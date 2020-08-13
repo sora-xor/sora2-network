@@ -4,7 +4,7 @@ use std::sync::Arc;
 use std::time::Duration;
 use sc_client_api::ExecutorProvider;
 use sc_consensus::LongestChain;
-use node_template_runtime::{self, opaque::Block, RuntimeApi};
+use substrate_iroha_bridge_runtime::{self, opaque::Block, RuntimeApi};
 use sc_service::{error::{Error as ServiceError}, AbstractService, Configuration, ServiceBuilder};
 use sp_inherents::InherentDataProviders;
 use sc_executor::native_executor_instance;
@@ -17,8 +17,8 @@ use sc_finality_grandpa::{
 // Our native executor instance.
 native_executor_instance!(
 	pub Executor,
-	node_template_runtime::api::dispatch,
-	node_template_runtime::native_version,
+	substrate_iroha_bridge_runtime::api::dispatch,
+	substrate_iroha_bridge_runtime::native_version,
 );
 
 /// Starts a `ServiceBuilder` for a full service.
@@ -34,8 +34,8 @@ macro_rules! new_full_start {
 		let inherent_data_providers = sp_inherents::InherentDataProviders::new();
 
 		let builder = sc_service::ServiceBuilder::new_full::<
-			node_template_runtime::opaque::Block,
-			node_template_runtime::RuntimeApi,
+			substrate_iroha_bridge_runtime::opaque::Block,
+			substrate_iroha_bridge_runtime::RuntimeApi,
 			crate::service::Executor
 		>($config)?
 			.with_select_chain(|_config, backend| {
@@ -98,6 +98,7 @@ pub fn new_full(config: Configuration) -> Result<impl AbstractService, ServiceEr
 	let force_authoring = config.force_authoring;
 	let name = config.network.node_name.clone();
 	let disable_grandpa = config.disable_grandpa;
+	let dev_seed = config.dev_key_seed.clone();
 
 	let (builder, mut import_setup, inherent_data_providers) = new_full_start!(config);
 
@@ -112,6 +113,26 @@ pub fn new_full(config: Configuration) -> Result<impl AbstractService, ServiceEr
 			Ok(Arc::new(GrandpaFinalityProofProvider::new(backend, provider)) as _)
 		})?
 		.build_full()?;
+
+	if let Some(seed) = dev_seed {
+		use substrate_iroha_bridge_runtime::iroha_bridge;
+		service
+			.keystore()
+			.write()
+			.insert_ephemeral_from_seed_by_type::<iroha_bridge::crypto::Pair>(
+				&seed,
+				iroha_bridge::KEY_TYPE,
+			)
+			.expect("Dev Seed should always succeed.");
+		service
+			.keystore()
+			.write()
+			.insert_ephemeral_from_seed_by_type::<iroha_bridge::crypto_ed::Pair>(
+				&seed,
+				iroha_bridge::KEY_TYPE_2,
+			)
+			.expect("Dev Seed should always succeed.");
+	}
 
 	if role.is_authority() {
 		let proposer = sc_basic_authorship::ProposerFactory::new(

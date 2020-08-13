@@ -5,14 +5,14 @@ description = 'Substrate Node template'
 edition = '2018'
 homepage = 'https://substrate.dev'
 license = 'Unlicense'
-name = 'node-template'
+name = 'substrate-iroha-bridge-node'
 repository = 'https://github.com/substrate-developer-hub/substrate-node-template/'
 version = '2.0.0-rc4'
 [package.metadata.docs.rs]
 targets = ['x86_64-unknown-linux-gnu']
 
 [[bin]]
-name = 'node-template'
+name = 'substrate-iroha-bridge-node'
 
 [dependencies]
 futures = '0.3.4'
@@ -20,7 +20,7 @@ log = '0.4.8'
 parking_lot = '0.10.0'
 structopt = '0.3.8'
 
-[dependencies.node-template-runtime]
+[dependencies.substrate-iroha-bridge-runtime]
 path = '../runtime'
 version = '2.0.0-rc4'
 

@@ -1,7 +1,7 @@
-use sp_core::{Pair, Public, sr25519};
-use node_template_runtime::{
+use sp_core::{crypto::AccountId32, Pair, Public, ed25519, sr25519};
+use substrate_iroha_bridge_runtime::{
 	AccountId, AuraConfig, BalancesConfig, GenesisConfig, GrandpaConfig,
-	SudoConfig, SystemConfig, WASM_BINARY, Signature
+	SudoConfig, SystemConfig, WASM_BINARY, Signature, XORConfig, DOTConfig, KSMConfig, IrohaBridgeConfig,
 };
 use sp_consensus_aura::sr25519::AuthorityId as AuraId;
 use sp_finality_grandpa::AuthorityId as GrandpaId;
@@ -108,9 +108,9 @@ fn testnet_genesis(initial_authorities: Vec<(AuraId, GrandpaId)>,
 			code: WASM_BINARY.to_vec(),
 			changes_trie_config: Default::default(),
 		}),
-		balances: Some(BalancesConfig {
-			balances: endowed_accounts.iter().cloned().map(|k|(k, 1 << 60)).collect(),
-		}),
+		// balances: Some(BalancesConfig {
+		// 	balances: endowed_accounts.iter().cloned().map(|k|(k, 1 << 60)).collect(),
+		// }),
 		aura: Some(AuraConfig {
 			authorities: initial_authorities.iter().map(|x| (x.0.clone())).collect(),
 		}),
@@ -120,5 +120,41 @@ fn testnet_genesis(initial_authorities: Vec<(AuraId, GrandpaId)>,
 		sudo: Some(SudoConfig {
 			key: root_key,
 		}),
+		balances_Instance1: Some(XORConfig {
+			balances: endowed_accounts
+				.iter()
+				.cloned()
+				.filter(|x| {
+					x != &AccountId32::from([
+						52u8, 45, 84, 67, 137, 84, 47, 252, 35, 59, 237, 44, 144, 70, 71, 206, 243,
+						67, 8, 115, 247, 189, 204, 26, 181, 226, 232, 81, 123, 12, 81, 120,
+					])
+				})
+				// .map(|k| (k, 1 << 60))
+				.map(|k| (k, 0))
+				.collect(),
+		}),
+		balances_Instance2: Some(DOTConfig {
+			balances: endowed_accounts
+				.iter()
+				.cloned()
+				.map(|k| (k, 1 << 8))
+				.collect(),
+		}),
+		balances_Instance3: Some(KSMConfig {
+			balances: endowed_accounts
+				.iter()
+				.cloned()
+				.map(|k| (k, 1 << 8))
+				.collect(),
+		}),
+		balances: Some(BalancesConfig {
+			balances: endowed_accounts
+				.iter()
+				.cloned()
+				.map(|k| (k, 1 << 60))
+				.collect(),
+		}),
+		iroha_bridge: Some(IrohaBridgeConfig { authorities: endowed_accounts.clone() }),
 	}
 }

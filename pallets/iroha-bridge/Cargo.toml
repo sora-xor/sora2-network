@@ -1,0 +1,103 @@
+[package]
+authors = ['Substrate DevHub <https://github.com/substrate-developer-hub>']
+description = 'FRAME pallet template'
+edition = '2018'
+homepage = 'https://substrate.dev'
+license = 'Unlicense'
+name = 'pallet-iroha-bridge'
+repository = 'https://github.com/substrate-developer-hub/substrate-node-template/'
+version = '2.0.0-rc4'
+
+[package.metadata.docs.rs]
+targets = ['x86_64-unknown-linux-gnu']
+
+#[dependencies.codec]
+#default-features = false
+#features = ['derive']
+#package = 'parity-scale-codec'
+#version = '1.3.1'
+
+[dependencies]
+# external dependencies
+parity-scale-codec = { default-features = false, features = ['derive'], version = '1.3.1' }
+parking_lot = "0.10.0"
+#ed25519-dalek = { version = "1.0.0-pre.3", default-features = false }
+#collateral = { path = '../collateral', default-features = false }
+treasury = { path = '../treasury', default-features = false }
+serde = { version = "1.0", optional = true, features = ["derive"] }
+
+#serde = { version = "1", default-features = false, features = ["derive"] }
+# updated to `alt_serde_json` when latest version supporting feature `alloc` is released
+#serde_json = { version = "1.0", default-features = false, features = ["alloc"] }
+alt_serde = { version = "1", default-features = false, features = ["derive"] }
+serde_json = { version = "1", default-features = false, git = "https://github.com/Xanewok/json", branch = "no-std", features = ["alloc"] }
+
+[dependencies.pallet-balances]
+default-features = false
+git = 'https://github.com/paritytech/substrate.git'
+package = 'pallet-balances'
+tag = 'v2.0.0-rc4'
+version = '2.0.0-rc4'
+
+[dependencies.frame-support]
+default-features = false
+git = 'https://github.com/paritytech/substrate.git'
+tag = 'v2.0.0-rc4'
+version = '2.0.0-rc4'
+
+[dependencies.frame-system]
+default-features = false
+git = 'https://github.com/paritytech/substrate.git'
+tag = 'v2.0.0-rc4'
+version = '2.0.0-rc4'
+
+[dependencies.sp-std]
+default-features = false
+git = 'https://github.com/paritytech/substrate.git'
+tag = 'v2.0.0-rc4'
+version = '2.0.0-rc4'
+
+[dependencies.iroha_client_no_std]
+default-features = false
+path = "../../../../../iroha/iroha_client_no_std"
+
+[dependencies.sp-core]
+default-features = false
+git = 'https://github.com/paritytech/substrate.git'
+tag = 'v2.0.0-rc4'
+version = '2.0.0-rc4'
+#features = ["full_crypto"]
+
+[dependencies.sp-io]
+default-features = false
+git = 'https://github.com/paritytech/substrate.git'
+tag = 'v2.0.0-rc4'
+version = '2.0.0-rc4'
+
+[dependencies.sp-runtime]
+default-features = false
+git = 'https://github.com/paritytech/substrate.git'
+tag = 'v2.0.0-rc4'
+version = '2.0.0-rc4'
+
+[features]
+default = ['std']
+std = [
+    #    "collateral/std",
+    "treasury/std",
+    'parity-scale-codec/std',
+    'frame-support/std',
+    'frame-system/std',
+    'sp-io/std',
+    'sp-runtime/std',
+    'sp-std/std',
+    'serde'
+]
+
+[dev-dependencies]
+iroha_client = { path = "../../../../iroha_client" }
+iroha = { path = "../../../../iroha" }
+async-std = { version = "1.5", features = ["attributes", "unstable"] }
+parity-scale-codec = { version = "1.3", features = ["derive"] }
+log = "0.4.8"
+tempfile = "3.1.0"
