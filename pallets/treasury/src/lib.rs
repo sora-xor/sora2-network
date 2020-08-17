@@ -7,27 +7,17 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
-#[cfg(test)]
-extern crate mocktopus;
-
-// #[cfg(test)]
-// use mocktopus::macros::mockable;
-
-use frame_support::traits::{Currency, ExistenceRequirement::KeepAlive, ReservableCurrency};
-/// # XOR Treasury implementation
-/// The Treasury module according to the specification at
-/// https://interlay.gitlab.io/XOR-spec/spec/treasury.html
-// Substrate
-use frame_support::{decl_event, decl_module, decl_error, decl_storage, dispatch::DispatchResult, ensure};
-use sp_runtime::ModuleId;
-use system::ensure_signed;
+use codec::{Decode, Encode};
+use core::convert::{TryFrom, TryInto};
 use core::marker::PhantomData;
-use codec::{Encode, Decode};
-use core::convert::{TryInto, TryFrom};
-
-// use x_core::Error;
-
-// pub type BalanceOf<T>= <<T as Trait>::XOR as Currency<<T as system::Trait>::AccountId>>::Balance;
+use frame_support::traits::{Currency, ExistenceRequirement::KeepAlive, ReservableCurrency};
+use frame_support::{
+    decl_error, decl_event, decl_module, decl_storage, dispatch::DispatchResult, ensure,
+};
+use iroha_client_no_std::prelude::AssetDefinitionId;
+use sp_runtime::ModuleId;
+use sp_std::str::FromStr;
+use system::ensure_signed;
 
 /// The treasury's module id, used for deriving its sovereign account ID.
 const _MODULE_ID: ModuleId = ModuleId(*b"ily/trsy");
@@ -39,6 +29,42 @@ pub enum AssetKind {
     KSM,
 }
 
+impl AssetKind {
+    pub fn definition_id(&self) -> AssetDefinitionId {
+        match self {
+            AssetKind::XOR => AssetDefinitionId::new("XOR", "global"),
+            AssetKind::DOT => AssetDefinitionId::new("DOT", "polkadot"),
+            AssetKind::KSM => AssetDefinitionId::new("KSM", "polkadot"),
+        }
+    }
+}
+
+impl<'a> TryFrom<&'a AssetDefinitionId> for AssetKind {
+    type Error = ();
+
+    fn try_from(asset_def_id: &'a AssetDefinitionId) -> Result<Self, Self::Error> {
+        match asset_def_id {
+            x if x == &AssetDefinitionId::new("XOR", "global") => Ok(AssetKind::XOR),
+            x if x == &AssetDefinitionId::new("DOT", "polkadot") => Ok(AssetKind::DOT),
+            x if x == &AssetDefinitionId::new("KSM", "polkadot") => Ok(AssetKind::KSM),
+            _ => Err(()),
+        }
+    }
+}
+
+impl FromStr for AssetKind {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "XOR" => Ok(AssetKind::XOR),
+            "DOT" => Ok(AssetKind::DOT),
+            "KSM" => Ok(AssetKind::KSM),
+            _ => Err(()),
+        }
+    }
+}
+
 /// The pallet's configuration trait.
 /// Instantiation of this pallet requires the existence of a module that
 /// implements Currency and ReservableCurrency. The Balances module can be used
@@ -46,20 +72,32 @@ pub enum AssetKind {
 /// of accounts, and any function defined by the Currency and ReservableCurrency
 /// traits.
 pub trait Trait: system::Trait {
-    type XOR: Currency<<Self as system::Trait>::AccountId> + ReservableCurrency<<Self as system::Trait>::AccountId>;
-    type DOT: Currency<<Self as system::Trait>::AccountId> + ReservableCurrency<<Self as system::Trait>::AccountId>;
-    type KSM: Currency<<Self as system::Trait>::AccountId> + ReservableCurrency<<Self as system::Trait>::AccountId>;
+    type XOR: Currency<<Self as system::Trait>::AccountId>
+        + ReservableCurrency<<Self as system::Trait>::AccountId>;
+    type DOT: Currency<<Self as system::Trait>::AccountId>
+        + ReservableCurrency<<Self as system::Trait>::AccountId>;
+    type KSM: Currency<<Self as system::Trait>::AccountId>
+        + ReservableCurrency<<Self as system::Trait>::AccountId>;
 
     /// The overarching event type.
     type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
 }
 
-pub fn balance_to_num<T: Trait, C: Currency<<T as system::Trait>::AccountId>>(amount: C::Balance) -> Result<u128, Error<T>> {
-    amount.try_into().map_err(|_| <Error<T>>::InvalidBalanceType)?.try_into().map_err(|_| <Error<T>>::InvalidBalanceType)
+pub fn balance_to_num<T: Trait, C: Currency<<T as system::Trait>::AccountId>>(
+    amount: C::Balance,
+) -> Result<u128, Error<T>> {
+    amount
+        .try_into()
+        .map_err(|_| <Error<T>>::InvalidBalanceType)?
+        .try_into()
+        .map_err(|_| <Error<T>>::InvalidBalanceType)
 }
 
-pub fn num_to_balance<T: Trait, C: Currency<<T as system::Trait>::AccountId>>(amount_num: u128) -> Result<C::Balance, Error<T>> {
-    C::Balance::try_from(usize::try_from(amount_num).map_err(|_| <Error<T>>::InvalidBalanceType)?).map_err(|_| <Error<T>>::InvalidBalanceType)
+pub fn num_to_balance<T: Trait, C: Currency<<T as system::Trait>::AccountId>>(
+    amount_num: u128,
+) -> Result<C::Balance, Error<T>> {
+    C::Balance::try_from(usize::try_from(amount_num).map_err(|_| <Error<T>>::InvalidBalanceType)?)
+        .map_err(|_| <Error<T>>::InvalidBalanceType)
 }
 
 decl_error! {
@@ -67,6 +105,7 @@ decl_error! {
         InsufficientLockedFunds,
         InsufficientFunds,
         InvalidBalanceType,
+        InvalidAssetName,
     }
 }
 
@@ -144,7 +183,11 @@ pub struct Asset<T, C> {
     _c: PhantomData<C>,
 }
 
-impl<T, C> Asset<T, C> where T: Trait, C: Currency<T::AccountId> + ReservableCurrency<T::AccountId> {
+impl<T, C> Asset<T, C>
+where
+    T: Trait,
+    C: Currency<T::AccountId> + ReservableCurrency<T::AccountId>,
+{
     /// Total supply of XOR
     #[allow(unused)]
     pub fn get_total_supply() -> C::Balance {
@@ -236,7 +279,11 @@ impl<T, C> Asset<T, C> where T: Trait, C: Currency<T::AccountId> + ReservableCur
 }
 
 impl<T: Trait> Module<T> {
-    pub fn mint(requester: T::AccountId, asset_kind: AssetKind, amount_num: u128) -> Result<(), Error<T>> {
+    pub fn mint(
+        requester: T::AccountId,
+        asset_kind: AssetKind,
+        amount_num: u128,
+    ) -> Result<(), Error<T>> {
         match asset_kind {
             AssetKind::XOR => Asset::<T, T::XOR>::mint(requester, amount_num),
             AssetKind::DOT => Asset::<T, T::DOT>::mint(requester, amount_num),
@@ -244,7 +291,11 @@ impl<T: Trait> Module<T> {
         }
     }
 
-    pub fn lock(redeemer: T::AccountId, asset_kind: AssetKind, amount_num: u128) -> Result<(), Error<T>> {
+    pub fn lock(
+        redeemer: T::AccountId,
+        asset_kind: AssetKind,
+        amount_num: u128,
+    ) -> Result<(), Error<T>> {
         match asset_kind {
             AssetKind::XOR => Asset::<T, T::XOR>::lock(redeemer, amount_num),
             AssetKind::DOT => Asset::<T, T::DOT>::lock(redeemer, amount_num),
@@ -252,7 +303,11 @@ impl<T: Trait> Module<T> {
         }
     }
 
-    pub fn burn(redeemer: T::AccountId, asset_kind: AssetKind, amount_num: u128) -> Result<(), Error<T>> {
+    pub fn burn(
+        redeemer: T::AccountId,
+        asset_kind: AssetKind,
+        amount_num: u128,
+    ) -> Result<(), Error<T>> {
         match asset_kind {
             AssetKind::XOR => Asset::<T, T::XOR>::burn(redeemer, amount_num),
             AssetKind::DOT => Asset::<T, T::DOT>::burn(redeemer, amount_num),
