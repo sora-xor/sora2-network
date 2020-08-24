@@ -88,6 +88,6 @@ path = "../../../../../iroha/iroha_client_no_std"
 #default-features = false
 #path = '../core'
 
-[dev-dependencies]
-mocktopus = "0.7.0"
+#[dev-dependencies]
+#mocktopus = "0.7.0"
 

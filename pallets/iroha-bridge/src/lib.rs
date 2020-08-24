@@ -11,53 +11,32 @@ pub mod mock;
 #[macro_use]
 mod utils;
 
-use alt_serde::{Deserialize, Deserializer};
-use core::{convert::TryInto, fmt};
 use core::{line, stringify};
 use frame_support::dispatch::Weight;
-use frame_support::traits::Currency;
-use frame_support::traits::ExistenceRequirement;
 use frame_support::{
     debug, decl_error, decl_event, decl_module, decl_storage, dispatch::DispatchResult, traits::Get,
 };
-use frame_system::offchain::{Account, SignMessage, SigningTypes};
-use frame_system::RawOrigin;
+use frame_system::offchain::SignMessage;
 use frame_system::{
-    self as system, ensure_none, ensure_root, ensure_signed,
-    offchain::{
-        AppCrypto, CreateSignedTransaction, SendSignedTransaction, Signer, SubmitTransaction,
-    },
+    self as system, ensure_root, ensure_signed,
+    offchain::{AppCrypto, CreateSignedTransaction, SendSignedTransaction, Signer},
 };
 use iroha_client_no_std::account;
 use iroha_client_no_std::account::isi::AccountInstruction;
 use iroha_client_no_std::account::query::GetAccount;
-use iroha_client_no_std::asset::isi::AssetInstruction;
-use iroha_client_no_std::asset::query::GetAccountAssets;
-use iroha_client_no_std::block::{BlockHeader, Message as BlockMessage, Message, ValidBlock};
+use iroha_client_no_std::block::{Message as BlockMessage, ValidBlock};
 use iroha_client_no_std::bridge;
-use iroha_client_no_std::bridge::asset::ExternalAsset;
 use iroha_client_no_std::bridge::{BridgeDefinitionId, ExternalTransaction};
 use iroha_client_no_std::crypto as iroha_crypto;
-use iroha_client_no_std::isi::prelude::PeerInstruction;
 use iroha_client_no_std::peer::PeerId;
 use iroha_client_no_std::prelude as iroha;
-use iroha_client_no_std::tx::{Payload, RequestedTransaction};
+use iroha_client_no_std::tx::RequestedTransaction;
 use parity_scale_codec::{Decode, Encode};
 use sp_core::crypto::KeyTypeId;
-use sp_core::ed25519::Signature as SpSignature;
-use sp_core::{crypto::AccountId32, ed25519, sr25519};
-use sp_runtime::offchain::http::Request;
-use sp_runtime::traits::{Hash, StaticLookup};
-use sp_runtime::traits::{IdentifyAccount, Verify};
-use sp_runtime::DispatchError;
+use sp_runtime::traits::Hash;
 use sp_runtime::{
-    offchain as rt_offchain,
-    offchain::storage::StorageValueRef,
-    transaction_validity::{
-        InvalidTransaction, TransactionPriority, TransactionSource, TransactionValidity,
-        ValidTransaction,
-    },
-    MultiSignature,
+    offchain as rt_offchain, offchain::storage::StorageValueRef,
+    transaction_validity::TransactionPriority,
 };
 use sp_std::convert::TryFrom;
 use sp_std::prelude::*;
@@ -74,13 +53,9 @@ pub const QUERY_ENDPOINT: &str = "http://127.0.0.1:7878/query";
 
 pub mod crypto {
     use crate::KEY_TYPE;
-    use sp_core::ecdsa::Signature as EcdsaSignature;
-    use sp_core::ed25519::{Public as EdPublic, Signature as Ed25519Signature};
-    use sp_core::sr25519::Signature as Sr25519Signature;
 
     use sp_runtime::{
-        app_crypto::{app_crypto, ecdsa, ed25519, sr25519},
-        traits::Verify,
+        app_crypto::{app_crypto, sr25519},
         MultiSignature, MultiSigner,
     };
 
@@ -98,11 +73,9 @@ pub mod crypto {
 
 pub mod crypto_ed {
     use crate::KEY_TYPE_2 as KEY_TYPE;
-    use sp_core::ed25519::{Public as EdPublic, Signature as Ed25519Signature};
 
     use sp_runtime::{
         app_crypto::{app_crypto, ed25519},
-        traits::Verify,
         MultiSignature, MultiSigner,
     };
 
@@ -195,7 +168,7 @@ decl_module! {
             let author = ensure_signed(origin)?;
 
             if Self::is_authority(&author) {
-                <treasury::Module<T>>::burn(sender.clone(), asset_kind, amount);
+                <treasury::Module<T>>::burn(sender.clone(), asset_kind, amount)?;
                 debug::info!("Finalized outgoing transfer request {} {:?} from {:?} to {}", amount, asset_kind, sender, receiver);
                 Self::deposit_event(RawEvent::OutgoingTransfer(sender, receiver, asset_kind, amount));
             }
@@ -209,12 +182,12 @@ decl_module! {
             let _sender = ensure_signed(origin)?;
 
             // TODO: transfer from `sender`
-            let mut from = <Self as Store>::Accounts::get(&receiver);
+            let from = <Self as Store>::Accounts::get(&receiver);
             if from == T::AccountId::default() {
                 debug::error!("Account was not found for: {:?}", receiver);
                 return Err(<Error<T>>::AccountNotFound.into());
             }
-            <treasury::Module<T>>::lock(from.clone(), asset_kind, amount);
+            <treasury::Module<T>>::lock(from.clone(), asset_kind, amount)?;
 
             <Self as Store>::OcRequests::mutate(|v| v.push(OffchainRequest::OutgoingTransfer(from, receiver, asset_kind, amount, nonce)));
             Ok(())
@@ -229,7 +202,7 @@ decl_module! {
                 if <Accounts<T>>::get(&sender) == T::AccountId::default() {
                     <Accounts<T>>::insert(sender.clone(), receiver.clone());
                 }
-                <treasury::Module<T>>::mint(receiver.clone(), asset_kind, amount);
+                <treasury::Module<T>>::mint(receiver.clone(), asset_kind, amount)?;
                 Self::deposit_event(RawEvent::IncomingTransfer(sender, receiver, asset_kind, amount));
             } else {
                debug::warn!("{:?} is not an authority", author);
@@ -284,14 +257,14 @@ impl<T: Trait> Module<T> {
     fn handle_block(block: ValidBlock) -> Result<(), Error<T>> {
         debug::debug!("Handling Iroha block at height {}", block.header.height);
         for tx in block.transactions {
-            let author_id = tx.payload.account_id;
+            let _author_id = tx.payload.account_id;
             let bridge_account_id = iroha::AccountId::new("bridge", "polkadot");
             for isi in tx.payload.instructions {
                 match isi {
                     iroha::Instruction::Account(AccountInstruction::TransferAsset(
                         from,
                         to,
-                        mut asset,
+                        asset,
                     )) => {
                         debug::info!(
                             "Outgoing {} transfer from {}",
@@ -301,7 +274,7 @@ impl<T: Trait> Module<T> {
                         if to == bridge_account_id {
                             let asset_kind = AssetKind::try_from(&asset.id.definition_id)
                                 .map_err(|_| <Error<T>>::Other)?;
-                            use sp_core::crypto::AccountId32;
+
                             let quantity = asset.quantity;
                             let amount = quantity as u128;
 
@@ -342,7 +315,7 @@ impl<T: Trait> Module<T> {
                             });
 
                             match result {
-                                Some((acc, Ok(_))) => {
+                                Some((_acc, Ok(_))) => {
                                     let bridge_def_id =
                                         BridgeDefinitionId::new(&bridge_account_id.domain_name);
                                     let tx = ExternalTransaction {
@@ -390,8 +363,7 @@ impl<T: Trait> Module<T> {
 
     fn fetch_blocks(from_height: u64) -> Result<Vec<ValidBlock>, Error<T>> {
         let null_pk = iroha_crypto::PublicKey::try_from(vec![0u8; 32]).unwrap();
-        let mut get_blocks =
-            BlockMessage::GetBlocksFromHeight(from_height, PeerId::new("", &null_pk));
+        let get_blocks = BlockMessage::GetBlocksFromHeight(from_height, PeerId::new("", &null_pk));
         let msg = Self::http_request::<_, BlockMessage>(BLOCK_ENDPOINT, &get_blocks)?;
         let blocks = match msg {
             BlockMessage::ShareBlocks(blocks, _) => blocks,
@@ -439,7 +411,7 @@ impl<T: Trait> Module<T> {
                     s_lock.set(&false);
 
                     for block in blocks {
-                        Self::handle_block(block);
+                        Self::handle_block(block)?;
                     }
                     debug::debug!("fetched blocks");
                 }
@@ -511,7 +483,7 @@ impl<T: Trait> Module<T> {
 
         let asset_definition_id = asset_kind.definition_id();
         let bridge_def_id = BridgeDefinitionId::new("polkadot");
-        let bridge_account_id = iroha::AccountId::new("bridge", &bridge_def_id.name);
+        let _bridge_account_id = iroha::AccountId::new("bridge", &bridge_def_id.name);
         let quantity = u32::try_from(amount).map_err(|_| <Error<T>>::InvalidBalanceType)?;
 
         let instructions = vec![bridge::isi::handle_incoming_transfer(

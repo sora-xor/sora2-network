@@ -8,7 +8,7 @@ use sp_runtime::{
 
 use async_std::task;
 
-use iroha::{bridge, config::Configuration, isi, prelude};
+use iroha::{config::Configuration, prelude};
 use iroha_client::client::account::by_id;
 use iroha_client::{client::Client, config::Configuration as ClientConfiguration};
 use iroha_client_no_std::prelude as no_std_prelude;

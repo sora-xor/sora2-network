@@ -2,50 +2,27 @@
 
 use crate as iroha_bridge;
 use frame_support::traits::StorageMapShim;
-use frame_support::{construct_runtime, impl_outer_origin, parameter_types, weights::Weight};
+use frame_support::{construct_runtime, parameter_types, weights::Weight};
 use frame_system as system;
-use frame_system::offchain::{Account, SignMessage, SigningTypes};
+use frame_system::offchain::{Account, SigningTypes};
 use parity_scale_codec::{Codec, Decode, Encode};
-use sp_api::impl_runtime_apis;
-use sp_core::{
-    offchain::{self, testing, HttpRequestId as RequestId},
-    sr25519::{self},
-    H256,
-};
 use sp_runtime::serde::{Serialize, Serializer};
 use sp_runtime::traits::{
     Applyable, Checkable, DispatchInfoOf, Dispatchable, PostDispatchInfoOf, SignedExtension,
     ValidateUnsigned,
 };
+use sp_runtime::traits::{Block, IdentifyAccount, Verify};
 use sp_runtime::transaction_validity::TransactionValidityError;
-use sp_runtime::{
-    create_runtime_str,
-    testing::TestXt,
-    traits::{Block, IdentifyAccount, Verify},
-};
 use sp_runtime::{
     generic,
     testing::Header,
     traits::{self, BlakeTwo256, IdentityLookup},
     transaction_validity::{TransactionSource, TransactionValidity},
-    AccountId32, ApplyExtrinsicResultWithInfo, MultiSignature, MultiSigner, Perbill,
+    AccountId32, ApplyExtrinsicResultWithInfo, MultiSignature, Perbill,
 };
 use sp_std::fmt::Debug;
-
 use frame_support::dispatch::{DispatchInfo, GetDispatchInfo};
 use frame_support::weights::Pays;
-use parity_scale_codec::alloc::collections::HashSet;
-use parking_lot::RwLock;
-use sp_api::RuntimeVersion;
-use sp_core::offchain::testing::PendingRequest;
-use sp_core::offchain::{
-    storage::{InMemOffchainStorage, OffchainOverlayedChange, OffchainOverlayedChanges},
-    HttpError, HttpRequestStatus as RequestStatus, OffchainStorage, OpaqueNetworkState,
-    StorageKind, Timestamp,
-};
-use sp_std::sync::Arc;
-use std::collections::HashMap;
-
 pub mod offchain_testing;
 pub use offchain_testing::*;
 
@@ -84,7 +61,7 @@ parity_util_mem::malloc_size_of_is_0!(any: MyTestXt<Call, Extra>);
 
 impl<Call: Codec + Sync + Send, Context, Extra> Checkable<Context> for MyTestXt<Call, Extra> {
     type Checked = Self;
-    fn check(self, c: &Context) -> Result<Self::Checked, TransactionValidityError> {
+    fn check(self, _c: &Context) -> Result<Self::Checked, TransactionValidityError> {
         Ok(self)
     }
 }
@@ -228,11 +205,11 @@ impl treasury::Trait for Test {
 impl<T: SigningTypes> system::offchain::SignMessage<T> for Test {
     type SignatureData = ();
 
-    fn sign_message(&self, message: &[u8]) -> Self::SignatureData {
+    fn sign_message(&self, _message: &[u8]) -> Self::SignatureData {
         unimplemented!()
     }
 
-    fn sign<TPayload, F>(&self, f: F) -> Self::SignatureData
+    fn sign<TPayload, F>(&self, _f: F) -> Self::SignatureData
     where
         F: Fn(&Account<T>) -> TPayload,
         TPayload: system::offchain::SignedPayload<T>,
@@ -249,7 +226,7 @@ where
         call: Call,
         _public: <Signature as Verify>::Signer,
         account: <Test as system::Trait>::AccountId,
-        index: <Test as system::Trait>::Index,
+        _index: <Test as system::Trait>::Index,
     ) -> Option<(
         Call,
         <TestExtrinsic as sp_runtime::traits::Extrinsic>::SignaturePayload,
@@ -407,7 +384,7 @@ impl_runtime_apis! {
 */
 use sp_runtime::BuildStorage;
 pub fn new_test_ext(
-    root_key: AccountId,
+    _root_key: AccountId,
     endowed_accounts: Vec<AccountId>,
 ) -> sp_io::TestExternalities {
     GenesisConfig {

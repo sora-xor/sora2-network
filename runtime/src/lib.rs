@@ -28,7 +28,7 @@ use sp_std::prelude::*;
 #[cfg(feature = "std")]
 use sp_version::NativeVersion;
 use sp_version::RuntimeVersion;
-use system::offchain::{Account, SignMessage, SigningTypes};
+use system::offchain::{Account, SigningTypes};
 
 // A few exports that help ease life for downstream crates.
 pub use balances::Call as BalancesCall;
@@ -304,11 +304,11 @@ impl treasury::Trait for Runtime {
 impl<T: SigningTypes> system::offchain::SignMessage<T> for Runtime {
     type SignatureData = ();
 
-    fn sign_message(&self, message: &[u8]) -> Self::SignatureData {
+    fn sign_message(&self, _message: &[u8]) -> Self::SignatureData {
         unimplemented!()
     }
 
-    fn sign<TPayload, F>(&self, f: F) -> Self::SignatureData
+    fn sign<TPayload, F>(&self, _f: F) -> Self::SignatureData
     where
         F: Fn(&Account<T>) -> TPayload,
         TPayload: system::offchain::SignedPayload<T>,

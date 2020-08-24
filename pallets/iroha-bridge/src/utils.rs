@@ -4,6 +4,7 @@ use frame_system::offchain::SigningTypes;
 use iroha_client_no_std::crypto as iroha_crypto;
 use parity_scale_codec::{Decode, Encode};
 
+#[allow(unused)]
 macro_rules! dbg {
     () => {
         debug::info!("[{}]", $crate::line!());
@@ -42,7 +43,7 @@ pub fn substrate_sig_to_iroha_sig<T: Trait>(
 pub fn iroha_sig_to_substrate_sig<T: Trait>(
     iroha_crypto::Signature {
         public_key,
-        mut signature,
+        signature,
     }: iroha_crypto::Signature,
 ) -> (T::Public, <T as SigningTypes>::Signature) {
     (

@@ -15,8 +15,6 @@ use sp_runtime::{
     Perbill,
 };
 
-use mocktopus::mocking::clear_mocks;
-
 impl_outer_origin! {
     pub enum Origin for Test {}
 }
@@ -127,7 +125,6 @@ pub fn run_test<T>(test: T) -> ()
 where
     T: FnOnce() -> (),
 {
-    clear_mocks();
     ExtBuilder::build().execute_with(|| {
         System::set_block_number(1);
         test();
