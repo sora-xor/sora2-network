@@ -184,6 +184,7 @@ decl_module! {
 
         /// Clean the state on initialisation of a block
         fn on_initialize(_now: T::BlockNumber) -> Weight {
+            debug::debug!("called on_initialize");
             <Self as Store>::OcRequests::kill();
             0
         }
@@ -230,6 +231,8 @@ decl_module! {
                 }
                 <treasury::Module<T>>::mint(receiver.clone(), asset_kind, amount);
                 Self::deposit_event(RawEvent::IncomingTransfer(sender, receiver, asset_kind, amount));
+            } else {
+               debug::warn!("{:?} is not an authority", author);
             }
             Ok(())
         }
@@ -243,27 +246,41 @@ decl_module! {
             Ok(())
         }
 
-        fn offchain_worker(block_number: T::BlockNumber) {
-            debug::info!("Entering off-chain workers");
-            for e in <Self as Store>::OcRequests::get() {
-                match e {
-                    OffchainRequest::OutgoingTransfer(from, to, asset_kind, amount, nonce) => {
-                        if let Err(_e) = Self::handle_outgoing_transfer(from, to, asset_kind, amount, nonce) {
-                            // TODO: unlock currency
-                        }
-                    }
-                }
-            }
+        /// Used for tests
+        #[weight = 0]
+        pub fn trigger(origin) -> DispatchResult {
+            Ok(())
+        }
 
-            match Self::fetch_iroha() {
-                Ok(_) => (),
-                Err(e) => { debug::error!("Fetching Iroha error: {:?}", e); }
-            }
+        fn offchain_worker(_block_number: T::BlockNumber) {
+            debug::info!("Entering off-chain workers");
+            Self::offchain();
         }
     }
 }
 
 impl<T: Trait> Module<T> {
+    fn offchain() {
+        for e in <Self as Store>::OcRequests::get() {
+            match e {
+                OffchainRequest::OutgoingTransfer(from, to, asset_kind, amount, nonce) => {
+                    if let Err(_e) =
+                        Self::handle_outgoing_transfer(from, to, asset_kind, amount, nonce)
+                    {
+                        // TODO: unlock currency
+                    }
+                }
+            }
+        }
+
+        match Self::fetch_iroha() {
+            Ok(_) => (),
+            Err(e) => {
+                debug::error!("Fetching Iroha error: {:?}", e);
+            }
+        }
+    }
+
     fn handle_block(block: ValidBlock) -> Result<(), Error<T>> {
         debug::debug!("Handling Iroha block at height {}", block.header.height);
         for tx in block.transactions {
@@ -441,6 +458,7 @@ impl<T: Trait> Module<T> {
     }
 
     fn send_instructions(instructions: Vec<iroha::Instruction>) -> Result<(), Error<T>> {
+        debug::debug!("send_instruction");
         let signer = Signer::<T, T::AuthorityIdEd>::all_accounts();
         if !signer.can_sign() {
             debug::error!("No local account available");
