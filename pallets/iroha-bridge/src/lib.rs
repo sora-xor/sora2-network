@@ -179,14 +179,8 @@ decl_module! {
         #[weight = 0]
         pub fn request_transfer(origin, receiver: iroha::AccountId, asset_kind: AssetKind, amount: u128, nonce: u8) -> DispatchResult {
             debug::debug!("called request_transfer");
-            let _sender = ensure_signed(origin)?;
+            let from = ensure_signed(origin)?;
 
-            // TODO: transfer from `sender`
-            let from = <Self as Store>::Accounts::get(&receiver);
-            if from == T::AccountId::default() {
-                debug::error!("Account was not found for: {:?}", receiver);
-                return Err(<Error<T>>::AccountNotFound.into());
-            }
             <treasury::Module<T>>::lock(from.clone(), asset_kind, amount)?;
 
             <Self as Store>::OcRequests::mutate(|v| v.push(OffchainRequest::OutgoingTransfer(from, receiver, asset_kind, amount, nonce)));
@@ -219,15 +213,34 @@ decl_module! {
             Ok(())
         }
 
-        /// Used for tests
-        #[weight = 0]
-        pub fn trigger(origin) -> DispatchResult {
-            Ok(())
-        }
-
-        fn offchain_worker(_block_number: T::BlockNumber) {
+        fn offchain_worker(block_number: T::BlockNumber) {
+            use core::convert::TryInto;
             debug::info!("Entering off-chain workers");
-            Self::offchain();
+
+            let block_num: u32 = match block_number.try_into().map(|n| n.try_into()) {
+                Ok(Ok(n)) => n,
+                _ => return
+            };
+
+            // acquire lock for the current block
+            let s_key = format!("iroha-bridge-ocw::lock-{}", block_num);
+            let s_lock = StorageValueRef::persistent(s_key.as_bytes());
+            let res: Result<Result<bool, bool>, Error<T>> =
+                s_lock.mutate(|s: Option<Option<bool>>| match s {
+                    None | Some(Some(false)) => Ok(true),
+                    _ => Err(<Error<T>>::AlreadyFetched),
+                });
+
+            if let Ok(Ok(true)) = res {
+                Self::offchain();
+            }
+
+            if block_num != 0 {
+                // release lock for previous block
+                let s_previous_key = format!("iroha-bridge-ocw::lock-{}", block_num - 1);
+                let s_previous_lock = StorageValueRef::persistent(s_previous_key.as_bytes());
+                s_previous_lock.set(&false);
+            }
         }
     }
 }
@@ -237,10 +250,19 @@ impl<T: Trait> Module<T> {
         for e in <Self as Store>::OcRequests::get() {
             match e {
                 OffchainRequest::OutgoingTransfer(from, to, asset_kind, amount, nonce) => {
-                    if let Err(_e) =
-                        Self::handle_outgoing_transfer(from, to, asset_kind, amount, nonce)
-                    {
-                        // TODO: unlock currency
+                    if let Err(e) = Self::handle_outgoing_transfer(
+                        from.clone(),
+                        to,
+                        asset_kind,
+                        amount,
+                        nonce,
+                    ) {
+                        debug::warn!("{:?}", e);
+                        if let Err(e) =
+                            <treasury::Module<T>>::unlock(from, asset_kind, amount)
+                        {
+                            debug::error!("Failed to unlock funds: {:?}", e);
+                        }
                     }
                 }
             }
@@ -267,7 +289,7 @@ impl<T: Trait> Module<T> {
                         asset,
                     )) => {
                         debug::info!(
-                            "Outgoing {} transfer from {}",
+                            "Detected outgoing {} transfer from {}",
                             asset.id.definition_id.name,
                             from
                         );
@@ -372,6 +394,7 @@ impl<T: Trait> Module<T> {
                 return Err(<Error<T>>::Other);
             }
         };
+        // TODO: validator list
         for block in blocks.clone() {
             for (pk, sig) in block
                 .signatures
@@ -394,46 +417,25 @@ impl<T: Trait> Module<T> {
     fn fetch_iroha() -> Result<(), Error<T>> {
         let s_last_fetched_height =
             StorageValueRef::persistent(b"iroha-bridge-ocw::last-fetched-height");
-        let s_lock = StorageValueRef::persistent(b"iroha-bridge-ocw::block-fetch-lock");
+        let latest_height = s_last_fetched_height.get::<u64>().flatten().unwrap_or(0);
+        let blocks = Self::fetch_blocks(latest_height)?;
 
-        let res: Result<Result<bool, bool>, Error<T>> =
-            s_lock.mutate(|s: Option<Option<bool>>| match s {
-                None | Some(Some(false)) => Ok(true),
-                _ => Err(<Error<T>>::AlreadyFetched),
-            });
-
-        if let Ok(Ok(true)) = res {
-            let latest_height = s_last_fetched_height.get::<u64>().flatten().unwrap_or(0);
-            match Self::fetch_blocks(latest_height) {
-                Ok(blocks) if !blocks.is_empty() => {
-                    // update last block hash and release the lock
-                    s_last_fetched_height.set(&blocks.last().unwrap().header.height);
-                    s_lock.set(&false);
-
-                    for block in blocks {
-                        Self::handle_block(block)?;
-                    }
-                    debug::debug!("fetched blocks");
-                }
-                Ok(_empty) => {
-                    // no new blocks received, release the lock
-                    s_lock.set(&false);
-                }
-                Err(err) => {
-                    // release the lock
-                    s_lock.set(&false);
-                    return Err(err);
-                }
+        if !blocks.is_empty() {
+            let new_last_height = blocks.last().unwrap().header.height;
+            for block in blocks {
+                Self::handle_block(block)?;
             }
+            s_last_fetched_height.set(&new_last_height);
+            debug::debug!("fetched blocks");
         }
         Ok(())
     }
 
     fn send_instructions(instructions: Vec<iroha::Instruction>) -> Result<(), Error<T>> {
-        debug::debug!("send_instruction");
+        debug::debug!("called send_instructions");
         let signer = Signer::<T, T::AuthorityIdEd>::all_accounts();
         if !signer.can_sign() {
-            debug::error!("No local account available");
+            debug::error!("No local account available for signing");
             return Err(<Error<T>>::Other);
         }
         let mut requested_tx = RequestedTransaction::new(
@@ -446,6 +448,7 @@ impl<T: Trait> Module<T> {
         let sigs = signer.sign_message(&payload_encoded);
         for (acc, sig) in sigs {
             debug::trace!("send_instructions acc [{}]: {:?}", acc.index, acc.public);
+            // TODO: multi-signature transaction
             if acc.index == 0 {
                 let sig = utils::substrate_sig_to_iroha_sig::<T>((acc.public, sig));
                 requested_tx.signatures.push(sig);
@@ -457,11 +460,6 @@ impl<T: Trait> Module<T> {
     }
 
     fn send_query(query: iroha::QueryRequest) -> Result<iroha::QueryResult, Error<T>> {
-        let signer = Signer::<T, T::AuthorityId>::all_accounts();
-        if !signer.can_sign() {
-            debug::error!("No local account available");
-            return Err(<Error<T>>::Other);
-        }
         let query_result = Self::http_request(QUERY_ENDPOINT, &query)?;
         Ok(query_result)
     }
@@ -475,34 +473,13 @@ impl<T: Trait> Module<T> {
     ) -> Result<(), Error<T>> {
         debug::info!("Received transfer request");
 
-        let signer = Signer::<T, T::AuthorityId>::all_accounts();
+        let signer = Signer::<T, T::AuthorityId>::any_account();
         if !signer.can_sign() {
             debug::error!("No local account available");
             return Err(<Error<T>>::Other);
         }
 
-        let asset_definition_id = asset_kind.definition_id();
-        let bridge_def_id = BridgeDefinitionId::new("polkadot");
-        let _bridge_account_id = iroha::AccountId::new("bridge", &bridge_def_id.name);
-        let quantity = u32::try_from(amount).map_err(|_| <Error<T>>::InvalidBalanceType)?;
-
-        let instructions = vec![bridge::isi::handle_incoming_transfer(
-            &bridge_def_id,
-            &asset_definition_id,
-            quantity,
-            0,
-            to_account_id.clone(),
-            &ExternalTransaction {
-                hash: "".into(),
-                payload: vec![],
-            },
-        )];
-        let resp = Self::send_instructions(instructions);
-        if resp.is_err() {
-            debug::error!("error while sending instructions");
-            return Err(<Error<T>>::SubmitInstructionsFailed);
-        }
-        let results = signer.send_signed_transaction(|_acc| {
+        let result = signer.send_signed_transaction(|_acc| {
             Call::outgoing_transfer(
                 from_account_id.clone(),
                 to_account_id.clone(),
@@ -512,16 +489,37 @@ impl<T: Trait> Module<T> {
             )
         });
 
-        for (acc, res) in &results {
-            match res {
-                Ok(()) => {
-                    debug::native::trace!("off-chain respond: acc: {:?}| nonce: {}", acc.id, nonce);
+        match result {
+            Some((_acc, Ok(_))) => {
+                let asset_definition_id = asset_kind.definition_id();
+                let bridge_def_id = BridgeDefinitionId::new("polkadot");
+                let quantity = u32::try_from(amount).map_err(|_| <Error<T>>::InvalidBalanceType)?;
+
+                let instructions = vec![bridge::isi::handle_incoming_transfer(
+                    &bridge_def_id,
+                    &asset_definition_id,
+                    quantity,
+                    0,
+                    to_account_id.clone(),
+                    &ExternalTransaction {
+                        hash: "".into(),
+                        payload: vec![],
+                    },
+                )];
+                let resp = Self::send_instructions(instructions);
+                if resp.is_err() {
+                    debug::error!("Error while sending instructions");
+                    return Err(<Error<T>>::SubmitInstructionsFailed);
                 }
-                Err(e) => {
-                    debug::error!("[{:?}] Failed in respond: {:?}", acc.id, e);
-                    return Err(<Error<T>>::SendSignedTransactionError);
-                }
-            };
+            }
+            Some((acc, Err(e))) => {
+                debug::error!("[{:?}] Failed in signed_submit_number: {:?}", acc.id, e);
+                return Err(<Error<T>>::SendSignedTransactionError);
+            }
+            _ => {
+                debug::error!("Failed in signed_submit_number");
+                return Err(<Error<T>>::SendSignedTransactionError);
+            }
         }
         Ok(())
     }

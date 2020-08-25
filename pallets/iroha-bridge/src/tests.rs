@@ -1,6 +1,6 @@
 use crate::{mock::*, KEY_TYPE, KEY_TYPE_2};
 use frame_support::{assert_ok, traits::OnInitialize};
-use sp_core::{crypto::AccountId32, sr25519, Pair, Public};
+use sp_core::{crypto::AccountId32, sr25519, Pair, Public, ed25519};
 use sp_runtime::{
     traits::{Dispatchable, IdentifyAccount, Verify},
     MultiSignature as Signature,
@@ -23,7 +23,6 @@ use sp_core::{
 use sp_io::TestExternalities;
 use std::thread;
 use tempfile::TempDir;
-// use crate::mock::offchain_testing::{self, OffchainState, PoolState, PendingRequest};
 
 use sp_core::offchain::Timestamp;
 
@@ -44,16 +43,16 @@ impl ExtBuilder {
         let (offchain, offchain_state) = TestOffchainExt::new();
         let (pool, pool_state) = TestTransactionPoolExt::new();
         let keystore = KeyStore::new();
-        keystore
-            .write()
-            .ed25519_generate_new(KEY_TYPE_2, Some("//Alice"))
-            .unwrap();
-
-        keystore
-            .write()
-            .sr25519_generate_new(KEY_TYPE, Some("//Alice"))
-            .unwrap();
-
+        {
+            let mut guard = keystore.write();
+            guard
+                .ed25519_generate_new(KEY_TYPE_2, Some("//Alice"))
+                .unwrap();
+            guard
+                .sr25519_generate_new(KEY_TYPE, Some("//Alice"))
+                .unwrap();
+            guard.sr25519_generate_new(KEY_TYPE, Some("//Bob")).unwrap();
+        }
         let _root_account = get_account_id_from_seed::<sr25519::Public>("Alice");
         let endowed_accounts = vec![
             get_account_id_from_seed::<sr25519::Public>("Alice"),
@@ -255,6 +254,9 @@ async fn should_transfer_asset_between_iroha_and_substrate() {
         ClientConfiguration::from_path("config.json").expect("Failed to load configuration.");
     let mut iroha_client = Client::new(&configuration);
 
+    let substrate_user_account =
+        AccountId32::decode(&mut &configuration.public_key.inner[..]).unwrap();
+
     let bridge_account_id = prelude::AccountId::new("bridge", "polkadot");
     let get_bridge_account = by_id(bridge_account_id.clone());
     let response = iroha_client
@@ -300,9 +302,14 @@ async fn should_transfer_asset_between_iroha_and_substrate() {
     };
     thread::spawn(|| offchain_worker_loop(oc_state_clone));
     ext.execute_with(|| {
+        let substrate_balance = Treasury::get_balance_from_account(substrate_user_account.clone(), AssetKind::XOR).unwrap();
+        assert_eq!(substrate_balance, 0);
+
         seal_block(1, state.clone(), oc_state.clone());
         seal_block(2, state.clone(), oc_state.clone());
-        // TODO: check balance on substrate account?
+
+        let substrate_balance = Treasury::get_balance_from_account(substrate_user_account.clone(), AssetKind::XOR).unwrap();
+        assert_eq!(substrate_balance, 100);
     });
 
     let get_bridge_account = by_id(bridge_account_id.clone());
@@ -320,11 +327,10 @@ async fn should_transfer_asset_between_iroha_and_substrate() {
     check_response_assets(&response, 0);
 
     ext.execute_with(|| {
-        let signer = get_account_id_from_seed::<sr25519::Public>("Alice");
         let amount = 100u128;
         let nonce = 0u8;
         assert_ok!(IrohaBridge::request_transfer(
-            Some(signer).into(),
+            Some(substrate_user_account.clone()).into(),
             no_std_user_account_id.clone(),
             AssetKind::XOR,
             amount,
@@ -333,6 +339,9 @@ async fn should_transfer_asset_between_iroha_and_substrate() {
 
         seal_block(3, state.clone(), oc_state.clone());
         seal_block(4, state.clone(), oc_state.clone());
+
+        let substrate_balance = Treasury::get_balance_from_account(substrate_user_account.clone(), AssetKind::XOR).unwrap();
+        assert_eq!(substrate_balance, 0);
     });
     thread::sleep(std::time::Duration::from_secs(10));
 

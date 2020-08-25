@@ -130,6 +130,7 @@ decl_event!(
         Transfer(AccountId, AccountId, u128),
         Mint(AccountId, u128),
         Lock(AccountId, u128),
+        Unlock(AccountId, u128),
         Burn(AccountId, u128),
     }
 );
@@ -253,6 +254,17 @@ where
         Ok(())
     }
 
+    #[allow(unused)]
+    pub fn unlock(redeemer: T::AccountId, amount_num: u128) -> Result<(), Error<T>> {
+        let amount = num_to_balance::<T, C>(amount_num)?;
+        C::unreserve(&redeemer, amount);
+
+        // update total locked balance
+        Self::decrease_total_locked(amount_num)?;
+        Module::<T>::deposit_event(RawEvent::Unlock(redeemer, amount_num));
+        Ok(())
+    }
+
     /// Burn previously locked XOR tokens
     ///
     /// # Arguments
@@ -303,6 +315,18 @@ impl<T: Trait> Module<T> {
         }
     }
 
+    pub fn unlock(
+        redeemer: T::AccountId,
+        asset_kind: AssetKind,
+        amount_num: u128,
+    ) -> Result<(), Error<T>> {
+        match asset_kind {
+            AssetKind::XOR => Asset::<T, T::XOR>::unlock(redeemer, amount_num),
+            AssetKind::DOT => Asset::<T, T::DOT>::unlock(redeemer, amount_num),
+            AssetKind::KSM => Asset::<T, T::KSM>::unlock(redeemer, amount_num),
+        }
+    }
+
     pub fn burn(
         redeemer: T::AccountId,
         asset_kind: AssetKind,
@@ -312,6 +336,14 @@ impl<T: Trait> Module<T> {
             AssetKind::XOR => Asset::<T, T::XOR>::burn(redeemer, amount_num),
             AssetKind::DOT => Asset::<T, T::DOT>::burn(redeemer, amount_num),
             AssetKind::KSM => Asset::<T, T::KSM>::burn(redeemer, amount_num),
+        }
+    }
+
+    pub fn get_balance_from_account(account: T::AccountId, asset_kind: AssetKind) -> Result<u128, Error<T>> {
+        match asset_kind {
+            AssetKind::XOR => balance_to_num::<T, T::XOR>(Asset::<T, T::XOR>::get_balance_from_account(account)),
+            AssetKind::DOT => balance_to_num::<T, T::DOT>(Asset::<T, T::DOT>::get_balance_from_account(account)),
+            AssetKind::KSM => balance_to_num::<T, T::KSM>(Asset::<T, T::KSM>::get_balance_from_account(account)),
         }
     }
 }
