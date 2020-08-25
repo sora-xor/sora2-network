@@ -12,6 +12,7 @@ use iroha::{config::Configuration, prelude};
 use iroha_client::client::account::by_id;
 use iroha_client::{client::Client, config::Configuration as ClientConfiguration};
 use iroha_client_no_std::prelude as no_std_prelude;
+use iroha_client_no_std::crypto as iroha_crypto;
 use parity_scale_codec::alloc::sync::Arc;
 use parity_scale_codec::Decode;
 use parking_lot::RwLock;
@@ -27,6 +28,7 @@ use tempfile::TempDir;
 use sp_core::offchain::Timestamp;
 
 use treasury::AssetKind;
+use frame_support::sp_std::convert::TryFrom;
 
 pub type SubstrateAccountId = <<Signature as Verify>::Signer as IdentifyAccount>::AccountId;
 
@@ -99,6 +101,7 @@ impl ExtBuilder {
             // pallet_sudo: Some(SudoConfig { key: root_key }),
             iroha_bridge: Some(IrohaBridgeConfig {
                 authorities: endowed_accounts.clone(),
+                iroha_peers: vec![iroha_crypto::PublicKey::try_from(vec![52u8, 45, 84, 67, 137, 84, 47, 252, 35, 59, 237, 44, 144, 70, 71, 206, 243, 67, 8, 115, 247, 189, 204, 26, 181, 226, 232, 81, 123, 12, 81, 120]).unwrap()],
             }),
         }
         .build_storage()

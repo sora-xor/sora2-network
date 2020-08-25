@@ -42,6 +42,7 @@ use sp_std::convert::TryFrom;
 use sp_std::prelude::*;
 use sp_std::str;
 use treasury::AssetKind;
+use parity_scale_codec::alloc::collections::HashSet;
 
 pub const KEY_TYPE: KeyTypeId = KeyTypeId(*b"demo");
 pub const KEY_TYPE_2: KeyTypeId = KeyTypeId(*b"dem0");
@@ -123,6 +124,7 @@ decl_storage! {
         OcRequests get(fn oc_requests): Vec<OffchainRequest<T>>;
         Authorities get(fn authorities) config(): Vec<T::AccountId>;
         Accounts: map hasher(twox_64_concat) iroha::AccountId => T::AccountId;
+        IrohaPeers get(fn iroha_peers) config(): Vec<iroha_crypto::PublicKey>;
     }
 }
 
@@ -209,6 +211,15 @@ decl_module! {
             let _ = ensure_root(origin)?;
             if !Self::is_authority(&who) {
                 <Authorities<T>>::mutate(|l| l.push(who));
+            }
+            Ok(())
+        }
+
+        #[weight = 0]
+        pub fn add_iroha_peer(origin, peer: iroha_crypto::PublicKey) -> DispatchResult {
+            let _ = ensure_root(origin)?;
+            if !Self::is_iroha_peer(&peer) {
+                IrohaPeers::mutate(|l| l.push(peer));
             }
             Ok(())
         }
@@ -394,15 +405,20 @@ impl<T: Trait> Module<T> {
                 return Err(<Error<T>>::Other);
             }
         };
-        // TODO: validator list
+        let mut expected_peers: HashSet<iroha_crypto::PublicKey> = IrohaPeers::get().iter().cloned().collect();
+        debug::debug!("expected_peers: {:?}", expected_peers);
         for block in blocks.clone() {
-            for (pk, sig) in block
+            for (iroha_pk, (pk, sig)) in block
                 .signatures
                 .values()
                 .iter()
                 .cloned()
-                .map(utils::iroha_sig_to_substrate_sig::<T>)
+                .map(|sig| (sig.public_key.clone(), utils::iroha_sig_to_substrate_sig::<T>(sig)))
             {
+                debug::debug!("block signer: {:?}", iroha_pk);
+                if !expected_peers.remove(&iroha_pk) {
+                    return Err(<Error<T>>::InvalidBlockSignature);
+                }
                 let block_hash = T::Hashing::hash(&block.header.encode());
                 if !T::AuthorityId::verify(block_hash.as_ref(), pk, sig) {
                     debug::error!("Invalid signature of block: {:?}", block_hash);
@@ -410,6 +426,10 @@ impl<T: Trait> Module<T> {
                 }
             }
         }
+        // TODO
+        // if !expected_peers.is_empty() {
+        //     return Err(<Error<T>>::InvalidBlockSignature);
+        // }
         debug::debug!("Blocks are verified");
         Ok(blocks)
     }
@@ -555,5 +575,9 @@ impl<T: Trait> Module<T> {
 
     fn is_authority(who: &T::AccountId) -> bool {
         Self::authorities().into_iter().find(|i| i == who).is_some()
+    }
+
+    fn is_iroha_peer(peer: &iroha_crypto::PublicKey) -> bool {
+        Self::iroha_peers().into_iter().find(|i| i == peer).is_some()
     }
 }
