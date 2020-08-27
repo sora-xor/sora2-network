@@ -1,6 +1,6 @@
 use crate::{mock::*, KEY_TYPE, KEY_TYPE_2};
 use frame_support::{assert_ok, traits::OnInitialize};
-use sp_core::{crypto::AccountId32, sr25519, Pair, Public, ed25519};
+use sp_core::{crypto::AccountId32, sr25519, Pair, Public};
 use sp_runtime::{
     traits::{Dispatchable, IdentifyAccount, Verify},
     MultiSignature as Signature,
@@ -141,7 +141,7 @@ fn create_and_start_iroha() {
         .kura_block_store_path(temp_dir.path());
     let iroha = prelude::Iroha::new(configuration);
     task::block_on(iroha.start()).expect("Failed to start Iroha.");
-    //Prevents temp_dir from clean up untill the end of the tests.
+    //Prevents temp_dir from clean up until the end of the tests.
     #[allow(clippy::empty_loop)]
     loop {}
 }
