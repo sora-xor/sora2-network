@@ -91,6 +91,7 @@ std = [
     'sp-io/std',
     'sp-runtime/std',
     'sp-std/std',
+    'iroha_client_no_std/std',
     'serde'
 ]
 

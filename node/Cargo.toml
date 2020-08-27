@@ -111,11 +111,11 @@ version = '2.0.0-rc4'
 git = 'https://github.com/paritytech/substrate.git'
 tag = 'v2.0.0-rc4'
 version = '2.0.0-rc4'
+
 [build-dependencies.substrate-build-script-utils]
 git = 'https://github.com/paritytech/substrate.git'
 tag = 'v2.0.0-rc4'
 version = '2.0.0-rc4'
 
 [dependencies.iroha_client_no_std]
-default-features = false
 path = "../../../../iroha/iroha_client_no_std"

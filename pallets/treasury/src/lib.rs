@@ -339,11 +339,20 @@ impl<T: Trait> Module<T> {
         }
     }
 
-    pub fn get_balance_from_account(account: T::AccountId, asset_kind: AssetKind) -> Result<u128, Error<T>> {
+    pub fn get_balance_from_account(
+        account: T::AccountId,
+        asset_kind: AssetKind,
+    ) -> Result<u128, Error<T>> {
         match asset_kind {
-            AssetKind::XOR => balance_to_num::<T, T::XOR>(Asset::<T, T::XOR>::get_balance_from_account(account)),
-            AssetKind::DOT => balance_to_num::<T, T::DOT>(Asset::<T, T::DOT>::get_balance_from_account(account)),
-            AssetKind::KSM => balance_to_num::<T, T::KSM>(Asset::<T, T::KSM>::get_balance_from_account(account)),
+            AssetKind::XOR => {
+                balance_to_num::<T, T::XOR>(Asset::<T, T::XOR>::get_balance_from_account(account))
+            }
+            AssetKind::DOT => {
+                balance_to_num::<T, T::DOT>(Asset::<T, T::DOT>::get_balance_from_account(account))
+            }
+            AssetKind::KSM => {
+                balance_to_num::<T, T::KSM>(Asset::<T, T::KSM>::get_balance_from_account(account))
+            }
         }
     }
 }

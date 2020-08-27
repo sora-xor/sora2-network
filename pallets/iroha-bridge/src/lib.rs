@@ -2,6 +2,9 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
+#[macro_use]
+extern crate alloc;
+
 #[cfg(test)]
 mod tests;
 
@@ -11,6 +14,7 @@ pub mod mock;
 #[macro_use]
 mod utils;
 
+use alloc::collections::btree_set::BTreeSet;
 use core::{line, stringify};
 use frame_support::dispatch::Weight;
 use frame_support::{
@@ -42,7 +46,6 @@ use sp_std::convert::TryFrom;
 use sp_std::prelude::*;
 use sp_std::str;
 use treasury::AssetKind;
-use parity_scale_codec::alloc::collections::HashSet;
 
 pub const KEY_TYPE: KeyTypeId = KeyTypeId(*b"demo");
 pub const KEY_TYPE_2: KeyTypeId = KeyTypeId(*b"dem0");
@@ -261,17 +264,11 @@ impl<T: Trait> Module<T> {
         for e in <Self as Store>::OcRequests::get() {
             match e {
                 OffchainRequest::OutgoingTransfer(from, to, asset_kind, amount, nonce) => {
-                    if let Err(e) = Self::handle_outgoing_transfer(
-                        from.clone(),
-                        to,
-                        asset_kind,
-                        amount,
-                        nonce,
-                    ) {
+                    if let Err(e) =
+                        Self::handle_outgoing_transfer(from.clone(), to, asset_kind, amount, nonce)
+                    {
                         debug::warn!("{:?}", e);
-                        if let Err(e) =
-                            <treasury::Module<T>>::unlock(from, asset_kind, amount)
-                        {
+                        if let Err(e) = <treasury::Module<T>>::unlock(from, asset_kind, amount) {
                             debug::error!("Failed to unlock funds: {:?}", e);
                         }
                     }
@@ -405,16 +402,16 @@ impl<T: Trait> Module<T> {
                 return Err(<Error<T>>::Other);
             }
         };
-        let mut expected_peers: HashSet<iroha_crypto::PublicKey> = IrohaPeers::get().iter().cloned().collect();
+        let mut expected_peers: BTreeSet<iroha_crypto::PublicKey> =
+            IrohaPeers::get().iter().cloned().collect();
         debug::debug!("expected_peers: {:?}", expected_peers);
         for block in blocks.clone() {
-            for (iroha_pk, (pk, sig)) in block
-                .signatures
-                .values()
-                .iter()
-                .cloned()
-                .map(|sig| (sig.public_key.clone(), utils::iroha_sig_to_substrate_sig::<T>(sig)))
-            {
+            for (iroha_pk, (pk, sig)) in block.signatures.values().iter().cloned().map(|sig| {
+                (
+                    sig.public_key.clone(),
+                    utils::iroha_sig_to_substrate_sig::<T>(sig),
+                )
+            }) {
                 debug::debug!("block signer: {:?}", iroha_pk);
                 if !expected_peers.remove(&iroha_pk) {
                     return Err(<Error<T>>::InvalidBlockSignature);
@@ -578,6 +575,9 @@ impl<T: Trait> Module<T> {
     }
 
     fn is_iroha_peer(peer: &iroha_crypto::PublicKey) -> bool {
-        Self::iroha_peers().into_iter().find(|i| i == peer).is_some()
+        Self::iroha_peers()
+            .into_iter()
+            .find(|i| i == peer)
+            .is_some()
     }
 }

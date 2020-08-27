@@ -1,7 +1,9 @@
 // Creating mock runtime here
 
 use crate as iroha_bridge;
+use frame_support::dispatch::{DispatchInfo, GetDispatchInfo};
 use frame_support::traits::StorageMapShim;
+use frame_support::weights::Pays;
 use frame_support::{construct_runtime, parameter_types, weights::Weight};
 use frame_system as system;
 use frame_system::offchain::{Account, SigningTypes};
@@ -21,8 +23,6 @@ use sp_runtime::{
     AccountId32, ApplyExtrinsicResultWithInfo, MultiSignature, Perbill,
 };
 use sp_std::fmt::Debug;
-use frame_support::dispatch::{DispatchInfo, GetDispatchInfo};
-use frame_support::weights::Pays;
 pub mod offchain_testing;
 pub use offchain_testing::*;
 

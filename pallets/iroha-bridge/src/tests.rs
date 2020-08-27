@@ -11,8 +11,8 @@ use async_std::task;
 use iroha::{config::Configuration, prelude};
 use iroha_client::client::account::by_id;
 use iroha_client::{client::Client, config::Configuration as ClientConfiguration};
-use iroha_client_no_std::prelude as no_std_prelude;
 use iroha_client_no_std::crypto as iroha_crypto;
+use iroha_client_no_std::prelude as no_std_prelude;
 use parity_scale_codec::alloc::sync::Arc;
 use parity_scale_codec::Decode;
 use parking_lot::RwLock;
@@ -27,8 +27,8 @@ use tempfile::TempDir;
 
 use sp_core::offchain::Timestamp;
 
-use treasury::AssetKind;
 use frame_support::sp_std::convert::TryFrom;
+use treasury::AssetKind;
 
 pub type SubstrateAccountId = <<Signature as Verify>::Signer as IdentifyAccount>::AccountId;
 
@@ -101,7 +101,11 @@ impl ExtBuilder {
             // pallet_sudo: Some(SudoConfig { key: root_key }),
             iroha_bridge: Some(IrohaBridgeConfig {
                 authorities: endowed_accounts.clone(),
-                iroha_peers: vec![iroha_crypto::PublicKey::try_from(vec![52u8, 45, 84, 67, 137, 84, 47, 252, 35, 59, 237, 44, 144, 70, 71, 206, 243, 67, 8, 115, 247, 189, 204, 26, 181, 226, 232, 81, 123, 12, 81, 120]).unwrap()],
+                iroha_peers: vec![iroha_crypto::PublicKey::try_from(vec![
+                    52u8, 45, 84, 67, 137, 84, 47, 252, 35, 59, 237, 44, 144, 70, 71, 206, 243, 67,
+                    8, 115, 247, 189, 204, 26, 181, 226, 232, 81, 123, 12, 81, 120,
+                ])
+                .unwrap()],
             }),
         }
         .build_storage()
@@ -305,13 +309,17 @@ async fn should_transfer_asset_between_iroha_and_substrate() {
     };
     thread::spawn(|| offchain_worker_loop(oc_state_clone));
     ext.execute_with(|| {
-        let substrate_balance = Treasury::get_balance_from_account(substrate_user_account.clone(), AssetKind::XOR).unwrap();
+        let substrate_balance =
+            Treasury::get_balance_from_account(substrate_user_account.clone(), AssetKind::XOR)
+                .unwrap();
         assert_eq!(substrate_balance, 0);
 
         seal_block(1, state.clone(), oc_state.clone());
         seal_block(2, state.clone(), oc_state.clone());
 
-        let substrate_balance = Treasury::get_balance_from_account(substrate_user_account.clone(), AssetKind::XOR).unwrap();
+        let substrate_balance =
+            Treasury::get_balance_from_account(substrate_user_account.clone(), AssetKind::XOR)
+                .unwrap();
         assert_eq!(substrate_balance, 100);
     });
 
@@ -343,7 +351,9 @@ async fn should_transfer_asset_between_iroha_and_substrate() {
         seal_block(3, state.clone(), oc_state.clone());
         seal_block(4, state.clone(), oc_state.clone());
 
-        let substrate_balance = Treasury::get_balance_from_account(substrate_user_account.clone(), AssetKind::XOR).unwrap();
+        let substrate_balance =
+            Treasury::get_balance_from_account(substrate_user_account.clone(), AssetKind::XOR)
+                .unwrap();
         assert_eq!(substrate_balance, 0);
     });
     thread::sleep(std::time::Duration::from_secs(10));

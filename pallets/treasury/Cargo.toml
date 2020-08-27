@@ -17,6 +17,7 @@ std = [
 	'sp-std/std',
     'system/std',
 	'pallet-balances/std',
+	'iroha_client_no_std/std',
 #	'x-core/std',
 ]
 
