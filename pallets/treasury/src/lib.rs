@@ -18,6 +18,7 @@ use iroha_client_no_std::prelude::AssetDefinitionId;
 use sp_runtime::ModuleId;
 use sp_std::str::FromStr;
 use system::ensure_signed;
+use system as frame_system;
 
 /// The treasury's module id, used for deriving its sovereign account ID.
 const _MODULE_ID: ModuleId = ModuleId(*b"ily/trsy");

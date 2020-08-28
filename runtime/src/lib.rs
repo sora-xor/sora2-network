@@ -7,11 +7,15 @@
 #[cfg(feature = "std")]
 include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
 
+use frame_support::traits::StorageMapShim;
+
 use sp_api::impl_runtime_apis;
 use sp_core::OpaqueMetadata;
+use sp_core::Encode;
 use sp_runtime::{
 	create_runtime_str, generic, impl_opaque_keys,
 	traits::{BlakeTwo256, Block as BlockT, IdentifyAccount, IdentityLookup, Saturating, Verify},
+	traits::SaturatedConversion,
 	transaction_validity::{TransactionSource, TransactionValidity},
 	ApplyExtrinsicResult, MultiSignature,
 };
@@ -19,12 +23,16 @@ use sp_std::prelude::*;
 #[cfg(feature = "std")]
 use sp_version::NativeVersion;
 use sp_version::RuntimeVersion;
+use frame_system::offchain::{Account, SigningTypes};
 
 // A few exports that help ease life for downstream crates.
 pub use frame_support::{
 	construct_runtime, parameter_types,
+	debug,
 	traits::Randomness,
+	traits::KeyOwnerProofSystem,
 	weights::{constants::WEIGHT_PER_SECOND, IdentityFee, Weight},
+	weights::constants::{BlockExecutionWeight, ExtrinsicBaseWeight, RocksDbWeight},
 	StorageValue,
 };
 pub use pallet_balances::Call as BalancesCall;
@@ -38,6 +46,9 @@ pub use template;
 
 /// Import the message pallet.
 pub use cumulus_token_dealer;
+
+/// Importing a iroha-bridge pallet
+pub use iroha_bridge;
 
 /// An index to a block.
 pub type BlockNumber = u32;
@@ -90,8 +101,8 @@ pub mod opaque {
 
 /// This runtime version.
 pub const VERSION: RuntimeVersion = RuntimeVersion {
-	spec_name: create_runtime_str!("parachain-template"),
-	impl_name: create_runtime_str!("parachain-template"),
+	spec_name: create_runtime_str!("substrate-iroha-bridge"),
+	impl_name: create_runtime_str!("substrate-iroha-bridge"),
 	authoring_version: 1,
 	spec_version: 1,
 	impl_version: 1,
@@ -131,7 +142,6 @@ parameter_types! {
 	pub const AvailableBlockRatio: Perbill = Perbill::from_percent(75);
 	pub const MaximumBlockLength: u32 = 5 * 1024 * 1024;
 	pub const Version: RuntimeVersion = VERSION;
-	pub const ExtrinsicBaseWeight: Weight = 10_000_000;
 }
 
 impl frame_system::Trait for Runtime {
@@ -170,7 +180,8 @@ impl frame_system::Trait for Runtime {
 	type AccountData = pallet_balances::AccountData<Balance>;
 	type OnNewAccount = ();
 	type OnKilledAccount = ();
-	type DbWeight = ();
+	/// The weight of database operations that the runtime can invoke.
+	type DbWeight = RocksDbWeight;
 	type ExtrinsicBaseWeight = ExtrinsicBaseWeight;
 	type BlockExecutionWeight = ();
 	type MaximumExtrinsicWeight = MaximumExtrinsicWeight;
@@ -191,7 +202,7 @@ impl pallet_timestamp::Trait for Runtime {
 }
 
 parameter_types! {
-	pub const ExistentialDeposit: u128 = 500;
+	pub const ExistentialDeposit: u128 = 0;
 	pub const TransferFee: u128 = 0;
 	pub const CreationFee: u128 = 0;
 	pub const TransactionByteFee: u128 = 1;
@@ -206,6 +217,140 @@ impl pallet_balances::Trait for Runtime {
 	type ExistentialDeposit = ExistentialDeposit;
 	type AccountStore = System;
 	type WeightInfo = ();
+}
+
+/// XOR
+impl pallet_balances::Trait<pallet_balances::Instance1> for Runtime {
+    /// The type for recording an account's balance.
+    type Balance = Balance;
+    /// The ubiquitous event type.
+    type Event = Event;
+    type DustRemoval = ();
+    type ExistentialDeposit = ExistentialDeposit;
+    type AccountStore = StorageMapShim<
+        pallet_balances::Account<Runtime, pallet_balances::Instance1>,
+        frame_system::CallOnCreatedAccount<Runtime>,
+        frame_system::CallKillAccount<Runtime>,
+        AccountId,
+        pallet_balances::AccountData<Balance>,
+    >;
+    type WeightInfo = ();
+}
+
+/// DOT
+impl pallet_balances::Trait<pallet_balances::Instance2> for Runtime {
+    /// The type for recording an account's balance.
+    type Balance = Balance;
+    /// The ubiquitous event type.
+    type Event = Event;
+    type DustRemoval = ();
+    type ExistentialDeposit = ExistentialDeposit;
+    type AccountStore = StorageMapShim<
+        pallet_balances::Account<Runtime, pallet_balances::Instance1>,
+        frame_system::CallOnCreatedAccount<Runtime>,
+        frame_system::CallKillAccount<Runtime>,
+        AccountId,
+        pallet_balances::AccountData<Balance>,
+    >;
+    type WeightInfo = ();
+}
+
+
+/// KSM
+impl pallet_balances::Trait<pallet_balances::Instance3> for Runtime {
+    /// The type for recording an account's balance.
+    type Balance = Balance;
+    /// The ubiquitous event type.
+    type Event = Event;
+    type DustRemoval = ();
+    type ExistentialDeposit = ExistentialDeposit;
+    type AccountStore = StorageMapShim<
+        pallet_balances::Account<Runtime, pallet_balances::Instance1>,
+        frame_system::CallOnCreatedAccount<Runtime>,
+        frame_system::CallKillAccount<Runtime>,
+        AccountId,
+        pallet_balances::AccountData<Balance>,
+    >;
+    type WeightInfo = ();
+}
+
+impl treasury::Trait for Runtime {
+    type Event = Event;
+    type XOR = pallet_balances::Module<Runtime, pallet_balances::Instance1>;
+    type DOT = pallet_balances::Module<Runtime, pallet_balances::Instance2>;
+    type KSM = pallet_balances::Module<Runtime, pallet_balances::Instance3>;
+}
+
+impl<T: SigningTypes> frame_system::offchain::SignMessage<T> for Runtime {
+    type SignatureData = ();
+
+    fn sign_message(&self, _message: &[u8]) -> Self::SignatureData {
+        unimplemented!()
+    }
+
+    fn sign<TPayload, F>(&self, _f: F) -> Self::SignatureData
+    where
+        F: Fn(&Account<T>) -> TPayload,
+        TPayload: frame_system::offchain::SignedPayload<T>,
+    {
+        unimplemented!()
+    }
+}
+
+impl<LocalCall> frame_system::offchain::CreateSignedTransaction<LocalCall> for Runtime
+where
+    Call: From<LocalCall>,
+{
+    fn create_transaction<C: frame_system::offchain::AppCrypto<Self::Public, Self::Signature>>(
+        call: Call,
+        public: <Signature as sp_runtime::traits::Verify>::Signer,
+        account: AccountId,
+        index: Index,
+    ) -> Option<(
+        Call,
+        <UncheckedExtrinsic as sp_runtime::traits::Extrinsic>::SignaturePayload,
+    )> {
+        let period = BlockHashCount::get() as u64;
+        let current_block = System::block_number()
+            .saturated_into::<u64>()
+            .saturating_sub(1);
+        let tip = 0;
+        let extra: SignedExtra = (
+            // system::CheckSpecVersion::<Runtime>::new(),
+            frame_system::CheckTxVersion::<Runtime>::new(),
+            frame_system::CheckGenesis::<Runtime>::new(),
+            frame_system::CheckEra::<Runtime>::from(generic::Era::mortal(period, current_block)),
+            frame_system::CheckNonce::<Runtime>::from(index),
+            frame_system::CheckWeight::<Runtime>::new(),
+            pallet_transaction_payment::ChargeTransactionPayment::<Runtime>::from(tip),
+        );
+
+        #[cfg_attr(not(feature = "std"), allow(unused_variables))]
+        let raw_payload = SignedPayload::new(call, extra)
+            .map_err(|e| {
+                debug::native::warn!("SignedPayload error: {:?}", e);
+            })
+            .ok()?;
+
+        let signature = raw_payload.using_encoded(|payload| C::sign(payload, public))?;
+
+        let address = account;
+        let (call, extra, _) = raw_payload.deconstruct();
+        Some((call, (address, signature, extra)))
+    }
+}
+
+impl frame_system::offchain::SigningTypes for Runtime {
+    type Public = <Signature as sp_runtime::traits::Verify>::Signer;
+    type Signature = Signature;
+}
+
+impl<C> frame_system::offchain::SendTransactionTypes<C> for Runtime
+where
+    Call: From<C>,
+{   
+    type OverarchingCall = Call;
+    type Extrinsic = UncheckedExtrinsic;
 }
 
 impl pallet_transaction_payment::Trait for Runtime {
@@ -250,6 +395,23 @@ impl template::Trait for Runtime {
 	type Event = Event;
 }
 
+/// Payload data to be signed when making signed transaction from off-chain workers,
+///   inside `create_transaction` function.
+pub type SignedPayload = generic::SignedPayload<Call, SignedExtra>;
+
+parameter_types! {
+    pub const UnsignedPriority: u64 = 100;
+}
+
+/// Used for the module template in `./template.rs`
+impl iroha_bridge::Trait for Runtime {
+    type AuthorityId = iroha_bridge::crypto::TestAuthId;
+    type AuthorityIdEd = iroha_bridge::crypto_ed::TestAuthId;
+    type Call = Call;
+    type Event = Event;
+    type UnsignedPriority = UnsignedPriority;
+}
+
 construct_runtime! {
 	pub enum Runtime where
 		Block = Block,
@@ -267,6 +429,12 @@ construct_runtime! {
 		ParachainInfo: parachain_info::{Module, Storage, Config},
 		TokenDealer: cumulus_token_dealer::{Module, Call, Event<T>},
 		TemplateModule: template::{Module, Call, Storage, Event<T>},
+
+		XOR: pallet_balances::<Instance1>::{Module, Call, Storage, Config<T>, Event<T>},
+		DOT: pallet_balances::<Instance2>::{Module, Call, Storage, Config<T>, Event<T>},
+		KSM: pallet_balances::<Instance3>::{Module, Call, Storage, Config<T>, Event<T>},
+		Treasury: treasury::{Module, Call, Storage, Event<T>},
+		IrohaBridge: iroha_bridge::{Module, Call, Storage, Config<T>, Event<T>},
 	}
 }
 
@@ -282,7 +450,7 @@ pub type SignedBlock = generic::SignedBlock<Block>;
 pub type BlockId = generic::BlockId<Block>;
 /// The SignedExtension to the basic transaction logic.
 pub type SignedExtra = (
-	frame_system::CheckSpecVersion<Runtime>,
+	frame_system::CheckTxVersion<Runtime>,
 	frame_system::CheckGenesis<Runtime>,
 	frame_system::CheckEra<Runtime>,
 	frame_system::CheckNonce<Runtime>,

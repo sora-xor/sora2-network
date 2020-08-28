@@ -121,6 +121,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "alt_serde"
+version = "1.0.104"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "03beeddedd09889b96def26f78ba46e34ffd9bdaaa33b2c980cbaa1d0e762686"
+dependencies = [
+ "alt_serde_derive",
+]
+
+[[package]]
+name = "alt_serde_derive"
+version = "1.0.104"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6757ed5faa82ccfbfa1837cd7a7a2e1bdb634236f21fa74d6c5c5736152838a1"
+dependencies = [
+ "proc-macro2 1.0.19",
+ "quote 1.0.7",
+ "syn 1.0.38",
+]
+
+[[package]]
 name = "ansi_term"
 version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -220,6 +240,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7deb0a829ca7bcfaf5da70b073a8d128619259a7be8216a355e23f00763059e5"
 
 [[package]]
+name = "async-attributes"
+version = "1.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "efd3d156917d94862e779f356c5acae312b08fd3121e792c857d7928c8088423"
+dependencies = [
+ "quote 1.0.7",
+ "syn 1.0.38",
+]
+
+[[package]]
 name = "async-channel"
 version = "1.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -236,6 +266,7 @@ version = "1.6.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "00d68a33ebc8b57800847d00787307f84a562224a14db069b0acefe4c2abbf5d"
 dependencies = [
+ "async-attributes",
  "async-task",
  "crossbeam-utils",
  "futures-channel",
@@ -1352,7 +1383,7 @@ dependencies = [
  "lazy_static",
  "log 0.4.11",
  "serde",
- "serde_json",
+ "serde_json 1.0.57",
 ]
 
 [[package]]
@@ -1752,7 +1783,7 @@ dependencies = [
  "parking_lot 0.9.0",
  "pin-project",
  "serde",
- "serde_json",
+ "serde_json 1.0.57",
 ]
 
 [[package]]
@@ -2368,6 +2399,41 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "47be2f14c678be2fdcab04ab1171db51b2762ce6f0a8ee87c8dd4a04ed216135"
 
 [[package]]
+name = "iroha-bridge"
+version = "2.0.0-rc5"
+dependencies = [
+ "alt_serde",
+ "async-std",
+ "frame-support",
+ "frame-system",
+ "iroha_client_no_std",
+ "log 0.4.11",
+ "pallet-balances",
+ "parity-scale-codec",
+ "parking_lot 0.10.2",
+ "serde",
+ "serde_json 1.0.44",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+ "tempfile",
+ "treasury",
+]
+
+[[package]]
+name = "iroha_client_no_std"
+version = "0.1.0"
+source = "git+https://github.com/EmelianPiker/iroha?branch=pikergan/2020-08-28/parachain-compat-fix02#03e745211d5f6681a672be05fbacf6d4c14c1a5c"
+dependencies = [
+ "async-std",
+ "chrono",
+ "parity-scale-codec",
+ "serde",
+ "serde_json 1.0.44",
+]
+
+[[package]]
 name = "itertools"
 version = "0.8.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2421,7 +2487,7 @@ dependencies = [
  "jsonrpc-pubsub",
  "log 0.4.11",
  "serde",
- "serde_json",
+ "serde_json 1.0.57",
  "url 1.7.2",
 ]
 
@@ -2435,7 +2501,7 @@ dependencies = [
  "log 0.4.11",
  "serde",
  "serde_derive",
- "serde_json",
+ "serde_json 1.0.57",
 ]
 
 [[package]]
@@ -3292,6 +3358,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "mocktopus"
+version = "0.7.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6bb802d95931d1426546328523487423c2bd44e0fca457d4ac063ec3150a681f"
+dependencies = [
+ "mocktopus_macros",
+]
+
+[[package]]
+name = "mocktopus_macros"
+version = "0.7.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "757ebe7dc317c368dba9dcc319266416e48272292ed86814478f66308119c2e9"
+dependencies = [
+ "proc-macro2 1.0.19",
+ "quote 1.0.7",
+ "syn 1.0.38",
+]
+
+[[package]]
 name = "more-asserts"
 version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4098,6 +4184,7 @@ dependencies = [
  "derive_more 0.15.0",
  "exit-future 0.1.4",
  "futures 0.3.5",
+ "iroha_client_no_std",
  "log 0.4.11",
  "nix 0.17.0",
  "pallet-sudo",
@@ -4167,6 +4254,7 @@ dependencies = [
  "frame-executive",
  "frame-support",
  "frame-system",
+ "iroha-bridge",
  "pallet-balances",
  "pallet-randomness-collective-flip",
  "pallet-sudo",
@@ -4188,6 +4276,7 @@ dependencies = [
  "sp-transaction-pool",
  "sp-version",
  "substrate-wasm-builder-runner 1.0.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "treasury",
 ]
 
 [[package]]
@@ -5898,7 +5987,7 @@ dependencies = [
  "sc-client-api",
  "sc-keystore",
  "sc-network",
- "serde_json",
+ "serde_json 1.0.57",
  "sp-api",
  "sp-authority-discovery",
  "sp-blockchain",
@@ -5958,7 +6047,7 @@ dependencies = [
  "sc-network",
  "sc-telemetry",
  "serde",
- "serde_json",
+ "serde_json 1.0.57",
  "sp-chain-spec",
  "sp-core",
  "sp-runtime",
@@ -6001,7 +6090,7 @@ dependencies = [
  "sc-telemetry",
  "sc-tracing",
  "serde",
- "serde_json",
+ "serde_json 1.0.57",
  "sp-blockchain",
  "sp-core",
  "sp-keyring",
@@ -6315,7 +6404,7 @@ dependencies = [
  "sc-network",
  "sc-network-gossip",
  "sc-telemetry",
- "serde_json",
+ "serde_json 1.0.57",
  "sp-api",
  "sp-application-crypto",
  "sp-arithmetic",
@@ -6344,7 +6433,7 @@ dependencies = [
  "log 0.4.11",
  "sc-finality-grandpa",
  "serde",
- "serde_json",
+ "serde_json 1.0.57",
 ]
 
 [[package]]
@@ -6375,7 +6464,7 @@ dependencies = [
  "merlin",
  "parking_lot 0.10.2",
  "rand 0.7.3",
- "serde_json",
+ "serde_json 1.0.57",
  "sp-application-crypto",
  "sp-core",
  "subtle 2.2.3",
@@ -6434,7 +6523,7 @@ dependencies = [
  "sc-client-api",
  "sc-peerset",
  "serde",
- "serde_json",
+ "serde_json 1.0.57",
  "slog",
  "slog_derive",
  "smallvec 0.6.13",
@@ -6502,7 +6591,7 @@ dependencies = [
  "futures 0.3.5",
  "libp2p",
  "log 0.4.11",
- "serde_json",
+ "serde_json 1.0.57",
  "sp-utils",
  "wasm-timer",
 ]
@@ -6533,7 +6622,7 @@ dependencies = [
  "sc-executor",
  "sc-keystore",
  "sc-rpc-api",
- "serde_json",
+ "serde_json 1.0.57",
  "sp-api",
  "sp-blockchain",
  "sp-chain-spec",
@@ -6563,7 +6652,7 @@ dependencies = [
  "parity-scale-codec",
  "parking_lot 0.10.2",
  "serde",
- "serde_json",
+ "serde_json 1.0.57",
  "sp-chain-spec",
  "sp-core",
  "sp-rpc",
@@ -6584,7 +6673,7 @@ dependencies = [
  "jsonrpc-ws-server",
  "log 0.4.11",
  "serde",
- "serde_json",
+ "serde_json 1.0.57",
  "sp-runtime",
 ]
 
@@ -6626,7 +6715,7 @@ dependencies = [
  "sc-tracing",
  "sc-transaction-pool",
  "serde",
- "serde_json",
+ "serde_json 1.0.57",
  "slog",
  "sp-api",
  "sp-application-crypto",
@@ -6697,7 +6786,7 @@ dependencies = [
  "rustc-hash",
  "sc-telemetry",
  "serde",
- "serde_json",
+ "serde_json 1.0.57",
  "slog",
  "sp-tracing",
  "tracing-core",
@@ -6907,6 +6996,16 @@ dependencies = [
 
 [[package]]
 name = "serde_json"
+version = "1.0.44"
+source = "git+https://github.com/Xanewok/json?branch=no-std#7954c3a363cf78bde5bbf2e875a222ff9ccafed4"
+dependencies = [
+ "alt_serde",
+ "itoa",
+ "ryu",
+]
+
+[[package]]
+name = "serde_json"
 version = "1.0.57"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "164eacbdb13512ec2745fb09d51fd5b22b0d65ed294a1dcf7285a360c80a675c"
@@ -7042,7 +7141,7 @@ dependencies = [
  "chrono",
  "erased-serde",
  "serde",
- "serde_json",
+ "serde_json 1.0.57",
  "slog",
 ]
 
@@ -7272,7 +7371,7 @@ version = "2.0.0-rc5"
 source = "git+https://github.com/paritytech/substrate?branch=rococo-branch#f397f246fd0a0c8c2ef2f0b7576ecbed133ed78d"
 dependencies = [
  "serde",
- "serde_json",
+ "serde_json 1.0.57",
 ]
 
 [[package]]
@@ -7605,7 +7704,7 @@ version = "2.0.0-rc5"
 source = "git+https://github.com/paritytech/substrate?branch=rococo-branch#f397f246fd0a0c8c2ef2f0b7576ecbed133ed78d"
 dependencies = [
  "serde",
- "serde_json",
+ "serde_json 1.0.57",
 ]
 
 [[package]]
@@ -7927,7 +8026,7 @@ dependencies = [
  "sc-light",
  "sc-service",
  "serde",
- "serde_json",
+ "serde_json 1.0.57",
  "sp-blockchain",
  "sp-consensus",
  "sp-core",
@@ -8590,6 +8689,24 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d593f98af59ebc017c0648f0117525db358745a8894a8d684e185ba3f45954f9"
 dependencies = [
  "lazy_static",
+]
+
+[[package]]
+name = "treasury"
+version = "2.0.0-rc5"
+dependencies = [
+ "frame-support",
+ "frame-system",
+ "iroha_client_no_std",
+ "mocktopus",
+ "pallet-balances",
+ "parity-scale-codec",
+ "safe-mix",
+ "sp-arithmetic",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
 ]
 
 [[package]]

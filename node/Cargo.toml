@@ -80,3 +80,8 @@ polkadot-test-service = { git = "https://github.com/paritytech/polkadot", branch
 pallet-sudo = { git = "https://github.com/paritytech/substrate", branch = "rococo-branch" }
 substrate-test-client = { git = "https://github.com/paritytech/substrate", branch = "rococo-branch" }
 substrate-test-runtime-client = { git = "https://github.com/paritytech/substrate", branch = "rococo-branch" }
+
+[dependencies.iroha_client_no_std]
+default-features = false
+git = "https://github.com/EmelianPiker/iroha"
+branch = "pikergan/2020-08-28/parachain-compat-fix02"
