@@ -59,6 +59,29 @@ pub fn new_partial(
 		parachain_runtime::RuntimeApi,
 		crate::service::Executor,
 	>(&config)?;
+
+    let dev_seed = config.dev_key_seed.clone();
+
+    println!("Prepare for adding bridge keys to keystore");
+    if let Some(seed) = dev_seed {
+        use parachain_runtime::iroha_bridge;
+        println!("Adding bridge keys to keystore");
+        keystore
+            .write()
+            .insert_ephemeral_from_seed_by_type::<iroha_bridge::crypto::Pair>(
+                &seed,
+                iroha_bridge::KEY_TYPE,
+            )   
+            .expect("Dev Seed should always succeed.");
+        keystore
+            .write()
+            .insert_ephemeral_from_seed_by_type::<iroha_bridge::crypto_ed::Pair>(
+                &seed,
+                iroha_bridge::KEY_TYPE_2,
+            )
+            .expect("Dev Seed should always succeed.");
+    }
+
 	let client = Arc::new(client);
 	//let select_chain = sc_consensus::LongestChain::new(backend.clone());
 
@@ -160,6 +183,16 @@ pub fn run_node(
 				finality_proof_provider: None,
 		})?;
 
+	if parachain_config.offchain_worker.enabled {
+		sc_service::build_offchain_workers(
+			&parachain_config,
+			backend.clone(),
+			task_manager.spawn_handle(),
+			client.clone(),
+			network.clone(),
+		);
+	}
+
 	sc_service::spawn_tasks(sc_service::SpawnTasksParams {
 		on_demand: None,
 		remote_blockchain: None,
@@ -170,7 +203,7 @@ pub fn run_node(
 		telemetry_connection_sinks: Default::default(),
 		config: parachain_config,
 		keystore: params.keystore,
-		backend,
+		backend: backend,
 		network: network.clone(),
 		network_status_sinks,
 		system_rpc_tx,
@@ -218,3 +251,4 @@ pub fn run_node(
 
 	Ok((task_manager, client))
 }
+

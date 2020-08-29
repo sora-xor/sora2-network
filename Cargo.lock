@@ -2424,7 +2424,7 @@ dependencies = [
 [[package]]
 name = "iroha_client_no_std"
 version = "0.1.0"
-source = "git+https://github.com/EmelianPiker/iroha?branch=pikergan/2020-08-28/parachain-compat-fix02#03e745211d5f6681a672be05fbacf6d4c14c1a5c"
+source = "git+https://github.com/EmelianPiker/iroha?branch=substrate-bridge-rococo#ba34fc82e32fde916f74caa80c44a95e0f106fea"
 dependencies = [
  "async-std",
  "chrono",
@@ -6976,18 +6976,18 @@ checksum = "f638d531eccd6e23b980caf34876660d38e265409d8e99b397ab71eb3612fad0"
 
 [[package]]
 name = "serde"
-version = "1.0.114"
+version = "1.0.111"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5317f7588f0a5078ee60ef675ef96735a1442132dc645eb1d12c018620ed8cd3"
+checksum = "c9124df5b40cbd380080b2cc6ab894c040a3070d995f5c9dc77e18c34a8ae37d"
 dependencies = [
  "serde_derive",
 ]
 
 [[package]]
 name = "serde_derive"
-version = "1.0.114"
+version = "1.0.111"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2a0be94b04690fbaed37cddffc5c134bf537c8e3329d53e982fe04c374978f8e"
+checksum = "3f2c3ac8e6ca1e9c80b8be1023940162bf81ae3cffbb1809474152f2ce1eb250"
 dependencies = [
  "proc-macro2 1.0.19",
  "quote 1.0.7",

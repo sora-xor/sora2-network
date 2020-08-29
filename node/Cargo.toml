@@ -84,4 +84,4 @@ substrate-test-runtime-client = { git = "https://github.com/paritytech/substrate
 [dependencies.iroha_client_no_std]
 default-features = false
 git = "https://github.com/EmelianPiker/iroha"
-branch = "pikergan/2020-08-28/parachain-compat-fix02"
+branch = "substrate-bridge-rococo"
