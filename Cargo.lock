@@ -2424,7 +2424,7 @@ dependencies = [
 [[package]]
 name = "iroha_client_no_std"
 version = "0.1.0"
-source = "git+https://github.com/EmelianPiker/iroha?branch=substrate-bridge-rococo#ba34fc82e32fde916f74caa80c44a95e0f106fea"
+source = "git+https://github.com/EmelianPiker/iroha?branch=substrate-bridge-rococo#d6097b81572554444b2e9a9a560c581006fc895a"
 dependencies = [
  "async-std",
  "chrono",
