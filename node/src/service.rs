@@ -60,6 +60,7 @@ pub fn new_partial(
 		crate::service::Executor,
 	>(&config)?;
 
+    /*
     let dev_seed = config.dev_key_seed.clone();
 
     println!("Prepare for adding bridge keys to keystore");
@@ -81,6 +82,7 @@ pub fn new_partial(
             )
             .expect("Dev Seed should always succeed.");
     }
+    */
 
 	let client = Arc::new(client);
 	//let select_chain = sc_consensus::LongestChain::new(backend.clone());

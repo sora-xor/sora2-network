@@ -47,8 +47,10 @@ pub use template;
 /// Import the message pallet.
 pub use cumulus_token_dealer;
 
+/*
 /// Importing a iroha-bridge pallet
 pub use iroha_bridge;
+*/
 
 /// An index to a block.
 pub type BlockNumber = u32;
@@ -101,8 +103,8 @@ pub mod opaque {
 
 /// This runtime version.
 pub const VERSION: RuntimeVersion = RuntimeVersion {
-	spec_name: create_runtime_str!("substrate-iroha-bridge"),
-	impl_name: create_runtime_str!("substrate-iroha-bridge"),
+	spec_name: create_runtime_str!("substrate-pswap"),
+	impl_name: create_runtime_str!("substrate-pswap"),
 	authoring_version: 1,
 	spec_version: 1,
 	impl_version: 1,
@@ -403,6 +405,7 @@ parameter_types! {
     pub const UnsignedPriority: u64 = 100;
 }
 
+/*
 /// Used for the module template in `./template.rs`
 impl iroha_bridge::Trait for Runtime {
     type AuthorityId = iroha_bridge::crypto::TestAuthId;
@@ -411,6 +414,7 @@ impl iroha_bridge::Trait for Runtime {
     type Event = Event;
     type UnsignedPriority = UnsignedPriority;
 }
+*/
 
 construct_runtime! {
 	pub enum Runtime where
@@ -434,7 +438,7 @@ construct_runtime! {
 		DOT: pallet_balances::<Instance2>::{Module, Call, Storage, Config<T>, Event<T>},
 		KSM: pallet_balances::<Instance3>::{Module, Call, Storage, Config<T>, Event<T>},
 		Treasury: treasury::{Module, Call, Storage, Event<T>},
-		IrohaBridge: iroha_bridge::{Module, Call, Storage, Config<T>, Event<T>},
+		//IrohaBridge: iroha_bridge::{Module, Call, Storage, Config<T>, Event<T>},
 	}
 }
 

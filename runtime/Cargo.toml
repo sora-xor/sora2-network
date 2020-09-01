@@ -43,7 +43,7 @@ cumulus-primitives = { git = "https://github.com/paritytech/cumulus",  default-f
 
 # Additional dependencies
 treasury = { path = "../pallets/treasury", default-features = false }
-iroha-bridge = { path = "../pallets/iroha-bridge", default-features = false }
+#iroha-bridge = { path = "../pallets/iroha-bridge", default-features = false }
 
 [build-dependencies]
 wasm-builder-runner = { package = "substrate-wasm-builder-runner", version = "1.0.6" }

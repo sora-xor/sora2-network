@@ -8,7 +8,7 @@ use cumulus_primitives::ParaId;
 use parachain_runtime::{
 	AccountId, BalancesConfig, GenesisConfig, Signature, SudoConfig, SystemConfig,
 	ParachainInfoConfig, WASM_BINARY,
-	IrohaBridgeConfig,
+	//IrohaBridgeConfig,
 	KSMConfig, XORConfig, DOTConfig,
 };
 
@@ -82,10 +82,12 @@ pub fn get_chain_spec(id: ParaId) -> ChainSpec {
 						67, 8, 115, 247, 189, 204, 26, 181, 226, 232, 81, 123, 12, 81, 120,
 					]),
 				],
+                /*
 				vec![iroha_crypto::PublicKey::try_from(vec![
 					52u8, 45, 84, 67, 137, 84, 47, 252, 35, 59, 237, 44, 144, 70, 71, 206, 243, 67,
 					8, 115, 247, 189, 204, 26, 181, 226, 232, 81, 123, 12, 81, 120,
 				]).unwrap()],
+                */
 				id,
 			)
 		},
@@ -109,10 +111,12 @@ pub fn staging_test_net(id: ParaId) -> ChainSpec {
 			testnet_genesis(
 				get_account_id_from_seed::<sr25519::Public>("Alice"),
 				vec![get_account_id_from_seed::<sr25519::Public>("Alice")],
+                /*
 				vec![iroha_crypto::PublicKey::try_from(vec![
 					52u8, 45, 84, 67, 137, 84, 47, 252, 35, 59, 237, 44, 144, 70, 71, 206, 243, 67,
 					8, 115, 247, 189, 204, 26, 181, 226, 232, 81, 123, 12, 81, 120,
 				]).unwrap()],
+                */
 				id,
 			)
 		},
@@ -130,7 +134,7 @@ pub fn staging_test_net(id: ParaId) -> ChainSpec {
 fn testnet_genesis(
 	root_key: AccountId,
 	endowed_accounts: Vec<AccountId>,
-	iroha_peers: Vec<iroha_crypto::PublicKey>,
+	//iroha_peers: Vec<iroha_crypto::PublicKey>,
 	id: ParaId,
 ) -> GenesisConfig {
 	GenesisConfig {
@@ -176,6 +180,6 @@ fn testnet_genesis(
 				.map(|k| (k, 1 << 60))
 				.collect(),
 		}),
-		iroha_bridge: Some(IrohaBridgeConfig { authorities: endowed_accounts.clone(), iroha_peers }),
+		//iroha_bridge: Some(IrohaBridgeConfig { authorities: endowed_accounts.clone(), iroha_peers }),
 	}
 }
