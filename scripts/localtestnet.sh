@@ -1,4 +1,5 @@
 #!/bin/sh
+. `dirname $0`/partial/helpers.sh || exit 1
 
 # Default configuration
 #
@@ -30,9 +31,6 @@ chain_json="$top/misc/rococo-custom.json"
 scripts="$top/scripts"
 dir="$top/tmp"
 
-# Use helpers
-sourse $top/lib/misc/helpers.bash || exit 1
-
 # Quick check for correctness of this variables
 must [ -f $chain_json              ]
 must [ -f $scripts/localtestnet.sh ]
@@ -42,14 +40,6 @@ must [ -f $top/runtime/Cargo.toml  ]
 
 # Declare functions
 #
-
-function first() {
-	echo $1 | fmt -w 1 | head -n 1
-}
-
-function expect() {
-	head -n 1 | grep -q "$1"
-}
 
 function link_makefile_etc() {
 	must ln -sf $top/misc/Makefile   .
@@ -68,6 +58,29 @@ function check_polkadot_binary() {
 	fi
 }
 
+function check_api_binary() {
+	if [ "$api" == "" ]; then
+		command_exist $1 && $1 --version | expect "[0-9]+\.[0-9]+\.[0-9]+"
+		if [ $? == 0 ]; then
+			api=`which $1`
+		else
+			false
+		fi
+	fi
+}
+
+function install_api_on_demand() {
+       command_exist npm || \
+               panic "npm is not found, please install npm"
+       expected_api="$dir/local/bin/polkadot-js-api"
+       if [ ! -f $expected_api ]; then
+               info "polkadot-js-api command not found, installing it"
+               must npm install -g @polkadot/api-cli --prefix "$dir/local"
+       fi
+       check_api_binary $expected_api || \
+               panic "polkadot-js-api is not working"
+}
+
 function build_polkadot_on_demand() {
 	polkadot_ready="$dir/polkadot_ready"
 	polkadot_path="$polkadot_ready/target/release"
@@ -79,7 +92,7 @@ function build_polkadot_on_demand() {
 		pushd $dir
 			git clone $polkadot_repository && \
 				mv polkadot polkadot_ready || \
-					bomb 3 1
+					bomb 3 1 "$@"
 		popd
 	fi
 	if [ ! -f $polkadot_binary ]; then
@@ -99,39 +112,16 @@ function build_polkadot_on_demand() {
 	fi
 }
 
-function check_api_binary() {
-	if [ "$api" == "" ]; then
-		command_exist $1 && $1 --version | expect "[0-9]+\.[0-9]+\.[0.9]"
-		if [ $? == 0 ]; then
-			api=`which $1`
-		else
-			false
-		fi
-	fi
-}
-
-function install_api_on_demand() {
-	command_exist npm || \
-		panic "npm is not found, please install npm"
-	expected_api="$dir/local/bin/polkadot-js-api"
-	if [ ! -f $expected_api ]; then
-		info "polkadot-js-api command not found, installing it"
-		must npm install -g @polkadot/api-cli --prefix "$dir/local"
-	fi
-	check_api_binary $expected_api || \
-		panic "polkadot-js-api is not working"
-}
-
 api=""
 check_api_binary polkadot-js-api
-check_api_binary ../rococo-localtestnet-scripts/local/bin/polkadot-js-api
-on_success info "polkadot-js-api is already exist, skipping install and use it" \
+check_api_binary $top/../rococo-localtestnet-scripts/local/bin/polkadot-js-api
+on_success info "polkadot-js-api is already exist, skipping install and using it" \
 	|| install_api_on_demand
 
 polkadot=""
 check_polkadot_binary polkadot
-check_polkadot_binary ../polkadot/target/release/polkadot
-on_success info "polkadot binary of $polkadot_commit commit is already exist, skiping build and use it" \
+check_polkadot_binary $top/../polkadot/target/release/polkadot
+on_success info "polkadot binary of $polkadot_commit commit is already exist, skiping build and using it" \
 	|| build_polkadot_on_demand
 
 
@@ -139,59 +129,38 @@ on_success info "polkadot binary of $polkadot_commit commit is already exist, sk
 # Compilation of parachain
 #
 
-if [ $enable_incremental_compilation == 1 ]; then
-	which $1 > /dev/null 2>&1 && $1 --help | head -n 1 | grep -q $polkadot_commit
-fi
-
-function get_all_commits() {
-	git log --reflog --first-parent | awk '/^commit /{ $2 }'
-}
-
-function get_current_commit() {
-	all_commits | head -n 1
-}
-
 function get_last_commit_in_cache() {
-	get_all_commits | awk "{ if (system(\"$cache\" $1 \".exist\")==0) { print $1; exit } }"
+	get_all_commits | awk "{ if (system(\"test -f $cache\" $1 \".exist\")==0) { print $1; exit } }"
 }
 
-function check_parachain_binary() {
-	if [ ! -f $parachain ]; then
-		echo "SCRIPT: parachain binary if not found after build"
-	else
-		$parachain --version | grep -q "parachain-collator"
-		if [ $? == 0 ]; then
-			if [ $enable_incremental_compilation == 1 ]; then
-				commit=`get_current_commit`
-				tar -cf $cache/$commit.tar.tmp target
-				if [ $? == 0 ]; then
-					mv $cache/$commit.tar.tmp $cache/$commit.fresh.tar || exit 1
-					rdiff signature $cache/$commit.fresh.tar \
-						        $cache/$commit.fresh.tar.sig || exit 1
-					sha256sum $cache/$commit.fresh.tar.sig > \
-					          $cache/$commit.fresh.tar.sig.sha256 || exit 1
-				else
-					echo "SCRIPT: backuping of target to cache is failed"
-					exit 1
-				fi
-			fi
-		else
-			echo "SCRIPT: parachain binary is incorrect"
-			exit 1
-		fi
-	fi
+function check_parachain_binary_and_cache_target() {
+	test -f $parachain \
+		|| panic "parachain binary is not found after build"
+	$parachain --version | expect "parachain-collator" \
+		|| panic "parachain binary is incorrect"
+	test $enable_incremental_compilation == 0 && return 0
+	mkdir -p $cache
+	path="$cache/`get_current_commit`"
+	test -f $path.exist && return 0
+	verbose tar -cf $path.tar.tmp target \
+		|| panic "backuping of target dir to cache is failed"
+	must mv $path.tar.tmp $path.fresh.tar
+	must verbose rdiff signature $path.fresh.tar \
+		             	     $path.tar.sig
+	sha256sum            	     $path.tar.sig > \
+	                     	     $path.tar.sig.sha256 || bomb 1 0 "$@"
+	get_all_commits | head -n 1000 > $path.exist || bomb 0 0 "$@"
 }
 
 function restore_target_from_cache_on_demand() {
-	if [ $enable_insremental_compilation == 1 ]; then
-		if [ ! -d target ]; then
-			commit=`get_last_commit_in_cache`
-			tarfile=`echo $cache/${commit}*.tar | fmt -w 1 | head -n 1`
-			if [ -f $tarfile ]; then
-				tar -xf $cache/$commit.tar
-			else
-			fi
-		fi
+	test $enable_incremental_compilation == 0 && return 0
+	test -d target && return 0
+	commit=`get_last_commit_in_cache`
+	tarfile=`first $cache/${commit}*.tar`
+	if [ -f $tarfile ]; then
+		must tar -xf $cache/$commit.tar
+	else
+		unimplemented
 	fi
 }
 
@@ -200,14 +169,13 @@ function build_parachain_binary() {
 		link_makefile_etc
 		rm -f $parachain > /dev/null 2>&1
 		restore_target_from_cache_on_demand
-		make cargo-build-release
-		check_parachain_binary
+		verbose make cargo-build-release
+		check_parachain_binary_and_cache_target
 	popd
 }
 
 parachain="$top/target/release/parachain-collator"
-
-#git log --reflog --first-parent | head -n 1 | awk '{ print $2 }'
+build_parachain_binary
 
 exit
 

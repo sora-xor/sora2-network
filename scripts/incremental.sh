@@ -1,30 +1,14 @@
 #!/bin/sh
-
-function trim() {
-	echo $1 | sed 's,^ *,,g;s,  *, ,g'
-}
-
-function readc() {
-	echo $stack | awk '{ print $1 }'
-}
-
-function popc() {
-	stack=`echo $stack | awk '{ $1=""; print $0 }' | trim`
-	readc
-}
-
-function pushc() {
-	stack="echo $1 $stack | trim"
-}
+. `dirname $0`/partial/helpers.sh || exit 1
 
 function restore() {
 	stack=""
-	pushc $1
+	push $1
 	while [ `trim $stack` != "" ]; do
-		commit=`readc`
+		commit=`get`
 		test -f $cache/${commit}*.tar
 		if [ $? == 0 ]; then
-			popc > /dev/null
+			pop -q
 			continue
 		fi
 		delta=`echo $cache/$commit-*.tar.delta | fmt -w 1 | head -n 1`
@@ -37,15 +21,53 @@ function restore() {
 					echo "SCRIPT: patching tar $basis_commit to $commit is failed"
 					exit 1
 				else
-					popc > /dev/null
+					pop -q
 				fi
 			else
-				pushc $basis_commit
+				push $basis_commit
 			fi
 		fi
 	done
 }
 
-if [ "$1" == "restore" ]; then
-	restore $2
-fi
+function archive() {
+	cache=$1
+	last=`ls -t $cache | grep exist | head -n 1`
+	stack=""
+	for commit in `cat $cache/$last`
+	do
+		tarfile=`first_ls $cache/$commit.point.tar $cache/$commit.fresh.tar`
+		test "$tarfile" == "" && continue
+		test -f $tarfile || continue
+		test -f $cache/$commit.tar.sig || bomb 2 0 "$@"
+		push $commit
+	done
+	ready=0
+	while [ $ready != 1 ]; do
+		test `length $stack` -ge 2 || return 0
+		pop -a new
+		pop -a old
+		push $old
+		delta="$cache/$old-$new.delta"
+		if [ ! -f $delta ]; then
+			verbose rdiff delta $cache/$old.tar.sig \
+			                   `first_ls $cache/${new}*.tar` \
+					    $delta.tmp \
+				|| bomb 8 0 "$@"
+			must mv $delta $delta.tmp
+			must rm -f $cache/${new}*.tar
+		fi
+	done
+}
+
+case "$1" in
+	restore)
+		restore $2
+		break
+		;;
+	archive)
+		archive $2
+		break
+		;;
+	*)
+esac
