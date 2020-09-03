@@ -30,22 +30,36 @@ chain_json="$top/misc/rococo-custom.json"
 scripts="$top/scripts"
 dir="$top/tmp"
 
+# Use helpers
+sourse $top/lib/misc/helpers.bash || exit 1
+
 # Quick check for correctness of this variables
-test -f $chain_json              || exit 1
-test -f $scripts/localtestnet.sh || exit 1
-test -f $top/Cargo.toml          || exit 1
-test -f $top/node/Cargo.toml     || exit 1
-test -f $top/runtime/Cargo.toml  || exit 1
+must [ -f $chain_json              ]
+must [ -f $scripts/localtestnet.sh ]
+must [ -f $top/Cargo.toml          ]
+must [ -f $top/node/Cargo.toml     ]
+must [ -f $top/runtime/Cargo.toml  ]
+
+# Declare functions
+#
+
+function first() {
+	echo $1 | fmt -w 1 | head -n 1
+}
+
+function expect() {
+	head -n 1 | grep -q "$1"
+}
 
 function link_makefile_etc() {
-	ln -sf $top/misc/Makefile   . || exit 1
-	ln -sf $top/misc/shell.nix  . || exit 1
-	ln -sf $top/misc/nix-env.sh . || exit 1
+	must ln -sf $top/misc/Makefile   .
+	must ln -sf $top/misc/shell.nix  .
+	must ln -sf $top/misc/nix-env.sh .
 }
 
 function check_polkadot_binary() {
 	if [ "$polkadot" == "" ]; then
-		which $1 > /dev/null 2>&1 && $1 --help | head -n 1 | grep -q $polkadot_commit
+		command_exist $1 && $1 --help | expect $polkadot_commit
 		if [ $? == 0 ]; then
 			polkadot=`which $1`
 		else
@@ -58,42 +72,38 @@ function build_polkadot_on_demand() {
 	polkadot_ready="$dir/polkadot_ready"
 	polkadot_path="$polkadot_ready/target/release"
 	polkadot_binary="$polkadot_path/polkadot"
-	echo "SCRIPT: polkadot binary of $polkadot_commit commit build is not found, building it"
+	info "polkadot binary of $polkadot_commit commit build is not found, building it"
 	if [ ! -d $dir/polkadot_ready  ]; then
-		echo "SCRIPT: polkadot is not cloned, cloning repository"
-		mkdir -p $dir || exit 1
+		info "polkadot is not cloned, cloning repository"
+		must mkdir -p $dir
 		pushd $dir
 			git clone $polkadot_repository && \
 				mv polkadot polkadot_ready || \
-					exit 1
+					bomb 3 1
 		popd
 	fi
 	if [ ! -f $polkadot_binary ]; then
-		echo "SCRIPT: polkadot binary is not builded, building it"
+		info "polkadot binary is not builded, building it"
 		pushd $polkadot_ready
-			git checkout $polkadot_commit || exit 1
+			must git checkout $polkadot_commit
 			link_makefile_etc
-			make cargo-build-release      || exit 1
+			must make cargo-build-release
 		popd
 	fi
 	if [ -f $polkadot_binary ]; then
-		echo "SCRIPT: checking that polkadot binary can run and is correct"
-		check_polkadot_binary $polkadot_binary
-		if [ $? != 0 ]; then
-			echo "SCRIPT: polkadot binary is incorrect"
-			exit 1
-		fi
+		info "checking that polkadot binary can run and is correct"
+		check_polkadot_binary $polkadot_binary || \
+			panic "polkadot binary is incorrect"
 	else
-		echo "SCRIPT: polkadot binary it not exist in target/release folder, building is failed"
-		exit 1
+		panic "polkadot binary it not exist in target/release folder, building is failed"
 	fi
 }
 
 function check_api_binary() {
 	if [ "$api" == "" ]; then
-		which $1 > /dev/null 2>&1 && $1 --version | grep -q "[0-9]+\.[0-9]+\.[0.9]"
+		command_exist $1 && $1 --version | expect "[0-9]+\.[0-9]+\.[0.9]"
 		if [ $? == 0 ]; then
-			polkadot=`which $1`
+			api=`which $1`
 		else
 			false
 		fi
@@ -101,42 +111,31 @@ function check_api_binary() {
 }
 
 function install_api_on_demand() {
-	which npm > /dev/null 2>&1
-	if [ $? != 0 ]; then
-		echo "SCRIPT: npm is not found, please install npm"
-		exit 1
-	else
-		expected_api=$dir/local/bin/polkadot-js-api
-		if [ ! -f $expected_api ]; then
-			echo "SCRIPT: polkadot-js-api command not found, installing it"
-			npm install -g @polkadot/api-cli --prefix $dir/local || exit 1
-		fi
-		check_api_binary $expected_api
-		if [ $? != 0 ]; then
-			echo "SCRIPT: polkadot-js-api is not working"
-			exit 1
-		fi
+	command_exist npm || \
+		panic "npm is not found, please install npm"
+	expected_api="$dir/local/bin/polkadot-js-api"
+	if [ ! -f $expected_api ]; then
+		info "polkadot-js-api command not found, installing it"
+		must npm install -g @polkadot/api-cli --prefix "$dir/local"
 	fi
+	check_api_binary $expected_api || \
+		panic "polkadot-js-api is not working"
 }
 
 api=""
 check_api_binary polkadot-js-api
 check_api_binary ../rococo-localtestnet-scripts/local/bin/polkadot-js-api
-if [ $? != 0 ]; then
-	echo "SCRIPT: polkadot-js-api is already exist, skipping install and use it"
-else
-	install_api_on_demand
-fi
+on_success info "polkadot-js-api is already exist, skipping install and use it" \
+	|| install_api_on_demand
 
 polkadot=""
 check_polkadot_binary polkadot
 check_polkadot_binary ../polkadot/target/release/polkadot
-if [ $? == 0 ]; then
-	echo "SCRIPT: Polkadot binary of $polkadot_commit commit is already exist, skiping build and use it"
-else
-	build_polkadot_on_demand
-fi
+on_success info "polkadot binary of $polkadot_commit commit is already exist, skiping build and use it" \
+	|| build_polkadot_on_demand
 
+
+#
 # Compilation of parachain
 #
 
@@ -167,7 +166,10 @@ function check_parachain_binary() {
 				tar -cf $cache/$commit.tar.tmp target
 				if [ $? == 0 ]; then
 					mv $cache/$commit.tar.tmp $cache/$commit.fresh.tar || exit 1
-					rdiff signature $cache/$commit.fresh.tar $cache/$commit.fresh.tar.sig || exit 1
+					rdiff signature $cache/$commit.fresh.tar \
+						        $cache/$commit.fresh.tar.sig || exit 1
+					sha256sum $cache/$commit.fresh.tar.sig > \
+					          $cache/$commit.fresh.tar.sig.sha256 || exit 1
 				else
 					echo "SCRIPT: backuping of target to cache is failed"
 					exit 1
