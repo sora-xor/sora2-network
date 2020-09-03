@@ -137,8 +137,12 @@ else
 	build_polkadot_on_demand
 fi
 
-# Incremental compilation of parachain
+# Compilation of parachain
 #
+
+if [ $enable_incremental_compilation == 1 ]; then
+	which $1 > /dev/null 2>&1 && $1 --help | head -n 1 | grep -q $polkadot_commit
+fi
 
 function get_all_commits() {
 	git log --reflog --first-parent | awk '/^commit /{ $2 }'
@@ -159,11 +163,11 @@ function check_parachain_binary() {
 		$parachain --version | grep -q "parachain-collator"
 		if [ $? == 0 ]; then
 			if [ $enable_incremental_compilation == 1 ]; then
-				current_commit=`get_current_commit`
-				tar -cf $cache/$current_commit.tar.tmp target
+				commit=`get_current_commit`
+				tar -cf $cache/$commit.tar.tmp target
 				if [ $? == 0 ]; then
-					mv $cache/$current_commit.tar.tmp $cache/$current_commit.tar || exit 1
-					touch $cache/$current_commit.exist || exit 1
+					mv $cache/$commit.tar.tmp $cache/$commit.fresh.tar || exit 1
+					rdiff signature $cache/$commit.fresh.tar $cache/$commit.fresh.tar.sig || exit 1
 				else
 					echo "SCRIPT: backuping of target to cache is failed"
 					exit 1
@@ -176,9 +180,15 @@ function check_parachain_binary() {
 	fi
 }
 
-function restore_from_cache_on_demand() {
+function restore_target_from_cache_on_demand() {
 	if [ $enable_insremental_compilation == 1 ]; then
 		if [ ! -d target ]; then
+			commit=`get_last_commit_in_cache`
+			tarfile=`echo $cache/${commit}*.tar | fmt -w 1 | head -n 1`
+			if [ -f $tarfile ]; then
+				tar -xf $cache/$commit.tar
+			else
+			fi
 		fi
 	fi
 }
@@ -187,6 +197,7 @@ function build_parachain_binary() {
 	pushd $top
 		link_makefile_etc
 		rm -f $parachain > /dev/null 2>&1
+		restore_target_from_cache_on_demand
 		make cargo-build-release
 		check_parachain_binary
 	popd
