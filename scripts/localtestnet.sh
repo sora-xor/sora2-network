@@ -1,19 +1,35 @@
 #!/bin/sh
 
+# Default configuration
+#
+
+relaychain_nodes_count=2
+
+parachains="200"
+parachain_fullnodes_count=2
+parachain_collators_count=4
+
+# Preparing environment
+#
+
 # Constants
 test_names="alice bob"
 polkadot_commit="fd4b176f"
 polkadot_repository="https://github.com/paritytech/polkadot"
+logdir_pattern="/tmp/rococo-localtestnet-logs-XXXXXXXX"
+cargo_target_incremental_cache="/tmp/parachain_cargo_target_cache"
 
 # Deciding of fundamental variables
 realpath=`realpath $0`
 basename=`basename $realpath`
 dirname=`dirname $realpath`
 top=`realpath $dirname/..`
+chain_json="$top/misc/rococo-custom.json"
 scripts="$top/scripts"
 dir="$top/tmp"
 
 # Quick check for correctness of this variables
+test -f $chain_json              || exit 1
 test -f $scripts/localtestnet.sh || exit 1
 test -f $top/Cargo.toml          || exit 1
 test -f $top/node/Cargo.toml     || exit 1
@@ -34,9 +50,9 @@ function build_polkadot_on_demand() {
 	polkadot_ready="$dir/polkadot_ready"
 	polkadot_path="$polkadot_ready/target/release"
 	polkadot_binary="$polkadot_path/polkadot"
-	echo "SCRIPT: Polkadot binary of $polkadot_commit commit build is not found in PATH, building it"
+	echo "SCRIPT: polkadot binary of $polkadot_commit commit build is not found, building it"
 	if [ ! -d $dir/polkadot_ready  ]; then
-		echo "SCRIPT: Polkadot is not cloned, cloning repository"
+		echo "SCRIPT: polkadot is not cloned, cloning repository"
 		mkdir -p $dir || exit 1
 		pushd $dir
 			git clone $polkadot_repository && \
@@ -45,7 +61,7 @@ function build_polkadot_on_demand() {
 		popd
 	fi
 	if [ ! -f $polkadot_binary ]; then
-		echo "SCRIPT: Polkadot binary is not builded, building it"
+		echo "SCRIPT: polkadot binary is not builded, building it"
 		pushd $polkadot_ready
 			git checkout $polkadot_commit || exit 1
 			ln -sf $top/misc/Makefile   . || exit 1
@@ -55,17 +71,56 @@ function build_polkadot_on_demand() {
 		popd
 	fi
 	if [ -f $polkadot_binary ]; then
-		echo "SCRIPT: Checking that polkadot binary can run and is correct"
+		echo "SCRIPT: checking that polkadot binary can run and is correct"
 		check_polkadot_binary $polkadot_binary
 		if [ $? != 0 ]; then
-			echo "SCRIPT: Polkadot binary is incorrect"
+			echo "SCRIPT: polkadot binary is incorrect"
 			exit 1
 		fi
 	else
-		echo "SCRIPT: Polkadot binary it not exist in target/release folder, building is failed"
+		echo "SCRIPT: polkadot binary it not exist in target/release folder, building is failed"
 		exit 1
 	fi
 }
+
+function check_api_binary() {
+	if [ "$api" == "" ]; then
+		which $1 > /dev/null 2>&1 && $1 --version | grep -q "[0-9]+\.[0-9]+\.[0.9]"
+		if [ $? == 0 ]; then
+			polkadot=`which $1`
+		else
+			false
+		fi
+	fi
+}
+
+function install_api_on_demand() {
+	which npm > /dev/null 2>&1
+	if [ $? != 0 ]; then
+		echo "SCRIPT: npm is not found, please install npm"
+		exit 1
+	else
+		expected_api=$dir/local/bin/polkadot-js-api
+		if [ ! -f $expected_api ]; then
+			echo "SCRIPT: polkadot-js-api command not found, installing it"
+			npm install -g @polkadot/api-cli --prefix $dir/local || exit 1
+		fi
+		check_api_binary $expected_api
+		if [ $? != 0 ]; then
+			echo "SCRIPT: polkadot-js-api is not working"
+			exit 1
+		fi
+	fi
+}
+
+api=""
+check_api_binary polkadot-js-api
+check_api_binary ../rococo-localtestnet-scripts/local/bin/polkadot-js-api
+if [ $? != 0 ]; then
+	echo "SCRIPT: polkadot-js-api is already exist, skipping install and use it"
+else
+	install_api_on_demand
+fi
 
 polkadot=""
 check_polkadot_binary polkadot
@@ -76,24 +131,11 @@ else
 	build_polkadot_on_demand
 fi
 
-
-
-
 exit
 
-# Parameters of testnet
-relaychain_nodes_count=2
 
-parachains="200"
-parachain_fullnodes_count=2
-parachain_collators_count=4
-
-dir="$PWD/tmp"
-bin="$dir/bin"
-polkadot="$dir/polkadot"
-chain_json="$PWD/misc/rococo-custom.json"
-parachain="$dir/parachain"
-logdir_pattern="/tmp/rococo-localtestnet-logs-XXXXXXXX"
+# Declaration of functions required to make local testnet
+#
 
 # Empty values
 relaychain_nodes=""
