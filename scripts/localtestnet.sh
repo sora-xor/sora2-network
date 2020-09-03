@@ -9,6 +9,8 @@ parachains="200"
 parachain_fullnodes_count=2
 parachain_collators_count=4
 
+enable_incremental_compilation=1
+
 # Preparing environment
 #
 
@@ -17,7 +19,7 @@ test_names="alice bob"
 polkadot_commit="fd4b176f"
 polkadot_repository="https://github.com/paritytech/polkadot"
 logdir_pattern="/tmp/rococo-localtestnet-logs-XXXXXXXX"
-cargo_target_incremental_cache="/tmp/parachain_cargo_target_cache"
+cache="/tmp/parachain_cargo_target_build_cache"
 
 # Deciding of fundamental variables
 realpath=`realpath $0`
@@ -34,6 +36,12 @@ test -f $scripts/localtestnet.sh || exit 1
 test -f $top/Cargo.toml          || exit 1
 test -f $top/node/Cargo.toml     || exit 1
 test -f $top/runtime/Cargo.toml  || exit 1
+
+function link_makefile_etc() {
+	ln -sf $top/misc/Makefile   . || exit 1
+	ln -sf $top/misc/shell.nix  . || exit 1
+	ln -sf $top/misc/nix-env.sh . || exit 1
+}
 
 function check_polkadot_binary() {
 	if [ "$polkadot" == "" ]; then
@@ -64,9 +72,7 @@ function build_polkadot_on_demand() {
 		echo "SCRIPT: polkadot binary is not builded, building it"
 		pushd $polkadot_ready
 			git checkout $polkadot_commit || exit 1
-			ln -sf $top/misc/Makefile   . || exit 1
-			ln -sf $top/misc/shell.nix  . || exit 1
-			ln -sf $top/misc/nix-env.sh . || exit 1
+			link_makefile_etc
 			make cargo-build-release      || exit 1
 		popd
 	fi
@@ -130,6 +136,65 @@ if [ $? == 0 ]; then
 else
 	build_polkadot_on_demand
 fi
+
+# Incremental compilation of parachain
+#
+
+function get_all_commits() {
+	git log --reflog --first-parent | awk '/^commit /{ $2 }'
+}
+
+function get_current_commit() {
+	all_commits | head -n 1
+}
+
+function get_last_commit_in_cache() {
+	get_all_commits | awk "{ if (system(\"$cache\" $1 \".exist\")==0) { print $1; exit } }"
+}
+
+function check_parachain_binary() {
+	if [ ! -f $parachain ]; then
+		echo "SCRIPT: parachain binary if not found after build"
+	else
+		$parachain --version | grep -q "parachain-collator"
+		if [ $? == 0 ]; then
+			if [ $enable_incremental_compilation == 1 ]; then
+				current_commit=`get_current_commit`
+				tar -cf $cache/$current_commit.tar.tmp target
+				if [ $? == 0 ]; then
+					mv $cache/$current_commit.tar.tmp $cache/$current_commit.tar || exit 1
+					touch $cache/$current_commit.exist || exit 1
+				else
+					echo "SCRIPT: backuping of target to cache is failed"
+					exit 1
+				fi
+			fi
+		else
+			echo "SCRIPT: parachain binary is incorrect"
+			exit 1
+		fi
+	fi
+}
+
+function restore_from_cache_on_demand() {
+	if [ $enable_insremental_compilation == 1 ]; then
+		if [ ! -d target ]; then
+		fi
+	fi
+}
+
+function build_parachain_binary() {
+	pushd $top
+		link_makefile_etc
+		rm -f $parachain > /dev/null 2>&1
+		make cargo-build-release
+		check_parachain_binary
+	popd
+}
+
+parachain="$top/target/release/parachain-collator"
+
+#git log --reflog --first-parent | head -n 1 | awk '{ print $2 }'
 
 exit
 
