@@ -78,7 +78,6 @@ function check_api_binary() {
 function install_api_on_demand() {
        command_exist npm || \
                panic "npm is not found, please install npm"
-       expected_api="$dir/local/bin/polkadot-js-api"
        if [ ! -f $expected_api ]; then
                info "polkadot-js-api command not found, installing it"
                must npm install -g @polkadot/api-cli --prefix "$dir/local"
@@ -88,9 +87,6 @@ function install_api_on_demand() {
 }
 
 function build_polkadot_on_demand() {
-	polkadot_ready="$dir/polkadot_ready"
-	polkadot_path="$polkadot_ready/target/release"
-	polkadot_binary="$polkadot_path/polkadot"
 	info "polkadot binary of $polkadot_commit commit build is not found, building it"
 	if [ ! -d $dir/polkadot_ready  ]; then
 		info "polkadot is not cloned, cloning repository"
@@ -119,14 +115,20 @@ function build_polkadot_on_demand() {
 }
 
 api=""
+expected_api="$dir/local/bin/polkadot-js-api"
 check_api_binary polkadot-js-api
-check_api_binary $top/../rococo-localtestnet-scripts/local/bin/polkadot-js-api
+check_api_binary $expected_api
+#check_api_binary $top/../rococo-localtestnet-scripts/local/bin/polkadot-js-api
 on_success info "polkadot-js-api is already exist, skipping install and using it" \
 	|| install_api_on_demand
 
 polkadot=""
+polkadot_ready="$dir/polkadot_ready"
+polkadot_path="$polkadot_ready/target/release"
+polkadot_binary="$polkadot_path/polkadot"
+check_polkadot_binary $polkadot_binary
 check_polkadot_binary polkadot
-check_polkadot_binary $top/../polkadot/target/release/polkadot
+#check_polkadot_binary $top/../polkadot/target/release/polkadot
 on_success info "polkadot binary of $polkadot_commit commit is already exist, skiping build and using it" \
 	|| build_polkadot_on_demand
 
@@ -342,12 +344,14 @@ function waiting_for_ready_state() {
 }
 
 function show_message() {
-	verbose -c "ls -la $log | grep '\.log$'"
-	echo "To view log run command: tail $log/parachain_200_fullnode_0.log"
+	echo "# To view some log you can copy and run some command"
+	for i in $log/*.log; do
+		echo "tail -f $i"
+	done
 	if [ $remove_log_dir_on_finalize == 1 ]; then
-		echo "hit Ctrl-C to terminate testnet and remove log dir"
+		echo "# hit Ctrl-C to terminate testnet and remove log dir"
 	else
-		echo "hit Ctrl-C to terminate testnet and keep log dir"
+		echo "# hit Ctrl-C to terminate testnet and keep log dir"
 	fi
 	info "rococo local test net is running"
 }
@@ -363,7 +367,7 @@ function finalize() {
 	do
 		kill -KILL $pid > /dev/null 2>&1
 	done
-	tail $log/parachain_200_fullnode_0.log
+	tail $log/parachain_200_fullnode_0.log 2> /dev/null
 	if [ $remove_log_dir_on_finalize == 1 ]; then
 		rm -Rf $log
 	fi
