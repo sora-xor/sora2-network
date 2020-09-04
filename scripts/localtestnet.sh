@@ -37,9 +37,14 @@ dirname=`dirname $realpath`
 top=`realpath $dirname/..`
 chain_json="$top/misc/rococo-custom.json"
 scripts="$top/scripts"
-dir="$top/tmp"
+if [ "$INSIDE_DOCKER" == "1" ]; then
+	dir="/cache"
+else
+	dir="$top/tmp"
+fi
 
 # Quick check for correctness of this variables
+must [ -d $dir                     ]
 must [ -f $chain_json              ]
 must [ -f $scripts/localtestnet.sh ]
 must [ -f $top/Cargo.toml          ]
@@ -53,6 +58,8 @@ function link_makefile_etc() {
 	must ln -sf $top/misc/Makefile   .
 	must ln -sf $top/misc/shell.nix  .
 	must ln -sf $top/misc/nix-env.sh .
+	must mkdir -p scripts/partial
+	must ln -sf $top/scripts/partial/helpers.sh ./scripts/partial/
 }
 
 function check_polkadot_binary() {
@@ -118,9 +125,10 @@ function build_polkadot_on_demand() {
 
 api=""
 expected_api="$dir/local/bin/polkadot-js-api"
-check_api_binary polkadot-js-api
 check_api_binary $expected_api
-#check_api_binary $top/../rococo-localtestnet-scripts/local/bin/polkadot-js-api
+check_api_binary polkadot-js-api
+check_api_binary /usr/node_modules/.bin/polkadot-js-api
+check_api_binary $top/../rococo-localtestnet-scripts/local/bin/polkadot-js-api
 on_success info "polkadot-js-api is already exist, skipping install and using it" \
 	|| install_api_on_demand
 
@@ -130,7 +138,8 @@ polkadot_path="$polkadot_ready/target/release"
 polkadot_binary="$polkadot_path/polkadot"
 check_polkadot_binary $polkadot_binary
 check_polkadot_binary polkadot
-#check_polkadot_binary $top/../polkadot/target/release/polkadot
+check_polkadot_binary /cache/polkadot/target/release/polkadot
+check_polkadot_binary $top/../polkadot/target/release/polkadot
 on_success info "polkadot binary of $polkadot_commit commit is already exist, skiping build and using it" \
 	|| build_polkadot_on_demand
 

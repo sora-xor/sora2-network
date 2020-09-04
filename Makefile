@@ -1,1 +1,1 @@
-/home/user/test-build/parachain/misc/Makefile
+misc/Makefile

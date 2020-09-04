@@ -21,3 +21,7 @@ yarn-build:
 	${RUN} "yarn"
 	${RUN} "yarn build"
 
+.with_docker_jobs/localtestnet_testlog_from_commit_%.log:
+	@mkdir -p .inside_docker_jobs/locked
+	flock .inside_docker_jobs/locked -c "./scripts/docker_compose_up.sh $*"
+
