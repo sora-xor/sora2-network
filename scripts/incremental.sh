@@ -2,27 +2,23 @@
 . `dirname $0`/partial/helpers.sh || exit 1
 
 function restore() {
+	cache=$1
 	stack=""
-	push $1
-	while [ `trim $stack` != "" ]; do
+	push $2
+	while [ "`trim $stack`" != "" ]; do
 		commit=`get`
-		test -f $cache/${commit}*.tar
-		if [ $? == 0 ]; then
+		if file_is_found_and_exist $cache/${commit}*.tar; then
 			pop -q
 			continue
 		fi
-		delta=`echo $cache/$commit-*.tar.delta | fmt -w 1 | head -n 1`
+		delta=`first_ls $cache/*-$commit.tar.delta`
 		if [ -f $delta ]; then
-			basis_commit=`echo $delta | awk -F '[\-\.]' '{ print $2 }' 2> /dev/null`
-			basis_file=`echo ${basis_commit}*.tar | fmt -w 1 | head -n 1`
+			basis_commit=`basename $delta | awk -F '[\-\.]' '{ print $1 }' 2> /dev/null`
+			basis_file=`first_ls $cache/${basis_commit}*.tar`
 			if [ -f $basis_file ]; then
-				rdiff patch $basis_file $delta $cache/$commit.restored.tar
-				if [ $? != 0 ]; then
-					echo "SCRIPT: patching tar $basis_commit to $commit is failed"
-					exit 1
-				else
-					pop -q
-				fi
+				verbose rdiff patch $basis_file $delta $cache/$commit.restored.tar \
+					|| panic "patching tar $basis_commit to $commit is failed"
+				pop -q
 			else
 				push $basis_commit
 			fi
@@ -48,7 +44,7 @@ function archive() {
 		pop -a new
 		pop -a old
 		push $old
-		delta="$cache/$old-$new.delta"
+		delta="$cache/$old-$new.tar.delta"
 		if [ ! -f $delta ]; then
 			verbose rdiff delta $cache/$old.tar.sig \
 			                   `first_ls $cache/${new}*.tar` \
@@ -62,7 +58,7 @@ function archive() {
 
 case "$1" in
 	restore)
-		restore $2
+		restore $2 $3
 		break
 		;;
 	archive)

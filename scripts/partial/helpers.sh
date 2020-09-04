@@ -125,3 +125,9 @@ function verbose() {
 	echo "SCRIPT RUNNING: $@" | trimmer
 	"$@"
 }
+
+function file_is_found_and_exist() {
+	found=`first_ls "$@"`
+	test "$found" == "" && return 1
+	test -f $found && echo $found
+}
