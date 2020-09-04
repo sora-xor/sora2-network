@@ -16,7 +16,9 @@ skip_build_of_parachain_binary_if_it_exist=1
 enable_incremental_compilation=0
 remove_binary_for_rebuild=0
 
-export RUST_LOG="sc_rpc=trace"
+if [ "$RUST_LOG" == "" ]; then
+	export RUST_LOG="sc_rpc=trace"
+fi
 
 # Preparing environment
 #
