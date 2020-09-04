@@ -8,9 +8,12 @@ edition = '2018'
 serde = { version = "1.0.101", default-features = false, optional = true, features = ["derive"] }
 codec = { package = "parity-scale-codec", version = "1.3.0", default-features = false, features = ["derive"] }
 
+trading-pair = { path = "../pallets/trading-pair", default-features = false}
 parachain-info = { path = "../pallets/parachain-info", default-features = false}
 cumulus-token-dealer = { path = "../pallets/token-dealer", default-features = false}
 template = { package = "pallet-template", path = "../pallets/template", version = "2.0.0-rc5", default-features = false}
+currencies = { package = "orml-currencies", branch = "rococo-branch", git = "https://github.com/vmarkushin/open-runtime-module-library", default-features = false }
+tokens = { package = "orml-tokens", branch = "rococo-branch", git = "https://github.com/vmarkushin/open-runtime-module-library", default-features = false }
 
 # Substrate dependencies
 sp-std = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "rococo-branch" }
@@ -43,6 +46,7 @@ cumulus-primitives = { git = "https://github.com/paritytech/cumulus",  default-f
 
 # Additional dependencies
 treasury = { path = "../pallets/treasury", default-features = false }
+common = { path = "../common", default-features = false }
 #iroha-bridge = { path = "../pallets/iroha-bridge", default-features = false }
 
 [build-dependencies]
@@ -79,8 +83,13 @@ std = [
 	"cumulus-upward-message/std",
 	"cumulus-primitives/std",
 	"cumulus-token-dealer/std",
+	"trading-pair/std",
+	"common/std",
 	"template/std",
+	"currencies/std",
+	"tokens/std",
 ]
+
 # Will be enabled by the `wasm-builder` when building the runtime for WASM.
 runtime-wasm = [
 	"cumulus-upward-message/runtime-wasm",

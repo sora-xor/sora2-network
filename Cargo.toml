@@ -1,8 +1,10 @@
 [workspace]
 members = [
 	"runtime/",
+	"common",
 	"pallets/parachain-info",
 	"pallets/token-dealer",
+	"pallets/trading-pair",
 	"pallets/template",
 	"node/",
 ]

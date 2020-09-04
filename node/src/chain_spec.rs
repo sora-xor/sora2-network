@@ -1,8 +1,5 @@
 // Copyright 2020 Parity Technologies (UK) Ltd.
 
-use iroha_client_no_std::crypto as iroha_crypto;
-use std::convert::TryFrom;
-
 use cumulus_primitives::ParaId;
 
 use parachain_runtime::{

@@ -24,6 +24,8 @@ use sp_std::prelude::*;
 use sp_version::NativeVersion;
 use sp_version::RuntimeVersion;
 use frame_system::offchain::{Account, SigningTypes};
+use currencies::BasicCurrencyAdapter;
+use common::AssetId;
 
 // A few exports that help ease life for downstream crates.
 pub use frame_support::{
@@ -257,7 +259,6 @@ impl pallet_balances::Trait<pallet_balances::Instance2> for Runtime {
     type WeightInfo = ();
 }
 
-
 /// KSM
 impl pallet_balances::Trait<pallet_balances::Instance3> for Runtime {
     /// The type for recording an account's balance.
@@ -281,6 +282,40 @@ impl treasury::Trait for Runtime {
     type XOR = pallet_balances::Module<Runtime, pallet_balances::Instance1>;
     type DOT = pallet_balances::Module<Runtime, pallet_balances::Instance2>;
     type KSM = pallet_balances::Module<Runtime, pallet_balances::Instance3>;
+}
+
+pub type Amount = i128;
+
+impl tokens::Trait for Runtime {
+	type Event = Event;
+	type Balance = Balance;
+	type Amount = Amount;
+	type CurrencyId = <Runtime as common::Trait>::AssetId;
+	type OnReceived = ();
+}
+
+parameter_types! {
+	pub const GetBaseAssetId: AssetId = AssetId::XOR;
+}
+
+impl currencies::Trait for Runtime {
+	type Event = Event;
+	type MultiCurrency = Tokens;
+	type NativeCurrency = BasicCurrencyAdapter<Balances, Balance, Balance, Amount, BlockNumber>;
+	type GetNativeCurrencyId = <Runtime as common::Trait>::GetBaseAssetId;
+}
+
+type DexId = u32;
+
+impl common::Trait for Runtime {
+	type DexId = DexId;
+	type AssetId = AssetId;
+	type GetBaseAssetId = GetBaseAssetId;
+	type EnsureDexOwner = (); // TODO: substitute a module that manages owners here
+}
+
+impl trading_pair::Trait for Runtime {
+	type Event = Event;
 }
 
 impl<T: SigningTypes> frame_system::offchain::SignMessage<T> for Runtime {
@@ -350,7 +385,7 @@ impl frame_system::offchain::SigningTypes for Runtime {
 impl<C> frame_system::offchain::SendTransactionTypes<C> for Runtime
 where
     Call: From<C>,
-{   
+{
     type OverarchingCall = Call;
     type Extrinsic = UncheckedExtrinsic;
 }
@@ -438,6 +473,9 @@ construct_runtime! {
 		DOT: pallet_balances::<Instance2>::{Module, Call, Storage, Config<T>, Event<T>},
 		KSM: pallet_balances::<Instance3>::{Module, Call, Storage, Config<T>, Event<T>},
 		Treasury: treasury::{Module, Call, Storage, Event<T>},
+		Tokens: tokens::{Module, Storage, Event<T>},
+		Currencies: currencies::{Module, Call, Event<T>},
+		TradingPair: trading_pair::{Module, Call, Event<T>},
 		//IrohaBridge: iroha_bridge::{Module, Call, Storage, Config<T>, Event<T>},
 	}
 }
