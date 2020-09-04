@@ -4,13 +4,19 @@
 # Default configuration
 #
 
+remove_log_dir_on_finalize=1
+
 relaychain_nodes_count=2
 
 parachains="200"
 parachain_fullnodes_count=2
 parachain_collators_count=4
 
-enable_incremental_compilation=1
+skip_build_of_parachain_binary_if_it_exist=1
+enable_incremental_compilation=0
+remove_binary_for_rebuild=0
+
+export RUST_LOG="sc_rpc=trace"
 
 # Preparing environment
 #
@@ -149,7 +155,7 @@ function check_parachain_binary_and_cache_target() {
 		             	     $path.tar.sig
 	sha256sum            	     $path.tar.sig > \
 	                     	     $path.tar.sig.sha256 || bomb 1 0 "$@"
-	get_all_commits | head -n 1000 > $path.exist || bomb 0 0 "$@"
+	get_all_commits | head -n 1000 > $path.exist || bomb
 }
 
 function restore_target_from_cache_on_demand() {
@@ -167,9 +173,13 @@ function restore_target_from_cache_on_demand() {
 function build_parachain_binary() {
 	pushd $top
 		link_makefile_etc
-		rm -f $parachain > /dev/null 2>&1
 		restore_target_from_cache_on_demand
-		verbose make cargo-build-release
+		if [ $remove_binary_for_rebuild == 1 ]; then
+			rm -f $parachain > /dev/null 2>&1
+		fi
+		if [ ! -f $parachain -o $skip_build_of_parachain_binary_if_it_exist == 0 ]; then
+			verbose make cargo-build-release
+		fi
 		check_parachain_binary_and_cache_target
 	popd
 }
@@ -177,9 +187,8 @@ function build_parachain_binary() {
 parachain="$top/target/release/parachain-collator"
 build_parachain_binary
 
-exit
 
-
+#
 # Declaration of functions required to make local testnet
 #
 
@@ -193,39 +202,14 @@ function get_test_name() {
 }
 
 function check_dirs_and_files() {
-	test -f $bin/polkadot-js-api || exit 1
-	test -d $iroha || exit 1
-	test -f $iroha/config.json || exit 1
-	test -d $polkadot || exit 1
-	test -f $chain_json || exit 1
+	# Additional checks can be added here if needed
+	return 0
 }
 
 function create_log_dir() {
-	log=`mktemp -u $logdir_pattern`
-	mkdir -p $log
-	echo "Rococo localtestnet logdir is: $log"
-}
-
-function add_cargo_path() {
-	PATH="$1/target/release:$PATH"
-	export PATH
-}
-
-function add_path() {
-	PATH="$1:$PATH"
-	export PATH
-}
-
-function start_iroha_node() {
-	prefix=$log/iroha_node_$1
-	logfile=$prefix.log
-	rm -Rf $iroha/blocks > /dev/null 2>&1
-	mkdir -p $log/iroha
-	cp $iroha/config.json $log/iroha/
-	(sh -c "cd $log/iroha; exec iroha 2>&1" & echo $! >&3) 3>$prefix.pid | \
-		awk "{ print \$0; fflush() }" > $logfile &
-	pids="$pids `cat $prefix.pid`"
-	echo "Iroha node $1 is running"
+	log=`mktemp -u $logdir_pattern` || bomb
+	must mkdir -p $log
+	info "rococo localtestnet logdir is: $log"
 }
 
 function start_relaychain_node() {
@@ -240,7 +224,7 @@ function start_relaychain_node() {
 	then
 		bootnodes="--bootnodes $relaychain_nodes"
 	fi
-	(sh -c "exec polkadot \
+	(sh -c "exec $polkadot \
 		  --chain $chain_json \
 	          --tmp \
 	          --ws-port $wsport \
@@ -256,7 +240,7 @@ function start_relaychain_node() {
 	do
 		sleep 0.1
 	done
-	echo "Relaychain node $1 is running"
+	info "relaychain node $1 is running"
 	relaychain_nodes="$relaychain_nodes /ip4/127.0.0.1/tcp/$port/p2p/`cat $localid`"
 }
 
@@ -277,7 +261,7 @@ function start_parachain_fullnode() {
 	then
 		parachain_bootnodes="--bootnodes $parachain_nodes"
 	fi
-	(sh -c "parachain-collator \
+	(sh -c "$parachain \
 		  --tmp \
 		  `if [ $1 == 0 ]; then echo --offchain-worker Always; else echo --offchain-worker Never; fi` \
 		  --alice \
@@ -296,7 +280,7 @@ function start_parachain_fullnode() {
 	do
 		sleep 0.1
 	done
-	echo "Parachain $2 fullnode $1 is running"
+	info "parachain $2 fullnode $1 is running"
 	parachain_nodes="$parachain_nodes /ip4/127.0.0.1/tcp/$port/p2p/`cat $localid`"
 }
 
@@ -317,7 +301,7 @@ function start_parachain_collator() {
 	then
 		parachain_bootnodes="--bootnodes $parachain_nodes"
 	fi
-	(sh -c "parachain-collator \
+	(sh -c "$parachain \
 		  --tmp \
 		  --validator \
 		  --alice \
@@ -336,7 +320,7 @@ function start_parachain_collator() {
 	do
 		sleep 0.1
 	done
-	echo "Parachain $2 collator $1 is running"
+	info "parachain $2 collator $1 is running"
 	parachain_nodes="$parachain_nodes /ip4/127.0.0.1/tcp/$port/p2p/`cat $localid`"
 }
 
@@ -354,21 +338,35 @@ function waiting_for_ready_state() {
 		 		}"
 		sleep 0.1
 	done
-	echo "Ready for testing, parachain $1 blocks is produced"
+	info "ready for testing, parachain $1 blocks is produced"
+}
+
+function show_message() {
+	verbose -c "ls -la $log | grep '\.log$'"
+	echo "To view log run command: tail $log/parachain_200_fullnode_0.log"
+	if [ $remove_log_dir_on_finalize == 1 ]; then
+		echo "hit Ctrl-C to terminate testnet and remove log dir"
+	else
+		echo "hit Ctrl-C to terminate testnet and keep log dir"
+	fi
+	info "rococo local test net is running"
 }
 
 function run_tests() {
-	sh -c "cd $iroha; bridge-tester"
 	#polkadot-js-api --seed "//Alice" tx.balances.transfer 5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty 999
+	return 0
 }
 
 function finalize() {
+	tailpid=$!
 	for pid in $pids
 	do
 		kill -KILL $pid > /dev/null 2>&1
 	done
-	# Remove log dir, comment or uncomment if needed
-	#rm -Rf $log
+	tail $log/parachain_200_fullnode_0.log
+	if [ $remove_log_dir_on_finalize == 1 ]; then
+		rm -Rf $log
+	fi
 	exit
 }
 
@@ -376,19 +374,6 @@ trap finalize 0 1 2 3 6 15
 
 check_dirs_and_files
 create_log_dir
-
-add_path $bin
-add_cargo_path $iroha
-add_cargo_path $polkadot
-add_cargo_path $parachain
-
-#export RUST_LOG="iroha_bridge=trace,sc_rpc=trace"
-export RUST_LOG="sc_rpc=trace"
-
-for iroha_node_number in `seq 1 $iroha_nodes_count`
-do
-	start_iroha_node `expr $iroha_node_number - 1`
-done
 
 for relaychain_node_number in `seq 1 $relaychain_nodes_count`
 do
@@ -408,12 +393,12 @@ do
 		start_parachain_collator `expr $parachain_collator_number - 1` $parachain_id
 	done
 
-	parachain-collator export-genesis-wasm > $log/parachain_${parachain_id}.wasm
+	$parachain export-genesis-wasm > $log/parachain_${parachain_id}.wasm
 	cat $log/parachain_${parachain_id}_collator_0.log | \
 		awk "/Parachain genesis state: /{ print \$9; exit }" > $log/genesis_${parachain_id}.txt
 
 	while true; do
-		polkadot-js-api \
+		$api \
 			--ws "ws://127.0.0.1:9944" \
 			--sudo \
 			--seed "//Alice" \
@@ -424,7 +409,7 @@ do
 			"`cat $log/genesis_${parachain_id}.txt`" | \
 	    	    grep -q '"InBlock": "0x' && break
     	done
-	echo "Parachain $parachain_id is registred"
+	info "parachain $parachain_id is registred"
 
 done
 
@@ -432,12 +417,8 @@ for parachain_id in $parachains
 do
 	waiting_for_ready_state $parachain_id
 done
+show_message
 run_tests
 
 wait
-
-
-#npm install -g @polkadot/api-cli --prefix $top/local
-#clone_and_build cargo polkadot https://github.com/paritytech/polkadot fd4b176f target/release/polkadot
-
 

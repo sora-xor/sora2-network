@@ -18,10 +18,18 @@ function must() {
 	fi
 }
 
+function opt() {
+	if [ "$1" == "" ]; then
+		echo $2
+	else
+		echo $1
+	fi
+}
+
 function bomb() {
 	a=$0
-	b=$1
-	c=$2
+	b=`opt $1 0`
+	c=`opt $2 0`
 	shift; shift
 	echo "SCRIPT PANIC: file = `realpath $0` line = $BASH_LINENO"
 	eval "`awk "BEGIN { print \\\"cat <<BoMbbOmB\\\" }
@@ -122,8 +130,17 @@ function push() {
 }
 
 function verbose() {
+	in_shell=0
+	if [ "$1" == "-c" ]; then
+		shift
+		in_shell=1
+	fi
 	echo "SCRIPT RUNNING: $@" | trimmer
-	"$@"
+	if [ $in_shell == 1 ]; then
+		sh -c "$@"
+	else
+		"$@"
+	fi
 }
 
 function file_is_found_and_exist() {
