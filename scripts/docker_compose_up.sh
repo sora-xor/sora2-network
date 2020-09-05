@@ -6,7 +6,8 @@ must git clone /repos/parachain
 must mv parachain/* .
 must mv parachain/.[a-hj-z]* .
 must git checkout $1
-ls -la ./scripts/partial/
+must mkdir -p /cache/target_current
+must ln -s /cache/target_current ./target
 exec bash ./scripts/localtestnet.sh
 EOF
 docker-compose up

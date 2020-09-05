@@ -43,8 +43,13 @@ fi
 if [ ! -f /usr/.container-tools.ready ]; then
 	nix-env -i \
 		socat \
+		gnutar \
+		wget \
 		|| exit 1
 	touch /usr/.container-tools.ready || exit 1
 fi
+
+export GIT_SSL_CAINFO=/repos/parachain/misc/ca-certificates.crt
+export SSL_CERT_FILE=/repos/parachain/misc/ca-certificates.crt
 
 socat - UNIX-CONNECT:.inside_docker_jobs/locked/socket | exec bash

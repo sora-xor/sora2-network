@@ -51,15 +51,19 @@ must [ -f $top/Cargo.toml          ]
 must [ -f $top/node/Cargo.toml     ]
 must [ -f $top/runtime/Cargo.toml  ]
 
+# Check that some commands is exist
+#which protoc > /dev/null 2>&1 || test "$PROTOC" != "" -a -f $PROTOC \
+#	|| panic "protoc command must exist, because it is needed to build many things in substrate"
+
 # Declare functions
 #
 
 function link_makefile_etc() {
-	must ln -sf $top/misc/Makefile   .
-	must ln -sf $top/misc/shell.nix  .
-	must ln -sf $top/misc/nix-env.sh .
 	must mkdir -p scripts/partial
-	must ln -sf $top/scripts/partial/helpers.sh ./scripts/partial/
+	test -f Makefile   || must ln -sf $top/misc/Makefile   .
+	test -f shell.nix  || must ln -sf $top/misc/shell.nix  .
+	test -f nix-env.sh || must ln -sf $top/misc/nix-env.sh .
+	test -f ./scripts/partial/helpers.sh || must ln -sf $top/scripts/partial/helpers.sh ./scripts/partial/
 }
 
 function check_polkadot_binary() {
@@ -214,7 +218,7 @@ function get_test_name() {
 	echo $test_names | fmt -w 1 | awk "NR == `expr $1 + 1` { print \$0 }"
 }
 
-function check_dirs_and_files() {
+function additional_checks() {
 	# Additional checks can be added here if needed
 	return 0
 }
@@ -387,7 +391,7 @@ function finalize() {
 
 trap finalize 0 1 2 3 6 15
 
-check_dirs_and_files
+additional_checks
 create_log_dir
 
 for relaychain_node_number in `seq 1 $relaychain_nodes_count`

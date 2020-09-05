@@ -4,13 +4,21 @@
 
 DevOps
 
-* Npm required
-
-* Nodejs required
-
-* OpenSSL required
-
-FIXME: versions and outer dependencies
+* [scripts/inside_docker.sh](scripts/inside_docker.sh) file contain information about needed packages
+* socat
+* nodejs
+* yarn
+* rustup
+* glibc
+* zlib
+* git
+* gnugrep
+* gnuset
+* gawk
+* gnumake
+* findutils
+* gnutar
+* wget
 
 
 
@@ -35,11 +43,15 @@ FIXME.
 
 ## Prepare
 
-curl https://sh.rustup.rs -sSf | sh
+* Install `rustup` command
+* Install `yarn` command
 
-rustup update nightly
-rustup target add wasm32-unknown-unknown --toolchain nightly
-rustup update stable
+```
+yarn global add @polkadot/api-cli
+rustup update nightly || exit 1
+rustup target add wasm32-unknown-unknown --toolchain nightly || exit 1
+rustup update stable || exit 1
+```
 
 
 ## Build
@@ -56,7 +68,24 @@ make cargo-test-release
 
 ## Run
 
-make localtestnet-run
+```
+# Manual run of collator
+./target/releaseparachain-collator \
+    --tmp --validator --alice --ws-port 9944 --port 30333 \
+    --parachain-id 200 -- --chain ./misc/rococo-custom.json
+```
+
+```
+# Manual run of parachain fullnode
+./target/releaseparachain-collator \
+    --tmp --alice --ws-port 9944 --port 30333 \
+    --parachain-id 200 -- --chain ./misc/rococo-custom.json
+```
+
+```
+# Automatic run of local test net by script
+./scripts/localtestnet.sh
+```
 
 
 
