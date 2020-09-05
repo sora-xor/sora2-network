@@ -49,6 +49,17 @@ if [ ! -f /usr/.container-tools.ready ]; then
 	touch /usr/.container-tools.ready || exit 1
 fi
 
+if [ ! -f /usr/.configs.ready ]; then
+#####################################
+
+cat <<EOF > /root/.gitconfig
+[advice]
+        detachedHead = false
+EOF
+
+#####################################
+fi
+
 export GIT_SSL_CAINFO=/repos/parachain/misc/ca-certificates.crt
 export SSL_CERT_FILE=/repos/parachain/misc/ca-certificates.crt
 

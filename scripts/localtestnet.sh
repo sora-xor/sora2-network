@@ -15,6 +15,7 @@ parachain_collators_count=4
 skip_build_of_parachain_binary_if_it_exist=1
 enable_incremental_compilation=0
 remove_binary_for_rebuild=0
+exit_after_success=1
 
 if [ "$RUST_LOG" == "" ]; then
 	export RUST_LOG="sc_rpc=trace"
@@ -436,8 +437,10 @@ for parachain_id in $parachains
 do
 	waiting_for_ready_state $parachain_id
 done
-show_message
+
+test $exit_after_success == 0 && show_message
+
 run_tests
 
-wait
+test $exit_after_success == 0 && wait
 
