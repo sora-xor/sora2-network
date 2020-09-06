@@ -5,12 +5,13 @@
 DevOps
 
 * [scripts/inside_docker.sh](scripts/inside_docker.sh) file contain information about needed packages
-* socat
-* nodejs
-* yarn
+* socat (for unix socket script passing)
+* nodejs (needed to run polkadot-js-api)
+* yarn (needed to install polkadot-js-api)
+* polkadot-js-api
 * rustup
 * glibc
-* zlib
+* zlib (for rustup)
 * git
 * gnugrep
 * gnuset
@@ -19,6 +20,7 @@ DevOps
 * findutils
 * gnutar
 * wget
+* utils-linux (getopt command)
 
 
 
@@ -83,8 +85,13 @@ make cargo-test-release
 ```
 
 ```
-# Automatic run of local test net by script
-./scripts/localtestnet.sh
+# Automatic run of local test net by script for given commit
+make a397f7451d80205abf5e535ecee95073ad49e369
+```
+
+```
+# Automatic run of local test net by script for last commit
+make docker-test
 ```
 
 

@@ -9,9 +9,12 @@ tmpdir=`mktemp -d`
 
 commit=$1
 logfile=$2
+
+shift
+shift
+
 docker_pid=$logfile.pid
 flock_pid=""
-shift
 
 function finalize() {
 	if [ -f $docker_pid ]; then
@@ -52,7 +55,7 @@ must mv parachain/.[a-hj-z]* .
 must git checkout $commit
 must mkdir -p /cache/target_current
 must ln -s /cache/target_current ./target
-exec bash ./scripts/localtestnet.sh $@
+exec bash ./scripts/localtestnet.sh --logdir-pattern "/cache/logs-$commit-XXXX" $@
 EOF
 
 must cat > $tmpdir/docker_up.sh <<EOF

@@ -15,7 +15,7 @@ parachain_collators_count=4
 skip_build_of_parachain_binary_if_it_exist=1
 enable_incremental_compilation=0
 remove_binary_for_rebuild=0
-exit_after_success=1
+exit_after_success=0
 
 if [ "$RUST_LOG" == "" ]; then
 	export RUST_LOG="sc_rpc=trace"
@@ -29,7 +29,7 @@ test_names="alice bob"
 polkadot_commit="fd4b176f"
 polkadot_repository="https://github.com/paritytech/polkadot"
 logdir_pattern="/tmp/rococo-localtestnet-logs-XXXXXXXX"
-cache="/tmp/parachain_cargo_target_build_cache"
+cache_dir="/tmp/parachain_cargo_target_build_cache"
 
 # Deciding of fundamental variables
 realpath=`realpath $0`
@@ -51,6 +51,31 @@ must [ -f $scripts/localtestnet.sh ]
 must [ -f $top/Cargo.toml          ]
 must [ -f $top/node/Cargo.toml     ]
 must [ -f $top/runtime/Cargo.toml  ]
+
+# Parse and eval command line options
+getopt_code=`awk -f $top/misc/getopt.awk <<EOF
+Usage: ./scripts/localtestnet.sh [OPTIONS]...
+Run local test net, downloading and (re)building on demand
+  -h  --help                     Show usage message
+usage
+exit 0
+  -k, --keep-logdir              Do not remove logdir after end of script work
+remove_log_dir_on_finalize=0
+  -r, --relay-nodes=n            Number of relay nodes to run (default $relay_nodes)
+relaychain_nodes_count=\$relay_nodes
+  -p, --parachain-fullnodes=n    Number of parachain node to run (default $parachain_fullnodes)
+parachain_fullnodes_count=\$parachain_fullnodes
+  -c, --collator-nodes=n         Number of collator nodes to run (default $collator_nodes)
+parachain_collators_count=\$collator_nodes
+  -f, --force-rebild-parachain   Remove parachain binary and rebuild with fresh commit (as additional test)
+remove_binary_for_rebuild=1
+  -l, --logdir-pattern=pat       Pattern of temporary logdir (default "$logdir_pattern")
+  -d, --cache-dir=dir            Cache dir to incremental backups of target dir (default "$cache_dir")
+  -e, --exit-after-success       Exit after success parachain block producing
+exit_after_success=1
+EOF
+`
+eval "$getopt_code"
 
 # Check that some commands is exist
 #which protoc > /dev/null 2>&1 || test "$PROTOC" != "" -a -f $PROTOC \
@@ -154,7 +179,7 @@ on_success info "polkadot binary of $polkadot_commit commit is already exist, sk
 #
 
 function get_last_commit_in_cache() {
-	get_all_commits | awk "{ if (system(\"test -f $cache\" $1 \".exist\")==0) { print $1; exit } }"
+	get_all_commits | awk "{ if (system(\"test -f $cache_dir/\" $1 \".exist\")==0) { print $1; exit } }"
 }
 
 function check_parachain_binary_and_cache_target() {
@@ -163,8 +188,8 @@ function check_parachain_binary_and_cache_target() {
 	$parachain --version | expect "parachain-collator" \
 		|| panic "parachain binary is incorrect"
 	test $enable_incremental_compilation == 0 && return 0
-	mkdir -p $cache
-	path="$cache/`get_current_commit`"
+	mkdir -p $cache_dir
+	path="$cache_dir/`get_current_commit`"
 	test -f $path.exist && return 0
 	verbose tar -cf $path.tar.tmp target \
 		|| panic "backuping of target dir to cache is failed"
@@ -180,9 +205,9 @@ function restore_target_from_cache_on_demand() {
 	test $enable_incremental_compilation == 0 && return 0
 	test -d target && return 0
 	commit=`get_last_commit_in_cache`
-	tarfile=`first $cache/${commit}*.tar`
+	tarfile=`first $cache_dir/${commit}*.tar`
 	if [ -f $tarfile ]; then
-		must tar -xf $cache/$commit.tar
+		must tar -xf $cache_dir/$commit.tar
 	else
 		unimplemented
 	fi

@@ -45,6 +45,7 @@ if [ ! -f /usr/.container-tools.ready ]; then
 		socat \
 		gnutar \
 		wget \
+		util-linux \
 		|| exit 1
 	touch /usr/.container-tools.ready || exit 1
 fi

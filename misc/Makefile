@@ -7,9 +7,6 @@ default: cargo-build-release
 
 docker-test: $(LAST_COMMIT)
 
-localtestnet-run:
-	./scripts/localtestnet.sh
-
 cargo-build-release:
 	${RUN} "cargo build --release"
 
@@ -27,7 +24,9 @@ yarn-build:
 	${RUN} "yarn build"
 
 .with_docker_jobs/localtestnet_testlog_from_commit_%.log:
-	@./scripts/docker_compose_up.sh $* $@
+	@./scripts/docker_compose_up.sh $* $@ -ef
 
 %:
-	@./scripts/docker_compose_up.sh $@ .with_docker_jobs/localtestnet_testlog_from_commit_$@.log:
+	@./scripts/docker_compose_up.sh $@ .with_docker_jobs/localtestnet_testlog_from_commit_$@.log -ef
+
+
