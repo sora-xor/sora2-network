@@ -444,3 +444,6 @@ run_tests
 
 test $exit_after_success == 0 && wait
 
+echo OK
+echo SCRIPT IS FINISHED SUCCESEFULLY
+

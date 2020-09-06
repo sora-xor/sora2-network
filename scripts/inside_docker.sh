@@ -63,4 +63,5 @@ fi
 export GIT_SSL_CAINFO=/repos/parachain/misc/ca-certificates.crt
 export SSL_CERT_FILE=/repos/parachain/misc/ca-certificates.crt
 
-socat - UNIX-CONNECT:.inside_docker_jobs/locked/socket | exec bash
+socat - UNIX-CONNECT:.inside_docker_jobs/socket > ./.run_commands.sh
+exec bash ./.run_commands.sh

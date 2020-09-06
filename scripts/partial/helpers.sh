@@ -148,3 +148,7 @@ function file_is_found_and_exist() {
 	test "$found" == "" && return 1
 	test -f $found && echo $found
 }
+
+function pwd_is_repos_topdir() {
+	test -d .inside_docker_jobs
+}
