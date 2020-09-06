@@ -2,7 +2,7 @@ version: "3.2"
 
 services:
   dev:
-    container_name: substrate-polkadot-parachain
+    container_name: substrate-polkaswap-parachain
     image: lnl7/nix:2020-06-07
     working_dir: /parachain
     ports:

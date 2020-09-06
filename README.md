@@ -4,7 +4,7 @@
 
 DevOps
 
-* [scripts/inside_docker.sh](scripts/inside_docker.sh) file contain information about needed packages
+* [scripts/inside_docker.sh](scripts/inside_docker.sh) file contains information about needed packages
 * socat (for unix socket script passing)
 * nodejs (needed to run polkadot-js-api)
 * yarn (needed to install polkadot-js-api)
@@ -45,6 +45,7 @@ FIXME.
 
 ## Prepare
 
+### In user environment
 * Install `rustup` command
 * Install `yarn` command
 
@@ -55,16 +56,27 @@ rustup target add wasm32-unknown-unknown --toolchain nightly || exit 1
 rustup update stable || exit 1
 ```
 
+### In docker
+docker-compose up
+
 
 ## Build
 
+### In user environment
 make cargo-build-release
+
+### In docker
+make docker-build-release
 
 
 
 ## Test
 
+### In user enviroment
 make cargo-test-release
+
+### In docker
+make docker-test-release
 
 
 
@@ -72,33 +84,33 @@ make cargo-test-release
 
 ```
 # Manual run of collator
-./target/releaseparachain-collator \
+./target/release/parachain-collator \
     --tmp --validator --alice --ws-port 9944 --port 30333 \
     --parachain-id 200 -- --chain ./misc/rococo-custom.json
 ```
 
 ```
 # Manual run of parachain fullnode
-./target/releaseparachain-collator \
+./target/release/parachain-collator \
     --tmp --alice --ws-port 9944 --port 30333 \
     --parachain-id 200 -- --chain ./misc/rococo-custom.json
 ```
 
 ```
-# Automatic run of local test net by script for given commit
+# Automatic run of local testnet by script for a given commit
 make a397f7451d80205abf5e535ecee95073ad49e369
 ```
 
 ```
 # Automatic run of local test net by script for last commit
-make docker-test
+make docker-localtestnet
 ```
 
 
 
 # Integration
 
-Search for a architecture diagram here:
+Search for an architecture diagram here:
 
 FIXME
 
@@ -120,11 +132,11 @@ FIXME
 
 # Logging
 
-You can set loggin level using environment variable
+You can set logging level using the environment variable
 
 ```export RUST_LOG="sc_rpc=trace"```
 
-You can see log files
+You can print logs
 
 ```tail -f /tmp/rococo-localtestnet-logs-*/parachain_200_fullnode_0.log```
 
@@ -153,4 +165,3 @@ FIXME
 # Queue (optional)
 
 FIXME
-

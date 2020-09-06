@@ -25,15 +25,13 @@ BEGIN {
 	if (start) {
 		if (usage) {
 			with_arg=0
-			if (match($2, /=/)) {
+			a = gensub(/--(.+)/, "\\1", "g", $2)
+			b = substr($1,2,1)
+			if (match($0, /--[^ ]+ \[/)) {
 				with_arg=1
-				a = gensub(/--(.+)=(.+)/, "\\1", "g", $2)
-				b = substr($1,2,1)
 				long  = long longsep a ":"
 				short = short b ":"
 			} else {
-				a = gensub(/--(.+)/, "\\1", "g", $2)
-				b = substr($1,2,1)
 				long  = long longsep a
 				short = short b
 			}

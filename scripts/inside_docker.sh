@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/usr/bin/env bash
 
 test "$INSIDE_DOCKER" == "1" || exit 1
 test "$PWD" == "/parachain"  || exit 1
@@ -64,5 +64,16 @@ fi
 export GIT_SSL_CAINFO=/repos/parachain/misc/ca-certificates.crt
 export SSL_CERT_FILE=/repos/parachain/misc/ca-certificates.crt
 
-socat - UNIX-CONNECT:.inside_docker_jobs/socket > ./.run_commands.sh
-exec bash ./.run_commands.sh
+socket=.inside_docker_jobs/socket
+
+if [ -e $socket ]; then
+	socat - UNIX-CONNECT:$socket > ./.run_commands.sh
+	bash ./.run_commands.sh
+	echo RUN COMMANDS IS FINISHED WITH CODE $?
+else
+	echo "# ./scripts/docker_compose_up.sh --with-last-commit --inside-docker \"cargo build --release\""
+fi
+
+
+
+

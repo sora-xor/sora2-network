@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/usr/bin/env bash
 . `dirname $0`/partial/helpers.sh || exit 1
 
 # Default configuration
@@ -56,21 +56,21 @@ must [ -f $top/runtime/Cargo.toml  ]
 getopt_code=`awk -f $top/misc/getopt.awk <<EOF
 Usage: ./scripts/localtestnet.sh [OPTIONS]...
 Run local test net, downloading and (re)building on demand
-  -h  --help                     Show usage message
+  -h, --help                     Show usage message
 usage
 exit 0
   -k, --keep-logdir              Do not remove logdir after end of script work
 remove_log_dir_on_finalize=0
-  -r, --relay-nodes=n            Number of relay nodes to run (default $relay_nodes)
+  -r, --relay-nodes [n]          Number of relay nodes to run (default $relay_nodes)
 relaychain_nodes_count=\$relay_nodes
-  -p, --parachain-fullnodes=n    Number of parachain node to run (default $parachain_fullnodes)
+  -p, --parachain-fullnodes [n]  Number of parachain node to run (default $parachain_fullnodes)
 parachain_fullnodes_count=\$parachain_fullnodes
-  -c, --collator-nodes=n         Number of collator nodes to run (default $collator_nodes)
+  -c, --collator-nodes [n]       Number of collator nodes to run (default $collator_nodes)
 parachain_collators_count=\$collator_nodes
   -f, --force-rebild-parachain   Remove parachain binary and rebuild with fresh commit (as additional test)
 remove_binary_for_rebuild=1
-  -l, --logdir-pattern=pat       Pattern of temporary logdir (default "$logdir_pattern")
-  -d, --cache-dir=dir            Cache dir to incremental backups of target dir (default "$cache_dir")
+  -l, --logdir-pattern [pat]     Pattern of temporary logdir (default "$logdir_pattern")
+  -d, --cache-dir [dir]          Cache dir to incremental backups of target dir (default "$cache_dir")
   -e, --exit-after-success       Exit after success parachain block producing
 exit_after_success=1
 EOF

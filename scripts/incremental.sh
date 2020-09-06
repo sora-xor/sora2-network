@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/usr/bin/env bash
 . `dirname $0`/partial/helpers.sh || exit 1
 
 function restore() {
