@@ -2,16 +2,38 @@ version: "3.2"
 
 services:
   dev:
-    container_name: node-template
-    image: paritytech/ci-linux:production
-    working_dir: /var/www/node-template
+    container_name: substrate-polkaswap-parachain
+    image: lnl7/nix:2020-06-07
+    working_dir: /parachain
     ports:
-      - "9944:9944"
+      - "9944:9944"   # relay 0
+      - "9945:9945"   # relay 1
+      - "19744:19744" # parachain 200 fullnode 0
+      - "19745:19745" # parachain 200 fullnode 1
+      - "29744:29744" # parachain 200 collator 0
+      - "29745:29745" # parachain 200 collator 1
+      - "29746:29746" # parachain 200 collator 2
+      - "29747:29747" # parachain 200 collator 3
+
     environment:
-      - CARGO_HOME=/var/www/node-template/.cargo
+      - INSIDE_DOCKER=1
+
     volumes:
-      - .:/var/www/node-template
+
       - type: bind
-        source: ./.local
-        target: /root/.local
-    command: bash -c "cargo build --release && ./target/release/node-template --dev --ws-external"
+        read_only: true
+        source: ./
+        target: /repos/parachain
+
+      - type: tmpfs
+        target: /parachain
+
+      - type: bind
+        source: ./.inside_docker_jobs
+        target: /parachain/.inside_docker_jobs
+
+      - type: bind
+        source: /tmp/cargo_target_cache
+        target: /cache
+
+    command: bash /repos/parachain/scripts/inside_docker.sh

@@ -125,20 +125,6 @@ name = "alt_serde"
 version = "1.0.104"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "03beeddedd09889b96def26f78ba46e34ffd9bdaaa33b2c980cbaa1d0e762686"
-dependencies = [
- "alt_serde_derive",
-]
-
-[[package]]
-name = "alt_serde_derive"
-version = "1.0.104"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6757ed5faa82ccfbfa1837cd7a7a2e1bdb634236f21fa74d6c5c5736152838a1"
-dependencies = [
- "proc-macro2 1.0.19",
- "quote 1.0.7",
- "syn 1.0.38",
-]
 
 [[package]]
 name = "ansi_term"
@@ -2399,29 +2385,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "47be2f14c678be2fdcab04ab1171db51b2762ce6f0a8ee87c8dd4a04ed216135"
 
 [[package]]
-name = "iroha-bridge"
-version = "2.0.0-rc5"
-dependencies = [
- "alt_serde",
- "async-std",
- "frame-support",
- "frame-system",
- "iroha_client_no_std",
- "log 0.4.11",
- "pallet-balances",
- "parity-scale-codec",
- "parking_lot 0.10.2",
- "serde",
- "serde_json 1.0.44",
- "sp-core",
- "sp-io",
- "sp-runtime",
- "sp-std",
- "tempfile",
- "treasury",
-]
-
-[[package]]
 name = "iroha_client_no_std"
 version = "0.1.0"
 source = "git+https://github.com/EmelianPiker/iroha?branch=substrate-bridge-rococo#d6097b81572554444b2e9a9a560c581006fc895a"
@@ -2429,7 +2392,6 @@ dependencies = [
  "async-std",
  "chrono",
  "parity-scale-codec",
- "serde",
  "serde_json 1.0.44",
 ]
 
@@ -4254,7 +4216,6 @@ dependencies = [
  "frame-executive",
  "frame-support",
  "frame-system",
- "iroha-bridge",
  "pallet-balances",
  "pallet-randomness-collective-flip",
  "pallet-sudo",
