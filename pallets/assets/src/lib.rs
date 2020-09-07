@@ -30,6 +30,7 @@ use frame_support::{
 };
 use frame_system::ensure_signed;
 use permissions::{BURN, MINT, SLASH, TRANSFER};
+use sp_std::convert::{TryFrom, TryInto};
 use traits::MultiCurrency;
 use traits::MultiCurrencyExtended;
 
@@ -85,6 +86,8 @@ decl_error! {
         AssetIdNotExists,
         /// Permissions error
         Permissions,
+        /// A number is out of range of the balance type.
+        InsufficientBalance,
     }
 }
 
@@ -288,4 +291,15 @@ impl<T: Trait> Module<T> {
             by_amount,
         )
     }
+}
+
+pub fn balance_to_num<T: Trait>(amount: BalanceOf<T>) -> Option<u128> {
+    amount.try_into().ok().and_then(|x| x.try_into().ok())
+}
+
+pub fn num_to_balance<T: Trait>(amount_num: u128) -> Result<BalanceOf<T>, Error<T>> {
+    BalanceOf::<T>::try_from(
+        usize::try_from(amount_num).map_err(|_| <Error<T>>::InsufficientBalance)?,
+    )
+    .map_err(|_| <Error<T>>::InsufficientBalance)
 }

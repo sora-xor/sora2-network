@@ -1,7 +1,8 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use assets::AssetIdOf;
-use common::{in_basis_points_range, AccountIdOf, EnsureDEXOwner};
+use common::in_basis_points_range;
+use common::prelude::{AccountIdOf, EnsureDEXOwner};
 use frame_support::sp_runtime::DispatchError;
 use frame_support::{
     decl_error, decl_event, decl_module, decl_storage, dispatch::DispatchResult, ensure,
@@ -15,7 +16,7 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
-type DEXInfo<T> = common::DEXInfo<AccountIdOf<T>, AssetIdOf<T>>;
+type DEXInfo<T> = common::prelude::DEXInfo<AccountIdOf<T>, AssetIdOf<T>>;
 
 pub trait Trait: common::Trait + assets::Trait {
     type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;

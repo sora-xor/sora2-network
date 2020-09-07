@@ -2,6 +2,7 @@
 
 use sp_arithmetic::FixedU128;
 
+mod fixed_wrapper;
 mod primitives;
 mod traits;
 
@@ -9,6 +10,14 @@ use blake2_rfc;
 use codec::Encode;
 use sp_core::hash::H512;
 //use twox_hash;
+
+pub use traits::Trait;
+pub mod prelude {
+    pub use super::fixed_wrapper::*;
+    pub use super::primitives::*;
+    pub use super::traits::*;
+    pub use super::Fixed;
+}
 
 pub use primitives::*;
 pub use traits::*;

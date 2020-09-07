@@ -34,6 +34,7 @@ pub enum AssetId {
     XOR = 0,
     DOT = 1,
     KSM = 2,
+    USD = 3,
 }
 
 impl Default for AssetId {

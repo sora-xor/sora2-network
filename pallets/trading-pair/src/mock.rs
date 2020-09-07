@@ -1,5 +1,6 @@
 use crate::{Module, Trait};
-use common::{AssetId, BasisPoints, DEXInfo};
+use common::prelude::{AssetId, DEXInfo};
+use common::BasisPoints;
 use currencies::BasicCurrencyAdapter;
 use frame_support::{impl_outer_origin, parameter_types, weights::Weight};
 use frame_system as system;

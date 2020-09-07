@@ -15,7 +15,7 @@ use frame_support::{
 };
 use sp_std::collections::btree_set::BTreeSet;
 
-type TradingPair<T> = common::TradingPair<<T as assets::Trait>::AssetId>;
+type TradingPair<T> = common::prelude::TradingPair<<T as assets::Trait>::AssetId>;
 
 pub trait Trait: common::Trait + assets::Trait {
     type Event: From<Event<Self>> + Into<<Self as frame_system::Trait>::Event>;

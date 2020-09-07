@@ -7,7 +7,8 @@
 #[cfg(feature = "std")]
 include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
 
-pub use common::{AssetId, BasisPoints};
+pub use common::prelude::AssetId;
+pub use common::BasisPoints;
 use currencies::BasicCurrencyAdapter;
 use frame_system::offchain::{Account, SigningTypes};
 use sp_api::impl_runtime_apis;
@@ -269,6 +270,8 @@ impl dex_manager::Trait for Runtime {
     type GetDefaultProtocolFee = GetDefaultProtocolFee;
 }
 
+impl bonding_curve_pool::Trait for Runtime {}
+
 impl<T: SigningTypes> frame_system::offchain::SignMessage<T> for Runtime {
     type SignatureData = ();
 
@@ -440,6 +443,7 @@ construct_runtime! {
         TradingPair: trading_pair::{Module, Call, Event<T>},
         Assets: assets::{Module, Call, Event<T>},
         DEXManager: dex_manager::{Module, Call, Storage, Config<T>, Event<T>},
+        BondingCurvePool: bonding_curve_pool::{Module},
         //IrohaBridge: iroha_bridge::{Module, Call, Storage, Config<T>, Event<T>},
     }
 }

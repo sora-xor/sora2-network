@@ -1,5 +1,5 @@
 use crate::{mock::*, *};
-use frame_support::{assert_noop, assert_ok};
+use frame_support::assert_ok;
 use sp_core::hash::H512;
 
 #[test]

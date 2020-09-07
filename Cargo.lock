@@ -524,6 +524,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "bonding-curve-pool"
+version = "2.0.0-rc5"
+dependencies = [
+ "assets",
+ "common",
+ "frame-support",
+ "frame-system",
+ "orml-currencies",
+ "orml-tokens",
+ "orml-traits",
+ "pallet-balances",
+ "parity-scale-codec",
+ "permissions",
+ "serde",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
 name = "bs58"
 version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -692,6 +713,7 @@ dependencies = [
  "frame-support",
  "frame-system",
  "orml-currencies",
+ "orml-traits",
  "parity-scale-codec",
  "serde",
  "sp-arithmetic",
@@ -4124,7 +4146,7 @@ dependencies = [
 [[package]]
 name = "pallet-transaction-payment"
 version = "2.0.0-rc5"
-source = "git+https://github.com/eadventurous/pallet-transaction-payment?branch=rococo-branch#8083db3f482c4878e1cef52f39c905d2f5ac457a"
+source = "git+https://github.com/eadventurous/pallet-transaction-payment?branch=rococo-branch#6b079b7acbc75de94719b947a495716fc4e24266"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -4176,7 +4198,7 @@ dependencies = [
 [[package]]
 name = "pallet-transaction-payment-rpc-runtime-api"
 version = "2.0.0-rc5"
-source = "git+https://github.com/eadventurous/pallet-transaction-payment?branch=rococo-branch#8083db3f482c4878e1cef52f39c905d2f5ac457a"
+source = "git+https://github.com/eadventurous/pallet-transaction-payment?branch=rococo-branch#6b079b7acbc75de94719b947a495716fc4e24266"
 dependencies = [
  "frame-support",
  "parity-scale-codec",
@@ -4319,6 +4341,7 @@ name = "parachain-runtime"
 version = "0.1.0"
 dependencies = [
  "assets",
+ "bonding-curve-pool",
  "common",
  "cumulus-message-broker",
  "cumulus-parachain-upgrade",

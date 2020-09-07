@@ -16,11 +16,8 @@ pub type Amount = i128;
 pub type Balance = u128;
 
 pub const ALICE: AccountId = 1;
-pub const BOB: AccountId = 2;
+pub const USD: AssetId = AssetId::USD;
 pub const XOR: AssetId = AssetId::XOR;
-pub const DOT: AssetId = AssetId::DOT;
-pub const DEX_A_ID: DEXId = 1;
-pub const DEX_B_ID: DEXId = 2;
 
 impl_outer_origin! {
     pub enum Origin for Runtime {}
@@ -33,8 +30,6 @@ parameter_types! {
     pub const MaximumBlockWeight: Weight = 1024;
     pub const MaximumBlockLength: u32 = 2 * 1024;
     pub const AvailableBlockRatio: Perbill = Perbill::from_percent(75);
-    pub const GetDefaultFee: u16 = 30;
-    pub const GetDefaultProtocolFee: u16 = 0;
 }
 
 impl system::Trait for Runtime {
@@ -65,11 +60,7 @@ impl system::Trait for Runtime {
     type SystemWeightInfo = ();
 }
 
-impl Trait for Runtime {
-    type Event = ();
-    type GetDefaultFee = GetDefaultFee;
-    type GetDefaultProtocolFee = GetDefaultProtocolFee;
-}
+impl Trait for Runtime {}
 
 impl tokens::Trait for Runtime {
     type Event = ();
@@ -79,12 +70,8 @@ impl tokens::Trait for Runtime {
     type OnReceived = ();
 }
 
-impl permissions::Trait for Runtime {
-    type Event = ();
-}
-
 parameter_types! {
-    pub const GetBaseAssetId: AssetId = AssetId::XOR;
+    pub const GetBaseAssetId: AssetId = USD;
 }
 
 impl currencies::Trait for Runtime {
@@ -96,19 +83,23 @@ impl currencies::Trait for Runtime {
 
 type DEXId = u32;
 
+impl common::Trait for Runtime {
+    type DEXId = DEXId;
+    type EnsureDEXOwner = ();
+}
+
 impl assets::Trait for Runtime {
     type Event = ();
     type AssetId = AssetId;
     type GetBaseAssetId = GetBaseAssetId;
 }
 
-impl common::Trait for Runtime {
-    type DEXId = DEXId;
-    type EnsureDEXOwner = Module<Runtime>;
+impl permissions::Trait for Runtime {
+    type Event = ();
 }
 
 parameter_types! {
-    pub const ExistentialDeposit: u128 = 1;
+    pub const ExistentialDeposit: u128 = 0;
     pub const TransferFee: u128 = 0;
     pub const CreationFee: u128 = 0;
     pub const TransactionByteFee: u128 = 1;
@@ -126,7 +117,7 @@ impl pallet_balances::Trait for Runtime {
 pub type System = frame_system::Module<Runtime>;
 pub type Balances = pallet_balances::Module<Runtime>;
 pub type Tokens = tokens::Module<Runtime>;
-pub type DEXModule = Module<Runtime>;
+pub type BondingCurvePool = Module<Runtime>;
 
 pub struct ExtBuilder {
     endowed_accounts: Vec<(AccountId, AssetId, Balance)>,
@@ -135,10 +126,7 @@ pub struct ExtBuilder {
 impl Default for ExtBuilder {
     fn default() -> Self {
         Self {
-            endowed_accounts: vec![
-                (ALICE, XOR, 1_000_000_000_000_000_000u128),
-                (BOB, DOT, 1_000_000_000_000_000_000u128),
-            ],
+            endowed_accounts: vec![(ALICE, XOR, 350_000u128)],
         }
     }
 }

@@ -18,7 +18,7 @@ use parachain_runtime::{
     WASM_BINARY,
 };
 
-use common::DEXInfo;
+use common::prelude::DEXInfo;
 use sc_chain_spec::{ChainSpecExtension, ChainSpecGroup};
 use sc_service::ChainType;
 use serde::{Deserialize, Serialize};
