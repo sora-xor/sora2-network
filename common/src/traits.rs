@@ -1,8 +1,4 @@
-use frame_support::{
-    sp_runtime::traits::BadOrigin,
-    traits::Get,
-    Parameter
-};
+use frame_support::{sp_runtime::traits::BadOrigin, traits::Get, Parameter};
 use frame_system::RawOrigin;
 
 /// Check on origin that it is a DEX owner.

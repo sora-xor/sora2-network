@@ -1,4 +1,4 @@
-use codec::{Encode, Decode};
+use codec::{Decode, Encode};
 
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
