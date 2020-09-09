@@ -141,6 +141,14 @@ You can print logs
 ```tail -f /tmp/rococo-localtestnet-logs-*/parachain_200_fullnode_0.log```
 
 
+# Docker containers
+
+### run to test
+```
+docker build -f housekeeping/docker/develop/Dockerfile -t soraneo-develop .
+docker run -ti -v $(pwd):/app -w /app --rm soraneo-develop cargo build --release
+```
+
 
 # Monitoring
 
