@@ -11,6 +11,9 @@ currencies = { package = "orml-currencies", branch = "rococo-branch", git = "htt
 frame-support = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "rococo-branch" }
 frame-system = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "rococo-branch" }
 sp-arithmetic = { git = "https://github.com/paritytech/substrate", branch = "rococo-branch", default-features = false }
+sp-core = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "rococo-branch" }
+blake2-rfc = { version = "0.2.18", default-features = false }
+#twox-hash = { version = "1.5.0", default-features = false }
 
 [features]
 default = ['std']
@@ -20,5 +23,8 @@ std = [
     'frame-support/std',
     'frame-system/std',
     'sp-arithmetic/std',
+    'sp-core/std',
     'currencies/std',
+    'blake2-rfc/std',
+    #'twox-hash/std',
 ]

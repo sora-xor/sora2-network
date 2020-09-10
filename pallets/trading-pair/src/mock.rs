@@ -70,7 +70,7 @@ impl tokens::Trait for Runtime {
     type Event = ();
     type Balance = Balance;
     type Amount = Amount;
-    type CurrencyId = <Runtime as common::Trait>::AssetId;
+    type CurrencyId = <Runtime as assets::Trait>::AssetId;
     type OnReceived = ();
 }
 
@@ -82,16 +82,20 @@ impl currencies::Trait for Runtime {
     type Event = ();
     type MultiCurrency = Tokens;
     type NativeCurrency = BasicCurrencyAdapter<Balances, Balance, Balance, Amount, BlockNumber>;
-    type GetNativeCurrencyId = <Runtime as common::Trait>::GetBaseAssetId;
+    type GetNativeCurrencyId = <Runtime as assets::Trait>::GetBaseAssetId;
 }
 
 type DEXId = u32;
 
 impl common::Trait for Runtime {
     type DEXId = DEXId;
+    type EnsureDEXOwner = dex_manager::Module<Runtime>;
+}
+
+impl assets::Trait for Runtime {
+    type Event = ();
     type AssetId = AssetId;
     type GetBaseAssetId = GetBaseAssetId;
-    type EnsureDEXOwner = dex_manager::Module<Runtime>;
 }
 
 parameter_types! {
@@ -113,6 +117,10 @@ impl pallet_balances::Trait for Runtime {
 parameter_types! {
     pub const GetDefaultFee: BasisPoints = 30;
     pub const GetDefaultProtocolFee: BasisPoints = 0;
+}
+
+impl permissions::Trait for Runtime {
+    type Event = ();
 }
 
 impl dex_manager::Trait for Runtime {

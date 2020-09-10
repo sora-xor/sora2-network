@@ -107,7 +107,7 @@ or<br/>
 ```
 
 ```
-# Automatic run of local test net by script for a given commit
+# Automatic run of local testnet by script for a given commit
 make a397f7451d80205abf5e535ecee95073ad49e369
 ```
 
@@ -117,7 +117,7 @@ make a397f7451d80205abf5e535ecee95073ad49e369-debug
 ```
 
 ```
-# Automatic run of local test net by script for last commit
+# Automatic run of local testnet by script for last commit
 make docker-localtestnet
 ```
 

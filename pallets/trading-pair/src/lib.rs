@@ -10,15 +10,14 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
-use common::AssetIdOf;
 use frame_support::{
     decl_error, decl_event, decl_module, decl_storage, dispatch, ensure, traits::Get,
 };
 use sp_std::collections::btree_set::BTreeSet;
 
-type TradingPair<T> = common::TradingPair<AssetIdOf<T>>;
+type TradingPair<T> = common::TradingPair<<T as assets::Trait>::AssetId>;
 
-pub trait Trait: common::Trait {
+pub trait Trait: common::Trait + assets::Trait {
     type Event: From<Event<Self>> + Into<<Self as frame_system::Trait>::Event>;
 }
 

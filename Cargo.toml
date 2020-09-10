@@ -2,6 +2,7 @@
 members = [
         "runtime/",
         "common",
+        "pallets/assets",
         "pallets/parachain-info",
         "pallets/permissions",
         "pallets/token-dealer",

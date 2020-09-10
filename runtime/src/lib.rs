@@ -226,7 +226,7 @@ impl tokens::Trait for Runtime {
     type Event = Event;
     type Balance = Balance;
     type Amount = Amount;
-    type CurrencyId = <Runtime as common::Trait>::AssetId;
+    type CurrencyId = <Runtime as assets::Trait>::AssetId;
     type OnReceived = ();
 }
 
@@ -238,16 +238,20 @@ impl currencies::Trait for Runtime {
     type Event = Event;
     type MultiCurrency = Tokens;
     type NativeCurrency = BasicCurrencyAdapter<Balances, Balance, Balance, Amount, BlockNumber>;
-    type GetNativeCurrencyId = <Runtime as common::Trait>::GetBaseAssetId;
+    type GetNativeCurrencyId = <Runtime as assets::Trait>::GetBaseAssetId;
 }
 
 pub type DEXId = u32;
 
 impl common::Trait for Runtime {
     type DEXId = DEXId;
+    type EnsureDEXOwner = dex_manager::Module<Runtime>;
+}
+
+impl assets::Trait for Runtime {
+    type Event = Event;
     type AssetId = AssetId;
     type GetBaseAssetId = GetBaseAssetId;
-    type EnsureDEXOwner = dex_manager::Module<Runtime>;
 }
 
 impl trading_pair::Trait for Runtime {
@@ -412,6 +416,7 @@ construct_runtime! {
         Tokens: tokens::{Module, Storage, Event<T>},
         Currencies: currencies::{Module, Call, Event<T>},
         TradingPair: trading_pair::{Module, Call, Event<T>},
+        Assets: assets::{Module, Call, Event<T>},
         DEXManager: dex_manager::{Module, Call, Storage, Config<T>, Event<T>},
         //IrohaBridge: iroha_bridge::{Module, Call, Storage, Config<T>, Event<T>},
     }
