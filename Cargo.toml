@@ -9,6 +9,8 @@ members = [
         "pallets/trading-pair",
         "pallets/dex-manager",
         "pallets/template",
+        "pallets/xor-fee",
+        "pallets/referral-system",
         "node/",
 ]
 

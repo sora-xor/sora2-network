@@ -2666,8 +2666,8 @@ dependencies = [
  "pallet-staking",
  "pallet-staking-reward-curve",
  "pallet-timestamp",
- "pallet-transaction-payment",
- "pallet-transaction-payment-rpc-runtime-api",
+ "pallet-transaction-payment 2.0.0-rc5 (git+https://github.com/paritytech/substrate?branch=rococo-branch)",
+ "pallet-transaction-payment-rpc-runtime-api 2.0.0-rc5 (git+https://github.com/paritytech/substrate?branch=rococo-branch)",
  "pallet-treasury",
  "pallet-utility",
  "pallet-vesting",
@@ -4124,11 +4124,28 @@ dependencies = [
 [[package]]
 name = "pallet-transaction-payment"
 version = "2.0.0-rc5"
+source = "git+https://github.com/eadventurous/pallet-transaction-payment?branch=rococo-branch#8083db3f482c4878e1cef52f39c905d2f5ac457a"
+dependencies = [
+ "frame-support",
+ "frame-system",
+ "pallet-transaction-payment-rpc-runtime-api 2.0.0-rc5 (git+https://github.com/eadventurous/pallet-transaction-payment?branch=rococo-branch)",
+ "parity-scale-codec",
+ "serde",
+ "smallvec 1.4.1",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
+name = "pallet-transaction-payment"
+version = "2.0.0-rc5"
 source = "git+https://github.com/paritytech/substrate?branch=rococo-branch#f397f246fd0a0c8c2ef2f0b7576ecbed133ed78d"
 dependencies = [
  "frame-support",
  "frame-system",
- "pallet-transaction-payment-rpc-runtime-api",
+ "pallet-transaction-payment-rpc-runtime-api 2.0.0-rc5 (git+https://github.com/paritytech/substrate?branch=rococo-branch)",
  "parity-scale-codec",
  "serde",
  "smallvec 1.4.1",
@@ -4146,7 +4163,7 @@ dependencies = [
  "jsonrpc-core",
  "jsonrpc-core-client",
  "jsonrpc-derive",
- "pallet-transaction-payment-rpc-runtime-api",
+ "pallet-transaction-payment-rpc-runtime-api 2.0.0-rc5 (git+https://github.com/paritytech/substrate?branch=rococo-branch)",
  "parity-scale-codec",
  "serde",
  "sp-api",
@@ -4154,6 +4171,19 @@ dependencies = [
  "sp-core",
  "sp-rpc",
  "sp-runtime",
+]
+
+[[package]]
+name = "pallet-transaction-payment-rpc-runtime-api"
+version = "2.0.0-rc5"
+source = "git+https://github.com/eadventurous/pallet-transaction-payment?branch=rococo-branch#8083db3f482c4878e1cef52f39c905d2f5ac457a"
+dependencies = [
+ "frame-support",
+ "parity-scale-codec",
+ "serde",
+ "sp-api",
+ "sp-runtime",
+ "sp-std",
 ]
 
 [[package]]
@@ -4307,10 +4337,11 @@ dependencies = [
  "pallet-sudo",
  "pallet-template",
  "pallet-timestamp",
- "pallet-transaction-payment",
+ "pallet-transaction-payment 2.0.0-rc5 (git+https://github.com/eadventurous/pallet-transaction-payment?branch=rococo-branch)",
  "parachain-info",
  "parity-scale-codec",
  "permissions",
+ "referral-system",
  "serde",
  "sp-api",
  "sp-block-builder",
@@ -4325,6 +4356,7 @@ dependencies = [
  "sp-version",
  "substrate-wasm-builder-runner 1.0.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "trading-pair",
+ "xor-fee",
 ]
 
 [[package]]
@@ -4877,8 +4909,8 @@ dependencies = [
  "pallet-staking",
  "pallet-staking-reward-curve",
  "pallet-timestamp",
- "pallet-transaction-payment",
- "pallet-transaction-payment-rpc-runtime-api",
+ "pallet-transaction-payment 2.0.0-rc5 (git+https://github.com/paritytech/substrate?branch=rococo-branch)",
+ "pallet-transaction-payment-rpc-runtime-api 2.0.0-rc5 (git+https://github.com/paritytech/substrate?branch=rococo-branch)",
  "pallet-treasury",
  "pallet-utility",
  "pallet-vesting",
@@ -4922,7 +4954,7 @@ dependencies = [
  "pallet-session",
  "pallet-staking",
  "pallet-timestamp",
- "pallet-transaction-payment",
+ "pallet-transaction-payment 2.0.0-rc5 (git+https://github.com/paritytech/substrate?branch=rococo-branch)",
  "pallet-vesting",
  "parity-scale-codec",
  "polkadot-primitives",
@@ -4987,7 +5019,7 @@ dependencies = [
  "pallet-babe",
  "pallet-im-online",
  "pallet-staking",
- "pallet-transaction-payment-rpc-runtime-api",
+ "pallet-transaction-payment-rpc-runtime-api 2.0.0-rc5 (git+https://github.com/paritytech/substrate?branch=rococo-branch)",
  "parity-scale-codec",
  "parking_lot 0.9.0",
  "polkadot-availability-store",
@@ -5068,8 +5100,8 @@ dependencies = [
  "pallet-staking-reward-curve",
  "pallet-sudo",
  "pallet-timestamp",
- "pallet-transaction-payment",
- "pallet-transaction-payment-rpc-runtime-api",
+ "pallet-transaction-payment 2.0.0-rc5 (git+https://github.com/paritytech/substrate?branch=rococo-branch)",
+ "pallet-transaction-payment-rpc-runtime-api 2.0.0-rc5 (git+https://github.com/paritytech/substrate?branch=rococo-branch)",
  "pallet-vesting",
  "parity-scale-codec",
  "polkadot-parachain",
@@ -5132,7 +5164,7 @@ dependencies = [
  "hex",
  "log 0.4.11",
  "pallet-staking",
- "pallet-transaction-payment",
+ "pallet-transaction-payment 2.0.0-rc5 (git+https://github.com/paritytech/substrate?branch=rococo-branch)",
  "polkadot-availability-store",
  "polkadot-network",
  "polkadot-primitives",
@@ -5749,6 +5781,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "referral-system"
+version = "2.0.0-rc5"
+dependencies = [
+ "frame-support",
+ "frame-system",
+ "parity-scale-codec",
+ "serde",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+]
+
+[[package]]
 name = "regalloc"
 version = "0.0.27"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5894,8 +5939,8 @@ dependencies = [
  "pallet-staking-reward-curve",
  "pallet-sudo",
  "pallet-timestamp",
- "pallet-transaction-payment",
- "pallet-transaction-payment-rpc-runtime-api",
+ "pallet-transaction-payment 2.0.0-rc5 (git+https://github.com/paritytech/substrate?branch=rococo-branch)",
+ "pallet-transaction-payment-rpc-runtime-api 2.0.0-rc5 (git+https://github.com/paritytech/substrate?branch=rococo-branch)",
  "pallet-treasury",
  "pallet-utility",
  "pallet-vesting",
@@ -9372,8 +9417,8 @@ dependencies = [
  "pallet-staking-reward-curve",
  "pallet-sudo",
  "pallet-timestamp",
- "pallet-transaction-payment",
- "pallet-transaction-payment-rpc-runtime-api",
+ "pallet-transaction-payment 2.0.0-rc5 (git+https://github.com/paritytech/substrate?branch=rococo-branch)",
+ "pallet-transaction-payment-rpc-runtime-api 2.0.0-rc5 (git+https://github.com/paritytech/substrate?branch=rococo-branch)",
  "pallet-treasury",
  "pallet-utility",
  "pallet-vesting",
@@ -9492,6 +9537,23 @@ dependencies = [
  "curve25519-dalek",
  "rand_core 0.5.1",
  "zeroize",
+]
+
+[[package]]
+name = "xor-fee"
+version = "2.0.0-rc5"
+dependencies = [
+ "frame-support",
+ "frame-system",
+ "orml-traits",
+ "pallet-balances",
+ "pallet-transaction-payment 2.0.0-rc5 (git+https://github.com/eadventurous/pallet-transaction-payment?branch=rococo-branch)",
+ "parity-scale-codec",
+ "referral-system",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
 ]
 
 [[package]]

@@ -341,9 +341,23 @@ where
     type Extrinsic = UncheckedExtrinsic;
 }
 
+impl referral_system::Trait for Runtime {
+    type Event = Event;
+}
+
+impl xor_fee::Trait for Runtime {
+    // Pass native currency.
+    type Event = Event;
+    type XorCurrency = Balances;
+    type ReferrerWeight = ReferrerWeight;
+    type XorBurnedWeight = XorBurnedWeight;
+    type XorIntoValBurnedWeight = XorIntoValBurnedWeight;
+}
+
 impl pallet_transaction_payment::Trait for Runtime {
+    // Pass native currency.
     type Currency = Balances;
-    type OnTransactionPayment = ();
+    type OnTransactionPayment = XorFee;
     type TransactionByteFee = TransactionByteFee;
     type WeightToFee = IdentityFee<Balance>;
     type FeeMultiplierUpdate = ();
@@ -392,6 +406,9 @@ pub type SignedPayload = generic::SignedPayload<Call, SignedExtra>;
 
 parameter_types! {
     pub const UnsignedPriority: u64 = 100;
+    pub const ReferrerWeight: u32 = 10;
+    pub const XorBurnedWeight: u32 = 40;
+    pub const XorIntoValBurnedWeight: u32 = 50;
 }
 
 construct_runtime! {
@@ -402,6 +419,7 @@ construct_runtime! {
     {
         System: frame_system::{Module, Call, Storage, Config, Event<T>},
         Timestamp: pallet_timestamp::{Module, Call, Storage, Inherent},
+        // Balances in native currency - XOR.
         Balances: pallet_balances::{Module, Call, Storage, Config<T>, Event<T>},
         Sudo: pallet_sudo::{Module, Call, Storage, Config<T>, Event<T>},
         RandomnessCollectiveFlip: pallet_randomness_collective_flip::{Module, Call, Storage},
@@ -412,8 +430,12 @@ construct_runtime! {
         Permissions: permissions::{Module, Call, Storage, Config<T>, Event<T>},
         TokenDealer: cumulus_token_dealer::{Module, Call, Event<T>},
         TemplateModule: template::{Module, Call, Storage, Event<T>},
+        ReferralSystem: referral_system::{Module, Call, Storage, Event},
+        XorFee: xor_fee::{Module, Call, Storage, Event},
 
+        // Non-native tokens - everything apart of XOR.
         Tokens: tokens::{Module, Storage, Event<T>},
+        // Unified interface for XOR and non-native tokens.
         Currencies: currencies::{Module, Call, Event<T>},
         TradingPair: trading_pair::{Module, Call, Event<T>},
         Assets: assets::{Module, Call, Event<T>},
