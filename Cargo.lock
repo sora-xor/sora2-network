@@ -3332,26 +3332,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "mocktopus"
-version = "0.7.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6bb802d95931d1426546328523487423c2bd44e0fca457d4ac063ec3150a681f"
-dependencies = [
- "mocktopus_macros",
-]
-
-[[package]]
-name = "mocktopus_macros"
-version = "0.7.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "757ebe7dc317c368dba9dcc319266416e48272292ed86814478f66308119c2e9"
-dependencies = [
- "proc-macro2 1.0.19",
- "quote 1.0.7",
- "syn 1.0.38",
-]
-
-[[package]]
 name = "more-asserts"
 version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4298,7 +4278,6 @@ dependencies = [
  "sp-version",
  "substrate-wasm-builder-runner 1.0.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "trading-pair",
- "treasury",
 ]
 
 [[package]]
@@ -8725,24 +8704,6 @@ dependencies = [
  "orml-traits",
  "pallet-balances",
  "parity-scale-codec",
- "sp-core",
- "sp-io",
- "sp-runtime",
- "sp-std",
-]
-
-[[package]]
-name = "treasury"
-version = "2.0.0-rc5"
-dependencies = [
- "frame-support",
- "frame-system",
- "iroha_client_no_std",
- "mocktopus",
- "pallet-balances",
- "parity-scale-codec",
- "safe-mix",
- "sp-arithmetic",
  "sp-core",
  "sp-io",
  "sp-runtime",

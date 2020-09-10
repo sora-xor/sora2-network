@@ -5,15 +5,12 @@ use cumulus_primitives::ParaId;
 use parachain_runtime::{
     AccountId,
     BalancesConfig,
-    DOTConfig,
     GenesisConfig,
     //IrohaBridgeConfig,
-    KSMConfig,
     ParachainInfoConfig,
     Signature,
     SudoConfig,
     SystemConfig,
-    XORConfig,
     WASM_BINARY,
 };
 
@@ -149,35 +146,6 @@ fn testnet_genesis(
         }),
         pallet_sudo: Some(SudoConfig { key: root_key }),
         parachain_info: Some(ParachainInfoConfig { parachain_id: id }),
-        pallet_balances_Instance1: Some(XORConfig {
-            balances: endowed_accounts
-                .iter()
-                .cloned()
-                //.filter(|x| {
-                //	x != &AccountId32::from([
-                //		52u8, 45, 84, 67, 137, 84, 47, 252, 35, 59, 237, 44, 144, 70, 71, 206, 243,
-                //		67, 8, 115, 247, 189, 204, 26, 181, 226, 232, 81, 123, 12, 81, 120,
-                //	])
-                //})
-                // .map(|k| (k, 1 << 60))
-                .map(|k| (k, 1 << 8))
-                //.map(|k| (k, 0))
-                .collect(),
-        }),
-        pallet_balances_Instance2: Some(DOTConfig {
-            balances: endowed_accounts
-                .iter()
-                .cloned()
-                .map(|k| (k, 1 << 8))
-                .collect(),
-        }),
-        pallet_balances_Instance3: Some(KSMConfig {
-            balances: endowed_accounts
-                .iter()
-                .cloned()
-                .map(|k| (k, 1 << 8))
-                .collect(),
-        }),
         pallet_balances: Some(BalancesConfig {
             balances: endowed_accounts
                 .iter()

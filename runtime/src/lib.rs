@@ -7,8 +7,6 @@
 #[cfg(feature = "std")]
 include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
 
-use frame_support::traits::StorageMapShim;
-
 use common::AssetId;
 use currencies::BasicCurrencyAdapter;
 use frame_system::offchain::{Account, SigningTypes};
@@ -222,67 +220,6 @@ impl pallet_balances::Trait for Runtime {
     type WeightInfo = ();
 }
 
-/// XOR
-impl pallet_balances::Trait<pallet_balances::Instance1> for Runtime {
-    /// The type for recording an account's balance.
-    type Balance = Balance;
-    /// The ubiquitous event type.
-    type Event = Event;
-    type DustRemoval = ();
-    type ExistentialDeposit = ExistentialDeposit;
-    type AccountStore = StorageMapShim<
-        pallet_balances::Account<Runtime, pallet_balances::Instance1>,
-        frame_system::CallOnCreatedAccount<Runtime>,
-        frame_system::CallKillAccount<Runtime>,
-        AccountId,
-        pallet_balances::AccountData<Balance>,
-    >;
-    type WeightInfo = ();
-}
-
-/// DOT
-impl pallet_balances::Trait<pallet_balances::Instance2> for Runtime {
-    /// The type for recording an account's balance.
-    type Balance = Balance;
-    /// The ubiquitous event type.
-    type Event = Event;
-    type DustRemoval = ();
-    type ExistentialDeposit = ExistentialDeposit;
-    type AccountStore = StorageMapShim<
-        pallet_balances::Account<Runtime, pallet_balances::Instance1>,
-        frame_system::CallOnCreatedAccount<Runtime>,
-        frame_system::CallKillAccount<Runtime>,
-        AccountId,
-        pallet_balances::AccountData<Balance>,
-    >;
-    type WeightInfo = ();
-}
-
-/// KSM
-impl pallet_balances::Trait<pallet_balances::Instance3> for Runtime {
-    /// The type for recording an account's balance.
-    type Balance = Balance;
-    /// The ubiquitous event type.
-    type Event = Event;
-    type DustRemoval = ();
-    type ExistentialDeposit = ExistentialDeposit;
-    type AccountStore = StorageMapShim<
-        pallet_balances::Account<Runtime, pallet_balances::Instance1>,
-        frame_system::CallOnCreatedAccount<Runtime>,
-        frame_system::CallKillAccount<Runtime>,
-        AccountId,
-        pallet_balances::AccountData<Balance>,
-    >;
-    type WeightInfo = ();
-}
-
-impl treasury::Trait for Runtime {
-    type Event = Event;
-    type XOR = pallet_balances::Module<Runtime, pallet_balances::Instance1>;
-    type DOT = pallet_balances::Module<Runtime, pallet_balances::Instance2>;
-    type KSM = pallet_balances::Module<Runtime, pallet_balances::Instance3>;
-}
-
 pub type Amount = i128;
 
 impl tokens::Trait for Runtime {
@@ -439,17 +376,6 @@ parameter_types! {
     pub const UnsignedPriority: u64 = 100;
 }
 
-/*
-/// Used for the module template in `./template.rs`
-impl iroha_bridge::Trait for Runtime {
-    type AuthorityId = iroha_bridge::crypto::TestAuthId;
-    type AuthorityIdEd = iroha_bridge::crypto_ed::TestAuthId;
-    type Call = Call;
-    type Event = Event;
-    type UnsignedPriority = UnsignedPriority;
-}
-*/
-
 construct_runtime! {
     pub enum Runtime where
         Block = Block,
@@ -468,10 +394,6 @@ construct_runtime! {
         TokenDealer: cumulus_token_dealer::{Module, Call, Event<T>},
         TemplateModule: template::{Module, Call, Storage, Event<T>},
 
-        XOR: pallet_balances::<Instance1>::{Module, Call, Storage, Config<T>, Event<T>},
-        DOT: pallet_balances::<Instance2>::{Module, Call, Storage, Config<T>, Event<T>},
-        KSM: pallet_balances::<Instance3>::{Module, Call, Storage, Config<T>, Event<T>},
-        Treasury: treasury::{Module, Call, Storage, Event<T>},
         Tokens: tokens::{Module, Storage, Event<T>},
         Currencies: currencies::{Module, Call, Event<T>},
         TradingPair: trading_pair::{Module, Call, Event<T>},

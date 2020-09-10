@@ -45,7 +45,6 @@ cumulus-upward-message = { git = "https://github.com/paritytech/cumulus",  defau
 cumulus-primitives = { git = "https://github.com/paritytech/cumulus",  default-features = false, rev = '96da14c14fb785e106bb89a18c9dedaf2f789d2c' }
 
 # Additional dependencies
-treasury = { path = "../pallets/treasury", default-features = false }
 common = { path = "../common", default-features = false }
 #iroha-bridge = { path = "../pallets/iroha-bridge", default-features = false }
 

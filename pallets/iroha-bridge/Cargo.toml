@@ -23,7 +23,6 @@ parity-scale-codec = { default-features = false, features = ['derive'], version 
 parking_lot = "0.10.0"
 #ed25519-dalek = { version = "1.0.0-pre.3", default-features = false }
 #collateral = { path = '../collateral', default-features = false }
-treasury = { path = '../treasury', default-features = false }
 serde = { version = "1.0.111", optional = true, features = ["derive"] }
 
 #serde = { version = "1", default-features = false, features = ["derive"] }
@@ -77,8 +76,6 @@ branch = "rococo-branch"
 [features]
 default = ['std']
 std = [
-    #    "collateral/std",
-    "treasury/std",
     'parity-scale-codec/std',
     'frame-support/std',
     'frame-system/std',
