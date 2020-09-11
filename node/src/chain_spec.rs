@@ -8,6 +8,7 @@ use parachain_runtime::{
     GenesisConfig,
     //IrohaBridgeConfig,
     ParachainInfoConfig,
+    PermissionsConfig,
     Signature,
     SudoConfig,
     SystemConfig,
@@ -146,6 +147,20 @@ fn testnet_genesis(
         }),
         pallet_sudo: Some(SudoConfig { key: root_key }),
         parachain_info: Some(ParachainInfoConfig { parachain_id: id }),
+        permissions: Some(PermissionsConfig {
+            initial_permissions: vec![
+                (
+                    1,
+                    get_account_id_from_seed::<sr25519::Public>("Alice"),
+                    get_account_id_from_seed::<sr25519::Public>("Alice"),
+                ),
+                (
+                    2,
+                    get_account_id_from_seed::<sr25519::Public>("Alice"),
+                    get_account_id_from_seed::<sr25519::Public>("Alice"),
+                ),
+            ],
+        }),
         pallet_balances: Some(BalancesConfig {
             balances: endowed_accounts
                 .iter()
