@@ -12,6 +12,7 @@ trading-pair = { path = "../pallets/trading-pair", default-features = false}
 parachain-info = { path = "../pallets/parachain-info", default-features = false}
 permissions = { path = "../pallets/permissions", default-features = false}
 cumulus-token-dealer = { path = "../pallets/token-dealer", default-features = false}
+dex-manager = { path = "../pallets/dex-manager", default-features = false }
 template = { package = "pallet-template", path = "../pallets/template", version = "2.0.0-rc5", default-features = false}
 currencies = { package = "orml-currencies", branch = "rococo-branch", git = "https://github.com/vmarkushin/open-runtime-module-library", default-features = false }
 tokens = { package = "orml-tokens", branch = "rococo-branch", git = "https://github.com/vmarkushin/open-runtime-module-library", default-features = false }
@@ -86,6 +87,7 @@ std = [
 	"trading-pair/std",
 	"common/std",
 	"template/std",
+	"dex-manager/std",
 	"currencies/std",
 	"tokens/std",
 ]

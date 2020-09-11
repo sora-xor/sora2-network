@@ -1167,6 +1167,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "dex-manager"
+version = "0.1.0"
+dependencies = [
+ "common",
+ "frame-support",
+ "frame-system",
+ "orml-currencies",
+ "orml-tokens",
+ "orml-traits",
+ "pallet-balances",
+ "parity-scale-codec",
+ "serde",
+ "sp-arithmetic",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+]
+
+[[package]]
 name = "difference"
 version = "2.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2404,6 +2423,7 @@ dependencies = [
  "async-std",
  "chrono",
  "parity-scale-codec",
+ "serde",
  "serde_json 1.0.44",
 ]
 
@@ -4175,6 +4195,7 @@ version = "0.1.0"
 dependencies = [
  "ansi_term 0.12.1",
  "assert_cmd",
+ "common",
  "cumulus-collator",
  "cumulus-consensus",
  "cumulus-network",
@@ -4251,6 +4272,7 @@ dependencies = [
  "cumulus-runtime",
  "cumulus-token-dealer",
  "cumulus-upward-message",
+ "dex-manager",
  "frame-executive",
  "frame-support",
  "frame-system",
@@ -8114,13 +8136,13 @@ dependencies = [
 [[package]]
 name = "substrate-wasm-builder-runner"
 version = "1.0.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d2a965994514ab35d3893e9260245f2947fd1981cdd4fffd2c6e6d1a9ce02e6a"
+source = "git+https://github.com/paritytech/substrate?branch=rococo-branch#f397f246fd0a0c8c2ef2f0b7576ecbed133ed78d"
 
 [[package]]
 name = "substrate-wasm-builder-runner"
 version = "1.0.6"
-source = "git+https://github.com/paritytech/substrate?branch=rococo-branch#f397f246fd0a0c8c2ef2f0b7576ecbed133ed78d"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d2a965994514ab35d3893e9260245f2947fd1981cdd4fffd2c6e6d1a9ce02e6a"
 
 [[package]]
 name = "substrate-wasmtime"
@@ -8711,6 +8733,7 @@ name = "trading-pair"
 version = "2.0.0-rc5"
 dependencies = [
  "common",
+ "dex-manager",
  "frame-support",
  "frame-system",
  "orml-currencies",

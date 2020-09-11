@@ -1,5 +1,5 @@
 use crate::{Module, Trait};
-use common::{AssetId, BasisPoints, DEXInfo};
+use common::AssetId;
 use currencies::BasicCurrencyAdapter;
 use frame_support::{impl_outer_origin, parameter_types, weights::Weight};
 use frame_system as system;
@@ -19,7 +19,8 @@ pub const ALICE: AccountId = 1;
 pub const BOB: AccountId = 2;
 pub const XOR: AssetId = AssetId::XOR;
 pub const DOT: AssetId = AssetId::DOT;
-pub const DEX_ID: DEXId = 1;
+pub const DEX_A_ID: DEXId = 1;
+pub const DEX_B_ID: DEXId = 2;
 
 impl_outer_origin! {
     pub enum Origin for Runtime {}
@@ -32,6 +33,8 @@ parameter_types! {
     pub const MaximumBlockWeight: Weight = 1024;
     pub const MaximumBlockLength: u32 = 2 * 1024;
     pub const AvailableBlockRatio: Perbill = Perbill::from_percent(75);
+    pub const GetDefaultFee: u16 = 30;
+    pub const GetDefaultProtocolFee: u16 = 0;
 }
 
 impl system::Trait for Runtime {
@@ -64,6 +67,8 @@ impl system::Trait for Runtime {
 
 impl Trait for Runtime {
     type Event = ();
+    type GetDefaultFee = GetDefaultFee;
+    type GetDefaultProtocolFee = GetDefaultProtocolFee;
 }
 
 impl tokens::Trait for Runtime {
@@ -91,7 +96,7 @@ impl common::Trait for Runtime {
     type DEXId = DEXId;
     type AssetId = AssetId;
     type GetBaseAssetId = GetBaseAssetId;
-    type EnsureDEXOwner = dex_manager::Module<Runtime>;
+    type EnsureDEXOwner = Module<Runtime>;
 }
 
 parameter_types! {
@@ -110,25 +115,13 @@ impl pallet_balances::Trait for Runtime {
     type WeightInfo = ();
 }
 
-parameter_types! {
-    pub const GetDefaultFee: BasisPoints = 30;
-    pub const GetDefaultProtocolFee: BasisPoints = 0;
-}
-
-impl dex_manager::Trait for Runtime {
-    type Event = ();
-    type GetDefaultFee = GetDefaultFee;
-    type GetDefaultProtocolFee = GetDefaultProtocolFee;
-}
-
 pub type System = frame_system::Module<Runtime>;
 pub type Balances = pallet_balances::Module<Runtime>;
 pub type Tokens = tokens::Module<Runtime>;
-pub type TradingPair = Module<Runtime>;
+pub type DEXModule = Module<Runtime>;
 
 pub struct ExtBuilder {
     endowed_accounts: Vec<(AccountId, AssetId, Balance)>,
-    dex_list: Vec<(DEXId, DEXInfo<AccountId, AssetId>)>,
 }
 
 impl Default for ExtBuilder {
@@ -138,15 +131,6 @@ impl Default for ExtBuilder {
                 (ALICE, XOR, 1_000_000_000_000_000_000u128),
                 (BOB, DOT, 1_000_000_000_000_000_000u128),
             ],
-            dex_list: vec![(
-                DEX_ID,
-                DEXInfo {
-                    owner_account_id: ALICE,
-                    base_asset_id: XOR,
-                    default_fee: 30,
-                    default_protocol_fee: 0,
-                },
-            )],
         }
     }
 }
@@ -159,12 +143,6 @@ impl ExtBuilder {
 
         tokens::GenesisConfig::<Runtime> {
             endowed_accounts: self.endowed_accounts,
-        }
-        .assimilate_storage(&mut t)
-        .unwrap();
-
-        dex_manager::GenesisConfig::<Runtime> {
-            dex_list: self.dex_list,
         }
         .assimilate_storage(&mut t)
         .unwrap();

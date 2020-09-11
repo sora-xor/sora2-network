@@ -7,7 +7,7 @@
 #[cfg(feature = "std")]
 include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
 
-use common::AssetId;
+pub use common::{AssetId, BasisPoints};
 use currencies::BasicCurrencyAdapter;
 use frame_system::offchain::{Account, SigningTypes};
 use sp_api::impl_runtime_apis;
@@ -241,17 +241,28 @@ impl currencies::Trait for Runtime {
     type GetNativeCurrencyId = <Runtime as common::Trait>::GetBaseAssetId;
 }
 
-type DexId = u32;
+pub type DEXId = u32;
 
 impl common::Trait for Runtime {
-    type DexId = DexId;
+    type DEXId = DEXId;
     type AssetId = AssetId;
     type GetBaseAssetId = GetBaseAssetId;
-    type EnsureDexOwner = (); // TODO: substitute a module that manages owners here
+    type EnsureDEXOwner = dex_manager::Module<Runtime>;
 }
 
 impl trading_pair::Trait for Runtime {
     type Event = Event;
+}
+
+parameter_types! {
+    pub const GetDefaultFee: BasisPoints = 30;
+    pub const GetDefaultProtocolFee: BasisPoints = 0;
+}
+
+impl dex_manager::Trait for Runtime {
+    type Event = Event;
+    type GetDefaultFee = GetDefaultFee;
+    type GetDefaultProtocolFee = GetDefaultProtocolFee;
 }
 
 impl<T: SigningTypes> frame_system::offchain::SignMessage<T> for Runtime {
@@ -401,6 +412,7 @@ construct_runtime! {
         Tokens: tokens::{Module, Storage, Event<T>},
         Currencies: currencies::{Module, Call, Event<T>},
         TradingPair: trading_pair::{Module, Call, Event<T>},
+        DEXManager: dex_manager::{Module, Call, Storage, Config<T>, Event<T>},
         //IrohaBridge: iroha_bridge::{Module, Call, Storage, Config<T>, Event<T>},
     }
 }
