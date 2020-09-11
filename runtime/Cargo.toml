@@ -10,6 +10,7 @@ codec = { package = "parity-scale-codec", version = "1.3.0", default-features = 
 
 trading-pair = { path = "../pallets/trading-pair", default-features = false}
 parachain-info = { path = "../pallets/parachain-info", default-features = false}
+permissions = { path = "../pallets/permissions", default-features = false}
 cumulus-token-dealer = { path = "../pallets/token-dealer", default-features = false}
 template = { package = "pallet-template", path = "../pallets/template", version = "2.0.0-rc5", default-features = false}
 currencies = { package = "orml-currencies", branch = "rococo-branch", git = "https://github.com/vmarkushin/open-runtime-module-library", default-features = false }

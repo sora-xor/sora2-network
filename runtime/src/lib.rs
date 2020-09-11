@@ -354,6 +354,9 @@ impl cumulus_message_broker::Trait for Runtime {
 }
 
 impl parachain_info::Trait for Runtime {}
+impl permissions::Trait for Runtime {
+    type Event = Event;
+}
 
 impl cumulus_token_dealer::Trait for Runtime {
     type Event = Event;
@@ -391,6 +394,7 @@ construct_runtime! {
         MessageBroker: cumulus_message_broker::{Module, Call, Inherent, Event<T>},
         TransactionPayment: pallet_transaction_payment::{Module, Storage},
         ParachainInfo: parachain_info::{Module, Storage, Config},
+        Permissions: permissions::{Module, Storage, Config<T>, Event<T>},
         TokenDealer: cumulus_token_dealer::{Module, Call, Event<T>},
         TemplateModule: template::{Module, Call, Storage, Event<T>},
 
