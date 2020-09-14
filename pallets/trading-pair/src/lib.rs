@@ -24,17 +24,17 @@ pub trait Trait: common::Trait {
 
 decl_storage! {
     trait Store for Module<T: Trait> as TradingPairModule {
-        TradingPairs get(fn trading_pairs): map hasher(twox_64_concat) T::DexId => BTreeSet<TradingPair<T>>;
+        TradingPairs get(fn trading_pairs): map hasher(twox_64_concat) T::DEXId => BTreeSet<TradingPair<T>>;
     }
 }
 
 decl_event!(
     pub enum Event<T>
     where
-        DexId = <T as common::Trait>::DexId,
+        DEXId = <T as common::Trait>::DEXId,
         TP = TradingPair<T>,
     {
-        TradingPairStored(DexId, TP),
+        TradingPairStored(DEXId, TP),
     }
 );
 
@@ -64,7 +64,7 @@ decl_module! {
         ///
         /// TODO: add information about weight
         #[weight = 10_000 + T::DbWeight::get().writes(1)]
-        pub fn register(origin, dex_id: T::DexId, base_asset_id: T::AssetId, target_asset_id: T::AssetId) -> dispatch::DispatchResult {
+        pub fn register(origin, dex_id: T::DEXId, base_asset_id: T::AssetId, target_asset_id: T::AssetId) -> dispatch::DispatchResult {
             let _author = T::ensure_dex_owner(&dex_id, origin)?;
             ensure!(base_asset_id != target_asset_id, Error::<T>::IdenticalAssetIds);
             ensure!(base_asset_id == T::GetBaseAssetId::get(), Error::<T>::ForbiddenBaseAssetId);

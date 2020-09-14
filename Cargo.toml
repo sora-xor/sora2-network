@@ -6,6 +6,7 @@ members = [
         "pallets/permissions",
         "pallets/token-dealer",
         "pallets/trading-pair",
+        "pallets/dex-manager",
         "pallets/template",
         "node/",
 ]

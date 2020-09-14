@@ -4,7 +4,10 @@ use cumulus_primitives::ParaId;
 
 use parachain_runtime::{
     AccountId,
+    AssetId,
     BalancesConfig,
+    DEXId,
+    DEXManagerConfig,
     GenesisConfig,
     //IrohaBridgeConfig,
     ParachainInfoConfig,
@@ -15,6 +18,7 @@ use parachain_runtime::{
     WASM_BINARY,
 };
 
+use common::DEXInfo;
 use sc_chain_spec::{ChainSpecExtension, ChainSpecGroup};
 use sc_service::ChainType;
 use serde::{Deserialize, Serialize};
@@ -91,6 +95,15 @@ pub fn get_chain_spec(id: ParaId) -> ChainSpec {
                     8, 115, 247, 189, 204, 26, 181, 226, 232, 81, 123, 12, 81, 120,
                 ]).unwrap()],
                 */
+                vec![(
+                    0,
+                    DEXInfo {
+                        owner_account_id: get_account_id_from_seed::<sr25519::Public>("Alice"),
+                        base_asset_id: AssetId::XOR,
+                        default_fee: 30,
+                        default_protocol_fee: 0,
+                    },
+                )],
                 id,
             )
         },
@@ -120,6 +133,15 @@ pub fn staging_test_net(id: ParaId) -> ChainSpec {
                     8, 115, 247, 189, 204, 26, 181, 226, 232, 81, 123, 12, 81, 120,
                 ]).unwrap()],
                 */
+                vec![(
+                    0,
+                    DEXInfo {
+                        owner_account_id: get_account_id_from_seed::<sr25519::Public>("Alice"),
+                        base_asset_id: AssetId::XOR,
+                        default_fee: 30,
+                        default_protocol_fee: 0,
+                    },
+                )],
                 id,
             )
         },
@@ -137,6 +159,7 @@ pub fn staging_test_net(id: ParaId) -> ChainSpec {
 fn testnet_genesis(
     root_key: AccountId,
     endowed_accounts: Vec<AccountId>,
+    dex_list: Vec<(DEXId, DEXInfo<AccountId, AssetId>)>,
     //iroha_peers: Vec<iroha_crypto::PublicKey>,
     id: ParaId,
 ) -> GenesisConfig {
@@ -167,6 +190,9 @@ fn testnet_genesis(
                 .cloned()
                 .map(|k| (k, 1 << 60))
                 .collect(),
+        }),
+        dex_manager: Some(DEXManagerConfig {
+            dex_list: dex_list.iter().cloned().collect(),
         }),
         //iroha_bridge: Some(IrohaBridgeConfig { authorities: endowed_accounts.clone(), iroha_peers }),
     }
