@@ -57,26 +57,36 @@ rustup update stable || exit 1
 ```
 
 ### In docker
-docker-compose up
+```make docker-build-image```
+or<br/>
+```docker build -t soraneo-develop-nix .```
 
 
 ## Build
 
 ### In user environment
-make cargo-build-release
+```make cargo-build-release```<br/>
+or<br/>
+```cargo build --release```
 
 ### In docker
-make docker-build-release
+```make docker-build-release```<br/>
+or<br/>
+```./scripts/docker_compose_up.sh --with-last-commit --run "cargo build --release"```
 
 
 
 ## Test
 
 ### In user enviroment
-make cargo-test-release
+```make cargo-test-release```<br/>
+or<br/>
+```cargo test --release```
 
 ### In docker
-make docker-test-release
+```make docker-test-release```<br/>
+or<br/>
+```./scripts/docker_compose_up.sh --with-last-commit --run "cargo test --release"```
 
 
 
@@ -97,13 +107,23 @@ make docker-test-release
 ```
 
 ```
-# Automatic run of local testnet by script for a given commit
+# Automatic run of local test net by script for a given commit
 make a397f7451d80205abf5e535ecee95073ad49e369
+```
+
+```
+# Debug version of command
+make a397f7451d80205abf5e535ecee95073ad49e369-debug
 ```
 
 ```
 # Automatic run of local test net by script for last commit
 make docker-localtestnet
+```
+
+```
+# Debug version of command
+make docker-localtestnet-debug
 ```
 
 

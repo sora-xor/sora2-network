@@ -12,7 +12,7 @@ parachains="200"
 parachain_fullnodes_count=2
 parachain_collators_count=4
 
-skip_build_of_parachain_binary_if_it_exist=1
+skip_build_of_parachain_binary_if_it_exist=0
 enable_incremental_compilation=0
 remove_binary_for_rebuild=0
 exit_after_success=0
@@ -39,7 +39,11 @@ top=`realpath $dirname/..`
 chain_json="$top/misc/rococo-custom.json"
 scripts="$top/scripts"
 if [ "$INSIDE_DOCKER" == "1" ]; then
-	dir="/cache"
+	if [ -d /cache ]; then
+		dir="/cache"
+	else
+		dir="/cache_inside_image"
+	fi
 else
 	dir="$top/tmp"
 fi
@@ -71,6 +75,8 @@ parachain_collators_count=\$collator_nodes
 remove_binary_for_rebuild=1
   -l, --logdir-pattern [pat]     Pattern of temporary logdir (default "$logdir_pattern")
   -d, --cache-dir [dir]          Cache dir to incremental backups of target dir (default "$cache_dir")
+  -j, --just-compile-deps        Compile dependancies and exit
+exit_after_deps=1
   -e, --exit-after-success       Exit after success parachain block producing
 exit_after_success=1
 EOF
@@ -168,11 +174,15 @@ polkadot_path="$polkadot_ready/target/release"
 polkadot_binary="$polkadot_path/polkadot"
 check_polkadot_binary $polkadot_binary
 check_polkadot_binary polkadot
-check_polkadot_binary /cache/polkadot/target/release/polkadot
+check_polkadot_binary /usr/local/bin/polkadot
+check_polkadot_binary /cache/polkadot_ready/target/release/polkadot
 check_polkadot_binary $top/../polkadot/target/release/polkadot
 on_success info "polkadot binary of $polkadot_commit commit is already exist, skiping build and using it" \
 	|| build_polkadot_on_demand
 
+if [ "$exit_after_deps" == "1" ]; then
+	exit 0
+fi
 
 #
 # Compilation of parachain
@@ -227,7 +237,11 @@ function build_parachain_binary() {
 	popd
 }
 
-parachain="$top/target/release/parachain-collator"
+if [ "$CARGO_TARGET_DIR" == "" ]; then
+	parachain="$top/target/release/parachain-collator"
+else
+	parachain="$CARGO_TARGET_DIR/release/parachain-collator"
+fi
 build_parachain_binary
 
 

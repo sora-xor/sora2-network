@@ -152,3 +152,18 @@ function file_is_found_and_exist() {
 function pwd_is_repos_topdir() {
 	test -d .inside_docker_jobs
 }
+
+function skip_if_done() {
+	mkdir -p ${DONE_DIR}
+	pushd ${DONE_DIR}
+		test "`bash -c \"ls $@ 2> /dev/null\"`" != "" && exit 0
+	popd
+}
+
+function set_done()
+{
+	mkdir -p ${DONE_DIR}
+	pushd ${DONE_DIR}
+		must touch -f $1
+	popd
+}

@@ -4,9 +4,12 @@ test "$INSIDE_DOCKER" == "1" || exit 1
 test "$PWD" == "/parachain"  || exit 1
 
 if [ ! -f /usr/.prepare-tools.ready ]; then
-	nix-env -i which gnugrep || exit 1
-	nix-env -iA nixos.nodejs || exit 1
-	nix-env -i yarn || exit 1
+	nix-env -i \
+		which \
+		gnugrep \
+		nodejs \
+		yarn \
+		|| exit 1
 	touch /usr/.prepare-tools.ready || exit 1
 fi
 
@@ -66,12 +69,34 @@ export SSL_CERT_FILE=/repos/parachain/misc/ca-certificates.crt
 
 socket=.inside_docker_jobs/socket
 
-if [ -e $socket ]; then
-	socat - UNIX-CONNECT:$socket > ./.run_commands.sh
-	bash ./.run_commands.sh
-	echo RUN COMMANDS IS FINISHED WITH CODE $?
+if [ "$INSIDE_DOCKER_USE_LAST_COMMIT_BY_DEFAULT" == "1" -a "$INSIDE_DOCKER_USE_COMMIT" == "" ]; then
+	pushd /repos/parachain
+		INSIDE_DOCKER_USE_COMMIT=`git log | head -n 1 | awk '{ print $2 }'`
+	popd
+fi
+
+if [ "$INSIDE_DOCKER_USE_COMMIT" != "" ]; then
+	cd /parachain || exit 1
+	git clone /repos/parachain || exit 1
+	mv parachain/* . || exit 1
+	mv parachain/.[a-hj-z]* . || exit 1
+	git checkout "$INSIDE_DOCKER_USE_COMMIT" || exit 1
+	if [ "$INSIDE_DOCKER_RUN_COMMANDS" != "" ]; then
+		bash -c "$INSIDE_DOCKER_RUN_COMMANDS"
+		echo RUN COMMANDS IS FINISHED WITH CODE $?
+	else
+		bash ./scripts/localtestnet.sh
+		echo RUN COMMANDS IS FINISHED WITH CODE $?
+	fi
 else
-	echo "# ./scripts/docker_compose_up.sh --with-last-commit --inside-docker \"cargo build --release\""
+	if [ -e $socket ]; then
+		socat - UNIX-CONNECT:$socket > ./.run_commands.sh
+		bash ./.run_commands.sh
+		echo RUN COMMANDS IS FINISHED WITH CODE $?
+	else
+		echo "# You can use command"
+		echo "# ./scripts/docker_compose_up.sh --with-last-commit --run \"cargo build --release\""
+	fi
 fi
 
 
