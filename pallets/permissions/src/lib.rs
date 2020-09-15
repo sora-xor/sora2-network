@@ -22,8 +22,10 @@ use frame_support::{
     codec::{Decode, Encode},
     decl_error, decl_event, decl_module, decl_storage, dispatch,
     traits::Get,
+    RuntimeDebug,
 };
 use frame_system::ensure_signed;
+use sp_core::hash::H512;
 
 #[cfg(test)]
 mod mock;
@@ -33,13 +35,12 @@ mod tests;
 
 pub const TRANSFER: u32 = 1;
 pub const EXCHANGE: u32 = 2;
-pub type PermissionId = u32;
 
 /// Permission container with parameters and information about it's owner.
-#[derive(PartialEq, Eq, Debug, Clone, Default, Encode, Decode)]
+#[derive(PartialEq, Eq, Clone, Default, Encode, Decode, RuntimeDebug)]
 pub struct Permission<T: frame_system::Trait> {
     owner_id: T::AccountId,
-    params: [u32; 32],
+    params: H512,
 }
 
 /// Pallet's configuration with parameters and types on which it depends.
@@ -56,13 +57,13 @@ decl_storage! {
                               .cloned()
                               .map(|(permission_id, holder_id, owner_id)| (permission_id, holder_id, Permission::<T> {
                                   owner_id,
-                                  params: [0;32]
+                                  params: H512::zero()
                               })).collect::<Vec<_>>()
-                             ): double_map hasher(opaque_blake2_256) PermissionId, hasher(opaque_blake2_256) T::AccountId => Option<Permission<T>>;
+                             ): double_map hasher(opaque_blake2_256) u32, hasher(opaque_blake2_256) T::AccountId => Option<Permission<T>>;
     }
 
     add_extra_genesis {
-        config(initial_permissions): Vec<(PermissionId, T::AccountId, T::AccountId)>;
+        config(initial_permissions): Vec<(u32, T::AccountId, T::AccountId)>;
     }
 }
 
@@ -72,9 +73,9 @@ decl_event!(
         AccountId = <T as frame_system::Trait>::AccountId,
     {
         /// Permission was granted to a holder. [permission, who]
-        PermissionGranted(PermissionId, AccountId),
+        PermissionGranted(u32, AccountId),
         /// Permission was transfered to a new owner. [permission, who]
-        PermissionTransfered(PermissionId, AccountId),
+        PermissionTransfered(u32, AccountId),
     }
 );
 
@@ -97,7 +98,7 @@ decl_module! {
 
         /// Dispatchable that checks a permission of an Account.
         #[weight = 10_000 + T::DbWeight::get().writes(1)]
-        pub fn check_permission(origin, permission_id: PermissionId) -> dispatch::DispatchResult {
+        pub fn check_permission(origin, permission_id: u32) -> dispatch::DispatchResult {
             let who = ensure_signed(origin)?;
             if Permissions::<T>::get(permission_id, &who).is_some() {
                 Ok(())
@@ -106,9 +107,9 @@ decl_module! {
             }
         }
 
-        /// Dispatchable that checks a permission of an Account with defined parameters.
+        /// Dispatchable that checks a permission with defined parameters of an Account.
         #[weight = 10_000 + T::DbWeight::get().writes(1)]
-        pub fn check_permission_with_parameters(origin, permission_id: PermissionId, parameters: [u32; 32]) -> dispatch::DispatchResult {
+        pub fn check_permission_with_parameters(origin, permission_id: u32, parameters: H512) -> dispatch::DispatchResult {
             let who = ensure_signed(origin)?;
             let permission = Permissions::<T>::get(permission_id, &who).ok_or(Error::<T>::PermissionNotFound)?;
             if permission.params == parameters {
@@ -120,7 +121,7 @@ decl_module! {
 
         /// Dispatchable that grants a permission to an Account.
         #[weight = 10_000 + T::DbWeight::get().reads_writes(1,1)]
-        pub fn grant_permission(origin, account_id: T::AccountId, permission_id: PermissionId) -> dispatch::DispatchResult {
+        pub fn grant_permission(origin, account_id: T::AccountId, permission_id: u32) -> dispatch::DispatchResult {
             let who = ensure_signed(origin)?;
             let permission = Permissions::<T>::get(permission_id, &who).ok_or(Error::<T>::PermissionNotFound)?;
             if permission.owner_id == who {
@@ -132,9 +133,29 @@ decl_module! {
             }
         }
 
+        /// Dispatchable that grants a permission with defined parameters to an Account.
+        #[weight = 10_000 + T::DbWeight::get().reads_writes(1,1)]
+        pub fn grant_permission_with_parameters(origin, account_id: T::AccountId, permission_id: u32, parameters: H512) -> dispatch::DispatchResult {
+            let who = ensure_signed(origin)?;
+            let permission = Permissions::<T>::get(permission_id, &who).ok_or(Error::<T>::PermissionNotFound)?;
+            if permission.params == parameters {
+                if permission.owner_id == who {
+                    Permissions::insert(permission_id, account_id.clone(), permission);
+                    Self::deposit_event(RawEvent::PermissionGranted(permission_id, account_id));
+                    Ok(())
+                } else {
+                    Err(Error::<T>::PermissionNotOwned)?
+                }
+            } else {
+                Err(Error::<T>::PermissionNotFound)?
+            }
+        }
+
+
+
         /// Dispatchable that transfers a permission from owner to another Account.
         #[weight = 10_000 + T::DbWeight::get().reads_writes(1,1)]
-        pub fn transfer_permission(origin, account_id: T::AccountId, permission_id: PermissionId) -> dispatch::DispatchResult {
+        pub fn transfer_permission(origin, account_id: T::AccountId, permission_id: u32) -> dispatch::DispatchResult {
             let who = ensure_signed(origin)?;
             let permission = Permissions::<T>::get(permission_id, &who).ok_or(Error::<T>::PermissionNotFound)?;
             if permission.owner_id == who {
