@@ -1,4 +1,4 @@
-use crate::{GenesisConfig, Module, PermissionId, Trait, EXCHANGE, TRANSFER};
+use crate::{GenesisConfig, Module, Trait, EXCHANGE, TRANSFER};
 use frame_support::{impl_outer_origin, parameter_types, weights::Weight};
 use frame_system as system;
 use sp_core::H256;
@@ -61,7 +61,7 @@ impl Trait for Test {
 pub type PermissionsModule = Module<Test>;
 
 pub struct ExtBuilder {
-    initial_permissions: Vec<(PermissionId, AccountId, AccountId)>,
+    initial_permissions: Vec<(u32, AccountId, AccountId)>,
 }
 
 impl Default for ExtBuilder {
