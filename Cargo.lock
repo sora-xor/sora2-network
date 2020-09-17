@@ -238,6 +238,7 @@ dependencies = [
  "pallet-balances",
  "parity-scale-codec",
  "permissions",
+ "serde",
  "sp-core",
  "sp-io",
  "sp-runtime",
@@ -542,6 +543,7 @@ dependencies = [
  "sp-io",
  "sp-runtime",
  "sp-std",
+ "technical",
 ]
 
 [[package]]
@@ -710,16 +712,22 @@ name = "common"
 version = "0.1.0"
 dependencies = [
  "blake2-rfc",
+ "cumulus-upward-message",
  "frame-support",
  "frame-system",
+ "num-traits 0.2.12",
  "orml-currencies",
  "orml-traits",
  "parity-scale-codec",
+ "polkadot-core-primitives",
+ "polkadot-parachain",
+ "rococo-runtime",
  "serde",
  "sp-arithmetic",
  "sp-core",
  "sp-runtime",
  "sp-std",
+ "static_assertions",
 ]
 
 [[package]]
@@ -9669,6 +9677,7 @@ dependencies = [
 name = "xor-fee"
 version = "2.0.0-rc5"
 dependencies = [
+ "common",
  "frame-support",
  "frame-system",
  "orml-traits",

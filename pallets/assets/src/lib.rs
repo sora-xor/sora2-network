@@ -22,7 +22,7 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
-use common::hash;
+use common::{hash, prelude::Balance, Amount};
 use frame_support::dispatch::{DispatchError, DispatchResult};
 use frame_support::sp_runtime::traits::{MaybeSerializeDeserialize, Member};
 use frame_support::{
@@ -30,26 +30,18 @@ use frame_support::{
 };
 use frame_system::ensure_signed;
 use permissions::{BURN, MINT, SLASH, TRANSFER};
-use sp_std::convert::{TryFrom, TryInto};
-use traits::MultiCurrency;
-use traits::MultiCurrencyExtended;
+use traits::{
+    MultiCurrency, MultiCurrencyExtended, MultiLockableCurrency, MultiReservableCurrency,
+};
 
 pub type AssetIdOf<T> = <T as Trait>::AssetId;
 
-type CurrencyIdOf<T> = <<T as currencies::Trait>::MultiCurrency as MultiCurrency<
-    <T as frame_system::Trait>::AccountId,
->>::CurrencyId;
+type CurrencyIdOf<T> =
+    <<T as Trait>::Currency as MultiCurrency<<T as frame_system::Trait>::AccountId>>::CurrencyId;
 
-type BalanceOf<T> = <<T as currencies::Trait>::MultiCurrency as MultiCurrency<
-    <T as frame_system::Trait>::AccountId,
->>::Balance;
-
-type AmountOf<T> = <<T as currencies::Trait>::MultiCurrency as MultiCurrencyExtended<
-    <T as frame_system::Trait>::AccountId,
->>::Amount;
-
-pub trait Trait: frame_system::Trait + currencies::Trait + permissions::Trait {
+pub trait Trait: frame_system::Trait + permissions::Trait + tokens::Trait {
     type Event: From<Event<Self>> + Into<<Self as frame_system::Trait>::Event>;
+
     /// DEX assets (currency) identifier.
     type AssetId: Parameter
         + Member
@@ -58,13 +50,32 @@ pub trait Trait: frame_system::Trait + currencies::Trait + permissions::Trait {
         + Ord
         + Default
         + Into<CurrencyIdOf<Self>>;
+
     /// The base asset as the core asset in all trading pairs
     type GetBaseAssetId: Get<Self::AssetId>;
+
+    /// Currency to transfer, reserve/unreserve, lock/unlock assets
+    type Currency: MultiLockableCurrency<
+            Self::AccountId,
+            Moment = Self::BlockNumber,
+            CurrencyId = Self::AssetId,
+            Balance = Balance,
+        > + MultiReservableCurrency<Self::AccountId, CurrencyId = Self::AssetId, Balance = Balance>
+        + MultiCurrencyExtended<Self::AccountId, Amount = Amount>;
 }
 
 decl_storage! {
     trait Store for Module<T: Trait> as AssetsModule {
         AssetOwners get(fn asset_owners): map hasher(twox_64_concat) T::AssetId => T::AccountId;
+    }
+    add_extra_genesis {
+        config(endowed_assets): Vec<(T::AssetId, T::AccountId)>;
+
+        build(|config: &GenesisConfig<T>| {
+            config.endowed_assets.iter().for_each(|(asset_id, account_id)| {
+                <AssetOwners<T>>::insert(asset_id.clone(), account_id.clone());
+            })
+        })
     }
 }
 
@@ -155,9 +166,9 @@ impl<T: Trait> Module<T> {
         Self::asset_owner(asset_id).is_some()
     }
 
-    pub fn ensure_asset_exists(asset_id: &T::AssetId) -> Result<(), Error<T>> {
+    pub fn ensure_asset_exists(asset_id: &T::AssetId) -> DispatchResult {
         if !Self::asset_exists(asset_id) {
-            return Err(Error::<T>::AssetIdNotExists);
+            return Err(Error::<T>::AssetIdNotExists.into());
         }
         Ok(())
     }
@@ -169,48 +180,41 @@ impl<T: Trait> Module<T> {
             .unwrap_or(false)
     }
 
-    pub fn total_issuance(asset_id: &T::AssetId) -> Result<BalanceOf<T>, Error<T>> {
+    pub fn total_issuance(asset_id: &T::AssetId) -> Result<Balance, DispatchError> {
         Self::ensure_asset_exists(asset_id)?;
-        let currency_id: CurrencyIdOf<T> = (*asset_id).into();
-        Ok(currencies::Module::<T>::total_issuance(currency_id))
+        Ok(T::Currency::total_issuance(asset_id.clone()))
     }
 
     pub fn total_balance(
         asset_id: &T::AssetId,
         who: &T::AccountId,
-    ) -> Result<BalanceOf<T>, Error<T>> {
+    ) -> Result<Balance, DispatchError> {
         Self::ensure_asset_exists(asset_id)?;
-        Ok(currencies::Module::<T>::total_balance(
-            (*asset_id).into(),
-            who,
-        ))
+        Ok(T::Currency::total_balance(asset_id.clone(), who))
     }
 
     pub fn free_balance(
         asset_id: &T::AssetId,
         who: &T::AccountId,
-    ) -> Result<BalanceOf<T>, Error<T>> {
+    ) -> Result<Balance, DispatchError> {
         Self::ensure_asset_exists(asset_id)?;
-        Ok(currencies::Module::<T>::free_balance(
-            (*asset_id).into(),
-            who,
-        ))
+        Ok(T::Currency::free_balance(asset_id.clone(), who))
     }
 
     pub fn ensure_can_withdraw(
         asset_id: &T::AssetId,
         who: &T::AccountId,
-        amount: BalanceOf<T>,
+        amount: Balance,
     ) -> DispatchResult {
         Self::ensure_asset_exists(asset_id)?;
-        currencies::Module::<T>::ensure_can_withdraw((*asset_id).into(), who, amount)
+        T::Currency::ensure_can_withdraw(asset_id.clone(), who, amount)
     }
 
     pub fn transfer(
         asset_id: &T::AssetId,
         from: &T::AccountId,
         to: &T::AccountId,
-        amount: BalanceOf<T>,
+        amount: Balance,
     ) -> DispatchResult {
         Self::ensure_asset_exists(asset_id)?;
         permissions::Module::<T>::check_permission_with_parameters(
@@ -218,62 +222,54 @@ impl<T: Trait> Module<T> {
             TRANSFER,
             hash(asset_id),
         )?;
-        <currencies::Module<T> as MultiCurrency<_>>::transfer((*asset_id).into(), from, to, amount)
+        T::Currency::transfer(asset_id.clone(), from, to, amount)
     }
 
-    pub fn mint(asset_id: &T::AssetId, who: &T::AccountId, amount: BalanceOf<T>) -> DispatchResult {
+    pub fn mint(asset_id: &T::AssetId, who: &T::AccountId, amount: Balance) -> DispatchResult {
         permissions::Module::<T>::check_permission_with_parameters(
             who.clone(),
             MINT,
             hash(asset_id),
         )?;
-        currencies::Module::<T>::deposit((*asset_id).into(), who, amount)
+        T::Currency::deposit(asset_id.clone(), who, amount)
     }
 
-    pub fn burn(asset_id: &T::AssetId, who: &T::AccountId, amount: BalanceOf<T>) -> DispatchResult {
+    pub fn burn(asset_id: &T::AssetId, who: &T::AccountId, amount: Balance) -> DispatchResult {
         permissions::Module::<T>::check_permission_with_parameters(
             who.clone(),
             BURN,
             hash(asset_id),
         )?;
-        currencies::Module::<T>::withdraw((*asset_id).into(), who, amount)
+        T::Currency::withdraw(asset_id.clone(), who, amount)
     }
 
     pub fn can_slash(
         asset_id: &T::AssetId,
         who: &T::AccountId,
-        amount: BalanceOf<T>,
-    ) -> Result<bool, Error<T>> {
+        amount: Balance,
+    ) -> Result<bool, DispatchError> {
         Self::ensure_asset_exists(asset_id)?;
-        Ok(currencies::Module::<T>::can_slash(
-            (*asset_id).into(),
-            who,
-            amount,
-        ))
+        Ok(T::Currency::can_slash(asset_id.clone(), who, amount))
     }
 
     pub fn slash(
         asset_id: &T::AssetId,
         who: &T::AccountId,
-        amount: BalanceOf<T>,
-    ) -> Result<BalanceOf<T>, DispatchError> {
+        amount: Balance,
+    ) -> Result<Balance, DispatchError> {
         Self::ensure_asset_exists(asset_id)?;
         permissions::Module::<T>::check_permission_with_parameters(
             who.clone(),
             SLASH,
             hash(asset_id),
         )?;
-        Ok(currencies::Module::<T>::slash(
-            (*asset_id).into(),
-            who,
-            amount,
-        ))
+        Ok(T::Currency::slash(asset_id.clone(), who, amount))
     }
 
     pub fn update_balance(
         asset_id: &T::AssetId,
         who: &T::AccountId,
-        by_amount: AmountOf<T>,
+        by_amount: Amount,
     ) -> DispatchResult {
         permissions::Module::<T>::check_permission_with_parameters(
             who.clone(),
@@ -285,21 +281,6 @@ impl<T: Trait> Module<T> {
             BURN,
             hash(asset_id),
         )?;
-        <currencies::Module<T> as MultiCurrencyExtended<_>>::update_balance(
-            (*asset_id).into(),
-            who,
-            by_amount,
-        )
+        T::Currency::update_balance(asset_id.clone(), who, by_amount)
     }
-}
-
-pub fn balance_to_num<T: Trait>(amount: BalanceOf<T>) -> Option<u128> {
-    amount.try_into().ok().and_then(|x| x.try_into().ok())
-}
-
-pub fn num_to_balance<T: Trait>(amount_num: u128) -> Result<BalanceOf<T>, Error<T>> {
-    BalanceOf::<T>::try_from(
-        usize::try_from(amount_num).map_err(|_| <Error<T>>::InsufficientBalance)?,
-    )
-    .map_err(|_| <Error<T>>::InsufficientBalance)
 }

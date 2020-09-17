@@ -29,9 +29,9 @@ mod tests {
         let mut ext = ExtBuilder::default().build();
         ext.execute_with(|| {
             assert_ok!(Assets::register(Origin::signed(ALICE), XOR));
-            assert_ok!(Assets::mint(&XOR, &ALICE, 100));
-            assert_ok!(Assets::burn(&XOR, &ALICE, 100));
-            assert_ok!(Assets::update_balance(&XOR, &ALICE, 100));
+            assert_ok!(Assets::mint(&XOR, &ALICE, 100u32.into()));
+            assert_ok!(Assets::burn(&XOR, &ALICE, 100u32.into()));
+            assert_ok!(Assets::update_balance(&XOR, &ALICE, 100.into()));
         });
     }
 
@@ -41,18 +41,15 @@ mod tests {
         ext.execute_with(|| {
             assert_ok!(Assets::register(Origin::signed(ALICE), XOR));
             assert_noop!(
-                Assets::mint(&XOR, &BOB, 100),
-                //permissions::Error::<Runtime>::PermissionNotOwned
+                Assets::mint(&XOR, &BOB, 100u32.into()),
                 permissions::Error::<Runtime>::PermissionNotFound
             );
             assert_noop!(
-                Assets::burn(&XOR, &BOB, 100),
-                //permissions::Error::<Runtime>::PermissionNotOwned
+                Assets::burn(&XOR, &BOB, 100u32.into()),
                 permissions::Error::<Runtime>::PermissionNotFound
             );
             assert_noop!(
-                Assets::update_balance(&XOR, &BOB, 100),
-                //permissions::Error::<Runtime>::PermissionNotOwned
+                Assets::update_balance(&XOR, &BOB, 100u32.into()),
                 permissions::Error::<Runtime>::PermissionNotFound
             );
         });

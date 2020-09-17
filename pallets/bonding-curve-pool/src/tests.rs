@@ -11,7 +11,7 @@ mod tests {
                 Fixed::from(100)
             );
             assert_eq!(
-                BondingCurvePool::buy_tokens_price(XOR, 100_000)
+                BondingCurvePool::buy_tokens_price(XOR, 100_000u32.into())
                     .expect("failed to calculate buy tokens price"),
                 Fixed::from(100_10_000)
             );
@@ -20,12 +20,12 @@ mod tests {
                 Fixed::from(80)
             );
             assert_eq!(
-                BondingCurvePool::sell_tokens_price(XOR, 100_000)
+                BondingCurvePool::sell_tokens_price(XOR, 100_000u32.into())
                     .expect("failed to calculate sell tokens price"),
                 Fixed::from(80_08_000)
             );
             assert_eq!(
-                BondingCurvePool::sell_tokens_price(XOR, 0)
+                BondingCurvePool::sell_tokens_price(XOR, 0u32.into())
                     .expect("failed to calculate sell tokens price"),
                 Fixed::from(0)
             );
@@ -37,10 +37,8 @@ mod tests {
         let mut ext = ExtBuilder::default().build();
         ext.execute_with(|| {
             assert_eq!(
-                BondingCurvePool::sell_tokens_price(XOR, u128::max_value())
-                    .unwrap_err()
-                    .as_u8(),
-                Error::<Runtime>::CalculatePriceFailed.as_u8()
+                BondingCurvePool::sell_tokens_price(XOR, u128::max_value().into()).unwrap_err(),
+                Error::<Runtime>::CalculatePriceFailed.into()
             );
         });
     }

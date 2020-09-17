@@ -138,6 +138,12 @@ pub enum TechAccountId<AccountId, AssetId, DEXId> {
     WrappedRepr(AccountId),
 }
 
+impl<AccountId: Default, AssetId, DEXId> Default for TechAccountId<AccountId, AssetId, DEXId> {
+    fn default() -> Self {
+        TechAccountId::Wrapped(AccountId::default())
+    }
+}
+
 impl<AccountId, AssetId, DEXId> crate::traits::WrappedRepr<AccountId>
     for TechAccountId<AccountId, AssetId, DEXId>
 {

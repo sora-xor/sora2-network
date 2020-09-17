@@ -1,8 +1,10 @@
 use crate::{Module, Trait};
-use common::prelude::AssetId;
+use common::prelude::{AssetId, Balance};
+use common::Amount;
 use currencies::BasicCurrencyAdapter;
 use frame_support::{impl_outer_origin, parameter_types, weights::Weight};
 use frame_system as system;
+use sp_core::crypto::AccountId32;
 use sp_core::H256;
 use sp_runtime::{
     testing::Header,
@@ -10,12 +12,14 @@ use sp_runtime::{
     Perbill,
 };
 
-pub type AccountId = u128;
+pub type AccountId = AccountId32;
 pub type BlockNumber = u64;
-pub type Amount = i128;
-pub type Balance = u128;
+type TechAccountIdPrimitive = common::TechAccountId<AccountId, AssetId, DEXId>;
+type TechAssetId = common::TechAssetId<AssetId, DEXId>;
 
-pub const ALICE: AccountId = 1;
+pub fn alice() -> AccountId {
+    AccountId32::from([1u8; 32])
+}
 pub const USD: AssetId = AssetId::USD;
 pub const XOR: AssetId = AssetId::XOR;
 
@@ -91,10 +95,22 @@ impl assets::Trait for Runtime {
     type Event = ();
     type AssetId = AssetId;
     type GetBaseAssetId = GetBaseAssetId;
+    type Currency = currencies::Module<Runtime>;
 }
 
 impl permissions::Trait for Runtime {
     type Event = ();
+}
+
+impl technical::Trait for Runtime {
+    type Event = ();
+    type TechAssetId = TechAssetId;
+    type TechAccountIdPrimitive = TechAccountIdPrimitive;
+    type TechAmount = Amount;
+    type TechBalance = Balance;
+    type Trigger = ();
+    type Condition = ();
+    type SwapAction = ();
 }
 
 parameter_types! {
@@ -125,7 +141,7 @@ pub struct ExtBuilder {
 impl Default for ExtBuilder {
     fn default() -> Self {
         Self {
-            endowed_accounts: vec![(ALICE, XOR, 350_000u128)],
+            endowed_accounts: vec![(alice(), XOR, 350_000u128.into())],
         }
     }
 }
@@ -135,6 +151,16 @@ impl ExtBuilder {
         let mut t = system::GenesisConfig::default()
             .build_storage::<Runtime>()
             .unwrap();
+
+        assets::GenesisConfig::<Runtime> {
+            endowed_assets: self
+                .endowed_accounts
+                .iter()
+                .map(|(account_id, asset_id, _)| (asset_id.clone(), account_id.clone()))
+                .collect(),
+        }
+        .assimilate_storage(&mut t)
+        .unwrap();
 
         tokens::GenesisConfig::<Runtime> {
             endowed_accounts: self.endowed_accounts,

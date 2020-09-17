@@ -1,9 +1,10 @@
 use crate::{Module, Trait};
-use common::AssetId;
+use common::prelude::{AssetId, Balance};
 use currencies::BasicCurrencyAdapter;
 use frame_support::{impl_outer_origin, parameter_types, weights::Weight};
 use frame_system as system;
 use sp_core::H256;
+use sp_runtime::traits::Zero;
 use sp_runtime::{
     testing::Header,
     traits::{BlakeTwo256, IdentityLookup},
@@ -13,7 +14,6 @@ use sp_runtime::{
 pub type AccountId = u128;
 pub type BlockNumber = u64;
 pub type Amount = i128;
-pub type Balance = u128;
 
 pub const ALICE: AccountId = 1;
 pub const BOB: AccountId = 2;
@@ -68,6 +68,7 @@ impl crate::Trait for Runtime {
     type Event = ();
     type AssetId = AssetId;
     type GetBaseAssetId = GetBaseAssetId;
+    type Currency = currencies::Module<Runtime>;
 }
 
 impl permissions::Trait for Runtime {
@@ -117,7 +118,7 @@ pub struct ExtBuilder {
 impl Default for ExtBuilder {
     fn default() -> Self {
         Self {
-            endowed_accounts: vec![(ALICE, XOR, 0u128)],
+            endowed_accounts: vec![(ALICE, XOR, Balance::zero())],
         }
     }
 }

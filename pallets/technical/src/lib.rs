@@ -1,11 +1,10 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use codec::{Decode, Encode};
-use common::{PureOrWrapped, SwapAction, SwapRulesValidation};
+use common::{prelude::Balance, Amount, PureOrWrapped, SwapAction, SwapRulesValidation};
 use frame_support::dispatch::{DispatchError, DispatchResult};
 use frame_support::{decl_error, decl_event, decl_module, decl_storage, ensure, Parameter};
 use frame_system::ensure_signed;
-use orml_traits::{MultiCurrency, MultiCurrencyExtended};
 use sp_core::crypto::AccountId32;
 use sp_runtime::traits::Member;
 use sp_runtime::RuntimeDebug;
@@ -22,14 +21,6 @@ mod tests;
 type AccountIdOf<T> = <T as frame_system::Trait>::AccountId;
 
 type AssetIdOf<T> = <T as assets::Trait>::AssetId;
-
-type BalanceOf<T> = <<T as currencies::Trait>::MultiCurrency as MultiCurrency<
-    <T as frame_system::Trait>::AccountId,
->>::Balance;
-
-type AmountOf<T> = <<T as currencies::Trait>::MultiCurrency as MultiCurrencyExtended<
-    <T as frame_system::Trait>::AccountId,
->>::Amount;
 
 type TechAccountIdOf<T> = TechAccountIdReprCompat<T, <T as Trait>::TechAccountIdPrimitive>;
 
@@ -160,13 +151,14 @@ pub trait Trait: common::Trait + assets::Trait {
     type TechAccountIdPrimitive: Ord
         + Member
         + Parameter
-        + PureOrWrapped<<Self as frame_system::Trait>::AccountId>;
+        + PureOrWrapped<<Self as frame_system::Trait>::AccountId>
+        + Default;
 
     /// The units in which we record amount.
-    type TechAmount: Default + Copy + PureOrWrapped<AmountOf<Self>>;
+    type TechAmount: Default + Copy + PureOrWrapped<Amount>;
 
     /// The units in which we record amount.
-    type TechBalance: Default + Copy + Member + Parameter + PureOrWrapped<BalanceOf<Self>>;
+    type TechBalance: Default + Copy + Member + Parameter + PureOrWrapped<Balance>;
 
     /// Trigger for auto claim.
     type Trigger: Default + Copy + Member + Parameter;
@@ -245,7 +237,7 @@ where
         asset: AssetIdOf<T>,
         source: <T as frame_system::Trait>::AccountId,
         tech_dest: TechAccountIdOf<T>,
-        amount: BalanceOf<T>,
+        amount: Balance,
     ) -> DispatchResult {
         ensure!(
             common::PureOrWrapped::<AccountId32>::is_pure(&tech_dest.clone()),
@@ -266,7 +258,7 @@ where
         asset: AssetIdOf<T>,
         tech_source: TechAccountIdOf<T>,
         dest: <T as frame_system::Trait>::AccountId,
-        amount: BalanceOf<T>,
+        amount: Balance,
     ) -> DispatchResult {
         ensure!(
             common::PureOrWrapped::<AccountId32>::is_pure(&tech_source.clone()),
@@ -289,7 +281,6 @@ decl_event!(
         <T as Trait>::TechAssetId,
         <T as Trait>::TechBalance,
         <T as Trait>::TechAmount,
-
     {
         /// Some pure technical assets were minted. [asset, owner, minted_amount, total_exist].
         /// This is not only for pure TechAccountId.

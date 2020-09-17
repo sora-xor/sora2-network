@@ -6,20 +6,14 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
-use common::prelude::{Fixed, FixedWrapper};
+use common::prelude::{Balance, Fixed, FixedWrapper};
 use frame_support::{decl_error, decl_module, decl_storage};
-use orml_traits::MultiCurrency;
-use sp_runtime::FixedPointNumber;
+use sp_runtime::{DispatchError, FixedPointNumber};
 
 pub trait Trait: common::Trait + assets::Trait {}
 
-type BalanceOf<T> = <<T as currencies::Trait>::MultiCurrency as MultiCurrency<
-    <T as frame_system::Trait>::AccountId,
->>::Balance;
-
 decl_storage! {
     trait Store for Module<T: Trait> as BondingCurve {
-        Reserves get(fn reserves): map hasher(twox_64_concat) T::DEXId => BalanceOf<T>;
         InitialPrice get(fn initial_price) config(): Fixed = Fixed::saturating_from_rational(993, 10);
         PriceChangeStep get(fn price_change_step) config(): Fixed = 5000.into();
         PriceChangeRate get(fn price_change_rate) config(): Fixed = 100.into();
@@ -54,11 +48,8 @@ impl<T: Trait> Module<T> {
     /// `PC_S`: price change step
     /// `Q`: token issuance (quantity)
     #[allow(non_snake_case)]
-    pub fn buy_price(asset_id: T::AssetId) -> Result<Fixed, Error<T>> {
-        let currency_id = asset_id.into();
-        let total_issuance_integer =
-            assets::balance_to_num::<T>(currencies::Module::<T>::total_issuance(currency_id))
-                .ok_or(Error::<T>::CalculatePriceFailed)?;
+    pub fn buy_price(asset_id: T::AssetId) -> Result<Fixed, DispatchError> {
+        let total_issuance_integer = assets::Module::<T>::total_issuance(&asset_id)?;
         let Q: FixedWrapper = total_issuance_integer.into();
         let P_I = Self::initial_price();
         let PC_S = Self::price_change_step();
@@ -85,11 +76,8 @@ impl<T: Trait> Module<T> {
     /// `q`: amount of tokens to buy
     #[allow(non_snake_case)]
     #[rustfmt::skip]
-    pub fn buy_tokens_price(asset_id: T::AssetId, quantity: u128) -> Result<Fixed, Error<T>> {
-        let currency_id = asset_id.into();
-        let total_issuance_integer =
-            assets::balance_to_num::<T>(currencies::Module::<T>::total_issuance(currency_id))
-                .ok_or(Error::<T>::CalculatePriceFailed)?;
+    pub fn buy_tokens_price(asset_id: T::AssetId, quantity: Balance) -> Result<Fixed, DispatchError> {
+        let total_issuance_integer = assets::Module::<T>::total_issuance(&asset_id)?;
         let Q = FixedWrapper::from(total_issuance_integer);
         let P_I = Self::initial_price();
         let PC_S = FixedWrapper::from(Self::price_change_step());
@@ -100,7 +88,7 @@ impl<T: Trait> Module<T> {
         let to   = Q_plus_q * Q_plus_q / two_times_PC_S_times_PC_R + P_I * Q_plus_q;
         let from = Q        * Q        / two_times_PC_S_times_PC_R + P_I * Q;
         let price: FixedWrapper = to - from;
-        price.get().ok_or(Error::<T>::CalculatePriceFailed)
+        price.get().ok_or(Error::<T>::CalculatePriceFailed.into())
     }
 
     /// Calculates and returns current sell price for one token.
@@ -110,11 +98,11 @@ impl<T: Trait> Module<T> {
     /// where
     /// `P_Sc: sell price coefficient (%)`
     #[allow(non_snake_case)]
-    pub fn sell_price(asset_id: T::AssetId) -> Result<Fixed, Error<T>> {
+    pub fn sell_price(asset_id: T::AssetId) -> Result<Fixed, DispatchError> {
         let P_B = Self::buy_price(asset_id)?;
         let P_Sc = FixedWrapper::from(Self::sell_price_coefficient());
         let price = P_Sc * P_B;
-        price.get().ok_or(Error::<T>::CalculatePriceFailed)
+        price.get().ok_or(Error::<T>::CalculatePriceFailed.into())
     }
 
     /// Calculates and returns current sell price for some amount of token.
@@ -129,10 +117,13 @@ impl<T: Trait> Module<T> {
     /// `P_Sc: sell price coefficient (%)`
     /// ```
     #[allow(non_snake_case)]
-    pub fn sell_tokens_price(asset_id: T::AssetId, quantity: u128) -> Result<Fixed, Error<T>> {
+    pub fn sell_tokens_price(
+        asset_id: T::AssetId,
+        quantity: Balance,
+    ) -> Result<Fixed, DispatchError> {
         let P_BT = Self::buy_tokens_price(asset_id, quantity)?;
         let P_Sc = FixedWrapper::from(Self::sell_price_coefficient());
         let price = P_Sc * P_BT;
-        price.get().ok_or(Error::<T>::CalculatePriceFailed)
+        price.get().ok_or(Error::<T>::CalculatePriceFailed.into())
     }
 }

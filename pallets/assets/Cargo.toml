@@ -13,6 +13,7 @@ package = 'parity-scale-codec'
 version = '1.3.5'
 
 [dependencies]
+serde = { version = "1.0.101", default-features = false, optional = true, features = ["derive"] }
 frame-support = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "rococo-branch" }
 frame-system = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "rococo-branch" }
 sp-std = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "rococo-branch" }
@@ -23,7 +24,6 @@ sp-core = { git = "https://github.com/paritytech/substrate", default-features = 
 permissions = { path = "../permissions", default-features = false }
 common = { path = "../../common", default-features = false }
 
-
 [dev-dependencies]
 sp-io = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "rococo-branch" }
 sp-runtime = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "rococo-branch" }
@@ -32,6 +32,7 @@ pallet-balances = { git = "https://github.com/paritytech/substrate", default-fea
 [features]
 default = ['std']
 std = [
+    'serde',
     'codec/std',
     'frame-support/std',
     'frame-system/std',

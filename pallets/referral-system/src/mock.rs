@@ -1,5 +1,5 @@
 // Copyright 2020 Parity Technologies (UK) Ltd.
-use crate::{Module, Trait};
+use crate::Trait;
 use frame_support::{impl_outer_origin, parameter_types, weights::Weight};
 use frame_system as system;
 use sp_core::H256;

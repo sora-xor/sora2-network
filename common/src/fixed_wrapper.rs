@@ -1,6 +1,8 @@
+use crate::balance::Balance;
 use crate::Fixed;
 use core::ops::*;
 use frame_support::sp_runtime::traits::{CheckedAdd, CheckedDiv, CheckedMul, CheckedSub};
+use static_assertions::_core::cmp::Ordering;
 
 /// A convenient wrapper around `Fixed` type for safe math.
 ///
@@ -31,11 +33,15 @@ impl From<Fixed> for FixedWrapper {
     }
 }
 
+impl From<Balance> for FixedWrapper {
+    fn from(balance: Balance) -> Self {
+        FixedWrapper::from(balance.0)
+    }
+}
+
 impl From<u128> for FixedWrapper {
     fn from(int: u128) -> Self {
-        FixedWrapper {
-            inner: Some(Fixed::from(int)),
-        }
+        FixedWrapper::from(Fixed::from(int))
     }
 }
 
@@ -63,6 +69,22 @@ impl_op_for_fixed_wrapper!(Add, add, checked_add);
 impl_op_for_fixed_wrapper!(Sub, sub, checked_sub);
 impl_op_for_fixed_wrapper!(Mul, mul, checked_mul);
 impl_op_for_fixed_wrapper!(Div, div, checked_div);
+
+impl PartialEq for FixedWrapper {
+    fn eq(&self, other: &Self) -> bool {
+        let lhs = self.inner;
+        let rhs = other.inner;
+        lhs.zip(rhs).map(|(lhs, rhs)| lhs.eq(&rhs)).unwrap_or(false)
+    }
+}
+
+impl PartialOrd for FixedWrapper {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        let lhs = self.inner;
+        let rhs = other.inner;
+        lhs.zip(rhs).and_then(|(lhs, rhs)| lhs.partial_cmp(&rhs))
+    }
+}
 
 macro_rules! impl_op_fixed_wrapper_for_type {
     (
@@ -108,4 +130,5 @@ macro_rules! impl_fixed_wrapper_for_type {
 
 // Here one can add more custom implementations.
 impl_fixed_wrapper_for_type!(Fixed);
+impl_fixed_wrapper_for_type!(Balance);
 impl_fixed_wrapper_for_type!(u128);

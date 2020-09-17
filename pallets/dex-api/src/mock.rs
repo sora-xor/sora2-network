@@ -1,5 +1,5 @@
 use crate::{Module, Trait};
-use common::{fixed_from_basis_points, hash, AssetId, DEXInfo, Fixed};
+use common::{fixed_from_basis_points, hash, prelude::Balance, AssetId, DEXInfo, Fixed};
 use currencies::BasicCurrencyAdapter;
 
 use frame_support::{impl_outer_origin, parameter_types, weights::Weight};
@@ -15,7 +15,6 @@ use sp_runtime::{
 pub type AccountId = u128;
 pub type BlockNumber = u64;
 pub type Amount = i128;
-pub type Balance = u128;
 
 pub const ALICE: AccountId = 1;
 pub const BOB: AccountId = 2;
@@ -102,6 +101,7 @@ impl assets::Trait for Runtime {
     type Event = ();
     type AssetId = AssetId;
     type GetBaseAssetId = GetBaseAssetId;
+    type Currency = currencies::Module<Runtime>;
 }
 
 impl common::Trait for Runtime {
@@ -162,8 +162,8 @@ impl Default for ExtBuilder {
     fn default() -> Self {
         Self {
             endowed_accounts: vec![
-                (ALICE, XOR, 1_000_000_000_000_000_000u128),
-                (BOB, DOT, 1_000_000_000_000_000_000u128),
+                (ALICE, XOR, 1_000_000_000_000_000_000u128.into()),
+                (BOB, DOT, 1_000_000_000_000_000_000u128.into()),
             ],
             reserves: vec![
                 (DEX_A_ID, DOT, (Fixed::from(5000), Fixed::from(7000))),

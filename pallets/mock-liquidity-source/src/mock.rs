@@ -2,6 +2,7 @@ use crate::{Module, Trait};
 use common::{fixed_from_basis_points, AssetId, Fixed};
 use currencies::BasicCurrencyAdapter;
 
+use common::prelude::Balance;
 use frame_support::{impl_outer_origin, parameter_types, weights::Weight};
 use frame_system as system;
 use sp_core::H256;
@@ -14,7 +15,6 @@ use sp_runtime::{
 pub type AccountId = u128;
 pub type BlockNumber = u64;
 pub type Amount = i128;
-pub type Balance = u128;
 
 pub const ALICE: AccountId = 1;
 pub const DOT: AssetId = AssetId::DOT;
@@ -101,6 +101,7 @@ impl assets::Trait for Runtime {
     type Event = ();
     type AssetId = AssetId;
     type GetBaseAssetId = GetBaseAssetId;
+    type Currency = currencies::Module<Runtime>;
 }
 
 impl common::Trait for Runtime {

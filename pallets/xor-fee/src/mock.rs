@@ -1,10 +1,10 @@
 pub use crate::{self as xor_fee, Module, Trait};
+use common::prelude::Balance;
 use frame_support::{
     impl_outer_dispatch, impl_outer_event, impl_outer_origin, parameter_types,
     weights::{DispatchInfo, IdentityFee, PostDispatchInfo, Weight},
 };
 use frame_system as system;
-use pallet_balances::Call as BalancesCall;
 use pallet_balances::WeightInfo;
 use sp_core::H256;
 use sp_runtime::{
@@ -38,7 +38,6 @@ impl_outer_event! {
 pub type System = frame_system::Module<Test>;
 pub type Balances = pallet_balances::Module<Test>;
 pub type XorFee = Module<Test>;
-pub type Balance = u64;
 
 #[derive(Clone, Eq, PartialEq)]
 pub struct Test;
@@ -142,9 +141,6 @@ pub const TO_ACCOUNT: u64 = 2;
 pub const INITIAL_BALANCE: u64 = 1_000;
 pub const TRANSFER_AMOUNT: u64 = 69;
 
-pub const CALL: &<Test as frame_system::Trait>::Call =
-    &Call::Balances(BalancesCall::transfer(TO_ACCOUNT, TRANSFER_AMOUNT));
-
 impl ExtBuilder {
     pub fn build() -> sp_io::TestExternalities {
         let mut t = system::GenesisConfig::default()
@@ -157,11 +153,12 @@ impl ExtBuilder {
         .assimilate_storage(&mut t)
         .unwrap();
 
+        let initial_balance: Balance = INITIAL_BALANCE.into();
         pallet_balances::GenesisConfig::<Test> {
             balances: vec![
-                (FROM_ACCOUNT, INITIAL_BALANCE),
-                (TO_ACCOUNT, INITIAL_BALANCE),
-                (REFERRER_ACCOUNT, INITIAL_BALANCE),
+                (FROM_ACCOUNT, initial_balance),
+                (TO_ACCOUNT, initial_balance),
+                (REFERRER_ACCOUNT, initial_balance),
             ],
         }
         .assimilate_storage(&mut t)

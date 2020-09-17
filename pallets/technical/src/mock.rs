@@ -1,5 +1,6 @@
 use crate::{Module, Trait};
 use codec::{Decode, Encode};
+use common::prelude::Balance;
 use common::BasisPoints;
 use currencies::BasicCurrencyAdapter;
 use frame_support::dispatch;
@@ -12,6 +13,7 @@ use sp_runtime::{
     traits::{BlakeTwo256, IdentityLookup},
     Perbill,
 };
+use PolySwapActionExample::*;
 
 pub use common::{mock::ComicAssetId::*, mock::*, TechAssetId::*, TechPurpose::*, TradingPair};
 
@@ -33,9 +35,9 @@ impl Default for ExtBuilder {
     fn default() -> Self {
         Self {
             endowed_accounts: vec![
-                (get_alice(), RedPepper, 99_000_u128),
-                (get_alice(), BlackPepper, 2000_000_u128),
-                (get_bob(), RedPepper, 2000_000_u128),
+                (get_alice(), RedPepper, 99_000_u128.into()),
+                (get_alice(), BlackPepper, 2000_000_u128.into()),
+                (get_bob(), RedPepper, 2000_000_u128.into()),
             ],
         }
     }
@@ -104,7 +106,6 @@ type DEXId = u32;
 pub type BlockNumber = u64;
 pub type AccountId = AccountId32;
 pub type Amount = i128;
-pub type Balance = u128;
 
 impl common::Trait for Testtime {
     type DEXId = DEXId;
@@ -154,6 +155,7 @@ impl assets::Trait for Testtime {
     type Event = ();
     type AssetId = AssetId;
     type GetBaseAssetId = GetBaseAssetId;
+    type Currency = currencies::Module<Testtime>;
 }
 
 #[derive(Clone, Eq, PartialEq, Encode, Decode, Debug)]
@@ -297,8 +299,6 @@ pub enum PolySwapActionExample {
     Multi(MultiSwapActionExample),
     Crowd(CrowdSwapActionExample),
 }
-
-use PolySwapActionExample::*;
 
 impl common::SwapAction<AccountId, TechAccountId, Testtime> for PolySwapActionExample {
     fn reserve(&self, source: &AccountId) -> dispatch::DispatchResult {

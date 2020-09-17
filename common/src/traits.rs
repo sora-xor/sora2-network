@@ -128,7 +128,7 @@ where
 pub type AccountIdOf<T> = <T as frame_system::Trait>::AccountId;
 
 /// Common DEX trait. Used for DEX-related pallets.
-pub trait Trait: frame_system::Trait {
+pub trait Trait: frame_system::Trait + currencies::Trait {
     /// DEX identifier.
     type DEXId: Parameter + Ord + Default;
 }

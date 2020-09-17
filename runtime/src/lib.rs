@@ -43,6 +43,7 @@ pub use sp_runtime::{Perbill, Permill};
 /// Import the template pallet.
 pub use template;
 
+use common::prelude::Balance;
 /// Import the message pallet.
 pub use cumulus_token_dealer;
 
@@ -64,9 +65,6 @@ pub type AccountId = <<Signature as Verify>::Signer as IdentifyAccount>::Account
 /// The type for looking up accounts. We don't expect more than 4 billion of them, but you
 /// never know...
 pub type AccountIndex = u32;
-
-/// Balance of an account.
-pub type Balance = u128;
 
 /// Index of a transaction in the chain.
 pub type Index = u32;
@@ -252,6 +250,7 @@ impl assets::Trait for Runtime {
     type Event = Event;
     type AssetId = AssetId;
     type GetBaseAssetId = GetBaseAssetId;
+    type Currency = currencies::Module<Runtime>;
 }
 
 impl trading_pair::Trait for Runtime {
@@ -274,14 +273,13 @@ impl bonding_curve_pool::Trait for Runtime {}
 
 type TechAccountIdPrimitive = common::TechAccountId<AccountId, AssetId, DEXId>;
 type TechAssetId = common::TechAssetId<AssetId, DEXId>;
-type TechAmount = Amount;
 type TechBalance = Balance;
 
 impl technical::Trait for Runtime {
     type Event = Event;
     type TechAssetId = TechAssetId;
     type TechAccountIdPrimitive = TechAccountIdPrimitive;
-    type TechAmount = TechAmount;
+    type TechAmount = Amount;
     type TechBalance = TechBalance;
     type Trigger = ();
     type Condition = ();
@@ -342,7 +340,7 @@ where
         let current_block = System::block_number()
             .saturated_into::<u64>()
             .saturating_sub(1);
-        let tip = 0;
+        let tip = 0u32;
         let extra: SignedExtra = (
             // system::CheckSpecVersion::<Runtime>::new(),
             frame_system::CheckTxVersion::<Runtime>::new(),
@@ -350,7 +348,7 @@ where
             frame_system::CheckEra::<Runtime>::from(generic::Era::mortal(period, current_block)),
             frame_system::CheckNonce::<Runtime>::from(index),
             frame_system::CheckWeight::<Runtime>::new(),
-            pallet_transaction_payment::ChargeTransactionPayment::<Runtime>::from(tip),
+            pallet_transaction_payment::ChargeTransactionPayment::<Runtime>::from(tip.into()),
         );
 
         #[cfg_attr(not(feature = "std"), allow(unused_variables))]
@@ -416,7 +414,7 @@ impl cumulus_parachain_upgrade::Trait for Runtime {
 impl cumulus_message_broker::Trait for Runtime {
     type Event = Event;
     type DownwardMessageHandlers = TokenDealer;
-    type UpwardMessage = cumulus_upward_message::RococoUpwardMessage;
+    type UpwardMessage = common::prelude::RococoUpwardMessage;
     type ParachainId = ParachainInfo;
     type XCMPMessage = cumulus_token_dealer::XCMPMessage<AccountId, Balance>;
     type XCMPMessageHandlers = TokenDealer;
@@ -430,7 +428,7 @@ impl permissions::Trait for Runtime {
 impl cumulus_token_dealer::Trait for Runtime {
     type Event = Event;
     type UpwardMessageSender = MessageBroker;
-    type UpwardMessage = cumulus_upward_message::RococoUpwardMessage;
+    type UpwardMessage = common::prelude::RococoUpwardMessage;
     type Currency = Balances;
     type XCMPMessageSender = MessageBroker;
 }

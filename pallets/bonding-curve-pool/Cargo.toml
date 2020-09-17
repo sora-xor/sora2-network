@@ -23,6 +23,7 @@ tokens = { package = "orml-tokens", branch = "rococo-branch", git = "https://git
 orml-traits = { package = "orml-traits", branch = "rococo-branch", git = "https://github.com/vmarkushin/open-runtime-module-library", default-features = false }
 sp-runtime = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "rococo-branch" }
 assets = { path = "../assets", default-features = false }
+technical = { path = "../technical", default-features = false }
 
 [dev-dependencies]
 sp-core = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "rococo-branch" }
@@ -44,5 +45,5 @@ std = [
     'tokens/std',
     'orml-traits/std',
     'assets/std',
-    'permissions/std',
+    'technical/std',
 ]

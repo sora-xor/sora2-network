@@ -2,12 +2,12 @@
 
 use sp_arithmetic::FixedU128;
 
+mod balance;
 mod fixed_wrapper;
+pub mod mock;
 mod primitives;
 mod traits;
 mod utils;
-
-pub mod mock;
 
 use blake2_rfc;
 use codec::Encode;
@@ -16,6 +16,7 @@ use sp_core::hash::H512;
 
 pub use traits::Trait;
 pub mod prelude {
+    pub use super::balance::*;
     pub use super::fixed_wrapper::*;
     pub use super::primitives::*;
     pub use super::traits::*;
@@ -32,6 +33,10 @@ pub type Asset<T, GetAssetId> = currencies::Currency<T, GetAssetId>;
 
 /// Basic type representing assets quantity.
 pub type Fixed = FixedU128;
+
+pub type Price = Fixed;
+
+pub type Amount = i128;
 
 /// Type definition representing financial basis points (1bp is 0.01%)
 pub type BasisPoints = u16;
