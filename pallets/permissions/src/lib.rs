@@ -20,11 +20,8 @@
 
 use frame_support::{
     codec::{Decode, Encode},
-    decl_error, decl_event, decl_module, decl_storage, dispatch,
-    traits::Get,
-    RuntimeDebug,
+    decl_error, decl_event, decl_module, decl_storage, RuntimeDebug,
 };
-use frame_system::ensure_signed;
 use sp_core::hash::H512;
 
 #[cfg(test)]
@@ -41,6 +38,19 @@ pub const EXCHANGE: u32 = 2;
 pub struct Permission<T: frame_system::Trait> {
     owner_id: T::AccountId,
     params: H512,
+}
+
+impl<T: Trait> Permission<T> {
+    pub fn new(owner_id: T::AccountId) -> Self {
+        Self {
+            owner_id,
+            params: H512::zero(),
+        }
+    }
+
+    pub fn with_parameters(owner_id: T::AccountId, params: H512) -> Self {
+        Self { owner_id, params }
+    }
 }
 
 /// Pallet's configuration with parameters and types on which it depends.
@@ -76,6 +86,8 @@ decl_event!(
         PermissionGranted(u32, AccountId),
         /// Permission was transfered to a new owner. [permission, who]
         PermissionTransfered(u32, AccountId),
+        /// Permission was created with an owner. [permission, who]
+        PermissionCreated(u32, AccountId),
     }
 );
 
@@ -86,86 +98,114 @@ decl_error! {
         PermissionNotFound,
         /// Account doesn't own a permission.
         PermissionNotOwned,
+        /// Permission already exists in the system.
+        PermissionAlreadyExists,
     }
 }
 
-decl_module! {
-    /// Permissions module declaration.
-    pub struct Module<T: Trait> for enum Call where origin: T::Origin {
-        type Error = Error<T>;
-
-        fn deposit_event() = default;
-
-        /// Dispatchable that checks a permission of an Account.
-        #[weight = 10_000 + T::DbWeight::get().writes(1)]
-        pub fn check_permission(origin, permission_id: u32) -> dispatch::DispatchResult {
-            let who = ensure_signed(origin)?;
-            if Permissions::<T>::get(permission_id, &who).is_some() {
-                Ok(())
-            } else {
-                Err(Error::<T>::PermissionNotFound)?
-            }
+/// Permissions module declaration.
+impl<T: Trait> Module<T> {
+    /// Method checks a permission of an Account.
+    pub fn check_permission(who: T::AccountId, permission_id: u32) -> Result<(), Error<T>> {
+        if Permissions::<T>::get(permission_id, &who).is_some() {
+            Ok(())
+        } else {
+            Err(Error::<T>::PermissionNotFound)
         }
+    }
 
-        /// Dispatchable that checks a permission with defined parameters of an Account.
-        #[weight = 10_000 + T::DbWeight::get().writes(1)]
-        pub fn check_permission_with_parameters(origin, permission_id: u32, parameters: H512) -> dispatch::DispatchResult {
-            let who = ensure_signed(origin)?;
-            let permission = Permissions::<T>::get(permission_id, &who).ok_or(Error::<T>::PermissionNotFound)?;
-            if permission.params == parameters {
-                Ok(())
-            } else {
-                Err(Error::<T>::PermissionNotFound)?
-            }
+    /// Method checks a permission with defined parameters of an Account.
+    pub fn check_permission_with_parameters(
+        who: T::AccountId,
+        permission_id: u32,
+        parameters: H512,
+    ) -> Result<(), Error<T>> {
+        let permission =
+            Permissions::<T>::get(permission_id, &who).ok_or(Error::<T>::PermissionNotFound)?;
+        if permission.params == parameters {
+            Ok(())
+        } else {
+            Err(Error::<T>::PermissionNotFound)
         }
+    }
 
-        /// Dispatchable that grants a permission to an Account.
-        #[weight = 10_000 + T::DbWeight::get().reads_writes(1,1)]
-        pub fn grant_permission(origin, account_id: T::AccountId, permission_id: u32) -> dispatch::DispatchResult {
-            let who = ensure_signed(origin)?;
-            let permission = Permissions::<T>::get(permission_id, &who).ok_or(Error::<T>::PermissionNotFound)?;
+    /// Method grants a permission to an Account.
+    pub fn grant_permission(
+        who: T::AccountId,
+        account_id: T::AccountId,
+        permission_id: u32,
+    ) -> Result<(), Error<T>> {
+        let permission =
+            Permissions::<T>::get(permission_id, &who).ok_or(Error::<T>::PermissionNotFound)?;
+        if permission.owner_id == who {
+            Permissions::insert(permission_id, account_id.clone(), permission);
+            Self::deposit_event(RawEvent::PermissionGranted(permission_id, account_id));
+            Ok(())
+        } else {
+            Err(Error::<T>::PermissionNotOwned)
+        }
+    }
+
+    /// Method grants a permission with defined parameters to an Account.
+    pub fn grant_permission_with_parameters(
+        who: T::AccountId,
+        account_id: T::AccountId,
+        permission_id: u32,
+        parameters: H512,
+    ) -> Result<(), Error<T>> {
+        let permission =
+            Permissions::<T>::get(permission_id, &who).ok_or(Error::<T>::PermissionNotFound)?;
+        if permission.params == parameters {
             if permission.owner_id == who {
                 Permissions::insert(permission_id, account_id.clone(), permission);
                 Self::deposit_event(RawEvent::PermissionGranted(permission_id, account_id));
                 Ok(())
             } else {
-                Err(Error::<T>::PermissionNotOwned)?
+                Err(Error::<T>::PermissionNotOwned)
             }
+        } else {
+            Err(Error::<T>::PermissionNotFound)
         }
+    }
 
-        /// Dispatchable that grants a permission with defined parameters to an Account.
-        #[weight = 10_000 + T::DbWeight::get().reads_writes(1,1)]
-        pub fn grant_permission_with_parameters(origin, account_id: T::AccountId, permission_id: u32, parameters: H512) -> dispatch::DispatchResult {
-            let who = ensure_signed(origin)?;
-            let permission = Permissions::<T>::get(permission_id, &who).ok_or(Error::<T>::PermissionNotFound)?;
-            if permission.params == parameters {
-                if permission.owner_id == who {
-                    Permissions::insert(permission_id, account_id.clone(), permission);
-                    Self::deposit_event(RawEvent::PermissionGranted(permission_id, account_id));
-                    Ok(())
-                } else {
-                    Err(Error::<T>::PermissionNotOwned)?
-                }
-            } else {
-                Err(Error::<T>::PermissionNotFound)?
-            }
+    /// Method transfers a permission from owner to another Account.
+    pub fn transfer_permission(
+        who: T::AccountId,
+        account_id: T::AccountId,
+        permission_id: u32,
+    ) -> Result<(), Error<T>> {
+        let permission =
+            Permissions::<T>::get(permission_id, &who).ok_or(Error::<T>::PermissionNotFound)?;
+        if permission.owner_id == who {
+            Permissions::insert(permission_id, account_id.clone(), permission);
+            Permissions::<T>::remove(permission_id, who);
+            Self::deposit_event(RawEvent::PermissionTransfered(permission_id, account_id));
+            Ok(())
+        } else {
+            Err(Error::<T>::PermissionNotOwned)
         }
+    }
 
-
-
-        /// Dispatchable that transfers a permission from owner to another Account.
-        #[weight = 10_000 + T::DbWeight::get().reads_writes(1,1)]
-        pub fn transfer_permission(origin, account_id: T::AccountId, permission_id: u32) -> dispatch::DispatchResult {
-            let who = ensure_signed(origin)?;
-            let permission = Permissions::<T>::get(permission_id, &who).ok_or(Error::<T>::PermissionNotFound)?;
-            if permission.owner_id == who {
-                Permissions::insert(permission_id, account_id.clone(), permission);
-                Permissions::<T>::remove(permission_id, who);
-                Self::deposit_event(RawEvent::PermissionTransfered(permission_id, account_id));
-                Ok(())
-            } else {
-                Err(Error::<T>::PermissionNotOwned)?
-            }
+    /// Method creates a permission from scratch.
+    pub fn create_permission(
+        who: T::AccountId,
+        account_id: T::AccountId,
+        permission_id: u32,
+        permission: Permission<T>,
+    ) -> Result<(), Error<T>> {
+        if Permissions::<T>::get(permission_id, &account_id).is_some() {
+            Err(Error::<T>::PermissionAlreadyExists)
+        } else {
+            Permissions::insert(permission_id, account_id.clone(), permission);
+            Self::deposit_event(RawEvent::PermissionCreated(permission_id, account_id));
+            Ok(())
         }
+    }
+}
+
+decl_module! {
+    pub struct Module<T: Trait> for enum Call where origin: T::Origin {
+        type Error = Error<T>;
+        fn deposit_event() = default;
     }
 }
