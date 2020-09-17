@@ -80,7 +80,18 @@ if [ "$INSIDE_DOCKER_USE_COMMIT" != "" ]; then
 	git clone /repos/parachain || exit 1
 	mv parachain/* . || exit 1
 	mv parachain/.[a-hj-z]* . || exit 1
+	git checkout "docker/build" || exit 1
+	mv scripts scripts.docker || exit 1
+	mv misc    misc.docker || exit 1
 	git checkout "$INSIDE_DOCKER_USE_COMMIT" || exit 1
+	if [ -d scripts ]; then
+		mv scripts scripts.commit || exit 1
+	fi
+	if [ -d misc ]; then
+		mv misc    misc.commit || exit 1
+	fi
+	mv scripts.docker scripts || exit 1
+	mv misc.docker    misc || exit 1
 	if [ "$INSIDE_DOCKER_RUN_COMMANDS" != "" ]; then
 		bash -c "$INSIDE_DOCKER_RUN_COMMANDS"
 		echo RUN COMMANDS IS FINISHED WITH CODE $?
