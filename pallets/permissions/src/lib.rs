@@ -32,6 +32,9 @@ mod tests;
 
 pub const TRANSFER: u32 = 1;
 pub const EXCHANGE: u32 = 2;
+pub const MINT: u32 = 3;
+pub const BURN: u32 = 4;
+pub const SLASH: u32 = 5;
 
 /// Permission container with parameters and information about it's owner.
 #[derive(PartialEq, Eq, Clone, Default, Encode, Decode, RuntimeDebug)]

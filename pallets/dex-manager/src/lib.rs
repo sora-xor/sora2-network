@@ -1,6 +1,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use common::{in_basis_points_range, AccountIdOf, AssetIdOf, EnsureDEXOwner};
+use assets::AssetIdOf;
+use common::{in_basis_points_range, AccountIdOf, EnsureDEXOwner};
 use frame_support::sp_runtime::DispatchError;
 use frame_support::{
     decl_error, decl_event, decl_module, decl_storage, dispatch::DispatchResult, ensure,
@@ -16,7 +17,7 @@ mod tests;
 
 type DEXInfo<T> = common::DEXInfo<AccountIdOf<T>, AssetIdOf<T>>;
 
-pub trait Trait: common::Trait {
+pub trait Trait: common::Trait + assets::Trait {
     type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
     type GetDefaultFee: Get<u16>;
     type GetDefaultProtocolFee: Get<u16>;

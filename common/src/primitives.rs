@@ -28,7 +28,8 @@ pub struct TradingPair<AssetId> {
 
 /// Asset identifier.
 #[derive(Encode, Decode, Eq, PartialEq, Copy, Clone, PartialOrd, Ord, Debug)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Hash))]
+#[repr(u8)]
 pub enum AssetId {
     XOR = 0,
     DOT = 1,

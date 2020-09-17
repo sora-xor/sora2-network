@@ -20,6 +20,7 @@ exit 0
 commit=\`get_current_commit\`
   -c, --commit [hex]      Use this commit
   -l, --logfile [path]    Use this logfile
+  -u, --use-unix-socket   Use unix socket to pass commands to run
 EOF
 `
 eval "$getopt_code"
@@ -27,6 +28,11 @@ eval "$getopt_code"
 if [ "$logfile" == "" ]; then
 	logfile=`mktemp -u`.log
 	info "logfile is $logfile"
+fi
+
+if [ "$commit" == "" -o "with_last_commit" == "1" ]; then
+	commit=`git log | head -n 1 | awk '{ print $2 }'`
+	test $? == 0 || bomb 2 1
 fi
 
 docker_pid=$logfile.pid
@@ -86,17 +92,28 @@ docker-compose up > $logfile.tmp 2>&1 &
 echo \$! > $docker_pid
 EOF
 
-must flock $lockdir -c "
-echo LOCKING JOBS DIR
-rm -f $socket
-socat - UNIX-LISTEN:$socket < $tmpdir/git_up.sh &
-pid=\$!
-sh $tmpdir/docker_up.sh &
-echo PASSING SCRIPT TO SOCKET
-wait \$pid
-echo UNLOCKING JOBS DIR
-" &
-flock_pid=$!
-wait
+if [ "$use_unix_socket" == 1 ]; then
 
-check_success
+	must flock $lockdir -c "
+	echo LOCKING JOBS DIR
+	rm -f $socket
+	socat - UNIX-LISTEN:$socket < $tmpdir/git_up.sh &
+	pid=\$!
+	sh $tmpdir/docker_up.sh &
+	echo PASSING SCRIPT TO SOCKET
+	wait \$pid
+	echo UNLOCKING JOBS DIR
+	" &
+	flock_pid=$!
+	wait
+	check_success
+
+else
+	export INSIDE_DOCKER_USE_COMMIT="$commit"
+	if [ "$run" != "" ]; then
+		export INSIDE_DOCKER_RUN_COMMANDS="$run"
+	fi
+	sh $tmpdir/docker_up.sh
+	check_success
+fi
+

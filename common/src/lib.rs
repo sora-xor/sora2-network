@@ -5,6 +5,11 @@ use sp_arithmetic::FixedU128;
 mod primitives;
 mod traits;
 
+use blake2_rfc;
+use codec::Encode;
+use sp_core::hash::H512;
+//use twox_hash;
+
 pub use primitives::*;
 pub use traits::*;
 
@@ -24,4 +29,8 @@ pub fn in_basis_points_range<T: Into<u16>>(value: T) -> bool {
         0..=10000 => true,
         _ => false,
     }
+}
+
+pub fn hash<T: Encode>(val: &T) -> H512 {
+    H512::from_slice(blake2_rfc::blake2b::blake2b(64, &[], &val.encode()).as_bytes())
 }

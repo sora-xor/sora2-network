@@ -1,7 +1,7 @@
-use frame_support::sp_runtime::traits::BadOrigin;
-use frame_support::sp_runtime::DispatchError;
-use frame_support::traits::Get;
-use frame_support::Parameter;
+use frame_support::{
+    sp_runtime::{traits::BadOrigin, DispatchError},
+    Parameter,
+};
 use frame_system::RawOrigin;
 
 /// Check on origin that it is a DEX owner.
@@ -30,17 +30,12 @@ impl<DEXId, AccountId> EnsureDEXOwner<DEXId, AccountId, DispatchError> for () {
     }
 }
 
-pub type AssetIdOf<T> = <T as Trait>::AssetId;
 pub type AccountIdOf<T> = <T as frame_system::Trait>::AccountId;
 
 /// Common DEX trait. Used for DEX-related pallets.
-pub trait Trait: frame_system::Trait + currencies::Trait {
+pub trait Trait: frame_system::Trait {
     /// DEX identifier.
     type DEXId: Parameter;
-    /// DEX assets (currency) identifier.
-    type AssetId: Parameter + Ord + Default;
-    /// The base asset as the core asset in all trading pairs
-    type GetBaseAssetId: Get<AssetIdOf<Self>>;
     /// Performs checks for origin is a DEX owner.
     type EnsureDEXOwner: EnsureDEXOwner<Self::DEXId, Self::AccountId, DispatchError>;
 
