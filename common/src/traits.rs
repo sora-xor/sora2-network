@@ -1,8 +1,12 @@
+use frame_support::dispatch::DispatchResult;
+use frame_support::weights::Weight;
 use frame_support::{
     sp_runtime::{traits::BadOrigin, DispatchError},
     Parameter,
 };
 use frame_system::RawOrigin;
+//FIXME maybe try info or try from is better than From and Option.
+//use sp_std::convert::TryInto;
 
 /// Check on origin that it is a DEX owner.
 pub trait EnsureDEXOwner<DEXId, AccountId, Error> {
@@ -47,5 +51,108 @@ pub trait Trait: frame_system::Trait {
         OuterOrigin: Into<Result<RawOrigin<Self::AccountId>, OuterOrigin>>,
     {
         Self::EnsureDEXOwner::ensure_dex_owner(dex_id, origin)
+    }
+}
+
+/// Definition of a pending atomic swap action. It contains the following three phrases:
+///
+/// - **Reserve**: reserve the resources needed for a swap. This is to make sure that **Claim**
+/// succeeds with best efforts.
+/// - **Claim**: claim any resources reserved in the first phrase.
+/// - **Cancel**: cancel any resources reserved in the first phrase.
+pub trait SwapAction<SourceAccountId, TargetAccountId, T: Trait> {
+    /// Reserve the resources needed for the swap, from the given `source`. The reservation is
+    /// allowed to fail. If that is the case, the the full swap creation operation is cancelled.
+    fn reserve(&self, source: &SourceAccountId) -> DispatchResult;
+    /// Claim the reserved resources, with `source`. Returns whether the claim succeeds.
+    fn claim(&self, source: &SourceAccountId) -> bool;
+    /// Weight for executing the operation.
+    fn weight(&self) -> Weight;
+    /// Cancel the resources reserved in `source`.
+    fn cancel(&self, source: &SourceAccountId);
+}
+
+/// Dummy implementation for cases then () used in runtime as empty SwapAction.
+impl<SourceAccountId, TargetAccountId, T: Trait> SwapAction<SourceAccountId, TargetAccountId, T>
+    for ()
+{
+    fn reserve(&self, _source: &SourceAccountId) -> DispatchResult {
+        Ok(())
+    }
+    fn claim(&self, _source: &SourceAccountId) -> bool {
+        true
+    }
+    fn weight(&self) -> Weight {
+        unimplemented!()
+    }
+    fn cancel(&self, _source: &SourceAccountId) {
+        unimplemented!()
+    }
+}
+
+pub trait SwapRulesValidation<SourceAccountId, TargetAccountId, T: Trait>:
+    SwapAction<SourceAccountId, TargetAccountId, T>
+{
+    /// Validate action if next steps must by applyed by consensus.
+    fn validate(&self, source: &SourceAccountId) -> bool;
+
+    /// Instant auto claim is performed just after reserve.
+    /// If triggered is not used, than it is one time auto claim, it will be canceled if it fails.
+    fn instant_auto_claim_used(&self) -> bool;
+
+    /// Triggered auto claim can be used for example for crowd like schemes.
+    /// for example: when crowd aggregation if succesefull event is fired by consensus, and it is trigger.
+    fn triggered_auto_claim_used(&self) -> bool;
+
+    /// Predicate for posibility to claim, timeout for example, or one time for crowd schemes/
+    fn is_able_to_claim(&self) -> bool;
+}
+
+impl<SourceAccountId, TargetAccountId, T: Trait>
+    SwapRulesValidation<SourceAccountId, TargetAccountId, T> for ()
+{
+    fn validate(&self, _source: &SourceAccountId) -> bool {
+        true
+    }
+    fn instant_auto_claim_used(&self) -> bool {
+        true
+    }
+    fn triggered_auto_claim_used(&self) -> bool {
+        false
+    }
+    fn is_able_to_claim(&self) -> bool {
+        true
+    }
+}
+
+pub trait PureOrWrapped<Regular>: From<Regular> + Into<Option<Regular>> {
+    /// Not any data is wrapped.
+    fn is_pure(&self) -> bool;
+
+    /// The entity is a wrapped `Regular`.
+    fn is_wrapped_regular(&self) -> bool;
+
+    /// The entity is wrapped
+    fn is_wrapped(&self) -> bool;
+}
+
+pub trait IsRepresentation {
+    fn is_repr(&self) -> bool;
+}
+
+pub trait WrappedRepr<Repr> {
+    fn wrapped_repr(repr: Repr) -> Self;
+}
+
+/// PureOrWrapped is reflexive.
+impl<A> PureOrWrapped<A> for A {
+    fn is_pure(&self) -> bool {
+        false
+    }
+    fn is_wrapped_regular(&self) -> bool {
+        true
+    }
+    fn is_wrapped(&self) -> bool {
+        true
     }
 }

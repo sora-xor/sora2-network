@@ -4378,6 +4378,7 @@ dependencies = [
  "sp-transaction-pool",
  "sp-version",
  "substrate-wasm-builder-runner 1.0.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "technical",
  "trading-pair",
  "xor-fee",
 ]
@@ -8353,6 +8354,28 @@ name = "target-lexicon"
 version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ab0e7238dcc7b40a7be719a25365910f6807bd864f4cce6b2e6b873658e2b19d"
+
+[[package]]
+name = "technical"
+version = "0.0.0"
+dependencies = [
+ "assets",
+ "common",
+ "dex-manager",
+ "frame-support",
+ "frame-system",
+ "orml-currencies",
+ "orml-tokens",
+ "orml-traits",
+ "pallet-balances",
+ "parity-scale-codec",
+ "permissions",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+ "twox-hash",
+]
 
 [[package]]
 name = "tempfile"
