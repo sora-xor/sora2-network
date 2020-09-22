@@ -167,3 +167,10 @@ function set_done()
 		must touch -f $1
 	popd
 }
+
+function export_if_not_exist()
+{
+	if eval "test \"\$$1\" == \"\""; then
+		eval "export ${1}=\"${2}\""
+	fi
+}

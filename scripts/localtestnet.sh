@@ -39,7 +39,7 @@ top=`realpath $dirname/..`
 chain_json="$top/misc/rococo-custom.json"
 scripts="$top/scripts"
 if [ "$INSIDE_DOCKER" == "1" ]; then
-	if [ -d /cache ]; then
+	if [ -d "/cache" ]; then
 		dir="/cache"
 	else
 		dir="/cache_inside_image"
@@ -231,7 +231,7 @@ function build_parachain_binary() {
 			rm -f $parachain > /dev/null 2>&1
 		fi
 		if [ ! -f $parachain -o $skip_build_of_parachain_binary_if_it_exist == 0 ]; then
-			verbose make cargo-build-release
+			verbose must make cargo-build-release
 		fi
 		check_parachain_binary_and_cache_target
 	popd

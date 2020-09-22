@@ -45,7 +45,7 @@ yarn-build:
 	${RUN} "yarn build"
 
 .with_docker_jobs/localtestnet_testlog_from_commit_%.log:
-	@./scripts/docker_compose_up.sh $* $@ -e
+	@./scripts/docker_compose_up.sh --commit $* --logfile $@ -- -e
 
 %:
 	@./scripts/docker_compose_up.sh --commit $@ --logfile .with_docker_jobs/localtestnet_testlog_from_commit_$@.log -- -e
