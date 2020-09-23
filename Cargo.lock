@@ -718,6 +718,8 @@ dependencies = [
  "serde",
  "sp-arithmetic",
  "sp-core",
+ "sp-runtime",
+ "sp-std",
 ]
 
 [[package]]
@@ -1210,6 +1212,31 @@ dependencies = [
 ]
 
 [[package]]
+name = "dex-api"
+version = "0.1.0"
+dependencies = [
+ "assets",
+ "common",
+ "dex-manager",
+ "frame-support",
+ "frame-system",
+ "mock-liquidity-source",
+ "orml-currencies",
+ "orml-tokens",
+ "orml-traits",
+ "pallet-balances",
+ "parity-scale-codec",
+ "permissions",
+ "serde",
+ "sp-arithmetic",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+ "trading-pair",
+]
+
+[[package]]
 name = "dex-manager"
 version = "0.1.0"
 dependencies = [
@@ -1228,6 +1255,7 @@ dependencies = [
  "sp-core",
  "sp-io",
  "sp-runtime",
+ "sp-std",
 ]
 
 [[package]]
@@ -3173,6 +3201,31 @@ dependencies = [
 ]
 
 [[package]]
+name = "liquidity-proxy"
+version = "0.1.0"
+dependencies = [
+ "assets",
+ "common",
+ "dex-api",
+ "dex-manager",
+ "frame-support",
+ "frame-system",
+ "mock-liquidity-source",
+ "orml-currencies",
+ "orml-tokens",
+ "orml-traits",
+ "pallet-balances",
+ "parity-scale-codec",
+ "permissions",
+ "sp-arithmetic",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+ "trading-pair",
+]
+
+[[package]]
 name = "lock_api"
 version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3394,6 +3447,30 @@ checksum = "07b88fb9795d4d36d62a012dfbf49a8f5cf12751f36d31a9dbe66d528e58979e"
 dependencies = [
  "socket2",
  "winapi 0.3.9",
+]
+
+[[package]]
+name = "mock-liquidity-source"
+version = "0.1.0"
+dependencies = [
+ "assets",
+ "common",
+ "dex-manager",
+ "frame-support",
+ "frame-system",
+ "orml-currencies",
+ "orml-tokens",
+ "orml-traits",
+ "pallet-balances",
+ "parity-scale-codec",
+ "permissions",
+ "serde",
+ "sp-arithmetic",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+ "trading-pair",
 ]
 
 [[package]]
@@ -4163,7 +4240,7 @@ dependencies = [
 [[package]]
 name = "pallet-transaction-payment"
 version = "2.0.0-rc5"
-source = "git+https://github.com/paritytech/substrate?branch=rococo-branch#f397f246fd0a0c8c2ef2f0b7576ecbed133ed78d"
+source = "git+https://github.com/paritytech/substrate?branch=rococo-branch#83544d41abcc0e3d3cbbd6aa510e04dc50863e5c"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -4180,7 +4257,7 @@ dependencies = [
 [[package]]
 name = "pallet-transaction-payment-rpc"
 version = "2.0.0-rc5"
-source = "git+https://github.com/paritytech/substrate?branch=rococo-branch#f397f246fd0a0c8c2ef2f0b7576ecbed133ed78d"
+source = "git+https://github.com/paritytech/substrate?branch=rococo-branch#83544d41abcc0e3d3cbbd6aa510e04dc50863e5c"
 dependencies = [
  "jsonrpc-core",
  "jsonrpc-core-client",
@@ -4211,7 +4288,7 @@ dependencies = [
 [[package]]
 name = "pallet-transaction-payment-rpc-runtime-api"
 version = "2.0.0-rc5"
-source = "git+https://github.com/paritytech/substrate?branch=rococo-branch#f397f246fd0a0c8c2ef2f0b7576ecbed133ed78d"
+source = "git+https://github.com/paritytech/substrate?branch=rococo-branch#83544d41abcc0e3d3cbbd6aa510e04dc50863e5c"
 dependencies = [
  "frame-support",
  "parity-scale-codec",
@@ -4349,10 +4426,13 @@ dependencies = [
  "cumulus-runtime",
  "cumulus-token-dealer",
  "cumulus-upward-message",
+ "dex-api",
  "dex-manager",
  "frame-executive",
  "frame-support",
  "frame-system",
+ "liquidity-proxy",
+ "mock-liquidity-source",
  "orml-currencies",
  "orml-tokens",
  "pallet-balances",

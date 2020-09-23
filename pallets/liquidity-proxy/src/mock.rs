@@ -1,9 +1,11 @@
 use crate::{Module, Trait};
-use common::{fixed_from_basis_points, prelude::AssetId, Fixed};
+use common::{fixed_from_basis_points, hash, AssetId, DEXInfo, Fixed};
 use currencies::BasicCurrencyAdapter;
+
 use frame_support::{impl_outer_origin, parameter_types, weights::Weight};
 use frame_system as system;
-use permissions::INIT_DEX;
+
+use permissions::{INIT_DEX, MANAGE_DEX};
 use sp_core::{H256, H512};
 use sp_runtime::{
     testing::Header,
@@ -17,9 +19,8 @@ pub type Amount = i128;
 pub type Balance = u128;
 
 pub const ALICE: AccountId = 1;
-pub const BOB: AccountId = 2;
-pub const XOR: AssetId = AssetId::XOR;
 pub const DOT: AssetId = AssetId::DOT;
+pub const KSM: AssetId = AssetId::KSM;
 pub const DEX_A_ID: DEXId = 1;
 pub const DEX_B_ID: DEXId = 2;
 
@@ -68,8 +69,7 @@ impl system::Trait for Runtime {
 
 impl Trait for Runtime {
     type Event = ();
-    type GetDefaultFee = GetDefaultFee;
-    type GetDefaultProtocolFee = GetDefaultProtocolFee;
+    type LiquidityRegistry = dex_api::Module<Runtime>;
 }
 
 impl tokens::Trait for Runtime {
@@ -80,10 +80,6 @@ impl tokens::Trait for Runtime {
     type OnReceived = ();
 }
 
-impl permissions::Trait for Runtime {
-    type Event = ();
-}
-
 parameter_types! {
     pub const GetBaseAssetId: AssetId = AssetId::XOR;
 }
@@ -92,7 +88,7 @@ impl currencies::Trait for Runtime {
     type Event = ();
     type MultiCurrency = Tokens;
     type NativeCurrency = BasicCurrencyAdapter<Balances, Balance, Balance, Amount, BlockNumber>;
-    type GetNativeCurrencyId = <Runtime as assets::Trait>::GetBaseAssetId;
+    type GetNativeCurrencyId = GetBaseAssetId;
 }
 
 type DEXId = u32;
@@ -116,35 +112,86 @@ parameter_types! {
 
 impl pallet_balances::Trait for Runtime {
     type Balance = Balance;
-    type Event = ();
     type DustRemoval = ();
+    type Event = ();
     type ExistentialDeposit = ExistentialDeposit;
     type AccountStore = System;
     type WeightInfo = ();
+}
+
+impl dex_manager::Trait for Runtime {
+    type Event = ();
+    type GetDefaultFee = GetDefaultFee;
+    type GetDefaultProtocolFee = GetDefaultProtocolFee;
 }
 
 parameter_types! {
     pub GetFee: Fixed = fixed_from_basis_points(30u16);
 }
 
+impl mock_liquidity_source::Trait for Runtime {
+    type Event = ();
+    type GetFee = GetFee;
+    type EnsureDEXOwner = dex_manager::Module<Runtime>;
+    type EnsureTradingPairExists = trading_pair::Module<Runtime>;
+}
+
+impl permissions::Trait for Runtime {
+    type Event = ();
+}
+
+impl dex_api::Trait for Runtime {
+    type Event = ();
+    type MockLiquiditySource = mock_liquidity_source::Module<Runtime>;
+}
+
+impl trading_pair::Trait for Runtime {
+    type Event = ();
+    type EnsureDEXOwner = dex_manager::Module<Runtime>;
+}
+
 pub type System = frame_system::Module<Runtime>;
 pub type Balances = pallet_balances::Module<Runtime>;
 pub type Tokens = tokens::Module<Runtime>;
-pub type DEXModule = Module<Runtime>;
+pub type LiquidityProxy = Module<Runtime>;
 
 pub struct ExtBuilder {
-    endowed_accounts: Vec<(AccountId, AssetId, Balance)>,
+    reserves: Vec<(DEXId, AssetId, (Fixed, Fixed))>,
+    dex_list: Vec<(DEXId, DEXInfo<AssetId>)>,
     initial_permissions: Vec<(u32, AccountId, AccountId, Option<H512>)>,
 }
 
 impl Default for ExtBuilder {
     fn default() -> Self {
         Self {
-            endowed_accounts: vec![
-                (ALICE, XOR, 1_000_000_000_000_000_000u128),
-                (BOB, DOT, 1_000_000_000_000_000_000u128),
+            reserves: vec![
+                (DEX_A_ID, DOT, (Fixed::from(5000), Fixed::from(7000))),
+                (DEX_A_ID, KSM, (Fixed::from(5500), Fixed::from(4000))),
+                (DEX_B_ID, DOT, (Fixed::from(100), Fixed::from(45))),
             ],
-            initial_permissions: vec![(INIT_DEX, ALICE, ALICE, None)],
+            dex_list: vec![
+                (
+                    DEX_A_ID,
+                    DEXInfo {
+                        base_asset_id: GetBaseAssetId::get(),
+                        default_fee: GetDefaultFee::get(),
+                        default_protocol_fee: GetDefaultProtocolFee::get(),
+                    },
+                ),
+                (
+                    DEX_B_ID,
+                    DEXInfo {
+                        base_asset_id: GetBaseAssetId::get(),
+                        default_fee: GetDefaultFee::get(),
+                        default_protocol_fee: GetDefaultProtocolFee::get(),
+                    },
+                ),
+            ],
+            initial_permissions: vec![
+                (INIT_DEX, ALICE, ALICE, None),
+                (MANAGE_DEX, ALICE, ALICE, Some(hash(&DEX_A_ID))),
+                (MANAGE_DEX, ALICE, ALICE, Some(hash(&DEX_B_ID))),
+            ],
         }
     }
 }
@@ -155,14 +202,20 @@ impl ExtBuilder {
             .build_storage::<Runtime>()
             .unwrap();
 
-        tokens::GenesisConfig::<Runtime> {
-            endowed_accounts: self.endowed_accounts,
+        dex_manager::GenesisConfig::<Runtime> {
+            dex_list: self.dex_list,
         }
         .assimilate_storage(&mut t)
         .unwrap();
 
         permissions::GenesisConfig::<Runtime> {
             initial_permissions: self.initial_permissions,
+        }
+        .assimilate_storage(&mut t)
+        .unwrap();
+
+        mock_liquidity_source::GenesisConfig::<Runtime> {
+            reserves: self.reserves,
         }
         .assimilate_storage(&mut t)
         .unwrap();

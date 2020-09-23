@@ -35,6 +35,8 @@ pub const EXCHANGE: u32 = 2;
 pub const MINT: u32 = 3;
 pub const BURN: u32 = 4;
 pub const SLASH: u32 = 5;
+pub const INIT_DEX: u32 = 6;
+pub const MANAGE_DEX: u32 = 7;
 
 /// Permission container with parameters and information about it's owner.
 #[derive(PartialEq, Eq, Clone, Default, Encode, Decode, RuntimeDebug)]
@@ -68,15 +70,15 @@ decl_storage! {
         pub Permissions build(|config: &GenesisConfig<T>|
                               config.initial_permissions.iter()
                               .cloned()
-                              .map(|(permission_id, holder_id, owner_id)| (permission_id, holder_id, Permission::<T> {
+                              .map(|(permission_id, holder_id, owner_id, params)| (permission_id, holder_id, Permission::<T> {
                                   owner_id,
-                                  params: H512::zero()
+                                  params: params.unwrap_or(H512::zero()),
                               })).collect::<Vec<_>>()
                              ): double_map hasher(opaque_blake2_256) u32, hasher(opaque_blake2_256) T::AccountId => Option<Permission<T>>;
     }
 
     add_extra_genesis {
-        config(initial_permissions): Vec<(u32, T::AccountId, T::AccountId)>;
+        config(initial_permissions): Vec<(u32, T::AccountId, T::AccountId, Option<H512>)>;
     }
 }
 

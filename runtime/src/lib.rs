@@ -7,8 +7,7 @@
 #[cfg(feature = "std")]
 include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
 
-pub use common::prelude::AssetId;
-pub use common::BasisPoints;
+pub use common::{fixed_from_basis_points, prelude::AssetId, BasisPoints, Fixed};
 use currencies::BasicCurrencyAdapter;
 use frame_system::offchain::{Account, SigningTypes};
 use sp_api::impl_runtime_apis;
@@ -77,6 +76,9 @@ pub type Hash = sp_core::H256;
 
 /// Digest item type.
 pub type DigestItem = generic::DigestItem<Hash>;
+
+/// Identification of DEX.
+pub type DEXId = u32;
 
 /// Opaque types. These are used by the CLI to instantiate machinery that don't need to know
 /// the specifics of the runtime. They can then be made to be agnostic over specific formats
@@ -242,11 +244,8 @@ impl currencies::Trait for Runtime {
     type GetNativeCurrencyId = <Runtime as assets::Trait>::GetBaseAssetId;
 }
 
-pub type DEXId = u32;
-
 impl common::Trait for Runtime {
     type DEXId = DEXId;
-    type EnsureDEXOwner = dex_manager::Module<Runtime>;
 }
 
 impl assets::Trait for Runtime {
@@ -257,6 +256,7 @@ impl assets::Trait for Runtime {
 
 impl trading_pair::Trait for Runtime {
     type Event = Event;
+    type EnsureDEXOwner = dex_manager::Module<Runtime>;
 }
 
 parameter_types! {
@@ -286,6 +286,27 @@ impl technical::Trait for Runtime {
     type Trigger = ();
     type Condition = ();
     type SwapAction = ();
+}
+
+impl liquidity_proxy::Trait for Runtime {
+    type Event = Event;
+    type LiquidityRegistry = dex_api::Module<Runtime>;
+}
+
+parameter_types! {
+    pub GetFee: Fixed = fixed_from_basis_points(30u16);
+}
+
+impl mock_liquidity_source::Trait for Runtime {
+    type Event = Event;
+    type GetFee = GetFee;
+    type EnsureDEXOwner = dex_manager::Module<Runtime>;
+    type EnsureTradingPairExists = trading_pair::Module<Runtime>;
+}
+
+impl dex_api::Trait for Runtime {
+    type Event = Event;
+    type MockLiquiditySource = mock_liquidity_source::Module<Runtime>;
 }
 
 impl<T: SigningTypes> frame_system::offchain::SignMessage<T> for Runtime {
@@ -461,6 +482,9 @@ construct_runtime! {
         DEXManager: dex_manager::{Module, Call, Storage, Config<T>, Event<T>},
         BondingCurvePool: bonding_curve_pool::{Module},
         Technical: technical::{Module, Call, Event<T>},
+        LiquidityProxy: liquidity_proxy::{Module, Call, Event<T>},
+        MockLiquiditySource: mock_liquidity_source::{Module, Call, Storage, Config<T>, Event<T>},
+        DEXAPI: dex_api::{Module, Call, Event<T>},
         //IrohaBridge: iroha_bridge::{Module, Call, Storage, Config<T>, Event<T>},
     }
 }

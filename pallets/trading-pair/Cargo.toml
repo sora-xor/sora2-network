@@ -21,7 +21,6 @@ sp-std = { git = "https://github.com/paritytech/substrate", default-features = f
 currencies = { package = "orml-currencies", branch = "rococo-branch", git = "https://github.com/vmarkushin/open-runtime-module-library", default-features = false }
 tokens = { package = "orml-tokens", branch = "rococo-branch", git = "https://github.com/vmarkushin/open-runtime-module-library", default-features = false }
 traits = { package = "orml-traits", branch = "rococo-branch", git = "https://github.com/vmarkushin/open-runtime-module-library", default-features = false }
-dex-manager = { path = "../dex-manager", default-features = false }
 
 [dev-dependencies]
 sp-core = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "rococo-branch" }
@@ -29,6 +28,7 @@ sp-io = { git = "https://github.com/paritytech/substrate", default-features = fa
 sp-runtime = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "rococo-branch" }
 pallet-balances = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "rococo-branch" }
 permissions = { path = "../permissions", default-features = false }
+dex-manager = { path = "../dex-manager", default-features = false }
 
 [features]
 default = ['std']

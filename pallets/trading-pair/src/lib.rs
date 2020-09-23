@@ -10,15 +10,21 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
+use common::{EnsureDEXOwner, EnsureTradingPairExists};
 use frame_support::{
-    decl_error, decl_event, decl_module, decl_storage, dispatch, ensure, traits::Get,
+    decl_error, decl_event, decl_module, decl_storage,
+    dispatch::{DispatchError, DispatchResult},
+    ensure,
+    traits::Get,
 };
 use sp_std::collections::btree_set::BTreeSet;
+use sp_std::vec::Vec;
 
 type TradingPair<T> = common::prelude::TradingPair<<T as assets::Trait>::AssetId>;
 
 pub trait Trait: common::Trait + assets::Trait {
     type Event: From<Event<Self>> + Into<<Self as frame_system::Trait>::Event>;
+    type EnsureDEXOwner: EnsureDEXOwner<Self::DEXId, Self::AccountId, DispatchError>;
 }
 
 decl_storage! {
@@ -45,6 +51,8 @@ decl_error! {
         ForbiddenBaseAssetId,
         /// The specified base asset ID is the same as target asset ID.
         IdenticalAssetIds,
+        /// Trading pair is not registered for given DEXId.
+        TradingPairDoesntExist,
     }
 }
 
@@ -63,8 +71,8 @@ decl_module! {
         ///
         /// TODO: add information about weight
         #[weight = 10_000 + T::DbWeight::get().writes(1)]
-        pub fn register(origin, dex_id: T::DEXId, base_asset_id: T::AssetId, target_asset_id: T::AssetId) -> dispatch::DispatchResult {
-            let _author = T::ensure_dex_owner(&dex_id, origin)?;
+        pub fn register(origin, dex_id: T::DEXId, base_asset_id: T::AssetId, target_asset_id: T::AssetId) -> DispatchResult {
+            let _author = T::EnsureDEXOwner::ensure_dex_owner(&dex_id, origin)?;
             ensure!(base_asset_id != target_asset_id, Error::<T>::IdenticalAssetIds);
             ensure!(base_asset_id == T::GetBaseAssetId::get(), Error::<T>::ForbiddenBaseAssetId);
             let trading_pair = TradingPair::<T> {
@@ -76,5 +84,28 @@ decl_module! {
             Self::deposit_event(RawEvent::TradingPairStored(dex_id, trading_pair));
             Ok(())
         }
+    }
+}
+
+impl<T: Trait> EnsureTradingPairExists<T::DEXId, T::AssetId, DispatchError> for Module<T> {
+    fn ensure_trading_pair_exists(
+        dex_id: &T::DEXId,
+        target_asset_id: &T::AssetId,
+    ) -> Result<(), DispatchError> {
+        let trading_pair = TradingPair::<T> {
+            base_asset_id: T::GetBaseAssetId::get(),
+            target_asset_id: target_asset_id.clone(),
+        };
+        ensure!(
+            Self::trading_pairs(dex_id).contains(&trading_pair),
+            Error::<T>::TradingPairDoesntExist
+        );
+        Ok(())
+    }
+}
+
+impl<T: Trait> Module<T> {
+    pub fn list_trading_pairs(dex_id: T::DEXId) -> Vec<TradingPair<T>> {
+        Self::trading_pairs(dex_id).iter().cloned().collect()
     }
 }

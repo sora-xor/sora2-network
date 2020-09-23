@@ -1,8 +1,8 @@
 [package]
-description = 'Pallet for creation of DEXes, managing their specific parameters and ownership.'
+description = 'Pallet for aggregation of available liquidity sources for other pallets and external api.'
 authors = ["Maxim Surkov <modbrin@gmail.com>"]
 version = '0.1.0'
-name = 'dex-manager'
+name = 'dex-api'
 edition = '2018'
 
 [package.metadata.docs.rs]
@@ -26,7 +26,9 @@ traits = { package = "orml-traits", branch = "rococo-branch", git = "https://git
 sp-arithmetic = { git = "https://github.com/paritytech/substrate", branch = "rococo-branch", default-features = false }
 pallet-balances = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "rococo-branch" }
 serde = { version = "1.0.101", optional = true, features = ["derive"], default-features = false }
-permissions = { path = "../permissions", default-features = false }
+dex-manager = { path = "../dex-manager", default-features = false }
+trading-pair = { path = "../trading-pair", default-features = false }
+mock-liquidity-source = { path = "../mock-liquidity-source", default-features = false }
 
 [dev-dependencies]
 sp-core = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "rococo-branch" }
@@ -46,5 +48,7 @@ std = [
     'tokens/std',
     'traits/std',
     'serde/std',
-    'permissions/std',
+    'dex-manager/std',
+    'trading-pair/std',
+    'mock-liquidity-source/std',
 ]

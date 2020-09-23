@@ -1,10 +1,14 @@
 use crate::{Module, Trait};
-use common::prelude::{AssetId, DEXInfo};
-use common::BasisPoints;
+use common::{
+    hash,
+    prelude::{AssetId, DEXInfo},
+    BasisPoints,
+};
 use currencies::BasicCurrencyAdapter;
 use frame_support::{impl_outer_origin, parameter_types, weights::Weight};
 use frame_system as system;
-use sp_core::H256;
+use permissions::{INIT_DEX, MANAGE_DEX};
+use sp_core::{H256, H512};
 use sp_runtime::{
     testing::Header,
     traits::{BlakeTwo256, IdentityLookup},
@@ -65,6 +69,7 @@ impl system::Trait for Runtime {
 
 impl Trait for Runtime {
     type Event = ();
+    type EnsureDEXOwner = dex_manager::Module<Runtime>;
 }
 
 impl tokens::Trait for Runtime {
@@ -90,7 +95,6 @@ type DEXId = u32;
 
 impl common::Trait for Runtime {
     type DEXId = DEXId;
-    type EnsureDEXOwner = dex_manager::Module<Runtime>;
 }
 
 impl assets::Trait for Runtime {
@@ -137,7 +141,8 @@ pub type TradingPair = Module<Runtime>;
 
 pub struct ExtBuilder {
     endowed_accounts: Vec<(AccountId, AssetId, Balance)>,
-    dex_list: Vec<(DEXId, DEXInfo<AccountId, AssetId>)>,
+    dex_list: Vec<(DEXId, DEXInfo<AssetId>)>,
+    initial_permissions: Vec<(u32, AccountId, AccountId, Option<H512>)>,
 }
 
 impl Default for ExtBuilder {
@@ -150,12 +155,15 @@ impl Default for ExtBuilder {
             dex_list: vec![(
                 DEX_ID,
                 DEXInfo {
-                    owner_account_id: ALICE,
                     base_asset_id: XOR,
                     default_fee: 30,
                     default_protocol_fee: 0,
                 },
             )],
+            initial_permissions: vec![
+                (INIT_DEX, ALICE, ALICE, None),
+                (MANAGE_DEX, ALICE, ALICE, Some(hash(&DEX_ID))),
+            ],
         }
     }
 }
@@ -168,6 +176,12 @@ impl ExtBuilder {
 
         tokens::GenesisConfig::<Runtime> {
             endowed_accounts: self.endowed_accounts,
+        }
+        .assimilate_storage(&mut t)
+        .unwrap();
+
+        permissions::GenesisConfig::<Runtime> {
+            initial_permissions: self.initial_permissions,
         }
         .assimilate_storage(&mut t)
         .unwrap();

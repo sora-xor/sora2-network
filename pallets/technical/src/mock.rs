@@ -108,7 +108,6 @@ pub type Balance = u128;
 
 impl common::Trait for Testtime {
     type DEXId = DEXId;
-    type EnsureDEXOwner = dex_manager::Module<Testtime>;
 }
 
 parameter_types! {

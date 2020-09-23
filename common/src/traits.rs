@@ -1,12 +1,14 @@
-use frame_support::dispatch::DispatchResult;
-use frame_support::weights::Weight;
+use crate::{Fixed, LiquiditySourceFilter, LiquiditySourceId, SwapAmount, SwapOutcome};
 use frame_support::{
+    dispatch::DispatchResult,
     sp_runtime::{traits::BadOrigin, DispatchError},
+    weights::Weight,
     Parameter,
 };
 use frame_system::RawOrigin;
 //FIXME maybe try info or try from is better than From and Option.
 //use sp_std::convert::TryInto;
+use sp_std::vec::Vec;
 
 /// Check on origin that it is a DEX owner.
 pub trait EnsureDEXOwner<DEXId, AccountId, Error> {
@@ -34,24 +36,101 @@ impl<DEXId, AccountId> EnsureDEXOwner<DEXId, AccountId, DispatchError> for () {
     }
 }
 
+pub trait EnsureTradingPairExists<DEXId, AssetId, Error> {
+    fn ensure_trading_pair_exists(dex_id: &DEXId, target_asset_id: &AssetId) -> Result<(), Error>;
+}
+
+impl<DEXId, AssetId> EnsureTradingPairExists<DEXId, AssetId, DispatchError> for () {
+    fn ensure_trading_pair_exists(
+        _dex_id: &DEXId,
+        _target_asset_id: &AssetId,
+    ) -> Result<(), DispatchError> {
+        Err(DispatchError::CannotLookup)
+    }
+}
+
+/// Indicates that particular object can be used to perform exchanges.
+pub trait LiquiditySource<TargetId, AccountId, AssetId, Amount, Error> {
+    /// Check if liquidity source provides an exchange from given input asset to output asset.
+    fn can_exchange(
+        target_id: &TargetId,
+        input_asset_id: &AssetId,
+        output_asset_id: &AssetId,
+    ) -> bool;
+
+    /// Get spot price of tokens based on desired amount, None returned if liquidity source
+    /// does not have available exchange methods for indicated path.
+    fn quote(
+        target_id: &TargetId,
+        input_asset_id: &AssetId,
+        output_asset_id: &AssetId,
+        swap_amount: SwapAmount<Amount>,
+    ) -> Result<SwapOutcome<Amount>, DispatchError>;
+
+    /// Perform exchange based on desired amount.
+    fn exchange(
+        sender: &AccountId,
+        receiver: &AccountId,
+        target_id: &TargetId,
+        input_asset_id: &AssetId,
+        output_asset_id: &AssetId,
+        swap_amount: SwapAmount<Amount>,
+    ) -> Result<SwapOutcome<Amount>, DispatchError>;
+}
+
+impl<DEXId, AccountId, AssetId> LiquiditySource<DEXId, AccountId, AssetId, Fixed, DispatchError>
+    for ()
+{
+    fn can_exchange(
+        _target_id: &DEXId,
+        _input_asset_id: &AssetId,
+        _output_asset_id: &AssetId,
+    ) -> bool {
+        false
+    }
+
+    fn quote(
+        _target_id: &DEXId,
+        _input_asset_id: &AssetId,
+        _output_asset_id: &AssetId,
+        _swap_amount: SwapAmount<Fixed>,
+    ) -> Result<SwapOutcome<Fixed>, DispatchError> {
+        Err(DispatchError::CannotLookup)
+    }
+
+    fn exchange(
+        _sender: &AccountId,
+        _receiver: &AccountId,
+        _target_id: &DEXId,
+        _input_asset_id: &AssetId,
+        _output_asset_id: &AssetId,
+        _swap_amount: SwapAmount<Fixed>,
+    ) -> Result<SwapOutcome<Fixed>, DispatchError> {
+        Err(DispatchError::CannotLookup)
+    }
+}
+
+pub trait LiquidityRegistry<DEXId, AccountId, AssetId, LiquiditySourceIndex, Amount, Error>:
+    LiquiditySource<LiquiditySourceId<DEXId, LiquiditySourceIndex>, AccountId, AssetId, Amount, Error>
+where
+    DEXId: PartialEq + Clone,
+    LiquiditySourceIndex: PartialEq + Clone,
+{
+    /// Enumerate available liquidity sources which provide
+    /// exchange with for given input->output tokens.
+    fn list_liquidity_sources(
+        input_asset_id: &AssetId,
+        output_asset_id: &AssetId,
+        filter: LiquiditySourceFilter<DEXId, LiquiditySourceIndex>,
+    ) -> Result<Vec<LiquiditySourceId<DEXId, LiquiditySourceIndex>>, Error>;
+}
+
 pub type AccountIdOf<T> = <T as frame_system::Trait>::AccountId;
 
 /// Common DEX trait. Used for DEX-related pallets.
 pub trait Trait: frame_system::Trait {
     /// DEX identifier.
-    type DEXId: Parameter;
-    /// Performs checks for origin is a DEX owner.
-    type EnsureDEXOwner: EnsureDEXOwner<Self::DEXId, Self::AccountId, DispatchError>;
-
-    fn ensure_dex_owner<OuterOrigin>(
-        dex_id: &Self::DEXId,
-        origin: OuterOrigin,
-    ) -> Result<Option<Self::AccountId>, DispatchError>
-    where
-        OuterOrigin: Into<Result<RawOrigin<Self::AccountId>, OuterOrigin>>,
-    {
-        Self::EnsureDEXOwner::ensure_dex_owner(dex_id, origin)
-    }
+    type DEXId: Parameter + Ord + Default;
 }
 
 /// Definition of a pending atomic swap action. It contains the following three phrases:
