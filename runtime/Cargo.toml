@@ -17,10 +17,13 @@ cumulus-token-dealer = { path = "../pallets/token-dealer", default-features = fa
 dex-manager = { path = "../pallets/dex-manager", default-features = false }
 referral-system = { path = "../pallets/referral-system", default-features = false }
 xor-fee = { path = "../pallets/xor-fee", default-features = false }
+mock-liquidity-source = { path = "../pallets/mock-liquidity-source", default-features = false }
+liquidity-proxy = { path = "../pallets/liquidity-proxy", default-features = false }
 template = { package = "pallet-template", path = "../pallets/template", version = "2.0.0-rc5", default-features = false}
 
 currencies = { package = "orml-currencies", branch = "rococo-branch", git = "https://github.com/vmarkushin/open-runtime-module-library", default-features = false }
 tokens = { package = "orml-tokens", branch = "rococo-branch", git = "https://github.com/vmarkushin/open-runtime-module-library", default-features = false }
+dex-api = { path = "../pallets/dex-api", default-features = false }
 
 # Substrate dependencies
 sp-std = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "rococo-branch" }
@@ -96,9 +99,12 @@ std = [
 	"common/std",
 	"template/std",
 	"dex-manager/std",
+	"liquidity-proxy/std",
+	"mock-liquidity-source/std",
 	"currencies/std",
 	"tokens/std",
 	"assets/std",
+	"dex-api/std",
 ]
 
 # Will be enabled by the `wasm-builder` when building the runtime for WASM.

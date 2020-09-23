@@ -1,7 +1,7 @@
 use crate::{GenesisConfig, Module, Trait, EXCHANGE, TRANSFER};
 use frame_support::{impl_outer_origin, parameter_types, weights::Weight};
 use frame_system as system;
-use sp_core::H256;
+use sp_core::{H256, H512};
 use sp_runtime::{
     testing::Header,
     traits::{BlakeTwo256, IdentityLookup},
@@ -61,13 +61,13 @@ impl Trait for Test {
 pub type PermissionsModule = Module<Test>;
 
 pub struct ExtBuilder {
-    initial_permissions: Vec<(u32, AccountId, AccountId)>,
+    initial_permissions: Vec<(u32, AccountId, AccountId, Option<H512>)>,
 }
 
 impl Default for ExtBuilder {
     fn default() -> Self {
         Self {
-            initial_permissions: vec![(TRANSFER, ALICE, ALICE), (EXCHANGE, BOB, ALICE)],
+            initial_permissions: vec![(TRANSFER, ALICE, ALICE, None), (EXCHANGE, BOB, ALICE, None)],
         }
     }
 }

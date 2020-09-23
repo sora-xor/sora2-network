@@ -1,6 +1,7 @@
 use crate::{Module, Trait};
-use common::prelude::AssetId;
+use common::{fixed_from_basis_points, AssetId, Fixed};
 use currencies::BasicCurrencyAdapter;
+
 use frame_support::{impl_outer_origin, parameter_types, weights::Weight};
 use frame_system as system;
 use sp_core::H256;
@@ -16,8 +17,10 @@ pub type Amount = i128;
 pub type Balance = u128;
 
 pub const ALICE: AccountId = 1;
-pub const USD: AssetId = AssetId::USD;
-pub const XOR: AssetId = AssetId::XOR;
+pub const DOT: AssetId = AssetId::DOT;
+pub const KSM: AssetId = AssetId::KSM;
+pub const DEX_A_ID: DEXId = 1;
+pub const DEX_B_ID: DEXId = 2;
 
 impl_outer_origin! {
     pub enum Origin for Runtime {}
@@ -30,6 +33,8 @@ parameter_types! {
     pub const MaximumBlockWeight: Weight = 1024;
     pub const MaximumBlockLength: u32 = 2 * 1024;
     pub const AvailableBlockRatio: Perbill = Perbill::from_percent(75);
+    pub const GetDefaultFee: u16 = 30;
+    pub const GetDefaultProtocolFee: u16 = 0;
 }
 
 impl system::Trait for Runtime {
@@ -60,7 +65,16 @@ impl system::Trait for Runtime {
     type SystemWeightInfo = ();
 }
 
-impl Trait for Runtime {}
+parameter_types! {
+    pub GetFee: Fixed = fixed_from_basis_points(30u16);
+}
+
+impl Trait for Runtime {
+    type Event = ();
+    type GetFee = GetFee;
+    type EnsureDEXOwner = dex_manager::Module<Runtime>;
+    type EnsureTradingPairExists = trading_pair::Module<Runtime>;
+}
 
 impl tokens::Trait for Runtime {
     type Event = ();
@@ -71,21 +85,17 @@ impl tokens::Trait for Runtime {
 }
 
 parameter_types! {
-    pub const GetBaseAssetId: AssetId = USD;
+    pub const GetBaseAssetId: AssetId = AssetId::XOR;
 }
 
 impl currencies::Trait for Runtime {
     type Event = ();
     type MultiCurrency = Tokens;
     type NativeCurrency = BasicCurrencyAdapter<Balances, Balance, Balance, Amount, BlockNumber>;
-    type GetNativeCurrencyId = <Runtime as assets::Trait>::GetBaseAssetId;
+    type GetNativeCurrencyId = GetBaseAssetId;
 }
 
 type DEXId = u32;
-
-impl common::Trait for Runtime {
-    type DEXId = DEXId;
-}
 
 impl assets::Trait for Runtime {
     type Event = ();
@@ -93,12 +103,12 @@ impl assets::Trait for Runtime {
     type GetBaseAssetId = GetBaseAssetId;
 }
 
-impl permissions::Trait for Runtime {
-    type Event = ();
+impl common::Trait for Runtime {
+    type DEXId = DEXId;
 }
 
 parameter_types! {
-    pub const ExistentialDeposit: u128 = 0;
+    pub const ExistentialDeposit: u128 = 1;
     pub const TransferFee: u128 = 0;
     pub const CreationFee: u128 = 0;
     pub const TransactionByteFee: u128 = 1;
@@ -106,41 +116,52 @@ parameter_types! {
 
 impl pallet_balances::Trait for Runtime {
     type Balance = Balance;
-    type Event = ();
     type DustRemoval = ();
+    type Event = ();
     type ExistentialDeposit = ExistentialDeposit;
     type AccountStore = System;
     type WeightInfo = ();
 }
 
+impl permissions::Trait for Runtime {
+    type Event = ();
+}
+
+impl dex_manager::Trait for Runtime {
+    type Event = ();
+    type GetDefaultFee = GetDefaultFee;
+    type GetDefaultProtocolFee = GetDefaultProtocolFee;
+}
+
+impl trading_pair::Trait for Runtime {
+    type Event = ();
+    type EnsureDEXOwner = dex_manager::Module<Runtime>;
+}
+
 pub type System = frame_system::Module<Runtime>;
 pub type Balances = pallet_balances::Module<Runtime>;
 pub type Tokens = tokens::Module<Runtime>;
-pub type BondingCurvePool = Module<Runtime>;
+pub type MockLiquiditySource = Module<Runtime>;
 
 pub struct ExtBuilder {
-    endowed_accounts: Vec<(AccountId, AssetId, Balance)>,
+    // add additional fields for other pallets genesis
 }
 
 impl Default for ExtBuilder {
     fn default() -> Self {
         Self {
-            endowed_accounts: vec![(ALICE, XOR, 350_000u128)],
+            // add values for mock genesis
         }
     }
 }
 
 impl ExtBuilder {
     pub fn build(self) -> sp_io::TestExternalities {
-        let mut t = system::GenesisConfig::default()
+        let t = system::GenesisConfig::default()
             .build_storage::<Runtime>()
             .unwrap();
 
-        tokens::GenesisConfig::<Runtime> {
-            endowed_accounts: self.endowed_accounts,
-        }
-        .assimilate_storage(&mut t)
-        .unwrap();
+        // Add additional pallets genesis
 
         t.into()
     }

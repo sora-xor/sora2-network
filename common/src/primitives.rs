@@ -1,14 +1,13 @@
 use crate::BasisPoints;
 use codec::{Decode, Encode};
+use frame_support::RuntimeDebug;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 
 /// Information about state of particular DEX.
-#[derive(Encode, Decode, Debug, Clone, PartialEq, Eq, Default)]
+#[derive(Encode, Decode, RuntimeDebug, Clone, PartialEq, Eq, Default)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-pub struct DEXInfo<AccountId, AssetId> {
-    /// AccountId of owner which can manage DEX.
-    pub owner_account_id: AccountId,
+pub struct DEXInfo<AssetId> {
     /// AssetId of Base Asset in DEX.
     pub base_asset_id: AssetId,
     /// Default value for fee in basis points.
@@ -17,8 +16,9 @@ pub struct DEXInfo<AccountId, AssetId> {
     pub default_protocol_fee: BasisPoints,
 }
 
+//TODO: consider replacing base_asset_id with dex_id, and getting base asset from dex
 /// Trading pair data.
-#[derive(Encode, Decode, Eq, PartialEq, Copy, Clone, PartialOrd, Ord, Debug)]
+#[derive(Encode, Decode, Eq, PartialEq, Copy, Clone, PartialOrd, Ord, RuntimeDebug)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct TradingPair<AssetId> {
     /// Base token of exchange.
@@ -28,7 +28,7 @@ pub struct TradingPair<AssetId> {
 }
 
 /// Asset identifier.
-#[derive(Encode, Decode, Eq, PartialEq, Copy, Clone, PartialOrd, Ord, Debug)]
+#[derive(Encode, Decode, Eq, PartialEq, Copy, Clone, PartialOrd, Ord, RuntimeDebug)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize, Hash))]
 #[repr(u8)]
 pub enum AssetId {
@@ -66,6 +66,32 @@ impl<AssetId, DEXId> From<TechAssetId<AssetId, DEXId>> for Option<AssetId> {
         match a {
             TechAssetId::Wrapped(a) => Some(a),
             _ => None,
+        }
+    }
+}
+
+/// Enumaration of all available liquidity sources.
+#[derive(Encode, Decode, RuntimeDebug, PartialEq, Eq, Copy, Clone, PartialOrd, Ord)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+pub enum LiquiditySourceType {
+    XYKPool,
+    MockPool,
+}
+
+/// Identification of liquidity source.
+#[derive(Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq, PartialOrd, Ord)]
+pub struct LiquiditySourceId<DEXId, LiquiditySourceIndex> {
+    /// Identification of target DEX.
+    pub dex_id: DEXId,
+    /// Index value to distinguish particular liquidity source, e.g. index in array or enum-type.
+    pub liquidity_source_index: LiquiditySourceIndex,
+}
+
+impl<DEXId, LiquiditySourceIndex> LiquiditySourceId<DEXId, LiquiditySourceIndex> {
+    pub fn new(dex_id: DEXId, liquidity_source_index: LiquiditySourceIndex) -> Self {
+        Self {
+            dex_id,
+            liquidity_source_index,
         }
     }
 }
@@ -133,6 +159,49 @@ where
     }
 }
 
+/// Used to identify intention of caller either to transfer tokens based on exact input amount or
+/// exact output amount.
+#[derive(Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq, PartialOrd, Ord)]
+pub enum SwapAmount<AmountType> {
+    WithDesiredInput {
+        desired_amount_in: AmountType,
+        min_amount_out: AmountType,
+    },
+    WithDesiredOutput {
+        desired_amount_out: AmountType,
+        max_amount_in: AmountType,
+    },
+}
+
+impl<T> SwapAmount<T> {
+    pub fn with_desired_input(desired_amount_in: T, min_amount_out: T) -> Self {
+        Self::WithDesiredInput {
+            desired_amount_in,
+            min_amount_out,
+        }
+    }
+
+    pub fn with_desired_output(desired_amount_out: T, max_amount_in: T) -> Self {
+        Self::WithDesiredOutput {
+            desired_amount_out,
+            max_amount_in,
+        }
+    }
+
+    pub fn amount(self) -> T {
+        match self {
+            SwapAmount::WithDesiredInput {
+                desired_amount_in: amount,
+                ..
+            }
+            | SwapAmount::WithDesiredOutput {
+                desired_amount_out: amount,
+                ..
+            } => amount,
+        }
+    }
+}
+
 impl<AccountId, AssetId, DEXId> From<TechAccountId<AccountId, AssetId, DEXId>>
     for Option<AccountId>
 {
@@ -169,5 +238,20 @@ where
             TechAccountId::Pure(_, _) => false,
             _ => true,
         }
+    }
+}
+
+/// Amount of output tokens from either price request or actual exchange.
+#[derive(Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq, PartialOrd, Ord)]
+pub struct SwapOutcome<AmountType> {
+    /// Actual swap output/input amount including deduced fee.
+    pub amount: AmountType,
+    /// Accumulated fee amount, assumed to be in XOR.
+    pub fee: AmountType,
+}
+
+impl<AmountType> SwapOutcome<AmountType> {
+    pub fn new(amount: AmountType, fee: AmountType) -> Self {
+        Self { amount, fee }
     }
 }

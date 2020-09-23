@@ -18,7 +18,7 @@ use parachain_runtime::{
     WASM_BINARY,
 };
 
-use common::prelude::DEXInfo;
+use common::{hash, prelude::DEXInfo};
 use sc_chain_spec::{ChainSpecExtension, ChainSpecGroup};
 use sc_service::ChainType;
 use serde::{Deserialize, Serialize};
@@ -98,7 +98,6 @@ pub fn get_chain_spec(id: ParaId) -> ChainSpec {
                 vec![(
                     0,
                     DEXInfo {
-                        owner_account_id: get_account_id_from_seed::<sr25519::Public>("Alice"),
                         base_asset_id: AssetId::XOR,
                         default_fee: 30,
                         default_protocol_fee: 0,
@@ -136,7 +135,6 @@ pub fn staging_test_net(id: ParaId) -> ChainSpec {
                 vec![(
                     0,
                     DEXInfo {
-                        owner_account_id: get_account_id_from_seed::<sr25519::Public>("Alice"),
                         base_asset_id: AssetId::XOR,
                         default_fee: 30,
                         default_protocol_fee: 0,
@@ -159,7 +157,7 @@ pub fn staging_test_net(id: ParaId) -> ChainSpec {
 fn testnet_genesis(
     root_key: AccountId,
     endowed_accounts: Vec<AccountId>,
-    dex_list: Vec<(DEXId, DEXInfo<AccountId, AssetId>)>,
+    dex_list: Vec<(DEXId, DEXInfo<AssetId>)>,
     //iroha_peers: Vec<iroha_crypto::PublicKey>,
     id: ParaId,
 ) -> GenesisConfig {
@@ -176,11 +174,25 @@ fn testnet_genesis(
                     1,
                     get_account_id_from_seed::<sr25519::Public>("Alice"),
                     get_account_id_from_seed::<sr25519::Public>("Alice"),
+                    None,
                 ),
                 (
                     2,
                     get_account_id_from_seed::<sr25519::Public>("Alice"),
                     get_account_id_from_seed::<sr25519::Public>("Alice"),
+                    None,
+                ),
+                (
+                    6,
+                    get_account_id_from_seed::<sr25519::Public>("Alice"),
+                    get_account_id_from_seed::<sr25519::Public>("Alice"),
+                    None,
+                ),
+                (
+                    7,
+                    get_account_id_from_seed::<sr25519::Public>("Alice"),
+                    get_account_id_from_seed::<sr25519::Public>("Alice"),
+                    Some(hash(&0u32)),
                 ),
             ],
         }),
@@ -194,6 +206,7 @@ fn testnet_genesis(
         dex_manager: Some(DEXManagerConfig {
             dex_list: dex_list.iter().cloned().collect(),
         }),
+        mock_liquidity_source: None,
         //iroha_bridge: Some(IrohaBridgeConfig { authorities: endowed_accounts.clone(), iroha_peers }),
     }
 }
