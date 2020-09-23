@@ -191,7 +191,7 @@ impl<T: Trait> Module<T> {
 
     /// Method creates a permission from scratch.
     pub fn create_permission(
-        who: T::AccountId,
+        _who: T::AccountId,
         account_id: T::AccountId,
         permission_id: u32,
         permission: Permission<T>,

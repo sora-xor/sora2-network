@@ -272,6 +272,22 @@ impl dex_manager::Trait for Runtime {
 
 impl bonding_curve_pool::Trait for Runtime {}
 
+type TechAccountIdPrimitive = common::TechAccountId<AccountId, AssetId, DEXId>;
+type TechAssetId = common::TechAssetId<AssetId, DEXId>;
+type TechAmount = Amount;
+type TechBalance = Balance;
+
+impl technical::Trait for Runtime {
+    type Event = Event;
+    type TechAssetId = TechAssetId;
+    type TechAccountIdPrimitive = TechAccountIdPrimitive;
+    type TechAmount = TechAmount;
+    type TechBalance = TechBalance;
+    type Trigger = ();
+    type Condition = ();
+    type SwapAction = ();
+}
+
 impl<T: SigningTypes> frame_system::offchain::SignMessage<T> for Runtime {
     type SignatureData = ();
 
@@ -444,6 +460,7 @@ construct_runtime! {
         Assets: assets::{Module, Call, Event<T>},
         DEXManager: dex_manager::{Module, Call, Storage, Config<T>, Event<T>},
         BondingCurvePool: bonding_curve_pool::{Module},
+        Technical: technical::{Module, Call, Event<T>},
         //IrohaBridge: iroha_bridge::{Module, Call, Storage, Config<T>, Event<T>},
     }
 }

@@ -9,6 +9,7 @@ members = [
     "pallets/trading-pair",
     "pallets/dex-manager",
     "pallets/template",
+    "pallets/technical",
     "pallets/xor-fee",
     "pallets/referral-system",
     "pallets/bonding-curve-pool",
