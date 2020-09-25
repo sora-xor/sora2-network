@@ -41,12 +41,32 @@ pub struct PendingSwap<T: Trait> {
 #[derive(Clone, Eq, PartialEq, Encode, Decode, PartialOrd, Ord)]
 pub struct TechAccountIdReprCompat<T: Trait, Primitive>(pub Primitive, PhantomData<T>);
 
+impl<T: Trait, Primitive: Default> Default for TechAccountIdReprCompat<T, Primitive> {
+    fn default() -> Self {
+        Self(Primitive::default(), PhantomData)
+    }
+}
+
 /// It is needed because PartialOrd is not implemented for Runtime.
 impl<T: Trait, Primitive: sp_std::fmt::Debug> sp_std::fmt::Debug
     for TechAccountIdReprCompat<T, Primitive>
 {
     fn fmt(&self, f: &mut sp_std::fmt::Formatter) -> Result<(), sp_std::fmt::Error> {
         self.0.fmt(f)
+    }
+}
+
+impl<T: Trait> From<[u8; 16]> for TechAccountIdOf<T>
+where
+    AccountIdOf<T>: From<AccountId32>,
+    AccountId32: From<AccountIdOf<T>>,
+    TechAccountIdPrimitiveOf<T>: common::WrappedRepr<AccountId32>,
+{
+    fn from(id: [u8; 16]) -> Self {
+        let mut arr = [0u8; 32];
+        arr[..16].clone_from_slice(&TECH_ACCOUNT_MAGIC_PREFIX);
+        arr[16..].clone_from_slice(&id);
+        Self::from(<AccountId32 as From<[u8; 32]>>::from(arr))
     }
 }
 
@@ -151,7 +171,7 @@ pub trait Trait: common::Trait + assets::Trait {
     type TechAccountIdPrimitive: Ord
         + Member
         + Parameter
-        + PureOrWrapped<<Self as frame_system::Trait>::AccountId>
+        + PureOrWrapped<AccountIdOf<Self>>
         + Default;
 
     /// The units in which we record amount.
@@ -202,7 +222,9 @@ where
     pub fn is_tech_account_id_registered(
         tech_account_id: TechAccountIdOf<T>,
     ) -> Result<bool, DispatchError> {
-        if !common::PureOrWrapped::<AccountId32>::is_pure(&tech_account_id.clone()) {
+        if !(common::PureOrWrapped::<AccountId32>::is_pure(&tech_account_id.clone())
+            || common::PureOrWrapped::<AccountId32>::is_wrapped(&tech_account_id.clone()))
+        {
             return Ok(false);
         }
         let repr32 = tech_account_id.clone().into();
@@ -216,7 +238,8 @@ where
     /// Register `TechAccountId` in storate map.
     pub fn register_tech_account_id(tech_account_id: TechAccountIdOf<T>) -> DispatchResult {
         ensure!(
-            common::PureOrWrapped::<AccountId32>::is_pure(&tech_account_id.clone()),
+            common::PureOrWrapped::<AccountId32>::is_pure(&tech_account_id.clone())
+                || common::PureOrWrapped::<AccountId32>::is_wrapped(&tech_account_id.clone()),
             Error::<T>::TechAccountIdMustBePure
         );
         let repr32 = tech_account_id.clone().into();
@@ -232,45 +255,92 @@ where
         <TechAccounts<T>>::get(&repr)
     }
 
-    /// Set storage changes in assets to transfer specific asset from regular `AccountId` into pure `TechAccountId`.
-    pub fn set_transfer_in(
-        asset: AssetIdOf<T>,
-        source: <T as frame_system::Trait>::AccountId,
+    /// Transfer specific asset from regular `AccountId` into pure `TechAccountId`.
+    pub fn transfer_in(
+        asset: &AssetIdOf<T>,
+        source: AccountIdOf<T>,
         tech_dest: TechAccountIdOf<T>,
         amount: Balance,
     ) -> DispatchResult {
-        ensure!(
-            common::PureOrWrapped::<AccountId32>::is_pure(&tech_dest.clone()),
-            Error::<T>::OnlyPureTechnicalAccount
-        );
         ensure!(
             Self::is_tech_account_id_registered(tech_dest.clone())?,
             Error::<T>::TechAccountIdIsNotRegistered
         );
         let repr32 = tech_dest.clone().into();
         let repr = AccountIdOf::<T>::from(repr32);
-        assets::Module::<T>::transfer(&asset, &source, &repr, amount)?;
+        assets::Module::<T>::transfer(asset, &source, &repr, amount)?;
         Ok(())
     }
 
-    /// Set storage changes in assets to transfer specific asset from pure `TechAccountId` into pure `AccountId`.
-    pub fn set_transfer_out(
-        asset: AssetIdOf<T>,
+    /// Transfer specific asset from pure `TechAccountId` into pure `AccountId`.
+    pub fn transfer_out(
+        asset: &AssetIdOf<T>,
         tech_source: TechAccountIdOf<T>,
-        dest: <T as frame_system::Trait>::AccountId,
+        dest: AccountIdOf<T>,
         amount: Balance,
     ) -> DispatchResult {
-        ensure!(
-            common::PureOrWrapped::<AccountId32>::is_pure(&tech_source.clone()),
-            Error::<T>::OnlyPureTechnicalAccount
-        );
         ensure!(
             Self::is_tech_account_id_registered(tech_source.clone())?,
             Error::<T>::TechAccountIdIsNotRegistered
         );
         let repr32 = tech_source.clone().into();
         let repr = AccountIdOf::<T>::from(repr32);
-        assets::Module::<T>::transfer(&asset, &repr, &dest, amount)?;
+        assets::Module::<T>::transfer(asset, &repr, &dest, amount)?;
+        Ok(())
+    }
+
+    /// Transfer specific asset from pure `TechAccountId` into pure `TechAccountId`.
+    pub fn transfer(
+        asset: &AssetIdOf<T>,
+        tech_source: TechAccountIdOf<T>,
+        tech_dest: TechAccountIdOf<T>,
+        amount: Balance,
+    ) -> DispatchResult {
+        ensure!(
+            Self::is_tech_account_id_registered(tech_source.clone())?,
+            Error::<T>::TechAccountIdIsNotRegistered
+        );
+        ensure!(
+            Self::is_tech_account_id_registered(tech_dest.clone())?,
+            Error::<T>::TechAccountIdIsNotRegistered
+        );
+        let repr32 = tech_source.clone().into();
+        let repr_source = AccountIdOf::<T>::from(repr32);
+        let repr32 = tech_dest.clone().into();
+        let repr_dest = AccountIdOf::<T>::from(repr32);
+        assets::Module::<T>::transfer(asset, &repr_source, &repr_dest, amount)?;
+        Ok(())
+    }
+
+    /// Mint specific asset to the given `TechAccountId`.
+    pub fn mint(
+        asset: &AssetIdOf<T>,
+        tech_dest: TechAccountIdOf<T>,
+        amount: Balance,
+    ) -> DispatchResult {
+        ensure!(
+            Self::is_tech_account_id_registered(tech_dest.clone())?,
+            Error::<T>::TechAccountIdIsNotRegistered
+        );
+        let repr32 = tech_dest.clone().into();
+        let repr = AccountIdOf::<T>::from(repr32);
+        assets::Module::<T>::mint(asset, &repr, &repr, amount)?;
+        Ok(())
+    }
+
+    /// Burn specific asset from the given `TechAccountId`.
+    pub fn burn(
+        asset: &AssetIdOf<T>,
+        tech_dest: TechAccountIdOf<T>,
+        amount: Balance,
+    ) -> DispatchResult {
+        ensure!(
+            Self::is_tech_account_id_registered(tech_dest.clone())?,
+            Error::<T>::TechAccountIdIsNotRegistered
+        );
+        let repr32 = tech_dest.clone().into();
+        let repr = AccountIdOf::<T>::from(repr32);
+        assets::Module::<T>::burn(asset, &repr, &repr, amount)?;
         Ok(())
     }
 }

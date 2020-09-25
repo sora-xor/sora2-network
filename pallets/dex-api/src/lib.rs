@@ -1,5 +1,6 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
+use common::balance::Balance;
 use common::{
     prelude::{SwapAmount, SwapOutcome},
     Fixed, LiquidityRegistry, LiquiditySource, LiquiditySourceFilter, LiquiditySourceId,
@@ -23,6 +24,13 @@ pub trait Trait: common::Trait + dex_manager::Trait + trading_pair::Trait {
         Self::AccountId,
         Self::AssetId,
         Fixed,
+        DispatchError,
+    >;
+    type BondingCurvePool: LiquiditySource<
+        Self::DEXId,
+        Self::AccountId,
+        Self::AssetId,
+        Balance,
         DispatchError,
     >;
 }
@@ -68,11 +76,17 @@ impl<T: Trait>
     ) -> bool {
         match liquidity_source_id.liquidity_source_index {
             LiquiditySourceType::XYKPool => unimplemented!(),
-            LiquiditySourceType::MockPool => T::MockLiquiditySource::can_exchange(
+            LiquiditySourceType::BondingCurvePool => T::BondingCurvePool::can_exchange(
                 &liquidity_source_id.dex_id,
                 &input_asset_id,
                 &output_asset_id,
             ),
+            LiquiditySourceType::MockPool => T::MockLiquiditySource::can_exchange(
+                &liquidity_source_id.dex_id,
+                &input_asset_id,
+                &output_asset_id,
+            )
+            .into(),
         }
     }
 
@@ -84,6 +98,13 @@ impl<T: Trait>
     ) -> Result<SwapOutcome<Fixed>, DispatchError> {
         match liquidity_source_id.liquidity_source_index {
             LiquiditySourceType::XYKPool => unimplemented!(),
+            LiquiditySourceType::BondingCurvePool => T::BondingCurvePool::quote(
+                &liquidity_source_id.dex_id,
+                input_asset_id,
+                output_asset_id,
+                swap_amount.into(),
+            )
+            .map(Into::into),
             LiquiditySourceType::MockPool => T::MockLiquiditySource::quote(
                 &liquidity_source_id.dex_id,
                 input_asset_id,
@@ -103,6 +124,15 @@ impl<T: Trait>
     ) -> Result<SwapOutcome<Fixed>, DispatchError> {
         match liquidity_source_id.liquidity_source_index {
             LiquiditySourceType::XYKPool => unimplemented!(),
+            LiquiditySourceType::BondingCurvePool => T::BondingCurvePool::exchange(
+                sender,
+                receiver,
+                &liquidity_source_id.dex_id,
+                input_asset_id,
+                output_asset_id,
+                swap_amount.into(),
+            )
+            .map(Into::into),
             LiquiditySourceType::MockPool => T::MockLiquiditySource::exchange(
                 sender,
                 receiver,

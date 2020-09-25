@@ -1,8 +1,9 @@
 use crate::{Module, Trait};
-use common::{fixed_from_basis_points, AssetId, Fixed};
+use common::{fixed_from_basis_points, Amount, AssetId, Fixed};
 use currencies::BasicCurrencyAdapter;
 
 use common::prelude::Balance;
+use frame_support::sp_runtime::AccountId32;
 use frame_support::{impl_outer_origin, parameter_types, weights::Weight};
 use frame_system as system;
 use sp_core::H256;
@@ -12,11 +13,19 @@ use sp_runtime::{
     Perbill,
 };
 
-pub type AccountId = u128;
+pub type AccountId = AccountId32;
 pub type BlockNumber = u64;
-pub type Amount = i128;
 
-pub const ALICE: AccountId = 1;
+type TechAssetId = common::TechAssetId<AssetId, DEXId>;
+type TechAccountIdPrimitive = common::TechAccountId<AccountId, AssetId, DEXId>;
+// type TechAccountId = crate::TechAccountIdReprCompat<Testtime, TechAccountIdPrimitive>;
+type TechAmount = Amount;
+type TechBalance = Balance;
+
+pub fn alice() -> AccountId {
+    AccountId32::from([1u8; 32])
+}
+
 pub const DOT: AssetId = AssetId::DOT;
 pub const KSM: AssetId = AssetId::KSM;
 pub const DEX_A_ID: DEXId = 1;
@@ -74,6 +83,17 @@ impl Trait for Runtime {
     type GetFee = GetFee;
     type EnsureDEXOwner = dex_manager::Module<Runtime>;
     type EnsureTradingPairExists = trading_pair::Module<Runtime>;
+}
+
+impl technical::Trait for Runtime {
+    type Event = ();
+    type TechAssetId = TechAssetId;
+    type TechAccountIdPrimitive = TechAccountIdPrimitive;
+    type TechAmount = TechAmount;
+    type TechBalance = TechBalance;
+    type Trigger = ();
+    type Condition = ();
+    type SwapAction = ();
 }
 
 impl tokens::Trait for Runtime {

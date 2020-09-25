@@ -1,16 +1,19 @@
 use crate::{Module, Trait};
-use common::prelude::{AssetId, Balance};
-use common::Amount;
+use common::prelude::{AssetId, Balance, SwapAmount, SwapOutcome};
+use common::{fixed, TechAccountId, TechPurpose};
+use common::{Amount, LiquiditySource};
 use currencies::BasicCurrencyAdapter;
-use frame_support::{impl_outer_origin, parameter_types, weights::Weight};
+use frame_support::{impl_outer_origin, parameter_types, weights::Weight, StorageValue};
 use frame_system as system;
+use orml_traits::MultiCurrency;
 use sp_core::crypto::AccountId32;
 use sp_core::H256;
 use sp_runtime::{
     testing::Header,
     traits::{BlakeTwo256, IdentityLookup},
-    Perbill,
+    DispatchError, Perbill,
 };
+use std::collections::HashMap;
 
 pub type AccountId = AccountId32;
 pub type BlockNumber = u64;
@@ -20,8 +23,10 @@ type TechAssetId = common::TechAssetId<AssetId, DEXId>;
 pub fn alice() -> AccountId {
     AccountId32::from([1u8; 32])
 }
+
 pub const USD: AssetId = AssetId::USD;
 pub const XOR: AssetId = AssetId::XOR;
+pub const VAL: AssetId = AssetId::VAL;
 
 impl_outer_origin! {
     pub enum Origin for Runtime {}
@@ -64,7 +69,119 @@ impl system::Trait for Runtime {
     type SystemWeightInfo = ();
 }
 
-impl Trait for Runtime {}
+parameter_types! {
+    pub const GetDefaultFee: u16 = 30;
+    pub const GetDefaultProtocolFee: u16 = 0;
+}
+
+impl dex_manager::Trait for Runtime {
+    type Event = ();
+    type GetDefaultFee = ();
+    type GetDefaultProtocolFee = ();
+}
+
+impl trading_pair::Trait for Runtime {
+    type Event = ();
+    type EnsureDEXOwner = dex_manager::Module<Runtime>;
+}
+
+impl dex_api::Trait for Runtime {
+    type Event = ();
+    type MockLiquiditySource = ();
+    type BondingCurvePool = ();
+}
+
+impl mock_liquidity_source::Trait for Runtime {
+    type Event = ();
+    type GetFee = ();
+    type EnsureDEXOwner = ();
+    type EnsureTradingPairExists = ();
+}
+
+pub struct MockDEXApi;
+
+impl MockDEXApi {
+    pub fn init() -> Result<(), DispatchError> {
+        let mock_liquidity_source_tech_account_id =
+            TechAccountId::Pure(DEXId::Polkaswap.into(), TechPurpose::FeeCollector);
+        let tech_acc_id_primitive =
+            Technical::tech_acc_id_from_primitive(mock_liquidity_source_tech_account_id.clone());
+        let account_id: AccountId = tech_acc_id_primitive.clone().into();
+        Technical::register_tech_account_id(tech_acc_id_primitive)?;
+        MockLiquiditySource::set_reserves_account_id(mock_liquidity_source_tech_account_id)?;
+        Currencies::deposit(XOR, &account_id, 1_000_u128.into())?;
+        Currencies::deposit(VAL, &account_id, 1_000_u128.into())?;
+        Currencies::deposit(USD, &account_id, 1_000_000_u128.into())?;
+        Ok(())
+    }
+}
+
+impl<DEXId> LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> for MockDEXApi {
+    fn can_exchange(
+        _target_id: &DEXId,
+        _input_asset_id: &AssetId,
+        _output_asset_id: &AssetId,
+    ) -> bool {
+        unimplemented!()
+    }
+
+    fn quote(
+        _target_id: &DEXId,
+        _input_asset_id: &AssetId,
+        _output_asset_id: &AssetId,
+        _swap_amount: SwapAmount<Balance>,
+    ) -> Result<SwapOutcome<Balance>, DispatchError> {
+        unimplemented!()
+    }
+
+    fn exchange(
+        sender: &AccountId,
+        receiver: &AccountId,
+        _target_id: &DEXId,
+        input_asset_id: &AssetId,
+        output_asset_id: &AssetId,
+        swap_amount: SwapAmount<Balance>,
+    ) -> Result<SwapOutcome<Balance>, DispatchError> {
+        let prices: HashMap<_, _> = vec![
+            ((USD, XOR), Balance(fixed!(0, 01))),
+            ((XOR, VAL), Balance(fixed!(2, 0))),
+        ]
+        .into_iter()
+        .collect();
+        match swap_amount {
+            SwapAmount::WithDesiredInput {
+                desired_amount_in, ..
+            } => {
+                let mut amount_out =
+                    desired_amount_in * prices[&(*input_asset_id, *output_asset_id)];
+                let fee = amount_out * Balance(fixed!(0,3%));
+                amount_out = amount_out - fee;
+                let reserves_account_id: &AccountId =
+                    &Technical::tech_acc_id_from_primitive(mock_liquidity_source::ReservesAcc::<
+                        Runtime,
+                    >::get())
+                    .into();
+                assert_ne!(desired_amount_in, 0u128.into());
+                let old = Assets::total_balance(input_asset_id, sender)?;
+                Assets::transfer(
+                    input_asset_id,
+                    sender,
+                    reserves_account_id,
+                    desired_amount_in,
+                )?;
+                let new = Assets::total_balance(input_asset_id, sender)?;
+                assert_ne!(old, new);
+                Assets::transfer(output_asset_id, reserves_account_id, receiver, amount_out)?;
+                Ok(SwapOutcome::new(amount_out, fee))
+            }
+            _ => Err(DispatchError::Other("Bad swap amount.")),
+        }
+    }
+}
+
+impl Trait for Runtime {
+    type DEXApi = MockDEXApi;
+}
 
 impl tokens::Trait for Runtime {
     type Event = ();
@@ -75,7 +192,7 @@ impl tokens::Trait for Runtime {
 }
 
 parameter_types! {
-    pub const GetBaseAssetId: AssetId = USD;
+    pub const GetBaseAssetId: AssetId = XOR;
 }
 
 impl currencies::Trait for Runtime {
@@ -85,7 +202,7 @@ impl currencies::Trait for Runtime {
     type GetNativeCurrencyId = <Runtime as assets::Trait>::GetBaseAssetId;
 }
 
-type DEXId = u32;
+type DEXId = common::DEXId;
 
 impl common::Trait for Runtime {
     type DEXId = DEXId;
@@ -132,7 +249,11 @@ impl pallet_balances::Trait for Runtime {
 pub type System = frame_system::Module<Runtime>;
 pub type Balances = pallet_balances::Module<Runtime>;
 pub type Tokens = tokens::Module<Runtime>;
+pub type Currencies = currencies::Module<Runtime>;
 pub type BondingCurvePool = Module<Runtime>;
+pub type Technical = technical::Module<Runtime>;
+pub type MockLiquiditySource = mock_liquidity_source::Module<Runtime>;
+pub type Assets = assets::Module<Runtime>;
 
 pub struct ExtBuilder {
     endowed_accounts: Vec<(AccountId, AssetId, Balance)>,
@@ -141,12 +262,20 @@ pub struct ExtBuilder {
 impl Default for ExtBuilder {
     fn default() -> Self {
         Self {
-            endowed_accounts: vec![(alice(), XOR, 350_000u128.into())],
+            endowed_accounts: vec![
+                (alice(), USD, 0u128.into()),
+                (alice(), XOR, 350_000u128.into()),
+                (alice(), VAL, 0u128.into()),
+            ],
         }
     }
 }
 
 impl ExtBuilder {
+    pub fn new(endowed_accounts: Vec<(AccountId, AssetId, Balance)>) -> Self {
+        Self { endowed_accounts }
+    }
+
     pub fn build(self) -> sp_io::TestExternalities {
         let mut t = system::GenesisConfig::default()
             .build_storage::<Runtime>()
@@ -157,6 +286,22 @@ impl ExtBuilder {
                 .endowed_accounts
                 .iter()
                 .map(|(account_id, asset_id, _)| (asset_id.clone(), account_id.clone()))
+                .collect(),
+        }
+        .assimilate_storage(&mut t)
+        .unwrap();
+
+        pallet_balances::GenesisConfig::<Runtime> {
+            balances: self
+                .endowed_accounts
+                .iter()
+                .filter_map(|(account_id, asset_id, balance)| {
+                    if asset_id == &GetBaseAssetId::get() {
+                        Some((account_id.clone(), balance.clone()))
+                    } else {
+                        None
+                    }
+                })
                 .collect(),
         }
         .assimilate_storage(&mut t)

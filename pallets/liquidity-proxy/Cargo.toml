@@ -33,6 +33,7 @@ sp-io = { git = "https://github.com/paritytech/substrate", default-features = fa
 sp-runtime = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "rococo-branch" }
 mock-liquidity-source = { path = "../mock-liquidity-source", default-features = false }
 dex-api = { path = "../dex-api", default-features = false }
+technical = { path = "../technical", default-features = false }
 
 [features]
 default = ['std']

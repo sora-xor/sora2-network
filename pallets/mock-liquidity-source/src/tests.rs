@@ -6,7 +6,7 @@ fn test_provides_exchange_should_pass() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
         MockLiquiditySource::set_reserve(
-            Origin::signed(ALICE),
+            Origin::signed(alice()),
             DEX_A_ID,
             DOT,
             Fixed::from(5000),
@@ -59,7 +59,7 @@ fn test_support_multiple_dexes_should_pass() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
         MockLiquiditySource::set_reserve(
-            Origin::signed(ALICE),
+            Origin::signed(alice()),
             DEX_A_ID,
             DOT,
             Fixed::from(1000),
@@ -67,7 +67,7 @@ fn test_support_multiple_dexes_should_pass() {
         )
         .expect("Failed to set reserve.");
         MockLiquiditySource::set_reserve(
-            Origin::signed(ALICE),
+            Origin::signed(alice()),
             DEX_B_ID,
             KSM,
             Fixed::from(1000),
@@ -102,7 +102,7 @@ fn test_quote_base_to_target_should_pass() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
         MockLiquiditySource::set_reserve(
-            Origin::signed(ALICE),
+            Origin::signed(alice()),
             DEX_A_ID,
             DOT,
             Fixed::from(5000),
@@ -136,7 +136,7 @@ fn test_quote_target_to_base_should_pass() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
         MockLiquiditySource::set_reserve(
-            Origin::signed(ALICE),
+            Origin::signed(alice()),
             DEX_A_ID,
             DOT,
             Fixed::from(5000),
@@ -170,7 +170,7 @@ fn test_quote_target_to_target_should_pass() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
         MockLiquiditySource::set_reserve(
-            Origin::signed(ALICE),
+            Origin::signed(alice()),
             DEX_A_ID,
             DOT,
             Fixed::from(5000),
@@ -178,7 +178,7 @@ fn test_quote_target_to_target_should_pass() {
         )
         .expect("Failed to set reserve.");
         MockLiquiditySource::set_reserve(
-            Origin::signed(ALICE),
+            Origin::signed(alice()),
             DEX_A_ID,
             KSM,
             Fixed::from(5500),

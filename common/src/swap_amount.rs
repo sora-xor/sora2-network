@@ -1,3 +1,5 @@
+use crate::balance::Balance;
+use crate::Fixed;
 use codec::{Decode, Encode};
 use core::ops::{Div, DivAssign, Mul, MulAssign};
 use frame_support::RuntimeDebug;
@@ -42,6 +44,48 @@ impl<T> SwapAmount<T> {
                 desired_amount_out: amount,
                 ..
             } => amount,
+        }
+    }
+}
+
+impl From<SwapAmount<Fixed>> for SwapAmount<Balance> {
+    fn from(v: SwapAmount<Fixed>) -> Self {
+        match v {
+            SwapAmount::WithDesiredInput {
+                desired_amount_in,
+                min_amount_out,
+            } => SwapAmount::WithDesiredInput {
+                desired_amount_in: desired_amount_in.into(),
+                min_amount_out: min_amount_out.into(),
+            },
+            SwapAmount::WithDesiredOutput {
+                desired_amount_out,
+                max_amount_in,
+            } => SwapAmount::WithDesiredOutput {
+                desired_amount_out: desired_amount_out.into(),
+                max_amount_in: max_amount_in.into(),
+            },
+        }
+    }
+}
+
+impl From<SwapAmount<Balance>> for SwapAmount<Fixed> {
+    fn from(v: SwapAmount<Balance>) -> Self {
+        match v {
+            SwapAmount::WithDesiredInput {
+                desired_amount_in,
+                min_amount_out,
+            } => SwapAmount::WithDesiredInput {
+                desired_amount_in: desired_amount_in.0,
+                min_amount_out: min_amount_out.0,
+            },
+            SwapAmount::WithDesiredOutput {
+                desired_amount_out,
+                max_amount_in,
+            } => SwapAmount::WithDesiredOutput {
+                desired_amount_out: desired_amount_out.0,
+                max_amount_in: max_amount_in.0,
+            },
         }
     }
 }
@@ -135,6 +179,28 @@ pub struct SwapOutcome<AmountType> {
 impl<AmountType> SwapOutcome<AmountType> {
     pub fn new(amount: AmountType, fee: AmountType) -> Self {
         Self { amount, fee }
+    }
+}
+
+impl From<SwapOutcome<Balance>> for SwapOutcome<Fixed> {
+    fn from(v: SwapOutcome<Balance>) -> Self {
+        match v {
+            SwapOutcome { amount, fee } => SwapOutcome {
+                amount: amount.0,
+                fee: fee.0,
+            },
+        }
+    }
+}
+
+impl From<SwapOutcome<Fixed>> for SwapOutcome<Balance> {
+    fn from(v: SwapOutcome<Fixed>) -> Self {
+        match v {
+            SwapOutcome { amount, fee } => SwapOutcome {
+                amount: amount.into(),
+                fee: fee.into(),
+            },
+        }
     }
 }
 

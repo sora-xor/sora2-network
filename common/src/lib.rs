@@ -2,13 +2,14 @@
 
 use sp_arithmetic::FixedU128;
 
-mod balance;
+pub mod balance;
 mod fixed_wrapper;
+pub mod macros;
 pub mod mock;
 mod primitives;
 mod swap_amount;
 mod traits;
-mod utils;
+pub mod utils;
 
 use blake2_rfc;
 use codec::Encode;

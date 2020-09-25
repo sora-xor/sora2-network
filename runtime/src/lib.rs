@@ -269,7 +269,9 @@ impl dex_manager::Trait for Runtime {
     type GetDefaultProtocolFee = GetDefaultProtocolFee;
 }
 
-impl bonding_curve_pool::Trait for Runtime {}
+impl bonding_curve_pool::Trait for Runtime {
+    type DEXApi = ();
+}
 
 type TechAccountIdPrimitive = common::TechAccountId<AccountId, AssetId, DEXId>;
 type TechAssetId = common::TechAssetId<AssetId, DEXId>;
@@ -305,6 +307,7 @@ impl mock_liquidity_source::Trait for Runtime {
 impl dex_api::Trait for Runtime {
     type Event = Event;
     type MockLiquiditySource = mock_liquidity_source::Module<Runtime>;
+    type BondingCurvePool = bonding_curve_pool::Module<Runtime>;
 }
 
 impl<T: SigningTypes> frame_system::offchain::SignMessage<T> for Runtime {

@@ -27,6 +27,12 @@ use static_assertions::{assert_eq_align, assert_eq_size};
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct Balance(pub Fixed);
 
+impl From<Fixed> for Balance {
+    fn from(fixed: Fixed) -> Self {
+        Self(fixed)
+    }
+}
+
 impl Rem for Balance {
     type Output = Balance;
 
