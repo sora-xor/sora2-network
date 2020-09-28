@@ -41,6 +41,7 @@ std = [
     'codec/std',
     'frame-support/std',
     'frame-system/std',
+    'sp-std/std',
     'common/std',
     'currencies/std',
     'tokens/std',
@@ -48,4 +49,5 @@ std = [
     'dex-manager/std',
     'assets/std',
     'permissions/std',
+    'mock-liquidity-source/std',
 ]

@@ -79,6 +79,7 @@ decl_module! {
     }
 }
 
+#[allow(non_snake_case)]
 impl<T: Trait<I>, I: Instance> Module<T, I> {
     fn initialize_reserves(reserves: &[(T::DEXId, T::AssetId, (Fixed, Fixed))]) {
         reserves
@@ -102,9 +103,14 @@ impl<T: Trait<I>, I: Instance> Module<T, I> {
             base_reserve > zero && target_reserve > zero,
             <Error<T, I>>::InsufficientLiquidity
         );
-        let numerator = target_amount_in * base_reserve;
-        let denominator = target_reserve + target_amount_in;
-        let amount_out_without_fee = numerator / denominator;
+        let X: FixedWrapper = base_reserve.into();
+        let Y: FixedWrapper = target_reserve.into();
+        let d_Y: FixedWrapper = target_amount_in.into();
+
+        let amount_out_without_fee = (d_Y * X / (Y + d_Y))
+            .get()
+            .ok_or(Error::<T, I>::InsufficientLiquidity)?;
+
         let fee_amount = amount_out_without_fee * T::GetFee::get();
         Ok(SwapOutcome::new(
             amount_out_without_fee - fee_amount,
@@ -128,9 +134,16 @@ impl<T: Trait<I>, I: Instance> Module<T, I> {
         );
         let fee_amount = base_amount_in * T::GetFee::get();
         let amount_in_with_fee = base_amount_in - fee_amount;
-        let numerator = amount_in_with_fee * target_reserve;
-        let denominator = base_reserve + amount_in_with_fee;
-        Ok(SwapOutcome::new(numerator / denominator, fee_amount))
+        
+        let X: FixedWrapper = base_reserve.into();
+        let Y: FixedWrapper = target_reserve.into();
+        let d_X: FixedWrapper = amount_in_with_fee.into();
+
+        let amount_out = (Y * d_X / (X + d_X))
+            .get()
+            .ok_or(Error::<T, I>::InsufficientLiquidity)?;
+
+        Ok(SwapOutcome::new(amount_out, fee_amount))
     }
 
     fn get_base_amount_in(
@@ -147,9 +160,15 @@ impl<T: Trait<I>, I: Instance> Module<T, I> {
             base_reserve > zero && target_reserve > zero,
             <Error<T, I>>::InsufficientLiquidity
         );
-        let numerator = base_reserve * target_amount_out;
-        let denominator = target_reserve - target_amount_out;
-        let base_amount_in_without_fee = numerator / denominator;
+
+        let X: FixedWrapper = base_reserve.into();
+        let Y: FixedWrapper = target_reserve.into();
+        let d_Y: FixedWrapper = target_amount_out.into();
+
+        let base_amount_in_without_fee = (X * d_Y/ (Y - d_Y))
+            .get()
+            .ok_or(Error::<T, I>::InsufficientLiquidity)?;
+
         let base_amount_in_with_fee =
             base_amount_in_without_fee / (Fixed::from(1) - T::GetFee::get());
         let amount_in =
@@ -181,10 +200,17 @@ impl<T: Trait<I>, I: Instance> Module<T, I> {
             base_reserve > zero && target_reserve > zero,
             <Error<T, I>>::InsufficientLiquidity
         );
+
         let base_amount_out_with_fee = base_amount_out / (Fixed::from(1) - T::GetFee::get());
-        let numerator = target_reserve * base_amount_out_with_fee;
-        let denominator = base_reserve - base_amount_out_with_fee;
-        let target_amount_in = numerator / denominator;
+
+        let X: FixedWrapper = base_reserve.into();
+        let Y: FixedWrapper = target_reserve.into();
+        let d_X: FixedWrapper = base_amount_out_with_fee.into();
+
+        let target_amount_in = (Y * d_X/ (X - d_X))
+            .get()
+            .ok_or(Error::<T, I>::InsufficientLiquidity)?;
+
         let amount_in =
             if Self::get_base_amount_out(target_amount_in, base_reserve, target_reserve)?.amount
                 < base_amount_out
