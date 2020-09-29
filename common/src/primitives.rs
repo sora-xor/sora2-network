@@ -130,10 +130,12 @@ pub enum TechPurpose<AssetId> {
 /// Enum encoding of technical account id, pure and wrapped records.
 /// Enum record `WrappedRepr` is wrapped represention of `Pure` variant of enum, this is useful then
 /// representation is known but backward mapping is not known.
-#[derive(Encode, Decode, Eq, PartialEq, Copy, Clone, PartialOrd, Ord, Debug)]
+#[derive(Encode, Decode, Eq, PartialEq, Clone, PartialOrd, Ord, Debug)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum TechAccountId<AccountId, AssetId, DEXId> {
     Pure(DEXId, TechPurpose<AssetId>),
+    /// First field is used as name or tag of binary format, second field is used as binary data.
+    Generic(sp_std::vec::Vec<u8>, sp_std::vec::Vec<u8>),
     Wrapped(AccountId),
     WrappedRepr(AccountId),
 }
@@ -230,6 +232,7 @@ where
     fn is_pure(&self) -> bool {
         match self {
             TechAccountId::Pure(_, _) => true,
+            TechAccountId::Generic(_, _) => true,
             _ => false,
         }
     }
@@ -242,6 +245,7 @@ where
     fn is_wrapped(&self) -> bool {
         match self {
             TechAccountId::Pure(_, _) => false,
+            TechAccountId::Generic(_, _) => false,
             _ => true,
         }
     }
