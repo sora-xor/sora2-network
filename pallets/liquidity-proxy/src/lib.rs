@@ -1,10 +1,12 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use common::{
-    Fixed, LiquidityRegistry, LiquiditySource, LiquiditySourceFilter, LiquiditySourceId,
-    LiquiditySourceType, SwapAmount,
+    prelude::SwapAmount, Fixed, LiquidityRegistry, LiquiditySource, LiquiditySourceFilter,
+    LiquiditySourceId, LiquiditySourceType,
 };
-use frame_support::{decl_error, decl_event, decl_module, sp_runtime::DispatchError};
+use frame_support::{
+    decl_error, decl_event, decl_module, dispatch::DispatchResult, sp_runtime::DispatchError,
+};
 use sp_std::vec::Vec;
 
 #[cfg(test)]

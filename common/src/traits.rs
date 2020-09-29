@@ -1,4 +1,7 @@
-use crate::{Fixed, LiquiditySourceFilter, LiquiditySourceId, SwapAmount, SwapOutcome};
+use crate::{
+    prelude::{SwapAmount, SwapOutcome},
+    Fixed, LiquiditySourceFilter, LiquiditySourceId,
+};
 use frame_support::{
     dispatch::DispatchResult,
     sp_runtime::{traits::BadOrigin, DispatchError},

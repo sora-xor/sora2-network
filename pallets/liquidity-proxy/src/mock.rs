@@ -1,5 +1,7 @@
 use crate::{Module, Trait};
-use common::{fixed_from_basis_points, hash, AssetId, DEXInfo, Fixed};
+use common::{
+    fixed_from_basis_points, hash, AssetId, DEXInfo, Fixed, LiquiditySourceId, LiquiditySourceType,
+};
 use currencies::BasicCurrencyAdapter;
 
 use frame_support::{impl_outer_origin, parameter_types, weights::Weight};
@@ -91,7 +93,7 @@ impl currencies::Trait for Runtime {
     type GetNativeCurrencyId = GetBaseAssetId;
 }
 
-type DEXId = u32;
+pub type DEXId = u32;
 
 impl assets::Trait for Runtime {
     type Event = ();

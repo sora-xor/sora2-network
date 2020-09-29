@@ -165,49 +165,6 @@ where
     }
 }
 
-/// Used to identify intention of caller either to transfer tokens based on exact input amount or
-/// exact output amount.
-#[derive(Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq, PartialOrd, Ord)]
-pub enum SwapAmount<AmountType> {
-    WithDesiredInput {
-        desired_amount_in: AmountType,
-        min_amount_out: AmountType,
-    },
-    WithDesiredOutput {
-        desired_amount_out: AmountType,
-        max_amount_in: AmountType,
-    },
-}
-
-impl<T> SwapAmount<T> {
-    pub fn with_desired_input(desired_amount_in: T, min_amount_out: T) -> Self {
-        Self::WithDesiredInput {
-            desired_amount_in,
-            min_amount_out,
-        }
-    }
-
-    pub fn with_desired_output(desired_amount_out: T, max_amount_in: T) -> Self {
-        Self::WithDesiredOutput {
-            desired_amount_out,
-            max_amount_in,
-        }
-    }
-
-    pub fn amount(self) -> T {
-        match self {
-            SwapAmount::WithDesiredInput {
-                desired_amount_in: amount,
-                ..
-            }
-            | SwapAmount::WithDesiredOutput {
-                desired_amount_out: amount,
-                ..
-            } => amount,
-        }
-    }
-}
-
 impl<AccountId, AssetId, DEXId> From<TechAccountId<AccountId, AssetId, DEXId>>
     for Option<AccountId>
 {
@@ -244,20 +201,5 @@ where
             TechAccountId::Pure(_, _) => false,
             _ => true,
         }
-    }
-}
-
-/// Amount of output tokens from either price request or actual exchange.
-#[derive(Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq, PartialOrd, Ord)]
-pub struct SwapOutcome<AmountType> {
-    /// Actual swap output/input amount including deduced fee.
-    pub amount: AmountType,
-    /// Accumulated fee amount, assumed to be in XOR.
-    pub fee: AmountType,
-}
-
-impl<AmountType> SwapOutcome<AmountType> {
-    pub fn new(amount: AmountType, fee: AmountType) -> Self {
-        Self { amount, fee }
     }
 }

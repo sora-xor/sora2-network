@@ -6,6 +6,7 @@ mod balance;
 mod fixed_wrapper;
 pub mod mock;
 mod primitives;
+mod swap_amount;
 mod traits;
 mod utils;
 
@@ -19,6 +20,7 @@ pub mod prelude {
     pub use super::balance::*;
     pub use super::fixed_wrapper::*;
     pub use super::primitives::*;
+    pub use super::swap_amount::*;
     pub use super::traits::*;
     pub use super::Fixed;
 }
