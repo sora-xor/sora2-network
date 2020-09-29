@@ -37,6 +37,10 @@ pub const BURN: u32 = 4;
 pub const SLASH: u32 = 5;
 pub const INIT_DEX: u32 = 6;
 pub const MANAGE_DEX: u32 = 7;
+pub const CREATE_FARM: u32 = 8;
+pub const CHECK_FARM: u32 = 9;
+pub const INVEST_TO_FARM: u32 = 10;
+pub const CLAIM_FROM_FARM: u32 = 11;
 
 /// Permission container with parameters and information about it's owner.
 #[derive(PartialEq, Eq, Clone, Default, Encode, Decode, RuntimeDebug)]

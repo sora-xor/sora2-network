@@ -9,6 +9,7 @@ members = [
     "pallets/trading-pair",
     "pallets/dex-manager",
     "pallets/dex-api",
+    "pallets/farming",
     "pallets/liquidity-proxy",
     "pallets/mock-liquidity-source",
     "pallets/template",
