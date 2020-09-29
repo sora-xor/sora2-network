@@ -247,16 +247,31 @@ pub trait PureOrWrapped<Regular>: From<Regular> + Into<Option<Regular>> {
     /// The entity is a wrapped `Regular`.
     fn is_wrapped_regular(&self) -> bool;
 
-    /// The entity is wrapped
+    /// The entity is wrapped.
     fn is_wrapped(&self) -> bool;
 }
 
 pub trait IsRepresentation {
-    fn is_repr(&self) -> bool;
+    fn is_representation(&self) -> bool;
 }
 
 pub trait WrappedRepr<Repr> {
     fn wrapped_repr(repr: Repr) -> Self;
+}
+
+pub trait IsRepresentable<A>: PureOrWrapped<A> {
+    /// The entity can be represented or already represented.
+    fn is_representable(&self) -> bool;
+}
+
+/// This is default generic implementation for IsRepresentable trait.
+impl<A, B> IsRepresentable<A> for B
+where
+    B: PureOrWrapped<A> + IsRepresentation,
+{
+    fn is_representable(&self) -> bool {
+        self.is_pure() || self.is_representation()
+    }
 }
 
 /// PureOrWrapped is reflexive.
@@ -270,4 +285,9 @@ impl<A> PureOrWrapped<A> for A {
     fn is_wrapped(&self) -> bool {
         true
     }
+}
+
+/// Abstract trait to get data type from generic pair name and data.
+pub trait FromGenericPair {
+    fn from_generic_pair(tag: Vec<u8>, data: Vec<u8>) -> Self;
 }

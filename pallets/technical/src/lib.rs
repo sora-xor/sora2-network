@@ -1,7 +1,9 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use codec::{Decode, Encode};
-use common::{prelude::Balance, Amount, PureOrWrapped, SwapAction, SwapRulesValidation};
+use common::{
+    prelude::Balance, Amount, IsRepresentable, PureOrWrapped, SwapAction, SwapRulesValidation,
+};
 use frame_support::dispatch::{DispatchError, DispatchResult};
 use frame_support::{decl_error, decl_event, decl_module, decl_storage, ensure, Parameter};
 use frame_system::ensure_signed;
@@ -9,8 +11,9 @@ use sp_core::crypto::AccountId32;
 use sp_runtime::traits::Member;
 use sp_runtime::RuntimeDebug;
 use sp_std::marker::PhantomData;
+use sp_std::vec::Vec;
 
-use common::TECH_ACCOUNT_MAGIC_PREFIX;
+use common::{FromGenericPair, TECH_ACCOUNT_MAGIC_PREFIX};
 
 #[cfg(test)]
 mod mock;
@@ -159,6 +162,19 @@ where
     }
 }
 
+/// This is just IsRepresentable wrapper and some type comstraints for other dependant
+/// implementations.
+impl<T: Trait> common::IsRepresentable<AccountId32> for TechAccountIdOf<T>
+where
+    AccountIdOf<T>: From<AccountId32>,
+    AccountId32: From<AccountIdOf<T>>,
+    TechAccountIdPrimitiveOf<T>: common::WrappedRepr<AccountId32>,
+{
+    fn is_representable(&self) -> bool {
+        self.0.is_representable()
+    }
+}
+
 /// Configure the pallet by specifying the parameters and types on which it depends.
 pub trait Trait: common::Trait + assets::Trait {
     /// Because this pallet emits events, it depends on the runtime's definition of an event.
@@ -172,6 +188,7 @@ pub trait Trait: common::Trait + assets::Trait {
         + Member
         + Parameter
         + PureOrWrapped<AccountIdOf<Self>>
+        + IsRepresentable<AccountIdOf<Self>>
         + Default;
 
     /// The units in which we record amount.
@@ -206,6 +223,19 @@ decl_storage! {
 
 impl<T: Trait> Module<T>
 where
+    TechAccountIdPrimitiveOf<T>: common::FromGenericPair,
+{
+    /// Get `TechAccountId` from generic pair, it is useful then trait is better than data constructor.
+    pub fn tech_acc_id_from_generic_pair(tag: Vec<u8>, data: Vec<u8>) -> TechAccountIdOf<T> {
+        TechAccountIdReprCompat(
+            TechAccountIdPrimitiveOf::<T>::from_generic_pair(tag, data),
+            PhantomData,
+        )
+    }
+}
+
+impl<T: Trait> Module<T>
+where
     AccountIdOf<T>: From<AccountId32>,
     AccountId32: From<AccountIdOf<T>>,
     TechAccountIdPrimitiveOf<T>: common::WrappedRepr<AccountId32>,
@@ -222,9 +252,7 @@ where
     pub fn is_tech_account_id_registered(
         tech_account_id: TechAccountIdOf<T>,
     ) -> Result<bool, DispatchError> {
-        if !(common::PureOrWrapped::<AccountId32>::is_pure(&tech_account_id.clone())
-            || common::PureOrWrapped::<AccountId32>::is_wrapped(&tech_account_id.clone()))
-        {
+        if !common::IsRepresentable::<AccountId32>::is_representable(&tech_account_id.clone()) {
             return Ok(false);
         }
         let repr32 = tech_account_id.clone().into();
