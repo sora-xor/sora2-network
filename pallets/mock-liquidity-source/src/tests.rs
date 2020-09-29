@@ -1,5 +1,5 @@
 use crate::mock::*;
-use common::*;
+use common::prelude::*;
 
 #[test]
 fn test_provides_exchange_should_pass() {
