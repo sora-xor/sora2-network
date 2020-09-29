@@ -4,6 +4,24 @@ use frame_support::assert_ok;
 use PolySwapActionExample::*;
 
 #[test]
+fn generic_primitive_repr_back_map() {
+    let mut ext = ExtBuilder::default().build();
+    let t01 = crate::Module::<Testtime>::tech_acc_id_from_primitive(
+        common::TechAccountId::Generic("Test123".into(), "Some data".into()),
+    );
+    ext.execute_with(|| {
+        assert_ok!(Technical::register_tech_account_id(t01.clone()));
+        assert_eq!(
+            crate::TechAccountIdReprCompat::<
+                Testtime,
+                <Testtime as crate::Trait>::TechAccountIdPrimitive,
+            >::from(AccountId::from(t01.clone())),
+            t01.clone()
+        );
+    });
+}
+
+#[test]
 fn repr_back_map() {
     let mut ext = ExtBuilder::default().build();
     let dex = 10;
