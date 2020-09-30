@@ -16,76 +16,69 @@ pub fn fixed_from_basis_points<BP: Into<u16>>(value: BP) -> Fixed {
     Fixed::from_inner(value_inner as u128 * 100_000_000_000_000)
 }
 /// Generalized filtration mechanism for listing liquidity sources.
-pub struct LiquiditySourceFilter<DEXId: PartialEq, LiquiditySourceIndex: PartialEq> {
-    pub list: Vec<(Option<DEXId>, Option<LiquiditySourceIndex>)>,
+pub struct LiquiditySourceFilter<DEXId: PartialEq + Copy, LiquiditySourceIndex: PartialEq + Copy> {
+    /// DEX Id to which listing is limited.
+    pub dex_id: DEXId,
+    /// Selected Liquidity Source Indices, e.g. Types comprising filter.
+    pub selected: Vec<LiquiditySourceIndex>,
+    /// Switch to either include only sources selected if `false`,
+    /// or include only sources not selected if `true`.
     pub ignore_selected: bool,
 }
 
-impl<DEXId: PartialEq + Clone, LiquiditySourceIndex: PartialEq + Clone>
+impl<DEXId: PartialEq + Copy, LiquiditySourceIndex: PartialEq + Copy>
     LiquiditySourceFilter<DEXId, LiquiditySourceIndex>
 {
-    fn make_list(
-        liquidity_sources: &[LiquiditySourceId<DEXId, LiquiditySourceIndex>],
-    ) -> Vec<(Option<DEXId>, Option<LiquiditySourceIndex>)> {
-        liquidity_sources
-            .iter()
-            .map(|elem| {
-                (
-                    Some(elem.dex_id.clone()),
-                    Some(elem.liquidity_source_index.clone()),
-                )
-            })
-            .collect()
-    }
-
     /// Create filter with no effect.
-    pub fn empty() -> Self {
+    pub fn empty(dex_id: DEXId) -> Self {
         Self {
-            list: Vec::new(),
+            dex_id,
+            selected: Vec::new(),
             ignore_selected: true,
         }
     }
 
-    /// Create filter with fully identified liquidity sources which are ignored.
-    pub fn with_concrete_ignored(
-        liquidity_sources: &[LiquiditySourceId<DEXId, LiquiditySourceIndex>],
+    pub fn new(
+        dex_id: DEXId,
+        selected_indices: &[LiquiditySourceIndex],
+        ignore_selected: bool,
     ) -> Self {
         Self {
-            list: Self::make_list(liquidity_sources),
+            dex_id,
+            selected: selected_indices.iter().cloned().collect(),
+            ignore_selected,
+        }
+    }
+
+    /// Create filter with fully identified liquidity sources which are ignored.
+    pub fn with_ignored(dex_id: DEXId, ignored_indices: &[LiquiditySourceIndex]) -> Self {
+        Self {
+            dex_id,
+            selected: ignored_indices.iter().cloned().collect(),
             ignore_selected: true,
         }
     }
 
     /// Create filter with fully identified liquidity sources which are allowed.
-    pub fn with_concrete_allowed(
-        liquidity_sources: &[LiquiditySourceId<DEXId, LiquiditySourceIndex>],
-    ) -> Self {
+    pub fn with_allowed(dex_id: DEXId, allowed_indices: &[LiquiditySourceIndex]) -> Self {
         Self {
-            list: Self::make_list(liquidity_sources),
+            dex_id,
+            selected: allowed_indices.iter().cloned().collect(),
             ignore_selected: false,
         }
     }
 
-    /// Create filter with partially identified liquidity sources - by their DEXId.
-    pub fn with_ignored_dex_ids(dex_ids: &[DEXId]) -> Self {
-        Self {
-            list: dex_ids
-                .iter()
-                .map(|elem| (Some(elem.clone()), None))
-                .collect(),
-            ignore_selected: true,
-        }
+    pub fn matches_dex_id(&self, dex_id: DEXId) -> bool {
+        self.dex_id == dex_id
     }
 
-    /// Create filter with partially identified liquidity sources - by their DEXId.
-    pub fn with_allowed_dex_ids(dex_ids: &[DEXId]) -> Self {
-        Self {
-            list: dex_ids
-                .iter()
-                .map(|elem| (Some(elem.clone()), None))
-                .collect(),
-            ignore_selected: false,
+    pub fn matches_index(&self, index: LiquiditySourceIndex) -> bool {
+        for idx in self.selected.iter() {
+            if *idx == index {
+                return !self.ignore_selected;
+            }
         }
+        self.ignore_selected
     }
 
     /// Check if given liquidity source is allowed by filter. Return True if allowed.
@@ -93,29 +86,8 @@ impl<DEXId: PartialEq + Clone, LiquiditySourceIndex: PartialEq + Clone>
         &self,
         liquidity_source_id: &LiquiditySourceId<DEXId, LiquiditySourceIndex>,
     ) -> bool {
-        for filter in self.list.iter() {
-            match filter {
-                (Some(dex_id), Some(index)) => {
-                    if dex_id == &liquidity_source_id.dex_id
-                        && index == &liquidity_source_id.liquidity_source_index
-                    {
-                        return !self.ignore_selected;
-                    }
-                }
-                (Some(dex_id), None) => {
-                    if dex_id == &liquidity_source_id.dex_id {
-                        return !self.ignore_selected;
-                    }
-                }
-                (None, Some(index)) => {
-                    if index == &liquidity_source_id.liquidity_source_index {
-                        return !self.ignore_selected;
-                    }
-                }
-                (None, None) => return !self.ignore_selected,
-            }
-        }
-        self.ignore_selected
+        self.matches_dex_id(liquidity_source_id.dex_id)
+            && self.matches_index(liquidity_source_id.liquidity_source_index)
     }
 }
 
@@ -143,5 +115,82 @@ mod tests {
             fixed_from_basis_points(9_999u16)
         );
         assert_eq!(Fixed::from(1), fixed_from_basis_points(10_000u16));
+    }
+
+    #[test]
+    fn test_filter_indices_empty_should_pass() {
+        let filter = LiquiditySourceFilter::<u8, u8>::empty(0);
+        assert!(filter.matches_index(0));
+    }
+
+    #[test]
+    fn test_filter_matches_dex_id_should_pass() {
+        let filter = LiquiditySourceFilter::<u8, u8>::empty(0);
+        assert!(filter.matches_dex_id(0));
+        assert!(!filter.matches_dex_id(1));
+    }
+
+    #[test]
+    fn test_filter_ignore_liquidity_source_id_should_pass() {
+        let filter = LiquiditySourceFilter::<u8, u8>::with_ignored(0, &[0, 1]);
+        assert!(!filter.matches(&LiquiditySourceId::<u8, u8>::new(0, 0)));
+        assert!(!filter.matches(&LiquiditySourceId::<u8, u8>::new(0, 1)));
+        assert!(filter.matches(&LiquiditySourceId::<u8, u8>::new(0, 2)));
+    }
+
+    #[test]
+    fn test_filter_allow_liquidity_source_id_should_pass() {
+        let filter = LiquiditySourceFilter::<u8, u8>::with_allowed(0, &[0, 1]);
+        assert!(filter.matches(&LiquiditySourceId::<u8, u8>::new(0, 0)));
+        assert!(filter.matches(&LiquiditySourceId::<u8, u8>::new(0, 1)));
+        assert!(!filter.matches(&LiquiditySourceId::<u8, u8>::new(0, 2)));
+    }
+
+    #[test]
+    fn test_filter_ignore_none_should_pass() {
+        let filter = LiquiditySourceFilter::<u8, u8>::with_ignored(0, &[]);
+        assert!(filter.matches_index(0));
+        assert!(filter.matches_index(1));
+        assert!(filter.matches_index(2));
+    }
+
+    #[test]
+    fn test_filter_ignore_some_should_pass() {
+        let filter = LiquiditySourceFilter::<u8, u8>::with_ignored(0, &[0, 1]);
+        assert!(!filter.matches_index(0));
+        assert!(!filter.matches_index(1));
+        assert!(filter.matches_index(2));
+    }
+
+    #[test]
+    fn test_filter_ignore_all_should_pass() {
+        let filter = LiquiditySourceFilter::<u8, u8>::with_ignored(0, &[0, 1, 2]);
+        assert!(!filter.matches_index(0));
+        assert!(!filter.matches_index(1));
+        assert!(!filter.matches_index(2));
+    }
+
+    #[test]
+    fn test_filter_allow_none_should_pass() {
+        let filter = LiquiditySourceFilter::<u8, u8>::with_allowed(0, &[]);
+        assert!(!filter.matches_index(0));
+        assert!(!filter.matches_index(1));
+        assert!(!filter.matches_index(2));
+    }
+
+    #[test]
+    fn test_filter_allow_some_should_pass() {
+        let filter = LiquiditySourceFilter::<u8, u8>::with_allowed(0, &[1, 2]);
+        assert!(!filter.matches_index(0));
+        assert!(filter.matches_index(1));
+        assert!(filter.matches_index(2));
+    }
+
+    #[test]
+    fn test_filter_allow_all_should_pass() {
+        let filter = LiquiditySourceFilter::<u8, u8>::with_allowed(0, &[0, 1, 2]);
+        assert!(filter.matches_index(0));
+        assert!(filter.matches_index(1));
+        assert!(filter.matches_index(2));
     }
 }

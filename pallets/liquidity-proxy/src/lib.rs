@@ -32,12 +32,14 @@ decl_event!(
     where
         AccountId = <T as frame_system::Trait>::AccountId,
         AssetId = <T as assets::Trait>::AssetId,
+        DEXId = <T as common::Trait>::DEXId,
     {
         /// Exchange of tokens has been performed
         /// [Caller Account, Liquidity Source Id, Input Asset Id, Output Asset Id, Input Amount, Output Amount]
         SuccessfulExchange(
             AccountId,
-            LiquiditySourceId<AssetId, LiquiditySourceType>,
+            DEXId,
+            LiquiditySourceType,
             AssetId,
             AssetId,
             Fixed,
@@ -65,6 +67,7 @@ decl_module! {
 impl<T: Trait> Module<T> {
     #[allow(dead_code)]
     fn demo_function(
+        dex_id: T::DEXId,
         input_asset_id: &T::AssetId,
         output_asset_id: &T::AssetId,
         amount: Fixed,
@@ -72,7 +75,7 @@ impl<T: Trait> Module<T> {
         Ok(T::LiquidityRegistry::list_liquidity_sources(
             input_asset_id,
             output_asset_id,
-            LiquiditySourceFilter::empty(),
+            LiquiditySourceFilter::empty(dex_id),
         )?
         .iter()
         .map(|src| {

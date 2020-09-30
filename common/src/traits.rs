@@ -116,8 +116,8 @@ impl<DEXId, AccountId, AssetId> LiquiditySource<DEXId, AccountId, AssetId, Fixed
 pub trait LiquidityRegistry<DEXId, AccountId, AssetId, LiquiditySourceIndex, Amount, Error>:
     LiquiditySource<LiquiditySourceId<DEXId, LiquiditySourceIndex>, AccountId, AssetId, Amount, Error>
 where
-    DEXId: PartialEq + Clone,
-    LiquiditySourceIndex: PartialEq + Clone,
+    DEXId: PartialEq + Clone + Copy,
+    LiquiditySourceIndex: PartialEq + Clone + Copy,
 {
     /// Enumerate available liquidity sources which provide
     /// exchange with for given input->output tokens.
@@ -133,7 +133,7 @@ pub type AccountIdOf<T> = <T as frame_system::Trait>::AccountId;
 /// Common DEX trait. Used for DEX-related pallets.
 pub trait Trait: frame_system::Trait + currencies::Trait {
     /// DEX identifier.
-    type DEXId: Parameter + Ord + Default;
+    type DEXId: Parameter + Ord + Copy + Default;
 }
 
 /// Definition of a pending atomic swap action. It contains the following three phrases:

@@ -1,4 +1,3 @@
-use crate::prelude::Balance;
 use codec::{Decode, Encode};
 use core::ops::{Div, DivAssign, Mul, MulAssign};
 use frame_support::RuntimeDebug;
@@ -142,6 +141,7 @@ impl<AmountType> SwapOutcome<AmountType> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::prelude::Balance;
 
     #[test]
     fn test_mul_amount_should_pass() {
