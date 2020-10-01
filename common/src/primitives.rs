@@ -80,14 +80,14 @@ pub enum LiquiditySourceType {
 
 /// Identification of liquidity source.
 #[derive(Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq, PartialOrd, Ord)]
-pub struct LiquiditySourceId<DEXId, LiquiditySourceIndex> {
+pub struct LiquiditySourceId<DEXId: Copy, LiquiditySourceIndex: Copy> {
     /// Identification of target DEX.
     pub dex_id: DEXId,
     /// Index value to distinguish particular liquidity source, e.g. index in array or enum-type.
     pub liquidity_source_index: LiquiditySourceIndex,
 }
 
-impl<DEXId, LiquiditySourceIndex> LiquiditySourceId<DEXId, LiquiditySourceIndex> {
+impl<DEXId: Copy, LiquiditySourceIndex: Copy> LiquiditySourceId<DEXId, LiquiditySourceIndex> {
     pub fn new(dex_id: DEXId, liquidity_source_index: LiquiditySourceIndex) -> Self {
         Self {
             dex_id,

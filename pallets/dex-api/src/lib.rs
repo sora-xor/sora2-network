@@ -5,7 +5,9 @@ use common::{
     Fixed, LiquidityRegistry, LiquiditySource, LiquiditySourceFilter, LiquiditySourceId,
     LiquiditySourceType,
 };
-use frame_support::{decl_error, decl_event, decl_module, sp_runtime::DispatchError};
+use frame_support::{
+    decl_error, decl_event, decl_module, ensure, sp_runtime::DispatchError, StorageMap,
+};
 use sp_std::vec::Vec;
 
 #[cfg(test)]
@@ -36,7 +38,7 @@ decl_event!(
 
 decl_error! {
     pub enum Error for Module<T: Trait> {
-        SomethingWrong,
+        DEXIdDoesNotExist,
     }
 }
 
@@ -122,15 +124,26 @@ impl<T: Trait>
         output_asset_id: &T::AssetId,
         filter: LiquiditySourceFilter<T::DEXId, LiquiditySourceType>,
     ) -> Result<Vec<LiquiditySourceId<T::DEXId, LiquiditySourceType>>, DispatchError> {
-        Ok(dex_manager::Module::<T>::list_dex_ids()
+        let supported_types = &[LiquiditySourceType::MockPool];
+        ensure!(
+            dex_manager::DEXInfos::<T>::contains_key(filter.dex_id),
+            Error::<T>::DEXIdDoesNotExist
+        );
+
+        Ok(supported_types
             .iter()
-            .filter_map(|dex_id| {
-                let source_id =
-                    LiquiditySourceId::new(dex_id.clone(), LiquiditySourceType::MockPool);
-                if filter.matches(&source_id)
-                    && T::MockLiquiditySource::can_exchange(dex_id, input_asset_id, output_asset_id)
+            .filter_map(|source_type| {
+                if filter.matches_index(*source_type)
+                    && T::MockLiquiditySource::can_exchange(
+                        &filter.dex_id,
+                        input_asset_id,
+                        output_asset_id,
+                    )
                 {
-                    Some(source_id)
+                    Some(LiquiditySourceId::new(
+                        filter.dex_id.clone(),
+                        source_type.clone(),
+                    ))
                 } else {
                     None
                 }
