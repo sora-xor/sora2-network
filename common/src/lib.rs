@@ -55,7 +55,7 @@ pub const TECH_ACCOUNT_MAGIC_PREFIX: [u8; 16] = [
 ];
 
 impl IsRepresentation for AccountId32 {
-    fn is_repr(&self) -> bool {
+    fn is_representation(&self) -> bool {
         let b: [u8; 32] = self.clone().into();
         b[0..16] == TECH_ACCOUNT_MAGIC_PREFIX
     }

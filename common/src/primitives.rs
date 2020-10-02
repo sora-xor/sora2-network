@@ -5,6 +5,7 @@ use frame_support::RuntimeDebug;
 use frame_support::{decl_error, decl_module};
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
+use sp_std::vec::Vec;
 
 decl_error! {
     pub enum Error for Module<T: Trait> {
@@ -159,7 +160,7 @@ impl<AssetId, DEXId> crate::traits::PureOrWrapped<AssetId> for TechAssetId<Asset
 }
 
 /// Code of purpose for technical account.
-#[derive(Encode, Decode, Eq, PartialEq, Copy, Clone, PartialOrd, Ord, Debug)]
+#[derive(Encode, Decode, Eq, PartialEq, Clone, PartialOrd, Ord, Debug)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum TechPurpose<AssetId> {
     FeeCollector,
@@ -174,9 +175,31 @@ pub enum TechPurpose<AssetId> {
 pub enum TechAccountId<AccountId, AssetId, DEXId> {
     Pure(DEXId, TechPurpose<AssetId>),
     /// First field is used as name or tag of binary format, second field is used as binary data.
-    Generic(sp_std::vec::Vec<u8>, sp_std::vec::Vec<u8>),
+    Generic(Vec<u8>, Vec<u8>),
     Wrapped(AccountId),
     WrappedRepr(AccountId),
+}
+
+/// Implementation of `IsRepresentation` for `TechAccountId`, because is has `WrappedRepr`.
+impl<AccountId, AssetId, DEXId> crate::traits::IsRepresentation
+    for TechAccountId<AccountId, AssetId, DEXId>
+{
+    fn is_representation(&self) -> bool {
+        match self {
+            TechAccountId::WrappedRepr(_) => true,
+            _ => false,
+        }
+    }
+}
+
+/// Implementation of `FromGenericPair` for cases when trait method is better than data type
+/// constructor.
+impl<AccountId, AssetId, DEXId> crate::traits::FromGenericPair
+    for TechAccountId<AccountId, AssetId, DEXId>
+{
+    fn from_generic_pair(tag: Vec<u8>, data: Vec<u8>) -> Self {
+        TechAccountId::Generic(tag, data)
+    }
 }
 
 impl<AccountId: Default, AssetId, DEXId> Default for TechAccountId<AccountId, AssetId, DEXId> {
@@ -198,7 +221,7 @@ where
     AccountId: crate::traits::IsRepresentation,
 {
     fn from(a: AccountId) -> Self {
-        if a.is_repr() {
+        if a.is_representation() {
             TechAccountId::Wrapped(a)
         } else {
             TechAccountId::WrappedRepr(a)
