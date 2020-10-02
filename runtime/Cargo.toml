@@ -58,6 +58,7 @@ cumulus-primitives = { git = "https://github.com/paritytech/cumulus",  default-f
 common = { path = "../common", default-features = false }
 assets = { path = "../pallets/assets", default-features = false }
 #iroha-bridge = { path = "../pallets/iroha-bridge", default-features = false }
+static_assertions = "1.1.0"
 
 [build-dependencies]
 substrate-wasm-builder-runner = { version = "1.0.6" }

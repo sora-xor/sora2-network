@@ -1,9 +1,10 @@
 #[rustfmt::skip]
 mod tests {
-    use crate::{mock::*, DistributionAccounts, Error, TechAccountIdOf};
-    use common::prelude::{Balance, Fixed, SwapAmount, SwapOutcome};
-    use common::{fixed, AssetId};
-    use common::{DEXId, LiquiditySource};
+    use crate::{mock::*, DistributionAccounts, Error};
+    use common::{
+        fixed, AssetId, TechPurpose, DEXId, LiquiditySource,
+        prelude::{Balance, Fixed, SwapAmount, SwapOutcome}
+    };
     use frame_support::assert_err;
     use sp_arithmetic::traits::{Bounded, Zero};
     use sp_runtime::DispatchError;
@@ -52,29 +53,27 @@ mod tests {
     fn bonding_curve_pool_init(
         initial_reserves: Vec<(AssetId, Balance)>,
     ) -> Result<DistributionAccounts<Runtime>, DispatchError> {
-        let bonding_curve_tech_account_id: TechAccountIdOf<Runtime> = [10u8; 16].into();
+        let bonding_curve_tech_account_id = TechAccountId::Pure(DEXId::Polkaswap, TechPurpose::Identifier(b"bonding_curve_tech_account_id".to_vec()));
         Technical::register_tech_account_id(bonding_curve_tech_account_id.clone())?;
-        BondingCurvePool::set_reserves_account_id(bonding_curve_tech_account_id.clone().0)?;
+        BondingCurvePool::set_reserves_account_id(bonding_curve_tech_account_id.clone())?;
         for (asset_id, balance) in initial_reserves {
-            Technical::mint(&asset_id, bonding_curve_tech_account_id.clone(), balance)?;
+            Technical::mint(&asset_id, &bonding_curve_tech_account_id, balance)?;
         }
-        let xor_allocation: TechAccountIdOf<Runtime> = [11u8; 16].into();
-        let sora_citizens: TechAccountIdOf<Runtime> = [12u8; 16].into();
-        let stores_and_shops: TechAccountIdOf<Runtime> = [13u8; 16].into();
-        let parliament_and_development: TechAccountIdOf<Runtime> = [14u8; 16].into();
-        let projects: TechAccountIdOf<Runtime> = [15u8; 16].into();
-        Technical::register_tech_account_id(xor_allocation.clone())?;
-        Technical::register_tech_account_id(sora_citizens.clone())?;
-        Technical::register_tech_account_id(stores_and_shops.clone())?;
-        Technical::register_tech_account_id(parliament_and_development.clone())?;
-        Technical::register_tech_account_id(projects.clone())?;
-        let accounts = DistributionAccounts {
+        let xor_allocation = TechAccountId::Pure(DEXId::Polkaswap, TechPurpose::Identifier(b"xor_allocation".to_vec()));
+        let sora_citizens = TechAccountId::Pure(DEXId::Polkaswap, TechPurpose::Identifier(b"sora_citizens".to_vec()));
+        let stores_and_shops = TechAccountId::Pure(DEXId::Polkaswap, TechPurpose::Identifier(b"stores_and_shops".to_vec()));
+        let parliament_and_development = TechAccountId::Pure(DEXId::Polkaswap, TechPurpose::Identifier(b"parliament_and_development".to_vec()));
+        let projects = TechAccountId::Pure(DEXId::Polkaswap, TechPurpose::Identifier(b"projects".to_vec()));
+        let accounts = DistributionAccounts::<Runtime> {
             xor_allocation,
             sora_citizens,
             stores_and_shops,
             parliament_and_development,
             projects,
         };
+        for tech_account in &accounts.as_array() {
+            Technical::register_tech_account_id((*tech_account).clone())?;
+        }
         BondingCurvePool::set_distribution_accounts(accounts.clone());
         Ok(accounts)
     }
@@ -90,7 +89,7 @@ mod tests {
         ext.execute_with(|| {
             MockDEXApi::init().unwrap();
             let distribution_accounts = bonding_curve_pool_init(Vec::new()).unwrap();
-            let distribution_accounts_array = distribution_accounts.to_accounts_array();
+            let distribution_accounts_array = distribution_accounts.as_array();
             let alice = &alice();
             assert_eq!(
                 BondingCurvePool::exchange(
@@ -106,7 +105,7 @@ mod tests {
             );
             for account_id in &distribution_accounts_array {
                 assert_eq!(
-                    Assets::total_balance(&XOR, &account_id.clone().into()).unwrap(),
+                    Technical::total_balance(&XOR, account_id).unwrap(),
                     Balance::zero(),
                 );
             }
@@ -145,7 +144,7 @@ mod tests {
                 - Balance(BondingCurvePool::buy_price(&XOR).unwrap()) / Balance::from(2u32);
             let distribution_accounts =
                 bonding_curve_pool_init(vec![(USD, pool_usd_amount)]).unwrap();
-            let distribution_accounts_array = distribution_accounts.to_accounts_array();
+            let distribution_accounts_array = distribution_accounts.as_array();
             let alice = &alice();
             assert_eq!(
                 BondingCurvePool::exchange(
@@ -172,7 +171,7 @@ mod tests {
                 .zip(balances)
             {
                 assert_eq!(
-                    Assets::total_balance(&XOR, &account_id.clone().into()).unwrap(),
+                    Technical::total_balance(&XOR, &account_id).unwrap(),
                     balance,
                 );
             }
@@ -209,7 +208,7 @@ mod tests {
                 Balance(BondingCurvePool::sell_tokens_in_price(&XOR, total_issuance).unwrap());
             let distribution_accounts =
                 bonding_curve_pool_init(vec![(USD, reserve_amount_expected)]).unwrap();
-            let distribution_accounts_array = distribution_accounts.to_accounts_array();
+            let distribution_accounts_array = distribution_accounts.as_array();
             let alice = &alice();
             assert_eq!(
                 BondingCurvePool::exchange(
@@ -236,7 +235,7 @@ mod tests {
                 .zip(balances)
             {
                 assert_eq!(
-                    Assets::total_balance(&XOR, &account_id.clone().into()).unwrap(),
+                    Technical::total_balance(&XOR, &account_id).unwrap(),
                     balance,
                 );
             }

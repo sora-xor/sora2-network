@@ -4,61 +4,19 @@ use frame_support::assert_ok;
 use PolySwapActionExample::*;
 
 #[test]
-fn generic_pair_repr_back_map() {
+fn should_register_technical_account() {
     let mut ext = ExtBuilder::default().build();
-    let t01 = crate::Module::<Testtime>::tech_acc_id_from_generic_pair(
-        "Test123".into(),
-        "Some data".into(),
-    );
-    ext.execute_with(|| {
-        assert_ok!(Technical::register_tech_account_id(t01.clone()));
-        assert_eq!(
-            crate::TechAccountIdReprCompat::<
-                Testtime,
-                <Testtime as crate::Trait>::TechAccountIdPrimitive,
-            >::from(AccountId::from(t01.clone())),
-            t01.clone()
-        );
-    });
-}
+    let tech_account_id = common::TechAccountId::Generic("Test123".into(), "Some data".into());
+    let t01 = crate::Module::<Testtime>::tech_account_id_to_account_id(&tech_account_id).unwrap();
 
-#[test]
-fn generic_primitive_repr_back_map() {
-    let mut ext = ExtBuilder::default().build();
-    let t01 = crate::Module::<Testtime>::tech_acc_id_from_primitive(
-        common::TechAccountId::Generic("Test123".into(), "Some data".into()),
-    );
     ext.execute_with(|| {
-        assert_ok!(Technical::register_tech_account_id(t01.clone()));
+        assert_ok!(Technical::register_tech_account_id(TechAccountId::Generic(
+            "Test123".into(),
+            "Some data".into()
+        )));
         assert_eq!(
-            crate::TechAccountIdReprCompat::<
-                Testtime,
-                <Testtime as crate::Trait>::TechAccountIdPrimitive,
-            >::from(AccountId::from(t01.clone())),
-            t01.clone()
-        );
-    });
-}
-
-#[test]
-fn repr_back_map() {
-    let mut ext = ExtBuilder::default().build();
-    let dex = 10;
-    let t01 = crate::Module::<Testtime>::tech_acc_id_from_primitive(common::TechAccountId::Pure(
-        dex,
-        LiquidityKeeper(TradingPair {
-            base_asset_id: RedPepper,
-            target_asset_id: BlackPepper,
-        }),
-    ));
-    ext.execute_with(|| {
-        assert_ok!(Technical::register_tech_account_id(t01.clone()));
-        assert_eq!(
-            crate::TechAccountIdReprCompat::<
-                Testtime,
-                <Testtime as crate::Trait>::TechAccountIdPrimitive,
-            >::from(AccountId::from(t01.clone())),
-            t01.clone()
+            crate::Module::<Testtime>::lookup_tech_account_id(&t01).unwrap(),
+            tech_account_id
         );
     });
 }
@@ -67,14 +25,14 @@ fn repr_back_map() {
 fn generic_pair_swap_simple() {
     let mut ext = ExtBuilder::default().build();
     let dex = 10;
-    let t01 = crate::Module::<Testtime>::tech_acc_id_from_primitive(common::TechAccountId::Pure(
+    let t01 = common::TechAccountId::Pure(
         dex,
         LiquidityKeeper(TradingPair {
             base_asset_id: RedPepper,
             target_asset_id: BlackPepper,
         }),
-    ));
-    let repr: AccountId = t01.clone().into();
+    );
+    let repr: AccountId = Technical::tech_account_id_to_account_id(&t01).unwrap();
     let a01 = RedPepper;
     let a02 = BlackPepper;
     let s01 = GenericPair(GenericPairSwapActionExample {

@@ -171,18 +171,17 @@ pub struct GenericPairSwapActionExample {
 
 impl common::SwapAction<AccountId, TechAccountId, Testtime> for GenericPairSwapActionExample {
     fn reserve(&self, source: &AccountId) -> dispatch::DispatchResult {
-        let src = (*source).clone();
         //FIXME now in this place exist two operations, and it is not lock.
         crate::Module::<Testtime>::transfer_in(
             &self.give_asset.into(),
-            src.clone(),
-            self.take_account.clone(),
+            source,
+            &self.take_account,
             self.give_amount,
         )?;
         crate::Module::<Testtime>::transfer_out(
             &self.take_asset.into(),
-            self.take_account.clone(),
-            src.clone(),
+            &self.take_account,
+            source,
             self.take_amount,
         )?;
         Ok(())
@@ -363,17 +362,14 @@ impl common::SwapRulesValidation<AccountId, TechAccountId, Testtime> for PolySwa
 }
 
 type TechAssetId = common::TechAssetId<AssetId, DEXId>;
-type TechAccountIdPrimitive = common::TechAccountId<AccountId, AssetId, DEXId>;
-type TechAccountId = crate::TechAccountIdReprCompat<Testtime, TechAccountIdPrimitive>;
+pub type TechAccountId = common::TechAccountId<AccountId, AssetId, DEXId>;
 type TechAmount = Amount;
 type TechBalance = Balance;
 
 impl Trait for Testtime {
     type Event = ();
     type TechAssetId = TechAssetId;
-    type TechAccountIdPrimitive = TechAccountIdPrimitive;
-    type TechAmount = TechAmount;
-    type TechBalance = TechBalance;
+    type TechAccountId = TechAccountId;
     type Trigger = ();
     type Condition = ();
     type SwapAction = PolySwapActionExample;

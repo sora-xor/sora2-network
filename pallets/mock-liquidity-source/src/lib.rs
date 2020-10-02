@@ -1,7 +1,6 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use common::prelude::*;
-use frame_support::sp_runtime::AccountId32;
 use frame_support::{
     decl_error, decl_event, decl_module, decl_storage,
     dispatch::{DispatchError, DispatchResult},
@@ -17,8 +16,6 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
-type TechAccountIdPrimitiveOf<T> = <T as technical::Trait>::TechAccountIdPrimitive;
-
 pub trait Trait<I: Instance>: common::Trait + assets::Trait + technical::Trait {
     type Event: From<Event<Self, I>> + Into<<Self as frame_system::Trait>::Event>;
     type GetFee: Get<Fixed>;
@@ -29,7 +26,7 @@ pub trait Trait<I: Instance>: common::Trait + assets::Trait + technical::Trait {
 decl_storage! {
     trait Store for Module<T: Trait<I>, I: Instance> as MockLiquiditySourceModule {
         pub Reserves get(fn reserves): double_map hasher(blake2_128_concat) T::DEXId, hasher(blake2_128_concat) T::AssetId => (Fixed, Fixed);
-        pub ReservesAcc get(fn reserves_account_id): T::TechAccountIdPrimitive;
+        pub ReservesAcc get(fn reserves_account_id): T::TechAccountId;
     }
 
     add_extra_genesis {
@@ -203,18 +200,10 @@ impl<T: Trait<I>, I: Instance> Module<T, I> {
     }
 }
 
-impl<T: Trait<I>, I: Instance> Module<T, I>
-where
-    AccountIdOf<T>: From<AccountId32>,
-    AccountId32: From<AccountIdOf<T>>,
-    TechAccountIdPrimitiveOf<T>: common::WrappedRepr<AccountId32>,
-{
-    pub fn set_reserves_account_id(
-        account: T::TechAccountIdPrimitive,
-    ) -> Result<(), DispatchError> {
+impl<T: Trait<I>, I: Instance> Module<T, I> {
+    pub fn set_reserves_account_id(account: T::TechAccountId) -> Result<(), DispatchError> {
         ReservesAcc::<T, I>::set(account.clone());
-        let reserves_tech_account_id = technical::Module::<T>::tech_acc_id_from_primitive(account);
-        let account_id = T::AccountId::from(reserves_tech_account_id.clone().into());
+        let account_id = technical::Module::<T>::tech_account_id_to_account_id(&account)?;
         let permission_obj = permissions::Permission::<T>::new(account_id.clone());
         let permissions = [BURN, MINT, TRANSFER, SLASH, EXCHANGE];
         for permission in &permissions {

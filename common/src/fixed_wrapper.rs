@@ -22,7 +22,7 @@ impl FixedWrapper {
     }
 
     /// Calculates square root of self using [Babylonian method][babylonian].
-    ///
+    /// Precision is `1e-10`.
     /// [babylonian]: https://en.wikipedia.org/wiki/Methods_of_computing_square_roots#Babylonian_method
     pub fn sqrt_accurate(self) -> Self {
         fn eq_eps(left: Fixed, right: Fixed, eps: Fixed) -> bool {

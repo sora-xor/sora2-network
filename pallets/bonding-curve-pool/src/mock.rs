@@ -1,13 +1,14 @@
 use crate::{Module, Trait};
-use common::prelude::{AssetId, Balance, SwapAmount, SwapOutcome};
-use common::{fixed, TechAccountId, TechPurpose};
-use common::{Amount, LiquiditySource};
+use common::{
+    fixed,
+    prelude::{AssetId, Balance, SwapAmount, SwapOutcome},
+    Amount, LiquiditySource, TechPurpose,
+};
 use currencies::BasicCurrencyAdapter;
 use frame_support::{impl_outer_origin, parameter_types, weights::Weight, StorageValue};
 use frame_system as system;
 use orml_traits::MultiCurrency;
-use sp_core::crypto::AccountId32;
-use sp_core::H256;
+use sp_core::{crypto::AccountId32, H256};
 use sp_runtime::{
     testing::Header,
     traits::{BlakeTwo256, IdentityLookup},
@@ -17,8 +18,10 @@ use std::collections::HashMap;
 
 pub type AccountId = AccountId32;
 pub type BlockNumber = u64;
-type TechAccountIdPrimitive = common::TechAccountId<AccountId, AssetId, DEXId>;
+pub type TechAccountId = common::TechAccountId<AccountId, AssetId, DEXId>;
 type TechAssetId = common::TechAssetId<AssetId, DEXId>;
+pub type ReservesAccount =
+    mock_liquidity_source::ReservesAcc<Runtime, mock_liquidity_source::Instance1>;
 
 pub fn alice() -> AccountId {
     AccountId32::from([1u8; 32])
@@ -98,10 +101,9 @@ impl MockDEXApi {
     pub fn init() -> Result<(), DispatchError> {
         let mock_liquidity_source_tech_account_id =
             TechAccountId::Pure(DEXId::Polkaswap.into(), TechPurpose::FeeCollector);
-        let tech_acc_id_primitive =
-            Technical::tech_acc_id_from_primitive(mock_liquidity_source_tech_account_id.clone());
-        let account_id: AccountId = tech_acc_id_primitive.clone().into();
-        Technical::register_tech_account_id(tech_acc_id_primitive)?;
+        let account_id =
+            Technical::tech_account_id_to_account_id(&mock_liquidity_source_tech_account_id)?;
+        Technical::register_tech_account_id(mock_liquidity_source_tech_account_id.clone())?;
         MockLiquiditySource::set_reserves_account_id(mock_liquidity_source_tech_account_id)?;
         Currencies::deposit(XOR, &account_id, 1_000_u128.into())?;
         Currencies::deposit(VAL, &account_id, 1_000_u128.into())?;
@@ -150,12 +152,8 @@ impl<DEXId> LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> f
                     desired_amount_in * prices[&(*input_asset_id, *output_asset_id)];
                 let fee = amount_out * Balance(fixed!(0,3%));
                 amount_out = amount_out - fee;
-                let reserves_account_id: &AccountId =
-                    &Technical::tech_acc_id_from_primitive(mock_liquidity_source::ReservesAcc::<
-                        Runtime,
-                        mock_liquidity_source::Instance1,
-                    >::get())
-                    .into();
+                let reserves_account_id =
+                    &Technical::tech_account_id_to_account_id(&ReservesAccount::get())?;
                 assert_ne!(desired_amount_in, 0u128.into());
                 let old = Assets::total_balance(input_asset_id, sender)?;
                 Assets::transfer(
@@ -217,9 +215,7 @@ impl permissions::Trait for Runtime {
 impl technical::Trait for Runtime {
     type Event = ();
     type TechAssetId = TechAssetId;
-    type TechAccountIdPrimitive = TechAccountIdPrimitive;
-    type TechAmount = Amount;
-    type TechBalance = Balance;
+    type TechAccountId = TechAccountId;
     type Trigger = ();
     type Condition = ();
     type SwapAction = ();

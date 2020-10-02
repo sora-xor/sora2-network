@@ -17,10 +17,7 @@ pub type AccountId = AccountId32;
 pub type BlockNumber = u64;
 
 type TechAssetId = common::TechAssetId<AssetId, DEXId>;
-type TechAccountIdPrimitive = common::TechAccountId<AccountId, AssetId, DEXId>;
-// type TechAccountId = crate::TechAccountIdReprCompat<Testtime, TechAccountIdPrimitive>;
-type TechAmount = Amount;
-type TechBalance = Balance;
+type TechAccountId = common::TechAccountId<AccountId, AssetId, DEXId>;
 
 pub fn alice() -> AccountId {
     AccountId32::from([1u8; 32])
@@ -95,9 +92,7 @@ impl Trait<crate::Instance2> for Runtime {
 impl technical::Trait for Runtime {
     type Event = ();
     type TechAssetId = TechAssetId;
-    type TechAccountIdPrimitive = TechAccountIdPrimitive;
-    type TechAmount = TechAmount;
-    type TechBalance = TechBalance;
+    type TechAccountId = TechAccountId;
     type Trigger = ();
     type Condition = ();
     type SwapAction = ();

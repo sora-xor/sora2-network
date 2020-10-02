@@ -172,9 +172,7 @@ impl mock_liquidity_source::Trait<mock_liquidity_source::Instance4> for Runtime 
 impl technical::Trait for Runtime {
     type Event = ();
     type TechAssetId = AssetId;
-    type TechAccountIdPrimitive = common::TechAccountId<AccountId, AssetId, DEXId>;
-    type TechAmount = Amount;
-    type TechBalance = Balance;
+    type TechAccountId = common::TechAccountId<AccountId, AssetId, DEXId>;
     type Trigger = ();
     type Condition = ();
     type SwapAction = ();

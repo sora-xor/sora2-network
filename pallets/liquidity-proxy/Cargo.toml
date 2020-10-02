@@ -46,8 +46,6 @@ std = [
     'tokens/std',
     'traits/std',
     'dex-manager/std',
-    'mock-liquidity-source/std',
-    'dex-api/std',
     'assets/std',
     'permissions/std',
 ]

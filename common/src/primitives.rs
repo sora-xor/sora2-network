@@ -168,6 +168,7 @@ impl<AssetId, DEXId> crate::traits::PureOrWrapped<AssetId> for TechAssetId<Asset
 pub enum TechPurpose<AssetId> {
     FeeCollector,
     LiquidityKeeper(TradingPair<AssetId>),
+    Identifier(Vec<u8>),
 }
 
 /// Enum encoding of technical account id, pure and wrapped records.

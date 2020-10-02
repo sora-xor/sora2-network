@@ -24,6 +24,7 @@ use sp_std::prelude::*;
 #[cfg(feature = "std")]
 use sp_version::NativeVersion;
 use sp_version::RuntimeVersion;
+use static_assertions::assert_eq_size;
 
 // A few exports that help ease life for downstream crates.
 pub use frame_support::{
@@ -61,6 +62,10 @@ pub type Signature = MultiSignature;
 /// Some way of identifying an account on the chain. We intentionally make it equivalent
 /// to the public key of our transaction signing scheme.
 pub type AccountId = <<Signature as Verify>::Signer as IdentifyAccount>::AccountId;
+
+// This assert is needed for `technical` pallet in order to create
+// `AccountId` from the hash type.
+assert_eq_size!(AccountId, sp_core::H256);
 
 /// The type for looking up accounts. We don't expect more than 4 billion of them, but you
 /// never know...
@@ -273,16 +278,13 @@ impl bonding_curve_pool::Trait for Runtime {
     type DEXApi = ();
 }
 
-type TechAccountIdPrimitive = common::TechAccountId<AccountId, AssetId, DEXId>;
+type TechAccountId = common::TechAccountId<AccountId, AssetId, DEXId>;
 type TechAssetId = common::TechAssetId<AssetId, DEXId>;
-type TechBalance = Balance;
 
 impl technical::Trait for Runtime {
     type Event = Event;
     type TechAssetId = TechAssetId;
-    type TechAccountIdPrimitive = TechAccountIdPrimitive;
-    type TechAmount = Amount;
-    type TechBalance = TechBalance;
+    type TechAccountId = TechAccountId;
     type Trigger = ();
     type Condition = ();
     type SwapAction = ();

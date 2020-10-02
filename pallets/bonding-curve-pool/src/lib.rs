@@ -10,19 +10,16 @@ mod mock;
 mod tests;
 
 use codec::{Decode, Encode};
-use common::prelude::{
-    Balance, Error as CommonError, Fixed, FixedWrapper, SwapAmount, SwapOutcome,
+use common::{
+    fixed,
+    prelude::{Balance, Error as CommonError, Fixed, FixedWrapper, SwapAmount, SwapOutcome},
+    AssetId, DEXId, LiquiditySource,
 };
-use common::{fixed, AccountIdOf, AssetId, DEXId, LiquiditySource};
-use frame_support::sp_runtime::AccountId32;
 use frame_support::traits::Get;
 use frame_support::{decl_error, decl_module, decl_storage};
 use permissions::{BURN, EXCHANGE, MINT, SLASH, TRANSFER};
 use sp_arithmetic::traits::{CheckedAdd, Zero};
 use sp_runtime::DispatchError;
-use technical::TechAccountIdReprCompat;
-
-type TechAccountIdPrimitiveOf<T> = <T as technical::Trait>::TechAccountIdPrimitive;
 
 pub trait Trait: common::Trait + assets::Trait + technical::Trait {
     type DEXApi: LiquiditySource<
@@ -36,29 +33,24 @@ pub trait Trait: common::Trait + assets::Trait + technical::Trait {
 
 type Assets<T> = assets::Module<T>;
 type Technical<T> = technical::Module<T>;
-type TechAccountIdOf<T> =
-    TechAccountIdReprCompat<T, <T as technical::Trait>::TechAccountIdPrimitive>;
 
 #[derive(Debug, Encode, Decode, Clone)]
 pub struct DistributionAccounts<T: Trait> {
-    xor_allocation: TechAccountIdOf<T>,
-    sora_citizens: TechAccountIdOf<T>,
-    stores_and_shops: TechAccountIdOf<T>,
-    parliament_and_development: TechAccountIdOf<T>,
-    projects: TechAccountIdOf<T>,
+    xor_allocation: T::TechAccountId,
+    sora_citizens: T::TechAccountId,
+    stores_and_shops: T::TechAccountId,
+    parliament_and_development: T::TechAccountId,
+    projects: T::TechAccountId,
 }
 
-impl<T: Trait> DistributionAccounts<T>
-where
-    TechAccountIdOf<T>: Into<AccountIdOf<T>>,
-{
-    pub fn to_accounts_array(&self) -> [TechAccountIdOf<T>; 5] {
+impl<T: Trait> DistributionAccounts<T> {
+    pub fn as_array(&self) -> [&T::TechAccountId; 5] {
         [
-            self.xor_allocation.clone(),
-            self.sora_citizens.clone(),
-            self.stores_and_shops.clone(),
-            self.parliament_and_development.clone(),
-            self.projects.clone(),
+            &self.xor_allocation,
+            &self.sora_citizens,
+            &self.stores_and_shops,
+            &self.parliament_and_development,
+            &self.projects,
         ]
     }
 }
@@ -78,7 +70,7 @@ impl<T: Trait> Default for DistributionAccounts<T> {
 decl_storage! {
     // TODO: make pre-check for all coefficients are <= 1.
     trait Store for Module<T: Trait> as BondingCurve {
-        ReservesAcc get(fn reserves_account_id): T::TechAccountIdPrimitive;
+        ReservesAcc get(fn reserves_account_id): T::TechAccountId;
         Fee get(fn fee) config(): Fixed = fixed!(0,1%);
         InitialPrice get(fn initial_price) config(): Fixed = fixed!(99,3);
         PriceChangeStep get(fn price_change_step) config(): Fixed = 5000.into();
@@ -106,12 +98,7 @@ decl_module! {
 }
 
 #[allow(non_snake_case)]
-impl<T: Trait> Module<T>
-where
-    AccountIdOf<T>: From<AccountId32>,
-    AccountId32: From<AccountIdOf<T>>,
-    TechAccountIdPrimitiveOf<T>: common::WrappedRepr<AccountId32>,
-{
+impl<T: Trait> Module<T> {
     /// Calculates and returns the current buy price for one token.
     ///
     /// For every `PC_S` tokens the price goes up by `PC_R`.
@@ -224,11 +211,9 @@ where
         to_account_id: &T::AccountId,
     ) -> Result<SwapOutcome<Balance>, DispatchError> {
         let input_amount = Balance(Self::buy_tokens_out_price(out_asset_id, output_amount)?);
-
-        let reserves_tech_account_id_primitive = Self::reserves_account_id();
-        let reserves_tech_account_id =
-            Technical::<T>::tech_acc_id_from_primitive(reserves_tech_account_id_primitive.clone());
-        let reserves_account_id = T::AccountId::from(reserves_tech_account_id.clone().into());
+        let reserves_tech_account_id = Self::reserves_account_id();
+        let reserves_account_id =
+            Technical::<T>::tech_account_id_to_account_id(&reserves_tech_account_id)?;
         let mut R = Assets::<T>::total_balance(in_asset_id, &reserves_account_id)?;
         let total_issuance = Assets::<T>::total_issuance(out_asset_id)?;
         let R_expected = Balance(Self::sell_tokens_in_price(out_asset_id, total_issuance)?);
@@ -237,8 +222,8 @@ where
         if R < R_expected {
             Technical::<T>::transfer_in(
                 in_asset_id,
-                from_account_id.clone(),
-                reserves_tech_account_id.clone(),
+                &from_account_id,
+                &reserves_tech_account_id,
                 input_amount,
             )?;
             R = R
@@ -254,8 +239,8 @@ where
             let reserved_amount = input_amount - input_amount_free;
             Technical::<T>::transfer_in(
                 in_asset_id,
-                from_account_id.clone(),
-                reserves_tech_account_id.clone(),
+                &from_account_id,
+                &reserves_tech_account_id,
                 reserved_amount,
             )?;
             R = R
@@ -273,16 +258,8 @@ where
                 SwapAmount::with_desired_input(input_amount_free, Balance::zero()), // TODO: do we need to set `min_amount_out`?
             )?
             .amount;
-            Technical::<T>::burn(
-                out_asset_id,
-                reserves_tech_account_id.clone(),
-                swapped_xor_amount,
-            )?;
-            Technical::<T>::mint(
-                out_asset_id,
-                reserves_tech_account_id.clone(),
-                swapped_xor_amount,
-            )?;
+            Technical::<T>::burn(out_asset_id, &reserves_tech_account_id, swapped_xor_amount)?;
+            Technical::<T>::mint(out_asset_id, &reserves_tech_account_id, swapped_xor_amount)?;
 
             let val_holders_coefficient: Fixed = fixed!(50%);
             let val_holders_xor_alloc_coeff = val_holders_coefficient * fixed!(90%);
@@ -316,8 +293,8 @@ where
             for (to_tech_account_id, coefficient) in distributions {
                 technical::Module::<T>::transfer(
                     out_asset_id,
-                    reserves_tech_account_id.clone(),
-                    to_tech_account_id,
+                    &reserves_tech_account_id,
+                    &to_tech_account_id,
                     swapped_xor_amount * Balance(coefficient),
                 )?;
             }
@@ -334,11 +311,7 @@ where
                 ),
             )?
             .amount;
-            Technical::<T>::burn(
-                &AssetId::VAL.into(),
-                reserves_tech_account_id.clone(),
-                val_amount,
-            )?;
+            Technical::<T>::burn(&AssetId::VAL.into(), &reserves_tech_account_id, val_amount)?;
             R = R - input_amount_free;
         }
         debug_assert_eq!(
@@ -371,11 +344,9 @@ where
         from_account_id: &T::AccountId,
         to_account_id: &T::AccountId,
     ) -> Result<SwapOutcome<Balance>, DispatchError> {
-        let reserves_tech_account_id_primitive = Self::reserves_account_id();
-        let reserves_tech_account_id = technical::Module::<T>::tech_acc_id_from_primitive(
-            reserves_tech_account_id_primitive.clone(),
-        );
-        let reserves_account_id = T::AccountId::from(reserves_tech_account_id.clone().into());
+        let reserves_tech_account_id = Self::reserves_account_id();
+        let reserves_account_id =
+            Technical::<T>::tech_account_id_to_account_id(&reserves_tech_account_id)?;
         let output_amount = Balance(Self::sell_tokens_in_price(in_asset_id, input_amount)?);
         // TODO: deal with fee.
         Assets::<T>::burn(
@@ -392,19 +363,16 @@ where
         }
         technical::Module::<T>::transfer_out(
             out_asset_id,
-            reserves_tech_account_id.clone(),
-            to_account_id.clone(),
+            &reserves_tech_account_id,
+            &to_account_id,
             transfer_amount,
         )?;
         Ok(SwapOutcome::new(transfer_amount, fee_amount))
     }
 
-    pub fn set_reserves_account_id(
-        account: T::TechAccountIdPrimitive,
-    ) -> Result<(), DispatchError> {
+    pub fn set_reserves_account_id(account: T::TechAccountId) -> Result<(), DispatchError> {
         ReservesAcc::<T>::set(account.clone());
-        let reserves_tech_account_id = technical::Module::<T>::tech_acc_id_from_primitive(account);
-        let account_id = T::AccountId::from(reserves_tech_account_id.clone().into());
+        let account_id = Technical::<T>::tech_account_id_to_account_id(&account)?;
         let permission_obj = permissions::Permission::<T>::new(account_id.clone());
         let permissions = [BURN, MINT, TRANSFER, SLASH, EXCHANGE];
         for permission in &permissions {
@@ -425,10 +393,6 @@ where
 
 impl<T: Trait> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, DispatchError>
     for Module<T>
-where
-    AccountIdOf<T>: From<AccountId32>,
-    AccountId32: From<AccountIdOf<T>>,
-    TechAccountIdPrimitiveOf<T>: common::WrappedRepr<AccountId32>,
 {
     fn can_exchange(
         dex_id: &T::DEXId,
@@ -497,9 +461,8 @@ where
         output_asset_id: &T::AssetId,
         desired_amount: SwapAmount<Balance>,
     ) -> Result<SwapOutcome<Balance>, DispatchError> {
-        let reserves_account_id = &T::AccountId::from(
-            technical::Module::<T>::tech_acc_id_from_primitive(Self::reserves_account_id()).into(),
-        );
+        let reserves_account_id =
+            &Technical::<T>::tech_account_id_to_account_id(&Self::reserves_account_id())?;
         // This is needed to prevent recursion calls.
         if sender == reserves_account_id && receiver == reserves_account_id {
             return Err(Error::<T>::CantExchangeOnItself.into());
