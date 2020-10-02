@@ -1,11 +1,15 @@
 use crate::{Fixed, LiquiditySourceId};
+use sp_arithmetic::FixedPointNumber;
 use sp_std::vec::Vec;
 
-/// Check if value belongs valid range of basis points, 0..10000 corresponds to 0.01%..100.00%.
+/// Basis points range (0..10000) corresponds to 0.01%..100.00%.
+const BASIS_POINTS_RANGE: u16 = 10000;
+
+/// Check if value belongs valid range of basis points.
 /// Returns true if range is valid, false otherwise.
 pub fn in_basis_points_range<BP: Into<u16>>(value: BP) -> bool {
     match value.into() {
-        0..=10000 => true,
+        0..=BASIS_POINTS_RANGE => true,
         _ => false,
     }
 }
@@ -13,8 +17,11 @@ pub fn in_basis_points_range<BP: Into<u16>>(value: BP) -> bool {
 /// Create fraction as Fixed from BasisPoints value.
 pub fn fixed_from_basis_points<BP: Into<u16>>(value: BP) -> Fixed {
     let value_inner: u16 = value.into();
-    Fixed::from_inner(value_inner as u128 * 100_000_000_000_000)
+    Fixed::from_inner(
+        value_inner as u128 * (<Fixed as FixedPointNumber>::DIV / BASIS_POINTS_RANGE as u128),
+    )
 }
+
 /// Generalized filtration mechanism for listing liquidity sources.
 pub struct LiquiditySourceFilter<DEXId: PartialEq + Copy, LiquiditySourceIndex: PartialEq + Copy> {
     /// DEX Id to which listing is limited.
@@ -89,6 +96,34 @@ impl<DEXId: PartialEq + Copy, LiquiditySourceIndex: PartialEq + Copy>
         self.matches_dex_id(liquidity_source_id.dex_id)
             && self.matches_index(liquidity_source_id.liquidity_source_index)
     }
+}
+
+/// Rises `base` to the power of `exp`.
+pub const fn pow(base: u32, mut exp: u32) -> u128 {
+    let int = base as u128;
+    let mut n = 1;
+    while exp > 0 {
+        exp -= 1;
+        n *= int;
+    }
+    n
+}
+
+/// Counts all non-underscore characters in the string (which is expected to be
+/// a string-formatted number).
+/// This function is used by `fixed!` macro to calculate order of the number.
+pub const fn number_str_order(num_s: &str) -> u32 {
+    let bytes = num_s.as_bytes();
+    let mut ord = 0;
+    let mut n = 0;
+    while n < bytes.len() {
+        let a = bytes[n];
+        if a != b'_' {
+            ord += 1;
+        }
+        n += 1;
+    }
+    ord
 }
 
 #[cfg(test)]
@@ -192,5 +227,19 @@ mod tests {
         assert!(filter.matches_index(0));
         assert!(filter.matches_index(1));
         assert!(filter.matches_index(2));
+    }
+
+    #[test]
+    fn test_pow() {
+        assert_eq!(pow(0, 2), 0);
+        assert_eq!(pow(2, 0), 1);
+        assert_eq!(pow(2, 3), 8);
+        assert_eq!(pow(3, 2), 9);
+    }
+
+    #[test]
+    fn test_number_str_len() {
+        assert_eq!(number_str_order("1234"), 4);
+        assert_eq!(number_str_order("12_34"), 4);
     }
 }

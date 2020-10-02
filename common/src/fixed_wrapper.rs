@@ -2,11 +2,12 @@ use crate::balance::Balance;
 use crate::Fixed;
 use core::ops::*;
 use frame_support::sp_runtime::traits::{CheckedAdd, CheckedDiv, CheckedMul, CheckedSub};
+use sp_arithmetic::FixedPointNumber;
 use static_assertions::_core::cmp::Ordering;
 
 /// A convenient wrapper around `Fixed` type for safe math.
 ///
-/// Supported operations: `+`, '-', '/', '*'.
+/// Supported operations: `+`, '-', '/', '*', 'sqrt'.
 #[derive(Clone, Copy)]
 pub struct FixedWrapper {
     inner: Option<Fixed>,
@@ -18,6 +19,55 @@ impl FixedWrapper {
     /// If returned value is `None`, then an error were occurred during calculation.
     pub fn get(self) -> Option<Fixed> {
         self.inner
+    }
+
+    /// Calculates square root of self using [Babylonian method][babylonian].
+    ///
+    /// [babylonian]: https://en.wikipedia.org/wiki/Methods_of_computing_square_roots#Babylonian_method
+    pub fn sqrt_accurate(self) -> Self {
+        fn eq_eps(left: Fixed, right: Fixed, eps: Fixed) -> bool {
+            if left > right {
+                (left - right) < eps
+            } else {
+                (right - left) < eps
+            }
+        };
+
+        let eps = crate::fixed!(1 e-10);
+        #[cfg(feature = "std")]
+        let initial_sqrt = self.sqrt().inner;
+        #[cfg(not(feature = "std"))]
+        let initial_sqrt = self.inner.map(|x| x / Fixed::from(2));
+        let sqrt_opt = self.inner.zip(initial_sqrt).map(|(s, mut n_prev)| {
+            let mut n;
+            let two = Fixed::from(2);
+            loop {
+                n = (n_prev + s / n_prev) / two;
+                if eq_eps(n * n, s, eps) {
+                    break;
+                }
+                n_prev = n;
+            }
+            n
+        });
+        Self::from(sqrt_opt)
+    }
+
+    /// Calculates square root of self using fractional representation.
+    #[cfg(feature = "std")]
+    pub fn sqrt(self) -> Self {
+        Self::from(self.to_fraction().map(|x| Self::from_fraction(x.sqrt())))
+    }
+
+    pub fn from_fraction(x: f64) -> Fixed {
+        Fixed::from_inner(
+            (x * (<Fixed as FixedPointNumber>::DIV as f64)) as <Fixed as FixedPointNumber>::Inner,
+        )
+    }
+
+    pub fn to_fraction(&self) -> Option<f64> {
+        self.inner
+            .map(|x| x.into_inner() as f64 / <Fixed as FixedPointNumber>::DIV as f64)
     }
 }
 

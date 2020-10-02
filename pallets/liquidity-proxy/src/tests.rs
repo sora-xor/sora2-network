@@ -22,7 +22,7 @@ fn test_exchange_tokens_1_should_pass() {
 
         // alternatively use directly:
         <mock_liquidity_source::Module<Runtime>>::set_reserve(
-            Origin::signed(ALICE),
+            Origin::signed(alice()),
             DEX_A_ID,
             KSM,
             Fixed::from(333),

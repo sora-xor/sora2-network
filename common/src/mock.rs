@@ -1,3 +1,4 @@
+use crate::AssetId;
 use codec::{Decode, Encode};
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
@@ -19,6 +20,19 @@ pub enum ComicAssetId {
     Headphones,
     GreenPromise,
     BluePromise,
+}
+
+impl From<AssetId> for ComicAssetId {
+    fn from(asset_id: AssetId) -> Self {
+        use crate::mock::ComicAssetId::*;
+        match asset_id {
+            AssetId::XOR => GoldenTicket,
+            AssetId::DOT => AppleTree,
+            AssetId::KSM => Apple,
+            AssetId::USD => Teapot,
+            AssetId::VAL => Flower,
+        }
+    }
 }
 
 impl Default for ComicAssetId {

@@ -173,14 +173,14 @@ impl common::SwapAction<AccountId, TechAccountId, Testtime> for GenericPairSwapA
     fn reserve(&self, source: &AccountId) -> dispatch::DispatchResult {
         let src = (*source).clone();
         //FIXME now in this place exist two operations, and it is not lock.
-        crate::Module::<Testtime>::set_transfer_in(
-            self.give_asset.into(),
+        crate::Module::<Testtime>::transfer_in(
+            &self.give_asset.into(),
             src.clone(),
             self.take_account.clone(),
             self.give_amount,
         )?;
-        crate::Module::<Testtime>::set_transfer_out(
-            self.take_asset.into(),
+        crate::Module::<Testtime>::transfer_out(
+            &self.take_asset.into(),
             self.take_account.clone(),
             src.clone(),
             self.take_amount,

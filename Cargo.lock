@@ -530,8 +530,11 @@ version = "2.0.0-rc5"
 dependencies = [
  "assets",
  "common",
+ "dex-api",
+ "dex-manager",
  "frame-support",
  "frame-system",
+ "mock-liquidity-source",
  "orml-currencies",
  "orml-tokens",
  "orml-traits",
@@ -539,11 +542,13 @@ dependencies = [
  "parity-scale-codec",
  "permissions",
  "serde",
+ "sp-arithmetic",
  "sp-core",
  "sp-io",
  "sp-runtime",
  "sp-std",
  "technical",
+ "trading-pair",
 ]
 
 [[package]]
@@ -1241,6 +1246,7 @@ dependencies = [
  "sp-io",
  "sp-runtime",
  "sp-std",
+ "technical",
  "trading-pair",
 ]
 
@@ -3230,6 +3236,7 @@ dependencies = [
  "sp-io",
  "sp-runtime",
  "sp-std",
+ "technical",
  "trading-pair",
 ]
 
@@ -3478,6 +3485,7 @@ dependencies = [
  "sp-io",
  "sp-runtime",
  "sp-std",
+ "technical",
  "trading-pair",
 ]
 
@@ -4248,7 +4256,7 @@ dependencies = [
 [[package]]
 name = "pallet-transaction-payment"
 version = "2.0.0-rc5"
-source = "git+https://github.com/paritytech/substrate?branch=rococo-branch#83544d41abcc0e3d3cbbd6aa510e04dc50863e5c"
+source = "git+https://github.com/paritytech/substrate?branch=rococo-branch#f397f246fd0a0c8c2ef2f0b7576ecbed133ed78d"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -4265,7 +4273,7 @@ dependencies = [
 [[package]]
 name = "pallet-transaction-payment-rpc"
 version = "2.0.0-rc5"
-source = "git+https://github.com/paritytech/substrate?branch=rococo-branch#83544d41abcc0e3d3cbbd6aa510e04dc50863e5c"
+source = "git+https://github.com/paritytech/substrate?branch=rococo-branch#f397f246fd0a0c8c2ef2f0b7576ecbed133ed78d"
 dependencies = [
  "jsonrpc-core",
  "jsonrpc-core-client",
@@ -4296,7 +4304,7 @@ dependencies = [
 [[package]]
 name = "pallet-transaction-payment-rpc-runtime-api"
 version = "2.0.0-rc5"
-source = "git+https://github.com/paritytech/substrate?branch=rococo-branch#83544d41abcc0e3d3cbbd6aa510e04dc50863e5c"
+source = "git+https://github.com/paritytech/substrate?branch=rococo-branch#f397f246fd0a0c8c2ef2f0b7576ecbed133ed78d"
 dependencies = [
  "frame-support",
  "parity-scale-codec",

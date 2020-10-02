@@ -1,10 +1,10 @@
 use crate::{Module, Trait};
-use common::{fixed_from_basis_points, hash, prelude::Balance, AssetId, DEXInfo, Fixed};
+use common::{fixed_from_basis_points, hash, prelude::Balance, Amount, AssetId, DEXInfo, Fixed};
 use currencies::BasicCurrencyAdapter;
-
 use frame_support::{impl_outer_origin, parameter_types, weights::Weight};
 use frame_system as system;
 use permissions::{INIT_DEX, MANAGE_DEX};
+use sp_core::crypto::AccountId32;
 use sp_core::{H256, H512};
 use sp_runtime::{
     testing::Header,
@@ -12,12 +12,17 @@ use sp_runtime::{
     Perbill,
 };
 
-pub type AccountId = u128;
+pub type AccountId = AccountId32;
 pub type BlockNumber = u64;
-pub type Amount = i128;
 
-pub const ALICE: AccountId = 1;
-pub const BOB: AccountId = 2;
+pub fn alice() -> AccountId {
+    AccountId32::from([1u8; 32])
+}
+
+pub fn bob() -> AccountId {
+    AccountId32::from([2u8; 32])
+}
+
 pub const XOR: AssetId = AssetId::XOR;
 pub const KSM: AssetId = AssetId::KSM;
 pub const DOT: AssetId = AssetId::DOT;
@@ -70,6 +75,7 @@ impl system::Trait for Runtime {
 impl Trait for Runtime {
     type Event = ();
     type MockLiquiditySource = mock_liquidity_source::Module<Runtime>;
+    type BondingCurvePool = ();
 }
 
 impl tokens::Trait for Runtime {
@@ -135,6 +141,17 @@ impl mock_liquidity_source::Trait for Runtime {
     type EnsureTradingPairExists = trading_pair::Module<Runtime>;
 }
 
+impl technical::Trait for Runtime {
+    type Event = ();
+    type TechAssetId = AssetId;
+    type TechAccountIdPrimitive = common::TechAccountId<AccountId, AssetId, DEXId>;
+    type TechAmount = Amount;
+    type TechBalance = Balance;
+    type Trigger = ();
+    type Condition = ();
+    type SwapAction = ();
+}
+
 impl dex_manager::Trait for Runtime {
     type Event = ();
     type GetDefaultFee = GetDefaultFee;
@@ -162,8 +179,8 @@ impl Default for ExtBuilder {
     fn default() -> Self {
         Self {
             endowed_accounts: vec![
-                (ALICE, XOR, 1_000_000_000_000_000_000u128.into()),
-                (BOB, DOT, 1_000_000_000_000_000_000u128.into()),
+                (alice(), XOR, 1_000_000_000_000_000_000u128.into()),
+                (bob(), DOT, 1_000_000_000_000_000_000u128.into()),
             ],
             reserves: vec![
                 (DEX_A_ID, DOT, (Fixed::from(5000), Fixed::from(7000))),
@@ -189,9 +206,9 @@ impl Default for ExtBuilder {
                 ),
             ],
             initial_permissions: vec![
-                (INIT_DEX, ALICE, ALICE, None),
-                (MANAGE_DEX, ALICE, ALICE, Some(hash(&DEX_A_ID))),
-                (MANAGE_DEX, ALICE, ALICE, Some(hash(&DEX_B_ID))),
+                (INIT_DEX, alice(), alice(), None),
+                (MANAGE_DEX, alice(), alice(), Some(hash(&DEX_A_ID))),
+                (MANAGE_DEX, alice(), alice(), Some(hash(&DEX_B_ID))),
             ],
         }
     }

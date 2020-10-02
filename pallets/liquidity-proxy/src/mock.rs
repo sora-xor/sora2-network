@@ -1,7 +1,5 @@
 use crate::{Module, Trait};
-use common::{
-    fixed_from_basis_points, hash, AssetId, DEXInfo, Fixed, LiquiditySourceId, LiquiditySourceType,
-};
+use common::{fixed_from_basis_points, hash, Amount, AssetId, DEXInfo, Fixed};
 use currencies::BasicCurrencyAdapter;
 
 use frame_support::{impl_outer_origin, parameter_types, weights::Weight};
@@ -13,14 +11,17 @@ use sp_core::{H256, H512};
 use sp_runtime::{
     testing::Header,
     traits::{BlakeTwo256, IdentityLookup},
-    Perbill,
+    AccountId32, Perbill,
 };
 
-pub type AccountId = u128;
+pub type AccountId = AccountId32;
 pub type BlockNumber = u64;
-pub type Amount = i128;
+type TechAccountIdPrimitive = common::TechAccountId<AccountId, AssetId, DEXId>;
+type TechAssetId = common::TechAssetId<AssetId, DEXId>;
 
-pub const ALICE: AccountId = 1;
+pub fn alice() -> AccountId {
+    AccountId32::from([1u8; 32])
+}
 pub const DOT: AssetId = AssetId::DOT;
 pub const KSM: AssetId = AssetId::KSM;
 pub const DEX_A_ID: DEXId = 1;
@@ -139,6 +140,17 @@ impl mock_liquidity_source::Trait for Runtime {
     type EnsureTradingPairExists = trading_pair::Module<Runtime>;
 }
 
+impl technical::Trait for Runtime {
+    type Event = ();
+    type TechAssetId = TechAssetId;
+    type TechAccountIdPrimitive = TechAccountIdPrimitive;
+    type TechAmount = Amount;
+    type TechBalance = Balance;
+    type Trigger = ();
+    type Condition = ();
+    type SwapAction = ();
+}
+
 impl permissions::Trait for Runtime {
     type Event = ();
 }
@@ -146,6 +158,7 @@ impl permissions::Trait for Runtime {
 impl dex_api::Trait for Runtime {
     type Event = ();
     type MockLiquiditySource = mock_liquidity_source::Module<Runtime>;
+    type BondingCurvePool = ();
 }
 
 impl trading_pair::Trait for Runtime {
@@ -191,9 +204,9 @@ impl Default for ExtBuilder {
                 ),
             ],
             initial_permissions: vec![
-                (INIT_DEX, ALICE, ALICE, None),
-                (MANAGE_DEX, ALICE, ALICE, Some(hash(&DEX_A_ID))),
-                (MANAGE_DEX, ALICE, ALICE, Some(hash(&DEX_B_ID))),
+                (INIT_DEX, alice(), alice(), None),
+                (MANAGE_DEX, alice(), alice(), Some(hash(&DEX_A_ID))),
+                (MANAGE_DEX, alice(), alice(), Some(hash(&DEX_B_ID))),
             ],
         }
     }

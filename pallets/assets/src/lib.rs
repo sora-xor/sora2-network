@@ -28,13 +28,15 @@ use frame_support::sp_runtime::traits::{MaybeSerializeDeserialize, Member};
 use frame_support::{
     decl_error, decl_event, decl_module, decl_storage, dispatch, ensure, traits::Get, Parameter,
 };
-use frame_system::ensure_signed;
+use frame_system::{ensure_signed, RawOrigin};
 use permissions::{BURN, MINT, SLASH, TRANSFER};
+use sp_core::H512;
 use traits::{
     MultiCurrency, MultiCurrencyExtended, MultiLockableCurrency, MultiReservableCurrency,
 };
 
 pub type AssetIdOf<T> = <T as Trait>::AssetId;
+pub type Permissions<T> = permissions::Module<T>;
 
 type CurrencyIdOf<T> =
     <<T as Trait>::Currency as MultiCurrency<<T as frame_system::Trait>::AccountId>>::CurrencyId;
@@ -49,7 +51,8 @@ pub trait Trait: frame_system::Trait + permissions::Trait + tokens::Trait {
         + MaybeSerializeDeserialize
         + Ord
         + Default
-        + Into<CurrencyIdOf<Self>>;
+        + Into<CurrencyIdOf<Self>>
+        + From<common::AssetId>;
 
     /// The base asset as the core asset in all trading pairs
     type GetBaseAssetId: Get<Self::AssetId>;
@@ -73,7 +76,8 @@ decl_storage! {
 
         build(|config: &GenesisConfig<T>| {
             config.endowed_assets.iter().for_each(|(asset_id, account_id)| {
-                <AssetOwners<T>>::insert(asset_id.clone(), account_id.clone());
+                Module::<T>::register(RawOrigin::Signed(account_id.clone()).into(), asset_id.clone())
+                    .expect("Failed to register asset.");
             })
         })
     }
@@ -121,30 +125,15 @@ decl_module! {
                 author.clone(),
                 hash(&asset_id),
             );
-            permissions::Module::<T>::create_permission(
-                author.clone(),
-                author.clone(),
-                TRANSFER,
-                permission.clone(),
-            )?;
-            permissions::Module::<T>::create_permission(
-                author.clone(),
-                author.clone(),
-                MINT,
-                permission.clone(),
-            )?;
-            permissions::Module::<T>::create_permission(
-                author.clone(),
-                author.clone(),
-                BURN,
-                permission.clone(),
-            )?;
-            permissions::Module::<T>::create_permission(
-                author.clone(),
-                author.clone(),
-                SLASH,
-                permission.clone(),
-            )?;
+            let permission_ids = [TRANSFER, MINT, BURN, SLASH];
+            for permission_id in &permission_ids {
+                let _ = Permissions::<T>::create_permission(
+                    author.clone(),
+                    author.clone(),
+                    *permission_id,
+                    permission.clone(),
+                );
+            }
             Self::deposit_event(RawEvent::AssetRegistered(asset_id, author));
             Ok(())
         }
@@ -178,6 +167,24 @@ impl<T: Trait> Module<T> {
         Self::asset_owner(asset_id)
             .map(|x| &x == account_id)
             .unwrap_or(false)
+    }
+
+    fn check_permission_maybe_with_parameters(
+        issuer: &T::AccountId,
+        permission_id: u32,
+        asset_id: &T::AssetId,
+    ) -> Result<(), DispatchError> {
+        Permissions::<T>::check_permission_with_parameters(
+            issuer.clone(),
+            permission_id,
+            hash(asset_id),
+        )
+        .or(Permissions::<T>::check_permission_with_parameters(
+            issuer.clone(),
+            permission_id,
+            H512::zero(),
+        ))?;
+        Ok(())
     }
 
     pub fn total_issuance(asset_id: &T::AssetId) -> Result<Balance, DispatchError> {
@@ -217,30 +224,39 @@ impl<T: Trait> Module<T> {
         amount: Balance,
     ) -> DispatchResult {
         Self::ensure_asset_exists(asset_id)?;
-        permissions::Module::<T>::check_permission_with_parameters(
-            from.clone(),
-            TRANSFER,
-            hash(asset_id),
-        )?;
+        Self::check_permission_maybe_with_parameters(from, TRANSFER, asset_id)?;
         T::Currency::transfer(asset_id.clone(), from, to, amount)
     }
 
-    pub fn mint(asset_id: &T::AssetId, who: &T::AccountId, amount: Balance) -> DispatchResult {
-        permissions::Module::<T>::check_permission_with_parameters(
-            who.clone(),
-            MINT,
-            hash(asset_id),
-        )?;
-        T::Currency::deposit(asset_id.clone(), who, amount)
+    pub fn force_transfer(
+        asset_id: &T::AssetId,
+        from: &T::AccountId,
+        to: &T::AccountId,
+        amount: Balance,
+    ) -> DispatchResult {
+        T::Currency::transfer(asset_id.clone(), from, to, amount)
     }
 
-    pub fn burn(asset_id: &T::AssetId, who: &T::AccountId, amount: Balance) -> DispatchResult {
-        permissions::Module::<T>::check_permission_with_parameters(
-            who.clone(),
-            BURN,
-            hash(asset_id),
-        )?;
-        T::Currency::withdraw(asset_id.clone(), who, amount)
+    pub fn mint(
+        asset_id: &T::AssetId,
+        issuer: &T::AccountId,
+        to: &T::AccountId,
+        amount: Balance,
+    ) -> DispatchResult {
+        Self::ensure_asset_exists(asset_id)?;
+        Self::check_permission_maybe_with_parameters(issuer, MINT, asset_id)?;
+        T::Currency::deposit(asset_id.clone(), to, amount)
+    }
+
+    pub fn burn(
+        asset_id: &T::AssetId,
+        issuer: &T::AccountId,
+        to: &T::AccountId,
+        amount: Balance,
+    ) -> DispatchResult {
+        Self::ensure_asset_exists(asset_id)?;
+        Self::check_permission_maybe_with_parameters(issuer, BURN, asset_id)?;
+        T::Currency::withdraw(asset_id.clone(), to, amount)
     }
 
     pub fn can_slash(
@@ -249,6 +265,7 @@ impl<T: Trait> Module<T> {
         amount: Balance,
     ) -> Result<bool, DispatchError> {
         Self::ensure_asset_exists(asset_id)?;
+        Self::check_permission_maybe_with_parameters(who, SLASH, asset_id)?;
         Ok(T::Currency::can_slash(asset_id.clone(), who, amount))
     }
 
@@ -258,11 +275,7 @@ impl<T: Trait> Module<T> {
         amount: Balance,
     ) -> Result<Balance, DispatchError> {
         Self::ensure_asset_exists(asset_id)?;
-        permissions::Module::<T>::check_permission_with_parameters(
-            who.clone(),
-            SLASH,
-            hash(asset_id),
-        )?;
+        Self::check_permission_maybe_with_parameters(who, SLASH, asset_id)?;
         Ok(T::Currency::slash(asset_id.clone(), who, amount))
     }
 
@@ -271,16 +284,8 @@ impl<T: Trait> Module<T> {
         who: &T::AccountId,
         by_amount: Amount,
     ) -> DispatchResult {
-        permissions::Module::<T>::check_permission_with_parameters(
-            who.clone(),
-            MINT,
-            hash(asset_id),
-        )?;
-        permissions::Module::<T>::check_permission_with_parameters(
-            who.clone(),
-            BURN,
-            hash(asset_id),
-        )?;
+        Self::check_permission_maybe_with_parameters(who, MINT, asset_id)?;
+        Self::check_permission_maybe_with_parameters(who, BURN, asset_id)?;
         T::Currency::update_balance(asset_id.clone(), who, by_amount)
     }
 }

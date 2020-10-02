@@ -11,6 +11,7 @@ use frame_support::{
 use frame_system::RawOrigin;
 //FIXME maybe try info or try from is better than From and Option.
 //use sp_std::convert::TryInto;
+use crate::balance::Balance;
 use sp_std::vec::Vec;
 
 /// Check on origin that it is a DEX owner.
@@ -113,6 +114,38 @@ impl<DEXId, AccountId, AssetId> LiquiditySource<DEXId, AccountId, AssetId, Fixed
     }
 }
 
+impl<DEXId, AccountId, AssetId> LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError>
+    for ()
+{
+    fn can_exchange(
+        _target_id: &DEXId,
+        _input_asset_id: &AssetId,
+        _output_asset_id: &AssetId,
+    ) -> bool {
+        false
+    }
+
+    fn quote(
+        _target_id: &DEXId,
+        _input_asset_id: &AssetId,
+        _output_asset_id: &AssetId,
+        _swap_amount: SwapAmount<Balance>,
+    ) -> Result<SwapOutcome<Balance>, DispatchError> {
+        Err(DispatchError::CannotLookup)
+    }
+
+    fn exchange(
+        _sender: &AccountId,
+        _receiver: &AccountId,
+        _target_id: &DEXId,
+        _input_asset_id: &AssetId,
+        _output_asset_id: &AssetId,
+        _swap_amount: SwapAmount<Balance>,
+    ) -> Result<SwapOutcome<Balance>, DispatchError> {
+        Err(DispatchError::CannotLookup)
+    }
+}
+
 pub trait LiquidityRegistry<DEXId, AccountId, AssetId, LiquiditySourceIndex, Amount, Error>:
     LiquiditySource<LiquiditySourceId<DEXId, LiquiditySourceIndex>, AccountId, AssetId, Amount, Error>
 where
@@ -133,7 +166,7 @@ pub type AccountIdOf<T> = <T as frame_system::Trait>::AccountId;
 /// Common DEX trait. Used for DEX-related pallets.
 pub trait Trait: frame_system::Trait + currencies::Trait {
     /// DEX identifier.
-    type DEXId: Parameter + Ord + Copy + Default;
+    type DEXId: Parameter + Ord + Copy + Default + From<crate::primitives::DEXId>;
 }
 
 /// Definition of a pending atomic swap action. It contains the following three phrases:

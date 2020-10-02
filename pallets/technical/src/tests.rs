@@ -79,11 +79,13 @@ fn generic_pair_swap_simple() {
         assert_ok!(assets::Module::<Testtime>::mint(
             &RedPepper,
             &get_alice(),
+            &get_alice(),
             9000_000u32.into()
         ));
         assert_ok!(assets::Module::<Testtime>::mint(
             &BlackPepper,
-            &repr.clone(),
+            &repr,
+            &repr,
             9000_000u32.into()
         ));
         assert_ok!(Technical::register_tech_account_id(t01));

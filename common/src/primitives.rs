@@ -1,8 +1,25 @@
+use crate::traits::Trait;
 use crate::BasisPoints;
 use codec::{Decode, Encode};
 use frame_support::RuntimeDebug;
+use frame_support::{decl_error, decl_module};
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
+
+decl_error! {
+    pub enum Error for Module<T: Trait> {
+        /// Liquidity source can't exchange assets with the given IDs on the given DEXId.
+        CantExchange,
+        /// Assets can't be swapped or exchanged with the given method.
+        UnsupportedSwapMethod,
+    }
+}
+
+decl_module! {
+    pub struct Module<T: Trait> for enum Call where origin: T::Origin {
+        type Error = Error<T>;
+    }
+}
 
 /// Information about state of particular DEX.
 #[derive(Encode, Decode, RuntimeDebug, Clone, PartialEq, Eq, Default)]
@@ -36,11 +53,32 @@ pub enum AssetId {
     DOT = 1,
     KSM = 2,
     USD = 3,
+    VAL = 4,
 }
 
 impl Default for AssetId {
     fn default() -> Self {
         Self::XOR
+    }
+}
+
+/// DEX identifier.
+#[derive(Encode, Decode, Eq, PartialEq, Copy, Clone, PartialOrd, Ord, RuntimeDebug)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Hash))]
+#[repr(u8)]
+pub enum DEXId {
+    Polkaswap = 0,
+}
+
+impl From<DEXId> for u32 {
+    fn from(dex_id: DEXId) -> Self {
+        dex_id as u32
+    }
+}
+
+impl Default for DEXId {
+    fn default() -> Self {
+        DEXId::Polkaswap
     }
 }
 
@@ -75,6 +113,7 @@ impl<AssetId, DEXId> From<TechAssetId<AssetId, DEXId>> for Option<AssetId> {
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum LiquiditySourceType {
     XYKPool,
+    BondingCurvePool,
     MockPool,
 }
 
@@ -173,6 +212,7 @@ impl<AccountId, AssetId, DEXId> From<TechAccountId<AccountId, AssetId, DEXId>>
     fn from(a: TechAccountId<AccountId, AssetId, DEXId>) -> Option<AccountId> {
         match a {
             TechAccountId::Wrapped(a) => Some(a),
+            TechAccountId::WrappedRepr(a) => Some(a),
             _ => None,
         }
     }
