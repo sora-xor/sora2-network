@@ -297,7 +297,28 @@ parameter_types! {
     pub GetFee: Fixed = fixed_from_basis_points(30u16);
 }
 
-impl mock_liquidity_source::Trait for Runtime {
+impl mock_liquidity_source::Trait<mock_liquidity_source::Instance1> for Runtime {
+    type Event = Event;
+    type GetFee = GetFee;
+    type EnsureDEXOwner = dex_manager::Module<Runtime>;
+    type EnsureTradingPairExists = trading_pair::Module<Runtime>;
+}
+
+impl mock_liquidity_source::Trait<mock_liquidity_source::Instance2> for Runtime {
+    type Event = Event;
+    type GetFee = GetFee;
+    type EnsureDEXOwner = dex_manager::Module<Runtime>;
+    type EnsureTradingPairExists = trading_pair::Module<Runtime>;
+}
+
+impl mock_liquidity_source::Trait<mock_liquidity_source::Instance3> for Runtime {
+    type Event = Event;
+    type GetFee = GetFee;
+    type EnsureDEXOwner = dex_manager::Module<Runtime>;
+    type EnsureTradingPairExists = trading_pair::Module<Runtime>;
+}
+
+impl mock_liquidity_source::Trait<mock_liquidity_source::Instance4> for Runtime {
     type Event = Event;
     type GetFee = GetFee;
     type EnsureDEXOwner = dex_manager::Module<Runtime>;
@@ -306,7 +327,14 @@ impl mock_liquidity_source::Trait for Runtime {
 
 impl dex_api::Trait for Runtime {
     type Event = Event;
-    type MockLiquiditySource = mock_liquidity_source::Module<Runtime>;
+    type MockLiquiditySource =
+        mock_liquidity_source::Module<Runtime, mock_liquidity_source::Instance1>;
+    type MockLiquiditySource2 =
+        mock_liquidity_source::Module<Runtime, mock_liquidity_source::Instance2>;
+    type MockLiquiditySource3 =
+        mock_liquidity_source::Module<Runtime, mock_liquidity_source::Instance3>;
+    type MockLiquiditySource4 =
+        mock_liquidity_source::Module<Runtime, mock_liquidity_source::Instance4>;
     type BondingCurvePool = bonding_curve_pool::Module<Runtime>;
 }
 
@@ -484,7 +512,10 @@ construct_runtime! {
         BondingCurvePool: bonding_curve_pool::{Module},
         Technical: technical::{Module, Call, Event<T>},
         LiquidityProxy: liquidity_proxy::{Module, Call, Event<T>},
-        MockLiquiditySource: mock_liquidity_source::{Module, Call, Storage, Config<T>, Event<T>},
+        MockLiquiditySource: mock_liquidity_source::<Instance1>::{Module, Call, Storage, Config<T>, Event<T>},
+        MockLiquiditySource2: mock_liquidity_source::<Instance2>::{Module, Call, Storage, Config<T>, Event<T>},
+        MockLiquiditySource3: mock_liquidity_source::<Instance3>::{Module, Call, Storage, Config<T>, Event<T>},
+        MockLiquiditySource4: mock_liquidity_source::<Instance4>::{Module, Call, Storage, Config<T>, Event<T>},
         DEXAPI: dex_api::{Module, Call, Event<T>},
         //IrohaBridge: iroha_bridge::{Module, Call, Storage, Config<T>, Event<T>},
     }

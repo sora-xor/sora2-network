@@ -130,12 +130,36 @@ impl dex_manager::Trait for Runtime {
 }
 
 parameter_types! {
-    pub GetFee: Fixed = fixed_from_basis_points(30u16);
+    pub GetFee0: Fixed = fixed_from_basis_points(0u16);
+    pub GetFee10: Fixed = fixed_from_basis_points(10u16);
+    pub GetFee20: Fixed = fixed_from_basis_points(20u16);
+    pub GetFee30: Fixed = fixed_from_basis_points(30u16);
 }
 
-impl mock_liquidity_source::Trait for Runtime {
+impl mock_liquidity_source::Trait<mock_liquidity_source::Instance1> for Runtime {
     type Event = ();
-    type GetFee = GetFee;
+    type GetFee = GetFee0;
+    type EnsureDEXOwner = dex_manager::Module<Runtime>;
+    type EnsureTradingPairExists = trading_pair::Module<Runtime>;
+}
+
+impl mock_liquidity_source::Trait<mock_liquidity_source::Instance2> for Runtime {
+    type Event = ();
+    type GetFee = GetFee10;
+    type EnsureDEXOwner = dex_manager::Module<Runtime>;
+    type EnsureTradingPairExists = trading_pair::Module<Runtime>;
+}
+
+impl mock_liquidity_source::Trait<mock_liquidity_source::Instance3> for Runtime {
+    type Event = ();
+    type GetFee = GetFee20;
+    type EnsureDEXOwner = dex_manager::Module<Runtime>;
+    type EnsureTradingPairExists = trading_pair::Module<Runtime>;
+}
+
+impl mock_liquidity_source::Trait<mock_liquidity_source::Instance4> for Runtime {
+    type Event = ();
+    type GetFee = GetFee30;
     type EnsureDEXOwner = dex_manager::Module<Runtime>;
     type EnsureTradingPairExists = trading_pair::Module<Runtime>;
 }
@@ -157,7 +181,14 @@ impl permissions::Trait for Runtime {
 
 impl dex_api::Trait for Runtime {
     type Event = ();
-    type MockLiquiditySource = mock_liquidity_source::Module<Runtime>;
+    type MockLiquiditySource =
+        mock_liquidity_source::Module<Runtime, mock_liquidity_source::Instance1>;
+    type MockLiquiditySource2 =
+        mock_liquidity_source::Module<Runtime, mock_liquidity_source::Instance2>;
+    type MockLiquiditySource3 =
+        mock_liquidity_source::Module<Runtime, mock_liquidity_source::Instance3>;
+    type MockLiquiditySource4 =
+        mock_liquidity_source::Module<Runtime, mock_liquidity_source::Instance4>;
     type BondingCurvePool = ();
 }
 
@@ -171,8 +202,13 @@ pub type Balances = pallet_balances::Module<Runtime>;
 pub type Tokens = tokens::Module<Runtime>;
 pub type LiquidityProxy = Module<Runtime>;
 
+type ReservesInit = Vec<(DEXId, AssetId, (Fixed, Fixed))>;
+
 pub struct ExtBuilder {
-    reserves: Vec<(DEXId, AssetId, (Fixed, Fixed))>,
+    reserves: ReservesInit,
+    reserves_2: ReservesInit,
+    reserves_3: ReservesInit,
+    reserves_4: ReservesInit,
     dex_list: Vec<(DEXId, DEXInfo<AssetId>)>,
     initial_permissions: Vec<(u32, AccountId, AccountId, Option<H512>)>,
 }
@@ -184,6 +220,21 @@ impl Default for ExtBuilder {
                 (DEX_A_ID, DOT, (Fixed::from(5000), Fixed::from(7000))),
                 (DEX_A_ID, KSM, (Fixed::from(5500), Fixed::from(4000))),
                 (DEX_B_ID, DOT, (Fixed::from(100), Fixed::from(45))),
+            ],
+            reserves_2: vec![
+                (DEX_A_ID, DOT, (Fixed::from(6000), Fixed::from(6000))),
+                (DEX_A_ID, KSM, (Fixed::from(6500), Fixed::from(3000))),
+                (DEX_B_ID, DOT, (Fixed::from(200), Fixed::from(45))),
+            ],
+            reserves_3: vec![
+                (DEX_A_ID, DOT, (Fixed::from(7000), Fixed::from(5000))),
+                (DEX_A_ID, KSM, (Fixed::from(7500), Fixed::from(2000))),
+                (DEX_B_ID, DOT, (Fixed::from(300), Fixed::from(45))),
+            ],
+            reserves_4: vec![
+                (DEX_A_ID, DOT, (Fixed::from(8000), Fixed::from(4000))),
+                (DEX_A_ID, KSM, (Fixed::from(8500), Fixed::from(1000))),
+                (DEX_B_ID, DOT, (Fixed::from(400), Fixed::from(45))),
             ],
             dex_list: vec![
                 (
@@ -230,8 +281,30 @@ impl ExtBuilder {
         .assimilate_storage(&mut t)
         .unwrap();
 
-        mock_liquidity_source::GenesisConfig::<Runtime> {
+        mock_liquidity_source::GenesisConfig::<Runtime, mock_liquidity_source::Instance1> {
             reserves: self.reserves,
+            phantom: Default::default(),
+        }
+        .assimilate_storage(&mut t)
+        .unwrap();
+
+        mock_liquidity_source::GenesisConfig::<Runtime, mock_liquidity_source::Instance2> {
+            reserves: self.reserves_2,
+            phantom: Default::default(),
+        }
+        .assimilate_storage(&mut t)
+        .unwrap();
+
+        mock_liquidity_source::GenesisConfig::<Runtime, mock_liquidity_source::Instance3> {
+            reserves: self.reserves_3,
+            phantom: Default::default(),
+        }
+        .assimilate_storage(&mut t)
+        .unwrap();
+
+        mock_liquidity_source::GenesisConfig::<Runtime, mock_liquidity_source::Instance4> {
+            reserves: self.reserves_4,
+            phantom: Default::default(),
         }
         .assimilate_storage(&mut t)
         .unwrap();

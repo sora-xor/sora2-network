@@ -26,6 +26,27 @@ pub trait Trait: common::Trait + dex_manager::Trait + trading_pair::Trait {
         Fixed,
         DispatchError,
     >;
+    type MockLiquiditySource2: LiquiditySource<
+        Self::DEXId,
+        Self::AccountId,
+        Self::AssetId,
+        Fixed,
+        DispatchError,
+    >;
+    type MockLiquiditySource3: LiquiditySource<
+        Self::DEXId,
+        Self::AccountId,
+        Self::AssetId,
+        Fixed,
+        DispatchError,
+    >;
+    type MockLiquiditySource4: LiquiditySource<
+        Self::DEXId,
+        Self::AccountId,
+        Self::AssetId,
+        Fixed,
+        DispatchError,
+    >;
     type BondingCurvePool: LiquiditySource<
         Self::DEXId,
         Self::AccountId,
@@ -74,19 +95,23 @@ impl<T: Trait>
         input_asset_id: &T::AssetId,
         output_asset_id: &T::AssetId,
     ) -> bool {
+        use LiquiditySourceType::*;
+        macro_rules! can_exchange {
+            ($source_type:ident) => {
+                T::$source_type::can_exchange(
+                    &liquidity_source_id.dex_id,
+                    input_asset_id,
+                    output_asset_id,
+                )
+            };
+        }
         match liquidity_source_id.liquidity_source_index {
-            LiquiditySourceType::XYKPool => unimplemented!(),
-            LiquiditySourceType::BondingCurvePool => T::BondingCurvePool::can_exchange(
-                &liquidity_source_id.dex_id,
-                &input_asset_id,
-                &output_asset_id,
-            ),
-            LiquiditySourceType::MockPool => T::MockLiquiditySource::can_exchange(
-                &liquidity_source_id.dex_id,
-                &input_asset_id,
-                &output_asset_id,
-            )
-            .into(),
+            XYKPool => unimplemented!(),
+            BondingCurvePool => can_exchange!(BondingCurvePool),
+            MockPool => can_exchange!(MockLiquiditySource),
+            MockPool2 => can_exchange!(MockLiquiditySource2),
+            MockPool3 => can_exchange!(MockLiquiditySource3),
+            MockPool4 => can_exchange!(MockLiquiditySource4),
         }
     }
 
@@ -96,21 +121,25 @@ impl<T: Trait>
         output_asset_id: &T::AssetId,
         swap_amount: SwapAmount<Fixed>,
     ) -> Result<SwapOutcome<Fixed>, DispatchError> {
+        use LiquiditySourceType::*;
+        macro_rules! quote {
+            ($source_type:ident) => {
+                T::$source_type::quote(
+                    &liquidity_source_id.dex_id,
+                    input_asset_id,
+                    output_asset_id,
+                    swap_amount.into(),
+                )
+                .map(Into::into)
+            };
+        }
         match liquidity_source_id.liquidity_source_index {
             LiquiditySourceType::XYKPool => unimplemented!(),
-            LiquiditySourceType::BondingCurvePool => T::BondingCurvePool::quote(
-                &liquidity_source_id.dex_id,
-                input_asset_id,
-                output_asset_id,
-                swap_amount.into(),
-            )
-            .map(Into::into),
-            LiquiditySourceType::MockPool => T::MockLiquiditySource::quote(
-                &liquidity_source_id.dex_id,
-                input_asset_id,
-                output_asset_id,
-                swap_amount,
-            ),
+            BondingCurvePool => quote!(BondingCurvePool),
+            MockPool => quote!(MockLiquiditySource),
+            MockPool2 => quote!(MockLiquiditySource2),
+            MockPool3 => quote!(MockLiquiditySource3),
+            MockPool4 => quote!(MockLiquiditySource4),
         }
     }
 
@@ -122,26 +151,40 @@ impl<T: Trait>
         output_asset_id: &T::AssetId,
         swap_amount: SwapAmount<Fixed>,
     ) -> Result<SwapOutcome<Fixed>, DispatchError> {
-        match liquidity_source_id.liquidity_source_index {
-            LiquiditySourceType::XYKPool => unimplemented!(),
-            LiquiditySourceType::BondingCurvePool => T::BondingCurvePool::exchange(
-                sender,
-                receiver,
-                &liquidity_source_id.dex_id,
-                input_asset_id,
-                output_asset_id,
-                swap_amount.into(),
-            )
-            .map(Into::into),
-            LiquiditySourceType::MockPool => T::MockLiquiditySource::exchange(
-                sender,
-                receiver,
-                &liquidity_source_id.dex_id,
-                input_asset_id,
-                output_asset_id,
-                swap_amount,
-            ),
+        use LiquiditySourceType::*;
+        macro_rules! exchange {
+            ($source_type:ident) => {
+                T::$source_type::exchange(
+                    sender,
+                    receiver,
+                    &liquidity_source_id.dex_id,
+                    input_asset_id,
+                    output_asset_id,
+                    swap_amount.into(),
+                )
+                .map(Into::into)
+            };
         }
+        match liquidity_source_id.liquidity_source_index {
+            XYKPool => unimplemented!(),
+            BondingCurvePool => exchange!(BondingCurvePool),
+            MockPool => exchange!(MockLiquiditySource),
+            MockPool2 => exchange!(MockLiquiditySource2),
+            MockPool3 => exchange!(MockLiquiditySource3),
+            MockPool4 => exchange!(MockLiquiditySource4),
+        }
+    }
+}
+
+impl<T: Trait> Module<T> {
+    pub fn get_supported_types() -> Vec<LiquiditySourceType> {
+        [
+            LiquiditySourceType::MockPool,
+            LiquiditySourceType::MockPool2,
+            LiquiditySourceType::MockPool3,
+            LiquiditySourceType::MockPool4,
+        ]
+        .into()
     }
 }
 
@@ -154,7 +197,7 @@ impl<T: Trait>
         output_asset_id: &T::AssetId,
         filter: LiquiditySourceFilter<T::DEXId, LiquiditySourceType>,
     ) -> Result<Vec<LiquiditySourceId<T::DEXId, LiquiditySourceType>>, DispatchError> {
-        let supported_types = &[LiquiditySourceType::MockPool];
+        let supported_types = Self::get_supported_types();
         ensure!(
             dex_manager::DEXInfos::<T>::contains_key(filter.dex_id),
             Error::<T>::DEXIdDoesNotExist

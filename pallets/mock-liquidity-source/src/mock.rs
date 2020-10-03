@@ -78,7 +78,14 @@ parameter_types! {
     pub GetFee: Fixed = fixed_from_basis_points(30u16);
 }
 
-impl Trait for Runtime {
+impl Trait<crate::Instance1> for Runtime {
+    type Event = ();
+    type GetFee = GetFee;
+    type EnsureDEXOwner = dex_manager::Module<Runtime>;
+    type EnsureTradingPairExists = trading_pair::Module<Runtime>;
+}
+
+impl Trait<crate::Instance2> for Runtime {
     type Event = ();
     type GetFee = GetFee;
     type EnsureDEXOwner = dex_manager::Module<Runtime>;
@@ -162,7 +169,8 @@ impl trading_pair::Trait for Runtime {
 pub type System = frame_system::Module<Runtime>;
 pub type Balances = pallet_balances::Module<Runtime>;
 pub type Tokens = tokens::Module<Runtime>;
-pub type MockLiquiditySource = Module<Runtime>;
+pub type MockLiquiditySource = Module<Runtime, crate::Instance1>;
+pub type MockLiquiditySource2 = Module<Runtime, crate::Instance2>;
 
 pub struct ExtBuilder {
     // add additional fields for other pallets genesis
