@@ -85,13 +85,7 @@ impl trading_pair::Trait for Runtime {
     type EnsureDEXOwner = dex_manager::Module<Runtime>;
 }
 
-impl dex_api::Trait for Runtime {
-    type Event = ();
-    type MockLiquiditySource = ();
-    type BondingCurvePool = ();
-}
-
-impl mock_liquidity_source::Trait for Runtime {
+impl mock_liquidity_source::Trait<mock_liquidity_source::Instance1> for Runtime {
     type Event = ();
     type GetFee = ();
     type EnsureDEXOwner = ();
@@ -159,6 +153,7 @@ impl<DEXId> LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> f
                 let reserves_account_id: &AccountId =
                     &Technical::tech_acc_id_from_primitive(mock_liquidity_source::ReservesAcc::<
                         Runtime,
+                        mock_liquidity_source::Instance1,
                     >::get())
                     .into();
                 assert_ne!(desired_amount_in, 0u128.into());
@@ -252,7 +247,8 @@ pub type Tokens = tokens::Module<Runtime>;
 pub type Currencies = currencies::Module<Runtime>;
 pub type BondingCurvePool = Module<Runtime>;
 pub type Technical = technical::Module<Runtime>;
-pub type MockLiquiditySource = mock_liquidity_source::Module<Runtime>;
+pub type MockLiquiditySource =
+    mock_liquidity_source::Module<Runtime, mock_liquidity_source::Instance1>;
 pub type Assets = assets::Module<Runtime>;
 
 pub struct ExtBuilder {

@@ -9,6 +9,7 @@ use parachain_runtime::{
     DEXId,
     DEXManagerConfig,
     GenesisConfig,
+    GetBaseAssetId,
     //IrohaBridgeConfig,
     ParachainInfoConfig,
     PermissionsConfig,
@@ -135,7 +136,7 @@ pub fn staging_test_net(id: ParaId) -> ChainSpec {
                 vec![(
                     0,
                     DEXInfo {
-                        base_asset_id: AssetId::XOR,
+                        base_asset_id: GetBaseAssetId::get(),
                         default_fee: 30,
                         default_protocol_fee: 0,
                     },
@@ -206,7 +207,10 @@ fn testnet_genesis(
         dex_manager: Some(DEXManagerConfig {
             dex_list: dex_list.iter().cloned().collect(),
         }),
-        mock_liquidity_source: None,
+        mock_liquidity_source_Instance1: None,
+        mock_liquidity_source_Instance2: None,
+        mock_liquidity_source_Instance3: None,
+        mock_liquidity_source_Instance4: None,
         //iroha_bridge: Some(IrohaBridgeConfig { authorities: endowed_accounts.clone(), iroha_peers }),
     }
 }

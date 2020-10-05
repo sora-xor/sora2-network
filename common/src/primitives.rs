@@ -116,6 +116,9 @@ pub enum LiquiditySourceType {
     XYKPool,
     BondingCurvePool,
     MockPool,
+    MockPool2,
+    MockPool3,
+    MockPool4,
 }
 
 /// Identification of liquidity source.

@@ -19,32 +19,28 @@ mod tests;
 
 type TechAccountIdPrimitiveOf<T> = <T as technical::Trait>::TechAccountIdPrimitive;
 
-pub trait Trait: common::Trait + assets::Trait + technical::Trait {
-    type Event: From<Event<Self>> + Into<<Self as frame_system::Trait>::Event>;
+pub trait Trait<I: Instance>: common::Trait + assets::Trait + technical::Trait {
+    type Event: From<Event<Self, I>> + Into<<Self as frame_system::Trait>::Event>;
     type GetFee: Get<Fixed>;
     type EnsureDEXOwner: EnsureDEXOwner<Self::DEXId, Self::AccountId, DispatchError>;
     type EnsureTradingPairExists: EnsureTradingPairExists<Self::DEXId, Self::AssetId, DispatchError>;
 }
 
 decl_storage! {
-    trait Store for Module<T: Trait> as MockLiquiditySourceModule {
+    trait Store for Module<T: Trait<I>, I: Instance> as MockLiquiditySourceModule {
         pub Reserves get(fn reserves): double_map hasher(blake2_128_concat) T::DEXId, hasher(blake2_128_concat) T::AssetId => (Fixed, Fixed);
         pub ReservesAcc get(fn reserves_account_id): T::TechAccountIdPrimitive;
     }
 
     add_extra_genesis {
+        config(phantom): sp_std::marker::PhantomData<I>;
         config(reserves): Vec<(T::DEXId, T::AssetId, (Fixed, Fixed))>;
-
-        build(|config: &GenesisConfig<T>| {
-            config.reserves.iter().for_each(|(dex_id, target_asset_id, reserve_pair)| {
-                <Reserves<T>>::insert(dex_id, target_asset_id, reserve_pair);
-            })
-        })
+        build(|config| Module::<T, I>::initialize_reserves(&config.reserves))
     }
 }
 
 decl_event!(
-    pub enum Event<T>
+    pub enum Event<T, I>
     where
         AccountId = <T as frame_system::Trait>::AccountId,
         AssetId = <T as assets::Trait>::AssetId,
@@ -55,7 +51,7 @@ decl_event!(
 
 // Errors inform users that something went wrong.
 decl_error! {
-    pub enum Error for Module<T: Trait> {
+    pub enum Error for Module<T: Trait<I>, I: Instance> {
         PairDoesNotExist,
         InsufficientInputAmount,
         InsufficientOutputAmount,
@@ -64,8 +60,8 @@ decl_error! {
 }
 
 decl_module! {
-    pub struct Module<T: Trait> for enum Call where origin: T::Origin {
-        type Error = Error<T>;
+    pub struct Module<T: Trait<I>, I: Instance> for enum Call where origin: T::Origin {
+        type Error = Error<T, I>;
 
         fn deposit_event() = default;
 
@@ -80,23 +76,34 @@ decl_module! {
         #[weight = 0]
         pub fn set_reserve(origin, dex_id: T::DEXId, target_id: T::AssetId, base_reserve: Fixed, target_reserve: Fixed) -> DispatchResult {
             let _who = ensure_signed(origin)?;
-            <Reserves<T>>::insert(dex_id, target_id, (base_reserve, target_reserve));
+            <Reserves<T, I>>::insert(dex_id, target_id, (base_reserve, target_reserve));
             Ok(())
         }
     }
 }
 
-impl<T: Trait> Module<T> {
+impl<T: Trait<I>, I: Instance> Module<T, I> {
+    fn initialize_reserves(reserves: &[(T::DEXId, T::AssetId, (Fixed, Fixed))]) {
+        reserves
+            .iter()
+            .for_each(|(dex_id, target_asset_id, reserve_pair)| {
+                <Reserves<T, I>>::insert(dex_id, target_asset_id, reserve_pair);
+            })
+    }
+
     fn get_base_amount_out(
         target_amount_in: Fixed,
         base_reserve: Fixed,
         target_reserve: Fixed,
     ) -> Result<SwapOutcome<Fixed>, DispatchError> {
         let zero = Fixed::from_inner(0);
-        ensure!(target_amount_in > zero, <Error<T>>::InsufficientInputAmount);
+        ensure!(
+            target_amount_in > zero,
+            <Error<T, I>>::InsufficientInputAmount
+        );
         ensure!(
             base_reserve > zero && target_reserve > zero,
-            <Error<T>>::InsufficientLiquidity
+            <Error<T, I>>::InsufficientLiquidity
         );
         let numerator = target_amount_in * base_reserve;
         let denominator = target_reserve + target_amount_in;
@@ -114,10 +121,13 @@ impl<T: Trait> Module<T> {
         target_reserve: Fixed,
     ) -> Result<SwapOutcome<Fixed>, DispatchError> {
         let zero = Fixed::from_inner(0);
-        ensure!(base_amount_in > zero, <Error<T>>::InsufficientInputAmount);
+        ensure!(
+            base_amount_in > zero,
+            <Error<T, I>>::InsufficientInputAmount
+        );
         ensure!(
             base_reserve > zero && target_reserve > zero,
-            <Error<T>>::InsufficientLiquidity
+            <Error<T, I>>::InsufficientLiquidity
         );
         let fee_amount = base_amount_in * T::GetFee::get();
         let amount_in_with_fee = base_amount_in - fee_amount;
@@ -134,11 +144,11 @@ impl<T: Trait> Module<T> {
         let zero = Fixed::from_inner(0);
         ensure!(
             target_amount_out > zero,
-            <Error<T>>::InsufficientOutputAmount
+            <Error<T, I>>::InsufficientOutputAmount
         );
         ensure!(
             base_reserve > zero && target_reserve > zero,
-            <Error<T>>::InsufficientLiquidity
+            <Error<T, I>>::InsufficientLiquidity
         );
         let numerator = base_reserve * target_amount_out;
         let denominator = target_reserve - target_amount_out;
@@ -166,10 +176,13 @@ impl<T: Trait> Module<T> {
         target_reserve: Fixed,
     ) -> Result<SwapOutcome<Fixed>, DispatchError> {
         let zero = Fixed::from_inner(0);
-        ensure!(base_amount_out > zero, <Error<T>>::InsufficientOutputAmount);
+        ensure!(
+            base_amount_out > zero,
+            <Error<T, I>>::InsufficientOutputAmount
+        );
         ensure!(
             base_reserve > zero && target_reserve > zero,
-            <Error<T>>::InsufficientLiquidity
+            <Error<T, I>>::InsufficientLiquidity
         );
         let base_amount_out_with_fee = base_amount_out / (Fixed::from(1) - T::GetFee::get());
         let numerator = target_reserve * base_amount_out_with_fee;
@@ -190,7 +203,7 @@ impl<T: Trait> Module<T> {
     }
 }
 
-impl<T: Trait> Module<T>
+impl<T: Trait<I>, I: Instance> Module<T, I>
 where
     AccountIdOf<T>: From<AccountId32>,
     AccountId32: From<AccountIdOf<T>>,
@@ -199,7 +212,7 @@ where
     pub fn set_reserves_account_id(
         account: T::TechAccountIdPrimitive,
     ) -> Result<(), DispatchError> {
-        ReservesAcc::<T>::set(account.clone());
+        ReservesAcc::<T, I>::set(account.clone());
         let reserves_tech_account_id = technical::Module::<T>::tech_acc_id_from_primitive(account);
         let account_id = T::AccountId::from(reserves_tech_account_id.clone().into());
         let permission_obj = permissions::Permission::<T>::new(account_id.clone());
@@ -216,8 +229,8 @@ where
     }
 }
 
-impl<T: Trait> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Fixed, DispatchError>
-    for Module<T>
+impl<T: Trait<I>, I: Instance>
+    LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Fixed, DispatchError> for Module<T, I>
 {
     fn can_exchange(
         dex_id: &T::DEXId,
@@ -226,12 +239,12 @@ impl<T: Trait> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Fixed, Dispat
     ) -> bool {
         let base_asset_id = &T::GetBaseAssetId::get();
         if input_asset_id == base_asset_id {
-            <Reserves<T>>::contains_key(dex_id, output_asset_id)
+            <Reserves<T, I>>::contains_key(dex_id, output_asset_id)
         } else if output_asset_id == base_asset_id {
-            <Reserves<T>>::contains_key(dex_id, input_asset_id)
+            <Reserves<T, I>>::contains_key(dex_id, input_asset_id)
         } else {
-            <Reserves<T>>::contains_key(dex_id, output_asset_id)
-                && <Reserves<T>>::contains_key(dex_id, input_asset_id)
+            <Reserves<T, I>>::contains_key(dex_id, output_asset_id)
+                && <Reserves<T, I>>::contains_key(dex_id, input_asset_id)
         }
     }
 
@@ -243,7 +256,7 @@ impl<T: Trait> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Fixed, Dispat
     ) -> Result<SwapOutcome<Fixed>, DispatchError> {
         let base_asset_id = &T::GetBaseAssetId::get();
         if input_asset_id == base_asset_id {
-            let (base_reserve, target_reserve) = <Reserves<T>>::get(dex_id, output_asset_id);
+            let (base_reserve, target_reserve) = <Reserves<T, I>>::get(dex_id, output_asset_id);
             match swap_amount {
                 SwapAmount::WithDesiredInput {
                     desired_amount_in: base_amount_in,
@@ -263,7 +276,7 @@ impl<T: Trait> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Fixed, Dispat
                 )?),
             }
         } else if output_asset_id == base_asset_id {
-            let (base_reserve, target_reserve) = <Reserves<T>>::get(dex_id, input_asset_id);
+            let (base_reserve, target_reserve) = <Reserves<T, I>>::get(dex_id, input_asset_id);
             match swap_amount {
                 SwapAmount::WithDesiredInput {
                     desired_amount_in: target_amount_in,
@@ -283,8 +296,8 @@ impl<T: Trait> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Fixed, Dispat
                 )?),
             }
         } else {
-            let (base_reserve_a, target_reserve_a) = <Reserves<T>>::get(dex_id, input_asset_id);
-            let (base_reserve_b, target_reserve_b) = <Reserves<T>>::get(dex_id, output_asset_id);
+            let (base_reserve_a, target_reserve_a) = <Reserves<T, I>>::get(dex_id, input_asset_id);
+            let (base_reserve_b, target_reserve_b) = <Reserves<T, I>>::get(dex_id, output_asset_id);
             match swap_amount {
                 SwapAmount::WithDesiredInput {
                     desired_amount_in, ..
