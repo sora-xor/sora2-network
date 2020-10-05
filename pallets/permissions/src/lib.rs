@@ -42,19 +42,22 @@ pub const MANAGE_DEX: u32 = 7;
 #[derive(PartialEq, Eq, Clone, Default, Encode, Decode, RuntimeDebug)]
 pub struct Permission<T: frame_system::Trait> {
     owner_id: T::AccountId,
-    params: H512,
+    params: Option<H512>,
 }
 
 impl<T: Trait> Permission<T> {
-    pub fn new(owner_id: T::AccountId) -> Self {
+    pub fn any(owner_id: T::AccountId) -> Self {
         Self {
             owner_id,
-            params: H512::zero(),
+            params: None,
         }
     }
 
     pub fn with_parameters(owner_id: T::AccountId, params: H512) -> Self {
-        Self { owner_id, params }
+        Self {
+            owner_id,
+            params: Some(params),
+        }
     }
 }
 
@@ -72,7 +75,7 @@ decl_storage! {
                               .cloned()
                               .map(|(permission_id, holder_id, owner_id, params)| (permission_id, holder_id, Permission::<T> {
                                   owner_id,
-                                  params: params.unwrap_or(H512::zero()),
+                                  params,
                               })).collect::<Vec<_>>()
                              ): double_map hasher(opaque_blake2_256) u32, hasher(opaque_blake2_256) T::AccountId => Option<Permission<T>>;
     }
@@ -127,7 +130,11 @@ impl<T: Trait> Module<T> {
     ) -> Result<(), Error<T>> {
         let permission =
             Permissions::<T>::get(permission_id, &who).ok_or(Error::<T>::PermissionNotFound)?;
-        if permission.params == parameters {
+        if permission
+            .params
+            .map(|params| params == parameters)
+            .unwrap_or(true)
+        {
             Ok(())
         } else {
             Err(Error::<T>::PermissionNotFound)
@@ -160,7 +167,11 @@ impl<T: Trait> Module<T> {
     ) -> Result<(), Error<T>> {
         let permission =
             Permissions::<T>::get(permission_id, &who).ok_or(Error::<T>::PermissionNotFound)?;
-        if permission.params == parameters {
+        if permission
+            .params
+            .map(|params| params == parameters)
+            .unwrap_or(true)
+        {
             if permission.owner_id == who {
                 Permissions::insert(permission_id, account_id.clone(), permission);
                 Self::deposit_event(RawEvent::PermissionGranted(permission_id, account_id));

@@ -158,7 +158,7 @@ fn permission_create_passes() {
             ALICE,
             BOB,
             TRANSFER,
-            Permission::<Test>::new(ALICE)
+            Permission::<Test>::any(ALICE)
         ));
     });
 }
@@ -170,7 +170,7 @@ fn permission_create_fails_with_permission_already_exists_error() {
             ALICE,
             ALICE,
             TRANSFER,
-            Permission::<Test>::new(ALICE),
+            Permission::<Test>::any(ALICE),
         ) {
         } else {
             panic!();

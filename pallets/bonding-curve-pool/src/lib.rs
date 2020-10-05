@@ -373,7 +373,7 @@ impl<T: Trait> Module<T> {
     pub fn set_reserves_account_id(account: T::TechAccountId) -> Result<(), DispatchError> {
         ReservesAcc::<T>::set(account.clone());
         let account_id = Technical::<T>::tech_account_id_to_account_id(&account)?;
-        let permission_obj = permissions::Permission::<T>::new(account_id.clone());
+        let permission_obj = permissions::Permission::<T>::any(account_id.clone());
         let permissions = [BURN, MINT, TRANSFER, SLASH, EXCHANGE];
         for permission in &permissions {
             permissions::Module::<T>::create_permission(
