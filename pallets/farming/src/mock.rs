@@ -17,7 +17,7 @@ use sp_runtime::{
 pub type AccountId = u128;
 pub type BlockNumber = u64;
 type TechAccountIdPrimitive = common::TechAccountId<AccountId, AssetId, DEXId>;
-pub type TechAccountId = common::TechAccountId<AccountId, AssetId, DEXId>;
+pub type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
 type TechAssetId = common::TechAssetId<AssetId, DEXId>;
 type DEXId = common::DEXId;
 pub type FarmsModule = Module<Test>;

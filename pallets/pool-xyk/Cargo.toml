@@ -1,0 +1,53 @@
+[package]
+authors = ['Evgeni Zhukov <zhukov@soramitsu.co.jp>']
+description = 'Pool XYK'
+edition = '2018'
+homepage = 'https://github.com/soramitsu/SoraNeo-substrate'
+license = 'Unlicense'
+name = 'pool-xyk'
+repository = 'https://github.com/soramitsu/SoraNeo-substrate'
+version = '0.0.0'
+
+[package.metadata.docs.rs]
+targets = ['x86_64-unknown-linux-gnu']
+
+[dependencies.codec]
+default-features = false
+features = ['derive']
+package = 'parity-scale-codec'
+version = '1.3.1'
+
+[dependencies]
+frame-support = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "rococo-branch" }
+frame-system = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "rococo-branch" }
+sp-runtime = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "rococo-branch" }
+common = { path = "../../common", default-features = false }
+technical = { path = "../technical", default-features = false }
+dex-manager = { path = "../dex-manager", default-features = false }
+trading-pair = { path = "../trading-pair", default-features = false }
+assets = { path = "../assets", default-features = false }
+orml-traits = { branch = "rococo-branch", git = "https://github.com/vmarkushin/open-runtime-module-library", default-features = false }
+currencies = { package = "orml-currencies", branch = "rococo-branch", git = "https://github.com/vmarkushin/open-runtime-module-library", default-features = false }
+num-traits = { version = "0.2.12", default-features = false }
+sp-core = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "rococo-branch" }
+
+[dev-dependencies]
+sp-io = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "rococo-branch" }
+pallet-balances = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "rococo-branch" }
+tokens = { package = "orml-tokens", branch = "rococo-branch", git = "https://github.com/vmarkushin/open-runtime-module-library", default-features = false }
+permissions = { path = "../permissions", default-features = false }
+sp-std = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "rococo-branch" }
+
+[features]
+default = ['std']
+std = [
+    'codec/std',
+    'frame-support/std',
+    'frame-system/std',
+    'common/std',
+    'currencies/std',
+    'num-traits/std',
+    'sp-core/std',
+    'dex-manager/std',
+    'trading-pair/std',
+]
