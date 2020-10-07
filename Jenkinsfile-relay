@@ -35,15 +35,12 @@ pipeline {
             }
         }
         stage('Push Image') {
-            when {
-                expression { env.GIT_BRANCH ==~ /master/ }
-            }
             steps{
                 script {
                     docker.withRegistry( "https://" + registry, dockerRegistryRWUserId) {
                         sh """
                             docker push ${imageName}:${polkadotCommit}
-                            docker tag ${imageName} ${imageName}:latest
+                            docker tag ${imageName}:${polkadotCommit} ${imageName}:latest
                             docker push ${imageName}:latest
                         """
                     }
