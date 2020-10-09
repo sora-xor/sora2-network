@@ -8,17 +8,22 @@
 include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
 
 pub use common::{fixed_from_basis_points, prelude::AssetId, BasisPoints, Fixed};
+use core::time::Duration;
 use currencies::BasicCurrencyAdapter;
 use frame_system::offchain::{Account, SigningTypes};
+use pallet_session::historical as pallet_session_historical;
 use sp_api::impl_runtime_apis;
 use sp_core::Encode;
-use sp_core::OpaqueMetadata;
+use sp_core::{crypto::KeyTypeId, OpaqueMetadata};
 use sp_runtime::{
     create_runtime_str, generic, impl_opaque_keys,
     traits::SaturatedConversion,
-    traits::{BlakeTwo256, Block as BlockT, IdentifyAccount, IdentityLookup, Saturating, Verify},
+    traits::{
+        BlakeTwo256, Block as BlockT, Convert, IdentifyAccount, IdentityLookup, OpaqueKeys,
+        Saturating, Verify,
+    },
     transaction_validity::{TransactionSource, TransactionValidity},
-    ApplyExtrinsicResult, MultiSignature,
+    ApplyExtrinsicResult, MultiSignature, Perbill, Percent, Permill,
 };
 use sp_std::prelude::*;
 #[cfg(feature = "std")]
@@ -39,7 +44,6 @@ pub use pallet_balances::Call as BalancesCall;
 pub use pallet_timestamp::Call as TimestampCall;
 #[cfg(any(feature = "std", test))]
 pub use sp_runtime::BuildStorage;
-pub use sp_runtime::{Perbill, Permill};
 
 /// Import the template pallet.
 pub use template;
@@ -83,6 +87,8 @@ pub type DigestItem = generic::DigestItem<Hash>;
 /// Identification of DEX.
 pub type DEXId = u32;
 
+pub type Moment = u64;
+
 /// Opaque types. These are used by the CLI to instantiate machinery that don't need to know
 /// the specifics of the runtime. They can then be made to be agnostic over specific formats
 /// of data like extrinsics, allowing for them to continue syncing the network through upgrades
@@ -102,7 +108,9 @@ pub mod opaque {
     pub type SessionHandlers = ();
 
     impl_opaque_keys! {
-        pub struct SessionKeys {}
+        pub struct SessionKeys {
+            pub babe: Babe,
+        }
     }
 }
 
@@ -117,11 +125,17 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
     transaction_version: 1,
 };
 
-pub const MILLISECS_PER_BLOCK: u64 = 6000;
+pub const MILLISECS_PER_BLOCK: Moment = 6000;
 
-pub const SLOT_DURATION: u64 = MILLISECS_PER_BLOCK;
+pub const SLOT_DURATION: Moment = MILLISECS_PER_BLOCK;
 
-pub const EPOCH_DURATION_IN_BLOCKS: u32 = 10 * MINUTES;
+pub const EPOCH_DURATION_IN_BLOCKS: BlockNumber = 10 * MINUTES;
+
+pub const EPOCH_DURATION_IN_SLOTS: u64 = {
+    const SLOT_FILL_RATE: f64 = MILLISECS_PER_BLOCK as f64 / SLOT_DURATION as f64;
+
+    (EPOCH_DURATION_IN_BLOCKS as f64 * SLOT_FILL_RATE) as u64
+};
 
 // These time units are defined in number of blocks.
 pub const MINUTES: BlockNumber = 60_000 / (MILLISECS_PER_BLOCK as BlockNumber);
@@ -149,6 +163,24 @@ parameter_types! {
     pub const AvailableBlockRatio: Perbill = Perbill::from_percent(75);
     pub const MaximumBlockLength: u32 = 5 * 1024 * 1024;
     pub const Version: RuntimeVersion = VERSION;
+    pub const DisabledValidatorsThreshold: Perbill = Perbill::from_percent(17);
+    pub const EpochDuration: u64 = EPOCH_DURATION_IN_SLOTS;
+    pub const ExpectedBlockTime: Moment = MILLISECS_PER_BLOCK;
+    pub const UncleGenerations: BlockNumber = 5;
+    pub const GetValAssetId: AssetId = AssetId::VAL;
+    pub const SessionsPerEra: sp_staking::SessionIndex = 3; // 3 hours
+    pub const BondingDuration: pallet_staking::EraIndex = 4; // 12 hours
+    pub const SlashDeferDuration: pallet_staking::EraIndex = 2; // 6 hours
+    pub const MaxNominatorRewardedPerValidator: u32 = 64;
+    pub const ElectionLookahead: BlockNumber = EPOCH_DURATION_IN_BLOCKS / 4;
+    pub const MaxIterations: u32 = 5;
+    // 0.05%. The higher the value, the more strict solution acceptance becomes.
+    pub MinSolutionScoreBump: Perbill = Perbill::from_rational_approximation(5u32, 10_000);
+    pub const ValRewardCurve: pallet_staking::ValRewardCurve = pallet_staking::ValRewardCurve {
+        duration_to_reward_flatline: Duration::from_secs(5 * 365 * 24 * 60 * 60),
+        min_val_burned_percentage_reward: Percent::from_percent(35),
+        max_val_burned_percentage_reward: Percent::from_percent(90),
+    };
 }
 
 impl frame_system::Trait for Runtime {
@@ -202,9 +234,86 @@ parameter_types! {
 
 impl pallet_timestamp::Trait for Runtime {
     /// A timestamp: milliseconds since the unix epoch.
-    type Moment = u64;
-    type OnTimestampSet = ();
+    type Moment = Moment;
+    type OnTimestampSet = Babe;
     type MinimumPeriod = MinimumPeriod;
+    type WeightInfo = ();
+}
+
+impl pallet_session::Trait for Runtime {
+    type SessionManager = pallet_session::historical::NoteHistoricalRoot<Self, Staking>;
+    type Keys = opaque::SessionKeys;
+    type ShouldEndSession = Babe;
+    type SessionHandler = <opaque::SessionKeys as OpaqueKeys>::KeyTypeIdProviders;
+    type Event = Event;
+    type ValidatorId = AccountId;
+    type ValidatorIdOf = pallet_staking::StashOf<Self>;
+    type DisabledValidatorsThreshold = DisabledValidatorsThreshold;
+    type NextSessionRotation = Babe;
+    type WeightInfo = ();
+}
+
+impl pallet_session::historical::Trait for Runtime {
+    type FullIdentification = pallet_staking::Exposure<AccountId, Balance>;
+    type FullIdentificationOf = pallet_staking::ExposureOf<Runtime>;
+}
+
+impl pallet_babe::Trait for Runtime {
+    type EpochDuration = EpochDuration;
+    type ExpectedBlockTime = ExpectedBlockTime;
+    type EpochChangeTrigger = pallet_babe::ExternalTrigger;
+    type KeyOwnerProofSystem = Historical;
+    type KeyOwnerProof = <Self::KeyOwnerProofSystem as KeyOwnerProofSystem<(
+        KeyTypeId,
+        pallet_babe::AuthorityId,
+    )>>::Proof;
+    type KeyOwnerIdentification = <Self::KeyOwnerProofSystem as KeyOwnerProofSystem<(
+        KeyTypeId,
+        pallet_babe::AuthorityId,
+    )>>::IdentificationTuple;
+    type HandleEquivocation = pallet_babe::EquivocationHandler<Self::KeyOwnerIdentification, ()>; // Offences
+}
+
+impl pallet_authorship::Trait for Runtime {
+    type FindAuthor = pallet_session::FindAccountFromAuthorIndex<Self, Babe>;
+    type UncleGenerations = UncleGenerations;
+    type FilterUncle = ();
+    type EventHandler = (Staking, ()); // ImOnline
+}
+
+pub struct CurrencyToVoteHandler;
+impl Convert<Balance, u64> for CurrencyToVoteHandler {
+    fn convert(x: Balance) -> u64 {
+        x.saturated_into()
+    }
+}
+impl Convert<u128, Balance> for CurrencyToVoteHandler {
+    fn convert(x: u128) -> Balance {
+        x.into()
+    }
+}
+
+impl pallet_staking::Trait for Runtime {
+    type Currency = Balances;
+    type MultiCurrency = Tokens;
+    type ValTokenId = GetValAssetId;
+    type ValRewardCurve = ValRewardCurve;
+    type UnixTime = Timestamp;
+    type CurrencyToVote = CurrencyToVoteHandler;
+    type Event = Event;
+    type Slash = ();
+    type SessionsPerEra = SessionsPerEra;
+    type SlashDeferDuration = SlashDeferDuration;
+    type SlashCancelOrigin = frame_system::EnsureRoot<Self::AccountId>;
+    type BondingDuration = BondingDuration;
+    type SessionInterface = Self;
+    type NextNewSession = Session;
+    type ElectionLookahead = ElectionLookahead;
+    type Call = Call;
+    type MaxIterations = MaxIterations;
+    type MinSolutionScoreBump = MinSolutionScoreBump;
+    type MaxNominatorRewardedPerValidator = MaxNominatorRewardedPerValidator;
+    type UnsignedPriority = UnsignedPriority;
     type WeightInfo = ();
 }
 
@@ -420,9 +529,11 @@ impl xor_fee::Trait for Runtime {
     // Pass native currency.
     type Event = Event;
     type XorCurrency = Balances;
+    type MultiCurrency = Tokens;
     type ReferrerWeight = ReferrerWeight;
     type XorBurnedWeight = XorBurnedWeight;
     type XorIntoValBurnedWeight = XorIntoValBurnedWeight;
+    type ValBurnedNotifier = Staking;
 }
 
 impl pallet_transaction_payment::Trait for Runtime {
@@ -503,6 +614,13 @@ construct_runtime! {
         TemplateModule: template::{Module, Call, Storage, Event<T>},
         ReferralSystem: referral_system::{Module, Call, Storage, Event},
         XorFee: xor_fee::{Module, Call, Storage, Event},
+
+        // Consensus and staking.
+        Session: pallet_session::{Module, Call, Storage, Event, Config<T>},
+        Historical: pallet_session_historical::{Module},
+        Babe: pallet_babe::{Module, Call, Storage, Config, Inherent, ValidateUnsigned},
+        Authorship: pallet_authorship::{Module, Call, Storage, Inherent},
+        Staking: pallet_staking::{Module, Call, Config<T>, Storage, Event<T>},
 
         // Non-native tokens - everything apart of XOR.
         Tokens: tokens::{Module, Storage, Event<T>},

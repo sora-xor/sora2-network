@@ -169,6 +169,9 @@ fn testnet_genesis(
         }),
         pallet_sudo: Some(SudoConfig { key: root_key }),
         parachain_info: Some(ParachainInfoConfig { parachain_id: id }),
+        pallet_babe: Some(Default::default()),
+        pallet_session: Some(Default::default()),
+        pallet_staking: Some(Default::default()),
         permissions: Some(PermissionsConfig {
             initial_permissions: vec![
                 (

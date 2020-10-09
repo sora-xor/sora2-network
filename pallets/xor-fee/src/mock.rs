@@ -1,11 +1,12 @@
 pub use crate::{self as xor_fee, Module, Trait};
-use common::prelude::Balance;
+use common::{prelude::Balance, Amount};
 use frame_support::{
     impl_outer_dispatch, impl_outer_event, impl_outer_origin, parameter_types,
     weights::{DispatchInfo, IdentityFee, PostDispatchInfo, Weight},
 };
 use frame_system as system;
 use pallet_balances::WeightInfo;
+use pallet_staking::ValBurnedNotifier;
 use sp_core::H256;
 use sp_runtime::{
     testing::Header,
@@ -32,12 +33,14 @@ impl_outer_event! {
         pallet_balances<T>,
         referral_system,
         xor_fee,
+        tokens<T>,
     }
 }
 
 pub type System = frame_system::Module<Test>;
 pub type Balances = pallet_balances::Module<Test>;
 pub type XorFee = Module<Test>;
+pub type Tokens = tokens::Module<Test>;
 
 #[derive(Clone, Eq, PartialEq)]
 pub struct Test;
@@ -103,12 +106,30 @@ impl pallet_transaction_payment::Trait for Test {
     type FeeMultiplierUpdate = ();
 }
 
+pub struct TestValBurnedNotifier;
+
+impl ValBurnedNotifier<Balance> for TestValBurnedNotifier {
+    fn notify_val_burned(amount: Balance) {}
+}
+
 impl Trait for Test {
     type Event = Event;
     type XorCurrency = Balances;
+    type MultiCurrency = Tokens;
     type ReferrerWeight = ReferrerWeight;
     type XorBurnedWeight = XorBurnedWeight;
     type XorIntoValBurnedWeight = XorIntoValBurnedWieght;
+    type ValBurnedNotifier = TestValBurnedNotifier;
+}
+
+type CurrencyId = u32;
+
+impl tokens::Trait for Test {
+    type Event = Event;
+    type Balance = Balance;
+    type Amount = Amount;
+    type CurrencyId = CurrencyId;
+    type OnReceived = ();
 }
 
 pub const MOCK_WEIGHT: u64 = 100;
