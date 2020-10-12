@@ -19,7 +19,7 @@ use sp_runtime::{
 pub type AccountId = AccountId32;
 pub type BlockNumber = u64;
 
-type TechAssetId = common::TechAssetId<common::AssetId, DEXId>;
+type TechAssetId = common::TechAssetId<common::AssetId, DEXId, common::LiquiditySourceType>;
 type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
 type AssetId = AssetId32<common::AssetId>;
 

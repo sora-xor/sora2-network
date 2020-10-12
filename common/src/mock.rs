@@ -67,17 +67,22 @@ impl From<AssetId32<AssetId>> for AssetId32<ComicAssetId> {
 
 // This is never used, and just makes some tests compatible.
 #[deprecated]
-impl<DEXId> From<TechAssetId<AssetId, DEXId>> for AssetId {
-    fn from(_tech: TechAssetId<AssetId, DEXId>) -> Self {
+impl<DEXId, LstId> From<TechAssetId<AssetId, DEXId, LstId>> for AssetId {
+    fn from(_tech: TechAssetId<AssetId, DEXId, LstId>) -> Self {
         unimplemented!()
     }
 }
 
 // This is never used, and just makes some tests compatible.
 #[deprecated]
-impl<DEXId> TryFrom<AssetId> for TechAssetId<TechAssetId<AssetId, DEXId>, DEXId>
+impl<DEXId, LstId> TryFrom<AssetId>
+    for crate::primitives::TechAssetId<
+        crate::primitives::TechAssetId<AssetId, DEXId, LstId>,
+        DEXId,
+        LstId,
+    >
 where
-    TechAssetId<AssetId, DEXId>: Decode,
+    crate::primitives::TechAssetId<AssetId, DEXId, LstId>: Decode,
 {
     type Error = DispatchError;
     fn try_from(_asset: AssetId) -> Result<Self, Self::Error> {
@@ -85,7 +90,7 @@ where
     }
 }
 
-impl<DEXId> From<AssetId> for TechAssetId<ComicAssetId, DEXId> {
+impl<DEXId, LstId> From<AssetId> for TechAssetId<ComicAssetId, DEXId, LstId> {
     fn from(asset_id: AssetId) -> Self {
         TechAssetId::Wrapped(ComicAssetId::from(asset_id))
     }
