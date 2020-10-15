@@ -1,6 +1,8 @@
 use crate::{Fixed, LiquiditySourceId};
+use codec::{Decode, Encode};
+use frame_support::RuntimeDebug;
 use sp_arithmetic::FixedPointNumber;
-use sp_std::vec::Vec;
+use sp_std::{iter::once, vec::Vec};
 
 /// Basis points range (0..10000) corresponds to 0.01%..100.00%.
 const BASIS_POINTS_RANGE: u16 = 10000;
@@ -22,7 +24,60 @@ pub fn fixed_from_basis_points<BP: Into<u16>>(value: BP) -> Fixed {
     )
 }
 
+/// An auxiliary type to denote an interval variants: (a, b), [a, b), (a, b] and [a, b].
+pub enum IntervalEndpoints {
+    None,
+    Left,
+    Right,
+    Both,
+}
+
+/// Evenly distribute N points inside an interval one of the following ways:
+/// - none endpoint included:   o - - - - - x - - - - - x - - - - - x - - - - - o
+/// - left endpoint included:   x - - - - - - - x - - - - - - - x - - - - - - - o
+/// - right endpoint included:  o - - - - - - - x - - - - - - - x - - - - - - - x
+/// - both endpoints included:  x - - - - - - - - - - - x - - - - - - - - - - - x
+pub fn linspace(a: Fixed, b: Fixed, n: usize, endpoints: IntervalEndpoints) -> Vec<Fixed> {
+    if n == 0 {
+        return Vec::<Fixed>::new();
+    };
+
+    if a == b {
+        return vec![a; n];
+    }
+
+    match endpoints {
+        IntervalEndpoints::None => linspace_inner(a, b, n),
+        IntervalEndpoints::Left => once(a)
+            .chain(linspace_inner(a, b, n - 1).into_iter())
+            .collect(),
+        IntervalEndpoints::Right => linspace_inner(a, b, n - 1)
+            .into_iter()
+            .chain(once(b))
+            .collect(),
+        IntervalEndpoints::Both => {
+            if n == 1 {
+                once(b).collect()
+            } else {
+                once(a)
+                    .chain(linspace_inner(a, b, n - 2).into_iter())
+                    .chain(once(b))
+                    .collect()
+            }
+        }
+    }
+}
+
+/// Helper function that evenly spreads points inside an interval with endpoints excluded
+/// Can only be called from public function `linspace` hence no additional bound checks
+fn linspace_inner(a: Fixed, b: Fixed, n: usize) -> Vec<Fixed> {
+    (1..=n)
+        .map(|x| a + (b - a) / (Fixed::from(n as u128 + 1) / Fixed::from(x as u128)))
+        .collect()
+}
+
 /// Generalized filtration mechanism for listing liquidity sources.
+#[derive(Encode, Decode, Clone, RuntimeDebug)]
 pub struct LiquiditySourceFilter<DEXId: PartialEq + Copy, LiquiditySourceIndex: PartialEq + Copy> {
     /// DEX Id to which listing is limited.
     pub dex_id: DEXId,
@@ -129,6 +184,7 @@ pub const fn number_str_order(num_s: &str) -> u32 {
 #[cfg(test)]
 mod tests {
     use crate::*;
+    use sp_arithmetic::traits::Bounded;
 
     #[test]
     fn test_in_basis_points_range_should_pass() {
@@ -241,5 +297,93 @@ mod tests {
     fn test_number_str_len() {
         assert_eq!(number_str_order("1234"), 4);
         assert_eq!(number_str_order("12_34"), 4);
+    }
+
+    #[test]
+    fn test_linspace_should_pass() {
+        // (0, 2], 6 points
+        assert_eq!(
+            &linspace(fixed!(0), fixed!(2), 6, IntervalEndpoints::Right),
+            &[
+                fixed!(0, 333333333333333333),
+                fixed!(0, 666666666666666666),
+                fixed!(1),
+                fixed!(1, 333333333333333333),
+                fixed!(1, 666666666666666666),
+                fixed!(2),
+            ]
+        );
+
+        // [1, 11), 6 points
+        assert_eq!(
+            &linspace(fixed!(1), fixed!(11), 6, IntervalEndpoints::Left),
+            &[
+                fixed!(1),
+                fixed!(2, 666666666666666666),
+                fixed!(4, 333333333333333333),
+                fixed!(6),
+                fixed!(7, 666666666666666666),
+                fixed!(9, 333333333333333333),
+            ]
+        );
+
+        // (0, 1), 6 points
+        assert_eq!(
+            &linspace(fixed!(0), fixed!(1), 6, IntervalEndpoints::None),
+            &[
+                fixed!(0, 142857142857142857),
+                fixed!(0, 285714285714285714),
+                fixed!(0, 428571428571428571),
+                fixed!(0, 571428571428571428),
+                fixed!(0, 714285714285714285),
+                fixed!(0, 857142857142857143),
+            ]
+        );
+
+        // (0, 1), 8 points
+        assert_eq!(
+            &linspace(fixed!(0), fixed!(1), 8, IntervalEndpoints::Both),
+            &[
+                fixed!(0),
+                fixed!(0, 142857142857142857),
+                fixed!(0, 285714285714285714),
+                fixed!(0, 428571428571428571),
+                fixed!(0, 571428571428571428),
+                fixed!(0, 714285714285714285),
+                fixed!(0, 857142857142857143),
+                fixed!(1),
+            ]
+        );
+    }
+
+    #[test]
+    fn test_linspace_corner_cases_should_pass() {
+        // 0 points requested => []
+        assert_eq!(
+            &linspace(fixed!(0), fixed!(2), 0, IntervalEndpoints::Right),
+            &[]
+        );
+
+        // [100, 100), 5 points => [100, 100, 100, 100, 100]
+        assert_eq!(
+            linspace(fixed!(100), fixed!(100), 5, IntervalEndpoints::Left),
+            vec![fixed!(100); 5]
+        );
+
+        // [100, 100], 6 points => [100, 100, 100, 100, 100, 100]
+        assert_eq!(
+            linspace(fixed!(100), fixed!(100), 6, IntervalEndpoints::Both),
+            vec![fixed!(100); 6]
+        );
+
+        // [0, Fixed::max_value()], 3 points
+        assert_eq!(
+            &linspace(fixed!(0), Fixed::max_value(), 3, IntervalEndpoints::Both),
+            &[
+                fixed!(0),
+                fixed!(170141183460469231731, 687303715884105727),
+                fixed!(340282366920938463463, 374607431768211455),
+            ]
+        );
     }
 }

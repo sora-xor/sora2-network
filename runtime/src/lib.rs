@@ -399,9 +399,14 @@ impl technical::Trait for Runtime {
     type SwapAction = ();
 }
 
+parameter_types! {
+    pub const GetNumSamples: usize = 100;
+}
+
 impl liquidity_proxy::Trait for Runtime {
     type Event = Event;
     type LiquidityRegistry = dex_api::Module<Runtime>;
+    type GetNumSamples = GetNumSamples;
 }
 
 parameter_types! {

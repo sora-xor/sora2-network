@@ -26,6 +26,7 @@ pub const DOT: AssetId = AssetId::DOT;
 pub const KSM: AssetId = AssetId::KSM;
 pub const DEX_A_ID: DEXId = 1;
 pub const DEX_B_ID: DEXId = 2;
+pub const DEX_C_ID: DEXId = 3;
 
 impl_outer_origin! {
     pub enum Origin for Runtime {}
@@ -40,6 +41,7 @@ parameter_types! {
     pub const AvailableBlockRatio: Perbill = Perbill::from_percent(75);
     pub const GetDefaultFee: u16 = 30;
     pub const GetDefaultProtocolFee: u16 = 0;
+    pub const GetNumSamples: usize = 100;
 }
 
 impl system::Trait for Runtime {
@@ -73,6 +75,7 @@ impl system::Trait for Runtime {
 impl Trait for Runtime {
     type Event = ();
     type LiquidityRegistry = dex_api::Module<Runtime>;
+    type GetNumSamples = GetNumSamples;
 }
 
 impl tokens::Trait for Runtime {
@@ -218,21 +221,25 @@ impl Default for ExtBuilder {
                 (DEX_A_ID, DOT, (Fixed::from(5000), Fixed::from(7000))),
                 (DEX_A_ID, KSM, (Fixed::from(5500), Fixed::from(4000))),
                 (DEX_B_ID, DOT, (Fixed::from(100), Fixed::from(45))),
+                (DEX_C_ID, DOT, (Fixed::from(520), Fixed::from(550))),
             ],
             reserves_2: vec![
                 (DEX_A_ID, DOT, (Fixed::from(6000), Fixed::from(6000))),
                 (DEX_A_ID, KSM, (Fixed::from(6500), Fixed::from(3000))),
                 (DEX_B_ID, DOT, (Fixed::from(200), Fixed::from(45))),
+                (DEX_C_ID, DOT, (Fixed::from(550), Fixed::from(700))),
             ],
             reserves_3: vec![
                 (DEX_A_ID, DOT, (Fixed::from(7000), Fixed::from(5000))),
                 (DEX_A_ID, KSM, (Fixed::from(7500), Fixed::from(2000))),
                 (DEX_B_ID, DOT, (Fixed::from(300), Fixed::from(45))),
+                (DEX_C_ID, DOT, (Fixed::from(400), Fixed::from(380))),
             ],
             reserves_4: vec![
                 (DEX_A_ID, DOT, (Fixed::from(8000), Fixed::from(4000))),
                 (DEX_A_ID, KSM, (Fixed::from(8500), Fixed::from(1000))),
                 (DEX_B_ID, DOT, (Fixed::from(400), Fixed::from(45))),
+                (DEX_C_ID, DOT, (Fixed::from(1300), Fixed::from(1800))),
             ],
             dex_list: vec![
                 (
@@ -245,6 +252,14 @@ impl Default for ExtBuilder {
                 ),
                 (
                     DEX_B_ID,
+                    DEXInfo {
+                        base_asset_id: GetBaseAssetId::get(),
+                        default_fee: GetDefaultFee::get(),
+                        default_protocol_fee: GetDefaultProtocolFee::get(),
+                    },
+                ),
+                (
+                    DEX_C_ID,
                     DEXInfo {
                         base_asset_id: GetBaseAssetId::get(),
                         default_fee: GetDefaultFee::get(),
