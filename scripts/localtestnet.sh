@@ -16,6 +16,8 @@ skip_build_of_parachain_binary_if_it_exist=0
 enable_incremental_compilation=0
 remove_binary_for_rebuild=0
 exit_after_success=0
+use_parachain_debug_build=0
+use_polkadot_debug_build=0
 
 if [ "$RUST_LOG" == "" ]; then
 	export RUST_LOG="sc_rpc=trace"
@@ -65,20 +67,26 @@ usage
 exit 0
   -k, --keep-logdir              Do not remove logdir after end of script work
 remove_log_dir_on_finalize=0
-  -r, --relay-nodes [n]          Number of relay nodes to run (default $relay_nodes)
+  -r, --relay-nodes [n]          Number of relay nodes to run (default $relaychain_nodes_count)
 relaychain_nodes_count=\$relay_nodes
-  -p, --parachain-fullnodes [n]  Number of parachain node to run (default $parachain_fullnodes)
+  -p, --parachain-fullnodes [n]  Number of parachain node to run (default $parachain_fullnodes_count)
 parachain_fullnodes_count=\$parachain_fullnodes
-  -c, --collator-nodes [n]       Number of collator nodes to run (default $collator_nodes)
+  -c, --collator-nodes [n]       Number of collator nodes to run (default $parachain_collators_count)
 parachain_collators_count=\$collator_nodes
-  -f, --force-rebild-parachain   Remove parachain binary and rebuild with fresh commit (as additional test)
+  -f, --force-rebuild-parachain   Remove parachain binary and rebuild with fresh commit (as additional test)
 remove_binary_for_rebuild=1
+  -s, --skip-build               Skip build is parachain binary is exist
+skip_build_of_parachain_binary_if_it_exist=1
   -l, --logdir-pattern [pat]     Pattern of temporary logdir (default "$logdir_pattern")
   -d, --cache-dir [dir]          Cache dir to incremental backups of target dir (default "$cache_dir")
-  -j, --just-compile-deps        Compile dependancies and exit
+  -j, --just-compile-deps        Compile dependencies and exit
 exit_after_deps=1
   -e, --exit-after-success       Exit after success parachain block producing
 exit_after_success=1
+  -g, --use-parachain-debug-build          Use debug build for parachain binary
+use_parachain_debug_build=1
+  -w, --use-polkadot-debug-build           Use debug build for polkadot binary
+use_polkadot_debug_build=1
 EOF
 `
 eval "$getopt_code"
@@ -147,7 +155,11 @@ function build_polkadot_on_demand() {
 		pushd $polkadot_ready
 			must git checkout $polkadot_commit
 			link_makefile_etc
-			must make cargo-build-release
+			if [ "$use_polkadot_debug_build" == 1 ]; then
+				must make cargo-build-debug
+			else
+				must make cargo-build-release
+			fi
 		popd
 	fi
 	if [ -f $polkadot_binary ]; then
@@ -155,7 +167,7 @@ function build_polkadot_on_demand() {
 		check_polkadot_binary $polkadot_binary || \
 			panic "polkadot binary is incorrect"
 	else
-		panic "polkadot binary it not exist in target/release folder, building is failed"
+		panic "polkadot binary it not exist in target/release or debug folder, building is failed"
 	fi
 }
 
@@ -170,7 +182,11 @@ on_success info "polkadot-js-api is already exist, skipping install and using it
 
 polkadot=""
 polkadot_ready="$dir/polkadot_ready"
-polkadot_path="$polkadot_ready/target/release"
+if [ "$use_polkadot_debug_build" == 1 ]; then
+	polkadot_path="$polkadot_ready/target/debug"
+else
+	polkadot_path="$polkadot_ready/target/release"
+fi
 polkadot_binary="$polkadot_path/polkadot"
 check_polkadot_binary $polkadot_binary
 check_polkadot_binary polkadot
@@ -231,16 +247,28 @@ function build_parachain_binary() {
 			rm -f $parachain > /dev/null 2>&1
 		fi
 		if [ ! -f $parachain -o $skip_build_of_parachain_binary_if_it_exist == 0 ]; then
-			verbose must make cargo-build-release
+			if [ "$use_parachain_debug_build" == 1 ]; then
+				verbose must make cargo-build-debug
+			else
+				verbose must make cargo-build-release
+			fi
 		fi
 		check_parachain_binary_and_cache_target
 	popd
 }
 
 if [ "$CARGO_TARGET_DIR" == "" ]; then
-	parachain="$top/target/release/parachain-collator"
+	if [ "$use_parachain_debug_build" == 1 ]; then
+		parachain="$top/target/debug/parachain-collator"
+	else
+		parachain="$top/target/release/parachain-collator"
+	fi
 else
-	parachain="$CARGO_TARGET_DIR/release/parachain-collator"
+	if [ "$use_parachain_debug_build" == 1 ]; then
+		parachain="$CARGO_TARGET_DIR/debug/parachain-collator"
+	else
+		parachain="$CARGO_TARGET_DIR/release/parachain-collator"
+	fi
 fi
 build_parachain_binary
 
@@ -253,6 +281,13 @@ build_parachain_binary
 relaychain_nodes=""
 parachain_nodes=""
 pids=""
+
+message_about_ports=""
+
+function pmsg() {
+	message_about_ports="$message_about_ports
+$@"
+}
 
 function get_test_name() {
 	echo $test_names | fmt -w 1 | awk "NR == `expr $1 + 1` { print \$0 }"
@@ -271,12 +306,14 @@ function create_log_dir() {
 
 function start_relaychain_node() {
 	wsport=`expr $1 + 9944`
+	rpcport=`expr $1 + 9933`
 	port=`expr $1 + 30333`
 	test_name=`get_test_name $1`
 	prefix=$log/relaychain_node_$1
 	localid=$prefix.localid
 	logfile=$prefix.log
 	bootnodes=""
+	pmsg "relay_chain_node $1 ports: $port, ws $wsport, rpc $rpcport"
 	if [ "$relay_nodes" != "" ]
 	then
 		bootnodes="--bootnodes $relaychain_nodes"
@@ -284,6 +321,7 @@ function start_relaychain_node() {
 	(sh -c "exec $polkadot \
 		  --chain $chain_json \
 	          --tmp \
+		  --rpc-port $rpcport \
 	          --ws-port $wsport \
 	          --port $port \
 	          --$test_name \
@@ -303,12 +341,14 @@ function start_relaychain_node() {
 
 function start_parachain_fullnode() {
 	wsport=`expr $1 + 19944 - $2`
+	rpcport=`expr $1 + 19933 - $2`
 	port=`expr $1 + 31333 - $2`
 	test_name=`get_test_name $1`
 	prefix=$log/parachain_$2_fullnode_$1
 	localid=$prefix.localid
 	logfile=$prefix.log
 	relaychain_bootnodes=""
+	pmsg "parachain_full_node $1 ports: $port, ws $wsport, rpc $rpcport"
 	if [ "$relaychain_nodes" != "" ]
 	then
 		relaychain_bootnodes="--bootnodes $relaychain_nodes"
@@ -322,6 +362,7 @@ function start_parachain_fullnode() {
 		  --tmp \
 		  `if [ $1 == 0 ]; then echo --offchain-worker Always; else echo --offchain-worker Never; fi` \
 		  --alice \
+		  --rpc-port $rpcport \
 		  --ws-port $wsport \
 		  --port $port \
 		  --parachain-id $2 \
@@ -343,12 +384,14 @@ function start_parachain_fullnode() {
 
 function start_parachain_collator() {
 	wsport=`expr $1 + 29944 - $2`
+	rpcport=`expr $1 + 29933 - $2`
 	port=`expr $1 + 32333 - $2`
 	test_name=`get_test_name $1`
 	prefix=$log/parachain_$2_collator_$1
 	localid=$prefix.localid
 	logfile=$prefix.log
 	relaychain_bootnodes=""
+	pmsg "parachain_collator_node $1 ports: $port, ws $wsport, rpc $rpcport"
 	if [ "$relaychain_nodes" != "" ]
 	then
 		relaychain_bootnodes="--bootnodes $relaychain_nodes"
@@ -362,6 +405,7 @@ function start_parachain_collator() {
 		  --tmp \
 		  --validator \
 		  --alice \
+		  --rpc-port $rpcport \
 		  --ws-port $wsport \
 		  --port $port \
 		  --parachain-id $2 \
@@ -478,6 +522,8 @@ do
 done
 
 test $exit_after_success == 0 && show_message
+
+echo "$message_about_ports"
 
 run_tests
 
