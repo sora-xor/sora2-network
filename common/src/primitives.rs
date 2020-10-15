@@ -274,3 +274,16 @@ where
         }
     }
 }
+
+/// Common error which can arise while invoking particular RPC call in runtime.
+pub enum InvokeRPCError {
+    RuntimeError,
+}
+
+impl From<InvokeRPCError> for i64 {
+    fn from(item: InvokeRPCError) -> i64 {
+        match item {
+            InvokeRPCError::RuntimeError => 1,
+        }
+    }
+}

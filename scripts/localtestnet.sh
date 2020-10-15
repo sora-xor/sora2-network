@@ -304,6 +304,7 @@ function start_relaychain_node() {
 function start_parachain_fullnode() {
 	wsport=`expr $1 + 19944 - $2`
 	port=`expr $1 + 31333 - $2`
+	rpcport=`expr $1 + 12134 - $2`
 	test_name=`get_test_name $1`
 	prefix=$log/parachain_$2_fullnode_$1
 	localid=$prefix.localid
@@ -324,6 +325,7 @@ function start_parachain_fullnode() {
 		  --alice \
 		  --ws-port $wsport \
 		  --port $port \
+		  --rpc-port $rpcport \
 		  --parachain-id $2 \
 		  $parachain_bootnodes \
 		  -- --chain $chain_json \
