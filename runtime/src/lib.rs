@@ -18,10 +18,11 @@ use sp_runtime::{
     traits::SaturatedConversion,
     traits::{BlakeTwo256, Block as BlockT, IdentifyAccount, IdentityLookup, Saturating, Verify},
     transaction_validity::{TransactionSource, TransactionValidity},
-    ApplyExtrinsicResult, MultiSignature,
+    ApplyExtrinsicResult, FixedPointNumber, MultiSignature,
 };
 use sp_std::marker::PhantomData;
 use sp_std::prelude::*;
+use sp_std::vec::Vec;
 #[cfg(feature = "std")]
 use sp_version::NativeVersion;
 use sp_version::RuntimeVersion;
@@ -35,6 +36,12 @@ pub use frame_support::{
     weights::constants::{BlockExecutionWeight, ExtrinsicBaseWeight, RocksDbWeight},
     weights::{constants::WEIGHT_PER_SECOND, IdentityFee, Weight},
     StorageValue,
+};
+
+pub use common::{
+    fixed,
+    prelude::{SwapAmount, SwapOutcome},
+    LiquiditySource, LiquiditySourceId, LiquiditySourceType,
 };
 pub use pallet_balances::Call as BalancesCall;
 pub use pallet_timestamp::Call as TimestampCall;
@@ -645,6 +652,52 @@ impl_runtime_apis! {
 
         fn generate_session_keys(seed: Option<Vec<u8>>) -> Vec<u8> {
             opaque::SessionKeys::generate(seed)
+        }
+    }
+
+    impl dex_manager_runtime_api::DEXManagerAPI<Block, DEXId> for Runtime {
+        fn list_dex_ids() -> Vec<DEXId> {
+            DEXManager::list_dex_ids()
+        }
+    }
+
+    impl dex_runtime_api::DEXAPI<
+        Block,
+        AssetId,
+        DEXId,
+        sp_core::U256,
+        LiquiditySourceType
+    > for Runtime {
+        fn get_price_with_desired_input(
+            dex_id: DEXId,
+            liquidity_source_type: LiquiditySourceType,
+            input_asset_id: AssetId,
+            output_asset_id: AssetId,
+            desired_input_amount: sp_core::U256,
+        ) -> Option<sp_core::U256> {
+            DEXAPI::quote(
+                &LiquiditySourceId::new(dex_id, liquidity_source_type),
+                &input_asset_id,
+                &output_asset_id,
+                // TODO: use correct Balance type
+                SwapAmount::with_desired_input(Fixed::from(desired_input_amount.low_u128()), Default::default()),
+            ).ok().map(|sa|sa.amount.into_inner()).map(Into::into)
+        }
+
+        fn get_price_with_desired_output(
+            dex_id: DEXId,
+            liquidity_source_type: LiquiditySourceType,
+            input_asset_id: AssetId,
+            output_asset_id: AssetId,
+            desired_output_amount: sp_core::U256,
+        ) -> Option<sp_core::U256> {
+            DEXAPI::quote(
+                &LiquiditySourceId::new(dex_id, liquidity_source_type),
+                &input_asset_id,
+                &output_asset_id,
+                // TODO: use correct Balance type
+                SwapAmount::with_desired_output(Fixed::from(desired_output_amount.low_u128()), Default::default()),
+            ).ok().map(|sa|sa.amount.into_inner()).map(Into::into)
         }
     }
 }
