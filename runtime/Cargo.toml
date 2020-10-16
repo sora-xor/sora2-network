@@ -33,7 +33,8 @@ dex-manager-runtime-api = { path = "../pallets/dex-manager/runtime-api", default
 trading-pair-runtime-api = { path = "../pallets/trading-pair/runtime-api", default-features = false}
 assets-runtime-api = { path = "../pallets/assets/runtime-api", default-features = false}
 liquidity-proxy-runtime-api = { path = "../pallets/liquidity-proxy/runtime-api", default-features = false}
-
+eth-bridge = { path = "../pallets/eth-bridge", default-features = false }
+multisig = { git = "https://github.com/soramitsu/sora2-frame-pallets.git", branch = "vmarkushin/multisig", package = "pallet-multisig", default-features = false }
 
 # Substrate dependencies
 frame-benchmarking = { default-features = false, optional = true, version = '2.0.0' }
@@ -126,4 +127,6 @@ std = [
     'dex-manager/std',
     'sp-staking/std',
     'pallet-authorship/std',
+	'eth-bridge/std',
+	'multisig/std',
 ]

@@ -92,7 +92,7 @@ impl Default for AssetId {
 }
 
 /// This code is H256 like.
-type AssetId32Code = [u8; 32];
+pub type AssetId32Code = [u8; 32];
 
 /// This is wrapped structure, this is like H256 or Р512, extra
 /// PhantomData is added for typing reasons.
@@ -252,7 +252,7 @@ impl Default for DEXId {
 pub type BalancePrecision = u8;
 
 #[derive(Encode, Decode, Eq, PartialEq, Clone, Ord, PartialOrd, RuntimeDebug)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Hash))]
 pub struct AssetSymbol(pub Vec<u8>);
 
 #[cfg(feature = "std")]
@@ -592,6 +592,48 @@ where
             TechAccountId::Generic(_, _) => false,
             _ => true,
         }
+    }
+}
+
+impl<AssetId> From<AssetId> for AssetId32<AssetId>
+where
+    AssetId32<AssetId>: From<TechAssetId<AssetId, DEXId>>,
+    AssetId: crate::traits::IsRepresentation,
+{
+    fn from(asset_id: AssetId) -> Self {
+        // Must be not representation, only direct asset must be here.
+        // Assert must exist here because it must never happen in runtime and must be covered by tests.
+        assert!(!asset_id.is_representation());
+        AssetId32::<AssetId>::from(TechAssetId::Wrapped(asset_id))
+    }
+}
+
+impl<AssetId, DEXId> From<TechAssetId<AssetId, DEXId>> for AssetId32<AssetId>
+where
+    TechAssetId<AssetId, DEXId>: Encode,
+    AssetId: crate::traits::IsRepresentation,
+{
+    fn from(tech_asset: TechAssetId<AssetId, DEXId>) -> Self {
+        let mut slice = [0_u8; 32];
+        let asset_encoded: Vec<u8> = tech_asset.encode();
+        let asset_length = asset_encoded.len();
+        // Encode size of TechAssetId must be always less or equal to 31.
+        // Recursion of MakeTechAssetId is limited for this to specific number of iterations.
+        // Assert must exist here because it must never happen in runtime and must be covered by tests.
+        assert!(asset_length <= 31);
+        // Must be not representation, only direct asset must be here.
+        // Assert must exist here because it must never happen in runtime and must be covered by tests.
+        assert!({
+            match tech_asset {
+                TechAssetId::Wrapped(a) => !a.is_representation(),
+                _ => true,
+            }
+        });
+        slice[0] = asset_length as u8;
+        for i in 0..asset_length {
+            slice[i + 1] = asset_encoded[i];
+        }
+        AssetId32::new(slice, PhantomData)
     }
 }
 

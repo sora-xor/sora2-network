@@ -46,8 +46,6 @@ std = [
     'traits/std',
     'frame-support/std',
     'frame-system/std',
-    'pallet-balances/std',
-    #'pallet-staking/std',
     'pallet-transaction-payment/std',
     'sp-arithmetic/std',
     'sp-runtime/std',

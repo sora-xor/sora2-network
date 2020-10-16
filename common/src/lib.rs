@@ -5,10 +5,12 @@ extern crate alloc;
 
 use sp_arithmetic::FixedU128;
 
+#[cfg(any(feature = "test", test))]
+pub mod mock;
+
 pub mod balance;
 mod fixed_wrapper;
 pub mod macros;
-pub mod mock;
 mod primitives;
 mod swap_amount;
 mod traits;

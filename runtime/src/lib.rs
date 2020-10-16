@@ -601,6 +601,28 @@ impl permissions::Trait for Runtime {
     type Event = Event;
 }
 
+parameter_types! {
+    pub const DepositBase: u64 = 1;
+    pub const DepositFactor: u64 = 1;
+    pub const MaxSignatories: u16 = 4;
+}
+
+impl multisig::Trait for Runtime {
+    type Call = Call;
+    type Event = Event;
+    type Currency = Balances;
+    type DepositBase = DepositBase;
+    type DepositFactor = DepositFactor;
+    type MaxSignatories = MaxSignatories;
+    type WeightInfo = ();
+}
+
+impl eth_bridge::Trait for Runtime {
+    type Event = Event;
+    type Call = Call;
+    type AuthorityId = eth_bridge::crypto::TestAuthId;
+}
+
 impl faucet::Trait for Runtime {
     type Event = Event;
 }
@@ -632,6 +654,7 @@ construct_runtime! {
         Permissions: permissions::{Module, Call, Storage, Config<T>, Event<T>},
         ReferralSystem: referral_system::{Module, Call, Storage, Event},
         XorFee: xor_fee::{Module, Call, Storage, Event},
+        Multisig: multisig::{Module, Call, Storage, Event<T>},
 
         // Consensus and staking.
         Session: pallet_session::{Module, Call, Storage, Event, Config<T>},
@@ -658,6 +681,8 @@ construct_runtime! {
         MockLiquiditySource4: mock_liquidity_source::<Instance4>::{Module, Call, Storage, Config<T>, Event<T>},
         DEXAPI: dex_api::{Module, Call, Storage, Config, Event<T>},
         Faucet: faucet::{Module, Call, Config<T>, Event<T>},
+        ETHBridge: eth_bridge::{Module, Call, Event<T>},
+        //IrohaBridge: iroha_bridge::{Module, Call, Storage, Config<T>, Event<T>},
     }
 }
 
@@ -870,7 +895,7 @@ impl_runtime_apis! {
         }
 
         fn get_asset_info(asset_id: AssetId) -> Option<assets_runtime_api::AssetInfo<AssetId, AssetSymbol, BalancePrecision>> {
-            let (symbol, precision) = Assets::get_asset_info(asset_id);
+            let (symbol, precision) = Assets::get_asset_info(&asset_id);
             Some(assets_runtime_api::AssetInfo::<AssetId, AssetSymbol, BalancePrecision> {
                 asset_id, symbol, precision
             })

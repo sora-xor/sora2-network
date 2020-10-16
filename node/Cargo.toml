@@ -27,7 +27,7 @@ dex-api-rpc = { path = "../pallets/dex-api/rpc" }
 dex-manager-rpc = { path = "../pallets/dex-manager/rpc" }
 technical = {path = "../pallets/technical" }
 permissions = {path = "../pallets/permissions" }
-xor-fee = {path = "../pallets/xor-fee"}
+xor-fee = { path = "../pallets/xor-fee" }
 faucet = { path = "../pallets/faucet" }
 trading-pair-rpc = { path = "../pallets/trading-pair/rpc" }
 assets-rpc = { path = "../pallets/assets/rpc" }
