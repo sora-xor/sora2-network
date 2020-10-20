@@ -3,8 +3,29 @@
 // `construct_runtime!` does a lot of recursion and requires us to increase the limit to 256.
 #![recursion_limit = "256"]
 
-use core::time::Duration;
+// Make the WASM binary available.
+#[cfg(feature = "std")]
+include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
+
+pub use common::{fixed_from_basis_points, prelude::AssetId, BasisPoints, Fixed};
 use currencies::BasicCurrencyAdapter;
+use frame_system::offchain::{Account, SigningTypes};
+use sp_api::impl_runtime_apis;
+use sp_core::Encode;
+use sp_core::OpaqueMetadata;
+use sp_runtime::{
+    create_runtime_str, generic, impl_opaque_keys,
+    traits::SaturatedConversion,
+    traits::{BlakeTwo256, Block as BlockT, IdentifyAccount, IdentityLookup, Saturating, Verify},
+    transaction_validity::{TransactionSource, TransactionValidity},
+    ApplyExtrinsicResult, MultiSignature,
+};
+use sp_std::prelude::*;
+#[cfg(feature = "std")]
+use sp_version::NativeVersion;
+use sp_version::RuntimeVersion;
+use static_assertions::assert_eq_size;
+
 // A few exports that help ease life for downstream crates.
 pub use frame_support::{
     construct_runtime, debug, parameter_types,
@@ -14,46 +35,18 @@ pub use frame_support::{
     weights::{constants::WEIGHT_PER_SECOND, IdentityFee, Weight},
     StorageValue,
 };
-use frame_system::offchain::{Account, SigningTypes};
 pub use pallet_balances::Call as BalancesCall;
-use pallet_session::historical as pallet_session_historical;
 pub use pallet_timestamp::Call as TimestampCall;
-use sp_api::impl_runtime_apis;
-use sp_core::Encode;
-use sp_core::{crypto::KeyTypeId, OpaqueMetadata};
 #[cfg(any(feature = "std", test))]
 pub use sp_runtime::BuildStorage;
-use sp_runtime::{
-    create_runtime_str, generic, impl_opaque_keys,
-    traits::SaturatedConversion,
-    traits::{
-        BlakeTwo256, Block as BlockT, Convert, IdentifyAccount, IdentityLookup, OpaqueKeys,
-        Saturating, Verify,
-    },
-    transaction_validity::{TransactionSource, TransactionValidity},
-    ApplyExtrinsicResult, FixedPointNumber, MultiSignature, Perbill, Percent,
-};
-use sp_std::prelude::*;
-use sp_std::vec::Vec;
-#[cfg(feature = "std")]
-use sp_version::NativeVersion;
-use sp_version::RuntimeVersion;
-use static_assertions::assert_eq_size;
+pub use sp_runtime::{Perbill, Permill};
 
-pub use common::{
-    fixed, fixed_from_basis_points,
-    prelude::{AssetId, Balance, SwapAmount, SwapOutcome},
-    BasisPoints, Fixed, LiquiditySource, LiquiditySourceId, LiquiditySourceType,
-};
-
-/// Import the message pallet.
-pub use cumulus_token_dealer;
 /// Import the template pallet.
 pub use template;
 
-// Make the WASM binary available.
-#[cfg(feature = "std")]
-include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
+use common::prelude::Balance;
+/// Import the message pallet.
+pub use cumulus_token_dealer;
 
 /*
 /// Importing a iroha-bridge pallet
@@ -90,14 +83,13 @@ pub type DigestItem = generic::DigestItem<Hash>;
 /// Identification of DEX.
 pub type DEXId = u32;
 
-pub type Moment = u64;
-
 /// Opaque types. These are used by the CLI to instantiate machinery that don't need to know
 /// the specifics of the runtime. They can then be made to be agnostic over specific formats
 /// of data like extrinsics, allowing for them to continue syncing the network through upgrades
 /// to even the core datastructures.
 pub mod opaque {
     use super::*;
+
     pub use sp_runtime::OpaqueExtrinsic as UncheckedExtrinsic;
 
     /// Opaque block header type.
@@ -110,9 +102,7 @@ pub mod opaque {
     pub type SessionHandlers = ();
 
     impl_opaque_keys! {
-        pub struct SessionKeys {
-            pub babe: Babe,
-        }
+        pub struct SessionKeys {}
     }
 }
 
@@ -127,17 +117,11 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
     transaction_version: 1,
 };
 
-pub const MILLISECS_PER_BLOCK: Moment = 6000;
+pub const MILLISECS_PER_BLOCK: u64 = 6000;
 
-pub const SLOT_DURATION: Moment = MILLISECS_PER_BLOCK;
+pub const SLOT_DURATION: u64 = MILLISECS_PER_BLOCK;
 
-pub const EPOCH_DURATION_IN_BLOCKS: BlockNumber = 10 * MINUTES;
-
-pub const EPOCH_DURATION_IN_SLOTS: u64 = {
-    const SLOT_FILL_RATE: f64 = MILLISECS_PER_BLOCK as f64 / SLOT_DURATION as f64;
-
-    (EPOCH_DURATION_IN_BLOCKS as f64 * SLOT_FILL_RATE) as u64
-};
+pub const EPOCH_DURATION_IN_BLOCKS: u32 = 10 * MINUTES;
 
 // These time units are defined in number of blocks.
 pub const MINUTES: BlockNumber = 60_000 / (MILLISECS_PER_BLOCK as BlockNumber);
@@ -165,24 +149,6 @@ parameter_types! {
     pub const AvailableBlockRatio: Perbill = Perbill::from_percent(75);
     pub const MaximumBlockLength: u32 = 5 * 1024 * 1024;
     pub const Version: RuntimeVersion = VERSION;
-    pub const DisabledValidatorsThreshold: Perbill = Perbill::from_percent(17);
-    pub const EpochDuration: u64 = EPOCH_DURATION_IN_SLOTS;
-    pub const ExpectedBlockTime: Moment = MILLISECS_PER_BLOCK;
-    pub const UncleGenerations: BlockNumber = 5;
-    pub const GetValAssetId: AssetId = AssetId::VAL;
-    pub const SessionsPerEra: sp_staking::SessionIndex = 3; // 3 hours
-    pub const BondingDuration: pallet_staking::EraIndex = 4; // 12 hours
-    pub const SlashDeferDuration: pallet_staking::EraIndex = 2; // 6 hours
-    pub const MaxNominatorRewardedPerValidator: u32 = 64;
-    pub const ElectionLookahead: BlockNumber = EPOCH_DURATION_IN_BLOCKS / 4;
-    pub const MaxIterations: u32 = 5;
-    // 0.05%. The higher the value, the more strict solution acceptance becomes.
-    pub MinSolutionScoreBump: Perbill = Perbill::from_rational_approximation(5u32, 10_000);
-    pub const ValRewardCurve: pallet_staking::ValRewardCurve = pallet_staking::ValRewardCurve {
-        duration_to_reward_flatline: Duration::from_secs(5 * 365 * 24 * 60 * 60),
-        min_val_burned_percentage_reward: Percent::from_percent(35),
-        max_val_burned_percentage_reward: Percent::from_percent(90),
-    };
 }
 
 impl frame_system::Trait for Runtime {
@@ -236,86 +202,9 @@ parameter_types! {
 
 impl pallet_timestamp::Trait for Runtime {
     /// A timestamp: milliseconds since the unix epoch.
-    type Moment = Moment;
-    type OnTimestampSet = Babe;
+    type Moment = u64;
+    type OnTimestampSet = ();
     type MinimumPeriod = MinimumPeriod;
-    type WeightInfo = ();
-}
-
-impl pallet_session::Trait for Runtime {
-    type SessionManager = pallet_session::historical::NoteHistoricalRoot<Self, Staking>;
-    type Keys = opaque::SessionKeys;
-    type ShouldEndSession = Babe;
-    type SessionHandler = <opaque::SessionKeys as OpaqueKeys>::KeyTypeIdProviders;
-    type Event = Event;
-    type ValidatorId = AccountId;
-    type ValidatorIdOf = pallet_staking::StashOf<Self>;
-    type DisabledValidatorsThreshold = DisabledValidatorsThreshold;
-    type NextSessionRotation = Babe;
-    type WeightInfo = ();
-}
-
-impl pallet_session::historical::Trait for Runtime {
-    type FullIdentification = pallet_staking::Exposure<AccountId, Balance>;
-    type FullIdentificationOf = pallet_staking::ExposureOf<Runtime>;
-}
-
-impl pallet_babe::Trait for Runtime {
-    type EpochDuration = EpochDuration;
-    type ExpectedBlockTime = ExpectedBlockTime;
-    type EpochChangeTrigger = pallet_babe::ExternalTrigger;
-    type KeyOwnerProofSystem = Historical;
-    type KeyOwnerProof = <Self::KeyOwnerProofSystem as KeyOwnerProofSystem<(
-        KeyTypeId,
-        pallet_babe::AuthorityId,
-    )>>::Proof;
-    type KeyOwnerIdentification = <Self::KeyOwnerProofSystem as KeyOwnerProofSystem<(
-        KeyTypeId,
-        pallet_babe::AuthorityId,
-    )>>::IdentificationTuple;
-    type HandleEquivocation = pallet_babe::EquivocationHandler<Self::KeyOwnerIdentification, ()>; // Offences
-}
-
-impl pallet_authorship::Trait for Runtime {
-    type FindAuthor = pallet_session::FindAccountFromAuthorIndex<Self, Babe>;
-    type UncleGenerations = UncleGenerations;
-    type FilterUncle = ();
-    type EventHandler = (Staking, ()); // ImOnline
-}
-
-pub struct CurrencyToVoteHandler;
-impl Convert<Balance, u64> for CurrencyToVoteHandler {
-    fn convert(x: Balance) -> u64 {
-        x.saturated_into()
-    }
-}
-impl Convert<u128, Balance> for CurrencyToVoteHandler {
-    fn convert(x: u128) -> Balance {
-        x.into()
-    }
-}
-
-impl pallet_staking::Trait for Runtime {
-    type Currency = Balances;
-    type MultiCurrency = Tokens;
-    type ValTokenId = GetValAssetId;
-    type ValRewardCurve = ValRewardCurve;
-    type UnixTime = Timestamp;
-    type CurrencyToVote = CurrencyToVoteHandler;
-    type Event = Event;
-    type Slash = ();
-    type SessionsPerEra = SessionsPerEra;
-    type SlashDeferDuration = SlashDeferDuration;
-    type SlashCancelOrigin = frame_system::EnsureRoot<Self::AccountId>;
-    type BondingDuration = BondingDuration;
-    type SessionInterface = Self;
-    type NextNewSession = Session;
-    type ElectionLookahead = ElectionLookahead;
-    type Call = Call;
-    type MaxIterations = MaxIterations;
-    type MinSolutionScoreBump = MinSolutionScoreBump;
-    type MaxNominatorRewardedPerValidator = MaxNominatorRewardedPerValidator;
-    type UnsignedPriority = UnsignedPriority;
     type WeightInfo = ();
 }
 
@@ -536,11 +425,9 @@ impl xor_fee::Trait for Runtime {
     // Pass native currency.
     type Event = Event;
     type XorCurrency = Balances;
-    type MultiCurrency = Tokens;
     type ReferrerWeight = ReferrerWeight;
     type XorBurnedWeight = XorBurnedWeight;
     type XorIntoValBurnedWeight = XorIntoValBurnedWeight;
-    type ValBurnedNotifier = Staking;
 }
 
 impl pallet_transaction_payment::Trait for Runtime {
@@ -572,7 +459,6 @@ impl cumulus_message_broker::Trait for Runtime {
 }
 
 impl parachain_info::Trait for Runtime {}
-
 impl permissions::Trait for Runtime {
     type Event = Event;
 }
@@ -622,13 +508,6 @@ construct_runtime! {
         TemplateModule: template::{Module, Call, Storage, Event<T>},
         ReferralSystem: referral_system::{Module, Call, Storage, Event},
         XorFee: xor_fee::{Module, Call, Storage, Event},
-
-        // Consensus and staking.
-        Session: pallet_session::{Module, Call, Storage, Event, Config<T>},
-        Historical: pallet_session_historical::{Module},
-        Babe: pallet_babe::{Module, Call, Storage, Config, Inherent, ValidateUnsigned},
-        Authorship: pallet_authorship::{Module, Call, Storage, Inherent},
-        Staking: pallet_staking::{Module, Call, Config<T>, Storage, Event<T>},
 
         // Non-native tokens - everything apart of XOR.
         Tokens: tokens::{Module, Storage, Event<T>},
@@ -750,52 +629,6 @@ impl_runtime_apis! {
 
         fn generate_session_keys(seed: Option<Vec<u8>>) -> Vec<u8> {
             opaque::SessionKeys::generate(seed)
-        }
-    }
-
-    impl dex_manager_runtime_api::DEXManagerAPI<Block, DEXId> for Runtime {
-        fn list_dex_ids() -> Vec<DEXId> {
-            DEXManager::list_dex_ids()
-        }
-    }
-
-    impl dex_runtime_api::DEXAPI<
-        Block,
-        AssetId,
-        DEXId,
-        sp_core::U256,
-        LiquiditySourceType
-    > for Runtime {
-        fn get_price_with_desired_input(
-            dex_id: DEXId,
-            liquidity_source_type: LiquiditySourceType,
-            input_asset_id: AssetId,
-            output_asset_id: AssetId,
-            desired_input_amount: sp_core::U256,
-        ) -> Option<sp_core::U256> {
-            DEXAPI::quote(
-                &LiquiditySourceId::new(dex_id, liquidity_source_type),
-                &input_asset_id,
-                &output_asset_id,
-                // TODO: use correct Balance type
-                SwapAmount::with_desired_input(Fixed::from(desired_input_amount.low_u128()), Default::default()),
-            ).ok().map(|sa|sa.amount.into_inner()).map(Into::into)
-        }
-
-        fn get_price_with_desired_output(
-            dex_id: DEXId,
-            liquidity_source_type: LiquiditySourceType,
-            input_asset_id: AssetId,
-            output_asset_id: AssetId,
-            desired_output_amount: sp_core::U256,
-        ) -> Option<sp_core::U256> {
-            DEXAPI::quote(
-                &LiquiditySourceId::new(dex_id, liquidity_source_type),
-                &input_asset_id,
-                &output_asset_id,
-                // TODO: use correct Balance type
-                SwapAmount::with_desired_output(Fixed::from(desired_output_amount.low_u128()), Default::default()),
-            ).ok().map(|sa|sa.amount.into_inner()).map(Into::into)
         }
     }
 }

@@ -15,9 +15,6 @@ parachain-info = { path = "../pallets/parachain-info", default-features = false}
 permissions = { path = "../pallets/permissions", default-features = false}
 cumulus-token-dealer = { path = "../pallets/token-dealer", default-features = false}
 dex-manager = { path = "../pallets/dex-manager", default-features = false }
-dex-manager-runtime-api = { path = "../pallets/dex-manager/runtime-api", default-features = false }
-dex-api = { path = "../pallets/dex-api", default-features = false }
-dex-runtime-api = { path = "../pallets/dex-api/runtime-api", default-features = false }
 referral-system = { path = "../pallets/referral-system", default-features = false }
 xor-fee = { path = "../pallets/xor-fee", default-features = false }
 mock-liquidity-source = { path = "../pallets/mock-liquidity-source", default-features = false }
@@ -26,6 +23,7 @@ template = { package = "pallet-template", path = "../pallets/template", version 
 
 currencies = { package = "orml-currencies", branch = "rococo-branch", git = "https://github.com/vmarkushin/open-runtime-module-library", default-features = false }
 tokens = { package = "orml-tokens", branch = "rococo-branch", git = "https://github.com/vmarkushin/open-runtime-module-library", default-features = false }
+dex-api = { path = "../pallets/dex-api", default-features = false }
 
 # Substrate dependencies
 sp-std = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "rococo-branch" }
@@ -39,7 +37,6 @@ sp-offchain = { git = "https://github.com/paritytech/substrate", default-feature
 sp-block-builder = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "rococo-branch" }
 sp-transaction-pool = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "rococo-branch" }
 sp-inherents = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "rococo-branch" }
-sp-staking = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "rococo-branch" }
 
 frame-support = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "rococo-branch" }
 frame-executive = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "rococo-branch" }
@@ -48,11 +45,7 @@ pallet-balances = { git = "https://github.com/paritytech/substrate", default-fea
 pallet-randomness-collective-flip = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "rococo-branch" }
 pallet-timestamp = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "rococo-branch" }
 pallet-sudo = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "rococo-branch" }
-pallet-transaction-payment = { git = "https://github.com/soramitsu/SoraNeo-frame-pallets", default-features = false, branch = "rococo-branch"}
-pallet-staking = { git = "https://github.com/soramitsu/SoraNeo-frame-pallets", default-features = false, branch = "rococo-branch"}
-pallet-session = { git = "https://github.com/paritytech/substrate", default-features = false, features = ["historical"], branch = "rococo-branch" }
-pallet-babe = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "rococo-branch" }
-pallet-authorship = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "rococo-branch" }
+pallet-transaction-payment = { git = "https://github.com/eadventurous/pallet-transaction-payment", default-features = false, branch = "rococo-branch"}
 
 # Cumulus dependencies
 cumulus-runtime = { git = "https://github.com/paritytech/cumulus",  default-features = false, rev = '96da14c14fb785e106bb89a18c9dedaf2f789d2c' }
@@ -89,14 +82,11 @@ std = [
 	"frame-support/std",
 	"frame-executive/std",
 	"frame-system/std",
-	"pallet-babe/std",
 	"pallet-balances/std",
 	"pallet-randomness-collective-flip/std",
 	"pallet-timestamp/std",
 	"pallet-sudo/std",
-	"pallet-session/std",
 	"pallet-transaction-payment/std",
-	"pallet-staking/std",
 	"parachain-info/std",
 	"cumulus-runtime/std",
 	"cumulus-parachain-upgrade/std",
@@ -110,14 +100,12 @@ std = [
 	"common/std",
 	"template/std",
 	"dex-manager/std",
-	"dex-manager-runtime-api/std",
-	"dex-api/std",
-	"dex-runtime-api/std",
 	"liquidity-proxy/std",
 	"mock-liquidity-source/std",
 	"currencies/std",
 	"tokens/std",
 	"assets/std",
+	"dex-api/std",
 	"permissions/std",
 ]
 

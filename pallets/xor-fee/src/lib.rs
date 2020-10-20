@@ -4,9 +4,7 @@ use frame_support::{
     decl_error, decl_event, decl_module, decl_storage,
     traits::{Currency, Get, Imbalance},
 };
-use pallet_staking::ValBurnedNotifier;
 use pallet_transaction_payment::OnTransactionPayment;
-use traits::{MultiCurrency, MultiCurrencyExtended, MultiLockableCurrency};
 
 type NegativeImbalanceOf<T> = <<T as Trait>::XorCurrency as Currency<
     <T as frame_system::Trait>::AccountId,
@@ -14,10 +12,6 @@ type NegativeImbalanceOf<T> = <<T as Trait>::XorCurrency as Currency<
 
 type BalanceOf<T> =
     <<T as Trait>::XorCurrency as Currency<<T as frame_system::Trait>::AccountId>>::Balance;
-
-/// The balance type for MultiCurrency.
-pub type MultiCurrencyBalanceOf<T> =
-    <<T as Trait>::MultiCurrency as MultiCurrency<<T as frame_system::Trait>::AccountId>>::Balance;
 
 #[cfg(test)]
 mod mock;
@@ -31,9 +25,6 @@ pub trait Trait: frame_system::Trait + referral_system::Trait {
     /// XOR - The native currency of this blockchain.
     type XorCurrency: Currency<Self::AccountId> + Send + Sync;
 
-    type MultiCurrency: MultiCurrencyExtended<Self::AccountId>
-        + MultiLockableCurrency<Self::AccountId, Moment = Self::BlockNumber>;
-
     //type ValToXorId: Get<u32>;
 
     type ReferrerWeight: Get<u32>;
@@ -41,8 +32,6 @@ pub trait Trait: frame_system::Trait + referral_system::Trait {
     type XorBurnedWeight: Get<u32>;
 
     type XorIntoValBurnedWeight: Get<u32>;
-
-    type ValBurnedNotifier: ValBurnedNotifier<MultiCurrencyBalanceOf<Self>>;
 }
 
 decl_storage! {
@@ -92,8 +81,5 @@ impl<T: Trait> OnTransactionPayment<T::AccountId, NegativeImbalanceOf<T>, Balanc
         );
         // TODO: buy back `VAL` through `DexManager`, when the interface is ready
         // let _val_burned = DexManager::buy(xor_to_val.peek(), ValToXorId::get());
-        // For now placeholder is used.
-        let val_burned = 1;
-        T::ValBurnedNotifier::notify_val_burned(val_burned.into());
     }
 }
