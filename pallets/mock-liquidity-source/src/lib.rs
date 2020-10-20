@@ -134,7 +134,7 @@ impl<T: Trait<I>, I: Instance> Module<T, I> {
         );
         let fee_amount = base_amount_in * T::GetFee::get();
         let amount_in_with_fee = base_amount_in - fee_amount;
-
+        
         let X: FixedWrapper = base_reserve.into();
         let Y: FixedWrapper = target_reserve.into();
         let d_X: FixedWrapper = amount_in_with_fee.into();
@@ -165,7 +165,7 @@ impl<T: Trait<I>, I: Instance> Module<T, I> {
         let Y: FixedWrapper = target_reserve.into();
         let d_Y: FixedWrapper = target_amount_out.into();
 
-        let base_amount_in_without_fee = (X * d_Y / (Y - d_Y))
+        let base_amount_in_without_fee = (X * d_Y/ (Y - d_Y))
             .get()
             .ok_or(Error::<T, I>::InsufficientLiquidity)?;
 
@@ -207,7 +207,7 @@ impl<T: Trait<I>, I: Instance> Module<T, I> {
         let Y: FixedWrapper = target_reserve.into();
         let d_X: FixedWrapper = base_amount_out_with_fee.into();
 
-        let target_amount_in = (Y * d_X / (X - d_X))
+        let target_amount_in = (Y * d_X/ (X - d_X))
             .get()
             .ok_or(Error::<T, I>::InsufficientLiquidity)?;
 

@@ -48,7 +48,7 @@ pub fn new_partial(
                 crate::service::Executor,
             >,
         >,
-        (impl Fn(crate::rpc::DenyUnsafe) -> crate::rpc::JsonRpcHandler,),
+        (),
     >,
     sc_service::Error,
 > {
@@ -105,21 +105,6 @@ pub fn new_partial(
         registry.clone(),
     )?;
 
-    let rpc_extensions_builder = {
-        let client = client.clone();
-        let pool = transaction_pool.clone();
-
-        Box::new(move |deny_unsafe| -> crate::rpc::JsonRpcHandler {
-            let deps = crate::rpc::FullDeps {
-                client: client.clone(),
-                pool: pool.clone(),
-                deny_unsafe,
-            };
-
-            crate::rpc::create_full(deps)
-        })
-    };
-
     let params = PartialComponents {
         backend,
         client,
@@ -129,7 +114,7 @@ pub fn new_partial(
         transaction_pool,
         inherent_data_providers,
         select_chain: (),
-        other: (rpc_extensions_builder,),
+        other: (),
     };
 
     Ok(params)
@@ -182,7 +167,6 @@ pub fn run_node(
         let block_announce_validator = block_announce_validator.clone();
         move |_| Box::new(block_announce_validator) as Box<_>
     };
-    let (rpc_extensions_builder,) = params.other;
 
     let prometheus_registry = parachain_config.prometheus_registry().cloned();
     let transaction_pool = params.transaction_pool.clone();
@@ -214,7 +198,7 @@ pub fn run_node(
     sc_service::spawn_tasks(sc_service::SpawnTasksParams {
         on_demand: None,
         remote_blockchain: None,
-        rpc_extensions_builder: Box::new(rpc_extensions_builder),
+        rpc_extensions_builder: Box::new(|_| ()),
         client: client.clone(),
         transaction_pool: transaction_pool.clone(),
         task_manager: &mut task_manager,

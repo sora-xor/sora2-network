@@ -3,8 +3,34 @@
 // `construct_runtime!` does a lot of recursion and requires us to increase the limit to 256.
 #![recursion_limit = "256"]
 
+// Make the WASM binary available.
+#[cfg(feature = "std")]
+include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
+
+pub use common::{fixed_from_basis_points, prelude::AssetId, BasisPoints, Fixed};
 use core::time::Duration;
 use currencies::BasicCurrencyAdapter;
+use frame_system::offchain::{Account, SigningTypes};
+use pallet_session::historical as pallet_session_historical;
+use sp_api::impl_runtime_apis;
+use sp_core::Encode;
+use sp_core::{crypto::KeyTypeId, OpaqueMetadata};
+use sp_runtime::{
+    create_runtime_str, generic, impl_opaque_keys,
+    traits::SaturatedConversion,
+    traits::{
+        BlakeTwo256, Block as BlockT, Convert, IdentifyAccount, IdentityLookup, OpaqueKeys,
+        Saturating, Verify,
+    },
+    transaction_validity::{TransactionSource, TransactionValidity},
+    ApplyExtrinsicResult, MultiSignature, Perbill, Percent, Permill,
+};
+use sp_std::prelude::*;
+#[cfg(feature = "std")]
+use sp_version::NativeVersion;
+use sp_version::RuntimeVersion;
+use static_assertions::assert_eq_size;
+
 // A few exports that help ease life for downstream crates.
 pub use frame_support::{
     construct_runtime, debug, parameter_types,
@@ -14,46 +40,17 @@ pub use frame_support::{
     weights::{constants::WEIGHT_PER_SECOND, IdentityFee, Weight},
     StorageValue,
 };
-use frame_system::offchain::{Account, SigningTypes};
 pub use pallet_balances::Call as BalancesCall;
-use pallet_session::historical as pallet_session_historical;
 pub use pallet_timestamp::Call as TimestampCall;
-use sp_api::impl_runtime_apis;
-use sp_core::Encode;
-use sp_core::{crypto::KeyTypeId, OpaqueMetadata};
 #[cfg(any(feature = "std", test))]
 pub use sp_runtime::BuildStorage;
-use sp_runtime::{
-    create_runtime_str, generic, impl_opaque_keys,
-    traits::SaturatedConversion,
-    traits::{
-        BlakeTwo256, Block as BlockT, Convert, IdentifyAccount, IdentityLookup, OpaqueKeys,
-        Saturating, Verify,
-    },
-    transaction_validity::{TransactionSource, TransactionValidity},
-    ApplyExtrinsicResult, FixedPointNumber, MultiSignature, Perbill, Percent,
-};
-use sp_std::prelude::*;
-use sp_std::vec::Vec;
-#[cfg(feature = "std")]
-use sp_version::NativeVersion;
-use sp_version::RuntimeVersion;
-use static_assertions::assert_eq_size;
 
-pub use common::{
-    fixed, fixed_from_basis_points,
-    prelude::{AssetId, Balance, SwapAmount, SwapOutcome},
-    BasisPoints, Fixed, LiquiditySource, LiquiditySourceId, LiquiditySourceType,
-};
-
-/// Import the message pallet.
-pub use cumulus_token_dealer;
 /// Import the template pallet.
 pub use template;
 
-// Make the WASM binary available.
-#[cfg(feature = "std")]
-include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
+use common::prelude::Balance;
+/// Import the message pallet.
+pub use cumulus_token_dealer;
 
 /*
 /// Importing a iroha-bridge pallet
@@ -98,6 +95,7 @@ pub type Moment = u64;
 /// to even the core datastructures.
 pub mod opaque {
     use super::*;
+
     pub use sp_runtime::OpaqueExtrinsic as UncheckedExtrinsic;
 
     /// Opaque block header type.
@@ -572,7 +570,6 @@ impl cumulus_message_broker::Trait for Runtime {
 }
 
 impl parachain_info::Trait for Runtime {}
-
 impl permissions::Trait for Runtime {
     type Event = Event;
 }
@@ -750,52 +747,6 @@ impl_runtime_apis! {
 
         fn generate_session_keys(seed: Option<Vec<u8>>) -> Vec<u8> {
             opaque::SessionKeys::generate(seed)
-        }
-    }
-
-    impl dex_manager_runtime_api::DEXManagerAPI<Block, DEXId> for Runtime {
-        fn list_dex_ids() -> Vec<DEXId> {
-            DEXManager::list_dex_ids()
-        }
-    }
-
-    impl dex_runtime_api::DEXAPI<
-        Block,
-        AssetId,
-        DEXId,
-        sp_core::U256,
-        LiquiditySourceType
-    > for Runtime {
-        fn get_price_with_desired_input(
-            dex_id: DEXId,
-            liquidity_source_type: LiquiditySourceType,
-            input_asset_id: AssetId,
-            output_asset_id: AssetId,
-            desired_input_amount: sp_core::U256,
-        ) -> Option<sp_core::U256> {
-            DEXAPI::quote(
-                &LiquiditySourceId::new(dex_id, liquidity_source_type),
-                &input_asset_id,
-                &output_asset_id,
-                // TODO: use correct Balance type
-                SwapAmount::with_desired_input(Fixed::from(desired_input_amount.low_u128()), Default::default()),
-            ).ok().map(|sa|sa.amount.into_inner()).map(Into::into)
-        }
-
-        fn get_price_with_desired_output(
-            dex_id: DEXId,
-            liquidity_source_type: LiquiditySourceType,
-            input_asset_id: AssetId,
-            output_asset_id: AssetId,
-            desired_output_amount: sp_core::U256,
-        ) -> Option<sp_core::U256> {
-            DEXAPI::quote(
-                &LiquiditySourceId::new(dex_id, liquidity_source_type),
-                &input_asset_id,
-                &output_asset_id,
-                // TODO: use correct Balance type
-                SwapAmount::with_desired_output(Fixed::from(desired_output_amount.low_u128()), Default::default()),
-            ).ok().map(|sa|sa.amount.into_inner()).map(Into::into)
         }
     }
 }
