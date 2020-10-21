@@ -169,6 +169,31 @@ docker build -f housekeeping/docker/develop/Dockerfile -t soraneo-develop .
 docker run -ti -v $(pwd):/app -w /app --rm soraneo-develop cargo build --release
 ```
 
+# Usage localtestnet.sh script
+```
+Usage: ./scripts/localtestnet.sh [OPTIONS]...
+Run local test net, downloading and (re)building on demand
+  -h, --help                     Show usage message
+  -k, --keep-logdir              Do not remove logdir after end of script work
+  -r, --relay-nodes [n]          Number of relay nodes to run (default 2)
+  -p, --parachain-fullnodes [n]  Number of parachain node to run (default 2)
+  -c, --collator-nodes [n]       Number of collator nodes to run (default 4)
+  -f, --force-rebuild-parachain   Remove parachain binary and rebuild with fresh commit (as additional test)
+  -s, --skip-build               Skip build is parachain binary is exist
+  -l, --logdir-pattern [pat]     Pattern of temporary logdir (default "/tmp/rococo-localtestnet-logs-XXXXXXXX")
+  -d, --cache-dir [dir]          Cache dir to incremental backups of target dir (default "/tmp/parachain_cargo_target_build_cache")
+  -j, --just-compile-deps        Compile dependencies and exit
+  -e, --exit-after-success       Exit after success parachain block producing
+  -g, --use-parachain-debug-build          Use debug build for parachain binary
+  -w, --use-polkadot-debug-build           Use debug build for polkadot binary
+```
+
+# Problems with debug build
+
+Now it is recommended to use cargo build --release for parachain binary
+because problem exist with extrinsics in debug mode and release mode is needed
+of course this problem with debug will be fixed in future
+
 
 # Monitoring
 
