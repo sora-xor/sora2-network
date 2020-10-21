@@ -17,7 +17,7 @@ pub type AccountId = AccountId32;
 pub type BlockNumber = u64;
 
 type TechAssetId = common::TechAssetId<AssetId, DEXId>;
-type TechAccountId = common::TechAccountId<AccountId, AssetId, DEXId>;
+type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
 
 pub fn alice() -> AccountId {
     AccountId32::from([1u8; 32])

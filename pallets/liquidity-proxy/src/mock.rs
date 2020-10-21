@@ -16,7 +16,7 @@ use sp_runtime::{
 
 pub type AccountId = AccountId32;
 pub type BlockNumber = u64;
-type TechAccountId = common::TechAccountId<AccountId, AssetId, DEXId>;
+type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
 type TechAssetId = common::TechAssetId<AssetId, DEXId>;
 
 pub fn alice() -> AccountId {

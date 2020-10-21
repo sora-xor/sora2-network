@@ -28,13 +28,13 @@ fn generic_pair_swap_simple() {
     let t01 = common::TechAccountId::Pure(
         dex,
         LiquidityKeeper(TradingPair {
-            base_asset_id: RedPepper,
-            target_asset_id: BlackPepper,
+            base_asset_id: common::mock::ComicAssetId::RedPepper.into(),
+            target_asset_id: common::mock::ComicAssetId::BlackPepper.into(),
         }),
     );
     let repr: AccountId = Technical::tech_account_id_to_account_id(&t01).unwrap();
-    let a01 = RedPepper;
-    let a02 = BlackPepper;
+    let a01 = RedPepper();
+    let a02 = BlackPepper();
     let s01 = GenericPair(GenericPairSwapActionExample {
         give_minted: false,
         give_asset: a01,
@@ -47,20 +47,20 @@ fn generic_pair_swap_simple() {
     ext.execute_with(|| {
         assert_ok!(assets::Module::<Testtime>::register(
             Origin::signed(get_alice()),
-            RedPepper
+            RedPepper()
         ));
         assert_ok!(assets::Module::<Testtime>::register(
             Origin::signed(repr.clone()),
-            BlackPepper
+            BlackPepper()
         ));
         assert_ok!(assets::Module::<Testtime>::mint(
-            &RedPepper,
+            &RedPepper(),
             &get_alice(),
             &get_alice(),
             9000_000u32.into()
         ));
         assert_ok!(assets::Module::<Testtime>::mint(
-            &BlackPepper,
+            &BlackPepper(),
             &repr,
             &repr,
             9000_000u32.into()

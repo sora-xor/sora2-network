@@ -99,7 +99,7 @@ pub fn get_chain_spec(id: ParaId) -> ChainSpec {
                 vec![(
                     0,
                     DEXInfo {
-                        base_asset_id: AssetId::XOR,
+                        base_asset_id: common::AssetId::XOR.into(),
                         default_fee: 30,
                         default_protocol_fee: 0,
                     },

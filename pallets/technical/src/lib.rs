@@ -1,8 +1,8 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use codec::{Decode, Encode};
-use common::{prelude::Balance, FromGenericPair, PureOrWrapped, SwapAction, SwapRulesValidation};
-use frame_support::dispatch::{self, DispatchError, DispatchResult};
+use common::{prelude::Balance, FromGenericPair, SwapAction, SwapRulesValidation};
+use frame_support::dispatch::{DispatchError, DispatchResult};
 use frame_support::{decl_error, decl_event, decl_module, decl_storage, Parameter};
 use frame_system::ensure_signed;
 use sp_runtime::traits::Member;
@@ -10,6 +10,7 @@ use sp_runtime::RuntimeDebug;
 
 use common::TECH_ACCOUNT_MAGIC_PREFIX;
 use sp_core::H256;
+use sp_std::convert::TryFrom;
 
 #[cfg(test)]
 mod mock;
@@ -20,6 +21,8 @@ mod tests;
 type AccountIdOf<T> = <T as frame_system::Trait>::AccountId;
 
 type AssetIdOf<T> = <T as assets::Trait>::AssetId;
+type TechAssetIdOf<T> = <T as Trait>::TechAssetId;
+type DEXIdOf<T> = <T as common::Trait>::DEXId;
 
 /// Pending atomic swap operation.
 #[derive(Clone, Eq, PartialEq, RuntimeDebug, Encode, Decode)]
@@ -38,10 +41,22 @@ pub trait Trait: common::Trait + assets::Trait {
     type Event: From<Event<Self>> + Into<<Self as frame_system::Trait>::Event>;
 
     /// Like Asset but deterministically maked from purpose.
-    type TechAssetId: Ord + Member + Parameter + PureOrWrapped<<Self as assets::Trait>::AssetId>;
+    type TechAssetId: Ord + Member + Parameter + Into<AssetIdOf<Self>> + TryFrom<AssetIdOf<Self>>;
 
     /// Like AccountId but controlled by consensus, not signing by user.
-    type TechAccountId: Ord + Member + Parameter + Default + FromGenericPair;
+    /// This extra traits exist here bacause no way to do it by constraints, problem exist with
+    /// constraints and substrate macroses, and place this traits here is solution.
+    type TechAccountId: Ord
+        + Member
+        + Parameter
+        + Default
+        + FromGenericPair
+        + common::ToMarkerAsset<TechAssetIdOf<Self>>
+        + common::ToFeeAccount
+        + common::ToTechUnitFromDEXAndTradingPair<
+            DEXIdOf<Self>,
+            common::TradingPair<TechAssetIdOf<Self>>,
+        >;
 
     /// Trigger for auto claim.
     type Trigger: Default + Copy + Member + Parameter;
@@ -58,6 +73,54 @@ decl_storage! {
     trait Store for Module<T: Trait> as Technical {
         /// Registered technical account identifiers. Map from repr `AccountId` into pure `TechAccountId`.
         TechAccounts get(fn tech_account): map hasher(blake2_128_concat) AccountIdOf<T> => Option<T::TechAccountId>;
+    }
+}
+
+impl<T: Trait> Module<T> {
+    /// Perform creation of swap, may be used by extrinsic operation or other pallets.
+    pub fn perform_create_swap(
+        source: AccountIdOf<T>,
+        action_orig: T::SwapAction,
+    ) -> DispatchResult {
+        let mut action = action_orig.clone();
+        action.prepare_and_validate(&source)?;
+        action.reserve(&source)?;
+        if action.is_able_to_claim() {
+            if action.instant_auto_claim_used() {
+                if action.claim(&source) {
+                    Self::deposit_event(RawEvent::SwapSuccess(source));
+                } else if !action.triggered_auto_claim_used() {
+                    action.cancel(&source);
+                } else {
+                    return Err(Error::<T>::NotImplemented)?;
+                }
+            } else {
+                return Err(Error::<T>::NotImplemented)?;
+            }
+        } else if action.triggered_auto_claim_used() {
+            return Err(Error::<T>::NotImplemented)?;
+        } else {
+            return Err(Error::<T>::NotImplemented)?;
+        }
+        Ok(())
+    }
+}
+
+decl_module! {
+    pub struct Module<T: Trait> for enum Call where origin: T::Origin
+    {
+        type Error = Error<T>;
+        fn deposit_event() = default;
+        #[weight = 0]
+        fn create_swap(
+            origin,
+            action: T::SwapAction,
+        ) -> DispatchResult
+        {
+            let source = ensure_signed(origin)?;
+            Module::<T>::perform_create_swap(source, action)?;
+            Ok(())
+        }
     }
 }
 
@@ -135,40 +198,6 @@ decl_error! {
         DecodeAccountIdFailed,
         /// Associated `AccountId` not found with a given `TechnicalAccountId`.
         AssociatedAccountIdNotFound,
-    }
-}
-
-decl_module! {
-    pub struct Module<T: Trait> for enum Call where origin: T::Origin {
-        type Error = Error<T>;
-
-        fn deposit_event() = default;
-
-        #[weight = 0]
-        pub fn create_swap(origin, action: T::SwapAction) -> dispatch::DispatchResult {
-            let source = ensure_signed(origin)?;
-            if action.validate(&source) {
-                action.reserve(&source)?;
-                if action.is_able_to_claim() {
-                    if action.instant_auto_claim_used() {
-                        if action.claim(&source) {
-                            Self::deposit_event(RawEvent::SwapSuccess(source));
-                        } else if !action.triggered_auto_claim_used() {
-                            action.cancel(&source);
-                        } else {
-                            return Err(Error::<T>::NotImplemented)?;
-                        }
-                    } else {
-                        return Err(Error::<T>::NotImplemented)?;
-                    }
-                } else if action.triggered_auto_claim_used() {
-                    return Err(Error::<T>::NotImplemented)?;
-                } else {
-                    return Err(Error::<T>::NotImplemented)?;
-                }
-            }
-            Ok(())
-        }
     }
 }
 

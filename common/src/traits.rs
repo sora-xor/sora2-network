@@ -209,7 +209,7 @@ pub trait SwapRulesValidation<SourceAccountId, TargetAccountId, T: Trait>:
     SwapAction<SourceAccountId, TargetAccountId, T>
 {
     /// Validate action if next steps must by applyed by consensus.
-    fn validate(&self, source: &SourceAccountId) -> bool;
+    fn prepare_and_validate(&mut self, source: &SourceAccountId) -> DispatchResult;
 
     /// Instant auto claim is performed just after reserve.
     /// If triggered is not used, than it is one time auto claim, it will be canceled if it fails.
@@ -226,8 +226,8 @@ pub trait SwapRulesValidation<SourceAccountId, TargetAccountId, T: Trait>:
 impl<SourceAccountId, TargetAccountId, T: Trait>
     SwapRulesValidation<SourceAccountId, TargetAccountId, T> for ()
 {
-    fn validate(&self, _source: &SourceAccountId) -> bool {
-        true
+    fn prepare_and_validate(&mut self, _source: &SourceAccountId) -> DispatchResult {
+        Ok(())
     }
     fn instant_auto_claim_used(&self) -> bool {
         true
@@ -272,6 +272,22 @@ where
     fn is_representable(&self) -> bool {
         self.is_pure() || self.is_representation()
     }
+}
+
+pub trait ToFeeAccount: Sized {
+    fn to_fee_account(&self) -> Option<Self>;
+}
+
+pub trait ToMarkerAsset<TechAssetId>: Sized {
+    fn to_marker_asset(&self) -> Option<TechAssetId>;
+}
+
+pub trait ToTechUnitFromDEXAndAsset<DEXId, AssetId>: Sized {
+    fn to_tech_unit_from_dex_and_asset(dex_id: DEXId, asset_id: AssetId) -> Self;
+}
+
+pub trait ToTechUnitFromDEXAndTradingPair<DEXId, TradingPair>: Sized {
+    fn to_tech_unit_from_dex_and_trading_pair(dex_id: DEXId, trading_pair: TradingPair) -> Self;
 }
 
 /// PureOrWrapped is reflexive.

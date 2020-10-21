@@ -18,7 +18,7 @@ use std::collections::HashMap;
 
 pub type AccountId = AccountId32;
 pub type BlockNumber = u64;
-pub type TechAccountId = common::TechAccountId<AccountId, AssetId, DEXId>;
+pub type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
 type TechAssetId = common::TechAssetId<AssetId, DEXId>;
 pub type ReservesAccount =
     mock_liquidity_source::ReservesAcc<Runtime, mock_liquidity_source::Instance1>;

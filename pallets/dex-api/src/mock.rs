@@ -15,6 +15,9 @@ use sp_runtime::{
 pub type AccountId = AccountId32;
 pub type BlockNumber = u64;
 
+type TechAssetId = common::TechAssetId<AssetId, DEXId>;
+type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
+
 pub fn alice() -> AccountId {
     AccountId32::from([1u8; 32])
 }
@@ -171,8 +174,8 @@ impl mock_liquidity_source::Trait<mock_liquidity_source::Instance4> for Runtime 
 
 impl technical::Trait for Runtime {
     type Event = ();
-    type TechAssetId = AssetId;
-    type TechAccountId = common::TechAccountId<AccountId, AssetId, DEXId>;
+    type TechAssetId = TechAssetId;
+    type TechAccountId = TechAccountId;
     type Trigger = ();
     type Condition = ();
     type SwapAction = ();

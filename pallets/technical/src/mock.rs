@@ -3,6 +3,7 @@ use codec::{Decode, Encode};
 use common::prelude::Balance;
 use common::BasisPoints;
 use currencies::BasicCurrencyAdapter;
+use dispatch::DispatchResult;
 use frame_support::dispatch;
 use frame_support::{impl_outer_origin, parameter_types, weights::Weight};
 use frame_system as system;
@@ -13,11 +14,11 @@ use sp_runtime::{
     traits::{BlakeTwo256, IdentityLookup},
     Perbill,
 };
+use sp_std::marker::PhantomData;
 use PolySwapActionExample::*;
 
-pub use common::{mock::ComicAssetId::*, mock::*, TechAssetId::*, TechPurpose::*, TradingPair};
+pub use common::{mock::*, MakeTechAssetId::*, TechPurpose::*, TradingPair};
 
-pub type AssetId = common::mock::ComicAssetId;
 pub type Technical = Module<Testtime>;
 
 pub fn get_alice() -> AccountId {
@@ -31,13 +32,23 @@ pub struct ExtBuilder {
     endowed_accounts: Vec<(AccountId, AssetId, Balance)>,
 }
 
+#[allow(non_snake_case)]
+pub fn RedPepper() -> AssetId {
+    common::mock::ComicAssetId::RedPepper.into()
+}
+
+#[allow(non_snake_case)]
+pub fn BlackPepper() -> AssetId {
+    common::mock::ComicAssetId::BlackPepper.into()
+}
+
 impl Default for ExtBuilder {
     fn default() -> Self {
         Self {
             endowed_accounts: vec![
-                (get_alice(), RedPepper, 99_000_u128.into()),
-                (get_alice(), BlackPepper, 2000_000_u128.into()),
-                (get_bob(), RedPepper, 2000_000_u128.into()),
+                (get_alice(), RedPepper(), 99_000_u128.into()),
+                (get_alice(), BlackPepper(), 2000_000_u128.into()),
+                (get_bob(), RedPepper(), 2000_000_u128.into()),
             ],
         }
     }
@@ -112,7 +123,7 @@ impl common::Trait for Testtime {
 }
 
 parameter_types! {
-    pub const GetBaseAssetId: AssetId = GoldenTicket;
+    pub const GetBaseAssetId: AssetId = common::JsonCompatAssetId { 0: [2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], 1: PhantomData };
 }
 
 parameter_types! {
@@ -202,8 +213,8 @@ impl common::SwapAction<AccountId, TechAccountId, Testtime> for GenericPairSwapA
 impl common::SwapRulesValidation<AccountId, TechAccountId, Testtime>
     for GenericPairSwapActionExample
 {
-    fn validate(&self, _source: &AccountId) -> bool {
-        true
+    fn prepare_and_validate(&mut self, _source: &AccountId) -> DispatchResult {
+        Ok(())
     }
     fn instant_auto_claim_used(&self) -> bool {
         true
@@ -241,8 +252,8 @@ impl common::SwapAction<AccountId, TechAccountId, Testtime> for MultiSwapActionE
 }
 
 impl common::SwapRulesValidation<AccountId, TechAccountId, Testtime> for MultiSwapActionExample {
-    fn validate(&self, _source: &AccountId) -> bool {
-        true
+    fn prepare_and_validate(&mut self, _source: &AccountId) -> DispatchResult {
+        Ok(())
     }
     fn instant_auto_claim_used(&self) -> bool {
         true
@@ -278,8 +289,8 @@ impl common::SwapAction<AccountId, TechAccountId, Testtime> for CrowdSwapActionE
 }
 
 impl common::SwapRulesValidation<AccountId, TechAccountId, Testtime> for CrowdSwapActionExample {
-    fn validate(&self, _source: &AccountId) -> bool {
-        true
+    fn prepare_and_validate(&mut self, _source: &AccountId) -> DispatchResult {
+        Ok(())
     }
     fn instant_auto_claim_used(&self) -> bool {
         false
@@ -331,11 +342,11 @@ impl common::SwapAction<AccountId, TechAccountId, Testtime> for PolySwapActionEx
 }
 
 impl common::SwapRulesValidation<AccountId, TechAccountId, Testtime> for PolySwapActionExample {
-    fn validate(&self, source: &AccountId) -> bool {
+    fn prepare_and_validate(&mut self, source: &AccountId) -> DispatchResult {
         match self {
-            GenericPair(a) => a.validate(source),
-            Multi(a) => a.validate(source),
-            Crowd(a) => a.validate(source),
+            GenericPair(a) => a.prepare_and_validate(source),
+            Multi(a) => a.prepare_and_validate(source),
+            Crowd(a) => a.prepare_and_validate(source),
         }
     }
     fn instant_auto_claim_used(&self) -> bool {
@@ -361,8 +372,9 @@ impl common::SwapRulesValidation<AccountId, TechAccountId, Testtime> for PolySwa
     }
 }
 
-type TechAssetId = common::TechAssetId<AssetId, DEXId>;
-pub type TechAccountId = common::TechAccountId<AccountId, AssetId, DEXId>;
+type AssetId = common::JsonCompatAssetId<common::mock::ComicAssetId>;
+type TechAssetId = common::TechAssetId<common::mock::ComicAssetId, DEXId>;
+pub type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
 type TechAmount = Amount;
 type TechBalance = Balance;
 

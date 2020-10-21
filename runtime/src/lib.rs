@@ -7,7 +7,7 @@
 #[cfg(feature = "std")]
 include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
 
-pub use common::{fixed_from_basis_points, prelude::AssetId, BasisPoints, Fixed};
+pub use common::{fixed_from_basis_points, BasisPoints, Fixed};
 use currencies::BasicCurrencyAdapter;
 use frame_system::offchain::{Account, SigningTypes};
 use sp_api::impl_runtime_apis;
@@ -20,6 +20,7 @@ use sp_runtime::{
     transaction_validity::{TransactionSource, TransactionValidity},
     ApplyExtrinsicResult, MultiSignature,
 };
+use sp_std::marker::PhantomData;
 use sp_std::prelude::*;
 #[cfg(feature = "std")]
 use sp_version::NativeVersion;
@@ -237,7 +238,8 @@ impl tokens::Trait for Runtime {
 }
 
 parameter_types! {
-    pub const GetBaseAssetId: AssetId = AssetId::XOR;
+    // This is common::AssetId with 0 index, 2 is size, 0 and 0 is code.
+    pub const GetBaseAssetId: AssetId = common::JsonCompatAssetId { 0: [2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], 1: PhantomData };
 }
 
 impl currencies::Trait for Runtime {
@@ -278,8 +280,9 @@ impl bonding_curve_pool::Trait for Runtime {
     type DEXApi = ();
 }
 
-type TechAccountId = common::TechAccountId<AccountId, AssetId, DEXId>;
-type TechAssetId = common::TechAssetId<AssetId, DEXId>;
+type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
+type TechAssetId = common::TechAssetId<common::AssetId, DEXId>;
+pub type AssetId = common::JsonCompatAssetId<common::AssetId>;
 
 impl technical::Trait for Runtime {
     type Event = Event;
@@ -287,7 +290,19 @@ impl technical::Trait for Runtime {
     type TechAccountId = TechAccountId;
     type Trigger = ();
     type Condition = ();
-    type SwapAction = ();
+    type SwapAction =
+        pool_xyk::PolySwapAction<AssetId, TechAssetId, Balance, AccountId, TechAccountId>;
+}
+
+impl pool_xyk::Trait for Runtime {
+    type Event = Event;
+    type PairSwapAction = pool_xyk::PairSwapAction<AssetId, Balance, AccountId, TechAccountId>;
+    type DepositLiquidityAction =
+        pool_xyk::DepositLiquidityAction<AssetId, TechAssetId, Balance, AccountId, TechAccountId>;
+    type WithdrawLiquidityAction =
+        pool_xyk::WithdrawLiquidityAction<AssetId, TechAssetId, Balance, AccountId, TechAccountId>;
+    type PolySwapAction =
+        pool_xyk::PolySwapAction<AssetId, TechAssetId, Balance, AccountId, TechAccountId>;
 }
 
 parameter_types! {
@@ -518,6 +533,7 @@ construct_runtime! {
         DEXManager: dex_manager::{Module, Call, Storage, Config<T>, Event<T>},
         BondingCurvePool: bonding_curve_pool::{Module},
         Technical: technical::{Module, Call, Event<T>},
+        PoolXYK: pool_xyk::{Module, Call, Event<T>},
         LiquidityProxy: liquidity_proxy::{Module, Call, Event<T>},
         MockLiquiditySource: mock_liquidity_source::<Instance1>::{Module, Call, Storage, Config<T>, Event<T>},
         MockLiquiditySource2: mock_liquidity_source::<Instance2>::{Module, Call, Storage, Config<T>, Event<T>},
