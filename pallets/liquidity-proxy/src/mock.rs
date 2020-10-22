@@ -34,14 +34,12 @@ impl_outer_origin! {
 
 #[derive(Clone, Eq, PartialEq)]
 pub struct Runtime;
+
 parameter_types! {
     pub const BlockHashCount: u64 = 250;
     pub const MaximumBlockWeight: Weight = 1024;
     pub const MaximumBlockLength: u32 = 2 * 1024;
     pub const AvailableBlockRatio: Perbill = Perbill::from_percent(75);
-    pub const GetDefaultFee: u16 = 30;
-    pub const GetDefaultProtocolFee: u16 = 0;
-    pub const GetNumSamples: usize = 100;
 }
 
 impl system::Trait for Runtime {
@@ -72,6 +70,9 @@ impl system::Trait for Runtime {
     type SystemWeightInfo = ();
 }
 
+parameter_types! {
+    pub const GetNumSamples: usize = 100;
+}
 impl Trait for Runtime {
     type Event = ();
     type LiquidityRegistry = dex_api::Module<Runtime>;
@@ -97,8 +98,6 @@ impl currencies::Trait for Runtime {
     type GetNativeCurrencyId = GetBaseAssetId;
 }
 
-pub type DEXId = u32;
-
 impl assets::Trait for Runtime {
     type Event = ();
     type AssetId = AssetId;
@@ -106,15 +105,14 @@ impl assets::Trait for Runtime {
     type Currency = currencies::Module<Runtime>;
 }
 
+pub type DEXId = u32;
+
 impl common::Trait for Runtime {
     type DEXId = DEXId;
 }
 
 parameter_types! {
     pub const ExistentialDeposit: u128 = 1;
-    pub const TransferFee: u128 = 0;
-    pub const CreationFee: u128 = 0;
-    pub const TransactionByteFee: u128 = 1;
 }
 
 impl pallet_balances::Trait for Runtime {
@@ -126,6 +124,10 @@ impl pallet_balances::Trait for Runtime {
     type WeightInfo = ();
 }
 
+parameter_types! {
+    pub const GetDefaultFee: u16 = 30;
+    pub const GetDefaultProtocolFee: u16 = 0;
+}
 impl dex_manager::Trait for Runtime {
     type Event = ();
     type GetDefaultFee = GetDefaultFee;

@@ -10,14 +10,12 @@ use common::{
     LiquiditySourceType,
 };
 use frame_support::{
-    decl_error, decl_event, decl_module,
-    dispatch::{DispatchError, DispatchResult},
-    ensure,
-    traits::Get,
+    decl_error, decl_event, decl_module, dispatch::DispatchResult, ensure, traits::Get,
     RuntimeDebug,
 };
 use frame_system::ensure_signed;
 use sp_arithmetic::{traits::Bounded, FixedPointNumber};
+use sp_runtime::DispatchError;
 use sp_std::vec::Vec;
 
 #[cfg(test)]
@@ -350,10 +348,26 @@ impl<T: Trait> Module<T> {
             _ => algo::find_distribution(sample_data, true),
         };
 
-        ensure!(
-            best > fixed!(0) && best < Fixed::max_value(),
-            Error::<T>::InsufficientLiquidity
-        );
+        match amount {
+            SwapAmount::WithDesiredInput {
+                desired_amount_in: _,
+                min_amount_out: threshold,
+            } => {
+                ensure!(
+                    best > fixed!(0) && best >= threshold,
+                    Error::<T>::UnavailableExchangePath
+                );
+            }
+            SwapAmount::WithDesiredOutput {
+                desired_amount_out: _,
+                max_amount_in: threshold,
+            } => {
+                ensure!(
+                    best <= threshold && best < Fixed::max_value(),
+                    Error::<T>::UnavailableExchangePath
+                );
+            }
+        }
 
         let total_fee = (0..distr.len()).fold(fixed!(0), |acc, i| {
             let idx = match (Fixed::from(num_samples as u128) * distr[i]).saturating_mul_int(1u32) {

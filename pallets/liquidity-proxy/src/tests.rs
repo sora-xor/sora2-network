@@ -5,6 +5,7 @@ use common::{
 };
 use frame_support::assert_noop;
 use sp_arithmetic::traits::{Bounded, Saturating};
+use sp_runtime::DispatchError;
 
 #[test]
 fn test_quote_exact_input_base_should_pass() {
@@ -308,7 +309,7 @@ fn test_quote_should_fail_with_unavailable_exchange_path_2() {
 }
 
 #[test]
-fn test_quote_should_fail_with_insufficient_liquidity() {
+fn test_quote_should_fail_with_unavailable_exchange_path_3() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
         let result = LiquidityProxy::quote(
@@ -317,7 +318,7 @@ fn test_quote_should_fail_with_insufficient_liquidity() {
             SwapAmount::with_desired_output(fixed!(5_000), Fixed::max_value()),
             LiquiditySourceFilter::empty(DEX_C_ID),
         );
-        assert_noop!(result, <Error<Runtime>>::InsufficientLiquidity);
+        assert_noop!(result, <Error<Runtime>>::UnavailableExchangePath);
     });
 }
 
@@ -375,5 +376,41 @@ fn test_sell_however_big_amount_base_should_pass() {
         )
         .expect("Failed to swap assets");
         assert!(result.amount > fixed!(0) && result.amount < fixed!(180));
+    });
+}
+
+#[test]
+fn test_swap_should_fail_with_unavailable_exchange_path() {
+    let mut ext = ExtBuilder::default().build();
+    ext.execute_with(|| {
+        let result = LiquidityProxy::swap_exact_input(
+            Origin::signed(alice()),
+            DEX_C_ID,
+            DOT,
+            GetBaseAssetId::get(),
+            fixed!(500),
+            Some(fixed!(400)), // expectation too high
+            None,
+            None,
+        );
+        assert_noop!(result, <Error<Runtime>>::UnavailableExchangePath);
+    });
+}
+
+#[test]
+fn test_swap_should_fail_with_bad_origin() {
+    let mut ext = ExtBuilder::default().build();
+    ext.execute_with(|| {
+        let result = LiquidityProxy::swap_exact_input(
+            Origin::root(),
+            DEX_C_ID,
+            DOT,
+            GetBaseAssetId::get(),
+            fixed!(500),
+            Some(fixed!(300)),
+            None,
+            None,
+        );
+        assert_noop!(result, DispatchError::BadOrigin);
     });
 }
