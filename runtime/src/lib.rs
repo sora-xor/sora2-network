@@ -365,6 +365,7 @@ impl dex_api::Trait for Runtime {
     type MockLiquiditySource4 =
         mock_liquidity_source::Module<Runtime, mock_liquidity_source::Instance4>;
     type BondingCurvePool = bonding_curve_pool::Module<Runtime>;
+    type XYKPool = pool_xyk::Module<Runtime>;
 }
 
 impl<T: SigningTypes> frame_system::offchain::SignMessage<T> for Runtime {

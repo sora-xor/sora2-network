@@ -54,6 +54,13 @@ pub trait Trait: common::Trait + dex_manager::Trait + trading_pair::Trait {
         Balance,
         DispatchError,
     >;
+    type XYKPool: LiquiditySource<
+        Self::DEXId,
+        Self::AccountId,
+        Self::AssetId,
+        Balance,
+        DispatchError,
+    >;
 }
 
 decl_event!(
@@ -106,7 +113,7 @@ impl<T: Trait>
             };
         }
         match liquidity_source_id.liquidity_source_index {
-            XYKPool => unimplemented!(),
+            XYKPool => can_exchange!(XYKPool),
             BondingCurvePool => can_exchange!(BondingCurvePool),
             MockPool => can_exchange!(MockLiquiditySource),
             MockPool2 => can_exchange!(MockLiquiditySource2),
@@ -134,7 +141,7 @@ impl<T: Trait>
             };
         }
         match liquidity_source_id.liquidity_source_index {
-            LiquiditySourceType::XYKPool => unimplemented!(),
+            LiquiditySourceType::XYKPool => quote!(XYKPool),
             BondingCurvePool => quote!(BondingCurvePool),
             MockPool => quote!(MockLiquiditySource),
             MockPool2 => quote!(MockLiquiditySource2),
@@ -166,7 +173,7 @@ impl<T: Trait>
             };
         }
         match liquidity_source_id.liquidity_source_index {
-            XYKPool => unimplemented!(),
+            XYKPool => exchange!(XYKPool),
             BondingCurvePool => exchange!(BondingCurvePool),
             MockPool => exchange!(MockLiquiditySource),
             MockPool2 => exchange!(MockLiquiditySource2),
@@ -183,6 +190,7 @@ impl<T: Trait> Module<T> {
             LiquiditySourceType::MockPool2,
             LiquiditySourceType::MockPool3,
             LiquiditySourceType::MockPool4,
+            LiquiditySourceType::XYKPool,
         ]
         .into()
     }

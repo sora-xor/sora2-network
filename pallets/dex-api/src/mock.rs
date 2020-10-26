@@ -86,6 +86,7 @@ impl Trait for Runtime {
     type MockLiquiditySource4 =
         mock_liquidity_source::Module<Runtime, mock_liquidity_source::Instance4>;
     type BondingCurvePool = ();
+    type XYKPool = ();
 }
 
 impl tokens::Trait for Runtime {

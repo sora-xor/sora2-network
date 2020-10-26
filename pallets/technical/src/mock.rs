@@ -213,7 +213,7 @@ impl common::SwapAction<AccountId, TechAccountId, Testtime> for GenericPairSwapA
 impl common::SwapRulesValidation<AccountId, TechAccountId, Testtime>
     for GenericPairSwapActionExample
 {
-    fn prepare_and_validate(&mut self, _source: &AccountId) -> DispatchResult {
+    fn prepare_and_validate(&mut self, _source: Option<&AccountId>) -> DispatchResult {
         Ok(())
     }
     fn instant_auto_claim_used(&self) -> bool {
@@ -252,7 +252,7 @@ impl common::SwapAction<AccountId, TechAccountId, Testtime> for MultiSwapActionE
 }
 
 impl common::SwapRulesValidation<AccountId, TechAccountId, Testtime> for MultiSwapActionExample {
-    fn prepare_and_validate(&mut self, _source: &AccountId) -> DispatchResult {
+    fn prepare_and_validate(&mut self, _source: Option<&AccountId>) -> DispatchResult {
         Ok(())
     }
     fn instant_auto_claim_used(&self) -> bool {
@@ -289,7 +289,7 @@ impl common::SwapAction<AccountId, TechAccountId, Testtime> for CrowdSwapActionE
 }
 
 impl common::SwapRulesValidation<AccountId, TechAccountId, Testtime> for CrowdSwapActionExample {
-    fn prepare_and_validate(&mut self, _source: &AccountId) -> DispatchResult {
+    fn prepare_and_validate(&mut self, _source: Option<&AccountId>) -> DispatchResult {
         Ok(())
     }
     fn instant_auto_claim_used(&self) -> bool {
@@ -342,7 +342,7 @@ impl common::SwapAction<AccountId, TechAccountId, Testtime> for PolySwapActionEx
 }
 
 impl common::SwapRulesValidation<AccountId, TechAccountId, Testtime> for PolySwapActionExample {
-    fn prepare_and_validate(&mut self, source: &AccountId) -> DispatchResult {
+    fn prepare_and_validate(&mut self, source: Option<&AccountId>) -> DispatchResult {
         match self {
             GenericPair(a) => a.prepare_and_validate(source),
             Multi(a) => a.prepare_and_validate(source),

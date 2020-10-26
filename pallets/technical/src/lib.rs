@@ -80,10 +80,9 @@ impl<T: Trait> Module<T> {
     /// Perform creation of swap, may be used by extrinsic operation or other pallets.
     pub fn perform_create_swap(
         source: AccountIdOf<T>,
-        action_orig: T::SwapAction,
+        action: &mut T::SwapAction,
     ) -> DispatchResult {
-        let mut action = action_orig.clone();
-        action.prepare_and_validate(&source)?;
+        action.prepare_and_validate(Some(&source))?;
         action.reserve(&source)?;
         if action.is_able_to_claim() {
             if action.instant_auto_claim_used() {
@@ -118,7 +117,8 @@ decl_module! {
         ) -> DispatchResult
         {
             let source = ensure_signed(origin)?;
-            Module::<T>::perform_create_swap(source, action)?;
+            let mut action_mut = action;
+            Module::<T>::perform_create_swap(source, &mut action_mut)?;
             Ok(())
         }
     }
