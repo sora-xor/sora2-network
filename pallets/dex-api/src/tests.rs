@@ -18,6 +18,7 @@ fn test_filter_empty_should_pass() {
                 LiquiditySourceId::new(DEX_A_ID, LiquiditySourceType::MockPool2),
                 LiquiditySourceId::new(DEX_A_ID, LiquiditySourceType::MockPool3),
                 LiquiditySourceId::new(DEX_A_ID, LiquiditySourceType::MockPool4),
+                LiquiditySourceId::new(DEX_A_ID, LiquiditySourceType::XYKPool),
             ]
         );
     })
@@ -43,7 +44,8 @@ fn test_filter_with_ignored_existing_should_pass() {
             &list,
             &[
                 LiquiditySourceId::new(DEX_A_ID, LiquiditySourceType::MockPool2),
-                LiquiditySourceId::new(DEX_A_ID, LiquiditySourceType::MockPool4)
+                LiquiditySourceId::new(DEX_A_ID, LiquiditySourceType::MockPool4),
+                LiquiditySourceId::new(DEX_A_ID, LiquiditySourceType::XYKPool)
             ]
         );
     })

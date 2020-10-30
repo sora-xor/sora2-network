@@ -208,6 +208,9 @@ impl<SourceAccountId, TargetAccountId, T: Trait> SwapAction<SourceAccountId, Tar
 pub trait SwapRulesValidation<SourceAccountId, TargetAccountId, T: Trait>:
     SwapAction<SourceAccountId, TargetAccountId, T>
 {
+    /// If action is only for abstract checking, shoud not apply by `reserve` function.
+    fn is_abstract_checking(&self) -> bool;
+
     /// Validate action if next steps must be applied by `reserve` function
     /// or if source account is None, than just ability to do operation is checked.
     fn prepare_and_validate(&mut self, source: Option<&SourceAccountId>) -> DispatchResult;
@@ -227,6 +230,9 @@ pub trait SwapRulesValidation<SourceAccountId, TargetAccountId, T: Trait>:
 impl<SourceAccountId, TargetAccountId, T: Trait>
     SwapRulesValidation<SourceAccountId, TargetAccountId, T> for ()
 {
+    fn is_abstract_checking(&self) -> bool {
+        true
+    }
     fn prepare_and_validate(&mut self, _source: Option<&SourceAccountId>) -> DispatchResult {
         Ok(())
     }

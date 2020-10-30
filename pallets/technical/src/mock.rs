@@ -213,6 +213,9 @@ impl common::SwapAction<AccountId, TechAccountId, Testtime> for GenericPairSwapA
 impl common::SwapRulesValidation<AccountId, TechAccountId, Testtime>
     for GenericPairSwapActionExample
 {
+    fn is_abstract_checking(&self) -> bool {
+        false
+    }
     fn prepare_and_validate(&mut self, _source: Option<&AccountId>) -> DispatchResult {
         Ok(())
     }
@@ -252,6 +255,9 @@ impl common::SwapAction<AccountId, TechAccountId, Testtime> for MultiSwapActionE
 }
 
 impl common::SwapRulesValidation<AccountId, TechAccountId, Testtime> for MultiSwapActionExample {
+    fn is_abstract_checking(&self) -> bool {
+        false
+    }
     fn prepare_and_validate(&mut self, _source: Option<&AccountId>) -> DispatchResult {
         Ok(())
     }
@@ -289,6 +295,9 @@ impl common::SwapAction<AccountId, TechAccountId, Testtime> for CrowdSwapActionE
 }
 
 impl common::SwapRulesValidation<AccountId, TechAccountId, Testtime> for CrowdSwapActionExample {
+    fn is_abstract_checking(&self) -> bool {
+        false
+    }
     fn prepare_and_validate(&mut self, _source: Option<&AccountId>) -> DispatchResult {
         Ok(())
     }
@@ -342,6 +351,14 @@ impl common::SwapAction<AccountId, TechAccountId, Testtime> for PolySwapActionEx
 }
 
 impl common::SwapRulesValidation<AccountId, TechAccountId, Testtime> for PolySwapActionExample {
+    fn is_abstract_checking(&self) -> bool {
+        match self {
+            GenericPair(a) => a.is_abstract_checking(),
+            Multi(a) => a.is_abstract_checking(),
+            Crowd(a) => a.is_abstract_checking(),
+        }
+    }
+
     fn prepare_and_validate(&mut self, source: Option<&AccountId>) -> DispatchResult {
         match self {
             GenericPair(a) => a.prepare_and_validate(source),
@@ -349,6 +366,7 @@ impl common::SwapRulesValidation<AccountId, TechAccountId, Testtime> for PolySwa
             Crowd(a) => a.prepare_and_validate(source),
         }
     }
+
     fn instant_auto_claim_used(&self) -> bool {
         match self {
             GenericPair(a) => a.instant_auto_claim_used(),
