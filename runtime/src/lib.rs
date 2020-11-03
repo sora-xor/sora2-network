@@ -287,8 +287,8 @@ impl bonding_curve_pool::Trait for Runtime {
     type DEXApi = ();
 }
 
-type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
-type TechAssetId = common::TechAssetId<common::AssetId, DEXId>;
+pub type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
+pub type TechAssetId = common::TechAssetId<common::AssetId, DEXId>;
 pub type AssetId = common::JsonCompatAssetId<common::AssetId>;
 
 impl technical::Trait for Runtime {
@@ -443,6 +443,11 @@ impl referral_system::Trait for Runtime {
     type Event = Event;
 }
 
+parameter_types! {
+    pub const ValId: AssetId = common::JsonCompatAssetId { 0: [2, 0, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], 1: PhantomData };
+    pub const DEXIdValue: DEXId = 0;
+}
+
 impl xor_fee::Trait for Runtime {
     // Pass native currency.
     type Event = Event;
@@ -450,6 +455,10 @@ impl xor_fee::Trait for Runtime {
     type ReferrerWeight = ReferrerWeight;
     type XorBurnedWeight = XorBurnedWeight;
     type XorIntoValBurnedWeight = XorIntoValBurnedWeight;
+    type XorId = GetBaseAssetId;
+    type ValId = ValId;
+    type DEXIdValue = DEXIdValue;
+    type LiquiditySource = mock_liquidity_source::Module<Runtime, mock_liquidity_source::Instance1>;
 }
 
 impl pallet_transaction_payment::Trait for Runtime {
@@ -539,7 +548,7 @@ construct_runtime! {
         Assets: assets::{Module, Call, Event<T>},
         DEXManager: dex_manager::{Module, Call, Storage, Config<T>, Event<T>},
         BondingCurvePool: bonding_curve_pool::{Module},
-        Technical: technical::{Module, Call, Event<T>},
+        Technical: technical::{Module, Call, Config<T>, Event<T>},
         PoolXYK: pool_xyk::{Module, Call, Event<T>},
         LiquidityProxy: liquidity_proxy::{Module, Call, Event<T>},
         MockLiquiditySource: mock_liquidity_source::<Instance1>::{Module, Call, Storage, Config<T>, Event<T>},

@@ -16,9 +16,12 @@ use parachain_runtime::{
     Signature,
     SudoConfig,
     SystemConfig,
+    TechAccountId,
+    TechnicalConfig,
     WASM_BINARY,
 };
 
+use codec::{Decode, Encode};
 use common::{hash, prelude::DEXInfo};
 use sc_chain_spec::{ChainSpecExtension, ChainSpecGroup};
 use sc_service::ChainType;
@@ -162,6 +165,13 @@ fn testnet_genesis(
     //iroha_peers: Vec<iroha_crypto::PublicKey>,
     id: ParaId,
 ) -> GenesisConfig {
+    let tech_account_id = TechAccountId::Generic(
+        xor_fee::TECH_ACCOUNT_PREFIX.to_vec(),
+        xor_fee::TECH_ACCOUNT_MAIN.to_vec(),
+    );
+    let repr = technical::tech_account_id_encoded_to_account_id_32(&tech_account_id.encode());
+    let xor_fee_account_id: AccountId =
+        AccountId::decode(&mut &repr[..]).expect("Failed to decode account Id");
     GenesisConfig {
         frame_system: Some(SystemConfig {
             code: WASM_BINARY.to_vec(),
@@ -169,31 +179,58 @@ fn testnet_genesis(
         }),
         pallet_sudo: Some(SudoConfig { key: root_key }),
         parachain_info: Some(ParachainInfoConfig { parachain_id: id }),
+        technical: Some(TechnicalConfig {
+            account_ids_to_tech_account_ids: vec![(xor_fee_account_id.clone(), tech_account_id)],
+        }),
         permissions: Some(PermissionsConfig {
             initial_permissions: vec![
                 (
-                    1,
+                    permissions::TRANSFER,
                     get_account_id_from_seed::<sr25519::Public>("Alice"),
                     get_account_id_from_seed::<sr25519::Public>("Alice"),
                     None,
                 ),
                 (
-                    2,
+                    permissions::EXCHANGE,
                     get_account_id_from_seed::<sr25519::Public>("Alice"),
                     get_account_id_from_seed::<sr25519::Public>("Alice"),
                     None,
                 ),
                 (
-                    6,
+                    permissions::INIT_DEX,
                     get_account_id_from_seed::<sr25519::Public>("Alice"),
                     get_account_id_from_seed::<sr25519::Public>("Alice"),
                     None,
                 ),
                 (
-                    7,
+                    permissions::MANAGE_DEX,
                     get_account_id_from_seed::<sr25519::Public>("Alice"),
                     get_account_id_from_seed::<sr25519::Public>("Alice"),
                     Some(hash(&0u32)),
+                ),
+                (
+                    permissions::TRANSFER,
+                    xor_fee_account_id.clone(),
+                    get_account_id_from_seed::<sr25519::Public>("Alice"),
+                    None,
+                ),
+                (
+                    permissions::EXCHANGE,
+                    xor_fee_account_id.clone(),
+                    get_account_id_from_seed::<sr25519::Public>("Alice"),
+                    None,
+                ),
+                (
+                    permissions::MINT,
+                    xor_fee_account_id.clone(),
+                    get_account_id_from_seed::<sr25519::Public>("Alice"),
+                    None,
+                ),
+                (
+                    permissions::BURN,
+                    xor_fee_account_id.clone(),
+                    get_account_id_from_seed::<sr25519::Public>("Alice"),
+                    None,
                 ),
             ],
         }),

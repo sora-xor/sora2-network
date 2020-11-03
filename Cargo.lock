@@ -4464,6 +4464,7 @@ dependencies = [
  "parachain-runtime",
  "parity-scale-codec",
  "parking_lot 0.9.0",
+ "permissions",
  "polkadot-cli",
  "polkadot-collator",
  "polkadot-parachain",
@@ -4503,8 +4504,10 @@ dependencies = [
  "substrate-build-script-utils",
  "substrate-test-client",
  "substrate-test-runtime-client",
+ "technical",
  "tokio 0.2.22",
  "trie-root 0.15.2",
+ "xor-fee",
 ]
 
 [[package]]
@@ -8583,6 +8586,7 @@ dependencies = [
  "pallet-balances",
  "parity-scale-codec",
  "permissions",
+ "serde",
  "sp-core",
  "sp-io",
  "sp-runtime",
@@ -9802,18 +9806,27 @@ dependencies = [
 name = "xor-fee"
 version = "2.0.0-rc5"
 dependencies = [
+ "assets",
  "common",
+ "dex-manager",
  "frame-support",
  "frame-system",
+ "mock-liquidity-source",
+ "orml-currencies",
+ "orml-tokens",
  "orml-traits",
  "pallet-balances",
  "pallet-transaction-payment 2.0.0-rc5 (git+https://github.com/eadventurous/pallet-transaction-payment?branch=rococo-branch)",
  "parity-scale-codec",
+ "permissions",
  "referral-system",
+ "sp-arithmetic",
  "sp-core",
  "sp-io",
  "sp-runtime",
  "sp-std",
+ "technical",
+ "trading-pair",
 ]
 
 [[package]]

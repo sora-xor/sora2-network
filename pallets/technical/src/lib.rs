@@ -72,7 +72,7 @@ pub trait Trait: common::Trait + assets::Trait {
 decl_storage! {
     trait Store for Module<T: Trait> as Technical {
         /// Registered technical account identifiers. Map from repr `AccountId` into pure `TechAccountId`.
-        TechAccounts get(fn tech_account): map hasher(blake2_128_concat) AccountIdOf<T> => Option<T::TechAccountId>;
+        TechAccounts get(fn tech_account) config(account_ids_to_tech_account_ids): map hasher(blake2_128_concat) AccountIdOf<T> => Option<T::TechAccountId>;
     }
 }
 
@@ -201,6 +201,21 @@ decl_error! {
     }
 }
 
+pub fn tech_account_id_encoded_to_account_id_32(tech_account_id: &[u8]) -> H256 {
+    use ::core::hash::Hasher;
+    let mut h0 = twox_hash::XxHash::with_seed(0);
+    let mut h1 = twox_hash::XxHash::with_seed(1);
+    h0.write(tech_account_id);
+    h1.write(tech_account_id);
+    let r0 = h0.finish();
+    let r1 = h1.finish();
+    let mut repr: H256 = H256::zero();
+    repr[..16].copy_from_slice(&TECH_ACCOUNT_MAGIC_PREFIX);
+    repr[16..24].copy_from_slice(&r0.to_le_bytes());
+    repr[24..].copy_from_slice(&r1.to_le_bytes());
+    repr
+}
+
 impl<T: Trait> Module<T> {
     /// Creates an `T::AccountId` based on `T::TechAccountId`.
     ///
@@ -209,18 +224,7 @@ impl<T: Trait> Module<T> {
     pub fn tech_account_id_to_account_id(
         tech_account_id: &T::TechAccountId,
     ) -> Result<T::AccountId, DispatchError> {
-        use ::core::hash::Hasher;
-        let data = &tech_account_id.encode();
-        let mut h0 = twox_hash::XxHash::with_seed(0);
-        let mut h1 = twox_hash::XxHash::with_seed(1);
-        h0.write(data);
-        h1.write(data);
-        let r0 = h0.finish();
-        let r1 = h1.finish();
-        let mut repr: H256 = H256::zero();
-        repr[..16].copy_from_slice(&TECH_ACCOUNT_MAGIC_PREFIX);
-        repr[16..24].copy_from_slice(&r0.to_le_bytes());
-        repr[24..].copy_from_slice(&r1.to_le_bytes());
+        let repr = tech_account_id_encoded_to_account_id_32(&tech_account_id.encode());
         T::AccountId::decode(&mut &repr[..]).map_err(|_| Error::<T>::DecodeAccountIdFailed.into())
     }
 

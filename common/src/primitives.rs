@@ -1,11 +1,13 @@
 use crate::traits::Trait;
 use crate::BasisPoints;
 use codec::{Decode, Encode};
-use frame_support::dispatch::DispatchError;
+use core::fmt::Debug;
+use frame_support::dispatch::{DispatchError, Parameter};
 use frame_support::RuntimeDebug;
 use frame_support::{decl_error, decl_module};
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
+use sp_runtime::traits::{MaybeDisplay, MaybeSerializeDeserialize, Member};
 use sp_std::convert::TryFrom;
 use sp_std::marker::PhantomData;
 use sp_std::vec::Vec;
