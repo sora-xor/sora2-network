@@ -1039,42 +1039,24 @@ decl_error! {
         AssetDecodingError,
         CalculatedValueIsOutOfDesiredBounds,
         BaseAssetIsNotMatchedWithAnyAssetArguments,
+        DestinationAmountMustBeSame,
+        SourceAmountMustBeSame,
     }
 }
 
-//TODO: name will be changed after draft PR.
-macro_rules! pattern01(
-    ($dex_id:expr, $asset_id:expr, $expr:expr) => ({
-
-        let dexinfo = <dex_manager::DEXInfos<T>>::get($dex_id.clone());
-        let base_asset_id = dexinfo.base_asset_id;
-        ensure!(base_asset_id != $asset_id, Error::<T>::AssetsMustNotBeSame);
-        // If tech asset if encoded in repr, than it is checked for decoding and
-        // converted.
-        let ba = Module::<T>::try_decode_asset(base_asset_id.clone())?;
-        let ta = Module::<T>::try_decode_asset($asset_id.clone())?;
-        let tpair = common::TradingPair::<TechAssetIdOf::<T>> { base_asset_id: ba, target_asset_id: ta };
-        let tech_acc_id = TechAccountIdOf::<T>::to_tech_unit_from_dex_and_trading_pair($dex_id.clone(), tpair);
-
-        $expr(base_asset_id, tech_acc_id)
-
-    });
-);
-
-//TODO: name will be changed after draft PR.
-macro_rules! pattern03(
-    ($dex_id:expr, $input_asset_id:expr, $output_asset_id:expr, $expr:expr) => ({
+macro_rules! with_tech_account(
+    ($dex_id:expr, $asset_a:expr, $asset_b:expr, $expr:expr) => ({
         let dexinfo = <dex_manager::DEXInfos<T>>::get($dex_id.clone());
         let base_asset_id = dexinfo.base_asset_id;
         ensure!(
-            $input_asset_id != $output_asset_id,
+            $asset_a != $asset_b,
             Error::<T>::AssetsMustNotBeSame
         );
         let ba = Module::<T>::try_decode_asset(base_asset_id.clone())?;
-        let ta = (if base_asset_id == *$input_asset_id {
-            Module::<T>::try_decode_asset($output_asset_id.clone())?
-        } else if base_asset_id == *$output_asset_id {
-            Module::<T>::try_decode_asset($input_asset_id.clone())?
+        let ta = (if base_asset_id == $asset_a {
+            Module::<T>::try_decode_asset($asset_b.clone())?
+        } else if base_asset_id == $asset_b {
+            Module::<T>::try_decode_asset($asset_a.clone())?
         } else {
             Err(Error::<T>::BaseAssetIsNotMatchedWithAnyAssetArguments)?
         });
@@ -1088,31 +1070,55 @@ macro_rules! pattern03(
     });
 );
 
-//TODO: name will be changed after draft PR.
-macro_rules! pattern02(
-    ($dex_id:expr, $input_asset_id:expr, $output_asset_id:expr, $swap_amount:expr, $expr:expr) => ({
-        pattern03!($dex_id, $input_asset_id, $output_asset_id,
+macro_rules! with_bounded_swap_amounts(
+    ($swap_amount:expr, $expr:expr) => ({
+        let (source_amount, destination_amount) = {
+            match $swap_amount {
+                SwapAmount::WithDesiredInput {
+                    desired_amount_in,
+                    min_amount_out,
+                } => (
+                    Bounds::Desired(desired_amount_in),
+                    Bounds::Min(min_amount_out),
+                ),
+                SwapAmount::WithDesiredOutput {
+                    desired_amount_out,
+                    max_amount_in,
+                } => (
+                    Bounds::Max(max_amount_in),
+                    Bounds::Desired(desired_amount_out),
+                ),
+            }
+        };
+        $expr(source_amount, destination_amount)
+    });
+);
+
+macro_rules! with_asset_pair_for_liquidity(
+    ($dex_id:expr,
+     $asset_a:expr, $asset_b:expr,
+     $swap_amount_a:expr, $swap_amount_b:expr,
+     $expr:expr) => ({
+        with_tech_account!(
+            $dex_id,
+            $asset_a,
+            $asset_b,
             |tech_acc_id: TechAccountIdOf::<T>| {
-            let (source_amount, destination_amount) = {
-                match $swap_amount {
-                    SwapAmount::WithDesiredInput {
-                        desired_amount_in,
-                        min_amount_out,
-                    } => (
-                        Bounds::Desired(desired_amount_in),
-                        Bounds::Min(min_amount_out),
-                    ),
-                    SwapAmount::WithDesiredOutput {
-                        desired_amount_out,
-                        max_amount_in,
-                    } => (
-                        Bounds::Max(max_amount_in),
-                        Bounds::Desired(desired_amount_out),
-                    ),
-                }
-            };
-            $expr(source_amount, destination_amount, tech_acc_id)
-        })
+                with_bounded_swap_amounts!(
+                    $swap_amount_a,
+                    |source_amount_a, destination_amount_a| {
+                        with_bounded_swap_amounts!(
+                            $swap_amount_b,
+                            |source_amount_b, destination_amount_b| {
+                                $expr(source_amount_a, destination_amount_a,
+                                      source_amount_b, destination_amount_b,
+                                      tech_acc_id)
+                            }
+                        )
+                    }
+                )
+            }
+        )
     });
 );
 
@@ -1139,54 +1145,82 @@ decl_module! {
         #[weight = 0]
         fn deposit_liquidity(
             origin,
+            receiver: AccountIdOf<T>,
             dex_id: DEXIdOf<T>,
-            target_asset_id_to_put: AssetIdOf<T>,
-            liq_to_get: Balance) -> DispatchResult {
+            input_asset_a: AssetIdOf<T>,
+            input_asset_b: AssetIdOf<T>,
+            swap_amount_a: SwapAmount<Balance>,
+            swap_amount_b: SwapAmount<Balance>) -> DispatchResult {
             let source = ensure_signed(origin)?;
-            pattern01!(dex_id, target_asset_id_to_put,
-                            |base_asset_id, tech_acc_id: TechAccountIdOf::<T>| {
-                let mark_asset = Module::<T>::get_marking_asset(tech_acc_id.clone())?;
-                let action = PolySwapActionStructOf::<T>::DepositLiquidity(
-                            DepositLiquidityAction::<AssetIdOf<T>, TechAssetIdOf<T>,
-                                Balance, AccountIdOf<T>, TechAccountIdOf<T>>{
-                    client_account: None,
-                    pool_account: tech_acc_id,
-                    source: ResourcePair(Resource(base_asset_id, Bounds::Decide), Resource(target_asset_id_to_put, Bounds::Decide)),
-                    destination: Resource(mark_asset, Bounds::Desired(liq_to_get)),
-                    minliq: None,
-                });
-                let action = T::PolySwapAction::from(action);
-                let mut action = action.into();
-                technical::Module::<T>::perform_create_swap(source, &mut action)?;
-                Ok(())
-            })
+            with_asset_pair_for_liquidity!(
+                dex_id,
+                input_asset_a,
+                input_asset_b,
+                swap_amount_a,
+                swap_amount_b,
+                |source_amount_a, destination_amount_a,
+                 source_amount_b, destination_amount_b,
+                 tech_acc_id: TechAccountIdOf::<T>| {
+                    ensure!(destination_amount_a == destination_amount_b, Error::<T>::DestinationAmountMustBeSame);
+                    let mark_asset = Module::<T>::get_marking_asset(tech_acc_id.clone())?;
+                    let action = PolySwapActionStructOf::<T>::DepositLiquidity(
+                                DepositLiquidityAction::<AssetIdOf<T>, TechAssetIdOf<T>,
+                                    Balance, AccountIdOf<T>, TechAccountIdOf<T>>{
+                        client_account: None,
+                        //receiver_account: Some(receiver),
+                        pool_account: tech_acc_id,
+                        source: ResourcePair(Resource(input_asset_a, source_amount_a),
+                                             Resource(input_asset_b, source_amount_b)),
+                        destination: Resource(mark_asset, destination_amount_a),
+                        minliq: None,
+                    });
+                    let action = T::PolySwapAction::from(action);
+                    let mut action = action.into();
+                    technical::Module::<T>::perform_create_swap(source, &mut action)?;
+                    Ok(())
+                 }
+            )
         }
 
         #[weight = 0]
         fn withdraw_liquidity(
             origin,
+            receiver_a: AccountIdOf<T>,
+            receiver_b: AccountIdOf<T>,
             dex_id: DEXIdOf<T>,
-            target_asset_id_to_get: AssetIdOf<T>,
-            liq_to_give: Balance) -> DispatchResult {
+            output_asset_a: AssetIdOf<T>,
+            output_asset_b: AssetIdOf<T>,
+            swap_amount_a: SwapAmount<Balance>,
+            swap_amount_b: SwapAmount<Balance>) -> DispatchResult {
             let source = ensure_signed(origin)?;
-            pattern01!(dex_id, target_asset_id_to_get,
-                            |base_asset_id, tech_acc_id: TechAccountIdOf::<T>| {
-                let mark_asset = Module::<T>::get_marking_asset(tech_acc_id.clone())?;
-                let action = PolySwapActionStructOf::<T>::WithdrawLiquidity(
-                            WithdrawLiquidityAction::<AssetIdOf<T>, TechAssetIdOf<T>,
-                                Balance, AccountIdOf<T>, TechAccountIdOf<T>>{
-                    client_account: None,
-                    pool_account: tech_acc_id,
-                    source: Resource(mark_asset, Bounds::Desired(liq_to_give)),
-                    destination: ResourcePair(Resource(base_asset_id, Bounds::Decide), Resource(target_asset_id_to_get, Bounds::Decide)),
-                });
-                let action = T::PolySwapAction::from(action);
-                let mut action = action.into();
-                technical::Module::<T>::perform_create_swap(source, &mut action)?;
-                Ok(())
-            })
+            with_asset_pair_for_liquidity!(
+                dex_id,
+                output_asset_a,
+                output_asset_b,
+                swap_amount_a,
+                swap_amount_b,
+                |source_amount_a, destination_amount_a,
+                 source_amount_b, destination_amount_b,
+                 tech_acc_id: TechAccountIdOf::<T>| {
+                    ensure!(source_amount_a == source_amount_b, Error::<T>::SourceAmountMustBeSame);
+                    let mark_asset = Module::<T>::get_marking_asset(tech_acc_id.clone())?;
+                    let action = PolySwapActionStructOf::<T>::WithdrawLiquidity(
+                                WithdrawLiquidityAction::<AssetIdOf<T>, TechAssetIdOf<T>,
+                                    Balance, AccountIdOf<T>, TechAccountIdOf<T>>{
+                        client_account: None,
+                        //receiver_account: Some(receiver),
+                        pool_account: tech_acc_id,
+                        source: Resource(mark_asset, source_amount_a),
+                        destination: ResourcePair(Resource(output_asset_a, destination_amount_a),
+                                                  Resource(output_asset_b, destination_amount_b)),
+                    });
+                    let action = T::PolySwapAction::from(action);
+                    let mut action = action.into();
+                    technical::Module::<T>::perform_create_swap(source, &mut action)?;
+                    Ok(())
+                }
+            )
         }
-
     }
 }
 
@@ -1201,10 +1235,10 @@ impl<T: Trait> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Disp
         // Function clause is used here, because in this case it is other scope and it not
         // conflicted with bool type.
         let res = || {
-            pattern03!(
+            with_tech_account!(
                 dex_id,
-                input_asset_id,
-                output_asset_id,
+                input_asset_id.clone(),
+                output_asset_id.clone(),
                 |tech_acc_id: TechAccountIdOf::<T>| {
                     let mut action = PolySwapActionStructOf::<T>::PairSwap(PairSwapAction::<
                         AssetIdOf<T>,
@@ -1220,7 +1254,8 @@ impl<T: Trait> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Disp
                         fee: None,
                         fee_account: None,
                     });
-                    common::SwapRulesValidation::<AccountIdOf<T>, TechAccountIdOf<T>, T>::prepare_and_validate(&mut action, None)
+                    common::SwapRulesValidation::<AccountIdOf<T>, TechAccountIdOf<T>, T>::
+                        prepare_and_validate(&mut action, None)
                 }
             )
         };
@@ -1233,38 +1268,37 @@ impl<T: Trait> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Disp
         output_asset_id: &T::AssetId,
         swap_amount: SwapAmount<Balance>,
     ) -> Result<SwapOutcome<Balance>, DispatchError> {
-        pattern02!(
+        with_tech_account!(
             dex_id,
-            input_asset_id,
-            output_asset_id,
-            swap_amount,
-            |source_amount, destination_amount, tech_acc_id: TechAccountIdOf::<T>| {
-                let mut action = PolySwapActionStructOf::<T>::PairSwap(PairSwapAction::<
-                    AssetIdOf<T>,
-                    Balance,
-                    AccountIdOf<T>,
-                    TechAccountIdOf<T>,
-                > {
-                    client_account: None,
-                    receiver_account: None,
-                    pool_account: tech_acc_id,
-                    source: Resource(*input_asset_id, source_amount),
-                    destination: Resource(*output_asset_id, destination_amount),
-                    fee: None,
-                    fee_account: None,
-                });
-
-                common::SwapRulesValidation::<AccountIdOf<T>, TechAccountIdOf<T>, T>::prepare_and_validate(
-                    &mut action,
-                    None,
-                )?;
-                // It is garanty that unwrap is always ok.
-                let (fee, term_amount) = match action.clone() {
-                    PolySwapAction::PairSwap(a) => (a.fee.unwrap(), a.destination.1.unwrap()),
-                    _ => unreachable!("we know that always PairSwap is used"),
-                };
-
-                Ok(common::prelude::SwapOutcome::new(term_amount, fee))
+            input_asset_id.clone(),
+            output_asset_id.clone(),
+            |tech_acc_id: TechAccountIdOf::<T>| {
+                with_bounded_swap_amounts!(swap_amount, |source_amount, destination_amount| {
+                    let mut action = PolySwapActionStructOf::<T>::PairSwap(PairSwapAction::<
+                        AssetIdOf<T>,
+                        Balance,
+                        AccountIdOf<T>,
+                        TechAccountIdOf<T>,
+                    > {
+                        client_account: None,
+                        receiver_account: None,
+                        pool_account: tech_acc_id,
+                        source: Resource(*input_asset_id, source_amount),
+                        destination: Resource(*output_asset_id, destination_amount),
+                        fee: None,
+                        fee_account: None,
+                    });
+                    common::SwapRulesValidation::<AccountIdOf<T>, TechAccountIdOf<T>, T>::prepare_and_validate(
+                            &mut action,
+                            None,
+                        )?;
+                    // It is garanty that unwrap is always ok.
+                    let (fee, term_amount) = match action.clone() {
+                        PolySwapAction::PairSwap(a) => (a.fee.unwrap(), a.destination.1.unwrap()),
+                        _ => unreachable!("we know that always PairSwap is used"),
+                    };
+                    Ok(common::prelude::SwapOutcome::new(term_amount, fee))
+                })
             }
         )
     }
@@ -1277,42 +1311,43 @@ impl<T: Trait> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Disp
         output_asset_id: &T::AssetId,
         swap_amount: SwapAmount<Balance>,
     ) -> Result<SwapOutcome<Balance>, DispatchError> {
-        pattern02!(
+        with_tech_account!(
             dex_id,
-            input_asset_id,
-            output_asset_id,
-            swap_amount,
-            |source_amount, destination_amount, tech_acc_id: TechAccountIdOf::<T>| {
-                let mut action = PolySwapActionStructOf::<T>::PairSwap(PairSwapAction::<
-                    AssetIdOf<T>,
-                    Balance,
-                    AccountIdOf<T>,
-                    TechAccountIdOf<T>,
-                > {
-                    client_account: None,
-                    receiver_account: Some(receiver.clone()),
-                    pool_account: tech_acc_id,
-                    source: Resource(*input_asset_id, source_amount),
-                    destination: Resource(*output_asset_id, destination_amount),
-                    fee: None,
-                    fee_account: None,
-                });
-
-                common::SwapRulesValidation::<AccountIdOf<T>, TechAccountIdOf<T>, T>::prepare_and_validate(
-                    &mut action,
-                    Some(sender),
-                )?;
-                // It is garanty that unwrap is always ok.
-                let (fee, term_amount) = match action.clone() {
-                    PolySwapAction::PairSwap(a) => (a.fee.unwrap(), a.destination.1.unwrap()),
-                    _ => unreachable!("we know that always PairSwap is used"),
-                };
-
-                let action = T::PolySwapAction::from(action);
-                let mut action = action.into();
-                technical::Module::<T>::perform_create_swap_unchecked(sender.clone(), &mut action)?;
-
-                Ok(common::prelude::SwapOutcome::new(term_amount, fee))
+            input_asset_id.clone(),
+            output_asset_id.clone(),
+            |tech_acc_id: TechAccountIdOf::<T>| {
+                with_bounded_swap_amounts!(swap_amount, |source_amount, destination_amount| {
+                    let mut action = PolySwapActionStructOf::<T>::PairSwap(PairSwapAction::<
+                        AssetIdOf<T>,
+                        Balance,
+                        AccountIdOf<T>,
+                        TechAccountIdOf<T>,
+                    > {
+                        client_account: None,
+                        receiver_account: Some(receiver.clone()),
+                        pool_account: tech_acc_id,
+                        source: Resource(*input_asset_id, source_amount),
+                        destination: Resource(*output_asset_id, destination_amount),
+                        fee: None,
+                        fee_account: None,
+                    });
+                    common::SwapRulesValidation::<AccountIdOf<T>, TechAccountIdOf<T>, T>::prepare_and_validate(
+                            &mut action,
+                            Some(sender),
+                        )?;
+                    // It is garanty that unwrap is always ok.
+                    let (fee, term_amount) = match action.clone() {
+                        PolySwapAction::PairSwap(a) => (a.fee.unwrap(), a.destination.1.unwrap()),
+                        _ => unreachable!("we know that always PairSwap is used"),
+                    };
+                    let action = T::PolySwapAction::from(action);
+                    let mut action = action.into();
+                    technical::Module::<T>::perform_create_swap_unchecked(
+                        sender.clone(),
+                        &mut action,
+                    )?;
+                    Ok(common::prelude::SwapOutcome::new(term_amount, fee))
+                })
             }
         )
     }

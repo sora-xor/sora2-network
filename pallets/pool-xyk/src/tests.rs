@@ -1,15 +1,13 @@
 use crate::mock::*;
 use common::{hash, prelude::SwapAmount, ToFeeAccount, ToTechUnitFromDEXAndTradingPair};
 use frame_support::{assert_noop, assert_ok};
-use permissions::MINT;
+use permissions::{BURN, MINT, TRANSFER};
 
 type TechAssetIdOf<T> = <T as technical::Trait>::TechAssetId;
 
 macro_rules! preset01(
 ($test: expr) => ({
-
     let mut ext = ExtBuilder::default().build();
-
     let dex_id = 220;
     let gt: crate::mock::AssetId = GoldenTicket.into();
     let bp: crate::mock::AssetId = BlackPepper.into();
@@ -27,7 +25,6 @@ macro_rules! preset01(
         technical::Module::<Testtime>::tech_account_id_to_account_id(&tech_acc_id).unwrap();
     let fee_repr: AccountId =
         technical::Module::<Testtime>::tech_account_id_to_account_id(&fee_acc).unwrap();
-
     ext.execute_with(|| {
         assert_ok!(technical::Module::<Testtime>::register_tech_account_id(
             tech_acc_id.clone()
@@ -109,11 +106,8 @@ macro_rules! preset01(
             ),
             0_u32
         );
-
         $test(dex_id, gt, bp, tpair, tech_acc_id.clone(), fee_acc.clone(), repr, fee_repr);
-
     });
-
 }));
 
 #[test]
