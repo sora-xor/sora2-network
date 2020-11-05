@@ -80,9 +80,8 @@ impl<T: Trait> Module<T> {
     /// Perform creation of swap, version without validation
     pub fn perform_create_swap_unchecked(
         source: AccountIdOf<T>,
-        action_a: &T::SwapAction,
+        action: &T::SwapAction,
     ) -> DispatchResult {
-        let mut action = action_a.clone();
         action.reserve(&source)?;
         if action.is_able_to_claim() {
             if action.instant_auto_claim_used() {

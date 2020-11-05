@@ -60,6 +60,8 @@ type DepositLiquidityActionOf<T> = DepositLiquidityAction<
     TechAccountIdOf<T>,
 >;
 
+/// Bounds enum, used for cases than min max limits is used. Also used for cases than values is
+/// Desired by used or Calculated by forumula. Dummy is used to abstract checking.
 #[derive(Clone, Copy, RuntimeDebug, Eq, PartialEq, Encode, Decode)]
 pub enum Bounds<Balance> {
     Calculated(Balance),
@@ -91,7 +93,12 @@ impl<Balance> From<Bounds<Balance>> for Option<Balance> {
 }
 
 #[derive(Clone, RuntimeDebug, Eq, PartialEq, Encode, Decode)]
-pub struct Resource<AssetId, Balance>(AssetId, Bounds<Balance>);
+pub struct Resource<AssetId, Balance> {
+    // This is `AssetId` of `Resource`.
+    pub asset: AssetId,
+    // This is amount of `Resurce`.
+    pub amount: Bounds<Balance>,
+}
 
 #[derive(Clone, RuntimeDebug, Eq, PartialEq, Encode, Decode)]
 pub struct ResourcePair<AssetId, Balance>(Resource<AssetId, Balance>, Resource<AssetId, Balance>);
@@ -114,7 +121,7 @@ pub struct DepositLiquidityAction<AssetId, TechAssetId, Balance, AccountId, Tech
     pool_account: TechAccountId,
     source: ResourcePair<AssetId, Balance>,
     destination: Resource<TechAssetId, Balance>,
-    minliq: Option<Balance>,
+    min_liquidity: Option<Balance>,
 }
 
 #[derive(Clone, RuntimeDebug, Eq, PartialEq, Encode, Decode)]
@@ -160,236 +167,7 @@ impl<T: Trait> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, T
     for PairSwapAction<AssetIdOf<T>, Balance, AccountIdOf<T>, TechAccountIdOf<T>>
 {
     fn is_abstract_checking(&self) -> bool {
-        self.source.1 == Bounds::Dummy || self.destination.1 == Bounds::Dummy
-    }
-
-    fn prepare_and_validate(&mut self, source_opt: Option<&AccountIdOf<T>>) -> DispatchResult {
-        let abstract_checking = source_opt.is_none() || common::SwapRulesValidation::<AccountIdOf<T>, TechAccountIdOf<T>, T>::is_abstract_checking(self);
-
-        // Check that client account is same as source, because signature is checked for source.
-        // Signature checking is used in extrinsics for example, and source is derived from origin.
-        // TODO: In general case it is possible to use different client account, for example if
-        // signature of source is legal for some source accounts.
-        if !abstract_checking {
-            let source = source_opt.unwrap();
-            match &self.client_account {
-                // Just use `client_account` as copy of source.
-                None => {
-                    self.client_account = Some(source.clone());
-                }
-                Some(ca) => {
-                    if ca != source {
-                        Err(Error::<T>::SourceAndClientAccountDoNotMatchAsEqual)?;
-                    }
-                }
-            }
-
-            // Dealing with receiver account, for example case then not swapping to self, but to
-            // other account.
-            match &self.receiver_account {
-                // Just use `client_account` as same account, swapping to self.
-                None => {
-                    self.receiver_account = self.client_account.clone();
-                }
-                _ => (),
-            }
-        }
-
-        let pool_account_repr_sys =
-            technical::Module::<T>::tech_account_id_to_account_id(&self.pool_account)?;
-        // Check that pool account is valid.
-        Module::<T>::is_pool_account_valid_for(self.source.0.clone(), self.pool_account.clone())?;
-
-        // Source balance of source account.
-        let balance_ss = if abstract_checking {
-            None
-        } else {
-            Some(<assets::Module<T>>::free_balance(
-                &(self.source.0),
-                &source_opt.unwrap(),
-            )?)
-        };
-        // Source balance of technical account.
-        let balance_st = <assets::Module<T>>::free_balance(&self.source.0, &pool_account_repr_sys)?;
-        // Destination balance of technical account.
-        let balance_tt =
-            <assets::Module<T>>::free_balance(&self.destination.0, &pool_account_repr_sys)?;
-        if !abstract_checking {
-            ensure!(
-                balance_ss.unwrap() > 0_u32.into(),
-                Error::<T>::AccountBalanceIsInvalid
-            );
-        }
-        if balance_st == 0_u32.into() && balance_tt == 0_u32.into() {
-            Err(Error::<T>::PoolIsEmpty)?;
-        } else if balance_st <= 0_u32.into() || balance_tt <= 0_u32.into() {
-            Err(Error::<T>::PoolIsInvalid)?;
-        }
-
-        if !abstract_checking {
-            // Calculate pair ratio of pool, and check or correct amount of pair swap action.
-            // Here source technical is divided by destination technical.
-            let ratio_a = balance_st / balance_tt;
-
-            match (self.source.1, self.destination.1) {
-                // Case then both source and destination amounts is specified, just checking it.
-                (Bounds::Desired(sa), Bounds::Desired(ta)) => {
-                    ensure!(sa > 0_u32.into(), Error::<T>::ZeroValueInAmountParameter);
-                    ensure!(ta > 0_u32.into(), Error::<T>::ZeroValueInAmountParameter);
-                    let ratio_b = sa / ta;
-                    if ratio_a != ratio_b {
-                        Err(Error::<T>::PoolPairRatioAndPairSwapRatioIsDifferent)?;
-                    }
-                }
-                // Case then source amount is specified but destination is not, it`s possible to decide it.
-                (Bounds::Desired(sa), ta_bnd) => {
-                    ensure!(sa > 0_u32.into(), Error::<T>::ZeroValueInAmountParameter);
-                    let candidate = sa / ratio_a;
-                    match ta_bnd {
-                        Bounds::Min(ta_min) => {
-                            ensure!(
-                                candidate >= ta_min,
-                                Error::<T>::CalculatedValueIsOutOfDesiredBounds
-                            );
-                        }
-                        _ => (),
-                    }
-                    self.destination.1 = Bounds::Calculated(candidate);
-                }
-                // Case then destination amount is specified but source is not, it`s possible to decide it.
-                (sa_bnd, Bounds::Desired(ta)) => {
-                    ensure!(ta > 0_u32.into(), Error::<T>::ZeroValueInAmountParameter);
-                    let candidate = ta * ratio_a;
-                    match sa_bnd {
-                        Bounds::Max(sa_max) => {
-                            ensure!(
-                                candidate <= sa_max,
-                                Error::<T>::CalculatedValueIsOutOfDesiredBounds
-                            );
-                        }
-                        _ => (),
-                    }
-                    self.source.1 = Bounds::Calculated(candidate);
-                }
-                // Case then no amount is specified, imposible to decide any amounts.
-                (_, _) => {
-                    Err(Error::<T>::ImposibleToDecideAssetPairAmounts)?;
-                }
-            }
-        }
-
-        // Check fee account if it is specified, or set it if not.
-        match self.fee_account.clone() {
-            Some(fa) => {
-                // Checking that fee account is valid for this set of parameters.
-                Module::<T>::is_fee_account_valid_for(
-                    self.source.0.clone(),
-                    self.pool_account.clone(),
-                    fa,
-                )?;
-            }
-            None => {
-                let fa = Module::<T>::get_fee_account(self.pool_account.clone())?;
-                self.fee_account = Some(fa);
-            }
-        }
-        // Recommended fee, will be used if fee is not specified or for checking if specified.
-        let recom_fee = Module::<T>::get_fee_for(self.source.0.clone(), self.pool_account.clone());
-        // Set recommended or check that fee is correct.
-        match self.fee {
-            // Just set it here if it not specified, this is usual case.
-            None => {
-                self.fee = Some(recom_fee);
-            }
-            // Case with source user fee is set, checking that it is not smaller.
-            Some(fee) => {
-                if fee < recom_fee {
-                    Err(Error::<T>::PairSwapActionFeeIsSmallerThanRecommended)?
-                }
-            }
-        }
-        if !abstract_checking {
-            // Get required values, now it is always Some, it is safe to unwrap().
-            let fee = self.fee.unwrap();
-            let source_amount = self.source.1.unwrap();
-            let destination_amount = self.destination.1.unwrap();
-            // Checking that balances if correct and large enouth for amounts.
-            // For source account balance must be not smaller than required with fee.
-            if balance_ss.unwrap() - fee < source_amount {
-                Err(Error::<T>::SourceBalanceIsNotLargeEnouth)?;
-            }
-            // For destination account balance must successful large for this swap.
-            if balance_tt < destination_amount {
-                Err(Error::<T>::TargetBalanceIsNotLargeEnouth)?;
-            }
-        }
-        Ok(())
-    }
-    fn instant_auto_claim_used(&self) -> bool {
-        true
-    }
-    fn triggered_auto_claim_used(&self) -> bool {
-        false
-    }
-    fn is_able_to_claim(&self) -> bool {
-        true
-    }
-}
-
-impl<T: Trait> common::SwapAction<AccountIdOf<T>, TechAccountIdOf<T>, T>
-    for PairSwapAction<AssetIdOf<T>, Balance, AccountIdOf<T>, TechAccountIdOf<T>>
-{
-    /// This function is called after validation, and every `Option` is `Some`, and it is safe to do
-    /// unwrap. `Bounds` is also safe to unwrap.
-    fn reserve(&self, source: &AccountIdOf<T>) -> dispatch::DispatchResult {
-        ensure!(
-            Some(source.clone()) == self.client_account,
-            Error::<T>::SourceAndClientAccountDoNotMatchAsEqual
-        );
-        technical::Module::<T>::transfer_in(
-            &self.source.0,
-            &source,
-            &self.pool_account,
-            self.source.1.unwrap(),
-        )?;
-        technical::Module::<T>::transfer_in(
-            &self.source.0,
-            &source,
-            &self.fee_account.clone().unwrap(),
-            self.fee.unwrap(),
-        )?;
-        technical::Module::<T>::transfer_out(
-            &self.destination.0,
-            &self.pool_account,
-            &self.receiver_account.clone().unwrap(),
-            self.destination.1.unwrap(),
-        )?;
-        Ok(())
-    }
-    fn claim(&self, _source: &AccountIdOf<T>) -> bool {
-        true
-    }
-    fn weight(&self) -> Weight {
-        unimplemented!()
-    }
-    fn cancel(&self, _source: &AccountIdOf<T>) {
-        unimplemented!()
-    }
-}
-
-impl<T: Trait> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, T>
-    for DepositLiquidityAction<
-        AssetIdOf<T>,
-        TechAssetIdOf<T>,
-        Balance,
-        AccountIdOf<T>,
-        TechAccountIdOf<T>,
-    >
-{
-    fn is_abstract_checking(&self) -> bool {
-        (self.source.0).1 == Bounds::Dummy
-            || (self.source.1).1 == Bounds::Dummy
-            || self.destination.1 == Bounds::Dummy
+        self.source.amount == Bounds::Dummy || self.destination.amount == Bounds::Dummy
     }
 
     fn prepare_and_validate(&mut self, source_opt: Option<&AccountIdOf<T>>) -> DispatchResult {
@@ -428,7 +206,241 @@ impl<T: Trait> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, T
             technical::Module::<T>::tech_account_id_to_account_id(&self.pool_account)?;
         // Check that pool account is valid.
         Module::<T>::is_pool_account_valid_for(
-            (self.source.0).0.clone(),
+            self.source.asset.clone(),
+            self.pool_account.clone(),
+        )?;
+
+        // Source balance of source account.
+        let balance_ss = if abstract_checking {
+            None
+        } else {
+            Some(<assets::Module<T>>::free_balance(
+                &(self.source.asset),
+                &source_opt.unwrap(),
+            )?)
+        };
+        // Source balance of technical account.
+        let balance_st =
+            <assets::Module<T>>::free_balance(&self.source.asset, &pool_account_repr_sys)?;
+        // Destination balance of technical account.
+        let balance_tt =
+            <assets::Module<T>>::free_balance(&self.destination.asset, &pool_account_repr_sys)?;
+        if !abstract_checking {
+            ensure!(
+                balance_ss.unwrap() > 0_u32.into(),
+                Error::<T>::AccountBalanceIsInvalid
+            );
+        }
+        if balance_st == 0_u32.into() && balance_tt == 0_u32.into() {
+            Err(Error::<T>::PoolIsEmpty)?;
+        } else if balance_st <= 0_u32.into() || balance_tt <= 0_u32.into() {
+            Err(Error::<T>::PoolIsInvalid)?;
+        }
+
+        if !abstract_checking {
+            // Calculate pair ratio of pool, and check or correct amount of pair swap action.
+            // Here source technical is divided by destination technical.
+            let ratio_a = balance_st / balance_tt;
+
+            match (self.source.amount, self.destination.amount) {
+                // Case then both source and destination amounts is specified, just checking it.
+                (Bounds::Desired(sa), Bounds::Desired(ta)) => {
+                    ensure!(sa > 0_u32.into(), Error::<T>::ZeroValueInAmountParameter);
+                    ensure!(ta > 0_u32.into(), Error::<T>::ZeroValueInAmountParameter);
+                    let ratio_b = sa / ta;
+                    if ratio_a != ratio_b {
+                        Err(Error::<T>::PoolPairRatioAndPairSwapRatioIsDifferent)?;
+                    }
+                }
+                // Case then source amount is specified but destination is not, it`s possible to decide it.
+                (Bounds::Desired(sa), ta_bnd) => {
+                    ensure!(sa > 0_u32.into(), Error::<T>::ZeroValueInAmountParameter);
+                    let candidate = sa / ratio_a;
+                    match ta_bnd {
+                        Bounds::Min(ta_min) => {
+                            ensure!(
+                                candidate >= ta_min,
+                                Error::<T>::CalculatedValueIsOutOfDesiredBounds
+                            );
+                        }
+                        _ => (),
+                    }
+                    self.destination.amount = Bounds::Calculated(candidate);
+                }
+                // Case then destination amount is specified but source is not, it`s possible to decide it.
+                (sa_bnd, Bounds::Desired(ta)) => {
+                    ensure!(ta > 0_u32.into(), Error::<T>::ZeroValueInAmountParameter);
+                    let candidate = ta * ratio_a;
+                    match sa_bnd {
+                        Bounds::Max(sa_max) => {
+                            ensure!(
+                                candidate <= sa_max,
+                                Error::<T>::CalculatedValueIsOutOfDesiredBounds
+                            );
+                        }
+                        _ => (),
+                    }
+                    self.source.amount = Bounds::Calculated(candidate);
+                }
+                // Case then no amount is specified, imposible to decide any amounts.
+                (_, _) => {
+                    Err(Error::<T>::ImposibleToDecideAssetPairAmounts)?;
+                }
+            }
+        }
+
+        // Check fee account if it is specified, or set it if not.
+        match self.fee_account.clone() {
+            Some(fa) => {
+                // Checking that fee account is valid for this set of parameters.
+                Module::<T>::is_fee_account_valid_for(
+                    self.source.asset.clone(),
+                    self.pool_account.clone(),
+                    fa,
+                )?;
+            }
+            None => {
+                let fa = Module::<T>::get_fee_account(self.pool_account.clone())?;
+                self.fee_account = Some(fa);
+            }
+        }
+        // Recommended fee, will be used if fee is not specified or for checking if specified.
+        let recom_fee =
+            Module::<T>::get_fee_for(self.source.asset.clone(), self.pool_account.clone());
+        // Set recommended or check that fee is correct.
+        match self.fee {
+            // Just set it here if it not specified, this is usual case.
+            None => {
+                self.fee = Some(recom_fee);
+            }
+            // Case with source user fee is set, checking that it is not smaller.
+            Some(fee) => {
+                if fee < recom_fee {
+                    Err(Error::<T>::PairSwapActionFeeIsSmallerThanRecommended)?
+                }
+            }
+        }
+        if !abstract_checking {
+            // Get required values, now it is always Some, it is safe to unwrap().
+            let fee = self.fee.unwrap();
+            let source_amount = self.source.amount.unwrap();
+            let destination_amount = self.destination.amount.unwrap();
+            // Checking that balances if correct and large enouth for amounts.
+            // For source account balance must be not smaller than required with fee.
+            if balance_ss.unwrap() - fee < source_amount {
+                Err(Error::<T>::SourceBalanceIsNotLargeEnouth)?;
+            }
+            // For destination account balance must successful large for this swap.
+            if balance_tt < destination_amount {
+                Err(Error::<T>::TargetBalanceIsNotLargeEnouth)?;
+            }
+        }
+        Ok(())
+    }
+    fn instant_auto_claim_used(&self) -> bool {
+        true
+    }
+    fn triggered_auto_claim_used(&self) -> bool {
+        false
+    }
+    fn is_able_to_claim(&self) -> bool {
+        true
+    }
+}
+
+impl<T: Trait> common::SwapAction<AccountIdOf<T>, TechAccountIdOf<T>, T>
+    for PairSwapAction<AssetIdOf<T>, Balance, AccountIdOf<T>, TechAccountIdOf<T>>
+{
+    /// This function is called after validation, and every `Option` is `Some`, and it is safe to do
+    /// unwrap. `Bounds` is also safe to unwrap.
+    fn reserve(&self, source: &AccountIdOf<T>) -> dispatch::DispatchResult {
+        ensure!(
+            Some(source.clone()) == self.client_account,
+            Error::<T>::SourceAndClientAccountDoNotMatchAsEqual
+        );
+        technical::Module::<T>::transfer_in(
+            &self.source.asset,
+            &source,
+            &self.pool_account,
+            self.source.amount.unwrap(),
+        )?;
+        technical::Module::<T>::transfer_in(
+            &self.source.asset,
+            &source,
+            &self.fee_account.clone().unwrap(),
+            self.fee.unwrap(),
+        )?;
+        technical::Module::<T>::transfer_out(
+            &self.destination.asset,
+            &self.pool_account,
+            &self.receiver_account.clone().unwrap(),
+            self.destination.amount.unwrap(),
+        )?;
+        Ok(())
+    }
+    fn claim(&self, _source: &AccountIdOf<T>) -> bool {
+        true
+    }
+    fn weight(&self) -> Weight {
+        unimplemented!()
+    }
+    fn cancel(&self, _source: &AccountIdOf<T>) {
+        unimplemented!()
+    }
+}
+
+impl<T: Trait> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, T>
+    for DepositLiquidityAction<
+        AssetIdOf<T>,
+        TechAssetIdOf<T>,
+        Balance,
+        AccountIdOf<T>,
+        TechAccountIdOf<T>,
+    >
+{
+    fn is_abstract_checking(&self) -> bool {
+        (self.source.0).amount == Bounds::Dummy
+            || (self.source.1).amount == Bounds::Dummy
+            || self.destination.amount == Bounds::Dummy
+    }
+
+    fn prepare_and_validate(&mut self, source_opt: Option<&AccountIdOf<T>>) -> DispatchResult {
+        let abstract_checking = source_opt.is_none() || common::SwapRulesValidation::<AccountIdOf<T>, TechAccountIdOf<T>, T>::is_abstract_checking(self);
+
+        // Check that client account is same as source, because signature is checked for source.
+        // Signature checking is used in extrinsics for example, and source is derived from origin.
+        // TODO: In general case it is possible to use different client account, for example if
+        // signature of source is legal for some source accounts.
+        if !abstract_checking {
+            let source = source_opt.unwrap();
+            match &self.client_account {
+                // Just use `client_account` as copy of source.
+                None => {
+                    self.client_account = Some(source.clone());
+                }
+                Some(ca) => {
+                    if ca != source {
+                        Err(Error::<T>::SourceAndClientAccountDoNotMatchAsEqual)?;
+                    }
+                }
+            }
+
+            // Dealing with receiver account, for example case then not swapping to self, but to
+            // other account.
+            match &self.receiver_account {
+                // Just use `client_account` as same account, swapping to self.
+                None => {
+                    self.receiver_account = self.client_account.clone();
+                }
+                _ => (),
+            }
+        }
+
+        let pool_account_repr_sys =
+            technical::Module::<T>::tech_account_id_to_account_id(&self.pool_account)?;
+        // Check that pool account is valid.
+        Module::<T>::is_pool_account_valid_for(
+            (self.source.0).asset.clone(),
             self.pool_account.clone(),
         )?;
 
@@ -439,11 +451,11 @@ impl<T: Trait> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, T
             let source = source_opt.unwrap();
             (
                 Some(<assets::Module<T>>::free_balance(
-                    &(self.source.0).0,
+                    &(self.source.0).asset,
                     &source,
                 )?),
                 Some(<assets::Module<T>>::free_balance(
-                    &(self.source.1).0,
+                    &(self.source.1).asset,
                     &source,
                 )?),
             )
@@ -457,12 +469,12 @@ impl<T: Trait> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, T
 
         // Balance of pool account for asset pair basic asset.
         let balance_bp = <assets::Module<T>>::free_balance(
-            &((self.source.0).0.clone()),
+            &((self.source.0).asset.clone()),
             &pool_account_repr_sys,
         )?;
         // Balance of pool account for asset pair target asset.
         let balance_tp = <assets::Module<T>>::free_balance(
-            &((self.source.1).0.clone()),
+            &((self.source.1).asset.clone()),
             &pool_account_repr_sys,
         )?;
 
@@ -478,9 +490,11 @@ impl<T: Trait> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, T
         let mut init_x = 0_u32.into();
         let mut init_y = 0_u32.into();
         if !abstract_checking && empty_pool {
-            init_x = Option::<Balance>::from((self.source.0).1)
+            // Convertation from `Bounds` to `Option` is used here, and it is posible that value
+            // None value returned from conversion.
+            init_x = Option::<Balance>::from((self.source.0).amount)
                 .ok_or(Error::<T>::InitialLiqudityDepositRatioMustBeDefined)?;
-            init_y = Option::<Balance>::from((self.source.1).1)
+            init_y = Option::<Balance>::from((self.source.1).amount)
                 .ok_or(Error::<T>::InitialLiqudityDepositRatioMustBeDefined)?;
         }
         // Calculate pair ratio of pool.
@@ -511,7 +525,7 @@ impl<T: Trait> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, T
         };
         if !abstract_checking {
             if empty_pool {
-                match self.destination.1 {
+                match self.destination.amount {
                     Bounds::Desired(k) => {
                         ensure!(
                             k == pool_k.unwrap(),
@@ -519,11 +533,15 @@ impl<T: Trait> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, T
                         );
                     }
                     _ => {
-                        self.destination.1 = Bounds::Calculated(pool_k.unwrap());
+                        self.destination.amount = Bounds::Calculated(pool_k.unwrap());
                     }
                 }
             } else {
-                match ((self.source.0).1, (self.source.1).1, self.destination.1) {
+                match (
+                    (self.source.0).amount,
+                    (self.source.1).amount,
+                    self.destination.amount,
+                ) {
                     (ox, oy, Bounds::Desired(destination_k)) => {
                         ensure!(
                             destination_k > 0_u32.into(),
@@ -539,7 +557,8 @@ impl<T: Trait> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, T
                                 }
                             }
                             _ => {
-                                (self.source.0).1 = Bounds::Calculated(balance_bp / peace_to_add);
+                                (self.source.0).amount =
+                                    Bounds::Calculated(balance_bp / peace_to_add);
                             }
                         }
                         match oy {
@@ -549,7 +568,8 @@ impl<T: Trait> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, T
                                 }
                             }
                             _ => {
-                                (self.source.1).1 = Bounds::Calculated(balance_tp / peace_to_add);
+                                (self.source.1).amount =
+                                    Bounds::Calculated(balance_tp / peace_to_add);
                             }
                         }
                     }
@@ -563,17 +583,19 @@ impl<T: Trait> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, T
         }
 
         // Recommended minimum liquidity, will be used if not specified or for checking if specified.
-        let recom_minliq =
-            Module::<T>::get_minliq_for((self.source.0).0.clone(), self.pool_account.clone());
-        // Set recommended or check that `minliq` is correct.
-        match self.minliq {
+        let recom_min_liquidity = Module::<T>::get_min_liquidity_for(
+            (self.source.0).asset.clone(),
+            self.pool_account.clone(),
+        );
+        // Set recommended or check that `min_liquidity` is correct.
+        match self.min_liquidity {
             // Just set it here if it not specified, this is usual case.
             None => {
-                self.minliq = Some(recom_minliq);
+                self.min_liquidity = Some(recom_min_liquidity);
             }
-            // Case with source user `minliq` is set, checking that it is not smaller.
-            Some(minliq) => {
-                if minliq < recom_minliq {
+            // Case with source user `min_liquidity` is set, checking that it is not smaller.
+            Some(min_liquidity) => {
+                if min_liquidity < recom_min_liquidity {
                     Err(Error::<T>::PairSwapActionMinimumLiquidityIsSmallerThanRecommended)?
                 }
             }
@@ -582,12 +604,14 @@ impl<T: Trait> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, T
         //TODO: for abstract_checking, check that is enouth liquidity in pool.
         if !abstract_checking {
             // Get required values, now it is always Some, it is safe to unwrap().
-            let minliq = self.minliq.unwrap();
-            let base_amount = (self.source.1).1.unwrap();
-            let target_amount = (self.source.0).1.unwrap();
-            let destination_amount = self.destination.1.unwrap();
+            let min_liquidity = self.min_liquidity.unwrap();
+            let base_amount = (self.source.1).amount.unwrap();
+            let target_amount = (self.source.0).amount.unwrap();
+            let destination_amount = self.destination.amount.unwrap();
             // Checking by minimum liquidity.
-            if minliq > pool_k.unwrap() && destination_amount < minliq - pool_k.unwrap() {
+            if min_liquidity > pool_k.unwrap()
+                && destination_amount < min_liquidity - pool_k.unwrap()
+            {
                 Err(Error::<T>::DestinationAmountOfLiquidityIsNotLargeEnouth)?;
             }
             // Checking that balances if correct and large enough for amounts.
@@ -626,26 +650,26 @@ impl<T: Trait> common::SwapAction<AccountIdOf<T>, TechAccountIdOf<T>, T>
             Some(source.clone()) == self.client_account,
             Error::<T>::SourceAndClientAccountDoNotMatchAsEqual
         );
-        let asset_repr = Into::<AssetIdOf<T>>::into(self.destination.0.clone());
+        let asset_repr = Into::<AssetIdOf<T>>::into(self.destination.asset.clone());
         let pool_account_repr_sys =
             technical::Module::<T>::tech_account_id_to_account_id(&self.pool_account)?;
         technical::Module::<T>::transfer_in(
-            &(self.source.0).0,
+            &(self.source.0).asset,
             &source,
             &self.pool_account,
-            (self.source.0).1.unwrap(),
+            (self.source.0).amount.unwrap(),
         )?;
         technical::Module::<T>::transfer_in(
-            &(self.source.1).0,
+            &(self.source.1).asset,
             &source,
             &self.pool_account,
-            (self.source.1).1.unwrap(),
+            (self.source.1).amount.unwrap(),
         )?;
         assets::Module::<T>::mint(
             &asset_repr,
             &pool_account_repr_sys,
             &self.receiver_account.clone().unwrap(),
-            self.destination.1.unwrap(),
+            self.destination.amount.unwrap(),
         )?;
         Ok(())
     }
@@ -670,9 +694,9 @@ impl<T: Trait> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, T
     >
 {
     fn is_abstract_checking(&self) -> bool {
-        (self.destination.0).1 == Bounds::Dummy
-            || (self.destination.1).1 == Bounds::Dummy
-            || self.source.1 == Bounds::Dummy
+        (self.destination.0).amount == Bounds::Dummy
+            || (self.destination.1).amount == Bounds::Dummy
+            || self.source.amount == Bounds::Dummy
     }
 
     fn prepare_and_validate(&mut self, source_opt: Option<&AccountIdOf<T>>) -> DispatchResult {
@@ -714,17 +738,17 @@ impl<T: Trait> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, T
             technical::Module::<T>::tech_account_id_to_account_id(&self.pool_account)?;
         // Check that pool account is valid.
         Module::<T>::is_pool_account_valid_for(
-            (self.destination.0).0.clone(),
+            (self.destination.0).asset.clone(),
             self.pool_account.clone(),
         )?;
 
         let mark_asset = Module::<T>::get_marking_asset(self.pool_account.clone())?;
         ensure!(
-            self.source.0 == mark_asset,
+            self.source.asset == mark_asset,
             Error::<T>::InvalidAssetForLiquidityMarking
         );
 
-        let repr_k_asset_id = self.source.0.clone().into();
+        let repr_k_asset_id = self.source.asset.clone().into();
 
         // Balance of source account for k value.
         let balance_ks = <assets::Module<T>>::free_balance(&repr_k_asset_id, &source)?;
@@ -734,10 +758,10 @@ impl<T: Trait> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, T
 
         // Balance of pool account for asset pair basic asset.
         let balance_bp =
-            <assets::Module<T>>::free_balance(&(self.destination.0).0, &pool_account_repr_sys)?;
+            <assets::Module<T>>::free_balance(&(self.destination.0).asset, &pool_account_repr_sys)?;
         // Balance of pool account for asset pair target asset.
         let balance_tp =
-            <assets::Module<T>>::free_balance(&(self.destination.1).0, &pool_account_repr_sys)?;
+            <assets::Module<T>>::free_balance(&(self.destination.1).asset, &pool_account_repr_sys)?;
 
         if balance_bp == 0_u32.into() && balance_tp == 0_u32.into() {
             Err(Error::<T>::PoolIsEmpty)?;
@@ -756,9 +780,9 @@ impl<T: Trait> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, T
         let pool_k = balance_bp * balance_tp;
 
         match (
-            self.source.1,
-            (self.destination.0).1,
-            (self.destination.1).1,
+            self.source.amount,
+            (self.destination.0).amount,
+            (self.destination.1).amount,
         ) {
             (Bounds::Desired(source_k), ox, oy) => {
                 ensure!(
@@ -777,7 +801,7 @@ impl<T: Trait> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, T
                     }
 
                     _ => {
-                        (self.destination.0).1 = Bounds::Calculated(recom_x);
+                        (self.destination.0).amount = Bounds::Calculated(recom_x);
                     }
                 }
 
@@ -789,7 +813,7 @@ impl<T: Trait> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, T
                     }
 
                     _ => {
-                        (self.destination.1).1 = Bounds::Calculated(recom_y);
+                        (self.destination.1).amount = Bounds::Calculated(recom_y);
                     }
                 }
             }
@@ -800,9 +824,9 @@ impl<T: Trait> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, T
         }
 
         // Get required values, now it is always Some, it is safe to unwrap().
-        let base_amount = (self.destination.1).1.unwrap();
-        let target_amount = (self.destination.0).1.unwrap();
-        let source_amount = self.source.1.unwrap();
+        let base_amount = (self.destination.1).amount.unwrap();
+        let target_amount = (self.destination.0).amount.unwrap();
+        let source_amount = self.source.amount.unwrap();
 
         if source_amount > pool_k {
             Err(Error::<T>::SourceBaseAmountIsTooLarge)?;
@@ -846,26 +870,26 @@ impl<T: Trait> common::SwapAction<AccountIdOf<T>, TechAccountIdOf<T>, T>
             Some(source.clone()) == self.client_account,
             Error::<T>::SourceAndClientAccountDoNotMatchAsEqual
         );
-        let asset_repr = Into::<AssetIdOf<T>>::into(self.source.0.clone());
+        let asset_repr = Into::<AssetIdOf<T>>::into(self.source.asset.clone());
         let pool_account_repr_sys =
             technical::Module::<T>::tech_account_id_to_account_id(&self.pool_account)?;
         technical::Module::<T>::transfer_out(
-            &(self.destination.0).0,
+            &(self.destination.0).asset,
             &self.pool_account,
             &self.receiver_account_a.clone().unwrap(),
-            (self.destination.0).1.unwrap(),
+            (self.destination.0).amount.unwrap(),
         )?;
         technical::Module::<T>::transfer_out(
-            &(self.destination.1).0,
+            &(self.destination.1).asset,
             &self.pool_account,
             &self.receiver_account_b.clone().unwrap(),
-            (self.destination.1).1.unwrap(),
+            (self.destination.1).amount.unwrap(),
         )?;
         assets::Module::<T>::burn(
             &asset_repr,
             &pool_account_repr_sys,
             &source,
-            self.source.1.unwrap(),
+            self.source.amount.unwrap(),
         )?;
         Ok(())
     }
@@ -973,18 +997,19 @@ impl<T: Trait> Module<T> {
     pub fn get_marking_asset_repr(
         tech_acc: TechAccountIdOf<T>,
     ) -> Result<AssetIdOf<T>, DispatchError> {
-        let a = common::ToMarkerAsset::<TechAssetIdOf<T>>::to_marker_asset(&tech_acc)
-            .ok_or(Error::<T>::UnableToDecideMarkerAsset)?;
-        let b = Into::<AssetIdOf<T>>::into(a);
-        Ok(b)
+        Ok(Into::<AssetIdOf<T>>::into(
+            common::ToMarkerAsset::<TechAssetIdOf<T>>::to_marker_asset(&tech_acc)
+                .ok_or(Error::<T>::UnableToDecideMarkerAsset)?,
+        ))
     }
 
     pub fn get_marking_asset(
         tech_acc: TechAccountIdOf<T>,
     ) -> Result<TechAssetIdOf<T>, DispatchError> {
-        let a = common::ToMarkerAsset::<TechAssetIdOf<T>>::to_marker_asset(&tech_acc)
-            .ok_or(Error::<T>::UnableToDecideMarkerAsset)?;
-        Ok(a)
+        Ok(
+            common::ToMarkerAsset::<TechAssetIdOf<T>>::to_marker_asset(&tech_acc)
+                .ok_or(Error::<T>::UnableToDecideMarkerAsset)?,
+        )
     }
 }
 
@@ -992,8 +1017,8 @@ impl<T: Trait> Module<T> {
     /// Using try into to get Result with some error, after this convert Result into Option,
     /// after this AssetDecodingError is used if None.
     pub fn try_decode_asset(asset: AssetIdOf<T>) -> Result<TechAssetIdOf<T>, DispatchError> {
-        Ok(TryInto::<TechAssetIdOf<T>>::try_into(asset)
-            .map_err(|_| Error::<T>::AssetDecodingError)?)
+        TryInto::<TechAssetIdOf<T>>::try_into(asset)
+            .map_err(|_| Error::<T>::AssetDecodingError.into())
     }
 
     pub fn get_fee_for(_asset_id: AssetIdOf<T>, _tech_acc: TechAccountIdOf<T>) -> Balance {
@@ -1001,7 +1026,10 @@ impl<T: Trait> Module<T> {
         30_u32.into()
     }
 
-    pub fn get_minliq_for(_asset_id: AssetIdOf<T>, _tech_acc: TechAccountIdOf<T>) -> Balance {
+    pub fn get_min_liquidity_for(
+        _asset_id: AssetIdOf<T>,
+        _tech_acc: TechAccountIdOf<T>,
+    ) -> Balance {
         //TODO: get this value from DEXInfo.
         55440_u32.into()
     }
@@ -1104,13 +1132,13 @@ impl<T: Trait> Module<T> {
         let base_asset_id = dexinfo.base_asset_id;
         ensure!(asset_a != asset_b, Error::<T>::AssetsMustNotBeSame);
         let ba = Module::<T>::try_decode_asset(base_asset_id.clone())?;
-        let ta = (if base_asset_id == asset_a {
+        let ta = if base_asset_id == asset_a {
             Module::<T>::try_decode_asset(asset_b.clone())?
         } else if base_asset_id == asset_b {
             Module::<T>::try_decode_asset(asset_a.clone())?
         } else {
             Err(Error::<T>::BaseAssetIsNotMatchedWithAnyAssetArguments)?
-        });
+        };
         let tpair = common::TradingPair::<TechAssetIdOf<T>> {
             base_asset_id: ba,
             target_asset_id: ta,
@@ -1202,11 +1230,20 @@ impl<T: Trait> Module<T> {
             receiver_account: Some(receiver),
             pool_account: tech_acc_id,
             source: ResourcePair(
-                Resource(input_asset_a, source_amount_a),
-                Resource(input_asset_b, source_amount_b),
+                Resource {
+                    asset: input_asset_a,
+                    amount: source_amount_a,
+                },
+                Resource {
+                    asset: input_asset_b,
+                    amount: source_amount_b,
+                },
             ),
-            destination: Resource(mark_asset, destination_amount_a),
-            minliq: None,
+            destination: Resource {
+                asset: mark_asset,
+                amount: destination_amount_a,
+            },
+            min_liquidity: None,
         });
         let action = T::PolySwapAction::from(action);
         let mut action = action.into();
@@ -1248,10 +1285,19 @@ impl<T: Trait> Module<T> {
                 receiver_account_a: Some(receiver_a),
                 receiver_account_b: Some(receiver_b),
                 pool_account: tech_acc_id,
-                source: Resource(mark_asset, source_amount_a),
+                source: Resource {
+                    asset: mark_asset,
+                    amount: source_amount_a,
+                },
                 destination: ResourcePair(
-                    Resource(output_asset_a, destination_amount_a),
-                    Resource(output_asset_b, destination_amount_b),
+                    Resource {
+                        asset: output_asset_a,
+                        amount: destination_amount_a,
+                    },
+                    Resource {
+                        asset: output_asset_b,
+                        amount: destination_amount_b,
+                    },
                 ),
             });
         let action = T::PolySwapAction::from(action);
@@ -1322,8 +1368,14 @@ impl<T: Trait> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Disp
                 client_account: None,
                 receiver_account: None,
                 pool_account: tech_acc_id,
-                source: Resource(*input_asset_id, Bounds::Dummy),
-                destination: Resource(*output_asset_id, Bounds::Dummy),
+                source: Resource {
+                    asset: *input_asset_id,
+                    amount: Bounds::Dummy,
+                },
+                destination: Resource {
+                    asset: *output_asset_id,
+                    amount: Bounds::Dummy,
+                },
                 fee: None,
                 fee_account: None,
             });
@@ -1350,8 +1402,14 @@ impl<T: Trait> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Disp
             client_account: None,
             receiver_account: None,
             pool_account: tech_acc_id,
-            source: Resource(*input_asset_id, source_amount),
-            destination: Resource(*output_asset_id, destination_amount),
+            source: Resource {
+                asset: *input_asset_id,
+                amount: source_amount,
+            },
+            destination: Resource {
+                asset: *output_asset_id,
+                amount: destination_amount,
+            },
             fee: None,
             fee_account: None,
         });
@@ -1361,7 +1419,7 @@ impl<T: Trait> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Disp
         )?;
         // It is garanty that unwrap is always ok.
         let (fee, term_amount) = match action.clone() {
-            PolySwapAction::PairSwap(a) => (a.fee.unwrap(), a.destination.1.unwrap()),
+            PolySwapAction::PairSwap(a) => (a.fee.unwrap(), a.destination.amount.unwrap()),
             _ => unreachable!("we know that always PairSwap is used"),
         };
         Ok(common::prelude::SwapOutcome::new(term_amount, fee))
@@ -1386,8 +1444,14 @@ impl<T: Trait> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Disp
             client_account: None,
             receiver_account: Some(receiver.clone()),
             pool_account: tech_acc_id,
-            source: Resource(*input_asset_id, source_amount),
-            destination: Resource(*output_asset_id, destination_amount),
+            source: Resource {
+                asset: *input_asset_id,
+                amount: source_amount,
+            },
+            destination: Resource {
+                asset: *output_asset_id,
+                amount: destination_amount,
+            },
             fee: None,
             fee_account: None,
         });
@@ -1397,7 +1461,7 @@ impl<T: Trait> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Disp
         )?;
         // It is garanty that unwrap is always ok.
         let (fee, term_amount) = match action.clone() {
-            PolySwapAction::PairSwap(a) => (a.fee.unwrap(), a.destination.1.unwrap()),
+            PolySwapAction::PairSwap(a) => (a.fee.unwrap(), a.destination.amount.unwrap()),
             _ => unreachable!("we know that always PairSwap is used"),
         };
         let action = T::PolySwapAction::from(action);
