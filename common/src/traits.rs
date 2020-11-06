@@ -208,8 +208,12 @@ impl<SourceAccountId, TargetAccountId, T: Trait> SwapAction<SourceAccountId, Tar
 pub trait SwapRulesValidation<SourceAccountId, TargetAccountId, T: Trait>:
     SwapAction<SourceAccountId, TargetAccountId, T>
 {
-    /// Validate action if next steps must by applyed by consensus.
-    fn prepare_and_validate(&mut self, source: &SourceAccountId) -> DispatchResult;
+    /// If action is only for abstract checking, shoud not apply by `reserve` function.
+    fn is_abstract_checking(&self) -> bool;
+
+    /// Validate action if next steps must be applied by `reserve` function
+    /// or if source account is None, than just ability to do operation is checked.
+    fn prepare_and_validate(&mut self, source: Option<&SourceAccountId>) -> DispatchResult;
 
     /// Instant auto claim is performed just after reserve.
     /// If triggered is not used, than it is one time auto claim, it will be canceled if it fails.
@@ -226,7 +230,10 @@ pub trait SwapRulesValidation<SourceAccountId, TargetAccountId, T: Trait>:
 impl<SourceAccountId, TargetAccountId, T: Trait>
     SwapRulesValidation<SourceAccountId, TargetAccountId, T> for ()
 {
-    fn prepare_and_validate(&mut self, _source: &SourceAccountId) -> DispatchResult {
+    fn is_abstract_checking(&self) -> bool {
+        true
+    }
+    fn prepare_and_validate(&mut self, _source: Option<&SourceAccountId>) -> DispatchResult {
         Ok(())
     }
     fn instant_auto_claim_used(&self) -> bool {

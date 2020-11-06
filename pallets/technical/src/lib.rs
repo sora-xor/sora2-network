@@ -3,7 +3,7 @@
 use codec::{Decode, Encode};
 use common::{prelude::Balance, FromGenericPair, SwapAction, SwapRulesValidation};
 use frame_support::dispatch::{DispatchError, DispatchResult};
-use frame_support::{decl_error, decl_event, decl_module, decl_storage, Parameter};
+use frame_support::{decl_error, decl_event, decl_module, decl_storage, ensure, Parameter};
 use frame_system::ensure_signed;
 use sp_runtime::traits::Member;
 use sp_runtime::RuntimeDebug;
@@ -77,13 +77,11 @@ decl_storage! {
 }
 
 impl<T: Trait> Module<T> {
-    /// Perform creation of swap, may be used by extrinsic operation or other pallets.
-    pub fn perform_create_swap(
+    /// Perform creation of swap, version without validation
+    pub fn perform_create_swap_unchecked(
         source: AccountIdOf<T>,
-        action_orig: T::SwapAction,
+        action: &T::SwapAction,
     ) -> DispatchResult {
-        let mut action = action_orig.clone();
-        action.prepare_and_validate(&source)?;
         action.reserve(&source)?;
         if action.is_able_to_claim() {
             if action.instant_auto_claim_used() {
@@ -104,6 +102,19 @@ impl<T: Trait> Module<T> {
         }
         Ok(())
     }
+
+    /// Perform creation of swap, may be used by extrinsic operation or other pallets.
+    pub fn perform_create_swap(
+        source: AccountIdOf<T>,
+        action: &mut T::SwapAction,
+    ) -> DispatchResult {
+        ensure!(
+            !action.is_abstract_checking(),
+            Error::<T>::OperationWithAbstractCheckingIsImposible
+        );
+        action.prepare_and_validate(Some(&source))?;
+        Module::<T>::perform_create_swap_unchecked(source, action)
+    }
 }
 
 decl_module! {
@@ -118,7 +129,8 @@ decl_module! {
         ) -> DispatchResult
         {
             let source = ensure_signed(origin)?;
-            Module::<T>::perform_create_swap(source, action)?;
+            let mut action_mut = action;
+            Module::<T>::perform_create_swap(source, &mut action_mut)?;
             Ok(())
         }
     }
@@ -198,6 +210,7 @@ decl_error! {
         DecodeAccountIdFailed,
         /// Associated `AccountId` not found with a given `TechnicalAccountId`.
         AssociatedAccountIdNotFound,
+        OperationWithAbstractCheckingIsImposible,
     }
 }
 

@@ -4,7 +4,7 @@ use common::BasisPoints;
 use currencies::BasicCurrencyAdapter;
 use frame_support::{impl_outer_origin, parameter_types, weights::Weight};
 use frame_system as system;
-use permissions::INIT_DEX;
+use permissions::{BURN, INIT_DEX, MINT, TRANSFER};
 use sp_core::crypto::AccountId32;
 use sp_core::{H256, H512};
 use sp_runtime::{
@@ -39,7 +39,11 @@ impl Default for ExtBuilder {
                 (ALICE(), BlackPepper.into(), 2000_000_u128.into()),
                 (BOB(), RedPepper.into(), 2000_000_u128.into()),
             ],
-            initial_permissions: vec![(INIT_DEX, BOB(), BOB(), None)],
+            initial_permissions: vec![
+                (INIT_DEX, BOB(), BOB(), None),
+                (TRANSFER, ALICE(), ALICE(), None),
+                (TRANSFER, BOB(), BOB(), None),
+            ],
         }
     }
 }
