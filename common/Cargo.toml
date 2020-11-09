@@ -18,12 +18,16 @@ sp-core = { git = "https://github.com/paritytech/substrate", default-features = 
 blake2-rfc = { version = "0.2.18", default-features = false }
 static_assertions = "1.1.0"
 num-traits = { version = "0.2.12", default-features = false }
+rustc-hex = { version = "2.1.0", default-features = false }
 #twox-hash = { version = "1.5.0", default-features = false }
 
 cumulus-upward-message = { git = "https://github.com/paritytech/cumulus",  default-features = false, rev = '96da14c14fb785e106bb89a18c9dedaf2f789d2c' }
 rococo-runtime = { git = "https://github.com/paritytech/polkadot", branch = "rococo-branch", default-features = false }
 polkadot-core-primitives = { git = "https://github.com/paritytech/polkadot", branch = "rococo-branch", default-features = false }
 polkadot-parachain = { git = "https://github.com/paritytech/polkadot", branch = "rococo-branch", default-features = false }
+
+[dev-dependencies]
+serde_json = "1.0.41"
 
 [features]
 default = ['std']

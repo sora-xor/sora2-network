@@ -73,6 +73,7 @@ decl_module! {
         #[weight = 10_000 + T::DbWeight::get().writes(1)]
         pub fn register(origin, dex_id: T::DEXId, base_asset_id: T::AssetId, target_asset_id: T::AssetId) -> DispatchResult {
             let _author = T::EnsureDEXOwner::ensure_dex_owner(&dex_id, origin)?;
+            //TODO: check token existence
             ensure!(base_asset_id != target_asset_id, Error::<T>::IdenticalAssetIds);
             ensure!(base_asset_id == T::GetBaseAssetId::get(), Error::<T>::ForbiddenBaseAssetId);
             let trading_pair = TradingPair::<T> {
@@ -107,5 +108,17 @@ impl<T: Trait> EnsureTradingPairExists<T::DEXId, T::AssetId, DispatchError> for 
 impl<T: Trait> Module<T> {
     pub fn list_trading_pairs(dex_id: T::DEXId) -> Vec<TradingPair<T>> {
         Self::trading_pairs(dex_id).iter().cloned().collect()
+    }
+
+    pub fn is_trading_pair_enabled(
+        dex_id: T::DEXId,
+        base_asset_id: T::AssetId,
+        target_asset_id: T::AssetId,
+    ) -> bool {
+        let pair = TradingPair::<T> {
+            base_asset_id,
+            target_asset_id,
+        };
+        Self::trading_pairs(dex_id).contains(&pair)
     }
 }

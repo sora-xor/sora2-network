@@ -4,10 +4,7 @@ use common::Amount;
 use currencies::BasicCurrencyAdapter;
 use frame_support::{impl_outer_event, impl_outer_origin, parameter_types, weights::Weight};
 use frame_system as system;
-use sp_core::crypto::AccountId32;
-use sp_core::crypto::UncheckedInto;
 use sp_core::{H256, H512};
-use sp_runtime::traits::Zero;
 use sp_runtime::{
     testing::Header,
     traits::{BlakeTwo256, IdentityLookup},

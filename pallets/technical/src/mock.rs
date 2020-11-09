@@ -123,7 +123,7 @@ impl common::Trait for Testtime {
 }
 
 parameter_types! {
-    pub const GetBaseAssetId: AssetId = common::JsonCompatAssetId { 0: [2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], 1: PhantomData };
+    pub const GetBaseAssetId: AssetId = common::AssetId32 { code: [2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], phantom: PhantomData };
 }
 
 parameter_types! {
@@ -390,7 +390,7 @@ impl common::SwapRulesValidation<AccountId, TechAccountId, Testtime> for PolySwa
     }
 }
 
-type AssetId = common::JsonCompatAssetId<common::mock::ComicAssetId>;
+type AssetId = common::AssetId32<common::mock::ComicAssetId>;
 type TechAssetId = common::TechAssetId<common::mock::ComicAssetId, DEXId>;
 pub type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
 type TechAmount = Amount;

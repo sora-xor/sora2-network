@@ -727,7 +727,9 @@ dependencies = [
  "polkadot-core-primitives",
  "polkadot-parachain",
  "rococo-runtime",
+ "rustc-hex",
  "serde",
+ "serde_json 1.0.57",
  "sp-arithmetic",
  "sp-core",
  "sp-runtime",
@@ -1325,6 +1327,7 @@ dependencies = [
 name = "dex-runtime-api"
 version = "0.1.0"
 dependencies = [
+ "common",
  "parity-scale-codec",
  "serde",
  "sp-api",
@@ -4505,7 +4508,9 @@ dependencies = [
  "substrate-test-client",
  "substrate-test-runtime-client",
  "technical",
+ "template-rpc",
  "tokio 0.2.22",
+ "trading-pair-rpc",
  "trie-root 0.15.2",
  "xor-fee",
 ]
@@ -4571,7 +4576,9 @@ dependencies = [
  "static_assertions",
  "substrate-wasm-builder-runner 1.0.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "technical",
+ "template-runtime-api",
  "trading-pair",
+ "trading-pair-runtime-api",
  "xor-fee",
 ]
 
@@ -8445,13 +8452,13 @@ dependencies = [
 [[package]]
 name = "substrate-wasm-builder-runner"
 version = "1.0.6"
-source = "git+https://github.com/paritytech/substrate?branch=rococo-branch#f397f246fd0a0c8c2ef2f0b7576ecbed133ed78d"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d2a965994514ab35d3893e9260245f2947fd1981cdd4fffd2c6e6d1a9ce02e6a"
 
 [[package]]
 name = "substrate-wasm-builder-runner"
 version = "1.0.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d2a965994514ab35d3893e9260245f2947fd1981cdd4fffd2c6e6d1a9ce02e6a"
+source = "git+https://github.com/paritytech/substrate?branch=rococo-branch#f397f246fd0a0c8c2ef2f0b7576ecbed133ed78d"
 
 [[package]]
 name = "substrate-wasmtime"
@@ -8606,6 +8613,36 @@ dependencies = [
  "redox_syscall",
  "remove_dir_all",
  "winapi 0.3.9",
+]
+
+[[package]]
+name = "template-rpc"
+version = "0.1.0"
+dependencies = [
+ "common",
+ "jsonrpc-core",
+ "jsonrpc-core-client",
+ "jsonrpc-derive",
+ "parity-scale-codec",
+ "serde",
+ "sp-api",
+ "sp-blockchain",
+ "sp-core",
+ "sp-rpc",
+ "sp-runtime",
+ "sp-std",
+ "template-runtime-api",
+]
+
+[[package]]
+name = "template-runtime-api"
+version = "0.1.0"
+dependencies = [
+ "parity-scale-codec",
+ "serde",
+ "sp-api",
+ "sp-runtime",
+ "sp-std",
 ]
 
 [[package]]
@@ -9077,6 +9114,36 @@ dependencies = [
  "permissions",
  "sp-core",
  "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
+name = "trading-pair-rpc"
+version = "0.1.0"
+dependencies = [
+ "common",
+ "jsonrpc-core",
+ "jsonrpc-core-client",
+ "jsonrpc-derive",
+ "parity-scale-codec",
+ "serde",
+ "sp-api",
+ "sp-blockchain",
+ "sp-core",
+ "sp-rpc",
+ "sp-runtime",
+ "sp-std",
+ "trading-pair-runtime-api",
+]
+
+[[package]]
+name = "trading-pair-runtime-api"
+version = "0.1.0"
+dependencies = [
+ "parity-scale-codec",
+ "serde",
+ "sp-api",
  "sp-runtime",
  "sp-std",
 ]
