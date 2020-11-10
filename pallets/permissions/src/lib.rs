@@ -77,11 +77,11 @@ decl_storage! {
         pub Permissions build(|config: &GenesisConfig<T>|
                               config.initial_permissions.iter()
                               .cloned()
-                              .map(|(permission_id, holder_id, owner_id, params)| (permission_id, holder_id, Permission::<T> {
+                              .map(|(permission_id, holder_id, owner_id, params)| (holder_id, permission_id, Permission::<T> {
                                   owner_id,
                                   params,
                               })).collect::<Vec<_>>()
-                             ): double_map hasher(opaque_blake2_256) u32, hasher(opaque_blake2_256) T::AccountId => Option<Permission<T>>;
+                             ): double_map hasher(opaque_blake2_256) T::AccountId, hasher(opaque_blake2_256) u32 => Option<Permission<T>>;
     }
 
     add_extra_genesis {
@@ -119,7 +119,7 @@ decl_error! {
 impl<T: Trait> Module<T> {
     /// Method checks a permission of an Account.
     pub fn check_permission(who: T::AccountId, permission_id: u32) -> Result<(), Error<T>> {
-        if Permissions::<T>::get(permission_id, &who).is_some() {
+        if Permissions::<T>::get(&who, permission_id).is_some() {
             Ok(())
         } else {
             Err(Error::<T>::PermissionNotFound)
@@ -133,7 +133,7 @@ impl<T: Trait> Module<T> {
         parameters: H512,
     ) -> Result<(), Error<T>> {
         let permission =
-            Permissions::<T>::get(permission_id, &who).ok_or(Error::<T>::PermissionNotFound)?;
+            Permissions::<T>::get(&who, permission_id).ok_or(Error::<T>::PermissionNotFound)?;
         if permission
             .params
             .map(|params| params == parameters)
@@ -152,9 +152,9 @@ impl<T: Trait> Module<T> {
         permission_id: u32,
     ) -> Result<(), Error<T>> {
         let permission =
-            Permissions::<T>::get(permission_id, &who).ok_or(Error::<T>::PermissionNotFound)?;
+            Permissions::<T>::get(&who, permission_id).ok_or(Error::<T>::PermissionNotFound)?;
         if permission.owner_id == who {
-            Permissions::insert(permission_id, account_id.clone(), permission);
+            Permissions::insert(account_id.clone(), permission_id, permission);
             Self::deposit_event(RawEvent::PermissionGranted(permission_id, account_id));
             Ok(())
         } else {
@@ -170,14 +170,14 @@ impl<T: Trait> Module<T> {
         parameters: H512,
     ) -> Result<(), Error<T>> {
         let permission =
-            Permissions::<T>::get(permission_id, &who).ok_or(Error::<T>::PermissionNotFound)?;
+            Permissions::<T>::get(&who, permission_id).ok_or(Error::<T>::PermissionNotFound)?;
         if permission
             .params
             .map(|params| params == parameters)
             .unwrap_or(true)
         {
             if permission.owner_id == who {
-                Permissions::insert(permission_id, account_id.clone(), permission);
+                Permissions::insert(account_id.clone(), permission_id, permission);
                 Self::deposit_event(RawEvent::PermissionGranted(permission_id, account_id));
                 Ok(())
             } else {
@@ -195,10 +195,10 @@ impl<T: Trait> Module<T> {
         permission_id: u32,
     ) -> Result<(), Error<T>> {
         let permission =
-            Permissions::<T>::get(permission_id, &who).ok_or(Error::<T>::PermissionNotFound)?;
+            Permissions::<T>::get(&who, permission_id).ok_or(Error::<T>::PermissionNotFound)?;
         if permission.owner_id == who {
-            Permissions::insert(permission_id, account_id.clone(), permission);
-            Permissions::<T>::remove(permission_id, who);
+            Permissions::insert(account_id.clone(), permission_id, permission);
+            Permissions::<T>::remove(who, permission_id);
             Self::deposit_event(RawEvent::PermissionTransfered(permission_id, account_id));
             Ok(())
         } else {
@@ -213,10 +213,10 @@ impl<T: Trait> Module<T> {
         permission_id: u32,
         permission: Permission<T>,
     ) -> Result<(), Error<T>> {
-        if Permissions::<T>::get(permission_id, &account_id).is_some() {
+        if Permissions::<T>::get(&account_id, permission_id).is_some() {
             Err(Error::<T>::PermissionAlreadyExists)
         } else {
-            Permissions::insert(permission_id, account_id.clone(), permission);
+            Permissions::insert(account_id.clone(), permission_id, permission);
             Self::deposit_event(RawEvent::PermissionCreated(permission_id, account_id));
             Ok(())
         }
