@@ -103,12 +103,16 @@ decl_module! {
                 owner_account_id.clone(),
                 hash(&dex_id),
             );
-            permissions::Module::<T>::create_permission(
+            let permission_status = permissions::Module::<T>::create_permission(
                 owner_account_id.clone(),
                 owner_account_id.clone(),
                 MANAGE_DEX,
                 permission.clone(),
-            )?;
+            );
+            match permission_status {
+                Err(permissions::Error::<T>::PermissionAlreadyExists) => (),
+                _ => permission_status?,
+            }
             Self::deposit_event(RawEvent::DEXInitialized(dex_id));
             Ok(())
         }

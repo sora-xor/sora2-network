@@ -5,16 +5,13 @@ use jsonrpc_core::{Error as RpcError, ErrorCode, Result};
 use jsonrpc_derive::rpc;
 use sp_api::ProvideRuntimeApi;
 use sp_blockchain::HeaderBackend;
-use sp_runtime::{
-    generic::BlockId,
-    traits::{Block as BlockT, MaybeDisplay, MaybeFromStr},
-};
+use sp_runtime::{generic::BlockId, traits::Block as BlockT};
 use sp_std::vec::Vec;
 use std::sync::Arc;
 
 #[rpc]
 pub trait DEXManagerAPI<BlockHash, DEXId> {
-    #[rpc(name = "dex_listDEXIds")]
+    #[rpc(name = "dexManager_listDEXIds")]
     fn list_dex_ids(&self, at: Option<BlockHash>) -> Result<Vec<DEXId>>;
 }
 
@@ -39,7 +36,7 @@ where
     C: Send + Sync + 'static,
     C: ProvideRuntimeApi<Block> + HeaderBackend<Block>,
     C::Api: DEXManagerRuntimeAPI<Block, DEXId>,
-    DEXId: Codec + MaybeDisplay + MaybeFromStr,
+    DEXId: Codec,
 {
     fn list_dex_ids(&self, at: Option<<Block as BlockT>::Hash>) -> Result<Vec<DEXId>> {
         let api = self.client.runtime_api();

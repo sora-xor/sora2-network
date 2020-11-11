@@ -2,31 +2,65 @@
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::unnecessary_mut_passed)]
 
-use codec::Codec;
+use codec::{Codec, Decode, Encode};
+#[cfg(feature = "std")]
+use common::utils::string_serialization;
+#[cfg(feature = "std")]
+use serde::{Deserialize, Serialize};
 use sp_runtime::traits::{MaybeDisplay, MaybeFromStr};
 use sp_std::prelude::*;
 
+#[derive(Eq, PartialEq, Encode, Decode, Default)]
+#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
+pub struct SwapOutcomeInfo<Balance> {
+    #[cfg_attr(
+        feature = "std",
+        serde(
+            bound(
+                serialize = "Balance: std::fmt::Display",
+                deserialize = "Balance: std::str::FromStr"
+            ),
+            with = "string_serialization"
+        )
+    )]
+    pub amount: Balance,
+    #[cfg_attr(
+        feature = "std",
+        serde(
+            bound(
+                serialize = "Balance: std::fmt::Display",
+                deserialize = "Balance: std::str::FromStr"
+            ),
+            with = "string_serialization"
+        )
+    )]
+    pub fee: Balance,
+}
+
 sp_api::decl_runtime_apis! {
-    pub trait DEXAPI<AssetId, DEXId, Balance, LiquiditySourceType> where
+    pub trait DEXAPI<AssetId, DEXId, Balance, LiquiditySourceType, SwapVariant> where
         AssetId: Codec,
         DEXId: Codec,
         LiquiditySourceType: Codec,
-        Balance: Codec + MaybeDisplay + MaybeFromStr,
+        Balance: Codec + MaybeFromStr + MaybeDisplay,
+        SwapVariant: Codec,
     {
-        fn get_price_with_desired_input(
+        fn quote(
             dex_id: DEXId,
             liquidity_source_type: LiquiditySourceType,
             input_asset_id: AssetId,
             output_asset_id: AssetId,
-            desired_input_amount: Balance,
-        ) -> Option<Balance>;
+            amount: Balance,
+            swap_variant: SwapVariant,
+        ) -> Option<SwapOutcomeInfo<Balance>>;
 
-        fn get_price_with_desired_output(
+        fn can_exchange(
             dex_id: DEXId,
             liquidity_source_type: LiquiditySourceType,
             input_asset_id: AssetId,
             output_asset_id: AssetId,
-            desired_output_amount: Balance,
-        ) -> Option<Balance>;
+        ) -> bool;
+
+        fn list_supported_sources() -> Vec<LiquiditySourceType>;
     }
 }

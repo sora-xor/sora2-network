@@ -3,7 +3,18 @@ use crate::Fixed;
 use codec::{Decode, Encode};
 use core::ops::{Div, DivAssign, Mul, MulAssign};
 use frame_support::RuntimeDebug;
+#[cfg(feature = "std")]
+use serde::{Deserialize, Serialize};
 use sp_std::mem;
+
+/// Used to identify intention of caller to indicate desired input amount or desired output amount.
+/// Similar to SwapAmount, does not hold value in order to be used in external API.
+#[derive(Encode, Decode, Copy, Clone, RuntimeDebug, PartialEq, Eq, PartialOrd, Ord)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+pub enum SwapVariant {
+    WithDesiredInput,
+    WithDesiredOutput,
+}
 
 /// Used to identify intention of caller either to transfer tokens based on exact input amount or
 /// exact output amount.
@@ -31,6 +42,19 @@ impl<T> SwapAmount<T> {
         Self::WithDesiredOutput {
             desired_amount_out,
             max_amount_in,
+        }
+    }
+
+    pub fn with_variant(variant: SwapVariant, amount: T, limit: T) -> Self {
+        match variant {
+            SwapVariant::WithDesiredInput => Self::WithDesiredInput {
+                desired_amount_in: amount,
+                min_amount_out: limit,
+            },
+            SwapVariant::WithDesiredOutput => Self::WithDesiredOutput {
+                desired_amount_out: amount,
+                max_amount_in: limit,
+            },
         }
     }
 
@@ -169,6 +193,7 @@ impl<T: Div<Output = T> + Clone + Copy> DivAssign<T> for SwapAmount<T> {
 
 /// Amount of output tokens from either price request or actual exchange.
 #[derive(Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq, PartialOrd, Ord)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct SwapOutcome<AmountType> {
     /// Actual swap output/input amount including deduced fee.
     pub amount: AmountType,

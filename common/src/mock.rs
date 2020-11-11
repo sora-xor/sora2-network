@@ -30,10 +30,10 @@ impl crate::traits::IsRepresentation for ComicAssetId {
     }
 }
 
-impl From<AssetId> for crate::primitives::JsonCompatAssetId<ComicAssetId> {
+impl From<AssetId> for crate::primitives::AssetId32<ComicAssetId> {
     fn from(asset: AssetId) -> Self {
         let comic = ComicAssetId::from(asset);
-        crate::primitives::JsonCompatAssetId::<ComicAssetId>::from(comic)
+        crate::primitives::AssetId32::<ComicAssetId>::from(comic)
     }
 }
 
@@ -81,20 +81,20 @@ use crate::primitives::*;
 use sp_std::marker::PhantomData;
 use sp_std::vec::Vec;
 
-impl<AssetId> From<AssetId> for JsonCompatAssetId<AssetId>
+impl<AssetId> From<AssetId> for AssetId32<AssetId>
 where
-    JsonCompatAssetId<AssetId>: From<TechAssetId<AssetId, DEXId>>,
+    AssetId32<AssetId>: From<TechAssetId<AssetId, DEXId>>,
     AssetId: crate::traits::IsRepresentation,
 {
     fn from(asset_id: AssetId) -> Self {
         // Must be not representation, only direct asset must be here.
         // Assert must exist here because it must never heppend in runtime and must be covered by tests.
         assert!(!asset_id.is_representation());
-        JsonCompatAssetId::<AssetId>::from(TechAssetId::Wrapped(asset_id))
+        AssetId32::<AssetId>::from(TechAssetId::Wrapped(asset_id))
     }
 }
 
-impl<AssetId, DEXId> From<TechAssetId<AssetId, DEXId>> for JsonCompatAssetId<AssetId>
+impl<AssetId, DEXId> From<TechAssetId<AssetId, DEXId>> for AssetId32<AssetId>
 where
     TechAssetId<AssetId, DEXId>: Encode,
     AssetId: crate::traits::IsRepresentation,
@@ -119,6 +119,6 @@ where
         for i in 0..asset_length {
             slice[i + 1] = asset_encoded[i];
         }
-        JsonCompatAssetId(slice, PhantomData)
+        AssetId32::new(slice, PhantomData)
     }
 }

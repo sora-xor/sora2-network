@@ -14,10 +14,14 @@ use sp_arithmetic::traits::{
 };
 use sp_arithmetic::FixedPointNumber;
 use sp_core::crypto::AccountId32;
+use sp_core::U256;
 use sp_runtime::FixedPointOperand;
 use sp_std::convert::TryFrom;
+use sp_std::fmt::Display;
 use sp_std::ops::*;
+use sp_std::str::FromStr;
 use sp_std::vec::Vec;
+use static_assertions::_core::fmt::Formatter;
 use static_assertions::{assert_eq_align, assert_eq_size};
 
 /// Fixed-point balance type.
@@ -26,10 +30,48 @@ use static_assertions::{assert_eq_align, assert_eq_size};
 #[derive(Debug, Clone, Copy, Encode, Decode, Default, PartialEq, Eq, PartialOrd, Ord)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct Balance(pub Fixed);
+//TODO add precisionq
 
 impl From<Fixed> for Balance {
     fn from(fixed: Fixed) -> Self {
         Self(fixed)
+    }
+}
+
+/// Error type for conversion.
+#[derive(Debug, PartialEq, Eq)]
+pub enum ConvertError {
+    /// Overflow encountered.
+    Overflow,
+    /// Input is not acceptable for conversion.
+    Invalid,
+}
+
+impl TryFrom<U256> for Balance {
+    type Error = ConvertError;
+
+    fn try_from(value: U256) -> Result<Self, Self::Error> {
+        if value > U256::from(Fixed::max_value().into_inner()) {
+            Err(ConvertError::Overflow)
+        } else {
+            Ok(Balance(Fixed::from_inner(value.low_u128())))
+        }
+    }
+}
+
+#[cfg(feature = "std")]
+impl FromStr for Balance {
+    type Err = &'static str;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(Balance(Fixed::from_str(s)?))
+    }
+}
+
+#[cfg(feature = "std")]
+impl Display for Balance {
+    fn fmt(&self, f: &mut Formatter<'_>) -> sp_std::fmt::Result {
+        write!(f, "{}", self.0)
     }
 }
 

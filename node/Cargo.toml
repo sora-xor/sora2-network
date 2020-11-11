@@ -27,6 +27,8 @@ dex-manager-rpc = { path = "../pallets/dex-manager/rpc" }
 technical = {path = "../pallets/technical" }
 permissions = {path = "../pallets/permissions" }
 xor-fee = {path = "../pallets/xor-fee"}
+template-rpc = { path = "../pallets/template/rpc" }
+trading-pair-rpc = { path = "../pallets/trading-pair/rpc" }
 
 # Parachain dependencies
 parachain-runtime = { path = "../runtime" }
