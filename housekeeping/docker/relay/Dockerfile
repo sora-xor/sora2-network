@@ -4,7 +4,7 @@ ENV RUSTUP_HOME="/opt/rust"
 ENV CARGO_HOME="/opt/rust"
 ENV CARGO_TARGET_DIR="/opt/rust-target"
 ENV PATH="$PATH:$RUSTUP_HOME/bin"
-ENV RUST_VERSION=nightly
+ENV RUST_VERSION=nightly-2020-10-05
 ARG POLKADOT_COMMIT
 # Install dependencies
 RUN apt-get update && \
@@ -15,16 +15,16 @@ RUN apt-get update && \
 # Install rust
 RUN curl https://sh.rustup.rs -sSf | sh -s -- -y --no-modify-path --default-toolchain ${RUST_VERSION} && \
     rustup default ${RUST_VERSION} && \
-    rustup target add wasm32-unknown-unknown --toolchain nightly && \
+    rustup target add wasm32-unknown-unknown && \
     command -v wasm-gc || \
-        cargo +nightly install --git https://github.com/alexcrichton/wasm-gc --force
+        cargo install --git https://github.com/alexcrichton/wasm-gc --force
 # Build project
 RUN git clone https://github.com/paritytech/polkadot.git  /polkadot
 WORKDIR /polkadot
 RUN git checkout ${POLKADOT_COMMIT}
 RUN cargo build --release
 
-FROM debian:stretch-slim
+FROM debian:buster-slim
 # add polkadot binary to docker image
 COPY --from=rust-env /opt/rust-target/release/polkadot /usr/local/bin
 # install tools and dependencies
