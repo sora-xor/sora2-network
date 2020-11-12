@@ -191,6 +191,7 @@ impl Trait for Testtime {
         crate::WithdrawLiquidityAction<AssetId, TechAssetId, Balance, AccountId, TechAccountId>;
     type PolySwapAction =
         crate::PolySwapAction<AssetId, TechAssetId, Balance, AccountId, TechAccountId>;
+    type EnsureDEXOwner = dex_manager::Module<Testtime>;
 }
 
 impl ExtBuilder {

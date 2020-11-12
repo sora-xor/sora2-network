@@ -10,7 +10,7 @@ use frame_support::Parameter;
 use sp_runtime::RuntimeDebug;
 
 use common::{
-    prelude::{Balance, Error as CommonError, SwapAmount, SwapOutcome},
+    prelude::{Balance, EnsureDEXOwner, Error as CommonError, SwapAmount, SwapOutcome},
     EnsureTradingPairExists, LiquiditySource,
 };
 use frame_support::traits::Get;
@@ -161,6 +161,7 @@ pub trait Trait: technical::Trait + dex_manager::Trait + trading_pair::Trait {
         + Parameter
         + Into<<Self as technical::Trait>::SwapAction>
         + From<PolySwapActionStructOf<Self>>;
+    type EnsureDEXOwner: EnsureDEXOwner<Self::DEXId, Self::AccountId, DispatchError>;
 }
 
 impl<T: Trait> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, T>
@@ -328,11 +329,11 @@ impl<T: Trait> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, T
             // Checking that balances if correct and large enouth for amounts.
             // For source account balance must be not smaller than required with fee.
             if balance_ss.unwrap() - fee < source_amount {
-                Err(Error::<T>::SourceBalanceIsNotLargeEnouth)?;
+                Err(Error::<T>::SourceBalanceIsNotLargeEnough)?;
             }
             // For destination account balance must successful large for this swap.
             if balance_tt < destination_amount {
-                Err(Error::<T>::TargetBalanceIsNotLargeEnouth)?;
+                Err(Error::<T>::TargetBalanceIsNotLargeEnough)?;
             }
         }
         Ok(())
@@ -612,14 +613,14 @@ impl<T: Trait> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, T
             if min_liquidity > pool_k.unwrap()
                 && destination_amount < min_liquidity - pool_k.unwrap()
             {
-                Err(Error::<T>::DestinationAmountOfLiquidityIsNotLargeEnouth)?;
+                Err(Error::<T>::DestinationAmountOfLiquidityIsNotLargeEnough)?;
             }
             // Checking that balances if correct and large enough for amounts.
             if balance_bs.unwrap() < base_amount {
-                Err(Error::<T>::SourceBaseAmountIsNotLargeEnouth)?;
+                Err(Error::<T>::SourceBaseAmountIsNotLargeEnough)?;
             }
             if balance_ts.unwrap() < target_amount {
-                Err(Error::<T>::TargetBaseAmountIsNotLargeEnouth)?;
+                Err(Error::<T>::TargetBaseAmountIsNotLargeEnough)?;
             }
         }
 
@@ -833,15 +834,15 @@ impl<T: Trait> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, T
         }
 
         if balance_ks < source_amount {
-            Err(Error::<T>::SourceBalanceOfLiquidityTokensIsNotLargeEnouth)?;
+            Err(Error::<T>::SourceBalanceOfLiquidityTokensIsNotLargeEnough)?;
         }
 
         // Checking that balances if correct and large enough for amounts.
         if balance_bp < base_amount {
-            Err(Error::<T>::DestinationBaseBalanceIsNotLargeEnouth)?;
+            Err(Error::<T>::DestinationBaseBalanceIsNotLargeEnough)?;
         }
         if balance_tp < target_amount {
-            Err(Error::<T>::DestinationTargetBalanceIsNotLargeEnouth)?;
+            Err(Error::<T>::DestinationTargetBalanceIsNotLargeEnough)?;
         }
         Ok(())
     }
@@ -1039,7 +1040,7 @@ impl<T: Trait> Module<T> {
     ) -> Result<TechAccountIdOf<T>, DispatchError> {
         let fee_acc = tech_acc
             .to_fee_account()
-            .ok_or(Error::<T>::UnableToDiriveFeeAccount)?;
+            .ok_or(Error::<T>::UnableToDeriveFeeAccount)?;
         Ok(fee_acc)
     }
 
@@ -1084,9 +1085,9 @@ decl_error! {
         ImposibleToDecideAssetPairAmounts,
         PoolPairRatioAndPairSwapRatioIsDifferent,
         PairSwapActionFeeIsSmallerThanRecommended,
-        SourceBalanceIsNotLargeEnouth,
-        TargetBalanceIsNotLargeEnouth,
-        UnableToDiriveFeeAccount,
+        SourceBalanceIsNotLargeEnough,
+        TargetBalanceIsNotLargeEnough,
+        UnableToDeriveFeeAccount,
         FeeAccountIsInvalid,
         SourceAndClientAccountDoNotMatchAsEqual,
         AssetsMustNotBeSame,
@@ -1094,9 +1095,9 @@ decl_error! {
         InvalidDepositLiquidityBasicAssetAmount,
         InvalidDepositLiquidityTargetAssetAmount,
         PairSwapActionMinimumLiquidityIsSmallerThanRecommended,
-        DestinationAmountOfLiquidityIsNotLargeEnouth,
-        SourceBaseAmountIsNotLargeEnouth,
-        TargetBaseAmountIsNotLargeEnouth,
+        DestinationAmountOfLiquidityIsNotLargeEnough,
+        SourceBaseAmountIsNotLargeEnough,
+        TargetBaseAmountIsNotLargeEnough,
         PoolIsInvalid,
         PoolIsEmpty,
         ZeroValueInAmountParameter,
@@ -1110,15 +1111,17 @@ decl_error! {
         InvalidWithdrawLiquidityBasicAssetAmount,
         InvalidWithdrawLiquidityTargetAssetAmount,
         SourceBaseAmountIsTooLarge,
-        SourceBalanceOfLiquidityTokensIsNotLargeEnouth,
-        DestinationBaseBalanceIsNotLargeEnouth,
-        DestinationTargetBalanceIsNotLargeEnouth,
+        SourceBalanceOfLiquidityTokensIsNotLargeEnough,
+        DestinationBaseBalanceIsNotLargeEnough,
+        DestinationTargetBalanceIsNotLargeEnough,
         InvalidAssetForLiquidityMarking,
         AssetDecodingError,
         CalculatedValueIsOutOfDesiredBounds,
         BaseAssetIsNotMatchedWithAnyAssetArguments,
         DestinationAmountMustBeSame,
         SourceAmountMustBeSame,
+        PoolInitializationIsInvalid,
+        PoolIsAlreadyInitialized,
     }
 }
 
@@ -1349,13 +1352,14 @@ decl_module! {
         }
 
         #[weight = 0]
-        fn create_and_register_trading_pair_and_tech_account_subscribe_marker_asset(
+        fn initialize_pool(
             origin,
             dex_id: DEXIdOf<T>,
             asset_a: AssetIdOf<T>,
             asset_b: AssetIdOf<T>,
             ) -> DispatchResult
         {
+                <T as Trait>::EnsureDEXOwner::ensure_dex_owner(&dex_id, origin.clone())?;
                 let (trading_pair, tech_acc_id) = Module::<T>::tech_account_from_dex_and_asset_pair(
                     dex_id.clone(),
                     asset_a.clone(),
@@ -1363,18 +1367,28 @@ decl_module! {
                 )?;
                 let fee_acc_id = tech_acc_id.clone().to_fee_account().unwrap();
                 let mark_asset = Module::<T>::get_marking_asset(tech_acc_id.clone())?;
+                // Function initialize_pools is usually called once, just quick check if tech
+                // account is not registered is enougth to do the job.
+                // If function is called second time, than this is not usual case and additional checks
+                // can be done, check every condition for `PoolIsAlreadyInitialized`.
+                if (!technical::Module::<T>::ensure_tech_account_registered(&tech_acc_id.clone()).is_ok()) {
+                    ()
+                } else if ( technical::Module::<T>::ensure_tech_account_registered(&fee_acc_id.clone()).is_ok()
+                           && assets::Module::<T>::ensure_asset_exists(&mark_asset.clone().into()).is_ok()
+                           && trading_pair::Module::<T>::ensure_trading_pair_exists(&dex_id.clone(), &trading_pair.target_asset_id.into().clone()).is_ok())
+                {
+                    Err(Error::<T>::PoolIsAlreadyInitialized)?;
+                } else {
+                    Err(Error::<T>::PoolInitializationIsInvalid)?;
+                }
+
                 technical::Module::<T>::register_tech_account_id(
                     tech_acc_id.clone()
                 )?;
                 technical::Module::<T>::register_tech_account_id(
                     fee_acc_id.clone()
                 )?;
-                trading_pair::Module::<T>::register(
-                    origin,
-                    dex_id.clone(),
-                    trading_pair.base_asset_id.into(),
-                    trading_pair.target_asset_id.into()
-                )?;
+                assets::Module::<T>::register(origin.clone(), mark_asset.clone().into())?;
                 //TODO: check and enable this than swap distribution will be available.
                 //swap_distribution::Module::<T>::subscribe(fee_acc_id.clone().into(),
                 //                dex_id.clone(), mark_asset.into(), you_frequency)?;

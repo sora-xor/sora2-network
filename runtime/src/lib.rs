@@ -310,6 +310,7 @@ impl pool_xyk::Trait for Runtime {
         pool_xyk::WithdrawLiquidityAction<AssetId, TechAssetId, Balance, AccountId, TechAccountId>;
     type PolySwapAction =
         pool_xyk::PolySwapAction<AssetId, TechAssetId, Balance, AccountId, TechAccountId>;
+    type EnsureDEXOwner = dex_manager::Module<Runtime>;
 }
 
 parameter_types! {
