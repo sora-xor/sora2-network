@@ -1127,7 +1127,7 @@ impl<T: Trait> Module<T> {
         dex_id: T::DEXId,
         asset_a: T::AssetId,
         asset_b: T::AssetId,
-    ) -> Result<TechAccountIdOf<T>, DispatchError> {
+    ) -> Result<(common::TradingPair<TechAssetIdOf<T>>, TechAccountIdOf<T>), DispatchError> {
         let dexinfo = <dex_manager::DEXInfos<T>>::get(dex_id.clone());
         let base_asset_id = dexinfo.base_asset_id;
         ensure!(asset_a != asset_b, Error::<T>::AssetsMustNotBeSame);
@@ -1143,7 +1143,10 @@ impl<T: Trait> Module<T> {
             base_asset_id: ba,
             target_asset_id: ta,
         };
-        Ok(TechAccountIdOf::<T>::to_tech_unit_from_dex_and_trading_pair(dex_id.clone(), tpair))
+        Ok((
+            tpair.clone(),
+            TechAccountIdOf::<T>::to_tech_unit_from_dex_and_trading_pair(dex_id.clone(), tpair),
+        ))
     }
 
     fn get_bounds_from_swap_amount(
@@ -1183,7 +1186,7 @@ impl<T: Trait> Module<T> {
         ),
         DispatchError,
     > {
-        let tech_acc_id =
+        let (_, tech_acc_id) =
             Module::<T>::tech_account_from_dex_and_asset_pair(dex_id, asset_a, asset_b)?;
         let (source_amount_a, destination_amount_a) =
             Module::<T>::get_bounds_from_swap_amount(swap_amount_a)?;
@@ -1345,6 +1348,39 @@ decl_module! {
             Ok(())
         }
 
+        #[weight = 0]
+        fn create_and_register_trading_pair_and_tech_account_subscribe_marker_asset(
+            origin,
+            dex_id: DEXIdOf<T>,
+            asset_a: AssetIdOf<T>,
+            asset_b: AssetIdOf<T>,
+            ) -> DispatchResult
+        {
+                let (trading_pair, tech_acc_id) = Module::<T>::tech_account_from_dex_and_asset_pair(
+                    dex_id.clone(),
+                    asset_a.clone(),
+                    asset_b.clone(),
+                )?;
+                let fee_acc_id = tech_acc_id.clone().to_fee_account().unwrap();
+                let mark_asset = Module::<T>::get_marking_asset(tech_acc_id.clone())?;
+                technical::Module::<T>::register_tech_account_id(
+                    tech_acc_id.clone()
+                )?;
+                technical::Module::<T>::register_tech_account_id(
+                    fee_acc_id.clone()
+                )?;
+                trading_pair::Module::<T>::register(
+                    origin,
+                    dex_id.clone(),
+                    trading_pair.base_asset_id.into(),
+                    trading_pair.target_asset_id.into()
+                )?;
+                //TODO: check and enable this than swap distribution will be available.
+                //swap_distribution::Module::<T>::subscribe(fee_acc_id.clone().into(),
+                //                dex_id.clone(), mark_asset.into(), you_frequency)?;
+                Ok(())
+        }
+
     }
 }
 
@@ -1359,7 +1395,7 @@ impl<T: Trait> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Disp
         // Function clause is used here, because in this case it is other scope and it not
         // conflicted with bool type.
         let res = || {
-            let tech_acc_id = Module::<T>::tech_account_from_dex_and_asset_pair(
+            let (_, tech_acc_id) = Module::<T>::tech_account_from_dex_and_asset_pair(
                 dex_id.clone(),
                 input_asset_id.clone(),
                 output_asset_id.clone(),
@@ -1391,7 +1427,7 @@ impl<T: Trait> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Disp
         output_asset_id: &T::AssetId,
         swap_amount: SwapAmount<Balance>,
     ) -> Result<SwapOutcome<Balance>, DispatchError> {
-        let tech_acc_id = Module::<T>::tech_account_from_dex_and_asset_pair(
+        let (_, tech_acc_id) = Module::<T>::tech_account_from_dex_and_asset_pair(
             dex_id.clone(),
             input_asset_id.clone(),
             output_asset_id.clone(),
@@ -1433,7 +1469,7 @@ impl<T: Trait> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Disp
         output_asset_id: &T::AssetId,
         swap_amount: SwapAmount<Balance>,
     ) -> Result<SwapOutcome<Balance>, DispatchError> {
-        let tech_acc_id = Module::<T>::tech_account_from_dex_and_asset_pair(
+        let (_, tech_acc_id) = Module::<T>::tech_account_from_dex_and_asset_pair(
             dex_id.clone(),
             input_asset_id.clone(),
             output_asset_id.clone(),
