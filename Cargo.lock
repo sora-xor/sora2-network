@@ -4492,6 +4492,7 @@ dependencies = [
  "sc-service",
  "sc-transaction-pool",
  "serde",
+ "serde_json 1.0.57",
  "sp-api",
  "sp-block-builder",
  "sp-blockchain",
