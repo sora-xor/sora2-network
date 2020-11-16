@@ -1,4 +1,4 @@
-use crate::{GenesisConfig, Module, Trait, EXCHANGE, TRANSFER};
+use crate::{GenesisConfig, Module, Trait, EXCHANGE, TRANSFER, MINT};
 use frame_support::{impl_outer_origin, parameter_types, weights::Weight};
 use frame_system as system;
 use sp_core::{H256, H512};
@@ -16,6 +16,7 @@ impl_outer_origin! {
 
 pub const ALICE: AccountId = 1;
 pub const BOB: AccountId = 2;
+pub const JOHN: AccountId = 3;
 
 #[derive(Clone, Eq, PartialEq)]
 pub struct Test;
@@ -67,7 +68,7 @@ pub struct ExtBuilder {
 impl Default for ExtBuilder {
     fn default() -> Self {
         Self {
-            initial_permissions: vec![(TRANSFER, ALICE, ALICE, None), (EXCHANGE, BOB, ALICE, None)],
+            initial_permissions: vec![(TRANSFER, ALICE, ALICE, None), (EXCHANGE, BOB, ALICE, None), (MINT, JOHN, JOHN, None)],
         }
     }
 }

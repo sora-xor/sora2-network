@@ -15,7 +15,7 @@ fn permission_check_fails_with_permission_not_found_error() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
         if let Err(Error::<Test>::PermissionNotFound) =
-            PermissionsModule::check_permission(2, TRANSFER)
+            PermissionsModule::check_permission(BOB, TRANSFER)
         {
         } else {
             panic!();
@@ -40,7 +40,7 @@ fn permission_check_with_parameters_fails_with_permission_not_found_error() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
         if let Err(Error::<Test>::PermissionNotFound) =
-            PermissionsModule::check_permission_with_parameters(2, TRANSFER, H512::repeat_byte(1))
+            PermissionsModule::check_permission_with_parameters(BOB, TRANSFER, H512::repeat_byte(1))
         {
         } else {
             panic!();
@@ -88,6 +88,37 @@ fn permission_grant_with_parameters_passes() {
             TRANSFER,
             H512::zero(),
         ));
+    });
+}
+
+
+#[test]
+fn permission_grant_with_parameters_multiple_times_passes() {
+    ExtBuilder::default().build().execute_with(|| {
+        assert_ok!(
+            PermissionsModule::grant_permission_with_parameters(
+                ALICE,
+                JOHN,
+                TRANSFER,
+                H512::repeat_byte(1)
+            )
+        );
+        assert_ok!(
+            PermissionsModule::grant_permission_with_parameters(
+                ALICE,
+                BOB,
+                TRANSFER,
+                H512::repeat_byte(1)
+            )
+        );
+        assert_ok!(
+            PermissionsModule::grant_permission_with_parameters(
+                JOHN,
+                BOB,
+                MINT,
+                H512::repeat_byte(1)
+            )
+        );
     });
 }
 
