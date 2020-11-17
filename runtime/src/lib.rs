@@ -116,8 +116,8 @@ pub mod opaque {
 
 /// This runtime version.
 pub const VERSION: RuntimeVersion = RuntimeVersion {
-    spec_name: create_runtime_str!("substrate-pswap"),
-    impl_name: create_runtime_str!("substrate-pswap"),
+    spec_name: create_runtime_str!("sora-substrate"),
+    impl_name: create_runtime_str!("sora-substrate"),
     authoring_version: 1,
     spec_version: 1,
     impl_version: 1,

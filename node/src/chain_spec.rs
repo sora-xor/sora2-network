@@ -26,6 +26,7 @@ use common::{hash, prelude::DEXInfo};
 use sc_chain_spec::{ChainSpecExtension, ChainSpecGroup};
 use sc_service::ChainType;
 use serde::{Deserialize, Serialize};
+use serde_json::map::Map;
 use sp_core::crypto::AccountId32;
 use sp_core::{sr25519, Pair, Public};
 use sp_runtime::traits::{IdentifyAccount, Verify};
@@ -68,8 +69,12 @@ where
 }
 
 pub fn get_chain_spec(id: ParaId) -> ChainSpec {
+    let mut properties = Map::new();
+    properties.insert("tokenSymbol".into(), "XOR".into());
+    properties.insert("tokenDecimals".into(), 18.into());
+
     ChainSpec::from_genesis(
-        "Local Testnet",
+        "SORA-Substrate Local Testnet",
         "local_testnet",
         ChainType::Local,
         move || {
@@ -112,8 +117,8 @@ pub fn get_chain_spec(id: ParaId) -> ChainSpec {
         },
         vec![],
         None,
-        None,
-        None,
+        Some("sora-substrate"),
+        Some(properties),
         Extensions {
             relay_chain: "local_testnet".into(),
             para_id: id.into(),
@@ -122,8 +127,12 @@ pub fn get_chain_spec(id: ParaId) -> ChainSpec {
 }
 
 pub fn staging_test_net(id: ParaId) -> ChainSpec {
+    let mut properties = Map::new();
+    properties.insert("tokenSymbol".into(), "XOR".into());
+    properties.insert("tokenDecimals".into(), 18.into());
+
     ChainSpec::from_genesis(
-        "Staging Testnet",
+        "SORA-Substrate Testnet",
         "staging_testnet",
         ChainType::Live,
         move || {
@@ -149,8 +158,8 @@ pub fn staging_test_net(id: ParaId) -> ChainSpec {
         },
         Vec::new(),
         None,
-        None,
-        None,
+        Some("sora-substrate"),
+        Some(properties),
         Extensions {
             relay_chain: "rococo_local_testnet".into(),
             para_id: id.into(),
