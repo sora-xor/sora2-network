@@ -188,7 +188,9 @@ impl<T: Trait> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, T
     }
 
     fn prepare_and_validate(&mut self, source_opt: Option<&AccountIdOf<T>>) -> DispatchResult {
-        let abstract_checking = source_opt.is_none() || common::SwapRulesValidation::<AccountIdOf<T>, TechAccountIdOf<T>, T>::is_abstract_checking(self);
+        let abstract_checking_from_method = common::SwapRulesValidation::<AccountIdOf<T>, TechAccountIdOf<T>, T>::is_abstract_checking(self);
+        let abstract_checking = source_opt.is_none() || abstract_checking_from_method;
+        let abstract_checking_for_quote = source_opt.is_none() && ! abstract_checking_from_method;
 
         // Check that client account is same as source, because signature is checked for source.
         // Signature checking is used in extrinsics for example, and source is derived from origin.
@@ -254,7 +256,7 @@ impl<T: Trait> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, T
             Err(Error::<T>::PoolIsInvalid)?;
         }
 
-        if !abstract_checking {
+        if abstract_checking_for_quote || !abstract_checking {
             // Calculate pair ratio of pool, and check or correct amount of pair swap action.
             // Here source technical is divided by destination technical.
             let ratio_a = balance_st / balance_tt;
