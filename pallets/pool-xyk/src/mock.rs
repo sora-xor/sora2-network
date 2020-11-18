@@ -112,7 +112,7 @@ impl trading_pair::Trait for Testtime {
     type EnsureDEXOwner = dex_manager::Module<Testtime>;
 }
 
-type DEXId = u32;
+pub type DEXId = u32;
 
 pub type BlockNumber = u64;
 pub type AccountId = AccountId32;
@@ -171,7 +171,7 @@ impl assets::Trait for Testtime {
 
 pub type TechAssetId = common::TechAssetId<common::mock::ComicAssetId, DEXId>;
 pub type AssetId = common::AssetId32<common::mock::ComicAssetId>;
-type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
+pub type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
 
 impl technical::Trait for Testtime {
     type Event = ();
