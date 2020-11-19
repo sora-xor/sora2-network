@@ -73,6 +73,7 @@ pub enum Bounds<Balance> {
 }
 
 impl<Balance: Ord + Eq + Clone> Bounds<Balance> {
+    /// Unwrap only known values, min and max is not known for final value.
     fn unwrap(self) -> Balance {
         match self {
             Bounds::Calculated(a) => a,
@@ -1255,20 +1256,19 @@ impl<T: Trait> Module<T> {
         // account is not registered is enougth to do the job.
         // If function is called second time, than this is not usual case and additional checks
         // can be done, check every condition for `PoolIsAlreadyInitialized`.
-        if (!technical::Module::<T>::ensure_tech_account_registered(&tech_acc_id.clone()).is_ok()) {
-            ()
-        } else if (technical::Module::<T>::ensure_tech_account_registered(&fee_acc_id.clone())
-            .is_ok()
-            && assets::Module::<T>::ensure_asset_exists(&mark_asset.clone().into()).is_ok()
-            && trading_pair::Module::<T>::ensure_trading_pair_exists(
-                &dex_id.clone(),
-                &trading_pair.target_asset_id.into().clone(),
-            )
-            .is_ok())
-        {
-            Err(Error::<T>::PoolIsAlreadyInitialized)?;
-        } else {
-            Err(Error::<T>::PoolInitializationIsInvalid)?;
+        if (technical::Module::<T>::ensure_tech_account_registered(&tech_acc_id.clone()).is_ok()) {
+            if (technical::Module::<T>::ensure_tech_account_registered(&fee_acc_id.clone()).is_ok()
+                && assets::Module::<T>::ensure_asset_exists(&mark_asset.clone().into()).is_ok()
+                && trading_pair::Module::<T>::ensure_trading_pair_exists(
+                    &dex_id.clone(),
+                    &trading_pair.target_asset_id.into().clone(),
+                )
+                .is_ok())
+            {
+                Err(Error::<T>::PoolIsAlreadyInitialized)?;
+            } else {
+                Err(Error::<T>::PoolInitializationIsInvalid)?;
+            }
         }
         technical::Module::<T>::register_tech_account_id(tech_acc_id.clone())?;
         technical::Module::<T>::register_tech_account_id(fee_acc_id.clone())?;
