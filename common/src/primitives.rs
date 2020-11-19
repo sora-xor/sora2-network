@@ -2,15 +2,18 @@ use crate::traits::Trait;
 use crate::BasisPoints;
 use codec::{Decode, Encode};
 use core::fmt::Debug;
-use frame_support::dispatch::{DispatchError, Parameter};
+use frame_support::dispatch::DispatchError;
 use frame_support::RuntimeDebug;
 use frame_support::{decl_error, decl_module};
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
-use sp_runtime::traits::{MaybeDisplay, MaybeSerializeDeserialize, Member};
+use sp_core::H256;
 use sp_std::convert::TryFrom;
 use sp_std::marker::PhantomData;
 use sp_std::vec::Vec;
+#[cfg(feature = "std")]
+#[allow(unused)]
+use std::fmt;
 
 decl_error! {
     pub enum Error for Module<T: Trait> {
@@ -75,49 +78,100 @@ impl Default for AssetId {
 }
 
 /// This code is H256 like.
-type JsonCompatCode = [u8; 32];
+type AssetId32Code = [u8; 32];
 
-/// This is wrapped structure, this is like H256 or Р512, and for this reason tuple is used here.
-/// H256 uses [u8; 32] wrapped in single tuple, and this structure is like this, but extra
+/// This is wrapped structure, this is like H256 or Р512, extra
 /// PhantomData is added for typing reasons.
 #[derive(Encode, Decode, Eq, PartialEq, Copy, Clone, PartialOrd, Ord, RuntimeDebug)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize, Hash))]
-pub struct JsonCompatAssetId<AssetId>(pub JsonCompatCode, pub PhantomData<AssetId>);
+pub struct AssetId32<AssetId> {
+    /// Internal data representing given AssetId.
+    #[cfg_attr(feature = "std", serde(with = "asset_id_32_serialization"))]
+    pub code: AssetId32Code,
+    /// Additional typing information.
+    #[cfg_attr(feature = "std", serde(skip_serializing, skip_deserializing))]
+    pub phantom: PhantomData<AssetId>,
+}
+
+mod asset_id_32_serialization {
+    use super::AssetId32Code;
+    use rustc_hex::{FromHex, ToHex};
+    #[cfg(feature = "std")]
+    use serde::{Deserialize, Deserializer, Serializer};
+    use sp_std::convert::TryInto;
+
+    #[cfg(feature = "std")]
+    pub fn deserialize<'de, D: Deserializer<'de>>(
+        deserializer: D,
+    ) -> Result<AssetId32Code, D::Error> {
+        let mut s = String::deserialize(deserializer)?;
+        if s.starts_with("0x") {
+            s = (&s[2..]).to_owned();
+        } else {
+            return Err(serde::de::Error::custom(
+                "expected hex string, e.g. 0x00..00",
+            ));
+        }
+        let code: Vec<u8> = s
+            .from_hex()
+            .map_err(|_| serde::de::Error::custom("error parsing hex string"))?;
+        let code: Box<[u8; 32]> = code.into_boxed_slice().try_into().map_err(|_| {
+            serde::de::Error::custom("expected hex string representing 32-byte object")
+        })?;
+        Ok(*code)
+    }
+
+    #[cfg(feature = "std")]
+    pub fn serialize<S: Serializer>(t: &AssetId32Code, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.serialize_str(&format!("0x{}", t.to_hex::<String>()))
+    }
+}
+
+impl<AssetId> AssetId32<AssetId> {
+    pub fn new(code: AssetId32Code, phantom: PhantomData<AssetId>) -> Self {
+        Self { code, phantom }
+    }
+}
+
+impl<AssetId> From<H256> for AssetId32<AssetId> {
+    fn from(value: H256) -> Self {
+        AssetId32::<AssetId>::new(value.0, Default::default())
+    }
+}
 
 #[allow(dead_code)]
-impl<AssetId: Clone> JsonCompatAssetId<AssetId>
+impl<AssetId: Clone> AssetId32<AssetId>
 where
-    Result<TechAssetId<AssetId, DEXId>, codec::Error>: From<JsonCompatAssetId<AssetId>>,
+    Result<TechAssetId<AssetId, DEXId>, codec::Error>: From<AssetId32<AssetId>>,
 {
-    fn try_from_code(code: JsonCompatCode) -> Result<Self, codec::Error> {
-        let json_compat = JsonCompatAssetId(code, PhantomData);
-        Result::<TechAssetId<AssetId, DEXId>, codec::Error>::from(json_compat.clone())
-            .map(|_| json_compat)
+    fn try_from_code(code: AssetId32Code) -> Result<Self, codec::Error> {
+        let compat = AssetId32::new(code, PhantomData);
+        Result::<TechAssetId<AssetId, DEXId>, codec::Error>::from(compat.clone()).map(|_| compat)
     }
 }
 
-impl<AssetId> From<JsonCompatAssetId<AssetId>> for JsonCompatCode {
-    fn from(json_compat: JsonCompatAssetId<AssetId>) -> Self {
-        json_compat.0
+impl<AssetId> From<AssetId32<AssetId>> for AssetId32Code {
+    fn from(compat: AssetId32<AssetId>) -> Self {
+        compat.code
     }
 }
 
-impl<AssetId: Default> Default for JsonCompatAssetId<AssetId>
+impl<AssetId: Default> Default for AssetId32<AssetId>
 where
-    JsonCompatAssetId<AssetId>: From<TechAssetId<AssetId, DEXId>>,
+    AssetId32<AssetId>: From<TechAssetId<AssetId, DEXId>>,
 {
     fn default() -> Self {
-        JsonCompatAssetId::<AssetId>::from(TechAssetId::Wrapped(AssetId::default()))
+        AssetId32::<AssetId>::from(TechAssetId::Wrapped(AssetId::default()))
     }
 }
 
-impl<AssetId, DEXId> TryFrom<JsonCompatAssetId<AssetId>> for TechAssetId<AssetId, DEXId>
+impl<AssetId, DEXId> TryFrom<AssetId32<AssetId>> for TechAssetId<AssetId, DEXId>
 where
     TechAssetId<AssetId, DEXId>: Decode,
 {
     type Error = DispatchError;
-    fn try_from(json_compat: JsonCompatAssetId<AssetId>) -> Result<Self, Self::Error> {
-        let code = json_compat.0;
+    fn try_from(compat: AssetId32<AssetId>) -> Result<Self, Self::Error> {
+        let code = compat.code;
         let end = (code[0] as usize) + 1;
         if end >= 32 {
             return Err("Invalid format".into());
@@ -460,5 +514,33 @@ impl From<InvokeRPCError> for i64 {
         match item {
             InvokeRPCError::RuntimeError => 1,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn should_serialize_and_deserialize_assetid32_properly_with_string() {
+        let asset_id = AssetId32 {
+            code: [
+                2, 0, 3, 0, 4, 0, 5, 0, 6, 0, 7, 0, 8, 0, 9, 0, 10, 0, 11, 0, 12, 0, 13, 0, 14, 0,
+                15, 0, 1, 0, 2, 0,
+            ],
+            phantom: PhantomData,
+        };
+
+        let json_str =
+            r#"{"code":"0x020003000400050006000700080009000a000b000c000d000e000f0001000200"}"#;
+
+        assert_eq!(serde_json::to_string(&asset_id).unwrap(), json_str);
+        assert_eq!(
+            serde_json::from_str::<AssetId32<AssetId>>(json_str).unwrap(),
+            asset_id
+        );
+
+        // should not panic
+        serde_json::to_value(&asset_id).unwrap();
     }
 }

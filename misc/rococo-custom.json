@@ -1,5 +1,5 @@
 {
-  "name": "Rococo Local Testnet",
+  "name": "SORA-Substrate Testnet",
   "id": "rococo_local_testnet",
   "chainType": "Local",
   "bootNodes": [],

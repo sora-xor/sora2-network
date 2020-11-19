@@ -123,7 +123,7 @@ impl common::Trait for Testtime {
 }
 
 parameter_types! {
-    pub const GetBaseAssetId: AssetId = common::JsonCompatAssetId { 0: [2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], 1: PhantomData };
+    pub const GetBaseAssetId: AssetId = common::AssetId32 { code: [2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], phantom: PhantomData };
 }
 
 parameter_types! {
@@ -170,7 +170,7 @@ impl assets::Trait for Testtime {
 }
 
 pub type TechAssetId = common::TechAssetId<common::mock::ComicAssetId, DEXId>;
-pub type AssetId = common::JsonCompatAssetId<common::mock::ComicAssetId>;
+pub type AssetId = common::AssetId32<common::mock::ComicAssetId>;
 type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
 
 impl technical::Trait for Testtime {
@@ -192,6 +192,7 @@ impl Trait for Testtime {
         crate::WithdrawLiquidityAction<AssetId, TechAssetId, Balance, AccountId, TechAccountId>;
     type PolySwapAction =
         crate::PolySwapAction<AssetId, TechAssetId, Balance, AccountId, TechAccountId>;
+    type EnsureDEXOwner = dex_manager::Module<Testtime>;
 }
 
 impl ExtBuilder {

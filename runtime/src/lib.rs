@@ -7,7 +7,6 @@
 #[cfg(feature = "std")]
 include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
 
-pub use common::{fixed_from_basis_points, BasisPoints, Fixed};
 use currencies::BasicCurrencyAdapter;
 use frame_system::offchain::{Account, SigningTypes};
 use sp_api::impl_runtime_apis;
@@ -18,7 +17,7 @@ use sp_runtime::{
     traits::SaturatedConversion,
     traits::{BlakeTwo256, Block as BlockT, IdentifyAccount, IdentityLookup, Saturating, Verify},
     transaction_validity::{TransactionSource, TransactionValidity},
-    ApplyExtrinsicResult, FixedPointNumber, MultiSignature,
+    ApplyExtrinsicResult, MultiSignature,
 };
 use sp_std::marker::PhantomData;
 use sp_std::prelude::*;
@@ -28,7 +27,15 @@ use sp_version::NativeVersion;
 use sp_version::RuntimeVersion;
 use static_assertions::assert_eq_size;
 
+// Exports from RPC extensions.
+use dex_runtime_api::SwapOutcomeInfo;
+
 // A few exports that help ease life for downstream crates.
+pub use common::{
+    fixed, fixed_from_basis_points,
+    prelude::{Balance, SwapAmount, SwapOutcome, SwapVariant},
+    BasisPoints, Fixed, LiquiditySource, LiquiditySourceId, LiquiditySourceType,
+};
 pub use frame_support::{
     construct_runtime, debug, parameter_types,
     traits::KeyOwnerProofSystem,
@@ -36,12 +43,6 @@ pub use frame_support::{
     weights::constants::{BlockExecutionWeight, ExtrinsicBaseWeight, RocksDbWeight},
     weights::{constants::WEIGHT_PER_SECOND, IdentityFee, Weight},
     StorageValue,
-};
-
-pub use common::{
-    fixed,
-    prelude::{SwapAmount, SwapOutcome},
-    LiquiditySource, LiquiditySourceId, LiquiditySourceType,
 };
 pub use pallet_balances::Call as BalancesCall;
 pub use pallet_timestamp::Call as TimestampCall;
@@ -52,7 +53,6 @@ pub use sp_runtime::{Perbill, Permill};
 /// Import the template pallet.
 pub use template;
 
-use common::prelude::Balance;
 /// Import the message pallet.
 pub use cumulus_token_dealer;
 
@@ -116,8 +116,8 @@ pub mod opaque {
 
 /// This runtime version.
 pub const VERSION: RuntimeVersion = RuntimeVersion {
-    spec_name: create_runtime_str!("substrate-pswap"),
-    impl_name: create_runtime_str!("substrate-pswap"),
+    spec_name: create_runtime_str!("sora-substrate"),
+    impl_name: create_runtime_str!("sora-substrate"),
     authoring_version: 1,
     spec_version: 1,
     impl_version: 1,
@@ -246,7 +246,7 @@ impl tokens::Trait for Runtime {
 
 parameter_types! {
     // This is common::AssetId with 0 index, 2 is size, 0 and 0 is code.
-    pub const GetBaseAssetId: AssetId = common::JsonCompatAssetId { 0: [2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], 1: PhantomData };
+    pub const GetBaseAssetId: AssetId = common::AssetId32 { code: [2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], phantom: PhantomData };
 }
 
 impl currencies::Trait for Runtime {
@@ -289,7 +289,7 @@ impl bonding_curve_pool::Trait for Runtime {
 
 pub type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
 pub type TechAssetId = common::TechAssetId<common::AssetId, DEXId>;
-pub type AssetId = common::JsonCompatAssetId<common::AssetId>;
+pub type AssetId = common::AssetId32<common::AssetId>;
 
 impl technical::Trait for Runtime {
     type Event = Event;
@@ -310,6 +310,7 @@ impl pool_xyk::Trait for Runtime {
         pool_xyk::WithdrawLiquidityAction<AssetId, TechAssetId, Balance, AccountId, TechAccountId>;
     type PolySwapAction =
         pool_xyk::PolySwapAction<AssetId, TechAssetId, Balance, AccountId, TechAccountId>;
+    type EnsureDEXOwner = dex_manager::Module<Runtime>;
 }
 
 parameter_types! {
@@ -445,7 +446,7 @@ impl referral_system::Trait for Runtime {
 }
 
 parameter_types! {
-    pub const ValId: AssetId = common::JsonCompatAssetId { 0: [2, 0, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], 1: PhantomData };
+    pub const ValId: AssetId = common::AssetId32 { code: [2, 0, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], phantom: PhantomData };
     pub const DEXIdValue: DEXId = 0;
 }
 
@@ -675,39 +676,57 @@ impl_runtime_apis! {
         Block,
         AssetId,
         DEXId,
-        sp_core::U256,
-        LiquiditySourceType
+        Balance,
+        LiquiditySourceType,
+        SwapVariant,
     > for Runtime {
-        fn get_price_with_desired_input(
+        fn quote(
             dex_id: DEXId,
             liquidity_source_type: LiquiditySourceType,
             input_asset_id: AssetId,
             output_asset_id: AssetId,
-            desired_input_amount: sp_core::U256,
-        ) -> Option<sp_core::U256> {
+            desired_input_amount: Balance,
+            swap_variant: SwapVariant,
+        ) -> Option<SwapOutcomeInfo<Balance>> {
             DEXAPI::quote(
                 &LiquiditySourceId::new(dex_id, liquidity_source_type),
                 &input_asset_id,
                 &output_asset_id,
-                // TODO: use correct Balance type
-                SwapAmount::with_desired_input(Fixed::from(desired_input_amount.low_u128()), Default::default()),
-            ).ok().map(|sa|sa.amount.into_inner()).map(Into::into)
+                SwapAmount::with_variant(swap_variant, desired_input_amount.0, Default::default()),
+            ).ok().map(|sa| SwapOutcomeInfo::<Balance> { amount: Balance(sa.amount), fee: Balance(sa.fee)})
         }
 
-        fn get_price_with_desired_output(
+        fn can_exchange(
             dex_id: DEXId,
             liquidity_source_type: LiquiditySourceType,
             input_asset_id: AssetId,
             output_asset_id: AssetId,
-            desired_output_amount: sp_core::U256,
-        ) -> Option<sp_core::U256> {
-            DEXAPI::quote(
+        ) -> bool {
+            DEXAPI::can_exchange(
                 &LiquiditySourceId::new(dex_id, liquidity_source_type),
                 &input_asset_id,
                 &output_asset_id,
-                // TODO: use correct Balance type
-                SwapAmount::with_desired_output(Fixed::from(desired_output_amount.low_u128()), Default::default()),
-            ).ok().map(|sa|sa.amount.into_inner()).map(Into::into)
+            )
+        }
+
+        fn list_supported_sources() -> Vec<LiquiditySourceType> {
+            DEXAPI::get_supported_types()
+        }
+    }
+
+    impl template_runtime_api::TemplateAPI<Block, Balance> for Runtime {
+        fn test_multiply_2(amount: Balance) -> Option<template_runtime_api::CustomInfo<Balance>> {
+            Some(template_runtime_api::CustomInfo::<Balance> { amount: Balance(Fixed::from(2) * amount.0)})
+        }
+    }
+
+    impl trading_pair_runtime_api::TradingPairAPI<Block, DEXId, common::TradingPair<AssetId>, AssetId> for Runtime {
+        fn list_enabled_pairs(dex_id: DEXId) -> Vec<common::TradingPair<AssetId>> {
+            TradingPair::list_trading_pairs(dex_id)
+        }
+
+        fn is_pair_enabled(dex_id: DEXId, base_asset_id: AssetId, target_asset_id: AssetId) -> bool {
+            TradingPair::is_trading_pair_enabled(dex_id, base_asset_id, target_asset_id)
         }
     }
 }

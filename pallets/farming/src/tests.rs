@@ -1,7 +1,6 @@
 use crate::{mock::*, *};
 use frame_support::{assert_noop, assert_ok};
-use sp_core::crypto::UncheckedInto;
-use sp_core::hash::{H256, H512};
+use sp_core::hash::H512;
 
 #[test]
 fn farm_creation_passes() {

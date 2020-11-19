@@ -277,7 +277,7 @@ fn swap_pair_large_swap_fail_with_source_balance_not_large_enouth() {
                     max_amount_in: 999999999u32.into(),
                 }
             ),
-            crate::Error::<Testtime>::SourceBalanceIsNotLargeEnouth
+            crate::Error::<Testtime>::SourceBalanceIsNotLargeEnough
         );
     });
 }
@@ -304,7 +304,7 @@ fn swap_pair_swap_fail_with_target_balance_not_large_enoth() {
                     max_amount_in: 999999999u32.into(),
                 }
             ),
-            crate::Error::<Testtime>::TargetBalanceIsNotLargeEnouth
+            crate::Error::<Testtime>::TargetBalanceIsNotLargeEnough
         );
     });
 }

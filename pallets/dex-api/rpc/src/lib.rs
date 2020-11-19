@@ -1,43 +1,42 @@
 use codec::Codec;
 use common::InvokeRPCError;
+use dex_runtime_api::SwapOutcomeInfo;
 pub use dex_runtime_api::DEXAPI as DEXRuntimeAPI;
 use jsonrpc_core::{Error as RpcError, ErrorCode, Result};
 use jsonrpc_derive::rpc;
 use sp_api::ProvideRuntimeApi;
 use sp_blockchain::HeaderBackend;
-use sp_core::U256;
-use sp_rpc::number::NumberOrHex;
 use sp_runtime::traits::{MaybeDisplay, MaybeFromStr};
 use sp_runtime::{generic::BlockId, traits::Block as BlockT};
-use sp_std::convert::TryFrom;
 use std::sync::Arc;
 
 #[rpc]
-pub trait DEXAPI<BlockHash, AssetId, DEXId, Balance, LiquiditySourceType>
-where
-    Balance: std::str::FromStr,
+pub trait DEXAPI<BlockHash, AssetId, DEXId, Balance, LiquiditySourceType, SwapVariant, SwapResponse>
 {
-    #[rpc(name = "dex_getPriceWithDesiredInput")]
-    fn get_price_with_desired_input(
+    #[rpc(name = "dexApi_quote")]
+    fn quote(
         &self,
         dex_id: DEXId,
         liquidity_source_type: LiquiditySourceType,
         input_asset_id: AssetId,
         output_asset_id: AssetId,
-        desired_input_amount: NumberOrHex,
+        amount: Balance,
+        swap_variant: SwapVariant,
         at: Option<BlockHash>,
-    ) -> Result<Option<Balance>>;
+    ) -> Result<SwapResponse>;
 
-    #[rpc(name = "dex_getPriceWithDesiredOutput")]
-    fn get_price_with_desired_output(
+    #[rpc(name = "dexApi_canExchange")]
+    fn can_exchange(
         &self,
         dex_id: DEXId,
         liquidity_source_type: LiquiditySourceType,
         input_asset_id: AssetId,
         output_asset_id: AssetId,
-        desired_output_amount: NumberOrHex,
         at: Option<BlockHash>,
-    ) -> Result<Option<Balance>>;
+    ) -> Result<bool>;
+
+    #[rpc(name = "dexApi_listSupportedSources")]
+    fn list_supported_sources(&self, at: Option<BlockHash>) -> Result<Vec<LiquiditySourceType>>;
 }
 
 pub struct DEX<C, B> {
@@ -55,47 +54,50 @@ impl<C, B> DEX<C, B> {
     }
 }
 
-impl<C, Block, AssetId, DEXId, Balance, LiquiditySourceType>
-    DEXAPI<<Block as BlockT>::Hash, AssetId, DEXId, Balance, LiquiditySourceType> for DEX<C, Block>
+impl<C, Block, AssetId, DEXId, Balance, LiquiditySourceType, SwapVariant>
+    DEXAPI<
+        <Block as BlockT>::Hash,
+        AssetId,
+        DEXId,
+        Balance,
+        LiquiditySourceType,
+        SwapVariant,
+        Option<SwapOutcomeInfo<Balance>>,
+    > for DEX<C, Block>
 where
     Block: BlockT,
     C: Send + Sync + 'static,
     C: ProvideRuntimeApi<Block> + HeaderBackend<Block>,
-    C::Api: DEXRuntimeAPI<Block, AssetId, DEXId, Balance, LiquiditySourceType>,
+    C::Api: DEXRuntimeAPI<Block, AssetId, DEXId, Balance, LiquiditySourceType, SwapVariant>,
     AssetId: Codec,
     DEXId: Codec,
-    Balance: Codec + MaybeFromStr + MaybeDisplay + TryFrom<U256>,
-    <Balance as TryFrom<U256>>::Error: sp_std::fmt::Debug,
+    Balance: Codec + MaybeFromStr + MaybeDisplay,
+    SwapVariant: Codec,
     LiquiditySourceType: Codec,
 {
-    fn get_price_with_desired_input(
+    fn quote(
         &self,
         dex_id: DEXId,
         liquidity_source_type: LiquiditySourceType,
         input_asset_id: AssetId,
         output_asset_id: AssetId,
-        desired_input_amount: NumberOrHex,
+        amount: Balance,
+        swap_variant: SwapVariant,
         at: Option<<Block as BlockT>::Hash>,
-    ) -> Result<Option<Balance>> {
+    ) -> Result<Option<SwapOutcomeInfo<Balance>>> {
         let api = self.client.runtime_api();
         let at = BlockId::hash(at.unwrap_or(
             // If the block hash is not supplied assume the best block.
             self.client.info().best_hash,
         ));
-        // TODO: U256 to U256 parsing, appropriate type for Balance needs to be derived
-        let amount: Balance =
-            TryFrom::try_from(desired_input_amount.into_u256()).map_err(|e| RpcError {
-                code: ErrorCode::ServerError(InvokeRPCError::RuntimeError.into()),
-                message: "Balance parsing error.".into(),
-                data: Some(format!("{:?}", e).into()),
-            })?;
-        api.get_price_with_desired_input(
+        api.quote(
             &at,
             dex_id,
             liquidity_source_type,
             input_asset_id,
             output_asset_id,
             amount,
+            swap_variant,
         )
         .map_err(|e| RpcError {
             code: ErrorCode::ServerError(InvokeRPCError::RuntimeError.into()),
@@ -104,38 +106,45 @@ where
         })
     }
 
-    fn get_price_with_desired_output(
+    fn can_exchange(
         &self,
         dex_id: DEXId,
         liquidity_source_type: LiquiditySourceType,
         input_asset_id: AssetId,
         output_asset_id: AssetId,
-        desired_output_amount: NumberOrHex,
         at: Option<<Block as BlockT>::Hash>,
-    ) -> Result<Option<Balance>> {
+    ) -> Result<bool> {
         let api = self.client.runtime_api();
         let at = BlockId::hash(at.unwrap_or(
             // If the block hash is not supplied assume the best block.
             self.client.info().best_hash,
         ));
-        // TODO: U256 to U256 parsing, appropriate type for Balance needs to be derived
-        let amount: Balance =
-            TryFrom::try_from(desired_output_amount.into_u256()).map_err(|e| RpcError {
-                code: ErrorCode::ServerError(InvokeRPCError::RuntimeError.into()),
-                message: "Balance parsing error.".into(),
-                data: Some(format!("{:?}", e).into()),
-            })?;
-        api.get_price_with_desired_output(
+        api.can_exchange(
             &at,
             dex_id,
             liquidity_source_type,
             input_asset_id,
             output_asset_id,
-            amount,
         )
         .map_err(|e| RpcError {
             code: ErrorCode::ServerError(InvokeRPCError::RuntimeError.into()),
-            message: "Unable to get price with desired output.".into(),
+            message: "Unable to query exchange capability of source.".into(),
+            data: Some(format!("{:?}", e).into()),
+        })
+    }
+
+    fn list_supported_sources(
+        &self,
+        at: Option<<Block as BlockT>::Hash>,
+    ) -> Result<Vec<LiquiditySourceType>> {
+        let api = self.client.runtime_api();
+        let at = BlockId::hash(at.unwrap_or(
+            // If the block hash is not supplied assume the best block.
+            self.client.info().best_hash,
+        ));
+        api.list_supported_sources(&at).map_err(|e| RpcError {
+            code: ErrorCode::ServerError(InvokeRPCError::RuntimeError.into()),
+            message: "Unable to query supported liquidity source types.".into(),
             data: Some(format!("{:?}", e).into()),
         })
     }

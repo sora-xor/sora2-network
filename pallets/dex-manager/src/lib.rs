@@ -99,13 +99,15 @@ decl_module! {
                 default_protocol_fee: protocol_fee,
             };
             <DEXInfos<T>>::insert(dex_id.clone(), new_dex_info);
-            let scope = Scope::Limited(hash(&dex_id));
-            permissions::Module::<T>::assign_permission(
+            match permissions::Module::<T>::assign_permission(
                 owner_account_id.clone(),
                 &owner_account_id,
                 MANAGE_DEX,
-                scope
-            )?;
+                Scope::Limited(hash(&dex_id))
+            ) {
+                Err(permissions::Error::<T>::PermissionAlreadyExists) => {}
+                result => result?,
+            }
             Self::deposit_event(RawEvent::DEXInitialized(dex_id));
             Ok(())
         }

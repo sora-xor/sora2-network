@@ -193,14 +193,6 @@ fn permission_transfer_passes() {
             MINT,
             Scope::Unlimited
         ));
-        // John is expected to lose his permission
-        match PermissionsModule::check_permission(JOHN, MINT) {
-            Err(Error::<Test>::Forbidden) => {}
-            result => panic!("{:?}", result),
-        }
-        assert_ok!(PermissionsModule::check_permission(BOB, MINT));
-        // Verify existing permissions are kept
-        assert_ok!(PermissionsModule::check_permission(BOB, EXCHANGE));
     });
 }
 
