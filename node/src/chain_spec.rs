@@ -23,11 +23,12 @@ use parachain_runtime::{
 
 use codec::{Decode, Encode};
 use common::{hash, prelude::DEXInfo};
+use frame_support::debug;
+use hex_literal::hex;
 use permissions::Scope;
 use sc_chain_spec::{ChainSpecExtension, ChainSpecGroup};
-use sc_service::ChainType;
+use sc_service::{ChainType, Properties};
 use serde::{Deserialize, Serialize};
-use serde_json::map::Map;
 use sp_core::crypto::AccountId32;
 use sp_core::{sr25519, Pair, Public};
 use sp_runtime::traits::{IdentifyAccount, Verify};
@@ -69,14 +70,15 @@ where
     AccountPublic::from(get_from_seed::<TPublic>(seed)).into_account()
 }
 
+// Can be exported via ./target/debug/parachain-collator build-spec --disable-default-bootnode > ./exported/chainspec-local.json
 pub fn get_chain_spec(id: ParaId) -> ChainSpec {
-    let mut properties = Map::new();
+    let mut properties = Properties::new();
     properties.insert("tokenSymbol".into(), "XOR".into());
     properties.insert("tokenDecimals".into(), 18.into());
 
     ChainSpec::from_genesis(
         "SORA-Substrate Local Testnet",
-        "local_testnet",
+        "sora-substrate-local",
         ChainType::Local,
         move || {
             testnet_genesis(
@@ -99,26 +101,14 @@ pub fn get_chain_spec(id: ParaId) -> ChainSpec {
                         67, 8, 115, 247, 189, 204, 26, 181, 226, 232, 81, 123, 12, 81, 120,
                     ]),
                 ],
-                /*
-                vec![iroha_crypto::PublicKey::try_from(vec![
-                    52u8, 45, 84, 67, 137, 84, 47, 252, 35, 59, 237, 44, 144, 70, 71, 206, 243, 67,
-                    8, 115, 247, 189, 204, 26, 181, 226, 232, 81, 123, 12, 81, 120,
-                ]).unwrap()],
-                */
-                vec![(
-                    0,
-                    DEXInfo {
-                        base_asset_id: common::AssetId::XOR.into(),
-                        default_fee: 30,
-                        default_protocol_fee: 0,
-                    },
-                )],
+                get_account_id_from_seed::<sr25519::Public>("Alice"),
+                get_account_id_from_seed::<sr25519::Public>("Alice"),
                 id,
             )
         },
         vec![],
         None,
-        Some("sora-substrate"),
+        None,
         Some(properties),
         Extensions {
             relay_chain: "local_testnet".into(),
@@ -127,39 +117,30 @@ pub fn get_chain_spec(id: ParaId) -> ChainSpec {
     )
 }
 
+// ./target/debug/parachain-collator build-spec --chain staging --disable-default-bootnode > ./exported/chainspec-staging.json
 pub fn staging_test_net(id: ParaId) -> ChainSpec {
-    let mut properties = Map::new();
+    let mut properties = Properties::new();
     properties.insert("tokenSymbol".into(), "XOR".into());
     properties.insert("tokenDecimals".into(), 18.into());
 
     ChainSpec::from_genesis(
         "SORA-Substrate Testnet",
-        "staging_testnet",
+        "sora-substrate-staging",
         ChainType::Live,
         move || {
             testnet_genesis(
-                get_account_id_from_seed::<sr25519::Public>("Alice"),
-                vec![get_account_id_from_seed::<sr25519::Public>("Alice")],
-                /*
-                vec![iroha_crypto::PublicKey::try_from(vec![
-                    52u8, 45, 84, 67, 137, 84, 47, 252, 35, 59, 237, 44, 144, 70, 71, 206, 243, 67,
-                    8, 115, 247, 189, 204, 26, 181, 226, 232, 81, 123, 12, 81, 120,
-                ]).unwrap()],
-                */
-                vec![(
-                    0,
-                    DEXInfo {
-                        base_asset_id: GetBaseAssetId::get(),
-                        default_fee: 30,
-                        default_protocol_fee: 0,
-                    },
-                )],
+                hex!("92c4ff71ae7492a1e6fef5d80546ea16307c560ac1063ffaa5e0e084df1e2b7e").into(),
+                vec![
+                    hex!("92c4ff71ae7492a1e6fef5d80546ea16307c560ac1063ffaa5e0e084df1e2b7e").into(),
+                ],
+                hex!("da723e9d76bd60da0ec846895c5e0ecf795b50ae652c012f27e56293277ef372").into(),
+                hex!("16fec57d383a1875ab4e9786aea7a626e721a491c828f475ae63ef098f98f373").into(),
                 id,
             )
         },
         Vec::new(),
         None,
-        Some("sora-substrate"),
+        Some("sora-substrate-1"),
         Some(properties),
         Extensions {
             relay_chain: "rococo_local_testnet".into(),
@@ -171,17 +152,19 @@ pub fn staging_test_net(id: ParaId) -> ChainSpec {
 fn testnet_genesis(
     root_key: AccountId,
     endowed_accounts: Vec<AccountId>,
-    dex_list: Vec<(DEXId, DEXInfo<AssetId>)>,
-    //iroha_peers: Vec<iroha_crypto::PublicKey>,
+    dex_root: AccountId,
+    tech_permissions_owner: AccountId,
     id: ParaId,
 ) -> GenesisConfig {
-    let tech_account_id = TechAccountId::Generic(
+    let xor_fee_tech_account_id = TechAccountId::Generic(
         xor_fee::TECH_ACCOUNT_PREFIX.to_vec(),
         xor_fee::TECH_ACCOUNT_MAIN.to_vec(),
     );
-    let repr = technical::tech_account_id_encoded_to_account_id_32(&tech_account_id.encode());
+    let xor_fee_account_repr =
+        technical::tech_account_id_encoded_to_account_id_32(&xor_fee_tech_account_id.encode());
     let xor_fee_account_id: AccountId =
-        AccountId::decode(&mut &repr[..]).expect("Failed to decode account Id");
+        AccountId::decode(&mut &xor_fee_account_repr[..]).expect("Failed to decode account Id");
+
     GenesisConfig {
         frame_system: Some(SystemConfig {
             code: WASM_BINARY.to_vec(),
@@ -190,49 +173,52 @@ fn testnet_genesis(
         pallet_sudo: Some(SudoConfig { key: root_key }),
         parachain_info: Some(ParachainInfoConfig { parachain_id: id }),
         technical: Some(TechnicalConfig {
-            account_ids_to_tech_account_ids: vec![(xor_fee_account_id.clone(), tech_account_id)],
+            account_ids_to_tech_account_ids: vec![(
+                xor_fee_account_id.clone(),
+                xor_fee_tech_account_id,
+            )],
         }),
         permissions: Some(PermissionsConfig {
             initial_permission_owners: vec![
                 (
                     permissions::TRANSFER,
                     Scope::Unlimited,
-                    vec![get_account_id_from_seed::<sr25519::Public>("Alice")],
+                    vec![tech_permissions_owner.clone()],
                 ),
                 (
                     permissions::EXCHANGE,
                     Scope::Unlimited,
-                    vec![get_account_id_from_seed::<sr25519::Public>("Alice")],
+                    vec![tech_permissions_owner.clone()],
                 ),
                 (
                     permissions::INIT_DEX,
                     Scope::Unlimited,
-                    vec![get_account_id_from_seed::<sr25519::Public>("Alice")],
+                    vec![tech_permissions_owner.clone()],
                 ),
                 (
                     permissions::MANAGE_DEX,
                     Scope::Limited(hash(&0u32)),
-                    vec![get_account_id_from_seed::<sr25519::Public>("Alice")],
+                    vec![tech_permissions_owner.clone()],
                 ),
                 (
                     permissions::MINT,
                     Scope::Unlimited,
-                    vec![get_account_id_from_seed::<sr25519::Public>("Alice")],
+                    vec![tech_permissions_owner.clone()],
                 ),
                 (
                     permissions::BURN,
                     Scope::Unlimited,
-                    vec![get_account_id_from_seed::<sr25519::Public>("Alice")],
+                    vec![tech_permissions_owner.clone()],
                 ),
             ],
             initial_permissions: vec![
                 (
-                    get_account_id_from_seed::<sr25519::Public>("Alice"),
+                    dex_root.clone(),
                     Scope::Unlimited,
                     vec![permissions::EXCHANGE, permissions::INIT_DEX],
                 ),
                 (
-                    get_account_id_from_seed::<sr25519::Public>("Alice"),
+                    dex_root.clone(),
                     Scope::Limited(hash(&0u32)),
                     vec![permissions::MANAGE_DEX],
                 ),
@@ -251,12 +237,18 @@ fn testnet_genesis(
                 .collect(),
         }),
         dex_manager: Some(DEXManagerConfig {
-            dex_list: dex_list.iter().cloned().collect(),
+            dex_list: vec![(
+                0,
+                DEXInfo {
+                    base_asset_id: GetBaseAssetId::get(),
+                    default_fee: 30,
+                    default_protocol_fee: 0,
+                },
+            )],
         }),
         mock_liquidity_source_Instance1: None,
         mock_liquidity_source_Instance2: None,
         mock_liquidity_source_Instance3: None,
         mock_liquidity_source_Instance4: None,
-        //iroha_bridge: Some(IrohaBridgeConfig { authorities: endowed_accounts.clone(), iroha_peers }),
     }
 }
