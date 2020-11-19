@@ -92,7 +92,10 @@ fn permission_check_with_scope_fails_with_forbidden_error() {
 #[test]
 fn permission_grant_passes() {
     ExtBuilder::default().build().execute_with(|| {
-        assert_ok!(PermissionsModule::grant_permission(ALICE, BOB, TRANSFER));
+        assert_ok!(PermissionsModule::grant_permission(JOHN, BOB, MINT));
+        assert_ok!(PermissionsModule::check_permission(BOB, MINT));
+        // Verify existing permissions are kept
+        assert_ok!(PermissionsModule::check_permission(BOB, EXCHANGE));
     });
 }
 
@@ -120,11 +123,14 @@ fn permission_grant_fails_with_permission_not_owned_error() {
 fn permission_grant_with_scope_passes() {
     ExtBuilder::default().build().execute_with(|| {
         assert_ok!(PermissionsModule::grant_permission_with_scope(
-            ALICE,
+            JOHN,
             BOB,
-            TRANSFER,
+            MINT,
             Scope::Unlimited,
         ));
+        assert_ok!(PermissionsModule::check_permission(BOB, MINT));
+        // Verify existing permissions are kept
+        assert_ok!(PermissionsModule::check_permission(BOB, EXCHANGE));
     });
 }
 
@@ -182,11 +188,19 @@ fn permission_grant_with_scope_fails_with_permission_not_owned_error() {
 fn permission_transfer_passes() {
     ExtBuilder::default().build().execute_with(|| {
         assert_ok!(PermissionsModule::transfer_permission(
-            ALICE,
+            JOHN,
             BOB,
-            TRANSFER,
+            MINT,
             Scope::Unlimited
         ));
+        // John is expected to lose his permission
+        match PermissionsModule::check_permission(JOHN, MINT) {
+            Err(Error::<Test>::Forbidden) => {}
+            result => panic!("{:?}", result),
+        }
+        assert_ok!(PermissionsModule::check_permission(BOB, MINT));
+        // Verify existing permissions are kept
+        assert_ok!(PermissionsModule::check_permission(BOB, EXCHANGE));
     });
 }
 
@@ -243,7 +257,15 @@ fn permission_create_passes() {
             Scope::Unlimited,
             Mode::Permit
         ));
+        // Verify Alice is the owner of CustomPermission
+        assert_ok!(PermissionsModule::grant_permission(
+            ALICE,
+            JOHN,
+            CUSTOM_PERMISSION
+        ));
         assert_ok!(PermissionsModule::check_permission(BOB, CUSTOM_PERMISSION));
+        // Verify existing permissions are kept
+        assert_ok!(PermissionsModule::check_permission(BOB, EXCHANGE));
     });
 }
 
