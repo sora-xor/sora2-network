@@ -23,6 +23,7 @@ use parachain_runtime::{
 
 use codec::{Decode, Encode};
 use common::{hash, prelude::DEXInfo};
+use permissions::Scope;
 use sc_chain_spec::{ChainSpecExtension, ChainSpecGroup};
 use sc_service::ChainType;
 use serde::{Deserialize, Serialize};
@@ -183,54 +184,53 @@ fn testnet_genesis(
             account_ids_to_tech_account_ids: vec![(xor_fee_account_id.clone(), tech_account_id)],
         }),
         permissions: Some(PermissionsConfig {
-            initial_permissions: vec![
+            initial_permission_owners: vec![
                 (
                     permissions::TRANSFER,
-                    get_account_id_from_seed::<sr25519::Public>("Alice"),
-                    get_account_id_from_seed::<sr25519::Public>("Alice"),
-                    None,
+                    Scope::Unlimited,
+                    vec![get_account_id_from_seed::<sr25519::Public>("Alice")],
                 ),
                 (
                     permissions::EXCHANGE,
-                    get_account_id_from_seed::<sr25519::Public>("Alice"),
-                    get_account_id_from_seed::<sr25519::Public>("Alice"),
-                    None,
+                    Scope::Unlimited,
+                    vec![get_account_id_from_seed::<sr25519::Public>("Alice")],
                 ),
                 (
                     permissions::INIT_DEX,
-                    get_account_id_from_seed::<sr25519::Public>("Alice"),
-                    get_account_id_from_seed::<sr25519::Public>("Alice"),
-                    None,
+                    Scope::Unlimited,
+                    vec![get_account_id_from_seed::<sr25519::Public>("Alice")],
                 ),
                 (
                     permissions::MANAGE_DEX,
-                    get_account_id_from_seed::<sr25519::Public>("Alice"),
-                    get_account_id_from_seed::<sr25519::Public>("Alice"),
-                    Some(hash(&0u32)),
-                ),
-                (
-                    permissions::TRANSFER,
-                    xor_fee_account_id.clone(),
-                    get_account_id_from_seed::<sr25519::Public>("Alice"),
-                    None,
-                ),
-                (
-                    permissions::EXCHANGE,
-                    xor_fee_account_id.clone(),
-                    get_account_id_from_seed::<sr25519::Public>("Alice"),
-                    None,
+                    Scope::Limited(hash(&0u32)),
+                    vec![get_account_id_from_seed::<sr25519::Public>("Alice")],
                 ),
                 (
                     permissions::MINT,
-                    xor_fee_account_id.clone(),
-                    get_account_id_from_seed::<sr25519::Public>("Alice"),
-                    None,
+                    Scope::Unlimited,
+                    vec![get_account_id_from_seed::<sr25519::Public>("Alice")],
                 ),
                 (
                     permissions::BURN,
-                    xor_fee_account_id.clone(),
+                    Scope::Unlimited,
+                    vec![get_account_id_from_seed::<sr25519::Public>("Alice")],
+                ),
+            ],
+            initial_permissions: vec![
+                (
                     get_account_id_from_seed::<sr25519::Public>("Alice"),
-                    None,
+                    Scope::Unlimited,
+                    vec![permissions::EXCHANGE, permissions::INIT_DEX],
+                ),
+                (
+                    get_account_id_from_seed::<sr25519::Public>("Alice"),
+                    Scope::Limited(hash(&0u32)),
+                    vec![permissions::MANAGE_DEX],
+                ),
+                (
+                    xor_fee_account_id,
+                    Scope::Unlimited,
+                    vec![permissions::EXCHANGE, permissions::MINT, permissions::BURN],
                 ),
             ],
         }),

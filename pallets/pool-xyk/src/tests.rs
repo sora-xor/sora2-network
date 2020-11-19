@@ -1,7 +1,7 @@
 use crate::mock::*;
 use common::{hash, prelude::SwapAmount, ToFeeAccount, ToTechUnitFromDEXAndTradingPair};
 use frame_support::{assert_noop, assert_ok};
-use permissions::{BURN, MINT, TRANSFER};
+use permissions::{Scope, MINT};
 
 type TechAssetIdOf<T> = <T as technical::Trait>::TechAssetId;
 
@@ -67,11 +67,11 @@ macro_rules! preset01(
             900_000u32.into()
         ));
         assert_ok!(
-            permissions::Module::<Testtime>::grant_permission_with_parameters(
+            permissions::Module::<Testtime>::grant_permission_with_scope(
                 ALICE(),
                 repr.clone(),
                 MINT,
-                hash(&gt)
+                Scope::Limited(hash(&gt))
             )
         );
         assert_ok!(assets::Module::<Testtime>::mint(

@@ -7,7 +7,7 @@ use frame_support::{
     sp_runtime::DispatchError, traits::Get, IterableStorageMap,
 };
 use frame_system::{self as system, ensure_signed, RawOrigin};
-use permissions::{INIT_DEX, MANAGE_DEX};
+use permissions::{Scope, INIT_DEX, MANAGE_DEX};
 use sp_std::vec::Vec;
 
 #[cfg(test)]
@@ -99,15 +99,12 @@ decl_module! {
                 default_protocol_fee: protocol_fee,
             };
             <DEXInfos<T>>::insert(dex_id.clone(), new_dex_info);
-            let permission = permissions::Permission::<T>::with_parameters(
+            let scope = Scope::Limited(hash(&dex_id));
+            permissions::Module::<T>::assign_permission(
                 owner_account_id.clone(),
-                hash(&dex_id),
-            );
-            permissions::Module::<T>::create_permission(
-                owner_account_id.clone(),
-                owner_account_id.clone(),
+                &owner_account_id,
                 MANAGE_DEX,
-                permission.clone(),
+                scope
             )?;
             Self::deposit_event(RawEvent::DEXInitialized(dex_id));
             Ok(())
@@ -163,10 +160,10 @@ impl<T: Trait> EnsureDEXOwner<T::DEXId, T::AccountId, DispatchError> for Module<
                     <DEXInfos<T>>::contains_key(&dex_id),
                     <Error<T>>::DEXDoesNotExist
                 );
-                permissions::Module::<T>::check_permission_with_parameters(
+                permissions::Module::<T>::check_permission_with_scope(
                     who.clone(),
                     MANAGE_DEX,
-                    hash(&dex_id),
+                    &Scope::Limited(hash(&dex_id)),
                 )?;
                 Ok(Some(who))
             }

@@ -4,8 +4,8 @@ use common::{fixed_from_basis_points, prelude::AssetId, Fixed};
 use currencies::BasicCurrencyAdapter;
 use frame_support::{impl_outer_origin, parameter_types, weights::Weight};
 use frame_system as system;
-use permissions::INIT_DEX;
-use sp_core::{H256, H512};
+use permissions::{Scope, INIT_DEX};
+use sp_core::H256;
 use sp_runtime::{
     testing::Header,
     traits::{BlakeTwo256, IdentityLookup},
@@ -135,7 +135,8 @@ pub type DEXModule = Module<Runtime>;
 
 pub struct ExtBuilder {
     endowed_accounts: Vec<(AccountId, AssetId, Balance)>,
-    initial_permissions: Vec<(u32, AccountId, AccountId, Option<H512>)>,
+    initial_permission_owners: Vec<(u32, Scope, Vec<AccountId>)>,
+    initial_permissions: Vec<(AccountId, Scope, Vec<u32>)>,
 }
 
 impl Default for ExtBuilder {
@@ -145,7 +146,8 @@ impl Default for ExtBuilder {
                 (ALICE, XOR, 1_000_000_000_000_000_000u128.into()),
                 (BOB, DOT, 1_000_000_000_000_000_000u128.into()),
             ],
-            initial_permissions: vec![(INIT_DEX, ALICE, ALICE, None)],
+            initial_permission_owners: vec![(INIT_DEX, Scope::Unlimited, vec![ALICE])],
+            initial_permissions: vec![(ALICE, Scope::Unlimited, vec![INIT_DEX])],
         }
     }
 }
@@ -163,6 +165,7 @@ impl ExtBuilder {
         .unwrap();
 
         permissions::GenesisConfig::<Runtime> {
+            initial_permission_owners: self.initial_permission_owners,
             initial_permissions: self.initial_permissions,
         }
         .assimilate_storage(&mut t)

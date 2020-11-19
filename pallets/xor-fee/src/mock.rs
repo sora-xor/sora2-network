@@ -8,6 +8,7 @@ use frame_support::{
 };
 use frame_system as system;
 use pallet_balances::WeightInfo;
+use permissions::{Scope, BURN, EXCHANGE, MINT, TRANSFER};
 use sp_core::H256;
 use sp_runtime::{
     testing::Header,
@@ -258,32 +259,17 @@ impl ExtBuilder {
             AccountId::decode(&mut &repr[..]).expect("Failed to decode account Id");
 
         permissions::GenesisConfig::<Test> {
-            initial_permissions: vec![
-                (
-                    permissions::MINT,
-                    xor_fee_account_id,
-                    xor_fee_account_id,
-                    None,
-                ),
-                (
-                    permissions::BURN,
-                    xor_fee_account_id,
-                    xor_fee_account_id,
-                    None,
-                ),
-                (
-                    permissions::TRANSFER,
-                    xor_fee_account_id,
-                    xor_fee_account_id,
-                    None,
-                ),
-                (
-                    permissions::EXCHANGE,
-                    xor_fee_account_id,
-                    xor_fee_account_id,
-                    None,
-                ),
+            initial_permission_owners: vec![
+                (MINT, Scope::Unlimited, vec![xor_fee_account_id]),
+                (BURN, Scope::Unlimited, vec![xor_fee_account_id]),
+                (TRANSFER, Scope::Unlimited, vec![xor_fee_account_id]),
+                (EXCHANGE, Scope::Unlimited, vec![xor_fee_account_id]),
             ],
+            initial_permissions: vec![(
+                xor_fee_account_id,
+                Scope::Unlimited,
+                vec![MINT, BURN, EXCHANGE],
+            )],
         }
         .assimilate_storage(&mut t)
         .unwrap();

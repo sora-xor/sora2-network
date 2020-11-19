@@ -42,15 +42,15 @@ mod tests {
             assert_ok!(Assets::register(Origin::signed(ALICE), XOR));
             assert_noop!(
                 Assets::mint(&XOR, &BOB, &BOB, 100u32.into()),
-                permissions::Error::<Runtime>::PermissionNotFound
+                permissions::Error::<Runtime>::Forbidden
             );
             assert_noop!(
                 Assets::burn(&XOR, &BOB, &BOB, 100u32.into()),
-                permissions::Error::<Runtime>::PermissionNotFound
+                permissions::Error::<Runtime>::Forbidden
             );
             assert_noop!(
                 Assets::update_balance(&XOR, &BOB, 100u32.into()),
-                permissions::Error::<Runtime>::PermissionNotFound
+                permissions::Error::<Runtime>::Forbidden
             );
         });
     }

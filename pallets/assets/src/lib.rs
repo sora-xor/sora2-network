@@ -29,7 +29,7 @@ use frame_support::{
     decl_error, decl_event, decl_module, decl_storage, dispatch, ensure, traits::Get, Parameter,
 };
 use frame_system::{ensure_signed, RawOrigin};
-use permissions::{BURN, MINT, SLASH, TRANSFER};
+use permissions::{Scope, BURN, MINT, SLASH, TRANSFER};
 use sp_core::H512;
 use traits::{
     MultiCurrency, MultiCurrencyExtended, MultiLockableCurrency, MultiReservableCurrency,
@@ -121,18 +121,12 @@ decl_module! {
             let author = ensure_signed(origin.clone())?;
             ensure!(Self::asset_owner(&asset_id).is_none(), Error::<T>::AssetIdAlreadyExists);
             AssetOwners::<T>::insert(asset_id.clone(), author.clone());
-            let permission = permissions::Permission::<T>::with_parameters(
-                author.clone(),
-                hash(&asset_id),
-            );
+            let scope = Scope::Limited(hash(&asset_id));
             let permission_ids = [TRANSFER, MINT, BURN, SLASH];
             for permission_id in &permission_ids {
-                let _ = Permissions::<T>::create_permission(
-                    author.clone(),
-                    author.clone(),
-                    *permission_id,
-                    permission.clone(),
-                );
+                if Permissions::<T>::assign_permission(author.clone(), &author, *permission_id, scope).is_err() {
+                    return Err(Error::<T>::Permissions.into());
+                }
             }
             Self::deposit_event(RawEvent::AssetRegistered(asset_id, author));
             Ok(())
@@ -174,15 +168,15 @@ impl<T: Trait> Module<T> {
         permission_id: u32,
         asset_id: &T::AssetId,
     ) -> Result<(), DispatchError> {
-        Permissions::<T>::check_permission_with_parameters(
+        Permissions::<T>::check_permission_with_scope(
             issuer.clone(),
             permission_id,
-            hash(asset_id),
+            &Scope::Limited(hash(asset_id)),
         )
-        .or(Permissions::<T>::check_permission_with_parameters(
+        .or(Permissions::<T>::check_permission_with_scope(
             issuer.clone(),
             permission_id,
-            H512::zero(),
+            &Scope::Limited(H512::zero()),
         ))?;
         Ok(())
     }

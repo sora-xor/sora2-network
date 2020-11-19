@@ -1,4 +1,4 @@
-use crate::{GenesisConfig, Module, Trait, EXCHANGE, TRANSFER, MINT};
+use crate::{GenesisConfig, Module, Scope, Trait, EXCHANGE, MINT, TRANSFER};
 use frame_support::{impl_outer_origin, parameter_types, weights::Weight};
 use frame_system as system;
 use sp_core::{H256, H512};
@@ -62,13 +62,24 @@ impl Trait for Test {
 pub type PermissionsModule = Module<Test>;
 
 pub struct ExtBuilder {
-    initial_permissions: Vec<(u32, AccountId, AccountId, Option<H512>)>,
+    initial_permission_owners: Vec<(u32, Scope, Vec<AccountId>)>,
+    initial_permissions: Vec<(AccountId, Scope, Vec<u32>)>,
 }
 
 impl Default for ExtBuilder {
     fn default() -> Self {
         Self {
-            initial_permissions: vec![(TRANSFER, ALICE, ALICE, None), (EXCHANGE, BOB, ALICE, None), (MINT, JOHN, JOHN, None)],
+            initial_permission_owners: vec![
+                (TRANSFER, Scope::Unlimited, vec![ALICE]),
+                (EXCHANGE, Scope::Unlimited, vec![ALICE]),
+                (MINT, Scope::Unlimited, vec![JOHN]),
+            ],
+            initial_permissions: vec![
+                (ALICE, Scope::Unlimited, vec![TRANSFER]), // Alice is forbidden to transfer
+                (BOB, Scope::Unlimited, vec![EXCHANGE]),
+                (BOB, Scope::Limited(H512::repeat_byte(1)), vec![TRANSFER]), // Bob is forbidden to transfer
+                (JOHN, Scope::Unlimited, vec![MINT]),
+            ],
         }
     }
 }
@@ -80,6 +91,7 @@ impl ExtBuilder {
             .unwrap();
 
         GenesisConfig::<Test> {
+            initial_permission_owners: self.initial_permission_owners,
             initial_permissions: self.initial_permissions,
         }
         .assimilate_storage(&mut t)

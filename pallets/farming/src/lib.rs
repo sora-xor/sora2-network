@@ -80,7 +80,6 @@ decl_module! {
             technical::Module::<T>::transfer_in(&parameters.incentive.asset_id, &who, &technical_account_id, parameters.incentive.amount)?;
             let technical_account_id = technical::Module::<T>::tech_account_id_to_account_id(&technical_account_id)?;
             Farms::<T>::insert(name, Farm::new(&who, &technical_account_id, parameters));
-            permissions::Module::<T>::grant_permission(who.clone(), technical_account_id, permissions::TRANSFER)?;
             Self::deposit_event(RawEvent::FarmCreated(who));
             Ok(())
         }

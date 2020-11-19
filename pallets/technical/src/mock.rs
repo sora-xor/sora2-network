@@ -411,6 +411,13 @@ impl ExtBuilder {
             .build_storage::<Testtime>()
             .unwrap();
 
+        permissions::GenesisConfig::<Testtime> {
+            initial_permission_owners: vec![],
+            initial_permissions: vec![],
+        }
+        .assimilate_storage(&mut t)
+        .unwrap();
+
         tokens::GenesisConfig::<Testtime> {
             endowed_accounts: self.endowed_accounts,
         }
