@@ -48,6 +48,7 @@ pub enum Scope {
 
 #[derive(PartialEq, Eq, Clone, Copy, RuntimeDebug, Encode, Decode)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+#[repr(u8)]
 pub enum Mode {
     // The action associated with the permission is permitted if the account has the permission, otherwise it's forbidden
     Permit,

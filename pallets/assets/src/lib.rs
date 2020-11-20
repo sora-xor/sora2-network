@@ -30,7 +30,6 @@ use frame_support::{
 };
 use frame_system::{ensure_signed, RawOrigin};
 use permissions::{Scope, BURN, MINT, SLASH, TRANSFER};
-use sp_core::H512;
 use traits::{
     MultiCurrency, MultiCurrencyExtended, MultiLockableCurrency, MultiReservableCurrency,
 };
