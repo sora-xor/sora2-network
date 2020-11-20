@@ -48,7 +48,6 @@ pub enum Scope {
 
 #[derive(PartialEq, Eq, Clone, Copy, RuntimeDebug, Encode, Decode)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-#[repr(u32)]
 pub enum Mode {
     // The action associated with the permission is permitted if the account has the permission, otherwise it's forbidden
     Permit,
@@ -120,7 +119,7 @@ decl_event!(
         PermissionTransfered(u32, AccountId),
         /// Permission was created with an owner. [permission, who]
         PermissionCreated(u32, AccountId),
-        // Permission was assigned to the account in the scope
+        /// Permission was assigned to the account in the scope. [permission, who]
         PermissionAssigned(u32, AccountId),
     }
 );
@@ -134,7 +133,7 @@ decl_error! {
         PermissionNotOwned,
         /// Permission already exists in the system.
         PermissionAlreadyExists,
-        /// The account either doesn't have the permission or has the restriction
+        /// The account either doesn't have the permission or has the restriction.
         Forbidden,
     }
 }

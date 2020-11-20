@@ -176,7 +176,7 @@ impl<T: Trait> Module<T> {
         .or(Permissions::<T>::check_permission_with_scope(
             issuer.clone(),
             permission_id,
-            &Scope::Limited(H512::zero()),
+            &Scope::Unlimited,
         ))?;
         Ok(())
     }
