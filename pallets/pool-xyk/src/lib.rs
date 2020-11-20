@@ -81,12 +81,12 @@ impl<Balance: Ord + Eq + Clone> Bounds<Balance> {
             _ => unreachable!("Must not happen, every uncalculated bound must be set in prepare_and_validate function"),
         }
     }
-    fn meets_the_boundaries(self, rhs: Self) -> bool {
+    fn meets_the_boundaries(&self, rhs: &Self) -> bool {
         use Bounds::*;
         match (
-            self.clone(),
-            Option::<Balance>::from(self.clone()),
-            Option::<Balance>::from(rhs),
+            self,
+            Option::<&Balance>::from(self),
+            Option::<&Balance>::from(rhs),
         ) {
             (Min(a), _, Some(b)) => a <= b,
             (Max(a), _, Some(b)) => a >= b,
@@ -94,13 +94,23 @@ impl<Balance: Ord + Eq + Clone> Bounds<Balance> {
             _ => false,
         }
     }
-    fn meets_the_boundaries_mutally(self, rhs: Self) -> bool {
-        self.clone().meets_the_boundaries(rhs.clone()) || rhs.meets_the_boundaries(self)
+    fn meets_the_boundaries_mutally(&self, rhs: &Self) -> bool {
+        self.meets_the_boundaries(rhs) || rhs.meets_the_boundaries(self)
     }
 }
 
 impl<Balance> From<Bounds<Balance>> for Option<Balance> {
     fn from(bounds: Bounds<Balance>) -> Self {
+        match bounds {
+            Bounds::Calculated(a) => Some(a),
+            Bounds::Desired(a) => Some(a),
+            _ => None,
+        }
+    }
+}
+
+impl<'a, Balance> From<&'a Bounds<Balance>> for Option<&'a Balance> {
+    fn from(bounds: &'a Bounds<Balance>) -> Self {
         match bounds {
             Bounds::Calculated(a) => Some(a),
             Bounds::Desired(a) => Some(a),
@@ -1298,7 +1308,7 @@ impl<T: Trait> Module<T> {
             swap_amount_b,
         )?;
         ensure!(
-            destination_amount_a.meets_the_boundaries_mutally(destination_amount_b),
+            destination_amount_a.meets_the_boundaries_mutally(&destination_amount_b),
             Error::<T>::DestinationAmountMustBeSame
         );
         let mark_asset = Module::<T>::get_marking_asset(tech_acc_id.clone())?;
