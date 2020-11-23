@@ -8,7 +8,7 @@ use frame_support::{
 };
 use frame_system as system;
 use pallet_balances::WeightInfo;
-use permissions::{Scope, BURN, EXCHANGE, MINT, TRANSFER};
+use permissions::{Scope, BURN, MINT, TRANSFER};
 use sp_core::H256;
 use sp_runtime::{
     testing::Header,
@@ -263,12 +263,11 @@ impl ExtBuilder {
                 (MINT, Scope::Unlimited, vec![xor_fee_account_id]),
                 (BURN, Scope::Unlimited, vec![xor_fee_account_id]),
                 (TRANSFER, Scope::Unlimited, vec![xor_fee_account_id]),
-                (EXCHANGE, Scope::Unlimited, vec![xor_fee_account_id]),
             ],
             initial_permissions: vec![(
                 xor_fee_account_id,
                 Scope::Unlimited,
-                vec![MINT, BURN, EXCHANGE],
+                vec![MINT, BURN],
             )],
         }
         .assimilate_storage(&mut t)

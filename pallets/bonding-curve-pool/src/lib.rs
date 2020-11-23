@@ -17,7 +17,7 @@ use common::{
 };
 use frame_support::traits::Get;
 use frame_support::{decl_error, decl_module, decl_storage};
-use permissions::{Scope, BURN, EXCHANGE, MINT, SLASH, TRANSFER};
+use permissions::{Scope, BURN, MINT, SLASH, TRANSFER};
 use sp_arithmetic::traits::{CheckedAdd, Zero};
 use sp_runtime::DispatchError;
 
@@ -373,7 +373,7 @@ impl<T: Trait> Module<T> {
     pub fn set_reserves_account_id(account: T::TechAccountId) -> Result<(), DispatchError> {
         ReservesAcc::<T>::set(account.clone());
         let account_id = Technical::<T>::tech_account_id_to_account_id(&account)?;
-        let permissions = [BURN, MINT, TRANSFER, SLASH, EXCHANGE];
+        let permissions = [BURN, MINT, TRANSFER, SLASH];
         for permission in &permissions {
             permissions::Module::<T>::assign_permission(
                 account_id.clone(),

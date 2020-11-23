@@ -1,4 +1,4 @@
-use crate::{GenesisConfig, Module, Scope, Trait, EXCHANGE, MINT, TRANSFER};
+use crate::{GenesisConfig, Module, Scope, Trait, INIT_DEX, MINT, TRANSFER};
 use frame_support::{impl_outer_origin, parameter_types, weights::Weight};
 use frame_system as system;
 use sp_core::{H256, H512};
@@ -71,12 +71,12 @@ impl Default for ExtBuilder {
         Self {
             initial_permission_owners: vec![
                 (TRANSFER, Scope::Unlimited, vec![ALICE]),
-                (EXCHANGE, Scope::Unlimited, vec![ALICE]),
+                (INIT_DEX, Scope::Unlimited, vec![ALICE]),
                 (MINT, Scope::Unlimited, vec![JOHN]),
             ],
             initial_permissions: vec![
                 (ALICE, Scope::Unlimited, vec![TRANSFER]), // Alice is forbidden to transfer
-                (BOB, Scope::Unlimited, vec![EXCHANGE]),
+                (BOB, Scope::Unlimited, vec![INIT_DEX]),
                 (BOB, Scope::Limited(H512::repeat_byte(1)), vec![TRANSFER]), // Bob is forbidden to transfer
                 (JOHN, Scope::Unlimited, vec![MINT]),
             ],

@@ -186,11 +186,6 @@ fn testnet_genesis(
                     vec![tech_permissions_owner.clone()],
                 ),
                 (
-                    permissions::EXCHANGE,
-                    Scope::Unlimited,
-                    vec![tech_permissions_owner.clone()],
-                ),
-                (
                     permissions::INIT_DEX,
                     Scope::Unlimited,
                     vec![tech_permissions_owner.clone()],
@@ -215,7 +210,7 @@ fn testnet_genesis(
                 (
                     dex_root.clone(),
                     Scope::Unlimited,
-                    vec![permissions::EXCHANGE, permissions::INIT_DEX],
+                    vec![permissions::INIT_DEX],
                 ),
                 (
                     dex_root.clone(),
@@ -225,7 +220,7 @@ fn testnet_genesis(
                 (
                     xor_fee_account_id,
                     Scope::Unlimited,
-                    vec![permissions::EXCHANGE, permissions::MINT, permissions::BURN],
+                    vec![permissions::MINT, permissions::BURN],
                 ),
             ],
         }),

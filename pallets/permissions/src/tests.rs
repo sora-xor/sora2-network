@@ -95,7 +95,7 @@ fn permission_grant_passes() {
         assert_ok!(PermissionsModule::grant_permission(JOHN, BOB, MINT));
         assert_ok!(PermissionsModule::check_permission(BOB, MINT));
         // Verify existing permissions are kept
-        assert_ok!(PermissionsModule::check_permission(BOB, EXCHANGE));
+        assert_ok!(PermissionsModule::check_permission(BOB, INIT_DEX));
     });
 }
 
@@ -112,7 +112,7 @@ fn permission_grant_fails_with_permission_not_found_error() {
 #[test]
 fn permission_grant_fails_with_permission_not_owned_error() {
     ExtBuilder::default().build().execute_with(|| {
-        match PermissionsModule::grant_permission(BOB, ALICE, EXCHANGE) {
+        match PermissionsModule::grant_permission(BOB, ALICE, INIT_DEX) {
             Err(Error::<Test>::PermissionNotOwned) => {}
             result => panic!("{:?}", result),
         }
@@ -130,7 +130,7 @@ fn permission_grant_with_scope_passes() {
         ));
         assert_ok!(PermissionsModule::check_permission(BOB, MINT));
         // Verify existing permissions are kept
-        assert_ok!(PermissionsModule::check_permission(BOB, EXCHANGE));
+        assert_ok!(PermissionsModule::check_permission(BOB, INIT_DEX));
     });
 }
 
@@ -176,7 +176,7 @@ fn permission_grant_with_scope_fails_with_permission_not_found_error() {
 #[test]
 fn permission_grant_with_scope_fails_with_permission_not_owned_error() {
     ExtBuilder::default().build().execute_with(|| {
-        match PermissionsModule::grant_permission_with_scope(BOB, ALICE, EXCHANGE, Scope::Unlimited)
+        match PermissionsModule::grant_permission_with_scope(BOB, ALICE, INIT_DEX, Scope::Unlimited)
         {
             Err(Error::<Test>::PermissionNotOwned) => {}
             result => panic!("{:?}", result),
@@ -209,7 +209,7 @@ fn permission_transfer_fails_with_permission_not_found_error() {
 #[test]
 fn permission_transfer_fails_with_permission_not_owned_error() {
     ExtBuilder::default().build().execute_with(|| {
-        match PermissionsModule::transfer_permission(BOB, ALICE, EXCHANGE, Scope::Unlimited) {
+        match PermissionsModule::transfer_permission(BOB, ALICE, INIT_DEX, Scope::Unlimited) {
             Err(Error::<Test>::PermissionNotOwned) => {}
             result => panic!("{:?}", result),
         }
@@ -232,7 +232,7 @@ fn permission_assign_passes() {
 #[test]
 fn permission_assign_fails_with_permission_already_exists() {
     ExtBuilder::default().build().execute_with(|| {
-        match PermissionsModule::assign_permission(ALICE, &BOB, EXCHANGE, Scope::Unlimited) {
+        match PermissionsModule::assign_permission(ALICE, &BOB, INIT_DEX, Scope::Unlimited) {
             Err(Error::<Test>::PermissionAlreadyExists) => {}
             result => panic!("{:?}", result),
         }
@@ -257,7 +257,7 @@ fn permission_create_passes() {
         ));
         assert_ok!(PermissionsModule::check_permission(BOB, CUSTOM_PERMISSION));
         // Verify existing permissions are kept
-        assert_ok!(PermissionsModule::check_permission(BOB, EXCHANGE));
+        assert_ok!(PermissionsModule::check_permission(BOB, INIT_DEX));
     });
 }
 
@@ -267,7 +267,7 @@ fn permission_create_fails_with_permission_already_exists_error() {
         match PermissionsModule::create_permission(
             ALICE,
             BOB,
-            EXCHANGE,
+            INIT_DEX,
             Scope::Unlimited,
             Mode::Permit,
         ) {
