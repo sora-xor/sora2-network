@@ -13,6 +13,7 @@ use sp_blockchain::{Error as BlockChainError, HeaderBackend, HeaderMetadata};
 use sp_transaction_pool::TransactionPool;
 use std::sync::Arc; // not reexported in parachain_runtime due to name clash
 
+/// JsonRpcHandler
 pub type JsonRpcHandler = jsonrpc_core::IoHandler<sc_rpc::Metadata>;
 
 /// Full client dependencies.

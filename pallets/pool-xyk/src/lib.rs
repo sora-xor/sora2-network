@@ -10,6 +10,7 @@ use frame_support::Parameter;
 use sp_runtime::RuntimeDebug;
 
 use common::{
+    hash,
     prelude::{Balance, EnsureDEXOwner, SwapAmount, SwapOutcome},
     AssetSymbol, EnsureTradingPairExists, LiquiditySource,
 };
@@ -20,6 +21,8 @@ use common::SwapRulesValidation;
 use common::ToFeeAccount;
 use common::ToTechUnitFromDEXAndTradingPair;
 use frame_support::ensure;
+use permissions::{Scope, BURN, MINT};
+use sp_std::vec::Vec;
 
 #[cfg(test)]
 mod mock;
@@ -63,11 +66,18 @@ type DepositLiquidityActionOf<T> = DepositLiquidityAction<
 /// Desired by used or Calculated by forumula. Dummy is used to abstract checking.
 #[derive(Clone, Copy, RuntimeDebug, Eq, PartialEq, Encode, Decode)]
 pub enum Bounds<Balance> {
+    /// This is consequence of computations, and not sed by used.
     Calculated(Balance),
+    /// This values set by used as fixed and determed value.
     Desired(Balance),
+    /// This is undetermined value, bounded by some logic or ranges.
     Min(Balance),
     Max(Balance),
+    /// This is determined value than pool is emply, then pool is not empty this works like range.
+    RangeFromDesiredToMin(Balance, Balance),
+    /// This is just unknown value that must be calulated and filled.
     Decide,
+    /// This is used in some checks tests and predicates, than value is not needed.
     Dummy,
 }
 
@@ -77,9 +87,11 @@ impl<Balance: Ord + Eq + Clone> Bounds<Balance> {
         match self {
             Bounds::Calculated(a) => a,
             Bounds::Desired(a) => a,
+            Bounds::RangeFromDesiredToMin(a, _) => a,
             _ => unreachable!("Must not happen, every uncalculated bound must be set in prepare_and_validate function"),
         }
     }
+
     fn meets_the_boundaries(&self, rhs: &Self) -> bool {
         use Bounds::*;
         match (
@@ -89,10 +101,13 @@ impl<Balance: Ord + Eq + Clone> Bounds<Balance> {
         ) {
             (Min(a), _, Some(b)) => a <= b,
             (Max(a), _, Some(b)) => a >= b,
+            (RangeFromDesiredToMin(a, b), _, Some(c)) => a >= c && c <= b,
             (_, Some(a), Some(b)) => a == b,
             _ => false,
         }
     }
+
+    #[allow(dead_code)]
     fn meets_the_boundaries_mutally(&self, rhs: &Self) -> bool {
         self.meets_the_boundaries(rhs) || rhs.meets_the_boundaries(self)
     }
@@ -103,6 +118,7 @@ impl<Balance> From<Bounds<Balance>> for Option<Balance> {
         match bounds {
             Bounds::Calculated(a) => Some(a),
             Bounds::Desired(a) => Some(a),
+            Bounds::RangeFromDesiredToMin(a, _) => Some(a),
             _ => None,
         }
     }
@@ -113,6 +129,7 @@ impl<'a, Balance> From<&'a Bounds<Balance>> for Option<&'a Balance> {
         match bounds {
             Bounds::Calculated(a) => Some(a),
             Bounds::Desired(a) => Some(a),
+            Bounds::RangeFromDesiredToMin(a, _) => Some(a),
             _ => None,
         }
     }
@@ -401,6 +418,17 @@ impl<T: Trait> common::SwapAction<AccountIdOf<T>, TechAccountIdOf<T>, T>
             self.receiver_account.as_ref().unwrap(),
             self.destination.amount.unwrap(),
         )?;
+        let pool_account_repr_sys =
+            technical::Module::<T>::tech_account_id_to_account_id(&self.pool_account)?;
+        let balance_a =
+            <assets::Module<T>>::free_balance(&self.source.asset, &pool_account_repr_sys)?;
+        let balance_b =
+            <assets::Module<T>>::free_balance(&self.destination.asset, &pool_account_repr_sys)?;
+        Module::<T>::update_reserves(
+            &self.source.asset,
+            &self.destination.asset,
+            (&balance_a, &balance_b),
+        );
         Ok(())
     }
     fn claim(&self, _source: &AccountIdOf<T>) -> bool {
@@ -574,9 +602,13 @@ impl<T: Trait> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, T
                                     Err(Error::<T>::InvalidDepositLiquidityBasicAssetAmount)?
                                 }
                             }
-                            _ => {
-                                (self.source.0).amount =
-                                    Bounds::Calculated(balance_bp / peace_to_add);
+                            bounds => {
+                                let calc = Bounds::Calculated(balance_bp / peace_to_add);
+                                ensure!(
+                                    bounds.meets_the_boundaries(&calc),
+                                    Error::<T>::CalculatedValueIsNotMeetsRequiredBoundaries
+                                );
+                                (self.source.0).amount = calc;
                             }
                         }
                         match oy {
@@ -585,11 +617,41 @@ impl<T: Trait> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, T
                                     Err(Error::<T>::InvalidDepositLiquidityTargetAssetAmount)?
                                 }
                             }
-                            _ => {
-                                (self.source.1).amount =
-                                    Bounds::Calculated(balance_tp / peace_to_add);
+                            bounds => {
+                                let calc = Bounds::Calculated(balance_tp / peace_to_add);
+                                ensure!(
+                                    bounds.meets_the_boundaries(&calc),
+                                    Error::<T>::CalculatedValueIsNotMeetsRequiredBoundaries
+                                );
+                                (self.source.1).amount = calc;
                             }
                         }
+                    }
+                    (
+                        Bounds::RangeFromDesiredToMin(xdes, xmin),
+                        Bounds::RangeFromDesiredToMin(ydes, ymin),
+                        Bounds::Decide,
+                    ) => {
+                        ensure!(
+                            xdes >= xmin && ydes >= ymin,
+                            Error::<T>::RangeValuesIsInvalid
+                        );
+                        let desliq = xdes * ydes;
+                        let piece = pool_k.unwrap() / desliq;
+                        let bp_tmp = balance_bp / piece;
+                        let tp_tmp = balance_tp / piece;
+                        let bp_down = bp_tmp / xdes;
+                        let tp_down = tp_tmp / ydes;
+                        let down = bp_down.max(tp_down);
+                        let bp_corr1 = bp_tmp / down;
+                        let tp_corr1 = tp_tmp / down;
+                        ensure!(
+                            bp_corr1 >= xmin && tp_corr1 >= ymin,
+                            Error::<T>::ImposibleToDecideValidPairValuesFromRangeForThisPool
+                        );
+                        (self.source.0).amount = Bounds::Calculated(bp_corr1);
+                        (self.source.1).amount = Bounds::Calculated(tp_corr1);
+                        self.destination.amount = Bounds::Calculated(bp_corr1 * tp_corr1);
                     }
                     // Case then no amount is specified (or something needed is not specified),
                     // impossible to decide any amounts.
@@ -687,6 +749,17 @@ impl<T: Trait> common::SwapAction<AccountIdOf<T>, TechAccountIdOf<T>, T>
             self.receiver_account.as_ref().unwrap(),
             self.destination.amount.unwrap(),
         )?;
+        let pool_account_repr_sys =
+            technical::Module::<T>::tech_account_id_to_account_id(&self.pool_account)?;
+        let balance_a =
+            <assets::Module<T>>::free_balance(&(self.source.0).asset, &pool_account_repr_sys)?;
+        let balance_b =
+            <assets::Module<T>>::free_balance(&(self.source.1).asset, &pool_account_repr_sys)?;
+        Module::<T>::update_reserves(
+            &(self.source.0).asset,
+            &(self.source.1).asset,
+            (&balance_a, &balance_b),
+        );
         Ok(())
     }
     fn claim(&self, _source: &AccountIdOf<T>) -> bool {
@@ -812,9 +885,13 @@ impl<T: Trait> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, T
                             Err(Error::<T>::InvalidWithdrawLiquidityBasicAssetAmount)?;
                         }
                     }
-
-                    _ => {
-                        (self.destination.0).amount = Bounds::Calculated(recom_x);
+                    bounds => {
+                        let calc = Bounds::Calculated(recom_x);
+                        ensure!(
+                            bounds.meets_the_boundaries(&calc),
+                            Error::<T>::CalculatedValueIsNotMeetsRequiredBoundaries
+                        );
+                        (self.destination.0).amount = calc;
                     }
                 }
 
@@ -824,9 +901,13 @@ impl<T: Trait> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, T
                             Err(Error::<T>::InvalidWithdrawLiquidityTargetAssetAmount)?;
                         }
                     }
-
-                    _ => {
-                        (self.destination.1).amount = Bounds::Calculated(recom_y);
+                    bounds => {
+                        let calc = Bounds::Calculated(recom_y);
+                        ensure!(
+                            bounds.meets_the_boundaries(&calc),
+                            Error::<T>::CalculatedValueIsNotMeetsRequiredBoundaries
+                        );
+                        (self.destination.1).amount = calc;
                     }
                 }
             }
@@ -904,6 +985,17 @@ impl<T: Trait> common::SwapAction<AccountIdOf<T>, TechAccountIdOf<T>, T>
             &source,
             self.source.amount.unwrap(),
         )?;
+        let pool_account_repr_sys =
+            technical::Module::<T>::tech_account_id_to_account_id(&self.pool_account)?;
+        let balance_a =
+            <assets::Module<T>>::free_balance(&(self.destination.0).asset, &pool_account_repr_sys)?;
+        let balance_b =
+            <assets::Module<T>>::free_balance(&(self.destination.1).asset, &pool_account_repr_sys)?;
+        Module::<T>::update_reserves(
+            &(self.destination.0).asset,
+            &(self.destination.1).asset,
+            (&balance_a, &balance_b),
+        );
         Ok(())
     }
     fn claim(&self, _source: &AccountIdOf<T>) -> bool {
@@ -1002,11 +1094,35 @@ where
 
 decl_storage! {
     trait Store for Module<T: Trait> as PoolXYK {
-        Something get(fn something): Option<u32>;
+        /// Updated after last liquidity change operation.
+        /// [Base Asset Id (XOR) -> Target Asset Id => (Base Balance, Target Balance)].
+        /// This storage records is not used as source of information, but used as quick cache for
+        /// information that comes from balances for assets from technical accounts.
+        /// For example, communication with technical accounts and their storage is not needed, and this
+        /// pair to balance cache can be used quickly.
+        pub Reserves get(fn reserves): double_map
+              hasher(blake2_128_concat) T::AssetId,
+              hasher(blake2_128_concat) T::AssetId => (Balance, Balance);
+        /// Collection of all registered marker tokens.
+        pub MarkerTokensIndex get(fn marker_tokens_index): Vec<T::AssetId>;
     }
 }
 
 impl<T: Trait> Module<T> {
+    fn update_reserves(
+        asset_a: &T::AssetId,
+        asset_b: &T::AssetId,
+        balance_pair: (&Balance, &Balance),
+    ) {
+        let hash_key = common::comm_merkle_op(asset_a, asset_b);
+        let (pair_u, pair_v) = common::sort_with_hash_key(
+            hash_key,
+            (asset_a, balance_pair.0),
+            (asset_b, balance_pair.1),
+        );
+        Reserves::<T>::insert(pair_u.0, pair_v.0, (pair_u.1, pair_v.1));
+    }
+
     pub fn get_marking_asset_repr(
         tech_acc: &TechAccountIdOf<T>,
     ) -> Result<AssetIdOf<T>, DispatchError> {
@@ -1082,9 +1198,9 @@ impl<T: Trait> Module<T> {
 decl_event!(
     pub enum Event<T>
     where
-        AssetId = AssetIdOf<T>,
+        TechAccountId = TechAccountIdOf<T>,
     {
-        SomethingStored(u32, AssetId),
+        PoolIsInitialized(TechAccountId),
     }
 );
 
@@ -1134,6 +1250,10 @@ decl_error! {
         SourceAmountMustBeSame,
         PoolInitializationIsInvalid,
         PoolIsAlreadyInitialized,
+        InvalidMinimumBoundValueOfBalance,
+        ImposibleToDecideValidPairValuesFromRangeForThisPool,
+        RangeValuesIsInvalid,
+        CalculatedValueIsNotMeetsRequiredBoundaries,
     }
 }
 
@@ -1185,6 +1305,7 @@ impl<T: Trait> Module<T> {
         }
     }
 
+    #[allow(dead_code)]
     fn get_bounded_asset_pair_for_liquidity(
         dex_id: T::DEXId,
         asset_a: T::AssetId,
@@ -1258,48 +1379,41 @@ impl<T: Trait> Module<T> {
 
     fn deposit_liquidity_unchecked(
         source: AccountIdOf<T>,
-        receiver: AccountIdOf<T>,
         dex_id: DEXIdOf<T>,
         input_asset_a: AssetIdOf<T>,
         input_asset_b: AssetIdOf<T>,
-        swap_amount_a: SwapAmount<Balance>,
-        swap_amount_b: SwapAmount<Balance>,
+        input_a_desired: Balance,
+        input_b_desired: Balance,
+        input_a_min: Balance,
+        input_b_min: Balance,
     ) -> DispatchResult {
-        let (
-            source_amount_a,
-            destination_amount_a,
-            source_amount_b,
-            destination_amount_b,
-            tech_acc_id,
-        ) = Module::<T>::get_bounded_asset_pair_for_liquidity(
+        let (_, tech_acc_id) = Module::<T>::tech_account_from_dex_and_asset_pair(
             dex_id,
             input_asset_a,
             input_asset_b,
-            swap_amount_a,
-            swap_amount_b,
         )?;
         ensure!(
-            destination_amount_a.meets_the_boundaries_mutally(&destination_amount_b),
-            Error::<T>::DestinationAmountMustBeSame
+            input_a_desired >= input_a_min && input_b_desired >= input_b_min,
+            Error::<T>::InvalidMinimumBoundValueOfBalance
         );
         let mark_asset = Module::<T>::get_marking_asset(&tech_acc_id)?;
         let action = PolySwapActionStructOf::<T>::DepositLiquidity(DepositLiquidityActionOf::<T> {
             client_account: None,
-            receiver_account: Some(receiver),
+            receiver_account: None,
             pool_account: tech_acc_id,
             source: ResourcePair(
                 Resource {
                     asset: input_asset_a,
-                    amount: source_amount_a,
+                    amount: Bounds::<Balance>::RangeFromDesiredToMin(input_a_desired, input_a_min),
                 },
                 Resource {
                     asset: input_asset_b,
-                    amount: source_amount_b,
+                    amount: Bounds::<Balance>::RangeFromDesiredToMin(input_b_desired, input_b_min),
                 },
             ),
             destination: Resource {
                 asset: mark_asset,
-                amount: destination_amount_a,
+                amount: Bounds::Decide,
             },
             min_liquidity: None,
         });
@@ -1311,50 +1425,37 @@ impl<T: Trait> Module<T> {
 
     fn withdraw_liquidity_unchecked(
         source: AccountIdOf<T>,
-        receiver_a: AccountIdOf<T>,
-        receiver_b: AccountIdOf<T>,
         dex_id: DEXIdOf<T>,
         output_asset_a: AssetIdOf<T>,
         output_asset_b: AssetIdOf<T>,
-        swap_amount_a: SwapAmount<Balance>,
-        swap_amount_b: SwapAmount<Balance>,
+        marker_asset_desired: Balance,
+        output_a_min: Balance,
+        output_b_min: Balance,
     ) -> DispatchResult {
-        let (
-            source_amount_a,
-            destination_amount_a,
-            source_amount_b,
-            destination_amount_b,
-            tech_acc_id,
-        ) = Module::<T>::get_bounded_asset_pair_for_liquidity(
+        let (_, tech_acc_id) = Module::<T>::tech_account_from_dex_and_asset_pair(
             dex_id,
             output_asset_a,
             output_asset_b,
-            swap_amount_a,
-            swap_amount_b,
         )?;
-        ensure!(
-            source_amount_a == source_amount_b,
-            Error::<T>::SourceAmountMustBeSame
-        );
         let mark_asset = Module::<T>::get_marking_asset(&tech_acc_id)?;
         let action =
             PolySwapActionStructOf::<T>::WithdrawLiquidity(WithdrawLiquidityActionOf::<T> {
                 client_account: None,
-                receiver_account_a: Some(receiver_a),
-                receiver_account_b: Some(receiver_b),
+                receiver_account_a: None,
+                receiver_account_b: None,
                 pool_account: tech_acc_id,
                 source: Resource {
                     asset: mark_asset,
-                    amount: source_amount_a,
+                    amount: Bounds::Desired(marker_asset_desired),
                 },
                 destination: ResourcePair(
                     Resource {
                         asset: output_asset_a,
-                        amount: destination_amount_a,
+                        amount: Bounds::Min(output_a_min),
                     },
                     Resource {
                         asset: output_asset_b,
-                        amount: destination_amount_b,
+                        amount: Bounds::Min(output_b_min),
                     },
                 ),
             });
@@ -1383,23 +1484,34 @@ decl_module! {
 
         #[weight = 0]
         fn deposit_liquidity(
-            origin, receiver: AccountIdOf<T>, dex_id: DEXIdOf<T>,
-            input_asset_a: AssetIdOf<T>, input_asset_b: AssetIdOf<T>,
-            swap_amount_a: SwapAmount<Balance>, swap_amount_b: SwapAmount<Balance>) -> DispatchResult {
+            origin,
+            dex_id: DEXIdOf<T>,
+            input_asset_a: AssetIdOf<T>,
+            input_asset_b: AssetIdOf<T>,
+            input_a_desired: Balance,
+            input_b_desired: Balance,
+            input_a_min: Balance,
+            input_b_min: Balance,
+        ) -> DispatchResult {
             let source = ensure_signed(origin)?;
-            Module::<T>::deposit_liquidity_unchecked(source, receiver, dex_id,
-                input_asset_a, input_asset_b, swap_amount_a, swap_amount_b)?;
+            Module::<T>::deposit_liquidity_unchecked(source, dex_id,
+                input_asset_a, input_asset_b, input_a_desired, input_b_desired, input_a_min, input_b_min)?;
             Ok(())
         }
 
         #[weight = 0]
         fn withdraw_liquidity(
-            origin, receiver_a: AccountIdOf<T>, receiver_b: AccountIdOf<T>, dex_id: DEXIdOf<T>,
-            output_asset_a: AssetIdOf<T>, output_asset_b: AssetIdOf<T>,
-            swap_amount_a: SwapAmount<Balance>, swap_amount_b: SwapAmount<Balance>) -> DispatchResult {
+            origin,
+            dex_id: DEXIdOf<T>,
+            output_asset_a: AssetIdOf<T>,
+            output_asset_b: AssetIdOf<T>,
+            marker_asset_desired: Balance,
+            output_a_min: Balance,
+            output_b_min: Balance,
+        ) -> DispatchResult {
             let source = ensure_signed(origin)?;
-            Module::<T>::withdraw_liquidity_unchecked(source, receiver_a, receiver_b, dex_id,
-                output_asset_a, output_asset_b, swap_amount_a, swap_amount_b)?;
+            Module::<T>::withdraw_liquidity_unchecked(source, dex_id,
+                output_asset_a, output_asset_b, marker_asset_desired, output_a_min, output_b_min)?;
             Ok(())
         }
 
@@ -1413,11 +1525,33 @@ decl_module! {
         {
                 let source = ensure_signed(origin.clone())?;
                 <T as Trait>::EnsureDEXOwner::ensure_dex_owner(&dex_id, origin.clone())?;
-                let (_,_,mark_asset) = Module::<T>::initialize_pool_unchecked(source, dex_id, asset_a, asset_b)?;
-                assets::Module::<T>::register(origin, mark_asset.into(), AssetSymbol(b"XYKPOOL".to_vec()), 18)?;
+                let (_,tech_account_id,mark_asset) = Module::<T>::initialize_pool_unchecked(source.clone(), dex_id, asset_a, asset_b)?;
+                let mark_asset_repr: T::AssetId = mark_asset.into();
+                assets::Module::<T>::register(origin, mark_asset_repr.clone(), AssetSymbol(b"XYKPOOL".to_vec()), 18)?;
+                let ta_repr = technical::Module::<T>::tech_account_id_to_account_id(&tech_account_id)?;
+                // Minting permission is needed for technical account to mint markered tokens of
+                // liquidity into account who deposit liquidity.
+                permissions::Module::<T>::grant_permission_with_scope(
+                   source.clone(),
+                   ta_repr.clone(),
+                   MINT,
+                   Scope::Limited(hash(&Into::<AssetIdOf::<T>>::into(mark_asset.clone())))
+                   )?;
+                permissions::Module::<T>::grant_permission_with_scope(
+                   source,
+                   ta_repr,
+                   BURN,
+                   Scope::Limited(hash(&Into::<AssetIdOf::<T>>::into(mark_asset.clone())))
+                   )?;
                 //  TODO: check and enable this than swap distribution will be available.
                 //  pswap_distribution::Module::<T>::subscribe(fee_acc_id.clone().into(),
                 //                dex_id.clone(), mark_asset.into(), frequency)?;
+                MarkerTokensIndex::<T>::mutate( |mti| {
+                    if let Err(index) = mti.binary_search(&mark_asset_repr) {
+                        mti.insert(index, mark_asset_repr);
+                    }
+                });
+                Self::deposit_event(RawEvent::PoolIsInitialized(tech_account_id.clone()));
                 Ok(())
         }
 

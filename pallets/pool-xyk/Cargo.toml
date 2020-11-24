@@ -30,13 +30,13 @@ orml-traits = { branch = "rococo-branch", git = "https://github.com/vmarkushin/o
 currencies = { package = "orml-currencies", branch = "rococo-branch", git = "https://github.com/vmarkushin/open-runtime-module-library", default-features = false }
 num-traits = { version = "0.2.12", default-features = false }
 sp-core = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "rococo-branch" }
+permissions = { path = "../permissions", default-features = false }
+sp-std = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "rococo-branch" }
 
 [dev-dependencies]
 sp-io = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "rococo-branch" }
 pallet-balances = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "rococo-branch" }
 tokens = { package = "orml-tokens", branch = "rococo-branch", git = "https://github.com/vmarkushin/open-runtime-module-library", default-features = false }
-permissions = { path = "../permissions", default-features = false }
-sp-std = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "rococo-branch" }
 
 [features]
 default = ['std']
@@ -44,10 +44,12 @@ std = [
     'codec/std',
     'frame-support/std',
     'frame-system/std',
+    'permissions/std',
     'common/std',
     'currencies/std',
     'num-traits/std',
     'sp-core/std',
+    'sp-std/std',
     'dex-manager/std',
     'trading-pair/std',
 ]

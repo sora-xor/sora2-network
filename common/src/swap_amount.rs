@@ -30,6 +30,36 @@ pub enum SwapAmount<AmountType> {
     },
 }
 
+#[derive(Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq, PartialOrd, Ord)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+pub enum QuoteAmount<AmountType> {
+    WithDesiredInput { desired_amount_in: AmountType },
+    WithDesiredOutput { desired_amount_out: AmountType },
+}
+
+impl<T> QuoteAmount<T> {
+    pub fn with_desired_input(desired_amount_in: T) -> Self {
+        Self::WithDesiredInput { desired_amount_in }
+    }
+
+    pub fn with_desired_output(desired_amount_out: T) -> Self {
+        Self::WithDesiredOutput { desired_amount_out }
+    }
+
+    pub fn amount(self) -> T {
+        match self {
+            QuoteAmount::WithDesiredInput {
+                desired_amount_in: amount,
+                ..
+            }
+            | QuoteAmount::WithDesiredOutput {
+                desired_amount_out: amount,
+                ..
+            } => amount,
+        }
+    }
+}
+
 impl<T> SwapAmount<T> {
     pub fn with_desired_input(desired_amount_in: T, min_amount_out: T) -> Self {
         Self::WithDesiredInput {
