@@ -72,7 +72,8 @@ pub enum Bounds<Balance> {
     Dummy,
 }
 
-impl<Balance> Bounds<Balance> {
+impl<Balance: Ord + Eq + Clone> Bounds<Balance> {
+    /// Unwrap only known values, min and max is not known for final value.
     fn unwrap(self) -> Balance {
         match self {
             Bounds::Calculated(a) => a,
@@ -80,10 +81,36 @@ impl<Balance> Bounds<Balance> {
             _ => unreachable!("Must not happen, every uncalculated bound must be set in prepare_and_validate function"),
         }
     }
+    fn meets_the_boundaries(&self, rhs: &Self) -> bool {
+        use Bounds::*;
+        match (
+            self,
+            Option::<&Balance>::from(self),
+            Option::<&Balance>::from(rhs),
+        ) {
+            (Min(a), _, Some(b)) => a <= b,
+            (Max(a), _, Some(b)) => a >= b,
+            (_, Some(a), Some(b)) => a == b,
+            _ => false,
+        }
+    }
+    fn meets_the_boundaries_mutally(&self, rhs: &Self) -> bool {
+        self.meets_the_boundaries(rhs) || rhs.meets_the_boundaries(self)
+    }
 }
 
 impl<Balance> From<Bounds<Balance>> for Option<Balance> {
     fn from(bounds: Bounds<Balance>) -> Self {
+        match bounds {
+            Bounds::Calculated(a) => Some(a),
+            Bounds::Desired(a) => Some(a),
+            _ => None,
+        }
+    }
+}
+
+impl<'a, Balance> From<&'a Bounds<Balance>> for Option<&'a Balance> {
+    fn from(bounds: &'a Bounds<Balance>) -> Self {
         match bounds {
             Bounds::Calculated(a) => Some(a),
             Bounds::Desired(a) => Some(a),
@@ -172,7 +199,13 @@ impl<T: Trait> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, T
     }
 
     fn prepare_and_validate(&mut self, source_opt: Option<&AccountIdOf<T>>) -> DispatchResult {
-        let abstract_checking = source_opt.is_none() || common::SwapRulesValidation::<AccountIdOf<T>, TechAccountIdOf<T>, T>::is_abstract_checking(self);
+        let abstract_checking_from_method = common::SwapRulesValidation::<
+            AccountIdOf<T>,
+            TechAccountIdOf<T>,
+            T,
+        >::is_abstract_checking(self);
+        let abstract_checking = source_opt.is_none() || abstract_checking_from_method;
+        let abstract_checking_for_quote = source_opt.is_none() && !abstract_checking_from_method;
 
         // Check that client account is same as source, because signature is checked for source.
         // Signature checking is used in extrinsics for example, and source is derived from origin.
@@ -238,7 +271,7 @@ impl<T: Trait> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, T
             Err(Error::<T>::PoolIsInvalid)?;
         }
 
-        if !abstract_checking {
+        if abstract_checking_for_quote || !abstract_checking {
             // Calculate pair ratio of pool, and check or correct amount of pair swap action.
             // Here source technical is divided by destination technical.
             let ratio_a = balance_st / balance_tt;
@@ -1204,6 +1237,54 @@ impl<T: Trait> Module<T> {
         ))
     }
 
+    pub fn initialize_pool_unchecked(
+        source: AccountIdOf<T>,
+        dex_id: DEXIdOf<T>,
+        asset_a: AssetIdOf<T>,
+        asset_b: AssetIdOf<T>,
+    ) -> Result<
+        (
+            common::TradingPair<TechAssetIdOf<T>>,
+            TechAccountIdOf<T>,
+            TechAssetIdOf<T>,
+        ),
+        DispatchError,
+    > {
+        let (trading_pair, tech_acc_id) = Module::<T>::tech_account_from_dex_and_asset_pair(
+            dex_id.clone(),
+            asset_a.clone(),
+            asset_b.clone(),
+        )?;
+        let fee_acc_id = tech_acc_id.clone().to_fee_account().unwrap();
+        let mark_asset = Module::<T>::get_marking_asset(tech_acc_id.clone())?;
+        let result = Ok((
+            trading_pair.clone(),
+            tech_acc_id.clone(),
+            mark_asset.clone(),
+        ));
+        // Function initialize_pools is usually called once, just quick check if tech
+        // account is not registered is enougth to do the job.
+        // If function is called second time, than this is not usual case and additional checks
+        // can be done, check every condition for `PoolIsAlreadyInitialized`.
+        if (technical::Module::<T>::ensure_tech_account_registered(&tech_acc_id.clone()).is_ok()) {
+            if (technical::Module::<T>::ensure_tech_account_registered(&fee_acc_id.clone()).is_ok()
+                && assets::Module::<T>::ensure_asset_exists(&mark_asset.clone().into()).is_ok()
+                && trading_pair::Module::<T>::ensure_trading_pair_exists(
+                    &dex_id.clone(),
+                    &trading_pair.target_asset_id.into().clone(),
+                )
+                .is_ok())
+            {
+                Err(Error::<T>::PoolIsAlreadyInitialized)?;
+            } else {
+                Err(Error::<T>::PoolInitializationIsInvalid)?;
+            }
+        }
+        technical::Module::<T>::register_tech_account_id(tech_acc_id.clone())?;
+        technical::Module::<T>::register_tech_account_id(fee_acc_id.clone())?;
+        result
+    }
+
     fn deposit_liquidity_unchecked(
         source: AccountIdOf<T>,
         receiver: AccountIdOf<T>,
@@ -1227,7 +1308,7 @@ impl<T: Trait> Module<T> {
             swap_amount_b,
         )?;
         ensure!(
-            destination_amount_a == destination_amount_b,
+            destination_amount_a.meets_the_boundaries_mutally(&destination_amount_b),
             Error::<T>::DestinationAmountMustBeSame
         );
         let mark_asset = Module::<T>::get_marking_asset(tech_acc_id.clone())?;
@@ -1359,41 +1440,16 @@ decl_module! {
             asset_b: AssetIdOf<T>,
             ) -> DispatchResult
         {
+                let source = ensure_signed(origin.clone())?;
                 <T as Trait>::EnsureDEXOwner::ensure_dex_owner(&dex_id, origin.clone())?;
-                let (trading_pair, tech_acc_id) = Module::<T>::tech_account_from_dex_and_asset_pair(
-                    dex_id.clone(),
-                    asset_a.clone(),
-                    asset_b.clone(),
-                )?;
-                let fee_acc_id = tech_acc_id.clone().to_fee_account().unwrap();
-                let mark_asset = Module::<T>::get_marking_asset(tech_acc_id.clone())?;
-                // Function initialize_pools is usually called once, just quick check if tech
-                // account is not registered is enougth to do the job.
-                // If function is called second time, than this is not usual case and additional checks
-                // can be done, check every condition for `PoolIsAlreadyInitialized`.
-                if (!technical::Module::<T>::ensure_tech_account_registered(&tech_acc_id.clone()).is_ok()) {
-                    ()
-                } else if ( technical::Module::<T>::ensure_tech_account_registered(&fee_acc_id.clone()).is_ok()
-                           && assets::Module::<T>::ensure_asset_exists(&mark_asset.clone().into()).is_ok()
-                           && trading_pair::Module::<T>::ensure_trading_pair_exists(&dex_id.clone(), &trading_pair.target_asset_id.into().clone()).is_ok())
-                {
-                    Err(Error::<T>::PoolIsAlreadyInitialized)?;
-                } else {
-                    Err(Error::<T>::PoolInitializationIsInvalid)?;
-                }
-
-                technical::Module::<T>::register_tech_account_id(
-                    tech_acc_id.clone()
-                )?;
-                technical::Module::<T>::register_tech_account_id(
-                    fee_acc_id.clone()
-                )?;
+                let (_,_,mark_asset) = Module::<T>::initialize_pool_unchecked(source, dex_id, asset_a, asset_b)?;
                 assets::Module::<T>::register(origin.clone(), mark_asset.clone().into())?;
                 //TODO: check and enable this than swap distribution will be available.
                 //swap_distribution::Module::<T>::subscribe(fee_acc_id.clone().into(),
                 //                dex_id.clone(), mark_asset.into(), you_frequency)?;
                 Ok(())
         }
+
 
     }
 }

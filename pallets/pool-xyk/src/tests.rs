@@ -5,115 +5,142 @@ use permissions::{Scope, MINT};
 
 type TechAssetIdOf<T> = <T as technical::Trait>::TechAssetId;
 
-macro_rules! preset01(
-($test: expr) => ({
-    let mut ext = ExtBuilder::default().build();
-    let dex_id = 220;
-    let gt: crate::mock::AssetId = GoldenTicket.into();
-    let bp: crate::mock::AssetId = BlackPepper.into();
-    let tpair = common::TradingPair::<TechAssetIdOf<Testtime>> {
-        base_asset_id: GoldenTicket.into(),
-        target_asset_id: BlackPepper.into(),
-    };
-    let tech_acc_id =
-        <Testtime as technical::Trait>::TechAccountId::to_tech_unit_from_dex_and_trading_pair(
-            dex_id.clone(),
-            tpair,
-        );
-    let fee_acc = tech_acc_id.clone().to_fee_account().unwrap();
-    let repr: AccountId =
-        technical::Module::<Testtime>::tech_account_id_to_account_id(&tech_acc_id).unwrap();
-    let fee_repr: AccountId =
-        technical::Module::<Testtime>::tech_account_id_to_account_id(&fee_acc).unwrap();
-    ext.execute_with(|| {
-        assert_ok!(technical::Module::<Testtime>::register_tech_account_id(
-            tech_acc_id.clone()
-        ));
-        assert_ok!(technical::Module::<Testtime>::register_tech_account_id(
-            fee_acc.clone()
-        ));
-        assert_ok!(assets::Module::<Testtime>::register(
-            Origin::signed(ALICE()),
-            GoldenTicket.into()
-        ));
-        assert_ok!(assets::Module::<Testtime>::register(
-            Origin::signed(repr.clone()),
-            BlackPepper.into()
-        ));
-        assert_ok!(dex_manager::Module::<Testtime>::initialize_dex(
-            Origin::signed(BOB()),
-            dex_id.clone(),
-            GoldenTicket.into(),
-            BOB(),
-            None,
-            None
-        ));
-        assert_ok!(trading_pair::Module::<Testtime>::register(
-            Origin::signed(BOB()),
-            dex_id.clone(),
-            GoldenTicket.into(),
-            BlackPepper.into()
-        ));
-        assert_ok!(assets::Module::<Testtime>::mint(
-            &gt,
-            &ALICE(),
-            &ALICE(),
-            900_000u32.into()
-        ));
-        assert_ok!(assets::Module::<Testtime>::mint(
-            &bp,
-            &repr.clone(),
-            &repr.clone(),
-            900_000u32.into()
-        ));
-        assert_ok!(
-            permissions::Module::<Testtime>::grant_permission_with_scope(
-                ALICE(),
-                repr.clone(),
-                MINT,
-                Scope::Limited(hash(&gt))
-            )
-        );
-        assert_ok!(assets::Module::<Testtime>::mint(
-            &gt,
-            &repr.clone(),
-            &repr.clone(),
-            1230_000u32.into()
-        ));
-        assert_eq!(
-            Into::<u32>::into(assets::Module::<Testtime>::free_balance(&gt, &ALICE()).unwrap()),
-            900_000u32
-        );
-        assert_eq!(
-            Into::<u32>::into(assets::Module::<Testtime>::free_balance(&bp, &ALICE()).unwrap()),
-            2000_000u32
-        );
-        assert_eq!(
-            Into::<u32>::into(
-                assets::Module::<Testtime>::free_balance(&gt, &repr.clone()).unwrap()
-            ),
-            1230_000u32
-        );
-        assert_eq!(
-            Into::<u32>::into(
-                assets::Module::<Testtime>::free_balance(&bp, &repr.clone()).unwrap()
-            ),
-            900_000u32
-        );
-        assert_eq!(
-            Into::<u32>::into(
-                assets::Module::<Testtime>::free_balance(&gt, &fee_repr.clone()).unwrap()
-            ),
-            0_u32
-        );
-        $test(dex_id, gt, bp, tpair, tech_acc_id.clone(), fee_acc.clone(), repr, fee_repr);
-    });
-}));
+impl crate::Module<Testtime> {
+    fn preset01(
+        test: fn(
+            crate::mock::DEXId,
+            AssetId,
+            AssetId,
+            common::TradingPair<crate::mock::TechAssetId>,
+            crate::mock::TechAccountId,
+            crate::mock::TechAccountId,
+            AccountId,
+            AccountId,
+        ) -> (),
+    ) {
+        let mut ext = ExtBuilder::default().build();
+        let dex_id = 220;
+        let gt: crate::mock::AssetId = GoldenTicket.into();
+        let bp: crate::mock::AssetId = BlackPepper.into();
+
+        ext.execute_with(|| {
+            assert_ok!(assets::Module::<Testtime>::register(
+                Origin::signed(ALICE()),
+                GoldenTicket.into()
+            ));
+
+            assert_ok!(dex_manager::Module::<Testtime>::initialize_dex(
+                Origin::signed(BOB()),
+                dex_id.clone(),
+                GoldenTicket.into(),
+                BOB(),
+                None,
+                None
+            ));
+
+            assert_ok!(trading_pair::Module::<Testtime>::register(
+                Origin::signed(BOB()),
+                dex_id.clone(),
+                GoldenTicket.into(),
+                BlackPepper.into()
+            ));
+
+            assert_ok!(crate::Module::<Testtime>::initialize_pool(
+                Origin::signed(BOB()),
+                dex_id.clone(),
+                GoldenTicket.into(),
+                BlackPepper.into(),
+            ));
+
+            let (tpair, tech_acc_id) =
+                crate::Module::<Testtime>::tech_account_from_dex_and_asset_pair(
+                    dex_id.clone(),
+                    GoldenTicket.into(),
+                    BlackPepper.into(),
+                )
+                .unwrap();
+
+            let fee_acc = tech_acc_id.clone().to_fee_account().unwrap();
+            let repr: AccountId =
+                technical::Module::<Testtime>::tech_account_id_to_account_id(&tech_acc_id).unwrap();
+            let fee_repr: AccountId =
+                technical::Module::<Testtime>::tech_account_id_to_account_id(&fee_acc).unwrap();
+
+            assert_ok!(assets::Module::<Testtime>::register(
+                Origin::signed(repr.clone()),
+                BlackPepper.into()
+            ));
+
+            assert_ok!(assets::Module::<Testtime>::mint(
+                &gt,
+                &ALICE(),
+                &ALICE(),
+                900_000u32.into()
+            ));
+            assert_ok!(assets::Module::<Testtime>::mint(
+                &bp,
+                &repr.clone(),
+                &repr.clone(),
+                900_000u32.into()
+            ));
+            assert_ok!(
+                permissions::Module::<Testtime>::grant_permission_with_scope(
+                    ALICE(),
+                    repr.clone(),
+                    MINT,
+                    Scope::Limited(hash(&gt))
+                )
+            );
+            assert_ok!(assets::Module::<Testtime>::mint(
+                &gt,
+                &repr.clone(),
+                &repr.clone(),
+                1230_000u32.into()
+            ));
+            assert_eq!(
+                Into::<u32>::into(assets::Module::<Testtime>::free_balance(&gt, &ALICE()).unwrap()),
+                900_000u32
+            );
+            assert_eq!(
+                Into::<u32>::into(assets::Module::<Testtime>::free_balance(&bp, &ALICE()).unwrap()),
+                2000_000u32
+            );
+            assert_eq!(
+                Into::<u32>::into(
+                    assets::Module::<Testtime>::free_balance(&gt, &repr.clone()).unwrap()
+                ),
+                1230_000u32
+            );
+            assert_eq!(
+                Into::<u32>::into(
+                    assets::Module::<Testtime>::free_balance(&bp, &repr.clone()).unwrap()
+                ),
+                900_000u32
+            );
+            assert_eq!(
+                Into::<u32>::into(
+                    assets::Module::<Testtime>::free_balance(&gt, &fee_repr.clone()).unwrap()
+                ),
+                0_u32
+            );
+            test(
+                dex_id,
+                gt,
+                bp,
+                tpair,
+                tech_acc_id.clone(),
+                fee_acc.clone(),
+                repr,
+                fee_repr,
+            );
+        });
+    }
+}
 
 #[test]
 #[rustfmt::skip]
 fn swap_pair_premintliq_desired_output() {
-    preset01!(|dex_id, gt, bp, _, _, _, repr: AccountId, fee_repr: AccountId| {
+    crate::Module::<Testtime>::preset01(|dex_id, gt, bp, _, _, _, repr: AccountId, fee_repr: AccountId| {
         assert_ok!(crate::Module::<Testtime>::swap_pair(
             Origin::signed(ALICE()),
             ALICE(),
@@ -157,7 +184,7 @@ fn swap_pair_premintliq_desired_output() {
 #[test]
 #[rustfmt::skip]
 fn swap_pair_premintliq_desired_input() {
-    preset01!(|dex_id, gt, bp, _, _, _, repr: AccountId, fee_repr: AccountId| {
+    crate::Module::<Testtime>::preset01(|dex_id, gt, bp, _, _, _, repr: AccountId, fee_repr: AccountId| {
         assert_ok!(crate::Module::<Testtime>::swap_pair(
             Origin::signed(ALICE()),
             ALICE(),
@@ -201,7 +228,7 @@ fn swap_pair_premintliq_desired_input() {
 #[test]
 #[rustfmt::skip]
 fn swap_pair_invalid_dex_id() {
-    preset01!(|_, _, _, _, _, _, _, _| {
+    crate::Module::<Testtime>::preset01(|_, _, _, _, _, _, _, _| {
         assert_noop!(
             crate::Module::<Testtime>::swap_pair(
                 Origin::signed(ALICE()),
@@ -222,7 +249,7 @@ fn swap_pair_invalid_dex_id() {
 #[test]
 #[rustfmt::skip]
 fn swap_pair_different_asset_pair() {
-    preset01!(|dex_id, _, _, _, _, _, _, _| {
+    crate::Module::<Testtime>::preset01(|dex_id, gt, bp, _, _, _, repr: AccountId, fee_repr: AccountId| {
         assert_noop!(
             crate::Module::<Testtime>::swap_pair(
                 Origin::signed(ALICE()),
@@ -243,7 +270,7 @@ fn swap_pair_different_asset_pair() {
 #[test]
 #[rustfmt::skip]
 fn swap_pair_large_swap_fail_with_out_of_bounds() {
-    preset01!(|dex_id, _, _, _, _, _, _, _| {
+    crate::Module::<Testtime>::preset01(|dex_id, gt, bp, _, _, _, repr: AccountId, fee_repr: AccountId| {
         assert_noop!(
             crate::Module::<Testtime>::swap_pair(
                 Origin::signed(ALICE()),
@@ -264,7 +291,7 @@ fn swap_pair_large_swap_fail_with_out_of_bounds() {
 #[test]
 #[rustfmt::skip]
 fn swap_pair_large_swap_fail_with_source_balance_not_large_enouth() {
-    preset01!(|dex_id, _, _, _, _, _, _, _| {
+    crate::Module::<Testtime>::preset01(|dex_id, gt, bp, _, _, _, repr: AccountId, fee_repr: AccountId| {
         assert_noop!(
             crate::Module::<Testtime>::swap_pair(
                 Origin::signed(ALICE()),
@@ -285,7 +312,7 @@ fn swap_pair_large_swap_fail_with_source_balance_not_large_enouth() {
 #[test]
 #[rustfmt::skip]
 fn swap_pair_swap_fail_with_target_balance_not_large_enoth() {
-    preset01!(|dex_id, gt, _, _, _, _, _, _| {
+    crate::Module::<Testtime>::preset01(|dex_id, gt, bp, _, _, _, repr: AccountId, fee_repr: AccountId| {
         assert_ok!(assets::Module::<Testtime>::mint(
             &gt,
             &ALICE(),
@@ -312,7 +339,7 @@ fn swap_pair_swap_fail_with_target_balance_not_large_enoth() {
 #[test]
 #[rustfmt::skip]
 fn swap_pair_swap_fail_with_invalid_balance() {
-    preset01!(|dex_id, _, _, _, _, _, _, _| {
+    crate::Module::<Testtime>::preset01(|dex_id, gt, bp, _, _, _, repr: AccountId, fee_repr: AccountId| {
         assert_noop!(
             crate::Module::<Testtime>::swap_pair(
                 Origin::signed(BOB()),
