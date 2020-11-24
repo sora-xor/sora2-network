@@ -84,11 +84,11 @@ impl crate::Module<Testtime> {
                 900_000u32.into()
             ));
             assert_ok!(
-                permissions::Module::<Testtime>::grant_permission_with_parameters(
+                permissions::Module::<Testtime>::grant_permission_with_scope(
                     ALICE(),
                     repr.clone(),
                     MINT,
-                    hash(&gt)
+                    Scope::Limited(hash(&gt))
                 )
             );
             assert_ok!(assets::Module::<Testtime>::mint(
