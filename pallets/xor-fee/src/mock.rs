@@ -264,11 +264,7 @@ impl ExtBuilder {
                 (BURN, Scope::Unlimited, vec![xor_fee_account_id]),
                 (TRANSFER, Scope::Unlimited, vec![xor_fee_account_id]),
             ],
-            initial_permissions: vec![(
-                xor_fee_account_id,
-                Scope::Unlimited,
-                vec![MINT, BURN],
-            )],
+            initial_permissions: vec![(xor_fee_account_id, Scope::Unlimited, vec![MINT, BURN])],
         }
         .assimilate_storage(&mut t)
         .unwrap();
