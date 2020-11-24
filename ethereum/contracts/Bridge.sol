@@ -92,6 +92,8 @@ contract Bridge {
     public 
     payable {
         require(msg.value > 0);
+        require (destination != "", "DESTINATION ADDRESS SHOULD BE NOT EMPTY");
+        
         emit Deposit(destination, msg.value, address(0x0));
     }
 
@@ -104,6 +106,14 @@ contract Bridge {
         address tokenAddress) 
         external 
         payable {
+            
+        IERC20 token = IERC20(tokenAddress);
+        
+        require (token.allowance(msg.sender, address(this)) >= amount, "NOT ENOUGH DELEGATED TOKENS ON SENDER BALANCE");
+
+        token.transferFrom(msg.sender, address(this), amount);
+        
+        emit Deposit(destination, amount, msg.sender);
     }
 
     function submitProof(
