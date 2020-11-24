@@ -4,9 +4,9 @@ use common::BasisPoints;
 use currencies::BasicCurrencyAdapter;
 use frame_support::{impl_outer_origin, parameter_types, weights::Weight};
 use frame_system as system;
-use permissions::{BURN, INIT_DEX, MINT, TRANSFER};
+use permissions::{Scope, INIT_DEX, TRANSFER};
 use sp_core::crypto::AccountId32;
-use sp_core::{H256, H512};
+use sp_core::H256;
 use sp_runtime::{
     testing::Header,
     traits::{BlakeTwo256, IdentityLookup},
@@ -28,7 +28,8 @@ pub fn BOB() -> AccountId {
 
 pub struct ExtBuilder {
     endowed_accounts: Vec<(AccountId, AssetId, Balance)>,
-    initial_permissions: Vec<(u32, AccountId, AccountId, Option<H512>)>,
+    initial_permission_owners: Vec<(u32, Scope, Vec<AccountId>)>,
+    initial_permissions: Vec<(AccountId, Scope, Vec<u32>)>,
 }
 
 impl Default for ExtBuilder {
@@ -39,11 +40,11 @@ impl Default for ExtBuilder {
                 (ALICE(), BlackPepper.into(), 2000_000_u128.into()),
                 (BOB(), RedPepper.into(), 2000_000_u128.into()),
             ],
-            initial_permissions: vec![
-                (INIT_DEX, BOB(), BOB(), None),
-                (TRANSFER, ALICE(), ALICE(), None),
-                (TRANSFER, BOB(), BOB(), None),
+            initial_permission_owners: vec![
+                (INIT_DEX, Scope::Unlimited, vec![BOB()]),
+                (TRANSFER, Scope::Unlimited, vec![ALICE()]),
             ],
+            initial_permissions: vec![(BOB(), Scope::Unlimited, vec![INIT_DEX])],
         }
     }
 }
@@ -207,6 +208,7 @@ impl ExtBuilder {
         .unwrap();
 
         permissions::GenesisConfig::<Testtime> {
+            initial_permission_owners: self.initial_permission_owners,
             initial_permissions: self.initial_permissions,
         }
         .assimilate_storage(&mut t)

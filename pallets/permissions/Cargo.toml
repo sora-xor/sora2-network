@@ -21,6 +21,7 @@ frame-support = { git = "https://github.com/paritytech/substrate", default-featu
 frame-system = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "rococo-branch" }
 serde = { version = "1.0.101", optional = true, features = ["derive"] }
 sp-core = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "rococo-branch" }
+sp-std = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "rococo-branch" }
 
 [dev-dependencies]
 sp-io = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "rococo-branch" }

@@ -3,9 +3,9 @@ use common::{fixed_from_basis_points, hash, prelude::Balance, Amount, AssetId, D
 use currencies::BasicCurrencyAdapter;
 use frame_support::{impl_outer_origin, parameter_types, weights::Weight};
 use frame_system as system;
-use permissions::{INIT_DEX, MANAGE_DEX};
+use permissions::{Scope, INIT_DEX, MANAGE_DEX};
 use sp_core::crypto::AccountId32;
-use sp_core::{H256, H512};
+use sp_core::H256;
 use sp_runtime::{
     testing::Header,
     traits::{BlakeTwo256, IdentityLookup},
@@ -207,7 +207,8 @@ pub struct ExtBuilder {
     reserves_3: ReservesInit,
     reserves_4: ReservesInit,
     dex_list: Vec<(DEXId, DEXInfo<AssetId>)>,
-    initial_permissions: Vec<(u32, AccountId, AccountId, Option<H512>)>,
+    initial_permission_owners: Vec<(u32, Scope, Vec<AccountId>)>,
+    initial_permissions: Vec<(AccountId, Scope, Vec<u32>)>,
 }
 
 impl Default for ExtBuilder {
@@ -255,10 +256,15 @@ impl Default for ExtBuilder {
                     },
                 ),
             ],
+            initial_permission_owners: vec![
+                (INIT_DEX, Scope::Unlimited, vec![alice()]),
+                (MANAGE_DEX, Scope::Limited(hash(&DEX_A_ID)), vec![alice()]),
+                (MANAGE_DEX, Scope::Limited(hash(&DEX_B_ID)), vec![alice()]),
+            ],
             initial_permissions: vec![
-                (INIT_DEX, alice(), alice(), None),
-                (MANAGE_DEX, alice(), alice(), Some(hash(&DEX_A_ID))),
-                (MANAGE_DEX, alice(), alice(), Some(hash(&DEX_B_ID))),
+                (alice(), Scope::Unlimited, vec![INIT_DEX]),
+                (alice(), Scope::Limited(hash(&DEX_A_ID)), vec![MANAGE_DEX]),
+                (alice(), Scope::Limited(hash(&DEX_B_ID)), vec![MANAGE_DEX]),
             ],
         }
     }
@@ -283,6 +289,7 @@ impl ExtBuilder {
         .unwrap();
 
         permissions::GenesisConfig::<Runtime> {
+            initial_permission_owners: self.initial_permission_owners,
             initial_permissions: self.initial_permissions,
         }
         .assimilate_storage(&mut t)

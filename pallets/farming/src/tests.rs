@@ -20,14 +20,14 @@ fn farm_creation_passes() {
 }
 
 #[test]
-fn farm_create_fails_with_permission_not_found_error() {
+fn farm_create_fails_with_forbidden_error() {
     let mut ext = new_test_ext();
     ext.execute_with(|| {
         let farm_name = H512::from_slice(&[3; 64]);
         let incenitive = Incentive::new(XOR, 1_000_u128.into());
         let parameters = Parameters::new(DateTimePeriod::new(0, 1), incenitive);
         let result = FarmsModule::create(Origin::signed(BOB), farm_name, parameters);
-        assert_noop!(result, permissions::Error::<Test>::PermissionNotFound);
+        assert_noop!(result, permissions::Error::<Test>::Forbidden);
     });
 }
 
@@ -58,7 +58,7 @@ fn farmer_creation_passes() {
 }
 
 #[test]
-fn farmer_creation_fails_with_permission_not_found_error() {
+fn farmer_creation_fails_with_forbidden_error() {
     let mut ext = new_test_ext();
     ext.execute_with(|| {
         let farm_name = H512::from_slice(&[5; 64]);
@@ -73,7 +73,7 @@ fn farmer_creation_fails_with_permission_not_found_error() {
         ));
         assert_noop!(
             FarmsModule::invest(Origin::signed(ALICE), farm_name, 1_000_u128.into()),
-            permissions::Error::<Test>::PermissionNotFound
+            permissions::Error::<Test>::Forbidden
         );
     });
 }
@@ -129,7 +129,7 @@ fn farmer_claims_passes() {
 }
 
 #[test]
-fn farmer_claims_fails_with_permission_not_found_error() {
+fn farmer_claims_fails_with_forbidden_error() {
     let mut ext = new_test_ext();
     ext.execute_with(|| {
         let farm_name = H512::from_slice(&[7; 64]);
@@ -150,7 +150,7 @@ fn farmer_claims_fails_with_permission_not_found_error() {
         ));
         assert_noop!(
             FarmsModule::claim(Origin::signed(NICK), farm_name, 1_000_u128.into()),
-            permissions::Error::<Test>::PermissionNotFound
+            permissions::Error::<Test>::Forbidden
         );
     });
 }

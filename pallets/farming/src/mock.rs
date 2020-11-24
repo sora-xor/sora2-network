@@ -4,6 +4,7 @@ use common::Amount;
 use currencies::BasicCurrencyAdapter;
 use frame_support::{impl_outer_event, impl_outer_origin, parameter_types, weights::Weight};
 use frame_system as system;
+use permissions::{Scope, CLAIM_FROM_FARM, CREATE_FARM, INVEST_TO_FARM, TRANSFER};
 use sp_core::{H256, H512};
 use sp_runtime::{
     testing::Header,
@@ -150,20 +151,24 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 }
 
 pub struct ExtBuilder {
-    initial_permissions: Vec<(u32, AccountId, AccountId, Option<H512>)>,
+    initial_permission_owners: Vec<(u32, Scope, Vec<AccountId>)>,
+    initial_permissions: Vec<(AccountId, Scope, Vec<u32>)>,
     endowed_accounts: Vec<(AccountId, AssetId, Balance)>,
 }
 
 impl Default for ExtBuilder {
     fn default() -> Self {
         Self {
+            initial_permission_owners: vec![
+                (CREATE_FARM, Scope::Unlimited, vec![ALICE]),
+                (TRANSFER, Scope::Unlimited, vec![BOB]),
+                (INVEST_TO_FARM, Scope::Unlimited, vec![BOB]),
+                (CLAIM_FROM_FARM, Scope::Unlimited, vec![BOB]),
+            ],
             initial_permissions: vec![
-                (permissions::CREATE_FARM, ALICE, ALICE, None),
-                (permissions::TRANSFER, BOB, BOB, None),
-                (permissions::TRANSFER, NICK, NICK, None),
-                (permissions::INVEST_TO_FARM, BOB, BOB, None),
-                (permissions::INVEST_TO_FARM, NICK, NICK, None),
-                (permissions::CLAIM_FROM_FARM, BOB, BOB, None),
+                (ALICE, Scope::Unlimited, vec![CREATE_FARM]),
+                (BOB, Scope::Unlimited, vec![INVEST_TO_FARM, CLAIM_FROM_FARM]),
+                (NICK, Scope::Unlimited, vec![INVEST_TO_FARM]),
             ],
             endowed_accounts: vec![
                 (ALICE, XOR, 1_000_000_u128.into()),
@@ -180,6 +185,7 @@ impl ExtBuilder {
             .unwrap();
 
         permissions::GenesisConfig::<Test> {
+            initial_permission_owners: self.initial_permission_owners,
             initial_permissions: self.initial_permissions,
         }
         .assimilate_storage(&mut t)

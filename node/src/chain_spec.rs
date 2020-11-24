@@ -25,6 +25,7 @@ use codec::{Decode, Encode};
 use common::{hash, prelude::DEXInfo};
 use frame_support::debug;
 use hex_literal::hex;
+use permissions::Scope;
 use sc_chain_spec::{ChainSpecExtension, ChainSpecGroup};
 use sc_service::{ChainType, Properties};
 use serde::{Deserialize, Serialize};
@@ -178,54 +179,48 @@ fn testnet_genesis(
             )],
         }),
         permissions: Some(PermissionsConfig {
-            initial_permissions: vec![
+            initial_permission_owners: vec![
                 (
                     permissions::TRANSFER,
-                    dex_root.clone(),
-                    tech_permissions_owner.clone(),
-                    None,
-                ),
-                (
-                    permissions::EXCHANGE,
-                    dex_root.clone(),
-                    tech_permissions_owner.clone(),
-                    None,
+                    Scope::Unlimited,
+                    vec![tech_permissions_owner.clone()],
                 ),
                 (
                     permissions::INIT_DEX,
-                    dex_root.clone(),
-                    tech_permissions_owner.clone(),
-                    None,
+                    Scope::Unlimited,
+                    vec![tech_permissions_owner.clone()],
                 ),
                 (
                     permissions::MANAGE_DEX,
-                    dex_root.clone(),
-                    tech_permissions_owner.clone(),
-                    Some(hash(&0u32)),
-                ),
-                (
-                    permissions::TRANSFER,
-                    xor_fee_account_id.clone(),
-                    tech_permissions_owner.clone(),
-                    None,
-                ),
-                (
-                    permissions::EXCHANGE,
-                    xor_fee_account_id.clone(),
-                    tech_permissions_owner.clone(),
-                    None,
+                    Scope::Limited(hash(&0u32)),
+                    vec![tech_permissions_owner.clone()],
                 ),
                 (
                     permissions::MINT,
-                    xor_fee_account_id.clone(),
-                    tech_permissions_owner.clone(),
-                    None,
+                    Scope::Unlimited,
+                    vec![tech_permissions_owner.clone()],
                 ),
                 (
                     permissions::BURN,
-                    xor_fee_account_id.clone(),
-                    tech_permissions_owner.clone(),
-                    None,
+                    Scope::Unlimited,
+                    vec![tech_permissions_owner.clone()],
+                ),
+            ],
+            initial_permissions: vec![
+                (
+                    dex_root.clone(),
+                    Scope::Unlimited,
+                    vec![permissions::INIT_DEX],
+                ),
+                (
+                    dex_root.clone(),
+                    Scope::Limited(hash(&0u32)),
+                    vec![permissions::MANAGE_DEX],
+                ),
+                (
+                    xor_fee_account_id,
+                    Scope::Unlimited,
+                    vec![permissions::MINT, permissions::BURN],
                 ),
             ],
         }),
