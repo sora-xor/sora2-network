@@ -92,8 +92,7 @@ contract Bridge {
     public 
     payable {
         require(msg.value > 0);
-        require (destination != "", "DESTINATION ADDRESS SHOULD BE NOT EMPTY");
-        
+
         emit Deposit(destination, msg.value, address(0x0));
     }
 
@@ -113,7 +112,7 @@ contract Bridge {
 
         token.transferFrom(msg.sender, address(this), amount);
         
-        emit Deposit(destination, amount, msg.sender);
+        emit Deposit(destination, amount, tokenAddress);
     }
 
     function submitProof(
