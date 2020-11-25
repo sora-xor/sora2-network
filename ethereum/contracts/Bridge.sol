@@ -24,7 +24,7 @@ contract Bridge {
     mapping(address => bool) public isToken;
 
     event Withdrawal(bytes32 txHash);
-    event Deposit(string destination, uint amount, address token);
+    event Deposit(bytes destination, uint amount, address token);
 
     event EnableContract(address provider, bytes32 proof);
 
@@ -88,10 +88,10 @@ contract Bridge {
         return msg.sender == owner_;
     }
     
-    function depositEth(string memory destination) 
+    function depositEth(bytes memory destination) 
     public 
     payable {
-        require(msg.value > 0);
+        require(msg.value > 0, "ETH VALUE SHOULD BE MORE THAN 0");
 
         emit Deposit(destination, msg.value, address(0x0));
     }
@@ -100,7 +100,7 @@ contract Bridge {
      * A special function-like stub to allow ether accepting
      */
     function depositERC20(
-        string memory destination, 
+        bytes memory destination, 
         uint amount, 
         address tokenAddress) 
         external 
