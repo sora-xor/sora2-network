@@ -41,7 +41,12 @@ pub trait Trait: common::Trait + assets::Trait {
     type Event: From<Event<Self>> + Into<<Self as frame_system::Trait>::Event>;
 
     /// Like Asset but deterministically maked from purpose.
-    type TechAssetId: Copy + Ord + Member + Parameter + Into<AssetIdOf<Self>> + TryFrom<AssetIdOf<Self>>;
+    type TechAssetId: Copy
+        + Ord
+        + Member
+        + Parameter
+        + Into<AssetIdOf<Self>>
+        + TryFrom<AssetIdOf<Self>>;
 
     /// Like AccountId but controlled by consensus, not signing by user.
     /// This extra traits exist here bacause no way to do it by constraints, problem exist with

@@ -238,10 +238,7 @@ impl<T: Trait> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, T
         let pool_account_repr_sys =
             technical::Module::<T>::tech_account_id_to_account_id(&self.pool_account)?;
         // Check that pool account is valid.
-        Module::<T>::is_pool_account_valid_for(
-            self.source.asset,
-            &self.pool_account,
-        )?;
+        Module::<T>::is_pool_account_valid_for(self.source.asset, &self.pool_account)?;
 
         // Source balance of source account.
         let balance_ss = if abstract_checking {
@@ -326,11 +323,7 @@ impl<T: Trait> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, T
         match self.fee_account {
             Some(ref fa) => {
                 // Checking that fee account is valid for this set of parameters.
-                Module::<T>::is_fee_account_valid_for(
-                    self.source.asset,
-                    &self.pool_account,
-                    fa,
-                )?;
+                Module::<T>::is_fee_account_valid_for(self.source.asset, &self.pool_account, fa)?;
             }
             None => {
                 let fa = Module::<T>::get_fee_account(&self.pool_account)?;
@@ -338,8 +331,7 @@ impl<T: Trait> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, T
             }
         }
         // Recommended fee, will be used if fee is not specified or for checking if specified.
-        let recom_fee =
-            Module::<T>::get_fee_for(self.source.asset, &self.pool_account);
+        let recom_fee = Module::<T>::get_fee_for(self.source.asset, &self.pool_account);
         // Set recommended or check that fee is correct.
         match self.fee {
             // Just set it here if it not specified, this is usual case.
@@ -472,10 +464,7 @@ impl<T: Trait> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, T
         let pool_account_repr_sys =
             technical::Module::<T>::tech_account_id_to_account_id(&self.pool_account)?;
         // Check that pool account is valid.
-        Module::<T>::is_pool_account_valid_for(
-            self.source.0.asset,
-            &self.pool_account,
-        )?;
+        Module::<T>::is_pool_account_valid_for(self.source.0.asset, &self.pool_account)?;
 
         // Balance of source account for asset pair.
         let (balance_bs, balance_ts) = if abstract_checking {
@@ -501,15 +490,11 @@ impl<T: Trait> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, T
         }
 
         // Balance of pool account for asset pair basic asset.
-        let balance_bp = <assets::Module<T>>::free_balance(
-            &self.source.0.asset,
-            &pool_account_repr_sys,
-        )?;
+        let balance_bp =
+            <assets::Module<T>>::free_balance(&self.source.0.asset, &pool_account_repr_sys)?;
         // Balance of pool account for asset pair target asset.
-        let balance_tp = <assets::Module<T>>::free_balance(
-            &self.source.1.asset,
-            &pool_account_repr_sys,
-        )?;
+        let balance_tp =
+            <assets::Module<T>>::free_balance(&self.source.1.asset, &pool_account_repr_sys)?;
 
         let mut empty_pool = false;
         if balance_bp == 0_u32.into() && balance_tp == 0_u32.into() {
@@ -616,10 +601,8 @@ impl<T: Trait> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, T
         }
 
         // Recommended minimum liquidity, will be used if not specified or for checking if specified.
-        let recom_min_liquidity = Module::<T>::get_min_liquidity_for(
-            self.source.0.asset,
-            &self.pool_account,
-        );
+        let recom_min_liquidity =
+            Module::<T>::get_min_liquidity_for(self.source.0.asset, &self.pool_account);
         // Set recommended or check that `min_liquidity` is correct.
         match self.min_liquidity {
             // Just set it here if it not specified, this is usual case.
@@ -770,10 +753,7 @@ impl<T: Trait> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, T
         let pool_account_repr_sys =
             technical::Module::<T>::tech_account_id_to_account_id(&self.pool_account)?;
         // Check that pool account is valid.
-        Module::<T>::is_pool_account_valid_for(
-            self.destination.0.asset,
-            &self.pool_account,
-        )?;
+        Module::<T>::is_pool_account_valid_for(self.destination.0.asset, &self.pool_account)?;
 
         let mark_asset = Module::<T>::get_marking_asset(&self.pool_account)?;
         ensure!(
@@ -1249,11 +1229,8 @@ impl<T: Trait> Module<T> {
         ),
         DispatchError,
     > {
-        let (trading_pair, tech_acc_id) = Module::<T>::tech_account_from_dex_and_asset_pair(
-            dex_id,
-            asset_a,
-            asset_b,
-        )?;
+        let (trading_pair, tech_acc_id) =
+            Module::<T>::tech_account_from_dex_and_asset_pair(dex_id, asset_a, asset_b)?;
         let fee_acc_id = tech_acc_id.to_fee_account().unwrap();
         let mark_asset = Module::<T>::get_marking_asset(&tech_acc_id)?;
         // Function initialize_pools is usually called once, just quick check if tech
@@ -1276,11 +1253,7 @@ impl<T: Trait> Module<T> {
         }
         technical::Module::<T>::register_tech_account_id(tech_acc_id.clone())?;
         technical::Module::<T>::register_tech_account_id(fee_acc_id)?;
-        Ok((
-            trading_pair,
-            tech_acc_id,
-            mark_asset,
-        ))
+        Ok((trading_pair, tech_acc_id, mark_asset))
     }
 
     fn deposit_liquidity_unchecked(
