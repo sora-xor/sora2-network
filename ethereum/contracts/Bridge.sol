@@ -9,19 +9,15 @@ import "./MasterToken.sol";
  */
 contract Bridge {
     bool internal initialized_;
-    bool internal enabled_;
     bytes32 public proof;
     uint256 public proofReward;
-    address public owner_;
     mapping(address => bool) public isPeer;
     uint public peersCount;
     /** Iroha tx hashes used */
     mapping(bytes32 => bool) public used;
     mapping(address => bool) public uniqueAddresses;
 
-    MasterToken public tokenInstance;
-
-    mapping(address => bool) public isToken;
+    mapping(bytes => address) sidechainTokens;
 
     event Withdrawal(bytes32 txHash);
     event Deposit(bytes destination, uint amount, address token);
@@ -33,59 +29,28 @@ contract Bridge {
      */
     constructor(
         address[] memory initialPeers, 
-        string memory name, 
-        string memory symbol, 
-        uint8 decimals, 
-        address beneficiary, 
-        uint256 supply, 
-        uint256 reward) public {
-        initialize(msg.sender, initialPeers, name, symbol, decimals, beneficiary, supply, reward);
-    }
-
-    /**
-     * Initialization of smart contract.
-     */
-    function initialize(address owner, address[] memory initialPeers, string memory name, string memory symbol, uint8 decimals, address beneficiary, uint256 supply, uint256 reward) public {
-        require(!initialized_);
-
-        owner_ = owner;
+        uint256 reward) 
+        public {
+        
         for (uint8 i = 0; i < initialPeers.length; i++) {
             addPeer(initialPeers[i]);
         }
-
-        // 0 means ether which is definitely in whitelist
-        isToken[address(0)] = true;
-
-        // Create new instance of the token
-        tokenInstance = new MasterToken(name, symbol, decimals, beneficiary, supply);
-        isToken[address(tokenInstance)] = true;
 
         proofReward = reward;
 
         initialized_ = true;
     }
-
-    /**
-     * @dev Throws if called by any account other than the owner.
-     */
-    modifier onlyOwner() {
-        require(isOwner());
-        _;
-    }
-
-    /**
-     * @dev Throws if called when the contract is disabled.
-     */
-    modifier enabled() {
-        require(enabled_);
-        _;
-    }
-
-    /**
-     * @return true if `msg.sender` is the owner of the contract.
-     */
-    function isOwner() public view returns (bool) {
-        return msg.sender == owner_;
+    
+    function addNewSidechainToken(
+        string memory name, 
+        string memory symbol,
+        uint8 decimals,
+        uint256 supply,
+        bytes memory sidechainAddress) 
+        public {
+        // Create new instance of the token
+        MasterToken tokenInstance = new MasterToken(name, symbol, decimals, address(this), supply, sidechainAddress);
+        sidechainTokens[sidechainAddress] = address(tokenInstance);
     }
     
     function depositEth(bytes memory destination) 
@@ -113,29 +78,6 @@ contract Bridge {
         token.transferFrom(msg.sender, address(this), amount);
         
         emit Deposit(destination, amount, tokenAddress);
-    }
-
-    function submitProof(
-        bytes32 proofArg,
-        uint8[] memory v,
-        bytes32[] memory r,
-        bytes32[] memory s
-    )
-    public
-    {
-        require(!enabled_, "Proof has been submitted already");
-        require(checkSignatures(
-                keccak256(abi.encodePacked(proofArg)),
-                v,
-                r,
-                s)
-        );
-
-        tokenInstance.mintTokens(msg.sender, proofReward);
-
-        proof = proofArg;
-        enabled_ = true;
-        emit EnableContract(msg.sender, proofArg);
     }
 
     /**
@@ -199,24 +141,6 @@ contract Bridge {
     }
 
     /**
-     * Adds new token to whitelist. Token should not been already added.
-     * @param newToken token to add
-     */
-    function addToken(address newToken) public onlyOwner {
-        require(isToken[newToken] == false);
-        isToken[newToken] = true;
-    }
-
-    /**
-     * Checks is given token inside a whitelist or not
-     * @param tokenAddress address of token to check
-     * @return true if token inside whitelist or false otherwise
-     */
-    function checkTokenAddress(address tokenAddress) public view returns (bool) {
-        return isToken[tokenAddress];
-    }
-
-    /**
      * Withdraws specified amount of ether or one of ERC-20 tokens to provided address
      * @param tokenAddress address of token to withdraw (0 for ether)
      * @param amount amount of tokens or ether to withdraw
@@ -238,9 +162,7 @@ contract Bridge {
         address from
     )
     public
-    enabled
     {
-        require(checkTokenAddress(tokenAddress));
         require(used[txHash] == false);
         require(checkSignatures(
                 keccak256(abi.encodePacked(tokenAddress, amount, to, txHash, from)),
@@ -324,7 +246,7 @@ contract Bridge {
 
     /**
      * Mint new Token
-     * @param tokenAddress address to mint
+     * @param sidechainToken id of sidechainToken to mint
      * @param amount how much to mint
      * @param beneficiary destination address
      * @param txHash hash of transaction from Iroha
@@ -333,7 +255,7 @@ contract Bridge {
      * @param s array of signatures of tx_hash (s-component)
      */
     function mintTokensByPeers(
-        address tokenAddress,
+        bytes memory sidechainToken,
         uint256 amount,
         address beneficiary,
         bytes32 txHash,
@@ -343,12 +265,12 @@ contract Bridge {
         address from
     )
     public
-    enabled
-    {
-        require(address(tokenInstance) == tokenAddress);
+    {   
+        require(sidechainTokens[sidechainToken] != address(0x0), "Sidechain token is not registered");
+        MasterToken tokenInstance = MasterToken(sidechainTokens[sidechainToken]);       
         require(used[txHash] == false);
         require(checkSignatures(
-                keccak256(abi.encodePacked(tokenAddress, amount, beneficiary, txHash, from)),
+                keccak256(abi.encodePacked(sidechainToken, amount, beneficiary, txHash, from)),
                 v,
                 r,
                 s)
