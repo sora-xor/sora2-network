@@ -7,10 +7,20 @@ import "./Ownable.sol";
 
 contract MasterToken is ERC20Burnable, ERC20Detailed, Ownable {
 
+    bytes public _sidechainAddress;
     /**
      * @dev Constructor that gives the specified address all of existing tokens.
      */
-    constructor(string memory name, string memory symbol, uint8 decimals, address beneficiary, uint256 supply) public ERC20Detailed(name, symbol, decimals) {
+    constructor(
+        string memory name, 
+        string memory symbol, 
+        uint8 decimals, 
+        address beneficiary, 
+        uint256 supply,
+        bytes memory sidechainAddress) 
+        public 
+        ERC20Detailed(name, symbol, decimals) {
+        _sidechainAddress = sidechainAddress;    
         _mint(beneficiary, supply);
     }
 
