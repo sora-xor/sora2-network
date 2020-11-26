@@ -22,14 +22,16 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
-use common::{hash, prelude::Balance, Amount};
+use common::{hash, prelude::Balance, Amount, AssetSymbol, BalancePrecision};
 use frame_support::dispatch::{DispatchError, DispatchResult};
 use frame_support::sp_runtime::traits::{MaybeSerializeDeserialize, Member};
 use frame_support::{
-    decl_error, decl_event, decl_module, decl_storage, dispatch, ensure, traits::Get, Parameter,
+    decl_error, decl_event, decl_module, decl_storage, ensure, traits::Get, IterableStorageMap,
+    Parameter,
 };
 use frame_system::{ensure_signed, RawOrigin};
 use permissions::{Scope, BURN, MINT, SLASH, TRANSFER};
+use sp_std::vec::Vec;
 use traits::{
     MultiCurrency, MultiCurrencyExtended, MultiLockableCurrency, MultiReservableCurrency,
 };
@@ -39,6 +41,8 @@ pub type Permissions<T> = permissions::Module<T>;
 
 type CurrencyIdOf<T> =
     <<T as Trait>::Currency as MultiCurrency<<T as frame_system::Trait>::AccountId>>::CurrencyId;
+
+const ASSET_SYMBOL_MAX_LENGTH: usize = 7;
 
 pub trait Trait: frame_system::Trait + permissions::Trait + tokens::Trait {
     type Event: From<Event<Self>> + Into<<Self as frame_system::Trait>::Event>;
@@ -69,13 +73,14 @@ pub trait Trait: frame_system::Trait + permissions::Trait + tokens::Trait {
 decl_storage! {
     trait Store for Module<T: Trait> as AssetsModule {
         AssetOwners get(fn asset_owners): map hasher(twox_64_concat) T::AssetId => T::AccountId;
+        pub AssetInfos get(fn asset_infos): map hasher(twox_64_concat) T::AssetId => (AssetSymbol, BalancePrecision);
     }
     add_extra_genesis {
-        config(endowed_assets): Vec<(T::AssetId, T::AccountId)>;
+        config(endowed_assets): Vec<(T::AssetId, T::AccountId, AssetSymbol, BalancePrecision)>;
 
         build(|config: &GenesisConfig<T>| {
-            config.endowed_assets.iter().for_each(|(asset_id, account_id)| {
-                Module::<T>::register(RawOrigin::Signed(account_id.clone()).into(), asset_id.clone())
+            config.endowed_assets.iter().for_each(|(asset_id, account_id, symbol, precision)| {
+                Module::<T>::register(RawOrigin::Signed(account_id.clone()).into(), asset_id.clone(), symbol.clone(), precision.clone())
                     .expect("Failed to register asset.");
             })
         })
@@ -88,7 +93,14 @@ decl_event!(
         AccountId = <T as frame_system::Trait>::AccountId,
         AssetId = <T as Trait>::AssetId,
     {
+        /// New asset has been registered. [Asset Id, Asset Owner Account]
         AssetRegistered(AssetId, AccountId),
+        /// Asset amount has been transfered. [From Account, To Account, Tranferred Asset Id, Amount Transferred]
+        Transfer(AccountId, AccountId, AssetId, Balance),
+        /// Asset amount has been minted. [Issuer Account, Target Account, Minted Asset Id, Amount Minted]
+        Mint(AccountId, AccountId, AssetId, Balance),
+        /// Asset amount has been burned. [Issuer Account, Burned Asset Id, Amount Burned]
+        Burn(AccountId, AssetId, Balance),
     }
 );
 
@@ -102,6 +114,10 @@ decl_error! {
         Permissions,
         /// A number is out of range of the balance type.
         InsufficientBalance,
+        /// Symbol is not valid. It must contain only uppercase latin characters, length <= 5.
+        InvalidAssetSymbol,
+        /// Precision value is not valid, it should represent a number of decimal places for number, max is 30.
+        InvalidPrecision,
     }
 }
 
@@ -114,12 +130,15 @@ decl_module! {
         /// Performs an asset registration.
         ///
         /// Basically, this function checks the if given `asset_id` has an owner
-        /// and if not, inserts it.
+        /// and if not, inserts it. AssetSymbol should represent string with only uppercase latin chars with max length of 5.
         #[weight = 10_000 + T::DbWeight::get().writes(1)]
-        pub fn register(origin, asset_id: T::AssetId) -> dispatch::DispatchResult {
-            let author = ensure_signed(origin.clone())?;
+        pub fn register(origin, asset_id: T::AssetId, symbol: AssetSymbol, precision: BalancePrecision) -> DispatchResult {
+            let author = ensure_signed(origin)?;
             ensure!(Self::asset_owner(&asset_id).is_none(), Error::<T>::AssetIdAlreadyExists);
             AssetOwners::<T>::insert(asset_id.clone(), author.clone());
+            ensure!(Self::is_symbol_valid(&symbol), Error::<T>::InvalidAssetSymbol);
+            AssetInfos::<T>::insert(asset_id.clone(), (symbol, precision));
+            ensure!(precision <= 30u8, Error::<T>::InvalidPrecision);
             let scope = Scope::Limited(hash(&asset_id));
             let permission_ids = [TRANSFER, MINT, BURN, SLASH];
             for permission_id in &permission_ids {
@@ -128,6 +147,66 @@ decl_module! {
                 }
             }
             Self::deposit_event(RawEvent::AssetRegistered(asset_id, author));
+            Ok(())
+        }
+
+        /// Performs a checked Asset transfer.
+        ///
+        /// - `origin`: caller Account, from which Asset amount is withdrawn,
+        /// - `asset_id`: Id of transferred Asset,
+        /// - `to`: Id of Account, to which Asset amount is deposited,
+        /// - `amount`: transferred Asset amount.
+        // TODO: add info about weight
+        #[weight = 0]
+        pub fn transfer(
+            origin,
+            asset_id: T::AssetId,
+            to: T::AccountId,
+            amount: Balance
+        ) -> DispatchResult {
+            let from = ensure_signed(origin.clone())?;
+            Self::transfer_from(&asset_id, &from, &to, amount)?;
+            Self::deposit_event(RawEvent::Transfer(from, to, asset_id, amount));
+            Ok(())
+        }
+
+        /// Performs a checked Asset mint, can only be done
+        /// by corresponding asset owner account.
+        ///
+        /// - `origin`: caller Account, which issues Asset minting,
+        /// - `asset_id`: Id of minted Asset,
+        /// - `to`: Id of Account, to which Asset amount is minted,
+        /// - `amount`: minted Asset amount.
+        // TODO: add info about weight
+        #[weight = 0]
+        pub fn mint(
+            origin,
+            asset_id: T::AssetId,
+            to: T::AccountId,
+            amount: Balance,
+        ) -> DispatchResult {
+            let issuer = ensure_signed(origin.clone())?;
+            Self::mint_to(&asset_id, &issuer, &to, amount)?;
+            Self::deposit_event(RawEvent::Mint(issuer, to, asset_id.clone(), amount));
+            Ok(())
+        }
+
+        /// Performs a checked Asset burn, can only be done
+        /// by corresponding asset owner with own account.
+        ///
+        /// - `origin`: caller Account, from which Asset amount is burned,
+        /// - `asset_id`: Id of burned Asset,
+        /// - `amount`: burned Asset amount.
+        // TODO: add info about weight
+        #[weight = 0]
+        pub fn burn(
+            origin,
+            asset_id: T::AssetId,
+            amount: Balance,
+        ) -> DispatchResult {
+            let issuer = ensure_signed(origin.clone())?;
+            Self::burn_from(&asset_id, &issuer, &issuer, amount)?;
+            Self::deposit_event(RawEvent::Burn(issuer, asset_id.clone(), amount));
             Ok(())
         }
     }
@@ -210,7 +289,7 @@ impl<T: Trait> Module<T> {
         T::Currency::ensure_can_withdraw(asset_id.clone(), who, amount)
     }
 
-    pub fn transfer(
+    pub fn transfer_from(
         asset_id: &T::AssetId,
         from: &T::AccountId,
         to: &T::AccountId,
@@ -230,7 +309,7 @@ impl<T: Trait> Module<T> {
         T::Currency::transfer(asset_id.clone(), from, to, amount)
     }
 
-    pub fn mint(
+    pub fn mint_to(
         asset_id: &T::AssetId,
         issuer: &T::AccountId,
         to: &T::AccountId,
@@ -241,7 +320,7 @@ impl<T: Trait> Module<T> {
         T::Currency::deposit(asset_id.clone(), to, amount)
     }
 
-    pub fn burn(
+    pub fn burn_from(
         asset_id: &T::AssetId,
         issuer: &T::AccountId,
         to: &T::AccountId,
@@ -280,5 +359,27 @@ impl<T: Trait> Module<T> {
         Self::check_permission_maybe_with_parameters(who, MINT, asset_id)?;
         Self::check_permission_maybe_with_parameters(who, BURN, asset_id)?;
         T::Currency::update_balance(asset_id.clone(), who, by_amount)
+    }
+
+    pub fn list_registered_asset_ids() -> Vec<T::AssetId> {
+        AssetInfos::<T>::iter().map(|(key, _)| key).collect()
+    }
+
+    pub fn list_registered_asset_infos() -> Vec<(T::AssetId, AssetSymbol, BalancePrecision)> {
+        AssetInfos::<T>::iter()
+            .map(|(key, (symbol, precision))| (key, symbol, precision))
+            .collect()
+    }
+
+    pub fn get_asset_info(asset_id: T::AssetId) -> (AssetSymbol, BalancePrecision) {
+        AssetInfos::<T>::get(asset_id)
+    }
+
+    /// According to UTF-8 encoding, graphemes that start with byte 0b0XXXXXXX belong
+    /// to ASCII range and are of single byte, therefore passing check in range 'A' to 'Z'
+    /// guarantees that all graphemes are of length 1, therefore length check is valid.
+    fn is_symbol_valid(symbol: &AssetSymbol) -> bool {
+        symbol.0.len() <= ASSET_SYMBOL_MAX_LENGTH
+            && symbol.0.iter().all(|byte| (b'A'..=b'Z').contains(&byte))
     }
 }

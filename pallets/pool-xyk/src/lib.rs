@@ -11,7 +11,7 @@ use sp_runtime::RuntimeDebug;
 
 use common::{
     prelude::{Balance, EnsureDEXOwner, SwapAmount, SwapOutcome},
-    EnsureTradingPairExists, LiquiditySource,
+    AssetSymbol, EnsureTradingPairExists, LiquiditySource,
 };
 
 use frame_support::dispatch::{DispatchError, DispatchResult};
@@ -681,7 +681,7 @@ impl<T: Trait> common::SwapAction<AccountIdOf<T>, TechAccountIdOf<T>, T>
             &self.pool_account,
             (self.source.1).amount.unwrap(),
         )?;
-        assets::Module::<T>::mint(
+        assets::Module::<T>::mint_to(
             &asset_repr,
             &pool_account_repr_sys,
             self.receiver_account.as_ref().unwrap(),
@@ -898,7 +898,7 @@ impl<T: Trait> common::SwapAction<AccountIdOf<T>, TechAccountIdOf<T>, T>
             self.receiver_account_b.as_ref().unwrap(),
             self.destination.1.amount.unwrap(),
         )?;
-        assets::Module::<T>::burn(
+        assets::Module::<T>::burn_from(
             &asset_repr,
             &pool_account_repr_sys,
             &source,
@@ -1414,10 +1414,10 @@ decl_module! {
                 let source = ensure_signed(origin.clone())?;
                 <T as Trait>::EnsureDEXOwner::ensure_dex_owner(&dex_id, origin.clone())?;
                 let (_,_,mark_asset) = Module::<T>::initialize_pool_unchecked(source, dex_id, asset_a, asset_b)?;
-                assets::Module::<T>::register(origin, mark_asset.into())?;
-                //TODO: check and enable this than swap distribution will be available.
-                //swap_distribution::Module::<T>::subscribe(fee_acc_id.into(),
-                //                dex_id, mark_asset.into(), you_frequency)?;
+                assets::Module::<T>::register(origin, mark_asset.into(), AssetSymbol(b"XYKPOOL".to_vec()), 18)?;
+                //  TODO: check and enable this than swap distribution will be available.
+                //  pswap_distribution::Module::<T>::subscribe(fee_acc_id.clone().into(),
+                //                dex_id.clone(), mark_asset.into(), frequency)?;
                 Ok(())
         }
 

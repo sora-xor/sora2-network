@@ -1,5 +1,7 @@
 use crate::mock::*;
-use common::{hash, prelude::SwapAmount, ToFeeAccount, ToTechUnitFromDEXAndTradingPair};
+use common::{
+    hash, prelude::SwapAmount, AssetSymbol, ToFeeAccount, ToTechUnitFromDEXAndTradingPair,
+};
 use frame_support::{assert_noop, assert_ok};
 use permissions::{Scope, MINT};
 
@@ -26,7 +28,9 @@ impl crate::Module<Testtime> {
         ext.execute_with(|| {
             assert_ok!(assets::Module::<Testtime>::register(
                 Origin::signed(ALICE()),
-                GoldenTicket.into()
+                GoldenTicket.into(),
+                AssetSymbol(b"GT".to_vec()),
+                18
             ));
 
             assert_ok!(dex_manager::Module::<Testtime>::initialize_dex(
@@ -68,16 +72,18 @@ impl crate::Module<Testtime> {
 
             assert_ok!(assets::Module::<Testtime>::register(
                 Origin::signed(repr.clone()),
-                BlackPepper.into()
+                BlackPepper.into(),
+                AssetSymbol(b"BP".to_vec()),
+                18
             ));
 
-            assert_ok!(assets::Module::<Testtime>::mint(
+            assert_ok!(assets::Module::<Testtime>::mint_to(
                 &gt,
                 &ALICE(),
                 &ALICE(),
                 900_000u32.into()
             ));
-            assert_ok!(assets::Module::<Testtime>::mint(
+            assert_ok!(assets::Module::<Testtime>::mint_to(
                 &bp,
                 &repr.clone(),
                 &repr.clone(),
@@ -91,7 +97,7 @@ impl crate::Module<Testtime> {
                     Scope::Limited(hash(&gt))
                 )
             );
-            assert_ok!(assets::Module::<Testtime>::mint(
+            assert_ok!(assets::Module::<Testtime>::mint_to(
                 &gt,
                 &repr.clone(),
                 &repr.clone(),
@@ -313,7 +319,7 @@ fn swap_pair_large_swap_fail_with_source_balance_not_large_enouth() {
 #[rustfmt::skip]
 fn swap_pair_swap_fail_with_target_balance_not_large_enoth() {
     crate::Module::<Testtime>::preset01(|dex_id, gt, bp, _, _, _, repr: AccountId, fee_repr: AccountId| {
-        assert_ok!(assets::Module::<Testtime>::mint(
+        assert_ok!(assets::Module::<Testtime>::mint_to(
             &gt,
             &ALICE(),
             &ALICE(),

@@ -3,27 +3,13 @@
 use cumulus_primitives::ParaId;
 
 use parachain_runtime::{
-    AccountId,
-    AssetId,
-    BalancesConfig,
-    DEXId,
-    DEXManagerConfig,
-    GenesisConfig,
-    GetBaseAssetId,
-    //IrohaBridgeConfig,
-    ParachainInfoConfig,
-    PermissionsConfig,
-    Signature,
-    SudoConfig,
-    SystemConfig,
-    TechAccountId,
-    TechnicalConfig,
-    WASM_BINARY,
+    AccountId, AssetSymbol, AssetsConfig, BalancesConfig, DEXManagerConfig, DotId, GenesisConfig,
+    GetBaseAssetId, KsmId, ParachainInfoConfig, PermissionsConfig, PswapId, Signature, SudoConfig,
+    SystemConfig, TechAccountId, TechnicalConfig, UsdId, ValId, XorId, WASM_BINARY,
 };
 
 use codec::{Decode, Encode};
 use common::{hash, prelude::DEXInfo};
-use frame_support::debug;
 use hex_literal::hex;
 use permissions::Scope;
 use sc_chain_spec::{ChainSpecExtension, ChainSpecGroup};
@@ -70,7 +56,7 @@ where
     AccountPublic::from(get_from_seed::<TPublic>(seed)).into_account()
 }
 
-// Can be exported via ./target/debug/parachain-collator build-spec --disable-default-bootnode > ./exported/chainspec-local.json
+// Can be exported via ./target/release/parachain-collator build-spec --disable-default-bootnode > ./exported/chainspec-local.json
 pub fn get_chain_spec(id: ParaId) -> ChainSpec {
     let mut properties = Properties::new();
     properties.insert("tokenSymbol".into(), "XOR".into());
@@ -103,6 +89,7 @@ pub fn get_chain_spec(id: ParaId) -> ChainSpec {
                 ],
                 get_account_id_from_seed::<sr25519::Public>("Alice"),
                 get_account_id_from_seed::<sr25519::Public>("Alice"),
+                get_account_id_from_seed::<sr25519::Public>("Alice"),
                 id,
             )
         },
@@ -117,7 +104,7 @@ pub fn get_chain_spec(id: ParaId) -> ChainSpec {
     )
 }
 
-// ./target/debug/parachain-collator build-spec --chain staging --disable-default-bootnode > ./exported/chainspec-staging.json
+// Can be exported via ./target/release/parachain-collator build-spec --chain staging --disable-default-bootnode > ./exported/chainspec-staging.json
 pub fn staging_test_net(id: ParaId) -> ChainSpec {
     let mut properties = Properties::new();
     properties.insert("tokenSymbol".into(), "XOR".into());
@@ -135,6 +122,7 @@ pub fn staging_test_net(id: ParaId) -> ChainSpec {
                 ],
                 hex!("da723e9d76bd60da0ec846895c5e0ecf795b50ae652c012f27e56293277ef372").into(),
                 hex!("16fec57d383a1875ab4e9786aea7a626e721a491c828f475ae63ef098f98f373").into(),
+                hex!("da723e9d76bd60da0ec846895c5e0ecf795b50ae652c012f27e56293277ef372").into(),
                 id,
             )
         },
@@ -154,6 +142,7 @@ fn testnet_genesis(
     endowed_accounts: Vec<AccountId>,
     dex_root: AccountId,
     tech_permissions_owner: AccountId,
+    initial_assets_owner: AccountId,
     id: ParaId,
 ) -> GenesisConfig {
     let xor_fee_tech_account_id = TechAccountId::Generic(
@@ -177,6 +166,46 @@ fn testnet_genesis(
                 xor_fee_account_id.clone(),
                 xor_fee_tech_account_id,
             )],
+        }),
+        assets: Some(AssetsConfig {
+            endowed_assets: vec![
+                (
+                    XorId::get(),
+                    initial_assets_owner.clone(),
+                    AssetSymbol(b"XOR".to_vec()),
+                    18,
+                ),
+                (
+                    DotId::get(),
+                    initial_assets_owner.clone(),
+                    AssetSymbol(b"DOT".to_vec()),
+                    10,
+                ),
+                (
+                    KsmId::get(),
+                    initial_assets_owner.clone(),
+                    AssetSymbol(b"KSM".to_vec()),
+                    12,
+                ),
+                (
+                    UsdId::get(),
+                    initial_assets_owner.clone(),
+                    AssetSymbol(b"USD".to_vec()),
+                    18,
+                ),
+                (
+                    ValId::get(),
+                    initial_assets_owner.clone(),
+                    AssetSymbol(b"VAL".to_vec()),
+                    18,
+                ),
+                (
+                    PswapId::get(),
+                    initial_assets_owner.clone(),
+                    AssetSymbol(b"PSWAP".to_vec()),
+                    18,
+                ),
+            ],
         }),
         permissions: Some(PermissionsConfig {
             initial_permission_owners: vec![
@@ -219,6 +248,11 @@ fn testnet_genesis(
                 ),
                 (
                     xor_fee_account_id,
+                    Scope::Unlimited,
+                    vec![permissions::MINT, permissions::BURN],
+                ),
+                (
+                    initial_assets_owner,
                     Scope::Unlimited,
                     vec![permissions::MINT, permissions::BURN],
                 ),

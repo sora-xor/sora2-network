@@ -321,7 +321,7 @@ impl<T: Trait> Module<T> {
         // TODO: deal with fee.
         let fee_amount = Balance(Self::fee()) * output_amount;
         let transfer_amount = output_amount - fee_amount;
-        Assets::<T>::mint(
+        Assets::<T>::mint_to(
             out_asset_id,
             &reserves_account_id,
             to_account_id,
@@ -349,7 +349,7 @@ impl<T: Trait> Module<T> {
             Technical::<T>::tech_account_id_to_account_id(&reserves_tech_account_id)?;
         let output_amount = Balance(Self::sell_tokens_in_price(in_asset_id, input_amount)?);
         // TODO: deal with fee.
-        Assets::<T>::burn(
+        Assets::<T>::burn_from(
             in_asset_id,
             &reserves_account_id,
             from_account_id,

@@ -246,6 +246,38 @@ dependencies = [
 ]
 
 [[package]]
+name = "assets-rpc"
+version = "0.1.0"
+dependencies = [
+ "assets-runtime-api",
+ "common",
+ "jsonrpc-core",
+ "jsonrpc-core-client",
+ "jsonrpc-derive",
+ "parity-scale-codec",
+ "serde",
+ "sp-api",
+ "sp-blockchain",
+ "sp-core",
+ "sp-rpc",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
+name = "assets-runtime-api"
+version = "0.1.0"
+dependencies = [
+ "common",
+ "parity-scale-codec",
+ "serde",
+ "serde_json 1.0.57",
+ "sp-api",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
 name = "async-attributes"
 version = "1.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4454,6 +4486,7 @@ version = "0.1.0"
 dependencies = [
  "ansi_term 0.12.1",
  "assert_cmd",
+ "assets-rpc",
  "common",
  "cumulus-collator",
  "cumulus-consensus",
@@ -4539,6 +4572,7 @@ name = "parachain-runtime"
 version = "0.1.0"
 dependencies = [
  "assets",
+ "assets-runtime-api",
  "bonding-curve-pool",
  "common",
  "cumulus-message-broker",
@@ -4554,6 +4588,7 @@ dependencies = [
  "frame-executive",
  "frame-support",
  "frame-system",
+ "hex-literal 0.3.1",
  "liquidity-proxy",
  "mock-liquidity-source",
  "orml-currencies",

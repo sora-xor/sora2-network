@@ -3,7 +3,7 @@ mod tests {
     use crate::{mock::*, DistributionAccounts, Error};
     use common::{
         fixed, AssetId, TechPurpose, DEXId, LiquiditySource,
-        prelude::{Balance, Fixed, SwapAmount, SwapOutcome}
+        prelude::{Balance, Fixed, SwapAmount, SwapOutcome}, AssetSymbol,
     };
     use frame_support::assert_err;
     use sp_arithmetic::traits::{Bounded, Zero};
@@ -81,9 +81,9 @@ mod tests {
     #[test]
     fn should_exchange_with_empty_reserves() {
         let mut ext = ExtBuilder::new(vec![
-            (alice(), USD, 10_000u32.into()),
-            (alice(), XOR, 0u32.into()),
-            (alice(), VAL, 0u32.into()),
+            (alice(), USD, 10_000u32.into(), AssetSymbol(b"USD".to_vec()), 18),
+            (alice(), XOR, 0u32.into(), AssetSymbol(b"XOR".to_vec()), 18),
+            (alice(), VAL, 0u32.into(), AssetSymbol(b"VAL".to_vec()), 18),
         ])
         .build();
         ext.execute_with(|| {
@@ -130,9 +130,9 @@ mod tests {
     #[test]
     fn should_exchange_with_nearly_full_reserves() {
         let mut ext = ExtBuilder::new(vec![
-            (alice(), USD, 10_000u32.into()),
-            (alice(), XOR, 10u32.into()),
-            (alice(), VAL, 0u32.into()),
+            (alice(), USD, 10_000u32.into(), AssetSymbol(b"USD".to_vec()), 18),
+            (alice(), XOR, 10u32.into(), AssetSymbol(b"XOR".to_vec()), 18),
+            (alice(), VAL, 0u32.into(), AssetSymbol(b"VAL".to_vec()), 18),
         ])
         .build();
         ext.execute_with(|| {
@@ -196,9 +196,9 @@ mod tests {
     #[test]
     fn should_exchange_with_full_reserves() {
         let mut ext = ExtBuilder::new(vec![
-            (alice(), USD, 10_000u32.into()),
-            (alice(), XOR, 10u32.into()),
-            (alice(), VAL, 0u32.into()),
+            (alice(), USD, 10_000u32.into(), AssetSymbol(b"USD".to_vec()), 18),
+            (alice(), XOR, 10u32.into(), AssetSymbol(b"XOR".to_vec()), 18),
+            (alice(), VAL, 0u32.into(), AssetSymbol(b"VAL".to_vec()), 18),
         ])
         .build();
         ext.execute_with(|| {
@@ -260,9 +260,9 @@ mod tests {
     #[test]
     fn should_not_sell_without_reserves() {
         let mut ext = ExtBuilder::new(vec![
-            (alice(), USD, 0u32.into()),
-            (alice(), XOR, 1u32.into()),
-            (alice(), VAL, 0u32.into()),
+            (alice(), USD, 0u32.into(), AssetSymbol(b"USD".to_vec()), 18),
+            (alice(), XOR, 1u32.into(), AssetSymbol(b"XOR".to_vec()), 18),
+            (alice(), VAL, 0u32.into(), AssetSymbol(b"VAL".to_vec()), 18),
         ])
         .build();
         ext.execute_with(|| {

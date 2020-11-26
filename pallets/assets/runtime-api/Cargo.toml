@@ -1,5 +1,5 @@
 [package]
-name = "dex-runtime-api"
+name = "assets-runtime-api"
 version = "0.1.0"
 edition = "2018"
 
@@ -11,13 +11,15 @@ sp-runtime = { git = "https://github.com/paritytech/substrate", default-features
 sp-std = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "rococo-branch" }
 common = { path = "../../../common", default-features = false}
 
+[dev-dependencies]
+serde_json = "1.0.41"
+
 [features]
 default = ["std"]
 std = [
-	"serde",
-	"codec/std",
-	"sp-api/std",
-	"sp-runtime/std",
-	"sp-std/std",
-	"common/std",
+    "serde",
+    "codec/std",
+    "sp-api/std",
+    "sp-runtime/std",
+    "sp-std/std",
 ]

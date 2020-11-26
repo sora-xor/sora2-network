@@ -360,6 +360,7 @@ function start_parachain_fullnode() {
 	fi
 	(sh -c "$parachain \
 		  --tmp \
+		  --chain local \
 		  `if [ $1 == 0 ]; then echo --offchain-worker Always; else echo --offchain-worker Never; fi` \
 		  --alice \
 		  --rpc-port $rpcport \
@@ -403,6 +404,7 @@ function start_parachain_collator() {
 	fi
 	(sh -c "$parachain \
 		  --tmp \
+		  --chain local \
 		  --validator \
 		  --alice \
 		  --rpc-port $rpcport \
@@ -496,7 +498,7 @@ do
 		start_parachain_collator `expr $parachain_collator_number - 1` $parachain_id
 	done
 
-	$parachain export-genesis-wasm > $log/parachain_${parachain_id}.wasm
+	$parachain export-genesis-wasm --chain local > $log/parachain_${parachain_id}.wasm
 	cat $log/parachain_${parachain_id}_collator_0.log | \
 		awk "/Parachain genesis state: /{ print \$9; exit }" > $log/genesis_${parachain_id}.txt
 
