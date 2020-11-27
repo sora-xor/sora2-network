@@ -283,7 +283,7 @@ impl<T: Trait> Module<T> {
     ) -> DispatchResult {
         let to = Self::tech_account_id_to_account_id(tech_dest)?;
         Self::ensure_account_registered(&to)?;
-        assets::Module::<T>::transfer(asset, source, &to, amount)?;
+        assets::Module::<T>::transfer_from(asset, source, &to, amount)?;
         Ok(())
     }
 
@@ -296,7 +296,7 @@ impl<T: Trait> Module<T> {
     ) -> DispatchResult {
         let from = Self::tech_account_id_to_account_id(tech_source)?;
         Self::ensure_account_registered(&from)?;
-        assets::Module::<T>::transfer(asset, &from, to, amount)?;
+        assets::Module::<T>::transfer_from(asset, &from, to, amount)?;
         Ok(())
     }
 
@@ -311,7 +311,7 @@ impl<T: Trait> Module<T> {
         Self::ensure_account_registered(&from)?;
         let to = Self::tech_account_id_to_account_id(tech_dest)?;
         Self::ensure_account_registered(&to)?;
-        assets::Module::<T>::transfer(asset, &from, &to, amount)
+        assets::Module::<T>::transfer_from(asset, &from, &to, amount)
     }
 
     /// Mint specific asset to the given `TechAccountId`.
@@ -322,7 +322,7 @@ impl<T: Trait> Module<T> {
     ) -> DispatchResult {
         let account_id = Self::tech_account_id_to_account_id(tech_dest)?;
         Self::ensure_account_registered(&account_id)?;
-        assets::Module::<T>::mint(asset, &account_id, &account_id, amount)
+        assets::Module::<T>::mint_to(asset, &account_id, &account_id, amount)
     }
 
     /// Burn specific asset from the given `TechAccountId`.
@@ -333,7 +333,7 @@ impl<T: Trait> Module<T> {
     ) -> DispatchResult {
         let account_id = Self::tech_account_id_to_account_id(tech_dest)?;
         Self::ensure_account_registered(&account_id)?;
-        assets::Module::<T>::burn(asset, &account_id, &account_id, amount)
+        assets::Module::<T>::burn_from(asset, &account_id, &account_id, amount)
     }
 
     /// Burn specific asset from the given `TechAccountId`.

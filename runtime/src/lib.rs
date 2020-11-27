@@ -9,6 +9,7 @@ include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
 
 use currencies::BasicCurrencyAdapter;
 use frame_system::offchain::{Account, SigningTypes};
+use hex_literal::hex;
 use sp_api::impl_runtime_apis;
 use sp_core::Encode;
 use sp_core::OpaqueMetadata;
@@ -19,7 +20,6 @@ use sp_runtime::{
     transaction_validity::{TransactionSource, TransactionValidity},
     ApplyExtrinsicResult, MultiSignature,
 };
-use sp_std::marker::PhantomData;
 use sp_std::prelude::*;
 use sp_std::vec::Vec;
 #[cfg(feature = "std")]
@@ -34,7 +34,8 @@ use dex_runtime_api::SwapOutcomeInfo;
 pub use common::{
     fixed, fixed_from_basis_points,
     prelude::{Balance, SwapAmount, SwapOutcome, SwapVariant},
-    BasisPoints, Fixed, LiquiditySource, LiquiditySourceId, LiquiditySourceType,
+    AssetSymbol, BalancePrecision, BasisPoints, Fixed, LiquiditySource, LiquiditySourceId,
+    LiquiditySourceType,
 };
 pub use frame_support::{
     construct_runtime, debug, parameter_types,
@@ -246,7 +247,14 @@ impl tokens::Trait for Runtime {
 
 parameter_types! {
     // This is common::AssetId with 0 index, 2 is size, 0 and 0 is code.
-    pub const GetBaseAssetId: AssetId = common::AssetId32 { code: [2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], phantom: PhantomData };
+    pub const XorId: AssetId = common::AssetId32::from_bytes(hex!("0200000000000000000000000000000000000000000000000000000000000000"));
+    pub const DotId: AssetId = common::AssetId32::from_bytes(hex!("0200010000000000000000000000000000000000000000000000000000000000"));
+    pub const KsmId: AssetId = common::AssetId32::from_bytes(hex!("0200020000000000000000000000000000000000000000000000000000000000"));
+    pub const UsdId: AssetId = common::AssetId32::from_bytes(hex!("0200030000000000000000000000000000000000000000000000000000000000"));
+    pub const ValId: AssetId = common::AssetId32::from_bytes(hex!("0200040000000000000000000000000000000000000000000000000000000000"));
+    pub const PswapId: AssetId = common::AssetId32::from_bytes(hex!("0200050000000000000000000000000000000000000000000000000000000000"));
+
+    pub const GetBaseAssetId: AssetId = XorId::get();
 }
 
 impl currencies::Trait for Runtime {
@@ -446,7 +454,6 @@ impl referral_system::Trait for Runtime {
 }
 
 parameter_types! {
-    pub const ValId: AssetId = common::AssetId32 { code: [2, 0, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], phantom: PhantomData };
     pub const DEXIdValue: DEXId = 0;
 }
 
@@ -457,7 +464,7 @@ impl xor_fee::Trait for Runtime {
     type ReferrerWeight = ReferrerWeight;
     type XorBurnedWeight = XorBurnedWeight;
     type XorIntoValBurnedWeight = XorIntoValBurnedWeight;
-    type XorId = GetBaseAssetId;
+    type XorId = XorId;
     type ValId = ValId;
     type DEXIdValue = DEXIdValue;
     type LiquiditySource = mock_liquidity_source::Module<Runtime, mock_liquidity_source::Instance1>;
@@ -547,7 +554,7 @@ construct_runtime! {
         // Unified interface for XOR and non-native tokens.
         Currencies: currencies::{Module, Call, Event<T>},
         TradingPair: trading_pair::{Module, Call, Event<T>},
-        Assets: assets::{Module, Call, Event<T>},
+        Assets: assets::{Module, Call, Storage, Config<T>, Event<T>},
         DEXManager: dex_manager::{Module, Call, Storage, Config<T>, Event<T>},
         BondingCurvePool: bonding_curve_pool::{Module},
         Technical: technical::{Module, Call, Config<T>, Event<T>},
@@ -727,6 +734,44 @@ impl_runtime_apis! {
 
         fn is_pair_enabled(dex_id: DEXId, base_asset_id: AssetId, target_asset_id: AssetId) -> bool {
             TradingPair::is_trading_pair_enabled(dex_id, base_asset_id, target_asset_id)
+        }
+    }
+
+    impl assets_runtime_api::AssetsAPI<Block, AccountId, AssetId, Balance, AssetSymbol, BalancePrecision> for Runtime {
+
+        fn free_balance(account_id: AccountId, asset_id: AssetId) -> Option<assets_runtime_api::BalanceInfo<Balance>> {
+            Assets::free_balance(&asset_id, &account_id).ok().map(|balance|
+                assets_runtime_api::BalanceInfo::<Balance> {
+                    balance: balance.clone(),
+                }
+            )
+        }
+
+        fn total_balance(account_id: AccountId, asset_id: AssetId) -> Option<assets_runtime_api::BalanceInfo<Balance>> {
+            Assets::total_balance(&asset_id, &account_id).ok().map(|balance|
+                assets_runtime_api::BalanceInfo::<Balance> {
+                    balance: balance.clone(),
+                }
+            )
+        }
+
+        fn list_asset_ids() -> Vec<AssetId> {
+            Assets::list_registered_asset_ids()
+        }
+
+        fn list_asset_infos() -> Vec<assets_runtime_api::AssetInfo<AssetId, AssetSymbol, u8>> {
+            Assets::list_registered_asset_infos().iter().map(|(asset_id, symbol, precision)|
+                assets_runtime_api::AssetInfo::<AssetId, AssetSymbol, BalancePrecision> {
+                    asset_id: asset_id.clone(), symbol: symbol.clone(), precision: precision.clone()
+                }
+            ).collect()
+        }
+
+        fn get_asset_info(asset_id: AssetId) -> Option<assets_runtime_api::AssetInfo<AssetId, AssetSymbol, BalancePrecision>> {
+            let (symbol, precision) = Assets::get_asset_info(asset_id);
+            Some(assets_runtime_api::AssetInfo::<AssetId, AssetSymbol, BalancePrecision> {
+                asset_id, symbol, precision
+            })
         }
     }
 }

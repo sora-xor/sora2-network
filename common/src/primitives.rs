@@ -5,12 +5,18 @@ use core::fmt::Debug;
 use frame_support::dispatch::DispatchError;
 use frame_support::RuntimeDebug;
 use frame_support::{decl_error, decl_module};
+use rustc_hex::{FromHex, ToHex};
 #[cfg(feature = "std")]
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use sp_core::H256;
 use sp_std::convert::TryFrom;
+use sp_std::convert::TryInto;
+use sp_std::fmt::Display;
 use sp_std::marker::PhantomData;
+#[cfg(feature = "std")]
+use sp_std::str::FromStr;
 use sp_std::vec::Vec;
+use static_assertions::_core::fmt::Formatter;
 #[cfg(feature = "std")]
 #[allow(unused)]
 use std::fmt;
@@ -83,53 +89,74 @@ type AssetId32Code = [u8; 32];
 /// This is wrapped structure, this is like H256 or Р512, extra
 /// PhantomData is added for typing reasons.
 #[derive(Encode, Decode, Eq, PartialEq, Copy, Clone, PartialOrd, Ord, RuntimeDebug)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Hash))]
+#[cfg_attr(feature = "std", derive(Hash))]
 pub struct AssetId32<AssetId> {
     /// Internal data representing given AssetId.
-    #[cfg_attr(feature = "std", serde(with = "asset_id_32_serialization"))]
     pub code: AssetId32Code,
     /// Additional typing information.
-    #[cfg_attr(feature = "std", serde(skip_serializing, skip_deserializing))]
     pub phantom: PhantomData<AssetId>,
 }
 
-mod asset_id_32_serialization {
-    use super::AssetId32Code;
-    use rustc_hex::{FromHex, ToHex};
-    #[cfg(feature = "std")]
-    use serde::{Deserialize, Deserializer, Serializer};
-    use sp_std::convert::TryInto;
+#[cfg(feature = "std")]
+impl<AssetId> Serialize for AssetId32<AssetId> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_str(&format!("{}", self))
+    }
+}
 
-    #[cfg(feature = "std")]
-    pub fn deserialize<'de, D: Deserializer<'de>>(
-        deserializer: D,
-    ) -> Result<AssetId32Code, D::Error> {
-        let mut s = String::deserialize(deserializer)?;
+#[cfg(feature = "std")]
+impl<'de, AssetId> Deserialize<'de> for AssetId32<AssetId> {
+    fn deserialize<D>(deserializer: D) -> Result<AssetId32<AssetId>, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let s = String::deserialize(deserializer)?;
+        AssetId32::from_str(&s).map_err(|str_err| serde::de::Error::custom(str_err))
+    }
+}
+
+#[cfg(feature = "std")]
+impl<AssetId> FromStr for AssetId32<AssetId> {
+    type Err = &'static str;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let mut s = s.to_owned();
         if s.starts_with("0x") {
             s = (&s[2..]).to_owned();
         } else {
-            return Err(serde::de::Error::custom(
-                "expected hex string, e.g. 0x00..00",
-            ));
+            return Err("expected hex string, e.g. 0x00..00");
         }
-        let code: Vec<u8> = s
-            .from_hex()
-            .map_err(|_| serde::de::Error::custom("error parsing hex string"))?;
-        let code: Box<[u8; 32]> = code.into_boxed_slice().try_into().map_err(|_| {
-            serde::de::Error::custom("expected hex string representing 32-byte object")
-        })?;
-        Ok(*code)
+        let code: Vec<u8> = s.from_hex().map_err(|_| "error parsing hex string")?;
+        let code: [u8; 32] = code
+            .try_into()
+            .map_err(|_| "expected hex string representing 32-byte object")?;
+        Ok(AssetId32 {
+            code,
+            phantom: PhantomData,
+        })
     }
+}
 
-    #[cfg(feature = "std")]
-    pub fn serialize<S: Serializer>(t: &AssetId32Code, serializer: S) -> Result<S::Ok, S::Error> {
-        serializer.serialize_str(&format!("0x{}", t.to_hex::<String>()))
+#[cfg(feature = "std")]
+impl<AssetId> Display for AssetId32<AssetId> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> sp_std::fmt::Result {
+        write!(f, "0x{}", self.code.to_hex::<String>())
     }
 }
 
 impl<AssetId> AssetId32<AssetId> {
-    pub fn new(code: AssetId32Code, phantom: PhantomData<AssetId>) -> Self {
+    pub const fn new(code: AssetId32Code, phantom: PhantomData<AssetId>) -> Self {
         Self { code, phantom }
+    }
+
+    pub const fn from_bytes(bytes: [u8; 32]) -> Self {
+        Self {
+            code: bytes,
+            phantom: PhantomData,
+        }
     }
 }
 
@@ -198,6 +225,36 @@ impl From<DEXId> for u32 {
 impl Default for DEXId {
     fn default() -> Self {
         DEXId::Polkaswap
+    }
+}
+
+pub type BalancePrecision = u8;
+
+#[derive(Encode, Decode, Eq, PartialEq, Clone, Ord, PartialOrd, RuntimeDebug)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+pub struct AssetSymbol(pub Vec<u8>);
+
+#[cfg(feature = "std")]
+impl FromStr for AssetSymbol {
+    type Err = &'static str;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let chars: Vec<u8> = s.chars().map(|un| un as u8).collect();
+        Ok(AssetSymbol(chars))
+    }
+}
+
+#[cfg(feature = "std")]
+impl Display for AssetSymbol {
+    fn fmt(&self, f: &mut Formatter<'_>) -> sp_std::fmt::Result {
+        let s: String = self.0.iter().map(|un| *un as char).collect();
+        write!(f, "{}", s)
+    }
+}
+
+impl Default for AssetSymbol {
+    fn default() -> Self {
+        Self(Vec::new())
     }
 }
 
@@ -531,8 +588,7 @@ mod tests {
             phantom: PhantomData,
         };
 
-        let json_str =
-            r#"{"code":"0x020003000400050006000700080009000a000b000c000d000e000f0001000200"}"#;
+        let json_str = r#""0x020003000400050006000700080009000a000b000c000d000e000f0001000200""#;
 
         assert_eq!(serde_json::to_string(&asset_id).unwrap(), json_str);
         assert_eq!(

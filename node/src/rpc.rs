@@ -1,7 +1,10 @@
 #![warn(missing_docs)]
 
 use common::TradingPair;
-use parachain_runtime::{opaque::Block, AssetId, Balance, DEXId, LiquiditySourceType, SwapVariant};
+use parachain_runtime::{
+    opaque::Block, AccountId, AssetId, AssetSymbol, Balance, BalancePrecision, DEXId,
+    LiquiditySourceType, SwapVariant,
+};
 pub use sc_rpc::DenyUnsafe;
 pub use sc_rpc::SubscriptionTaskExecutor;
 use sp_api::ProvideRuntimeApi;
@@ -39,9 +42,18 @@ where
     C::Api: dex_manager_rpc::DEXManagerRuntimeAPI<Block, DEXId>,
     C::Api: template_rpc::TemplateRuntimeAPI<Block, Balance>,
     C::Api: trading_pair_rpc::TradingPairRuntimeAPI<Block, DEXId, TradingPair<AssetId>, AssetId>,
+    C::Api: assets_rpc::AssetsRuntimeAPI<
+        Block,
+        AccountId,
+        AssetId,
+        Balance,
+        AssetSymbol,
+        BalancePrecision,
+    >,
     C::Api: BlockBuilder<Block>,
     P: TransactionPool + Send + Sync + 'static,
 {
+    use assets_rpc::{AssetsAPI, AssetsClient};
     use dex_api_rpc::{DEX, DEXAPI};
     use dex_manager_rpc::{DEXManager, DEXManagerAPI};
     use template_rpc::{Template, TemplateAPI};
@@ -54,5 +66,6 @@ where
     io.extend_with(TradingPairAPI::to_delegate(TradingPairClient::new(
         client.clone(),
     )));
+    io.extend_with(AssetsAPI::to_delegate(AssetsClient::new(client.clone())));
     io
 }

@@ -2,7 +2,7 @@ use crate::{Module, Trait};
 use common::{
     fixed,
     prelude::{AssetId, Balance, SwapAmount, SwapOutcome},
-    Amount, LiquiditySource, TechPurpose,
+    Amount, AssetSymbol, LiquiditySource, TechPurpose,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::{impl_outer_origin, parameter_types, weights::Weight, StorageValue};
@@ -156,7 +156,7 @@ impl<DEXId> LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> f
                     &Technical::tech_account_id_to_account_id(&ReservesAccount::get())?;
                 assert_ne!(desired_amount_in, 0u128.into());
                 let old = Assets::total_balance(input_asset_id, sender)?;
-                Assets::transfer(
+                Assets::transfer_from(
                     input_asset_id,
                     sender,
                     reserves_account_id,
@@ -164,7 +164,7 @@ impl<DEXId> LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> f
                 )?;
                 let new = Assets::total_balance(input_asset_id, sender)?;
                 assert_ne!(old, new);
-                Assets::transfer(output_asset_id, reserves_account_id, receiver, amount_out)?;
+                Assets::transfer_from(output_asset_id, reserves_account_id, receiver, amount_out)?;
                 Ok(SwapOutcome::new(amount_out, fee))
             }
             _ => Err(DispatchError::Other("Bad swap amount.")),
@@ -248,23 +248,29 @@ pub type MockLiquiditySource =
 pub type Assets = assets::Module<Runtime>;
 
 pub struct ExtBuilder {
-    endowed_accounts: Vec<(AccountId, AssetId, Balance)>,
+    endowed_accounts: Vec<(AccountId, AssetId, Balance, AssetSymbol, u8)>,
 }
 
 impl Default for ExtBuilder {
     fn default() -> Self {
         Self {
             endowed_accounts: vec![
-                (alice(), USD, 0u128.into()),
-                (alice(), XOR, 350_000u128.into()),
-                (alice(), VAL, 0u128.into()),
+                (alice(), USD, 0u128.into(), AssetSymbol(b"USD".to_vec()), 18),
+                (
+                    alice(),
+                    XOR,
+                    350_000u128.into(),
+                    AssetSymbol(b"XOR".to_vec()),
+                    18,
+                ),
+                (alice(), VAL, 0u128.into(), AssetSymbol(b"VAL".to_vec()), 18),
             ],
         }
     }
 }
 
 impl ExtBuilder {
-    pub fn new(endowed_accounts: Vec<(AccountId, AssetId, Balance)>) -> Self {
+    pub fn new(endowed_accounts: Vec<(AccountId, AssetId, Balance, AssetSymbol, u8)>) -> Self {
         Self { endowed_accounts }
     }
 
@@ -284,7 +290,10 @@ impl ExtBuilder {
             endowed_assets: self
                 .endowed_accounts
                 .iter()
-                .map(|(account_id, asset_id, _)| (asset_id.clone(), account_id.clone()))
+                .cloned()
+                .map(|(account_id, asset_id, _, symbol, precision)| {
+                    (asset_id, account_id, symbol, precision)
+                })
                 .collect(),
         }
         .assimilate_storage(&mut t)
@@ -294,9 +303,10 @@ impl ExtBuilder {
             balances: self
                 .endowed_accounts
                 .iter()
-                .filter_map(|(account_id, asset_id, balance)| {
-                    if asset_id == &GetBaseAssetId::get() {
-                        Some((account_id.clone(), balance.clone()))
+                .cloned()
+                .filter_map(|(account_id, asset_id, balance, ..)| {
+                    if asset_id == GetBaseAssetId::get() {
+                        Some((account_id, balance))
                     } else {
                         None
                     }
@@ -307,7 +317,11 @@ impl ExtBuilder {
         .unwrap();
 
         tokens::GenesisConfig::<Runtime> {
-            endowed_accounts: self.endowed_accounts,
+            endowed_accounts: self
+                .endowed_accounts
+                .into_iter()
+                .map(|(account_id, asset_id, balance, ..)| (account_id, asset_id, balance))
+                .collect(),
         }
         .assimilate_storage(&mut t)
         .unwrap();

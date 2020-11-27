@@ -1,6 +1,6 @@
 use crate::mock::*;
+use common::AssetSymbol;
 use frame_support::assert_ok;
-
 use PolySwapActionExample::*;
 
 #[test]
@@ -47,19 +47,23 @@ fn generic_pair_swap_simple() {
     ext.execute_with(|| {
         assert_ok!(assets::Module::<Testtime>::register(
             Origin::signed(get_alice()),
-            RedPepper()
+            RedPepper(),
+            AssetSymbol(b"RP".to_vec()),
+            18
         ));
         assert_ok!(assets::Module::<Testtime>::register(
             Origin::signed(repr.clone()),
-            BlackPepper()
+            BlackPepper(),
+            AssetSymbol(b"BP".to_vec()),
+            18
         ));
-        assert_ok!(assets::Module::<Testtime>::mint(
+        assert_ok!(assets::Module::<Testtime>::mint_to(
             &RedPepper(),
             &get_alice(),
             &get_alice(),
             9000_000u32.into()
         ));
-        assert_ok!(assets::Module::<Testtime>::mint(
+        assert_ok!(assets::Module::<Testtime>::mint_to(
             &BlackPepper(),
             &repr,
             &repr,
