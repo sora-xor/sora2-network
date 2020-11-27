@@ -16,7 +16,7 @@ contract Bridge {
     mapping(bytes32 => bool) public used;
     mapping(address => bool) public _uniqueAddresses;
 
-    mapping(address => address) _sidechainTokens;
+    mapping(bytes32 => address) public _sidechainTokens;
 
     event Withdrawal(bytes32 txHash);
     event Deposit(bytes32 destination, uint amount, address token);
@@ -59,23 +59,28 @@ contract Bridge {
         string memory symbol,
         uint8 decimals,
         uint256 supply,
-        address sidechainTokenAddress,
+        bytes32 sidechainAssetId,
         uint8[] memory v,
         bytes32[] memory r,
         bytes32[] memory s) 
         public {
         
-        require(checkSignatures(keccak256(abi.encodePacked(name, symbol, decimals, supply, sidechainTokenAddress)),
+        require(checkSignatures(keccak256(abi.encodePacked(
+            name, 
+            symbol, 
+            decimals, 
+            supply, 
+            sidechainAssetId)),
             v,
             r,
             s), "Peer signatures are invalid"
         );
         // Create new instance of the token
-        MasterToken tokenInstance = new MasterToken(name, symbol, decimals, address(this), supply, sidechainTokenAddress);
-        _sidechainTokens[sidechainTokenAddress] = address(tokenInstance);
+        MasterToken tokenInstance = new MasterToken(name, symbol, decimals, address(this), supply, sidechainAssetId);
+        _sidechainTokens[sidechainAssetId] = address(tokenInstance);
     }
     
-    function depositEth(bytes32 destination) 
+    function sendToSidchainEth(bytes32 destination) 
     public 
     payable
     shouldBeInitialized {
@@ -87,7 +92,7 @@ contract Bridge {
     /**
      * A special function-like stub to allow ether accepting
      */
-    function depositERC20(
+    function sendToSidchainERC20(
         bytes32 destination, 
         uint amount, 
         address tokenAddress) 
@@ -206,7 +211,7 @@ contract Bridge {
      * @param s array of signatures of tx_hash (s-component)
      */
     function mintTokensByPeers(
-        address sidechainTokenId,
+        bytes32 sidechainTokenId,
         uint256 amount,
         address beneficiary,
         bytes32 txHash,
