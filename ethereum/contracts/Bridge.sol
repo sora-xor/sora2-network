@@ -22,7 +22,8 @@ contract Bridge {
     event Deposit(bytes32 destination, uint amount, address token);
 
     /**
-     * Constructor. Sets contract owner to contract creator.
+     * Constructor.
+     * @param initialPeers - list of initial bridge validators on substrate side.
      */
     constructor(
         address[] memory initialPeers) 
