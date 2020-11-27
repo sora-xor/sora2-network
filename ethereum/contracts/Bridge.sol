@@ -122,7 +122,7 @@ contract Bridge {
         require(checkSignatures(keccak256(abi.encodePacked(newPeerAddress, txHash)),
             v,
             r,
-            s)
+            s), "Peer signatures are invalid"
         );
 
         addPeer(newPeerAddress);
@@ -146,7 +146,7 @@ contract Bridge {
                 keccak256(abi.encodePacked(peerAddress, txHash)),
                 v,
                 r,
-                s)
+                s), "Peer signatures are invalid"
         );
 
         removePeer(peerAddress);
@@ -182,7 +182,7 @@ contract Bridge {
                 keccak256(abi.encodePacked(tokenAddress, amount, to, txHash, from)),
                 v,
                 r,
-                s)
+                s), "Peer signatures are invalid"
         );
 
         if (tokenAddress == address(0)) {
@@ -227,7 +227,7 @@ contract Bridge {
                 keccak256(abi.encodePacked(sidechainTokenId, amount, beneficiary, txHash, from)),
                 v,
                 r,
-                s)
+                s), "Peer signatures are invalid"
         );
 
         tokenInstance.mintTokens(beneficiary, amount);
