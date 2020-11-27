@@ -21,8 +21,6 @@ contract Bridge {
     event Withdrawal(bytes32 txHash);
     event Deposit(bytes32 destination, uint amount, address token);
 
-    event EnableContract(address provider, bytes32 proof);
-
     /**
      * Constructor. Sets contract owner to contract creator.
      */
