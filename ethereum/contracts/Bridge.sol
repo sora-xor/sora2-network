@@ -5,12 +5,11 @@ import "./IERC20.sol";
 import "./MasterToken.sol";
 
 /**
- * Provides functionality of master contract
+ * Provides functionality of bridge contract
  */
 contract Bridge {
     bool internal initialized_;
     bytes32 public proof;
-    uint256 public proofReward;
     mapping(address => bool) public isPeer;
     uint public peersCount;
     /** Iroha tx hashes used */
@@ -28,17 +27,22 @@ contract Bridge {
      * Constructor. Sets contract owner to contract creator.
      */
     constructor(
-        address[] memory initialPeers, 
-        uint256 reward) 
+        address[] memory initialPeers) 
         public {
-        
         for (uint8 i = 0; i < initialPeers.length; i++) {
             addPeer(initialPeers[i]);
         }
-
-        proofReward = reward;
-
-        initialized_ = true;
+    }
+    
+    modifier shouldBeInitialized {
+        require(initialized_ == true, "Contract should be initialized to use this function");
+        _;
+    }
+    
+    function shutDown()
+    public
+    shouldBeInitialized {
+        initialized_ = false;
     }
     
     function addNewSidechainToken(
@@ -55,7 +59,8 @@ contract Bridge {
     
     function depositEth(bytes memory destination) 
     public 
-    payable {
+    payable
+    shouldBeInitialized {
         require(msg.value > 0, "ETH VALUE SHOULD BE MORE THAN 0");
 
         emit Deposit(destination, msg.value, address(0x0));
@@ -69,7 +74,8 @@ contract Bridge {
         uint amount, 
         address tokenAddress) 
         external 
-        payable {
+        payable 
+        shouldBeInitialized {
             
         IERC20 token = IERC20(tokenAddress);
         
@@ -80,23 +86,6 @@ contract Bridge {
         emit Deposit(destination, amount, tokenAddress);
     }
 
-    /**
-     * Adds new peer to list of signature verifiers. Can be called only by contract owner.
-     * @param newAddress address of new peer
-     */
-    function addPeer(address newAddress) private returns (uint) {
-        require(isPeer[newAddress] == false);
-        isPeer[newAddress] = true;
-        ++peersCount;
-        return peersCount;
-    }
-
-    function removePeer(address peerAddress) private {
-        require(isPeer[peerAddress] == true);
-        isPeer[peerAddress] = false;
-        --peersCount;
-    }
-
     function addPeerByPeer(
         address newPeerAddress,
         bytes32 txHash,
@@ -104,7 +93,9 @@ contract Bridge {
         bytes32[] memory r,
         bytes32[] memory s
     )
-    public returns (bool)
+    public 
+    shouldBeInitialized
+    returns (bool)
     {
         require(used[txHash] == false);
         require(checkSignatures(keccak256(abi.encodePacked(newPeerAddress, txHash)),
@@ -125,7 +116,9 @@ contract Bridge {
         bytes32[] memory r,
         bytes32[] memory s
     )
-    public returns (bool)
+    public 
+    shouldBeInitialized
+    returns (bool)
     {
         require(used[txHash] == false);
         require(checkSignatures(
@@ -196,7 +189,9 @@ contract Bridge {
         uint8[] memory v,
         bytes32[] memory r,
         bytes32[] memory s
-    ) private returns (bool) {
+    ) 
+    private 
+    returns (bool) {
         require(peersCount >= 1);
         require(v.length == r.length);
         require(r.length == s.length);
@@ -238,7 +233,14 @@ contract Bridge {
      * @param s s-component of signature from hash
      * @return address recovered from signature
      */
-    function recoverAddress(bytes32 hash, uint8 v, bytes32 r, bytes32 s) private pure returns (address) {
+    function recoverAddress(
+        bytes32 hash, 
+        uint8 v, 
+        bytes32 r, 
+        bytes32 s) 
+    private 
+    pure 
+    returns (address) {
         bytes32 simple_hash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", hash));
         address res = ecrecover(simple_hash, v, r, s);
         return res;
@@ -279,5 +281,30 @@ contract Bridge {
         tokenInstance.mintTokens(beneficiary, amount);
         used[txHash] = true;
         emit Withdrawal(txHash);
+    }
+    
+    
+
+    /**
+     * Adds new peer to list of signature verifiers. 
+     * Internal function
+     * @param newAddress address of new peer
+     */
+    function addPeer(address newAddress) 
+    internal 
+    shouldBeInitialized
+    returns (uint) {
+        require(isPeer[newAddress] == false);
+        isPeer[newAddress] = true;
+        ++peersCount;
+        return peersCount;
+    }
+
+    function removePeer(address peerAddress) 
+    internal
+    shouldBeInitialized {
+        require(isPeer[peerAddress] == true);
+        isPeer[peerAddress] = false;
+        --peersCount;
     }
 }
