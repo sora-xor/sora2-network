@@ -16,10 +16,10 @@ contract Bridge {
     mapping(bytes32 => bool) public used;
     mapping(address => bool) public _uniqueAddresses;
 
-    mapping(address => address) _sidechainTokens;
+    mapping(bytes32 => address) _sidechainTokens;
 
     event Withdrawal(bytes32 txHash);
-    event Deposit(address destination, uint amount, address token);
+    event Deposit(bytes32 destination, uint amount, address token);
 
     event EnableContract(address provider, bytes32 proof);
 
@@ -62,6 +62,7 @@ contract Bridge {
         uint8 decimals,
         uint256 supply,
         address sidechainAddress,
+        bytes32 sideTokenId,
         uint8[] memory v,
         bytes32[] memory r,
         bytes32[] memory s) 
@@ -74,10 +75,10 @@ contract Bridge {
         );
         // Create new instance of the token
         MasterToken tokenInstance = new MasterToken(name, symbol, decimals, address(this), supply, sidechainAddress);
-        _sidechainTokens[sidechainAddress] = address(tokenInstance);
+        _sidechainTokens[sideTokenId] = address(tokenInstance);
     }
     
-    function depositEth(address destination) 
+    function depositEth(bytes32 destination) 
     public 
     payable
     shouldBeInitialized {
@@ -90,7 +91,7 @@ contract Bridge {
      * A special function-like stub to allow ether accepting
      */
     function depositERC20(
-        address destination, 
+        bytes32 destination, 
         uint amount, 
         address tokenAddress) 
         external 
@@ -197,9 +198,9 @@ contract Bridge {
         emit Withdrawal(txHash);
     }
     
-        /**
+/**
      * Mint new Token
-     * @param sidechainToken id of sidechainToken to mint
+     * @param sidechainTokenId id of sidechainToken to mint
      * @param amount how much to mint
      * @param beneficiary destination address
      * @param txHash hash of transaction from Iroha
@@ -208,7 +209,7 @@ contract Bridge {
      * @param s array of signatures of tx_hash (s-component)
      */
     function mintTokensByPeers(
-        address sidechainToken,
+        bytes32 sidechainTokenId,
         uint256 amount,
         address beneficiary,
         bytes32 txHash,
@@ -219,11 +220,11 @@ contract Bridge {
     )
     public
     {   
-        require(_sidechainTokens[sidechainToken] != address(0x0), "Sidechain token is not registered");
-        MasterToken tokenInstance = MasterToken(_sidechainTokens[sidechainToken]);       
+        require(_sidechainTokens[sidechainTokenId] != address(0x0), "Sidechain token is not registered");
+        MasterToken tokenInstance = MasterToken(_sidechainTokens[sidechainTokenId]);       
         require(used[txHash] == false);
         require(checkSignatures(
-                keccak256(abi.encodePacked(sidechainToken, amount, beneficiary, txHash, from)),
+                keccak256(abi.encodePacked(sidechainTokenId, amount, beneficiary, txHash, from)),
                 v,
                 r,
                 s)
