@@ -19,7 +19,7 @@ contract Bridge {
     mapping(address => address) _sidechainTokens;
 
     event Withdrawal(bytes32 txHash);
-    event Deposit(bytes destination, uint amount, address token);
+    event Deposit(address destination, uint amount, address token);
 
     event EnableContract(address provider, bytes32 proof);
 
@@ -77,7 +77,7 @@ contract Bridge {
         _sidechainTokens[sidechainAddress] = address(tokenInstance);
     }
     
-    function depositEth(bytes memory destination) 
+    function depositEth(address destination) 
     public 
     payable
     shouldBeInitialized {
@@ -90,7 +90,7 @@ contract Bridge {
      * A special function-like stub to allow ether accepting
      */
     function depositERC20(
-        bytes memory destination, 
+        address destination, 
         uint amount, 
         address tokenAddress) 
         external 
