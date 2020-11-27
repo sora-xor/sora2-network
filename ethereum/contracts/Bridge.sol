@@ -14,9 +14,9 @@ contract Bridge {
     uint public peersCount;
     /** Iroha tx hashes used */
     mapping(bytes32 => bool) public used;
-    mapping(address => bool) public uniqueAddresses;
+    mapping(address => bool) public _uniqueAddresses;
 
-    mapping(bytes => address) sidechainTokens;
+    mapping(address => address) _sidechainTokens;
 
     event Withdrawal(bytes32 txHash);
     event Deposit(bytes destination, uint amount, address token);
@@ -39,9 +39,20 @@ contract Bridge {
         _;
     }
     
-    function shutDown()
+    function shutDown(
+        address thisContractAddress, 
+        string memory salt,
+        uint8[] memory v,
+        bytes32[] memory r,
+        bytes32[] memory s
+        )
     public
     shouldBeInitialized {
+         require(checkSignatures(keccak256(abi.encodePacked(thisContractAddress, salt)),
+            v,
+            r,
+            s), "Peer signatures are invalid"
+        );
         initialized_ = false;
     }
     
@@ -50,11 +61,20 @@ contract Bridge {
         string memory symbol,
         uint8 decimals,
         uint256 supply,
-        bytes memory sidechainAddress) 
+        address sidechainAddress,
+        uint8[] memory v,
+        bytes32[] memory r,
+        bytes32[] memory s) 
         public {
+        
+        require(checkSignatures(keccak256(abi.encodePacked(name, symbol, decimals, supply, sidechainAddress)),
+            v,
+            r,
+            s), "Peer signatures are invalid"
+        );
         // Create new instance of the token
         MasterToken tokenInstance = new MasterToken(name, symbol, decimals, address(this), supply, sidechainAddress);
-        sidechainTokens[sidechainAddress] = address(tokenInstance);
+        _sidechainTokens[sidechainAddress] = address(tokenInstance);
     }
     
     function depositEth(bytes memory destination) 
@@ -176,6 +196,43 @@ contract Bridge {
         }
         emit Withdrawal(txHash);
     }
+    
+        /**
+     * Mint new Token
+     * @param sidechainToken id of sidechainToken to mint
+     * @param amount how much to mint
+     * @param beneficiary destination address
+     * @param txHash hash of transaction from Iroha
+     * @param v array of signatures of tx_hash (v-component)
+     * @param r array of signatures of tx_hash (r-component)
+     * @param s array of signatures of tx_hash (s-component)
+     */
+    function mintTokensByPeers(
+        address sidechainToken,
+        uint256 amount,
+        address beneficiary,
+        bytes32 txHash,
+        uint8[] memory v,
+        bytes32[] memory r,
+        bytes32[] memory s,
+        address from
+    )
+    public
+    {   
+        require(_sidechainTokens[sidechainToken] != address(0x0), "Sidechain token is not registered");
+        MasterToken tokenInstance = MasterToken(_sidechainTokens[sidechainToken]);       
+        require(used[txHash] == false);
+        require(checkSignatures(
+                keccak256(abi.encodePacked(sidechainToken, amount, beneficiary, txHash, from)),
+                v,
+                r,
+                s)
+        );
+
+        tokenInstance.mintTokens(beneficiary, amount);
+        used[txHash] = true;
+        emit Withdrawal(txHash);
+    }
 
     /**
      * Checks given addresses for duplicates and if they are peers signatures
@@ -209,17 +266,17 @@ contract Bridge {
             );
 
             // not a peer address or not unique
-            if (isPeer[recoveredAddress] != true || uniqueAddresses[recoveredAddress] == true) {
+            if (isPeer[recoveredAddress] != true || _uniqueAddresses[recoveredAddress] == true) {
                 continue;
             }
             recoveredAddresses[count] = recoveredAddress;
             count = count + 1;
-            uniqueAddresses[recoveredAddress] = true;
+            _uniqueAddresses[recoveredAddress] = true;
         }
 
         // restore state for future usages
         for (uint i = 0; i < count; ++i) {
-            uniqueAddresses[recoveredAddresses[i]] = false;
+            _uniqueAddresses[recoveredAddresses[i]] = false;
         }
 
         return count >= needSigs;
@@ -245,45 +302,6 @@ contract Bridge {
         address res = ecrecover(simple_hash, v, r, s);
         return res;
     }
-
-    /**
-     * Mint new Token
-     * @param sidechainToken id of sidechainToken to mint
-     * @param amount how much to mint
-     * @param beneficiary destination address
-     * @param txHash hash of transaction from Iroha
-     * @param v array of signatures of tx_hash (v-component)
-     * @param r array of signatures of tx_hash (r-component)
-     * @param s array of signatures of tx_hash (s-component)
-     */
-    function mintTokensByPeers(
-        bytes memory sidechainToken,
-        uint256 amount,
-        address beneficiary,
-        bytes32 txHash,
-        uint8[] memory v,
-        bytes32[] memory r,
-        bytes32[] memory s,
-        address from
-    )
-    public
-    {   
-        require(sidechainTokens[sidechainToken] != address(0x0), "Sidechain token is not registered");
-        MasterToken tokenInstance = MasterToken(sidechainTokens[sidechainToken]);       
-        require(used[txHash] == false);
-        require(checkSignatures(
-                keccak256(abi.encodePacked(sidechainToken, amount, beneficiary, txHash, from)),
-                v,
-                r,
-                s)
-        );
-
-        tokenInstance.mintTokens(beneficiary, amount);
-        used[txHash] = true;
-        emit Withdrawal(txHash);
-    }
-    
-    
 
     /**
      * Adds new peer to list of signature verifiers. 
