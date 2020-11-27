@@ -16,7 +16,7 @@ contract Bridge {
     mapping(bytes32 => bool) public used;
     mapping(address => bool) public _uniqueAddresses;
 
-    mapping(bytes32 => address) _sidechainTokens;
+    mapping(address => address) _sidechainTokens;
 
     event Withdrawal(bytes32 txHash);
     event Deposit(bytes32 destination, uint amount, address token);
@@ -61,21 +61,20 @@ contract Bridge {
         string memory symbol,
         uint8 decimals,
         uint256 supply,
-        address sidechainAddress,
-        bytes32 sideTokenId,
+        address sidechainTokenAddress,
         uint8[] memory v,
         bytes32[] memory r,
         bytes32[] memory s) 
         public {
         
-        require(checkSignatures(keccak256(abi.encodePacked(name, symbol, decimals, supply, sidechainAddress)),
+        require(checkSignatures(keccak256(abi.encodePacked(name, symbol, decimals, supply, sidechainTokenAddress)),
             v,
             r,
             s), "Peer signatures are invalid"
         );
         // Create new instance of the token
-        MasterToken tokenInstance = new MasterToken(name, symbol, decimals, address(this), supply, sidechainAddress);
-        _sidechainTokens[sideTokenId] = address(tokenInstance);
+        MasterToken tokenInstance = new MasterToken(name, symbol, decimals, address(this), supply, sidechainTokenAddress);
+        _sidechainTokens[sidechainTokenAddress] = address(tokenInstance);
     }
     
     function depositEth(bytes32 destination) 
@@ -209,7 +208,7 @@ contract Bridge {
      * @param s array of signatures of tx_hash (s-component)
      */
     function mintTokensByPeers(
-        bytes32 sidechainTokenId,
+        address sidechainTokenId,
         uint256 amount,
         address beneficiary,
         bytes32 txHash,
