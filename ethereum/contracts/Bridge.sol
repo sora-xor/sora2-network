@@ -80,7 +80,7 @@ contract Bridge {
         _sidechainTokens[sidechainAssetId] = address(tokenInstance);
     }
     
-    function sendToSidchainEth(bytes32 destination) 
+    function sendEthToSidchain(bytes32 destination) 
     public 
     payable
     shouldBeInitialized {
@@ -92,7 +92,7 @@ contract Bridge {
     /**
      * A special function-like stub to allow ether accepting
      */
-    function sendToSidchainERC20(
+    function sendERC20ToSidchain(
         bytes32 destination, 
         uint amount, 
         address tokenAddress) 
@@ -167,7 +167,7 @@ contract Bridge {
      * @param s array of signatures of tx_hash (s-component)
      * @param from relay contract address
      */
-    function withdraw(
+    function receiveByEthereumAssetAddress(
         address tokenAddress,
         uint256 amount,
         address payable to,
@@ -202,7 +202,7 @@ contract Bridge {
     
 /**
      * Mint new Token
-     * @param sidechainTokenId id of sidechainToken to mint
+     * @param sidechainAssetId id of sidechainToken to mint
      * @param amount how much to mint
      * @param beneficiary destination address
      * @param txHash hash of transaction from Iroha
@@ -210,8 +210,8 @@ contract Bridge {
      * @param r array of signatures of tx_hash (r-component)
      * @param s array of signatures of tx_hash (s-component)
      */
-    function mintTokensByPeers(
-        bytes32 sidechainTokenId,
+    function receiveBySidechainAssetId(
+        bytes32 sidechainAssetId,
         uint256 amount,
         address beneficiary,
         bytes32 txHash,
@@ -222,11 +222,11 @@ contract Bridge {
     )
     public
     {   
-        require(_sidechainTokens[sidechainTokenId] != address(0x0), "Sidechain token is not registered");
-        MasterToken tokenInstance = MasterToken(_sidechainTokens[sidechainTokenId]);       
+        require(_sidechainTokens[sidechainAssetId] != address(0x0), "Sidechain asset is not registered");
+        MasterToken tokenInstance = MasterToken(_sidechainTokens[sidechainAssetId]);       
         require(used[txHash] == false);
         require(checkSignatures(
-                keccak256(abi.encodePacked(sidechainTokenId, amount, beneficiary, txHash, from)),
+                keccak256(abi.encodePacked(sidechainAssetId, amount, beneficiary, txHash, from)),
                 v,
                 r,
                 s), "Peer signatures are invalid"
