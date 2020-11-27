@@ -1,7 +1,5 @@
 use codec::Codec;
 use common::InvokeRPCError;
-use dex_runtime_api::SwapOutcomeInfo;
-pub use dex_runtime_api::DEXAPI as DEXRuntimeAPI;
 use jsonrpc_core::{Error as RpcError, ErrorCode, Result};
 use jsonrpc_derive::rpc;
 use sp_api::ProvideRuntimeApi;
@@ -9,6 +7,10 @@ use sp_blockchain::HeaderBackend;
 use sp_runtime::traits::{MaybeDisplay, MaybeFromStr};
 use sp_runtime::{generic::BlockId, traits::Block as BlockT};
 use std::sync::Arc;
+
+// imports from runtime-api
+use dex_runtime_api::SwapOutcomeInfo;
+pub use dex_runtime_api::DEXAPI as DEXRuntimeAPI;
 
 #[rpc]
 pub trait DEXAPI<BlockHash, AssetId, DEXId, Balance, LiquiditySourceType, SwapVariant, SwapResponse>
@@ -101,7 +103,7 @@ where
         )
         .map_err(|e| RpcError {
             code: ErrorCode::ServerError(InvokeRPCError::RuntimeError.into()),
-            message: "Unable to get price with desired input.".into(),
+            message: "Unable to quote price.".into(),
             data: Some(format!("{:?}", e).into()),
         })
     }

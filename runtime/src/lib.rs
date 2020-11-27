@@ -27,15 +27,12 @@ use sp_version::NativeVersion;
 use sp_version::RuntimeVersion;
 use static_assertions::assert_eq_size;
 
-// Exports from RPC extensions.
-use dex_runtime_api::SwapOutcomeInfo;
-
 // A few exports that help ease life for downstream crates.
 pub use common::{
     fixed, fixed_from_basis_points,
     prelude::{Balance, SwapAmount, SwapOutcome, SwapVariant},
-    AssetSymbol, BalancePrecision, BasisPoints, Fixed, LiquiditySource, LiquiditySourceId,
-    LiquiditySourceType,
+    AssetSymbol, BalancePrecision, BasisPoints, FilterMode, Fixed, LiquiditySource,
+    LiquiditySourceFilter, LiquiditySourceId, LiquiditySourceType,
 };
 pub use frame_support::{
     construct_runtime, debug, parameter_types,
@@ -694,7 +691,8 @@ impl_runtime_apis! {
             output_asset_id: AssetId,
             desired_input_amount: Balance,
             swap_variant: SwapVariant,
-        ) -> Option<SwapOutcomeInfo<Balance>> {
+        ) -> Option<dex_runtime_api::SwapOutcomeInfo<Balance>> {
+            use dex_runtime_api::SwapOutcomeInfo;
             DEXAPI::quote(
                 &LiquiditySourceId::new(dex_id, liquidity_source_type),
                 &input_asset_id,
@@ -738,7 +736,6 @@ impl_runtime_apis! {
     }
 
     impl assets_runtime_api::AssetsAPI<Block, AccountId, AssetId, Balance, AssetSymbol, BalancePrecision> for Runtime {
-
         fn free_balance(account_id: AccountId, asset_id: AssetId) -> Option<assets_runtime_api::BalanceInfo<Balance>> {
             Assets::free_balance(&asset_id, &account_id).ok().map(|balance|
                 assets_runtime_api::BalanceInfo::<Balance> {
@@ -760,9 +757,9 @@ impl_runtime_apis! {
         }
 
         fn list_asset_infos() -> Vec<assets_runtime_api::AssetInfo<AssetId, AssetSymbol, u8>> {
-            Assets::list_registered_asset_infos().iter().map(|(asset_id, symbol, precision)|
+            Assets::list_registered_asset_infos().into_iter().map(|(asset_id, symbol, precision)|
                 assets_runtime_api::AssetInfo::<AssetId, AssetSymbol, BalancePrecision> {
-                    asset_id: asset_id.clone(), symbol: symbol.clone(), precision: precision.clone()
+                    asset_id, symbol, precision
                 }
             ).collect()
         }
@@ -772,6 +769,39 @@ impl_runtime_apis! {
             Some(assets_runtime_api::AssetInfo::<AssetId, AssetSymbol, BalancePrecision> {
                 asset_id, symbol, precision
             })
+        }
+    }
+
+    impl liquidity_proxy_runtime_api::LiquidityProxyAPI<
+        Block,
+        DEXId,
+        AssetId,
+        Balance,
+        SwapVariant,
+        LiquiditySourceType,
+        FilterMode,
+    > for Runtime {
+        fn quote(
+            dex_id: DEXId,
+            input_asset_id: AssetId,
+            output_asset_id: AssetId,
+            amount: Balance,
+            swap_variant: SwapVariant,
+            selected_source_types: Vec<LiquiditySourceType>,
+            filter_mode: FilterMode,
+        ) -> Option<liquidity_proxy_runtime_api::SwapOutcomeInfo<Balance>> {
+            let filter = match filter_mode {
+                FilterMode::Disabled => LiquiditySourceFilter::empty(dex_id),
+                FilterMode::AllowSelected => LiquiditySourceFilter::with_allowed(dex_id, &selected_source_types),
+                FilterMode::ForbidSelected => LiquiditySourceFilter::with_ignored(dex_id, &selected_source_types)
+            };
+            use liquidity_proxy_runtime_api::SwapOutcomeInfo;
+            LiquidityProxy::quote(
+                &input_asset_id,
+                &output_asset_id,
+                SwapAmount::with_variant(swap_variant, amount.0, Default::default()),
+                filter,
+            ).ok().map(|asa| SwapOutcomeInfo::<Balance> { amount: Balance(asa.amount), fee: Balance(asa.fee)})
         }
     }
 }

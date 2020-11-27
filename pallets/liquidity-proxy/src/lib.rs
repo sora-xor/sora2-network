@@ -5,9 +5,9 @@ extern crate alloc;
 
 use codec::{Decode, Encode};
 use common::{
-    fixed, linspace, prelude::SwapAmount, prelude::SwapOutcome, Fixed, IntervalEndpoints,
-    LiquidityRegistry, LiquiditySource, LiquiditySourceFilter, LiquiditySourceId,
-    LiquiditySourceType,
+    fixed, linspace, prelude::SwapAmount, prelude::SwapOutcome, FilterMode, Fixed,
+    IntervalEndpoints, LiquidityRegistry, LiquiditySource, LiquiditySourceFilter,
+    LiquiditySourceId, LiquiditySourceType,
 };
 use frame_support::{
     decl_error, decl_event, decl_module, dispatch::DispatchResult, ensure, traits::Get,
@@ -28,9 +28,9 @@ pub mod algo;
 
 /// Output of the aggregated LiquidityProxy::quote() price.
 #[derive(Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq, PartialOrd, Ord)]
-pub struct AggregatedSwapOutcome<LiquiditySourceIdType, AmountType> {
+pub struct AggregatedSwapOutcome<LiquiditySourceType, AmountType> {
     /// A distribution of shares each liquidity sources gets to swap in the entire trade
-    pub distribution: Vec<(LiquiditySourceIdType, Fixed)>,
+    pub distribution: Vec<(LiquiditySourceType, Fixed)>,
     /// The best possible output/input amount for a given trade and a set of liquidity sources
     pub amount: AmountType,
     /// Total fee amount, nominated in XOR
@@ -72,8 +72,8 @@ decl_event!(
         DEXId = <T as common::Trait>::DEXId,
     {
         /// Exchange of tokens has been performed
-        /// [Caller Account, DEX Id, Input Asset Id, Output Asset Id, Input Amount, Output Amount]
-        Exchange(AccountId, DEXId, AssetId, AssetId, Fixed, Fixed),
+        /// [Caller Account, DEX Id, Input Asset Id, Output Asset Id, Input Amount, Output Amount, Fee Amount]
+        Exchange(AccountId, DEXId, AssetId, AssetId, Fixed, Fixed, Fixed),
     }
 );
 
@@ -96,111 +96,55 @@ decl_module! {
 
         fn deposit_event() = default;
 
-        /// Swaps an exact amount of the input asset with as much of output asset as possible.
+        /// Perform swap of tokens (input/output defined via SwapAmount direction).
         ///
         /// - `origin`: the account on whose behalf the transaction is being executed,
         /// - `dex_id`: DEX ID for which liquidity sources aggregation is being done,
         /// - `input_asset_id`: ID of the asset being sold,
         /// - `output_asset_id`: ID of the asset being bought,
-        /// - `amount`: the exact amount to be sold (in input_assed_id units),
-        /// - `min_received`: Optional. If the amount of output asset slips below this value the trade is reverted,
-        /// - `included_sources`: Optional. A list of liquidity sources to include into aggregation pool,
-        /// - `excluded_sources`: Optional. A list of liquidity sources to exclude from aggregation pool; ignored if `included_sources` is specified.
+        /// - `swap_amount`: the exact amount to be sold (either in input_assed_id or output_asset_id units with corresponding slippage tolerance absolute bound),
+        /// - `selected_source_types`: list of selected LiquiditySource types, selection effect is determined by filter_mode,
+        /// - `filter_mode`: indicate either to allow or forbid selected types only, or disable filtering.
         ///
         /// TODO: add information about weight
         #[weight = 0]
-        pub fn swap_exact_input(
+        pub fn swap(
             origin,
             dex_id: T::DEXId,
             input_asset_id: T::AssetId,
             output_asset_id: T::AssetId,
-            amount: Fixed,
-            min_received: Option<Fixed>,
-            included_sources: Option<Vec<LiquiditySourceType>>,
-            excluded_sources: Option<Vec<LiquiditySourceType>>,
+            swap_amount: SwapAmount<Fixed>,
+            selected_source_types: Vec<LiquiditySourceType>,
+            filter_mode: FilterMode,
         ) -> DispatchResult {
-            let who = ensure_signed(origin.clone())?;
-
-            let filter = included_sources
-                .map(|sources| LiquiditySourceFilter::new(dex_id, &sources[..], false))
-                .or(excluded_sources
-                    .map(|sources| LiquiditySourceFilter::new(dex_id, &sources[..], true))
-                )
-                .unwrap_or_else(|| LiquiditySourceFilter::empty(dex_id));
-
-            let res = Self::swap(
+            let who = ensure_signed(origin)?;
+            let filter = match filter_mode {
+                FilterMode::Disabled => LiquiditySourceFilter::empty(dex_id),
+                FilterMode::AllowSelected => LiquiditySourceFilter::with_allowed(dex_id, &selected_source_types),
+                FilterMode::ForbidSelected => LiquiditySourceFilter::with_ignored(dex_id, &selected_source_types)
+            };
+            let outcome = Self::perform_swap(
                 &who,
                 &input_asset_id,
                 &output_asset_id,
-                SwapAmount::with_desired_input(amount, min_received.unwrap_or_else(|| fixed!(0))),
+                swap_amount.clone(),
                 filter,
             )?;
-
+            let (input_amount, output_amount, fee_amount) = match swap_amount {
+                SwapAmount::WithDesiredInput{desired_amount_in, ..} => (desired_amount_in, outcome.amount, outcome.fee),
+                SwapAmount::WithDesiredOutput{desired_amount_out, ..} => (outcome.amount, desired_amount_out, outcome.fee),
+            };
             Self::deposit_event(
                 RawEvent::Exchange(
                     who,
                     dex_id,
                     input_asset_id,
                     output_asset_id,
-                    amount,
-                    res.amount,
+                    input_amount,
+                    output_amount,
+                    fee_amount,
                 )
             );
-
-            Ok(())
-        }
-
-        /// Swaps as little as possible of the input asset to get a fixed amount of the output asset.
-        ///
-        /// - `origin`: the account on whose behalf the transaction is being executed,
-        /// - `dex_id`: DEX ID for which liquidity sources aggregation is being done,
-        /// - `input_asset_id`: ID of the asset being sold,
-        /// - `output_asset_id`: ID of the asset being bought,
-        /// - `amount`: the exact amount to be bought (in output_asset_id units),
-        /// - `max_spent`: Optional. If the amount of input asset slips above this value the trade is reverted,
-        /// - `included_sources`: Optional. A list of liquidity sources to include into aggregation pool,
-        /// - `excluded_sources`: Optional. A list of liquidity sources to exclude from aggregation pool; ignored if `included_sources` is specified.
-        ///
-        /// TODO: add information about weight
-        #[weight = 0]
-        pub fn swap_exact_output(
-            origin,
-            dex_id: T::DEXId,
-            input_asset_id: T::AssetId,
-            output_asset_id: T::AssetId,
-            amount: Fixed,
-            max_spent: Option<Fixed>,
-            included_sources: Option<Vec<LiquiditySourceType>>,
-            excluded_sources: Option<Vec<LiquiditySourceType>>,
-        ) -> DispatchResult {
-            let who = ensure_signed(origin.clone())?;
-
-            let filter = included_sources
-                .map(|sources| LiquiditySourceFilter::new(dex_id, &sources[..], false))
-                .or(excluded_sources
-                    .map(|sources| LiquiditySourceFilter::new(dex_id, &sources[..], true))
-                )
-                .unwrap_or_else(|| LiquiditySourceFilter::empty(dex_id));
-
-            let res = Self::swap(
-                &who,
-                &input_asset_id,
-                &output_asset_id,
-                SwapAmount::with_desired_output(amount, max_spent.unwrap_or_else(|| Fixed::max_value())),
-                filter,
-            )?;
-
-            Self::deposit_event(
-                RawEvent::Exchange(
-                    who,
-                    dex_id,
-                    input_asset_id,
-                    output_asset_id,
-                    res.amount,
-                    amount,
-                )
-            );
-
             Ok(())
         }
     }
@@ -266,7 +210,7 @@ impl<T: Trait> Module<T> {
     }
 
     /// Performs a swap given a numbebr of liquidity sources and a distribuition of the swap amount across the sources.
-    pub fn swap(
+    pub fn perform_swap(
         origin: &T::AccountId,
         input_asset_id: &T::AssetId,
         output_asset_id: &T::AssetId,

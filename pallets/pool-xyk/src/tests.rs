@@ -1,6 +1,6 @@
 use crate::mock::*;
 use common::{
-    hash, prelude::SwapAmount, AssetSymbol, ToFeeAccount, ToTechUnitFromDEXAndTradingPair,
+    hash, prelude::SwapAmount, AssetSymbol, ToFeeAccount,
 };
 use frame_support::{assert_noop, assert_ok};
 use permissions::{Scope, MINT};
@@ -255,7 +255,7 @@ fn swap_pair_invalid_dex_id() {
 #[test]
 #[rustfmt::skip]
 fn swap_pair_different_asset_pair() {
-    crate::Module::<Testtime>::preset01(|dex_id, gt, bp, _, _, _, repr: AccountId, fee_repr: AccountId| {
+    crate::Module::<Testtime>::preset01(|dex_id, _gt, _bp, _, _, _, _repr: AccountId, _fee_repr: AccountId| {
         assert_noop!(
             crate::Module::<Testtime>::swap_pair(
                 Origin::signed(ALICE()),
@@ -276,7 +276,7 @@ fn swap_pair_different_asset_pair() {
 #[test]
 #[rustfmt::skip]
 fn swap_pair_large_swap_fail_with_out_of_bounds() {
-    crate::Module::<Testtime>::preset01(|dex_id, gt, bp, _, _, _, repr: AccountId, fee_repr: AccountId| {
+    crate::Module::<Testtime>::preset01(|dex_id, _gt, _bp, _, _, _, _repr: AccountId, _fee_repr: AccountId| {
         assert_noop!(
             crate::Module::<Testtime>::swap_pair(
                 Origin::signed(ALICE()),
@@ -297,7 +297,7 @@ fn swap_pair_large_swap_fail_with_out_of_bounds() {
 #[test]
 #[rustfmt::skip]
 fn swap_pair_large_swap_fail_with_source_balance_not_large_enouth() {
-    crate::Module::<Testtime>::preset01(|dex_id, gt, bp, _, _, _, repr: AccountId, fee_repr: AccountId| {
+    crate::Module::<Testtime>::preset01(|dex_id, _gt, _bp, _, _, _, _repr: AccountId, _fee_repr: AccountId| {
         assert_noop!(
             crate::Module::<Testtime>::swap_pair(
                 Origin::signed(ALICE()),
@@ -318,7 +318,7 @@ fn swap_pair_large_swap_fail_with_source_balance_not_large_enouth() {
 #[test]
 #[rustfmt::skip]
 fn swap_pair_swap_fail_with_target_balance_not_large_enoth() {
-    crate::Module::<Testtime>::preset01(|dex_id, gt, bp, _, _, _, repr: AccountId, fee_repr: AccountId| {
+    crate::Module::<Testtime>::preset01(|dex_id, gt, _bp, _, _, _, _repr: AccountId, _fee_repr: AccountId| {
         assert_ok!(assets::Module::<Testtime>::mint_to(
             &gt,
             &ALICE(),
@@ -345,7 +345,7 @@ fn swap_pair_swap_fail_with_target_balance_not_large_enoth() {
 #[test]
 #[rustfmt::skip]
 fn swap_pair_swap_fail_with_invalid_balance() {
-    crate::Module::<Testtime>::preset01(|dex_id, gt, bp, _, _, _, repr: AccountId, fee_repr: AccountId| {
+    crate::Module::<Testtime>::preset01(|dex_id, _gt, _bp, _, _, _, _repr: AccountId, _fee_repr: AccountId| {
         assert_noop!(
             crate::Module::<Testtime>::swap_pair(
                 Origin::signed(BOB()),

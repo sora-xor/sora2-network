@@ -2,7 +2,7 @@
 
 use common::TradingPair;
 use parachain_runtime::{
-    opaque::Block, AccountId, AssetId, AssetSymbol, Balance, BalancePrecision, DEXId,
+    opaque::Block, AccountId, AssetId, AssetSymbol, Balance, BalancePrecision, DEXId, FilterMode,
     LiquiditySourceType, SwapVariant,
 };
 pub use sc_rpc::DenyUnsafe;
@@ -50,12 +50,22 @@ where
         AssetSymbol,
         BalancePrecision,
     >,
+    C::Api: liquidity_proxy_rpc::LiquidityProxyRuntimeAPI<
+        Block,
+        DEXId,
+        AssetId,
+        Balance,
+        SwapVariant,
+        LiquiditySourceType,
+        FilterMode,
+    >,
     C::Api: BlockBuilder<Block>,
     P: TransactionPool + Send + Sync + 'static,
 {
     use assets_rpc::{AssetsAPI, AssetsClient};
     use dex_api_rpc::{DEX, DEXAPI};
     use dex_manager_rpc::{DEXManager, DEXManagerAPI};
+    use liquidity_proxy_rpc::{LiquidityProxyAPI, LiquidityProxyClient};
     use template_rpc::{Template, TemplateAPI};
     use trading_pair_rpc::{TradingPairAPI, TradingPairClient};
     let mut io = jsonrpc_core::IoHandler::default();
@@ -67,5 +77,8 @@ where
         client.clone(),
     )));
     io.extend_with(AssetsAPI::to_delegate(AssetsClient::new(client.clone())));
+    io.extend_with(LiquidityProxyAPI::to_delegate(LiquidityProxyClient::new(
+        client.clone(),
+    )));
     io
 }
