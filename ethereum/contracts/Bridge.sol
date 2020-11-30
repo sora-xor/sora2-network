@@ -31,6 +31,7 @@ contract Bridge {
         for (uint8 i = 0; i < initialPeers.length; i++) {
             addPeer(initialPeers[i]);
         }
+        initialized_ = true;
     }
     
     modifier shouldBeInitialized {
@@ -314,7 +315,6 @@ contract Bridge {
      */
     function addPeer(address newAddress) 
     internal 
-    shouldBeInitialized
     returns (uint) {
         require(isPeer[newAddress] == false);
         isPeer[newAddress] = true;
@@ -323,8 +323,7 @@ contract Bridge {
     }
 
     function removePeer(address peerAddress) 
-    internal
-    shouldBeInitialized {
+    internal {
         require(isPeer[peerAddress] == true);
         isPeer[peerAddress] = false;
         --peersCount;
