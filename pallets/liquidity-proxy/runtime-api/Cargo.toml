@@ -1,5 +1,5 @@
 [package]
-name = "dex-runtime-api"
+name = "liquidity-proxy-runtime-api"
 version = "0.1.0"
 edition = "2018"
 
@@ -14,10 +14,10 @@ common = { path = "../../../common", default-features = false }
 [features]
 default = ["std"]
 std = [
-	"serde",
-	"codec/std",
-	"sp-api/std",
-	"sp-runtime/std",
-	"sp-std/std",
-	"common/std",
+    "serde",
+    "codec/std",
+    "sp-api/std",
+    "sp-runtime/std",
+    "sp-std/std",
+    "common/std",
 ]

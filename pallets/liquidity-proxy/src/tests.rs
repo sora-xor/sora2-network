@@ -1,6 +1,6 @@
 use crate::{mock::*, Error};
 use common::{
-    fixed, prelude::SwapAmount, Fixed, LiquiditySourceFilter, LiquiditySourceId,
+    fixed, prelude::SwapAmount, FilterMode, Fixed, LiquiditySourceFilter, LiquiditySourceId,
     LiquiditySourceType,
 };
 use frame_support::assert_noop;
@@ -200,7 +200,7 @@ fn test_sell_token_for_base_should_pass() {
     ext.execute_with(|| {
         let alice = alice();
         let filter = LiquiditySourceFilter::empty(DEX_C_ID);
-        let result = LiquidityProxy::swap(
+        let result = LiquidityProxy::perform_swap(
             &alice,
             &DOT,
             &GetBaseAssetId::get(),
@@ -218,7 +218,7 @@ fn test_sell_base_for_token_should_pass() {
     ext.execute_with(|| {
         let alice = alice();
         let filter = LiquiditySourceFilter::empty(DEX_C_ID);
-        let result = LiquidityProxy::swap(
+        let result = LiquidityProxy::perform_swap(
             &alice,
             &GetBaseAssetId::get(),
             &DOT,
@@ -237,12 +237,13 @@ fn test_buy_base_with_allowed_should_pass() {
         let alice = alice();
         let filter = LiquiditySourceFilter::with_allowed(
             DEX_C_ID,
-            &[
+            [
                 LiquiditySourceType::MockPool,
                 LiquiditySourceType::MockPool2,
-            ],
+            ]
+            .into(),
         );
-        let result = LiquidityProxy::swap(
+        let result = LiquidityProxy::perform_swap(
             &alice,
             &DOT,
             &GetBaseAssetId::get(),
@@ -260,18 +261,19 @@ fn test_buy_base_with_allowed_should_pass() {
 }
 
 #[test]
-fn test_buy_base_with_ignored_should_pass() {
+fn test_buy_base_with_forbidden_should_pass() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
         let alice = alice();
-        let filter = LiquiditySourceFilter::with_ignored(
+        let filter = LiquiditySourceFilter::with_forbidden(
             DEX_C_ID,
-            &[
+            [
                 LiquiditySourceType::MockPool,
                 LiquiditySourceType::MockPool2,
-            ],
+            ]
+            .into(),
         );
-        let result = LiquidityProxy::swap(
+        let result = LiquidityProxy::perform_swap(
             &alice,
             &DOT,
             &GetBaseAssetId::get(),
@@ -310,14 +312,15 @@ fn test_quote_should_fail_with_unavailable_exchange_path_2() {
             &GetBaseAssetId::get(),
             &DOT,
             SwapAmount::with_desired_output(fixed!(300), Fixed::max_value()),
-            LiquiditySourceFilter::with_ignored(
+            LiquiditySourceFilter::with_forbidden(
                 DEX_C_ID,
-                &[
+                [
                     LiquiditySourceType::MockPool,
                     LiquiditySourceType::MockPool2,
                     LiquiditySourceType::MockPool3,
                     LiquiditySourceType::MockPool4,
-                ],
+                ]
+                .into(),
             ),
         );
         assert_noop!(result, <Error<Runtime>>::UnavailableExchangePath);
@@ -343,7 +346,7 @@ fn test_sell_however_big_amount_base_should_pass() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
         let alice = alice();
-        let result = LiquidityProxy::swap(
+        let result = LiquidityProxy::perform_swap(
             &alice,
             &GetBaseAssetId::get(),
             &DOT,
@@ -353,7 +356,7 @@ fn test_sell_however_big_amount_base_should_pass() {
         .expect("Failed to swap assets");
         assert!(result.amount > fixed!(0) && result.amount < fixed!(180));
 
-        let result = LiquidityProxy::swap(
+        let result = LiquidityProxy::perform_swap(
             &alice,
             &GetBaseAssetId::get(),
             &DOT,
@@ -363,7 +366,7 @@ fn test_sell_however_big_amount_base_should_pass() {
         .expect("Failed to swap assets");
         assert!(result.amount > fixed!(0) && result.amount < fixed!(180));
 
-        let result = LiquidityProxy::swap(
+        let result = LiquidityProxy::perform_swap(
             &alice,
             &GetBaseAssetId::get(),
             &DOT,
@@ -373,7 +376,7 @@ fn test_sell_however_big_amount_base_should_pass() {
         .expect("Failed to swap assets");
         assert!(result.amount > fixed!(0) && result.amount < fixed!(180));
 
-        let result = LiquidityProxy::swap(
+        let result = LiquidityProxy::perform_swap(
             &alice,
             &GetBaseAssetId::get(),
             &DOT,
@@ -383,7 +386,7 @@ fn test_sell_however_big_amount_base_should_pass() {
         .expect("Failed to swap assets");
         assert!(result.amount > fixed!(0) && result.amount < fixed!(180));
 
-        let result = LiquidityProxy::swap(
+        let result = LiquidityProxy::perform_swap(
             &alice,
             &GetBaseAssetId::get(),
             &DOT,
@@ -399,15 +402,14 @@ fn test_sell_however_big_amount_base_should_pass() {
 fn test_swap_should_fail_with_unavailable_exchange_path() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
-        let result = LiquidityProxy::swap_exact_input(
+        let result = LiquidityProxy::swap(
             Origin::signed(alice()),
             DEX_C_ID,
             DOT,
             GetBaseAssetId::get(),
-            fixed!(500),
-            Some(fixed!(400)), // expectation too high
-            None,
-            None,
+            SwapAmount::with_desired_output(fixed!(500), fixed!(400)), // expectation too high
+            Vec::new(),
+            FilterMode::Disabled,
         );
         assert_noop!(result, <Error<Runtime>>::UnavailableExchangePath);
     });
@@ -417,15 +419,14 @@ fn test_swap_should_fail_with_unavailable_exchange_path() {
 fn test_swap_should_fail_with_bad_origin() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
-        let result = LiquidityProxy::swap_exact_input(
+        let result = LiquidityProxy::swap(
             Origin::root(),
             DEX_C_ID,
             DOT,
             GetBaseAssetId::get(),
-            fixed!(500),
-            Some(fixed!(300)),
-            None,
-            None,
+            SwapAmount::with_desired_input(fixed!(500), fixed!(300)),
+            Vec::new(),
+            FilterMode::Disabled,
         );
         assert_noop!(result, DispatchError::BadOrigin);
     });

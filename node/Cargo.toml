@@ -31,6 +31,8 @@ xor-fee = {path = "../pallets/xor-fee"}
 template-rpc = { path = "../pallets/template/rpc" }
 trading-pair-rpc = { path = "../pallets/trading-pair/rpc" }
 assets-rpc = { path = "../pallets/assets/rpc" }
+liquidity-proxy-rpc = { path = "../pallets/liquidity-proxy/rpc" }
+
 # Parachain dependencies
 parachain-runtime = { path = "../runtime" }
 

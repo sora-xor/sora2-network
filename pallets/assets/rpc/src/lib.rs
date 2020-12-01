@@ -12,7 +12,7 @@ use sp_runtime::{
 
 use std::sync::Arc;
 
-// Custom imports
+// Runtime API imports.
 pub use assets_runtime_api::AssetsAPI as AssetsRuntimeAPI;
 use assets_runtime_api::{AssetInfo, BalanceInfo};
 

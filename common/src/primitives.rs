@@ -348,6 +348,7 @@ impl<AssetId, DEXId> From<TechAssetId<AssetId, DEXId>> for Option<AssetId> {
 /// Enumaration of all available liquidity sources.
 #[derive(Encode, Decode, RuntimeDebug, PartialEq, Eq, Copy, Clone, PartialOrd, Ord)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+#[repr(u8)]
 pub enum LiquiditySourceType {
     XYKPool,
     BondingCurvePool,
@@ -355,6 +356,24 @@ pub enum LiquiditySourceType {
     MockPool2,
     MockPool3,
     MockPool4,
+}
+
+#[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+#[repr(u8)]
+pub enum FilterMode {
+    /// Filter is disabled, all items regardless of filter are included.
+    Disabled,
+    /// Only selected items are filtered out, rest will be included.
+    ForbidSelected,
+    /// Only selected items will be included, rest are filtered out.
+    AllowSelected,
+}
+
+impl Default for FilterMode {
+    fn default() -> Self {
+        Self::Disabled
+    }
 }
 
 /// Identification of liquidity source.

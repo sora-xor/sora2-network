@@ -53,4 +53,5 @@ std = [
     'permissions/std',
     'dex-manager/std',
     'trading-pair/std',
+    'mock-liquidity-source/std',
 ]

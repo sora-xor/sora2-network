@@ -25,6 +25,7 @@ referral-system = { path = "../pallets/referral-system", default-features = fals
 xor-fee = { path = "../pallets/xor-fee", default-features = false }
 mock-liquidity-source = { path = "../pallets/mock-liquidity-source", default-features = false }
 liquidity-proxy = { path = "../pallets/liquidity-proxy", default-features = false }
+liquidity-proxy-runtime-api = { path = "../pallets/liquidity-proxy/runtime-api", default-features = false }
 template = { package = "pallet-template", path = "../pallets/template", version = "2.0.0-rc5", default-features = false}
 template-runtime-api = { path = "../pallets/template/runtime-api", default-features = false }
 
@@ -114,6 +115,7 @@ std = [
 	"dex-api/std",
 	"dex-runtime-api/std",
 	"liquidity-proxy/std",
+	"liquidity-proxy-runtime-api/std",
 	"mock-liquidity-source/std",
 	"currencies/std",
 	"tokens/std",

@@ -1,4 +1,4 @@
-use crate::{Fixed, LiquiditySourceId};
+use crate::{FilterMode, Fixed, LiquiditySourceId};
 use codec::{Decode, Encode};
 use frame_support::RuntimeDebug;
 use sp_arithmetic::FixedPointNumber;
@@ -107,7 +107,7 @@ pub struct LiquiditySourceFilter<DEXId: PartialEq + Copy, LiquiditySourceIndex: 
     pub selected: Vec<LiquiditySourceIndex>,
     /// Switch to either include only sources selected if `false`,
     /// or include only sources not selected if `true`.
-    pub ignore_selected: bool,
+    pub forbid_selected: bool,
 }
 
 impl<DEXId: PartialEq + Copy, LiquiditySourceIndex: PartialEq + Copy>
@@ -118,37 +118,53 @@ impl<DEXId: PartialEq + Copy, LiquiditySourceIndex: PartialEq + Copy>
         Self {
             dex_id,
             selected: Vec::new(),
-            ignore_selected: true,
+            forbid_selected: true,
         }
     }
 
     pub fn new(
         dex_id: DEXId,
-        selected_indices: &[LiquiditySourceIndex],
-        ignore_selected: bool,
+        selected_indices: Vec<LiquiditySourceIndex>,
+        forbid_selected: bool,
     ) -> Self {
         Self {
             dex_id,
-            selected: selected_indices.iter().cloned().collect(),
-            ignore_selected,
+            selected: selected_indices,
+            forbid_selected,
         }
     }
 
-    /// Create filter with fully identified liquidity sources which are ignored.
-    pub fn with_ignored(dex_id: DEXId, ignored_indices: &[LiquiditySourceIndex]) -> Self {
+    /// Create filter with fully identified liquidity sources which are forbidden, all other sources are allowed.
+    pub fn with_forbidden(dex_id: DEXId, forbidden_indices: Vec<LiquiditySourceIndex>) -> Self {
         Self {
             dex_id,
-            selected: ignored_indices.iter().cloned().collect(),
-            ignore_selected: true,
+            selected: forbidden_indices,
+            forbid_selected: true,
         }
     }
 
-    /// Create filter with fully identified liquidity sources which are allowed.
-    pub fn with_allowed(dex_id: DEXId, allowed_indices: &[LiquiditySourceIndex]) -> Self {
+    /// Create filter with fully identified liquidity sources which are allowed, all other sources are forbidden.
+    pub fn with_allowed(dex_id: DEXId, allowed_indices: Vec<LiquiditySourceIndex>) -> Self {
         Self {
             dex_id,
-            selected: allowed_indices.iter().cloned().collect(),
-            ignore_selected: false,
+            selected: allowed_indices,
+            forbid_selected: false,
+        }
+    }
+
+    pub fn with_mode(
+        dex_id: DEXId,
+        mode: FilterMode,
+        selected_indices: Vec<LiquiditySourceIndex>,
+    ) -> Self {
+        match mode {
+            FilterMode::Disabled => LiquiditySourceFilter::empty(dex_id),
+            FilterMode::AllowSelected => {
+                LiquiditySourceFilter::with_allowed(dex_id, selected_indices)
+            }
+            FilterMode::ForbidSelected => {
+                LiquiditySourceFilter::with_forbidden(dex_id, selected_indices)
+            }
         }
     }
 
@@ -159,10 +175,10 @@ impl<DEXId: PartialEq + Copy, LiquiditySourceIndex: PartialEq + Copy>
     pub fn matches_index(&self, index: LiquiditySourceIndex) -> bool {
         for idx in self.selected.iter() {
             if *idx == index {
-                return !self.ignore_selected;
+                return !self.forbid_selected;
             }
         }
-        self.ignore_selected
+        self.forbid_selected
     }
 
     /// Check if given liquidity source is allowed by filter. Return True if allowed.
@@ -244,8 +260,8 @@ mod tests {
     }
 
     #[test]
-    fn test_filter_ignore_liquidity_source_id_should_pass() {
-        let filter = LiquiditySourceFilter::<u8, u8>::with_ignored(0, &[0, 1]);
+    fn test_filter_forbid_liquidity_source_id_should_pass() {
+        let filter = LiquiditySourceFilter::<u8, u8>::with_forbidden(0, [0, 1].into());
         assert!(!filter.matches(&LiquiditySourceId::<u8, u8>::new(0, 0)));
         assert!(!filter.matches(&LiquiditySourceId::<u8, u8>::new(0, 1)));
         assert!(filter.matches(&LiquiditySourceId::<u8, u8>::new(0, 2)));
@@ -253,31 +269,31 @@ mod tests {
 
     #[test]
     fn test_filter_allow_liquidity_source_id_should_pass() {
-        let filter = LiquiditySourceFilter::<u8, u8>::with_allowed(0, &[0, 1]);
+        let filter = LiquiditySourceFilter::<u8, u8>::with_allowed(0, [0, 1].into());
         assert!(filter.matches(&LiquiditySourceId::<u8, u8>::new(0, 0)));
         assert!(filter.matches(&LiquiditySourceId::<u8, u8>::new(0, 1)));
         assert!(!filter.matches(&LiquiditySourceId::<u8, u8>::new(0, 2)));
     }
 
     #[test]
-    fn test_filter_ignore_none_should_pass() {
-        let filter = LiquiditySourceFilter::<u8, u8>::with_ignored(0, &[]);
+    fn test_filter_forbid_none_should_pass() {
+        let filter = LiquiditySourceFilter::<u8, u8>::with_forbidden(0, [].into());
         assert!(filter.matches_index(0));
         assert!(filter.matches_index(1));
         assert!(filter.matches_index(2));
     }
 
     #[test]
-    fn test_filter_ignore_some_should_pass() {
-        let filter = LiquiditySourceFilter::<u8, u8>::with_ignored(0, &[0, 1]);
+    fn test_filter_forbid_some_should_pass() {
+        let filter = LiquiditySourceFilter::<u8, u8>::with_forbidden(0, [0, 1].into());
         assert!(!filter.matches_index(0));
         assert!(!filter.matches_index(1));
         assert!(filter.matches_index(2));
     }
 
     #[test]
-    fn test_filter_ignore_all_should_pass() {
-        let filter = LiquiditySourceFilter::<u8, u8>::with_ignored(0, &[0, 1, 2]);
+    fn test_filter_forbid_all_should_pass() {
+        let filter = LiquiditySourceFilter::<u8, u8>::with_forbidden(0, [0, 1, 2].into());
         assert!(!filter.matches_index(0));
         assert!(!filter.matches_index(1));
         assert!(!filter.matches_index(2));
@@ -285,7 +301,7 @@ mod tests {
 
     #[test]
     fn test_filter_allow_none_should_pass() {
-        let filter = LiquiditySourceFilter::<u8, u8>::with_allowed(0, &[]);
+        let filter = LiquiditySourceFilter::<u8, u8>::with_allowed(0, [].into());
         assert!(!filter.matches_index(0));
         assert!(!filter.matches_index(1));
         assert!(!filter.matches_index(2));
@@ -293,7 +309,7 @@ mod tests {
 
     #[test]
     fn test_filter_allow_some_should_pass() {
-        let filter = LiquiditySourceFilter::<u8, u8>::with_allowed(0, &[1, 2]);
+        let filter = LiquiditySourceFilter::<u8, u8>::with_allowed(0, [1, 2].into());
         assert!(!filter.matches_index(0));
         assert!(filter.matches_index(1));
         assert!(filter.matches_index(2));
@@ -301,9 +317,65 @@ mod tests {
 
     #[test]
     fn test_filter_allow_all_should_pass() {
-        let filter = LiquiditySourceFilter::<u8, u8>::with_allowed(0, &[0, 1, 2]);
+        let filter = LiquiditySourceFilter::<u8, u8>::with_allowed(0, [0, 1, 2].into());
         assert!(filter.matches_index(0));
         assert!(filter.matches_index(1));
+        assert!(filter.matches_index(2));
+    }
+
+    #[test]
+    fn test_filter_mode_disabled_none_should_pass() {
+        let filter = LiquiditySourceFilter::<u8, u8>::with_mode(0, FilterMode::Disabled, [].into());
+        assert!(filter.matches_index(0));
+        assert!(filter.matches_index(1));
+        assert!(filter.matches_index(2));
+    }
+
+    #[test]
+    fn test_filter_mode_disabled_some_should_pass() {
+        let filter =
+            LiquiditySourceFilter::<u8, u8>::with_mode(0, FilterMode::Disabled, [0, 1, 2].into());
+        assert!(filter.matches_index(0));
+        assert!(filter.matches_index(1));
+        assert!(filter.matches_index(2));
+    }
+
+    #[test]
+    fn test_filter_mode_allowed_none_should_pass() {
+        let filter =
+            LiquiditySourceFilter::<u8, u8>::with_mode(0, FilterMode::AllowSelected, [].into());
+        assert!(!filter.matches_index(0));
+        assert!(!filter.matches_index(1));
+        assert!(!filter.matches_index(2));
+    }
+
+    #[test]
+    fn test_filter_mode_allowed_some_should_pass() {
+        let filter =
+            LiquiditySourceFilter::<u8, u8>::with_mode(0, FilterMode::AllowSelected, [1, 2].into());
+        assert!(!filter.matches_index(0));
+        assert!(filter.matches_index(1));
+        assert!(filter.matches_index(2));
+    }
+
+    #[test]
+    fn test_filter_mode_forbidden_none_should_pass() {
+        let filter =
+            LiquiditySourceFilter::<u8, u8>::with_mode(0, FilterMode::ForbidSelected, [].into());
+        assert!(filter.matches_index(0));
+        assert!(filter.matches_index(1));
+        assert!(filter.matches_index(2));
+    }
+
+    #[test]
+    fn test_filter_mode_forbidden_some_should_pass() {
+        let filter = LiquiditySourceFilter::<u8, u8>::with_mode(
+            0,
+            FilterMode::ForbidSelected,
+            [0, 1].into(),
+        );
+        assert!(!filter.matches_index(0));
+        assert!(!filter.matches_index(1));
         assert!(filter.matches_index(2));
     }
 

@@ -3364,6 +3364,37 @@ dependencies = [
 ]
 
 [[package]]
+name = "liquidity-proxy-rpc"
+version = "0.1.0"
+dependencies = [
+ "common",
+ "jsonrpc-core",
+ "jsonrpc-core-client",
+ "jsonrpc-derive",
+ "liquidity-proxy-runtime-api",
+ "parity-scale-codec",
+ "serde",
+ "sp-api",
+ "sp-blockchain",
+ "sp-core",
+ "sp-rpc",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
+name = "liquidity-proxy-runtime-api"
+version = "0.1.0"
+dependencies = [
+ "common",
+ "parity-scale-codec",
+ "serde",
+ "sp-api",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
 name = "lock_api"
 version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4502,6 +4533,7 @@ dependencies = [
  "hex-literal 0.3.1",
  "iroha_client_no_std",
  "jsonrpc-core",
+ "liquidity-proxy-rpc",
  "log 0.4.11",
  "nix 0.17.0",
  "pallet-sudo",
@@ -4590,6 +4622,7 @@ dependencies = [
  "frame-system",
  "hex-literal 0.3.1",
  "liquidity-proxy",
+ "liquidity-proxy-runtime-api",
  "mock-liquidity-source",
  "orml-currencies",
  "orml-tokens",
