@@ -1,7 +1,5 @@
 use crate::mock::*;
-use common::{
-    hash, prelude::SwapAmount, AssetSymbol, ToFeeAccount,
-};
+use common::{hash, prelude::SwapAmount, AssetSymbol, ToFeeAccount};
 use frame_support::{assert_noop, assert_ok};
 use permissions::{Scope, MINT};
 

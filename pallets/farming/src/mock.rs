@@ -5,7 +5,7 @@ use currencies::BasicCurrencyAdapter;
 use frame_support::{impl_outer_event, impl_outer_origin, parameter_types, weights::Weight};
 use frame_system as system;
 use permissions::{Scope, CLAIM_FROM_FARM, CREATE_FARM, INVEST_TO_FARM, TRANSFER};
-use sp_core::{H256};
+use sp_core::H256;
 use sp_runtime::{
     testing::Header,
     traits::{BlakeTwo256, IdentityLookup},

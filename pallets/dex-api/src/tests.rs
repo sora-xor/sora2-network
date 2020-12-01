@@ -25,18 +25,19 @@ fn test_filter_empty_should_pass() {
 }
 
 #[test]
-fn test_filter_with_ignored_existing_should_pass() {
+fn test_filter_with_forbidden_existing_should_pass() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
         let list = DEXAPI::list_liquidity_sources(
             &XOR,
             &DOT,
-            LiquiditySourceFilter::with_ignored(
+            LiquiditySourceFilter::with_forbidden(
                 DEX_A_ID,
-                &[
+                [
                     LiquiditySourceType::MockPool,
                     LiquiditySourceType::MockPool3,
-                ],
+                ]
+                .into(),
             ),
         )
         .expect("Failed to list available sources.");
@@ -60,10 +61,11 @@ fn test_filter_with_allowed_existing_should_pass() {
             &DOT,
             LiquiditySourceFilter::with_allowed(
                 DEX_A_ID,
-                &[
+                [
                     LiquiditySourceType::MockPool,
                     LiquiditySourceType::MockPool2,
-                ],
+                ]
+                .into(),
             ),
         )
         .expect("Failed to list available sources.");

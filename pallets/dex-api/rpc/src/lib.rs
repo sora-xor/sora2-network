@@ -8,7 +8,7 @@ use sp_runtime::traits::{MaybeDisplay, MaybeFromStr};
 use sp_runtime::{generic::BlockId, traits::Block as BlockT};
 use std::sync::Arc;
 
-// imports from runtime-api
+// Runtime API imports.
 use dex_runtime_api::SwapOutcomeInfo;
 pub use dex_runtime_api::DEXAPI as DEXRuntimeAPI;
 

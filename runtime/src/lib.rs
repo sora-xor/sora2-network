@@ -692,13 +692,12 @@ impl_runtime_apis! {
             desired_input_amount: Balance,
             swap_variant: SwapVariant,
         ) -> Option<dex_runtime_api::SwapOutcomeInfo<Balance>> {
-            use dex_runtime_api::SwapOutcomeInfo;
             DEXAPI::quote(
                 &LiquiditySourceId::new(dex_id, liquidity_source_type),
                 &input_asset_id,
                 &output_asset_id,
                 SwapAmount::with_variant(swap_variant, desired_input_amount.0, Default::default()),
-            ).ok().map(|sa| SwapOutcomeInfo::<Balance> { amount: Balance(sa.amount), fee: Balance(sa.fee)})
+            ).ok().map(|sa| dex_runtime_api::SwapOutcomeInfo::<Balance> { amount: Balance(sa.amount), fee: Balance(sa.fee)})
         }
 
         fn can_exchange(
@@ -790,18 +789,12 @@ impl_runtime_apis! {
             selected_source_types: Vec<LiquiditySourceType>,
             filter_mode: FilterMode,
         ) -> Option<liquidity_proxy_runtime_api::SwapOutcomeInfo<Balance>> {
-            let filter = match filter_mode {
-                FilterMode::Disabled => LiquiditySourceFilter::empty(dex_id),
-                FilterMode::AllowSelected => LiquiditySourceFilter::with_allowed(dex_id, &selected_source_types),
-                FilterMode::ForbidSelected => LiquiditySourceFilter::with_ignored(dex_id, &selected_source_types)
-            };
-            use liquidity_proxy_runtime_api::SwapOutcomeInfo;
             LiquidityProxy::quote(
                 &input_asset_id,
                 &output_asset_id,
                 SwapAmount::with_variant(swap_variant, amount.0, Default::default()),
-                filter,
-            ).ok().map(|asa| SwapOutcomeInfo::<Balance> { amount: Balance(asa.amount), fee: Balance(asa.fee)})
+                LiquiditySourceFilter::with_mode(dex_id, filter_mode, selected_source_types),
+            ).ok().map(|asa| liquidity_proxy_runtime_api::SwapOutcomeInfo::<Balance> { amount: Balance(asa.amount), fee: Balance(asa.fee)})
         }
     }
 }

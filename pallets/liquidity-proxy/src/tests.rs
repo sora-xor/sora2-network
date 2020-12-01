@@ -237,10 +237,11 @@ fn test_buy_base_with_allowed_should_pass() {
         let alice = alice();
         let filter = LiquiditySourceFilter::with_allowed(
             DEX_C_ID,
-            &[
+            [
                 LiquiditySourceType::MockPool,
                 LiquiditySourceType::MockPool2,
-            ],
+            ]
+            .into(),
         );
         let result = LiquidityProxy::perform_swap(
             &alice,
@@ -260,16 +261,17 @@ fn test_buy_base_with_allowed_should_pass() {
 }
 
 #[test]
-fn test_buy_base_with_ignored_should_pass() {
+fn test_buy_base_with_forbidden_should_pass() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
         let alice = alice();
-        let filter = LiquiditySourceFilter::with_ignored(
+        let filter = LiquiditySourceFilter::with_forbidden(
             DEX_C_ID,
-            &[
+            [
                 LiquiditySourceType::MockPool,
                 LiquiditySourceType::MockPool2,
-            ],
+            ]
+            .into(),
         );
         let result = LiquidityProxy::perform_swap(
             &alice,
@@ -310,14 +312,15 @@ fn test_quote_should_fail_with_unavailable_exchange_path_2() {
             &GetBaseAssetId::get(),
             &DOT,
             SwapAmount::with_desired_output(fixed!(300), Fixed::max_value()),
-            LiquiditySourceFilter::with_ignored(
+            LiquiditySourceFilter::with_forbidden(
                 DEX_C_ID,
-                &[
+                [
                     LiquiditySourceType::MockPool,
                     LiquiditySourceType::MockPool2,
                     LiquiditySourceType::MockPool3,
                     LiquiditySourceType::MockPool4,
-                ],
+                ]
+                .into(),
             ),
         );
         assert_noop!(result, <Error<Runtime>>::UnavailableExchangePath);

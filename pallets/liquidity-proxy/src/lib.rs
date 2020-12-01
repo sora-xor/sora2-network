@@ -118,17 +118,12 @@ decl_module! {
             filter_mode: FilterMode,
         ) -> DispatchResult {
             let who = ensure_signed(origin)?;
-            let filter = match filter_mode {
-                FilterMode::Disabled => LiquiditySourceFilter::empty(dex_id),
-                FilterMode::AllowSelected => LiquiditySourceFilter::with_allowed(dex_id, &selected_source_types),
-                FilterMode::ForbidSelected => LiquiditySourceFilter::with_ignored(dex_id, &selected_source_types)
-            };
             let outcome = Self::perform_swap(
                 &who,
                 &input_asset_id,
                 &output_asset_id,
                 swap_amount.clone(),
-                filter,
+                LiquiditySourceFilter::with_mode(dex_id, filter_mode, selected_source_types),
             )?;
             let (input_amount, output_amount, fee_amount) = match swap_amount {
                 SwapAmount::WithDesiredInput{desired_amount_in, ..} => (desired_amount_in, outcome.amount, outcome.fee),

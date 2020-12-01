@@ -1,6 +1,5 @@
 use codec::Codec;
 use common::InvokeRPCError;
-pub use dex_manager_runtime_api::DEXManagerAPI as DEXManagerRuntimeAPI;
 use jsonrpc_core::{Error as RpcError, ErrorCode, Result};
 use jsonrpc_derive::rpc;
 use sp_api::ProvideRuntimeApi;
@@ -8,6 +7,9 @@ use sp_blockchain::HeaderBackend;
 use sp_runtime::{generic::BlockId, traits::Block as BlockT};
 use sp_std::vec::Vec;
 use std::sync::Arc;
+
+// Runtime API imports.
+pub use dex_manager_runtime_api::DEXManagerAPI as DEXManagerRuntimeAPI;
 
 #[rpc]
 pub trait DEXManagerAPI<BlockHash, DEXId> {
