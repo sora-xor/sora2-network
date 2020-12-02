@@ -17,6 +17,8 @@ use sp_std::vec::Vec;
 
 mod weights;
 
+mod benchmarking;
+
 #[cfg(test)]
 mod mock;
 

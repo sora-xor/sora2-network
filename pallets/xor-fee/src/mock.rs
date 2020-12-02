@@ -12,7 +12,6 @@ use frame_support::{
     weights::{DispatchInfo, IdentityFee, PostDispatchInfo, Weight},
 };
 use frame_system as system;
-use pallet_balances::WeightInfo;
 use permissions::{Scope, BURN, MINT, TRANSFER};
 use sp_core::H256;
 use sp_runtime::{
@@ -188,7 +187,7 @@ impl pallet_balances::Trait for Test {
     type DustRemoval = ();
     type ExistentialDeposit = ExistentialDeposit;
     type AccountStore = System;
-    type WeightInfo = MockWeightInfo;
+    type WeightInfo = ();
     type MaxLocks = ();
 }
 
@@ -341,26 +340,6 @@ impl Trait for Test {
 }
 
 pub const MOCK_WEIGHT: u64 = 100;
-
-pub struct MockWeightInfo;
-
-impl WeightInfo for MockWeightInfo {
-    fn transfer() -> Weight {
-        MOCK_WEIGHT
-    }
-    fn transfer_keep_alive() -> Weight {
-        MOCK_WEIGHT
-    }
-    fn set_balance_creating() -> Weight {
-        MOCK_WEIGHT
-    }
-    fn set_balance_killing() -> Weight {
-        MOCK_WEIGHT
-    }
-    fn force_transfer() -> Weight {
-        MOCK_WEIGHT
-    }
-}
 
 pub const REFERRER_ACCOUNT: u64 = 3;
 pub const FROM_ACCOUNT: u64 = 1;

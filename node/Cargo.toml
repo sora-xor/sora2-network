@@ -75,7 +75,6 @@ frame-benchmarking = '2.0.0'
 frame-benchmarking-cli = '2.0.0'
 substrate-frame-rpc-system = { version = "2.0.0", default-features = false }
 
-
 [build-dependencies]
 substrate-build-script-utils = { version = "2.0.0", default-features = false }
 
@@ -87,3 +86,11 @@ tokio = { version = "0.2.13", features = ["macros"] }
 
 # Substrate dependencies
 pallet-sudo = { version = "2.0.0", default-features = false }
+
+[features]
+runtime-benchmarks = [
+    "framenode-runtime/runtime-benchmarks",
+    "sc-executor/wasmtime",
+    "sc-cli/wasmtime",
+    "sc-service/wasmtime",
+]

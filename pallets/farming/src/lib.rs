@@ -7,10 +7,23 @@ use frame_support::{
     decl_error, decl_event, decl_module, decl_storage,
     dispatch::DispatchResult,
     RuntimeDebug,
+    weights::Weight
 };
 use frame_system::ensure_signed;
 use pallet_timestamp as timestamp;
 use sp_core::hash::H512;
+
+pub trait WeightInfo {
+    fn create() -> Weight;
+    fn invest() -> Weight;
+    fn claim() -> Weight;
+}
+
+impl WeightInfo for () {
+    fn create() -> Weight { 100_000_000 }
+    fn invest() -> Weight { 100_000_000 }
+    fn claim() -> Weight { 100_000_000 }
+}
 
 mod domain;
 #[cfg(test)]
@@ -29,6 +42,9 @@ pub trait Trait:
     + sp_std::default::Default
 {
     type Event: From<Event<Self>> + Into<<Self as frame_system::Trait>::Event>;
+
+    /// Weight information for extrinsics in this pallet.
+	type WeightInfo: WeightInfo;
 }
 
 decl_storage! {
@@ -71,7 +87,7 @@ decl_module! {
 
         /// Create `Farm` dispatchable.
         /// Generates `Farm` identifier and creates `TechAccount` to collect incentives.
-        #[weight = 10_000]
+        #[weight = <T as Trait>::WeightInfo::create()]
         pub fn create(origin, name: FarmName, parameters: Parameters<T>) -> DispatchResult {
             let who = ensure_signed(origin)?;
             permissions::Module::<T>::check_permission(who.clone(), permissions::CREATE_FARM)?;
@@ -86,7 +102,7 @@ decl_module! {
 
         /// Invest tokens to `Farm`.
         /// Creates new `Farmer` and includes they into incentives distribution.
-        #[weight = 5_000]
+        #[weight = <T as Trait>::WeightInfo::invest()]
         pub fn invest(origin, farm_name: FarmName, amount: Balance) -> DispatchResult {
             let who = ensure_signed(origin)?;
             permissions::Module::<T>::check_permission(who.clone(), permissions::INVEST_TO_FARM)?;
@@ -109,7 +125,7 @@ decl_module! {
 
         /// Claim incentitives from `Farm`.
         /// Calculates incentives and transfer them into Farmer's Account.
-        #[weight = 15_000]
+        #[weight = <T as Trait>::WeightInfo::claim()]
         pub fn claim(origin, farm_name: FarmName, amount: Balance) -> DispatchResult {
             let who = ensure_signed(origin)?;
             //TODO: check_permission_with_parameters

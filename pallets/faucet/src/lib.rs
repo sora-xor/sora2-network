@@ -11,6 +11,8 @@ use frame_support::{
 use sp_arithmetic::traits::Saturating;
 use sp_runtime::transaction_validity::{InvalidTransaction, ValidTransaction};
 
+mod benchmarking;
+
 #[cfg(test)]
 mod mock;
 #[cfg(test)]
