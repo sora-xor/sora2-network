@@ -105,11 +105,13 @@ impl dex_manager::Trait for Testtime {
     type Event = ();
     type GetDefaultFee = GetDefaultFee;
     type GetDefaultProtocolFee = GetDefaultProtocolFee;
+    type WeightInfo = ();
 }
 
 impl trading_pair::Trait for Testtime {
     type Event = ();
     type EnsureDEXOwner = dex_manager::Module<Testtime>;
+    type WeightInfo = ();
 }
 
 pub type DEXId = u32;
@@ -167,6 +169,7 @@ impl assets::Trait for Testtime {
     type AssetId = AssetId;
     type GetBaseAssetId = GetBaseAssetId;
     type Currency = currencies::Module<Testtime>;
+    type WeightInfo = ();
 }
 
 pub type TechAssetId = common::TechAssetId<common::mock::ComicAssetId, DEXId>;
@@ -181,6 +184,7 @@ impl technical::Trait for Testtime {
     type Condition = ();
     type SwapAction =
         crate::PolySwapAction<AssetId, TechAssetId, Balance, AccountId, TechAccountId>;
+    type WeightInfo = ();
 }
 
 impl Trait for Testtime {
@@ -193,6 +197,7 @@ impl Trait for Testtime {
     type PolySwapAction =
         crate::PolySwapAction<AssetId, TechAssetId, Balance, AccountId, TechAccountId>;
     type EnsureDEXOwner = dex_manager::Module<Testtime>;
+    type WeightInfo = ();
 }
 
 impl ExtBuilder {

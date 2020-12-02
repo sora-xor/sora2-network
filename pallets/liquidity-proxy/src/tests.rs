@@ -23,7 +23,7 @@ fn test_quote_exact_input_base_should_pass() {
 
         dist.sort_by(|a, b| a.0.cmp(&b.0));
 
-        assert_eq!(quotes.amount, fixed!(537, 658984414492410269));
+        assert_eq!(quotes.amount, fixed!(537, 643138033120596208));
         assert_eq!(
             &dist,
             &[
@@ -37,11 +37,11 @@ fn test_quote_exact_input_base_should_pass() {
                 ),
                 (
                     LiquiditySourceId::new(DEX_C_ID, LiquiditySourceType::MockPool2),
-                    fixed!(0, 22),
+                    fixed!(0, 225),
                 ),
                 (
                     LiquiditySourceId::new(DEX_C_ID, LiquiditySourceType::MockPool3),
-                    fixed!(0, 03),
+                    fixed!(0, 025),
                 ),
                 (
                     LiquiditySourceId::new(DEX_C_ID, LiquiditySourceType::MockPool4),
@@ -67,7 +67,7 @@ fn test_quote_exact_input_target_should_pass() {
         let mut dist = quotes.distribution;
         dist.sort_by(|a, b| a.0.cmp(&b.0));
 
-        assert_eq!(quotes.amount, fixed!(363, 647298994628839043));
+        assert_eq!(quotes.amount, fixed!(363, 569067258883248762));
         assert_eq!(
             &dist,
             &[
@@ -77,15 +77,15 @@ fn test_quote_exact_input_target_should_pass() {
                 ),
                 (
                     LiquiditySourceId::new(DEX_C_ID, LiquiditySourceType::MockPool),
-                    fixed!(0, 27),
+                    fixed!(0, 275),
                 ),
                 (
                     LiquiditySourceId::new(DEX_C_ID, LiquiditySourceType::MockPool2),
-                    fixed!(0, 19),
+                    fixed!(0, 2),
                 ),
                 (
                     LiquiditySourceId::new(DEX_C_ID, LiquiditySourceType::MockPool3),
-                    fixed!(0, 24),
+                    fixed!(0, 225),
                 ),
                 (
                     LiquiditySourceId::new(DEX_C_ID, LiquiditySourceType::MockPool4),
@@ -112,10 +112,10 @@ fn test_quote_exact_output_target_should_pass() {
         dist.sort_by(|a, b| a.0.cmp(&b.0));
 
         let tolerance = fixed!(1 e-10);
-        let expected_base_amount = fixed!(205, 339009250744456360);
+        let approx_expected_base_amount = fixed!(205, 339009250744456360);
         assert!(
-            (quotes.amount.saturating_sub(expected_base_amount) < tolerance)
-                && (expected_base_amount.saturating_sub(quotes.amount) < tolerance)
+            (quotes.amount.saturating_sub(approx_expected_base_amount) < tolerance)
+                && (approx_expected_base_amount.saturating_sub(quotes.amount) < tolerance)
         );
         assert_eq!(
             &dist,
@@ -161,10 +161,10 @@ fn test_quote_exact_output_base_should_pass() {
         dist.sort_by(|a, b| a.0.cmp(&b.0));
 
         let tolerance = fixed!(1 e-10);
-        let expected_target_amount = fixed!(322, 379695480740487555);
+        let approx_expected_target_amount = fixed!(322, 399717709871);
         assert!(
-            (quotes.amount.saturating_sub(expected_target_amount) < tolerance)
-                && (expected_target_amount.saturating_sub(quotes.amount) < tolerance)
+            (quotes.amount.saturating_sub(approx_expected_target_amount) < tolerance)
+                && (approx_expected_target_amount.saturating_sub(quotes.amount) < tolerance)
         );
         assert_eq!(
             &dist,
@@ -175,19 +175,19 @@ fn test_quote_exact_output_base_should_pass() {
                 ),
                 (
                     LiquiditySourceId::new(DEX_C_ID, LiquiditySourceType::MockPool),
-                    fixed!(0, 33),
+                    fixed!(0, 325),
                 ),
                 (
                     LiquiditySourceId::new(DEX_C_ID, LiquiditySourceType::MockPool2),
-                    fixed!(0, 17),
+                    fixed!(0, 175),
                 ),
                 (
                     LiquiditySourceId::new(DEX_C_ID, LiquiditySourceType::MockPool3),
-                    fixed!(0, 32),
+                    fixed!(0, 325),
                 ),
                 (
                     LiquiditySourceId::new(DEX_C_ID, LiquiditySourceType::MockPool4),
-                    fixed!(0, 18),
+                    fixed!(0, 175),
                 ),
             ]
         );
@@ -208,7 +208,7 @@ fn test_sell_token_for_base_should_pass() {
             filter,
         )
         .expect("Failed to swap assets");
-        assert_eq!(result.amount, fixed!(363, 647298994628839003));
+        assert_eq!(result.amount, fixed!(363, 569067258883248731));
     });
 }
 
@@ -226,7 +226,7 @@ fn test_sell_base_for_token_should_pass() {
             filter,
         )
         .expect("Failed to swap assets");
-        assert_eq!(result.amount, fixed!(537, 658984414492410156));
+        assert_eq!(result.amount, fixed!(537, 643138033120596096));
     });
 }
 
@@ -252,10 +252,10 @@ fn test_buy_base_with_allowed_should_pass() {
         )
         .expect("Failed to swap assets");
         let tolerance = fixed!(1 e-10);
-        let expected_target_amount = fixed!(284, 236667768229000000);
+        let approx_expected_target_amount = fixed!(284, 281354954553);
         assert!(
-            (result.amount.saturating_sub(expected_target_amount) < tolerance)
-                && (expected_target_amount.saturating_sub(result.amount) < tolerance)
+            (result.amount.saturating_sub(approx_expected_target_amount) < tolerance)
+                && (approx_expected_target_amount.saturating_sub(result.amount) < tolerance)
         );
     });
 }
@@ -282,10 +282,10 @@ fn test_buy_base_with_forbidden_should_pass() {
         )
         .expect("Failed to swap assets");
         let tolerance = fixed!(1 e-10);
-        let expected_target_amount = fixed!(277, 350428580061000000);
+        let approx_expected_target_amount = fixed!(277, 348779693090);
         assert!(
-            (result.amount.saturating_sub(expected_target_amount) < tolerance)
-                && (expected_target_amount.saturating_sub(result.amount) < tolerance)
+            (result.amount.saturating_sub(approx_expected_target_amount) < tolerance)
+                && (approx_expected_target_amount.saturating_sub(result.amount) < tolerance)
         );
     });
 }

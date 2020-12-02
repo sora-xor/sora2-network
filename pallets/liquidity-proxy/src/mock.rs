@@ -71,12 +71,13 @@ impl system::Trait for Runtime {
 }
 
 parameter_types! {
-    pub const GetNumSamples: usize = 100;
+    pub const GetNumSamples: usize = 40;
 }
 impl Trait for Runtime {
     type Event = ();
     type LiquidityRegistry = dex_api::Module<Runtime>;
     type GetNumSamples = GetNumSamples;
+    type WeightInfo = ();
 }
 
 impl tokens::Trait for Runtime {
@@ -103,6 +104,7 @@ impl assets::Trait for Runtime {
     type AssetId = AssetId;
     type GetBaseAssetId = GetBaseAssetId;
     type Currency = currencies::Module<Runtime>;
+    type WeightInfo = ();
 }
 
 pub type DEXId = u32;
@@ -132,6 +134,7 @@ impl dex_manager::Trait for Runtime {
     type Event = ();
     type GetDefaultFee = GetDefaultFee;
     type GetDefaultProtocolFee = GetDefaultProtocolFee;
+    type WeightInfo = ();
 }
 
 parameter_types! {
@@ -176,6 +179,7 @@ impl technical::Trait for Runtime {
     type Trigger = ();
     type Condition = ();
     type SwapAction = ();
+    type WeightInfo = ();
 }
 
 impl permissions::Trait for Runtime {
@@ -194,11 +198,13 @@ impl dex_api::Trait for Runtime {
         mock_liquidity_source::Module<Runtime, mock_liquidity_source::Instance4>;
     type BondingCurvePool = ();
     type XYKPool = ();
+    type WeightInfo = ();
 }
 
 impl trading_pair::Trait for Runtime {
     type Event = ();
     type EnsureDEXOwner = dex_manager::Module<Runtime>;
+    type WeightInfo = ();
 }
 
 pub type System = frame_system::Module<Runtime>;

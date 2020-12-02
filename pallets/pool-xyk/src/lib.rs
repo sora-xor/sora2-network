@@ -24,6 +24,8 @@ use frame_support::ensure;
 use permissions::{Scope, BURN, MINT};
 use sp_std::vec::Vec;
 
+mod weights;
+
 #[cfg(test)]
 mod mock;
 
@@ -188,6 +190,13 @@ pub enum PolySwapAction<AssetId, TechAssetId, Balance, AccountId, TechAccountId>
     ),
 }
 
+pub trait WeightInfo {
+    fn swap_pair() -> Weight;
+    fn deposit_liquidity() -> Weight;
+    fn withdraw_liquidity() -> Weight;
+    fn initialize_pool() -> Weight;
+}
+
 /// Configure the pallet by specifying the parameters and types on which it depends.
 pub trait Trait: technical::Trait + dex_manager::Trait + trading_pair::Trait {
     /// Because this pallet emits events, it depends on the runtime's definition of an event.
@@ -205,6 +214,9 @@ pub trait Trait: technical::Trait + dex_manager::Trait + trading_pair::Trait {
         + Into<<Self as technical::Trait>::SwapAction>
         + From<PolySwapActionStructOf<Self>>;
     type EnsureDEXOwner: EnsureDEXOwner<Self::DEXId, Self::AccountId, DispatchError>;
+
+    /// Weight information for extrinsics in this pallet.
+    type WeightInfo: WeightInfo;
 }
 
 impl<T: Trait> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, T>
@@ -1472,7 +1484,7 @@ decl_module! {
         type Error = Error<T>;
         fn deposit_event() = default;
 
-        #[weight = 0]
+        #[weight = <T as Trait>::WeightInfo::swap_pair()]
         fn swap_pair(
             origin, receiver: AccountIdOf<T>, dex_id: DEXIdOf<T>,
             input_asset_id: AssetIdOf<T>, output_asset_id: AssetIdOf<T>,
@@ -1482,7 +1494,7 @@ decl_module! {
             Ok(())
         }
 
-        #[weight = 0]
+        #[weight = <T as Trait>::WeightInfo::deposit_liquidity()]
         fn deposit_liquidity(
             origin,
             dex_id: DEXIdOf<T>,
@@ -1499,7 +1511,7 @@ decl_module! {
             Ok(())
         }
 
-        #[weight = 0]
+        #[weight = <T as Trait>::WeightInfo::withdraw_liquidity()]
         fn withdraw_liquidity(
             origin,
             dex_id: DEXIdOf<T>,
@@ -1515,7 +1527,7 @@ decl_module! {
             Ok(())
         }
 
-        #[weight = 0]
+        #[weight = <T as Trait>::WeightInfo::initialize_pool()]
         fn initialize_pool(
             origin,
             dex_id: DEXIdOf<T>,

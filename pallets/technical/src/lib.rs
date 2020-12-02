@@ -3,7 +3,9 @@
 use codec::{Decode, Encode};
 use common::{prelude::Balance, FromGenericPair, SwapAction, SwapRulesValidation};
 use frame_support::dispatch::{DispatchError, DispatchResult};
-use frame_support::{decl_error, decl_event, decl_module, decl_storage, ensure, Parameter};
+use frame_support::{
+    decl_error, decl_event, decl_module, decl_storage, ensure, weights::Weight, Parameter,
+};
 use frame_system::ensure_signed;
 use sp_runtime::traits::Member;
 use sp_runtime::RuntimeDebug;
@@ -11,6 +13,8 @@ use sp_runtime::RuntimeDebug;
 use common::TECH_ACCOUNT_MAGIC_PREFIX;
 use sp_core::H256;
 use sp_std::convert::TryFrom;
+
+mod weights;
 
 #[cfg(test)]
 mod mock;
@@ -33,6 +37,10 @@ pub struct PendingSwap<T: Trait> {
     pub action: T::SwapAction,
     /// Condition is time or block number, or something logical.
     pub condition: T::Condition,
+}
+
+pub trait WeightInfo {
+    fn create_swap() -> Weight;
 }
 
 /// Configure the pallet by specifying the parameters and types on which it depends.
@@ -72,6 +80,9 @@ pub trait Trait: common::Trait + assets::Trait {
     /// Swap action.
     type SwapAction: common::SwapRulesValidation<Self::AccountId, Self::TechAccountId, Self>
         + Parameter;
+
+    /// Weight information for extrinsics in this pallet.
+    type WeightInfo: WeightInfo;
 }
 
 decl_storage! {
@@ -127,7 +138,8 @@ decl_module! {
     {
         type Error = Error<T>;
         fn deposit_event() = default;
-        #[weight = 0]
+
+        #[weight = <T as Trait>::WeightInfo::create_swap()]
         fn create_swap(
             origin,
             action: T::SwapAction,

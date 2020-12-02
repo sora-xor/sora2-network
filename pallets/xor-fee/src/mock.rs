@@ -114,11 +114,13 @@ impl dex_manager::Trait for Test {
     type Event = ();
     type GetDefaultFee = GetDefaultFee;
     type GetDefaultProtocolFee = GetDefaultProtocolFee;
+    type WeightInfo = ();
 }
 
 impl trading_pair::Trait for Test {
     type Event = ();
     type EnsureDEXOwner = dex_manager::Module<Test>;
+    type WeightInfo = ();
 }
 
 impl referral_system::Trait for Test {
@@ -153,6 +155,7 @@ impl technical::Trait for Test {
     type Trigger = ();
     type Condition = ();
     type SwapAction = ();
+    type WeightInfo = ();
 }
 
 impl currencies::Trait for Test {
@@ -167,6 +170,7 @@ impl assets::Trait for Test {
     type AssetId = AssetId;
     type GetBaseAssetId = XorId;
     type Currency = currencies::Module<Test>;
+    type WeightInfo = ();
 }
 
 impl permissions::Trait for Test {
