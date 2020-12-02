@@ -2,8 +2,13 @@
 
 #[macro_use]
 extern crate alloc;
+#[macro_use]
+extern crate fixnum;
 
-use sp_arithmetic::FixedU128;
+use fixnum::{
+    typenum::{Unsigned, U18},
+    FixedPoint,
+};
 
 #[cfg(any(feature = "test", test))]
 pub mod mock;
@@ -15,10 +20,9 @@ mod primitives;
 mod swap_amount;
 mod traits;
 pub mod utils;
-mod weights;
 
-use blake2_rfc;
 use codec::Encode;
+use codec::{Compact, CompactAs, Input, WrapperTypeEncode};
 use sp_core::hash::H512;
 use sp_runtime::TransactionOutcome;
 
@@ -29,7 +33,6 @@ pub mod prelude {
     pub use super::primitives::*;
     pub use super::swap_amount::*;
     pub use super::traits::*;
-    pub use super::weights::*;
     pub use super::Fixed;
 }
 use sp_core::crypto::AccountId32;
@@ -42,7 +45,17 @@ pub use utils::*;
 pub type Asset<T, GetAssetId> = currencies::Currency<T, GetAssetId>;
 
 /// Basic type representing assets quantity.
-pub type Fixed = FixedU128;
+///
+/// MAX = (2 ** (BITS_COUNT - 1) - 1) / 10 ** PRECISION =
+///     = (2 ** (128 - 1) - 1) / 1e18 =
+///     = 170_141_183_460_469_231_731.687_303_715_884_105_727 ~
+///     ~ 1.7e20
+/// ERROR_MAX = 0.5 / (10 ** PRECISION) =
+///           = 0.5 / 1e18 =
+///           = 5e-19
+pub type Fixed = FixedPoint<FixedInner, FixedPrecision>;
+pub type FixedInner = i128;
+type FixedPrecision = U18;
 
 pub type Price = Fixed;
 
@@ -50,6 +63,8 @@ pub type Amount = i128;
 
 /// Type definition representing financial basis points (1bp is 0.01%)
 pub type BasisPoints = u16;
+
+pub const FIXED_PRECISION: i32 = FixedPrecision::I32;
 
 /// Similar to #\[transactional]
 pub fn with_transaction<T, E>(f: impl FnOnce() -> Result<T, E>) -> Result<T, E> {

@@ -1,17 +1,16 @@
-use crate::Amount;
-use crate::Fixed;
-use codec::{Compact, CompactAs};
-use codec::{Decode, Encode};
-use num_traits::{CheckedNeg, Num};
+use core::convert::TryInto;
+use core::ops::{Shl, Shr};
+
+use codec::{Compact, CompactAs, Decode, Encode, Input, WrapperTypeEncode};
+use derive_more::From;
+use fixnum::ops::{CheckedAdd, CheckedSub, Numeric, RoundMode::*, RoundingDiv, RoundingMul};
+use num_traits::{CheckedNeg, Num, One, Unsigned, Zero};
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 use sp_arithmetic::traits::{
-    Bounded, CheckedAdd, CheckedDiv, CheckedMul, CheckedShl, CheckedShr, CheckedSub,
-    IntegerSquareRoot, One, Saturating, Unsigned, Zero,
+    Bounded, CheckedDiv, CheckedMul, CheckedShl, CheckedShr, IntegerSquareRoot, Saturating,
 };
-use sp_arithmetic::FixedPointNumber;
-
-use sp_core::U256;
+use sp_core::{crypto::AccountId32, U256};
 use sp_runtime::FixedPointOperand;
 use sp_std::convert::TryFrom;
 use sp_std::fmt::Display;
@@ -21,18 +20,12 @@ use sp_std::str::FromStr;
 use static_assertions::_core::fmt::Formatter;
 use static_assertions::{assert_eq_align, assert_eq_size};
 
+use crate::{Amount, Fixed, FixedInner};
+
 /// Fixed-point balance type.
-///
-/// Note: some operations like `Shl` and `integer_sqrt_checked` are not implemented yet.
-#[derive(Debug, Clone, Copy, Encode, Decode, Default, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Encode, Debug, Clone, Copy, Decode, Default, From, PartialEq, Eq, PartialOrd, Ord)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct Balance(pub Fixed);
-
-impl From<Fixed> for Balance {
-    fn from(fixed: Fixed) -> Self {
-        Self(fixed)
-    }
-}
 
 /// Error type for conversion.
 #[derive(Debug, PartialEq, Eq)]
@@ -43,24 +36,14 @@ pub enum ConvertError {
     Invalid,
 }
 
-impl TryFrom<U256> for Balance {
-    type Error = ConvertError;
-
-    fn try_from(value: U256) -> Result<Self, Self::Error> {
-        if value > U256::from(Fixed::max_value().into_inner()) {
-            Err(ConvertError::Overflow)
-        } else {
-            Ok(Balance(Fixed::from_inner(value.low_u128())))
-        }
-    }
-}
+type Inner = i128;
 
 #[cfg(feature = "std")]
 impl FromStr for Balance {
     type Err = &'static str;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Ok(Balance(Fixed::from_str(s)?))
+        Ok(Balance(s.parse()?))
     }
 }
 
@@ -84,7 +67,7 @@ impl Add for Balance {
     type Output = Balance;
 
     fn add(self, rhs: Self) -> Self::Output {
-        Self(self.0 + rhs.0)
+        Self(self.0.cadd(rhs.0).unwrap())
     }
 }
 
@@ -92,7 +75,7 @@ impl Mul for Balance {
     type Output = Balance;
 
     fn mul(self, rhs: Self) -> Self::Output {
-        Self(self.0 * rhs.0)
+        Self(self.0.rmul(rhs.0, Floor).unwrap())
     }
 }
 
@@ -100,7 +83,7 @@ impl Div for Balance {
     type Output = Balance;
 
     fn div(self, rhs: Self) -> Self::Output {
-        Self(self.0 / rhs.0)
+        Self(self.0.rdiv(rhs.0, Floor).unwrap())
     }
 }
 
@@ -108,7 +91,7 @@ impl Sub for Balance {
     type Output = Balance;
 
     fn sub(self, rhs: Self) -> Self::Output {
-        Self(self.0 - rhs.0)
+        Self(self.0.csub(rhs.0).unwrap())
     }
 }
 
@@ -132,25 +115,25 @@ impl Shr<u32> for Balance {
 
 impl AddAssign for Balance {
     fn add_assign(&mut self, rhs: Self) {
-        *self = Self(self.0 + rhs.0);
+        *self = Self(self.0.cadd(rhs.0).unwrap());
     }
 }
 
 impl SubAssign for Balance {
     fn sub_assign(&mut self, rhs: Self) {
-        *self = Self(self.0 - rhs.0);
+        *self = Self(self.0.csub(rhs.0).unwrap());
     }
 }
 
 impl MulAssign for Balance {
     fn mul_assign(&mut self, rhs: Self) {
-        *self = Self(self.0 * rhs.0);
+        *self = Self(self.0.rmul(rhs.0, Floor).unwrap());
     }
 }
 
 impl DivAssign for Balance {
     fn div_assign(&mut self, rhs: Self) {
-        *self = Self(self.0 / rhs.0);
+        *self = Self(self.0.rdiv(rhs.0, Floor).unwrap());
     }
 }
 
@@ -162,31 +145,33 @@ impl RemAssign for Balance {
 
 impl Bounded for Balance {
     fn min_value() -> Self {
-        Self(Fixed::min_value())
+        Self(Fixed::MIN)
     }
 
     fn max_value() -> Self {
-        Self(Fixed::max_value())
+        Self(Fixed::MAX)
     }
 }
 
 impl Zero for Balance {
     fn zero() -> Self {
-        Self(Fixed::zero())
+        const ZERO: Fixed = Fixed::from_bits(0);
+        Self(ZERO)
     }
 
     fn is_zero(&self) -> bool {
-        self.0.is_zero()
+        const ZERO: Fixed = Fixed::from_bits(0);
+        self.0 == ZERO
     }
 }
 
 impl One for Balance {
     fn one() -> Self {
-        Self(Fixed::one())
+        Self(1u32.try_into().unwrap())
     }
 
     fn is_one(&self) -> bool {
-        self.0.is_one()
+        self.0 == 1u32.try_into().unwrap()
     }
 }
 
@@ -200,27 +185,27 @@ impl IntegerSquareRoot for Balance {
     }
 }
 
-impl CheckedAdd for Balance {
+impl sp_arithmetic::traits::CheckedAdd for Balance {
     fn checked_add(&self, rhs: &Self) -> Option<Self> {
-        self.0.checked_add(&rhs.0).map(Self)
+        self.0.cadd(rhs.0).map(Self).ok()
     }
 }
 
-impl CheckedSub for Balance {
+impl sp_arithmetic::traits::CheckedSub for Balance {
     fn checked_sub(&self, rhs: &Self) -> Option<Self> {
-        self.0.checked_sub(&rhs.0).map(Self)
+        self.0.csub(rhs.0).map(Self).ok()
     }
 }
 
 impl CheckedMul for Balance {
     fn checked_mul(&self, rhs: &Self) -> Option<Self> {
-        self.0.checked_mul(&rhs.0).map(Self)
+        self.0.rmul(rhs.0, Floor).map(Self).ok()
     }
 }
 
 impl CheckedDiv for Balance {
     fn checked_div(&self, rhs: &Self) -> Option<Self> {
-        self.0.checked_div(&rhs.0).map(Self)
+        self.0.rdiv(rhs.0, Floor).map(Self).ok()
     }
 }
 
@@ -240,19 +225,19 @@ impl CheckedShr for Balance {
 
 impl Saturating for Balance {
     fn saturating_add(self, rhs: Self) -> Self {
-        Self(self.0.saturating_add(rhs.0))
+        unimplemented!() // TODO
     }
 
     fn saturating_sub(self, rhs: Self) -> Self {
-        Self(self.0.saturating_sub(rhs.0))
+        unimplemented!() // TODO
     }
 
     fn saturating_mul(self, rhs: Self) -> Self {
-        Self(self.0.saturating_mul(rhs.0))
+        unimplemented!() // TODO
     }
 
     fn saturating_pow(self, exp: usize) -> Self {
-        Self(self.0.saturating_pow(exp))
+        unimplemented!() // TODO
     }
 }
 
@@ -267,39 +252,36 @@ impl Num for Balance {
 
 impl Unsigned for Balance {}
 
-macro_rules! impl_primitive_conversion {
-    ($t:ty) => {
+macro_rules! impl_primitive_conversions {
+    ($($t:ty)+) => ($(
+        impl_primitive_conversions!{@single $t}
+    )*);
+    (@single $t:ty) => {
         impl From<$t> for Balance {
             fn from(v: $t) -> Balance {
-                Balance(Fixed::from(v as <Fixed as FixedPointNumber>::Inner))
+                Balance(Fixed::from_bits(v as FixedInner))
             }
         }
 
         impl Into<$t> for Balance {
             fn into(self) -> $t {
-                self.0.saturating_mul_int(1 as $t)
+                *self.0.as_bits() as $t
             }
         }
     };
 }
 
-macro_rules! impl_primitive_conversion_any {
-        ($($t:ty)+) => ($(
-            impl_primitive_conversion!($t);
-        )+)
-    }
-
-impl_primitive_conversion_any!(u8 u16 u32 u64 u128);
+impl_primitive_conversions!(u8 u16 u32 u64 u128);
 
 impl From<usize> for Balance {
-    fn from(v: usize) -> Balance {
-        Balance(Fixed::from(v as <Fixed as FixedPointNumber>::Inner))
+    fn from(x: usize) -> Balance {
+        Balance(Fixed::try_from(x as FixedInner).unwrap())
     }
 }
 
 impl Into<usize> for Balance {
     fn into(self) -> usize {
-        self.0.saturating_mul_int(1u128) as usize
+        *self.0.as_bits() as usize // TODO
     }
 }
 
@@ -336,34 +318,38 @@ impl From<Compact<Balance>> for Balance {
 }
 
 impl CompactAs for Balance {
-    type As = <Fixed as FixedPointNumber>::Inner;
+    type As = Inner;
 
     fn encode_as(&self) -> &Self::As {
         // This statically (at compile time) guarantees memory layout
         // equality for `Fixed` and its inner type `Fixed::Inner`.
-        assert_eq_size!(Fixed, <Fixed as FixedPointNumber>::Inner);
-        assert_eq_align!(Fixed, <Fixed as FixedPointNumber>::Inner);
+        assert_eq_size!(Fixed, Inner);
+        assert_eq_align!(Fixed, Inner);
 
         // FIXME: create a pull request for adding something like
         // `FixedPointNumber::inner_as_ref` to substrate
         //
         // Safety: `Fixed` is a newtype (`FixedU128(u128)`), so it has memory layout
         //         same as its inner type - `u128`.
-        unsafe { sp_std::mem::transmute::<&Fixed, &<Fixed as FixedPointNumber>::Inner>(&self.0) }
+        unsafe { sp_std::mem::transmute::<&Fixed, &Inner>(&self.0) }
     }
 
     fn decode_from(v: Self::As) -> Self {
-        Balance(Fixed::from_inner(v))
+        Balance(Fixed::from_bits(v))
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{Balance, CompactAs, FixedPointNumber, One};
+    use codec::{Compact, CompactAs, Decode, Encode, Input, WrapperTypeEncode};
+
+    use crate::fixed;
+
+    use super::Balance;
 
     #[test]
     fn balance_encode_as_should_equal_fixed_inner() {
-        let balance = Balance::one();
-        assert_eq!(balance.0.into_inner(), *balance.encode_as());
+        let balance: Balance = fixed!(1).into();
+        assert_eq!(balance.0.as_bits(), balance.encode_as());
     }
 }

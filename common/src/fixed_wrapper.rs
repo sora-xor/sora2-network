@@ -1,8 +1,6 @@
 use crate::balance::Balance;
 use crate::Fixed;
 use core::ops::*;
-use frame_support::sp_runtime::traits::{CheckedAdd, CheckedDiv, CheckedMul, CheckedSub};
-use sp_arithmetic::FixedPointNumber;
 use static_assertions::_core::cmp::Ordering;
 
 /// A convenient wrapper around `Fixed` type for safe math.
@@ -74,7 +72,6 @@ impl FixedWrapper {
     pub fn sqrt(self) -> Self {
         Self::from(self.to_fraction().map(|x| Self::from_fraction(x.sqrt())))
     }
-
     pub fn from_fraction(x: f64) -> Fixed {
         Fixed::from_inner(
             (x * (<Fixed as FixedPointNumber>::DIV as f64)) as <Fixed as FixedPointNumber>::Inner,
