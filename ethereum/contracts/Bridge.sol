@@ -81,6 +81,7 @@ contract Bridge {
         // Create new instance of the token
         MasterToken tokenInstance = new MasterToken(name, symbol, decimals, address(this), supply, sidechainAssetId);
         _sidechainTokens[sidechainAssetId] = address(tokenInstance);
+        _sidechainTokensByAddress[address(tokenInstance)] = sidechainAssetId;
     }
     
     function sendEthToSidechain(bytes32 destination) 
