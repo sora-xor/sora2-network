@@ -9,7 +9,6 @@ import "./MasterToken.sol";
  */
 contract Bridge {
     bool internal initialized_;
-    bytes32 public proof;
     mapping(address => bool) public isPeer;
     uint public peersCount;
     /** Iroha tx hashes used */
