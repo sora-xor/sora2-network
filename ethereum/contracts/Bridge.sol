@@ -83,7 +83,7 @@ contract Bridge {
         _sidechainTokens[sidechainAssetId] = address(tokenInstance);
     }
     
-    function sendEthToSidchain(bytes32 destination) 
+    function sendEthToSidechain(bytes32 destination) 
     public 
     payable
     shouldBeInitialized {
@@ -95,20 +95,24 @@ contract Bridge {
     /**
      * A special function-like stub to allow ether accepting
      */
-    function sendERC20ToSidchain(
+    function sendERC20ToSidechain(
         bytes32 destination, 
         uint amount, 
         address tokenAddress) 
         external 
-        payable 
         shouldBeInitialized {
             
         IERC20 token = IERC20(tokenAddress);
         
         require (token.allowance(msg.sender, address(this)) >= amount, "NOT ENOUGH DELEGATED TOKENS ON SENDER BALANCE");
 
-        token.transferFrom(msg.sender, address(this), amount);
         bytes32 sidechainAssetId = _sidechainTokensByAddress[tokenAddress];
+        if(_sidechainTokens[sidechainAssetId] != address(0x0)) {
+            MasterToken mtoken = MasterToken(tokenAddress);
+            mtoken.burnFrom(msg.sender, amount);
+        } else {
+            token.transferFrom(msg.sender, address(this), amount);
+        }
         emit Deposit(destination, amount, tokenAddress, sidechainAssetId);
     }
 
