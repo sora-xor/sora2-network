@@ -10,7 +10,8 @@ fn farm_creation_passes() {
         let farm_name = H512::from_slice(&[2; 64]);
         let incenitive = Incentive::new(XOR, 1_000_u128.into());
         let parameters = Parameters::new(DateTimePeriod::new(0, 1), incenitive);
-        Assets::register(Origin::signed(ALICE), XOR, AssetSymbol(b"XOR".to_vec()), 18);
+        #[allow(unused_must_use)]
+        Assets::register(Origin::signed(ALICE), XOR, AssetSymbol(b"XOR".to_vec()), 18).unwrap();
         assert_ok!(Assets::mint_to(
             &XOR,
             &ALICE,
@@ -47,7 +48,7 @@ fn farmer_creation_passes() {
             DateTimePeriod::new(0, <pallet_timestamp::Module<Test>>::get() + 10_000),
             incenitive,
         );
-        Assets::register(Origin::signed(ALICE), XOR, AssetSymbol(b"XOR".to_vec()), 18);
+        Assets::register(Origin::signed(ALICE), XOR, AssetSymbol(b"XOR".to_vec()), 18).unwrap();
         assert_ok!(Assets::mint_to(
             &XOR,
             &ALICE,
@@ -75,7 +76,7 @@ fn farmer_creation_fails_with_forbidden_error() {
         let farm_name = H512::from_slice(&[5; 64]);
         let incenitive = Incentive::new(XOR, 20_000_u128.into());
         let parameters = Parameters::new(DateTimePeriod::new(0, 1), incenitive);
-        Assets::register(Origin::signed(ALICE), XOR, AssetSymbol(b"XOR".to_vec()), 18);
+        Assets::register(Origin::signed(ALICE), XOR, AssetSymbol(b"XOR".to_vec()), 18).unwrap();
         assert_ok!(Assets::mint_to(
             &XOR,
             &ALICE,
@@ -101,7 +102,7 @@ fn farmer_creation_fails_with_farm_already_closed() {
         let farm_name = H512::from_slice(&[4; 64]);
         let incenitive = Incentive::new(XOR, 20_000_u128.into());
         let parameters = Parameters::new(DateTimePeriod::new(1, 2), incenitive);
-        Assets::register(Origin::signed(ALICE), XOR, AssetSymbol(b"XOR".to_vec()), 18);
+        Assets::register(Origin::signed(ALICE), XOR, AssetSymbol(b"XOR".to_vec()), 18).unwrap();
         assert_ok!(Assets::mint_to(
             &XOR,
             &ALICE,
@@ -128,7 +129,7 @@ fn farmer_claims_passes() {
         let farm_name = H512::from_slice(&[6; 64]);
         let incenitive = Incentive::new(XOR, 20_000_u128.into());
         let parameters = Parameters::new(DateTimePeriod::new(0, 1), incenitive);
-        Assets::register(Origin::signed(ALICE), XOR, AssetSymbol(b"XOR".to_vec()), 18);
+        Assets::register(Origin::signed(ALICE), XOR, AssetSymbol(b"XOR".to_vec()), 18).unwrap();
         assert_ok!(Assets::mint_to(
             &XOR,
             &ALICE,
@@ -161,7 +162,7 @@ fn farmer_claims_fails_with_forbidden_error() {
         let farm_name = H512::from_slice(&[7; 64]);
         let incenitive = Incentive::new(XOR, 20_000_u128.into());
         let parameters = Parameters::new(DateTimePeriod::new(0, 1), incenitive);
-        Assets::register(Origin::signed(ALICE), XOR, AssetSymbol(b"XOR".to_vec()), 18);
+        Assets::register(Origin::signed(ALICE), XOR, AssetSymbol(b"XOR".to_vec()), 18).unwrap();
         assert_ok!(Assets::mint_to(
             &XOR,
             &ALICE,

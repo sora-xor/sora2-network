@@ -41,6 +41,7 @@ impl_outer_event! {
 pub type System = frame_system::Module<Test>;
 pub type Balances = pallet_balances::Module<Test>;
 pub type XorFee = Module<Test>;
+#[allow(dead_code)]
 type TechAccountIdPrimitive = common::TechAccountId<AccountId, AssetId, DEXId>;
 pub type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
 type TechAssetId = common::TechAssetId<AssetId, DEXId>;
@@ -48,11 +49,14 @@ type DEXId = common::DEXId;
 pub type AccountId = u64;
 pub type AssetId = common::AssetId;
 pub type BlockNumber = u64;
+#[allow(dead_code)]
 pub type Technical = technical::Module<Test>;
 pub type MockLiquiditySource =
     mock_liquidity_source::Module<Test, mock_liquidity_source::Instance1>;
+#[allow(dead_code)]
 pub type Assets = assets::Module<Test>;
 pub type Tokens = tokens::Module<Test>;
+#[allow(dead_code)]
 pub type Currencies = currencies::Module<Test>;
 
 #[derive(Clone, Eq, PartialEq)]
