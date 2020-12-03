@@ -79,7 +79,7 @@ decl_module! {
             technical::Module::<T>::register_tech_account_id(technical_account_id.clone())?;
             technical::Module::<T>::transfer_in(&parameters.incentive.asset_id, &who, &technical_account_id, parameters.incentive.amount)?;
             let technical_account_id = technical::Module::<T>::tech_account_id_to_account_id(&technical_account_id)?;
-            Farms::<T>::insert(name, Farm::new(&who, &technical_account_id, parameters));
+            Farms::<T>::insert(name, Farm::new(who.clone(), technical_account_id, parameters));
             Self::deposit_event(RawEvent::FarmCreated(who));
             Ok(())
         }
@@ -100,7 +100,7 @@ decl_module! {
                 &farm.parameters.incentive.asset_id,
                 &who, &technical_account_id, amount
             )?;
-            let farmer = Farmer::new(&technical::Module::<T>::tech_account_id_to_account_id(&technical_account_id)?, amount);
+            let farmer = Farmer::new(technical::Module::<T>::tech_account_id_to_account_id(&technical_account_id)?, amount);
             Farmers::<T>::insert(farm_name, who.clone(), farmer);
             //TODO: grant permission
             Self::deposit_event(RawEvent::FarmerCreated(who));

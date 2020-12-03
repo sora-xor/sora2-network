@@ -9,6 +9,7 @@ serde = { version = "1.0.101", default-features = false, optional = true, featur
 codec = { package = "parity-scale-codec", version = "1.3.0", default-features = false, features = ["derive"] }
 hex-literal = "0.3.1"
 
+faucet = { path = "../pallets/faucet", default-features = false }
 trading-pair = { path = "../pallets/trading-pair", default-features = false}
 trading-pair-runtime-api = { path = "../pallets/trading-pair/runtime-api", default-features = false }
 bonding-curve-pool = { path = "../pallets/bonding-curve-pool", default-features = false }
@@ -102,6 +103,7 @@ std = [
 	"cumulus-upward-message/std",
 	"cumulus-primitives/std",
 	"cumulus-token-dealer/std",
+	"faucet/std",
 	"trading-pair/std",
 	"trading-pair-runtime-api/std",
 	"bonding-curve-pool/std",

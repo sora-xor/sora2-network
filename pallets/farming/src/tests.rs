@@ -10,7 +10,6 @@ fn farm_creation_passes() {
         let farm_name = H512::from_slice(&[2; 64]);
         let incenitive = Incentive::new(XOR, 1_000_u128.into());
         let parameters = Parameters::new(DateTimePeriod::new(0, 1), incenitive);
-        #[allow(unused_must_use)]
         Assets::register(Origin::signed(ALICE), XOR, AssetSymbol(b"XOR".to_vec()), 18).unwrap();
         assert_ok!(Assets::mint_to(
             &XOR,

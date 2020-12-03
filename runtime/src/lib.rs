@@ -508,6 +508,10 @@ impl cumulus_token_dealer::Trait for Runtime {
     type XCMPMessageSender = MessageBroker;
 }
 
+impl faucet::Trait for Runtime {
+    type Event = Event;
+}
+
 /// Configure the pallet template in pallets/template.
 impl template::Trait for Runtime {
     type Event = Event;
@@ -547,7 +551,7 @@ construct_runtime! {
         XorFee: xor_fee::{Module, Call, Storage, Event},
 
         // Non-native tokens - everything apart of XOR.
-        Tokens: tokens::{Module, Storage, Event<T>},
+        Tokens: tokens::{Module, Storage, Config<T>, Event<T>},
         // Unified interface for XOR and non-native tokens.
         Currencies: currencies::{Module, Call, Event<T>},
         TradingPair: trading_pair::{Module, Call, Event<T>},
@@ -562,6 +566,7 @@ construct_runtime! {
         MockLiquiditySource3: mock_liquidity_source::<Instance3>::{Module, Call, Storage, Config<T>, Event<T>},
         MockLiquiditySource4: mock_liquidity_source::<Instance4>::{Module, Call, Storage, Config<T>, Event<T>},
         DEXAPI: dex_api::{Module, Call, Event<T>},
+        Faucet: faucet::{Module, Call, Config<T>, Event<T>},
         //IrohaBridge: iroha_bridge::{Module, Call, Storage, Config<T>, Event<T>},
     }
 }

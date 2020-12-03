@@ -14,8 +14,6 @@ use sp_runtime::{
 
 pub type AccountId = u128;
 pub type BlockNumber = u64;
-#[allow(dead_code)]
-type TechAccountIdPrimitive = common::TechAccountId<AccountId, AssetId, DEXId>;
 pub type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
 type TechAssetId = common::TechAssetId<AssetId, DEXId>;
 type DEXId = common::DEXId;
@@ -23,15 +21,6 @@ pub type FarmsModule = Module<Test>;
 pub type System = frame_system::Module<Test>;
 pub type Balances = pallet_balances::Module<Test>;
 pub type Tokens = tokens::Module<Test>;
-#[allow(dead_code)]
-pub type Currencies = currencies::Module<Test>;
-#[allow(dead_code)]
-pub type BondingCurvePool = Module<Test>;
-#[allow(dead_code)]
-pub type Technical = technical::Module<Test>;
-#[allow(dead_code)]
-pub type MockLiquiditySource =
-    mock_liquidity_source::ReservesAcc<Test, mock_liquidity_source::Instance1>;
 pub type Assets = assets::Module<Test>;
 
 pub const XOR: AssetId = AssetId::XOR;

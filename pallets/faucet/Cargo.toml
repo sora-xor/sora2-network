@@ -1,0 +1,46 @@
+[package]
+authors = ['Alexey Kalita <kalita@soramitsu.co.jp>']
+description = 'Pallet for transferring tokens from technical accounts'
+edition = '2018'
+license = 'MIT OR Apache-2.0'
+name = 'faucet'
+repository = 'https://github.com/soramitsu/SoraNeo-substrate/'
+version = '0.1.0'
+
+[package.metadata.docs.rs]
+targets = ['x86_64-unknown-linux-gnu']
+
+[dependencies.codec]
+default-features = false
+features = ['derive']
+package = 'parity-scale-codec'
+version = '1.3.1'
+
+[dependencies]
+assets = { path = "../assets", default-features = false }
+common = { path = "../../common", default-features = false }
+frame-support = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "rococo-branch" }
+frame-system = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "rococo-branch" }
+serde = { version = "1.0.101", optional = true, features = ["derive"] }
+sp-arithmetic = { git = "https://github.com/paritytech/substrate", branch = "rococo-branch", default-features = false }
+sp-core = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "rococo-branch" }
+sp-runtime = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "rococo-branch" }
+pallet-timestamp = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "rococo-branch" }
+permissions = { path = "../permissions", default-features = false }
+technical = { path = "../technical", default-features = false }
+
+[dev-dependencies]
+sp-io = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "rococo-branch" }
+pallet-balances = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "rococo-branch" }
+tokens = { package = "orml-tokens", branch = "rococo-branch", git = "https://github.com/vmarkushin/open-runtime-module-library", default-features = false }
+currencies = { package = "orml-currencies", branch = "rococo-branch", git = "https://github.com/vmarkushin/open-runtime-module-library", default-features = false }
+mock-liquidity-source = { path = "../mock-liquidity-source", default-features = false }
+
+[features]
+default = ['std']
+std = [
+    'codec/std',
+    'serde',
+    'frame-support/std',
+    'frame-system/std',
+]

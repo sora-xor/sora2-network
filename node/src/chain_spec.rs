@@ -3,9 +3,10 @@
 use cumulus_primitives::ParaId;
 
 use parachain_runtime::{
-    AccountId, AssetSymbol, AssetsConfig, BalancesConfig, DEXManagerConfig, DotId, GenesisConfig,
-    GetBaseAssetId, KsmId, ParachainInfoConfig, PermissionsConfig, PswapId, Signature, SudoConfig,
-    SystemConfig, TechAccountId, TechnicalConfig, UsdId, ValId, XorId, WASM_BINARY,
+    AccountId, AssetSymbol, AssetsConfig, BalancesConfig, DEXManagerConfig, DotId, FaucetConfig,
+    GenesisConfig, GetBaseAssetId, KsmId, ParachainInfoConfig, PermissionsConfig, PswapId,
+    Signature, SudoConfig, SystemConfig, TechAccountId, TechnicalConfig, TokensConfig, UsdId,
+    ValId, XorId, WASM_BINARY,
 };
 
 use codec::{Decode, Encode};
@@ -17,7 +18,10 @@ use sc_service::{ChainType, Properties};
 use serde::{Deserialize, Serialize};
 use sp_core::crypto::AccountId32;
 use sp_core::{sr25519, Pair, Public};
-use sp_runtime::traits::{IdentifyAccount, Verify};
+use sp_runtime::{
+    sp_std::iter::once,
+    traits::{IdentifyAccount, Verify},
+};
 
 /// Specialized `ChainSpec`. This is a specialization of the general Substrate ChainSpec type.
 pub type ChainSpec = sc_service::GenericChainSpec<GenesisConfig, Extensions>;
@@ -153,6 +157,14 @@ fn testnet_genesis(
         technical::tech_account_id_encoded_to_account_id_32(&xor_fee_tech_account_id.encode());
     let xor_fee_account_id: AccountId =
         AccountId::decode(&mut &xor_fee_account_repr[..]).expect("Failed to decode account Id");
+    let faucet_tech_account_id = TechAccountId::Generic(
+        faucet::TECH_ACCOUNT_PREFIX.to_vec(),
+        faucet::TECH_ACCOUNT_MAIN.to_vec(),
+    );
+    let faucet_account_repr =
+        technical::tech_account_id_encoded_to_account_id_32(&faucet_tech_account_id.encode());
+    let faucet_account_id: AccountId =
+        AccountId::decode(&mut &faucet_account_repr[..]).expect("Failed to decode account id");
 
     GenesisConfig {
         frame_system: Some(SystemConfig {
@@ -162,10 +174,10 @@ fn testnet_genesis(
         pallet_sudo: Some(SudoConfig { key: root_key }),
         parachain_info: Some(ParachainInfoConfig { parachain_id: id }),
         technical: Some(TechnicalConfig {
-            account_ids_to_tech_account_ids: vec![(
-                xor_fee_account_id.clone(),
-                xor_fee_tech_account_id,
-            )],
+            account_ids_to_tech_account_ids: vec![
+                (xor_fee_account_id.clone(), xor_fee_tech_account_id),
+                (faucet_account_id.clone(), faucet_tech_account_id.clone()),
+            ],
         }),
         assets: Some(AssetsConfig {
             endowed_assets: vec![
@@ -262,6 +274,7 @@ fn testnet_genesis(
             balances: endowed_accounts
                 .iter()
                 .cloned()
+                .chain(once(faucet_account_id.clone()))
                 .map(|k| (k, (1u128 << 60).into()))
                 .collect(),
         }),
@@ -279,5 +292,18 @@ fn testnet_genesis(
         mock_liquidity_source_Instance2: None,
         mock_liquidity_source_Instance3: None,
         mock_liquidity_source_Instance4: None,
+        faucet: Some(FaucetConfig {
+            reserves_account_id: faucet_tech_account_id,
+        }),
+        tokens: Some(TokensConfig {
+            endowed_accounts: vec![
+                (
+                    faucet_account_id.clone(),
+                    ValId::get(),
+                    (1u128 << 60).into(),
+                ),
+                (faucet_account_id, PswapId::get(), (1u128 << 60).into()),
+            ],
+        }),
     }
 }

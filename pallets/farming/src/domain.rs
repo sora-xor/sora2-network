@@ -10,19 +10,19 @@ pub struct Farm<T: Trait> {
 
 impl<T: Trait> Farm<T> {
     pub fn new(
-        owner_id: &T::AccountId,
-        technical_account_id: &T::AccountId,
+        owner_id: T::AccountId,
+        technical_account_id: T::AccountId,
         parameters: Parameters<T>,
     ) -> Self {
         Farm {
-            owner_id: owner_id.clone(),
-            technical_account_id: technical_account_id.clone(),
+            owner_id,
+            technical_account_id,
             parameters,
         }
     }
 
     pub fn is_open(&self, time: T::Moment) -> bool {
-        self.parameters.period.is_in(time)
+        self.parameters.period.contains(time)
     }
 }
 
@@ -60,8 +60,8 @@ impl<T: Trait> DateTimePeriod<T> {
         }
     }
 
-    pub fn is_in(&self, time: T::Moment) -> bool {
-        (time <= self.end_date_time_ms) && (time >= self.start_date_time_ms)
+    pub fn contains(&self, time: T::Moment) -> bool {
+        time <= self.end_date_time_ms && time >= self.start_date_time_ms
     }
 }
 
@@ -116,9 +116,9 @@ pub struct Farmer<T: Trait> {
 }
 
 impl<T: Trait> Farmer<T> {
-    pub fn new(technical_account_id: &T::AccountId, amount: Balance) -> Self {
+    pub fn new(technical_account_id: T::AccountId, amount: Balance) -> Self {
         Farmer {
-            technical_account_id: technical_account_id.clone(),
+            technical_account_id,
             amount,
         }
     }

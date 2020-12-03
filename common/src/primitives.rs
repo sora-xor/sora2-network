@@ -69,6 +69,7 @@ pub enum AssetId {
     KSM = 2,
     USD = 3,
     VAL = 4,
+    PSWAP = 5,
 }
 
 impl crate::traits::IsRepresentation for AssetId {
