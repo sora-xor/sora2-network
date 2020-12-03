@@ -17,9 +17,10 @@ contract Bridge {
     mapping(address => bool) public _uniqueAddresses;
 
     mapping(bytes32 => address) public _sidechainTokens;
+    mapping(address => bytes32) public _sidechainTokensByAddress;
 
     event Withdrawal(bytes32 txHash);
-    event Deposit(bytes32 destination, uint amount, address token);
+    event Deposit(bytes32 destination, uint amount, address token, bytes32 sidechainAsset);
 
     /**
      * Constructor.
@@ -87,8 +88,8 @@ contract Bridge {
     payable
     shouldBeInitialized {
         require(msg.value > 0, "ETH VALUE SHOULD BE MORE THAN 0");
-
-        emit Deposit(destination, msg.value, address(0x0));
+        bytes32 empty;
+        emit Deposit(destination, msg.value, address(0x0), empty);
     }
 
     /**
@@ -107,8 +108,8 @@ contract Bridge {
         require (token.allowance(msg.sender, address(this)) >= amount, "NOT ENOUGH DELEGATED TOKENS ON SENDER BALANCE");
 
         token.transferFrom(msg.sender, address(this), amount);
-        
-        emit Deposit(destination, amount, tokenAddress);
+        bytes32 sidechainAssetId = _sidechainTokensByAddress[tokenAddress];
+        emit Deposit(destination, amount, tokenAddress, sidechainAssetId);
     }
 
     function addPeerByPeer(
