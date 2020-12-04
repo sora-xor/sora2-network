@@ -25,8 +25,8 @@ pub trait Trait:
     + timestamp::Trait
     + permissions::Trait
     + technical::Trait
-    + std::fmt::Debug
-    + std::default::Default
+    + sp_std::fmt::Debug
+    + sp_std::default::Default
 {
     type Event: From<Event<Self>> + Into<<Self as frame_system::Trait>::Event>;
 }

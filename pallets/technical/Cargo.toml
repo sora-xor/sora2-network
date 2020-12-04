@@ -6,37 +6,32 @@ homepage = 'https://github.com/soramitsu/SoraNeo-substrate'
 license = 'Unlicense'
 name = 'technical'
 repository = 'https://github.com/soramitsu/SoraNeo-substrate'
-version = '0.0.0'
+version = '0.1.0'
 
 [package.metadata.docs.rs]
 targets = ['x86_64-unknown-linux-gnu']
 
-[dependencies.codec]
-default-features = false
-features = ['derive']
-package = 'parity-scale-codec'
-version = '1.3.1'
-
 [dependencies]
-frame-support = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "rococo-branch" }
-frame-system = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "rococo-branch" }
-sp-runtime = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "rococo-branch" }
-sp-core = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "rococo-branch" }
+codec = { package = "parity-scale-codec", version = "1.3.1", default-features = false, features = ["derive"] }
+frame-support = { version = "2.0.0", default-features = false }
+frame-system = { version = "2.0.0", default-features = false }
+sp-runtime = { version = "2.0.0", default-features = false }
+sp-core = { version = "2.0.0", default-features = false }
 common = { path = "../../common", default-features = false }
 assets = { path = "../assets", default-features = false }
-pallet-balances = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "rococo-branch" }
-orml-traits = { branch = "rococo-branch", git = "https://github.com/vmarkushin/open-runtime-module-library", default-features = false }
-currencies = { package = "orml-currencies", branch = "rococo-branch", git = "https://github.com/vmarkushin/open-runtime-module-library", default-features = false }
+pallet-balances = { version = "2.0.0", default-features = false }
+currencies = { version = "0.3.2", package = "orml-currencies", default-features = false }
+orml-traits = { version = "0.3.2", package = "orml-traits", default-features = false }
 twox-hash = { version = "1.5.0", default-features = false }
-sp-std = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "rococo-branch" }
+sp-std = { version = "2.0.0", default-features = false }
 serde = { version = "1.0.101", optional = true, features = ["derive"] }
 
 [dev-dependencies]
-sp-core = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "rococo-branch" }
-sp-io = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "rococo-branch" }
+sp-core = { version = "2.0.0", default-features = false }
+sp-io = { version = "2.0.0", default-features = false }
 dex-manager = { path = "../dex-manager", default-features = false }
 permissions = { path = "../permissions", default-features = false }
-tokens = { package = "orml-tokens", branch = "rococo-branch", git = "https://github.com/vmarkushin/open-runtime-module-library", default-features = false }
+tokens = { version = "0.3.2", package = "orml-tokens", default-features = false }
 
 [features]
 default = ['std']

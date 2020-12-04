@@ -1,11 +1,8 @@
 use crate::Amount;
 use crate::Fixed;
-use codec::{Compact, CompactAs, Input, WrapperTypeEncode};
+use codec::{Compact, CompactAs};
 use codec::{Decode, Encode};
-use cumulus_upward_message::{BalancesMessage, XCMPMessage};
 use num_traits::{CheckedNeg, Num};
-use polkadot_parachain::primitives::Id as ParaId;
-use rococo_runtime::{BalancesCall, ParachainsCall};
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 use sp_arithmetic::traits::{
@@ -13,14 +10,14 @@ use sp_arithmetic::traits::{
     IntegerSquareRoot, One, Saturating, Unsigned, Zero,
 };
 use sp_arithmetic::FixedPointNumber;
-use sp_core::crypto::AccountId32;
+
 use sp_core::U256;
 use sp_runtime::FixedPointOperand;
 use sp_std::convert::TryFrom;
 use sp_std::fmt::Display;
 use sp_std::ops::*;
 use sp_std::str::FromStr;
-use sp_std::vec::Vec;
+
 use static_assertions::_core::fmt::Formatter;
 use static_assertions::{assert_eq_align, assert_eq_size};
 
@@ -332,40 +329,6 @@ impl CheckedNeg for Balance {
 }
 
 impl FixedPointOperand for Balance {}
-
-/// Custom implementation of `cumulus_upward_message`'s `UpwardMessage`.
-/// Basically, it encodes our `Balance` type to `u128`.
-pub struct RococoUpwardMessage(cumulus_upward_message::RococoUpwardMessage);
-
-impl BalancesMessage<AccountId32, Balance> for RococoUpwardMessage {
-    fn transfer(dest: AccountId32, amount: Balance) -> Self {
-        Self(BalancesCall::transfer(dest, amount.0.into_inner()).into())
-    }
-}
-
-impl XCMPMessage for RococoUpwardMessage {
-    fn send_message(dest: ParaId, msg: Vec<u8>) -> Self {
-        Self(ParachainsCall::send_xcmp_message(dest, msg).into())
-    }
-}
-
-impl Deref for RococoUpwardMessage {
-    type Target = cumulus_upward_message::RococoUpwardMessage;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl WrapperTypeEncode for RococoUpwardMessage {}
-
-impl Decode for RococoUpwardMessage {
-    fn decode<I: Input>(value: &mut I) -> Result<Self, codec::Error> {
-        Ok(Self(cumulus_upward_message::RococoUpwardMessage::decode(
-            value,
-        )?))
-    }
-}
 
 impl From<Compact<Balance>> for Balance {
     fn from(v: Compact<Balance>) -> Self {

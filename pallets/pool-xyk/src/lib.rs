@@ -17,10 +17,12 @@ use common::{
 
 use frame_support::dispatch::{DispatchError, DispatchResult};
 
+use common::Fixed;
 use common::SwapRulesValidation;
 use common::ToFeeAccount;
 use common::ToTechUnitFromDEXAndTradingPair;
 use frame_support::ensure;
+use frame_support::traits::Get;
 use permissions::{Scope, BURN, MINT};
 use sp_std::vec::Vec;
 
@@ -157,6 +159,7 @@ pub struct PairSwapAction<AssetId, Balance, AccountId, TechAccountId> {
     destination: Resource<AssetId, Balance>,
     fee: Option<Balance>,
     fee_account: Option<TechAccountId>,
+    get_fee_from_destination: Option<bool>,
 }
 
 #[derive(Clone, RuntimeDebug, Eq, PartialEq, Encode, Decode)]
@@ -296,50 +299,105 @@ impl<T: Trait> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, T
             Err(Error::<T>::PoolIsInvalid)?;
         }
 
+        match self.get_fee_from_destination {
+            None => {
+                let is_fee_from_d = Module::<T>::decide_is_fee_from_destination(
+                    &self.source.asset,
+                    &self.destination.asset,
+                )?;
+                self.get_fee_from_destination = Some(is_fee_from_d);
+            }
+            _ => (),
+        }
+
+        // Recommended fee, will be used if fee is not specified or for checking if specified.
+        let mut recom_fee: Option<Balance> = None;
+
         if abstract_checking_for_quote || !abstract_checking {
             // Calculate pair ratio of pool, and check or correct amount of pair swap action.
             // Here source technical is divided by destination technical.
-            let ratio_a = balance_st / balance_tt;
+            let _ratio_a = balance_st / balance_tt;
 
             match (self.source.amount, self.destination.amount) {
                 // Case then both source and destination amounts is specified, just checking it.
                 (Bounds::Desired(sa), Bounds::Desired(ta)) => {
                     ensure!(sa > 0_u32.into(), Error::<T>::ZeroValueInAmountParameter);
                     ensure!(ta > 0_u32.into(), Error::<T>::ZeroValueInAmountParameter);
-                    let ratio_b = sa / ta;
-                    if ratio_a != ratio_b {
+                    let y_out_pair = Module::<T>::calc_output_for_exact_input(
+                        &self.source.asset,
+                        &self.destination.asset,
+                        &self.pool_account,
+                        self.get_fee_from_destination.unwrap(),
+                        &balance_st,
+                        &balance_tt,
+                        &sa,
+                    )?;
+                    let x_in_pair = Module::<T>::calc_input_for_exact_output(
+                        &self.source.asset,
+                        &self.destination.asset,
+                        &self.pool_account,
+                        self.get_fee_from_destination.unwrap(),
+                        &balance_st,
+                        &balance_tt,
+                        &ta,
+                    )?;
+                    if y_out_pair.0 != ta || x_in_pair.0 != sa || y_out_pair.1 != x_in_pair.1 {
                         Err(Error::<T>::PoolPairRatioAndPairSwapRatioIsDifferent)?;
                     }
+                    recom_fee = Some(y_out_pair.1);
                 }
                 // Case then source amount is specified but destination is not, it`s possible to decide it.
                 (Bounds::Desired(sa), ta_bnd) => {
                     ensure!(sa > 0_u32.into(), Error::<T>::ZeroValueInAmountParameter);
-                    let candidate = sa / ratio_a;
                     match ta_bnd {
                         Bounds::Min(ta_min) => {
+                            let (calculated, fee) = Module::<T>::calc_output_for_exact_input(
+                                &self.source.asset,
+                                &self.destination.asset,
+                                &self.pool_account,
+                                self.get_fee_from_destination.unwrap(),
+                                &balance_st,
+                                &balance_tt,
+                                &sa,
+                            )?;
+
                             ensure!(
-                                candidate >= ta_min,
+                                calculated >= ta_min,
                                 Error::<T>::CalculatedValueIsOutOfDesiredBounds
                             );
+                            self.destination.amount = Bounds::Calculated(calculated);
+                            recom_fee = Some(fee);
                         }
-                        _ => (),
+                        _ => {
+                            Err(Error::<T>::ImposibleToDecideAssetPairAmounts)?;
+                        }
                     }
-                    self.destination.amount = Bounds::Calculated(candidate);
                 }
                 // Case then destination amount is specified but source is not, it`s possible to decide it.
                 (sa_bnd, Bounds::Desired(ta)) => {
                     ensure!(ta > 0_u32.into(), Error::<T>::ZeroValueInAmountParameter);
-                    let candidate = ta * ratio_a;
                     match sa_bnd {
                         Bounds::Max(sa_max) => {
+                            let (calculated, fee) = Module::<T>::calc_input_for_exact_output(
+                                &self.source.asset,
+                                &self.destination.asset,
+                                &self.pool_account,
+                                self.get_fee_from_destination.unwrap(),
+                                &balance_st,
+                                &balance_tt,
+                                &ta,
+                            )?;
                             ensure!(
-                                candidate <= sa_max,
+                                calculated <= sa_max,
                                 Error::<T>::CalculatedValueIsOutOfDesiredBounds
                             );
+                            self.source.amount = Bounds::Calculated(calculated);
+                            recom_fee = Some(fee);
                         }
-                        _ => (),
+                        _ => {
+                            Err(Error::<T>::ImposibleToDecideAssetPairAmounts)?;
+                        }
                     }
-                    self.source.amount = Bounds::Calculated(candidate);
                 }
                 // Case then no amount is specified, imposible to decide any amounts.
                 (_, _) => {
@@ -359,34 +417,51 @@ impl<T: Trait> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, T
                 self.fee_account = Some(fa);
             }
         }
-        // Recommended fee, will be used if fee is not specified or for checking if specified.
-        let recom_fee = Module::<T>::get_fee_for(self.source.asset, &self.pool_account);
-        // Set recommended or check that fee is correct.
-        match self.fee {
-            // Just set it here if it not specified, this is usual case.
-            None => {
-                self.fee = Some(recom_fee);
-            }
-            // Case with source user fee is set, checking that it is not smaller.
-            Some(fee) => {
-                if fee < recom_fee {
-                    Err(Error::<T>::PairSwapActionFeeIsSmallerThanRecommended)?
-                }
-            }
-        }
-        if !abstract_checking {
-            // Get required values, now it is always Some, it is safe to unwrap().
-            let fee = self.fee.unwrap();
+
+        if abstract_checking_for_quote || !abstract_checking {
             let source_amount = self.source.amount.unwrap();
             let destination_amount = self.destination.amount.unwrap();
-            // Checking that balances if correct and large enouth for amounts.
-            // For source account balance must be not smaller than required with fee.
-            if balance_ss.unwrap() - fee < source_amount {
-                Err(Error::<T>::SourceBalanceIsNotLargeEnough)?;
+
+            // Set recommended or check that fee is correct.
+            match self.fee {
+                // Just set it here if it not specified, this is usual case.
+                None => {
+                    self.fee = recom_fee;
+                }
+                // Case with source user fee is set, checking that it is not smaller.
+                Some(fee) => {
+                    if fee < recom_fee.unwrap() {
+                        Err(Error::<T>::PairSwapActionFeeIsSmallerThanRecommended)?
+                    }
+                }
             }
-            // For destination account balance must successful large for this swap.
-            if balance_tt < destination_amount {
-                Err(Error::<T>::TargetBalanceIsNotLargeEnough)?;
+            // Get required values, now it is always Some, it is safe to unwrap().
+            let fee = self.fee.unwrap();
+
+            if !abstract_checking {
+                // Checking that balances if correct and large enouth for amounts.
+                if self.get_fee_from_destination.unwrap() {
+                    // For source account balance must be not smaller than required with fee.
+                    if balance_ss.unwrap() < source_amount {
+                        Err(Error::<T>::SourceBalanceIsNotLargeEnough)?;
+                    }
+                    // For destination technical account balance must successful large for this swap.
+                    if balance_tt - fee < destination_amount {
+                        Err(Error::<T>::TargetBalanceIsNotLargeEnough)?;
+                    }
+                    if (self.destination.amount.unwrap() - self.fee.unwrap()) <= 0u32.into() {
+                        Err(Error::<T>::GettingFeeFromDestinationInImposible)?;
+                    }
+                } else {
+                    // For source account balance must be not smaller than required with fee.
+                    if balance_ss.unwrap() - fee < source_amount {
+                        Err(Error::<T>::SourceBalanceIsNotLargeEnough)?;
+                    }
+                    // For destination technical account balance must successful large for this swap.
+                    if balance_tt < destination_amount {
+                        Err(Error::<T>::TargetBalanceIsNotLargeEnough)?;
+                    }
+                }
             }
         }
         Ok(())
@@ -412,24 +487,50 @@ impl<T: Trait> common::SwapAction<AccountIdOf<T>, TechAccountIdOf<T>, T>
             Some(source) == self.client_account.as_ref(),
             Error::<T>::SourceAndClientAccountDoNotMatchAsEqual
         );
-        technical::Module::<T>::transfer_in(
-            &self.source.asset,
-            &source,
-            &self.pool_account,
-            self.source.amount.unwrap(),
-        )?;
-        technical::Module::<T>::transfer_in(
-            &self.source.asset,
-            &source,
+        let fee_account_repr_sys = technical::Module::<T>::tech_account_id_to_account_id(
             self.fee_account.as_ref().unwrap(),
-            self.fee.unwrap(),
         )?;
-        technical::Module::<T>::transfer_out(
-            &self.destination.asset,
-            &self.pool_account,
-            self.receiver_account.as_ref().unwrap(),
-            self.destination.amount.unwrap(),
-        )?;
+
+        if self.get_fee_from_destination.unwrap() {
+            technical::Module::<T>::transfer_in(
+                &self.source.asset,
+                &source,
+                &self.pool_account,
+                self.source.amount.unwrap(),
+            )?;
+            technical::Module::<T>::transfer_out(
+                &self.destination.asset,
+                &self.pool_account,
+                &fee_account_repr_sys,
+                self.fee.unwrap(),
+            )?;
+            technical::Module::<T>::transfer_out(
+                &self.destination.asset,
+                &self.pool_account,
+                self.receiver_account.as_ref().unwrap(),
+                self.destination.amount.unwrap() - self.fee.unwrap(),
+            )?;
+        } else {
+            technical::Module::<T>::transfer_in(
+                &self.source.asset,
+                &source,
+                &self.pool_account,
+                self.source.amount.unwrap() - self.fee.unwrap(),
+            )?;
+            technical::Module::<T>::transfer_in(
+                &self.source.asset,
+                &source,
+                self.fee_account.as_ref().unwrap(),
+                self.fee.unwrap(),
+            )?;
+            technical::Module::<T>::transfer_out(
+                &self.destination.asset,
+                &self.pool_account,
+                self.receiver_account.as_ref().unwrap(),
+                self.destination.amount.unwrap(),
+            )?;
+        }
+
         let pool_account_repr_sys =
             technical::Module::<T>::tech_account_id_to_account_id(&self.pool_account)?;
         let balance_a =
@@ -642,7 +743,7 @@ impl<T: Trait> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, T
                     (
                         Bounds::RangeFromDesiredToMin(xdes, xmin),
                         Bounds::RangeFromDesiredToMin(ydes, ymin),
-                        Bounds::Decide,
+                        dest_amount,
                     ) => {
                         ensure!(
                             xdes >= xmin && ydes >= ymin,
@@ -663,7 +764,14 @@ impl<T: Trait> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, T
                         );
                         (self.source.0).amount = Bounds::Calculated(bp_corr1);
                         (self.source.1).amount = Bounds::Calculated(tp_corr1);
-                        self.destination.amount = Bounds::Calculated(bp_corr1 * tp_corr1);
+                        match dest_amount {
+                            Bounds::Desired(_) => {
+                                ();
+                            }
+                            _ => {
+                                self.destination.amount = Bounds::Calculated(bp_corr1 * tp_corr1);
+                            }
+                        }
                     }
                     // Case then no amount is specified (or something needed is not specified),
                     // impossible to decide any amounts.
@@ -695,8 +803,8 @@ impl<T: Trait> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, T
         if !abstract_checking {
             // Get required values, now it is always Some, it is safe to unwrap().
             let min_liquidity = self.min_liquidity.unwrap();
-            let base_amount = (self.source.1).amount.unwrap();
-            let target_amount = (self.source.0).amount.unwrap();
+            let base_amount = (self.source.0).amount.unwrap();
+            let target_amount = (self.source.1).amount.unwrap();
             let destination_amount = self.destination.amount.unwrap();
             // Checking by minimum liquidity.
             if min_liquidity > pool_k.unwrap()
@@ -1126,13 +1234,20 @@ impl<T: Trait> Module<T> {
         asset_b: &T::AssetId,
         balance_pair: (&Balance, &Balance),
     ) {
-        let hash_key = common::comm_merkle_op(asset_a, asset_b);
-        let (pair_u, pair_v) = common::sort_with_hash_key(
-            hash_key,
-            (asset_a, balance_pair.0),
-            (asset_b, balance_pair.1),
-        );
-        Reserves::<T>::insert(pair_u.0, pair_v.0, (pair_u.1, pair_v.1));
+        let base_asset_id: T::AssetId = T::GetBaseAssetId::get();
+        if base_asset_id == asset_a.clone() {
+            Reserves::<T>::insert(asset_a, asset_b, (balance_pair.0, balance_pair.1));
+        } else if base_asset_id == asset_b.clone() {
+            Reserves::<T>::insert(asset_b, asset_a, (balance_pair.1, balance_pair.0));
+        } else {
+            let hash_key = common::comm_merkle_op(asset_a, asset_b);
+            let (pair_u, pair_v) = common::sort_with_hash_key(
+                hash_key,
+                (asset_a, balance_pair.0),
+                (asset_b, balance_pair.1),
+            );
+            Reserves::<T>::insert(pair_u.0, pair_v.0, (pair_u.1, pair_v.1));
+        }
     }
 
     pub fn get_marking_asset_repr(
@@ -1162,9 +1277,112 @@ impl<T: Trait> Module<T> {
             .map_err(|_| Error::<T>::AssetDecodingError.into())
     }
 
-    pub fn get_fee_for(_asset_id: AssetIdOf<T>, _tech_acc: &TechAccountIdOf<T>) -> Balance {
+    pub fn decide_is_fee_from_destination(
+        asset_a: &AssetIdOf<T>,
+        asset_b: &AssetIdOf<T>,
+    ) -> Result<bool, DispatchError> {
+        let base_asset_id: T::AssetId = T::GetBaseAssetId::get();
+        if &base_asset_id == asset_a {
+            Ok(false)
+        } else if &base_asset_id == asset_b {
+            Ok(true)
+        } else {
+            Ok(false)
+        }
+    }
+
+    pub fn guard_fee_from_destination(
+        _asset_a: &AssetIdOf<T>,
+        _asset_b: &AssetIdOf<T>,
+    ) -> DispatchResult {
+        Ok(())
+    }
+
+    pub fn guard_fee_from_source(
+        _asset_a: &AssetIdOf<T>,
+        _asset_b: &AssetIdOf<T>,
+    ) -> DispatchResult {
+        Ok(())
+    }
+
+    #[inline]
+    pub fn get_fee_for_source(
+        _asset_id: &AssetIdOf<T>,
+        _tech_acc: &TechAccountIdOf<T>,
+        x_in: &Balance,
+    ) -> Result<Balance, DispatchError> {
         //TODO: get this value from DEXInfo.
-        30_u32.into()
+        let nat1000: Balance = 1000_u32.into();
+        let fee: Balance = 3_u32.into();
+        Ok((*x_in * fee) / nat1000)
+    }
+
+    #[inline]
+    pub fn get_fee_for_destination(
+        _asset_id: &AssetIdOf<T>,
+        _tech_acc: &TechAccountIdOf<T>,
+        y_out: &Balance,
+    ) -> Result<Balance, DispatchError> {
+        //TODO: get this value from DEXInfo.
+        let nat1000: Balance = 1000_u32.into();
+        let fee: Balance = 3_u32.into();
+        Ok((*y_out * fee) / nat1000)
+    }
+
+    /// Calulate (y_output,fee) pair where fee can be fee_of_y1 or fee_of_x_in, and output is
+    /// without fee.
+    pub fn calc_output_for_exact_input(
+        asset_a: &AssetIdOf<T>,
+        asset_b: &AssetIdOf<T>,
+        tech_acc: &TechAccountIdOf<T>,
+        get_fee_from_destination: bool,
+        x: &Balance,
+        y: &Balance,
+        x_in: &Balance,
+    ) -> Result<(Balance, Balance), DispatchError> {
+        if get_fee_from_destination {
+            Module::<T>::guard_fee_from_destination(asset_a, asset_b)?;
+            let y1 = (*x_in * *y) / (*x + *x_in);
+            let fee_of_y1 = Module::<T>::get_fee_for_destination(asset_a, tech_acc, &y1)?;
+            Ok((y1, fee_of_y1))
+        } else {
+            Module::<T>::guard_fee_from_source(asset_a, asset_b)?;
+            let fee_of_x_in = Module::<T>::get_fee_for_source(asset_a, tech_acc, x_in)?;
+            let x_in_subfee = *x_in - fee_of_x_in;
+            let y_out = (x_in_subfee * *y) / (*x + x_in_subfee);
+            Ok((y_out, fee_of_x_in))
+        }
+    }
+
+    /// Calulate (x_input,fee) pair where fee can be fee_of_y1 or fee_of_x_in, and input is
+    /// without fee.
+    pub fn calc_input_for_exact_output(
+        asset_a: &AssetIdOf<T>,
+        asset_b: &AssetIdOf<T>,
+        tech_acc: &TechAccountIdOf<T>,
+        get_fee_from_destination: bool,
+        x: &Balance,
+        y: &Balance,
+        y_out: &Balance,
+    ) -> Result<(Balance, Balance), DispatchError> {
+        if get_fee_from_destination {
+            Module::<T>::guard_fee_from_destination(asset_a, asset_b)?;
+            let unit: Balance = 1_u32.into();
+            let fract_a: Balance = Module::<T>::get_fee_for_destination(asset_a, tech_acc, &unit)?;
+            let fract_b: Balance = unit - fract_a;
+            let y1 = *y_out / fract_b;
+            let x_in = (*x * y1) / (*y - y1);
+            let fee = y1 - *y_out;
+            Ok((x_in, fee))
+        } else {
+            Module::<T>::guard_fee_from_source(asset_a, asset_b)?;
+            let y_minus_y_out = *y - *y_out;
+            let ymyo_fee = Module::<T>::get_fee_for_source(asset_a, tech_acc, &y_minus_y_out)?;
+            let ymyo_subfee = y_minus_y_out - ymyo_fee;
+            let x_in = (*x * *y_out) / ymyo_subfee;
+            let fee = Module::<T>::get_fee_for_source(asset_a, tech_acc, &x_in)?;
+            Ok((x_in, fee))
+        }
     }
 
     pub fn get_min_liquidity_for(
@@ -1172,7 +1390,7 @@ impl<T: Trait> Module<T> {
         _tech_acc: &TechAccountIdOf<T>,
     ) -> Balance {
         //TODO: get this value from DEXInfo.
-        55440_u32.into()
+        Fixed::from_inner(1000).into()
     }
 
     pub fn get_fee_account(
@@ -1266,6 +1484,7 @@ decl_error! {
         ImposibleToDecideValidPairValuesFromRangeForThisPool,
         RangeValuesIsInvalid,
         CalculatedValueIsNotMeetsRequiredBoundaries,
+        GettingFeeFromDestinationInImposible,
     }
 }
 
@@ -1601,6 +1820,7 @@ impl<T: Trait> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Disp
                 },
                 fee: None,
                 fee_account: None,
+                get_fee_from_destination: None,
             });
             common::SwapRulesValidation::<AccountIdOf<T>, TechAccountIdOf<T>, T>::
                         prepare_and_validate(&mut action, None)
@@ -1635,17 +1855,33 @@ impl<T: Trait> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Disp
             },
             fee: None,
             fee_account: None,
+            get_fee_from_destination: None,
         });
         common::SwapRulesValidation::<AccountIdOf<T>, TechAccountIdOf<T>, T>::prepare_and_validate(
             &mut action,
             None,
         )?;
         // It is garanty that unwrap is always ok.
-        let (fee, term_amount) = match action {
-            PolySwapAction::PairSwap(a) => (a.fee.unwrap(), a.destination.amount.unwrap()),
+        match action {
+            PolySwapAction::PairSwap(a) => {
+                let (fee, amount) = match swap_amount {
+                    SwapAmount::WithDesiredInput {
+                        desired_amount_in: _,
+                        min_amount_out: _,
+                    } => (a.fee.unwrap(), a.destination.amount.unwrap()),
+                    SwapAmount::WithDesiredOutput {
+                        desired_amount_out: _,
+                        max_amount_in: _,
+                    } => (a.fee.unwrap(), a.source.amount.unwrap()),
+                };
+                if a.get_fee_from_destination.unwrap() {
+                    Ok(common::prelude::SwapOutcome::new(amount - fee, fee))
+                } else {
+                    Ok(common::prelude::SwapOutcome::new(amount, fee))
+                }
+            }
             _ => unreachable!("we know that always PairSwap is used"),
-        };
-        Ok(common::prelude::SwapOutcome::new(term_amount, fee))
+        }
     }
 
     fn exchange(
@@ -1677,6 +1913,7 @@ impl<T: Trait> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Disp
             },
             fee: None,
             fee_account: None,
+            get_fee_from_destination: None,
         });
         common::SwapRulesValidation::<AccountIdOf<T>, TechAccountIdOf<T>, T>::prepare_and_validate(
             &mut action,

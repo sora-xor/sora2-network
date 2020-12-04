@@ -3,16 +3,14 @@ members = [
     "runtime/",
     "common",
     "pallets/assets",
-    "pallets/parachain-info",
     "pallets/permissions",
-    "pallets/token-dealer",
     "pallets/trading-pair",
     "pallets/dex-manager",
     "pallets/dex-api",
     "pallets/farming",
+    "pallets/faucet",
     "pallets/liquidity-proxy",
     "pallets/mock-liquidity-source",
-    "pallets/template",
     "pallets/technical",
     "pallets/pool-xyk",
     "pallets/xor-fee",
@@ -23,3 +21,4 @@ members = [
 
 [profile.release]
 panic = 'unwind'
+
