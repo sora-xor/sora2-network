@@ -8,16 +8,22 @@ use common::{
 };
 use frame_support::{
     decl_error, decl_event, decl_module, dispatch::DispatchResult, ensure,
-    sp_runtime::DispatchError, StorageMap,
+    sp_runtime::DispatchError, weights::Weight, StorageMap,
 };
 use frame_system::ensure_signed;
 use sp_std::vec::Vec;
+
+mod weights;
 
 #[cfg(test)]
 mod mock;
 
 #[cfg(test)]
 mod tests;
+
+pub trait WeightInfo {
+    fn swap() -> Weight;
+}
 
 pub trait Trait: common::Trait + dex_manager::Trait + trading_pair::Trait {
     type Event: From<Event<Self>> + Into<<Self as frame_system::Trait>::Event>;
@@ -63,6 +69,9 @@ pub trait Trait: common::Trait + dex_manager::Trait + trading_pair::Trait {
         Balance,
         DispatchError,
     >;
+
+    /// Weight information for extrinsics in this pallet.
+    type WeightInfo: WeightInfo;
 }
 
 decl_event!(
@@ -111,8 +120,7 @@ decl_module! {
         ///            determined by `swap_variant` parameter.
         /// - `swap_variant`: Either 'WithDesiredInput' or 'WithDesiredOutput', indicates amounts purpose.
         /// - `receiver`: Optional value, indicates AccountId for swap receiver. If not set, default is `sender`.
-        /// TODO: add information about weight
-        #[weight = 0]
+        #[weight = <T as Trait>::WeightInfo::swap()]
         pub fn swap(
             origin,
             dex_id: T::DEXId,

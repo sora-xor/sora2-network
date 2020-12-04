@@ -51,7 +51,6 @@ std = [
     'sp-runtime/std',
     'sp-arithmetic/std',
     'pallet-transaction-payment/std',
-    'pallet-balances/std',
     'referral-system/std',
     'frame-support/std',
     'frame-system/std',

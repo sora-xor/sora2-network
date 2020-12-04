@@ -4,27 +4,37 @@
 #[macro_use]
 extern crate alloc;
 
-#[cfg(test)]
-mod mock;
-
-#[cfg(test)]
-mod tests;
-
 use common::{EnsureDEXOwner, EnsureTradingPairExists};
 use frame_support::{
     decl_error, decl_event, decl_module, decl_storage,
     dispatch::{DispatchError, DispatchResult},
     ensure,
     traits::Get,
+    weights::Weight,
 };
 use sp_std::collections::btree_set::BTreeSet;
 use sp_std::vec::Vec;
 
+mod weights;
+
+#[cfg(test)]
+mod mock;
+
+#[cfg(test)]
+mod tests;
+
 type TradingPair<T> = common::prelude::TradingPair<<T as assets::Trait>::AssetId>;
+
+pub trait WeightInfo {
+    fn register() -> Weight;
+}
 
 pub trait Trait: common::Trait + assets::Trait {
     type Event: From<Event<Self>> + Into<<Self as frame_system::Trait>::Event>;
     type EnsureDEXOwner: EnsureDEXOwner<Self::DEXId, Self::AccountId, DispatchError>;
+
+    /// Weight information for extrinsics in this pallet.
+    type WeightInfo: WeightInfo;
 }
 
 decl_storage! {
@@ -68,9 +78,7 @@ decl_module! {
         /// - `dex_id`: ID of the exchange.
         /// - `base_asset_id`: base asset ID.
         /// - `target_asset_id`: target asset ID.
-        ///
-        /// TODO: add information about weight
-        #[weight = 10_000 + T::DbWeight::get().writes(1)]
+        #[weight = <T as Trait>::WeightInfo::register()]
         pub fn register(origin, dex_id: T::DEXId, base_asset_id: T::AssetId, target_asset_id: T::AssetId) -> DispatchResult {
             let _author = T::EnsureDEXOwner::ensure_dex_owner(&dex_id, origin)?;
             //TODO: check token existence

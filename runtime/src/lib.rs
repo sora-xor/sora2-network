@@ -270,11 +270,13 @@ impl assets::Trait for Runtime {
     type AssetId = AssetId;
     type GetBaseAssetId = GetBaseAssetId;
     type Currency = currencies::Module<Runtime>;
+    type WeightInfo = ();
 }
 
 impl trading_pair::Trait for Runtime {
     type Event = Event;
     type EnsureDEXOwner = dex_manager::Module<Runtime>;
+    type WeightInfo = ();
 }
 
 parameter_types! {
@@ -286,6 +288,7 @@ impl dex_manager::Trait for Runtime {
     type Event = Event;
     type GetDefaultFee = GetDefaultFee;
     type GetDefaultProtocolFee = GetDefaultProtocolFee;
+    type WeightInfo = ();
 }
 
 impl bonding_curve_pool::Trait for Runtime {
@@ -304,6 +307,7 @@ impl technical::Trait for Runtime {
     type Condition = ();
     type SwapAction =
         pool_xyk::PolySwapAction<AssetId, TechAssetId, Balance, AccountId, TechAccountId>;
+    type WeightInfo = ();
 }
 
 impl pool_xyk::Trait for Runtime {
@@ -316,16 +320,18 @@ impl pool_xyk::Trait for Runtime {
     type PolySwapAction =
         pool_xyk::PolySwapAction<AssetId, TechAssetId, Balance, AccountId, TechAccountId>;
     type EnsureDEXOwner = dex_manager::Module<Runtime>;
+    type WeightInfo = ();
 }
 
 parameter_types! {
-    pub const GetNumSamples: usize = 100;
+    pub const GetNumSamples: usize = 40;
 }
 
 impl liquidity_proxy::Trait for Runtime {
     type Event = Event;
     type LiquidityRegistry = dex_api::Module<Runtime>;
     type GetNumSamples = GetNumSamples;
+    type WeightInfo = ();
 }
 
 parameter_types! {
@@ -372,6 +378,7 @@ impl dex_api::Trait for Runtime {
         mock_liquidity_source::Module<Runtime, mock_liquidity_source::Instance4>;
     type BondingCurvePool = bonding_curve_pool::Module<Runtime>;
     type XYKPool = pool_xyk::Module<Runtime>;
+    type WeightInfo = ();
 }
 
 impl<T: SigningTypes> frame_system::offchain::SignMessage<T> for Runtime {
@@ -506,6 +513,7 @@ impl cumulus_token_dealer::Trait for Runtime {
     type UpwardMessage = common::prelude::RococoUpwardMessage;
     type Currency = Balances;
     type XCMPMessageSender = MessageBroker;
+    type WeightInfo = ();
 }
 
 impl faucet::Trait for Runtime {

@@ -69,6 +69,7 @@ impl crate::Trait for Runtime {
     type AssetId = AssetId;
     type GetBaseAssetId = GetBaseAssetId;
     type Currency = currencies::Module<Runtime>;
+    type WeightInfo = ();
 }
 
 impl permissions::Trait for Runtime {

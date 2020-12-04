@@ -100,6 +100,7 @@ impl technical::Trait for Test {
     type Trigger = ();
     type Condition = ();
     type SwapAction = ();
+    type WeightInfo = ();
 }
 
 impl assets::Trait for Test {
@@ -107,6 +108,7 @@ impl assets::Trait for Test {
     type AssetId = AssetId;
     type GetBaseAssetId = GetBaseAssetId;
     type Currency = currencies::Module<Test>;
+    type WeightInfo = ();
 }
 
 impl common::Trait for Test {

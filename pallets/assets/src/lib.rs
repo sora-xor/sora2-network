@@ -16,6 +16,8 @@
 #[macro_use]
 extern crate alloc;
 
+mod weights;
+
 #[cfg(test)]
 mod mock;
 
@@ -26,8 +28,8 @@ use common::{hash, prelude::Balance, Amount, AssetSymbol, BalancePrecision};
 use frame_support::dispatch::{DispatchError, DispatchResult};
 use frame_support::sp_runtime::traits::{MaybeSerializeDeserialize, Member};
 use frame_support::{
-    decl_error, decl_event, decl_module, decl_storage, ensure, traits::Get, IterableStorageMap,
-    Parameter,
+    decl_error, decl_event, decl_module, decl_storage, ensure, traits::Get, weights::Weight,
+    IterableStorageMap, Parameter,
 };
 use frame_system::{ensure_signed, RawOrigin};
 use permissions::{Scope, BURN, MINT, SLASH, TRANSFER};
@@ -35,6 +37,13 @@ use sp_std::vec::Vec;
 use traits::{
     MultiCurrency, MultiCurrencyExtended, MultiLockableCurrency, MultiReservableCurrency,
 };
+
+pub trait WeightInfo {
+    fn register() -> Weight;
+    fn transfer() -> Weight;
+    fn mint() -> Weight;
+    fn burn() -> Weight;
+}
 
 pub type AssetIdOf<T> = <T as Trait>::AssetId;
 pub type Permissions<T> = permissions::Module<T>;
@@ -68,6 +77,9 @@ pub trait Trait: frame_system::Trait + permissions::Trait + tokens::Trait {
             Balance = Balance,
         > + MultiReservableCurrency<Self::AccountId, CurrencyId = Self::AssetId, Balance = Balance>
         + MultiCurrencyExtended<Self::AccountId, Amount = Amount>;
+
+    /// Weight information for extrinsics in this pallet.
+    type WeightInfo: WeightInfo;
 }
 
 decl_storage! {
@@ -131,7 +143,7 @@ decl_module! {
         ///
         /// Basically, this function checks the if given `asset_id` has an owner
         /// and if not, inserts it. AssetSymbol should represent string with only uppercase latin chars with max length of 5.
-        #[weight = 10_000 + T::DbWeight::get().writes(1)]
+        #[weight = <T as Trait>::WeightInfo::register()]
         pub fn register(origin, asset_id: T::AssetId, symbol: AssetSymbol, precision: BalancePrecision) -> DispatchResult {
             let author = ensure_signed(origin)?;
             ensure!(Self::asset_owner(&asset_id).is_none(), Error::<T>::AssetIdAlreadyExists);
@@ -157,7 +169,7 @@ decl_module! {
         /// - `to`: Id of Account, to which Asset amount is deposited,
         /// - `amount`: transferred Asset amount.
         // TODO: add info about weight
-        #[weight = 0]
+        #[weight = <T as Trait>::WeightInfo::transfer()]
         pub fn transfer(
             origin,
             asset_id: T::AssetId,
@@ -178,7 +190,7 @@ decl_module! {
         /// - `to`: Id of Account, to which Asset amount is minted,
         /// - `amount`: minted Asset amount.
         // TODO: add info about weight
-        #[weight = 0]
+        #[weight = <T as Trait>::WeightInfo::mint()]
         pub fn mint(
             origin,
             asset_id: T::AssetId,
@@ -198,7 +210,7 @@ decl_module! {
         /// - `asset_id`: Id of burned Asset,
         /// - `amount`: burned Asset amount.
         // TODO: add info about weight
-        #[weight = 0]
+        #[weight = <T as Trait>::WeightInfo::burn()]
         pub fn burn(
             origin,
             asset_id: T::AssetId,

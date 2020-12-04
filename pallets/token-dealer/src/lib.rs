@@ -5,6 +5,7 @@ use frame_support::{
     decl_event, decl_module,
     dispatch::DispatchResult,
     traits::{Currency, ExistenceRequirement, WithdrawReason},
+    weights::Weight,
 };
 use frame_system::ensure_signed;
 
@@ -17,6 +18,8 @@ use cumulus_primitives::{
 use cumulus_upward_message::BalancesMessage;
 use polkadot_parachain::primitives::AccountIdConversion;
 
+mod weights;
+
 #[derive(Encode, Decode)]
 pub enum XCMPMessage<XAccountId, XBalance> {
     /// Transfer tokens to the given account from the Parachain account.
@@ -25,6 +28,11 @@ pub enum XCMPMessage<XAccountId, XBalance> {
 
 type BalanceOf<T> =
     <<T as Trait>::Currency as Currency<<T as frame_system::Trait>::AccountId>>::Balance;
+
+pub trait WeightInfo {
+    fn transfer_tokens_to_relay_chain() -> Weight;
+    fn transfer_tokens_to_parachain_chain() -> Weight;
+}
 
 /// Configuration trait of this pallet.
 pub trait Trait: frame_system::Trait {
@@ -42,6 +50,9 @@ pub trait Trait: frame_system::Trait {
 
     /// The sender of XCMP messages.
     type XCMPMessageSender: XCMPMessageSender<XCMPMessage<Self::AccountId, BalanceOf<Self>>>;
+
+    /// Weight information for extrinsics in this pallet.
+    type WeightInfo: WeightInfo;
 }
 
 decl_event! {
@@ -62,7 +73,7 @@ decl_module! {
     pub struct Module<T: Trait> for enum Call where origin: T::Origin, system = frame_system {
         /// Transfer `amount` of tokens on the relay chain from the Parachain account to
         /// the given `dest` account.
-        #[weight = 10]
+        #[weight = <T as Trait>::WeightInfo::transfer_tokens_to_relay_chain()]
         fn transfer_tokens_to_relay_chain(origin, dest: T::AccountId, amount: BalanceOf<T>) {
             let who = ensure_signed(origin)?;
 
@@ -81,7 +92,7 @@ decl_module! {
         }
 
         /// Transfer `amount` of tokens to another parachain.
-        #[weight = 10]
+        #[weight = <T as Trait>::WeightInfo::transfer_tokens_to_parachain_chain()]
         fn transfer_tokens_to_parachain_chain(
             origin,
             para_id: u32,

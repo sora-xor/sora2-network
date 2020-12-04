@@ -4,11 +4,13 @@ use assets::AssetIdOf;
 use common::{hash, in_basis_points_range, prelude::EnsureDEXOwner, BasisPoints};
 use frame_support::{
     decl_error, decl_event, decl_module, decl_storage, dispatch::DispatchResult, ensure,
-    sp_runtime::DispatchError, traits::Get, IterableStorageMap,
+    sp_runtime::DispatchError, traits::Get, weights::Weight, IterableStorageMap,
 };
 use frame_system::{self as system, ensure_signed, RawOrigin};
 use permissions::{Scope, INIT_DEX, MANAGE_DEX};
 use sp_std::vec::Vec;
+
+mod weights;
 
 #[cfg(test)]
 mod mock;
@@ -18,10 +20,19 @@ mod tests;
 
 type DEXInfo<T> = common::prelude::DEXInfo<AssetIdOf<T>>;
 
+pub trait WeightInfo {
+    fn initialize_dex() -> Weight;
+    fn set_fee() -> Weight;
+    fn set_protocol_fee() -> Weight;
+}
+
 pub trait Trait: common::Trait + assets::Trait {
     type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
     type GetDefaultFee: Get<u16>;
     type GetDefaultProtocolFee: Get<u16>;
+
+    /// Weight information for extrinsics in this pallet.
+    type WeightInfo: WeightInfo;
 }
 
 decl_storage! {
@@ -78,9 +89,7 @@ decl_module! {
         /// - `dex_id`: ID of the exchange.
         /// - `fee`: value of fee on swaps in basis points.
         /// - `protocol_fee`: value of fee fraction for protocol beneficiary in basis points.
-        ///
-        /// TODO: add information about weight
-        #[weight = 0]
+        #[weight = <T as Trait>::WeightInfo::initialize_dex()]
         pub fn initialize_dex(origin, dex_id: T::DEXId, base_asset_id: T::AssetId, owner_account_id: T::AccountId, fee: Option<u16>, protocol_fee: Option<u16>) -> DispatchResult {
             let who = ensure_signed(origin)?;
             permissions::Module::<T>::check_permission(who.clone(), INIT_DEX)?;
@@ -116,9 +125,7 @@ decl_module! {
         ///
         /// - `dex_id`: ID of the exchange.
         /// - `fee`: value of fee on swaps in basis points.
-        ///
-        /// TODO: add information about weight
-        #[weight = 0]
+        #[weight = <T as Trait>::WeightInfo::set_fee()]
         pub fn set_fee(origin, dex_id: T::DEXId, fee: BasisPoints) -> DispatchResult {
             let _who = Self::ensure_dex_owner(&dex_id, origin)?;
             if !in_basis_points_range(fee) {
@@ -133,9 +140,7 @@ decl_module! {
         ///
         /// - `dex_id`: ID of the exchange.
         /// - `protocol_fee`: value of fee fraction for protocol beneficiary in basis points.
-        ///
-        /// TODO: add information about weight
-        #[weight = 0]
+        #[weight = <T as Trait>::WeightInfo::set_protocol_fee()]
         pub fn set_protocol_fee(origin, dex_id: T::DEXId, protocol_fee: BasisPoints) -> DispatchResult {
             let _who = Self::ensure_dex_owner(&dex_id, origin)?;
             if !in_basis_points_range(protocol_fee) {

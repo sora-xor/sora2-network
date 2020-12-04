@@ -5,18 +5,20 @@ extern crate alloc;
 
 use codec::{Decode, Encode};
 use common::{
-    fixed, linspace, prelude::SwapAmount, prelude::SwapOutcome, FilterMode, Fixed,
-    IntervalEndpoints, LiquidityRegistry, LiquiditySource, LiquiditySourceFilter,
+    fixed, linspace, prelude::SwapAmount, prelude::SwapOutcome, prelude::SwapVariant, FilterMode,
+    Fixed, IntervalEndpoints, LiquidityRegistry, LiquiditySource, LiquiditySourceFilter,
     LiquiditySourceId, LiquiditySourceType,
 };
 use frame_support::{
     decl_error, decl_event, decl_module, dispatch::DispatchResult, ensure, traits::Get,
-    RuntimeDebug,
+    weights::Weight, RuntimeDebug,
 };
 use frame_system::ensure_signed;
 use sp_arithmetic::{traits::Bounded, FixedPointNumber};
 use sp_runtime::DispatchError;
 use sp_std::vec::Vec;
+
+mod weights;
 
 #[cfg(test)]
 mod mock;
@@ -51,6 +53,10 @@ impl<LiquiditySourceIdType, AmountType> AggregatedSwapOutcome<LiquiditySourceIdT
     }
 }
 
+pub trait WeightInfo {
+    fn swap(amount: SwapVariant) -> Weight;
+}
+
 pub trait Trait: common::Trait + assets::Trait {
     type Event: From<Event<Self>> + Into<<Self as frame_system::Trait>::Event>;
     type LiquidityRegistry: LiquidityRegistry<
@@ -62,6 +68,9 @@ pub trait Trait: common::Trait + assets::Trait {
         DispatchError,
     >;
     type GetNumSamples: Get<usize>;
+
+    /// Weight information for the extrinsics in this pallet.
+    type WeightInfo: WeightInfo;
 }
 
 decl_event!(
@@ -105,9 +114,7 @@ decl_module! {
         /// - `swap_amount`: the exact amount to be sold (either in input_assed_id or output_asset_id units with corresponding slippage tolerance absolute bound),
         /// - `selected_source_types`: list of selected LiquiditySource types, selection effect is determined by filter_mode,
         /// - `filter_mode`: indicate either to allow or forbid selected types only, or disable filtering.
-        ///
-        /// TODO: add information about weight
-        #[weight = 0]
+        #[weight = <T as Trait>::WeightInfo::swap((*swap_amount).into())]
         pub fn swap(
             origin,
             dex_id: T::DEXId,

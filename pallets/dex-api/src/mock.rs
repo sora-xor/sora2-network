@@ -87,6 +87,7 @@ impl Trait for Runtime {
         mock_liquidity_source::Module<Runtime, mock_liquidity_source::Instance4>;
     type BondingCurvePool = ();
     type XYKPool = ();
+    type WeightInfo = ();
 }
 
 impl tokens::Trait for Runtime {
@@ -119,6 +120,7 @@ impl assets::Trait for Runtime {
     type AssetId = AssetId;
     type GetBaseAssetId = GetBaseAssetId;
     type Currency = currencies::Module<Runtime>;
+    type WeightInfo = ();
 }
 
 impl common::Trait for Runtime {
@@ -180,17 +182,20 @@ impl technical::Trait for Runtime {
     type Trigger = ();
     type Condition = ();
     type SwapAction = ();
+    type WeightInfo = ();
 }
 
 impl dex_manager::Trait for Runtime {
     type Event = ();
     type GetDefaultFee = GetDefaultFee;
     type GetDefaultProtocolFee = GetDefaultProtocolFee;
+    type WeightInfo = ();
 }
 
 impl trading_pair::Trait for Runtime {
     type Event = ();
     type EnsureDEXOwner = dex_manager::Module<Runtime>;
+    type WeightInfo = ();
 }
 
 pub type System = frame_system::Module<Runtime>;

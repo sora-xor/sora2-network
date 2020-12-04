@@ -110,6 +110,7 @@ impl dex_manager::Trait for Testtime {
     type Event = ();
     type GetDefaultFee = GetDefaultFee;
     type GetDefaultProtocolFee = GetDefaultProtocolFee;
+    type WeightInfo = ();
 }
 
 type DEXId = u32;
@@ -167,6 +168,7 @@ impl assets::Trait for Testtime {
     type AssetId = AssetId;
     type GetBaseAssetId = GetBaseAssetId;
     type Currency = currencies::Module<Testtime>;
+    type WeightInfo = ();
 }
 
 #[derive(Clone, Eq, PartialEq, Encode, Decode, Debug)]
@@ -403,6 +405,7 @@ impl Trait for Testtime {
     type Trigger = ();
     type Condition = ();
     type SwapAction = PolySwapActionExample;
+    type WeightInfo = ();
 }
 
 impl ExtBuilder {
