@@ -24,6 +24,7 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
+use codec::Encode;
 use common::{hash, prelude::Balance, Amount, AssetSymbol, BalancePrecision};
 use frame_support::dispatch::{DispatchError, DispatchResult};
 use frame_support::sp_runtime::traits::{MaybeSerializeDeserialize, Member};
@@ -31,9 +32,11 @@ use frame_support::{
     decl_error, decl_event, decl_module, decl_storage, ensure, traits::Get, weights::Weight,
     IterableStorageMap, Parameter,
 };
-use frame_system::{ensure_signed, RawOrigin};
+use frame_system::ensure_signed;
 use permissions::{Scope, BURN, MINT, SLASH, TRANSFER};
+use sp_core::H256;
 use sp_std::vec::Vec;
+use tiny_keccak::{Hasher, Keccak};
 use traits::{
     MultiCurrency, MultiCurrencyExtended, MultiLockableCurrency, MultiReservableCurrency,
 };
@@ -64,7 +67,9 @@ pub trait Trait: frame_system::Trait + permissions::Trait + tokens::Trait {
         + Ord
         + Default
         + Into<CurrencyIdOf<Self>>
-        + From<common::AssetId>;
+        + From<common::AssetId32<common::AssetId>>
+        + From<H256>
+        + Into<H256>;
 
     /// The base asset as the core asset in all trading pairs
     type GetBaseAssetId: Get<Self::AssetId>;
@@ -92,7 +97,7 @@ decl_storage! {
 
         build(|config: &GenesisConfig<T>| {
             config.endowed_assets.iter().for_each(|(asset_id, account_id, symbol, precision)| {
-                Module::<T>::register(RawOrigin::Signed(account_id.clone()).into(), asset_id.clone(), symbol.clone(), precision.clone())
+                Module::<T>::register_asset_id(account_id.clone(), *asset_id, symbol.clone(), precision.clone())
                     .expect("Failed to register asset.");
             })
         })
@@ -141,24 +146,12 @@ decl_module! {
 
         /// Performs an asset registration.
         ///
-        /// Basically, this function checks the if given `asset_id` has an owner
-        /// and if not, inserts it. AssetSymbol should represent string with only uppercase latin chars with max length of 5.
+        /// Registers new `AssetId` for the given `origin`.
+        /// AssetSymbol should represent string with only uppercase latin chars with max length of 5.
         #[weight = <T as Trait>::WeightInfo::register()]
-        pub fn register(origin, asset_id: T::AssetId, symbol: AssetSymbol, precision: BalancePrecision) -> DispatchResult {
+        pub fn register(origin, symbol: AssetSymbol, precision: BalancePrecision) -> DispatchResult {
             let author = ensure_signed(origin)?;
-            ensure!(Self::asset_owner(&asset_id).is_none(), Error::<T>::AssetIdAlreadyExists);
-            AssetOwners::<T>::insert(asset_id.clone(), author.clone());
-            ensure!(Self::is_symbol_valid(&symbol), Error::<T>::InvalidAssetSymbol);
-            AssetInfos::<T>::insert(asset_id.clone(), (symbol, precision));
-            ensure!(precision <= 30u8, Error::<T>::InvalidPrecision);
-            let scope = Scope::Limited(hash(&asset_id));
-            let permission_ids = [TRANSFER, MINT, BURN, SLASH];
-            for permission_id in &permission_ids {
-                if Permissions::<T>::assign_permission(author.clone(), &author, *permission_id, scope).is_err() {
-                    return Err(Error::<T>::Permissions.into());
-                }
-            }
-            Self::deposit_event(RawEvent::AssetRegistered(asset_id, author));
+            let _asset_id = Self::register_from(&author, symbol, precision)?;
             Ok(())
         }
 
@@ -225,6 +218,65 @@ decl_module! {
 }
 
 impl<T: Trait> Module<T> {
+    /// Generates an `AssetId` for the given `AccountId`.
+    pub fn gen_asset_id(account_id: &T::AccountId) -> T::AssetId {
+        let mut keccak = Keccak::v256();
+        keccak.update(b"Sora Asset Id");
+        keccak.update(&account_id.encode());
+        keccak.update(&frame_system::Module::<T>::account_nonce(&account_id).encode());
+        let mut output = [0u8; 32];
+        keccak.finalize(&mut output);
+        T::AssetId::from(H256(output))
+    }
+
+    /// Register the given `AssetId`.
+    pub fn register_asset_id(
+        account_id: T::AccountId,
+        asset_id: T::AssetId,
+        symbol: AssetSymbol,
+        precision: BalancePrecision,
+    ) -> DispatchResult {
+        ensure!(
+            Self::asset_owner(&asset_id).is_none(),
+            Error::<T>::AssetIdAlreadyExists
+        );
+        AssetOwners::<T>::insert(asset_id, account_id.clone());
+        ensure!(
+            Self::is_symbol_valid(&symbol),
+            Error::<T>::InvalidAssetSymbol
+        );
+        AssetInfos::<T>::insert(asset_id, (symbol, precision));
+        ensure!(precision <= 30u8, Error::<T>::InvalidPrecision);
+        let scope = Scope::Limited(hash(&asset_id));
+        let permission_ids = [TRANSFER, MINT, BURN, SLASH];
+        for permission_id in &permission_ids {
+            if Permissions::<T>::assign_permission(
+                account_id.clone(),
+                &account_id,
+                *permission_id,
+                scope,
+            )
+            .is_err()
+            {
+                return Err(Error::<T>::Permissions.into());
+            }
+        }
+        frame_system::Module::<T>::inc_account_nonce(&account_id);
+        Self::deposit_event(RawEvent::AssetRegistered(asset_id, account_id));
+        Ok(())
+    }
+
+    /// Generates new `AssetId` and registers it from the `account_id`.
+    pub fn register_from(
+        account_id: &T::AccountId,
+        symbol: AssetSymbol,
+        precision: BalancePrecision,
+    ) -> Result<T::AssetId, DispatchError> {
+        let asset_id = Self::gen_asset_id(account_id);
+        Self::register_asset_id(account_id.clone(), asset_id, symbol, precision)?;
+        Ok(asset_id)
+    }
+
     pub fn asset_owner(asset_id: &T::AssetId) -> Option<T::AccountId> {
         let account_id = Self::asset_owners(&asset_id);
         if account_id == T::AccountId::default() {

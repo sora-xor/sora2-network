@@ -17,7 +17,6 @@ pub mod utils;
 use blake2_rfc;
 use codec::Encode;
 use sp_core::hash::H512;
-//use twox_hash;
 
 pub use traits::Trait;
 pub mod prelude {

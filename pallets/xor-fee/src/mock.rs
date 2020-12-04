@@ -1,6 +1,6 @@
 pub use crate::{self as xor_fee, Module, Trait};
 use codec::{Decode, Encode};
-use common::{fixed_from_basis_points, prelude::Balance, Amount, Fixed};
+use common::{self, fixed_from_basis_points, prelude::Balance, Amount, AssetId32, Fixed, VAL, XOR};
 use currencies::BasicCurrencyAdapter;
 use frame_support::{
     impl_outer_dispatch, impl_outer_event, impl_outer_origin, parameter_types,
@@ -17,6 +17,7 @@ use sp_runtime::{
 };
 
 // Configure a mock runtime to test the pallet.
+type AssetId = AssetId32<common::AssetId>;
 
 impl_outer_origin! {
     pub enum Origin for Test {}
@@ -42,10 +43,9 @@ pub type System = frame_system::Module<Test>;
 pub type Balances = pallet_balances::Module<Test>;
 pub type XorFee = Module<Test>;
 pub type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
-type TechAssetId = common::TechAssetId<AssetId, DEXId>;
+type TechAssetId = common::TechAssetId<common::AssetId, DEXId>;
 type DEXId = common::DEXId;
 pub type AccountId = u64;
-pub type AssetId = common::AssetId;
 pub type BlockNumber = u64;
 pub type MockLiquiditySource =
     mock_liquidity_source::Module<Test, mock_liquidity_source::Instance1>;
@@ -64,8 +64,8 @@ parameter_types! {
     pub const ExistentialDeposit: u32 = 1;
     pub const TransactionByteFee: u32 = 0;
     pub const ExtrinsicBaseWeight: u32 = 0;
-    pub const XorId: AssetId = AssetId::XOR;
-    pub const ValId: AssetId = AssetId::VAL;
+    pub const XorId: AssetId = XOR;
+    pub const ValId: AssetId = VAL;
     pub const DEXIdValue: DEXId = common::DEXId::Polkaswap;
 }
 

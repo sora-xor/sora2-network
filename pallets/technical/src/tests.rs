@@ -45,14 +45,14 @@ fn generic_pair_swap_simple() {
         take_account: t01.clone(),
     });
     ext.execute_with(|| {
-        assert_ok!(assets::Module::<Testtime>::register(
-            Origin::signed(get_alice()),
+        assert_ok!(assets::Module::<Testtime>::register_asset_id(
+            get_alice(),
             RedPepper(),
             AssetSymbol(b"RP".to_vec()),
             18
         ));
-        assert_ok!(assets::Module::<Testtime>::register(
-            Origin::signed(repr.clone()),
+        assert_ok!(assets::Module::<Testtime>::register_asset_id(
+            repr.clone(),
             BlackPepper(),
             AssetSymbol(b"BP".to_vec()),
             18

@@ -1,5 +1,6 @@
 use crate::{mock::*, Error};
 use common::prelude::DEXInfo;
+use common::XOR;
 use frame_support::{assert_noop, assert_ok};
 
 #[test]

@@ -1,6 +1,6 @@
 use crate::{Module, Trait};
-use common::prelude::{AssetId, Balance};
-use common::Amount;
+use common::prelude::Balance;
+use common::{self, Amount, AssetId32, XOR};
 use currencies::BasicCurrencyAdapter;
 use frame_support::{impl_outer_event, impl_outer_origin, parameter_types, weights::Weight};
 use frame_system as system;
@@ -15,15 +15,15 @@ use sp_runtime::{
 pub type AccountId = u128;
 pub type BlockNumber = u64;
 pub type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
-type TechAssetId = common::TechAssetId<AssetId, DEXId>;
+type TechAssetId = common::TechAssetId<common::AssetId, DEXId>;
 type DEXId = common::DEXId;
 pub type FarmsModule = Module<Test>;
 pub type System = frame_system::Module<Test>;
 pub type Balances = pallet_balances::Module<Test>;
 pub type Tokens = tokens::Module<Test>;
 pub type Assets = assets::Module<Test>;
+type AssetId = AssetId32<common::AssetId>;
 
-pub const XOR: AssetId = AssetId::XOR;
 pub const ALICE: AccountId = 1;
 pub const BOB: AccountId = 2;
 pub const NICK: AccountId = 3;
@@ -47,7 +47,7 @@ parameter_types! {
     pub const MaximumBlockWeight: Weight = 1024;
     pub const MaximumBlockLength: u32 = 2 * 1024;
     pub const AvailableBlockRatio: Perbill = Perbill::from_percent(75);
-    pub const GetBaseAssetId: AssetId = AssetId::XOR;
+    pub const GetBaseAssetId: AssetId = XOR;
     pub const ExistentialDeposit: u128 = 0;
     pub const MinimumPeriod: u64 = 5;
 }

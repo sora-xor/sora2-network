@@ -1,5 +1,6 @@
 mod tests {
     use crate::{mock::*, Error};
+    use common::{DOT, XOR};
     use frame_support::{assert_noop, assert_ok};
 
     #[test]

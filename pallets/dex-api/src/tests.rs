@@ -1,7 +1,7 @@
 use crate::mock::*;
 use common::{
     fixed, prelude::SwapAmount, LiquidityRegistry, LiquiditySource, LiquiditySourceFilter,
-    LiquiditySourceId, LiquiditySourceType,
+    LiquiditySourceId, LiquiditySourceType, DOT, XOR,
 };
 
 #[test]

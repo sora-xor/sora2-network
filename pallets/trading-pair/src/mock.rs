@@ -1,8 +1,8 @@
 use crate::{Module, Trait};
 use common::{
     hash,
-    prelude::{AssetId, Balance, DEXInfo},
-    BasisPoints,
+    prelude::{Balance, DEXInfo},
+    AssetId32, BasisPoints, DOT, XOR,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::{impl_outer_origin, parameter_types, weights::Weight};
@@ -21,9 +21,8 @@ pub type Amount = i128;
 
 pub const ALICE: AccountId = 1;
 pub const BOB: AccountId = 2;
-pub const XOR: AssetId = AssetId::XOR;
-pub const DOT: AssetId = AssetId::DOT;
 pub const DEX_ID: DEXId = 1;
+type AssetId = AssetId32<common::AssetId>;
 
 impl_outer_origin! {
     pub enum Origin for Runtime {}
@@ -81,7 +80,7 @@ impl tokens::Trait for Runtime {
 }
 
 parameter_types! {
-    pub const GetBaseAssetId: AssetId = AssetId::XOR;
+    pub const GetBaseAssetId: AssetId = XOR;
 }
 
 impl currencies::Trait for Runtime {

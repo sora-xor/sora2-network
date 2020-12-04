@@ -1,5 +1,8 @@
 use crate::{Module, Trait};
-use common::{fixed_from_basis_points, hash, prelude::Balance, Amount, AssetId, DEXInfo, Fixed};
+use common::{
+    fixed_from_basis_points, hash, prelude::Balance, Amount, AssetId32, DEXInfo, Fixed, DOT, KSM,
+    XOR,
+};
 use currencies::BasicCurrencyAdapter;
 use frame_support::{impl_outer_origin, parameter_types, weights::Weight};
 use frame_system as system;
@@ -15,8 +18,9 @@ use sp_runtime::{
 pub type AccountId = AccountId32;
 pub type BlockNumber = u64;
 
-type TechAssetId = common::TechAssetId<AssetId, DEXId>;
+type TechAssetId = common::TechAssetId<common::AssetId, DEXId>;
 type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
+type AssetId = AssetId32<common::AssetId>;
 
 pub fn alice() -> AccountId {
     AccountId32::from([1u8; 32])
@@ -26,9 +30,6 @@ pub fn bob() -> AccountId {
     AccountId32::from([2u8; 32])
 }
 
-pub const XOR: AssetId = AssetId::XOR;
-pub const KSM: AssetId = AssetId::KSM;
-pub const DOT: AssetId = AssetId::DOT;
 pub const DEX_A_ID: DEXId = 1;
 pub const DEX_B_ID: DEXId = 2;
 
@@ -103,7 +104,7 @@ impl permissions::Trait for Runtime {
 }
 
 parameter_types! {
-    pub const GetBaseAssetId: AssetId = AssetId::XOR;
+    pub const GetBaseAssetId: AssetId = XOR;
 }
 
 impl currencies::Trait for Runtime {

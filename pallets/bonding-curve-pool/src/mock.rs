@@ -1,8 +1,8 @@
 use crate::{Module, Trait};
 use common::{
-    fixed,
-    prelude::{AssetId, Balance, SwapAmount, SwapOutcome},
-    Amount, AssetSymbol, LiquiditySource, TechPurpose,
+    self, fixed,
+    prelude::{Balance, SwapAmount, SwapOutcome},
+    Amount, AssetId32, AssetSymbol, LiquiditySource, TechPurpose, USD, VAL, XOR,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::{impl_outer_origin, parameter_types, weights::Weight, StorageValue};
@@ -19,17 +19,14 @@ use std::collections::HashMap;
 pub type AccountId = AccountId32;
 pub type BlockNumber = u64;
 pub type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
-type TechAssetId = common::TechAssetId<AssetId, DEXId>;
+type TechAssetId = common::TechAssetId<common::AssetId, DEXId>;
 pub type ReservesAccount =
     mock_liquidity_source::ReservesAcc<Runtime, mock_liquidity_source::Instance1>;
+pub type AssetId = AssetId32<common::AssetId>;
 
 pub fn alice() -> AccountId {
     AccountId32::from([1u8; 32])
 }
-
-pub const USD: AssetId = AssetId::USD;
-pub const XOR: AssetId = AssetId::XOR;
-pub const VAL: AssetId = AssetId::VAL;
 
 impl_outer_origin! {
     pub enum Origin for Runtime {}

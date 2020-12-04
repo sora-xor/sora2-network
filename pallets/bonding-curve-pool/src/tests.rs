@@ -1,10 +1,7 @@
 #[rustfmt::skip]
 mod tests {
     use crate::{mock::*, DistributionAccounts, Error};
-    use common::{
-        fixed, AssetId, TechPurpose, DEXId, LiquiditySource,
-        prelude::{Balance, Fixed, SwapAmount, SwapOutcome}, AssetSymbol,
-    };
+    use common::{fixed, self, TechPurpose, DEXId, LiquiditySource, prelude::{Balance, Fixed, SwapAmount, SwapOutcome}, AssetSymbol, VAL, XOR, USD};
     use frame_support::assert_err;
     use sp_arithmetic::traits::{Bounded, Zero};
     use sp_runtime::DispatchError;

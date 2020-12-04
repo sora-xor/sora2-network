@@ -1,5 +1,6 @@
 use crate::{Module, Trait};
-use common::prelude::{AssetId, Balance};
+use common::prelude::Balance;
+use common::{AssetId32, XOR};
 use currencies::BasicCurrencyAdapter;
 use frame_support::{impl_outer_origin, parameter_types, weights::Weight};
 use frame_system as system;
@@ -14,10 +15,10 @@ use sp_runtime::{
 pub type AccountId = u128;
 pub type BlockNumber = u64;
 pub type Amount = i128;
+type AssetId = AssetId32<common::AssetId>;
 
 pub const ALICE: AccountId = 1;
 pub const BOB: AccountId = 2;
-pub const XOR: AssetId = AssetId::XOR;
 
 impl_outer_origin! {
     pub enum Origin for Runtime {}
@@ -61,7 +62,7 @@ impl system::Trait for Runtime {
 }
 
 parameter_types! {
-    pub const GetBaseAssetId: AssetId = AssetId::XOR;
+    pub const GetBaseAssetId: AssetId = XOR;
 }
 
 impl crate::Trait for Runtime {

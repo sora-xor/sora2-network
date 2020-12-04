@@ -1,6 +1,6 @@
 use crate::{Module, Trait};
 use common::prelude::Balance;
-use common::{fixed_from_basis_points, prelude::AssetId, Fixed};
+use common::{self, fixed_from_basis_points, AssetId32, Fixed, DOT, XOR};
 use currencies::BasicCurrencyAdapter;
 use frame_support::{impl_outer_origin, parameter_types, weights::Weight};
 use frame_system as system;
@@ -15,11 +15,10 @@ use sp_runtime::{
 pub type AccountId = u128;
 pub type BlockNumber = u64;
 pub type Amount = i128;
+type AssetId = AssetId32<common::AssetId>;
 
 pub const ALICE: AccountId = 1;
 pub const BOB: AccountId = 2;
-pub const XOR: AssetId = AssetId::XOR;
-pub const DOT: AssetId = AssetId::DOT;
 pub const DEX_A_ID: DEXId = 1;
 pub const DEX_B_ID: DEXId = 2;
 
@@ -86,7 +85,7 @@ impl permissions::Trait for Runtime {
 }
 
 parameter_types! {
-    pub const GetBaseAssetId: AssetId = AssetId::XOR;
+    pub const GetBaseAssetId: AssetId = XOR;
 }
 
 impl currencies::Trait for Runtime {

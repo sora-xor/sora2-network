@@ -72,6 +72,13 @@ pub enum AssetId {
     PSWAP = 5,
 }
 
+pub const XOR: AssetId32<AssetId> = AssetId32::from_asset_id(AssetId::XOR);
+pub const DOT: AssetId32<AssetId> = AssetId32::from_asset_id(AssetId::DOT);
+pub const KSM: AssetId32<AssetId> = AssetId32::from_asset_id(AssetId::KSM);
+pub const USD: AssetId32<AssetId> = AssetId32::from_asset_id(AssetId::USD);
+pub const VAL: AssetId32<AssetId> = AssetId32::from_asset_id(AssetId::VAL);
+pub const PSWAP: AssetId32<AssetId> = AssetId32::from_asset_id(AssetId::PSWAP);
+
 impl crate::traits::IsRepresentation for AssetId {
     fn is_representation(&self) -> bool {
         false
@@ -159,11 +166,24 @@ impl<AssetId> AssetId32<AssetId> {
             phantom: PhantomData,
         }
     }
+
+    pub const fn from_asset_id(asset_id: super::AssetId) -> Self {
+        let mut bytes = [0u8; 32];
+        bytes[0] = 2;
+        bytes[2] = asset_id as u8;
+        Self::from_bytes(bytes)
+    }
 }
 
 impl<AssetId> From<H256> for AssetId32<AssetId> {
     fn from(value: H256) -> Self {
         AssetId32::<AssetId>::new(value.0, Default::default())
+    }
+}
+
+impl<AssetId> From<AssetId32<AssetId>> for H256 {
+    fn from(value: AssetId32<AssetId>) -> H256 {
+        H256(value.code)
     }
 }
 
@@ -328,12 +348,6 @@ impl<AssetId: Default, DEXId> Default for TechAssetId<AssetId, DEXId> {
 impl<AssetId, DEXId> From<AssetId> for TechAssetId<AssetId, DEXId> {
     fn from(a: AssetId) -> Self {
         TechAssetId::Wrapped(a)
-    }
-}
-
-impl<DEXId> From<AssetId> for TechAssetId<crate::mock::ComicAssetId, DEXId> {
-    fn from(asset_id: AssetId) -> Self {
-        TechAssetId::Wrapped(crate::mock::ComicAssetId::from(asset_id))
     }
 }
 

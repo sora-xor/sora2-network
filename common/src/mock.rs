@@ -39,7 +39,7 @@ impl From<AssetId> for crate::primitives::AssetId32<ComicAssetId> {
 
 impl From<AssetId> for ComicAssetId {
     fn from(asset_id: AssetId) -> Self {
-        use crate::mock::ComicAssetId::*;
+        use ComicAssetId::*;
         match asset_id {
             AssetId::XOR => GoldenTicket,
             AssetId::DOT => AppleTree,
@@ -54,6 +54,14 @@ impl From<AssetId> for ComicAssetId {
 impl Default for ComicAssetId {
     fn default() -> Self {
         Self::GoldenTicket
+    }
+}
+
+// This is never used, and just makes some tests compatible.
+#[deprecated]
+impl From<AssetId32<AssetId>> for AssetId32<ComicAssetId> {
+    fn from(_asset: AssetId32<AssetId>) -> Self {
+        unreachable!()
     }
 }
 
@@ -121,5 +129,11 @@ where
             slice[i + 1] = asset_encoded[i];
         }
         AssetId32::new(slice, PhantomData)
+    }
+}
+
+impl<DEXId> From<AssetId> for TechAssetId<ComicAssetId, DEXId> {
+    fn from(asset_id: AssetId) -> Self {
+        TechAssetId::Wrapped(ComicAssetId::from(asset_id))
     }
 }

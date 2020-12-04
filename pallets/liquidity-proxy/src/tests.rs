@@ -1,7 +1,7 @@
 use crate::{mock::*, Error};
 use common::{
     fixed, prelude::SwapAmount, FilterMode, Fixed, LiquiditySourceFilter, LiquiditySourceId,
-    LiquiditySourceType,
+    LiquiditySourceType, DOT, KSM,
 };
 use frame_support::assert_noop;
 use sp_arithmetic::traits::{Bounded, Saturating};

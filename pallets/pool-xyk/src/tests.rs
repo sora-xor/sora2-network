@@ -23,8 +23,8 @@ impl crate::Module<Testtime> {
         let bp: crate::mock::AssetId = BlackPepper.into();
 
         ext.execute_with(|| {
-            assert_ok!(assets::Module::<Testtime>::register(
-                Origin::signed(ALICE()),
+            assert_ok!(assets::Module::<Testtime>::register_asset_id(
+                ALICE(),
                 GoldenTicket.into(),
                 AssetSymbol(b"GT".to_vec()),
                 18
@@ -67,8 +67,8 @@ impl crate::Module<Testtime> {
             let fee_repr: AccountId =
                 technical::Module::<Testtime>::tech_account_id_to_account_id(&fee_acc).unwrap();
 
-            assert_ok!(assets::Module::<Testtime>::register(
-                Origin::signed(ALICE()),
+            assert_ok!(assets::Module::<Testtime>::register_asset_id(
+                ALICE(),
                 BlackPepper.into(),
                 AssetSymbol(b"BP".to_vec()),
                 18

@@ -232,6 +232,7 @@ dependencies = [
  "common",
  "frame-support",
  "frame-system",
+ "hex-literal 0.3.1",
  "orml-currencies",
  "orml-tokens",
  "orml-traits",
@@ -243,6 +244,7 @@ dependencies = [
  "sp-io",
  "sp-runtime",
  "sp-std",
+ "tiny-keccak",
 ]
 
 [[package]]

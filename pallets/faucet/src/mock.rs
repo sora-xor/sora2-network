@@ -1,9 +1,5 @@
 use crate::{GenesisConfig, Trait};
-use codec::{Decode, Encode};
-use common::{
-    prelude::{AssetId, Balance},
-    Amount, AssetSymbol, TechPurpose,
-};
+use common::{self, prelude::Balance, Amount, AssetId32, AssetSymbol, TechPurpose, USD, VAL, XOR};
 use currencies::BasicCurrencyAdapter;
 use frame_support::{impl_outer_origin, parameter_types, weights::Weight};
 use permissions::{Scope, BURN, MINT};
@@ -18,11 +14,12 @@ type DEXId = common::DEXId;
 type AccountId = AccountId32;
 type BlockNumber = u64;
 type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
-type TechAssetId = common::TechAssetId<AssetId, DEXId>;
+type TechAssetId = common::TechAssetId<common::AssetId, DEXId>;
 type Balances = pallet_balances::Module<Test>;
 type Tokens = tokens::Module<Test>;
 type System = frame_system::Module<Test>;
 type Technical = technical::Module<Test>;
+type AssetId = AssetId32<common::AssetId>;
 
 pub fn alice() -> AccountId32 {
     AccountId32::from([1u8; 32])
@@ -43,14 +40,14 @@ pub fn account_id() -> AccountId {
     Technical::tech_account_id_to_account_id(&tech_account_id()).unwrap()
 }
 
-pub const NOT_SUPPORTED_ASSET_ID: AssetId = AssetId::USD;
+pub const NOT_SUPPORTED_ASSET_ID: AssetId = USD;
 
 parameter_types! {
     pub const BlockHashCount: u64 = 250;
     pub const MaximumBlockWeight: Weight = 1024;
     pub const MaximumBlockLength: u32 = 2 * 1024;
     pub const AvailableBlockRatio: Perbill = Perbill::from_percent(75);
-    pub const GetBaseAssetId: AssetId = AssetId::XOR;
+    pub const GetBaseAssetId: AssetId = XOR;
     pub const ExistentialDeposit: u128 = 0;
 }
 
@@ -176,15 +173,15 @@ impl ExtBuilder {
 
         assets::GenesisConfig::<Test> {
             endowed_assets: vec![
-                (AssetId::XOR, alice(), AssetSymbol(b"XOR".to_vec()), 18),
-                (AssetId::VAL, alice(), AssetSymbol(b"VAL".to_vec()), 18),
+                (XOR, alice(), AssetSymbol(b"XOR".to_vec()), 18),
+                (VAL.into(), alice(), AssetSymbol(b"VAL".to_vec()), 18),
             ],
         }
         .assimilate_storage(&mut t)
         .unwrap();
 
         tokens::GenesisConfig::<Test> {
-            endowed_accounts: vec![(account_id.clone(), AssetId::VAL, 150u128.into())],
+            endowed_accounts: vec![(account_id.clone(), VAL.into(), 150u128.into())],
         }
         .assimilate_storage(&mut t)
         .unwrap();

@@ -1,7 +1,6 @@
 use crate::{Module, Trait};
 use codec::{Decode, Encode};
-use common::prelude::Balance;
-use common::BasisPoints;
+use common::{prelude::Balance, BasisPoints};
 use currencies::BasicCurrencyAdapter;
 use dispatch::DispatchResult;
 use frame_support::dispatch;

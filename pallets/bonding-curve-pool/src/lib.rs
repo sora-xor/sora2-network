@@ -13,7 +13,7 @@ use codec::{Decode, Encode};
 use common::{
     fixed,
     prelude::{Balance, Error as CommonError, Fixed, FixedWrapper, SwapAmount, SwapOutcome},
-    AssetId, DEXId, LiquiditySource,
+    DEXId, LiquiditySource, USD, VAL,
 };
 use frame_support::traits::Get;
 use frame_support::{decl_error, decl_module, decl_storage};
@@ -304,14 +304,14 @@ impl<T: Trait> Module<T> {
                 &reserves_account_id,
                 &DEXId::Polkaswap.into(),
                 out_asset_id,
-                &AssetId::VAL.into(),
+                &VAL.into(),
                 SwapAmount::with_desired_input(
                     swapped_xor_amount * Balance(val_holders_buy_back_coefficient),
                     Balance::zero(),
                 ),
             )?
             .amount;
-            Technical::<T>::burn(&AssetId::VAL.into(), &reserves_tech_account_id, val_amount)?;
+            Technical::<T>::burn(&VAL.into(), &reserves_tech_account_id, val_amount)?;
             R = R - input_amount_free;
         }
         debug_assert_eq!(
@@ -401,8 +401,8 @@ impl<T: Trait> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Disp
         let base_asset_id = &T::GetBaseAssetId::get();
         // Can trade only with XOR (base asset) and USD on Polkaswap.
         *dex_id == DEXId::Polkaswap.into()
-            && ((input_asset_id == &AssetId::USD.into() && output_asset_id == base_asset_id)
-                || (output_asset_id == &AssetId::USD.into() && input_asset_id == base_asset_id))
+            && ((input_asset_id == &USD.into() && output_asset_id == base_asset_id)
+                || (output_asset_id == &USD.into() && input_asset_id == base_asset_id))
     }
 
     fn quote(

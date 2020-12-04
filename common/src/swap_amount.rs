@@ -147,7 +147,7 @@ impl From<SwapAmount<Balance>> for SwapAmount<Fixed> {
 impl<T> From<SwapAmount<T>> for SwapVariant {
     fn from(v: SwapAmount<T>) -> Self {
         match v {
-            SwapAmount::WithDesiredInput {..} => SwapVariant::WithDesiredInput,
+            SwapAmount::WithDesiredInput { .. } => SwapVariant::WithDesiredInput,
             _ => SwapVariant::WithDesiredOutput,
         }
     }

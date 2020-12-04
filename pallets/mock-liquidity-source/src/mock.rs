@@ -1,5 +1,5 @@
 use crate::{Module, Trait};
-use common::{fixed_from_basis_points, Amount, AssetId, Fixed};
+use common::{self, fixed_from_basis_points, Amount, AssetId32, Fixed, XOR};
 use currencies::BasicCurrencyAdapter;
 
 use common::prelude::Balance;
@@ -15,16 +15,15 @@ use sp_runtime::{
 
 pub type AccountId = AccountId32;
 pub type BlockNumber = u64;
+type AssetId = AssetId32<common::AssetId>;
 
-type TechAssetId = common::TechAssetId<AssetId, DEXId>;
+type TechAssetId = common::TechAssetId<common::AssetId, DEXId>;
 type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
 
 pub fn alice() -> AccountId {
     AccountId32::from([1u8; 32])
 }
 
-pub const DOT: AssetId = AssetId::DOT;
-pub const KSM: AssetId = AssetId::KSM;
 pub const DEX_A_ID: DEXId = 1;
 pub const DEX_B_ID: DEXId = 2;
 
@@ -108,7 +107,7 @@ impl tokens::Trait for Runtime {
 }
 
 parameter_types! {
-    pub const GetBaseAssetId: AssetId = AssetId::XOR;
+    pub const GetBaseAssetId: AssetId = XOR;
 }
 
 impl currencies::Trait for Runtime {

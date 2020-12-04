@@ -97,9 +97,9 @@ decl_module! {
 
 impl<T: Trait> Module<T> {
     fn ensure_asset_supported(asset_id: T::AssetId) -> Result<(), Error<T>> {
-        let xor = AssetId::XOR.into();
-        let val = AssetId::VAL.into();
-        let pswap = AssetId::PSWAP.into();
+        let xor = XOR.into();
+        let val = VAL.into();
+        let pswap = PSWAP.into();
         if asset_id == xor || asset_id == val || asset_id == pswap {
             Ok(())
         } else {

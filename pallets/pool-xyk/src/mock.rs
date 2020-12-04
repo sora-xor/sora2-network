@@ -1,6 +1,5 @@
 use crate::Trait;
-use common::prelude::Balance;
-use common::BasisPoints;
+use common::{prelude::Balance, BasisPoints};
 use currencies::BasicCurrencyAdapter;
 use frame_support::{impl_outer_origin, parameter_types, weights::Weight};
 use frame_system as system;
