@@ -2,9 +2,8 @@
 
 ## Solidity compiler
 You have to have solidity compiler of required version and setup the path variable for it to use mentioned commands
-1. compile contract with ABI: 
-   solc <contract.sol> --bin --abi --output ../java-wrapper/src/main/resources/contracts
-
+1. compile contract with ABI:
+   solc-windows.exe Bridge.sol --bin --abi -o ../java-wrapper/src/main/resources/contracts
 
 ## Tutorial
 
