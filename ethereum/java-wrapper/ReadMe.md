@@ -1,10 +1,11 @@
-# Java wrapper for ethereum smart contracts
+# Sora-substrate Ethereum bridge Smart contract Java Wrapper
 
-## Solidity compiler
-You have to have solidity compiler of required version and setup the path variable for it to use mentioned commands
-1. compile contract with ABI:
-   solc-windows.exe Bridge.sol --bin --abi -o ../java-wrapper/src/main/resources/contracts
+In order to run this demo, three pieces of information are required:
 
-## Tutorial
+1. Ethereum client (or node) endpoint. The simplest thing to do is 
+[request a free access token](https://infura.io/register) from Infura.
+1. A wallet file. This can be generated using the [Epirus CLI](https://docs.epirus.io/sdk/cli/). 
+1. Some Ether. This can be requested from the [Rinkeby Faucet](https://www.rinkeby.io/#faucet).
 
-Some beginners tutorial: https://www.youtube.com/watch?v=fzUGvU2dXxU&list=PL16WqdAj66SCOdL6XIFbke-XQg2GW_Avg&index=31
+Once these details have been added to the main Application class, you'll be good to go.
+
