@@ -25,6 +25,7 @@ cumulus-upward-message = { git = "https://github.com/paritytech/cumulus",  defau
 rococo-runtime = { git = "https://github.com/paritytech/polkadot", branch = "rococo-branch", default-features = false }
 polkadot-core-primitives = { git = "https://github.com/paritytech/polkadot", branch = "rococo-branch", default-features = false }
 polkadot-parachain = { git = "https://github.com/paritytech/polkadot", branch = "rococo-branch", default-features = false }
+smallvec = "1.5.0"
 
 [dev-dependencies]
 serde_json = "1.0.41"
