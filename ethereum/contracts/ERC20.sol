@@ -1,4 +1,4 @@
-pragma solidity ^0.6.12;
+pragma solidity ^0.7.4;
 // "SPDX-License-Identifier: Apache License 2.0"
 
 import "./IERC20.sol";

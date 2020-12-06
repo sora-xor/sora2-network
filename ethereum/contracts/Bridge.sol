@@ -1,4 +1,4 @@
-pragma solidity ^0.6.12;
+pragma solidity ^0.7.4;
 // "SPDX-License-Identifier: Apache License 2.0"
 
 import "./IERC20.sol";
@@ -26,8 +26,7 @@ contract Bridge {
      * @param initialPeers - list of initial bridge validators on substrate side.
      */
     constructor(
-        address[] memory initialPeers) 
-        public {
+        address[] memory initialPeers)  {
         for (uint8 i = 0; i < initialPeers.length; i++) {
             addPeer(initialPeers[i]);
         }

@@ -1,4 +1,4 @@
-pragma solidity >=0.5.16;
+pragma solidity ^0.7.4;
 // "SPDX-License-Identifier: Apache License 2.0"
 
 

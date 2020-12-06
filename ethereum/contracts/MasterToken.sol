@@ -1,4 +1,4 @@
-pragma solidity ^0.6.12;
+pragma solidity ^0.7.4;
 // "SPDX-License-Identifier: Apache License 2.0"
 
 import "./ERC20Detailed.sol";
@@ -18,7 +18,6 @@ contract MasterToken is ERC20Burnable, ERC20Detailed, Ownable {
         address beneficiary, 
         uint256 supply,
         bytes32 sidechainAssetId) 
-        public 
         ERC20Detailed(name, symbol, decimals) {
         _sidechainAssetId = sidechainAssetId;    
         _mint(beneficiary, supply);
