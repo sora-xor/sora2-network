@@ -11,7 +11,7 @@ contract Bridge {
     bool internal initialized_;
     mapping(address => bool) public isPeer;
     uint public peersCount;
-    /** Iroha tx hashes used */
+    /** Substrate proofs used */
     mapping(bytes32 => bool) public used;
     mapping(address => bool) public _uniqueAddresses;
 
@@ -229,7 +229,6 @@ contract Bridge {
     public
     {   
         require(_sidechainTokens[sidechainAssetId] != address(0x0), "Sidechain asset is not registered");
-        MasterToken tokenInstance = MasterToken(_sidechainTokens[sidechainAssetId]);       
         require(used[txHash] == false);
         require(checkSignatures(
                 keccak256(abi.encodePacked(sidechainAssetId, amount, beneficiary, txHash, from)),
@@ -238,6 +237,7 @@ contract Bridge {
                 s), "Peer signatures are invalid"
         );
 
+        MasterToken tokenInstance = MasterToken(_sidechainTokens[sidechainAssetId]);       
         tokenInstance.mintTokens(beneficiary, amount);
         used[txHash] = true;
         emit Withdrawal(txHash);
