@@ -1,4 +1,4 @@
-package net.sora.substrate.bridge.contracts;
+package net.sora;
 
 import io.reactivex.Flowable;
 import io.reactivex.functions.Function;
