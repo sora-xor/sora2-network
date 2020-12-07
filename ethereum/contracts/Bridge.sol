@@ -13,6 +13,7 @@ contract Bridge {
     uint public peersCount;
     /** Substrate proofs used */
     mapping(bytes32 => bool) public used;
+    mapping(address => bool) public _uniqueAddresses;
 
     mapping(bytes32 => address) public _sidechainTokens;
     mapping(address => bytes32) public _sidechainTokensByAddress;
@@ -262,7 +263,6 @@ contract Bridge {
         require(r.length == s.length);
         uint needSigs = peersCount - (peersCount - 1) / 3;
         require(s.length >= needSigs);
-        mapping(address => bool) memory _uniqueAddresses;
 
         uint count = 0;
         address[] memory recoveredAddresses = new address[](s.length);
