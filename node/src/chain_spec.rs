@@ -1,53 +1,36 @@
-// Copyright 2020 Parity Technologies (UK) Ltd.
-
-use cumulus_primitives::ParaId;
-
-use parachain_runtime::{
-    AccountId, AssetSymbol, AssetsConfig, BalancesConfig, DEXManagerConfig, DotId, FaucetConfig,
-    GenesisConfig, GetBaseAssetId, KsmId, ParachainInfoConfig, PermissionsConfig, PswapId,
-    Signature, SudoConfig, SystemConfig, TechAccountId, TechnicalConfig, TokensConfig, UsdId,
-    ValId, XorId, WASM_BINARY,
+use framenode_runtime::{
+    opaque::SessionKeys, AccountId, AssetSymbol, AssetsConfig, BabeConfig, BalancesConfig,
+    DEXManagerConfig, DotId, FaucetConfig, GenesisConfig, GetBaseAssetId, GrandpaConfig, KsmId,
+    PermissionsConfig, PswapId, SessionConfig, Signature, StakerStatus, StakingConfig, SudoConfig,
+    SystemConfig, TechAccountId, TechnicalConfig, TokensConfig, UsdId, ValId, XorId, WASM_BINARY,
 };
 
 use codec::{Decode, Encode};
-use common::{hash, prelude::DEXInfo};
+use common::{balance::Balance, hash, prelude::DEXInfo};
+use grandpa::AuthorityId as GrandpaId;
+#[allow(unused_imports)]
 use hex_literal::hex;
 use permissions::Scope;
-use sc_chain_spec::{ChainSpecExtension, ChainSpecGroup};
 use sc_service::{ChainType, Properties};
-use serde::{Deserialize, Serialize};
+use sp_consensus_aura::sr25519::AuthorityId as AuraId;
+use sp_consensus_babe::AuthorityId as BabeId;
+#[allow(unused_imports)]
 use sp_core::crypto::AccountId32;
 use sp_core::{sr25519, Pair, Public};
 use sp_runtime::{
     sp_std::iter::once,
     traits::{IdentifyAccount, Verify},
+    Perbill,
 };
 
 /// Specialized `ChainSpec`. This is a specialization of the general Substrate ChainSpec type.
-pub type ChainSpec = sc_service::GenericChainSpec<GenesisConfig, Extensions>;
+pub type ChainSpec = sc_service::GenericChainSpec<GenesisConfig>;
 
 /// Helper function to generate a crypto pair from seed
 pub fn get_from_seed<TPublic: Public>(seed: &str) -> <TPublic::Pair as Pair>::Public {
     TPublic::Pair::from_string(&format!("//{}", seed), None)
         .expect("static values are valid; qed")
         .public()
-}
-
-/// The extensions for the [`ChainSpec`].
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, ChainSpecGroup, ChainSpecExtension)]
-#[serde(deny_unknown_fields)]
-pub struct Extensions {
-    /// The relay chain of the Parachain.
-    pub relay_chain: String,
-    /// The id of the Parachain.
-    pub para_id: u32,
-}
-
-impl Extensions {
-    /// Try to get the extension from the given `ChainSpec`.
-    pub fn try_get(chain_spec: &Box<dyn sc_service::ChainSpec>) -> Option<&Self> {
-        sc_chain_spec::get_extension(chain_spec.extensions())
-    }
 }
 
 type AccountPublic = <Signature as Verify>::Signer;
@@ -60,12 +43,55 @@ where
     AccountPublic::from(get_from_seed::<TPublic>(seed)).into_account()
 }
 
-// Can be exported via ./target/release/parachain-collator build-spec --disable-default-bootnode > ./exported/chainspec-local.json
-pub fn get_chain_spec(id: ParaId) -> ChainSpec {
+/// Generate an Babe authority key.
+pub fn authority_keys_from_seed(seed: &str) -> (AccountId, AccountId, AuraId, BabeId, GrandpaId) {
+    (
+        get_account_id_from_seed::<sr25519::Public>(&format!("{}//stash", seed)),
+        get_account_id_from_seed::<sr25519::Public>(seed),
+        get_from_seed::<AuraId>(seed),
+        get_from_seed::<BabeId>(seed),
+        get_from_seed::<GrandpaId>(seed),
+    )
+}
+
+fn session_keys(grandpa: GrandpaId, babe: BabeId) -> SessionKeys {
+    SessionKeys { babe, grandpa }
+}
+
+pub fn staging_test_net() -> ChainSpec {
     let mut properties = Properties::new();
     properties.insert("tokenSymbol".into(), "XOR".into());
     properties.insert("tokenDecimals".into(), 18.into());
+    ChainSpec::from_genesis(
+        "SORA-Substrate Testnet",
+        "sora-substrate-staging",
+        ChainType::Live,
+        move || {
+            testnet_genesis(
+                hex!("92c4ff71ae7492a1e6fef5d80546ea16307c560ac1063ffaa5e0e084df1e2b7e").into(),
+                vec![
+                    authority_keys_from_seed("Alice"),
+                    authority_keys_from_seed("Bob"),
+                    authority_keys_from_seed("Charlie"),
+                    authority_keys_from_seed("Dave"),
+                ],
+                vec![
+                    hex!("92c4ff71ae7492a1e6fef5d80546ea16307c560ac1063ffaa5e0e084df1e2b7e").into(),
+                ],
+                hex!("da723e9d76bd60da0ec846895c5e0ecf795b50ae652c012f27e56293277ef372").into(),
+                hex!("16fec57d383a1875ab4e9786aea7a626e721a491c828f475ae63ef098f98f373").into(),
+                hex!("da723e9d76bd60da0ec846895c5e0ecf795b50ae652c012f27e56293277ef372").into(),
+            )
+        },
+        vec![],
+        None,
+        Some("sora-substrate-1"),
+        Some(properties),
+        None,
+    )
+}
 
+pub fn local_testnet_config() -> ChainSpec {
     ChainSpec::from_genesis(
         "SORA-Substrate Local Testnet",
         "sora-substrate-local",
@@ -73,6 +99,16 @@ pub fn get_chain_spec(id: ParaId) -> ChainSpec {
         move || {
             testnet_genesis(
                 get_account_id_from_seed::<sr25519::Public>("Alice"),
+                vec![
+                    authority_keys_from_seed("Alice"),
+                    authority_keys_from_seed("Bob"),
+                    authority_keys_from_seed("Charlie"),
+                    authority_keys_from_seed("Dave"),
+                    /*
+                    authority_keys_from_seed("Eve"),
+                    authority_keys_from_seed("Ferdie"),
+                    */
+                ],
                 vec![
                     get_account_id_from_seed::<sr25519::Public>("Alice"),
                     get_account_id_from_seed::<sr25519::Public>("Bob"),
@@ -86,69 +122,30 @@ pub fn get_chain_spec(id: ParaId) -> ChainSpec {
                     get_account_id_from_seed::<sr25519::Public>("Dave//stash"),
                     get_account_id_from_seed::<sr25519::Public>("Eve//stash"),
                     get_account_id_from_seed::<sr25519::Public>("Ferdie//stash"),
-                    AccountId32::from([
-                        52u8, 45, 84, 67, 137, 84, 47, 252, 35, 59, 237, 44, 144, 70, 71, 206, 243,
-                        67, 8, 115, 247, 189, 204, 26, 181, 226, 232, 81, 123, 12, 81, 120,
-                    ]),
                 ],
                 get_account_id_from_seed::<sr25519::Public>("Alice"),
                 get_account_id_from_seed::<sr25519::Public>("Alice"),
                 get_account_id_from_seed::<sr25519::Public>("Alice"),
-                id,
             )
         },
         vec![],
         None,
         None,
-        Some(properties),
-        Extensions {
-            relay_chain: "local_testnet".into(),
-            para_id: id.into(),
-        },
-    )
-}
-
-// Can be exported via ./target/release/parachain-collator build-spec --chain staging --disable-default-bootnode > ./exported/chainspec-staging.json
-pub fn staging_test_net(id: ParaId) -> ChainSpec {
-    let mut properties = Properties::new();
-    properties.insert("tokenSymbol".into(), "XOR".into());
-    properties.insert("tokenDecimals".into(), 18.into());
-
-    ChainSpec::from_genesis(
-        "SORA-Substrate Testnet",
-        "sora-substrate-staging",
-        ChainType::Live,
-        move || {
-            testnet_genesis(
-                hex!("92c4ff71ae7492a1e6fef5d80546ea16307c560ac1063ffaa5e0e084df1e2b7e").into(),
-                vec![
-                    hex!("92c4ff71ae7492a1e6fef5d80546ea16307c560ac1063ffaa5e0e084df1e2b7e").into(),
-                ],
-                hex!("da723e9d76bd60da0ec846895c5e0ecf795b50ae652c012f27e56293277ef372").into(),
-                hex!("16fec57d383a1875ab4e9786aea7a626e721a491c828f475ae63ef098f98f373").into(),
-                hex!("da723e9d76bd60da0ec846895c5e0ecf795b50ae652c012f27e56293277ef372").into(),
-                id,
-            )
-        },
-        Vec::new(),
         None,
-        Some("sora-substrate-1"),
-        Some(properties),
-        Extensions {
-            relay_chain: "rococo_local_testnet".into(),
-            para_id: id.into(),
-        },
+        None,
     )
 }
 
 fn testnet_genesis(
     root_key: AccountId,
+    initial_authorities: Vec<(AccountId, AccountId, AuraId, BabeId, GrandpaId)>,
     endowed_accounts: Vec<AccountId>,
     dex_root: AccountId,
     tech_permissions_owner: AccountId,
     initial_assets_owner: AccountId,
-    id: ParaId,
 ) -> GenesisConfig {
+    let initial_balance = 1u128 << 60;
+    let initial_staking: Balance = (initial_balance / 2).into();
     let xor_fee_tech_account_id = TechAccountId::Generic(
         xor_fee::TECH_ACCOUNT_PREFIX.to_vec(),
         xor_fee::TECH_ACCOUNT_MAIN.to_vec(),
@@ -168,16 +165,54 @@ fn testnet_genesis(
 
     GenesisConfig {
         frame_system: Some(SystemConfig {
-            code: WASM_BINARY.to_vec(),
+            code: WASM_BINARY.unwrap().to_vec(),
             changes_trie_config: Default::default(),
         }),
         pallet_sudo: Some(SudoConfig { key: root_key }),
-        parachain_info: Some(ParachainInfoConfig { parachain_id: id }),
         technical: Some(TechnicalConfig {
             account_ids_to_tech_account_ids: vec![
                 (xor_fee_account_id.clone(), xor_fee_tech_account_id),
                 (faucet_account_id.clone(), faucet_tech_account_id.clone()),
             ],
+        }),
+        pallet_babe: Some(BabeConfig {
+            authorities: vec![],
+        }),
+        pallet_grandpa: Some(GrandpaConfig {
+            authorities: vec![],
+        }),
+        pallet_session: Some(SessionConfig {
+            keys: initial_authorities
+                .iter()
+                .map(|(account, _, _, babe_id, grandpa_id)| {
+                    (
+                        account.clone(),
+                        account.clone(),
+                        session_keys(grandpa_id.clone(), babe_id.clone()),
+                    )
+                })
+                .collect::<Vec<_>>(),
+        }),
+        pallet_staking: Some(StakingConfig {
+            validator_count: initial_authorities.len() as u32 * 2,
+            minimum_validator_count: 1,
+            stakers: initial_authorities
+                .iter()
+                .map(|(stash_account, account, _, _, _)| {
+                    (
+                        stash_account.clone(),
+                        account.clone(),
+                        initial_staking,
+                        StakerStatus::Validator,
+                    )
+                })
+                .collect(),
+            invulnerables: initial_authorities
+                .iter()
+                .map(|(stash_account, _, _, _, _)| stash_account.clone())
+                .collect(),
+            slash_reward_fraction: Perbill::from_percent(10),
+            ..Default::default()
         }),
         assets: Some(AssetsConfig {
             endowed_assets: vec![

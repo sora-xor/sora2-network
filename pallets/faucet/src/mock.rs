@@ -83,11 +83,11 @@ impl frame_system::Trait for Test {
     type MaximumBlockLength = MaximumBlockLength;
     type AvailableBlockRatio = AvailableBlockRatio;
     type Version = ();
-    type ModuleToIndex = ();
     type AccountData = pallet_balances::AccountData<Balance>;
     type OnNewAccount = ();
     type OnKilledAccount = ();
     type SystemWeightInfo = ();
+    type PalletInfo = ();
 }
 
 impl technical::Trait for Test {
@@ -121,8 +121,9 @@ impl permissions::Trait for Test {
 impl currencies::Trait for Test {
     type Event = ();
     type MultiCurrency = Tokens;
-    type NativeCurrency = BasicCurrencyAdapter<Balances, Balance, Balance, Amount, BlockNumber>;
+    type NativeCurrency = BasicCurrencyAdapter<Test, Balances, Amount, BlockNumber>;
     type GetNativeCurrencyId = <Test as assets::Trait>::GetBaseAssetId;
+    type WeightInfo = ();
 }
 
 // Required by currencies::Trait
@@ -133,6 +134,7 @@ impl pallet_balances::Trait for Test {
     type ExistentialDeposit = ExistentialDeposit;
     type AccountStore = System;
     type WeightInfo = ();
+    type MaxLocks = ();
 }
 
 // Required by assets::Trait
@@ -142,6 +144,7 @@ impl tokens::Trait for Test {
     type Amount = Amount;
     type CurrencyId = <Test as assets::Trait>::AssetId;
     type OnReceived = ();
+    type WeightInfo = ();
 }
 
 pub struct ExtBuilder {}

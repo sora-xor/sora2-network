@@ -54,11 +54,11 @@ impl system::Trait for Runtime {
     type MaximumBlockLength = MaximumBlockLength;
     type AvailableBlockRatio = AvailableBlockRatio;
     type Version = ();
-    type ModuleToIndex = ();
     type AccountData = pallet_balances::AccountData<Balance>;
     type OnNewAccount = ();
     type OnKilledAccount = ();
     type SystemWeightInfo = ();
+    type PalletInfo = ();
 }
 
 parameter_types! {
@@ -83,13 +83,15 @@ impl tokens::Trait for Runtime {
     type Amount = Amount;
     type CurrencyId = <Runtime as Trait>::AssetId;
     type OnReceived = ();
+    type WeightInfo = ();
 }
 
 impl currencies::Trait for Runtime {
     type Event = ();
     type MultiCurrency = Tokens;
-    type NativeCurrency = BasicCurrencyAdapter<Balances, Balance, Balance, Amount, BlockNumber>;
+    type NativeCurrency = BasicCurrencyAdapter<Runtime, Balances, Amount, BlockNumber>;
     type GetNativeCurrencyId = <Runtime as Trait>::GetBaseAssetId;
+    type WeightInfo = ();
 }
 
 parameter_types! {
@@ -106,6 +108,7 @@ impl pallet_balances::Trait for Runtime {
     type ExistentialDeposit = ExistentialDeposit;
     type AccountStore = System;
     type WeightInfo = ();
+    type MaxLocks = ();
 }
 
 pub type System = frame_system::Module<Runtime>;

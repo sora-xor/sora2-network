@@ -14,7 +14,7 @@ COPY ./housekeeping/docker/release/api-cli.tar.gz $POLKADOT_API_PATH/api-cli.tar
 RUN tar -xzf $POLKADOT_API_PATH/api-cli.tar.gz -C $POLKADOT_API_PATH/
 RUN useradd substrate -u 10000
 
-COPY ./housekeeping/parachain-collator /usr/local/bin/parachain-collator
+COPY ./housekeeping/framenode /usr/local/bin/framenode
 COPY --chown=10000:10000 ./housekeeping/docker/release/parachain_registration.sh /opt/soraneo/parachain_registration.sh
 RUN chmod +x /opt/soraneo/parachain_registration.sh
 
@@ -22,4 +22,4 @@ COPY --chown=10000:10000 ./misc/rococo-custom.json /chain.spec
 
 USER substrate
 
-ENTRYPOINT ["parachain-collator"]
+ENTRYPOINT ["framenode"]

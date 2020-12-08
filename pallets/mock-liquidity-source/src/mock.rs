@@ -63,11 +63,11 @@ impl system::Trait for Runtime {
     type MaximumBlockLength = MaximumBlockLength;
     type AvailableBlockRatio = AvailableBlockRatio;
     type Version = ();
-    type ModuleToIndex = ();
     type AccountData = pallet_balances::AccountData<Balance>;
     type OnNewAccount = ();
     type OnKilledAccount = ();
     type SystemWeightInfo = ();
+    type PalletInfo = ();
 }
 
 parameter_types! {
@@ -104,6 +104,7 @@ impl tokens::Trait for Runtime {
     type Amount = Amount;
     type CurrencyId = <Runtime as assets::Trait>::AssetId;
     type OnReceived = ();
+    type WeightInfo = ();
 }
 
 parameter_types! {
@@ -113,8 +114,9 @@ parameter_types! {
 impl currencies::Trait for Runtime {
     type Event = ();
     type MultiCurrency = Tokens;
-    type NativeCurrency = BasicCurrencyAdapter<Balances, Balance, Balance, Amount, BlockNumber>;
+    type NativeCurrency = BasicCurrencyAdapter<Runtime, Balances, Amount, BlockNumber>;
     type GetNativeCurrencyId = GetBaseAssetId;
+    type WeightInfo = ();
 }
 
 type DEXId = u32;
@@ -145,6 +147,7 @@ impl pallet_balances::Trait for Runtime {
     type ExistentialDeposit = ExistentialDeposit;
     type AccountStore = System;
     type WeightInfo = ();
+    type MaxLocks = ();
 }
 
 impl permissions::Trait for Runtime {

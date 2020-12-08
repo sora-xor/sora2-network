@@ -89,11 +89,11 @@ impl system::Trait for Testtime {
     type MaximumBlockLength = MaximumBlockLength;
     type AvailableBlockRatio = AvailableBlockRatio;
     type Version = ();
-    type ModuleToIndex = ();
     type AccountData = pallet_balances::AccountData<Balance>;
     type OnNewAccount = ();
     type OnKilledAccount = ();
     type SystemWeightInfo = ();
+    type PalletInfo = ();
 }
 
 parameter_types! {
@@ -139,6 +139,7 @@ impl pallet_balances::Trait for Testtime {
     type ExistentialDeposit = ExistentialDeposit;
     type AccountStore = System;
     type WeightInfo = ();
+    type MaxLocks = ();
 }
 
 impl tokens::Trait for Testtime {
@@ -147,19 +148,16 @@ impl tokens::Trait for Testtime {
     type Amount = Amount;
     type CurrencyId = <Testtime as assets::Trait>::AssetId;
     type OnReceived = ();
+    type WeightInfo = ();
 }
 
 impl currencies::Trait for Testtime {
     type Event = ();
     type MultiCurrency = tokens::Module<Testtime>;
-    type NativeCurrency = BasicCurrencyAdapter<
-        pallet_balances::Module<Testtime>,
-        Balance,
-        Balance,
-        Amount,
-        BlockNumber,
-    >;
+    type NativeCurrency =
+        BasicCurrencyAdapter<Testtime, pallet_balances::Module<Testtime>, Amount, BlockNumber>;
     type GetNativeCurrencyId = <Testtime as assets::Trait>::GetBaseAssetId;
+    type WeightInfo = ();
 }
 
 impl assets::Trait for Testtime {
