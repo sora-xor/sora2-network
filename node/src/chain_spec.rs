@@ -76,6 +76,14 @@ pub fn staging_test_net() -> ChainSpec {
                     authority_keys_from_seed("Dave"),
                 ],
                 vec![
+                    get_account_id_from_seed::<sr25519::Public>("Alice"),
+                    get_account_id_from_seed::<sr25519::Public>("Bob"),
+                    get_account_id_from_seed::<sr25519::Public>("Charlie"),
+                    get_account_id_from_seed::<sr25519::Public>("Dave"),
+                    get_account_id_from_seed::<sr25519::Public>("Alice//stash"),
+                    get_account_id_from_seed::<sr25519::Public>("Bob//stash"),
+                    get_account_id_from_seed::<sr25519::Public>("Charlie//stash"),
+                    get_account_id_from_seed::<sr25519::Public>("Dave//stash"),
                     hex!("92c4ff71ae7492a1e6fef5d80546ea16307c560ac1063ffaa5e0e084df1e2b7e").into(),
                 ],
                 hex!("da723e9d76bd60da0ec846895c5e0ecf795b50ae652c012f27e56293277ef372").into(),
@@ -92,6 +100,9 @@ pub fn staging_test_net() -> ChainSpec {
 }
 
 pub fn local_testnet_config() -> ChainSpec {
+    let mut properties = Properties::new();
+    properties.insert("tokenSymbol".into(), "XOR".into());
+    properties.insert("tokenDecimals".into(), 18.into());
     ChainSpec::from_genesis(
         "SORA-Substrate Local Testnet",
         "sora-substrate-local",
@@ -131,7 +142,7 @@ pub fn local_testnet_config() -> ChainSpec {
         vec![],
         None,
         None,
-        None,
+        Some(properties),
         None,
     )
 }
@@ -310,7 +321,7 @@ fn testnet_genesis(
                 .iter()
                 .cloned()
                 .chain(once(faucet_account_id.clone()))
-                .map(|k| (k, (1u128 << 60).into()))
+                .map(|k| (k, initial_balance.into()))
                 .collect(),
         }),
         dex_manager: Some(DEXManagerConfig {
@@ -335,9 +346,9 @@ fn testnet_genesis(
                 (
                     faucet_account_id.clone(),
                     ValId::get(),
-                    (1u128 << 60).into(),
+                    initial_balance.into(),
                 ),
-                (faucet_account_id, PswapId::get(), (1u128 << 60).into()),
+                (faucet_account_id, PswapId::get(), initial_balance.into()),
             ],
         }),
     }
