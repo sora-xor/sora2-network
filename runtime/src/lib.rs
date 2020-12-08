@@ -30,7 +30,7 @@ use static_assertions::assert_eq_size;
 // A few exports that help ease life for downstream crates.
 pub use common::{
     fixed, fixed_from_basis_points,
-    prelude::{Balance, SwapAmount, SwapOutcome, SwapVariant},
+    prelude::{Balance, SwapAmount, SwapOutcome, SwapVariant, WeightToFixedFee},
     AssetSymbol, BalancePrecision, BasisPoints, FilterMode, Fixed, LiquiditySource,
     LiquiditySourceFilter, LiquiditySourceId, LiquiditySourceType,
 };
@@ -39,7 +39,7 @@ pub use frame_support::{
     traits::KeyOwnerProofSystem,
     traits::Randomness,
     weights::constants::{BlockExecutionWeight, ExtrinsicBaseWeight, RocksDbWeight},
-    weights::{constants::WEIGHT_PER_SECOND, IdentityFee, Weight},
+    weights::{constants::WEIGHT_PER_SECOND, Weight},
     StorageValue,
 };
 pub use pallet_balances::Call as BalancesCall;
@@ -479,7 +479,7 @@ impl pallet_transaction_payment::Trait for Runtime {
     type Currency = Balances;
     type OnTransactionPayment = XorFee;
     type TransactionByteFee = TransactionByteFee;
-    type WeightToFee = IdentityFee<Balance>;
+    type WeightToFee = WeightToFixedFee;
     type FeeMultiplierUpdate = ();
 }
 

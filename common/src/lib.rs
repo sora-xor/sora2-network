@@ -13,6 +13,7 @@ mod primitives;
 mod swap_amount;
 mod traits;
 pub mod utils;
+mod weights;
 
 use blake2_rfc;
 use codec::Encode;
@@ -25,6 +26,7 @@ pub mod prelude {
     pub use super::primitives::*;
     pub use super::swap_amount::*;
     pub use super::traits::*;
+    pub use super::weights::*;
     pub use super::Fixed;
 }
 use sp_core::crypto::AccountId32;
