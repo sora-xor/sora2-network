@@ -1,8 +1,9 @@
 use framenode_runtime::{
     opaque::SessionKeys, AccountId, AssetSymbol, AssetsConfig, BabeConfig, BalancesConfig,
-    DEXManagerConfig, DotId, FaucetConfig, GenesisConfig, GetBaseAssetId, GrandpaConfig, KsmId,
-    PermissionsConfig, PswapId, SessionConfig, Signature, StakerStatus, StakingConfig, SudoConfig,
-    SystemConfig, TechAccountId, TechnicalConfig, TokensConfig, UsdId, ValId, XorId, WASM_BINARY,
+    DEXAPIConfig, DEXManagerConfig, DotId, FaucetConfig, GenesisConfig, GetBaseAssetId,
+    GrandpaConfig, KsmId, LiquiditySourceType, PermissionsConfig, PswapId, SessionConfig,
+    Signature, StakerStatus, StakingConfig, SudoConfig, SystemConfig, TechAccountId,
+    TechnicalConfig, TokensConfig, UsdId, ValId, XorId, WASM_BINARY,
 };
 
 use codec::{Decode, Encode};
@@ -92,6 +93,9 @@ pub fn staging_test_net() -> ChainSpec {
 }
 
 pub fn local_testnet_config() -> ChainSpec {
+    let mut properties = Properties::new();
+    properties.insert("tokenSymbol".into(), "XOR".into());
+    properties.insert("tokenDecimals".into(), 18.into());
     ChainSpec::from_genesis(
         "SORA-Substrate Local Testnet",
         "sora-substrate-local",
@@ -131,7 +135,7 @@ pub fn local_testnet_config() -> ChainSpec {
         vec![],
         None,
         None,
-        None,
+        Some(properties),
         None,
     )
 }
@@ -289,7 +293,7 @@ fn testnet_genesis(
                     vec![permissions::INIT_DEX],
                 ),
                 (
-                    dex_root.clone(),
+                    dex_root,
                     Scope::Limited(hash(&0u32)),
                     vec![permissions::MANAGE_DEX],
                 ),
@@ -339,6 +343,9 @@ fn testnet_genesis(
                 ),
                 (faucet_account_id, PswapId::get(), (1u128 << 60).into()),
             ],
+        }),
+        dex_api: Some(DEXAPIConfig {
+            source_types: [LiquiditySourceType::XYKPool].into(),
         }),
     }
 }

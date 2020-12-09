@@ -111,6 +111,16 @@ impl crate::Module<Testtime> {
                 0_u32
             );
 
+            let base_asset: AssetId = GoldenTicket.into();
+            let target_asset: AssetId = BlackPepper.into();
+            let tech_asset: AssetId = crate::Module::<Testtime>::get_marking_asset(&tech_acc_id)
+                .expect("Failed to get marking asset")
+                .into();
+            assert_eq!(
+                crate::Module::<Testtime>::properties(base_asset, target_asset),
+                Some((repr.clone(), fee_repr.clone(), tech_asset))
+            );
+
             for test in &tests {
                 test(
                     dex_id.clone(),

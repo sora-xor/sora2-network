@@ -7,7 +7,7 @@ use common::{
     LiquiditySourceType,
 };
 use frame_support::{
-    decl_error, decl_event, decl_module, dispatch::DispatchResult, ensure,
+    decl_error, decl_event, decl_module, decl_storage, dispatch::DispatchResult, ensure,
     sp_runtime::DispatchError, weights::Weight, StorageMap,
 };
 use frame_system::ensure_signed;
@@ -72,6 +72,12 @@ pub trait Trait: common::Trait + dex_manager::Trait + trading_pair::Trait {
 
     /// Weight information for extrinsics in this pallet.
     type WeightInfo: WeightInfo;
+}
+
+decl_storage! {
+    trait Store for Module<T: Trait> as DexApiModule {
+        pub EnabledSourceTypes config(source_types): Vec<LiquiditySourceType>;
+    }
 }
 
 decl_event!(
@@ -260,15 +266,10 @@ impl<T: Trait>
 }
 
 impl<T: Trait> Module<T> {
+    /// List liquidity source types which are enabled on chain, this applies to all DEX'es.
+    /// Used in aggregation pallets, such as liquidity-proxy.
     pub fn get_supported_types() -> Vec<LiquiditySourceType> {
-        [
-            LiquiditySourceType::MockPool,
-            LiquiditySourceType::MockPool2,
-            LiquiditySourceType::MockPool3,
-            LiquiditySourceType::MockPool4,
-            LiquiditySourceType::XYKPool,
-        ]
-        .into()
+        EnabledSourceTypes::get()
     }
 }
 
@@ -291,8 +292,8 @@ impl<T: Trait>
             .iter()
             .filter_map(|source_type| {
                 if filter.matches_index(*source_type)
-                    && T::MockLiquiditySource::can_exchange(
-                        &filter.dex_id,
+                    && Self::can_exchange(
+                        &LiquiditySourceId::new(filter.dex_id, *source_type),
                         input_asset_id,
                         output_asset_id,
                     )

@@ -656,7 +656,7 @@ construct_runtime! {
         MockLiquiditySource2: mock_liquidity_source::<Instance2>::{Module, Call, Storage, Config<T>, Event<T>},
         MockLiquiditySource3: mock_liquidity_source::<Instance3>::{Module, Call, Storage, Config<T>, Event<T>},
         MockLiquiditySource4: mock_liquidity_source::<Instance4>::{Module, Call, Storage, Config<T>, Event<T>},
-        DEXAPI: dex_api::{Module, Call, Event<T>},
+        DEXAPI: dex_api::{Module, Call, Storage, Config, Event<T>},
         Faucet: faucet::{Module, Call, Config<T>, Event<T>},
     }
 }

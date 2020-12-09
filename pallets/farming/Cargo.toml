@@ -29,7 +29,6 @@ sp-io = { version = "2.0.0", default-features = false }
 pallet-balances = { version = "2.0.0", default-features = false }
 currencies = { version = "0.3.2", package = "orml-currencies", default-features = false }
 tokens = { version = "0.3.2", package = "orml-tokens", default-features = false }
-
 mock-liquidity-source = { path = "../mock-liquidity-source", default-features = false }
 
 [features]
