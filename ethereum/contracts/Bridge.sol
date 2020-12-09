@@ -48,7 +48,8 @@ contract Bridge {
         )
     public
     shouldBeInitialized {
-         require(checkSignatures(keccak256(abi.encode(thisContractAddress, salt)),
+        require(address(this) == thisContractAddress);
+        require(checkSignatures(keccak256(abi.encode(thisContractAddress, salt)),
             v,
             r,
             s), "Peer signatures are invalid"
@@ -83,20 +84,22 @@ contract Bridge {
         _sidechainTokensByAddress[address(tokenInstance)] = sidechainAssetId;
     }
     
-    function sendEthToSidechain(bytes32 destination) 
+    function sendEthToSidechain(
+        bytes32 to
+        ) 
     public 
     payable
     shouldBeInitialized {
         require(msg.value > 0, "ETH VALUE SHOULD BE MORE THAN 0");
         bytes32 empty;
-        emit Deposit(destination, msg.value, address(0x0), empty);
+        emit Deposit(to, msg.value, address(0x0), empty);
     }
 
     /**
      * A special function-like stub to allow ether accepting
      */
     function sendERC20ToSidechain(
-        bytes32 destination, 
+        bytes32 to, 
         uint amount, 
         address tokenAddress) 
         external 
@@ -113,7 +116,7 @@ contract Bridge {
         } else {
             token.transferFrom(msg.sender, address(this), amount);
         }
-        emit Deposit(destination, amount, tokenAddress, sidechainAssetId);
+        emit Deposit(to, amount, tokenAddress, sidechainAssetId);
     }
 
     function addPeerByPeer(
