@@ -20,6 +20,7 @@ contract Bridge {
 
     event Withdrawal(bytes32 txHash);
     event Deposit(bytes32 destination, uint amount, address token, bytes32 sidechainAsset);
+    event ChangePeers(address peerId, bool removal);
 
     /**
      * Constructor.
@@ -47,7 +48,7 @@ contract Bridge {
         )
     public
     shouldBeInitialized {
-         require(checkSignatures(keccak256(abi.encodePacked(thisContractAddress, salt)),
+         require(checkSignatures(keccak256(abi.encode(thisContractAddress, salt)),
             v,
             r,
             s), "Peer signatures are invalid"
@@ -66,7 +67,7 @@ contract Bridge {
         bytes32[] memory s) 
         public {
         
-        require(checkSignatures(keccak256(abi.encodePacked(
+        require(checkSignatures(keccak256(abi.encode(
             name, 
             symbol, 
             decimals, 
@@ -127,7 +128,7 @@ contract Bridge {
     returns (bool)
     {
         require(used[txHash] == false);
-        require(checkSignatures(keccak256(abi.encodePacked(newPeerAddress, txHash)),
+        require(checkSignatures(keccak256(abi.encode(newPeerAddress, txHash)),
             v,
             r,
             s), "Peer signatures are invalid"
@@ -135,6 +136,7 @@ contract Bridge {
 
         addPeer(newPeerAddress);
         used[txHash] = true;
+        emit ChangePeers(newPeerAddress, false);
         return true;
     }
 
@@ -151,7 +153,7 @@ contract Bridge {
     {
         require(used[txHash] == false);
         require(checkSignatures(
-                keccak256(abi.encodePacked(peerAddress, txHash)),
+                keccak256(abi.encode(peerAddress, txHash)),
                 v,
                 r,
                 s), "Peer signatures are invalid"
@@ -159,6 +161,7 @@ contract Bridge {
 
         removePeer(peerAddress);
         used[txHash] = true;
+        emit ChangePeers(peerAddress, true);
         return true;
     }
 
@@ -187,7 +190,7 @@ contract Bridge {
     {
         require(used[txHash] == false);
         require(checkSignatures(
-                keccak256(abi.encodePacked(tokenAddress, amount, to, txHash, from)),
+                keccak256(abi.encode(tokenAddress, amount, to, txHash, from)),
                 v,
                 r,
                 s), "Peer signatures are invalid"
@@ -210,7 +213,7 @@ contract Bridge {
      * Mint new Token
      * @param sidechainAssetId id of sidechainToken to mint
      * @param amount how much to mint
-     * @param beneficiary destination address
+     * @param to destination address
      * @param txHash hash of transaction from Iroha
      * @param v array of signatures of tx_hash (v-component)
      * @param r array of signatures of tx_hash (r-component)
@@ -219,7 +222,7 @@ contract Bridge {
     function receiveBySidechainAssetId(
         bytes32 sidechainAssetId,
         uint256 amount,
-        address beneficiary,
+        address to,
         bytes32 txHash,
         uint8[] memory v,
         bytes32[] memory r,
@@ -231,14 +234,14 @@ contract Bridge {
         require(_sidechainTokens[sidechainAssetId] != address(0x0), "Sidechain asset is not registered");
         require(used[txHash] == false);
         require(checkSignatures(
-                keccak256(abi.encodePacked(sidechainAssetId, amount, beneficiary, txHash, from)),
+                keccak256(abi.encode(sidechainAssetId, amount, to, txHash, from)),
                 v,
                 r,
                 s), "Peer signatures are invalid"
         );
 
         MasterToken tokenInstance = MasterToken(_sidechainTokens[sidechainAssetId]);       
-        tokenInstance.mintTokens(beneficiary, amount);
+        tokenInstance.mintTokens(to, amount);
         used[txHash] = true;
         emit Withdrawal(txHash);
     }
