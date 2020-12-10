@@ -1,8 +1,9 @@
 use framenode_runtime::{
     opaque::SessionKeys, AccountId, AssetSymbol, AssetsConfig, BabeConfig, BalancesConfig,
-    DEXManagerConfig, DotId, FaucetConfig, GenesisConfig, GetBaseAssetId, GrandpaConfig, KsmId,
-    PermissionsConfig, PswapId, SessionConfig, Signature, StakerStatus, StakingConfig, SudoConfig,
-    SystemConfig, TechAccountId, TechnicalConfig, TokensConfig, UsdId, ValId, XorId, WASM_BINARY,
+    DEXAPIConfig, DEXManagerConfig, DotId, FaucetConfig, GenesisConfig, GetBaseAssetId,
+    GrandpaConfig, KsmId, LiquiditySourceType, PermissionsConfig, PswapId, SessionConfig,
+    Signature, StakerStatus, StakingConfig, SudoConfig, SystemConfig, TechAccountId,
+    TechnicalConfig, TokensConfig, UsdId, ValId, XorId, WASM_BINARY,
 };
 
 use codec::{Decode, Encode};
@@ -300,7 +301,7 @@ fn testnet_genesis(
                     vec![permissions::INIT_DEX],
                 ),
                 (
-                    dex_root.clone(),
+                    dex_root,
                     Scope::Limited(hash(&0u32)),
                     vec![permissions::MANAGE_DEX],
                 ),
@@ -350,6 +351,9 @@ fn testnet_genesis(
                 ),
                 (faucet_account_id, PswapId::get(), initial_balance.into()),
             ],
+        }),
+        dex_api: Some(DEXAPIConfig {
+            source_types: [LiquiditySourceType::XYKPool].into(),
         }),
     }
 }

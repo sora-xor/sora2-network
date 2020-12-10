@@ -1225,10 +1225,43 @@ decl_storage! {
               hasher(blake2_128_concat) T::AssetId => (Balance, Balance);
         /// Collection of all registered marker tokens.
         pub MarkerTokensIndex get(fn marker_tokens_index): Vec<T::AssetId>;
+        /// Properties of particular pool. [Reserves Account Id, Fees Account Id, Marker Asset Id]
+        pub Properties get(fn properties): double_map
+              hasher(blake2_128_concat) T::AssetId,
+              hasher(blake2_128_concat) T::AssetId => Option<(T::AccountId, T::AccountId, T::AssetId)>;
     }
 }
 
 impl<T: Trait> Module<T> {
+    fn initialize_pool_properties(
+        asset_a: &T::AssetId,
+        asset_b: &T::AssetId,
+        reserves_account_id: &T::AccountId,
+        fees_account_id: &T::AccountId,
+        marker_asset_id: &T::AssetId,
+    ) {
+        let base_asset_id: T::AssetId = T::GetBaseAssetId::get();
+        let (sorted_asset_a, sorted_asset_b) = if &base_asset_id == asset_a {
+            (asset_a, asset_b)
+        } else if &base_asset_id == asset_b {
+            (asset_b, asset_a)
+        } else {
+            let hash_key = common::comm_merkle_op(asset_a, asset_b);
+            let (asset_a_pair, asset_b_pair) =
+                common::sort_with_hash_key(hash_key, (asset_a, &()), (asset_b, &()));
+            (asset_a_pair.0, asset_b_pair.0)
+        };
+        Properties::<T>::insert(
+            sorted_asset_a,
+            sorted_asset_b,
+            (
+                reserves_account_id.clone(),
+                fees_account_id.clone(),
+                marker_asset_id.clone(),
+            ),
+        )
+    }
+
     fn update_reserves(
         asset_a: &T::AssetId,
         asset_b: &T::AssetId,
@@ -1428,9 +1461,10 @@ impl<T: Trait> Module<T> {
 decl_event!(
     pub enum Event<T>
     where
-        TechAccountId = TechAccountIdOf<T>,
+        AccountId = <T as frame_system::Trait>::AccountId,
     {
-        PoolIsInitialized(TechAccountId),
+        // New pool for particular pair was initialized. [Reserves Account Id]
+        PoolIsInitialized(AccountId),
     }
 );
 
@@ -1577,6 +1611,7 @@ impl<T: Trait> Module<T> {
         (
             common::TradingPair<TechAssetIdOf<T>>,
             TechAccountIdOf<T>,
+            TechAccountIdOf<T>,
             TechAssetIdOf<T>,
         ),
         DispatchError,
@@ -1586,7 +1621,7 @@ impl<T: Trait> Module<T> {
         let fee_acc_id = tech_acc_id.to_fee_account().unwrap();
         let mark_asset = Module::<T>::get_marking_asset(&tech_acc_id)?;
         // Function initialize_pools is usually called once, just quick check if tech
-        // account is not registered is enougth to do the job.
+        // account is not registered is enough to do the job.
         // If function is called second time, than this is not usual case and additional checks
         // can be done, check every condition for `PoolIsAlreadyInitialized`.
         if technical::Module::<T>::ensure_tech_account_registered(&tech_acc_id).is_ok() {
@@ -1604,8 +1639,8 @@ impl<T: Trait> Module<T> {
             }
         }
         technical::Module::<T>::register_tech_account_id(tech_acc_id.clone())?;
-        technical::Module::<T>::register_tech_account_id(fee_acc_id)?;
-        Ok((trading_pair, tech_acc_id, mark_asset))
+        technical::Module::<T>::register_tech_account_id(fee_acc_id.clone())?;
+        Ok((trading_pair, tech_acc_id, fee_acc_id, mark_asset))
     }
 
     fn deposit_liquidity_unchecked(
@@ -1756,10 +1791,11 @@ decl_module! {
         {
                 let source = ensure_signed(origin.clone())?;
                 <T as Trait>::EnsureDEXOwner::ensure_dex_owner(&dex_id, origin.clone())?;
-                let (_,tech_account_id,mark_asset) = Module::<T>::initialize_pool_unchecked(source.clone(), dex_id, asset_a, asset_b)?;
+                let (_,tech_account_id, fees_account_id, mark_asset) = Module::<T>::initialize_pool_unchecked(source.clone(), dex_id, asset_a, asset_b)?;
                 let mark_asset_repr: T::AssetId = mark_asset.into();
                 assets::Module::<T>::register_asset_id(source.clone(), mark_asset_repr, AssetSymbol(b"XYKPOOL".to_vec()), 18)?;
                 let ta_repr = technical::Module::<T>::tech_account_id_to_account_id(&tech_account_id)?;
+                let fees_ta_repr = technical::Module::<T>::tech_account_id_to_account_id(&fees_account_id)?;
                 // Minting permission is needed for technical account to mint markered tokens of
                 // liquidity into account who deposit liquidity.
                 permissions::Module::<T>::grant_permission_with_scope(
@@ -1770,11 +1806,11 @@ decl_module! {
                    )?;
                 permissions::Module::<T>::grant_permission_with_scope(
                    source,
-                   ta_repr,
+                   ta_repr.clone(),
                    BURN,
                    Scope::Limited(hash(&Into::<AssetIdOf::<T>>::into(mark_asset.clone())))
                    )?;
-                //  TODO: check and enable this than swap distribution will be available.
+                //  TODO: check and enable this when pswap-distribution will be available.
                 //  pswap_distribution::Module::<T>::subscribe(fee_acc_id.clone().into(),
                 //                dex_id.clone(), mark_asset.into(), frequency)?;
                 MarkerTokensIndex::<T>::mutate( |mti| {
@@ -1782,7 +1818,8 @@ decl_module! {
                         mti.insert(index, mark_asset_repr);
                     }
                 });
-                Self::deposit_event(RawEvent::PoolIsInitialized(tech_account_id.clone()));
+                Module::<T>::initialize_pool_properties(&asset_a, &asset_b, &ta_repr, &fees_ta_repr, &mark_asset_repr);
+                Self::deposit_event(RawEvent::PoolIsInitialized(ta_repr));
                 Ok(())
         }
 

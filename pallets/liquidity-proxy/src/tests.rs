@@ -28,10 +28,6 @@ fn test_quote_exact_input_base_should_pass() {
             &dist,
             &[
                 (
-                    LiquiditySourceId::new(DEX_C_ID, LiquiditySourceType::XYKPool),
-                    fixed!(0, 0),
-                ),
-                (
                     LiquiditySourceId::new(DEX_C_ID, LiquiditySourceType::MockPool),
                     fixed!(0, 1),
                 ),
@@ -71,10 +67,6 @@ fn test_quote_exact_input_target_should_pass() {
         assert_eq!(
             &dist,
             &[
-                (
-                    LiquiditySourceId::new(DEX_C_ID, LiquiditySourceType::XYKPool),
-                    fixed!(0, 0),
-                ),
                 (
                     LiquiditySourceId::new(DEX_C_ID, LiquiditySourceType::MockPool),
                     fixed!(0, 275),
@@ -121,10 +113,6 @@ fn test_quote_exact_output_target_should_pass() {
             &dist,
             &[
                 (
-                    LiquiditySourceId::new(DEX_C_ID, LiquiditySourceType::XYKPool),
-                    fixed!(0),
-                ),
-                (
                     LiquiditySourceId::new(DEX_C_ID, LiquiditySourceType::MockPool),
                     fixed!(0),
                 ),
@@ -169,10 +157,6 @@ fn test_quote_exact_output_base_should_pass() {
         assert_eq!(
             &dist,
             &[
-                (
-                    LiquiditySourceId::new(DEX_C_ID, LiquiditySourceType::XYKPool),
-                    fixed!(0, 0),
-                ),
                 (
                     LiquiditySourceId::new(DEX_C_ID, LiquiditySourceType::MockPool),
                     fixed!(0, 325),

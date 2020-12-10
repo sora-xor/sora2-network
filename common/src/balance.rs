@@ -27,7 +27,6 @@ use static_assertions::{assert_eq_align, assert_eq_size};
 #[derive(Debug, Clone, Copy, Encode, Decode, Default, PartialEq, Eq, PartialOrd, Ord)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct Balance(pub Fixed);
-//TODO add precisionq
 
 impl From<Fixed> for Balance {
     fn from(fixed: Fixed) -> Self {

@@ -1,7 +1,7 @@
 use crate::{Module, Trait};
 use common::{
-    fixed_from_basis_points, hash, prelude::Balance, Amount, AssetId32, DEXInfo, Fixed, DOT, KSM,
-    XOR,
+    fixed_from_basis_points, hash, prelude::Balance, Amount, AssetId32, DEXInfo, Fixed,
+    LiquiditySourceType, DOT, KSM, XOR,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::{impl_outer_origin, parameter_types, weights::Weight};
@@ -218,6 +218,7 @@ pub struct ExtBuilder {
     dex_list: Vec<(DEXId, DEXInfo<AssetId>)>,
     initial_permission_owners: Vec<(u32, Scope, Vec<AccountId>)>,
     initial_permissions: Vec<(AccountId, Scope, Vec<u32>)>,
+    source_types: Vec<LiquiditySourceType>,
 }
 
 impl Default for ExtBuilder {
@@ -275,6 +276,12 @@ impl Default for ExtBuilder {
                 (alice(), Scope::Limited(hash(&DEX_A_ID)), vec![MANAGE_DEX]),
                 (alice(), Scope::Limited(hash(&DEX_B_ID)), vec![MANAGE_DEX]),
             ],
+            source_types: vec![
+                LiquiditySourceType::MockPool,
+                LiquiditySourceType::MockPool2,
+                LiquiditySourceType::MockPool3,
+                LiquiditySourceType::MockPool4,
+            ],
         }
     }
 }
@@ -328,6 +335,12 @@ impl ExtBuilder {
         mock_liquidity_source::GenesisConfig::<Runtime, mock_liquidity_source::Instance4> {
             reserves: self.reserves_4,
             phantom: Default::default(),
+        }
+        .assimilate_storage(&mut t)
+        .unwrap();
+
+        crate::GenesisConfig {
+            source_types: self.source_types,
         }
         .assimilate_storage(&mut t)
         .unwrap();
