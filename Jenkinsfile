@@ -3,9 +3,9 @@
 String agentLabel = 'docker-build-agent'
 String registry = "docker.soramitsu.co.jp"
 String dockerBuildToolsUserId = 'bot-build-tools-ro'
-String dockerRegistryRWUserId = 'bot-soraneo-rw'
-String baseImageName = "docker.soramitsu.co.jp/soraneo/soraneo-substrate-env:latest"
-String appImageName = "docker.soramitsu.co.jp/soraneo/soraneo-substrate"
+String dockerRegistryRWUserId = 'bot-sora2-rw'
+String baseImageName = "docker.soramitsu.co.jp/sora2/substrate-env:latest"
+String appImageName = "docker.soramitsu.co.jp/sora2/substrate"
 String secretScannerExclusion = '.*Cargo.toml'
 Boolean disableSecretScanner = false
 
