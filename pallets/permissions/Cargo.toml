@@ -1,0 +1,34 @@
+[package]
+authors = ['Nikita Puzankov <puzankov@soramitsu.co.jp']
+description = 'Polkaswap pallet for defining permissions model.'
+edition = '2018'
+license = 'MIT OR Apache-2.0'
+name = 'permissions'
+repository = 'https://github.com/soramitsu/SoraNeo-substrate/'
+version = '0.1.0'
+
+[package.metadata.docs.rs]
+targets = ['x86_64-unknown-linux-gnu']
+
+[dependencies]
+codec = { package = "parity-scale-codec", version = "1.3.1", default-features = false, features = ["derive"] }
+serde = { version = "1.0.101", optional = true, features = ["derive"] }
+frame-support = { version = "2.0.0", default-features = false }
+frame-system = { version = "2.0.0", default-features = false }
+sp-core = { version = "2.0.0", default-features = false }
+sp-std = { version = "2.0.0", default-features = false }
+
+[dev-dependencies]
+sp-io = { version = "2.0.0", default-features = false }
+sp-runtime = { version = "2.0.0", default-features = false }
+
+[features]
+default = ['std']
+std = [
+    'codec/std',
+    'serde',
+    'frame-support/std',
+    'frame-system/std',
+    'sp-core/std',
+    'sp-std/std',
+]

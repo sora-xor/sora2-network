@@ -1,24 +1,23 @@
-# Substrate Cumulus Parachain Template
 
-A new Cumulus-based Substrate node, ready for hacking :rocket:
+<pre>
+use
+sh run_script.sh
+</pre>
+
+
+
+# Substrate Node Template
+
+A new FRAME-based Substrate node, ready for hacking :rocket:
 
 ## Local Development
 
 Follow these steps to prepare a local Substrate development environment :hammer_and_wrench:
 
-### Simple Setup
+### Setup
 
-Install all the required dependencies with a single command (be patient, this can take up to 30
-minutes).
-
-```bash
-curl https://getsubstrate.io -sSf | bash -s -- --fast
-```
-
-### Manual Setup
-
-Find manual setup instructions at the
-[Substrate Developer Hub](https://substrate.dev/docs/en/knowledgebase/getting-started/#manual-installation).
+Setup instructions can be found at the
+[Substrate Developer Hub](https://substrate.dev/docs/en/knowledgebase/getting-started).
 
 ### Build
 
@@ -27,46 +26,32 @@ Once the development environment is set up, build the node template. This comman
 [native](https://substrate.dev/docs/en/knowledgebase/advanced/executor#native-execution) code:
 
 ```bash
-cargo build --release
+WASM_BUILD_TOOLCHAIN=nightly-2020-10-05 cargo build --release
 ```
 
 ## Run
 
-### Single Staging Node Chain
+### Single Node Development Chain
 
-Purge any existing staging chain state:
-
-```bash
-./target/release/parachain-collator purge-chain --chain staging
-```
-
-Start a staging chain:
+Purge any existing dev chain state:
 
 ```bash
-./target/release/parachain-collator --chain staging
+./target/release/framenode purge-chain --dev
 ```
 
-Or, start a staging chain with detailed logging:
+Start a dev chain:
 
 ```bash
-RUST_LOG=debug RUST_BACKTRACE=1 ./target/release/parachain-collator -lruntime=debug --chain staging
+./target/release/framenode --dev
 ```
 
-### Local Testnet
+Or, start a dev chain with detailed logging:
 
-Polkadot (rococo-branch):
-```
-./target/release/polkadot build-spec --chain rococo-local --raw --disable-default-bootnode > rococo_local.json
-
-./target/release/polkadot --chain ./rococo_local.json -d cumulus_relay1 --validator --bob --port 50555
-./target/release/polkadot --chain ./rococo_local.json -d cumulus_relay0 --validator --alice --port 50556
+```bash
+RUST_LOG=debug RUST_BACKTRACE=1 ./target/release/framenode -lruntime=debug --dev
 ```
 
-Substrate Parachain Template:
-```
-# this command assumes the chain spec is in a directory named polkadot that is a sibling of the working directory
-./target/release/parachain-collator -d local-test --validator --ws-port 9945 --parachain-id 200 -- --chain ../polkadot/rococo_local.json
-```
+### Multi-Node Local Testnet
 
 If you want to see the multi-node consensus algorithm in action, refer to
 [our Start a Private Network tutorial](https://substrate.dev/docs/en/tutorials/start-a-private-network/).
@@ -86,7 +71,8 @@ Substrate-based blockchain nodes expose a number of capabilities:
 -   Consensus: Blockchains must have a way to come to
     [consensus](https://substrate.dev/docs/en/knowledgebase/advanced/consensus) on the state of the
     network. Substrate makes it possible to supply custom consensus engines and also ships with
-    several consensus mechanisms that have been built on top of Web3 Foundation research.
+    several consensus mechanisms that have been built on top of
+    [Web3 Foundation research](https://research.web3.foundation/en/latest/polkadot/NPoS/index.html).
 -   RPC Server: A remote procedure call (RPC) server is used to interact with Substrate nodes.
 
 There are several files in the `node` directory - take special note of the following:
@@ -102,23 +88,33 @@ There are several files in the `node` directory - take special note of the follo
     and use them to configure the blockchain's initial state.
 -   [`service.rs`](./node/src/service.rs): This file defines the node implementation. Take note of
     the libraries that this file imports and the names of the functions it invokes. In particular,
-    there are references to consensus-related topics.
+    there are references to consensus-related topics, such as the
+    [longest chain rule](https://substrate.dev/docs/en/knowledgebase/advanced/consensus#longest-chain-rule),
+    the [Aura](https://substrate.dev/docs/en/knowledgebase/advanced/consensus#aura) block authoring
+    mechanism and the
+    [GRANDPA](https://substrate.dev/docs/en/knowledgebase/advanced/consensus#grandpa) finality
+    gadget.
 
 After the node has been [built](#build), refer to the embedded documentation to learn more about the
 capabilities and configuration parameters that it exposes:
 
 ```shell
-./target/release/parachain-collator --help
+./target/release/framenode --help
 ```
 
 ### Runtime
 
-The Substrate project in this repository uses the
-[FRAME](https://substrate.dev/docs/en/knowledgebase/runtime/frame) framework to construct a
+In Substrate, the terms
+"[runtime](https://substrate.dev/docs/en/knowledgebase/getting-started/glossary#runtime)" and
+"[state transition function](https://substrate.dev/docs/en/knowledgebase/getting-started/glossary#stf-state-transition-function)"
+are analogous - they refer to the core logic of the blockchain that is responsible for validating
+blocks and executing the state changes they define. The Substrate project in this repository uses
+the [FRAME](https://substrate.dev/docs/en/knowledgebase/runtime/frame) framework to construct a
 blockchain runtime. FRAME allows runtime developers to declare domain-specific logic in modules
 called "pallets". At the heart of FRAME is a helpful
 [macro language](https://substrate.dev/docs/en/knowledgebase/runtime/macros) that makes it easy to
-create pallets and flexibly compose them to create blockchains that can address a variety of needs.
+create pallets and flexibly compose them to create blockchains that can address
+[a variety of needs](https://www.substrate.io/substrate-users/).
 
 Review the [FRAME runtime implementation](./runtime/src/lib.rs) included in this template and note
 the following:
@@ -150,3 +146,29 @@ A FRAME pallet is compromised of a number of blockchain primitives:
 -   Errors: When a dispatchable fails, it returns an error.
 -   Trait: The `Trait` configuration interface is used to define the types and parameters upon which
     a FRAME pallet depends.
+
+### Run in Docker
+
+First, install [Docker](https://docs.docker.com/get-docker/) and
+[Docker Compose](https://docs.docker.com/compose/install/).
+
+Then run the following command to start a single node development chain.
+
+```bash
+./scripts/docker_run.sh
+```
+
+This command will firstly compile your code, and then start a local development network. You can
+also replace the default command (`cargo build --release && ./target/release/framenode --dev --ws-external`)
+by appending your own. A few useful ones are as follow.
+
+```bash
+# Run Substrate node without re-compiling
+./scripts/docker_run.sh ./target/release/framenode --dev --ws-external
+
+# Purge the local dev chain
+./scripts/docker_run.sh ./target/release/framenode purge-chain --dev
+
+# Check whether the code is compilable
+./scripts/docker_run.sh cargo check
+```
