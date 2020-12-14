@@ -1,4 +1,6 @@
 
+# Please use this script first, to run testnet
+
 <pre>
 use
 sh run_script.sh
