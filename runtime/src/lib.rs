@@ -765,6 +765,15 @@ impl_runtime_apis! {
         }
     }
 
+    impl pallet_transaction_payment_rpc_runtime_api::TransactionPaymentApi<
+        Block,
+        Balance,
+    > for Runtime {
+        fn query_info(uxt: <Block as BlockT>::Extrinsic, len: u32) -> pallet_transaction_payment_rpc_runtime_api::RuntimeDispatchInfo<Balance> {
+            TransactionPayment::query_info(uxt, len)
+        }
+    }
+
     impl dex_manager_runtime_api::DEXManagerAPI<Block, DEXId> for Runtime {
         fn list_dex_ids() -> Vec<DEXId> {
             DEXManager::list_dex_ids()

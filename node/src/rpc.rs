@@ -3,7 +3,7 @@
 use common::TradingPair;
 use framenode_runtime::{
     opaque::Block, AccountId, AssetId, AssetSymbol, Balance, BalancePrecision, DEXId, FilterMode,
-    LiquiditySourceType, SwapVariant,
+    Index, LiquiditySourceType, SwapVariant,
 };
 pub use sc_rpc::DenyUnsafe;
 pub use sc_rpc::SubscriptionTaskExecutor;
@@ -32,6 +32,8 @@ where
     C: ProvideRuntimeApi<Block>,
     C: HeaderBackend<Block> + HeaderMetadata<Block, Error = BlockChainError>,
     C: Send + Sync + 'static,
+    C::Api: substrate_frame_rpc_system::AccountNonceApi<Block, AccountId, Index>,
+    C::Api: pallet_transaction_payment_rpc::TransactionPaymentRuntimeApi<Block, Balance>,
     C::Api: dex_api_rpc::DEXRuntimeAPI<
         Block,
         AssetId,
@@ -66,9 +68,23 @@ where
     use dex_api_rpc::{DEX, DEXAPI};
     use dex_manager_rpc::{DEXManager, DEXManagerAPI};
     use liquidity_proxy_rpc::{LiquidityProxyAPI, LiquidityProxyClient};
+    use pallet_transaction_payment_rpc::{TransactionPayment, TransactionPaymentApi};
+    use substrate_frame_rpc_system::{FullSystem, SystemApi};
     use trading_pair_rpc::{TradingPairAPI, TradingPairClient};
     let mut io = jsonrpc_core::IoHandler::default();
-    let FullDeps { client, .. } = deps;
+    let FullDeps {
+        client,
+        pool,
+        deny_unsafe,
+    } = deps;
+    io.extend_with(SystemApi::to_delegate(FullSystem::new(
+        client.clone(),
+        pool,
+        deny_unsafe,
+    )));
+    io.extend_with(TransactionPaymentApi::to_delegate(TransactionPayment::new(
+        client.clone(),
+    )));
     io.extend_with(DEXAPI::to_delegate(DEX::new(client.clone())));
     io.extend_with(DEXManagerAPI::to_delegate(DEXManager::new(client.clone())));
     io.extend_with(TradingPairAPI::to_delegate(TradingPairClient::new(
