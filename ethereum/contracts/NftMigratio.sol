@@ -6,9 +6,17 @@ contract NftMigration {
     address public owner;
     address public nftCreator = 0x3482549fCa7511267C9Ef7089507c0F16eA1dcC1;
     IERC1155 soramotoContract = IERC1155(0xd07dc4262BCDbf85190C01c996b4C06a461d2430); 
+    mapping (uint => bool) public acceptableNft;
     
     constructor() {
         owner = msg.sender;
+        acceptableNft[6895] = true;
+        acceptableNft[88849] = true;
+        acceptableNft[77235] = true;
+        acceptableNft[24403] = true;
+        acceptableNft[6929] = true;
+        acceptableNft[30297] = true;
+        acceptableNft[12277] = true;
     }
     
     event Deposit(
@@ -21,10 +29,12 @@ contract NftMigration {
         uint256[] calldata tokenIds, 
         uint256[] calldata values,
         bytes calldata data)
-        
         public {
         if(msg.sender != owner && msg.sender != nftCreator) {
             require(soramotoContract.isApprovedForAll(msg.sender, address(this)), "Tokens are not approved");
+            for (uint i=0; i<tokenIds.length; i++) {
+                require(acceptableNft[tokenIds[i]], "One of NFT Id is not acceptable");
+            }
             soramotoContract.safeBatchTransferFrom(
             msg.sender, 
             address(this), 
@@ -32,13 +42,32 @@ contract NftMigration {
             values,
             data);
             
-                emit Deposit(
+            emit Deposit(
+                substrateAddress,
+                tokenIds, 
+                values
+            );
+            }
+        }
+        
+/*    function test() public {
+        bytes32 substrateAddress = keccak256(abi.encode("Some test value"));
+
+        uint256[] memory tokenIds = new uint256[](3);
+        tokenIds[0] = (uint(34234));
+        tokenIds[1] = uint(65463);
+        tokenIds[2] = uint(457567);
+        
+        uint256[] memory values = new uint256[](3);
+        values[0] = uint(23);
+        values[1] = uint(654);
+        values[2] = uint(4575);
+        emit Deposit(
                     substrateAddress,
                     tokenIds, 
                     values
                 );
-            }
-        }
+    }*/
 }
 
 interface IERC165 {
