@@ -3,6 +3,7 @@
 use common::{fixed, prelude::*};
 use frame_support::{
     decl_error, decl_event, decl_module, decl_storage, dispatch::DispatchResult, ensure,
+    weights::Pays,
 };
 use frame_system::ensure_signed;
 use sp_arithmetic::traits::Saturating;
@@ -71,7 +72,7 @@ decl_module! {
         /// AssetNotSupported is returned if `asset_id` is something the function doesn't support.
         /// AmountAboveLimit is returned if `target` has already received their daily limit of `asset_id`.
         /// NotEnoughReserves is returned if `amount` is greater than the reserves
-        #[weight = 0]
+        #[weight = (0, Pays::No)]
         pub fn transfer(origin, asset_id: T::AssetId, target: T::AccountId, amount: Balance) -> DispatchResult {
             let _ = ensure_signed(origin)?;
             Self::ensure_asset_supported(asset_id)?;
