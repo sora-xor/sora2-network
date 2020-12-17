@@ -17,6 +17,7 @@ contract Bridge {
 
     mapping(bytes32 => address) public _sidechainTokens;
     mapping(address => bytes32) public _sidechainTokensByAddress;
+    address[] public _sidechainTokenAddressArray;
 
     event Withdrawal(bytes32 txHash);
     event Deposit(bytes32 destination, uint amount, address token, bytes32 sidechainAsset);
@@ -39,9 +40,10 @@ contract Bridge {
         _;
     }
     
-    function shutDown(
+    function shutDownAndMigrate(
         address thisContractAddress, 
         string memory salt,
+        address newContractAddress,
         uint8[] memory v,
         bytes32[] memory r,
         bytes32[] memory s
@@ -54,6 +56,12 @@ contract Bridge {
             r,
             s), "Peer signatures are invalid"
         );
+
+        for(uint i=0; i<_sidechainTokenAddressArray.length; i++) {
+            MasterToken token = MasterToken(_sidechainTokenAddressArray[i]);
+            MasterToken(token).transferOwnership(newContractAddress);
+            token.transfer(newContractAddress, token.balanceOf(thisContractAddress)); 
+        }
         initialized_ = false;
     }
     
@@ -82,6 +90,7 @@ contract Bridge {
         MasterToken tokenInstance = new MasterToken(name, symbol, decimals, address(this), supply, sidechainAssetId);
         _sidechainTokens[sidechainAssetId] = address(tokenInstance);
         _sidechainTokensByAddress[address(tokenInstance)] = sidechainAssetId;
+        _sidechainTokenAddressArray.push(address(tokenInstance));
     }
     
     function sendEthToSidechain(
@@ -104,13 +113,13 @@ contract Bridge {
         address tokenAddress) 
         external 
         shouldBeInitialized {
-            
+
         IERC20 token = IERC20(tokenAddress);
         
         require (token.allowance(msg.sender, address(this)) >= amount, "NOT ENOUGH DELEGATED TOKENS ON SENDER BALANCE");
 
         bytes32 sidechainAssetId = _sidechainTokensByAddress[tokenAddress];
-        if(_sidechainTokens[sidechainAssetId] != address(0x0)) {
+        if(sidechainAssetId.length != 0) {
             MasterToken mtoken = MasterToken(tokenAddress);
             mtoken.burnFrom(msg.sender, amount);
         } else {
