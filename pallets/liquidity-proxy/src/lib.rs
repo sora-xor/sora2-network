@@ -3,18 +3,22 @@
 #[macro_use]
 extern crate alloc;
 
+use core::convert::TryFrom;
+
 use codec::{Decode, Encode};
+
 use common::{
-    balance::Balance, fixed, linspace, prelude::SwapAmount, prelude::SwapOutcome,
-    prelude::SwapVariant, FilterMode, Fixed, IntervalEndpoints, LiquidityRegistry, LiquiditySource,
+    fixed, linspace, Balance,
+    FilterMode, Fixed, FixedInner, IntervalEndpoints, LiquidityRegistry, LiquiditySource,
     LiquiditySourceFilter, LiquiditySourceId, LiquiditySourceType,
 };
+use common::prelude::{FixedWrapper, SwapAmount, SwapOutcome, SwapVariant},
+use common::prelude::fixnum::ops::{CheckedMul, Numeric},
 use frame_support::{
     decl_error, decl_event, decl_module, dispatch::DispatchResult, ensure, traits::Get,
     weights::Weight, RuntimeDebug,
 };
 use frame_system::ensure_signed;
-use sp_arithmetic::{traits::Bounded, FixedPointNumber};
 use sp_runtime::DispatchError;
 use sp_std::prelude::*;
 
@@ -98,6 +102,8 @@ decl_error! {
         InsufficientLiquidity,
         /// Path exists but it's not possible to perform exchange with currently available liquidity on pools.
         AggregationError,
+        /// Specified parameters lead to arithmetic error
+        ArithmeticError,
     }
 }
 
@@ -131,7 +137,7 @@ decl_module! {
                 &who,
                 &input_asset_id,
                 &output_asset_id,
-                swap_amount.clone(),
+                swap_amount,
                 LiquiditySourceFilter::with_mode(dex_id, filter_mode, selected_source_types),
             )?;
             let (input_amount, output_amount, fee_amount) = match swap_amount {
@@ -205,7 +211,7 @@ impl<T: Trait> Module<T> {
                                 output_asset_id,
                                 SwapAmount::with_desired_output(*x, *y),
                             )
-                            .unwrap_or_else(|_| SwapOutcome::new(Fixed::max_value(), fixed!(0)))
+                            .unwrap_or_else(|_| SwapOutcome::new(Fixed::MAX, fixed!(0)))
                         })
                         .collect();
                 outputs
@@ -244,9 +250,27 @@ impl<T: Trait> Module<T> {
 
         Ok(res
             .into_iter()
-            .fold(SwapOutcome::new(fixed!(0), fixed!(0)), |acc, x| {
-                SwapOutcome::new(acc.amount + x.amount, acc.fee + x.fee)
-            }))
+            .filter(|(_src, share)| *share > fixed!(0))
+            .map(|(src, share)| {
+                T::LiquidityRegistry::exchange(
+                    origin,
+                    origin,
+                    &src,
+                    input_asset_id,
+                    output_asset_id,
+                    amount * share,
+                )
+            })
+            .collect::<Result<Vec<SwapOutcome<Fixed>>, DispatchError>>()?;
+        let (amount, fee): (FixedWrapper, FixedWrapper) = res
+            .into_iter()
+            .fold((fixed!(0), fixed!(0)), |(amount_acc, fee_acc), x| {
+                (amount_acc + x.amount, fee_acc + x.fee)
+            });
+        let amount = amount.get().map_err(|_| Error::ArithmeticError::<T>)?;
+        let fee = fee.get().map_err(|_| Error::ArithmeticError::<T>)?;
+
+        Ok(SwapOutcome::new(amount, fee))
     }
 
     /// Computes the optimal distribution across available liquidity sources to exectute the requested trade
@@ -267,23 +291,15 @@ impl<T: Trait> Module<T> {
         DispatchError,
     > {
         let num_samples = T::GetNumSamples::get();
-        let sources = T::LiquidityRegistry::list_liquidity_sources(
-            input_asset_id,
-            output_asset_id,
-            filter.clone(),
-        )?;
+        let sources =
+            T::LiquidityRegistry::list_liquidity_sources(input_asset_id, output_asset_id, filter)?;
 
         ensure!(!sources.is_empty(), Error::<T>::UnavailableExchangePath);
 
         let sampling_outcome = sources
             .iter()
-            .map(|src| {
-                Self::sample_liquidity_source(src, input_asset_id, output_asset_id, amount.clone())
-            })
-            .collect::<Vec<_>>();
-
+            .map(|src| Self::sample_liquidity_source(src, input_asset_id, output_asset_id, amount));
         let (sample_data, sample_fees): (Vec<_>, Vec<_>) = sampling_outcome
-            .into_iter()
             .map(|row| {
                 let data = row.iter().map(|x| x.amount).collect::<Vec<_>>();
                 let fees = row.iter().map(|x| x.fee).collect::<Vec<_>>();
@@ -301,13 +317,20 @@ impl<T: Trait> Module<T> {
             Error::<T>::AggregationError
         );
 
-        let total_fee = (0..distr.len()).fold(fixed!(0), |acc, i| {
-            let idx = match (Fixed::from(num_samples as u128) * distr[i]).saturating_mul_int(1u32) {
+        let num_samples =
+            FixedInner::try_from(num_samples).map_err(|_| Error::ArithmeticError::<T>)?;
+        let total_fee: FixedWrapper = (0..distr.len()).fold(fixed!(0), |acc, i| {
+            let idx = match distr[i].cmul(num_samples) {
+                Err(_) => return acc,
+                Ok(index) => index,
+            };
+            let idx = match idx.as_bits() {
                 0 => 0,
                 k => k - 1,
             };
             acc + *sample_fees[i].get(idx as usize).unwrap_or(&fixed!(0))
         });
+        let total_fee = total_fee.get().map_err(|_| Error::ArithmeticError::<T>)?;
 
         Ok(AggregatedSwapOutcome::<
             LiquiditySourceId<T::DEXId, LiquiditySourceType>,

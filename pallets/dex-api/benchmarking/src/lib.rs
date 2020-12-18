@@ -71,31 +71,31 @@ fn setup_benchmark<T: Trait>() -> Result<(), &'static str> {
         owner_origin.clone(),
         XOR.into(),
         owner.clone(),
-        10_000_u128.into(),
+        fixed!(10000),
     )?;
     Assets::<T>::mint(
         owner_origin.clone(),
         DOT.into(),
         owner.clone(),
-        20_000_u128.into(),
+        fixed!(20000),
     )?;
     Assets::<T>::mint(
         owner_origin.clone(),
         XOR.into(),
         repr.clone(),
-        1_000_000_u128.into(),
+        fixed!(1000000),
     )?;
     Assets::<T>::mint(
         owner_origin.clone(),
         DOT.into(),
         repr.clone(),
-        1_500_000_u128.into(),
+        fixed!(1500000),
     )?;
     Assets::<T>::mint(
         owner_origin.clone(),
         mark_asset.into(),
         owner.clone(),
-        1_500_000_000_000_u128.into(),
+        fixed!(1500000000000),
     )?;
 
     Ok(())
@@ -125,7 +125,7 @@ benchmarks! {
         LiquiditySourceType::XYKPool,
         base_asset.clone(),
         target_asset.clone(),
-        fixed!(1_000),
+        fixed!(1000),
         fixed!(0),
         SwapVariant::WithDesiredInput,
         None

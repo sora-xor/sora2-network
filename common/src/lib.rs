@@ -1,10 +1,8 @@
 #![cfg_attr(not(feature = "std"), no_std)]
-
 #[macro_use]
 extern crate alloc;
-#[macro_use]
-extern crate fixnum;
 
+pub use fixnum;
 use fixnum::{
     typenum::{Unsigned, U18},
     FixedPoint,
@@ -20,9 +18,9 @@ mod primitives;
 mod swap_amount;
 mod traits;
 pub mod utils;
+pub mod weights;
 
 use codec::Encode;
-use codec::{Compact, CompactAs, Input, WrapperTypeEncode};
 use sp_core::hash::H512;
 use sp_runtime::TransactionOutcome;
 
@@ -33,10 +31,13 @@ pub mod prelude {
     pub use super::primitives::*;
     pub use super::swap_amount::*;
     pub use super::traits::*;
-    pub use super::Fixed;
+    pub use super::weights::*;
+    pub use super::{Fixed, FixedInner};
+    pub use fixnum;
 }
 use sp_core::crypto::AccountId32;
 
+pub use macros::*;
 pub use primitives::*;
 pub use traits::*;
 pub use utils::*;
@@ -60,11 +61,10 @@ type FixedPrecision = U18;
 pub type Price = Fixed;
 
 pub type Amount = i128;
-
 /// Type definition representing financial basis points (1bp is 0.01%)
 pub type BasisPoints = u16;
 
-pub const FIXED_PRECISION: i32 = FixedPrecision::I32;
+pub const FIXED_PRECISION: u32 = FixedPrecision::U32;
 
 /// Similar to #\[transactional]
 pub fn with_transaction<T, E>(f: impl FnOnce() -> Result<T, E>) -> Result<T, E> {

@@ -1,5 +1,3 @@
-use crate::balance::Balance;
-use crate::Fixed;
 use frame_support::weights::{
     Weight, WeightToFeeCoefficient, WeightToFeeCoefficients, WeightToFeePolynomial,
 };
@@ -8,6 +6,9 @@ use sp_arithmetic::{
     traits::{Saturating, Zero},
     Perbill,
 };
+
+use crate::balance::Balance;
+use crate::{Fixed, FixedInner};
 
 pub struct WeightToFixedFee(Balance);
 
@@ -32,7 +33,7 @@ impl WeightToFeePolynomial for WeightToFixedFee {
         Self::polynomial()
             .iter()
             .fold(Self::Balance::zero(), |mut acc, args| {
-                let w = Self::Balance::from(Fixed::from_inner(*weight as u128))
+                let w = Self::Balance::from(Fixed::from_bits(FixedInner::from(*weight)))
                     .saturating_pow(args.degree.into());
 
                 // The sum could get negative. Therefore we only sum with the accumulator.

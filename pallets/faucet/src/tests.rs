@@ -41,13 +41,13 @@ fn transfer_passes_native_currency() {
             Origin::signed(alice()),
             XOR,
             bob(),
-            fixed!(49, 91).into()
+            fixed!(49.91).into()
         ));
         assert_ok!(Module::transfer(
             Origin::signed(alice()),
             XOR,
             bob(),
-            fixed!(50, 09).into()
+            fixed!(50.09).into()
         ));
         assert_eq!(
             Assets::free_balance(&XOR, &account_id()).unwrap(),
@@ -90,11 +90,11 @@ fn transfer_passes_multiple_assets() {
             Origin::signed(alice()),
             VAL,
             bob(),
-            fixed!(50, 43).into()
+            fixed!(50.43).into()
         ));
         assert_eq!(
             Assets::free_balance(&VAL, &account_id()).unwrap(),
-            fixed!(99, 57).into()
+            fixed!(99.57).into()
         );
         assert_eq!(
             Assets::free_balance(&VAL, &alice()).unwrap(),
@@ -102,7 +102,7 @@ fn transfer_passes_multiple_assets() {
         );
         assert_eq!(
             Assets::free_balance(&VAL, &bob()).unwrap(),
-            fixed!(50, 43).into()
+            fixed!(50.43).into()
         );
     });
 }
@@ -139,6 +139,16 @@ fn transfer_passes_after_limit_is_reset() {
 }
 
 #[test]
+fn transfer_fails_with_bad_origin() {
+    ExtBuilder::build().execute_with(|| {
+        assert_noop!(
+            Module::transfer(Origin::root(), XOR, bob(), fixed!(0.5).into()),
+            DispatchError::BadOrigin
+        );
+    });
+}
+
+#[test]
 fn transfer_fails_with_asset_not_supported() {
     ExtBuilder::build().execute_with(|| {
         assert_noop!(
@@ -146,7 +156,7 @@ fn transfer_fails_with_asset_not_supported() {
                 Origin::signed(alice()),
                 NOT_SUPPORTED_ASSET_ID,
                 bob(),
-                fixed!(0, 5).into()
+                fixed!(0.5).into()
             ),
             crate::Error::<Test>::AssetNotSupported
         );
@@ -163,7 +173,7 @@ fn transfer_fails_with_amount_above_limit() {
             fixed!(100).into()
         ));
         assert_noop!(
-            Module::transfer(Origin::signed(alice()), XOR, bob(), fixed!(0, 2).into()),
+            Module::transfer(Origin::signed(alice()), XOR, bob(), fixed!(0.2).into()),
             crate::Error::<Test>::AmountAboveLimit
         );
     });

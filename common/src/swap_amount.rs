@@ -26,7 +26,7 @@ pub enum SwapVariant {
 
 /// Used to identify intention of caller either to transfer tokens based on exact input amount or
 /// exact output amount.
-#[derive(Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Encode, Decode, Copy, Clone, RuntimeDebug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum SwapAmount<AmountType> {
     WithDesiredInput {
         desired_amount_in: AmountType,
@@ -118,6 +118,15 @@ impl From<SwapAmount<Balance>> for SwapAmount<Fixed> {
                 desired_amount_out: desired_amount_out.0,
                 max_amount_in: max_amount_in.0,
             },
+        }
+    }
+}
+
+impl<T> From<SwapAmount<T>> for SwapVariant {
+    fn from(v: SwapAmount<T>) -> Self {
+        match v {
+            SwapAmount::WithDesiredInput { .. } => SwapVariant::WithDesiredInput,
+            _ => SwapVariant::WithDesiredOutput,
         }
     }
 }

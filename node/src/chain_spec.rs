@@ -8,8 +8,11 @@ use framenode_runtime::{
 };
 
 use common::{
-    balance::Balance, fixed, hash, prelude::DEXInfo, DEXId, Fixed, TechPurpose, PSWAP, VAL, XOR,
+    balance::Balance,
+    hash,
+    DEXId, Fixed, TechPurpose, VAL, XOR,PSWAP,
 };
+    use common::prelude::{DEXInfo, FixedWrapper},
 use frame_support::sp_runtime::Percent;
 use framenode_runtime::bonding_curve_pool::{DistributionAccountData, DistributionAccounts};
 use framenode_runtime::eth_bridge::AssetKind;
@@ -281,25 +284,29 @@ pub fn staging_test_net() -> ChainSpec {
     )
 }
 
-fn bonding_curve_distribution_accounts(
-) -> DistributionAccounts<DistributionAccountData<<Runtime as technical::Trait>::TechAccountId>> {
-    let val_holders_coefficient: Fixed = fixed!(50%);
-    let val_holders_xor_alloc_coeff = val_holders_coefficient * fixed!(90%);
-    let val_holders_buy_back_coefficient = val_holders_coefficient * (fixed!(100%) - fixed!(90%));
-    let projects_coefficient = fixed!(100%) - val_holders_coefficient;
-    let projects_sora_citizens_coeff = projects_coefficient * fixed!(1%);
-    let projects_stores_and_shops_coeff = projects_coefficient * fixed!(4%);
-    let projects_parliament_and_development_coeff = projects_coefficient * fixed!(5%);
-    let projects_other_coeff = projects_coefficient * fixed!(90%);
+fn bonding_curve_distribution_accounts() -> DistributionAccounts<DistributionAccountData<<Runtime as technical::Trait>::TechAccountId>> {
+    use common::{fixed_wrapper, prelude::fixnum::ops::Numeric};
+    let val_holders_coefficient = fixed_wrapper!(0.5);
+    let val_holders_xor_alloc_coeff = fixed_wrapper!(0.9) * val_holders_coefficient.clone();
+    let val_holders_buy_back_coefficient = val_holders_coefficient.clone() * (fixed_wrapper!(1) - fixed_wrapper!(0.9));
+    let projects_coefficient = fixed_wrapper!(1) - val_holders_coefficient;
+    let projects_sora_citizens_coeff = projects_coefficient.clone() * fixed_wrapper!(0.01);
+    let projects_stores_and_shops_coeff = projects_coefficient.clone() * fixed_wrapper!(0.04);
+    let projects_parliament_and_development_coeff =
+        projects_coefficient.clone() * fixed_wrapper!(0.05);
+    let projects_other_coeff = projects_coefficient.clone() * fixed_wrapper!(0.9);
 
     debug_assert_eq!(
-        fixed!(100%),
-        val_holders_xor_alloc_coeff
-            + projects_sora_citizens_coeff
-            + projects_stores_and_shops_coeff
-            + projects_parliament_and_development_coeff
-            + projects_other_coeff
-            + val_holders_buy_back_coefficient
+        Fixed::ONE,
+        FixedWrapper::get(
+            val_holders_xor_alloc_coeff.clone()
+                + projects_sora_citizens_coeff.clone()
+                + projects_stores_and_shops_coeff.clone()
+                + projects_parliament_and_development_coeff.clone()
+                + projects_other_coeff.clone()
+                + val_holders_buy_back_coefficient.clone()
+        )
+        .unwrap()
     );
 
     let xor_allocation = DistributionAccountData::new(
@@ -307,42 +314,42 @@ fn bonding_curve_distribution_accounts(
             DEXId::Polkaswap.into(),
             TechPurpose::Identifier(b"xor_allocation".to_vec()),
         ),
-        val_holders_xor_alloc_coeff,
+        val_holders_xor_alloc_coeff.get().unwrap(),
     );
     let sora_citizens = DistributionAccountData::new(
         TechAccountId::Pure(
             DEXId::Polkaswap.into(),
             TechPurpose::Identifier(b"sora_citizens".to_vec()),
         ),
-        projects_sora_citizens_coeff,
+        projects_sora_citizens_coeff.get().unwrap(),
     );
     let stores_and_shops = DistributionAccountData::new(
         TechAccountId::Pure(
             DEXId::Polkaswap.into(),
             TechPurpose::Identifier(b"stores_and_shops".to_vec()),
         ),
-        projects_stores_and_shops_coeff,
+        projects_stores_and_shops_coeff.get().unwrap(),
     );
     let parliament_and_development = DistributionAccountData::new(
         TechAccountId::Pure(
             DEXId::Polkaswap.into(),
             TechPurpose::Identifier(b"parliament_and_development".to_vec()),
         ),
-        projects_parliament_and_development_coeff,
+        projects_parliament_and_development_coeff.get().unwrap(),
     );
     let projects = DistributionAccountData::new(
         TechAccountId::Pure(
             DEXId::Polkaswap.into(),
             TechPurpose::Identifier(b"projects".to_vec()),
         ),
-        projects_other_coeff,
+        projects_other_coeff.get().unwrap(),
     );
     let val_holders = DistributionAccountData::new(
         TechAccountId::Pure(
             DEXId::Polkaswap.into(),
             TechPurpose::Identifier(b"val_holders".to_vec()),
         ),
-        val_holders_buy_back_coefficient,
+        val_holders_buy_back_coefficient.get().unwrap(),
     );
     DistributionAccounts::<_> {
         xor_allocation,

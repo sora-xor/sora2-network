@@ -11,12 +11,7 @@ use ethabi::{FixedBytes, Token};
 #[allow(unused_imports)]
 use frame_support::debug;
 use frame_support::sp_runtime::app_crypto::sp_core;
-use frame_support::{
-    dispatch::DispatchError,
-    ensure,
-    sp_runtime::{traits::Zero, FixedPointNumber},
-    RuntimeDebug, StorageMap, StorageValue,
-};
+use frame_support::{dispatch::DispatchError, ensure, RuntimeDebug, StorageMap, StorageValue};
 use frame_system::RawOrigin;
 use sp_std::prelude::*;
 
@@ -176,14 +171,14 @@ impl<T: Trait> OutgoingTransfer<T> {
             let x = <T::AssetId as Into<sp_core::H256>>::into(self.asset_id);
             currency_id = CurrencyIdEncoded::AssetId(H256(x.0));
         }
-        let amount = U256::from(self.amount.0.into_inner());
+        let amount = U256::from(*self.amount.0.as_bits());
         let tx_hash = H256(tx_hash.0);
         let raw = ethabi::encode_packed(&[
             currency_id.to_token(),
             Token::Uint(amount),
-            Token::Address(to.clone()),
+            Token::Address(to),
             Token::FixedBytes(tx_hash.0.to_vec()),
-            Token::Address(from.clone()),
+            Token::Address(from),
         ]);
         Ok(OutgoingTransferEthEncoded {
             from,

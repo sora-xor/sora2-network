@@ -1516,7 +1516,7 @@ impl<T: Trait> Module<T> {
         _tech_acc: &TechAccountIdOf<T>,
     ) -> Balance {
         //TODO: get this value from DEXInfo.
-        Fixed::from_inner(1000).into()
+        Fixed::from_bits(1000).into()
     }
 
     pub fn get_fee_account(
@@ -2100,7 +2100,7 @@ impl<T: Trait> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Disp
             *output_asset_id,
         )?;
         let (source_amount, destination_amount) =
-            Module::<T>::get_bounds_from_swap_amount(swap_amount)?;
+            Module::<T>::get_bounds_from_swap_amount(swap_amount.clone())?;
         let mut action = PolySwapActionStructOf::<T>::PairSwap(PairSwapActionOf::<T> {
             client_account: None,
             receiver_account: Some(receiver.clone()),

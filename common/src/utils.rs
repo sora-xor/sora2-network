@@ -1,9 +1,11 @@
-use fixnum::ops::{CheckedAdd, CheckedMul, CheckedSub, RoundMode::*, RoundingDiv};
+use core::convert::TryFrom;
+
+use codec::{Decode, Encode};
+use fixnum::ops::{RoundMode::*, RoundingDiv};
 use frame_support::RuntimeDebug;
 use sp_std::{iter::once, vec::Vec};
 
-use crate::{FilterMode, Fixed, FixedInner, LiquiditySourceId};
-use codec::{Decode, Encode};
+use crate::prelude::{FilterMode, Fixed, FixedInner, FixedWrapper, LiquiditySourceId};
 
 /// Basis points range (0..10000) corresponds to 0.01%..100.00%.
 const BASIS_POINTS_RANGE: u16 = 10000;
@@ -20,7 +22,10 @@ pub fn in_basis_points_range<BP: Into<u16>>(value: BP) -> bool {
 /// Create fraction as Fixed from BasisPoints value.
 pub fn fixed_from_basis_points<BP: Into<u16>>(value: BP) -> Fixed {
     let value: u16 = value.into();
-    BASIS_POINT.cmul(i128::from(value)).unwrap() // TODO(quasiyoke): should be checked
+    Fixed::try_from(i128::from(value))
+        .unwrap()
+        .rdiv(i128::from(BASIS_POINTS_RANGE), Floor)
+        .unwrap() // TODO(quasiyoke): should be checked
 }
 
 /// An auxiliary type to denote an interval variants: (a, b), [a, b), (a, b] and [a, b].
@@ -70,14 +75,14 @@ pub fn linspace(a: Fixed, b: Fixed, n: usize, endpoints: IntervalEndpoints) -> V
 /// Helper function that evenly spreads points inside an interval with endpoints excluded
 /// Can only be called from public function `linspace` hence no additional bound checks
 fn linspace_inner(a: Fixed, b: Fixed, n: usize) -> Vec<Fixed> {
+    let a: FixedWrapper = a.into();
+    let b: FixedWrapper = b.into();
+    let width: FixedWrapper = (n as u128 + 1).into();
     (1..=n)
         .map(|x| -> Fixed {
-            a.cadd(b.csub(a).unwrap())
-                .unwrap()
-                .rdiv(Fixed::from_bits(n as i128 + 1), Floor)
-                .unwrap()
-                .rdiv(Fixed::from_bits(x as i128), Floor)
-                .unwrap() // TODO(quasiyoke): should be checked
+            let x: FixedWrapper =
+                a.clone() + (b.clone() - a.clone()) / width.clone() / FixedWrapper::from(x as u128);
+            x.get().unwrap()
         })
         .collect()
 }
@@ -382,11 +387,11 @@ mod tests {
         assert_eq!(
             &linspace(fixed!(0), fixed!(2), 6, IntervalEndpoints::Right),
             &[
-                fixed!(0, 333333333333333333),
-                fixed!(0, 666666666666666666),
+                fixed!(0.333333333333333333),
+                fixed!(0.666666666666666666),
                 fixed!(1),
-                fixed!(1, 333333333333333333),
-                fixed!(1, 666666666666666666),
+                fixed!(1.333333333333333333),
+                fixed!(1.666666666666666666),
                 fixed!(2),
             ]
         );
@@ -396,11 +401,11 @@ mod tests {
             &linspace(fixed!(1), fixed!(11), 6, IntervalEndpoints::Left),
             &[
                 fixed!(1),
-                fixed!(2, 666666666666666666),
-                fixed!(4, 333333333333333333),
+                fixed!(2.666666666666666666),
+                fixed!(4.333333333333333333),
                 fixed!(6),
-                fixed!(7, 666666666666666666),
-                fixed!(9, 333333333333333333),
+                fixed!(7.666666666666666666),
+                fixed!(9.333333333333333333),
             ]
         );
 
@@ -408,12 +413,12 @@ mod tests {
         assert_eq!(
             &linspace(fixed!(0), fixed!(1), 6, IntervalEndpoints::None),
             &[
-                fixed!(0, 142857142857142857),
-                fixed!(0, 285714285714285714),
-                fixed!(0, 428571428571428571),
-                fixed!(0, 571428571428571428),
-                fixed!(0, 714285714285714285),
-                fixed!(0, 857142857142857143),
+                fixed!(0.142857142857142857),
+                fixed!(0.285714285714285714),
+                fixed!(0.428571428571428571),
+                fixed!(0.571428571428571428),
+                fixed!(0.714285714285714285),
+                fixed!(0.857142857142857143),
             ]
         );
 
@@ -422,12 +427,12 @@ mod tests {
             &linspace(fixed!(0), fixed!(1), 8, IntervalEndpoints::Both),
             &[
                 fixed!(0),
-                fixed!(0, 142857142857142857),
-                fixed!(0, 285714285714285714),
-                fixed!(0, 428571428571428571),
-                fixed!(0, 571428571428571428),
-                fixed!(0, 714285714285714285),
-                fixed!(0, 857142857142857143),
+                fixed!(0.142857142857142857),
+                fixed!(0.285714285714285714),
+                fixed!(0.428571428571428571),
+                fixed!(0.571428571428571428),
+                fixed!(0.714285714285714285),
+                fixed!(0.857142857142857143),
                 fixed!(1),
             ]
         );
@@ -463,8 +468,8 @@ mod tests {
             ),
             &[
                 fixed!(0),
-                fixed!(170141183460469231731, 687303715884105727),
-                fixed!(340282366920938463463, 374607431768211455),
+                fixed!(85070591730234615865.843651857942052864),
+                fixed!(170141183460469231731.687303715884105727),
             ]
         );
     }

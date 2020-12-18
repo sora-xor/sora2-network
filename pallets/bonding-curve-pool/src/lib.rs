@@ -109,11 +109,11 @@ impl<DistributionAccountData: Default> Default for DistributionAccounts<Distribu
 decl_storage! {
     trait Store for Module<T: Trait> as BondingCurve {
         ReservesAcc get(fn reserves_account_id) config(): T::TechAccountId;
-        Fee get(fn fee): Fixed = fixed!(0,1%);
-        InitialPrice get(fn initial_price): Fixed = fixed!(99,3);
-        PriceChangeStep get(fn price_change_step): Fixed = 5000.into();
-        PriceChangeRate get(fn price_change_rate): Fixed = 100.into();
-        SellPriceCoefficient get(fn sell_price_coefficient): Fixed = fixed!(80%);
+        Fee get(fn fee): Fixed = fixed!(0.001);
+        InitialPrice get(fn initial_price): Fixed = fixed!(99.3);
+        PriceChangeStep get(fn price_change_step): Fixed = fixed!(5000);
+        PriceChangeRate get(fn price_change_rate): Fixed = fixed!(100);
+        SellPriceCoefficient get(fn sell_price_coefficient): Fixed = fixed!(0.8);
         DistributionAccountsEntry get(fn distribution_accounts) config(): DistributionAccounts<DistributionAccountData<T::TechAccountId>>;
     }
 }
@@ -204,27 +204,26 @@ impl<T: Trait> BuyMainAsset<T> {
             let in_asset = &self.in_asset_id;
             let (input_amount, output_amount) =
                 Module::<T>::decide_buy_amounts(out_asset, self.amount)?;
-            let total_issuance = Assets::<T>::total_issuance(out_asset)?;
-            let reserves_expected = Balance(Module::<T>::price_for_main_asset(
-                out_asset,
-                total_issuance,
-                SwapKind::Sell,
-            )?);
-            Technical::<T>::transfer_in(
-                in_asset,
-                &self.from_account_id,
-                &self.reserves_tech_account_id,
-                input_amount,
-            )?;
-            let reserves = Assets::<T>::total_balance(in_asset, &self.reserves_account_id)?;
-            let free_amount = if reserves > reserves_expected {
-                let amount_free_coefficient: Balance = fixed!(20%).into();
-                (reserves - reserves_expected) * amount_free_coefficient
-            } else {
-                Balance::zero()
-            };
-            Ok((free_amount, input_amount, output_amount))
-        })
+        let total_issuance = Assets::<T>::total_issuance(out_asset)?;
+        let reserves_expected = Balance(Module::<T>::price_for_main_asset(
+            out_asset,
+            total_issuance,
+            SwapKind::Sell,
+        )?);
+        Technical::<T>::transfer_in(
+            in_asset,
+            &self.from_account_id,
+            &self.reserves_tech_account_id,
+            input_amount,
+        )?;
+        let reserves = Assets::<T>::total_balance(in_asset, &self.reserves_account_id)?;
+        let free_amount = if reserves > reserves_expected {
+            let amount_free_coefficient: Balance = fixed!(0.2);
+            (reserves - reserves_expected) * amount_free_coefficient
+        } else {
+            Balance::zero()
+        };
+        Ok((free_amount, input_amount, output_amount))
     }
 
     fn distribute_reserves(&self, free_amount: Balance) -> Result<(), DispatchError> {
@@ -323,9 +322,11 @@ impl<T: Trait> Module<T> {
         let Q: FixedWrapper = total_issuance.into();
         let P_I = Self::initial_price();
         let PC_S = Self::price_change_step();
-        let PC_R = Self::price_change_rate();
+        let PC_R: FixedWrapper = Self::price_change_rate().into();
         let price = Q / (PC_S * PC_R) + P_I;
-        price.get().ok_or(Error::<T>::CalculatePriceFailed.into())
+        price
+            .get()
+            .map_err(|_| Error::<T>::CalculatePriceFailed.into())
     }
 
     /// Calculates and returns the current buy/sell price for main asset.
@@ -362,17 +363,17 @@ impl<T: Trait> Module<T> {
         let PC_S = FixedWrapper::from(Self::price_change_step());
         let PC_R = Self::price_change_rate();
 
-        let Q_prime = if kind == SwapKind::Buy { Q + quantity } else { Q - quantity };
+        let Q_prime = if kind == SwapKind::Buy { Q.clone() + quantity } else { Q.clone() - quantity };
         let two_times_PC_S_times_PC_R = 2 * PC_S * PC_R;
-        let to = (Q_prime / two_times_PC_S_times_PC_R + P_I) * Q_prime;
-        let from = (Q / two_times_PC_S_times_PC_R + P_I) * Q;
+        let to = (Q_prime.clone() / two_times_PC_S_times_PC_R.clone() + P_I) * Q_prime;
+        let from = (Q.clone() / two_times_PC_S_times_PC_R + P_I) * Q;
         let price: FixedWrapper = if kind == SwapKind::Buy {
             to - from
         } else {
             let P_Sc = FixedWrapper::from(Self::sell_price_coefficient());
             P_Sc * (from - to)
         };
-        price.get().ok_or(Error::<T>::CalculatePriceFailed.into())
+        price.get().map_err(|_| Error::<T>::CalculatePriceFailed.into())
     }
 
     /// Calculates and returns the current buy/sell price for target asset.
@@ -445,7 +446,9 @@ impl<T: Trait> Module<T> {
         let P_B = Self::buy_price_for_one_main_asset(in_asset_id)?;
         let P_Sc = FixedWrapper::from(Self::sell_price_coefficient());
         let price = P_Sc * P_B;
-        price.get().ok_or(Error::<T>::CalculatePriceFailed.into())
+        price
+            .get()
+            .map_err(|_| Error::<T>::CalculatePriceFailed.into())
     }
 
     /// Decompose SwapAmount into particular buy quotation query.
