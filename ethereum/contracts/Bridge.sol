@@ -3,6 +3,8 @@ pragma solidity ^0.7.4;
 
 import "./IERC20.sol";
 import "./MasterToken.sol";
+import "./Ownable.sol";
+import "./ERC20Burnable.sol";
 
 /**
  * Provides functionality of bridge contract
@@ -17,20 +19,28 @@ contract Bridge {
 
     mapping(bytes32 => address) public _sidechainTokens;
     mapping(address => bytes32) public _sidechainTokensByAddress;
+    address[] public _sidechainTokenAddressArray;
 
     event Withdrawal(bytes32 txHash);
     event Deposit(bytes32 destination, uint amount, address token, bytes32 sidechainAsset);
     event ChangePeers(address peerId, bool removal);
+    
+    address public _addressVAL = 0xe88f8313e61A97cEc1871EE37fBbe2a8bf3ed1E4;
+    address public _addressXOR = 0x40FD72257597aA14C7231A7B1aaa29Fce868F677;
 
     /**
      * Constructor.
      * @param initialPeers - list of initial bridge validators on substrate side.
      */
     constructor(
-        address[] memory initialPeers)  {
+        address[] memory initialPeers,
+        address addressVAL,
+        address addressXOR)  {
         for (uint8 i = 0; i < initialPeers.length; i++) {
             addPeer(initialPeers[i]);
         }
+        _addressXOR = addressXOR;
+        _addressVAL = addressVAL;
         initialized_ = true;
     }
     
@@ -39,9 +49,11 @@ contract Bridge {
         _;
     }
     
-    function shutDown(
+    function shutDownAndMigrate(
         address thisContractAddress, 
         string memory salt,
+        address newContractAddress,
+        address[] calldata erc20nativeTokens,  //List of ERC20 tokens with non zero balances for this contract. Can be taken from substrate bridge peers.
         uint8[] memory v,
         bytes32[] memory r,
         bytes32[] memory s
@@ -49,11 +61,19 @@ contract Bridge {
     public
     shouldBeInitialized {
         require(address(this) == thisContractAddress);
-        require(checkSignatures(keccak256(abi.encode(thisContractAddress, salt)),
+        require(checkSignatures(keccak256(abi.encodePacked(thisContractAddress, salt, erc20nativeTokens)),
             v,
             r,
             s), "Peer signatures are invalid"
         );
+        for(uint i=0; i<_sidechainTokenAddressArray.length; i++) {
+            Ownable token = Ownable(_sidechainTokenAddressArray[i]);
+            token.transferOwnership(newContractAddress);
+        }
+        for(uint i=0; i<erc20nativeTokens.length; i++) {
+            IERC20 token = IERC20(erc20nativeTokens[i]);
+            token.transfer(newContractAddress,  token.balanceOf(address(this)));
+        }
         initialized_ = false;
     }
     
@@ -68,7 +88,7 @@ contract Bridge {
         bytes32[] memory s) 
         public {
         
-        require(checkSignatures(keccak256(abi.encode(
+        require(checkSignatures(keccak256(abi.encodePacked(
             name, 
             symbol, 
             decimals, 
@@ -80,8 +100,10 @@ contract Bridge {
         );
         // Create new instance of the token
         MasterToken tokenInstance = new MasterToken(name, symbol, decimals, address(this), supply, sidechainAssetId);
-        _sidechainTokens[sidechainAssetId] = address(tokenInstance);
-        _sidechainTokensByAddress[address(tokenInstance)] = sidechainAssetId;
+        address tokenAddress = address(tokenInstance);
+        _sidechainTokens[sidechainAssetId] = tokenAddress;
+        _sidechainTokensByAddress[tokenAddress] = sidechainAssetId;
+        _sidechainTokenAddressArray.push(tokenAddress);
     }
     
     function sendEthToSidechain(
@@ -104,14 +126,14 @@ contract Bridge {
         address tokenAddress) 
         external 
         shouldBeInitialized {
-            
+
         IERC20 token = IERC20(tokenAddress);
         
         require (token.allowance(msg.sender, address(this)) >= amount, "NOT ENOUGH DELEGATED TOKENS ON SENDER BALANCE");
 
         bytes32 sidechainAssetId = _sidechainTokensByAddress[tokenAddress];
-        if(_sidechainTokens[sidechainAssetId] != address(0x0)) {
-            MasterToken mtoken = MasterToken(tokenAddress);
+        if(sidechainAssetId.length != 0 || _addressVAL == tokenAddress || _addressXOR == tokenAddress) {
+            ERC20Burnable mtoken = ERC20Burnable(tokenAddress);
             mtoken.burnFrom(msg.sender, amount);
         } else {
             token.transferFrom(msg.sender, address(this), amount);
@@ -131,7 +153,7 @@ contract Bridge {
     returns (bool)
     {
         require(used[txHash] == false);
-        require(checkSignatures(keccak256(abi.encode(newPeerAddress, txHash)),
+        require(checkSignatures(keccak256(abi.encodePacked(newPeerAddress, txHash)),
             v,
             r,
             s), "Peer signatures are invalid"
@@ -156,7 +178,7 @@ contract Bridge {
     {
         require(used[txHash] == false);
         require(checkSignatures(
-                keccak256(abi.encode(peerAddress, txHash)),
+                keccak256(abi.encodePacked(peerAddress, txHash)),
                 v,
                 r,
                 s), "Peer signatures are invalid"
@@ -193,7 +215,7 @@ contract Bridge {
     {
         require(used[txHash] == false);
         require(checkSignatures(
-                keccak256(abi.encode(tokenAddress, amount, to, txHash, from)),
+                keccak256(abi.encodePacked(tokenAddress, amount, to, txHash, from)),
                 v,
                 r,
                 s), "Peer signatures are invalid"
@@ -237,7 +259,7 @@ contract Bridge {
         require(_sidechainTokens[sidechainAssetId] != address(0x0), "Sidechain asset is not registered");
         require(used[txHash] == false);
         require(checkSignatures(
-                keccak256(abi.encode(sidechainAssetId, amount, to, txHash, from)),
+                keccak256(abi.encodePacked(sidechainAssetId, amount, to, txHash, from)),
                 v,
                 r,
                 s), "Peer signatures are invalid"
