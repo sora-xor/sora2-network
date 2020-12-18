@@ -25,8 +25,8 @@ contract Bridge {
     event Deposit(bytes32 destination, uint amount, address token, bytes32 sidechainAsset);
     event ChangePeers(address peerId, bool removal);
     
-    address public _addressVAL = 0xe88f8313e61A97cEc1871EE37fBbe2a8bf3ed1E4;
-    address public _addressXOR = 0x40FD72257597aA14C7231A7B1aaa29Fce868F677;
+    address public _addressVAL;
+    address public _addressXOR;
 
     /**
      * Constructor.
