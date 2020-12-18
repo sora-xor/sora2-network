@@ -55,7 +55,7 @@ contract Bridge {
     public
     shouldBeInitialized {
         require(address(this) == thisContractAddress);
-        require(checkSignatures(keccak256(abi.encode(thisContractAddress, salt, erc20nativeTokens)),
+        require(checkSignatures(keccak256(abi.encodePacked(thisContractAddress, salt, erc20nativeTokens)),
             v,
             r,
             s), "Peer signatures are invalid"
@@ -82,7 +82,7 @@ contract Bridge {
         bytes32[] memory s) 
         public {
         
-        require(checkSignatures(keccak256(abi.encode(
+        require(checkSignatures(keccak256(abi.encodePacked(
             name, 
             symbol, 
             decimals, 
@@ -146,7 +146,7 @@ contract Bridge {
     returns (bool)
     {
         require(used[txHash] == false);
-        require(checkSignatures(keccak256(abi.encode(newPeerAddress, txHash)),
+        require(checkSignatures(keccak256(abi.encodePacked(newPeerAddress, txHash)),
             v,
             r,
             s), "Peer signatures are invalid"
@@ -171,7 +171,7 @@ contract Bridge {
     {
         require(used[txHash] == false);
         require(checkSignatures(
-                keccak256(abi.encode(peerAddress, txHash)),
+                keccak256(abi.encodePacked(peerAddress, txHash)),
                 v,
                 r,
                 s), "Peer signatures are invalid"
@@ -208,7 +208,7 @@ contract Bridge {
     {
         require(used[txHash] == false);
         require(checkSignatures(
-                keccak256(abi.encode(tokenAddress, amount, to, txHash, from)),
+                keccak256(abi.encodePacked(tokenAddress, amount, to, txHash, from)),
                 v,
                 r,
                 s), "Peer signatures are invalid"
@@ -252,7 +252,7 @@ contract Bridge {
         require(_sidechainTokens[sidechainAssetId] != address(0x0), "Sidechain asset is not registered");
         require(used[txHash] == false);
         require(checkSignatures(
-                keccak256(abi.encode(sidechainAssetId, amount, to, txHash, from)),
+                keccak256(abi.encodePacked(sidechainAssetId, amount, to, txHash, from)),
                 v,
                 r,
                 s), "Peer signatures are invalid"
