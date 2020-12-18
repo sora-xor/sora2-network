@@ -3,6 +3,8 @@ pragma solidity ^0.7.4;
 
 import "./IERC20.sol";
 import "./MasterToken.sol";
+import "./Ownable.sol";
+import "./ERC20Burnable.sol";
 
 /**
  * Provides functionality of bridge contract
@@ -23,18 +25,22 @@ contract Bridge {
     event Deposit(bytes32 destination, uint amount, address token, bytes32 sidechainAsset);
     event ChangePeers(address peerId, bool removal);
     
-    address public addressVAL = 0xe88f8313e61A97cEc1871EE37fBbe2a8bf3ed1E4;
-    address public addressXOR = 0x40FD72257597aA14C7231A7B1aaa29Fce868F677;
+    address public _addressVAL = 0xe88f8313e61A97cEc1871EE37fBbe2a8bf3ed1E4;
+    address public _addressXOR = 0x40FD72257597aA14C7231A7B1aaa29Fce868F677;
 
     /**
      * Constructor.
      * @param initialPeers - list of initial bridge validators on substrate side.
      */
     constructor(
-        address[] memory initialPeers)  {
+        address[] memory initialPeers,
+        address addressVAL,
+        address addressXOR)  {
         for (uint8 i = 0; i < initialPeers.length; i++) {
             addPeer(initialPeers[i]);
         }
+        _addressXOR = addressXOR;
+        _addressVAL = addressVAL;
         initialized_ = true;
     }
     
@@ -61,7 +67,7 @@ contract Bridge {
             s), "Peer signatures are invalid"
         );
         for(uint i=0; i<_sidechainTokenAddressArray.length; i++) {
-            MasterToken token = MasterToken(_sidechainTokenAddressArray[i]);
+            Ownable token = Ownable(_sidechainTokenAddressArray[i]);
             token.transferOwnership(newContractAddress);
         }
         for(uint i=0; i<erc20nativeTokens.length; i++) {
@@ -125,8 +131,8 @@ contract Bridge {
         require (token.allowance(msg.sender, address(this)) >= amount, "NOT ENOUGH DELEGATED TOKENS ON SENDER BALANCE");
 
         bytes32 sidechainAssetId = _sidechainTokensByAddress[tokenAddress];
-        if(sidechainAssetId.length != 0 || addressVAL == tokenAddress || addressXOR == tokenAddress) {
-            MasterToken mtoken = MasterToken(tokenAddress);
+        if(sidechainAssetId.length != 0 || _addressVAL == tokenAddress || _addressXOR == tokenAddress) {
+            ERC20Burnable mtoken = ERC20Burnable(tokenAddress);
             mtoken.burnFrom(msg.sender, amount);
         } else {
             token.transferFrom(msg.sender, address(this), amount);
