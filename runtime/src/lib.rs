@@ -59,6 +59,8 @@ pub use pallet_timestamp::Call as TimestampCall;
 pub use sp_runtime::BuildStorage;
 pub use sp_runtime::{Perbill, Permill};
 
+pub use eth_bridge;
+
 /// An index to a block.
 pub type BlockNumber = u32;
 
@@ -620,7 +622,7 @@ impl multisig::Trait for Runtime {
 impl eth_bridge::Trait for Runtime {
     type Event = Event;
     type Call = Call;
-    type AuthorityId = eth_bridge::crypto::TestAuthId;
+    type PeerId = eth_bridge::crypto::TestAuthId;
 }
 
 impl faucet::Trait for Runtime {
@@ -654,7 +656,7 @@ construct_runtime! {
         Permissions: permissions::{Module, Call, Storage, Config<T>, Event<T>},
         ReferralSystem: referral_system::{Module, Call, Storage, Event},
         XorFee: xor_fee::{Module, Call, Storage, Event},
-        Multisig: multisig::{Module, Call, Storage, Event<T>},
+        Multisig: multisig::{Module, Call, Storage, Config<T>, Event<T>},
 
         // Consensus and staking.
         Session: pallet_session::{Module, Call, Storage, Event, Config<T>},
@@ -681,8 +683,7 @@ construct_runtime! {
         MockLiquiditySource4: mock_liquidity_source::<Instance4>::{Module, Call, Storage, Config<T>, Event<T>},
         DEXAPI: dex_api::{Module, Call, Storage, Config, Event<T>},
         Faucet: faucet::{Module, Call, Config<T>, Event<T>, ValidateUnsigned},
-        ETHBridge: eth_bridge::{Module, Call, Event<T>},
-        //IrohaBridge: iroha_bridge::{Module, Call, Storage, Config<T>, Event<T>},
+        EthBridge: eth_bridge::{Module, Call, Config<T>, Event<T>},
     }
 }
 

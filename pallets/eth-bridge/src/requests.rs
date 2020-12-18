@@ -1,5 +1,5 @@
 use crate::types::{Address, H256, U256};
-use crate::{AssetIdOf, AssetKind, Error, Trait};
+use crate::{AssetIdOf, AssetKind, Error, IncomingAsset, Trait};
 use codec::{Decode, Encode};
 use common::prelude::Balance;
 use ethabi::Token;
@@ -9,6 +9,56 @@ use frame_support::{
     StorageValue,
 };
 use sp_std::prelude::*;
+
+#[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug)]
+pub struct IncomingTransfer<T: Trait> {
+    pub from: Address,
+    pub to: T::AccountId,
+    pub incoming_asset: IncomingAsset<T>,
+    pub amount: Balance,
+    pub tx_hash: sp_core::H256,
+    pub at_height: u64,
+}
+
+impl<T: Trait> IncomingTransfer<T> {
+    pub fn finalize(self) -> Result<sp_core::H256, DispatchError> {
+        let (asset_id, asset_kind) = match self.incoming_asset {
+            IncomingAsset::Loaded(asset_id, asset_kind) => (asset_id, asset_kind),
+            IncomingAsset::ToRegister(addr, precision, symbol) => {
+                if let Ok(asset) =
+                    crate::Module::<T>::register_sidechain_asset(addr, precision, symbol)
+                        .map(|asset_id| (asset_id, AssetKind::Sidechain))
+                {
+                    asset
+                } else {
+                    crate::Module::<T>::get_asset_by_raw_asset_id(H256::zero(), &addr)?
+                        .ok_or(Error::<T>::FailedToGetAssetById)?
+                }
+            }
+        };
+
+        let bridge_account_id = crate::Module::<T>::bridge_account();
+        match asset_kind {
+            AssetKind::Thischain | AssetKind::SidechainOwned => {
+                assets::Module::<T>::ensure_can_withdraw(
+                    &asset_id,
+                    &bridge_account_id,
+                    self.amount,
+                )?;
+                assets::Module::<T>::transfer_from(
+                    &asset_id,
+                    &bridge_account_id,
+                    &self.to,
+                    self.amount,
+                )?;
+            }
+            AssetKind::Sidechain => {
+                assets::Module::<T>::mint_to(&asset_id, &bridge_account_id, &self.to, self.amount)?;
+            }
+        }
+        Ok(self.tx_hash)
+    }
+}
 
 #[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug)]
 pub struct OutgoingTransfer<T: Trait> {
@@ -36,7 +86,7 @@ impl<T: Trait> OutgoingTransfer<T> {
         }
         let amount = U256::from(self.amount.0.into_inner());
         let tx_hash = H256(tx_hash.0);
-        let raw = ethabi::encode(&[
+        let raw = ethabi::encode_packed(&[
             currency_id.to_token(),
             Token::Uint(amount),
             Token::Address(to.clone()),
@@ -68,7 +118,7 @@ impl<T: Trait> OutgoingTransfer<T> {
 
     pub fn validate(&self) -> Result<(), DispatchError> {
         ensure!(
-            crate::RegisteredAssets::<T>::get(&self.asset_id).is_some(),
+            crate::RegisteredAsset::<T>::get(&self.asset_id).is_some(),
             Error::<T>::UnsupportedToken
         );
         Ok(())
@@ -76,9 +126,9 @@ impl<T: Trait> OutgoingTransfer<T> {
 
     pub fn finalize(&self) -> Result<(), DispatchError> {
         self.validate()?;
-        let bridge_acc = &crate::Module::<T>::bridge_account();
-        assets::Module::<T>::unreserve(self.asset_id, bridge_acc, self.amount)?;
         if let Some(AssetKind::Sidechain) = crate::Module::<T>::registered_asset(&self.asset_id) {
+            let bridge_acc = &crate::Module::<T>::bridge_account();
+            assets::Module::<T>::unreserve(self.asset_id, bridge_acc, self.amount)?;
             assets::Module::<T>::burn_from(&self.asset_id, bridge_acc, bridge_acc, self.amount)?;
         }
         Ok(())

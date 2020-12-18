@@ -1,7 +1,6 @@
 use crate::{mock::*, *};
 use common::fixed;
 use frame_support::{assert_noop, assert_ok};
-use sp_runtime::DispatchError;
 
 type Module = crate::Module<Test>;
 type Assets = assets::Module<Test>;

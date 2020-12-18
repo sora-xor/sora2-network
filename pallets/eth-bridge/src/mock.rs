@@ -1,13 +1,10 @@
 // Creating mock Test here
 
 use crate as eth_bridge;
-use crate::KEY_TYPE;
+use crate::{AssetKind, KEY_TYPE};
 use codec::{Codec, Decode, Encode};
-use common::{balance::Balance, Amount, AssetId, AssetId32, AssetSymbol, USD};
+use common::{balance::Balance, Amount, AssetId, AssetId32, AssetSymbol, USD, VAL};
 use currencies::BasicCurrencyAdapter;
-use frame_support::sp_runtime::offchain::testing::{
-    OffchainState, PoolState, TestOffchainExt, TestTransactionPoolExt,
-};
 use frame_support::{
     assert_ok, construct_runtime,
     dispatch::{DispatchInfo, GetDispatchInfo},
@@ -28,7 +25,10 @@ use frame_support::{
             },
             CryptoTypePublicPair,
         },
-        offchain::OffchainStorage,
+        offchain::{
+            testing::{OffchainState, PoolState, TestOffchainExt, TestTransactionPoolExt},
+            OffchainStorage,
+        },
         serde::{Serialize, Serializer},
         traits::{
             Applyable, Block, Checkable, DispatchInfoOf, Dispatchable, IdentifyAccount,
@@ -333,7 +333,7 @@ parameter_types! {
 }
 
 impl crate::Trait for Test {
-    type AuthorityId = crate::crypto::TestAuthId;
+    type PeerId = crate::crypto::TestAuthId;
     type Call = Call;
     type Event = Event;
 }
@@ -342,7 +342,6 @@ impl sp_runtime::traits::ExtrinsicMetadata for TestExtrinsic {
     const VERSION: u8 = 1;
     type SignedExtensions = ();
 }
-// use pallet_balances::GenesisConfig;
 
 construct_runtime!(
     pub enum Test where
@@ -362,9 +361,6 @@ construct_runtime!(
     }
 );
 
-// pub type Balances = pallet_balances::Module<Test>;
-// pub type Sudo = pallet_sudo::Module<Test>;
-
 pub type SubstrateAccountId = <<Signature as Verify>::Signer as IdentifyAccount>::AccountId;
 
 pub struct State {
@@ -374,11 +370,32 @@ pub struct State {
 
 pub struct ExtBuilder {
     peers_num: usize,
+    tokens: Vec<(common::AssetId32<AssetId>, Option<sp_core::H160>, AssetKind)>,
 }
 
 impl Default for ExtBuilder {
     fn default() -> Self {
-        Self { peers_num: 4 }
+        Self {
+            peers_num: 4,
+            tokens: vec![
+                (
+                    AssetId::XOR.into(),
+                    Some(
+                        sp_core::H160::from_str("40fd72257597aa14c7231a7b1aaa29fce868f677")
+                            .unwrap(),
+                    ),
+                    AssetKind::SidechainOwned,
+                ),
+                (
+                    AssetId::VAL.into(),
+                    Some(
+                        sp_core::H160::from_str("3f9feac97e5feb15d8bf98042a9a01b515da3dfb")
+                            .unwrap(),
+                    ),
+                    AssetKind::SidechainOwned,
+                ),
+            ],
+        }
     }
 }
 
@@ -445,7 +462,12 @@ impl ExtBuilder {
             (
                 multisig_account_id.clone(),
                 XOR.into(),
-                Balance::from(100_000u32),
+                Balance::from(350_000u32),
+            ),
+            (
+                multisig_account_id.clone(),
+                VAL.into(),
+                Balance::from(33_900_000u32),
             ),
         ];
 
@@ -509,18 +531,9 @@ impl ExtBuilder {
         .unwrap();
 
         EthBridgeConfig {
-            authorities: Default::default(),
+            peers: Default::default(),
             bridge_account: multisig_account_id.clone(),
-            tokens: vec![
-                (
-                    AssetId::XOR.into(),
-                    sp_core::H160::from_str("40fd72257597aa14c7231a7b1aaa29fce868f677").unwrap(),
-                ),
-                (
-                    AssetId::VAL.into(),
-                    sp_core::H160::from_str("3f9feac97e5feb15d8bf98042a9a01b515da3dfb").unwrap(),
-                ),
-            ],
+            tokens: self.tokens,
             ..Default::default()
         }
         .assimilate_storage(&mut storage)
@@ -534,7 +547,10 @@ impl ExtBuilder {
 
         t.execute_with(|| {
             for (_, account_id, _) in &ocw_kps {
-                assert_ok!(EthBridge::add_authority(Origin::root(), account_id.clone()));
+                assert_ok!(EthBridge::force_add_peer(
+                    Origin::root(),
+                    account_id.clone()
+                ));
             }
         });
 

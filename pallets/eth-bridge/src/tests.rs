@@ -1,16 +1,22 @@
 use crate::{
-    majority, mock::*, types::Address, OffchainRequest, OutgoingRequest, OutgoingTransfer,
-    RequestStatus, SignatureParams,
+    majority,
+    mock::*,
+    types::{Address, Bytes, Log},
+    AssetKind, ContractEvent, IncomingAsset, IncomingRequest, IncomingRequestKind, OffchainRequest,
+    OutgoingRequest, OutgoingTransfer, RequestStatus, SignatureParams,
 };
 use codec::{Decode, Encode};
-use common::AssetId;
+use common::{balance::Balance, AssetId, AssetId32, AssetSymbol};
+use ethereum_types::H256;
 use frame_support::{
     assert_err, assert_ok,
-    sp_runtime::app_crypto::sp_core::{ecdsa, sr25519, Public},
+    sp_runtime::app_crypto::sp_core::{self, crypto::AccountId32, ecdsa, sr25519, Public},
     StorageMap, StorageValue,
 };
+use hex_literal::hex;
 use rustc_hex::FromHex;
 use secp256k1::{PublicKey, SecretKey};
+use serde_json::Value;
 use sp_std::{collections::btree_set::BTreeSet, prelude::*};
 use std::str::FromStr;
 
@@ -19,6 +25,32 @@ fn get_signature_params(signature: &ecdsa::Signature) -> SignatureParams {
     let mut params = SignatureParams::decode(&mut &encoded[..]).expect("Wrong signature format");
     params.v += 27;
     params
+}
+
+#[test]
+fn should_parse_eth_string() {
+    let bytes: Bytes = serde_json::from_value(Value::String("0x00000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000003584f520000000000000000000000000000000000000000000000000000000000".into())).unwrap();
+    let s = crate::parse_eth_string(&bytes.0).unwrap();
+    assert_eq!(s, "XOR");
+}
+
+#[test]
+fn parses_event() {
+    let (mut ext, _, _, _) = ExtBuilder::new();
+    ext.execute_with(|| {
+        let mut log = Log::default();
+        log.topics = vec![H256(hex!("85c0fa492ded927d3acca961da52b0dda1debb06d8c27fe189315f06bb6e26c8"))];
+        log.data = Bytes(hex!("1111111111111111111111111111111111111111111111111111111111111111000000000000000000000000000000000000000000000000000000000000002a00000000000000000000000022222222222222222222222222222222222222220200040000000000000000000000000000000000000000000000000000000011").to_vec());
+        assert_eq!(
+            EthBridge::parse_main_event(&[log]).unwrap(),
+            ContractEvent::Deposit(
+                AccountId32::from(hex!("1111111111111111111111111111111111111111111111111111111111111111")),
+                Balance::from(42u128),
+                Address::from(&hex!("2222222222222222222222222222222222222222")),
+                H256(hex!("0200040000000000000000000000000000000000000000000000000000000011"))
+            )
+        )
+    });
 }
 
 fn last_event() -> Event {
@@ -36,6 +68,10 @@ fn approve_request(state: &State, request: OutgoingRequest<Test>) -> Result<(), 
     let request_hash = request.hash();
     let encoded = request.to_eth_abi(request_hash).unwrap();
     System::reset_events();
+    assert_eq!(
+        crate::RequestsQueue::<Test>::get().last().unwrap().hash(),
+        request.hash()
+    );
     let mut approves = BTreeSet::new();
 
     for (i, (_signer, account_id, seed)) in state.ocw_keypairs.iter().enumerate() {
@@ -46,7 +82,7 @@ fn approve_request(state: &State, request: OutgoingRequest<Test>) -> Result<(), 
         let signature = sig_pair.into();
         let signature_params = get_signature_params(&signature);
         approves.insert(signature_params.clone());
-        let additional_sigs = if crate::PendingAuthority::<Test>::get().is_some() {
+        let additional_sigs = if crate::PendingPeer::<Test>::get().is_some() {
             1
         } else {
             0
@@ -67,7 +103,13 @@ fn approve_request(state: &State, request: OutgoingRequest<Test>) -> Result<(), 
                         assert_eq!(e, encoded);
                         assert_eq!(a, approves);
                     }
-                    e => return Err(Event::eth_bridge(e)),
+                    e => {
+                        assert_ne!(
+                            crate::RequestsQueue::<Test>::get().last().map(|x| x.hash()),
+                            Some(request.hash())
+                        );
+                        return Err(Event::eth_bridge(e));
+                    }
                 },
                 e => panic!("Unexpected event: {:?}", e),
             }
@@ -76,15 +118,79 @@ fn approve_request(state: &State, request: OutgoingRequest<Test>) -> Result<(), 
         }
         System::reset_events();
     }
+    assert_ne!(
+        crate::RequestsQueue::<Test>::get().last().map(|x| x.hash()),
+        Some(request.hash())
+    );
     Ok(())
 }
 
 fn approve_last_request(state: &State) -> Result<(), Event> {
-    let request = crate::RequestsQueue::<Test>::mutate(|v| v.pop().unwrap());
+    let request = crate::RequestsQueue::<Test>::get().pop().unwrap();
     let outgoing_request = match request {
         OffchainRequest::Outgoing(r, _) => r,
+        _ => panic!("Unexpected request type"),
     };
     approve_request(state, outgoing_request)
+}
+
+fn request_incoming(
+    account_id: AccountId,
+    tx_hash: H256,
+    kind: IncomingRequestKind,
+) -> Result<sp_core::H256, Event> {
+    assert_ok!(EthBridge::request_from_sidechain(
+        Origin::signed(account_id),
+        tx_hash,
+        kind
+    ));
+    let last_request: OffchainRequest<Test> = crate::RequestsQueue::get().pop().unwrap();
+    match last_request {
+        OffchainRequest::Incoming(_, h, _) => assert_eq!(h, tx_hash),
+        _ => panic!("Invalid off-chain request"),
+    }
+    let tx_hash = sp_core::H256(tx_hash.0);
+    assert_eq!(
+        crate::RequestStatuses::get(&tx_hash).unwrap(),
+        RequestStatus::Pending
+    );
+    Ok(tx_hash)
+}
+
+fn approve_incoming_request(
+    state: &State,
+    incoming_request: IncomingRequest<Test>,
+    tx_hash: sp_core::H256,
+) -> Result<(), Event> {
+    assert_eq!(
+        crate::RequestsQueue::<Test>::get().last().unwrap().hash().0,
+        incoming_request.tx_hash().0
+    );
+    assert_ok!(EthBridge::register_incoming_request(
+        Origin::signed(state.bridge_account.clone()),
+        incoming_request.clone()
+    ));
+    assert_ne!(
+        crate::RequestsQueue::<Test>::get()
+            .last()
+            .map(|x| x.hash().0),
+        Some(incoming_request.tx_hash().0)
+    );
+    assert!(crate::PendingIncomingRequests::get().contains(&tx_hash));
+    assert_eq!(
+        crate::IncomingRequests::get(&tx_hash).unwrap(),
+        incoming_request
+    );
+    assert_ok!(EthBridge::finalize_incoming_request(
+        Origin::signed(state.bridge_account.clone()),
+        Ok(incoming_request)
+    ));
+    assert_eq!(
+        crate::RequestStatuses::get(&tx_hash).unwrap(),
+        RequestStatus::Ready
+    );
+    assert!(crate::PendingIncomingRequests::get().is_empty());
+    Ok(())
 }
 
 #[test]
@@ -110,6 +216,99 @@ fn should_transfer() {
             99900u32.into()
         );
         approve_last_request(&state).expect("request wasn't approved");
+    });
+}
+
+#[test]
+fn should_mint_and_burn_sidechain_asset() {
+    let _ = env_logger::try_init();
+
+    let (mut ext, state, _, _) = ExtBuilder::new();
+
+    #[track_caller]
+    fn check_invariant(asset_id: &AssetId32<AssetId>, val: u32) {
+        assert_eq!(
+            assets::Module::<Test>::total_issuance(asset_id).unwrap(),
+            val.into()
+        );
+    }
+
+    ext.execute_with(|| {
+        let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
+        let token_address = Address::from(hex!("7d7ff6f42e928de241282b9606c8e98ea48526e2"));
+        EthBridge::register_sidechain_asset(token_address, 18, AssetSymbol(b"TEST".to_vec()))
+            .unwrap();
+        let (asset_id, asset_kind) =
+            EthBridge::get_asset_by_raw_asset_id(H256::zero(), &token_address)
+                .unwrap()
+                .unwrap();
+        assert_eq!(asset_kind, AssetKind::Sidechain);
+        check_invariant(&asset_id, 0);
+        let tx_hash = H256::from_slice(&[1u8; 32]);
+        let tx_hash =
+            request_incoming(alice.clone(), tx_hash, IncomingRequestKind::Transfer).unwrap();
+        let incoming_transfer = IncomingRequest::Transfer(crate::IncomingTransfer {
+            from: Address::from([1; 20]),
+            to: alice.clone(),
+            incoming_asset: IncomingAsset::Loaded(asset_id, asset_kind),
+            amount: 100u32.into(),
+            tx_hash,
+            at_height: 1,
+        });
+        approve_incoming_request(&state, incoming_transfer.clone(), tx_hash).unwrap();
+        check_invariant(&asset_id, 100);
+        assert_ok!(EthBridge::transfer_to_sidechain(
+            Origin::signed(alice.clone()),
+            asset_id,
+            Address::from_str("19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A").unwrap(),
+            100_u32.into(),
+        ));
+        approve_last_request(&state).expect("request wasn't approved");
+        check_invariant(&asset_id, 0);
+    });
+}
+
+#[test]
+fn should_not_burn_or_mint_sidechain_owned_asset() {
+    let _ = env_logger::try_init();
+
+    let (mut ext, state, _, _) = ExtBuilder::new();
+
+    fn check_invariant() {
+        assert_eq!(
+            assets::Module::<Test>::total_issuance(&AssetId::XOR.into()).unwrap(),
+            450000u32.into()
+        );
+    }
+
+    ext.execute_with(|| {
+        let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
+        assert_eq!(
+            EthBridge::registered_asset(AssetId32::from(AssetId::XOR)).unwrap(),
+            AssetKind::SidechainOwned
+        );
+        check_invariant();
+        let tx_hash = H256::from_slice(&[1u8; 32]);
+        let tx_hash =
+            request_incoming(alice.clone(), tx_hash, IncomingRequestKind::Transfer).unwrap();
+        let incoming_transfer = IncomingRequest::Transfer(crate::IncomingTransfer {
+            from: Address::from([1; 20]),
+            to: alice.clone(),
+            incoming_asset: IncomingAsset::Loaded(AssetId::XOR.into(), AssetKind::SidechainOwned),
+            amount: 100u32.into(),
+            tx_hash,
+            at_height: 1,
+        });
+        approve_incoming_request(&state, incoming_transfer.clone(), tx_hash).unwrap();
+        check_invariant();
+        assert_ok!(EthBridge::transfer_to_sidechain(
+            Origin::signed(alice.clone()),
+            AssetId::XOR.into(),
+            Address::from_str("19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A").unwrap(),
+            100_u32.into(),
+        ));
+        approve_last_request(&state).expect("request wasn't approved");
+        check_invariant();
     });
 }
 
@@ -159,14 +358,226 @@ fn should_register_outgoing_transfer() {
             to: Address::from([1; 20]),
             asset_id: AssetId::XOR.into(),
             amount: 100_u32.into(),
-            nonce: 2,
+            nonce: 3,
         };
         let last_request = crate::RequestsQueue::get().pop().unwrap();
         match last_request {
             OffchainRequest::Outgoing(OutgoingRequest::OutgoingTransfer(r), _) => {
                 assert_eq!(r, outgoing_transfer)
             }
+            _ => panic!("Invalid off-chain request"),
         }
+    });
+}
+
+#[test]
+fn should_not_accept_duplicated_incoming_transfer() {
+    let _ = env_logger::try_init();
+
+    let (mut ext, _state, _pool_state, _oc_state) = ExtBuilder::new();
+
+    ext.execute_with(|| {
+        let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
+        assert_ok!(EthBridge::request_from_sidechain(
+            Origin::signed(alice.clone()),
+            H256::from_slice(&[1u8; 32]),
+            IncomingRequestKind::Transfer
+        ));
+        assert_err!(
+            EthBridge::request_from_sidechain(
+                Origin::signed(alice.clone()),
+                H256::from_slice(&[1u8; 32]),
+                IncomingRequestKind::Transfer
+            ),
+            crate::Error::<Test>::DuplicatedRequest
+        );
+    });
+}
+
+#[test]
+fn should_not_accept_approved_incoming_transfer() {
+    let _ = env_logger::try_init();
+
+    let (mut ext, state, _pool_state, _oc_state) = ExtBuilder::new();
+
+    ext.execute_with(|| {
+        let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
+        let tx_hash = H256::from_slice(&[1u8; 32]);
+        let tx_hash =
+            request_incoming(alice.clone(), tx_hash, IncomingRequestKind::Transfer).unwrap();
+        let incoming_transfer = IncomingRequest::Transfer(crate::IncomingTransfer {
+            from: Address::from([1; 20]),
+            to: alice.clone(),
+            incoming_asset: IncomingAsset::Loaded(AssetId::XOR.into(), AssetKind::Thischain),
+            amount: 100u32.into(),
+            tx_hash,
+            at_height: 1,
+        });
+        approve_incoming_request(&state, incoming_transfer.clone(), tx_hash).unwrap();
+        assert_err!(
+            EthBridge::request_from_sidechain(
+                Origin::signed(alice.clone()),
+                H256::from_slice(&[1u8; 32]),
+                IncomingRequestKind::Transfer
+            ),
+            crate::Error::<Test>::DuplicatedRequest
+        );
+    });
+}
+
+#[test]
+fn should_success_incoming_transfer() {
+    let _ = env_logger::try_init();
+
+    let (mut ext, state, _pool_state, _oc_state) = ExtBuilder::new();
+    ext.execute_with(|| {
+        let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
+        let tx_hash = H256::from_slice(&[1u8; 32]);
+        let tx_hash =
+            request_incoming(alice.clone(), tx_hash, IncomingRequestKind::Transfer).unwrap();
+        let incoming_transfer = IncomingRequest::Transfer(crate::IncomingTransfer {
+            from: Address::from([1; 20]),
+            to: alice.clone(),
+            incoming_asset: IncomingAsset::Loaded(AssetId::XOR.into(), AssetKind::Thischain),
+            amount: 100u32.into(),
+            tx_hash,
+            at_height: 1,
+        });
+        assert_eq!(
+            assets::Module::<Test>::total_balance(&AssetId::XOR.into(), &alice).unwrap(),
+            100000u32.into()
+        );
+        approve_incoming_request(&state, incoming_transfer.clone(), tx_hash).unwrap();
+        assert_eq!(
+            assets::Module::<Test>::total_balance(&AssetId::XOR.into(), &alice).unwrap(),
+            100100u32.into()
+        );
+    });
+}
+
+#[test]
+fn should_fail_incoming_transfer() {
+    let _ = env_logger::try_init();
+
+    let (mut ext, state, _pool_state, _oc_state) = ExtBuilder::new();
+    ext.execute_with(|| {
+        let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
+        let tx_hash = H256::from_slice(&[1u8; 32]);
+        let tx_hash =
+            request_incoming(alice.clone(), tx_hash, IncomingRequestKind::Transfer).unwrap();
+        let incoming_transfer = IncomingRequest::Transfer(crate::IncomingTransfer {
+            from: Address::from([1; 20]),
+            to: alice.clone(),
+            incoming_asset: IncomingAsset::Loaded(AssetId::XOR.into(), AssetKind::Thischain),
+            amount: 100u32.into(),
+            tx_hash,
+            at_height: 1,
+        });
+        assert_ok!(EthBridge::register_incoming_request(
+            Origin::signed(state.bridge_account.clone()),
+            incoming_transfer.clone()
+        ));
+        assert!(crate::PendingIncomingRequests::get().contains(&tx_hash));
+        assert_eq!(
+            crate::IncomingRequests::get(&tx_hash).unwrap(),
+            incoming_transfer
+        );
+        assert_eq!(
+            assets::Module::<Test>::total_balance(&AssetId::XOR.into(), &alice).unwrap(),
+            100000u32.into()
+        );
+        assert_ok!(EthBridge::finalize_incoming_request(
+            Origin::signed(state.bridge_account),
+            Err((tx_hash, crate::Error::<Test>::Other.into()))
+        ));
+        assert_eq!(
+            crate::RequestStatuses::get(&tx_hash).unwrap(),
+            RequestStatus::Failed
+        );
+        assert!(crate::PendingIncomingRequests::get().is_empty());
+        assert_eq!(
+            assets::Module::<Test>::total_balance(&AssetId::XOR.into(), &alice).unwrap(),
+            100000u32.into()
+        );
+    });
+}
+
+#[test]
+fn should_register_and_find_asset_ids() {
+    let _ = env_logger::try_init();
+
+    let (mut ext, _state, _pool_state, _oc_state) = ExtBuilder::new();
+    ext.execute_with(|| {
+        // gets a known asset
+        let (asset_id, asset_kind) = EthBridge::get_asset_by_raw_asset_id(
+            H256(AssetId32::<AssetId>::from_asset_id(AssetId::XOR).code),
+            &Address::zero(),
+        )
+        .unwrap()
+        .unwrap();
+        assert_eq!(asset_id, AssetId::XOR.into());
+        assert_eq!(asset_kind, AssetKind::Thischain);
+        let token_address = Address::from(hex!("7d7ff6f42e928de241282b9606c8e98ea48526e2"));
+        // registers unknown token
+        assert!(
+            EthBridge::get_asset_by_raw_asset_id(H256::zero(), &token_address)
+                .unwrap()
+                .is_none()
+        );
+        // gets registered asset ID, associated with the token
+        EthBridge::register_sidechain_asset(token_address, 18, AssetSymbol(b"TEST".to_vec()))
+            .unwrap();
+        let (asset_id, asset_kind) =
+            EthBridge::get_asset_by_raw_asset_id(H256::zero(), &token_address)
+                .unwrap()
+                .unwrap();
+        assert_eq!(
+            asset_id,
+            AssetId32::from_bytes(hex!(
+                "a308f54ca8c5b054d3180463aa4443c2c87600a1c2d21671f7dbfb39943377a9"
+            ))
+        );
+        assert_eq!(asset_kind, AssetKind::Sidechain);
+        assert_eq!(
+            EthBridge::registered_sidechain_token(&asset_id).unwrap(),
+            token_address
+        );
+        assert_eq!(
+            EthBridge::registered_sidechain_asset(&token_address).unwrap(),
+            asset_id
+        );
+    });
+}
+
+#[test]
+fn should_add_new_asset_on_incoming_transfer() {
+    let _ = env_logger::try_init();
+
+    let (mut ext, state, _pool_state, _oc_state) = ExtBuilder::new();
+    ext.execute_with(|| {
+        let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
+        let tx_hash = H256::from_slice(&[1u8; 32]);
+        let tx_hash =
+            request_incoming(alice.clone(), tx_hash, IncomingRequestKind::Transfer).unwrap();
+        let token_address = Address::from(hex!("7d7ff6f42e928de241282b9606c8e98ea48526e2"));
+        let incoming_transfer = IncomingRequest::Transfer(crate::IncomingTransfer {
+            from: Address::from([1; 20]),
+            to: alice.clone(),
+            incoming_asset: IncomingAsset::ToRegister(
+                token_address,
+                18,
+                AssetSymbol(b"TEST".to_vec()),
+            ),
+            amount: 100u32.into(),
+            tx_hash,
+            at_height: 1,
+        });
+        approve_incoming_request(&state, incoming_transfer.clone(), tx_hash).unwrap();
+        let asset_id = EthBridge::registered_sidechain_asset(&token_address).unwrap();
+        assert_eq!(
+            assets::Module::<Test>::total_balance(&asset_id, &alice).unwrap(),
+            100u32.into()
+        );
     });
 }
 

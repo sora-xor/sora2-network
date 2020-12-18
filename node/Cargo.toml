@@ -32,6 +32,7 @@ faucet = { path = "../pallets/faucet" }
 trading-pair-rpc = { path = "../pallets/trading-pair/rpc" }
 assets-rpc = { path = "../pallets/assets/rpc" }
 liquidity-proxy-rpc = { path = "../pallets/liquidity-proxy/rpc" }
+multisig = { git = "https://github.com/soramitsu/sora2-frame-pallets.git", branch = "vmarkushin/multisig", package = "pallet-multisig" }
 
 # Parachain dependencies
 framenode-runtime = { path = "../runtime" }

@@ -127,8 +127,8 @@ std = [
     'dex-manager/std',
     'sp-staking/std',
     'pallet-authorship/std',
-    'eth-bridge/std',
-    'multisig/std',
+	'eth-bridge/std',
+	'multisig/std',
     'mock-liquidity-source/std',
     'dex-api/std',
 ]

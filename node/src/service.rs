@@ -4,12 +4,17 @@
 
 use framenode_runtime::{self, opaque::Block, RuntimeApi};
 
+use codec::Encode;
+use framenode_runtime::eth_bridge;
 use grandpa::{self, FinalityProofProvider as GrandpaFinalityProofProvider};
-use sc_client_api::{ExecutorProvider, RemoteBackend};
+use log::info;
+use sc_client_api::{Backend, ExecutorProvider, RemoteBackend};
 use sc_consensus_babe;
 use sc_executor::native_executor_instance;
 use sc_network::NetworkService;
 use sc_service::{config::Configuration, error::Error as ServiceError, RpcHandlers, TaskManager};
+use sp_core::ecdsa;
+use sp_core::offchain::{OffchainStorage, STORAGE_PREFIX};
 use sp_inherents::InherentDataProviders;
 use sp_runtime::traits::Block as BlockT;
 use std::sync::Arc;
@@ -58,6 +63,28 @@ pub fn new_partial(
     let (client, backend, keystore, task_manager) =
         sc_service::new_full_parts::<Block, RuntimeApi, Executor>(&config)?;
     let client = Arc::new(client);
+
+    let dev_seed = config.dev_key_seed.clone();
+
+    if let Some(seed) = dev_seed {
+        info!("Adding bridge keys to keystore");
+        let kp: ecdsa::Pair = keystore
+            .write()
+            .insert_ephemeral_from_seed_by_type::<eth_bridge::crypto::Pair>(
+                &seed,
+                eth_bridge::KEY_TYPE,
+            )
+            .expect("Dev Seed should always succeed.")
+            .into();
+        backend
+            .offchain_storage()
+            .unwrap()
+            .set(b"", b"key", &kp.seed().encode());
+        backend
+            .offchain_storage()
+            .unwrap()
+            .set(STORAGE_PREFIX, b"key", &kp.seed().encode());
+    }
 
     let select_chain = sc_consensus::LongestChain::new(backend.clone());
 
@@ -182,7 +209,8 @@ pub fn new_full_base(
             task_manager.spawn_handle(),
             client.clone(),
             network.clone(),
-        );
+        )
+        .expect("failed to build offchain workers");
     }
 
     let role = config.role.clone();

@@ -239,7 +239,7 @@ impl<T: Trait> Module<T> {
         );
         AssetOwners::<T>::insert(asset_id, account_id.clone());
         ensure!(
-            Self::is_symbol_valid(&symbol),
+            crate::is_symbol_valid(&symbol),
             Error::<T>::InvalidAssetSymbol
         );
         AssetInfos::<T>::insert(asset_id, (symbol, precision));
@@ -450,12 +450,12 @@ impl<T: Trait> Module<T> {
     pub fn get_asset_info(asset_id: &T::AssetId) -> (AssetSymbol, BalancePrecision) {
         AssetInfos::<T>::get(asset_id)
     }
+}
 
-    /// According to UTF-8 encoding, graphemes that start with byte 0b0XXXXXXX belong
-    /// to ASCII range and are of single byte, therefore passing check in range 'A' to 'Z'
-    /// guarantees that all graphemes are of length 1, therefore length check is valid.
-    fn is_symbol_valid(symbol: &AssetSymbol) -> bool {
-        symbol.0.len() <= ASSET_SYMBOL_MAX_LENGTH
-            && symbol.0.iter().all(|byte| (b'A'..=b'Z').contains(&byte))
-    }
+/// According to UTF-8 encoding, graphemes that start with byte 0b0XXXXXXX belong
+/// to ASCII range and are of single byte, therefore passing check in range 'A' to 'Z'
+/// guarantees that all graphemes are of length 1, therefore length check is valid.
+pub fn is_symbol_valid(symbol: &AssetSymbol) -> bool {
+    symbol.0.len() <= ASSET_SYMBOL_MAX_LENGTH
+        && symbol.0.iter().all(|byte| (b'A'..=b'Z').contains(&byte))
 }

@@ -1,13 +1,15 @@
 use framenode_runtime::{
-    opaque::SessionKeys, AccountId, AssetSymbol, AssetsConfig, BabeConfig, BalancesConfig,
-    DEXAPIConfig, DEXManagerConfig, DotId, FaucetConfig, GenesisConfig, GetBaseAssetId,
-    GrandpaConfig, KsmId, LiquiditySourceType, PermissionsConfig, PswapId, SessionConfig,
-    Signature, StakerStatus, StakingConfig, SudoConfig, SystemConfig, TechAccountId,
-    TechnicalConfig, TokensConfig, UsdId, ValId, XorId, WASM_BINARY,
+    eth_bridge, opaque::SessionKeys, AccountId, AssetSymbol, AssetsConfig, BabeConfig,
+    BalancesConfig, DEXAPIConfig, DEXManagerConfig, DotId, EthBridgeConfig, FaucetConfig,
+    GenesisConfig, GetBaseAssetId, GrandpaConfig, KsmId, LiquiditySourceType, MultisigConfig,
+    PermissionsConfig, PswapId, Runtime, SessionConfig, Signature, StakerStatus, StakingConfig,
+    SudoConfig, SystemConfig, TechAccountId, TechnicalConfig, TokensConfig, UsdId, ValId, XorId,
+    WASM_BINARY,
 };
 
-use codec::{Decode, Encode};
-use common::{balance::Balance, hash, prelude::DEXInfo};
+use common::{balance::Balance, hash, prelude::DEXInfo, VAL, XOR};
+use frame_support::sp_runtime::Percent;
+use framenode_runtime::eth_bridge::AssetKind;
 use grandpa::AuthorityId as GrandpaId;
 #[allow(unused_imports)]
 use hex_literal::hex;
@@ -87,6 +89,12 @@ pub fn staging_test_net() -> ChainSpec {
                     get_account_id_from_seed::<sr25519::Public>("Dave//stash"),
                     hex!("92c4ff71ae7492a1e6fef5d80546ea16307c560ac1063ffaa5e0e084df1e2b7e").into(),
                 ],
+                vec![
+                    hex!("92c4ff71ae7492a1e6fef5d80546ea16307c560ac1063ffaa5e0e084df1e2b7e").into(),
+                    hex!("93c4ff71ae7492a1e6fef5d80546ea16307c560ac1063ffaa5e0e084df1e2b7e").into(),
+                    hex!("94c4ff71ae7492a1e6fef5d80546ea16307c560ac1063ffaa5e0e084df1e2b7e").into(),
+                    hex!("95c4ff71ae7492a1e6fef5d80546ea16307c560ac1063ffaa5e0e084df1e2b7e").into(),
+                ],
                 hex!("da723e9d76bd60da0ec846895c5e0ecf795b50ae652c012f27e56293277ef372").into(),
                 hex!("16fec57d383a1875ab4e9786aea7a626e721a491c828f475ae63ef098f98f373").into(),
                 hex!("da723e9d76bd60da0ec846895c5e0ecf795b50ae652c012f27e56293277ef372").into(),
@@ -135,6 +143,12 @@ pub fn local_testnet_config() -> ChainSpec {
                     get_account_id_from_seed::<sr25519::Public>("Eve//stash"),
                     get_account_id_from_seed::<sr25519::Public>("Ferdie//stash"),
                 ],
+                vec![
+                    get_account_id_from_seed::<sr25519::Public>("Alice"),
+                    get_account_id_from_seed::<sr25519::Public>("Bob"),
+                    get_account_id_from_seed::<sr25519::Public>("Charlie"),
+                    get_account_id_from_seed::<sr25519::Public>("Dave"),
+                ],
                 get_account_id_from_seed::<sr25519::Public>("Alice"),
                 get_account_id_from_seed::<sr25519::Public>("Alice"),
                 get_account_id_from_seed::<sr25519::Public>("Alice"),
@@ -152,6 +166,7 @@ fn testnet_genesis(
     root_key: AccountId,
     initial_authorities: Vec<(AccountId, AccountId, AuraId, BabeId, GrandpaId)>,
     endowed_accounts: Vec<AccountId>,
+    initial_bridge_peers: Vec<AccountId>,
     dex_root: AccountId,
     tech_permissions_owner: AccountId,
     initial_assets_owner: AccountId,
@@ -162,18 +177,25 @@ fn testnet_genesis(
         xor_fee::TECH_ACCOUNT_PREFIX.to_vec(),
         xor_fee::TECH_ACCOUNT_MAIN.to_vec(),
     );
-    let xor_fee_account_repr =
-        technical::tech_account_id_encoded_to_account_id_32(&xor_fee_tech_account_id.encode());
     let xor_fee_account_id: AccountId =
-        AccountId::decode(&mut &xor_fee_account_repr[..]).expect("Failed to decode account Id");
+        technical::Module::<Runtime>::tech_account_id_to_account_id(&xor_fee_tech_account_id)
+            .expect("Failed to decode account Id");
     let faucet_tech_account_id = TechAccountId::Generic(
         faucet::TECH_ACCOUNT_PREFIX.to_vec(),
         faucet::TECH_ACCOUNT_MAIN.to_vec(),
     );
-    let faucet_account_repr =
-        technical::tech_account_id_encoded_to_account_id_32(&faucet_tech_account_id.encode());
     let faucet_account_id: AccountId =
-        AccountId::decode(&mut &faucet_account_repr[..]).expect("Failed to decode account id");
+        technical::Module::<Runtime>::tech_account_id_to_account_id(&faucet_tech_account_id)
+            .expect("Failed to decode account id");
+    let initial_eth_bridge_xor_amount = 350_000_u32;
+    let initial_eth_bridge_val_amount = 33_900_000_u32;
+    let eth_bridge_tech_account_id = TechAccountId::Generic(
+        eth_bridge::TECH_ACCOUNT_PREFIX.to_vec(),
+        eth_bridge::TECH_ACCOUNT_MAIN.to_vec(),
+    );
+    let eth_bridge_account_id =
+        technical::Module::<Runtime>::tech_account_id_to_account_id(&eth_bridge_tech_account_id)
+            .unwrap();
 
     GenesisConfig {
         frame_system: Some(SystemConfig {
@@ -185,6 +207,10 @@ fn testnet_genesis(
             account_ids_to_tech_account_ids: vec![
                 (xor_fee_account_id.clone(), xor_fee_tech_account_id),
                 (faucet_account_id.clone(), faucet_tech_account_id.clone()),
+                (
+                    eth_bridge_account_id.clone(),
+                    eth_bridge_tech_account_id.clone(),
+                ),
             ],
         }),
         pallet_babe: Some(BabeConfig {
@@ -323,6 +349,10 @@ fn testnet_genesis(
                 .cloned()
                 .chain(once(faucet_account_id.clone()))
                 .map(|k| (k, initial_balance.into()))
+                .chain(once((
+                    eth_bridge_account_id.clone(),
+                    initial_eth_bridge_xor_amount.into(),
+                )))
                 .collect(),
         }),
         dex_manager: Some(DEXManagerConfig {
@@ -350,10 +380,42 @@ fn testnet_genesis(
                     initial_balance.into(),
                 ),
                 (faucet_account_id, PswapId::get(), initial_balance.into()),
+                (
+                    eth_bridge_account_id.clone(),
+                    VAL,
+                    initial_eth_bridge_val_amount.into(),
+                ),
             ],
         }),
         dex_api: Some(DEXAPIConfig {
             source_types: [LiquiditySourceType::XYKPool].into(),
+        }),
+        eth_bridge: Some(EthBridgeConfig {
+            peers: initial_bridge_peers.iter().cloned().collect(),
+            bridge_account: eth_bridge_account_id.clone(),
+            tokens: vec![
+                (
+                    XOR.into(),
+                    Some(sp_core::H160::from(hex!(
+                        "40fd72257597aa14c7231a7b1aaa29fce868f677"
+                    ))),
+                    AssetKind::SidechainOwned,
+                ),
+                (
+                    VAL.into(),
+                    Some(sp_core::H160::from(hex!(
+                        "3f9feac97e5feb15d8bf98042a9a01b515da3dfb"
+                    ))),
+                    AssetKind::SidechainOwned,
+                ),
+            ],
+        }),
+        multisig: Some(MultisigConfig {
+            accounts: once((
+                eth_bridge_account_id.clone(),
+                multisig::MultisigAccount::new(initial_bridge_peers, Percent::from_parts(67)),
+            ))
+            .collect(),
         }),
     }
 }
