@@ -625,7 +625,7 @@ construct_runtime! {
         System: frame_system::{Module, Call, Storage, Config, Event<T>},
         Timestamp: pallet_timestamp::{Module, Call, Storage, Inherent},
         // Balances in native currency - XOR.
-        Balances: pallet_balances::{Module, Call, Storage, Config<T>, Event<T>},
+        Balances: pallet_balances::{Module, Config<T>, Event<T>},
         Sudo: pallet_sudo::{Module, Call, Storage, Config<T>, Event<T>},
         RandomnessCollectiveFlip: pallet_randomness_collective_flip::{Module, Call, Storage},
         TransactionPayment: pallet_transaction_payment::{Module, Storage},
@@ -642,9 +642,9 @@ construct_runtime! {
         Staking: pallet_staking::{Module, Call, Config<T>, Storage, Event<T>},
 
         // Non-native tokens - everything apart of XOR.
-        Tokens: tokens::{Module, Storage, Config<T>, Event<T>},
+        Tokens: tokens::{Module, Config<T>, Event<T>},
         // Unified interface for XOR and non-native tokens.
-        Currencies: currencies::{Module, Call, Event<T>},
+        Currencies: currencies::{Module, Event<T>},
         TradingPair: trading_pair::{Module, Call, Event<T>},
         Assets: assets::{Module, Call, Storage, Config<T>, Event<T>},
         DEXManager: dex_manager::{Module, Call, Storage, Config<T>, Event<T>},
@@ -843,6 +843,14 @@ impl_runtime_apis! {
 
         fn total_balance(account_id: AccountId, asset_id: AssetId) -> Option<assets_runtime_api::BalanceInfo<Balance>> {
             Assets::total_balance(&asset_id, &account_id).ok().map(|balance|
+                assets_runtime_api::BalanceInfo::<Balance> {
+                    balance: balance.clone(),
+                }
+            )
+        }
+
+        fn total_supply(asset_id: AssetId) -> Option<assets_runtime_api::BalanceInfo<Balance>> {
+            Assets::total_issuance(&asset_id).ok().map(|balance|
                 assets_runtime_api::BalanceInfo::<Balance> {
                     balance: balance.clone(),
                 }
