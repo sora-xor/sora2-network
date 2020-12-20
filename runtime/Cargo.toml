@@ -131,4 +131,5 @@ std = [
 	'multisig/std',
     'mock-liquidity-source/std',
     'dex-api/std',
+    'bonding-curve-pool/std',
 ]

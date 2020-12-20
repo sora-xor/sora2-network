@@ -1917,6 +1917,7 @@ dependencies = [
  "sc-transaction-pool",
  "serde 1.0.118",
  "sp-api",
+ "sp-arithmetic",
  "sp-block-builder",
  "sp-blockchain",
  "sp-consensus",

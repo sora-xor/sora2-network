@@ -59,6 +59,7 @@ pub use pallet_timestamp::Call as TimestampCall;
 pub use sp_runtime::BuildStorage;
 pub use sp_runtime::{Perbill, Permill};
 
+pub use bonding_curve_pool;
 pub use eth_bridge;
 
 /// An index to a block.
@@ -673,7 +674,7 @@ construct_runtime! {
         TradingPair: trading_pair::{Module, Call, Event<T>},
         Assets: assets::{Module, Call, Storage, Config<T>, Event<T>},
         DEXManager: dex_manager::{Module, Call, Storage, Config<T>, Event<T>},
-        BondingCurvePool: bonding_curve_pool::{Module},
+        BondingCurvePool: bonding_curve_pool::{Module, Call, Storage, Config<T>},
         Technical: technical::{Module, Call, Config<T>, Event<T>},
         PoolXYK: pool_xyk::{Module, Call, Storage, Event<T>},
         LiquidityProxy: liquidity_proxy::{Module, Call, Event<T>},

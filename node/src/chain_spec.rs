@@ -1,24 +1,22 @@
 use framenode_runtime::{
-    eth_bridge, opaque::SessionKeys, AccountId, AssetSymbol, AssetsConfig, BabeConfig,
-    BalancesConfig, DEXAPIConfig, DEXManagerConfig, DotId, EthBridgeConfig, FaucetConfig,
-    GenesisConfig, GetBaseAssetId, GrandpaConfig, KsmId, LiquiditySourceType, MultisigConfig,
-    PermissionsConfig, PswapId, Runtime, SessionConfig, Signature, StakerStatus, StakingConfig,
-    SudoConfig, SystemConfig, TechAccountId, TechnicalConfig, TokensConfig, UsdId, ValId, XorId,
-    WASM_BINARY,
+    bonding_curve_pool, eth_bridge, opaque::SessionKeys, AccountId, AssetSymbol, AssetsConfig,
+    BabeConfig, BalancesConfig, BondingCurvePoolConfig, DEXAPIConfig, DEXManagerConfig, DotId,
+    EthBridgeConfig, FaucetConfig, GenesisConfig, GetBaseAssetId, GrandpaConfig, KsmId,
+    LiquiditySourceType, MultisigConfig, PermissionsConfig, PswapId, Runtime, SessionConfig,
+    Signature, StakerStatus, StakingConfig, SudoConfig, SystemConfig, TechAccountId,
+    TechnicalConfig, TokensConfig, UsdId, ValId, XorId, WASM_BINARY,
 };
 
-use common::{balance::Balance, hash, prelude::DEXInfo, VAL, XOR};
+use common::{balance::Balance, hash, prelude::DEXInfo, DEXId, Fixed, TechPurpose, VAL, XOR};
 use frame_support::sp_runtime::Percent;
+use framenode_runtime::bonding_curve_pool::{DistributionAccountData, DistributionAccounts};
 use framenode_runtime::eth_bridge::AssetKind;
 use grandpa::AuthorityId as GrandpaId;
-#[allow(unused_imports)]
 use hex_literal::hex;
 use permissions::Scope;
 use sc_service::{ChainType, Properties};
 use sp_consensus_aura::sr25519::AuthorityId as AuraId;
 use sp_consensus_babe::AuthorityId as BabeId;
-#[allow(unused_imports)]
-use sp_core::crypto::AccountId32;
 use sp_core::{sr25519, Pair, Public};
 use sp_runtime::{
     sp_std::iter::once,
@@ -28,6 +26,7 @@ use sp_runtime::{
 
 /// Specialized `ChainSpec`. This is a specialization of the general Substrate ChainSpec type.
 pub type ChainSpec = sc_service::GenericChainSpec<GenesisConfig>;
+type Technical = technical::Module<Runtime>;
 
 /// Helper function to generate a crypto pair from seed
 pub fn get_from_seed<TPublic: Public>(seed: &str) -> <TPublic::Pair as Pair>::Public {
@@ -106,6 +105,80 @@ pub fn staging_test_net() -> ChainSpec {
         Some(properties),
         None,
     )
+}
+
+fn bonding_curve_distribution_accounts(
+) -> DistributionAccounts<DistributionAccountData<<Runtime as technical::Trait>::TechAccountId>> {
+    use common::fixed;
+    let val_holders_coefficient: Fixed = fixed!(50%);
+    let val_holders_xor_alloc_coeff = val_holders_coefficient * fixed!(90%);
+    let val_holders_buy_back_coefficient = val_holders_coefficient * (fixed!(100%) - fixed!(90%));
+    let projects_coefficient = fixed!(100%) - val_holders_coefficient;
+    let projects_sora_citizens_coeff = projects_coefficient * fixed!(1%);
+    let projects_stores_and_shops_coeff = projects_coefficient * fixed!(4%);
+    let projects_parliament_and_development_coeff = projects_coefficient * fixed!(5%);
+    let projects_other_coeff = projects_coefficient * fixed!(90%);
+
+    debug_assert_eq!(
+        fixed!(100%),
+        val_holders_xor_alloc_coeff
+            + projects_sora_citizens_coeff
+            + projects_stores_and_shops_coeff
+            + projects_parliament_and_development_coeff
+            + projects_other_coeff
+            + val_holders_buy_back_coefficient
+    );
+
+    let xor_allocation = DistributionAccountData::new(
+        TechAccountId::Pure(
+            DEXId::Polkaswap.into(),
+            TechPurpose::Identifier(b"xor_allocation".to_vec()),
+        ),
+        val_holders_xor_alloc_coeff,
+    );
+    let sora_citizens = DistributionAccountData::new(
+        TechAccountId::Pure(
+            DEXId::Polkaswap.into(),
+            TechPurpose::Identifier(b"sora_citizens".to_vec()),
+        ),
+        projects_sora_citizens_coeff,
+    );
+    let stores_and_shops = DistributionAccountData::new(
+        TechAccountId::Pure(
+            DEXId::Polkaswap.into(),
+            TechPurpose::Identifier(b"stores_and_shops".to_vec()),
+        ),
+        projects_stores_and_shops_coeff,
+    );
+    let parliament_and_development = DistributionAccountData::new(
+        TechAccountId::Pure(
+            DEXId::Polkaswap.into(),
+            TechPurpose::Identifier(b"parliament_and_development".to_vec()),
+        ),
+        projects_parliament_and_development_coeff,
+    );
+    let projects = DistributionAccountData::new(
+        TechAccountId::Pure(
+            DEXId::Polkaswap.into(),
+            TechPurpose::Identifier(b"projects".to_vec()),
+        ),
+        projects_other_coeff,
+    );
+    let val_holders = DistributionAccountData::new(
+        TechAccountId::Pure(
+            DEXId::Polkaswap.into(),
+            TechPurpose::Identifier(b"val_holders".to_vec()),
+        ),
+        val_holders_buy_back_coefficient,
+    );
+    DistributionAccounts::<_> {
+        xor_allocation,
+        sora_citizens,
+        stores_and_shops,
+        parliament_and_development,
+        projects,
+        val_holders,
+    }
 }
 
 pub fn local_testnet_config() -> ChainSpec {
@@ -197,6 +270,31 @@ fn testnet_genesis(
         technical::Module::<Runtime>::tech_account_id_to_account_id(&eth_bridge_tech_account_id)
             .unwrap();
 
+    let bonding_curve_reserves_tech_account_id = TechAccountId::Generic(
+        bonding_curve_pool::TECH_ACCOUNT_PREFIX.to_vec(),
+        bonding_curve_pool::TECH_ACCOUNT_RESERVES.to_vec(),
+    );
+
+    let mut tech_accounts = vec![
+        (xor_fee_account_id.clone(), xor_fee_tech_account_id),
+        (faucet_account_id.clone(), faucet_tech_account_id.clone()),
+        (
+            eth_bridge_account_id.clone(),
+            eth_bridge_tech_account_id.clone(),
+        ),
+    ];
+    let accounts = bonding_curve_distribution_accounts();
+    tech_accounts.push((
+        Technical::tech_account_id_to_account_id(&accounts.val_holders.account_id).unwrap(),
+        accounts.val_holders.account_id.clone(),
+    ));
+    for tech_account in &accounts.xor_distribution_accounts_as_array() {
+        tech_accounts.push((
+            Technical::tech_account_id_to_account_id(&tech_account).unwrap(),
+            (*tech_account).to_owned(),
+        ));
+    }
+
     GenesisConfig {
         frame_system: Some(SystemConfig {
             code: WASM_BINARY.unwrap().to_vec(),
@@ -204,14 +302,7 @@ fn testnet_genesis(
         }),
         pallet_sudo: Some(SudoConfig { key: root_key }),
         technical: Some(TechnicalConfig {
-            account_ids_to_tech_account_ids: vec![
-                (xor_fee_account_id.clone(), xor_fee_tech_account_id),
-                (faucet_account_id.clone(), faucet_tech_account_id.clone()),
-                (
-                    eth_bridge_account_id.clone(),
-                    eth_bridge_tech_account_id.clone(),
-                ),
-            ],
+            account_ids_to_tech_account_ids: tech_accounts,
         }),
         pallet_babe: Some(BabeConfig {
             authorities: vec![],
@@ -416,6 +507,10 @@ fn testnet_genesis(
                 multisig::MultisigAccount::new(initial_bridge_peers, Percent::from_parts(67)),
             ))
             .collect(),
+        }),
+        bonding_curve_pool: Some(BondingCurvePoolConfig {
+            distribution_accounts: accounts,
+            reserves_account_id: bonding_curve_reserves_tech_account_id,
         }),
     }
 }
