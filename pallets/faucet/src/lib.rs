@@ -2,11 +2,14 @@
 
 use common::{fixed, prelude::*};
 use frame_support::{
-    decl_error, decl_event, decl_module, decl_storage, dispatch::DispatchResult, ensure,
+    decl_error, decl_event, decl_module, decl_storage,
+    dispatch::DispatchResult,
+    ensure,
+    unsigned::{TransactionSource, TransactionValidity, ValidateUnsigned},
     weights::Pays,
 };
-use frame_system::ensure_signed;
 use sp_arithmetic::traits::Saturating;
+use sp_runtime::transaction_validity::{InvalidTransaction, ValidTransaction};
 
 #[cfg(test)]
 mod mock;
@@ -74,7 +77,6 @@ decl_module! {
         /// NotEnoughReserves is returned if `amount` is greater than the reserves
         #[weight = (0, Pays::No)]
         pub fn transfer(origin, asset_id: T::AssetId, target: T::AccountId, amount: Balance) -> DispatchResult {
-            let _ = ensure_signed(origin)?;
             Self::ensure_asset_supported(asset_id)?;
             let block_number = System::<T>::block_number();
             let (block_number, taken_amount) = Self::prepare_transfer(&target, asset_id, amount, block_number)?;
@@ -92,6 +94,22 @@ decl_module! {
             Transfers::<T>::insert(target.clone(), asset_id, (block_number, taken_amount));
             Self::deposit_event(RawEvent::Transferred(target, amount));
             Ok(())
+        }
+    }
+}
+
+impl<T: Trait> ValidateUnsigned for Module<T> {
+    type Call = Call<T>;
+
+    fn validate_unsigned(_source: TransactionSource, call: &Self::Call) -> TransactionValidity {
+        if let Call::transfer(_, target, _) = call {
+            ValidTransaction::with_tag_prefix("Faucet")
+                .priority(0)
+                .and_provides(target)
+                .propagate(false)
+                .build()
+        } else {
+            InvalidTransaction::Call.into()
         }
     }
 }

@@ -680,7 +680,7 @@ construct_runtime! {
         MockLiquiditySource3: mock_liquidity_source::<Instance3>::{Module, Call, Storage, Config<T>, Event<T>},
         MockLiquiditySource4: mock_liquidity_source::<Instance4>::{Module, Call, Storage, Config<T>, Event<T>},
         DEXAPI: dex_api::{Module, Call, Storage, Config, Event<T>},
-        Faucet: faucet::{Module, Call, Config<T>, Event<T>},
+        Faucet: faucet::{Module, Call, Config<T>, Event<T>, ValidateUnsigned},
         ETHBridge: eth_bridge::{Module, Call, Event<T>},
         //IrohaBridge: iroha_bridge::{Module, Call, Storage, Config<T>, Event<T>},
     }
