@@ -8,6 +8,7 @@ String baseImageName = "docker.soramitsu.co.jp/sora2/substrate-env:latest"
 String appImageName = "docker.soramitsu.co.jp/sora2/substrate"
 String secretScannerExclusion = '.*Cargo.toml'
 Boolean disableSecretScanner = false
+def pushTags=['master': 'latest', 'develop': 'dev', 'staging': 'stage']
 
 pipeline {
     options {
@@ -52,11 +53,11 @@ pipeline {
         }
         stage('Push Image') {
             when {
-                expression { getPushVersion() }
+                expression { getPushVersion(pushTags) }
             }
             steps{
                 script {
-                    baseImageTag = "${getPushVersion()}"
+                    baseImageTag = "${getPushVersion(pushTags)}"
                     docker.withRegistry( "https://" + registry, dockerRegistryRWUserId) {
                         sh """
                             docker tag ${appImageName} ${appImageName}:${baseImageTag}
