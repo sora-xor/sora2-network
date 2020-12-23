@@ -16,6 +16,8 @@ contract Bridge {
     /** Substrate proofs used */
     mapping(bytes32 => bool) public used;
     mapping(address => bool) public _uniqueAddresses;
+    /* White list of ERC-20 ethereum native tokens */
+    mapping(address => bool) public acceptedEthTokens;
 
     mapping(bytes32 => address) public _sidechainTokens;
     mapping(address => bytes32) public _sidechainTokensByAddress;
@@ -55,6 +57,30 @@ contract Bridge {
     
     receive() external payable { 
         revert();
+    }
+    
+    /**
+     * Adds new token to whitelist. 
+     * Token should not been already added.
+     * @param newToken token to add
+     */
+    function addEthNativeToken(
+        address newToken, 
+        bytes memory ticker, 
+        bytes memory name, 
+        uint decimals,
+        uint8[] memory v,
+        bytes32[] memory r,
+        bytes32[] memory s
+        ) 
+        public {
+        require(acceptedEthTokens[newToken] == false);
+        require(checkSignatures(keccak256(abi.encodePacked(newToken, ticker, name, decimals)),
+            v,
+            r,
+            s), "Peer signatures are invalid"
+        );
+        acceptedEthTokens[newToken] = true;
     }
     
     function shutDownAndMigrate(
@@ -144,6 +170,7 @@ contract Bridge {
             ERC20Burnable mtoken = ERC20Burnable(tokenAddress);
             mtoken.burnFrom(msg.sender, amount);
         } else {
+            require(acceptedEthTokens[tokenAddress], "The Token is not accepted for transfer to sidechain");
             token.transferFrom(msg.sender, address(this), amount);
         }
         emit Deposit(to, amount, tokenAddress, sidechainAssetId);
