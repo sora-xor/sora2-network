@@ -584,6 +584,7 @@ impl xor_fee::Trait for Runtime {
     type ValId = ValId;
     type DEXIdValue = DEXIdValue;
     type LiquiditySource = mock_liquidity_source::Module<Runtime, mock_liquidity_source::Instance1>;
+    type ValBurnedNotifier = Staking;
 }
 
 impl pallet_transaction_payment::Trait for Runtime {

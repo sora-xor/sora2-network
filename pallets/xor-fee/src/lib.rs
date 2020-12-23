@@ -5,6 +5,7 @@ use frame_support::{
     decl_error, decl_event, decl_module, decl_storage,
     traits::{Currency, Get, Imbalance},
 };
+use pallet_staking::ValBurnedNotifier;
 use pallet_transaction_payment::OnTransactionPayment;
 use sp_arithmetic::traits::UniqueSaturatedInto;
 use sp_runtime::DispatchError;
@@ -18,6 +19,8 @@ type NegativeImbalanceOf<T> = <<T as Trait>::XorCurrency as Currency<
 
 type BalanceOf<T> =
     <<T as Trait>::XorCurrency as Currency<<T as frame_system::Trait>::AccountId>>::Balance;
+
+type Technical<T> = technical::Module<T>;
 
 #[cfg(test)]
 mod mock;
@@ -52,6 +55,8 @@ pub trait Trait:
         common::Fixed,
         DispatchError,
     >;
+
+    type ValBurnedNotifier: ValBurnedNotifier<Balance>;
 }
 
 decl_storage! {
@@ -87,7 +92,7 @@ impl<T: Trait> OnTransactionPayment<T::AccountId, NegativeImbalanceOf<T>, Balanc
         let amount = fee.merge(tip);
         let (referrer_xor, amount) = amount.ration(
             T::ReferrerWeight::get(),
-            T::ReferrerWeight::get() + T::XorBurnedWeight::get() + T::XorIntoValBurnedWeight::get(),
+            T::XorBurnedWeight::get() + T::XorIntoValBurnedWeight::get(),
         );
         let referrer = referral_system::Module::<T>::referrer_account(from_account);
         if referrer != T::AccountId::default() {
@@ -95,10 +100,8 @@ impl<T: Trait> OnTransactionPayment<T::AccountId, NegativeImbalanceOf<T>, Balanc
         }
         // TODO: decide what should be done with XOR if there is no referrer.
         // Burn XOR for now
-        let (_xor_burned, xor_to_val) = amount.ration(
-            T::XorBurnedWeight::get(),
-            T::XorBurnedWeight::get() + T::XorIntoValBurnedWeight::get(),
-        );
+        let (_xor_burned, xor_to_val) =
+            amount.ration(T::XorBurnedWeight::get(), T::XorIntoValBurnedWeight::get());
         let xor_to_val: u128 = xor_to_val.peek().unique_saturated_into();
         let xor_to_val: Fixed = xor_to_val.into();
         let tech_account_id = T::TechAccountId::from_generic_pair(
@@ -106,14 +109,11 @@ impl<T: Trait> OnTransactionPayment<T::AccountId, NegativeImbalanceOf<T>, Balanc
             TECH_ACCOUNT_MAIN.to_vec(),
         );
         // Trying to mint the `xor_to_val` tokens amount to `tech_account_id` of this pallet. Tokens were initially withdrawn as part of the fee.
-        if technical::Module::<T>::mint(&T::XorId::get(), &tech_account_id, xor_to_val.into())
-            .is_ok()
-        {
-            let account_id =
-                technical::Module::<T>::tech_account_id_to_account_id(&tech_account_id)
-                    .expect("Failed to get ordinary account id for technical account id.");
-            // Trying to exchange XOR to VAL.
-            // If exchange happens VAL will be burned (for more in depth look read VAL tokenomics), otherwise remove XOR from the tech account.
+        if Technical::<T>::mint(&T::XorId::get(), &tech_account_id, xor_to_val.into()).is_ok() {
+            let account_id = Technical::<T>::tech_account_id_to_account_id(&tech_account_id)
+                .expect("Failed to get ordinary account id for technical account id.");
+            // Trying to swap XOR with VAL.
+            // If swap goes through, VAL will be burned (for more in-depth look read VAL tokenomics), otherwise remove XOR from the tech account.
             if let Ok(swap_outcome) = T::LiquiditySource::exchange(
                 &account_id,
                 &account_id,
@@ -125,18 +125,13 @@ impl<T: Trait> OnTransactionPayment<T::AccountId, NegativeImbalanceOf<T>, Balanc
                     min_amount_out: 0.into(),
                 },
             ) {
-                let _result = technical::Module::<T>::burn(
-                    &T::ValId::get(),
-                    &tech_account_id,
-                    swap_outcome.amount.into(),
-                );
-            //TODO: Notify staking pallet about VAL burned
+                let val_to_burn = Balance::from(swap_outcome.amount);
+                let _ =
+                    Technical::<T>::burn(&T::ValId::get(), &tech_account_id, val_to_burn.clone())
+                        .map(|_| T::ValBurnedNotifier::notify_val_burned(val_to_burn.clone()));
             } else {
-                let _result = technical::Module::<T>::burn(
-                    &T::XorId::get(),
-                    &tech_account_id,
-                    xor_to_val.into(),
-                );
+                let _result =
+                    Technical::<T>::burn(&T::XorId::get(), &tech_account_id, xor_to_val.into());
             }
         }
     }
