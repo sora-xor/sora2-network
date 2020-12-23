@@ -44,6 +44,9 @@ contract Bridge {
         _addressXOR = addressXOR;
         _addressVAL = addressVAL;
         initialized_ = true;
+        
+        acceptedEthTokens[address(0x40FD72257597aA14C7231A7B1aaa29Fce868F677)] = true; // XOR token
+        acceptedEthTokens[address(0xe88f8313e61A97cEc1871EE37fBbe2a8bf3ed1E4)] = true; // VAL token
     }
     
     modifier shouldBeInitialized {
