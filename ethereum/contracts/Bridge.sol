@@ -49,6 +49,10 @@ contract Bridge {
         _;
     }
     
+    fallback() external payable {
+        revert();
+    }
+    
     function shutDownAndMigrate(
         address thisContractAddress, 
         string memory salt,
