@@ -8,6 +8,7 @@ import "./Ownable.sol";
 contract MasterToken is ERC20Burnable, ERC20Detailed, Ownable {
 
     bytes32 public _sidechainAssetId;
+
     /**
      * @dev Constructor that gives the specified address all of existing tokens.
      */
@@ -21,6 +22,15 @@ contract MasterToken is ERC20Burnable, ERC20Detailed, Ownable {
         ERC20Detailed(name, symbol, decimals) {
         _sidechainAssetId = sidechainAssetId;    
         _mint(beneficiary, supply);
+        
+    }
+    
+    fallback() external {
+        revert();
+    }
+    
+    receive() external payable { 
+        revert();
     }
 
     function mintTokens(address beneficiary, uint256 amount) public onlyOwner {

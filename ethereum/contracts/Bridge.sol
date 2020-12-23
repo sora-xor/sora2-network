@@ -49,7 +49,11 @@ contract Bridge {
         _;
     }
     
-    fallback() external payable {
+    fallback() external {
+        revert();
+    }
+    
+    receive() external payable { 
         revert();
     }
     
