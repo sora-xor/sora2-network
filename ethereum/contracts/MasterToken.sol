@@ -28,10 +28,6 @@ contract MasterToken is ERC20Burnable, ERC20Detailed, Ownable {
     fallback() external {
         revert();
     }
-    
-    receive() external payable { 
-        revert();
-    }
 
     function mintTokens(address beneficiary, uint256 amount) public onlyOwner {
         _mint(beneficiary, amount);
