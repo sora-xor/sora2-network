@@ -16,6 +16,8 @@ contract Bridge {
     /** Substrate proofs used */
     mapping(bytes32 => bool) public used;
     mapping(address => bool) public _uniqueAddresses;
+    /* White list of ERC-20 ethereum native tokens */
+    mapping(address => bool) public acceptedEthTokens;
 
     mapping(bytes32 => address) public _sidechainTokens;
     mapping(address => bytes32) public _sidechainTokensByAddress;
@@ -25,8 +27,8 @@ contract Bridge {
     event Deposit(bytes32 destination, uint amount, address token, bytes32 sidechainAsset);
     event ChangePeers(address peerId, bool removal);
     
-    address public _addressVAL = 0xe88f8313e61A97cEc1871EE37fBbe2a8bf3ed1E4;
-    address public _addressXOR = 0x40FD72257597aA14C7231A7B1aaa29Fce868F677;
+    address public _addressVAL;
+    address public _addressXOR;
 
     /**
      * Constructor.
@@ -42,11 +44,46 @@ contract Bridge {
         _addressXOR = addressXOR;
         _addressVAL = addressVAL;
         initialized_ = true;
+        
+        acceptedEthTokens[_addressXOR] = true;
+        acceptedEthTokens[_addressVAL] = true;
     }
     
     modifier shouldBeInitialized {
         require(initialized_ == true, "Contract should be initialized to use this function");
         _;
+    }
+    
+    fallback() external {
+        revert();
+    }
+    
+    receive() external payable { 
+        revert();
+    }
+    
+    /**
+     * Adds new token to whitelist. 
+     * Token should not been already added.
+     * @param newToken token to add
+     */
+    function addEthNativeToken(
+        address newToken, 
+        string memory ticker, 
+        string memory name, 
+        uint8 decimals,
+        uint8[] memory v,
+        bytes32[] memory r,
+        bytes32[] memory s
+        ) 
+        public {
+        require(acceptedEthTokens[newToken] == false);
+        require(checkSignatures(keccak256(abi.encodePacked(newToken, ticker, name, decimals)),
+            v,
+            r,
+            s), "Peer signatures are invalid"
+        );
+        acceptedEthTokens[newToken] = true;
     }
     
     function shutDownAndMigrate(
@@ -136,6 +173,7 @@ contract Bridge {
             ERC20Burnable mtoken = ERC20Burnable(tokenAddress);
             mtoken.burnFrom(msg.sender, amount);
         } else {
+            require(acceptedEthTokens[tokenAddress], "The Token is not accepted for transfer to sidechain");
             token.transferFrom(msg.sender, address(this), amount);
         }
         emit Deposit(to, amount, tokenAddress, sidechainAssetId);
