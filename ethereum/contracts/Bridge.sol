@@ -45,8 +45,8 @@ contract Bridge {
         _addressVAL = addressVAL;
         initialized_ = true;
         
-        acceptedEthTokens[address(0x40FD72257597aA14C7231A7B1aaa29Fce868F677)] = true; // XOR token
-        acceptedEthTokens[address(0xe88f8313e61A97cEc1871EE37fBbe2a8bf3ed1E4)] = true; // VAL token
+        acceptedEthTokens[_addressXOR] = true;
+        acceptedEthTokens[_addressVAL] = true;
     }
     
     modifier shouldBeInitialized {
@@ -69,9 +69,9 @@ contract Bridge {
      */
     function addEthNativeToken(
         address newToken, 
-        bytes memory ticker, 
-        bytes memory name, 
-        uint decimals,
+        string memory ticker, 
+        string memory name, 
+        uint8 decimals,
         uint8[] memory v,
         bytes32[] memory r,
         bytes32[] memory s
