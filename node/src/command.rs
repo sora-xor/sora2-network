@@ -23,7 +23,7 @@ use sc_service::PartialComponents;
 
 impl SubstrateCli for Cli {
     fn impl_name() -> String {
-        "SORA-Substrate Node".into()
+        "SORA-staging Node".into()
     }
 
     fn impl_version() -> String {

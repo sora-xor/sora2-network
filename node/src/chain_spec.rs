@@ -65,7 +65,7 @@ pub fn staging_test_net() -> ChainSpec {
     properties.insert("tokenSymbol".into(), "XOR".into());
     properties.insert("tokenDecimals".into(), 18.into());
     ChainSpec::from_genesis(
-        "SORA-Substrate Testnet",
+        "SORA-staging Testnet",
         "sora-substrate-staging",
         ChainType::Live,
         move || {
@@ -186,7 +186,7 @@ pub fn local_testnet_config() -> ChainSpec {
     properties.insert("tokenSymbol".into(), "XOR".into());
     properties.insert("tokenDecimals".into(), 18.into());
     ChainSpec::from_genesis(
-        "SORA-Substrate Local Testnet",
+        "SORA-local Testnet",
         "sora-substrate-local",
         ChainType::Local,
         move || {
