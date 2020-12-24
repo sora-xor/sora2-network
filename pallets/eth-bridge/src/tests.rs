@@ -195,8 +195,6 @@ fn approve_incoming_request(
 
 #[test]
 fn should_transfer() {
-    let _ = env_logger::try_init();
-
     let (mut ext, state, _, _) = ExtBuilder::new();
 
     ext.execute_with(|| {
@@ -221,8 +219,6 @@ fn should_transfer() {
 
 #[test]
 fn should_mint_and_burn_sidechain_asset() {
-    let _ = env_logger::try_init();
-
     let (mut ext, state, _, _) = ExtBuilder::new();
 
     #[track_caller]
@@ -270,8 +266,6 @@ fn should_mint_and_burn_sidechain_asset() {
 
 #[test]
 fn should_not_burn_or_mint_sidechain_owned_asset() {
-    let _ = env_logger::try_init();
-
     let (mut ext, state, _, _) = ExtBuilder::new();
 
     fn check_invariant() {
@@ -314,8 +308,6 @@ fn should_not_burn_or_mint_sidechain_owned_asset() {
 
 #[test]
 fn should_not_transfer() {
-    let _ = env_logger::try_init();
-
     let (mut ext, _, _, _) = ExtBuilder::new();
 
     ext.execute_with(|| {
@@ -341,8 +333,6 @@ fn should_not_transfer() {
 
 #[test]
 fn should_register_outgoing_transfer() {
-    let _ = env_logger::try_init();
-
     let (mut ext, _state, _pool_state, _oc_state) = ExtBuilder::new();
 
     ext.execute_with(|| {
@@ -372,8 +362,6 @@ fn should_register_outgoing_transfer() {
 
 #[test]
 fn should_not_accept_duplicated_incoming_transfer() {
-    let _ = env_logger::try_init();
-
     let (mut ext, _state, _pool_state, _oc_state) = ExtBuilder::new();
 
     ext.execute_with(|| {
@@ -396,8 +384,6 @@ fn should_not_accept_duplicated_incoming_transfer() {
 
 #[test]
 fn should_not_accept_approved_incoming_transfer() {
-    let _ = env_logger::try_init();
-
     let (mut ext, state, _pool_state, _oc_state) = ExtBuilder::new();
 
     ext.execute_with(|| {
@@ -427,8 +413,6 @@ fn should_not_accept_approved_incoming_transfer() {
 
 #[test]
 fn should_success_incoming_transfer() {
-    let _ = env_logger::try_init();
-
     let (mut ext, state, _pool_state, _oc_state) = ExtBuilder::new();
     ext.execute_with(|| {
         let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
@@ -457,8 +441,6 @@ fn should_success_incoming_transfer() {
 
 #[test]
 fn should_fail_incoming_transfer() {
-    let _ = env_logger::try_init();
-
     let (mut ext, state, _pool_state, _oc_state) = ExtBuilder::new();
     ext.execute_with(|| {
         let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
@@ -504,8 +486,6 @@ fn should_fail_incoming_transfer() {
 
 #[test]
 fn should_register_and_find_asset_ids() {
-    let _ = env_logger::try_init();
-
     let (mut ext, _state, _pool_state, _oc_state) = ExtBuilder::new();
     ext.execute_with(|| {
         // gets a known asset
@@ -551,8 +531,6 @@ fn should_register_and_find_asset_ids() {
 
 #[test]
 fn should_add_new_asset_on_incoming_transfer() {
-    let _ = env_logger::try_init();
-
     let (mut ext, state, _pool_state, _oc_state) = ExtBuilder::new();
     ext.execute_with(|| {
         let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
@@ -583,7 +561,6 @@ fn should_add_new_asset_on_incoming_transfer() {
 
 #[test]
 fn should_convert_to_eth_address() {
-    let _ = env_logger::try_init();
     let (mut ext, _, _, _) = ExtBuilder::new();
     ext.execute_with(|| {
         let account_id = PublicKey::parse_slice(

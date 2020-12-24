@@ -1,0 +1,3 @@
+#!/bin/sh
+# The file is a workaround to provide SKIP_WASM_BUILD to make checks faster until https://github.com/rust-analyzer/rust-analyzer/pull/6099 is delivered
+SKIP_WASM_BUILD=true cargo check --message-format=json "$@"
