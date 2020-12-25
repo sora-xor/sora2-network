@@ -651,7 +651,7 @@ construct_runtime! {
         System: frame_system::{Module, Call, Storage, Config, Event<T>},
         Timestamp: pallet_timestamp::{Module, Call, Storage, Inherent},
         // Balances in native currency - XOR.
-        Balances: pallet_balances::{Module, Config<T>, Event<T>},
+        Balances: pallet_balances::{Module, Call, Storage, Config<T>, Event<T>},
         Sudo: pallet_sudo::{Module, Call, Storage, Config<T>, Event<T>},
         RandomnessCollectiveFlip: pallet_randomness_collective_flip::{Module, Call, Storage},
         TransactionPayment: pallet_transaction_payment::{Module, Storage},
@@ -669,9 +669,9 @@ construct_runtime! {
         Staking: pallet_staking::{Module, Call, Config<T>, Storage, Event<T>},
 
         // Non-native tokens - everything apart of XOR.
-        Tokens: tokens::{Module, Config<T>, Event<T>},
+        Tokens: tokens::{Module, Storage, Config<T>, Event<T>},
         // Unified interface for XOR and non-native tokens.
-        Currencies: currencies::{Module, Event<T>},
+        Currencies: currencies::{Module, Call, Event<T>},
         TradingPair: trading_pair::{Module, Call, Event<T>},
         Assets: assets::{Module, Call, Storage, Config<T>, Event<T>},
         DEXManager: dex_manager::{Module, Call, Storage, Config<T>, Event<T>},

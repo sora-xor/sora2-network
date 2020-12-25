@@ -1,7 +1,7 @@
 use framenode_runtime::{
     bonding_curve_pool, eth_bridge, opaque::SessionKeys, AccountId, AssetSymbol, AssetsConfig,
-    BabeConfig, BalancesConfig, BondingCurvePoolConfig, DEXAPIConfig, DEXManagerConfig, DotId,
-    EthBridgeConfig, FaucetConfig, GenesisConfig, GetBaseAssetId, GrandpaConfig, KsmId,
+    BabeConfig, BalancesConfig, BondingCurvePoolConfig, DEXAPIConfig, DEXManagerConfig,
+    EthBridgeConfig, FaucetConfig, GenesisConfig, GetBaseAssetId, GrandpaConfig,
     LiquiditySourceType, MultisigConfig, PermissionsConfig, PswapId, Runtime, SessionConfig,
     Signature, StakerStatus, StakingConfig, SudoConfig, SystemConfig, TechAccountId,
     TechnicalConfig, TokensConfig, UsdId, ValId, XorId, WASM_BINARY,
@@ -350,18 +350,6 @@ fn testnet_genesis(
                     initial_assets_owner.clone(),
                     AssetSymbol(b"XOR".to_vec()),
                     18,
-                ),
-                (
-                    DotId::get(),
-                    initial_assets_owner.clone(),
-                    AssetSymbol(b"DOT".to_vec()),
-                    10,
-                ),
-                (
-                    KsmId::get(),
-                    initial_assets_owner.clone(),
-                    AssetSymbol(b"KSM".to_vec()),
-                    12,
                 ),
                 (
                     UsdId::get(),
