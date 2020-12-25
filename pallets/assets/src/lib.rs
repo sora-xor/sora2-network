@@ -423,6 +423,10 @@ impl<T: Trait> Module<T> {
         T::Currency::update_balance(asset_id.clone(), who, by_amount)
     }
 
+    pub fn can_reserve(asset_id: T::AssetId, who: &T::AccountId, amount: Balance) -> bool {
+        T::Currency::can_reserve(asset_id, who, amount)
+    }
+
     pub fn reserve(
         asset_id: T::AssetId,
         who: &T::AccountId,
@@ -436,10 +440,10 @@ impl<T: Trait> Module<T> {
         asset_id: T::AssetId,
         who: &T::AccountId,
         amount: Balance,
-    ) -> Result<(), DispatchError> {
+    ) -> Result<Balance, DispatchError> {
         Self::ensure_asset_exists(&asset_id)?;
-        let _ = T::Currency::unreserve(asset_id, who, amount);
-        Ok(())
+        let amount = T::Currency::unreserve(asset_id, who, amount);
+        Ok(amount)
     }
 
     pub fn list_registered_asset_ids() -> Vec<T::AssetId> {
