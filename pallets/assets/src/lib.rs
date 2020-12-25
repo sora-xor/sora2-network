@@ -20,6 +20,8 @@ extern crate alloc;
 
 mod weights;
 
+mod benchmarking;
+
 #[cfg(test)]
 mod mock;
 

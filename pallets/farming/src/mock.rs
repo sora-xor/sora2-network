@@ -142,6 +142,7 @@ impl pallet_timestamp::Trait for Test {
 
 impl Trait for Test {
     type Event = ();
+    type WeightInfo = ();
 }
 
 // Build genesis storage according to the mock runtime.

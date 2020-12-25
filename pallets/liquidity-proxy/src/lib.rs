@@ -16,7 +16,7 @@ use frame_support::{
 use frame_system::ensure_signed;
 use sp_arithmetic::{traits::Bounded, FixedPointNumber};
 use sp_runtime::DispatchError;
-use sp_std::vec::Vec;
+use sp_std::prelude::*;
 
 mod weights;
 
