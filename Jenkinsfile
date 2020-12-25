@@ -25,6 +25,7 @@ pipeline {
         stage('Secret scanner'){
             steps {
                 script {
+                    gitNotify("main-CI", "PENDING", "This commit is being built")
                     docker.withRegistry( "https://" + registry, dockerBuildToolsUserId) {
                         secretScanner(disableSecretScanner, secretScannerExclusion) 
                     }
@@ -36,7 +37,7 @@ pipeline {
                 script {
                     docker.withRegistry( "https://" + registry, dockerRegistryRWUserId) {
                         docker.image(baseImageName).inside() {
-                            sh "cd ${env.WORKSPACE} && cargo build --release"
+                            sh "cd ${env.WORKSPACE} && cargo update && cargo build --release"
                             sh "cp /opt/rust-target/release/framenode ${env.WORKSPACE}/housekeeping/framenode"
                             sh "cargo test --release"
                         }
@@ -69,6 +70,15 @@ pipeline {
         }
     }
     post {
+        success {
+            script { gitNotify("main-CI", "SUCCESS", "Success")}
+        }
+        failure {
+            script { gitNotify("main-CI", "FAILURE", "Failure")}
+        }
+        aborted {
+            script { gitNotify("main-CI", "FAILURE", "Aborted")}
+        }
         cleanup { cleanWs() }
     }
 }

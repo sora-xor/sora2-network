@@ -23,6 +23,7 @@ pipeline {
         stage('Secret scanner'){
             steps {
                 script {
+                    gitNotify("env-CI", "PENDING", "This commit is being built")
                     docker.withRegistry( "https://" + registry, dockerBuildToolsUserId) {
                         secretScanner(disableSecretScanner, secretScannerExclusion) 
                     }
@@ -50,6 +51,15 @@ pipeline {
         }
     }
     post {
+        success {
+            script { gitNotify("env-CI", "SUCCESS", "Success")}
+        }
+        failure {
+            script { gitNotify("env-CI", "FAILURE", "Failure")}
+        }
+        aborted {
+            script { gitNotify("env-CI", "FAILURE", "Aborted")}
+        }
         cleanup { cleanWs() }
     }
 }
