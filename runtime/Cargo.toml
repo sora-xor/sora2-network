@@ -33,7 +33,12 @@ dex-manager-runtime-api = { path = "../pallets/dex-manager/runtime-api", default
 trading-pair-runtime-api = { path = "../pallets/trading-pair/runtime-api", default-features = false}
 assets-runtime-api = { path = "../pallets/assets/runtime-api", default-features = false}
 liquidity-proxy-runtime-api = { path = "../pallets/liquidity-proxy/runtime-api", default-features = false}
+eth-bridge = { path = "../pallets/eth-bridge", default-features = false }
+multisig = { git = "https://github.com/soramitsu/sora2-frame-pallets.git", branch = "vmarkushin/multisig", package = "pallet-multisig", default-features = false }
 
+liquidity-proxy-benchmarking = { path = "../pallets/liquidity-proxy/benchmarking", default-features = false, optional = true }
+pool-xyk-benchmarking = { path = "../pallets/pool-xyk/benchmarking", default-features = false, optional = true }
+dex-api-benchmarking = { path = "../pallets/dex-api/benchmarking", default-features = false, optional = true }
 
 # Substrate dependencies
 frame-benchmarking = { default-features = false, optional = true, version = '2.0.0' }
@@ -80,15 +85,6 @@ static_assertions = "1.1.0"
 
 [features]
 default = ['std']
-runtime-benchmarks = [
-    'frame-benchmarking',
-    'frame-support/runtime-benchmarks',
-    'frame-system-benchmarking',
-    'frame-system/runtime-benchmarks',
-    'pallet-balances/runtime-benchmarks',
-    'pallet-timestamp/runtime-benchmarks',
-    'sp-runtime/runtime-benchmarks',
-]
 std = [
     'codec/std',
     'serde',
@@ -120,10 +116,45 @@ std = [
     'sp-std/std',
     'sp-transaction-pool/std',
     'sp-version/std',
-    'permissions/std',
-    'faucet/std',
-    'assets/std',
-    'dex-manager/std',
     'sp-staking/std',
     'pallet-authorship/std',
+
+    'common/std',
+    'assets/std',
+    'bonding-curve-pool/std',
+    'dex-api/std',
+    'dex-manager/std',
+    'eth-bridge/std',
+    'farming/std',
+    'faucet/std',
+    'liquidity-proxy/std',
+    'mock-liquidity-source/std',
+    'multisig/std',
+    'permissions/std',
+    'pool-xyk/std',
+    'referral-system/std',
+    'technical/std',
+    'trading-pair/std',
+    'xor-fee/std',
+    'dex-runtime-api/std',
+    'dex-manager-runtime-api/std',
+    'trading-pair-runtime-api/std',
+    'assets-runtime-api/std',
+    'liquidity-proxy-runtime-api/std',
+]
+
+runtime-benchmarks = [
+    "frame-benchmarking",
+    "frame-system/runtime-benchmarks",
+    "frame-support/runtime-benchmarks",
+    "frame-system-benchmarking",
+
+    "assets/runtime-benchmarks",
+    "dex-api-benchmarking",
+    "dex-manager/runtime-benchmarks",
+    "faucet/runtime-benchmarks",
+    "liquidity-proxy-benchmarking",
+    "pool-xyk-benchmarking",
+    "technical/runtime-benchmarks",
+    "trading-pair/runtime-benchmarks",
 ]

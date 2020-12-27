@@ -12,6 +12,7 @@ version = '0.1.0'
 targets = ['x86_64-unknown-linux-gnu']
 
 [dependencies]
+serde = { version = "1.0.101", features = ["derive"], optional = true }
 codec = { package = "parity-scale-codec", version = "1.3.1", default-features = false, features = ["derive"] }
 traits = { version = "0.3.2", package = "orml-traits", default-features = false }
 frame-support = { version = "2.0.0", default-features = false }
@@ -19,35 +20,36 @@ frame-system = { version = "2.0.0", default-features = false }
 sp-arithmetic = { version = "2.0.0", default-features = false }
 sp-runtime = { version = "2.0.0", default-features = false }
 sp-std = { version = "2.0.0", default-features = false }
-#pallet-staking = { git = "https://github.com/soramitsu/sora2-frame-pallets", default-features = false, branch = "selected-v2.0.0"}
+pallet-staking = { git = "https://github.com/soramitsu/sora2-frame-pallets", default-features = false, branch = "selected-v2.0.0"}
 pallet-transaction-payment = { git = "https://github.com/soramitsu/sora2-frame-pallets", default-features = false, branch = "selected-v2.0.0"}
 referral-system = { path = "../referral-system", default-features = false}
 assets = { path = "../assets", default-features = false }
 common = { path = "../../common", default-features = false }
 technical = { path = "../technical", default-features = false }
 
-
 [dev-dependencies]
 pallet-balances = { version = "2.0.0", default-features = false }
+pallet-timestamp = { version = "2.0.0", default-features = false }
+pallet-session = { version = "2.0.0", default-features = false }
 sp-core = { version = "2.0.0", default-features = false }
 sp-io = { version = "2.0.0", default-features = false }
 sp-runtime = { version = "2.0.0", default-features = false }
 currencies = { version = "0.3.2", package = "orml-currencies", default-features = false }
 tokens = { version = "0.3.2", package = "orml-tokens", default-features = false }
 dex-manager = { path = "../dex-manager", default-features = false }
-mock-liquidity-source = { path = "../mock-liquidity-source", default-features = false }
+mock-liquidity-source = { path = "../mock-liquidity-source" }
 permissions = { path = "../permissions", default-features = false }
 trading-pair = { path = "../trading-pair", default-features = false }
 
 [features]
 default = ['std']
 std = [
+    'serde',
     'codec/std',
     'traits/std',
     'frame-support/std',
     'frame-system/std',
-    'pallet-balances/std',
-    #'pallet-staking/std',
+    'pallet-staking/std',
     'pallet-transaction-payment/std',
     'sp-arithmetic/std',
     'sp-runtime/std',

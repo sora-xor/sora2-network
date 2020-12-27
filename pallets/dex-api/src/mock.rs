@@ -6,6 +6,7 @@ use common::{
 use currencies::BasicCurrencyAdapter;
 use frame_support::{impl_outer_origin, parameter_types, weights::Weight};
 use frame_system as system;
+use hex_literal::hex;
 use permissions::{Scope, INIT_DEX, MANAGE_DEX};
 use sp_core::crypto::AccountId32;
 use sp_core::H256;
@@ -23,7 +24,9 @@ type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
 type AssetId = AssetId32<common::AssetId>;
 
 pub fn alice() -> AccountId {
-    AccountId32::from([1u8; 32])
+    AccountId32::from(hex!(
+        "d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d"
+    ))
 }
 
 pub fn bob() -> AccountId {
@@ -87,7 +90,7 @@ impl Trait for Runtime {
     type MockLiquiditySource4 =
         mock_liquidity_source::Module<Runtime, mock_liquidity_source::Instance4>;
     type BondingCurvePool = ();
-    type XYKPool = ();
+    type XYKPool = pool_xyk::Module<Runtime>;
     type WeightInfo = ();
 }
 
@@ -185,7 +188,8 @@ impl technical::Trait for Runtime {
     type TechAccountId = TechAccountId;
     type Trigger = ();
     type Condition = ();
-    type SwapAction = ();
+    type SwapAction =
+        pool_xyk::PolySwapAction<AssetId, TechAssetId, Balance, AccountId, TechAccountId>;
     type WeightInfo = ();
 }
 
@@ -198,6 +202,19 @@ impl dex_manager::Trait for Runtime {
 
 impl trading_pair::Trait for Runtime {
     type Event = ();
+    type EnsureDEXOwner = dex_manager::Module<Runtime>;
+    type WeightInfo = ();
+}
+
+impl pool_xyk::Trait for Runtime {
+    type Event = ();
+    type PairSwapAction = pool_xyk::PairSwapAction<AssetId, Balance, AccountId, TechAccountId>;
+    type DepositLiquidityAction =
+        pool_xyk::DepositLiquidityAction<AssetId, TechAssetId, Balance, AccountId, TechAccountId>;
+    type WithdrawLiquidityAction =
+        pool_xyk::WithdrawLiquidityAction<AssetId, TechAssetId, Balance, AccountId, TechAccountId>;
+    type PolySwapAction =
+        pool_xyk::PolySwapAction<AssetId, TechAssetId, Balance, AccountId, TechAccountId>;
     type EnsureDEXOwner = dex_manager::Module<Runtime>;
     type WeightInfo = ();
 }

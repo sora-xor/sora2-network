@@ -7,7 +7,7 @@ use frame_support::{
     decl_error, decl_event, decl_module, decl_storage, ensure, weights::Weight, Parameter,
 };
 use frame_system::ensure_signed;
-use sp_runtime::traits::Member;
+use sp_runtime::traits::{MaybeSerializeDeserialize, Member};
 use sp_runtime::RuntimeDebug;
 
 use common::TECH_ACCOUNT_MAGIC_PREFIX;
@@ -64,6 +64,7 @@ pub trait Trait: common::Trait + assets::Trait {
         + Parameter
         + Default
         + FromGenericPair
+        + MaybeSerializeDeserialize
         + common::ToMarkerAsset<TechAssetIdOf<Self>>
         + common::ToFeeAccount
         + common::ToTechUnitFromDEXAndTradingPair<

@@ -59,6 +59,9 @@ pub use pallet_timestamp::Call as TimestampCall;
 pub use sp_runtime::BuildStorage;
 pub use sp_runtime::{Perbill, Permill};
 
+pub use bonding_curve_pool;
+pub use eth_bridge;
+
 /// An index to a block.
 pub type BlockNumber = u32;
 
@@ -581,6 +584,7 @@ impl xor_fee::Trait for Runtime {
     type ValId = ValId;
     type DEXIdValue = DEXIdValue;
     type LiquiditySource = mock_liquidity_source::Module<Runtime, mock_liquidity_source::Instance1>;
+    type ValBurnedNotifier = Staking;
 }
 
 impl pallet_transaction_payment::Trait for Runtime {
@@ -599,6 +603,28 @@ impl pallet_sudo::Trait for Runtime {
 
 impl permissions::Trait for Runtime {
     type Event = Event;
+}
+
+parameter_types! {
+    pub const DepositBase: u64 = 1;
+    pub const DepositFactor: u64 = 1;
+    pub const MaxSignatories: u16 = 4;
+}
+
+impl multisig::Trait for Runtime {
+    type Call = Call;
+    type Event = Event;
+    type Currency = Balances;
+    type DepositBase = DepositBase;
+    type DepositFactor = DepositFactor;
+    type MaxSignatories = MaxSignatories;
+    type WeightInfo = ();
+}
+
+impl eth_bridge::Trait for Runtime {
+    type Event = Event;
+    type Call = Call;
+    type PeerId = eth_bridge::crypto::TestAuthId;
 }
 
 impl faucet::Trait for Runtime {
@@ -632,6 +658,7 @@ construct_runtime! {
         Permissions: permissions::{Module, Call, Storage, Config<T>, Event<T>},
         ReferralSystem: referral_system::{Module, Call, Storage, Event},
         XorFee: xor_fee::{Module, Call, Storage, Event},
+        Multisig: multisig::{Module, Call, Storage, Config<T>, Event<T>},
 
         // Consensus and staking.
         Session: pallet_session::{Module, Call, Storage, Event, Config<T>},
@@ -648,7 +675,7 @@ construct_runtime! {
         TradingPair: trading_pair::{Module, Call, Event<T>},
         Assets: assets::{Module, Call, Storage, Config<T>, Event<T>},
         DEXManager: dex_manager::{Module, Call, Storage, Config<T>, Event<T>},
-        BondingCurvePool: bonding_curve_pool::{Module},
+        BondingCurvePool: bonding_curve_pool::{Module, Call, Storage, Config<T>},
         Technical: technical::{Module, Call, Config<T>, Event<T>},
         PoolXYK: pool_xyk::{Module, Call, Storage, Event<T>},
         LiquidityProxy: liquidity_proxy::{Module, Call, Event<T>},
@@ -657,7 +684,8 @@ construct_runtime! {
         MockLiquiditySource3: mock_liquidity_source::<Instance3>::{Module, Call, Storage, Config<T>, Event<T>},
         MockLiquiditySource4: mock_liquidity_source::<Instance4>::{Module, Call, Storage, Config<T>, Event<T>},
         DEXAPI: dex_api::{Module, Call, Storage, Config, Event<T>},
-        Faucet: faucet::{Module, Call, Config<T>, Event<T>},
+        Faucet: faucet::{Module, Call, Config<T>, Event<T>, ValidateUnsigned},
+        EthBridge: eth_bridge::{Module, Call, Config<T>, Event<T>},
     }
 }
 
@@ -849,6 +877,14 @@ impl_runtime_apis! {
             )
         }
 
+        fn total_supply(asset_id: AssetId) -> Option<assets_runtime_api::BalanceInfo<Balance>> {
+            Assets::total_issuance(&asset_id).ok().map(|balance|
+                assets_runtime_api::BalanceInfo::<Balance> {
+                    balance: balance.clone(),
+                }
+            )
+        }
+
         fn list_asset_ids() -> Vec<AssetId> {
             Assets::list_registered_asset_ids()
         }
@@ -862,7 +898,7 @@ impl_runtime_apis! {
         }
 
         fn get_asset_info(asset_id: AssetId) -> Option<assets_runtime_api::AssetInfo<AssetId, AssetSymbol, BalancePrecision>> {
-            let (symbol, precision) = Assets::get_asset_info(asset_id);
+            let (symbol, precision) = Assets::get_asset_info(&asset_id);
             Some(assets_runtime_api::AssetInfo::<AssetId, AssetSymbol, BalancePrecision> {
                 asset_id, symbol, precision
             })
@@ -971,6 +1007,52 @@ impl_runtime_apis! {
             Historical::prove((fg_primitives::KEY_TYPE, authority_id))
                 .map(|p| p.encode())
                 .map(fg_primitives::OpaqueKeyOwnershipProof::new)
+        }
+    }
+
+    #[cfg(feature = "runtime-benchmarks")]
+    impl frame_benchmarking::Benchmark<Block> for Runtime {
+        fn dispatch_benchmark(
+            config: frame_benchmarking::BenchmarkConfig
+        ) -> Result<Vec<frame_benchmarking::BenchmarkBatch>, sp_runtime::RuntimeString> {
+            use frame_benchmarking::{Benchmarking, BenchmarkBatch, add_benchmark, TrackedStorageKey};
+
+            use dex_api_benchmarking::Module as DEXAPIBench;
+            use liquidity_proxy_benchmarking::Module as LiquidityProxyBench;
+            use pool_xyk_benchmarking::Module as XYKPoolBench;
+
+            impl dex_api_benchmarking::Trait for Runtime {}
+            impl liquidity_proxy_benchmarking::Trait for Runtime {}
+            impl pool_xyk_benchmarking::Trait for Runtime {}
+
+            let whitelist: Vec<TrackedStorageKey> = vec![
+                // Block Number
+                hex_literal::hex!("26aa394eea5630e07c48ae0c9558cef702a5c1b19ab7a04f536c519aca4983ac").to_vec().into(),
+                // Total Issuance
+                hex_literal::hex!("c2261276cc9d1f8598ea4b6a74b15c2f57c875e4cff74148e4628f264b974c80").to_vec().into(),
+                // Execution Phase
+                hex_literal::hex!("26aa394eea5630e07c48ae0c9558cef7ff553b5a9862a516939d82b3d3d8661a").to_vec().into(),
+                // Event Count
+                hex_literal::hex!("26aa394eea5630e07c48ae0c9558cef70a98fdbe9ce6c55837576c60c7af3850").to_vec().into(),
+                // System Events
+                hex_literal::hex!("26aa394eea5630e07c48ae0c9558cef780d41e5e16056765bc8461851072c9d7").to_vec().into(),
+                // Treasury Account
+                hex_literal::hex!("26aa394eea5630e07c48ae0c9558cef7b99d880ec681799c0cf30e8886371da95ecffd7b6c0f78751baa9d281e0bfa3a6d6f646c70792f74727372790000000000000000000000000000000000000000").to_vec().into(),
+            ];
+
+            let mut batches = Vec::<BenchmarkBatch>::new();
+            let params = (&config, &whitelist);
+
+            add_benchmark!(params, batches, assets, Assets);
+            add_benchmark!(params, batches, dex_api, DEXAPIBench::<Runtime>);
+            add_benchmark!(params, batches, dex_manager, DEXManager);
+            add_benchmark!(params, batches, faucet, Faucet);
+            add_benchmark!(params, batches, liquidity_proxy, LiquidityProxyBench::<Runtime>);
+            add_benchmark!(params, batches, trading_pair, TradingPair);
+            add_benchmark!(params, batches, pool_xyk, XYKPoolBench::<Runtime>);
+
+            if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
+            Ok(batches)
         }
     }
 }

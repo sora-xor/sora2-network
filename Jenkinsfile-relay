@@ -27,6 +27,7 @@ pipeline {
         stage('Build image') {
             steps{
                 script {
+                    gitNotify("polkadot-CI", "PENDING", "This commit is being built")
                     if ( polkadotCommit.length() != 8 ) {
                         error("You MUST use short version hash of commit!")
                     }
@@ -49,6 +50,15 @@ pipeline {
         }
     }
     post {
+        success {
+            script { gitNotify("polkadot-CI", "SUCCESS", "Success")}
+        }
+        failure {
+            script { gitNotify("polkadot-CI", "FAILURE", "Failure")}
+        }
+        aborted {
+            script { gitNotify("polkadot-CI", "FAILURE", "Aborted")}
+        }
         cleanup { cleanWs() }
     }
 }

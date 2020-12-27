@@ -45,6 +45,30 @@ macro_rules! fixed {
     }};
 }
 
+#[allow(unused)]
+#[macro_export]
+macro_rules! dbg {
+    () => {
+        debug::info!("[{}]", core::line!());
+    };
+    ($val:expr) => {
+        // Use of `match` here is intentional because it affects the lifetimes
+        // of temporaries - https://stackoverflow.com/a/48732525/1063961
+        match $val {
+            tmp => {
+                debug::info!("[{}] {} = {:#?}",
+                    core::line!(), core::stringify!($val), &tmp);
+                tmp
+            }
+        }
+    };
+    // Trailing comma with single argument is ignored
+    ($val:expr,) => { debug::info!($val) };
+    ($($val:expr),+ $(,)?) => {
+        ($(debug::info!($val)),+,)
+    };
+}
+
 #[cfg(test)]
 mod tests {
     use crate::Fixed;
