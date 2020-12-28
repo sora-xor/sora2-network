@@ -1,7 +1,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use common::balance::Balance;
 use common::{
+    balance::Balance,
     prelude::{SwapAmount, SwapOutcome, SwapVariant},
     Fixed, LiquidityRegistry, LiquiditySource, LiquiditySourceFilter, LiquiditySourceId,
     LiquiditySourceType,

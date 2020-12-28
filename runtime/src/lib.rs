@@ -45,8 +45,8 @@ use static_assertions::assert_eq_size;
 pub use common::{
     fixed, fixed_from_basis_points,
     prelude::{Balance, SwapAmount, SwapOutcome, SwapVariant, WeightToFixedFee},
-    AssetSymbol, BalancePrecision, BasisPoints, FilterMode, Fixed, LiquiditySource,
-    LiquiditySourceFilter, LiquiditySourceId, LiquiditySourceType,
+    AssetSymbol, BalancePrecision, BasisPoints, FilterMode, Fixed, FromGenericPair,
+    LiquiditySource, LiquiditySourceFilter, LiquiditySourceId, LiquiditySourceType,
 };
 pub use frame_support::{
     construct_runtime, debug, parameter_types,
@@ -647,6 +647,34 @@ impl faucet::Trait for Runtime {
     type Event = Event;
 }
 
+parameter_types! {
+    pub GetPswapDistributionTechAccountId: TechAccountId = {
+        let tech_account_id = TechAccountId::from_generic_pair(
+            pswap_distribution::TECH_ACCOUNT_PREFIX.to_vec(),
+            pswap_distribution::TECH_ACCOUNT_MAIN.to_vec(),
+        );
+        tech_account_id
+    };
+    pub GetPswapDistributionAccountId: AccountId = {
+        let tech_account_id = GetPswapDistributionTechAccountId::get();
+        let account_id =
+            technical::Module::<Runtime>::tech_account_id_to_account_id(&tech_account_id)
+                .expect("Failed to get ordinary account id for technical account id.");
+        account_id
+    };
+    pub const GetDefaultSubscriptionFrequency: BlockNumber = 14400;
+}
+
+impl pswap_distribution::Trait for Runtime {
+    type Event = Event;
+    type GetIncentiveAssetId = PswapId;
+    type Exchange = LiquidityProxy;
+    type CompatBalance = Balance;
+    type GetDefaultSubscriptionFrequency = GetDefaultSubscriptionFrequency;
+    type GetTechnicalAccountId = GetPswapDistributionAccountId;
+    type EnsureDEXOwner = DEXManager;
+}
+
 /// Payload data to be signed when making signed transaction from off-chain workers,
 ///   inside `create_transaction` function.
 pub type SignedPayload = generic::SignedPayload<Call, SignedExtra>;
@@ -703,6 +731,7 @@ construct_runtime! {
         Faucet: faucet::{Module, Call, Config<T>, Event<T>, ValidateUnsigned},
         EthBridge: eth_bridge::{Module, Call, Config<T>, Event<T>},
         Farming: farming::{Module, Call, Storage, Config<T>, Event<T>},
+        PswapDistribution: pswap_distribution::{Module, Call, Storage, Config<T>, Event<T>},
     }
 }
 
@@ -963,7 +992,7 @@ impl_runtime_apis! {
             } else {
                 Balance::max_value()
             };
-            LiquidityProxy::quote(
+            LiquidityProxy::quote_with_filter(
                 &input_asset_id,
                 &output_asset_id,
                 SwapAmount::with_variant(swap_variant, amount.0, limit.0),
