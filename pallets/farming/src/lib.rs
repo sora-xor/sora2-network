@@ -6,8 +6,8 @@ use frame_support::{
     codec::{Decode, Encode},
     decl_error, decl_event, decl_module, decl_storage,
     dispatch::DispatchResult,
+    weights::Weight,
     RuntimeDebug,
-    weights::Weight
 };
 use frame_system::ensure_signed;
 use pallet_timestamp as timestamp;
@@ -20,9 +20,15 @@ pub trait WeightInfo {
 }
 
 impl WeightInfo for () {
-    fn create() -> Weight { 100_000_000 }
-    fn invest() -> Weight { 100_000_000 }
-    fn claim() -> Weight { 100_000_000 }
+    fn create() -> Weight {
+        100_000_000
+    }
+    fn invest() -> Weight {
+        100_000_000
+    }
+    fn claim() -> Weight {
+        100_000_000
+    }
 }
 
 mod domain;
@@ -44,7 +50,7 @@ pub trait Trait:
     type Event: From<Event<Self>> + Into<<Self as frame_system::Trait>::Event>;
 
     /// Weight information for extrinsics in this pallet.
-	type WeightInfo: WeightInfo;
+    type WeightInfo: WeightInfo;
 }
 
 decl_storage! {

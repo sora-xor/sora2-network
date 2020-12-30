@@ -23,8 +23,8 @@ use sp_core::{crypto::KeyTypeId, OpaqueMetadata};
 use sp_runtime::{
     create_runtime_str, generic, impl_opaque_keys,
     traits::{
-        BlakeTwo256, Block as BlockT, Convert, IdentifyAccount, IdentityLookup, NumberFor,
-        OpaqueKeys, SaturatedConversion, Saturating, Verify,
+        BlakeTwo256, Block as BlockT, Bounded, Convert, IdentifyAccount, IdentityLookup, NumberFor,
+        OpaqueKeys, SaturatedConversion, Saturating, Verify, Zero,
     },
     transaction_validity::{TransactionSource, TransactionValidity},
     ApplyExtrinsicResult, MultiSignature, Percent,
@@ -824,11 +824,17 @@ impl_runtime_apis! {
             desired_input_amount: Balance,
             swap_variant: SwapVariant,
         ) -> Option<dex_runtime_api::SwapOutcomeInfo<Balance>> {
+            // TODO: remove with proper QuoteAmount refactor
+            let limit = if swap_variant == SwapVariant::WithDesiredInput {
+                Balance::zero()
+            } else {
+                Balance::max_value()
+            };
             DEXAPI::quote(
                 &LiquiditySourceId::new(dex_id, liquidity_source_type),
                 &input_asset_id,
                 &output_asset_id,
-                SwapAmount::with_variant(swap_variant, desired_input_amount.0, Default::default()),
+                SwapAmount::with_variant(swap_variant, desired_input_amount.0, limit.0),
             ).ok().map(|sa| dex_runtime_api::SwapOutcomeInfo::<Balance> { amount: Balance(sa.amount), fee: Balance(sa.fee)})
         }
 
@@ -855,8 +861,9 @@ impl_runtime_apis! {
             TradingPair::list_trading_pairs(dex_id)
         }
 
-        fn is_pair_enabled(dex_id: DEXId, base_asset_id: AssetId, target_asset_id: AssetId) -> bool {
-            TradingPair::is_trading_pair_enabled(dex_id, base_asset_id, target_asset_id)
+        fn is_pair_enabled(dex_id: DEXId, asset_id_a: AssetId, asset_id_b: AssetId) -> bool {
+            TradingPair::is_trading_pair_enabled(dex_id, asset_id_a, asset_id_b)
+                || TradingPair::is_trading_pair_enabled(dex_id, asset_id_b, asset_id_a)
         }
     }
 
@@ -923,10 +930,16 @@ impl_runtime_apis! {
             selected_source_types: Vec<LiquiditySourceType>,
             filter_mode: FilterMode,
         ) -> Option<liquidity_proxy_runtime_api::SwapOutcomeInfo<Balance>> {
+            // TODO: remove with proper QuoteAmount refactor
+            let limit = if swap_variant == SwapVariant::WithDesiredInput {
+                Balance::zero()
+            } else {
+                Balance::max_value()
+            };
             LiquidityProxy::quote(
                 &input_asset_id,
                 &output_asset_id,
-                SwapAmount::with_variant(swap_variant, amount.0, Default::default()),
+                SwapAmount::with_variant(swap_variant, amount.0, limit.0),
                 LiquiditySourceFilter::with_mode(dex_id, filter_mode, selected_source_types),
             ).ok().map(|asa| liquidity_proxy_runtime_api::SwapOutcomeInfo::<Balance> { amount: Balance(asa.amount), fee: Balance(asa.fee)})
         }

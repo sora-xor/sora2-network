@@ -96,6 +96,8 @@ decl_error! {
         InvalidFeeValue,
         /// None of the sources has enough reserves to execute a trade
         InsufficientLiquidity,
+        /// Path exists but it's not possible to perform exchange with currently available liquidity on pools.
+        AggregationError,
     }
 }
 
@@ -294,26 +296,10 @@ impl<T: Trait> Module<T> {
             _ => algo::find_distribution(sample_data, true),
         };
 
-        match amount {
-            SwapAmount::WithDesiredInput {
-                desired_amount_in: _,
-                min_amount_out: threshold,
-            } => {
-                ensure!(
-                    best > fixed!(0) && best >= threshold,
-                    Error::<T>::UnavailableExchangePath
-                );
-            }
-            SwapAmount::WithDesiredOutput {
-                desired_amount_out: _,
-                max_amount_in: threshold,
-            } => {
-                ensure!(
-                    best <= threshold && best < Fixed::max_value(),
-                    Error::<T>::UnavailableExchangePath
-                );
-            }
-        }
+        ensure!(
+            best > Fixed::zero() && best < Fixed::max_value(),
+            Error::<T>::AggregationError
+        );
 
         let total_fee = (0..distr.len()).fold(fixed!(0), |acc, i| {
             let idx = match (Fixed::from(num_samples as u128) * distr[i]).saturating_mul_int(1u32) {

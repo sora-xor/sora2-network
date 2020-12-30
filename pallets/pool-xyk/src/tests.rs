@@ -188,6 +188,25 @@ macro_rules! simplify_swap_outcome(
 );
 
 #[test]
+fn can_exchange_all_directions() {
+    crate::Module::<Testtime>::preset01(vec![|dex_id, gt, bp, _, _, _, _, _| {
+        assert_ok!(crate::Module::<Testtime>::deposit_liquidity(
+            Origin::signed(ALICE()),
+            dex_id,
+            GoldenTicket.into(),
+            BlackPepper.into(),
+            100_000_u32.into(),
+            200_000_u32.into(),
+            0_u32.into(),
+            0_u32.into(),
+        ));
+        assert!(crate::Module::<Testtime>::can_exchange(&dex_id, &gt, &bp));
+        assert!(crate::Module::<Testtime>::can_exchange(&dex_id, &bp, &gt));
+        // TODO: add tests for indirect exchange, i.e. both input and output are not base asset
+    }]);
+}
+
+#[test]
 fn quote_case_exact_input_for_output_base_first() {
     crate::Module::<Testtime>::preset01(vec![|dex_id, gt, bp, _, _, _, _, _| {
         assert_ok!(crate::Module::<Testtime>::deposit_liquidity(
