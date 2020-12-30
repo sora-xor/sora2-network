@@ -4,7 +4,7 @@
 extern crate alloc;
 extern crate jsonrpc_core as rpc;
 
-use crate::types::{Address, Log, TransactionReceipt, U64};
+use crate::types::{Address, Log, TransactionReceipt, H160, U64};
 use alloc::string::String;
 use alt_serde::{Deserialize, Serialize};
 use codec::{Decode, Encode};
@@ -26,7 +26,7 @@ use frame_support::{
         traits::IdentifyAccount,
         KeyTypeId, MultiSigner,
     },
-    weights::Weight,
+    weights::{Pays, Weight},
     RuntimeDebug,
 };
 use frame_system::{
@@ -54,7 +54,7 @@ mod requests;
 mod tests;
 pub mod types;
 
-const URL: &str = "https://parity-testnet-open.s0.dev.soranet.soramitsu.co.jp";
+const URL: &str = "https://eth-ropsten.s0.dev.soranet.soramitsu.co.jp";
 
 pub fn serialize<T: alt_serde::Serialize>(t: &T) -> rpc::Value {
     serde_json::to_value(t).expect("Types never fail to serialize.")
@@ -70,6 +70,9 @@ pub const TECH_ACCOUNT_AUTHORITY: &[u8] = b"authority";
 
 pub const KEY_TYPE: KeyTypeId = KeyTypeId(*b"ethb");
 pub const CONFIRMATION_INTERVAL: u64 = 30;
+pub const STORAGE_PEER_SECRET_KEY: &[u8] = b"key";
+pub const STORAGE_ETH_NODE_URL_KEY: &[u8] = b"eth-bridge-ocw::eth-node-url";
+pub const STORAGE_ETH_NODE_CREDENTIALS_KEY: &[u8] = b"eth-bridge-ocw::eth-node-credentials";
 
 type AssetIdOf<T> = <T as assets::Trait>::AssetId;
 
@@ -557,7 +560,7 @@ decl_module! {
         pub fn transfer_to_sidechain(
             origin,
             asset_id: AssetIdOf<T>,
-            to: Address,
+            to: H160,
             amount: Balance
         ) {
             debug::debug!("called transfer_to_sidechain");
@@ -580,7 +583,7 @@ decl_module! {
             Self::add_request(OffchainRequest::Incoming(from, eth_tx_hash, kind))?;
         }
 
-        #[weight = 0]
+        #[weight = (0, Pays::No)]
         pub fn finalize_incoming_request(origin, result: Result<IncomingRequest<T>, (sp_core::H256, DispatchError)>) {
             debug::debug!("called finalize_incoming_request");
             let from = ensure_signed(origin)?;
@@ -616,7 +619,7 @@ decl_module! {
             Self::remove_request_from_queue(&hash);
         }
 
-        #[weight = 0]
+        #[weight = (0, Pays::No)]
         pub fn add_peer(origin, account_id: T::AccountId, address: Address) {
             debug::debug!("called change_peers_out");
             let from = ensure_signed(origin.clone())?;
@@ -631,7 +634,7 @@ decl_module! {
             frame_system::Module::<T>::inc_account_nonce(&from);
         }
 
-        #[weight = 0]
+        #[weight = (0, Pays::No)]
         pub fn remove_peer(origin, account_id: T::AccountId) {
             debug::debug!("called change_peers_out");
             let from = ensure_signed(origin.clone())?;
@@ -647,7 +650,7 @@ decl_module! {
             frame_system::Module::<T>::inc_account_nonce(&from);
         }
 
-        #[weight = 0]
+        #[weight = (0, Pays::No)]
         pub fn register_incoming_request(origin, incoming_request: IncomingRequest<T>) {
             debug::debug!("called register_incoming_request");
             let author = ensure_signed(origin)?;
@@ -663,7 +666,7 @@ decl_module! {
             IncomingRequests::insert(tx_hash.clone(), incoming_request);
         }
 
-        #[weight = 0]
+        #[weight = (0, Pays::No)]
         pub fn approve_request(
             origin,
             ocw_public: ecdsa::Public,
@@ -704,7 +707,12 @@ decl_module! {
         }
 
         fn offchain_worker(block_number: T::BlockNumber) {
-            debug::info!("Entering off-chain workers {:?}", block_number);
+            debug::debug!("Entering off-chain workers {:?}", block_number);
+            if StorageValueRef::persistent(STORAGE_PEER_SECRET_KEY).get::<Vec<u8>>().is_none() {
+                debug::debug!("Peer secret key not found. Skipping off-chain procedure.");
+                return;
+            }
+
             let mut lock = StorageLock::<'_, Time>::new(b"eth-bridge-ocw::lock");
             let _guard = lock.lock();
             Self::offchain();
@@ -874,9 +882,9 @@ impl<T: Trait> Module<T> {
         }
     }
 
-    fn sign_message(msg: &[u8]) -> SignatureParams {
+    fn sign_message(msg: &[u8]) -> (SignatureParams, secp256k1::PublicKey) {
         // TODO: encrypt the key
-        let secret_s = StorageValueRef::local(b"key");
+        let secret_s = StorageValueRef::persistent(STORAGE_PEER_SECRET_KEY);
         let sk = secp256k1::SecretKey::parse_slice(
             &secret_s
                 .get::<Vec<u8>>()
@@ -886,13 +894,17 @@ impl<T: Trait> Module<T> {
         .expect("Invalid off-chain worker secret key.");
         let message = Self::prepare_message(msg);
         let (sig, v) = secp256k1::sign(&message, &sk);
+        let pk = secp256k1::PublicKey::from_secret_key(&sk);
         let v = v.serialize();
         let sig_ser = sig.serialize();
-        SignatureParams {
-            r: sig_ser[..32].try_into().unwrap(),
-            s: sig_ser[32..].try_into().unwrap(),
-            v,
-        }
+        (
+            SignatureParams {
+                r: sig_ser[..32].try_into().unwrap(),
+                s: sig_ser[32..].try_into().unwrap(),
+                v,
+            },
+            pk,
+        )
     }
 
     fn handle_pending_incoming_requests(current_eth_height: u64) {
@@ -931,7 +943,6 @@ impl<T: Trait> Module<T> {
             }
         };
         s_eth_height.set(&current_height);
-
         let s_handled_requests = StorageValueRef::persistent(b"eth-bridge-ocw::handled-request");
         let mut handled = s_handled_requests
             .get::<BTreeMap<sp_core::H256, T::BlockNumber>>()
@@ -996,13 +1007,13 @@ impl<T: Trait> Module<T> {
     fn http_request(
         url: &str,
         body: Vec<u8>,
-        headers: &[(&'static str, &'static str)],
+        headers: &[(&'static str, String)],
     ) -> Result<Vec<u8>, Error<T>> {
         debug::trace!("Sending request to: {}", url);
         let mut request = rt_offchain::http::Request::post(url, vec![body]);
         let timeout = sp_io::offchain::timestamp().add(rt_offchain::Duration::from_millis(10000));
         for (key, value) in headers {
-            request = request.add_header(*key, *value);
+            request = request.add_header(*key, &*value);
         }
         let pending = request.deadline(timeout).send().map_err(|e| {
             debug::error!("Failed to send a request {:?}", e);
@@ -1041,8 +1052,17 @@ impl<T: Trait> Module<T> {
             }
         };
 
+        let s_node_url = StorageValueRef::persistent(STORAGE_ETH_NODE_URL_KEY);
+        let node_url = s_node_url.get::<String>().flatten().unwrap_or(URL.into());
+        let mut headers: Vec<(_, String)> = vec![("content-type", "application/json".into())];
+
+        let s_node_credentials = StorageValueRef::persistent(STORAGE_ETH_NODE_CREDENTIALS_KEY);
+        let option = s_node_credentials.get::<String>();
+        if let Some(node_credentials) = option.flatten() {
+            headers.push(("Authorization", node_credentials));
+        }
         let raw_response = Self::http_request(
-            URL,
+            &node_url,
             serde_json::to_vec(&rpc::Call::MethodCall(rpc::MethodCall {
                 jsonrpc: Some(rpc::Version::V2),
                 method: method.into(),
@@ -1050,7 +1070,7 @@ impl<T: Trait> Module<T> {
                 id: rpc::Id::Num(id as u64),
             }))
             .ok()?,
-            &[("content-type", "application/json")],
+            &headers,
         )
         .and_then(|x| String::from_utf8(x).map_err(|_| Error::<T>::HttpFetchingError))
         .ok()?;
@@ -1228,11 +1248,11 @@ impl<T: Trait> Module<T> {
         }
         let encoded_request = request.to_eth_abi(request.hash())?;
 
-        // Signs `abi.encodePacked(tokenAddress, amount, to, txHash, from)`.
-        let result = signer.send_signed_transaction(|acc| {
-            let signature = Self::sign_message(encoded_request.as_raw());
+        let result = signer.send_signed_transaction(|_acc| {
+            // Signs `abi.encodePacked(tokenAddress, amount, to, txHash, from)`.
+            let (signature, public) = Self::sign_message(encoded_request.as_raw());
             Call::approve_request(
-                ecdsa::Public::decode(&mut &acc.clone().public.encode()[..]).unwrap(),
+                ecdsa::Public::from_slice(&public.serialize_compressed()),
                 request.clone(),
                 encoded_request.clone(),
                 signature,
@@ -1240,7 +1260,9 @@ impl<T: Trait> Module<T> {
         });
 
         match result {
-            Some((_acc, Ok(_))) => {}
+            Some((_acc, Ok(_))) => {
+                debug::trace!("Signed transaction sent");
+            }
             Some((acc, Err(e))) => {
                 debug::error!("[{:?}] Failed in handle_outgoing_transfer: {:?}", acc.id, e);
                 return Err(<Error<T>>::FailedToSendSignedTransaction);
