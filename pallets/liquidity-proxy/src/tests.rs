@@ -312,7 +312,7 @@ fn test_quote_should_fail_with_unavailable_exchange_path_2() {
 }
 
 #[test]
-fn test_quote_should_fail_with_unavailable_exchange_path_3() {
+fn test_quote_should_fail_with_aggregation_error() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
         let result = LiquidityProxy::quote(
@@ -321,7 +321,7 @@ fn test_quote_should_fail_with_unavailable_exchange_path_3() {
             SwapAmount::with_desired_output(fixed!(5_000), Fixed::max_value()),
             LiquiditySourceFilter::empty(DEX_C_ID),
         );
-        assert_noop!(result, <Error<Runtime>>::UnavailableExchangePath);
+        assert_noop!(result, <Error<Runtime>>::AggregationError);
     });
 }
 
@@ -379,23 +379,6 @@ fn test_sell_however_big_amount_base_should_pass() {
         )
         .expect("Failed to swap assets");
         assert!(result.amount > fixed!(0) && result.amount < fixed!(180));
-    });
-}
-
-#[test]
-fn test_swap_should_fail_with_unavailable_exchange_path() {
-    let mut ext = ExtBuilder::default().build();
-    ext.execute_with(|| {
-        let result = LiquidityProxy::swap(
-            Origin::signed(alice()),
-            DEX_C_ID,
-            DOT,
-            GetBaseAssetId::get(),
-            SwapAmount::with_desired_output(fixed!(500), fixed!(400)), // expectation too high
-            Vec::new(),
-            FilterMode::Disabled,
-        );
-        assert_noop!(result, <Error<Runtime>>::UnavailableExchangePath);
     });
 }
 
