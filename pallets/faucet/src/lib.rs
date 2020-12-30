@@ -9,7 +9,7 @@ use frame_support::{
     weights::Pays,
 };
 use sp_arithmetic::traits::Saturating;
-use sp_runtime::transaction_validity::{InvalidTransaction, ValidTransaction};
+use sp_runtime::transaction_validity::{InvalidTransaction, TransactionPriority, ValidTransaction};
 
 mod benchmarking;
 
@@ -104,11 +104,12 @@ impl<T: Trait> ValidateUnsigned for Module<T> {
     type Call = Call<T>;
 
     fn validate_unsigned(_source: TransactionSource, call: &Self::Call) -> TransactionValidity {
-        if let Call::transfer(_, target, _) = call {
+        if let Call::transfer(asset_id, target, _) = call {
             ValidTransaction::with_tag_prefix("Faucet")
-                .priority(0)
+                .priority(TransactionPriority::max_value())
+                .and_provides(asset_id)
                 .and_provides(target)
-                .propagate(false)
+                .propagate(true)
                 .build()
         } else {
             InvalidTransaction::Call.into()
