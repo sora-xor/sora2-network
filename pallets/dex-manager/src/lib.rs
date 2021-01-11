@@ -172,16 +172,12 @@ impl<T: Trait> EnsureDEXOwner<T::DEXId, T::AccountId, DispatchError> for Module<
     {
         match origin.into() {
             Ok(RawOrigin::Signed(who)) => {
-                // Check if DEX exists.
-                if let Some(dex_info) = DEXInfos::<T>::get(&dex_id) {
-                    // If DEX is public, anyone can manage it, otherwise confirm ownership.
-                    if !dex_info.is_public {
-                        Self::ensure_direct_manager(&dex_id, &who)?;
-                    }
-                    Ok(Some(who))
-                } else {
-                    Err(Error::<T>::DEXDoesNotExist.into())
+                let dex_info = Self::get_dex_info(&dex_id)?;
+                // If DEX is public, anyone can manage it, otherwise confirm ownership.
+                if !dex_info.is_public {
+                    Self::ensure_direct_manager(&dex_id, &who)?;
                 }
+                Ok(Some(who))
             }
             _ => Err(Error::<T>::InvalidAccountId.into()),
         }
@@ -189,8 +185,17 @@ impl<T: Trait> EnsureDEXOwner<T::DEXId, T::AccountId, DispatchError> for Module<
 }
 
 impl<T: Trait> Module<T> {
+    pub fn get_dex_info(dex_id: &T::DEXId) -> Result<DEXInfo<T>, DispatchError> {
+        Ok(DEXInfos::<T>::get(&dex_id).ok_or(Error::<T>::DEXDoesNotExist)?)
+    }
+
+    pub fn ensure_dex_exists(dex_id: &T::DEXId) -> DispatchResult {
+        let _return = Self::get_dex_info(dex_id)?;
+        Ok(())
+    }
+
     pub fn list_dex_ids() -> Vec<T::DEXId> {
-        DEXInfos::<T>::iter().map(|(k, _)| k.clone()).collect()
+        DEXInfos::<T>::iter().map(|(k, _)| k).collect()
     }
 
     pub fn ensure_direct_manager(dex_id: &T::DEXId, who: &T::AccountId) -> DispatchResult {

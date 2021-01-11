@@ -41,12 +41,17 @@ impl<DEXId, AccountId> EnsureDEXOwner<DEXId, AccountId, DispatchError> for () {
 }
 
 pub trait EnsureTradingPairExists<DEXId, AssetId, Error> {
-    fn ensure_trading_pair_exists(dex_id: &DEXId, target_asset_id: &AssetId) -> Result<(), Error>;
+    fn ensure_trading_pair_exists(
+        dex_id: &DEXId,
+        base_asset_id: &AssetId,
+        target_asset_id: &AssetId,
+    ) -> Result<(), Error>;
 }
 
 impl<DEXId, AssetId> EnsureTradingPairExists<DEXId, AssetId, DispatchError> for () {
     fn ensure_trading_pair_exists(
         _dex_id: &DEXId,
+        _base_asset_id: &AssetId,
         _target_asset_id: &AssetId,
     ) -> Result<(), DispatchError> {
         Err(DispatchError::CannotLookup)

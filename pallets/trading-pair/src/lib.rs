@@ -4,13 +4,14 @@
 #[macro_use]
 extern crate alloc;
 
-use common::{EnsureDEXOwner, EnsureTradingPairExists};
+use common::{EnsureDEXOwner, EnsureTradingPairExists, LiquiditySourceType};
 use frame_support::{
     decl_error, decl_event, decl_module, decl_storage,
     dispatch::{DispatchError, DispatchResult},
     ensure,
     traits::Get,
     weights::Weight,
+    IterableStorageDoubleMap,
 };
 use sp_std::collections::btree_set::BTreeSet;
 use sp_std::vec::Vec;
@@ -26,12 +27,14 @@ mod mock;
 mod tests;
 
 type TradingPair<T> = common::prelude::TradingPair<<T as assets::Trait>::AssetId>;
+type Assets<T> = assets::Module<T>;
+type DEXManager<T> = dex_manager::Module<T>;
 
 pub trait WeightInfo {
     fn register() -> Weight;
 }
 
-pub trait Trait: common::Trait + assets::Trait {
+pub trait Trait: common::Trait + assets::Trait + dex_manager::Trait {
     type Event: From<Event<Self>> + Into<<Self as frame_system::Trait>::Event>;
     type EnsureDEXOwner: EnsureDEXOwner<Self::DEXId, Self::AccountId, DispatchError>;
 
@@ -41,7 +44,8 @@ pub trait Trait: common::Trait + assets::Trait {
 
 decl_storage! {
     trait Store for Module<T: Trait> as TradingPairModule {
-        TradingPairs get(fn trading_pairs): map hasher(twox_64_concat) T::DEXId => BTreeSet<TradingPair<T>>;
+        EnabledSources get(fn enabled_sources): double_map hasher(twox_64_concat) T::DEXId,
+                                                         hasher(blake2_128_concat) TradingPair<T> => Option<BTreeSet<LiquiditySourceType>>;
     }
 }
 
@@ -49,9 +53,10 @@ decl_event!(
     pub enum Event<T>
     where
         DEXId = <T as common::Trait>::DEXId,
-        TP = TradingPair<T>,
+        TradingPair = TradingPair<T>,
     {
-        TradingPairStored(DEXId, TP),
+        /// Trading pair has been redistered on a DEX. [DEX Id, Trading Pair]
+        TradingPairStored(DEXId, TradingPair),
     }
 );
 
@@ -83,15 +88,18 @@ decl_module! {
         #[weight = <T as Trait>::WeightInfo::register()]
         pub fn register(origin, dex_id: T::DEXId, base_asset_id: T::AssetId, target_asset_id: T::AssetId) -> DispatchResult {
             let _author = T::EnsureDEXOwner::ensure_can_manage(&dex_id, origin)?;
-            //TODO: check token existence
+            Assets::<T>::ensure_asset_exists(&base_asset_id)?;
+            Assets::<T>::ensure_asset_exists(&target_asset_id)?;
             ensure!(base_asset_id != target_asset_id, Error::<T>::IdenticalAssetIds);
             ensure!(base_asset_id == T::GetBaseAssetId::get(), Error::<T>::ForbiddenBaseAssetId);
             let trading_pair = TradingPair::<T> {
                 base_asset_id,
                 target_asset_id
             };
-            let inserted = <TradingPairs<T>>::mutate(&dex_id, |vec| vec.insert(trading_pair.clone()));
-            ensure!(inserted, Error::<T>::TradingPairExists);
+            // let inserted = <TradingPairs<T>>::mutate(&dex_id, |vec| vec.insert(trading_pair.clone()));
+            // ensure!(inserted, Error::<T>::TradingPairExists);
+            ensure!(Self::enabled_sources(&dex_id, &trading_pair).is_none(), Error::<T>::TradingPairExists);
+            EnabledSources::<T>::mutate(&dex_id, &trading_pair, |opt| *opt = Some(BTreeSet::new()));
             Self::deposit_event(RawEvent::TradingPairStored(dex_id, trading_pair));
             Ok(())
         }
@@ -101,14 +109,11 @@ decl_module! {
 impl<T: Trait> EnsureTradingPairExists<T::DEXId, T::AssetId, DispatchError> for Module<T> {
     fn ensure_trading_pair_exists(
         dex_id: &T::DEXId,
+        base_asset_id: &T::AssetId,
         target_asset_id: &T::AssetId,
-    ) -> Result<(), DispatchError> {
-        let trading_pair = TradingPair::<T> {
-            base_asset_id: T::GetBaseAssetId::get(),
-            target_asset_id: target_asset_id.clone(),
-        };
+    ) -> DispatchResult {
         ensure!(
-            Self::trading_pairs(dex_id).contains(&trading_pair),
+            Self::is_trading_pair_enabled(dex_id, base_asset_id, target_asset_id)?,
             Error::<T>::TradingPairDoesntExist
         );
         Ok(())
@@ -116,19 +121,67 @@ impl<T: Trait> EnsureTradingPairExists<T::DEXId, T::AssetId, DispatchError> for 
 }
 
 impl<T: Trait> Module<T> {
-    pub fn list_trading_pairs(dex_id: T::DEXId) -> Vec<TradingPair<T>> {
-        Self::trading_pairs(dex_id).iter().cloned().collect()
+    pub fn list_trading_pairs(dex_id: &T::DEXId) -> Result<Vec<TradingPair<T>>, DispatchError> {
+        DEXManager::<T>::ensure_dex_exists(dex_id)?;
+        Ok(EnabledSources::<T>::iter_prefix(dex_id)
+            .map(|(pair, _)| pair)
+            .collect())
     }
 
     pub fn is_trading_pair_enabled(
-        dex_id: T::DEXId,
-        base_asset_id: T::AssetId,
-        target_asset_id: T::AssetId,
-    ) -> bool {
+        dex_id: &T::DEXId,
+        &base_asset_id: &T::AssetId,
+        &target_asset_id: &T::AssetId,
+    ) -> Result<bool, DispatchError> {
+        DEXManager::<T>::ensure_dex_exists(dex_id)?;
         let pair = TradingPair::<T> {
             base_asset_id,
             target_asset_id,
         };
-        Self::trading_pairs(dex_id).contains(&pair)
+        Ok(Self::enabled_sources(dex_id, &pair).is_some())
+    }
+
+    pub fn list_enabled_sources_for_trading_pair(
+        dex_id: &T::DEXId,
+        &base_asset_id: &T::AssetId,
+        &target_asset_id: &T::AssetId,
+    ) -> Result<BTreeSet<LiquiditySourceType>, DispatchError> {
+        DEXManager::<T>::ensure_dex_exists(dex_id)?;
+        let pair = TradingPair::<T> {
+            base_asset_id,
+            target_asset_id,
+        };
+        Ok(Self::enabled_sources(dex_id, &pair).ok_or(Error::<T>::TradingPairDoesntExist)?)
+    }
+
+    pub fn is_source_enabled_for_trading_pair(
+        dex_id: &T::DEXId,
+        base_asset_id: &T::AssetId,
+        target_asset_id: &T::AssetId,
+        source_type: LiquiditySourceType,
+    ) -> Result<bool, DispatchError> {
+        Ok(
+            Self::list_enabled_sources_for_trading_pair(dex_id, base_asset_id, target_asset_id)?
+                .contains(&source_type),
+        )
+    }
+
+    pub fn enable_source_for_trading_pair(
+        dex_id: &T::DEXId,
+        &base_asset_id: &T::AssetId,
+        &target_asset_id: &T::AssetId,
+        source_type: LiquiditySourceType,
+    ) -> DispatchResult {
+        Self::ensure_trading_pair_exists(dex_id, &base_asset_id, &target_asset_id)?;
+        let pair = TradingPair::<T> {
+            base_asset_id,
+            target_asset_id,
+        };
+        // This logic considers Ok if source is already enabled.
+        // unwrap() is safe, check done in `ensure_trading_pair_exists`.
+        EnabledSources::<T>::mutate(dex_id, &pair, |opt_set| {
+            opt_set.as_mut().unwrap().insert(source_type)
+        });
+        Ok(())
     }
 }

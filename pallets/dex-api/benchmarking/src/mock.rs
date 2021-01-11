@@ -214,6 +214,7 @@ impl Default for ExtBuilder {
                     base_asset_id: GetBaseAssetId::get(),
                     default_fee: GetDefaultFee::get(),
                     default_protocol_fee: GetDefaultProtocolFee::get(),
+                    is_public: true,
                 },
             )],
             initial_permission_owners: vec![

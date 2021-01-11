@@ -910,12 +910,14 @@ impl_runtime_apis! {
 
     impl trading_pair_runtime_api::TradingPairAPI<Block, DEXId, common::TradingPair<AssetId>, AssetId> for Runtime {
         fn list_enabled_pairs(dex_id: DEXId) -> Vec<common::TradingPair<AssetId>> {
-            TradingPair::list_trading_pairs(dex_id)
+            // TODO: error passing PR fixes this crunch return
+            TradingPair::list_trading_pairs(&dex_id).unwrap_or(Vec::new())
         }
 
         fn is_pair_enabled(dex_id: DEXId, asset_id_a: AssetId, asset_id_b: AssetId) -> bool {
-            TradingPair::is_trading_pair_enabled(dex_id, asset_id_a, asset_id_b)
-                || TradingPair::is_trading_pair_enabled(dex_id, asset_id_b, asset_id_a)
+            // TODO: error passing PR fixes this crunch return
+            TradingPair::is_trading_pair_enabled(&dex_id, &asset_id_a, &asset_id_b).unwrap_or(false)
+                || TradingPair::is_trading_pair_enabled(&dex_id, &asset_id_b, &asset_id_a).unwrap_or(false)
         }
     }
 

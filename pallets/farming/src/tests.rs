@@ -41,13 +41,21 @@ impl crate::Module<Testtime> {
                 18
             ));
 
+            assert_ok!(assets::Module::<Testtime>::register_asset_id(
+                ALICE(),
+                DOT,
+                AssetSymbol(b"DOT".to_vec()),
+                18
+            ));
+
             assert_ok!(dex_manager::Module::<Testtime>::initialize_dex(
                 Origin::signed(BOB()),
                 dex_id.clone(),
                 XOR,
                 BOB(),
                 None,
-                None
+                None,
+                true,
             ));
 
             assert_ok!(trading_pair::Module::<Testtime>::register(
@@ -79,13 +87,6 @@ impl crate::Module<Testtime> {
                 technical::Module::<Testtime>::tech_account_id_to_account_id(&fee_acc).unwrap();
             let mark_asset =
                 pool_xyk::Module::<Testtime>::get_marking_asset_repr(&tech_acc_id).unwrap();
-
-            assert_ok!(assets::Module::<Testtime>::register_asset_id(
-                ALICE(),
-                DOT,
-                AssetSymbol(b"DOT".to_vec()),
-                18
-            ));
 
             assert_ok!(assets::Module::<Testtime>::mint_to(
                 &gt,

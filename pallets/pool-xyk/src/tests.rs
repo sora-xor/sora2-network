@@ -1,5 +1,8 @@
-use common::prelude::{SwapAmount, SwapOutcome};
-use common::{fixed, AssetSymbol, LiquiditySource, ToFeeAccount};
+use common::{
+    fixed,
+    prelude::{SwapAmount, SwapOutcome},
+    AssetSymbol, LiquiditySource, LiquiditySourceType, ToFeeAccount,
+};
 use frame_support::{assert_noop, assert_ok};
 
 use crate::mock::*;
@@ -32,13 +35,21 @@ impl crate::Module<Testtime> {
                 18
             ));
 
+            assert_ok!(assets::Module::<Testtime>::register_asset_id(
+                ALICE(),
+                BlackPepper.into(),
+                AssetSymbol(b"BP".to_vec()),
+                18
+            ));
+
             assert_ok!(dex_manager::Module::<Testtime>::initialize_dex(
                 Origin::signed(BOB()),
                 dex_id.clone(),
                 GoldenTicket.into(),
                 BOB(),
                 None,
-                None
+                None,
+                true,
             ));
 
             assert_ok!(trading_pair::Module::<Testtime>::register(
@@ -55,6 +66,16 @@ impl crate::Module<Testtime> {
                 BlackPepper.into(),
             ));
 
+            assert!(
+                trading_pair::Module::<Testtime>::is_source_enabled_for_trading_pair(
+                    &dex_id,
+                    &GoldenTicket.into(),
+                    &BlackPepper.into(),
+                    LiquiditySourceType::XYKPool,
+                )
+                .expect("Failed to query trading pair status.")
+            );
+
             let (tpair, tech_acc_id) =
                 crate::Module::<Testtime>::tech_account_from_dex_and_asset_pair(
                     dex_id.clone(),
@@ -68,13 +89,6 @@ impl crate::Module<Testtime> {
                 technical::Module::<Testtime>::tech_account_id_to_account_id(&tech_acc_id).unwrap();
             let fee_repr: AccountId =
                 technical::Module::<Testtime>::tech_account_id_to_account_id(&fee_acc).unwrap();
-
-            assert_ok!(assets::Module::<Testtime>::register_asset_id(
-                ALICE(),
-                BlackPepper.into(),
-                AssetSymbol(b"BP".to_vec()),
-                18
-            ));
 
             assert_ok!(assets::Module::<Testtime>::mint_to(
                 &gt,
@@ -672,7 +686,7 @@ fn swap_pair_invalid_dex_id() {
                     max_amount_in: fixed!(99999999),
                 }
             ),
-            technical::Error::<Testtime>::TechAccountIdIsNotRegistered
+            dex_manager::Error::<Testtime>::DEXDoesNotExist //technical::Error::<Testtime>::TechAccountIdIsNotRegistered
         );
     }]);
 }

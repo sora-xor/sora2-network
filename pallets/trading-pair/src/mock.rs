@@ -2,7 +2,7 @@ use crate::{Module, Trait};
 use common::{
     hash,
     prelude::{Balance, DEXInfo},
-    AssetId32, BasisPoints, DOT, XOR,
+    AssetId32, AssetSymbol, BalancePrecision, BasisPoints, DOT, KSM, XOR,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::{impl_outer_origin, parameter_types, weights::Weight};
@@ -142,9 +142,10 @@ impl dex_manager::Trait for Runtime {
 pub type System = frame_system::Module<Runtime>;
 pub type Balances = pallet_balances::Module<Runtime>;
 pub type Tokens = tokens::Module<Runtime>;
-pub type TradingPair = Module<Runtime>;
+pub type TradingPairModule = Module<Runtime>;
 
 pub struct ExtBuilder {
+    endowed_assets: Vec<(AssetId, AccountId, AssetSymbol, BalancePrecision)>,
     endowed_accounts: Vec<(AccountId, AssetId, Balance)>,
     dex_list: Vec<(DEXId, DEXInfo<AssetId>)>,
     initial_permission_owners: Vec<(u32, Scope, Vec<AccountId>)>,
@@ -154,6 +155,11 @@ pub struct ExtBuilder {
 impl Default for ExtBuilder {
     fn default() -> Self {
         Self {
+            endowed_assets: vec![
+                (XOR, ALICE, AssetSymbol(b"XOR".to_vec()), 18),
+                (DOT, ALICE, AssetSymbol(b"DOT".to_vec()), 18),
+                (KSM, ALICE, AssetSymbol(b"DOT".to_vec()), 18),
+            ],
             endowed_accounts: vec![
                 (ALICE, XOR, 1_000_000_000_000_000_000u128.into()),
                 (BOB, DOT, 1_000_000_000_000_000_000u128.into()),
@@ -164,6 +170,7 @@ impl Default for ExtBuilder {
                     base_asset_id: XOR,
                     default_fee: 30,
                     default_protocol_fee: 0,
+                    is_public: true,
                 },
             )],
             initial_permission_owners: vec![
@@ -184,15 +191,21 @@ impl ExtBuilder {
             .build_storage::<Runtime>()
             .unwrap();
 
-        tokens::GenesisConfig::<Runtime> {
-            endowed_accounts: self.endowed_accounts,
+        permissions::GenesisConfig::<Runtime> {
+            initial_permission_owners: self.initial_permission_owners,
+            initial_permissions: self.initial_permissions,
         }
         .assimilate_storage(&mut t)
         .unwrap();
 
-        permissions::GenesisConfig::<Runtime> {
-            initial_permission_owners: self.initial_permission_owners,
-            initial_permissions: self.initial_permissions,
+        assets::GenesisConfig::<Runtime> {
+            endowed_assets: self.endowed_assets,
+        }
+        .assimilate_storage(&mut t)
+        .unwrap();
+
+        tokens::GenesisConfig::<Runtime> {
+            endowed_accounts: self.endowed_accounts,
         }
         .assimilate_storage(&mut t)
         .unwrap();
