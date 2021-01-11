@@ -4630,7 +4630,7 @@ dependencies = [
 [[package]]
 name = "pallet-staking"
 version = "2.0.0"
-source = "git+https://github.com/soramitsu/sora2-frame-pallets?branch=selected-v2.0.0#def565a42f3bf54020c5c5836b2ee99abbaae646"
+source = "git+https://github.com/soramitsu/sora2-frame-pallets?branch=selected-v2.0.0#2beee11c0581b158de520005d1faf795a8c10c22"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -4684,7 +4684,7 @@ dependencies = [
 [[package]]
 name = "pallet-transaction-payment"
 version = "2.0.0"
-source = "git+https://github.com/soramitsu/sora2-frame-pallets?branch=selected-v2.0.0#def565a42f3bf54020c5c5836b2ee99abbaae646"
+source = "git+https://github.com/soramitsu/sora2-frame-pallets?branch=selected-v2.0.0#2beee11c0581b158de520005d1faf795a8c10c22"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -4701,7 +4701,7 @@ dependencies = [
 [[package]]
 name = "pallet-transaction-payment-rpc"
 version = "2.0.0"
-source = "git+https://github.com/soramitsu/sora2-frame-pallets?branch=selected-v2.0.0#def565a42f3bf54020c5c5836b2ee99abbaae646"
+source = "git+https://github.com/soramitsu/sora2-frame-pallets?branch=selected-v2.0.0#2beee11c0581b158de520005d1faf795a8c10c22"
 dependencies = [
  "jsonrpc-core 15.1.0",
  "jsonrpc-core-client",
@@ -4719,7 +4719,7 @@ dependencies = [
 [[package]]
 name = "pallet-transaction-payment-rpc-runtime-api"
 version = "2.0.0"
-source = "git+https://github.com/soramitsu/sora2-frame-pallets?branch=selected-v2.0.0#def565a42f3bf54020c5c5836b2ee99abbaae646"
+source = "git+https://github.com/soramitsu/sora2-frame-pallets?branch=selected-v2.0.0#2beee11c0581b158de520005d1faf795a8c10c22"
 dependencies = [
  "frame-support",
  "parity-scale-codec",
@@ -8746,7 +8746,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "04f8ab788026715fa63b31960869617cba39117e520eb415b0139543e325ab59"
 dependencies = [
  "cfg-if 0.1.10",
- "rand 0.3.23",
+ "rand 0.7.3",
  "static_assertions",
 ]
 

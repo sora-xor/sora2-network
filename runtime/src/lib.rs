@@ -27,7 +27,7 @@ use sp_runtime::{
         OpaqueKeys, SaturatedConversion, Saturating, Verify, Zero,
     },
     transaction_validity::{TransactionSource, TransactionValidity},
-    ApplyExtrinsicResult, MultiSignature, Percent,
+    ApplyExtrinsicResult, FixedPointNumber, MultiSignature, Perbill, Percent, Perquintill,
 };
 use sp_std::marker::PhantomData;
 use sp_std::prelude::*;
@@ -55,9 +55,9 @@ pub use frame_support::{
 pub use pallet_balances::Call as BalancesCall;
 pub use pallet_staking::StakerStatus;
 pub use pallet_timestamp::Call as TimestampCall;
+pub use pallet_transaction_payment::{Multiplier, TargetedFeeAdjustment};
 #[cfg(any(feature = "std", test))]
 pub use sp_runtime::BuildStorage;
-pub use sp_runtime::{Perbill, Permill};
 
 pub use bonding_curve_pool;
 pub use eth_bridge;
@@ -328,7 +328,6 @@ parameter_types! {
     pub const ExistentialDeposit: u128 = 0;
     pub const TransferFee: u128 = 0;
     pub const CreationFee: u128 = 0;
-    pub const TransactionByteFee: u128 = 0;
 }
 
 impl pallet_balances::Trait for Runtime {
@@ -587,13 +586,21 @@ impl xor_fee::Trait for Runtime {
     type ValBurnedNotifier = Staking;
 }
 
+parameter_types! {
+    pub const TransactionByteFee: Balance = Balance(Fixed::from_inner(1_000_000_000_000_u128)); // 10^-6 XOR ~ 10 * MILLICENTS
+    pub const TargetBlockFullness: Perquintill = Perquintill::from_percent(25);
+    pub AdjustmentVariable: Multiplier = Multiplier::saturating_from_rational(1, 100_000);
+    pub MinimumMultiplier: Multiplier = Multiplier::saturating_from_rational(1, 1_000_000_000_u128);
+}
+
 impl pallet_transaction_payment::Trait for Runtime {
     // Pass native currency.
     type Currency = Balances;
     type OnTransactionPayment = XorFee;
     type TransactionByteFee = TransactionByteFee;
     type WeightToFee = WeightToFixedFee;
-    type FeeMultiplierUpdate = ();
+    type FeeMultiplierUpdate =
+        TargetedFeeAdjustment<Self, TargetBlockFullness, AdjustmentVariable, MinimumMultiplier>;
 }
 
 impl pallet_sudo::Trait for Runtime {
