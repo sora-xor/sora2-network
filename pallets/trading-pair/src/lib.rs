@@ -82,7 +82,7 @@ decl_module! {
         /// - `target_asset_id`: target asset ID.
         #[weight = <T as Trait>::WeightInfo::register()]
         pub fn register(origin, dex_id: T::DEXId, base_asset_id: T::AssetId, target_asset_id: T::AssetId) -> DispatchResult {
-            let _author = T::EnsureDEXOwner::ensure_dex_owner(&dex_id, origin)?;
+            let _author = T::EnsureDEXOwner::ensure_can_manage(&dex_id, origin)?;
             //TODO: check token existence
             ensure!(base_asset_id != target_asset_id, Error::<T>::IdenticalAssetIds);
             ensure!(base_asset_id == T::GetBaseAssetId::get(), Error::<T>::ForbiddenBaseAssetId);

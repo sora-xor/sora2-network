@@ -47,6 +47,8 @@ pub struct DEXInfo<AssetId> {
     pub default_fee: BasisPoints,
     /// Default value for protocol fee in basis points.
     pub default_protocol_fee: BasisPoints,
+    /// Determines if DEX can be managed by regular users.
+    pub is_public: bool,
 }
 
 //TODO: consider replacing base_asset_id with dex_id, and getting base asset from dex

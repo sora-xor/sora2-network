@@ -40,14 +40,14 @@ pub trait Trait: common::Trait + assets::Trait {
 decl_storage! {
     trait Store for Module<T: Trait> as DEXManager {
         // TODO: compare performance with separate tables
-        pub DEXInfos get(fn dex_id): map hasher(twox_64_concat) T::DEXId => DEXInfo<T>;
+        pub DEXInfos get(fn dex_id): map hasher(twox_64_concat) T::DEXId => Option<DEXInfo<T>>;
     }
     add_extra_genesis {
         config(dex_list): Vec<(T::DEXId, DEXInfo<T>)>;
 
         build(|config: &GenesisConfig<T>| {
             config.dex_list.iter().for_each(|(dex_id, dex_info)| {
-                <DEXInfos<T>>::insert(dex_id.clone(), dex_info);
+                DEXInfos::<T>::insert(dex_id.clone(), dex_info);
             })
         })
     }
@@ -58,8 +58,11 @@ decl_event!(
     where
         DEXId = <T as common::Trait>::DEXId,
     {
+        /// New DEX has been registered. [DEX Id]
         DEXInitialized(DEXId),
+        /// Default fee setting has been changed. [DEX Id, Swap fee in basis points]
         FeeChanged(DEXId, u16),
+        /// Default protocol fee setting has been changed. [DEX Id, Protocol fee in basis points]
         ProtocolFeeChanged(DEXId, u16),
     }
 );
@@ -92,10 +95,11 @@ decl_module! {
         /// - `fee`: value of fee on swaps in basis points.
         /// - `protocol_fee`: value of fee fraction for protocol beneficiary in basis points.
         #[weight = <T as Trait>::WeightInfo::initialize_dex()]
-        pub fn initialize_dex(origin, dex_id: T::DEXId, base_asset_id: T::AssetId, owner_account_id: T::AccountId, fee: Option<u16>, protocol_fee: Option<u16>) -> DispatchResult {
+        pub fn initialize_dex(origin, dex_id: T::DEXId, base_asset_id: T::AssetId, owner_account_id: T::AccountId, fee: Option<u16>, protocol_fee: Option<u16>, is_public: bool) -> DispatchResult {
             let who = ensure_signed(origin)?;
             permissions::Module::<T>::check_permission(who.clone(), INIT_DEX)?;
-            ensure!(!<DEXInfos<T>>::contains_key(&dex_id), <Error<T>>::DEXIdAlreadyExists);
+            ensure!(!DEXInfos::<T>::contains_key(&dex_id), Error::<T>::DEXIdAlreadyExists);
+            // Get default values for fees.
             let fee = match fee {
                 Some(val) => val,
                 None => T::GetDefaultFee::get(),
@@ -104,12 +108,15 @@ decl_module! {
                 Some(val) => val,
                 None => T::GetDefaultProtocolFee::get(),
             };
+            // Construct DEX information.
             let new_dex_info = DEXInfo::<T> {
                 base_asset_id,
                 default_fee: fee,
                 default_protocol_fee: protocol_fee,
+                is_public,
             };
-            <DEXInfos<T>>::insert(dex_id.clone(), new_dex_info);
+            DEXInfos::<T>::insert(dex_id.clone(), new_dex_info);
+            // Create permission for designated owner account.
             match permissions::Module::<T>::assign_permission(
                 owner_account_id.clone(),
                 &owner_account_id,
@@ -129,11 +136,11 @@ decl_module! {
         /// - `fee`: value of fee on swaps in basis points.
         #[weight = <T as Trait>::WeightInfo::set_fee()]
         pub fn set_fee(origin, dex_id: T::DEXId, fee: BasisPoints) -> DispatchResult {
-            let _who = Self::ensure_dex_owner(&dex_id, origin)?;
-            if !in_basis_points_range(fee) {
-                return Err(<Error<T>>::InvalidFeeValue.into());
-            }
-            <DEXInfos<T>>::mutate(&dex_id, |dex_info| dex_info.default_fee = fee);
+            ensure!(DEXInfos::<T>::get(&dex_id).is_some(), Error::<T>::DEXDoesNotExist);
+            let who = ensure_signed(origin)?;
+            Self::ensure_direct_manager(&dex_id, &who)?;
+            ensure!(in_basis_points_range(fee), Error::<T>::InvalidFeeValue);
+            DEXInfos::<T>::mutate(&dex_id, |dex_info| dex_info.as_mut().unwrap().default_fee = fee);
             Self::deposit_event(RawEvent::FeeChanged(dex_id, fee));
             Ok(())
         }
@@ -144,11 +151,11 @@ decl_module! {
         /// - `protocol_fee`: value of fee fraction for protocol beneficiary in basis points.
         #[weight = <T as Trait>::WeightInfo::set_protocol_fee()]
         pub fn set_protocol_fee(origin, dex_id: T::DEXId, protocol_fee: BasisPoints) -> DispatchResult {
-            let _who = Self::ensure_dex_owner(&dex_id, origin)?;
-            if !in_basis_points_range(protocol_fee) {
-                return Err(<Error<T>>::InvalidFeeValue.into());
-            }
-            <DEXInfos<T>>::mutate(&dex_id, |dex_info| dex_info.default_protocol_fee = protocol_fee);
+            ensure!(DEXInfos::<T>::get(&dex_id).is_some(), Error::<T>::DEXDoesNotExist);
+            let who = ensure_signed(origin)?;
+            Self::ensure_direct_manager(&dex_id, &who)?;
+            ensure!(in_basis_points_range(protocol_fee), Error::<T>::InvalidFeeValue);
+            DEXInfos::<T>::mutate(&dex_id, |dex_info| dex_info.as_mut().unwrap().default_protocol_fee = protocol_fee);
             Self::deposit_event(RawEvent::ProtocolFeeChanged(dex_id, protocol_fee));
             Ok(())
         }
@@ -156,7 +163,7 @@ decl_module! {
 }
 
 impl<T: Trait> EnsureDEXOwner<T::DEXId, T::AccountId, DispatchError> for Module<T> {
-    fn ensure_dex_owner<OuterOrigin>(
+    fn ensure_can_manage<OuterOrigin>(
         dex_id: &T::DEXId,
         origin: OuterOrigin,
     ) -> Result<Option<T::AccountId>, DispatchError>
@@ -165,25 +172,33 @@ impl<T: Trait> EnsureDEXOwner<T::DEXId, T::AccountId, DispatchError> for Module<
     {
         match origin.into() {
             Ok(RawOrigin::Signed(who)) => {
-                ensure!(
-                    <DEXInfos<T>>::contains_key(&dex_id),
-                    <Error<T>>::DEXDoesNotExist
-                );
-                permissions::Module::<T>::check_permission_with_scope(
-                    who.clone(),
-                    MANAGE_DEX,
-                    &Scope::Limited(hash(&dex_id)),
-                )?;
-                Ok(Some(who))
+                // Check if DEX exists.
+                if let Some(dex_info) = DEXInfos::<T>::get(&dex_id) {
+                    // If DEX is public, anyone can manage it, otherwise confirm ownership.
+                    if !dex_info.is_public {
+                        Self::ensure_direct_manager(&dex_id, &who)?;
+                    }
+                    Ok(Some(who))
+                } else {
+                    Err(Error::<T>::DEXDoesNotExist.into())
+                }
             }
-            Ok(RawOrigin::Root) => Ok(None),
-            _ => Err(<Error<T>>::InvalidAccountId.into()),
+            _ => Err(Error::<T>::InvalidAccountId.into()),
         }
     }
 }
 
 impl<T: Trait> Module<T> {
     pub fn list_dex_ids() -> Vec<T::DEXId> {
-        <DEXInfos<T>>::iter().map(|(k, _)| k.clone()).collect()
+        DEXInfos::<T>::iter().map(|(k, _)| k.clone()).collect()
+    }
+
+    pub fn ensure_direct_manager(dex_id: &T::DEXId, who: &T::AccountId) -> DispatchResult {
+        permissions::Module::<T>::check_permission_with_scope(
+            who.clone(),
+            MANAGE_DEX,
+            &Scope::Limited(hash(&dex_id)),
+        )
+        .map_err(|e| e.into())
     }
 }

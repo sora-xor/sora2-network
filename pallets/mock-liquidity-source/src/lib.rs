@@ -68,7 +68,7 @@ decl_module! {
         // example, this checks should be called at the beginning of management functions of actual liquidity sources, e.g. register, set_fee
         #[weight = 0]
         pub fn test_access(origin, dex_id: T::DEXId, target_id: T::AssetId) -> DispatchResult {
-            let _who = T::EnsureDEXOwner::ensure_dex_owner(&dex_id, origin)?;
+            let _who = T::EnsureDEXOwner::ensure_can_manage(&dex_id, origin)?;
             T::EnsureTradingPairExists::ensure_trading_pair_exists(&dex_id, &target_id)?;
             Ok(())
         }

@@ -16,7 +16,7 @@ use sp_std::vec::Vec;
 
 /// Check on origin that it is a DEX owner.
 pub trait EnsureDEXOwner<DEXId, AccountId, Error> {
-    fn ensure_dex_owner<OuterOrigin>(
+    fn ensure_can_manage<OuterOrigin>(
         dex_id: &DEXId,
         origin: OuterOrigin,
     ) -> Result<Option<AccountId>, Error>
@@ -25,7 +25,7 @@ pub trait EnsureDEXOwner<DEXId, AccountId, Error> {
 }
 
 impl<DEXId, AccountId> EnsureDEXOwner<DEXId, AccountId, DispatchError> for () {
-    fn ensure_dex_owner<OuterOrigin>(
+    fn ensure_can_manage<OuterOrigin>(
         _dex_id: &DEXId,
         origin: OuterOrigin,
     ) -> Result<Option<AccountId>, DispatchError>
