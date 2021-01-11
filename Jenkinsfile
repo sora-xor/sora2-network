@@ -37,7 +37,7 @@ pipeline {
                 script {
                     docker.withRegistry( "https://" + registry, dockerRegistryRWUserId) {
                         docker.image(baseImageName).inside() {
-                            sh "cd ${env.WORKSPACE} && cargo update && cargo build --release"
+                            sh "cd ${env.WORKSPACE} && cargo build --release"
                             sh "cp /opt/rust-target/release/framenode ${env.WORKSPACE}/housekeeping/framenode"
                             sh "cargo test --release"
                         }

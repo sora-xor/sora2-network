@@ -35,7 +35,6 @@ RUN curl https://sh.rustup.rs -sSf | sh -s -- -y --no-modify-path --default-tool
 # Build project
 ADD . /app
 WORKDIR /app
-RUN cargo update
 RUN cargo build --release
 
 # Remove source code
