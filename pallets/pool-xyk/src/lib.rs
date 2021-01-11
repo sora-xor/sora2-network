@@ -1987,8 +1987,6 @@ decl_module! {
                 Self::deposit_event(RawEvent::PoolIsInitialized(ta_repr));
                 Ok(())
         }
-
-
     }
 }
 

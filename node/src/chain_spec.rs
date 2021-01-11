@@ -7,12 +7,8 @@ use framenode_runtime::{
     TechAccountId, TechnicalConfig, TokensConfig, UsdId, ValId, XorId, WASM_BINARY,
 };
 
-use common::{
-    balance::Balance,
-    hash,
-    DEXId, Fixed, TechPurpose, VAL, XOR,PSWAP,
-};
-    use common::prelude::{DEXInfo, FixedWrapper},
+use common::prelude::{DEXInfo, FixedWrapper};
+use common::{balance::Balance, fixed, hash, DEXId, Fixed, TechPurpose, PSWAP, VAL, XOR};
 use frame_support::sp_runtime::Percent;
 use framenode_runtime::bonding_curve_pool::{DistributionAccountData, DistributionAccounts};
 use framenode_runtime::eth_bridge::AssetKind;
@@ -284,11 +280,13 @@ pub fn staging_test_net() -> ChainSpec {
     )
 }
 
-fn bonding_curve_distribution_accounts() -> DistributionAccounts<DistributionAccountData<<Runtime as technical::Trait>::TechAccountId>> {
+fn bonding_curve_distribution_accounts(
+) -> DistributionAccounts<DistributionAccountData<<Runtime as technical::Trait>::TechAccountId>> {
     use common::{fixed_wrapper, prelude::fixnum::ops::Numeric};
     let val_holders_coefficient = fixed_wrapper!(0.5);
     let val_holders_xor_alloc_coeff = fixed_wrapper!(0.9) * val_holders_coefficient.clone();
-    let val_holders_buy_back_coefficient = val_holders_coefficient.clone() * (fixed_wrapper!(1) - fixed_wrapper!(0.9));
+    let val_holders_buy_back_coefficient =
+        val_holders_coefficient.clone() * (fixed_wrapper!(1) - fixed_wrapper!(0.9));
     let projects_coefficient = fixed_wrapper!(1) - val_holders_coefficient;
     let projects_sora_citizens_coeff = projects_coefficient.clone() * fixed_wrapper!(0.01);
     let projects_stores_and_shops_coeff = projects_coefficient.clone() * fixed_wrapper!(0.04);
@@ -748,12 +746,7 @@ fn testnet_genesis(
         }),
         pswap_distribution: Some(PswapDistributionConfig {
             subscribed_accounts: Vec::new(),
-            burn_info: (
-                fixed!(0),
-                fixed!(0, 000369738339021615),
-                fixed!(0, 65),
-                14400,
-            ),
+            burn_info: (fixed!(0), fixed!(0.000369738339021615), fixed!(0.65), 14400),
         }),
     }
 }

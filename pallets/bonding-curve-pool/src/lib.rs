@@ -358,9 +358,9 @@ impl<T: Trait> Module<T> {
     #[rustfmt::skip]
     pub fn price_for_main_asset(main_asset_id: &T::AssetId, quantity: Balance, kind: SwapKind) -> Result<Fixed, DispatchError> {
         let total_issuance = Assets::<T>::total_issuance(&main_asset_id)?;
-        let Q = FixedWrapper::from(total_issuance);
+        let Q: FixedWrapper = total_issuance.into();
         let P_I = Self::initial_price();
-        let PC_S = FixedWrapper::from(Self::price_change_step());
+        let PC_S: FixedWrapper = Self::price_change_step().into();
         let PC_R = Self::price_change_rate();
 
         let Q_prime = if kind == SwapKind::Buy { Q.clone() + quantity } else { Q.clone() - quantity };

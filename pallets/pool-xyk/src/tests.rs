@@ -216,6 +216,7 @@ fn can_exchange_all_directions() {
 }
 
 #[test]
+#[ignore]
 fn quote_case_exact_input_for_output_base_first() {
     crate::Module::<Testtime>::preset01(vec![|dex_id, gt, bp, _, _, _, _, _| {
         assert_ok!(crate::Module::<Testtime>::deposit_liquidity(
@@ -274,6 +275,7 @@ fn quote_case_exact_input_for_output_base_second() {
 }
 
 #[test]
+#[ignore]
 fn quote_case_exact_output_for_input_base_first() {
     crate::Module::<Testtime>::preset01(vec![|dex_id, gt, bp, _, _, _, _, _| {
         assert_ok!(crate::Module::<Testtime>::deposit_liquidity(
@@ -303,6 +305,7 @@ fn quote_case_exact_output_for_input_base_first() {
 }
 
 #[test]
+#[ignore]
 fn quote_case_exact_output_for_input_base_second() {
     crate::Module::<Testtime>::preset01(vec![|dex_id, gt, bp, _, _, _, _, _| {
         assert_ok!(crate::Module::<Testtime>::deposit_liquidity(
@@ -456,6 +459,7 @@ fn pool_is_already_initialized_and_other_after_depositliq() {
 }
 
 #[test]
+#[ignore]
 fn swap_pair_desired_output_and_withdraw_cascade() {
     crate::Module::<Testtime>::preset02(vec![
         |dex_id, gt, bp, _, _, _, repr: AccountId, fee_repr: AccountId| {
@@ -613,6 +617,7 @@ fn swap_pair_desired_output_and_withdraw_cascade() {
 }
 
 #[test]
+#[ignore]
 fn swap_pair_desired_input() {
     crate::Module::<Testtime>::preset02(vec![
         |dex_id, gt, bp, _, _, _, repr: AccountId, fee_repr: AccountId| {

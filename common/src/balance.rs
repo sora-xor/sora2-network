@@ -253,19 +253,19 @@ impl Num for Balance {
 impl Unsigned for Balance {}
 
 macro_rules! impl_primitive_conversions {
-    ($($t:ty)+) => ($(
+    ($( $t:ty )+) => ($(
         impl_primitive_conversions!{@single $t}
     )*);
     (@single $t:ty) => {
         impl From<$t> for Balance {
-            fn from(v: $t) -> Balance {
-                Balance(Fixed::from_bits(v as FixedInner))
+            fn from(value: $t) -> Self {
+                Fixed::try_from(value).unwrap().into()
             }
         }
 
         impl From<Balance> for $t {
-            fn from(value: Balance) -> $t {
-                *value.0.as_bits() as $t
+            fn from(value: Balance) -> Self {
+                value.0.rounding_to_i64() as Self
             }
         }
     };

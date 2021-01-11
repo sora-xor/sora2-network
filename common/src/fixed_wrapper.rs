@@ -39,6 +39,10 @@ impl FixedWrapper {
         FixedWrapper { inner: None }
     }
 
+    pub fn pow(&self, x: u32) -> Self {
+        (0..x).fold(fixed!(1), |acc, _| acc * self.clone())
+    }
+
     /// Calculates square root of self using [Babylonian method][babylonian].
     /// Precision is `1e-10`.
     /// [babylonian]: https://en.wikipedia.org/wiki/Methods_of_computing_square_roots#Babylonian_method
@@ -121,26 +125,20 @@ impl From<Balance> for FixedWrapper {
     }
 }
 
-impl From<u128> for FixedWrapper {
-    fn from(int: u128) -> Self {
-        FixedWrapper::from(Fixed::from_bits(int as i128))
-    }
-}
-
 macro_rules! impl_from_for_fixed_wrapper {
-    ($( $t:ty ),+) => {
-        $( impl_from_for_fixed_wrapper!(@single $t); )*
+    ($( $T:ty ),+) => {
+        $( impl_from_for_fixed_wrapper!(@single $T); )*
     };
-    (@single $t:ty) => {
-        impl From<$t> for FixedWrapper {
-            fn from(value: $t) -> Self {
+    (@single $T:ty) => {
+        impl From<$T> for FixedWrapper {
+            fn from(value: $T) -> Self {
                 Fixed::try_from(value).map_err(|_: ConvertError| ArithmeticError::Overflow).into()
             }
         }
     };
 }
 
-impl_from_for_fixed_wrapper!(usize, isize);
+impl_from_for_fixed_wrapper!(usize, isize, u128, i128, u64, i64, u32, i32);
 
 fn zip<'a, 'b, T, E: Clone>(a: &'a Result<T, E>, b: &'b Result<T, E>) -> Result<(&'a T, &'b T), E> {
     a.as_ref()
@@ -229,7 +227,7 @@ macro_rules! impl_op_fixed_wrapper_for_type {
                 if self.inner.is_err() {
                     return Err(ArithmeticError::Overflow).into();
                 }
-                let rhs = FixedWrapper::from(rhs);
+                let rhs: FixedWrapper = rhs.into();
                 self.$op_fn(rhs)
             }
         }
@@ -241,7 +239,7 @@ macro_rules! impl_op_fixed_wrapper_for_type {
                 if rhs.inner.is_err() {
                     return Err(ArithmeticError::Overflow).into();
                 }
-                let lhs = FixedWrapper::from(self);
+                let lhs: FixedWrapper = self.into();
                 lhs.$op_fn(rhs)
             }
         }

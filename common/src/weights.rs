@@ -8,7 +8,8 @@ use sp_arithmetic::{
 };
 
 use crate::balance::Balance;
-use crate::{Fixed, FixedInner};
+use crate::fixed_wrapper::FixedWrapper;
+use crate::{fixed, Fixed, FixedInner};
 
 pub struct WeightToFixedFee(Balance);
 
@@ -30,34 +31,31 @@ impl WeightToFeePolynomial for WeightToFixedFee {
     ///
     /// Specializaiton of the default trait method implementation for `Balance` being a `FixedU128` type.
     fn calc(weight: &Weight) -> Self::Balance {
-        Self::polynomial()
-            .iter()
-            .fold(Self::Balance::zero(), |mut acc, args| {
-                let w = Self::Balance::from(Fixed::from_bits(FixedInner::from(*weight)))
-                    .saturating_pow(args.degree.into());
+        let result: FixedWrapper = Self::polynomial().iter().fold(fixed!(0), |mut acc, args| {
+            let w = FixedWrapper::from(Fixed::from_bits(FixedInner::from(*weight)))
+                .pow(args.degree.into());
 
-                // The sum could get negative. Therefore we only sum with the accumulator.
-                // The Perbill Mul implementation is non overflowing.
-                let frac = args.coeff_frac * w;
-                let integer = args.coeff_integer.saturating_mul(w);
+            // The sum could get negative. Therefore we only sum with the accumulator.
+            // The Perbill Mul implementation is non overflowing.
+            let frac = w.clone() * FixedWrapper::from(args.coeff_frac.deconstruct());
+            let integer = w * args.coeff_integer;
 
-                if args.negative {
-                    acc = acc.saturating_sub(frac);
-                    acc = acc.saturating_sub(integer);
-                } else {
-                    acc = acc.saturating_add(frac);
-                    acc = acc.saturating_add(integer);
-                }
+            if args.negative {
+                acc = acc - frac - integer;
+            } else {
+                acc = acc + frac + integer;
+            }
 
-                acc
-            })
+            acc
+        });
+        result.get().unwrap().into()
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{balance::Balance, fixed};
+    use crate::fixed;
     use frame_support::weights::Weight;
     use sp_runtime::traits::SaturatedConversion;
 
@@ -65,22 +63,22 @@ mod tests {
 
     #[test]
     fn weight_to_fixed_fee_works() {
-        assert_eq!(Fee::calc(&100_000_000_000), Balance(fixed!(1)));
-        assert_eq!(Fee::calc(&500_000_000), Balance(fixed!(5 e-3)));
-        assert_eq!(Fee::calc(&72_000_000), Balance(fixed!(72 e-5)));
-        assert_eq!(Fee::calc(&210_200_000_000), Balance(fixed!(2, 102)));
+        assert_eq!(Fee::calc(&100_000_000_000), fixed!(1));
+        assert_eq!(Fee::calc(&500_000_000), fixed!(0.005));
+        assert_eq!(Fee::calc(&72_000_000), fixed!(0.00072));
+        assert_eq!(Fee::calc(&210_200_000_000), fixed!(2.102));
     }
 
     #[test]
     fn weight_to_fixed_fee_does_not_underflow() {
-        assert_eq!(Fee::calc(&0), Balance::saturated_from(0_u32));
+        assert_eq!(Fee::calc(&0), fixed!(0));
     }
 
     #[test]
     fn weight_to_fixed_fee_does_not_overflow() {
         assert_eq!(
             Fee::calc(&Weight::max_value()),
-            Balance(fixed!(184467440, 73709551615)),
+            fixed!(184467440.73709551615),
         );
     }
 }

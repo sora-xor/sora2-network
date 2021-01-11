@@ -5,6 +5,14 @@ macro_rules! fixed {
     };
 }
 
+#[macro_export]
+macro_rules! fixed_wrapper {
+    ($val:literal) => {{
+        let val: $crate::prelude::FixedWrapper = $crate::fixed!($val);
+        val
+    }};
+}
+
 #[allow(unused)]
 #[macro_export]
 macro_rules! dbg {

@@ -7,13 +7,12 @@ use core::convert::TryFrom;
 
 use codec::{Decode, Encode};
 
+use common::prelude::fixnum::ops::{CheckedMul, Numeric, RoundMode::*};
+use common::prelude::{Balance, FixedWrapper, SwapAmount, SwapOutcome, SwapVariant};
 use common::{
-    fixed, linspace, Balance,
-    FilterMode, Fixed, FixedInner, IntervalEndpoints, LiquidityRegistry, LiquiditySource,
-    LiquiditySourceFilter, LiquiditySourceId, LiquiditySourceType,
+    fixed, linspace, FilterMode, Fixed, FixedInner, IntervalEndpoints, LiquidityRegistry,
+    LiquiditySource, LiquiditySourceFilter, LiquiditySourceId, LiquiditySourceType,
 };
-use common::prelude::{FixedWrapper, SwapAmount, SwapOutcome, SwapVariant},
-use common::prelude::fixnum::ops::{CheckedMul, Numeric},
 use frame_support::{
     decl_error, decl_event, decl_module, dispatch::DispatchResult, ensure, traits::Get,
     weights::Weight, RuntimeDebug,
@@ -227,28 +226,8 @@ impl<T: Trait> Module<T> {
         amount: SwapAmount<Fixed>,
         filter: LiquiditySourceFilter<T::DEXId, LiquiditySourceType>,
     ) -> Result<SwapOutcome<Fixed>, DispatchError> {
-        let res = Self::quote_with_filter(
-            input_asset_id,
-            output_asset_id,
-            amount.clone(),
-            filter.clone(),
-        )?
-        .distribution
-        .into_iter()
-        .filter(|(_src, share)| *share > fixed!(0))
-        .map(|(src, share)| {
-            T::LiquidityRegistry::exchange(
-                origin,
-                origin,
-                &src,
-                input_asset_id,
-                output_asset_id,
-                amount.clone() * share,
-            )
-        })
-        .collect::<Result<Vec<SwapOutcome<Fixed>>, DispatchError>>()?;
-
-        Ok(res
+        let res = Self::quote_with_filter(input_asset_id, output_asset_id, amount, filter)?
+            .distribution
             .into_iter()
             .filter(|(_src, share)| *share > fixed!(0))
             .map(|(src, share)| {
@@ -262,6 +241,9 @@ impl<T: Trait> Module<T> {
                 )
             })
             .collect::<Result<Vec<SwapOutcome<Fixed>>, DispatchError>>()?;
+        let r: Vec<Fixed> = res.iter().map(|s| s.amount).collect();
+        assert_eq!(r, vec![]);
+
         let (amount, fee): (FixedWrapper, FixedWrapper) = res
             .into_iter()
             .fold((fixed!(0), fixed!(0)), |(amount_acc, fee_acc), x| {
@@ -313,7 +295,7 @@ impl<T: Trait> Module<T> {
         };
 
         ensure!(
-            best > Fixed::zero() && best < Fixed::max_value(),
+            best > fixed!(0) && best < Fixed::MAX,
             Error::<T>::AggregationError
         );
 
@@ -324,9 +306,9 @@ impl<T: Trait> Module<T> {
                 Err(_) => return acc,
                 Ok(index) => index,
             };
-            let idx = match idx.as_bits() {
+            let idx = match idx.integral(Floor) {
                 0 => 0,
-                k => k - 1,
+                k => k,
             };
             acc + *sample_fees[i].get(idx as usize).unwrap_or(&fixed!(0))
         });

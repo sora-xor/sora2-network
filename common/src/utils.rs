@@ -5,6 +5,7 @@ use fixnum::ops::{RoundMode::*, RoundingDiv};
 use frame_support::RuntimeDebug;
 use sp_std::{iter::once, vec::Vec};
 
+use crate::fixed_wrapper;
 use crate::prelude::{FilterMode, Fixed, FixedInner, FixedWrapper, LiquiditySourceId};
 
 /// Basis points range (0..10000) corresponds to 0.01%..100.00%.
@@ -77,11 +78,11 @@ pub fn linspace(a: Fixed, b: Fixed, n: usize, endpoints: IntervalEndpoints) -> V
 fn linspace_inner(a: Fixed, b: Fixed, n: usize) -> Vec<Fixed> {
     let a: FixedWrapper = a.into();
     let b: FixedWrapper = b.into();
-    let width: FixedWrapper = (n as u128 + 1).into();
+    let width: FixedWrapper = FixedWrapper::from(n) + fixed_wrapper!(1);
     (1..=n)
         .map(|x| -> Fixed {
             let x: FixedWrapper =
-                a.clone() + (b.clone() - a.clone()) / width.clone() / FixedWrapper::from(x as u128);
+                a.clone() + (b.clone() - a.clone()) / (width.clone() / FixedWrapper::from(x));
             x.get().unwrap()
         })
         .collect()
@@ -460,15 +461,10 @@ mod tests {
 
         // [0, Fixed::max_value()], 3 points
         assert_eq!(
-            &linspace(
-                fixed!(0),
-                <Fixed as Numeric>::MAX,
-                3,
-                IntervalEndpoints::Both
-            ),
+            &linspace(fixed!(0), Fixed::MAX, 3, IntervalEndpoints::Both),
             &[
                 fixed!(0),
-                fixed!(85070591730234615865.843651857942052864),
+                fixed!(85070591730234615865.843651857942052863),
                 fixed!(170141183460469231731.687303715884105727),
             ]
         );
