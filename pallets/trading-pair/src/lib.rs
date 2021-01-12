@@ -47,6 +47,15 @@ decl_storage! {
         EnabledSources get(fn enabled_sources): double_map hasher(twox_64_concat) T::DEXId,
                                                          hasher(blake2_128_concat) TradingPair<T> => Option<BTreeSet<LiquiditySourceType>>;
     }
+    add_extra_genesis {
+        config(trading_pairs): Vec<(T::DEXId, TradingPair<T>)>;
+
+        build(|config: &GenesisConfig<T>| {
+            config.trading_pairs.iter().for_each(|(dex_id, pair)| {
+                EnabledSources::<T>::insert(&dex_id, &pair, BTreeSet::<LiquiditySourceType>::new());
+            })
+        })
+    }
 }
 
 decl_event!(
@@ -96,10 +105,8 @@ decl_module! {
                 base_asset_id,
                 target_asset_id
             };
-            // let inserted = <TradingPairs<T>>::mutate(&dex_id, |vec| vec.insert(trading_pair.clone()));
-            // ensure!(inserted, Error::<T>::TradingPairExists);
             ensure!(Self::enabled_sources(&dex_id, &trading_pair).is_none(), Error::<T>::TradingPairExists);
-            EnabledSources::<T>::mutate(&dex_id, &trading_pair, |opt| *opt = Some(BTreeSet::new()));
+            EnabledSources::<T>::insert(&dex_id, &trading_pair, BTreeSet::<LiquiditySourceType>::new());
             Self::deposit_event(RawEvent::TradingPairStored(dex_id, trading_pair));
             Ok(())
         }

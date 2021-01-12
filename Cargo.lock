@@ -8774,6 +8774,7 @@ dependencies = [
  "pallet-balances",
  "parity-scale-codec",
  "permissions",
+ "serde 1.0.118",
  "sp-core",
  "sp-io",
  "sp-runtime",
