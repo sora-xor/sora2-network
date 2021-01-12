@@ -1,0 +1,7 @@
+
+example script
+less /tmp/port_10001_name_alice.txt | grep DEBUG | awk 'BEGIN { a[0]=0; a[1]=0; } /==START==/{ start=3 } { start-=1; if (start < 3 && start >= 0) { a[start] = $6 } } /==END==/ { print a[0] " " a[1] } ' > /tmp/plot03.txt
+
+gnuplot> set style data lines
+gnuplot> set logscale y
+gnuplot> plot "./graph_parsed_from_node_log.txt" u 0:1, "" u 0:2 lw 4 lc "grey"

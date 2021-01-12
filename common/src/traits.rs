@@ -285,8 +285,16 @@ pub trait ToFeeAccount: Sized {
     fn to_fee_account(&self) -> Option<Self>;
 }
 
-pub trait ToMarkerAsset<TechAssetId>: Sized {
-    fn to_marker_asset(&self) -> Option<TechAssetId>;
+pub trait ToMarkerAsset<TechAssetId, LstId>: Sized {
+    fn to_marker_asset(&self, lst_id: LstId) -> Option<TechAssetId>;
+}
+
+pub trait GetTechAssetWithLstTag<LstId, AssetId>: Sized {
+    fn get_tech_asset_with_lst_tag(tag: LstId, asset_id: AssetId) -> Result<Self, ()>;
+}
+
+pub trait GetLstIdAndTradingPairFromTechAsset<LstId, TradingPair> {
+    fn get_lst_id_and_trading_pair_from_tech_asset(&self) -> Option<(LstId, TradingPair)>;
 }
 
 pub trait ToTechUnitFromDEXAndAsset<DEXId, AssetId>: Sized {

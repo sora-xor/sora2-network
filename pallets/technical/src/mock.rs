@@ -390,7 +390,8 @@ impl common::SwapRulesValidation<AccountId, TechAccountId, Testtime> for PolySwa
 }
 
 type AssetId = common::AssetId32<common::mock::ComicAssetId>;
-type TechAssetId = common::TechAssetId<common::mock::ComicAssetId, DEXId>;
+type TechAssetId =
+    common::TechAssetId<common::mock::ComicAssetId, DEXId, common::LiquiditySourceType>;
 pub type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
 type TechAmount = Amount;
 type TechBalance = Balance;

@@ -8,6 +8,8 @@ usage
 exit 0
   -d, --duplicate-log-of-first-node  Duplicate log of first node to console
 duplicate_log=1
+  -w, --disable-offchain-workers     Disable offchain workers
+offchain_flags="--offchain-worker Never"
 EOF
 `
 eval "$getopt_code"
@@ -61,9 +63,9 @@ for name in alice bob charlie dave eve
 do
 	newport=`expr $port + 1`
 	if [ "$start1" == "1" ]; then
-		sh -c "./target/release/framenode --tmp --$name --port $newport --ws-port $wsport --chain local 2>&1" | local_id | logger_for_first_node $tmpdir/port_${newport}_name_$name.txt &
+		sh -c "./target/release/framenode $offchain_flags --tmp --$name --port $newport --ws-port $wsport --chain local 2>&1" | local_id | logger_for_first_node $tmpdir/port_${newport}_name_$name.txt &
 	else
-		sh -c "./target/release/framenode --tmp --$name --port $newport --ws-port $wsport --chain local --bootnodes /ip4/127.0.0.1/tcp/$port/p2p/`cat $localid` 2>&1" | local_id > $tmpdir/port_${newport}_name_$name.txt &
+		sh -c "./target/release/framenode $offchain_flags --tmp --$name --port $newport --ws-port $wsport --chain local --bootnodes /ip4/127.0.0.1/tcp/$port/p2p/`cat $localid` 2>&1" | local_id > $tmpdir/port_${newport}_name_$name.txt &
 	fi
 	echo SCRIPT: $newport $port $name $wsport $tmpdir/port_${newport}_name_$name.txt
 	sleep 5

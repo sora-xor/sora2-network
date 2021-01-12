@@ -34,6 +34,8 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
+type LstId = common::LiquiditySourceType;
+
 type AccountIdOf<T> = <T as frame_system::Trait>::AccountId;
 
 type AssetIdOf<T> = <T as assets::Trait>::AssetId;
@@ -1287,8 +1289,11 @@ impl<T: Trait> Module<T> {
         tech_acc: &TechAccountIdOf<T>,
     ) -> Result<AssetIdOf<T>, DispatchError> {
         Ok(Into::<AssetIdOf<T>>::into(
-            common::ToMarkerAsset::<TechAssetIdOf<T>>::to_marker_asset(tech_acc)
-                .ok_or(Error::<T>::UnableToDecideMarkerAsset)?,
+            common::ToMarkerAsset::<TechAssetIdOf<T>, LstId>::to_marker_asset(
+                tech_acc,
+                common::LiquiditySourceType::XYKPool,
+            )
+            .ok_or(Error::<T>::UnableToDecideMarkerAsset)?,
         ))
     }
 
@@ -1296,8 +1301,11 @@ impl<T: Trait> Module<T> {
         tech_acc: &TechAccountIdOf<T>,
     ) -> Result<TechAssetIdOf<T>, DispatchError> {
         Ok(
-            common::ToMarkerAsset::<TechAssetIdOf<T>>::to_marker_asset(tech_acc)
-                .ok_or(Error::<T>::UnableToDecideMarkerAsset)?,
+            common::ToMarkerAsset::<TechAssetIdOf<T>, LstId>::to_marker_asset(
+                tech_acc,
+                common::LiquiditySourceType::XYKPool,
+            )
+            .ok_or(Error::<T>::UnableToDecideMarkerAsset)?,
         )
     }
 }
@@ -1523,7 +1531,27 @@ decl_error! {
 }
 
 impl<T: Trait> Module<T> {
-    fn tech_account_from_dex_and_asset_pair(
+    pub fn get_xor_part_from_trading_pair(
+        dex_id: T::DEXId,
+        trading_pair: common::TradingPair<AssetIdOf<T>>,
+        liq_amount: Balance,
+    ) -> Result<Balance, DispatchError> {
+        let (_, pool_acc) = Module::<T>::tech_account_from_dex_and_asset_pair(
+            dex_id,
+            trading_pair.base_asset_id,
+            trading_pair.target_asset_id,
+        )?;
+        let pool_acc_sys = technical::Module::<T>::tech_account_id_to_account_id(&pool_acc)?;
+        let b_in_pool =
+            assets::Module::<T>::free_balance(&trading_pair.base_asset_id, &pool_acc_sys)?;
+        let t_in_pool =
+            assets::Module::<T>::free_balance(&trading_pair.target_asset_id, &pool_acc_sys)?;
+        let liq_in_pool = b_in_pool * t_in_pool;
+        let peace = liq_in_pool / liq_amount;
+        Ok(b_in_pool / peace)
+    }
+
+    pub fn tech_account_from_dex_and_asset_pair(
         dex_id: T::DEXId,
         asset_a: T::AssetId,
         asset_b: T::AssetId,
@@ -1739,7 +1767,7 @@ decl_module! {
         fn deposit_event() = default;
 
         #[weight = <T as Trait>::WeightInfo::swap_pair()]
-        fn swap_pair(
+        pub fn swap_pair(
             origin, receiver: AccountIdOf<T>, dex_id: DEXIdOf<T>,
             input_asset_id: AssetIdOf<T>, output_asset_id: AssetIdOf<T>,
             swap_amount: SwapAmount<Balance>,) -> DispatchResult {
@@ -1749,7 +1777,7 @@ decl_module! {
         }
 
         #[weight = <T as Trait>::WeightInfo::deposit_liquidity()]
-        fn deposit_liquidity(
+        pub fn deposit_liquidity(
             origin,
             dex_id: DEXIdOf<T>,
             input_asset_a: AssetIdOf<T>,
@@ -1766,7 +1794,7 @@ decl_module! {
         }
 
         #[weight = <T as Trait>::WeightInfo::withdraw_liquidity()]
-        fn withdraw_liquidity(
+        pub fn withdraw_liquidity(
             origin,
             dex_id: DEXIdOf<T>,
             output_asset_a: AssetIdOf<T>,
@@ -1782,7 +1810,7 @@ decl_module! {
         }
 
         #[weight = <T as Trait>::WeightInfo::initialize_pool()]
-        fn initialize_pool(
+        pub fn initialize_pool(
             origin,
             dex_id: DEXIdOf<T>,
             asset_a: AssetIdOf<T>,

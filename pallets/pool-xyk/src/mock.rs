@@ -169,7 +169,8 @@ impl assets::Trait for Testtime {
     type WeightInfo = ();
 }
 
-pub type TechAssetId = common::TechAssetId<common::mock::ComicAssetId, DEXId>;
+pub type TechAssetId =
+    common::TechAssetId<common::mock::ComicAssetId, DEXId, common::LiquiditySourceType>;
 pub type AssetId = common::AssetId32<common::mock::ComicAssetId>;
 pub type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
 

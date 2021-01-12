@@ -54,6 +54,17 @@ pub fn hash<T: Encode>(val: &T) -> H512 {
     H512::from_slice(blake2_rfc::blake2b::blake2b(64, &[], &val.encode()).as_bytes())
 }
 
+pub fn hash_to_u128_pair<T: Encode>(val: &T) -> (u128, u128) {
+    let data = blake2_rfc::blake2b::blake2b(32, &[], &val.encode());
+    let bytes = data.as_bytes();
+    let mut result: (u128, u128) = (0, 0);
+    for i in 0..16 {
+        result.0 += (bytes[i] as u128) << (8 * i);
+        result.1 += (bytes[i + 16] as u128) << (8 * i);
+    }
+    result
+}
+
 /// Commutative merkle operation, is crypto safe, defined as hash(a,b) `xor` hash(b,a).
 pub fn comm_merkle_op<T: Encode>(val_a: &T, val_b: &T) -> H512 {
     use sp_std::ops::BitXor;

@@ -1,13 +1,15 @@
 use framenode_runtime::{
     bonding_curve_pool, eth_bridge, opaque::SessionKeys, AccountId, AssetSymbol, AssetsConfig,
     BabeConfig, BalancesConfig, BondingCurvePoolConfig, DEXAPIConfig, DEXManagerConfig,
-    EthBridgeConfig, FaucetConfig, GenesisConfig, GetBaseAssetId, GrandpaConfig,
+    EthBridgeConfig, FarmingConfig, FaucetConfig, GenesisConfig, GetBaseAssetId, GrandpaConfig,
     LiquiditySourceType, MultisigConfig, PermissionsConfig, PswapId, Runtime, SessionConfig,
     Signature, StakerStatus, StakingConfig, SudoConfig, SystemConfig, TechAccountId,
     TechnicalConfig, TokensConfig, UsdId, ValId, XorId, WASM_BINARY,
 };
 
-use common::{balance::Balance, hash, prelude::DEXInfo, DEXId, Fixed, TechPurpose, VAL, XOR};
+use common::{
+    balance::Balance, hash, prelude::DEXInfo, DEXId, Fixed, TechPurpose, PSWAP, VAL, XOR,
+};
 use frame_support::sp_runtime::Percent;
 use framenode_runtime::bonding_curve_pool::{DistributionAccountData, DistributionAccounts};
 use framenode_runtime::eth_bridge::AssetKind;
@@ -406,7 +408,7 @@ fn testnet_genesis(
                     vec![permissions::INIT_DEX],
                 ),
                 (
-                    dex_root,
+                    dex_root.clone(),
                     Scope::Limited(hash(&0u32)),
                     vec![permissions::MANAGE_DEX],
                 ),
@@ -418,7 +420,38 @@ fn testnet_genesis(
                 (
                     initial_assets_owner,
                     Scope::Unlimited,
-                    vec![permissions::MINT, permissions::BURN],
+                    vec![
+                        permissions::MINT,
+                        permissions::BURN,
+                        permissions::CREATE_FARM,
+                        permissions::LOCK_TO_FARM,
+                        permissions::UNLOCK_FROM_FARM,
+                        permissions::CLAIM_FROM_FARM,
+                    ],
+                ),
+                (
+                    endowed_accounts[1].clone(),
+                    Scope::Unlimited,
+                    vec![
+                        permissions::MINT,
+                        permissions::BURN,
+                        permissions::CREATE_FARM,
+                        permissions::LOCK_TO_FARM,
+                        permissions::UNLOCK_FROM_FARM,
+                        permissions::CLAIM_FROM_FARM,
+                    ],
+                ),
+                (
+                    endowed_accounts[2].clone(),
+                    Scope::Unlimited,
+                    vec![
+                        permissions::MINT,
+                        permissions::BURN,
+                        permissions::CREATE_FARM,
+                        permissions::LOCK_TO_FARM,
+                        permissions::UNLOCK_FROM_FARM,
+                        permissions::CLAIM_FROM_FARM,
+                    ],
                 ),
             ],
         }),
@@ -499,6 +532,9 @@ fn testnet_genesis(
         bonding_curve_pool: Some(BondingCurvePoolConfig {
             distribution_accounts: accounts,
             reserves_account_id: bonding_curve_reserves_tech_account_id,
+        }),
+        farming: Some(FarmingConfig {
+            initial_farm: (dex_root, XOR, PSWAP),
         }),
     }
 }

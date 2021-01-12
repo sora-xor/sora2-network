@@ -12,6 +12,10 @@ include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
 
 use core::time::Duration;
 use currencies::BasicCurrencyAdapter;
+pub use farming::{
+    domain::{FarmInfo, FarmerInfo},
+    FarmId,
+};
 use frame_system::offchain::{Account, SigningTypes};
 use hex_literal::hex;
 use pallet_grandpa::fg_primitives;
@@ -408,7 +412,7 @@ impl bonding_curve_pool::Trait for Runtime {
 }
 
 pub type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
-pub type TechAssetId = common::TechAssetId<common::AssetId, DEXId>;
+pub type TechAssetId = common::TechAssetId<common::AssetId, DEXId, common::LiquiditySourceType>;
 pub type AssetId = common::AssetId32<common::AssetId>;
 
 impl technical::Trait for Runtime {
@@ -490,6 +494,11 @@ impl dex_api::Trait for Runtime {
         mock_liquidity_source::Module<Runtime, mock_liquidity_source::Instance4>;
     type BondingCurvePool = bonding_curve_pool::Module<Runtime>;
     type XYKPool = pool_xyk::Module<Runtime>;
+    type WeightInfo = ();
+}
+
+impl farming::Trait for Runtime {
+    type Event = Event;
     type WeightInfo = ();
 }
 
@@ -693,6 +702,7 @@ construct_runtime! {
         DEXAPI: dex_api::{Module, Call, Storage, Config, Event<T>},
         Faucet: faucet::{Module, Call, Config<T>, Event<T>, ValidateUnsigned},
         EthBridge: eth_bridge::{Module, Call, Config<T>, Event<T>},
+        Farming: farming::{Module, Call, Storage, Config<T>, Event<T>},
     }
 }
 
@@ -916,6 +926,16 @@ impl_runtime_apis! {
             Some(assets_runtime_api::AssetInfo::<AssetId, AssetSymbol, BalancePrecision> {
                 asset_id, symbol, precision
             })
+        }
+    }
+
+    impl farming_runtime_api::FarmingRuntimeApi<Block, AccountId, FarmId, FarmInfo<AccountId, AssetId, BlockNumber>, FarmerInfo<AccountId, TechAccountId, BlockNumber>> for Runtime {
+        fn get_farm_info(who: AccountId, name: FarmId) -> Option<FarmInfo<AccountId, AssetId, BlockNumber>> {
+            Farming::get_farm_info(who, name).ok()?
+        }
+
+        fn get_farmer_info(who: AccountId, name: FarmId) -> Option<FarmerInfo<AccountId, TechAccountId, BlockNumber>> {
+            Farming::get_farmer_info(who, name).ok()?
         }
     }
 
