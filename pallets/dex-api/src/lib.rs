@@ -278,10 +278,6 @@ impl<T: Trait>
         filter: LiquiditySourceFilter<T::DEXId, LiquiditySourceType>,
     ) -> Result<Vec<LiquiditySourceId<T::DEXId, LiquiditySourceType>>, DispatchError> {
         let supported_types = Self::get_supported_types();
-        // ensure!(
-        //     dex_manager::DEXInfos::<T>::contains_key(filter.dex_id),
-        //     Error::<T>::DEXIdDoesNotExist
-        // );
         DEXManager::<T>::ensure_dex_exists(&filter.dex_id)?;
         Ok(supported_types
             .iter()

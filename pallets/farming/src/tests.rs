@@ -53,8 +53,6 @@ impl crate::Module<Testtime> {
                 dex_id.clone(),
                 XOR,
                 BOB(),
-                None,
-                None,
                 true,
             ));
 

@@ -106,7 +106,7 @@ impl Trait for Runtime {
     type CompatBalance = Balance;
     type GetDefaultSubscriptionFrequency = GetDefaultSubscriptionFrequency;
     type GetTechnicalAccountId = GetPswapDistributionAccountId;
-    type EnsureDEXOwner = DexManager;
+    type EnsureDEXManager = DexManager;
 }
 
 impl tokens::Trait for Runtime {
@@ -178,8 +178,6 @@ impl technical::Trait for Runtime {
 
 impl dex_manager::Trait for Runtime {
     type Event = ();
-    type GetDefaultFee = GetDefaultFee;
-    type GetDefaultProtocolFee = GetDefaultProtocolFee;
     type WeightInfo = ();
 }
 

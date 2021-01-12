@@ -13,9 +13,9 @@ use sp_std::collections::btree_set::BTreeSet;
 
 use common::{
     fixed, hash,
-    prelude::{Balance, EnsureDEXOwner, FixedWrapper, SwapAmount, SwapOutcome},
+    prelude::{Balance, EnsureDEXManager, FixedWrapper, SwapAmount, SwapOutcome},
     AssetSymbol, EnsureTradingPairExists, Fixed, LiquiditySource, LiquiditySourceType,
-    SwapRulesValidation, ToFeeAccount, ToTechUnitFromDEXAndTradingPair,
+    ManagementMode, SwapRulesValidation, ToFeeAccount, ToTechUnitFromDEXAndTradingPair,
 };
 use permissions::{Scope, BURN, MINT};
 
@@ -215,7 +215,7 @@ pub trait Trait:
         + Parameter
         + Into<<Self as technical::Trait>::SwapAction>
         + From<PolySwapActionStructOf<Self>>;
-    type EnsureDEXOwner: EnsureDEXOwner<Self::DEXId, Self::AccountId, DispatchError>;
+    type EnsureDEXManager: EnsureDEXManager<Self::DEXId, Self::AccountId, DispatchError>;
 
     /// Weight information for extrinsics in this pallet.
     type WeightInfo: WeightInfo;
@@ -1970,7 +1970,7 @@ decl_module! {
             ) -> DispatchResult
         {
                 let source = ensure_signed(origin.clone())?;
-                <T as Trait>::EnsureDEXOwner::ensure_can_manage(&dex_id, origin.clone())?;
+                <T as Trait>::EnsureDEXManager::ensure_can_manage(&dex_id, origin.clone(), ManagementMode::PublicCreation)?;
                 let (_,tech_account_id, fees_account_id, mark_asset) = Module::<T>::initialize_pool_unchecked(source.clone(), dex_id, asset_a, asset_b)?;
                 let mark_asset_repr: T::AssetId = mark_asset.into();
                 assets::Module::<T>::register_asset_id(source.clone(), mark_asset_repr, AssetSymbol(b"XYKPOOL".to_vec()), 18)?;

@@ -678,8 +678,6 @@ fn testnet_genesis(
                 0,
                 DEXInfo {
                     base_asset_id: GetBaseAssetId::get(),
-                    default_fee: 30,
-                    default_protocol_fee: 0,
                     is_public: true,
                 },
             )],

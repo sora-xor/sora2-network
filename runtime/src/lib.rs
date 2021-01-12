@@ -391,19 +391,12 @@ impl assets::Trait for Runtime {
 
 impl trading_pair::Trait for Runtime {
     type Event = Event;
-    type EnsureDEXOwner = dex_manager::Module<Runtime>;
+    type EnsureDEXManager = dex_manager::Module<Runtime>;
     type WeightInfo = ();
-}
-
-parameter_types! {
-    pub const GetDefaultFee: BasisPoints = 30;
-    pub const GetDefaultProtocolFee: BasisPoints = 0;
 }
 
 impl dex_manager::Trait for Runtime {
     type Event = Event;
-    type GetDefaultFee = GetDefaultFee;
-    type GetDefaultProtocolFee = GetDefaultProtocolFee;
     type WeightInfo = ();
 }
 
@@ -435,7 +428,7 @@ impl pool_xyk::Trait for Runtime {
         pool_xyk::WithdrawLiquidityAction<AssetId, TechAssetId, Balance, AccountId, TechAccountId>;
     type PolySwapAction =
         pool_xyk::PolySwapAction<AssetId, TechAssetId, Balance, AccountId, TechAccountId>;
-    type EnsureDEXOwner = dex_manager::Module<Runtime>;
+    type EnsureDEXManager = dex_manager::Module<Runtime>;
     type WeightInfo = ();
 }
 
@@ -457,28 +450,28 @@ parameter_types! {
 impl mock_liquidity_source::Trait<mock_liquidity_source::Instance1> for Runtime {
     type Event = Event;
     type GetFee = GetFee;
-    type EnsureDEXOwner = dex_manager::Module<Runtime>;
+    type EnsureDEXManager = dex_manager::Module<Runtime>;
     type EnsureTradingPairExists = trading_pair::Module<Runtime>;
 }
 
 impl mock_liquidity_source::Trait<mock_liquidity_source::Instance2> for Runtime {
     type Event = Event;
     type GetFee = GetFee;
-    type EnsureDEXOwner = dex_manager::Module<Runtime>;
+    type EnsureDEXManager = dex_manager::Module<Runtime>;
     type EnsureTradingPairExists = trading_pair::Module<Runtime>;
 }
 
 impl mock_liquidity_source::Trait<mock_liquidity_source::Instance3> for Runtime {
     type Event = Event;
     type GetFee = GetFee;
-    type EnsureDEXOwner = dex_manager::Module<Runtime>;
+    type EnsureDEXManager = dex_manager::Module<Runtime>;
     type EnsureTradingPairExists = trading_pair::Module<Runtime>;
 }
 
 impl mock_liquidity_source::Trait<mock_liquidity_source::Instance4> for Runtime {
     type Event = Event;
     type GetFee = GetFee;
-    type EnsureDEXOwner = dex_manager::Module<Runtime>;
+    type EnsureDEXManager = dex_manager::Module<Runtime>;
     type EnsureTradingPairExists = trading_pair::Module<Runtime>;
 }
 
@@ -677,7 +670,7 @@ impl pswap_distribution::Trait for Runtime {
     type CompatBalance = Balance;
     type GetDefaultSubscriptionFrequency = GetDefaultSubscriptionFrequency;
     type GetTechnicalAccountId = GetPswapDistributionAccountId;
-    type EnsureDEXOwner = DEXManager;
+    type EnsureDEXManager = DEXManager;
 }
 
 /// Payload data to be signed when making signed transaction from off-chain workers,

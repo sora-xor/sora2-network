@@ -1,5 +1,5 @@
 use crate::Trait;
-use common::{prelude::Balance, BasisPoints};
+use common::prelude::Balance;
 use currencies::BasicCurrencyAdapter;
 use frame_support::{impl_outer_origin, parameter_types, weights::Weight};
 use frame_system as system;
@@ -91,25 +91,18 @@ impl system::Trait for Testtime {
     type PalletInfo = ();
 }
 
-parameter_types! {
-    pub const GetDefaultFee: BasisPoints = 30;
-    pub const GetDefaultProtocolFee: BasisPoints = 0;
-}
-
 impl permissions::Trait for Testtime {
     type Event = ();
 }
 
 impl dex_manager::Trait for Testtime {
     type Event = ();
-    type GetDefaultFee = GetDefaultFee;
-    type GetDefaultProtocolFee = GetDefaultProtocolFee;
     type WeightInfo = ();
 }
 
 impl trading_pair::Trait for Testtime {
     type Event = ();
-    type EnsureDEXOwner = dex_manager::Module<Testtime>;
+    type EnsureDEXManager = dex_manager::Module<Testtime>;
     type WeightInfo = ();
 }
 
@@ -198,7 +191,7 @@ impl pswap_distribution::Trait for Testtime {
     type CompatBalance = Balance;
     type GetDefaultSubscriptionFrequency = GetDefaultSubscriptionFrequency;
     type GetTechnicalAccountId = GetPswapDistributionAccountId;
-    type EnsureDEXOwner = ();
+    type EnsureDEXManager = ();
 }
 
 impl Trait for Testtime {
@@ -210,7 +203,7 @@ impl Trait for Testtime {
         crate::WithdrawLiquidityAction<AssetId, TechAssetId, Balance, AccountId, TechAccountId>;
     type PolySwapAction =
         crate::PolySwapAction<AssetId, TechAssetId, Balance, AccountId, TechAccountId>;
-    type EnsureDEXOwner = dex_manager::Module<Testtime>;
+    type EnsureDEXManager = dex_manager::Module<Testtime>;
     type WeightInfo = ();
 }
 

@@ -1,5 +1,4 @@
 use crate::traits::Trait;
-use crate::BasisPoints;
 use codec::{Decode, Encode};
 use core::fmt::Debug;
 use frame_support::dispatch::DispatchError;
@@ -43,10 +42,6 @@ decl_module! {
 pub struct DEXInfo<AssetId> {
     /// AssetId of Base Asset in DEX.
     pub base_asset_id: AssetId,
-    /// Default value for fee in basis points.
-    pub default_fee: BasisPoints,
-    /// Default value for protocol fee in basis points.
-    pub default_protocol_fee: BasisPoints,
     /// Determines if DEX can be managed by regular users.
     pub is_public: bool,
 }
@@ -490,6 +485,22 @@ pub enum FilterMode {
 impl Default for FilterMode {
     fn default() -> Self {
         Self::Disabled
+    }
+}
+
+#[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+#[repr(u8)]
+pub enum ManagementMode {
+    /// All functions can be managed with this mode.
+    Private,
+    /// Functions checked as public can be managed with this mode.
+    PublicCreation,
+}
+
+impl Default for ManagementMode {
+    fn default() -> Self {
+        Self::Private
     }
 }
 

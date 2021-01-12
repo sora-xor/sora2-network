@@ -1,5 +1,5 @@
 use crate::{
-    prelude::{SwapAmount, SwapOutcome},
+    prelude::{ManagementMode, SwapAmount, SwapOutcome},
     Fixed, LiquiditySourceFilter, LiquiditySourceId,
 };
 use frame_support::{
@@ -15,19 +15,21 @@ use crate::balance::Balance;
 use sp_std::vec::Vec;
 
 /// Check on origin that it is a DEX owner.
-pub trait EnsureDEXOwner<DEXId, AccountId, Error> {
+pub trait EnsureDEXManager<DEXId, AccountId, Error> {
     fn ensure_can_manage<OuterOrigin>(
         dex_id: &DEXId,
         origin: OuterOrigin,
+        mode: ManagementMode,
     ) -> Result<Option<AccountId>, Error>
     where
         OuterOrigin: Into<Result<RawOrigin<AccountId>, OuterOrigin>>;
 }
 
-impl<DEXId, AccountId> EnsureDEXOwner<DEXId, AccountId, DispatchError> for () {
+impl<DEXId, AccountId> EnsureDEXManager<DEXId, AccountId, DispatchError> for () {
     fn ensure_can_manage<OuterOrigin>(
         _dex_id: &DEXId,
         origin: OuterOrigin,
+        _mode: ManagementMode,
     ) -> Result<Option<AccountId>, DispatchError>
     where
         OuterOrigin: Into<Result<RawOrigin<AccountId>, OuterOrigin>>,

@@ -47,8 +47,6 @@ impl crate::Module<Testtime> {
                 dex_id.clone(),
                 GoldenTicket.into(),
                 BOB(),
-                None,
-                None,
                 true,
             ));
 

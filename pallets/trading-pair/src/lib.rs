@@ -4,7 +4,7 @@
 #[macro_use]
 extern crate alloc;
 
-use common::{EnsureDEXOwner, EnsureTradingPairExists, LiquiditySourceType};
+use common::{EnsureDEXManager, EnsureTradingPairExists, LiquiditySourceType, ManagementMode};
 use frame_support::{
     decl_error, decl_event, decl_module, decl_storage,
     dispatch::{DispatchError, DispatchResult},
@@ -36,7 +36,7 @@ pub trait WeightInfo {
 
 pub trait Trait: common::Trait + assets::Trait + dex_manager::Trait {
     type Event: From<Event<Self>> + Into<<Self as frame_system::Trait>::Event>;
-    type EnsureDEXOwner: EnsureDEXOwner<Self::DEXId, Self::AccountId, DispatchError>;
+    type EnsureDEXManager: EnsureDEXManager<Self::DEXId, Self::AccountId, DispatchError>;
 
     /// Weight information for extrinsics in this pallet.
     type WeightInfo: WeightInfo;
@@ -96,7 +96,7 @@ decl_module! {
         /// - `target_asset_id`: target asset ID.
         #[weight = <T as Trait>::WeightInfo::register()]
         pub fn register(origin, dex_id: T::DEXId, base_asset_id: T::AssetId, target_asset_id: T::AssetId) -> DispatchResult {
-            let _author = T::EnsureDEXOwner::ensure_can_manage(&dex_id, origin)?;
+            let _author = T::EnsureDEXManager::ensure_can_manage(&dex_id, origin, ManagementMode::PublicCreation)?;
             Assets::<T>::ensure_asset_exists(&base_asset_id)?;
             Assets::<T>::ensure_asset_exists(&target_asset_id)?;
             ensure!(base_asset_id != target_asset_id, Error::<T>::IdenticalAssetIds);

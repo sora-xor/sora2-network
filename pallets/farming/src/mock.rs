@@ -152,14 +152,12 @@ impl permissions::Trait for Testtime {
 
 impl dex_manager::Trait for Testtime {
     type Event = ();
-    type GetDefaultFee = GetDefaultFee;
-    type GetDefaultProtocolFee = GetDefaultProtocolFee;
     type WeightInfo = ();
 }
 
 impl trading_pair::Trait for Testtime {
     type Event = ();
-    type EnsureDEXOwner = dex_manager::Module<Testtime>;
+    type EnsureDEXManager = dex_manager::Module<Testtime>;
     type WeightInfo = ();
 }
 
@@ -243,7 +241,7 @@ impl pool_xyk::Trait for Testtime {
         pool_xyk::WithdrawLiquidityAction<AssetId, TechAssetId, Balance, AccountId, TechAccountId>;
     type PolySwapAction =
         pool_xyk::PolySwapAction<AssetId, TechAssetId, Balance, AccountId, TechAccountId>;
-    type EnsureDEXOwner = dex_manager::Module<Testtime>;
+    type EnsureDEXManager = dex_manager::Module<Testtime>;
     type WeightInfo = ();
 }
 
@@ -260,7 +258,7 @@ impl pswap_distribution::Trait for Testtime {
     type CompatBalance = Balance;
     type GetDefaultSubscriptionFrequency = GetDefaultSubscriptionFrequency;
     type GetTechnicalAccountId = GetPswapDistributionAccountId;
-    type EnsureDEXOwner = ();
+    type EnsureDEXManager = ();
 }
 
 impl Trait for Testtime {
