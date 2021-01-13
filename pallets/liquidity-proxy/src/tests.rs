@@ -14,7 +14,7 @@ fn test_quote_exact_input_base_should_pass() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
         let amount: Fixed = fixed!(500);
-        let quotes = LiquidityProxy::quote_with_filter(
+        let quotes = LiquidityProxy::quote_with_filter_single(
             &GetBaseAssetId::get(),
             &DOT,
             SwapAmount::with_desired_input(amount, fixed!(0)),
@@ -67,7 +67,7 @@ fn test_quote_exact_input_target_should_pass() {
     let mut ext = ExtBuilder::default().build();
     let amount: Fixed = fixed!(500);
     ext.execute_with(|| {
-        let quotes = LiquidityProxy::quote_with_filter(
+        let quotes = LiquidityProxy::quote_with_filter_single(
             &DOT,
             &GetBaseAssetId::get(),
             SwapAmount::with_desired_input(amount, fixed!(0)),
@@ -119,7 +119,7 @@ fn test_quote_exact_output_target_should_pass() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
         let amount: Fixed = fixed!(250);
-        let quotes = LiquidityProxy::quote_with_filter(
+        let quotes = LiquidityProxy::quote_with_filter_single(
             &GetBaseAssetId::get(),
             &DOT,
             SwapAmount::with_desired_output(amount, fixed!(10000)),
@@ -176,7 +176,7 @@ fn test_quote_exact_output_base_should_pass() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
         let amount: Fixed = fixed!(250);
-        let quotes = LiquidityProxy::quote_with_filter(
+        let quotes = LiquidityProxy::quote_with_filter_single(
             &DOT,
             &GetBaseAssetId::get(),
             SwapAmount::with_desired_output(amount, fixed!(10000)),
@@ -234,7 +234,8 @@ fn test_sell_token_for_base_should_pass() {
     ext.execute_with(|| {
         let alice = alice();
         let filter = LiquiditySourceFilter::empty(DEX_C_ID);
-        let result = LiquidityProxy::perform_swap(
+        let result = LiquidityProxy::perform_swap_single(
+            &alice,
             &alice,
             &DOT,
             &GetBaseAssetId::get(),
@@ -252,7 +253,8 @@ fn test_sell_base_for_token_should_pass() {
     ext.execute_with(|| {
         let alice = alice();
         let filter = LiquiditySourceFilter::empty(DEX_C_ID);
-        let result = LiquidityProxy::perform_swap(
+        let result = LiquidityProxy::perform_swap_single(
+            &alice,
             &alice,
             &GetBaseAssetId::get(),
             &DOT,
@@ -315,7 +317,8 @@ fn test_buy_base_with_allowed_should_pass() {
             ]
             .into(),
         );
-        let result = LiquidityProxy::perform_swap(
+        let result = LiquidityProxy::perform_swap_single(
+            &alice,
             &alice,
             &DOT,
             &GetBaseAssetId::get(),
@@ -343,7 +346,8 @@ fn test_buy_base_with_forbidden_should_pass() {
             ]
             .into(),
         );
-        let result = LiquidityProxy::perform_swap(
+        let result = LiquidityProxy::perform_swap_single(
+            &alice,
             &alice,
             &DOT,
             &GetBaseAssetId::get(),
@@ -362,7 +366,7 @@ fn test_buy_base_with_forbidden_should_pass() {
 fn test_quote_should_fail_with_unavailable_exchange_path() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
-        let result = LiquidityProxy::quote_with_filter(
+        let result = LiquidityProxy::quote_with_filter_single(
             &GetBaseAssetId::get(),
             &KSM,
             SwapAmount::with_desired_output(fixed!(300), Fixed::MAX),
@@ -376,7 +380,7 @@ fn test_quote_should_fail_with_unavailable_exchange_path() {
 fn test_quote_should_fail_with_unavailable_exchange_path_2() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
-        let result = LiquidityProxy::quote_with_filter(
+        let result = LiquidityProxy::quote_with_filter_single(
             &GetBaseAssetId::get(),
             &DOT,
             SwapAmount::with_desired_output(fixed!(300), Fixed::MAX),
@@ -399,7 +403,7 @@ fn test_quote_should_fail_with_unavailable_exchange_path_2() {
 fn test_quote_should_fail_with_aggregation_error() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
-        let result = LiquidityProxy::quote_with_filter(
+        let result = LiquidityProxy::quote_with_filter_single(
             &GetBaseAssetId::get(),
             &DOT,
             SwapAmount::with_desired_output(fixed!(5000), Fixed::MAX),
@@ -414,7 +418,8 @@ fn test_sell_however_big_amount_base_should_pass() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
         let alice = alice();
-        let result = LiquidityProxy::perform_swap(
+        let result = LiquidityProxy::perform_swap_single(
+            &alice,
             &alice,
             &GetBaseAssetId::get(),
             &DOT,
@@ -424,7 +429,8 @@ fn test_sell_however_big_amount_base_should_pass() {
         .expect("Failed to swap assets");
         assert!(result.amount > fixed!(0) && result.amount < fixed!(180));
 
-        let result = LiquidityProxy::perform_swap(
+        let result = LiquidityProxy::perform_swap_single(
+            &alice,
             &alice,
             &GetBaseAssetId::get(),
             &DOT,
@@ -434,7 +440,8 @@ fn test_sell_however_big_amount_base_should_pass() {
         .expect("Failed to swap assets");
         assert!(result.amount > fixed!(0) && result.amount < fixed!(180));
 
-        let result = LiquidityProxy::perform_swap(
+        let result = LiquidityProxy::perform_swap_single(
+            &alice,
             &alice,
             &GetBaseAssetId::get(),
             &DOT,
@@ -444,7 +451,8 @@ fn test_sell_however_big_amount_base_should_pass() {
         .expect("Failed to swap assets");
         assert!(result.amount > fixed!(0) && result.amount < fixed!(180));
 
-        let result = LiquidityProxy::perform_swap(
+        let result = LiquidityProxy::perform_swap_single(
+            &alice,
             &alice,
             &GetBaseAssetId::get(),
             &DOT,
@@ -454,7 +462,8 @@ fn test_sell_however_big_amount_base_should_pass() {
         .expect("Failed to swap assets");
         assert!(result.amount > fixed!(0) && result.amount < fixed!(180));
 
-        let result = LiquidityProxy::perform_swap(
+        let result = LiquidityProxy::perform_swap_single(
+            &alice,
             &alice,
             &GetBaseAssetId::get(),
             &DOT,
