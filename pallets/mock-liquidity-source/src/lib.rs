@@ -81,7 +81,6 @@ decl_module! {
 
 #[allow(non_snake_case)]
 impl<T: Trait<I>, I: Instance> Module<T, I> {
-    #[allow(dead_code)]
     fn initialize_reserves(reserves: &[(T::DEXId, T::AssetId, (Fixed, Fixed))]) {
         reserves
             .iter()

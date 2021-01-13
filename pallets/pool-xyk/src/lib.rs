@@ -487,66 +487,72 @@ impl<T: Trait> common::SwapAction<AccountIdOf<T>, TechAccountIdOf<T>, T>
     /// This function is called after validation, and every `Option` is `Some`, and it is safe to do
     /// unwrap. `Bounds` is also safe to unwrap.
     fn reserve(&self, source: &AccountIdOf<T>) -> dispatch::DispatchResult {
-        ensure!(
-            Some(source) == self.client_account.as_ref(),
-            Error::<T>::SourceAndClientAccountDoNotMatchAsEqual
-        );
-        let fee_account_repr_sys = technical::Module::<T>::tech_account_id_to_account_id(
-            self.fee_account.as_ref().unwrap(),
-        )?;
-
-        if self.get_fee_from_destination.unwrap() {
-            technical::Module::<T>::transfer_in(
-                &self.source.asset,
-                &source,
-                &self.pool_account,
-                self.source.amount.unwrap(),
-            )?;
-            technical::Module::<T>::transfer_out(
-                &self.destination.asset,
-                &self.pool_account,
-                &fee_account_repr_sys,
-                self.fee.unwrap(),
-            )?;
-            technical::Module::<T>::transfer_out(
-                &self.destination.asset,
-                &self.pool_account,
-                self.receiver_account.as_ref().unwrap(),
-                self.destination.amount.unwrap() - self.fee.unwrap(),
-            )?;
-        } else {
-            technical::Module::<T>::transfer_in(
-                &self.source.asset,
-                &source,
-                &self.pool_account,
-                self.source.amount.unwrap() - self.fee.unwrap(),
-            )?;
-            technical::Module::<T>::transfer_in(
-                &self.source.asset,
-                &source,
+        common::with_transaction(|| {
+            if Some(source) != self.client_account.as_ref() {
+                let e = Error::<T>::SourceAndClientAccountDoNotMatchAsEqual.into();
+                return Err(e);
+            }
+            ensure!(
+                Some(source) == self.client_account.as_ref(),
+                Error::<T>::SourceAndClientAccountDoNotMatchAsEqual
+            );
+            let fee_account_repr_sys = technical::Module::<T>::tech_account_id_to_account_id(
                 self.fee_account.as_ref().unwrap(),
-                self.fee.unwrap(),
             )?;
-            technical::Module::<T>::transfer_out(
-                &self.destination.asset,
-                &self.pool_account,
-                self.receiver_account.as_ref().unwrap(),
-                self.destination.amount.unwrap(),
-            )?;
-        }
 
-        let pool_account_repr_sys =
-            technical::Module::<T>::tech_account_id_to_account_id(&self.pool_account)?;
-        let balance_a =
-            <assets::Module<T>>::free_balance(&self.source.asset, &pool_account_repr_sys)?;
-        let balance_b =
-            <assets::Module<T>>::free_balance(&self.destination.asset, &pool_account_repr_sys)?;
-        Module::<T>::update_reserves(
-            &self.source.asset,
-            &self.destination.asset,
-            (&balance_a, &balance_b),
-        );
-        Ok(())
+            if self.get_fee_from_destination.unwrap() {
+                technical::Module::<T>::transfer_in(
+                    &self.source.asset,
+                    &source,
+                    &self.pool_account,
+                    self.source.amount.unwrap(),
+                )?;
+                technical::Module::<T>::transfer_out(
+                    &self.destination.asset,
+                    &self.pool_account,
+                    &fee_account_repr_sys,
+                    self.fee.unwrap(),
+                )?;
+                technical::Module::<T>::transfer_out(
+                    &self.destination.asset,
+                    &self.pool_account,
+                    self.receiver_account.as_ref().unwrap(),
+                    self.destination.amount.unwrap() - self.fee.unwrap(),
+                )?;
+            } else {
+                technical::Module::<T>::transfer_in(
+                    &self.source.asset,
+                    &source,
+                    &self.pool_account,
+                    self.source.amount.unwrap() - self.fee.unwrap(),
+                )?;
+                technical::Module::<T>::transfer_in(
+                    &self.source.asset,
+                    &source,
+                    self.fee_account.as_ref().unwrap(),
+                    self.fee.unwrap(),
+                )?;
+                technical::Module::<T>::transfer_out(
+                    &self.destination.asset,
+                    &self.pool_account,
+                    self.receiver_account.as_ref().unwrap(),
+                    self.destination.amount.unwrap(),
+                )?;
+            }
+
+            let pool_account_repr_sys =
+                technical::Module::<T>::tech_account_id_to_account_id(&self.pool_account)?;
+            let balance_a =
+                <assets::Module<T>>::free_balance(&self.source.asset, &pool_account_repr_sys)?;
+            let balance_b =
+                <assets::Module<T>>::free_balance(&self.destination.asset, &pool_account_repr_sys)?;
+            Module::<T>::update_reserves(
+                &self.source.asset,
+                &self.destination.asset,
+                (&balance_a, &balance_b),
+            );
+            Ok(())
+        })
     }
     fn claim(&self, _source: &AccountIdOf<T>) -> bool {
         true

@@ -105,25 +105,27 @@ impl<T: Trait> Module<T> {
         source: AccountIdOf<T>,
         action: &T::SwapAction,
     ) -> DispatchResult {
-        action.reserve(&source)?;
-        if action.is_able_to_claim() {
-            if action.instant_auto_claim_used() {
-                if action.claim(&source) {
-                    Self::deposit_event(RawEvent::SwapSuccess(source));
-                } else if !action.triggered_auto_claim_used() {
-                    action.cancel(&source);
+        common::with_transaction(|| {
+            action.reserve(&source)?;
+            if action.is_able_to_claim() {
+                if action.instant_auto_claim_used() {
+                    if action.claim(&source) {
+                        Self::deposit_event(RawEvent::SwapSuccess(source));
+                    } else if !action.triggered_auto_claim_used() {
+                        action.cancel(&source);
+                    } else {
+                        return Err(Error::<T>::NotImplemented)?;
+                    }
                 } else {
                     return Err(Error::<T>::NotImplemented)?;
                 }
+            } else if action.triggered_auto_claim_used() {
+                return Err(Error::<T>::NotImplemented)?;
             } else {
                 return Err(Error::<T>::NotImplemented)?;
             }
-        } else if action.triggered_auto_claim_used() {
-            return Err(Error::<T>::NotImplemented)?;
-        } else {
-            return Err(Error::<T>::NotImplemented)?;
-        }
-        Ok(())
+            Ok(())
+        })
     }
 
     /// Perform creation of swap, may be used by extrinsic operation or other pallets.

@@ -311,11 +311,13 @@ impl<T: Trait> Module<T> {
             permission_id,
             &Scope::Limited(hash(asset_id)),
         )
-        .or(Permissions::<T>::check_permission_with_scope(
-            issuer.clone(),
-            permission_id,
-            &Scope::Unlimited,
-        ))?;
+        .or_else(|_| {
+            Permissions::<T>::check_permission_with_scope(
+                issuer.clone(),
+                permission_id,
+                &Scope::Unlimited,
+            )
+        })?;
         Ok(())
     }
 

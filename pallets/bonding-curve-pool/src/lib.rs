@@ -197,85 +197,90 @@ impl<T: Trait> BuyMainAsset<T> {
     /// `A_I` - amount of the input asset
     /// `P_SM` - sell price for main asset
     fn deposit_input(&self) -> Result<Balance, DispatchError> {
-        let out_asset = &self.out_asset_id;
-        let in_asset = &self.in_asset_id;
-        let input_amount = Balance(Module::<T>::price_for_main_asset(
-            out_asset,
-            self.output_amount,
-            SwapKind::Buy,
-        )?);
-        let total_issuance = Assets::<T>::total_issuance(out_asset)?;
-        let reserves_expected = Balance(Module::<T>::price_for_main_asset(
-            out_asset,
-            total_issuance,
-            SwapKind::Sell,
-        )?);
-        Technical::<T>::transfer_in(
-            in_asset,
-            &self.from_account_id,
-            &self.reserves_tech_account_id,
-            input_amount,
-        )?;
-        let reserves = Assets::<T>::total_balance(in_asset, &self.reserves_account_id)?;
-        let free_amount = if reserves > reserves_expected {
-            let amount_free_coefficient: Balance = fixed!(20%).into();
-            (reserves - reserves_expected) * amount_free_coefficient
-        } else {
-            Balance::zero()
-        };
-        Ok(free_amount)
+        common::with_transaction(|| {
+            let out_asset = &self.out_asset_id;
+            let in_asset = &self.in_asset_id;
+            let input_amount = Balance(Module::<T>::price_for_main_asset(
+                out_asset,
+                self.output_amount,
+                SwapKind::Buy,
+            )?);
+            let total_issuance = Assets::<T>::total_issuance(out_asset)?;
+            let reserves_expected = Balance(Module::<T>::price_for_main_asset(
+                out_asset,
+                total_issuance,
+                SwapKind::Sell,
+            )?);
+            Technical::<T>::transfer_in(
+                in_asset,
+                &self.from_account_id,
+                &self.reserves_tech_account_id,
+                input_amount,
+            )?;
+            let reserves = Assets::<T>::total_balance(in_asset, &self.reserves_account_id)?;
+            let free_amount = if reserves > reserves_expected {
+                let amount_free_coefficient: Balance = fixed!(20%).into();
+                (reserves - reserves_expected) * amount_free_coefficient
+            } else {
+                Balance::zero()
+            };
+            Ok(free_amount)
+        })
     }
 
     fn distribute_reserves(&self, free_amount: Balance) -> Result<(), DispatchError> {
-        if free_amount == Balance::zero() {
-            return Ok(());
-        }
+        common::with_transaction(|| {
+            if free_amount == Balance::zero() {
+                return Ok(());
+            }
 
-        let reserves_tech_acc = &self.reserves_tech_account_id;
-        let reserves_acc = &self.reserves_account_id;
-        let in_asset = &self.in_asset_id;
-        let out_asset = &self.out_asset_id;
-        let swapped_xor_amount = T::DEXApi::exchange(
-            reserves_acc,
-            reserves_acc,
-            &DEXId::Polkaswap.into(),
-            in_asset,
-            out_asset,
-            SwapAmount::with_desired_input(free_amount, Balance::zero()), // TODO: do we need to set `min_amount_out`?
-        )?
-        .amount;
-        Technical::<T>::burn(out_asset, reserves_tech_acc, swapped_xor_amount)?;
-        Technical::<T>::mint(out_asset, reserves_tech_acc, swapped_xor_amount)?;
-
-        let distribution_accounts: DistributionAccounts<DistributionAccountData<T::TechAccountId>> =
-            DistributionAccountsEntry::<T>::get();
-        for (to_tech_account_id, coefficient) in distribution_accounts
-            .xor_distribution_as_array()
-            .iter()
-            .map(|x| (&x.account_id, x.coefficient))
-        {
-            technical::Module::<T>::transfer(
+            let reserves_tech_acc = &self.reserves_tech_account_id;
+            let reserves_acc = &self.reserves_account_id;
+            let in_asset = &self.in_asset_id;
+            let out_asset = &self.out_asset_id;
+            let swapped_xor_amount = T::DEXApi::exchange(
+                reserves_acc,
+                reserves_acc,
+                &DEXId::Polkaswap.into(),
+                in_asset,
                 out_asset,
-                reserves_tech_acc,
-                to_tech_account_id,
-                swapped_xor_amount * Balance(coefficient),
-            )?;
-        }
+                SwapAmount::with_desired_input(free_amount, Balance::zero()), // TODO: do we need to set `min_amount_out`?
+            )?
+            .amount;
+            Technical::<T>::burn(out_asset, reserves_tech_acc, swapped_xor_amount)?;
+            Technical::<T>::mint(out_asset, reserves_tech_acc, swapped_xor_amount)?;
 
-        let val_amount = T::DEXApi::exchange(
-            reserves_acc,
-            reserves_acc,
-            &DEXId::Polkaswap.into(),
-            out_asset,
-            &VAL.into(),
-            SwapAmount::with_desired_input(
-                swapped_xor_amount * Balance(distribution_accounts.val_holders.coefficient),
-                Balance::zero(),
-            ),
-        )?
-        .amount;
-        Technical::<T>::burn(&VAL.into(), reserves_tech_acc, val_amount)?;
-        Ok(())
+            let distribution_accounts: DistributionAccounts<
+                DistributionAccountData<T::TechAccountId>,
+            > = DistributionAccountsEntry::<T>::get();
+            for (to_tech_account_id, coefficient) in distribution_accounts
+                .xor_distribution_as_array()
+                .iter()
+                .map(|x| (&x.account_id, x.coefficient))
+            {
+                technical::Module::<T>::transfer(
+                    out_asset,
+                    reserves_tech_acc,
+                    to_tech_account_id,
+                    swapped_xor_amount * Balance(coefficient),
+                )?;
+            }
+
+            let val_amount = T::DEXApi::exchange(
+                reserves_acc,
+                reserves_acc,
+                &DEXId::Polkaswap.into(),
+                out_asset,
+                &VAL.into(),
+                SwapAmount::with_desired_input(
+                    swapped_xor_amount * Balance(distribution_accounts.val_holders.coefficient),
+                    Balance::zero(),
+                ),
+            )?
+            .amount;
+            Technical::<T>::burn(&VAL.into(), reserves_tech_acc, val_amount)?;
+            Ok(())
+        })
     }
 
     fn mint_output(&self) -> Result<SwapOutcome<Balance>, DispatchError> {
@@ -292,9 +297,11 @@ impl<T: Trait> BuyMainAsset<T> {
     }
 
     fn swap(&self) -> Result<SwapOutcome<Balance>, DispatchError> {
-        let input_amount_free = self.deposit_input()?;
-        self.distribute_reserves(input_amount_free)?;
-        self.mint_output()
+        common::with_transaction(|| {
+            let input_amount_free = self.deposit_input()?;
+            self.distribute_reserves(input_amount_free)?;
+            self.mint_output()
+        })
     }
 }
 
@@ -396,50 +403,54 @@ impl<T: Trait> Module<T> {
         from_account_id: &T::AccountId,
         to_account_id: &T::AccountId,
     ) -> Result<SwapOutcome<Balance>, DispatchError> {
-        let reserves_tech_account_id = Self::reserves_account_id();
-        let reserves_account_id =
-            Technical::<T>::tech_account_id_to_account_id(&reserves_tech_account_id)?;
-        let output_amount = Balance(Self::price_for_main_asset(
-            in_asset_id,
-            input_amount,
-            SwapKind::Sell,
-        )?);
-        // TODO: deal with fee.
-        let fee_amount = Balance(Self::fee()) * output_amount;
-        let transfer_amount = output_amount - fee_amount;
-        let reserves_amount = Assets::<T>::total_balance(out_asset_id, &reserves_account_id)?;
-        ensure!(
-            reserves_amount >= transfer_amount,
-            Error::<T>::NotEnoughReserves
-        );
-        technical::Module::<T>::transfer_out(
-            out_asset_id,
-            &reserves_tech_account_id,
-            &to_account_id,
-            transfer_amount,
-        )?;
-        Assets::<T>::burn_from(
-            in_asset_id,
-            &reserves_account_id,
-            from_account_id,
-            input_amount,
-        )?;
-        Ok(SwapOutcome::new(transfer_amount, fee_amount))
+        common::with_transaction(|| {
+            let reserves_tech_account_id = Self::reserves_account_id();
+            let reserves_account_id =
+                Technical::<T>::tech_account_id_to_account_id(&reserves_tech_account_id)?;
+            let output_amount = Balance(Self::price_for_main_asset(
+                in_asset_id,
+                input_amount,
+                SwapKind::Sell,
+            )?);
+            // TODO: deal with fee.
+            let fee_amount = Balance(Self::fee()) * output_amount;
+            let transfer_amount = output_amount - fee_amount;
+            let reserves_amount = Assets::<T>::total_balance(out_asset_id, &reserves_account_id)?;
+            ensure!(
+                reserves_amount >= transfer_amount,
+                Error::<T>::NotEnoughReserves
+            );
+            technical::Module::<T>::transfer_out(
+                out_asset_id,
+                &reserves_tech_account_id,
+                &to_account_id,
+                transfer_amount,
+            )?;
+            Assets::<T>::burn_from(
+                in_asset_id,
+                &reserves_account_id,
+                from_account_id,
+                input_amount,
+            )?;
+            Ok(SwapOutcome::new(transfer_amount, fee_amount))
+        })
     }
 
     pub fn set_reserves_account_id(account: T::TechAccountId) -> Result<(), DispatchError> {
-        ReservesAcc::<T>::set(account.clone());
-        let account_id = Technical::<T>::tech_account_id_to_account_id(&account)?;
-        let permissions = [BURN, MINT, TRANSFER, SLASH];
-        for permission in &permissions {
-            permissions::Module::<T>::assign_permission(
-                account_id.clone(),
-                &account_id,
-                *permission,
-                Scope::Unlimited,
-            )?;
-        }
-        Ok(())
+        common::with_transaction(|| {
+            ReservesAcc::<T>::set(account.clone());
+            let account_id = Technical::<T>::tech_account_id_to_account_id(&account)?;
+            let permissions = [BURN, MINT, TRANSFER, SLASH];
+            for permission in &permissions {
+                permissions::Module::<T>::assign_permission(
+                    account_id.clone(),
+                    &account_id,
+                    *permission,
+                    Scope::Unlimited,
+                )?;
+            }
+            Ok(())
+        })
     }
 
     pub fn set_distribution_accounts(
