@@ -219,6 +219,22 @@ impl pool_xyk::Trait for Runtime {
     type WeightInfo = ();
 }
 
+parameter_types! {
+    pub GetPswapDistributionAccountId: AccountId = AccountId32::from([3; 32]);
+    pub const GetDefaultSubscriptionFrequency: BlockNumber = 10;
+    pub GetIncentiveAssetId: AssetId = common::PSWAP.into();
+}
+
+impl pswap_distribution::Trait for Runtime {
+    type Event = ();
+    type GetIncentiveAssetId = GetIncentiveAssetId;
+    type Exchange = ();
+    type CompatBalance = Balance;
+    type GetDefaultSubscriptionFrequency = GetDefaultSubscriptionFrequency;
+    type GetTechnicalAccountId = GetPswapDistributionAccountId;
+    type EnsureDEXOwner = ();
+}
+
 pub type System = frame_system::Module<Runtime>;
 pub type Balances = pallet_balances::Module<Runtime>;
 pub type Tokens = tokens::Module<Runtime>;

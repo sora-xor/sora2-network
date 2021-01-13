@@ -24,7 +24,7 @@ use common::ToTechUnitFromDEXAndTradingPair;
 use frame_support::ensure;
 use frame_support::traits::Get;
 use permissions::{Scope, BURN, MINT};
-use sp_std::vec::Vec;
+use sp_std::collections::btree_set::BTreeSet;
 
 mod weights;
 
@@ -203,7 +203,9 @@ pub trait WeightInfo {
 }
 
 /// Configure the pallet by specifying the parameters and types on which it depends.
-pub trait Trait: technical::Trait + dex_manager::Trait + trading_pair::Trait {
+pub trait Trait:
+    technical::Trait + dex_manager::Trait + trading_pair::Trait + pswap_distribution::Trait
+{
     /// Because this pallet emits events, it depends on the runtime's definition of an event.
     type Event: From<Event<Self>> + Into<<Self as frame_system::Trait>::Event>;
 
@@ -1226,7 +1228,7 @@ decl_storage! {
               hasher(blake2_128_concat) T::AssetId,
               hasher(blake2_128_concat) T::AssetId => (Balance, Balance);
         /// Collection of all registered marker tokens.
-        pub MarkerTokensIndex get(fn marker_tokens_index): Vec<T::AssetId>;
+        pub MarkerTokensIndex get(fn marker_tokens_index): BTreeSet<T::AssetId>;
         /// Properties of particular pool. [Reserves Account Id, Fees Account Id, Marker Asset Id]
         pub Properties get(fn properties): double_map
               hasher(blake2_128_concat) T::AssetId,
@@ -1838,15 +1840,9 @@ decl_module! {
                    BURN,
                    Scope::Limited(hash(&Into::<AssetIdOf::<T>>::into(mark_asset.clone())))
                    )?;
-                //  TODO: check and enable this when pswap-distribution will be available.
-                //  pswap_distribution::Module::<T>::subscribe(fee_acc_id.clone().into(),
-                //                dex_id.clone(), mark_asset.into(), frequency)?;
-                MarkerTokensIndex::<T>::mutate( |mti| {
-                    if let Err(index) = mti.binary_search(&mark_asset_repr) {
-                        mti.insert(index, mark_asset_repr);
-                    }
-                });
                 Module::<T>::initialize_pool_properties(&asset_a, &asset_b, &ta_repr, &fees_ta_repr, &mark_asset_repr);
+                pswap_distribution::Module::<T>::subscribe(fees_ta_repr, dex_id, mark_asset_repr, None)?;
+                MarkerTokensIndex::<T>::mutate( |mti| {mti.insert(mark_asset_repr)});
                 Self::deposit_event(RawEvent::PoolIsInitialized(ta_repr));
                 Ok(())
         }

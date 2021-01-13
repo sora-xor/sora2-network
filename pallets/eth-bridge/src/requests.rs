@@ -81,7 +81,7 @@ impl<T: Trait> OutgoingTransfer<T> {
         {
             currency_id = CurrencyIdEncoded::TokenAddress(token_address);
         } else {
-            let x: sp_core::H256 = self.asset_id.into();
+            let x = <T::AssetId as Into<sp_core::H256>>::into(self.asset_id);
             currency_id = CurrencyIdEncoded::AssetId(H256(x.0));
         }
         let amount = U256::from(self.amount.0.into_inner());

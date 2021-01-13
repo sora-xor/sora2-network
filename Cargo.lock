@@ -1289,6 +1289,7 @@ dependencies = [
  "parity-scale-codec",
  "permissions",
  "pool-xyk",
+ "pswap-distribution",
  "serde 1.0.118",
  "sp-arithmetic",
  "sp-core",
@@ -1317,6 +1318,7 @@ dependencies = [
  "parity-scale-codec",
  "permissions",
  "pool-xyk",
+ "pswap-distribution",
  "sp-arithmetic",
  "sp-core",
  "sp-io",
@@ -1757,6 +1759,7 @@ dependencies = [
  "parity-scale-codec",
  "permissions",
  "pool-xyk",
+ "pswap-distribution",
  "serde 1.0.118",
  "sp-core",
  "sp-io",
@@ -2224,6 +2227,7 @@ dependencies = [
  "permissions",
  "pool-xyk",
  "pool-xyk-benchmarking",
+ "pswap-distribution",
  "referral-system",
  "serde 1.0.118",
  "sp-api",
@@ -3828,6 +3832,7 @@ dependencies = [
  "parity-scale-codec",
  "permissions",
  "pool-xyk",
+ "pswap-distribution",
  "sp-core",
  "sp-io",
  "sp-runtime",
@@ -4616,7 +4621,7 @@ dependencies = [
 [[package]]
 name = "pallet-multisig"
 version = "2.0.0-rc5"
-source = "git+https://github.com/soramitsu/sora2-frame-pallets.git?branch=vmarkushin/multisig#ddc31aadbbaddc058e2b739e1038fda83d51fb61"
+source = "git+https://github.com/soramitsu/sora2-frame-pallets.git?branch=vmarkushin/multisig#6a25888a7c8397c8c4b91f044a48dc09f813e44c"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -5193,6 +5198,7 @@ dependencies = [
  "dex-manager",
  "frame-support",
  "frame-system",
+ "hex-literal",
  "num-traits",
  "orml-currencies",
  "orml-tokens",
@@ -5200,6 +5206,7 @@ dependencies = [
  "pallet-balances",
  "parity-scale-codec",
  "permissions",
+ "pswap-distribution",
  "sp-core",
  "sp-io",
  "sp-runtime",
@@ -5226,6 +5233,7 @@ dependencies = [
  "parity-scale-codec",
  "permissions",
  "pool-xyk",
+ "pswap-distribution",
  "sp-core",
  "sp-io",
  "sp-runtime",
@@ -5416,6 +5424,33 @@ checksum = "1834f67c0697c001304b75be76f67add9c89742eda3a085ad8ee0bb38c3417aa"
 dependencies = [
  "bytes 0.5.6",
  "prost",
+]
+
+[[package]]
+name = "pswap-distribution"
+version = "0.1.0"
+dependencies = [
+ "assets",
+ "bonding-curve-pool",
+ "common",
+ "dex-manager",
+ "frame-support",
+ "frame-system",
+ "hex-literal",
+ "mock-liquidity-source",
+ "orml-currencies",
+ "orml-tokens",
+ "orml-traits",
+ "pallet-balances",
+ "parity-scale-codec",
+ "permissions",
+ "serde 1.0.118",
+ "sp-arithmetic",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+ "technical",
 ]
 
 [[package]]
@@ -8792,7 +8827,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "04f8ab788026715fa63b31960869617cba39117e520eb415b0139543e325ab59"
 dependencies = [
  "cfg-if 0.1.10",
- "rand 0.7.3",
+ "rand 0.3.23",
  "static_assertions",
 ]
 

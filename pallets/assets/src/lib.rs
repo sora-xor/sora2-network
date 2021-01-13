@@ -73,7 +73,8 @@ pub trait Trait: frame_system::Trait + permissions::Trait + tokens::Trait {
         + Into<CurrencyIdOf<Self>>
         + From<common::AssetId32<common::AssetId>>
         + From<H256>
-        + Into<H256>;
+        + Into<H256>
+        + Into<<Self as tokens::Trait>::CurrencyId>;
 
     /// The base asset as the core asset in all trading pairs
     type GetBaseAssetId: Get<Self::AssetId>;

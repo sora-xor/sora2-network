@@ -221,14 +221,14 @@ pub type LiquidityProxy = Module<Runtime>;
 type ReservesInit = Vec<(DEXId, AssetId, (Fixed, Fixed))>;
 
 pub struct ExtBuilder {
-    reserves: ReservesInit,
-    reserves_2: ReservesInit,
-    reserves_3: ReservesInit,
-    reserves_4: ReservesInit,
-    dex_list: Vec<(DEXId, DEXInfo<AssetId>)>,
-    initial_permission_owners: Vec<(u32, Scope, Vec<AccountId>)>,
-    initial_permissions: Vec<(AccountId, Scope, Vec<u32>)>,
-    source_types: Vec<LiquiditySourceType>,
+    pub reserves: ReservesInit,
+    pub reserves_2: ReservesInit,
+    pub reserves_3: ReservesInit,
+    pub reserves_4: ReservesInit,
+    pub dex_list: Vec<(DEXId, DEXInfo<AssetId>)>,
+    pub initial_permission_owners: Vec<(u32, Scope, Vec<AccountId>)>,
+    pub initial_permissions: Vec<(AccountId, Scope, Vec<u32>)>,
+    pub source_types: Vec<LiquiditySourceType>,
 }
 
 impl Default for ExtBuilder {

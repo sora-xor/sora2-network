@@ -2,13 +2,13 @@ use framenode_runtime::{
     bonding_curve_pool, eth_bridge, opaque::SessionKeys, AccountId, AssetSymbol, AssetsConfig,
     BabeConfig, BalancesConfig, BondingCurvePoolConfig, DEXAPIConfig, DEXManagerConfig,
     EthBridgeConfig, FarmingConfig, FaucetConfig, GenesisConfig, GetBaseAssetId, GrandpaConfig,
-    LiquiditySourceType, MultisigConfig, PermissionsConfig, PswapId, Runtime, SessionConfig,
-    Signature, StakerStatus, StakingConfig, SudoConfig, SystemConfig, TechAccountId,
-    TechnicalConfig, TokensConfig, UsdId, ValId, XorId, WASM_BINARY,
+    LiquiditySourceType, MultisigConfig, PermissionsConfig, PswapDistributionConfig, PswapId,
+    Runtime, SessionConfig, Signature, StakerStatus, StakingConfig, SudoConfig, SystemConfig,
+    TechAccountId, TechnicalConfig, TokensConfig, UsdId, ValId, XorId, WASM_BINARY,
 };
 
 use common::{
-    balance::Balance, hash, prelude::DEXInfo, DEXId, Fixed, TechPurpose, PSWAP, VAL, XOR,
+    balance::Balance, fixed, hash, prelude::DEXInfo, DEXId, Fixed, TechPurpose, PSWAP, VAL, XOR,
 };
 use frame_support::sp_runtime::Percent;
 use framenode_runtime::bonding_curve_pool::{DistributionAccountData, DistributionAccounts};
@@ -111,7 +111,6 @@ pub fn staging_test_net() -> ChainSpec {
 
 fn bonding_curve_distribution_accounts(
 ) -> DistributionAccounts<DistributionAccountData<<Runtime as technical::Trait>::TechAccountId>> {
-    use common::fixed;
     let val_holders_coefficient: Fixed = fixed!(50%);
     let val_holders_xor_alloc_coeff = val_holders_coefficient * fixed!(90%);
     let val_holders_buy_back_coefficient = val_holders_coefficient * (fixed!(100%) - fixed!(90%));
@@ -277,12 +276,20 @@ fn testnet_genesis(
         bonding_curve_pool::TECH_ACCOUNT_RESERVES.to_vec(),
     );
 
+    let pswap_distribution_tech_account_id =
+        framenode_runtime::GetPswapDistributionTechAccountId::get();
+    let pswap_distribution_account_id = framenode_runtime::GetPswapDistributionAccountId::get();
+
     let mut tech_accounts = vec![
         (xor_fee_account_id.clone(), xor_fee_tech_account_id),
         (faucet_account_id.clone(), faucet_tech_account_id.clone()),
         (
             eth_bridge_account_id.clone(),
             eth_bridge_tech_account_id.clone(),
+        ),
+        (
+            pswap_distribution_account_id.clone(),
+            pswap_distribution_tech_account_id.clone(),
         ),
     ];
     let accounts = bonding_curve_distribution_accounts();
@@ -453,6 +460,11 @@ fn testnet_genesis(
                         permissions::CLAIM_FROM_FARM,
                     ],
                 ),
+                (
+                    pswap_distribution_account_id,
+                    Scope::Unlimited,
+                    vec![permissions::MINT, permissions::BURN],
+                ),
             ],
         }),
         pallet_balances: Some(BalancesConfig {
@@ -535,6 +547,15 @@ fn testnet_genesis(
         }),
         farming: Some(FarmingConfig {
             initial_farm: (dex_root, XOR, PSWAP),
+        }),
+        pswap_distribution: Some(PswapDistributionConfig {
+            subscribed_accounts: Vec::new(),
+            burn_info: (
+                fixed!(0),
+                fixed!(0, 000369738339021615),
+                fixed!(0, 65),
+                14400,
+            ),
         }),
     }
 }

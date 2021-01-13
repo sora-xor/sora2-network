@@ -5,9 +5,9 @@ extern crate alloc;
 
 use codec::{Decode, Encode};
 use common::{
-    fixed, linspace, prelude::SwapAmount, prelude::SwapOutcome, prelude::SwapVariant, FilterMode,
-    Fixed, IntervalEndpoints, LiquidityRegistry, LiquiditySource, LiquiditySourceFilter,
-    LiquiditySourceId, LiquiditySourceType,
+    balance::Balance, fixed, linspace, prelude::SwapAmount, prelude::SwapOutcome,
+    prelude::SwapVariant, FilterMode, Fixed, IntervalEndpoints, LiquidityRegistry, LiquiditySource,
+    LiquiditySourceFilter, LiquiditySourceId, LiquiditySourceType,
 };
 use frame_support::{
     decl_error, decl_event, decl_module, dispatch::DispatchResult, ensure, traits::Get,
@@ -28,7 +28,7 @@ mod tests;
 
 pub mod algo;
 
-/// Output of the aggregated LiquidityProxy::quote() price.
+/// Output of the aggregated LiquidityProxy::quote_with_filter() price.
 #[derive(Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct AggregatedSwapOutcome<LiquiditySourceType, AmountType> {
     /// A distribution of shares each liquidity sources gets to swap in the entire trade
@@ -113,7 +113,7 @@ decl_module! {
         /// - `dex_id`: DEX ID for which liquidity sources aggregation is being done,
         /// - `input_asset_id`: ID of the asset being sold,
         /// - `output_asset_id`: ID of the asset being bought,
-        /// - `swap_amount`: the exact amount to be sold (either in input_assed_id or output_asset_id units with corresponding slippage tolerance absolute bound),
+        /// - `swap_amount`: the exact amount to be sold (either in input_asset_id or output_asset_id units with corresponding slippage tolerance absolute bound),
         /// - `selected_source_types`: list of selected LiquiditySource types, selection effect is determined by filter_mode,
         /// - `filter_mode`: indicate either to allow or forbid selected types only, or disable filtering.
         #[weight = <T as Trait>::WeightInfo::swap((*swap_amount).into())]
@@ -221,7 +221,7 @@ impl<T: Trait> Module<T> {
         amount: SwapAmount<Fixed>,
         filter: LiquiditySourceFilter<T::DEXId, LiquiditySourceType>,
     ) -> Result<SwapOutcome<Fixed>, DispatchError> {
-        let res = Self::quote(
+        let res = Self::quote_with_filter(
             input_asset_id,
             output_asset_id,
             amount.clone(),
@@ -257,7 +257,7 @@ impl<T: Trait> Module<T> {
     /// - 'amount' - the amount with "direction" (sell or buy) together with the maximum price impact (slippage),
     /// - 'filter' - a filter composed of a list of liquidity sources IDs to accept or ban for this trade.
     ///
-    pub fn quote(
+    pub fn quote_with_filter(
         input_asset_id: &T::AssetId,
         output_asset_id: &T::AssetId,
         amount: SwapAmount<Fixed>,
@@ -320,5 +320,61 @@ impl<T: Trait> Module<T> {
             best,
             total_fee,
         ))
+    }
+}
+
+/// Implementation of LiquiditySource Trait for LiquidityProxy, it's actually exposes reduced set of parameters that can be passed,
+/// therefore it's not used for extrinsics and user-querieable rpc, but intended for pallets that need to perform swap in an
+/// automated manner, still conforming to general liquidity source interface.
+impl<T: Trait> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, DispatchError>
+    for Module<T>
+{
+    fn can_exchange(
+        dex_id: &T::DEXId,
+        input_asset_id: &T::AssetId,
+        output_asset_id: &T::AssetId,
+    ) -> bool {
+        T::LiquidityRegistry::list_liquidity_sources(
+            input_asset_id,
+            output_asset_id,
+            LiquiditySourceFilter::empty(*dex_id),
+        )
+        .unwrap_or(Vec::new())
+        .iter()
+        .map(|source| T::LiquidityRegistry::can_exchange(source, input_asset_id, output_asset_id))
+        .any(|b| b)
+    }
+
+    fn quote(
+        dex_id: &T::DEXId,
+        input_asset_id: &T::AssetId,
+        output_asset_id: &T::AssetId,
+        swap_amount: SwapAmount<Balance>,
+    ) -> Result<SwapOutcome<Balance>, DispatchError> {
+        Self::quote_with_filter(
+            input_asset_id,
+            output_asset_id,
+            swap_amount.into(),
+            LiquiditySourceFilter::empty(*dex_id),
+        )
+        .map(|aso| SwapOutcome::new(aso.amount, aso.fee).into())
+    }
+
+    fn exchange(
+        sender: &T::AccountId,
+        _receiver: &T::AccountId,
+        dex_id: &T::DEXId,
+        input_asset_id: &T::AssetId,
+        output_asset_id: &T::AssetId,
+        desired_amount: SwapAmount<Balance>,
+    ) -> Result<SwapOutcome<Balance>, DispatchError> {
+        Self::perform_swap(
+            sender,
+            input_asset_id,
+            output_asset_id,
+            desired_amount.into(),
+            LiquiditySourceFilter::empty(*dex_id),
+        )
+        .map(|so| so.into())
     }
 }

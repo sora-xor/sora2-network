@@ -36,8 +36,7 @@ liquidity-proxy-runtime-api = { path = "../pallets/liquidity-proxy/runtime-api",
 eth-bridge = { path = "../pallets/eth-bridge", default-features = false }
 multisig = { git = "https://github.com/soramitsu/sora2-frame-pallets.git", branch = "vmarkushin/multisig", package = "pallet-multisig", default-features = false }
 farming-runtime-api = { path = "../pallets/farming/runtime-api", default-features = false}
-
-
+pswap-distribution = { path = "../pallets/pswap-distribution", default-features = false }
 liquidity-proxy-benchmarking = { path = "../pallets/liquidity-proxy/benchmarking", default-features = false, optional = true }
 pool-xyk-benchmarking = { path = "../pallets/pool-xyk/benchmarking", default-features = false, optional = true }
 dex-api-benchmarking = { path = "../pallets/dex-api/benchmarking", default-features = false, optional = true }
@@ -75,14 +74,12 @@ sp-session = { default-features = false, version = '2.0.0' }
 sp-std = { default-features = false, version = '2.0.0' }
 sp-transaction-pool = { default-features = false, version = '2.0.0' }
 sp-version = { default-features = false, version = '2.0.0' }
-
 sp-staking = { default-features = false, version = '2.0.0' }
 pallet-authorship = { default-features = false, version = '2.0.0' }
 
 # Other
 currencies = { version = "0.3.2", package = "orml-currencies", default-features = false }
 tokens = { version = "0.3.2", package = "orml-tokens", default-features = false }
-
 static_assertions = "1.1.0"
 
 [features]
@@ -120,7 +117,6 @@ std = [
     'sp-version/std',
     'sp-staking/std',
     'pallet-authorship/std',
-
     'common/std',
     'assets/std',
     'bonding-curve-pool/std',
@@ -143,6 +139,7 @@ std = [
     'trading-pair-runtime-api/std',
     'assets-runtime-api/std',
     'liquidity-proxy-runtime-api/std',
+    'pswap-distribution/std',
 ]
 
 runtime-benchmarks = [
@@ -150,7 +147,6 @@ runtime-benchmarks = [
     "frame-system/runtime-benchmarks",
     "frame-support/runtime-benchmarks",
     "frame-system-benchmarking",
-
     "assets/runtime-benchmarks",
     "dex-api-benchmarking",
     "dex-manager/runtime-benchmarks",

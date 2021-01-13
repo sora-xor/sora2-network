@@ -120,6 +120,15 @@ impl crate::Module<Testtime> {
                 crate::Module::<Testtime>::properties(base_asset, target_asset),
                 Some((repr.clone(), fee_repr.clone(), tech_asset))
             );
+            assert_eq!(
+                pswap_distribution::Module::<Testtime>::subscribed_accounts(&fee_repr),
+                Some((
+                    dex_id.clone(),
+                    tech_asset,
+                    GetDefaultSubscriptionFrequency::get(),
+                    0
+                ))
+            );
 
             for test in &tests {
                 test(
