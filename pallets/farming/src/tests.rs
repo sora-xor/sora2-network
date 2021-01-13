@@ -230,7 +230,7 @@ fn one_farmer_working_with_farm_cascade() {
                 dex_id,
                 farm_id,
                 mark_asset,
-                10000_000u32.into(),
+                10_000u32.into(),
             ));
 
             crate::Module::<Testtime>::run_to_block(3000);
@@ -266,7 +266,7 @@ fn one_farmer_working_with_farm_cascade() {
                 dex_id,
                 farm_id,
                 mark_asset,
-                Some(1000_000u32.into()),
+                Some(1000u32.into()),
             ));
 
             crate::Module::<Testtime>::run_to_block(20000);
@@ -276,7 +276,7 @@ fn one_farmer_working_with_farm_cascade() {
                 dex_id,
                 farm_id,
                 mark_asset,
-                1000_000u32.into(),
+                1000u32.into(),
             ));
 
             crate::Module::<Testtime>::run_to_block(30000);
@@ -294,7 +294,7 @@ fn one_farmer_working_with_farm_cascade() {
                 dex_id,
                 farm_id,
                 mark_asset,
-                1000_000u32.into(),
+                1000u32.into(),
             ));
 
             crate::Module::<Testtime>::run_to_block(50000);
@@ -348,7 +348,7 @@ fn two_farmers_working_with_farm_cascade() {
                 dex_id,
                 farm_id,
                 mark_asset,
-                10000_000u32.into(),
+                10_000u32.into(),
             ));
 
             assert_ok!(crate::Module::<Testtime>::lock_to_farm(
@@ -356,7 +356,7 @@ fn two_farmers_working_with_farm_cascade() {
                 dex_id,
                 farm_id,
                 mark_asset,
-                10000_000u32.into(),
+                10_000u32.into(),
             ));
 
             crate::Module::<Testtime>::run_to_block(3000);
@@ -416,7 +416,7 @@ fn two_farmers_working_with_farm_cascade() {
                 dex_id,
                 farm_id,
                 mark_asset,
-                Some(1000_000u32.into()),
+                Some(1000u32.into()),
             ));
 
             assert_ok!(crate::Module::<Testtime>::unlock_from_farm(
@@ -424,7 +424,7 @@ fn two_farmers_working_with_farm_cascade() {
                 dex_id,
                 farm_id,
                 mark_asset,
-                Some(1000_000u32.into()),
+                Some(1000u32.into()),
             ));
 
             crate::Module::<Testtime>::run_to_block(20000);
@@ -476,7 +476,7 @@ fn two_farmers_working_with_farm_cascade() {
                 dex_id,
                 farm_id,
                 mark_asset,
-                1000_000u32.into(),
+                1000u32.into(),
             ));
 
             assert_ok!(crate::Module::<Testtime>::lock_to_farm(
@@ -484,7 +484,7 @@ fn two_farmers_working_with_farm_cascade() {
                 dex_id,
                 farm_id,
                 mark_asset,
-                1500_000u32.into(),
+                1500u32.into(),
             ));
 
             crate::Module::<Testtime>::run_to_block(24000);
@@ -560,7 +560,7 @@ fn two_farmers_working_with_farm_cascade() {
                 dex_id,
                 farm_id,
                 mark_asset,
-                1000_000u32.into(),
+                1000u32.into(),
             ));
 
             assert_ok!(crate::Module::<Testtime>::lock_to_farm(
@@ -568,7 +568,7 @@ fn two_farmers_working_with_farm_cascade() {
                 dex_id,
                 farm_id,
                 mark_asset,
-                1000_000u32.into(),
+                1000u32.into(),
             ));
 
             crate::Module::<Testtime>::run_to_block(50000);

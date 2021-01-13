@@ -165,18 +165,18 @@ benchmarks! {
         DEX.into(),
         XOR.into(),
         DOT.into(),
-        1_500_000_000_u128.into(),
+        38730_u128.into(),
         0_u128.into(),
         0_u128.into()
     )
     verify {
         assert_eq!(
             Into::<u128>::into(Assets::<T>::free_balance(&XOR.into(), &caller.clone()).unwrap()),
-            Into::<u128>::into(initial_xor_balance) + 1_000_u128
+            Into::<u128>::into(initial_xor_balance) + 31622_u128
         );
         assert_eq!(
             Into::<u128>::into(Assets::<T>::free_balance(&DOT.into(), &caller.clone()).unwrap()),
-            Into::<u128>::into(initial_dot_balance) + 1_500_u128
+            Into::<u128>::into(initial_dot_balance) + 47434_u128
         );
     }
 
