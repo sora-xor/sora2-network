@@ -61,6 +61,7 @@ pallet-session = { default-features = false, features = ["historical"], version 
 pallet-staking = { git = "https://github.com/soramitsu/sora2-frame-pallets", default-features = false, branch = "selected-v2.0.0"}
 pallet-transaction-payment = { git = "https://github.com/soramitsu/sora2-frame-pallets", default-features = false, branch = "selected-v2.0.0"}
 pallet-transaction-payment-rpc-runtime-api = { git = "https://github.com/soramitsu/sora2-frame-pallets", default-features = false, branch = "selected-v2.0.0"}
+pallet-utility = { default-features = false, version = '2.0.0' }
 
 sp-api = { default-features = false, version = '2.0.0' }
 sp-block-builder = { default-features = false, version = '2.0.0' }
@@ -103,6 +104,7 @@ std = [
     'pallet-contracts/std',
     'pallet-session/std',
     'pallet-staking/std',
+    'pallet-utility/std',
     'sp-api/std',
     'sp-block-builder/std',
     'sp-consensus-aura/std',
