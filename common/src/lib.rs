@@ -20,6 +20,7 @@ mod weights;
 use blake2_rfc;
 use codec::Encode;
 use sp_core::hash::H512;
+use sp_runtime::TransactionOutcome;
 
 pub use traits::Trait;
 pub mod prelude {
@@ -49,6 +50,18 @@ pub type Amount = i128;
 
 /// Type definition representing financial basis points (1bp is 0.01%)
 pub type BasisPoints = u16;
+
+/// Similar to #\[transactional]
+pub fn with_transaction<T, E>(f: impl FnOnce() -> Result<T, E>) -> Result<T, E> {
+    frame_support::storage::with_transaction(|| {
+        let result = f();
+        if result.is_ok() {
+            TransactionOutcome::Commit(result)
+        } else {
+            TransactionOutcome::Rollback(result)
+        }
+    })
+}
 
 pub fn hash<T: Encode>(val: &T) -> H512 {
     H512::from_slice(blake2_rfc::blake2b::blake2b(64, &[], &val.encode()).as_bytes())
