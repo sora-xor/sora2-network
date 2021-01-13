@@ -45,4 +45,6 @@ std = [
     'traits/std',
     'assets/std',
     'common/std',
+    'mock-liquidity-source/std',
+    'dex-api/std',
 ]
