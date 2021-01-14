@@ -621,6 +621,12 @@ impl permissions::Trait for Runtime {
     type Event = Event;
 }
 
+impl pallet_utility::Trait for Runtime {
+    type Event = Event;
+    type Call = Call;
+    type WeightInfo = ();
+}
+
 parameter_types! {
     pub const DepositBase: u64 = 1;
     pub const DepositFactor: u64 = 1;
@@ -703,6 +709,7 @@ construct_runtime! {
         ReferralSystem: referral_system::{Module, Call, Storage, Event},
         XorFee: xor_fee::{Module, Call, Storage, Event},
         Multisig: multisig::{Module, Call, Storage, Config<T>, Event<T>},
+        Utility: pallet_utility::{Module, Call, Event},
 
         // Consensus and staking.
         Session: pallet_session::{Module, Call, Storage, Event, Config<T>},
