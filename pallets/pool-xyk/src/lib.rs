@@ -1639,10 +1639,10 @@ impl<T: Trait> Module<T> {
         let fxw_liq_amount: FixedWrapper = liq_amount.into();
         let fxw_peace: FixedWrapper = fxw_liq_in_pool / fxw_liq_amount;
         let fxw_value: FixedWrapper = fxw_b_in_pool / fxw_peace;
-        let value: Balance = (fxw_value
+        let value: Balance = fxw_value
             .get()
-            .ok_or(Error::<T>::FixedWrapperCalculationFailed)?)
-        .into();
+            .ok_or(Error::<T>::FixedWrapperCalculationFailed)?
+            .into();
         Ok(value)
     }
 
