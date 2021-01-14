@@ -49,9 +49,11 @@ use frame_support::{
 use frame_system as system;
 use frame_system::offchain::{Account, SigningTypes};
 use parking_lot::RwLock;
+use permissions::{Scope, MINT};
 use sp_std::{convert::TryFrom, fmt::Debug, str::FromStr, sync::Arc};
 use std::collections::HashSet;
 
+pub const PSWAP: AssetId = AssetId::PSWAP;
 pub const XOR: AssetId = AssetId::XOR;
 
 /// An index to a block.
@@ -461,6 +463,11 @@ impl ExtBuilder {
             ),
             (
                 multisig_account_id.clone(),
+                PSWAP.into(),
+                Balance::from(0u32),
+            ),
+            (
+                multisig_account_id.clone(),
                 XOR.into(),
                 Balance::from(350_000u32),
             ),
@@ -514,7 +521,7 @@ impl ExtBuilder {
 
         PermissionsConfig {
             initial_permission_owners: vec![],
-            initial_permissions: vec![],
+            initial_permissions: vec![(multisig_account_id.clone(), Scope::Unlimited, vec![MINT])],
         }
         .assimilate_storage(&mut storage)
         .unwrap();
@@ -534,6 +541,10 @@ impl ExtBuilder {
             peers: Default::default(),
             bridge_account: multisig_account_id.clone(),
             tokens: self.tokens,
+            pswap_owners: vec![(
+                sp_core::H160::from_str("40fd72257597aa14c7231a7b1aaa29fce868f677").unwrap(),
+                Balance::from(300u128),
+            )],
             ..Default::default()
         }
         .assimilate_storage(&mut storage)
