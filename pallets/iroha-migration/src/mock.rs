@@ -4,42 +4,31 @@ use codec::{Codec, Decode, Encode};
 use common::{balance::Balance, Amount, AssetId, AssetId32, AssetSymbol, VAL};
 use currencies::BasicCurrencyAdapter;
 use frame_support::{
-    assert_ok, construct_runtime,
+    construct_runtime,
     dispatch::{DispatchInfo, GetDispatchInfo},
-    impl_outer_origin, parameter_types,
+    parameter_types,
     weights::{Pays, Weight},
 };
 use permissions::{Scope, MINT};
 use sp_core::H256;
-use sp_io::TestExternalities;
 use sp_runtime::{
     self,
     app_crypto::{
-        sp_core,
-        sp_core::{
+        sp_core::{self, 
             crypto::AccountId32,
-            ecdsa,
-            offchain::{OffchainExt, TransactionPoolExt},
-            sr25519,
-            testing::KeyStore,
-            traits::KeystoreExt,
-            Pair, Public,
         },
-        CryptoTypePublicPair,
     },
     generic,
     serde::{Serialize, Serializer},
     testing::Header,
     traits::{
         self, Applyable, BlakeTwo256, Block, Checkable, DispatchInfoOf, Dispatchable,
-        IdentifyAccount, IdentityLookup, PostDispatchInfoOf, SignedExtension, ValidateUnsigned,
-        Verify,
+        IdentityLookup, PostDispatchInfoOf, SignedExtension, ValidateUnsigned,
     },
     transaction_validity::{TransactionSource, TransactionValidity, TransactionValidityError},
-    ApplyExtrinsicResultWithInfo, MultiSignature, MultiSigner, Perbill, Percent,
+    ApplyExtrinsicResultWithInfo, Perbill,
 };
-use sp_std::{convert::TryFrom, fmt::Debug, str::FromStr, sync::Arc};
-use std::collections::HashSet;
+use sp_std::{fmt::Debug};
 
 // Configure a mock runtime to test the pallet.
 

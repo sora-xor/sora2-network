@@ -6,7 +6,7 @@ use ethabi::Token;
 use frame_support::sp_runtime::app_crypto::sp_core;
 use frame_support::{
     dispatch::DispatchError,
-    ensure, fail,
+    ensure,
     sp_runtime::{traits::Zero, FixedPointNumber},
     RuntimeDebug, StorageMap, StorageValue,
 };
