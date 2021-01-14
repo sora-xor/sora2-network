@@ -1502,10 +1502,10 @@ impl<T: Trait> Module<T> {
             let ymyo_subfee = y_minus_y_out - ymyo_fee;
             let fxw_ymyo_subfee: FixedWrapper = ymyo_subfee.into();
             let fxw_x_in = (fxw_x * fxw_y_out) / fxw_ymyo_subfee;
-            let x_in: Balance = (fxw_x_in
+            let x_in: Balance = fxw_x_in
                 .get()
-                .ok_or(Error::<T>::FixedWrapperCalculationFailed)?)
-            .into();
+                .ok_or(Error::<T>::FixedWrapperCalculationFailed)?
+                .into();
             let fee = Module::<T>::get_fee_for_source(asset_a, tech_acc, &x_in)?;
             Ok((x_in, fee))
         }
