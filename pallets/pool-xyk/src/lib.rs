@@ -1443,10 +1443,10 @@ impl<T: Trait> Module<T> {
         if get_fee_from_destination {
             Module::<T>::guard_fee_from_destination(asset_a, asset_b)?;
             let fxw_y1 = (fxw_x_in * fxw_y) / (fxw_x + fxw_x_in);
-            let y1: Balance = (fxw_y1
+            let y1: Balance = fxw_y1
                 .get()
-                .ok_or(Error::<T>::FixedWrapperCalculationFailed)?)
-            .into();
+                .ok_or(Error::<T>::FixedWrapperCalculationFailed)?
+                .into();
             let fee_of_y1 = Module::<T>::get_fee_for_destination(asset_a, tech_acc, &y1)?;
             Ok((y1, fee_of_y1))
         } else {
