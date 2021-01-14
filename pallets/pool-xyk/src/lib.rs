@@ -1455,10 +1455,10 @@ impl<T: Trait> Module<T> {
             let fxw_fee_of_x_in: FixedWrapper = fee_of_x_in.into();
             let fxw_x_in_subfee = fxw_x_in - fxw_fee_of_x_in;
             let fxw_y_out = (fxw_x_in_subfee * fxw_y) / (fxw_x + fxw_x_in_subfee);
-            let y_out: Balance = (fxw_y_out
+            let y_out: Balance = fxw_y_out
                 .get()
-                .ok_or(Error::<T>::FixedWrapperCalculationFailed)?)
-            .into();
+                .ok_or(Error::<T>::FixedWrapperCalculationFailed)?
+                .into();
             Ok((y_out, fee_of_x_in))
         }
     }
