@@ -175,30 +175,35 @@ pub enum IncomingRequestKind {
     AddToken,
     AddPeer,
     RemovePeer,
+    ClaimPswap,
 }
 
 /// The type of request we can send to the offchain worker
 #[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug)]
 pub enum IncomingRequest<T: Trait> {
     Transfer(IncomingTransfer<T>),
+    ClaimPswap(IncomingClaimPswap<T>),
 }
 
 impl<T: Trait> IncomingRequest<T> {
     fn tx_hash(&self) -> &sp_core::H256 {
         match self {
             IncomingRequest::Transfer(request) => &request.tx_hash,
+            IncomingRequest::ClaimPswap(request) => &request.tx_hash,
         }
     }
 
     fn at_height(&self) -> u64 {
         match self {
             IncomingRequest::Transfer(request) => request.at_height,
+            IncomingRequest::ClaimPswap(request) => request.at_height,
         }
     }
 
     pub fn finalize(self) -> Result<sp_core::H256, DispatchError> {
         match self {
             IncomingRequest::Transfer(request) => request.finalize(),
+            IncomingRequest::ClaimPswap(request) => request.finalize(),
         }
     }
 }
@@ -323,9 +328,14 @@ decl_storage! {
         PendingPeer get(fn pending_peer): Option<T::AccountId>;
 
         BridgeAccount get(fn bridge_account) config(): T::AccountId;
+
+        // None means the address owns no pswap.
+        // 0 means the address claimed them.
+        PswapOwners: map hasher(identity) Address => Option<Balance>;
     }
     add_extra_genesis {
         config(tokens): Vec<(T::AssetId, Option<sp_core::H160>, AssetKind)>;
+        config(pswap_owners): Vec<(sp_core::H160, Balance)>;
         build(|config| {
             for (asset_id, opt_token_address, kind) in &config.tokens {
                 if let Some(token_address) = opt_token_address {
@@ -334,6 +344,10 @@ decl_storage! {
                     RegisteredSidechainToken::<T>::insert(&asset_id, token_address);
                 }
                 RegisteredAsset::<T>::insert(asset_id, kind);
+            }
+
+            for (address, balance) in &config.pswap_owners {
+                PswapOwners::insert(Address::from_slice(address.as_bytes()), balance);
             }
         })
     }
@@ -389,6 +403,7 @@ decl_error! {
         CantAddMorePeers,
         CantRemoveMorePeers,
         UnknownPeerId,
+        AlreadyClaimed,
         Other,
     }
 }
@@ -536,6 +551,7 @@ decl_module! {
 pub enum ContractEvent<AssetId, Address, AccountId, Balance> {
     Withdraw(AssetId, Balance, Address, AccountId),
     Deposit(AccountId, Balance, Address, H256),
+    ClaimPswap(AccountId),
 }
 
 fn parse_eth_string(bytes: &[u8]) -> Option<String> {
@@ -622,6 +638,19 @@ impl<T: Trait> Module<T> {
                     )
                     .map_err(|_| Error::<T>::InvalidAccountId)?;
                     return Ok(ContractEvent::Deposit(to, amount, token, asset_id));
+                }
+                &hex!("4eb3aea69bf61684354f60a43d355c3026751ddd0ea4e1f5afc1274b96c65505") => {
+                    let types = [ParamType::FixedBytes(32)];
+                    let mut decoded =
+                        ethabi::decode(&types, &log.data.0).map_err(|_| Error::<T>::Other)?;
+                    let account_id = T::AccountId::decode(
+                        &mut &decoded
+                            .pop()
+                            .and_then(|x| x.to_fixed_bytes())
+                            .ok_or(Error::<T>::InvalidAccountId)?[..],
+                    )
+                    .map_err(|_| Error::<T>::InvalidAccountId)?;
+                    return Ok(ContractEvent::ClaimPswap(account_id));
                 }
                 _ => (),
             }
@@ -1006,6 +1035,19 @@ impl<T: Trait> Module<T> {
                     to,
                     incoming_asset,
                     amount,
+                    tx_hash,
+                    at_height,
+                })
+            }
+            ContractEvent::ClaimPswap(account_id) => {
+                let at_height = tx_receipt
+                    .block_number
+                    .expect("'block_number' is null only when the log is pending; qed")
+                    .as_u64();
+                let tx_hash = sp_core::H256(tx_receipt.transaction_hash.0);
+                IncomingRequest::ClaimPswap(IncomingClaimPswap {
+                    account_id,
+                    eth_address: tx_receipt.from,
                     tx_hash,
                     at_height,
                 })

@@ -1,12 +1,14 @@
 use crate::types::{Address, H256, U256};
-use crate::{AssetIdOf, AssetKind, Error, IncomingAsset, Trait};
+use crate::{AssetIdOf, AssetKind, Error, IncomingAsset, Module, PswapOwners, Trait};
 use codec::{Decode, Encode};
-use common::prelude::Balance;
+use common::{prelude::Balance, PSWAP};
 use ethabi::Token;
 use frame_support::sp_runtime::app_crypto::sp_core;
 use frame_support::{
-    dispatch::DispatchError, ensure, sp_runtime::FixedPointNumber, RuntimeDebug, StorageMap,
-    StorageValue,
+    dispatch::DispatchError,
+    ensure, fail,
+    sp_runtime::{traits::Zero, FixedPointNumber},
+    RuntimeDebug, StorageMap, StorageValue,
 };
 use sp_std::prelude::*;
 
@@ -25,19 +27,18 @@ impl<T: Trait> IncomingTransfer<T> {
         let (asset_id, asset_kind) = match self.incoming_asset {
             IncomingAsset::Loaded(asset_id, asset_kind) => (asset_id, asset_kind),
             IncomingAsset::ToRegister(addr, precision, symbol) => {
-                if let Ok(asset) =
-                    crate::Module::<T>::register_sidechain_asset(addr, precision, symbol)
-                        .map(|asset_id| (asset_id, AssetKind::Sidechain))
+                if let Ok(asset) = Module::<T>::register_sidechain_asset(addr, precision, symbol)
+                    .map(|asset_id| (asset_id, AssetKind::Sidechain))
                 {
                     asset
                 } else {
-                    crate::Module::<T>::get_asset_by_raw_asset_id(H256::zero(), &addr)?
+                    Module::<T>::get_asset_by_raw_asset_id(H256::zero(), &addr)?
                         .ok_or(Error::<T>::FailedToGetAssetById)?
                 }
             }
         };
 
-        let bridge_account_id = crate::Module::<T>::bridge_account();
+        let bridge_account_id = Module::<T>::bridge_account();
         match asset_kind {
             AssetKind::Thischain | AssetKind::SidechainOwned => {
                 assets::Module::<T>::ensure_can_withdraw(
@@ -61,6 +62,25 @@ impl<T: Trait> IncomingTransfer<T> {
 }
 
 #[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug)]
+pub struct IncomingClaimPswap<T: Trait> {
+    pub account_id: T::AccountId,
+    pub eth_address: Address,
+    pub tx_hash: sp_core::H256,
+    pub at_height: u64,
+}
+
+impl<T: Trait> IncomingClaimPswap<T> {
+    pub fn finalize(self) -> Result<sp_core::H256, DispatchError> {
+        let bridge_account_id = Module::<T>::bridge_account();
+        let amount = PswapOwners::get(&self.eth_address).ok_or(Error::<T>::AccountNotFound)?;
+        ensure!(!amount.is_zero(), Error::<T>::AlreadyClaimed);
+        PswapOwners::insert(&self.eth_address, Balance::from(0u128));
+        assets::Module::<T>::mint_to(&PSWAP.into(), &bridge_account_id, &self.account_id, amount)?;
+        Ok(self.tx_hash)
+    }
+}
+
+#[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug)]
 pub struct OutgoingTransfer<T: Trait> {
     pub from: T::AccountId,
     pub to: Address,
@@ -77,8 +97,7 @@ impl<T: Trait> OutgoingTransfer<T> {
         let from = Address::from_slice(&self.from.encode()[..20]);
         let to = self.to;
         let currency_id;
-        if let Some(token_address) = crate::Module::<T>::registered_sidechain_token(&self.asset_id)
-        {
+        if let Some(token_address) = Module::<T>::registered_sidechain_token(&self.asset_id) {
             currency_id = CurrencyIdEncoded::TokenAddress(token_address);
         } else {
             let x = <T::AssetId as Into<sp_core::H256>>::into(self.asset_id);
@@ -108,7 +127,7 @@ impl<T: Trait> OutgoingTransfer<T> {
         assets::Module::<T>::transfer_from(
             &self.asset_id,
             &self.from,
-            &crate::Module::<T>::bridge_account(),
+            &Module::<T>::bridge_account(),
             self.amount,
         )?;
         let bridge_account = crate::BridgeAccount::<T>::get();
@@ -126,8 +145,8 @@ impl<T: Trait> OutgoingTransfer<T> {
 
     pub fn finalize(&self) -> Result<(), DispatchError> {
         self.validate()?;
-        if let Some(AssetKind::Sidechain) = crate::Module::<T>::registered_asset(&self.asset_id) {
-            let bridge_acc = &crate::Module::<T>::bridge_account();
+        if let Some(AssetKind::Sidechain) = Module::<T>::registered_asset(&self.asset_id) {
+            let bridge_acc = &Module::<T>::bridge_account();
             assets::Module::<T>::unreserve(self.asset_id, bridge_acc, self.amount)?;
             assets::Module::<T>::burn_from(&self.asset_id, bridge_acc, bridge_acc, self.amount)?;
         }

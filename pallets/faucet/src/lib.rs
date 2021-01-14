@@ -58,8 +58,11 @@ decl_event!(
 
 decl_error! {
     pub enum Error for Module<T: Trait> {
+        /// Asset is not supported.
         AssetNotSupported,
+        /// Amount is above limit.
         AmountAboveLimit,
+        /// Not enough reserves.
         NotEnoughReserves,
     }
 }

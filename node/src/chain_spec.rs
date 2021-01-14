@@ -533,6 +533,7 @@ fn testnet_genesis(
                     AssetKind::SidechainOwned,
                 ),
             ],
+            pswap_owners: vec![],
         }),
         multisig: Some(MultisigConfig {
             accounts: once((
