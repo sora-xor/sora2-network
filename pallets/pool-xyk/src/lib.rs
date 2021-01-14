@@ -1486,14 +1486,14 @@ impl<T: Trait> Module<T> {
             let fxw_y1 = fxw_y_out / fxw_fract_b;
             let fxw_x_in = (fxw_x * fxw_y1) / (fxw_y - fxw_y1);
             let fxw_fee = fxw_y1 - fxw_y_out;
-            let x_in: Balance = (fxw_x_in
+            let x_in: Balance = fxw_x_in
                 .get()
-                .ok_or(Error::<T>::FixedWrapperCalculationFailed)?)
-            .into();
-            let fee: Balance = (fxw_fee
+                .ok_or(Error::<T>::FixedWrapperCalculationFailed)?
+                .into();
+            let fee: Balance = fxw_fee
                 .get()
-                .ok_or(Error::<T>::FixedWrapperCalculationFailed)?)
-            .into();
+                .ok_or(Error::<T>::FixedWrapperCalculationFailed)?
+                .into();
             Ok((x_in, fee))
         } else {
             Module::<T>::guard_fee_from_source(asset_a, asset_b)?;
