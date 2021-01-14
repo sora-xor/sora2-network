@@ -502,6 +502,10 @@ impl farming::Trait for Runtime {
     type WeightInfo = ();
 }
 
+impl iroha_migration::Trait for Runtime {
+    type Event = Event;
+}
+
 impl<T: SigningTypes> frame_system::offchain::SignMessage<T> for Runtime {
     type SignatureData = ();
 
@@ -739,6 +743,7 @@ construct_runtime! {
         EthBridge: eth_bridge::{Module, Call, Config<T>, Event<T>},
         Farming: farming::{Module, Call, Storage, Config<T>, Event<T>},
         PswapDistribution: pswap_distribution::{Module, Call, Storage, Config<T>, Event<T>},
+        IrohaMigration: iroha_migration::{Module, Call, Config<T>, Event<T>},
     }
 }
 

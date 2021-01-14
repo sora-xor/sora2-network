@@ -1525,6 +1525,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "ed25519-dalek-iroha"
+version = "1.0.1"
+source = "git+https://github.com/soramitsu/sora2-ed25519-dalek-iroha.git?branch=develop#11f9bb453fe208f83840dd6ddb4d05afdb0c1fde"
+dependencies = [
+ "curve25519-dalek 3.0.2",
+ "ed25519",
+ "sha3",
+ "zeroize",
+]
+
+[[package]]
 name = "either"
 version = "1.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2126,6 +2137,7 @@ dependencies = [
  "framenode-runtime",
  "futures 0.3.9",
  "hex-literal",
+ "iroha-migration",
  "jsonrpc-core 15.1.0",
  "liquidity-proxy-rpc",
  "log",
@@ -2203,6 +2215,7 @@ dependencies = [
  "frame-system-benchmarking",
  "frame-system-rpc-runtime-api",
  "hex-literal",
+ "iroha-migration",
  "liquidity-proxy",
  "liquidity-proxy-benchmarking",
  "liquidity-proxy-runtime-api",
@@ -3035,6 +3048,33 @@ name = "ipnet"
 version = "2.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "47be2f14c678be2fdcab04ab1171db51b2762ce6f0a8ee87c8dd4a04ed216135"
+
+[[package]]
+name = "iroha-migration"
+version = "0.1.0"
+dependencies = [
+ "assets",
+ "common",
+ "ed25519-dalek-iroha",
+ "frame-support",
+ "frame-system",
+ "hex",
+ "orml-currencies",
+ "orml-tokens",
+ "pallet-balances",
+ "pallet-multisig",
+ "parity-scale-codec",
+ "parity-util-mem",
+ "permissions",
+ "referral-system",
+ "serde 1.0.118",
+ "sha3",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+ "technical",
+]
 
 [[package]]
 name = "itertools"

@@ -28,9 +28,9 @@ else
 	awk="awk"
 fi
 
-if [ ! -f ./target/release/framenode ]; then
+if [ ! -f ./target/debug/framenode ]; then
 	echo "Please build framenode binary"
-	echo "for example by running command: cargo build --release"
+	echo "for example by running command: cargo build --debug"
 	exit 1
 fi
 
@@ -61,6 +61,7 @@ wsport="9944"
 start1="1"
 for name in alice bob charlie dave eve
 do
+	export RUST_LOG="debug"
 	newport=`expr $port + 1`
 	if [ "$start1" == "1" ]; then
 		sh -c "./target/release/framenode $offchain_flags --tmp --$name --port $newport --ws-port $wsport --chain local 2>&1" | local_id | logger_for_first_node $tmpdir/port_${newport}_name_$name.txt &

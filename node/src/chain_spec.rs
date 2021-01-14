@@ -2,9 +2,10 @@ use framenode_runtime::{
     bonding_curve_pool, eth_bridge, opaque::SessionKeys, AccountId, AssetSymbol, AssetsConfig,
     BabeConfig, BalancesConfig, BondingCurvePoolConfig, DEXAPIConfig, DEXManagerConfig,
     EthBridgeConfig, FarmingConfig, FaucetConfig, GenesisConfig, GetBaseAssetId, GrandpaConfig,
-    LiquiditySourceType, MultisigConfig, PermissionsConfig, PswapDistributionConfig, PswapId,
-    Runtime, SessionConfig, Signature, StakerStatus, StakingConfig, SudoConfig, SystemConfig,
-    TechAccountId, TechnicalConfig, TokensConfig, UsdId, ValId, XorId, WASM_BINARY,
+    IrohaMigrationConfig, LiquiditySourceType, MultisigConfig, PermissionsConfig,
+    PswapDistributionConfig, PswapId, Runtime, SessionConfig, Signature, StakerStatus,
+    StakingConfig, SudoConfig, SystemConfig, TechAccountId, TechnicalConfig, TokensConfig, UsdId,
+    ValId, XorId, WASM_BINARY,
 };
 
 use common::{
@@ -304,6 +305,15 @@ fn testnet_genesis(
         ));
     }
 
+    let iroha_migration_tech_account_id = TechAccountId::Generic(
+        iroha_migration::TECH_ACCOUNT_PREFIX.to_vec(),
+        iroha_migration::TECH_ACCOUNT_MAIN.to_vec(),
+    );
+    let iroha_migration_account_id = technical::Module::<Runtime>::tech_account_id_to_account_id(
+        &iroha_migration_tech_account_id,
+    )
+    .unwrap();
+
     GenesisConfig {
         frame_system: Some(SystemConfig {
             code: WASM_BINARY.unwrap().to_vec(),
@@ -557,6 +567,10 @@ fn testnet_genesis(
                 fixed!(0, 65),
                 14400,
             ),
+        }),
+        iroha_migration: Some(IrohaMigrationConfig {
+            iroha_accounts: vec![],
+            account_id: iroha_migration_account_id,
         }),
     }
 }

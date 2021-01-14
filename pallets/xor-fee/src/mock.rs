@@ -361,7 +361,7 @@ impl ExtBuilder {
             .unwrap();
 
         referral_system::GenesisConfig::<Test> {
-            accounts_to_referrers: vec![(FROM_ACCOUNT, REFERRER_ACCOUNT)],
+            referrers: vec![(FROM_ACCOUNT, REFERRER_ACCOUNT)],
         }
         .assimilate_storage(&mut t)
         .unwrap();
