@@ -450,7 +450,7 @@ impl<T: Trait> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, T
                         Err(Error::<T>::TargetBalanceIsNotLargeEnough)?;
                     }
                     if (self.destination.amount.unwrap() - self.fee.unwrap()) <= 0u32.into() {
-                        Err(Error::<T>::GettingFeeFromDestinationInImposible)?;
+                        Err(Error::<T>::GettingFeeFromDestinationIsImposible)?;
                     }
                 } else {
                     // For source account balance must be not smaller than required with fee.
@@ -1560,53 +1560,101 @@ decl_error! {
     {
         /// It is impossible to calculate fee for some pair swap operation, or other operation.
         UnableToCalculateFee,
+        /// Is is impossible to get balance.
         UnableToGetBalance,
+        /// Imposible to decide asset pair amounts.
         ImposibleToDecideAssetPairAmounts,
+        /// Pool pair ratio and pair swap ratio is different.
         PoolPairRatioAndPairSwapRatioIsDifferent,
+        /// Pair swap action fee is smaller than recommended.
         PairSwapActionFeeIsSmallerThanRecommended,
+        /// Source balance is not large enough.
         SourceBalanceIsNotLargeEnough,
+        /// Target balance is not large enough.
         TargetBalanceIsNotLargeEnough,
+        /// It is unable to derive fee account.
         UnableToDeriveFeeAccount,
+        /// The fee account is invalid.
         FeeAccountIsInvalid,
+        /// Source and client accounts do not match as equal.
         SourceAndClientAccountDoNotMatchAsEqual,
+        /// In this case assets must not be same.
         AssetsMustNotBeSame,
+        /// Imposible to decice deposit liquidity amounts.
         ImposibleToDecideDepositLiquidityAmounts,
+        /// Invalid deposit liquidity basic asset amount.
         InvalidDepositLiquidityBasicAssetAmount,
+        /// Invalid deposit liquidity target asset amount.
         InvalidDepositLiquidityTargetAssetAmount,
+        /// Pair swap action minimum liquidity is smallet than recommended.
         PairSwapActionMinimumLiquidityIsSmallerThanRecommended,
+        /// Destination amount of liquidity is not large enough.
         DestinationAmountOfLiquidityIsNotLargeEnough,
+        /// Source base amount if not large enough.
         SourceBaseAmountIsNotLargeEnough,
+        /// Target base amount is not large enough.
         TargetBaseAmountIsNotLargeEnough,
+        /// The balance structure of pool is invalid.
         PoolIsInvalid,
+        /// The pool has empty liquidity.
         PoolIsEmpty,
+        /// Amount parameter has zero value, it is invalid.
         ZeroValueInAmountParameter,
+        /// The account balance is invalid.
         AccountBalanceIsInvalid,
+        /// Incalid deposit liquidity destination amount.
         InvalidDepositLiquidityDestinationAmount,
+        /// Initial liquidity deposit ratio must be defined.
         InitialLiqudityDepositRatioMustBeDefined,
+        /// Technical asset is not representable.
         TechAssetIsNotRepresentable,
+        /// Unable or imposible to decide marker asset.
         UnableToDecideMarkerAsset,
+        /// Unable or imposible to get asset representation.
         UnableToGetAssetRepr,
+        /// Imposible to decide withdraw liquidity amounts.
         ImposibleToDecideWithdrawLiquidityAmounts,
+        /// Invalid withdraw liquidity base asset amount.
         InvalidWithdrawLiquidityBasicAssetAmount,
+        /// Invalud withdras liquidity target asset amount.
         InvalidWithdrawLiquidityTargetAssetAmount,
+        /// Source base amount if tool large.
         SourceBaseAmountIsTooLarge,
+        /// Source balance if liquidity is not large enough.
         SourceBalanceOfLiquidityTokensIsNotLargeEnough,
+        /// Destination base balance is not large enough.
         DestinationBaseBalanceIsNotLargeEnough,
+        /// Destination base balance is not large enough.
         DestinationTargetBalanceIsNotLargeEnough,
+        /// Asset for liquidity marking is invalid.
         InvalidAssetForLiquidityMarking,
+        /// Error in asset decoding.
         AssetDecodingError,
+        /// Calculated value is out of desired bounds.
         CalculatedValueIsOutOfDesiredBounds,
+        /// The base asset is not matched with any asset arguments.
         BaseAssetIsNotMatchedWithAnyAssetArguments,
+        /// Some values is need to be same, the destination amount must be same.
         DestinationAmountMustBeSame,
+        /// Some values is need to be same, the source amount must be same.
         SourceAmountMustBeSame,
+        /// The pool initialization if invalid and failed.
         PoolInitializationIsInvalid,
+        /// The pool is already initialized.
         PoolIsAlreadyInitialized,
+        /// The minimul bound values of balance is invalid.
         InvalidMinimumBoundValueOfBalance,
+        /// It is imposible to decide valid pair values from range for this pool.
         ImposibleToDecideValidPairValuesFromRangeForThisPool,
+        /// This range values is not validy by rules of correct range.
         RangeValuesIsInvalid,
+        /// The values that is calculated is out out of required bounds.
         CalculatedValueIsNotMeetsRequiredBoundaries,
-        GettingFeeFromDestinationInImposible,
+        /// In this case getting fee from destination is imposible.
+        GettingFeeFromDestinationIsImposible,
+        /// Math calculation with fixed number if failed to complete.
         FixedWrapperCalculationFailed,
+        /// This case if not supported by logic of pool of validation code.
         ThisCaseIsNotSupported,
     }
 }
