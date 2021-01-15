@@ -10,7 +10,7 @@ use codec::{Decode, Encode};
 use common::{
     fixed,
     prelude::{Balance, Error as CommonError, Fixed, FixedWrapper, SwapAmount, SwapOutcome},
-    DEXId, LiquiditySource, USD, VAL,
+    DEXId, LiquiditySource, USDT, VAL,
 };
 use frame_support::traits::Get;
 use frame_support::{decl_error, decl_module, decl_storage, ensure, fail};
@@ -469,10 +469,10 @@ impl<T: Trait> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Disp
         output_asset_id: &T::AssetId,
     ) -> bool {
         let base_asset_id = &T::GetBaseAssetId::get();
-        // Can trade only with XOR (base asset) and USD on Polkaswap.
+        // Can trade only with XOR (base asset) and USDT on Polkaswap.
         *dex_id == DEXId::Polkaswap.into()
-            && ((input_asset_id == &USD.into() && output_asset_id == base_asset_id)
-                || (output_asset_id == &USD.into() && input_asset_id == base_asset_id))
+            && ((input_asset_id == &USDT.into() && output_asset_id == base_asset_id)
+                || (output_asset_id == &USDT.into() && input_asset_id == base_asset_id))
     }
 
     fn quote(

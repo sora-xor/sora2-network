@@ -376,7 +376,7 @@ fn testnet_genesis(
                 (
                     UsdId::get(),
                     initial_assets_owner.clone(),
-                    AssetSymbol(b"USD".to_vec()),
+                    AssetSymbol(b"USDT".to_vec()),
                     18,
                 ),
                 (

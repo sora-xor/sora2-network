@@ -68,7 +68,7 @@ pub enum AssetId {
     XOR = 0,
     DOT = 1,
     KSM = 2,
-    USD = 3,
+    USDT = 3,
     VAL = 4,
     PSWAP = 5,
 }
@@ -76,7 +76,7 @@ pub enum AssetId {
 pub const XOR: AssetId32<AssetId> = AssetId32::from_asset_id(AssetId::XOR);
 pub const DOT: AssetId32<AssetId> = AssetId32::from_asset_id(AssetId::DOT);
 pub const KSM: AssetId32<AssetId> = AssetId32::from_asset_id(AssetId::KSM);
-pub const USD: AssetId32<AssetId> = AssetId32::from_asset_id(AssetId::USD);
+pub const USDT: AssetId32<AssetId> = AssetId32::from_asset_id(AssetId::USDT);
 pub const VAL: AssetId32<AssetId> = AssetId32::from_asset_id(AssetId::VAL);
 pub const PSWAP: AssetId32<AssetId> = AssetId32::from_asset_id(AssetId::PSWAP);
 
