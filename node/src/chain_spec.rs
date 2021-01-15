@@ -270,6 +270,15 @@ fn testnet_genesis(
     let eth_bridge_account_id =
         technical::Module::<Runtime>::tech_account_id_to_account_id(&eth_bridge_tech_account_id)
             .unwrap();
+    let eth_bridge_authority_tech_account_id = TechAccountId::Generic(
+        eth_bridge::TECH_ACCOUNT_PREFIX.to_vec(),
+        eth_bridge::TECH_ACCOUNT_AUTHORITY.to_vec(),
+    );
+    let eth_bridge_authority_account_id =
+        technical::Module::<Runtime>::tech_account_id_to_account_id(
+            &eth_bridge_authority_tech_account_id,
+        )
+        .unwrap();
 
     let bonding_curve_reserves_tech_account_id = TechAccountId::Generic(
         bonding_curve_pool::TECH_ACCOUNT_PREFIX.to_vec(),
@@ -286,6 +295,10 @@ fn testnet_genesis(
         (
             eth_bridge_account_id.clone(),
             eth_bridge_tech_account_id.clone(),
+        ),
+        (
+            eth_bridge_authority_account_id.clone(),
+            eth_bridge_authority_tech_account_id.clone(),
         ),
         (
             pswap_distribution_account_id.clone(),
@@ -517,6 +530,7 @@ fn testnet_genesis(
         eth_bridge: Some(EthBridgeConfig {
             peers: initial_bridge_peers.iter().cloned().collect(),
             bridge_account: eth_bridge_account_id.clone(),
+            authority_account: eth_bridge_authority_account_id.clone(),
             tokens: vec![
                 (
                     XOR.into(),
@@ -533,6 +547,7 @@ fn testnet_genesis(
                     AssetKind::SidechainOwned,
                 ),
             ],
+            pswap_owners: vec![],
         }),
         multisig: Some(MultisigConfig {
             accounts: once((

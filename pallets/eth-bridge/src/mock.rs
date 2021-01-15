@@ -3,7 +3,7 @@
 use crate as eth_bridge;
 use crate::{AssetKind, KEY_TYPE};
 use codec::{Codec, Decode, Encode};
-use common::{balance::Balance, Amount, AssetId, AssetId32, AssetSymbol, USD, VAL};
+use common::{balance::Balance, Amount, AssetId, AssetId32, AssetSymbol, VAL};
 use currencies::BasicCurrencyAdapter;
 use frame_support::{
     assert_ok, construct_runtime,
@@ -49,9 +49,11 @@ use frame_support::{
 use frame_system as system;
 use frame_system::offchain::{Account, SigningTypes};
 use parking_lot::RwLock;
+use permissions::{Scope, MINT};
 use sp_std::{convert::TryFrom, fmt::Debug, str::FromStr, sync::Arc};
 use std::collections::HashSet;
 
+pub const PSWAP: AssetId = AssetId::PSWAP;
 pub const XOR: AssetId = AssetId::XOR;
 
 /// An index to a block.
@@ -364,13 +366,17 @@ construct_runtime!(
 pub type SubstrateAccountId = <<Signature as Verify>::Signer as IdentifyAccount>::AccountId;
 
 pub struct State {
-    pub bridge_account: AccountId32,
+    pub bridge_account_id: AccountId32,
+    pub authority_account_id: AccountId32,
     pub ocw_keypairs: Vec<(MultiSigner, AccountId32, [u8; 32])>,
+    pub pool_state: Arc<RwLock<PoolState>>,
+    pub offchain_state: Arc<RwLock<OffchainState>>,
 }
 
 pub struct ExtBuilder {
     peers_num: usize,
     tokens: Vec<(common::AssetId32<AssetId>, Option<sp_core::H160>, AssetKind)>,
+    reserves: Vec<(common::AssetId32<AssetId>, Balance)>,
 }
 
 impl Default for ExtBuilder {
@@ -395,28 +401,30 @@ impl Default for ExtBuilder {
                     AssetKind::SidechainOwned,
                 ),
             ],
+            reserves: vec![
+                (XOR.into(), Balance::from(350_000u32)),
+                (VAL.into(), Balance::from(33_900_000u32)),
+            ],
         }
     }
 }
 
 impl ExtBuilder {
-    pub fn new() -> (
-        TestExternalities,
-        State,
-        Arc<RwLock<PoolState>>,
-        Arc<RwLock<OffchainState>>,
-    ) {
+    pub fn new() -> (TestExternalities, State) {
         Self::default().build()
     }
 
-    pub fn build(
-        self,
-    ) -> (
-        TestExternalities,
-        State,
-        Arc<RwLock<PoolState>>,
-        Arc<RwLock<OffchainState>>,
-    ) {
+    pub fn peers_num(mut self, n: usize) -> Self {
+        self.peers_num = n;
+        self
+    }
+
+    pub fn with_reserves(mut self, reserves: Vec<(common::AssetId32<AssetId>, Balance)>) -> Self {
+        self.reserves = reserves;
+        self
+    }
+
+    pub fn build(self) -> (TestExternalities, State) {
         let (offchain, offchain_state) = TestOffchainExt::new();
         let (pool, pool_state) = TestTransactionPoolExt::new();
         let keystore = KeyStore::new();
@@ -448,32 +456,29 @@ impl ExtBuilder {
 
         let root_account = get_account_id_from_seed::<sr25519::Public>("Alice");
         let multisig_account_id = multisig::Module::<Test>::multi_account_id(&root_account, 1, 0);
-        let endowed_accounts: Vec<(_, AssetId32<AssetId>, _)> = vec![
-            (
-                get_account_id_from_seed::<sr25519::Public>("Alice"),
-                XOR.into(),
-                Balance::from(100_000u32),
-            ),
-            (
-                get_account_id_from_seed::<sr25519::Public>("Alice"),
-                USD.into(),
-                Balance::from(100u32),
-            ),
+        let authority_account_id = multisig::Module::<Test>::multi_account_id(&root_account, 1, 1);
+        let mut endowed_accounts: Vec<(_, AssetId32<AssetId>, _)> = vec![
             (
                 multisig_account_id.clone(),
-                XOR.into(),
-                Balance::from(350_000u32),
+                PSWAP.into(),
+                Balance::from(0u32),
             ),
+            (multisig_account_id.clone(), XOR.into(), Balance::from(0u32)),
             (
                 multisig_account_id.clone(),
                 VAL.into(),
                 Balance::from(33_900_000u32),
             ),
         ];
+        endowed_accounts.extend(
+            self.reserves
+                .into_iter()
+                .map(|(asset_id, balance)| (multisig_account_id.clone(), asset_id, balance)),
+        );
 
         let endowed_assets: HashSet<_> = endowed_accounts
             .iter()
-            .map(|x| (x.1, root_account.clone(), AssetSymbol(b"USD".to_vec()), 18))
+            .map(|x| (x.1, root_account.clone(), AssetSymbol(b"".to_vec()), 18))
             .collect();
 
         let mut storage = frame_system::GenesisConfig::default()
@@ -514,7 +519,7 @@ impl ExtBuilder {
 
         PermissionsConfig {
             initial_permission_owners: vec![],
-            initial_permissions: vec![],
+            initial_permissions: vec![(multisig_account_id.clone(), Scope::Unlimited, vec![MINT])],
         }
         .assimilate_storage(&mut storage)
         .unwrap();
@@ -533,7 +538,12 @@ impl ExtBuilder {
         EthBridgeConfig {
             peers: Default::default(),
             bridge_account: multisig_account_id.clone(),
+            authority_account: authority_account_id.clone(),
             tokens: self.tokens,
+            pswap_owners: vec![(
+                sp_core::H160::from_str("40fd72257597aa14c7231a7b1aaa29fce868f677").unwrap(),
+                Balance::from(300u128),
+            )],
             ..Default::default()
         }
         .assimilate_storage(&mut storage)
@@ -555,10 +565,13 @@ impl ExtBuilder {
         });
 
         let state = State {
-            bridge_account: multisig_account_id,
+            bridge_account_id: multisig_account_id,
+            authority_account_id,
             ocw_keypairs: ocw_kps,
+            pool_state,
+            offchain_state,
         };
-        (t, state, pool_state, offchain_state)
+        (t, state)
     }
 }
 

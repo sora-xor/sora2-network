@@ -192,9 +192,8 @@ impl<T: Trait> Module<T> {
             if owners.contains(&who) {
                 (true, true)
             } else if scope != Scope::Unlimited {
-                Owners::<T>::mutate(permission_id, Scope::Unlimited, |owners| {
-                    (!owners.is_empty(), owners.contains(&who))
-                })
+                let owners = Owners::<T>::get(permission_id, Scope::Unlimited);
+                (!owners.is_empty(), owners.contains(&who))
             } else {
                 (!owners.is_empty(), false)
             }

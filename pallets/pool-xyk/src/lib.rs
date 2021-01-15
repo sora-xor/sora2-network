@@ -483,66 +483,72 @@ impl<T: Trait> common::SwapAction<AccountIdOf<T>, TechAccountIdOf<T>, T>
     /// This function is called after validation, and every `Option` is `Some`, and it is safe to do
     /// unwrap. `Bounds` is also safe to unwrap.
     fn reserve(&self, source: &AccountIdOf<T>) -> dispatch::DispatchResult {
-        ensure!(
-            Some(source) == self.client_account.as_ref(),
-            Error::<T>::SourceAndClientAccountDoNotMatchAsEqual
-        );
-        let fee_account_repr_sys = technical::Module::<T>::tech_account_id_to_account_id(
-            self.fee_account.as_ref().unwrap(),
-        )?;
-
-        if self.get_fee_from_destination.unwrap() {
-            technical::Module::<T>::transfer_in(
-                &self.source.asset,
-                &source,
-                &self.pool_account,
-                self.source.amount.unwrap(),
-            )?;
-            technical::Module::<T>::transfer_out(
-                &self.destination.asset,
-                &self.pool_account,
-                &fee_account_repr_sys,
-                self.fee.unwrap(),
-            )?;
-            technical::Module::<T>::transfer_out(
-                &self.destination.asset,
-                &self.pool_account,
-                self.receiver_account.as_ref().unwrap(),
-                self.destination.amount.unwrap() - self.fee.unwrap(),
-            )?;
-        } else {
-            technical::Module::<T>::transfer_in(
-                &self.source.asset,
-                &source,
-                &self.pool_account,
-                self.source.amount.unwrap() - self.fee.unwrap(),
-            )?;
-            technical::Module::<T>::transfer_in(
-                &self.source.asset,
-                &source,
+        common::with_transaction(|| {
+            if Some(source) != self.client_account.as_ref() {
+                let e = Error::<T>::SourceAndClientAccountDoNotMatchAsEqual.into();
+                return Err(e);
+            }
+            ensure!(
+                Some(source) == self.client_account.as_ref(),
+                Error::<T>::SourceAndClientAccountDoNotMatchAsEqual
+            );
+            let fee_account_repr_sys = technical::Module::<T>::tech_account_id_to_account_id(
                 self.fee_account.as_ref().unwrap(),
-                self.fee.unwrap(),
             )?;
-            technical::Module::<T>::transfer_out(
-                &self.destination.asset,
-                &self.pool_account,
-                self.receiver_account.as_ref().unwrap(),
-                self.destination.amount.unwrap(),
-            )?;
-        }
 
-        let pool_account_repr_sys =
-            technical::Module::<T>::tech_account_id_to_account_id(&self.pool_account)?;
-        let balance_a =
-            <assets::Module<T>>::free_balance(&self.source.asset, &pool_account_repr_sys)?;
-        let balance_b =
-            <assets::Module<T>>::free_balance(&self.destination.asset, &pool_account_repr_sys)?;
-        Module::<T>::update_reserves(
-            &self.source.asset,
-            &self.destination.asset,
-            (&balance_a, &balance_b),
-        );
-        Ok(())
+            if self.get_fee_from_destination.unwrap() {
+                technical::Module::<T>::transfer_in(
+                    &self.source.asset,
+                    &source,
+                    &self.pool_account,
+                    self.source.amount.unwrap(),
+                )?;
+                technical::Module::<T>::transfer_out(
+                    &self.destination.asset,
+                    &self.pool_account,
+                    &fee_account_repr_sys,
+                    self.fee.unwrap(),
+                )?;
+                technical::Module::<T>::transfer_out(
+                    &self.destination.asset,
+                    &self.pool_account,
+                    self.receiver_account.as_ref().unwrap(),
+                    self.destination.amount.unwrap() - self.fee.unwrap(),
+                )?;
+            } else {
+                technical::Module::<T>::transfer_in(
+                    &self.source.asset,
+                    &source,
+                    &self.pool_account,
+                    self.source.amount.unwrap() - self.fee.unwrap(),
+                )?;
+                technical::Module::<T>::transfer_in(
+                    &self.source.asset,
+                    &source,
+                    self.fee_account.as_ref().unwrap(),
+                    self.fee.unwrap(),
+                )?;
+                technical::Module::<T>::transfer_out(
+                    &self.destination.asset,
+                    &self.pool_account,
+                    self.receiver_account.as_ref().unwrap(),
+                    self.destination.amount.unwrap(),
+                )?;
+            }
+
+            let pool_account_repr_sys =
+                technical::Module::<T>::tech_account_id_to_account_id(&self.pool_account)?;
+            let balance_a =
+                <assets::Module<T>>::free_balance(&self.source.asset, &pool_account_repr_sys)?;
+            let balance_b =
+                <assets::Module<T>>::free_balance(&self.destination.asset, &pool_account_repr_sys)?;
+            Module::<T>::update_reserves(
+                &self.source.asset,
+                &self.destination.asset,
+                (&balance_a, &balance_b),
+            );
+            Ok(())
+        })
     }
     fn claim(&self, _source: &AccountIdOf<T>) -> bool {
         true
@@ -1437,10 +1443,10 @@ impl<T: Trait> Module<T> {
         if get_fee_from_destination {
             Module::<T>::guard_fee_from_destination(asset_a, asset_b)?;
             let fxw_y1 = (fxw_x_in * fxw_y) / (fxw_x + fxw_x_in);
-            let y1: Balance = (fxw_y1
+            let y1: Balance = fxw_y1
                 .get()
-                .ok_or(Error::<T>::FixedWrapperCalculationFailed)?)
-            .into();
+                .ok_or(Error::<T>::FixedWrapperCalculationFailed)?
+                .into();
             let fee_of_y1 = Module::<T>::get_fee_for_destination(asset_a, tech_acc, &y1)?;
             Ok((y1, fee_of_y1))
         } else {
@@ -1449,10 +1455,10 @@ impl<T: Trait> Module<T> {
             let fxw_fee_of_x_in: FixedWrapper = fee_of_x_in.into();
             let fxw_x_in_subfee = fxw_x_in - fxw_fee_of_x_in;
             let fxw_y_out = (fxw_x_in_subfee * fxw_y) / (fxw_x + fxw_x_in_subfee);
-            let y_out: Balance = (fxw_y_out
+            let y_out: Balance = fxw_y_out
                 .get()
-                .ok_or(Error::<T>::FixedWrapperCalculationFailed)?)
-            .into();
+                .ok_or(Error::<T>::FixedWrapperCalculationFailed)?
+                .into();
             Ok((y_out, fee_of_x_in))
         }
     }
@@ -1480,14 +1486,14 @@ impl<T: Trait> Module<T> {
             let fxw_y1 = fxw_y_out / fxw_fract_b;
             let fxw_x_in = (fxw_x * fxw_y1) / (fxw_y - fxw_y1);
             let fxw_fee = fxw_y1 - fxw_y_out;
-            let x_in: Balance = (fxw_x_in
+            let x_in: Balance = fxw_x_in
                 .get()
-                .ok_or(Error::<T>::FixedWrapperCalculationFailed)?)
-            .into();
-            let fee: Balance = (fxw_fee
+                .ok_or(Error::<T>::FixedWrapperCalculationFailed)?
+                .into();
+            let fee: Balance = fxw_fee
                 .get()
-                .ok_or(Error::<T>::FixedWrapperCalculationFailed)?)
-            .into();
+                .ok_or(Error::<T>::FixedWrapperCalculationFailed)?
+                .into();
             Ok((x_in, fee))
         } else {
             Module::<T>::guard_fee_from_source(asset_a, asset_b)?;
@@ -1496,10 +1502,10 @@ impl<T: Trait> Module<T> {
             let ymyo_subfee = y_minus_y_out - ymyo_fee;
             let fxw_ymyo_subfee: FixedWrapper = ymyo_subfee.into();
             let fxw_x_in = (fxw_x * fxw_y_out) / fxw_ymyo_subfee;
-            let x_in: Balance = (fxw_x_in
+            let x_in: Balance = fxw_x_in
                 .get()
-                .ok_or(Error::<T>::FixedWrapperCalculationFailed)?)
-            .into();
+                .ok_or(Error::<T>::FixedWrapperCalculationFailed)?
+                .into();
             let fee = Module::<T>::get_fee_for_source(asset_a, tech_acc, &x_in)?;
             Ok((x_in, fee))
         }
@@ -1681,10 +1687,10 @@ impl<T: Trait> Module<T> {
         let fxw_liq_amount: FixedWrapper = liq_amount.into();
         let fxw_peace: FixedWrapper = fxw_liq_in_pool / fxw_liq_amount;
         let fxw_value: FixedWrapper = fxw_b_in_pool / fxw_peace;
-        let value: Balance = (fxw_value
+        let value: Balance = fxw_value
             .get()
-            .ok_or(Error::<T>::FixedWrapperCalculationFailed)?)
-        .into();
+            .ok_or(Error::<T>::FixedWrapperCalculationFailed)?
+            .into();
         Ok(value)
     }
 
