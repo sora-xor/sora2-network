@@ -431,7 +431,7 @@ impl<T: Trait> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, T
                 }
             }
             // Get required values, now it is always Some, it is safe to unwrap().
-            let fee = self.fee.unwrap();
+            let _fee = self.fee.unwrap();
 
             if !abstract_checking {
                 // Checking that balances if correct and large enouth for amounts.
@@ -1442,7 +1442,7 @@ impl<T: Trait> Module<T> {
         amount_a_min: Balance,
         amount_b_min: Balance,
     ) -> Result<(Balance, Balance), DispatchError> {
-        let fxw_total_supply: FixedWrapper = total_supply.into();
+        let _fxw_total_supply: FixedWrapper = total_supply.into();
 
         let fxw_am_a_des: FixedWrapper = amount_a_desired.into();
         let fxw_am_b_des: FixedWrapper = amount_b_desired.into();
@@ -1464,7 +1464,7 @@ impl<T: Trait> Module<T> {
             .map_err(|_| Error::<T>::FixedWrapperCalculationFailed)?
             .into();
 
-        if (opt_am_b_des <= amount_b_desired) {
+        if opt_am_b_des <= amount_b_desired {
             ensure!(
                 opt_am_b_des >= amount_b_min,
                 Error::<T>::ImposibleToDecideValidPairValuesFromRangeForThisPool

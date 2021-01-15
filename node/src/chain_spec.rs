@@ -4,8 +4,8 @@ use framenode_runtime::{
     DEXManagerConfig, EthBridgeConfig, FarmingConfig, FaucetConfig, GenesisConfig, GetBaseAssetId,
     GrandpaConfig, IrohaMigrationConfig, LiquiditySourceType, PermissionsConfig,
     PswapDistributionConfig, PswapId, Runtime, SessionConfig, Signature, StakerStatus,
-    StakingConfig, SudoConfig, SystemConfig, TechAccountId, TechnicalConfig, TokensConfig, UsdId,
-    ValId, XorId, WASM_BINARY,
+    StakingConfig, SudoConfig, SystemConfig, TechAccountId, TechnicalConfig, TokensConfig, ValId,
+    XorId, WASM_BINARY,
 };
 
 use common::prelude::{DEXInfo, FixedWrapper};

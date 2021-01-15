@@ -1,13 +1,13 @@
 use crate::{
     majority,
     mock::*,
-    types::{Address, Bytes, Log},
-    AssetKind, ContractEvent, IncomingRequest, IncomingRequestKind, OffchainRequest,
+    types,
+    types::{Bytes, Log},
+    Address, AssetKind, ContractEvent, IncomingRequest, IncomingRequestKind, OffchainRequest,
     OutgoingRequest, OutgoingTransfer, RequestStatus, SignatureParams,
 };
 use codec::{Decode, Encode};
-use common::{balance::Balance, AssetId, AssetId32, AssetSymbol};
-use ethereum_types::H256;
+use common::{balance::Balance, fixed, AssetId, AssetId32, AssetSymbol};
 use frame_support::{
     assert_err, assert_ok,
     sp_runtime::{
@@ -19,6 +19,7 @@ use frame_support::{
 use hex_literal::hex;
 use rustc_hex::FromHex;
 use secp256k1::{PublicKey, SecretKey};
+use sp_core::{H160, H256};
 use sp_std::{collections::btree_set::BTreeSet, prelude::*};
 use std::str::FromStr;
 
@@ -34,14 +35,14 @@ fn parses_event() {
     let (mut ext, _) = ExtBuilder::new();
     ext.execute_with(|| {
         let mut log = Log::default();
-        log.topics = vec![H256(hex!("85c0fa492ded927d3acca961da52b0dda1debb06d8c27fe189315f06bb6e26c8"))];
-        log.data = Bytes(hex!("1111111111111111111111111111111111111111111111111111111111111111000000000000000000000000000000000000000000000000000000000000002a00000000000000000000000022222222222222222222222222222222222222220200040000000000000000000000000000000000000000000000000000000011").to_vec());
+        log.topics = vec![types::H256(hex!("85c0fa492ded927d3acca961da52b0dda1debb06d8c27fe189315f06bb6e26c8"))];
+        log.data = Bytes(hex!("111111111111111111111111111111111111111111111111111111111111111100000000000000000000000000000000000000000000000246ddf9797668000000000000000000000000000022222222222222222222222222222222222222220200040000000000000000000000000000000000000000000000000000000011").to_vec());
         assert_eq!(
             EthBridge::parse_main_event(&[log]).unwrap(),
             ContractEvent::Deposit(
                 AccountId32::from(hex!("1111111111111111111111111111111111111111111111111111111111111111")),
                 Balance::from(42u128),
-                Address::from(&hex!("2222222222222222222222222222222222222222")),
+                H160::from(&hex!("2222222222222222222222222222222222222222")),
                 H256(hex!("0200040000000000000000000000000000000000000000000000000000000011"))
             )
         )
@@ -53,7 +54,7 @@ fn parses_deposit_pswap() {
     let (mut ext, _) = ExtBuilder::new();
     ext.execute_with(|| {
         let mut log = Log::default();
-        log.topics = vec![H256(hex!(
+        log.topics = vec![types::H256(hex!(
             "4eb3aea69bf61684354f60a43d355c3026751ddd0ea4e1f5afc1274b96c65505"
         ))];
         log.data = Bytes(
@@ -83,6 +84,7 @@ fn should_success_claim_pswap() {
             account_id: alice.clone(),
             tx_hash,
             at_height: 1,
+            timepoint: Default::default(),
         });
         assert_eq!(
             assets::Module::<Test>::total_balance(&AssetId::PSWAP.into(), &alice).unwrap(),
@@ -111,6 +113,7 @@ fn should_fail_claim_pswap_already_claimed() {
             account_id: alice.clone(),
             tx_hash,
             at_height: 1,
+            timepoint: Default::default(),
         });
         assert_eq!(
             assets::Module::<Test>::total_balance(&AssetId::PSWAP.into(), &alice).unwrap(),
@@ -129,6 +132,7 @@ fn should_fail_claim_pswap_already_claimed() {
             account_id: alice.clone(),
             tx_hash,
             at_height: 1,
+            timepoint: Default::default(),
         });
         // Same eth_address
         assert_incoming_request_failed(&state, request.clone(), tx_hash).unwrap();
@@ -150,6 +154,7 @@ fn should_fail_claim_pswap_account_not_found() {
             account_id: alice.clone(),
             tx_hash,
             at_height: 1,
+            timepoint: Default::default(),
         });
         assert_ok!(EthBridge::register_incoming_request(
             Origin::signed(state.bridge_account_id.clone()),
@@ -261,7 +266,7 @@ fn request_incoming(
     account_id: AccountId,
     tx_hash: H256,
     kind: IncomingRequestKind,
-) -> Result<sp_core::H256, Event> {
+) -> Result<H256, Event> {
     assert_ok!(EthBridge::request_from_sidechain(
         Origin::signed(account_id),
         tx_hash,
@@ -269,10 +274,10 @@ fn request_incoming(
     ));
     let last_request: OffchainRequest<Test> = crate::RequestsQueue::get().pop().unwrap();
     match last_request {
-        OffchainRequest::Incoming(_, h, _) => assert_eq!(h, tx_hash),
+        OffchainRequest::Incoming(_, h, ..) => assert_eq!(h, tx_hash),
         _ => panic!("Invalid off-chain request"),
     }
-    let tx_hash = sp_core::H256(tx_hash.0);
+    let tx_hash = H256(tx_hash.0);
     assert_eq!(
         crate::RequestStatuses::get(&tx_hash).unwrap(),
         RequestStatus::Pending
@@ -283,7 +288,7 @@ fn request_incoming(
 fn assert_incoming_request_ready(
     state: &State,
     incoming_request: IncomingRequest<Test>,
-    tx_hash: sp_core::H256,
+    tx_hash: H256,
 ) -> Result<(), Option<Event>> {
     assert_eq!(
         crate::RequestsQueue::<Test>::get().last().unwrap().hash().0,
@@ -319,7 +324,7 @@ fn assert_incoming_request_ready(
 fn assert_incoming_request_failed(
     state: &State,
     incoming_request: IncomingRequest<Test>,
-    tx_hash: sp_core::H256,
+    tx_hash: H256,
 ) -> Result<(), Event> {
     assert_eq!(
         crate::RequestsQueue::<Test>::get().last().unwrap().hash().0,
@@ -412,6 +417,7 @@ fn should_mint_and_burn_sidechain_asset() {
             amount: 100u32.into(),
             tx_hash,
             at_height: 1,
+            timepoint: Default::default(),
         });
         assert_incoming_request_ready(&state, incoming_transfer.clone(), tx_hash).unwrap();
         check_invariant(&asset_id, 100);
@@ -456,6 +462,7 @@ fn should_not_burn_or_mint_sidechain_owned_asset() {
             amount: 100u32.into(),
             tx_hash,
             at_height: 1,
+            timepoint: Default::default(),
         });
         assert_incoming_request_ready(&state, incoming_transfer.clone(), tx_hash).unwrap();
         check_invariant();
@@ -565,6 +572,7 @@ fn should_not_accept_approved_incoming_transfer() {
             amount: 100u32.into(),
             tx_hash,
             at_height: 1,
+            timepoint: Default::default(),
         });
         assert_incoming_request_ready(&state, incoming_transfer.clone(), tx_hash).unwrap();
         assert_err!(
@@ -594,6 +602,7 @@ fn should_success_incoming_transfer() {
             amount: 100u32.into(),
             tx_hash,
             at_height: 1,
+            timepoint: Default::default(),
         });
         assert_eq!(
             assets::Module::<Test>::total_balance(&AssetId::XOR.into(), &alice).unwrap(),
@@ -628,6 +637,7 @@ fn should_cancel_incoming_transfer() {
             amount: 100u32.into(),
             tx_hash,
             at_height: 1,
+            timepoint: Default::default(),
         });
         assert_ok!(EthBridge::register_incoming_request(
             Origin::signed(state.bridge_account_id.clone()),
@@ -683,6 +693,7 @@ fn should_fail_incoming_transfer() {
             amount: 100u32.into(),
             tx_hash,
             at_height: 1,
+            timepoint: Default::default(),
         });
         assert_ok!(EthBridge::register_incoming_request(
             Origin::signed(state.bridge_account_id.clone()),
@@ -788,6 +799,7 @@ fn should_add_asset() {
         assert_ok!(EthBridge::add_asset(
             Origin::signed(alice.clone()),
             asset_id,
+            fixed!(100)
         ));
         assert!(EthBridge::registered_asset(asset_id).is_none());
         approve_last_request(&state).expect("request wasn't approved");
@@ -806,7 +818,11 @@ fn should_not_allow_adding_asset_if_not_owner() {
     ext.execute_with(|| {
         let bob = get_account_id_from_seed::<sr25519::Public>("Bob");
         assert_err!(
-            EthBridge::add_asset(Origin::signed(bob.clone()), AssetId::USDT.into(),),
+            EthBridge::add_asset(
+                Origin::signed(bob.clone()),
+                AssetId::USDT.into(),
+                fixed!(100)
+            ),
             crate::Error::<Test>::TokenIsNotOwnedByTheAuthor
         );
         assert!(EthBridge::registered_asset(AssetId32::from(AssetId::USDT)).is_none());
@@ -900,6 +916,7 @@ fn should_force_add_peer() {
             added: true,
             tx_hash,
             at_height: 1,
+            timepoint: Default::default(),
         });
         assert!(!crate::Peers::<Test>::get().contains(&new_peer_id));
         assert_incoming_request_ready(&state, incoming_request.clone(), tx_hash).unwrap();
@@ -952,6 +969,7 @@ fn should_remove_peer() {
             added: false,
             tx_hash,
             at_height: 1,
+            timepoint: Default::default(),
         });
         assert_incoming_request_ready(&state, incoming_request.clone(), tx_hash).unwrap();
         assert!(crate::PendingPeer::<Test>::get().is_none());

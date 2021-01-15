@@ -1,9 +1,5 @@
-use crate::types::{Address, H256, U256};
-use crate::{AssetIdOf, AssetKind, Error, Module, PswapOwners, Trait};
-use alloc::{
-    collections::BTreeSet,
-    string::{String, ToString},
-};
+use crate::{types, Address, AssetIdOf, AssetKind, Error, Module, PswapOwners, Timepoint, Trait};
+use alloc::{collections::BTreeSet, string::String};
 use codec::{Decode, Encode};
 use common::prelude::Balance;
 use common::{fixed, AssetSymbol, BalancePrecision, PSWAP};
@@ -13,23 +9,28 @@ use frame_support::debug;
 use frame_support::sp_runtime::app_crypto::sp_core;
 use frame_support::{dispatch::DispatchError, ensure, RuntimeDebug, StorageMap, StorageValue};
 use frame_system::RawOrigin;
+#[cfg(feature = "std")]
+use serde::{Deserialize, Serialize};
+use sp_core::{H256, U256};
 use sp_std::prelude::*;
 
 pub const MIN_PEERS: usize = 4;
 pub const MAX_PEERS: usize = 100;
 
 #[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug)]
+#[cfg_attr(feature = "std", derive(Serialize))]
 pub struct IncomingAddToken<T: Trait> {
     pub token_address: Address,
     pub asset_id: T::AssetId,
     pub precision: BalancePrecision,
     pub symbol: AssetSymbol,
-    pub tx_hash: sp_core::H256,
+    pub tx_hash: H256,
     pub at_height: u64,
+    pub timepoint: Timepoint<T>,
 }
 
 impl<T: Trait> IncomingAddToken<T> {
-    pub fn finalize(&self) -> Result<sp_core::H256, DispatchError> {
+    pub fn finalize(&self) -> Result<H256, DispatchError> {
         crate::Module::<T>::register_sidechain_asset(
             self.token_address,
             self.precision,
@@ -37,19 +38,25 @@ impl<T: Trait> IncomingAddToken<T> {
         )?;
         Ok(self.tx_hash)
     }
+
+    pub fn timepoint(&self) -> Timepoint<T> {
+        self.timepoint
+    }
 }
 
 #[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct IncomingChangePeers<T: Trait> {
     pub peer_account_id: T::AccountId,
     pub peer_address: Address,
     pub added: bool,
-    pub tx_hash: sp_core::H256,
+    pub tx_hash: H256,
     pub at_height: u64,
+    pub timepoint: Timepoint<T>,
 }
 
 impl<T: Trait> IncomingChangePeers<T> {
-    pub fn finalize(&self) -> Result<sp_core::H256, DispatchError> {
+    pub fn finalize(&self) -> Result<H256, DispatchError> {
         let pending_peer = crate::PendingPeer::<T>::get().ok_or(Error::<T>::NoPendingPeer)?;
         ensure!(
             pending_peer == self.peer_account_id,
@@ -66,17 +73,23 @@ impl<T: Trait> IncomingChangePeers<T> {
         crate::PendingPeer::<T>::set(None);
         Ok(self.tx_hash)
     }
+
+    pub fn timepoint(&self) -> Timepoint<T> {
+        self.timepoint
+    }
 }
 
 #[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct IncomingTransfer<T: Trait> {
     pub from: Address,
     pub to: T::AccountId,
     pub asset_id: AssetIdOf<T>,
     pub asset_kind: AssetKind,
     pub amount: Balance,
-    pub tx_hash: sp_core::H256,
+    pub tx_hash: H256,
     pub at_height: u64,
+    pub timepoint: Timepoint<T>,
 }
 
 impl<T: Trait> IncomingTransfer<T> {
@@ -92,7 +105,7 @@ impl<T: Trait> IncomingTransfer<T> {
         if self.asset_kind.is_owned() {
             let bridge_acc = &crate::Module::<T>::bridge_account();
             if let Err(e) = assets::Module::<T>::unreserve(self.asset_id, bridge_acc, self.amount) {
-                debug::error!("Unpredictable error: {:?}", e);
+                debug::error!("Unexpected error: {:?}", e);
             }
         }
     }
@@ -102,7 +115,7 @@ impl<T: Trait> IncomingTransfer<T> {
         Ok(())
     }
 
-    pub fn finalize(&self) -> Result<sp_core::H256, DispatchError> {
+    pub fn finalize(&self) -> Result<H256, DispatchError> {
         let bridge_account_id = crate::Module::<T>::bridge_account();
         if self.asset_kind.is_owned() {
             self.unreserve();
@@ -127,18 +140,24 @@ impl<T: Trait> IncomingTransfer<T> {
         }
         Ok(self.tx_hash)
     }
+
+    pub fn timepoint(&self) -> Timepoint<T> {
+        self.timepoint
+    }
 }
 
 #[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct IncomingClaimPswap<T: Trait> {
     pub account_id: T::AccountId,
     pub eth_address: Address,
-    pub tx_hash: sp_core::H256,
+    pub tx_hash: H256,
     pub at_height: u64,
+    pub timepoint: Timepoint<T>,
 }
 
 impl<T: Trait> IncomingClaimPswap<T> {
-    pub fn finalize(&self) -> Result<sp_core::H256, DispatchError> {
+    pub fn finalize(&self) -> Result<H256, DispatchError> {
         let bridge_account_id = Module::<T>::bridge_account();
         let amount = PswapOwners::get(&self.eth_address).ok_or(Error::<T>::AccountNotFound)?;
         ensure!(amount != fixed!(0), Error::<T>::AlreadyClaimed);
@@ -147,39 +166,43 @@ impl<T: Trait> IncomingClaimPswap<T> {
         assets::Module::<T>::mint_to(&PSWAP.into(), &bridge_account_id, &self.account_id, amount)?;
         Ok(self.tx_hash.clone())
     }
+
+    pub fn timepoint(&self) -> Timepoint<T> {
+        self.timepoint
+    }
 }
 
 #[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct OutgoingTransfer<T: Trait> {
     pub from: T::AccountId,
     pub to: Address,
     pub asset_id: AssetIdOf<T>,
+    #[cfg_attr(serde, serde(skip))]
     pub amount: Balance,
     pub nonce: T::Index,
 }
 
 impl<T: Trait> OutgoingTransfer<T> {
-    pub fn to_eth_abi(
-        &self,
-        tx_hash: sp_core::H256,
-    ) -> Result<OutgoingTransferEthEncoded, Error<T>> {
+    pub fn to_eth_abi(&self, tx_hash: H256) -> Result<OutgoingTransferEthEncoded, Error<T>> {
+        // TODO: Incorrect type (Address != AccountId).
         let from = Address::from_slice(&self.from.encode()[..20]);
         let to = self.to;
         let currency_id;
         if let Some(token_address) = Module::<T>::registered_sidechain_token(&self.asset_id) {
             currency_id = CurrencyIdEncoded::TokenAddress(token_address);
         } else {
-            let x = <T::AssetId as Into<sp_core::H256>>::into(self.asset_id);
+            let x = <T::AssetId as Into<H256>>::into(self.asset_id);
             currency_id = CurrencyIdEncoded::AssetId(H256(x.0));
         }
         let amount = U256::from(*self.amount.0.as_bits());
         let tx_hash = H256(tx_hash.0);
         let raw = ethabi::encode_packed(&[
             currency_id.to_token(),
-            Token::Uint(amount),
-            Token::Address(to),
+            Token::Uint(types::U256(amount.0)),
+            Token::Address(types::H160(to.0)),
             Token::FixedBytes(tx_hash.0.to_vec()),
-            Token::Address(from),
+            Token::Address(types::H160(from.0)),
         ]);
         Ok(OutgoingTransferEthEncoded {
             from,
@@ -236,6 +259,7 @@ impl<T: Trait> OutgoingTransfer<T> {
 }
 
 #[derive(Clone, PartialEq, Eq, Encode, Decode, RuntimeDebug)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum CurrencyIdEncoded {
     AssetId(H256),
     TokenAddress(Address),
@@ -245,12 +269,15 @@ impl CurrencyIdEncoded {
     pub fn to_token(&self) -> Token {
         match self {
             CurrencyIdEncoded::AssetId(asset_id) => Token::FixedBytes(asset_id.encode()),
-            CurrencyIdEncoded::TokenAddress(address) => Token::Address(address.clone()),
+            CurrencyIdEncoded::TokenAddress(address) => {
+                Token::Address(types::H160(address.0.clone()))
+            }
         }
     }
 }
 
 #[derive(Clone, PartialEq, Eq, Encode, Decode, RuntimeDebug)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct OutgoingTransferEthEncoded {
     pub currency_id: CurrencyIdEncoded,
     pub amount: U256,
@@ -263,28 +290,31 @@ pub struct OutgoingTransferEthEncoded {
 
 // TODO: lock the adding token to prevent double-adding.
 #[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct AddAssetOutgoingRequest<T: Trait> {
     pub author: T::AccountId,
     pub asset_id: AssetIdOf<T>,
+    pub supply: Balance,
     pub nonce: T::Index,
 }
 
 impl<T: Trait> AddAssetOutgoingRequest<T> {
-    pub fn to_eth_abi(&self, tx_hash: sp_core::H256) -> Result<AddAssetRequestEncoded, Error<T>> {
+    pub fn to_eth_abi(&self, tx_hash: H256) -> Result<AddAssetRequestEncoded, Error<T>> {
         let hash = H256(tx_hash.0);
-        let name = "".to_string();
-        let asset_id_code = <AssetIdOf<T> as Into<sp_core::H256>>::into(self.asset_id);
         let (symbol, precision) = assets::Module::<T>::get_asset_info(&self.asset_id);
         let symbol: String = String::from_utf8_lossy(&symbol.0).into();
-        let supply: U256 = Default::default();
+        let name = symbol.clone();
+        let asset_id_code = <AssetIdOf<T> as Into<H256>>::into(self.asset_id);
+        let supply: U256 = U256::from(*self.supply.0.as_bits());
         let sidechain_asset_id = asset_id_code.0.to_vec();
         let raw = ethabi::encode_packed(&[
             Token::String(name.clone()),
             Token::String(symbol.clone()),
             Token::UintSized(precision.into(), 8),
-            Token::Uint(supply.clone()),
+            Token::Uint(types::U256(supply.clone().0)),
             Token::FixedBytes(sidechain_asset_id.clone()),
         ]);
+
         Ok(AddAssetRequestEncoded {
             name,
             symbol,
@@ -314,7 +344,6 @@ impl<T: Trait> AddAssetOutgoingRequest<T> {
 
     pub fn finalize(&self) -> Result<(), DispatchError> {
         self.validate()?;
-        // TODO: will it work?
         crate::RegisteredAsset::<T>::insert(&self.asset_id, AssetKind::Thischain);
         Ok(())
     }
@@ -325,6 +354,7 @@ impl<T: Trait> AddAssetOutgoingRequest<T> {
 }
 
 #[derive(Clone, PartialEq, Eq, Encode, Decode, RuntimeDebug)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct AddAssetRequestEncoded {
     pub name: String,
     pub symbol: String,
@@ -337,6 +367,7 @@ pub struct AddAssetRequestEncoded {
 }
 
 #[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct AddTokenOutgoingRequest<T: Trait> {
     pub author: T::AccountId,
     pub token_address: Address,
@@ -347,14 +378,14 @@ pub struct AddTokenOutgoingRequest<T: Trait> {
 }
 
 impl<T: Trait> AddTokenOutgoingRequest<T> {
-    pub fn to_eth_abi(&self, tx_hash: sp_core::H256) -> Result<AddTokenRequestEncoded, Error<T>> {
+    pub fn to_eth_abi(&self, tx_hash: H256) -> Result<AddTokenRequestEncoded, Error<T>> {
         let hash = H256(tx_hash.0);
         let token_address = self.token_address.clone();
         let ticker = self.ticker.clone();
         let name = self.name.clone();
         let decimals = self.decimals;
         let raw = ethabi::encode_packed(&[
-            Token::Address(token_address),
+            Token::Address(types::H160(token_address.0)),
             Token::String(ticker.clone()),
             Token::String(name.clone()),
             Token::UintSized(decimals.into(), 8),
@@ -398,6 +429,7 @@ impl<T: Trait> AddTokenOutgoingRequest<T> {
 }
 
 #[derive(Clone, PartialEq, Eq, Encode, Decode, RuntimeDebug)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct AddTokenRequestEncoded {
     pub token_address: Address,
     pub ticker: String,
@@ -409,6 +441,7 @@ pub struct AddTokenRequestEncoded {
 }
 
 #[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct AddPeerOutgoingRequest<T: Trait> {
     pub author: T::AccountId,
     pub peer_address: Address,
@@ -417,14 +450,11 @@ pub struct AddPeerOutgoingRequest<T: Trait> {
 }
 
 impl<T: Trait> AddPeerOutgoingRequest<T> {
-    pub fn to_eth_abi(
-        &self,
-        tx_hash: sp_core::H256,
-    ) -> Result<AddPeerOutgoingRequestEncoded, Error<T>> {
+    pub fn to_eth_abi(&self, tx_hash: H256) -> Result<AddPeerOutgoingRequestEncoded, Error<T>> {
         let tx_hash = H256(tx_hash.0);
         let peer_address = self.peer_address;
         let raw = ethabi::encode_packed(&[
-            Token::Address(peer_address.clone()),
+            Token::Address(types::H160(peer_address.clone().0)),
             Token::FixedBytes(tx_hash.0.to_vec()),
         ]);
         Ok(AddPeerOutgoingRequestEncoded {
@@ -439,7 +469,7 @@ impl<T: Trait> AddPeerOutgoingRequest<T> {
         ensure!(peers.len() <= MAX_PEERS, Error::<T>::CantAddMorePeers);
         ensure!(
             !peers.contains(&self.peer_account_id),
-            Error::<T>::UnknownPeerId
+            Error::<T>::PeerIsAlreadyAdded
         );
         Ok(peers)
     }
@@ -465,6 +495,7 @@ impl<T: Trait> AddPeerOutgoingRequest<T> {
 }
 
 #[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct RemovePeerOutgoingRequest<T: Trait> {
     pub author: T::AccountId,
     pub peer_account_id: T::AccountId,
@@ -473,14 +504,11 @@ pub struct RemovePeerOutgoingRequest<T: Trait> {
 }
 
 impl<T: Trait> RemovePeerOutgoingRequest<T> {
-    pub fn to_eth_abi(
-        &self,
-        tx_hash: sp_core::H256,
-    ) -> Result<RemovePeerOutgoingRequestEncoded, Error<T>> {
+    pub fn to_eth_abi(&self, tx_hash: H256) -> Result<RemovePeerOutgoingRequestEncoded, Error<T>> {
         let tx_hash = H256(tx_hash.0);
         let peer_address = self.peer_address;
         let raw = ethabi::encode_packed(&[
-            Token::Address(peer_address.clone()),
+            Token::Address(types::H160(peer_address.clone().0)),
             Token::FixedBytes(tx_hash.0.to_vec()),
         ]);
         Ok(RemovePeerOutgoingRequestEncoded {
@@ -525,6 +553,7 @@ impl<T: Trait> RemovePeerOutgoingRequest<T> {
 }
 
 #[derive(Clone, PartialEq, Eq, Encode, Decode, RuntimeDebug)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct AddPeerOutgoingRequestEncoded {
     pub peer_address: Address,
     pub tx_hash: H256,
@@ -533,6 +562,7 @@ pub struct AddPeerOutgoingRequestEncoded {
 }
 
 #[derive(Clone, PartialEq, Eq, Encode, Decode, RuntimeDebug)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct RemovePeerOutgoingRequestEncoded {
     pub peer_address: Address,
     pub tx_hash: H256,

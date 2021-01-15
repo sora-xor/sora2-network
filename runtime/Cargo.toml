@@ -35,6 +35,7 @@ trading-pair-runtime-api = { path = "../pallets/trading-pair/runtime-api", defau
 assets-runtime-api = { path = "../pallets/assets/runtime-api", default-features = false}
 liquidity-proxy-runtime-api = { path = "../pallets/liquidity-proxy/runtime-api", default-features = false}
 eth-bridge = { path = "../pallets/eth-bridge", default-features = false }
+eth-bridge-runtime-api = { path = "../pallets/eth-bridge/runtime-api", default-features = false }
 bridge-multisig = { git = "https://github.com/soramitsu/sora2-frame-pallets.git", branch = "selected-v2.0.0", package = "pallet-multisig", default-features = false }
 farming-runtime-api = { path = "../pallets/farming/runtime-api", default-features = false}
 iroha-migration-runtime-api = { path = "../pallets/iroha-migration/runtime-api", default-features = false }
@@ -128,6 +129,7 @@ std = [
     'dex-api/std',
     'dex-manager/std',
     'eth-bridge/std',
+    'eth-bridge-runtime-api/std',
     'farming/std',
     'faucet/std',
     'iroha-migration/std',

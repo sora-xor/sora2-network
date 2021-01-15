@@ -45,8 +45,10 @@ pub struct Receipt {
     pub block_hash: Option<H256>,
     /// Number of the block this transaction was included within.
     pub block_number: Option<U64>,
-    /// Sender
+    /// Sender.
     pub from: H160,
+    /// Recipient. `None` if contract deployment.
+    pub to: Option<H160>,
     /// Cumulative gas used within the block after this was executed.
     pub cumulative_gas_used: U256,
     /// Gas used by this transaction alone.

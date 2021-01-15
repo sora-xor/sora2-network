@@ -1706,6 +1706,37 @@ dependencies = [
 ]
 
 [[package]]
+name = "eth-bridge-rpc"
+version = "0.1.0"
+dependencies = [
+ "common",
+ "eth-bridge",
+ "eth-bridge-runtime-api",
+ "jsonrpc-core 15.1.0",
+ "jsonrpc-core-client",
+ "jsonrpc-derive",
+ "parity-scale-codec",
+ "serde",
+ "sp-api",
+ "sp-blockchain",
+ "sp-core",
+ "sp-rpc",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
+name = "eth-bridge-runtime-api"
+version = "0.1.0"
+dependencies = [
+ "parity-scale-codec",
+ "serde",
+ "sp-api",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
 name = "ethabi"
 version = "12.0.3"
 source = "git+https://github.com/vmarkushin/ethabi.git?branch=no-std#704bda95f1498ed6171bcdb81487bd3810466ead"
@@ -2194,6 +2225,7 @@ dependencies = [
  "derive_more 0.15.0",
  "dex-api-rpc",
  "dex-manager-rpc",
+ "eth-bridge-rpc",
  "exit-future 0.1.4",
  "farming-rpc",
  "faucet",
@@ -2273,6 +2305,7 @@ dependencies = [
  "dex-manager-runtime-api",
  "dex-runtime-api",
  "eth-bridge",
+ "eth-bridge-runtime-api",
  "farming",
  "farming-runtime-api",
  "faucet",

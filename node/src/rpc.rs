@@ -2,9 +2,9 @@
 
 use common::TradingPair;
 use framenode_runtime::{
-    opaque::Block, AccountId, AssetId, AssetSymbol, Balance, BalancePrecision, BlockNumber, DEXId,
-    FarmId, FarmInfo, FarmerInfo, FilterMode, Index, LiquiditySourceType, SwapVariant,
-    TechAccountId,
+    eth_bridge, opaque::Block, AccountId, AssetId, AssetSymbol, Balance, BalancePrecision,
+    BlockNumber, DEXId, FarmId, FarmInfo, FarmerInfo, FilterMode, Index, LiquiditySourceType,
+    Runtime, SwapVariant, TechAccountId,
 };
 pub use sc_rpc::DenyUnsafe;
 pub use sc_rpc::SubscriptionTaskExecutor;
@@ -75,6 +75,18 @@ where
         FarmInfo<AccountId, AssetId, BlockNumber>,
         FarmerInfo<AccountId, TechAccountId, BlockNumber>,
     >,
+    C::Api: eth_bridge_rpc::EthBridgeRuntimeApi<
+        Block,
+        sp_core::H256,
+        eth_bridge::SignatureParams,
+        AccountId,
+        eth_bridge::AssetKind,
+        AssetId,
+        sp_core::H160,
+        eth_bridge::OffchainRequest<Runtime>,
+        eth_bridge::RequestStatus,
+        eth_bridge::OutgoingRequestEncoded,
+    >,
     C::Api: iroha_migration_rpc::IrohaMigrationRuntimeAPI<Block>,
     C::Api: BlockBuilder<Block>,
     P: TransactionPool + Send + Sync + 'static,
@@ -87,7 +99,9 @@ where
     use liquidity_proxy_rpc::{LiquidityProxyAPI, LiquidityProxyClient};
     use pallet_transaction_payment_rpc::{TransactionPayment, TransactionPaymentApi};
     //use substrate_frame_rpc_system::{FullSystem, SystemApi};
+    use eth_bridge_rpc::{EthBridgeApi, EthBridgeRpc};
     use trading_pair_rpc::{TradingPairAPI, TradingPairClient};
+
     let mut io = jsonrpc_core::IoHandler::default();
     let FullDeps {
         client,
@@ -114,6 +128,7 @@ where
         client.clone(),
     )));
     io.extend_with(FarmingApi::to_delegate(FarmingRpc::new(client.clone())));
+    io.extend_with(EthBridgeApi::to_delegate(EthBridgeRpc::new(client.clone())));
     io.extend_with(IrohaMigrationAPI::to_delegate(IrohaMigrationClient::new(
         client.clone(),
     )));

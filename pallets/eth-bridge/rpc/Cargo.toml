@@ -1,9 +1,9 @@
 [package]
-authors = ['Nikita Puzankov <puzankov@soramitsu.co.jp>']
+name = "eth-bridge-rpc"
+authors = []
 description = 'Polkaswap RPC for farming operations.'
 edition = "2018"
 license = 'MIT OR Apache-2.0'
-name = "farming-rpc"
 repository = 'https://github.com/soramitsu/sora2-substrate/'
 version = "0.1.0"
 
@@ -19,6 +19,6 @@ sp-blockchain = { version = "2.0.0" }
 sp-std = { version = "2.0.0" }
 sp-core = { version = "2.0.0" }
 sp-rpc = { version = "2.0.0" }
-farming = { path = "../" }
-farming-runtime-api = { path = "../runtime-api" }
+eth-bridge = { path = "../" }
+eth-bridge-runtime-api = { path = "../runtime-api" }
 common = { path = "../../../common" }

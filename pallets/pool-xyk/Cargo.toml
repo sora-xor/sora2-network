@@ -5,7 +5,7 @@ edition = '2018'
 homepage = 'https://github.com/soramitsu/SoraNeo-substrate'
 license = 'Unlicense'
 name = 'pool-xyk'
-repository = 'https://github.com/soramitsu/SoraNeo-substrate'
+repository = 'https://github.com/soramitsu/sora2-substrate'
 version = '0.1.0'
 
 [package.metadata.docs.rs]

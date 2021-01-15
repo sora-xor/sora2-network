@@ -14,7 +14,6 @@ use sp_std::convert::TryFrom;
 use sp_std::fmt::Display;
 use sp_std::ops::*;
 use sp_std::str::FromStr;
-
 use static_assertions::_core::fmt::Formatter;
 
 use crate::{fixed, Amount, Fixed, FixedInner};

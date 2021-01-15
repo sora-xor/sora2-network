@@ -22,8 +22,7 @@ EOF
 `
 eval "$getopt_code"
 
-
-export RUST_LOG="eth_bridge=debug"
+export RUST_LOG="runtime=debug"
 
 localid=`mktemp`
 tmpdir=`dirname $localid`

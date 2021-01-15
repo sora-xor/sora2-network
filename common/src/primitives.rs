@@ -297,8 +297,29 @@ impl Default for DEXId {
 pub type BalancePrecision = u8;
 
 #[derive(Encode, Decode, Eq, PartialEq, Clone, Ord, PartialOrd, RuntimeDebug)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Hash))]
+#[cfg_attr(feature = "std", derive(Hash))]
 pub struct AssetSymbol(pub Vec<u8>);
+
+#[cfg(feature = "std")]
+impl Serialize for AssetSymbol {
+    fn serialize<S>(&self, serializer: S) -> Result<<S as Serializer>::Ok, <S as Serializer>::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_str(&format!("{}", self))
+    }
+}
+
+#[cfg(feature = "std")]
+impl<'de> Deserialize<'de> for AssetSymbol {
+    fn deserialize<D>(deserializer: D) -> Result<Self, <D as Deserializer<'de>>::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let s = String::deserialize(deserializer)?;
+        Self::from_str(&s).map_err(|str_err| serde::de::Error::custom(str_err))
+    }
+}
 
 #[cfg(feature = "std")]
 impl FromStr for AssetSymbol {

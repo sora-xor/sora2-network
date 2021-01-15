@@ -4,14 +4,13 @@
 extern crate alloc;
 extern crate jsonrpc_core as rpc;
 
-use crate::types::{Address, Log, TransactionReceipt, H160, U64};
+use crate::types::{Log, TransactionReceipt};
 use alloc::string::String;
-use serde::{Deserialize, Serialize};
 use codec::{Decode, Encode};
-use common::{prelude::Balance, AssetSymbol, BalancePrecision};
+use common::{prelude::Balance, AssetSymbol, BalancePrecision, Fixed};
 use core::{convert::TryFrom, fmt, line, stringify};
 use ethabi::ParamType;
-use ethereum_types::H256;
+use frame_support::traits::GetCallName;
 use frame_support::{
     debug, decl_error, decl_event, decl_module, decl_storage,
     dispatch::{DispatchError, DispatchResult},
@@ -38,7 +37,9 @@ use requests::*;
 use rpc::Params;
 use rustc_hex::ToHex;
 use secp256k1::PublicKey;
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use sp_core::{H160, H256};
 use sp_io::hashing::{blake2_256, keccak_256};
 use sp_std::{
     collections::{btree_map::BTreeMap, btree_set::BTreeSet},
@@ -47,14 +48,19 @@ use sp_std::{
     prelude::*,
 };
 
+type Address = H160;
+type EthereumAddress = Address;
+
 #[cfg(test)]
 mod mock;
-mod requests;
+pub mod requests;
 #[cfg(test)]
 mod tests;
 pub mod types;
 
 const URL: &str = "https://eth-ropsten.s0.dev.soranet.soramitsu.co.jp";
+const CONTRACT_ADDRESS: types::H160 = types::H160(hex!("146ba2cdf6bc7df15ffcff2ac1bc83eb33d8197e"));
+const HTTP_REQUEST_TIMEOUT_SECS: u64 = 10;
 
 pub fn serialize<T: serde::Serialize>(t: &T) -> rpc::Value {
     serde_json::to_value(t).expect("Types never fail to serialize.")
@@ -75,6 +81,7 @@ pub const STORAGE_ETH_NODE_URL_KEY: &[u8] = b"eth-bridge-ocw::eth-node-url";
 pub const STORAGE_ETH_NODE_CREDENTIALS_KEY: &[u8] = b"eth-bridge-ocw::eth-node-credentials";
 
 type AssetIdOf<T> = <T as assets::Trait>::AssetId;
+type Timepoint<T> = bridge_multisig::Timepoint<<T as frame_system::Trait>::BlockNumber>;
 
 pub mod crypto {
     use crate::KEY_TYPE;
@@ -123,6 +130,7 @@ pub fn public_key_to_eth_address(pub_key: &PublicKey) -> Address {
 
 /// The type of request we can send to the offchain worker
 #[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug)]
+#[cfg_attr(feature = "std", derive(Serialize))]
 pub enum OutgoingRequest<T: Trait> {
     /// Incoming transfer from Substrate to Ethereum request.
     OutgoingTransfer(OutgoingTransfer<T>),
@@ -147,7 +155,7 @@ impl<T: Trait> OutgoingRequest<T> {
         }
     }
 
-    fn to_eth_abi(&self, tx_hash: sp_core::H256) -> Result<OutgoingRequestEncoded, Error<T>> {
+    fn to_eth_abi(&self, tx_hash: H256) -> Result<OutgoingRequestEncoded, Error<T>> {
         match self {
             OutgoingRequest::OutgoingTransfer(transfer) => transfer
                 .to_eth_abi(tx_hash)
@@ -167,9 +175,9 @@ impl<T: Trait> OutgoingRequest<T> {
         }
     }
 
-    fn hash(&self) -> sp_core::H256 {
+    fn hash(&self) -> H256 {
         let hash = self.using_encoded(blake2_256);
-        sp_core::H256(hash)
+        H256(hash)
     }
 
     fn validate(&self) -> Result<(), DispatchError> {
@@ -214,6 +222,7 @@ impl<T: Trait> OutgoingRequest<T> {
 }
 
 #[derive(Clone, Encode, Decode, RuntimeDebug, PartialEq, Eq)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum IncomingRequestKind {
     Transfer,
     AddAsset,
@@ -232,7 +241,7 @@ pub enum IncomingRequest<T: Trait> {
 }
 
 impl<T: Trait> IncomingRequest<T> {
-    fn tx_hash(&self) -> &sp_core::H256 {
+    fn tx_hash(&self) -> &H256 {
         match self {
             IncomingRequest::Transfer(request) => &request.tx_hash,
             IncomingRequest::AddAsset(request) => &request.tx_hash,
@@ -268,7 +277,7 @@ impl<T: Trait> IncomingRequest<T> {
         }
     }
 
-    pub fn finalize(&self) -> Result<sp_core::H256, DispatchError> {
+    pub fn finalize(&self) -> Result<H256, DispatchError> {
         match self {
             IncomingRequest::Transfer(request) => request.finalize(),
             IncomingRequest::AddAsset(request) => request.finalize(),
@@ -276,12 +285,22 @@ impl<T: Trait> IncomingRequest<T> {
             IncomingRequest::ClaimPswap(request) => request.finalize(),
         }
     }
+
+    pub fn timepoint(&self) -> Timepoint<T> {
+        match self {
+            IncomingRequest::Transfer(request) => request.timepoint(),
+            IncomingRequest::AddAsset(request) => request.timepoint(),
+            IncomingRequest::ChangePeers(request) => request.timepoint(),
+            IncomingRequest::ClaimPswap(request) => request.timepoint(),
+        }
+    }
 }
 
 #[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug)]
+#[cfg_attr(feature = "std", derive(Serialize))]
 pub enum OffchainRequest<T: Trait> {
-    Outgoing(OutgoingRequest<T>, sp_core::H256),
-    Incoming(T::AccountId, H256, IncomingRequestKind),
+    Outgoing(OutgoingRequest<T>, H256),
+    Incoming(T::AccountId, H256, Timepoint<T>, IncomingRequestKind),
 }
 
 impl<T: Trait> OffchainRequest<T> {
@@ -290,24 +309,24 @@ impl<T: Trait> OffchainRequest<T> {
         Self::Outgoing(request, hash)
     }
 
-    fn hash(&self) -> sp_core::H256 {
+    fn hash(&self) -> H256 {
         match self {
             OffchainRequest::Outgoing(_request, hash) => *hash,
-            OffchainRequest::Incoming(_, hash, _) => sp_core::H256(hash.0.clone()),
+            OffchainRequest::Incoming(_, hash, ..) => H256(hash.0.clone()),
         }
     }
 
     fn author(&self) -> &T::AccountId {
         match self {
             OffchainRequest::Outgoing(request, _) => request.author(),
-            OffchainRequest::Incoming(author, _, _) => author,
+            OffchainRequest::Incoming(author, ..) => author,
         }
     }
 
     fn prepare(&mut self) -> Result<(), DispatchError> {
         match self {
             OffchainRequest::Outgoing(request, _) => request.prepare(),
-            OffchainRequest::Incoming(_, _, _) => Ok(()),
+            OffchainRequest::Incoming(..) => Ok(()),
         }
     }
 
@@ -315,19 +334,20 @@ impl<T: Trait> OffchainRequest<T> {
     fn cancel(&self) -> Result<(), DispatchError> {
         match self {
             OffchainRequest::Outgoing(request, _) => request.cancel(),
-            OffchainRequest::Incoming(_, _, _) => Ok(()),
+            OffchainRequest::Incoming(..) => Ok(()),
         }
     }
 
     fn validate(&self) -> Result<(), DispatchError> {
         match self {
             OffchainRequest::Outgoing(request, _) => request.validate(),
-            OffchainRequest::Incoming(_, _, _) => Ok(()),
+            OffchainRequest::Incoming(..) => Ok(()),
         }
     }
 }
 
 #[derive(Clone, Encode, Decode, RuntimeDebug, PartialEq, Eq)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum OutgoingRequestEncoded {
     /// ETH-encoded incoming transfer from Substrate to Ethereum request.
     OutgoingTransfer(OutgoingTransferEthEncoded),
@@ -343,7 +363,7 @@ pub enum OutgoingRequestEncoded {
 
 impl OutgoingRequestEncoded {
     #[allow(unused)]
-    fn hash(&self) -> sp_core::H256 {
+    fn hash(&self) -> H256 {
         let hash = match self {
             OutgoingRequestEncoded::OutgoingTransfer(transfer) => transfer.tx_hash,
             OutgoingRequestEncoded::AddAsset(request) => request.hash,
@@ -351,7 +371,7 @@ impl OutgoingRequestEncoded {
             OutgoingRequestEncoded::AddPeer(request) => request.tx_hash,
             OutgoingRequestEncoded::RemovePeer(request) => request.tx_hash,
         };
-        sp_core::H256(hash.0)
+        H256(hash.0)
     }
 
     fn as_raw(&self) -> &[u8] {
@@ -366,6 +386,7 @@ impl OutgoingRequestEncoded {
 }
 
 #[derive(PartialEq, Eq, Encode, Decode, RuntimeDebug)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum RequestStatus {
     Pending,
     Ready,
@@ -384,7 +405,7 @@ pub trait Trait:
     /// The identifier type for an offchain worker.
     type PeerId: AppCrypto<Self::Public, Self::Signature>;
     /// The overarching dispatch call type.
-    type Call: From<Call<Self>>;
+    type Call: From<Call<Self>> + Encode;
 }
 
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
@@ -405,14 +426,14 @@ decl_storage! {
     trait Store for Module<T: Trait> as EthBridge {
         pub RequestsQueue get(fn requests_queue): Vec<OffchainRequest<T>>;
 
-        pub IncomingRequests get(fn incoming_requests): map hasher(identity) sp_core::H256 => Option<IncomingRequest<T>>;
-        pub PendingIncomingRequests get(fn pending_incoming_requests): BTreeSet<sp_core::H256>;
+        pub IncomingRequests get(fn incoming_requests): map hasher(identity) H256 => Option<IncomingRequest<T>>;
+        pub PendingIncomingRequests get(fn pending_incoming_requests): BTreeSet<H256>;
 
-        pub Request get(fn request): map hasher(identity) sp_core::H256 => Option<OffchainRequest<T>>;
-        pub RequestStatuses get(fn request_status): map hasher(identity) sp_core::H256 => Option<RequestStatus>;
-        pub RequestSubmissionHeight get(fn request_submission_height): map hasher(identity) sp_core::H256 => T::BlockNumber;
-        RequestApproves get(fn approves): map hasher(identity) sp_core::H256 => BTreeSet<SignatureParams>;
-        AccountRequests get(fn account_requests): map hasher(identity) T::AccountId => Vec<sp_core::H256>; // TODO: non-set
+        pub Request get(fn request): map hasher(identity) H256 => Option<OffchainRequest<T>>;
+        pub RequestStatuses get(fn request_status): map hasher(identity) H256 => Option<RequestStatus>;
+        pub RequestSubmissionHeight get(fn request_submission_height): map hasher(identity) H256 => T::BlockNumber;
+        RequestApproves get(fn approves): map hasher(identity) H256 => BTreeSet<SignatureParams>;
+        AccountRequests get(fn account_requests): map hasher(identity) T::AccountId => Vec<H256>; // TODO: non-set
 
         RegisteredAsset get(fn registered_asset): map hasher(identity) T::AssetId => Option<AssetKind>;
         RegisteredSidechainAsset get(fn registered_sidechain_asset): map hasher(identity) Address => Option<T::AssetId>;
@@ -431,8 +452,8 @@ decl_storage! {
         PswapOwners: map hasher(identity) Address => Option<Balance>;
     }
     add_extra_genesis {
-        config(tokens): Vec<(T::AssetId, Option<sp_core::H160>, AssetKind)>;
-        config(pswap_owners): Vec<(sp_core::H160, Balance)>;
+        config(tokens): Vec<(T::AssetId, Option<H160>, AssetKind)>;
+        config(pswap_owners): Vec<(H160, Balance)>;
         build(|config| {
             for (asset_id, opt_token_address, kind) in &config.tokens {
                 if let Some(token_address) = opt_token_address {
@@ -457,9 +478,9 @@ decl_event!(
     {
         SomethingStored(u32, AccountId),
         ApprovesCollected(OutgoingRequestEncoded, BTreeSet<SignatureParams>),
-        RequestFinalizationFailed(sp_core::H256),
-        IncomingRequestFinalizationFailed(sp_core::H256),
-        IncomingRequestFinalized(sp_core::H256),
+        RequestFinalizationFailed(H256),
+        IncomingRequestFinalizationFailed(H256),
+        IncomingRequestFinalized(H256),
     }
 );
 
@@ -499,9 +520,11 @@ decl_error! {
         FailedToGetAssetById,
         CantAddMorePeers,
         CantRemoveMorePeers,
+        PeerIsAlreadyAdded,
         UnknownPeerId,
         CantReserveFunds,
         AlreadyClaimed,
+        UnknownContractAddress,
         Other,
     }
 }
@@ -520,6 +543,7 @@ decl_module! {
         pub fn add_asset(
             origin,
             asset_id: AssetIdOf<T>,
+            supply: Balance,
         ) {
             debug::debug!("called add_asset");
             let from = ensure_signed(origin)?;
@@ -527,6 +551,7 @@ decl_module! {
             Self::add_request(OffchainRequest::outgoing(OutgoingRequest::AddAsset(AddAssetOutgoingRequest {
                 author: from.clone(),
                 asset_id,
+                supply,
                 nonce,
             })))?;
             frame_system::Module::<T>::inc_account_nonce(&from);
@@ -535,7 +560,7 @@ decl_module! {
         #[weight = 0]
         pub fn add_eth_token(
             origin,
-            token_address: Address,
+            token_address: EthereumAddress,
             ticker: String,
             name: String,
             decimals: u8,
@@ -560,7 +585,7 @@ decl_module! {
         pub fn transfer_to_sidechain(
             origin,
             asset_id: AssetIdOf<T>,
-            to: H160,
+            to: EthereumAddress,
             amount: Balance
         ) {
             debug::debug!("called transfer_to_sidechain");
@@ -580,28 +605,31 @@ decl_module! {
         pub fn request_from_sidechain(origin, eth_tx_hash: H256, kind: IncomingRequestKind) {
             debug::debug!("called request_from_sidechain");
             let from = ensure_signed(origin)?;
-            Self::add_request(OffchainRequest::Incoming(from, eth_tx_hash, kind))?;
+            let timepoint = bridge_multisig::Module::<T>::timepoint();
+            Self::add_request(OffchainRequest::Incoming(from, eth_tx_hash, timepoint, kind))?;
         }
 
         #[weight = (0, Pays::No)]
-        pub fn finalize_incoming_request(origin, result: Result<IncomingRequest<T>, (sp_core::H256, DispatchError)>) {
+        pub fn finalize_incoming_request(origin, result: Result<IncomingRequest<T>, (H256, DispatchError)>) {
             debug::debug!("called finalize_incoming_request");
+
             let from = ensure_signed(origin)?;
             let bridge_account_id = Self::bridge_account();
             ensure!(from == bridge_account_id, Error::<T>::Forbidden);
+
             let result = result.and_then(|req| {
-                let hash = sp_core::H256(req.tx_hash().0);
+                let hash = H256(req.tx_hash().0);
                 let result = req.finalize().map_err(|e| (hash, e));
                 if result.is_err() {
                     if let Err(e) = req.cancel() {
-                        debug::error!("Request cancellation failed: {:?}, {:?}", e, req)
+                        debug::error!("Request cancellation failed: {:?}, {:?}", e, req);
                     }
                 }
                 result
             });
             let hash = match result {
                 Ok(hash) => {
-                    debug::warn!("Incoming request finalized failed {:?}", hash);
+                    debug::warn!("Incoming request finalized {:?}", hash);
                     RequestStatuses::insert(hash, RequestStatus::Ready);
                     Self::deposit_event(RawEvent::IncomingRequestFinalized(hash));
                     hash
@@ -620,7 +648,7 @@ decl_module! {
         }
 
         #[weight = (0, Pays::No)]
-        pub fn add_peer(origin, account_id: T::AccountId, address: Address) {
+        pub fn add_peer(origin, account_id: T::AccountId, address: EthereumAddress) {
             debug::debug!("called change_peers_out");
             let from = ensure_signed(origin.clone())?;
             ensure!(from == Self::authority_account(), Error::<T>::Forbidden);
@@ -677,33 +705,45 @@ decl_module! {
             debug::debug!("called approve_request");
             let author = ensure_signed(origin)?;
             Self::ensure_peer(&author)?;
-            if !Self::verify_message(request_encoded.as_raw(), &signature_params, &ocw_public, &author) {
+            if !Self::verify_message(
+                request_encoded.as_raw(),
+                &signature_params,
+                &ocw_public,
+                &author,
+            ) {
                 // TODO: punish the off-chain worker
                 return Err(Error::<T>::InvalidSignature.into());
             }
             debug::info!("Verified request approve {:?}", request_encoded);
             let hash = request.hash();
-            RequestApproves::mutate(&hash, |approves| {
-                let pending_peers_len = if PendingPeer::<T>::get().is_some() { 1 } else { 0 };
-                let need_sigs = majority(Self::peers().len()) + pending_peers_len;
-                approves.insert(signature_params);
-                let current_status = RequestStatuses::get(&hash).unwrap_or(RequestStatus::Pending);
-                if current_status == RequestStatus::Pending && approves.len() == need_sigs {
-                    if let Err(err) = request.finalize() {
-                        debug::error!("Outgoing request finalization failed: {:?}", err);
-                        RequestStatuses::insert(hash, RequestStatus::Failed);
-                        Self::deposit_event(RawEvent::RequestFinalizationFailed(hash));
-                        if let Err(e) = request.cancel() {
-                            debug::error!("Request cancellation failed: {:?}, {:?}", e, request)
-                        }
-                    } else {
-                        debug::debug!("Outgoing request finalized {:?}", hash);
-                        RequestStatuses::insert(hash, RequestStatus::Ready);
-                        Self::deposit_event(RawEvent::ApprovesCollected(request_encoded, approves.clone()));
+            let mut approves = RequestApproves::get(&hash);
+            let pending_peers_len = if PendingPeer::<T>::get().is_some() {
+                1
+            } else {
+                0
+            };
+            let need_sigs = majority(Self::peers().len()) + pending_peers_len;
+            approves.insert(signature_params);
+            RequestApproves::insert(&hash, &approves);
+            let current_status = RequestStatuses::get(&hash).unwrap_or(RequestStatus::Pending);
+            if current_status == RequestStatus::Pending && approves.len() == need_sigs {
+                if let Err(err) = request.finalize() {
+                    debug::error!("Outgoing request finalization failed: {:?}", err);
+                    RequestStatuses::insert(hash, RequestStatus::Failed);
+                    Self::deposit_event(RawEvent::RequestFinalizationFailed(hash));
+                    if let Err(e) = request.cancel() {
+                        debug::error!("Request cancellation failed: {:?}, {:?}", e, request)
                     }
-                    Self::remove_request_from_queue(&hash);
+                } else {
+                    debug::debug!("Outgoing request finalized {:?}", hash);
+                    RequestStatuses::insert(hash, RequestStatus::Ready);
+                    Self::deposit_event(RawEvent::ApprovesCollected(
+                        request_encoded,
+                        approves.clone(),
+                    ));
                 }
-            });
+                Self::remove_request_from_queue(&hash);
+            }
         }
 
         fn offchain_worker(block_number: T::BlockNumber) {
@@ -760,7 +800,7 @@ impl<T: Trait> Module<T> {
         Ok(())
     }
 
-    fn remove_request_from_queue(hash: &sp_core::H256) {
+    fn remove_request_from_queue(hash: &H256) {
         RequestsQueue::<T>::mutate(|queue| {
             if let Some(pos) = queue.iter().position(|x| x.hash() == *hash) {
                 queue.remove(pos);
@@ -799,15 +839,15 @@ impl<T: Trait> Module<T> {
                         .pop()
                         .and_then(|x| x.to_address())
                         .ok_or(Error::<T>::InvalidAddress)?;
-                    let amount = Balance::from(
-                        u128::try_from(
+                    let amount = Balance::from(Fixed::from_bits(
+                        i128::try_from(
                             decoded
                                 .pop()
                                 .and_then(|x| x.to_uint())
                                 .ok_or(Error::<T>::InvalidAmount)?,
                         )
                         .map_err(|_| Error::<T>::InvalidAmount)?,
-                    );
+                    ));
                     let to = T::AccountId::decode(
                         &mut &decoded
                             .pop()
@@ -815,7 +855,7 @@ impl<T: Trait> Module<T> {
                             .ok_or(Error::<T>::InvalidAccountId)?[..],
                     )
                     .map_err(|_| Error::<T>::InvalidAccountId)?;
-                    return Ok(ContractEvent::Deposit(to, amount, token, asset_id));
+                    return Ok(ContractEvent::Deposit(to, amount, H160(token.0), asset_id));
                 }
                 // ChangePeers(address,bool)
                 &hex!("a9fac23eb012e72fbd1f453498e7069c380385436763ee2c1c057b170d88d9f9") => {
@@ -830,7 +870,7 @@ impl<T: Trait> Module<T> {
                         .pop()
                         .and_then(|x| x.to_address())
                         .ok_or(Error::<T>::InvalidAddress)?;
-                    return Ok(ContractEvent::ChangePeers(peer_address, added));
+                    return Ok(ContractEvent::ChangePeers(H160(peer_address.0), added));
                 }
                 &hex!("4eb3aea69bf61684354f60a43d355c3026751ddd0ea4e1f5afc1274b96c65505") => {
                     let types = [ParamType::FixedBytes(32)];
@@ -883,7 +923,6 @@ impl<T: Trait> Module<T> {
     }
 
     fn sign_message(msg: &[u8]) -> (SignatureParams, secp256k1::PublicKey) {
-        // TODO: encrypt the key
         let secret_s = StorageValueRef::persistent(STORAGE_PEER_SECRET_KEY);
         let sk = secp256k1::SecretKey::parse_slice(
             &secret_s
@@ -911,7 +950,7 @@ impl<T: Trait> Module<T> {
         let s_approved_pending_incoming_requests =
             StorageValueRef::persistent(b"eth-bridge-ocw::approved-pending-incoming-request");
         let mut approved = s_approved_pending_incoming_requests
-            .get::<BTreeMap<sp_core::H256, T::BlockNumber>>()
+            .get::<BTreeMap<H256, T::BlockNumber>>()
             .flatten()
             .unwrap_or_default();
         for hash in <Self as Store>::PendingIncomingRequests::get() {
@@ -945,7 +984,7 @@ impl<T: Trait> Module<T> {
         s_eth_height.set(&current_height);
         let s_handled_requests = StorageValueRef::persistent(b"eth-bridge-ocw::handled-request");
         let mut handled = s_handled_requests
-            .get::<BTreeMap<sp_core::H256, T::BlockNumber>>()
+            .get::<BTreeMap<H256, T::BlockNumber>>()
             .flatten()
             .unwrap_or_default();
 
@@ -959,19 +998,20 @@ impl<T: Trait> Module<T> {
             };
             if need_to_handle {
                 let error = match request {
-                    OffchainRequest::Incoming(_author, tx_hash, _request) => {
+                    OffchainRequest::Incoming(_author, tx_hash, timepoint, _request) => {
+                        debug::debug!("Loaded approved tx {}", tx_hash);
                         match Self::load_approved_tx_receipt(tx_hash)
-                            .and_then(Self::parse_incoming_request)
+                            .and_then(|tx| Self::parse_incoming_request(tx, timepoint))
                         {
                             Ok(incoming_request) => {
                                 let register_call =
                                     Call::<T>::register_incoming_request(incoming_request);
                                 let call = bridge_multisig::Call::as_multi(
                                     Self::bridge_account(),
-                                    None,
-                                    register_call.encode(),
+                                    Some(timepoint),
+                                    <<T as Trait>::Call>::from(register_call).encode(),
                                     false,
-                                    Weight::from(1000000u32),
+                                    Weight::from(10_000_000_000_000u64),
                                 );
                                 Self::send_signed_transaction::<bridge_multisig::Call<T>>(call)
                                     .err()
@@ -980,7 +1020,8 @@ impl<T: Trait> Module<T> {
                                 Some(Error::<T>::HttpFetchingError)
                             }
                             Err(e) => Self::send_incoming_request_result(Err((
-                                sp_core::H256(tx_hash.0),
+                                H256(tx_hash.0),
+                                timepoint,
                                 e.into(),
                             )))
                             .err(),
@@ -1012,7 +1053,9 @@ impl<T: Trait> Module<T> {
     ) -> Result<Vec<u8>, Error<T>> {
         debug::trace!("Sending request to: {}", url);
         let mut request = rt_offchain::http::Request::post(url, vec![body]);
-        let timeout = sp_io::offchain::timestamp().add(rt_offchain::Duration::from_millis(10000));
+        let timeout = sp_io::offchain::timestamp().add(rt_offchain::Duration::from_millis(
+            HTTP_REQUEST_TIMEOUT_SECS * 1000,
+        ));
         for (key, value) in headers {
             request = request.add_header(*key, &*value);
         }
@@ -1092,7 +1135,9 @@ impl<T: Trait> Module<T> {
             .collect()
     }
 
-    fn send_signed_transaction<LocalCall: Clone>(call: LocalCall) -> Result<(), Error<T>>
+    fn send_signed_transaction<LocalCall: Clone + GetCallName>(
+        call: LocalCall,
+    ) -> Result<(), Error<T>>
     where
         T: CreateSignedTransaction<LocalCall>,
     {
@@ -1101,6 +1146,7 @@ impl<T: Trait> Module<T> {
             debug::error!("No local account available");
             return Err(<Error<T>>::NoLocalAccountForSigning);
         }
+        debug::debug!("Sending signed transaction: {}", call.get_call_name());
         let result = signer.send_signed_transaction(|_acc| call.clone());
 
         match result {
@@ -1151,7 +1197,7 @@ impl<T: Trait> Module<T> {
                 Self::registered_asset(&asset_id).unwrap_or(AssetKind::Sidechain),
             )))
         } else {
-            let asset_id = T::AssetId::from(sp_core::H256(raw_asset_id.0));
+            let asset_id = T::AssetId::from(H256(raw_asset_id.0));
             let asset_kind = Self::registered_asset(&asset_id);
             if asset_kind.is_none() || asset_kind.unwrap() == AssetKind::Sidechain {
                 fail!(Error::<T>::Other);
@@ -1162,6 +1208,10 @@ impl<T: Trait> Module<T> {
 
     fn load_approved_tx_receipt(tx_hash: H256) -> Result<TransactionReceipt, DispatchError> {
         let tx_receipt = Self::load_tx_receipt(tx_hash)?;
+        ensure!(
+            tx_receipt.to == Some(CONTRACT_ADDRESS),
+            Error::<T>::UnknownContractAddress
+        );
         // TODO: handle `root` field?
         if tx_receipt.status.unwrap_or(0.into()) == 0.into() {
             fail!(Error::<T>::EthTransactionIsPending);
@@ -1171,20 +1221,20 @@ impl<T: Trait> Module<T> {
 
     fn parse_incoming_request(
         tx_receipt: TransactionReceipt,
+        timepoint: Timepoint<T>,
     ) -> Result<IncomingRequest<T>, DispatchError> {
         let call = Self::parse_main_event(&tx_receipt.logs)?;
         let at_height = tx_receipt
             .block_number
             .expect("'block_number' is null only when the log/transaction is pending; qed")
             .as_u64();
-        let tx_hash = sp_core::H256(tx_receipt.transaction_hash.0);
+        let tx_hash = H256(tx_receipt.transaction_hash.0);
 
         Ok(match call {
             ContractEvent::Deposit(to, amount, token_address, raw_asset_id) => {
                 let (asset_id, asset_kind) =
                     Module::<T>::get_asset_by_raw_asset_id(raw_asset_id, &token_address)?
                         .ok_or(Error::<T>::UnsupportedAssetId)?;
-
                 IncomingRequest::Transfer(IncomingTransfer {
                     from: Default::default(),
                     to,
@@ -1193,6 +1243,7 @@ impl<T: Trait> Module<T> {
                     amount,
                     tx_hash,
                     at_height,
+                    timepoint,
                 })
             }
             ContractEvent::ChangePeers(peer_address, added) => {
@@ -1207,6 +1258,7 @@ impl<T: Trait> Module<T> {
                     added,
                     tx_hash,
                     at_height,
+                    timepoint,
                 })
             }
             ContractEvent::ClaimPswap(account_id) => {
@@ -1214,12 +1266,13 @@ impl<T: Trait> Module<T> {
                     .block_number
                     .expect("'block_number' is null only when the log is pending; qed")
                     .as_u64();
-                let tx_hash = sp_core::H256(tx_receipt.transaction_hash.0);
+                let tx_hash = H256(tx_receipt.transaction_hash.0);
                 IncomingRequest::ClaimPswap(IncomingClaimPswap {
                     account_id,
-                    eth_address: tx_receipt.from,
+                    eth_address: H160(tx_receipt.from.0),
                     tx_hash,
                     at_height,
+                    timepoint,
                 })
             }
             _ => fail!(Error::<T>::UnknownMethodId),
@@ -1227,15 +1280,25 @@ impl<T: Trait> Module<T> {
     }
 
     fn send_incoming_request_result(
-        incoming_request_result: Result<IncomingRequest<T>, (sp_core::H256, DispatchError)>,
+        incoming_request_result: Result<IncomingRequest<T>, (H256, Timepoint<T>, DispatchError)>,
     ) -> Result<(), Error<T>> {
-        let transfer_call = Call::<T>::finalize_incoming_request(incoming_request_result);
+        debug::debug!(
+            "send_incoming_request_result: {:?}",
+            incoming_request_result
+        );
+        let transfer_call = Call::<T>::finalize_incoming_request(
+            incoming_request_result.clone().map_err(|(h, _, e)| (h, e)),
+        );
+        let timepoint = match &incoming_request_result {
+            Ok(r) => r.timepoint(),
+            Err((_, t, ..)) => *t,
+        };
         let call = bridge_multisig::Call::as_multi(
             Self::bridge_account(),
-            None,
-            transfer_call.encode(),
+            Some(timepoint),
+            <<T as Trait>::Call>::from(transfer_call).encode(),
             false,
-            Weight::from(1000000u32),
+            Weight::from(10_000_000_000_000_000u64),
         );
         Self::send_signed_transaction::<bridge_multisig::Call<T>>(call)?;
         Ok(())
@@ -1277,12 +1340,13 @@ impl<T: Trait> Module<T> {
     }
 
     fn load_current_height() -> Option<u64> {
-        Self::json_rpc_request::<_, U64>(1, "eth_blockNumber", &())?
+        Self::json_rpc_request::<_, types::U64>(1, "eth_blockNumber", &())?
             .first()
             .map(|x| x.as_u64())
     }
 
     fn load_tx_receipt(hash: H256) -> Result<TransactionReceipt, Error<T>> {
+        let hash = types::H256(hash.0);
         Self::json_rpc_request::<_, TransactionReceipt>(2, "eth_getTransactionReceipt", &vec![hash])
             .ok_or(Error::<T>::HttpFetchingError)?
             .pop()
@@ -1296,5 +1360,75 @@ impl<T: Trait> Module<T> {
     fn ensure_peer(who: &T::AccountId) -> DispatchResult {
         ensure!(Self::is_peer(who), Error::<T>::Forbidden);
         Ok(())
+    }
+}
+
+impl<T: Trait> Module<T> {
+    const ITEMS_LIMIT: usize = 50;
+
+    /// Get requests data and their statuses by hash.
+    pub fn get_requests(
+        hashes: &[H256],
+    ) -> Result<Vec<(OffchainRequest<T>, RequestStatus)>, DispatchError> {
+        Ok(hashes
+            .iter()
+            .take(Self::ITEMS_LIMIT)
+            .filter_map(|hash| Request::get(hash).zip(Self::request_status(hash)))
+            .collect())
+    }
+
+    /// Get approved outgoing requests data and proofs.
+    pub fn get_approved_requests(
+        hashes: &[H256],
+    ) -> Result<Vec<(OutgoingRequestEncoded, Vec<SignatureParams>)>, DispatchError> {
+        let items = hashes
+            .iter()
+            .take(Self::ITEMS_LIMIT)
+            .filter_map(|hash| {
+                if Self::request_status(hash)? == RequestStatus::Ready {
+                    let request: OffchainRequest<T> = Request::get(hash)?;
+                    match request {
+                        OffchainRequest::Outgoing(request, hash) => {
+                            let encoded = request
+                                .to_eth_abi(hash)
+                                .expect("this conversion was already tested; qed");
+                            Self::get_approves(&[hash.clone()])
+                                .ok()?
+                                .pop()
+                                .map(|approves| (encoded, approves))
+                        }
+                        OffchainRequest::Incoming(..) => None,
+                    }
+                } else {
+                    None
+                }
+            })
+            .collect();
+        Ok(items)
+    }
+
+    /// Get requests approves.
+    pub fn get_approves(hashes: &[H256]) -> Result<Vec<Vec<SignatureParams>>, DispatchError> {
+        Ok(hashes
+            .iter()
+            .take(Self::ITEMS_LIMIT)
+            .map(|hash| RequestApproves::get(hash).into_iter().collect())
+            .collect())
+    }
+
+    /// Get account requests list.
+    pub fn get_account_requests(account: &T::AccountId) -> Result<Vec<H256>, DispatchError> {
+        Ok(Self::account_requests(account))
+    }
+
+    /// Get registered assets and tokens.
+    pub fn get_registered_assets(
+    ) -> Result<Vec<(AssetKind, AssetIdOf<T>, Option<H160>)>, DispatchError> {
+        Ok(RegisteredAsset::<T>::iter()
+            .map(|(asset_id, kind)| {
+                let token_addr = RegisteredSidechainToken::<T>::get(&asset_id).map(|x| H160(x.0));
+                (kind, asset_id, token_addr)
+            })
+            .collect())
     }
 }

@@ -2,7 +2,6 @@
 // `construct_runtime!` does a lot of recursion and requires us to increase the limit to 256.
 #![recursion_limit = "256"]
 
-#[macro_use]
 extern crate alloc;
 use alloc::string::String;
 
@@ -35,7 +34,8 @@ use sp_runtime::{
         OpaqueKeys, SaturatedConversion, Saturating, Verify, Zero,
     },
     transaction_validity::{TransactionSource, TransactionValidity},
-    ApplyExtrinsicResult, FixedPointNumber, MultiSignature, Perbill, Percent, Perquintill,
+    ApplyExtrinsicResult, DispatchError, FixedPointNumber, MultiSignature, Perbill, Percent,
+    Perquintill,
 };
 use sp_std::marker::PhantomData;
 use sp_std::prelude::*;
@@ -69,6 +69,8 @@ pub use sp_runtime::BuildStorage;
 
 pub use bonding_curve_pool;
 pub use eth_bridge;
+#[cfg(feature = "std")]
+use serde::{Serialize, Serializer};
 
 /// An index to a block.
 pub type BlockNumber = u32;
@@ -761,11 +763,26 @@ construct_runtime! {
         MockLiquiditySource4: mock_liquidity_source::<Instance4>::{Module, Call, Storage, Config<T>, Event<T>},
         DEXAPI: dex_api::{Module, Call, Storage, Config, Event<T>},
         Faucet: faucet::{Module, Call, Config<T>, Event<T>, ValidateUnsigned},
-        EthBridge: eth_bridge::{Module, Call, Config<T>, Event<T>},
+        EthBridge: eth_bridge::{Module, Call, Storage, Config<T>, Event<T>},
         Farming: farming::{Module, Call, Storage, Config<T>, Event<T>},
         PswapDistribution: pswap_distribution::{Module, Call, Storage, Config<T>, Event<T>},
         Multisig: pallet_multisig::{Module, Call, Storage, Event<T>},
         IrohaMigration: iroha_migration::{Module, Call, Storage, Config<T>, Event<T>},
+    }
+}
+
+// This is needed, because the compiler automatically places `Serialize` bound
+// when `derive` is used, but the method is never actually used
+#[cfg(feature = "std")]
+impl Serialize for Runtime {
+    fn serialize<S>(
+        &self,
+        _serializer: S,
+    ) -> Result<<S as Serializer>::Ok, <S as Serializer>::Error>
+    where
+        S: Serializer,
+    {
+        unreachable!("we never serialize runtime; qed")
     }
 }
 
@@ -1020,6 +1037,60 @@ impl_runtime_apis! {
 
         fn get_farmer_info(who: AccountId, name: FarmId) -> Option<FarmerInfo<AccountId, TechAccountId, BlockNumber>> {
             Farming::get_farmer_info(who, name).ok()?
+        }
+    }
+
+    impl
+        eth_bridge_runtime_api::EthBridgeRuntimeApi<
+            Block,
+            sp_core::H256,
+            eth_bridge::SignatureParams,
+            AccountId,
+            eth_bridge::AssetKind,
+            AssetId,
+            sp_core::H160,
+            eth_bridge::OffchainRequest<Runtime>,
+            eth_bridge::RequestStatus,
+            eth_bridge::OutgoingRequestEncoded,
+        > for Runtime
+    {
+        fn get_requests(
+            hashes: Vec<sp_core::H256>,
+        ) -> Result<
+            Vec<(
+                eth_bridge::OffchainRequest<Runtime>,
+                eth_bridge::RequestStatus,
+            )>,
+            DispatchError,
+        > {
+            EthBridge::get_requests(&hashes)
+        }
+
+        fn get_approved_requests(
+            hashes: Vec<sp_core::H256>,
+        ) -> Result<
+            Vec<(
+                eth_bridge::OutgoingRequestEncoded,
+                Vec<eth_bridge::SignatureParams>,
+            )>,
+            DispatchError,
+        > {
+            EthBridge::get_approved_requests(&hashes)
+        }
+
+        fn get_approves(
+            hashes: Vec<sp_core::H256>,
+        ) -> Result<Vec<Vec<eth_bridge::SignatureParams>>, DispatchError> {
+            EthBridge::get_approves(&hashes)
+        }
+
+        fn get_account_requests(account_id: AccountId) -> Result<Vec<sp_core::H256>, DispatchError> {
+            EthBridge::get_account_requests(&account_id)
+        }
+
+        fn get_registered_assets(
+        ) -> Result<Vec<(eth_bridge::AssetKind, AssetId, Option<sp_core::H160>)>, DispatchError> {
+            EthBridge::get_registered_assets()
         }
     }
 
