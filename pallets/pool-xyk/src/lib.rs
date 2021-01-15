@@ -652,7 +652,9 @@ impl<T: Trait> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, T
             Err(Error::<T>::PoolIsInvalid)?;
         }
 
+        #[allow(unused_variables)]
         let mut init_x = 0_u32.into();
+        #[allow(unused_variables)]
         let mut init_y = 0_u32.into();
         if !abstract_checking && empty_pool {
             // Convertation from `Bounds` to `Option` is used here, and it is posible that value
@@ -675,16 +677,14 @@ impl<T: Trait> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, T
                 } else {
                     let fxw_init_x: FixedWrapper = init_x.into();
                     let fxw_init_y: FixedWrapper = init_x.into();
-                    let fxw_value: FixedWrapper =
-                        fxw_init_x.sqrt_accurate() * fxw_init_y.sqrt_accurate();
+                    let fxw_value: FixedWrapper = fxw_init_x.multiply_and_sqrt(&fxw_init_y);
                     let value: Fixed = fxw_value
                         .get()
                         .ok_or(Error::<T>::FixedWrapperCalculationFailed)?;
                     (Some(value.into()), Some(fxw_value))
                 }
             } else {
-                let fxw_value: FixedWrapper =
-                    fxw_balance_bp.sqrt_accurate() * fxw_balance_tp.sqrt_accurate();
+                let fxw_value: FixedWrapper = fxw_balance_bp.multiply_and_sqrt(&fxw_balance_tp);
                 let value: Fixed = fxw_value
                     .get()
                     .ok_or(Error::<T>::FixedWrapperCalculationFailed)?;
@@ -775,7 +775,7 @@ impl<T: Trait> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, T
                         );
                         let fxw_xdes: FixedWrapper = xdes.into();
                         let fxw_ydes: FixedWrapper = ydes.into();
-                        let fxw_desliq = fxw_xdes.sqrt_accurate() * fxw_ydes.sqrt_accurate();
+                        let fxw_desliq = fxw_xdes.multiply_and_sqrt(&fxw_ydes);
                         let fxw_piece = fxw_pool_k.unwrap() / fxw_desliq;
                         let fxw_bp_tmp = fxw_balance_bp / fxw_piece;
                         let fxw_tp_tmp = fxw_balance_tp / fxw_piece;
@@ -811,11 +811,11 @@ impl<T: Trait> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, T
                                 return Err(Error::<T>::ThisCaseIsNotSupported.into());
                             }
                             _ => {
-                                let calc: Balance = ((fxw_bp_corr1.sqrt_accurate()
-                                    * fxw_tp_corr1.sqrt_accurate())
-                                .get()
-                                .ok_or(Error::<T>::FixedWrapperCalculationFailed)?)
-                                .into();
+                                let calc: Balance = fxw_bp_corr1
+                                    .multiply_and_sqrt(&fxw_tp_corr1)
+                                    .get()
+                                    .ok_or(Error::<T>::FixedWrapperCalculationFailed)?
+                                    .into();
                                 self.destination.amount = Bounds::Calculated(calc);
                             }
                         }
@@ -1028,7 +1028,7 @@ impl<T: Trait> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, T
         let fxw_balance_tp: FixedWrapper = balance_tp.into();
 
         // Product of pool pair amounts to get k value.
-        let fxw_pool_k = fxw_balance_bp.sqrt_accurate() * fxw_balance_tp.sqrt_accurate();
+        let fxw_pool_k = fxw_balance_bp.multiply_and_sqrt(&fxw_balance_tp);
         let pool_k: Balance = (fxw_pool_k
             .get()
             .ok_or(Error::<T>::FixedWrapperCalculationFailed)?)
@@ -1683,7 +1683,7 @@ impl<T: Trait> Module<T> {
             assets::Module::<T>::free_balance(&trading_pair.target_asset_id, &pool_acc_sys)?;
         let fxw_b_in_pool: FixedWrapper = b_in_pool.into();
         let fxw_t_in_pool: FixedWrapper = t_in_pool.into();
-        let fxw_liq_in_pool = fxw_b_in_pool.sqrt_accurate() * fxw_t_in_pool.sqrt_accurate();
+        let fxw_liq_in_pool = fxw_b_in_pool.multiply_and_sqrt(&fxw_t_in_pool);
         let fxw_liq_amount: FixedWrapper = liq_amount.into();
         let fxw_peace: FixedWrapper = fxw_liq_in_pool / fxw_liq_amount;
         let fxw_value: FixedWrapper = fxw_b_in_pool / fxw_peace;
