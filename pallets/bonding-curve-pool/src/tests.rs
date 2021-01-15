@@ -4,7 +4,7 @@ mod tests {
     use common::{
         self, fixed,
         prelude::{Balance, Fixed, SwapAmount, SwapOutcome},
-        AssetSymbol, DEXId, LiquiditySource, TechPurpose, USD, VAL, XOR,
+        AssetSymbol, DEXId, LiquiditySource, TechPurpose, USDT, VAL, XOR,
     };
     use frame_support::assert_err;
     use frame_support::storage::{with_transaction, TransactionOutcome};
@@ -157,9 +157,9 @@ mod tests {
         let mut ext = ExtBuilder::new(vec![
             (
                 alice(),
-                USD,
+                USDT,
                 10_000u32.into(),
-                AssetSymbol(b"USD".to_vec()),
+                AssetSymbol(b"USDT".to_vec()),
                 18,
             ),
             (alice(), XOR, 0u32.into(), AssetSymbol(b"XOR".to_vec()), 18),
@@ -176,7 +176,7 @@ mod tests {
                     alice,
                     alice,
                     &DEXId::Polkaswap.into(),
-                    &USD,
+                    &USDT,
                     &XOR,
                     SwapAmount::with_desired_output(1u32.into(), Balance::max_value()),
                 )
@@ -195,7 +195,7 @@ mod tests {
                     alice,
                     &DEXId::Polkaswap.into(),
                     &XOR,
-                    &USD,
+                    &USDT,
                     SwapAmount::with_desired_input(fixed!(0,999).into(), Balance::zero()),
                 )
                 .unwrap(),
@@ -212,9 +212,9 @@ mod tests {
         let mut ext = ExtBuilder::new(vec![
             (
                 alice(),
-                USD,
+                USDT,
                 10_000u32.into(),
-                AssetSymbol(b"USD".to_vec()),
+                AssetSymbol(b"USDT".to_vec()),
                 18,
             ),
             (alice(), XOR, 10u32.into(), AssetSymbol(b"XOR".to_vec()), 18),
@@ -232,7 +232,7 @@ mod tests {
                 - Balance(BondingCurvePool::buy_price_for_one_main_asset(&XOR).unwrap())
                     / Balance::from(2u32);
             let distribution_accounts =
-                bonding_curve_pool_init(vec![(USD, pool_usd_amount)]).unwrap();
+                bonding_curve_pool_init(vec![(USDT, pool_usd_amount)]).unwrap();
             let distribution_accounts_array = distribution_accounts.xor_distribution_accounts_as_array();
             let alice = &alice();
             assert_eq!(
@@ -240,7 +240,7 @@ mod tests {
                     alice,
                     alice,
                     &DEXId::Polkaswap.into(),
-                    &USD,
+                    &USDT,
                     &XOR,
                     SwapAmount::with_desired_output(1u32.into(), Balance::max_value()),
                 )
@@ -270,7 +270,7 @@ mod tests {
                     alice,
                     &DEXId::Polkaswap.into(),
                     &XOR,
-                    &USD,
+                    &USDT,
                     SwapAmount::with_desired_input(fixed!(0, 999).into(), Balance::zero()),
                 )
                 .unwrap(),
@@ -287,9 +287,9 @@ mod tests {
         let mut ext = ExtBuilder::new(vec![
             (
                 alice(),
-                USD,
+                USDT,
                 10_000u32.into(),
-                AssetSymbol(b"USD".to_vec()),
+                AssetSymbol(b"USDT".to_vec()),
                 18,
             ),
             (alice(), XOR, 10u32.into(), AssetSymbol(b"XOR".to_vec()), 18),
@@ -304,7 +304,7 @@ mod tests {
                     .unwrap(),
             );
             let distribution_accounts =
-                bonding_curve_pool_init(vec![(USD, reserve_amount_expected)]).unwrap();
+                bonding_curve_pool_init(vec![(USDT, reserve_amount_expected)]).unwrap();
             let distribution_accounts_array = distribution_accounts.xor_distribution_accounts_as_array();
             let alice = &alice();
             assert_eq!(
@@ -312,7 +312,7 @@ mod tests {
                     alice,
                     alice,
                     &DEXId::Polkaswap.into(),
-                    &USD,
+                    &USDT,
                     &XOR,
                     SwapAmount::with_desired_output(1u32.into(), Balance::max_value()),
                 )
@@ -342,7 +342,7 @@ mod tests {
                     alice,
                     &DEXId::Polkaswap.into(),
                     &XOR,
-                    &USD,
+                    &USDT,
                     SwapAmount::with_desired_input(fixed!(0,999).into(), Balance::zero()),
                 )
                 .unwrap(),
@@ -357,7 +357,7 @@ mod tests {
     #[test]
     fn should_not_sell_without_reserves() {
         let mut ext = ExtBuilder::new(vec![
-            (alice(), USD, 0u32.into(), AssetSymbol(b"USD".to_vec()), 18),
+            (alice(), USDT, 0u32.into(), AssetSymbol(b"USDT".to_vec()), 18),
             (alice(), XOR, 1u32.into(), AssetSymbol(b"XOR".to_vec()), 18),
             (alice(), VAL, 0u32.into(), AssetSymbol(b"VAL".to_vec()), 18),
         ])
@@ -372,7 +372,7 @@ mod tests {
                     alice,
                     &DEXId::Polkaswap.into(),
                     &XOR,
-                    &USD,
+                    &USDT,
                     SwapAmount::with_desired_input(1u32.into(), Balance::zero()),
                 ),
                 Error::<Runtime>::NotEnoughReserves
@@ -385,9 +385,9 @@ mod tests {
         let mut ext = ExtBuilder::new(vec![
             (
                 alice(),
-                USD,
+                USDT,
                 10_000u32.into(),
-                AssetSymbol(b"USD".to_vec()),
+                AssetSymbol(b"USDT".to_vec()),
                 18,
             ),
             (alice(), XOR, 0u32.into(), AssetSymbol(b"XOR".to_vec()), 18),
@@ -406,7 +406,7 @@ mod tests {
                     alice,
                     alice,
                     &DEXId::Polkaswap.into(),
-                    &USD,
+                    &USDT,
                     &XOR,
                     SwapAmount::with_desired_output(amount.into(), Balance::max_value()),
                 )
@@ -421,7 +421,7 @@ mod tests {
                         alice,
                         alice,
                         &DEXId::Polkaswap.into(),
-                        &USD,
+                        &USDT,
                         &XOR,
                         SwapAmount::with_desired_output(
                             (amount / parts).into(),
@@ -445,7 +445,7 @@ mod tests {
                     alice,
                     &DEXId::Polkaswap.into(),
                     &XOR,
-                    &USD,
+                    &USDT,
                     SwapAmount::with_desired_input(cumulative_outcome.amount, Balance::zero()),
                 )
                 .unwrap();
@@ -460,7 +460,7 @@ mod tests {
                         alice,
                         &DEXId::Polkaswap.into(),
                         &XOR,
-                        &USD,
+                        &USDT,
                         SwapAmount::with_desired_input(
                             cumulative_outcome.amount / Balance::from(parts),
                             Balance::zero(),

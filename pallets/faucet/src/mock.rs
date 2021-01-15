@@ -1,5 +1,5 @@
 use crate::{GenesisConfig, Trait};
-use common::{self, prelude::Balance, Amount, AssetId32, AssetSymbol, TechPurpose, USD, VAL, XOR};
+use common::{self, prelude::Balance, Amount, AssetId32, AssetSymbol, TechPurpose, USDT, VAL, XOR};
 use currencies::BasicCurrencyAdapter;
 use frame_support::{impl_outer_origin, parameter_types, weights::Weight};
 use permissions::{Scope, BURN, MINT};
@@ -40,7 +40,7 @@ pub fn account_id() -> AccountId {
     Technical::tech_account_id_to_account_id(&tech_account_id()).unwrap()
 }
 
-pub const NOT_SUPPORTED_ASSET_ID: AssetId = USD;
+pub const NOT_SUPPORTED_ASSET_ID: AssetId = USDT;
 
 parameter_types! {
     pub const BlockHashCount: u64 = 250;
