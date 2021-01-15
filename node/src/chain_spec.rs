@@ -25,6 +25,8 @@ use sp_runtime::{
     traits::{IdentifyAccount, Verify},
     Perbill,
 };
+use sc_network::config::MultiaddrWithPeerId;
+use std::str::FromStr;
 
 /// Specialized `ChainSpec`. This is a specialization of the general Substrate ChainSpec type.
 pub type ChainSpec = sc_service::GenericChainSpec<GenesisConfig>;
@@ -77,7 +79,7 @@ fn session_keys(grandpa: GrandpaId, babe: BabeId) -> SessionKeys {
     SessionKeys { babe, grandpa }
 }
 
-pub fn sora_test_net() -> ChainSpec {
+pub fn test_net() -> ChainSpec {
     let mut properties = Properties::new();
     properties.insert("tokenSymbol".into(), "XOR".into());
     properties.insert("tokenDecimals".into(), 18.into());
@@ -143,7 +145,12 @@ pub fn sora_test_net() -> ChainSpec {
                 hex!("da723e9d76bd60da0ec846895c5e0ecf795b50ae652c012f27e56293277ef372").into(),
             )
         },
-        vec![],
+        vec![
+            MultiaddrWithPeerId::from_str("/dns/s1.stg1.sora2.soramitsu.co.jp/tcp/30333/p2p/12D3KooWQf9AXopgwHsfKCweXtuePnWKieythwNa7AFwNfyemcjX").unwrap(),
+            MultiaddrWithPeerId::from_str("/dns/s1.stg1.sora2.soramitsu.co.jp/tcp/30334/p2p/12D3KooWGXhnvgvUwbU831p19sy2gEdPbusN1B8P8ShuKi4JfLDH").unwrap(),
+            MultiaddrWithPeerId::from_str("/dns/s2.stg1.sora2.soramitsu.co.jp/tcp/31333/p2p/12D3KooWBwZmMTKQ37dEKAR3oxcuH9YFpzUdGRTbQcKgXLEmyhob").unwrap(),
+            MultiaddrWithPeerId::from_str("/dns/s2.stg1.sora2.soramitsu.co.jp/tcp/31334/p2p/12D3KooWExRdWV2CAF8oEyMYiXc9NABu8mmYLdXLtTNjjt1WjqAC").unwrap(),
+        ],
         None,
         Some("sora-substrate-1"),
         Some(properties),
