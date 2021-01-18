@@ -82,6 +82,8 @@ pub fn new_partial(
             let seed = kep.to_raw_vec();
             bridge_peer_secret_key = Some(seed);
         }
+    } else {
+        log::debug!("Ethereum bridge peer key not found.")
     }
 
     if let Some(sk) = bridge_peer_secret_key {
