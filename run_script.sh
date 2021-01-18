@@ -16,7 +16,7 @@ duplicate_log=1
 offchain_flags="--offchain-worker Never"
   -r, --use-release-build            Use release build
 binary="./target/release/framenode"
-  -s, --staging                      Using stagins chain spec
+  -s, --staging                      Using staging chain spec
 chain="staging"
 EOF
 `
@@ -90,4 +90,3 @@ echo SCRIPT: maybe framenode processes is still runnning, you can check it and f
 echo SCRIPT: in future this can be done automatically
 
 sleep 999999
-
