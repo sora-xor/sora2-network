@@ -26,6 +26,11 @@ mod tests {
                 Fixed::from(10_010_000)
             );
             assert_eq!(
+                BondingCurvePool::price_for_collateral_asset(&XOR, 10_010_000u32.into(), SwapKind::Buy)
+                    .expect("failed to calculate buy assets price"),
+                Fixed::from(100_000)
+            );
+            assert_eq!(
                 BondingCurvePool::sell_price_for_one_main_asset(&XOR)
                     .expect("failed to calculate sell price"),
                 Fixed::from(80)
@@ -36,10 +41,59 @@ mod tests {
                 Fixed::from(7_992_000)
             );
             assert_eq!(
+                BondingCurvePool::price_for_collateral_asset(&XOR, 7_992_000u32.into(), SwapKind::Sell)
+                    .expect("failed to calculate sell assets price"),
+                Fixed::from(100_000)
+            );
+            assert_eq!(
                 BondingCurvePool::price_for_main_asset(&XOR, 0u32.into(), SwapKind::Sell)
                     .expect("failed to calculate sell assets price"),
                 Fixed::from(0)
             );
+        });
+    }
+
+    #[test]
+    fn inverse_calculation_for_buy_should_match_forward_price() {
+        let mut ext = ExtBuilder::default().build();
+        ext.execute_with(|| {
+            for q in 0u32..10_000 {
+                let direct_price = BondingCurvePool::price_for_main_asset(&XOR, q.into(), SwapKind::Buy)
+                    .expect("failed to calculate buy assets price");
+                let inverse_price = BondingCurvePool::price_for_collateral_asset(&XOR, direct_price.into(), SwapKind::Buy)
+                    .expect("failed to calculate buy assets price");
+                assert_eq!(Balance::from(q), Balance(inverse_price));
+            }
+
+            for q in (100u32..200_000).step_by(123) {
+                let direct_price = BondingCurvePool::price_for_main_asset(&XOR, q.into(), SwapKind::Buy)
+                    .expect("failed to calculate buy assets price");
+                let inverse_price = BondingCurvePool::price_for_collateral_asset(&XOR, direct_price.into(), SwapKind::Buy)
+                    .expect("failed to calculate buy assets price");
+                assert_eq!(Balance::from(q), Balance(inverse_price));
+            }
+        });
+    }
+
+    #[test]
+    fn inverse_calculation_for_sell_should_match_forward_price() {
+        let mut ext = ExtBuilder::default().build();
+        ext.execute_with(|| {
+            for q in 0u32..10_000 {
+                let direct_price = BondingCurvePool::price_for_main_asset(&XOR, q.into(), SwapKind::Sell)
+                    .expect("failed to calculate buy assets price");
+                let inverse_price = BondingCurvePool::price_for_collateral_asset(&XOR, direct_price.into(), SwapKind::Sell)
+                    .expect("failed to calculate buy assets price (inverse)");
+                assert_eq!(Balance::from(q), Balance(inverse_price));
+            }
+
+            for q in (100u32..200_000).step_by(123) {
+                let direct_price = BondingCurvePool::price_for_main_asset(&XOR, q.into(), SwapKind::Sell)
+                    .expect("failed to calculate buy assets price");
+                let inverse_price = BondingCurvePool::price_for_collateral_asset(&XOR, direct_price.into(), SwapKind::Sell)
+                    .expect("failed to calculate buy assets price (inverse)");
+                assert_eq!(Balance::from(q), Balance(inverse_price));
+            }
         });
     }
 
