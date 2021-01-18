@@ -298,8 +298,19 @@ impl<T: Trait> Module<T> {
         let mut farm = Farms::<T>::get(&farm_id).ok_or(Error::<T>::FarmNotFound)?;
         let current_block = <frame_system::Module<T>>::block_number();
         let mut farmer = Self::get_or_create_farmer(who.clone(), farm_id)?;
+        let ta_repr =
+            technical::Module::<T>::tech_account_id_to_account_id(&farmer.tech_account_id)?;
         let amount_opt = match (amount_opt, opt_asset_id) {
-            (Some(amount), Some(asset_id)) => {
+            (_, Some(asset_id)) => {
+                let amount = match amount_opt {
+                    Some(amount) => amount,
+                    None => {
+                        MarkerTokensIndex::<T>::mutate((farm_id.clone(), who.clone()), |mti| {
+                            mti.remove(&asset_id)
+                        });
+                        <assets::Module<T>>::free_balance(&asset_id, &ta_repr)?
+                    }
+                };
                 let xor_part =
                     Module::<T>::get_xor_part_amount_from_marker(dex_id, asset_id, amount)?;
                 farmer
@@ -313,9 +324,6 @@ impl<T: Trait> Module<T> {
                     .state
                     .remove_all_from_locked(Some(&mut farm.aggregated_state), current_block)
                     .map_err(|()| Error::<T>::CalculationOrOperationWithFarmingStateIsFailed)?;
-
-                let ta_repr =
-                    technical::Module::<T>::tech_account_id_to_account_id(&farmer.tech_account_id)?;
                 let mti = MarkerTokensIndex::<T>::get((farm_id, who.clone()));
                 for asset_id in mti {
                     let amount = <assets::Module<T>>::free_balance(&asset_id, &ta_repr)?;
