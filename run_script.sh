@@ -1,5 +1,7 @@
 #!/bin/sh
 
+binary="./target/debug/framenode"
+
 getopt_code=`awk -f ./misc/getopt.awk <<EOF
 Usage: sh ./run_script.sh [OPTIONS]...
 Run frame node based local test net
@@ -10,6 +12,8 @@ exit 0
 duplicate_log=1
   -w, --disable-offchain-workers     Disable offchain workers
 offchain_flags="--offchain-worker Never"
+  -r, --use-release-build            Use release build
+binary="./target/release/framenode"
 EOF
 `
 eval "$getopt_code"
@@ -26,9 +30,9 @@ else
 	awk="awk"
 fi
 
-if [ ! -f ./target/debug/framenode ]; then
+if [ ! -f $binary ]; then
 	echo "Please build framenode binary"
-	echo "for example by running command: cargo build --debug"
+	echo "for example by running command: cargo build --debug or cargo build --release"
 	exit 1
 fi
 
@@ -64,9 +68,9 @@ do
 	newport=`expr $port + 1`
 	rpcport=`expr $wsport + 10`
 	if [ "$num" == "0" ]; then
-		sh -c "./target/debug/framenode $offchain_flags -d db$num --$name --port $newport --ws-port $wsport --rpc-port $rpcport --chain local 2>&1" | local_id | logger_for_first_node $tmpdir/port_${newport}_name_$name.txt &
+		sh -c "$binary $offchain_flags -d db$num --$name --port $newport --ws-port $wsport --rpc-port $rpcport --chain local 2>&1" | local_id | logger_for_first_node $tmpdir/port_${newport}_name_$name.txt &
 	else
-		sh -c "./target/debug/framenode $offchain_flags -d db$num --$name --port $newport --ws-port $wsport --rpc-port $rpcport --chain local --bootnodes /ip4/127.0.0.1/tcp/$port/p2p/`cat $localid` 2>&1" | local_id > $tmpdir/port_${newport}_name_$name.txt &
+		sh -c "$binary $offchain_flags -d db$num --$name --port $newport --ws-port $wsport --rpc-port $rpcport --chain local --bootnodes /ip4/127.0.0.1/tcp/$port/p2p/`cat $localid` 2>&1" | local_id > $tmpdir/port_${newport}_name_$name.txt &
 	fi
 	echo SCRIPT: "Port:" $newport "P2P port:" $port "Name:" $name "WS:" $wsport "RPC:" $rpcport $tmpdir/port_${newport}_name_$name.txt
 	sleep 5
