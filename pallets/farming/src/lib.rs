@@ -583,7 +583,9 @@ decl_module! {
                                 opt_asset_id: Option<T::AssetId>, amount_opt: Option<Balance>) -> DispatchResult
         {
             let who = ensure_signed(origin)?;
-            Module::<T>::unlock_from_farm_unchecked(who, dex_id, farm_id, opt_asset_id, amount_opt)
+            common::with_transaction(|| {
+                Module::<T>::unlock_from_farm_unchecked(who, dex_id, farm_id, opt_asset_id, amount_opt)
+            })
         }
 
         #[weight = 0]
