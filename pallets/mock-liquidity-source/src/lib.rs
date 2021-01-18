@@ -1,5 +1,6 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
+use common::fixnum::ops::Numeric;
 use common::{fixed, prelude::*};
 use frame_support::{
     decl_error, decl_event, decl_module, decl_storage,
@@ -53,7 +54,8 @@ decl_error! {
         InsufficientInputAmount,
         InsufficientOutputAmount,
         InsufficientLiquidity,
-        ArithmeticError,
+        /// Specified parameters lead to arithmetic error
+        CalculationError,
     }
 }
 
@@ -117,10 +119,10 @@ impl<T: Trait<I>, I: Instance> Module<T, I> {
         Ok(SwapOutcome::new(
             (amount_out_without_fee - fee_amount.clone())
                 .get()
-                .map_err(|_| Error::<T, I>::ArithmeticError)?,
+                .map_err(|_| Error::<T, I>::CalculationError)?,
             fee_amount
                 .get()
-                .map_err(|_| Error::<T, I>::ArithmeticError)?,
+                .map_err(|_| Error::<T, I>::CalculationError)?,
         ))
     }
 
@@ -151,7 +153,7 @@ impl<T: Trait<I>, I: Instance> Module<T, I> {
             .map_err(|_| Error::<T, I>::InsufficientLiquidity)?;
         let fee_amount = fee_amount
             .get()
-            .map_err(|_| Error::<T, I>::ArithmeticError)?;
+            .map_err(|_| Error::<T, I>::CalculationError)?;
 
         Ok(SwapOutcome::new(amount_out, fee_amount))
     }
@@ -180,12 +182,13 @@ impl<T: Trait<I>, I: Instance> Module<T, I> {
             .map_err(|_| Error::<T, I>::InsufficientLiquidity)?;
 
         let fee_fraction: FixedWrapper = T::GetFee::get().into();
-        let base_amount_in_with_fee = base_amount_in_without_fee / -fee_fraction;
+        let base_amount_in_with_fee = FixedWrapper::from(base_amount_in_without_fee)
+            / (FixedWrapper::from(Fixed::ONE) - fee_fraction);
         let actual_target_amount_out = Self::get_target_amount_out(
             base_amount_in_with_fee
                 .clone()
                 .get()
-                .map_err(|_| Error::<T, I>::ArithmeticError)?,
+                .map_err(|_| Error::<T, I>::CalculationError)?,
             base_reserve,
             target_reserve,
         )?
@@ -198,10 +201,10 @@ impl<T: Trait<I>, I: Instance> Module<T, I> {
         Ok(SwapOutcome::new(
             amount_in
                 .get()
-                .map_err(|_| Error::<T, I>::ArithmeticError)?,
+                .map_err(|_| Error::<T, I>::CalculationError)?,
             (base_amount_in_with_fee - base_amount_in_without_fee)
                 .get()
-                .map_err(|_| Error::<T, I>::ArithmeticError)?,
+                .map_err(|_| Error::<T, I>::CalculationError)?,
         ))
     }
 
@@ -241,10 +244,10 @@ impl<T: Trait<I>, I: Instance> Module<T, I> {
         };
         let amount_in = amount_in
             .get()
-            .map_err(|_| Error::<T, I>::ArithmeticError)?;
+            .map_err(|_| Error::<T, I>::CalculationError)?;
         let fee = (base_amount_out_with_fee - base_amount_out)
             .get()
-            .map_err(|_| Error::<T, I>::ArithmeticError)?;
+            .map_err(|_| Error::<T, I>::CalculationError)?;
         Ok(SwapOutcome::new(amount_in, fee))
     }
 }
@@ -353,7 +356,7 @@ impl<T: Trait<I>, I: Instance>
                     let outcome_b_fee: FixedWrapper = outcome_b.fee.into();
                     let fee = (outcome_a_fee + outcome_b_fee)
                         .get()
-                        .map_err(|_| Error::<T, I>::ArithmeticError)?;
+                        .map_err(|_| Error::<T, I>::CalculationError)?;
                     Ok(SwapOutcome::new(outcome_b.amount, fee))
                 }
                 SwapAmount::WithDesiredOutput {
@@ -373,7 +376,7 @@ impl<T: Trait<I>, I: Instance>
                     let outcome_b_fee: FixedWrapper = outcome_b.fee.into();
                     let fee = (outcome_b_fee + outcome_a_fee)
                         .get()
-                        .map_err(|_| Error::<T, I>::ArithmeticError)?;
+                        .map_err(|_| Error::<T, I>::CalculationError)?;
                     Ok(SwapOutcome::new(outcome_a.amount, fee))
                 }
             }

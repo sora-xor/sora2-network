@@ -29,7 +29,7 @@ mod tests {
             assert_eq!(
                 BondingCurvePool::price_for_collateral_asset(&XOR, 10_010_000u32.into(), SwapKind::Buy)
                     .expect("failed to calculate buy assets price"),
-                Fixed::from(100_000)
+                fixed!(100000)
             );
             assert_eq!(
                 BondingCurvePool::sell_price_for_one_main_asset(&XOR)

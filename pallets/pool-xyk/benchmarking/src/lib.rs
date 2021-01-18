@@ -172,7 +172,7 @@ benchmarks! {
     verify {
         assert_eq!(
             Into::<u128>::into(Assets::<T>::free_balance(&XOR.into(), &caller.clone()).unwrap()),
-            Into::<u128>::into(initial_xor_balance) + 31622_u128
+            Into::<u128>::into(initial_xor_balance) + 31623_u128
         );
         assert_eq!(
             Into::<u128>::into(Assets::<T>::free_balance(&DOT.into(), &caller.clone()).unwrap()),

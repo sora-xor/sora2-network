@@ -53,7 +53,6 @@ fn unsubscribe_with_inexistent_account_should_fail() {
 }
 
 #[test]
-#[ignore]
 fn distribute_existing_pswap_should_pass() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
@@ -117,7 +116,6 @@ fn distribute_with_zero_balance_should_pass() {
 }
 
 #[test]
-#[ignore]
 fn incentive_distribution_routine_should_pass() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
@@ -351,7 +349,6 @@ fn claim_until_zero_should_pass() {
 }
 
 #[test]
-#[ignore]
 fn external_transfer_to_tech_account_after_distribution() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
@@ -402,7 +399,6 @@ fn external_transfer_to_tech_account_after_distribution() {
 }
 
 #[test]
-#[ignore]
 fn jump_start_with_unowned_incentive_should_pass() {
     let mut ext = ExtBuilder::with_accounts(vec![
         (FEES_ACCOUNT_A, common::PSWAP.into(), fixed!(6)),
@@ -466,7 +462,6 @@ fn jump_start_with_unowned_incentive_should_pass() {
 }
 
 #[test]
-#[ignore]
 fn increasing_volumes_should_pass() {
     let mut ext = ExtBuilder::with_accounts(vec![
         (LIQUIDITY_PROVIDER_A, PoolTokenAId::get(), fixed!(3)),
@@ -519,7 +514,6 @@ fn increasing_volumes_should_pass() {
 }
 
 #[test]
-#[ignore]
 fn multiple_pools_should_pass() {
     let mut ext = ExtBuilder::with_accounts(vec![
         (FEES_ACCOUNT_A, common::PSWAP.into(), fixed!(20)),
@@ -555,7 +549,6 @@ fn multiple_pools_should_pass() {
 }
 
 #[test]
-#[ignore]
 fn mixed_multiple_pools_should_pass() {
     let mut ext = ExtBuilder::with_accounts(vec![
         (FEES_ACCOUNT_A, common::PSWAP.into(), fixed!(20)),

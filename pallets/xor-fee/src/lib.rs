@@ -1,5 +1,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
+use core::convert::TryFrom;
+
 use common::{fixed, prelude::*, Fixed};
 use frame_support::{
     decl_error, decl_event, decl_module, decl_storage,
@@ -102,8 +104,7 @@ impl<T: Trait> OnTransactionPayment<T::AccountId, NegativeImbalanceOf<T>, Balanc
         // Burn XOR for now
         let (_xor_burned, xor_to_val) =
             amount.ration(T::XorBurnedWeight::get(), T::XorIntoValBurnedWeight::get());
-        let xor_to_val: i128 = xor_to_val.peek().unique_saturated_into() as i128;
-        let xor_to_val = Fixed::from_bits(xor_to_val);
+        let xor_to_val = Fixed::try_from(xor_to_val.peek().unique_saturated_into()).unwrap();
         let tech_account_id = T::TechAccountId::from_generic_pair(
             TECH_ACCOUNT_PREFIX.to_vec(),
             TECH_ACCOUNT_MAIN.to_vec(),

@@ -102,7 +102,7 @@ decl_error! {
         /// Path exists but it's not possible to perform exchange with currently available liquidity on pools.
         AggregationError,
         /// Specified parameters lead to arithmetic error
-        ArithmeticError,
+        CalculationError,
     }
 }
 
@@ -241,16 +241,14 @@ impl<T: Trait> Module<T> {
                 )
             })
             .collect::<Result<Vec<SwapOutcome<Fixed>>, DispatchError>>()?;
-        let r: Vec<Fixed> = res.iter().map(|s| s.amount).collect();
-        assert_eq!(r, vec![]);
 
         let (amount, fee): (FixedWrapper, FixedWrapper) = res
             .into_iter()
             .fold((fixed!(0), fixed!(0)), |(amount_acc, fee_acc), x| {
                 (amount_acc + x.amount, fee_acc + x.fee)
             });
-        let amount = amount.get().map_err(|_| Error::ArithmeticError::<T>)?;
-        let fee = fee.get().map_err(|_| Error::ArithmeticError::<T>)?;
+        let amount = amount.get().map_err(|_| Error::CalculationError::<T>)?;
+        let fee = fee.get().map_err(|_| Error::CalculationError::<T>)?;
 
         Ok(SwapOutcome::new(amount, fee))
     }
@@ -300,19 +298,16 @@ impl<T: Trait> Module<T> {
         );
 
         let num_samples =
-            FixedInner::try_from(num_samples).map_err(|_| Error::ArithmeticError::<T>)?;
+            FixedInner::try_from(num_samples).map_err(|_| Error::CalculationError::<T>)?;
         let total_fee: FixedWrapper = (0..distr.len()).fold(fixed!(0), |acc, i| {
             let idx = match distr[i].cmul(num_samples) {
                 Err(_) => return acc,
                 Ok(index) => index,
             };
-            let idx = match idx.integral(Floor) {
-                0 => 0,
-                k => k,
-            };
+            let idx = idx.integral(Floor);
             acc + *sample_fees[i].get(idx as usize).unwrap_or(&fixed!(0))
         });
-        let total_fee = total_fee.get().map_err(|_| Error::ArithmeticError::<T>)?;
+        let total_fee = total_fee.get().map_err(|_| Error::CalculationError::<T>)?;
 
         Ok(AggregatedSwapOutcome::<
             LiquiditySourceId<T::DEXId, LiquiditySourceType>,

@@ -2,10 +2,7 @@ use frame_support::weights::{
     Weight, WeightToFeeCoefficient, WeightToFeeCoefficients, WeightToFeePolynomial,
 };
 use smallvec::smallvec;
-use sp_arithmetic::{
-    traits::{Saturating, Zero},
-    Perbill,
-};
+use sp_arithmetic::Perbill;
 
 use crate::balance::Balance;
 use crate::fixed_wrapper::FixedWrapper;
@@ -57,7 +54,6 @@ mod tests {
     use super::*;
     use crate::fixed;
     use frame_support::weights::Weight;
-    use sp_runtime::traits::SaturatedConversion;
 
     type Fee = WeightToFixedFee;
 

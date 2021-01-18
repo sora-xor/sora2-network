@@ -1,30 +1,22 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use frame_support::{decl_error, decl_event, decl_module, decl_storage, dispatch};
-use frame_system::ensure_signed;
-
 use codec::{Decode, Encode};
 use core::convert::TryInto;
-use frame_support::weights::Weight;
-use frame_support::Parameter;
-use sp_runtime::RuntimeDebug;
-
-use common::{
-    hash,
-    prelude::{Balance, EnsureDEXOwner, FixedWrapper, SwapAmount, SwapOutcome},
-    AssetSymbol, EnsureTradingPairExists, LiquiditySource,
-};
-
 use frame_support::dispatch::{DispatchError, DispatchResult};
-
-use common::Fixed;
-use common::SwapRulesValidation;
-use common::ToFeeAccount;
-use common::ToTechUnitFromDEXAndTradingPair;
-use frame_support::ensure;
-use frame_support::traits::Get;
-use permissions::{Scope, BURN, MINT};
+use frame_support::{
+    decl_error, decl_event, decl_module, decl_storage, dispatch, ensure, traits::Get,
+    weights::Weight, Parameter,
+};
+use frame_system::ensure_signed;
+use sp_runtime::RuntimeDebug;
 use sp_std::collections::btree_set::BTreeSet;
+
+use common::prelude::{Balance, EnsureDEXOwner, FixedWrapper, SwapAmount, SwapOutcome};
+use common::{
+    fixed, hash, AssetSymbol, EnsureTradingPairExists, Fixed, LiquiditySource, SwapRulesValidation,
+    ToFeeAccount, ToTechUnitFromDEXAndTradingPair,
+};
+use permissions::{Scope, BURN, MINT};
 
 mod weights;
 
@@ -653,9 +645,9 @@ impl<T: Trait> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, T
         }
 
         #[allow(unused_variables)]
-        let mut init_x = 0_u32.into();
+        let mut init_x = fixed!(0);
         #[allow(unused_variables)]
-        let mut init_y = 0_u32.into();
+        let mut init_y = fixed!(0);
         if !abstract_checking && empty_pool {
             // Convertation from `Bounds` to `Option` is used here, and it is posible that value
             // None value returned from conversion.
@@ -679,15 +671,17 @@ impl<T: Trait> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, T
                     let fxw_init_y: FixedWrapper = init_y.into();
                     let fxw_value: FixedWrapper = fxw_init_x.multiply_and_sqrt(&fxw_init_y);
                     let value: Fixed = fxw_value
+                        .clone()
                         .get()
-                        .ok_or(Error::<T>::FixedWrapperCalculationFailed)?;
+                        .map_err(|_| Error::<T>::FixedWrapperCalculationFailed)?;
                     (Some(value.into()), Some(fxw_value))
                 }
             } else {
                 let fxw_value: FixedWrapper = fxw_balance_bp.multiply_and_sqrt(&fxw_balance_tp);
                 let value: Fixed = fxw_value
+                    .clone()
                     .get()
-                    .ok_or(Error::<T>::FixedWrapperCalculationFailed)?;
+                    .map_err(|_| Error::<T>::FixedWrapperCalculationFailed)?;
                 (Some(value.into()), Some(fxw_value))
             }
         };
@@ -717,15 +711,15 @@ impl<T: Trait> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, T
                         );
                         let fxw_destination_k: FixedWrapper = init_x.into();
                         let fxw_peace_to_add = fxw_pool_k.unwrap() / fxw_destination_k;
-                        let fxw_recom_x = fxw_balance_bp / fxw_peace_to_add;
-                        let fxw_recom_y = fxw_balance_tp / fxw_peace_to_add;
+                        let fxw_recom_x = fxw_balance_bp.clone() / fxw_peace_to_add.clone();
+                        let fxw_recom_y = fxw_balance_tp.clone() / fxw_peace_to_add.clone();
                         let recom_x = (fxw_recom_x
                             .get()
-                            .ok_or(Error::<T>::FixedWrapperCalculationFailed)?)
+                            .map_err(|_| Error::<T>::FixedWrapperCalculationFailed)?)
                         .into();
                         let recom_y = (fxw_recom_y
                             .get()
-                            .ok_or(Error::<T>::FixedWrapperCalculationFailed)?)
+                            .map_err(|_| Error::<T>::FixedWrapperCalculationFailed)?)
                         .into();
                         match ox {
                             Bounds::Desired(x) => {
@@ -734,9 +728,9 @@ impl<T: Trait> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, T
                                 }
                             }
                             bounds => {
-                                let value: Fixed = (fxw_balance_bp / fxw_peace_to_add)
+                                let value: Fixed = (fxw_balance_bp / fxw_peace_to_add.clone())
                                     .get()
-                                    .ok_or(Error::<T>::FixedWrapperCalculationFailed)?;
+                                    .map_err(|_| Error::<T>::FixedWrapperCalculationFailed)?;
                                 let calc = Bounds::Calculated(value.into());
                                 ensure!(
                                     bounds.meets_the_boundaries(&calc),
@@ -752,9 +746,9 @@ impl<T: Trait> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, T
                                 }
                             }
                             bounds => {
-                                let value: Fixed = (fxw_balance_tp / fxw_peace_to_add)
+                                let value: Fixed = (fxw_balance_tp / fxw_peace_to_add.clone())
                                     .get()
-                                    .ok_or(Error::<T>::FixedWrapperCalculationFailed)?;
+                                    .map_err(|_| Error::<T>::FixedWrapperCalculationFailed)?;
                                 let calc = Bounds::Calculated(value.into());
                                 ensure!(
                                     bounds.meets_the_boundaries(&calc),
@@ -777,28 +771,30 @@ impl<T: Trait> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, T
                         let fxw_ydes: FixedWrapper = ydes.into();
                         let fxw_desliq = fxw_xdes.multiply_and_sqrt(&fxw_ydes);
                         let fxw_piece = fxw_pool_k.unwrap() / fxw_desliq;
-                        let fxw_bp_tmp = fxw_balance_bp / fxw_piece;
+                        let fxw_bp_tmp = fxw_balance_bp / fxw_piece.clone();
                         let fxw_tp_tmp = fxw_balance_tp / fxw_piece;
-                        let fxw_bp_down = fxw_bp_tmp / fxw_xdes;
-                        let fxw_tp_down = fxw_tp_tmp / fxw_ydes;
+                        let fxw_bp_down = fxw_bp_tmp.clone() / fxw_xdes;
+                        let fxw_tp_down = fxw_tp_tmp.clone() / fxw_ydes;
                         let bp_down: Balance = (fxw_bp_down
                             .get()
-                            .ok_or(Error::<T>::FixedWrapperCalculationFailed)?)
+                            .map_err(|_| Error::<T>::FixedWrapperCalculationFailed)?)
                         .into();
                         let tp_down: Balance = (fxw_tp_down
                             .get()
-                            .ok_or(Error::<T>::FixedWrapperCalculationFailed)?)
+                            .map_err(|_| Error::<T>::FixedWrapperCalculationFailed)?)
                         .into();
                         let fxw_down: FixedWrapper = bp_down.max(tp_down).into();
-                        let fxw_bp_corr1 = fxw_bp_tmp / fxw_down;
+                        let fxw_bp_corr1 = fxw_bp_tmp / fxw_down.clone();
                         let fxw_tp_corr1 = fxw_tp_tmp / fxw_down;
                         let bp_corr1: Balance = (fxw_bp_corr1
+                            .clone()
                             .get()
-                            .ok_or(Error::<T>::FixedWrapperCalculationFailed)?)
+                            .map_err(|_| Error::<T>::FixedWrapperCalculationFailed)?)
                         .into();
                         let tp_corr1: Balance = (fxw_tp_corr1
+                            .clone()
                             .get()
-                            .ok_or(Error::<T>::FixedWrapperCalculationFailed)?)
+                            .map_err(|_| Error::<T>::FixedWrapperCalculationFailed)?)
                         .into();
                         ensure!(
                             bp_corr1 >= xmin && tp_corr1 >= ymin,
@@ -814,7 +810,7 @@ impl<T: Trait> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, T
                                 let calc: Balance = fxw_bp_corr1
                                     .multiply_and_sqrt(&fxw_tp_corr1)
                                     .get()
-                                    .ok_or(Error::<T>::FixedWrapperCalculationFailed)?
+                                    .map_err(|_| Error::<T>::FixedWrapperCalculationFailed)?
                                     .into();
                                 self.destination.amount = Bounds::Calculated(calc);
                             }
@@ -1030,8 +1026,9 @@ impl<T: Trait> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, T
         // Product of pool pair amounts to get k value.
         let fxw_pool_k = fxw_balance_bp.multiply_and_sqrt(&fxw_balance_tp);
         let pool_k: Balance = (fxw_pool_k
+            .clone()
             .get()
-            .ok_or(Error::<T>::FixedWrapperCalculationFailed)?)
+            .map_err(|_| Error::<T>::FixedWrapperCalculationFailed)?)
         .into();
 
         match (
@@ -1046,15 +1043,15 @@ impl<T: Trait> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, T
                 );
                 let fxw_source_k: FixedWrapper = source_k.into();
                 let fxw_peace_to_take = fxw_pool_k / fxw_source_k;
-                let fxw_recom_x = fxw_balance_bp / fxw_peace_to_take;
+                let fxw_recom_x = fxw_balance_bp / fxw_peace_to_take.clone();
                 let fxw_recom_y = fxw_balance_tp / fxw_peace_to_take;
                 let recom_x: Balance = (fxw_recom_x
                     .get()
-                    .ok_or(Error::<T>::FixedWrapperCalculationFailed)?)
+                    .map_err(|_| Error::<T>::FixedWrapperCalculationFailed)?)
                 .into();
                 let recom_y: Balance = (fxw_recom_y
                     .get()
-                    .ok_or(Error::<T>::FixedWrapperCalculationFailed)?)
+                    .map_err(|_| Error::<T>::FixedWrapperCalculationFailed)?)
                 .into();
 
                 match ox {
@@ -1442,10 +1439,10 @@ impl<T: Trait> Module<T> {
         let fxw_x_in: FixedWrapper = x_in.clone().into();
         if get_fee_from_destination {
             Module::<T>::guard_fee_from_destination(asset_a, asset_b)?;
-            let fxw_y1 = (fxw_x_in * fxw_y) / (fxw_x + fxw_x_in);
+            let fxw_y1 = (fxw_x_in.clone() * fxw_y) / (fxw_x + fxw_x_in);
             let y1: Balance = fxw_y1
                 .get()
-                .ok_or(Error::<T>::FixedWrapperCalculationFailed)?
+                .map_err(|_| Error::<T>::FixedWrapperCalculationFailed)?
                 .into();
             let fee_of_y1 = Module::<T>::get_fee_for_destination(asset_a, tech_acc, &y1)?;
             Ok((y1, fee_of_y1))
@@ -1454,10 +1451,10 @@ impl<T: Trait> Module<T> {
             let fee_of_x_in = Module::<T>::get_fee_for_source(asset_a, tech_acc, x_in)?;
             let fxw_fee_of_x_in: FixedWrapper = fee_of_x_in.into();
             let fxw_x_in_subfee = fxw_x_in - fxw_fee_of_x_in;
-            let fxw_y_out = (fxw_x_in_subfee * fxw_y) / (fxw_x + fxw_x_in_subfee);
+            let fxw_y_out = (fxw_x_in_subfee.clone() * fxw_y) / (fxw_x + fxw_x_in_subfee);
             let y_out: Balance = fxw_y_out
                 .get()
-                .ok_or(Error::<T>::FixedWrapperCalculationFailed)?
+                .map_err(|_| Error::<T>::FixedWrapperCalculationFailed)?
                 .into();
             Ok((y_out, fee_of_x_in))
         }
@@ -1483,16 +1480,16 @@ impl<T: Trait> Module<T> {
             let fract_a: Balance = Module::<T>::get_fee_for_destination(asset_a, tech_acc, &unit)?;
             let fract_b: Balance = unit - fract_a;
             let fxw_fract_b: FixedWrapper = fract_b.into();
-            let fxw_y1 = fxw_y_out / fxw_fract_b;
-            let fxw_x_in = (fxw_x * fxw_y1) / (fxw_y - fxw_y1);
+            let fxw_y1 = fxw_y_out.clone() / fxw_fract_b;
+            let fxw_x_in = (fxw_x * fxw_y1.clone()) / (fxw_y - fxw_y1.clone());
             let fxw_fee = fxw_y1 - fxw_y_out;
             let x_in: Balance = fxw_x_in
                 .get()
-                .ok_or(Error::<T>::FixedWrapperCalculationFailed)?
+                .map_err(|_| Error::<T>::FixedWrapperCalculationFailed)?
                 .into();
             let fee: Balance = fxw_fee
                 .get()
-                .ok_or(Error::<T>::FixedWrapperCalculationFailed)?
+                .map_err(|_| Error::<T>::FixedWrapperCalculationFailed)?
                 .into();
             Ok((x_in, fee))
         } else {
@@ -1504,7 +1501,7 @@ impl<T: Trait> Module<T> {
             let fxw_x_in = (fxw_x * fxw_y_out) / fxw_ymyo_subfee;
             let x_in: Balance = fxw_x_in
                 .get()
-                .ok_or(Error::<T>::FixedWrapperCalculationFailed)?
+                .map_err(|_| Error::<T>::FixedWrapperCalculationFailed)?
                 .into();
             let fee = Module::<T>::get_fee_for_source(asset_a, tech_acc, &x_in)?;
             Ok((x_in, fee))
@@ -1689,7 +1686,7 @@ impl<T: Trait> Module<T> {
         let fxw_value: FixedWrapper = fxw_b_in_pool / fxw_peace;
         let value: Balance = fxw_value
             .get()
-            .ok_or(Error::<T>::FixedWrapperCalculationFailed)?
+            .map_err(|_| Error::<T>::FixedWrapperCalculationFailed)?
             .into();
         Ok(value)
     }

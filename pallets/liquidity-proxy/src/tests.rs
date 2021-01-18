@@ -1,5 +1,5 @@
 use common::prelude::fixnum::ops::{CheckedSub, Numeric};
-use common::prelude::{FixedWrapper, SwapAmount};
+use common::prelude::SwapAmount;
 use common::{
     fixed, FilterMode, Fixed, LiquiditySource, LiquiditySourceFilter, LiquiditySourceId,
     LiquiditySourceType, DOT, KSM,
@@ -10,7 +10,6 @@ use sp_runtime::DispatchError;
 use crate::{mock::*, Error};
 
 #[test]
-#[ignore]
 fn test_quote_exact_input_base_should_pass() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
@@ -63,7 +62,6 @@ fn test_quote_exact_input_base_should_pass() {
 }
 
 #[test]
-#[ignore]
 fn test_quote_exact_input_target_should_pass() {
     let mut ext = ExtBuilder::default().build();
     let amount: Fixed = fixed!(500);
@@ -115,7 +113,6 @@ fn test_quote_exact_input_target_should_pass() {
 }
 
 #[test]
-#[ignore]
 fn test_quote_exact_output_target_should_pass() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
@@ -172,7 +169,6 @@ fn test_quote_exact_output_target_should_pass() {
 }
 
 #[test]
-#[ignore]
 fn test_quote_exact_output_base_should_pass() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
@@ -229,7 +225,6 @@ fn test_quote_exact_output_base_should_pass() {
 }
 
 #[test]
-#[ignore]
 fn test_sell_token_for_base_should_pass() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
@@ -248,7 +243,6 @@ fn test_sell_token_for_base_should_pass() {
 }
 
 #[test]
-#[ignore]
 fn test_sell_base_for_token_should_pass() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
@@ -262,12 +256,11 @@ fn test_sell_base_for_token_should_pass() {
             filter,
         )
         .expect("Failed to swap assets");
-        assert_eq!(result.amount, fixed!(537.643138033120596096));
+        assert_eq!(result.amount, fixed!(537.643138033120596095));
     });
 }
 
 #[test]
-#[ignore]
 fn test_sell_token_for_base_with_liquidity_source_trait_should_pass() {
     let mut ext = ExtBuilder::default().build();
     let amount: Fixed = fixed!(500);
@@ -287,7 +280,6 @@ fn test_sell_token_for_base_with_liquidity_source_trait_should_pass() {
 }
 
 #[test]
-#[ignore]
 fn test_sell_base_for_token_with_liquidity_source_trait_should_pass() {
     let mut ext = ExtBuilder::default().build();
     let amount: Fixed = fixed!(500);
@@ -302,12 +294,11 @@ fn test_sell_base_for_token_with_liquidity_source_trait_should_pass() {
             SwapAmount::with_desired_input(amount, fixed!(510)).into(),
         )
         .expect("Failed to swap assets");
-        assert_eq!(result.amount, fixed!(537.643138033120596096));
+        assert_eq!(result.amount, fixed!(537.643138033120596095));
     });
 }
 
 #[test]
-#[ignore]
 fn test_buy_base_with_allowed_should_pass() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
@@ -336,7 +327,6 @@ fn test_buy_base_with_allowed_should_pass() {
 }
 
 #[test]
-#[ignore]
 fn test_buy_base_with_forbidden_should_pass() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
@@ -402,7 +392,6 @@ fn test_quote_should_fail_with_unavailable_exchange_path_2() {
 }
 
 #[test]
-#[ignore]
 fn test_quote_should_fail_with_aggregation_error() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
@@ -417,7 +406,6 @@ fn test_quote_should_fail_with_aggregation_error() {
 }
 
 #[test]
-#[ignore]
 fn test_sell_however_big_amount_base_should_pass() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {

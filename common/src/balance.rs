@@ -253,7 +253,7 @@ impl Num for Balance {
 impl Unsigned for Balance {}
 
 macro_rules! impl_primitive_conversions {
-    ($( $t:ty )+) => ($(
+    ($( $t:ty ),+) => ($(
         impl_primitive_conversions!{@single $t}
     )*);
     (@single $t:ty) => {
@@ -271,7 +271,7 @@ macro_rules! impl_primitive_conversions {
     };
 }
 
-impl_primitive_conversions!(u8 u16 u32 u64 u128);
+impl_primitive_conversions!(u8, u16, u32, u64, u128);
 
 impl From<usize> for Balance {
     fn from(v: usize) -> Balance {

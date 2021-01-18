@@ -1,6 +1,5 @@
 use common::fixed;
 use frame_support::{assert_noop, assert_ok};
-use sp_runtime::DispatchError;
 
 use crate::{mock::*, *};
 

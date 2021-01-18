@@ -204,26 +204,27 @@ impl<T: Trait> BuyMainAsset<T> {
             let in_asset = &self.in_asset_id;
             let (input_amount, output_amount) =
                 Module::<T>::decide_buy_amounts(out_asset, self.amount)?;
-        let total_issuance = Assets::<T>::total_issuance(out_asset)?;
-        let reserves_expected = Balance(Module::<T>::price_for_main_asset(
-            out_asset,
-            total_issuance,
-            SwapKind::Sell,
-        )?);
-        Technical::<T>::transfer_in(
-            in_asset,
-            &self.from_account_id,
-            &self.reserves_tech_account_id,
-            input_amount,
-        )?;
-        let reserves = Assets::<T>::total_balance(in_asset, &self.reserves_account_id)?;
-        let free_amount = if reserves > reserves_expected {
-            let amount_free_coefficient: Balance = fixed!(0.2);
-            (reserves - reserves_expected) * amount_free_coefficient
-        } else {
-            Balance::zero()
-        };
-        Ok((free_amount, input_amount, output_amount))
+            let total_issuance = Assets::<T>::total_issuance(out_asset)?;
+            let reserves_expected = Balance(Module::<T>::price_for_main_asset(
+                out_asset,
+                total_issuance,
+                SwapKind::Sell,
+            )?);
+            Technical::<T>::transfer_in(
+                in_asset,
+                &self.from_account_id,
+                &self.reserves_tech_account_id,
+                input_amount,
+            )?;
+            let reserves = Assets::<T>::total_balance(in_asset, &self.reserves_account_id)?;
+            let free_amount = if reserves > reserves_expected {
+                let amount_free_coefficient: Balance = fixed!(0.2);
+                (reserves - reserves_expected) * amount_free_coefficient
+            } else {
+                Balance::zero()
+            };
+            Ok((free_amount, input_amount, output_amount))
+        })
     }
 
     fn distribute_reserves(&self, free_amount: Balance) -> Result<(), DispatchError> {
@@ -416,24 +417,24 @@ impl<T: Trait> Module<T> {
         let PC_R = FixedWrapper::from(Self::price_change_rate());
         let OUT_PRICE = FixedWrapper::from(quantity);
 
-        let PC_S_times_PC_R = PC_S * PC_R;
-        let PC_S_times_PC_R_times_P_I = PC_S_times_PC_R * P_I;
-        let PC_S_times_PC_R_times_P_I_squared = PC_S_times_PC_R_times_P_I * P_I;
+        let PC_S_times_PC_R = PC_S.clone() * PC_R.clone();
+        let PC_S_times_PC_R_times_P_I = PC_S_times_PC_R.clone() * P_I.clone();
+        let PC_S_times_PC_R_times_P_I_squared = PC_S_times_PC_R_times_P_I.clone() * P_I.clone();
 
         let price: FixedWrapper = if kind == SwapKind::Buy {
-            let Q_squared = Q * Q;
-            let inner_term_a = 2 * Q * PC_S_times_PC_R_times_P_I;
+            let Q_squared = Q.clone() * Q.clone();
+            let inner_term_a = 2 * Q.clone() * PC_S_times_PC_R_times_P_I.clone();
             let inner_term_b = PC_S * PC_R * (PC_S_times_PC_R_times_P_I_squared + 2 * OUT_PRICE);
             let under_sqrt = Q_squared + inner_term_a + inner_term_b;
             under_sqrt.sqrt_accurate() - Q - PC_S_times_PC_R_times_P_I
         } else {
             let P_Sc = FixedWrapper::from(Self::sell_price_coefficient());
-            let inner_term_a = ((Q * P_Sc) / PC_S_times_PC_R) + (P_I * P_Sc);
-            let inner_term_b =  (2 * P_Sc * OUT_PRICE) / PC_S_times_PC_R;
-            let under_sqrt = inner_term_a * inner_term_a - inner_term_b;
+            let inner_term_a = ((Q.clone() * P_Sc.clone()) / PC_S_times_PC_R.clone()) + (P_I * P_Sc.clone());
+            let inner_term_b =  (2 * P_Sc.clone() * OUT_PRICE) / PC_S_times_PC_R.clone();
+            let under_sqrt = inner_term_a.clone() * inner_term_a - inner_term_b;
             (Q + PC_S_times_PC_R_times_P_I) - ((PC_S_times_PC_R * under_sqrt.sqrt_accurate()) / P_Sc)
         };
-        price.get().ok_or(Error::<T>::CalculatePriceFailed.into())
+        price.get().map_err(|_| Error::<T>::CalculatePriceFailed.into())
     }
 
     /// Calculates and returns the current sell price for one main asset.

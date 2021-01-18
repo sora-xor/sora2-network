@@ -98,7 +98,6 @@ fn test_support_multiple_dexes_should_pass() {
 }
 
 #[test]
-#[ignore]
 fn test_quote_base_to_target_should_pass() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
@@ -125,7 +124,7 @@ fn test_quote_base_to_target_should_pass() {
             SwapAmount::with_desired_output(fixed!(136.851187324744592819), fixed!(100)),
         )
         .unwrap();
-        assert_eq!(outcome.amount, fixed!(100));
+        assert_eq!(outcome.amount, fixed!(99.999999999999999999));
     });
 }
 
@@ -161,7 +160,6 @@ fn test_quote_target_to_base_should_pass() {
 }
 
 #[test]
-#[ignore]
 fn test_quote_target_to_target_should_pass() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {

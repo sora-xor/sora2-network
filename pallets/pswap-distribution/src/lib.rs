@@ -12,7 +12,6 @@ use frame_support::{
 };
 use frame_system::{self as system, ensure_signed};
 use sp_arithmetic::traits::{Saturating, Zero};
-use sp_arithmetic::FixedPointNumber;
 use tokens::Accounts;
 
 #[cfg(test)]

@@ -28,15 +28,17 @@ impl FixedWrapper {
         /*
         FIXME: Has been running for over 60 seconds.
         let mul_first = (self.clone() * lhs.clone()).sqrt_accurate();
-        if mul_first.inner.is_some() {
+        if mul_first.inner.is_ok() {
             return mul_first;
         }
         */
         let mul_after = self.clone().sqrt_accurate() * lhs.clone().sqrt_accurate();
-        if mul_after.inner.is_some() {
+        if mul_after.inner.is_ok() {
             return mul_after;
         }
-        FixedWrapper { inner: None }
+        FixedWrapper {
+            inner: Err(ArithmeticError::Overflow),
+        }
     }
 
     pub fn pow(&self, x: u32) -> Self {
