@@ -498,7 +498,7 @@ fn swap_pair_desired_output_and_withdraw_cascade() {
                 322_u32
             );
 
-            // a = ( 467027 * 111000 ) / 1999999000 = 25.92001146000573
+            // a = sqrt ( 467027 * 111000 ) / 8784 = 25.92001146000573
             // b = 467_027 / a = 18018.00900900901
             // c = 111_000 / a = 4282.405514028097
             // Testing this line with noop
@@ -511,7 +511,7 @@ fn swap_pair_desired_output_and_withdraw_cascade() {
                     dex_id,
                     GoldenTicket.into(),
                     BlackPepper.into(),
-                    1999_999_000_u32.into(),
+                    8784_u32.into(),
                     18_100_u32.into(),
                     4_100_u32.into()
                 ),
@@ -525,7 +525,7 @@ fn swap_pair_desired_output_and_withdraw_cascade() {
                     dex_id,
                     GoldenTicket.into(),
                     BlackPepper.into(),
-                    1999_999_000_u32.into(),
+                    8784_u32.into(),
                     18_000_u32.into(),
                     4_300_u32.into()
                 ),
@@ -538,7 +538,7 @@ fn swap_pair_desired_output_and_withdraw_cascade() {
                 dex_id,
                 GoldenTicket.into(),
                 BlackPepper.into(),
-                1999_999_000_u32.into(),
+                8784_u32.into(),
                 18_000_u32.into(),
                 4_200_u32.into(),
             ));
@@ -594,7 +594,7 @@ fn swap_pair_desired_output_and_withdraw_cascade() {
                 Into::<u32>::into(
                     assets::Module::<Testtime>::free_balance(&gt, &repr.clone()).unwrap()
                 ),
-                650_009u32
+                650_010u32
             );
             assert_eq!(
                 Into::<u32>::into(

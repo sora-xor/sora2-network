@@ -21,6 +21,19 @@ impl FixedWrapper {
         self.inner
     }
 
+    /// Calculation of sqrt(a*b) = c, if a*b fails than sqrt(a) * sqrt(b) is used.
+    pub fn multiply_and_sqrt(&self, lhs: &Self) -> Self {
+        let mul_first = (self.clone() * lhs.clone()).sqrt_accurate();
+        if mul_first.inner.is_some() {
+            return mul_first;
+        }
+        let mul_after = self.clone().sqrt_accurate() * lhs.clone().sqrt_accurate();
+        if mul_after.inner.is_some() {
+            return mul_after;
+        }
+        FixedWrapper { inner: None }
+    }
+
     /// Calculates square root of self using [Babylonian method][babylonian].
     /// Precision is `1e-10`.
     /// [babylonian]: https://en.wikipedia.org/wiki/Methods_of_computing_square_roots#Babylonian_method
