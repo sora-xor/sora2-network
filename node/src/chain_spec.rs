@@ -25,6 +25,8 @@ use sp_runtime::{
     traits::{IdentifyAccount, Verify},
     Perbill,
 };
+use sc_network::config::MultiaddrWithPeerId;
+use std::str::FromStr;
 
 /// Specialized `ChainSpec`. This is a specialization of the general Substrate ChainSpec type.
 pub type ChainSpec = sc_service::GenericChainSpec<GenesisConfig>;
@@ -58,8 +60,107 @@ pub fn authority_keys_from_seed(seed: &str) -> (AccountId, AccountId, AuraId, Ba
     )
 }
 
+pub fn authority_keys_from_public_keys(
+    stash_address: [u8; 32],
+    controller_address: [u8; 32],
+    sr25519_key: [u8; 32],
+    ed25519_key: [u8; 32]
+) -> (AccountId, AccountId, AuraId, BabeId, GrandpaId) {
+    (
+        stash_address.into(),
+        controller_address.into(),
+        AuraId::from_slice(&sr25519_key),
+        BabeId::from_slice(&sr25519_key),
+        GrandpaId::from_slice(&ed25519_key)
+    )
+}
+
 fn session_keys(grandpa: GrandpaId, babe: BabeId) -> SessionKeys {
     SessionKeys { babe, grandpa }
+}
+
+pub fn dev_net() -> ChainSpec {
+    let mut properties = Properties::new();
+    properties.insert("tokenSymbol".into(), "XOR".into());
+    properties.insert("tokenDecimals".into(), 18.into());
+    ChainSpec::from_genesis(
+        "SORA-dev Testnet",
+        "sora-substrate-dev",
+        ChainType::Live,
+        move || {
+            testnet_genesis(
+                hex!("92c4ff71ae7492a1e6fef5d80546ea16307c560ac1063ffaa5e0e084df1e2b7e").into(),
+                vec![
+                    authority_keys_from_public_keys(
+                        hex!("349b061381fe1e47b5dd18061f7c7f76801b41dc9c6afe0b2c4c65e0171c8b35"),
+                        hex!("9c3c8836f6def559a11751c18541b9a2c81bcf9bd6ac28d978b1adfacc354456"),
+                        hex!("9c3c8836f6def559a11751c18541b9a2c81bcf9bd6ac28d978b1adfacc354456"),
+                        hex!("0ced48eb19e0e2809a769c35a64264c3dd39f3aa0ff132aa7caaa6730ad31f57")
+                    ),
+                    authority_keys_from_public_keys(
+                        hex!("5e7df6d78fb252ecfe5e2c516a145671b9c64ee7b733a3c128af27d76e2fe74c"),
+                        hex!("02bbb81a8132f9eb78ac1f2a9606055e58540f220fa1075bb3ba3d30add09e3f"),
+                        hex!("02bbb81a8132f9eb78ac1f2a9606055e58540f220fa1075bb3ba3d30add09e3f"),
+                        hex!("c75a2ed4012a61cf05ec6eecc4b83faedcf6a781111cc61f8e9a23ad2810bb5e")
+                    ),
+                    authority_keys_from_public_keys(
+                        hex!("baa98b9fde4fc1c983998798536a63ab70b3c365ce3870dd84a230cb19093004"),
+                        hex!("0ea8eafc441aa319aeaa23a74ed588f0ccd17eb3b41d12a1d8283b5f79c7b15d"),
+                        hex!("0ea8eafc441aa319aeaa23a74ed588f0ccd17eb3b41d12a1d8283b5f79c7b15d"),
+                        hex!("4be870c72a1ac412a5c239d701b5dd62a9e030899943faad55b48eb2c7c9dc2a")
+                    ),
+                    authority_keys_from_public_keys(
+                        hex!("4eb0f6225cef84a0285a54916625846e50d86526bdece448894af0ac87792956"),
+                        hex!("18b2c456464825673c63aa7866ee479b52d1a7a4bab7999408bd3568d5a02b64"),
+                        hex!("18b2c456464825673c63aa7866ee479b52d1a7a4bab7999408bd3568d5a02b64"),
+                        hex!("8061f3a75ef96a0d840d84cec5d42bcad43f882efdcf93b30a60c7bac6c894c1")
+                    ),
+                    authority_keys_from_public_keys(
+                        hex!("22a886a8f0a0ddd031518a2bc567585b0046d02d7aacbdb058857b42da40444b"),
+                        hex!("3a41a438f76d6a68b17fbd34e8a8195e5e2f74419db3bf7d914627803409ce35"),
+                        hex!("3a41a438f76d6a68b17fbd34e8a8195e5e2f74419db3bf7d914627803409ce35"),
+                        hex!("86320cd87cbe2881cdf3515d3a72d833099d61b4c38266437366e3b143f8835b")
+                    ),
+                    authority_keys_from_public_keys(
+                        hex!("20a0225a3cafe2d5e9813025e3f1a2d9a3e50f44528ecc3bed01c13466e33316"),
+                        hex!("c25eb643fd3a981a223046f32d1977644a17bb856a228d755868c1bb89d95b3d"),
+                        hex!("c25eb643fd3a981a223046f32d1977644a17bb856a228d755868c1bb89d95b3d"),
+                        hex!("15c652e559703197d10997d04df0081918314b77b8475d74002adaca0f3b634d")
+                    ),
+                ],
+                vec![
+                    hex!("349b061381fe1e47b5dd18061f7c7f76801b41dc9c6afe0b2c4c65e0171c8b35").into(),
+                    hex!("9c3c8836f6def559a11751c18541b9a2c81bcf9bd6ac28d978b1adfacc354456").into(),
+                    hex!("5e7df6d78fb252ecfe5e2c516a145671b9c64ee7b733a3c128af27d76e2fe74c").into(),
+                    hex!("02bbb81a8132f9eb78ac1f2a9606055e58540f220fa1075bb3ba3d30add09e3f").into(),
+                    hex!("baa98b9fde4fc1c983998798536a63ab70b3c365ce3870dd84a230cb19093004").into(),
+                    hex!("0ea8eafc441aa319aeaa23a74ed588f0ccd17eb3b41d12a1d8283b5f79c7b15d").into(),
+                    hex!("4eb0f6225cef84a0285a54916625846e50d86526bdece448894af0ac87792956").into(),
+                    hex!("18b2c456464825673c63aa7866ee479b52d1a7a4bab7999408bd3568d5a02b64").into(),
+                    hex!("22a886a8f0a0ddd031518a2bc567585b0046d02d7aacbdb058857b42da40444b").into(),
+                    hex!("3a41a438f76d6a68b17fbd34e8a8195e5e2f74419db3bf7d914627803409ce35").into(),
+                    hex!("20a0225a3cafe2d5e9813025e3f1a2d9a3e50f44528ecc3bed01c13466e33316").into(),
+                    hex!("c25eb643fd3a981a223046f32d1977644a17bb856a228d755868c1bb89d95b3d").into(),
+                ],
+                vec![
+                    hex!("da96bc5065020df6d5ccc9659ae3007ddc04a6fd7f52cabe76e87b6219026b65").into(),
+                    hex!("f57efdde92d350999cb41d1f2b21255d9ba7ae70cf03538ddee42a38f48a5436").into(),
+                    hex!("aa79aa80b94b1cfba69c4a7d60eeb7b469e6411d1f686cc61de8adc8b1b76a69").into(),
+                    hex!("60dc5adadc262770cbe904e3f65a26a89d46b70447640cd7968b49ddf5a459bc").into(),
+                    hex!("70d61e980602e09ac8b5fb50658ebd345774e73b8248d3b61862ba1a9a035082").into(),
+                    hex!("05918034f4a7f7c5d99cd0382aa6574ec2aba148aa3d769e50e0ac7663e36d58").into(),
+                ],
+                hex!("da723e9d76bd60da0ec846895c5e0ecf795b50ae652c012f27e56293277ef372").into(),
+                hex!("16fec57d383a1875ab4e9786aea7a626e721a491c828f475ae63ef098f98f373").into(),
+                hex!("da723e9d76bd60da0ec846895c5e0ecf795b50ae652c012f27e56293277ef372").into(),
+            )
+        },
+        vec![],
+        None,
+        Some("sora-substrate-1"),
+        Some(properties),
+        None,
+    )
 }
 
 pub fn staging_test_net() -> ChainSpec {
@@ -324,7 +425,7 @@ fn testnet_genesis(
             code: WASM_BINARY.unwrap().to_vec(),
             changes_trie_config: Default::default(),
         }),
-        pallet_sudo: Some(SudoConfig { key: root_key }),
+        pallet_sudo: Some(SudoConfig { key: root_key.clone() }),
         technical: Some(TechnicalConfig {
             account_ids_to_tech_account_ids: tech_accounts,
         }),
@@ -486,7 +587,10 @@ fn testnet_genesis(
             balances: endowed_accounts
                 .iter()
                 .cloned()
-                .chain(once(faucet_account_id.clone()))
+                .chain(vec![
+                    root_key,
+                    faucet_account_id.clone(),
+                ].into_iter())
                 .map(|k| (k, initial_balance.into()))
                 .chain(once((
                     eth_bridge_account_id.clone(),
