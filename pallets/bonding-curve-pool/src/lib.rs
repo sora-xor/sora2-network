@@ -152,7 +152,7 @@ pub enum SwapKind {
 struct BuyMainAsset<T: Trait> {
     in_asset_id: T::AssetId,
     out_asset_id: T::AssetId,
-    output_amount: Balance,
+    amount: SwapAmount<Balance>,
     from_account_id: T::AccountId,
     to_account_id: T::AccountId,
     reserves_tech_account_id: T::TechAccountId,
@@ -163,7 +163,7 @@ impl<T: Trait> BuyMainAsset<T> {
     pub fn new(
         in_asset_id: T::AssetId,
         out_asset_id: T::AssetId,
-        output_amount: Balance,
+        amount: SwapAmount<Balance>,
         from_account_id: T::AccountId,
         to_account_id: T::AccountId,
     ) -> Result<Self, DispatchError> {
@@ -173,7 +173,7 @@ impl<T: Trait> BuyMainAsset<T> {
         Ok(BuyMainAsset {
             in_asset_id,
             out_asset_id,
-            output_amount,
+            amount,
             from_account_id,
             to_account_id,
             reserves_tech_account_id,
@@ -196,15 +196,14 @@ impl<T: Trait> BuyMainAsset<T> {
     /// `c` - free amount coefficient of extra reserves
     /// `A_I` - amount of the input asset
     /// `P_SM` - sell price for main asset
-    fn deposit_input(&self) -> Result<Balance, DispatchError> {
+    ///
+    /// Returns (Free Amount, Input Amount, Output Amount)
+    fn deposit_input(&self) -> Result<(Balance, Balance, Balance), DispatchError> {
         common::with_transaction(|| {
             let out_asset = &self.out_asset_id;
             let in_asset = &self.in_asset_id;
-            let input_amount = Balance(Module::<T>::price_for_main_asset(
-                out_asset,
-                self.output_amount,
-                SwapKind::Buy,
-            )?);
+            let (input_amount, output_amount) =
+                Module::<T>::decide_buy_amounts(out_asset, self.amount)?;
             let total_issuance = Assets::<T>::total_issuance(out_asset)?;
             let reserves_expected = Balance(Module::<T>::price_for_main_asset(
                 out_asset,
@@ -224,7 +223,7 @@ impl<T: Trait> BuyMainAsset<T> {
             } else {
                 Balance::zero()
             };
-            Ok(free_amount)
+            Ok((free_amount, input_amount, output_amount))
         })
     }
 
@@ -244,7 +243,7 @@ impl<T: Trait> BuyMainAsset<T> {
                 &DEXId::Polkaswap.into(),
                 in_asset,
                 out_asset,
-                SwapAmount::with_desired_input(free_amount, Balance::zero()), // TODO: do we need to set `min_amount_out`?
+                SwapAmount::with_desired_input(free_amount, Balance::zero()),
             )?
             .amount;
             Technical::<T>::burn(out_asset, reserves_tech_acc, swapped_xor_amount)?;
@@ -283,10 +282,10 @@ impl<T: Trait> BuyMainAsset<T> {
         })
     }
 
-    fn mint_output(&self) -> Result<SwapOutcome<Balance>, DispatchError> {
+    fn mint_output(&self, output_amount: Balance) -> Result<SwapOutcome<Balance>, DispatchError> {
         // TODO: deal with fee.
-        let fee_amount = Balance(Fee::get()) * self.output_amount;
-        let transfer_amount = self.output_amount - fee_amount;
+        let fee_amount = Balance(Fee::get()) * output_amount;
+        let transfer_amount = output_amount - fee_amount;
         Assets::<T>::mint_to(
             &self.out_asset_id,
             &self.reserves_account_id,
@@ -298,9 +297,9 @@ impl<T: Trait> BuyMainAsset<T> {
 
     fn swap(&self) -> Result<SwapOutcome<Balance>, DispatchError> {
         common::with_transaction(|| {
-            let input_amount_free = self.deposit_input()?;
+            let (input_amount_free, _, output_amount) = self.deposit_input()?;
             self.distribute_reserves(input_amount_free)?;
-            self.mint_output()
+            self.mint_output(output_amount)
         })
     }
 }
@@ -376,6 +375,66 @@ impl<T: Trait> Module<T> {
         price.get().ok_or(Error::<T>::CalculatePriceFailed.into())
     }
 
+    /// Calculates and returns the current buy/sell price for target asset.
+    ///
+    ///
+    /// Using derived formula for `price_for_base_asset`
+    /// ```nocompile
+    /// P_M(Q, Q')  = | (Q' / (2 * PC_S * PC_R) + P_I) * Q' -
+    ///                 (Q  / (2 * PC_S * PC_R) + P_I) * Q |
+    ///
+    /// q_BM = √(Q² + 2 * Q * PC_S * PC_R * P_I + PC_S * PC_R *(PC_S * PC_R * P_I²
+    ///         + 2 * P_TB(Q, Q'))) - Q - PC_S * PC_R * P_I
+    ///
+    /// q_SM = Q + PC_S * PC_R * P_I - (PC_S * PC_R * √(((Q * P_Sc) / (PC_S * PC_R)
+    ///          + P_I * P_Sc)² - (2 * P_Sc * P_M(Q, Q')) / (PC_S * PC_R))) / P_Sc
+    /// ```
+    /// where
+    /// `Q`: current token issuance (quantity)
+    /// `Q'`: new token issuance (quantity)
+    /// `P_I`: initial asset price
+    /// `PC_R`: price change rate
+    /// `PC_S`: price change step
+    /// `P_M(Q, Q')`: helper function to calculate price for `q` assets, where `q = |Q' - Q|`
+    /// `P_Sc: sell price coefficient (%)`
+    /// `q_BM`: price for `q` assets to be bought, when P_M(Q, Q') tokens are spend
+    /// `q_SM`: price for `q` assets to be sold, when P_M(Q, Q') tokens are spend
+    ///
+    /// [Wolfram Alpha (buy)](https://www.wolframalpha.com/input/?i=y+%3D+%28%28a%2Bx%29+%2F+%282+*+b+*+c%29+%2B+d%29+*+%28a%2Bx%29+-+%28+a+%2F+%282+*+b+*+c%29+%2B+d%29+*+a+solve+for+x)
+    /// [Wolfram Alpha (sell)](https://www.wolframalpha.com/input/?i=y+%3D+%28%28a++%2F+%282+*+b+*+c%29+%2B+d%29+*+a+-+%28%28a+-+x%29+%2F+%282+*+b+*+c%29+%2B+d%29+*+%28a+-+x%29%29+*+k+solve+for+x)
+    #[rustfmt::skip]
+    pub fn price_for_collateral_asset(
+        main_asset_id: &T::AssetId,
+        quantity: Balance,
+        kind: SwapKind,
+    ) -> Result<Fixed, DispatchError> {
+        let total_issuance = Assets::<T>::total_issuance(&main_asset_id)?;
+        let Q = FixedWrapper::from(total_issuance);
+        let P_I = FixedWrapper::from(Self::initial_price());
+        let PC_S = FixedWrapper::from(Self::price_change_step());
+        let PC_R = FixedWrapper::from(Self::price_change_rate());
+        let OUT_PRICE = FixedWrapper::from(quantity);
+
+        let PC_S_times_PC_R = PC_S * PC_R;
+        let PC_S_times_PC_R_times_P_I = PC_S_times_PC_R * P_I;
+        let PC_S_times_PC_R_times_P_I_squared = PC_S_times_PC_R_times_P_I * P_I;
+
+        let price: FixedWrapper = if kind == SwapKind::Buy {
+            let Q_squared = Q * Q;
+            let inner_term_a = 2 * Q * PC_S_times_PC_R_times_P_I;
+            let inner_term_b = PC_S * PC_R * (PC_S_times_PC_R_times_P_I_squared + 2 * OUT_PRICE);
+            let under_sqrt = Q_squared + inner_term_a + inner_term_b;
+            under_sqrt.sqrt_accurate() - Q - PC_S_times_PC_R_times_P_I
+        } else {
+            let P_Sc = FixedWrapper::from(Self::sell_price_coefficient());
+            let inner_term_a = ((Q * P_Sc) / PC_S_times_PC_R) + (P_I * P_Sc);
+            let inner_term_b =  (2 * P_Sc * OUT_PRICE) / PC_S_times_PC_R;
+            let under_sqrt = inner_term_a * inner_term_a - inner_term_b;
+            (Q + PC_S_times_PC_R_times_P_I) - ((PC_S_times_PC_R * under_sqrt.sqrt_accurate()) / P_Sc)
+        };
+        price.get().ok_or(Error::<T>::CalculatePriceFailed.into())
+    }
+
     /// Calculates and returns the current sell price for one main asset.
     /// Sell price is `P_Sc`% of buy price (see `buy_price_for_one_main_asset`).
     ///
@@ -389,6 +448,68 @@ impl<T: Trait> Module<T> {
         price.get().ok_or(Error::<T>::CalculatePriceFailed.into())
     }
 
+    /// Decompose SwapAmount into particular buy quotation query.
+    ///
+    /// Returns ordered pair: (input_amount, output_amount).
+    fn decide_buy_amounts(
+        main_asset_id: &T::AssetId,
+        amount: SwapAmount<Balance>,
+    ) -> Result<(Balance, Balance), DispatchError> {
+        Ok(match amount {
+            SwapAmount::WithDesiredInput {
+                desired_amount_in, ..
+            } => {
+                let output_amount = Module::<T>::price_for_collateral_asset(
+                    main_asset_id,
+                    desired_amount_in,
+                    SwapKind::Buy,
+                )?;
+                (desired_amount_in, output_amount.into())
+            }
+            SwapAmount::WithDesiredOutput {
+                desired_amount_out, ..
+            } => {
+                let input_amount = Module::<T>::price_for_main_asset(
+                    main_asset_id,
+                    desired_amount_out,
+                    SwapKind::Buy,
+                )?;
+                (input_amount.into(), desired_amount_out)
+            }
+        })
+        // TODO: handle min/max limit
+    }
+
+    /// Decompose SwapAmount into particular sell quotation query.
+    ///
+    /// Returns ordered pair: (input_amount, output_amount).
+    fn decide_sell_amounts(
+        main_asset_id: &T::AssetId,
+        amount: SwapAmount<Balance>,
+    ) -> Result<(Balance, Balance), DispatchError> {
+        Ok(match amount {
+            SwapAmount::WithDesiredInput {
+                desired_amount_in, ..
+            } => {
+                let output_amount =
+                    Self::price_for_main_asset(main_asset_id, desired_amount_in, SwapKind::Sell)?;
+                (desired_amount_in, output_amount.into())
+            }
+
+            SwapAmount::WithDesiredOutput {
+                desired_amount_out, ..
+            } => {
+                let input_amount = Self::price_for_collateral_asset(
+                    main_asset_id,
+                    desired_amount_out,
+                    SwapKind::Sell,
+                )?;
+                (input_amount.into(), desired_amount_out)
+            }
+        })
+        // TODO: handle min/max limit
+    }
+
     /// This function is used by `exchange` function to burn `input_amount` of `in_asset_id`
     /// and transfer calculated amount of `out_asset_id` to the receiver from reserves.
     ///
@@ -399,7 +520,7 @@ impl<T: Trait> Module<T> {
         _dex_id: &T::DEXId,
         in_asset_id: &T::AssetId,
         out_asset_id: &T::AssetId,
-        input_amount: Balance,
+        amount: SwapAmount<Balance>,
         from_account_id: &T::AccountId,
         to_account_id: &T::AccountId,
     ) -> Result<SwapOutcome<Balance>, DispatchError> {
@@ -407,11 +528,7 @@ impl<T: Trait> Module<T> {
             let reserves_tech_account_id = Self::reserves_account_id();
             let reserves_account_id =
                 Technical::<T>::tech_account_id_to_account_id(&reserves_tech_account_id)?;
-            let output_amount = Balance(Self::price_for_main_asset(
-                in_asset_id,
-                input_amount,
-                SwapKind::Sell,
-            )?);
+            let (input_amount, output_amount) = Self::decide_sell_amounts(in_asset_id, amount)?;
             // TODO: deal with fee.
             let fee_amount = Balance(Self::fee()) * output_amount;
             let transfer_amount = output_amount - fee_amount;
@@ -500,19 +617,31 @@ impl<T: Trait> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Disp
                     Ok(SwapOutcome::new(amount, amount * Balance(Self::fee())))
                 }
                 SwapAmount::WithDesiredOutput {
-                    desired_amount_out: _target_amount_out,
+                    desired_amount_out: target_amount_out,
                     ..
                 } => {
-                    fail!(CommonError::<T>::UnsupportedSwapMethod);
+                    let amount = Self::price_for_collateral_asset(
+                        input_asset_id,
+                        target_amount_out,
+                        SwapKind::Sell,
+                    )?
+                    .into();
+                    Ok(SwapOutcome::new(amount, amount * Balance(Self::fee())))
                 }
             }
         } else {
             match swap_amount {
                 SwapAmount::WithDesiredInput {
-                    desired_amount_in: _target_amount_in,
+                    desired_amount_in: target_amount_in,
                     ..
                 } => {
-                    fail!(CommonError::<T>::UnsupportedSwapMethod);
+                    let amount = Self::price_for_collateral_asset(
+                        input_asset_id,
+                        target_amount_in,
+                        SwapKind::Buy,
+                    )?
+                    .into();
+                    Ok(SwapOutcome::new(amount, amount * Balance(Self::fee())))
                 }
                 SwapAmount::WithDesiredOutput {
                     desired_amount_out: base_amount_out,
@@ -520,7 +649,7 @@ impl<T: Trait> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Disp
                 } => {
                     let amount = Self::price_for_main_asset(
                         output_asset_id,
-                        base_amount_out.into(),
+                        base_amount_out,
                         SwapKind::Buy,
                     )?
                     .into();
@@ -549,45 +678,23 @@ impl<T: Trait> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Disp
         }
         let base_asset_id = &T::GetBaseAssetId::get();
         if input_asset_id == base_asset_id {
-            match desired_amount {
-                SwapAmount::WithDesiredInput {
-                    desired_amount_in: base_amount_in,
-                    ..
-                } => Self::sell_main_asset(
-                    dex_id,
-                    input_asset_id,
-                    output_asset_id,
-                    base_amount_in,
-                    sender,
-                    receiver,
-                ),
-                SwapAmount::WithDesiredOutput {
-                    desired_amount_out: _target_amount_out,
-                    ..
-                } => {
-                    fail!(CommonError::<T>::UnsupportedSwapMethod);
-                }
-            }
+            Self::sell_main_asset(
+                dex_id,
+                input_asset_id,
+                output_asset_id,
+                desired_amount,
+                sender,
+                receiver,
+            )
         } else {
-            match desired_amount {
-                SwapAmount::WithDesiredInput {
-                    desired_amount_in: _target_amount_in,
-                    ..
-                } => {
-                    fail!(CommonError::<T>::UnsupportedSwapMethod);
-                }
-                SwapAmount::WithDesiredOutput {
-                    desired_amount_out: base_amount_out,
-                    ..
-                } => BuyMainAsset::<T>::new(
-                    *input_asset_id,
-                    *output_asset_id,
-                    base_amount_out,
-                    sender.clone(),
-                    receiver.clone(),
-                )?
-                .swap(),
-            }
+            BuyMainAsset::<T>::new(
+                *input_asset_id,
+                *output_asset_id,
+                desired_amount,
+                sender.clone(),
+                receiver.clone(),
+            )?
+            .swap()
         }
     }
 }
