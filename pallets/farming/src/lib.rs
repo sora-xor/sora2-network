@@ -267,8 +267,7 @@ impl<T: Trait> Module<T> {
         farm_id: FarmId,
         asset_id: T::AssetId,
         amount: Balance,
-    ) -> DispatchResult
-    {
+    ) -> DispatchResult {
         permissions::Module::<T>::check_permission(who.clone(), permissions::LOCK_TO_FARM)?;
         let xor_part = Module::<T>::get_xor_part_amount_from_marker(dex_id, asset_id, amount)?;
         let mut farm = Farms::<T>::get(&farm_id).ok_or(Error::<T>::FarmNotFound)?;
@@ -284,7 +283,7 @@ impl<T: Trait> Module<T> {
         // and this code is about writeing to storage map.
         Farms::<T>::insert(farm.id, farm);
         Farmers::<T>::insert(farmer.id.0.clone(), farmer.id.1.clone(), farmer);
-        MarkerTokensIndex::<T>::mutate((farm_id, who), |mti| {mti.insert(asset_id)});
+        MarkerTokensIndex::<T>::mutate((farm_id, who), |mti| mti.insert(asset_id));
         Ok(())
     }
 
@@ -294,8 +293,7 @@ impl<T: Trait> Module<T> {
         farm_id: FarmId,
         opt_asset_id: Option<T::AssetId>,
         amount_opt: Option<Balance>,
-    ) -> DispatchResult
-    {
+    ) -> DispatchResult {
         permissions::Module::<T>::check_permission(who.clone(), permissions::UNLOCK_FROM_FARM)?;
         let mut farm = Farms::<T>::get(&farm_id).ok_or(Error::<T>::FarmNotFound)?;
         let current_block = <frame_system::Module<T>>::block_number();
@@ -310,7 +308,7 @@ impl<T: Trait> Module<T> {
                     .map_err(|()| Error::<T>::CalculationOrOperationWithFarmingStateIsFailed)?;
                 Some(amount)
             }
-            (None,None) => {
+            (None, None) => {
                 farmer
                     .state
                     .remove_all_from_locked(Some(&mut farm.aggregated_state), current_block)
@@ -322,17 +320,29 @@ impl<T: Trait> Module<T> {
                 for asset_id in mti {
                     let amount = <assets::Module<T>>::free_balance(&asset_id, &ta_repr)?;
                     // Asset is None so unlock all assets, this is like exiting from farm.
-                    technical::Module::<T>::transfer_out(&asset_id, &farmer.tech_account_id, &who, amount)?;
+                    technical::Module::<T>::transfer_out(
+                        &asset_id,
+                        &farmer.tech_account_id,
+                        &who,
+                        amount,
+                    )?;
                 }
                 let empty: BTreeSet<T::AssetId> = BTreeSet::new();
                 MarkerTokensIndex::<T>::insert((farm_id, who.clone()), empty);
                 None
             }
-            _ => { return Err(Error::<T>::CaseIsNotSupported.into()); }
+            _ => {
+                return Err(Error::<T>::CaseIsNotSupported.into());
+            }
         };
         if let Some(amount) = amount_opt {
             // Technical account for farmer is unique, so this is unlock.
-            technical::Module::<T>::transfer_out(&opt_asset_id.unwrap(), &farmer.tech_account_id, &who, amount)?;
+            technical::Module::<T>::transfer_out(
+                &opt_asset_id.unwrap(),
+                &farmer.tech_account_id,
+                &who,
+                amount,
+            )?;
         }
         // If previous operation is fail than transfer is not done, and next code is not performed,
         // and this code is about writeing to storage map.
