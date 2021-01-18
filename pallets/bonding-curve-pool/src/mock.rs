@@ -2,7 +2,7 @@ use crate::{Module, Trait};
 use common::{
     self, fixed,
     prelude::{Balance, SwapAmount, SwapOutcome},
-    Amount, AssetId32, AssetSymbol, LiquiditySource, TechPurpose, USD, VAL, XOR,
+    Amount, AssetId32, AssetSymbol, LiquiditySource, TechPurpose, USDT, VAL, XOR,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::{impl_outer_origin, parameter_types, weights::Weight, StorageValue};
@@ -106,7 +106,7 @@ impl MockDEXApi {
         MockLiquiditySource::set_reserves_account_id(mock_liquidity_source_tech_account_id)?;
         Currencies::deposit(XOR, &account_id, 1_000_u128.into())?;
         Currencies::deposit(VAL, &account_id, 1_000_u128.into())?;
-        Currencies::deposit(USD, &account_id, 1_000_000_u128.into())?;
+        Currencies::deposit(USDT, &account_id, 1_000_000_u128.into())?;
         Ok(())
     }
 }
@@ -138,7 +138,7 @@ impl<DEXId> LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> f
         swap_amount: SwapAmount<Balance>,
     ) -> Result<SwapOutcome<Balance>, DispatchError> {
         let prices: HashMap<_, _> = vec![
-            ((USD, XOR), Balance(fixed!(0, 01))),
+            ((USDT, XOR), Balance(fixed!(0, 01))),
             ((XOR, VAL), Balance(fixed!(2, 0))),
         ]
         .into_iter()
@@ -259,7 +259,13 @@ impl Default for ExtBuilder {
     fn default() -> Self {
         Self {
             endowed_accounts: vec![
-                (alice(), USD, 0u128.into(), AssetSymbol(b"USD".to_vec()), 18),
+                (
+                    alice(),
+                    USDT,
+                    0u128.into(),
+                    AssetSymbol(b"USDT".to_vec()),
+                    18,
+                ),
                 (
                     alice(),
                     XOR,

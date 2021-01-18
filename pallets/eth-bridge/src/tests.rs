@@ -806,10 +806,10 @@ fn should_not_allow_adding_asset_if_not_owner() {
     ext.execute_with(|| {
         let bob = get_account_id_from_seed::<sr25519::Public>("Bob");
         assert_err!(
-            EthBridge::add_asset(Origin::signed(bob.clone()), AssetId::USD.into(),),
+            EthBridge::add_asset(Origin::signed(bob.clone()), AssetId::USDT.into(),),
             crate::Error::<Test>::TokenIsNotOwnedByTheAuthor
         );
-        assert!(EthBridge::registered_asset(AssetId32::from(AssetId::USD)).is_none());
+        assert!(EthBridge::registered_asset(AssetId32::from(AssetId::USDT)).is_none());
     });
 }
 

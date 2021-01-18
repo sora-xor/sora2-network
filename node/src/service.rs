@@ -6,17 +6,21 @@ use framenode_runtime::{self, opaque::Block, RuntimeApi};
 
 use codec::Encode;
 use framenode_runtime::eth_bridge;
+use framenode_runtime::eth_bridge::{
+    STORAGE_ETH_NODE_CREDENTIALS_KEY, STORAGE_ETH_NODE_URL_KEY, STORAGE_PEER_SECRET_KEY,
+};
 use grandpa::{self, FinalityProofProvider as GrandpaFinalityProofProvider};
-use log::info;
 use sc_client_api::{Backend, ExecutorProvider, RemoteBackend};
 use sc_consensus_babe;
 use sc_executor::native_executor_instance;
 use sc_network::NetworkService;
 use sc_service::{config::Configuration, error::Error as ServiceError, RpcHandlers, TaskManager};
-use sp_core::ecdsa;
 use sp_core::offchain::{OffchainStorage, STORAGE_PREFIX};
+use sp_core::traits::BareCryptoStore;
+use sp_core::{Pair, Public};
 use sp_inherents::InherentDataProviders;
 use sp_runtime::traits::Block as BlockT;
+use std::fs::File;
 use std::sync::Arc;
 
 // Our native executor instance.
@@ -64,27 +68,61 @@ pub fn new_partial(
     let (client, backend, keystore, task_manager) =
         sc_service::new_full_parts::<Block, RuntimeApi, Executor>(&config)?;
     let client = Arc::new(client);
+    let mut bridge_peer_secret_key = None;
 
-    let dev_seed = config.dev_key_seed.clone();
+    if let Some(first_pk_raw) = keystore
+        .read()
+        .keys(eth_bridge::KEY_TYPE)
+        .unwrap()
+        .first()
+        .map(|x| x.1.clone())
+    {
+        let pk = eth_bridge::crypto::Public::from_slice(&first_pk_raw[..]);
+        if let Ok(kep) = keystore.read().key_pair::<eth_bridge::crypto::Pair>(&pk) {
+            let seed = kep.to_raw_vec();
+            bridge_peer_secret_key = Some(seed);
+        }
+    }
 
-    if let Some(seed) = dev_seed {
-        info!("Adding bridge keys to keystore");
-        let kp: ecdsa::Pair = keystore
-            .write()
-            .insert_ephemeral_from_seed_by_type::<eth_bridge::crypto::Pair>(
-                &seed,
-                eth_bridge::KEY_TYPE,
-            )
-            .expect("Dev Seed should always succeed.")
-            .into();
-        backend
-            .offchain_storage()
-            .unwrap()
-            .set(b"", b"key", &kp.seed().encode());
-        backend
-            .offchain_storage()
-            .unwrap()
-            .set(STORAGE_PREFIX, b"key", &kp.seed().encode());
+    if let Some(sk) = bridge_peer_secret_key {
+        let mut storage = backend.offchain_storage().unwrap();
+        storage.set(STORAGE_PREFIX, STORAGE_PEER_SECRET_KEY, &sk.encode());
+
+        let path = config
+            .network
+            .net_config_path
+            .clone()
+            .or(config.database.path().map(|x| x.to_owned()))
+            .expect("Expected network or database path.");
+        let bridge_path = path
+            .ancestors()
+            .skip(1)
+            .next()
+            .map(|x| {
+                let mut x = x.to_owned();
+                x.push("bridge/eth");
+                x
+            })
+            .unwrap();
+        let file = File::open(&bridge_path).expect(&format!(
+            "Ethereum bridge node config not found. Expected path: {:?}",
+            bridge_path
+        ));
+        let params: [String; 2] =
+            serde_json::from_reader(&file).expect("Invalid ethereum bridge node config.");
+        if !params[0].is_empty() {
+            storage.set(
+                STORAGE_PREFIX,
+                STORAGE_ETH_NODE_URL_KEY,
+                &params[0].encode(),
+            );
+        }
+        storage.set(
+            STORAGE_PREFIX,
+            STORAGE_ETH_NODE_CREDENTIALS_KEY,
+            &params[1].encode(),
+        );
+        log::info!("Ethereum bridge peer initialized");
     }
 
     let select_chain = sc_consensus::LongestChain::new(backend.clone());

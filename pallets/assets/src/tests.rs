@@ -106,7 +106,7 @@ mod tests {
             assert!(crate::is_symbol_valid(&AssetSymbol(b"XOR".to_vec())));
             assert!(crate::is_symbol_valid(&AssetSymbol(b"DOT".to_vec())));
             assert!(crate::is_symbol_valid(&AssetSymbol(b"KSM".to_vec())));
-            assert!(crate::is_symbol_valid(&AssetSymbol(b"USD".to_vec())));
+            assert!(crate::is_symbol_valid(&AssetSymbol(b"USDT".to_vec())));
             assert!(crate::is_symbol_valid(&AssetSymbol(b"VAL".to_vec())));
             assert!(crate::is_symbol_valid(&AssetSymbol(b"PSWAP".to_vec())));
             assert!(crate::is_symbol_valid(&AssetSymbol(b"GT".to_vec())));
