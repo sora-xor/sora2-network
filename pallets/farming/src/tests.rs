@@ -265,7 +265,7 @@ fn one_farmer_working_with_farm_cascade() {
                 Origin::signed(ALICE()),
                 dex_id,
                 farm_id,
-                mark_asset,
+                Some(mark_asset),
                 Some(1000u32.into()),
             ));
 
@@ -415,7 +415,7 @@ fn two_farmers_working_with_farm_cascade() {
                 Origin::signed(ALICE()),
                 dex_id,
                 farm_id,
-                mark_asset,
+                Some(mark_asset),
                 Some(1000u32.into()),
             ));
 
@@ -423,7 +423,7 @@ fn two_farmers_working_with_farm_cascade() {
                 Origin::signed(BOB()),
                 dex_id,
                 farm_id,
-                mark_asset,
+                Some(mark_asset),
                 Some(1000u32.into()),
             ));
 

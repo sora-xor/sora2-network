@@ -676,7 +676,7 @@ impl<T: Trait> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, T
                     (None, None)
                 } else {
                     let fxw_init_x: FixedWrapper = init_x.into();
-                    let fxw_init_y: FixedWrapper = init_x.into();
+                    let fxw_init_y: FixedWrapper = init_y.into();
                     let fxw_value: FixedWrapper = fxw_init_x.multiply_and_sqrt(&fxw_init_y);
                     let value: Fixed = fxw_value
                         .get()
