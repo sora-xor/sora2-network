@@ -79,70 +79,83 @@ fn session_keys(grandpa: GrandpaId, babe: BabeId) -> SessionKeys {
     SessionKeys { babe, grandpa }
 }
 
-pub fn test_net() -> ChainSpec {
+pub fn dev_net() -> ChainSpec {
     let mut properties = Properties::new();
     properties.insert("tokenSymbol".into(), "XOR".into());
     properties.insert("tokenDecimals".into(), 18.into());
     ChainSpec::from_genesis(
-        "SORA-staging Testnet",
-        "sora-substrate-staging",
+        "SORA-dev Testnet",
+        "sora-substrate-dev",
         ChainType::Live,
         move || {
             testnet_genesis(
-                hex!("2c5f3fd607721d5dd9fdf26d69cdcb9294df96a8ff956b1323d69282502aaa2e").into(),
+                hex!("92c4ff71ae7492a1e6fef5d80546ea16307c560ac1063ffaa5e0e084df1e2b7e").into(),
                 vec![
                     authority_keys_from_public_keys(
-                        hex!("dce47ff231d43281e03dd21e5890db128176d9ee20e65da331d8ae0b64863779"),
-                        hex!("5683cf2ddb87bfed4f4f10ceefd44a61c0eda4fe7c63bd046cb5b3673c41c66b"),
-                        hex!("5683cf2ddb87bfed4f4f10ceefd44a61c0eda4fe7c63bd046cb5b3673c41c66b"),
-                        hex!("51d7f9c7f9da7a72a78f50470e56e39b7923339988506060d94f6c2e9c516be8")
+                        hex!("349b061381fe1e47b5dd18061f7c7f76801b41dc9c6afe0b2c4c65e0171c8b35"),
+                        hex!("9c3c8836f6def559a11751c18541b9a2c81bcf9bd6ac28d978b1adfacc354456"),
+                        hex!("9c3c8836f6def559a11751c18541b9a2c81bcf9bd6ac28d978b1adfacc354456"),
+                        hex!("0ced48eb19e0e2809a769c35a64264c3dd39f3aa0ff132aa7caaa6730ad31f57")
                     ),
                     authority_keys_from_public_keys(
-                        hex!("2a57402736d2b5ada9ee900e506a84436556470de7abd382031e1d90b182bd48"),
-                        hex!("9a014ecc9f8d87b0315a21d2e3be84409c2fbbd9b5236910660aaa6d5e1ac05e"),
-                        hex!("9a014ecc9f8d87b0315a21d2e3be84409c2fbbd9b5236910660aaa6d5e1ac05e"),
-                        hex!("f0c30bbb51dd66d2111e534cd47ac553a3a342d60c4d4f44b5566c9ad26e3346")
+                        hex!("5e7df6d78fb252ecfe5e2c516a145671b9c64ee7b733a3c128af27d76e2fe74c"),
+                        hex!("02bbb81a8132f9eb78ac1f2a9606055e58540f220fa1075bb3ba3d30add09e3f"),
+                        hex!("02bbb81a8132f9eb78ac1f2a9606055e58540f220fa1075bb3ba3d30add09e3f"),
+                        hex!("c75a2ed4012a61cf05ec6eecc4b83faedcf6a781111cc61f8e9a23ad2810bb5e")
                     ),
                     authority_keys_from_public_keys(
-                        hex!("e493667f399170b28f3b2db4b9f28dbbabbc5da5fc21114e076768fc3c539002"),
-                        hex!("8c9a6f997970057925bbc022bee892c7da318f29bbdc9d4645b6c159534d3a67"),
-                        hex!("8c9a6f997970057925bbc022bee892c7da318f29bbdc9d4645b6c159534d3a67"),
-                        hex!("b2e80730dd52182b324b6dfe1f0731f0f449ee2b7e257fb575f56c72a9f5af6d")
+                        hex!("baa98b9fde4fc1c983998798536a63ab70b3c365ce3870dd84a230cb19093004"),
+                        hex!("0ea8eafc441aa319aeaa23a74ed588f0ccd17eb3b41d12a1d8283b5f79c7b15d"),
+                        hex!("0ea8eafc441aa319aeaa23a74ed588f0ccd17eb3b41d12a1d8283b5f79c7b15d"),
+                        hex!("4be870c72a1ac412a5c239d701b5dd62a9e030899943faad55b48eb2c7c9dc2a")
                     ),
                     authority_keys_from_public_keys(
-                        hex!("00e8f3ad6566b446834f5361d0ed98aca3ab0c59848372f87546897345f9456f"),
-                        hex!("1e7ef2261dee2d6fc8ac829e943d547bddacf4371a22555e63d4dbaf1c2e827a"),
-                        hex!("1e7ef2261dee2d6fc8ac829e943d547bddacf4371a22555e63d4dbaf1c2e827a"),
-                        hex!("04bd6c3c7a8f116a7a4d5578f5c1cc6e61e72d75bd7eac3333e5a300e5c17d9b")
+                        hex!("4eb0f6225cef84a0285a54916625846e50d86526bdece448894af0ac87792956"),
+                        hex!("18b2c456464825673c63aa7866ee479b52d1a7a4bab7999408bd3568d5a02b64"),
+                        hex!("18b2c456464825673c63aa7866ee479b52d1a7a4bab7999408bd3568d5a02b64"),
+                        hex!("8061f3a75ef96a0d840d84cec5d42bcad43f882efdcf93b30a60c7bac6c894c1")
+                    ),
+                    authority_keys_from_public_keys(
+                        hex!("22a886a8f0a0ddd031518a2bc567585b0046d02d7aacbdb058857b42da40444b"),
+                        hex!("3a41a438f76d6a68b17fbd34e8a8195e5e2f74419db3bf7d914627803409ce35"),
+                        hex!("3a41a438f76d6a68b17fbd34e8a8195e5e2f74419db3bf7d914627803409ce35"),
+                        hex!("86320cd87cbe2881cdf3515d3a72d833099d61b4c38266437366e3b143f8835b")
+                    ),
+                    authority_keys_from_public_keys(
+                        hex!("20a0225a3cafe2d5e9813025e3f1a2d9a3e50f44528ecc3bed01c13466e33316"),
+                        hex!("c25eb643fd3a981a223046f32d1977644a17bb856a228d755868c1bb89d95b3d"),
+                        hex!("c25eb643fd3a981a223046f32d1977644a17bb856a228d755868c1bb89d95b3d"),
+                        hex!("15c652e559703197d10997d04df0081918314b77b8475d74002adaca0f3b634d")
                     ),
                 ],
                 vec![
-                    hex!("dce47ff231d43281e03dd21e5890db128176d9ee20e65da331d8ae0b64863779").into(),
-                    hex!("5683cf2ddb87bfed4f4f10ceefd44a61c0eda4fe7c63bd046cb5b3673c41c66b").into(),
-                    hex!("2a57402736d2b5ada9ee900e506a84436556470de7abd382031e1d90b182bd48").into(),
-                    hex!("9a014ecc9f8d87b0315a21d2e3be84409c2fbbd9b5236910660aaa6d5e1ac05e").into(),
-                    hex!("e493667f399170b28f3b2db4b9f28dbbabbc5da5fc21114e076768fc3c539002").into(),
-                    hex!("8c9a6f997970057925bbc022bee892c7da318f29bbdc9d4645b6c159534d3a67").into(),
-                    hex!("00e8f3ad6566b446834f5361d0ed98aca3ab0c59848372f87546897345f9456f").into(),
-                    hex!("1e7ef2261dee2d6fc8ac829e943d547bddacf4371a22555e63d4dbaf1c2e827a").into(),
+                    hex!("349b061381fe1e47b5dd18061f7c7f76801b41dc9c6afe0b2c4c65e0171c8b35").into(),
+                    hex!("9c3c8836f6def559a11751c18541b9a2c81bcf9bd6ac28d978b1adfacc354456").into(),
+                    hex!("5e7df6d78fb252ecfe5e2c516a145671b9c64ee7b733a3c128af27d76e2fe74c").into(),
+                    hex!("02bbb81a8132f9eb78ac1f2a9606055e58540f220fa1075bb3ba3d30add09e3f").into(),
+                    hex!("baa98b9fde4fc1c983998798536a63ab70b3c365ce3870dd84a230cb19093004").into(),
+                    hex!("0ea8eafc441aa319aeaa23a74ed588f0ccd17eb3b41d12a1d8283b5f79c7b15d").into(),
+                    hex!("4eb0f6225cef84a0285a54916625846e50d86526bdece448894af0ac87792956").into(),
+                    hex!("18b2c456464825673c63aa7866ee479b52d1a7a4bab7999408bd3568d5a02b64").into(),
+                    hex!("22a886a8f0a0ddd031518a2bc567585b0046d02d7aacbdb058857b42da40444b").into(),
+                    hex!("3a41a438f76d6a68b17fbd34e8a8195e5e2f74419db3bf7d914627803409ce35").into(),
+                    hex!("20a0225a3cafe2d5e9813025e3f1a2d9a3e50f44528ecc3bed01c13466e33316").into(),
+                    hex!("c25eb643fd3a981a223046f32d1977644a17bb856a228d755868c1bb89d95b3d").into(),
                 ],
                 vec![
-                    hex!("9cbca76054814f05364abf691f9166b1be176d9b399d94dc2d88b6c4bc2b0589").into(),
-                    hex!("3b2e166bca8913d9b88d7a8acdfc54c3fe92c15e347deda6a13c191c6e0cc19c").into(),
-                    hex!("07f5670d08b8f3bd493ff829482a489d94494fd50dd506957e44e9fdc2e98684").into(),
-                    hex!("211bb96e9f746183c05a1d583bccf513f9d8f679d6f36ecbd06609615a55b1cc").into(),
+                    hex!("da96bc5065020df6d5ccc9659ae3007ddc04a6fd7f52cabe76e87b6219026b65").into(),
+                    hex!("f57efdde92d350999cb41d1f2b21255d9ba7ae70cf03538ddee42a38f48a5436").into(),
+                    hex!("aa79aa80b94b1cfba69c4a7d60eeb7b469e6411d1f686cc61de8adc8b1b76a69").into(),
+                    hex!("60dc5adadc262770cbe904e3f65a26a89d46b70447640cd7968b49ddf5a459bc").into(),
+                    hex!("70d61e980602e09ac8b5fb50658ebd345774e73b8248d3b61862ba1a9a035082").into(),
+                    hex!("05918034f4a7f7c5d99cd0382aa6574ec2aba148aa3d769e50e0ac7663e36d58").into(),
                 ],
                 hex!("da723e9d76bd60da0ec846895c5e0ecf795b50ae652c012f27e56293277ef372").into(),
                 hex!("16fec57d383a1875ab4e9786aea7a626e721a491c828f475ae63ef098f98f373").into(),
                 hex!("da723e9d76bd60da0ec846895c5e0ecf795b50ae652c012f27e56293277ef372").into(),
             )
         },
-        vec![
-            MultiaddrWithPeerId::from_str("/dns/s1.stg1.sora2.soramitsu.co.jp/tcp/30333/p2p/12D3KooWQf9AXopgwHsfKCweXtuePnWKieythwNa7AFwNfyemcjX").unwrap(),
-            MultiaddrWithPeerId::from_str("/dns/s1.stg1.sora2.soramitsu.co.jp/tcp/30334/p2p/12D3KooWGXhnvgvUwbU831p19sy2gEdPbusN1B8P8ShuKi4JfLDH").unwrap(),
-            MultiaddrWithPeerId::from_str("/dns/s2.stg1.sora2.soramitsu.co.jp/tcp/31333/p2p/12D3KooWBwZmMTKQ37dEKAR3oxcuH9YFpzUdGRTbQcKgXLEmyhob").unwrap(),
-            MultiaddrWithPeerId::from_str("/dns/s2.stg1.sora2.soramitsu.co.jp/tcp/31334/p2p/12D3KooWExRdWV2CAF8oEyMYiXc9NABu8mmYLdXLtTNjjt1WjqAC").unwrap(),
-        ],
+        vec![],
         None,
         Some("sora-substrate-1"),
         Some(properties),
