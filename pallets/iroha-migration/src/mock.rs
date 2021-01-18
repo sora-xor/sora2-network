@@ -13,11 +13,7 @@ use permissions::{Scope, MINT};
 use sp_core::H256;
 use sp_runtime::{
     self,
-    app_crypto::{
-        sp_core::{self, 
-            crypto::AccountId32,
-        },
-    },
+    app_crypto::sp_core::{self, crypto::AccountId32},
     generic,
     serde::{Serialize, Serializer},
     testing::Header,
@@ -28,7 +24,7 @@ use sp_runtime::{
     transaction_validity::{TransactionSource, TransactionValidity, TransactionValidityError},
     ApplyExtrinsicResultWithInfo, Perbill,
 };
-use sp_std::{fmt::Debug};
+use sp_std::fmt::Debug;
 
 // Configure a mock runtime to test the pallet.
 
