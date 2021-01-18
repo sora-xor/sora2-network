@@ -742,7 +742,7 @@ construct_runtime! {
         EthBridge: eth_bridge::{Module, Call, Config<T>, Event<T>},
         Farming: farming::{Module, Call, Storage, Config<T>, Event<T>},
         PswapDistribution: pswap_distribution::{Module, Call, Storage, Config<T>, Event<T>},
-        IrohaMigration: iroha_migration::{Module, Call, Config<T>, Event<T>},
+        IrohaMigration: iroha_migration::{Module, Call, Storage, Config<T>, Event<T>},
     }
 }
 

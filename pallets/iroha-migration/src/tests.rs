@@ -6,19 +6,6 @@ use referral_system::Referrers;
 type Assets = assets::Module<Test>;
 
 #[test]
-fn it_works() {
-    new_test_ext().execute_with(|| {
-        // Dispatch a signed extrinsic.
-        assert!(true);
-        assert_ok!(Module::<Test>::migrate(
-            Origin::signed(ALICE),
-             "did_sora_d9bda3688c6f608ab15c@sora".to_string(),
-              "d9bda3688c6f608ab15c03a55b171da0413788a40a25722b4ae4d3672890bcd7".to_string(),
-              "c3cdb9a20b19abcfc869eae8f14389680aecc7afb5959fb87c2fee65951a46a7507f8bf11ee0c609fb101fd41d6534b84bb8c3e55a79189de96bcc8227fa5c01".to_string()));
-    });
-}
-
-#[test]
 fn test_verification_failed() {
     new_test_ext().execute_with(|| {
         assert_noop!(Module::<Test>::migrate(

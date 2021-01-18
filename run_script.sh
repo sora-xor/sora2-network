@@ -65,7 +65,6 @@ wsport="9944"
 num="0"
 for name in alice bob charlie dave eve
 do
-	export RUST_LOG="debug"
 	newport=`expr $port + 1`
 	rpcport=`expr $wsport + 10`
 	if [ "$num" == "0" ]; then
