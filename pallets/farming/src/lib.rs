@@ -12,6 +12,7 @@ use frame_support::{
 };
 use frame_system::ensure_signed;
 use orml_traits::currency::MultiCurrency;
+use sp_std::collections::btree_set::BTreeSet;
 
 pub trait WeightInfo {
     fn create() -> Weight;
@@ -121,6 +122,9 @@ decl_storage! {
                 hasher(blake2_128_concat) AssetId32<common::AssetId>
                   => Option<SmoothPriceState>;
 
+        /// Collection of all registered marker tokens for farmer.
+        pub MarkerTokensIndex get(fn marker_token_index): map hasher(blake2_128_concat) (FarmId, T::AccountId) => BTreeSet<T::AssetId>;
+
     }
     add_extra_genesis {
         config(initial_farm): (T::AccountId, T::AssetId, T::AssetId);
@@ -161,7 +165,8 @@ decl_error! {
         UnableToConvertAssetIdToTechAssetId,
         UnableToGetPoolInformationFromTechAsset,
         ThisTypeOfLiquiditySourceIsNotImplementedOrSupported,
-        NothingToClaim
+        NothingToClaim,
+        CaseIsNotSupported,
     }
 }
 
@@ -262,7 +267,8 @@ impl<T: Trait> Module<T> {
         farm_id: FarmId,
         asset_id: T::AssetId,
         amount: Balance,
-    ) -> DispatchResult {
+    ) -> DispatchResult
+    {
         permissions::Module::<T>::check_permission(who.clone(), permissions::LOCK_TO_FARM)?;
         let xor_part = Module::<T>::get_xor_part_amount_from_marker(dex_id, asset_id, amount)?;
         let mut farm = Farms::<T>::get(&farm_id).ok_or(Error::<T>::FarmNotFound)?;
@@ -278,6 +284,7 @@ impl<T: Trait> Module<T> {
         // and this code is about writeing to storage map.
         Farms::<T>::insert(farm.id, farm);
         Farmers::<T>::insert(farmer.id.0.clone(), farmer.id.1.clone(), farmer);
+        MarkerTokensIndex::<T>::mutate((farm_id, who), |mti| {mti.insert(asset_id)});
         Ok(())
     }
 
@@ -285,24 +292,25 @@ impl<T: Trait> Module<T> {
         who: T::AccountId,
         dex_id: T::DEXId,
         farm_id: FarmId,
-        asset_id: T::AssetId,
+        opt_asset_id: Option<T::AssetId>,
         amount_opt: Option<Balance>,
-    ) -> DispatchResult {
+    ) -> DispatchResult
+    {
         permissions::Module::<T>::check_permission(who.clone(), permissions::UNLOCK_FROM_FARM)?;
         let mut farm = Farms::<T>::get(&farm_id).ok_or(Error::<T>::FarmNotFound)?;
         let current_block = <frame_system::Module<T>>::block_number();
         let mut farmer = Self::get_or_create_farmer(who.clone(), farm_id)?;
-        let amount = match amount_opt {
-            Some(amount) => {
+        let amount_opt = match (amount_opt, opt_asset_id) {
+            (Some(amount), Some(asset_id)) => {
                 let xor_part =
                     Module::<T>::get_xor_part_amount_from_marker(dex_id, asset_id, amount)?;
                 farmer
                     .state
                     .remove_from_locked(Some(&mut farm.aggregated_state), current_block, xor_part)
                     .map_err(|()| Error::<T>::CalculationOrOperationWithFarmingStateIsFailed)?;
-                amount
+                Some(amount)
             }
-            None => {
+            (None,None) => {
                 farmer
                     .state
                     .remove_all_from_locked(Some(&mut farm.aggregated_state), current_block)
@@ -310,12 +318,22 @@ impl<T: Trait> Module<T> {
 
                 let ta_repr =
                     technical::Module::<T>::tech_account_id_to_account_id(&farmer.tech_account_id)?;
-                let amount = <assets::Module<T>>::free_balance(&asset_id, &ta_repr)?;
-                amount
+                let mti = MarkerTokensIndex::<T>::get((farm_id, who.clone()));
+                for asset_id in mti {
+                    let amount = <assets::Module<T>>::free_balance(&asset_id, &ta_repr)?;
+                    // Asset is None so unlock all assets, this is like exiting from farm.
+                    technical::Module::<T>::transfer_out(&asset_id, &farmer.tech_account_id, &who, amount)?;
+                }
+                let empty: BTreeSet<T::AssetId> = BTreeSet::new();
+                MarkerTokensIndex::<T>::insert((farm_id, who.clone()), empty);
+                None
             }
+            _ => { return Err(Error::<T>::CaseIsNotSupported.into()); }
         };
-        // Technical account for farmer is unique, so this is unlock.
-        technical::Module::<T>::transfer_out(&asset_id, &farmer.tech_account_id, &who, amount)?;
+        if let Some(amount) = amount_opt {
+            // Technical account for farmer is unique, so this is unlock.
+            technical::Module::<T>::transfer_out(&opt_asset_id.unwrap(), &farmer.tech_account_id, &who, amount)?;
+        }
         // If previous operation is fail than transfer is not done, and next code is not performed,
         // and this code is about writeing to storage map.
         Farms::<T>::insert(farm.id, farm);
@@ -544,16 +562,18 @@ decl_module! {
         }
 
         #[weight = 0]
-        pub fn lock_to_farm(origin, dex_id: T::DEXId, farm_id: FarmId, asset_id: T::AssetId, amount: Balance) -> DispatchResult {
+        pub fn lock_to_farm(origin, dex_id: T::DEXId, farm_id: FarmId, asset_id: T::AssetId, amount: Balance) -> DispatchResult
+        {
             let who = ensure_signed(origin)?;
             Module::<T>::lock_to_farm_unchecked(who, dex_id, farm_id, asset_id, amount)
         }
 
         #[weight = 0]
         pub fn unlock_from_farm(origin, dex_id: T::DEXId, farm_id: FarmId,
-                                asset_id: T::AssetId, amount_opt: Option<Balance>) -> DispatchResult {
+                                opt_asset_id: Option<T::AssetId>, amount_opt: Option<Balance>) -> DispatchResult
+        {
             let who = ensure_signed(origin)?;
-            Module::<T>::unlock_from_farm_unchecked(who, dex_id, farm_id, asset_id, amount_opt)
+            Module::<T>::unlock_from_farm_unchecked(who, dex_id, farm_id, opt_asset_id, amount_opt)
         }
 
         #[weight = 0]
