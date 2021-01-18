@@ -16,6 +16,7 @@ use framenode_runtime::eth_bridge::AssetKind;
 use grandpa::AuthorityId as GrandpaId;
 use hex_literal::hex;
 use permissions::Scope;
+use sc_network::config::MultiaddrWithPeerId;
 use sc_service::{ChainType, Properties};
 use sp_consensus_aura::sr25519::AuthorityId as AuraId;
 use sp_consensus_babe::AuthorityId as BabeId;
@@ -25,7 +26,6 @@ use sp_runtime::{
     traits::{IdentifyAccount, Verify},
     Perbill,
 };
-use sc_network::config::MultiaddrWithPeerId;
 use std::str::FromStr;
 
 /// Specialized `ChainSpec`. This is a specialization of the general Substrate ChainSpec type.
@@ -64,14 +64,14 @@ pub fn authority_keys_from_public_keys(
     stash_address: [u8; 32],
     controller_address: [u8; 32],
     sr25519_key: [u8; 32],
-    ed25519_key: [u8; 32]
+    ed25519_key: [u8; 32],
 ) -> (AccountId, AccountId, AuraId, BabeId, GrandpaId) {
     (
         stash_address.into(),
         controller_address.into(),
         AuraId::from_slice(&sr25519_key),
         BabeId::from_slice(&sr25519_key),
-        GrandpaId::from_slice(&ed25519_key)
+        GrandpaId::from_slice(&ed25519_key),
     )
 }
 
@@ -95,37 +95,37 @@ pub fn dev_net() -> ChainSpec {
                         hex!("349b061381fe1e47b5dd18061f7c7f76801b41dc9c6afe0b2c4c65e0171c8b35"),
                         hex!("9c3c8836f6def559a11751c18541b9a2c81bcf9bd6ac28d978b1adfacc354456"),
                         hex!("9c3c8836f6def559a11751c18541b9a2c81bcf9bd6ac28d978b1adfacc354456"),
-                        hex!("0ced48eb19e0e2809a769c35a64264c3dd39f3aa0ff132aa7caaa6730ad31f57")
+                        hex!("0ced48eb19e0e2809a769c35a64264c3dd39f3aa0ff132aa7caaa6730ad31f57"),
                     ),
                     authority_keys_from_public_keys(
                         hex!("5e7df6d78fb252ecfe5e2c516a145671b9c64ee7b733a3c128af27d76e2fe74c"),
                         hex!("02bbb81a8132f9eb78ac1f2a9606055e58540f220fa1075bb3ba3d30add09e3f"),
                         hex!("02bbb81a8132f9eb78ac1f2a9606055e58540f220fa1075bb3ba3d30add09e3f"),
-                        hex!("c75a2ed4012a61cf05ec6eecc4b83faedcf6a781111cc61f8e9a23ad2810bb5e")
+                        hex!("c75a2ed4012a61cf05ec6eecc4b83faedcf6a781111cc61f8e9a23ad2810bb5e"),
                     ),
                     authority_keys_from_public_keys(
                         hex!("baa98b9fde4fc1c983998798536a63ab70b3c365ce3870dd84a230cb19093004"),
                         hex!("0ea8eafc441aa319aeaa23a74ed588f0ccd17eb3b41d12a1d8283b5f79c7b15d"),
                         hex!("0ea8eafc441aa319aeaa23a74ed588f0ccd17eb3b41d12a1d8283b5f79c7b15d"),
-                        hex!("4be870c72a1ac412a5c239d701b5dd62a9e030899943faad55b48eb2c7c9dc2a")
+                        hex!("4be870c72a1ac412a5c239d701b5dd62a9e030899943faad55b48eb2c7c9dc2a"),
                     ),
                     authority_keys_from_public_keys(
                         hex!("4eb0f6225cef84a0285a54916625846e50d86526bdece448894af0ac87792956"),
                         hex!("18b2c456464825673c63aa7866ee479b52d1a7a4bab7999408bd3568d5a02b64"),
                         hex!("18b2c456464825673c63aa7866ee479b52d1a7a4bab7999408bd3568d5a02b64"),
-                        hex!("8061f3a75ef96a0d840d84cec5d42bcad43f882efdcf93b30a60c7bac6c894c1")
+                        hex!("8061f3a75ef96a0d840d84cec5d42bcad43f882efdcf93b30a60c7bac6c894c1"),
                     ),
                     authority_keys_from_public_keys(
                         hex!("22a886a8f0a0ddd031518a2bc567585b0046d02d7aacbdb058857b42da40444b"),
                         hex!("3a41a438f76d6a68b17fbd34e8a8195e5e2f74419db3bf7d914627803409ce35"),
                         hex!("3a41a438f76d6a68b17fbd34e8a8195e5e2f74419db3bf7d914627803409ce35"),
-                        hex!("86320cd87cbe2881cdf3515d3a72d833099d61b4c38266437366e3b143f8835b")
+                        hex!("86320cd87cbe2881cdf3515d3a72d833099d61b4c38266437366e3b143f8835b"),
                     ),
                     authority_keys_from_public_keys(
                         hex!("20a0225a3cafe2d5e9813025e3f1a2d9a3e50f44528ecc3bed01c13466e33316"),
                         hex!("c25eb643fd3a981a223046f32d1977644a17bb856a228d755868c1bb89d95b3d"),
                         hex!("c25eb643fd3a981a223046f32d1977644a17bb856a228d755868c1bb89d95b3d"),
-                        hex!("15c652e559703197d10997d04df0081918314b77b8475d74002adaca0f3b634d")
+                        hex!("15c652e559703197d10997d04df0081918314b77b8475d74002adaca0f3b634d"),
                     ),
                 ],
                 vec![
@@ -496,7 +496,9 @@ fn testnet_genesis(
             code: WASM_BINARY.unwrap().to_vec(),
             changes_trie_config: Default::default(),
         }),
-        pallet_sudo: Some(SudoConfig { key: root_key.clone() }),
+        pallet_sudo: Some(SudoConfig {
+            key: root_key.clone(),
+        }),
         technical: Some(TechnicalConfig {
             account_ids_to_tech_account_ids: tech_accounts,
         }),
@@ -658,10 +660,7 @@ fn testnet_genesis(
             balances: endowed_accounts
                 .iter()
                 .cloned()
-                .chain(vec![
-                    root_key,
-                    faucet_account_id.clone(),
-                ].into_iter())
+                .chain(vec![root_key, faucet_account_id.clone()].into_iter())
                 .map(|k| (k, initial_balance.into()))
                 .chain(once((
                     eth_bridge_account_id.clone(),
