@@ -7,7 +7,6 @@ use sp_runtime::traits::SignedExtension;
 use crate::mock::*;
 
 #[test]
-#[ignore]
 fn referrer_gets_bonus_from_tx_fee() {
     ExtBuilder::build().execute_with(|| {
         let call: &<Test as frame_system::Trait>::Call =
@@ -61,7 +60,6 @@ fn referrer_gets_bonus_from_tx_fee() {
 }
 
 #[test]
-#[ignore]
 fn notify_val_burned_works() {
     ExtBuilder::build().execute_with(|| {
         assert_eq!(

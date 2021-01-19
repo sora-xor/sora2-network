@@ -230,9 +230,21 @@ impl Saturating for Balance {
     }
 
     fn saturating_mul(self, rhs: Self) -> Self {
-        let lhs = *self.0.as_bits();
-        let rhs = *rhs.0.as_bits();
-        Fixed::from_bits(lhs.saturating_mul(rhs)).into()
+        let lhs = self.0;
+        let rhs = rhs.0;
+        let result = match lhs.rmul(rhs, Floor) {
+            Ok(value) => value,
+            Err(_) => {
+                let left_is_negative = lhs < fixed!(0);
+                let right_is_negative = rhs < fixed!(0);
+                if left_is_negative == right_is_negative {
+                    Fixed::MAX
+                } else {
+                    Fixed::MIN
+                }
+            }
+        };
+        result.into()
     }
 
     fn saturating_pow(self, exp: usize) -> Self {
