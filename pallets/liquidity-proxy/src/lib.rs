@@ -302,9 +302,15 @@ impl<T: Trait> Module<T> {
         let total_fee: FixedWrapper = (0..distr.len()).fold(fixed!(0), |acc, i| {
             let idx = match distr[i].cmul(num_samples) {
                 Err(_) => return acc,
-                Ok(index) => index,
+                Ok(index) => {
+                    let index = index.rounding_to_i64();
+                    if index == 0 {
+                        0
+                    } else {
+                        index - 1
+                    }
+                }
             };
-            let idx = idx.integral(Floor);
             acc + *sample_fees[i].get(idx as usize).unwrap_or(&fixed!(0))
         });
         let total_fee = total_fee.get().map_err(|_| Error::CalculationError::<T>)?;
