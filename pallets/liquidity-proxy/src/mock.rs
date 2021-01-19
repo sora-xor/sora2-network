@@ -1,7 +1,7 @@
 use crate::{Module, Trait};
 use common::{
-    self, fixed_from_basis_points, hash, Amount, AssetId32, DEXInfo, Fixed, LiquiditySourceType,
-    DOT, KSM, XOR,
+    self, fixed, fixed_from_basis_points, hash, Amount, AssetId32, DEXInfo, Fixed,
+    LiquiditySourceType, DOT, KSM, XOR,
 };
 use currencies::BasicCurrencyAdapter;
 
@@ -235,28 +235,28 @@ impl Default for ExtBuilder {
     fn default() -> Self {
         Self {
             reserves: vec![
-                (DEX_A_ID, DOT, (Fixed::from(5000), Fixed::from(7000))),
-                (DEX_A_ID, KSM, (Fixed::from(5500), Fixed::from(4000))),
-                (DEX_B_ID, DOT, (Fixed::from(100), Fixed::from(45))),
-                (DEX_C_ID, DOT, (Fixed::from(520), Fixed::from(550))),
+                (DEX_A_ID, DOT, (fixed!(5000), fixed!(7000))),
+                (DEX_A_ID, KSM, (fixed!(5500), fixed!(4000))),
+                (DEX_B_ID, DOT, (fixed!(100), fixed!(45))),
+                (DEX_C_ID, DOT, (fixed!(520), fixed!(550))),
             ],
             reserves_2: vec![
-                (DEX_A_ID, DOT, (Fixed::from(6000), Fixed::from(6000))),
-                (DEX_A_ID, KSM, (Fixed::from(6500), Fixed::from(3000))),
-                (DEX_B_ID, DOT, (Fixed::from(200), Fixed::from(45))),
-                (DEX_C_ID, DOT, (Fixed::from(550), Fixed::from(700))),
+                (DEX_A_ID, DOT, (fixed!(6000), fixed!(6000))),
+                (DEX_A_ID, KSM, (fixed!(6500), fixed!(3000))),
+                (DEX_B_ID, DOT, (fixed!(200), fixed!(45))),
+                (DEX_C_ID, DOT, (fixed!(550), fixed!(700))),
             ],
             reserves_3: vec![
-                (DEX_A_ID, DOT, (Fixed::from(7000), Fixed::from(5000))),
-                (DEX_A_ID, KSM, (Fixed::from(7500), Fixed::from(2000))),
-                (DEX_B_ID, DOT, (Fixed::from(300), Fixed::from(45))),
-                (DEX_C_ID, DOT, (Fixed::from(400), Fixed::from(380))),
+                (DEX_A_ID, DOT, (fixed!(7000), fixed!(5000))),
+                (DEX_A_ID, KSM, (fixed!(7500), fixed!(2000))),
+                (DEX_B_ID, DOT, (fixed!(300), fixed!(45))),
+                (DEX_C_ID, DOT, (fixed!(400), fixed!(380))),
             ],
             reserves_4: vec![
-                (DEX_A_ID, DOT, (Fixed::from(8000), Fixed::from(4000))),
-                (DEX_A_ID, KSM, (Fixed::from(8500), Fixed::from(1000))),
-                (DEX_B_ID, DOT, (Fixed::from(400), Fixed::from(45))),
-                (DEX_C_ID, DOT, (Fixed::from(1300), Fixed::from(1800))),
+                (DEX_A_ID, DOT, (fixed!(8000), fixed!(4000))),
+                (DEX_A_ID, KSM, (fixed!(8500), fixed!(1000))),
+                (DEX_B_ID, DOT, (fixed!(400), fixed!(45))),
+                (DEX_C_ID, DOT, (fixed!(1300), fixed!(1800))),
             ],
             dex_list: vec![
                 (

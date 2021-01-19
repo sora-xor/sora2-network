@@ -8,7 +8,7 @@ extern crate alloc;
 use liquidity_proxy::*;
 
 use codec::Decode;
-use common::{prelude::SwapAmount, AssetSymbol, DEXId, FilterMode, DOT, XOR};
+use common::{fixed, prelude::SwapAmount, AssetSymbol, DEXId, FilterMode, DOT, XOR};
 use frame_benchmarking::benchmarks;
 use frame_support::traits::Get;
 use frame_system::RawOrigin;
@@ -80,31 +80,31 @@ fn setup_benchmark<T: Trait>() -> Result<(), &'static str> {
         owner_origin.clone(),
         XOR.into(),
         owner.clone(),
-        10_000_u128.into(),
+        fixed!(10000),
     )?;
     Assets::<T>::mint(
         owner_origin.clone(),
         DOT.into(),
         owner.clone(),
-        20_000_u128.into(),
+        fixed!(20000),
     )?;
     Assets::<T>::mint(
         owner_origin.clone(),
         XOR.into(),
         repr.clone(),
-        1_000_000_u128.into(),
+        fixed!(1000000),
     )?;
     Assets::<T>::mint(
         owner_origin.clone(),
         DOT.into(),
         repr.clone(),
-        1_500_000_u128.into(),
+        fixed!(1500000),
     )?;
     Assets::<T>::mint(
         owner_origin.clone(),
         mark_asset.into(),
         owner.clone(),
-        1_500_000_000_000_u128.into(),
+        fixed!(1500000000000),
     )?;
 
     // Adding reserves to mock sources
@@ -115,29 +115,29 @@ fn setup_benchmark<T: Trait>() -> Result<(), &'static str> {
         owner_origin.clone(),
         DEX.into(),
         DOT.into(),
-        10_000_000_000_000_u128.into(),
-        11_000_u128.into(),
+        fixed!(10000000000000),
+        fixed!(11000),
     )?;
     MockLiquiditySource::<T, mock_liquidity_source::Instance2>::set_reserve(
         owner_origin.clone(),
         DEX.into(),
         DOT.into(),
-        11_000_000_000_000_u128.into(),
-        14_000_u128.into(),
+        fixed!(11000000000000),
+        fixed!(14000),
     )?;
     MockLiquiditySource::<T, mock_liquidity_source::Instance3>::set_reserve(
         owner_origin.clone(),
         DEX.into(),
         DOT.into(),
-        8_000_000_000_000_u128.into(),
-        8_000_u128.into(),
+        fixed!(8000000000000),
+        fixed!(8000),
     )?;
     MockLiquiditySource::<T, mock_liquidity_source::Instance4>::set_reserve(
         owner_origin.clone(),
         DEX.into(),
         DOT.into(),
-        26_000_000_000_000_u128.into(),
-        36_000_u128.into(),
+        fixed!(26000000000000),
+        fixed!(36000),
     )?;
 
     Ok(())
@@ -158,7 +158,7 @@ benchmarks! {
         DEX.into(),
         base_asset.clone(),
         target_asset.clone(),
-        SwapAmount::with_desired_input(1_000_u128.into(), 0_u128.into()),
+        SwapAmount::with_desired_input(fixed!(1000), fixed!(0)),
         Vec::new(),
         FilterMode::Disabled
     )
@@ -180,7 +180,7 @@ benchmarks! {
         DEX.into(),
         base_asset.clone(),
         target_asset.clone(),
-        SwapAmount::with_desired_output(1_000_u128.into(), 10_000_u128.into()),
+        SwapAmount::with_desired_output(fixed!(1000), fixed!(10000)),
         Vec::new(),
         FilterMode::Disabled
     )

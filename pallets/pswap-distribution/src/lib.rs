@@ -1,10 +1,8 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use common::{
-    balance::Balance,
-    prelude::{FixedWrapper, SwapAmount},
-    EnsureDEXOwner, Fixed, LiquiditySource,
-};
+use common::prelude::fixnum::ops::{CheckedAdd, CheckedSub};
+use common::prelude::{FixedWrapper, SwapAmount};
+use common::{balance::Balance, fixed, EnsureDEXOwner, Fixed, LiquiditySource};
 use frame_support::{
     decl_error, decl_event, decl_module, decl_storage,
     dispatch::{DispatchError, DispatchResult, Weight},
@@ -14,7 +12,6 @@ use frame_support::{
 };
 use frame_system::{self as system, ensure_signed};
 use sp_arithmetic::traits::{Saturating, Zero};
-use sp_arithmetic::FixedPointNumber;
 use tokens::Accounts;
 
 #[cfg(test)]
@@ -214,26 +211,24 @@ impl<T: Trait> Module<T> {
 
     fn claim_by_account(account_id: T::AccountId) -> DispatchResult {
         let current_position = ShareholderAccounts::<T>::get(&account_id);
-        if !current_position.is_zero() {
+        if current_position != fixed!(0) {
             // get definitions
             let incentives_asset_id = T::GetIncentiveAssetId::get();
             let tech_account_id = T::GetTechnicalAccountId::get();
-            let claimable_incentives = FixedWrapper::from(assets::Module::<T>::free_balance(
-                &incentives_asset_id,
-                &tech_account_id,
-            )?);
+            let claimable_incentives: FixedWrapper =
+                assets::Module::<T>::free_balance(&incentives_asset_id, &tech_account_id)?.into();
             let shares_total = FixedWrapper::from(ClaimableShares::get());
 
             // clean up shares info
-            ShareholderAccounts::<T>::mutate(&account_id, |current| *current = Fixed::zero());
-            ClaimableShares::mutate(|current| *current = current.saturating_sub(current_position));
+            ShareholderAccounts::<T>::mutate(&account_id, |current| *current = fixed!(0));
+            ClaimableShares::mutate(|current| *current = current.csub(current_position).unwrap());
 
             // perform claimed tokens transfer
-            let incentives_to_claim =
-                FixedWrapper::from(current_position) / (shares_total / claimable_incentives);
+            let incentives_to_claim = FixedWrapper::from(current_position)
+                / (shares_total / claimable_incentives.clone());
             let incentives_to_claim = incentives_to_claim
                 .get()
-                .ok_or(Error::<T>::CalculationError)?;
+                .map_err(|_| Error::CalculationError::<T>)?;
 
             let _result = Assets::<T>::transfer_from(
                 &incentives_asset_id,
@@ -244,7 +239,7 @@ impl<T: Trait> Module<T> {
                         // TODO: consider cases where this is bad, can it accumulate?
                         claimable_incentives
                             .get()
-                            .ok_or(Error::<T>::CalculationError)?,
+                            .map_err(|_| Error::CalculationError::<T>)?,
                     ),
                 ),
             )?;
@@ -263,7 +258,7 @@ impl<T: Trait> Module<T> {
         dex_id: &T::DEXId,
     ) -> DispatchResult {
         let base_total = Assets::<T>::free_balance(&T::GetBaseAssetId::get(), &fees_account_id)?;
-        if base_total.is_zero() {
+        if base_total == fixed!(0) {
             Self::deposit_event(RawEvent::NothingToExchange(
                 dex_id.clone(),
                 fees_account_id.clone(),
@@ -316,7 +311,7 @@ impl<T: Trait> Module<T> {
         let incentive_asset_id = T::GetIncentiveAssetId::get();
         let marker_total = Assets::<T>::total_issuance(&marker_asset_id)?;
         let incentive_total = Assets::<T>::free_balance(&incentive_asset_id, &fees_account_id)?;
-        if incentive_total.is_zero() {
+        if incentive_total == fixed!(0) {
             Self::deposit_event(RawEvent::NothingToDistribute(
                 dex_id.clone(),
                 fees_account_id.clone(),
@@ -338,7 +333,7 @@ impl<T: Trait> Module<T> {
         let incentive_total = Balance::from(
             incentive_to_revive
                 .get()
-                .ok_or(Error::<T>::CalculationError)?,
+                .map_err(|_| Error::<T>::CalculationError)?,
         );
 
         let Balance(mut claimable_incentives) =
@@ -353,32 +348,39 @@ impl<T: Trait> Module<T> {
                     / (FixedWrapper::from(marker_total) / FixedWrapper::from(incentive_total));
 
                 let total_claimable_shares = ClaimableShares::get();
-                let claimable_share = if total_claimable_shares.is_zero() {
-                    share.get().ok_or(Error::<T>::CalculationError)?
+                let claimable_share = if total_claimable_shares == fixed!(0) {
+                    share
+                        .clone()
+                        .get()
+                        .map_err(|_| Error::<T>::CalculationError)?
                 } else {
-                    let claimable_share = share
+                    let claimable_share = share.clone()
                         / (FixedWrapper::from(claimable_incentives)
                             / FixedWrapper::from(total_claimable_shares));
-                    claimable_share.get().ok_or(Error::<T>::CalculationError)?
+                    claimable_share
+                        .get()
+                        .map_err(|_| Error::<T>::CalculationError)?
                 };
                 let claimable_share_delta =
-                    if total_claimable_shares.is_zero() && !claimable_incentives.is_zero() {
+                    if total_claimable_shares == fixed!(0) && claimable_incentives != fixed!(0) {
                         // this case is triggered when there is unowned incentives, first
                         // claim should posess it, but share needs to be corrected to avoid
                         // precision loss by following claims
-                        (FixedWrapper::from(claimable_incentives + share))
+                        (claimable_incentives.clone() + share)
                             .get()
-                            .ok_or(Error::<T>::CalculationError)?
+                            .map_err(|_| Error::<T>::CalculationError)?
                     } else {
                         claimable_share
                     };
                 ShareholderAccounts::<T>::mutate(&account_id, |current| {
-                    *current = current.saturating_add(claimable_share_delta)
+                    *current = current.cadd(claimable_share_delta).unwrap()
                 });
                 ClaimableShares::mutate(|current| {
-                    *current = current.saturating_add(claimable_share_delta)
+                    *current = current.cadd(claimable_share_delta).unwrap()
                 });
-                claimable_incentives = claimable_incentives.saturating_add(claimable_share);
+                claimable_incentives = claimable_incentives
+                    .cadd(claimable_share)
+                    .map_err(|_| Error::<T>::CalculationError)?;
                 shareholders_num += 1;
             }
         }
@@ -423,7 +425,7 @@ impl<T: Trait> Module<T> {
         let mut burn_rate = BurnRate::get();
         let (increase_delta, max) = BurnUpdateInfo::get();
         if burn_rate < max {
-            burn_rate = max.min(burn_rate + increase_delta);
+            burn_rate = max.min(burn_rate.cadd(increase_delta).unwrap());
             BurnRate::mutate(|val| *val = burn_rate.clone());
             Self::deposit_event(RawEvent::BurnRateChanged(burn_rate))
         }

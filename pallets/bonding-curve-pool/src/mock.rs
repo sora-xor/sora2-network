@@ -104,9 +104,9 @@ impl MockDEXApi {
             Technical::tech_account_id_to_account_id(&mock_liquidity_source_tech_account_id)?;
         Technical::register_tech_account_id(mock_liquidity_source_tech_account_id.clone())?;
         MockLiquiditySource::set_reserves_account_id(mock_liquidity_source_tech_account_id)?;
-        Currencies::deposit(XOR, &account_id, 1_000_u128.into())?;
-        Currencies::deposit(VAL, &account_id, 1_000_u128.into())?;
-        Currencies::deposit(USDT, &account_id, 1_000_000_u128.into())?;
+        Currencies::deposit(XOR, &account_id, fixed!(1000))?;
+        Currencies::deposit(VAL, &account_id, fixed!(1000))?;
+        Currencies::deposit(USDT, &account_id, fixed!(1000000))?;
         Ok(())
     }
 }
@@ -138,8 +138,8 @@ impl<DEXId> LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> f
         swap_amount: SwapAmount<Balance>,
     ) -> Result<SwapOutcome<Balance>, DispatchError> {
         let prices: HashMap<_, _> = vec![
-            ((USDT, XOR), Balance(fixed!(0, 01))),
-            ((XOR, VAL), Balance(fixed!(2, 0))),
+            ((USDT, XOR), Balance(fixed!(0.01))),
+            ((XOR, VAL), Balance(fixed!(2))),
         ]
         .into_iter()
         .collect();
@@ -149,11 +149,11 @@ impl<DEXId> LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> f
             } => {
                 let mut amount_out =
                     desired_amount_in * prices[&(*input_asset_id, *output_asset_id)];
-                let fee = amount_out * Balance(fixed!(0,3%));
+                let fee = amount_out * Balance(fixed!(0.003));
                 amount_out = amount_out - fee;
                 let reserves_account_id =
                     &Technical::tech_account_id_to_account_id(&ReservesAccount::get())?;
-                assert_ne!(desired_amount_in, 0u128.into());
+                assert_ne!(desired_amount_in, fixed!(0));
                 let old = Assets::total_balance(input_asset_id, sender)?;
                 Assets::transfer_from(
                     input_asset_id,

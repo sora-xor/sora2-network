@@ -1,6 +1,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use common::prelude::*;
+use common::fixnum::ops::Numeric;
+use common::{fixed, prelude::*};
 use frame_support::{
     decl_error, decl_event, decl_module, decl_storage,
     dispatch::{DispatchError, DispatchResult},
@@ -53,6 +54,8 @@ decl_error! {
         InsufficientInputAmount,
         InsufficientOutputAmount,
         InsufficientLiquidity,
+        /// Specified parameters lead to arithmetic error
+        CalculationError,
     }
 }
 
@@ -94,7 +97,7 @@ impl<T: Trait<I>, I: Instance> Module<T, I> {
         base_reserve: Fixed,
         target_reserve: Fixed,
     ) -> Result<SwapOutcome<Fixed>, DispatchError> {
-        let zero = Fixed::from_inner(0);
+        let zero = fixed!(0);
         ensure!(
             target_amount_in > zero,
             <Error<T, I>>::InsufficientInputAmount
@@ -107,14 +110,19 @@ impl<T: Trait<I>, I: Instance> Module<T, I> {
         let Y: FixedWrapper = target_reserve.into();
         let d_Y: FixedWrapper = target_amount_in.into();
 
-        let amount_out_without_fee = (d_Y * X / (Y + d_Y))
+        let amount_out_without_fee = (d_Y.clone() * X / (Y + d_Y))
             .get()
-            .ok_or(Error::<T, I>::InsufficientLiquidity)?;
+            .map_err(|_| Error::<T, I>::InsufficientLiquidity)?;
 
-        let fee_amount = amount_out_without_fee * T::GetFee::get();
+        let fee_fraction: FixedWrapper = T::GetFee::get().into();
+        let fee_amount = amount_out_without_fee * fee_fraction;
         Ok(SwapOutcome::new(
-            amount_out_without_fee - fee_amount,
-            fee_amount,
+            (amount_out_without_fee - fee_amount.clone())
+                .get()
+                .map_err(|_| Error::<T, I>::CalculationError)?,
+            fee_amount
+                .get()
+                .map_err(|_| Error::<T, I>::CalculationError)?,
         ))
     }
 
@@ -123,7 +131,7 @@ impl<T: Trait<I>, I: Instance> Module<T, I> {
         base_reserve: Fixed,
         target_reserve: Fixed,
     ) -> Result<SwapOutcome<Fixed>, DispatchError> {
-        let zero = Fixed::from_inner(0);
+        let zero = fixed!(0);
         ensure!(
             base_amount_in > zero,
             <Error<T, I>>::InsufficientInputAmount
@@ -132,16 +140,20 @@ impl<T: Trait<I>, I: Instance> Module<T, I> {
             base_reserve > zero && target_reserve > zero,
             <Error<T, I>>::InsufficientLiquidity
         );
-        let fee_amount = base_amount_in * T::GetFee::get();
-        let amount_in_with_fee = base_amount_in - fee_amount;
+        let fee_fraction: FixedWrapper = T::GetFee::get().into();
+        let fee_amount = base_amount_in * fee_fraction;
+        let amount_in_with_fee = base_amount_in - fee_amount.clone();
 
         let X: FixedWrapper = base_reserve.into();
         let Y: FixedWrapper = target_reserve.into();
         let d_X: FixedWrapper = amount_in_with_fee.into();
 
-        let amount_out = (Y * d_X / (X + d_X))
+        let amount_out = (Y * d_X.clone() / (X + d_X))
             .get()
-            .ok_or(Error::<T, I>::InsufficientLiquidity)?;
+            .map_err(|_| Error::<T, I>::InsufficientLiquidity)?;
+        let fee_amount = fee_amount
+            .get()
+            .map_err(|_| Error::<T, I>::CalculationError)?;
 
         Ok(SwapOutcome::new(amount_out, fee_amount))
     }
@@ -151,7 +163,7 @@ impl<T: Trait<I>, I: Instance> Module<T, I> {
         base_reserve: Fixed,
         target_reserve: Fixed,
     ) -> Result<SwapOutcome<Fixed>, DispatchError> {
-        let zero = Fixed::from_inner(0);
+        let zero = fixed!(0);
         ensure!(
             target_amount_out > zero,
             <Error<T, I>>::InsufficientOutputAmount
@@ -165,24 +177,34 @@ impl<T: Trait<I>, I: Instance> Module<T, I> {
         let Y: FixedWrapper = target_reserve.into();
         let d_Y: FixedWrapper = target_amount_out.into();
 
-        let base_amount_in_without_fee = (X * d_Y / (Y - d_Y))
+        let base_amount_in_without_fee = (X * d_Y.clone() / (Y - d_Y))
             .get()
-            .ok_or(Error::<T, I>::InsufficientLiquidity)?;
+            .map_err(|_| Error::<T, I>::InsufficientLiquidity)?;
 
-        let base_amount_in_with_fee =
-            base_amount_in_without_fee / (Fixed::from(1) - T::GetFee::get());
-        let amount_in =
-            if Self::get_target_amount_out(base_amount_in_with_fee, base_reserve, target_reserve)?
-                .amount
-                < target_amount_out
-            {
-                base_amount_in_with_fee + Fixed::from_inner(1)
-            } else {
-                base_amount_in_with_fee
-            };
+        let fee_fraction: FixedWrapper = T::GetFee::get().into();
+        let base_amount_in_with_fee = FixedWrapper::from(base_amount_in_without_fee)
+            / (FixedWrapper::from(Fixed::ONE) - fee_fraction);
+        let actual_target_amount_out = Self::get_target_amount_out(
+            base_amount_in_with_fee
+                .clone()
+                .get()
+                .map_err(|_| Error::<T, I>::CalculationError)?,
+            base_reserve,
+            target_reserve,
+        )?
+        .amount;
+        let amount_in = if actual_target_amount_out < target_amount_out {
+            base_amount_in_with_fee.clone() + Fixed::from_bits(1)
+        } else {
+            base_amount_in_with_fee.clone()
+        };
         Ok(SwapOutcome::new(
-            amount_in,
-            base_amount_in_with_fee - base_amount_in_without_fee,
+            amount_in
+                .get()
+                .map_err(|_| Error::<T, I>::CalculationError)?,
+            (base_amount_in_with_fee - base_amount_in_without_fee)
+                .get()
+                .map_err(|_| Error::<T, I>::CalculationError)?,
         ))
     }
 
@@ -191,7 +213,7 @@ impl<T: Trait<I>, I: Instance> Module<T, I> {
         base_reserve: Fixed,
         target_reserve: Fixed,
     ) -> Result<SwapOutcome<Fixed>, DispatchError> {
-        let zero = Fixed::from_inner(0);
+        let zero = fixed!(0);
         ensure!(
             base_amount_out > zero,
             <Error<T, I>>::InsufficientOutputAmount
@@ -201,28 +223,32 @@ impl<T: Trait<I>, I: Instance> Module<T, I> {
             <Error<T, I>>::InsufficientLiquidity
         );
 
-        let base_amount_out_with_fee = base_amount_out / (Fixed::from(1) - T::GetFee::get());
+        let one: FixedWrapper = fixed!(1);
+        let base_amount_out_wrapper: FixedWrapper = base_amount_out.into();
+        let base_amount_out_with_fee = base_amount_out_wrapper / (one - T::GetFee::get());
 
         let X: FixedWrapper = base_reserve.into();
         let Y: FixedWrapper = target_reserve.into();
-        let d_X: FixedWrapper = base_amount_out_with_fee.into();
+        let d_X = base_amount_out_with_fee.clone();
 
-        let target_amount_in = (Y * d_X / (X - d_X))
+        let target_amount_in: Fixed = (Y * d_X.clone() / (X - d_X))
             .get()
-            .ok_or(Error::<T, I>::InsufficientLiquidity)?;
+            .map_err(|_| Error::<T, I>::InsufficientLiquidity)?;
+        let actual_base_amount_out =
+            Self::get_base_amount_out(target_amount_in, base_reserve, target_reserve)?.amount;
 
-        let amount_in =
-            if Self::get_base_amount_out(target_amount_in, base_reserve, target_reserve)?.amount
-                < base_amount_out
-            {
-                target_amount_in + Fixed::from_inner(1)
-            } else {
-                target_amount_in
-            };
-        Ok(SwapOutcome::new(
-            amount_in,
-            base_amount_out_with_fee - base_amount_out,
-        ))
+        let amount_in = if actual_base_amount_out < base_amount_out {
+            target_amount_in + Fixed::from_bits(1).into()
+        } else {
+            target_amount_in.into()
+        };
+        let amount_in = amount_in
+            .get()
+            .map_err(|_| Error::<T, I>::CalculationError)?;
+        let fee = (base_amount_out_with_fee - base_amount_out)
+            .get()
+            .map_err(|_| Error::<T, I>::CalculationError)?;
+        Ok(SwapOutcome::new(amount_in, fee))
     }
 }
 
@@ -326,10 +352,12 @@ impl<T: Trait<I>, I: Instance>
                         base_reserve_b,
                         target_reserve_b,
                     )?;
-                    Ok(SwapOutcome::new(
-                        outcome_b.amount,
-                        outcome_a.fee + outcome_b.fee,
-                    ))
+                    let outcome_a_fee: FixedWrapper = outcome_a.fee.into();
+                    let outcome_b_fee: FixedWrapper = outcome_b.fee.into();
+                    let fee = (outcome_a_fee + outcome_b_fee)
+                        .get()
+                        .map_err(|_| Error::<T, I>::CalculationError)?;
+                    Ok(SwapOutcome::new(outcome_b.amount, fee))
                 }
                 SwapAmount::WithDesiredOutput {
                     desired_amount_out, ..
@@ -344,10 +372,12 @@ impl<T: Trait<I>, I: Instance>
                         base_reserve_a,
                         target_reserve_a,
                     )?;
-                    Ok(SwapOutcome::new(
-                        outcome_a.amount,
-                        outcome_b.fee + outcome_a.fee,
-                    ))
+                    let outcome_a_fee: FixedWrapper = outcome_a.fee.into();
+                    let outcome_b_fee: FixedWrapper = outcome_b.fee.into();
+                    let fee = (outcome_b_fee + outcome_a_fee)
+                        .get()
+                        .map_err(|_| Error::<T, I>::CalculationError)?;
+                    Ok(SwapOutcome::new(outcome_a.amount, fee))
                 }
             }
         }

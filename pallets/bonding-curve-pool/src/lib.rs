@@ -109,11 +109,11 @@ impl<DistributionAccountData: Default> Default for DistributionAccounts<Distribu
 decl_storage! {
     trait Store for Module<T: Trait> as BondingCurve {
         ReservesAcc get(fn reserves_account_id) config(): T::TechAccountId;
-        Fee get(fn fee): Fixed = fixed!(0,1%);
-        InitialPrice get(fn initial_price): Fixed = fixed!(99,3);
-        PriceChangeStep get(fn price_change_step): Fixed = 5000.into();
-        PriceChangeRate get(fn price_change_rate): Fixed = 100.into();
-        SellPriceCoefficient get(fn sell_price_coefficient): Fixed = fixed!(80%);
+        Fee get(fn fee): Fixed = fixed!(0.001);
+        InitialPrice get(fn initial_price): Fixed = fixed!(99.3);
+        PriceChangeStep get(fn price_change_step): Fixed = fixed!(5000);
+        PriceChangeRate get(fn price_change_rate): Fixed = fixed!(100);
+        SellPriceCoefficient get(fn sell_price_coefficient): Fixed = fixed!(0.8);
         DistributionAccountsEntry get(fn distribution_accounts) config(): DistributionAccounts<DistributionAccountData<T::TechAccountId>>;
     }
 }
@@ -218,7 +218,7 @@ impl<T: Trait> BuyMainAsset<T> {
             )?;
             let reserves = Assets::<T>::total_balance(in_asset, &self.reserves_account_id)?;
             let free_amount = if reserves > reserves_expected {
-                let amount_free_coefficient: Balance = fixed!(20%).into();
+                let amount_free_coefficient: Balance = fixed!(0.2);
                 (reserves - reserves_expected) * amount_free_coefficient
             } else {
                 Balance::zero()
@@ -323,9 +323,11 @@ impl<T: Trait> Module<T> {
         let Q: FixedWrapper = total_issuance.into();
         let P_I = Self::initial_price();
         let PC_S = Self::price_change_step();
-        let PC_R = Self::price_change_rate();
+        let PC_R: FixedWrapper = Self::price_change_rate().into();
         let price = Q / (PC_S * PC_R) + P_I;
-        price.get().ok_or(Error::<T>::CalculatePriceFailed.into())
+        price
+            .get()
+            .map_err(|_| Error::<T>::CalculatePriceFailed.into())
     }
 
     /// Calculates and returns the current buy/sell price for main asset.
@@ -357,22 +359,22 @@ impl<T: Trait> Module<T> {
     #[rustfmt::skip]
     pub fn price_for_main_asset(main_asset_id: &T::AssetId, quantity: Balance, kind: SwapKind) -> Result<Fixed, DispatchError> {
         let total_issuance = Assets::<T>::total_issuance(&main_asset_id)?;
-        let Q = FixedWrapper::from(total_issuance);
+        let Q: FixedWrapper = total_issuance.into();
         let P_I = Self::initial_price();
-        let PC_S = FixedWrapper::from(Self::price_change_step());
+        let PC_S: FixedWrapper = Self::price_change_step().into();
         let PC_R = Self::price_change_rate();
 
-        let Q_prime = if kind == SwapKind::Buy { Q + quantity } else { Q - quantity };
+        let Q_prime = if kind == SwapKind::Buy { Q.clone() + quantity } else { Q.clone() - quantity };
         let two_times_PC_S_times_PC_R = 2 * PC_S * PC_R;
-        let to = (Q_prime / two_times_PC_S_times_PC_R + P_I) * Q_prime;
-        let from = (Q / two_times_PC_S_times_PC_R + P_I) * Q;
+        let to = (Q_prime.clone() / two_times_PC_S_times_PC_R.clone() + P_I) * Q_prime;
+        let from = (Q.clone() / two_times_PC_S_times_PC_R + P_I) * Q;
         let price: FixedWrapper = if kind == SwapKind::Buy {
             to - from
         } else {
             let P_Sc = FixedWrapper::from(Self::sell_price_coefficient());
             P_Sc * (from - to)
         };
-        price.get().ok_or(Error::<T>::CalculatePriceFailed.into())
+        price.get().map_err(|_| Error::<T>::CalculatePriceFailed.into())
     }
 
     /// Calculates and returns the current buy/sell price for target asset.
@@ -415,24 +417,24 @@ impl<T: Trait> Module<T> {
         let PC_R = FixedWrapper::from(Self::price_change_rate());
         let OUT_PRICE = FixedWrapper::from(quantity);
 
-        let PC_S_times_PC_R = PC_S * PC_R;
-        let PC_S_times_PC_R_times_P_I = PC_S_times_PC_R * P_I;
-        let PC_S_times_PC_R_times_P_I_squared = PC_S_times_PC_R_times_P_I * P_I;
+        let PC_S_times_PC_R = PC_S.clone() * PC_R.clone();
+        let PC_S_times_PC_R_times_P_I = PC_S_times_PC_R.clone() * P_I.clone();
+        let PC_S_times_PC_R_times_P_I_squared = PC_S_times_PC_R_times_P_I.clone() * P_I.clone();
 
         let price: FixedWrapper = if kind == SwapKind::Buy {
-            let Q_squared = Q * Q;
-            let inner_term_a = 2 * Q * PC_S_times_PC_R_times_P_I;
+            let Q_squared = Q.clone() * Q.clone();
+            let inner_term_a = 2 * Q.clone() * PC_S_times_PC_R_times_P_I.clone();
             let inner_term_b = PC_S * PC_R * (PC_S_times_PC_R_times_P_I_squared + 2 * OUT_PRICE);
             let under_sqrt = Q_squared + inner_term_a + inner_term_b;
             under_sqrt.sqrt_accurate() - Q - PC_S_times_PC_R_times_P_I
         } else {
             let P_Sc = FixedWrapper::from(Self::sell_price_coefficient());
-            let inner_term_a = ((Q * P_Sc) / PC_S_times_PC_R) + (P_I * P_Sc);
-            let inner_term_b =  (2 * P_Sc * OUT_PRICE) / PC_S_times_PC_R;
-            let under_sqrt = inner_term_a * inner_term_a - inner_term_b;
+            let inner_term_a = ((Q.clone() * P_Sc.clone()) / PC_S_times_PC_R.clone()) + (P_I * P_Sc.clone());
+            let inner_term_b =  (2 * P_Sc.clone() * OUT_PRICE) / PC_S_times_PC_R.clone();
+            let under_sqrt = inner_term_a.clone() * inner_term_a - inner_term_b;
             (Q + PC_S_times_PC_R_times_P_I) - ((PC_S_times_PC_R * under_sqrt.sqrt_accurate()) / P_Sc)
         };
-        price.get().ok_or(Error::<T>::CalculatePriceFailed.into())
+        price.get().map_err(|_| Error::<T>::CalculatePriceFailed.into())
     }
 
     /// Calculates and returns the current sell price for one main asset.
@@ -445,7 +447,9 @@ impl<T: Trait> Module<T> {
         let P_B = Self::buy_price_for_one_main_asset(in_asset_id)?;
         let P_Sc = FixedWrapper::from(Self::sell_price_coefficient());
         let price = P_Sc * P_B;
-        price.get().ok_or(Error::<T>::CalculatePriceFailed.into())
+        price
+            .get()
+            .map_err(|_| Error::<T>::CalculatePriceFailed.into())
     }
 
     /// Decompose SwapAmount into particular buy quotation query.
