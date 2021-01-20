@@ -156,27 +156,23 @@ impl system::Trait for Test {
 
 parameter_types! {
     pub GetFee: Fixed = fixed_from_basis_points(0u16);
-    pub const GetDefaultFee: u16 = 0;
-    pub const GetDefaultProtocolFee: u16 = 0;
 }
 
 impl mock_liquidity_source::Trait<mock_liquidity_source::Instance1> for Test {
     type Event = ();
     type GetFee = GetFee;
-    type EnsureDEXOwner = dex_manager::Module<Test>;
+    type EnsureDEXManager = dex_manager::Module<Test>;
     type EnsureTradingPairExists = trading_pair::Module<Test>;
 }
 
 impl dex_manager::Trait for Test {
     type Event = ();
-    type GetDefaultFee = GetDefaultFee;
-    type GetDefaultProtocolFee = GetDefaultProtocolFee;
     type WeightInfo = ();
 }
 
 impl trading_pair::Trait for Test {
     type Event = ();
-    type EnsureDEXOwner = dex_manager::Module<Test>;
+    type EnsureDEXManager = dex_manager::Module<Test>;
     type WeightInfo = ();
 }
 

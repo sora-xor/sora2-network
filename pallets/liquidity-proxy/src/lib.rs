@@ -7,7 +7,7 @@ use core::convert::TryFrom;
 
 use codec::{Decode, Encode};
 
-use common::prelude::fixnum::ops::{CheckedMul, Numeric, RoundMode::*};
+use common::prelude::fixnum::ops::{CheckedMul, Numeric};
 use common::prelude::{Balance, FixedWrapper, SwapAmount, SwapOutcome, SwapVariant};
 use common::{
     fixed, linspace, FilterMode, Fixed, FixedInner, IntervalEndpoints, LiquidityRegistry,

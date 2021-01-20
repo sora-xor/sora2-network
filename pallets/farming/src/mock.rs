@@ -1,7 +1,5 @@
 use crate::Trait;
-use common::DOT;
-use common::XOR;
-use common::{prelude::Balance, BasisPoints};
+use common::{prelude::Balance, BasisPoints, DOT, XOR};
 use currencies::BasicCurrencyAdapter;
 use frame_support::{impl_outer_origin, parameter_types, weights::Weight};
 use frame_system as system;
@@ -152,14 +150,12 @@ impl permissions::Trait for Testtime {
 
 impl dex_manager::Trait for Testtime {
     type Event = ();
-    type GetDefaultFee = GetDefaultFee;
-    type GetDefaultProtocolFee = GetDefaultProtocolFee;
     type WeightInfo = ();
 }
 
 impl trading_pair::Trait for Testtime {
     type Event = ();
-    type EnsureDEXOwner = dex_manager::Module<Testtime>;
+    type EnsureDEXManager = dex_manager::Module<Testtime>;
     type WeightInfo = ();
 }
 
@@ -243,7 +239,7 @@ impl pool_xyk::Trait for Testtime {
         pool_xyk::WithdrawLiquidityAction<AssetId, TechAssetId, Balance, AccountId, TechAccountId>;
     type PolySwapAction =
         pool_xyk::PolySwapAction<AssetId, TechAssetId, Balance, AccountId, TechAccountId>;
-    type EnsureDEXOwner = dex_manager::Module<Testtime>;
+    type EnsureDEXManager = dex_manager::Module<Testtime>;
     type WeightInfo = ();
 }
 
@@ -260,7 +256,7 @@ impl pswap_distribution::Trait for Testtime {
     type CompatBalance = Balance;
     type GetDefaultSubscriptionFrequency = GetDefaultSubscriptionFrequency;
     type GetTechnicalAccountId = GetPswapDistributionAccountId;
-    type EnsureDEXOwner = ();
+    type EnsureDEXManager = ();
 }
 
 impl Trait for Testtime {
