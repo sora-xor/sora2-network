@@ -901,7 +901,7 @@ impl_runtime_apis! {
         }
     }
 
-    impl trading_pair_runtime_api::TradingPairAPI<Block, DEXId, common::TradingPair<AssetId>, AssetId> for Runtime {
+    impl trading_pair_runtime_api::TradingPairAPI<Block, DEXId, common::TradingPair<AssetId>, AssetId, LiquiditySourceType> for Runtime {
         fn list_enabled_pairs(dex_id: DEXId) -> Vec<common::TradingPair<AssetId>> {
             // TODO: error passing PR fixes this crunch return
             TradingPair::list_trading_pairs(&dex_id).unwrap_or(Vec::new())
@@ -911,6 +911,25 @@ impl_runtime_apis! {
             // TODO: error passing PR fixes this crunch return
             TradingPair::is_trading_pair_enabled(&dex_id, &asset_id_a, &asset_id_b).unwrap_or(false)
                 || TradingPair::is_trading_pair_enabled(&dex_id, &asset_id_b, &asset_id_a).unwrap_or(false)
+        }
+
+        fn list_enabled_sources_for_pair(
+            dex_id: DEXId,
+            base_asset_id: AssetId,
+            target_asset_id: AssetId,
+        ) -> Vec<LiquiditySourceType> {
+            // TODO: error passing PR fixes this crunch return
+            TradingPair::list_enabled_sources_for_trading_pair(&dex_id, &base_asset_id, &target_asset_id).map(|bts| bts.into_iter().collect::<Vec<_>>()).unwrap_or(Vec::new())
+        }
+
+        fn is_source_enabled_for_pair(
+            dex_id: DEXId,
+            base_asset_id: AssetId,
+            target_asset_id: AssetId,
+            source_type: LiquiditySourceType,
+        ) -> bool {
+            // TODO: error passing PR fixes this crunch return
+            TradingPair::is_source_enabled_for_trading_pair(&dex_id, &base_asset_id, &target_asset_id, source_type).unwrap_or(false)
         }
     }
 

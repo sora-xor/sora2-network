@@ -4638,7 +4638,7 @@ dependencies = [
 [[package]]
 name = "pallet-multisig"
 version = "2.0.0-rc5"
-source = "git+https://github.com/soramitsu/sora2-frame-pallets.git?branch=vmarkushin/multisig#6c747e23ba0cf63981053317d8f0d12d6b3f59f4"
+source = "git+https://github.com/soramitsu/sora2-frame-pallets.git?branch=vmarkushin/multisig#572e084be4ab45ca0b7779763b2eadc712212475"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -8861,7 +8861,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "04f8ab788026715fa63b31960869617cba39117e520eb415b0139543e325ab59"
 dependencies = [
  "cfg-if 0.1.10",
- "rand 0.7.3",
+ "rand 0.3.23",
  "static_assertions",
 ]
 

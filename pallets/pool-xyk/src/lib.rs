@@ -1970,7 +1970,7 @@ decl_module! {
             ) -> DispatchResult
         {
                 let source = ensure_signed(origin.clone())?;
-                <T as Trait>::EnsureDEXManager::ensure_can_manage(&dex_id, origin.clone(), ManagementMode::PublicCreation)?;
+                <T as Trait>::EnsureDEXManager::ensure_can_manage(&dex_id, origin.clone(), ManagementMode::Public)?;
                 let (_,tech_account_id, fees_account_id, mark_asset) = Module::<T>::initialize_pool_unchecked(source.clone(), dex_id, asset_a, asset_b)?;
                 let mark_asset_repr: T::AssetId = mark_asset.into();
                 assets::Module::<T>::register_asset_id(source.clone(), mark_asset_repr, AssetSymbol(b"XYKPOOL".to_vec()), 18)?;
@@ -1990,7 +1990,7 @@ decl_module! {
                    BURN,
                    Scope::Limited(hash(&Into::<AssetIdOf::<T>>::into(mark_asset.clone())))
                    )?;
-                Module::<T>::initialize_pool_properties(&dex_id, &asset_a, &asset_b, &ta_repr, &fees_ta_repr, &mark_asset_repr);
+                Module::<T>::initialize_pool_properties(&dex_id, &asset_a, &asset_b, &ta_repr, &fees_ta_repr, &mark_asset_repr)?;
                 pswap_distribution::Module::<T>::subscribe(fees_ta_repr, dex_id, mark_asset_repr, None)?;
                 MarkerTokensIndex::<T>::mutate( |mti| {mti.insert(mark_asset_repr)});
                 Self::deposit_event(RawEvent::PoolIsInitialized(ta_repr));

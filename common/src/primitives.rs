@@ -495,7 +495,7 @@ pub enum ManagementMode {
     /// All functions can be managed with this mode.
     Private,
     /// Functions checked as public can be managed with this mode.
-    PublicCreation,
+    Public,
 }
 
 impl Default for ManagementMode {

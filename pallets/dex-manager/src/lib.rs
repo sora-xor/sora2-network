@@ -132,7 +132,7 @@ impl<T: Trait> EnsureDEXManager<T::DEXId, T::AccountId, DispatchError> for Modul
             Ok(RawOrigin::Signed(who)) => {
                 let dex_info = Self::get_dex_info(&dex_id)?;
                 // If DEX is public, anyone can manage it, otherwise confirm ownership.
-                if !dex_info.is_public || mode != ManagementMode::PublicCreation {
+                if !dex_info.is_public || mode != ManagementMode::Public {
                     Self::ensure_direct_manager(&dex_id, &who)?;
                 }
                 Ok(Some(who))
@@ -148,7 +148,10 @@ impl<T: Trait> Module<T> {
     }
 
     pub fn ensure_dex_exists(dex_id: &T::DEXId) -> DispatchResult {
-        let _return = Self::get_dex_info(dex_id)?;
+        ensure!(
+            DEXInfos::<T>::contains_key(&dex_id),
+            Error::<T>::DEXDoesNotExist
+        );
         Ok(())
     }
 

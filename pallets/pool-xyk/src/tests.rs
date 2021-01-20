@@ -684,7 +684,7 @@ fn swap_pair_invalid_dex_id() {
                     max_amount_in: fixed!(99999999),
                 }
             ),
-            dex_manager::Error::<Testtime>::DEXDoesNotExist //technical::Error::<Testtime>::TechAccountIdIsNotRegistered
+            dex_manager::Error::<Testtime>::DEXDoesNotExist
         );
     }]);
 }

@@ -96,7 +96,7 @@ decl_module! {
         /// - `target_asset_id`: target asset ID.
         #[weight = <T as Trait>::WeightInfo::register()]
         pub fn register(origin, dex_id: T::DEXId, base_asset_id: T::AssetId, target_asset_id: T::AssetId) -> DispatchResult {
-            let _author = T::EnsureDEXManager::ensure_can_manage(&dex_id, origin, ManagementMode::PublicCreation)?;
+            let _author = T::EnsureDEXManager::ensure_can_manage(&dex_id, origin, ManagementMode::Public)?;
             Assets::<T>::ensure_asset_exists(&base_asset_id)?;
             Assets::<T>::ensure_asset_exists(&target_asset_id)?;
             ensure!(base_asset_id != target_asset_id, Error::<T>::IdenticalAssetIds);

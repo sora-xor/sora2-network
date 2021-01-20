@@ -147,22 +147,16 @@ fn test_can_manage_on_private_dex_should_pass() {
         let result =
             DEXModule::ensure_can_manage(&DEX_A_ID, Origin::signed(ALICE), ManagementMode::Private);
         assert_ok!(result);
-        let result = DEXModule::ensure_can_manage(
-            &DEX_A_ID,
-            Origin::signed(ALICE),
-            ManagementMode::PublicCreation,
-        );
+        let result =
+            DEXModule::ensure_can_manage(&DEX_A_ID, Origin::signed(ALICE), ManagementMode::Public);
         assert_ok!(result);
 
         // another account has no access
         let result =
             DEXModule::ensure_can_manage(&DEX_A_ID, Origin::signed(BOB), ManagementMode::Private);
         assert_noop!(result, permissions::Error::<Runtime>::Forbidden);
-        let result = DEXModule::ensure_can_manage(
-            &DEX_A_ID,
-            Origin::signed(BOB),
-            ManagementMode::PublicCreation,
-        );
+        let result =
+            DEXModule::ensure_can_manage(&DEX_A_ID, Origin::signed(BOB), ManagementMode::Public);
         assert_noop!(result, permissions::Error::<Runtime>::Forbidden);
 
         // sudo account is not handled
@@ -170,7 +164,7 @@ fn test_can_manage_on_private_dex_should_pass() {
             DEXModule::ensure_can_manage(&DEX_A_ID, Origin::root(), ManagementMode::Private);
         assert_noop!(result, Error::<Runtime>::InvalidAccountId);
         let result =
-            DEXModule::ensure_can_manage(&DEX_A_ID, Origin::root(), ManagementMode::PublicCreation);
+            DEXModule::ensure_can_manage(&DEX_A_ID, Origin::root(), ManagementMode::Public);
         assert_noop!(result, Error::<Runtime>::InvalidAccountId);
     })
 }
@@ -185,22 +179,16 @@ fn test_can_manage_on_public_dex_should_pass() {
         let result =
             DEXModule::ensure_can_manage(&DEX_A_ID, Origin::signed(ALICE), ManagementMode::Private);
         assert_ok!(result);
-        let result = DEXModule::ensure_can_manage(
-            &DEX_A_ID,
-            Origin::signed(ALICE),
-            ManagementMode::PublicCreation,
-        );
+        let result =
+            DEXModule::ensure_can_manage(&DEX_A_ID, Origin::signed(ALICE), ManagementMode::Public);
         assert_ok!(result);
 
         // another account has only access in public mode
         let result =
             DEXModule::ensure_can_manage(&DEX_A_ID, Origin::signed(BOB), ManagementMode::Private);
         assert_noop!(result, permissions::Error::<Runtime>::Forbidden);
-        let result = DEXModule::ensure_can_manage(
-            &DEX_A_ID,
-            Origin::signed(BOB),
-            ManagementMode::PublicCreation,
-        );
+        let result =
+            DEXModule::ensure_can_manage(&DEX_A_ID, Origin::signed(BOB), ManagementMode::Public);
         assert_ok!(result);
 
         // sudo account is not handled
@@ -208,7 +196,7 @@ fn test_can_manage_on_public_dex_should_pass() {
             DEXModule::ensure_can_manage(&DEX_A_ID, Origin::root(), ManagementMode::Private);
         assert_noop!(result, Error::<Runtime>::InvalidAccountId);
         let result =
-            DEXModule::ensure_can_manage(&DEX_A_ID, Origin::root(), ManagementMode::PublicCreation);
+            DEXModule::ensure_can_manage(&DEX_A_ID, Origin::root(), ManagementMode::Public);
         assert_noop!(result, Error::<Runtime>::InvalidAccountId);
     })
 }
@@ -264,11 +252,7 @@ fn test_queries_for_nonexistant_dex_should_fail() {
             Error::<Runtime>::DEXDoesNotExist
         );
         assert_noop!(
-            DEXModule::ensure_can_manage(
-                &DEX_A_ID,
-                Origin::signed(ALICE),
-                ManagementMode::PublicCreation
-            ),
+            DEXModule::ensure_can_manage(&DEX_A_ID, Origin::signed(ALICE), ManagementMode::Public),
             Error::<Runtime>::DEXDoesNotExist
         );
         assert_noop!(

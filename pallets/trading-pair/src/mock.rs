@@ -166,7 +166,7 @@ impl Default for ExtBuilder {
             endowed_assets: vec![
                 (XOR, ALICE, AssetSymbol(b"XOR".to_vec()), 18),
                 (DOT, ALICE, AssetSymbol(b"DOT".to_vec()), 18),
-                (KSM, ALICE, AssetSymbol(b"DOT".to_vec()), 18),
+                (KSM, ALICE, AssetSymbol(b"KSM".to_vec()), 18),
             ],
             endowed_accounts: vec![],
             dex_list: vec![(
