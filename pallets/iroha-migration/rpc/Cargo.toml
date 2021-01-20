@@ -1,0 +1,18 @@
+[package]
+name = "iroha-migration-rpc"
+version = "0.1.0"
+edition = "2018"
+
+[dependencies]
+iroha-migration-runtime-api = { path = "../runtime-api" }
+#serde = { version = "1.0.101", features = ["derive"] }
+jsonrpc-core = "15.0.0"
+jsonrpc-core-client = "15.0.0"
+jsonrpc-derive = "15.0.0"
+sp-runtime = { version = "2.0.0" }
+sp-api = { version = "2.0.0" }
+sp-blockchain = { version = "2.0.0" }
+#sp-std = { version = "2.0.0" }
+#sp-core = { version = "2.0.0" }
+sp-rpc = { version = "2.0.0" }
+common = { path = "../../../common" }

@@ -2138,6 +2138,7 @@ dependencies = [
  "futures 0.3.9",
  "hex-literal",
  "iroha-migration",
+ "iroha-migration-rpc",
  "jsonrpc-core 15.1.0",
  "libsecp256k1",
  "liquidity-proxy-rpc",
@@ -2217,6 +2218,7 @@ dependencies = [
  "frame-system-rpc-runtime-api",
  "hex-literal",
  "iroha-migration",
+ "iroha-migration-runtime-api",
  "liquidity-proxy",
  "liquidity-proxy-benchmarking",
  "liquidity-proxy-runtime-api",
@@ -3075,6 +3077,28 @@ dependencies = [
  "sp-runtime",
  "sp-std",
  "technical",
+]
+
+[[package]]
+name = "iroha-migration-rpc"
+version = "0.1.0"
+dependencies = [
+ "common",
+ "iroha-migration-runtime-api",
+ "jsonrpc-core 15.1.0",
+ "jsonrpc-core-client",
+ "jsonrpc-derive",
+ "sp-api",
+ "sp-blockchain",
+ "sp-rpc",
+ "sp-runtime",
+]
+
+[[package]]
+name = "iroha-migration-runtime-api"
+version = "0.1.0"
+dependencies = [
+ "sp-api",
 ]
 
 [[package]]

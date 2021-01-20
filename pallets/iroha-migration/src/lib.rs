@@ -166,6 +166,10 @@ decl_module! {
 }
 
 impl<T: Trait> Module<T> {
+    pub fn is_migrated(iroha_address: &String) -> bool {
+        MigratedAccounts::<T>::contains_key(iroha_address)
+    }
+
     fn create_public_key(iroha_public_key: &str) -> Result<PublicKey, DispatchError> {
         let iroha_public_key =
             hex::decode(&iroha_public_key).map_err(|_| Error::<T>::PublicKeyParsingFailed)?;

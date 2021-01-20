@@ -37,6 +37,7 @@ liquidity-proxy-runtime-api = { path = "../pallets/liquidity-proxy/runtime-api",
 eth-bridge = { path = "../pallets/eth-bridge", default-features = false }
 multisig = { git = "https://github.com/soramitsu/sora2-frame-pallets.git", branch = "vmarkushin/multisig", package = "pallet-multisig", default-features = false }
 farming-runtime-api = { path = "../pallets/farming/runtime-api", default-features = false}
+iroha-migration-runtime-api = { path = "../pallets/iroha-migration/runtime-api", default-features = false }
 pswap-distribution = { path = "../pallets/pswap-distribution", default-features = false }
 liquidity-proxy-benchmarking = { path = "../pallets/liquidity-proxy/benchmarking", default-features = false, optional = true }
 pool-xyk-benchmarking = { path = "../pallets/pool-xyk/benchmarking", default-features = false, optional = true }

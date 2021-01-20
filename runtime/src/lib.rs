@@ -2,6 +2,10 @@
 // `construct_runtime!` does a lot of recursion and requires us to increase the limit to 256.
 #![recursion_limit = "256"]
 
+#[macro_use]
+extern crate alloc;
+use alloc::string::String;
+
 /// Constant values used within the runtime.
 pub mod constants;
 use constants::time::*;
@@ -976,6 +980,12 @@ impl_runtime_apis! {
 
         fn get_farmer_info(who: AccountId, name: FarmId) -> Option<FarmerInfo<AccountId, TechAccountId, BlockNumber>> {
             Farming::get_farmer_info(who, name).ok()?
+        }
+    }
+
+    impl iroha_migration_runtime_api::IrohaMigrationAPI<Block> for Runtime {
+        fn is_migrated(iroha_address: String) -> bool {
+            IrohaMigration::is_migrated(&iroha_address)
         }
     }
 
