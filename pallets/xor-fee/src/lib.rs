@@ -1,6 +1,8 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use common::{prelude::*, Fixed};
+use core::convert::TryFrom;
+
+use common::{fixed, prelude::*, Fixed};
 use frame_support::{
     decl_error, decl_event, decl_module, decl_storage,
     traits::{Currency, Get, Imbalance},
@@ -101,8 +103,7 @@ impl<T: Trait> OnTransactionPayment<T::AccountId, NegativeImbalanceOf<T>, Balanc
         // Burn XOR for now
         let (_xor_burned, xor_to_val) =
             amount.ration(T::XorBurnedWeight::get(), T::XorIntoValBurnedWeight::get());
-        let xor_to_val: u128 = xor_to_val.peek().unique_saturated_into();
-        let xor_to_val: Fixed = xor_to_val.into();
+        let xor_to_val = Fixed::try_from(xor_to_val.peek().unique_saturated_into()).unwrap();
         let tech_account_id = T::TechAccountId::from_generic_pair(
             TECH_ACCOUNT_PREFIX.to_vec(),
             TECH_ACCOUNT_MAIN.to_vec(),
@@ -121,7 +122,7 @@ impl<T: Trait> OnTransactionPayment<T::AccountId, NegativeImbalanceOf<T>, Balanc
                 &T::ValId::get(),
                 SwapAmount::WithDesiredInput {
                     desired_amount_in: xor_to_val,
-                    min_amount_out: 0.into(),
+                    min_amount_out: fixed!(0),
                 },
             ) {
                 let val_to_burn = Balance::from(swap_outcome.amount);

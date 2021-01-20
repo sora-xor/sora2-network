@@ -2,10 +2,11 @@
 mod tests {
     use crate::{mock::*, DistributionAccountData, DistributionAccounts, Error, SwapKind};
     use common::{
-        self, fixed,
-        prelude::{Balance, Fixed, SwapAmount, SwapOutcome},
+        self, fixed, fixed_wrapper,
         AssetSymbol, DEXId, LiquiditySource, TechPurpose, USDT, VAL, XOR,
     };
+    use common::prelude::{Balance, Fixed, SwapAmount, SwapOutcome, FixedWrapper};
+    use common::prelude::fixnum::ops::Numeric;
     use frame_support::assert_err;
     use frame_support::storage::{with_transaction, TransactionOutcome};
     use sp_arithmetic::traits::{Bounded, Zero};
@@ -18,37 +19,37 @@ mod tests {
             assert_eq!(
                 BondingCurvePool::buy_price_for_one_main_asset(&XOR)
                     .expect("failed to calculate buy price"),
-                Fixed::from(100)
+                fixed!(100)
             );
             assert_eq!(
-                BondingCurvePool::price_for_main_asset(&XOR, 100_000u32.into(), SwapKind::Buy)
+                BondingCurvePool::price_for_main_asset(&XOR, fixed!(100000), SwapKind::Buy)
                     .expect("failed to calculate buy assets price"),
-                Fixed::from(10_010_000)
+                fixed!(10010000)
             );
             assert_eq!(
                 BondingCurvePool::price_for_collateral_asset(&XOR, 10_010_000u32.into(), SwapKind::Buy)
                     .expect("failed to calculate buy assets price"),
-                Fixed::from(100_000)
+                fixed!(100000)
             );
             assert_eq!(
                 BondingCurvePool::sell_price_for_one_main_asset(&XOR)
                     .expect("failed to calculate sell price"),
-                Fixed::from(80)
+                fixed!(80)
             );
             assert_eq!(
-                BondingCurvePool::price_for_main_asset(&XOR, 100_000u32.into(), SwapKind::Sell)
+                BondingCurvePool::price_for_main_asset(&XOR, fixed!(100000), SwapKind::Sell)
                     .expect("failed to calculate sell assets price"),
-                Fixed::from(7_992_000)
+                fixed!(7992000)
             );
             assert_eq!(
-                BondingCurvePool::price_for_collateral_asset(&XOR, 7_992_000u32.into(), SwapKind::Sell)
+                BondingCurvePool::price_for_collateral_asset(&XOR, fixed!(7992000), SwapKind::Sell)
                     .expect("failed to calculate sell assets price"),
-                Fixed::from(100_000)
+                fixed!(100000)
             );
             assert_eq!(
-                BondingCurvePool::price_for_main_asset(&XOR, 0u32.into(), SwapKind::Sell)
+                BondingCurvePool::price_for_main_asset(&XOR, fixed!(0), SwapKind::Sell)
                     .expect("failed to calculate sell assets price"),
-                Fixed::from(0)
+                fixed!(0)
             );
         });
     }
@@ -104,7 +105,7 @@ mod tests {
             assert_eq!(
                 BondingCurvePool::price_for_main_asset(
                     &XOR,
-                    u128::max_value().into(),
+                    Balance::max_value(),
                     SwapKind::Sell
                 )
                 .unwrap_err(),
@@ -129,24 +130,23 @@ mod tests {
             Technical::mint(&asset_id, &bonding_curve_tech_account_id, balance)?;
         }
 
-        let val_holders_coefficient: Fixed = fixed!(50%);
-        let val_holders_xor_alloc_coeff = val_holders_coefficient * fixed!(90%);
-        let val_holders_buy_back_coefficient =
-            val_holders_coefficient * (fixed!(100%) - fixed!(90%));
-        let projects_coefficient = fixed!(100%) - val_holders_coefficient;
-        let projects_sora_citizens_coeff = projects_coefficient * fixed!(1%);
-        let projects_stores_and_shops_coeff = projects_coefficient * fixed!(4%);
-        let projects_parliament_and_development_coeff = projects_coefficient * fixed!(5%);
-        let projects_other_coeff = projects_coefficient * fixed!(90%);
+        let val_holders_coefficient: Fixed = fixed!(0.5);
+        let val_holders_xor_alloc_coeff = val_holders_coefficient * fixed_wrapper!(0.9);
+        let val_holders_buy_back_coefficient = val_holders_coefficient * fixed_wrapper!(0.1);
+        let projects_coefficient: FixedWrapper = fixed_wrapper!(1) - val_holders_coefficient;
+        let projects_sora_citizens_coeff: FixedWrapper = projects_coefficient.clone() * fixed_wrapper!(0.01);
+        let projects_stores_and_shops_coeff: FixedWrapper = projects_coefficient.clone() * fixed_wrapper!(0.04);
+        let projects_parliament_and_development_coeff: FixedWrapper = projects_coefficient.clone() * fixed_wrapper!(0.05);
+        let projects_other_coeff: FixedWrapper = projects_coefficient.clone() * fixed_wrapper!(0.9);
 
         debug_assert_eq!(
-            fixed!(100%),
-            val_holders_xor_alloc_coeff
-                + projects_sora_citizens_coeff
-                + projects_stores_and_shops_coeff
-                + projects_parliament_and_development_coeff
-                + projects_other_coeff
-                + val_holders_buy_back_coefficient
+            Fixed::ONE,
+            (val_holders_xor_alloc_coeff.clone()
+                + projects_sora_citizens_coeff.clone()
+                + projects_stores_and_shops_coeff.clone()
+                + projects_parliament_and_development_coeff.clone()
+                + projects_other_coeff.clone()
+                + val_holders_buy_back_coefficient.clone()).get().unwrap()
         );
 
         let xor_allocation = DistributionAccountData::new(
@@ -154,42 +154,42 @@ mod tests {
                 DEXId::Polkaswap,
                 TechPurpose::Identifier(b"xor_allocation".to_vec()),
             ),
-            val_holders_xor_alloc_coeff,
+            val_holders_xor_alloc_coeff.get().unwrap(),
         );
         let sora_citizens = DistributionAccountData::new(
             TechAccountId::Pure(
                 DEXId::Polkaswap,
                 TechPurpose::Identifier(b"sora_citizens".to_vec()),
             ),
-            projects_sora_citizens_coeff,
+            projects_sora_citizens_coeff.get().unwrap(),
         );
         let stores_and_shops = DistributionAccountData::new(
             TechAccountId::Pure(
                 DEXId::Polkaswap,
                 TechPurpose::Identifier(b"stores_and_shops".to_vec()),
             ),
-            projects_stores_and_shops_coeff,
+            projects_stores_and_shops_coeff.get().unwrap(),
         );
         let parliament_and_development = DistributionAccountData::new(
             TechAccountId::Pure(
                 DEXId::Polkaswap,
                 TechPurpose::Identifier(b"parliament_and_development".to_vec()),
             ),
-            projects_parliament_and_development_coeff,
+            projects_parliament_and_development_coeff.get().unwrap(),
         );
         let projects = DistributionAccountData::new(
             TechAccountId::Pure(
                 DEXId::Polkaswap,
                 TechPurpose::Identifier(b"projects".to_vec()),
             ),
-            projects_other_coeff,
+            projects_other_coeff.get().unwrap(),
         );
         let val_holders = DistributionAccountData::new(
             TechAccountId::Pure(
                 DEXId::Polkaswap,
                 TechPurpose::Identifier(b"val_holders".to_vec()),
             ),
-            val_holders_buy_back_coefficient,
+            val_holders_buy_back_coefficient.get().unwrap(),
         );
         let accounts = DistributionAccounts::<_> {
             xor_allocation,
@@ -235,7 +235,7 @@ mod tests {
                     SwapAmount::with_desired_output(1u32.into(), Balance::max_value()),
                 )
                 .unwrap(),
-                SwapOutcome::new(fixed!(0,999).into(), fixed!(0,001).into())
+                SwapOutcome::new(fixed!(0.999), fixed!(0.001))
             );
             for account_id in &distribution_accounts_array {
                 assert_eq!(
@@ -250,12 +250,12 @@ mod tests {
                     &DEXId::Polkaswap.into(),
                     &XOR,
                     &USDT,
-                    SwapAmount::with_desired_input(fixed!(0,999).into(), Balance::zero()),
+                    SwapAmount::with_desired_input(fixed!(0.999), Balance::zero()),
                 )
                 .unwrap(),
                 SwapOutcome::new(
-                    fixed!(79,2827970392023992).into(),
-                    fixed!(0,0793621591984008).into()
+                    fixed!(79.2827970392023992),
+                    fixed!(0.0793621591984008)
                 )
             );
         });
@@ -267,12 +267,12 @@ mod tests {
             (
                 alice(),
                 USDT,
-                10_000u32.into(),
+                fixed!(10000),
                 AssetSymbol(b"USDT".to_vec()),
                 18,
             ),
-            (alice(), XOR, 10u32.into(), AssetSymbol(b"XOR".to_vec()), 18),
-            (alice(), VAL, 0u32.into(), AssetSymbol(b"VAL".to_vec()), 18),
+            (alice(), XOR, fixed!(10), AssetSymbol(b"XOR".to_vec()), 18),
+            (alice(), VAL, fixed!(0), AssetSymbol(b"VAL".to_vec()), 18),
         ])
         .build();
         ext.execute_with(|| {
@@ -284,7 +284,7 @@ mod tests {
             );
             let pool_usd_amount = reserve_amount_expected
                 - Balance(BondingCurvePool::buy_price_for_one_main_asset(&XOR).unwrap())
-                    / Balance::from(2u32);
+                    / Balance(fixed!(2));
             let distribution_accounts =
                 bonding_curve_pool_init(vec![(USDT, pool_usd_amount)]).unwrap();
             let distribution_accounts_array = distribution_accounts.xor_distribution_accounts_as_array();
@@ -296,17 +296,17 @@ mod tests {
                     &DEXId::Polkaswap.into(),
                     &USDT,
                     &XOR,
-                    SwapAmount::with_desired_output(1u32.into(), Balance::max_value()),
+                    SwapAmount::with_desired_output(fixed!(1), Balance::max_value()),
                 )
                 .unwrap(),
-                SwapOutcome::new(fixed!(0,999).into(), fixed!(0,001).into())
+                SwapOutcome::new(fixed!(0.999), fixed!(0.001))
             );
             let balances: Vec<Balance> = vec![
-                fixed!(0,0445518521703).into(),
-                fixed!(0,00049502057967).into(),
-                fixed!(0,00198008231868).into(),
-                fixed!(0,00247510289835).into(),
-                fixed!(0,0445518521703).into(),
+                fixed!(0.0445518521703),
+                fixed!(0.00049502057967),
+                fixed!(0.00198008231868),
+                fixed!(0.00247510289835),
+                fixed!(0.0445518521703),
             ];
             for (account_id, balance) in distribution_accounts_array
                 .to_vec()
@@ -325,12 +325,12 @@ mod tests {
                     &DEXId::Polkaswap.into(),
                     &XOR,
                     &USDT,
-                    SwapAmount::with_desired_input(fixed!(0, 999).into(), Balance::zero()),
+                    SwapAmount::with_desired_input(fixed!(0.999), Balance::zero()),
                 )
                 .unwrap(),
                 SwapOutcome::new(
-                    fixed!(79,2828130072183992).into(),
-                    fixed!(0,0793621751824008).into()
+                    fixed!(79.2828130072183992),
+                    fixed!(0.0793621751824008)
                 )
             );
         });
@@ -342,12 +342,12 @@ mod tests {
             (
                 alice(),
                 USDT,
-                10_000u32.into(),
+                fixed!(10000),
                 AssetSymbol(b"USDT".to_vec()),
                 18,
             ),
-            (alice(), XOR, 10u32.into(), AssetSymbol(b"XOR".to_vec()), 18),
-            (alice(), VAL, 0u32.into(), AssetSymbol(b"VAL".to_vec()), 18),
+            (alice(), XOR, fixed!(10), AssetSymbol(b"XOR".to_vec()), 18),
+            (alice(), VAL, fixed!(0), AssetSymbol(b"VAL".to_vec()), 18),
         ])
         .build();
         ext.execute_with(|| {
@@ -368,17 +368,17 @@ mod tests {
                     &DEXId::Polkaswap.into(),
                     &USDT,
                     &XOR,
-                    SwapAmount::with_desired_output(1u32.into(), Balance::max_value()),
+                    SwapAmount::with_desired_output(fixed!(1), Balance::max_value()),
                 )
                 .unwrap(),
-                SwapOutcome::new(fixed!(0, 999).into(), fixed!(0, 001).into())
+                SwapOutcome::new(fixed!(0.999), fixed!(0.001))
             );
             let balances: Vec<Balance> = vec![
-                fixed!(0,0891037034433).into(),
-                fixed!(0,00099004114937).into(),
-                fixed!(0,00396016459748).into(),
-                fixed!(0,00495020574685).into(),
-                fixed!(0,0891037034433).into(),
+                fixed!(0.0891037034433),
+                fixed!(0.00099004114937),
+                fixed!(0.00396016459748),
+                fixed!(0.00495020574685),
+                fixed!(0.0891037034433),
             ];
             for (account_id, balance) in distribution_accounts_array
                 .to_vec()
@@ -397,12 +397,12 @@ mod tests {
                     &DEXId::Polkaswap.into(),
                     &XOR,
                     &USDT,
-                    SwapAmount::with_desired_input(fixed!(0,999).into(), Balance::zero()),
+                    SwapAmount::with_desired_input(fixed!(0.999), Balance::zero()),
                 )
                 .unwrap(),
                 SwapOutcome::new(
-                    fixed!(79,2828130072183992).into(),
-                    fixed!(0,0793621751824008).into()
+                    fixed!(79.2828130072183992),
+                    fixed!(0.0793621751824008)
                 )
             );
         });
@@ -427,7 +427,7 @@ mod tests {
                     &DEXId::Polkaswap.into(),
                     &XOR,
                     &USDT,
-                    SwapAmount::with_desired_input(1u32.into(), Balance::zero()),
+                    SwapAmount::with_desired_input(fixed!(1), Balance::zero()),
                 ),
                 Error::<Runtime>::NotEnoughReserves
             );
@@ -440,12 +440,12 @@ mod tests {
             (
                 alice(),
                 USDT,
-                10_000u32.into(),
+                fixed!(10000),
                 AssetSymbol(b"USDT".to_vec()),
                 18,
             ),
-            (alice(), XOR, 0u32.into(), AssetSymbol(b"XOR".to_vec()), 18),
-            (alice(), VAL, 0u32.into(), AssetSymbol(b"VAL".to_vec()), 18),
+            (alice(), XOR, fixed!(0), AssetSymbol(b"XOR".to_vec()), 18),
+            (alice(), VAL, fixed!(0), AssetSymbol(b"VAL".to_vec()), 18),
         ])
         .build();
         ext.execute_with(|| {

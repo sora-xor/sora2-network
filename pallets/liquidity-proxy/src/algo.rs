@@ -1,6 +1,12 @@
-use common::Fixed;
-use frame_support::sp_runtime::traits::Saturating;
+use core::convert::TryFrom;
+
 use sp_std::vec::Vec;
+
+use common::{
+    fixed,
+    prelude::{fixnum::ops::CheckedAdd, FixedWrapper},
+    Fixed,
+};
 
 /// Given a set of monotoneous sequences A_i(n), i = 0..M-1, n = 0..N-1 returns a pair of:
 /// - a vector of "weights" [W_i / N], i = 0..M-1, where W_i are lengths of respective
@@ -12,17 +18,21 @@ use sp_std::vec::Vec;
 /// - `sample_data`: a 2D matrix of N vectors each composed of M elements,
 /// - `inversed`: boolean flag: if true, the overall sum is minimized (otherwise maximized).
 pub fn find_distribution(sample_data: Vec<Vec<Fixed>>, inversed: bool) -> (Vec<Fixed>, Fixed) {
+    fn default() -> (Vec<Fixed>, Fixed) {
+        (Default::default(), fixed!(0))
+    }
     if sample_data.is_empty() {
-        return (Vec::new(), Fixed::from(0));
+        return default();
     }
     let n = sample_data.len();
     let s = sample_data[0].len();
+    let total_parts = match Fixed::try_from(s) {
+        Err(_) => return default(),
+        Ok(value) if value == fixed!(0) => return default(),
+        Ok(value) => value,
+    };
 
-    if s == 0 {
-        return (Vec::new(), Fixed::from(0));
-    }
-
-    let mut accumulator: Vec<Vec<Fixed>> = vec![vec![Fixed::from(0); s + 1]; n];
+    let mut accumulator: Vec<Vec<Fixed>> = vec![vec![fixed!(0); s + 1]; n];
     accumulator[0][1..].copy_from_slice(&sample_data[0][..]);
     let mut foreign: Vec<Vec<usize>> = vec![vec![0; s + 1]; n];
 
@@ -32,7 +42,10 @@ pub fn find_distribution(sample_data: Vec<Vec<Fixed>>, inversed: bool) -> (Vec<F
             foreign[i][j] = j;
 
             for k in 0..j {
-                let tmp: Fixed = accumulator[i - 1][j - k - 1].saturating_add(sample_data[i][k]);
+                let tmp: Fixed = match accumulator[i - 1][j - k - 1].cadd(sample_data[i][k]) {
+                    Err(_) => continue,
+                    Ok(value) => value,
+                };
                 let is_better = match inversed {
                     true => tmp < accumulator[i][j],
                     _ => tmp > accumulator[i][j],
@@ -45,20 +58,20 @@ pub fn find_distribution(sample_data: Vec<Vec<Fixed>>, inversed: bool) -> (Vec<F
         }
     }
 
-    let total_parts = Fixed::from(s as u128);
     let mut parts_left = s;
     let mut cur_exchange = n;
-    let mut distribution = vec![Fixed::from(0); n];
+    let mut distribution = vec![fixed!(0); n];
 
-    while parts_left > 0 {
-        if cur_exchange == 0 {
-            break;
-        }
+    while parts_left > 0 && cur_exchange != 0 {
         cur_exchange -= 1;
-        distribution[cur_exchange] = Fixed::from(parts_left as u128)
-            .saturating_sub(Fixed::from(foreign[cur_exchange][parts_left] as u128))
+        let distribution_part = (FixedWrapper::from(parts_left)
+            - FixedWrapper::from(foreign[cur_exchange][parts_left]))
             / total_parts;
-        parts_left = foreign[cur_exchange][parts_left] as usize;
+        distribution[cur_exchange] = match distribution_part.get() {
+            Err(_) => return default(),
+            Ok(value) => value,
+        };
+        parts_left = foreign[cur_exchange][parts_left];
     }
 
     let best_amount = accumulator[n - 1][s];

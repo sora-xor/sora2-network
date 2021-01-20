@@ -1,6 +1,6 @@
 use crate::mock::*;
 use crate::FarmId;
-use common::{prelude::SwapAmount, AssetSymbol, ToFeeAccount, DOT, PSWAP, XOR};
+use common::{fixed, prelude::SwapAmount, AssetSymbol, ToFeeAccount, DOT, PSWAP, XOR};
 use frame_support::{assert_noop, assert_ok};
 
 impl crate::Module<Testtime> {
@@ -102,31 +102,25 @@ impl crate::Module<Testtime> {
             ));
 
             assert_eq!(
-                Into::<u32>::into(assets::Module::<Testtime>::free_balance(&gt, &ALICE()).unwrap()),
-                900_000u32
+                assets::Module::<Testtime>::free_balance(&gt, &ALICE()).unwrap(),
+                fixed!(900000),
             );
             assert_eq!(
-                Into::<u32>::into(assets::Module::<Testtime>::free_balance(&bp, &ALICE()).unwrap()),
-                2000_000u32
+                assets::Module::<Testtime>::free_balance(&bp, &ALICE()).unwrap(),
+                fixed!(2000000),
             );
             assert_eq!(
-                Into::<u32>::into(
-                    assets::Module::<Testtime>::free_balance(&gt, &repr.clone()).unwrap()
-                ),
-                0u32
+                assets::Module::<Testtime>::free_balance(&gt, &repr.clone()).unwrap(),
+                fixed!(0),
             );
 
             assert_eq!(
-                Into::<u32>::into(
-                    assets::Module::<Testtime>::free_balance(&bp, &repr.clone()).unwrap()
-                ),
-                0u32
+                assets::Module::<Testtime>::free_balance(&bp, &repr.clone()).unwrap(),
+                fixed!(0)
             );
             assert_eq!(
-                Into::<u32>::into(
-                    assets::Module::<Testtime>::free_balance(&gt, &fee_repr.clone()).unwrap()
-                ),
-                0_u32
+                assets::Module::<Testtime>::free_balance(&gt, &fee_repr.clone()).unwrap(),
+                fixed!(0)
             );
 
             let farm_id = crate::Module::<Testtime>::create(Origin::signed(ALICE()), XOR, PSWAP)
@@ -234,9 +228,9 @@ fn one_farmer_working_with_farm_cascade() {
             ));
 
             crate::Module::<Testtime>::run_to_block(3000);
+            let a = Origin::signed(ALICE());
             assert_eq!(
-                crate::Module::<Testtime>::discover_claim(Origin::signed(ALICE()), farm_id,)
-                    .unwrap(),
+                crate::Module::<Testtime>::discover_claim(a, farm_id).unwrap(),
                 Some(103975u64)
             );
 
@@ -363,13 +357,13 @@ fn two_farmers_working_with_farm_cascade() {
             assert_eq!(
                 crate::Module::<Testtime>::discover_claim(Origin::signed(ALICE()), farm_id,)
                     .unwrap(),
-                Some(51987u64)
+                Some(51988u64)
             );
 
             crate::Module::<Testtime>::run_to_block(3000);
             assert_eq!(
                 crate::Module::<Testtime>::discover_claim(Origin::signed(BOB()), farm_id,).unwrap(),
-                Some(51987u64)
+                Some(51988u64)
             );
 
             crate::Module::<Testtime>::run_to_block(5000);
@@ -431,22 +425,22 @@ fn two_farmers_working_with_farm_cascade() {
             assert_eq!(
                 crate::Module::<Testtime>::discover_claim(Origin::signed(ALICE()), farm_id,)
                     .unwrap(),
-                Some(52451u64)
+                Some(52452u64)
             );
             assert_eq!(
                 crate::Module::<Testtime>::discover_claim(Origin::signed(BOB()), farm_id,).unwrap(),
-                Some(52451u64)
+                Some(52452u64)
             );
 
             crate::Module::<Testtime>::run_to_block(21000);
             assert_eq!(
                 crate::Module::<Testtime>::discover_claim(Origin::signed(ALICE()), farm_id,)
                     .unwrap(),
-                Some(52487u64)
+                Some(52488u64)
             );
             assert_eq!(
                 crate::Module::<Testtime>::discover_claim(Origin::signed(BOB()), farm_id,).unwrap(),
-                Some(52487u64)
+                Some(52488u64)
             );
 
             crate::Module::<Testtime>::run_to_block(22000);
@@ -464,11 +458,11 @@ fn two_farmers_working_with_farm_cascade() {
             assert_eq!(
                 crate::Module::<Testtime>::discover_claim(Origin::signed(ALICE()), farm_id,)
                     .unwrap(),
-                Some(52530u64)
+                Some(52531u64)
             );
             assert_eq!(
                 crate::Module::<Testtime>::discover_claim(Origin::signed(BOB()), farm_id,).unwrap(),
-                Some(52530u64)
+                Some(52531u64)
             );
 
             assert_ok!(crate::Module::<Testtime>::lock_to_farm(
@@ -517,14 +511,14 @@ fn two_farmers_working_with_farm_cascade() {
             );
             assert_eq!(
                 crate::Module::<Testtime>::discover_claim(Origin::signed(BOB()), farm_id,).unwrap(),
-                Some(53081u64)
+                Some(53082u64)
             );
 
             crate::Module::<Testtime>::run_to_block(30000);
             assert_eq!(
                 crate::Module::<Testtime>::discover_claim(Origin::signed(ALICE()), farm_id,)
                     .unwrap(),
-                Some(52245u64)
+                Some(52246u64)
             );
             assert_eq!(
                 crate::Module::<Testtime>::discover_claim(Origin::signed(BOB()), farm_id,).unwrap(),
@@ -546,7 +540,7 @@ fn two_farmers_working_with_farm_cascade() {
             assert_eq!(
                 crate::Module::<Testtime>::discover_claim(Origin::signed(ALICE()), farm_id,)
                     .unwrap(),
-                Some(52235u64)
+                Some(52236u64)
             );
             assert_eq!(
                 crate::Module::<Testtime>::discover_claim(Origin::signed(BOB()), farm_id,).unwrap(),
@@ -575,11 +569,11 @@ fn two_farmers_working_with_farm_cascade() {
             assert_eq!(
                 crate::Module::<Testtime>::discover_claim(Origin::signed(ALICE()), farm_id,)
                     .unwrap(),
-                Some(40716u64)
+                Some(40717u64)
             );
             assert_eq!(
                 crate::Module::<Testtime>::discover_claim(Origin::signed(BOB()), farm_id,).unwrap(),
-                Some(25369u64)
+                Some(25370u64)
             );
 
             assert_ok!(crate::Module::<Testtime>::claim(

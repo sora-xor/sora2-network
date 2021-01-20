@@ -886,6 +886,8 @@ name = "common"
 version = "0.1.0"
 dependencies = [
  "blake2-rfc",
+ "derive_more 0.99.11",
+ "fixnum",
  "frame-support",
  "frame-system",
  "num-traits",
@@ -1907,6 +1909,19 @@ name = "fixedbitset"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "37ab347416e802de484e4d03c7316c48f1ecb56574dfd4a46a80f173ce1de04d"
+
+[[package]]
+name = "fixnum"
+version = "0.2.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "dba6a40925da721b95acc50b9a937ea07ee6f1e9aff81bacd26a1bd298a503b3"
+dependencies = [
+ "derive_more 0.99.11",
+ "parity-scale-codec",
+ "serde 1.0.118",
+ "static_assertions",
+ "typenum",
+]
 
 [[package]]
 name = "flate2"

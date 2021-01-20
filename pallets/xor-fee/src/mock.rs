@@ -1,8 +1,9 @@
-pub use crate::{self as xor_fee, Module, Trait};
+use core::convert::TryInto;
+
 use codec::{Decode, Encode};
 use common::{
-    self, fixed_from_basis_points, prelude::Balance, Amount, AssetId32, AssetSymbol, Fixed, VAL,
-    XOR,
+    self, fixed, fixed_from_basis_points, prelude::Balance, Amount, AssetId32, AssetSymbol, Fixed,
+    VAL, XOR,
 };
 use core::time::Duration;
 use currencies::BasicCurrencyAdapter;
@@ -19,6 +20,8 @@ use sp_runtime::{
     traits::{BlakeTwo256, Convert, IdentityLookup, SaturatedConversion},
     Perbill, Percent,
 };
+
+pub use crate::{self as xor_fee, Module, Trait};
 
 // Configure a mock runtime to test the pallet.
 type AssetId = AssetId32<common::AssetId>;
@@ -339,7 +342,7 @@ impl Trait for Test {
     type ValBurnedNotifier = Staking;
 }
 
-pub const MOCK_WEIGHT: u64 = 100;
+pub const MOCK_WEIGHT: Weight = 100;
 
 pub const REFERRER_ACCOUNT: u64 = 3;
 pub const FROM_ACCOUNT: u64 = 1;
@@ -348,9 +351,9 @@ pub const STASH_ACCOUNT: u64 = 11;
 pub const STASH_ACCOUNT2: u64 = 21;
 pub const CONTROLLER_ACCOUNT: u64 = 10;
 pub const CONTROLLER_ACCOUNT2: u64 = 20;
-pub const INITIAL_BALANCE: u64 = 1_000;
+pub const INITIAL_BALANCE: u64 = 1000;
 pub const TRANSFER_AMOUNT: u64 = 69;
-pub const INITIAL_RESERVES: u128 = 10_000;
+pub const INITIAL_RESERVES: u64 = 10000;
 
 pub struct ExtBuilder;
 
@@ -417,7 +420,7 @@ impl ExtBuilder {
         .unwrap();
 
         tokens::GenesisConfig::<Test> {
-            endowed_accounts: vec![(xor_fee_account_id.clone(), VAL, 1_000_u128.into())],
+            endowed_accounts: vec![(xor_fee_account_id.clone(), VAL, fixed!(1000))],
         }
         .assimilate_storage(&mut t)
         .unwrap();
@@ -427,13 +430,13 @@ impl ExtBuilder {
             (
                 STASH_ACCOUNT,
                 CONTROLLER_ACCOUNT,
-                1_000_u32.into(),
+                fixed!(1000),
                 pallet_staking::StakerStatus::<AccountId>::Validator,
             ),
             (
                 STASH_ACCOUNT2,
                 CONTROLLER_ACCOUNT2,
-                1_000_u32.into(),
+                fixed!(1000),
                 pallet_staking::StakerStatus::<AccountId>::Validator,
             ),
         ];
@@ -467,11 +470,12 @@ impl ExtBuilder {
         .assimilate_storage(&mut t)
         .unwrap();
 
+        let initial_reserves: Fixed = INITIAL_RESERVES.try_into().unwrap();
         mock_liquidity_source::GenesisConfig::<Test, mock_liquidity_source::Instance1> {
             reserves: vec![(
                 common::DEXId::Polkaswap,
                 VAL,
-                (INITIAL_RESERVES.into(), INITIAL_RESERVES.into()),
+                (initial_reserves, initial_reserves),
             )],
             phantom: Default::default(),
         }
