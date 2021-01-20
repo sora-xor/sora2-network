@@ -35,6 +35,7 @@ fn test_quote_exact_input_base_should_pass() {
         dist.sort_by(|a, b| a.0.cmp(&b.0));
 
         assert_eq!(quotes.amount, fixed!(537.643138033120596204));
+        assert_eq!(quotes.fee, fixed!(1.1125));
         assert_eq!(ls_quote.amount, quotes.amount.into());
         assert_eq!(ls_quote.fee, quotes.fee.into());
         assert_eq!(
@@ -86,6 +87,7 @@ fn test_quote_exact_input_target_should_pass() {
         dist.sort_by(|a, b| a.0.cmp(&b.0));
 
         assert_eq!(quotes.amount, fixed!(363.569067258883248761));
+        assert_eq!(quotes.fee, fixed!(0.551491116751269035));
         assert_eq!(ls_quote.amount, quotes.amount.into());
         assert_eq!(ls_quote.fee, quotes.fee.into());
         assert_eq!(
@@ -142,6 +144,7 @@ fn test_quote_exact_output_target_should_pass() {
             (quotes.amount.csub(approx_expected_base_amount).unwrap() < tolerance)
                 && (approx_expected_base_amount.csub(quotes.amount).unwrap() < tolerance)
         );
+        assert_eq!(quotes.fee, fixed!(0.531316943052148668));
         assert_eq!(ls_quote.amount, quotes.amount.into());
         assert_eq!(ls_quote.fee, quotes.fee.into());
         assert_eq!(
@@ -198,6 +201,7 @@ fn test_quote_exact_output_base_should_pass() {
             (quotes.amount.csub(approx_expected_target_amount).unwrap() < tolerance)
                 && (approx_expected_target_amount.csub(quotes.amount).unwrap() < tolerance)
         );
+        assert_eq!(quotes.fee, fixed!(0.338264379900812242));
         assert_eq!(ls_quote.amount, quotes.amount.into());
         assert_eq!(ls_quote.fee, quotes.fee.into());
         assert_eq!(
@@ -507,4 +511,28 @@ fn test_can_exchange_with_no_sources_should_pass() {
     }
     .build();
     ext.execute_with(|| assert!(!LiquidityProxy::can_exchange(&DEX_A_ID, &KSM, &DOT)));
+}
+
+#[test]
+fn test_fee_when_exchange_on_one_source_of_many_should_pass() {
+    let mut ext = ExtBuilder::default().build();
+    ext.execute_with(|| {
+        let amount: Fixed = fixed!(250);
+        let filter = LiquiditySourceFilter::with_allowed(
+            DEX_C_ID,
+            [
+                LiquiditySourceType::MockPool3,
+                LiquiditySourceType::MockPool4,
+            ]
+            .into(),
+        );
+        let quotes = LiquidityProxy::quote_with_filter(
+            &GetBaseAssetId::get(),
+            &DOT,
+            SwapAmount::with_desired_output(amount, fixed!(10000)),
+            filter,
+        )
+        .expect("Failed to get a quote");
+        assert_eq!(quotes.fee, fixed!(0.630925033164008153));
+    });
 }
