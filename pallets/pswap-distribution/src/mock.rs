@@ -211,7 +211,7 @@ impl ExtBuilder {
             initial_permission_owners: Vec::new(),
             initial_permissions: Vec::new(),
             subscribed_accounts: Vec::new(),
-            burn_info: (fixed!(0), fixed!(0, 10), fixed!(0, 30), 3),
+            burn_info: (fixed!(0), fixed!(0.10), fixed!(0.30), 3),
         }
     }
 }
@@ -252,7 +252,7 @@ impl ExtBuilder {
                 (FEES_ACCOUNT_A, (DEX_A_ID, PoolTokenAId::get(), 5, 0)),
                 (FEES_ACCOUNT_B, (DEX_A_ID, PoolTokenBId::get(), 7, 0)),
             ],
-            burn_info: (fixed!(0), fixed!(0, 10), fixed!(0, 30), 3),
+            burn_info: (fixed!(0), fixed!(0.10), fixed!(0.30), 3),
         }
     }
 }

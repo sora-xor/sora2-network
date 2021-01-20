@@ -595,7 +595,7 @@ impl xor_fee::Trait for Runtime {
 }
 
 parameter_types! {
-    pub const TransactionByteFee: Balance = Balance(Fixed::from_inner(1_000_000_000_000_u128)); // 10^-6 XOR ~ 10 * MILLICENTS
+    pub const TransactionByteFee: Balance = Balance(Fixed::from_bits(1_000_000_000_000_i128)); // 10^-6 XOR ~ 10 * MILLICENTS
     pub const TargetBlockFullness: Perquintill = Perquintill::from_percent(25);
     pub AdjustmentVariable: Multiplier = Multiplier::saturating_from_rational(1, 100_000);
     pub MinimumMultiplier: Multiplier = Multiplier::saturating_from_rational(1, 1_000_000_000_u128);

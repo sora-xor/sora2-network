@@ -604,11 +604,10 @@ decl_module! {
         }
 
         #[weight = 0]
-        fn discover_claim(origin, farm_id: FarmId) -> Result<Option<u64>,DispatchError> {
+        fn discover_claim(origin, farm_id: FarmId) -> Result<Option<u64>, DispatchError> {
             let who = ensure_signed(origin)?;
             let discover = Module::<T>::prepare_and_optional_claim(who, farm_id, None, false)?;
             Ok(Some(discover.available_claim.into()))
         }
-
     }
 }

@@ -1,11 +1,19 @@
-use crate::balance::Balance;
-use crate::Fixed;
-use codec::{Decode, Encode};
+use core::fmt::Debug;
 use core::ops::{Div, DivAssign, Mul, MulAssign};
+use core::result::Result;
+
+use codec::{Decode, Encode};
+use fixnum::{
+    impl_op,
+    ops::{RoundMode::*, RoundingDiv, RoundingMul},
+};
 use frame_support::RuntimeDebug;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 use sp_std::mem;
+
+use crate::balance::Balance;
+use crate::Fixed;
 
 /// Used to identify intention of caller to indicate desired input amount or desired output amount.
 /// Similar to SwapAmount, does not hold value in order to be used in external API.
@@ -18,7 +26,7 @@ pub enum SwapVariant {
 
 /// Used to identify intention of caller either to transfer tokens based on exact input amount or
 /// exact output amount.
-#[derive(Encode, Decode, Clone, Copy, RuntimeDebug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Encode, Decode, Copy, Clone, RuntimeDebug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum SwapAmount<AmountType> {
     WithDesiredInput {
         desired_amount_in: AmountType,
@@ -28,36 +36,6 @@ pub enum SwapAmount<AmountType> {
         desired_amount_out: AmountType,
         max_amount_in: AmountType,
     },
-}
-
-#[derive(Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq, PartialOrd, Ord)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-pub enum QuoteAmount<AmountType> {
-    WithDesiredInput { desired_amount_in: AmountType },
-    WithDesiredOutput { desired_amount_out: AmountType },
-}
-
-impl<T> QuoteAmount<T> {
-    pub fn with_desired_input(desired_amount_in: T) -> Self {
-        Self::WithDesiredInput { desired_amount_in }
-    }
-
-    pub fn with_desired_output(desired_amount_out: T) -> Self {
-        Self::WithDesiredOutput { desired_amount_out }
-    }
-
-    pub fn amount(self) -> T {
-        match self {
-            QuoteAmount::WithDesiredInput {
-                desired_amount_in: amount,
-                ..
-            }
-            | QuoteAmount::WithDesiredOutput {
-                desired_amount_out: amount,
-                ..
-            } => amount,
-        }
-    }
 }
 
 impl<T> SwapAmount<T> {
@@ -154,7 +132,11 @@ impl<T> From<SwapAmount<T>> for SwapVariant {
 }
 
 // TODO: use macros for impl generation
-impl<T: Mul<Output = T> + Clone + Copy> Mul<T> for SwapAmount<T> {
+impl<T> Mul<T> for SwapAmount<T>
+where
+    T: Copy + RoundingMul<Output = T>,
+    <T as RoundingMul>::Error: Debug,
+{
     type Output = Self;
 
     fn mul(self, rhs: T) -> Self::Output {
@@ -162,16 +144,26 @@ impl<T: Mul<Output = T> + Clone + Copy> Mul<T> for SwapAmount<T> {
             SwapAmount::WithDesiredInput {
                 desired_amount_in,
                 min_amount_out,
-            } => SwapAmount::with_desired_input(desired_amount_in * rhs, min_amount_out * rhs),
+            } => SwapAmount::with_desired_input(
+                desired_amount_in.rmul(rhs, Floor).unwrap(),
+                min_amount_out.rmul(rhs, Floor).unwrap(),
+            ),
             SwapAmount::WithDesiredOutput {
                 desired_amount_out,
                 max_amount_in,
-            } => SwapAmount::with_desired_output(desired_amount_out * rhs, max_amount_in * rhs),
+            } => SwapAmount::with_desired_output(
+                desired_amount_out.rmul(rhs, Floor).unwrap(),
+                max_amount_in.rmul(rhs, Floor).unwrap(),
+            ),
         }
     }
 }
 
-impl<T: Div<Output = T> + Clone + Copy> Div<T> for SwapAmount<T> {
+impl<T> Div<T> for SwapAmount<T>
+where
+    T: Copy + RoundingDiv<Output = T>,
+    <T as RoundingDiv>::Error: Debug,
+{
     type Output = Self;
 
     fn div(self, rhs: T) -> Self::Output {
@@ -179,16 +171,26 @@ impl<T: Div<Output = T> + Clone + Copy> Div<T> for SwapAmount<T> {
             SwapAmount::WithDesiredInput {
                 desired_amount_in,
                 min_amount_out,
-            } => SwapAmount::with_desired_input(desired_amount_in / rhs, min_amount_out / rhs),
+            } => SwapAmount::with_desired_input(
+                desired_amount_in.rdiv(rhs, Floor).unwrap(),
+                min_amount_out.rdiv(rhs, Floor).unwrap(),
+            ),
             SwapAmount::WithDesiredOutput {
                 desired_amount_out,
                 max_amount_in,
-            } => SwapAmount::with_desired_output(desired_amount_out / rhs, max_amount_in / rhs),
+            } => SwapAmount::with_desired_output(
+                desired_amount_out.rdiv(rhs, Floor).unwrap(),
+                max_amount_in.rdiv(rhs, Floor).unwrap(),
+            ),
         }
     }
 }
 
-impl<T: Mul<Output = T> + Clone + Copy> MulAssign<T> for SwapAmount<T> {
+impl<T> MulAssign<T> for SwapAmount<T>
+where
+    T: Copy + RoundingMul<Output = T>,
+    <T as RoundingMul>::Error: Debug,
+{
     fn mul_assign(&mut self, rhs: T) {
         match self.clone() {
             SwapAmount::WithDesiredInput {
@@ -196,20 +198,30 @@ impl<T: Mul<Output = T> + Clone + Copy> MulAssign<T> for SwapAmount<T> {
                 min_amount_out,
             } => mem::replace(
                 self,
-                SwapAmount::with_desired_input(desired_amount_in * rhs, min_amount_out * rhs),
+                SwapAmount::with_desired_input(
+                    desired_amount_in.rmul(rhs, Floor).unwrap(),
+                    min_amount_out.rmul(rhs, Floor).unwrap(),
+                ),
             ),
             SwapAmount::WithDesiredOutput {
                 desired_amount_out,
                 max_amount_in,
             } => mem::replace(
                 self,
-                SwapAmount::with_desired_output(desired_amount_out * rhs, max_amount_in * rhs),
+                SwapAmount::with_desired_output(
+                    desired_amount_out.rmul(rhs, Floor).unwrap(),
+                    max_amount_in.rmul(rhs, Floor).unwrap(),
+                ),
             ),
         };
     }
 }
 
-impl<T: Div<Output = T> + Clone + Copy> DivAssign<T> for SwapAmount<T> {
+impl<T> DivAssign<T> for SwapAmount<T>
+where
+    T: Copy + RoundingDiv<Output = T>,
+    <T as RoundingDiv>::Error: Debug,
+{
     fn div_assign(&mut self, rhs: T) {
         match self.clone() {
             SwapAmount::WithDesiredInput {
@@ -217,14 +229,20 @@ impl<T: Div<Output = T> + Clone + Copy> DivAssign<T> for SwapAmount<T> {
                 min_amount_out,
             } => mem::replace(
                 self,
-                SwapAmount::with_desired_input(desired_amount_in / rhs, min_amount_out / rhs),
+                SwapAmount::with_desired_input(
+                    desired_amount_in.rdiv(rhs, Floor).unwrap(),
+                    min_amount_out.rdiv(rhs, Floor).unwrap(),
+                ),
             ),
             SwapAmount::WithDesiredOutput {
                 desired_amount_out,
                 max_amount_in,
             } => mem::replace(
                 self,
-                SwapAmount::with_desired_output(desired_amount_out / rhs, max_amount_in / rhs),
+                SwapAmount::with_desired_output(
+                    desired_amount_out.rdiv(rhs, Floor).unwrap(),
+                    max_amount_in.rdiv(rhs, Floor).unwrap(),
+                ),
             ),
         };
     }
@@ -268,50 +286,54 @@ impl From<SwapOutcome<Fixed>> for SwapOutcome<Balance> {
     }
 }
 
+impl_op!(Balance [rmul] Balance = Balance);
+impl_op!(Balance [rdiv] Balance = Balance);
+
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::prelude::Balance;
+    use crate::{prelude::Balance, FixedInner};
+    use std::convert::TryFrom;
+
+    fn balance(x: FixedInner) -> Balance {
+        Balance::from(Fixed::try_from(x).unwrap())
+    }
 
     #[test]
     fn test_mul_amount_should_pass() {
-        let swap_amount =
-            SwapAmount::with_desired_input(Balance::from(100u128), Balance::from(50u128));
+        let swap_amount = SwapAmount::with_desired_input(balance(100), balance(50));
         assert_eq!(
-            swap_amount * Balance::from(2u128),
-            SwapAmount::with_desired_input(Balance::from(200u128), Balance::from(100u128))
+            swap_amount * balance(2),
+            SwapAmount::with_desired_input(balance(200), balance(100))
         );
     }
 
     #[test]
     fn test_mul_assign_amount_should_pass() {
-        let swap_amount =
-            SwapAmount::with_desired_input(Balance::from(100u128), Balance::from(50u128));
+        let swap_amount = SwapAmount::with_desired_input(balance(100), balance(50));
         assert_eq!(
-            swap_amount / Balance::from(2u128),
-            SwapAmount::with_desired_input(Balance::from(50u128), Balance::from(25u128))
+            swap_amount / balance(2),
+            SwapAmount::with_desired_input(balance(50), balance(25))
         );
     }
 
     #[test]
     fn test_div_amount_should_pass() {
-        let mut swap_amount =
-            SwapAmount::with_desired_input(Balance::from(100u128), Balance::from(50u128));
-        swap_amount *= Balance::from(2u128);
+        let mut swap_amount = SwapAmount::with_desired_input(balance(100), balance(50));
+        swap_amount *= balance(2);
         assert_eq!(
             swap_amount,
-            SwapAmount::with_desired_input(Balance::from(200u128), Balance::from(100u128))
+            SwapAmount::with_desired_input(balance(200), balance(100))
         );
     }
 
     #[test]
     fn test_div_assign_amount_should_pass() {
-        let mut swap_amount =
-            SwapAmount::with_desired_input(Balance::from(100u128), Balance::from(50u128));
-        swap_amount /= Balance::from(2u128);
+        let mut swap_amount = SwapAmount::with_desired_input(balance(100), balance(50));
+        swap_amount /= balance(2);
         assert_eq!(
             swap_amount,
-            SwapAmount::with_desired_input(Balance::from(50u128), Balance::from(25u128))
+            SwapAmount::with_desired_input(balance(50), balance(25))
         );
     }
 }
