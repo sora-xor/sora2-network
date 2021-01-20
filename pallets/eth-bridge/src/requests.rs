@@ -57,7 +57,7 @@ impl<T: Trait> IncomingChangePeers<T> {
         );
         if self.added {
             let account_id = self.peer_account_id.clone();
-            multisig::Module::<T>::add_signatory(
+            bridge_multisig::Module::<T>::add_signatory(
                 RawOrigin::Signed(crate::BridgeAccount::<T>::get()).into(),
                 account_id.clone(),
             )?;
@@ -509,7 +509,7 @@ impl<T: Trait> RemovePeerOutgoingRequest<T> {
 
     pub fn finalize(&self) -> Result<(), DispatchError> {
         let mut peers = self.validate()?;
-        multisig::Module::<T>::remove_signatory(
+        bridge_multisig::Module::<T>::remove_signatory(
             RawOrigin::Signed(crate::BridgeAccount::<T>::get()).into(),
             self.peer_account_id.clone(),
         )?;

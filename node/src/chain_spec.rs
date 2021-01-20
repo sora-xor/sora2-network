@@ -729,10 +729,13 @@ fn testnet_genesis(
             ],
             pswap_owners: vec![],
         }),
-        multisig: Some(MultisigConfig {
+        bridge_multisig: Some(MultisigConfig {
             accounts: once((
                 eth_bridge_account_id.clone(),
-                multisig::MultisigAccount::new(initial_bridge_peers, Percent::from_parts(67)),
+                bridge_multisig::MultisigAccount::new(
+                    initial_bridge_peers,
+                    Percent::from_parts(67),
+                ),
             ))
             .collect(),
         }),
