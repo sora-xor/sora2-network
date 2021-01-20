@@ -313,8 +313,6 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
     .assimilate_storage(&mut t)
     .unwrap();
 
-    println!("{:?}", VAL);
-
     tokens::GenesisConfig::<Test> {
         endowed_accounts: vec![(ALICE, VAL, 0u128.into())],
     }

@@ -28,6 +28,7 @@ use frame_support::{
 };
 use frame_system::{ensure_signed, RawOrigin};
 use sha3::Sha3_256;
+use sp_std::convert::TryInto;
 use sp_std::prelude::*;
 
 pub const TECH_ACCOUNT_PREFIX: &[u8] = b"iroha-migration";
@@ -181,14 +182,10 @@ impl<T: Trait> Module<T> {
     fn create_signature(iroha_signature: &str) -> Result<Signature, DispatchError> {
         let iroha_signature =
             hex::decode(&iroha_signature).map_err(|_| Error::<T>::SignatureParsingFailed)?;
-        ensure!(
-            iroha_signature.len() == SIGNATURE_LENGTH,
-            Error::<T>::SignatureParsingFailed
-        );
-        let mut signature_bytes = [0; SIGNATURE_LENGTH];
-        for i in 0..SIGNATURE_LENGTH {
-            signature_bytes[i] = iroha_signature[i];
-        }
+        let signature_bytes: [u8; SIGNATURE_LENGTH] = iroha_signature
+            .as_slice()
+            .try_into()
+            .map_err(|_| Error::<T>::SignatureParsingFailed)?;
         Ok(Signature::new(signature_bytes))
     }
 
@@ -288,11 +285,10 @@ impl<T: Trait> Module<T> {
         iroha_address: &String,
         account: &T::AccountId,
     ) -> Result<(), DispatchError> {
-        if let Some(balance) = Balances::get(iroha_address) {
+        if let Some(balance) = Balances::take(iroha_address) {
             if !balance.is_zero() {
                 assets::Module::<T>::mint_to(&VAL.into(), &Account::<T>::get(), account, balance)?;
             }
-            Balances::remove(iroha_address); // Free up memory
         }
         Ok(())
     }
