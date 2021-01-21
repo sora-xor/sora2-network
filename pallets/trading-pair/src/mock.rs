@@ -2,7 +2,7 @@ use crate::{Module, Trait};
 use common::{
     hash,
     prelude::{Balance, DEXInfo},
-    AssetId32, BasisPoints, DOT, XOR,
+    AssetId32, AssetSymbol, BalancePrecision, DOT, KSM, XOR,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::{impl_outer_origin, parameter_types, weights::Weight};
@@ -20,7 +20,6 @@ pub type BlockNumber = u64;
 pub type Amount = i128;
 
 pub const ALICE: AccountId = 1;
-pub const BOB: AccountId = 2;
 pub const DEX_ID: DEXId = 1;
 type AssetId = AssetId32<common::AssetId>;
 
@@ -67,7 +66,7 @@ impl system::Trait for Runtime {
 
 impl Trait for Runtime {
     type Event = ();
-    type EnsureDEXOwner = dex_manager::Module<Runtime>;
+    type EnsureDEXManager = dex_manager::Module<Runtime>;
     type WeightInfo = ();
 }
 
@@ -123,47 +122,58 @@ impl pallet_balances::Trait for Runtime {
     type MaxLocks = ();
 }
 
-parameter_types! {
-    pub const GetDefaultFee: BasisPoints = 30;
-    pub const GetDefaultProtocolFee: BasisPoints = 0;
-}
-
 impl permissions::Trait for Runtime {
     type Event = ();
 }
 
 impl dex_manager::Trait for Runtime {
     type Event = ();
-    type GetDefaultFee = GetDefaultFee;
-    type GetDefaultProtocolFee = GetDefaultProtocolFee;
     type WeightInfo = ();
 }
 
 pub type System = frame_system::Module<Runtime>;
 pub type Balances = pallet_balances::Module<Runtime>;
 pub type Tokens = tokens::Module<Runtime>;
-pub type TradingPair = Module<Runtime>;
+pub type TradingPairModule = Module<Runtime>;
 
 pub struct ExtBuilder {
+    endowed_assets: Vec<(AssetId, AccountId, AssetSymbol, BalancePrecision)>,
     endowed_accounts: Vec<(AccountId, AssetId, Balance)>,
     dex_list: Vec<(DEXId, DEXInfo<AssetId>)>,
     initial_permission_owners: Vec<(u32, Scope, Vec<AccountId>)>,
     initial_permissions: Vec<(AccountId, Scope, Vec<u32>)>,
 }
 
+impl ExtBuilder {
+    pub fn without_initialized_dex() -> Self {
+        Self {
+            endowed_assets: vec![
+                (XOR, ALICE, AssetSymbol(b"XOR".to_vec()), 18),
+                (DOT, ALICE, AssetSymbol(b"DOT".to_vec()), 18),
+                (KSM, ALICE, AssetSymbol(b"DOT".to_vec()), 18),
+            ],
+            endowed_accounts: vec![],
+            dex_list: vec![],
+            initial_permission_owners: vec![],
+            initial_permissions: vec![],
+        }
+    }
+}
+
 impl Default for ExtBuilder {
     fn default() -> Self {
         Self {
-            endowed_accounts: vec![
-                (ALICE, XOR, 1_000_000_000_000_000_000u128.into()),
-                (BOB, DOT, 1_000_000_000_000_000_000u128.into()),
+            endowed_assets: vec![
+                (XOR, ALICE, AssetSymbol(b"XOR".to_vec()), 18),
+                (DOT, ALICE, AssetSymbol(b"DOT".to_vec()), 18),
+                (KSM, ALICE, AssetSymbol(b"KSM".to_vec()), 18),
             ],
+            endowed_accounts: vec![],
             dex_list: vec![(
                 DEX_ID,
                 DEXInfo {
                     base_asset_id: XOR,
-                    default_fee: 30,
-                    default_protocol_fee: 0,
+                    is_public: true,
                 },
             )],
             initial_permission_owners: vec![
@@ -184,15 +194,21 @@ impl ExtBuilder {
             .build_storage::<Runtime>()
             .unwrap();
 
-        tokens::GenesisConfig::<Runtime> {
-            endowed_accounts: self.endowed_accounts,
+        permissions::GenesisConfig::<Runtime> {
+            initial_permission_owners: self.initial_permission_owners,
+            initial_permissions: self.initial_permissions,
         }
         .assimilate_storage(&mut t)
         .unwrap();
 
-        permissions::GenesisConfig::<Runtime> {
-            initial_permission_owners: self.initial_permission_owners,
-            initial_permissions: self.initial_permissions,
+        assets::GenesisConfig::<Runtime> {
+            endowed_assets: self.endowed_assets,
+        }
+        .assimilate_storage(&mut t)
+        .unwrap();
+
+        tokens::GenesisConfig::<Runtime> {
+            endowed_accounts: self.endowed_accounts,
         }
         .assimilate_storage(&mut t)
         .unwrap();

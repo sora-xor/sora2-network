@@ -69,28 +69,21 @@ impl system::Trait for Runtime {
     type PalletInfo = ();
 }
 
-parameter_types! {
-    pub const GetDefaultFee: u16 = 30;
-    pub const GetDefaultProtocolFee: u16 = 0;
-}
-
 impl dex_manager::Trait for Runtime {
     type Event = ();
-    type GetDefaultFee = ();
-    type GetDefaultProtocolFee = ();
     type WeightInfo = ();
 }
 
 impl trading_pair::Trait for Runtime {
     type Event = ();
-    type EnsureDEXOwner = dex_manager::Module<Runtime>;
+    type EnsureDEXManager = dex_manager::Module<Runtime>;
     type WeightInfo = ();
 }
 
 impl mock_liquidity_source::Trait<mock_liquidity_source::Instance1> for Runtime {
     type Event = ();
     type GetFee = ();
-    type EnsureDEXOwner = ();
+    type EnsureDEXManager = ();
     type EnsureTradingPairExists = ();
 }
 

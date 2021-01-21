@@ -33,8 +33,6 @@ parameter_types! {
     pub const MaximumBlockWeight: Weight = 1024;
     pub const MaximumBlockLength: u32 = 2 * 1024;
     pub const AvailableBlockRatio: Perbill = Perbill::from_percent(75);
-    pub const GetDefaultFee: u16 = 30;
-    pub const GetDefaultProtocolFee: u16 = 0;
 }
 
 impl system::Trait for Runtime {
@@ -67,8 +65,6 @@ impl system::Trait for Runtime {
 
 impl Trait for Runtime {
     type Event = ();
-    type GetDefaultFee = GetDefaultFee;
-    type GetDefaultProtocolFee = GetDefaultProtocolFee;
     type WeightInfo = ();
 }
 
@@ -97,7 +93,7 @@ impl currencies::Trait for Runtime {
     type WeightInfo = ();
 }
 
-type DEXId = u32;
+pub type DEXId = u32;
 
 impl assets::Trait for Runtime {
     type Event = ();

@@ -2,7 +2,7 @@
 
 use common::prelude::fixnum::ops::{CheckedAdd, CheckedSub};
 use common::prelude::{FixedWrapper, SwapAmount};
-use common::{balance::Balance, fixed, EnsureDEXOwner, Fixed, LiquiditySource};
+use common::{balance::Balance, fixed, EnsureDEXManager, Fixed, LiquiditySource};
 use frame_support::{
     decl_error, decl_event, decl_module, decl_storage,
     dispatch::{DispatchError, DispatchResult, Weight},
@@ -44,7 +44,7 @@ pub trait Trait: common::Trait + assets::Trait + technical::Trait {
         + Zero;
     type GetTechnicalAccountId: Get<Self::AccountId>;
     type GetDefaultSubscriptionFrequency: Get<Self::BlockNumber>;
-    type EnsureDEXOwner: EnsureDEXOwner<Self::DEXId, Self::AccountId, DispatchError>;
+    type EnsureDEXManager: EnsureDEXManager<Self::DEXId, Self::AccountId, DispatchError>;
 }
 
 decl_storage! {

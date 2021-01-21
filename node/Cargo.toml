@@ -34,7 +34,7 @@ iroha-migration = { path = "../pallets/iroha-migration" }
 trading-pair-rpc = { path = "../pallets/trading-pair/rpc" }
 assets-rpc = { path = "../pallets/assets/rpc" }
 liquidity-proxy-rpc = { path = "../pallets/liquidity-proxy/rpc" }
-multisig = { git = "https://github.com/soramitsu/sora2-frame-pallets.git", branch = "vmarkushin/multisig", package = "pallet-multisig" }
+bridge-multisig = { git = "https://github.com/soramitsu/sora2-frame-pallets.git", branch = "selected-v2.0.0", package = "pallet-multisig" }
 farming-rpc = { path = "../pallets/farming/rpc" }
 iroha-migration-rpc = { path = "../pallets/iroha-migration/rpc" }
 libsecp256k1 = { version = "0.3.5", features = ['hmac'], default-features = false }
