@@ -8,7 +8,7 @@ use fixnum::{
 };
 use num_traits::{CheckedNeg, Num, One, Unsigned, Zero};
 #[cfg(feature = "std")]
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use sp_arithmetic::traits::{
     Bounded, CheckedDiv, CheckedMul, CheckedShl, CheckedShr, IntegerSquareRoot, Saturating,
 };
@@ -26,7 +26,6 @@ use crate::{fixed, Amount, Fixed, FixedInner};
 #[derive(
     CompactAs, Encode, Debug, Clone, Copy, Decode, Default, From, PartialEq, Eq, PartialOrd, Ord,
 )]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct Balance(pub Fixed);
 
 #[cfg(feature = "std")]
@@ -44,6 +43,27 @@ impl FromStr for Balance {
 impl Display for Balance {
     fn fmt(&self, f: &mut Formatter<'_>) -> sp_std::fmt::Result {
         write!(f, "{}", self.0)
+    }
+}
+
+#[cfg(feature = "std")]
+impl Serialize for Balance {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_str(&format!("{}", self))
+    }
+}
+
+#[cfg(feature = "std")]
+impl<'de> Deserialize<'de> for Balance {
+    fn deserialize<D>(deserializer: D) -> Result<Balance, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let s = String::deserialize(deserializer)?;
+        Balance::from_str(&s).map_err(|str_err| serde::de::Error::custom(str_err))
     }
 }
 
@@ -325,14 +345,39 @@ impl FixedPointOperand for Balance {}
 
 #[cfg(test)]
 mod tests {
-    use codec::CompactAs;
-    use num_traits::One;
-
     use super::Balance;
+    use crate::fixed;
+    use codec::CompactAs;
+    use num_traits::Bounded;
+    use num_traits::One;
 
     #[test]
     fn balance_encode_as_should_equal_fixed_inner() {
         let balance = Balance::one();
         assert_eq!(&balance.0, balance.encode_as());
+    }
+
+    #[test]
+    fn should_serialize_and_deserialize_balance_properly_with_string() {
+        let test_for_number = |value: Balance, json_str: &str| {
+            assert_eq!(serde_json::to_string(&value).unwrap(), json_str);
+            assert_eq!(serde_json::from_str::<Balance>(json_str).unwrap(), value);
+            // should not panic
+            serde_json::to_value(&value).unwrap();
+        };
+        test_for_number(fixed!(1.5), r#""1.5""#);
+        test_for_number(
+            Balance::from(1u32) / Balance::from(1000000000000000000u128),
+            r#""0.000000000000000001""#,
+        );
+        test_for_number(
+            Balance::from(1u32) / Balance::from(10000000000000000000u128),
+            r#""0.0""#,
+        );
+        test_for_number(
+            Balance::max_value(),
+            r#""170141183460469231731.687303715884105727""#,
+        );
+        test_for_number(Balance::from(10u32), r#""10.0""#)
     }
 }
