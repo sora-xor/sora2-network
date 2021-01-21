@@ -1034,6 +1034,9 @@ impl<T: Trait> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, T
             .map_err(|_| Error::<T>::FixedWrapperCalculationFailed)?)
         .into();
 
+        let total_iss = assets::Module::<T>::total_issuance(&repr_k_asset_id)?;
+        let fxw_total_iss: FixedWrapper = total_iss.into();
+
         match (
             self.source.amount,
             (self.destination.0).amount,
@@ -1045,7 +1048,7 @@ impl<T: Trait> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, T
                     Error::<T>::ZeroValueInAmountParameter
                 );
                 let fxw_source_k: FixedWrapper = source_k.into();
-                let fxw_peace_to_take = fxw_pool_k / fxw_source_k;
+                let fxw_peace_to_take = fxw_total_iss / fxw_source_k;
                 let fxw_recom_x = fxw_balance_bp / fxw_peace_to_take.clone();
                 let fxw_recom_y = fxw_balance_tp / fxw_peace_to_take;
                 let recom_x: Balance = (fxw_recom_x
