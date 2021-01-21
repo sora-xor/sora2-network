@@ -625,7 +625,7 @@ parameter_types! {
     pub const MaxSignatories: u16 = 4;
 }
 
-impl multisig::Trait for Runtime {
+impl bridge_multisig::Trait for Runtime {
     type Call = Call;
     type Event = Event;
     type Currency = Balances;
@@ -700,7 +700,7 @@ construct_runtime! {
         Permissions: permissions::{Module, Call, Storage, Config<T>, Event<T>},
         ReferralSystem: referral_system::{Module, Call, Storage, Event},
         XorFee: xor_fee::{Module, Call, Storage, Event},
-        Multisig: multisig::{Module, Call, Storage, Config<T>, Event<T>},
+        Multisig: bridge_multisig::{Module, Call, Storage, Config<T>, Event<T>},
         Utility: pallet_utility::{Module, Call, Event},
 
         // Consensus and staking.

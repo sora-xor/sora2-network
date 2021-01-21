@@ -375,9 +375,9 @@ pub enum RequestStatus {
 pub trait Trait:
     frame_system::Trait
     + CreateSignedTransaction<Call<Self>>
-    + CreateSignedTransaction<multisig::Call<Self>>
+    + CreateSignedTransaction<bridge_multisig::Call<Self>>
     + assets::Trait
-    + multisig::Trait
+    + bridge_multisig::Trait
     + fmt::Debug
 {
     type Event: From<Event<Self>> + Into<<Self as frame_system::Trait>::Event>;
@@ -966,14 +966,15 @@ impl<T: Trait> Module<T> {
                             Ok(incoming_request) => {
                                 let register_call =
                                     Call::<T>::register_incoming_request(incoming_request);
-                                let call = multisig::Call::as_multi(
+                                let call = bridge_multisig::Call::as_multi(
                                     Self::bridge_account(),
                                     None,
                                     register_call.encode(),
                                     false,
                                     Weight::from(1000000u32),
                                 );
-                                Self::send_signed_transaction::<multisig::Call<T>>(call).err()
+                                Self::send_signed_transaction::<bridge_multisig::Call<T>>(call)
+                                    .err()
                             }
                             Err(e) if e == Error::<T>::HttpFetchingError.into() => {
                                 Some(Error::<T>::HttpFetchingError)
@@ -1229,14 +1230,14 @@ impl<T: Trait> Module<T> {
         incoming_request_result: Result<IncomingRequest<T>, (sp_core::H256, DispatchError)>,
     ) -> Result<(), Error<T>> {
         let transfer_call = Call::<T>::finalize_incoming_request(incoming_request_result);
-        let call = multisig::Call::as_multi(
+        let call = bridge_multisig::Call::as_multi(
             Self::bridge_account(),
             None,
             transfer_call.encode(),
             false,
             Weight::from(1000000u32),
         );
-        Self::send_signed_transaction::<multisig::Call<T>>(call)?;
+        Self::send_signed_transaction::<bridge_multisig::Call<T>>(call)?;
         Ok(())
     }
 
