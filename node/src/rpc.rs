@@ -44,7 +44,13 @@ where
         SwapVariant,
     >,
     C::Api: dex_manager_rpc::DEXManagerRuntimeAPI<Block, DEXId>,
-    C::Api: trading_pair_rpc::TradingPairRuntimeAPI<Block, DEXId, TradingPair<AssetId>, AssetId>,
+    C::Api: trading_pair_rpc::TradingPairRuntimeAPI<
+        Block,
+        DEXId,
+        TradingPair<AssetId>,
+        AssetId,
+        LiquiditySourceType,
+    >,
     C::Api: assets_rpc::AssetsRuntimeAPI<
         Block,
         AccountId,

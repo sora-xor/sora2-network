@@ -134,7 +134,7 @@ decl_error! {
         AssetIdNotExists,
         /// A number is out of range of the balance type.
         InsufficientBalance,
-        /// Symbol is not valid. It must contain only uppercase latin characters, length <= 5.
+        /// Symbol is not valid. It must contain only uppercase latin characters, length <= 7.
         InvalidAssetSymbol,
         /// Precision value is not valid, it should represent a number of decimal places for number, max is 30.
         InvalidPrecision,
