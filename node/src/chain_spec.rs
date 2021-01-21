@@ -468,6 +468,9 @@ fn testnet_genesis(
         framenode_runtime::GetPswapDistributionTechAccountId::get();
     let pswap_distribution_account_id = framenode_runtime::GetPswapDistributionAccountId::get();
 
+    let liquidity_proxy_tech_account_id = framenode_runtime::GetLiquidityProxyTechAccountId::get();
+    let liquidity_proxy_account_id = framenode_runtime::GetLiquidityProxyAccountId::get();
+
     let mut tech_accounts = vec![
         (xor_fee_account_id.clone(), xor_fee_tech_account_id),
         (faucet_account_id.clone(), faucet_tech_account_id.clone()),
@@ -482,6 +485,10 @@ fn testnet_genesis(
         (
             pswap_distribution_account_id.clone(),
             pswap_distribution_tech_account_id.clone(),
+        ),
+        (
+            liquidity_proxy_account_id.clone(),
+            liquidity_proxy_tech_account_id.clone(),
         ),
     ];
     let accounts = bonding_curve_distribution_accounts();

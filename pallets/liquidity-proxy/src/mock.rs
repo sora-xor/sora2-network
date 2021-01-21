@@ -1,6 +1,6 @@
 use crate::{Module, Trait};
 use common::{
-    self, fixed, fixed_from_basis_points, hash, Amount, AssetId32, DEXInfo, Fixed,
+    self, fixed, fixed_from_basis_points, hash, Amount, AssetId32, DEXInfo, Fixed, FromGenericPair,
     LiquiditySourceType, DOT, KSM, XOR,
 };
 use currencies::BasicCurrencyAdapter;
@@ -74,12 +74,27 @@ impl system::Trait for Runtime {
 }
 
 parameter_types! {
+    pub GetLiquidityProxyTechAccountId: TechAccountId = {
+        let tech_account_id = TechAccountId::from_generic_pair(
+            crate::TECH_ACCOUNT_PREFIX.to_vec(),
+            crate::TECH_ACCOUNT_MAIN.to_vec(),
+        );
+        tech_account_id
+    };
+    pub GetLiquidityProxyAccountId: AccountId = {
+        let tech_account_id = GetLiquidityProxyTechAccountId::get();
+        let account_id =
+            technical::Module::<Runtime>::tech_account_id_to_account_id(&tech_account_id)
+                .expect("Failed to get ordinary account id for technical account id.");
+        account_id
+    };
     pub const GetNumSamples: usize = 40;
 }
 impl Trait for Runtime {
     type Event = ();
     type LiquidityRegistry = dex_api::Module<Runtime>;
     type GetNumSamples = GetNumSamples;
+    type GetTechnicalAccountId = GetLiquidityProxyAccountId;
     type WeightInfo = ();
 }
 

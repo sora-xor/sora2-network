@@ -7,7 +7,7 @@ use core::convert::TryFrom;
 
 use codec::{Decode, Encode};
 
-use common::prelude::fixnum::ops::{CheckedMul, Numeric};
+use common::prelude::fixnum::ops::{CheckedAdd, CheckedMul, Numeric};
 use common::prelude::{Balance, FixedWrapper, SwapAmount, SwapOutcome, SwapVariant};
 use common::{
     fixed, linspace, FilterMode, Fixed, FixedInner, IntervalEndpoints, LiquidityRegistry,
@@ -30,6 +30,41 @@ mod mock;
 mod tests;
 
 pub mod algo;
+
+pub const TECH_ACCOUNT_PREFIX: &[u8] = b"liquidity-proxy";
+pub const TECH_ACCOUNT_MAIN: &[u8] = b"main";
+
+pub enum ExchangePath<T: Trait> {
+    Direct {
+        from_asset_id: T::AssetId,
+        to_asset_id: T::AssetId,
+    },
+    Twofold {
+        from_asset_id: T::AssetId,
+        intermediate_asset_id: T::AssetId,
+        to_asset_id: T::AssetId,
+    },
+}
+
+impl<T: Trait> ExchangePath<T> {
+    pub fn as_vec(self) -> Vec<(T::AssetId, T::AssetId)> {
+        match self {
+            ExchangePath::Direct {
+                from_asset_id,
+                to_asset_id,
+            } => [(from_asset_id, to_asset_id)].into(),
+            ExchangePath::Twofold {
+                from_asset_id,
+                intermediate_asset_id,
+                to_asset_id,
+            } => [
+                (from_asset_id, intermediate_asset_id),
+                (intermediate_asset_id, to_asset_id),
+            ]
+            .into(),
+        }
+    }
+}
 
 /// Output of the aggregated LiquidityProxy::quote_with_filter() price.
 #[derive(Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq, PartialOrd, Ord)]
@@ -71,6 +106,7 @@ pub trait Trait: common::Trait + assets::Trait {
         DispatchError,
     >;
     type GetNumSamples: Get<usize>;
+    type GetTechnicalAccountId: Get<Self::AccountId>;
 
     /// Weight information for the extrinsics in this pallet.
     type WeightInfo: WeightInfo;
@@ -103,6 +139,8 @@ decl_error! {
         AggregationError,
         /// Specified parameters lead to arithmetic error
         CalculationError,
+        /// Slippage either exceeds minimum tolerated output or maximum tolerated input.
+        SlippageNotTolerated,
     }
 }
 
@@ -133,6 +171,7 @@ decl_module! {
         ) -> DispatchResult {
             let who = ensure_signed(origin)?;
             let outcome = Self::perform_swap(
+                &who,
                 &who,
                 &input_asset_id,
                 &output_asset_id,
@@ -218,39 +257,227 @@ impl<T: Trait> Module<T> {
         }
     }
 
-    /// Performs a swap given a numbebr of liquidity sources and a distribuition of the swap amount across the sources.
+    /// Applies trivial routing (via Base Asset), resulting in a poly-swap which may contain several individual swaps.
+    /// Those individual swaps are subject to liquidity aggregation algorithm.
+    ///
+    /// This a wrapper for `perform_swap_single`.
     pub fn perform_swap(
-        origin: &T::AccountId,
+        sender: &T::AccountId,
+        receiver: &T::AccountId,
         input_asset_id: &T::AssetId,
         output_asset_id: &T::AssetId,
         amount: SwapAmount<Fixed>,
         filter: LiquiditySourceFilter<T::DEXId, LiquiditySourceType>,
     ) -> Result<SwapOutcome<Fixed>, DispatchError> {
-        let res = Self::quote_with_filter(input_asset_id, output_asset_id, amount, filter)?
-            .distribution
-            .into_iter()
-            .filter(|(_src, share)| *share > fixed!(0))
-            .map(|(src, share)| {
-                T::LiquidityRegistry::exchange(
-                    origin,
-                    origin,
-                    &src,
-                    input_asset_id,
-                    output_asset_id,
-                    amount * share,
-                )
-            })
-            .collect::<Result<Vec<SwapOutcome<Fixed>>, DispatchError>>()?;
+        ensure!(
+            input_asset_id != output_asset_id,
+            Error::<T>::UnavailableExchangePath
+        );
+        common::with_transaction(|| {
+            match Self::construct_trivial_path(*input_asset_id, *output_asset_id) {
+                ExchangePath::Direct {
+                    from_asset_id,
+                    to_asset_id,
+                } => Self::perform_swap_single(
+                    sender,
+                    receiver,
+                    &from_asset_id,
+                    &to_asset_id,
+                    amount,
+                    filter,
+                ),
+                ExchangePath::Twofold {
+                    from_asset_id,
+                    intermediate_asset_id,
+                    to_asset_id,
+                } => match amount {
+                    SwapAmount::WithDesiredInput {
+                        desired_amount_in,
+                        min_amount_out,
+                    } => {
+                        let transit_account = T::GetTechnicalAccountId::get();
+                        let first_swap = Self::perform_swap_single(
+                            sender,
+                            &transit_account,
+                            &from_asset_id,
+                            &intermediate_asset_id,
+                            SwapAmount::with_desired_input(desired_amount_in, Fixed::ZERO),
+                            filter.clone(),
+                        )?;
+                        let second_swap = Self::perform_swap_single(
+                            &transit_account,
+                            receiver,
+                            &intermediate_asset_id,
+                            &to_asset_id,
+                            SwapAmount::with_desired_input(first_swap.amount, Fixed::ZERO),
+                            filter,
+                        )?;
+                        ensure!(
+                            second_swap.amount >= min_amount_out,
+                            Error::<T>::SlippageNotTolerated
+                        );
+                        let cumulative_fee = first_swap
+                            .fee
+                            .cadd(second_swap.fee)
+                            .map_err(|_| Error::<T>::CalculationError)?;
+                        Ok(SwapOutcome::new(second_swap.amount, cumulative_fee))
+                    }
+                    SwapAmount::WithDesiredOutput {
+                        desired_amount_out,
+                        max_amount_in,
+                    } => {
+                        let second_quote = Self::quote_with_filter_single(
+                            &intermediate_asset_id,
+                            &to_asset_id,
+                            SwapAmount::with_desired_output(desired_amount_out, Fixed::MAX),
+                            filter.clone(),
+                        )?;
+                        let first_quote = Self::quote_with_filter_single(
+                            &from_asset_id,
+                            &intermediate_asset_id,
+                            SwapAmount::with_desired_output(second_quote.amount, Fixed::MAX),
+                            filter.clone(),
+                        )?;
+                        ensure!(
+                            first_quote.amount <= max_amount_in,
+                            Error::<T>::SlippageNotTolerated
+                        );
+                        let transit_account = T::GetTechnicalAccountId::get();
+                        let first_swap = Self::perform_swap_single(
+                            sender,
+                            &transit_account,
+                            &from_asset_id,
+                            &intermediate_asset_id,
+                            SwapAmount::with_desired_input(first_quote.amount, Fixed::ZERO),
+                            filter.clone(),
+                        )?;
+                        let second_swap = Self::perform_swap_single(
+                            &transit_account,
+                            receiver,
+                            &intermediate_asset_id,
+                            &to_asset_id,
+                            SwapAmount::with_desired_input(first_swap.amount, Fixed::ZERO),
+                            filter,
+                        )?;
+                        let cumulative_fee = first_swap
+                            .fee
+                            .cadd(second_swap.fee)
+                            .map_err(|_| Error::<T>::CalculationError)?;
+                        Ok(SwapOutcome::new(first_quote.amount, cumulative_fee))
+                    }
+                },
+            }
+        })
+    }
 
-        let (amount, fee): (FixedWrapper, FixedWrapper) = res
-            .into_iter()
-            .fold((fixed!(0), fixed!(0)), |(amount_acc, fee_acc), x| {
-                (amount_acc + x.amount, fee_acc + x.fee)
-            });
-        let amount = amount.get().map_err(|_| Error::CalculationError::<T>)?;
-        let fee = fee.get().map_err(|_| Error::CalculationError::<T>)?;
+    /// Performs a swap given a number of liquidity sources and a distribuition of the swap amount across the sources.
+    fn perform_swap_single(
+        sender: &T::AccountId,
+        receiver: &T::AccountId,
+        input_asset_id: &T::AssetId,
+        output_asset_id: &T::AssetId,
+        amount: SwapAmount<Fixed>,
+        filter: LiquiditySourceFilter<T::DEXId, LiquiditySourceType>,
+    ) -> Result<SwapOutcome<Fixed>, DispatchError> {
+        common::with_transaction(|| {
+            let res =
+                Self::quote_with_filter_single(input_asset_id, output_asset_id, amount, filter)?
+                    .distribution
+                    .into_iter()
+                    .filter(|(_src, share)| *share > fixed!(0))
+                    .map(|(src, share)| {
+                        T::LiquidityRegistry::exchange(
+                            sender,
+                            receiver,
+                            &src,
+                            input_asset_id,
+                            output_asset_id,
+                            amount * share,
+                        )
+                    })
+                    .collect::<Result<Vec<SwapOutcome<Fixed>>, DispatchError>>()?;
 
-        Ok(SwapOutcome::new(amount, fee))
+            let (amount, fee): (FixedWrapper, FixedWrapper) = res
+                .into_iter()
+                .fold((fixed!(0), fixed!(0)), |(amount_acc, fee_acc), x| {
+                    (amount_acc + x.amount, fee_acc + x.fee)
+                });
+            let amount = amount.get().map_err(|_| Error::CalculationError::<T>)?;
+            let fee = fee.get().map_err(|_| Error::CalculationError::<T>)?;
+
+            Ok(SwapOutcome::new(amount, fee))
+        })
+    }
+
+    /// Applies trivial routing (via Base Asset), resulting in a poly-swap which may contain several individual swaps.
+    /// Those individual swaps are subject to liquidity aggregation algorithm.
+    ///
+    /// This a wrapper for `quote_with_filter_single`.
+    pub fn quote_with_filter(
+        input_asset_id: &T::AssetId,
+        output_asset_id: &T::AssetId,
+        amount: SwapAmount<Fixed>,
+        filter: LiquiditySourceFilter<T::DEXId, LiquiditySourceType>,
+    ) -> Result<SwapOutcome<Fixed>, DispatchError> {
+        ensure!(
+            input_asset_id != output_asset_id,
+            Error::<T>::UnavailableExchangePath
+        );
+        match Self::construct_trivial_path(*input_asset_id, *output_asset_id) {
+            ExchangePath::Direct {
+                from_asset_id,
+                to_asset_id,
+            } => Self::quote_with_filter_single(&from_asset_id, &to_asset_id, amount, filter)
+                .map(|aso| SwapOutcome::new(aso.amount, aso.fee).into()),
+            ExchangePath::Twofold {
+                from_asset_id,
+                intermediate_asset_id,
+                to_asset_id,
+            } => match amount {
+                SwapAmount::WithDesiredInput {
+                    desired_amount_in, ..
+                } => {
+                    let first_quote = Self::quote_with_filter_single(
+                        &from_asset_id,
+                        &intermediate_asset_id,
+                        SwapAmount::with_desired_input(desired_amount_in, Fixed::ZERO),
+                        filter.clone(),
+                    )?;
+                    let second_quote = Self::quote_with_filter_single(
+                        &intermediate_asset_id,
+                        &to_asset_id,
+                        SwapAmount::with_desired_input(first_quote.amount, Fixed::ZERO),
+                        filter,
+                    )?;
+                    let cumulative_fee = first_quote
+                        .fee
+                        .cadd(second_quote.fee)
+                        .map_err(|_| Error::<T>::CalculationError)?;
+                    Ok(SwapOutcome::new(second_quote.amount, cumulative_fee))
+                }
+                SwapAmount::WithDesiredOutput {
+                    desired_amount_out, ..
+                } => {
+                    let second_quote = Self::quote_with_filter_single(
+                        &intermediate_asset_id,
+                        &to_asset_id,
+                        SwapAmount::with_desired_output(desired_amount_out, Fixed::MAX),
+                        filter.clone(),
+                    )?;
+                    let first_quote = Self::quote_with_filter_single(
+                        &from_asset_id,
+                        &intermediate_asset_id,
+                        SwapAmount::with_desired_output(second_quote.amount, Fixed::MAX),
+                        filter,
+                    )?;
+                    let cumulative_fee = first_quote
+                        .fee
+                        .cadd(second_quote.fee)
+                        .map_err(|_| Error::<T>::CalculationError)?;
+                    Ok(SwapOutcome::new(first_quote.amount, cumulative_fee))
+                }
+            },
+        }
     }
 
     /// Computes the optimal distribution across available liquidity sources to exectute the requested trade
@@ -261,7 +488,7 @@ impl<T: Trait> Module<T> {
     /// - 'amount' - the amount with "direction" (sell or buy) together with the maximum price impact (slippage),
     /// - 'filter' - a filter composed of a list of liquidity sources IDs to accept or ban for this trade.
     ///
-    pub fn quote_with_filter(
+    fn quote_with_filter_single(
         input_asset_id: &T::AssetId,
         output_asset_id: &T::AssetId,
         amount: SwapAmount<Fixed>,
@@ -322,6 +549,25 @@ impl<T: Trait> Module<T> {
             total_fee,
         ))
     }
+
+    pub fn construct_trivial_path(
+        input_asset_id: T::AssetId,
+        output_asset_id: T::AssetId,
+    ) -> ExchangePath<T> {
+        let base_asset_id = T::GetBaseAssetId::get();
+        if input_asset_id == base_asset_id || output_asset_id == base_asset_id {
+            ExchangePath::Direct {
+                from_asset_id: input_asset_id,
+                to_asset_id: output_asset_id,
+            }
+        } else {
+            ExchangePath::Twofold {
+                from_asset_id: input_asset_id,
+                intermediate_asset_id: base_asset_id,
+                to_asset_id: output_asset_id,
+            }
+        }
+    }
 }
 
 /// Implementation of LiquiditySource Trait for LiquidityProxy, it's actually exposes reduced set of parameters that can be passed,
@@ -335,15 +581,23 @@ impl<T: Trait> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Disp
         input_asset_id: &T::AssetId,
         output_asset_id: &T::AssetId,
     ) -> bool {
-        T::LiquidityRegistry::list_liquidity_sources(
-            input_asset_id,
-            output_asset_id,
-            LiquiditySourceFilter::empty(*dex_id),
-        )
-        .unwrap_or(Vec::new())
-        .iter()
-        .map(|source| T::LiquidityRegistry::can_exchange(source, input_asset_id, output_asset_id))
-        .any(|b| b)
+        Self::construct_trivial_path(*input_asset_id, *output_asset_id)
+            .as_vec()
+            .iter()
+            .map(|(from_asset_id, to_asset_id)| {
+                T::LiquidityRegistry::list_liquidity_sources(
+                    from_asset_id,
+                    to_asset_id,
+                    LiquiditySourceFilter::empty(*dex_id),
+                )
+                .unwrap_or(Vec::new())
+                .iter()
+                .map(|source| {
+                    T::LiquidityRegistry::can_exchange(source, input_asset_id, output_asset_id)
+                })
+                .any(|b| b)
+            })
+            .all(|b| b)
     }
 
     fn quote(
@@ -358,12 +612,12 @@ impl<T: Trait> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Disp
             swap_amount.into(),
             LiquiditySourceFilter::empty(*dex_id),
         )
-        .map(|aso| SwapOutcome::new(aso.amount, aso.fee).into())
+        .map(|so| so.into())
     }
 
     fn exchange(
         sender: &T::AccountId,
-        _receiver: &T::AccountId,
+        receiver: &T::AccountId,
         dex_id: &T::DEXId,
         input_asset_id: &T::AssetId,
         output_asset_id: &T::AssetId,
@@ -371,6 +625,7 @@ impl<T: Trait> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Disp
     ) -> Result<SwapOutcome<Balance>, DispatchError> {
         Self::perform_swap(
             sender,
+            receiver,
             input_asset_id,
             output_asset_id,
             desired_amount.into(),
