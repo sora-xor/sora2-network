@@ -1465,7 +1465,8 @@ impl<T: Trait> Module<T> {
             let fee_of_x_in = Module::<T>::get_fee_for_source(asset_a, tech_acc, x_in)?;
             let fxw_fee_of_x_in: FixedWrapper = fee_of_x_in.into();
             let fxw_x_in_subfee = fxw_x_in - fxw_fee_of_x_in;
-            let fxw_y_out = (fxw_x_in_subfee.clone() * fxw_y) / (fxw_x + fxw_x_in_subfee);
+            //let fxw_y_out = (fxw_x_in_subfee.clone() * fxw_y) / (fxw_x + fxw_x_in_subfee);
+            let fxw_y_out = fxw_x_in_subfee.clone() / ((fxw_x + fxw_x_in_subfee) / fxw_y);
             let y_out: Balance = fxw_y_out
                 .get()
                 .map_err(|_| Error::<T>::FixedWrapperCalculationFailed)?
@@ -1512,7 +1513,8 @@ impl<T: Trait> Module<T> {
             let ymyo_fee = Module::<T>::get_fee_for_source(asset_a, tech_acc, &y_minus_y_out)?;
             let ymyo_subfee = y_minus_y_out - ymyo_fee;
             let fxw_ymyo_subfee: FixedWrapper = ymyo_subfee.into();
-            let fxw_x_in = (fxw_x * fxw_y_out) / fxw_ymyo_subfee;
+            //let fxw_x_in = (fxw_x * fxw_y_out) / fxw_ymyo_subfee;
+            let fxw_x_in = fxw_x / (fxw_ymyo_subfee / fxw_y_out);
             let x_in: Balance = fxw_x_in
                 .get()
                 .map_err(|_| Error::<T>::FixedWrapperCalculationFailed)?
