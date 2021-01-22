@@ -2,10 +2,7 @@ use core::ops::{Shl, Shr};
 
 use codec::{CompactAs, Decode, Encode};
 use derive_more::From;
-use fixnum::{
-    ops::{CheckedAdd, CheckedSub, Numeric, RoundMode::*, RoundingDiv, RoundingMul},
-    ConvertError,
-};
+use fixnum::ops::{CheckedAdd, CheckedSub, Numeric, RoundMode::*, RoundingDiv, RoundingMul};
 use num_traits::{CheckedNeg, Num, One, Unsigned, Zero};
 #[cfg(feature = "std")]
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
@@ -33,16 +30,17 @@ impl FromStr for Balance {
     type Err = &'static str;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Ok(Balance(
-            s.parse().map_err(|err: ConvertError| err.as_str())?,
-        ))
+        let val = s
+            .parse::<FixedInner>()
+            .map_err(|_| "Parsing fixedpoint number failed.")?;
+        Ok(Balance(Fixed::from_bits(val)))
     }
 }
 
 #[cfg(feature = "std")]
 impl Display for Balance {
     fn fmt(&self, f: &mut Formatter<'_>) -> sp_std::fmt::Result {
-        write!(f, "{}", self.0)
+        write!(f, "{}", self.0.as_bits())
     }
 }
 
@@ -365,19 +363,19 @@ mod tests {
             // should not panic
             serde_json::to_value(&value).unwrap();
         };
-        test_for_number(fixed!(1.5), r#""1.5""#);
+        test_for_number(fixed!(1.5), r#""1500000000000000000""#);
         test_for_number(
-            Balance::from(1u32) / Balance::from(1000000000000000000u128),
-            r#""0.000000000000000001""#,
+            Balance::from(1u32) / Balance::from(1_000_000_000_000_000_000u128),
+            r#""1""#,
         );
         test_for_number(
-            Balance::from(1u32) / Balance::from(10000000000000000000u128),
-            r#""0.0""#,
+            Balance::from(1u32) / Balance::from(10_000_000_000_000_000_000u128),
+            r#""0""#,
         );
         test_for_number(
             Balance::max_value(),
-            r#""170141183460469231731.687303715884105727""#,
+            r#""170141183460469231731687303715884105727""#,
         );
-        test_for_number(Balance::from(10u32), r#""10.0""#)
+        test_for_number(Balance::from(10u32), r#""10000000000000000000""#)
     }
 }
