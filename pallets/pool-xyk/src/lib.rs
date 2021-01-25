@@ -608,6 +608,14 @@ impl<T: Trait> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, T
         // Check that pool account is valid.
         Module::<T>::is_pool_account_valid_for(self.source.0.asset, &self.pool_account)?;
 
+        let mark_asset = Module::<T>::get_marking_asset(&self.pool_account)?;
+        ensure!(
+            self.destination.asset == mark_asset,
+            Error::<T>::InvalidAssetForLiquidityMarking
+        );
+
+        let repr_k_asset_id = self.destination.asset.into();
+
         // Balance of source account for asset pair.
         let (balance_bs, balance_ts) = if abstract_checking {
             (None, None)
@@ -688,6 +696,7 @@ impl<T: Trait> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, T
                 (Some(value.into()), Some(fxw_value))
             }
         };
+
         if !abstract_checking {
             if empty_pool {
                 match self.destination.amount {
@@ -770,52 +779,23 @@ impl<T: Trait> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, T
                             xdes >= xmin && ydes >= ymin,
                             Error::<T>::RangeValuesIsInvalid
                         );
-                        let fxw_xdes: FixedWrapper = xdes.into();
-                        let fxw_ydes: FixedWrapper = ydes.into();
-                        let fxw_desliq = fxw_xdes.multiply_and_sqrt(&fxw_ydes);
-                        let fxw_piece = fxw_pool_k.unwrap() / fxw_desliq;
-                        let fxw_bp_tmp = fxw_balance_bp / fxw_piece.clone();
-                        let fxw_tp_tmp = fxw_balance_tp / fxw_piece;
-                        let fxw_bp_down = fxw_bp_tmp.clone() / fxw_xdes;
-                        let fxw_tp_down = fxw_tp_tmp.clone() / fxw_ydes;
-                        let bp_down: Balance = (fxw_bp_down
-                            .get()
-                            .map_err(|_| Error::<T>::FixedWrapperCalculationFailed)?)
-                        .into();
-                        let tp_down: Balance = (fxw_tp_down
-                            .get()
-                            .map_err(|_| Error::<T>::FixedWrapperCalculationFailed)?)
-                        .into();
-                        let fxw_down: FixedWrapper = bp_down.max(tp_down).into();
-                        let fxw_bp_corr1 = fxw_bp_tmp / fxw_down.clone();
-                        let fxw_tp_corr1 = fxw_tp_tmp / fxw_down;
-                        let bp_corr1: Balance = (fxw_bp_corr1
-                            .clone()
-                            .get()
-                            .map_err(|_| Error::<T>::FixedWrapperCalculationFailed)?)
-                        .into();
-                        let tp_corr1: Balance = (fxw_tp_corr1
-                            .clone()
-                            .get()
-                            .map_err(|_| Error::<T>::FixedWrapperCalculationFailed)?)
-                        .into();
-                        ensure!(
-                            bp_corr1 >= xmin && tp_corr1 >= ymin,
-                            Error::<T>::ImposibleToDecideValidPairValuesFromRangeForThisPool
-                        );
-                        (self.source.0).amount = Bounds::Calculated(bp_corr1);
-                        (self.source.1).amount = Bounds::Calculated(tp_corr1);
+
+                        let total_iss = assets::Module::<T>::total_issuance(&repr_k_asset_id)?;
+
+                        let (calc_xdes, calc_ydes, calc_marker) =
+                            Module::<T>::calc_deposit_liquidity_1(
+                                total_iss, balance_bp, balance_tp, xdes, ydes, xmin, ymin,
+                            )?;
+
+                        self.source.0.amount = Bounds::Calculated(calc_xdes);
+                        self.source.1.amount = Bounds::Calculated(calc_ydes);
+
                         match dest_amount {
                             Bounds::Desired(_) => {
                                 return Err(Error::<T>::ThisCaseIsNotSupported.into());
                             }
                             _ => {
-                                let calc: Balance = fxw_bp_corr1
-                                    .multiply_and_sqrt(&fxw_tp_corr1)
-                                    .get()
-                                    .map_err(|_| Error::<T>::FixedWrapperCalculationFailed)?
-                                    .into();
-                                self.destination.amount = Bounds::Calculated(calc);
+                                self.destination.amount = Bounds::Calculated(calc_marker);
                             }
                         }
                     }
@@ -1435,6 +1415,91 @@ impl<T: Trait> Module<T> {
         let nat1000: Balance = 1000_u32.into();
         let fee: Balance = 3_u32.into();
         Ok((*y_out * fee) / nat1000)
+    }
+
+    pub fn calculate_optimal_deposit(
+        total_supply: Balance,
+        reserve_a: Balance,
+        reserve_b: Balance,
+        amount_a_desired: Balance,
+        amount_b_desired: Balance,
+        amount_a_min: Balance,
+        amount_b_min: Balance,
+    ) -> Result<(Balance, Balance), DispatchError> {
+        let fxw_total_supply: FixedWrapper = total_supply.into();
+
+        let fxw_am_a_des: FixedWrapper = amount_a_desired.into();
+        let fxw_am_b_des: FixedWrapper = amount_b_desired.into();
+
+        let fxw_reserve_a: FixedWrapper = reserve_a.into();
+        let fxw_reserve_b: FixedWrapper = reserve_b.into();
+
+        let fxw_opt_am_a_des: FixedWrapper =
+            fxw_am_b_des.clone() / (fxw_reserve_b.clone() / fxw_reserve_a.clone());
+        let fxw_opt_am_b_des: FixedWrapper =
+            fxw_am_a_des.clone() / (fxw_reserve_a.clone() / fxw_reserve_b.clone());
+
+        let opt_am_a_des: Balance = fxw_opt_am_a_des
+            .get()
+            .map_err(|_| Error::<T>::FixedWrapperCalculationFailed)?
+            .into();
+        let opt_am_b_des: Balance = fxw_opt_am_b_des
+            .get()
+            .map_err(|_| Error::<T>::FixedWrapperCalculationFailed)?
+            .into();
+
+        if (opt_am_b_des <= amount_b_desired) {
+            ensure!(
+                opt_am_b_des >= amount_b_min,
+                Error::<T>::ImposibleToDecideValidPairValuesFromRangeForThisPool
+            );
+            Ok((amount_a_desired, opt_am_b_des))
+        } else {
+            ensure!(
+                opt_am_a_des >= amount_a_min && opt_am_a_des <= amount_a_desired,
+                Error::<T>::ImposibleToDecideValidPairValuesFromRangeForThisPool
+            );
+            Ok((opt_am_a_des, amount_b_desired))
+        }
+    }
+
+    pub fn calc_deposit_liquidity_1(
+        total_supply: Balance,
+        reserve_a: Balance,
+        reserve_b: Balance,
+        amount_a_desired: Balance,
+        amount_b_desired: Balance,
+        amount_a_min: Balance,
+        amount_b_min: Balance,
+    ) -> Result<(Balance, Balance, Balance), DispatchError> {
+        let (am_a_des, am_b_des) = Module::<T>::calculate_optimal_deposit(
+            total_supply,
+            reserve_a,
+            reserve_b,
+            amount_a_desired,
+            amount_b_desired,
+            amount_a_min,
+            amount_b_min,
+        )?;
+        let fxw_am_a_des: FixedWrapper = am_a_des.into();
+        let fxw_am_b_des: FixedWrapper = am_b_des.into();
+        let fxw_reserve_a: FixedWrapper = reserve_a.into();
+        let fxw_reserve_b: FixedWrapper = reserve_b.into();
+        let fxw_total_supply: FixedWrapper = total_supply.into();
+        let fxw_lhs: FixedWrapper =
+            fxw_am_a_des.clone() / (fxw_reserve_a.clone() / fxw_total_supply.clone());
+        let fxw_rhs: FixedWrapper =
+            fxw_am_b_des.clone() / (fxw_reserve_b.clone() / fxw_total_supply.clone());
+        let lhs: Balance = fxw_lhs
+            .get()
+            .map_err(|_| Error::<T>::FixedWrapperCalculationFailed)?
+            .into();
+        let rhs: Balance = fxw_rhs
+            .get()
+            .map_err(|_| Error::<T>::FixedWrapperCalculationFailed)?
+            .into();
+        let min_value = lhs.min(rhs);
+        Ok((am_a_des, am_b_des, min_value))
     }
 
     /// Calulate (y_output,fee) pair where fee can be fee_of_y1 or fee_of_x_in, and output is
