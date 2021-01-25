@@ -11,10 +11,11 @@ use frame_system::ensure_signed;
 use sp_runtime::RuntimeDebug;
 use sp_std::collections::btree_set::BTreeSet;
 
-use common::prelude::{Balance, EnsureDEXOwner, FixedWrapper, SwapAmount, SwapOutcome};
 use common::{
-    fixed, hash, AssetSymbol, EnsureTradingPairExists, Fixed, LiquiditySource, SwapRulesValidation,
-    ToFeeAccount, ToTechUnitFromDEXAndTradingPair,
+    fixed, hash,
+    prelude::{Balance, EnsureDEXManager, FixedWrapper, SwapAmount, SwapOutcome},
+    AssetSymbol, EnsureTradingPairExists, Fixed, LiquiditySource, LiquiditySourceType,
+    ManagementMode, SwapRulesValidation, ToFeeAccount, ToTechUnitFromDEXAndTradingPair,
 };
 use permissions::{Scope, BURN, MINT};
 
@@ -59,6 +60,8 @@ type DepositLiquidityActionOf<T> = DepositLiquidityAction<
     AccountIdOf<T>,
     TechAccountIdOf<T>,
 >;
+
+type DEXManager<T> = dex_manager::Module<T>;
 
 /// Bounds enum, used for cases than min max limits is used. Also used for cases than values is
 /// Desired by used or Calculated by forumula. Dummy is used to abstract checking.
@@ -212,7 +215,7 @@ pub trait Trait:
         + Parameter
         + Into<<Self as technical::Trait>::SwapAction>
         + From<PolySwapActionStructOf<Self>>;
-    type EnsureDEXOwner: EnsureDEXOwner<Self::DEXId, Self::AccountId, DispatchError>;
+    type EnsureDEXManager: EnsureDEXManager<Self::DEXId, Self::AccountId, DispatchError>;
 
     /// Weight information for extrinsics in this pallet.
     type WeightInfo: WeightInfo;
@@ -1031,6 +1034,9 @@ impl<T: Trait> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, T
             .map_err(|_| Error::<T>::FixedWrapperCalculationFailed)?)
         .into();
 
+        let total_iss = assets::Module::<T>::total_issuance(&repr_k_asset_id)?;
+        let fxw_total_iss: FixedWrapper = total_iss.into();
+
         match (
             self.source.amount,
             (self.destination.0).amount,
@@ -1042,7 +1048,7 @@ impl<T: Trait> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, T
                     Error::<T>::ZeroValueInAmountParameter
                 );
                 let fxw_source_k: FixedWrapper = source_k.into();
-                let fxw_peace_to_take = fxw_pool_k / fxw_source_k;
+                let fxw_peace_to_take = fxw_total_iss / fxw_source_k;
                 let fxw_recom_x = fxw_balance_bp / fxw_peace_to_take.clone();
                 let fxw_recom_y = fxw_balance_tp / fxw_peace_to_take;
                 let recom_x: Balance = (fxw_recom_x
@@ -1289,12 +1295,13 @@ decl_storage! {
 
 impl<T: Trait> Module<T> {
     fn initialize_pool_properties(
+        dex_id: &T::DEXId,
         asset_a: &T::AssetId,
         asset_b: &T::AssetId,
         reserves_account_id: &T::AccountId,
         fees_account_id: &T::AccountId,
         marker_asset_id: &T::AssetId,
-    ) {
+    ) -> DispatchResult {
         let base_asset_id: T::AssetId = T::GetBaseAssetId::get();
         let (sorted_asset_a, sorted_asset_b) = if &base_asset_id == asset_a {
             (asset_a, asset_b)
@@ -1306,6 +1313,12 @@ impl<T: Trait> Module<T> {
                 common::sort_with_hash_key(hash_key, (asset_a, &()), (asset_b, &()));
             (asset_a_pair.0, asset_b_pair.0)
         };
+        trading_pair::Module::<T>::enable_source_for_trading_pair(
+            dex_id,
+            sorted_asset_a,
+            sorted_asset_b,
+            LiquiditySourceType::XYKPool,
+        )?;
         Properties::<T>::insert(
             sorted_asset_a,
             sorted_asset_b,
@@ -1314,7 +1327,8 @@ impl<T: Trait> Module<T> {
                 fees_account_id.clone(),
                 marker_asset_id.clone(),
             ),
-        )
+        );
+        Ok(())
     }
 
     fn update_reserves(
@@ -1451,7 +1465,10 @@ impl<T: Trait> Module<T> {
             let fee_of_x_in = Module::<T>::get_fee_for_source(asset_a, tech_acc, x_in)?;
             let fxw_fee_of_x_in: FixedWrapper = fee_of_x_in.into();
             let fxw_x_in_subfee = fxw_x_in - fxw_fee_of_x_in;
-            let fxw_y_out = (fxw_x_in_subfee.clone() * fxw_y) / (fxw_x + fxw_x_in_subfee);
+            //TODO: this comments exist now for comparation of multiplication version, please remove it
+            //than precision problems will finally set to best solution.
+            //let fxw_y_out = (fxw_x_in_subfee.clone() * fxw_y) / (fxw_x + fxw_x_in_subfee);
+            let fxw_y_out = fxw_x_in_subfee.clone() / ((fxw_x + fxw_x_in_subfee) / fxw_y);
             let y_out: Balance = fxw_y_out
                 .get()
                 .map_err(|_| Error::<T>::FixedWrapperCalculationFailed)?
@@ -1498,7 +1515,10 @@ impl<T: Trait> Module<T> {
             let ymyo_fee = Module::<T>::get_fee_for_source(asset_a, tech_acc, &y_minus_y_out)?;
             let ymyo_subfee = y_minus_y_out - ymyo_fee;
             let fxw_ymyo_subfee: FixedWrapper = ymyo_subfee.into();
-            let fxw_x_in = (fxw_x * fxw_y_out) / fxw_ymyo_subfee;
+            //TODO: this comments exist now for comparation of multiplication version, please remove it
+            //than precision problems will finally set to best solution.
+            //let fxw_x_in = (fxw_x * fxw_y_out) / fxw_ymyo_subfee;
+            let fxw_x_in = fxw_x / (fxw_ymyo_subfee / fxw_y_out);
             let x_in: Balance = fxw_x_in
                 .get()
                 .map_err(|_| Error::<T>::FixedWrapperCalculationFailed)?
@@ -1696,7 +1716,7 @@ impl<T: Trait> Module<T> {
         asset_a: T::AssetId,
         asset_b: T::AssetId,
     ) -> Result<(common::TradingPair<TechAssetIdOf<T>>, TechAccountIdOf<T>), DispatchError> {
-        let dexinfo = <dex_manager::DEXInfos<T>>::get(dex_id);
+        let dexinfo = DEXManager::<T>::get_dex_info(&dex_id)?;
         let base_asset_id = dexinfo.base_asset_id;
         ensure!(asset_a != asset_b, Error::<T>::AssetsMustNotBeSame);
         let ba = Module::<T>::try_decode_asset(base_asset_id)?;
@@ -1797,6 +1817,7 @@ impl<T: Trait> Module<T> {
                 && assets::Module::<T>::ensure_asset_exists(&mark_asset.into()).is_ok()
                 && trading_pair::Module::<T>::ensure_trading_pair_exists(
                     &dex_id,
+                    &trading_pair.base_asset_id.into(),
                     &trading_pair.target_asset_id.into(),
                 )
                 .is_ok()
@@ -1958,7 +1979,7 @@ decl_module! {
             ) -> DispatchResult
         {
                 let source = ensure_signed(origin.clone())?;
-                <T as Trait>::EnsureDEXOwner::ensure_dex_owner(&dex_id, origin.clone())?;
+                <T as Trait>::EnsureDEXManager::ensure_can_manage(&dex_id, origin.clone(), ManagementMode::Public)?;
                 let (_,tech_account_id, fees_account_id, mark_asset) = Module::<T>::initialize_pool_unchecked(source.clone(), dex_id, asset_a, asset_b)?;
                 let mark_asset_repr: T::AssetId = mark_asset.into();
                 assets::Module::<T>::register_asset_id(source.clone(), mark_asset_repr, AssetSymbol(b"XYKPOOL".to_vec()), 18)?;
@@ -1978,7 +1999,7 @@ decl_module! {
                    BURN,
                    Scope::Limited(hash(&Into::<AssetIdOf::<T>>::into(mark_asset.clone())))
                    )?;
-                Module::<T>::initialize_pool_properties(&asset_a, &asset_b, &ta_repr, &fees_ta_repr, &mark_asset_repr);
+                Module::<T>::initialize_pool_properties(&dex_id, &asset_a, &asset_b, &ta_repr, &fees_ta_repr, &mark_asset_repr)?;
                 pswap_distribution::Module::<T>::subscribe(fees_ta_repr, dex_id, mark_asset_repr, None)?;
                 MarkerTokensIndex::<T>::mutate( |mti| {mti.insert(mark_asset_repr)});
                 Self::deposit_event(RawEvent::PoolIsInitialized(ta_repr));

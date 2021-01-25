@@ -905,9 +905,11 @@ fn should_force_add_peer() {
         assert_incoming_request_ready(&state, incoming_request.clone(), tx_hash).unwrap();
         assert!(crate::PendingPeer::<Test>::get().is_none());
         assert!(crate::Peers::<Test>::get().contains(&new_peer_id));
-        assert!(multisig::Accounts::<Test>::get(&state.bridge_account_id)
-            .unwrap()
-            .is_signatory(&new_peer_id));
+        assert!(
+            bridge_multisig::Accounts::<Test>::get(&state.bridge_account_id)
+                .unwrap()
+                .is_signatory(&new_peer_id)
+        );
     });
 }
 
@@ -930,9 +932,11 @@ fn should_remove_peer() {
         approve_last_request(&state).expect("request wasn't approved");
         assert_eq!(&crate::PendingPeer::<Test>::get().unwrap(), peer_id);
         assert!(!crate::Peers::<Test>::get().contains(&peer_id));
-        assert!(!multisig::Accounts::<Test>::get(&state.bridge_account_id)
-            .unwrap()
-            .is_signatory(&peer_id));
+        assert!(
+            !bridge_multisig::Accounts::<Test>::get(&state.bridge_account_id)
+                .unwrap()
+                .is_signatory(&peer_id)
+        );
 
         // incoming request part
         let tx_hash = request_incoming(

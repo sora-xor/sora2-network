@@ -315,7 +315,7 @@ parameter_types! {
     pub const MaxSignatories: u16 = 4;
 }
 
-impl multisig::Trait for Test {
+impl bridge_multisig::Trait for Test {
     type Call = Call;
     type Event = Event;
     type Currency = Balances;
@@ -353,7 +353,7 @@ construct_runtime!(
     {
         System: system::{Module, Call, Config, Storage, Event<T>},
         Balances: pallet_balances::{Module, Call, Storage, Config<T>, Event<T>},
-        Multisig: multisig::{Module, Call, Storage, Config<T>, Event<T>},
+        Multisig: bridge_multisig::{Module, Call, Storage, Config<T>, Event<T>},
         Tokens: tokens::{Module, Call, Storage, Config<T>, Event<T>},
         Currencies: currencies::{Module, Call, Storage,  Event<T>},
         Assets: assets::{Module, Call, Storage, Config<T>, Event<T>},
@@ -455,8 +455,10 @@ impl ExtBuilder {
             .collect();
 
         let root_account = get_account_id_from_seed::<sr25519::Public>("Alice");
-        let multisig_account_id = multisig::Module::<Test>::multi_account_id(&root_account, 1, 0);
-        let authority_account_id = multisig::Module::<Test>::multi_account_id(&root_account, 1, 1);
+        let multisig_account_id =
+            bridge_multisig::Module::<Test>::multi_account_id(&root_account, 1, 0);
+        let authority_account_id =
+            bridge_multisig::Module::<Test>::multi_account_id(&root_account, 1, 1);
         let mut endowed_accounts: Vec<(_, AssetId32<AssetId>, _)> = vec![
             (
                 multisig_account_id.clone(),
@@ -507,7 +509,7 @@ impl ExtBuilder {
         MultisigConfig {
             accounts: core::iter::once((
                 multisig_account_id.clone(),
-                multisig::MultisigAccount::new(
+                bridge_multisig::MultisigAccount::new(
                     ocw_kps.iter().map(|x| x.1.clone()).collect(),
                     Percent::from_parts(67),
                 ),

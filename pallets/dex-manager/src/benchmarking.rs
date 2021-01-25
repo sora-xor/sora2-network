@@ -41,8 +41,7 @@ fn setup_benchmark<T: Trait>(n: u32) -> Result<(), &'static str> {
             dex::<T>("dex", i),
             XOR.into(),
             owner.clone(),
-            None,
-            None,
+            true,
         )?;
     }
 

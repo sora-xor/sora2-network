@@ -391,19 +391,12 @@ impl assets::Trait for Runtime {
 
 impl trading_pair::Trait for Runtime {
     type Event = Event;
-    type EnsureDEXOwner = dex_manager::Module<Runtime>;
+    type EnsureDEXManager = dex_manager::Module<Runtime>;
     type WeightInfo = ();
-}
-
-parameter_types! {
-    pub const GetDefaultFee: BasisPoints = 30;
-    pub const GetDefaultProtocolFee: BasisPoints = 0;
 }
 
 impl dex_manager::Trait for Runtime {
     type Event = Event;
-    type GetDefaultFee = GetDefaultFee;
-    type GetDefaultProtocolFee = GetDefaultProtocolFee;
     type WeightInfo = ();
 }
 
@@ -435,11 +428,25 @@ impl pool_xyk::Trait for Runtime {
         pool_xyk::WithdrawLiquidityAction<AssetId, TechAssetId, Balance, AccountId, TechAccountId>;
     type PolySwapAction =
         pool_xyk::PolySwapAction<AssetId, TechAssetId, Balance, AccountId, TechAccountId>;
-    type EnsureDEXOwner = dex_manager::Module<Runtime>;
+    type EnsureDEXManager = dex_manager::Module<Runtime>;
     type WeightInfo = ();
 }
 
 parameter_types! {
+    pub GetLiquidityProxyTechAccountId: TechAccountId = {
+        let tech_account_id = TechAccountId::from_generic_pair(
+            pswap_distribution::TECH_ACCOUNT_PREFIX.to_vec(),
+            pswap_distribution::TECH_ACCOUNT_MAIN.to_vec(),
+        );
+        tech_account_id
+    };
+    pub GetLiquidityProxyAccountId: AccountId = {
+        let tech_account_id = GetLiquidityProxyTechAccountId::get();
+        let account_id =
+            technical::Module::<Runtime>::tech_account_id_to_account_id(&tech_account_id)
+                .expect("Failed to get ordinary account id for technical account id.");
+        account_id
+    };
     pub const GetNumSamples: usize = 40;
 }
 
@@ -447,6 +454,7 @@ impl liquidity_proxy::Trait for Runtime {
     type Event = Event;
     type LiquidityRegistry = dex_api::Module<Runtime>;
     type GetNumSamples = GetNumSamples;
+    type GetTechnicalAccountId = GetLiquidityProxyAccountId;
     type WeightInfo = ();
 }
 
@@ -457,28 +465,28 @@ parameter_types! {
 impl mock_liquidity_source::Trait<mock_liquidity_source::Instance1> for Runtime {
     type Event = Event;
     type GetFee = GetFee;
-    type EnsureDEXOwner = dex_manager::Module<Runtime>;
+    type EnsureDEXManager = dex_manager::Module<Runtime>;
     type EnsureTradingPairExists = trading_pair::Module<Runtime>;
 }
 
 impl mock_liquidity_source::Trait<mock_liquidity_source::Instance2> for Runtime {
     type Event = Event;
     type GetFee = GetFee;
-    type EnsureDEXOwner = dex_manager::Module<Runtime>;
+    type EnsureDEXManager = dex_manager::Module<Runtime>;
     type EnsureTradingPairExists = trading_pair::Module<Runtime>;
 }
 
 impl mock_liquidity_source::Trait<mock_liquidity_source::Instance3> for Runtime {
     type Event = Event;
     type GetFee = GetFee;
-    type EnsureDEXOwner = dex_manager::Module<Runtime>;
+    type EnsureDEXManager = dex_manager::Module<Runtime>;
     type EnsureTradingPairExists = trading_pair::Module<Runtime>;
 }
 
 impl mock_liquidity_source::Trait<mock_liquidity_source::Instance4> for Runtime {
     type Event = Event;
     type GetFee = GetFee;
-    type EnsureDEXOwner = dex_manager::Module<Runtime>;
+    type EnsureDEXManager = dex_manager::Module<Runtime>;
     type EnsureTradingPairExists = trading_pair::Module<Runtime>;
 }
 
@@ -632,7 +640,7 @@ parameter_types! {
     pub const MaxSignatories: u16 = 4;
 }
 
-impl multisig::Trait for Runtime {
+impl bridge_multisig::Trait for Runtime {
     type Call = Call;
     type Event = Event;
     type Currency = Balances;
@@ -677,7 +685,7 @@ impl pswap_distribution::Trait for Runtime {
     type CompatBalance = Balance;
     type GetDefaultSubscriptionFrequency = GetDefaultSubscriptionFrequency;
     type GetTechnicalAccountId = GetPswapDistributionAccountId;
-    type EnsureDEXOwner = DEXManager;
+    type EnsureDEXManager = DEXManager;
 }
 
 /// Payload data to be signed when making signed transaction from off-chain workers,
@@ -707,7 +715,7 @@ construct_runtime! {
         Permissions: permissions::{Module, Call, Storage, Config<T>, Event<T>},
         ReferralSystem: referral_system::{Module, Call, Storage, Event},
         XorFee: xor_fee::{Module, Call, Storage, Event},
-        Multisig: multisig::{Module, Call, Storage, Config<T>, Event<T>},
+        Multisig: bridge_multisig::{Module, Call, Storage, Config<T>, Event<T>},
         Utility: pallet_utility::{Module, Call, Event},
 
         // Consensus and staking.
@@ -908,14 +916,35 @@ impl_runtime_apis! {
         }
     }
 
-    impl trading_pair_runtime_api::TradingPairAPI<Block, DEXId, common::TradingPair<AssetId>, AssetId> for Runtime {
+    impl trading_pair_runtime_api::TradingPairAPI<Block, DEXId, common::TradingPair<AssetId>, AssetId, LiquiditySourceType> for Runtime {
         fn list_enabled_pairs(dex_id: DEXId) -> Vec<common::TradingPair<AssetId>> {
-            TradingPair::list_trading_pairs(dex_id)
+            // TODO: error passing PR fixes this crunch return
+            TradingPair::list_trading_pairs(&dex_id).unwrap_or(Vec::new())
         }
 
         fn is_pair_enabled(dex_id: DEXId, asset_id_a: AssetId, asset_id_b: AssetId) -> bool {
-            TradingPair::is_trading_pair_enabled(dex_id, asset_id_a, asset_id_b)
-                || TradingPair::is_trading_pair_enabled(dex_id, asset_id_b, asset_id_a)
+            // TODO: error passing PR fixes this crunch return
+            TradingPair::is_trading_pair_enabled(&dex_id, &asset_id_a, &asset_id_b).unwrap_or(false)
+                || TradingPair::is_trading_pair_enabled(&dex_id, &asset_id_b, &asset_id_a).unwrap_or(false)
+        }
+
+        fn list_enabled_sources_for_pair(
+            dex_id: DEXId,
+            base_asset_id: AssetId,
+            target_asset_id: AssetId,
+        ) -> Vec<LiquiditySourceType> {
+            // TODO: error passing PR fixes this crunch return
+            TradingPair::list_enabled_sources_for_trading_pair(&dex_id, &base_asset_id, &target_asset_id).map(|bts| bts.into_iter().collect::<Vec<_>>()).unwrap_or(Vec::new())
+        }
+
+        fn is_source_enabled_for_pair(
+            dex_id: DEXId,
+            base_asset_id: AssetId,
+            target_asset_id: AssetId,
+            source_type: LiquiditySourceType,
+        ) -> bool {
+            // TODO: error passing PR fixes this crunch return
+            TradingPair::is_source_enabled_for_trading_pair(&dex_id, &base_asset_id, &target_asset_id, source_type).unwrap_or(false)
         }
     }
 

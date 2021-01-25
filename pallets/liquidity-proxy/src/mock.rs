@@ -1,6 +1,6 @@
 use crate::{Module, Trait};
 use common::{
-    self, fixed, fixed_from_basis_points, hash, Amount, AssetId32, DEXInfo, Fixed,
+    self, fixed, fixed_from_basis_points, hash, Amount, AssetId32, DEXInfo, Fixed, FromGenericPair,
     LiquiditySourceType, DOT, KSM, XOR,
 };
 use currencies::BasicCurrencyAdapter;
@@ -74,12 +74,27 @@ impl system::Trait for Runtime {
 }
 
 parameter_types! {
+    pub GetLiquidityProxyTechAccountId: TechAccountId = {
+        let tech_account_id = TechAccountId::from_generic_pair(
+            crate::TECH_ACCOUNT_PREFIX.to_vec(),
+            crate::TECH_ACCOUNT_MAIN.to_vec(),
+        );
+        tech_account_id
+    };
+    pub GetLiquidityProxyAccountId: AccountId = {
+        let tech_account_id = GetLiquidityProxyTechAccountId::get();
+        let account_id =
+            technical::Module::<Runtime>::tech_account_id_to_account_id(&tech_account_id)
+                .expect("Failed to get ordinary account id for technical account id.");
+        account_id
+    };
     pub const GetNumSamples: usize = 40;
 }
 impl Trait for Runtime {
     type Event = ();
     type LiquidityRegistry = dex_api::Module<Runtime>;
     type GetNumSamples = GetNumSamples;
+    type GetTechnicalAccountId = GetLiquidityProxyAccountId;
     type WeightInfo = ();
 }
 
@@ -132,14 +147,8 @@ impl pallet_balances::Trait for Runtime {
     type MaxLocks = ();
 }
 
-parameter_types! {
-    pub const GetDefaultFee: u16 = 30;
-    pub const GetDefaultProtocolFee: u16 = 0;
-}
 impl dex_manager::Trait for Runtime {
     type Event = ();
-    type GetDefaultFee = GetDefaultFee;
-    type GetDefaultProtocolFee = GetDefaultProtocolFee;
     type WeightInfo = ();
 }
 
@@ -153,28 +162,28 @@ parameter_types! {
 impl mock_liquidity_source::Trait<mock_liquidity_source::Instance1> for Runtime {
     type Event = ();
     type GetFee = GetFee0;
-    type EnsureDEXOwner = dex_manager::Module<Runtime>;
+    type EnsureDEXManager = dex_manager::Module<Runtime>;
     type EnsureTradingPairExists = trading_pair::Module<Runtime>;
 }
 
 impl mock_liquidity_source::Trait<mock_liquidity_source::Instance2> for Runtime {
     type Event = ();
     type GetFee = GetFee10;
-    type EnsureDEXOwner = dex_manager::Module<Runtime>;
+    type EnsureDEXManager = dex_manager::Module<Runtime>;
     type EnsureTradingPairExists = trading_pair::Module<Runtime>;
 }
 
 impl mock_liquidity_source::Trait<mock_liquidity_source::Instance3> for Runtime {
     type Event = ();
     type GetFee = GetFee20;
-    type EnsureDEXOwner = dex_manager::Module<Runtime>;
+    type EnsureDEXManager = dex_manager::Module<Runtime>;
     type EnsureTradingPairExists = trading_pair::Module<Runtime>;
 }
 
 impl mock_liquidity_source::Trait<mock_liquidity_source::Instance4> for Runtime {
     type Event = ();
     type GetFee = GetFee30;
-    type EnsureDEXOwner = dex_manager::Module<Runtime>;
+    type EnsureDEXManager = dex_manager::Module<Runtime>;
     type EnsureTradingPairExists = trading_pair::Module<Runtime>;
 }
 
@@ -209,7 +218,7 @@ impl dex_api::Trait for Runtime {
 
 impl trading_pair::Trait for Runtime {
     type Event = ();
-    type EnsureDEXOwner = dex_manager::Module<Runtime>;
+    type EnsureDEXManager = dex_manager::Module<Runtime>;
     type WeightInfo = ();
 }
 
@@ -263,24 +272,21 @@ impl Default for ExtBuilder {
                     DEX_A_ID,
                     DEXInfo {
                         base_asset_id: GetBaseAssetId::get(),
-                        default_fee: GetDefaultFee::get(),
-                        default_protocol_fee: GetDefaultProtocolFee::get(),
+                        is_public: true,
                     },
                 ),
                 (
                     DEX_B_ID,
                     DEXInfo {
                         base_asset_id: GetBaseAssetId::get(),
-                        default_fee: GetDefaultFee::get(),
-                        default_protocol_fee: GetDefaultProtocolFee::get(),
+                        is_public: true,
                     },
                 ),
                 (
                     DEX_C_ID,
                     DEXInfo {
                         base_asset_id: GetBaseAssetId::get(),
-                        default_fee: GetDefaultFee::get(),
-                        default_protocol_fee: GetDefaultProtocolFee::get(),
+                        is_public: true,
                     },
                 ),
             ],
