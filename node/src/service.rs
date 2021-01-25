@@ -8,6 +8,7 @@ use codec::Encode;
 use framenode_runtime::eth_bridge;
 use framenode_runtime::eth_bridge::{
     STORAGE_ETH_NODE_CREDENTIALS_KEY, STORAGE_ETH_NODE_URL_KEY, STORAGE_PEER_SECRET_KEY,
+    STORAGE_SUB_NODE_URL_KEY,
 };
 use grandpa::{self, FinalityProofProvider as GrandpaFinalityProofProvider};
 use sc_client_api::{Backend, ExecutorProvider, RemoteBackend};
@@ -123,6 +124,15 @@ pub fn new_partial(
             STORAGE_PREFIX,
             STORAGE_ETH_NODE_CREDENTIALS_KEY,
             &params[1].encode(),
+        );
+        let rpc_addr = config
+            .rpc_http
+            .as_ref()
+            .expect("HTTP RPC should be enabled for ethereum bridge. Please enable it via `--rpc-port <port>`.");
+        storage.set(
+            STORAGE_PREFIX,
+            STORAGE_SUB_NODE_URL_KEY,
+            &format!("http://{}", rpc_addr).encode(),
         );
         log::info!("Ethereum bridge peer initialized");
     }

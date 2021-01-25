@@ -58,7 +58,8 @@ pub mod requests;
 mod tests;
 pub mod types;
 
-const URL: &str = "https://eth-ropsten.s0.dev.soranet.soramitsu.co.jp";
+const ETH_NODE_URL: &str = "https://eth-ropsten.s0.dev.soranet.soramitsu.co.jp";
+const SUB_NODE_URL: &str = "http://127.0.0.1:9954";
 const CONTRACT_ADDRESS: types::H160 = types::H160(hex!("146ba2cdf6bc7df15ffcff2ac1bc83eb33d8197e"));
 const HTTP_REQUEST_TIMEOUT_SECS: u64 = 10;
 
@@ -78,6 +79,7 @@ pub const KEY_TYPE: KeyTypeId = KeyTypeId(*b"ethb");
 pub const CONFIRMATION_INTERVAL: u64 = 30;
 pub const STORAGE_PEER_SECRET_KEY: &[u8] = b"key";
 pub const STORAGE_ETH_NODE_URL_KEY: &[u8] = b"eth-bridge-ocw::eth-node-url";
+pub const STORAGE_SUB_NODE_URL_KEY: &[u8] = b"eth-bridge-ocw::sub-node-url";
 pub const STORAGE_ETH_NODE_CREDENTIALS_KEY: &[u8] = b"eth-bridge-ocw::eth-node-credentials";
 
 type AssetIdOf<T> = <T as assets::Trait>::AssetId;
@@ -524,6 +526,8 @@ decl_error! {
         UnknownPeerId,
         CantReserveFunds,
         AlreadyClaimed,
+        FailedToLoadBlockHeader,
+        FailedToLoadFinalizedHead,
         UnknownContractAddress,
         Other,
     }
@@ -972,26 +976,59 @@ impl<T: Trait> Module<T> {
         s_approved_pending_incoming_requests.set(&approved);
     }
 
+    fn load_substrate_finalized_height() -> Result<T::BlockNumber, Error<T>> {
+        let hash =
+            Self::substrate_json_rpc_request::<_, types::H256>("chain_getFinalizedHead", &())
+                .ok_or(Error::<T>::HttpFetchingError)?
+                .pop()
+                .ok_or(Error::<T>::FailedToLoadFinalizedHead)?;
+        let header = Self::substrate_json_rpc_request::<_, types::SubstrateHeaderLimited>(
+            "chain_getHeader",
+            &[hash],
+        )
+        .ok_or(Error::<T>::HttpFetchingError)?
+        .pop()
+        .ok_or(Error::<T>::FailedToLoadBlockHeader)?;
+        let number = <T::BlockNumber as From<u32>>::from(header.number.as_u32());
+        Ok(number)
+    }
+
     fn offchain() {
         let s_eth_height = StorageValueRef::persistent(b"eth-bridge-ocw::eth-height");
-        let current_height = match Self::load_current_height() {
+        let current_eth_height = match Self::load_current_height() {
             Some(v) => v,
             None => {
-                debug::info!("Failed to load current height. Skipping off-chain procedure.");
+                debug::info!(
+                    "Failed to load current ethereum height. Skipping off-chain procedure."
+                );
                 return;
             }
         };
-        s_eth_height.set(&current_height);
+        s_eth_height.set(&current_eth_height);
         let s_handled_requests = StorageValueRef::persistent(b"eth-bridge-ocw::handled-request");
+
+        let finalized_height = match Self::load_substrate_finalized_height() {
+            Ok(v) => v,
+            Err(e) => {
+                debug::info!(
+                    "Failed to load substrate finalized block height ({:?}). Skipping off-chain procedure.",
+                    e
+                );
+                return;
+            }
+        };
+
         let mut handled = s_handled_requests
             .get::<BTreeMap<H256, T::BlockNumber>>()
             .flatten()
             .unwrap_or_default();
-
         for request in <Self as Store>::RequestsQueue::get() {
             let request_hash = request.hash();
             let request_submission_height: T::BlockNumber =
                 Self::request_submission_height(&request_hash);
+            if finalized_height < request_submission_height {
+                continue;
+            }
             let need_to_handle = match handled.get(&request_hash) {
                 Some(height) => &request_submission_height > height,
                 None => true,
@@ -1043,7 +1080,7 @@ impl<T: Trait> Module<T> {
         }
         s_handled_requests.set(&handled);
 
-        Self::handle_pending_incoming_requests(current_height);
+        Self::handle_pending_incoming_requests(current_eth_height);
     }
 
     fn http_request(
@@ -1082,9 +1119,11 @@ impl<T: Trait> Module<T> {
     }
 
     fn json_rpc_request<I: Serialize, O: for<'de> Deserialize<'de>>(
+        url: &str,
         id: u64,
         method: &str,
         params: &I,
+        headers: &[(&'static str, String)],
     ) -> Option<Vec<O>> {
         let params = match serialize(params) {
             Value::Null => Params::None,
@@ -1096,17 +1135,8 @@ impl<T: Trait> Module<T> {
             }
         };
 
-        let s_node_url = StorageValueRef::persistent(STORAGE_ETH_NODE_URL_KEY);
-        let node_url = s_node_url.get::<String>().flatten().unwrap_or(URL.into());
-        let mut headers: Vec<(_, String)> = vec![("content-type", "application/json".into())];
-
-        let s_node_credentials = StorageValueRef::persistent(STORAGE_ETH_NODE_CREDENTIALS_KEY);
-        let option = s_node_credentials.get::<String>();
-        if let Some(node_credentials) = option.flatten() {
-            headers.push(("Authorization", node_credentials));
-        }
         let raw_response = Self::http_request(
-            &node_url,
+            url,
             serde_json::to_vec(&rpc::Call::MethodCall(rpc::MethodCall {
                 jsonrpc: Some(rpc::Version::V2),
                 method: method.into(),
@@ -1116,9 +1146,18 @@ impl<T: Trait> Module<T> {
             .ok()?,
             &headers,
         )
-        .and_then(|x| String::from_utf8(x).map_err(|_| Error::<T>::HttpFetchingError))
+        .and_then(|x| {
+            String::from_utf8(x).map_err(|e| {
+                debug::error!("json_rpc_request: from utf8 failed, {}", e);
+                Error::<T>::HttpFetchingError
+            })
+        })
         .ok()?;
-        let response = rpc::Response::from_json(&raw_response).ok()?;
+        let response = rpc::Response::from_json(&raw_response)
+            .map_err(|e| {
+                debug::error!("json_rpc_request: from_json failed, {}", e);
+            })
+            .ok()?;
         let results = match response {
             rpc::Response::Batch(xs) => xs,
             rpc::Response::Single(x) => vec![x],
@@ -1126,13 +1165,50 @@ impl<T: Trait> Module<T> {
         results
             .into_iter()
             .map(|x| match x {
-                rpc::Output::Success(s) => serde_json::from_value(s.result).ok(),
+                rpc::Output::Success(s) => serde_json::from_value(s.result)
+                    .map_err(|e| {
+                        debug::error!("json_rpc_request: from_value failed, {}", e);
+                    })
+                    .ok(),
                 _ => {
                     debug::error!("json_rpc_request: request failed");
                     None
                 }
             })
             .collect()
+    }
+
+    fn eth_json_rpc_request<I: Serialize, O: for<'de> Deserialize<'de>>(
+        method: &str,
+        params: &I,
+    ) -> Option<Vec<O>> {
+        let s_node_url = StorageValueRef::persistent(STORAGE_ETH_NODE_URL_KEY);
+        let node_url = s_node_url
+            .get::<String>()
+            .flatten()
+            .unwrap_or(ETH_NODE_URL.into());
+        let mut headers: Vec<(_, String)> = vec![("content-type", "application/json".into())];
+
+        let s_node_credentials = StorageValueRef::persistent(STORAGE_ETH_NODE_CREDENTIALS_KEY);
+        let option = s_node_credentials.get::<String>();
+        if let Some(node_credentials) = option.flatten() {
+            headers.push(("Authorization", node_credentials));
+        }
+        Self::json_rpc_request(&node_url, 1, method, params, &headers)
+    }
+
+    fn substrate_json_rpc_request<I: Serialize, O: for<'de> Deserialize<'de>>(
+        method: &str,
+        params: &I,
+    ) -> Option<Vec<O>> {
+        let s_node_url = StorageValueRef::persistent(STORAGE_SUB_NODE_URL_KEY);
+        let node_url = s_node_url
+            .get::<String>()
+            .flatten()
+            .unwrap_or(SUB_NODE_URL.into());
+        let headers: Vec<(_, String)> = vec![("content-type", "application/json".into())];
+
+        Self::json_rpc_request(&node_url, 0, method, params, &headers)
     }
 
     fn send_signed_transaction<LocalCall: Clone + GetCallName>(
@@ -1340,17 +1416,20 @@ impl<T: Trait> Module<T> {
     }
 
     fn load_current_height() -> Option<u64> {
-        Self::json_rpc_request::<_, types::U64>(1, "eth_blockNumber", &())?
+        Self::eth_json_rpc_request::<_, types::U64>("eth_blockNumber", &())?
             .first()
             .map(|x| x.as_u64())
     }
 
     fn load_tx_receipt(hash: H256) -> Result<TransactionReceipt, Error<T>> {
         let hash = types::H256(hash.0);
-        Self::json_rpc_request::<_, TransactionReceipt>(2, "eth_getTransactionReceipt", &vec![hash])
-            .ok_or(Error::<T>::HttpFetchingError)?
-            .pop()
-            .ok_or(Error::<T>::FailedToLoadTransaction)
+        Self::eth_json_rpc_request::<_, TransactionReceipt>(
+            "eth_getTransactionReceipt",
+            &vec![hash],
+        )
+        .ok_or(Error::<T>::HttpFetchingError)?
+        .pop()
+        .ok_or(Error::<T>::FailedToLoadTransaction)
     }
 
     fn is_peer(who: &T::AccountId) -> bool {
