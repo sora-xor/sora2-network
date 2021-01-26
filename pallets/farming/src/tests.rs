@@ -181,8 +181,8 @@ impl crate::Module<Testtime> {
                     DOT,
                     360_000u32.into(),
                     144_000u32.into(),
-                    360_000u32.into(),
-                    144_000u32.into(),
+                    360_00u32.into(),
+                    144_00u32.into(),
                 ));
 
                 assert_ok!(pool_xyk::Module::<Testtime>::deposit_liquidity(
@@ -192,8 +192,8 @@ impl crate::Module<Testtime> {
                     DOT,
                     360_000u32.into(),
                     144_000u32.into(),
-                    360_000u32.into(),
-                    144_000u32.into(),
+                    360_00u32.into(),
+                    144_00u32.into(),
                 ));
             },
         ];

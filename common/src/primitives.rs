@@ -553,6 +553,7 @@ impl<AssetId, DEXId, LstId> crate::traits::PureOrWrapped<AssetId>
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum TechPurpose<AssetId> {
     FeeCollector,
+    FeeCollectorForPair(TradingPair<AssetId>),
     LiquidityKeeper(TradingPair<AssetId>),
     Identifier(Vec<u8>),
 }
@@ -606,14 +607,18 @@ impl<AccountId, AssetId, DEXId> crate::traits::WrappedRepr<AccountId>
     }
 }
 
-impl<AccountId, AssetId, DEXId: Clone> crate::traits::ToFeeAccount
+impl<AccountId, AssetId: Clone, DEXId: Clone> crate::traits::ToFeeAccount
     for TechAccountId<AccountId, AssetId, DEXId>
 {
     fn to_fee_account(&self) -> Option<Self> {
         match self {
-            TechAccountId::Pure(dex, _) => {
-                Some(TechAccountId::Pure(dex.clone(), TechPurpose::FeeCollector))
-            }
+            TechAccountId::Pure(dex, purpose) => match purpose {
+                TechPurpose::LiquidityKeeper(tpair) => Some(TechAccountId::Pure(
+                    dex.clone(),
+                    TechPurpose::FeeCollectorForPair(tpair.clone()),
+                )),
+                _ => None,
+            },
             _ => None,
         }
     }
