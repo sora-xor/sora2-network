@@ -1637,7 +1637,7 @@ dependencies = [
  "orml-tokens",
  "orml-traits",
  "pallet-balances",
- "pallet-multisig",
+ "pallet-multisig 2.0.0-rc5",
  "pallet-sudo",
  "parity-scale-codec",
  "parity-util-mem",
@@ -2159,7 +2159,7 @@ dependencies = [
  "liquidity-proxy-rpc",
  "log",
  "nix",
- "pallet-multisig",
+ "pallet-multisig 2.0.0-rc5",
  "pallet-sudo",
  "pallet-transaction-payment-rpc",
  "parity-scale-codec",
@@ -2246,7 +2246,8 @@ dependencies = [
  "pallet-balances",
  "pallet-contracts",
  "pallet-grandpa",
- "pallet-multisig",
+ "pallet-multisig 2.0.0-rc5",
+ "pallet-multisig 2.0.1",
  "pallet-randomness-collective-flip",
  "pallet-session",
  "pallet-staking",
@@ -3080,7 +3081,7 @@ dependencies = [
  "orml-currencies",
  "orml-tokens",
  "pallet-balances",
- "pallet-multisig",
+ "pallet-multisig 2.0.1",
  "parity-scale-codec",
  "parity-util-mem",
  "permissions",
@@ -4703,6 +4704,22 @@ dependencies = [
 name = "pallet-multisig"
 version = "2.0.0-rc5"
 source = "git+https://github.com/soramitsu/sora2-frame-pallets.git?branch=selected-v2.0.0#fe6e9937578f28ba6d9869a52aedad5a6bf4e06f"
+dependencies = [
+ "frame-support",
+ "frame-system",
+ "parity-scale-codec",
+ "serde 1.0.118",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
+name = "pallet-multisig"
+version = "2.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a1af73af221c006e5a7ee919116fdd5a47bb198ec5a08b2a07609a78f8bfdfd7"
 dependencies = [
  "frame-support",
  "frame-system",
