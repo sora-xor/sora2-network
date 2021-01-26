@@ -2043,6 +2043,7 @@ decl_module! {
             asset_b: AssetIdOf<T>,
             ) -> DispatchResult
         {
+            common::with_transaction(|| {
                 let source = ensure_signed(origin.clone())?;
                 <T as Trait>::EnsureDEXManager::ensure_can_manage(&dex_id, origin.clone(), ManagementMode::Public)?;
                 let (_,tech_account_id, fees_account_id, mark_asset) = Module::<T>::initialize_pool_unchecked(source.clone(), dex_id, asset_a, asset_b)?;
@@ -2069,6 +2070,7 @@ decl_module! {
                 MarkerTokensIndex::<T>::mutate( |mti| {mti.insert(mark_asset_repr)});
                 Self::deposit_event(RawEvent::PoolIsInitialized(ta_repr));
                 Ok(())
+            })
         }
     }
 }
