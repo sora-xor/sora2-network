@@ -391,25 +391,6 @@ fn depositliq_large_values() {
 }
 
 #[test]
-fn depositliq_invalid_range() {
-    crate::Module::<Testtime>::preset02(vec![|dex_id, _, _, _, _, _, _, _| {
-        assert_noop!(
-            crate::Module::<Testtime>::deposit_liquidity(
-                Origin::signed(ALICE()),
-                dex_id,
-                GoldenTicket.into(),
-                BlackPepper.into(),
-                fixed!(360000),
-                fixed!(999000),
-                fixed!(350000),
-                fixed!(145000),
-            ),
-            crate::Error::<Testtime>::ImposibleToDecideValidPairValuesFromRangeForThisPool
-        );
-    }]);
-}
-
-#[test]
 fn depositliq_valid_range_but_desired_is_corrected() {
     crate::Module::<Testtime>::preset02(vec![|dex_id, _, _, _, _, _, _, _| {
         assert_ok!(crate::Module::<Testtime>::deposit_liquidity(
