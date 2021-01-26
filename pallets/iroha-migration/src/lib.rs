@@ -218,7 +218,7 @@ impl<T: Trait> Module<T> {
         MigratedAccounts::<T>::contains_key(iroha_address)
     }
 
-    fn create_public_key(iroha_public_key: &str) -> Result<PublicKey, DispatchError> {
+    fn parse_public_key(iroha_public_key: &str) -> Result<PublicKey, DispatchError> {
         let iroha_public_key =
             hex::decode(&iroha_public_key).map_err(|_| Error::<T>::PublicKeyParsingFailed)?;
         let public_key = PublicKey::from_bytes(iroha_public_key.as_slice())
@@ -226,7 +226,7 @@ impl<T: Trait> Module<T> {
         Ok(public_key)
     }
 
-    fn create_signature(iroha_signature: &str) -> Result<Signature, DispatchError> {
+    fn parse_signature(iroha_signature: &str) -> Result<Signature, DispatchError> {
         let iroha_signature =
             hex::decode(&iroha_signature).map_err(|_| Error::<T>::SignatureParsingFailed)?;
         let signature_bytes: [u8; SIGNATURE_LENGTH] = iroha_signature
@@ -241,8 +241,8 @@ impl<T: Trait> Module<T> {
         iroha_public_key: &str,
         iroha_signature: &str,
     ) -> Result<(), DispatchError> {
-        let public_key = Self::create_public_key(iroha_public_key)?;
-        let signature = Self::create_signature(iroha_signature)?;
+        let public_key = Self::parse_public_key(iroha_public_key)?;
+        let signature = Self::parse_signature(iroha_signature)?;
         let message = format!("{}{}", iroha_address, iroha_public_key);
         let mut prehashed_message = Sha3_256::default();
         prehashed_message.update(&message[..]);
@@ -257,16 +257,14 @@ impl<T: Trait> Module<T> {
         iroha_public_key: &String,
     ) -> Result<(usize, usize), DispatchError> {
         PublicKeys::mutate(iroha_address, |keys| {
-            if let Some((already_approved, _)) =
-                keys.iter_mut().find(|(_, key)| key == iroha_public_key)
             {
-                if !*already_approved {
-                    *already_approved = true;
-                } else {
-                    return Err(Error::<T>::PublicKeyAlreadyUsed.into());
-                }
-            } else {
-                return Err(Error::<T>::PublicKeyNotFound.into());
+                let already_approved = keys
+                    .iter_mut()
+                    .find(|(_, key)| key == iroha_public_key)
+                    .map(|(already_approved, _)| already_approved)
+                    .ok_or(Error::<T>::PublicKeyNotFound)?;
+                ensure!(!*already_approved, Error::<T>::PublicKeyAlreadyUsed);
+                *already_approved = true;
             }
             let approved_count = keys
                 .iter()
