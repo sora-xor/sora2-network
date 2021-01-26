@@ -514,6 +514,16 @@ impl farming::Trait for Runtime {
     type WeightInfo = ();
 }
 
+impl pallet_multisig::Trait for Runtime {
+    type Call = Call;
+    type Event = Event;
+    type Currency = Balances;
+    type DepositBase = DepositBase;
+    type DepositFactor = DepositFactor;
+    type MaxSignatories = MaxSignatories;
+    type WeightInfo = ();
+}
+
 impl iroha_migration::Trait for Runtime {
     type Event = Event;
 }
@@ -723,7 +733,7 @@ construct_runtime! {
         Permissions: permissions::{Module, Call, Storage, Config<T>, Event<T>},
         ReferralSystem: referral_system::{Module, Call, Storage, Event},
         XorFee: xor_fee::{Module, Call, Storage, Event},
-        Multisig: bridge_multisig::{Module, Call, Storage, Config<T>, Event<T>},
+        BridgeMultisig: bridge_multisig::{Module, Call, Storage, Config<T>, Event<T>},
         Utility: pallet_utility::{Module, Call, Event},
 
         // Consensus and staking.
@@ -754,6 +764,7 @@ construct_runtime! {
         EthBridge: eth_bridge::{Module, Call, Config<T>, Event<T>},
         Farming: farming::{Module, Call, Storage, Config<T>, Event<T>},
         PswapDistribution: pswap_distribution::{Module, Call, Storage, Config<T>, Event<T>},
+        Multisig: pallet_multisig::{Module, Call, Storage, Event<T>},
         IrohaMigration: iroha_migration::{Module, Call, Storage, Config<T>, Event<T>},
     }
 }

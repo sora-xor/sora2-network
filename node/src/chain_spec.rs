@@ -1,8 +1,8 @@
 use framenode_runtime::{
     bonding_curve_pool, eth_bridge, opaque::SessionKeys, AccountId, AssetSymbol, AssetsConfig,
-    BabeConfig, BalancesConfig, BondingCurvePoolConfig, DEXAPIConfig, DEXManagerConfig,
-    EthBridgeConfig, FarmingConfig, FaucetConfig, GenesisConfig, GetBaseAssetId, GrandpaConfig,
-    IrohaMigrationConfig, LiquiditySourceType, MultisigConfig, PermissionsConfig,
+    BabeConfig, BalancesConfig, BondingCurvePoolConfig, BridgeMultisigConfig, DEXAPIConfig,
+    DEXManagerConfig, EthBridgeConfig, FarmingConfig, FaucetConfig, GenesisConfig, GetBaseAssetId,
+    GrandpaConfig, IrohaMigrationConfig, LiquiditySourceType, PermissionsConfig,
     PswapDistributionConfig, PswapId, Runtime, SessionConfig, Signature, StakerStatus,
     StakingConfig, SudoConfig, SystemConfig, TechAccountId, TechnicalConfig, TokensConfig, UsdId,
     ValId, XorId, WASM_BINARY,
@@ -636,6 +636,11 @@ fn testnet_genesis(
                     vec![permissions::MINT, permissions::BURN],
                 ),
                 (
+                    iroha_migration_account_id.clone(),
+                    Scope::Limited(hash(&VAL)),
+                    vec![permissions::MINT],
+                ),
+                (
                     initial_assets_owner,
                     Scope::Unlimited,
                     vec![
@@ -746,7 +751,7 @@ fn testnet_genesis(
             ],
             pswap_owners: vec![],
         }),
-        bridge_multisig: Some(MultisigConfig {
+        bridge_multisig: Some(BridgeMultisigConfig {
             accounts: once((
                 eth_bridge_account_id.clone(),
                 bridge_multisig::MultisigAccount::new(

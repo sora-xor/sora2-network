@@ -1,6 +1,6 @@
 use crate::{mock::*, Error, MigratedAccounts, Module, PendingMultiSigAccounts, PendingReferrals};
 use common::{prelude::Balance, VAL};
-use frame_support::{assert_noop, assert_ok, storage::StorageMap};
+use frame_support::{assert_noop, assert_ok, storage::StorageMap, traits::OnFinalize};
 use referral_system::Referrers;
 
 type Assets = assets::Module<Test>;
@@ -107,24 +107,83 @@ fn test_migrate_multi_sig() {
         );
         assert!(!MigratedAccounts::<Test>::contains_key(&iroha_address));
         assert!(PendingMultiSigAccounts::<Test>::contains_key(&iroha_address));
-        let multi_sig_account = PendingMultiSigAccounts::<Test>::get(&iroha_address);
-        assert_eq!(Assets::free_balance(&VAL, &multi_sig_account).unwrap(), Balance::from(0u128));
+        let multi_account = {
+            let mut signatories = [ALICE, BOB, CHARLIE];
+            signatories.sort();
+            pallet_multisig::Module::<Test>::multi_account_id(&signatories, 2)
+        };
+        assert_eq!(Assets::free_balance(&VAL, &multi_account).unwrap(), Balance::from(0u128));
         assert_ok!(Module::<Test>::migrate(
             Origin::signed(BOB),
             iroha_address.clone(),
             "f56b4880ed91a25b257144acab749f615855c4b1b6a5d7891e1a6cdd9fd695e9".to_string(),
             "5c0f4296175b9836baac7c2d92116c90961bb80f87c30e3e2e2b2d5819d0c278fa55d3f04793d7fbf19a78afeb8b52f17b5ba55bf7373e726723da7155cad70d".to_string())
         );
-        assert!(MigratedAccounts::<Test>::contains_key(&iroha_address));
         assert!(PendingMultiSigAccounts::<Test>::contains_key(&iroha_address));
-        assert_eq!(Assets::free_balance(&VAL, &multi_sig_account).unwrap(), Balance::from(1000u128));
         assert_ok!(Module::<Test>::migrate(
             Origin::signed(CHARLIE),
             iroha_address.clone(),
             "57571ec82cff710143eba60c05d88de14a22799048137162d63c534a8b02dc20".to_string(),
             "3cfd2e95676ec7f4a7eb6f8bf91b447990c1bb4d771784e5e5d6027852eef75c13ad911d6fac9130b24f67e2088c3b908d25c092f87b77ed8a44dcd62572cc0f".to_string())
         );
+        assert!(MigratedAccounts::<Test>::contains_key(&iroha_address));
         assert!(!PendingMultiSigAccounts::<Test>::contains_key(&iroha_address));
+        assert_eq!(Assets::free_balance(&VAL, &multi_account).unwrap(), Balance::from(1000u128));
+    });
+}
+
+#[test]
+fn test_migrate_multi_sig_after_timeout() {
+    new_test_ext().execute_with(|| {
+        let iroha_address = "did_sora_multi_sig@sora".to_string();
+        assert_ok!(Module::<Test>::migrate(
+            Origin::signed(ALICE),
+            iroha_address.clone(),
+            "f7d89d39d48a67e4741a612de10650234f9148e84fe9e8b2a9fad322b0d8e5bc".to_string(),
+            "d5f6dcc6967aa05df71894dd2c253085b236026efc1c66d4b33ee88dda20fc751b516aef631d1f96919f8cba2e15334022e04ef6602298d6b9820daeefe13e03".to_string())
+        );
+
+        assert!(!MigratedAccounts::<Test>::contains_key(&iroha_address));
+        assert!(PendingMultiSigAccounts::<Test>::contains_key(&iroha_address));
+        let multi_account_of_2 = {
+            let mut signatories = [ALICE, BOB];
+            signatories.sort();
+            pallet_multisig::Module::<Test>::multi_account_id(&signatories, 2)
+        };
+        let multi_account_of_3 = {
+            let mut signatories = [ALICE, BOB, CHARLIE];
+            signatories.sort();
+            pallet_multisig::Module::<Test>::multi_account_id(&signatories, 2)
+        };
+        assert_eq!(Assets::free_balance(&VAL, &multi_account_of_2).unwrap(), Balance::from(0u128));
+        assert_eq!(Assets::free_balance(&VAL, &multi_account_of_3).unwrap(), Balance::from(0u128));
+
+        assert_ok!(Module::<Test>::migrate(
+            Origin::signed(BOB),
+            iroha_address.clone(),
+            "f56b4880ed91a25b257144acab749f615855c4b1b6a5d7891e1a6cdd9fd695e9".to_string(),
+            "5c0f4296175b9836baac7c2d92116c90961bb80f87c30e3e2e2b2d5819d0c278fa55d3f04793d7fbf19a78afeb8b52f17b5ba55bf7373e726723da7155cad70d".to_string())
+        );
+
+        assert!(!MigratedAccounts::<Test>::contains_key(&iroha_address));
+        assert!(PendingMultiSigAccounts::<Test>::contains_key(&iroha_address));
+        assert_eq!(Assets::free_balance(&VAL, &multi_account_of_2).unwrap(), Balance::from(0u128));
+        assert_eq!(Assets::free_balance(&VAL, &multi_account_of_3).unwrap(), Balance::from(0u128));
+
+        Module::<Test>::on_finalize(crate::blocks_till_migration::<Test>());
+
+        assert!(MigratedAccounts::<Test>::contains_key(&iroha_address));
+        assert!(!PendingMultiSigAccounts::<Test>::contains_key(&iroha_address));
+        assert_eq!(Assets::free_balance(&VAL, &multi_account_of_2).unwrap(), Balance::from(1000u128));
+        assert_eq!(Assets::free_balance(&VAL, &multi_account_of_3).unwrap(), Balance::from(0u128));
+
+        assert_noop!(Module::<Test>::migrate(
+            Origin::signed(CHARLIE),
+            iroha_address.clone(),
+            "57571ec82cff710143eba60c05d88de14a22799048137162d63c534a8b02dc20".to_string(),
+            "3cfd2e95676ec7f4a7eb6f8bf91b447990c1bb4d771784e5e5d6027852eef75c13ad911d6fac9130b24f67e2088c3b908d25c092f87b77ed8a44dcd62572cc0f".to_string()),
+            Error::<Test>::AccountAlreadyMigrated,
+        );
     });
 }
 

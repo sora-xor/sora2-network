@@ -163,7 +163,7 @@ construct_runtime!(
     {
         System: frame_system::{Module, Call, Config, Storage, Event<T>},
         Balances: pallet_balances::{Module, Call, Storage, Config<T>, Event<T>},
-        Multisig: multisig::{Module, Call, Storage, Config<T>, Event<T>},
+        Multisig: pallet_multisig::{Module, Call, Storage, Event<T>},
         Tokens: tokens::{Module, Call, Storage, Config<T>, Event<T>},
         Currencies: currencies::{Module, Call, Storage,  Event<T>},
         Assets: assets::{Module, Call, Storage, Config<T>, Event<T>},
@@ -277,7 +277,7 @@ parameter_types! {
     pub const MaxSignatories: u16 = 4;
 }
 
-impl multisig::Trait for Test {
+impl pallet_multisig::Trait for Test {
     type Call = Call;
     type Event = Event;
     type Currency = Balances;
@@ -379,10 +379,6 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
     }
     .assimilate_storage(&mut t)
     .unwrap();
-
-    multisig::GenesisConfig::<Test> { accounts: vec![] }
-        .assimilate_storage(&mut t)
-        .unwrap();
 
     t.into()
 }
