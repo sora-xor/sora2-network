@@ -44,10 +44,11 @@ where
             // If the block hash is not supplied assume the best block.
             self.client.info().best_hash,
         ));
-        api.needs_migration(&at, iroha_address).map_err(|e| RpcError {
-            code: ErrorCode::ServerError(InvokeRPCError::RuntimeError.into()),
-            message: "Unable to check if needs migration.".into(),
-            data: Some(format!("{:?}", e).into()),
-        })
+        api.needs_migration(&at, iroha_address)
+            .map_err(|e| RpcError {
+                code: ErrorCode::ServerError(InvokeRPCError::RuntimeError.into()),
+                message: "Unable to check if needs migration.".into(),
+                data: Some(format!("{:?}", e).into()),
+            })
     }
 }

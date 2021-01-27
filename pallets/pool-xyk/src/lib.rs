@@ -2162,7 +2162,8 @@ impl<T: Trait> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Disp
             &mut action,
             None,
         )?;
-        // It is garanty that unwrap is always ok.
+
+        // It is guarantee that unwrap is always ok.
         match action {
             PolySwapAction::PairSwap(a) => {
                 let (fee, amount) = match swap_amount {
@@ -2220,14 +2221,32 @@ impl<T: Trait> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Disp
             &mut action,
             Some(sender),
         )?;
-        // It is garanty that unwrap is always ok.
-        let (fee, term_amount) = match action {
-            PolySwapAction::PairSwap(ref a) => (a.fee.unwrap(), a.destination.amount.unwrap()),
+
+        // It is guarantee that unwrap is always ok.
+        // Clone is used here because action is used for perform_create_swap_unchecked.
+        let retval = match action.clone() {
+            PolySwapAction::PairSwap(a) => {
+                let (fee, amount) = match swap_amount {
+                    SwapAmount::WithDesiredInput { .. } => {
+                        (a.fee.unwrap(), a.destination.amount.unwrap())
+                    }
+                    SwapAmount::WithDesiredOutput { .. } => {
+                        (a.fee.unwrap(), a.source.amount.unwrap())
+                    }
+                };
+                if a.get_fee_from_destination.unwrap() {
+                    Ok(common::prelude::SwapOutcome::new(amount - fee, fee))
+                } else {
+                    Ok(common::prelude::SwapOutcome::new(amount, fee))
+                }
+            }
             _ => unreachable!("we know that always PairSwap is used"),
         };
+
         let action = T::PolySwapAction::from(action);
         let mut action = action.into();
         technical::Module::<T>::perform_create_swap_unchecked(sender.clone(), &mut action)?;
-        Ok(common::prelude::SwapOutcome::new(term_amount, fee))
+
+        retval
     }
 }
