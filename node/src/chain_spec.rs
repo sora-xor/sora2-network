@@ -4,7 +4,7 @@ use framenode_runtime::{
     EthBridgeConfig, FarmingConfig, FaucetConfig, GenesisConfig, GetBaseAssetId, GrandpaConfig,
     LiquiditySourceType, MultisigConfig, PermissionsConfig, PswapDistributionConfig, PswapId,
     Runtime, SessionConfig, Signature, StakerStatus, StakingConfig, SudoConfig, SystemConfig,
-    TechAccountId, TechnicalConfig, TokensConfig, UsdId, ValId, XorId, WASM_BINARY,
+    TechAccountId, TechnicalConfig, TokensConfig, ValId, XorId, WASM_BINARY,
 };
 
 use common::prelude::{DEXInfo, FixedWrapper};
@@ -534,12 +534,12 @@ fn testnet_genesis(
                     AssetSymbol(b"XOR".to_vec()),
                     18,
                 ),
-                (
-                    UsdId::get(),
-                    initial_assets_owner.clone(),
-                    AssetSymbol(b"USDT".to_vec()),
-                    18,
-                ),
+                // (
+                //     UsdId::get(),
+                //     initial_assets_owner.clone(),
+                //     AssetSymbol(b"USDT".to_vec()),
+                //     18,
+                // ),
                 (
                     ValId::get(),
                     initial_assets_owner.clone(),
