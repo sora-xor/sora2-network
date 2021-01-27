@@ -181,8 +181,8 @@ impl crate::Module<Testtime> {
                     DOT,
                     360_000u32.into(),
                     144_000u32.into(),
-                    360_000u32.into(),
-                    144_000u32.into(),
+                    360_00u32.into(),
+                    144_00u32.into(),
                 ));
 
                 assert_ok!(pool_xyk::Module::<Testtime>::deposit_liquidity(
@@ -192,8 +192,8 @@ impl crate::Module<Testtime> {
                     DOT,
                     360_000u32.into(),
                     144_000u32.into(),
-                    360_000u32.into(),
-                    144_000u32.into(),
+                    360_00u32.into(),
+                    144_00u32.into(),
                 ));
             },
         ];
@@ -619,6 +619,127 @@ fn two_farmers_working_with_farm_cascade() {
                     Some(999u32.into()),
                 ),
                 crate::Error::<Testtime>::AmountIsOutOfAvailableValue
+            );
+        },
+    ]);
+}
+
+#[test]
+fn unlock_exact() {
+    crate::Module::<Testtime>::preset02(vec![
+        |dex_id, _gt, _bp, _, _, _, _, _, mark_asset: AssetId, farm_id: FarmId| {
+            assert_ok!(crate::Module::<Testtime>::lock_to_farm(
+                Origin::signed(ALICE()),
+                dex_id,
+                farm_id,
+                mark_asset,
+                10_000u32.into(),
+            ));
+            assert_ok!(crate::Module::<Testtime>::unlock_from_farm(
+                Origin::signed(ALICE()),
+                dex_id,
+                farm_id,
+                Some(mark_asset),
+                Some(10_000u32.into()),
+            ));
+            assert_noop!(
+                crate::Module::<Testtime>::unlock_from_farm(
+                    Origin::signed(ALICE()),
+                    dex_id,
+                    farm_id,
+                    Some(mark_asset),
+                    Some(1u32.into()),
+                ),
+                crate::Error::<Testtime>::CalculationOrOperationWithFarmingStateIsFailed
+            );
+        },
+    ]);
+}
+
+#[test]
+fn unlock_more_than_exist_must_fail() {
+    crate::Module::<Testtime>::preset02(vec![
+        |dex_id, _gt, _bp, _, _, _, _, _, mark_asset: AssetId, farm_id: FarmId| {
+            assert_ok!(crate::Module::<Testtime>::lock_to_farm(
+                Origin::signed(ALICE()),
+                dex_id,
+                farm_id,
+                mark_asset,
+                10_000u32.into(),
+            ));
+            assert_noop!(
+                crate::Module::<Testtime>::unlock_from_farm(
+                    Origin::signed(ALICE()),
+                    dex_id,
+                    farm_id,
+                    Some(mark_asset),
+                    Some(10_001u32.into()),
+                ),
+                crate::Error::<Testtime>::CalculationOrOperationWithFarmingStateIsFailed
+            );
+        },
+    ]);
+}
+
+#[test]
+fn unlock_all_for_asset() {
+    crate::Module::<Testtime>::preset02(vec![
+        |dex_id, _gt, _bp, _, _, _, _, _, mark_asset: AssetId, farm_id: FarmId| {
+            assert_ok!(crate::Module::<Testtime>::lock_to_farm(
+                Origin::signed(ALICE()),
+                dex_id,
+                farm_id,
+                mark_asset,
+                10_000u32.into(),
+            ));
+            assert_ok!(crate::Module::<Testtime>::unlock_from_farm(
+                Origin::signed(ALICE()),
+                dex_id,
+                farm_id,
+                Some(mark_asset),
+                None,
+            ));
+            assert_noop!(
+                crate::Module::<Testtime>::unlock_from_farm(
+                    Origin::signed(ALICE()),
+                    dex_id,
+                    farm_id,
+                    Some(mark_asset),
+                    Some(1u32.into()),
+                ),
+                crate::Error::<Testtime>::CalculationOrOperationWithFarmingStateIsFailed
+            );
+        },
+    ]);
+}
+
+#[test]
+fn unlock_all_assets() {
+    crate::Module::<Testtime>::preset02(vec![
+        |dex_id, _gt, _bp, _, _, _, _, _, mark_asset: AssetId, farm_id: FarmId| {
+            assert_ok!(crate::Module::<Testtime>::lock_to_farm(
+                Origin::signed(ALICE()),
+                dex_id,
+                farm_id,
+                mark_asset,
+                10_000u32.into(),
+            ));
+            assert_ok!(crate::Module::<Testtime>::unlock_from_farm(
+                Origin::signed(ALICE()),
+                dex_id,
+                farm_id,
+                None,
+                None,
+            ));
+            assert_noop!(
+                crate::Module::<Testtime>::unlock_from_farm(
+                    Origin::signed(ALICE()),
+                    dex_id,
+                    farm_id,
+                    Some(mark_asset),
+                    Some(1u32.into()),
+                ),
+                crate::Error::<Testtime>::CalculationOrOperationWithFarmingStateIsFailed
             );
         },
     ]);

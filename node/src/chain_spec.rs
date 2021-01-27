@@ -4,7 +4,7 @@ use framenode_runtime::{
     EthBridgeConfig, FarmingConfig, FaucetConfig, GenesisConfig, GetBaseAssetId, GrandpaConfig,
     LiquiditySourceType, MultisigConfig, PermissionsConfig, PswapDistributionConfig, PswapId,
     Runtime, SessionConfig, Signature, StakerStatus, StakingConfig, SudoConfig, SystemConfig,
-    TechAccountId, TechnicalConfig, TokensConfig, UsdId, ValId, XorId, WASM_BINARY,
+    TechAccountId, TechnicalConfig, TokensConfig, ValId, XorId, WASM_BINARY,
 };
 
 use common::prelude::{DEXInfo, FixedWrapper};
@@ -173,10 +173,10 @@ pub fn staging_net(test: bool) -> ChainSpec {
             "SORA-test",
             "sora-substrate-test",
             vec![
-                MultiaddrWithPeerId::from_str("/dns/s1.tst.sora2.mitsu/tcp/30333/p2p/12D3KooWSG3eJ9LXNyhzUzkzqjhT3Jv35vak9zLTHTsoTiqU4mxW").unwrap(),
-                MultiaddrWithPeerId::from_str("/dns/s1.tst.sora2.mitsu/tcp/30334/p2p/12D3KooWCfkMa5ATWfa8Edn3Lx71tfZwTU8X532Qx8jbtBnyvXyD").unwrap(),
-                MultiaddrWithPeerId::from_str("/dns/s2.tst.sora2.mitsu/tcp/31333/p2p/12D3KooWCKC4hDHz8AxnacYg7CmeDPJL8MuJxGYHUBFZ4BjZYcCy").unwrap(),
-                MultiaddrWithPeerId::from_str("/dns/s2.tst.sora2.mitsu/tcp/31334/p2p/12D3KooWRo4T2RxgLs1ej61g788kbYR3obU4fHu4GEfeQNEPGD2Y").unwrap(),
+                MultiaddrWithPeerId::from_str("/dns/s1.tst.sora2.soramitsu.co.jp/tcp/30333/p2p/12D3KooWSG3eJ9LXNyhzUzkzqjhT3Jv35vak9zLTHTsoTiqU4mxW").unwrap(),
+                MultiaddrWithPeerId::from_str("/dns/s1.tst.sora2.soramitsu.co.jp/tcp/30334/p2p/12D3KooWCfkMa5ATWfa8Edn3Lx71tfZwTU8X532Qx8jbtBnyvXyD").unwrap(),
+                MultiaddrWithPeerId::from_str("/dns/s2.tst.sora2.soramitsu.co.jp/tcp/31333/p2p/12D3KooWCKC4hDHz8AxnacYg7CmeDPJL8MuJxGYHUBFZ4BjZYcCy").unwrap(),
+                MultiaddrWithPeerId::from_str("/dns/s2.tst.sora2.soramitsu.co.jp/tcp/31334/p2p/12D3KooWRo4T2RxgLs1ej61g788kbYR3obU4fHu4GEfeQNEPGD2Y").unwrap(),
             ]
         )
     } else {
@@ -534,12 +534,12 @@ fn testnet_genesis(
                     AssetSymbol(b"XOR".to_vec()),
                     18,
                 ),
-                (
-                    UsdId::get(),
-                    initial_assets_owner.clone(),
-                    AssetSymbol(b"USDT".to_vec()),
-                    18,
-                ),
+                // (
+                //     UsdId::get(),
+                //     initial_assets_owner.clone(),
+                //     AssetSymbol(b"USDT".to_vec()),
+                //     18,
+                // ),
                 (
                     ValId::get(),
                     initial_assets_owner.clone(),
