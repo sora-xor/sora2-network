@@ -479,7 +479,8 @@ impl<T: Trait> Module<T> {
     }
 
     fn update_xor_pswap_smooth_price(now: T::BlockNumber) {
-        let index: u32 = match (now / UPDATE_PRICES_EVERY_N_BLOCK.into()).try_into() {
+        let result: Result<u32, _> = (now / UPDATE_PRICES_EVERY_N_BLOCK.into()).try_into();
+        let index: u32 = match result {
             Ok(v) => v.try_into().unwrap(),
             _ => unreachable!(),
         };
