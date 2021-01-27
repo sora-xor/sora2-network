@@ -1,9 +1,9 @@
 use crate::types::{Bytes, H160, H2048, H256, H64, U256, U64};
 use alloc::vec::Vec;
-use alt_serde::{ser::SerializeStruct, Deserialize, Serialize, Serializer};
+use serde::{ser::SerializeStruct, Deserialize, Serialize, Serializer};
 
 /// The block header type returned from RPC calls.
-#[serde(crate = "alt_serde", rename_all = "camelCase")]
+#[serde(crate = "serde", rename_all = "camelCase")]
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
 pub struct BlockHeader {
     /// Hash of the block
@@ -44,7 +44,7 @@ pub struct BlockHeader {
 
 /// The block type returned from RPC calls.
 /// This is generic over a `TX` type.
-#[serde(crate = "alt_serde", rename_all = "camelCase")]
+#[serde(crate = "serde", rename_all = "camelCase")]
 #[derive(Debug, Default, Clone, PartialEq, Deserialize, Serialize)]
 pub struct Block<TX> {
     /// Hash of the block

@@ -1,12 +1,12 @@
 use crate::types::{Address, Bytes, U256};
-use alt_serde::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
 
 /// Call contract request (eth_call / eth_estimateGas)
 ///
 /// When using this for `eth_estimateGas`, all the fields
 /// are optional. However, for usage in `eth_call` the
 /// `to` field must be provided.
-#[serde(crate = "alt_serde")]
+#[serde(crate = "serde")]
 #[derive(Clone, Debug, PartialEq, Default, Serialize, Deserialize)]
 pub struct CallRequest {
     /// Sender address (None for arbitrary address)
@@ -31,7 +31,7 @@ pub struct CallRequest {
 }
 
 /// Send Transaction Parameters
-#[serde(crate = "alt_serde")]
+#[serde(crate = "serde")]
 #[derive(Clone, Debug, PartialEq, Default, Serialize, Deserialize)]
 pub struct TransactionRequest {
     /// Sender address
@@ -61,7 +61,7 @@ pub struct TransactionRequest {
 }
 
 /// Represents condition on minimum block number or block timestamp.
-#[serde(crate = "alt_serde")]
+#[serde(crate = "serde")]
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub enum TransactionCondition {

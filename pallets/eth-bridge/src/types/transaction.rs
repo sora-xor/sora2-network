@@ -1,9 +1,9 @@
 use crate::types::{Bytes, Index, Log, H160, H2048, H256, U256, U64};
-use alt_serde::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
 use sp_std::prelude::*;
 
 /// Description of a Transaction, pending or in the chain.
-#[serde(crate = "alt_serde", rename_all = "camelCase")]
+#[serde(crate = "serde", rename_all = "camelCase")]
 #[derive(Debug, Default, Clone, PartialEq, Deserialize, Serialize)]
 pub struct Transaction {
     /// Hash
@@ -34,7 +34,7 @@ pub struct Transaction {
 }
 
 /// "Receipt" of an executed transaction: details of its execution.
-#[serde(crate = "alt_serde", rename_all = "camelCase")]
+#[serde(crate = "serde", rename_all = "camelCase")]
 #[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Receipt {
     /// Transaction hash.
@@ -66,7 +66,7 @@ pub struct Receipt {
 }
 
 /// Raw bytes of a signed, but not yet sent transaction
-#[serde(crate = "alt_serde")]
+#[serde(crate = "serde")]
 #[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
 pub struct RawTransaction {
     /// Signed transaction as raw bytes
@@ -76,7 +76,7 @@ pub struct RawTransaction {
 }
 
 /// Details of a signed transaction
-#[serde(crate = "alt_serde", rename_all = "camelCase")]
+#[serde(crate = "serde", rename_all = "camelCase")]
 #[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
 pub struct RawTransactionDetails {
     /// Hash

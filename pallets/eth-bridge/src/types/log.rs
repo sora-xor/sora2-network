@@ -1,10 +1,10 @@
 use crate::types::{BlockNumber, Bytes, Index, H160, H256, U256, U64};
 use alloc::string::String;
-use alt_serde::{Deserialize, Serialize, Serializer};
+use serde::{Deserialize, Serialize, Serializer};
 use sp_std::prelude::*;
 
 /// A log produced by a transaction.
-#[serde(crate = "alt_serde", rename_all = "camelCase")]
+#[serde(crate = "serde", rename_all = "camelCase")]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
 pub struct Log {
     /// H160
@@ -70,7 +70,7 @@ where
 }
 
 /// Filter
-#[serde(crate = "alt_serde", rename_all = "camelCase")]
+#[serde(crate = "serde", rename_all = "camelCase")]
 #[derive(Default, Debug, PartialEq, Clone, Serialize)]
 pub struct Filter {
     /// From Block
