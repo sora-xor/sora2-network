@@ -1697,21 +1697,23 @@ dependencies = [
 [[package]]
 name = "ethabi"
 version = "12.0.3"
+source = "git+https://github.com/vmarkushin/ethabi.git?branch=no-std#704bda95f1498ed6171bcdb81487bd3810466ead"
 dependencies = [
  "ethereum-types",
  "rustc-hex",
  "serde",
  "serde_json",
  "tiny-keccak 1.5.0",
- "uint 0.8.5",
+ "uint 0.8.5 (git+https://github.com/vmarkushin/parity-common.git?branch=no-std)",
 ]
 
 [[package]]
 name = "ethbloom"
 version = "0.9.3"
+source = "git+https://github.com/vmarkushin/parity-common.git?branch=no-std#76837f10b96f63b52b97394e88a25f6cdda28c91"
 dependencies = [
  "crunchy",
- "fixed-hash 0.6.1",
+ "fixed-hash 0.6.1 (git+https://github.com/vmarkushin/parity-common.git?branch=no-std)",
  "impl-rlp",
  "impl-serde 0.3.2",
  "tiny-keccak 2.0.2",
@@ -1720,14 +1722,15 @@ dependencies = [
 [[package]]
 name = "ethereum-types"
 version = "0.9.4"
+source = "git+https://github.com/vmarkushin/parity-common.git?branch=no-std#76837f10b96f63b52b97394e88a25f6cdda28c91"
 dependencies = [
  "ethbloom",
- "fixed-hash 0.6.1",
- "impl-codec 0.4.2",
+ "fixed-hash 0.6.1 (git+https://github.com/vmarkushin/parity-common.git?branch=no-std)",
+ "impl-codec 0.4.2 (git+https://github.com/vmarkushin/parity-common.git?branch=no-std)",
  "impl-rlp",
  "impl-serde 0.3.2",
  "primitive-types 0.7.4",
- "uint 0.8.5",
+ "uint 0.8.5 (git+https://github.com/vmarkushin/parity-common.git?branch=no-std)",
 ]
 
 [[package]]
@@ -1921,6 +1924,8 @@ dependencies = [
 [[package]]
 name = "fixed-hash"
 version = "0.6.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "11498d382790b7a8f2fd211780bec78619bba81cdad3a283997c0c41f836759c"
 dependencies = [
  "byteorder 1.4.2",
  "rand 0.7.3",
@@ -1931,8 +1936,7 @@ dependencies = [
 [[package]]
 name = "fixed-hash"
 version = "0.6.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "11498d382790b7a8f2fd211780bec78619bba81cdad3a283997c0c41f836759c"
+source = "git+https://github.com/vmarkushin/parity-common.git?branch=no-std#76837f10b96f63b52b97394e88a25f6cdda28c91"
 dependencies = [
  "byteorder 1.4.2",
  "rand 0.7.3",
@@ -2989,13 +2993,6 @@ dependencies = [
 [[package]]
 name = "impl-codec"
 version = "0.4.2"
-dependencies = [
- "parity-scale-codec",
-]
-
-[[package]]
-name = "impl-codec"
-version = "0.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1be51a921b067b0eaca2fad532d9400041561aa922221cc65f95a85641c6bf53"
 dependencies = [
@@ -3003,10 +3000,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "impl-codec"
+version = "0.4.2"
+source = "git+https://github.com/vmarkushin/parity-common.git?branch=no-std#76837f10b96f63b52b97394e88a25f6cdda28c91"
+dependencies = [
+ "parity-scale-codec",
+]
+
+[[package]]
 name = "impl-rlp"
 version = "0.2.1"
+source = "git+https://github.com/vmarkushin/parity-common.git?branch=no-std#76837f10b96f63b52b97394e88a25f6cdda28c91"
 dependencies = [
- "rlp 0.4.6",
+ "rlp 0.4.6 (git+https://github.com/vmarkushin/parity-common.git?branch=no-std)",
 ]
 
 [[package]]
@@ -3021,6 +3027,7 @@ dependencies = [
 [[package]]
 name = "impl-serde"
 version = "0.3.2"
+source = "git+https://github.com/vmarkushin/parity-common.git?branch=no-std#76837f10b96f63b52b97394e88a25f6cdda28c91"
 dependencies = [
  "serde",
 ]
@@ -3169,7 +3176,7 @@ dependencies = [
 [[package]]
 name = "jsonrpc-core"
 version = "17.0.0"
-source = "git+https://github.com/KalitaAlexey/jsonrpc.git?branch=kalita/merge-and-fragments#e7e539cecc68057912d4419a957dab23f94de700"
+source = "git+https://github.com/vmarkushin/jsonrpc.git?branch=no-std#ef5d2846b52f7d7202b381be4936a75dd34fed49"
 dependencies = [
  "futures 0.3.12",
  "log",
@@ -5385,12 +5392,13 @@ dependencies = [
 [[package]]
 name = "primitive-types"
 version = "0.7.4"
+source = "git+https://github.com/vmarkushin/parity-common.git?branch=no-std#76837f10b96f63b52b97394e88a25f6cdda28c91"
 dependencies = [
- "fixed-hash 0.6.1",
- "impl-codec 0.4.2",
+ "fixed-hash 0.6.1 (git+https://github.com/vmarkushin/parity-common.git?branch=no-std)",
+ "impl-codec 0.4.2 (git+https://github.com/vmarkushin/parity-common.git?branch=no-std)",
  "impl-rlp",
  "impl-serde 0.3.2",
- "uint 0.8.5",
+ "uint 0.8.5 (git+https://github.com/vmarkushin/parity-common.git?branch=no-std)",
 ]
 
 [[package]]
@@ -6027,6 +6035,8 @@ dependencies = [
 [[package]]
 name = "rlp"
 version = "0.4.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1190dcc8c3a512f1eef5d09bb8c84c7f39e1054e174d1795482e18f5272f2e73"
 dependencies = [
  "rustc-hex",
 ]
@@ -6034,8 +6044,7 @@ dependencies = [
 [[package]]
 name = "rlp"
 version = "0.4.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1190dcc8c3a512f1eef5d09bb8c84c7f39e1054e174d1795482e18f5272f2e73"
+source = "git+https://github.com/vmarkushin/parity-common.git?branch=no-std#76837f10b96f63b52b97394e88a25f6cdda28c91"
 dependencies = [
  "rustc-hex",
 ]
@@ -9009,6 +9018,8 @@ checksum = "56dee185309b50d1f11bfedef0fe6d036842e3fb77413abef29f8f8d1c5d4c1c"
 [[package]]
 name = "uint"
 version = "0.8.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9db035e67dfaf7edd9aebfe8676afcd63eed53c8a4044fed514c8cccf1835177"
 dependencies = [
  "byteorder 1.4.2",
  "crunchy",
@@ -9019,8 +9030,7 @@ dependencies = [
 [[package]]
 name = "uint"
 version = "0.8.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9db035e67dfaf7edd9aebfe8676afcd63eed53c8a4044fed514c8cccf1835177"
+source = "git+https://github.com/vmarkushin/parity-common.git?branch=no-std#76837f10b96f63b52b97394e88a25f6cdda28c91"
 dependencies = [
  "byteorder 1.4.2",
  "crunchy",
