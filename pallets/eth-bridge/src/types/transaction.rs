@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use sp_std::prelude::*;
 
 /// Description of a Transaction, pending or in the chain.
-#[serde(crate = "serde", rename_all = "camelCase")]
+#[serde(rename_all = "camelCase")]
 #[derive(Debug, Default, Clone, PartialEq, Deserialize, Serialize)]
 pub struct Transaction {
     /// Hash
@@ -34,7 +34,7 @@ pub struct Transaction {
 }
 
 /// "Receipt" of an executed transaction: details of its execution.
-#[serde(crate = "serde", rename_all = "camelCase")]
+#[serde(rename_all = "camelCase")]
 #[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Receipt {
     /// Transaction hash.
@@ -76,7 +76,7 @@ pub struct RawTransaction {
 }
 
 /// Details of a signed transaction
-#[serde(crate = "serde", rename_all = "camelCase")]
+#[serde(rename_all = "camelCase")]
 #[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
 pub struct RawTransactionDetails {
     /// Hash

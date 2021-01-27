@@ -3,7 +3,7 @@ use alloc::vec::Vec;
 use serde::{ser::SerializeStruct, Deserialize, Serialize, Serializer};
 
 /// The block header type returned from RPC calls.
-#[serde(crate = "serde", rename_all = "camelCase")]
+#[serde(rename_all = "camelCase")]
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
 pub struct BlockHeader {
     /// Hash of the block
@@ -44,7 +44,7 @@ pub struct BlockHeader {
 
 /// The block type returned from RPC calls.
 /// This is generic over a `TX` type.
-#[serde(crate = "serde", rename_all = "camelCase")]
+#[serde(rename_all = "camelCase")]
 #[derive(Debug, Default, Clone, PartialEq, Deserialize, Serialize)]
 pub struct Block<TX> {
     /// Hash of the block
