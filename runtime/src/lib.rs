@@ -1024,8 +1024,8 @@ impl_runtime_apis! {
     }
 
     impl iroha_migration_runtime_api::IrohaMigrationAPI<Block> for Runtime {
-        fn is_migrated(iroha_address: String) -> bool {
-            IrohaMigration::is_migrated(&iroha_address)
+        fn needs_migration(iroha_address: String) -> bool {
+            IrohaMigration::needs_migration(&iroha_address)
         }
     }
 

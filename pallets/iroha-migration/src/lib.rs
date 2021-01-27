@@ -214,8 +214,8 @@ decl_module! {
 }
 
 impl<T: Trait> Module<T> {
-    pub fn is_migrated(iroha_address: &String) -> bool {
-        MigratedAccounts::<T>::contains_key(iroha_address)
+    pub fn needs_migration(iroha_address: &String) -> bool {
+        Balances::contains_key(iroha_address) && !MigratedAccounts::<T>::contains_key(iroha_address)
     }
 
     fn parse_public_key(iroha_public_key: &str) -> Result<PublicKey, DispatchError> {

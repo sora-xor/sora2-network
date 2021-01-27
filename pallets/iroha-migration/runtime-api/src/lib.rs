@@ -6,6 +6,6 @@ use alloc::string::String;
 
 sp_api::decl_runtime_apis! {
     pub trait IrohaMigrationAPI {
-        fn is_migrated(iroha_address: String) -> bool;
+        fn needs_migration(iroha_address: String) -> bool;
     }
 }

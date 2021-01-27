@@ -12,8 +12,8 @@ pub use iroha_migration_runtime_api::IrohaMigrationAPI as IrohaMigrationRuntimeA
 
 #[rpc]
 pub trait IrohaMigrationAPI<BlockHash> {
-    #[rpc(name = "irohaMigration_isMigrated")]
-    fn is_migrated(&self, iroha_address: String, at: Option<BlockHash>) -> Result<bool>;
+    #[rpc(name = "irohaMigration_needsMigration")]
+    fn needs_migration(&self, iroha_address: String, at: Option<BlockHash>) -> Result<bool>;
 }
 
 pub struct IrohaMigrationClient<C, B> {
@@ -38,15 +38,15 @@ where
     C: ProvideRuntimeApi<Block> + HeaderBackend<Block>,
     C::Api: IrohaMigrationRuntimeAPI<Block>,
 {
-    fn is_migrated(&self, iroha_address: String, at: Option<Block::Hash>) -> Result<bool> {
+    fn needs_migration(&self, iroha_address: String, at: Option<Block::Hash>) -> Result<bool> {
         let api = self.client.runtime_api();
         let at = BlockId::hash(at.unwrap_or(
             // If the block hash is not supplied assume the best block.
             self.client.info().best_hash,
         ));
-        api.is_migrated(&at, iroha_address).map_err(|e| RpcError {
+        api.needs_migration(&at, iroha_address).map_err(|e| RpcError {
             code: ErrorCode::ServerError(InvokeRPCError::RuntimeError.into()),
-            message: "Unable to check if already migrated.".into(),
+            message: "Unable to check if needs migration.".into(),
             data: Some(format!("{:?}", e).into()),
         })
     }
