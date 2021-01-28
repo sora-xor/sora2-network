@@ -6,7 +6,7 @@ extern crate jsonrpc_core as rpc;
 
 use crate::types::{Address, Log, TransactionReceipt, H160, U64};
 use alloc::string::String;
-use alt_serde::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
 use codec::{Decode, Encode};
 use common::{prelude::Balance, AssetSymbol, BalancePrecision};
 use core::{convert::TryFrom, fmt, line, stringify};
@@ -56,11 +56,11 @@ pub mod types;
 
 const URL: &str = "https://eth-ropsten.s0.dev.soranet.soramitsu.co.jp";
 
-pub fn serialize<T: alt_serde::Serialize>(t: &T) -> rpc::Value {
+pub fn serialize<T: serde::Serialize>(t: &T) -> rpc::Value {
     serde_json::to_value(t).expect("Types never fail to serialize.")
 }
 
-pub fn to_string<T: alt_serde::Serialize>(request: &T) -> String {
+pub fn to_string<T: serde::Serialize>(request: &T) -> String {
     serde_json::to_string(&request).expect("String serialization never fails.")
 }
 

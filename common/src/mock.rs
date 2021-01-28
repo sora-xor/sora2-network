@@ -58,7 +58,6 @@ impl Default for ComicAssetId {
 }
 
 // This is never used, and just makes some tests compatible.
-#[deprecated]
 impl From<AssetId32<AssetId>> for AssetId32<ComicAssetId> {
     fn from(_asset: AssetId32<AssetId>) -> Self {
         unreachable!()
@@ -66,7 +65,6 @@ impl From<AssetId32<AssetId>> for AssetId32<ComicAssetId> {
 }
 
 // This is never used, and just makes some tests compatible.
-#[deprecated]
 impl<DEXId, LstId> From<TechAssetId<AssetId, DEXId, LstId>> for AssetId {
     fn from(_tech: TechAssetId<AssetId, DEXId, LstId>) -> Self {
         unimplemented!()
@@ -74,7 +72,6 @@ impl<DEXId, LstId> From<TechAssetId<AssetId, DEXId, LstId>> for AssetId {
 }
 
 // This is never used, and just makes some tests compatible.
-#[deprecated]
 impl<DEXId, LstId> TryFrom<AssetId>
     for crate::primitives::TechAssetId<
         crate::primitives::TechAssetId<AssetId, DEXId, LstId>,

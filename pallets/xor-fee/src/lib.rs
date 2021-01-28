@@ -103,7 +103,8 @@ impl<T: Trait> OnTransactionPayment<T::AccountId, NegativeImbalanceOf<T>, Balanc
         // Burn XOR for now
         let (_xor_burned, xor_to_val) =
             amount.ration(T::XorBurnedWeight::get(), T::XorIntoValBurnedWeight::get());
-        let xor_to_val = Fixed::try_from(xor_to_val.peek().unique_saturated_into()).unwrap();
+        let xor_to_val: u128 = xor_to_val.peek().unique_saturated_into();
+        let xor_to_val = Fixed::try_from(xor_to_val).unwrap();
         let tech_account_id = T::TechAccountId::from_generic_pair(
             TECH_ACCOUNT_PREFIX.to_vec(),
             TECH_ACCOUNT_MAIN.to_vec(),

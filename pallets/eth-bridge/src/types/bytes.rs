@@ -1,6 +1,6 @@
 use alloc::string::String;
-use alt_serde::de::{Error, Unexpected, Visitor};
-use alt_serde::{Deserialize, Deserializer, Serialize, Serializer};
+use serde::de::{Error, Unexpected, Visitor};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use core::fmt;
 use rustc_hex::{FromHex, ToHex};
 use sp_std::borrow::ToOwned;

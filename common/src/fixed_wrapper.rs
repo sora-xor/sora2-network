@@ -56,7 +56,7 @@ impl FixedWrapper {
             } else {
                 delta < eps
             }
-        };
+        }
 
         fn half_sum(a: Fixed, b: Fixed) -> Fixed {
             a.cadd(b).unwrap().rdiv(2, Floor).unwrap()

@@ -31,7 +31,7 @@ pub fn balance_limit() -> Balance {
 }
 
 pub fn transfer_limit_block_count<T: frame_system::Trait>() -> BlockNumberOf<T> {
-    14400.into()
+    14400u32.into()
 }
 
 pub trait Trait: technical::Trait + assets::Trait + frame_system::Trait {
