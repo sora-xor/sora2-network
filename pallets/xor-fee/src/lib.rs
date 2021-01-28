@@ -96,8 +96,7 @@ impl<T: Trait> OnTransactionPayment<T::AccountId, NegativeImbalanceOf<T>, Balanc
             T::ReferrerWeight::get(),
             T::XorBurnedWeight::get() + T::XorIntoValBurnedWeight::get(),
         );
-        let referrer = referral_system::Module::<T>::referrer_account(from_account);
-        if referrer != T::AccountId::default() {
+        if let Some(referrer) = referral_system::Module::<T>::referrer_account(from_account) {
             let _result = T::XorCurrency::resolve_into_existing(&referrer, referrer_xor);
         }
         // TODO: decide what should be done with XOR if there is no referrer.

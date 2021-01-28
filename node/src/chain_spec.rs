@@ -1,10 +1,11 @@
 use framenode_runtime::{
     bonding_curve_pool, eth_bridge, opaque::SessionKeys, AccountId, AssetSymbol, AssetsConfig,
-    BabeConfig, BalancesConfig, BondingCurvePoolConfig, DEXAPIConfig, DEXManagerConfig,
-    EthBridgeConfig, FarmingConfig, FaucetConfig, GenesisConfig, GetBaseAssetId, GrandpaConfig,
-    LiquiditySourceType, MultisigConfig, PermissionsConfig, PswapDistributionConfig, PswapId,
-    Runtime, SessionConfig, Signature, StakerStatus, StakingConfig, SudoConfig, SystemConfig,
-    TechAccountId, TechnicalConfig, TokensConfig, ValId, XorId, WASM_BINARY,
+    BabeConfig, BalancesConfig, BondingCurvePoolConfig, BridgeMultisigConfig, DEXAPIConfig,
+    DEXManagerConfig, EthBridgeConfig, FarmingConfig, FaucetConfig, GenesisConfig, GetBaseAssetId,
+    GrandpaConfig, IrohaMigrationConfig, LiquiditySourceType, PermissionsConfig,
+    PswapDistributionConfig, PswapId, Runtime, SessionConfig, Signature, StakerStatus,
+    StakingConfig, SudoConfig, SystemConfig, TechAccountId, TechnicalConfig, TokensConfig, UsdId,
+    ValId, XorId, WASM_BINARY,
 };
 
 use common::prelude::{DEXInfo, FixedWrapper};
@@ -476,6 +477,15 @@ fn testnet_genesis(
         ));
     }
 
+    let iroha_migration_tech_account_id = TechAccountId::Generic(
+        iroha_migration::TECH_ACCOUNT_PREFIX.to_vec(),
+        iroha_migration::TECH_ACCOUNT_MAIN.to_vec(),
+    );
+    let iroha_migration_account_id = technical::Module::<Runtime>::tech_account_id_to_account_id(
+        &iroha_migration_tech_account_id,
+    )
+    .unwrap();
+
     GenesisConfig {
         frame_system: Some(SystemConfig {
             code: WASM_BINARY.unwrap().to_vec(),
@@ -599,6 +609,11 @@ fn testnet_genesis(
                     vec![permissions::MINT, permissions::BURN],
                 ),
                 (
+                    iroha_migration_account_id.clone(),
+                    Scope::Limited(hash(&VAL)),
+                    vec![permissions::MINT],
+                ),
+                (
                     initial_assets_owner,
                     Scope::Unlimited,
                     vec![
@@ -709,7 +724,7 @@ fn testnet_genesis(
             ],
             pswap_owners: vec![],
         }),
-        bridge_multisig: Some(MultisigConfig {
+        bridge_multisig: Some(BridgeMultisigConfig {
             accounts: once((
                 eth_bridge_account_id.clone(),
                 bridge_multisig::MultisigAccount::new(
@@ -729,6 +744,10 @@ fn testnet_genesis(
         pswap_distribution: Some(PswapDistributionConfig {
             subscribed_accounts: Vec::new(),
             burn_info: (fixed!(0), fixed!(0.000369738339021615), fixed!(0.65), 14400),
+        }),
+        iroha_migration: Some(IrohaMigrationConfig {
+            iroha_accounts: vec![],
+            account_id: iroha_migration_account_id,
         }),
     }
 }
