@@ -1,14 +1,14 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use common::balance::Balance;
 use common::{
+    balance::Balance,
     prelude::{SwapAmount, SwapOutcome, SwapVariant},
     Fixed, LiquidityRegistry, LiquiditySource, LiquiditySourceFilter, LiquiditySourceId,
     LiquiditySourceType,
 };
 use frame_support::{
-    decl_error, decl_event, decl_module, decl_storage, dispatch::DispatchResult, ensure,
-    sp_runtime::DispatchError, weights::Weight, StorageMap,
+    decl_event, decl_module, decl_storage, dispatch::DispatchResult, sp_runtime::DispatchError,
+    weights::Weight,
 };
 use frame_system::ensure_signed;
 use sp_std::vec::Vec;
@@ -24,6 +24,8 @@ mod tests;
 pub trait WeightInfo {
     fn swap() -> Weight;
 }
+
+type DEXManager<T> = dex_manager::Module<T>;
 
 pub trait Trait: common::Trait + dex_manager::Trait + trading_pair::Trait {
     type Event: From<Event<Self>> + Into<<Self as frame_system::Trait>::Event>;
@@ -103,15 +105,8 @@ decl_event!(
     }
 );
 
-decl_error! {
-    pub enum Error for Module<T: Trait> {
-        DEXIdDoesNotExist,
-    }
-}
-
 decl_module! {
     pub struct Module<T: Trait> for enum Call where origin: T::Origin {
-        type Error = Error<T>;
 
         fn deposit_event() = default;
 
@@ -283,11 +278,7 @@ impl<T: Trait>
         filter: LiquiditySourceFilter<T::DEXId, LiquiditySourceType>,
     ) -> Result<Vec<LiquiditySourceId<T::DEXId, LiquiditySourceType>>, DispatchError> {
         let supported_types = Self::get_supported_types();
-        ensure!(
-            dex_manager::DEXInfos::<T>::contains_key(filter.dex_id),
-            Error::<T>::DEXIdDoesNotExist
-        );
-
+        DEXManager::<T>::ensure_dex_exists(&filter.dex_id)?;
         Ok(supported_types
             .iter()
             .filter_map(|source_type| {

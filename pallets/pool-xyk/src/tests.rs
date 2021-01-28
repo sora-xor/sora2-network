@@ -1,8 +1,11 @@
-use crate::mock::*;
 use common::{
-    prelude::SwapAmount, prelude::SwapOutcome, AssetSymbol, LiquiditySource, ToFeeAccount,
+    fixed,
+    prelude::{SwapAmount, SwapOutcome},
+    AssetSymbol, LiquiditySource, LiquiditySourceType, ToFeeAccount,
 };
 use frame_support::{assert_noop, assert_ok};
+
+use crate::mock::*;
 
 impl crate::Module<Testtime> {
     fn preset01(
@@ -32,13 +35,19 @@ impl crate::Module<Testtime> {
                 18
             ));
 
+            assert_ok!(assets::Module::<Testtime>::register_asset_id(
+                ALICE(),
+                BlackPepper.into(),
+                AssetSymbol(b"BP".to_vec()),
+                18
+            ));
+
             assert_ok!(dex_manager::Module::<Testtime>::initialize_dex(
                 Origin::signed(BOB()),
                 dex_id.clone(),
                 GoldenTicket.into(),
                 BOB(),
-                None,
-                None
+                true,
             ));
 
             assert_ok!(trading_pair::Module::<Testtime>::register(
@@ -55,6 +64,16 @@ impl crate::Module<Testtime> {
                 BlackPepper.into(),
             ));
 
+            assert!(
+                trading_pair::Module::<Testtime>::is_source_enabled_for_trading_pair(
+                    &dex_id,
+                    &GoldenTicket.into(),
+                    &BlackPepper.into(),
+                    LiquiditySourceType::XYKPool,
+                )
+                .expect("Failed to query trading pair status.")
+            );
+
             let (tpair, tech_acc_id) =
                 crate::Module::<Testtime>::tech_account_from_dex_and_asset_pair(
                     dex_id.clone(),
@@ -69,18 +88,11 @@ impl crate::Module<Testtime> {
             let fee_repr: AccountId =
                 technical::Module::<Testtime>::tech_account_id_to_account_id(&fee_acc).unwrap();
 
-            assert_ok!(assets::Module::<Testtime>::register_asset_id(
-                ALICE(),
-                BlackPepper.into(),
-                AssetSymbol(b"BP".to_vec()),
-                18
-            ));
-
             assert_ok!(assets::Module::<Testtime>::mint_to(
                 &gt,
                 &ALICE(),
                 &ALICE(),
-                900_000u32.into()
+                fixed!(900000)
             ));
 
             assert_eq!(
@@ -119,6 +131,15 @@ impl crate::Module<Testtime> {
             assert_eq!(
                 crate::Module::<Testtime>::properties(base_asset, target_asset),
                 Some((repr.clone(), fee_repr.clone(), tech_asset))
+            );
+            assert_eq!(
+                pswap_distribution::Module::<Testtime>::subscribed_accounts(&fee_repr),
+                Some((
+                    dex_id.clone(),
+                    tech_asset,
+                    GetDefaultSubscriptionFrequency::get(),
+                    0
+                ))
             );
 
             for test in &tests {
@@ -167,10 +188,10 @@ impl crate::Module<Testtime> {
                 dex_id,
                 GoldenTicket.into(),
                 BlackPepper.into(),
-                360_000u32.into(),
-                144_000u32.into(),
-                360_000u32.into(),
-                144_000u32.into(),
+                fixed!(360000),
+                fixed!(144000),
+                fixed!(360000),
+                fixed!(144000),
             ));
         }];
         let mut tests_to_add = tests.clone();
@@ -188,6 +209,25 @@ macro_rules! simplify_swap_outcome(
 );
 
 #[test]
+fn can_exchange_all_directions() {
+    crate::Module::<Testtime>::preset01(vec![|dex_id, gt, bp, _, _, _, _, _| {
+        assert_ok!(crate::Module::<Testtime>::deposit_liquidity(
+            Origin::signed(ALICE()),
+            dex_id,
+            GoldenTicket.into(),
+            BlackPepper.into(),
+            fixed!(100000),
+            fixed!(200000),
+            fixed!(0),
+            fixed!(0),
+        ));
+        assert!(crate::Module::<Testtime>::can_exchange(&dex_id, &gt, &bp));
+        assert!(crate::Module::<Testtime>::can_exchange(&dex_id, &bp, &gt));
+        // TODO: add tests for indirect exchange, i.e. both input and output are not base asset
+    }]);
+}
+
+#[test]
 fn quote_case_exact_input_for_output_base_first() {
     crate::Module::<Testtime>::preset01(vec![|dex_id, gt, bp, _, _, _, _, _| {
         assert_ok!(crate::Module::<Testtime>::deposit_liquidity(
@@ -195,10 +235,10 @@ fn quote_case_exact_input_for_output_base_first() {
             dex_id,
             GoldenTicket.into(),
             BlackPepper.into(),
-            100_000_u32.into(),
-            200_000_u32.into(),
-            0_u32.into(),
-            0_u32.into(),
+            fixed!(100000),
+            fixed!(200000),
+            fixed!(0),
+            fixed!(0),
         ));
         assert_eq!(
             simplify_swap_outcome!(crate::Module::<Testtime>::quote(
@@ -206,12 +246,12 @@ fn quote_case_exact_input_for_output_base_first() {
                 &gt,
                 &bp,
                 SwapAmount::WithDesiredInput {
-                    desired_amount_in: 100_000_u32.into(),
-                    min_amount_out: 50_000_u32.into(),
+                    desired_amount_in: fixed!(100000),
+                    min_amount_out: fixed!(50000),
                 }
             )
             .unwrap()),
-            (99_849_u32, 300_u32)
+            (99_850_u32, 300_u32)
         );
     }]);
 }
@@ -224,10 +264,10 @@ fn quote_case_exact_input_for_output_base_second() {
             dex_id,
             GoldenTicket.into(),
             BlackPepper.into(),
-            100_000_u32.into(),
-            200_000_u32.into(),
-            0_u32.into(),
-            0_u32.into(),
+            fixed!(100000),
+            fixed!(200000),
+            fixed!(0),
+            fixed!(0),
         ));
         assert_eq!(
             simplify_swap_outcome!(crate::Module::<Testtime>::quote(
@@ -235,8 +275,8 @@ fn quote_case_exact_input_for_output_base_second() {
                 &bp,
                 &gt,
                 SwapAmount::WithDesiredInput {
-                    desired_amount_in: 100_000_u32.into(),
-                    min_amount_out: 0_u32.into(),
+                    desired_amount_in: fixed!(100000),
+                    min_amount_out: fixed!(0),
                 }
             )
             .unwrap()),
@@ -253,10 +293,10 @@ fn quote_case_exact_output_for_input_base_first() {
             dex_id,
             GoldenTicket.into(),
             BlackPepper.into(),
-            100_000_u32.into(),
-            200_000_u32.into(),
-            0_u32.into(),
-            0_u32.into(),
+            fixed!(100000),
+            fixed!(200000),
+            fixed!(0),
+            fixed!(0),
         ));
         assert_eq!(
             simplify_swap_outcome!(crate::Module::<Testtime>::quote(
@@ -264,12 +304,12 @@ fn quote_case_exact_output_for_input_base_first() {
                 &gt,
                 &bp,
                 SwapAmount::WithDesiredOutput {
-                    desired_amount_out: 100_000_u32.into(),
-                    max_amount_in: 150_000_u32.into(),
+                    desired_amount_out: fixed!(100000),
+                    max_amount_in: fixed!(150000),
                 }
             )
             .unwrap()),
-            (100_300_u32, 300_u32)
+            (100_301_u32, 301_u32)
         );
     }]);
 }
@@ -282,10 +322,10 @@ fn quote_case_exact_output_for_input_base_second() {
             dex_id,
             GoldenTicket.into(),
             BlackPepper.into(),
-            100_000_u32.into(),
-            200_000_u32.into(),
-            0_u32.into(),
-            0_u32.into(),
+            fixed!(100000),
+            fixed!(200000),
+            fixed!(0),
+            fixed!(0),
         ));
         assert_eq!(
             simplify_swap_outcome!(crate::Module::<Testtime>::quote(
@@ -293,12 +333,12 @@ fn quote_case_exact_output_for_input_base_second() {
                 &bp,
                 &gt,
                 SwapAmount::WithDesiredOutput {
-                    desired_amount_out: 50_000_u32.into(),
-                    max_amount_in: 999_000_u32.into(),
+                    desired_amount_out: fixed!(50000),
+                    max_amount_in: fixed!(999000),
                 }
             )
             .unwrap()),
-            (201_056_u32, 150_u32)
+            (201_057_u32, 150_u32)
         );
     }]);
 }
@@ -311,10 +351,10 @@ fn quote_case_exact_output_for_input_base_second_fail_with_out_of_bounds() {
             dex_id,
             GoldenTicket.into(),
             BlackPepper.into(),
-            100_000_u32.into(),
-            200_000_u32.into(),
-            0_u32.into(),
-            0_u32.into(),
+            fixed!(100000),
+            fixed!(200000),
+            fixed!(0),
+            fixed!(0),
         ));
         assert_noop!(
             crate::Module::<Testtime>::quote(
@@ -322,8 +362,8 @@ fn quote_case_exact_output_for_input_base_second_fail_with_out_of_bounds() {
                 &bp,
                 &gt,
                 SwapAmount::WithDesiredOutput {
-                    desired_amount_out: 50_000_u32.into(),
-                    max_amount_in: 90_000_u32.into(),
+                    desired_amount_out: fixed!(50000),
+                    max_amount_in: fixed!(90000),
                 }
             ),
             crate::Error::<Testtime>::CalculatedValueIsOutOfDesiredBounds
@@ -340,31 +380,12 @@ fn depositliq_large_values() {
                 dex_id,
                 GoldenTicket.into(),
                 BlackPepper.into(),
-                999360_000u32.into(),
-                999144_000u32.into(),
-                360_000u32.into(),
-                144_000u32.into(),
+                fixed!(999360000),
+                fixed!(999144000),
+                fixed!(360000),
+                fixed!(144000),
             ),
             crate::Error::<Testtime>::SourceBaseAmountIsNotLargeEnough
-        );
-    }]);
-}
-
-#[test]
-fn depositliq_invalid_range() {
-    crate::Module::<Testtime>::preset02(vec![|dex_id, _, _, _, _, _, _, _| {
-        assert_noop!(
-            crate::Module::<Testtime>::deposit_liquidity(
-                Origin::signed(ALICE()),
-                dex_id,
-                GoldenTicket.into(),
-                BlackPepper.into(),
-                360_000u32.into(),
-                999_000u32.into(),
-                350_000u32.into(),
-                145_000u32.into(),
-            ),
-            crate::Error::<Testtime>::ImposibleToDecideValidPairValuesFromRangeForThisPool
         );
     }]);
 }
@@ -377,10 +398,10 @@ fn depositliq_valid_range_but_desired_is_corrected() {
             dex_id,
             GoldenTicket.into(),
             BlackPepper.into(),
-            360_000u32.into(),
-            999_000u32.into(),
-            350_000u32.into(),
-            143_000u32.into(),
+            fixed!(360000),
+            fixed!(999000),
+            fixed!(350000),
+            fixed!(143000),
         ));
     }]);
 }
@@ -438,14 +459,14 @@ fn swap_pair_desired_output_and_withdraw_cascade() {
                 GoldenTicket.into(),
                 BlackPepper.into(),
                 SwapAmount::WithDesiredOutput {
-                    desired_amount_out: 33_000u32.into(),
-                    max_amount_in: 99999999_u32.into(),
+                    desired_amount_out: fixed!(33000),
+                    max_amount_in: fixed!(99999999),
                 }
             ));
 
             assert_eq!(
                 Into::<u32>::into(assets::Module::<Testtime>::free_balance(&gt, &ALICE()).unwrap()),
-                432650u32
+                432651u32
             );
             assert_eq!(
                 Into::<u32>::into(assets::Module::<Testtime>::free_balance(&bp, &ALICE()).unwrap()),
@@ -470,7 +491,7 @@ fn swap_pair_desired_output_and_withdraw_cascade() {
                 322_u32
             );
 
-            // a = ( 467027 * 111000 ) / 1999999000 = 25.92001146000573
+            // a = sqrt ( 467027 * 111000 ) / 8784 = 25.92001146000573
             // b = 467_027 / a = 18018.00900900901
             // c = 111_000 / a = 4282.405514028097
             // Testing this line with noop
@@ -483,9 +504,9 @@ fn swap_pair_desired_output_and_withdraw_cascade() {
                     dex_id,
                     GoldenTicket.into(),
                     BlackPepper.into(),
-                    1999_999_000_u32.into(),
-                    18_100_u32.into(),
-                    4_100_u32.into()
+                    fixed!(8784),
+                    fixed!(18100),
+                    fixed!(4100)
                 ),
                 crate::Error::<Testtime>::CalculatedValueIsNotMeetsRequiredBoundaries
             );
@@ -497,9 +518,9 @@ fn swap_pair_desired_output_and_withdraw_cascade() {
                     dex_id,
                     GoldenTicket.into(),
                     BlackPepper.into(),
-                    1999_999_000_u32.into(),
-                    18_000_u32.into(),
-                    4_300_u32.into()
+                    fixed!(8784),
+                    fixed!(18000),
+                    fixed!(4300)
                 ),
                 crate::Error::<Testtime>::CalculatedValueIsNotMeetsRequiredBoundaries
             );
@@ -510,14 +531,14 @@ fn swap_pair_desired_output_and_withdraw_cascade() {
                 dex_id,
                 GoldenTicket.into(),
                 BlackPepper.into(),
-                1999_999_000_u32.into(),
-                18_000_u32.into(),
-                4_200_u32.into(),
+                fixed!(8784),
+                fixed!(18000),
+                fixed!(4200),
             ));
 
             assert_eq!(
                 Into::<u32>::into(assets::Module::<Testtime>::free_balance(&gt, &ALICE()).unwrap()),
-                450668u32
+                450669u32
             );
             assert_eq!(
                 Into::<u32>::into(assets::Module::<Testtime>::free_balance(&bp, &ALICE()).unwrap()),
@@ -533,7 +554,7 @@ fn swap_pair_desired_output_and_withdraw_cascade() {
                 Into::<u32>::into(
                     assets::Module::<Testtime>::free_balance(&bp, &repr.clone()).unwrap()
                 ),
-                106_717u32
+                106_718u32
             );
             assert_eq!(
                 Into::<u32>::into(
@@ -549,8 +570,8 @@ fn swap_pair_desired_output_and_withdraw_cascade() {
                 GoldenTicket.into(),
                 BlackPepper.into(),
                 SwapAmount::WithDesiredOutput {
-                    desired_amount_out: 33_000u32.into(),
-                    max_amount_in: 99999999_u32.into(),
+                    desired_amount_out: fixed!(33000),
+                    max_amount_in: fixed!(99999999),
                 }
             ));
 
@@ -566,19 +587,19 @@ fn swap_pair_desired_output_and_withdraw_cascade() {
                 Into::<u32>::into(
                     assets::Module::<Testtime>::free_balance(&gt, &repr.clone()).unwrap()
                 ),
-                650_009u32
+                650_010u32
             );
             assert_eq!(
                 Into::<u32>::into(
                     assets::Module::<Testtime>::free_balance(&bp, &repr.clone()).unwrap()
                 ),
-                73_717u32
+                73_718u32
             );
             assert_eq!(
                 Into::<u32>::into(
                     assets::Module::<Testtime>::free_balance(&gt, &fee_repr.clone()).unwrap()
                 ),
-                926_u32
+                927_u32
             );
         },
     ]);
@@ -595,8 +616,8 @@ fn swap_pair_desired_input() {
                 GoldenTicket.into(),
                 BlackPepper.into(),
                 SwapAmount::WithDesiredInput {
-                    desired_amount_in: 33_000u32.into(),
-                    min_amount_out: 0_u32.into(),
+                    desired_amount_in: fixed!(33000),
+                    min_amount_out: fixed!(0),
                 }
             ));
             assert_eq!(
@@ -617,7 +638,7 @@ fn swap_pair_desired_input() {
                 Into::<u32>::into(
                     assets::Module::<Testtime>::free_balance(&bp, &repr.clone()).unwrap()
                 ),
-                131941u32
+                131942u32
             );
             assert_eq!(
                 Into::<u32>::into(
@@ -640,11 +661,11 @@ fn swap_pair_invalid_dex_id() {
                 GoldenTicket.into(),
                 BlackPepper.into(),
                 SwapAmount::WithDesiredOutput {
-                    desired_amount_out: 33_000u32.into(),
-                    max_amount_in: 99999999_u32.into(),
+                    desired_amount_out: fixed!(33000),
+                    max_amount_in: fixed!(99999999),
                 }
             ),
-            technical::Error::<Testtime>::TechAccountIdIsNotRegistered
+            dex_manager::Error::<Testtime>::DEXDoesNotExist
         );
     }]);
 }
@@ -660,8 +681,8 @@ fn swap_pair_different_asset_pair() {
                 GoldenTicket.into(),
                 RedPepper.into(),
                 SwapAmount::WithDesiredOutput {
-                    desired_amount_out: 33_000u32.into(),
-                    max_amount_in: 99999999_u32.into(),
+                    desired_amount_out: fixed!(33000),
+                    max_amount_in: fixed!(99999999),
                 }
             ),
             technical::Error::<Testtime>::TechAccountIdIsNotRegistered
@@ -680,8 +701,8 @@ fn swap_pair_swap_fail_with_invalid_balance() {
                 GoldenTicket.into(),
                 BlackPepper.into(),
                 SwapAmount::WithDesiredOutput {
-                    desired_amount_out: 33_000u32.into(),
-                    max_amount_in: 999999999u32.into(),
+                    desired_amount_out: fixed!(33000),
+                    max_amount_in: fixed!(999999999),
                 }
             ),
             crate::Error::<Testtime>::AccountBalanceIsInvalid

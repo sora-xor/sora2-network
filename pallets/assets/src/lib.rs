@@ -10,6 +10,8 @@
 //!
 //! - `register` - registers new asset by a given ID.
 
+// TODO: add info about weight
+
 #![cfg_attr(not(feature = "std"), no_std)]
 
 #[allow(unused_imports)]
@@ -17,6 +19,8 @@
 extern crate alloc;
 
 mod weights;
+
+mod benchmarking;
 
 #[cfg(test)]
 mod mock;
@@ -69,7 +73,8 @@ pub trait Trait: frame_system::Trait + permissions::Trait + tokens::Trait {
         + Into<CurrencyIdOf<Self>>
         + From<common::AssetId32<common::AssetId>>
         + From<H256>
-        + Into<H256>;
+        + Into<H256>
+        + Into<<Self as tokens::Trait>::CurrencyId>;
 
     /// The base asset as the core asset in all trading pairs
     type GetBaseAssetId: Get<Self::AssetId>;
@@ -127,11 +132,9 @@ decl_error! {
         AssetIdAlreadyExists,
         /// An asset with a given ID not exists.
         AssetIdNotExists,
-        /// Permissions error
-        Permissions,
         /// A number is out of range of the balance type.
         InsufficientBalance,
-        /// Symbol is not valid. It must contain only uppercase latin characters, length <= 5.
+        /// Symbol is not valid. It must contain only uppercase latin characters, length <= 7.
         InvalidAssetSymbol,
         /// Precision value is not valid, it should represent a number of decimal places for number, max is 30.
         InvalidPrecision,
@@ -161,7 +164,6 @@ decl_module! {
         /// - `asset_id`: Id of transferred Asset,
         /// - `to`: Id of Account, to which Asset amount is deposited,
         /// - `amount`: transferred Asset amount.
-        // TODO: add info about weight
         #[weight = <T as Trait>::WeightInfo::transfer()]
         pub fn transfer(
             origin,
@@ -182,7 +184,6 @@ decl_module! {
         /// - `asset_id`: Id of minted Asset,
         /// - `to`: Id of Account, to which Asset amount is minted,
         /// - `amount`: minted Asset amount.
-        // TODO: add info about weight
         #[weight = <T as Trait>::WeightInfo::mint()]
         pub fn mint(
             origin,
@@ -202,7 +203,6 @@ decl_module! {
         /// - `origin`: caller Account, from which Asset amount is burned,
         /// - `asset_id`: Id of burned Asset,
         /// - `amount`: burned Asset amount.
-        // TODO: add info about weight
         #[weight = <T as Trait>::WeightInfo::burn()]
         pub fn burn(
             origin,
@@ -242,7 +242,7 @@ impl<T: Trait> Module<T> {
         );
         AssetOwners::<T>::insert(asset_id, account_id.clone());
         ensure!(
-            Self::is_symbol_valid(&symbol),
+            crate::is_symbol_valid(&symbol),
             Error::<T>::InvalidAssetSymbol
         );
         AssetInfos::<T>::insert(asset_id, (symbol, precision));
@@ -250,16 +250,12 @@ impl<T: Trait> Module<T> {
         let scope = Scope::Limited(hash(&asset_id));
         let permission_ids = [TRANSFER, MINT, BURN, SLASH];
         for permission_id in &permission_ids {
-            if Permissions::<T>::assign_permission(
+            Permissions::<T>::assign_permission(
                 account_id.clone(),
                 &account_id,
                 *permission_id,
                 scope,
-            )
-            .is_err()
-            {
-                return Err(Error::<T>::Permissions.into());
-            }
+            )?;
         }
         frame_system::Module::<T>::inc_account_nonce(&account_id);
         Self::deposit_event(RawEvent::AssetRegistered(asset_id, account_id));
@@ -315,11 +311,13 @@ impl<T: Trait> Module<T> {
             permission_id,
             &Scope::Limited(hash(asset_id)),
         )
-        .or(Permissions::<T>::check_permission_with_scope(
-            issuer.clone(),
-            permission_id,
-            &Scope::Unlimited,
-        ))?;
+        .or_else(|_| {
+            Permissions::<T>::check_permission_with_scope(
+                issuer.clone(),
+                permission_id,
+                &Scope::Unlimited,
+            )
+        })?;
         Ok(())
     }
 
@@ -425,6 +423,29 @@ impl<T: Trait> Module<T> {
         T::Currency::update_balance(asset_id.clone(), who, by_amount)
     }
 
+    pub fn can_reserve(asset_id: T::AssetId, who: &T::AccountId, amount: Balance) -> bool {
+        T::Currency::can_reserve(asset_id, who, amount)
+    }
+
+    pub fn reserve(
+        asset_id: T::AssetId,
+        who: &T::AccountId,
+        amount: Balance,
+    ) -> Result<(), DispatchError> {
+        Self::ensure_asset_exists(&asset_id)?;
+        T::Currency::reserve(asset_id, who, amount)
+    }
+
+    pub fn unreserve(
+        asset_id: T::AssetId,
+        who: &T::AccountId,
+        amount: Balance,
+    ) -> Result<Balance, DispatchError> {
+        Self::ensure_asset_exists(&asset_id)?;
+        let amount = T::Currency::unreserve(asset_id, who, amount);
+        Ok(amount)
+    }
+
     pub fn list_registered_asset_ids() -> Vec<T::AssetId> {
         AssetInfos::<T>::iter().map(|(key, _)| key).collect()
     }
@@ -435,15 +456,15 @@ impl<T: Trait> Module<T> {
             .collect()
     }
 
-    pub fn get_asset_info(asset_id: T::AssetId) -> (AssetSymbol, BalancePrecision) {
+    pub fn get_asset_info(asset_id: &T::AssetId) -> (AssetSymbol, BalancePrecision) {
         AssetInfos::<T>::get(asset_id)
     }
+}
 
-    /// According to UTF-8 encoding, graphemes that start with byte 0b0XXXXXXX belong
-    /// to ASCII range and are of single byte, therefore passing check in range 'A' to 'Z'
-    /// guarantees that all graphemes are of length 1, therefore length check is valid.
-    fn is_symbol_valid(symbol: &AssetSymbol) -> bool {
-        symbol.0.len() <= ASSET_SYMBOL_MAX_LENGTH
-            && symbol.0.iter().all(|byte| (b'A'..=b'Z').contains(&byte))
-    }
+/// According to UTF-8 encoding, graphemes that start with byte 0b0XXXXXXX belong
+/// to ASCII range and are of single byte, therefore passing check in range 'A' to 'Z'
+/// guarantees that all graphemes are of length 1, therefore length check is valid.
+pub fn is_symbol_valid(symbol: &AssetSymbol) -> bool {
+    symbol.0.len() <= ASSET_SYMBOL_MAX_LENGTH
+        && symbol.0.iter().all(|byte| (b'A'..=b'Z').contains(&byte))
 }

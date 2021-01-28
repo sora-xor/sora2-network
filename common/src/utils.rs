@@ -1,8 +1,12 @@
-use crate::{FilterMode, Fixed, LiquiditySourceId};
+use core::convert::TryFrom;
+
 use codec::{Decode, Encode};
+use fixnum::ops::{RoundMode::*, RoundingDiv};
 use frame_support::RuntimeDebug;
-use sp_arithmetic::FixedPointNumber;
 use sp_std::{iter::once, vec::Vec};
+
+use crate::fixed_wrapper;
+use crate::prelude::{FilterMode, Fixed, FixedInner, FixedWrapper, LiquiditySourceId};
 
 /// Basis points range (0..10000) corresponds to 0.01%..100.00%.
 const BASIS_POINTS_RANGE: u16 = 10000;
@@ -18,10 +22,11 @@ pub fn in_basis_points_range<BP: Into<u16>>(value: BP) -> bool {
 
 /// Create fraction as Fixed from BasisPoints value.
 pub fn fixed_from_basis_points<BP: Into<u16>>(value: BP) -> Fixed {
-    let value_inner: u16 = value.into();
-    Fixed::from_inner(
-        value_inner as u128 * (<Fixed as FixedPointNumber>::DIV / BASIS_POINTS_RANGE as u128),
-    )
+    let value: u16 = value.into();
+    Fixed::try_from(i128::from(value))
+        .unwrap()
+        .rdiv(i128::from(BASIS_POINTS_RANGE), Floor)
+        .unwrap() // TODO(quasiyoke): should be checked
 }
 
 /// An auxiliary type to denote an interval variants: (a, b), [a, b), (a, b] and [a, b].
@@ -71,8 +76,15 @@ pub fn linspace(a: Fixed, b: Fixed, n: usize, endpoints: IntervalEndpoints) -> V
 /// Helper function that evenly spreads points inside an interval with endpoints excluded
 /// Can only be called from public function `linspace` hence no additional bound checks
 fn linspace_inner(a: Fixed, b: Fixed, n: usize) -> Vec<Fixed> {
+    let a: FixedWrapper = a.into();
+    let b: FixedWrapper = b.into();
+    let width: FixedWrapper = FixedWrapper::from(n) + fixed_wrapper!(1);
     (1..=n)
-        .map(|x| a + (b - a) / (Fixed::from(n as u128 + 1) / Fixed::from(x as u128)))
+        .map(|x| -> Fixed {
+            let x: FixedWrapper =
+                a.clone() + (b.clone() - a.clone()) / (width.clone() / FixedWrapper::from(x));
+            x.get().unwrap()
+        })
         .collect()
 }
 
@@ -192,8 +204,9 @@ impl<DEXId: PartialEq + Copy, LiquiditySourceIndex: PartialEq + Copy>
 }
 
 /// Rises `base` to the power of `exp`.
-pub const fn pow(base: u32, mut exp: u32) -> u128 {
-    let int = base as u128;
+/// Differs from std's `pow` with `const`
+pub const fn pow(base: u32, mut exp: u32) -> FixedInner {
+    let int = base as FixedInner;
     let mut n = 1;
     while exp > 0 {
         exp -= 1;
@@ -202,27 +215,15 @@ pub const fn pow(base: u32, mut exp: u32) -> u128 {
     n
 }
 
-/// Counts all non-underscore characters in the string (which is expected to be
-/// a string-formatted number).
-/// This function is used by `fixed!` macro to calculate order of the number.
-pub const fn number_str_order(num_s: &str) -> u32 {
-    let bytes = num_s.as_bytes();
-    let mut ord = 0;
-    let mut n = 0;
-    while n < bytes.len() {
-        let a = bytes[n];
-        if a != b'_' {
-            ord += 1;
-        }
-        n += 1;
-    }
-    ord
-}
-
 #[cfg(test)]
 mod tests {
+    use fixnum::ops::{CheckedMul, Numeric};
+
     use crate::*;
-    use sp_arithmetic::traits::Bounded;
+
+    fn fp(s: &str) -> Fixed {
+        s.parse().unwrap()
+    }
 
     #[test]
     fn test_in_basis_points_range_should_pass() {
@@ -233,17 +234,11 @@ mod tests {
 
     #[test]
     fn test_fixed_from_basis_points_should_pass() {
-        assert_eq!(
-            fixed_from_basis_points(1u16) * Fixed::from(10_000),
-            Fixed::from(1)
-        );
-        assert_eq!(Fixed::from_fraction(0.003), fixed_from_basis_points(30u16));
-        assert_eq!(Fixed::from_fraction(0.0001), fixed_from_basis_points(1u16));
-        assert_eq!(
-            Fixed::from_fraction(0.9999),
-            fixed_from_basis_points(9_999u16)
-        );
-        assert_eq!(Fixed::from(1), fixed_from_basis_points(10_000u16));
+        assert_eq!(fixed_from_basis_points(1u16).cmul(10_000).unwrap(), fp("1"));
+        assert_eq!(fixed_from_basis_points(30u16), fp("0.003"));
+        assert_eq!(fixed_from_basis_points(1u16), fp("0.0001"));
+        assert_eq!(fixed_from_basis_points(9_999u16), fp("0.9999"));
+        assert_eq!(fixed_from_basis_points(10_000u16), fp("1"));
     }
 
     #[test]
@@ -388,22 +383,16 @@ mod tests {
     }
 
     #[test]
-    fn test_number_str_len() {
-        assert_eq!(number_str_order("1234"), 4);
-        assert_eq!(number_str_order("12_34"), 4);
-    }
-
-    #[test]
     fn test_linspace_should_pass() {
         // (0, 2], 6 points
         assert_eq!(
             &linspace(fixed!(0), fixed!(2), 6, IntervalEndpoints::Right),
             &[
-                fixed!(0, 333333333333333333),
-                fixed!(0, 666666666666666666),
+                fixed!(0.333333333333333333),
+                fixed!(0.666666666666666666),
                 fixed!(1),
-                fixed!(1, 333333333333333333),
-                fixed!(1, 666666666666666666),
+                fixed!(1.333333333333333333),
+                fixed!(1.666666666666666666),
                 fixed!(2),
             ]
         );
@@ -413,11 +402,11 @@ mod tests {
             &linspace(fixed!(1), fixed!(11), 6, IntervalEndpoints::Left),
             &[
                 fixed!(1),
-                fixed!(2, 666666666666666666),
-                fixed!(4, 333333333333333333),
+                fixed!(2.666666666666666666),
+                fixed!(4.333333333333333333),
                 fixed!(6),
-                fixed!(7, 666666666666666666),
-                fixed!(9, 333333333333333333),
+                fixed!(7.666666666666666666),
+                fixed!(9.333333333333333333),
             ]
         );
 
@@ -425,12 +414,12 @@ mod tests {
         assert_eq!(
             &linspace(fixed!(0), fixed!(1), 6, IntervalEndpoints::None),
             &[
-                fixed!(0, 142857142857142857),
-                fixed!(0, 285714285714285714),
-                fixed!(0, 428571428571428571),
-                fixed!(0, 571428571428571428),
-                fixed!(0, 714285714285714285),
-                fixed!(0, 857142857142857143),
+                fixed!(0.142857142857142857),
+                fixed!(0.285714285714285714),
+                fixed!(0.428571428571428571),
+                fixed!(0.571428571428571428),
+                fixed!(0.714285714285714285),
+                fixed!(0.857142857142857143),
             ]
         );
 
@@ -439,12 +428,12 @@ mod tests {
             &linspace(fixed!(0), fixed!(1), 8, IntervalEndpoints::Both),
             &[
                 fixed!(0),
-                fixed!(0, 142857142857142857),
-                fixed!(0, 285714285714285714),
-                fixed!(0, 428571428571428571),
-                fixed!(0, 571428571428571428),
-                fixed!(0, 714285714285714285),
-                fixed!(0, 857142857142857143),
+                fixed!(0.142857142857142857),
+                fixed!(0.285714285714285714),
+                fixed!(0.428571428571428571),
+                fixed!(0.571428571428571428),
+                fixed!(0.714285714285714285),
+                fixed!(0.857142857142857143),
                 fixed!(1),
             ]
         );
@@ -472,11 +461,11 @@ mod tests {
 
         // [0, Fixed::max_value()], 3 points
         assert_eq!(
-            &linspace(fixed!(0), Fixed::max_value(), 3, IntervalEndpoints::Both),
+            &linspace(fixed!(0), Fixed::MAX, 3, IntervalEndpoints::Both),
             &[
                 fixed!(0),
-                fixed!(170141183460469231731, 687303715884105727),
-                fixed!(340282366920938463463, 374607431768211455),
+                fixed!(85070591730234615865.843651857942052863),
+                fixed!(170141183460469231731.687303715884105727),
             ]
         );
     }

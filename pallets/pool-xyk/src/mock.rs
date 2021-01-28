@@ -1,8 +1,9 @@
 use crate::Trait;
-use common::{prelude::Balance, BasisPoints};
+use common::prelude::Balance;
 use currencies::BasicCurrencyAdapter;
 use frame_support::{impl_outer_origin, parameter_types, weights::Weight};
 use frame_system as system;
+use hex_literal::hex;
 use permissions::{Scope, INIT_DEX, TRANSFER};
 use sp_core::crypto::AccountId32;
 use sp_core::H256;
@@ -11,7 +12,6 @@ use sp_runtime::{
     traits::{BlakeTwo256, IdentityLookup},
     Perbill,
 };
-use sp_std::marker::PhantomData;
 
 pub use common::{mock::ComicAssetId::*, mock::*, TechAssetId as Tas, TechPurpose::*, TradingPair};
 
@@ -91,25 +91,18 @@ impl system::Trait for Testtime {
     type PalletInfo = ();
 }
 
-parameter_types! {
-    pub const GetDefaultFee: BasisPoints = 30;
-    pub const GetDefaultProtocolFee: BasisPoints = 0;
-}
-
 impl permissions::Trait for Testtime {
     type Event = ();
 }
 
 impl dex_manager::Trait for Testtime {
     type Event = ();
-    type GetDefaultFee = GetDefaultFee;
-    type GetDefaultProtocolFee = GetDefaultProtocolFee;
     type WeightInfo = ();
 }
 
 impl trading_pair::Trait for Testtime {
     type Event = ();
-    type EnsureDEXOwner = dex_manager::Module<Testtime>;
+    type EnsureDEXManager = dex_manager::Module<Testtime>;
     type WeightInfo = ();
 }
 
@@ -124,7 +117,8 @@ impl common::Trait for Testtime {
 }
 
 parameter_types! {
-    pub const GetBaseAssetId: AssetId = common::AssetId32 { code: [2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], phantom: PhantomData };
+    pub GetBaseAssetId: AssetId = common::AssetId32::from_bytes(hex!("0200000000000000000000000000000000000000000000000000000000000000").into());
+    pub GetIncentiveAssetId: AssetId = common::AssetId32::from_bytes(hex!("0200050000000000000000000000000000000000000000000000000000000000").into());
 }
 
 parameter_types! {
@@ -169,7 +163,8 @@ impl assets::Trait for Testtime {
     type WeightInfo = ();
 }
 
-pub type TechAssetId = common::TechAssetId<common::mock::ComicAssetId, DEXId>;
+pub type TechAssetId =
+    common::TechAssetId<common::mock::ComicAssetId, DEXId, common::LiquiditySourceType>;
 pub type AssetId = common::AssetId32<common::mock::ComicAssetId>;
 pub type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
 
@@ -184,6 +179,21 @@ impl technical::Trait for Testtime {
     type WeightInfo = ();
 }
 
+parameter_types! {
+    pub GetPswapDistributionAccountId: AccountId = AccountId32::from([3; 32]);
+    pub const GetDefaultSubscriptionFrequency: BlockNumber = 10;
+}
+
+impl pswap_distribution::Trait for Testtime {
+    type Event = ();
+    type GetIncentiveAssetId = GetIncentiveAssetId;
+    type Exchange = crate::Module<Testtime>;
+    type CompatBalance = Balance;
+    type GetDefaultSubscriptionFrequency = GetDefaultSubscriptionFrequency;
+    type GetTechnicalAccountId = GetPswapDistributionAccountId;
+    type EnsureDEXManager = ();
+}
+
 impl Trait for Testtime {
     type Event = ();
     type PairSwapAction = crate::PairSwapAction<AssetId, Balance, AccountId, TechAccountId>;
@@ -193,7 +203,7 @@ impl Trait for Testtime {
         crate::WithdrawLiquidityAction<AssetId, TechAssetId, Balance, AccountId, TechAccountId>;
     type PolySwapAction =
         crate::PolySwapAction<AssetId, TechAssetId, Balance, AccountId, TechAccountId>;
-    type EnsureDEXOwner = dex_manager::Module<Testtime>;
+    type EnsureDEXManager = dex_manager::Module<Testtime>;
     type WeightInfo = ();
 }
 

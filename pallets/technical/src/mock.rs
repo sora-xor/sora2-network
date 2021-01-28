@@ -1,6 +1,6 @@
 use crate::{Module, Trait};
 use codec::{Decode, Encode};
-use common::{prelude::Balance, BasisPoints};
+use common::prelude::Balance;
 use currencies::BasicCurrencyAdapter;
 use dispatch::DispatchResult;
 use frame_support::dispatch;
@@ -96,19 +96,12 @@ impl system::Trait for Testtime {
     type PalletInfo = ();
 }
 
-parameter_types! {
-    pub const GetDefaultFee: BasisPoints = 30;
-    pub const GetDefaultProtocolFee: BasisPoints = 0;
-}
-
 impl permissions::Trait for Testtime {
     type Event = ();
 }
 
 impl dex_manager::Trait for Testtime {
     type Event = ();
-    type GetDefaultFee = GetDefaultFee;
-    type GetDefaultProtocolFee = GetDefaultProtocolFee;
     type WeightInfo = ();
 }
 
@@ -390,7 +383,8 @@ impl common::SwapRulesValidation<AccountId, TechAccountId, Testtime> for PolySwa
 }
 
 type AssetId = common::AssetId32<common::mock::ComicAssetId>;
-type TechAssetId = common::TechAssetId<common::mock::ComicAssetId, DEXId>;
+type TechAssetId =
+    common::TechAssetId<common::mock::ComicAssetId, DEXId, common::LiquiditySourceType>;
 pub type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
 type TechAmount = Amount;
 type TechBalance = Balance;

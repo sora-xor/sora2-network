@@ -2,8 +2,9 @@
 
 use common::TradingPair;
 use framenode_runtime::{
-    opaque::Block, AccountId, AssetId, AssetSymbol, Balance, BalancePrecision, DEXId, FilterMode,
-    Index, LiquiditySourceType, SwapVariant,
+    opaque::Block, AccountId, AssetId, AssetSymbol, Balance, BalancePrecision, BlockNumber, DEXId,
+    FarmId, FarmInfo, FarmerInfo, FilterMode, Index, LiquiditySourceType, SwapVariant,
+    TechAccountId,
 };
 pub use sc_rpc::DenyUnsafe;
 pub use sc_rpc::SubscriptionTaskExecutor;
@@ -43,7 +44,13 @@ where
         SwapVariant,
     >,
     C::Api: dex_manager_rpc::DEXManagerRuntimeAPI<Block, DEXId>,
-    C::Api: trading_pair_rpc::TradingPairRuntimeAPI<Block, DEXId, TradingPair<AssetId>, AssetId>,
+    C::Api: trading_pair_rpc::TradingPairRuntimeAPI<
+        Block,
+        DEXId,
+        TradingPair<AssetId>,
+        AssetId,
+        LiquiditySourceType,
+    >,
     C::Api: assets_rpc::AssetsRuntimeAPI<
         Block,
         AccountId,
@@ -61,27 +68,39 @@ where
         LiquiditySourceType,
         FilterMode,
     >,
+    C::Api: farming_rpc::FarmingRuntimeApi<
+        Block,
+        AccountId,
+        FarmId,
+        FarmInfo<AccountId, AssetId, BlockNumber>,
+        FarmerInfo<AccountId, TechAccountId, BlockNumber>,
+    >,
+    C::Api: iroha_migration_rpc::IrohaMigrationRuntimeAPI<Block>,
     C::Api: BlockBuilder<Block>,
     P: TransactionPool + Send + Sync + 'static,
 {
     use assets_rpc::{AssetsAPI, AssetsClient};
     use dex_api_rpc::{DEX, DEXAPI};
     use dex_manager_rpc::{DEXManager, DEXManagerAPI};
+    use farming_rpc::*;
+    use iroha_migration_rpc::{IrohaMigrationAPI, IrohaMigrationClient};
     use liquidity_proxy_rpc::{LiquidityProxyAPI, LiquidityProxyClient};
     use pallet_transaction_payment_rpc::{TransactionPayment, TransactionPaymentApi};
-    use substrate_frame_rpc_system::{FullSystem, SystemApi};
+    //use substrate_frame_rpc_system::{FullSystem, SystemApi};
     use trading_pair_rpc::{TradingPairAPI, TradingPairClient};
     let mut io = jsonrpc_core::IoHandler::default();
     let FullDeps {
         client,
-        pool,
-        deny_unsafe,
+        pool: _,
+        deny_unsafe: _,
     } = deps;
+    /*
     io.extend_with(SystemApi::to_delegate(FullSystem::new(
         client.clone(),
         pool,
         deny_unsafe,
     )));
+    */
     io.extend_with(TransactionPaymentApi::to_delegate(TransactionPayment::new(
         client.clone(),
     )));
@@ -92,6 +111,10 @@ where
     )));
     io.extend_with(AssetsAPI::to_delegate(AssetsClient::new(client.clone())));
     io.extend_with(LiquidityProxyAPI::to_delegate(LiquidityProxyClient::new(
+        client.clone(),
+    )));
+    io.extend_with(FarmingApi::to_delegate(FarmingRpc::new(client.clone())));
+    io.extend_with(IrohaMigrationAPI::to_delegate(IrohaMigrationClient::new(
         client.clone(),
     )));
     io

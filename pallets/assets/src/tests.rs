@@ -103,17 +103,17 @@ mod tests {
     fn should_check_symbols_correctly() {
         let mut ext = ExtBuilder::default().build();
         ext.execute_with(|| {
-            assert!(Assets::is_symbol_valid(&AssetSymbol(b"XOR".to_vec())));
-            assert!(Assets::is_symbol_valid(&AssetSymbol(b"DOT".to_vec())));
-            assert!(Assets::is_symbol_valid(&AssetSymbol(b"KSM".to_vec())));
-            assert!(Assets::is_symbol_valid(&AssetSymbol(b"USD".to_vec())));
-            assert!(Assets::is_symbol_valid(&AssetSymbol(b"VAL".to_vec())));
-            assert!(Assets::is_symbol_valid(&AssetSymbol(b"PSWAP".to_vec())));
-            assert!(Assets::is_symbol_valid(&AssetSymbol(b"GT".to_vec())));
-            assert!(Assets::is_symbol_valid(&AssetSymbol(b"BP".to_vec())));
-            assert!(!Assets::is_symbol_valid(&AssetSymbol(b"ABCDEFGH".to_vec())));
-            assert!(!Assets::is_symbol_valid(&AssetSymbol(b"AB1".to_vec())));
-            assert!(!Assets::is_symbol_valid(&AssetSymbol(
+            assert!(crate::is_symbol_valid(&AssetSymbol(b"XOR".to_vec())));
+            assert!(crate::is_symbol_valid(&AssetSymbol(b"DOT".to_vec())));
+            assert!(crate::is_symbol_valid(&AssetSymbol(b"KSM".to_vec())));
+            assert!(crate::is_symbol_valid(&AssetSymbol(b"USDT".to_vec())));
+            assert!(crate::is_symbol_valid(&AssetSymbol(b"VAL".to_vec())));
+            assert!(crate::is_symbol_valid(&AssetSymbol(b"PSWAP".to_vec())));
+            assert!(crate::is_symbol_valid(&AssetSymbol(b"GT".to_vec())));
+            assert!(crate::is_symbol_valid(&AssetSymbol(b"BP".to_vec())));
+            assert!(!crate::is_symbol_valid(&AssetSymbol(b"ABCDEFGH".to_vec())));
+            assert!(!crate::is_symbol_valid(&AssetSymbol(b"AB1".to_vec())));
+            assert!(!crate::is_symbol_valid(&AssetSymbol(
                 b"\xF0\x9F\x98\xBF".to_vec()
             )));
         })

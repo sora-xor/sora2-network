@@ -2,7 +2,7 @@ use crate::{Module, Trait};
 use common::{
     self, fixed,
     prelude::{Balance, SwapAmount, SwapOutcome},
-    Amount, AssetId32, AssetSymbol, LiquiditySource, TechPurpose, USD, VAL, XOR,
+    Amount, AssetId32, AssetSymbol, LiquiditySource, TechPurpose, USDT, VAL, XOR,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::{impl_outer_origin, parameter_types, weights::Weight, StorageValue};
@@ -19,7 +19,7 @@ use std::collections::HashMap;
 pub type AccountId = AccountId32;
 pub type BlockNumber = u64;
 pub type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
-type TechAssetId = common::TechAssetId<common::AssetId, DEXId>;
+type TechAssetId = common::TechAssetId<common::AssetId, DEXId, common::LiquiditySourceType>;
 pub type ReservesAccount =
     mock_liquidity_source::ReservesAcc<Runtime, mock_liquidity_source::Instance1>;
 pub type AssetId = AssetId32<common::AssetId>;
@@ -69,28 +69,21 @@ impl system::Trait for Runtime {
     type PalletInfo = ();
 }
 
-parameter_types! {
-    pub const GetDefaultFee: u16 = 30;
-    pub const GetDefaultProtocolFee: u16 = 0;
-}
-
 impl dex_manager::Trait for Runtime {
     type Event = ();
-    type GetDefaultFee = ();
-    type GetDefaultProtocolFee = ();
     type WeightInfo = ();
 }
 
 impl trading_pair::Trait for Runtime {
     type Event = ();
-    type EnsureDEXOwner = dex_manager::Module<Runtime>;
+    type EnsureDEXManager = dex_manager::Module<Runtime>;
     type WeightInfo = ();
 }
 
 impl mock_liquidity_source::Trait<mock_liquidity_source::Instance1> for Runtime {
     type Event = ();
     type GetFee = ();
-    type EnsureDEXOwner = ();
+    type EnsureDEXManager = ();
     type EnsureTradingPairExists = ();
 }
 
@@ -104,9 +97,9 @@ impl MockDEXApi {
             Technical::tech_account_id_to_account_id(&mock_liquidity_source_tech_account_id)?;
         Technical::register_tech_account_id(mock_liquidity_source_tech_account_id.clone())?;
         MockLiquiditySource::set_reserves_account_id(mock_liquidity_source_tech_account_id)?;
-        Currencies::deposit(XOR, &account_id, 1_000_u128.into())?;
-        Currencies::deposit(VAL, &account_id, 1_000_u128.into())?;
-        Currencies::deposit(USD, &account_id, 1_000_000_u128.into())?;
+        Currencies::deposit(XOR, &account_id, fixed!(1000))?;
+        Currencies::deposit(VAL, &account_id, fixed!(1000))?;
+        Currencies::deposit(USDT, &account_id, fixed!(1000000))?;
         Ok(())
     }
 }
@@ -138,8 +131,8 @@ impl<DEXId> LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> f
         swap_amount: SwapAmount<Balance>,
     ) -> Result<SwapOutcome<Balance>, DispatchError> {
         let prices: HashMap<_, _> = vec![
-            ((USD, XOR), Balance(fixed!(0, 01))),
-            ((XOR, VAL), Balance(fixed!(2, 0))),
+            ((USDT, XOR), Balance(fixed!(0.01))),
+            ((XOR, VAL), Balance(fixed!(2))),
         ]
         .into_iter()
         .collect();
@@ -149,11 +142,11 @@ impl<DEXId> LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> f
             } => {
                 let mut amount_out =
                     desired_amount_in * prices[&(*input_asset_id, *output_asset_id)];
-                let fee = amount_out * Balance(fixed!(0,3%));
+                let fee = amount_out * Balance(fixed!(0.003));
                 amount_out = amount_out - fee;
                 let reserves_account_id =
                     &Technical::tech_account_id_to_account_id(&ReservesAccount::get())?;
-                assert_ne!(desired_amount_in, 0u128.into());
+                assert_ne!(desired_amount_in, fixed!(0));
                 let old = Assets::total_balance(input_asset_id, sender)?;
                 Assets::transfer_from(
                     input_asset_id,
@@ -259,7 +252,13 @@ impl Default for ExtBuilder {
     fn default() -> Self {
         Self {
             endowed_accounts: vec![
-                (alice(), USD, 0u128.into(), AssetSymbol(b"USD".to_vec()), 18),
+                (
+                    alice(),
+                    USDT,
+                    0u128.into(),
+                    AssetSymbol(b"USDT".to_vec()),
+                    18,
+                ),
                 (
                     alice(),
                     XOR,

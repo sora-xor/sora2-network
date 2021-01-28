@@ -2,11 +2,16 @@
 
 use common::{fixed, prelude::*};
 use frame_support::{
-    decl_error, decl_event, decl_module, decl_storage, dispatch::DispatchResult, ensure,
+    decl_error, decl_event, decl_module, decl_storage,
+    dispatch::DispatchResult,
+    ensure,
+    unsigned::{TransactionSource, TransactionValidity, ValidateUnsigned},
     weights::Pays,
 };
-use frame_system::ensure_signed;
 use sp_arithmetic::traits::Saturating;
+use sp_runtime::transaction_validity::{InvalidTransaction, TransactionPriority, ValidTransaction};
+
+mod benchmarking;
 
 #[cfg(test)]
 mod mock;
@@ -26,7 +31,7 @@ pub fn balance_limit() -> Balance {
 }
 
 pub fn transfer_limit_block_count<T: frame_system::Trait>() -> BlockNumberOf<T> {
-    14400.into()
+    14400u32.into()
 }
 
 pub trait Trait: technical::Trait + assets::Trait + frame_system::Trait {
@@ -53,8 +58,11 @@ decl_event!(
 
 decl_error! {
     pub enum Error for Module<T: Trait> {
+        /// Asset is not supported.
         AssetNotSupported,
+        /// Amount is above limit.
         AmountAboveLimit,
+        /// Not enough reserves.
         NotEnoughReserves,
     }
 }
@@ -74,7 +82,6 @@ decl_module! {
         /// NotEnoughReserves is returned if `amount` is greater than the reserves
         #[weight = (0, Pays::No)]
         pub fn transfer(origin, asset_id: T::AssetId, target: T::AccountId, amount: Balance) -> DispatchResult {
-            let _ = ensure_signed(origin)?;
             Self::ensure_asset_supported(asset_id)?;
             let block_number = System::<T>::block_number();
             let (block_number, taken_amount) = Self::prepare_transfer(&target, asset_id, amount, block_number)?;
@@ -92,6 +99,23 @@ decl_module! {
             Transfers::<T>::insert(target.clone(), asset_id, (block_number, taken_amount));
             Self::deposit_event(RawEvent::Transferred(target, amount));
             Ok(())
+        }
+    }
+}
+
+impl<T: Trait> ValidateUnsigned for Module<T> {
+    type Call = Call<T>;
+
+    fn validate_unsigned(_source: TransactionSource, call: &Self::Call) -> TransactionValidity {
+        if let Call::transfer(asset_id, target, _) = call {
+            ValidTransaction::with_tag_prefix("Faucet")
+                .priority(TransactionPriority::max_value())
+                .and_provides(asset_id)
+                .and_provides(target)
+                .propagate(true)
+                .build()
+        } else {
+            InvalidTransaction::Call.into()
         }
     }
 }

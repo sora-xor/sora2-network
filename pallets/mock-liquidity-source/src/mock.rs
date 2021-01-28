@@ -17,7 +17,7 @@ pub type AccountId = AccountId32;
 pub type BlockNumber = u64;
 type AssetId = AssetId32<common::AssetId>;
 
-type TechAssetId = common::TechAssetId<common::AssetId, DEXId>;
+type TechAssetId = common::TechAssetId<common::AssetId, DEXId, common::LiquiditySourceType>;
 type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
 
 pub fn alice() -> AccountId {
@@ -38,8 +38,6 @@ parameter_types! {
     pub const MaximumBlockWeight: Weight = 1024;
     pub const MaximumBlockLength: u32 = 2 * 1024;
     pub const AvailableBlockRatio: Perbill = Perbill::from_percent(75);
-    pub const GetDefaultFee: u16 = 30;
-    pub const GetDefaultProtocolFee: u16 = 0;
 }
 
 impl system::Trait for Runtime {
@@ -77,14 +75,14 @@ parameter_types! {
 impl Trait<crate::Instance1> for Runtime {
     type Event = ();
     type GetFee = GetFee;
-    type EnsureDEXOwner = dex_manager::Module<Runtime>;
+    type EnsureDEXManager = dex_manager::Module<Runtime>;
     type EnsureTradingPairExists = trading_pair::Module<Runtime>;
 }
 
 impl Trait<crate::Instance2> for Runtime {
     type Event = ();
     type GetFee = GetFee;
-    type EnsureDEXOwner = dex_manager::Module<Runtime>;
+    type EnsureDEXManager = dex_manager::Module<Runtime>;
     type EnsureTradingPairExists = trading_pair::Module<Runtime>;
 }
 
@@ -156,14 +154,12 @@ impl permissions::Trait for Runtime {
 
 impl dex_manager::Trait for Runtime {
     type Event = ();
-    type GetDefaultFee = GetDefaultFee;
-    type GetDefaultProtocolFee = GetDefaultProtocolFee;
     type WeightInfo = ();
 }
 
 impl trading_pair::Trait for Runtime {
     type Event = ();
-    type EnsureDEXOwner = dex_manager::Module<Runtime>;
+    type EnsureDEXManager = dex_manager::Module<Runtime>;
     type WeightInfo = ();
 }
 
