@@ -66,7 +66,6 @@ pub struct Receipt {
 }
 
 /// Raw bytes of a signed, but not yet sent transaction
-#[serde(crate = "serde")]
 #[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
 pub struct RawTransaction {
     /// Signed transaction as raw bytes

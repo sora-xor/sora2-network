@@ -6,7 +6,6 @@ use serde::{Deserialize, Serialize};
 /// When using this for `eth_estimateGas`, all the fields
 /// are optional. However, for usage in `eth_call` the
 /// `to` field must be provided.
-#[serde(crate = "serde")]
 #[derive(Clone, Debug, PartialEq, Default, Serialize, Deserialize)]
 pub struct CallRequest {
     /// Sender address (None for arbitrary address)
@@ -31,7 +30,6 @@ pub struct CallRequest {
 }
 
 /// Send Transaction Parameters
-#[serde(crate = "serde")]
 #[derive(Clone, Debug, PartialEq, Default, Serialize, Deserialize)]
 pub struct TransactionRequest {
     /// Sender address
@@ -61,7 +59,6 @@ pub struct TransactionRequest {
 }
 
 /// Represents condition on minimum block number or block timestamp.
-#[serde(crate = "serde")]
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub enum TransactionCondition {
