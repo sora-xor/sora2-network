@@ -43,7 +43,7 @@ where
     T: frame_system::Trait,
 {
     // 1 month
-    446400.into()
+    446400u32.into()
 }
 
 #[derive(PartialEq, Eq, Clone, RuntimeDebug, Encode, Decode)]

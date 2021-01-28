@@ -3137,7 +3137,7 @@ dependencies = [
  "parity-util-mem",
  "permissions",
  "referral-system",
- "serde 1.0.118",
+ "serde",
  "sha3",
  "sp-core",
  "sp-io",
@@ -3425,9 +3425,9 @@ checksum = "3576a87f2ba00f6f106fdfcd16db1d698d648a26ad8e0573cad8537c3c362d2a"
 
 [[package]]
 name = "libc"
-version = "0.2.82"
+version = "0.2.83"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "89203f3fba0a3795506acaad8ebce3c80c0af93f994d5a1d7a0b1eeb23271929"
+checksum = "7eb0c4e9c72ee9d69b767adebc5f4788462a3b45624acd919475c92597bcaf4f"
 
 [[package]]
 name = "libloading"
@@ -4776,7 +4776,7 @@ dependencies = [
  "frame-support",
  "frame-system",
  "parity-scale-codec",
- "serde 1.0.118",
+ "serde",
  "sp-core",
  "sp-io",
  "sp-runtime",
