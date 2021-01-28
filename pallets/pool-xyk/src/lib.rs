@@ -440,6 +440,9 @@ impl<T: Trait> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, T
                     if balance_ss.unwrap() < source_amount {
                         Err(Error::<T>::SourceBalanceIsNotLargeEnough)?;
                     }
+
+                    /*
+                    TODO: find correct solution.
                     // For destination technical account balance must successful large for this swap.
                     if balance_tt - fee < destination_amount {
                         Err(Error::<T>::TargetBalanceIsNotLargeEnough)?;
@@ -447,11 +450,24 @@ impl<T: Trait> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, T
                     if (self.destination.amount.unwrap() - self.fee.unwrap()) <= 0u32.into() {
                         Err(Error::<T>::GettingFeeFromDestinationIsImposible)?;
                     }
+                    */
+
+                    if balance_tt < destination_amount {
+                        Err(Error::<T>::TargetBalanceIsNotLargeEnough)?;
+                    }
                 } else {
+                    /*
+                    TODO: find correct solution.
                     // For source account balance must be not smaller than required with fee.
                     if balance_ss.unwrap() - fee < source_amount {
                         Err(Error::<T>::SourceBalanceIsNotLargeEnough)?;
                     }
+                    */
+
+                    if balance_ss.unwrap() < source_amount {
+                        Err(Error::<T>::SourceBalanceIsNotLargeEnough)?;
+                    }
+
                     // For destination technical account balance must successful large for this swap.
                     if balance_tt < destination_amount {
                         Err(Error::<T>::TargetBalanceIsNotLargeEnough)?;

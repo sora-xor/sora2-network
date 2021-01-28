@@ -544,12 +544,12 @@ fn testnet_genesis(
                     AssetSymbol(b"XOR".to_vec()),
                     18,
                 ),
-                (
-                    UsdId::get(),
-                    initial_assets_owner.clone(),
-                    AssetSymbol(b"USDT".to_vec()),
-                    18,
-                ),
+                // (
+                //     UsdId::get(),
+                //     initial_assets_owner.clone(),
+                //     AssetSymbol(b"USDT".to_vec()),
+                //     18,
+                // ),
                 (
                     ValId::get(),
                     initial_assets_owner.clone(),
