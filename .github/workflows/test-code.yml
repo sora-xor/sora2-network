@@ -3,10 +3,10 @@ name: Test Code
 on:
   pull_request:
     branches:
-    - master
+    - none
   push:
     branches:
-    - master
+    - none
 
 jobs:
   test-code:
