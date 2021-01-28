@@ -2,6 +2,10 @@
 // `construct_runtime!` does a lot of recursion and requires us to increase the limit to 256.
 #![recursion_limit = "256"]
 
+#[macro_use]
+extern crate alloc;
+use alloc::string::String;
+
 /// Constant values used within the runtime.
 pub mod constants;
 use constants::time::*;
@@ -510,6 +514,20 @@ impl farming::Trait for Runtime {
     type WeightInfo = ();
 }
 
+impl pallet_multisig::Trait for Runtime {
+    type Call = Call;
+    type Event = Event;
+    type Currency = Balances;
+    type DepositBase = DepositBase;
+    type DepositFactor = DepositFactor;
+    type MaxSignatories = MaxSignatories;
+    type WeightInfo = ();
+}
+
+impl iroha_migration::Trait for Runtime {
+    type Event = Event;
+}
+
 impl<T: SigningTypes> frame_system::offchain::SignMessage<T> for Runtime {
     type SignatureData = ();
 
@@ -715,7 +733,7 @@ construct_runtime! {
         Permissions: permissions::{Module, Call, Storage, Config<T>, Event<T>},
         ReferralSystem: referral_system::{Module, Call, Storage, Event},
         XorFee: xor_fee::{Module, Call, Storage, Event},
-        Multisig: bridge_multisig::{Module, Call, Storage, Config<T>, Event<T>},
+        BridgeMultisig: bridge_multisig::{Module, Call, Storage, Config<T>, Event<T>},
         Utility: pallet_utility::{Module, Call, Event},
 
         // Consensus and staking.
@@ -746,6 +764,8 @@ construct_runtime! {
         EthBridge: eth_bridge::{Module, Call, Config<T>, Event<T>},
         Farming: farming::{Module, Call, Storage, Config<T>, Event<T>},
         PswapDistribution: pswap_distribution::{Module, Call, Storage, Config<T>, Event<T>},
+        Multisig: pallet_multisig::{Module, Call, Storage, Event<T>},
+        IrohaMigration: iroha_migration::{Module, Call, Storage, Config<T>, Event<T>},
     }
 }
 
@@ -1000,6 +1020,12 @@ impl_runtime_apis! {
 
         fn get_farmer_info(who: AccountId, name: FarmId) -> Option<FarmerInfo<AccountId, TechAccountId, BlockNumber>> {
             Farming::get_farmer_info(who, name).ok()?
+        }
+    }
+
+    impl iroha_migration_runtime_api::IrohaMigrationAPI<Block> for Runtime {
+        fn needs_migration(iroha_address: String) -> bool {
+            IrohaMigration::needs_migration(&iroha_address)
         }
     }
 

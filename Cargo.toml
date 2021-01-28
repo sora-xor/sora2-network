@@ -14,6 +14,7 @@ members = [
     "pallets/dex-api",
     "pallets/farming",
     "pallets/faucet",
+    "pallets/iroha-migration",
     "pallets/liquidity-proxy",
     "pallets/mock-liquidity-source",
     "pallets/technical",
