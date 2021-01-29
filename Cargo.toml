@@ -1,3 +1,8 @@
+[patch.crates-io]
+jsonrpc-core = { git = "https://github.com/soramitsu/jsonrpc.git", branch = "new_fragment_capacity" }
+jsonrpc-ws-server = { git = "https://github.com/soramitsu/jsonrpc.git", branch = "new_fragment_capacity" }
+jsonrpc-server-utils = { git = "https://github.com/soramitsu/jsonrpc.git", branch = "new_fragment_capacity" }
+
 [workspace]
 members = [
     "runtime/",
@@ -9,6 +14,7 @@ members = [
     "pallets/dex-api",
     "pallets/farming",
     "pallets/faucet",
+    "pallets/iroha-migration",
     "pallets/liquidity-proxy",
     "pallets/mock-liquidity-source",
     "pallets/technical",
@@ -16,9 +22,10 @@ members = [
     "pallets/xor-fee",
     "pallets/referral-system",
     "pallets/bonding-curve-pool",
+    "pallets/eth-bridge",
+    "pallets/pswap-distribution",
     "node/",
 ]
 
 [profile.release]
 panic = 'unwind'
-

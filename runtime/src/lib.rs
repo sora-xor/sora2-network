@@ -2,6 +2,9 @@
 // `construct_runtime!` does a lot of recursion and requires us to increase the limit to 256.
 #![recursion_limit = "256"]
 
+extern crate alloc;
+use alloc::string::String;
+
 /// Constant values used within the runtime.
 pub mod constants;
 use constants::time::*;
@@ -12,6 +15,10 @@ include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
 
 use core::time::Duration;
 use currencies::BasicCurrencyAdapter;
+pub use farming::{
+    domain::{FarmInfo, FarmerInfo},
+    FarmId,
+};
 use frame_system::offchain::{Account, SigningTypes};
 use hex_literal::hex;
 use pallet_grandpa::fg_primitives;
@@ -23,11 +30,12 @@ use sp_core::{crypto::KeyTypeId, OpaqueMetadata};
 use sp_runtime::{
     create_runtime_str, generic, impl_opaque_keys,
     traits::{
-        BlakeTwo256, Block as BlockT, Convert, IdentifyAccount, IdentityLookup, NumberFor,
-        OpaqueKeys, SaturatedConversion, Saturating, Verify,
+        BlakeTwo256, Block as BlockT, Bounded, Convert, IdentifyAccount, IdentityLookup, NumberFor,
+        OpaqueKeys, SaturatedConversion, Saturating, Verify, Zero,
     },
     transaction_validity::{TransactionSource, TransactionValidity},
-    ApplyExtrinsicResult, MultiSignature, Percent,
+    ApplyExtrinsicResult, DispatchError, FixedPointNumber, MultiSignature, Perbill, Percent,
+    Perquintill,
 };
 use sp_std::marker::PhantomData;
 use sp_std::prelude::*;
@@ -41,8 +49,8 @@ use static_assertions::assert_eq_size;
 pub use common::{
     fixed, fixed_from_basis_points,
     prelude::{Balance, SwapAmount, SwapOutcome, SwapVariant, WeightToFixedFee},
-    AssetSymbol, BalancePrecision, BasisPoints, FilterMode, Fixed, LiquiditySource,
-    LiquiditySourceFilter, LiquiditySourceId, LiquiditySourceType,
+    AssetSymbol, BalancePrecision, BasisPoints, FilterMode, Fixed, FromGenericPair,
+    LiquiditySource, LiquiditySourceFilter, LiquiditySourceId, LiquiditySourceType,
 };
 pub use frame_support::{
     construct_runtime, debug, parameter_types,
@@ -55,9 +63,14 @@ pub use frame_support::{
 pub use pallet_balances::Call as BalancesCall;
 pub use pallet_staking::StakerStatus;
 pub use pallet_timestamp::Call as TimestampCall;
+pub use pallet_transaction_payment::{Multiplier, TargetedFeeAdjustment};
 #[cfg(any(feature = "std", test))]
 pub use sp_runtime::BuildStorage;
-pub use sp_runtime::{Perbill, Permill};
+
+pub use bonding_curve_pool;
+pub use eth_bridge;
+#[cfg(feature = "std")]
+use serde::{Serialize, Serializer};
 
 /// An index to a block.
 pub type BlockNumber = u32;
@@ -325,7 +338,6 @@ parameter_types! {
     pub const ExistentialDeposit: u128 = 0;
     pub const TransferFee: u128 = 0;
     pub const CreationFee: u128 = 0;
-    pub const TransactionByteFee: u128 = 1;
 }
 
 impl pallet_balances::Trait for Runtime {
@@ -385,19 +397,12 @@ impl assets::Trait for Runtime {
 
 impl trading_pair::Trait for Runtime {
     type Event = Event;
-    type EnsureDEXOwner = dex_manager::Module<Runtime>;
+    type EnsureDEXManager = dex_manager::Module<Runtime>;
     type WeightInfo = ();
-}
-
-parameter_types! {
-    pub const GetDefaultFee: BasisPoints = 30;
-    pub const GetDefaultProtocolFee: BasisPoints = 0;
 }
 
 impl dex_manager::Trait for Runtime {
     type Event = Event;
-    type GetDefaultFee = GetDefaultFee;
-    type GetDefaultProtocolFee = GetDefaultProtocolFee;
     type WeightInfo = ();
 }
 
@@ -406,7 +411,7 @@ impl bonding_curve_pool::Trait for Runtime {
 }
 
 pub type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
-pub type TechAssetId = common::TechAssetId<common::AssetId, DEXId>;
+pub type TechAssetId = common::TechAssetId<common::AssetId, DEXId, common::LiquiditySourceType>;
 pub type AssetId = common::AssetId32<common::AssetId>;
 
 impl technical::Trait for Runtime {
@@ -429,11 +434,25 @@ impl pool_xyk::Trait for Runtime {
         pool_xyk::WithdrawLiquidityAction<AssetId, TechAssetId, Balance, AccountId, TechAccountId>;
     type PolySwapAction =
         pool_xyk::PolySwapAction<AssetId, TechAssetId, Balance, AccountId, TechAccountId>;
-    type EnsureDEXOwner = dex_manager::Module<Runtime>;
+    type EnsureDEXManager = dex_manager::Module<Runtime>;
     type WeightInfo = ();
 }
 
 parameter_types! {
+    pub GetLiquidityProxyTechAccountId: TechAccountId = {
+        let tech_account_id = TechAccountId::from_generic_pair(
+            pswap_distribution::TECH_ACCOUNT_PREFIX.to_vec(),
+            pswap_distribution::TECH_ACCOUNT_MAIN.to_vec(),
+        );
+        tech_account_id
+    };
+    pub GetLiquidityProxyAccountId: AccountId = {
+        let tech_account_id = GetLiquidityProxyTechAccountId::get();
+        let account_id =
+            technical::Module::<Runtime>::tech_account_id_to_account_id(&tech_account_id)
+                .expect("Failed to get ordinary account id for technical account id.");
+        account_id
+    };
     pub const GetNumSamples: usize = 40;
 }
 
@@ -441,6 +460,7 @@ impl liquidity_proxy::Trait for Runtime {
     type Event = Event;
     type LiquidityRegistry = dex_api::Module<Runtime>;
     type GetNumSamples = GetNumSamples;
+    type GetTechnicalAccountId = GetLiquidityProxyAccountId;
     type WeightInfo = ();
 }
 
@@ -451,28 +471,28 @@ parameter_types! {
 impl mock_liquidity_source::Trait<mock_liquidity_source::Instance1> for Runtime {
     type Event = Event;
     type GetFee = GetFee;
-    type EnsureDEXOwner = dex_manager::Module<Runtime>;
+    type EnsureDEXManager = dex_manager::Module<Runtime>;
     type EnsureTradingPairExists = trading_pair::Module<Runtime>;
 }
 
 impl mock_liquidity_source::Trait<mock_liquidity_source::Instance2> for Runtime {
     type Event = Event;
     type GetFee = GetFee;
-    type EnsureDEXOwner = dex_manager::Module<Runtime>;
+    type EnsureDEXManager = dex_manager::Module<Runtime>;
     type EnsureTradingPairExists = trading_pair::Module<Runtime>;
 }
 
 impl mock_liquidity_source::Trait<mock_liquidity_source::Instance3> for Runtime {
     type Event = Event;
     type GetFee = GetFee;
-    type EnsureDEXOwner = dex_manager::Module<Runtime>;
+    type EnsureDEXManager = dex_manager::Module<Runtime>;
     type EnsureTradingPairExists = trading_pair::Module<Runtime>;
 }
 
 impl mock_liquidity_source::Trait<mock_liquidity_source::Instance4> for Runtime {
     type Event = Event;
     type GetFee = GetFee;
-    type EnsureDEXOwner = dex_manager::Module<Runtime>;
+    type EnsureDEXManager = dex_manager::Module<Runtime>;
     type EnsureTradingPairExists = trading_pair::Module<Runtime>;
 }
 
@@ -489,6 +509,25 @@ impl dex_api::Trait for Runtime {
     type BondingCurvePool = bonding_curve_pool::Module<Runtime>;
     type XYKPool = pool_xyk::Module<Runtime>;
     type WeightInfo = ();
+}
+
+impl farming::Trait for Runtime {
+    type Event = Event;
+    type WeightInfo = ();
+}
+
+impl pallet_multisig::Trait for Runtime {
+    type Call = Call;
+    type Event = Event;
+    type Currency = Balances;
+    type DepositBase = DepositBase;
+    type DepositFactor = DepositFactor;
+    type MaxSignatories = MaxSignatories;
+    type WeightInfo = ();
+}
+
+impl iroha_migration::Trait for Runtime {
+    type Event = Event;
 }
 
 impl<T: SigningTypes> frame_system::offchain::SignMessage<T> for Runtime {
@@ -533,7 +572,6 @@ where
             frame_system::CheckWeight::<Runtime>::new(),
             pallet_transaction_payment::ChargeTransactionPayment::<Runtime>::from(tip.into()),
         );
-
         #[cfg_attr(not(feature = "std"), allow(unused_variables))]
         let raw_payload = SignedPayload::new(call, extra)
             .map_err(|e| {
@@ -581,6 +619,14 @@ impl xor_fee::Trait for Runtime {
     type ValId = ValId;
     type DEXIdValue = DEXIdValue;
     type LiquiditySource = mock_liquidity_source::Module<Runtime, mock_liquidity_source::Instance1>;
+    type ValBurnedNotifier = Staking;
+}
+
+parameter_types! {
+    pub const TransactionByteFee: Balance = Balance(Fixed::from_bits(1_000_000_000_000_i128)); // 10^-6 XOR ~ 10 * MILLICENTS
+    pub const TargetBlockFullness: Perquintill = Perquintill::from_percent(25);
+    pub AdjustmentVariable: Multiplier = Multiplier::saturating_from_rational(1, 100_000);
+    pub MinimumMultiplier: Multiplier = Multiplier::saturating_from_rational(1, 1_000_000_000_u128);
 }
 
 impl pallet_transaction_payment::Trait for Runtime {
@@ -589,7 +635,8 @@ impl pallet_transaction_payment::Trait for Runtime {
     type OnTransactionPayment = XorFee;
     type TransactionByteFee = TransactionByteFee;
     type WeightToFee = WeightToFixedFee;
-    type FeeMultiplierUpdate = ();
+    type FeeMultiplierUpdate =
+        TargetedFeeAdjustment<Self, TargetBlockFullness, AdjustmentVariable, MinimumMultiplier>;
 }
 
 impl pallet_sudo::Trait for Runtime {
@@ -601,8 +648,64 @@ impl permissions::Trait for Runtime {
     type Event = Event;
 }
 
+impl pallet_utility::Trait for Runtime {
+    type Event = Event;
+    type Call = Call;
+    type WeightInfo = ();
+}
+
+parameter_types! {
+    pub const DepositBase: u64 = 1;
+    pub const DepositFactor: u64 = 1;
+    pub const MaxSignatories: u16 = 4;
+}
+
+impl bridge_multisig::Trait for Runtime {
+    type Call = Call;
+    type Event = Event;
+    type Currency = Balances;
+    type DepositBase = DepositBase;
+    type DepositFactor = DepositFactor;
+    type MaxSignatories = MaxSignatories;
+    type WeightInfo = ();
+}
+
+impl eth_bridge::Trait for Runtime {
+    type Event = Event;
+    type Call = Call;
+    type PeerId = eth_bridge::crypto::TestAuthId;
+}
+
 impl faucet::Trait for Runtime {
     type Event = Event;
+}
+
+parameter_types! {
+    pub GetPswapDistributionTechAccountId: TechAccountId = {
+        let tech_account_id = TechAccountId::from_generic_pair(
+            pswap_distribution::TECH_ACCOUNT_PREFIX.to_vec(),
+            pswap_distribution::TECH_ACCOUNT_MAIN.to_vec(),
+        );
+        tech_account_id
+    };
+    pub GetPswapDistributionAccountId: AccountId = {
+        let tech_account_id = GetPswapDistributionTechAccountId::get();
+        let account_id =
+            technical::Module::<Runtime>::tech_account_id_to_account_id(&tech_account_id)
+                .expect("Failed to get ordinary account id for technical account id.");
+        account_id
+    };
+    pub const GetDefaultSubscriptionFrequency: BlockNumber = 14400;
+}
+
+impl pswap_distribution::Trait for Runtime {
+    type Event = Event;
+    type GetIncentiveAssetId = PswapId;
+    type Exchange = LiquidityProxy;
+    type CompatBalance = Balance;
+    type GetDefaultSubscriptionFrequency = GetDefaultSubscriptionFrequency;
+    type GetTechnicalAccountId = GetPswapDistributionAccountId;
+    type EnsureDEXManager = DEXManager;
 }
 
 /// Payload data to be signed when making signed transaction from off-chain workers,
@@ -632,6 +735,8 @@ construct_runtime! {
         Permissions: permissions::{Module, Call, Storage, Config<T>, Event<T>},
         ReferralSystem: referral_system::{Module, Call, Storage, Event},
         XorFee: xor_fee::{Module, Call, Storage, Event},
+        BridgeMultisig: bridge_multisig::{Module, Call, Storage, Config<T>, Event<T>},
+        Utility: pallet_utility::{Module, Call, Event},
 
         // Consensus and staking.
         Session: pallet_session::{Module, Call, Storage, Event, Config<T>},
@@ -648,7 +753,7 @@ construct_runtime! {
         TradingPair: trading_pair::{Module, Call, Event<T>},
         Assets: assets::{Module, Call, Storage, Config<T>, Event<T>},
         DEXManager: dex_manager::{Module, Call, Storage, Config<T>, Event<T>},
-        BondingCurvePool: bonding_curve_pool::{Module},
+        BondingCurvePool: bonding_curve_pool::{Module, Call, Storage, Config<T>},
         Technical: technical::{Module, Call, Config<T>, Event<T>},
         PoolXYK: pool_xyk::{Module, Call, Storage, Event<T>},
         LiquidityProxy: liquidity_proxy::{Module, Call, Event<T>},
@@ -657,7 +762,27 @@ construct_runtime! {
         MockLiquiditySource3: mock_liquidity_source::<Instance3>::{Module, Call, Storage, Config<T>, Event<T>},
         MockLiquiditySource4: mock_liquidity_source::<Instance4>::{Module, Call, Storage, Config<T>, Event<T>},
         DEXAPI: dex_api::{Module, Call, Storage, Config, Event<T>},
-        Faucet: faucet::{Module, Call, Config<T>, Event<T>},
+        Faucet: faucet::{Module, Call, Config<T>, Event<T>, ValidateUnsigned},
+        EthBridge: eth_bridge::{Module, Call, Storage, Config<T>, Event<T>},
+        Farming: farming::{Module, Call, Storage, Config<T>, Event<T>},
+        PswapDistribution: pswap_distribution::{Module, Call, Storage, Config<T>, Event<T>},
+        Multisig: pallet_multisig::{Module, Call, Storage, Event<T>},
+        IrohaMigration: iroha_migration::{Module, Call, Storage, Config<T>, Event<T>},
+    }
+}
+
+// This is needed, because the compiler automatically places `Serialize` bound
+// when `derive` is used, but the method is never actually used
+#[cfg(feature = "std")]
+impl Serialize for Runtime {
+    fn serialize<S>(
+        &self,
+        _serializer: S,
+    ) -> Result<<S as Serializer>::Ok, <S as Serializer>::Error>
+    where
+        S: Serializer,
+    {
+        unreachable!("we never serialize runtime; qed")
     }
 }
 
@@ -796,11 +921,17 @@ impl_runtime_apis! {
             desired_input_amount: Balance,
             swap_variant: SwapVariant,
         ) -> Option<dex_runtime_api::SwapOutcomeInfo<Balance>> {
+            // TODO: remove with proper QuoteAmount refactor
+            let limit = if swap_variant == SwapVariant::WithDesiredInput {
+                Balance::zero()
+            } else {
+                Balance::max_value()
+            };
             DEXAPI::quote(
                 &LiquiditySourceId::new(dex_id, liquidity_source_type),
                 &input_asset_id,
                 &output_asset_id,
-                SwapAmount::with_variant(swap_variant, desired_input_amount.0, Default::default()),
+                SwapAmount::with_variant(swap_variant, desired_input_amount.0, limit.0),
             ).ok().map(|sa| dex_runtime_api::SwapOutcomeInfo::<Balance> { amount: Balance(sa.amount), fee: Balance(sa.fee)})
         }
 
@@ -822,13 +953,35 @@ impl_runtime_apis! {
         }
     }
 
-    impl trading_pair_runtime_api::TradingPairAPI<Block, DEXId, common::TradingPair<AssetId>, AssetId> for Runtime {
+    impl trading_pair_runtime_api::TradingPairAPI<Block, DEXId, common::TradingPair<AssetId>, AssetId, LiquiditySourceType> for Runtime {
         fn list_enabled_pairs(dex_id: DEXId) -> Vec<common::TradingPair<AssetId>> {
-            TradingPair::list_trading_pairs(dex_id)
+            // TODO: error passing PR fixes this crunch return
+            TradingPair::list_trading_pairs(&dex_id).unwrap_or(Vec::new())
         }
 
-        fn is_pair_enabled(dex_id: DEXId, base_asset_id: AssetId, target_asset_id: AssetId) -> bool {
-            TradingPair::is_trading_pair_enabled(dex_id, base_asset_id, target_asset_id)
+        fn is_pair_enabled(dex_id: DEXId, asset_id_a: AssetId, asset_id_b: AssetId) -> bool {
+            // TODO: error passing PR fixes this crunch return
+            TradingPair::is_trading_pair_enabled(&dex_id, &asset_id_a, &asset_id_b).unwrap_or(false)
+                || TradingPair::is_trading_pair_enabled(&dex_id, &asset_id_b, &asset_id_a).unwrap_or(false)
+        }
+
+        fn list_enabled_sources_for_pair(
+            dex_id: DEXId,
+            base_asset_id: AssetId,
+            target_asset_id: AssetId,
+        ) -> Vec<LiquiditySourceType> {
+            // TODO: error passing PR fixes this crunch return
+            TradingPair::list_enabled_sources_for_trading_pair(&dex_id, &base_asset_id, &target_asset_id).map(|bts| bts.into_iter().collect::<Vec<_>>()).unwrap_or(Vec::new())
+        }
+
+        fn is_source_enabled_for_pair(
+            dex_id: DEXId,
+            base_asset_id: AssetId,
+            target_asset_id: AssetId,
+            source_type: LiquiditySourceType,
+        ) -> bool {
+            // TODO: error passing PR fixes this crunch return
+            TradingPair::is_source_enabled_for_trading_pair(&dex_id, &base_asset_id, &target_asset_id, source_type).unwrap_or(false)
         }
     }
 
@@ -849,6 +1002,14 @@ impl_runtime_apis! {
             )
         }
 
+        fn total_supply(asset_id: AssetId) -> Option<assets_runtime_api::BalanceInfo<Balance>> {
+            Assets::total_issuance(&asset_id).ok().map(|balance|
+                assets_runtime_api::BalanceInfo::<Balance> {
+                    balance: balance.clone(),
+                }
+            )
+        }
+
         fn list_asset_ids() -> Vec<AssetId> {
             Assets::list_registered_asset_ids()
         }
@@ -862,10 +1023,80 @@ impl_runtime_apis! {
         }
 
         fn get_asset_info(asset_id: AssetId) -> Option<assets_runtime_api::AssetInfo<AssetId, AssetSymbol, BalancePrecision>> {
-            let (symbol, precision) = Assets::get_asset_info(asset_id);
+            let (symbol, precision) = Assets::get_asset_info(&asset_id);
             Some(assets_runtime_api::AssetInfo::<AssetId, AssetSymbol, BalancePrecision> {
                 asset_id, symbol, precision
             })
+        }
+    }
+
+    impl farming_runtime_api::FarmingRuntimeApi<Block, AccountId, FarmId, FarmInfo<AccountId, AssetId, BlockNumber>, FarmerInfo<AccountId, TechAccountId, BlockNumber>> for Runtime {
+        fn get_farm_info(who: AccountId, name: FarmId) -> Option<FarmInfo<AccountId, AssetId, BlockNumber>> {
+            Farming::get_farm_info(who, name).ok()?
+        }
+
+        fn get_farmer_info(who: AccountId, name: FarmId) -> Option<FarmerInfo<AccountId, TechAccountId, BlockNumber>> {
+            Farming::get_farmer_info(who, name).ok()?
+        }
+    }
+
+    impl
+        eth_bridge_runtime_api::EthBridgeRuntimeApi<
+            Block,
+            sp_core::H256,
+            eth_bridge::SignatureParams,
+            AccountId,
+            eth_bridge::AssetKind,
+            AssetId,
+            sp_core::H160,
+            eth_bridge::OffchainRequest<Runtime>,
+            eth_bridge::RequestStatus,
+            eth_bridge::OutgoingRequestEncoded,
+        > for Runtime
+    {
+        fn get_requests(
+            hashes: Vec<sp_core::H256>,
+        ) -> Result<
+            Vec<(
+                eth_bridge::OffchainRequest<Runtime>,
+                eth_bridge::RequestStatus,
+            )>,
+            DispatchError,
+        > {
+            EthBridge::get_requests(&hashes)
+        }
+
+        fn get_approved_requests(
+            hashes: Vec<sp_core::H256>,
+        ) -> Result<
+            Vec<(
+                eth_bridge::OutgoingRequestEncoded,
+                Vec<eth_bridge::SignatureParams>,
+            )>,
+            DispatchError,
+        > {
+            EthBridge::get_approved_requests(&hashes)
+        }
+
+        fn get_approves(
+            hashes: Vec<sp_core::H256>,
+        ) -> Result<Vec<Vec<eth_bridge::SignatureParams>>, DispatchError> {
+            EthBridge::get_approves(&hashes)
+        }
+
+        fn get_account_requests(account_id: AccountId) -> Result<Vec<sp_core::H256>, DispatchError> {
+            EthBridge::get_account_requests(&account_id)
+        }
+
+        fn get_registered_assets(
+        ) -> Result<Vec<(eth_bridge::AssetKind, AssetId, Option<sp_core::H160>)>, DispatchError> {
+            EthBridge::get_registered_assets()
+        }
+    }
+
+    impl iroha_migration_runtime_api::IrohaMigrationAPI<Block> for Runtime {
+        fn needs_migration(iroha_address: String) -> bool {
+            IrohaMigration::needs_migration(&iroha_address)
         }
     }
 
@@ -887,10 +1118,16 @@ impl_runtime_apis! {
             selected_source_types: Vec<LiquiditySourceType>,
             filter_mode: FilterMode,
         ) -> Option<liquidity_proxy_runtime_api::SwapOutcomeInfo<Balance>> {
-            LiquidityProxy::quote(
+            // TODO: remove with proper QuoteAmount refactor
+            let limit = if swap_variant == SwapVariant::WithDesiredInput {
+                Balance::zero()
+            } else {
+                Balance::max_value()
+            };
+            LiquidityProxy::quote_with_filter(
                 &input_asset_id,
                 &output_asset_id,
-                SwapAmount::with_variant(swap_variant, amount.0, Default::default()),
+                SwapAmount::with_variant(swap_variant, amount.0, limit.0),
                 LiquiditySourceFilter::with_mode(dex_id, filter_mode, selected_source_types),
             ).ok().map(|asa| liquidity_proxy_runtime_api::SwapOutcomeInfo::<Balance> { amount: Balance(asa.amount), fee: Balance(asa.fee)})
         }
@@ -971,6 +1208,52 @@ impl_runtime_apis! {
             Historical::prove((fg_primitives::KEY_TYPE, authority_id))
                 .map(|p| p.encode())
                 .map(fg_primitives::OpaqueKeyOwnershipProof::new)
+        }
+    }
+
+    #[cfg(feature = "runtime-benchmarks")]
+    impl frame_benchmarking::Benchmark<Block> for Runtime {
+        fn dispatch_benchmark(
+            config: frame_benchmarking::BenchmarkConfig
+        ) -> Result<Vec<frame_benchmarking::BenchmarkBatch>, sp_runtime::RuntimeString> {
+            use frame_benchmarking::{Benchmarking, BenchmarkBatch, add_benchmark, TrackedStorageKey};
+
+            use dex_api_benchmarking::Module as DEXAPIBench;
+            use liquidity_proxy_benchmarking::Module as LiquidityProxyBench;
+            use pool_xyk_benchmarking::Module as XYKPoolBench;
+
+            impl dex_api_benchmarking::Trait for Runtime {}
+            impl liquidity_proxy_benchmarking::Trait for Runtime {}
+            impl pool_xyk_benchmarking::Trait for Runtime {}
+
+            let whitelist: Vec<TrackedStorageKey> = vec![
+                // Block Number
+                hex_literal::hex!("26aa394eea5630e07c48ae0c9558cef702a5c1b19ab7a04f536c519aca4983ac").to_vec().into(),
+                // Total Issuance
+                hex_literal::hex!("c2261276cc9d1f8598ea4b6a74b15c2f57c875e4cff74148e4628f264b974c80").to_vec().into(),
+                // Execution Phase
+                hex_literal::hex!("26aa394eea5630e07c48ae0c9558cef7ff553b5a9862a516939d82b3d3d8661a").to_vec().into(),
+                // Event Count
+                hex_literal::hex!("26aa394eea5630e07c48ae0c9558cef70a98fdbe9ce6c55837576c60c7af3850").to_vec().into(),
+                // System Events
+                hex_literal::hex!("26aa394eea5630e07c48ae0c9558cef780d41e5e16056765bc8461851072c9d7").to_vec().into(),
+                // Treasury Account
+                hex_literal::hex!("26aa394eea5630e07c48ae0c9558cef7b99d880ec681799c0cf30e8886371da95ecffd7b6c0f78751baa9d281e0bfa3a6d6f646c70792f74727372790000000000000000000000000000000000000000").to_vec().into(),
+            ];
+
+            let mut batches = Vec::<BenchmarkBatch>::new();
+            let params = (&config, &whitelist);
+
+            add_benchmark!(params, batches, assets, Assets);
+            add_benchmark!(params, batches, dex_api, DEXAPIBench::<Runtime>);
+            add_benchmark!(params, batches, dex_manager, DEXManager);
+            add_benchmark!(params, batches, faucet, Faucet);
+            add_benchmark!(params, batches, liquidity_proxy, LiquidityProxyBench::<Runtime>);
+            add_benchmark!(params, batches, trading_pair, TradingPair);
+            add_benchmark!(params, batches, pool_xyk, XYKPoolBench::<Runtime>);
+
+            if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
+            Ok(batches)
         }
     }
 }

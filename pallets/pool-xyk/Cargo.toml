@@ -5,7 +5,7 @@ edition = '2018'
 homepage = 'https://github.com/soramitsu/SoraNeo-substrate'
 license = 'Unlicense'
 name = 'pool-xyk'
-repository = 'https://github.com/soramitsu/SoraNeo-substrate'
+repository = 'https://github.com/soramitsu/sora2-substrate'
 version = '0.1.0'
 
 [package.metadata.docs.rs]
@@ -27,11 +27,13 @@ orml-traits = { version = "0.3.2", package = "orml-traits", default-features = f
 num-traits = { version = "0.2.12", default-features = false }
 sp-core = { version = "2.0.0", default-features = false }
 sp-std = { version = "2.0.0", default-features = false }
+pswap-distribution = { path = "../pswap-distribution", default-features = false }
 
 [dev-dependencies]
 sp-io = { version = "2.0.0", default-features = false }
 pallet-balances = { version = "2.0.0", default-features = false }
 tokens = { version = "0.3.2", package = "orml-tokens", default-features = false }
+hex-literal = { version = '0.3.1' }
 
 [features]
 default = ['std']

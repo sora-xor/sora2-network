@@ -77,6 +77,8 @@ sp_api::decl_runtime_apis! {
 
         fn total_balance(account_id: AccountId, asset_id: AssetId) -> Option<BalanceInfo<Balance>>;
 
+        fn total_supply(asset_id: AssetId) -> Option<BalanceInfo<Balance>>;
+
         fn list_asset_ids() -> Vec<AssetId>;
 
         fn list_asset_infos() -> Vec<AssetInfo<AssetId, AssetSymbol, Precision>>;

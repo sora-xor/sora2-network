@@ -1,23 +1,28 @@
 #![cfg_attr(not(feature = "std"), no_std)]
-
 #[macro_use]
 extern crate alloc;
 
-use sp_arithmetic::FixedU128;
+pub use fixnum;
+use fixnum::{
+    typenum::{Unsigned, U18},
+    FixedPoint,
+};
+
+#[cfg(any(feature = "test", test))]
+pub mod mock;
 
 pub mod balance;
 mod fixed_wrapper;
 pub mod macros;
-pub mod mock;
 mod primitives;
 mod swap_amount;
 mod traits;
 pub mod utils;
-mod weights;
+pub mod weights;
 
-use blake2_rfc;
 use codec::Encode;
 use sp_core::hash::H512;
+use sp_runtime::TransactionOutcome;
 
 pub use traits::Trait;
 pub mod prelude {
@@ -27,10 +32,12 @@ pub mod prelude {
     pub use super::swap_amount::*;
     pub use super::traits::*;
     pub use super::weights::*;
-    pub use super::Fixed;
+    pub use super::{Fixed, FixedInner};
+    pub use fixnum;
 }
 use sp_core::crypto::AccountId32;
 
+pub use macros::*;
 pub use primitives::*;
 pub use traits::*;
 pub use utils::*;
@@ -39,17 +46,51 @@ pub use utils::*;
 pub type Asset<T, GetAssetId> = currencies::Currency<T, GetAssetId>;
 
 /// Basic type representing assets quantity.
-pub type Fixed = FixedU128;
+///
+/// MAX = (2 ** (BITS_COUNT - 1) - 1) / 10 ** PRECISION =
+///     = (2 ** (128 - 1) - 1) / 1e18 =
+///     = 170_141_183_460_469_231_731.687_303_715_884_105_727 ~
+///     ~ 1.7e20
+/// ERROR_MAX = 0.5 / (10 ** PRECISION) =
+///           = 0.5 / 1e18 =
+///           = 5e-19
+pub type Fixed = FixedPoint<FixedInner, FixedPrecision>;
+pub type FixedInner = i128;
+type FixedPrecision = U18;
 
 pub type Price = Fixed;
 
 pub type Amount = i128;
-
 /// Type definition representing financial basis points (1bp is 0.01%)
 pub type BasisPoints = u16;
 
+pub const FIXED_PRECISION: u32 = FixedPrecision::U32;
+
+/// Similar to #\[transactional]
+pub fn with_transaction<T, E>(f: impl FnOnce() -> Result<T, E>) -> Result<T, E> {
+    frame_support::storage::with_transaction(|| {
+        let result = f();
+        if result.is_ok() {
+            TransactionOutcome::Commit(result)
+        } else {
+            TransactionOutcome::Rollback(result)
+        }
+    })
+}
+
 pub fn hash<T: Encode>(val: &T) -> H512 {
     H512::from_slice(blake2_rfc::blake2b::blake2b(64, &[], &val.encode()).as_bytes())
+}
+
+pub fn hash_to_u128_pair<T: Encode>(val: &T) -> (u128, u128) {
+    let data = blake2_rfc::blake2b::blake2b(32, &[], &val.encode());
+    let bytes = data.as_bytes();
+    let mut result: (u128, u128) = (0, 0);
+    for i in 0..16 {
+        result.0 += (bytes[i] as u128) << (8 * i);
+        result.1 += (bytes[i + 16] as u128) << (8 * i);
+    }
+    result
 }
 
 /// Commutative merkle operation, is crypto safe, defined as hash(a,b) `xor` hash(b,a).

@@ -135,7 +135,7 @@ The runtime in this project is constructed using many FRAME pallets that ship wi
 [core Substrate repository](https://github.com/paritytech/substrate/tree/master/frame) and a
 template pallet that is [defined in the `pallets`](./pallets/template/src/lib.rs) directory.
 
-A FRAME pallet is compromised of a number of blockchain primitives:
+A FRAME pallet is composed of a number of blockchain primitives:
 
 -   Storage: FRAME defines a rich set of powerful
     [storage abstractions](https://substrate.dev/docs/en/knowledgebase/runtime/storage) that makes

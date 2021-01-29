@@ -1,11 +1,12 @@
 use crate::{Module, Trait};
 use common::{
-    fixed_from_basis_points, hash, prelude::Balance, Amount, AssetId32, DEXInfo, Fixed,
+    fixed, fixed_from_basis_points, hash, prelude::Balance, Amount, AssetId32, DEXInfo, Fixed,
     LiquiditySourceType, DOT, KSM, XOR,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::{impl_outer_origin, parameter_types, weights::Weight};
 use frame_system as system;
+use hex_literal::hex;
 use permissions::{Scope, INIT_DEX, MANAGE_DEX};
 use sp_core::crypto::AccountId32;
 use sp_core::H256;
@@ -18,12 +19,14 @@ use sp_runtime::{
 pub type AccountId = AccountId32;
 pub type BlockNumber = u64;
 
-type TechAssetId = common::TechAssetId<common::AssetId, DEXId>;
+type TechAssetId = common::TechAssetId<common::AssetId, DEXId, common::LiquiditySourceType>;
 type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
 type AssetId = AssetId32<common::AssetId>;
 
 pub fn alice() -> AccountId {
-    AccountId32::from([1u8; 32])
+    AccountId32::from(hex!(
+        "d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d"
+    ))
 }
 
 pub fn bob() -> AccountId {
@@ -44,8 +47,6 @@ parameter_types! {
     pub const MaximumBlockWeight: Weight = 1024;
     pub const MaximumBlockLength: u32 = 2 * 1024;
     pub const AvailableBlockRatio: Perbill = Perbill::from_percent(75);
-    pub const GetDefaultFee: u16 = 30;
-    pub const GetDefaultProtocolFee: u16 = 0;
 }
 
 impl system::Trait for Runtime {
@@ -87,7 +88,7 @@ impl Trait for Runtime {
     type MockLiquiditySource4 =
         mock_liquidity_source::Module<Runtime, mock_liquidity_source::Instance4>;
     type BondingCurvePool = ();
-    type XYKPool = ();
+    type XYKPool = pool_xyk::Module<Runtime>;
     type WeightInfo = ();
 }
 
@@ -154,28 +155,28 @@ parameter_types! {
 impl mock_liquidity_source::Trait<mock_liquidity_source::Instance1> for Runtime {
     type Event = ();
     type GetFee = GetFee;
-    type EnsureDEXOwner = dex_manager::Module<Runtime>;
+    type EnsureDEXManager = dex_manager::Module<Runtime>;
     type EnsureTradingPairExists = trading_pair::Module<Runtime>;
 }
 
 impl mock_liquidity_source::Trait<mock_liquidity_source::Instance2> for Runtime {
     type Event = ();
     type GetFee = GetFee;
-    type EnsureDEXOwner = dex_manager::Module<Runtime>;
+    type EnsureDEXManager = dex_manager::Module<Runtime>;
     type EnsureTradingPairExists = trading_pair::Module<Runtime>;
 }
 
 impl mock_liquidity_source::Trait<mock_liquidity_source::Instance3> for Runtime {
     type Event = ();
     type GetFee = GetFee;
-    type EnsureDEXOwner = dex_manager::Module<Runtime>;
+    type EnsureDEXManager = dex_manager::Module<Runtime>;
     type EnsureTradingPairExists = trading_pair::Module<Runtime>;
 }
 
 impl mock_liquidity_source::Trait<mock_liquidity_source::Instance4> for Runtime {
     type Event = ();
     type GetFee = GetFee;
-    type EnsureDEXOwner = dex_manager::Module<Runtime>;
+    type EnsureDEXManager = dex_manager::Module<Runtime>;
     type EnsureTradingPairExists = trading_pair::Module<Runtime>;
 }
 
@@ -185,21 +186,49 @@ impl technical::Trait for Runtime {
     type TechAccountId = TechAccountId;
     type Trigger = ();
     type Condition = ();
-    type SwapAction = ();
+    type SwapAction =
+        pool_xyk::PolySwapAction<AssetId, TechAssetId, Balance, AccountId, TechAccountId>;
     type WeightInfo = ();
 }
 
 impl dex_manager::Trait for Runtime {
     type Event = ();
-    type GetDefaultFee = GetDefaultFee;
-    type GetDefaultProtocolFee = GetDefaultProtocolFee;
     type WeightInfo = ();
 }
 
 impl trading_pair::Trait for Runtime {
     type Event = ();
-    type EnsureDEXOwner = dex_manager::Module<Runtime>;
+    type EnsureDEXManager = dex_manager::Module<Runtime>;
     type WeightInfo = ();
+}
+
+impl pool_xyk::Trait for Runtime {
+    type Event = ();
+    type PairSwapAction = pool_xyk::PairSwapAction<AssetId, Balance, AccountId, TechAccountId>;
+    type DepositLiquidityAction =
+        pool_xyk::DepositLiquidityAction<AssetId, TechAssetId, Balance, AccountId, TechAccountId>;
+    type WithdrawLiquidityAction =
+        pool_xyk::WithdrawLiquidityAction<AssetId, TechAssetId, Balance, AccountId, TechAccountId>;
+    type PolySwapAction =
+        pool_xyk::PolySwapAction<AssetId, TechAssetId, Balance, AccountId, TechAccountId>;
+    type EnsureDEXManager = dex_manager::Module<Runtime>;
+    type WeightInfo = ();
+}
+
+parameter_types! {
+    pub GetPswapDistributionAccountId: AccountId = AccountId32::from([3; 32]);
+    pub const GetDefaultSubscriptionFrequency: BlockNumber = 10;
+    pub GetIncentiveAssetId: AssetId = common::PSWAP.into();
+}
+
+impl pswap_distribution::Trait for Runtime {
+    type Event = ();
+    type GetIncentiveAssetId = GetIncentiveAssetId;
+    type Exchange = ();
+    type CompatBalance = Balance;
+    type GetDefaultSubscriptionFrequency = GetDefaultSubscriptionFrequency;
+    type GetTechnicalAccountId = GetPswapDistributionAccountId;
+    type EnsureDEXManager = ();
 }
 
 pub type System = frame_system::Module<Runtime>;
@@ -229,40 +258,38 @@ impl Default for ExtBuilder {
                 (bob(), DOT, 1_000_000_000_000_000_000u128.into()),
             ],
             reserves: vec![
-                (DEX_A_ID, DOT, (Fixed::from(5000), Fixed::from(7000))),
-                (DEX_A_ID, KSM, (Fixed::from(5500), Fixed::from(4000))),
-                (DEX_B_ID, DOT, (Fixed::from(100), Fixed::from(45))),
+                (DEX_A_ID, DOT, (fixed!(5000), fixed!(7000))),
+                (DEX_A_ID, KSM, (fixed!(5500), fixed!(4000))),
+                (DEX_B_ID, DOT, (fixed!(100), fixed!(45))),
             ],
             reserves_2: vec![
-                (DEX_A_ID, DOT, (Fixed::from(6000), Fixed::from(7000))),
-                (DEX_A_ID, KSM, (Fixed::from(6500), Fixed::from(3000))),
-                (DEX_B_ID, DOT, (Fixed::from(200), Fixed::from(45))),
+                (DEX_A_ID, DOT, (fixed!(6000), fixed!(7000))),
+                (DEX_A_ID, KSM, (fixed!(6500), fixed!(3000))),
+                (DEX_B_ID, DOT, (fixed!(200), fixed!(45))),
             ],
             reserves_3: vec![
-                (DEX_A_ID, DOT, (Fixed::from(7000), Fixed::from(7000))),
-                (DEX_A_ID, KSM, (Fixed::from(7500), Fixed::from(2000))),
-                (DEX_B_ID, DOT, (Fixed::from(300), Fixed::from(45))),
+                (DEX_A_ID, DOT, (fixed!(7000), fixed!(7000))),
+                (DEX_A_ID, KSM, (fixed!(7500), fixed!(2000))),
+                (DEX_B_ID, DOT, (fixed!(300), fixed!(45))),
             ],
             reserves_4: vec![
-                (DEX_A_ID, DOT, (Fixed::from(8000), Fixed::from(7000))),
-                (DEX_A_ID, KSM, (Fixed::from(8500), Fixed::from(1000))),
-                (DEX_B_ID, DOT, (Fixed::from(400), Fixed::from(45))),
+                (DEX_A_ID, DOT, (fixed!(8000), fixed!(7000))),
+                (DEX_A_ID, KSM, (fixed!(8500), fixed!(1000))),
+                (DEX_B_ID, DOT, (fixed!(400), fixed!(45))),
             ],
             dex_list: vec![
                 (
                     DEX_A_ID,
                     DEXInfo {
                         base_asset_id: GetBaseAssetId::get(),
-                        default_fee: GetDefaultFee::get(),
-                        default_protocol_fee: GetDefaultProtocolFee::get(),
+                        is_public: true,
                     },
                 ),
                 (
                     DEX_B_ID,
                     DEXInfo {
                         base_asset_id: GetBaseAssetId::get(),
-                        default_fee: GetDefaultFee::get(),
-                        default_protocol_fee: GetDefaultProtocolFee::get(),
+                        is_public: true,
                     },
                 ),
             ],

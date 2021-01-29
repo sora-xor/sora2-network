@@ -44,6 +44,9 @@ pub trait AssetsAPI<
         at: Option<BlockHash>,
     ) -> Result<OptionBalanceInfo>;
 
+    #[rpc(name = "assets_totalSupply")]
+    fn total_supply(&self, asset_id: AssetId, at: Option<BlockHash>) -> Result<OptionBalanceInfo>;
+
     #[rpc(name = "assets_listAssetIds")]
     fn list_asset_ids(&self, at: Option<BlockHash>) -> Result<VecAssetId>;
 
@@ -127,6 +130,23 @@ where
                 message: "Unable to get total balance.".into(),
                 data: Some(format!("{:?}", e).into()),
             })
+    }
+
+    fn total_supply(
+        &self,
+        asset_id: AssetId,
+        at: Option<<Block as BlockT>::Hash>,
+    ) -> Result<Option<BalanceInfo<Balance>>> {
+        let api = self.client.runtime_api();
+        let at = BlockId::hash(at.unwrap_or(
+            // If the block hash is not supplied assume the best block.
+            self.client.info().best_hash,
+        ));
+        api.total_supply(&at, asset_id).map_err(|e| RpcError {
+            code: ErrorCode::ServerError(InvokeRPCError::RuntimeError.into()),
+            message: "Unable to get total supply.".into(),
+            data: Some(format!("{:?}", e).into()),
+        })
     }
 
     fn list_asset_ids(&self, at: Option<<Block as BlockT>::Hash>) -> Result<Vec<AssetId>> {

@@ -7,12 +7,16 @@ use frame_support::{
     decl_error, decl_event, decl_module, decl_storage, ensure, weights::Weight, Parameter,
 };
 use frame_system::ensure_signed;
-use sp_runtime::traits::Member;
+use sp_runtime::traits::{MaybeSerializeDeserialize, Member};
 use sp_runtime::RuntimeDebug;
 
+use common::GetLstIdAndTradingPairFromTechAsset;
+use common::GetTechAssetWithLstTag;
 use common::TECH_ACCOUNT_MAGIC_PREFIX;
 use sp_core::H256;
 use sp_std::convert::TryFrom;
+
+type LstId = common::LiquiditySourceType;
 
 mod weights;
 
@@ -54,7 +58,9 @@ pub trait Trait: common::Trait + assets::Trait {
         + Member
         + Parameter
         + Into<AssetIdOf<Self>>
-        + TryFrom<AssetIdOf<Self>>;
+        + TryFrom<AssetIdOf<Self>>
+        + GetLstIdAndTradingPairFromTechAsset<LstId, common::TradingPair<AssetIdOf<Self>>>
+        + GetTechAssetWithLstTag<LstId, AssetIdOf<Self>>;
 
     /// Like AccountId but controlled by consensus, not signing by user.
     /// This extra traits exist here bacause no way to do it by constraints, problem exist with
@@ -64,7 +70,8 @@ pub trait Trait: common::Trait + assets::Trait {
         + Parameter
         + Default
         + FromGenericPair
-        + common::ToMarkerAsset<TechAssetIdOf<Self>>
+        + MaybeSerializeDeserialize
+        + common::ToMarkerAsset<TechAssetIdOf<Self>, LstId>
         + common::ToFeeAccount
         + common::ToTechUnitFromDEXAndTradingPair<
             DEXIdOf<Self>,
@@ -98,25 +105,27 @@ impl<T: Trait> Module<T> {
         source: AccountIdOf<T>,
         action: &T::SwapAction,
     ) -> DispatchResult {
-        action.reserve(&source)?;
-        if action.is_able_to_claim() {
-            if action.instant_auto_claim_used() {
-                if action.claim(&source) {
-                    Self::deposit_event(RawEvent::SwapSuccess(source));
-                } else if !action.triggered_auto_claim_used() {
-                    action.cancel(&source);
+        common::with_transaction(|| {
+            action.reserve(&source)?;
+            if action.is_able_to_claim() {
+                if action.instant_auto_claim_used() {
+                    if action.claim(&source) {
+                        Self::deposit_event(RawEvent::SwapSuccess(source));
+                    } else if !action.triggered_auto_claim_used() {
+                        action.cancel(&source);
+                    } else {
+                        return Err(Error::<T>::NotImplemented)?;
+                    }
                 } else {
                     return Err(Error::<T>::NotImplemented)?;
                 }
+            } else if action.triggered_auto_claim_used() {
+                return Err(Error::<T>::NotImplemented)?;
             } else {
                 return Err(Error::<T>::NotImplemented)?;
             }
-        } else if action.triggered_auto_claim_used() {
-            return Err(Error::<T>::NotImplemented)?;
-        } else {
-            return Err(Error::<T>::NotImplemented)?;
-        }
-        Ok(())
+            Ok(())
+        })
     }
 
     /// Perform creation of swap, may be used by extrinsic operation or other pallets.
@@ -283,6 +292,20 @@ impl<T: Trait> Module<T> {
     pub fn register_tech_account_id(tech_account_id: T::TechAccountId) -> DispatchResult {
         let account_id = Self::tech_account_id_to_account_id(&tech_account_id)?;
         <TechAccounts<T>>::insert(account_id, tech_account_id);
+        Ok(())
+    }
+
+    /// Register `TechAccountId` in storate map if it not exist.
+    pub fn register_tech_account_id_if_not_exist(
+        tech_account_id: &T::TechAccountId,
+    ) -> DispatchResult {
+        let account_id = Self::tech_account_id_to_account_id(tech_account_id)?;
+        match Self::lookup_tech_account_id(&account_id) {
+            Err(_) => {
+                <TechAccounts<T>>::insert(account_id, tech_account_id.clone());
+            }
+            _ => (),
+        }
         Ok(())
     }
 

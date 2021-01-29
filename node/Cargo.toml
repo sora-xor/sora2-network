@@ -21,23 +21,31 @@ codec = { package = 'parity-scale-codec', version = '1.3.1', features = ["derive
 structopt = "0.3.3"
 ansi_term = "0.12.1"
 serde = { version = "1.0.101", features = ["derive"] }
+serde_json = "1.0.61"
 common = { path = "../common" }
 jsonrpc-core = "15.0.0"
 dex-api-rpc = { path = "../pallets/dex-api/rpc" }
 dex-manager-rpc = { path = "../pallets/dex-manager/rpc" }
 technical = {path = "../pallets/technical" }
 permissions = {path = "../pallets/permissions" }
-xor-fee = {path = "../pallets/xor-fee"}
+xor-fee = { path = "../pallets/xor-fee" }
 faucet = { path = "../pallets/faucet" }
+iroha-migration = { path = "../pallets/iroha-migration" }
+iroha-migration-rpc = { path = "../pallets/iroha-migration/rpc" }
 trading-pair-rpc = { path = "../pallets/trading-pair/rpc" }
 assets-rpc = { path = "../pallets/assets/rpc" }
 liquidity-proxy-rpc = { path = "../pallets/liquidity-proxy/rpc" }
+bridge-multisig = { git = "https://github.com/soramitsu/sora2-frame-pallets.git", branch = "selected-v2.0.0", package = "pallet-multisig" }
+farming-rpc = { path = "../pallets/farming/rpc" }
+eth-bridge-rpc = { path = "../pallets/eth-bridge/rpc" }
+libsecp256k1 = { version = "0.3.5", features = ['hmac'], default-features = false }
 
 # Parachain dependencies
 framenode-runtime = { path = "../runtime" }
 
 # Substrate dependencies
 sp-runtime = { version = "2.0.0", default-features = false }
+sp-arithmetic = { version = "2.0.0", default-features = false }
 sp-io = { version = "2.0.0", default-features = false }
 sp-api = { version = "2.0.0", default-features = false }
 sp-block-builder = { version = "2.0.0", default-features = false }
@@ -73,15 +81,21 @@ frame-benchmarking = '2.0.0'
 frame-benchmarking-cli = '2.0.0'
 substrate-frame-rpc-system = { version = "2.0.0", default-features = false }
 
-
 [build-dependencies]
 substrate-build-script-utils = { version = "2.0.0", default-features = false }
 
 [dev-dependencies]
 assert_cmd = "0.12"
 nix = "0.17"
-rand = "0.7.3"
 tokio = { version = "0.2.13", features = ["macros"] }
 
 # Substrate dependencies
 pallet-sudo = { version = "2.0.0", default-features = false }
+
+[features]
+runtime-benchmarks = [
+    "framenode-runtime/runtime-benchmarks",
+    "sc-executor/wasmtime",
+    "sc-cli/wasmtime",
+    "sc-service/wasmtime",
+]

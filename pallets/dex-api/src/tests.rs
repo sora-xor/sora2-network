@@ -88,8 +88,8 @@ fn test_different_reserves_should_pass() {
             SwapAmount::with_desired_input(fixed!(100), fixed!(0)),
         );
         assert_eq!(
-            res1.expect("Calc failed").amount,
-            fixed!(136, 851187324744592819) // for reserves: 5000 XOR, 7000 DOT, 30bp fee
+            res1.unwrap().amount,
+            fixed!(136.851187324744592819) // for reserves: 5000 XOR, 7000 DOT, 30bp fee
         );
         let res2 = crate::Module::<Runtime>::quote(
             &LiquiditySourceId::new(DEX_A_ID, LiquiditySourceType::MockPool2),
@@ -98,8 +98,8 @@ fn test_different_reserves_should_pass() {
             SwapAmount::with_desired_input(fixed!(100), fixed!(0)),
         );
         assert_eq!(
-            res2.expect("Calc failed").amount,
-            fixed!(114, 415463055560109514) // for reserves: 6000 XOR, 7000 DOT, 30bp fee
+            res2.unwrap().amount,
+            fixed!(114.415463055560109513) // for reserves: 6000 XOR, 7000 DOT, 30bp fee
         );
     })
 }

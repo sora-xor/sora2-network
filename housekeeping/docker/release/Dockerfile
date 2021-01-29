@@ -3,7 +3,7 @@ ENV POLKADOT_API_PATH=/usr/local/lib/node_modules/@polkadot
 # Install dependencies
 RUN apt-get update && \
     apt-get install --no-install-recommends -y \
-        npm nano curl && \
+        npm nano curl&& \
 	apt-get autoremove -y && \
 	apt-get clean && \
 	find /var/lib/apt/lists/ -type f -not -name lock -delete

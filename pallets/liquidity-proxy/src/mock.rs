@@ -1,7 +1,7 @@
 use crate::{Module, Trait};
 use common::{
-    self, fixed_from_basis_points, hash, Amount, AssetId32, DEXInfo, Fixed, LiquiditySourceType,
-    DOT, KSM, XOR,
+    self, fixed, fixed_from_basis_points, hash, Amount, AssetId32, DEXInfo, Fixed, FromGenericPair,
+    LiquiditySourceType, DOT, KSM, XOR,
 };
 use currencies::BasicCurrencyAdapter;
 
@@ -20,7 +20,7 @@ use sp_runtime::{
 pub type AccountId = AccountId32;
 pub type BlockNumber = u64;
 type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
-type TechAssetId = common::TechAssetId<common::AssetId, DEXId>;
+type TechAssetId = common::TechAssetId<common::AssetId, DEXId, common::LiquiditySourceType>;
 type AssetId = AssetId32<common::AssetId>;
 
 pub fn alice() -> AccountId {
@@ -74,12 +74,27 @@ impl system::Trait for Runtime {
 }
 
 parameter_types! {
+    pub GetLiquidityProxyTechAccountId: TechAccountId = {
+        let tech_account_id = TechAccountId::from_generic_pair(
+            crate::TECH_ACCOUNT_PREFIX.to_vec(),
+            crate::TECH_ACCOUNT_MAIN.to_vec(),
+        );
+        tech_account_id
+    };
+    pub GetLiquidityProxyAccountId: AccountId = {
+        let tech_account_id = GetLiquidityProxyTechAccountId::get();
+        let account_id =
+            technical::Module::<Runtime>::tech_account_id_to_account_id(&tech_account_id)
+                .expect("Failed to get ordinary account id for technical account id.");
+        account_id
+    };
     pub const GetNumSamples: usize = 40;
 }
 impl Trait for Runtime {
     type Event = ();
     type LiquidityRegistry = dex_api::Module<Runtime>;
     type GetNumSamples = GetNumSamples;
+    type GetTechnicalAccountId = GetLiquidityProxyAccountId;
     type WeightInfo = ();
 }
 
@@ -132,14 +147,8 @@ impl pallet_balances::Trait for Runtime {
     type MaxLocks = ();
 }
 
-parameter_types! {
-    pub const GetDefaultFee: u16 = 30;
-    pub const GetDefaultProtocolFee: u16 = 0;
-}
 impl dex_manager::Trait for Runtime {
     type Event = ();
-    type GetDefaultFee = GetDefaultFee;
-    type GetDefaultProtocolFee = GetDefaultProtocolFee;
     type WeightInfo = ();
 }
 
@@ -153,28 +162,28 @@ parameter_types! {
 impl mock_liquidity_source::Trait<mock_liquidity_source::Instance1> for Runtime {
     type Event = ();
     type GetFee = GetFee0;
-    type EnsureDEXOwner = dex_manager::Module<Runtime>;
+    type EnsureDEXManager = dex_manager::Module<Runtime>;
     type EnsureTradingPairExists = trading_pair::Module<Runtime>;
 }
 
 impl mock_liquidity_source::Trait<mock_liquidity_source::Instance2> for Runtime {
     type Event = ();
     type GetFee = GetFee10;
-    type EnsureDEXOwner = dex_manager::Module<Runtime>;
+    type EnsureDEXManager = dex_manager::Module<Runtime>;
     type EnsureTradingPairExists = trading_pair::Module<Runtime>;
 }
 
 impl mock_liquidity_source::Trait<mock_liquidity_source::Instance3> for Runtime {
     type Event = ();
     type GetFee = GetFee20;
-    type EnsureDEXOwner = dex_manager::Module<Runtime>;
+    type EnsureDEXManager = dex_manager::Module<Runtime>;
     type EnsureTradingPairExists = trading_pair::Module<Runtime>;
 }
 
 impl mock_liquidity_source::Trait<mock_liquidity_source::Instance4> for Runtime {
     type Event = ();
     type GetFee = GetFee30;
-    type EnsureDEXOwner = dex_manager::Module<Runtime>;
+    type EnsureDEXManager = dex_manager::Module<Runtime>;
     type EnsureTradingPairExists = trading_pair::Module<Runtime>;
 }
 
@@ -209,7 +218,7 @@ impl dex_api::Trait for Runtime {
 
 impl trading_pair::Trait for Runtime {
     type Event = ();
-    type EnsureDEXOwner = dex_manager::Module<Runtime>;
+    type EnsureDEXManager = dex_manager::Module<Runtime>;
     type WeightInfo = ();
 }
 
@@ -221,66 +230,63 @@ pub type LiquidityProxy = Module<Runtime>;
 type ReservesInit = Vec<(DEXId, AssetId, (Fixed, Fixed))>;
 
 pub struct ExtBuilder {
-    reserves: ReservesInit,
-    reserves_2: ReservesInit,
-    reserves_3: ReservesInit,
-    reserves_4: ReservesInit,
-    dex_list: Vec<(DEXId, DEXInfo<AssetId>)>,
-    initial_permission_owners: Vec<(u32, Scope, Vec<AccountId>)>,
-    initial_permissions: Vec<(AccountId, Scope, Vec<u32>)>,
-    source_types: Vec<LiquiditySourceType>,
+    pub reserves: ReservesInit,
+    pub reserves_2: ReservesInit,
+    pub reserves_3: ReservesInit,
+    pub reserves_4: ReservesInit,
+    pub dex_list: Vec<(DEXId, DEXInfo<AssetId>)>,
+    pub initial_permission_owners: Vec<(u32, Scope, Vec<AccountId>)>,
+    pub initial_permissions: Vec<(AccountId, Scope, Vec<u32>)>,
+    pub source_types: Vec<LiquiditySourceType>,
 }
 
 impl Default for ExtBuilder {
     fn default() -> Self {
         Self {
             reserves: vec![
-                (DEX_A_ID, DOT, (Fixed::from(5000), Fixed::from(7000))),
-                (DEX_A_ID, KSM, (Fixed::from(5500), Fixed::from(4000))),
-                (DEX_B_ID, DOT, (Fixed::from(100), Fixed::from(45))),
-                (DEX_C_ID, DOT, (Fixed::from(520), Fixed::from(550))),
+                (DEX_A_ID, DOT, (fixed!(5000), fixed!(7000))),
+                (DEX_A_ID, KSM, (fixed!(5500), fixed!(4000))),
+                (DEX_B_ID, DOT, (fixed!(100), fixed!(45))),
+                (DEX_C_ID, DOT, (fixed!(520), fixed!(550))),
             ],
             reserves_2: vec![
-                (DEX_A_ID, DOT, (Fixed::from(6000), Fixed::from(6000))),
-                (DEX_A_ID, KSM, (Fixed::from(6500), Fixed::from(3000))),
-                (DEX_B_ID, DOT, (Fixed::from(200), Fixed::from(45))),
-                (DEX_C_ID, DOT, (Fixed::from(550), Fixed::from(700))),
+                (DEX_A_ID, DOT, (fixed!(6000), fixed!(6000))),
+                (DEX_A_ID, KSM, (fixed!(6500), fixed!(3000))),
+                (DEX_B_ID, DOT, (fixed!(200), fixed!(45))),
+                (DEX_C_ID, DOT, (fixed!(550), fixed!(700))),
             ],
             reserves_3: vec![
-                (DEX_A_ID, DOT, (Fixed::from(7000), Fixed::from(5000))),
-                (DEX_A_ID, KSM, (Fixed::from(7500), Fixed::from(2000))),
-                (DEX_B_ID, DOT, (Fixed::from(300), Fixed::from(45))),
-                (DEX_C_ID, DOT, (Fixed::from(400), Fixed::from(380))),
+                (DEX_A_ID, DOT, (fixed!(7000), fixed!(5000))),
+                (DEX_A_ID, KSM, (fixed!(7500), fixed!(2000))),
+                (DEX_B_ID, DOT, (fixed!(300), fixed!(45))),
+                (DEX_C_ID, DOT, (fixed!(400), fixed!(380))),
             ],
             reserves_4: vec![
-                (DEX_A_ID, DOT, (Fixed::from(8000), Fixed::from(4000))),
-                (DEX_A_ID, KSM, (Fixed::from(8500), Fixed::from(1000))),
-                (DEX_B_ID, DOT, (Fixed::from(400), Fixed::from(45))),
-                (DEX_C_ID, DOT, (Fixed::from(1300), Fixed::from(1800))),
+                (DEX_A_ID, DOT, (fixed!(8000), fixed!(4000))),
+                (DEX_A_ID, KSM, (fixed!(8500), fixed!(1000))),
+                (DEX_B_ID, DOT, (fixed!(400), fixed!(45))),
+                (DEX_C_ID, DOT, (fixed!(1300), fixed!(1800))),
             ],
             dex_list: vec![
                 (
                     DEX_A_ID,
                     DEXInfo {
                         base_asset_id: GetBaseAssetId::get(),
-                        default_fee: GetDefaultFee::get(),
-                        default_protocol_fee: GetDefaultProtocolFee::get(),
+                        is_public: true,
                     },
                 ),
                 (
                     DEX_B_ID,
                     DEXInfo {
                         base_asset_id: GetBaseAssetId::get(),
-                        default_fee: GetDefaultFee::get(),
-                        default_protocol_fee: GetDefaultProtocolFee::get(),
+                        is_public: true,
                     },
                 ),
                 (
                     DEX_C_ID,
                     DEXInfo {
                         base_asset_id: GetBaseAssetId::get(),
-                        default_fee: GetDefaultFee::get(),
-                        default_protocol_fee: GetDefaultProtocolFee::get(),
+                        is_public: true,
                     },
                 ),
             ],

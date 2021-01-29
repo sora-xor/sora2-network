@@ -23,7 +23,7 @@ use sc_service::PartialComponents;
 
 impl SubstrateCli for Cli {
     fn impl_name() -> String {
-        "SORA-Substrate Node".into()
+        "SORA-staging Node".into()
     }
 
     fn impl_version() -> String {
@@ -49,7 +49,9 @@ impl SubstrateCli for Cli {
     fn load_spec(&self, id: &str) -> Result<Box<dyn sc_service::ChainSpec>, String> {
         Ok(match id {
             "" | "local" => Box::new(chain_spec::local_testnet_config()),
-            "staging" => Box::new(chain_spec::staging_test_net()),
+            "dev" => Box::new(chain_spec::dev_net()),
+            "staging" => Box::new(chain_spec::staging_net(false)),
+            "test" => Box::new(chain_spec::staging_net(true)),
             path => Box::new(chain_spec::ChainSpec::from_json_file(
                 std::path::PathBuf::from(path),
             )?),
