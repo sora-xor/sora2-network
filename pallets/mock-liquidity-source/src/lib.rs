@@ -270,7 +270,7 @@ impl<T: Trait<I>, I: Instance> Module<T, I> {
 }
 
 impl<T: Trait<I>, I: Instance>
-    LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Fixed, DispatchError> for Module<T, I>
+    LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, DispatchError> for Module<T, I>
 {
     fn can_exchange(
         dex_id: &T::DEXId,
@@ -292,8 +292,8 @@ impl<T: Trait<I>, I: Instance>
         dex_id: &T::DEXId,
         input_asset_id: &T::AssetId,
         output_asset_id: &T::AssetId,
-        swap_amount: SwapAmount<Fixed>,
-    ) -> Result<SwapOutcome<Fixed>, DispatchError> {
+        swap_amount: SwapAmount<Balance>,
+    ) -> Result<SwapOutcome<Balance>, DispatchError> {
         let base_asset_id = &T::GetBaseAssetId::get();
         if input_asset_id == base_asset_id {
             let (base_reserve, target_reserve) = <Reserves<T, I>>::get(dex_id, output_asset_id);
@@ -302,18 +302,20 @@ impl<T: Trait<I>, I: Instance>
                     desired_amount_in: base_amount_in,
                     ..
                 } => Ok(Self::get_target_amount_out(
-                    base_amount_in,
+                    base_amount_in.0,
                     base_reserve,
                     target_reserve,
-                )?),
+                )?
+                .into()),
                 SwapAmount::WithDesiredOutput {
                     desired_amount_out: target_amount_out,
                     ..
                 } => Ok(Self::get_base_amount_in(
-                    target_amount_out,
+                    target_amount_out.0,
                     base_reserve,
                     target_reserve,
-                )?),
+                )?
+                .into()),
             }
         } else if output_asset_id == base_asset_id {
             let (base_reserve, target_reserve) = <Reserves<T, I>>::get(dex_id, input_asset_id);
@@ -322,18 +324,20 @@ impl<T: Trait<I>, I: Instance>
                     desired_amount_in: target_amount_in,
                     ..
                 } => Ok(Self::get_base_amount_out(
-                    target_amount_in,
+                    target_amount_in.0,
                     base_reserve,
                     target_reserve,
-                )?),
+                )?
+                .into()),
                 SwapAmount::WithDesiredOutput {
                     desired_amount_out: base_amount_out,
                     ..
                 } => Ok(Self::get_target_amount_in(
-                    base_amount_out,
+                    base_amount_out.0,
                     base_reserve,
                     target_reserve,
-                )?),
+                )?
+                .into()),
             }
         } else {
             let (base_reserve_a, target_reserve_a) = <Reserves<T, I>>::get(dex_id, input_asset_id);
@@ -342,42 +346,46 @@ impl<T: Trait<I>, I: Instance>
                 SwapAmount::WithDesiredInput {
                     desired_amount_in, ..
                 } => {
-                    let outcome_a = Self::get_base_amount_out(
-                        desired_amount_in,
+                    let outcome_a: SwapOutcome<Balance> = Self::get_base_amount_out(
+                        desired_amount_in.0,
                         base_reserve_a,
                         target_reserve_a,
-                    )?;
-                    let outcome_b = Self::get_target_amount_out(
-                        outcome_a.amount,
+                    )?
+                    .into();
+                    let outcome_b: SwapOutcome<Balance> = Self::get_target_amount_out(
+                        outcome_a.amount.0,
                         base_reserve_b,
                         target_reserve_b,
-                    )?;
+                    )?
+                    .into();
                     let outcome_a_fee: FixedWrapper = outcome_a.fee.into();
                     let outcome_b_fee: FixedWrapper = outcome_b.fee.into();
                     let fee = (outcome_a_fee + outcome_b_fee)
                         .get()
                         .map_err(|_| Error::<T, I>::CalculationError)?;
-                    Ok(SwapOutcome::new(outcome_b.amount, fee))
+                    Ok(SwapOutcome::new(outcome_b.amount, Balance(fee)))
                 }
                 SwapAmount::WithDesiredOutput {
                     desired_amount_out, ..
                 } => {
-                    let outcome_b = Self::get_base_amount_in(
-                        desired_amount_out,
+                    let outcome_b: SwapOutcome<Balance> = Self::get_base_amount_in(
+                        desired_amount_out.0,
                         base_reserve_b,
                         target_reserve_b,
-                    )?;
-                    let outcome_a = Self::get_target_amount_in(
-                        outcome_b.amount,
+                    )?
+                    .into();
+                    let outcome_a: SwapOutcome<Balance> = Self::get_target_amount_in(
+                        outcome_b.amount.0,
                         base_reserve_a,
                         target_reserve_a,
-                    )?;
+                    )?
+                    .into();
                     let outcome_a_fee: FixedWrapper = outcome_a.fee.into();
                     let outcome_b_fee: FixedWrapper = outcome_b.fee.into();
                     let fee = (outcome_b_fee + outcome_a_fee)
                         .get()
                         .map_err(|_| Error::<T, I>::CalculationError)?;
-                    Ok(SwapOutcome::new(outcome_a.amount, fee))
+                    Ok(SwapOutcome::new(outcome_a.amount, Balance(fee)))
                 }
             }
         }
@@ -389,8 +397,8 @@ impl<T: Trait<I>, I: Instance>
         dex_id: &T::DEXId,
         input_asset_id: &T::AssetId,
         output_asset_id: &T::AssetId,
-        desired_amount: SwapAmount<Fixed>,
-    ) -> Result<SwapOutcome<Fixed>, DispatchError> {
+        desired_amount: SwapAmount<Balance>,
+    ) -> Result<SwapOutcome<Balance>, DispatchError> {
         // actual exchange does not happen
         Self::quote(dex_id, input_asset_id, output_asset_id, desired_amount)
     }
