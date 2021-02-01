@@ -1534,7 +1534,8 @@ impl<T: Trait> Module<T> {
         let fxw_x_in: FixedWrapper = x_in.clone().into();
         if get_fee_from_destination {
             Module::<T>::guard_fee_from_destination(asset_a, asset_b)?;
-            let fxw_y1 = (fxw_x_in.clone() * fxw_y) / (fxw_x + fxw_x_in);
+            //let fxw_y1 = (fxw_x_in.clone() * fxw_y) / (fxw_x + fxw_x_in);
+            let fxw_y1 = fxw_x_in.clone() / ((fxw_x + fxw_x_in) / fxw_y);
             let y1: Balance = fxw_y1
                 .get()
                 .map_err(|_| Error::<T>::FixedWrapperCalculationFailed)?
@@ -1579,7 +1580,8 @@ impl<T: Trait> Module<T> {
             let fract_b: Balance = unit - fract_a;
             let fxw_fract_b: FixedWrapper = fract_b.into();
             let fxw_y1 = fxw_y_out.clone() / fxw_fract_b;
-            let fxw_x_in = (fxw_x * fxw_y1.clone()) / (fxw_y - fxw_y1.clone());
+            //let fxw_x_in = (fxw_x * fxw_y1.clone()) / (fxw_y - fxw_y1.clone());
+            let fxw_x_in = fxw_x / ((fxw_y - fxw_y1.clone()) / fxw_y1.clone());
             let fxw_fee = fxw_y1 - fxw_y_out;
             let x_in: Balance = fxw_x_in
                 .get()
@@ -2166,17 +2168,21 @@ impl<T: Trait> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Disp
         // It is guarantee that unwrap is always ok.
         match action {
             PolySwapAction::PairSwap(a) => {
+                let mut desired_in = false;
                 let (fee, amount) = match swap_amount {
                     SwapAmount::WithDesiredInput {
                         desired_amount_in: _,
                         min_amount_out: _,
-                    } => (a.fee.unwrap(), a.destination.amount.unwrap()),
+                    } => {
+                        desired_in = true;
+                        (a.fee.unwrap(), a.destination.amount.unwrap())
+                    }
                     SwapAmount::WithDesiredOutput {
                         desired_amount_out: _,
                         max_amount_in: _,
                     } => (a.fee.unwrap(), a.source.amount.unwrap()),
                 };
-                if a.get_fee_from_destination.unwrap() {
+                if a.get_fee_from_destination.unwrap() && desired_in {
                     Ok(common::prelude::SwapOutcome::new(amount - fee, fee))
                 } else {
                     Ok(common::prelude::SwapOutcome::new(amount, fee))
@@ -2226,15 +2232,17 @@ impl<T: Trait> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Disp
         // Clone is used here because action is used for perform_create_swap_unchecked.
         let retval = match action.clone() {
             PolySwapAction::PairSwap(a) => {
+                let mut desired_in = false;
                 let (fee, amount) = match swap_amount {
                     SwapAmount::WithDesiredInput { .. } => {
+                        desired_in = true;
                         (a.fee.unwrap(), a.destination.amount.unwrap())
                     }
                     SwapAmount::WithDesiredOutput { .. } => {
                         (a.fee.unwrap(), a.source.amount.unwrap())
                     }
                 };
-                if a.get_fee_from_destination.unwrap() {
+                if a.get_fee_from_destination.unwrap() && desired_in {
                     Ok(common::prelude::SwapOutcome::new(amount - fee, fee))
                 } else {
                     Ok(common::prelude::SwapOutcome::new(amount, fee))

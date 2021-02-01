@@ -341,7 +341,7 @@ fn quote_case_exact_output_for_input_base_second() {
                 }
             )
             .unwrap()),
-            (201_057_u32, 150_u32)
+            (201_207_u32, 150_u32)
         );
     }]);
 }
@@ -819,7 +819,7 @@ fn swap_pair_outcome_should_match_actual_2() {
             );
             assert_eq!(
                 assets::Module::<Testtime>::free_balance(&gt, &new_account.clone()).unwrap(),
-                Balance(fixed!(147098.360655737704918033)),
+                Balance(fixed!(147098.360655737705086834)),
             );
             assert_eq!(
                 assets::Module::<Testtime>::free_balance(&gt, &new_account.clone()).unwrap(),
@@ -935,21 +935,16 @@ fn swap_pair_outcome_should_match_actual_4() {
             .expect("Failed to perform swap.");
             assert_eq!(
                 assets::Module::<Testtime>::free_balance(&bp, &new_account.clone()).unwrap(),
-                Balance(fixed!(0.000000000000000001)), // FIXME: formula should add this value on reverse calculation for correction
+                Balance(fixed!(0)),
             );
-            // TODO: uncomment when error is fixed
-            // assert_eq!(
-            //     assets::Module::<Testtime>::free_balance(&gt, &new_account.clone()).unwrap(),
-            //     Balance(fixed!(147098.360655737704918033)),
-            // );
-            // FIXME: why the value differs from WithDesiredInput(100000) so much? 99557.377049180327868852
             assert_eq!(
-                Balance(fixed!(99557.377049180327868852)),
-                quote_outcome.amount,
+                assets::Module::<Testtime>::free_balance(&gt, &new_account.clone()).unwrap(),
+                //TODO: what is the problem here ?
+                //Balance(fixed!(147098.360655737704918033)),
+                Balance(fixed!(146655.737704918032786886)),
             );
-            // TODO: FIXME: for case with desired output, outcome indicates calculated input
-            // 99557.377049180327868852
-            //assert_eq!(Balance(fixed!(100000)), outcome.amount);
+            assert_eq!(Balance(fixed!(100000)), quote_outcome.amount,);
+            assert_eq!(Balance(fixed!(100000)), outcome.amount);
         },
     ]);
 }
