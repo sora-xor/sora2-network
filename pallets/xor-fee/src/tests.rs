@@ -27,7 +27,7 @@ fn referrer_gets_bonus_from_tx_fee() {
         );
         assert!(ChargeTransactionPayment::<Test>::post_dispatch(
             pre,
-            &info_from_weight(100),
+            &info_from_weight(MOCK_WEIGHT),
             &default_post_info(),
             len,
             &Ok(())
