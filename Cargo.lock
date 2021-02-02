@@ -233,7 +233,7 @@ dependencies = [
  "sp-io",
  "sp-runtime",
  "sp-std",
- "tiny-keccak 2.0.2",
+ "tiny-keccak",
 ]
 
 [[package]]
@@ -975,7 +975,7 @@ dependencies = [
  "getrandom 0.2.2",
  "lazy_static",
  "proc-macro-hack",
- "tiny-keccak 2.0.2",
+ "tiny-keccak",
 ]
 
 [[package]]
@@ -1678,6 +1678,8 @@ dependencies = [
  "common",
  "env_logger 0.8.2",
  "ethabi",
+ "ethabi-contract",
+ "ethabi-derive",
  "ethereum-types",
  "frame-executive",
  "frame-support",
@@ -1685,6 +1687,7 @@ dependencies = [
  "hex-literal",
  "jsonrpc-core 17.0.0",
  "libsecp256k1",
+ "once_cell 1.5.2",
  "orml-currencies",
  "orml-tokens",
  "orml-traits",
@@ -1701,7 +1704,7 @@ dependencies = [
  "serde_json",
  "sp-core",
  "sp-std",
- "tiny-keccak 2.0.2",
+ "tiny-keccak",
  "tokio 0.2.24",
 ]
 
@@ -1738,15 +1741,34 @@ dependencies = [
 
 [[package]]
 name = "ethabi"
-version = "12.0.3"
-source = "git+https://github.com/vmarkushin/ethabi.git?branch=no-std#704bda95f1498ed6171bcdb81487bd3810466ead"
+version = "13.0.0"
+source = "git+https://github.com/vmarkushin/ethabi.git?branch=no-std#1f362bf13e66e6c2dd007737fbd7a0c1883ab82a"
 dependencies = [
+ "anyhow",
  "ethereum-types",
- "rustc-hex",
+ "hex",
  "serde",
  "serde_json",
- "tiny-keccak 1.5.0",
+ "sha3",
  "uint 0.8.5 (git+https://github.com/vmarkushin/parity-common.git?branch=no-std)",
+]
+
+[[package]]
+name = "ethabi-contract"
+version = "11.0.0"
+source = "git+https://github.com/vmarkushin/ethabi.git?branch=no-std#1f362bf13e66e6c2dd007737fbd7a0c1883ab82a"
+
+[[package]]
+name = "ethabi-derive"
+version = "13.0.0"
+source = "git+https://github.com/vmarkushin/ethabi.git?branch=no-std#1f362bf13e66e6c2dd007737fbd7a0c1883ab82a"
+dependencies = [
+ "anyhow",
+ "ethabi",
+ "heck",
+ "proc-macro2 1.0.24",
+ "quote 1.0.8",
+ "syn 1.0.60",
 ]
 
 [[package]]
@@ -1758,7 +1780,7 @@ dependencies = [
  "fixed-hash 0.6.1 (git+https://github.com/vmarkushin/parity-common.git?branch=no-std)",
  "impl-rlp",
  "impl-serde 0.3.2",
- "tiny-keccak 2.0.2",
+ "tiny-keccak",
 ]
 
 [[package]]
@@ -7809,7 +7831,7 @@ dependencies = [
  "sp-storage",
  "substrate-bip39",
  "tiny-bip39",
- "tiny-keccak 2.0.2",
+ "tiny-keccak",
  "twox-hash",
  "wasmi",
  "zeroize",
@@ -8579,15 +8601,6 @@ dependencies = [
 
 [[package]]
 name = "tiny-keccak"
-version = "1.5.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1d8a021c69bb74a44ccedb824a046447e2c84a01df9e5c20779750acb38e11b2"
-dependencies = [
- "crunchy",
-]
-
-[[package]]
-name = "tiny-keccak"
 version = "2.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2c9d3793400a45f954c52e73d068316d76b6f4e36977e3fcebb13a2721e80237"
@@ -9112,7 +9125,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "04f8ab788026715fa63b31960869617cba39117e520eb415b0139543e325ab59"
 dependencies = [
  "cfg-if 0.1.10",
- "rand 0.7.3",
+ "rand 0.3.23",
  "static_assertions",
 ]
 

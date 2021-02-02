@@ -1,4 +1,8 @@
-use crate::{types, Address, AssetIdOf, AssetKind, Error, Module, PswapOwners, Timepoint, Trait};
+use crate::contract::{MethodId, FUNCTIONS};
+use crate::{
+    types, Address, AssetIdOf, AssetKind, Decoder, Error, Module, OutgoingRequest, PswapOwners,
+    RequestStatus, SignatureParams, Timepoint, Trait,
+};
 use alloc::{collections::BTreeSet, string::String};
 use codec::{Decode, Encode};
 use common::prelude::Balance;
@@ -172,6 +176,70 @@ impl<T: Trait> IncomingClaimPswap<T> {
     }
 }
 
+pub fn encode_outgoing_request_eth_call<T: Trait>(
+    method_id: MethodId,
+    request: &OutgoingRequest<T>,
+) -> Result<Vec<u8>, Error<T>> {
+    let fun_metas = &*FUNCTIONS;
+    let fun_meta = fun_metas.get(&method_id).ok_or(Error::UnknownMethodId)?;
+    let request_hash = request.hash();
+    let request_encoded = request.to_eth_abi(request_hash)?;
+    let approves: BTreeSet<SignatureParams> = crate::RequestApproves::get(&request_hash);
+    let input_tokens = request_encoded.input_tokens(Some(approves.into_iter().collect()));
+    fun_meta
+        .function
+        .encode_input(&input_tokens)
+        .map_err(|_| Error::EthAbiEncodingError)
+}
+
+#[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug)]
+#[cfg_attr(feature = "std", derive(Serialize))]
+pub struct CancelOutgoingRequest<T: Trait> {
+    pub request: OutgoingRequest<T>,
+    pub tx_input: Vec<u8>,
+    pub tx_hash: H256,
+    pub at_height: u64,
+    pub timepoint: Timepoint<T>,
+}
+
+impl<T: Trait> CancelOutgoingRequest<T> {
+    pub fn prepare(&self) -> Result<(), DispatchError> {
+        let request_hash = self.request.hash();
+        let req_status =
+            crate::RequestStatuses::get(&request_hash).ok_or(crate::Error::<T>::Other)?;
+        ensure!(
+            req_status == RequestStatus::Ready,
+            crate::Error::<T>::RequestIsNotReady
+        );
+        let mut method_id = [0u8; 4];
+        method_id.clone_from_slice(&self.tx_input[..4]);
+        let expected_input = encode_outgoing_request_eth_call(method_id, &self.request)?;
+        ensure!(
+            expected_input == self.tx_input,
+            crate::Error::<T>::InvalidContractInput
+        );
+        crate::RequestStatuses::insert(&request_hash, RequestStatus::Frozen);
+        Ok(())
+    }
+
+    pub fn cancel(&self) -> Result<(), DispatchError> {
+        crate::RequestStatuses::insert(&self.request.hash(), RequestStatus::Ready);
+        Ok(())
+    }
+
+    pub fn finalize(&self) -> Result<H256, DispatchError> {
+        self.request.cancel()?;
+        let hash = &self.request.hash();
+        crate::RequestStatuses::insert(hash, RequestStatus::Failed);
+        crate::RequestApproves::take(hash);
+        Ok(self.tx_hash)
+    }
+
+    pub fn timepoint(&self) -> Timepoint<T> {
+        self.timepoint
+    }
+}
+
 #[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct OutgoingTransfer<T: Trait> {
@@ -201,8 +269,8 @@ impl<T: Trait> OutgoingTransfer<T> {
             currency_id.to_token(),
             Token::Uint(types::U256(amount.0)),
             Token::Address(types::H160(to.0)),
-            Token::FixedBytes(tx_hash.0.to_vec()),
             Token::Address(types::H160(from.0)),
+            Token::FixedBytes(tx_hash.0.to_vec()),
         ]);
         Ok(OutgoingTransferEthEncoded {
             from,
@@ -282,10 +350,28 @@ pub struct OutgoingTransferEthEncoded {
     pub currency_id: CurrencyIdEncoded,
     pub amount: U256,
     pub to: Address,
-    pub tx_hash: H256,
     pub from: Address,
+    pub tx_hash: H256,
     /// EABI-encoded data to be signed.
     pub raw: Vec<u8>,
+}
+
+impl OutgoingTransferEthEncoded {
+    pub fn input_tokens(&self, signatures: Option<Vec<SignatureParams>>) -> Vec<Token> {
+        let mut tokens = vec![
+            self.currency_id.to_token(),
+            Token::Uint(types::U256(self.amount.0)),
+            Token::Address(types::H160(self.to.0)),
+            Token::Address(types::H160(self.from.0)),
+            Token::FixedBytes(self.tx_hash.0.to_vec()),
+        ];
+
+        if let Some(sigs) = signatures {
+            let sig_tokens = signature_params_to_tokens(sigs);
+            tokens.extend(sig_tokens);
+        }
+        tokens
+    }
 }
 
 // TODO: lock the adding token to prevent double-adding.
@@ -313,6 +399,7 @@ impl<T: Trait> AddAssetOutgoingRequest<T> {
             Token::UintSized(precision.into(), 8),
             Token::Uint(types::U256(supply.clone().0)),
             Token::FixedBytes(sidechain_asset_id.clone()),
+            Token::FixedBytes(tx_hash.0.to_vec()),
         ]);
 
         Ok(AddAssetRequestEncoded {
@@ -366,6 +453,23 @@ pub struct AddAssetRequestEncoded {
     pub raw: Vec<u8>,
 }
 
+impl AddAssetRequestEncoded {
+    pub fn input_tokens(&self, signatures: Option<Vec<SignatureParams>>) -> Vec<Token> {
+        let mut tokens = vec![
+            Token::String(self.name.clone()),
+            Token::String(self.symbol.clone()),
+            Token::Uint(self.decimal.into()),
+            Token::Uint(types::U256(self.supply.clone().0)),
+            Token::FixedBytes(self.sidechain_asset_id.clone()),
+        ];
+        if let Some(sigs) = signatures {
+            let sig_tokens = signature_params_to_tokens(sigs);
+            tokens.extend(sig_tokens);
+        }
+        tokens
+    }
+}
+
 #[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct AddTokenOutgoingRequest<T: Trait> {
@@ -375,6 +479,44 @@ pub struct AddTokenOutgoingRequest<T: Trait> {
     pub name: String,
     pub decimals: u8,
     pub nonce: T::Index,
+}
+
+pub struct Encoder {
+    tokens: Vec<Token>,
+}
+
+impl Encoder {
+    pub fn new() -> Self {
+        Encoder { tokens: Vec::new() }
+    }
+
+    pub fn write_address(&mut self, val: &Address) {
+        self.tokens.push(Token::Address(types::H160(val.0)));
+    }
+
+    pub fn write_string(&mut self, val: String) {
+        self.tokens.push(Token::String(val));
+    }
+
+    pub fn write_u8(&mut self, val: u8) {
+        self.tokens.push(Token::Uint(types::U256::from(val)));
+    }
+
+    pub fn into_inner(self) -> Vec<Token> {
+        self.tokens
+    }
+}
+
+pub fn signature_params_to_tokens(sig_params: Vec<SignatureParams>) -> Vec<Token> {
+    let mut vs = Vec::new();
+    let mut rs = Vec::new();
+    let mut ss = Vec::new();
+    for sig_param in sig_params {
+        vs.push(Token::Uint(types::U256::from(sig_param.v)));
+        rs.push(Token::FixedBytes(sig_param.r.to_vec()));
+        ss.push(Token::FixedBytes(sig_param.s.to_vec()));
+    }
+    vec![Token::Array(vs), Token::Array(rs), Token::Array(ss)]
 }
 
 impl<T: Trait> AddTokenOutgoingRequest<T> {
@@ -389,6 +531,7 @@ impl<T: Trait> AddTokenOutgoingRequest<T> {
             Token::String(ticker.clone()),
             Token::String(name.clone()),
             Token::UintSized(decimals.into(), 8),
+            Token::FixedBytes(tx_hash.0.to_vec()),
         ]);
         Ok(AddTokenRequestEncoded {
             token_address,
@@ -438,6 +581,22 @@ pub struct AddTokenRequestEncoded {
     pub hash: H256,
     /// EABI-encoded data to be signed.
     pub raw: Vec<u8>,
+}
+
+impl AddTokenRequestEncoded {
+    pub fn input_tokens(&self, signatures: Option<Vec<SignatureParams>>) -> Vec<Token> {
+        let mut tokens = vec![
+            Token::Address(types::H160(self.token_address.0)),
+            Token::String(self.ticker.clone()),
+            Token::String(self.name.clone()),
+            Token::Uint(self.decimals.into()),
+        ];
+        if let Some(sigs) = signatures {
+            let sig_tokens = signature_params_to_tokens(sigs);
+            tokens.extend(sig_tokens);
+        }
+        tokens
+    }
 }
 
 #[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug)]
@@ -561,6 +720,20 @@ pub struct AddPeerOutgoingRequestEncoded {
     pub raw: Vec<u8>,
 }
 
+impl AddPeerOutgoingRequestEncoded {
+    pub fn input_tokens(&self, signatures: Option<Vec<SignatureParams>>) -> Vec<Token> {
+        let mut tokens = vec![
+            Token::Address(types::H160(self.peer_address.clone().0)),
+            Token::FixedBytes(self.tx_hash.0.to_vec()),
+        ];
+        if let Some(sigs) = signatures {
+            let sig_tokens = signature_params_to_tokens(sigs);
+            tokens.extend(sig_tokens);
+        }
+        tokens
+    }
+}
+
 #[derive(Clone, PartialEq, Eq, Encode, Decode, RuntimeDebug)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct RemovePeerOutgoingRequestEncoded {
@@ -568,4 +741,29 @@ pub struct RemovePeerOutgoingRequestEncoded {
     pub tx_hash: H256,
     /// EABI-encoded data to be signed.
     pub raw: Vec<u8>,
+}
+
+impl RemovePeerOutgoingRequestEncoded {
+    pub fn input_tokens(&self, signatures: Option<Vec<SignatureParams>>) -> Vec<Token> {
+        let mut tokens = vec![
+            Token::Address(types::H160(self.peer_address.clone().0)),
+            Token::FixedBytes(self.tx_hash.0.to_vec()),
+        ];
+        if let Some(sigs) = signatures {
+            let sig_tokens = signature_params_to_tokens(sigs);
+            tokens.extend(sig_tokens);
+        }
+        tokens
+    }
+}
+
+pub fn parse_hash_from_call<T: Trait>(
+    tokens: Vec<Token>,
+    tx_hash_arg_pos: usize,
+) -> Result<H256, DispatchError> {
+    tokens
+        .get(tx_hash_arg_pos)
+        .cloned()
+        .and_then(Decoder::<T>::parse_h256)
+        .ok_or(Error::<T>::FailedToParseTxHashInCall.into())
 }

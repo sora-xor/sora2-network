@@ -72,13 +72,14 @@ contract Bridge {
         string memory ticker,
         string memory name,
         uint8 decimals,
+        bytes32 txHash,
         uint8[] memory v,
         bytes32[] memory r,
         bytes32[] memory s
     )
     public {
         require(acceptedEthTokens[newToken] == false);
-        require(checkSignatures(keccak256(abi.encodePacked(newToken, ticker, name, decimals)),
+        require(checkSignatures(keccak256(abi.encodePacked(newToken, ticker, name, decimals, txHash)),
             v,
             r,
             s), "Peer signatures are invalid"
@@ -120,6 +121,7 @@ contract Bridge {
         uint8 decimals,
         uint256 supply,
         bytes32 sidechainAssetId,
+        bytes32 txHash,
         uint8[] memory v,
         bytes32[] memory r,
         bytes32[] memory s)
@@ -130,7 +132,9 @@ contract Bridge {
                 symbol,
                 decimals,
                 supply,
-                sidechainAssetId)),
+                sidechainAssetId,
+                txHash
+            )),
             v,
             r,
             s), "Peer signatures are invalid"
@@ -243,17 +247,17 @@ contract Bridge {
         address tokenAddress,
         uint256 amount,
         address payable to,
+        address from,
         bytes32 txHash,
         uint8[] memory v,
         bytes32[] memory r,
-        bytes32[] memory s,
-        address from
+        bytes32[] memory s
     )
     public
     {
         require(used[txHash] == false);
         require(checkSignatures(
-                keccak256(abi.encodePacked(tokenAddress, amount, to, txHash, from)),
+                keccak256(abi.encodePacked(tokenAddress, amount, to, from, txHash)),
                 v,
                 r,
                 s), "Peer signatures are invalid"
@@ -277,6 +281,7 @@ contract Bridge {
          * @param sidechainAssetId id of sidechainToken to mint
          * @param amount how much to mint
          * @param to destination address
+         * @param from sender address
          * @param txHash hash of transaction from Iroha
          * @param v array of signatures of tx_hash (v-component)
          * @param r array of signatures of tx_hash (r-component)
@@ -286,18 +291,18 @@ contract Bridge {
         bytes32 sidechainAssetId,
         uint256 amount,
         address to,
+        address from,
         bytes32 txHash,
         uint8[] memory v,
         bytes32[] memory r,
-        bytes32[] memory s,
-        address from
+        bytes32[] memory s
     )
     public
     {
         require(_sidechainTokens[sidechainAssetId] != address(0x0), "Sidechain asset is not registered");
         require(used[txHash] == false);
         require(checkSignatures(
-                keccak256(abi.encodePacked(sidechainAssetId, amount, to, txHash, from)),
+                keccak256(abi.encodePacked(sidechainAssetId, amount, to, from, txHash)),
                 v,
                 r,
                 s), "Peer signatures are invalid"
