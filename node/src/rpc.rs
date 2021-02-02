@@ -98,23 +98,21 @@ where
     use iroha_migration_rpc::{IrohaMigrationAPI, IrohaMigrationClient};
     use liquidity_proxy_rpc::{LiquidityProxyAPI, LiquidityProxyClient};
     use pallet_transaction_payment_rpc::{TransactionPayment, TransactionPaymentApi};
-    //use substrate_frame_rpc_system::{FullSystem, SystemApi};
+    use substrate_frame_rpc_system::{FullSystem, SystemApi};
     use eth_bridge_rpc::{EthBridgeApi, EthBridgeRpc};
     use trading_pair_rpc::{TradingPairAPI, TradingPairClient};
 
     let mut io = jsonrpc_core::IoHandler::default();
     let FullDeps {
         client,
-        pool: _,
-        deny_unsafe: _,
+        pool,
+        deny_unsafe,
     } = deps;
-    /*
     io.extend_with(SystemApi::to_delegate(FullSystem::new(
         client.clone(),
         pool,
         deny_unsafe,
     )));
-    */
     io.extend_with(TransactionPaymentApi::to_delegate(TransactionPayment::new(
         client.clone(),
     )));
