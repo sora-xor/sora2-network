@@ -3,7 +3,7 @@
 use common::{
     balance::Balance,
     prelude::{SwapAmount, SwapOutcome, SwapVariant},
-    Fixed, LiquidityRegistry, LiquiditySource, LiquiditySourceFilter, LiquiditySourceId,
+    LiquidityRegistry, LiquiditySource, LiquiditySourceFilter, LiquiditySourceId,
     LiquiditySourceType,
 };
 use frame_support::{
@@ -33,28 +33,28 @@ pub trait Trait: common::Trait + dex_manager::Trait + trading_pair::Trait {
         Self::DEXId,
         Self::AccountId,
         Self::AssetId,
-        Fixed,
+        Balance,
         DispatchError,
     >;
     type MockLiquiditySource2: LiquiditySource<
         Self::DEXId,
         Self::AccountId,
         Self::AssetId,
-        Fixed,
+        Balance,
         DispatchError,
     >;
     type MockLiquiditySource3: LiquiditySource<
         Self::DEXId,
         Self::AccountId,
         Self::AssetId,
-        Fixed,
+        Balance,
         DispatchError,
     >;
     type MockLiquiditySource4: LiquiditySource<
         Self::DEXId,
         Self::AccountId,
         Self::AssetId,
-        Fixed,
+        Balance,
         DispatchError,
     >;
     type BondingCurvePool: LiquiditySource<
@@ -98,9 +98,9 @@ decl_event!(
             LiquiditySourceType,
             AssetId,
             AssetId,
-            Fixed,
-            Fixed,
-            Fixed,
+            Balance,
+            Balance,
+            Balance,
         ),
     }
 );
@@ -128,8 +128,8 @@ decl_module! {
             liquidity_source_type: LiquiditySourceType,
             input_asset_id: T::AssetId,
             output_asset_id: T::AssetId,
-            amount: Fixed,
-            limit: Fixed,
+            amount: Balance,
+            limit: Balance,
             swap_variant: SwapVariant,
             receiver: Option<T::AccountId>
         ) -> DispatchResult {
@@ -170,7 +170,7 @@ impl<T: Trait>
         LiquiditySourceId<T::DEXId, LiquiditySourceType>,
         T::AccountId,
         T::AssetId,
-        Fixed,
+        Balance,
         DispatchError,
     > for Module<T>
 {
@@ -203,8 +203,8 @@ impl<T: Trait>
         liquidity_source_id: &LiquiditySourceId<T::DEXId, LiquiditySourceType>,
         input_asset_id: &T::AssetId,
         output_asset_id: &T::AssetId,
-        swap_amount: SwapAmount<Fixed>,
-    ) -> Result<SwapOutcome<Fixed>, DispatchError> {
+        swap_amount: SwapAmount<Balance>,
+    ) -> Result<SwapOutcome<Balance>, DispatchError> {
         use LiquiditySourceType::*;
         macro_rules! quote {
             ($source_type:ident) => {
@@ -233,8 +233,8 @@ impl<T: Trait>
         liquidity_source_id: &LiquiditySourceId<T::DEXId, LiquiditySourceType>,
         input_asset_id: &T::AssetId,
         output_asset_id: &T::AssetId,
-        swap_amount: SwapAmount<Fixed>,
-    ) -> Result<SwapOutcome<Fixed>, DispatchError> {
+        swap_amount: SwapAmount<Balance>,
+    ) -> Result<SwapOutcome<Balance>, DispatchError> {
         use LiquiditySourceType::*;
         macro_rules! exchange {
             ($source_type:ident) => {
@@ -269,8 +269,14 @@ impl<T: Trait> Module<T> {
 }
 
 impl<T: Trait>
-    LiquidityRegistry<T::DEXId, T::AccountId, T::AssetId, LiquiditySourceType, Fixed, DispatchError>
-    for Module<T>
+    LiquidityRegistry<
+        T::DEXId,
+        T::AccountId,
+        T::AssetId,
+        LiquiditySourceType,
+        Balance,
+        DispatchError,
+    > for Module<T>
 {
     fn list_liquidity_sources(
         input_asset_id: &T::AssetId,

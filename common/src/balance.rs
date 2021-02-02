@@ -314,6 +314,12 @@ impl From<Balance> for usize {
     }
 }
 
+impl From<Balance> for Fixed {
+    fn from(value: Balance) -> Fixed {
+        value.0
+    }
+}
+
 impl Into<Amount> for Balance {
     fn into(self) -> Amount {
         <Self as Into<u64>>::into(self) as i128

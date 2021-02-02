@@ -54,7 +54,7 @@ pub trait Trait:
         Self::DEXId,
         Self::AccountId,
         Self::AssetId,
-        common::Fixed,
+        Balance,
         DispatchError,
     >;
 
@@ -122,8 +122,8 @@ impl<T: Trait> OnTransactionPayment<T::AccountId, NegativeImbalanceOf<T>, Balanc
                 &T::XorId::get(),
                 &T::ValId::get(),
                 SwapAmount::WithDesiredInput {
-                    desired_amount_in: xor_to_val,
-                    min_amount_out: fixed!(0),
+                    desired_amount_in: Balance(xor_to_val),
+                    min_amount_out: Balance(fixed!(0)),
                 },
             ) {
                 let val_to_burn = Balance::from(swap_outcome.amount);
