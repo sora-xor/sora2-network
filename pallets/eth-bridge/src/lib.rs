@@ -4,12 +4,13 @@
 extern crate alloc;
 extern crate jsonrpc_core as rpc;
 
-use crate::types::{Log, TransactionReceipt};
+use crate::contract::FUNCTIONS;
+use crate::types::{Log, Transaction, TransactionReceipt};
 use alloc::string::String;
 use codec::{Decode, Encode};
 use common::{prelude::Balance, AssetSymbol, BalancePrecision, Fixed};
-use core::{convert::TryFrom, fmt, line, stringify};
-use ethabi::ParamType;
+use core::{convert::TryFrom, fmt, iter, line, stringify};
+use ethabi::{ParamType, Token};
 use frame_support::traits::GetCallName;
 use frame_support::{
     debug, decl_error, decl_event, decl_module, decl_storage,
@@ -41,6 +42,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use sp_core::{H160, H256};
 use sp_io::hashing::{blake2_256, keccak_256};
+use sp_std::marker::PhantomData;
 use sp_std::{
     collections::{btree_map::BTreeMap, btree_set::BTreeSet},
     convert::TryInto,
@@ -51,6 +53,7 @@ use sp_std::{
 type Address = H160;
 type EthereumAddress = Address;
 
+mod contract;
 #[cfg(test)]
 mod mock;
 pub mod requests;
@@ -231,6 +234,7 @@ pub enum IncomingRequestKind {
     AddPeer,
     RemovePeer,
     ClaimPswap,
+    CancelOutgoingRequest,
 }
 
 /// The type of request we can send to the offchain worker
@@ -240,15 +244,17 @@ pub enum IncomingRequest<T: Trait> {
     AddAsset(IncomingAddToken<T>),
     ChangePeers(IncomingChangePeers<T>),
     ClaimPswap(IncomingClaimPswap<T>),
+    CancelOutgoingRequest(CancelOutgoingRequest<T>),
 }
 
 impl<T: Trait> IncomingRequest<T> {
-    fn tx_hash(&self) -> &H256 {
+    fn hash(&self) -> H256 {
         match self {
-            IncomingRequest::Transfer(request) => &request.tx_hash,
-            IncomingRequest::AddAsset(request) => &request.tx_hash,
-            IncomingRequest::ChangePeers(request) => &request.tx_hash,
-            IncomingRequest::ClaimPswap(request) => &request.tx_hash,
+            IncomingRequest::Transfer(request) => request.tx_hash,
+            IncomingRequest::AddAsset(request) => request.tx_hash,
+            IncomingRequest::ChangePeers(request) => request.tx_hash,
+            IncomingRequest::ClaimPswap(request) => request.tx_hash,
+            IncomingRequest::CancelOutgoingRequest(request) => request.tx_hash,
         }
     }
 
@@ -258,6 +264,7 @@ impl<T: Trait> IncomingRequest<T> {
             IncomingRequest::AddAsset(request) => request.at_height,
             IncomingRequest::ChangePeers(request) => request.at_height,
             IncomingRequest::ClaimPswap(request) => request.at_height,
+            IncomingRequest::CancelOutgoingRequest(request) => request.at_height,
         }
     }
 
@@ -267,6 +274,7 @@ impl<T: Trait> IncomingRequest<T> {
             IncomingRequest::AddAsset(_request) => Ok(()),
             IncomingRequest::ChangePeers(_request) => Ok(()),
             IncomingRequest::ClaimPswap(_request) => Ok(()),
+            IncomingRequest::CancelOutgoingRequest(request) => request.prepare(),
         }
     }
 
@@ -276,6 +284,7 @@ impl<T: Trait> IncomingRequest<T> {
             IncomingRequest::AddAsset(_request) => Ok(()),
             IncomingRequest::ChangePeers(_request) => Ok(()),
             IncomingRequest::ClaimPswap(_request) => Ok(()),
+            IncomingRequest::CancelOutgoingRequest(_request) => Ok(()),
         }
     }
 
@@ -285,6 +294,7 @@ impl<T: Trait> IncomingRequest<T> {
             IncomingRequest::AddAsset(request) => request.finalize(),
             IncomingRequest::ChangePeers(request) => request.finalize(),
             IncomingRequest::ClaimPswap(request) => request.finalize(),
+            IncomingRequest::CancelOutgoingRequest(request) => request.finalize(),
         }
     }
 
@@ -294,6 +304,7 @@ impl<T: Trait> IncomingRequest<T> {
             IncomingRequest::AddAsset(request) => request.timepoint(),
             IncomingRequest::ChangePeers(request) => request.timepoint(),
             IncomingRequest::ClaimPswap(request) => request.timepoint(),
+            IncomingRequest::CancelOutgoingRequest(request) => request.timepoint(),
         }
     }
 }
@@ -385,12 +396,23 @@ impl OutgoingRequestEncoded {
             OutgoingRequestEncoded::RemovePeer(request) => &request.raw,
         }
     }
+
+    pub fn input_tokens(&self, signatures: Option<Vec<SignatureParams>>) -> Vec<Token> {
+        match self {
+            OutgoingRequestEncoded::OutgoingTransfer(request) => request.input_tokens(signatures),
+            OutgoingRequestEncoded::AddAsset(request) => request.input_tokens(signatures),
+            OutgoingRequestEncoded::AddToken(request) => request.input_tokens(signatures),
+            OutgoingRequestEncoded::AddPeer(request) => request.input_tokens(signatures),
+            OutgoingRequestEncoded::RemovePeer(request) => request.input_tokens(signatures),
+        }
+    }
 }
 
 #[derive(PartialEq, Eq, Encode, Decode, RuntimeDebug)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum RequestStatus {
     Pending,
+    Frozen,
     Ready,
     Failed,
 }
@@ -435,7 +457,7 @@ decl_storage! {
         pub RequestStatuses get(fn request_status): map hasher(identity) H256 => Option<RequestStatus>;
         pub RequestSubmissionHeight get(fn request_submission_height): map hasher(identity) H256 => T::BlockNumber;
         RequestApproves get(fn approves): map hasher(identity) H256 => BTreeSet<SignatureParams>;
-        AccountRequests get(fn account_requests): map hasher(identity) T::AccountId => Vec<H256>; // TODO: non-set
+        AccountRequests get(fn account_requests): map hasher(identity) T::AccountId => Vec<H256>; // TODO: should be a linked-set
 
         RegisteredAsset get(fn registered_asset): map hasher(identity) T::AssetId => Option<AssetKind>;
         RegisteredSidechainAsset get(fn registered_sidechain_asset): map hasher(identity) Address => Option<T::AssetId>;
@@ -498,11 +520,16 @@ decl_error! {
         UnknownMethodId,
         InvalidFunctionInput,
         InvalidSignature,
+        InvalidUint,
         InvalidAmount,
+        InvalidBalance,
+        InvalidString,
+        InvalidByte,
         InvalidAddress,
         InvalidAssetId,
         InvalidAccountId,
         InvalidBool,
+        InvalidH256,
         UnknownEvent,
         UnknownTokenAddress,
         NoLocalAccountForSigning,
@@ -514,8 +541,10 @@ decl_error! {
         DuplicatedRequest,
         UnsupportedToken,
         UnknownPeerAddress,
+        EthAbiEncodingError,
         EthAbiDecodingError,
-        EthTransactionIsPending,
+        EthTransactionIsFailed,
+        EthTransactionIsSucceeded,
         NoPendingPeer,
         WrongPendingPeer,
         TooManyPendingPeers,
@@ -529,6 +558,10 @@ decl_error! {
         FailedToLoadBlockHeader,
         FailedToLoadFinalizedHead,
         UnknownContractAddress,
+        InvalidContractInput,
+        RequestIsNotOwnedByTheAuthor,
+        FailedToParseTxHashInCall,
+        RequestIsNotReady,
         Other,
     }
 }
@@ -622,7 +655,7 @@ decl_module! {
             ensure!(from == bridge_account_id, Error::<T>::Forbidden);
 
             let result = result.and_then(|req| {
-                let hash = H256(req.tx_hash().0);
+                let hash = H256(req.hash().0);
                 let result = req.finalize().map_err(|e| (hash, e));
                 if result.is_err() {
                     if let Err(e) = req.cancel() {
@@ -688,14 +721,15 @@ decl_module! {
             let author = ensure_signed(origin)?;
             let bridge_account_id = Self::bridge_account();
             ensure!(author == bridge_account_id, Error::<T>::Forbidden);
-            let tx_hash = incoming_request.tx_hash();
+            let tx_hash = incoming_request.hash();
             ensure!(
                 !PendingIncomingRequests::get().contains(&tx_hash),
                 Error::<T>::TransferIsAlreadyRegistered
             );
+            incoming_request.prepare()?;
             PendingIncomingRequests::mutate(|transfers| transfers.insert(tx_hash.clone()));
             Self::remove_request_from_queue(&tx_hash);
-            IncomingRequests::insert(tx_hash.clone(), incoming_request);
+            IncomingRequests::insert(&tx_hash, incoming_request);
         }
 
         #[weight = (0, Pays::No)]
@@ -780,6 +814,146 @@ pub enum ContractEvent<AssetId, Address, AccountId, Balance> {
     ClaimPswap(AccountId),
 }
 
+#[derive(PartialEq)]
+pub struct Decoder<T: Trait> {
+    tokens: Vec<Token>,
+    _phantom: PhantomData<T>,
+}
+
+impl<T: Trait> Decoder<T> {
+    pub fn new(tokens: Vec<Token>) -> Self {
+        Self {
+            tokens,
+            _phantom: PhantomData,
+        }
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.tokens.is_empty()
+    }
+
+    pub fn next_string(&mut self) -> Result<String, DispatchError> {
+        self.tokens
+            .pop()
+            .and_then(|x| x.into_string())
+            .ok_or(Error::<T>::InvalidString.into())
+    }
+
+    pub fn next_bool(&mut self) -> Result<bool, DispatchError> {
+        self.tokens
+            .pop()
+            .and_then(|x| x.into_bool())
+            .ok_or(Error::<T>::InvalidBool.into())
+    }
+
+    pub fn next_u8(&mut self) -> Result<u8, DispatchError> {
+        self.tokens
+            .pop()
+            .and_then(|x| x.into_uint())
+            .filter(|x| x.as_u32() <= u8::MAX as u32)
+            .map(|x| x.as_u32() as u8)
+            .ok_or(Error::<T>::InvalidByte.into())
+    }
+
+    pub fn next_address(&mut self) -> Result<Address, DispatchError> {
+        Ok(H160(
+            self.tokens
+                .pop()
+                .and_then(|x| x.into_address())
+                .ok_or(Error::<T>::InvalidAddress)?
+                .0,
+        ))
+    }
+
+    pub fn next_balance(&mut self) -> Result<Balance, DispatchError> {
+        Ok(Balance::from(
+            u128::try_from(
+                self.tokens
+                    .pop()
+                    .and_then(|x| x.into_uint())
+                    .ok_or(Error::<T>::InvalidUint)?,
+            )
+            .map_err(|_| Error::<T>::InvalidBalance)?, // amount should be of size u128
+        ))
+    }
+
+    pub fn next_amount(&mut self) -> Result<Balance, DispatchError> {
+        Ok(Balance::from(Fixed::from_bits(
+            i128::try_from(
+                self.tokens
+                    .pop()
+                    .and_then(|x| x.into_uint())
+                    .ok_or(Error::<T>::InvalidUint)?,
+            )
+            .map_err(|_| Error::<T>::InvalidAmount)?,
+        )))
+    }
+
+    pub fn next_account_id(&mut self) -> Result<T::AccountId, DispatchError> {
+        Ok(T::AccountId::decode(
+            &mut &self
+                .tokens
+                .pop()
+                .and_then(|x| x.into_fixed_bytes())
+                .ok_or(Error::<T>::InvalidAccountId)?[..],
+        )
+        .map_err(|_| Error::<T>::InvalidAccountId)?)
+    }
+
+    pub fn next_asset_id(&mut self) -> Result<T::AssetId, DispatchError> {
+        Ok(T::AssetId::decode(&mut &self.next_h256()?.0[..])
+            .map_err(|_| Error::<T>::InvalidAssetId)?)
+    }
+
+    pub fn parse_h256(token: Token) -> Option<H256> {
+        <[u8; 32]>::try_from(token.into_fixed_bytes()?)
+            .ok()
+            .map(H256)
+    }
+
+    pub fn next_h256(&mut self) -> Result<H256, DispatchError> {
+        self.tokens
+            .pop()
+            .and_then(Self::parse_h256)
+            .ok_or(Error::<T>::InvalidH256.into())
+    }
+
+    pub fn next_array(&mut self) -> Result<Vec<Token>, DispatchError> {
+        self.tokens
+            .pop()
+            .and_then(|x| x.into_array())
+            .ok_or(Error::<T>::Other.into())
+    }
+
+    pub fn next_array_map<U, F: FnMut(&mut Decoder<T>) -> Result<U, DispatchError>>(
+        &mut self,
+        mut f: F,
+    ) -> Result<Vec<U>, DispatchError> {
+        let mut decoder = Decoder::<T>::new(self.next_array()?);
+        iter::repeat(())
+            .map(|_| f(&mut decoder))
+            .collect::<Result<Vec<_>, _>>()
+    }
+
+    pub fn next_signature_params(&mut self) -> Result<Vec<SignatureParams>, DispatchError> {
+        let rs = self.next_array_map(|d| d.next_h256().map(|x| x.0))?;
+        let ss = self.next_array_map(|d| d.next_h256().map(|x| x.0))?;
+        let vs = self.next_array_map(|d| d.next_u8())?;
+        Ok(rs
+            .into_iter()
+            .zip(ss)
+            .zip(vs)
+            .map(|((r, s), v)| SignatureParams { r, s, v })
+            .collect())
+    }
+}
+
+impl<T: Trait> Decoder<T> {
+    pub fn write_string(&mut self, val: String) {
+        self.tokens.push(Token::String(val));
+    }
+}
+
 impl<T: Trait> Module<T> {
     fn add_request(mut request: OffchainRequest<T>) -> Result<(), DispatchError> {
         let hash = request.hash();
@@ -814,7 +988,7 @@ impl<T: Trait> Module<T> {
 
     fn parse_main_event(
         logs: &[Log],
-    ) -> Result<ContractEvent<T::AssetId, Address, T::AccountId, Balance>, Error<T>> {
+    ) -> Result<ContractEvent<T::AssetId, Address, T::AccountId, Balance>, DispatchError> {
         for log in logs {
             if log.removed.unwrap_or(false) {
                 continue;
@@ -832,67 +1006,37 @@ impl<T: Trait> Module<T> {
                         ParamType::Address,
                         ParamType::FixedBytes(32),
                     ];
-                    let mut decoded = ethabi::decode(&types, &log.data.0)
+                    let decoded = ethabi::decode(&types, &log.data.0)
                         .map_err(|_| Error::<T>::EthAbiDecodingError)?;
-                    let asset_id = decoded
-                        .pop()
-                        .and_then(|x| <[u8; 32]>::try_from(x.to_fixed_bytes()?).ok())
-                        .map(H256)
-                        .ok_or(Error::<T>::InvalidAssetId)?;
-                    let token = decoded
-                        .pop()
-                        .and_then(|x| x.to_address())
-                        .ok_or(Error::<T>::InvalidAddress)?;
-                    let amount = Balance::from(Fixed::from_bits(
-                        i128::try_from(
-                            decoded
-                                .pop()
-                                .and_then(|x| x.to_uint())
-                                .ok_or(Error::<T>::InvalidAmount)?,
-                        )
-                        .map_err(|_| Error::<T>::InvalidAmount)?,
-                    ));
-                    let to = T::AccountId::decode(
-                        &mut &decoded
-                            .pop()
-                            .and_then(|x| x.to_fixed_bytes())
-                            .ok_or(Error::<T>::InvalidAccountId)?[..],
-                    )
-                    .map_err(|_| Error::<T>::InvalidAccountId)?;
+                    let mut decoder = Decoder::<T>::new(decoded);
+                    let asset_id = decoder.next_h256()?;
+                    let token = decoder.next_address()?;
+                    let amount = decoder.next_amount()?;
+                    let to = decoder.next_account_id()?;
                     return Ok(ContractEvent::Deposit(to, amount, H160(token.0), asset_id));
                 }
                 // ChangePeers(address,bool)
                 &hex!("a9fac23eb012e72fbd1f453498e7069c380385436763ee2c1c057b170d88d9f9") => {
                     let types = [ParamType::Address, ParamType::Bool];
-                    let mut decoded = ethabi::decode(&types, &log.data.0)
+                    let decoded = ethabi::decode(&types, &log.data.0)
                         .map_err(|_| Error::<T>::EthAbiDecodingError)?;
-                    let added = decoded
-                        .pop()
-                        .and_then(|x| x.to_bool())
-                        .ok_or(Error::<T>::InvalidBool)?;
-                    let peer_address = decoded
-                        .pop()
-                        .and_then(|x| x.to_address())
-                        .ok_or(Error::<T>::InvalidAddress)?;
+                    let mut decoder = Decoder::<T>::new(decoded);
+                    let added = decoder.next_bool()?;
+                    let peer_address = decoder.next_address()?;
                     return Ok(ContractEvent::ChangePeers(H160(peer_address.0), added));
                 }
                 &hex!("4eb3aea69bf61684354f60a43d355c3026751ddd0ea4e1f5afc1274b96c65505") => {
                     let types = [ParamType::FixedBytes(32)];
-                    let mut decoded =
+                    let decoded =
                         ethabi::decode(&types, &log.data.0).map_err(|_| Error::<T>::Other)?;
-                    let account_id = T::AccountId::decode(
-                        &mut &decoded
-                            .pop()
-                            .and_then(|x| x.to_fixed_bytes())
-                            .ok_or(Error::<T>::InvalidAccountId)?[..],
-                    )
-                    .map_err(|_| Error::<T>::InvalidAccountId)?;
+                    let mut decoder = Decoder::<T>::new(decoded);
+                    let account_id = decoder.next_account_id()?;
                     return Ok(ContractEvent::ClaimPswap(account_id));
                 }
                 _ => (),
             }
         }
-        Err(Error::<T>::UnknownEvent)
+        Err(Error::<T>::UnknownEvent.into())
     }
 
     fn prepare_message(msg: &[u8]) -> secp256k1::Message {
@@ -1035,11 +1179,11 @@ impl<T: Trait> Module<T> {
             };
             if need_to_handle {
                 let error = match request {
-                    OffchainRequest::Incoming(_author, tx_hash, timepoint, _request) => {
+                    OffchainRequest::Incoming(author, tx_hash, timepoint, kind) => {
                         debug::debug!("Loaded approved tx {}", tx_hash);
-                        match Self::load_approved_tx_receipt(tx_hash)
-                            .and_then(|tx| Self::parse_incoming_request(tx, timepoint))
-                        {
+                        match Self::load_tx_receipt(tx_hash).and_then(|tx| {
+                            Self::parse_incoming_request(tx, timepoint, kind, author)
+                        }) {
                             Ok(incoming_request) => {
                                 let register_call =
                                     Call::<T>::register_incoming_request(incoming_request);
@@ -1287,77 +1431,107 @@ impl<T: Trait> Module<T> {
         }
     }
 
-    fn load_approved_tx_receipt(tx_hash: H256) -> Result<TransactionReceipt, DispatchError> {
-        let tx_receipt = Self::load_tx_receipt(tx_hash)?;
-        ensure!(
-            tx_receipt.to == Some(CONTRACT_ADDRESS),
-            Error::<T>::UnknownContractAddress
-        );
-        // TODO: handle `root` field?
-        if tx_receipt.status.unwrap_or(0.into()) == 0.into() {
-            fail!(Error::<T>::EthTransactionIsPending);
-        }
-        Ok(tx_receipt)
-    }
-
     fn parse_incoming_request(
         tx_receipt: TransactionReceipt,
         timepoint: Timepoint<T>,
+        request_kind: IncomingRequestKind,
+        author: T::AccountId,
     ) -> Result<IncomingRequest<T>, DispatchError> {
-        let call = Self::parse_main_event(&tx_receipt.logs)?;
+        let tx_approved = tx_receipt.is_approved();
         let at_height = tx_receipt
             .block_number
             .expect("'block_number' is null only when the log/transaction is pending; qed")
             .as_u64();
         let tx_hash = H256(tx_receipt.transaction_hash.0);
 
-        Ok(match call {
-            ContractEvent::Deposit(to, amount, token_address, raw_asset_id) => {
-                let (asset_id, asset_kind) =
-                    Module::<T>::get_asset_by_raw_asset_id(raw_asset_id, &token_address)?
-                        .ok_or(Error::<T>::UnsupportedAssetId)?;
-                IncomingRequest::Transfer(IncomingTransfer {
-                    from: Default::default(),
-                    to,
-                    asset_id,
-                    asset_kind,
-                    amount,
-                    tx_hash,
-                    at_height,
-                    timepoint,
-                })
-            }
-            ContractEvent::ChangePeers(peer_address, added) => {
-                let peer_account_id = Self::peer_account_id(&peer_address);
+        match request_kind {
+            // A special flow for request cancellation.
+            IncomingRequestKind::CancelOutgoingRequest => {
+                ensure!(!tx_approved, Error::<T>::EthTransactionIsSucceeded);
+                let tx = Self::load_tx(H256(tx_receipt.transaction_hash.0))?;
+                let mut method_id = [0u8; 4];
+                method_id.clone_from_slice(&tx.input.0[..4]);
+                let funs = &*FUNCTIONS;
+                let fun_meta = funs.get(&method_id).ok_or(Error::<T>::UnknownMethodId)?;
+                let fun = &fun_meta.function;
+                let tokens = fun
+                    .decode_input(&tx.input.0)
+                    .map_err(|_| Error::<T>::InvalidFunctionInput)?;
+                let hash = parse_hash_from_call::<T>(tokens, fun_meta.tx_hash_arg_pos)?;
+                let oc_request: OffchainRequest<T> =
+                    crate::Request::<T>::get(hash).ok_or(Error::<T>::Other)?;
+                let request = match oc_request {
+                    OffchainRequest::Outgoing(request, _) => request,
+                    OffchainRequest::Incoming(..) => fail!(Error::<T>::Other),
+                };
                 ensure!(
-                    peer_account_id != T::AccountId::default(),
-                    Error::<T>::UnknownPeerAddress
+                    request.author() == &author,
+                    Error::<T>::RequestIsNotOwnedByTheAuthor
                 );
-                IncomingRequest::ChangePeers(IncomingChangePeers {
-                    peer_account_id,
-                    peer_address,
-                    added,
-                    tx_hash,
-                    at_height,
-                    timepoint,
+                Ok(IncomingRequest::CancelOutgoingRequest(
+                    CancelOutgoingRequest {
+                        request,
+                        tx_input: tx.input.0,
+                        tx_hash,
+                        at_height,
+                        timepoint,
+                    },
+                ))
+            }
+            _ => {
+                ensure!(tx_approved, Error::<T>::EthTransactionIsFailed);
+
+                let call = Self::parse_main_event(&tx_receipt.logs)?;
+
+                Ok(match call {
+                    ContractEvent::Deposit(to, amount, token_address, raw_asset_id) => {
+                        let (asset_id, asset_kind) =
+                            Module::<T>::get_asset_by_raw_asset_id(raw_asset_id, &token_address)?
+                                .ok_or(Error::<T>::UnsupportedAssetId)?;
+                        IncomingRequest::Transfer(IncomingTransfer {
+                            from: Default::default(),
+                            to,
+                            asset_id,
+                            asset_kind,
+                            amount,
+                            tx_hash,
+                            at_height,
+                            timepoint,
+                        })
+                    }
+                    ContractEvent::ChangePeers(peer_address, added) => {
+                        let peer_account_id = Self::peer_account_id(&peer_address);
+                        ensure!(
+                            peer_account_id != T::AccountId::default(),
+                            Error::<T>::UnknownPeerAddress
+                        );
+                        IncomingRequest::ChangePeers(IncomingChangePeers {
+                            peer_account_id,
+                            peer_address,
+                            added,
+                            tx_hash,
+                            at_height,
+                            timepoint,
+                        })
+                    }
+                    ContractEvent::ClaimPswap(account_id) => {
+                        let at_height = tx_receipt
+                            .block_number
+                            .expect("'block_number' is null only when the log is pending; qed")
+                            .as_u64();
+                        let tx_hash = H256(tx_receipt.transaction_hash.0);
+                        IncomingRequest::ClaimPswap(IncomingClaimPswap {
+                            account_id,
+                            eth_address: H160(tx_receipt.from.0),
+                            tx_hash,
+                            at_height,
+                            timepoint,
+                        })
+                    }
+                    _ => fail!(Error::<T>::UnknownMethodId),
                 })
             }
-            ContractEvent::ClaimPswap(account_id) => {
-                let at_height = tx_receipt
-                    .block_number
-                    .expect("'block_number' is null only when the log is pending; qed")
-                    .as_u64();
-                let tx_hash = H256(tx_receipt.transaction_hash.0);
-                IncomingRequest::ClaimPswap(IncomingClaimPswap {
-                    account_id,
-                    eth_address: H160(tx_receipt.from.0),
-                    tx_hash,
-                    at_height,
-                    timepoint,
-                })
-            }
-            _ => fail!(Error::<T>::UnknownMethodId),
-        })
+        }
     }
 
     fn send_incoming_request_result(
@@ -1426,15 +1600,34 @@ impl<T: Trait> Module<T> {
             .map(|x| x.as_u64())
     }
 
-    fn load_tx_receipt(hash: H256) -> Result<TransactionReceipt, Error<T>> {
+    fn load_tx(hash: H256) -> Result<Transaction, DispatchError> {
         let hash = types::H256(hash.0);
-        Self::eth_json_rpc_request::<_, TransactionReceipt>(
+        let tx_receipt =
+            Self::eth_json_rpc_request::<_, Transaction>("eth_getTransactionByHash", &vec![hash])
+                .ok_or(Error::<T>::HttpFetchingError)?
+                .pop()
+                .ok_or(Error::<T>::FailedToLoadTransaction)?;
+        ensure!(
+            tx_receipt.to == Some(CONTRACT_ADDRESS),
+            Error::<T>::UnknownContractAddress
+        );
+        Ok(tx_receipt)
+    }
+
+    fn load_tx_receipt(hash: H256) -> Result<TransactionReceipt, DispatchError> {
+        let hash = types::H256(hash.0);
+        let tx_receipt = Self::eth_json_rpc_request::<_, TransactionReceipt>(
             "eth_getTransactionReceipt",
             &vec![hash],
         )
         .ok_or(Error::<T>::HttpFetchingError)?
         .pop()
-        .ok_or(Error::<T>::FailedToLoadTransaction)
+        .ok_or(Error::<T>::FailedToLoadTransaction)?;
+        ensure!(
+            tx_receipt.to == Some(CONTRACT_ADDRESS),
+            Error::<T>::UnknownContractAddress
+        );
+        Ok(tx_receipt)
     }
 
     fn is_peer(who: &T::AccountId) -> bool {

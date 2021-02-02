@@ -67,6 +67,13 @@ pub struct Receipt {
     pub logs_bloom: H2048,
 }
 
+impl Receipt {
+    pub fn is_approved(&self) -> bool {
+        // TODO: handle `root` field?
+        self.status.unwrap_or(0.into()) != 0.into()
+    }
+}
+
 /// Raw bytes of a signed, but not yet sent transaction
 #[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
 pub struct RawTransaction {
