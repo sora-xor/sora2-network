@@ -1,5 +1,5 @@
 use crate::mock::*;
-use common::AssetSymbol;
+use common::{prelude::Balance, AssetSymbol};
 use frame_support::assert_ok;
 use PolySwapActionExample::*;
 
@@ -49,13 +49,17 @@ fn generic_pair_swap_simple() {
             get_alice(),
             RedPepper(),
             AssetSymbol(b"RP".to_vec()),
-            18
+            18,
+            Balance::from(0u32),
+            true,
         ));
         assert_ok!(assets::Module::<Testtime>::register_asset_id(
             repr.clone(),
             BlackPepper(),
             AssetSymbol(b"BP".to_vec()),
-            18
+            18,
+            Balance::from(0u32),
+            true,
         ));
         assert_ok!(assets::Module::<Testtime>::mint_to(
             &RedPepper(),

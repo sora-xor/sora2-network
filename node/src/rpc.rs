@@ -94,12 +94,12 @@ where
     use assets_rpc::{AssetsAPI, AssetsClient};
     use dex_api_rpc::{DEX, DEXAPI};
     use dex_manager_rpc::{DEXManager, DEXManagerAPI};
+    use eth_bridge_rpc::{EthBridgeApi, EthBridgeRpc};
     use farming_rpc::*;
     use iroha_migration_rpc::{IrohaMigrationAPI, IrohaMigrationClient};
     use liquidity_proxy_rpc::{LiquidityProxyAPI, LiquidityProxyClient};
     use pallet_transaction_payment_rpc::{TransactionPayment, TransactionPaymentApi};
     use substrate_frame_rpc_system::{FullSystem, SystemApi};
-    use eth_bridge_rpc::{EthBridgeApi, EthBridgeRpc};
     use trading_pair_rpc::{TradingPairAPI, TradingPairClient};
 
     let mut io = jsonrpc_core::IoHandler::default();

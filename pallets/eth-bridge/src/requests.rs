@@ -301,7 +301,7 @@ pub struct AddAssetOutgoingRequest<T: Trait> {
 impl<T: Trait> AddAssetOutgoingRequest<T> {
     pub fn to_eth_abi(&self, tx_hash: H256) -> Result<AddAssetRequestEncoded, Error<T>> {
         let hash = H256(tx_hash.0);
-        let (symbol, precision) = assets::Module::<T>::get_asset_info(&self.asset_id);
+        let (symbol, precision, _) = assets::Module::<T>::get_asset_info(&self.asset_id);
         let symbol: String = String::from_utf8_lossy(&symbol.0).into();
         let name = symbol.clone();
         let asset_id_code = <AssetIdOf<T> as Into<H256>>::into(self.asset_id);

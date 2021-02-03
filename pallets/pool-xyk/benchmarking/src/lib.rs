@@ -8,7 +8,10 @@ extern crate alloc;
 use pool_xyk::*;
 
 use codec::Decode;
-use common::{prelude::SwapAmount, AssetSymbol, DEXId, DOT, XOR};
+use common::{
+    prelude::{Balance, SwapAmount},
+    AssetSymbol, DEXId, DOT, XOR,
+};
 use frame_benchmarking::benchmarks;
 use frame_system::RawOrigin;
 use hex_literal::hex;
@@ -42,10 +45,22 @@ fn setup_benchmark_assets_only<T: Trait>() -> Result<(), &'static str> {
     Permissions::<T>::grant_permission(owner.clone(), owner.clone(), MINT)?;
     Permissions::<T>::grant_permission(owner.clone(), owner.clone(), BURN)?;
 
-    let _ =
-        Assets::<T>::register_asset_id(owner.clone(), XOR.into(), AssetSymbol(b"XOR".to_vec()), 18);
-    let _ =
-        Assets::<T>::register_asset_id(owner.clone(), DOT.into(), AssetSymbol(b"DOT".to_vec()), 18);
+    let _ = Assets::<T>::register_asset_id(
+        owner.clone(),
+        XOR.into(),
+        AssetSymbol(b"XOR".to_vec()),
+        18,
+        Balance::from(0u32),
+        true,
+    );
+    let _ = Assets::<T>::register_asset_id(
+        owner.clone(),
+        DOT.into(),
+        AssetSymbol(b"DOT".to_vec()),
+        18,
+        Balance::from(0u32),
+        true,
+    );
 
     TradingPair::<T>::register(owner_origin.clone(), DEX.into(), XOR.into(), DOT.into())?;
 
@@ -60,10 +75,22 @@ fn setup_benchmark<T: Trait>() -> Result<(), &'static str> {
     Permissions::<T>::grant_permission(owner.clone(), owner.clone(), MINT)?;
     Permissions::<T>::grant_permission(owner.clone(), owner.clone(), BURN)?;
 
-    let _ =
-        Assets::<T>::register_asset_id(owner.clone(), XOR.into(), AssetSymbol(b"XOR".to_vec()), 18);
-    let _ =
-        Assets::<T>::register_asset_id(owner.clone(), DOT.into(), AssetSymbol(b"DOT".to_vec()), 18);
+    let _ = Assets::<T>::register_asset_id(
+        owner.clone(),
+        XOR.into(),
+        AssetSymbol(b"XOR".to_vec()),
+        18,
+        Balance::from(0u32),
+        true,
+    );
+    let _ = Assets::<T>::register_asset_id(
+        owner.clone(),
+        DOT.into(),
+        AssetSymbol(b"DOT".to_vec()),
+        18,
+        Balance::from(0u32),
+        true,
+    );
 
     TradingPair::<T>::register(owner_origin.clone(), DEX.into(), XOR.into(), DOT.into())?;
 
@@ -75,6 +102,8 @@ fn setup_benchmark<T: Trait>() -> Result<(), &'static str> {
         mark_asset.clone().into(),
         AssetSymbol(b"PSWAP".to_vec()),
         18,
+        Balance::from(0u32),
+        true,
     );
 
     let repr: <T>::AccountId = Technical::<T>::tech_account_id_to_account_id(&tech_acc_id).unwrap();

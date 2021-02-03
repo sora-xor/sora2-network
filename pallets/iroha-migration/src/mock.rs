@@ -308,7 +308,14 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
     .unwrap();
 
     assets::GenesisConfig::<Test> {
-        endowed_assets: vec![(VAL, ALICE, AssetSymbol(b"VAL".to_vec()), 18)],
+        endowed_assets: vec![(
+            VAL,
+            ALICE,
+            AssetSymbol(b"VAL".to_vec()),
+            18,
+            Balance::from(0u32),
+            true,
+        )],
     }
     .assimilate_storage(&mut t)
     .unwrap();

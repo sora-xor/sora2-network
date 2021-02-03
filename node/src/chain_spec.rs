@@ -23,7 +23,7 @@ use sp_consensus_babe::AuthorityId as BabeId;
 use sp_core::{sr25519, Pair, Public};
 use sp_runtime::{
     sp_std::iter::once,
-    traits::{IdentifyAccount, Verify},
+    traits::{IdentifyAccount, Verify, Zero},
     Perbill,
 };
 use std::str::FromStr;
@@ -543,24 +543,32 @@ fn testnet_genesis(
                     initial_assets_owner.clone(),
                     AssetSymbol(b"XOR".to_vec()),
                     18,
+                    Balance::zero(),
+                    true,
                 ),
                 // (
                 //     UsdId::get(),
                 //     initial_assets_owner.clone(),
                 //     AssetSymbol(b"USDT".to_vec()),
                 //     18,
+                //     Balance::zero(),
+                //     true,
                 // ),
                 (
                     ValId::get(),
                     initial_assets_owner.clone(),
                     AssetSymbol(b"VAL".to_vec()),
                     18,
+                    Balance::zero(),
+                    true,
                 ),
                 (
                     PswapId::get(),
                     initial_assets_owner.clone(),
                     AssetSymbol(b"PSWAP".to_vec()),
                     18,
+                    Balance::zero(),
+                    true,
                 ),
             ],
         }),

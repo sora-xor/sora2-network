@@ -215,9 +215,11 @@ mod tests {
                 10_000u32.into(),
                 AssetSymbol(b"USDT".to_vec()),
                 18,
+                Balance::from(0u32),
+                true,
             ),
-            (alice(), XOR, 0u32.into(), AssetSymbol(b"XOR".to_vec()), 18),
-            (alice(), VAL, 0u32.into(), AssetSymbol(b"VAL".to_vec()), 18),
+            (alice(), XOR, 0u32.into(), AssetSymbol(b"XOR".to_vec()), 18, Balance::from(0u32), true),
+            (alice(), VAL, 0u32.into(), AssetSymbol(b"VAL".to_vec()), 18, Balance::from(0u32), true),
         ])
         .build();
         ext.execute_with(|| {
@@ -270,9 +272,11 @@ mod tests {
                 fixed!(10000),
                 AssetSymbol(b"USDT".to_vec()),
                 18,
+                Balance::from(0u32),
+                true,
             ),
-            (alice(), XOR, fixed!(10), AssetSymbol(b"XOR".to_vec()), 18),
-            (alice(), VAL, fixed!(0), AssetSymbol(b"VAL".to_vec()), 18),
+            (alice(), XOR, fixed!(10), AssetSymbol(b"XOR".to_vec()), 18, Balance::from(0u32), true),
+            (alice(), VAL, fixed!(0), AssetSymbol(b"VAL".to_vec()), 18, Balance::from(0u32), true),
         ])
         .build();
         ext.execute_with(|| {
@@ -345,9 +349,11 @@ mod tests {
                 fixed!(10000),
                 AssetSymbol(b"USDT".to_vec()),
                 18,
+                Balance::from(0u32),
+                true,
             ),
-            (alice(), XOR, fixed!(10), AssetSymbol(b"XOR".to_vec()), 18),
-            (alice(), VAL, fixed!(0), AssetSymbol(b"VAL".to_vec()), 18),
+            (alice(), XOR, fixed!(10), AssetSymbol(b"XOR".to_vec()), 18, Balance::from(0u32), true),
+            (alice(), VAL, fixed!(0), AssetSymbol(b"VAL".to_vec()), 18, Balance::from(0u32), true),
         ])
         .build();
         ext.execute_with(|| {
@@ -411,9 +417,9 @@ mod tests {
     #[test]
     fn should_not_sell_without_reserves() {
         let mut ext = ExtBuilder::new(vec![
-            (alice(), USDT, 0u32.into(), AssetSymbol(b"USDT".to_vec()), 18),
-            (alice(), XOR, 1u32.into(), AssetSymbol(b"XOR".to_vec()), 18),
-            (alice(), VAL, 0u32.into(), AssetSymbol(b"VAL".to_vec()), 18),
+            (alice(), USDT, 0u32.into(), AssetSymbol(b"USDT".to_vec()), 18, Balance::from(0u32), true),
+            (alice(), XOR, 1u32.into(), AssetSymbol(b"XOR".to_vec()), 18, Balance::from(0u32), true),
+            (alice(), VAL, 0u32.into(), AssetSymbol(b"VAL".to_vec()), 18, Balance::from(0u32), true),
         ])
         .build();
         ext.execute_with(|| {
@@ -443,9 +449,11 @@ mod tests {
                 fixed!(10000),
                 AssetSymbol(b"USDT".to_vec()),
                 18,
+                Balance::from(0u32),
+                true,
             ),
-            (alice(), XOR, fixed!(0), AssetSymbol(b"XOR".to_vec()), 18),
-            (alice(), VAL, fixed!(0), AssetSymbol(b"VAL".to_vec()), 18),
+            (alice(), XOR, fixed!(0), AssetSymbol(b"XOR".to_vec()), 18, Balance::from(0u32), true,),
+            (alice(), VAL, fixed!(0), AssetSymbol(b"VAL".to_vec()), 18, Balance::from(0u32), true,),
         ])
         .build();
         ext.execute_with(|| {
