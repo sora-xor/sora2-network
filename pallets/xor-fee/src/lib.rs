@@ -1,6 +1,6 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use core::convert::TryFrom;
+use core::convert::TryInto;
 
 use common::{fixed, prelude::*, Fixed};
 use frame_support::{
@@ -9,7 +9,6 @@ use frame_support::{
 };
 use pallet_staking::ValBurnedNotifier;
 use pallet_transaction_payment::OnTransactionPayment;
-use sp_arithmetic::traits::UniqueSaturatedInto;
 use sp_runtime::DispatchError;
 
 pub const TECH_ACCOUNT_PREFIX: &[u8] = b"xor-fee";
@@ -103,19 +102,22 @@ impl<T: Trait> OnTransactionPayment<T::AccountId, NegativeImbalanceOf<T>, Balanc
         // Burn XOR for now
         let (_xor_burned, xor_to_val) =
             amount.ration(T::XorBurnedWeight::get(), T::XorIntoValBurnedWeight::get());
-        let xor_to_val: u128 = xor_to_val.peek().unique_saturated_into();
-        let xor_to_val = Fixed::try_from(xor_to_val).unwrap();
+        // Convert `NegativeImbalanceOf<T>` value to a `Fixed` type through its inner representation
+        // This method is saturation-free as long as `xor_to_val` doesn't exceed 13.106511852580896768
+        // which is the case for fees (that are usually of the order of ~10^-4)
+        let xor_to_val: usize = xor_to_val.peek().try_into().unwrap_or(0);
+        let xor_to_val: Fixed = Fixed::from_bits(xor_to_val as i128);
         let tech_account_id = T::TechAccountId::from_generic_pair(
             TECH_ACCOUNT_PREFIX.to_vec(),
             TECH_ACCOUNT_MAIN.to_vec(),
         );
         // Trying to mint the `xor_to_val` tokens amount to `tech_account_id` of this pallet. Tokens were initially withdrawn as part of the fee.
-        if Technical::<T>::mint(&T::XorId::get(), &tech_account_id, xor_to_val.into()).is_ok() {
+        if Technical::<T>::mint(&T::XorId::get(), &tech_account_id, Balance(xor_to_val)).is_ok() {
             let account_id = Technical::<T>::tech_account_id_to_account_id(&tech_account_id)
                 .expect("Failed to get ordinary account id for technical account id.");
             // Trying to swap XOR with VAL.
             // If swap goes through, VAL will be burned (for more in-depth look read VAL tokenomics), otherwise remove XOR from the tech account.
-            if let Ok(swap_outcome) = T::LiquiditySource::exchange(
+            match T::LiquiditySource::exchange(
                 &account_id,
                 &account_id,
                 &T::DEXIdValue::get(),
@@ -126,13 +128,18 @@ impl<T: Trait> OnTransactionPayment<T::AccountId, NegativeImbalanceOf<T>, Balanc
                     min_amount_out: Balance(fixed!(0)),
                 },
             ) {
-                let val_to_burn = Balance::from(swap_outcome.amount);
-                let _ =
-                    Technical::<T>::burn(&T::ValId::get(), &tech_account_id, val_to_burn.clone())
-                        .map(|_| T::ValBurnedNotifier::notify_val_burned(val_to_burn.clone()));
-            } else {
-                let _result =
-                    Technical::<T>::burn(&T::XorId::get(), &tech_account_id, xor_to_val.into());
+                Ok(swap_outcome) => {
+                    let val_to_burn = Balance::from(swap_outcome.amount);
+                    if Technical::<T>::burn(&T::ValId::get(), &tech_account_id, val_to_burn.clone())
+                        .is_ok()
+                    {
+                        T::ValBurnedNotifier::notify_val_burned(val_to_burn);
+                    };
+                }
+                Err(_) => {
+                    let _ =
+                        Technical::<T>::burn(&T::XorId::get(), &tech_account_id, xor_to_val.into());
+                }
             }
         }
     }
