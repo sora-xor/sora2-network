@@ -1,6 +1,10 @@
 use crate::mock::*;
 use crate::FarmId;
-use common::{fixed, prelude::SwapAmount, AssetSymbol, ToFeeAccount, DOT, PSWAP, XOR};
+use common::{
+    fixed,
+    prelude::{Balance, SwapAmount},
+    AssetSymbol, ToFeeAccount, DOT, PSWAP, XOR,
+};
 use frame_support::{assert_noop, assert_ok};
 
 impl crate::Module<Testtime> {
@@ -38,14 +42,18 @@ impl crate::Module<Testtime> {
                 ALICE(),
                 XOR,
                 AssetSymbol(b"XOR".to_vec()),
-                18
+                18,
+                Balance::from(0u32),
+                true,
             ));
 
             assert_ok!(assets::Module::<Testtime>::register_asset_id(
                 ALICE(),
                 DOT,
                 AssetSymbol(b"DOT".to_vec()),
-                18
+                18,
+                Balance::from(0u32),
+                true,
             ));
 
             assert_ok!(dex_manager::Module::<Testtime>::initialize_dex(

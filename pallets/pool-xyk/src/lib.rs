@@ -2066,7 +2066,7 @@ decl_module! {
                 <T as Trait>::EnsureDEXManager::ensure_can_manage(&dex_id, origin.clone(), ManagementMode::Public)?;
                 let (_,tech_account_id, fees_account_id, mark_asset) = Module::<T>::initialize_pool_unchecked(source.clone(), dex_id, asset_a, asset_b)?;
                 let mark_asset_repr: T::AssetId = mark_asset.into();
-                assets::Module::<T>::register_asset_id(source.clone(), mark_asset_repr, AssetSymbol(b"XYKPOOL".to_vec()), 18)?;
+                assets::Module::<T>::register_asset_id(source.clone(), mark_asset_repr, AssetSymbol(b"XYKPOOL".to_vec()), 18, Balance::from(0u32), true)?;
                 let ta_repr = technical::Module::<T>::tech_account_id_to_account_id(&tech_account_id)?;
                 let fees_ta_repr = technical::Module::<T>::tech_account_id_to_account_id(&fees_account_id)?;
                 // Minting permission is needed for technical account to mint markered tokens of

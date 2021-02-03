@@ -11,7 +11,7 @@ use permissions::Scope;
 use sp_core::H256;
 use sp_runtime::{
     testing::Header,
-    traits::{BlakeTwo256, IdentityLookup},
+    traits::{BlakeTwo256, IdentityLookup, Zero},
     Perbill,
 };
 
@@ -189,7 +189,14 @@ pub type Assets = assets::Module<Runtime>;
 
 pub struct ExtBuilder {
     endowed_accounts: Vec<(AccountId, AssetId, Balance)>,
-    endowed_assets: Vec<(AssetId, AccountId, AssetSymbol, BalancePrecision)>,
+    endowed_assets: Vec<(
+        AssetId,
+        AccountId,
+        AssetSymbol,
+        BalancePrecision,
+        Balance,
+        bool,
+    )>,
     initial_permission_owners: Vec<(u32, Scope, Vec<AccountId>)>,
     initial_permissions: Vec<(AccountId, Scope, Vec<u32>)>,
     subscribed_accounts: Vec<(AccountId, (DEXId, AssetId, BlockNumber, BlockNumber))>,
@@ -205,6 +212,8 @@ impl ExtBuilder {
                 ALICE,
                 AssetSymbol(b"POOL".to_vec()),
                 18,
+                Balance::from(0u32),
+                true,
             )],
             initial_permission_owners: Vec::new(),
             initial_permissions: Vec::new(),
@@ -220,24 +229,37 @@ impl ExtBuilder {
         Self {
             endowed_accounts: accounts,
             endowed_assets: vec![
-                (common::XOR.into(), ALICE, AssetSymbol(b"XOR".to_vec()), 18),
+                (
+                    common::XOR.into(),
+                    ALICE,
+                    AssetSymbol(b"XOR".to_vec()),
+                    18,
+                    Balance::zero(),
+                    true,
+                ),
                 (
                     common::PSWAP.into(),
                     ALICE,
                     AssetSymbol(b"PSWAP".to_vec()),
                     10,
+                    Balance::zero(),
+                    true,
                 ),
                 (
                     PoolTokenAId::get(),
                     ALICE,
                     AssetSymbol(b"POOLA".to_vec()),
                     18,
+                    Balance::zero(),
+                    true,
                 ),
                 (
                     PoolTokenBId::get(),
                     ALICE,
                     AssetSymbol(b"POOLB".to_vec()),
                     18,
+                    Balance::zero(),
+                    true,
                 ),
             ],
             initial_permission_owners: vec![],

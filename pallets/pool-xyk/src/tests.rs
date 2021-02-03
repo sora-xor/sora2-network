@@ -35,14 +35,18 @@ impl crate::Module<Testtime> {
                 ALICE(),
                 GoldenTicket.into(),
                 AssetSymbol(b"GT".to_vec()),
-                18
+                18,
+                Balance::from(0u32),
+                true,
             ));
 
             assert_ok!(assets::Module::<Testtime>::register_asset_id(
                 ALICE(),
                 BlackPepper.into(),
                 AssetSymbol(b"BP".to_vec()),
-                18
+                18,
+                Balance::from(0u32),
+                true,
             ));
 
             assert_ok!(dex_manager::Module::<Testtime>::initialize_dex(

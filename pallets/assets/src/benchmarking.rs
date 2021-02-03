@@ -25,7 +25,13 @@ fn add_assets<T: Trait>(n: u32) -> Result<(), &'static str> {
     let owner = alice::<T>();
     let owner_origin: <T as frame_system::Trait>::Origin = RawOrigin::Signed(owner.clone()).into();
     for _i in 0..n {
-        Assets::<T>::register(owner_origin.clone(), AssetSymbol(b"TOKEN".to_vec()), 18)?;
+        Assets::<T>::register(
+            owner_origin.clone(),
+            AssetSymbol(b"TOKEN".to_vec()),
+            18,
+            Balance::zero(),
+            true,
+        )?;
     }
 
     Ok(())
@@ -52,7 +58,9 @@ benchmarks! {
             caller.clone(),
             asset_id.clone(),
             AssetSymbol(b"NEWT".to_vec()),
-            18
+            18,
+            Balance::zero(),
+            true,
         )?;
     }
     verify {
@@ -66,7 +74,9 @@ benchmarks! {
             caller.clone(),
             XOR.into(),
             AssetSymbol(b"XOR".to_vec()),
-            18
+            18,
+            Balance::zero(),
+            true,
         );
     }: _(
         RawOrigin::Signed(caller.clone()),
@@ -85,7 +95,9 @@ benchmarks! {
             caller.clone(),
             XOR.into(),
             AssetSymbol(b"XOR".to_vec()),
-            18
+            18,
+            Balance::zero(),
+            true,
         );
     }: _(
         RawOrigin::Signed(caller.clone()),

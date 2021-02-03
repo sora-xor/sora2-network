@@ -11,7 +11,7 @@ use permissions::{Scope, INIT_DEX, MANAGE_DEX};
 use sp_core::H256;
 use sp_runtime::{
     testing::Header,
-    traits::{BlakeTwo256, IdentityLookup},
+    traits::{BlakeTwo256, IdentityLookup, Zero},
     Perbill,
 };
 
@@ -137,7 +137,14 @@ pub type Tokens = tokens::Module<Runtime>;
 pub type TradingPairModule = Module<Runtime>;
 
 pub struct ExtBuilder {
-    endowed_assets: Vec<(AssetId, AccountId, AssetSymbol, BalancePrecision)>,
+    endowed_assets: Vec<(
+        AssetId,
+        AccountId,
+        AssetSymbol,
+        BalancePrecision,
+        Balance,
+        bool,
+    )>,
     endowed_accounts: Vec<(AccountId, AssetId, Balance)>,
     dex_list: Vec<(DEXId, DEXInfo<AssetId>)>,
     initial_permission_owners: Vec<(u32, Scope, Vec<AccountId>)>,
@@ -148,9 +155,30 @@ impl ExtBuilder {
     pub fn without_initialized_dex() -> Self {
         Self {
             endowed_assets: vec![
-                (XOR, ALICE, AssetSymbol(b"XOR".to_vec()), 18),
-                (DOT, ALICE, AssetSymbol(b"DOT".to_vec()), 18),
-                (KSM, ALICE, AssetSymbol(b"DOT".to_vec()), 18),
+                (
+                    XOR,
+                    ALICE,
+                    AssetSymbol(b"XOR".to_vec()),
+                    18,
+                    Balance::from(0u32),
+                    true,
+                ),
+                (
+                    DOT,
+                    ALICE,
+                    AssetSymbol(b"DOT".to_vec()),
+                    18,
+                    Balance::from(0u32),
+                    true,
+                ),
+                (
+                    KSM,
+                    ALICE,
+                    AssetSymbol(b"DOT".to_vec()),
+                    18,
+                    Balance::from(0u32),
+                    true,
+                ),
             ],
             endowed_accounts: vec![],
             dex_list: vec![],
@@ -164,9 +192,30 @@ impl Default for ExtBuilder {
     fn default() -> Self {
         Self {
             endowed_assets: vec![
-                (XOR, ALICE, AssetSymbol(b"XOR".to_vec()), 18),
-                (DOT, ALICE, AssetSymbol(b"DOT".to_vec()), 18),
-                (KSM, ALICE, AssetSymbol(b"KSM".to_vec()), 18),
+                (
+                    XOR,
+                    ALICE,
+                    AssetSymbol(b"XOR".to_vec()),
+                    18,
+                    Balance::zero(),
+                    true,
+                ),
+                (
+                    DOT,
+                    ALICE,
+                    AssetSymbol(b"DOT".to_vec()),
+                    18,
+                    Balance::zero(),
+                    true,
+                ),
+                (
+                    KSM,
+                    ALICE,
+                    AssetSymbol(b"KSM".to_vec()),
+                    18,
+                    Balance::zero(),
+                    true,
+                ),
             ],
             endowed_accounts: vec![],
             dex_list: vec![(

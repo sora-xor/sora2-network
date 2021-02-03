@@ -63,6 +63,8 @@ pub struct AssetInfo<AssetId, AssetSymbol, Precision> {
         )
     )]
     pub precision: Precision,
+    #[cfg_attr(feature = "std", serde(with = "string_serialization"))]
+    pub is_extensible: bool,
 }
 
 sp_api::decl_runtime_apis! {
@@ -74,6 +76,8 @@ sp_api::decl_runtime_apis! {
         Precision: Codec + MaybeFromStr + MaybeDisplay,
     {
         fn free_balance(account_id: AccountId, asset_id: AssetId) -> Option<BalanceInfo<Balance>>;
+
+        fn usable_balance(account_id: AccountId, asset_id: AssetId) -> Option<BalanceInfo<Balance>>;
 
         fn total_balance(account_id: AccountId, asset_id: AssetId) -> Option<BalanceInfo<Balance>>;
 
@@ -112,9 +116,10 @@ mod tests {
             },
             symbol: ConcrAssetSymbol(b"XOR".to_vec()),
             precision: 18,
+            is_extensible: true,
         };
 
-        let json_str = r#"{"asset_id":"0x020003000400050006000700080009000a000b000c000d000e000f0001000200","symbol":"XOR","precision":"18"}"#;
+        let json_str = r#"{"asset_id":"0x020003000400050006000700080009000a000b000c000d000e000f0001000200","symbol":"XOR","precision":"18","is_extensible":"true"}"#;
 
         assert_eq!(serde_json::to_string(&asset_info).unwrap(), json_str);
         assert_eq!(

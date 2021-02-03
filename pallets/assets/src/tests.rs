@@ -1,8 +1,12 @@
 mod tests {
     use crate::{mock::*, Error};
-    use common::{prelude::AssetSymbol, AssetId32, XOR};
+    use common::{
+        prelude::{AssetSymbol, Balance},
+        AssetId32, DOT, VAL, XOR,
+    };
     use frame_support::{assert_noop, assert_ok};
     use hex_literal::hex;
+    use sp_runtime::traits::Zero;
 
     #[test]
     fn should_gen_and_register_asset() {
@@ -19,7 +23,9 @@ mod tests {
             assert_ok!(Assets::register(
                 Origin::signed(ALICE),
                 AssetSymbol(b"ALIC".to_vec()),
-                18
+                18,
+                Balance::zero(),
+                true,
             ));
             assert_ok!(Assets::ensure_asset_exists(&next_asset_id));
             assert_ne!(Assets::gen_asset_id(&ALICE), next_asset_id);
@@ -35,7 +41,9 @@ mod tests {
                 ALICE,
                 XOR,
                 AssetSymbol(b"XOR".to_vec()),
-                18
+                18,
+                Balance::zero(),
+                true,
             ));
             assert_ok!(Assets::ensure_asset_exists(&XOR));
         });
@@ -49,10 +57,19 @@ mod tests {
                 ALICE,
                 XOR,
                 AssetSymbol(b"XOR".to_vec()),
-                18
+                18,
+                Balance::zero(),
+                true,
             ));
             assert_noop!(
-                Assets::register_asset_id(ALICE, XOR, AssetSymbol(b"XOR".to_vec()), 18),
+                Assets::register_asset_id(
+                    ALICE,
+                    XOR,
+                    AssetSymbol(b"XOR".to_vec()),
+                    18,
+                    Balance::zero(),
+                    true,
+                ),
                 Error::<Runtime>::AssetIdAlreadyExists
             );
         });
@@ -66,7 +83,9 @@ mod tests {
                 ALICE,
                 XOR,
                 AssetSymbol(b"XOR".to_vec()),
-                18
+                18,
+                Balance::zero(),
+                true,
             ));
             assert_ok!(Assets::mint_to(&XOR, &ALICE, &ALICE, 100u32.into()));
             assert_ok!(Assets::burn_from(&XOR, &ALICE, &ALICE, 100u32.into()));
@@ -82,7 +101,9 @@ mod tests {
                 ALICE,
                 XOR,
                 AssetSymbol(b"XOR".to_vec()),
-                18
+                18,
+                Balance::zero(),
+                true,
             ));
             assert_noop!(
                 Assets::mint_to(&XOR, &BOB, &BOB, 100u32.into()),
@@ -116,6 +137,119 @@ mod tests {
             assert!(!crate::is_symbol_valid(&AssetSymbol(
                 b"\xF0\x9F\x98\xBF".to_vec()
             )));
+        })
+    }
+
+    #[test]
+    fn should_mint_initial_supply_for_owner() {
+        let mut ext = ExtBuilder::default().build();
+        ext.execute_with(|| {
+            assert_ok!(Assets::register_asset_id(
+                ALICE,
+                XOR,
+                AssetSymbol(b"XOR".to_vec()),
+                18,
+                Balance::from(123u32),
+                true,
+            ));
+            assert_eq!(
+                Assets::free_balance(&XOR, &ALICE).expect("Failed to query free balance."),
+                Balance::from(123u32),
+            );
+            assert_ok!(Assets::register_asset_id(
+                ALICE,
+                VAL,
+                AssetSymbol(b"VAL".to_vec()),
+                18,
+                Balance::from(321u32),
+                false,
+            ));
+            assert_eq!(
+                Assets::free_balance(&VAL, &ALICE).expect("Failed to query free balance."),
+                Balance::from(321u32),
+            );
+            assert_ok!(Assets::register_asset_id(
+                ALICE,
+                DOT,
+                AssetSymbol(b"DOT".to_vec()),
+                18,
+                Balance::from(0u32),
+                false,
+            ));
+            assert_eq!(
+                Assets::free_balance(&DOT, &ALICE).expect("Failed to query free balance."),
+                Balance::zero(),
+            );
+        })
+    }
+
+    #[test]
+    fn should_fail_with_non_extensible_asset_supply() {
+        let mut ext = ExtBuilder::default().build();
+        ext.execute_with(|| {
+            assert_ok!(Assets::register_asset_id(
+                ALICE,
+                XOR,
+                AssetSymbol(b"XOR".to_vec()),
+                18,
+                Balance::from(10u32),
+                false,
+            ));
+            assert_noop!(
+                Assets::mint_to(&XOR, &ALICE, &ALICE, Balance::from(10u32)),
+                Error::<Runtime>::AssetSupplyIsNotExtensible
+            );
+            assert_noop!(
+                Assets::mint_to(&XOR, &ALICE, &BOB, Balance::from(10u32)),
+                Error::<Runtime>::AssetSupplyIsNotExtensible
+            );
+            assert_noop!(
+                Assets::update_balance(&XOR, &ALICE, 1i128),
+                Error::<Runtime>::AssetSupplyIsNotExtensible
+            );
+            assert_ok!(Assets::update_balance(&XOR, &ALICE, 0i128),);
+            assert_ok!(Assets::update_balance(&XOR, &ALICE, -1i128),);
+        })
+    }
+
+    #[test]
+    fn should_mint_for_extensible_asset() {
+        let mut ext = ExtBuilder::default().build();
+        ext.execute_with(|| {
+            assert_ok!(Assets::register_asset_id(
+                ALICE,
+                XOR,
+                AssetSymbol(b"XOR".to_vec()),
+                18,
+                Balance::from(10u32),
+                true,
+            ));
+            assert_ok!(Assets::mint_to(&XOR, &ALICE, &ALICE, Balance::from(10u32)),);
+            assert_ok!(Assets::mint_to(&XOR, &ALICE, &BOB, Balance::from(10u32)),);
+            assert_ok!(Assets::update_balance(&XOR, &ALICE, 1i128),);
+            assert_ok!(Assets::update_balance(&XOR, &ALICE, 0i128),);
+            assert_ok!(Assets::update_balance(&XOR, &ALICE, -1i128),);
+
+            assert_noop!(
+                Assets::set_non_extensible_from(&XOR, &BOB),
+                Error::<Runtime>::InvalidAssetOwner
+            );
+            assert_ok!(Assets::set_non_extensible_from(&XOR, &ALICE));
+
+            assert_noop!(
+                Assets::mint_to(&XOR, &ALICE, &ALICE, Balance::from(10u32)),
+                Error::<Runtime>::AssetSupplyIsNotExtensible
+            );
+            assert_noop!(
+                Assets::mint_to(&XOR, &ALICE, &BOB, Balance::from(10u32)),
+                Error::<Runtime>::AssetSupplyIsNotExtensible
+            );
+            assert_noop!(
+                Assets::update_balance(&XOR, &ALICE, 1i128),
+                Error::<Runtime>::AssetSupplyIsNotExtensible
+            );
+            assert_ok!(Assets::update_balance(&XOR, &ALICE, 0i128),);
+            assert_ok!(Assets::update_balance(&XOR, &ALICE, -1i128),);
         })
     }
 }

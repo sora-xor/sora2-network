@@ -51,7 +51,7 @@ use frame_system::offchain::{Account, SigningTypes};
 use parking_lot::RwLock;
 use permissions::{Scope, MINT};
 use sp_std::{convert::TryFrom, fmt::Debug, str::FromStr, sync::Arc};
-use std::collections::HashSet;
+use std::collections::BTreeSet;
 
 pub const PSWAP: AssetId = AssetId::PSWAP;
 pub const XOR: AssetId = AssetId::XOR;
@@ -478,9 +478,18 @@ impl ExtBuilder {
                 .map(|(asset_id, balance)| (multisig_account_id.clone(), asset_id, balance)),
         );
 
-        let endowed_assets: HashSet<_> = endowed_accounts
+        let endowed_assets: BTreeSet<_> = endowed_accounts
             .iter()
-            .map(|x| (x.1, root_account.clone(), AssetSymbol(b"".to_vec()), 18))
+            .map(|x| {
+                (
+                    x.1,
+                    root_account.clone(),
+                    AssetSymbol(b"".to_vec()),
+                    18,
+                    Balance::from(0u32),
+                    true,
+                )
+            })
             .collect();
 
         let mut storage = frame_system::GenesisConfig::default()

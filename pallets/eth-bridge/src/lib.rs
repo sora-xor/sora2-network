@@ -1248,8 +1248,13 @@ impl<T: Trait> Module<T> {
             RegisteredSidechainAsset::<T>::get(&token_address).is_none(),
             Error::<T>::TokenIsAlreadyAdded
         );
-        let asset_id =
-            assets::Module::<T>::register_from(&Self::bridge_account(), symbol, precision)?;
+        let asset_id = assets::Module::<T>::register_from(
+            &Self::bridge_account(),
+            symbol,
+            precision,
+            Balance::from(0u32),
+            true,
+        )?;
         RegisteredAsset::<T>::insert(&asset_id, AssetKind::Sidechain);
         RegisteredSidechainAsset::<T>::insert(&token_address, asset_id);
         RegisteredSidechainToken::<T>::insert(&asset_id, token_address);
