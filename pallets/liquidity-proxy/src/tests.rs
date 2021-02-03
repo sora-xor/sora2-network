@@ -1,21 +1,19 @@
+use crate::{mock::*, Error};
 use common::prelude::fixnum::ops::{CheckedSub, Numeric};
 use common::{
     fixed,
     prelude::{Balance, SwapAmount},
-    FilterMode, Fixed, LiquiditySource, LiquiditySourceFilter, LiquiditySourceId,
-    LiquiditySourceType, DOT, KSM,
+    FilterMode, Fixed, LiquiditySourceFilter, LiquiditySourceId, LiquiditySourceType, DOT, KSM,
 };
 use frame_support::assert_noop;
 use sp_runtime::DispatchError;
-
-use crate::{mock::*, Error};
 
 #[test]
 fn test_quote_exact_input_base_should_pass() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
         let amount: Balance = Balance(fixed!(500));
-        let quotes = LiquidityProxy::quote_with_filter_single(
+        let quotes = LiquidityProxy::quote_single(
             &GetBaseAssetId::get(),
             &DOT,
             SwapAmount::with_desired_input(amount, Balance(fixed!(0))),
@@ -24,10 +22,10 @@ fn test_quote_exact_input_base_should_pass() {
         .expect("Failed to get a quote");
 
         let ls_quote = LiquidityProxy::quote(
-            &DEX_C_ID,
             &GetBaseAssetId::get(),
             &DOT,
             SwapAmount::with_desired_input(amount, Balance(fixed!(0))),
+            LiquiditySourceFilter::empty(DEX_C_ID),
         )
         .expect("Failed to get a quote via LiquiditySource trait");
 
@@ -68,7 +66,7 @@ fn test_quote_exact_input_target_should_pass() {
     let mut ext = ExtBuilder::default().build();
     let amount: Balance = Balance(fixed!(500));
     ext.execute_with(|| {
-        let quotes = LiquidityProxy::quote_with_filter_single(
+        let quotes = LiquidityProxy::quote_single(
             &DOT,
             &GetBaseAssetId::get(),
             SwapAmount::with_desired_input(amount, Balance(fixed!(0))),
@@ -77,10 +75,10 @@ fn test_quote_exact_input_target_should_pass() {
         .expect("Failed to get a quote");
 
         let ls_quote = LiquidityProxy::quote(
-            &DEX_C_ID,
             &DOT,
             &GetBaseAssetId::get(),
             SwapAmount::with_desired_input(amount, Balance(fixed!(0))),
+            LiquiditySourceFilter::empty(DEX_C_ID),
         )
         .expect("Failed to get a quote via LiquiditySource trait");
 
@@ -120,7 +118,7 @@ fn test_quote_exact_output_target_should_pass() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
         let amount: Balance = Balance(fixed!(250));
-        let quotes = LiquidityProxy::quote_with_filter_single(
+        let quotes = LiquidityProxy::quote_single(
             &GetBaseAssetId::get(),
             &DOT,
             SwapAmount::with_desired_output(amount, Balance(fixed!(10000))),
@@ -129,10 +127,10 @@ fn test_quote_exact_output_target_should_pass() {
         .expect("Failed to get a quote");
 
         let ls_quote = LiquidityProxy::quote(
-            &DEX_C_ID,
             &GetBaseAssetId::get(),
             &DOT,
             SwapAmount::with_desired_output(amount, Balance(fixed!(10000))),
+            LiquiditySourceFilter::empty(DEX_C_ID),
         )
         .expect("Failed to get a quote via LiquiditySource trait");
 
@@ -177,7 +175,7 @@ fn test_quote_exact_output_base_should_pass() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
         let amount: Balance = Balance(fixed!(250));
-        let quotes = LiquidityProxy::quote_with_filter_single(
+        let quotes = LiquidityProxy::quote_single(
             &DOT,
             &GetBaseAssetId::get(),
             SwapAmount::with_desired_output(amount, Balance(fixed!(10000))),
@@ -186,10 +184,10 @@ fn test_quote_exact_output_base_should_pass() {
         .expect("Failed to get a quote");
 
         let ls_quote = LiquidityProxy::quote(
-            &DEX_C_ID,
             &DOT,
             &GetBaseAssetId::get(),
             SwapAmount::with_desired_output(amount, Balance(fixed!(10000))),
+            LiquiditySourceFilter::empty(DEX_C_ID),
         )
         .expect("Failed to get a quote via LiquiditySource trait");
 
@@ -233,7 +231,7 @@ fn test_quote_exact_output_base_should_pass() {
 fn test_poly_quote_exact_input_1_should_pass() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
-        let quotes = LiquidityProxy::quote_with_filter(
+        let quotes = LiquidityProxy::quote(
             &KSM,
             &DOT,
             SwapAmount::with_desired_input(Balance(fixed!(100)), Balance(fixed!(0))),
@@ -242,20 +240,20 @@ fn test_poly_quote_exact_input_1_should_pass() {
         .expect("Failed to get a quote");
 
         let ls_quote = LiquidityProxy::quote(
-            &DEX_A_ID,
             &KSM,
             &DOT,
             SwapAmount::with_desired_input(Balance(fixed!(100)), Balance(fixed!(0))),
+            LiquiditySourceFilter::empty(DEX_A_ID),
         )
         .expect("Failed to get a quote via LiquiditySource trait");
 
         let ls_swap = LiquidityProxy::exchange(
             &alice(),
             &alice(),
-            &DEX_A_ID,
             &KSM,
             &DOT,
             SwapAmount::with_desired_input(Balance(fixed!(100)), Balance(fixed!(0))),
+            LiquiditySourceFilter::empty(DEX_A_ID),
         )
         .expect("Failed to swap via LiquiditySource trait");
 
@@ -272,7 +270,7 @@ fn test_poly_quote_exact_input_1_should_pass() {
 fn test_poly_quote_exact_output_1_should_pass() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
-        let quotes = LiquidityProxy::quote_with_filter(
+        let quotes = LiquidityProxy::quote(
             &KSM,
             &DOT,
             SwapAmount::with_desired_output(
@@ -284,7 +282,6 @@ fn test_poly_quote_exact_output_1_should_pass() {
         .expect("Failed to get a quote");
 
         let ls_quote = LiquidityProxy::quote(
-            &DEX_A_ID,
             &KSM,
             &DOT,
             SwapAmount::with_desired_output(
@@ -292,13 +289,13 @@ fn test_poly_quote_exact_output_1_should_pass() {
                 Balance(fixed!(101)),
             )
             .into(),
+            LiquiditySourceFilter::empty(DEX_A_ID),
         )
         .expect("Failed to get a quote via LiquiditySource trait");
 
         let ls_swap = LiquidityProxy::exchange(
             &alice(),
             &alice(),
-            &DEX_A_ID,
             &KSM,
             &DOT,
             SwapAmount::with_desired_output(
@@ -306,6 +303,7 @@ fn test_poly_quote_exact_output_1_should_pass() {
                 Balance(fixed!(101)),
             )
             .into(),
+            LiquiditySourceFilter::empty(DEX_A_ID),
         )
         .expect("Failed to swap via LiquiditySource trait");
 
@@ -322,7 +320,7 @@ fn test_poly_quote_exact_output_1_should_pass() {
 fn test_poly_quote_exact_input_2_should_pass() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
-        let quotes = LiquidityProxy::quote_with_filter(
+        let quotes = LiquidityProxy::quote(
             &DOT,
             &KSM,
             SwapAmount::with_desired_input(Balance(fixed!(500)), Balance(fixed!(0))),
@@ -331,20 +329,20 @@ fn test_poly_quote_exact_input_2_should_pass() {
         .expect("Failed to get a quote");
 
         let ls_quote = LiquidityProxy::quote(
-            &DEX_A_ID,
             &DOT,
             &KSM,
             SwapAmount::with_desired_input(Balance(fixed!(500)), Balance(fixed!(0))),
+            LiquiditySourceFilter::empty(DEX_A_ID),
         )
         .expect("Failed to get a quote via LiquiditySource trait");
 
         let ls_swap = LiquidityProxy::exchange(
             &alice(),
             &alice(),
-            &DEX_A_ID,
             &DOT,
             &KSM,
             SwapAmount::with_desired_input(Balance(fixed!(500)), Balance(fixed!(0))),
+            LiquiditySourceFilter::empty(DEX_A_ID),
         )
         .expect("Failed to swap via LiquiditySource trait");
 
@@ -361,7 +359,7 @@ fn test_poly_quote_exact_input_2_should_pass() {
 fn test_poly_quote_exact_output_2_should_pass() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
-        let quotes = LiquidityProxy::quote_with_filter(
+        let quotes = LiquidityProxy::quote(
             &DOT,
             &KSM,
             SwapAmount::with_desired_output(
@@ -373,7 +371,6 @@ fn test_poly_quote_exact_output_2_should_pass() {
         .expect("Failed to get a quote");
 
         let ls_quote = LiquidityProxy::quote(
-            &DEX_A_ID,
             &DOT,
             &KSM,
             SwapAmount::with_desired_output(
@@ -381,13 +378,13 @@ fn test_poly_quote_exact_output_2_should_pass() {
                 Balance(fixed!(501)),
             )
             .into(),
+            LiquiditySourceFilter::empty(DEX_A_ID),
         )
         .expect("Failed to get a quote via LiquiditySource trait");
 
         let ls_swap = LiquidityProxy::exchange(
             &alice(),
             &alice(),
-            &DEX_A_ID,
             &DOT,
             &KSM,
             SwapAmount::with_desired_output(
@@ -395,6 +392,7 @@ fn test_poly_quote_exact_output_2_should_pass() {
                 Balance(fixed!(501)),
             )
             .into(),
+            LiquiditySourceFilter::empty(DEX_A_ID),
         )
         .expect("Failed to swap via LiquiditySource trait");
 
@@ -413,7 +411,7 @@ fn test_sell_token_for_base_should_pass() {
     ext.execute_with(|| {
         let alice = alice();
         let filter = LiquiditySourceFilter::empty(DEX_C_ID);
-        let result = LiquidityProxy::perform_swap_single(
+        let result = LiquidityProxy::exchange_single(
             &alice,
             &alice,
             &DOT,
@@ -432,7 +430,7 @@ fn test_sell_base_for_token_should_pass() {
     ext.execute_with(|| {
         let alice = alice();
         let filter = LiquiditySourceFilter::empty(DEX_C_ID);
-        let result = LiquidityProxy::perform_swap_single(
+        let result = LiquidityProxy::exchange_single(
             &alice,
             &alice,
             &GetBaseAssetId::get(),
@@ -454,10 +452,10 @@ fn test_sell_token_for_base_with_liquidity_source_trait_should_pass() {
         let result = LiquidityProxy::exchange(
             &alice,
             &alice,
-            &DEX_C_ID,
             &DOT,
             &GetBaseAssetId::get(),
             SwapAmount::with_desired_input(amount, Balance(fixed!(345))),
+            LiquiditySourceFilter::empty(DEX_C_ID),
         )
         .expect("Failed to swap assets");
         assert_eq!(result.amount.0, fixed!(363.569067258883248731));
@@ -473,10 +471,10 @@ fn test_sell_base_for_token_with_liquidity_source_trait_should_pass() {
         let result = LiquidityProxy::exchange(
             &alice,
             &alice,
-            &DEX_C_ID,
             &GetBaseAssetId::get(),
             &DOT,
             SwapAmount::with_desired_input(amount, Balance(fixed!(510))).into(),
+            LiquiditySourceFilter::empty(DEX_C_ID),
         )
         .expect("Failed to swap assets");
         assert_eq!(result.amount.0, fixed!(537.643138033120596095));
@@ -496,7 +494,7 @@ fn test_buy_base_with_allowed_should_pass() {
             ]
             .into(),
         );
-        let result = LiquidityProxy::perform_swap_single(
+        let result = LiquidityProxy::exchange_single(
             &alice,
             &alice,
             &DOT,
@@ -525,7 +523,7 @@ fn test_buy_base_with_forbidden_should_pass() {
             ]
             .into(),
         );
-        let result = LiquidityProxy::perform_swap_single(
+        let result = LiquidityProxy::exchange_single(
             &alice,
             &alice,
             &DOT,
@@ -545,7 +543,7 @@ fn test_buy_base_with_forbidden_should_pass() {
 fn test_quote_should_fail_with_unavailable_exchange_path() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
-        let result = LiquidityProxy::quote_with_filter_single(
+        let result = LiquidityProxy::quote_single(
             &GetBaseAssetId::get(),
             &KSM,
             SwapAmount::with_desired_output(Balance(fixed!(300)), Balance(Fixed::MAX)),
@@ -559,7 +557,7 @@ fn test_quote_should_fail_with_unavailable_exchange_path() {
 fn test_quote_should_fail_with_unavailable_exchange_path_2() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
-        let result = LiquidityProxy::quote_with_filter_single(
+        let result = LiquidityProxy::quote_single(
             &GetBaseAssetId::get(),
             &DOT,
             SwapAmount::with_desired_output(Balance(fixed!(300)), Balance(Fixed::MAX)),
@@ -582,7 +580,7 @@ fn test_quote_should_fail_with_unavailable_exchange_path_2() {
 fn test_quote_should_fail_with_aggregation_error() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
-        let result = LiquidityProxy::quote_with_filter_single(
+        let result = LiquidityProxy::quote_single(
             &GetBaseAssetId::get(),
             &DOT,
             SwapAmount::with_desired_output(Balance(fixed!(5000)), Balance(Fixed::MAX)),
@@ -597,7 +595,7 @@ fn test_sell_however_big_amount_base_should_pass() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
         let alice = alice();
-        let result = LiquidityProxy::perform_swap_single(
+        let result = LiquidityProxy::exchange_single(
             &alice,
             &alice,
             &GetBaseAssetId::get(),
@@ -608,7 +606,7 @@ fn test_sell_however_big_amount_base_should_pass() {
         .expect("Failed to swap assets");
         assert!(result.amount.0 > fixed!(0) && result.amount.0 < fixed!(180));
 
-        let result = LiquidityProxy::perform_swap_single(
+        let result = LiquidityProxy::exchange_single(
             &alice,
             &alice,
             &GetBaseAssetId::get(),
@@ -619,7 +617,7 @@ fn test_sell_however_big_amount_base_should_pass() {
         .expect("Failed to swap assets");
         assert!(result.amount.0 > fixed!(0) && result.amount.0 < fixed!(180));
 
-        let result = LiquidityProxy::perform_swap_single(
+        let result = LiquidityProxy::exchange_single(
             &alice,
             &alice,
             &GetBaseAssetId::get(),
@@ -630,7 +628,7 @@ fn test_sell_however_big_amount_base_should_pass() {
         .expect("Failed to swap assets");
         assert!(result.amount.0 > fixed!(0) && result.amount.0 < fixed!(180));
 
-        let result = LiquidityProxy::perform_swap_single(
+        let result = LiquidityProxy::exchange_single(
             &alice,
             &alice,
             &GetBaseAssetId::get(),
@@ -641,7 +639,7 @@ fn test_sell_however_big_amount_base_should_pass() {
         .expect("Failed to swap assets");
         assert!(result.amount.0 > fixed!(0) && result.amount.0 < fixed!(180));
 
-        let result = LiquidityProxy::perform_swap_single(
+        let result = LiquidityProxy::exchange_single(
             &alice,
             &alice,
             &GetBaseAssetId::get(),
@@ -671,35 +669,35 @@ fn test_swap_should_fail_with_bad_origin() {
     });
 }
 
-#[test]
-fn test_can_exchange_via_liquidity_proxy_should_pass() {
-    let mut ext = ExtBuilder {
-        source_types: vec![LiquiditySourceType::MockPool],
-        ..Default::default()
-    }
-    .build();
-    ext.execute_with(|| assert!(LiquidityProxy::can_exchange(&DEX_A_ID, &KSM, &DOT)));
-}
+// #[test]
+// fn test_can_exchange_via_liquidity_proxy_should_pass() {
+//     let mut ext = ExtBuilder {
+//         source_types: vec![LiquiditySourceType::MockPool],
+//         ..Default::default()
+//     }
+//     .build();
+//     ext.execute_with(|| assert!(LiquidityProxy::can_exchange(&DEX_A_ID, &KSM, &DOT)));
+// }
 
-#[test]
-fn test_can_exchange_with_uninitialized_source_should_pass() {
-    let mut ext = ExtBuilder {
-        source_types: vec![LiquiditySourceType::XYKPool],
-        ..Default::default()
-    }
-    .build();
-    ext.execute_with(|| assert!(!LiquidityProxy::can_exchange(&DEX_A_ID, &KSM, &DOT)));
-}
+// #[test]
+// fn test_can_exchange_with_uninitialized_source_should_pass() {
+//     let mut ext = ExtBuilder {
+//         source_types: vec![LiquiditySourceType::XYKPool],
+//         ..Default::default()
+//     }
+//     .build();
+//     ext.execute_with(|| assert!(!LiquidityProxy::can_exchange(&DEX_A_ID, &KSM, &DOT)));
+// }
 
-#[test]
-fn test_can_exchange_with_no_sources_should_pass() {
-    let mut ext = ExtBuilder {
-        source_types: vec![],
-        ..Default::default()
-    }
-    .build();
-    ext.execute_with(|| assert!(!LiquidityProxy::can_exchange(&DEX_A_ID, &KSM, &DOT)));
-}
+// #[test]
+// fn test_can_exchange_with_no_sources_should_pass() {
+//     let mut ext = ExtBuilder {
+//         source_types: vec![],
+//         ..Default::default()
+//     }
+//     .build();
+//     ext.execute_with(|| assert!(!LiquidityProxy::can_exchange(&DEX_A_ID, &KSM, &DOT)));
+// }
 
 #[test]
 fn test_fee_when_exchange_on_one_source_of_many_should_pass() {
@@ -714,7 +712,7 @@ fn test_fee_when_exchange_on_one_source_of_many_should_pass() {
             ]
             .into(),
         );
-        let quotes = LiquidityProxy::quote_with_filter(
+        let quotes = LiquidityProxy::quote(
             &GetBaseAssetId::get(),
             &DOT,
             SwapAmount::with_desired_output(amount, Balance(fixed!(10000))),

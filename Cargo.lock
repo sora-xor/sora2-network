@@ -2344,6 +2344,7 @@ dependencies = [
  "liquidity-proxy-benchmarking",
  "liquidity-proxy-runtime-api",
  "mock-liquidity-source",
+ "multicollateral-bonding-curve-pool",
  "orml-currencies",
  "orml-tokens",
  "pallet-aura",
@@ -4362,6 +4363,35 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0debeb9fcf88823ea64d64e4a815ab1643f33127d995978e099942ce38f25238"
 
 [[package]]
+name = "multicollateral-bonding-curve-pool"
+version = "0.1.0"
+dependencies = [
+ "assets",
+ "bonding-curve-pool",
+ "common",
+ "dex-api",
+ "dex-manager",
+ "frame-support",
+ "frame-system",
+ "liquidity-proxy",
+ "mock-liquidity-source",
+ "orml-currencies",
+ "orml-tokens",
+ "orml-traits",
+ "pallet-balances",
+ "parity-scale-codec",
+ "permissions",
+ "serde",
+ "sp-arithmetic",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+ "technical",
+ "trading-pair",
+]
+
+[[package]]
 name = "multihash"
 version = "0.11.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5676,6 +5706,7 @@ dependencies = [
  "frame-support",
  "frame-system",
  "hex-literal",
+ "liquidity-proxy",
  "mock-liquidity-source",
  "orml-currencies",
  "orml-tokens",
@@ -9814,6 +9845,7 @@ dependencies = [
  "dex-manager",
  "frame-support",
  "frame-system",
+ "liquidity-proxy",
  "mock-liquidity-source",
  "orml-currencies",
  "orml-tokens",

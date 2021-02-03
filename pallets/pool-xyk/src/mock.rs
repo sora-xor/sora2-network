@@ -187,7 +187,7 @@ parameter_types! {
 impl pswap_distribution::Trait for Testtime {
     type Event = ();
     type GetIncentiveAssetId = GetIncentiveAssetId;
-    type Exchange = crate::Module<Testtime>;
+    type LiquidityProxy = ();
     type CompatBalance = Balance;
     type GetDefaultSubscriptionFrequency = GetDefaultSubscriptionFrequency;
     type GetTechnicalAccountId = GetPswapDistributionAccountId;

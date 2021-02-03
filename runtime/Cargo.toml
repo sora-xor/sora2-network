@@ -17,6 +17,7 @@ common = { path = "../common", default-features = false }
 faucet = { path = "../pallets/faucet", default-features = false }
 assets = { path = "../pallets/assets", default-features = false }
 bonding-curve-pool = { path = "../pallets/bonding-curve-pool", default-features = false }
+multicollateral-bonding-curve-pool = { path = "../pallets/multicollateral-bonding-curve-pool", default-features = false }
 dex-api = { path = "../pallets/dex-api", default-features = false }
 dex-manager = { path = "../pallets/dex-manager", default-features = false }
 farming = { path = "../pallets/farming", default-features = false}
@@ -126,6 +127,7 @@ std = [
     'common/std',
     'assets/std',
     'bonding-curve-pool/std',
+    'multicollateral-bonding-curve-pool/std',
     'dex-api/std',
     'dex-manager/std',
     'eth-bridge/std',

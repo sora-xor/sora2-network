@@ -27,6 +27,7 @@ sp-std = { version = "2.0.0", default-features = false }
 pallet-balances = { version = "2.0.0", default-features = false }
 serde = { version = "1.0.101", optional = true, features = ["derive"], default-features = false }
 technical = { path = "../technical", default-features = false }
+liquidity-proxy = { path = "../liquidity-proxy", default-features = false }
 
 [dev-dependencies]
 sp-core = { version = "2.0.0", default-features = false}
@@ -52,4 +53,5 @@ std = [
     'sp-arithmetic/std',
     'sp-std/std',
     'serde/std',
+    'liquidity-proxy/std',
 ]

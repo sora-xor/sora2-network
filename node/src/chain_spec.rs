@@ -1,8 +1,9 @@
 use framenode_runtime::{
-    bonding_curve_pool, eth_bridge, opaque::SessionKeys, AccountId, AssetSymbol, AssetsConfig,
-    BabeConfig, BalancesConfig, BondingCurvePoolConfig, BridgeMultisigConfig, DEXAPIConfig,
-    DEXManagerConfig, EthBridgeConfig, FarmingConfig, FaucetConfig, GenesisConfig, GetBaseAssetId,
-    GrandpaConfig, IrohaMigrationConfig, LiquiditySourceType, PermissionsConfig,
+    bonding_curve_pool, eth_bridge, multicollateral_bonding_curve_pool, opaque::SessionKeys,
+    AccountId, AssetSymbol, AssetsConfig, BabeConfig, BalancesConfig, BondingCurvePoolConfig,
+    BridgeMultisigConfig, DEXAPIConfig, DEXManagerConfig, EthBridgeConfig, FarmingConfig,
+    FaucetConfig, GenesisConfig, GetBaseAssetId, GrandpaConfig, IrohaMigrationConfig,
+    LiquiditySourceType, MulticollateralBondingCurvePoolConfig, PermissionsConfig,
     PswapDistributionConfig, PswapId, Runtime, SessionConfig, Signature, StakerStatus,
     StakingConfig, SudoConfig, SystemConfig, TechAccountId, TechnicalConfig, TokensConfig, ValId,
     XorId, WASM_BINARY,
@@ -438,6 +439,11 @@ fn testnet_genesis(
         bonding_curve_pool::TECH_ACCOUNT_RESERVES.to_vec(),
     );
 
+    let multicollateral_bonding_curve_reserves_tech_account_id = TechAccountId::Generic(
+        multicollateral_bonding_curve_pool::TECH_ACCOUNT_PREFIX.to_vec(),
+        multicollateral_bonding_curve_pool::TECH_ACCOUNT_RESERVES.to_vec(),
+    );
+
     let pswap_distribution_tech_account_id =
         framenode_runtime::GetPswapDistributionTechAccountId::get();
     let pswap_distribution_account_id = framenode_runtime::GetPswapDistributionAccountId::get();
@@ -708,7 +714,11 @@ fn testnet_genesis(
             ],
         }),
         dex_api: Some(DEXAPIConfig {
-            source_types: [LiquiditySourceType::XYKPool].into(),
+            source_types: [
+                LiquiditySourceType::XYKPool,
+                LiquiditySourceType::MulticollateralBondingCurvePool,
+            ]
+            .into(),
         }),
         eth_bridge: Some(EthBridgeConfig {
             peers: initial_bridge_peers.iter().cloned().collect(),
@@ -743,8 +753,13 @@ fn testnet_genesis(
             .collect(),
         }),
         bonding_curve_pool: Some(BondingCurvePoolConfig {
-            distribution_accounts: accounts,
+            distribution_accounts: accounts.clone(),
             reserves_account_id: bonding_curve_reserves_tech_account_id,
+        }),
+        multicollateral_bonding_curve_pool: Some(MulticollateralBondingCurvePoolConfig {
+            distribution_accounts: accounts,
+            reserves_account_id: multicollateral_bonding_curve_reserves_tech_account_id,
+            reference_asset_id: Default::default(),
         }),
         farming: Some(FarmingConfig {
             initial_farm: (dex_root, XOR, PSWAP),

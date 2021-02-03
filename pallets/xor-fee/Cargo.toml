@@ -26,6 +26,7 @@ referral-system = { path = "../referral-system", default-features = false}
 assets = { path = "../assets", default-features = false }
 common = { path = "../../common", default-features = false }
 technical = { path = "../technical", default-features = false }
+liquidity-proxy = { path = "../liquidity-proxy", default-features = false }
 
 [dev-dependencies]
 pallet-balances = { version = "2.0.0", default-features = false }
@@ -57,4 +58,5 @@ std = [
     'referral-system/std',
     'common/std',
     'technical/std',
+    'liquidity-proxy/std',
 ]

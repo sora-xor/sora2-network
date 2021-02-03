@@ -14,6 +14,36 @@ use sp_std::mem;
 use crate::balance::Balance;
 use crate::Fixed;
 
+#[derive(Encode, Decode, Copy, Clone, RuntimeDebug, PartialEq, Eq, PartialOrd, Ord)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+pub enum QuoteAmount<AmountType> {
+    WithDesiredInput { desired_amount_in: AmountType },
+    WithDesiredOutput { desired_amount_out: AmountType },
+}
+
+impl<T> QuoteAmount<T> {
+    pub fn with_desired_input(desired_amount_in: T) -> Self {
+        Self::WithDesiredInput { desired_amount_in }
+    }
+
+    pub fn with_desired_output(desired_amount_out: T) -> Self {
+        Self::WithDesiredOutput { desired_amount_out }
+    }
+
+    pub fn amount(self) -> T {
+        match self {
+            QuoteAmount::WithDesiredInput {
+                desired_amount_in: amount,
+                ..
+            }
+            | QuoteAmount::WithDesiredOutput {
+                desired_amount_out: amount,
+                ..
+            } => amount,
+        }
+    }
+}
+
 /// Used to identify intention of caller to indicate desired input amount or desired output amount.
 /// Similar to SwapAmount, does not hold value in order to be used in external API.
 #[derive(Encode, Decode, Copy, Clone, RuntimeDebug, PartialEq, Eq, PartialOrd, Ord)]

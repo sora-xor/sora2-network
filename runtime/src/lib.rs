@@ -24,6 +24,8 @@ use hex_literal::hex;
 use pallet_grandpa::fg_primitives;
 use pallet_grandpa::{AuthorityId as GrandpaId, AuthorityList as GrandpaAuthorityList};
 use pallet_session::historical as pallet_session_historical;
+#[cfg(feature = "std")]
+use serde::{Serialize, Serializer};
 use sp_api::impl_runtime_apis;
 use sp_core::Encode;
 use sp_core::{crypto::KeyTypeId, OpaqueMetadata};
@@ -69,8 +71,7 @@ pub use sp_runtime::BuildStorage;
 
 pub use bonding_curve_pool;
 pub use eth_bridge;
-#[cfg(feature = "std")]
-use serde::{Serialize, Serializer};
+pub use multicollateral_bonding_curve_pool;
 
 /// An index to a block.
 pub type BlockNumber = u32;
@@ -507,6 +508,7 @@ impl dex_api::Trait for Runtime {
     type MockLiquiditySource4 =
         mock_liquidity_source::Module<Runtime, mock_liquidity_source::Instance4>;
     type BondingCurvePool = bonding_curve_pool::Module<Runtime>;
+    type MulticollateralBondingCurvePool = multicollateral_bonding_curve_pool::Module<Runtime>;
     type XYKPool = pool_xyk::Module<Runtime>;
     type WeightInfo = ();
 }
@@ -618,7 +620,7 @@ impl xor_fee::Trait for Runtime {
     type XorId = XorId;
     type ValId = ValId;
     type DEXIdValue = DEXIdValue;
-    type LiquiditySource = LiquidityProxy;
+    type LiquidityProxy = LiquidityProxy;
     type ValBurnedNotifier = Staking;
 }
 
@@ -701,11 +703,18 @@ parameter_types! {
 impl pswap_distribution::Trait for Runtime {
     type Event = Event;
     type GetIncentiveAssetId = PswapId;
-    type Exchange = LiquidityProxy;
+    type LiquidityProxy = LiquidityProxy;
     type CompatBalance = Balance;
     type GetDefaultSubscriptionFrequency = GetDefaultSubscriptionFrequency;
     type GetTechnicalAccountId = GetPswapDistributionAccountId;
     type EnsureDEXManager = DEXManager;
+}
+
+impl multicollateral_bonding_curve_pool::Trait for Runtime {
+    type Event = Event;
+    type LiquidityProxy = LiquidityProxy;
+    type EnsureDEXManager = DEXManager;
+    type EnsureTradingPairExists = TradingPair;
 }
 
 /// Payload data to be signed when making signed transaction from off-chain workers,
@@ -754,6 +763,7 @@ construct_runtime! {
         Assets: assets::{Module, Call, Storage, Config<T>, Event<T>},
         DEXManager: dex_manager::{Module, Call, Storage, Config<T>, Event<T>},
         BondingCurvePool: bonding_curve_pool::{Module, Call, Storage, Config<T>},
+        MulticollateralBondingCurvePool: multicollateral_bonding_curve_pool::{Module, Call, Storage, Config<T>, Event<T>},
         Technical: technical::{Module, Call, Config<T>, Event<T>},
         PoolXYK: pool_xyk::{Module, Call, Storage, Event<T>},
         LiquidityProxy: liquidity_proxy::{Module, Call, Event<T>},
@@ -1134,7 +1144,7 @@ impl_runtime_apis! {
             } else {
                 Balance::max_value()
             };
-            LiquidityProxy::quote_with_filter(
+            LiquidityProxy::quote(
                 &input_asset_id,
                 &output_asset_id,
                 SwapAmount::with_variant(swap_variant, amount, limit),
