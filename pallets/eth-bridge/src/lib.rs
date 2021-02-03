@@ -11,7 +11,8 @@ use codec::{Decode, Encode};
 use common::{prelude::Balance, AssetSymbol, BalancePrecision, Fixed};
 use core::{convert::TryFrom, fmt, iter, line, stringify};
 use ethabi::{ParamType, Token};
-use frame_support::traits::GetCallName;
+use frame_support::sp_runtime::traits::{AtLeast32Bit, MaybeSerializeDeserialize, Member};
+use frame_support::traits::{Get, GetCallName};
 use frame_support::{
     debug, decl_error, decl_event, decl_module, decl_storage,
     dispatch::{DispatchError, DispatchResult},
@@ -23,17 +24,18 @@ use frame_support::{
             storage::StorageValueRef,
             storage_lock::{BlockNumberProvider, StorageLock, Time},
         },
-        traits::IdentifyAccount,
-        KeyTypeId, MultiSigner,
+        traits::{IdentifyAccount, One},
+        KeyTypeId, MultiSigner, Percent,
     },
     weights::{Pays, Weight},
-    RuntimeDebug,
+    Parameter, RuntimeDebug,
 };
 use frame_system::{
     ensure_root, ensure_signed,
     offchain::{AppCrypto, CreateSignedTransaction, SendSignedTransaction, Signer},
 };
 use hex_literal::hex;
+use permissions::{Scope, MINT};
 use requests::*;
 use rpc::Params;
 use rustc_hex::ToHex;
@@ -46,9 +48,11 @@ use sp_std::marker::PhantomData;
 use sp_std::{
     collections::{btree_map::BTreeMap, btree_set::BTreeSet},
     convert::{identity, TryInto},
-    fmt::Formatter,
+    fmt::{Debug, Formatter},
     prelude::*,
 };
+#[cfg(feature = "std")]
+use std::collections::HashMap;
 
 type Address = H160;
 type EthereumAddress = Address;
@@ -61,9 +65,7 @@ pub mod requests;
 mod tests;
 pub mod types;
 
-const ETH_NODE_URL: &str = "https://eth-ropsten.s0.dev.soranet.soramitsu.co.jp";
 const SUB_NODE_URL: &str = "http://127.0.0.1:9954";
-const CONTRACT_ADDRESS: types::H160 = types::H160(hex!("146ba2cdf6bc7df15ffcff2ac1bc83eb33d8197e"));
 const XOR_CONTRACT_ADDRESS: types::H160 =
     types::H160(hex!("0000000000000000000000000000000000000000"));
 const VAL_CONTRACT_ADDRESS: types::H160 =
@@ -84,10 +86,14 @@ pub const TECH_ACCOUNT_AUTHORITY: &[u8] = b"authority";
 
 pub const KEY_TYPE: KeyTypeId = KeyTypeId(*b"ethb");
 pub const CONFIRMATION_INTERVAL: u64 = 30;
-pub const STORAGE_PEER_SECRET_KEY: &[u8] = b"key";
-pub const STORAGE_ETH_NODE_URL_KEY: &[u8] = b"eth-bridge-ocw::eth-node-url";
 pub const STORAGE_SUB_NODE_URL_KEY: &[u8] = b"eth-bridge-ocw::sub-node-url";
-pub const STORAGE_ETH_NODE_CREDENTIALS_KEY: &[u8] = b"eth-bridge-ocw::eth-node-credentials";
+pub const STORAGE_PEER_SECRET_KEY: &[u8] = b"eth-bridge-ocw::secret-key";
+pub const STORAGE_ETH_NODE_PARAMS: &str = "eth-bridge-ocw::node-params";
+pub const STORAGE_NETWORK_IDS_KEY: &[u8] = b"eth-bridge-ocw::network-ids";
+
+pub const PSWAP_CONTRACT_ADDRESS: H160 = H160(hex!("0000000000000000000000000000000000000000"));
+// pub const XOR_CONTRACT_ADDRESS: H160 = H160(hex!("0000000000000000000000000000000000000000"));
+// pub const VAL_CONTRACT_ADDRESS: H160 = H160(hex!("0000000000000000000000000000000000000000"));
 
 type AssetIdOf<T> = <T as assets::Trait>::AssetId;
 type Timepoint<T> = bridge_multisig::Timepoint<<T as frame_system::Trait>::BlockNumber>;
@@ -110,6 +116,19 @@ pub mod crypto {
         type GenericSignature = ecdsa::Signature;
         type GenericPublic = ecdsa::Public;
     }
+}
+
+#[derive(Encode, Decode, Eq, PartialEq, Clone, PartialOrd, Ord, RuntimeDebug)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+pub struct NodeParams {
+    url: String,
+    credentials: Option<String>,
+}
+
+#[cfg(feature = "std")]
+#[derive(Clone, RuntimeDebug, Serialize, Deserialize)]
+pub struct PeerConfig<NetworkId: std::hash::Hash + Eq> {
+    pub networks: HashMap<NetworkId, NodeParams>,
 }
 
 #[derive(Encode, Decode, Eq, PartialEq, Clone, PartialOrd, Ord, RuntimeDebug)]
@@ -189,6 +208,16 @@ impl<T: Trait> OutgoingRequest<T> {
         H256(hash)
     }
 
+    fn network_id(&self) -> T::NetworkId {
+        match self {
+            OutgoingRequest::Transfer(request) => request.network_id,
+            OutgoingRequest::AddAsset(request) => request.network_id,
+            OutgoingRequest::AddToken(request) => request.network_id,
+            OutgoingRequest::AddPeer(request) => request.network_id,
+            OutgoingRequest::RemovePeer(request) => request.network_id,
+        }
+    }
+
     fn validate(&self) -> Result<(), DispatchError> {
         match self {
             OutgoingRequest::Transfer(request) => request.validate(),
@@ -230,7 +259,7 @@ impl<T: Trait> OutgoingRequest<T> {
     }
 }
 
-#[derive(Clone, Encode, Decode, RuntimeDebug, PartialEq, Eq)]
+#[derive(Clone, Copy, Encode, Decode, RuntimeDebug, PartialEq, Eq)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum IncomingRequestKind {
     Transfer,
@@ -260,6 +289,16 @@ impl<T: Trait> IncomingRequest<T> {
             IncomingRequest::ChangePeers(request) => request.tx_hash,
             IncomingRequest::ClaimPswap(request) => request.tx_hash,
             IncomingRequest::CancelOutgoingRequest(request) => request.initial_request_hash,
+        }
+    }
+
+    fn network_id(&self) -> T::NetworkId {
+        match self {
+            IncomingRequest::Transfer(request) => request.network_id,
+            IncomingRequest::AddAsset(request) => request.network_id,
+            IncomingRequest::ChangePeers(request) => request.network_id,
+            IncomingRequest::ClaimPswap(request) => request.network_id,
+            IncomingRequest::CancelOutgoingRequest(request) => request.network_id,
         }
     }
 
@@ -314,11 +353,39 @@ impl<T: Trait> IncomingRequest<T> {
     }
 }
 
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+#[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug)]
+pub struct IncomingPreRequest<T: Trait> {
+    author: T::AccountId,
+    hash: H256,
+    timepoint: Timepoint<T>,
+    kind: IncomingRequestKind,
+    network_id: T::NetworkId,
+}
+
+impl<T: Trait> IncomingPreRequest<T> {
+    pub fn new(
+        author: T::AccountId,
+        hash: H256,
+        timepoint: Timepoint<T>,
+        kind: IncomingRequestKind,
+        network_id: T::NetworkId,
+    ) -> Self {
+        IncomingPreRequest {
+            author,
+            hash,
+            timepoint,
+            kind,
+            network_id,
+        }
+    }
+}
+
 #[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug)]
 #[cfg_attr(feature = "std", derive(Serialize))]
 pub enum OffchainRequest<T: Trait> {
     Outgoing(OutgoingRequest<T>, H256),
-    Incoming(T::AccountId, H256, Timepoint<T>, IncomingRequestKind),
+    Incoming(IncomingPreRequest<T>),
 }
 
 impl<T: Trait> OffchainRequest<T> {
@@ -330,25 +397,33 @@ impl<T: Trait> OffchainRequest<T> {
     fn hash(&self) -> H256 {
         match self {
             OffchainRequest::Outgoing(_request, hash) => *hash,
-            OffchainRequest::Incoming(.., IncomingRequestKind::CancelOutgoingRequest)
-            | OffchainRequest::Incoming(.., IncomingRequestKind::MarkAsDone) => {
-                H256(self.using_encoded(blake2_256))
-            }
-            OffchainRequest::Incoming(_, hash, ..) => H256(hash.0.clone()),
+            OffchainRequest::Incoming(request) => match request.kind {
+                IncomingRequestKind::CancelOutgoingRequest | IncomingRequestKind::MarkAsDone => {
+                    H256(self.using_encoded(blake2_256))
+                }
+                _ => H256(request.hash.0.clone()),
+            },
+        }
+    }
+
+    fn network_id(&self) -> T::NetworkId {
+        match self {
+            OffchainRequest::Outgoing(request, _) => request.network_id(),
+            OffchainRequest::Incoming(request) => request.network_id,
         }
     }
 
     fn author(&self) -> &T::AccountId {
         match self {
             OffchainRequest::Outgoing(request, _) => request.author(),
-            OffchainRequest::Incoming(author, ..) => author,
+            OffchainRequest::Incoming(request) => &request.author,
         }
     }
 
     fn prepare(&mut self) -> Result<(), DispatchError> {
         match self {
             OffchainRequest::Outgoing(request, _) => request.prepare(),
-            OffchainRequest::Incoming(..) => Ok(()),
+            OffchainRequest::Incoming(_) => Ok(()),
         }
     }
 
@@ -356,23 +431,27 @@ impl<T: Trait> OffchainRequest<T> {
     fn cancel(&self) -> Result<(), DispatchError> {
         match self {
             OffchainRequest::Outgoing(request, _) => request.cancel(),
-            OffchainRequest::Incoming(..) => Ok(()),
+            OffchainRequest::Incoming(_) => Ok(()),
         }
     }
 
     fn validate(&self) -> Result<(), DispatchError> {
         match self {
             OffchainRequest::Outgoing(request, _) => request.validate(),
-            OffchainRequest::Incoming(_, hash, .., IncomingRequestKind::MarkAsDone) => {
-                let request_status =
-                    RequestStatuses::get(hash).ok_or(Error::<T>::UnknownRequest)?;
-                ensure!(
-                    request_status == RequestStatus::ApprovesReady,
-                    Error::<T>::RequestIsNotReady
-                );
+            OffchainRequest::Incoming(request) => {
+                match request.kind {
+                    IncomingRequestKind::MarkAsDone => {
+                        let request_status =
+                            RequestStatuses::get(request.hash).ok_or(Error::<T>::UnknownRequest)?;
+                        ensure!(
+                            request_status == RequestStatus::ApprovesReady,
+                            Error::<T>::RequestIsNotReady
+                        );
+                    }
+                    _ => (),
+                }
                 Ok(())
             }
-            OffchainRequest::Incoming(..) => Ok(()),
         }
     }
 }
@@ -449,6 +528,16 @@ pub trait Trait:
     type PeerId: AppCrypto<Self::Public, Self::Signature>;
     /// The overarching dispatch call type.
     type Call: From<Call<Self>> + Encode;
+    /// Sidechain network ID.
+    type NetworkId: Parameter
+        + Member
+        + AtLeast32Bit
+        + Copy
+        + MaybeSerializeDeserialize
+        + Ord
+        + Default
+        + Debug;
+    type GetEthNetworkId: Get<Self::NetworkId>;
 }
 
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
@@ -465,46 +554,88 @@ impl AssetKind {
     }
 }
 
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+#[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug)]
+pub struct NetworkParams<AccountId: Ord> {
+    pub bridge_contract_address: Address,
+    pub initial_peers: BTreeSet<AccountId>,
+}
+
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+#[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug)]
+pub struct NetworkConfig<T: Trait> {
+    pub initial_peers: BTreeSet<T::AccountId>,
+    pub bridge_account_id: T::AccountId,
+    pub tokens: Vec<(T::AssetId, Option<H160>, AssetKind)>,
+    pub bridge_contract_address: Address,
+    pub reserves: Vec<(T::AssetId, Balance)>,
+}
+
 decl_storage! {
     trait Store for Module<T: Trait> as EthBridge {
-        pub RequestsQueue get(fn requests_queue): Vec<OffchainRequest<T>>;
+        pub RequestsQueue get(fn requests_queue): map hasher(twox_64_concat) T::NetworkId => Vec<OffchainRequest<T>>;
 
         pub IncomingRequests get(fn incoming_requests): map hasher(identity) H256 => Option<IncomingRequest<T>>;
-        pub PendingIncomingRequests get(fn pending_incoming_requests): BTreeSet<H256>;
+        pub PendingIncomingRequests get(fn pending_incoming_requests): map hasher(twox_64_concat) T::NetworkId => BTreeSet<H256>;
 
         pub Request get(fn request): map hasher(identity) H256 => Option<OffchainRequest<T>>;
         pub RequestStatuses get(fn request_status): map hasher(identity) H256 => Option<RequestStatus>;
         pub RequestSubmissionHeight get(fn request_submission_height): map hasher(identity) H256 => T::BlockNumber;
         RequestApprovals get(fn approvals): map hasher(identity) H256 => BTreeSet<SignatureParams>;
-        AccountRequests get(fn account_requests): map hasher(identity) T::AccountId => Vec<H256>; // TODO: should be a linked-set
+        AccountRequests get(fn account_requests): map hasher(blake2_128_concat) T::AccountId => Vec<H256>; // TODO: should be a linked-set
 
-        RegisteredAsset get(fn registered_asset): map hasher(identity) T::AssetId => Option<AssetKind>;
-        RegisteredSidechainAsset get(fn registered_sidechain_asset): map hasher(identity) Address => Option<T::AssetId>;
-        RegisteredSidechainToken get(fn registered_sidechain_token): map hasher(identity) T::AssetId => Option<Address>;
+        RegisteredAsset get(fn registered_asset): double_map hasher(twox_64_concat) T::NetworkId, hasher(identity) T::AssetId => Option<AssetKind>;
+        RegisteredSidechainAsset get(fn registered_sidechain_asset): double_map hasher(twox_64_concat) T::NetworkId, hasher(blake2_128_concat) Address => Option<T::AssetId>;
+        RegisteredSidechainToken get(fn registered_sidechain_token): double_map hasher(twox_64_concat) T::NetworkId, hasher(blake2_128_concat) T::AssetId => Option<Address>;
 
-        Peers get(fn peers) config(): BTreeSet<T::AccountId>;
-        PendingPeer get(fn pending_peer): Option<T::AccountId>;
-        PeerAccountId get(fn peer_account_id): map hasher(identity) Address => T::AccountId;
-        PeerAddress get(fn peer_address): map hasher(identity) T::AccountId => Address;
+        Peers get(fn peers): map hasher(twox_64_concat) T::NetworkId => BTreeSet<T::AccountId>;
+        PendingPeer get(fn pending_peer): map hasher(twox_64_concat) T::NetworkId => Option<T::AccountId>;
+        PeerAccountId get(fn peer_account_id): double_map hasher(twox_64_concat) T::NetworkId, hasher(blake2_128_concat) Address => T::AccountId;
+        PeerAddress get(fn peer_address): double_map hasher(twox_64_concat) T::NetworkId, hasher(blake2_128_concat) T::AccountId => Address;
 
-        BridgeAccount get(fn bridge_account) config(): T::AccountId;
+        /// Multi-signature bridge peers' account. `None` if there is no network with the given ID.
+        BridgeAccount get(fn bridge_account): map hasher(twox_64_concat) T::NetworkId => Option<T::AccountId>;
         AuthorityAccount get(fn authority_account) config(): T::AccountId;
+
+        BridgeContractAddress get(fn bridge_contract_address): map hasher(twox_64_concat) T::NetworkId => Address;
 
         // None means the address owns no pswap.
         // 0 means the address claimed them.
         PswapOwners: map hasher(identity) Address => Option<Balance>;
+
+        LastNetworkId: T::NetworkId;
     }
     add_extra_genesis {
-        config(tokens): Vec<(T::AssetId, Option<H160>, AssetKind)>;
+        config(networks): Vec<NetworkConfig<T>>;
         config(pswap_owners): Vec<(H160, Balance)>;
         build(|config| {
-            for (asset_id, opt_token_address, kind) in &config.tokens {
-                if let Some(token_address) = opt_token_address {
-                    let token_address = Address::from(token_address.0);
-                    RegisteredSidechainAsset::<T>::insert(token_address, *asset_id);
-                    RegisteredSidechainToken::<T>::insert(&asset_id, token_address);
+            for network in &config.networks {
+                let net_id = LastNetworkId::<T>::get();
+                let peers_account_id = &network.bridge_account_id;
+                BridgeContractAddress::<T>::insert(net_id, network.bridge_contract_address);
+                BridgeAccount::<T>::insert(net_id, peers_account_id.clone());
+                Peers::<T>::insert(net_id, network.initial_peers.clone());
+
+                for (asset_id, opt_token_address, kind) in &network.tokens {
+                    if let Some(token_address) = opt_token_address {
+                        let token_address = Address::from(token_address.0);
+                        RegisteredSidechainAsset::<T>::insert(net_id, token_address, *asset_id);
+                        RegisteredSidechainToken::<T>::insert(net_id, &asset_id, token_address);
+                    }
+                    RegisteredAsset::<T>::insert(net_id, asset_id, kind);
                 }
-                RegisteredAsset::<T>::insert(asset_id, kind);
+                // TODO: consider to change to Limited.
+                let scope = Scope::Unlimited;
+                let permission_ids = [MINT];
+                for permission_id in &permission_ids {
+                    permissions::Module::<T>::assign_permission(
+                        peers_account_id.clone(),
+                        &peers_account_id,
+                        *permission_id,
+                        scope,
+                    ).expect("failed to assign permissions for a bridge account");
+                }
+                LastNetworkId::<T>::set(net_id + T::NetworkId::one());
             }
 
             for (address, balance) in &config.pswap_owners {
@@ -584,6 +715,7 @@ decl_error! {
         RequestIsNotReady,
         UnknownRequest,
         RequestNotFinalizedOnSidechain,
+        UnknownNetwork,
         Other,
     }
 }
@@ -599,10 +731,27 @@ decl_module! {
         fn deposit_event() = default;
 
         #[weight = 0]
+        pub fn register_bridge(origin, bridge_contract_address: Address, initial_peers: BTreeSet<T::AccountId>) {
+            let author = ensure_signed(origin)?;
+            // TODO: governence
+            let net_id = LastNetworkId::<T>::get();
+            let peers_account_id = bridge_multisig::Module::<T>::register_multisig_inner(
+                author,
+                initial_peers.iter().cloned().collect(),
+                Percent::from_parts(67)
+            )?;
+            BridgeContractAddress::<T>::insert(net_id, bridge_contract_address);
+            BridgeAccount::<T>::insert(net_id, peers_account_id);
+            Peers::<T>::insert(net_id, initial_peers);
+            LastNetworkId::<T>::set(net_id + T::NetworkId::one());
+        }
+
+        #[weight = 0]
         pub fn add_asset(
             origin,
             asset_id: AssetIdOf<T>,
             supply: Balance,
+            network_id: T::NetworkId,
         ) {
             debug::debug!("called add_asset");
             let from = ensure_signed(origin)?;
@@ -612,19 +761,21 @@ decl_module! {
                 asset_id,
                 supply,
                 nonce,
+                network_id,
             })))?;
             frame_system::Module::<T>::inc_account_nonce(&from);
         }
 
         #[weight = 0]
-        pub fn add_eth_token(
+        pub fn add_sidechain_token(
             origin,
             token_address: EthereumAddress,
             ticker: String,
             name: String,
             decimals: u8,
+            network_id: T::NetworkId,
         ) {
-            debug::debug!("called add_eth_token");
+            debug::debug!("called add_sidechain_token");
             let from = ensure_signed(origin)?;
             let authority_account_id = Self::authority_account();
             ensure!(from == authority_account_id, Error::<T>::Forbidden);
@@ -636,6 +787,7 @@ decl_module! {
                 name,
                 decimals,
                 nonce,
+                network_id,
             })))?;
             frame_system::Module::<T>::inc_account_nonce(&from);
         }
@@ -645,7 +797,8 @@ decl_module! {
             origin,
             asset_id: AssetIdOf<T>,
             to: EthereumAddress,
-            amount: Balance
+            amount: Balance,
+            network_id: T::NetworkId,
         ) {
             debug::debug!("called transfer_to_sidechain");
             let from = ensure_signed(origin)?;
@@ -656,25 +809,40 @@ decl_module! {
                 asset_id: asset_id.clone(),
                 amount,
                 nonce,
+                network_id,
             })))?;
             frame_system::Module::<T>::inc_account_nonce(&from);
         }
 
         #[weight = 0]
-        pub fn request_from_sidechain(origin, eth_tx_hash: H256, kind: IncomingRequestKind) {
+        pub fn request_from_sidechain(
+            origin,
+            eth_tx_hash: H256,
+            kind: IncomingRequestKind,
+            network_id: T::NetworkId,
+        ) {
             debug::debug!("called request_from_sidechain");
             let from = ensure_signed(origin)?;
             let timepoint = bridge_multisig::Module::<T>::timepoint();
-            Self::add_request(OffchainRequest::Incoming(from, eth_tx_hash, timepoint, kind))?;
+            Self::add_request(OffchainRequest::Incoming(IncomingPreRequest::new(
+                from,
+                eth_tx_hash,
+                timepoint,
+                kind,
+                network_id,
+            )))?;
         }
 
         #[weight = (0, Pays::No)]
-        pub fn finalize_incoming_request(origin, result: Result<IncomingRequest<T>, (H256, DispatchError)>) {
+        pub fn finalize_incoming_request(
+            origin,
+            result: Result<IncomingRequest<T>, (H256, DispatchError)>,
+            network_id: T::NetworkId
+        ) {
             debug::debug!("called finalize_incoming_request");
 
             let from = ensure_signed(origin)?;
-            let bridge_account_id = Self::bridge_account();
-            ensure!(from == bridge_account_id, Error::<T>::Forbidden);
+            let _ = Self::ensure_bridge_account(&from, network_id)?;
 
             let result = result.and_then(|req| {
                 let hash = H256(req.hash().0);
@@ -700,14 +868,19 @@ decl_module! {
                     hash
                 }
             };
-            PendingIncomingRequests::mutate(|set| {
+            PendingIncomingRequests::<T>::mutate(network_id, |set| {
                 set.remove(&hash)
             });
-            Self::remove_request_from_queue(&hash);
+            Self::remove_request_from_queue(network_id, &hash);
         }
 
         #[weight = (0, Pays::No)]
-        pub fn add_peer(origin, account_id: T::AccountId, address: EthereumAddress) {
+        pub fn add_peer(
+            origin,
+            account_id: T::AccountId,
+            address: EthereumAddress,
+            network_id: T::NetworkId,
+        ) {
             debug::debug!("called change_peers_out");
             let from = ensure_signed(origin.clone())?;
             ensure!(from == Self::authority_account(), Error::<T>::Forbidden);
@@ -717,22 +890,24 @@ decl_module! {
                 peer_account_id: account_id,
                 peer_address: address,
                 nonce,
+                network_id,
             })))?;
             frame_system::Module::<T>::inc_account_nonce(&from);
         }
 
         #[weight = (0, Pays::No)]
-        pub fn remove_peer(origin, account_id: T::AccountId) {
+        pub fn remove_peer(origin, account_id: T::AccountId, network_id: T::NetworkId) {
             debug::debug!("called change_peers_out");
             let from = ensure_signed(origin.clone())?;
             ensure!(from == Self::authority_account(), Error::<T>::Forbidden);
-            let peer_address = Self::peer_address(&account_id);
+            let peer_address = Self::peer_address(network_id, &account_id);
             let nonce = frame_system::Module::<T>::account_nonce(&from);
             Self::add_request(OffchainRequest::outgoing(OutgoingRequest::RemovePeer(OutgoingRemovePeer {
                 author: account_id.clone(),
                 peer_account_id: account_id,
                 peer_address,
                 nonce,
+                network_id,
             })))?;
             frame_system::Module::<T>::inc_account_nonce(&from);
         }
@@ -741,17 +916,17 @@ decl_module! {
         pub fn register_incoming_request(origin, incoming_request: IncomingRequest<T>) {
             debug::debug!("called register_incoming_request");
             let author = ensure_signed(origin)?;
-            let bridge_account_id = Self::bridge_account();
-            ensure!(author == bridge_account_id, Error::<T>::Forbidden);
+            let _ = Self::ensure_bridge_account(&author, incoming_request.network_id())?;
             let tx_hash = incoming_request.hash();
+            let net_id = incoming_request.network_id();
             ensure!(
-                !PendingIncomingRequests::get().contains(&tx_hash),
+                !PendingIncomingRequests::<T>::get(net_id).contains(&tx_hash),
                 Error::<T>::TransferIsAlreadyRegistered
             );
             incoming_request.prepare()?;
-            PendingIncomingRequests::mutate(|transfers| transfers.insert(tx_hash.clone()));
-            Self::remove_request_from_queue(&tx_hash);
-            IncomingRequests::insert(&tx_hash, incoming_request);
+            PendingIncomingRequests::<T>::mutate(net_id, |transfers| transfers.insert(tx_hash.clone()));
+            Self::remove_request_from_queue(net_id, &tx_hash);
+            IncomingRequests::<T>::insert(&tx_hash, incoming_request);
         }
 
         #[weight = (0, Pays::No)]
@@ -764,7 +939,8 @@ decl_module! {
         ) {
             debug::debug!("called approve_request");
             let author = ensure_signed(origin)?;
-            Self::ensure_peer(&author)?;
+            let net_id = request.network_id();
+            Self::ensure_peer(&author, net_id)?;
             if !Self::verify_message(
                 request_encoded.as_raw(),
                 &signature_params,
@@ -777,12 +953,12 @@ decl_module! {
             debug::info!("Verified request approve {:?}", request_encoded);
             let hash = request.hash();
             let mut approvals = RequestApprovals::get(&hash);
-            let pending_peers_len = if PendingPeer::<T>::get().is_some() {
+            let pending_peers_len = if PendingPeer::<T>::get(net_id).is_some() {
                 1
             } else {
                 0
             };
-            let need_sigs = majority(Self::peers().len()) + pending_peers_len;
+            let need_sigs = majority(Self::peers(net_id).len()) + pending_peers_len;
             approvals.insert(signature_params);
             RequestApprovals::insert(&hash, &approvals);
             let current_status = RequestStatuses::get(&hash).unwrap_or(RequestStatus::Pending);
@@ -802,15 +978,16 @@ decl_module! {
                         approvals.clone(),
                     ));
                 }
-                Self::remove_request_from_queue(&hash);
+                Self::remove_request_from_queue(net_id, &hash);
             }
         }
 
+        // TODO: maybe rewrite to finalize with `finalize_incoming_request`
         #[weight = (0, Pays::No)]
-        pub fn finalize_mark_as_done(origin, request_hash: H256) {
+        pub fn finalize_mark_as_done(origin, request_hash: H256, network_id: T::NetworkId) {
             debug::debug!("called finalize_mark_as_done");
             let author = ensure_signed(origin)?;
-            let bridge_account_id = Self::bridge_account();
+            let bridge_account_id = get_bridge_account::<T>(network_id);
             ensure!(author == bridge_account_id, Error::<T>::Forbidden);
             let request_status = RequestStatuses::get(request_hash).ok_or(Error::<T>::UnknownRequest)?;
             ensure!(request_status == RequestStatus::ApprovesReady, Error::<T>::RequestIsNotReady);
@@ -830,10 +1007,10 @@ decl_module! {
         }
 
         #[weight = 0]
-        pub fn force_add_peer(origin, who: T::AccountId) {
+        pub fn force_add_peer(origin, who: T::AccountId, network_id: T::NetworkId) {
             let _ = ensure_root(origin)?;
-            if !Self::is_peer(&who) {
-                <Peers<T>>::mutate(|l| l.insert(who));
+            if !Self::is_peer(&who, network_id) {
+                <Peers<T>>::mutate(network_id, |l| l.insert(who));
             }
         }
     }
@@ -990,7 +1167,11 @@ impl<T: Trait> Decoder<T> {
 impl<T: Trait> Module<T> {
     fn add_request(mut request: OffchainRequest<T>) -> Result<(), DispatchError> {
         let hash = request.hash();
-
+        let net_id = request.network_id();
+        ensure!(
+            BridgeAccount::<T>::get(net_id).is_some(),
+            Error::<T>::UnknownNetwork
+        );
         let can_resubmit = RequestStatuses::get(&hash)
             .map(|status| status == RequestStatus::Failed)
             .unwrap_or(false);
@@ -1004,7 +1185,7 @@ impl<T: Trait> Module<T> {
         request.prepare()?;
         AccountRequests::<T>::mutate(&request.author(), |vec| vec.push(hash));
         Request::<T>::insert(&hash, request.clone());
-        RequestsQueue::<T>::mutate(|v| v.push(request));
+        RequestsQueue::<T>::mutate(net_id, |v| v.push(request));
         RequestStatuses::insert(&hash, RequestStatus::Pending);
         let block_number = frame_system::Module::<T>::current_block_number();
         RequestSubmissionHeight::<T>::insert(&hash, block_number);
@@ -1012,8 +1193,8 @@ impl<T: Trait> Module<T> {
         Ok(())
     }
 
-    fn remove_request_from_queue(hash: &H256) {
-        RequestsQueue::<T>::mutate(|queue| {
+    fn remove_request_from_queue(network_id: T::NetworkId, hash: &H256) {
+        RequestsQueue::<T>::mutate(network_id, |queue| {
             if let Some(pos) = queue.iter().position(|x| x.hash() == *hash) {
                 queue.remove(pos);
             }
@@ -1022,6 +1203,7 @@ impl<T: Trait> Module<T> {
 
     fn parse_main_event(
         logs: &[Log],
+        kind: IncomingRequestKind,
     ) -> Result<ContractEvent<T::AssetId, Address, T::AccountId, Balance>, DispatchError> {
         for log in logs {
             if log.removed.unwrap_or(false) {
@@ -1033,7 +1215,9 @@ impl<T: Trait> Module<T> {
             };
             match topic {
                 // Deposit(bytes32,uint256,address,bytes32)
-                &hex!("85c0fa492ded927d3acca961da52b0dda1debb06d8c27fe189315f06bb6e26c8") => {
+                &hex!("85c0fa492ded927d3acca961da52b0dda1debb06d8c27fe189315f06bb6e26c8")
+                    if kind == IncomingRequestKind::Transfer =>
+                {
                     let types = [
                         ParamType::FixedBytes(32),
                         ParamType::Uint(256),
@@ -1050,7 +1234,10 @@ impl<T: Trait> Module<T> {
                     return Ok(ContractEvent::Deposit(to, amount, H160(token.0), asset_id));
                 }
                 // ChangePeers(address,bool)
-                &hex!("a9fac23eb012e72fbd1f453498e7069c380385436763ee2c1c057b170d88d9f9") => {
+                &hex!("a9fac23eb012e72fbd1f453498e7069c380385436763ee2c1c057b170d88d9f9")
+                    if kind == IncomingRequestKind::AddPeer
+                        || kind == IncomingRequestKind::RemovePeer =>
+                {
                     let types = [ParamType::Address, ParamType::Bool];
                     let decoded = ethabi::decode(&types, &log.data.0)
                         .map_err(|_| Error::<T>::EthAbiDecodingError)?;
@@ -1059,7 +1246,9 @@ impl<T: Trait> Module<T> {
                     let peer_address = decoder.next_address()?;
                     return Ok(ContractEvent::ChangePeers(H160(peer_address.0), added));
                 }
-                &hex!("4eb3aea69bf61684354f60a43d355c3026751ddd0ea4e1f5afc1274b96c65505") => {
+                &hex!("4eb3aea69bf61684354f60a43d355c3026751ddd0ea4e1f5afc1274b96c65505")
+                    if kind == IncomingRequestKind::ClaimPswap =>
+                {
                     let types = [ParamType::FixedBytes(32)];
                     let decoded =
                         ethabi::decode(&types, &log.data.0).map_err(|_| Error::<T>::Other)?;
@@ -1128,14 +1317,14 @@ impl<T: Trait> Module<T> {
         )
     }
 
-    fn handle_pending_incoming_requests(current_eth_height: u64) {
+    fn handle_pending_incoming_requests(network_id: T::NetworkId, current_eth_height: u64) {
         let s_approved_pending_incoming_requests =
             StorageValueRef::persistent(b"eth-bridge-ocw::approved-pending-incoming-request");
         let mut approved = s_approved_pending_incoming_requests
             .get::<BTreeMap<H256, T::BlockNumber>>()
             .flatten()
             .unwrap_or_default();
-        for hash in <Self as Store>::PendingIncomingRequests::get() {
+        for hash in <Self as Store>::PendingIncomingRequests::get(network_id) {
             let request: IncomingRequest<T> = <Self as Store>::IncomingRequests::get(&hash)
                 .expect("request are never removed; qed");
             let request_submission_height: T::BlockNumber = Self::request_submission_height(&hash);
@@ -1146,7 +1335,7 @@ impl<T: Trait> Module<T> {
             let confirmed = current_eth_height >= request.at_height()
                 && current_eth_height - request.at_height() >= CONFIRMATION_INTERVAL;
             if need_to_approve && confirmed {
-                if Self::send_incoming_request_result(Ok(request)).is_ok() {
+                if Self::send_incoming_request_result(Ok(request), network_id).is_ok() {
                     approved.insert(hash, request_submission_height);
                 }
             }
@@ -1175,12 +1364,13 @@ impl<T: Trait> Module<T> {
         result: Result<IncomingRequest<T>, DispatchError>,
         timepoint: Timepoint<T>,
         hash: H256,
+        network_id: T::NetworkId,
     ) -> Result<(), Error<T>> {
         match result {
             Ok(incoming_request) => {
                 let register_call = Call::<T>::register_incoming_request(incoming_request);
                 let call = bridge_multisig::Call::as_multi(
-                    Self::bridge_account(),
+                    get_bridge_account::<T>(network_id),
                     Some(timepoint),
                     <<T as Trait>::Call>::from(register_call).encode(),
                     false,
@@ -1191,16 +1381,16 @@ impl<T: Trait> Module<T> {
             Err(e) if e == Error::<T>::HttpFetchingError.into() => {
                 Err(Error::<T>::HttpFetchingError)
             }
-            Err(e) => Self::send_incoming_request_result(Err((hash, timepoint, e.into()))),
+            Err(e) => {
+                Self::send_incoming_request_result(Err((hash, timepoint, e.into())), network_id)
+            }
         }
     }
 
     fn parse_cancel_incoming_request(
         tx_receipt: TransactionReceipt,
-        author: &T::AccountId,
-        request_hash: H256,
-        tx_hash: H256,
-        timepoint: Timepoint<T>,
+        pre_request: IncomingPreRequest<T>,
+        pre_request_hash: H256,
     ) -> Result<IncomingRequest<T>, DispatchError> {
         let tx_approved = tx_receipt.is_approved();
         ensure!(!tx_approved, Error::<T>::EthTransactionIsSucceeded);
@@ -1208,7 +1398,11 @@ impl<T: Trait> Module<T> {
             .block_number
             .expect("'block_number' is null only when the log/transaction is pending; qed")
             .as_u64();
-        let tx = Self::load_tx(H256(tx_receipt.transaction_hash.0))?;
+        let tx = Self::load_tx(
+            H256(tx_receipt.transaction_hash.0),
+            pre_request.network_id,
+            pre_request.kind,
+        )?;
         let mut method_id = [0u8; 4];
         method_id.clone_from_slice(&tx.input.0[..4]);
         let funs = &*FUNCTIONS;
@@ -1225,34 +1419,32 @@ impl<T: Trait> Module<T> {
             OffchainRequest::Incoming(..) => fail!(Error::<T>::Other),
         };
         ensure!(
-            request.author() == author,
+            request.author() == &pre_request.author,
             Error::<T>::RequestIsNotOwnedByTheAuthor
         );
         Ok(IncomingRequest::CancelOutgoingRequest(
             IncomingCancelOutgoingRequest {
                 request,
-                initial_request_hash: request_hash,
+                initial_request_hash: pre_request_hash,
                 tx_input: tx.input.0,
-                tx_hash,
+                tx_hash: pre_request.hash,
                 at_height,
-                timepoint,
+                timepoint: pre_request.timepoint,
+                network_id: pre_request.network_id,
             },
         ))
     }
 
     fn handle_mark_as_done_incoming_request(
-        tx_hash: H256,
-        timepoint: Timepoint<T>,
+        pre_request: IncomingPreRequest<T>,
     ) -> Result<(), Error<T>> {
-        let is_used = vec![CONTRACT_ADDRESS, XOR_CONTRACT_ADDRESS, VAL_CONTRACT_ADDRESS]
-            .into_iter()
-            .filter_map(|x| Self::load_is_used(tx_hash, H160(x.0)).ok())
-            .any(identity);
+        let is_used = Self::load_is_used(pre_request.hash, pre_request.network_id)?;
         ensure!(is_used, Error::<T>::RequestNotFinalizedOnSidechain);
-        let finalize_mark_as_done = Call::<T>::finalize_mark_as_done(tx_hash);
+        let finalize_mark_as_done =
+            Call::<T>::finalize_mark_as_done(pre_request.hash, pre_request.network_id);
         let call = bridge_multisig::Call::as_multi(
-            Self::bridge_account(),
-            Some(timepoint),
+            get_bridge_account::<T>(pre_request.network_id),
+            Some(pre_request.timepoint),
             <<T as Trait>::Call>::from(finalize_mark_as_done).encode(),
             false,
             Weight::from(10_000_000_000_000u64),
@@ -1265,39 +1457,47 @@ impl<T: Trait> Module<T> {
         request_hash: H256,
     ) -> Result<(), Error<T>> {
         match request {
-            OffchainRequest::Incoming(author, tx_hash, timepoint, kind) => match kind {
-                IncomingRequestKind::MarkAsDone => {
-                    Self::handle_mark_as_done_incoming_request(tx_hash, timepoint)
-                }
-                IncomingRequestKind::CancelOutgoingRequest => {
-                    let result = Self::load_tx_receipt(tx_hash).and_then(|tx| {
-                        Self::parse_cancel_incoming_request(
-                            tx,
-                            &author,
-                            request_hash,
-                            tx_hash,
+            OffchainRequest::Incoming(request) => {
+                let network_id = request.network_id;
+                let tx_hash = request.hash;
+                let timepoint = request.timepoint;
+                let kind = request.kind;
+                match request.kind {
+                    IncomingRequestKind::MarkAsDone => {
+                        Self::handle_mark_as_done_incoming_request(request)
+                    }
+                    IncomingRequestKind::CancelOutgoingRequest => {
+                        let result =
+                            Self::load_tx_receipt(tx_hash, network_id, kind).and_then(|tx| {
+                                Self::parse_cancel_incoming_request(tx, request, request_hash)
+                            });
+                        Self::handle_parsed_incoming_request_result(
+                            result,
                             timepoint,
+                            request_hash,
+                            network_id,
                         )
-                    });
-                    Self::handle_parsed_incoming_request_result(result, timepoint, request_hash)
+                    }
+                    _ => {
+                        debug::debug!("Loading approved tx {}", tx_hash);
+                        Self::handle_parsed_incoming_request_result(
+                            Self::load_tx_receipt(tx_hash, network_id, kind)
+                                .and_then(|tx| Self::parse_incoming_request(tx, request)),
+                            timepoint,
+                            request_hash,
+                            network_id,
+                        )
+                    }
                 }
-                _ => {
-                    debug::debug!("Loading approved tx {}", tx_hash);
-                    Self::handle_parsed_incoming_request_result(
-                        Self::load_tx_receipt(tx_hash)
-                            .and_then(|tx| Self::parse_incoming_request(tx, timepoint)),
-                        timepoint,
-                        request_hash,
-                    )
-                }
-            },
+            }
             OffchainRequest::Outgoing(request, _) => Self::handle_outgoing_request(request),
         }
     }
 
-    fn offchain() {
-        let s_eth_height = StorageValueRef::persistent(b"eth-bridge-ocw::eth-height");
-        let current_eth_height = match Self::load_current_height() {
+    fn handle_network(network_id: T::NetworkId) {
+        let string = format!("eth-bridge-ocw::eth-height-{:?}", network_id);
+        let s_eth_height = StorageValueRef::persistent(string.as_bytes());
+        let current_eth_height = match Self::load_current_height(network_id) {
             Some(v) => v,
             None => {
                 debug::info!(
@@ -1324,7 +1524,8 @@ impl<T: Trait> Module<T> {
             .get::<BTreeMap<H256, T::BlockNumber>>()
             .flatten()
             .unwrap_or_default();
-        for request in <Self as Store>::RequestsQueue::get() {
+
+        for request in <Self as Store>::RequestsQueue::get(network_id) {
             let request_hash = request.hash();
             let request_submission_height: T::BlockNumber =
                 Self::request_submission_height(&request_hash);
@@ -1349,7 +1550,18 @@ impl<T: Trait> Module<T> {
         }
         s_handled_requests.set(&handled);
 
-        Self::handle_pending_incoming_requests(current_eth_height);
+        Self::handle_pending_incoming_requests(network_id, current_eth_height);
+    }
+
+    fn offchain() {
+        let s_networks_ids = StorageValueRef::persistent(STORAGE_NETWORK_IDS_KEY);
+        let network_ids = s_networks_ids
+            .get::<BTreeSet<T::NetworkId>>()
+            .flatten()
+            .unwrap_or_default();
+        for network_id in network_ids {
+            Self::handle_network(network_id);
+        }
     }
 
     fn http_request(
@@ -1450,20 +1662,22 @@ impl<T: Trait> Module<T> {
     fn eth_json_rpc_request<I: Serialize, O: for<'de> Deserialize<'de>>(
         method: &str,
         params: &I,
+        network_id: T::NetworkId,
     ) -> Option<Vec<O>> {
-        let s_node_url = StorageValueRef::persistent(STORAGE_ETH_NODE_URL_KEY);
-        let node_url = s_node_url
-            .get::<String>()
-            .flatten()
-            .unwrap_or(ETH_NODE_URL.into());
+        let string = format!("{}-{:?}", STORAGE_ETH_NODE_PARAMS, network_id);
+        let s_node_params = StorageValueRef::persistent(string.as_bytes());
+        let node_params = match s_node_params.get::<NodeParams>().flatten() {
+            Some(v) => v,
+            None => {
+                debug::warn!("Failed to make JSON-RPC request, make sure to set node parameters.");
+                return None;
+            }
+        };
         let mut headers: Vec<(_, String)> = vec![("content-type", "application/json".into())];
-
-        let s_node_credentials = StorageValueRef::persistent(STORAGE_ETH_NODE_CREDENTIALS_KEY);
-        let option = s_node_credentials.get::<String>();
-        if let Some(node_credentials) = option.flatten() {
+        if let Some(node_credentials) = node_params.credentials {
             headers.push(("Authorization", node_credentials));
         }
-        Self::json_rpc_request(&node_url, 1, method, params, &headers)
+        Self::json_rpc_request(&node_params.url, 1, method, params, &headers)
     }
 
     fn substrate_json_rpc_request<I: Serialize, O: for<'de> Deserialize<'de>>(
@@ -1508,54 +1722,84 @@ impl<T: Trait> Module<T> {
         Ok(())
     }
 
-    fn load_is_used(hash: H256, contract_address: Address) -> Result<bool, Error<T>> {
+    fn load_is_used(hash: H256, network_id: T::NetworkId) -> Result<bool, Error<T>> {
         // `used(bytes32)`
         let mut data: Vec<_> = hex!("b07c411f").to_vec();
         data.extend(&hash.0);
-        let result = Self::eth_json_rpc_request::<_, bool>(
-            "eth_call",
-            &vec![
-                serialize(&CallRequest {
-                    to: Some(types::Address::from(contract_address.0)),
-                    data: Some(Bytes(data)),
-                    ..Default::default()
-                }),
-                Value::String("latest".into()),
-            ],
-        )
-        .ok_or(Error::<T>::HttpFetchingError)?;
-        Ok(result.first().cloned().unwrap_or(false))
+        let contract_address = types::H160(BridgeContractAddress::<T>::get(network_id).0);
+        let contracts = if network_id == T::GetEthNetworkId::get() {
+            vec![contract_address, XOR_CONTRACT_ADDRESS, VAL_CONTRACT_ADDRESS]
+        } else {
+            vec![contract_address]
+        };
+        let result = contracts
+            .into_iter()
+            .filter_map(|x| {
+                Self::eth_json_rpc_request::<_, bool>(
+                    "eth_call",
+                    &vec![
+                        serialize(&CallRequest {
+                            to: Some(x),
+                            data: Some(Bytes(data.clone())),
+                            ..Default::default()
+                        }),
+                        Value::String("latest".into()),
+                    ],
+                    network_id,
+                )
+                .and_then(|mut xs| xs.pop())
+            })
+            .any(identity);
+        Ok(result)
     }
 
     fn register_sidechain_asset(
         token_address: Address,
         precision: BalancePrecision,
         symbol: AssetSymbol,
+        network_id: T::NetworkId,
     ) -> Result<T::AssetId, DispatchError> {
         ensure!(
-            RegisteredSidechainAsset::<T>::get(&token_address).is_none(),
+            RegisteredSidechainAsset::<T>::get(network_id, &token_address).is_none(),
             Error::<T>::TokenIsAlreadyAdded
         );
+        let bridge_account =
+            Self::bridge_account(network_id).expect("networks can't be removed; qed");
         let asset_id = assets::Module::<T>::register_from(
-            &Self::bridge_account(),
+            &bridge_account,
             symbol,
             precision,
             Balance::from(0u32),
             true,
         )?;
-        RegisteredAsset::<T>::insert(&asset_id, AssetKind::Sidechain);
-        RegisteredSidechainAsset::<T>::insert(&token_address, asset_id);
-        RegisteredSidechainToken::<T>::insert(&asset_id, token_address);
+        RegisteredAsset::<T>::insert(network_id, &asset_id, AssetKind::Sidechain);
+        RegisteredSidechainAsset::<T>::insert(network_id, &token_address, asset_id);
+        RegisteredSidechainToken::<T>::insert(network_id, &asset_id, token_address);
+        let scope = Scope::Unlimited;
+        let permission_ids = [MINT];
+        for permission_id in &permission_ids {
+            let permission_owner = permissions::Owners::<T>::get(permission_id, &scope)
+                .pop()
+                .unwrap_or_else(|| bridge_account.clone());
+            permissions::Module::<T>::grant_permission_with_scope(
+                permission_owner,
+                bridge_account.clone(),
+                *permission_id,
+                scope,
+            )?;
+        }
+
         Ok(asset_id)
     }
 
     fn get_asset_by_raw_asset_id(
         raw_asset_id: H256,
         token_address: &Address,
+        network_id: T::NetworkId,
     ) -> Result<Option<(T::AssetId, AssetKind)>, DispatchError> {
         let is_sidechain_token = raw_asset_id == H256::zero();
         if is_sidechain_token {
-            let asset_id = match Self::registered_sidechain_asset(&token_address) {
+            let asset_id = match Self::registered_sidechain_asset(network_id, &token_address) {
                 Some(asset_id) => asset_id,
                 _ => {
                     return Ok(None);
@@ -1563,11 +1807,11 @@ impl<T: Trait> Module<T> {
             };
             Ok(Some((
                 asset_id,
-                Self::registered_asset(&asset_id).unwrap_or(AssetKind::Sidechain),
+                Self::registered_asset(network_id, &asset_id).unwrap_or(AssetKind::Sidechain),
             )))
         } else {
             let asset_id = T::AssetId::from(H256(raw_asset_id.0));
-            let asset_kind = Self::registered_asset(&asset_id);
+            let asset_kind = Self::registered_asset(network_id, &asset_id);
             if asset_kind.is_none() || asset_kind.unwrap() == AssetKind::Sidechain {
                 fail!(Error::<T>::Other);
             }
@@ -1577,7 +1821,7 @@ impl<T: Trait> Module<T> {
 
     fn parse_incoming_request(
         tx_receipt: TransactionReceipt,
-        timepoint: Timepoint<T>,
+        incoming_request: IncomingPreRequest<T>,
     ) -> Result<IncomingRequest<T>, DispatchError> {
         let tx_approved = tx_receipt.is_approved();
         ensure!(tx_approved, Error::<T>::EthTransactionIsFailed);
@@ -1586,14 +1830,20 @@ impl<T: Trait> Module<T> {
             .expect("'block_number' is null only when the log/transaction is pending; qed")
             .as_u64();
         let tx_hash = H256(tx_receipt.transaction_hash.0);
+        let timepoint = incoming_request.timepoint;
+        let kind = incoming_request.kind;
+        let network_id = incoming_request.network_id;
 
-        let call = Self::parse_main_event(&tx_receipt.logs)?;
+        let call = Self::parse_main_event(&tx_receipt.logs, kind)?;
 
         Ok(match call {
             ContractEvent::Deposit(to, amount, token_address, raw_asset_id) => {
-                let (asset_id, asset_kind) =
-                    Module::<T>::get_asset_by_raw_asset_id(raw_asset_id, &token_address)?
-                        .ok_or(Error::<T>::UnsupportedAssetId)?;
+                let (asset_id, asset_kind) = Module::<T>::get_asset_by_raw_asset_id(
+                    raw_asset_id,
+                    &token_address,
+                    network_id,
+                )?
+                .ok_or(Error::<T>::UnsupportedAssetId)?;
                 IncomingRequest::Transfer(IncomingTransfer {
                     from: Default::default(),
                     to,
@@ -1603,10 +1853,11 @@ impl<T: Trait> Module<T> {
                     tx_hash,
                     at_height,
                     timepoint,
+                    network_id,
                 })
             }
             ContractEvent::ChangePeers(peer_address, added) => {
-                let peer_account_id = Self::peer_account_id(&peer_address);
+                let peer_account_id = Self::peer_account_id(network_id, &peer_address);
                 ensure!(
                     peer_account_id != T::AccountId::default(),
                     Error::<T>::UnknownPeerAddress
@@ -1618,6 +1869,7 @@ impl<T: Trait> Module<T> {
                     tx_hash,
                     at_height,
                     timepoint,
+                    network_id,
                 })
             }
             ContractEvent::ClaimPswap(account_id) => {
@@ -1632,6 +1884,7 @@ impl<T: Trait> Module<T> {
                     tx_hash,
                     at_height,
                     timepoint,
+                    network_id,
                 })
             }
             _ => fail!(Error::<T>::UnknownMethodId),
@@ -1640,6 +1893,7 @@ impl<T: Trait> Module<T> {
 
     fn send_incoming_request_result(
         incoming_request_result: Result<IncomingRequest<T>, (H256, Timepoint<T>, DispatchError)>,
+        network_id: T::NetworkId,
     ) -> Result<(), Error<T>> {
         debug::debug!(
             "send_incoming_request_result: {:?}",
@@ -1647,13 +1901,14 @@ impl<T: Trait> Module<T> {
         );
         let transfer_call = Call::<T>::finalize_incoming_request(
             incoming_request_result.clone().map_err(|(h, _, e)| (h, e)),
+            network_id,
         );
         let timepoint = match &incoming_request_result {
             Ok(r) => r.timepoint(),
             Err((_, t, ..)) => *t,
         };
         let call = bridge_multisig::Call::as_multi(
-            Self::bridge_account(),
+            Self::bridge_account(network_id).expect("networks can't be removed; qed"),
             Some(timepoint),
             <<T as Trait>::Call>::from(transfer_call).encode(),
             false,
@@ -1698,49 +1953,102 @@ impl<T: Trait> Module<T> {
         Ok(())
     }
 
-    fn load_current_height() -> Option<u64> {
-        Self::eth_json_rpc_request::<_, types::U64>("eth_blockNumber", &())?
+    fn load_current_height(network_id: T::NetworkId) -> Option<u64> {
+        Self::eth_json_rpc_request::<_, types::U64>("eth_blockNumber", &(), network_id)?
             .first()
             .map(|x| x.as_u64())
     }
 
-    fn load_tx(hash: H256) -> Result<Transaction, DispatchError> {
-        let hash = types::H256(hash.0);
-        let tx_receipt =
-            Self::eth_json_rpc_request::<_, Transaction>("eth_getTransactionByHash", &vec![hash])
-                .ok_or(Error::<T>::HttpFetchingError)?
-                .pop()
-                .ok_or(Error::<T>::FailedToLoadTransaction)?;
-        ensure!(
-            tx_receipt.to == Some(CONTRACT_ADDRESS),
-            Error::<T>::UnknownContractAddress
-        );
-        Ok(tx_receipt)
+    fn ensure_known_contract(
+        to: Address,
+        network_id: T::NetworkId,
+        kind: IncomingRequestKind,
+    ) -> DispatchResult {
+        match kind {
+            IncomingRequestKind::ClaimPswap => {
+                ensure!(
+                    network_id == T::GetEthNetworkId::get(),
+                    Error::<T>::UnknownContractAddress
+                );
+                ensure!(
+                    to == PSWAP_CONTRACT_ADDRESS,
+                    Error::<T>::UnknownContractAddress
+                );
+            }
+            _ => {
+                ensure!(
+                    to == BridgeContractAddress::<T>::get(network_id),
+                    Error::<T>::UnknownContractAddress
+                );
+            }
+        }
+        Ok(())
     }
 
-    fn load_tx_receipt(hash: H256) -> Result<TransactionReceipt, DispatchError> {
+    fn load_tx(
+        hash: H256,
+        network_id: T::NetworkId,
+        kind: IncomingRequestKind,
+    ) -> Result<Transaction, DispatchError> {
         let hash = types::H256(hash.0);
-        let tx_receipt = Self::eth_json_rpc_request::<_, TransactionReceipt>(
-            "eth_getTransactionReceipt",
+        let tx_receipt = Self::eth_json_rpc_request::<_, Transaction>(
+            "eth_getTransactionByHash",
             &vec![hash],
+            network_id,
         )
         .ok_or(Error::<T>::HttpFetchingError)?
         .pop()
         .ok_or(Error::<T>::FailedToLoadTransaction)?;
-        ensure!(
-            tx_receipt.to == Some(CONTRACT_ADDRESS),
-            Error::<T>::UnknownContractAddress
-        );
+        let to = tx_receipt
+            .to
+            .map(|x| H160(x.0))
+            .ok_or(Error::<T>::UnknownContractAddress)?;
+        Self::ensure_known_contract(to, network_id, kind)?;
         Ok(tx_receipt)
     }
 
-    fn is_peer(who: &T::AccountId) -> bool {
-        Self::peers().into_iter().find(|i| i == who).is_some()
+    fn load_tx_receipt(
+        hash: H256,
+        network_id: T::NetworkId,
+        kind: IncomingRequestKind,
+    ) -> Result<TransactionReceipt, DispatchError> {
+        let hash = types::H256(hash.0);
+        let tx_receipt = Self::eth_json_rpc_request::<_, TransactionReceipt>(
+            "eth_getTransactionReceipt",
+            &vec![hash],
+            network_id,
+        )
+        .ok_or(Error::<T>::HttpFetchingError)?
+        .pop()
+        .ok_or(Error::<T>::FailedToLoadTransaction)?;
+        let to = tx_receipt
+            .to
+            .map(|x| H160(x.0))
+            .ok_or(Error::<T>::UnknownContractAddress)?;
+        Self::ensure_known_contract(to, network_id, kind)?;
+        Ok(tx_receipt)
     }
 
-    fn ensure_peer(who: &T::AccountId) -> DispatchResult {
-        ensure!(Self::is_peer(who), Error::<T>::Forbidden);
+    fn is_peer(who: &T::AccountId, network_id: T::NetworkId) -> bool {
+        Self::peers(network_id)
+            .into_iter()
+            .find(|i| i == who)
+            .is_some()
+    }
+
+    fn ensure_peer(who: &T::AccountId, network_id: T::NetworkId) -> DispatchResult {
+        ensure!(Self::is_peer(who, network_id), Error::<T>::Forbidden);
         Ok(())
+    }
+
+    fn ensure_bridge_account(
+        who: &T::AccountId,
+        network_id: T::NetworkId,
+    ) -> Result<T::AccountId, DispatchError> {
+        let bridge_account_id =
+            Self::bridge_account(network_id).ok_or(Error::<T>::UnknownNetwork)?;
+        ensure!(who == &bridge_account_id, Error::<T>::Forbidden);
+        Ok(bridge_account_id)
     }
 }
 
@@ -1778,7 +2086,7 @@ impl<T: Trait> Module<T> {
                                 .pop()
                                 .map(|approvals| (encoded, approvals))
                         }
-                        OffchainRequest::Incoming(..) => None,
+                        OffchainRequest::Incoming(_) => None,
                     }
                 } else {
                     None
@@ -1813,10 +2121,15 @@ impl<T: Trait> Module<T> {
     pub fn get_registered_assets(
     ) -> Result<Vec<(AssetKind, AssetIdOf<T>, Option<H160>)>, DispatchError> {
         Ok(RegisteredAsset::<T>::iter()
-            .map(|(asset_id, kind)| {
-                let token_addr = RegisteredSidechainToken::<T>::get(&asset_id).map(|x| H160(x.0));
+            .map(|(network_id, asset_id, kind)| {
+                let token_addr =
+                    RegisteredSidechainToken::<T>::get(network_id, &asset_id).map(|x| H160(x.0));
                 (kind, asset_id, token_addr)
             })
             .collect())
     }
+}
+
+pub fn get_bridge_account<T: Trait>(network_id: T::NetworkId) -> T::AccountId {
+    crate::BridgeAccount::<T>::get(network_id).expect("networks can't be removed; qed")
 }

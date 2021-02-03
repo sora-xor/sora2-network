@@ -679,6 +679,7 @@ impl eth_bridge::Trait for Runtime {
     type Event = Event;
     type Call = Call;
     type PeerId = eth_bridge::crypto::TestAuthId;
+    type NetworkId = u64;
 }
 
 impl faucet::Trait for Runtime {

@@ -2,13 +2,13 @@
 
 //! Service implementation. Specialized wrapper over substrate service.
 
-use framenode_runtime::{self, opaque::Block, RuntimeApi};
+use framenode_runtime::{self, opaque::Block, Runtime, RuntimeApi};
 
 use codec::Encode;
 use framenode_runtime::eth_bridge;
 use framenode_runtime::eth_bridge::{
-    STORAGE_ETH_NODE_CREDENTIALS_KEY, STORAGE_ETH_NODE_URL_KEY, STORAGE_PEER_SECRET_KEY,
-    STORAGE_SUB_NODE_URL_KEY,
+    PeerConfig, STORAGE_ETH_NODE_CREDENTIALS_KEY, STORAGE_ETH_NODE_URL_KEY,
+    STORAGE_PEER_SECRET_KEY, STORAGE_SUB_NODE_URL_KEY,
 };
 use grandpa::{self, FinalityProofProvider as GrandpaFinalityProofProvider};
 use sc_client_api::{Backend, ExecutorProvider, RemoteBackend};
@@ -103,7 +103,7 @@ pub fn new_partial(
             .next()
             .map(|x| {
                 let mut x = x.to_owned();
-                x.push("bridge/eth");
+                x.push("bridge/eth.json");
                 x
             })
             .unwrap();
@@ -111,29 +111,14 @@ pub fn new_partial(
             "Ethereum bridge node config not found. Expected path: {:?}",
             bridge_path
         ));
-        let params: [String; 2] =
+        let peer_config: PeerConfig<<Runtime as eth_bridge::Trait>::NetworkId> =
             serde_json::from_reader(&file).expect("Invalid ethereum bridge node config.");
-        if !params[0].is_empty() {
-            storage.set(
-                STORAGE_PREFIX,
-                STORAGE_ETH_NODE_URL_KEY,
-                &params[0].encode(),
-            );
+        for (net_id, params) in peer_config.networks {
+            // TODO: optimize storage key construction.
+            let string = format!("{}-{:?}", STORAGE_ETH_NODE_PARAMS, net_id);
+            storage.set(STORAGE_PREFIX, string.as_bytes(), &params.encode());
         }
-        storage.set(
-            STORAGE_PREFIX,
-            STORAGE_ETH_NODE_CREDENTIALS_KEY,
-            &params[1].encode(),
-        );
-        let rpc_addr = config
-            .rpc_http
-            .as_ref()
-            .expect("HTTP RPC should be enabled for ethereum bridge. Please enable it via `--rpc-port <port>`.");
-        storage.set(
-            STORAGE_PREFIX,
-            STORAGE_SUB_NODE_URL_KEY,
-            &format!("http://{}", rpc_addr).encode(),
-        );
+        // TODO: STORAGE_NETWORK_IDS_KEY
         log::info!("Ethereum bridge peer initialized");
     }
 

@@ -29,6 +29,7 @@ contract Bridge {
 
     address public _addressVAL;
     address public _addressXOR;
+    uint32 public _networkId;
 
     /**
      * Constructor.
@@ -37,12 +38,14 @@ contract Bridge {
     constructor(
         address[] memory initialPeers,
         address addressVAL,
-        address addressXOR)  {
+        address addressXOR
+        uint32 networkId)  {
         for (uint8 i = 0; i < initialPeers.length; i++) {
             addPeer(initialPeers[i]);
         }
         _addressXOR = addressXOR;
         _addressVAL = addressVAL;
+        _networkId = networkId;
         initialized_ = true;
 
         acceptedEthTokens[_addressXOR] = true;
@@ -79,7 +82,7 @@ contract Bridge {
     )
     public {
         require(acceptedEthTokens[newToken] == false);
-        require(checkSignatures(keccak256(abi.encodePacked(newToken, ticker, name, decimals, txHash)),
+        require(checkSignatures(keccak256(abi.encodePacked(newToken, ticker, name, decimals, txHash, _networkId)),
             v,
             r,
             s), "Peer signatures are invalid"
@@ -133,7 +136,8 @@ contract Bridge {
                 decimals,
                 supply,
                 sidechainAssetId,
-                txHash
+                txHash,
+                _networkId
             )),
             v,
             r,
@@ -195,7 +199,7 @@ contract Bridge {
     returns (bool)
     {
         require(used[txHash] == false);
-        require(checkSignatures(keccak256(abi.encodePacked(newPeerAddress, txHash)),
+        require(checkSignatures(keccak256(abi.encodePacked(newPeerAddress, txHash, _networkId)),
             v,
             r,
             s), "Peer signatures are invalid"
@@ -220,7 +224,7 @@ contract Bridge {
     {
         require(used[txHash] == false);
         require(checkSignatures(
-                keccak256(abi.encodePacked(peerAddress, txHash)),
+                keccak256(abi.encodePacked(peerAddress, txHash, _networkId)),
                 v,
                 r,
                 s), "Peer signatures are invalid"
@@ -257,7 +261,7 @@ contract Bridge {
     {
         require(used[txHash] == false);
         require(checkSignatures(
-                keccak256(abi.encodePacked(tokenAddress, amount, to, from, txHash)),
+                keccak256(abi.encodePacked(tokenAddress, amount, to, from, txHash, _networkId)),
                 v,
                 r,
                 s), "Peer signatures are invalid"
@@ -302,7 +306,7 @@ contract Bridge {
         require(_sidechainTokens[sidechainAssetId] != address(0x0), "Sidechain asset is not registered");
         require(used[txHash] == false);
         require(checkSignatures(
-                keccak256(abi.encodePacked(sidechainAssetId, amount, to, from, txHash)),
+                keccak256(abi.encodePacked(sidechainAssetId, amount, to, from, txHash, _networkId)),
                 v,
                 r,
                 s), "Peer signatures are invalid"

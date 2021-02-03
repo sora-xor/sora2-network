@@ -25,6 +25,7 @@ libsecp256k1 = { version = "0.3.5", features = ['hmac'], default-features = fals
 tiny-keccak = { version = "2", default-features = false }
 hex-literal = "0.3.1"
 once_cell = { version = "1.5.2", default-features = false }
+permissions = { path = "../permissions", default-features = false }
 
 [dev-dependencies]
 parking_lot = "0.10.0"
@@ -34,7 +35,6 @@ pallet-balances = { version = "2.0.0" }
 pallet-sudo = { version = "2.0.0" }
 frame-executive = { version = "2.0.0", default-features = false }
 common = { path = "../../common", default-features = false, features = ["test"] }
-permissions = { path = "../permissions", default-features = false }
 tokio = { version = "0.2.13", default-features = false, features = ["macros"] }
 env_logger = "0.8.1"
 currencies = { version = "0.3.2", package = "orml-currencies", default-features = false }
@@ -66,5 +66,6 @@ std = [
     'jsonrpc-core/std',
     'rustc-hex/std',
     'common/std',
+    'permissions/std',
     'libsecp256k1/std',
 ]

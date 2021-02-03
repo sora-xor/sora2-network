@@ -1,7 +1,7 @@
 use crate::contract::{MethodId, FUNCTIONS};
 use crate::{
-    types, Address, AssetIdOf, AssetKind, Decoder, Error, Module, OutgoingRequest, PswapOwners,
-    RequestStatus, SignatureParams, Timepoint, Trait,
+    get_bridge_account, types, Address, AssetIdOf, AssetKind, Decoder, Error, Module,
+    OutgoingRequest, PswapOwners, RequestStatus, SignatureParams, Timepoint, Trait,
 };
 use alloc::{collections::BTreeSet, string::String};
 use codec::{Decode, Encode};
@@ -11,11 +11,12 @@ use ethabi::{FixedBytes, Token};
 #[allow(unused_imports)]
 use frame_support::debug;
 use frame_support::sp_runtime::app_crypto::sp_core;
-use frame_support::{dispatch::DispatchError, ensure, RuntimeDebug, StorageMap, StorageValue};
+use frame_support::{dispatch::DispatchError, ensure, RuntimeDebug, StorageDoubleMap, StorageMap};
 use frame_system::RawOrigin;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 use sp_core::{H256, U256};
+use sp_std::convert::TryInto;
 use sp_std::prelude::*;
 
 pub const MIN_PEERS: usize = 4;
@@ -31,6 +32,7 @@ pub struct IncomingAddToken<T: Trait> {
     pub tx_hash: H256,
     pub at_height: u64,
     pub timepoint: Timepoint<T>,
+    pub network_id: T::NetworkId,
 }
 
 impl<T: Trait> IncomingAddToken<T> {
@@ -39,6 +41,7 @@ impl<T: Trait> IncomingAddToken<T> {
             self.token_address,
             self.precision,
             self.symbol.clone(),
+            self.network_id,
         )?;
         Ok(self.tx_hash)
     }
@@ -57,11 +60,13 @@ pub struct IncomingChangePeers<T: Trait> {
     pub tx_hash: H256,
     pub at_height: u64,
     pub timepoint: Timepoint<T>,
+    pub network_id: T::NetworkId,
 }
 
 impl<T: Trait> IncomingChangePeers<T> {
     pub fn finalize(&self) -> Result<H256, DispatchError> {
-        let pending_peer = crate::PendingPeer::<T>::get().ok_or(Error::<T>::NoPendingPeer)?;
+        let pending_peer =
+            crate::PendingPeer::<T>::get(self.network_id).ok_or(Error::<T>::NoPendingPeer)?;
         ensure!(
             pending_peer == self.peer_account_id,
             Error::<T>::WrongPendingPeer
@@ -69,12 +74,12 @@ impl<T: Trait> IncomingChangePeers<T> {
         if self.added {
             let account_id = self.peer_account_id.clone();
             bridge_multisig::Module::<T>::add_signatory(
-                RawOrigin::Signed(crate::BridgeAccount::<T>::get()).into(),
+                RawOrigin::Signed(get_bridge_account::<T>(self.network_id)).into(),
                 account_id.clone(),
             )?;
-            crate::Peers::<T>::mutate(|set| set.insert(account_id));
+            crate::Peers::<T>::mutate(self.network_id, |set| set.insert(account_id));
         }
-        crate::PendingPeer::<T>::set(None);
+        crate::PendingPeer::<T>::take(self.network_id);
         Ok(self.tx_hash)
     }
 
@@ -94,12 +99,13 @@ pub struct IncomingTransfer<T: Trait> {
     pub tx_hash: H256,
     pub at_height: u64,
     pub timepoint: Timepoint<T>,
+    pub network_id: T::NetworkId,
 }
 
 impl<T: Trait> IncomingTransfer<T> {
     pub fn prepare(&self) -> Result<(), DispatchError> {
         if self.asset_kind.is_owned() {
-            let bridge_account = crate::BridgeAccount::<T>::get();
+            let bridge_account = get_bridge_account::<T>(self.network_id);
             assets::Module::<T>::reserve(self.asset_id, &bridge_account, self.amount)?;
         }
         Ok(())
@@ -107,7 +113,7 @@ impl<T: Trait> IncomingTransfer<T> {
 
     pub fn unreserve(&self) {
         if self.asset_kind.is_owned() {
-            let bridge_acc = &crate::Module::<T>::bridge_account();
+            let bridge_acc = &get_bridge_account::<T>(self.network_id);
             if let Err(e) = assets::Module::<T>::unreserve(self.asset_id, bridge_acc, self.amount) {
                 debug::error!("Unexpected error: {:?}", e);
             }
@@ -120,7 +126,7 @@ impl<T: Trait> IncomingTransfer<T> {
     }
 
     pub fn finalize(&self) -> Result<H256, DispatchError> {
-        let bridge_account_id = crate::Module::<T>::bridge_account();
+        let bridge_account_id = get_bridge_account::<T>(self.network_id);
         if self.asset_kind.is_owned() {
             self.unreserve();
             assets::Module::<T>::ensure_can_withdraw(
@@ -158,11 +164,12 @@ pub struct IncomingClaimPswap<T: Trait> {
     pub tx_hash: H256,
     pub at_height: u64,
     pub timepoint: Timepoint<T>,
+    pub network_id: T::NetworkId,
 }
 
 impl<T: Trait> IncomingClaimPswap<T> {
     pub fn finalize(&self) -> Result<H256, DispatchError> {
-        let bridge_account_id = Module::<T>::bridge_account();
+        let bridge_account_id = get_bridge_account::<T>(self.network_id);
         let amount = PswapOwners::get(&self.eth_address).ok_or(Error::<T>::AccountNotFound)?;
         ensure!(amount != fixed!(0), Error::<T>::AlreadyClaimed);
         let empty_balance: Balance = fixed!(0);
@@ -201,6 +208,7 @@ pub struct IncomingCancelOutgoingRequest<T: Trait> {
     pub tx_hash: H256,
     pub at_height: u64,
     pub timepoint: Timepoint<T>,
+    pub network_id: T::NetworkId,
 }
 
 impl<T: Trait> IncomingCancelOutgoingRequest<T> {
@@ -247,9 +255,9 @@ pub struct OutgoingTransfer<T: Trait> {
     pub from: T::AccountId,
     pub to: Address,
     pub asset_id: AssetIdOf<T>,
-    #[cfg_attr(serde, serde(skip))]
     pub amount: Balance,
     pub nonce: T::Index,
+    pub network_id: T::NetworkId,
 }
 
 impl<T: Trait> OutgoingTransfer<T> {
@@ -258,7 +266,9 @@ impl<T: Trait> OutgoingTransfer<T> {
         let from = Address::from_slice(&self.from.encode()[..20]);
         let to = self.to;
         let currency_id;
-        if let Some(token_address) = Module::<T>::registered_sidechain_token(&self.asset_id) {
+        if let Some(token_address) =
+            Module::<T>::registered_sidechain_token(self.network_id, &self.asset_id)
+        {
             currency_id = CurrencyIdEncoded::TokenAddress(token_address);
         } else {
             let x = <T::AssetId as Into<H256>>::into(self.asset_id);
@@ -266,6 +276,10 @@ impl<T: Trait> OutgoingTransfer<T> {
         }
         let amount = U256::from(*self.amount.0.as_bits());
         let tx_hash = H256(tx_hash.0);
+        let network_id = types::U256::from(
+            <T::NetworkId as TryInto<u32>>::try_into(self.network_id)
+                .map_err(|_| Error::<T>::Other)?,
+        );
         let is_old_contract = self.asset_id == XOR.into() || self.asset_id == VAL.into();
         let raw = if is_old_contract {
             ethabi::encode_packed(&[
@@ -282,6 +296,7 @@ impl<T: Trait> OutgoingTransfer<T> {
                 Token::Address(types::H160(to.0)),
                 Token::Address(types::H160(from.0)),
                 Token::FixedBytes(tx_hash.0.to_vec()),
+                Token::UintSized(network_id, 32),
             ])
         };
         Ok(OutgoingTransferEncoded {
@@ -296,7 +311,7 @@ impl<T: Trait> OutgoingTransfer<T> {
 
     pub fn prepare(&mut self) -> Result<(), DispatchError> {
         assets::Module::<T>::ensure_can_withdraw(&self.asset_id, &self.from, self.amount)?;
-        let bridge_account = crate::BridgeAccount::<T>::get();
+        let bridge_account = get_bridge_account::<T>(self.network_id);
         assets::Module::<T>::transfer_from(
             &self.asset_id,
             &self.from,
@@ -309,7 +324,7 @@ impl<T: Trait> OutgoingTransfer<T> {
 
     pub fn validate(&self) -> Result<(), DispatchError> {
         ensure!(
-            crate::RegisteredAsset::<T>::get(&self.asset_id).is_some(),
+            crate::RegisteredAsset::<T>::get(self.network_id, &self.asset_id).is_some(),
             Error::<T>::UnsupportedToken
         );
         Ok(())
@@ -317,8 +332,10 @@ impl<T: Trait> OutgoingTransfer<T> {
 
     pub fn finalize(&self) -> Result<(), DispatchError> {
         self.validate()?;
-        if let Some(AssetKind::Sidechain) = Module::<T>::registered_asset(&self.asset_id) {
-            let bridge_acc = &Module::<T>::bridge_account();
+        if let Some(AssetKind::Sidechain) =
+            Module::<T>::registered_asset(self.network_id, &self.asset_id)
+        {
+            let bridge_acc = &get_bridge_account::<T>(self.network_id);
             assets::Module::<T>::unreserve(self.asset_id, bridge_acc, self.amount)?;
             assets::Module::<T>::burn_from(&self.asset_id, bridge_acc, bridge_acc, self.amount)?;
         }
@@ -326,11 +343,11 @@ impl<T: Trait> OutgoingTransfer<T> {
     }
 
     pub fn cancel(&self) -> Result<(), DispatchError> {
-        let bridge_account = crate::BridgeAccount::<T>::get();
+        let bridge_account = get_bridge_account::<T>(self.network_id);
         assets::Module::<T>::unreserve(self.asset_id, &bridge_account, self.amount)?;
         assets::Module::<T>::transfer_from(
             &self.asset_id,
-            &crate::Module::<T>::bridge_account(),
+            &bridge_account,
             &self.from,
             self.amount,
         )?;
@@ -394,6 +411,7 @@ pub struct OutgoingAddAsset<T: Trait> {
     pub asset_id: AssetIdOf<T>,
     pub supply: Balance,
     pub nonce: T::Index,
+    pub network_id: T::NetworkId,
 }
 
 impl<T: Trait> OutgoingAddAsset<T> {
@@ -405,6 +423,13 @@ impl<T: Trait> OutgoingAddAsset<T> {
         let asset_id_code = <AssetIdOf<T> as Into<H256>>::into(self.asset_id);
         let supply: U256 = U256::from(*self.supply.0.as_bits());
         let sidechain_asset_id = asset_id_code.0.to_vec();
+        let mut network_id: H256 = H256::default();
+        U256::from(
+            <T::NetworkId as TryInto<u128>>::try_into(self.network_id)
+                .ok()
+                .expect("NetworkId can be always converted to u128; qed"),
+        )
+        .to_big_endian(&mut network_id.0);
         let raw = ethabi::encode_packed(&[
             Token::String(name.clone()),
             Token::String(symbol.clone()),
@@ -412,6 +437,7 @@ impl<T: Trait> OutgoingAddAsset<T> {
             Token::Uint(types::U256(supply.clone().0)),
             Token::FixedBytes(sidechain_asset_id.clone()),
             Token::FixedBytes(tx_hash.0.to_vec()),
+            Token::FixedBytes(network_id.0.to_vec()),
         ]);
 
         Ok(OutgoingAddAssetEncoded {
@@ -421,17 +447,18 @@ impl<T: Trait> OutgoingAddAsset<T> {
             supply, // TODO: supply
             sidechain_asset_id,
             hash,
+            network_id,
             raw,
         })
     }
 
     pub fn validate(&self) -> Result<(), DispatchError> {
+        // ensure!(
+        //     assets::Module::<T>::is_asset_owner(&self.asset_id, &self.author),
+        //     Error::<T>::TokenIsNotOwnedByTheAuthor
+        // );
         ensure!(
-            assets::Module::<T>::is_asset_owner(&self.asset_id, &self.author),
-            Error::<T>::TokenIsNotOwnedByTheAuthor
-        );
-        ensure!(
-            crate::RegisteredAsset::<T>::get(&self.asset_id).is_none(),
+            crate::RegisteredAsset::<T>::get(self.network_id, &self.asset_id).is_none(),
             Error::<T>::TokenIsAlreadyAdded
         );
         Ok(())
@@ -443,7 +470,7 @@ impl<T: Trait> OutgoingAddAsset<T> {
 
     pub fn finalize(&self) -> Result<(), DispatchError> {
         self.validate()?;
-        crate::RegisteredAsset::<T>::insert(&self.asset_id, AssetKind::Thischain);
+        crate::RegisteredAsset::<T>::insert(self.network_id, &self.asset_id, AssetKind::Thischain);
         Ok(())
     }
 
@@ -461,6 +488,7 @@ pub struct OutgoingAddAssetEncoded {
     pub supply: U256,
     pub sidechain_asset_id: FixedBytes,
     pub hash: H256,
+    pub network_id: H256,
     /// EABI-encoded data to be signed.
     pub raw: Vec<u8>,
 }
@@ -491,6 +519,7 @@ pub struct OutgoingAddToken<T: Trait> {
     pub name: String,
     pub decimals: u8,
     pub nonce: T::Index,
+    pub network_id: T::NetworkId,
 }
 
 pub struct Encoder {
@@ -538,12 +567,20 @@ impl<T: Trait> OutgoingAddToken<T> {
         let ticker = self.ticker.clone();
         let name = self.name.clone();
         let decimals = self.decimals;
+        let mut network_id: H256 = H256::default();
+        U256::from(
+            <T::NetworkId as TryInto<u128>>::try_into(self.network_id)
+                .ok()
+                .expect("NetworkId can be always converted to u128; qed"),
+        )
+        .to_big_endian(&mut network_id.0);
         let raw = ethabi::encode_packed(&[
             Token::Address(types::H160(token_address.0)),
             Token::String(ticker.clone()),
             Token::String(name.clone()),
             Token::UintSized(decimals.into(), 8),
             Token::FixedBytes(tx_hash.0.to_vec()),
+            Token::FixedBytes(network_id.0.to_vec()),
         ]);
         Ok(OutgoingAddTokenEncoded {
             token_address,
@@ -551,13 +588,15 @@ impl<T: Trait> OutgoingAddToken<T> {
             ticker,
             decimals,
             hash,
+            network_id,
             raw,
         })
     }
 
     pub fn validate(&self) -> Result<AssetSymbol, DispatchError> {
         ensure!(
-            crate::RegisteredSidechainAsset::<T>::get(&self.token_address).is_none(),
+            crate::RegisteredSidechainAsset::<T>::get(self.network_id, &self.token_address)
+                .is_none(),
             Error::<T>::Other
         );
         let symbol = AssetSymbol(self.ticker.as_bytes().to_vec());
@@ -574,7 +613,12 @@ impl<T: Trait> OutgoingAddToken<T> {
 
     pub fn finalize(&self) -> Result<(), DispatchError> {
         let symbol = self.validate()?;
-        crate::Module::<T>::register_sidechain_asset(self.token_address, self.decimals, symbol)?;
+        crate::Module::<T>::register_sidechain_asset(
+            self.token_address,
+            self.decimals,
+            symbol,
+            self.network_id,
+        )?;
         Ok(())
     }
 
@@ -591,6 +635,7 @@ pub struct OutgoingAddTokenEncoded {
     pub name: String,
     pub decimals: u8,
     pub hash: H256,
+    pub network_id: H256,
     /// EABI-encoded data to be signed.
     pub raw: Vec<u8>,
 }
@@ -618,25 +663,35 @@ pub struct OutgoingAddPeer<T: Trait> {
     pub peer_address: Address,
     pub peer_account_id: T::AccountId,
     pub nonce: T::Index,
+    pub network_id: T::NetworkId,
 }
 
 impl<T: Trait> OutgoingAddPeer<T> {
     pub fn to_eth_abi(&self, tx_hash: H256) -> Result<OutgoingAddPeerEncoded, Error<T>> {
         let tx_hash = H256(tx_hash.0);
         let peer_address = self.peer_address;
+        let mut network_id: H256 = H256::default();
+        U256::from(
+            <T::NetworkId as TryInto<u128>>::try_into(self.network_id)
+                .ok()
+                .expect("NetworkId can be always converted to u128; qed"),
+        )
+        .to_big_endian(&mut network_id.0);
         let raw = ethabi::encode_packed(&[
             Token::Address(types::H160(peer_address.clone().0)),
             Token::FixedBytes(tx_hash.0.to_vec()),
+            Token::FixedBytes(network_id.0.to_vec()),
         ]);
         Ok(OutgoingAddPeerEncoded {
             peer_address,
             tx_hash,
+            network_id,
             raw,
         })
     }
 
     pub fn validate(&self) -> Result<BTreeSet<T::AccountId>, DispatchError> {
-        let peers = crate::Peers::<T>::get();
+        let peers = crate::Peers::<T>::get(self.network_id);
         ensure!(peers.len() <= MAX_PEERS, Error::<T>::CantAddMorePeers);
         ensure!(
             !peers.contains(&self.peer_account_id),
@@ -646,21 +701,29 @@ impl<T: Trait> OutgoingAddPeer<T> {
     }
 
     pub fn prepare(&mut self, _validated_state: ()) -> Result<(), DispatchError> {
-        let pending_peer = crate::PendingPeer::<T>::get();
+        let pending_peer = crate::PendingPeer::<T>::get(self.network_id);
         ensure!(pending_peer.is_none(), Error::<T>::TooManyPendingPeers);
-        crate::PendingPeer::<T>::set(Some(self.peer_account_id.clone()));
+        crate::PendingPeer::<T>::insert(self.network_id, self.peer_account_id.clone());
         Ok(())
     }
 
     pub fn finalize(&self) -> Result<(), DispatchError> {
         let _peers = self.validate()?;
-        crate::PeerAccountId::<T>::insert(self.peer_address, self.peer_account_id.clone());
-        crate::PeerAddress::<T>::insert(&self.peer_account_id, self.peer_address.clone());
+        crate::PeerAccountId::<T>::insert(
+            self.network_id,
+            self.peer_address,
+            self.peer_account_id.clone(),
+        );
+        crate::PeerAddress::<T>::insert(
+            self.network_id,
+            &self.peer_account_id,
+            self.peer_address.clone(),
+        );
         Ok(())
     }
 
     pub fn cancel(&self) -> Result<(), DispatchError> {
-        crate::PendingPeer::<T>::set(None);
+        crate::PendingPeer::<T>::take(self.network_id);
         Ok(())
     }
 }
@@ -672,25 +735,35 @@ pub struct OutgoingRemovePeer<T: Trait> {
     pub peer_account_id: T::AccountId,
     pub peer_address: Address,
     pub nonce: T::Index,
+    pub network_id: T::NetworkId,
 }
 
 impl<T: Trait> OutgoingRemovePeer<T> {
     pub fn to_eth_abi(&self, tx_hash: H256) -> Result<OutgoingRemovePeerEncoded, Error<T>> {
         let tx_hash = H256(tx_hash.0);
         let peer_address = self.peer_address;
+        let mut network_id: H256 = H256::default();
+        U256::from(
+            <T::NetworkId as TryInto<u128>>::try_into(self.network_id)
+                .ok()
+                .expect("NetworkId can be always converted to u128; qed"),
+        )
+        .to_big_endian(&mut network_id.0);
         let raw = ethabi::encode_packed(&[
             Token::Address(types::H160(peer_address.clone().0)),
             Token::FixedBytes(tx_hash.0.to_vec()),
+            Token::FixedBytes(network_id.0.to_vec()),
         ]);
         Ok(OutgoingRemovePeerEncoded {
             peer_address,
             tx_hash,
+            network_id,
             raw,
         })
     }
 
     pub fn validate(&self) -> Result<BTreeSet<T::AccountId>, DispatchError> {
-        let peers = crate::Peers::<T>::get();
+        let peers = crate::Peers::<T>::get(self.network_id);
         ensure!(peers.len() >= MIN_PEERS, Error::<T>::CantRemoveMorePeers);
         ensure!(
             peers.contains(&self.peer_account_id),
@@ -700,25 +773,25 @@ impl<T: Trait> OutgoingRemovePeer<T> {
     }
 
     pub fn prepare(&mut self, _validated_state: ()) -> Result<(), DispatchError> {
-        let pending_peer = crate::PendingPeer::<T>::get();
+        let pending_peer = crate::PendingPeer::<T>::get(self.network_id);
         ensure!(pending_peer.is_none(), Error::<T>::TooManyPendingPeers);
-        crate::PendingPeer::<T>::set(Some(self.peer_account_id.clone()));
+        crate::PendingPeer::<T>::insert(self.network_id, self.peer_account_id.clone());
         Ok(())
     }
 
     pub fn finalize(&self) -> Result<(), DispatchError> {
         let mut peers = self.validate()?;
         bridge_multisig::Module::<T>::remove_signatory(
-            RawOrigin::Signed(crate::BridgeAccount::<T>::get()).into(),
+            RawOrigin::Signed(get_bridge_account::<T>(self.network_id)).into(),
             self.peer_account_id.clone(),
         )?;
         peers.remove(&self.peer_account_id);
-        crate::Peers::<T>::set(peers);
+        crate::Peers::<T>::insert(self.network_id, peers);
         Ok(())
     }
 
     pub fn cancel(&self) -> Result<(), DispatchError> {
-        crate::PendingPeer::<T>::set(None);
+        crate::PendingPeer::<T>::take(self.network_id);
         Ok(())
     }
 }
@@ -728,6 +801,7 @@ impl<T: Trait> OutgoingRemovePeer<T> {
 pub struct OutgoingAddPeerEncoded {
     pub peer_address: Address,
     pub tx_hash: H256,
+    pub network_id: H256,
     /// EABI-encoded data to be signed.
     pub raw: Vec<u8>,
 }
@@ -751,6 +825,7 @@ impl OutgoingAddPeerEncoded {
 pub struct OutgoingRemovePeerEncoded {
     pub peer_address: Address,
     pub tx_hash: H256,
+    pub network_id: H256,
     /// EABI-encoded data to be signed.
     pub raw: Vec<u8>,
 }
