@@ -13,7 +13,7 @@ use common::prelude::{DEXInfo, FixedWrapper};
 use common::{balance::Balance, fixed, hash, DEXId, Fixed, TechPurpose, PSWAP, VAL, XOR};
 use frame_support::sp_runtime::Percent;
 use framenode_runtime::bonding_curve_pool::{DistributionAccountData, DistributionAccounts};
-use framenode_runtime::eth_bridge::AssetKind;
+use framenode_runtime::eth_bridge::{AssetKind, NetworkConfig};
 use grandpa::AuthorityId as GrandpaId;
 use hex_literal::hex;
 use permissions::Scope;
@@ -721,25 +721,30 @@ fn testnet_genesis(
             .into(),
         }),
         eth_bridge: Some(EthBridgeConfig {
-            peers: initial_bridge_peers.iter().cloned().collect(),
-            bridge_account: eth_bridge_account_id.clone(),
             authority_account: eth_bridge_authority_account_id.clone(),
-            tokens: vec![
-                (
-                    XOR.into(),
-                    Some(sp_core::H160::from(hex!(
-                        "40fd72257597aa14c7231a7b1aaa29fce868f677"
-                    ))),
-                    AssetKind::SidechainOwned,
-                ),
-                (
-                    VAL.into(),
-                    Some(sp_core::H160::from(hex!(
-                        "3f9feac97e5feb15d8bf98042a9a01b515da3dfb"
-                    ))),
-                    AssetKind::SidechainOwned,
-                ),
-            ],
+            networks: vec![NetworkConfig {
+                initial_peers: initial_bridge_peers.iter().cloned().collect(),
+                bridge_account_id: eth_bridge_account_id.clone(),
+                tokens: vec![
+                    (
+                        XOR.into(),
+                        Some(sp_core::H160::from(hex!(
+                            "40fd72257597aa14c7231a7b1aaa29fce868f677"
+                        ))),
+                        AssetKind::SidechainOwned,
+                    ),
+                    (
+                        VAL.into(),
+                        Some(sp_core::H160::from(hex!(
+                            "3f9feac97e5feb15d8bf98042a9a01b515da3dfb"
+                        ))),
+                        AssetKind::SidechainOwned,
+                    ),
+                ],
+                bridge_contract_address: sp_core::H160(hex!(
+                    "146ba2cdf6bc7df15ffcff2ac1bc83eb33d8197e"
+                )),
+            }],
             pswap_owners: vec![],
         }),
         bridge_multisig: Some(BridgeMultisigConfig {

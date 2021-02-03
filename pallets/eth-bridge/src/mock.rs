@@ -1,12 +1,12 @@
 // Creating mock Test here
 
 use crate as eth_bridge;
-use crate::{AssetKind, KEY_TYPE};
+use crate::{AssetKind, NetworkConfig, Trait};
 use codec::{Codec, Decode, Encode};
 use common::{balance::Balance, Amount, AssetId, AssetId32, AssetSymbol, VAL};
 use currencies::BasicCurrencyAdapter;
 use frame_support::{
-    assert_ok, construct_runtime,
+    construct_runtime,
     dispatch::{DispatchInfo, GetDispatchInfo},
     parameter_types,
     sp_io::TestExternalities,
@@ -23,12 +23,8 @@ use frame_support::{
                 traits::KeystoreExt,
                 Pair, Public,
             },
-            CryptoTypePublicPair,
         },
-        offchain::{
-            testing::{OffchainState, PoolState, TestOffchainExt, TestTransactionPoolExt},
-            OffchainStorage,
-        },
+        offchain::testing::{OffchainState, PoolState, TestOffchainExt, TestTransactionPoolExt},
         serde::{Serialize, Serializer},
         traits::{
             Applyable, Block, Checkable, DispatchInfoOf, Dispatchable, IdentifyAccount,
@@ -49,9 +45,11 @@ use frame_support::{
 use frame_system as system;
 use frame_system::offchain::{Account, SigningTypes};
 use parking_lot::RwLock;
-use permissions::{Scope, MINT};
-use sp_std::{convert::TryFrom, fmt::Debug, str::FromStr, sync::Arc};
-use std::collections::BTreeSet;
+// use permissions::{Scope, MINT};
+use sp_core::H160;
+use sp_std::collections::btree_set::BTreeSet;
+use sp_std::{fmt::Debug, str::FromStr, sync::Arc};
+use std::collections::HashMap;
 
 pub const PSWAP: AssetId = AssetId::PSWAP;
 pub const XOR: AssetId = AssetId::XOR;
@@ -332,12 +330,15 @@ impl pallet_sudo::Trait for Test {
 
 parameter_types! {
     pub const UnsignedPriority: u64 = 100;
+    pub const EthNetworkId: <Test as Trait>::NetworkId = 0;
 }
 
 impl crate::Trait for Test {
     type PeerId = crate::crypto::TestAuthId;
     type Call = Call;
     type Event = Event;
+    type NetworkId = u32;
+    type GetEthNetworkId = EthNetworkId;
 }
 
 impl sp_runtime::traits::ExtrinsicMetadata for TestExtrinsic {
@@ -366,24 +367,34 @@ construct_runtime!(
 pub type SubstrateAccountId = <<Signature as Verify>::Signer as IdentifyAccount>::AccountId;
 
 pub struct State {
-    pub bridge_account_id: AccountId32,
+    pub networks: HashMap<u32, ExtendedNetworkConfig>,
     pub authority_account_id: AccountId32,
-    pub ocw_keypairs: Vec<(MultiSigner, AccountId32, [u8; 32])>,
     pub pool_state: Arc<RwLock<PoolState>>,
     pub offchain_state: Arc<RwLock<OffchainState>>,
 }
 
+#[derive(Clone, Debug)]
+pub struct ExtendedNetworkConfig {
+    pub ocw_keypairs: Vec<(MultiSigner, AccountId32, [u8; 32])>,
+    pub config: NetworkConfig<Test>,
+}
+
 pub struct ExtBuilder {
-    peers_num: usize,
-    tokens: Vec<(common::AssetId32<AssetId>, Option<sp_core::H160>, AssetKind)>,
-    reserves: Vec<(common::AssetId32<AssetId>, Balance)>,
+    pub networks: HashMap<u32, ExtendedNetworkConfig>,
+    last_network_id: u32,
+    root_account_id: AccountId32,
 }
 
 impl Default for ExtBuilder {
     fn default() -> Self {
-        Self {
-            peers_num: 4,
-            tokens: vec![
+        let mut builder = Self {
+            networks: Default::default(),
+            last_network_id: Default::default(),
+            root_account_id: get_account_id_from_seed::<sr25519::Public>("Alice"),
+        };
+        builder.add_network(
+            vec![
+                (AssetId::PSWAP.into(), None, AssetKind::Thischain),
                 (
                     AssetId::XOR.into(),
                     Some(
@@ -401,89 +412,124 @@ impl Default for ExtBuilder {
                     AssetKind::SidechainOwned,
                 ),
             ],
-            reserves: vec![
+            Some(vec![
                 (XOR.into(), Balance::from(350_000u32)),
                 (VAL.into(), Balance::from(33_900_000u32)),
-            ],
-        }
+            ]),
+            Some(4),
+        );
+        builder
     }
 }
 
 impl ExtBuilder {
-    pub fn new() -> (TestExternalities, State) {
-        Self::default().build()
+    pub fn new() -> Self {
+        Self {
+            networks: Default::default(),
+            last_network_id: Default::default(),
+            root_account_id: get_account_id_from_seed::<sr25519::Public>("Alice"),
+        }
     }
 
-    pub fn peers_num(mut self, n: usize) -> Self {
-        self.peers_num = n;
-        self
+    pub fn add_reserves(&mut self, network_id: u32, reserves: (AssetId32<AssetId>, Balance)) {
+        self.networks
+            .get_mut(&network_id)
+            .unwrap()
+            .config
+            .reserves
+            .push(reserves);
     }
 
-    pub fn with_reserves(mut self, reserves: Vec<(common::AssetId32<AssetId>, Balance)>) -> Self {
-        self.reserves = reserves;
-        self
+    pub fn add_network(
+        &mut self,
+        tokens: Vec<(AssetId32<AssetId>, Option<H160>, AssetKind)>,
+        reserves: Option<Vec<(AssetId32<AssetId>, Balance)>>,
+        peers_num: Option<usize>,
+    ) -> u32 {
+        let net_id = self.last_network_id;
+        let multisig_account_id = bridge_multisig::Module::<Test>::multi_account_id(
+            &self.root_account_id,
+            1,
+            net_id as u64 + 10,
+        );
+        let peers_keys = gen_peers_keys(&format!("OCW{}", net_id), peers_num.unwrap_or(4));
+        self.networks.insert(
+            net_id,
+            ExtendedNetworkConfig {
+                config: NetworkConfig {
+                    initial_peers: peers_keys.iter().map(|(_, id, _)| id).cloned().collect(),
+                    bridge_account_id: multisig_account_id.clone(),
+                    tokens,
+                    bridge_contract_address: Default::default(),
+                    reserves: reserves.unwrap_or_default(),
+                },
+                ocw_keypairs: peers_keys,
+            },
+        );
+        self.last_network_id += 1;
+        net_id
     }
 
     pub fn build(self) -> (TestExternalities, State) {
         let (offchain, offchain_state) = TestOffchainExt::new();
         let (pool, pool_state) = TestTransactionPoolExt::new();
         let keystore = KeyStore::new();
-        let _offchain_keys: Vec<_> = {
-            let mut guard = keystore.write();
-            guard.ecdsa_generate_new(KEY_TYPE, Some("//Alice")).unwrap();
-            let kp = ecdsa::Pair::from_string("//Alice", None).unwrap();
+        // let _offchain_keys: Vec<_> = {
+        //     let mut guard = keystore.write();
+        //     guard.ecdsa_generate_new(KEY_TYPE, Some("//Alice")).unwrap();
+        //     let kp = ecdsa::Pair::from_string("//Alice", None).unwrap();
+        //
+        //     offchain_state
+        //         .write()
+        //         .local_storage
+        //         .set(b"", b"key", &kp.to_raw_vec().encode());
+        //
+        //     guard
+        //         .keys(KEY_TYPE)
+        //         .unwrap()
+        //         .into_iter()
+        //         .map(|CryptoTypePublicPair(_, raw)| AccountId32::try_from(&raw[1..]).unwrap())
+        //         .collect()
+        // };
 
-            offchain_state
-                .write()
-                .local_storage
-                .set(b"", b"key", &kp.to_raw_vec().encode());
-
-            guard
-                .keys(KEY_TYPE)
-                .unwrap()
-                .into_iter()
-                .map(|CryptoTypePublicPair(_, raw)| AccountId32::try_from(&raw[1..]).unwrap())
-                .collect()
-        };
-
-        let ocw_kps: Vec<_> = (0..self.peers_num)
-            .map(|i| {
-                let kp = ecdsa::Pair::from_string(&format!("//OCW{}", i), None).unwrap();
-                let signer = AccountPublic::from(kp.public());
-                (signer.clone(), signer.into_account(), kp.seed())
-            })
-            .collect();
-
-        let root_account = get_account_id_from_seed::<sr25519::Public>("Alice");
-        let multisig_account_id =
-            bridge_multisig::Module::<Test>::multi_account_id(&root_account, 1, 0);
         let authority_account_id =
-            bridge_multisig::Module::<Test>::multi_account_id(&root_account, 1, 1);
-        let mut endowed_accounts: Vec<(_, AssetId32<AssetId>, _)> = vec![
-            (
-                multisig_account_id.clone(),
-                PSWAP.into(),
-                Balance::from(0u32),
-            ),
-            (multisig_account_id.clone(), XOR.into(), Balance::from(0u32)),
-            (
-                multisig_account_id.clone(),
-                VAL.into(),
-                Balance::from(33_900_000u32),
-            ),
-        ];
-        endowed_accounts.extend(
-            self.reserves
-                .into_iter()
-                .map(|(asset_id, balance)| (multisig_account_id.clone(), asset_id, balance)),
-        );
+            bridge_multisig::Module::<Test>::multi_account_id(&self.root_account_id, 1, 0);
+
+        let mut bridge_accounts = Vec::new();
+        let mut bridge_network_configs = Vec::new();
+        let mut endowed_accounts: Vec<(_, AssetId32<AssetId>, _)> = Vec::new();
+        let mut networks: Vec<_> = self.networks.clone().into_iter().collect();
+        networks.sort_by(|(x, _), (y, _)| x.cmp(y));
+        for (_net_id, ext_network) in networks {
+            bridge_network_configs.push(ext_network.config.clone());
+            endowed_accounts.extend(ext_network.config.reserves.iter().cloned().map(
+                |(asset_id, balance)| {
+                    (
+                        ext_network.config.bridge_account_id.clone(),
+                        asset_id,
+                        balance,
+                    )
+                },
+            ));
+            bridge_accounts.push((
+                ext_network.config.bridge_account_id.clone(),
+                bridge_multisig::MultisigAccount::new(
+                    ext_network
+                        .ocw_keypairs
+                        .iter()
+                        .map(|x| x.1.clone())
+                        .collect(),
+                    Percent::from_parts(67),
+                ),
+            ));
+        }
 
         let endowed_assets: BTreeSet<_> = endowed_accounts
             .iter()
             .map(|x| {
                 (
                     x.1,
-                    root_account.clone(),
+                    self.root_account_id.clone(),
                     AssetSymbol(b"".to_vec()),
                     18,
                     Balance::from(0u32),
@@ -496,11 +542,14 @@ impl ExtBuilder {
             .build_storage::<Test>()
             .unwrap();
 
-        SudoConfig {
-            key: endowed_accounts[0].0.clone(),
+        if !endowed_accounts.is_empty() {
+            SudoConfig {
+                key: endowed_accounts[0].0.clone(),
+            }
+            .assimilate_storage(&mut storage)
+            .unwrap();
         }
-        .assimilate_storage(&mut storage)
-        .unwrap();
+
         BalancesConfig {
             balances: endowed_accounts
                 .iter()
@@ -516,21 +565,15 @@ impl ExtBuilder {
         .assimilate_storage(&mut storage)
         .unwrap();
         MultisigConfig {
-            accounts: core::iter::once((
-                multisig_account_id.clone(),
-                bridge_multisig::MultisigAccount::new(
-                    ocw_kps.iter().map(|x| x.1.clone()).collect(),
-                    Percent::from_parts(67),
-                ),
-            ))
-            .collect(),
+            accounts: bridge_accounts,
         }
         .assimilate_storage(&mut storage)
         .unwrap();
 
         PermissionsConfig {
             initial_permission_owners: vec![],
-            initial_permissions: vec![(multisig_account_id.clone(), Scope::Unlimited, vec![MINT])],
+            initial_permissions: Vec::new(),
+            // initial_permissions: vec![(multisig_account_id.clone(), Scope::Unlimited, vec![MINT])],
         }
         .assimilate_storage(&mut storage)
         .unwrap();
@@ -547,10 +590,8 @@ impl ExtBuilder {
         .unwrap();
 
         EthBridgeConfig {
-            peers: Default::default(),
-            bridge_account: multisig_account_id.clone(),
+            networks: bridge_network_configs,
             authority_account: authority_account_id.clone(),
-            tokens: self.tokens,
             pswap_owners: vec![(
                 sp_core::H160::from_str("40fd72257597aa14c7231a7b1aaa29fce868f677").unwrap(),
                 Balance::from(300u128),
@@ -566,19 +607,18 @@ impl ExtBuilder {
         t.register_extension(KeystoreExt(keystore));
         t.execute_with(|| System::set_block_number(1));
 
-        t.execute_with(|| {
-            for (_, account_id, _) in &ocw_kps {
-                assert_ok!(EthBridge::force_add_peer(
-                    Origin::root(),
-                    account_id.clone()
-                ));
-            }
-        });
+        // t.execute_with(|| {
+        //     for (_, account_id, _) in &ocw_kps {
+        //         assert_ok!(EthBridge::force_add_peer(
+        //             Origin::root(),
+        //             account_id.clone()
+        //         ));
+        //     }
+        // });
 
         let state = State {
-            bridge_account_id: multisig_account_id,
+            networks: self.networks,
             authority_account_id,
-            ocw_keypairs: ocw_kps,
             pool_state,
             offchain_state,
         };
@@ -600,4 +640,17 @@ where
     AccountPublic: From<<TPublic::Pair as Pair>::Public>,
 {
     AccountPublic::from(get_from_seed::<TPublic>(seed)).into_account()
+}
+
+pub fn gen_peers_keys(
+    prefix: &str,
+    peers_num: usize,
+) -> Vec<(AccountPublic, AccountId32, [u8; 32])> {
+    (0..peers_num)
+        .map(|i| {
+            let kp = ecdsa::Pair::from_string(&format!("//{}{}", prefix, i), None).unwrap();
+            let signer = AccountPublic::from(kp.public());
+            (signer.clone(), signer.into_account(), kp.seed())
+        })
+        .collect()
 }
