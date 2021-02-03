@@ -88,6 +88,7 @@ impl Trait for Runtime {
     type MockLiquiditySource4 =
         mock_liquidity_source::Module<Runtime, mock_liquidity_source::Instance4>;
     type BondingCurvePool = ();
+    type MulticollateralBondingCurvePool = ();
     type XYKPool = pool_xyk::Module<Runtime>;
     type WeightInfo = ();
 }
@@ -224,7 +225,7 @@ parameter_types! {
 impl pswap_distribution::Trait for Runtime {
     type Event = ();
     type GetIncentiveAssetId = GetIncentiveAssetId;
-    type Exchange = ();
+    type LiquidityProxy = ();
     type CompatBalance = Balance;
     type GetDefaultSubscriptionFrequency = GetDefaultSubscriptionFrequency;
     type GetTechnicalAccountId = GetPswapDistributionAccountId;

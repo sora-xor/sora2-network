@@ -39,7 +39,7 @@ pub const TECH_ACCOUNT_RESERVES: &[u8] = b"reserves";
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct DistributionAccountData<TechAccountId> {
     pub account_id: TechAccountId,
-    coefficient: Fixed,
+    pub coefficient: Fixed,
 }
 
 impl<TechAccountId: Default> Default for DistributionAccountData<TechAccountId> {

@@ -136,6 +136,7 @@ impl dex_api::Trait for Runtime {
     type MockLiquiditySource3 = ();
     type MockLiquiditySource4 = ();
     type BondingCurvePool = ();
+    type MulticollateralBondingCurvePool = ();
     type XYKPool = pool_xyk::Module<Runtime>;
     type WeightInfo = ();
 }
@@ -173,7 +174,7 @@ parameter_types! {
 impl pswap_distribution::Trait for Runtime {
     type Event = ();
     type GetIncentiveAssetId = GetIncentiveAssetId;
-    type Exchange = pool_xyk::Module<Runtime>;
+    type LiquidityProxy = ();
     type CompatBalance = Balance;
     type GetDefaultSubscriptionFrequency = GetDefaultSubscriptionFrequency;
     type GetTechnicalAccountId = GetPswapDistributionAccountId;

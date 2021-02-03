@@ -485,6 +485,7 @@ impl<AssetId, DEXId, LstId> From<AssetId> for TechAssetId<AssetId, DEXId, LstId>
 pub enum LiquiditySourceType {
     XYKPool,
     BondingCurvePool,
+    MulticollateralBondingCurvePool,
     MockPool,
     MockPool2,
     MockPool3,

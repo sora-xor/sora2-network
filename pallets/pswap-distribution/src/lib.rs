@@ -2,7 +2,10 @@
 
 use common::prelude::fixnum::ops::{CheckedAdd, CheckedSub};
 use common::prelude::{FixedWrapper, SwapAmount};
-use common::{balance::Balance, fixed, EnsureDEXManager, Fixed, LiquiditySource};
+use common::{
+    balance::Balance, fixed, fixnum::ops::Numeric, EnsureDEXManager, Fixed, LiquiditySourceFilter,
+    LiquiditySourceType,
+};
 use frame_support::{
     decl_error, decl_event, decl_module, decl_storage,
     dispatch::{DispatchError, DispatchResult, Weight},
@@ -11,6 +14,7 @@ use frame_support::{
     IterableStorageDoubleMap, IterableStorageMap,
 };
 use frame_system::{self as system, ensure_signed};
+use liquidity_proxy::LiquidityProxyTrait;
 use sp_arithmetic::traits::{Saturating, Zero};
 use tokens::Accounts;
 
@@ -30,13 +34,7 @@ type System<T> = frame_system::Module<T>;
 pub trait Trait: common::Trait + assets::Trait + technical::Trait {
     type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
     type GetIncentiveAssetId: Get<Self::AssetId>;
-    type Exchange: LiquiditySource<
-        Self::DEXId,
-        Self::AccountId,
-        Self::AssetId,
-        Balance,
-        DispatchError,
-    >;
+    type LiquidityProxy: LiquidityProxyTrait<Self::DEXId, Self::AccountId, Self::AssetId>;
     type CompatBalance: From<<Self as tokens::Trait>::Balance>
         + Into<common::balance::Balance>
         + From<common::balance::Balance>
@@ -265,13 +263,16 @@ impl<T: Trait> Module<T> {
             ));
             return Ok(());
         }
-        let outcome = T::Exchange::exchange(
+        let outcome = T::LiquidityProxy::exchange(
             fees_account_id,
             fees_account_id,
-            dex_id,
             &T::GetBaseAssetId::get(),
             &T::GetIncentiveAssetId::get(),
-            SwapAmount::with_desired_input(base_total.clone(), Balance::from(0u128)),
+            SwapAmount::with_desired_input(base_total.clone(), Balance(Fixed::ZERO)),
+            LiquiditySourceFilter::with_allowed(
+                dex_id.clone(),
+                [LiquiditySourceType::XYKPool].into(),
+            ),
         );
         match outcome {
             Ok(swap_outcome) => Self::deposit_event(RawEvent::FeesExchanged(
