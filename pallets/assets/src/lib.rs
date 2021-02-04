@@ -497,9 +497,10 @@ impl<T: Trait> Module<T> {
             Error::<T>::InvalidAssetOwner
         );
         AssetInfos::<T>::mutate(asset_id, |(_, _, ref mut is_extensible)| {
-            *is_extensible = false
-        });
-        Ok(())
+            ensure!(*is_extensible, Error::<T>::AssetSupplyIsNotExtensible);
+            *is_extensible = false;
+            Ok(())
+        })
     }
 
     pub fn list_registered_asset_ids() -> Vec<T::AssetId> {
