@@ -205,6 +205,48 @@ impl crate::Module<Testtime> {
         new_tests.append(&mut tests_to_add);
         crate::Module::<Testtime>::preset01(new_tests);
     }
+
+    fn preset03(
+        tests: Vec<
+            fn(
+                crate::mock::DEXId,
+                AssetId,
+                AssetId,
+                common::TradingPair<crate::mock::TechAssetId>,
+                crate::mock::TechAccountId,
+                crate::mock::TechAccountId,
+                AccountId,
+                AccountId,
+            ) -> (),
+        >,
+    ) {
+        let mut new_tests: Vec<
+            fn(
+                crate::mock::DEXId,
+                AssetId,
+                AssetId,
+                common::TradingPair<crate::mock::TechAssetId>,
+                crate::mock::TechAccountId,
+                crate::mock::TechAccountId,
+                AccountId,
+                AccountId,
+            ) -> (),
+        > = vec![|dex_id, _, _, _, _, _, _, _| {
+            assert_ok!(crate::Module::<Testtime>::deposit_liquidity(
+                Origin::signed(ALICE()),
+                dex_id,
+                GoldenTicket.into(),
+                BlackPepper.into(),
+                fixed!(0.01),
+                fixed!(0.01),
+                fixed!(0),
+                fixed!(0),
+            ));
+        }];
+        let mut tests_to_add = tests.clone();
+        new_tests.append(&mut tests_to_add);
+        crate::Module::<Testtime>::preset01(new_tests);
+    }
 }
 
 macro_rules! simplify_swap_outcome(
@@ -949,6 +991,28 @@ fn swap_pair_outcome_should_match_actual_4() {
             );
             assert_eq!(Balance(fixed!(100000)), quote_outcome.amount,);
             assert_eq!(Balance(fixed!(100000)), outcome.amount);
+        },
+    ]);
+}
+
+#[test]
+fn swap_pair_liquidity_after_operation_check() {
+    crate::Module::<Testtime>::preset03(vec![
+        |dex_id, gt, bp, _, _, _, repr: AccountId, fee_repr: AccountId| {
+            assert_noop!(
+                crate::Module::<Testtime>::swap_pair(
+                    Origin::signed(ALICE()),
+                    ALICE(),
+                    dex_id,
+                    GoldenTicket.into(),
+                    BlackPepper.into(),
+                    SwapAmount::WithDesiredOutput {
+                        desired_amount_out: Balance(fixed!(0.0099999)),
+                        max_amount_in: Balance(Fixed::MAX),
+                    }
+                ),
+                crate::Error::<Testtime>::PoolBecomesInvalidAfterOperation
+            );
         },
     ]);
 }

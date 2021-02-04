@@ -479,28 +479,30 @@ impl<T: Trait> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, T
         // unwrap. `Bounds` is also safe to unwrap.
         // Also this computation of only for security of pool, and not for applying values, so
         // this check can be simpler than actual transfering of values.
-        let liq_after_op_test = {
-            // Recommended minimum liquidity, will be used if not specified or for checking if specified.
-            let recom_min_liquidity =
-                Module::<T>::get_min_liquidity_for(self.source.asset, &self.pool_account);
-            let fxw_balance_st: FixedWrapper = balance_st.into();
-            let fxw_balance_tt: FixedWrapper = balance_tt.into();
-            let fxw_source_amount: FixedWrapper = self.source.amount.unwrap().into();
-            let fxw_dest_amount: FixedWrapper = self.destination.amount.unwrap().into();
-            let fxw_x = fxw_balance_st + fxw_source_amount;
-            let fxw_y = fxw_balance_tt - fxw_dest_amount;
-            let fxw_liq: FixedWrapper = fxw_x.multiply_and_sqrt(&fxw_y);
-            let liq: Balance = fxw_liq
-                .clone()
-                .get()
-                .map_err(|_| Error::<T>::FixedWrapperCalculationFailed)?
-                .into();
-            liq >= recom_min_liquidity
-        };
-        ensure!(
-            liq_after_op_test,
-            Error::<T>::InsifficientAmountOfLiquidityAfterOperation
-        );
+        if !abstract_checking {
+            let pool_is_valid_after_op_test = {
+                let fxw_balance_st: FixedWrapper = balance_st.clone().into();
+                let fxw_balance_tt: FixedWrapper = balance_tt.clone().into();
+                let fxw_source_amount: FixedWrapper = self.source.amount.unwrap().into();
+                let fxw_dest_amount: FixedWrapper = self.destination.amount.unwrap().into();
+                let fxw_x = fxw_balance_st.clone() + fxw_source_amount;
+                let fxw_y = fxw_balance_tt.clone() - fxw_dest_amount;
+                let fxw_before = fxw_balance_st.clone() / fxw_balance_tt.clone();
+                let fxw_after = fxw_x / fxw_y;
+                let mut fxw_diff = fxw_after - fxw_before;
+                fxw_diff = fxw_diff.clone() * fxw_diff.clone();
+                let diff: Balance = fxw_diff
+                    .clone()
+                    .get()
+                    .map_err(|_| Error::<T>::FixedWrapperCalculationFailed)?
+                    .into();
+                diff < 100u32.into()
+            };
+            ensure!(
+                pool_is_valid_after_op_test,
+                Error::<T>::PoolBecomesInvalidAfterOperation
+            );
+        }
         Ok(())
     }
     fn instant_auto_claim_used(&self) -> bool {
@@ -1790,6 +1792,8 @@ decl_error! {
         ThisCaseIsNotSupported,
         /// After the execution of the operation in the pool there will be insufficient liquidity.
         InsifficientAmountOfLiquidityAfterOperation,
+        /// Pool becomes invalid after operation
+        PoolBecomesInvalidAfterOperation,
     }
 }
 
