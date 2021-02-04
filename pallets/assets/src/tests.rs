@@ -252,4 +252,24 @@ mod tests {
             assert_ok!(Assets::update_balance(&XOR, &ALICE, -1i128),);
         })
     }
+
+    #[test]
+    fn should_not_allow_duplicate_set_non_extensible() {
+        let mut ext = ExtBuilder::default().build();
+        ext.execute_with(|| {
+            assert_ok!(Assets::register_asset_id(
+                ALICE,
+                XOR,
+                AssetSymbol(b"XOR".to_vec()),
+                18,
+                Balance::from(10u32),
+                true,
+            ));
+            assert_ok!(Assets::set_non_extensible_from(&XOR, &ALICE));
+            assert_noop!(
+                Assets::set_non_extensible_from(&XOR, &ALICE),
+                Error::<Runtime>::AssetSupplyIsNotExtensible
+            );
+        })
+    }
 }
