@@ -475,6 +475,32 @@ impl<T: Trait> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, T
                 }
             }
         }
+        // This peace of code is called after validation, and every `Option` is `Some`, and it is safe to do
+        // unwrap. `Bounds` is also safe to unwrap.
+        // Also this computation of only for security of pool, and not for applying values, so
+        // this check can be simpler than actual transfering of values.
+        let liq_after_op_test = {
+            // Recommended minimum liquidity, will be used if not specified or for checking if specified.
+            let recom_min_liquidity =
+                Module::<T>::get_min_liquidity_for(self.source.asset, &self.pool_account);
+            let fxw_balance_st: FixedWrapper = balance_st.into();
+            let fxw_balance_tt: FixedWrapper = balance_tt.into();
+            let fxw_source_amount: FixedWrapper = self.source.amount.unwrap().into();
+            let fxw_dest_amount: FixedWrapper = self.destination.amount.unwrap().into();
+            let fxw_x = fxw_balance_st + fxw_source_amount;
+            let fxw_y = fxw_balance_tt - fxw_dest_amount;
+            let fxw_liq: FixedWrapper = fxw_x.multiply_and_sqrt(&fxw_y);
+            let liq: Balance = fxw_liq
+                .clone()
+                .get()
+                .map_err(|_| Error::<T>::FixedWrapperCalculationFailed)?
+                .into();
+            liq >= recom_min_liquidity
+        };
+        ensure!(
+            liq_after_op_test,
+            Error::<T>::InsifficientAmountOfLiquidityAfterOperation
+        );
         Ok(())
     }
     fn instant_auto_claim_used(&self) -> bool {
@@ -1762,6 +1788,8 @@ decl_error! {
         FixedWrapperCalculationFailed,
         /// This case if not supported by logic of pool of validation code.
         ThisCaseIsNotSupported,
+        /// After the execution of the operation in the pool there will be insufficient liquidity.
+        InsifficientAmountOfLiquidityAfterOperation,
     }
 }
 
