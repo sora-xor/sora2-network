@@ -338,7 +338,7 @@ impl Trait for Test {
     type ValBurnedNotifier = Staking;
 }
 
-pub const MOCK_WEIGHT: Weight = 100;
+pub const MOCK_WEIGHT: Weight = 10;
 
 pub const REFERRER_ACCOUNT: u64 = 3;
 pub const FROM_ACCOUNT: u64 = 1;

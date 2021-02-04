@@ -618,7 +618,7 @@ impl xor_fee::Trait for Runtime {
     type XorId = XorId;
     type ValId = ValId;
     type DEXIdValue = DEXIdValue;
-    type LiquiditySource = mock_liquidity_source::Module<Runtime, mock_liquidity_source::Instance1>;
+    type LiquiditySource = LiquidityProxy;
     type ValBurnedNotifier = Staking;
 }
 
@@ -931,8 +931,8 @@ impl_runtime_apis! {
                 &LiquiditySourceId::new(dex_id, liquidity_source_type),
                 &input_asset_id,
                 &output_asset_id,
-                SwapAmount::with_variant(swap_variant, desired_input_amount.0, limit.0),
-            ).ok().map(|sa| dex_runtime_api::SwapOutcomeInfo::<Balance> { amount: Balance(sa.amount), fee: Balance(sa.fee)})
+                SwapAmount::with_variant(swap_variant, desired_input_amount, limit),
+            ).ok().map(|sa| dex_runtime_api::SwapOutcomeInfo::<Balance> { amount: sa.amount, fee: sa.fee})
         }
 
         fn can_exchange(
@@ -1127,9 +1127,9 @@ impl_runtime_apis! {
             LiquidityProxy::quote_with_filter(
                 &input_asset_id,
                 &output_asset_id,
-                SwapAmount::with_variant(swap_variant, amount.0, limit.0),
+                SwapAmount::with_variant(swap_variant, amount, limit),
                 LiquiditySourceFilter::with_mode(dex_id, filter_mode, selected_source_types),
-            ).ok().map(|asa| liquidity_proxy_runtime_api::SwapOutcomeInfo::<Balance> { amount: Balance(asa.amount), fee: Balance(asa.fee)})
+            ).ok().map(|asa| liquidity_proxy_runtime_api::SwapOutcomeInfo::<Balance> { amount: asa.amount, fee: asa.fee})
         }
     }
 

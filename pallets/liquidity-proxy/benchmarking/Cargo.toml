@@ -30,7 +30,7 @@ sp-io = { version = "2.0.0", default-features = false }
 sp-core = { version = "2.0.0", default-features = false }
 pallet-balances = { version = "2.0.0", default-features = false }
 dex-manager = { path = "../../dex-manager", default-features = false }
-dex-api = { path = "../../dex-api", default-features = false }
+dex-api = { path = "../../dex-api" }
 currencies = { version = "0.3.2", package = "orml-currencies", default-features = false }
 tokens = { version = "0.3.2", package = "orml-tokens", default-features = false }
 

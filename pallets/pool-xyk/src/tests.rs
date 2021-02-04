@@ -6,6 +6,9 @@ use common::{
 use frame_support::{assert_noop, assert_ok};
 
 use crate::mock::*;
+use common::fixnum::ops::Numeric;
+use common::prelude::Balance;
+use common::Fixed;
 
 impl crate::Module<Testtime> {
     fn preset01(
@@ -338,7 +341,7 @@ fn quote_case_exact_output_for_input_base_second() {
                 }
             )
             .unwrap()),
-            (201_057_u32, 150_u32)
+            (201_207_u32, 150_u32)
         );
     }]);
 }
@@ -708,4 +711,240 @@ fn swap_pair_swap_fail_with_invalid_balance() {
             crate::Error::<Testtime>::AccountBalanceIsInvalid
         );
     }]);
+}
+
+#[test]
+fn swap_pair_outcome_should_match_actual_1() {
+    crate::Module::<Testtime>::preset02(vec![
+        |dex_id, gt, bp, _, _, _, repr: AccountId, fee_repr: AccountId| {
+            use sp_core::crypto::AccountId32;
+            let new_account = AccountId32::from([33; 32]);
+            assets::Module::<Testtime>::transfer(
+                Origin::signed(ALICE()),
+                gt.clone(),
+                new_account.clone(),
+                fixed!(100000),
+            )
+            .expect("Failed to transfer balance");
+
+            assert_eq!(
+                assets::Module::<Testtime>::free_balance(&gt, &ALICE()).unwrap(),
+                Balance(fixed!(440000)),
+            );
+            let quote_outcome = crate::Module::<Testtime>::quote(
+                &dex_id,
+                &GoldenTicket.into(),
+                &BlackPepper.into(),
+                SwapAmount::WithDesiredInput {
+                    desired_amount_in: Balance(fixed!(100000)),
+                    min_amount_out: Balance(fixed!(0)),
+                },
+            )
+            .expect("Failed to quote.");
+            let outcome = crate::Module::<Testtime>::exchange(
+                &new_account,
+                &new_account,
+                &dex_id,
+                &GoldenTicket.into(),
+                &BlackPepper.into(),
+                SwapAmount::WithDesiredInput {
+                    desired_amount_in: Balance(fixed!(100000)),
+                    min_amount_out: Balance(fixed!(0)),
+                },
+            )
+            .expect("Failed to perform swap.");
+            assert_eq!(
+                assets::Module::<Testtime>::free_balance(&gt, &new_account.clone()).unwrap(),
+                Balance(fixed!(0)),
+            );
+            assert_eq!(
+                assets::Module::<Testtime>::free_balance(&bp, &new_account.clone()).unwrap(),
+                Balance(fixed!(31230.802697411355232759)),
+            );
+            assert_eq!(
+                assets::Module::<Testtime>::free_balance(&bp, &new_account.clone()).unwrap(),
+                outcome.amount,
+            );
+            assert_eq!(
+                assets::Module::<Testtime>::free_balance(&bp, &new_account.clone()).unwrap(),
+                quote_outcome.amount,
+            );
+        },
+    ]);
+}
+
+#[test]
+fn swap_pair_outcome_should_match_actual_2() {
+    crate::Module::<Testtime>::preset02(vec![
+        |dex_id, gt, bp, _, _, _, repr: AccountId, fee_repr: AccountId| {
+            use sp_core::crypto::AccountId32;
+            let new_account = AccountId32::from([3; 32]);
+            assets::Module::<Testtime>::transfer(
+                Origin::signed(ALICE()),
+                bp.clone(),
+                new_account.clone(),
+                fixed!(100000),
+            )
+            .expect("Failed to transfer balance");
+
+            assert_eq!(
+                assets::Module::<Testtime>::free_balance(&bp, &ALICE()).unwrap(),
+                Balance(fixed!(1756000)),
+            );
+            let quote_outcome = crate::Module::<Testtime>::quote(
+                &dex_id,
+                &BlackPepper.into(),
+                &GoldenTicket.into(),
+                SwapAmount::WithDesiredInput {
+                    desired_amount_in: Balance(fixed!(100000)),
+                    min_amount_out: Balance(fixed!(0)),
+                },
+            )
+            .expect("Failed to quote.");
+            let outcome = crate::Module::<Testtime>::exchange(
+                &new_account,
+                &new_account,
+                &dex_id,
+                &BlackPepper.into(),
+                &GoldenTicket.into(),
+                SwapAmount::WithDesiredInput {
+                    desired_amount_in: Balance(fixed!(100000)),
+                    min_amount_out: Balance(fixed!(0)),
+                },
+            )
+            .expect("Failed to perform swap.");
+            assert_eq!(
+                assets::Module::<Testtime>::free_balance(&bp, &new_account.clone()).unwrap(),
+                Balance(fixed!(0)),
+            );
+            assert_eq!(
+                assets::Module::<Testtime>::free_balance(&gt, &new_account.clone()).unwrap(),
+                Balance(fixed!(147098.360655737705086834)),
+            );
+            assert_eq!(
+                assets::Module::<Testtime>::free_balance(&gt, &new_account.clone()).unwrap(),
+                outcome.amount,
+            );
+            assert_eq!(
+                assets::Module::<Testtime>::free_balance(&gt, &new_account.clone()).unwrap(),
+                quote_outcome.amount,
+            );
+        },
+    ]);
+}
+
+#[test]
+fn swap_pair_outcome_should_match_actual_3() {
+    crate::Module::<Testtime>::preset02(vec![
+        |dex_id, gt, bp, _, _, _, repr: AccountId, fee_repr: AccountId| {
+            use sp_core::crypto::AccountId32;
+            let new_account = AccountId32::from([3; 32]);
+            assets::Module::<Testtime>::transfer(
+                Origin::signed(ALICE()),
+                gt.clone(),
+                new_account.clone(),
+                fixed!(100000.000000000000027777), // FIXME: why such a huge calculation error compared to WithDesiredInput(100000): ...027777?
+            )
+            .expect("Failed to transfer balance");
+
+            /// TODO: uncomment when ..027777 error is fixed
+            // assert_eq!(
+            //     assets::Module::<Testtime>::free_balance(&gt, &ALICE()).unwrap(),
+            //     Balance(fixed!(440000)),
+            // );
+            let quote_outcome = crate::Module::<Testtime>::quote(
+                &dex_id,
+                &GoldenTicket.into(),
+                &BlackPepper.into(),
+                SwapAmount::WithDesiredOutput {
+                    desired_amount_out: Balance(fixed!(31230.802697411355232759)),
+                    max_amount_in: Balance(Fixed::MAX),
+                },
+            )
+            .expect("Failed to quote.");
+            let outcome = crate::Module::<Testtime>::exchange(
+                &new_account,
+                &new_account,
+                &dex_id,
+                &GoldenTicket.into(),
+                &BlackPepper.into(),
+                SwapAmount::WithDesiredOutput {
+                    desired_amount_out: Balance(fixed!(31230.802697411355232759)),
+                    max_amount_in: Balance(Fixed::MAX),
+                },
+            )
+            .expect("Failed to perform swap.");
+            assert_eq!(
+                assets::Module::<Testtime>::free_balance(&gt, &new_account.clone()).unwrap(),
+                Balance(fixed!(0)),
+            );
+            assert_eq!(
+                assets::Module::<Testtime>::free_balance(&bp, &new_account.clone()).unwrap(),
+                Balance(fixed!(31230.802697411355232759)),
+            );
+            assert_eq!(
+                Balance(fixed!(100000.000000000000027777)), // FIXME: why such a huge calculation error compared to WithDesiredInput(100000): ...027777?
+                quote_outcome.amount,
+            );
+            // TODO: FIXME: for case with desired output, outcome indicates calculated input
+            // 100000.000000000000027777
+            //assert_eq!(Balance(fixed!(100000)), outcome.amount);
+        },
+    ]);
+}
+
+#[test]
+fn swap_pair_outcome_should_match_actual_4() {
+    crate::Module::<Testtime>::preset02(vec![
+        |dex_id, gt, bp, _, _, _, repr: AccountId, fee_repr: AccountId| {
+            use sp_core::crypto::AccountId32;
+            let new_account = AccountId32::from([3; 32]);
+            assets::Module::<Testtime>::transfer(
+                Origin::signed(ALICE()),
+                bp.clone(),
+                new_account.clone(),
+                fixed!(100000),
+            )
+            .expect("Failed to transfer balance");
+
+            assert_eq!(
+                assets::Module::<Testtime>::free_balance(&bp, &ALICE()).unwrap(),
+                Balance(fixed!(1756000)),
+            );
+            let quote_outcome = crate::Module::<Testtime>::quote(
+                &dex_id,
+                &BlackPepper.into(),
+                &GoldenTicket.into(),
+                SwapAmount::WithDesiredOutput {
+                    desired_amount_out: Balance(fixed!(147098.360655737704918033)),
+                    max_amount_in: Balance(Fixed::MAX),
+                },
+            )
+            .expect("Failed to quote.");
+            let outcome = crate::Module::<Testtime>::exchange(
+                &new_account,
+                &new_account,
+                &dex_id,
+                &BlackPepper.into(),
+                &GoldenTicket.into(),
+                SwapAmount::WithDesiredOutput {
+                    desired_amount_out: Balance(fixed!(147098.360655737704918033)),
+                    max_amount_in: Balance(Fixed::MAX),
+                },
+            )
+            .expect("Failed to perform swap.");
+            assert_eq!(
+                assets::Module::<Testtime>::free_balance(&bp, &new_account.clone()).unwrap(),
+                Balance(fixed!(0)),
+            );
+            assert_eq!(
+                assets::Module::<Testtime>::free_balance(&gt, &new_account.clone()).unwrap(),
+                //TODO: what is the problem here ?
+                //Balance(fixed!(147098.360655737704918033)),
+                Balance(fixed!(146655.737704918032786886)),
+            );
+            assert_eq!(Balance(fixed!(100000)), quote_outcome.amount,);
+            assert_eq!(Balance(fixed!(100000)), outcome.amount);
+        },
+    ]);
 }

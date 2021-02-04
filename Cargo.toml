@@ -3,6 +3,9 @@ jsonrpc-core = { git = "https://github.com/soramitsu/jsonrpc.git", branch = "new
 jsonrpc-ws-server = { git = "https://github.com/soramitsu/jsonrpc.git", branch = "new_fragment_capacity" }
 jsonrpc-server-utils = { git = "https://github.com/soramitsu/jsonrpc.git", branch = "new_fragment_capacity" }
 
+# The latest versions of thread_local (1.1.2) had a memory leak. This version doesn't have it.
+thread_local = { git = "https://github.com/KalitaAlexey/thread_local-rs.git", branch = "patch-1.0.1" }
+
 [workspace]
 members = [
     "runtime/",
