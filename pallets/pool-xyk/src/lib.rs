@@ -475,34 +475,35 @@ impl<T: Trait> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, T
                 }
             }
         }
-        // This peace of code is called after validation, and every `Option` is `Some`, and it is safe to do
+        if abstract_checking {
+            return Ok(());
+        }
+        // This piece of code is called after validation, and every `Option` is `Some`, and it is safe to do
         // unwrap. `Bounds` is also safe to unwrap.
         // Also this computation of only for security of pool, and not for applying values, so
         // this check can be simpler than actual transfering of values.
-        if !abstract_checking {
-            let pool_is_valid_after_op_test = {
-                let fxw_balance_st: FixedWrapper = balance_st.clone().into();
-                let fxw_balance_tt: FixedWrapper = balance_tt.clone().into();
-                let fxw_source_amount: FixedWrapper = self.source.amount.unwrap().into();
-                let fxw_dest_amount: FixedWrapper = self.destination.amount.unwrap().into();
-                let fxw_x = fxw_balance_st.clone() + fxw_source_amount;
-                let fxw_y = fxw_balance_tt.clone() - fxw_dest_amount;
-                let fxw_before = fxw_balance_st.clone() / fxw_balance_tt.clone();
-                let fxw_after = fxw_x / fxw_y;
-                let mut fxw_diff = fxw_after - fxw_before;
-                fxw_diff = fxw_diff.clone() * fxw_diff.clone();
-                let diff: Balance = fxw_diff
-                    .clone()
-                    .get()
-                    .map_err(|_| Error::<T>::FixedWrapperCalculationFailed)?
-                    .into();
-                diff < 100u32.into()
-            };
-            ensure!(
-                pool_is_valid_after_op_test,
-                Error::<T>::PoolBecomesInvalidAfterOperation
-            );
-        }
+        let pool_is_valid_after_op_test = {
+            let fxw_balance_st: FixedWrapper = balance_st.clone().into();
+            let fxw_balance_tt: FixedWrapper = balance_tt.clone().into();
+            let fxw_source_amount: FixedWrapper = self.source.amount.unwrap().into();
+            let fxw_dest_amount: FixedWrapper = self.destination.amount.unwrap().into();
+            let fxw_x = fxw_balance_st.clone() + fxw_source_amount;
+            let fxw_y = fxw_balance_tt.clone() - fxw_dest_amount;
+            let fxw_before = fxw_balance_st.clone() / fxw_balance_tt.clone();
+            let fxw_after = fxw_x / fxw_y;
+            let mut fxw_diff = fxw_after - fxw_before;
+            fxw_diff = fxw_diff.clone() * fxw_diff.clone();
+            let diff: Balance = fxw_diff
+                .clone()
+                .get()
+                .map_err(|_| Error::<T>::FixedWrapperCalculationFailed)?
+                .into();
+            diff < 100u32.into()
+        };
+        ensure!(
+            pool_is_valid_after_op_test,
+            Error::<T>::PoolBecomesInvalidAfterOperation
+        );
         Ok(())
     }
     fn instant_auto_claim_used(&self) -> bool {
@@ -1791,7 +1792,7 @@ decl_error! {
         /// This case if not supported by logic of pool of validation code.
         ThisCaseIsNotSupported,
         /// After the execution of the operation in the pool there will be insufficient liquidity.
-        InsifficientAmountOfLiquidityAfterOperation,
+        InsufficientAmountOfLiquidityAfterOperation,
         /// Pool becomes invalid after operation
         PoolBecomesInvalidAfterOperation,
     }
