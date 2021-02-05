@@ -13,7 +13,7 @@ use permissions::{Scope, INIT_DEX, MANAGE_DEX};
 use sp_core::{crypto::AccountId32, H256};
 use sp_runtime::{
     testing::Header,
-    traits::{BlakeTwo256, IdentityLookup},
+    traits::{BlakeTwo256, IdentityLookup, Zero},
     DispatchError, Perbill,
 };
 use std::collections::HashMap;
@@ -439,7 +439,14 @@ impl ExtBuilder {
                 .iter()
                 .cloned()
                 .map(|(account_id, asset_id, _, symbol, precision)| {
-                    (asset_id, account_id, symbol, precision)
+                    (
+                        asset_id,
+                        account_id,
+                        symbol,
+                        precision,
+                        Balance::zero(),
+                        true,
+                    )
                 })
                 .collect(),
         }
