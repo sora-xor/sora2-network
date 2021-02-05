@@ -184,7 +184,7 @@ mod tests {
     }
 
     #[test]
-    fn should_fail_with_non_extensible_asset_supply() {
+    fn should_fail_with_non_mintable_asset_supply() {
         let mut ext = ExtBuilder::default().build();
         ext.execute_with(|| {
             assert_ok!(Assets::register_asset_id(
@@ -197,15 +197,15 @@ mod tests {
             ));
             assert_noop!(
                 Assets::mint_to(&XOR, &ALICE, &ALICE, Balance::from(10u32)),
-                Error::<Runtime>::AssetSupplyIsNotExtensible
+                Error::<Runtime>::AssetSupplyIsNotMintable
             );
             assert_noop!(
                 Assets::mint_to(&XOR, &ALICE, &BOB, Balance::from(10u32)),
-                Error::<Runtime>::AssetSupplyIsNotExtensible
+                Error::<Runtime>::AssetSupplyIsNotMintable
             );
             assert_noop!(
                 Assets::update_balance(&XOR, &ALICE, 1i128),
-                Error::<Runtime>::AssetSupplyIsNotExtensible
+                Error::<Runtime>::AssetSupplyIsNotMintable
             );
             assert_ok!(Assets::update_balance(&XOR, &ALICE, 0i128),);
             assert_ok!(Assets::update_balance(&XOR, &ALICE, -1i128),);
@@ -213,7 +213,7 @@ mod tests {
     }
 
     #[test]
-    fn should_mint_for_extensible_asset() {
+    fn should_mint_for_mintable_asset() {
         let mut ext = ExtBuilder::default().build();
         ext.execute_with(|| {
             assert_ok!(Assets::register_asset_id(
@@ -231,22 +231,22 @@ mod tests {
             assert_ok!(Assets::update_balance(&XOR, &ALICE, -1i128),);
 
             assert_noop!(
-                Assets::set_non_extensible_from(&XOR, &BOB),
+                Assets::set_non_mintable_from(&XOR, &BOB),
                 Error::<Runtime>::InvalidAssetOwner
             );
-            assert_ok!(Assets::set_non_extensible_from(&XOR, &ALICE));
+            assert_ok!(Assets::set_non_mintable_from(&XOR, &ALICE));
 
             assert_noop!(
                 Assets::mint_to(&XOR, &ALICE, &ALICE, Balance::from(10u32)),
-                Error::<Runtime>::AssetSupplyIsNotExtensible
+                Error::<Runtime>::AssetSupplyIsNotMintable
             );
             assert_noop!(
                 Assets::mint_to(&XOR, &ALICE, &BOB, Balance::from(10u32)),
-                Error::<Runtime>::AssetSupplyIsNotExtensible
+                Error::<Runtime>::AssetSupplyIsNotMintable
             );
             assert_noop!(
                 Assets::update_balance(&XOR, &ALICE, 1i128),
-                Error::<Runtime>::AssetSupplyIsNotExtensible
+                Error::<Runtime>::AssetSupplyIsNotMintable
             );
             assert_ok!(Assets::update_balance(&XOR, &ALICE, 0i128),);
             assert_ok!(Assets::update_balance(&XOR, &ALICE, -1i128),);
@@ -254,7 +254,7 @@ mod tests {
     }
 
     #[test]
-    fn should_not_allow_duplicate_set_non_extensible() {
+    fn should_not_allow_duplicate_set_non_mintable() {
         let mut ext = ExtBuilder::default().build();
         ext.execute_with(|| {
             assert_ok!(Assets::register_asset_id(
@@ -265,10 +265,10 @@ mod tests {
                 Balance::from(10u32),
                 true,
             ));
-            assert_ok!(Assets::set_non_extensible_from(&XOR, &ALICE));
+            assert_ok!(Assets::set_non_mintable_from(&XOR, &ALICE));
             assert_noop!(
-                Assets::set_non_extensible_from(&XOR, &ALICE),
-                Error::<Runtime>::AssetSupplyIsNotExtensible
+                Assets::set_non_mintable_from(&XOR, &ALICE),
+                Error::<Runtime>::AssetSupplyIsNotMintable
             );
         })
     }
