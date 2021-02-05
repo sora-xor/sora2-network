@@ -994,6 +994,16 @@ impl_runtime_apis! {
             )
         }
 
+        fn usable_balance(account_id: AccountId, asset_id: AssetId) -> Option<assets_runtime_api::BalanceInfo<Balance>> {
+            let usable_balance = if asset_id == <Runtime as currencies::Trait>::GetNativeCurrencyId::get() {
+                Balances::usable_balance(account_id)
+            } else {
+                let account_data = Tokens::accounts(account_id, asset_id);
+                account_data.free.saturating_sub(account_data.frozen)
+            };
+            Some(assets_runtime_api::BalanceInfo { balance: usable_balance })
+        }
+
         fn total_balance(account_id: AccountId, asset_id: AssetId) -> Option<assets_runtime_api::BalanceInfo<Balance>> {
             Assets::total_balance(&asset_id, &account_id).ok().map(|balance|
                 assets_runtime_api::BalanceInfo::<Balance> {
@@ -1015,17 +1025,17 @@ impl_runtime_apis! {
         }
 
         fn list_asset_infos() -> Vec<assets_runtime_api::AssetInfo<AssetId, AssetSymbol, u8>> {
-            Assets::list_registered_asset_infos().into_iter().map(|(asset_id, symbol, precision)|
+            Assets::list_registered_asset_infos().into_iter().map(|(asset_id, symbol, precision, is_mintable)|
                 assets_runtime_api::AssetInfo::<AssetId, AssetSymbol, BalancePrecision> {
-                    asset_id, symbol, precision
+                    asset_id, symbol, precision, is_mintable
                 }
             ).collect()
         }
 
         fn get_asset_info(asset_id: AssetId) -> Option<assets_runtime_api::AssetInfo<AssetId, AssetSymbol, BalancePrecision>> {
-            let (symbol, precision) = Assets::get_asset_info(&asset_id);
+            let (symbol, precision, is_mintable) = Assets::get_asset_info(&asset_id);
             Some(assets_runtime_api::AssetInfo::<AssetId, AssetSymbol, BalancePrecision> {
-                asset_id, symbol, precision
+                asset_id, symbol, precision, is_mintable,
             })
         }
     }

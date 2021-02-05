@@ -39,6 +39,7 @@ use frame_support::{
 use frame_system::ensure_signed;
 use permissions::{Scope, BURN, MINT, SLASH, TRANSFER};
 use sp_core::H256;
+use sp_runtime::traits::Zero;
 use sp_std::vec::Vec;
 use tiny_keccak::{Hasher, Keccak};
 use traits::{
@@ -59,6 +60,7 @@ type CurrencyIdOf<T> =
     <<T as Trait>::Currency as MultiCurrency<<T as frame_system::Trait>::AccountId>>::CurrencyId;
 
 const ASSET_SYMBOL_MAX_LENGTH: usize = 7;
+const MAX_ALLOWED_PRECISION: u8 = 18;
 
 pub trait Trait: frame_system::Trait + permissions::Trait + tokens::Trait {
     type Event: From<Event<Self>> + Into<<Self as frame_system::Trait>::Event>;
@@ -94,15 +96,17 @@ pub trait Trait: frame_system::Trait + permissions::Trait + tokens::Trait {
 
 decl_storage! {
     trait Store for Module<T: Trait> as AssetsModule {
+        /// Asset Id -> Owner Account Id
         AssetOwners get(fn asset_owners): map hasher(twox_64_concat) T::AssetId => T::AccountId;
-        pub AssetInfos get(fn asset_infos): map hasher(twox_64_concat) T::AssetId => (AssetSymbol, BalancePrecision);
+        /// Asset Id -> (Symbol, Precision, Is Mintable)
+        pub AssetInfos get(fn asset_infos): map hasher(twox_64_concat) T::AssetId => (AssetSymbol, BalancePrecision, bool);
     }
     add_extra_genesis {
-        config(endowed_assets): Vec<(T::AssetId, T::AccountId, AssetSymbol, BalancePrecision)>;
+        config(endowed_assets): Vec<(T::AssetId, T::AccountId, AssetSymbol, BalancePrecision, Balance, bool)>;
 
         build(|config: &GenesisConfig<T>| {
-            config.endowed_assets.iter().for_each(|(asset_id, account_id, symbol, precision)| {
-                Module::<T>::register_asset_id(account_id.clone(), *asset_id, symbol.clone(), precision.clone())
+            config.endowed_assets.iter().cloned().for_each(|(asset_id, account_id, symbol, precision, initial_supply, is_mintable)| {
+                Module::<T>::register_asset_id(account_id, asset_id, symbol, precision, initial_supply, is_mintable)
                     .expect("Failed to register asset.");
             })
         })
@@ -123,6 +127,8 @@ decl_event!(
         Mint(AccountId, AccountId, AssetId, Balance),
         /// Asset amount has been burned. [Issuer Account, Burned Asset Id, Amount Burned]
         Burn(AccountId, AssetId, Balance),
+        /// Asset is set as non-mintable. [Target Asset Id]
+        AssetSetNonMintable(AssetId),
     }
 );
 
@@ -138,6 +144,10 @@ decl_error! {
         InvalidAssetSymbol,
         /// Precision value is not valid, it should represent a number of decimal places for number, max is 30.
         InvalidPrecision,
+        /// Minting for particular asset id is disabled.
+        AssetSupplyIsNotMintable,
+        /// Caller does not own requested asset.
+        InvalidAssetOwner,
     }
 }
 
@@ -152,9 +162,9 @@ decl_module! {
         /// Registers new `AssetId` for the given `origin`.
         /// AssetSymbol should represent string with only uppercase latin chars with max length of 5.
         #[weight = <T as Trait>::WeightInfo::register()]
-        pub fn register(origin, symbol: AssetSymbol, precision: BalancePrecision) -> DispatchResult {
+        pub fn register(origin, symbol: AssetSymbol, precision: BalancePrecision, initial_supply: Balance, is_mintable: bool) -> DispatchResult {
             let author = ensure_signed(origin)?;
-            let _asset_id = Self::register_from(&author, symbol, precision)?;
+            let _asset_id = Self::register_from(&author, symbol, precision, initial_supply, is_mintable)?;
             Ok(())
         }
 
@@ -214,6 +224,22 @@ decl_module! {
             Self::deposit_event(RawEvent::Burn(issuer, asset_id.clone(), amount));
             Ok(())
         }
+
+        /// Set given asset to be non-mintable, i.e. it can no longer be minted, only burned.
+        /// Operation can not be undone.
+        ///
+        /// - `origin`: caller Account, should correspond to Asset owner
+        /// - `asset_id`: Id of burned Asset,
+        #[weight = 0]
+        pub fn set_non_mintable(
+            origin,
+            asset_id: T::AssetId,
+        ) -> DispatchResult {
+            let who = ensure_signed(origin.clone())?;
+            Self::set_non_mintable_from(&asset_id, &who)?;
+            Self::deposit_event(RawEvent::AssetSetNonMintable(asset_id.clone()));
+            Ok(())
+        }
     }
 }
 
@@ -235,6 +261,8 @@ impl<T: Trait> Module<T> {
         asset_id: T::AssetId,
         symbol: AssetSymbol,
         precision: BalancePrecision,
+        initial_supply: Balance,
+        is_mintable: bool,
     ) -> DispatchResult {
         ensure!(
             Self::asset_owner(&asset_id).is_none(),
@@ -245,8 +273,11 @@ impl<T: Trait> Module<T> {
             crate::is_symbol_valid(&symbol),
             Error::<T>::InvalidAssetSymbol
         );
-        AssetInfos::<T>::insert(asset_id, (symbol, precision));
-        ensure!(precision <= 30u8, Error::<T>::InvalidPrecision);
+        AssetInfos::<T>::insert(asset_id, (symbol, precision, is_mintable));
+        ensure!(
+            precision <= MAX_ALLOWED_PRECISION,
+            Error::<T>::InvalidPrecision
+        );
         let scope = Scope::Limited(hash(&asset_id));
         let permission_ids = [TRANSFER, MINT, BURN, SLASH];
         for permission_id in &permission_ids {
@@ -256,6 +287,9 @@ impl<T: Trait> Module<T> {
                 *permission_id,
                 scope,
             )?;
+        }
+        if !initial_supply.is_zero() {
+            T::Currency::deposit(asset_id.clone(), &account_id, initial_supply)?;
         }
         frame_system::Module::<T>::inc_account_nonce(&account_id);
         Self::deposit_event(RawEvent::AssetRegistered(asset_id, account_id));
@@ -267,10 +301,21 @@ impl<T: Trait> Module<T> {
         account_id: &T::AccountId,
         symbol: AssetSymbol,
         precision: BalancePrecision,
+        initial_supply: Balance,
+        is_mintable: bool,
     ) -> Result<T::AssetId, DispatchError> {
-        let asset_id = Self::gen_asset_id(account_id);
-        Self::register_asset_id(account_id.clone(), asset_id, symbol, precision)?;
-        Ok(asset_id)
+        common::with_transaction(|| {
+            let asset_id = Self::gen_asset_id(account_id);
+            Self::register_asset_id(
+                account_id.clone(),
+                asset_id,
+                symbol,
+                precision,
+                initial_supply,
+                is_mintable,
+            )?;
+            Ok(asset_id)
+        })
     }
 
     pub fn asset_owner(asset_id: &T::AssetId) -> Option<T::AccountId> {
@@ -379,6 +424,8 @@ impl<T: Trait> Module<T> {
     ) -> DispatchResult {
         Self::ensure_asset_exists(asset_id)?;
         Self::check_permission_maybe_with_parameters(issuer, MINT, asset_id)?;
+        let (_, _, is_mintable) = AssetInfos::<T>::get(asset_id);
+        ensure!(is_mintable, Error::<T>::AssetSupplyIsNotMintable);
         T::Currency::deposit(asset_id.clone(), to, amount)
     }
 
@@ -420,6 +467,10 @@ impl<T: Trait> Module<T> {
     ) -> DispatchResult {
         Self::check_permission_maybe_with_parameters(who, MINT, asset_id)?;
         Self::check_permission_maybe_with_parameters(who, BURN, asset_id)?;
+        if by_amount.is_positive() {
+            let (_, _, is_mintable) = AssetInfos::<T>::get(asset_id);
+            ensure!(is_mintable, Error::<T>::AssetSupplyIsNotMintable);
+        }
         T::Currency::update_balance(asset_id.clone(), who, by_amount)
     }
 
@@ -446,17 +497,29 @@ impl<T: Trait> Module<T> {
         Ok(amount)
     }
 
+    pub fn set_non_mintable_from(asset_id: &T::AssetId, who: &T::AccountId) -> DispatchResult {
+        ensure!(
+            Self::is_asset_owner(asset_id, who),
+            Error::<T>::InvalidAssetOwner
+        );
+        AssetInfos::<T>::mutate(asset_id, |(_, _, ref mut is_mintable)| {
+            ensure!(*is_mintable, Error::<T>::AssetSupplyIsNotMintable);
+            *is_mintable = false;
+            Ok(())
+        })
+    }
+
     pub fn list_registered_asset_ids() -> Vec<T::AssetId> {
         AssetInfos::<T>::iter().map(|(key, _)| key).collect()
     }
 
-    pub fn list_registered_asset_infos() -> Vec<(T::AssetId, AssetSymbol, BalancePrecision)> {
+    pub fn list_registered_asset_infos() -> Vec<(T::AssetId, AssetSymbol, BalancePrecision, bool)> {
         AssetInfos::<T>::iter()
-            .map(|(key, (symbol, precision))| (key, symbol, precision))
+            .map(|(key, (symbol, precision, is_mintable))| (key, symbol, precision, is_mintable))
             .collect()
     }
 
-    pub fn get_asset_info(asset_id: &T::AssetId) -> (AssetSymbol, BalancePrecision) {
+    pub fn get_asset_info(asset_id: &T::AssetId) -> (AssetSymbol, BalancePrecision, bool) {
         AssetInfos::<T>::get(asset_id)
     }
 }

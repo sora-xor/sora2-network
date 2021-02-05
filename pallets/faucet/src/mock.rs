@@ -176,8 +176,22 @@ impl ExtBuilder {
 
         assets::GenesisConfig::<Test> {
             endowed_assets: vec![
-                (XOR, alice(), AssetSymbol(b"XOR".to_vec()), 18),
-                (VAL.into(), alice(), AssetSymbol(b"VAL".to_vec()), 18),
+                (
+                    XOR,
+                    alice(),
+                    AssetSymbol(b"XOR".to_vec()),
+                    18,
+                    Balance::from(0u32),
+                    true,
+                ),
+                (
+                    VAL.into(),
+                    alice(),
+                    AssetSymbol(b"VAL".to_vec()),
+                    18,
+                    Balance::from(0u32),
+                    true,
+                ),
             ],
         }
         .assimilate_storage(&mut t)

@@ -36,6 +36,14 @@ pub trait AssetsAPI<
         at: Option<BlockHash>,
     ) -> Result<OptionBalanceInfo>;
 
+    #[rpc(name = "assets_usableBalance")]
+    fn usable_balance(
+        &self,
+        account_id: AccountId,
+        asset_id: AssetId,
+        at: Option<BlockHash>,
+    ) -> Result<OptionBalanceInfo>;
+
     #[rpc(name = "assets_totalBalance")]
     fn total_balance(
         &self,
@@ -109,6 +117,25 @@ where
             .map_err(|e| RpcError {
                 code: ErrorCode::ServerError(InvokeRPCError::RuntimeError.into()),
                 message: "Unable to get free balance.".into(),
+                data: Some(format!("{:?}", e).into()),
+            })
+    }
+
+    fn usable_balance(
+        &self,
+        account_id: AccountId,
+        asset_id: AssetId,
+        at: Option<<Block as BlockT>::Hash>,
+    ) -> Result<Option<BalanceInfo<Balance>>> {
+        let api = self.client.runtime_api();
+        let at = BlockId::hash(at.unwrap_or(
+            // If the block hash is not supplied assume the best block.
+            self.client.info().best_hash,
+        ));
+        api.usable_balance(&at, account_id, asset_id)
+            .map_err(|e| RpcError {
+                code: ErrorCode::ServerError(InvokeRPCError::RuntimeError.into()),
+                message: "Unable to get usable balance.".into(),
                 data: Some(format!("{:?}", e).into()),
             })
     }

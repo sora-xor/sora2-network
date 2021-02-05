@@ -793,9 +793,14 @@ fn should_add_asset() {
 
     ext.execute_with(|| {
         let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
-        let asset_id =
-            assets::Module::<Test>::register_from(&alice, AssetSymbol(b"TEST".to_vec()), 18)
-                .unwrap();
+        let asset_id = assets::Module::<Test>::register_from(
+            &alice,
+            AssetSymbol(b"TEST".to_vec()),
+            18,
+            Balance::from(0u32),
+            true,
+        )
+        .unwrap();
         assert_ok!(EthBridge::add_asset(
             Origin::signed(alice.clone()),
             asset_id,

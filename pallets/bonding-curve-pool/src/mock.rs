@@ -245,7 +245,7 @@ pub type MockLiquiditySource =
 pub type Assets = assets::Module<Runtime>;
 
 pub struct ExtBuilder {
-    endowed_accounts: Vec<(AccountId, AssetId, Balance, AssetSymbol, u8)>,
+    endowed_accounts: Vec<(AccountId, AssetId, Balance, AssetSymbol, u8, Balance, bool)>,
 }
 
 impl Default for ExtBuilder {
@@ -258,6 +258,8 @@ impl Default for ExtBuilder {
                     0u128.into(),
                     AssetSymbol(b"USDT".to_vec()),
                     18,
+                    Balance::from(0u32),
+                    true,
                 ),
                 (
                     alice(),
@@ -265,15 +267,27 @@ impl Default for ExtBuilder {
                     350_000u128.into(),
                     AssetSymbol(b"XOR".to_vec()),
                     18,
+                    Balance::from(0u32),
+                    true,
                 ),
-                (alice(), VAL, 0u128.into(), AssetSymbol(b"VAL".to_vec()), 18),
+                (
+                    alice(),
+                    VAL,
+                    0u128.into(),
+                    AssetSymbol(b"VAL".to_vec()),
+                    18,
+                    Balance::from(0u32),
+                    true,
+                ),
             ],
         }
     }
 }
 
 impl ExtBuilder {
-    pub fn new(endowed_accounts: Vec<(AccountId, AssetId, Balance, AssetSymbol, u8)>) -> Self {
+    pub fn new(
+        endowed_accounts: Vec<(AccountId, AssetId, Balance, AssetSymbol, u8, Balance, bool)>,
+    ) -> Self {
         Self { endowed_accounts }
     }
 
@@ -294,9 +308,18 @@ impl ExtBuilder {
                 .endowed_accounts
                 .iter()
                 .cloned()
-                .map(|(account_id, asset_id, _, symbol, precision)| {
-                    (asset_id, account_id, symbol, precision)
-                })
+                .map(
+                    |(account_id, asset_id, _, symbol, precision, initial_supply, is_mintable)| {
+                        (
+                            asset_id,
+                            account_id,
+                            symbol,
+                            precision,
+                            initial_supply,
+                            is_mintable,
+                        )
+                    },
+                )
                 .collect(),
         }
         .assimilate_storage(&mut t)
