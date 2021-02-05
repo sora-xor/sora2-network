@@ -146,47 +146,28 @@ impl<T: Trait> BuyMainAsset<T> {
     /// Assets deposition algorithm:
     ///
     /// ```nocompile
-    /// R_e := P_SM('all XOR')
-    /// R := R + A_I
-    /// R_f := max((R - R_e) * c, 0)
+    /// R_f := A_I * c
+    /// R := R + A_I - R_f
     /// ```
     ///
     /// where:
     /// `R` - current reserves
-    /// `R_e` - expected reserves (sell price of all XOR in the reserves)
     /// `R_f` - free reserves, that can be distributed
     /// `c` - free amount coefficient of extra reserves
     /// `A_I` - amount of the input asset
-    /// `P_SM` - sell price for main asset
     fn deposit_input(&self) -> Result<(Balance, (Balance, Balance)), DispatchError> {
         common::with_transaction(|| {
             let main_asset_id = &self.main_asset_id;
             let collateral_asset_id = &self.collateral_asset_id;
             let (input_amount, output_amount) =
                 Module::<T>::decide_buy_amounts(main_asset_id, collateral_asset_id, self.amount)?;
-            // let total_issuance = Assets::<T>::total_issuance(main_asset_id)?;
-            // let reserves_expected = Module::<T>::sell_price(
-            //     main_asset_id,
-            //     collateral_asset_id,
-            //     QuoteAmount::with_desired_input(total_issuance),
-            // );
-            // let enough_reserves = reserves_expected != Err(Error::<T>::NotEnoughReserves.into());
             Technical::<T>::transfer_in(
                 collateral_asset_id,
                 &self.from_account_id,
                 &self.reserves_tech_account_id,
                 input_amount,
             )?;
-            // let reserves =
-            //     Assets::<T>::total_balance(collateral_asset_id, &self.reserves_account_id)?;
-
             let free_amount = input_amount * Balance(fixed!(0.2));
-            // let free_amount = if enough_reserves && reserves > Balance(reserves_expected?) {
-            //     let amount_free_coefficient = Balance(fixed!(0.2));
-            //     (reserves - Balance(reserves_expected?)) * amount_free_coefficient
-            // } else {
-            //     Balance::zero()
-            // };
             Ok((free_amount, (input_amount, output_amount)))
         })
     }

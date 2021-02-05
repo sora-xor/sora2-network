@@ -669,36 +669,6 @@ fn test_swap_should_fail_with_bad_origin() {
     });
 }
 
-// #[test]
-// fn test_can_exchange_via_liquidity_proxy_should_pass() {
-//     let mut ext = ExtBuilder {
-//         source_types: vec![LiquiditySourceType::MockPool],
-//         ..Default::default()
-//     }
-//     .build();
-//     ext.execute_with(|| assert!(LiquidityProxy::can_exchange(&DEX_A_ID, &KSM, &DOT)));
-// }
-
-// #[test]
-// fn test_can_exchange_with_uninitialized_source_should_pass() {
-//     let mut ext = ExtBuilder {
-//         source_types: vec![LiquiditySourceType::XYKPool],
-//         ..Default::default()
-//     }
-//     .build();
-//     ext.execute_with(|| assert!(!LiquidityProxy::can_exchange(&DEX_A_ID, &KSM, &DOT)));
-// }
-
-// #[test]
-// fn test_can_exchange_with_no_sources_should_pass() {
-//     let mut ext = ExtBuilder {
-//         source_types: vec![],
-//         ..Default::default()
-//     }
-//     .build();
-//     ext.execute_with(|| assert!(!LiquidityProxy::can_exchange(&DEX_A_ID, &KSM, &DOT)));
-// }
-
 #[test]
 fn test_fee_when_exchange_on_one_source_of_many_should_pass() {
     let mut ext = ExtBuilder::default().build();
