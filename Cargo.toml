@@ -27,6 +27,7 @@ members = [
     "pallets/bonding-curve-pool",
     "pallets/eth-bridge",
     "pallets/pswap-distribution",
+    "pallets/multicollateral-bonding-curve-pool",
     "node/",
 ]
 

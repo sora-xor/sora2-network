@@ -102,7 +102,7 @@ parameter_types! {
 impl Trait for Runtime {
     type Event = ();
     type GetIncentiveAssetId = GetIncentiveAssetId;
-    type Exchange = ();
+    type LiquidityProxy = ();
     type CompatBalance = Balance;
     type GetDefaultSubscriptionFrequency = GetDefaultSubscriptionFrequency;
     type GetTechnicalAccountId = GetPswapDistributionAccountId;

@@ -213,6 +213,7 @@ impl dex_api::Trait for Runtime {
         mock_liquidity_source::Module<Runtime, mock_liquidity_source::Instance4>;
     type BondingCurvePool = ();
     type XYKPool = ();
+    type MulticollateralBondingCurvePool = ();
     type WeightInfo = ();
 }
 

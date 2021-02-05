@@ -2,14 +2,14 @@
 
 use core::convert::TryInto;
 
-use common::{fixed, prelude::*, Fixed};
+use common::{fixed, prelude::*, Fixed, LiquiditySourceFilter, LiquiditySourceType};
 use frame_support::{
     decl_error, decl_event, decl_module, decl_storage,
     traits::{Currency, Get, Imbalance},
 };
+use liquidity_proxy::LiquidityProxyTrait;
 use pallet_staking::ValBurnedNotifier;
 use pallet_transaction_payment::OnTransactionPayment;
-use sp_runtime::DispatchError;
 
 pub const TECH_ACCOUNT_PREFIX: &[u8] = b"xor-fee";
 pub const TECH_ACCOUNT_MAIN: &[u8] = b"main";
@@ -49,13 +49,7 @@ pub trait Trait:
 
     type DEXIdValue: Get<Self::DEXId>;
 
-    type LiquiditySource: common::LiquiditySource<
-        Self::DEXId,
-        Self::AccountId,
-        Self::AssetId,
-        Balance,
-        DispatchError,
-    >;
+    type LiquidityProxy: LiquidityProxyTrait<Self::DEXId, Self::AccountId, Self::AssetId>;
 
     type ValBurnedNotifier: ValBurnedNotifier<Balance>;
 }
@@ -117,16 +111,19 @@ impl<T: Trait> OnTransactionPayment<T::AccountId, NegativeImbalanceOf<T>, Balanc
                 .expect("Failed to get ordinary account id for technical account id.");
             // Trying to swap XOR with VAL.
             // If swap goes through, VAL will be burned (for more in-depth look read VAL tokenomics), otherwise remove XOR from the tech account.
-            match T::LiquiditySource::exchange(
+            match T::LiquidityProxy::exchange(
                 &account_id,
                 &account_id,
-                &T::DEXIdValue::get(),
                 &T::XorId::get(),
                 &T::ValId::get(),
                 SwapAmount::WithDesiredInput {
                     desired_amount_in: Balance(xor_to_val),
                     min_amount_out: Balance(fixed!(0)),
                 },
+                LiquiditySourceFilter::with_allowed(
+                    T::DEXIdValue::get(),
+                    [LiquiditySourceType::XYKPool].into(),
+                ),
             ) {
                 Ok(swap_outcome) => {
                     let val_to_burn = Balance::from(swap_outcome.amount);

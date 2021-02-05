@@ -2,8 +2,10 @@ use core::convert::TryInto;
 
 use codec::{Decode, Encode};
 use common::{
-    self, fixed, fixed_from_basis_points, prelude::Balance, Amount, AssetId32, AssetSymbol, Fixed,
-    VAL, XOR,
+    self, fixed, fixed_from_basis_points,
+    prelude::{Balance, SwapAmount, SwapOutcome},
+    Amount, AssetId32, AssetSymbol, Fixed, LiquiditySource, LiquiditySourceFilter,
+    LiquiditySourceType, VAL, XOR,
 };
 use core::time::Duration;
 use currencies::BasicCurrencyAdapter;
@@ -18,7 +20,7 @@ use sp_core::H256;
 use sp_runtime::{
     testing::{Header, TestXt, UintAuthorityId},
     traits::{BlakeTwo256, Convert, IdentityLookup, SaturatedConversion},
-    Perbill, Percent,
+    DispatchError, Perbill, Percent,
 };
 
 pub use crate::{self as xor_fee, Module, Trait};
@@ -334,8 +336,39 @@ impl Trait for Test {
     type XorId = XorId;
     type ValId = ValId;
     type DEXIdValue = DEXIdValue;
-    type LiquiditySource = MockLiquiditySource;
+    type LiquidityProxy = MockLiquidityProxy;
     type ValBurnedNotifier = Staking;
+}
+
+pub struct MockLiquidityProxy;
+
+impl liquidity_proxy::LiquidityProxyTrait<DEXId, AccountId, AssetId> for MockLiquidityProxy {
+    fn exchange(
+        sender: &AccountId,
+        receiver: &AccountId,
+        input_asset_id: &AssetId,
+        output_asset_id: &AssetId,
+        amount: SwapAmount<Balance>,
+        filter: LiquiditySourceFilter<DEXId, LiquiditySourceType>,
+    ) -> Result<SwapOutcome<Balance>, DispatchError> {
+        MockLiquiditySource::exchange(
+            &sender,
+            &receiver,
+            &filter.dex_id,
+            input_asset_id,
+            output_asset_id,
+            amount,
+        )
+    }
+
+    fn quote(
+        input_asset_id: &AssetId,
+        output_asset_id: &AssetId,
+        amount: SwapAmount<Balance>,
+        filter: LiquiditySourceFilter<DEXId, LiquiditySourceType>,
+    ) -> Result<SwapOutcome<Balance>, DispatchError> {
+        MockLiquiditySource::quote(&filter.dex_id, input_asset_id, output_asset_id, amount)
+    }
 }
 
 pub const MOCK_WEIGHT: Weight = 10;
