@@ -64,7 +64,7 @@ pub struct AssetInfo<AssetId, AssetSymbol, Precision> {
     )]
     pub precision: Precision,
     #[cfg_attr(feature = "std", serde(with = "string_serialization"))]
-    pub is_extensible: bool,
+    pub is_mintable: bool,
 }
 
 sp_api::decl_runtime_apis! {
@@ -116,10 +116,10 @@ mod tests {
             },
             symbol: ConcrAssetSymbol(b"XOR".to_vec()),
             precision: 18,
-            is_extensible: true,
+            is_mintable: true,
         };
 
-        let json_str = r#"{"asset_id":"0x020003000400050006000700080009000a000b000c000d000e000f0001000200","symbol":"XOR","precision":"18","is_extensible":"true"}"#;
+        let json_str = r#"{"asset_id":"0x020003000400050006000700080009000a000b000c000d000e000f0001000200","symbol":"XOR","precision":"18","is_mintable":"true"}"#;
 
         assert_eq!(serde_json::to_string(&asset_info).unwrap(), json_str);
         assert_eq!(

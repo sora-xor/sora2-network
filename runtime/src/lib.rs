@@ -1025,17 +1025,17 @@ impl_runtime_apis! {
         }
 
         fn list_asset_infos() -> Vec<assets_runtime_api::AssetInfo<AssetId, AssetSymbol, u8>> {
-            Assets::list_registered_asset_infos().into_iter().map(|(asset_id, symbol, precision, is_extensible)|
+            Assets::list_registered_asset_infos().into_iter().map(|(asset_id, symbol, precision, is_mintable)|
                 assets_runtime_api::AssetInfo::<AssetId, AssetSymbol, BalancePrecision> {
-                    asset_id, symbol, precision, is_extensible
+                    asset_id, symbol, precision, is_mintable
                 }
             ).collect()
         }
 
         fn get_asset_info(asset_id: AssetId) -> Option<assets_runtime_api::AssetInfo<AssetId, AssetSymbol, BalancePrecision>> {
-            let (symbol, precision, is_extensible) = Assets::get_asset_info(&asset_id);
+            let (symbol, precision, is_mintable) = Assets::get_asset_info(&asset_id);
             Some(assets_runtime_api::AssetInfo::<AssetId, AssetSymbol, BalancePrecision> {
-                asset_id, symbol, precision, is_extensible,
+                asset_id, symbol, precision, is_mintable,
             })
         }
     }

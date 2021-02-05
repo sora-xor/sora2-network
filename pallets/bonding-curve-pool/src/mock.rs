@@ -309,22 +309,14 @@ impl ExtBuilder {
                 .iter()
                 .cloned()
                 .map(
-                    |(
-                        account_id,
-                        asset_id,
-                        _,
-                        symbol,
-                        precision,
-                        initial_supply,
-                        is_extensible,
-                    )| {
+                    |(account_id, asset_id, _, symbol, precision, initial_supply, is_mintable)| {
                         (
                             asset_id,
                             account_id,
                             symbol,
                             precision,
                             initial_supply,
-                            is_extensible,
+                            is_mintable,
                         )
                     },
                 )
