@@ -6,12 +6,19 @@ macro_rules! fixed {
 }
 
 #[macro_export]
+macro_rules! fixed_const {
+    ($val:literal) => {
+        $crate::fixnum::fixnum_const!($val, 18)
+    };
+}
+
+#[macro_export]
 macro_rules! balance {
-    ($val:literal) => {{
-        use core::convert::TryInto;
-        let fixed: $crate::Fixed = $crate::fixed!($val);
-        let value: u128 = fixed.into_bits().try_into().unwrap();
-        value
+    ($value:literal) => {{
+        use $crate::fixnum::_priv::parse_fixed;
+        const VALUE_SIGNED: i128 = parse_fixed(stringify!($value), 1_000_000_000_000_000_000);
+        const VALUE: $crate::Balance = VALUE_SIGNED.abs() as u128;
+        VALUE
     }};
 }
 
