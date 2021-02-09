@@ -41,10 +41,10 @@ cargo-build-debug:
 	${RUN} "cargo build"
 
 cargo-test-release:
-	${RUN} "cargo test --release"
+	${RUN} "SKIP_WASM_BUILD=1 cargo test --release"
 
 cargo-test-debug:
-	${RUN} "cargo test"
+	${RUN} "SKIP_WASM_BUILD=1 cargo test"
 
 yarn-build:
 	${RUN} "yarn"

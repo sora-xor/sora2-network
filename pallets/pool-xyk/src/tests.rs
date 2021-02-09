@@ -189,18 +189,28 @@ impl crate::Module<Testtime> {
                 AccountId,
                 AccountId,
             ) -> (),
-        > = vec![|dex_id, _, _, _, _, _, _, _| {
-            assert_ok!(crate::Module::<Testtime>::deposit_liquidity(
-                Origin::signed(ALICE()),
-                dex_id,
-                GoldenTicket.into(),
-                BlackPepper.into(),
-                fixed!(360000),
-                fixed!(144000),
-                fixed!(360000),
-                fixed!(144000),
-            ));
-        }];
+        > = vec![
+            |dex_id, _, _, _, tech_acc_id: crate::mock::TechAccountId, _, _, _| {
+                assert_ok!(crate::Module::<Testtime>::deposit_liquidity(
+                    Origin::signed(ALICE()),
+                    dex_id,
+                    GoldenTicket.into(),
+                    BlackPepper.into(),
+                    fixed!(360000),
+                    fixed!(144000),
+                    fixed!(360000),
+                    fixed!(144000),
+                ));
+                let tech_asset: AssetId =
+                    crate::Module::<Testtime>::get_marking_asset(&tech_acc_id)
+                        .expect("Failed to get marking asset")
+                        .into();
+                assert_eq!(
+                    assets::Module::<Testtime>::free_balance(&tech_asset, &ALICE()).unwrap(),
+                    Balance(fixed!(227683.9915321233119034)),
+                );
+            },
+        ];
         let mut tests_to_add = tests.clone();
         new_tests.append(&mut tests_to_add);
         crate::Module::<Testtime>::preset01(new_tests);
@@ -1013,6 +1023,71 @@ fn swap_pair_liquidity_after_operation_check() {
                 ),
                 crate::Error::<Testtime>::PoolBecameInvalidAfterOperation
             );
+        },
+    ]);
+}
+
+#[test]
+fn withdraw_all_liquidity() {
+    crate::Module::<Testtime>::preset02(vec![
+        |dex_id,
+         gt,
+         bp,
+         _,
+         tech_acc_id: crate::mock::TechAccountId,
+         _,
+         repr: AccountId,
+         fee_repr: AccountId| {
+            assert_eq!(
+                assets::Module::<Testtime>::free_balance(&gt, &ALICE()).unwrap(),
+                fixed!(540000.0),
+            );
+            assert_eq!(
+                assets::Module::<Testtime>::free_balance(&bp, &ALICE()).unwrap(),
+                fixed!(1856000.0),
+            );
+
+            assert_noop!(
+                crate::Module::<Testtime>::withdraw_liquidity(
+                    Origin::signed(ALICE()),
+                    dex_id,
+                    GoldenTicket.into(),
+                    BlackPepper.into(),
+                    fixed!(227683.9915321233119035),
+                    fixed!(0),
+                    fixed!(0)
+                ),
+                crate::Error::<Testtime>::SourceBaseAmountIsTooLarge
+            );
+
+            assert_ok!(crate::Module::<Testtime>::withdraw_liquidity(
+                Origin::signed(ALICE()),
+                dex_id,
+                GoldenTicket.into(),
+                BlackPepper.into(),
+                fixed!(227683.9915321233119034),
+                fixed!(0),
+                fixed!(0),
+            ));
+
+            let tech_asset: AssetId = crate::Module::<Testtime>::get_marking_asset(&tech_acc_id)
+                .expect("Failed to get marking asset")
+                .into();
+            assert_eq!(
+                assets::Module::<Testtime>::free_balance(&tech_asset, &ALICE()).unwrap(),
+                fixed!(0),
+            );
+
+            assert_eq!(
+                assets::Module::<Testtime>::free_balance(&gt, &ALICE()).unwrap(),
+                fixed!(900000.0),
+            );
+            assert_eq!(
+                assets::Module::<Testtime>::free_balance(&bp, &ALICE()).unwrap(),
+                fixed!(2000000.0),
+            );
+            //900000.0 - 540000.0 = 360000.0
+            //2000000.0 - 1856000.0 = 144000.0
         },
     ]);
 }
