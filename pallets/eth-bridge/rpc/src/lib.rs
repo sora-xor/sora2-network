@@ -49,6 +49,7 @@ pub trait EthBridgeApi<
     fn get_account_requests(
         &self,
         account_id: AccountId,
+        status_filter: Option<RequestStatus>,
         at: Option<BlockHash>,
     ) -> RpcResult<Result<Vec<Hash>, DispatchError>>;
 
@@ -171,11 +172,12 @@ where
     fn get_account_requests(
         &self,
         account_id: AccountId,
+        status_filter: Option<RequestStatus>,
         at: Option<<Block as BlockT>::Hash>,
     ) -> RpcResult<Result<Vec<Hash>, DispatchError>> {
         let api = self.client.runtime_api();
         let at = BlockId::hash(at.unwrap_or_else(|| self.client.info().best_hash));
-        api.get_account_requests(&at, account_id)
+        api.get_account_requests(&at, account_id, status_filter)
             .map_err(|e| RpcError {
                 code: ErrorCode::ServerError(InvokeRPCError::RuntimeError.into()),
                 message: "Unable to get account requests.".into(),

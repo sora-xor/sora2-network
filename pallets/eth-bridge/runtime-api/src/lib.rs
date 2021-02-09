@@ -31,7 +31,7 @@ sp_api::decl_runtime_apis! {
         fn get_requests(hashes: Vec<Hash>) -> Result<Vec<(OffchainRequest, RequestStatus)>, DispatchError>;
         fn get_approved_requests(hashes: Vec<Hash>) -> Result<Vec<(OutgoingRequestEncoded, Vec<Approve>)>, DispatchError>;
         fn get_approves(hashes: Vec<Hash>) -> Result<Vec<Vec<Approve>>, DispatchError>;
-        fn get_account_requests(account_id: AccountId) -> Result<Vec<Hash>, DispatchError>;
+        fn get_account_requests(account_id: AccountId, status_filter: Option<RequestStatus>) -> Result<Vec<Hash>, DispatchError>;
         fn get_registered_assets() -> Result<Vec<(AssetKind, AssetId, Option<Address>)>, DispatchError>;
     }
 }
