@@ -481,7 +481,7 @@ impl<T: Trait> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, T
         }
         // This piece of code is called after validation, and every `Option` is `Some`, and it is safe to do
         // unwrap. `Bounds` is also safe to unwrap.
-        // Also this computation of only for security of pool, and not for applying values, so
+        // Also this computation of only things that is for security of pool, and not for applying values, so
         // this check can be simpler than actual transfering of values.
         let pool_is_valid_after_op_test = {
             let fxw_balance_st: FixedWrapper = balance_st.clone().into();
