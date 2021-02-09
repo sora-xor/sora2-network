@@ -71,6 +71,9 @@ pub use sp_runtime::BuildStorage;
 
 pub use bonding_curve_pool;
 pub use eth_bridge;
+use eth_bridge::{
+    AssetKind, OffchainRequest, OutgoingRequestEncoded, RequestStatus, SignatureParams,
+};
 pub use multicollateral_bonding_curve_pool;
 
 /// An index to a block.
@@ -1064,22 +1067,22 @@ impl_runtime_apis! {
         eth_bridge_runtime_api::EthBridgeRuntimeApi<
             Block,
             sp_core::H256,
-            eth_bridge::SignatureParams,
+            SignatureParams,
             AccountId,
-            eth_bridge::AssetKind,
+            AssetKind,
             AssetId,
             sp_core::H160,
-            eth_bridge::OffchainRequest<Runtime>,
-            eth_bridge::RequestStatus,
-            eth_bridge::OutgoingRequestEncoded,
+            OffchainRequest<Runtime>,
+            RequestStatus,
+            OutgoingRequestEncoded,
         > for Runtime
     {
         fn get_requests(
             hashes: Vec<sp_core::H256>,
         ) -> Result<
             Vec<(
-                eth_bridge::OffchainRequest<Runtime>,
-                eth_bridge::RequestStatus,
+                OffchainRequest<Runtime>,
+                RequestStatus,
             )>,
             DispatchError,
         > {
@@ -1090,8 +1093,8 @@ impl_runtime_apis! {
             hashes: Vec<sp_core::H256>,
         ) -> Result<
             Vec<(
-                eth_bridge::OutgoingRequestEncoded,
-                Vec<eth_bridge::SignatureParams>,
+                OutgoingRequestEncoded,
+                Vec<SignatureParams>,
             )>,
             DispatchError,
         > {
@@ -1100,16 +1103,16 @@ impl_runtime_apis! {
 
         fn get_approves(
             hashes: Vec<sp_core::H256>,
-        ) -> Result<Vec<Vec<eth_bridge::SignatureParams>>, DispatchError> {
+        ) -> Result<Vec<Vec<SignatureParams>>, DispatchError> {
             EthBridge::get_approves(&hashes)
         }
 
-        fn get_account_requests(account_id: AccountId) -> Result<Vec<sp_core::H256>, DispatchError> {
-            EthBridge::get_account_requests(&account_id)
+        fn get_account_requests(account_id: AccountId, status_filter: Option<RequestStatus>) -> Result<Vec<sp_core::H256>, DispatchError> {
+            EthBridge::get_account_requests(&account_id, status_filter)
         }
 
         fn get_registered_assets(
-        ) -> Result<Vec<(eth_bridge::AssetKind, AssetId, Option<sp_core::H160>)>, DispatchError> {
+        ) -> Result<Vec<(AssetKind, AssetId, Option<sp_core::H160>)>, DispatchError> {
             EthBridge::get_registered_assets()
         }
     }

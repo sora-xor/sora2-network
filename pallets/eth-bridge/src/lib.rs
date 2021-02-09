@@ -5,7 +5,7 @@ extern crate alloc;
 extern crate jsonrpc_core as rpc;
 
 use crate::contract::FUNCTIONS;
-use crate::types::{Log, Transaction, TransactionReceipt};
+use crate::types::{Bytes, CallRequest, Log, Transaction, TransactionReceipt};
 use alloc::string::String;
 use codec::{Decode, Encode};
 use common::{prelude::Balance, AssetSymbol, BalancePrecision, Fixed};
@@ -235,6 +235,7 @@ pub enum IncomingRequestKind {
     RemovePeer,
     ClaimPswap,
     CancelOutgoingRequest,
+    MarkAsDone,
 }
 
 /// The type of request we can send to the offchain worker
@@ -254,7 +255,7 @@ impl<T: Trait> IncomingRequest<T> {
             IncomingRequest::AddAsset(request) => request.tx_hash,
             IncomingRequest::ChangePeers(request) => request.tx_hash,
             IncomingRequest::ClaimPswap(request) => request.tx_hash,
-            IncomingRequest::CancelOutgoingRequest(request) => request.tx_hash,
+            IncomingRequest::CancelOutgoingRequest(request) => request.initial_request_hash,
         }
     }
 
@@ -325,6 +326,10 @@ impl<T: Trait> OffchainRequest<T> {
     fn hash(&self) -> H256 {
         match self {
             OffchainRequest::Outgoing(_request, hash) => *hash,
+            OffchainRequest::Incoming(.., IncomingRequestKind::CancelOutgoingRequest)
+            | OffchainRequest::Incoming(.., IncomingRequestKind::MarkAsDone) => {
+                H256(self.using_encoded(blake2_256))
+            }
             OffchainRequest::Incoming(_, hash, ..) => H256(hash.0.clone()),
         }
     }
@@ -354,6 +359,15 @@ impl<T: Trait> OffchainRequest<T> {
     fn validate(&self) -> Result<(), DispatchError> {
         match self {
             OffchainRequest::Outgoing(request, _) => request.validate(),
+            OffchainRequest::Incoming(_, hash, .., IncomingRequestKind::MarkAsDone) => {
+                let request_status =
+                    RequestStatuses::get(hash).ok_or(Error::<T>::UnknownRequest)?;
+                ensure!(
+                    request_status == RequestStatus::ApprovesReady,
+                    Error::<T>::RequestIsNotReady
+                );
+                Ok(())
+            }
             OffchainRequest::Incoming(..) => Ok(()),
         }
     }
@@ -413,8 +427,9 @@ impl OutgoingRequestEncoded {
 pub enum RequestStatus {
     Pending,
     Frozen,
-    Ready,
+    ApprovesReady,
     Failed,
+    Done,
 }
 
 pub trait Trait:
@@ -501,6 +516,7 @@ decl_event!(
         AccountId = <T as frame_system::Trait>::AccountId,
     {
         SomethingStored(u32, AccountId),
+        RequestRegistered(H256),
         ApprovesCollected(OutgoingRequestEncoded, BTreeSet<SignatureParams>),
         RequestFinalizationFailed(H256),
         IncomingRequestFinalizationFailed(H256),
@@ -562,6 +578,8 @@ decl_error! {
         RequestIsNotOwnedByTheAuthor,
         FailedToParseTxHashInCall,
         RequestIsNotReady,
+        UnknownRequest,
+        RequestNotFinalizedOnSidechain,
         Other,
     }
 }
@@ -667,7 +685,7 @@ decl_module! {
             let hash = match result {
                 Ok(hash) => {
                     debug::warn!("Incoming request finalized {:?}", hash);
-                    RequestStatuses::insert(hash, RequestStatus::Ready);
+                    RequestStatuses::insert(hash, RequestStatus::Done);
                     Self::deposit_event(RawEvent::IncomingRequestFinalized(hash));
                     hash
                 }
@@ -774,7 +792,7 @@ decl_module! {
                     }
                 } else {
                     debug::debug!("Outgoing request finalized {:?}", hash);
-                    RequestStatuses::insert(hash, RequestStatus::Ready);
+                    RequestStatuses::insert(hash, RequestStatus::ApprovesReady);
                     Self::deposit_event(RawEvent::ApprovesCollected(
                         request_encoded,
                         approves.clone(),
@@ -782,6 +800,17 @@ decl_module! {
                 }
                 Self::remove_request_from_queue(&hash);
             }
+        }
+
+        #[weight = (0, Pays::No)]
+        pub fn finalize_mark_as_done(origin, request_hash: H256) {
+            debug::debug!("called finalize_mark_as_done");
+            let author = ensure_signed(origin)?;
+            let bridge_account_id = Self::bridge_account();
+            ensure!(author == bridge_account_id, Error::<T>::Forbidden);
+            let request_status = RequestStatuses::get(request_hash).ok_or(Error::<T>::UnknownRequest)?;
+            ensure!(request_status == RequestStatus::ApprovesReady, Error::<T>::RequestIsNotReady);
+            RequestStatuses::insert(request_hash, RequestStatus::Done);
         }
 
         fn offchain_worker(block_number: T::BlockNumber) {
@@ -975,6 +1004,7 @@ impl<T: Trait> Module<T> {
         RequestStatuses::insert(&hash, RequestStatus::Pending);
         let block_number = frame_system::Module::<T>::current_block_number();
         RequestSubmissionHeight::<T>::insert(&hash, block_number);
+        Self::deposit_event(RawEvent::RequestRegistered(hash));
         Ok(())
     }
 
@@ -1137,6 +1167,128 @@ impl<T: Trait> Module<T> {
         Ok(number)
     }
 
+    fn handle_parsed_incoming_request_result(
+        result: Result<IncomingRequest<T>, DispatchError>,
+        timepoint: Timepoint<T>,
+        hash: H256,
+    ) -> Result<(), Error<T>> {
+        match result {
+            Ok(incoming_request) => {
+                let register_call = Call::<T>::register_incoming_request(incoming_request);
+                let call = bridge_multisig::Call::as_multi(
+                    Self::bridge_account(),
+                    Some(timepoint),
+                    <<T as Trait>::Call>::from(register_call).encode(),
+                    false,
+                    Weight::from(10_000_000_000_000u64),
+                );
+                Self::send_signed_transaction::<bridge_multisig::Call<T>>(call)
+            }
+            Err(e) if e == Error::<T>::HttpFetchingError.into() => {
+                Err(Error::<T>::HttpFetchingError)
+            }
+            Err(e) => Self::send_incoming_request_result(Err((hash, timepoint, e.into()))),
+        }
+    }
+
+    fn parse_cancel_incoming_request(
+        tx_receipt: TransactionReceipt,
+        author: &T::AccountId,
+        request_hash: H256,
+        tx_hash: H256,
+        timepoint: Timepoint<T>,
+    ) -> Result<IncomingRequest<T>, DispatchError> {
+        let tx_approved = tx_receipt.is_approved();
+        ensure!(!tx_approved, Error::<T>::EthTransactionIsSucceeded);
+        let at_height = tx_receipt
+            .block_number
+            .expect("'block_number' is null only when the log/transaction is pending; qed")
+            .as_u64();
+        let tx = Self::load_tx(H256(tx_receipt.transaction_hash.0))?;
+        let mut method_id = [0u8; 4];
+        method_id.clone_from_slice(&tx.input.0[..4]);
+        let funs = &*FUNCTIONS;
+        let fun_meta = funs.get(&method_id).ok_or(Error::<T>::UnknownMethodId)?;
+        let fun = &fun_meta.function;
+        let tokens = fun
+            .decode_input(&tx.input.0)
+            .map_err(|_| Error::<T>::InvalidFunctionInput)?;
+        let hash = parse_hash_from_call::<T>(tokens, fun_meta.tx_hash_arg_pos)?;
+        let oc_request: OffchainRequest<T> =
+            crate::Request::<T>::get(hash).ok_or(Error::<T>::Other)?;
+        let request = match oc_request {
+            OffchainRequest::Outgoing(request, _) => request,
+            OffchainRequest::Incoming(..) => fail!(Error::<T>::Other),
+        };
+        ensure!(
+            request.author() == author,
+            Error::<T>::RequestIsNotOwnedByTheAuthor
+        );
+        Ok(IncomingRequest::CancelOutgoingRequest(
+            CancelOutgoingRequest {
+                request,
+                initial_request_hash: request_hash,
+                tx_input: tx.input.0,
+                tx_hash,
+                at_height,
+                timepoint,
+            },
+        ))
+    }
+
+    fn handle_mark_as_done_incoming_request(
+        tx_hash: H256,
+        timepoint: Timepoint<T>,
+    ) -> Result<(), Error<T>> {
+        Self::load_is_used(tx_hash).and_then(|is_used| {
+            ensure!(is_used, Error::<T>::RequestNotFinalizedOnSidechain);
+            let finalize_mark_as_done = Call::<T>::finalize_mark_as_done(tx_hash);
+            let call = bridge_multisig::Call::as_multi(
+                Self::bridge_account(),
+                Some(timepoint),
+                <<T as Trait>::Call>::from(finalize_mark_as_done).encode(),
+                false,
+                Weight::from(10_000_000_000_000u64),
+            );
+            Self::send_signed_transaction::<bridge_multisig::Call<T>>(call)
+        })
+    }
+
+    fn handle_offchain_request(
+        request: OffchainRequest<T>,
+        request_hash: H256,
+    ) -> Result<(), Error<T>> {
+        match request {
+            OffchainRequest::Incoming(author, tx_hash, timepoint, kind) => match kind {
+                IncomingRequestKind::MarkAsDone => {
+                    Self::handle_mark_as_done_incoming_request(tx_hash, timepoint)
+                }
+                IncomingRequestKind::CancelOutgoingRequest => {
+                    let result = Self::load_tx_receipt(tx_hash).and_then(|tx| {
+                        Self::parse_cancel_incoming_request(
+                            tx,
+                            &author,
+                            request_hash,
+                            tx_hash,
+                            timepoint,
+                        )
+                    });
+                    Self::handle_parsed_incoming_request_result(result, timepoint, request_hash)
+                }
+                _ => {
+                    debug::debug!("Loading approved tx {}", tx_hash);
+                    Self::handle_parsed_incoming_request_result(
+                        Self::load_tx_receipt(tx_hash)
+                            .and_then(|tx| Self::parse_incoming_request(tx, timepoint)),
+                        timepoint,
+                        request_hash,
+                    )
+                }
+            },
+            OffchainRequest::Outgoing(request, _) => Self::handle_outgoing_request(request),
+        }
+    }
+
     fn offchain() {
         let s_eth_height = StorageValueRef::persistent(b"eth-bridge-ocw::eth-height");
         let current_eth_height = match Self::load_current_height() {
@@ -1178,40 +1330,7 @@ impl<T: Trait> Module<T> {
                 None => true,
             };
             if need_to_handle {
-                let error = match request {
-                    OffchainRequest::Incoming(author, tx_hash, timepoint, kind) => {
-                        debug::debug!("Loaded approved tx {}", tx_hash);
-                        match Self::load_tx_receipt(tx_hash).and_then(|tx| {
-                            Self::parse_incoming_request(tx, timepoint, kind, author)
-                        }) {
-                            Ok(incoming_request) => {
-                                let register_call =
-                                    Call::<T>::register_incoming_request(incoming_request);
-                                let call = bridge_multisig::Call::as_multi(
-                                    Self::bridge_account(),
-                                    Some(timepoint),
-                                    <<T as Trait>::Call>::from(register_call).encode(),
-                                    false,
-                                    Weight::from(10_000_000_000_000u64),
-                                );
-                                Self::send_signed_transaction::<bridge_multisig::Call<T>>(call)
-                                    .err()
-                            }
-                            Err(e) if e == Error::<T>::HttpFetchingError.into() => {
-                                Some(Error::<T>::HttpFetchingError)
-                            }
-                            Err(e) => Self::send_incoming_request_result(Err((
-                                H256(tx_hash.0),
-                                timepoint,
-                                e.into(),
-                            )))
-                            .err(),
-                        }
-                    }
-                    OffchainRequest::Outgoing(request, _) => {
-                        Self::handle_outgoing_request(request).err()
-                    }
-                };
+                let error = Self::handle_offchain_request(request, request_hash).err();
                 if let Some(e) = error {
                     debug::error!(
                         "An error occurred while processing off-chain request: {:?}",
@@ -1383,6 +1502,25 @@ impl<T: Trait> Module<T> {
         Ok(())
     }
 
+    fn load_is_used(hash: H256) -> Result<bool, Error<T>> {
+        // `used(bytes32)`
+        let mut data: Vec<_> = hex!("b07c411f").to_vec();
+        data.extend(&hash.0);
+        let result = Self::eth_json_rpc_request::<_, bool>(
+            "eth_call",
+            &vec![
+                serialize(&CallRequest {
+                    to: Some(CONTRACT_ADDRESS),
+                    data: Some(Bytes(data)),
+                    ..Default::default()
+                }),
+                Value::String("latest".into()),
+            ],
+        )
+        .ok_or(Error::<T>::HttpFetchingError)?;
+        Ok(result.first().cloned().unwrap_or(false))
+    }
+
     fn register_sidechain_asset(
         token_address: Address,
         precision: BalancePrecision,
@@ -1434,104 +1572,64 @@ impl<T: Trait> Module<T> {
     fn parse_incoming_request(
         tx_receipt: TransactionReceipt,
         timepoint: Timepoint<T>,
-        request_kind: IncomingRequestKind,
-        author: T::AccountId,
     ) -> Result<IncomingRequest<T>, DispatchError> {
         let tx_approved = tx_receipt.is_approved();
+        ensure!(tx_approved, Error::<T>::EthTransactionIsFailed);
         let at_height = tx_receipt
             .block_number
             .expect("'block_number' is null only when the log/transaction is pending; qed")
             .as_u64();
         let tx_hash = H256(tx_receipt.transaction_hash.0);
 
-        match request_kind {
-            // A special flow for request cancellation.
-            IncomingRequestKind::CancelOutgoingRequest => {
-                ensure!(!tx_approved, Error::<T>::EthTransactionIsSucceeded);
-                let tx = Self::load_tx(H256(tx_receipt.transaction_hash.0))?;
-                let mut method_id = [0u8; 4];
-                method_id.clone_from_slice(&tx.input.0[..4]);
-                let funs = &*FUNCTIONS;
-                let fun_meta = funs.get(&method_id).ok_or(Error::<T>::UnknownMethodId)?;
-                let fun = &fun_meta.function;
-                let tokens = fun
-                    .decode_input(&tx.input.0)
-                    .map_err(|_| Error::<T>::InvalidFunctionInput)?;
-                let hash = parse_hash_from_call::<T>(tokens, fun_meta.tx_hash_arg_pos)?;
-                let oc_request: OffchainRequest<T> =
-                    crate::Request::<T>::get(hash).ok_or(Error::<T>::Other)?;
-                let request = match oc_request {
-                    OffchainRequest::Outgoing(request, _) => request,
-                    OffchainRequest::Incoming(..) => fail!(Error::<T>::Other),
-                };
-                ensure!(
-                    request.author() == &author,
-                    Error::<T>::RequestIsNotOwnedByTheAuthor
-                );
-                Ok(IncomingRequest::CancelOutgoingRequest(
-                    CancelOutgoingRequest {
-                        request,
-                        tx_input: tx.input.0,
-                        tx_hash,
-                        at_height,
-                        timepoint,
-                    },
-                ))
-            }
-            _ => {
-                ensure!(tx_approved, Error::<T>::EthTransactionIsFailed);
+        let call = Self::parse_main_event(&tx_receipt.logs)?;
 
-                let call = Self::parse_main_event(&tx_receipt.logs)?;
-
-                Ok(match call {
-                    ContractEvent::Deposit(to, amount, token_address, raw_asset_id) => {
-                        let (asset_id, asset_kind) =
-                            Module::<T>::get_asset_by_raw_asset_id(raw_asset_id, &token_address)?
-                                .ok_or(Error::<T>::UnsupportedAssetId)?;
-                        IncomingRequest::Transfer(IncomingTransfer {
-                            from: Default::default(),
-                            to,
-                            asset_id,
-                            asset_kind,
-                            amount,
-                            tx_hash,
-                            at_height,
-                            timepoint,
-                        })
-                    }
-                    ContractEvent::ChangePeers(peer_address, added) => {
-                        let peer_account_id = Self::peer_account_id(&peer_address);
-                        ensure!(
-                            peer_account_id != T::AccountId::default(),
-                            Error::<T>::UnknownPeerAddress
-                        );
-                        IncomingRequest::ChangePeers(IncomingChangePeers {
-                            peer_account_id,
-                            peer_address,
-                            added,
-                            tx_hash,
-                            at_height,
-                            timepoint,
-                        })
-                    }
-                    ContractEvent::ClaimPswap(account_id) => {
-                        let at_height = tx_receipt
-                            .block_number
-                            .expect("'block_number' is null only when the log is pending; qed")
-                            .as_u64();
-                        let tx_hash = H256(tx_receipt.transaction_hash.0);
-                        IncomingRequest::ClaimPswap(IncomingClaimPswap {
-                            account_id,
-                            eth_address: H160(tx_receipt.from.0),
-                            tx_hash,
-                            at_height,
-                            timepoint,
-                        })
-                    }
-                    _ => fail!(Error::<T>::UnknownMethodId),
+        Ok(match call {
+            ContractEvent::Deposit(to, amount, token_address, raw_asset_id) => {
+                let (asset_id, asset_kind) =
+                    Module::<T>::get_asset_by_raw_asset_id(raw_asset_id, &token_address)?
+                        .ok_or(Error::<T>::UnsupportedAssetId)?;
+                IncomingRequest::Transfer(IncomingTransfer {
+                    from: Default::default(),
+                    to,
+                    asset_id,
+                    asset_kind,
+                    amount,
+                    tx_hash,
+                    at_height,
+                    timepoint,
                 })
             }
-        }
+            ContractEvent::ChangePeers(peer_address, added) => {
+                let peer_account_id = Self::peer_account_id(&peer_address);
+                ensure!(
+                    peer_account_id != T::AccountId::default(),
+                    Error::<T>::UnknownPeerAddress
+                );
+                IncomingRequest::ChangePeers(IncomingChangePeers {
+                    peer_account_id,
+                    peer_address,
+                    added,
+                    tx_hash,
+                    at_height,
+                    timepoint,
+                })
+            }
+            ContractEvent::ClaimPswap(account_id) => {
+                let at_height = tx_receipt
+                    .block_number
+                    .expect("'block_number' is null only when the log is pending; qed")
+                    .as_u64();
+                let tx_hash = H256(tx_receipt.transaction_hash.0);
+                IncomingRequest::ClaimPswap(IncomingClaimPswap {
+                    account_id,
+                    eth_address: H160(tx_receipt.from.0),
+                    tx_hash,
+                    at_height,
+                    timepoint,
+                })
+            }
+            _ => fail!(Error::<T>::UnknownMethodId),
+        })
     }
 
     fn send_incoming_request_result(
@@ -1662,7 +1760,7 @@ impl<T: Trait> Module<T> {
             .iter()
             .take(Self::ITEMS_LIMIT)
             .filter_map(|hash| {
-                if Self::request_status(hash)? == RequestStatus::Ready {
+                if Self::request_status(hash)? == RequestStatus::ApprovesReady {
                     let request: OffchainRequest<T> = Request::get(hash)?;
                     match request {
                         OffchainRequest::Outgoing(request, hash) => {
@@ -1694,8 +1792,15 @@ impl<T: Trait> Module<T> {
     }
 
     /// Get account requests list.
-    pub fn get_account_requests(account: &T::AccountId) -> Result<Vec<H256>, DispatchError> {
-        Ok(Self::account_requests(account))
+    pub fn get_account_requests(
+        account: &T::AccountId,
+        status_filter: Option<RequestStatus>,
+    ) -> Result<Vec<H256>, DispatchError> {
+        let mut requests: Vec<H256> = Self::account_requests(account);
+        if let Some(filter) = status_filter {
+            requests.retain(|x| Self::request_status(x).unwrap() == filter)
+        }
+        Ok(requests)
     }
 
     /// Get registered assets and tokens.

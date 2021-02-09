@@ -196,6 +196,7 @@ pub fn encode_outgoing_request_eth_call<T: Trait>(
 #[cfg_attr(feature = "std", derive(Serialize))]
 pub struct CancelOutgoingRequest<T: Trait> {
     pub request: OutgoingRequest<T>,
+    pub initial_request_hash: H256,
     pub tx_input: Vec<u8>,
     pub tx_hash: H256,
     pub at_height: u64,
@@ -208,7 +209,7 @@ impl<T: Trait> CancelOutgoingRequest<T> {
         let req_status =
             crate::RequestStatuses::get(&request_hash).ok_or(crate::Error::<T>::Other)?;
         ensure!(
-            req_status == RequestStatus::Ready,
+            req_status == RequestStatus::ApprovesReady,
             crate::Error::<T>::RequestIsNotReady
         );
         let mut method_id = [0u8; 4];
@@ -223,7 +224,7 @@ impl<T: Trait> CancelOutgoingRequest<T> {
     }
 
     pub fn cancel(&self) -> Result<(), DispatchError> {
-        crate::RequestStatuses::insert(&self.request.hash(), RequestStatus::Ready);
+        crate::RequestStatuses::insert(&self.request.hash(), RequestStatus::ApprovesReady);
         Ok(())
     }
 
@@ -232,7 +233,7 @@ impl<T: Trait> CancelOutgoingRequest<T> {
         let hash = &self.request.hash();
         crate::RequestStatuses::insert(hash, RequestStatus::Failed);
         crate::RequestApproves::take(hash);
-        Ok(self.tx_hash)
+        Ok(self.initial_request_hash)
     }
 
     pub fn timepoint(&self) -> Timepoint<T> {
