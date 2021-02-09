@@ -17,6 +17,7 @@ use common::{
     AssetSymbol, EnsureTradingPairExists, Fixed, LiquiditySource, LiquiditySourceType,
     ManagementMode, SwapRulesValidation, ToFeeAccount, ToTechUnitFromDEXAndTradingPair,
 };
+use frame_support::debug;
 use permissions::{Scope, BURN, MINT};
 
 mod weights;
@@ -498,11 +499,17 @@ impl<T: Trait> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, T
                 .get()
                 .map_err(|_| Error::<T>::FixedWrapperCalculationFailed)?
                 .into();
-            diff < 100u32.into()
+            let value = diff < 100u32.into();
+            if !value {
+                debug::warn!(
+                    "Potential swap operation is blocked because pool became invalid after it"
+                );
+            }
+            value
         };
         ensure!(
             pool_is_valid_after_op_test,
-            Error::<T>::PoolBecomesInvalidAfterOperation
+            Error::<T>::PoolBecameInvalidAfterOperation
         );
         Ok(())
     }
@@ -1791,10 +1798,8 @@ decl_error! {
         FixedWrapperCalculationFailed,
         /// This case if not supported by logic of pool of validation code.
         ThisCaseIsNotSupported,
-        /// After the execution of the operation in the pool there will be insufficient liquidity.
-        InsufficientAmountOfLiquidityAfterOperation,
         /// Pool becomes invalid after operation
-        PoolBecomesInvalidAfterOperation,
+        PoolBecameInvalidAfterOperation,
     }
 }
 
