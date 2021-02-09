@@ -1011,7 +1011,7 @@ fn swap_pair_liquidity_after_operation_check() {
                         max_amount_in: Balance(Fixed::MAX),
                     }
                 ),
-                crate::Error::<Testtime>::PoolBecomesInvalidAfterOperation
+                crate::Error::<Testtime>::PoolBecameInvalidAfterOperation
             );
         },
     ]);
