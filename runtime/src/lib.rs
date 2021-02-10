@@ -1101,10 +1101,10 @@ impl_runtime_apis! {
             EthBridge::get_approved_requests(&hashes)
         }
 
-        fn get_approves(
+        fn get_approvals(
             hashes: Vec<sp_core::H256>,
         ) -> Result<Vec<Vec<SignatureParams>>, DispatchError> {
-            EthBridge::get_approves(&hashes)
+            EthBridge::get_approvals(&hashes)
         }
 
         fn get_account_requests(account_id: AccountId, status_filter: Option<RequestStatus>) -> Result<Vec<sp_core::H256>, DispatchError> {

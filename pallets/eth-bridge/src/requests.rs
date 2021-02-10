@@ -184,8 +184,8 @@ pub fn encode_outgoing_request_eth_call<T: Trait>(
     let fun_meta = fun_metas.get(&method_id).ok_or(Error::UnknownMethodId)?;
     let request_hash = request.hash();
     let request_encoded = request.to_eth_abi(request_hash)?;
-    let approves: BTreeSet<SignatureParams> = crate::RequestApproves::get(&request_hash);
-    let input_tokens = request_encoded.input_tokens(Some(approves.into_iter().collect()));
+    let approvals: BTreeSet<SignatureParams> = crate::RequestApprovals::get(&request_hash);
+    let input_tokens = request_encoded.input_tokens(Some(approvals.into_iter().collect()));
     fun_meta
         .function
         .encode_input(&input_tokens)
@@ -194,7 +194,7 @@ pub fn encode_outgoing_request_eth_call<T: Trait>(
 
 #[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug)]
 #[cfg_attr(feature = "std", derive(Serialize))]
-pub struct CancelOutgoingRequest<T: Trait> {
+pub struct IncomingCancelOutgoingRequest<T: Trait> {
     pub request: OutgoingRequest<T>,
     pub initial_request_hash: H256,
     pub tx_input: Vec<u8>,
@@ -203,7 +203,7 @@ pub struct CancelOutgoingRequest<T: Trait> {
     pub timepoint: Timepoint<T>,
 }
 
-impl<T: Trait> CancelOutgoingRequest<T> {
+impl<T: Trait> IncomingCancelOutgoingRequest<T> {
     pub fn prepare(&self) -> Result<(), DispatchError> {
         let request_hash = self.request.hash();
         let req_status =
@@ -232,7 +232,7 @@ impl<T: Trait> CancelOutgoingRequest<T> {
         self.request.cancel()?;
         let hash = &self.request.hash();
         crate::RequestStatuses::insert(hash, RequestStatus::Failed);
-        crate::RequestApproves::take(hash);
+        crate::RequestApprovals::take(hash);
         Ok(self.initial_request_hash)
     }
 
@@ -253,7 +253,7 @@ pub struct OutgoingTransfer<T: Trait> {
 }
 
 impl<T: Trait> OutgoingTransfer<T> {
-    pub fn to_eth_abi(&self, tx_hash: H256) -> Result<OutgoingTransferEthEncoded, Error<T>> {
+    pub fn to_eth_abi(&self, tx_hash: H256) -> Result<OutgoingTransferEncoded, Error<T>> {
         // TODO: Incorrect type (Address != AccountId).
         let from = Address::from_slice(&self.from.encode()[..20]);
         let to = self.to;
@@ -273,7 +273,7 @@ impl<T: Trait> OutgoingTransfer<T> {
             Token::Address(types::H160(from.0)),
             Token::FixedBytes(tx_hash.0.to_vec()),
         ]);
-        Ok(OutgoingTransferEthEncoded {
+        Ok(OutgoingTransferEncoded {
             from,
             to,
             currency_id,
@@ -347,7 +347,7 @@ impl CurrencyIdEncoded {
 
 #[derive(Clone, PartialEq, Eq, Encode, Decode, RuntimeDebug)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-pub struct OutgoingTransferEthEncoded {
+pub struct OutgoingTransferEncoded {
     pub currency_id: CurrencyIdEncoded,
     pub amount: U256,
     pub to: Address,
@@ -357,7 +357,7 @@ pub struct OutgoingTransferEthEncoded {
     pub raw: Vec<u8>,
 }
 
-impl OutgoingTransferEthEncoded {
+impl OutgoingTransferEncoded {
     pub fn input_tokens(&self, signatures: Option<Vec<SignatureParams>>) -> Vec<Token> {
         let mut tokens = vec![
             self.currency_id.to_token(),
@@ -378,15 +378,15 @@ impl OutgoingTransferEthEncoded {
 // TODO: lock the adding token to prevent double-adding.
 #[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-pub struct AddAssetOutgoingRequest<T: Trait> {
+pub struct OutgoingAddAsset<T: Trait> {
     pub author: T::AccountId,
     pub asset_id: AssetIdOf<T>,
     pub supply: Balance,
     pub nonce: T::Index,
 }
 
-impl<T: Trait> AddAssetOutgoingRequest<T> {
-    pub fn to_eth_abi(&self, tx_hash: H256) -> Result<AddAssetRequestEncoded, Error<T>> {
+impl<T: Trait> OutgoingAddAsset<T> {
+    pub fn to_eth_abi(&self, tx_hash: H256) -> Result<OutgoingAddAssetEncoded, Error<T>> {
         let hash = H256(tx_hash.0);
         let (symbol, precision, _) = assets::Module::<T>::get_asset_info(&self.asset_id);
         let symbol: String = String::from_utf8_lossy(&symbol.0).into();
@@ -403,7 +403,7 @@ impl<T: Trait> AddAssetOutgoingRequest<T> {
             Token::FixedBytes(tx_hash.0.to_vec()),
         ]);
 
-        Ok(AddAssetRequestEncoded {
+        Ok(OutgoingAddAssetEncoded {
             name,
             symbol,
             decimal: precision,
@@ -443,7 +443,7 @@ impl<T: Trait> AddAssetOutgoingRequest<T> {
 
 #[derive(Clone, PartialEq, Eq, Encode, Decode, RuntimeDebug)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-pub struct AddAssetRequestEncoded {
+pub struct OutgoingAddAssetEncoded {
     pub name: String,
     pub symbol: String,
     pub decimal: u8,
@@ -454,7 +454,7 @@ pub struct AddAssetRequestEncoded {
     pub raw: Vec<u8>,
 }
 
-impl AddAssetRequestEncoded {
+impl OutgoingAddAssetEncoded {
     pub fn input_tokens(&self, signatures: Option<Vec<SignatureParams>>) -> Vec<Token> {
         let mut tokens = vec![
             Token::String(self.name.clone()),
@@ -473,7 +473,7 @@ impl AddAssetRequestEncoded {
 
 #[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-pub struct AddTokenOutgoingRequest<T: Trait> {
+pub struct OutgoingAddToken<T: Trait> {
     pub author: T::AccountId,
     pub token_address: Address,
     pub ticker: String,
@@ -520,8 +520,8 @@ pub fn signature_params_to_tokens(sig_params: Vec<SignatureParams>) -> Vec<Token
     vec![Token::Array(vs), Token::Array(rs), Token::Array(ss)]
 }
 
-impl<T: Trait> AddTokenOutgoingRequest<T> {
-    pub fn to_eth_abi(&self, tx_hash: H256) -> Result<AddTokenRequestEncoded, Error<T>> {
+impl<T: Trait> OutgoingAddToken<T> {
+    pub fn to_eth_abi(&self, tx_hash: H256) -> Result<OutgoingAddTokenEncoded, Error<T>> {
         let hash = H256(tx_hash.0);
         let token_address = self.token_address.clone();
         let ticker = self.ticker.clone();
@@ -534,7 +534,7 @@ impl<T: Trait> AddTokenOutgoingRequest<T> {
             Token::UintSized(decimals.into(), 8),
             Token::FixedBytes(tx_hash.0.to_vec()),
         ]);
-        Ok(AddTokenRequestEncoded {
+        Ok(OutgoingAddTokenEncoded {
             token_address,
             name,
             ticker,
@@ -574,7 +574,7 @@ impl<T: Trait> AddTokenOutgoingRequest<T> {
 
 #[derive(Clone, PartialEq, Eq, Encode, Decode, RuntimeDebug)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-pub struct AddTokenRequestEncoded {
+pub struct OutgoingAddTokenEncoded {
     pub token_address: Address,
     pub ticker: String,
     pub name: String,
@@ -584,7 +584,7 @@ pub struct AddTokenRequestEncoded {
     pub raw: Vec<u8>,
 }
 
-impl AddTokenRequestEncoded {
+impl OutgoingAddTokenEncoded {
     pub fn input_tokens(&self, signatures: Option<Vec<SignatureParams>>) -> Vec<Token> {
         let mut tokens = vec![
             Token::Address(types::H160(self.token_address.0)),
@@ -602,22 +602,22 @@ impl AddTokenRequestEncoded {
 
 #[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-pub struct AddPeerOutgoingRequest<T: Trait> {
+pub struct OutgoingAddPeer<T: Trait> {
     pub author: T::AccountId,
     pub peer_address: Address,
     pub peer_account_id: T::AccountId,
     pub nonce: T::Index,
 }
 
-impl<T: Trait> AddPeerOutgoingRequest<T> {
-    pub fn to_eth_abi(&self, tx_hash: H256) -> Result<AddPeerOutgoingRequestEncoded, Error<T>> {
+impl<T: Trait> OutgoingAddPeer<T> {
+    pub fn to_eth_abi(&self, tx_hash: H256) -> Result<OutgoingAddPeerEncoded, Error<T>> {
         let tx_hash = H256(tx_hash.0);
         let peer_address = self.peer_address;
         let raw = ethabi::encode_packed(&[
             Token::Address(types::H160(peer_address.clone().0)),
             Token::FixedBytes(tx_hash.0.to_vec()),
         ]);
-        Ok(AddPeerOutgoingRequestEncoded {
+        Ok(OutgoingAddPeerEncoded {
             peer_address,
             tx_hash,
             raw,
@@ -656,22 +656,22 @@ impl<T: Trait> AddPeerOutgoingRequest<T> {
 
 #[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-pub struct RemovePeerOutgoingRequest<T: Trait> {
+pub struct OutgoingRemovePeer<T: Trait> {
     pub author: T::AccountId,
     pub peer_account_id: T::AccountId,
     pub peer_address: Address,
     pub nonce: T::Index,
 }
 
-impl<T: Trait> RemovePeerOutgoingRequest<T> {
-    pub fn to_eth_abi(&self, tx_hash: H256) -> Result<RemovePeerOutgoingRequestEncoded, Error<T>> {
+impl<T: Trait> OutgoingRemovePeer<T> {
+    pub fn to_eth_abi(&self, tx_hash: H256) -> Result<OutgoingRemovePeerEncoded, Error<T>> {
         let tx_hash = H256(tx_hash.0);
         let peer_address = self.peer_address;
         let raw = ethabi::encode_packed(&[
             Token::Address(types::H160(peer_address.clone().0)),
             Token::FixedBytes(tx_hash.0.to_vec()),
         ]);
-        Ok(RemovePeerOutgoingRequestEncoded {
+        Ok(OutgoingRemovePeerEncoded {
             peer_address,
             tx_hash,
             raw,
@@ -714,14 +714,14 @@ impl<T: Trait> RemovePeerOutgoingRequest<T> {
 
 #[derive(Clone, PartialEq, Eq, Encode, Decode, RuntimeDebug)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-pub struct AddPeerOutgoingRequestEncoded {
+pub struct OutgoingAddPeerEncoded {
     pub peer_address: Address,
     pub tx_hash: H256,
     /// EABI-encoded data to be signed.
     pub raw: Vec<u8>,
 }
 
-impl AddPeerOutgoingRequestEncoded {
+impl OutgoingAddPeerEncoded {
     pub fn input_tokens(&self, signatures: Option<Vec<SignatureParams>>) -> Vec<Token> {
         let mut tokens = vec![
             Token::Address(types::H160(self.peer_address.clone().0)),
@@ -737,14 +737,14 @@ impl AddPeerOutgoingRequestEncoded {
 
 #[derive(Clone, PartialEq, Eq, Encode, Decode, RuntimeDebug)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-pub struct RemovePeerOutgoingRequestEncoded {
+pub struct OutgoingRemovePeerEncoded {
     pub peer_address: Address,
     pub tx_hash: H256,
     /// EABI-encoded data to be signed.
     pub raw: Vec<u8>,
 }
 
-impl RemovePeerOutgoingRequestEncoded {
+impl OutgoingRemovePeerEncoded {
     pub fn input_tokens(&self, signatures: Option<Vec<SignatureParams>>) -> Vec<Token> {
         let mut tokens = vec![
             Token::Address(types::H160(self.peer_address.clone().0)),
