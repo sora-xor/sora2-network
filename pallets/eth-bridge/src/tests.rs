@@ -216,7 +216,7 @@ fn approve_request(state: &State, request: OutgoingRequest<Test>) -> Result<(), 
         crate::RequestsQueue::<Test>::get().last().unwrap().hash(),
         request.hash()
     );
-    let mut approves = BTreeSet::new();
+    let mut approvals = BTreeSet::new();
 
     for (i, (_signer, account_id, seed)) in state.ocw_keypairs.iter().enumerate() {
         let secret = SecretKey::parse_slice(seed).unwrap();
@@ -225,7 +225,7 @@ fn approve_request(state: &State, request: OutgoingRequest<Test>) -> Result<(), 
         let sig_pair = secp256k1::sign(&msg, &secret);
         let signature = sig_pair.into();
         let signature_params = get_signature_params(&signature);
-        approves.insert(signature_params.clone());
+        approvals.insert(signature_params.clone());
         let additional_sigs = if crate::PendingPeer::<Test>::get().is_some() {
             1
         } else {
@@ -243,9 +243,9 @@ fn approve_request(state: &State, request: OutgoingRequest<Test>) -> Result<(), 
         if current_status == RequestStatus::Pending && i + 1 == sigs_needed {
             match last_event().ok_or(None)? {
                 Event::eth_bridge(bridge_event) => match bridge_event {
-                    crate::RawEvent::ApprovesCollected(e, a) => {
+                    crate::RawEvent::ApprovalsCollected(e, a) => {
                         assert_eq!(e, encoded);
-                        assert_eq!(a, approves);
+                        assert_eq!(a, approvals);
                     }
                     e => {
                         assert_ne!(
@@ -576,7 +576,7 @@ fn should_register_outgoing_transfer() {
         };
         let last_request = crate::RequestsQueue::get().pop().unwrap();
         match last_request {
-            OffchainRequest::Outgoing(OutgoingRequest::OutgoingTransfer(r), _) => {
+            OffchainRequest::Outgoing(OutgoingRequest::Transfer(r), _) => {
                 assert_eq!(r, outgoing_transfer)
             }
             _ => panic!("Invalid off-chain request"),
@@ -1136,7 +1136,7 @@ fn should_cancel_ready_outgoing_request() {
         )
         .unwrap();
         let incoming_transfer =
-            IncomingRequest::CancelOutgoingRequest(crate::CancelOutgoingRequest {
+            IncomingRequest::CancelOutgoingRequest(crate::IncomingCancelOutgoingRequest {
                 request: outgoing_req.clone(),
                 initial_request_hash: request_hash,
                 tx_input: tx_input.clone(),
@@ -1154,7 +1154,7 @@ fn should_cancel_ready_outgoing_request() {
 }
 
 #[test]
-fn should_fail_cancel_ready_outgoing_request_with_wrong_approves() {
+fn should_fail_cancel_ready_outgoing_request_with_wrong_approvals() {
     let (mut ext, state) = ExtBuilder::new();
     ext.execute_with(|| {
         let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
@@ -1191,7 +1191,7 @@ fn should_fail_cancel_ready_outgoing_request_with_wrong_approves() {
         )
         .unwrap();
         let incoming_transfer =
-            IncomingRequest::CancelOutgoingRequest(crate::CancelOutgoingRequest {
+            IncomingRequest::CancelOutgoingRequest(crate::IncomingCancelOutgoingRequest {
                 request: outgoing_req.clone(),
                 initial_request_hash: request_hash,
                 tx_input: tx_input.clone(),
@@ -1201,7 +1201,7 @@ fn should_fail_cancel_ready_outgoing_request_with_wrong_approves() {
             });
 
         // Insert some signature
-        crate::RequestApproves::mutate(outgoing_req.hash(), |v| {
+        crate::RequestApprovals::mutate(outgoing_req.hash(), |v| {
             v.insert(SignatureParams {
                 r: [1; 32],
                 s: [1; 32],
@@ -1259,7 +1259,7 @@ fn should_fail_cancel_unfinished_outgoing_request() {
         )
         .unwrap();
         let incoming_transfer =
-            IncomingRequest::CancelOutgoingRequest(crate::CancelOutgoingRequest {
+            IncomingRequest::CancelOutgoingRequest(crate::IncomingCancelOutgoingRequest {
                 request: outgoing_req,
                 initial_request_hash: request_hash,
                 tx_input,

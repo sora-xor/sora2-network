@@ -9,7 +9,7 @@ use sp_std::prelude::*;
 sp_api::decl_runtime_apis! {
     pub trait EthBridgeRuntimeApi<
         Hash,
-        Approve,
+        Approval,
         AccountId,
         AssetKind,
         AssetId,
@@ -19,7 +19,7 @@ sp_api::decl_runtime_apis! {
         OutgoingRequestEncoded,
 > where
         Hash: Codec,
-        Approve: Codec,
+        Approval: Codec,
         AccountId: Codec,
         AssetKind: Codec,
         AssetId: Codec,
@@ -29,8 +29,8 @@ sp_api::decl_runtime_apis! {
         OutgoingRequestEncoded: Codec,
     {
         fn get_requests(hashes: Vec<Hash>) -> Result<Vec<(OffchainRequest, RequestStatus)>, DispatchError>;
-        fn get_approved_requests(hashes: Vec<Hash>) -> Result<Vec<(OutgoingRequestEncoded, Vec<Approve>)>, DispatchError>;
-        fn get_approves(hashes: Vec<Hash>) -> Result<Vec<Vec<Approve>>, DispatchError>;
+        fn get_approved_requests(hashes: Vec<Hash>) -> Result<Vec<(OutgoingRequestEncoded, Vec<Approval>)>, DispatchError>;
+        fn get_approvals(hashes: Vec<Hash>) -> Result<Vec<Vec<Approval>>, DispatchError>;
         fn get_account_requests(account_id: AccountId, status_filter: Option<RequestStatus>) -> Result<Vec<Hash>, DispatchError>;
         fn get_registered_assets() -> Result<Vec<(AssetKind, AssetId, Option<Address>)>, DispatchError>;
     }

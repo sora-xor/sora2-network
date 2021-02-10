@@ -13,7 +13,7 @@ use std::sync::Arc;
 pub trait EthBridgeApi<
     BlockHash,
     Hash,
-    Approve,
+    Approval,
     AccountId,
     AssetKind,
     AssetId,
@@ -36,14 +36,14 @@ pub trait EthBridgeApi<
         &self,
         request_hashes: Vec<Hash>,
         at: Option<BlockHash>,
-    ) -> RpcResult<Result<Vec<(OutgoingRequestEncoded, Vec<Approve>)>, DispatchError>>;
+    ) -> RpcResult<Result<Vec<(OutgoingRequestEncoded, Vec<Approval>)>, DispatchError>>;
 
-    #[rpc(name = "ethBridge_getApproves")]
-    fn get_approves(
+    #[rpc(name = "ethBridge_getApprovals")]
+    fn get_approvals(
         &self,
         request_hashes: Vec<Hash>,
         at: Option<BlockHash>,
-    ) -> RpcResult<Result<Vec<Vec<Approve>>, DispatchError>>;
+    ) -> RpcResult<Result<Vec<Vec<Approval>>, DispatchError>>;
 
     #[rpc(name = "ethBridge_getAccountRequests")]
     fn get_account_requests(
@@ -78,7 +78,7 @@ impl<
         C,
         Block,
         Hash,
-        Approve,
+        Approval,
         AccountId,
         AssetKind,
         AssetId,
@@ -90,7 +90,7 @@ impl<
     EthBridgeApi<
         <Block as BlockT>::Hash,
         Hash,
-        Approve,
+        Approval,
         AccountId,
         AssetKind,
         AssetId,
@@ -107,7 +107,7 @@ where
     C::Api: EthBridgeRuntimeApi<
         Block,
         Hash,
-        Approve,
+        Approval,
         AccountId,
         AssetKind,
         AssetId,
@@ -116,7 +116,7 @@ where
         RequestStatus,
         OutgoingRequestEncoded,
     >,
-    Approve: Codec,
+    Approval: Codec,
     Hash: Codec,
     AccountId: Codec,
     AssetKind: Codec,
@@ -144,29 +144,30 @@ where
         &self,
         request_hashes: Vec<Hash>,
         at: Option<<Block as BlockT>::Hash>,
-    ) -> RpcResult<Result<Vec<(OutgoingRequestEncoded, Vec<Approve>)>, DispatchError>> {
+    ) -> RpcResult<Result<Vec<(OutgoingRequestEncoded, Vec<Approval>)>, DispatchError>> {
         let api = self.client.runtime_api();
         let at = BlockId::hash(at.unwrap_or_else(|| self.client.info().best_hash));
         api.get_approved_requests(&at, request_hashes)
             .map_err(|e| RpcError {
                 code: ErrorCode::ServerError(InvokeRPCError::RuntimeError.into()),
-                message: "Unable to get encoded off-chain requests and approves.".into(),
+                message: "Unable to get encoded off-chain requests and approvals.".into(),
                 data: Some(format!("{:?}", e).into()),
             })
     }
 
-    fn get_approves(
+    fn get_approvals(
         &self,
         request_hashes: Vec<Hash>,
         at: Option<<Block as BlockT>::Hash>,
-    ) -> RpcResult<Result<Vec<Vec<Approve>>, DispatchError>> {
+    ) -> RpcResult<Result<Vec<Vec<Approval>>, DispatchError>> {
         let api = self.client.runtime_api();
         let at = BlockId::hash(at.unwrap_or_else(|| self.client.info().best_hash));
-        api.get_approves(&at, request_hashes).map_err(|e| RpcError {
-            code: ErrorCode::ServerError(InvokeRPCError::RuntimeError.into()),
-            message: "Unable to get approves of the requests.".into(),
-            data: Some(format!("{:?}", e).into()),
-        })
+        api.get_approvals(&at, request_hashes)
+            .map_err(|e| RpcError {
+                code: ErrorCode::ServerError(InvokeRPCError::RuntimeError.into()),
+                message: "Unable to get approvals of the requests.".into(),
+                data: Some(format!("{:?}", e).into()),
+            })
     }
 
     fn get_account_requests(
