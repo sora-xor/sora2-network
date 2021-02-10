@@ -6,7 +6,7 @@ use crate::{
 use alloc::{collections::BTreeSet, string::String};
 use codec::{Decode, Encode};
 use common::prelude::Balance;
-use common::{fixed, AssetSymbol, BalancePrecision, PSWAP};
+use common::{fixed, AssetSymbol, BalancePrecision, PSWAP, VAL, XOR};
 use ethabi::{FixedBytes, Token};
 #[allow(unused_imports)]
 use frame_support::debug;
@@ -266,13 +266,24 @@ impl<T: Trait> OutgoingTransfer<T> {
         }
         let amount = U256::from(*self.amount.0.as_bits());
         let tx_hash = H256(tx_hash.0);
-        let raw = ethabi::encode_packed(&[
-            currency_id.to_token(),
-            Token::Uint(types::U256(amount.0)),
-            Token::Address(types::H160(to.0)),
-            Token::Address(types::H160(from.0)),
-            Token::FixedBytes(tx_hash.0.to_vec()),
-        ]);
+        let is_old_contract = self.asset_id == XOR.into() || self.asset_id == VAL.into();
+        let raw = if is_old_contract {
+            ethabi::encode_packed(&[
+                currency_id.to_token(),
+                Token::Uint(types::U256(amount.0)),
+                Token::Address(types::H160(to.0)),
+                Token::FixedBytes(tx_hash.0.to_vec()),
+                Token::Address(types::H160(from.0)),
+            ])
+        } else {
+            ethabi::encode_packed(&[
+                currency_id.to_token(),
+                Token::Uint(types::U256(amount.0)),
+                Token::Address(types::H160(to.0)),
+                Token::Address(types::H160(from.0)),
+                Token::FixedBytes(tx_hash.0.to_vec()),
+            ])
+        };
         Ok(OutgoingTransferEncoded {
             from,
             to,
