@@ -45,7 +45,7 @@ use sp_io::hashing::{blake2_256, keccak_256};
 use sp_std::marker::PhantomData;
 use sp_std::{
     collections::{btree_map::BTreeMap, btree_set::BTreeSet},
-    convert::TryInto,
+    convert::{identity, TryInto},
     fmt::Formatter,
     prelude::*,
 };
@@ -64,6 +64,10 @@ pub mod types;
 const ETH_NODE_URL: &str = "https://eth-ropsten.s0.dev.soranet.soramitsu.co.jp";
 const SUB_NODE_URL: &str = "http://127.0.0.1:9954";
 const CONTRACT_ADDRESS: types::H160 = types::H160(hex!("146ba2cdf6bc7df15ffcff2ac1bc83eb33d8197e"));
+const XOR_CONTRACT_ADDRESS: types::H160 =
+    types::H160(hex!("0000000000000000000000000000000000000000"));
+const VAL_CONTRACT_ADDRESS: types::H160 =
+    types::H160(hex!("0000000000000000000000000000000000000000"));
 const HTTP_REQUEST_TIMEOUT_SECS: u64 = 10;
 
 pub fn serialize<T: serde::Serialize>(t: &T) -> rpc::Value {
@@ -1240,18 +1244,20 @@ impl<T: Trait> Module<T> {
         tx_hash: H256,
         timepoint: Timepoint<T>,
     ) -> Result<(), Error<T>> {
-        Self::load_is_used(tx_hash).and_then(|is_used| {
-            ensure!(is_used, Error::<T>::RequestNotFinalizedOnSidechain);
-            let finalize_mark_as_done = Call::<T>::finalize_mark_as_done(tx_hash);
-            let call = bridge_multisig::Call::as_multi(
-                Self::bridge_account(),
-                Some(timepoint),
-                <<T as Trait>::Call>::from(finalize_mark_as_done).encode(),
-                false,
-                Weight::from(10_000_000_000_000u64),
-            );
-            Self::send_signed_transaction::<bridge_multisig::Call<T>>(call)
-        })
+        let is_used = vec![CONTRACT_ADDRESS, XOR_CONTRACT_ADDRESS, VAL_CONTRACT_ADDRESS]
+            .into_iter()
+            .filter_map(|x| Self::load_is_used(tx_hash, H160(x.0)).ok())
+            .any(identity);
+        ensure!(is_used, Error::<T>::RequestNotFinalizedOnSidechain);
+        let finalize_mark_as_done = Call::<T>::finalize_mark_as_done(tx_hash);
+        let call = bridge_multisig::Call::as_multi(
+            Self::bridge_account(),
+            Some(timepoint),
+            <<T as Trait>::Call>::from(finalize_mark_as_done).encode(),
+            false,
+            Weight::from(10_000_000_000_000u64),
+        );
+        Self::send_signed_transaction::<bridge_multisig::Call<T>>(call)
     }
 
     fn handle_offchain_request(
@@ -1502,7 +1508,7 @@ impl<T: Trait> Module<T> {
         Ok(())
     }
 
-    fn load_is_used(hash: H256) -> Result<bool, Error<T>> {
+    fn load_is_used(hash: H256, contract_address: Address) -> Result<bool, Error<T>> {
         // `used(bytes32)`
         let mut data: Vec<_> = hex!("b07c411f").to_vec();
         data.extend(&hash.0);
@@ -1510,7 +1516,7 @@ impl<T: Trait> Module<T> {
             "eth_call",
             &vec![
                 serialize(&CallRequest {
-                    to: Some(CONTRACT_ADDRESS),
+                    to: Some(types::Address::from(contract_address.0)),
                     data: Some(Bytes(data)),
                     ..Default::default()
                 }),
