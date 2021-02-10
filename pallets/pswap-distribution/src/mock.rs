@@ -107,6 +107,7 @@ impl Trait for Runtime {
     type GetDefaultSubscriptionFrequency = GetDefaultSubscriptionFrequency;
     type GetTechnicalAccountId = GetPswapDistributionAccountId;
     type EnsureDEXManager = DexManager;
+    type OnPswapBurnedAggregator = ();
 }
 
 impl tokens::Trait for Runtime {

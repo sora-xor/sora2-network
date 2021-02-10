@@ -3,7 +3,7 @@ use common::{
     self, fixed, hash,
     prelude::{Balance, SwapAmount, SwapOutcome},
     Amount, AssetId32, AssetSymbol, DEXInfo, LiquiditySourceFilter, LiquiditySourceType,
-    TechPurpose, USDT, VAL, XOR,
+    TechPurpose, PSWAP, USDT, VAL, XOR,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::{impl_outer_origin, parameter_types, weights::Weight, StorageValue};
@@ -32,6 +32,10 @@ pub fn alice() -> AccountId {
 
 pub fn assets_owner() -> AccountId {
     AccountId32::from([2u8; 32])
+}
+
+pub fn incentives_account() -> AccountId {
+    AccountId32::from([3u8; 32])
 }
 
 impl_outer_origin! {
@@ -252,11 +256,19 @@ impl liquidity_proxy::LiquidityProxyTrait<DEXId, AccountId, AssetId> for MockDEX
     }
 }
 
+parameter_types! {
+    pub const GetBaseAssetId: AssetId = XOR;
+    pub const GetPswapAssetId: AssetId = PSWAP;
+    pub const GetValAssetId: AssetId = VAL;
+}
+
 impl Trait for Runtime {
     type Event = ();
     type LiquidityProxy = MockDEXApi;
     type EnsureTradingPairExists = trading_pair::Module<Runtime>;
     type EnsureDEXManager = dex_manager::Module<Runtime>;
+    type GetPswapAssetId = GetPswapAssetId;
+    type GetValAssetId = GetValAssetId;
 }
 
 impl tokens::Trait for Runtime {
@@ -266,10 +278,6 @@ impl tokens::Trait for Runtime {
     type CurrencyId = <Runtime as assets::Trait>::AssetId;
     type OnReceived = ();
     type WeightInfo = ();
-}
-
-parameter_types! {
-    pub const GetBaseAssetId: AssetId = XOR;
 }
 
 impl currencies::Trait for Runtime {
@@ -416,6 +424,7 @@ impl ExtBuilder {
             distribution_accounts: Default::default(),
             reserves_account_id: Default::default(),
             reference_asset_id: self.reference_asset_id,
+            incentives_account_id: incentives_account(),
         }
         .assimilate_storage(&mut t)
         .unwrap();

@@ -4383,6 +4383,7 @@ dependencies = [
  "pallet-balances",
  "parity-scale-codec",
  "permissions",
+ "pswap-distribution",
  "serde",
  "sp-arithmetic",
  "sp-core",

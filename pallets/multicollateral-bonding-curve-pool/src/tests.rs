@@ -20,7 +20,7 @@ mod tests {
             let _ = bonding_curve_pool_init(Vec::new()).unwrap();
             let alice = &alice();
             TradingPair::register(Origin::signed(alice.clone()),DEXId::Polkaswap.into(), XOR, VAL).expect("Failed to register trading pair.");
-            MBCPool::initialize_pool_unchecked(XOR, VAL).expect("Failed to initialize pool.");
+            MBCPool::initialize_pool_unchecked(VAL).expect("Failed to initialize pool.");
 
             // base case for buy
             assert_eq!(
@@ -77,7 +77,7 @@ mod tests {
             let _distribution_accounts = bonding_curve_pool_init(Vec::new()).unwrap();
             let alice = alice();
             TradingPair::register(Origin::signed(alice.clone()) ,DEXId::Polkaswap.into(), XOR, VAL).expect("Failed to register trading pair.");
-            MBCPool::initialize_pool_unchecked(XOR, VAL).expect("Failed to initialize pool.");
+            MBCPool::initialize_pool_unchecked(VAL).expect("Failed to initialize pool.");
             // add some reserves
             MBCPool::exchange(&alice, &alice, &DEXId::Polkaswap, &VAL, &XOR, SwapAmount::with_desired_input(1u32.into(), 0u32.into())).expect("Failed to buy XOR.");
 
@@ -262,7 +262,7 @@ mod tests {
             let _distribution_accounts_array = distribution_accounts.xor_distribution_accounts_as_array();
             let alice = &alice();
             TradingPair::register(Origin::signed(alice.clone()),DEXId::Polkaswap.into(), XOR, VAL).expect("Failed to register trading pair.");
-            MBCPool::initialize_pool_unchecked(XOR, VAL).expect("Failed to initialize pool.");
+            MBCPool::initialize_pool_unchecked(VAL).expect("Failed to initialize pool.");
             assert_eq!(
                 MBCPool::exchange(
                     alice,
@@ -303,7 +303,7 @@ mod tests {
         ext.execute_with(|| {
             MockDEXApi::init().unwrap();
             TradingPair::register(Origin::signed(alice()),DEXId::Polkaswap.into(), XOR, VAL).expect("Failed to register trading pair.");
-            MBCPool::initialize_pool_unchecked(XOR, VAL).expect("Failed to initialize pool.");
+            MBCPool::initialize_pool_unchecked(VAL).expect("Failed to initialize pool.");
             let total_issuance = Assets::total_issuance(&XOR).unwrap();
             let reserve_amount_expected = Balance(
                 (FixedWrapper::from(total_issuance.0) * MBCPool::reference_sell_price_for_one_main_asset(&XOR)
@@ -375,7 +375,7 @@ mod tests {
             MockDEXApi::init().unwrap();
             let total_issuance = Assets::total_issuance(&XOR).unwrap();
             TradingPair::register(Origin::signed(alice()),DEXId::Polkaswap.into(), XOR, VAL).expect("Failed to register trading pair.");
-            MBCPool::initialize_pool_unchecked(XOR, VAL).expect("Failed to initialize pool.");
+            MBCPool::initialize_pool_unchecked(VAL).expect("Failed to initialize pool.");
 
             let pool_reference_amount = Balance(
                 (FixedWrapper::from(total_issuance.0) * MBCPool::reference_sell_price_for_one_main_asset(&XOR)
@@ -447,7 +447,7 @@ mod tests {
             MockDEXApi::init().unwrap();
             let _ = bonding_curve_pool_init(vec![]).unwrap();
             TradingPair::register(Origin::signed(alice()),DEXId::Polkaswap.into(), XOR, VAL).expect("Failed to register trading pair.");
-            MBCPool::initialize_pool_unchecked(XOR, VAL).expect("Failed to initialize pool.");
+            MBCPool::initialize_pool_unchecked(VAL).expect("Failed to initialize pool.");
             let alice = &alice();
 
             assert_err!(
@@ -483,7 +483,7 @@ mod tests {
             let alice = &alice();
             let _ = bonding_curve_pool_init(Vec::new()).unwrap();
             TradingPair::register(Origin::signed(alice.clone()),DEXId::Polkaswap.into(), XOR, VAL).expect("Failed to register trading pair.");
-            MBCPool::initialize_pool_unchecked(XOR, VAL).expect("Failed to initialize pool.");
+            MBCPool::initialize_pool_unchecked(VAL).expect("Failed to initialize pool.");
             let amount = 124_u32; // TODO: investigate strange precision error dependency on value
             let parts = 2;
 

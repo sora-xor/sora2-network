@@ -24,6 +24,7 @@ dex-api = { path = "../dex-api", default-features = false }
 permissions = { path = "../permissions", default-features = false }
 liquidity-proxy = { path = "../liquidity-proxy", default-features = false }
 bonding-curve-pool = { path = "../bonding-curve-pool", default-features = false }
+pswap-distribution = { path = "../pswap-distribution", default-features = false }
 
 [dev-dependencies]
 sp-core = { version = "2.0.0", default-features = false }
@@ -52,4 +53,5 @@ std = [
     'dex-api/std',
     'permissions/std',
     'bonding-curve-pool/std',
+    'pswap-distribution/std',
 ]

@@ -31,6 +31,16 @@ type CurrencyIdOf<T> = <T as tokens::Trait>::CurrencyId;
 type Assets<T> = assets::Module<T>;
 type System<T> = frame_system::Module<T>;
 
+pub trait OnPswapBurned {
+    fn on_pswap_burned(amount: Balance);
+}
+
+impl OnPswapBurned for () {
+    fn on_pswap_burned(_amount: Balance) {
+        // do nothing
+    }
+}
+
 pub trait Trait: common::Trait + assets::Trait + technical::Trait {
     type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
     type GetIncentiveAssetId: Get<Self::AssetId>;
@@ -43,6 +53,7 @@ pub trait Trait: common::Trait + assets::Trait + technical::Trait {
     type GetTechnicalAccountId: Get<Self::AccountId>;
     type GetDefaultSubscriptionFrequency: Get<Self::BlockNumber>;
     type EnsureDEXManager: EnsureDEXManager<Self::DEXId, Self::AccountId, DispatchError>;
+    type OnPswapBurnedAggregator: OnPswapBurned;
 }
 
 decl_storage! {
@@ -371,6 +382,14 @@ impl<T: Trait> Module<T> {
                 .get()
                 .map_err(|_| Error::<T>::CalculationError)?,
         );
+
+        let incentive_to_burn_unwrapped: Balance = incentive_to_burn
+            .get()
+            .map_err(|_| Error::<T>::CalculationError)?
+            .into();
+        if !incentive_to_burn_unwrapped.is_zero() {
+            T::OnPswapBurnedAggregator::on_pswap_burned(incentive_to_burn_unwrapped);
+        }
 
         let Balance(mut claimable_incentives) =
             assets::Module::<T>::free_balance(&incentive_asset_id, &tech_account_id)?;

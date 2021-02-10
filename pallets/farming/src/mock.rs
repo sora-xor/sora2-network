@@ -257,6 +257,7 @@ impl pswap_distribution::Trait for Testtime {
     type GetDefaultSubscriptionFrequency = GetDefaultSubscriptionFrequency;
     type GetTechnicalAccountId = GetPswapDistributionAccountId;
     type EnsureDEXManager = ();
+    type OnPswapBurnedAggregator = ();
 }
 
 impl Trait for Testtime {
