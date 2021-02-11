@@ -524,47 +524,6 @@ mod tests {
                     },
                 );
             assert_eq!(whole_outcome, cumulative_outcome);
-
-
-            // TODO: linear additivity is inapplicable to curve used in sell, how else this can be checked?
-
-            // let whole_outcome = with_transaction(|| {
-            //     let whole_outcome = MBCPool::exchange(
-            //         alice,
-            //         alice,
-            //         &DEXId::Polkaswap.into(),
-            //         &XOR,
-            //         &VAL,
-            //         SwapAmount::with_desired_input(cumulative_outcome.amount, Balance::zero()),
-            //     )
-            //     .unwrap();
-            //     TransactionOutcome::Rollback(whole_outcome)
-            // });
-
-            // let cumulative_outcome = (0..parts)
-            //     .into_iter()
-            //     .map(|_i| {
-            //         MBCPool::exchange(
-            //             alice,
-            //             alice,
-            //             &DEXId::Polkaswap.into(),
-            //             &XOR,
-            //             &VAL,
-            //             SwapAmount::with_desired_input(
-            //                 cumulative_outcome.amount / Balance::from(parts),
-            //                 Balance::zero(),
-            //             ),
-            //         )
-            //         .unwrap()
-            //     })
-            //     .fold(
-            //         SwapOutcome::new(Balance::zero(), Balance::zero()),
-            //         |acc, x| SwapOutcome {
-            //             amount: acc.amount + x.amount,
-            //             fee: acc.fee + x.fee,
-            //         },
-            //     );
-            // assert_eq!(whole_outcome, cumulative_outcome);
         });
     }
 }

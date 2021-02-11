@@ -25,7 +25,7 @@ use sp_arithmetic::traits::{One, Zero};
 use sp_runtime::{traits::Saturating, DispatchError, DispatchResult};
 use sp_std::collections::btree_set::BTreeSet;
 
-pub trait Trait: common::Trait + assets::Trait + technical::Trait {
+pub trait Trait: common::Trait + assets::Trait + technical::Trait + trading_pair::Trait {
     type Event: From<Event<Self>> + Into<<Self as frame_system::Trait>::Event>;
     type LiquidityProxy: LiquidityProxyTrait<Self::DEXId, Self::AccountId, Self::AssetId>;
     type EnsureDEXManager: EnsureDEXManager<Self::DEXId, Self::AccountId, DispatchError>;
@@ -125,13 +125,13 @@ decl_module! {
 
         #[weight = 0]
         fn initialize_pool(origin, collateral_asset_id: T::AssetId) -> DispatchResult {
-            let _who = T::EnsureDEXManager::ensure_can_manage(&DEXId::Polkaswap.into(), origin, ManagementMode::Private)?;
+            let _who = <T as Trait>::EnsureDEXManager::ensure_can_manage(&DEXId::Polkaswap.into(), origin, ManagementMode::Private)?;
             Self::initialize_pool_unchecked(collateral_asset_id)
         }
 
         #[weight = 0]
         fn set_reference_asset(origin, reference_asset_id: T::AssetId) -> DispatchResult {
-            let _who = T::EnsureDEXManager::ensure_can_manage(&DEXId::Polkaswap.into(), origin, ManagementMode::Private)?;
+            let _who = <T as Trait>::EnsureDEXManager::ensure_can_manage(&DEXId::Polkaswap.into(), origin, ManagementMode::Private)?;
             ReferenceAssetId::<T>::put(reference_asset_id);
             Ok(())
         }
@@ -201,13 +201,22 @@ impl<T: Trait> BuyMainAsset<T> {
             let collateral_asset_id = &self.collateral_asset_id;
             let (input_amount, output_amount) =
                 Module::<T>::decide_buy_amounts(main_asset_id, collateral_asset_id, self.amount)?;
+            let reserves_expected = Module::<T>::ideal_reserves_reference_price()?;
             Technical::<T>::transfer_in(
                 collateral_asset_id,
                 &self.from_account_id,
                 &self.reserves_tech_account_id,
                 input_amount,
             )?;
-            let free_amount = input_amount * Balance(fixed!(0.2));
+            let actual_reserves =
+                Module::<T>::actual_reserves_reference_price(&self.reserves_account_id)?;
+            let free_amount = if actual_reserves > reserves_expected {
+                let amount_free_coefficient: Balance = fixed!(0.2);
+                (actual_reserves - reserves_expected) * amount_free_coefficient
+                    / Module::<T>::reference_price(collateral_asset_id)?
+            } else {
+                Balance::zero()
+            };
             Ok((free_amount, (input_amount, output_amount)))
         })
     }
@@ -334,6 +343,12 @@ impl<T: Trait> Module<T> {
                 &DEXId::Polkaswap.into(),
                 &T::GetBaseAssetId::get(),
                 &collateral_asset_id,
+            )?;
+            trading_pair::Module::<T>::enable_source_for_trading_pair(
+                &DEXId::Polkaswap.into(),
+                &T::GetBaseAssetId::get(),
+                &collateral_asset_id,
+                LiquiditySourceType::MulticollateralBondingCurvePool,
             )?;
             if Self::collateral_is_incentivised(&collateral_asset_id) {
                 IncentivisedCurrenciesNum::mutate(|num| *num += 1)
