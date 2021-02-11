@@ -400,7 +400,7 @@ fn testnet_genesis(
     initial_assets_owner: AccountId,
 ) -> GenesisConfig {
     let initial_balance = 1u128 << 60;
-    let initial_staking: Balance = (initial_balance / 2).into();
+    let initial_staking: Balance = (initial_balance >> 44).into();
     let xor_fee_tech_account_id = TechAccountId::Generic(
         xor_fee::TECH_ACCOUNT_PREFIX.to_vec(),
         xor_fee::TECH_ACCOUNT_MAIN.to_vec(),
