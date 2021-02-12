@@ -67,7 +67,7 @@ decl_storage! {
         pub ClaimableShares get(fn claimable_shares): Fixed;
 
         /// This is needed for farm id 0, now it is hardcoded, in future it will be resolved and
-        /// used in move convinient way.
+        /// used in a more convenient way.
         pub BurnedPswapDedicatedForOtherPallets get(fn burned_pswap_dedicated_for_other_pallets): Fixed;
     }
     add_extra_genesis {
