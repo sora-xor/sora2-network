@@ -7,8 +7,8 @@ use framenode_runtime::{self, opaque::Block, Runtime, RuntimeApi};
 use codec::Encode;
 use framenode_runtime::eth_bridge;
 use framenode_runtime::eth_bridge::{
-    PeerConfig, STORAGE_ETH_NODE_CREDENTIALS_KEY, STORAGE_ETH_NODE_URL_KEY,
-    STORAGE_PEER_SECRET_KEY, STORAGE_SUB_NODE_URL_KEY,
+    PeerConfig, STORAGE_ETH_NODE_PARAMS, STORAGE_NETWORK_IDS_KEY, STORAGE_PEER_SECRET_KEY,
+    STORAGE_SUB_NODE_URL_KEY,
 };
 use grandpa::{self, FinalityProofProvider as GrandpaFinalityProofProvider};
 use sc_client_api::{Backend, ExecutorProvider, RemoteBackend};
@@ -21,6 +21,7 @@ use sp_core::traits::BareCryptoStore;
 use sp_core::{Pair, Public};
 use sp_inherents::InherentDataProviders;
 use sp_runtime::traits::Block as BlockT;
+use std::collections::BTreeSet;
 use std::fs::File;
 use std::sync::Arc;
 
@@ -113,12 +114,27 @@ pub fn new_partial(
         ));
         let peer_config: PeerConfig<<Runtime as eth_bridge::Trait>::NetworkId> =
             serde_json::from_reader(&file).expect("Invalid ethereum bridge node config.");
+        let mut network_ids = BTreeSet::new();
         for (net_id, params) in peer_config.networks {
             // TODO: optimize storage key construction.
             let string = format!("{}-{:?}", STORAGE_ETH_NODE_PARAMS, net_id);
             storage.set(STORAGE_PREFIX, string.as_bytes(), &params.encode());
+            network_ids.insert(net_id);
         }
-        // TODO: STORAGE_NETWORK_IDS_KEY
+        storage.set(
+            STORAGE_PREFIX,
+            STORAGE_NETWORK_IDS_KEY,
+            &network_ids.encode(),
+        );
+        let rpc_addr = config
+            .rpc_http
+            .as_ref()
+            .expect("HTTP RPC should be enabled for ethereum bridge. Please enable it via `--rpc-port <port>`.");
+        storage.set(
+            STORAGE_PREFIX,
+            STORAGE_SUB_NODE_URL_KEY,
+            &format!("http://{}", rpc_addr).encode(),
+        );
         log::info!("Ethereum bridge peer initialized");
     }
 

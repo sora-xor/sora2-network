@@ -7,7 +7,7 @@ extern crate jsonrpc_core as rpc;
 use crate::contract::FUNCTIONS;
 use crate::types::{Bytes, CallRequest, Log, Transaction, TransactionReceipt};
 use alloc::string::String;
-use codec::{Decode, Encode};
+use codec::{Decode, Encode, FullCodec};
 use common::{prelude::Balance, AssetSymbol, BalancePrecision, Fixed};
 use core::{convert::TryFrom, fmt, iter, line, stringify};
 use ethabi::{ParamType, Token};
@@ -28,7 +28,7 @@ use frame_support::{
         KeyTypeId, MultiSigner, Percent,
     },
     weights::{Pays, Weight},
-    Parameter, RuntimeDebug,
+    IterableStorageDoubleMap, Parameter, RuntimeDebug, StorageDoubleMap,
 };
 use frame_system::{
     ensure_root, ensure_signed,
@@ -70,15 +70,9 @@ const XOR_CONTRACT_ADDRESS: types::H160 =
     types::H160(hex!("0000000000000000000000000000000000000000"));
 const VAL_CONTRACT_ADDRESS: types::H160 =
     types::H160(hex!("0000000000000000000000000000000000000000"));
+pub const PSWAP_CONTRACT_ADDRESS: H160 = H160(hex!("0000000000000000000000000000000000000000"));
+
 const HTTP_REQUEST_TIMEOUT_SECS: u64 = 10;
-
-pub fn serialize<T: serde::Serialize>(t: &T) -> rpc::Value {
-    serde_json::to_value(t).expect("Types never fail to serialize.")
-}
-
-pub fn to_string<T: serde::Serialize>(request: &T) -> String {
-    serde_json::to_string(&request).expect("String serialization never fails.")
-}
 
 pub const TECH_ACCOUNT_PREFIX: &[u8] = b"bridge";
 pub const TECH_ACCOUNT_MAIN: &[u8] = b"main";
@@ -90,10 +84,6 @@ pub const STORAGE_SUB_NODE_URL_KEY: &[u8] = b"eth-bridge-ocw::sub-node-url";
 pub const STORAGE_PEER_SECRET_KEY: &[u8] = b"eth-bridge-ocw::secret-key";
 pub const STORAGE_ETH_NODE_PARAMS: &str = "eth-bridge-ocw::node-params";
 pub const STORAGE_NETWORK_IDS_KEY: &[u8] = b"eth-bridge-ocw::network-ids";
-
-pub const PSWAP_CONTRACT_ADDRESS: H160 = H160(hex!("0000000000000000000000000000000000000000"));
-// pub const XOR_CONTRACT_ADDRESS: H160 = H160(hex!("0000000000000000000000000000000000000000"));
-// pub const VAL_CONTRACT_ADDRESS: H160 = H160(hex!("0000000000000000000000000000000000000000"));
 
 type AssetIdOf<T> = <T as assets::Trait>::AssetId;
 type Timepoint<T> = bridge_multisig::Timepoint<<T as frame_system::Trait>::BlockNumber>;
@@ -442,7 +432,8 @@ impl<T: Trait> OffchainRequest<T> {
                 match request.kind {
                     IncomingRequestKind::MarkAsDone => {
                         let request_status =
-                            RequestStatuses::get(request.hash).ok_or(Error::<T>::UnknownRequest)?;
+                            RequestStatuses::<T>::get(request.network_id, request.hash)
+                                .ok_or(Error::<T>::UnknownRequest)?;
                         ensure!(
                             request_status == RequestStatus::ApprovesReady,
                             Error::<T>::RequestIsNotReady
@@ -575,14 +566,14 @@ decl_storage! {
     trait Store for Module<T: Trait> as EthBridge {
         pub RequestsQueue get(fn requests_queue): map hasher(twox_64_concat) T::NetworkId => Vec<OffchainRequest<T>>;
 
-        pub IncomingRequests get(fn incoming_requests): map hasher(identity) H256 => Option<IncomingRequest<T>>;
+        pub IncomingRequests get(fn incoming_requests): double_map hasher(twox_64_concat) T::NetworkId, hasher(identity) H256 => Option<IncomingRequest<T>>;
         pub PendingIncomingRequests get(fn pending_incoming_requests): map hasher(twox_64_concat) T::NetworkId => BTreeSet<H256>;
 
-        pub Request get(fn request): map hasher(identity) H256 => Option<OffchainRequest<T>>;
-        pub RequestStatuses get(fn request_status): map hasher(identity) H256 => Option<RequestStatus>;
-        pub RequestSubmissionHeight get(fn request_submission_height): map hasher(identity) H256 => T::BlockNumber;
-        RequestApprovals get(fn approvals): map hasher(identity) H256 => BTreeSet<SignatureParams>;
-        AccountRequests get(fn account_requests): map hasher(blake2_128_concat) T::AccountId => Vec<H256>; // TODO: should be a linked-set
+        pub Request get(fn request): double_map hasher(twox_64_concat) T::NetworkId, hasher(identity) H256 => Option<OffchainRequest<T>>;
+        pub RequestStatuses get(fn request_status): double_map hasher(twox_64_concat) T::NetworkId, hasher(identity) H256 => Option<RequestStatus>;
+        pub RequestSubmissionHeight get(fn request_submission_height): double_map hasher(twox_64_concat) T::NetworkId, hasher(identity) H256 => T::BlockNumber;
+        RequestApprovals get(fn approvals): double_map hasher(twox_64_concat) T::NetworkId, hasher(identity) H256 => BTreeSet<SignatureParams>;
+        AccountRequests get(fn account_requests): map hasher(blake2_128_concat) T::AccountId => Vec<(T::NetworkId, H256)>; // TODO: should be a linked-set
 
         RegisteredAsset get(fn registered_asset): double_map hasher(twox_64_concat) T::NetworkId, hasher(identity) T::AssetId => Option<AssetKind>;
         RegisteredSidechainAsset get(fn registered_sidechain_asset): double_map hasher(twox_64_concat) T::NetworkId, hasher(blake2_128_concat) Address => Option<T::AssetId>;
@@ -857,13 +848,13 @@ decl_module! {
             let hash = match result {
                 Ok(hash) => {
                     debug::warn!("Incoming request finalized {:?}", hash);
-                    RequestStatuses::insert(hash, RequestStatus::Done);
+                    RequestStatuses::<T>::insert(network_id, hash, RequestStatus::Done);
                     Self::deposit_event(RawEvent::IncomingRequestFinalized(hash));
                     hash
                 }
                 Err((hash, e)) => {
                     debug::error!("Incoming request finalization failed {:?} {:?}", hash, e);
-                    RequestStatuses::insert(hash, RequestStatus::Failed);
+                    RequestStatuses::<T>::insert(network_id, hash, RequestStatus::Failed);
                     Self::deposit_event(RawEvent::IncomingRequestFinalizationFailed(hash));
                     hash
                 }
@@ -926,7 +917,7 @@ decl_module! {
             incoming_request.prepare()?;
             PendingIncomingRequests::<T>::mutate(net_id, |transfers| transfers.insert(tx_hash.clone()));
             Self::remove_request_from_queue(net_id, &tx_hash);
-            IncomingRequests::<T>::insert(&tx_hash, incoming_request);
+            IncomingRequests::<T>::insert(net_id, &tx_hash, incoming_request);
         }
 
         #[weight = (0, Pays::No)]
@@ -952,7 +943,7 @@ decl_module! {
             }
             debug::info!("Verified request approve {:?}", request_encoded);
             let hash = request.hash();
-            let mut approvals = RequestApprovals::get(&hash);
+            let mut approvals = RequestApprovals::<T>::get(net_id, &hash);
             let pending_peers_len = if PendingPeer::<T>::get(net_id).is_some() {
                 1
             } else {
@@ -960,19 +951,19 @@ decl_module! {
             };
             let need_sigs = majority(Self::peers(net_id).len()) + pending_peers_len;
             approvals.insert(signature_params);
-            RequestApprovals::insert(&hash, &approvals);
-            let current_status = RequestStatuses::get(&hash).unwrap_or(RequestStatus::Pending);
+            RequestApprovals::<T>::insert(net_id, &hash, &approvals);
+            let current_status = RequestStatuses::<T>::get(net_id, &hash).unwrap_or(RequestStatus::Pending);
             if current_status == RequestStatus::Pending && approvals.len() == need_sigs {
                 if let Err(err) = request.finalize() {
                     debug::error!("Outgoing request finalization failed: {:?}", err);
-                    RequestStatuses::insert(hash, RequestStatus::Failed);
+                    RequestStatuses::<T>::insert(net_id, hash, RequestStatus::Failed);
                     Self::deposit_event(RawEvent::RequestFinalizationFailed(hash));
                     if let Err(e) = request.cancel() {
                         debug::error!("Request cancellation failed: {:?}, {:?}", e, request)
                     }
                 } else {
                     debug::debug!("Outgoing request finalized {:?}", hash);
-                    RequestStatuses::insert(hash, RequestStatus::ApprovesReady);
+                    RequestStatuses::<T>::insert(net_id, hash, RequestStatus::ApprovesReady);
                     Self::deposit_event(RawEvent::ApprovalsCollected(
                         request_encoded,
                         approvals.clone(),
@@ -989,9 +980,9 @@ decl_module! {
             let author = ensure_signed(origin)?;
             let bridge_account_id = get_bridge_account::<T>(network_id);
             ensure!(author == bridge_account_id, Error::<T>::Forbidden);
-            let request_status = RequestStatuses::get(request_hash).ok_or(Error::<T>::UnknownRequest)?;
+            let request_status = RequestStatuses::<T>::get(network_id, request_hash).ok_or(Error::<T>::UnknownRequest)?;
             ensure!(request_status == RequestStatus::ApprovesReady, Error::<T>::RequestIsNotReady);
-            RequestStatuses::insert(request_hash, RequestStatus::Done);
+            RequestStatuses::<T>::insert(network_id, request_hash, RequestStatus::Done);
         }
 
         fn offchain_worker(block_number: T::BlockNumber) {
@@ -1083,7 +1074,7 @@ impl<T: Trait> Decoder<T> {
                     .and_then(|x| x.into_uint())
                     .ok_or(Error::<T>::InvalidUint)?,
             )
-            .map_err(|_| Error::<T>::InvalidBalance)?, // amount should be of size u128
+            .map_err(|_| Error::<T>::InvalidBalance)?,
         ))
     }
 
@@ -1172,23 +1163,23 @@ impl<T: Trait> Module<T> {
             BridgeAccount::<T>::get(net_id).is_some(),
             Error::<T>::UnknownNetwork
         );
-        let can_resubmit = RequestStatuses::get(&hash)
+        let can_resubmit = RequestStatuses::<T>::get(net_id, &hash)
             .map(|status| status == RequestStatus::Failed)
             .unwrap_or(false);
         if !can_resubmit {
             ensure!(
-                Request::<T>::get(&hash).is_none(),
+                Request::<T>::get(net_id, &hash).is_none(),
                 Error::<T>::DuplicatedRequest
             );
         }
         request.validate()?;
         request.prepare()?;
-        AccountRequests::<T>::mutate(&request.author(), |vec| vec.push(hash));
-        Request::<T>::insert(&hash, request.clone());
+        AccountRequests::<T>::mutate(&request.author(), |vec| vec.push((net_id, hash)));
+        Request::<T>::insert(net_id, &hash, request.clone());
         RequestsQueue::<T>::mutate(net_id, |v| v.push(request));
-        RequestStatuses::insert(&hash, RequestStatus::Pending);
+        RequestStatuses::<T>::insert(net_id, &hash, RequestStatus::Pending);
         let block_number = frame_system::Module::<T>::current_block_number();
-        RequestSubmissionHeight::<T>::insert(&hash, block_number);
+        RequestSubmissionHeight::<T>::insert(net_id, &hash, block_number);
         Self::deposit_event(RawEvent::RequestRegistered(hash));
         Ok(())
     }
@@ -1325,9 +1316,11 @@ impl<T: Trait> Module<T> {
             .flatten()
             .unwrap_or_default();
         for hash in <Self as Store>::PendingIncomingRequests::get(network_id) {
-            let request: IncomingRequest<T> = <Self as Store>::IncomingRequests::get(&hash)
-                .expect("request are never removed; qed");
-            let request_submission_height: T::BlockNumber = Self::request_submission_height(&hash);
+            let request: IncomingRequest<T> =
+                <Self as Store>::IncomingRequests::get(network_id, &hash)
+                    .expect("request are never removed; qed");
+            let request_submission_height: T::BlockNumber =
+                Self::request_submission_height(network_id, &hash);
             let need_to_approve = match approved.get(&hash) {
                 Some(height) => &request_submission_height > height,
                 None => true,
@@ -1413,7 +1406,7 @@ impl<T: Trait> Module<T> {
             .map_err(|_| Error::<T>::InvalidFunctionInput)?;
         let hash = parse_hash_from_call::<T>(tokens, fun_meta.tx_hash_arg_pos)?;
         let oc_request: OffchainRequest<T> =
-            crate::Request::<T>::get(hash).ok_or(Error::<T>::Other)?;
+            crate::Request::<T>::get(pre_request.network_id, hash).ok_or(Error::<T>::Other)?;
         let request = match oc_request {
             OffchainRequest::Outgoing(request, _) => request,
             OffchainRequest::Incoming(..) => fail!(Error::<T>::Other),
@@ -1528,7 +1521,7 @@ impl<T: Trait> Module<T> {
         for request in <Self as Store>::RequestsQueue::get(network_id) {
             let request_hash = request.hash();
             let request_submission_height: T::BlockNumber =
-                Self::request_submission_height(&request_hash);
+                Self::request_submission_height(network_id, &request_hash);
             if finalized_height < request_submission_height {
                 continue;
             }
@@ -2058,50 +2051,108 @@ impl<T: Trait> Module<T> {
     /// Get requests data and their statuses by hash.
     pub fn get_requests(
         hashes: &[H256],
+        network_id: Option<T::NetworkId>,
     ) -> Result<Vec<(OffchainRequest<T>, RequestStatus)>, DispatchError> {
         Ok(hashes
             .iter()
             .take(Self::ITEMS_LIMIT)
-            .filter_map(|hash| Request::get(hash).zip(Self::request_status(hash)))
+            .flat_map(|hash| {
+                if let Some(net_id) = network_id {
+                    Request::<T>::get(net_id, hash)
+                        .zip(Self::request_status(net_id, hash))
+                        .map(|x| vec![x])
+                        .unwrap_or(Vec::new())
+                } else {
+                    Request::<T>::iter()
+                        .filter(|(_, h, _)| h == hash)
+                        .map(|(net_id, hash, v)| {
+                            (
+                                v,
+                                Self::request_status(net_id, hash)
+                                    .unwrap_or(RequestStatus::Pending),
+                            )
+                        })
+                        .collect()
+                }
+            })
             .collect())
     }
 
     /// Get approved outgoing requests data and proofs.
     pub fn get_approved_requests(
         hashes: &[H256],
+        network_id: Option<T::NetworkId>,
     ) -> Result<Vec<(OutgoingRequestEncoded, Vec<SignatureParams>)>, DispatchError> {
         let items = hashes
             .iter()
             .take(Self::ITEMS_LIMIT)
             .filter_map(|hash| {
-                if Self::request_status(hash)? == RequestStatus::ApprovesReady {
-                    let request: OffchainRequest<T> = Request::get(hash)?;
-                    match request {
-                        OffchainRequest::Outgoing(request, hash) => {
-                            let encoded = request
-                                .to_eth_abi(hash)
-                                .expect("this conversion was already tested; qed");
-                            Self::get_approvals(&[hash.clone()])
-                                .ok()?
-                                .pop()
-                                .map(|approvals| (encoded, approvals))
+                if let Some(net_id) = network_id {
+                    if Self::request_status(net_id, hash)? == RequestStatus::ApprovesReady {
+                        let request: OffchainRequest<T> = Request::get(net_id, hash)?;
+                        match request {
+                            OffchainRequest::Outgoing(request, hash) => {
+                                let encoded = request
+                                    .to_eth_abi(hash)
+                                    .expect("this conversion was already tested; qed");
+                                Self::get_approvals(&[hash.clone()], Some(net_id))
+                                    .ok()?
+                                    .pop()
+                                    .map(|approvals| vec![(encoded, approvals)])
+                            }
+                            OffchainRequest::Incoming(_) => None,
                         }
-                        OffchainRequest::Incoming(_) => None,
+                    } else {
+                        None
                     }
                 } else {
-                    None
+                    Some(
+                        RequestStatuses::<T>::iter()
+                            .filter(|(_, _hash, v)| v == &RequestStatus::ApprovesReady)
+                            .filter_map(|(net_id, hash, _v)| {
+                                let request: OffchainRequest<T> = Request::get(net_id, hash)?;
+                                match request {
+                                    OffchainRequest::Outgoing(request, hash) => {
+                                        let encoded = request
+                                            .to_eth_abi(hash)
+                                            .expect("this conversion was already tested; qed");
+                                        Self::get_approvals(&[hash.clone()], Some(net_id))
+                                            .ok()?
+                                            .pop()
+                                            .map(|approvals| (encoded, approvals))
+                                    }
+                                    OffchainRequest::Incoming(_) => None,
+                                }
+                            })
+                            .collect(),
+                    )
                 }
             })
+            .flatten()
             .collect();
         Ok(items)
     }
 
     /// Get requests approvals.
-    pub fn get_approvals(hashes: &[H256]) -> Result<Vec<Vec<SignatureParams>>, DispatchError> {
+    pub fn get_approvals(
+        hashes: &[H256],
+        network_id: Option<T::NetworkId>,
+    ) -> Result<Vec<Vec<SignatureParams>>, DispatchError> {
         Ok(hashes
             .iter()
             .take(Self::ITEMS_LIMIT)
-            .map(|hash| RequestApprovals::get(hash).into_iter().collect())
+            .flat_map(|hash| {
+                if let Some(net_id) = network_id {
+                    vec![RequestApprovals::<T>::get(net_id, hash)
+                        .into_iter()
+                        .collect()]
+                } else {
+                    RequestApprovals::<T>::iter()
+                        .filter(|(_, h, _)| h == hash)
+                        .map(|(_, _, v)| v.into_iter().collect::<Vec<_>>())
+                        .collect()
+                }
+            })
             .collect())
     }
 
@@ -2109,27 +2160,55 @@ impl<T: Trait> Module<T> {
     pub fn get_account_requests(
         account: &T::AccountId,
         status_filter: Option<RequestStatus>,
-    ) -> Result<Vec<H256>, DispatchError> {
-        let mut requests: Vec<H256> = Self::account_requests(account);
+    ) -> Result<Vec<(T::NetworkId, H256)>, DispatchError> {
+        let mut requests: Vec<(T::NetworkId, H256)> = Self::account_requests(account);
         if let Some(filter) = status_filter {
-            requests.retain(|x| Self::request_status(x).unwrap() == filter)
+            requests.retain(|(net_id, h)| Self::request_status(net_id, h).unwrap() == filter)
         }
         Ok(requests)
     }
 
     /// Get registered assets and tokens.
     pub fn get_registered_assets(
+        network_id: Option<T::NetworkId>,
     ) -> Result<Vec<(AssetKind, AssetIdOf<T>, Option<H160>)>, DispatchError> {
-        Ok(RegisteredAsset::<T>::iter()
-            .map(|(network_id, asset_id, kind)| {
+        Ok(iter_storage::<RegisteredAsset<T>, _, _, _, _, _>(
+            network_id,
+            |(network_id, asset_id, kind)| {
                 let token_addr =
                     RegisteredSidechainToken::<T>::get(network_id, &asset_id).map(|x| H160(x.0));
                 (kind, asset_id, token_addr)
-            })
-            .collect())
+            },
+        ))
     }
 }
 
 pub fn get_bridge_account<T: Trait>(network_id: T::NetworkId) -> T::AccountId {
     crate::BridgeAccount::<T>::get(network_id).expect("networks can't be removed; qed")
+}
+
+pub fn serialize<T: serde::Serialize>(t: &T) -> rpc::Value {
+    serde_json::to_value(t).expect("Types never fail to serialize.")
+}
+
+pub fn to_string<T: serde::Serialize>(request: &T) -> String {
+    serde_json::to_string(&request).expect("String serialization never fails.")
+}
+
+fn iter_storage<S, K1, K2, V, F, O>(k1: Option<K1>, f: F) -> Vec<O>
+where
+    K1: FullCodec + Copy,
+    K2: FullCodec,
+    V: FullCodec,
+    S: IterableStorageDoubleMap<K1, K2, V>,
+    F: FnMut((K1, K2, V)) -> O,
+{
+    if let Some(k1) = k1 {
+        S::iter_prefix(k1)
+            .map(|(k2, v)| (k1, k2, v))
+            .map(f)
+            .collect()
+    } else {
+        S::iter().map(f).collect()
+    }
 }

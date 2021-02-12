@@ -675,11 +675,18 @@ impl bridge_multisig::Trait for Runtime {
     type WeightInfo = ();
 }
 
+parameter_types! {
+    pub const EthNetworkId: u32 = 0;
+}
+
+pub type NetworkId = u32;
+
 impl eth_bridge::Trait for Runtime {
     type Event = Event;
     type Call = Call;
     type PeerId = eth_bridge::crypto::TestAuthId;
-    type NetworkId = u64;
+    type NetworkId = NetworkId;
+    type GetEthNetworkId = EthNetworkId;
 }
 
 impl faucet::Trait for Runtime {
@@ -1076,10 +1083,12 @@ impl_runtime_apis! {
             OffchainRequest<Runtime>,
             RequestStatus,
             OutgoingRequestEncoded,
+            NetworkId,
         > for Runtime
     {
         fn get_requests(
             hashes: Vec<sp_core::H256>,
+            network_id: Option<NetworkId>
         ) -> Result<
             Vec<(
                 OffchainRequest<Runtime>,
@@ -1087,11 +1096,12 @@ impl_runtime_apis! {
             )>,
             DispatchError,
         > {
-            EthBridge::get_requests(&hashes)
+            EthBridge::get_requests(&hashes, network_id)
         }
 
         fn get_approved_requests(
             hashes: Vec<sp_core::H256>,
+            network_id: Option<NetworkId>
         ) -> Result<
             Vec<(
                 OutgoingRequestEncoded,
@@ -1099,22 +1109,24 @@ impl_runtime_apis! {
             )>,
             DispatchError,
         > {
-            EthBridge::get_approved_requests(&hashes)
+            EthBridge::get_approved_requests(&hashes, network_id)
         }
 
         fn get_approvals(
             hashes: Vec<sp_core::H256>,
+            network_id: Option<NetworkId>
         ) -> Result<Vec<Vec<SignatureParams>>, DispatchError> {
-            EthBridge::get_approvals(&hashes)
+            EthBridge::get_approvals(&hashes, network_id)
         }
 
-        fn get_account_requests(account_id: AccountId, status_filter: Option<RequestStatus>) -> Result<Vec<sp_core::H256>, DispatchError> {
+        fn get_account_requests(account_id: AccountId, status_filter: Option<RequestStatus>) -> Result<Vec<(NetworkId, sp_core::H256)>, DispatchError> {
             EthBridge::get_account_requests(&account_id, status_filter)
         }
 
         fn get_registered_assets(
+            network_id: Option<NetworkId>
         ) -> Result<Vec<(AssetKind, AssetId, Option<sp_core::H160>)>, DispatchError> {
-            EthBridge::get_registered_assets()
+            EthBridge::get_registered_assets(network_id)
         }
     }
 

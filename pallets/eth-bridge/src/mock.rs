@@ -474,24 +474,6 @@ impl ExtBuilder {
         let (offchain, offchain_state) = TestOffchainExt::new();
         let (pool, pool_state) = TestTransactionPoolExt::new();
         let keystore = KeyStore::new();
-        // let _offchain_keys: Vec<_> = {
-        //     let mut guard = keystore.write();
-        //     guard.ecdsa_generate_new(KEY_TYPE, Some("//Alice")).unwrap();
-        //     let kp = ecdsa::Pair::from_string("//Alice", None).unwrap();
-        //
-        //     offchain_state
-        //         .write()
-        //         .local_storage
-        //         .set(b"", b"key", &kp.to_raw_vec().encode());
-        //
-        //     guard
-        //         .keys(KEY_TYPE)
-        //         .unwrap()
-        //         .into_iter()
-        //         .map(|CryptoTypePublicPair(_, raw)| AccountId32::try_from(&raw[1..]).unwrap())
-        //         .collect()
-        // };
-
         let authority_account_id =
             bridge_multisig::Module::<Test>::multi_account_id(&self.root_account_id, 1, 0);
 
@@ -573,7 +555,6 @@ impl ExtBuilder {
         PermissionsConfig {
             initial_permission_owners: vec![],
             initial_permissions: Vec::new(),
-            // initial_permissions: vec![(multisig_account_id.clone(), Scope::Unlimited, vec![MINT])],
         }
         .assimilate_storage(&mut storage)
         .unwrap();
@@ -606,15 +587,6 @@ impl ExtBuilder {
         t.register_extension(TransactionPoolExt::new(pool));
         t.register_extension(KeystoreExt(keystore));
         t.execute_with(|| System::set_block_number(1));
-
-        // t.execute_with(|| {
-        //     for (_, account_id, _) in &ocw_kps {
-        //         assert_ok!(EthBridge::force_add_peer(
-        //             Origin::root(),
-        //             account_id.clone()
-        //         ));
-        //     }
-        // });
 
         let state = State {
             networks: self.networks,
