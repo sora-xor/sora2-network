@@ -29,7 +29,7 @@ contract Bridge {
 
     address public _addressVAL;
     address public _addressXOR;
-    uint32 public _networkId;
+    bytes32 public _networkId;
 
     /**
      * Constructor.
@@ -38,7 +38,7 @@ contract Bridge {
     constructor(
         address[] memory initialPeers,
         address addressVAL,
-        address addressXOR
+        address addressXOR,
         uint32 networkId)  {
         for (uint8 i = 0; i < initialPeers.length; i++) {
             addPeer(initialPeers[i]);

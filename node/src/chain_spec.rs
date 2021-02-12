@@ -744,6 +744,10 @@ fn testnet_genesis(
                 bridge_contract_address: sp_core::H160(hex!(
                     "146ba2cdf6bc7df15ffcff2ac1bc83eb33d8197e"
                 )),
+                reserves: vec![
+                    (XOR.into(), Balance::from(350_000u32)),
+                    (VAL.into(), Balance::from(33_900_000u32)),
+                ],
             }],
             pswap_owners: vec![],
         }),

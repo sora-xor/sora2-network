@@ -198,7 +198,10 @@ fn should_fail_claim_pswap_account_not_found() {
             request.clone()
         ));
         assert!(crate::PendingIncomingRequests::<Test>::get(net_id).contains(&tx_hash));
-        assert_eq!(crate::IncomingRequests::get(&tx_hash).unwrap(), request);
+        assert_eq!(
+            crate::IncomingRequests::get(net_id, &tx_hash).unwrap(),
+            request
+        );
         assert_eq!(
             assets::Module::<Test>::total_balance(&AssetId::PSWAP.into(), &alice).unwrap(),
             0u32.into()
@@ -209,7 +212,7 @@ fn should_fail_claim_pswap_account_not_found() {
             net_id
         ));
         assert_eq!(
-            crate::RequestStatuses::get(&tx_hash).unwrap(),
+            crate::RequestStatuses::<Test>::get(net_id, &tx_hash).unwrap(),
             RequestStatus::Failed
         );
         assert!(crate::PendingIncomingRequests::<Test>::get(net_id).is_empty());
@@ -258,7 +261,7 @@ fn approve_request(state: &State, request: OutgoingRequest<Test>) -> Result<(), 
             0
         };
         let sigs_needed = majority(keypairs.len()) + additional_sigs;
-        let current_status = crate::RequestStatuses::get(&request.hash()).unwrap();
+        let current_status = crate::RequestStatuses::<Test>::get(net_id, &request.hash()).unwrap();
         assert_ok!(EthBridge::approve_request(
             Origin::signed(account_id.clone()),
             ecdsa::Public::from_slice(&public.serialize_compressed()),
@@ -340,7 +343,7 @@ fn request_incoming(
     }
     let hash = last_request.hash();
     assert_eq!(
-        crate::RequestStatuses::get(&hash).unwrap(),
+        crate::RequestStatuses::<Test>::get(net_id, &hash).unwrap(),
         RequestStatus::Pending
     );
     Ok(hash)
@@ -373,7 +376,7 @@ fn assert_incoming_request_done(
     );
     assert!(crate::PendingIncomingRequests::<Test>::get(net_id).contains(&req_hash));
     assert_eq!(
-        crate::IncomingRequests::get(&req_hash).unwrap(),
+        crate::IncomingRequests::get(net_id, &req_hash).unwrap(),
         incoming_request
     );
     assert_ok!(EthBridge::finalize_incoming_request(
@@ -382,7 +385,7 @@ fn assert_incoming_request_done(
         net_id,
     ));
     assert_eq!(
-        crate::RequestStatuses::get(&req_hash).unwrap(),
+        crate::RequestStatuses::<Test>::get(net_id, &req_hash).unwrap(),
         RequestStatus::Done
     );
     assert!(crate::PendingIncomingRequests::<Test>::get(net_id).is_empty());
@@ -442,7 +445,7 @@ fn assert_incoming_request_failed(
     );
     assert!(crate::PendingIncomingRequests::<Test>::get(net_id).contains(&tx_hash));
     assert_eq!(
-        crate::IncomingRequests::get(&tx_hash).unwrap(),
+        crate::IncomingRequests::get(net_id, &tx_hash).unwrap(),
         incoming_request
     );
     assert_ok!(EthBridge::finalize_incoming_request(
@@ -451,7 +454,7 @@ fn assert_incoming_request_failed(
         net_id,
     ));
     assert_eq!(
-        crate::RequestStatuses::get(&tx_hash).unwrap(),
+        crate::RequestStatuses::<Test>::get(net_id, &tx_hash).unwrap(),
         RequestStatus::Failed
     );
     assert!(crate::PendingIncomingRequests::<Test>::get(net_id).is_empty());
@@ -820,7 +823,7 @@ fn should_cancel_incoming_transfer() {
             net_id,
         ));
         assert_eq!(
-            crate::RequestStatuses::get(incoming_transfer.hash()).unwrap(),
+            crate::RequestStatuses::<Test>::get(net_id, incoming_transfer.hash()).unwrap(),
             RequestStatus::Failed
         );
         assert_eq!(
@@ -863,7 +866,7 @@ fn should_fail_incoming_transfer() {
         ));
         assert!(crate::PendingIncomingRequests::<Test>::get(net_id).contains(&tx_hash));
         assert_eq!(
-            crate::IncomingRequests::get(&tx_hash).unwrap(),
+            crate::IncomingRequests::get(net_id, &tx_hash).unwrap(),
             incoming_transfer
         );
         assert_eq!(
@@ -876,7 +879,7 @@ fn should_fail_incoming_transfer() {
             net_id,
         ));
         assert_eq!(
-            crate::RequestStatuses::get(&tx_hash).unwrap(),
+            crate::RequestStatuses::<Test>::get(net_id, &tx_hash).unwrap(),
             RequestStatus::Failed
         );
         assert!(crate::PendingIncomingRequests::<Test>::get(net_id).is_empty());
@@ -987,26 +990,6 @@ fn should_add_asset() {
     });
 }
 
-// #[test]
-// fn should_not_allow_adding_asset_if_not_owner() {
-//     let (mut ext, _state) = ExtBuilder::default().build();
-//
-//     ext.execute_with(|| {
-//         let net_id = ETH_NETWORK_ID;
-//         let bob = get_account_id_from_seed::<sr25519::Public>("Bob");
-//         assert_err!(
-//             EthBridge::add_asset(
-//                 Origin::signed(bob.clone()),
-//                 AssetId::USDT.into(),
-//                 fixed!(100),
-//                 net_id,
-//             ),
-//             Error::TokenIsNotOwnedByTheAuthor
-//         );
-//         assert!(EthBridge::registered_asset(net_id, AssetId32::from(AssetId::USDT)).is_none());
-//     });
-// }
-
 #[test]
 fn should_add_token() {
     let (mut ext, state) = ExtBuilder::default().build();
@@ -1036,7 +1019,6 @@ fn should_add_token() {
     });
 }
 
-// TODO: not allow if exists
 #[test]
 fn should_not_add_token_if_not_bridge_account() {
     let (mut ext, _state) = ExtBuilder::default().build();
@@ -1354,7 +1336,7 @@ fn should_fail_cancel_ready_outgoing_request_with_wrong_approvals() {
             });
 
         // Insert some signature
-        crate::RequestApprovals::mutate(outgoing_req.hash(), |v| {
+        crate::RequestApprovals::<Test>::mutate(net_id, outgoing_req.hash(), |v| {
             v.insert(SignatureParams {
                 r: [1; 32],
                 s: [1; 32],
@@ -1467,7 +1449,7 @@ fn should_mark_request_as_done() {
             net_id,
         ));
         assert_eq!(
-            crate::RequestStatuses::get(outgoing_req_hash).unwrap(),
+            crate::RequestStatuses::<Test>::get(net_id, outgoing_req_hash).unwrap(),
             RequestStatus::Done
         );
     });

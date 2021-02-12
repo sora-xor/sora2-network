@@ -86,6 +86,7 @@ where
         eth_bridge::OffchainRequest<Runtime>,
         eth_bridge::RequestStatus,
         eth_bridge::OutgoingRequestEncoded,
+        framenode_runtime::NetworkId,
     >,
     C::Api: iroha_migration_rpc::IrohaMigrationRuntimeAPI<Block>,
     C::Api: BlockBuilder<Block>,

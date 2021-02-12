@@ -191,7 +191,8 @@ pub fn encode_outgoing_request_eth_call<T: Trait>(
     let fun_meta = fun_metas.get(&method_id).ok_or(Error::UnknownMethodId)?;
     let request_hash = request.hash();
     let request_encoded = request.to_eth_abi(request_hash)?;
-    let approvals: BTreeSet<SignatureParams> = crate::RequestApprovals::get(&request_hash);
+    let approvals: BTreeSet<SignatureParams> =
+        crate::RequestApprovals::<T>::get(request.network_id(), &request_hash);
     let input_tokens = request_encoded.input_tokens(Some(approvals.into_iter().collect()));
     fun_meta
         .function
@@ -214,8 +215,9 @@ pub struct IncomingCancelOutgoingRequest<T: Trait> {
 impl<T: Trait> IncomingCancelOutgoingRequest<T> {
     pub fn prepare(&self) -> Result<(), DispatchError> {
         let request_hash = self.request.hash();
-        let req_status =
-            crate::RequestStatuses::get(&request_hash).ok_or(crate::Error::<T>::Other)?;
+        let net_id = self.network_id;
+        let req_status = crate::RequestStatuses::<T>::get(net_id, &request_hash)
+            .ok_or(crate::Error::<T>::Other)?;
         ensure!(
             req_status == RequestStatus::ApprovesReady,
             crate::Error::<T>::RequestIsNotReady
@@ -227,20 +229,25 @@ impl<T: Trait> IncomingCancelOutgoingRequest<T> {
             expected_input == self.tx_input,
             crate::Error::<T>::InvalidContractInput
         );
-        crate::RequestStatuses::insert(&request_hash, RequestStatus::Frozen);
+        crate::RequestStatuses::<T>::insert(net_id, &request_hash, RequestStatus::Frozen);
         Ok(())
     }
 
     pub fn cancel(&self) -> Result<(), DispatchError> {
-        crate::RequestStatuses::insert(&self.request.hash(), RequestStatus::ApprovesReady);
+        crate::RequestStatuses::<T>::insert(
+            self.network_id,
+            &self.request.hash(),
+            RequestStatus::ApprovesReady,
+        );
         Ok(())
     }
 
     pub fn finalize(&self) -> Result<H256, DispatchError> {
         self.request.cancel()?;
         let hash = &self.request.hash();
-        crate::RequestStatuses::insert(hash, RequestStatus::Failed);
-        crate::RequestApprovals::take(hash);
+        let net_id = self.network_id;
+        crate::RequestStatuses::<T>::insert(net_id, hash, RequestStatus::Failed);
+        crate::RequestApprovals::<T>::take(net_id, hash);
         Ok(self.initial_request_hash)
     }
 
@@ -276,10 +283,13 @@ impl<T: Trait> OutgoingTransfer<T> {
         }
         let amount = U256::from(*self.amount.0.as_bits());
         let tx_hash = H256(tx_hash.0);
-        let network_id = types::U256::from(
-            <T::NetworkId as TryInto<u32>>::try_into(self.network_id)
-                .map_err(|_| Error::<T>::Other)?,
-        );
+        let mut network_id: H256 = H256::default();
+        U256::from(
+            <T::NetworkId as TryInto<u128>>::try_into(self.network_id)
+                .ok()
+                .expect("NetworkId can be always converted to u128; qed"),
+        )
+        .to_big_endian(&mut network_id.0);
         let is_old_contract = self.asset_id == XOR.into() || self.asset_id == VAL.into();
         let raw = if is_old_contract {
             ethabi::encode_packed(&[
@@ -296,7 +306,7 @@ impl<T: Trait> OutgoingTransfer<T> {
                 Token::Address(types::H160(to.0)),
                 Token::Address(types::H160(from.0)),
                 Token::FixedBytes(tx_hash.0.to_vec()),
-                Token::UintSized(network_id, 32),
+                Token::FixedBytes(network_id.0.to_vec()),
             ])
         };
         Ok(OutgoingTransferEncoded {
@@ -305,6 +315,7 @@ impl<T: Trait> OutgoingTransfer<T> {
             currency_id,
             amount,
             tx_hash,
+            network_id,
             raw,
         })
     }
@@ -381,6 +392,7 @@ pub struct OutgoingTransferEncoded {
     pub to: Address,
     pub from: Address,
     pub tx_hash: H256,
+    pub network_id: H256,
     /// EABI-encoded data to be signed.
     pub raw: Vec<u8>,
 }
@@ -453,10 +465,6 @@ impl<T: Trait> OutgoingAddAsset<T> {
     }
 
     pub fn validate(&self) -> Result<(), DispatchError> {
-        // ensure!(
-        //     assets::Module::<T>::is_asset_owner(&self.asset_id, &self.author),
-        //     Error::<T>::TokenIsNotOwnedByTheAuthor
-        // );
         ensure!(
             crate::RegisteredAsset::<T>::get(self.network_id, &self.asset_id).is_none(),
             Error::<T>::TokenIsAlreadyAdded
