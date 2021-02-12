@@ -13,7 +13,6 @@ type CanFail = Result<(), ()>;
 
 macro_rules! guard {
     ( $predicate:expr ) => {
-        debug_assert!($predicate);
         #[cfg(not(skip_guards))]
         {
             if !$predicate {

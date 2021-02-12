@@ -772,7 +772,7 @@ fn swap_pair_swap_fail_with_invalid_balance() {
 #[test]
 fn swap_pair_outcome_should_match_actual_1() {
     crate::Module::<Testtime>::preset02(vec![
-        |dex_id, gt, bp, _, _, _, repr: AccountId, fee_repr: AccountId| {
+        |dex_id, gt, bp, _, _, _, _repr: AccountId, _fee_repr: AccountId| {
             use sp_core::crypto::AccountId32;
             let new_account = AccountId32::from([33; 32]);
             assets::Module::<Testtime>::transfer(
@@ -832,7 +832,7 @@ fn swap_pair_outcome_should_match_actual_1() {
 #[test]
 fn swap_pair_outcome_should_match_actual_2() {
     crate::Module::<Testtime>::preset02(vec![
-        |dex_id, gt, bp, _, _, _, repr: AccountId, fee_repr: AccountId| {
+        |dex_id, gt, bp, _, _, _, _repr: AccountId, _fee_repr: AccountId| {
             use sp_core::crypto::AccountId32;
             let new_account = AccountId32::from([3; 32]);
             assets::Module::<Testtime>::transfer(
@@ -892,7 +892,7 @@ fn swap_pair_outcome_should_match_actual_2() {
 #[test]
 fn swap_pair_outcome_should_match_actual_3() {
     crate::Module::<Testtime>::preset02(vec![
-        |dex_id, gt, bp, _, _, _, repr: AccountId, fee_repr: AccountId| {
+        |dex_id, gt, bp, _, _, _, _repr: AccountId, _fee_repr: AccountId| {
             use sp_core::crypto::AccountId32;
             let new_account = AccountId32::from([3; 32]);
             assets::Module::<Testtime>::transfer(
@@ -903,7 +903,7 @@ fn swap_pair_outcome_should_match_actual_3() {
             )
             .expect("Failed to transfer balance");
 
-            /// TODO: uncomment when ..027777 error is fixed
+            // TODO: uncomment when ..027777 error is fixed
             // assert_eq!(
             //     assets::Module::<Testtime>::free_balance(&gt, &ALICE()).unwrap(),
             //     Balance(fixed!(440000)),
@@ -918,7 +918,7 @@ fn swap_pair_outcome_should_match_actual_3() {
                 },
             )
             .expect("Failed to quote.");
-            let outcome = crate::Module::<Testtime>::exchange(
+            let _outcome = crate::Module::<Testtime>::exchange(
                 &new_account,
                 &new_account,
                 &dex_id,
@@ -952,7 +952,7 @@ fn swap_pair_outcome_should_match_actual_3() {
 #[test]
 fn swap_pair_outcome_should_match_actual_4() {
     crate::Module::<Testtime>::preset02(vec![
-        |dex_id, gt, bp, _, _, _, repr: AccountId, fee_repr: AccountId| {
+        |dex_id, gt, bp, _, _, _, _repr: AccountId, _fee_repr: AccountId| {
             use sp_core::crypto::AccountId32;
             let new_account = AccountId32::from([3; 32]);
             assets::Module::<Testtime>::transfer(
@@ -1008,7 +1008,7 @@ fn swap_pair_outcome_should_match_actual_4() {
 #[test]
 fn swap_pair_liquidity_after_operation_check() {
     crate::Module::<Testtime>::preset03(vec![
-        |dex_id, gt, bp, _, _, _, repr: AccountId, fee_repr: AccountId| {
+        |dex_id, _gt, _bp, _, _, _, _repr: AccountId, _fee_repr: AccountId| {
             assert_noop!(
                 crate::Module::<Testtime>::swap_pair(
                     Origin::signed(ALICE()),
@@ -1036,8 +1036,8 @@ fn withdraw_all_liquidity() {
          _,
          tech_acc_id: crate::mock::TechAccountId,
          _,
-         repr: AccountId,
-         fee_repr: AccountId| {
+         _repr: AccountId,
+         _fee_repr: AccountId| {
             assert_eq!(
                 assets::Module::<Testtime>::free_balance(&gt, &ALICE()).unwrap(),
                 fixed!(540000.0),
