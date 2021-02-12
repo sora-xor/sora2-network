@@ -1131,8 +1131,8 @@ impl<T: Trait> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, T
         }
 
         // Get required values, now it is always Some, it is safe to unwrap().
-        let base_amount = (self.destination.1).amount.unwrap();
-        let target_amount = (self.destination.0).amount.unwrap();
+        let _base_amount = (self.destination.1).amount.unwrap();
+        let _target_amount = (self.destination.0).amount.unwrap();
         let source_amount = self.source.amount.unwrap();
 
         if source_amount > pool_k {
