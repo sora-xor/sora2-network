@@ -118,7 +118,8 @@ decl_event!(
         NothingToDistribute(DEXId, AccountId),
         /// This is needed for other pallet that will use this variables, for example this is
         /// farming pallet.
-        /// [DEX Id, Incentive Asset Id, Incentives burned after exchange, Incentives that is not revived (to burn)]
+        /// [DEX Id, Incentive Asset Id, Total exchanged incentives (Incentives burned after exchange),
+        /// Incentives burned (Incentives that is not revived (to burn)]).
         IncentivesBurnedAfterExchange(DEXId, AssetId, Balance, Balance),
     }
 );
