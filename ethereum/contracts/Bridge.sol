@@ -39,7 +39,7 @@ contract Bridge {
         address[] memory initialPeers,
         address addressVAL,
         address addressXOR,
-        uint32 networkId)  {
+        bytes32 networkId)  {
         for (uint8 i = 0; i < initialPeers.length; i++) {
             addPeer(initialPeers[i]);
         }
