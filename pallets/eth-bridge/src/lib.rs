@@ -87,6 +87,7 @@ pub const STORAGE_NETWORK_IDS_KEY: &[u8] = b"eth-bridge-ocw::network-ids";
 
 type AssetIdOf<T> = <T as assets::Trait>::AssetId;
 type Timepoint<T> = bridge_multisig::Timepoint<<T as frame_system::Trait>::BlockNumber>;
+type BridgeNetworkId<T> = <T as Trait>::NetworkId;
 
 pub mod crypto {
     use crate::KEY_TYPE;
@@ -158,8 +159,12 @@ pub enum OutgoingRequest<T: Trait> {
     AddToken(OutgoingAddToken<T>),
     /// 'Add peer' request.
     AddPeer(OutgoingAddPeer<T>),
-    /// 'Add peer' request.
+    /// 'Remove peer' request.
     RemovePeer(OutgoingRemovePeer<T>),
+    /// 'Prepare for migration' request.
+    PrepareForMigration(OutgoingPrepareForMigration<T>),
+    /// 'Migrate' request.
+    Migrate(OutgoingMigrate<T>),
 }
 
 impl<T: Trait> OutgoingRequest<T> {
@@ -170,6 +175,8 @@ impl<T: Trait> OutgoingRequest<T> {
             OutgoingRequest::AddToken(request) => &request.author,
             OutgoingRequest::AddPeer(request) => &request.author,
             OutgoingRequest::RemovePeer(request) => &request.author,
+            OutgoingRequest::PrepareForMigration(request) => &request.author,
+            OutgoingRequest::Migrate(request) => &request.author,
         }
     }
 
@@ -190,6 +197,12 @@ impl<T: Trait> OutgoingRequest<T> {
             OutgoingRequest::RemovePeer(request) => request
                 .to_eth_abi(tx_hash)
                 .map(OutgoingRequestEncoded::RemovePeer),
+            OutgoingRequest::PrepareForMigration(request) => request
+                .to_eth_abi(tx_hash)
+                .map(OutgoingRequestEncoded::PrepareForMigration),
+            OutgoingRequest::Migrate(request) => request
+                .to_eth_abi(tx_hash)
+                .map(OutgoingRequestEncoded::Migrate),
         }
     }
 
@@ -205,6 +218,8 @@ impl<T: Trait> OutgoingRequest<T> {
             OutgoingRequest::AddToken(request) => request.network_id,
             OutgoingRequest::AddPeer(request) => request.network_id,
             OutgoingRequest::RemovePeer(request) => request.network_id,
+            OutgoingRequest::PrepareForMigration(request) => request.network_id,
+            OutgoingRequest::Migrate(request) => request.network_id,
         }
     }
 
@@ -215,6 +230,8 @@ impl<T: Trait> OutgoingRequest<T> {
             OutgoingRequest::AddToken(request) => request.validate().map(|_| ()),
             OutgoingRequest::AddPeer(request) => request.validate().map(|_| ()),
             OutgoingRequest::RemovePeer(request) => request.validate().map(|_| ()),
+            OutgoingRequest::PrepareForMigration(request) => request.validate().map(|_| ()),
+            OutgoingRequest::Migrate(request) => request.validate().map(|_| ()),
         }
     }
 
@@ -225,6 +242,8 @@ impl<T: Trait> OutgoingRequest<T> {
             OutgoingRequest::AddToken(request) => request.prepare(()),
             OutgoingRequest::AddPeer(request) => request.prepare(()),
             OutgoingRequest::RemovePeer(request) => request.prepare(()),
+            OutgoingRequest::PrepareForMigration(request) => request.prepare(()),
+            OutgoingRequest::Migrate(request) => request.prepare(()),
         }
     }
 
@@ -235,6 +254,8 @@ impl<T: Trait> OutgoingRequest<T> {
             OutgoingRequest::AddToken(request) => request.finalize(),
             OutgoingRequest::AddPeer(request) => request.finalize(),
             OutgoingRequest::RemovePeer(request) => request.finalize(),
+            OutgoingRequest::PrepareForMigration(request) => request.finalize(),
+            OutgoingRequest::Migrate(request) => request.finalize(),
         }
     }
 
@@ -245,6 +266,15 @@ impl<T: Trait> OutgoingRequest<T> {
             OutgoingRequest::AddToken(request) => request.cancel(),
             OutgoingRequest::AddPeer(request) => request.cancel(),
             OutgoingRequest::RemovePeer(request) => request.cancel(),
+            OutgoingRequest::PrepareForMigration(request) => request.cancel(),
+            OutgoingRequest::Migrate(request) => request.cancel(),
+        }
+    }
+
+    fn is_allowed_during_migration(&self) -> bool {
+        match self {
+            OutgoingRequest::Migrate(_) => true,
+            _ => false,
         }
     }
 }
@@ -259,6 +289,8 @@ pub enum IncomingRequestKind {
     ClaimPswap,
     CancelOutgoingRequest,
     MarkAsDone,
+    PrepareForMigration,
+    Migrate,
 }
 
 /// The type of request we can send to the offchain worker
@@ -269,6 +301,8 @@ pub enum IncomingRequest<T: Trait> {
     ChangePeers(IncomingChangePeers<T>),
     ClaimPswap(IncomingClaimPswap<T>),
     CancelOutgoingRequest(IncomingCancelOutgoingRequest<T>),
+    PrepareForMigration(IncomingPrepareForMigration<T>),
+    Migrate(IncomingMigrate<T>),
 }
 
 impl<T: Trait> IncomingRequest<T> {
@@ -279,6 +313,8 @@ impl<T: Trait> IncomingRequest<T> {
             IncomingRequest::ChangePeers(request) => request.tx_hash,
             IncomingRequest::ClaimPswap(request) => request.tx_hash,
             IncomingRequest::CancelOutgoingRequest(request) => request.initial_request_hash,
+            IncomingRequest::PrepareForMigration(request) => request.tx_hash,
+            IncomingRequest::Migrate(request) => request.tx_hash,
         }
     }
 
@@ -289,6 +325,8 @@ impl<T: Trait> IncomingRequest<T> {
             IncomingRequest::ChangePeers(request) => request.network_id,
             IncomingRequest::ClaimPswap(request) => request.network_id,
             IncomingRequest::CancelOutgoingRequest(request) => request.network_id,
+            IncomingRequest::PrepareForMigration(request) => request.network_id,
+            IncomingRequest::Migrate(request) => request.network_id,
         }
     }
 
@@ -299,6 +337,8 @@ impl<T: Trait> IncomingRequest<T> {
             IncomingRequest::ChangePeers(request) => request.at_height,
             IncomingRequest::ClaimPswap(request) => request.at_height,
             IncomingRequest::CancelOutgoingRequest(request) => request.at_height,
+            IncomingRequest::PrepareForMigration(request) => request.at_height,
+            IncomingRequest::Migrate(request) => request.at_height,
         }
     }
 
@@ -309,6 +349,8 @@ impl<T: Trait> IncomingRequest<T> {
             IncomingRequest::ChangePeers(_request) => Ok(()),
             IncomingRequest::ClaimPswap(_request) => Ok(()),
             IncomingRequest::CancelOutgoingRequest(request) => request.prepare(),
+            IncomingRequest::PrepareForMigration(request) => request.prepare(),
+            IncomingRequest::Migrate(request) => request.prepare(),
         }
     }
 
@@ -318,7 +360,9 @@ impl<T: Trait> IncomingRequest<T> {
             IncomingRequest::AddAsset(_request) => Ok(()),
             IncomingRequest::ChangePeers(_request) => Ok(()),
             IncomingRequest::ClaimPswap(_request) => Ok(()),
-            IncomingRequest::CancelOutgoingRequest(_request) => Ok(()),
+            IncomingRequest::CancelOutgoingRequest(request) => request.cancel(),
+            IncomingRequest::PrepareForMigration(request) => request.cancel(),
+            IncomingRequest::Migrate(request) => request.cancel(),
         }
     }
 
@@ -329,6 +373,8 @@ impl<T: Trait> IncomingRequest<T> {
             IncomingRequest::ChangePeers(request) => request.finalize(),
             IncomingRequest::ClaimPswap(request) => request.finalize(),
             IncomingRequest::CancelOutgoingRequest(request) => request.finalize(),
+            IncomingRequest::PrepareForMigration(request) => request.finalize(),
+            IncomingRequest::Migrate(request) => request.finalize(),
         }
     }
 
@@ -339,6 +385,8 @@ impl<T: Trait> IncomingRequest<T> {
             IncomingRequest::ChangePeers(request) => request.timepoint(),
             IncomingRequest::ClaimPswap(request) => request.timepoint(),
             IncomingRequest::CancelOutgoingRequest(request) => request.timepoint(),
+            IncomingRequest::PrepareForMigration(request) => request.timepoint(),
+            IncomingRequest::Migrate(request) => request.timepoint(),
         }
     }
 }
@@ -445,6 +493,13 @@ impl<T: Trait> OffchainRequest<T> {
             }
         }
     }
+
+    pub fn as_outgoing(&self) -> Option<&OutgoingRequest<T>> {
+        match self {
+            OffchainRequest::Outgoing(r, _) => Some(r),
+            _ => None,
+        }
+    }
 }
 
 #[derive(Clone, Encode, Decode, RuntimeDebug, PartialEq, Eq)]
@@ -460,6 +515,10 @@ pub enum OutgoingRequestEncoded {
     AddPeer(OutgoingAddPeerEncoded),
     /// ETH-encoded 'remove peer' request.
     RemovePeer(OutgoingRemovePeerEncoded),
+    /// ETH-encoded 'prepare for migration' request.
+    PrepareForMigration(OutgoingPrepareForMigrationEncoded),
+    /// ETH-encoded 'migrate' request.
+    Migrate(OutgoingMigrateEncoded),
 }
 
 impl OutgoingRequestEncoded {
@@ -471,6 +530,8 @@ impl OutgoingRequestEncoded {
             OutgoingRequestEncoded::AddToken(request) => request.hash,
             OutgoingRequestEncoded::AddPeer(request) => request.tx_hash,
             OutgoingRequestEncoded::RemovePeer(request) => request.tx_hash,
+            OutgoingRequestEncoded::PrepareForMigration(request) => request.tx_hash,
+            OutgoingRequestEncoded::Migrate(request) => request.tx_hash,
         };
         H256(hash.0)
     }
@@ -482,6 +543,8 @@ impl OutgoingRequestEncoded {
             OutgoingRequestEncoded::AddToken(request) => &request.raw,
             OutgoingRequestEncoded::AddPeer(request) => &request.raw,
             OutgoingRequestEncoded::RemovePeer(request) => &request.raw,
+            OutgoingRequestEncoded::PrepareForMigration(request) => &request.raw,
+            OutgoingRequestEncoded::Migrate(request) => &request.raw,
         }
     }
 
@@ -492,6 +555,10 @@ impl OutgoingRequestEncoded {
             OutgoingRequestEncoded::AddToken(request) => request.input_tokens(signatures),
             OutgoingRequestEncoded::AddPeer(request) => request.input_tokens(signatures),
             OutgoingRequestEncoded::RemovePeer(request) => request.input_tokens(signatures),
+            OutgoingRequestEncoded::PrepareForMigration(request) => {
+                request.input_tokens(signatures)
+            }
+            OutgoingRequestEncoded::Migrate(request) => request.input_tokens(signatures),
         }
     }
 }
@@ -562,6 +629,19 @@ pub struct NetworkConfig<T: Trait> {
     pub reserves: Vec<(T::AssetId, Balance)>,
 }
 
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+#[derive(Clone, Copy, PartialEq, Eq, Encode, Decode, RuntimeDebug)]
+pub enum BridgeStatus {
+    Initialized,
+    Migrating,
+}
+
+impl Default for BridgeStatus {
+    fn default() -> Self {
+        Self::Initialized
+    }
+}
+
 decl_storage! {
     trait Store for Module<T: Trait> as EthBridge {
         pub RequestsQueue get(fn requests_queue): map hasher(twox_64_concat) T::NetworkId => Vec<OffchainRequest<T>>;
@@ -589,6 +669,7 @@ decl_storage! {
         AuthorityAccount get(fn authority_account) config(): T::AccountId;
 
         BridgeContractAddress get(fn bridge_contract_address): map hasher(twox_64_concat) T::NetworkId => Address;
+        BridgeBridgeStatus get(fn bridge_contract_status): map hasher(twox_64_concat) T::NetworkId => BridgeStatus;
 
         // None means the address owns no pswap.
         // 0 means the address claimed them.
@@ -707,6 +788,9 @@ decl_error! {
         UnknownRequest,
         RequestNotFinalizedOnSidechain,
         UnknownNetwork,
+        ContractIsInMigrationStage,
+        ContractIsNotInMigrationStage,
+        ContractIsAlreadyInMigrationStage,
         Other,
     }
 }
@@ -742,7 +826,7 @@ decl_module! {
             origin,
             asset_id: AssetIdOf<T>,
             supply: Balance,
-            network_id: T::NetworkId,
+            network_id: BridgeNetworkId<T>,
         ) {
             debug::debug!("called add_asset");
             let from = ensure_signed(origin)?;
@@ -764,7 +848,7 @@ decl_module! {
             ticker: String,
             name: String,
             decimals: u8,
-            network_id: T::NetworkId,
+            network_id: BridgeNetworkId<T>,
         ) {
             debug::debug!("called add_sidechain_token");
             let from = ensure_signed(origin)?;
@@ -789,7 +873,7 @@ decl_module! {
             asset_id: AssetIdOf<T>,
             to: EthereumAddress,
             amount: Balance,
-            network_id: T::NetworkId,
+            network_id: BridgeNetworkId<T>,
         ) {
             debug::debug!("called transfer_to_sidechain");
             let from = ensure_signed(origin)?;
@@ -810,7 +894,7 @@ decl_module! {
             origin,
             eth_tx_hash: H256,
             kind: IncomingRequestKind,
-            network_id: T::NetworkId,
+            network_id: BridgeNetworkId<T>,
         ) {
             debug::debug!("called request_from_sidechain");
             let from = ensure_signed(origin)?;
@@ -828,7 +912,7 @@ decl_module! {
         pub fn finalize_incoming_request(
             origin,
             result: Result<IncomingRequest<T>, (H256, DispatchError)>,
-            network_id: T::NetworkId
+            network_id: BridgeNetworkId<T>
         ) {
             debug::debug!("called finalize_incoming_request");
 
@@ -870,14 +954,14 @@ decl_module! {
             origin,
             account_id: T::AccountId,
             address: EthereumAddress,
-            network_id: T::NetworkId,
+            network_id: BridgeNetworkId<T>,
         ) {
             debug::debug!("called change_peers_out");
             let from = ensure_signed(origin.clone())?;
             ensure!(from == Self::authority_account(), Error::<T>::Forbidden);
             let nonce = frame_system::Module::<T>::account_nonce(&from);
             Self::add_request(OffchainRequest::outgoing(OutgoingRequest::AddPeer(OutgoingAddPeer {
-                author: account_id.clone(),
+                author: from.clone(),
                 peer_account_id: account_id,
                 peer_address: address,
                 nonce,
@@ -887,14 +971,14 @@ decl_module! {
         }
 
         #[weight = (0, Pays::No)]
-        pub fn remove_peer(origin, account_id: T::AccountId, network_id: T::NetworkId) {
+        pub fn remove_peer(origin, account_id: T::AccountId, network_id: BridgeNetworkId<T>) {
             debug::debug!("called change_peers_out");
             let from = ensure_signed(origin.clone())?;
             ensure!(from == Self::authority_account(), Error::<T>::Forbidden);
             let peer_address = Self::peer_address(network_id, &account_id);
             let nonce = frame_system::Module::<T>::account_nonce(&from);
             Self::add_request(OffchainRequest::outgoing(OutgoingRequest::RemovePeer(OutgoingRemovePeer {
-                author: account_id.clone(),
+                author: from.clone(),
                 peer_account_id: account_id,
                 peer_address,
                 nonce,
@@ -903,6 +987,42 @@ decl_module! {
             frame_system::Module::<T>::inc_account_nonce(&from);
         }
 
+        #[weight = (0, Pays::No)]
+        pub fn prepare_for_migration(origin, network_id: BridgeNetworkId<T>) {
+            debug::debug!("called prepare_for_migration");
+            let from = ensure_signed(origin.clone())?;
+            ensure!(from == Self::authority_account(), Error::<T>::Forbidden);
+            let nonce = frame_system::Module::<T>::account_nonce(&from);
+            Self::add_request(OffchainRequest::outgoing(OutgoingRequest::PrepareForMigration(OutgoingPrepareForMigration {
+                author: from.clone(),
+                nonce,
+                network_id,
+            })))?;
+            frame_system::Module::<T>::inc_account_nonce(&from);
+        }
+
+        #[weight = (0, Pays::No)]
+        pub fn migrate(
+            origin,
+            new_contract_address: EthereumAddress,
+            erc20_native_tokens: Vec<EthereumAddress>,
+            network_id: BridgeNetworkId<T>
+        ) {
+            debug::debug!("called prepare_for_migration");
+            let from = ensure_signed(origin.clone())?;
+            ensure!(from == Self::authority_account(), Error::<T>::Forbidden);
+            let nonce = frame_system::Module::<T>::account_nonce(&from);
+            Self::add_request(OffchainRequest::outgoing(OutgoingRequest::Migrate(OutgoingMigrate {
+                author: from.clone(),
+                new_contract_address,
+                erc20_native_tokens,
+                nonce,
+                network_id,
+            })))?;
+            frame_system::Module::<T>::inc_account_nonce(&from);
+        }
+
+        // TODO: handle incoming requests without register
         #[weight = (0, Pays::No)]
         pub fn register_incoming_request(origin, incoming_request: IncomingRequest<T>) {
             debug::debug!("called register_incoming_request");
@@ -975,7 +1095,7 @@ decl_module! {
 
         // TODO: maybe rewrite to finalize with `finalize_incoming_request`
         #[weight = (0, Pays::No)]
-        pub fn finalize_mark_as_done(origin, request_hash: H256, network_id: T::NetworkId) {
+        pub fn finalize_mark_as_done(origin, request_hash: H256, network_id: BridgeNetworkId<T>) {
             debug::debug!("called finalize_mark_as_done");
             let author = ensure_signed(origin)?;
             let bridge_account_id = get_bridge_account::<T>(network_id);
@@ -998,7 +1118,7 @@ decl_module! {
         }
 
         #[weight = 0]
-        pub fn force_add_peer(origin, who: T::AccountId, network_id: T::NetworkId) {
+        pub fn force_add_peer(origin, who: T::AccountId, network_id: BridgeNetworkId<T>) {
             let _ = ensure_root(origin)?;
             if !Self::is_peer(&who, network_id) {
                 <Peers<T>>::mutate(network_id, |l| l.insert(who));
@@ -1013,6 +1133,8 @@ pub enum ContractEvent<AssetId, Address, AccountId, Balance> {
     Deposit(AccountId, Balance, Address, H256),
     ChangePeers(Address, bool),
     ClaimPswap(AccountId),
+    PreparedForMigration,
+    Migrated(Address),
 }
 
 #[derive(PartialEq)]
@@ -1157,8 +1279,16 @@ impl<T: Trait> Decoder<T> {
 
 impl<T: Trait> Module<T> {
     fn add_request(mut request: OffchainRequest<T>) -> Result<(), DispatchError> {
-        let hash = request.hash();
         let net_id = request.network_id();
+        if let Some(outgoing_req) = request.as_outgoing() {
+            ensure!(
+                Self::bridge_contract_status(net_id) != BridgeStatus::Migrating
+                    || outgoing_req.is_allowed_during_migration(),
+                Error::<T>::ContractIsInMigrationStage
+            );
+        }
+
+        let hash = request.hash();
         ensure!(
             BridgeAccount::<T>::get(net_id).is_some(),
             Error::<T>::UnknownNetwork
@@ -1246,6 +1376,21 @@ impl<T: Trait> Module<T> {
                     let mut decoder = Decoder::<T>::new(decoded);
                     let account_id = decoder.next_account_id()?;
                     return Ok(ContractEvent::ClaimPswap(account_id));
+                }
+                &hex!("5389de9593f75e6515eefa796bd2d3324759f441f2c9b2dcda0efb25190378ff")
+                    if kind == IncomingRequestKind::PrepareForMigration =>
+                {
+                    return Ok(ContractEvent::PreparedForMigration);
+                }
+                &hex!("a2e7361c23d7820040603b83c0cd3f494d377bac69736377d75bb56c651a5098")
+                    if kind == IncomingRequestKind::Migrate =>
+                {
+                    let types = [ParamType::Address];
+                    let decoded =
+                        ethabi::decode(&types, &log.data.0).map_err(|_| Error::<T>::Other)?;
+                    let mut decoder = Decoder::<T>::new(decoded);
+                    let account_id = decoder.next_address()?;
+                    return Ok(ContractEvent::Migrated(account_id));
                 }
                 _ => (),
             }
@@ -1870,14 +2015,29 @@ impl<T: Trait> Module<T> {
                 })
             }
             ContractEvent::ClaimPswap(account_id) => {
-                let at_height = tx_receipt
-                    .block_number
-                    .expect("'block_number' is null only when the log is pending; qed")
-                    .as_u64();
                 let tx_hash = H256(tx_receipt.transaction_hash.0);
                 IncomingRequest::ClaimPswap(IncomingClaimPswap {
                     account_id,
                     eth_address: H160(tx_receipt.from.0),
+                    tx_hash,
+                    at_height,
+                    timepoint,
+                    network_id,
+                })
+            }
+            ContractEvent::PreparedForMigration => {
+                let tx_hash = H256(tx_receipt.transaction_hash.0);
+                IncomingRequest::PrepareForMigration(IncomingPrepareForMigration {
+                    tx_hash,
+                    at_height,
+                    timepoint,
+                    network_id,
+                })
+            }
+            ContractEvent::Migrated(to) => {
+                let tx_hash = H256(tx_receipt.transaction_hash.0);
+                IncomingRequest::Migrate(IncomingMigrate {
+                    new_contract_address: to,
                     tx_hash,
                     at_height,
                     timepoint,

@@ -11,6 +11,8 @@ import "./ERC20Burnable.sol";
  */
 contract Bridge {
     bool internal initialized_;
+    bool internal preparedForMigration_;
+
     mapping(address => bool) public isPeer;
     uint public peersCount;
     /** Substrate proofs used */
@@ -26,6 +28,8 @@ contract Bridge {
     event Withdrawal(bytes32 txHash);
     event Deposit(bytes32 destination, uint amount, address token, bytes32 sidechainAsset);
     event ChangePeers(address peerId, bool removal);
+    event PreparedForMigration();
+    event Migrated(address to);
 
     address public _addressVAL;
     address public _addressXOR;
@@ -47,6 +51,7 @@ contract Bridge {
         _addressVAL = addressVAL;
         _networkId = networkId;
         initialized_ = true;
+        preparedForMigration_ = false;
 
         acceptedEthTokens[_addressXOR] = true;
         acceptedEthTokens[_addressVAL] = true;
@@ -54,6 +59,16 @@ contract Bridge {
 
     modifier shouldBeInitialized {
         require(initialized_ == true, "Contract should be initialized to use this function");
+        _;
+    }
+
+    modifier shouldNotBePreparedForMigration {
+        require(preparedForMigration_ == false, "Contract should not be prepared for migration to use this function");
+        _;
+    }
+
+    modifier shouldBePreparedForMigration {
+        require(preparedForMigration_ == true, "Contract should be prepared for migration to use this function");
         _;
     }
 
@@ -80,7 +95,7 @@ contract Bridge {
         bytes32[] memory r,
         bytes32[] memory s
     )
-    public {
+    public shouldBeInitialized {
         require(acceptedEthTokens[newToken] == false);
         require(checkSignatures(keccak256(abi.encodePacked(newToken, ticker, name, decimals, txHash, _networkId)),
             v,
@@ -90,32 +105,52 @@ contract Bridge {
         acceptedEthTokens[newToken] = true;
     }
 
-    function shutDownAndMigrate(
+    function prepareForMigration(
         address thisContractAddress,
-        string memory salt,
-        address newContractAddress,
-        address[] calldata erc20nativeTokens,  //List of ERC20 tokens with non zero balances for this contract. Can be taken from substrate bridge peers.
+        bytes32 salt,
         uint8[] memory v,
         bytes32[] memory r,
         bytes32[] memory s
     )
     public
-    shouldBeInitialized {
+    shouldBeInitialized shouldBePreparedForMigration {
         require(address(this) == thisContractAddress);
-        require(checkSignatures(keccak256(abi.encodePacked(thisContractAddress, salt, erc20nativeTokens)),
+        require(checkSignatures(keccak256(abi.encodePacked(thisContractAddress, salt, _networkId)),
             v,
             r,
             s), "Peer signatures are invalid"
         );
-        for(uint i=0; i<_sidechainTokenAddressArray.length; i++) {
+        preparedForMigration_ = true;
+        emit PreparedForMigration();
+    }
+
+    function shutDownAndMigrate(
+        address thisContractAddress,
+        bytes32 salt,
+        address newContractAddress,
+        address[] calldata erc20nativeTokens, //List of ERC20 tokens with non zero balances for this contract. Can be taken from substrate bridge peers.
+        uint8[] memory v,
+        bytes32[] memory r,
+        bytes32[] memory s
+    )
+    public
+    shouldBeInitialized shouldBePreparedForMigration {
+        require(address(this) == thisContractAddress);
+        require(checkSignatures(keccak256(abi.encodePacked(thisContractAddress, newContractAddress, salt, erc20nativeTokens, _networkId)),
+            v,
+            r,
+            s), "Peer signatures are invalid"
+        );
+        for (uint i = 0; i < _sidechainTokenAddressArray.length; i++) {
             Ownable token = Ownable(_sidechainTokenAddressArray[i]);
             token.transferOwnership(newContractAddress);
         }
-        for(uint i=0; i<erc20nativeTokens.length; i++) {
+        for (uint i = 0; i < erc20nativeTokens.length; i++) {
             IERC20 token = IERC20(erc20nativeTokens[i]);
-            token.transfer(newContractAddress,  token.balanceOf(address(this)));
+            token.transfer(newContractAddress, token.balanceOf(address(this)));
         }
         initialized_ = false;
+        emit Migrated(newContractAddress);
     }
 
     function addNewSidechainToken(
@@ -128,8 +163,7 @@ contract Bridge {
         uint8[] memory v,
         bytes32[] memory r,
         bytes32[] memory s)
-    public {
-
+    public shouldBeInitialized {
         require(checkSignatures(keccak256(abi.encodePacked(
                 name,
                 symbol,
@@ -156,7 +190,7 @@ contract Bridge {
     )
     public
     payable
-    shouldBeInitialized {
+    shouldBeInitialized shouldNotBePreparedForMigration {
         require(msg.value > 0, "ETH VALUE SHOULD BE MORE THAN 0");
         bytes32 empty;
         emit Deposit(to, msg.value, address(0x0), empty);
@@ -170,14 +204,13 @@ contract Bridge {
         uint amount,
         address tokenAddress)
     external
-    shouldBeInitialized {
-
+    shouldBeInitialized shouldNotBePreparedForMigration {
         IERC20 token = IERC20(tokenAddress);
 
-        require (token.allowance(msg.sender, address(this)) >= amount, "NOT ENOUGH DELEGATED TOKENS ON SENDER BALANCE");
+        require(token.allowance(msg.sender, address(this)) >= amount, "NOT ENOUGH DELEGATED TOKENS ON SENDER BALANCE");
 
         bytes32 sidechainAssetId = _sidechainTokensByAddress[tokenAddress];
-        if(sidechainAssetId.length != 0 || _addressVAL == tokenAddress || _addressXOR == tokenAddress) {
+        if (sidechainAssetId.length != 0 || _addressVAL == tokenAddress || _addressXOR == tokenAddress) {
             ERC20Burnable mtoken = ERC20Burnable(tokenAddress);
             mtoken.burnFrom(msg.sender, amount);
         } else {
@@ -257,7 +290,7 @@ contract Bridge {
         bytes32[] memory r,
         bytes32[] memory s
     )
-    public
+    public shouldBeInitialized
     {
         require(used[txHash] == false);
         require(checkSignatures(
@@ -301,7 +334,7 @@ contract Bridge {
         bytes32[] memory r,
         bytes32[] memory s
     )
-    public
+    public shouldBeInitialized
     {
         require(_sidechainTokens[sidechainAssetId] != address(0x0), "Sidechain asset is not registered");
         require(used[txHash] == false);
