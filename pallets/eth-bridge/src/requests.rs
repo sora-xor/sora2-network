@@ -1,6 +1,6 @@
 use crate::contract::{MethodId, FUNCTIONS};
 use crate::{
-    get_bridge_account, types, Address, AssetIdOf, AssetKind, Decoder, Error, Module,
+    get_bridge_account, types, Address, AssetIdOf, AssetKind, BridgeStatus, Decoder, Error, Module,
     OutgoingRequest, PswapOwners, RequestStatus, SignatureParams, Timepoint, Trait,
 };
 use alloc::{collections::BTreeSet, string::String};
@@ -249,6 +249,72 @@ impl<T: Trait> IncomingCancelOutgoingRequest<T> {
         crate::RequestStatuses::<T>::insert(net_id, hash, RequestStatus::Failed);
         crate::RequestApprovals::<T>::take(net_id, hash);
         Ok(self.initial_request_hash)
+    }
+
+    pub fn timepoint(&self) -> Timepoint<T> {
+        self.timepoint
+    }
+}
+
+#[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug)]
+#[cfg_attr(feature = "std", derive(Serialize))]
+pub struct IncomingPrepareForMigration<T: Trait> {
+    pub tx_hash: H256,
+    pub at_height: u64,
+    pub timepoint: Timepoint<T>,
+    pub network_id: T::NetworkId,
+}
+
+impl<T: Trait> IncomingPrepareForMigration<T> {
+    pub fn prepare(&self) -> Result<(), DispatchError> {
+        ensure!(
+            crate::BridgeBridgeStatus::<T>::get(&self.network_id) == BridgeStatus::Initialized,
+            Error::<T>::ContractIsAlreadyInMigrationStage
+        );
+        Ok(())
+    }
+
+    pub fn cancel(&self) -> Result<(), DispatchError> {
+        Ok(())
+    }
+
+    pub fn finalize(&self) -> Result<H256, DispatchError> {
+        crate::BridgeBridgeStatus::<T>::insert(self.network_id, BridgeStatus::Migrating);
+        Ok(self.tx_hash)
+    }
+
+    pub fn timepoint(&self) -> Timepoint<T> {
+        self.timepoint
+    }
+}
+
+#[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug)]
+#[cfg_attr(feature = "std", derive(Serialize))]
+pub struct IncomingMigrate<T: Trait> {
+    pub new_contract_address: Address,
+    pub tx_hash: H256,
+    pub at_height: u64,
+    pub timepoint: Timepoint<T>,
+    pub network_id: T::NetworkId,
+}
+
+impl<T: Trait> IncomingMigrate<T> {
+    pub fn prepare(&self) -> Result<(), DispatchError> {
+        ensure!(
+            crate::BridgeBridgeStatus::<T>::get(&self.network_id) == BridgeStatus::Migrating,
+            Error::<T>::ContractIsNotInMigrationStage
+        );
+        Ok(())
+    }
+
+    pub fn cancel(&self) -> Result<(), DispatchError> {
+        Ok(())
+    }
+
+    pub fn finalize(&self) -> Result<H256, DispatchError> {
+        crate::BridgeContractAddress::<T>::insert(self.network_id, self.new_contract_address);
+        crate::BridgeBridgeStatus::<T>::insert(self.network_id, BridgeStatus::Initialized);
+        Ok(self.tx_hash)
     }
 
     pub fn timepoint(&self) -> Timepoint<T> {
@@ -844,6 +910,165 @@ impl OutgoingRemovePeerEncoded {
             Token::Address(types::H160(self.peer_address.clone().0)),
             Token::FixedBytes(self.tx_hash.0.to_vec()),
         ];
+        if let Some(sigs) = signatures {
+            let sig_tokens = signature_params_to_tokens(sigs);
+            tokens.extend(sig_tokens);
+        }
+        tokens
+    }
+}
+
+#[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+pub struct OutgoingPrepareForMigration<T: Trait> {
+    pub author: T::AccountId,
+    pub nonce: T::Index,
+    pub network_id: T::NetworkId,
+}
+
+impl<T: Trait> OutgoingPrepareForMigration<T> {
+    pub fn to_eth_abi(
+        &self,
+        tx_hash: H256,
+    ) -> Result<OutgoingPrepareForMigrationEncoded, Error<T>> {
+        let tx_hash = H256(tx_hash.0);
+        let mut network_id: H256 = H256::default();
+        U256::from(
+            <T::NetworkId as TryInto<u128>>::try_into(self.network_id)
+                .ok()
+                .expect("NetworkId can be always converted to u128; qed"),
+        )
+        .to_big_endian(&mut network_id.0);
+        let contract_address: Address = crate::BridgeContractAddress::<T>::get(&self.network_id);
+        let raw = ethabi::encode_packed(&[
+            Token::Address(types::Address::from(contract_address.0)),
+            Token::FixedBytes(tx_hash.0.to_vec()),
+            Token::FixedBytes(network_id.0.to_vec()),
+        ]);
+        Ok(OutgoingPrepareForMigrationEncoded {
+            this_contract_address: contract_address,
+            tx_hash,
+            network_id,
+            raw,
+        })
+    }
+
+    pub fn validate(&self) -> Result<(), DispatchError> {
+        Ok(())
+    }
+
+    pub fn prepare(&mut self, _validated_state: ()) -> Result<(), DispatchError> {
+        Ok(())
+    }
+
+    pub fn cancel(&self) -> Result<(), DispatchError> {
+        Ok(())
+    }
+
+    pub fn finalize(&self) -> Result<(), DispatchError> {
+        Ok(())
+    }
+}
+
+#[derive(Clone, PartialEq, Eq, Encode, Decode, RuntimeDebug)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+pub struct OutgoingPrepareForMigrationEncoded {
+    pub this_contract_address: Address,
+    pub tx_hash: H256,
+    pub network_id: H256,
+    /// EABI-encoded data to be signed.
+    pub raw: Vec<u8>,
+}
+
+impl OutgoingPrepareForMigrationEncoded {
+    pub fn input_tokens(&self, signatures: Option<Vec<SignatureParams>>) -> Vec<Token> {
+        let mut tokens = vec![
+            Token::Address(types::Address::from(self.this_contract_address.0)),
+            Token::FixedBytes(self.tx_hash.0.to_vec()),
+        ];
+        if let Some(sigs) = signatures {
+            let sig_tokens = signature_params_to_tokens(sigs);
+            tokens.extend(sig_tokens);
+        }
+        tokens
+    }
+}
+
+#[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+pub struct OutgoingMigrate<T: Trait> {
+    pub author: T::AccountId,
+    pub new_contract_address: Address,
+    pub erc20_native_tokens: Vec<Address>,
+    pub nonce: T::Index,
+    pub network_id: T::NetworkId,
+}
+
+impl<T: Trait> OutgoingMigrate<T> {
+    pub fn to_eth_abi(&self, tx_hash: H256) -> Result<OutgoingMigrateEncoded, Error<T>> {
+        let tx_hash = H256(tx_hash.0);
+        let mut network_id: H256 = H256::default();
+        U256::from(
+            <T::NetworkId as TryInto<u128>>::try_into(self.network_id)
+                .ok()
+                .expect("NetworkId can be always converted to u128; qed"),
+        )
+        .to_big_endian(&mut network_id.0);
+        let contract_address: Address = crate::BridgeContractAddress::<T>::get(&self.network_id);
+        let raw = ethabi::encode_packed(&[
+            Token::Address(types::Address::from(contract_address.0)),
+            Token::Address(types::Address::from(self.new_contract_address.0)),
+            Token::FixedBytes(tx_hash.0.to_vec()),
+            Token::Array(
+                self.erc20_native_tokens
+                    .iter()
+                    .map(|addr| Token::Address(types::Address::from(addr.0)))
+                    .collect(),
+            ),
+            Token::FixedBytes(network_id.0.to_vec()),
+        ]);
+        Ok(OutgoingMigrateEncoded {
+            this_contract_address: contract_address,
+            tx_hash,
+            new_contract_address: self.new_contract_address.clone(),
+            erc20_native_tokens: self.erc20_native_tokens.clone(),
+            network_id,
+            raw,
+        })
+    }
+
+    pub fn validate(&self) -> Result<(), DispatchError> {
+        Ok(())
+    }
+
+    pub fn prepare(&mut self, _validated_state: ()) -> Result<(), DispatchError> {
+        Ok(())
+    }
+
+    pub fn cancel(&self) -> Result<(), DispatchError> {
+        Ok(())
+    }
+
+    pub fn finalize(&self) -> Result<(), DispatchError> {
+        Ok(())
+    }
+}
+
+#[derive(Clone, PartialEq, Eq, Encode, Decode, RuntimeDebug)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+pub struct OutgoingMigrateEncoded {
+    pub this_contract_address: Address,
+    pub tx_hash: H256,
+    pub new_contract_address: Address,
+    pub erc20_native_tokens: Vec<Address>,
+    pub network_id: H256,
+    /// EABI-encoded data to be signed.
+    pub raw: Vec<u8>,
+}
+
+impl OutgoingMigrateEncoded {
+    pub fn input_tokens(&self, signatures: Option<Vec<SignatureParams>>) -> Vec<Token> {
+        let mut tokens = vec![Token::FixedBytes(self.tx_hash.0.to_vec())];
         if let Some(sigs) = signatures {
             let sig_tokens = signature_params_to_tokens(sigs);
             tokens.extend(sig_tokens);

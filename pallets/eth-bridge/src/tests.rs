@@ -5,13 +5,13 @@ use crate::{
     mock::*,
     types,
     types::{Bytes, Log},
-    Address, AssetKind, ContractEvent, IncomingRequest, IncomingRequestKind, OffchainRequest,
-    OutgoingRequest, OutgoingTransfer, RequestStatus, SignatureParams,
+    Address, AssetKind, BridgeStatus, ContractEvent, IncomingRequest, IncomingRequestKind,
+    OffchainRequest, OutgoingRequest, OutgoingTransfer, RequestStatus, SignatureParams,
 };
 use codec::{Decode, Encode};
 use common::{balance::Balance, fixed, AssetId, AssetId32, AssetSymbol};
 use frame_support::{
-    assert_err, assert_noop, assert_ok,
+    assert_err, assert_noop, assert_ok, ensure,
     sp_runtime::{
         app_crypto::sp_core::{self, crypto::AccountId32, ecdsa, sr25519, Pair, Public},
         traits::IdentifyAccount,
@@ -262,13 +262,17 @@ fn approve_request(state: &State, request: OutgoingRequest<Test>) -> Result<(), 
         };
         let sigs_needed = majority(keypairs.len()) + additional_sigs;
         let current_status = crate::RequestStatuses::<Test>::get(net_id, &request.hash()).unwrap();
-        assert_ok!(EthBridge::approve_request(
-            Origin::signed(account_id.clone()),
-            ecdsa::Public::from_slice(&public.serialize_compressed()),
-            request.clone(),
-            encoded.clone(),
-            signature_params
-        ));
+        ensure!(
+            EthBridge::approve_request(
+                Origin::signed(account_id.clone()),
+                ecdsa::Public::from_slice(&public.serialize_compressed()),
+                request.clone(),
+                encoded.clone(),
+                signature_params
+            )
+            .is_ok(),
+            None
+        );
         if current_status == RequestStatus::Pending && i + 1 == sigs_needed {
             match last_event().ok_or(None)? {
                 Event::eth_bridge(bridge_event) => match bridge_event {
@@ -1764,5 +1768,204 @@ fn should_handle_sidechain_and_thischain_asset_on_different_networks() {
             assets::Module::<Test>::total_issuance(&asset_id).unwrap(),
             supply
         );
+    });
+}
+
+#[test]
+fn should_migrate() {
+    let (mut ext, state) = ExtBuilder::default().build();
+
+    ext.execute_with(|| {
+        let net_id = ETH_NETWORK_ID;
+        let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
+
+        // preparation phase
+        assert_ok!(EthBridge::prepare_for_migration(
+            Origin::signed(state.authority_account_id.clone()),
+            net_id,
+        ));
+        approve_last_request(&state, net_id).expect("request wasn't approved");
+        assert_eq!(
+            crate::BridgeBridgeStatus::<Test>::get(net_id),
+            BridgeStatus::Initialized
+        );
+        let contract_address = crate::BridgeContractAddress::<Test>::get(net_id);
+
+        let tx_hash = request_incoming(
+            alice.clone(),
+            H256::from_slice(&[10; 32]),
+            IncomingRequestKind::PrepareForMigration,
+            net_id,
+        )
+        .unwrap();
+        let incoming_transfer =
+            IncomingRequest::PrepareForMigration(crate::IncomingPrepareForMigration {
+                tx_hash,
+                at_height: 1,
+                timepoint: Default::default(),
+                network_id: net_id,
+            });
+        assert_incoming_request_done(&state, incoming_transfer.clone()).unwrap();
+        assert_eq!(
+            crate::BridgeBridgeStatus::<Test>::get(net_id),
+            BridgeStatus::Migrating
+        );
+
+        // Disallow outgoing requests (except `Migrate` request)
+        assert_noop!(
+            EthBridge::transfer_to_sidechain(
+                Origin::signed(alice.clone()),
+                AssetId::XOR.into(),
+                Address::from_str("19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A").unwrap(),
+                100_u32.into(),
+                net_id,
+            ),
+            Error::ContractIsInMigrationStage
+        );
+
+        // migration phase
+        let new_contract_address = Address::from([2u8; 20]);
+        let erc20_native_tokens = vec![Address::from([11u8; 20]), Address::from([22u8; 20])];
+        assert_ok!(EthBridge::migrate(
+            Origin::signed(state.authority_account_id.clone()),
+            new_contract_address,
+            erc20_native_tokens,
+            net_id,
+        ));
+        approve_last_request(&state, net_id).expect("request wasn't approved");
+        assert_eq!(
+            crate::BridgeBridgeStatus::<Test>::get(net_id),
+            BridgeStatus::Migrating
+        );
+        assert_eq!(
+            crate::BridgeContractAddress::<Test>::get(net_id),
+            contract_address
+        );
+
+        let tx_hash = request_incoming(
+            alice.clone(),
+            H256::from_slice(&[20; 32]),
+            IncomingRequestKind::Migrate,
+            net_id,
+        )
+        .unwrap();
+        let incoming_transfer = IncomingRequest::Migrate(crate::IncomingMigrate {
+            new_contract_address,
+            tx_hash,
+            at_height: 2,
+            timepoint: Default::default(),
+            network_id: net_id,
+        });
+        assert_incoming_request_done(&state, incoming_transfer.clone()).unwrap();
+        assert_eq!(
+            crate::BridgeBridgeStatus::<Test>::get(net_id),
+            BridgeStatus::Initialized
+        );
+        assert_eq!(
+            crate::BridgeContractAddress::<Test>::get(net_id),
+            new_contract_address
+        );
+    });
+}
+
+#[test]
+fn should_not_allow_duplicate_migration_requests() {
+    let (mut ext, state) = ExtBuilder::default().build();
+
+    ext.execute_with(|| {
+        let net_id = ETH_NETWORK_ID;
+        let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
+
+        // preparation phase
+        assert_ok!(EthBridge::prepare_for_migration(
+            Origin::signed(state.authority_account_id.clone()),
+            net_id,
+        ));
+        approve_last_request(&state, net_id).expect("request wasn't approved");
+
+        let tx_hash = request_incoming(
+            alice.clone(),
+            H256::from_slice(&[10; 32]),
+            IncomingRequestKind::PrepareForMigration,
+            net_id,
+        )
+        .unwrap();
+        let incoming_transfer =
+            IncomingRequest::PrepareForMigration(crate::IncomingPrepareForMigration {
+                tx_hash,
+                at_height: 1,
+                timepoint: Default::default(),
+                network_id: net_id,
+            });
+        assert_incoming_request_done(&state, incoming_transfer.clone()).unwrap();
+
+        let tx_hash = request_incoming(
+            alice.clone(),
+            H256::from_slice(&[100; 32]),
+            IncomingRequestKind::PrepareForMigration,
+            net_id,
+        )
+        .unwrap();
+        let incoming_transfer =
+            IncomingRequest::PrepareForMigration(crate::IncomingPrepareForMigration {
+                tx_hash,
+                at_height: 2,
+                timepoint: Default::default(),
+                network_id: net_id,
+            });
+        assert_incoming_request_registration_failed(
+            &state,
+            incoming_transfer.clone(),
+            Error::ContractIsAlreadyInMigrationStage,
+        )
+        .unwrap();
+
+        // migration phase
+        let new_contract_address = Address::from([2u8; 20]);
+        let erc20_native_tokens = vec![Address::from([11u8; 20]), Address::from([22u8; 20])];
+        assert_ok!(EthBridge::migrate(
+            Origin::signed(state.authority_account_id.clone()),
+            new_contract_address,
+            erc20_native_tokens.clone(),
+            net_id,
+        ));
+        approve_last_request(&state, net_id).expect("request wasn't approved");
+
+        let tx_hash = request_incoming(
+            alice.clone(),
+            H256::from_slice(&[20; 32]),
+            IncomingRequestKind::Migrate,
+            net_id,
+        )
+        .unwrap();
+        let incoming_transfer = IncomingRequest::Migrate(crate::IncomingMigrate {
+            new_contract_address,
+            tx_hash,
+            at_height: 2,
+            timepoint: Default::default(),
+            network_id: net_id,
+        });
+        assert_incoming_request_done(&state, incoming_transfer.clone()).unwrap();
+
+        let tx_hash = request_incoming(
+            alice.clone(),
+            H256::from_slice(&[200; 32]),
+            IncomingRequestKind::Migrate,
+            net_id,
+        )
+        .unwrap();
+        let incoming_transfer = IncomingRequest::Migrate(crate::IncomingMigrate {
+            new_contract_address,
+            tx_hash,
+            at_height: 2,
+            timepoint: Default::default(),
+            network_id: net_id,
+        });
+        assert_incoming_request_registration_failed(
+            &state,
+            incoming_transfer.clone(),
+            Error::ContractIsNotInMigrationStage,
+        )
+        .unwrap();
     });
 }
