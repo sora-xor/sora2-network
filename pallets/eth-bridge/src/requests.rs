@@ -219,7 +219,7 @@ impl<T: Trait> IncomingCancelOutgoingRequest<T> {
         let req_status = crate::RequestStatuses::<T>::get(net_id, &request_hash)
             .ok_or(crate::Error::<T>::Other)?;
         ensure!(
-            req_status == RequestStatus::ApprovesReady,
+            req_status == RequestStatus::ApprovalsReady,
             crate::Error::<T>::RequestIsNotReady
         );
         let mut method_id = [0u8; 4];
@@ -237,7 +237,7 @@ impl<T: Trait> IncomingCancelOutgoingRequest<T> {
         crate::RequestStatuses::<T>::insert(
             self.network_id,
             &self.request.hash(),
-            RequestStatus::ApprovesReady,
+            RequestStatus::ApprovalsReady,
         );
         Ok(())
     }

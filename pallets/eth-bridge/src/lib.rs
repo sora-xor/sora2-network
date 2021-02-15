@@ -435,7 +435,7 @@ impl<T: Trait> OffchainRequest<T> {
                             RequestStatuses::<T>::get(request.network_id, request.hash)
                                 .ok_or(Error::<T>::UnknownRequest)?;
                         ensure!(
-                            request_status == RequestStatus::ApprovesReady,
+                            request_status == RequestStatus::ApprovalsReady,
                             Error::<T>::RequestIsNotReady
                         );
                     }
@@ -501,7 +501,7 @@ impl OutgoingRequestEncoded {
 pub enum RequestStatus {
     Pending,
     Frozen,
-    ApprovesReady,
+    ApprovalsReady,
     Failed,
     Done,
 }
@@ -963,7 +963,7 @@ decl_module! {
                     }
                 } else {
                     debug::debug!("Outgoing request finalized {:?}", hash);
-                    RequestStatuses::<T>::insert(net_id, hash, RequestStatus::ApprovesReady);
+                    RequestStatuses::<T>::insert(net_id, hash, RequestStatus::ApprovalsReady);
                     Self::deposit_event(RawEvent::ApprovalsCollected(
                         request_encoded,
                         approvals.clone(),
@@ -981,7 +981,7 @@ decl_module! {
             let bridge_account_id = get_bridge_account::<T>(network_id);
             ensure!(author == bridge_account_id, Error::<T>::Forbidden);
             let request_status = RequestStatuses::<T>::get(network_id, request_hash).ok_or(Error::<T>::UnknownRequest)?;
-            ensure!(request_status == RequestStatus::ApprovesReady, Error::<T>::RequestIsNotReady);
+            ensure!(request_status == RequestStatus::ApprovalsReady, Error::<T>::RequestIsNotReady);
             RequestStatuses::<T>::insert(network_id, request_hash, RequestStatus::Done);
         }
 
@@ -2088,7 +2088,7 @@ impl<T: Trait> Module<T> {
             .take(Self::ITEMS_LIMIT)
             .filter_map(|hash| {
                 if let Some(net_id) = network_id {
-                    if Self::request_status(net_id, hash)? == RequestStatus::ApprovesReady {
+                    if Self::request_status(net_id, hash)? == RequestStatus::ApprovalsReady {
                         let request: OffchainRequest<T> = Request::get(net_id, hash)?;
                         match request {
                             OffchainRequest::Outgoing(request, hash) => {
@@ -2108,7 +2108,7 @@ impl<T: Trait> Module<T> {
                 } else {
                     Some(
                         RequestStatuses::<T>::iter()
-                            .filter(|(_, _hash, v)| v == &RequestStatus::ApprovesReady)
+                            .filter(|(_, _hash, v)| v == &RequestStatus::ApprovalsReady)
                             .filter_map(|(net_id, hash, _v)| {
                                 let request: OffchainRequest<T> = Request::get(net_id, hash)?;
                                 match request {
