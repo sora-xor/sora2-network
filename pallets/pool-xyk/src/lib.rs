@@ -11,6 +11,7 @@ use frame_system::ensure_signed;
 use sp_runtime::RuntimeDebug;
 use sp_std::collections::btree_set::BTreeSet;
 
+use common::FromGenericPair;
 use common::{
     fixed, hash,
     prelude::{Balance, EnsureDEXManager, FixedWrapper, SwapAmount, SwapOutcome},
@@ -18,6 +19,7 @@ use common::{
     ManagementMode, SwapRulesValidation, ToFeeAccount, ToTechUnitFromDEXAndTradingPair,
 };
 use frame_support::debug;
+use orml_traits::currency::MultiCurrency;
 use permissions::{Scope, BURN, MINT};
 
 mod weights;
@@ -2145,31 +2147,34 @@ impl<T: Trait> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Disp
         // Function clause is used here, because in this case it is other scope and it not
         // conflicted with bool type.
         let res = || {
-            let (_, tech_acc_id) = Module::<T>::tech_account_from_dex_and_asset_pair(
-                *dex_id,
-                *input_asset_id,
-                *output_asset_id,
+            let tech_acc_id = T::TechAccountId::from_generic_pair(
+                "PoolXYK".into(),
+                "CanExchangeOperation".into(),
+            );
+            //TODO: Account registration is not needed to do operation, is this ok?
+            //Technical::register_tech_account_id(tech_acc_id)?;
+            let repr = technical::Module::<T>::tech_account_id_to_account_id(&tech_acc_id)?;
+            //FIXME: Use special max variable that is good for this operation.
+            T::Currency::deposit(input_asset_id.clone(), &repr, 999999999u32.into())?;
+            let swap_amount = common::prelude::SwapAmount::WithDesiredInput {
+                //FIXME: Use special max variable that is good for this operation.
+                desired_amount_in: Balance(fixed!(0.000000001)),
+                min_amount_out: Balance(fixed!(0)),
+            };
+            Module::<T>::exchange(
+                &repr,
+                &repr,
+                dex_id,
+                input_asset_id,
+                output_asset_id,
+                swap_amount,
             )?;
-            let mut action = PolySwapActionStructOf::<T>::PairSwap(PairSwapActionOf::<T> {
-                client_account: None,
-                receiver_account: None,
-                pool_account: tech_acc_id,
-                source: Resource {
-                    asset: *input_asset_id,
-                    amount: Bounds::Dummy,
-                },
-                destination: Resource {
-                    asset: *output_asset_id,
-                    amount: Bounds::Dummy,
-                },
-                fee: None,
-                fee_account: None,
-                get_fee_from_destination: None,
-            });
-            common::SwapRulesValidation::<AccountIdOf<T>, TechAccountIdOf<T>, T>::
-                        prepare_and_validate(&mut action, None)
+            Ok(())
         };
-        res().is_ok()
+        frame_support::storage::with_transaction(|| {
+            let v: DispatchResult = res();
+            sp_runtime::TransactionOutcome::Rollback(v.is_ok())
+        })
     }
 
     fn quote(
@@ -2178,59 +2183,29 @@ impl<T: Trait> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Disp
         output_asset_id: &T::AssetId,
         swap_amount: SwapAmount<Balance>,
     ) -> Result<SwapOutcome<Balance>, DispatchError> {
-        let (_, tech_acc_id) = Module::<T>::tech_account_from_dex_and_asset_pair(
-            *dex_id,
-            *input_asset_id,
-            *output_asset_id,
-        )?;
-        let (source_amount, destination_amount) =
-            Module::<T>::get_bounds_from_swap_amount(swap_amount)?;
-        let mut action = PolySwapActionStructOf::<T>::PairSwap(PairSwapActionOf::<T> {
-            client_account: None,
-            receiver_account: None,
-            pool_account: tech_acc_id,
-            source: Resource {
-                asset: *input_asset_id,
-                amount: source_amount,
-            },
-            destination: Resource {
-                asset: *output_asset_id,
-                amount: destination_amount,
-            },
-            fee: None,
-            fee_account: None,
-            get_fee_from_destination: None,
-        });
-        common::SwapRulesValidation::<AccountIdOf<T>, TechAccountIdOf<T>, T>::prepare_and_validate(
-            &mut action,
-            None,
-        )?;
-
-        // It is guarantee that unwrap is always ok.
-        match action {
-            PolySwapAction::PairSwap(a) => {
-                let mut desired_in = false;
-                let (fee, amount) = match swap_amount {
-                    SwapAmount::WithDesiredInput {
-                        desired_amount_in: _,
-                        min_amount_out: _,
-                    } => {
-                        desired_in = true;
-                        (a.fee.unwrap(), a.destination.amount.unwrap())
-                    }
-                    SwapAmount::WithDesiredOutput {
-                        desired_amount_out: _,
-                        max_amount_in: _,
-                    } => (a.fee.unwrap(), a.source.amount.unwrap()),
-                };
-                if a.get_fee_from_destination.unwrap() && desired_in {
-                    Ok(common::prelude::SwapOutcome::new(amount - fee, fee))
-                } else {
-                    Ok(common::prelude::SwapOutcome::new(amount, fee))
-                }
-            }
-            _ => unreachable!("we know that always PairSwap is used"),
-        }
+        let res = || {
+            let tech_acc_id = T::TechAccountId::from_generic_pair(
+                "PoolXYK".into(),
+                "QuoteOperation".into(),
+            );
+            //TODO: Account registration is not needed to do operation, is this ok?
+            //Technical::register_tech_account_id(tech_acc_id)?;
+            let repr = technical::Module::<T>::tech_account_id_to_account_id(&tech_acc_id)?;
+            //FIXME: Use special max variable that is good for this operation.
+            T::Currency::deposit(input_asset_id.clone(), &repr, 999999999u32.into())?;
+            Module::<T>::exchange(
+                &repr,
+                &repr,
+                dex_id,
+                input_asset_id,
+                output_asset_id,
+                swap_amount,
+            )
+        };
+        frame_support::storage::with_transaction(|| {
+            let v: Result<SwapOutcome<Balance>, DispatchError> = res();
+            sp_runtime::TransactionOutcome::Rollback(v)
+        })
     }
 
     fn exchange(

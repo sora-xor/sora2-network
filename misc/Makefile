@@ -1,6 +1,6 @@
 .PHONY: cargo-build-release-error-head cargo-test-release-error-head default docker-build-image docker-env-test docker-localtestnet docker-localtestnet-debug docker-localtestnet docker-build-release docker-test-release docker-build-debug docker-test-debug cargo-build-release cargo-build-debug cargo-test-release cargo-test-debug yarn-build
 
-RUN := $(shell which nix-shell > /dev/null 2>&1 && echo 'eval "`cat ./nix-env.sh`"; nix-shell --run ' || echo 'sh -c ')
+RUN := $(shell which nix-shell > /dev/null 2>&1 && echo 'nix-shell --run ' || echo 'sh -c ')
 LAST_COMMIT := $(shell sh -c "git log | head -n 1 | awk '{ print \$$2 }'" 2> /dev/null)
 
 default: cargo-build-release
