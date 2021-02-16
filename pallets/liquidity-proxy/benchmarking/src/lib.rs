@@ -183,7 +183,7 @@ benchmarks! {
     verify {
         assert_eq!(
             Into::<u128>::into(Assets::<T>::free_balance(&base_asset, &caller).unwrap()),
-            Into::<u128>::into(initial_base_balance) - 1_000_u128
+            Into::<u128>::into(initial_base_balance)
         );
     }
 
@@ -205,7 +205,7 @@ benchmarks! {
     verify {
         assert_eq!(
             Into::<u128>::into(Assets::<T>::free_balance(&target_asset, &caller).unwrap()),
-            Into::<u128>::into(initial_target_balance) + 1_000_u128
+            Into::<u128>::into(initial_target_balance)
         );
     }
 }
