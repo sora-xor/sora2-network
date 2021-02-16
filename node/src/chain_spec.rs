@@ -736,7 +736,7 @@ fn testnet_genesis(
                     (
                         VAL.into(),
                         Some(sp_core::H160::from(hex!(
-                            "3f9feac97e5feb15d8bf98042a9a01b515da3dfb"
+                            "8a95ee0422b6897c8dcec14c2ee25cb1405fc978"
                         ))),
                         AssetKind::SidechainOwned,
                     ),
