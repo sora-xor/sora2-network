@@ -65,6 +65,10 @@ decl_storage! {
 
         /// Sum of all shares of incentive token owners.
         pub ClaimableShares get(fn claimable_shares): Fixed;
+
+        /// This is needed for farm id 0, now it is hardcoded, in future it will be resolved and
+        /// used in a more convenient way.
+        pub BurnedPswapDedicatedForOtherPallets get(fn burned_pswap_dedicated_for_other_pallets): Fixed;
     }
     add_extra_genesis {
         /// (Fees Account, (DEX Id, Marker Token Id, Distribution Frequency, Block Offset))
@@ -112,6 +116,11 @@ decl_event!(
         /// Fees Account contains zero incentive tokens, thus distribution is dismissed.
         /// [DEX Id, Fees Account Id]
         NothingToDistribute(DEXId, AccountId),
+        /// This is needed for other pallet that will use this variables, for example this is
+        /// farming pallet.
+        /// [DEX Id, Incentive Asset Id, Total exchanged incentives (Incentives burned after exchange),
+        /// Incentives burned (Incentives that is not revived (to burn)]).
+        IncentivesBurnedAfterExchange(DEXId, AssetId, Balance, Balance),
     }
 );
 
@@ -323,13 +332,39 @@ impl<T: Trait> Module<T> {
         // Adjust values and burn portion of incentive.
         let incentive_to_burn =
             FixedWrapper::from(incentive_total.clone()) * FixedWrapper::from(BurnRate::get());
-        let incentive_to_revive = FixedWrapper::from(incentive_total.clone()) - incentive_to_burn;
+        let incentive_to_revive =
+            FixedWrapper::from(incentive_total.clone()) - incentive_to_burn.clone();
         assets::Module::<T>::burn_from(
             &incentive_asset_id,
             tech_account_id,
             fees_account_id,
             incentive_total,
         )?;
+
+        let incentive_to_burn_fixed: Fixed = incentive_to_burn
+            .clone()
+            .get()
+            .map_err(|_| Error::<T>::CalculationError)?;
+
+        // This is needed for other pallet that will use this variables, for example this is
+        // farming pallet.
+        Self::deposit_event(RawEvent::IncentivesBurnedAfterExchange(
+            dex_id.clone(),
+            incentive_asset_id.clone(),
+            incentive_total.clone(),
+            incentive_to_burn_fixed.into(),
+        ));
+
+        // This is needed for farm id 0, now it is hardcoded, in future it will be resolved and
+        // used in move convinient way.
+        if incentive_asset_id.clone() == common::PSWAP.into() {
+            let old = BurnedPswapDedicatedForOtherPallets::get();
+            let new: Fixed = (old + incentive_to_burn)
+                .get()
+                .map_err(|_| Error::<T>::CalculationError)?;
+            BurnedPswapDedicatedForOtherPallets::set(new);
+        }
+
         // Shadowing intended, re-mint decreased incentive amount and set it as new total.
         let incentive_total = Balance::from(
             incentive_to_revive
