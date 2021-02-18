@@ -1,1 +1,0 @@
-misc/nix-env.sh

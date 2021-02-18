@@ -66,10 +66,10 @@ mod tests;
 pub mod types;
 
 const SUB_NODE_URL: &str = "http://127.0.0.1:9954";
-const XOR_CONTRACT_ADDRESS: types::H160 =
-    types::H160(hex!("0000000000000000000000000000000000000000"));
-const VAL_CONTRACT_ADDRESS: types::H160 =
-    types::H160(hex!("0000000000000000000000000000000000000000"));
+const XOR_MASTER_CONTRACT_ADDRESS: types::H160 =
+    types::H160(hex!("12c6a709925783f49fcca0b398d13b0d597e6e1c"));
+const VAL_MASTER_CONTRACT_ADDRESS: types::H160 =
+    types::H160(hex!("47e229aa491763038f6a505b4f85d8eb463f0962"));
 pub const PSWAP_CONTRACT_ADDRESS: H160 = H160(hex!("0000000000000000000000000000000000000000"));
 
 const HTTP_REQUEST_TIMEOUT_SECS: u64 = 10;
@@ -1721,7 +1721,11 @@ impl<T: Trait> Module<T> {
         data.extend(&hash.0);
         let contract_address = types::H160(BridgeContractAddress::<T>::get(network_id).0);
         let contracts = if network_id == T::GetEthNetworkId::get() {
-            vec![contract_address, XOR_CONTRACT_ADDRESS, VAL_CONTRACT_ADDRESS]
+            vec![
+                contract_address,
+                XOR_MASTER_CONTRACT_ADDRESS,
+                VAL_MASTER_CONTRACT_ADDRESS,
+            ]
         } else {
             vec![contract_address]
         };

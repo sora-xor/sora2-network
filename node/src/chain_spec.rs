@@ -729,20 +729,20 @@ fn testnet_genesis(
                     (
                         XOR.into(),
                         Some(sp_core::H160::from(hex!(
-                            "40fd72257597aa14c7231a7b1aaa29fce868f677"
+                            "02ffdae478412dbde6bbd5cda8ff05c0960e0c45"
                         ))),
                         AssetKind::SidechainOwned,
                     ),
                     (
                         VAL.into(),
                         Some(sp_core::H160::from(hex!(
-                            "3f9feac97e5feb15d8bf98042a9a01b515da3dfb"
+                            "68339de68c9af6577c54867728dbb2db9d7368bf"
                         ))),
                         AssetKind::SidechainOwned,
                     ),
                 ],
                 bridge_contract_address: sp_core::H160(hex!(
-                    "146ba2cdf6bc7df15ffcff2ac1bc83eb33d8197e"
+                    "79d6ad8533257fbd8bba0150739289b9953d7217"
                 )),
                 reserves: vec![
                     (XOR.into(), Balance::from(350_000u32)),
