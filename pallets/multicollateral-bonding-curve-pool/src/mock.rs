@@ -8,8 +8,10 @@ use common::{
 use currencies::BasicCurrencyAdapter;
 use frame_support::{impl_outer_origin, parameter_types, weights::Weight, StorageValue};
 use frame_system as system;
+use hex_literal::hex;
 use orml_traits::MultiCurrency;
 use permissions::{Scope, INIT_DEX, MANAGE_DEX};
+use sp_arithmetic::traits::One;
 use sp_core::{crypto::AccountId32, H256};
 use sp_runtime::{
     testing::Header,
@@ -30,12 +32,16 @@ pub fn alice() -> AccountId {
     AccountId32::from([1u8; 32])
 }
 
-pub fn assets_owner() -> AccountId {
+pub fn bob() -> AccountId {
     AccountId32::from([2u8; 32])
 }
 
-pub fn incentives_account() -> AccountId {
+pub fn assets_owner() -> AccountId {
     AccountId32::from([3u8; 32])
+}
+
+pub fn incentives_account() -> AccountId {
+    AccountId32::from([4u8; 32])
 }
 
 impl_outer_origin! {
@@ -43,6 +49,9 @@ impl_outer_origin! {
 }
 
 pub const DEX_A_ID: DEXId = DEXId::Polkaswap;
+pub const DAI: AssetId = common::AssetId32::from_bytes(hex!(
+    "0200060000000000000000000000000000000000000000000000000000000111"
+));
 
 #[derive(Clone, Eq, PartialEq)]
 pub struct Runtime;
@@ -214,17 +223,27 @@ impl MockDEXApi {
     }
 }
 
-fn get_mock_prices() -> HashMap<(AssetId, AssetId), Balance> {
-    vec![
-        ((USDT, XOR), Balance(fixed!(0.01))),
-        ((XOR, USDT), Balance(fixed!(100.0))),
-        ((VAL, XOR), Balance(fixed!(0.5))),
+pub fn get_mock_prices() -> HashMap<(AssetId, AssetId), Balance> {
+    let direct = vec![
         ((XOR, VAL), Balance(fixed!(2.0))),
-        ((USDT, VAL), Balance(fixed!(0.02))),
+        // USDT
+        ((XOR, USDT), Balance(fixed!(100.0))),
         ((VAL, USDT), Balance(fixed!(50.0))),
-    ]
-    .into_iter()
-    .collect()
+        // DAI
+        ((XOR, DAI), Balance(fixed!(102.0))),
+        ((VAL, DAI), Balance(fixed!(51.0))),
+        ((USDT, DAI), Balance(fixed!(1.02))),
+        // PSWAP
+        ((XOR, PSWAP), Balance(fixed!(10))),
+        ((VAL, PSWAP), Balance(fixed!(5))),
+        ((USDT, PSWAP), Balance(fixed!(0.1))),
+        ((DAI, PSWAP), Balance(fixed!(0.098))),
+    ];
+    let reverse = direct
+        .clone()
+        .into_iter()
+        .map(|((a, b), price)| ((b, a), Balance::one() / price));
+    direct.into_iter().chain(reverse).collect()
 }
 
 impl liquidity_proxy::LiquidityProxyTrait<DEXId, AccountId, AssetId> for MockDEXApi {
@@ -254,6 +273,13 @@ impl liquidity_proxy::LiquidityProxyTrait<DEXId, AccountId, AssetId> for MockDEX
     ) -> Result<SwapOutcome<Balance>, DispatchError> {
         Self::inner_quote(&filter.dex_id, input_asset_id, output_asset_id, amount)
     }
+}
+
+pub fn get_pool_reserves_account_id() -> AccountId {
+    let reserves_tech_account_id = crate::ReservesAcc::<Runtime>::get();
+    let reserves_account_id =
+        Technical::tech_account_id_to_account_id(&reserves_tech_account_id).unwrap();
+    reserves_account_id
 }
 
 parameter_types! {

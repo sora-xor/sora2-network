@@ -34,6 +34,7 @@ pallet-balances = { version = "2.0.0", default-features = false }
 trading-pair = { path = "../trading-pair", default-features = false }
 dex-manager = { path = "../dex-manager", default-features = false }
 mock-liquidity-source = { path = "../mock-liquidity-source", default-features = false }
+hex-literal = { version = '0.3.1' }
 
 [features]
 default = ['std']
