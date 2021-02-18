@@ -4,7 +4,7 @@
 extern crate alloc;
 extern crate jsonrpc_core as rpc;
 
-use crate::contract::FUNCTIONS;
+use crate::contract::{functions, FUNCTIONS};
 use crate::types::{Bytes, CallRequest, Log, Transaction, TransactionReceipt};
 use alloc::string::String;
 use codec::{Decode, Encode, FullCodec};
@@ -27,7 +27,7 @@ use frame_support::{
         traits::{IdentifyAccount, One},
         KeyTypeId, MultiSigner, Percent,
     },
-    weights::{Pays, Weight},
+    weights::Pays,
     IterableStorageDoubleMap, Parameter, RuntimeDebug, StorageDoubleMap,
 };
 use frame_system::{
@@ -272,10 +272,7 @@ impl<T: Trait> OutgoingRequest<T> {
     }
 
     fn is_allowed_during_migration(&self) -> bool {
-        match self {
-            OutgoingRequest::Migrate(_) => true,
-            _ => false,
-        }
+        matches!(self, OutgoingRequest::Migrate(_))
     }
 }
 
@@ -439,7 +436,7 @@ impl<T: Trait> OffchainRequest<T> {
                 IncomingRequestKind::CancelOutgoingRequest | IncomingRequestKind::MarkAsDone => {
                     H256(self.using_encoded(blake2_256))
                 }
-                _ => H256(request.hash.0.clone()),
+                _ => H256(request.hash.0),
             },
         }
     }
@@ -881,7 +878,7 @@ decl_module! {
             Self::add_request(OffchainRequest::outgoing(OutgoingRequest::Transfer(OutgoingTransfer {
                 from: from.clone(),
                 to,
-                asset_id: asset_id.clone(),
+                asset_id,
                 amount,
                 nonce,
                 network_id,
@@ -957,7 +954,7 @@ decl_module! {
             network_id: BridgeNetworkId<T>,
         ) {
             debug::debug!("called change_peers_out");
-            let from = ensure_signed(origin.clone())?;
+            let from = ensure_signed(origin)?;
             ensure!(from == Self::authority_account(), Error::<T>::Forbidden);
             let nonce = frame_system::Module::<T>::account_nonce(&from);
             Self::add_request(OffchainRequest::outgoing(OutgoingRequest::AddPeer(OutgoingAddPeer {
@@ -973,7 +970,7 @@ decl_module! {
         #[weight = (0, Pays::No)]
         pub fn remove_peer(origin, account_id: T::AccountId, network_id: BridgeNetworkId<T>) {
             debug::debug!("called change_peers_out");
-            let from = ensure_signed(origin.clone())?;
+            let from = ensure_signed(origin)?;
             ensure!(from == Self::authority_account(), Error::<T>::Forbidden);
             let peer_address = Self::peer_address(network_id, &account_id);
             let nonce = frame_system::Module::<T>::account_nonce(&from);
@@ -990,7 +987,7 @@ decl_module! {
         #[weight = (0, Pays::No)]
         pub fn prepare_for_migration(origin, network_id: BridgeNetworkId<T>) {
             debug::debug!("called prepare_for_migration");
-            let from = ensure_signed(origin.clone())?;
+            let from = ensure_signed(origin)?;
             ensure!(from == Self::authority_account(), Error::<T>::Forbidden);
             let nonce = frame_system::Module::<T>::account_nonce(&from);
             Self::add_request(OffchainRequest::outgoing(OutgoingRequest::PrepareForMigration(OutgoingPrepareForMigration {
@@ -1009,7 +1006,7 @@ decl_module! {
             network_id: BridgeNetworkId<T>
         ) {
             debug::debug!("called prepare_for_migration");
-            let from = ensure_signed(origin.clone())?;
+            let from = ensure_signed(origin)?;
             ensure!(from == Self::authority_account(), Error::<T>::Forbidden);
             let nonce = frame_system::Module::<T>::account_nonce(&from);
             Self::add_request(OffchainRequest::outgoing(OutgoingRequest::Migrate(OutgoingMigrate {
@@ -1035,7 +1032,7 @@ decl_module! {
                 Error::<T>::TransferIsAlreadyRegistered
             );
             incoming_request.prepare()?;
-            PendingIncomingRequests::<T>::mutate(net_id, |transfers| transfers.insert(tx_hash.clone()));
+            PendingIncomingRequests::<T>::mutate(net_id, |transfers| transfers.insert(tx_hash));
             Self::remove_request_from_queue(net_id, &tx_hash);
             IncomingRequests::<T>::insert(net_id, &tx_hash, incoming_request);
         }
@@ -1086,7 +1083,7 @@ decl_module! {
                     RequestStatuses::<T>::insert(net_id, hash, RequestStatus::ApprovalsReady);
                     Self::deposit_event(RawEvent::ApprovalsCollected(
                         request_encoded,
-                        approvals.clone(),
+                        approvals,
                     ));
                 }
                 Self::remove_request_from_queue(net_id, &hash);
@@ -1159,14 +1156,14 @@ impl<T: Trait> Decoder<T> {
         self.tokens
             .pop()
             .and_then(|x| x.into_string())
-            .ok_or(Error::<T>::InvalidString.into())
+            .ok_or_else(|| Error::<T>::InvalidString.into())
     }
 
     pub fn next_bool(&mut self) -> Result<bool, DispatchError> {
         self.tokens
             .pop()
             .and_then(|x| x.into_bool())
-            .ok_or(Error::<T>::InvalidBool.into())
+            .ok_or_else(|| Error::<T>::InvalidBool.into())
     }
 
     pub fn next_u8(&mut self) -> Result<u8, DispatchError> {
@@ -1175,7 +1172,7 @@ impl<T: Trait> Decoder<T> {
             .and_then(|x| x.into_uint())
             .filter(|x| x.as_u32() <= u8::MAX as u32)
             .map(|x| x.as_u32() as u8)
-            .ok_or(Error::<T>::InvalidByte.into())
+            .ok_or_else(|| Error::<T>::InvalidByte.into())
     }
 
     pub fn next_address(&mut self) -> Result<Address, DispatchError> {
@@ -1238,14 +1235,14 @@ impl<T: Trait> Decoder<T> {
         self.tokens
             .pop()
             .and_then(Self::parse_h256)
-            .ok_or(Error::<T>::InvalidH256.into())
+            .ok_or_else(|| Error::<T>::InvalidH256.into())
     }
 
     pub fn next_array(&mut self) -> Result<Vec<Token>, DispatchError> {
         self.tokens
             .pop()
             .and_then(|x| x.into_array())
-            .ok_or(Error::<T>::Other.into())
+            .ok_or_else(|| Error::<T>::Other.into())
     }
 
     pub fn next_array_map<U, F: FnMut(&mut Decoder<T>) -> Result<U, DispatchError>>(
@@ -1334,9 +1331,9 @@ impl<T: Trait> Module<T> {
                 Some(x) => &x.0,
                 None => continue,
             };
-            match topic {
+            match *topic {
                 // Deposit(bytes32,uint256,address,bytes32)
-                &hex!("85c0fa492ded927d3acca961da52b0dda1debb06d8c27fe189315f06bb6e26c8")
+                hex!("85c0fa492ded927d3acca961da52b0dda1debb06d8c27fe189315f06bb6e26c8")
                     if kind == IncomingRequestKind::Transfer =>
                 {
                     let types = [
@@ -1355,7 +1352,7 @@ impl<T: Trait> Module<T> {
                     return Ok(ContractEvent::Deposit(to, amount, H160(token.0), asset_id));
                 }
                 // ChangePeers(address,bool)
-                &hex!("a9fac23eb012e72fbd1f453498e7069c380385436763ee2c1c057b170d88d9f9")
+                hex!("a9fac23eb012e72fbd1f453498e7069c380385436763ee2c1c057b170d88d9f9")
                     if kind == IncomingRequestKind::AddPeer
                         || kind == IncomingRequestKind::RemovePeer =>
                 {
@@ -1367,7 +1364,7 @@ impl<T: Trait> Module<T> {
                     let peer_address = decoder.next_address()?;
                     return Ok(ContractEvent::ChangePeers(H160(peer_address.0), added));
                 }
-                &hex!("4eb3aea69bf61684354f60a43d355c3026751ddd0ea4e1f5afc1274b96c65505")
+                hex!("4eb3aea69bf61684354f60a43d355c3026751ddd0ea4e1f5afc1274b96c65505")
                     if kind == IncomingRequestKind::ClaimPswap =>
                 {
                     let types = [ParamType::FixedBytes(32)];
@@ -1377,12 +1374,12 @@ impl<T: Trait> Module<T> {
                     let account_id = decoder.next_account_id()?;
                     return Ok(ContractEvent::ClaimPswap(account_id));
                 }
-                &hex!("5389de9593f75e6515eefa796bd2d3324759f441f2c9b2dcda0efb25190378ff")
+                hex!("5389de9593f75e6515eefa796bd2d3324759f441f2c9b2dcda0efb25190378ff")
                     if kind == IncomingRequestKind::PrepareForMigration =>
                 {
                     return Ok(ContractEvent::PreparedForMigration);
                 }
-                &hex!("a2e7361c23d7820040603b83c0cd3f494d377bac69736377d75bb56c651a5098")
+                hex!("a2e7361c23d7820040603b83c0cd3f494d377bac69736377d75bb56c651a5098")
                     if kind == IncomingRequestKind::Migrate =>
                 {
                     let types = [ParamType::Address];
@@ -1473,7 +1470,8 @@ impl<T: Trait> Module<T> {
             let confirmed = current_eth_height >= request.at_height()
                 && current_eth_height - request.at_height() >= CONFIRMATION_INTERVAL;
             if need_to_approve && confirmed {
-                if Self::send_incoming_request_result(Ok(request), network_id).is_ok() {
+                let sent = Self::send_incoming_request_result(Ok(request), network_id).is_ok();
+                if sent {
                     approved.insert(hash, request_submission_height);
                 }
             }
@@ -1512,16 +1510,14 @@ impl<T: Trait> Module<T> {
                     Some(timepoint),
                     <<T as Trait>::Call>::from(register_call).encode(),
                     false,
-                    Weight::from(10_000_000_000_000u64),
+                    10_000_000_000_000u64,
                 );
                 Self::send_signed_transaction::<bridge_multisig::Call<T>>(call)
             }
             Err(e) if e == Error::<T>::HttpFetchingError.into() => {
                 Err(Error::<T>::HttpFetchingError)
             }
-            Err(e) => {
-                Self::send_incoming_request_result(Err((hash, timepoint, e.into())), network_id)
-            }
+            Err(e) => Self::send_incoming_request_result(Err((hash, timepoint, e)), network_id),
         }
     }
 
@@ -1543,7 +1539,7 @@ impl<T: Trait> Module<T> {
         )?;
         let mut method_id = [0u8; 4];
         method_id.clone_from_slice(&tx.input.0[..4]);
-        let funs = &*FUNCTIONS;
+        let funs = FUNCTIONS.get_or_init(functions);
         let fun_meta = funs.get(&method_id).ok_or(Error::<T>::UnknownMethodId)?;
         let fun = &fun_meta.function;
         let tokens = fun
@@ -1585,7 +1581,7 @@ impl<T: Trait> Module<T> {
             Some(pre_request.timepoint),
             <<T as Trait>::Call>::from(finalize_mark_as_done).encode(),
             false,
-            Weight::from(10_000_000_000_000u64),
+            10_000_000_000_000u64,
         );
         Self::send_signed_transaction::<bridge_multisig::Call<T>>(call)
     }
@@ -1826,7 +1822,7 @@ impl<T: Trait> Module<T> {
         let node_url = s_node_url
             .get::<String>()
             .flatten()
-            .unwrap_or(SUB_NODE_URL.into());
+            .unwrap_or_else(|| SUB_NODE_URL.into());
         let headers: Vec<(_, String)> = vec![("content-type", "application/json".into())];
 
         Self::json_rpc_request(&node_url, 0, method, params, &headers)
@@ -2069,7 +2065,7 @@ impl<T: Trait> Module<T> {
             Some(timepoint),
             <<T as Trait>::Call>::from(transfer_call).encode(),
             false,
-            Weight::from(10_000_000_000_000_000u64),
+            10_000_000_000_000_000u64,
         );
         Self::send_signed_transaction::<bridge_multisig::Call<T>>(call)?;
         Ok(())
@@ -2187,10 +2183,7 @@ impl<T: Trait> Module<T> {
     }
 
     fn is_peer(who: &T::AccountId, network_id: T::NetworkId) -> bool {
-        Self::peers(network_id)
-            .into_iter()
-            .find(|i| i == who)
-            .is_some()
+        Self::peers(network_id).into_iter().any(|i| i == *who)
     }
 
     fn ensure_peer(who: &T::AccountId, network_id: T::NetworkId) -> DispatchResult {
@@ -2225,7 +2218,7 @@ impl<T: Trait> Module<T> {
                     Request::<T>::get(net_id, hash)
                         .zip(Self::request_status(net_id, hash))
                         .map(|x| vec![x])
-                        .unwrap_or(Vec::new())
+                        .unwrap_or_default()
                 } else {
                     Request::<T>::iter()
                         .filter(|(_, h, _)| h == hash)
@@ -2259,7 +2252,7 @@ impl<T: Trait> Module<T> {
                                 let encoded = request
                                     .to_eth_abi(hash)
                                     .expect("this conversion was already tested; qed");
-                                Self::get_approvals(&[hash.clone()], Some(net_id))
+                                Self::get_approvals(&[hash], Some(net_id))
                                     .ok()?
                                     .pop()
                                     .map(|approvals| vec![(encoded, approvals)])
@@ -2280,7 +2273,7 @@ impl<T: Trait> Module<T> {
                                         let encoded = request
                                             .to_eth_abi(hash)
                                             .expect("this conversion was already tested; qed");
-                                        Self::get_approvals(&[hash.clone()], Some(net_id))
+                                        Self::get_approvals(&[hash], Some(net_id))
                                             .ok()?
                                             .pop()
                                             .map(|approvals| (encoded, approvals))

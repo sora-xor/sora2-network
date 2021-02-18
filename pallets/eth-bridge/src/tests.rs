@@ -1,4 +1,4 @@
-use crate::contract::RECEIVE_BY_ETHEREUM_ASSET_ADDRESS_ID;
+use crate::contract::{functions, FUNCTIONS, RECEIVE_BY_ETHEREUM_ASSET_ADDRESS_ID};
 use crate::requests::encode_outgoing_request_eth_call;
 use crate::{
     majority,
@@ -1232,6 +1232,7 @@ fn should_not_allow_changing_peers_simultaneously() {
 fn should_cancel_ready_outgoing_request() {
     let _ = env_logger::try_init();
     let (mut ext, state) = ExtBuilder::default().build();
+    let _ = FUNCTIONS.get_or_init(functions);
     ext.execute_with(|| {
         let net_id = ETH_NETWORK_ID;
         let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
@@ -1265,7 +1266,7 @@ fn should_cancel_ready_outgoing_request() {
         )
         .unwrap();
         let tx_input = encode_outgoing_request_eth_call::<Test>(
-            *RECEIVE_BY_ETHEREUM_ASSET_ADDRESS_ID,
+            *RECEIVE_BY_ETHEREUM_ASSET_ADDRESS_ID.get().unwrap(),
             &outgoing_req,
         )
         .unwrap();
@@ -1324,7 +1325,7 @@ fn should_fail_cancel_ready_outgoing_request_with_wrong_approvals() {
         )
         .unwrap();
         let tx_input = encode_outgoing_request_eth_call::<Test>(
-            *RECEIVE_BY_ETHEREUM_ASSET_ADDRESS_ID,
+            *RECEIVE_BY_ETHEREUM_ASSET_ADDRESS_ID.get().unwrap(),
             &outgoing_req,
         )
         .unwrap();
@@ -1396,7 +1397,7 @@ fn should_fail_cancel_unfinished_outgoing_request() {
         )
         .unwrap();
         let tx_input = encode_outgoing_request_eth_call::<Test>(
-            *RECEIVE_BY_ETHEREUM_ASSET_ADDRESS_ID,
+            *RECEIVE_BY_ETHEREUM_ASSET_ADDRESS_ID.get().unwrap(),
             &outgoing_req,
         )
         .unwrap();
