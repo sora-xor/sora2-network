@@ -70,7 +70,7 @@ pub struct Receipt {
 impl Receipt {
     pub fn is_approved(&self) -> bool {
         // TODO: handle `root` field?
-        self.status.unwrap_or(0.into()) != 0.into()
+        self.status.unwrap_or_else(|| 0.into()) != 0.into()
     }
 }
 

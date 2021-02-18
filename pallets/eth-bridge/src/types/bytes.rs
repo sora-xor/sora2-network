@@ -49,9 +49,9 @@ impl<'a> Visitor<'a> for BytesVisitor {
     where
         E: Error,
     {
-        if value.starts_with("0x") {
-            let bytes = FromHex::from_hex(&value[2..])
-                .map_err(|e| Error::custom(format!("Invalid hex: {}", e)))?;
+        if let Some(val) = value.strip_prefix("0x") {
+            let bytes =
+                FromHex::from_hex(val).map_err(|e| Error::custom(format!("Invalid hex: {}", e)))?;
             Ok(Bytes(bytes))
         } else {
             Err(Error::invalid_value(Unexpected::Str(value), &"0x prefix"))
