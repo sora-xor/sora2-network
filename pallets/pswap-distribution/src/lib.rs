@@ -370,7 +370,7 @@ impl<T: Trait> Module<T> {
         // used in move convinient way.
         if incentive_asset_id.clone() == common::PSWAP.into() {
             let old = BurnedPswapDedicatedForOtherPallets::get();
-            let new: Fixed = (old + incentive_to_burn)
+            let new: Fixed = (old + incentive_to_burn.clone())
                 .get()
                 .map_err(|_| Error::<T>::CalculationError)?;
             BurnedPswapDedicatedForOtherPallets::set(new);
