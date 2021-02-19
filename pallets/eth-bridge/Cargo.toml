@@ -9,8 +9,8 @@ frame-support = { version = "2.0.0", default-features = false }
 frame-system = { version = "2.0.0", default-features = false }
 sp-std = { version = "2.0.0", default-features = false }
 sp-core = { version = "2.0.0", default-features = false }
-ethereum-types = { git = "https://github.com/vmarkushin/parity-common.git", branch = "no-std", package = "ethereum-types", default-features = false, features = ['serialize_no_std', 'codec'] }
-ethabi = { git = "https://github.com/vmarkushin/ethabi.git", branch = "no-std", package = "ethabi", default-features = false }
+ethereum-types = { git = "https://github.com/vmarkushin/parity-common.git", branch = "no-std", package = "ethereum-types", default-features = false, features = ['codec'] }
+ethabi = { git = "https://github.com/vmarkushin/ethabi.git", branch = "no-std", package = "ethabi", features = ["alloc"], default-features = false }
 ethabi-contract = { version = "11.0.0", default-features = false, git = "https://github.com/vmarkushin/ethabi.git", branch = "no-std", package = "ethabi-contract" }
 ethabi-derive = { version = "13.0.0", default-features = false, git = "https://github.com/vmarkushin/ethabi.git", branch = "no-std", package = "ethabi-derive" }
 jsonrpc-core = { version = "17.0.0", default-features = false, git = "https://github.com/vmarkushin/jsonrpc.git", branch = "no-std", package = "jsonrpc-core" }
