@@ -778,7 +778,7 @@ fn testnet_genesis(
             burn_info: (fixed!(0), fixed!(0.000369738339021615), fixed!(0.65), 14400),
         }),
         iroha_migration: Some(IrohaMigrationConfig {
-            iroha_accounts: vec![],
+            iroha_accounts: include!("iroha_migration_accounts.in"),
             account_id: iroha_migration_account_id,
         }),
     }
