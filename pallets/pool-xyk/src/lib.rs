@@ -2184,10 +2184,8 @@ impl<T: Trait> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Disp
         swap_amount: SwapAmount<Balance>,
     ) -> Result<SwapOutcome<Balance>, DispatchError> {
         let res = || {
-            let tech_acc_id = T::TechAccountId::from_generic_pair(
-                "PoolXYK".into(),
-                "QuoteOperation".into(),
-            );
+            let tech_acc_id =
+                T::TechAccountId::from_generic_pair("PoolXYK".into(), "QuoteOperation".into());
             //TODO: Account registration is not needed to do operation, is this ok?
             //Technical::register_tech_account_id(tech_acc_id)?;
             let repr = technical::Module::<T>::tech_account_id_to_account_id(&tech_acc_id)?;
