@@ -726,7 +726,7 @@ mod tests {
             let (limit, owned) = MBCPool::rewards(&alice());
             assert!(limit.is_zero());
             // FIXME: this does seem too large for a reward, considering PSWAP price $10
-            assert_eq!(owned, Balance(fixed!(68.734420253671657619)));
+            assert_eq!(owned, Balance(fixed!(22.911473417890552539)));
         });
     }
 
@@ -789,16 +789,16 @@ mod tests {
             MBCPool::on_pswap_burned(pswap_to_burn);
             let (limit_alice, _) = MBCPool::rewards(&alice());
             let (limit_bob, _) = MBCPool::rewards(&bob());
-            assert_eq!(limit_alice, Balance(fixed!(3435.442645125439461804)));
-            assert_eq!(limit_bob, Balance(fixed!(1717.610175353555595612)));
+            assert_eq!(limit_alice, Balance(fixed!(1145.147548375146487267)));
+            assert_eq!(limit_bob, Balance(fixed!(572.536725117851865203)));
 
             // claiming incentives partially
             assert_ok!(MBCPool::claim_incentives(Origin::signed(alice())));
             assert_ok!(MBCPool::claim_incentives(Origin::signed(bob())));
             let (limit_alice, remaining_owned_alice) = MBCPool::rewards(&alice());
             let (limit_bob, remaining_owned_bob) = MBCPool::rewards(&bob());
-            assert_eq!(remaining_owned_alice, Balance(fixed!(3435.442645125439461805)));
-            assert_eq!(remaining_owned_bob, Balance(fixed!(1717.610175353555595614)));
+            assert_eq!(remaining_owned_alice, Balance(fixed!(1145.147548375146487269)));
+            assert_eq!(remaining_owned_bob, Balance(fixed!(572.536725117851865205)));
             assert!(limit_alice.is_zero());
             assert!(limit_bob.is_zero());
             assert_eq!(Assets::free_balance(&PSWAP, &alice()).unwrap(), owned_alice - remaining_owned_alice);

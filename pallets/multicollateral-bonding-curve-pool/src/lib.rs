@@ -867,8 +867,8 @@ impl<T: Trait> Module<T> {
     /// actual_after = actual_before + input_currency_amount * input_currency_usd_price
     /// a = ideal_before - actual_before
     /// b = ideal_after - actual_after
-    /// N = enabled currencies except PSWAP and VAL
-    /// reward_usd = (a - b) * (mean(a, b) / ideal_after) / N
+    /// N = enabled reserve currencies except PSWAP and VAL
+    /// reward_usd = (a - b) * (mean(a, b) / ideal_after) / (N * 3)
     pub fn calculate_buy_reward(
         reserves_account_id: &T::AccountId,
         collateral_asset_id: &T::AssetId,
@@ -895,7 +895,7 @@ impl<T: Trait> Module<T> {
         let mean_ab = (a.clone() + b.clone()) / fixed_wrapper!(2);
         let first_term = a - b;
         let second_term = mean_ab / ideal_before;
-        let reference_amount = (first_term * second_term) / N;
+        let reference_amount = (first_term * second_term) / (N * fixed_wrapper!(3));
 
         // Convert to PSWAP.
         let pswap_price = Self::reference_price(&T::GetPswapAssetId::get())?;
