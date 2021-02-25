@@ -66,12 +66,6 @@ mod tests;
 pub mod types;
 
 const SUB_NODE_URL: &str = "http://127.0.0.1:9954";
-const XOR_MASTER_CONTRACT_ADDRESS: types::H160 =
-    types::H160(hex!("12c6a709925783f49fcca0b398d13b0d597e6e1c"));
-const VAL_MASTER_CONTRACT_ADDRESS: types::H160 =
-    types::H160(hex!("47e229aa491763038f6a505b4f85d8eb463f0962"));
-pub const PSWAP_CONTRACT_ADDRESS: H160 = H160(hex!("0000000000000000000000000000000000000000"));
-
 const HTTP_REQUEST_TIMEOUT_SECS: u64 = 10;
 
 pub const TECH_ACCOUNT_PREFIX: &[u8] = b"bridge";
@@ -665,8 +659,11 @@ decl_storage! {
         BridgeAccount get(fn bridge_account): map hasher(twox_64_concat) T::NetworkId => Option<T::AccountId>;
         AuthorityAccount get(fn authority_account) config(): T::AccountId;
 
-        BridgeContractAddress get(fn bridge_contract_address): map hasher(twox_64_concat) T::NetworkId => Address;
         BridgeBridgeStatus get(fn bridge_contract_status): map hasher(twox_64_concat) T::NetworkId => BridgeStatus;
+        BridgeContractAddress get(fn bridge_contract_address): map hasher(twox_64_concat) T::NetworkId => Address;
+        XorMasterContractAddress get(fn xor_master_contract_address) config(): Address;
+        ValMasterContractAddress get(fn val_master_contract_address) config(): Address;
+        PswapContractAddress get(fn pswap_contract_address) config(): Address;
 
         // None means the address owns no pswap.
         // 0 means the address claimed them.
@@ -1864,8 +1861,8 @@ impl<T: Trait> Module<T> {
         let contracts = if network_id == T::GetEthNetworkId::get() {
             vec![
                 contract_address,
-                XOR_MASTER_CONTRACT_ADDRESS,
-                VAL_MASTER_CONTRACT_ADDRESS,
+                types::H160(Self::xor_master_contract_address().0),
+                types::H160(Self::val_master_contract_address().0),
             ]
         } else {
             vec![contract_address]
@@ -2124,7 +2121,7 @@ impl<T: Trait> Module<T> {
                     Error::<T>::UnknownContractAddress
                 );
                 ensure!(
-                    to == PSWAP_CONTRACT_ADDRESS,
+                    to == Self::pswap_contract_address(),
                     Error::<T>::UnknownContractAddress
                 );
             }
