@@ -21,7 +21,7 @@ use sc_network::config::MultiaddrWithPeerId;
 use sc_service::{ChainType, Properties};
 use sp_consensus_aura::sr25519::AuthorityId as AuraId;
 use sp_consensus_babe::AuthorityId as BabeId;
-use sp_core::{sr25519, Pair, Public};
+use sp_core::{sr25519, Pair, Public, H160};
 use sp_runtime::{
     sp_std::iter::once,
     traits::{IdentifyAccount, Verify, Zero},
@@ -78,6 +78,15 @@ pub fn authority_keys_from_public_keys(
 
 fn session_keys(grandpa: GrandpaId, babe: BabeId) -> SessionKeys {
     SessionKeys { babe, grandpa }
+}
+
+struct EthBridgeParams {
+    xor_master_contract_address: H160,
+    xor_contract_address: H160,
+    val_master_contract_address: H160,
+    val_contract_address: H160,
+    pswap_contract_address: H160,
+    bridge_contract_address: H160,
 }
 
 pub fn dev_net() -> ChainSpec {
@@ -154,6 +163,17 @@ pub fn dev_net() -> ChainSpec {
                 hex!("da723e9d76bd60da0ec846895c5e0ecf795b50ae652c012f27e56293277ef372").into(),
                 hex!("16fec57d383a1875ab4e9786aea7a626e721a491c828f475ae63ef098f98f373").into(),
                 hex!("da723e9d76bd60da0ec846895c5e0ecf795b50ae652c012f27e56293277ef372").into(),
+                EthBridgeParams {
+                    xor_master_contract_address: hex!("12c6a709925783f49fcca0b398d13b0d597e6e1c")
+                        .into(),
+                    xor_contract_address: hex!("02ffdae478412dbde6bbd5cda8ff05c0960e0c45").into(),
+                    val_master_contract_address: hex!("47e229aa491763038f6a505b4f85d8eb463f0962")
+                        .into(),
+                    val_contract_address: hex!("68339de68c9af6577c54867728dbb2db9d7368bf").into(),
+                    pswap_contract_address: hex!("0000000000000000000000000000000000000000").into(),
+                    bridge_contract_address: hex!("64fb0ca483b356832cd97958e6b23df783fb7ced")
+                        .into(),
+                },
             )
         },
         vec![],
@@ -245,6 +265,17 @@ pub fn staging_net(test: bool) -> ChainSpec {
                 hex!("da723e9d76bd60da0ec846895c5e0ecf795b50ae652c012f27e56293277ef372").into(),
                 hex!("16fec57d383a1875ab4e9786aea7a626e721a491c828f475ae63ef098f98f373").into(),
                 hex!("da723e9d76bd60da0ec846895c5e0ecf795b50ae652c012f27e56293277ef372").into(),
+                EthBridgeParams {
+                    xor_master_contract_address: hex!("cceb41100aa2a9a6f144d7c1f876070b810bf7ae")
+                        .into(),
+                    xor_contract_address: hex!("dc1c024535118f6de6d999c23fc31e33bc2cafc9").into(),
+                    val_master_contract_address: hex!("d7f81ed173cb3af28f983670164df30851fba678")
+                        .into(),
+                    val_contract_address: hex!("725c6b8cd3621eba4e0ccc40d532e7025b925a65").into(),
+                    pswap_contract_address: hex!("0000000000000000000000000000000000000000").into(),
+                    bridge_contract_address: hex!("3ef9b59f2a1563f14e683de3724e618b9b69aebb")
+                        .into(),
+                },
             )
         },
         boot_nodes,
@@ -380,6 +411,17 @@ pub fn local_testnet_config() -> ChainSpec {
                 get_account_id_from_seed::<sr25519::Public>("Alice"),
                 get_account_id_from_seed::<sr25519::Public>("Alice"),
                 get_account_id_from_seed::<sr25519::Public>("Alice"),
+                EthBridgeParams {
+                    xor_master_contract_address: hex!("12c6a709925783f49fcca0b398d13b0d597e6e1c")
+                        .into(),
+                    xor_contract_address: hex!("02ffdae478412dbde6bbd5cda8ff05c0960e0c45").into(),
+                    val_master_contract_address: hex!("47e229aa491763038f6a505b4f85d8eb463f0962")
+                        .into(),
+                    val_contract_address: hex!("68339de68c9af6577c54867728dbb2db9d7368bf").into(),
+                    pswap_contract_address: hex!("0000000000000000000000000000000000000000").into(),
+                    bridge_contract_address: hex!("64fb0ca483b356832cd97958e6b23df783fb7ced")
+                        .into(),
+                },
             )
         },
         vec![],
@@ -398,6 +440,7 @@ fn testnet_genesis(
     dex_root: AccountId,
     tech_permissions_owner: AccountId,
     initial_assets_owner: AccountId,
+    eth_bridge_params: EthBridgeParams,
 ) -> GenesisConfig {
     let initial_balance = 1u128 << 60;
     let initial_staking: Balance = (initial_balance >> 44).into();
@@ -728,28 +771,25 @@ fn testnet_genesis(
                 tokens: vec![
                     (
                         XOR.into(),
-                        Some(sp_core::H160::from(hex!(
-                            "02ffdae478412dbde6bbd5cda8ff05c0960e0c45"
-                        ))),
+                        Some(eth_bridge_params.xor_contract_address),
                         AssetKind::SidechainOwned,
                     ),
                     (
                         VAL.into(),
-                        Some(sp_core::H160::from(hex!(
-                            "68339de68c9af6577c54867728dbb2db9d7368bf"
-                        ))),
+                        Some(eth_bridge_params.val_contract_address),
                         AssetKind::SidechainOwned,
                     ),
                 ],
-                bridge_contract_address: sp_core::H160(hex!(
-                    "79d6ad8533257fbd8bba0150739289b9953d7217"
-                )),
+                bridge_contract_address: eth_bridge_params.bridge_contract_address,
                 reserves: vec![
                     (XOR.into(), Balance::from(350_000u32)),
                     (VAL.into(), Balance::from(33_900_000u32)),
                 ],
             }],
             pswap_owners: vec![],
+            xor_master_contract_address: eth_bridge_params.xor_master_contract_address,
+            val_master_contract_address: eth_bridge_params.val_master_contract_address,
+            pswap_contract_address: eth_bridge_params.pswap_contract_address,
         }),
         bridge_multisig: Some(BridgeMultisigConfig {
             accounts: once((
