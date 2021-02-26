@@ -98,7 +98,7 @@ pub type Balances = pallet_balances::Module<Test>;
 pub type XorFee = Module<Test>;
 pub type Timestamp = pallet_timestamp::Module<Test>;
 pub type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
-type TechAssetId = common::TechAssetId<common::AssetId, DEXId, common::LiquiditySourceType>;
+type TechAssetId = common::TechAssetId<common::AssetId>;
 type DEXId = common::DEXId;
 pub type AccountId = u64;
 pub type BlockNumber = u64;
@@ -222,6 +222,11 @@ impl currencies::Trait for Test {
 
 impl assets::Trait for Test {
     type Event = ();
+    type ExtraDEXId = common::DEXId;
+    type ExtraLstId = common::LiquiditySourceType;
+    type ExtraAccountId = AccountId;
+    type ExtraTupleArg =
+        common::AssetIdExtraTupleArg<common::DEXId, common::LiquiditySourceType, AccountId>;
     type AssetId = AssetId;
     type GetBaseAssetId = XorId;
     type Currency = currencies::Module<Test>;

@@ -16,7 +16,7 @@ type DEXId = common::DEXId;
 type AccountId = AccountId32;
 type BlockNumber = u64;
 type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
-type TechAssetId = common::TechAssetId<common::AssetId, DEXId, common::LiquiditySourceType>;
+type TechAssetId = common::TechAssetId<common::AssetId>;
 type Balances = pallet_balances::Module<Test>;
 type Tokens = tokens::Module<Test>;
 type System = frame_system::Module<Test>;
@@ -104,6 +104,11 @@ impl technical::Trait for Test {
 
 impl assets::Trait for Test {
     type Event = ();
+    type ExtraDEXId = common::DEXId;
+    type ExtraLstId = common::LiquiditySourceType;
+    type ExtraAccountId = [u8; 32];
+    type ExtraTupleArg =
+        common::AssetIdExtraTupleArg<common::DEXId, common::LiquiditySourceType, [u8; 32]>;
     type AssetId = AssetId;
     type GetBaseAssetId = GetBaseAssetId;
     type Currency = currencies::Module<Test>;

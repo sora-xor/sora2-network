@@ -46,6 +46,9 @@ cargo-test-release:
 cargo-test-debug:
 	${RUN} "SKIP_WASM_BUILD=1 cargo test"
 
+cargo-check-release:
+	${RUN} "SKIP_WASM_BUILD=1 cargo check --release"
+
 yarn-build:
 	${RUN} "yarn"
 	${RUN} "yarn build"

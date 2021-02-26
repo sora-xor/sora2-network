@@ -36,7 +36,7 @@ type DEXId = common::DEXId;
 type AccountId = AccountId32;
 type BlockNumber = u64;
 type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
-type TechAssetId = common::TechAssetId<common::AssetId, DEXId, common::LiquiditySourceType>;
+type TechAssetId = common::TechAssetId<common::AssetId>;
 
 pub const XOR: AssetId = AssetId::XOR;
 pub const ALICE: u64 = 1;
@@ -223,6 +223,11 @@ impl technical::Trait for Test {
 
 impl assets::Trait for Test {
     type Event = Event;
+    type ExtraDEXId = common::DEXId;
+    type ExtraLstId = common::LiquiditySourceType;
+    type ExtraAccountId = u64;
+    type ExtraTupleArg =
+        common::AssetIdExtraTupleArg<common::DEXId, common::LiquiditySourceType, u64>;
     type AssetId = common::AssetId32<AssetId>;
     type GetBaseAssetId = GetBaseAssetId;
     type Currency = currencies::Module<Test>;

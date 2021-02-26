@@ -28,7 +28,7 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
-use codec::Encode;
+use codec::{Decode, Encode};
 use common::{hash, prelude::Balance, Amount, AssetSymbol, BalancePrecision};
 use frame_support::dispatch::{DispatchError, DispatchResult};
 use frame_support::sp_runtime::traits::{MaybeSerializeDeserialize, Member};
@@ -38,6 +38,7 @@ use frame_support::{
 };
 use frame_system::ensure_signed;
 use permissions::{Scope, BURN, MINT, SLASH, TRANSFER};
+use sp_core::hash::H512;
 use sp_core::H256;
 use sp_runtime::traits::Zero;
 use sp_std::vec::Vec;
@@ -62,8 +63,100 @@ type CurrencyIdOf<T> =
 const ASSET_SYMBOL_MAX_LENGTH: usize = 7;
 const MAX_ALLOWED_PRECISION: u8 = 18;
 
+#[derive(Clone, Copy, Eq, PartialEq, Encode, Decode)]
+pub enum TupleArg<T: Trait> {
+    GenericI32(i32),
+    GenericU64(u64),
+    GenericU128(u128),
+    GenericU8x32([u8; 32]),
+    GenericH256(H256),
+    GenericH512(H512),
+    LeafAssetId(AssetIdOf<T>),
+    TupleAssetId(AssetIdOf<T>),
+    Extra(T::ExtraTupleArg),
+}
+
+#[derive(Clone, Copy, Eq, PartialEq, Encode, Decode)]
+pub enum Tuple<T: Trait> {
+    Arity0,
+    Arity1(TupleArg<T>),
+    Arity2(TupleArg<T>, TupleArg<T>),
+    Arity3(TupleArg<T>, TupleArg<T>, TupleArg<T>),
+    Arity4(TupleArg<T>, TupleArg<T>, TupleArg<T>, TupleArg<T>),
+    Arity5(
+        TupleArg<T>,
+        TupleArg<T>,
+        TupleArg<T>,
+        TupleArg<T>,
+        TupleArg<T>,
+    ),
+    Arity6(
+        TupleArg<T>,
+        TupleArg<T>,
+        TupleArg<T>,
+        TupleArg<T>,
+        TupleArg<T>,
+        TupleArg<T>,
+    ),
+    Arity7(
+        TupleArg<T>,
+        TupleArg<T>,
+        TupleArg<T>,
+        TupleArg<T>,
+        TupleArg<T>,
+        TupleArg<T>,
+        TupleArg<T>,
+    ),
+    Arity8(
+        TupleArg<T>,
+        TupleArg<T>,
+        TupleArg<T>,
+        TupleArg<T>,
+        TupleArg<T>,
+        TupleArg<T>,
+        TupleArg<T>,
+        TupleArg<T>,
+    ),
+    Arity9(
+        TupleArg<T>,
+        TupleArg<T>,
+        TupleArg<T>,
+        TupleArg<T>,
+        TupleArg<T>,
+        TupleArg<T>,
+        TupleArg<T>,
+        TupleArg<T>,
+        TupleArg<T>,
+    ),
+}
+
 pub trait Trait: frame_system::Trait + permissions::Trait + tokens::Trait {
     type Event: From<Event<Self>> + Into<<Self as frame_system::Trait>::Event>;
+
+    type ExtraDEXId: Clone + Copy + Encode + Decode + Eq + PartialEq;
+    type ExtraLstId: Clone
+        + Copy
+        + Encode
+        + Decode
+        + Eq
+        + PartialEq
+        + From<common::LiquiditySourceType>;
+    type ExtraAccountId: Clone
+        + Copy
+        + Encode
+        + Decode
+        + Eq
+        + PartialEq
+        + From<Self::AccountId>
+        + Into<Self::AccountId>;
+    type ExtraTupleArg: Clone
+        + Copy
+        + Encode
+        + Decode
+        + Eq
+        + PartialEq
+        + From<common::AssetIdExtraTupleArg<Self::ExtraDEXId, Self::ExtraLstId, Self::ExtraAccountId>>
+        + Into<common::AssetIdExtraTupleArg<Self::ExtraDEXId, Self::ExtraLstId, Self::ExtraAccountId>>;
 
     /// DEX assets (currency) identifier.
     type AssetId: Parameter
@@ -100,6 +193,8 @@ decl_storage! {
         AssetOwners get(fn asset_owners): map hasher(twox_64_concat) T::AssetId => T::AccountId;
         /// Asset Id -> (Symbol, Precision, Is Mintable)
         pub AssetInfos get(fn asset_infos): map hasher(twox_64_concat) T::AssetId => (AssetSymbol, BalancePrecision, bool);
+        /// Asset Id -> Tuple<T>
+        pub TupleAssetId get(fn tuple_asset_id): map hasher(twox_64_concat) T::AssetId => Option<Tuple<T>>;
     }
     add_extra_genesis {
         config(endowed_assets): Vec<(T::AssetId, T::AccountId, AssetSymbol, BalancePrecision, Balance, bool)>;
@@ -244,6 +339,27 @@ decl_module! {
 }
 
 impl<T: Trait> Module<T> {
+    /// Generates an `AssetId` for the given `Tuple<T>`, and insert record to storage map.
+    pub fn asset_id_from_tuple(tuple: &Tuple<T>) -> T::AssetId
+    where
+        Tuple<T>: Encode,
+        AssetIdOf<T>: Encode,
+    {
+        let mut keccak = Keccak::v256();
+        keccak.update(b"From Tuple");
+        keccak.update(&tuple.encode());
+        let mut output = [0u8; 32];
+        keccak.finalize(&mut output);
+        let asset_id = T::AssetId::from(H256(output));
+        TupleAssetId::<T>::insert(asset_id, tuple);
+        asset_id
+    }
+
+    /// Get `Tuple<T>` from `AssetId`.
+    pub fn tuple_from_asset_id(asset_id: &T::AssetId) -> Option<Tuple<T>> {
+        TupleAssetId::<T>::get(asset_id)
+    }
+
     /// Generates an `AssetId` for the given `AccountId`.
     pub fn gen_asset_id(account_id: &T::AccountId) -> T::AssetId {
         let mut keccak = Keccak::v256();

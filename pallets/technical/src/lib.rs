@@ -58,9 +58,7 @@ pub trait Trait: common::Trait + assets::Trait {
         + Member
         + Parameter
         + Into<AssetIdOf<Self>>
-        + TryFrom<AssetIdOf<Self>>
-        + GetLstIdAndTradingPairFromTechAsset<LstId, common::TradingPair<AssetIdOf<Self>>>
-        + GetTechAssetWithLstTag<LstId, AssetIdOf<Self>>;
+        + TryFrom<AssetIdOf<Self>>;
 
     /// Like AccountId but controlled by consensus, not signing by user.
     /// This extra traits exist here bacause no way to do it by constraints, problem exist with
@@ -71,12 +69,12 @@ pub trait Trait: common::Trait + assets::Trait {
         + Default
         + FromGenericPair
         + MaybeSerializeDeserialize
-        + common::ToMarkerAsset<TechAssetIdOf<Self>, LstId>
         + common::ToFeeAccount
         + common::ToTechUnitFromDEXAndTradingPair<
             DEXIdOf<Self>,
             common::TradingPair<TechAssetIdOf<Self>>,
         >;
+    //+ Into<common::TechAccountId<Self::AccountId, Self::AssetId, Self::ExtraDEXId>>;
 
     /// Trigger for auto claim.
     type Trigger: Default + Copy + Member + Parameter;

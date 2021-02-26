@@ -1985,8 +1985,7 @@ dependencies = [
 [[package]]
 name = "fixed-hash"
 version = "0.6.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "11498d382790b7a8f2fd211780bec78619bba81cdad3a283997c0c41f836759c"
+source = "git+https://github.com/vmarkushin/parity-common.git?branch=no-std#76837f10b96f63b52b97394e88a25f6cdda28c91"
 dependencies = [
  "byteorder 1.3.4",
  "rand 0.7.3",
@@ -1997,7 +1996,8 @@ dependencies = [
 [[package]]
 name = "fixed-hash"
 version = "0.6.1"
-source = "git+https://github.com/vmarkushin/parity-common.git?branch=no-std#76837f10b96f63b52b97394e88a25f6cdda28c91"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "11498d382790b7a8f2fd211780bec78619bba81cdad3a283997c0c41f836759c"
 dependencies = [
  "byteorder 1.3.4",
  "rand 0.7.3",
@@ -3072,8 +3072,7 @@ dependencies = [
 [[package]]
 name = "impl-codec"
 version = "0.4.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1be51a921b067b0eaca2fad532d9400041561aa922221cc65f95a85641c6bf53"
+source = "git+https://github.com/vmarkushin/parity-common.git?branch=no-std#76837f10b96f63b52b97394e88a25f6cdda28c91"
 dependencies = [
  "parity-scale-codec",
 ]
@@ -3081,7 +3080,8 @@ dependencies = [
 [[package]]
 name = "impl-codec"
 version = "0.4.2"
-source = "git+https://github.com/vmarkushin/parity-common.git?branch=no-std#76837f10b96f63b52b97394e88a25f6cdda28c91"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1be51a921b067b0eaca2fad532d9400041561aa922221cc65f95a85641c6bf53"
 dependencies = [
  "parity-scale-codec",
 ]
@@ -6220,8 +6220,7 @@ dependencies = [
 [[package]]
 name = "rlp"
 version = "0.4.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1190dcc8c3a512f1eef5d09bb8c84c7f39e1054e174d1795482e18f5272f2e73"
+source = "git+https://github.com/vmarkushin/parity-common.git?branch=no-std#76837f10b96f63b52b97394e88a25f6cdda28c91"
 dependencies = [
  "rustc-hex",
 ]
@@ -6229,7 +6228,8 @@ dependencies = [
 [[package]]
 name = "rlp"
 version = "0.4.6"
-source = "git+https://github.com/vmarkushin/parity-common.git?branch=no-std#76837f10b96f63b52b97394e88a25f6cdda28c91"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1190dcc8c3a512f1eef5d09bb8c84c7f39e1054e174d1795482e18f5272f2e73"
 dependencies = [
  "rustc-hex",
 ]
@@ -9199,8 +9199,7 @@ checksum = "56dee185309b50d1f11bfedef0fe6d036842e3fb77413abef29f8f8d1c5d4c1c"
 [[package]]
 name = "uint"
 version = "0.8.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9db035e67dfaf7edd9aebfe8676afcd63eed53c8a4044fed514c8cccf1835177"
+source = "git+https://github.com/vmarkushin/parity-common.git?branch=no-std#76837f10b96f63b52b97394e88a25f6cdda28c91"
 dependencies = [
  "byteorder 1.3.4",
  "crunchy",
@@ -9211,7 +9210,8 @@ dependencies = [
 [[package]]
 name = "uint"
 version = "0.8.5"
-source = "git+https://github.com/vmarkushin/parity-common.git?branch=no-std#76837f10b96f63b52b97394e88a25f6cdda28c91"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9db035e67dfaf7edd9aebfe8676afcd63eed53c8a4044fed514c8cccf1835177"
 dependencies = [
  "byteorder 1.3.4",
  "crunchy",

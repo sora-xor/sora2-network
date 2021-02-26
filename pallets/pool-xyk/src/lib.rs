@@ -32,6 +32,8 @@ mod tests;
 
 type LstId = common::LiquiditySourceType;
 
+type ExtraAccountIdOf<T> = <T as assets::Trait>::ExtraAccountId;
+
 type AccountIdOf<T> = <T as frame_system::Trait>::AccountId;
 
 type AssetIdOf<T> = <T as assets::Trait>::AssetId;
@@ -1374,25 +1376,24 @@ impl<T: Trait> Module<T> {
     pub fn get_marking_asset_repr(
         tech_acc: &TechAccountIdOf<T>,
     ) -> Result<AssetIdOf<T>, DispatchError> {
-        Ok(Into::<AssetIdOf<T>>::into(
-            common::ToMarkerAsset::<TechAssetIdOf<T>, LstId>::to_marker_asset(
-                tech_acc,
-                common::LiquiditySourceType::XYKPool,
-            )
-            .ok_or(Error::<T>::UnableToDecideMarkerAsset)?,
-        ))
+        use assets::{Tuple::*, TupleArg::*};
+        use common::AssetIdExtraTupleArg::*;
+        let repr_extra: ExtraAccountIdOf<T> =
+            technical::Module::<T>::tech_account_id_to_account_id(&tech_acc)?.into();
+        let tag = GenericU128(common::hash_to_u128_pair(b"Marking asset").0);
+        let lst_extra = Extra(LstId(common::LiquiditySourceType::XYKPool.into()).into());
+        let acc_extra = Extra(AccountId(repr_extra).into());
+        let asset_id = assets::Module::<T>::asset_id_from_tuple(&Arity3(tag, lst_extra, acc_extra));
+        Ok(asset_id)
     }
 
     pub fn get_marking_asset(
         tech_acc: &TechAccountIdOf<T>,
     ) -> Result<TechAssetIdOf<T>, DispatchError> {
-        Ok(
-            common::ToMarkerAsset::<TechAssetIdOf<T>, LstId>::to_marker_asset(
-                tech_acc,
-                common::LiquiditySourceType::XYKPool,
-            )
-            .ok_or(Error::<T>::UnableToDecideMarkerAsset)?,
-        )
+        let asset_id = Module::<T>::get_marking_asset_repr(tech_acc)?;
+        asset_id
+            .try_into()
+            .map_err(|_| Error::<T>::UnableToConvertAssetToTechAssetId.into())
     }
 }
 
@@ -1782,25 +1783,20 @@ decl_error! {
         ThisCaseIsNotSupported,
         /// Pool becomes invalid after operation
         PoolBecameInvalidAfterOperation,
+        /// Unable to convert asset to tech asset id.
+        UnableToConvertAssetToTechAssetId,
     }
 }
 
 impl<T: Trait> Module<T> {
-    pub fn get_xor_part_from_trading_pair(
-        dex_id: T::DEXId,
-        trading_pair: common::TradingPair<AssetIdOf<T>>,
+    pub fn get_xor_part_from_pool_account(
+        pool_acc: T::AccountId,
         liq_amount: Balance,
     ) -> Result<Balance, DispatchError> {
-        let (_, pool_acc) = Module::<T>::tech_account_from_dex_and_asset_pair(
-            dex_id,
-            trading_pair.base_asset_id,
-            trading_pair.target_asset_id,
-        )?;
-        let pool_acc_sys = technical::Module::<T>::tech_account_id_to_account_id(&pool_acc)?;
-        let b_in_pool =
-            assets::Module::<T>::free_balance(&trading_pair.base_asset_id, &pool_acc_sys)?;
+        let trading_pair: common::TradingPair<T::AssetId> = unimplemented!();
+        let b_in_pool = assets::Module::<T>::free_balance(&trading_pair.base_asset_id, &pool_acc)?;
         let t_in_pool =
-            assets::Module::<T>::free_balance(&trading_pair.target_asset_id, &pool_acc_sys)?;
+            assets::Module::<T>::free_balance(&trading_pair.target_asset_id, &pool_acc)?;
         let fxw_b_in_pool = FixedWrapper::from(b_in_pool);
         let fxw_t_in_pool = FixedWrapper::from(t_in_pool);
         let fxw_liq_in_pool = fxw_b_in_pool.multiply_and_sqrt(&fxw_t_in_pool);
@@ -2065,7 +2061,8 @@ decl_module! {
             marker_asset_desired: Balance,
             output_a_min: Balance,
             output_b_min: Balance,
-        ) -> DispatchResult {
+        ) -> DispatchResult
+        {
             let source = ensure_signed(origin)?;
             Module::<T>::withdraw_liquidity_unchecked(source, dex_id,
                 output_asset_a, output_asset_b, marker_asset_desired, output_a_min, output_b_min)?;

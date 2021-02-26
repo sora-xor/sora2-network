@@ -99,6 +99,11 @@ impl common::Trait for Runtime {
 
 impl assets::Trait for Runtime {
     type Event = ();
+    type ExtraDEXId = common::DEXId;
+    type ExtraLstId = common::LiquiditySourceType;
+    type ExtraAccountId = AccountId;
+    type ExtraTupleArg =
+        common::AssetIdExtraTupleArg<common::DEXId, common::LiquiditySourceType, AccountId>;
     type AssetId = AssetId;
     type GetBaseAssetId = GetBaseAssetId;
     type Currency = currencies::Module<Runtime>;

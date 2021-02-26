@@ -157,14 +157,18 @@ impl currencies::Trait for Testtime {
 
 impl assets::Trait for Testtime {
     type Event = ();
+    type ExtraDEXId = common::DEXId;
+    type ExtraLstId = common::LiquiditySourceType;
+    type ExtraAccountId = [u8; 32];
+    type ExtraTupleArg =
+        common::AssetIdExtraTupleArg<common::DEXId, common::LiquiditySourceType, [u8; 32]>;
     type AssetId = AssetId;
     type GetBaseAssetId = GetBaseAssetId;
     type Currency = currencies::Module<Testtime>;
     type WeightInfo = ();
 }
 
-pub type TechAssetId =
-    common::TechAssetId<common::mock::ComicAssetId, DEXId, common::LiquiditySourceType>;
+pub type TechAssetId = common::TechAssetId<common::mock::ComicAssetId>;
 pub type AssetId = common::AssetId32<common::mock::ComicAssetId>;
 pub type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
 

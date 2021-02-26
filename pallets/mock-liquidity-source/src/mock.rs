@@ -17,7 +17,7 @@ pub type AccountId = AccountId32;
 pub type BlockNumber = u64;
 type AssetId = AssetId32<common::AssetId>;
 
-type TechAssetId = common::TechAssetId<common::AssetId, DEXId, common::LiquiditySourceType>;
+type TechAssetId = common::TechAssetId<common::AssetId>;
 type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
 
 pub fn alice() -> AccountId {
@@ -121,6 +121,11 @@ type DEXId = u32;
 
 impl assets::Trait for Runtime {
     type Event = ();
+    type ExtraDEXId = common::DEXId;
+    type ExtraLstId = common::LiquiditySourceType;
+    type ExtraAccountId = [u8; 32];
+    type ExtraTupleArg =
+        common::AssetIdExtraTupleArg<common::DEXId, common::LiquiditySourceType, [u8; 32]>;
     type AssetId = AssetId;
     type GetBaseAssetId = GetBaseAssetId;
     type Currency = currencies::Module<Runtime>;
