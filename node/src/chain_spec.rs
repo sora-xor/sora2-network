@@ -218,6 +218,31 @@ pub fn staging_net(test: bool) -> ChainSpec {
         id,
         ChainType::Live,
         move || {
+            let eth_bridge_params = if test {
+                EthBridgeParams {
+                    xor_master_contract_address: hex!("3520adc7b99e55c77efd0e0d379d07d08a7488cc")
+                        .into(),
+                    xor_contract_address: hex!("83ba842e5e26a4eda2466891221187aabbc33692").into(),
+                    val_master_contract_address: hex!("a55236ad2162a47a52316f86d688fbd71b520945")
+                        .into(),
+                    val_contract_address: hex!("7fcb82ab5a4762f0f18287ece64d4ec74b6071c0").into(),
+                    pswap_contract_address: hex!("0000000000000000000000000000000000000000").into(),
+                    bridge_contract_address: hex!("50e693aaaf4855cdd6cb7ab38e7e2a4006a77022")
+                        .into(),
+                }
+            } else {
+                EthBridgeParams {
+                    xor_master_contract_address: hex!("cceb41100aa2a9a6f144d7c1f876070b810bf7ae")
+                        .into(),
+                    xor_contract_address: hex!("dc1c024535118f6de6d999c23fc31e33bc2cafc9").into(),
+                    val_master_contract_address: hex!("d7f81ed173cb3af28f983670164df30851fba678")
+                        .into(),
+                    val_contract_address: hex!("725c6b8cd3621eba4e0ccc40d532e7025b925a65").into(),
+                    pswap_contract_address: hex!("0000000000000000000000000000000000000000").into(),
+                    bridge_contract_address: hex!("3ef9b59f2a1563f14e683de3724e618b9b69aebb")
+                        .into(),
+                }
+            };
             testnet_genesis(
                 hex!("2c5f3fd607721d5dd9fdf26d69cdcb9294df96a8ff956b1323d69282502aaa2e").into(),
                 vec![
@@ -265,17 +290,7 @@ pub fn staging_net(test: bool) -> ChainSpec {
                 hex!("da723e9d76bd60da0ec846895c5e0ecf795b50ae652c012f27e56293277ef372").into(),
                 hex!("16fec57d383a1875ab4e9786aea7a626e721a491c828f475ae63ef098f98f373").into(),
                 hex!("da723e9d76bd60da0ec846895c5e0ecf795b50ae652c012f27e56293277ef372").into(),
-                EthBridgeParams {
-                    xor_master_contract_address: hex!("cceb41100aa2a9a6f144d7c1f876070b810bf7ae")
-                        .into(),
-                    xor_contract_address: hex!("dc1c024535118f6de6d999c23fc31e33bc2cafc9").into(),
-                    val_master_contract_address: hex!("d7f81ed173cb3af28f983670164df30851fba678")
-                        .into(),
-                    val_contract_address: hex!("725c6b8cd3621eba4e0ccc40d532e7025b925a65").into(),
-                    pswap_contract_address: hex!("0000000000000000000000000000000000000000").into(),
-                    bridge_contract_address: hex!("3ef9b59f2a1563f14e683de3724e618b9b69aebb")
-                        .into(),
-                },
+                eth_bridge_params,
             )
         },
         boot_nodes,
