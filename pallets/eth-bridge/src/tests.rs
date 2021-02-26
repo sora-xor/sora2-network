@@ -1970,3 +1970,47 @@ fn should_not_allow_duplicate_migration_requests() {
         .unwrap();
     });
 }
+
+#[test]
+fn should_ensure_known_contract() {
+    let (mut ext, _state) = ExtBuilder::default().build();
+
+    ext.execute_with(|| {
+        assert_ok!(EthBridge::ensure_known_contract(
+            EthBridge::xor_master_contract_address(),
+            ETH_NETWORK_ID,
+            IncomingRequestKind::Transfer,
+        ));
+        assert_ok!(EthBridge::ensure_known_contract(
+            EthBridge::val_master_contract_address(),
+            ETH_NETWORK_ID,
+            IncomingRequestKind::Transfer,
+        ));
+        assert_ok!(EthBridge::ensure_known_contract(
+            crate::BridgeContractAddress::<Test>::get(ETH_NETWORK_ID),
+            ETH_NETWORK_ID,
+            IncomingRequestKind::Transfer,
+        ));
+        assert_err!(
+            EthBridge::ensure_known_contract(
+                EthBridge::xor_master_contract_address(),
+                100,
+                IncomingRequestKind::Transfer,
+            ),
+            Error::UnknownContractAddress
+        );
+        assert_ok!(EthBridge::ensure_known_contract(
+            EthBridge::pswap_contract_address(),
+            ETH_NETWORK_ID,
+            IncomingRequestKind::ClaimPswap,
+        ));
+        assert_err!(
+            EthBridge::ensure_known_contract(
+                EthBridge::pswap_contract_address(),
+                100,
+                IncomingRequestKind::ClaimPswap,
+            ),
+            Error::UnknownContractAddress
+        );
+    });
+}
