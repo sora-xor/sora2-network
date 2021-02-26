@@ -2126,10 +2126,19 @@ impl<T: Trait> Module<T> {
                 );
             }
             _ => {
-                ensure!(
-                    to == BridgeContractAddress::<T>::get(network_id),
-                    Error::<T>::UnknownContractAddress
-                );
+                if network_id == T::GetEthNetworkId::get() {
+                    ensure!(
+                        to == BridgeContractAddress::<T>::get(network_id)
+                            || to == Self::xor_master_contract_address()
+                            || to == Self::val_master_contract_address(),
+                        Error::<T>::UnknownContractAddress
+                    );
+                } else {
+                    ensure!(
+                        to == BridgeContractAddress::<T>::get(network_id),
+                        Error::<T>::UnknownContractAddress
+                    );
+                }
             }
         }
         Ok(())
