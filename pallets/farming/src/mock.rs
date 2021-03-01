@@ -1,5 +1,5 @@
 use crate::Trait;
-use common::{prelude::Balance, BasisPoints, DOT, XOR};
+use common::{balance, prelude::Balance, BasisPoints, DOT, XOR};
 use currencies::BasicCurrencyAdapter;
 use frame_support::{impl_outer_origin, parameter_types, weights::Weight};
 use frame_system as system;
@@ -63,18 +63,18 @@ impl Default for ExtBuilder {
         ];
         Self {
             endowed_accounts: vec![
-                (ALICE(), XOR, 99_000_u128.into()),
-                (ALICE(), DOT, 2000_000_u128.into()),
-                (BOB(), XOR, 2000_000_u128.into()),
-                (BOB(), DOT, 2000_000_u128.into()),
-                (CHARLIE(), XOR, 2000_000_u128.into()),
-                (CHARLIE(), DOT, 2000_000_u128.into()),
-                (DAVE(), XOR, 2000_000_u128.into()),
-                (DAVE(), DOT, 2000_000_u128.into()),
-                (EVE(), XOR, 2000_000_u128.into()),
-                (EVE(), DOT, 2000_000_u128.into()),
-                (FERDIE(), XOR, 2000_000_u128.into()),
-                (FERDIE(), DOT, 2000_000_u128.into()),
+                (ALICE(), XOR, balance!(99000)),
+                (ALICE(), DOT, balance!(2000000)),
+                (BOB(), XOR, balance!(2000000)),
+                (BOB(), DOT, balance!(2000000)),
+                (CHARLIE(), XOR, balance!(2000000)),
+                (CHARLIE(), DOT, balance!(2000000)),
+                (DAVE(), XOR, balance!(2000000)),
+                (DAVE(), DOT, balance!(2000000)),
+                (EVE(), XOR, balance!(2000000)),
+                (EVE(), DOT, balance!(2000000)),
+                (FERDIE(), XOR, balance!(2000000)),
+                (FERDIE(), DOT, balance!(2000000)),
             ],
             initial_permission_owners: vec![
                 (INIT_DEX, Scope::Unlimited, vec![BOB()]),

@@ -1,4 +1,7 @@
-use common::balance::*;
+use common::{
+    balance,
+    prelude::{Balance, FixedWrapper},
+};
 
 pub fn get_demo_price(block: u32) -> (Balance, Balance) {
     let a = (block as usize) % DEMO_HIST;
@@ -7,11 +10,11 @@ pub fn get_demo_price(block: u32) -> (Balance, Balance) {
     } else {
         DEMO_PRICE[DEMO_HIST * 2 - a as usize]
     };
-    let b: Balance = 70000u32.into();
-    let c: Balance = 1000000u32.into();
-    let price: Balance = pair.0.into();
-    let volume: Balance = pair.1.into();
-    (price / b, volume / c)
+    let b: FixedWrapper = balance!(70000).into();
+    let c: FixedWrapper = balance!(1000000).into();
+    let price: FixedWrapper = (pair.0 as u128 * balance!(1)).into();
+    let volume: FixedWrapper = (pair.1 as u128 * balance!(1)).into();
+    ((price / b).into_balance(), (volume / c).into_balance())
 }
 
 const DEMO_HIST: usize = 2547;

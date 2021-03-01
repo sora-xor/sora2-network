@@ -1,7 +1,7 @@
 use crate::{Module, Trait};
 use common::{
-    fixed, fixed_from_basis_points, hash, prelude::Balance, Amount, AssetId32, DEXInfo, Fixed,
-    LiquiditySourceType, DOT, KSM, XOR,
+    balance, fixed, fixed_from_basis_points, hash, prelude::Balance, Amount, AssetId32, DEXInfo,
+    Fixed, LiquiditySourceType, DOT, KSM, XOR,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::{impl_outer_origin, parameter_types, weights::Weight};
@@ -255,8 +255,8 @@ impl Default for ExtBuilder {
     fn default() -> Self {
         Self {
             endowed_accounts: vec![
-                (alice(), XOR, 1_000_000_000_000_000_000u128.into()),
-                (bob(), DOT, 1_000_000_000_000_000_000u128.into()),
+                (alice(), XOR, balance!(1000000000000000000)),
+                (bob(), DOT, balance!(1000000000000000000)),
             ],
             reserves: vec![
                 (DEX_A_ID, DOT, (fixed!(5000), fixed!(7000))),

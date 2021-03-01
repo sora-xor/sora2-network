@@ -11,7 +11,7 @@ use frame_support::{
 use frame_system::RawOrigin;
 //FIXME maybe try info or try from is better than From and Option.
 //use sp_std::convert::TryInto;
-use crate::balance::Balance;
+use crate::primitives::Balance;
 use sp_std::vec::Vec;
 
 /// Check on origin that it is a DEX owner.

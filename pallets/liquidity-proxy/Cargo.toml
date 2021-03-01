@@ -23,7 +23,7 @@ assets = { path = "../assets", default-features = false }
 [dev-dependencies]
 sp-core = { version = "2.0.0", default-features = false }
 sp-io = { version = "2.0.0", default-features = false }
-dex-api = { path = "../dex-api" }
+dex-api = { path = "../dex-api", default-features = false }
 dex-manager = { path = "../dex-manager", default-features = false }
 mock-liquidity-source = { path = "../mock-liquidity-source" }
 trading-pair = { path = "../trading-pair", default-features = false }
@@ -45,4 +45,6 @@ std = [
     'traits/std',
     'assets/std',
     'common/std',
+    'dex-api/std',
+    'dex-manager/std',
 ]

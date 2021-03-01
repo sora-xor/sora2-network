@@ -9,7 +9,7 @@ use crate::{
     OffchainRequest, OutgoingRequest, OutgoingTransfer, RequestStatus, SignatureParams,
 };
 use codec::{Decode, Encode};
-use common::{balance::Balance, fixed, AssetId, AssetId32, AssetSymbol};
+use common::{balance, prelude::Balance, AssetId, AssetId32, AssetSymbol};
 use frame_support::{
     assert_err, assert_noop, assert_ok, ensure,
     sp_runtime::{
@@ -47,7 +47,7 @@ fn parses_event() {
             EthBridge::parse_main_event(&[log], IncomingRequestKind::Transfer).unwrap(),
             ContractEvent::Deposit(
                 AccountId32::from(hex!("1111111111111111111111111111111111111111111111111111111111111111")),
-                Balance::from(42u128),
+                balance!(42),
                 H160::from(&hex!("2222222222222222222222222222222222222222")),
                 H256(hex!("0200040000000000000000000000000000000000000000000000000000000011"))
             )
@@ -982,7 +982,7 @@ fn should_add_asset() {
         assert_ok!(EthBridge::add_asset(
             Origin::signed(alice.clone()),
             asset_id,
-            fixed!(100),
+            balance!(100),
             net_id,
         ));
         assert!(EthBridge::registered_asset(net_id, asset_id).is_none());
@@ -1546,7 +1546,12 @@ fn should_fail_request_to_unknown_network() {
         );
 
         assert_noop!(
-            EthBridge::add_asset(Origin::signed(alice.clone()), asset_id, fixed!(100), net_id,),
+            EthBridge::add_asset(
+                Origin::signed(alice.clone()),
+                asset_id,
+                balance!(100),
+                net_id,
+            ),
             Error::UnknownNetwork
         );
 
@@ -1599,7 +1604,7 @@ fn should_reserve_owned_asset_on_different_networks() {
         assert_ok!(EthBridge::add_asset(
             Origin::signed(alice.clone()),
             asset_id,
-            fixed!(0),
+            0,
             net_id_1,
         ));
         approve_last_request(&state, net_id_1).expect("request wasn't approved");
@@ -1692,7 +1697,7 @@ fn should_handle_sidechain_and_thischain_asset_on_different_networks() {
         assert_ok!(EthBridge::add_asset(
             Origin::signed(alice.clone()),
             asset_id,
-            fixed!(0),
+            0,
             net_id_1,
         ));
         approve_last_request(&state, net_id_1).expect("request wasn't approved");

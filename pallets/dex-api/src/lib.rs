@@ -1,8 +1,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use common::{
-    balance::Balance,
-    prelude::{SwapAmount, SwapOutcome, SwapVariant},
+    prelude::{Balance, SwapAmount, SwapOutcome, SwapVariant},
     LiquidityRegistry, LiquiditySource, LiquiditySourceFilter, LiquiditySourceId,
     LiquiditySourceType,
 };
@@ -220,9 +219,8 @@ impl<T: Trait>
                     &liquidity_source_id.dex_id,
                     input_asset_id,
                     output_asset_id,
-                    swap_amount.into(),
+                    swap_amount,
                 )
-                .map(Into::into)
             };
         }
         match liquidity_source_id.liquidity_source_index {
@@ -253,9 +251,8 @@ impl<T: Trait>
                     &liquidity_source_id.dex_id,
                     input_asset_id,
                     output_asset_id,
-                    swap_amount.into(),
+                    swap_amount,
                 )
-                .map(Into::into)
             };
         }
         match liquidity_source_id.liquidity_source_index {

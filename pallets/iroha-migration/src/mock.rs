@@ -1,7 +1,7 @@
 use crate as iroha_migration; // for construct_runtime
 use crate::{Trait, TECH_ACCOUNT_MAIN, TECH_ACCOUNT_PREFIX};
 use codec::{Codec, Decode, Encode};
-use common::{balance::Balance, Amount, AssetId, AssetId32, AssetSymbol, VAL};
+use common::{prelude::Balance, Amount, AssetId, AssetId32, AssetSymbol, VAL};
 use currencies::BasicCurrencyAdapter;
 use frame_support::{
     construct_runtime,

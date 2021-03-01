@@ -11,7 +11,6 @@ use fixnum::{
 #[cfg(any(feature = "test", test))]
 pub mod mock;
 
-pub mod balance;
 mod fixed_wrapper;
 pub mod macros;
 mod primitives;
@@ -26,7 +25,6 @@ use sp_runtime::TransactionOutcome;
 
 pub use traits::Trait;
 pub mod prelude {
-    pub use super::balance::*;
     pub use super::fixed_wrapper::*;
     pub use super::primitives::*;
     pub use super::swap_amount::*;

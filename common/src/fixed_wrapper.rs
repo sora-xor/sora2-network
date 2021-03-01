@@ -1,17 +1,17 @@
-use core::convert::TryFrom;
+use core::convert::TryInto;
 use core::ops::*;
 use core::result::Result;
 
 use fixnum::ops::{CheckedAdd, CheckedSub, RoundMode::*, RoundingDiv, RoundingMul};
-use fixnum::{ArithmeticError, ConvertError};
+use fixnum::ArithmeticError;
 use static_assertions::_core::cmp::Ordering;
 
-use crate::balance::Balance;
-use crate::{fixed, pow, Fixed, FixedInner, FIXED_PRECISION};
+use crate::{fixed, pow, Balance, Fixed, FixedInner, FIXED_PRECISION};
 
 /// A convenient wrapper around `Fixed` type for safe math.
 ///
 /// Supported operations: `+`, '-', '/', '*', 'sqrt'.
+#[cfg_attr(feature = "std", derive(Debug))]
 #[derive(Clone)]
 pub struct FixedWrapper {
     inner: Result<Fixed, ArithmeticError>,
@@ -94,6 +94,23 @@ impl FixedWrapper {
     pub fn to_fraction(&self) -> Result<f64, ArithmeticError> {
         self.inner.clone().map(Fixed::to_f64)
     }
+
+    pub fn try_into_balance(self) -> Result<Balance, ArithmeticError> {
+        match self.inner {
+            Ok(fixed) => fixed
+                .into_bits()
+                .try_into()
+                .map_err(|_| ArithmeticError::Overflow),
+            Err(e) => Err(e),
+        }
+    }
+
+    /// For development it panics if cannot convert the inner value into Balance.
+    /// For production it returns Balance saturated from 0
+    pub fn into_balance(self) -> Balance {
+        // TODO: Make it saturate
+        self.inner.unwrap().into_bits().try_into().unwrap()
+    }
 }
 
 impl From<Result<Fixed, ArithmeticError>> for FixedWrapper {
@@ -121,12 +138,6 @@ impl From<f64> for FixedWrapper {
     }
 }
 
-impl From<Balance> for FixedWrapper {
-    fn from(balance: Balance) -> Self {
-        FixedWrapper::from(balance.0)
-    }
-}
-
 macro_rules! impl_from_for_fixed_wrapper {
     ($( $T:ty ),+) => {
         $( impl_from_for_fixed_wrapper!(@single $T); )*
@@ -134,7 +145,14 @@ macro_rules! impl_from_for_fixed_wrapper {
     (@single $T:ty) => {
         impl From<$T> for FixedWrapper {
             fn from(value: $T) -> Self {
-                Fixed::try_from(value).map_err(|_: ConvertError| ArithmeticError::Overflow).into()
+                match value.try_into() {
+                    Ok(raw) => Self {
+                        inner: Ok(Fixed::from_bits(raw)),
+                    },
+                    Err(_) => Self {
+                        inner: Err(ArithmeticError::Overflow),
+                    },
+                }
             }
         }
     };
@@ -259,5 +277,4 @@ macro_rules! impl_fixed_wrapper_for_type {
 
 // Here one can add more custom implementations.
 impl_fixed_wrapper_for_type!(Fixed);
-impl_fixed_wrapper_for_type!(Balance);
 impl_fixed_wrapper_for_type!(u128);

@@ -21,6 +21,8 @@ use static_assertions::_core::fmt::Formatter;
 #[allow(unused)]
 use std::fmt;
 
+pub type Balance = u128;
+
 decl_error! {
     pub enum Error for Module<T: Trait> {
         /// Liquidity source can't exchange assets with the given IDs on the given DEXId.

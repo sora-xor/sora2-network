@@ -30,6 +30,7 @@ sp-std = { version = "2.0.0", default-features = false }
 pswap-distribution = { path = "../pswap-distribution", default-features = false }
 
 [dev-dependencies]
+common = { path = "../../common", default-features = false, features = ["test"] }
 sp-io = { version = "2.0.0", default-features = false }
 pallet-balances = { version = "2.0.0", default-features = false }
 tokens = { version = "0.3.2", package = "orml-tokens", default-features = false }

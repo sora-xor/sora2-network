@@ -32,7 +32,7 @@ use sp_core::{crypto::KeyTypeId, OpaqueMetadata};
 use sp_runtime::{
     create_runtime_str, generic, impl_opaque_keys,
     traits::{
-        BlakeTwo256, Block as BlockT, Bounded, Convert, IdentifyAccount, IdentityLookup, NumberFor,
+        BlakeTwo256, Block as BlockT, Convert, IdentifyAccount, IdentityLookup, NumberFor,
         OpaqueKeys, SaturatedConversion, Saturating, Verify, Zero,
     },
     transaction_validity::{TransactionSource, TransactionValidity},
@@ -628,7 +628,7 @@ impl xor_fee::Trait for Runtime {
 }
 
 parameter_types! {
-    pub const TransactionByteFee: Balance = Balance(Fixed::from_bits(1_000_000_000_000_i128)); // 10^-6 XOR ~ 10 * MILLICENTS
+    pub const TransactionByteFee: Balance = 1_000_000_000_000; // 10^-6 XOR ~ 10 * MILLICENTS
     pub const TargetBlockFullness: Perquintill = Perquintill::from_percent(25);
     pub AdjustmentVariable: Multiplier = Multiplier::saturating_from_rational(1, 100_000);
     pub MinimumMultiplier: Multiplier = Multiplier::saturating_from_rational(1, 1_000_000_000_u128);

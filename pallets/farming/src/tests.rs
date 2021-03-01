@@ -1,7 +1,7 @@
 use crate::mock::*;
 use crate::FarmId;
 use common::{
-    fixed,
+    balance,
     prelude::{Balance, SwapAmount},
     AssetSymbol, ToFeeAccount, DOT, PSWAP, XOR,
 };
@@ -98,36 +98,36 @@ impl crate::Module<Testtime> {
                 &gt,
                 &ALICE(),
                 &ALICE(),
-                900_000u32.into()
+                balance!(900000)
             ));
 
             assert_ok!(assets::Module::<Testtime>::mint_to(
                 &gt,
                 &ALICE(),
                 &BOB(),
-                900_000u32.into()
+                balance!(900000)
             ));
 
             assert_eq!(
                 assets::Module::<Testtime>::free_balance(&gt, &ALICE()).unwrap(),
-                fixed!(900000),
+                balance!(900000),
             );
             assert_eq!(
                 assets::Module::<Testtime>::free_balance(&bp, &ALICE()).unwrap(),
-                fixed!(2000000),
+                balance!(2000000),
             );
             assert_eq!(
                 assets::Module::<Testtime>::free_balance(&gt, &repr.clone()).unwrap(),
-                fixed!(0),
+                0
             );
 
             assert_eq!(
                 assets::Module::<Testtime>::free_balance(&bp, &repr.clone()).unwrap(),
-                fixed!(0)
+                0
             );
             assert_eq!(
                 assets::Module::<Testtime>::free_balance(&gt, &fee_repr.clone()).unwrap(),
-                fixed!(0)
+                0
             );
 
             let farm_id = crate::Module::<Testtime>::create(Origin::signed(ALICE()), XOR, PSWAP)
@@ -187,10 +187,10 @@ impl crate::Module<Testtime> {
                     dex_id,
                     XOR,
                     DOT,
-                    360_000u32.into(),
-                    144_000u32.into(),
-                    360_00u32.into(),
-                    144_00u32.into(),
+                    balance!(360000),
+                    balance!(144000),
+                    balance!(36000),
+                    balance!(14400),
                 ));
 
                 assert_ok!(pool_xyk::Module::<Testtime>::deposit_liquidity(
@@ -198,10 +198,10 @@ impl crate::Module<Testtime> {
                     dex_id,
                     XOR,
                     DOT,
-                    360_000u32.into(),
-                    144_000u32.into(),
-                    360_00u32.into(),
-                    144_00u32.into(),
+                    balance!(360000),
+                    balance!(144000),
+                    balance!(36000),
+                    balance!(14400),
                 ));
             },
         ];
@@ -231,14 +231,14 @@ fn one_farmer_working_with_farm_cascade() {
                 dex_id,
                 farm_id,
                 mark_asset,
-                10_000u32.into(),
+                balance!(10000),
             ));
 
             crate::Module::<Testtime>::run_to_block(3000);
             let a = Origin::signed(ALICE());
             assert_eq!(
                 crate::Module::<Testtime>::discover_claim(a, farm_id).unwrap(),
-                Some(103975u64)
+                103975138541464779121884
             );
 
             crate::Module::<Testtime>::run_to_block(5000);
@@ -250,8 +250,8 @@ fn one_farmer_working_with_farm_cascade() {
                 XOR,
                 DOT,
                 SwapAmount::WithDesiredOutput {
-                    desired_amount_out: 33_000u32.into(),
-                    max_amount_in: 99999999_u32.into(),
+                    desired_amount_out: balance!(33000),
+                    max_amount_in: balance!(99999999),
                 }
             ));
 
@@ -259,7 +259,7 @@ fn one_farmer_working_with_farm_cascade() {
             assert_eq!(
                 crate::Module::<Testtime>::discover_claim(Origin::signed(ALICE()), farm_id,)
                     .unwrap(),
-                Some(103978u64)
+                103978267222392724771206
             );
 
             assert_ok!(crate::Module::<Testtime>::unlock_from_farm(
@@ -267,7 +267,7 @@ fn one_farmer_working_with_farm_cascade() {
                 dex_id,
                 farm_id,
                 Some(mark_asset),
-                Some(1000u32.into()),
+                Some(balance!(1000)),
             ));
 
             crate::Module::<Testtime>::run_to_block(20000);
@@ -277,7 +277,7 @@ fn one_farmer_working_with_farm_cascade() {
                 dex_id,
                 farm_id,
                 mark_asset,
-                1000u32.into(),
+                balance!(1000),
             ));
 
             crate::Module::<Testtime>::run_to_block(30000);
@@ -285,7 +285,7 @@ fn one_farmer_working_with_farm_cascade() {
             assert_ok!(crate::Module::<Testtime>::claim(
                 Origin::signed(ALICE()),
                 farm_id,
-                Some(10u32.into()),
+                Some(balance!(10)),
             ));
 
             crate::Module::<Testtime>::run_to_block(35000);
@@ -295,7 +295,7 @@ fn one_farmer_working_with_farm_cascade() {
                 dex_id,
                 farm_id,
                 mark_asset,
-                1000u32.into(),
+                balance!(1000),
             ));
 
             crate::Module::<Testtime>::run_to_block(50000);
@@ -310,7 +310,7 @@ fn one_farmer_working_with_farm_cascade() {
                 crate::Module::<Testtime>::claim(
                     Origin::signed(ALICE()),
                     farm_id,
-                    Some(1u32.into()),
+                    Some(balance!(1)),
                 ),
                 crate::Error::<Testtime>::NothingToClaim
             );
@@ -321,7 +321,7 @@ fn one_farmer_working_with_farm_cascade() {
                 crate::Module::<Testtime>::claim(
                     Origin::signed(ALICE()),
                     farm_id,
-                    Some(999u32.into()),
+                    Some(balance!(999)),
                 ),
                 crate::Error::<Testtime>::AmountIsOutOfAvailableValue
             );
@@ -349,7 +349,7 @@ fn two_farmers_working_with_farm_cascade() {
                 dex_id,
                 farm_id,
                 mark_asset,
-                10_000u32.into(),
+                balance!(10000),
             ));
 
             assert_ok!(crate::Module::<Testtime>::lock_to_farm(
@@ -357,20 +357,20 @@ fn two_farmers_working_with_farm_cascade() {
                 dex_id,
                 farm_id,
                 mark_asset,
-                10_000u32.into(),
+                balance!(10000),
             ));
 
             crate::Module::<Testtime>::run_to_block(3000);
             assert_eq!(
                 crate::Module::<Testtime>::discover_claim(Origin::signed(ALICE()), farm_id,)
                     .unwrap(),
-                Some(51988u64)
+                51987569270732389560942
             );
 
             crate::Module::<Testtime>::run_to_block(3000);
             assert_eq!(
                 crate::Module::<Testtime>::discover_claim(Origin::signed(BOB()), farm_id,).unwrap(),
-                Some(51988u64)
+                51987569270732389560942
             );
 
             crate::Module::<Testtime>::run_to_block(5000);
@@ -382,8 +382,8 @@ fn two_farmers_working_with_farm_cascade() {
                 XOR,
                 DOT,
                 SwapAmount::WithDesiredOutput {
-                    desired_amount_out: 33_000u32.into(),
-                    max_amount_in: 99999999_u32.into(),
+                    desired_amount_out: balance!(33000),
+                    max_amount_in: balance!(99999999),
                 }
             ));
 
@@ -394,8 +394,8 @@ fn two_farmers_working_with_farm_cascade() {
                 XOR,
                 DOT,
                 SwapAmount::WithDesiredOutput {
-                    desired_amount_out: 33_000u32.into(),
-                    max_amount_in: 99999999_u32.into(),
+                    desired_amount_out: balance!(33000),
+                    max_amount_in: balance!(99999999),
                 }
             ));
 
@@ -404,12 +404,12 @@ fn two_farmers_working_with_farm_cascade() {
             assert_eq!(
                 crate::Module::<Testtime>::discover_claim(Origin::signed(ALICE()), farm_id,)
                     .unwrap(),
-                Some(51989u64)
+                51989133611196362385603
             );
 
             assert_eq!(
                 crate::Module::<Testtime>::discover_claim(Origin::signed(BOB()), farm_id,).unwrap(),
-                Some(51989u64)
+                51989133611196362385603
             );
 
             assert_ok!(crate::Module::<Testtime>::unlock_from_farm(
@@ -417,7 +417,7 @@ fn two_farmers_working_with_farm_cascade() {
                 dex_id,
                 farm_id,
                 Some(mark_asset),
-                Some(1000u32.into()),
+                Some(balance!(1000)),
             ));
 
             assert_ok!(crate::Module::<Testtime>::unlock_from_farm(
@@ -425,51 +425,51 @@ fn two_farmers_working_with_farm_cascade() {
                 dex_id,
                 farm_id,
                 Some(mark_asset),
-                Some(1000u32.into()),
+                Some(balance!(1000)),
             ));
 
             crate::Module::<Testtime>::run_to_block(20000);
             assert_eq!(
                 crate::Module::<Testtime>::discover_claim(Origin::signed(ALICE()), farm_id,)
                     .unwrap(),
-                Some(52452u64)
+                52451700702476025417273
             );
             assert_eq!(
                 crate::Module::<Testtime>::discover_claim(Origin::signed(BOB()), farm_id,).unwrap(),
-                Some(52452u64)
+                52451700702476025417273
             );
 
             crate::Module::<Testtime>::run_to_block(21000);
             assert_eq!(
                 crate::Module::<Testtime>::discover_claim(Origin::signed(ALICE()), farm_id,)
                     .unwrap(),
-                Some(52488u64)
+                52487858899033049591217
             );
             assert_eq!(
                 crate::Module::<Testtime>::discover_claim(Origin::signed(BOB()), farm_id,).unwrap(),
-                Some(52488u64)
+                52487858899033049591217
             );
 
             crate::Module::<Testtime>::run_to_block(22000);
             assert_eq!(
                 crate::Module::<Testtime>::discover_claim(Origin::signed(ALICE()), farm_id,)
                     .unwrap(),
-                Some(52505u64)
+                52505454948186526233939
             );
             assert_eq!(
                 crate::Module::<Testtime>::discover_claim(Origin::signed(BOB()), farm_id,).unwrap(),
-                Some(52505u64)
+                52505454948186526233939
             );
 
             crate::Module::<Testtime>::run_to_block(23000);
             assert_eq!(
                 crate::Module::<Testtime>::discover_claim(Origin::signed(ALICE()), farm_id,)
                     .unwrap(),
-                Some(52531u64)
+                52530526066639891663368
             );
             assert_eq!(
                 crate::Module::<Testtime>::discover_claim(Origin::signed(BOB()), farm_id,).unwrap(),
-                Some(52531u64)
+                52530526066639891663368
             );
 
             assert_ok!(crate::Module::<Testtime>::lock_to_farm(
@@ -477,7 +477,7 @@ fn two_farmers_working_with_farm_cascade() {
                 dex_id,
                 farm_id,
                 mark_asset,
-                1000u32.into(),
+                balance!(1000),
             ));
 
             assert_ok!(crate::Module::<Testtime>::lock_to_farm(
@@ -485,73 +485,73 @@ fn two_farmers_working_with_farm_cascade() {
                 dex_id,
                 farm_id,
                 mark_asset,
-                1500u32.into(),
+                balance!(1500),
             ));
 
             crate::Module::<Testtime>::run_to_block(24000);
             assert_eq!(
                 crate::Module::<Testtime>::discover_claim(Origin::signed(ALICE()), farm_id,)
                     .unwrap(),
-                Some(52473u64)
+                52473261848944591846985
             );
             assert_eq!(
                 crate::Module::<Testtime>::discover_claim(Origin::signed(BOB()), farm_id,).unwrap(),
-                Some(52645u64)
+                52645211368930210402144
             );
 
             crate::Module::<Testtime>::run_to_block(25000);
             assert_eq!(
                 crate::Module::<Testtime>::discover_claim(Origin::signed(ALICE()), farm_id,)
                     .unwrap(),
-                Some(52415u64)
+                52415419296342604706870
             );
             assert_eq!(
                 crate::Module::<Testtime>::discover_claim(Origin::signed(BOB()), farm_id,).unwrap(),
-                Some(52742u64)
+                52742419572690985932385
             );
 
             crate::Module::<Testtime>::run_to_block(29000);
             assert_eq!(
                 crate::Module::<Testtime>::discover_claim(Origin::signed(ALICE()), farm_id,)
                     .unwrap(),
-                Some(52261u64)
+                52261271263478340093362
             );
             assert_eq!(
                 crate::Module::<Testtime>::discover_claim(Origin::signed(BOB()), farm_id,).unwrap(),
-                Some(53082u64)
+                53081592068137254514308
             );
 
             crate::Module::<Testtime>::run_to_block(30000);
             assert_eq!(
                 crate::Module::<Testtime>::discover_claim(Origin::signed(ALICE()), farm_id,)
                     .unwrap(),
-                Some(52246u64)
+                52245597363990619535308
             );
             assert_eq!(
                 crate::Module::<Testtime>::discover_claim(Origin::signed(BOB()), farm_id,).unwrap(),
-                Some(53165u64)
+                53165260016667738554569
             );
 
             assert_ok!(crate::Module::<Testtime>::claim(
                 Origin::signed(ALICE()),
                 farm_id,
-                Some(10u32.into()),
+                Some(balance!(10)),
             ));
 
             assert_ok!(crate::Module::<Testtime>::claim(
                 Origin::signed(BOB()),
                 farm_id,
-                Some(40000u32.into()),
+                Some(balance!(40000)),
             ));
 
             assert_eq!(
                 crate::Module::<Testtime>::discover_claim(Origin::signed(ALICE()), farm_id,)
                     .unwrap(),
-                Some(52236u64)
+                52235597363990619534674
             );
             assert_eq!(
                 crate::Module::<Testtime>::discover_claim(Origin::signed(BOB()), farm_id,).unwrap(),
-                Some(13165u64)
+                13165260016667738554690
             );
 
             crate::Module::<Testtime>::run_to_block(35000);
@@ -561,7 +561,7 @@ fn two_farmers_working_with_farm_cascade() {
                 dex_id,
                 farm_id,
                 mark_asset,
-                1000u32.into(),
+                balance!(1000),
             ));
 
             assert_ok!(crate::Module::<Testtime>::lock_to_farm(
@@ -569,18 +569,18 @@ fn two_farmers_working_with_farm_cascade() {
                 dex_id,
                 farm_id,
                 mark_asset,
-                1000u32.into(),
+                balance!(1000),
             ));
 
             crate::Module::<Testtime>::run_to_block(50000);
             assert_eq!(
                 crate::Module::<Testtime>::discover_claim(Origin::signed(ALICE()), farm_id,)
                     .unwrap(),
-                Some(40717u64)
+                40716972520757701551844
             );
             assert_eq!(
                 crate::Module::<Testtime>::discover_claim(Origin::signed(BOB()), farm_id,).unwrap(),
-                Some(25370u64)
+                25369990980909847626935
             );
 
             assert_ok!(crate::Module::<Testtime>::claim(
@@ -599,13 +599,13 @@ fn two_farmers_working_with_farm_cascade() {
                 crate::Module::<Testtime>::claim(
                     Origin::signed(ALICE()),
                     farm_id,
-                    Some(1u32.into()),
+                    Some(balance!(1)),
                 ),
                 crate::Error::<Testtime>::NothingToClaim
             );
 
             assert_noop!(
-                crate::Module::<Testtime>::claim(Origin::signed(BOB()), farm_id, Some(1u32.into()),),
+                crate::Module::<Testtime>::claim(Origin::signed(BOB()), farm_id, Some(balance!(1))),
                 crate::Error::<Testtime>::NothingToClaim
             );
 
@@ -615,7 +615,7 @@ fn two_farmers_working_with_farm_cascade() {
                 crate::Module::<Testtime>::claim(
                     Origin::signed(ALICE()),
                     farm_id,
-                    Some(999u32.into()),
+                    Some(balance!(999)),
                 ),
                 crate::Error::<Testtime>::AmountIsOutOfAvailableValue
             );
@@ -624,7 +624,7 @@ fn two_farmers_working_with_farm_cascade() {
                 crate::Module::<Testtime>::claim(
                     Origin::signed(BOB()),
                     farm_id,
-                    Some(999u32.into()),
+                    Some(balance!(999)),
                 ),
                 crate::Error::<Testtime>::AmountIsOutOfAvailableValue
             );
@@ -641,14 +641,14 @@ fn unlock_exact() {
                 dex_id,
                 farm_id,
                 mark_asset,
-                10_000u32.into(),
+                balance!(10000),
             ));
             assert_ok!(crate::Module::<Testtime>::unlock_from_farm(
                 Origin::signed(ALICE()),
                 dex_id,
                 farm_id,
                 Some(mark_asset),
-                Some(10_000u32.into()),
+                Some(balance!(10000)),
             ));
             assert_noop!(
                 crate::Module::<Testtime>::unlock_from_farm(
@@ -656,7 +656,7 @@ fn unlock_exact() {
                     dex_id,
                     farm_id,
                     Some(mark_asset),
-                    Some(1u32.into()),
+                    Some(balance!(1)),
                 ),
                 crate::Error::<Testtime>::CalculationOrOperationWithFarmingStateIsFailed
             );
@@ -713,7 +713,7 @@ fn unlock_all_for_asset() {
                     dex_id,
                     farm_id,
                     Some(mark_asset),
-                    Some(1u32.into()),
+                    Some(balance!(1)),
                 ),
                 crate::Error::<Testtime>::CalculationOrOperationWithFarmingStateIsFailed
             );
@@ -745,7 +745,7 @@ fn unlock_all_assets() {
                     dex_id,
                     farm_id,
                     Some(mark_asset),
-                    Some(1u32.into()),
+                    Some(balance!(1)),
                 ),
                 crate::Error::<Testtime>::CalculationOrOperationWithFarmingStateIsFailed
             );

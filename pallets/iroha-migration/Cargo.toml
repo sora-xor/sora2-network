@@ -43,6 +43,11 @@ std = [
     'codec/std',
     'frame-support/std',
     'frame-system/std',
+    'assets/std',
+    'permissions/std',
+    'referral-system/std',
+    'technical/std',
+    'common/std',
     'pallet-multisig/std',
     'serde',
 ]

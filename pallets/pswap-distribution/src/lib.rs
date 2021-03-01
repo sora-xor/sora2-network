@@ -1,10 +1,12 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use common::prelude::fixnum::ops::{CheckedAdd, CheckedSub};
-use common::prelude::{FixedWrapper, SwapAmount};
+use core::convert::TryInto;
+
 use common::{
-    balance::Balance, fixed, fixnum::ops::Numeric, EnsureDEXManager, Fixed, LiquiditySourceFilter,
-    LiquiditySourceType,
+    fixed,
+    fixnum::ops::{CheckedAdd, CheckedSub},
+    prelude::{Balance, FixedWrapper, SwapAmount},
+    EnsureDEXManager, Fixed, LiquiditySourceFilter, LiquiditySourceType,
 };
 use frame_support::{
     decl_error, decl_event, decl_module, decl_storage,
@@ -36,8 +38,8 @@ pub trait Trait: common::Trait + assets::Trait + technical::Trait {
     type GetIncentiveAssetId: Get<Self::AssetId>;
     type LiquidityProxy: LiquidityProxyTrait<Self::DEXId, Self::AccountId, Self::AssetId>;
     type CompatBalance: From<<Self as tokens::Trait>::Balance>
-        + Into<common::balance::Balance>
-        + From<common::balance::Balance>
+        + Into<Balance>
+        + From<Balance>
         + Clone
         + Zero;
     type GetTechnicalAccountId: Get<Self::AccountId>;
@@ -222,8 +224,10 @@ impl<T: Trait> Module<T> {
             // get definitions
             let incentives_asset_id = T::GetIncentiveAssetId::get();
             let tech_account_id = T::GetTechnicalAccountId::get();
-            let claimable_incentives: FixedWrapper =
-                assets::Module::<T>::free_balance(&incentives_asset_id, &tech_account_id)?.into();
+            let claimable_incentives = FixedWrapper::from(assets::Module::<T>::free_balance(
+                &incentives_asset_id,
+                &tech_account_id,
+            )?);
             let shares_total = FixedWrapper::from(ClaimableShares::get());
 
             // clean up shares info
@@ -237,18 +241,21 @@ impl<T: Trait> Module<T> {
                 .get()
                 .map_err(|_| Error::CalculationError::<T>)?;
 
+            let amount = incentives_to_claim.min(
+                // TODO: consider cases where this is bad, can it accumulate?
+                claimable_incentives
+                    .get()
+                    .map_err(|_| Error::CalculationError::<T>)?,
+            );
+            let amount = amount
+                .into_bits()
+                .try_into()
+                .map_err(|_| Error::CalculationError::<T>)?;
             let _result = Assets::<T>::transfer_from(
                 &incentives_asset_id,
                 &tech_account_id,
                 &account_id,
-                Balance(
-                    incentives_to_claim.min(
-                        // TODO: consider cases where this is bad, can it accumulate?
-                        claimable_incentives
-                            .get()
-                            .map_err(|_| Error::CalculationError::<T>)?,
-                    ),
-                ),
+                amount,
             )?;
             Ok(())
         } else {
@@ -265,7 +272,7 @@ impl<T: Trait> Module<T> {
         dex_id: &T::DEXId,
     ) -> DispatchResult {
         let base_total = Assets::<T>::free_balance(&T::GetBaseAssetId::get(), &fees_account_id)?;
-        if base_total == fixed!(0) {
+        if base_total == 0 {
             Self::deposit_event(RawEvent::NothingToExchange(
                 dex_id.clone(),
                 fees_account_id.clone(),
@@ -277,7 +284,7 @@ impl<T: Trait> Module<T> {
             fees_account_id,
             &T::GetBaseAssetId::get(),
             &T::GetIncentiveAssetId::get(),
-            SwapAmount::with_desired_input(base_total.clone(), Balance(Fixed::ZERO)),
+            SwapAmount::with_desired_input(base_total.clone(), Balance::zero()),
             LiquiditySourceFilter::with_allowed(
                 dex_id.clone(),
                 [LiquiditySourceType::XYKPool].into(),
@@ -321,7 +328,7 @@ impl<T: Trait> Module<T> {
         let incentive_asset_id = T::GetIncentiveAssetId::get();
         let marker_total = Assets::<T>::total_issuance(&marker_asset_id)?;
         let incentive_total = Assets::<T>::free_balance(&incentive_asset_id, &fees_account_id)?;
-        if incentive_total == fixed!(0) {
+        if incentive_total == 0 {
             Self::deposit_event(RawEvent::NothingToDistribute(
                 dex_id.clone(),
                 fees_account_id.clone(),
@@ -329,11 +336,13 @@ impl<T: Trait> Module<T> {
             return Ok(());
         }
 
+        let incentive_total = FixedWrapper::from(incentive_total);
         // Adjust values and burn portion of incentive.
-        let incentive_to_burn =
-            FixedWrapper::from(incentive_total.clone()) * FixedWrapper::from(BurnRate::get());
-        let incentive_to_revive =
-            FixedWrapper::from(incentive_total.clone()) - incentive_to_burn.clone();
+        let incentive_to_burn = incentive_total.clone() * FixedWrapper::from(BurnRate::get());
+        let incentive_to_revive = incentive_total.clone() - incentive_to_burn.clone();
+        let incentive_total = incentive_total
+            .try_into_balance()
+            .map_err(|_| Error::<T>::CalculationError)?;
         assets::Module::<T>::burn_from(
             &incentive_asset_id,
             tech_account_id,
@@ -341,18 +350,13 @@ impl<T: Trait> Module<T> {
             incentive_total,
         )?;
 
-        let incentive_to_burn_fixed: Fixed = incentive_to_burn
-            .clone()
-            .get()
-            .map_err(|_| Error::<T>::CalculationError)?;
-
         // This is needed for other pallet that will use this variables, for example this is
         // farming pallet.
         Self::deposit_event(RawEvent::IncentivesBurnedAfterExchange(
             dex_id.clone(),
             incentive_asset_id.clone(),
-            incentive_total.clone(),
-            incentive_to_burn_fixed.into(),
+            incentive_total,
+            incentive_to_burn.clone().try_into_balance().map_err(|_| Error::<T>::CalculationError)?,
         ));
 
         // This is needed for farm id 0, now it is hardcoded, in future it will be resolved and
@@ -366,14 +370,13 @@ impl<T: Trait> Module<T> {
         }
 
         // Shadowing intended, re-mint decreased incentive amount and set it as new total.
-        let incentive_total = Balance::from(
-            incentive_to_revive
-                .get()
-                .map_err(|_| Error::<T>::CalculationError)?,
-        );
-
-        let Balance(mut claimable_incentives) =
-            assets::Module::<T>::free_balance(&incentive_asset_id, &tech_account_id)?;
+        let incentive_total = incentive_to_revive
+            .try_into_balance()
+            .map_err(|_| Error::<T>::CalculationError)?;
+        let mut claimable_incentives = FixedWrapper::from(assets::Module::<T>::free_balance(
+            &incentive_asset_id,
+            &tech_account_id,
+        )?);
 
         // Distribute incentive to shareholders.
         let mut shareholders_num = 0u128;
@@ -391,7 +394,7 @@ impl<T: Trait> Module<T> {
                         .map_err(|_| Error::<T>::CalculationError)?
                 } else {
                     let claimable_share = share.clone()
-                        / (FixedWrapper::from(claimable_incentives)
+                        / (claimable_incentives.clone()
                             / FixedWrapper::from(total_claimable_shares));
                     claimable_share
                         .get()
@@ -414,9 +417,7 @@ impl<T: Trait> Module<T> {
                 ClaimableShares::mutate(|current| {
                     *current = current.cadd(claimable_share_delta).unwrap()
                 });
-                claimable_incentives = claimable_incentives
-                    .cadd(claimable_share)
-                    .map_err(|_| Error::<T>::CalculationError)?;
+                claimable_incentives = claimable_incentives + claimable_share;
                 shareholders_num += 1;
             }
         }

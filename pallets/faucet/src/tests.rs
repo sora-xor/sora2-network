@@ -1,4 +1,4 @@
-use common::fixed;
+use common::balance;
 use frame_support::{assert_noop, assert_ok};
 
 use crate::{mock::*, *};
@@ -11,13 +11,23 @@ type System = frame_system::Module<Test>;
 fn transfer_passes_unsigned() {
     ExtBuilder::build().execute_with(|| {
         // Receive 100 (Limit) in two transfers
-        assert_ok!(Module::transfer(Origin::none(), XOR, bob(), fixed!(49.91)));
-        assert_ok!(Module::transfer(Origin::none(), XOR, bob(), fixed!(50.09)));
+        assert_ok!(Module::transfer(
+            Origin::none(),
+            XOR,
+            bob(),
+            balance!(49.91)
+        ));
+        assert_ok!(Module::transfer(
+            Origin::none(),
+            XOR,
+            bob(),
+            balance!(50.09)
+        ));
         assert_eq!(
             Assets::free_balance(&XOR, &account_id()).unwrap(),
-            fixed!(50)
+            balance!(50)
         );
-        assert_eq!(Assets::free_balance(&XOR, &bob()).unwrap(), fixed!(100));
+        assert_eq!(Assets::free_balance(&XOR, &bob()).unwrap(), balance!(100));
     });
 }
 
@@ -29,20 +39,20 @@ fn transfer_passes_native_currency() {
             Origin::signed(alice()),
             XOR,
             bob(),
-            fixed!(49.91)
+            balance!(49.91)
         ));
         assert_ok!(Module::transfer(
             Origin::signed(alice()),
             XOR,
             bob(),
-            fixed!(50.09)
+            balance!(50.09)
         ));
         assert_eq!(
             Assets::free_balance(&XOR, &account_id()).unwrap(),
-            fixed!(50)
+            balance!(50)
         );
-        assert_eq!(Assets::free_balance(&XOR, &alice()).unwrap(), fixed!(0));
-        assert_eq!(Assets::free_balance(&XOR, &bob()).unwrap(), fixed!(100));
+        assert_eq!(Assets::free_balance(&XOR, &alice()).unwrap(), 0);
+        assert_eq!(Assets::free_balance(&XOR, &bob()).unwrap(), balance!(100));
     });
 }
 
@@ -53,27 +63,27 @@ fn transfer_passes_multiple_assets() {
             Origin::signed(alice()),
             XOR,
             bob(),
-            fixed!(100)
+            balance!(100)
         ));
         assert_eq!(
             Assets::free_balance(&XOR, &account_id()).unwrap(),
-            fixed!(50)
+            balance!(50)
         );
-        assert_eq!(Assets::free_balance(&XOR, &alice()).unwrap(), fixed!(0));
-        assert_eq!(Assets::free_balance(&XOR, &bob()).unwrap(), fixed!(100));
+        assert_eq!(Assets::free_balance(&XOR, &alice()).unwrap(), 0);
+        assert_eq!(Assets::free_balance(&XOR, &bob()).unwrap(), balance!(100));
 
         assert_ok!(Module::transfer(
             Origin::signed(alice()),
             VAL,
             bob(),
-            fixed!(50.43)
+            balance!(50.43)
         ));
         assert_eq!(
             Assets::free_balance(&VAL, &account_id()).unwrap(),
-            fixed!(99.57)
+            balance!(99.57)
         );
-        assert_eq!(Assets::free_balance(&VAL, &alice()).unwrap(), fixed!(0));
-        assert_eq!(Assets::free_balance(&VAL, &bob()).unwrap(), fixed!(50.43));
+        assert_eq!(Assets::free_balance(&VAL, &alice()).unwrap(), 0);
+        assert_eq!(Assets::free_balance(&VAL, &bob()).unwrap(), balance!(50.43));
     });
 }
 
@@ -84,21 +94,18 @@ fn transfer_passes_after_limit_is_reset() {
             Origin::signed(alice()),
             XOR,
             bob(),
-            fixed!(100)
+            balance!(100)
         ));
         System::set_block_number(14401);
         assert_ok!(Module::transfer(
             Origin::signed(alice()),
             XOR,
             bob(),
-            fixed!(50)
+            balance!(50)
         ));
-        assert_eq!(
-            Assets::free_balance(&XOR, &account_id()).unwrap(),
-            fixed!(0)
-        );
-        assert_eq!(Assets::free_balance(&XOR, &alice()).unwrap(), fixed!(0));
-        assert_eq!(Assets::free_balance(&XOR, &bob()).unwrap(), fixed!(150));
+        assert_eq!(Assets::free_balance(&XOR, &account_id()).unwrap(), 0);
+        assert_eq!(Assets::free_balance(&XOR, &alice()).unwrap(), 0);
+        assert_eq!(Assets::free_balance(&XOR, &bob()).unwrap(), balance!(150));
     });
 }
 
@@ -110,7 +117,7 @@ fn transfer_fails_with_asset_not_supported() {
                 Origin::signed(alice()),
                 NOT_SUPPORTED_ASSET_ID,
                 bob(),
-                fixed!(0.5)
+                balance!(0.5)
             ),
             crate::Error::<Test>::AssetNotSupported
         );
@@ -124,10 +131,10 @@ fn transfer_fails_with_amount_above_limit() {
             Origin::signed(alice()),
             XOR,
             bob(),
-            fixed!(100)
+            balance!(100)
         ));
         assert_noop!(
-            Module::transfer(Origin::signed(alice()), XOR, bob(), fixed!(0.2)),
+            Module::transfer(Origin::signed(alice()), XOR, bob(), balance!(0.2)),
             crate::Error::<Test>::AmountAboveLimit
         );
     });
@@ -140,10 +147,10 @@ fn transfer_fails_with_not_enough_reserves() {
             Origin::signed(alice()),
             XOR,
             bob(),
-            fixed!(100)
+            balance!(100)
         ));
         assert_noop!(
-            Module::transfer(Origin::signed(bob()), XOR, alice(), fixed!(100)),
+            Module::transfer(Origin::signed(bob()), XOR, alice(), balance!(100)),
             crate::Error::<Test>::NotEnoughReserves
         );
     });

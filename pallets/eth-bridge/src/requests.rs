@@ -6,7 +6,7 @@ use crate::{
 use alloc::{collections::BTreeSet, string::String};
 use codec::{Decode, Encode};
 use common::prelude::Balance;
-use common::{fixed, AssetSymbol, BalancePrecision, PSWAP, VAL, XOR};
+use common::{AssetSymbol, BalancePrecision, PSWAP, VAL, XOR};
 use ethabi::{FixedBytes, Token};
 #[allow(unused_imports)]
 use frame_support::debug;
@@ -171,8 +171,8 @@ impl<T: Trait> IncomingClaimPswap<T> {
     pub fn finalize(&self) -> Result<H256, DispatchError> {
         let bridge_account_id = get_bridge_account::<T>(self.network_id);
         let amount = PswapOwners::get(&self.eth_address).ok_or(Error::<T>::AccountNotFound)?;
-        ensure!(amount != fixed!(0), Error::<T>::AlreadyClaimed);
-        let empty_balance: Balance = fixed!(0);
+        ensure!(amount != 0, Error::<T>::AlreadyClaimed);
+        let empty_balance = 0;
         PswapOwners::insert(&self.eth_address, empty_balance);
         assets::Module::<T>::mint_to(&PSWAP.into(), &bridge_account_id, &self.account_id, amount)?;
         Ok(self.tx_hash)
@@ -347,7 +347,7 @@ impl<T: Trait> OutgoingTransfer<T> {
             let x = <T::AssetId as Into<H256>>::into(self.asset_id);
             currency_id = CurrencyIdEncoded::AssetId(H256(x.0));
         }
-        let amount = U256::from(*self.amount.0.as_bits());
+        let amount = U256::from(self.amount);
         let tx_hash = H256(tx_hash.0);
         let mut network_id: H256 = H256::default();
         U256::from(
@@ -497,7 +497,7 @@ impl<T: Trait> OutgoingAddAsset<T> {
         let symbol: String = String::from_utf8_lossy(&symbol.0).into();
         let name = symbol.clone();
         let asset_id_code = <AssetIdOf<T> as Into<H256>>::into(self.asset_id);
-        let supply: U256 = U256::from(*self.supply.0.as_bits());
+        let supply: U256 = U256::from(self.supply);
         let sidechain_asset_id = asset_id_code.0.to_vec();
         let mut network_id: H256 = H256::default();
         U256::from(

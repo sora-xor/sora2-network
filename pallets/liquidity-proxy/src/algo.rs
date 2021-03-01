@@ -3,7 +3,7 @@ use core::convert::TryFrom;
 use sp_std::vec::Vec;
 
 use common::{
-    fixed,
+    balance, fixed,
     prelude::{fixnum::ops::CheckedAdd, FixedWrapper},
     Fixed,
 };
@@ -64,8 +64,8 @@ pub fn find_distribution(sample_data: Vec<Vec<Fixed>>, inversed: bool) -> (Vec<F
 
     while parts_left > 0 && cur_exchange != 0 {
         cur_exchange -= 1;
-        let distribution_part = (FixedWrapper::from(parts_left)
-            - FixedWrapper::from(foreign[cur_exchange][parts_left]))
+        let distribution_part = (FixedWrapper::from(parts_left as u128 * balance!(1))
+            - foreign[cur_exchange][parts_left] as u128 * balance!(1))
             / total_parts;
         distribution[cur_exchange] = match distribution_part.get() {
             Err(_) => return default(),

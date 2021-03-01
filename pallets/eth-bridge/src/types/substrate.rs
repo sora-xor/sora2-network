@@ -1,8 +1,8 @@
 use crate::types::{H256, U64};
 use serde::{Deserialize, Serialize};
 
-#[serde(rename_all = "camelCase")]
 #[derive(Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct SubstrateHeaderLimited {
     /// The parent hash.
     #[serde(skip)]

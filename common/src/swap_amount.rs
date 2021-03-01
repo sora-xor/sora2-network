@@ -1,17 +1,16 @@
+use core::convert::{TryFrom, TryInto};
 use core::ops::{Mul, MulAssign};
 use core::result::Result;
 
 use codec::{Decode, Encode};
-use fixnum::{
-    impl_op,
-    ops::{RoundMode::*, RoundingMul},
-};
+use fixnum::ops::{RoundMode::*, RoundingMul};
 use frame_support::RuntimeDebug;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
+use sp_runtime::traits::{UniqueSaturatedFrom, UniqueSaturatedInto};
 use sp_std::mem;
 
-use crate::balance::Balance;
+use crate::primitives::Balance;
 use crate::Fixed;
 
 #[derive(Encode, Decode, Copy, Clone, RuntimeDebug, PartialEq, Eq, PartialOrd, Ord)]
@@ -109,43 +108,121 @@ impl<T> SwapAmount<T> {
     }
 }
 
-impl From<SwapAmount<Fixed>> for SwapAmount<Balance> {
-    fn from(v: SwapAmount<Fixed>) -> Self {
-        match v {
+#[derive(Clone, Copy)]
+#[cfg_attr(feature = "std", derive(Debug))]
+pub struct TryFromSwapAmountError;
+
+impl TryFrom<SwapAmount<Fixed>> for SwapAmount<Balance> {
+    type Error = TryFromSwapAmountError;
+
+    fn try_from(v: SwapAmount<Fixed>) -> Result<Self, Self::Error> {
+        Ok(match v {
             SwapAmount::WithDesiredInput {
                 desired_amount_in,
                 min_amount_out,
             } => SwapAmount::WithDesiredInput {
-                desired_amount_in: desired_amount_in.into(),
-                min_amount_out: min_amount_out.into(),
+                desired_amount_in: desired_amount_in
+                    .into_bits()
+                    .try_into()
+                    .map_err(|_| TryFromSwapAmountError)?,
+                min_amount_out: min_amount_out
+                    .into_bits()
+                    .try_into()
+                    .map_err(|_| TryFromSwapAmountError)?,
             },
             SwapAmount::WithDesiredOutput {
                 desired_amount_out,
                 max_amount_in,
             } => SwapAmount::WithDesiredOutput {
-                desired_amount_out: desired_amount_out.into(),
-                max_amount_in: max_amount_in.into(),
+                desired_amount_out: desired_amount_out
+                    .into_bits()
+                    .try_into()
+                    .map_err(|_| TryFromSwapAmountError)?,
+                max_amount_in: max_amount_in
+                    .into_bits()
+                    .try_into()
+                    .map_err(|_| TryFromSwapAmountError)?,
+            },
+        })
+    }
+}
+
+impl UniqueSaturatedFrom<SwapAmount<Fixed>> for SwapAmount<Balance> {
+    fn unique_saturated_from(v: SwapAmount<Fixed>) -> Self {
+        match v {
+            SwapAmount::WithDesiredInput {
+                desired_amount_in,
+                min_amount_out,
+            } => SwapAmount::WithDesiredInput {
+                desired_amount_in: desired_amount_in.into_bits().unique_saturated_into(),
+                min_amount_out: min_amount_out.into_bits().unique_saturated_into(),
+            },
+            SwapAmount::WithDesiredOutput {
+                desired_amount_out,
+                max_amount_in,
+            } => SwapAmount::WithDesiredOutput {
+                desired_amount_out: desired_amount_out.into_bits().unique_saturated_into(),
+                max_amount_in: max_amount_in.into_bits().unique_saturated_into(),
             },
         }
     }
 }
 
-impl From<SwapAmount<Balance>> for SwapAmount<Fixed> {
-    fn from(v: SwapAmount<Balance>) -> Self {
-        match v {
+impl TryFrom<SwapAmount<Balance>> for SwapAmount<Fixed> {
+    type Error = TryFromSwapAmountError;
+
+    fn try_from(v: SwapAmount<Balance>) -> Result<Self, Self::Error> {
+        Ok(match v {
             SwapAmount::WithDesiredInput {
                 desired_amount_in,
                 min_amount_out,
             } => SwapAmount::WithDesiredInput {
-                desired_amount_in: desired_amount_in.0,
-                min_amount_out: min_amount_out.0,
+                desired_amount_in: Fixed::from_bits(
+                    desired_amount_in
+                        .try_into()
+                        .map_err(|_| TryFromSwapAmountError)?,
+                ),
+                min_amount_out: Fixed::from_bits(
+                    min_amount_out
+                        .try_into()
+                        .map_err(|_| TryFromSwapAmountError)?,
+                ),
             },
             SwapAmount::WithDesiredOutput {
                 desired_amount_out,
                 max_amount_in,
             } => SwapAmount::WithDesiredOutput {
-                desired_amount_out: desired_amount_out.0,
-                max_amount_in: max_amount_in.0,
+                desired_amount_out: Fixed::from_bits(
+                    desired_amount_out
+                        .try_into()
+                        .map_err(|_| TryFromSwapAmountError)?,
+                ),
+                max_amount_in: Fixed::from_bits(
+                    max_amount_in
+                        .try_into()
+                        .map_err(|_| TryFromSwapAmountError)?,
+                ),
+            },
+        })
+    }
+}
+
+impl UniqueSaturatedFrom<SwapAmount<Balance>> for SwapAmount<Fixed> {
+    fn unique_saturated_from(v: SwapAmount<Balance>) -> Self {
+        match v {
+            SwapAmount::WithDesiredInput {
+                desired_amount_in,
+                min_amount_out,
+            } => SwapAmount::WithDesiredInput {
+                desired_amount_in: Fixed::from_bits(desired_amount_in.unique_saturated_into()),
+                min_amount_out: Fixed::from_bits(min_amount_out.unique_saturated_into()),
+            },
+            SwapAmount::WithDesiredOutput {
+                desired_amount_out,
+                max_amount_in,
+            } => SwapAmount::WithDesiredOutput {
+                desired_amount_out: Fixed::from_bits(desired_amount_out.unique_saturated_into()),
+                max_amount_in: Fixed::from_bits(max_amount_in.unique_saturated_into()),
             },
         }
     }
@@ -259,57 +336,66 @@ impl<AmountType> SwapOutcome<AmountType> {
     }
 }
 
-impl From<SwapOutcome<Balance>> for SwapOutcome<Fixed> {
-    fn from(v: SwapOutcome<Balance>) -> Self {
-        match v {
-            SwapOutcome { amount, fee } => SwapOutcome {
-                amount: amount.0,
-                fee: fee.0,
-            },
-        }
+#[derive(Clone, Copy)]
+#[cfg_attr(feature = "std", derive(Debug))]
+pub struct TryFromSwapOutcomeError;
+
+impl TryFrom<SwapOutcome<Balance>> for SwapOutcome<Fixed> {
+    type Error = TryFromSwapOutcomeError;
+
+    fn try_from(value: SwapOutcome<Balance>) -> Result<Self, Self::Error> {
+        let amount = Fixed::from_bits(
+            value
+                .amount
+                .try_into()
+                .map_err(|_| TryFromSwapOutcomeError)?,
+        );
+        let fee = Fixed::from_bits(value.fee.try_into().map_err(|_| TryFromSwapOutcomeError)?);
+        Ok(Self { amount, fee })
     }
 }
 
-impl From<SwapOutcome<Fixed>> for SwapOutcome<Balance> {
-    fn from(v: SwapOutcome<Fixed>) -> Self {
-        match v {
-            SwapOutcome { amount, fee } => SwapOutcome {
-                amount: amount.into(),
-                fee: fee.into(),
-            },
-        }
+impl TryFrom<SwapOutcome<Fixed>> for SwapOutcome<Balance> {
+    type Error = TryFromSwapOutcomeError;
+
+    fn try_from(value: SwapOutcome<Fixed>) -> Result<Self, Self::Error> {
+        let amount = value
+            .amount
+            .into_bits()
+            .try_into()
+            .map_err(|_| TryFromSwapOutcomeError)?;
+        let fee = value
+            .fee
+            .into_bits()
+            .try_into()
+            .map_err(|_| TryFromSwapOutcomeError)?;
+        Ok(Self { amount, fee })
     }
 }
-
-impl_op!(Balance [rmul] Balance = Balance);
-impl_op!(Balance [rdiv] Balance = Balance);
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{fixed, prelude::Balance, FixedInner};
-    use std::convert::TryFrom;
-
-    fn balance(x: FixedInner) -> Balance {
-        Balance::from(Fixed::try_from(x).unwrap())
-    }
+    use crate::fixed;
 
     #[test]
     fn test_mul_amount_should_pass() {
-        let swap_amount = SwapAmount::with_desired_input(balance(100), balance(50));
+        let swap_amount: SwapAmount<Fixed> =
+            SwapAmount::with_desired_input(fixed!(100), fixed!(50));
         assert_eq!(
             swap_amount * fixed!(2),
-            SwapAmount::with_desired_input(balance(200), balance(100))
+            SwapAmount::with_desired_input(fixed!(200), fixed!(100))
         );
     }
 
     #[test]
     fn test_mul_assign_amount_should_pass() {
-        let mut swap_amount = SwapAmount::with_desired_input(balance(100), balance(50));
+        let mut swap_amount: SwapAmount<Fixed> =
+            SwapAmount::with_desired_input(fixed!(100), fixed!(50));
         swap_amount *= fixed!(2);
         assert_eq!(
             swap_amount,
-            SwapAmount::with_desired_input(balance(200), balance(100))
+            SwapAmount::with_desired_input(fixed!(200), fixed!(100))
         );
     }
 }

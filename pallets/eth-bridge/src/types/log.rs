@@ -4,8 +4,8 @@ use serde::{Deserialize, Serialize, Serializer};
 use sp_std::prelude::*;
 
 /// A log produced by a transaction.
-#[serde(rename_all = "camelCase")]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
 pub struct Log {
     /// H160
     pub address: H160,
@@ -70,8 +70,8 @@ where
 }
 
 /// Filter
-#[serde(rename_all = "camelCase")]
 #[derive(Default, Debug, PartialEq, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Filter {
     /// From Block
     #[serde(skip_serializing_if = "Option::is_none")]

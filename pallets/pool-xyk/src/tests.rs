@@ -1,14 +1,11 @@
 use common::{
-    fixed,
+    balance,
     prelude::{SwapAmount, SwapOutcome},
-    AssetSymbol, LiquiditySource, LiquiditySourceType, ToFeeAccount,
+    AssetSymbol, Balance, LiquiditySource, LiquiditySourceType, ToFeeAccount,
 };
 use frame_support::{assert_noop, assert_ok};
 
 use crate::mock::*;
-use common::fixnum::ops::Numeric;
-use common::prelude::Balance;
-use common::Fixed;
 
 impl crate::Module<Testtime> {
     fn preset01(
@@ -99,35 +96,29 @@ impl crate::Module<Testtime> {
                 &gt,
                 &ALICE(),
                 &ALICE(),
-                fixed!(900000)
+                balance!(900000)
             ));
 
             assert_eq!(
-                Into::<u32>::into(assets::Module::<Testtime>::free_balance(&gt, &ALICE()).unwrap()),
-                900_000u32
+                assets::Module::<Testtime>::free_balance(&gt, &ALICE()).unwrap(),
+                balance!(900000)
             );
             assert_eq!(
-                Into::<u32>::into(assets::Module::<Testtime>::free_balance(&bp, &ALICE()).unwrap()),
-                2000_000u32
+                assets::Module::<Testtime>::free_balance(&bp, &ALICE()).unwrap(),
+                balance!(2000000)
             );
             assert_eq!(
-                Into::<u32>::into(
-                    assets::Module::<Testtime>::free_balance(&gt, &repr.clone()).unwrap()
-                ),
-                0u32
+                assets::Module::<Testtime>::free_balance(&gt, &repr.clone()).unwrap(),
+                0
             );
 
             assert_eq!(
-                Into::<u32>::into(
-                    assets::Module::<Testtime>::free_balance(&bp, &repr.clone()).unwrap()
-                ),
-                0u32
+                assets::Module::<Testtime>::free_balance(&bp, &repr.clone()).unwrap(),
+                0
             );
             assert_eq!(
-                Into::<u32>::into(
-                    assets::Module::<Testtime>::free_balance(&gt, &fee_repr.clone()).unwrap()
-                ),
-                0_u32
+                assets::Module::<Testtime>::free_balance(&gt, &fee_repr.clone()).unwrap(),
+                0
             );
 
             let base_asset: AssetId = GoldenTicket.into();
@@ -196,10 +187,10 @@ impl crate::Module<Testtime> {
                     dex_id,
                     GoldenTicket.into(),
                     BlackPepper.into(),
-                    fixed!(360000),
-                    fixed!(144000),
-                    fixed!(360000),
-                    fixed!(144000),
+                    balance!(360000),
+                    balance!(144000),
+                    balance!(360000),
+                    balance!(144000),
                 ));
                 let tech_asset: AssetId =
                     crate::Module::<Testtime>::get_marking_asset(&tech_acc_id)
@@ -207,7 +198,7 @@ impl crate::Module<Testtime> {
                         .into();
                 assert_eq!(
                     assets::Module::<Testtime>::free_balance(&tech_asset, &ALICE()).unwrap(),
-                    Balance(fixed!(227683.9915321233119034)),
+                    balance!(227683.9915321233119034),
                 );
             },
         ];
@@ -247,10 +238,10 @@ impl crate::Module<Testtime> {
                 dex_id,
                 GoldenTicket.into(),
                 BlackPepper.into(),
-                fixed!(0.01),
-                fixed!(0.01),
-                fixed!(0),
-                fixed!(0),
+                balance!(0.01),
+                balance!(0.01),
+                balance!(0),
+                balance!(0),
             ));
         }];
         let mut tests_to_add = tests.clone();
@@ -275,10 +266,10 @@ fn can_exchange_all_directions() {
             dex_id,
             GoldenTicket.into(),
             BlackPepper.into(),
-            fixed!(100000),
-            fixed!(200000),
-            fixed!(0),
-            fixed!(0),
+            balance!(100000),
+            balance!(200000),
+            0,
+            0,
         ));
         assert!(crate::Module::<Testtime>::can_exchange(&dex_id, &gt, &bp));
         assert!(crate::Module::<Testtime>::can_exchange(&dex_id, &bp, &gt));
@@ -294,10 +285,10 @@ fn quote_case_exact_input_for_output_base_first() {
             dex_id,
             GoldenTicket.into(),
             BlackPepper.into(),
-            fixed!(100000),
-            fixed!(200000),
-            fixed!(0),
-            fixed!(0),
+            balance!(100000),
+            balance!(200000),
+            0,
+            0,
         ));
         assert_eq!(
             simplify_swap_outcome!(crate::Module::<Testtime>::quote(
@@ -305,12 +296,12 @@ fn quote_case_exact_input_for_output_base_first() {
                 &gt,
                 &bp,
                 SwapAmount::WithDesiredInput {
-                    desired_amount_in: fixed!(100000),
-                    min_amount_out: fixed!(50000),
+                    desired_amount_in: balance!(100000),
+                    min_amount_out: balance!(50000),
                 }
             )
             .unwrap()),
-            (99_850_u32, 300_u32)
+            (99849774661992989484226, balance!(300))
         );
     }]);
 }
@@ -323,10 +314,10 @@ fn quote_case_exact_input_for_output_base_second() {
             dex_id,
             GoldenTicket.into(),
             BlackPepper.into(),
-            fixed!(100000),
-            fixed!(200000),
-            fixed!(0),
-            fixed!(0),
+            balance!(100000),
+            balance!(200000),
+            0,
+            0,
         ));
         assert_eq!(
             simplify_swap_outcome!(crate::Module::<Testtime>::quote(
@@ -334,12 +325,12 @@ fn quote_case_exact_input_for_output_base_second() {
                 &bp,
                 &gt,
                 SwapAmount::WithDesiredInput {
-                    desired_amount_in: fixed!(100000),
-                    min_amount_out: fixed!(0),
+                    desired_amount_in: balance!(100000),
+                    min_amount_out: 0,
                 }
             )
             .unwrap()),
-            (33_233_u32, 100_u32)
+            (33233333333333333333334, 99999999999999999999)
         );
     }]);
 }
@@ -352,10 +343,10 @@ fn quote_case_exact_output_for_input_base_first() {
             dex_id,
             GoldenTicket.into(),
             BlackPepper.into(),
-            fixed!(100000),
-            fixed!(200000),
-            fixed!(0),
-            fixed!(0),
+            balance!(100000),
+            balance!(200000),
+            0,
+            0,
         ));
         assert_eq!(
             simplify_swap_outcome!(crate::Module::<Testtime>::quote(
@@ -363,12 +354,12 @@ fn quote_case_exact_output_for_input_base_first() {
                 &gt,
                 &bp,
                 SwapAmount::WithDesiredOutput {
-                    desired_amount_out: fixed!(100000),
-                    max_amount_in: fixed!(150000),
+                    desired_amount_out: balance!(100000),
+                    max_amount_in: balance!(150000),
                 }
             )
             .unwrap()),
-            (100_301_u32, 301_u32)
+            (100300902708124373119358, 300902708124373119358)
         );
     }]);
 }
@@ -381,10 +372,10 @@ fn quote_case_exact_output_for_input_base_second() {
             dex_id,
             GoldenTicket.into(),
             BlackPepper.into(),
-            fixed!(100000),
-            fixed!(200000),
-            fixed!(0),
-            fixed!(0),
+            balance!(100000),
+            balance!(200000),
+            0,
+            0,
         ));
         assert_eq!(
             simplify_swap_outcome!(crate::Module::<Testtime>::quote(
@@ -392,12 +383,12 @@ fn quote_case_exact_output_for_input_base_second() {
                 &bp,
                 &gt,
                 SwapAmount::WithDesiredOutput {
-                    desired_amount_out: fixed!(50000),
-                    max_amount_in: fixed!(999000),
+                    desired_amount_out: balance!(50000),
+                    max_amount_in: balance!(999000),
                 }
             )
             .unwrap()),
-            (201_207_u32, 150_u32)
+            (201207243460764587525150, 150451354062186559679)
         );
     }]);
 }
@@ -410,10 +401,10 @@ fn quote_case_exact_output_for_input_base_second_fail_with_out_of_bounds() {
             dex_id,
             GoldenTicket.into(),
             BlackPepper.into(),
-            fixed!(100000),
-            fixed!(200000),
-            fixed!(0),
-            fixed!(0),
+            balance!(100000),
+            balance!(200000),
+            0,
+            0,
         ));
         assert_noop!(
             crate::Module::<Testtime>::quote(
@@ -421,8 +412,8 @@ fn quote_case_exact_output_for_input_base_second_fail_with_out_of_bounds() {
                 &bp,
                 &gt,
                 SwapAmount::WithDesiredOutput {
-                    desired_amount_out: fixed!(50000),
-                    max_amount_in: fixed!(90000),
+                    desired_amount_out: balance!(50000),
+                    max_amount_in: balance!(90000),
                 }
             ),
             crate::Error::<Testtime>::CalculatedValueIsOutOfDesiredBounds
@@ -439,10 +430,10 @@ fn depositliq_large_values() {
                 dex_id,
                 GoldenTicket.into(),
                 BlackPepper.into(),
-                fixed!(999360000),
-                fixed!(999144000),
-                fixed!(360000),
-                fixed!(144000),
+                balance!(999360000),
+                balance!(999144000),
+                balance!(360000),
+                balance!(144000),
             ),
             crate::Error::<Testtime>::SourceBaseAmountIsNotLargeEnough
         );
@@ -457,10 +448,10 @@ fn depositliq_valid_range_but_desired_is_corrected() {
             dex_id,
             GoldenTicket.into(),
             BlackPepper.into(),
-            fixed!(360000),
-            fixed!(999000),
-            fixed!(350000),
-            fixed!(143000),
+            balance!(360000),
+            balance!(999000),
+            balance!(350000),
+            balance!(143000),
         ));
     }]);
 }
@@ -470,28 +461,20 @@ fn pool_is_already_initialized_and_other_after_depositliq() {
     crate::Module::<Testtime>::preset02(vec![
         |dex_id, gt, bp, _, _, _, repr: AccountId, fee_repr: AccountId| {
             assert_eq!(
-                Into::<u32>::into(
-                    assets::Module::<Testtime>::free_balance(&bp, &repr.clone()).unwrap()
-                ),
-                144_000u32
+                assets::Module::<Testtime>::free_balance(&bp, &repr.clone()).unwrap(),
+                balance!(144000)
             );
             assert_eq!(
-                Into::<u32>::into(
-                    assets::Module::<Testtime>::free_balance(&gt, &repr.clone()).unwrap()
-                ),
-                360_000_u32
+                assets::Module::<Testtime>::free_balance(&gt, &repr.clone()).unwrap(),
+                balance!(360000)
             );
             assert_eq!(
-                Into::<u32>::into(
-                    assets::Module::<Testtime>::free_balance(&bp, &fee_repr.clone()).unwrap()
-                ),
-                0_u32
+                assets::Module::<Testtime>::free_balance(&bp, &fee_repr.clone()).unwrap(),
+                0
             );
             assert_eq!(
-                Into::<u32>::into(
-                    assets::Module::<Testtime>::free_balance(&gt, &fee_repr.clone()).unwrap()
-                ),
-                0_u32
+                assets::Module::<Testtime>::free_balance(&gt, &fee_repr.clone()).unwrap(),
+                0
             );
 
             assert_noop!(
@@ -518,36 +501,30 @@ fn swap_pair_desired_output_and_withdraw_cascade() {
                 GoldenTicket.into(),
                 BlackPepper.into(),
                 SwapAmount::WithDesiredOutput {
-                    desired_amount_out: fixed!(33000),
-                    max_amount_in: fixed!(99999999),
+                    desired_amount_out: balance!(33000),
+                    max_amount_in: balance!(99999999),
                 }
             ));
 
             assert_eq!(
-                Into::<u32>::into(assets::Module::<Testtime>::free_balance(&gt, &ALICE()).unwrap()),
-                432651u32
+                assets::Module::<Testtime>::free_balance(&gt, &ALICE()).unwrap(),
+                432650925750223643890137
             );
             assert_eq!(
-                Into::<u32>::into(assets::Module::<Testtime>::free_balance(&bp, &ALICE()).unwrap()),
-                1889_000u32
+                assets::Module::<Testtime>::free_balance(&bp, &ALICE()).unwrap(),
+                balance!(1889000)
             );
             assert_eq!(
-                Into::<u32>::into(
-                    assets::Module::<Testtime>::free_balance(&gt, &repr.clone()).unwrap()
-                ),
-                467_027u32
+                assets::Module::<Testtime>::free_balance(&gt, &repr.clone()).unwrap(),
+                467027027027027027041534
             );
             assert_eq!(
-                Into::<u32>::into(
-                    assets::Module::<Testtime>::free_balance(&bp, &repr.clone()).unwrap()
-                ),
-                111_000u32
+                assets::Module::<Testtime>::free_balance(&bp, &repr.clone()).unwrap(),
+                balance!(111000)
             );
             assert_eq!(
-                Into::<u32>::into(
-                    assets::Module::<Testtime>::free_balance(&gt, &fee_repr.clone()).unwrap()
-                ),
-                322_u32
+                assets::Module::<Testtime>::free_balance(&gt, &fee_repr.clone()).unwrap(),
+                322047222749329068329
             );
 
             // a = sqrt ( 467027 * 111000 ) / 8784 = 25.92001146000573
@@ -563,9 +540,9 @@ fn swap_pair_desired_output_and_withdraw_cascade() {
                     dex_id,
                     GoldenTicket.into(),
                     BlackPepper.into(),
-                    fixed!(8784),
-                    fixed!(18100),
-                    fixed!(4100)
+                    balance!(8784),
+                    balance!(18100),
+                    balance!(4100)
                 ),
                 crate::Error::<Testtime>::CalculatedValueIsNotMeetsRequiredBoundaries
             );
@@ -577,9 +554,9 @@ fn swap_pair_desired_output_and_withdraw_cascade() {
                     dex_id,
                     GoldenTicket.into(),
                     BlackPepper.into(),
-                    fixed!(8784),
-                    fixed!(18000),
-                    fixed!(4300)
+                    balance!(8784),
+                    balance!(18000),
+                    balance!(4300)
                 ),
                 crate::Error::<Testtime>::CalculatedValueIsNotMeetsRequiredBoundaries
             );
@@ -590,36 +567,30 @@ fn swap_pair_desired_output_and_withdraw_cascade() {
                 dex_id,
                 GoldenTicket.into(),
                 BlackPepper.into(),
-                fixed!(8784),
-                fixed!(18000),
-                fixed!(4200),
+                balance!(8784),
+                balance!(18000),
+                balance!(4200),
             ));
 
             assert_eq!(
-                Into::<u32>::into(assets::Module::<Testtime>::free_balance(&gt, &ALICE()).unwrap()),
-                450669u32
+                assets::Module::<Testtime>::free_balance(&gt, &ALICE()).unwrap(),
+                450668729188225185979315
             );
             assert_eq!(
-                Into::<u32>::into(assets::Module::<Testtime>::free_balance(&bp, &ALICE()).unwrap()),
-                1893_282u32
+                assets::Module::<Testtime>::free_balance(&bp, &ALICE()).unwrap(),
+                1893282356407400019291548
             );
             assert_eq!(
-                Into::<u32>::into(
-                    assets::Module::<Testtime>::free_balance(&gt, &repr.clone()).unwrap()
-                ),
-                449_009u32
+                assets::Module::<Testtime>::free_balance(&gt, &repr.clone()).unwrap(),
+                449009223589025484952356
             );
             assert_eq!(
-                Into::<u32>::into(
-                    assets::Module::<Testtime>::free_balance(&bp, &repr.clone()).unwrap()
-                ),
-                106_718u32
+                assets::Module::<Testtime>::free_balance(&bp, &repr.clone()).unwrap(),
+                106717643592599980708452
             );
             assert_eq!(
-                Into::<u32>::into(
-                    assets::Module::<Testtime>::free_balance(&gt, &fee_repr.clone()).unwrap()
-                ),
-                322_u32
+                assets::Module::<Testtime>::free_balance(&gt, &fee_repr.clone()).unwrap(),
+                322047222749329068329
             );
 
             assert_ok!(crate::Module::<Testtime>::swap_pair(
@@ -629,36 +600,30 @@ fn swap_pair_desired_output_and_withdraw_cascade() {
                 GoldenTicket.into(),
                 BlackPepper.into(),
                 SwapAmount::WithDesiredOutput {
-                    desired_amount_out: fixed!(33000),
-                    max_amount_in: fixed!(99999999),
+                    desired_amount_out: balance!(33000),
+                    max_amount_in: balance!(99999999),
                 }
             ));
 
             assert_eq!(
-                Into::<u32>::into(assets::Module::<Testtime>::free_balance(&gt, &ALICE()).unwrap()),
-                249063u32
+                assets::Module::<Testtime>::free_balance(&gt, &ALICE()).unwrap(),
+                249063125369447164992796
             );
             assert_eq!(
-                Into::<u32>::into(assets::Module::<Testtime>::free_balance(&bp, &ALICE()).unwrap()),
-                1926_282u32
+                assets::Module::<Testtime>::free_balance(&bp, &ALICE()).unwrap(),
+                1926282356407400019291548
             );
             assert_eq!(
-                Into::<u32>::into(
-                    assets::Module::<Testtime>::free_balance(&gt, &repr.clone()).unwrap()
-                ),
-                650_010u32
+                assets::Module::<Testtime>::free_balance(&gt, &repr.clone()).unwrap(),
+                650010010596347171875916
             );
             assert_eq!(
-                Into::<u32>::into(
-                    assets::Module::<Testtime>::free_balance(&bp, &repr.clone()).unwrap()
-                ),
-                73_718u32
+                assets::Module::<Testtime>::free_balance(&bp, &repr.clone()).unwrap(),
+                73717643592599980708452
             );
             assert_eq!(
-                Into::<u32>::into(
-                    assets::Module::<Testtime>::free_balance(&gt, &fee_repr.clone()).unwrap()
-                ),
-                927_u32
+                assets::Module::<Testtime>::free_balance(&gt, &fee_repr.clone()).unwrap(),
+                926864034205663131288
             );
         },
     ]);
@@ -675,35 +640,29 @@ fn swap_pair_desired_input() {
                 GoldenTicket.into(),
                 BlackPepper.into(),
                 SwapAmount::WithDesiredInput {
-                    desired_amount_in: fixed!(33000),
-                    min_amount_out: fixed!(0),
+                    desired_amount_in: balance!(33000),
+                    min_amount_out: 0,
                 }
             ));
             assert_eq!(
-                Into::<u32>::into(assets::Module::<Testtime>::free_balance(&gt, &ALICE()).unwrap()),
-                507_000u32
+                assets::Module::<Testtime>::free_balance(&gt, &ALICE()).unwrap(),
+                balance!(507000)
             );
             assert_eq!(
-                Into::<u32>::into(assets::Module::<Testtime>::free_balance(&bp, &ALICE()).unwrap()),
-                1868_058u32
+                assets::Module::<Testtime>::free_balance(&bp, &ALICE()).unwrap(),
+                1868058365847885345166231
             );
             assert_eq!(
-                Into::<u32>::into(
-                    assets::Module::<Testtime>::free_balance(&gt, &repr.clone()).unwrap()
-                ),
-                392_901u32
+                assets::Module::<Testtime>::free_balance(&gt, &repr.clone()).unwrap(),
+                balance!(392901)
             );
             assert_eq!(
-                Into::<u32>::into(
-                    assets::Module::<Testtime>::free_balance(&bp, &repr.clone()).unwrap()
-                ),
-                131942u32
+                assets::Module::<Testtime>::free_balance(&bp, &repr.clone()).unwrap(),
+                131941634152114654833769
             );
             assert_eq!(
-                Into::<u32>::into(
-                    assets::Module::<Testtime>::free_balance(&gt, &fee_repr.clone()).unwrap()
-                ),
-                99_u32
+                assets::Module::<Testtime>::free_balance(&gt, &fee_repr.clone()).unwrap(),
+                balance!(99)
             );
         },
     ]);
@@ -720,8 +679,8 @@ fn swap_pair_invalid_dex_id() {
                 GoldenTicket.into(),
                 BlackPepper.into(),
                 SwapAmount::WithDesiredOutput {
-                    desired_amount_out: fixed!(33000),
-                    max_amount_in: fixed!(99999999),
+                    desired_amount_out: balance!(33000),
+                    max_amount_in: balance!(99999999),
                 }
             ),
             dex_manager::Error::<Testtime>::DEXDoesNotExist
@@ -740,8 +699,8 @@ fn swap_pair_different_asset_pair() {
                 GoldenTicket.into(),
                 RedPepper.into(),
                 SwapAmount::WithDesiredOutput {
-                    desired_amount_out: fixed!(33000),
-                    max_amount_in: fixed!(99999999),
+                    desired_amount_out: balance!(33000),
+                    max_amount_in: balance!(99999999),
                 }
             ),
             technical::Error::<Testtime>::TechAccountIdIsNotRegistered
@@ -760,8 +719,8 @@ fn swap_pair_swap_fail_with_invalid_balance() {
                 GoldenTicket.into(),
                 BlackPepper.into(),
                 SwapAmount::WithDesiredOutput {
-                    desired_amount_out: fixed!(33000),
-                    max_amount_in: fixed!(999999999),
+                    desired_amount_out: balance!(33000),
+                    max_amount_in: balance!(999999999),
                 }
             ),
             crate::Error::<Testtime>::AccountBalanceIsInvalid
@@ -779,21 +738,21 @@ fn swap_pair_outcome_should_match_actual_1() {
                 Origin::signed(ALICE()),
                 gt.clone(),
                 new_account.clone(),
-                fixed!(100000),
+                balance!(100000),
             )
             .expect("Failed to transfer balance");
 
             assert_eq!(
                 assets::Module::<Testtime>::free_balance(&gt, &ALICE()).unwrap(),
-                Balance(fixed!(440000)),
+                balance!(440000),
             );
             let quote_outcome = crate::Module::<Testtime>::quote(
                 &dex_id,
                 &GoldenTicket.into(),
                 &BlackPepper.into(),
                 SwapAmount::WithDesiredInput {
-                    desired_amount_in: Balance(fixed!(100000)),
-                    min_amount_out: Balance(fixed!(0)),
+                    desired_amount_in: balance!(100000),
+                    min_amount_out: 0,
                 },
             )
             .expect("Failed to quote.");
@@ -804,18 +763,18 @@ fn swap_pair_outcome_should_match_actual_1() {
                 &GoldenTicket.into(),
                 &BlackPepper.into(),
                 SwapAmount::WithDesiredInput {
-                    desired_amount_in: Balance(fixed!(100000)),
-                    min_amount_out: Balance(fixed!(0)),
+                    desired_amount_in: balance!(100000),
+                    min_amount_out: 0,
                 },
             )
             .expect("Failed to perform swap.");
             assert_eq!(
                 assets::Module::<Testtime>::free_balance(&gt, &new_account.clone()).unwrap(),
-                Balance(fixed!(0)),
+                0,
             );
             assert_eq!(
                 assets::Module::<Testtime>::free_balance(&bp, &new_account.clone()).unwrap(),
-                Balance(fixed!(31230.802697411355232759)),
+                balance!(31230.802697411355232759),
             );
             assert_eq!(
                 assets::Module::<Testtime>::free_balance(&bp, &new_account.clone()).unwrap(),
@@ -839,21 +798,21 @@ fn swap_pair_outcome_should_match_actual_2() {
                 Origin::signed(ALICE()),
                 bp.clone(),
                 new_account.clone(),
-                fixed!(100000),
+                balance!(100000),
             )
             .expect("Failed to transfer balance");
 
             assert_eq!(
                 assets::Module::<Testtime>::free_balance(&bp, &ALICE()).unwrap(),
-                Balance(fixed!(1756000)),
+                balance!(1756000),
             );
             let quote_outcome = crate::Module::<Testtime>::quote(
                 &dex_id,
                 &BlackPepper.into(),
                 &GoldenTicket.into(),
                 SwapAmount::WithDesiredInput {
-                    desired_amount_in: Balance(fixed!(100000)),
-                    min_amount_out: Balance(fixed!(0)),
+                    desired_amount_in: balance!(100000),
+                    min_amount_out: 0,
                 },
             )
             .expect("Failed to quote.");
@@ -864,18 +823,18 @@ fn swap_pair_outcome_should_match_actual_2() {
                 &BlackPepper.into(),
                 &GoldenTicket.into(),
                 SwapAmount::WithDesiredInput {
-                    desired_amount_in: Balance(fixed!(100000)),
-                    min_amount_out: Balance(fixed!(0)),
+                    desired_amount_in: balance!(100000),
+                    min_amount_out: 0,
                 },
             )
             .expect("Failed to perform swap.");
             assert_eq!(
                 assets::Module::<Testtime>::free_balance(&bp, &new_account.clone()).unwrap(),
-                Balance(fixed!(0)),
+                0,
             );
             assert_eq!(
                 assets::Module::<Testtime>::free_balance(&gt, &new_account.clone()).unwrap(),
-                Balance(fixed!(147098.360655737705086834)),
+                147098360655737705086834,
             );
             assert_eq!(
                 assets::Module::<Testtime>::free_balance(&gt, &new_account.clone()).unwrap(),
@@ -899,22 +858,22 @@ fn swap_pair_outcome_should_match_actual_3() {
                 Origin::signed(ALICE()),
                 gt.clone(),
                 new_account.clone(),
-                fixed!(100000.000000000000027777), // FIXME: why such a huge calculation error compared to WithDesiredInput(100000): ...027777?
+                balance!(100000.000000000000027777), // FIXME: why such a huge calculation error compared to WithDesiredInput(100000): ...027777?
             )
             .expect("Failed to transfer balance");
 
             // TODO: uncomment when ..027777 error is fixed
             // assert_eq!(
             //     assets::Module::<Testtime>::free_balance(&gt, &ALICE()).unwrap(),
-            //     Balance(fixed!(440000)),
+            //     balance!(440000),
             // );
             let quote_outcome = crate::Module::<Testtime>::quote(
                 &dex_id,
                 &GoldenTicket.into(),
                 &BlackPepper.into(),
                 SwapAmount::WithDesiredOutput {
-                    desired_amount_out: Balance(fixed!(31230.802697411355232759)),
-                    max_amount_in: Balance(Fixed::MAX),
+                    desired_amount_out: balance!(31230.802697411355232759),
+                    max_amount_in: Balance::MAX,
                 },
             )
             .expect("Failed to quote.");
@@ -925,26 +884,26 @@ fn swap_pair_outcome_should_match_actual_3() {
                 &GoldenTicket.into(),
                 &BlackPepper.into(),
                 SwapAmount::WithDesiredOutput {
-                    desired_amount_out: Balance(fixed!(31230.802697411355232759)),
-                    max_amount_in: Balance(Fixed::MAX),
+                    desired_amount_out: balance!(31230.802697411355232759),
+                    max_amount_in: Balance::MAX,
                 },
             )
             .expect("Failed to perform swap.");
             assert_eq!(
                 assets::Module::<Testtime>::free_balance(&gt, &new_account.clone()).unwrap(),
-                Balance(fixed!(0)),
+                0,
             );
             assert_eq!(
                 assets::Module::<Testtime>::free_balance(&bp, &new_account.clone()).unwrap(),
-                Balance(fixed!(31230.802697411355232759)),
+                balance!(31230.802697411355232759),
             );
             assert_eq!(
-                Balance(fixed!(100000.000000000000027777)), // FIXME: why such a huge calculation error compared to WithDesiredInput(100000): ...027777?
+                balance!(100000.000000000000027777), // FIXME: why such a huge calculation error compared to WithDesiredInput(100000): ...027777?
                 quote_outcome.amount,
             );
             // TODO: FIXME: for case with desired output, outcome indicates calculated input
             // 100000.000000000000027777
-            //assert_eq!(Balance(fixed!(100000)), outcome.amount);
+            //assert_eq!(balance!(100000), outcome.amount);
         },
     ]);
 }
@@ -959,21 +918,21 @@ fn swap_pair_outcome_should_match_actual_4() {
                 Origin::signed(ALICE()),
                 bp.clone(),
                 new_account.clone(),
-                fixed!(100000),
+                balance!(100000),
             )
             .expect("Failed to transfer balance");
 
             assert_eq!(
                 assets::Module::<Testtime>::free_balance(&bp, &ALICE()).unwrap(),
-                Balance(fixed!(1756000)),
+                balance!(1756000),
             );
             let quote_outcome = crate::Module::<Testtime>::quote(
                 &dex_id,
                 &BlackPepper.into(),
                 &GoldenTicket.into(),
                 SwapAmount::WithDesiredOutput {
-                    desired_amount_out: Balance(fixed!(147098.360655737704918033)),
-                    max_amount_in: Balance(Fixed::MAX),
+                    desired_amount_out: balance!(147098.360655737704918033),
+                    max_amount_in: Balance::MAX,
                 },
             )
             .expect("Failed to quote.");
@@ -984,23 +943,23 @@ fn swap_pair_outcome_should_match_actual_4() {
                 &BlackPepper.into(),
                 &GoldenTicket.into(),
                 SwapAmount::WithDesiredOutput {
-                    desired_amount_out: Balance(fixed!(147098.360655737704918033)),
-                    max_amount_in: Balance(Fixed::MAX),
+                    desired_amount_out: balance!(147098.360655737704918033),
+                    max_amount_in: Balance::MAX,
                 },
             )
             .expect("Failed to perform swap.");
             assert_eq!(
                 assets::Module::<Testtime>::free_balance(&bp, &new_account.clone()).unwrap(),
-                Balance(fixed!(0)),
+                0,
             );
             assert_eq!(
                 assets::Module::<Testtime>::free_balance(&gt, &new_account.clone()).unwrap(),
                 //TODO: what is the problem here ?
-                //Balance(fixed!(147098.360655737704918033)),
-                Balance(fixed!(146655.737704918032786886)),
+                //balance!(147098.360655737704918033),
+                balance!(146655.737704918032786886),
             );
-            assert_eq!(Balance(fixed!(100000)), quote_outcome.amount,);
-            assert_eq!(Balance(fixed!(100000)), outcome.amount);
+            assert_eq!(balance!(100000), quote_outcome.amount);
+            assert_eq!(balance!(100000), outcome.amount);
         },
     ]);
 }
@@ -1017,8 +976,8 @@ fn swap_pair_liquidity_after_operation_check() {
                     GoldenTicket.into(),
                     BlackPepper.into(),
                     SwapAmount::WithDesiredOutput {
-                        desired_amount_out: Balance(fixed!(0.0099999)),
-                        max_amount_in: Balance(Fixed::MAX),
+                        desired_amount_out: balance!(0.0099999),
+                        max_amount_in: Balance::MAX,
                     }
                 ),
                 crate::Error::<Testtime>::PoolBecameInvalidAfterOperation
@@ -1040,11 +999,11 @@ fn withdraw_all_liquidity() {
          _fee_repr: AccountId| {
             assert_eq!(
                 assets::Module::<Testtime>::free_balance(&gt, &ALICE()).unwrap(),
-                fixed!(540000.0),
+                balance!(540000.0),
             );
             assert_eq!(
                 assets::Module::<Testtime>::free_balance(&bp, &ALICE()).unwrap(),
-                fixed!(1856000.0),
+                balance!(1856000.0),
             );
 
             assert_noop!(
@@ -1053,9 +1012,9 @@ fn withdraw_all_liquidity() {
                     dex_id,
                     GoldenTicket.into(),
                     BlackPepper.into(),
-                    fixed!(227683.9915321233119035),
-                    fixed!(0),
-                    fixed!(0)
+                    balance!(227683.9915321233119035),
+                    0,
+                    0
                 ),
                 crate::Error::<Testtime>::SourceBaseAmountIsTooLarge
             );
@@ -1065,9 +1024,9 @@ fn withdraw_all_liquidity() {
                 dex_id,
                 GoldenTicket.into(),
                 BlackPepper.into(),
-                fixed!(227683.9915321233119034),
-                fixed!(0),
-                fixed!(0),
+                balance!(227683.9915321233119034),
+                0,
+                0
             ));
 
             let tech_asset: AssetId = crate::Module::<Testtime>::get_marking_asset(&tech_acc_id)
@@ -1075,16 +1034,16 @@ fn withdraw_all_liquidity() {
                 .into();
             assert_eq!(
                 assets::Module::<Testtime>::free_balance(&tech_asset, &ALICE()).unwrap(),
-                fixed!(0),
+                0,
             );
 
             assert_eq!(
                 assets::Module::<Testtime>::free_balance(&gt, &ALICE()).unwrap(),
-                fixed!(900000.0),
+                balance!(900000.0),
             );
             assert_eq!(
                 assets::Module::<Testtime>::free_balance(&bp, &ALICE()).unwrap(),
-                fixed!(2000000.0),
+                balance!(2000000.0),
             );
             //900000.0 - 540000.0 = 360000.0
             //2000000.0 - 1856000.0 = 144000.0

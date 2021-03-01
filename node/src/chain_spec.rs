@@ -10,7 +10,7 @@ use framenode_runtime::{
 };
 
 use common::prelude::{DEXInfo, FixedWrapper};
-use common::{balance::Balance, fixed, hash, DEXId, Fixed, TechPurpose, PSWAP, VAL, XOR};
+use common::{fixed, hash, prelude::Balance, DEXId, Fixed, TechPurpose, PSWAP, VAL, XOR};
 use frame_support::sp_runtime::Percent;
 use framenode_runtime::bonding_curve_pool::{DistributionAccountData, DistributionAccounts};
 use framenode_runtime::eth_bridge::{AssetKind, NetworkConfig};
@@ -303,7 +303,7 @@ pub fn staging_net(test: bool) -> ChainSpec {
 
 fn bonding_curve_distribution_accounts(
 ) -> DistributionAccounts<DistributionAccountData<<Runtime as technical::Trait>::TechAccountId>> {
-    use common::{fixed_wrapper, prelude::fixnum::ops::Numeric};
+    use common::{fixed_wrapper, prelude::fixnum::ops::One};
     let val_holders_coefficient = fixed_wrapper!(0.5);
     let val_holders_xor_alloc_coeff = fixed_wrapper!(0.9) * val_holders_coefficient.clone();
     let val_holders_buy_back_coefficient =

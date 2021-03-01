@@ -3,7 +3,7 @@
 use crate as eth_bridge;
 use crate::{AssetKind, NetworkConfig, Trait};
 use codec::{Codec, Decode, Encode};
-use common::{balance::Balance, Amount, AssetId, AssetId32, AssetSymbol, VAL};
+use common::{prelude::Balance, Amount, AssetId, AssetId32, AssetSymbol, VAL};
 use currencies::BasicCurrencyAdapter;
 use frame_support::{
     construct_runtime,

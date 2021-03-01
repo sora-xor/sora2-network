@@ -8,7 +8,7 @@ use crate::contract::{functions, FUNCTIONS};
 use crate::types::{Bytes, CallRequest, Log, Transaction, TransactionReceipt};
 use alloc::string::String;
 use codec::{Decode, Encode, FullCodec};
-use common::{prelude::Balance, AssetSymbol, BalancePrecision, Fixed};
+use common::{prelude::Balance, AssetSymbol, BalancePrecision};
 use core::{convert::TryFrom, fmt, iter, line, stringify};
 use ethabi::{ParamType, Token};
 use frame_support::sp_runtime::traits::{AtLeast32Bit, MaybeSerializeDeserialize, Member};
@@ -1195,15 +1195,13 @@ impl<T: Trait> Decoder<T> {
     }
 
     pub fn next_amount(&mut self) -> Result<Balance, DispatchError> {
-        Ok(Balance::from(Fixed::from_bits(
-            i128::try_from(
-                self.tokens
-                    .pop()
-                    .and_then(|x| x.into_uint())
-                    .ok_or(Error::<T>::InvalidUint)?,
-            )
-            .map_err(|_| Error::<T>::InvalidAmount)?,
-        )))
+        Ok(u128::try_from(
+            self.tokens
+                .pop()
+                .and_then(|x| x.into_uint())
+                .ok_or(Error::<T>::InvalidUint)?,
+        )
+        .map_err(|_| Error::<T>::InvalidAmount)?)
     }
 
     pub fn next_account_id(&mut self) -> Result<T::AccountId, DispatchError> {

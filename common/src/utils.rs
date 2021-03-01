@@ -5,8 +5,8 @@ use fixnum::ops::{RoundMode::*, RoundingDiv};
 use frame_support::RuntimeDebug;
 use sp_std::{iter::once, vec::Vec};
 
-use crate::fixed_wrapper;
 use crate::prelude::{FilterMode, Fixed, FixedInner, FixedWrapper, LiquiditySourceId};
+use crate::{balance, fixed_wrapper};
 
 /// Basis points range (0..10000) corresponds to 0.01%..100.00%.
 const BASIS_POINTS_RANGE: u16 = 10000;
@@ -30,6 +30,8 @@ pub fn fixed_from_basis_points<BP: Into<u16>>(value: BP) -> Fixed {
 }
 
 /// An auxiliary type to denote an interval variants: (a, b), [a, b), (a, b] and [a, b].
+#[cfg_attr(feature = "std", derive(Debug))]
+#[derive(Clone, Copy)]
 pub enum IntervalEndpoints {
     None,
     Left,
@@ -50,7 +52,6 @@ pub fn linspace(a: Fixed, b: Fixed, n: usize, endpoints: IntervalEndpoints) -> V
     if a == b {
         return vec![a; n];
     }
-
     match endpoints {
         IntervalEndpoints::None => linspace_inner(a, b, n),
         IntervalEndpoints::Left => once(a)
@@ -78,11 +79,12 @@ pub fn linspace(a: Fixed, b: Fixed, n: usize, endpoints: IntervalEndpoints) -> V
 fn linspace_inner(a: Fixed, b: Fixed, n: usize) -> Vec<Fixed> {
     let a: FixedWrapper = a.into();
     let b: FixedWrapper = b.into();
-    let width: FixedWrapper = FixedWrapper::from(n) + fixed_wrapper!(1);
+    let width = FixedWrapper::from(n as u128 * balance!(1)) + fixed_wrapper!(1);
     (1..=n)
         .map(|x| -> Fixed {
-            let x: FixedWrapper =
-                a.clone() + (b.clone() - a.clone()) / (width.clone() / FixedWrapper::from(x));
+            let x: FixedWrapper = a.clone()
+                + (b.clone() - a.clone())
+                    / (width.clone() / FixedWrapper::from(x as u128 * balance!(1)));
             x.get().unwrap()
         })
         .collect()
@@ -217,7 +219,7 @@ pub const fn pow(base: u32, mut exp: u32) -> FixedInner {
 
 #[cfg(test)]
 mod tests {
-    use fixnum::ops::{CheckedMul, Numeric};
+    use fixnum::ops::{Bounded, CheckedMul};
 
     use crate::*;
 

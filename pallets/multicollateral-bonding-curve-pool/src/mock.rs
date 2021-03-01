@@ -1,7 +1,7 @@
 use crate::{Module, Trait};
 use common::{
-    self, fixed, hash,
-    prelude::{Balance, SwapAmount, SwapOutcome},
+    self, balance, hash,
+    prelude::{Balance, FixedWrapper, SwapAmount, SwapOutcome},
     Amount, AssetId32, AssetSymbol, DEXInfo, LiquiditySourceFilter, LiquiditySourceType,
     TechPurpose, USDT, VAL, XOR,
 };
@@ -16,7 +16,7 @@ use sp_runtime::{
     traits::{BlakeTwo256, IdentityLookup, Zero},
     DispatchError, Perbill,
 };
-use std::collections::HashMap;
+use std::{collections::HashMap};
 
 pub type AccountId = AccountId32;
 pub type BlockNumber = u64;
@@ -110,9 +110,9 @@ impl MockDEXApi {
             Technical::tech_account_id_to_account_id(&mock_liquidity_source_tech_account_id)?;
         Technical::register_tech_account_id(mock_liquidity_source_tech_account_id.clone())?;
         MockLiquiditySource::set_reserves_account_id(mock_liquidity_source_tech_account_id)?;
-        Currencies::deposit(XOR, &account_id, 100_000_u128.into())?;
-        Currencies::deposit(VAL, &account_id, 100_000_u128.into())?;
-        Currencies::deposit(USDT, &account_id, 1_000_000_u128.into())?;
+        Currencies::deposit(XOR, &account_id, balance!(100000))?;
+        Currencies::deposit(VAL, &account_id, balance!(100000))?;
+        Currencies::deposit(USDT, &account_id, balance!(1000000))?;
         Ok(())
     }
 
@@ -134,10 +134,12 @@ impl MockDEXApi {
             SwapAmount::WithDesiredInput {
                 desired_amount_in, ..
             } => {
-                let mut amount_out =
-                    desired_amount_in * get_mock_prices()[&(*input_asset_id, *output_asset_id)];
-                let fee = amount_out * Balance(fixed!(0.003));
-                amount_out = amount_out - fee;
+                let amount_out = FixedWrapper::from(desired_amount_in)
+                    * get_mock_prices()[&(*input_asset_id, *output_asset_id)];
+                let fee = amount_out.clone() * balance!(0.003);
+                let fee = fee.into_balance();
+                let amount_out: Balance = amount_out.into_balance();
+                let amount_out = amount_out - fee;
                 Ok(SwapOutcome::new(amount_out, fee))
             }
             SwapAmount::WithDesiredOutput {
@@ -145,7 +147,7 @@ impl MockDEXApi {
             } => {
                 let amount_in =
                     desired_amount_out / get_mock_prices()[&(*input_asset_id, *output_asset_id)];
-                let with_fee = amount_in / Balance(fixed!(0.997));
+                let with_fee = amount_in / balance!(0.997);
                 let fee = with_fee - amount_in;
                 Ok(SwapOutcome::new(with_fee, fee))
             }
@@ -168,7 +170,7 @@ impl MockDEXApi {
                     Self::inner_quote(target_id, input_asset_id, output_asset_id, swap_amount)?;
                 let reserves_account_id =
                     &Technical::tech_account_id_to_account_id(&ReservesAccount::get())?;
-                assert_ne!(desired_amount_in, 0u128.into());
+                assert_ne!(desired_amount_in, 0);
                 let old = Assets::total_balance(input_asset_id, sender)?;
                 Assets::transfer_from(
                     input_asset_id,
@@ -193,7 +195,7 @@ impl MockDEXApi {
                     Self::inner_quote(target_id, input_asset_id, output_asset_id, swap_amount)?;
                 let reserves_account_id =
                     &Technical::tech_account_id_to_account_id(&ReservesAccount::get())?;
-                assert_ne!(outcome.amount, 0u128.into());
+                assert_ne!(outcome.amount, 0);
                 let old = Assets::total_balance(input_asset_id, sender)?;
                 Assets::transfer_from(input_asset_id, sender, reserves_account_id, outcome.amount)?;
                 let new = Assets::total_balance(input_asset_id, sender)?;
@@ -212,12 +214,12 @@ impl MockDEXApi {
 
 fn get_mock_prices() -> HashMap<(AssetId, AssetId), Balance> {
     vec![
-        ((USDT, XOR), Balance(fixed!(0.01))),
-        ((XOR, USDT), Balance(fixed!(100.0))),
-        ((VAL, XOR), Balance(fixed!(0.5))),
-        ((XOR, VAL), Balance(fixed!(2.0))),
-        ((USDT, VAL), Balance(fixed!(0.02))),
-        ((VAL, USDT), Balance(fixed!(50.0))),
+        ((USDT, XOR), balance!(0.01)),
+        ((XOR, USDT), balance!(100.0)),
+        ((VAL, XOR), balance!(0.5)),
+        ((XOR, VAL), balance!(2.0)),
+        ((USDT, VAL), balance!(0.02)),
+        ((VAL, USDT), balance!(50.0)),
     ]
     .into_iter()
     .collect()
@@ -352,24 +354,18 @@ impl Default for ExtBuilder {
     fn default() -> Self {
         Self {
             endowed_accounts: vec![
-                (
-                    alice(),
-                    USDT,
-                    0u128.into(),
-                    AssetSymbol(b"USDT".to_vec()),
-                    18,
-                ),
+                (alice(), USDT, 0, AssetSymbol(b"USDT".to_vec()), 18),
                 (
                     alice(),
                     XOR,
-                    350_000u128.into(),
+                    balance!(350000),
                     AssetSymbol(b"XOR".to_vec()),
                     18,
                 ),
                 (
                     alice(),
                     VAL,
-                    500_000u128.into(),
+                    balance!(500000),
                     AssetSymbol(b"VAL".to_vec()),
                     18,
                 ),

@@ -6,9 +6,11 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
+use core::convert::TryInto;
+
 use common::{
-    fixed,
-    fixnum::ops::Numeric,
+    balance, fixed,
+    fixnum::ops::Zero as _,
     prelude::{
         Balance, Error as CommonError, Fixed, FixedWrapper, QuoteAmount, SwapAmount, SwapOutcome,
     },
@@ -19,7 +21,7 @@ use frame_support::traits::Get;
 use frame_support::{decl_error, decl_event, decl_module, decl_storage, ensure, fail};
 use liquidity_proxy::LiquidityProxyTrait;
 use permissions::{Scope, BURN, MINT, SLASH, TRANSFER};
-use sp_arithmetic::traits::{One, Zero};
+use sp_arithmetic::traits::Zero;
 use sp_runtime::{DispatchError, DispatchResult};
 use sp_std::collections::btree_set::BTreeSet;
 
@@ -167,7 +169,10 @@ impl<T: Trait> BuyMainAsset<T> {
                 &self.reserves_tech_account_id,
                 input_amount,
             )?;
-            let free_amount = input_amount * Balance(fixed!(0.2));
+            let free_amount = FixedWrapper::from(input_amount) * balance!(0.2);
+            let free_amount = free_amount
+                .try_into_balance()
+                .map_err(|_| Error::<T>::CalculatePriceFailed)?;
             Ok((free_amount, (input_amount, output_amount)))
         })
     }
@@ -195,6 +200,8 @@ impl<T: Trait> BuyMainAsset<T> {
             Technical::<T>::burn(out_asset, reserves_tech_acc, swapped_xor_amount)?;
             Technical::<T>::mint(out_asset, reserves_tech_acc, swapped_xor_amount)?;
 
+            let fw_swapped_xor_amount = FixedWrapper::from(swapped_xor_amount);
+
             let distribution_accounts: DistributionAccounts<
                 DistributionAccountData<T::TechAccountId>,
             > = DistributionAccountsEntry::<T>::get();
@@ -203,25 +210,31 @@ impl<T: Trait> BuyMainAsset<T> {
                 .iter()
                 .map(|x| (&x.account_id, x.coefficient))
             {
+                let amount = fw_swapped_xor_amount.clone() * coefficient;
+                let amount = amount
+                    .try_into_balance()
+                    .map_err(|_| Error::<T>::CalculatePriceFailed)?;
                 technical::Module::<T>::transfer(
                     out_asset,
                     reserves_tech_acc,
                     to_tech_account_id,
-                    swapped_xor_amount * Balance(coefficient),
+                    amount,
                 )?;
             }
             let val_amount = if out_asset == &VAL.into() {
                 Assets::<T>::free_balance(&VAL.into(), reserves_acc)?
             } else {
+                let amount =
+                    fw_swapped_xor_amount.clone() * distribution_accounts.val_holders.coefficient;
+                let amount = amount
+                    .try_into_balance()
+                    .map_err(|_| Error::<T>::CalculatePriceFailed)?;
                 T::LiquidityProxy::exchange(
                     reserves_acc,
                     reserves_acc,
                     out_asset,
                     &VAL.into(),
-                    SwapAmount::with_desired_input(
-                        swapped_xor_amount * Balance(distribution_accounts.val_holders.coefficient),
-                        Balance::zero(),
-                    ),
+                    SwapAmount::with_desired_input(amount, Balance::zero()),
                     Module::<T>::self_excluding_filter(),
                 )?
                 .amount
@@ -368,7 +381,7 @@ impl<T: Trait> Module<T> {
         let collateral_price_per_reference_unit: FixedWrapper = T::LiquidityProxy::quote(
             collateral_asset_id,
             &ReferenceAssetId::<T>::get(),
-            SwapAmount::with_desired_input(Balance::one(), Balance::zero()),
+            SwapAmount::with_desired_input(balance!(1), Balance::zero()),
             Self::self_excluding_filter(),
         )?
         .amount
@@ -382,9 +395,10 @@ impl<T: Trait> Module<T> {
                 let IN = collateral_price_per_reference_unit * collateral_quantity;
                 let PC_S_times_PC_R_times_P_I = PC_S.clone() * PC_R.clone() * P_I;
                 let Q_squared = Q.clone() * Q.clone();
-                let inner_term_a = 2 * Q.clone() * PC_S_times_PC_R_times_P_I.clone();
-                let inner_term_b =
-                    PC_S.clone() * PC_R * (PC_S_times_PC_R_times_P_I.clone() * P_I + 2 * IN);
+                let inner_term_a = balance!(2) * Q.clone() * PC_S_times_PC_R_times_P_I.clone();
+                let inner_term_b = PC_S.clone()
+                    * PC_R
+                    * (PC_S_times_PC_R_times_P_I.clone() * P_I + balance!(2) * IN);
                 let under_sqrt = Q_squared + inner_term_a + inner_term_b;
                 let output_main = under_sqrt.sqrt_accurate() - Q - PC_S_times_PC_R_times_P_I;
                 Ok(output_main
@@ -396,7 +410,7 @@ impl<T: Trait> Module<T> {
                 desired_amount_out: main_quantity,
             } => {
                 let Q_prime = Q.clone() + main_quantity;
-                let two_times_PC_S_times_PC_R = 2 * PC_S * PC_R;
+                let two_times_PC_S_times_PC_R = balance!(2) * PC_S * PC_R;
                 let to = (Q_prime.clone() / two_times_PC_S_times_PC_R.clone() + P_I) * Q_prime;
                 let from = (Q.clone() / two_times_PC_S_times_PC_R + P_I) * Q;
                 let mut output_collateral = to - from;
@@ -438,7 +452,7 @@ impl<T: Trait> Module<T> {
         let collateral_price_per_reference_unit: FixedWrapper = T::LiquidityProxy::quote(
             collateral_asset_id,
             &ReferenceAssetId::<T>::get(),
-            SwapAmount::with_desired_input(Balance::one(), Balance::zero()),
+            SwapAmount::with_desired_input(balance!(1), Balance::zero()),
             Self::self_excluding_filter(),
         )?
         .amount
@@ -461,7 +475,7 @@ impl<T: Trait> Module<T> {
                     .get()
                     .map_err(|_| Error::<T>::CalculatePriceFailed)?;
                 ensure!(
-                    output_collateral_unwrapped < collateral_supply_unwrapped.into(),
+                    output_collateral_unwrapped < collateral_supply_unwrapped,
                     Error::<T>::NotEnoughReserves
                 );
                 Ok(output_collateral_unwrapped)
@@ -469,8 +483,12 @@ impl<T: Trait> Module<T> {
             QuoteAmount::WithDesiredOutput {
                 desired_amount_out: quantity_collateral,
             } => {
+                let collateral_supply_unwrapped = collateral_supply_unwrapped
+                    .into_bits()
+                    .try_into()
+                    .map_err(|_| Error::<T>::CalculatePriceFailed)?;
                 ensure!(
-                    quantity_collateral < collateral_supply_unwrapped.into(),
+                    quantity_collateral < collateral_supply_unwrapped,
                     Error::<T>::NotEnoughReserves
                 );
                 let output_main =
@@ -516,8 +534,11 @@ impl<T: Trait> Module<T> {
                     main_asset_id,
                     collateral_asset_id,
                     QuoteAmount::with_desired_input(desired_amount_in),
-                )?
-                .into();
+                )?;
+                let output_amount = output_amount
+                    .into_bits()
+                    .try_into()
+                    .map_err(|_| Error::<T>::CalculatePriceFailed)?;
                 ensure!(output_amount >= min_amount_out, Error::<T>::SlippageFailed);
                 (desired_amount_in, output_amount)
             }
@@ -529,8 +550,11 @@ impl<T: Trait> Module<T> {
                     main_asset_id,
                     collateral_asset_id,
                     QuoteAmount::with_desired_output(desired_amount_out),
-                )?
-                .into();
+                )?;
+                let input_amount = input_amount
+                    .into_bits()
+                    .try_into()
+                    .map_err(|_| Error::<T>::CalculatePriceFailed)?;
                 ensure!(input_amount <= max_amount_in, Error::<T>::SlippageFailed);
                 (input_amount, desired_amount_out)
             }
@@ -554,8 +578,11 @@ impl<T: Trait> Module<T> {
                     main_asset_id,
                     collateral_asset_id,
                     QuoteAmount::with_desired_input(desired_amount_in),
-                )?
-                .into();
+                )?;
+                let output_amount = output_amount
+                    .into_bits()
+                    .try_into()
+                    .map_err(|_| Error::<T>::CalculatePriceFailed)?;
                 ensure!(output_amount >= min_amount_out, Error::<T>::SlippageFailed);
                 (desired_amount_in, output_amount)
             }
@@ -567,8 +594,11 @@ impl<T: Trait> Module<T> {
                     main_asset_id,
                     collateral_asset_id,
                     QuoteAmount::with_desired_output(desired_amount_out),
-                )?
-                .into();
+                )?;
+                let input_amount = input_amount
+                    .into_bits()
+                    .try_into()
+                    .map_err(|_| Error::<T>::CalculatePriceFailed)?;
                 ensure!(input_amount <= max_amount_in, Error::<T>::SlippageFailed);
                 (input_amount, desired_amount_out)
             }
@@ -689,8 +719,11 @@ impl<T: Trait> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Disp
                         input_asset_id,
                         output_asset_id,
                         QuoteAmount::with_desired_input(base_amount_in),
-                    )?
-                    .into();
+                    )?;
+                    let amount = amount
+                        .into_bits()
+                        .try_into()
+                        .map_err(|_| Error::<T>::CalculatePriceFailed)?;
                     Ok(SwapOutcome::new(amount, Balance::zero()))
                 }
                 SwapAmount::WithDesiredOutput {
@@ -701,8 +734,11 @@ impl<T: Trait> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Disp
                         input_asset_id,
                         output_asset_id,
                         QuoteAmount::with_desired_output(target_amount_out),
-                    )?
-                    .into();
+                    )?;
+                    let amount = amount
+                        .into_bits()
+                        .try_into()
+                        .map_err(|_| Error::<T>::CalculatePriceFailed)?;
                     Ok(SwapOutcome::new(amount, Balance::zero()))
                 }
             }
@@ -716,8 +752,11 @@ impl<T: Trait> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Disp
                         output_asset_id,
                         input_asset_id,
                         QuoteAmount::with_desired_input(target_amount_in),
-                    )?
-                    .into();
+                    )?;
+                    let amount = amount
+                        .into_bits()
+                        .try_into()
+                        .map_err(|_| Error::<T>::CalculatePriceFailed)?;
                     Ok(SwapOutcome::new(amount, Balance::zero()))
                 }
                 SwapAmount::WithDesiredOutput {
@@ -728,8 +767,11 @@ impl<T: Trait> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Disp
                         output_asset_id,
                         input_asset_id,
                         QuoteAmount::with_desired_output(base_amount_out),
-                    )?
-                    .into();
+                    )?;
+                    let amount = amount
+                        .into_bits()
+                        .try_into()
+                        .map_err(|_| Error::<T>::CalculatePriceFailed)?;
                     Ok(SwapOutcome::new(amount, Balance::zero()))
                 }
             }

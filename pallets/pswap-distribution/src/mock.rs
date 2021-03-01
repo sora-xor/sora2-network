@@ -1,5 +1,5 @@
 use crate::{GenesisConfig, Module, Trait};
-use common::prelude::Balance;
+use common::{balance, prelude::Balance};
 use common::{
     fixed, fixed_from_basis_points, AssetSymbol, BalancePrecision, Fixed, FromGenericPair,
 };
@@ -280,38 +280,14 @@ impl ExtBuilder {
 impl Default for ExtBuilder {
     fn default() -> Self {
         ExtBuilder::with_accounts(vec![
-            (FEES_ACCOUNT_A, common::XOR.into(), Balance(fixed!(1))),
-            (FEES_ACCOUNT_A, common::PSWAP.into(), Balance(fixed!(6))),
-            (
-                LIQUIDITY_PROVIDER_A,
-                PoolTokenAId::get(),
-                Balance(fixed!(3)),
-            ),
-            (
-                LIQUIDITY_PROVIDER_B,
-                PoolTokenAId::get(),
-                Balance(fixed!(2)),
-            ),
-            (
-                LIQUIDITY_PROVIDER_C,
-                PoolTokenAId::get(),
-                Balance(fixed!(1)),
-            ),
-            (
-                LIQUIDITY_PROVIDER_A,
-                PoolTokenBId::get(),
-                Balance(fixed!(10)),
-            ),
-            (
-                LIQUIDITY_PROVIDER_B,
-                PoolTokenBId::get(),
-                Balance(fixed!(10)),
-            ),
-            (
-                LIQUIDITY_PROVIDER_C,
-                PoolTokenBId::get(),
-                Balance(fixed!(10)),
-            ),
+            (FEES_ACCOUNT_A, common::XOR.into(), balance!(1)),
+            (FEES_ACCOUNT_A, common::PSWAP.into(), balance!(6)),
+            (LIQUIDITY_PROVIDER_A, PoolTokenAId::get(), balance!(3)),
+            (LIQUIDITY_PROVIDER_B, PoolTokenAId::get(), balance!(2)),
+            (LIQUIDITY_PROVIDER_C, PoolTokenAId::get(), balance!(1)),
+            (LIQUIDITY_PROVIDER_A, PoolTokenBId::get(), balance!(10)),
+            (LIQUIDITY_PROVIDER_B, PoolTokenBId::get(), balance!(10)),
+            (LIQUIDITY_PROVIDER_C, PoolTokenBId::get(), balance!(10)),
         ])
     }
 }
