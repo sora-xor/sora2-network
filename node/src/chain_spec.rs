@@ -9,7 +9,7 @@ use framenode_runtime::{
     XorId, WASM_BINARY,
 };
 
-use common::prelude::{DEXInfo, FixedWrapper};
+use common::{balance, prelude::{DEXInfo, FixedWrapper}};
 use common::{fixed, hash, prelude::Balance, DEXId, Fixed, TechPurpose, PSWAP, VAL, XOR};
 use frame_support::sp_runtime::Percent;
 use framenode_runtime::bonding_curve_pool::{DistributionAccountData, DistributionAccounts};
@@ -457,7 +457,7 @@ fn testnet_genesis(
     initial_assets_owner: AccountId,
     eth_bridge_params: EthBridgeParams,
 ) -> GenesisConfig {
-    let initial_balance = 1u128 << 60;
+    let initial_balance = balance!(1000000000);
     let initial_staking: Balance = (initial_balance >> 44).into();
     let xor_fee_tech_account_id = TechAccountId::Generic(
         xor_fee::TECH_ACCOUNT_PREFIX.to_vec(),
@@ -473,8 +473,8 @@ fn testnet_genesis(
     let faucet_account_id: AccountId =
         technical::Module::<Runtime>::tech_account_id_to_account_id(&faucet_tech_account_id)
             .expect("Failed to decode account id");
-    let initial_eth_bridge_xor_amount = 350_000_u32;
-    let initial_eth_bridge_val_amount = 33_900_000_u32;
+    let initial_eth_bridge_xor_amount = balance!(350000);
+    let initial_eth_bridge_val_amount = balance!(33900000);
     let eth_bridge_tech_account_id = TechAccountId::Generic(
         eth_bridge::TECH_ACCOUNT_PREFIX.to_vec(),
         eth_bridge::TECH_ACCOUNT_MAIN.to_vec(),
@@ -797,8 +797,8 @@ fn testnet_genesis(
                 ],
                 bridge_contract_address: eth_bridge_params.bridge_contract_address,
                 reserves: vec![
-                    (XOR.into(), Balance::from(350_000u32)),
-                    (VAL.into(), Balance::from(33_900_000u32)),
+                    (XOR.into(), balance!(350000)),
+                    (VAL.into(), balance!(33900000)),
                 ],
             }],
             pswap_owners: vec![],
