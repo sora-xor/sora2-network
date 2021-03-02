@@ -23,6 +23,44 @@ use std::fmt;
 
 pub type Balance = u128;
 
+/// Wrapper type which extends Balance serialization, used for json in RPC's.
+#[derive(Encode, Decode, Debug, Clone, PartialEq, Eq)]
+pub struct BalanceWrapper(pub Balance);
+
+impl From<Balance> for BalanceWrapper {
+    fn from(balance: Balance) -> Self {
+        BalanceWrapper(balance)
+    }
+}
+
+impl From<BalanceWrapper> for Balance {
+    fn from(wrapper: BalanceWrapper) -> Self {
+        wrapper.0
+    }
+}
+
+#[cfg(feature = "std")]
+impl Serialize for BalanceWrapper {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_str(&format!("{}", self.0))
+    }
+}
+
+#[cfg(feature = "std")]
+impl<'de> Deserialize<'de> for BalanceWrapper {
+    fn deserialize<D>(deserializer: D) -> Result<BalanceWrapper, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let s = String::deserialize(deserializer)?;
+        let inner = Balance::from_str(&s).map_err(|str_err| serde::de::Error::custom(str_err))?;
+        Ok(BalanceWrapper(inner))
+    }
+}
+
 decl_error! {
     pub enum Error for Module<T: Trait> {
         /// Liquidity source can't exchange assets with the given IDs on the given DEXId.
@@ -824,5 +862,22 @@ mod tests {
 
         // should not panic
         serde_json::to_value(&asset_id).unwrap();
+    }
+
+    #[test]
+    fn should_serialize_and_deserialize_balance_properly_with_string() {
+        let balance: Balance = 123_456u128;
+        let wrapper: BalanceWrapper = balance.into();
+
+        let json_str = r#""123456""#;
+
+        assert_eq!(serde_json::to_string(&wrapper).unwrap(), json_str);
+        let unwrapped: Balance = serde_json::from_str::<BalanceWrapper>(json_str)
+            .unwrap()
+            .into();
+        assert_eq!(unwrapped, balance);
+
+        // should not panic
+        serde_json::to_value(&BalanceWrapper(balance)).unwrap();
     }
 }

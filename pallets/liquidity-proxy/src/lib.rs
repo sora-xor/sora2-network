@@ -388,7 +388,7 @@ impl<T: Trait> Module<T> {
                             second_swap.amount >= min_amount_out,
                             Error::<T>::SlippageNotTolerated
                         );
-                       let cumulative_fee = first_swap
+                        let cumulative_fee = first_swap
                             .fee
                             .checked_add(second_swap.fee)
                             .ok_or(Error::<T>::CalculationError)?;
@@ -536,9 +536,9 @@ impl<T: Trait> Module<T> {
                         filter,
                     )?;
                     let cumulative_fee = first_quote
-                            .fee
-                            .checked_add(second_quote.fee)
-                            .ok_or(Error::<T>::CalculationError)?;
+                        .fee
+                        .checked_add(second_quote.fee)
+                        .ok_or(Error::<T>::CalculationError)?;
                     Ok(SwapOutcome::new(second_quote.amount, cumulative_fee))
                 }
                 SwapAmount::WithDesiredOutput {
@@ -557,9 +557,9 @@ impl<T: Trait> Module<T> {
                         filter,
                     )?;
                     let cumulative_fee = first_quote
-                            .fee
-                            .checked_add(second_quote.fee)
-                            .ok_or(Error::<T>::CalculationError)?;
+                        .fee
+                        .checked_add(second_quote.fee)
+                        .ok_or(Error::<T>::CalculationError)?;
                     Ok(SwapOutcome::new(first_quote.amount, cumulative_fee))
                 }
             },

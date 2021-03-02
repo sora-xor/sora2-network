@@ -16,7 +16,7 @@ use sp_runtime::{
     traits::{BlakeTwo256, IdentityLookup, Zero},
     DispatchError, Perbill,
 };
-use std::{collections::HashMap};
+use std::collections::HashMap;
 
 pub type AccountId = AccountId32;
 pub type BlockNumber = u64;

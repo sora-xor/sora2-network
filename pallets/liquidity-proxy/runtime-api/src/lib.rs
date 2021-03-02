@@ -5,6 +5,7 @@
 use codec::{Codec, Decode, Encode};
 #[cfg(feature = "std")]
 use common::utils::string_serialization;
+use common::BalanceWrapper;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 use sp_runtime::traits::{MaybeDisplay, MaybeFromStr};
@@ -50,7 +51,7 @@ sp_api::decl_runtime_apis! {
             dex_id: DEXId,
             input_asset_id: AssetId,
             output_asset_id: AssetId,
-            amount: Balance,
+            amount: BalanceWrapper,
             swap_variant: SwapVariant,
             selected_source_types: Vec<LiquiditySourceType>,
             filter_mode: FilterMode,

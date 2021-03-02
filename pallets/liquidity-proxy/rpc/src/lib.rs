@@ -1,4 +1,5 @@
 use codec::Codec;
+use common::BalanceWrapper;
 use common::InvokeRPCError;
 use jsonrpc_core::{Error as RpcError, ErrorCode, Result};
 use jsonrpc_derive::rpc;
@@ -32,7 +33,7 @@ pub trait LiquidityProxyAPI<
         dex_id: DEXId,
         input_asset_id: AssetId,
         output_asset_id: AssetId,
-        amount: Balance,
+        amount: BalanceWrapper,
         swap_variant: SwapVariant,
         selected_source_types: Vec<LiquiditySourceType>,
         filter_mode: FilterMode,
@@ -91,7 +92,7 @@ where
         dex_id: DEXId,
         input_asset_id: AssetId,
         output_asset_id: AssetId,
-        amount: Balance,
+        amount: BalanceWrapper,
         swap_variant: SwapVariant,
         selected_source_types: Vec<LiquiditySourceType>,
         filter_mode: FilterMode,

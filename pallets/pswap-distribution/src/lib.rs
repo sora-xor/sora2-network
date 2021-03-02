@@ -356,7 +356,10 @@ impl<T: Trait> Module<T> {
             dex_id.clone(),
             incentive_asset_id.clone(),
             incentive_total,
-            incentive_to_burn.clone().try_into_balance().map_err(|_| Error::<T>::CalculationError)?,
+            incentive_to_burn
+                .clone()
+                .try_into_balance()
+                .map_err(|_| Error::<T>::CalculationError)?,
         ));
 
         // This is needed for farm id 0, now it is hardcoded, in future it will be resolved and

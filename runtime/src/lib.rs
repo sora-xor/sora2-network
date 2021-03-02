@@ -50,7 +50,7 @@ use static_assertions::assert_eq_size;
 // A few exports that help ease life for downstream crates.
 pub use common::{
     fixed, fixed_from_basis_points,
-    prelude::{Balance, SwapAmount, SwapOutcome, SwapVariant, WeightToFixedFee},
+    prelude::{Balance, BalanceWrapper, SwapAmount, SwapOutcome, SwapVariant, WeightToFixedFee},
     AssetSymbol, BalancePrecision, BasisPoints, FilterMode, Fixed, FromGenericPair,
     LiquiditySource, LiquiditySourceFilter, LiquiditySourceId, LiquiditySourceType,
 };
@@ -939,7 +939,7 @@ impl_runtime_apis! {
             liquidity_source_type: LiquiditySourceType,
             input_asset_id: AssetId,
             output_asset_id: AssetId,
-            desired_input_amount: Balance,
+            desired_input_amount: BalanceWrapper,
             swap_variant: SwapVariant,
         ) -> Option<dex_runtime_api::SwapOutcomeInfo<Balance>> {
             // TODO: remove with proper QuoteAmount refactor
@@ -952,7 +952,7 @@ impl_runtime_apis! {
                 &LiquiditySourceId::new(dex_id, liquidity_source_type),
                 &input_asset_id,
                 &output_asset_id,
-                SwapAmount::with_variant(swap_variant, desired_input_amount, limit),
+                SwapAmount::with_variant(swap_variant, desired_input_amount.into(), limit),
             ).ok().map(|sa| dex_runtime_api::SwapOutcomeInfo::<Balance> { amount: sa.amount, fee: sa.fee})
         }
 
@@ -1149,7 +1149,7 @@ impl_runtime_apis! {
             dex_id: DEXId,
             input_asset_id: AssetId,
             output_asset_id: AssetId,
-            amount: Balance,
+            amount: BalanceWrapper,
             swap_variant: SwapVariant,
             selected_source_types: Vec<LiquiditySourceType>,
             filter_mode: FilterMode,
@@ -1163,7 +1163,7 @@ impl_runtime_apis! {
             LiquidityProxy::quote(
                 &input_asset_id,
                 &output_asset_id,
-                SwapAmount::with_variant(swap_variant, amount, limit),
+                SwapAmount::with_variant(swap_variant, amount.into(), limit),
                 LiquiditySourceFilter::with_mode(dex_id, filter_mode, selected_source_types),
             ).ok().map(|asa| liquidity_proxy_runtime_api::SwapOutcomeInfo::<Balance> { amount: asa.amount, fee: asa.fee})
         }
