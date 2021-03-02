@@ -340,7 +340,7 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
                 None,
                 1,
                 vec![
-                    "d9bda3688c6f608ab15c03a55b171da0413788a40a25722b4ae4d3672890bcd7".to_string(),
+                    "D9BDA3688c6f608ab15c03a55b171da0413788a40a25722b4ae4d3672890bcd7".to_string(),
                 ],
             ),
             (
@@ -349,7 +349,7 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
                 None,
                 1,
                 vec![
-                    "9a685d77bcd3f60e6cc1e91eedc7a48e11bbcf1a036b920f3bae0372a78a5432".to_string(),
+                    "9A685d77BCd3f60e6cc1e91eedc7a48e11bbcf1a036b920f3bae0372a78a5432".to_string(),
                 ],
             ),
             (
