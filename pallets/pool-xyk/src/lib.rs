@@ -1785,6 +1785,8 @@ decl_error! {
         PoolBecameInvalidAfterOperation,
         /// Unable to convert asset to tech asset id.
         UnableToConvertAssetToTechAssetId,
+        /// Unable to get XOR part from marker asset.
+        UnableToGetXORPartFromMarkerAsset,
     }
 }
 
@@ -1793,10 +1795,21 @@ impl<T: Trait> Module<T> {
         pool_acc: T::AccountId,
         liq_amount: Balance,
     ) -> Result<Balance, DispatchError> {
-        let trading_pair: common::TradingPair<T::AssetId> = unimplemented!();
-        let b_in_pool = assets::Module::<T>::free_balance(&trading_pair.base_asset_id, &pool_acc)?;
+        let tech_acc = technical::Module::<T>::lookup_tech_account_id(&pool_acc)?;
+        //let trading_pair = match <TechAccountIdOf::<T> as Into::<common::TechAccountId::<T::AccountId,T::AssetId,T::ExtraDEXId>>>::into(tech_acc) {
+        let trading_pair = match tech_acc.into() {
+            common::TechAccountId::Pure(
+                _,
+                common::TechPurpose::LiquidityKeeper(trading_pair),
+            ) => trading_pair,
+            _ => {
+                return Err(Error::<T>::UnableToGetXORPartFromMarkerAsset.into());
+            }
+        };
+        let b_in_pool =
+            assets::Module::<T>::free_balance(&trading_pair.base_asset_id.into(), &pool_acc)?;
         let t_in_pool =
-            assets::Module::<T>::free_balance(&trading_pair.target_asset_id, &pool_acc)?;
+            assets::Module::<T>::free_balance(&trading_pair.target_asset_id.into(), &pool_acc)?;
         let fxw_b_in_pool = FixedWrapper::from(b_in_pool);
         let fxw_t_in_pool = FixedWrapper::from(t_in_pool);
         let fxw_liq_in_pool = fxw_b_in_pool.multiply_and_sqrt(&fxw_t_in_pool);

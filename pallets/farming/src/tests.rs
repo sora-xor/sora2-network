@@ -1,4 +1,3 @@
-/*
 use crate::mock::*;
 use crate::FarmId;
 use common::{
@@ -753,4 +752,3 @@ fn unlock_all_assets() {
         },
     ]);
 }
-*/

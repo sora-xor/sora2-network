@@ -303,14 +303,16 @@ where
 {
     type Error = DispatchError;
     fn try_from(compat: AssetId32<AssetId>) -> Result<Self, Self::Error> {
-        let code = compat.code;
-        let end = (code[0] as usize) + 1;
-        if end >= 32 {
-            return Err("Invalid format".into());
-        }
-        let mut frag: &[u8] = &code[1..end];
-        let can_fail = TechAssetId::<AssetId>::decode(&mut frag);
-        match can_fail {
+        let can_fail = || {
+            let code = compat.code;
+            let end = (code[0] as usize) + 1;
+            if end >= 32 {
+                return Err("Invalid format".into());
+            }
+            let mut frag: &[u8] = &code[1..end];
+            TechAssetId::<AssetId>::decode(&mut frag)
+        };
+        match can_fail() {
             Ok(v) => Ok(v),
             Err(_) => Ok(TechAssetId::<AssetId>::Escape(compat.code)),
         }

@@ -33,7 +33,7 @@ pub struct MyExtra;
 pub type TestExtrinsic = MyTestXt<Call, MyExtra>;
 type NodeBlock = generic::Block<Header, TestExtrinsic>;
 type DEXId = common::DEXId;
-type AccountId = AccountId32;
+type AccountId = u64;
 type BlockNumber = u64;
 type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
 type TechAssetId = common::TechAssetId<common::AssetId>;
@@ -94,7 +94,7 @@ where
     Call:
         'static + Sized + Send + Sync + Clone + Eq + Codec + Debug + Dispatchable<Origin = Origin>,
     Extra: SignedExtension<AccountId = AccountId, Call = Call>,
-    Origin: From<Option<AccountId32>>,
+    Origin: From<Option<AccountId>>,
 {
     type Call = Call;
 
@@ -223,11 +223,10 @@ impl technical::Trait for Test {
 
 impl assets::Trait for Test {
     type Event = Event;
-    type ExtraDEXId = common::DEXId;
+    type ExtraDEXId = DEXId;
     type ExtraLstId = common::LiquiditySourceType;
     type ExtraAccountId = u64;
-    type ExtraTupleArg =
-        common::AssetIdExtraTupleArg<common::DEXId, common::LiquiditySourceType, u64>;
+    type ExtraTupleArg = common::AssetIdExtraTupleArg<DEXId, common::LiquiditySourceType, u64>;
     type AssetId = common::AssetId32<AssetId>;
     type GetBaseAssetId = GetBaseAssetId;
     type Currency = currencies::Module<Test>;
