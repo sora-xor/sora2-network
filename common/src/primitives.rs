@@ -1,4 +1,4 @@
-use crate::traits::Trait;
+use crate::traits::{IsRepresentation, PureOrWrapped, Trait};
 use codec::{Decode, Encode};
 use core::fmt::Debug;
 use frame_support::dispatch::DispatchError;
@@ -117,7 +117,7 @@ pub const USDT: AssetId32<AssetId> = AssetId32::from_asset_id(AssetId::USDT);
 pub const VAL: AssetId32<AssetId> = AssetId32::from_asset_id(AssetId::VAL);
 pub const PSWAP: AssetId32<AssetId> = AssetId32::from_asset_id(AssetId::PSWAP);
 
-impl crate::traits::IsRepresentation for AssetId {
+impl IsRepresentation for AssetId {
     fn is_representation(&self) -> bool {
         false
     }
@@ -157,34 +157,11 @@ impl<AssetId> From<TechAssetId<AssetId>> for Option<AssetId> {
 impl<AssetId> From<TechAssetId<AssetId>> for Result<AssetId32<AssetId>, ()>
 where
     TechAssetId<AssetId>: Encode,
-    AssetId: crate::traits::IsRepresentation,
+    AssetId: IsRepresentation,
+    AssetId32<AssetId>: From<TechAssetId<AssetId>>,
 {
     fn from(tech_asset: TechAssetId<AssetId>) -> Self {
-        match tech_asset {
-            TechAssetId::Escape(code) => Ok(AssetId32::new(code, PhantomData)),
-            _ => {
-                let mut slice = [0_u8; 32];
-                let asset_encoded: Vec<u8> = tech_asset.encode();
-                let asset_length = asset_encoded.len();
-                // Encode size of TechAssetId must be always less or equal to 31.
-                // Assert must exist here because it must never heppend in runtime and must be covered by tests.
-                if !(asset_length <= 31) {
-                    Err(())?
-                }
-                // Must be not representation, only direct asset must be here.
-                // Assert must exist here because it must never happen in runtime and must be covered by tests.
-                let is_repr = match tech_asset {
-                    TechAssetId::Wrapped(a) => !a.is_representation(),
-                    _ => true,
-                };
-                ensure!(is_repr, ());
-                slice[0] = asset_length as u8;
-                for i in 0..asset_length {
-                    slice[i + 1] = asset_encoded[i];
-                }
-                Ok(AssetId32::new(slice, PhantomData))
-            }
-        }
+        Ok(tech_asset.into())
     }
 }
 
@@ -270,17 +247,6 @@ impl<AssetId> From<AssetId32<AssetId>> for H256 {
     }
 }
 
-#[allow(dead_code)]
-impl<AssetId: Clone> AssetId32<AssetId>
-where
-    Result<TechAssetId<AssetId>, codec::Error>: From<AssetId32<AssetId>>,
-{
-    fn try_from_code(code: AssetId32Code) -> Result<Self, codec::Error> {
-        let compat = AssetId32::new(code, PhantomData);
-        Result::<TechAssetId<AssetId>, codec::Error>::from(compat.clone()).map(|_| compat)
-    }
-}
-
 impl<AssetId> From<AssetId32<AssetId>> for AssetId32Code {
     fn from(compat: AssetId32<AssetId>) -> Self {
         compat.code
@@ -306,15 +272,13 @@ where
         let can_fail = || {
             let code = compat.code;
             let end = (code[0] as usize) + 1;
-            if end >= 32 {
-                return Err("Invalid format".into());
-            }
+            ensure!(end < 32, "Invalid format");
             let mut frag: &[u8] = &code[1..end];
             TechAssetId::<AssetId>::decode(&mut frag)
         };
         match can_fail() {
             Ok(v) => Ok(v),
-            Err(_) => Ok(TechAssetId::<AssetId>::Escape(compat.code)),
+            Err(_) => Ok(TechAssetId::<AssetId>::Escaped(compat.code)),
         }
     }
 }
@@ -394,7 +358,7 @@ impl Default for AssetSymbol {
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum TechAssetId<AssetId> {
     Wrapped(AssetId),
-    Escape(AssetId32Code),
+    Escaped(AssetId32Code),
 }
 
 #[derive(Encode, Decode, Eq, PartialEq, PartialOrd, Ord, Debug, Copy, Clone, Hash)]
@@ -484,7 +448,7 @@ impl<DEXId: Copy, LiquiditySourceIndex: Copy> LiquiditySourceId<DEXId, Liquidity
 }
 
 // LstId is Liquidity Source Type Id.
-impl<AssetId> crate::traits::PureOrWrapped<AssetId> for TechAssetId<AssetId> {
+impl<AssetId> PureOrWrapped<AssetId> for TechAssetId<AssetId> {
     fn is_pure(&self) -> bool {
         match self {
             TechAssetId::Wrapped(_) => false,
@@ -531,9 +495,7 @@ pub enum TechAccountId<AccountId, AssetId, DEXId> {
 }
 
 /// Implementation of `IsRepresentation` for `TechAccountId`, because is has `WrappedRepr`.
-impl<AccountId, AssetId, DEXId> crate::traits::IsRepresentation
-    for TechAccountId<AccountId, AssetId, DEXId>
-{
+impl<AccountId, AssetId, DEXId> IsRepresentation for TechAccountId<AccountId, AssetId, DEXId> {
     fn is_representation(&self) -> bool {
         match self {
             TechAccountId::WrappedRepr(_) => true,
@@ -597,7 +559,7 @@ impl<AccountId, AssetId, DEXId: Clone>
 
 impl<AccountId, AssetId, DEXId> From<AccountId> for TechAccountId<AccountId, AssetId, DEXId>
 where
-    AccountId: crate::traits::IsRepresentation,
+    AccountId: IsRepresentation,
 {
     fn from(a: AccountId) -> Self {
         if a.is_representation() {
@@ -624,9 +586,9 @@ impl<
         AccountId: Clone + Encode + From<[u8; 32]> + Into<[u8; 32]>,
         AssetId: Encode,
         DEXId: Encode,
-    > crate::traits::PureOrWrapped<AccountId> for TechAccountId<AccountId, AssetId, DEXId>
+    > PureOrWrapped<AccountId> for TechAccountId<AccountId, AssetId, DEXId>
 where
-    AccountId: crate::traits::IsRepresentation,
+    AccountId: IsRepresentation,
 {
     fn is_pure(&self) -> bool {
         match self {
@@ -653,7 +615,7 @@ where
 impl<AssetId> From<AssetId> for AssetId32<AssetId>
 where
     AssetId32<AssetId>: From<TechAssetId<AssetId>>,
-    AssetId: crate::traits::IsRepresentation,
+    AssetId: IsRepresentation,
 {
     fn from(asset_id: AssetId) -> Self {
         // Must be not representation, only direct asset must be here.
@@ -667,11 +629,11 @@ where
 impl<AssetId> From<TechAssetId<AssetId>> for AssetId32<AssetId>
 where
     TechAssetId<AssetId>: Encode,
-    AssetId: crate::traits::IsRepresentation,
+    AssetId: IsRepresentation,
 {
     fn from(tech_asset: TechAssetId<AssetId>) -> Self {
         match tech_asset {
-            TechAssetId::Escape(code) => AssetId32::new(code, PhantomData),
+            TechAssetId::Escaped(code) => AssetId32::new(code, PhantomData),
             _ => {
                 let mut slice = [0_u8; 32];
                 let asset_encoded: Vec<u8> = tech_asset.encode();
@@ -688,9 +650,7 @@ where
                     }
                 });
                 slice[0] = asset_length as u8;
-                for i in 0..asset_length {
-                    slice[i + 1] = asset_encoded[i];
-                }
+                slice[1..asset_length + 1].copy_from_slice(&asset_encoded);
                 AssetId32::new(slice, PhantomData)
             }
         }

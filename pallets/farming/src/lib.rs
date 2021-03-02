@@ -250,17 +250,18 @@ impl<T: Trait> Module<T> {
         use common::TechAccountId::*;
         use common::TechPurpose::*;
         use common::TradingPair;
-        let tuple = assets::Module::<T>::tuple_from_asset_id(&asset_id);
+        let tuple = assets::Module::<T>::tuple_from_asset_id(&asset_id)
+            .ok_or(Error::<T>::UnableToGetPoolInformationFromTechAsset)?;
         match tuple {
-            Some(Arity3(GenericU128(tag), Extra(lst_extra), Extra(acc_extra))) => {
-                if tag != common::hash_to_u128_pair(b"Marking asset").0 {
-                    return Err(Error::<T>::UnableToGetPoolInformationFromTechAsset.into());
-                }
-                if lst_extra != LstId(common::LiquiditySourceType::XYKPool.into()).into() {
-                    return Err(
-                        Error::<T>::ThisTypeOfLiquiditySourceIsNotImplementedOrSupported.into(),
-                    );
-                }
+            Arity3(GenericU128(tag), Extra(lst_extra), Extra(acc_extra)) => {
+                ensure!(
+                    tag == common::hash_to_u128_pair(b"Marking asset").0,
+                    Error::<T>::UnableToGetPoolInformationFromTechAsset
+                );
+                ensure!(
+                    lst_extra == LstId(common::LiquiditySourceType::XYKPool.into()).into(),
+                    Error::<T>::ThisTypeOfLiquiditySourceIsNotImplementedOrSupported
+                );
                 match acc_extra.into() {
                     AccountId(extra_acc) => {
                         let acc: AccountIdOf<T> = extra_acc.into();

@@ -1383,7 +1383,8 @@ impl<T: Trait> Module<T> {
         let tag = GenericU128(common::hash_to_u128_pair(b"Marking asset").0);
         let lst_extra = Extra(LstId(common::LiquiditySourceType::XYKPool.into()).into());
         let acc_extra = Extra(AccountId(repr_extra).into());
-        let asset_id = assets::Module::<T>::asset_id_from_tuple(&Arity3(tag, lst_extra, acc_extra));
+        let asset_id =
+            assets::Module::<T>::register_asset_id_from_tuple(&Arity3(tag, lst_extra, acc_extra));
         Ok(asset_id)
     }
 
@@ -1796,12 +1797,10 @@ impl<T: Trait> Module<T> {
         liq_amount: Balance,
     ) -> Result<Balance, DispatchError> {
         let tech_acc = technical::Module::<T>::lookup_tech_account_id(&pool_acc)?;
-        //let trading_pair = match <TechAccountIdOf::<T> as Into::<common::TechAccountId::<T::AccountId,T::AssetId,T::ExtraDEXId>>>::into(tech_acc) {
         let trading_pair = match tech_acc.into() {
-            common::TechAccountId::Pure(
-                _,
-                common::TechPurpose::LiquidityKeeper(trading_pair),
-            ) => trading_pair,
+            common::TechAccountId::Pure(_, common::TechPurpose::LiquidityKeeper(trading_pair)) => {
+                trading_pair
+            }
             _ => {
                 return Err(Error::<T>::UnableToGetXORPartFromMarkerAsset.into());
             }

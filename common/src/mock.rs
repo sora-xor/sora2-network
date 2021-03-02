@@ -72,9 +72,9 @@ impl From<TechAssetId<AssetId>> for AssetId {
 }
 
 // This is never used, and just makes some tests compatible.
-impl TryFrom<AssetId> for crate::primitives::TechAssetId<crate::primitives::TechAssetId<AssetId>>
+impl TryFrom<AssetId> for TechAssetId<TechAssetId<AssetId>>
 where
-    crate::primitives::TechAssetId<AssetId>: Decode,
+    TechAssetId<AssetId>: Decode,
 {
     type Error = DispatchError;
     fn try_from(_asset: AssetId) -> Result<Self, Self::Error> {

@@ -194,7 +194,7 @@ decl_storage! {
         /// Asset Id -> (Symbol, Precision, Is Mintable)
         pub AssetInfos get(fn asset_infos): map hasher(twox_64_concat) T::AssetId => (AssetSymbol, BalancePrecision, bool);
         /// Asset Id -> Tuple<T>
-        pub TupleAssetId get(fn tuple_asset_id): map hasher(twox_64_concat) T::AssetId => Option<Tuple<T>>;
+        pub TupleAssetId get(fn tuple_from_asset_id): map hasher(twox_64_concat) T::AssetId => Option<Tuple<T>>;
     }
     add_extra_genesis {
         config(endowed_assets): Vec<(T::AssetId, T::AccountId, AssetSymbol, BalancePrecision, Balance, bool)>;
@@ -340,7 +340,7 @@ decl_module! {
 
 impl<T: Trait> Module<T> {
     /// Generates an `AssetId` for the given `Tuple<T>`, and insert record to storage map.
-    pub fn asset_id_from_tuple(tuple: &Tuple<T>) -> T::AssetId
+    pub fn register_asset_id_from_tuple(tuple: &Tuple<T>) -> T::AssetId
     where
         Tuple<T>: Encode,
         AssetIdOf<T>: Encode,
@@ -355,11 +355,6 @@ impl<T: Trait> Module<T> {
         let asset_id = T::AssetId::from(H256(output));
         TupleAssetId::<T>::insert(asset_id, tuple);
         asset_id
-    }
-
-    /// Get `Tuple<T>` from `AssetId`.
-    pub fn tuple_from_asset_id(asset_id: &T::AssetId) -> Option<Tuple<T>> {
-        TupleAssetId::<T>::get(asset_id)
     }
 
     /// Generates an `AssetId` for the given `AccountId`.
