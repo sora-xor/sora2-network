@@ -350,6 +350,8 @@ impl<T: Trait> Module<T> {
         keccak.update(&tuple.encode());
         let mut output = [0u8; 32];
         keccak.finalize(&mut output);
+        // More safe to escape.
+        output[0] = 0u8;
         let asset_id = T::AssetId::from(H256(output));
         TupleAssetId::<T>::insert(asset_id, tuple);
         asset_id
@@ -368,6 +370,8 @@ impl<T: Trait> Module<T> {
         keccak.update(&frame_system::Module::<T>::account_nonce(&account_id).encode());
         let mut output = [0u8; 32];
         keccak.finalize(&mut output);
+        // More safe to escape.
+        output[0] = 0u8;
         T::AssetId::from(H256(output))
     }
 
