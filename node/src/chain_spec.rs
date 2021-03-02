@@ -9,7 +9,10 @@ use framenode_runtime::{
     XorId, WASM_BINARY,
 };
 
-use common::{balance, prelude::{DEXInfo, FixedWrapper}};
+use common::{
+    balance,
+    prelude::{DEXInfo, FixedWrapper},
+};
 use common::{fixed, hash, prelude::Balance, DEXId, Fixed, TechPurpose, PSWAP, VAL, XOR};
 use frame_support::sp_runtime::Percent;
 use framenode_runtime::bonding_curve_pool::{DistributionAccountData, DistributionAccounts};
