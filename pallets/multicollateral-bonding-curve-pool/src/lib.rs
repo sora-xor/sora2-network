@@ -13,7 +13,7 @@ use common::{
         Balance, Error as CommonError, Fixed, FixedWrapper, QuoteAmount, SwapAmount, SwapOutcome,
     },
     prelude::{EnsureDEXManager, EnsureTradingPairExists},
-    DEXId, LiquiditySource, LiquiditySourceFilter, LiquiditySourceType, ManagementMode, VAL,
+    DEXId, LiquiditySource, LiquiditySourceFilter, LiquiditySourceType, ManagementMode, PSWAP, VAL,
 };
 use frame_support::traits::Get;
 use frame_support::{decl_error, decl_event, decl_module, decl_storage, ensure, fail};
@@ -31,8 +31,6 @@ pub trait Trait: common::Trait + assets::Trait + technical::Trait + trading_pair
     type LiquidityProxy: LiquidityProxyTrait<Self::DEXId, Self::AccountId, Self::AssetId>;
     type EnsureDEXManager: EnsureDEXManager<Self::DEXId, Self::AccountId, DispatchError>;
     type EnsureTradingPairExists: EnsureTradingPairExists<Self::DEXId, Self::AssetId, DispatchError>;
-    type GetPswapAssetId: Get<Self::AssetId>;
-    type GetValAssetId: Get<Self::AssetId>;
 }
 
 type Assets<T> = assets::Module<T>;
@@ -523,7 +521,7 @@ impl<T: Trait> Module<T> {
     /// ```nocompile
     /// buy_function(x) = M*x + P_I
     ///
-    /// m * q² + 2 * AB * q - 2 * S = 0
+    /// M * q² + 2 * AB * q - 2 * S = 0
     /// equation with two solutions, taking only positive one:
     /// q = (√((AB * 2 / M)² + 8 * S / M) - 2 * AB / M) / 2
     /// ```
@@ -898,7 +896,7 @@ impl<T: Trait> Module<T> {
         let reference_amount = (first_term * second_term) / (N * fixed_wrapper!(3));
 
         // Convert to PSWAP.
-        let pswap_price = Self::reference_price(&T::GetPswapAssetId::get())?;
+        let pswap_price = Self::reference_price(&PSWAP.into())?;
         let pswap_amount = reference_amount / pswap_price;
         pswap_amount
             .get()
@@ -907,14 +905,13 @@ impl<T: Trait> Module<T> {
     }
 
     fn collateral_is_incentivised(collateral_asset_id: &T::AssetId) -> bool {
-        collateral_asset_id != &T::GetPswapAssetId::get()
-            && collateral_asset_id != &T::GetValAssetId::get()
+        collateral_asset_id != &PSWAP.into() && collateral_asset_id != &VAL.into()
     }
 
     fn claim_incentives_inner(account_id: &T::AccountId) -> DispatchResult {
         common::with_transaction(|| {
             let (rewards_limit, rewards_owned) = Rewards::<T>::get(account_id);
-            let pswap_asset_id = T::GetPswapAssetId::get();
+            let pswap_asset_id = PSWAP.into();
             let incentives_account_id = IncentivesAccountId::<T>::get();
             let available_rewards =
                 Assets::<T>::free_balance(&pswap_asset_id, &incentives_account_id)?;
@@ -946,23 +943,24 @@ impl<T: Trait> OnPswapBurned for Module<T> {
         let total_rewards = TotalRewards::get();
         amount = amount.saturating_mul(Balance(PswapBurnedDedicatedForRewards::get()));
         amount = amount.saturating_add(IncentiveLimitNotDistributed::get());
-        let mut limit_distributed = Balance::zero();
+        let mut limit_distributed =
+            sp_std::rc::Rc::new(sp_std::cell::RefCell::new(Balance::zero()));
+
+        let lambda = |_key: T::AccountId, value: (Balance, Balance)| {
+            let (limit, owned) = value;
+            let limit_to_add = owned.saturating_mul(amount) / (total_rewards);
+            let new_limit = limit.saturating_add(limit_to_add.clone());
+            let limit_distributed_mut = limit_distributed.borrow_mut();
+            *limit_distributed_mut = limit_distributed_mut.saturating_add(limit_to_add);
+            // limit_distributed = limit_distributed.saturating_add(limit_to_add); // TODO: enable
+            Some((new_limit, owned))
+        };
         if !total_rewards.is_zero() {
-            let updated: Vec<_> = Rewards::<T>::iter()
-                .map(|(key, (limit, owned))| {
-                    let limit_to_add = owned.saturating_mul(amount) / (total_rewards);
-                    let new_limit = limit.saturating_add(limit_to_add.clone());
-                    limit_distributed = limit_distributed.saturating_add(limit_to_add);
-                    (key, (new_limit, owned))
-                })
-                .collect();
-            for (key, val) in updated.into_iter() {
-                Rewards::<T>::insert(key, val);
-            }
+            Rewards::<T>::translate(lambda)
         }
-        if limit_distributed < amount {
-            IncentiveLimitNotDistributed::set(amount.saturating_sub(limit_distributed));
-        }
+        // if *limit_distributed < amount {
+        // IncentiveLimitNotDistributed::set(amount.saturating_sub(limit_distributed));
+        // }
     }
 }
 

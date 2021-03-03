@@ -293,8 +293,6 @@ impl Trait for Runtime {
     type LiquidityProxy = MockDEXApi;
     type EnsureTradingPairExists = trading_pair::Module<Runtime>;
     type EnsureDEXManager = dex_manager::Module<Runtime>;
-    type GetPswapAssetId = GetPswapAssetId;
-    type GetValAssetId = GetValAssetId;
 }
 
 impl tokens::Trait for Runtime {
