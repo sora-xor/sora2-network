@@ -97,16 +97,7 @@ pub struct IncomingTransfer<T: Trait> {
     pub to: T::AccountId,
     pub asset_id: AssetIdOf<T>,
     pub asset_kind: AssetKind,
-    #[cfg_attr(
-        feature = "std",
-        serde(
-            bound(
-                serialize = "Balance: sp_std::fmt::Display",
-                deserialize = "Balance: sp_std::str::FromStr"
-            ),
-            with = "string_serialization"
-        )
-    )]
+    #[cfg_attr(feature = "std", serde(with = "string_serialization"))]
     pub amount: Balance,
     pub tx_hash: H256,
     pub at_height: u64,
@@ -340,16 +331,7 @@ pub struct OutgoingTransfer<T: Trait> {
     pub from: T::AccountId,
     pub to: Address,
     pub asset_id: AssetIdOf<T>,
-    #[cfg_attr(
-        feature = "std",
-        serde(
-            bound(
-                serialize = "Balance: sp_std::fmt::Display",
-                deserialize = "Balance: sp_std::str::FromStr"
-            ),
-            with = "string_serialization"
-        )
-    )]
+    #[cfg_attr(feature = "std", serde(with = "string_serialization"))]
     pub amount: Balance,
     pub nonce: T::Index,
     pub network_id: T::NetworkId,
@@ -507,16 +489,7 @@ impl OutgoingTransferEncoded {
 pub struct OutgoingAddAsset<T: Trait> {
     pub author: T::AccountId,
     pub asset_id: AssetIdOf<T>,
-    #[cfg_attr(
-        feature = "std",
-        serde(
-            bound(
-                serialize = "Balance: sp_std::fmt::Display",
-                deserialize = "Balance: sp_std::str::FromStr"
-            ),
-            with = "string_serialization"
-        )
-    )]
+    #[cfg_attr(feature = "std", serde(with = "string_serialization"))]
     pub supply: Balance,
     pub nonce: T::Index,
     pub network_id: T::NetworkId,

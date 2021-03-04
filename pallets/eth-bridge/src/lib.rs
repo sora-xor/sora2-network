@@ -42,7 +42,6 @@ use rustc_hex::ToHex;
 use secp256k1::PublicKey;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use serde_with::serde_as;
 use sp_core::{H160, H256};
 use sp_io::hashing::{blake2_256, keccak_256};
 use sp_std::marker::PhantomData;
@@ -611,7 +610,6 @@ pub struct NetworkParams<AccountId: Ord> {
     pub initial_peers: BTreeSet<AccountId>,
 }
 
-#[serde_as]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug)]
 pub struct NetworkConfig<T: Trait> {
@@ -619,7 +617,6 @@ pub struct NetworkConfig<T: Trait> {
     pub bridge_account_id: T::AccountId,
     pub tokens: Vec<(T::AssetId, Option<H160>, AssetKind)>,
     pub bridge_contract_address: Address,
-    #[serde_as(as = "Vec<(_, serde_with::DisplayFromStr)>")]
     pub reserves: Vec<(T::AssetId, Balance)>,
 }
 

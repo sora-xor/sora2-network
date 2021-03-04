@@ -2020,30 +2020,3 @@ fn should_ensure_known_contract() {
         );
     });
 }
-
-#[test]
-fn should_serialize_and_deserialize_balance_in_network_config_properly() {
-    let config = NetworkConfig::<Test> {
-        bridge_account_id: Default::default(),
-        bridge_contract_address: Default::default(),
-        initial_peers: Default::default(),
-        reserves: [(Default::default(), 123_456u128)].into(),
-        tokens: Default::default(),
-    };
-
-    let json_str = "{\"initial_peers\":[],\
-    \"bridge_account_id\":\"5C4hrfjw9DjXZTzV3MwzrrAr9P1MJhSrvWGWqi1eSuyUpnhM\",\
-    \"tokens\":[],\
-    \"bridge_contract_address\":\"0x0000000000000000000000000000000000000000\",\
-    \"reserves\":[[\"0x0200000000000000000000000000000000000000000000000000000000000000\",\
-    \"123456\"]]}";
-
-    assert_eq!(serde_json::to_string(&config).unwrap(), json_str);
-    assert_eq!(
-        serde_json::from_str::<NetworkConfig::<Test>>(json_str).unwrap(),
-        config
-    );
-
-    // should not panic
-    serde_json::to_value(&config).unwrap();
-}
