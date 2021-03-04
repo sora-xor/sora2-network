@@ -122,7 +122,6 @@ type DEXId = u32;
 
 impl assets::Trait for Runtime {
     type Event = ();
-    type ExtraLstId = common::LiquiditySourceType;
     type ExtraAccountId = [u8; 32];
     type ExtraTupleArg = common::AssetIdExtraTupleArg<DEXId, common::LiquiditySourceType, [u8; 32]>;
     type AssetId = AssetId;
@@ -133,6 +132,7 @@ impl assets::Trait for Runtime {
 
 impl common::Trait for Runtime {
     type DEXId = DEXId;
+    type LstId = common::LiquiditySourceType;
 }
 
 parameter_types! {

@@ -200,6 +200,7 @@ impl pallet_transaction_payment::Trait for Test {
 
 impl common::Trait for Test {
     type DEXId = DEXId;
+    type LstId = common::LiquiditySourceType;
 }
 
 impl technical::Trait for Test {
@@ -222,7 +223,6 @@ impl currencies::Trait for Test {
 
 impl assets::Trait for Test {
     type Event = ();
-    type ExtraLstId = common::LiquiditySourceType;
     type ExtraAccountId = AccountId;
     type ExtraTupleArg =
         common::AssetIdExtraTupleArg<common::DEXId, common::LiquiditySourceType, AccountId>;

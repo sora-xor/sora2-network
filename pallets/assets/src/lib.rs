@@ -133,13 +133,6 @@ pub enum Tuple<T: Trait> {
 pub trait Trait: frame_system::Trait + permissions::Trait + tokens::Trait + common::Trait {
     type Event: From<Event<Self>> + Into<<Self as frame_system::Trait>::Event>;
 
-    type ExtraLstId: Clone
-        + Copy
-        + Encode
-        + Decode
-        + Eq
-        + PartialEq
-        + From<common::LiquiditySourceType>;
     type ExtraAccountId: Clone
         + Copy
         + Encode
@@ -154,8 +147,8 @@ pub trait Trait: frame_system::Trait + permissions::Trait + tokens::Trait + comm
         + Decode
         + Eq
         + PartialEq
-        + From<common::AssetIdExtraTupleArg<Self::DEXId, Self::ExtraLstId, Self::ExtraAccountId>>
-        + Into<common::AssetIdExtraTupleArg<Self::DEXId, Self::ExtraLstId, Self::ExtraAccountId>>;
+        + From<common::AssetIdExtraTupleArg<Self::DEXId, Self::LstId, Self::ExtraAccountId>>
+        + Into<common::AssetIdExtraTupleArg<Self::DEXId, Self::LstId, Self::ExtraAccountId>>;
 
     /// DEX assets (currency) identifier.
     type AssetId: Parameter

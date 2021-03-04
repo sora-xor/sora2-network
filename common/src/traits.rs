@@ -184,6 +184,13 @@ pub trait Trait: frame_system::Trait + currencies::Trait {
         + Decode
         + Eq
         + PartialEq;
+    type LstId: Clone
+        + Copy
+        + Encode
+        + Decode
+        + Eq
+        + PartialEq
+        + From<crate::primitives::LiquiditySourceType>;
 }
 
 /// Definition of a pending atomic swap action. It contains the following three phrases:
