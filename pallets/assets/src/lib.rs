@@ -130,10 +130,9 @@ pub enum Tuple<T: Trait> {
     ),
 }
 
-pub trait Trait: frame_system::Trait + permissions::Trait + tokens::Trait {
+pub trait Trait: frame_system::Trait + permissions::Trait + tokens::Trait + common::Trait {
     type Event: From<Event<Self>> + Into<<Self as frame_system::Trait>::Event>;
 
-    type ExtraDEXId: Clone + Copy + Encode + Decode + Eq + PartialEq;
     type ExtraLstId: Clone
         + Copy
         + Encode
@@ -155,8 +154,8 @@ pub trait Trait: frame_system::Trait + permissions::Trait + tokens::Trait {
         + Decode
         + Eq
         + PartialEq
-        + From<common::AssetIdExtraTupleArg<Self::ExtraDEXId, Self::ExtraLstId, Self::ExtraAccountId>>
-        + Into<common::AssetIdExtraTupleArg<Self::ExtraDEXId, Self::ExtraLstId, Self::ExtraAccountId>>;
+        + From<common::AssetIdExtraTupleArg<Self::DEXId, Self::ExtraLstId, Self::ExtraAccountId>>
+        + Into<common::AssetIdExtraTupleArg<Self::DEXId, Self::ExtraLstId, Self::ExtraAccountId>>;
 
     /// DEX assets (currency) identifier.
     type AssetId: Parameter
@@ -340,8 +339,7 @@ decl_module! {
 
 impl<T: Trait> Module<T> {
     /// Generates an `AssetId` for the given `Tuple<T>`, and insert record to storage map.
-    pub fn register_asset_id_from_tuple(tuple: &Tuple<T>) -> T::AssetId
-    {
+    pub fn register_asset_id_from_tuple(tuple: &Tuple<T>) -> T::AssetId {
         let mut keccak = Keccak::v256();
         keccak.update(b"From Tuple");
         keccak.update(&tuple.encode());

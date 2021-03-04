@@ -73,7 +73,7 @@ pub trait Trait: common::Trait + assets::Trait {
         + common::ToTechUnitFromDEXAndTradingPair<
             DEXIdOf<Self>,
             common::TradingPair<TechAssetIdOf<Self>>,
-        > + Into<common::TechAccountId<Self::AccountId, Self::TechAssetId, Self::ExtraDEXId>>;
+        > + Into<common::TechAccountId<Self::AccountId, Self::TechAssetId, Self::DEXId>>;
 
     /// Trigger for auto claim.
     type Trigger: Default + Copy + Member + Parameter;

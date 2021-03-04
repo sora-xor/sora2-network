@@ -12,6 +12,7 @@ use frame_system::RawOrigin;
 //FIXME maybe try info or try from is better than From and Option.
 //use sp_std::convert::TryInto;
 use crate::primitives::Balance;
+use codec::{Decode, Encode};
 use sp_std::vec::Vec;
 
 /// Check on origin that it is a DEX owner.
@@ -173,7 +174,16 @@ pub type AccountIdOf<T> = <T as frame_system::Trait>::AccountId;
 /// Common DEX trait. Used for DEX-related pallets.
 pub trait Trait: frame_system::Trait + currencies::Trait {
     /// DEX identifier.
-    type DEXId: Parameter + Ord + Copy + Default + From<crate::primitives::DEXId>;
+    type DEXId: Parameter
+        + Ord
+        + Copy
+        + Default
+        + From<crate::primitives::DEXId>
+        + Clone
+        + Encode
+        + Decode
+        + Eq
+        + PartialEq;
 }
 
 /// Definition of a pending atomic swap action. It contains the following three phrases:

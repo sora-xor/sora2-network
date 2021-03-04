@@ -297,7 +297,6 @@ impl currencies::Trait for Test {
 
 impl assets::Trait for Test {
     type Event = Event;
-    type ExtraDEXId = common::DEXId;
     type ExtraLstId = common::LiquiditySourceType;
     type ExtraAccountId = [u8; 32];
     type ExtraTupleArg =
@@ -306,6 +305,10 @@ impl assets::Trait for Test {
     type GetBaseAssetId = GetBaseAssetId;
     type Currency = currencies::Module<Test>;
     type WeightInfo = ();
+}
+
+impl common::Trait for Test {
+    type DEXId = common::DEXId;
 }
 
 impl permissions::Trait for Test {

@@ -290,7 +290,6 @@ impl common::Trait for Runtime {
 
 impl assets::Trait for Runtime {
     type Event = ();
-    type ExtraDEXId = common::DEXId;
     type ExtraLstId = common::LiquiditySourceType;
     type ExtraAccountId = [u8; 32];
     type ExtraTupleArg =

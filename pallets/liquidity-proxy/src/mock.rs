@@ -121,7 +121,6 @@ impl currencies::Trait for Runtime {
 
 impl assets::Trait for Runtime {
     type Event = ();
-    type ExtraDEXId = DEXId;
     type ExtraLstId = common::LiquiditySourceType;
     type ExtraAccountId = [u8; 32];
     type ExtraTupleArg = common::AssetIdExtraTupleArg<DEXId, common::LiquiditySourceType, [u8; 32]>;

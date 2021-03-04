@@ -223,7 +223,6 @@ impl technical::Trait for Test {
 
 impl assets::Trait for Test {
     type Event = Event;
-    type ExtraDEXId = DEXId;
     type ExtraLstId = common::LiquiditySourceType;
     type ExtraAccountId = u64;
     type ExtraTupleArg = common::AssetIdExtraTupleArg<DEXId, common::LiquiditySourceType, u64>;

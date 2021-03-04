@@ -222,7 +222,6 @@ impl currencies::Trait for Test {
 
 impl assets::Trait for Test {
     type Event = ();
-    type ExtraDEXId = common::DEXId;
     type ExtraLstId = common::LiquiditySourceType;
     type ExtraAccountId = AccountId;
     type ExtraTupleArg =
