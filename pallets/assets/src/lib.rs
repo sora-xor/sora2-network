@@ -341,9 +341,6 @@ decl_module! {
 impl<T: Trait> Module<T> {
     /// Generates an `AssetId` for the given `Tuple<T>`, and insert record to storage map.
     pub fn register_asset_id_from_tuple(tuple: &Tuple<T>) -> T::AssetId
-    where
-        Tuple<T>: Encode,
-        AssetIdOf<T>: Encode,
     {
         let mut keccak = Keccak::v256();
         keccak.update(b"From Tuple");
