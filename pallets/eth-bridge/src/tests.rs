@@ -6,8 +6,7 @@ use crate::{
     types,
     types::{Bytes, Log},
     Address, AssetKind, BridgeStatus, ContractEvent, IncomingRequest, IncomingRequestKind,
-    NetworkConfig, OffchainRequest, OutgoingRequest, OutgoingTransfer, RequestStatus,
-    SignatureParams,
+    OffchainRequest, OutgoingRequest, OutgoingTransfer, RequestStatus, SignatureParams,
 };
 use codec::{Decode, Encode};
 use common::{balance, prelude::Balance, AssetId, AssetId32, AssetSymbol};
