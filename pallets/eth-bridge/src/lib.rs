@@ -1,3 +1,38 @@
+/*!
+# Multi-network Ethereum Bridge pallet
+
+## Description
+Provides functionality for cross-chain transfers of assets between Sora and Ethereum-based networks.
+
+## Overview
+Bridge can be divided in 3 main parts:
+1. Bridge pallet. A Substrate pallet (this one).
+2. Middle-layer. A part of the bridge pallet, more precisely, off-chain workers.
+3. Bridge contracts. A set of smart-contracts deployed on Ethereum-based networks.
+
+## Definitions
+_Thischain_ - working chain/network.
+_Sidechain_ - external chain/network.
+_Network_ - an ethereum-based network with a bridge contract.
+
+## Bridge pallet
+Stores basic information about networks: peers accounts, requests and registered assets/tokens.
+Networks can be added and managed through requests. Requests can be [incoming](`IncomingRequest`)
+(came from sidechain) and [outgoing](`OutgoingRequest`) (to sidechain). Each request has it's own
+hash (differs from extrinsic hash), status (`RequestStatus`), some specific data and additional information.
+Basically, requests life-cycle consists of 3 stages: validation, preparation and finalization.
+Requests are registered by accounts and finalized by _bridge peers_.
+
+## Middle-layer
+Works through off-chain workers. Any substrate node can be a bridge peer with its own
+secret key (differs from validator's key) and participate in bridge consensus (after election).
+The bridge peer set (`Peers` in storage) forms a N-of-M-multisignature account (`BridgeAccount`
+in storage), which is used to finalize all requests.
+
+## Bridge contract
+Persists the same multi-sig account (+- 1 signatory) for validating all its incoming requests.
+*/
+
 #![cfg_attr(not(feature = "std"), no_std)]
 
 #[macro_use]
@@ -34,6 +69,7 @@ use frame_support::{
     weights::{Pays, Weight},
     IterableStorageDoubleMap, Parameter, RuntimeDebug,
 };
+use frame_system::offchain::SignMessage;
 use frame_system::{
     ensure_root, ensure_signed,
     offchain::{AppCrypto, CreateSignedTransaction, SendSignedTransaction, Signer},
@@ -85,6 +121,7 @@ pub mod requests;
 mod tests;
 pub mod types;
 
+/// Substrate node RPC URL.
 const SUB_NODE_URL: &str = "http://127.0.0.1:9954";
 const HTTP_REQUEST_TIMEOUT_SECS: u64 = 10;
 
@@ -93,7 +130,9 @@ pub const TECH_ACCOUNT_MAIN: &[u8] = b"main";
 pub const TECH_ACCOUNT_AUTHORITY: &[u8] = b"authority";
 
 pub const KEY_TYPE: KeyTypeId = KeyTypeId(*b"ethb");
+/// A number of sidechain blocks needed to consider transaction as confirmed.
 pub const CONFIRMATION_INTERVAL: u64 = 30;
+// Off-chain worker storage paths.
 pub const STORAGE_SUB_NODE_URL_KEY: &[u8] = b"eth-bridge-ocw::sub-node-url";
 pub const STORAGE_PEER_SECRET_KEY: &[u8] = b"eth-bridge-ocw::secret-key";
 pub const STORAGE_ETH_NODE_PARAMS: &str = "eth-bridge-ocw::node-params";
@@ -103,6 +142,7 @@ type AssetIdOf<T> = <T as assets::Config>::AssetId;
 type Timepoint<T> = bridge_multisig::Timepoint<<T as frame_system::Config>::BlockNumber>;
 type BridgeNetworkId<T> = <T as Config>::NetworkId;
 
+/// Cryptography used by off-chain workers.
 pub mod crypto {
     use crate::KEY_TYPE;
 
@@ -123,6 +163,7 @@ pub mod crypto {
     }
 }
 
+/// Ethereum node parameters (url, credentials).
 #[derive(Encode, Decode, Eq, PartialEq, Clone, PartialOrd, Ord, RuntimeDebug)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct NodeParams {
@@ -130,12 +171,14 @@ pub struct NodeParams {
     credentials: Option<String>,
 }
 
+/// Local peer config. Contains a set of networks that the peer is responsible for.
 #[cfg(feature = "std")]
 #[derive(Clone, RuntimeDebug, Serialize, Deserialize)]
 pub struct PeerConfig<NetworkId: std::hash::Hash + Eq> {
     pub networks: HashMap<NetworkId, NodeParams>,
 }
 
+/// Separated components of a secp256k1 signature.
 #[derive(Encode, Decode, Eq, PartialEq, Clone, PartialOrd, Ord, RuntimeDebug)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[repr(C)]
@@ -156,12 +199,17 @@ impl fmt::Display for SignatureParams {
     }
 }
 
+/// Converts secp256k1 public key to an Ethereum address.
 pub fn public_key_to_eth_address(pub_key: &PublicKey) -> Address {
     let hash = keccak_256(&pub_key.serialize()[1..]);
     Address::from_slice(&hash[12..])
 }
 
-/// The type of request we can send to the offchain worker
+/// Outgoing (Thischain->Sidechain) request.
+///
+/// Each request, has the following properties: author, nonce, network ID and hash (calculates
+/// just-in-time).
+/// And the following methods: validate, prepare, finalize, cancel.
 #[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug)]
 #[cfg_attr(feature = "std", derive(Serialize))]
 pub enum OutgoingRequest<T: Config> {
@@ -200,6 +248,8 @@ impl<T: Config> OutgoingRequest<T> {
         }
     }
 
+    /// Encodes the request to a corresponding Ethereum contract function's arguments.
+    /// Also, serializes some parameters with `encode_packed` to be signed by peers.
     fn to_eth_abi(&self, tx_hash: H256) -> Result<OutgoingRequestEncoded, Error<T>> {
         match self {
             OutgoingRequest::Transfer(transfer) => transfer
@@ -232,6 +282,7 @@ impl<T: Config> OutgoingRequest<T> {
         }
     }
 
+    /// Calculates the request's hash.
     fn hash(&self) -> H256 {
         let hash = self.using_encoded(blake2_256);
         H256(hash)
@@ -251,6 +302,8 @@ impl<T: Config> OutgoingRequest<T> {
         }
     }
 
+    /// Checks that the request can be initiated (e.g. verifies that an account has
+    /// sufficient funds for transfer).
     fn validate(&self) -> Result<(), DispatchError> {
         match self {
             OutgoingRequest::Transfer(request) => request.validate(),
@@ -312,6 +365,7 @@ impl<T: Config> OutgoingRequest<T> {
     }
 }
 
+/// Types of requests that can be made from sidechain.
 #[derive(Clone, Copy, Encode, Decode, RuntimeDebug, PartialEq, Eq)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum IncomingRequestKind {
@@ -329,12 +383,16 @@ pub enum IncomingRequestKind {
 }
 
 impl IncomingRequestKind {
+    /// Returns `true` if the request should be used with XOR and VAL contracts.
     pub fn is_compat(&self) -> bool {
         *self == Self::AddPeerCompat || *self == Self::RemovePeerCompat
     }
 }
 
-/// The type of request we can send to the offchain worker
+/// Incoming (Sidechain->Thischain) request.
+///
+/// Each request, has the following properties: transaction hash, height, network ID and timepoint.
+/// And the following methods: validate, prepare, finalize, cancel.
 #[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug)]
 pub enum IncomingRequest<T: Config> {
     Transfer(IncomingTransfer<T>),
@@ -450,6 +508,7 @@ impl<T: Config> IncomingRequest<T> {
         }
     }
 
+    /// A sidechain height at which the sidechain transaction was added.
     fn at_height(&self) -> u64 {
         match self {
             IncomingRequest::Transfer(request) => request.at_height,
@@ -502,6 +561,7 @@ impl<T: Config> IncomingRequest<T> {
         }
     }
 
+    /// A timepoint at which the request was registered in thischain. Used my `multisig` pallet.
     pub fn timepoint(&self) -> Timepoint<T> {
         match self {
             IncomingRequest::Transfer(request) => request.timepoint(),
@@ -516,6 +576,8 @@ impl<T: Config> IncomingRequest<T> {
     }
 }
 
+/// Information needed for a request to be loaded from sidechain. Basically it's
+/// a hash of the transaction and a kind of the request.
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug)]
 pub struct IncomingPreRequest<T: Config> {
@@ -544,10 +606,13 @@ impl<T: Config> IncomingPreRequest<T> {
     }
 }
 
+/// A bridge operation handled by off-chain workers.
 #[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug)]
 #[cfg_attr(feature = "std", derive(Serialize))]
 pub enum OffchainRequest<T: Config> {
+    /// Thischain->Sidechain request with its hash.
     Outgoing(OutgoingRequest<T>, H256),
+    /// Information required to load corresponding incoming request from the sidechain network.
     Incoming(IncomingPreRequest<T>),
 }
 
@@ -557,10 +622,14 @@ impl<T: Config> OffchainRequest<T> {
         Self::Outgoing(request, hash)
     }
 
+    /// Calculates or returns an already calculated request hash.
     fn hash(&self) -> H256 {
         match self {
             OffchainRequest::Outgoing(_request, hash) => *hash,
             OffchainRequest::Incoming(request) => match request.kind {
+                // We calculate a different hash for these types of requests, to avoid
+                // collisions, because, for example, `MarkAsDone` pre-request contains a hash that
+                // is already added to the storage. One can think of these as 'meta-requests'.
                 IncomingRequestKind::CancelOutgoingRequest | IncomingRequestKind::MarkAsDone => {
                     H256(self.using_encoded(blake2_256))
                 }
@@ -569,6 +638,7 @@ impl<T: Config> OffchainRequest<T> {
         }
     }
 
+    /// The request's network.
     fn network_id(&self) -> T::NetworkId {
         match self {
             OffchainRequest::Outgoing(request, _) => request.network_id(),
@@ -576,6 +646,7 @@ impl<T: Config> OffchainRequest<T> {
         }
     }
 
+    /// An initiator of the request.
     fn author(&self) -> &T::AccountId {
         match self {
             OffchainRequest::Outgoing(request, _) => request.author(),
@@ -583,21 +654,8 @@ impl<T: Config> OffchainRequest<T> {
         }
     }
 
-    fn prepare(&mut self) -> Result<(), DispatchError> {
-        match self {
-            OffchainRequest::Outgoing(request, _) => request.prepare(),
-            OffchainRequest::Incoming(_) => Ok(()),
-        }
-    }
-
-    #[allow(unused)]
-    fn cancel(&self) -> Result<(), DispatchError> {
-        match self {
-            OffchainRequest::Outgoing(request, _) => request.cancel(),
-            OffchainRequest::Incoming(_) => Ok(()),
-        }
-    }
-
+    /// Checks that the request can be initiated (e.g. verifies that an account has
+    /// sufficient funds for transfer).
     fn validate(&self) -> Result<(), DispatchError> {
         match self {
             OffchainRequest::Outgoing(request, _) => request.validate(),
@@ -619,6 +677,23 @@ impl<T: Config> OffchainRequest<T> {
         }
     }
 
+    /// Performs additional state changes for the request (e.g. reserves funds for a transfer).
+    fn prepare(&mut self) -> Result<(), DispatchError> {
+        match self {
+            OffchainRequest::Outgoing(request, _) => request.prepare(),
+            OffchainRequest::Incoming(_) => Ok(()),
+        }
+    }
+
+    /// Undos the state changes done in the `prepare` function.
+    #[allow(unused)]
+    fn cancel(&self) -> Result<(), DispatchError> {
+        match self {
+            OffchainRequest::Outgoing(request, _) => request.cancel(),
+            OffchainRequest::Incoming(_) => Ok(()),
+        }
+    }
+
     pub fn as_outgoing(&self) -> Option<&OutgoingRequest<T>> {
         match self {
             OffchainRequest::Outgoing(r, _) => Some(r),
@@ -627,6 +702,8 @@ impl<T: Config> OffchainRequest<T> {
     }
 }
 
+/// Ethereum-encoded `OutgoingRequest`. Contains a payload for signing by peers. Also, can be used
+/// by client apps for more convenient contract function calls.
 #[derive(Clone, Encode, Decode, RuntimeDebug, PartialEq, Eq)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum OutgoingRequestEncoded {
@@ -673,6 +750,7 @@ impl OutgoingRequestEncoded {
         }
     }
 
+    /// Returns Ethereum tokens needed for the corresponding contract function.
     pub fn input_tokens(&self, signatures: Option<Vec<SignatureParams>>) -> Vec<Token> {
         match self {
             OutgoingRequestEncoded::Transfer(request) => request.input_tokens(signatures),
@@ -688,6 +766,14 @@ impl OutgoingRequestEncoded {
     }
 }
 
+/// Status of a registered request.
+///
+/// - Pending: request hasn't been approved yet.
+/// - Frozen: request stopped receiving confirmations (signatures) from peers.
+///   E.g. when the request is in 'cancellation' stage.
+/// - ApprovalsReady: request was approved and can be used in the sidechain.
+/// - Failed: an error occurred in one of the previous stages.
+/// - Done: request was finalized.
 #[derive(PartialEq, Eq, Encode, Decode, RuntimeDebug)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum RequestStatus {
@@ -698,6 +784,11 @@ pub enum RequestStatus {
     Done,
 }
 
+/// A type of asset registered on a bridge.
+///
+/// - Thischain: a Sora asset.
+/// - Sidechain: an Ethereum token.
+/// - SidechainOwned: an Ethereum token that can be minted on Sora.
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(Clone, Copy, Encode, Decode, PartialEq, Eq, RuntimeDebug)]
 pub enum AssetKind {
@@ -712,6 +803,7 @@ impl AssetKind {
     }
 }
 
+/// Network-specific parameters.
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug)]
 pub struct NetworkParams<AccountId: Ord> {
@@ -719,6 +811,7 @@ pub struct NetworkParams<AccountId: Ord> {
     pub initial_peers: BTreeSet<AccountId>,
 }
 
+/// Network configuration.
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug)]
 pub struct NetworkConfig<T: Config> {
@@ -729,6 +822,7 @@ pub struct NetworkConfig<T: Config> {
     pub reserves: Vec<(T::AssetId, Balance)>,
 }
 
+/// Bridge status.
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(Clone, Copy, PartialEq, Eq, Encode, Decode, RuntimeDebug)]
 pub enum BridgeStatus {
@@ -784,6 +878,9 @@ pub mod pallet {
 
     #[pallet::hooks]
     impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
+        /// Main off-chain worker procedure.
+        ///
+        /// Note: only one worker is expected to be used.
         fn offchain_worker(block_number: T::BlockNumber) {
             debug::debug!("Entering off-chain workers {:?}", block_number);
             if StorageValueRef::persistent(STORAGE_PEER_SECRET_KEY)
@@ -802,6 +899,12 @@ pub mod pallet {
 
     #[pallet::call]
     impl<T: Config> Pallet<T> {
+        /// Register a new bridge.
+        ///
+        /// Parameters:
+        /// - `bridge_contract_address` - address of smart-contract deployed on a corresponding
+        /// network.
+        /// - `initial_peers` - a set of initial network peers.
         #[pallet::weight(<T as Config>::WeightInfo::register_bridge())]
         pub fn register_bridge(
             origin: OriginFor<T>,
@@ -810,7 +913,7 @@ pub mod pallet {
         ) -> DispatchResultWithPostInfo {
             let author = ensure_signed(origin)?;
             // TODO: governence
-            let net_id = LastNetworkId::<T>::get();
+            let net_id = NextNetworkId::<T>::get();
             let peers_account_id = bridge_multisig::Module::<T>::register_multisig_inner(
                 author,
                 initial_peers.iter().cloned().collect(),
@@ -819,10 +922,15 @@ pub mod pallet {
             BridgeContractAddress::<T>::insert(net_id, bridge_contract_address);
             BridgeAccount::<T>::insert(net_id, peers_account_id);
             Peers::<T>::insert(net_id, initial_peers);
-            LastNetworkId::<T>::set(net_id + T::NetworkId::one());
+            NextNetworkId::<T>::set(net_id + T::NetworkId::one());
             Ok(().into())
         }
 
+        /// Add a Thischain asset to the bridge whitelist.
+        ///
+        /// Parameters:
+        /// - `asset_id` - Thischain asset identifier.
+        /// - `network_id` - network identifier to which the asset should be added.
         #[pallet::weight(<T as Config>::WeightInfo::add_asset())]
         pub fn add_asset(
             origin: OriginFor<T>,
@@ -844,6 +952,14 @@ pub mod pallet {
             Ok(().into())
         }
 
+        /// Add a Sidechain token to the bridge whitelist.
+        ///
+        /// Parameters:
+        /// - `token_address` - token contract address.
+        /// - `ticker` - token ticker (symbol).
+        /// - `name` - token name.
+        /// - `decimals` -  token precision.
+        /// - `network_id` - network identifier.
         #[pallet::weight(<T as Config>::WeightInfo::add_sidechain_token())]
         pub fn add_sidechain_token(
             origin: OriginFor<T>,
@@ -873,6 +989,13 @@ pub mod pallet {
             Ok(().into())
         }
 
+        /// Transfer some amount of the given asset to Sidechain address.
+        ///
+        /// Parameters:
+        /// - `asset_id` - thischain asset id.
+        /// - `to` - sidechain account id.
+        /// - `amount` - amount of the asset.
+        /// - `network_id` - network identifier.
         #[pallet::weight(<T as Config>::WeightInfo::transfer_to_sidechain())]
         pub fn transfer_to_sidechain(
             origin: OriginFor<T>,
@@ -898,6 +1021,12 @@ pub mod pallet {
             Ok(().into())
         }
 
+        /// Load incoming request from Sidechain by the given transaction hash.
+        ///
+        /// Parameters:
+        /// - `eth_tx_hash` - transaction hash on Sidechain.
+        /// - `kind` - incoming request kind.
+        /// - `network_id` - network identifier.
         #[pallet::weight(<T as Config>::WeightInfo::request_from_sidechain())]
         pub fn request_from_sidechain(
             origin: OriginFor<T>,
@@ -921,6 +1050,17 @@ pub mod pallet {
             Ok(().into())
         }
 
+        /// Finalize incoming request.
+        ///
+        /// If the `result` is `Ok`, then `finalize` is called on the request, if it fails, `cancel`
+        /// gets called. Request status changes depending on the result (`Done` or `Failed`), and
+        /// finally the request gets removed from the queue.
+        ///
+        /// Can be only called from a bridge account.
+        ///
+        /// Parameters:
+        /// - `result` - `IncomingRequest` if Ok or request hash and error, otherwise.
+        /// - `network_id` - network identifier.
         #[pallet::weight((0, Pays::No))]
         pub fn finalize_incoming_request(
             origin: OriginFor<T>,
@@ -961,6 +1101,12 @@ pub mod pallet {
             Ok(().into())
         }
 
+        /// Add a new peer to the bridge peers set.
+        ///
+        /// Parameters:
+        /// - `account_id` - account id on thischain.
+        /// - `address` - account id on sidechain.
+        /// - `network_id` - network identifier.
         #[pallet::weight(<T as Config>::WeightInfo::add_peer())]
         pub fn add_peer(
             origin: OriginFor<T>,
@@ -998,6 +1144,11 @@ pub mod pallet {
             Ok(().into())
         }
 
+        /// Remove peer from the the bridge peers set.
+        ///
+        /// Parameters:
+        /// - `account_id` - account id on thischain.
+        /// - `network_id` - network identifier.
         #[pallet::weight(<T as Config>::WeightInfo::remove_peer())]
         pub fn remove_peer(
             origin: OriginFor<T>,
@@ -1035,6 +1186,12 @@ pub mod pallet {
             Ok(().into())
         }
 
+        /// Prepare the given bridge for migration.
+        ///
+        /// Can only be called by an authority.
+        ///
+        /// Parameters:
+        /// - `network_id` - bridge network identifier.
         #[pallet::weight(<T as Config>::WeightInfo::prepare_for_migration())]
         pub fn prepare_for_migration(
             origin: OriginFor<T>,
@@ -1055,6 +1212,14 @@ pub mod pallet {
             Ok(().into())
         }
 
+        /// Migrate the given bridge to a new smart-contract.
+        ///
+        /// Can only be called by an authority.
+        ///
+        /// Parameters:
+        /// - `new_contract_address` - new sidechain ocntract address.
+        /// - `erc20_native_tokens` - migrated assets ids.
+        /// - `network_id` - bridge network identifier.
         #[pallet::weight(<T as Config>::WeightInfo::migrate())]
         pub fn migrate(
             origin: OriginFor<T>,
@@ -1079,7 +1244,12 @@ pub mod pallet {
             Ok(().into())
         }
 
-        // TODO: handle incoming requests without register
+        /// Register the given incoming request and add it to the queue.
+        ///
+        /// Calls `prepare` on the request, adds it to incoming requests queue and map, and removes
+        /// corresponding pre-incoming request from requests queue.
+        ///
+        /// Can only be called by a bridge account.
         #[pallet::weight((0, Pays::No))]
         pub fn register_incoming_request(
             origin: OriginFor<T>,
@@ -1092,7 +1262,7 @@ pub mod pallet {
             let net_id = incoming_request.network_id();
             ensure!(
                 !PendingIncomingRequests::<T>::get(net_id).contains(&tx_hash),
-                Error::<T>::TransferIsAlreadyRegistered
+                Error::<T>::RequestIsAlreadyRegistered
             );
             if let Err(e) = incoming_request.prepare() {
                 Self::finalize_incoming_request(origin, Err((tx_hash, e)), net_id)?;
@@ -1104,6 +1274,10 @@ pub mod pallet {
             Ok(().into())
         }
 
+        /// Approve the given outgoing request. The function is used by bridge peers.
+        ///
+        /// Verifies the peer signature of the given request and adds it to `RequestApprovals`.
+        /// Once quorum is collected, the request gets finalized and removed from request queue.
         #[pallet::weight((0, Pays::No))]
         pub fn approve_request(
             origin: OriginFor<T>,
@@ -1156,6 +1330,7 @@ pub mod pallet {
             Ok(().into())
         }
 
+        /// Finalizes `MarkAsDone` incoming request.
         // TODO: maybe rewrite to finalize with `finalize_incoming_request`
         #[pallet::weight(<T as Config>::WeightInfo::finalize_mark_as_done())]
         pub fn finalize_mark_as_done(
@@ -1177,6 +1352,9 @@ pub mod pallet {
             Ok(().into())
         }
 
+        /// Add the given peer to the peers set without additional checks.
+        ///
+        /// Can only be called by a root account.
         #[pallet::weight(<T as Config>::WeightInfo::force_add_peer())]
         pub fn force_add_peer(
             origin: OriginFor<T>,
@@ -1198,108 +1376,177 @@ pub mod pallet {
     #[pallet::metadata(AccountIdOf<T> = "AccountId")]
     #[pallet::generate_deposit(pub(super) fn deposit_event)]
     pub enum Event<T: Config> {
-        SomethingStored(u32, AccountIdOf<T>),
+        /// New request has been registered. [Request Hash]
         RequestRegistered(H256),
+        /// The request's approvals have been collected. [Encoded Outgoing Request, Signatures]
         ApprovalsCollected(OutgoingRequestEncoded, BTreeSet<SignatureParams>),
+        /// The request finalization has been failed. [Request Hash]
         RequestFinalizationFailed(H256),
+        /// The incoming request finalization has been failed. [Request Hash]
         IncomingRequestFinalizationFailed(H256),
+        /// The incoming request has been finalized. [Request Hash]
         IncomingRequestFinalized(H256),
     }
 
     #[pallet::error]
     pub enum Error<T> {
-        StorageOverflow,
+        /// Error fetching HTTP.
         HttpFetchingError,
+        /// Account not found.
         AccountNotFound,
+        /// Forbidden.
         Forbidden,
+        /// Transfer is already registered.
         TransferIsAlreadyRegistered,
+        /// Failed to load sidechain transaction.
         FailedToLoadTransaction,
+        /// Failed to load token precision.
         FailedToLoadPrecision,
+        /// Unknown method ID.
         UnknownMethodId,
+        /// Invalid contract function input.
         InvalidFunctionInput,
+        /// Invalid peer signature.
         InvalidSignature,
+        /// Invalid uint value.
         InvalidUint,
+        /// Invalid amount value.
         InvalidAmount,
+        /// Invalid balance value.
         InvalidBalance,
+        /// Invalid string value.
         InvalidString,
+        /// Invalid byte value.
         InvalidByte,
+        /// Invalid address value.
         InvalidAddress,
+        /// Invalid asset id value.
         InvalidAssetId,
+        /// Invalid account id value.
         InvalidAccountId,
+        /// Invalid bool value.
         InvalidBool,
+        /// Invalid h256 value.
         InvalidH256,
+        /// Unknown contract event.
         UnknownEvent,
+        /// Unknown token address.
         UnknownTokenAddress,
+        /// No local account for signing available.
         NoLocalAccountForSigning,
+        /// Unsupported asset id.
         UnsupportedAssetId,
+        /// Failed to sign message.
         FailedToSignMessage,
+        /// Failed to send signed message.
         FailedToSendSignedTransaction,
+        /// Token is not owned by the author.
         TokenIsNotOwnedByTheAuthor,
+        /// Token is already added.
         TokenIsAlreadyAdded,
+        /// Duplicated request.
         DuplicatedRequest,
+        /// Token is unsupported.
         UnsupportedToken,
+        /// Unknown peer address.
         UnknownPeerAddress,
+        /// Ethereum ABI encoding error.
         EthAbiEncodingError,
+        /// Ethereum ABI decoding error.
         EthAbiDecodingError,
+        /// Ethereum transaction is failed.
         EthTransactionIsFailed,
+        /// Ethereum transaction is succeeded.
         EthTransactionIsSucceeded,
+        /// Ethereum transaction is succeeded.
         NoPendingPeer,
+        /// Wrong pending peer.
         WrongPendingPeer,
+        /// Too many pending peers.
         TooManyPendingPeers,
+        /// Failed to get an asset by id.
         FailedToGetAssetById,
+        /// Can't add more peers.
         CantAddMorePeers,
+        /// Can't remove more peers.
         CantRemoveMorePeers,
+        /// Peer is already added.
         PeerIsAlreadyAdded,
+        /// Unknown peer id.
         UnknownPeerId,
+        /// Can't reserve funds.
         CantReserveFunds,
+        /// Funds are already claimed.
         AlreadyClaimed,
+        /// Failed to load substrate block header.
         FailedToLoadBlockHeader,
+        /// Failed to load substrate finalized head.
         FailedToLoadFinalizedHead,
+        /// Unknown contract address.
         UnknownContractAddress,
+        /// Invalid contract input.
         InvalidContractInput,
+        /// Request is not owned by the author.
         RequestIsNotOwnedByTheAuthor,
+        /// Failed to parse transaction hash in a call.
         FailedToParseTxHashInCall,
+        /// Request is not ready.
         RequestIsNotReady,
+        /// Unknown request.
         UnknownRequest,
+        /// Request is not finalized on Sidechain.
         RequestNotFinalizedOnSidechain,
+        /// Unknown network.
         UnknownNetwork,
+        /// Contract is in migration stage.
         ContractIsInMigrationStage,
+        /// Contract is not on migration stage.
         ContractIsNotInMigrationStage,
+        /// Contract is already in migration stage.
         ContractIsAlreadyInMigrationStage,
+        /// Functionality is unavailable.
         Unavailable,
+        /// Unknown error.
         Other,
     }
 
+    /// Registered requests queue handled by off-chain workers.
     #[pallet::storage]
     #[pallet::getter(fn requests_queue)]
     pub type RequestsQueue<T: Config> =
         StorageMap<_, Twox64Concat, T::NetworkId, Vec<OffchainRequest<T>>, ValueQuery>;
 
+    /// Incoming requests.
     #[pallet::storage]
     #[pallet::getter(fn incoming_requests)]
     pub type IncomingRequests<T: Config> =
         StorageDoubleMap<_, Twox64Concat, T::NetworkId, Identity, H256, IncomingRequest<T>>;
 
+    /// Registered incoming requests queue handled by off-chain workers.
     #[pallet::storage]
     #[pallet::getter(fn pending_incoming_requests)]
     pub type PendingIncomingRequests<T: Config> =
         StorageMap<_, Twox64Concat, T::NetworkId, BTreeSet<H256>, ValueQuery>;
 
+    /// Registered requests.
     #[pallet::storage]
     #[pallet::getter(fn request)]
     pub type Request<T: Config> =
         StorageDoubleMap<_, Twox64Concat, T::NetworkId, Identity, H256, OffchainRequest<T>>;
 
+    /// Requests statuses.
     #[pallet::storage]
     #[pallet::getter(fn request_status)]
     pub type RequestStatuses<T: Config> =
         StorageDoubleMap<_, Twox64Concat, T::NetworkId, Identity, H256, RequestStatus>;
 
+    /// Requests submission height map (on substrate).
     #[pallet::storage]
     #[pallet::getter(fn request_submission_height)]
     pub type RequestSubmissionHeight<T: Config> =
         StorageDoubleMap<_, Twox64Concat, T::NetworkId, Identity, H256, T::BlockNumber, ValueQuery>;
 
+    /// Outgoing requests approvals.
     #[pallet::storage]
     #[pallet::getter(fn approvals)]
     pub(super) type RequestApprovals<T: Config> = StorageDoubleMap<
@@ -1312,31 +1559,37 @@ pub mod pallet {
         ValueQuery,
     >;
 
+    /// Requests made by an account.
     #[pallet::storage]
     #[pallet::getter(fn account_requests)]
     pub(super) type AccountRequests<T: Config> =
         StorageMap<_, Blake2_128Concat, T::AccountId, Vec<(T::NetworkId, H256)>, ValueQuery>;
 
+    /// Registered asset kind.
     #[pallet::storage]
     #[pallet::getter(fn registered_asset)]
     pub(super) type RegisteredAsset<T: Config> =
         StorageDoubleMap<_, Twox64Concat, T::NetworkId, Identity, T::AssetId, AssetKind>;
 
+    /// Registered token `AssetId` on Thischain.
     #[pallet::storage]
     #[pallet::getter(fn registered_sidechain_asset)]
     pub(super) type RegisteredSidechainAsset<T: Config> =
         StorageDoubleMap<_, Twox64Concat, T::NetworkId, Blake2_128Concat, Address, T::AssetId>;
 
+    /// Registered asset address on Sidechain.
     #[pallet::storage]
     #[pallet::getter(fn registered_sidechain_token)]
     pub(super) type RegisteredSidechainToken<T: Config> =
         StorageDoubleMap<_, Twox64Concat, T::NetworkId, Blake2_128Concat, T::AssetId, Address>;
 
+    /// Network peers set.
     #[pallet::storage]
     #[pallet::getter(fn peers)]
     pub(super) type Peers<T: Config> =
         StorageMap<_, Twox64Concat, T::NetworkId, BTreeSet<T::AccountId>, ValueQuery>;
 
+    /// Network pending peer TODO.
     #[pallet::storage]
     #[pallet::getter(fn pending_peer)]
     pub(super) type PendingPeer<T: Config> =
@@ -1346,6 +1599,7 @@ pub mod pallet {
     #[pallet::storage]
     pub(super) type PendingEthPeersSync<T: Config> = StorageValue<_, EthPeersSync, ValueQuery>;
 
+    /// Peer account ID on Thischain.
     #[pallet::storage]
     #[pallet::getter(fn peer_account_id)]
     pub(super) type PeerAccountId<T: Config> = StorageDoubleMap<
@@ -1358,6 +1612,7 @@ pub mod pallet {
         ValueQuery,
     >;
 
+    /// Peer address on Sidechain.
     #[pallet::storage]
     #[pallet::getter(fn peer_address)]
     pub(super) type PeerAddress<T: Config> = StorageDoubleMap<
@@ -1370,43 +1625,51 @@ pub mod pallet {
         ValueQuery,
     >;
 
-    /// Multi-signature bridge peers' account. `None` if there is no network with the given ID.
+    /// Multi-signature bridge peers' account. `None` if there is no account and network with the given ID.
     #[pallet::storage]
     #[pallet::getter(fn bridge_account)]
     pub(super) type BridgeAccount<T: Config> =
         StorageMap<_, Twox64Concat, T::NetworkId, T::AccountId>;
 
+    /// Thischain authority account.
     #[pallet::storage]
     #[pallet::getter(fn authority_account)]
     pub(super) type AuthorityAccount<T: Config> = StorageValue<_, T::AccountId, ValueQuery>;
 
+    /// Thischain authority account. TODO
     #[pallet::storage]
     #[pallet::getter(fn bridge_contract_status)]
     pub(super) type BridgeBridgeStatus<T: Config> =
         StorageMap<_, Twox64Concat, T::NetworkId, BridgeStatus, ValueQuery>;
 
+    /// Smart-contract address on Sidechain.
     #[pallet::storage]
     #[pallet::getter(fn bridge_contract_address)]
     pub(super) type BridgeContractAddress<T: Config> =
         StorageMap<_, Twox64Concat, T::NetworkId, Address, ValueQuery>;
 
+    /// Sora XOR master contract address.
     #[pallet::storage]
     #[pallet::getter(fn xor_master_contract_address)]
     pub(super) type XorMasterContractAddress<T: Config> = StorageValue<_, Address, ValueQuery>;
 
+    /// Sora VAL master contract address.
     #[pallet::storage]
     #[pallet::getter(fn val_master_contract_address)]
     pub(super) type ValMasterContractAddress<T: Config> = StorageValue<_, Address, ValueQuery>;
 
+    /// Sora PSWAP contract address.
     #[pallet::storage]
     #[pallet::getter(fn pswap_contract_address)]
     pub(super) type PswapContractAddress<T: Config> = StorageValue<_, Address, ValueQuery>;
 
+    /// PSWAP owners on Sidechain. `None` - no owner, `Some(0)` - already claimed.
     #[pallet::storage]
     pub(super) type PswapOwners<T: Config> = StorageMap<_, Identity, Address, Balance>;
 
+    /// Next Network ID counter.
     #[pallet::storage]
-    pub(super) type LastNetworkId<T: Config> = StorageValue<_, T::NetworkId, ValueQuery>;
+    pub(super) type NextNetworkId<T: Config> = StorageValue<_, T::NetworkId, ValueQuery>;
 
     #[pallet::genesis_config]
     pub struct GenesisConfig<T: Config> {
@@ -1435,6 +1698,7 @@ pub mod pallet {
     #[pallet::genesis_build]
     impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
         fn build(&self) {
+            // TODO:
             AuthorityAccount::<T>::put(&self.authority_account);
             XorMasterContractAddress::<T>::put(&self.xor_master_contract_address);
             ValMasterContractAddress::<T>::put(&self.val_master_contract_address);
@@ -1453,6 +1717,7 @@ pub mod pallet {
                     }
                     RegisteredAsset::<T>::insert(net_id, asset_id, kind);
                 }
+                // TODO: consider to change to Limited.
                 let scope = Scope::Unlimited;
                 let permission_ids = [MINT];
                 for permission_id in &permission_ids {
@@ -1464,7 +1729,7 @@ pub mod pallet {
                     )
                     .expect("failed to assign permissions for a bridge account");
                 }
-                LastNetworkId::<T>::set(net_id + T::NetworkId::one());
+                NextNetworkId::<T>::set(net_id + T::NetworkId::one());
             }
             for (address, balance) in &self.pswap_owners {
                 PswapOwners::<T>::insert(Address::from_slice(address.as_bytes()), balance);
@@ -1477,6 +1742,7 @@ pub fn majority(peers_count: usize) -> usize {
     peers_count - (peers_count - 1) / 3
 }
 
+/// Events that can be emitted by Sidechain smart-contract.
 #[cfg_attr(feature = "std", derive(PartialEq, Eq, RuntimeDebug))]
 pub enum ContractEvent<AssetId, Address, AccountId, Balance> {
     Withdraw(AssetId, Balance, Address, AccountId),
@@ -1487,6 +1753,7 @@ pub enum ContractEvent<AssetId, Address, AccountId, Balance> {
     Migrated(Address),
 }
 
+/// A helper for encoding bridge types into ethereum tokens.
 #[derive(PartialEq)]
 pub struct Decoder<T: Config> {
     tokens: Vec<Token>,
@@ -1619,15 +1886,22 @@ impl<T: Config> Decoder<T> {
     }
 }
 
-impl<T: Config> Decoder<T> {
-    pub fn write_string(&mut self, val: String) {
-        self.tokens.push(Token::String(val));
-    }
-}
-
 impl<T: Config> Module<T> {
+    /// Registers the given off-chain request.
+    ///
+    /// Conditions for registering:
+    /// 1. Network ID should be valid.
+    /// 2. If the bridge is migrating and request is outgoing, it should be allowed during migration.
+    /// 3. Request status should be empty or `Failed` (for resubmission).
+    /// 4. There is no registered request with the same hash.
+    /// 5. The request's `validate` and `prepare` should pass.
     fn add_request(mut request: OffchainRequest<T>) -> Result<(), DispatchError> {
         let net_id = request.network_id();
+        ensure!(
+            BridgeAccount::<T>::get(net_id).is_some(),
+            Error::<T>::UnknownNetwork
+        );
+
         if let Some(outgoing_req) = request.as_outgoing() {
             ensure!(
                 Self::bridge_contract_status(net_id) != BridgeStatus::Migrating
@@ -1637,10 +1911,6 @@ impl<T: Config> Module<T> {
         }
 
         let hash = request.hash();
-        ensure!(
-            BridgeAccount::<T>::get(net_id).is_some(),
-            Error::<T>::UnknownNetwork
-        );
         let can_resubmit = RequestStatuses::<T>::get(net_id, &hash)
             .map(|status| status == RequestStatus::Failed)
             .unwrap_or(false);
@@ -1663,6 +1933,7 @@ impl<T: Config> Module<T> {
         Ok(())
     }
 
+    /// Finds and removes request from `RequestsQueue` by its hash and network id.
     fn remove_request_from_queue(network_id: T::NetworkId, hash: &H256) {
         RequestsQueue::<T>::mutate(network_id, |queue| {
             if let Some(pos) = queue.iter().position(|x| x.hash() == *hash) {
@@ -1671,6 +1942,8 @@ impl<T: Config> Module<T> {
         });
     }
 
+    /// Loops through the given array of logs and finds the first one that matches the kind
+    /// and topic.
     fn parse_main_event(
         logs: &[Log],
         kind: IncomingRequestKind,
@@ -1747,6 +2020,7 @@ impl<T: Config> Module<T> {
         Err(Error::<T>::UnknownEvent.into())
     }
 
+    /// Prepares the message to be signed. Uses an Ethereum recommended scheme.
     fn prepare_message(msg: &[u8]) -> secp256k1::Message {
         let hash = keccak_256(msg);
         let mut prefix = b"\x19Ethereum Signed Message:\n32".to_vec();
@@ -1755,6 +2029,8 @@ impl<T: Config> Module<T> {
         secp256k1::Message::parse_slice(&hash).expect("hash size == 256 bits; qed")
     }
 
+    /// Verifies the message signed by a peer. Also, compares the given `AccountId` with the given
+    /// public key.
     fn verify_message(
         msg: &[u8],
         signature: &SignatureParams,
@@ -1778,6 +2054,7 @@ impl<T: Config> Module<T> {
         }
     }
 
+    /// Signs a message with a peer's secret key.
     fn sign_message(msg: &[u8]) -> (SignatureParams, secp256k1::PublicKey) {
         let secret_s = StorageValueRef::persistent(STORAGE_PEER_SECRET_KEY);
         let sk = secp256k1::SecretKey::parse_slice(
@@ -1802,6 +2079,14 @@ impl<T: Config> Module<T> {
         )
     }
 
+    /// Procedure for handling incoming requests.
+    ///
+    /// For an incoming request, a premise for its finalization will be block confirmation in PoW
+    /// consensus. Since the confirmation is probabilistic, we need to choose a relatively large
+    /// number of how many blocks should be mined after a corresponding transaction
+    /// (`CONFIRMATION_INTERVAL`).
+    ///
+    /// An off-chain worker keeps track of already handled requests in local storage.
     fn handle_pending_incoming_requests(network_id: T::NetworkId, current_eth_height: u64) {
         let s_approved_pending_incoming_requests =
             StorageValueRef::persistent(b"eth-bridge-ocw::approved-pending-incoming-request");
@@ -1832,6 +2117,8 @@ impl<T: Config> Module<T> {
         s_approved_pending_incoming_requests.set(&approved);
     }
 
+    /// Queries the current finalized height of the local node with `chain_getFinalizedHead`
+    /// RPC call.
     fn load_substrate_finalized_height() -> Result<T::BlockNumber, Error<T>> {
         let hash =
             Self::substrate_json_rpc_request::<_, types::H256>("chain_getFinalizedHead", &())
@@ -1849,6 +2136,11 @@ impl<T: Config> Module<T> {
         Ok(number)
     }
 
+    /// Handles the result of parsing pre-incoming request.
+    ///
+    /// If the result was `Err(HttpFetchingError)`, the result will be ignored and parsed again
+    /// later. Otherwise, a multisig transaction will be sent from a peer account to register the
+    /// result (see `register_incoming_request`).
     fn handle_parsed_incoming_request_result(
         result: Result<IncomingRequest<T>, DispatchError>,
         timepoint: Timepoint<T>,
@@ -1874,6 +2166,10 @@ impl<T: Config> Module<T> {
         }
     }
 
+    /// Parses a 'cancel' incoming request from the given transaction receipt and pre-request.
+    ///
+    /// This special flow (unlike `parse_incoming_request`) requires transaction to be _failed_,
+    /// because only in this case the initial request can be cancelled.
     fn parse_cancel_incoming_request(
         tx_receipt: TransactionReceipt,
         pre_request: IncomingPreRequest<T>,
@@ -1923,6 +2219,10 @@ impl<T: Config> Module<T> {
         ))
     }
 
+    /// Handles a special case of incoming request - marking as done.
+    ///
+    /// This special flow (unlike `parse_incoming_request`) only queries contract's `is_used`
+    /// variable to check if the request was actually made.
     fn handle_mark_as_done_incoming_request(
         pre_request: IncomingPreRequest<T>,
     ) -> Result<(), Error<T>> {
@@ -1940,6 +2240,11 @@ impl<T: Config> Module<T> {
         Self::send_signed_transaction::<bridge_multisig::Call<T>>(call)
     }
 
+    /// Handles the given off-chain request.
+    ///
+    /// The function delegates further handling depending on request kind.
+    /// There are 4 flows. 3 for incoming request: handle 'mark as done', handle 'cancel outgoing
+    /// request' and for the rest, and only one for all outgoing requests.
     fn handle_offchain_request(
         request: OffchainRequest<T>,
         request_hash: H256,
@@ -1984,6 +2289,13 @@ impl<T: Config> Module<T> {
         }
     }
 
+    /// Retrieves latest needed information about networks and handles corresponding
+    /// requests queues.
+    ///
+    /// At first, it loads current Sidechain height and current finalized Thischain height.
+    /// Then it handles each request in the requests queue if it was submitted at least at
+    /// the finalized height. The same is done with incoming requests queue. All handled requests
+    /// are added to local storage to not be handled twice by the off-chain worker.
     fn handle_network(network_id: T::NetworkId) {
         let string = format!("eth-bridge-ocw::eth-height-{:?}", network_id);
         let s_eth_height = StorageValueRef::persistent(string.as_bytes());
@@ -2043,6 +2355,7 @@ impl<T: Config> Module<T> {
         Self::handle_pending_incoming_requests(network_id, current_eth_height);
     }
 
+    /// Handles registered networks.
     fn offchain() {
         let s_networks_ids = StorageValueRef::persistent(STORAGE_NETWORK_IDS_KEY);
         let network_ids = s_networks_ids
@@ -2054,6 +2367,7 @@ impl<T: Config> Module<T> {
         }
     }
 
+    /// Makes off-chain HTTP request.
     fn http_request(
         url: &str,
         body: Vec<u8>,
@@ -2089,6 +2403,7 @@ impl<T: Config> Module<T> {
         Ok(resp)
     }
 
+    /// Makes JSON-RPC request.
     fn json_rpc_request<I: Serialize, O: for<'de> Deserialize<'de>>(
         url: &str,
         id: u64,
@@ -2149,6 +2464,8 @@ impl<T: Config> Module<T> {
             .collect()
     }
 
+    /// Makes request to a Sidechain node. The node URL and credentials are stored in the local
+    /// storage.
     fn eth_json_rpc_request<I: Serialize, O: for<'de> Deserialize<'de>>(
         method: &str,
         params: &I,
@@ -2170,6 +2487,7 @@ impl<T: Config> Module<T> {
         Self::json_rpc_request(&node_params.url, 1, method, params, &headers)
     }
 
+    /// Makes request to the local node. The node URL is stored in the local storage.
     fn substrate_json_rpc_request<I: Serialize, O: for<'de> Deserialize<'de>>(
         method: &str,
         params: &I,
@@ -2184,6 +2502,7 @@ impl<T: Config> Module<T> {
         Self::json_rpc_request(&node_url, 0, method, params, &headers)
     }
 
+    /// Sends a substrate transaction signed by an off-chain worker.
     fn send_signed_transaction<LocalCall: Clone + GetCallName>(
         call: LocalCall,
     ) -> Result<(), Error<T>>
@@ -2212,6 +2531,7 @@ impl<T: Config> Module<T> {
         Ok(())
     }
 
+    /// Queries Sidechain's contract variable `is_used`.
     fn load_is_used(hash: H256, network_id: T::NetworkId) -> Result<bool, Error<T>> {
         // `used(bytes32)`
         let mut data: Vec<_> = hex!("b07c411f").to_vec();
@@ -2247,6 +2567,7 @@ impl<T: Config> Module<T> {
         Ok(result)
     }
 
+    /// Registers new sidechain asset and grants mint permission to the bridge account.
     fn register_sidechain_asset(
         token_address: Address,
         precision: BalancePrecision,
@@ -2286,6 +2607,8 @@ impl<T: Config> Module<T> {
         Ok(asset_id)
     }
 
+    /// Gets Thischain asset id and its kind. If the `raw_asset_id` is `zero`, it means that it's
+    /// a Sidechain(Owned) asset, otherwise, Thischain.
     fn get_asset_by_raw_asset_id(
         raw_asset_id: H256,
         token_address: &Address,
@@ -2313,6 +2636,11 @@ impl<T: Config> Module<T> {
         }
     }
 
+    /// Tries to parse a method call on one of old Sora contracts (XOR and VAL).
+    ///
+    /// Since the XOR and VAL contracts don't have the same interface and events that the modern
+    /// bridge contract have, and since they can't be changed we have to provide a special parsing
+    /// flow for some of the methods that we might use.
     fn parse_old_incoming_request_method_call(
         incoming_request: IncomingPreRequest<T>,
         tx: Transaction,
@@ -2395,6 +2723,10 @@ impl<T: Config> Module<T> {
         }
     }
 
+    /// Tries to parse incoming request from the given pre-request and transaction receipt.
+    ///
+    /// The transaction should be approved and contain a known event from which the request
+    /// is built.
     fn parse_incoming_request(
         tx_receipt: TransactionReceipt,
         incoming_pre_request: IncomingPreRequest<T>,
@@ -2427,6 +2759,7 @@ impl<T: Config> Module<T> {
         )
     }
 
+    /// Send result of loading and parsing an incoming request.
     fn send_incoming_request_result(
         incoming_request_result: Result<IncomingRequest<T>, (H256, Timepoint<T>, DispatchError)>,
         network_id: T::NetworkId,
@@ -2454,6 +2787,8 @@ impl<T: Config> Module<T> {
         Ok(())
     }
 
+    /// Encodes the given outgoing request to Ethereum ABI, then signs the data by off-chain worker's
+    /// key and sends the approve as a signed transaction.
     fn handle_outgoing_request(request: OutgoingRequest<T>) -> Result<(), Error<T>> {
         let signer = Signer::<T, T::PeerId>::any_account();
         if !signer.can_sign() {
@@ -2489,12 +2824,16 @@ impl<T: Config> Module<T> {
         Ok(())
     }
 
+    /// Queries current height of Sidechain.
     fn load_current_height(network_id: T::NetworkId) -> Option<u64> {
         Self::eth_json_rpc_request::<_, types::U64>("eth_blockNumber", &(), network_id)?
             .first()
             .map(|x| x.as_u64())
     }
 
+    /// Checks that the given contract address is known to the bridge network.
+    ///
+    /// There are special cases for PSWAP, XOR and VAL contracts.
     fn ensure_known_contract(
         to: Address,
         network_id: T::NetworkId,
@@ -2530,6 +2869,7 @@ impl<T: Config> Module<T> {
         Ok(())
     }
 
+    /// Loads a Sidechain transaction by the hash and ensures that it came from a known contract.
     fn load_tx(
         hash: H256,
         network_id: T::NetworkId,
@@ -2552,6 +2892,7 @@ impl<T: Config> Module<T> {
         Ok(tx_receipt)
     }
 
+    /// Loads a Sidechain transaction receipt by the hash and ensures that it came from a known contract.
     // TODO: check if transaction failed due to gas limit
     fn load_tx_receipt(
         hash: H256,
@@ -2575,15 +2916,18 @@ impl<T: Config> Module<T> {
         Ok(tx_receipt)
     }
 
+    /// Checks if the account is a bridge peer.
     fn is_peer(who: &T::AccountId, network_id: T::NetworkId) -> bool {
         Self::peers(network_id).into_iter().any(|i| i == *who)
     }
 
+    /// Ensures that the account is a bridge peer.
     fn ensure_peer(who: &T::AccountId, network_id: T::NetworkId) -> DispatchResult {
         ensure!(Self::is_peer(who, network_id), Error::<T>::Forbidden);
         Ok(())
     }
 
+    /// Ensures that the account is a bridge multisig account.
     fn ensure_bridge_account(
         who: &T::AccountId,
         network_id: T::NetworkId,

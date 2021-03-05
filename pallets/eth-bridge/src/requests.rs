@@ -25,6 +25,7 @@ use sp_std::prelude::*;
 pub const MIN_PEERS: usize = 4;
 pub const MAX_PEERS: usize = 100;
 
+/// Incoming request for adding Sidechain token to a bridge.
 #[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug)]
 #[cfg_attr(feature = "std", derive(Serialize))]
 pub struct IncomingAddToken<T: Config> {
@@ -39,6 +40,7 @@ pub struct IncomingAddToken<T: Config> {
 }
 
 impl<T: Config> IncomingAddToken<T> {
+    /// Registers the sidechain asset.
     pub fn finalize(&self) -> Result<H256, DispatchError> {
         crate::Pallet::<T>::register_sidechain_asset(
             self.token_address,
@@ -54,6 +56,7 @@ impl<T: Config> IncomingAddToken<T> {
     }
 }
 
+/// Incoming request for adding/removing peer in a bridge.
 #[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct IncomingChangePeers<T: Config> {
@@ -67,6 +70,10 @@ pub struct IncomingChangePeers<T: Config> {
 }
 
 impl<T: Config> IncomingChangePeers<T> {
+    /// Checks if the pending peer matches with a peer in the request, then adds a signatory to the
+    /// bridge multisig account and to the peers set (if `added` is true), otherwise does nothing,
+    /// because the peer was removed early (in the corresponding outgoing request). Finally, it
+    /// cleans the pending peer value.
     pub fn finalize(&self) -> Result<H256, DispatchError> {
         let pending_peer =
             crate::PendingPeer::<T>::get(self.network_id).ok_or(Error::<T>::NoPendingPeer)?;
@@ -181,6 +188,7 @@ impl<T: Config> IncomingChangePeersCompat<T> {
     }
 }
 
+/// Incoming request for transferring token from Sidechain to Thischain.
 #[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct IncomingTransfer<T: Config> {
@@ -197,6 +205,7 @@ pub struct IncomingTransfer<T: Config> {
 }
 
 impl<T: Config> IncomingTransfer<T> {
+    /// If the asset kind is owned, then the `amount` of funds is reserved on the bridge account.
     pub fn prepare(&self) -> Result<(), DispatchError> {
         if self.asset_kind.is_owned() {
             let bridge_account = get_bridge_account::<T>(self.network_id);
@@ -205,6 +214,7 @@ impl<T: Config> IncomingTransfer<T> {
         Ok(())
     }
 
+    /// Unreserves previously reserved amount of funds if the asset kind is owned.
     pub fn unreserve(&self) {
         if self.asset_kind.is_owned() {
             let bridge_acc = &get_bridge_account::<T>(self.network_id);
@@ -214,11 +224,14 @@ impl<T: Config> IncomingTransfer<T> {
         }
     }
 
+    /// Calls `.unreserve`.
     pub fn cancel(&self) -> Result<(), DispatchError> {
         self.unreserve();
         Ok(())
     }
 
+    /// If the transferring asset kind is owned, the funds are transferred from the bridge account,
+    /// otherwise the amount is minted.
     pub fn finalize(&self) -> Result<H256, DispatchError> {
         let bridge_account_id = get_bridge_account::<T>(self.network_id);
         if self.asset_kind.is_owned() {
@@ -250,6 +263,7 @@ impl<T: Config> IncomingTransfer<T> {
     }
 }
 
+/// Incoming request for claiming PSWAP.
 #[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct IncomingClaimPswap<T: Config> {
@@ -262,6 +276,8 @@ pub struct IncomingClaimPswap<T: Config> {
 }
 
 impl<T: Config> IncomingClaimPswap<T> {
+    /// Mints amount of PSWAP owned by a corresponding account id. If the account not found or
+    /// the amount is zero, an error is thrown.
     pub fn finalize(&self) -> Result<H256, DispatchError> {
         let bridge_account_id = get_bridge_account::<T>(self.network_id);
         let amount = PswapOwners::<T>::get(&self.eth_address).ok_or(Error::<T>::AccountNotFound)?;
@@ -277,6 +293,7 @@ impl<T: Config> IncomingClaimPswap<T> {
     }
 }
 
+/// Encodes the given outgoing request as it should look when it gets called on Sidechain.
 pub fn encode_outgoing_request_eth_call<T: Config>(
     method_id: MethodId,
     request: &OutgoingRequest<T>,
@@ -294,6 +311,10 @@ pub fn encode_outgoing_request_eth_call<T: Config>(
         .map_err(|_| Error::EthAbiEncodingError)
 }
 
+/// Incoming request for cancelling a broken outgoing request. "Broken" means that the request
+/// signatures were collected, but something changed in the bridge state (e.g. peers set) and
+/// the signatures became invalid. In this case we want to cancel the request to be able to
+/// re-submit it later.
 #[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug)]
 #[cfg_attr(feature = "std", derive(Serialize))]
 pub struct IncomingCancelOutgoingRequest<T: Config> {
@@ -307,6 +328,9 @@ pub struct IncomingCancelOutgoingRequest<T: Config> {
 }
 
 impl<T: Config> IncomingCancelOutgoingRequest<T> {
+    /// Checks that the request status is `ApprovalsReady`, and encoded request's call matches
+    /// with the `tx_input`, otherwise an error is thrown. After that, a status of the request
+    /// is changed to `Frozen` to stop receiving approvals.
     pub fn prepare(&self) -> Result<(), DispatchError> {
         let request_hash = self.request.hash();
         let net_id = self.network_id;
@@ -328,6 +352,7 @@ impl<T: Config> IncomingCancelOutgoingRequest<T> {
         Ok(())
     }
 
+    /// Changes the request's status back to `ApprovalsReady`.
     pub fn cancel(&self) -> Result<(), DispatchError> {
         crate::RequestStatuses::<T>::insert(
             self.network_id,
@@ -337,6 +362,8 @@ impl<T: Config> IncomingCancelOutgoingRequest<T> {
         Ok(())
     }
 
+    /// Calls `cancel` on the request, changes its status to `Failed` and takes it approvals to
+    /// make it available for resubmission.
     pub fn finalize(&self) -> Result<H256, DispatchError> {
         self.request.cancel()?;
         let hash = &self.request.hash();
@@ -351,6 +378,8 @@ impl<T: Config> IncomingCancelOutgoingRequest<T> {
     }
 }
 
+/// Incoming request that acts as an acknowledgement to a corresponding
+/// `OutgoingPrepareForMigration` request.
 #[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug)]
 #[cfg_attr(feature = "std", derive(Serialize))]
 pub struct IncomingPrepareForMigration<T: Config> {
@@ -361,6 +390,7 @@ pub struct IncomingPrepareForMigration<T: Config> {
 }
 
 impl<T: Config> IncomingPrepareForMigration<T> {
+    /// Checks that the current bridge status is `Initialized`, otherwise an error is thrown.
     pub fn prepare(&self) -> Result<(), DispatchError> {
         ensure!(
             crate::BridgeBridgeStatus::<T>::get(&self.network_id) == BridgeStatus::Initialized,
@@ -373,6 +403,7 @@ impl<T: Config> IncomingPrepareForMigration<T> {
         Ok(())
     }
 
+    /// Sets the bridge status to `Migrating`.
     pub fn finalize(&self) -> Result<H256, DispatchError> {
         crate::BridgeBridgeStatus::<T>::insert(self.network_id, BridgeStatus::Migrating);
         Ok(self.tx_hash)
@@ -383,6 +414,8 @@ impl<T: Config> IncomingPrepareForMigration<T> {
     }
 }
 
+/// Incoming request that acts as an acknowledgement to a corresponding
+/// `OutgoingMigrate` request.
 #[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug)]
 #[cfg_attr(feature = "std", derive(Serialize))]
 pub struct IncomingMigrate<T: Config> {
@@ -394,6 +427,7 @@ pub struct IncomingMigrate<T: Config> {
 }
 
 impl<T: Config> IncomingMigrate<T> {
+    /// Checks that the current bridge status is `Migrating`, otherwise an error is thrown.
     pub fn prepare(&self) -> Result<(), DispatchError> {
         ensure!(
             crate::BridgeBridgeStatus::<T>::get(&self.network_id) == BridgeStatus::Migrating,
@@ -406,6 +440,7 @@ impl<T: Config> IncomingMigrate<T> {
         Ok(())
     }
 
+    /// Updates the bridge's contract address and sets its status to `Initialized`.
     pub fn finalize(&self) -> Result<H256, DispatchError> {
         crate::BridgeContractAddress::<T>::insert(self.network_id, self.new_contract_address);
         crate::BridgeBridgeStatus::<T>::insert(self.network_id, BridgeStatus::Initialized);
@@ -417,6 +452,7 @@ impl<T: Config> IncomingMigrate<T> {
     }
 }
 
+/// Outgoing request for transferring the given asset from Thischain to Sidechain.
 #[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct OutgoingTransfer<T: Config> {
@@ -482,6 +518,16 @@ impl<T: Config> OutgoingTransfer<T> {
         })
     }
 
+    /// Checks that the given asset can be transferred through the bridge.
+    pub fn validate(&self) -> Result<(), DispatchError> {
+        ensure!(
+            crate::RegisteredAsset::<T>::get(self.network_id, &self.asset_id).is_some(),
+            Error::<T>::UnsupportedToken
+        );
+        Ok(())
+    }
+
+    /// Transfers the given `amount` of `asset_id` to the bridge account and reserve it.
     pub fn prepare(&mut self) -> Result<(), DispatchError> {
         assets::Pallet::<T>::ensure_can_withdraw(&self.asset_id, &self.from, self.amount)?;
         let bridge_account = get_bridge_account::<T>(self.network_id);
@@ -495,14 +541,7 @@ impl<T: Config> OutgoingTransfer<T> {
         Ok(())
     }
 
-    pub fn validate(&self) -> Result<(), DispatchError> {
-        ensure!(
-            crate::RegisteredAsset::<T>::get(self.network_id, &self.asset_id).is_some(),
-            Error::<T>::UnsupportedToken
-        );
-        Ok(())
-    }
-
+    /// Validates the request again, then, if the asset is originated in Sidechain, it gets burned.
     pub fn finalize(&self) -> Result<(), DispatchError> {
         self.validate()?;
         // TODO: add a test
@@ -516,6 +555,7 @@ impl<T: Config> OutgoingTransfer<T> {
         Ok(())
     }
 
+    /// Unreserves and transfers the given asset back to the request's author.
     pub fn cancel(&self) -> Result<(), DispatchError> {
         let bridge_account = get_bridge_account::<T>(self.network_id);
         assets::Pallet::<T>::unreserve(self.asset_id, &bridge_account, self.amount)?;
@@ -529,6 +569,7 @@ impl<T: Config> OutgoingTransfer<T> {
     }
 }
 
+/// Thischain or Sidechain asset id.
 #[derive(Clone, PartialEq, Eq, Encode, Decode, RuntimeDebug)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum CurrencyIdEncoded {
@@ -545,6 +586,7 @@ impl CurrencyIdEncoded {
     }
 }
 
+/// Sidechain-compatible version of `OutgoingTransfer`.
 #[derive(Clone, PartialEq, Eq, Encode, Decode, RuntimeDebug)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct OutgoingTransferEncoded {
@@ -576,6 +618,7 @@ impl OutgoingTransferEncoded {
     }
 }
 
+/// Outgoing request for adding a Thischain asset.
 // TODO: lock the adding token to prevent double-adding.
 #[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
@@ -621,6 +664,7 @@ impl<T: Config> OutgoingAddAsset<T> {
         })
     }
 
+    /// Checks that the asset isn't registered yet.
     pub fn validate(&self) -> Result<(), DispatchError> {
         ensure!(
             crate::RegisteredAsset::<T>::get(self.network_id, &self.asset_id).is_none(),
@@ -633,6 +677,7 @@ impl<T: Config> OutgoingAddAsset<T> {
         Ok(())
     }
 
+    /// Calls `validate` again and registers the asset.
     pub fn finalize(&self) -> Result<(), DispatchError> {
         self.validate()?;
         crate::RegisteredAsset::<T>::insert(self.network_id, &self.asset_id, AssetKind::Thischain);
@@ -644,6 +689,7 @@ impl<T: Config> OutgoingAddAsset<T> {
     }
 }
 
+/// Sidechain-compatible version of `OutgoingAddAsset`.
 #[derive(Clone, PartialEq, Eq, Encode, Decode, RuntimeDebug)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct OutgoingAddAssetEncoded {
@@ -673,6 +719,7 @@ impl OutgoingAddAssetEncoded {
     }
 }
 
+/// Outgoing request for adding a Sidechain token.
 #[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct OutgoingAddToken<T: Config> {
@@ -712,6 +759,7 @@ impl Encoder {
     }
 }
 
+/// Converts signature params to Sidechain-compatible tokens.
 pub fn signature_params_to_tokens(sig_params: Vec<SignatureParams>) -> Vec<Token> {
     let mut vs = Vec::new();
     let mut rs = Vec::new();
@@ -757,6 +805,7 @@ impl<T: Config> OutgoingAddToken<T> {
         })
     }
 
+    /// Checks that the asset isn't registered yet and the given symbol is valid.
     pub fn validate(&self) -> Result<AssetSymbol, DispatchError> {
         ensure!(
             crate::RegisteredSidechainAsset::<T>::get(self.network_id, &self.token_address)
@@ -775,6 +824,7 @@ impl<T: Config> OutgoingAddToken<T> {
         Ok(())
     }
 
+    /// Calls `validate` again and registers the sidechain asset.
     pub fn finalize(&self) -> Result<(), DispatchError> {
         let symbol = self.validate()?;
         crate::Pallet::<T>::register_sidechain_asset(
@@ -791,6 +841,7 @@ impl<T: Config> OutgoingAddToken<T> {
     }
 }
 
+/// Sidechain-compatible version of `OutgoingAddToken`.
 #[derive(Clone, PartialEq, Eq, Encode, Decode, RuntimeDebug)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct OutgoingAddTokenEncoded {
@@ -820,6 +871,7 @@ impl OutgoingAddTokenEncoded {
     }
 }
 
+/// Outgoing request for adding a peer.
 #[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct OutgoingAddPeer<T: Config> {
@@ -854,6 +906,8 @@ impl<T: Config> OutgoingAddPeer<T> {
         })
     }
 
+    /// Checks that the current number of peers is not greater than `MAX_PEERS` and the given peer
+    /// is not presented in the current peer set,
     pub fn validate(&self) -> Result<BTreeSet<T::AccountId>, DispatchError> {
         let peers = crate::Peers::<T>::get(self.network_id);
         ensure!(peers.len() <= MAX_PEERS, Error::<T>::CantAddMorePeers);
@@ -864,6 +918,7 @@ impl<T: Config> OutgoingAddPeer<T> {
         Ok(peers)
     }
 
+    /// Checks that the current pending peer value is none and inserts the given one.
     pub fn prepare(&mut self, _validated_state: ()) -> Result<(), DispatchError> {
         let pending_peer = crate::PendingPeer::<T>::get(self.network_id);
         ensure!(pending_peer.is_none(), Error::<T>::TooManyPendingPeers);
@@ -871,6 +926,8 @@ impl<T: Config> OutgoingAddPeer<T> {
         Ok(())
     }
 
+    /// Calls `validate` again and inserts the peer account ids on Thischain and Sidechain to
+    /// have an association.
     pub fn finalize(&self) -> Result<(), DispatchError> {
         let _peers = self.validate()?;
         crate::PeerAccountId::<T>::insert(
@@ -882,6 +939,7 @@ impl<T: Config> OutgoingAddPeer<T> {
         Ok(())
     }
 
+    /// Cleans the current pending peer value.
     pub fn cancel(&self) -> Result<(), DispatchError> {
         crate::PendingPeer::<T>::take(self.network_id);
         Ok(())
@@ -951,6 +1009,7 @@ impl<T: Config> OutgoingAddPeerCompat<T> {
     }
 }
 
+/// Outgoing request for removing a peer.
 #[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct OutgoingRemovePeer<T: Config> {
@@ -985,6 +1044,8 @@ impl<T: Config> OutgoingRemovePeer<T> {
         })
     }
 
+    /// Checks that the current number of peers is not less than `MIN_PEERS` and the given peer
+    /// is presented in the current peer set,
     pub fn validate(&self) -> Result<BTreeSet<T::AccountId>, DispatchError> {
         let peers = crate::Peers::<T>::get(self.network_id);
         ensure!(peers.len() >= MIN_PEERS, Error::<T>::CantRemoveMorePeers);
@@ -995,6 +1056,7 @@ impl<T: Config> OutgoingRemovePeer<T> {
         Ok(peers)
     }
 
+    /// Checks that the current pending peer value is none and inserts the given one.
     pub fn prepare(&mut self, _validated_state: ()) -> Result<(), DispatchError> {
         let pending_peer = crate::PendingPeer::<T>::get(self.network_id);
         ensure!(pending_peer.is_none(), Error::<T>::TooManyPendingPeers);
@@ -1002,6 +1064,8 @@ impl<T: Config> OutgoingRemovePeer<T> {
         Ok(())
     }
 
+    /// Calls `validate` again and removes the peer from the peer set and from the multisig bridge
+    /// account.
     pub fn finalize(&self) -> Result<(), DispatchError> {
         let mut peers = self.validate()?;
         bridge_multisig::Pallet::<T>::remove_signatory(
@@ -1015,6 +1079,7 @@ impl<T: Config> OutgoingRemovePeer<T> {
         Ok(())
     }
 
+    /// Cleans the current pending peer value.
     pub fn cancel(&self) -> Result<(), DispatchError> {
         crate::PendingPeer::<T>::take(self.network_id);
         Ok(())
@@ -1084,6 +1149,7 @@ impl<T: Config> OutgoingRemovePeerCompat<T> {
     }
 }
 
+/// Sidechain-compatible version of `OutgoingAddPeer`.
 #[derive(Clone, PartialEq, Eq, Encode, Decode, RuntimeDebug)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct OutgoingAddPeerEncoded {
@@ -1108,6 +1174,7 @@ impl OutgoingAddPeerEncoded {
     }
 }
 
+/// Sidechain-compatible version of `OutgoingRemovePeer`.
 #[derive(Clone, PartialEq, Eq, Encode, Decode, RuntimeDebug)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct OutgoingRemovePeerEncoded {
@@ -1132,6 +1199,15 @@ impl OutgoingRemovePeerEncoded {
     }
 }
 
+/// Outgoing request for preparing bridge for migration.
+///
+/// The migration is executed in 2 phases:
+/// 1. Prepare both chains for migration. After the preparation, Thischain stops collecting
+/// signatures for outgoing requests, but accepts all incoming requests. This phase is used to
+/// get pending incoming requests to finish and to have both chains as much synchronised
+/// as possible.
+/// 2. Migrate the bridge. At this stage a new Sidechain contract should be deployed and Thischain
+/// should be switched to it, so the old contract can't be used anymore.
 #[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct OutgoingPrepareForMigration<T: Config> {
@@ -1184,6 +1260,7 @@ impl<T: Config> OutgoingPrepareForMigration<T> {
     }
 }
 
+/// Sidechain-compatible version of `OutgoingPrepareForMigration`.
 #[derive(Clone, PartialEq, Eq, Encode, Decode, RuntimeDebug)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct OutgoingPrepareForMigrationEncoded {
@@ -1208,6 +1285,8 @@ impl OutgoingPrepareForMigrationEncoded {
     }
 }
 
+/// Outgoing request for migrating the bridge. For the full migration process description see
+/// `OutgoingPrepareForMigration` request.
 #[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct OutgoingMigrate<T: Config> {
@@ -1268,6 +1347,7 @@ impl<T: Config> OutgoingMigrate<T> {
     }
 }
 
+/// Sidechain-compatible version of `OutgoingMigrate`.
 #[derive(Clone, PartialEq, Eq, Encode, Decode, RuntimeDebug)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct OutgoingMigrateEncoded {
@@ -1291,6 +1371,7 @@ impl OutgoingMigrateEncoded {
     }
 }
 
+// TODO: docs
 #[derive(Clone, Default, PartialEq, Eq, Encode, Decode, RuntimeDebug)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct EthPeersSync {
@@ -1323,6 +1404,8 @@ impl EthPeersSync {
     }
 }
 
+/// Parses a `tx_hash` argument of a contract call. `tx_hash` is usually a hash of a Thischain's
+/// outgoing request (`OutgoingRequest`).
 pub fn parse_hash_from_call<T: Config>(
     tokens: Vec<Token>,
     tx_hash_arg_pos: usize,
