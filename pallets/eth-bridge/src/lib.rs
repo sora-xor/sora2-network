@@ -1182,7 +1182,7 @@ decl_module! {
         #[weight = (0, Pays::No)]
         pub fn register_incoming_request(origin, incoming_request: IncomingRequest<T>) {
             debug::debug!("called register_incoming_request");
-            let author = ensure_signed(origin)?;
+            let author = ensure_signed(origin.clone())?;
             let _ = Self::ensure_bridge_account(&author, incoming_request.network_id())?;
             let tx_hash = incoming_request.hash();
             let net_id = incoming_request.network_id();
@@ -1190,7 +1190,10 @@ decl_module! {
                 !PendingIncomingRequests::<T>::get(net_id).contains(&tx_hash),
                 Error::<T>::TransferIsAlreadyRegistered
             );
-            incoming_request.prepare()?;
+            if let Err(e) = incoming_request.prepare() {
+                Self::finalize_incoming_request(origin, Err((tx_hash, e)), net_id)?;
+                return Err(e);
+            }
             PendingIncomingRequests::<T>::mutate(net_id, |transfers| transfers.insert(tx_hash));
             Self::remove_request_from_queue(net_id, &tx_hash);
             IncomingRequests::<T>::insert(net_id, &tx_hash, incoming_request);

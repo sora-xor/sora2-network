@@ -116,8 +116,6 @@ fn should_success_claim_pswap() {
 
 #[test]
 fn should_fail_claim_pswap_already_claimed() {
-    let _ = env_logger::try_init();
-
     let net_id = ETH_NETWORK_ID;
     let mut builder = ExtBuilder::default();
     builder.add_reserves(net_id, (PSWAP.into(), Balance::from(0u32)));
@@ -170,8 +168,6 @@ fn should_fail_claim_pswap_already_claimed() {
 
 #[test]
 fn should_fail_claim_pswap_account_not_found() {
-    let _ = env_logger::try_init();
-
     let net_id = ETH_NETWORK_ID;
     let mut builder = ExtBuilder::default();
     builder.add_reserves(net_id, (PSWAP.into(), Balance::from(0u32)));
@@ -665,7 +661,7 @@ fn should_register_outgoing_transfer() {
             to: Address::from([1; 20]),
             asset_id: AssetId::XOR.into(),
             amount: 100_u32.into(),
-            nonce: 2,
+            nonce: 3,
             network_id: ETH_NETWORK_ID,
         };
         let last_request = crate::RequestsQueue::get(net_id).pop().unwrap();
@@ -900,6 +896,50 @@ fn should_fail_incoming_transfer() {
         assert_eq!(
             assets::Module::<Test>::total_balance(&AssetId::XOR.into(), &alice).unwrap(),
             100000u32.into()
+        );
+    });
+}
+
+#[test]
+fn should_fail_registering_incoming_request_if_preparation_failed() {
+    let net_id = ETH_NETWORK_ID;
+    let mut builder = ExtBuilder::default();
+    builder.add_currency(net_id, (PSWAP.into(), None, AssetKind::Thischain));
+    let (mut ext, state) = builder.build();
+
+    ext.execute_with(|| {
+        let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
+        let tx_hash = request_incoming(
+            alice.clone(),
+            H256::from_slice(&[1u8; 32]),
+            IncomingRequestKind::Transfer,
+            net_id,
+        )
+        .unwrap();
+        let incoming_transfer = IncomingRequest::Transfer(crate::IncomingTransfer {
+            from: Address::from([1; 20]),
+            to: alice.clone(),
+            asset_id: AssetId::PSWAP.into(),
+            asset_kind: AssetKind::Thischain,
+            amount: 100u32.into(),
+            tx_hash,
+            at_height: 1,
+            timepoint: Default::default(),
+            network_id: net_id,
+        });
+        let bridge_acc_id = state.networks[&net_id].config.bridge_account_id.clone();
+        assert_err!(
+            EthBridge::register_incoming_request(
+                Origin::signed(bridge_acc_id.clone()),
+                incoming_transfer.clone()
+            ),
+            tokens::Error::<Test>::BalanceTooLow
+        );
+        assert!(!crate::PendingIncomingRequests::<Test>::get(net_id).contains(&tx_hash));
+        assert!(crate::IncomingRequests::<Test>::get(net_id, &tx_hash).is_none());
+        assert_eq!(
+            crate::RequestStatuses::<Test>::get(net_id, &tx_hash).unwrap(),
+            RequestStatus::Failed
         );
     });
 }
@@ -1453,7 +1493,6 @@ fn should_not_allow_changing_peers_simultaneously() {
 #[test]
 #[ignore]
 fn should_cancel_ready_outgoing_request() {
-    let _ = env_logger::try_init();
     let (mut ext, state) = ExtBuilder::default().build();
     let _ = FUNCTIONS.get_or_init(functions);
     ext.execute_with(|| {
