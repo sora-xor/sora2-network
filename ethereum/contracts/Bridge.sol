@@ -15,7 +15,7 @@ contract Bridge {
 
     mapping(address => bool) public isPeer;
     uint public peersCount;
-    
+
     /** Substrate proofs used */
     mapping(bytes32 => bool) public used;
     mapping(address => bool) public _uniqueAddresses;
@@ -200,7 +200,6 @@ contract Bridge {
     * @param name token title
     * @param symbol token symbol
     * @param decimals number of decimals
-    * @param supply token supply to mint during token creation
     * @param sidechainAssetId token id on the sidechain
     * @param txHash sidechain transaction hash
     * @param v array of signatures of tx_hash (v-component)
@@ -211,7 +210,6 @@ contract Bridge {
         string memory name,
         string memory symbol,
         uint8 decimals,
-        uint256 supply,
         bytes32 sidechainAssetId,
         bytes32 txHash,
         uint8[] memory v,
@@ -222,7 +220,6 @@ contract Bridge {
                 name,
                 symbol,
                 decimals,
-                supply,
                 sidechainAssetId,
                 txHash,
                 _networkId
@@ -232,7 +229,7 @@ contract Bridge {
             s), "Peer signatures are invalid"
         );
         // Create new instance of the token
-        MasterToken tokenInstance = new MasterToken(name, symbol, decimals, address(this), supply, sidechainAssetId);
+        MasterToken tokenInstance = new MasterToken(name, symbol, decimals, address(this), 0, sidechainAssetId);
         address tokenAddress = address(tokenInstance);
         _sidechainTokens[sidechainAssetId] = tokenAddress;
         _sidechainTokensByAddress[tokenAddress] = sidechainAssetId;

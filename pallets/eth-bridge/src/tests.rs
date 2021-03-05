@@ -982,7 +982,6 @@ fn should_add_asset() {
         assert_ok!(EthBridge::add_asset(
             Origin::signed(alice.clone()),
             asset_id,
-            balance!(100),
             net_id,
         ));
         assert!(EthBridge::registered_asset(net_id, asset_id).is_none());
@@ -1546,12 +1545,7 @@ fn should_fail_request_to_unknown_network() {
         );
 
         assert_noop!(
-            EthBridge::add_asset(
-                Origin::signed(alice.clone()),
-                asset_id,
-                balance!(100),
-                net_id,
-            ),
+            EthBridge::add_asset(Origin::signed(alice.clone()), asset_id, net_id,),
             Error::UnknownNetwork
         );
 
@@ -1604,7 +1598,6 @@ fn should_reserve_owned_asset_on_different_networks() {
         assert_ok!(EthBridge::add_asset(
             Origin::signed(alice.clone()),
             asset_id,
-            0,
             net_id_1,
         ));
         approve_last_request(&state, net_id_1).expect("request wasn't approved");
@@ -1697,7 +1690,6 @@ fn should_handle_sidechain_and_thischain_asset_on_different_networks() {
         assert_ok!(EthBridge::add_asset(
             Origin::signed(alice.clone()),
             asset_id,
-            0,
             net_id_1,
         ));
         approve_last_request(&state, net_id_1).expect("request wasn't approved");
