@@ -461,7 +461,7 @@ fn testnet_genesis(
     eth_bridge_params: EthBridgeParams,
 ) -> GenesisConfig {
     let initial_balance = balance!(1000000000);
-    let initial_staking: Balance = (initial_balance >> 44).into();
+    let initial_staking = balance!(1000000);
     let xor_fee_tech_account_id = TechAccountId::Generic(
         xor_fee::TECH_ACCOUNT_PREFIX.to_vec(),
         xor_fee::TECH_ACCOUNT_MAIN.to_vec(),
