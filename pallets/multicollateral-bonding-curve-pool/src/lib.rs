@@ -51,21 +51,21 @@ decl_storage! {
         /// Technical account used to store collateral tokens.
         pub ReservesAcc get(fn reserves_account_id) config(): T::TechAccountId;
 
-        /// Buy price starting constant.
+        /// Buy price starting constant. This is the price users pay for new XOR.
         InitialPrice get(fn initial_price): Fixed = fixed!(200);
 
         /// Cofficients in buy price function.
         PriceChangeStep get(fn price_change_step): Fixed = fixed!(1337);
         PriceChangeRate get(fn price_change_rate): Fixed = fixed!(1);
 
-        /// Margin between sell price and buy price.
+        /// Sets the sell function as a fraction of the buy function, so there is margin between the two functions.
         SellPriceCoefficient get(fn sell_price_coefficient): Fixed = fixed!(0.8);
 
-        /// Coefficient which determines fraction of input collateral token to be selected as `free reserves`, exchanged to XOR and
-        /// be distributed to predefined accounts. Relevant in Buy function.
+        /// Coefficient which determines the fraction of input collateral token to be exchanged to XOR and
+        /// be distributed to predefined accounts. Relevant for the Buy function (when a user buys new XOR).
         AlwaysDistributeCoefficient get(fn always_distribute_coefficient): Fixed = fixed!(0.2);
 
-        /// Base fee in XOR which is deduced on all trades, currently it's burned.
+        /// Base fee in XOR which is deducted on all trades, currently it's burned: 0.3%.
         BaseFee get(fn base_fee): Fixed = fixed!(0.003);
 
         /// Accounts that receive 20% buy/sell margin according predefined proportions.
@@ -74,7 +74,7 @@ decl_storage! {
         /// Collateral Assets allowed to be sold on bonding curve.
         pub EnabledTargets get(fn enabled_targets): BTreeSet<T::AssetId>;
 
-        /// Asset that is used to compare collateral assets by value, e.g. DAI.
+        /// Asset that is used to compare collateral assets by value, e.g., DAI.
         pub ReferenceAssetId get(fn reference_asset_id) config(): T::AssetId;
 
         /// Registry to store information about rewards owned by users in PSWAP. (claim_limit, available_rewards)
@@ -83,10 +83,10 @@ decl_storage! {
         /// Total amount of PSWAP owned by accounts.
         pub TotalRewards get(fn total_rewards): Balance;
 
-        /// Keeping track of remainder not distributed to accounts.
+        /// Keeping track of remainder of PSWAP rewards not distributed to accounts.
         IncentiveLimitNotDistributed get(fn incentive_limit_not_distributed): Balance;
 
-        /// Number of reserve currencies selling which user will get rewards, namely all registered collaterals except PSWAP and VAL.
+        /// Number of reserve currencies for which users will get rewards for buying from the bonding curve, i.e., all registered collaterals except PSWAP and VAL.
         pub IncentivisedCurrenciesNum get(fn incentivised_currencies_num): u32;
 
         /// Account which stores actual PSWAP intended for rewards.
@@ -96,6 +96,7 @@ decl_storage! {
         pub AssetsWithOptionalRewardMultiplier: map hasher(twox_64_concat) T::AssetId => Option<Fixed>;
 
         /// Fraction of burned PSWAP that is used in reward vesting.
+        /// TODO: this is wrong.
         PswapBurnedDedicatedForRewards get(fn pswap_burned_dedicated_for_rewards): Fixed = fixed!(0.2);
     }
 }
@@ -105,7 +106,7 @@ decl_error! {
         /// An error occurred while calculating the price.
         CalculatePriceFailed,
         /// The pool can't perform exchange on itself.
-        CantExchangeOnItself,
+        CannotExchangeWithSelf,
         /// It's not enough reserves in the pool to perform the operation.
         NotEnoughReserves,
         /// Attempt to initialize pool for pair that already exists.
@@ -415,93 +416,6 @@ impl<T: Trait> Module<T> {
         price
             .get()
             .map_err(|_| Error::<T>::CalculatePriceFailed.into())
-    }
-
-    /// Calculates and returns the current buy price, assuming that input is the collateral asset and output is the main asset.
-    ///
-    /// To calculate price for a specific amount of assets (with desired main asset output),
-    /// one needs to integrate the equation of buy price (`P_B(Q)`):
-    ///
-    /// ```nocompile
-    /// P_M(Q, Q') = ∫ [P_B(x) dx, x = Q to Q']
-    ///            = x² / (2 * PC_S * PC_R) + P_I * x, x = Q to Q'
-    ///            = (Q' / (2 * PC_S * PC_R) + P_I) * Q' -
-    ///              (Q  / (2 * PC_S * PC_R) + P_I) * Q;
-    ///
-    /// P_BM(Q, q) = P_M(Q, Q+q);
-    /// ```
-    /// Using derived formula for buy price, inverse price (with desired collateral asset input)
-    /// is a solution for with respect to `q`.
-    ///
-    /// ```nocompile
-    /// P_M(Q, Q')  = | (Q' / (2 * PC_S * PC_R) + P_I) * Q' -
-    ///                 (Q  / (2 * PC_S * PC_R) + P_I) * Q |
-    ///
-    /// q_BM = √(Q² + 2 * Q * PC_S * PC_R * P_I + PC_S * PC_R *(PC_S * PC_R * P_I²
-    ///         + 2 * P_TB(Q, Q'))) - Q - PC_S * PC_R * P_I
-    ///```
-    /// where
-    /// `Q`: current asset issuance (quantity)
-    /// `Q'`: new asset issuance (quantity)
-    /// `P_I`: initial asset price
-    /// `PC_R`: price change rate
-    /// `PC_S`: price change step
-    /// `P_Sc: sell price coefficient (%)`
-    /// `P_M(Q, Q')`: helper function to calculate price for `q` assets, where `q = |Q' - Q|`
-    /// `P_BM(Q, q)`: price for `q` assets to buy
-    /// `q_BM`: price for `q` assets to be bought, when P_M(Q, Q') tokens are spend
-    ///
-    /// [buy with desired output](https://www.wolframalpha.com/input/?i=p+%3D+q+%2F+(s+*+r)+%2B+i+integrate+for+q&assumption="i"+->+"Variable")
-    /// [buy with desired input](https://www.wolframalpha.com/input/?i=y+%3D+%28%28a%2Bx%29+%2F+%282+*+b+*+c%29+%2B+d%29+*+%28a%2Bx%29+-+%28+a+%2F+%282+*+b+*+c%29+%2B+d%29+*+a+solve+for+x)
-    #[deprecated]
-    pub fn _buy_price(
-        main_asset_id: &T::AssetId,
-        collateral_asset_id: &T::AssetId,
-        quantity: QuoteAmount<Balance>,
-    ) -> Result<Fixed, DispatchError> {
-        // This call provides check for pool existance.
-        let total_issuance = Assets::<T>::total_issuance(&main_asset_id)?;
-        let Q = FixedWrapper::from(total_issuance);
-        let P_I = Self::initial_price();
-        let PC_S = FixedWrapper::from(Self::price_change_step());
-        let PC_R = Self::price_change_rate();
-        let collateral_price_per_reference_unit: FixedWrapper =
-            Self::reference_price(collateral_asset_id)?.into();
-
-        match quantity {
-            QuoteAmount::WithDesiredInput {
-                desired_amount_in: collateral_quantity,
-            } => {
-                // convert from collateral to reference price
-                let IN = collateral_price_per_reference_unit * collateral_quantity;
-                let PC_S_times_PC_R_times_P_I = PC_S.clone() * PC_R.clone() * P_I;
-                let Q_squared = Q.clone() * Q.clone();
-                let inner_term_a = 2 * Q.clone() * PC_S_times_PC_R_times_P_I.clone();
-                let inner_term_b =
-                    PC_S.clone() * PC_R * (PC_S_times_PC_R_times_P_I.clone() * P_I + 2 * IN);
-                let under_sqrt = Q_squared + inner_term_a + inner_term_b;
-                let output_main = under_sqrt.sqrt_accurate() - Q - PC_S_times_PC_R_times_P_I;
-                Ok(output_main
-                    .get()
-                    .map_err(|_| Error::<T>::CalculatePriceFailed)?
-                    .max(Fixed::ZERO)) // Limiting bound to zero because sqrt error subtraction can be negative.
-            }
-            QuoteAmount::WithDesiredOutput {
-                desired_amount_out: main_quantity,
-            } => {
-                let Q_prime = Q.clone() + main_quantity;
-                let two_times_PC_S_times_PC_R = 2 * PC_S * PC_R;
-                let to = (Q_prime.clone() / two_times_PC_S_times_PC_R.clone() + P_I) * Q_prime;
-                let from = (Q.clone() / two_times_PC_S_times_PC_R + P_I) * Q;
-                let mut output_collateral = to - from;
-                // convert from reference to collateral price
-                output_collateral = output_collateral / collateral_price_per_reference_unit;
-                Ok(output_collateral
-                    .get()
-                    .map_err(|_| Error::<T>::CalculatePriceFailed)?
-                    .max(Fixed::ZERO)) // Limiting bound to zero because substracting value with error can result in negative value.
-            }
-        }
     }
 
     /// Calculates and returns the current buy price, assuming that input is the collateral asset and output is the main asset.
@@ -1020,7 +934,7 @@ impl<T: Trait> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Disp
             &Technical::<T>::tech_account_id_to_account_id(&Self::reserves_account_id())?;
         // This is needed to prevent recursion calls.
         if sender == reserves_account_id && receiver == reserves_account_id {
-            fail!(Error::<T>::CantExchangeOnItself);
+            fail!(Error::<T>::CannotExchangeWithSelf);
         }
         let base_asset_id = &T::GetBaseAssetId::get();
         if input_asset_id == base_asset_id {
