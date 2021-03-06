@@ -751,8 +751,6 @@ impl multicollateral_bonding_curve_pool::Trait for Runtime {
     type LiquidityProxy = LiquidityProxy;
     type EnsureDEXManager = DEXManager;
     type EnsureTradingPairExists = TradingPair;
-    type GetPswapAssetId = GetPswapAssetId;
-    type GetValAssetId = GetValAssetId;
 }
 
 /// Payload data to be signed when making signed transaction from off-chain workers,

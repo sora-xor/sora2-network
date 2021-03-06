@@ -24,7 +24,6 @@ use pswap_distribution::OnPswapBurned;
 use sp_arithmetic::traits::{One, Zero};
 use sp_runtime::{traits::Saturating, DispatchError, DispatchResult};
 use sp_std::collections::btree_set::BTreeSet;
-use sp_std::vec::Vec;
 
 pub trait Trait: common::Trait + assets::Trait + technical::Trait + trading_pair::Trait {
     type Event: From<Event<Self>> + Into<<Self as frame_system::Trait>::Event>;
@@ -80,9 +79,6 @@ decl_storage! {
 
         /// Total amount of PSWAP owned by accounts.
         pub TotalRewards get(fn total_rewards): Balance;
-
-        /// Keeping track of remainder not distributed to accounts.
-        IncentiveLimitNotDistributed get(fn incentive_limit_not_distributed): Balance;
 
         /// Number of reserve currencies selling which user will get rewards, namely all registered collaterals except PSWAP and VAL.
         pub IncentivisedCurrenciesNum get(fn incentivised_currencies_num): u32;
@@ -942,25 +938,15 @@ impl<T: Trait> OnPswapBurned for Module<T> {
     fn on_pswap_burned(mut amount: Balance) {
         let total_rewards = TotalRewards::get();
         amount = amount.saturating_mul(Balance(PswapBurnedDedicatedForRewards::get()));
-        amount = amount.saturating_add(IncentiveLimitNotDistributed::get());
-        let mut limit_distributed =
-            sp_std::rc::Rc::new(sp_std::cell::RefCell::new(Balance::zero()));
 
-        let lambda = |_key: T::AccountId, value: (Balance, Balance)| {
-            let (limit, owned) = value;
-            let limit_to_add = owned.saturating_mul(amount) / (total_rewards);
-            let new_limit = limit.saturating_add(limit_to_add.clone());
-            let limit_distributed_mut = limit_distributed.borrow_mut();
-            *limit_distributed_mut = limit_distributed_mut.saturating_add(limit_to_add);
-            // limit_distributed = limit_distributed.saturating_add(limit_to_add); // TODO: enable
-            Some((new_limit, owned))
-        };
         if !total_rewards.is_zero() {
-            Rewards::<T>::translate(lambda)
+            Rewards::<T>::translate(|_key: T::AccountId, value: (Balance, Balance)| {
+                let (limit, owned) = value;
+                let limit_to_add = owned.saturating_mul(amount) / (total_rewards);
+                let new_limit = limit.saturating_add(limit_to_add.clone());
+                Some((new_limit, owned))
+            })
         }
-        // if *limit_distributed < amount {
-        // IncentiveLimitNotDistributed::set(amount.saturating_sub(limit_distributed));
-        // }
     }
 }
 

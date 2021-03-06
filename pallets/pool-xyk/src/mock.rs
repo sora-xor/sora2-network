@@ -5,7 +5,6 @@ use frame_support::{impl_outer_origin, parameter_types, weights::Weight};
 use frame_system as system;
 use hex_literal::hex;
 use permissions::{Scope, INIT_DEX, TRANSFER};
-use pswap_distribution::OnPswapBurned;
 use sp_core::crypto::AccountId32;
 use sp_core::H256;
 use sp_runtime::{
