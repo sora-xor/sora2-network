@@ -89,7 +89,7 @@ mod tests {
                     &VAL,
                     QuoteAmount::with_desired_input(Balance::max_value()),
                 ),
-                Error::<Runtime>::CalculatePriceFailed,
+                Error::<Runtime>::PriceCalculationFailed,
             );
             assert_noop!(
                 MBCPool::sell_price(
@@ -122,7 +122,7 @@ mod tests {
                     &VAL,
                     QuoteAmount::with_desired_input(Balance::max_value()),
                 ),
-                Error::<Runtime>::CalculatePriceFailed,
+                Error::<Runtime>::PriceCalculationFailed,
             );
             assert_noop!(
                 MBCPool::buy_price(
@@ -130,7 +130,7 @@ mod tests {
                     &VAL,
                     QuoteAmount::with_desired_output(Balance::max_value()),
                 ),
-                Error::<Runtime>::CalculatePriceFailed,
+                Error::<Runtime>::PriceCalculationFailed,
             );
             assert_eq!(
                 MBCPool::buy_price(

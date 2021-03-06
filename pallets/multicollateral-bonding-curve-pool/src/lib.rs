@@ -104,7 +104,7 @@ decl_storage! {
 decl_error! {
     pub enum Error for Module<T: Trait> {
         /// An error occurred while calculating the price.
-        CalculatePriceFailed,
+        PriceCalculationFailed,
         /// The pool can't perform exchange on itself.
         CannotExchangeWithSelf,
         /// It's not enough reserves in the pool to perform the operation.
@@ -114,13 +114,13 @@ decl_error! {
         /// Attempt to get info for uninitialized pool.
         PoolNotInitialized,
         /// Indicated limits for slippage has not been met during transaction execution.
-        SlippageFailed,
+        SlippageLimitExceeded,
         /// Either user has no pending rewards or current limit is exceeded at the moment.
         NothingToClaim,
         /// User has pending reward, but rewards supply is insufficient at the moment.
         RewardsSupplyShortage,
         /// Indicated collateral asset is not enabled for pool.
-        UnknownCollateralAssetId,
+        UnsupportedCollateralAssetId,
     }
 }
 
@@ -166,7 +166,7 @@ decl_module! {
         #[weight = 0]
         fn set_optional_reward_multiplier(origin, collateral_asset_id: T::AssetId, multiplier: Option<Fixed>) -> DispatchResult {
             let _who = <T as Trait>::EnsureDEXManager::ensure_can_manage(&DEXId::Polkaswap.into(), origin, ManagementMode::Private)?;
-            ensure!(Self::enabled_targets().contains(&collateral_asset_id), Error::<T>::UnknownCollateralAssetId);
+            ensure!(Self::enabled_targets().contains(&collateral_asset_id), Error::<T>::UnsupportedCollateralAssetId);
             // NOTE: not using insert() here because it unwraps Option, which is not intended
             AssetsWithOptionalRewardMultiplier::<T>::mutate(&collateral_asset_id, |opt| *opt = multiplier.clone());
             Self::deposit_event(RawEvent::OptionalRewardMultiplierUpdated(collateral_asset_id, multiplier));
@@ -415,7 +415,7 @@ impl<T: Trait> Module<T> {
         let price = (Q + delta) / (PC_S * PC_R) + P_I;
         price
             .get()
-            .map_err(|_| Error::<T>::CalculatePriceFailed.into())
+            .map_err(|_| Error::<T>::PriceCalculationFailed.into())
     }
 
     /// Calculates and returns the current buy price, assuming that input is the collateral asset and output is the main asset.
@@ -476,7 +476,7 @@ impl<T: Trait> Module<T> {
                     under_sqrt.sqrt_accurate() / fixed_wrapper!(2.0) - PC * current_state;
                 main_out
                     .get()
-                    .map_err(|_| Error::<T>::CalculatePriceFailed.into())
+                    .map_err(|_| Error::<T>::PriceCalculationFailed.into())
                     .map(|value| value.max(Fixed::ZERO))
             }
             QuoteAmount::WithDesiredOutput {
@@ -490,7 +490,7 @@ impl<T: Trait> Module<T> {
                     collateral_reference_in / collateral_price_per_reference_unit;
                 collateral_quantity
                     .get()
-                    .map_err(|_| Error::<T>::CalculatePriceFailed.into())
+                    .map_err(|_| Error::<T>::PriceCalculationFailed.into())
                     .map(|value| value.max(Fixed::ZERO))
             }
         }
@@ -528,7 +528,7 @@ impl<T: Trait> Module<T> {
         let collateral_supply_unwrapped = collateral_supply
             .clone()
             .get()
-            .map_err(|_| Error::<T>::CalculatePriceFailed)?;
+            .map_err(|_| Error::<T>::PriceCalculationFailed)?;
 
         match quantity {
             QuoteAmount::WithDesiredInput {
@@ -538,7 +538,7 @@ impl<T: Trait> Module<T> {
                     (quantity_main * collateral_supply) / (main_supply + quantity_main);
                 let output_collateral_unwrapped = output_collateral
                     .get()
-                    .map_err(|_| Error::<T>::CalculatePriceFailed)?;
+                    .map_err(|_| Error::<T>::PriceCalculationFailed)?;
                 ensure!(
                     output_collateral_unwrapped < collateral_supply_unwrapped.into(),
                     Error::<T>::NotEnoughReserves
@@ -556,7 +556,7 @@ impl<T: Trait> Module<T> {
                     (main_supply * quantity_collateral) / (collateral_supply - quantity_collateral);
                 output_main
                     .get()
-                    .map_err(|_| Error::<T>::CalculatePriceFailed.into())
+                    .map_err(|_| Error::<T>::PriceCalculationFailed.into())
             }
         }
     }
@@ -574,7 +574,7 @@ impl<T: Trait> Module<T> {
         let price = P_Sc * P_B;
         price
             .get()
-            .map_err(|_| Error::<T>::CalculatePriceFailed.into())
+            .map_err(|_| Error::<T>::PriceCalculationFailed.into())
     }
 
     /// Decompose SwapAmount into particular buy quotation query.
@@ -598,7 +598,7 @@ impl<T: Trait> Module<T> {
                 .into();
                 let fee_amount = Balance(BaseFee::get()).saturating_mul(output_amount.clone());
                 output_amount = output_amount.saturating_sub(fee_amount.clone());
-                ensure!(output_amount >= min_amount_out, Error::<T>::SlippageFailed);
+                ensure!(output_amount >= min_amount_out, Error::<T>::SlippageLimitExceeded);
                 (desired_amount_in, output_amount, fee_amount)
             }
             SwapAmount::WithDesiredOutput {
@@ -613,7 +613,7 @@ impl<T: Trait> Module<T> {
                     QuoteAmount::with_desired_output(desired_amount_out_with_fee.clone()),
                 )?
                 .into();
-                ensure!(input_amount <= max_amount_in, Error::<T>::SlippageFailed);
+                ensure!(input_amount <= max_amount_in, Error::<T>::SlippageLimitExceeded);
                 (
                     input_amount,
                     desired_amount_out,
@@ -645,7 +645,7 @@ impl<T: Trait> Module<T> {
                     ),
                 )?
                 .into();
-                ensure!(output_amount >= min_amount_out, Error::<T>::SlippageFailed);
+                ensure!(output_amount >= min_amount_out, Error::<T>::SlippageLimitExceeded);
                 (desired_amount_in, output_amount, fee_amount)
             }
             SwapAmount::WithDesiredOutput {
@@ -662,7 +662,7 @@ impl<T: Trait> Module<T> {
                     input_amount.clone() / (Balance::one() - Balance(BaseFee::get()));
                 ensure!(
                     input_amount_with_fee <= max_amount_in,
-                    Error::<T>::SlippageFailed
+                    Error::<T>::SlippageLimitExceeded
                 );
                 (
                     input_amount_with_fee.clone(),
@@ -772,7 +772,7 @@ impl<T: Trait> Module<T> {
         let price = (initial_state + current_state) / fixed_wrapper!(2.0) * base_total_supply;
         price
             .get()
-            .map_err(|_| Error::<T>::CalculatePriceFailed.into())
+            .map_err(|_| Error::<T>::PriceCalculationFailed.into())
             .map(|fxd| Balance(fxd))
     }
 
@@ -817,7 +817,7 @@ impl<T: Trait> Module<T> {
         pswap_amount
             .get()
             .map(|fp| Balance(fp))
-            .map_err(|_| Error::<T>::CalculatePriceFailed.into())
+            .map_err(|_| Error::<T>::PriceCalculationFailed.into())
     }
 
     fn collateral_is_incentivised(collateral_asset_id: &T::AssetId) -> bool {
