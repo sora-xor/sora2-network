@@ -1,5 +1,7 @@
 use crate::{GenesisConfig, Trait};
-use common::{self, prelude::Balance, Amount, AssetId32, AssetSymbol, TechPurpose, USDT, VAL, XOR};
+use common::{
+    self, balance, prelude::Balance, Amount, AssetId32, AssetSymbol, TechPurpose, USDT, VAL, XOR,
+};
 use currencies::BasicCurrencyAdapter;
 use frame_support::{impl_outer_origin, parameter_types, weights::Weight};
 use permissions::{Scope, BURN, MINT};
@@ -159,7 +161,7 @@ impl ExtBuilder {
         let account_id: AccountId = account_id();
 
         pallet_balances::GenesisConfig::<Test> {
-            balances: vec![(account_id.clone(), 150u128.into())],
+            balances: vec![(account_id.clone(), balance!(150))],
         }
         .assimilate_storage(&mut t)
         .unwrap();
@@ -198,7 +200,7 @@ impl ExtBuilder {
         .unwrap();
 
         tokens::GenesisConfig::<Test> {
-            endowed_accounts: vec![(account_id.clone(), VAL.into(), 150u128.into())],
+            endowed_accounts: vec![(account_id.clone(), VAL.into(), balance!(150))],
         }
         .assimilate_storage(&mut t)
         .unwrap();

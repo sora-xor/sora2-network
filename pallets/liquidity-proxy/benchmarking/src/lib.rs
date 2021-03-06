@@ -9,7 +9,7 @@ use liquidity_proxy::*;
 
 use codec::Decode;
 use common::{
-    fixed,
+    balance, fixed,
     prelude::{Balance, SwapAmount},
     AssetSymbol, DEXId, FilterMode, DOT, XOR,
 };
@@ -98,31 +98,31 @@ fn setup_benchmark<T: Trait>() -> Result<(), &'static str> {
         owner_origin.clone(),
         XOR.into(),
         owner.clone(),
-        fixed!(10000),
+        balance!(10000),
     )?;
     Assets::<T>::mint(
         owner_origin.clone(),
         DOT.into(),
         owner.clone(),
-        fixed!(20000),
+        balance!(20000),
     )?;
     Assets::<T>::mint(
         owner_origin.clone(),
         XOR.into(),
         repr.clone(),
-        fixed!(1000000),
+        balance!(1000000),
     )?;
     Assets::<T>::mint(
         owner_origin.clone(),
         DOT.into(),
         repr.clone(),
-        fixed!(1500000),
+        balance!(1500000),
     )?;
     Assets::<T>::mint(
         owner_origin.clone(),
         mark_asset.into(),
         owner.clone(),
-        fixed!(1500000000000),
+        balance!(1500000000000),
     )?;
 
     // Adding reserves to mock sources
@@ -176,14 +176,14 @@ benchmarks! {
         DEX.into(),
         base_asset.clone(),
         target_asset.clone(),
-        SwapAmount::with_desired_input(fixed!(1000), fixed!(0)),
+        SwapAmount::with_desired_input(balance!(1000), 0),
         Vec::new(),
         FilterMode::Disabled
     )
     verify {
         assert_eq!(
             Into::<u128>::into(Assets::<T>::free_balance(&base_asset, &caller).unwrap()),
-            Into::<u128>::into(initial_base_balance)
+            Into::<u128>::into(initial_base_balance) - balance!(1000)
         );
     }
 
@@ -198,14 +198,14 @@ benchmarks! {
         DEX.into(),
         base_asset.clone(),
         target_asset.clone(),
-        SwapAmount::with_desired_output(fixed!(1000), fixed!(10000)),
+        SwapAmount::with_desired_output(balance!(1000), balance!(1000)),
         Vec::new(),
         FilterMode::Disabled
     )
     verify {
         assert_eq!(
             Into::<u128>::into(Assets::<T>::free_balance(&target_asset, &caller).unwrap()),
-            Into::<u128>::into(initial_target_balance)
+            Into::<u128>::into(initial_target_balance) + balance!(1000)
         );
     }
 }

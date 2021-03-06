@@ -35,6 +35,7 @@ sp-io = { version = "2.0.0", default-features = false }
 pallet-balances = { version = "2.0.0", default-features = false }
 currencies = { version = "0.3.2", package = "orml-currencies", default-features = false }
 tokens = { version = "0.3.2", package = "orml-tokens", default-features = false }
+common = { path = "../../common", default-features = false, features = ["test"] }
 mock-liquidity-source = { path = "../mock-liquidity-source", default-features = false }
 pswap-distribution = { path = "../pswap-distribution", default-features = false }
 
@@ -48,6 +49,11 @@ std = [
     'sp-std/std',
     'common/std',
     'assets/std',
+    'pool-xyk/std',
+    'dex-manager/std',
+    'trading-pair/std',
+    'mock-liquidity-source/std',
+    'pswap-distribution/std',
     'sp-core/std',
     'sp-runtime/std',
     'pallet-timestamp/std',

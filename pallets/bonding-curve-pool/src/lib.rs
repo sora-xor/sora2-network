@@ -8,10 +8,11 @@ mod tests;
 
 use codec::{Decode, Encode};
 use common::{
-    fixed,
+    balance, fixed,
     prelude::{Balance, Error as CommonError, Fixed, FixedWrapper, SwapAmount, SwapOutcome},
     DEXId, LiquiditySource, USDT, VAL,
 };
+use core::convert::TryInto;
 use frame_support::traits::Get;
 use frame_support::{decl_error, decl_module, decl_storage, ensure, fail};
 use permissions::{Scope, BURN, MINT, SLASH, TRANSFER};
@@ -205,7 +206,7 @@ impl<T: Trait> BuyMainAsset<T> {
             let (input_amount, output_amount) =
                 Module::<T>::decide_buy_amounts(out_asset, self.amount)?;
             let total_issuance = Assets::<T>::total_issuance(out_asset)?;
-            let reserves_expected = Balance(Module::<T>::price_for_main_asset(
+            let reserves_expected = FixedWrapper::from(Module::<T>::price_for_main_asset(
                 out_asset,
                 total_issuance,
                 SwapKind::Sell,
@@ -216,10 +217,16 @@ impl<T: Trait> BuyMainAsset<T> {
                 &self.reserves_tech_account_id,
                 input_amount,
             )?;
-            let reserves = Assets::<T>::total_balance(in_asset, &self.reserves_account_id)?;
+            let reserves = FixedWrapper::from(Assets::<T>::total_balance(
+                in_asset,
+                &self.reserves_account_id,
+            )?);
             let free_amount = if reserves > reserves_expected {
-                let amount_free_coefficient: Balance = fixed!(0.2);
-                (reserves - reserves_expected) * amount_free_coefficient
+                let amount_free_coefficient: Fixed = fixed!(0.2);
+                let free_amount = (reserves - reserves_expected) * amount_free_coefficient;
+                free_amount
+                    .try_into_balance()
+                    .map_err(|_| Error::<T>::CalculatePriceFailed)?
             } else {
                 Balance::zero()
             };
@@ -257,24 +264,31 @@ impl<T: Trait> BuyMainAsset<T> {
                 .iter()
                 .map(|x| (&x.account_id, x.coefficient))
             {
+                let amount = FixedWrapper::from(swapped_xor_amount) * coefficient;
+                let amount = amount
+                    .try_into_balance()
+                    .map_err(|_| Error::<T>::CalculatePriceFailed)?;
+
                 technical::Module::<T>::transfer(
                     out_asset,
                     reserves_tech_acc,
                     to_tech_account_id,
-                    swapped_xor_amount * Balance(coefficient),
+                    amount,
                 )?;
             }
 
+            let desired_amount_in = FixedWrapper::from(swapped_xor_amount)
+                * distribution_accounts.val_holders.coefficient;
+            let desired_amount_in = desired_amount_in
+                .try_into_balance()
+                .map_err(|_| Error::<T>::CalculatePriceFailed)?;
             let val_amount = T::DEXApi::exchange(
                 reserves_acc,
                 reserves_acc,
                 &DEXId::Polkaswap.into(),
                 out_asset,
                 &VAL.into(),
-                SwapAmount::with_desired_input(
-                    swapped_xor_amount * Balance(distribution_accounts.val_holders.coefficient),
-                    Balance::zero(),
-                ),
+                SwapAmount::with_desired_input(desired_amount_in, Balance::zero()),
             )?
             .amount;
             Technical::<T>::burn(&VAL.into(), reserves_tech_acc, val_amount)?;
@@ -284,7 +298,10 @@ impl<T: Trait> BuyMainAsset<T> {
 
     fn mint_output(&self, output_amount: Balance) -> Result<SwapOutcome<Balance>, DispatchError> {
         // TODO: deal with fee.
-        let fee_amount = Balance(Fee::get()) * output_amount;
+        let fee_amount = FixedWrapper::from(Fee::get()) * FixedWrapper::from(output_amount);
+        let fee_amount = fee_amount
+            .try_into_balance()
+            .map_err(|_| Error::<T>::CalculatePriceFailed)?;
         let transfer_amount = output_amount - fee_amount;
         Assets::<T>::mint_to(
             &self.out_asset_id,
@@ -320,7 +337,7 @@ impl<T: Trait> Module<T> {
     /// `Q`: asset issuance (quantity)
     pub fn buy_price_for_one_main_asset(out_asset_id: &T::AssetId) -> Result<Fixed, DispatchError> {
         let total_issuance = Assets::<T>::total_issuance(out_asset_id)?;
-        let Q: FixedWrapper = total_issuance.into();
+        let Q = FixedWrapper::from(total_issuance);
         let P_I = Self::initial_price();
         let PC_S = Self::price_change_step();
         let PC_R: FixedWrapper = Self::price_change_rate().into();
@@ -356,25 +373,32 @@ impl<T: Trait> Module<T> {
     /// `P_SM(Q, q)`: price for `q` assets to sell
     ///
     /// [Formula calculation](https://www.wolframalpha.com/input/?i=p+%3D+q+%2F+(s+*+r)+%2B+i+integrate+for+q&assumption="i"+->+"Variable")
-    #[rustfmt::skip]
-    pub fn price_for_main_asset(main_asset_id: &T::AssetId, quantity: Balance, kind: SwapKind) -> Result<Fixed, DispatchError> {
+    pub fn price_for_main_asset(
+        main_asset_id: &T::AssetId,
+        quantity: Balance,
+        kind: SwapKind,
+    ) -> Result<Fixed, DispatchError> {
         let total_issuance = Assets::<T>::total_issuance(&main_asset_id)?;
         let Q: FixedWrapper = total_issuance.into();
         let P_I = Self::initial_price();
         let PC_S: FixedWrapper = Self::price_change_step().into();
         let PC_R = Self::price_change_rate();
-
-        let Q_prime = if kind == SwapKind::Buy { Q.clone() + quantity } else { Q.clone() - quantity };
-        let two_times_PC_S_times_PC_R = 2 * PC_S * PC_R;
+        let Q_prime = if kind == SwapKind::Buy {
+            Q.clone() + quantity
+        } else {
+            Q.clone() - quantity
+        };
+        let two_times_PC_S_times_PC_R = balance!(2) * PC_S * PC_R;
         let to = (Q_prime.clone() / two_times_PC_S_times_PC_R.clone() + P_I) * Q_prime;
         let from = (Q.clone() / two_times_PC_S_times_PC_R + P_I) * Q;
         let price: FixedWrapper = if kind == SwapKind::Buy {
             to - from
         } else {
-            let P_Sc = FixedWrapper::from(Self::sell_price_coefficient());
-            P_Sc * (from - to)
+            Self::sell_price_coefficient() * (from - to)
         };
-        price.get().map_err(|_| Error::<T>::CalculatePriceFailed.into())
+        price
+            .get()
+            .map_err(|_| Error::<T>::CalculatePriceFailed.into())
     }
 
     /// Calculates and returns the current buy/sell price for target asset.
@@ -404,7 +428,6 @@ impl<T: Trait> Module<T> {
     ///
     /// [Wolfram Alpha (buy)](https://www.wolframalpha.com/input/?i=y+%3D+%28%28a%2Bx%29+%2F+%282+*+b+*+c%29+%2B+d%29+*+%28a%2Bx%29+-+%28+a+%2F+%282+*+b+*+c%29+%2B+d%29+*+a+solve+for+x)
     /// [Wolfram Alpha (sell)](https://www.wolframalpha.com/input/?i=y+%3D+%28%28a++%2F+%282+*+b+*+c%29+%2B+d%29+*+a+-+%28%28a+-+x%29+%2F+%282+*+b+*+c%29+%2B+d%29+*+%28a+-+x%29%29+*+k+solve+for+x)
-    #[rustfmt::skip]
     pub fn price_for_collateral_asset(
         main_asset_id: &T::AssetId,
         quantity: Balance,
@@ -423,18 +446,23 @@ impl<T: Trait> Module<T> {
 
         let price: FixedWrapper = if kind == SwapKind::Buy {
             let Q_squared = Q.clone() * Q.clone();
-            let inner_term_a = 2 * Q.clone() * PC_S_times_PC_R_times_P_I.clone();
-            let inner_term_b = PC_S * PC_R * (PC_S_times_PC_R_times_P_I_squared + 2 * OUT_PRICE);
+            let inner_term_a = balance!(2) * Q.clone() * PC_S_times_PC_R_times_P_I.clone();
+            let inner_term_b =
+                PC_S * PC_R * (PC_S_times_PC_R_times_P_I_squared + balance!(2) * OUT_PRICE);
             let under_sqrt = Q_squared + inner_term_a + inner_term_b;
             under_sqrt.sqrt_accurate() - Q - PC_S_times_PC_R_times_P_I
         } else {
             let P_Sc = FixedWrapper::from(Self::sell_price_coefficient());
-            let inner_term_a = ((Q.clone() * P_Sc.clone()) / PC_S_times_PC_R.clone()) + (P_I * P_Sc.clone());
-            let inner_term_b =  (2 * P_Sc.clone() * OUT_PRICE) / PC_S_times_PC_R.clone();
+            let inner_term_a =
+                ((Q.clone() * P_Sc.clone()) / PC_S_times_PC_R.clone()) + (P_I * P_Sc.clone());
+            let inner_term_b = (balance!(2) * P_Sc.clone() * OUT_PRICE) / PC_S_times_PC_R.clone();
             let under_sqrt = inner_term_a.clone() * inner_term_a - inner_term_b;
-            (Q + PC_S_times_PC_R_times_P_I) - ((PC_S_times_PC_R * under_sqrt.sqrt_accurate()) / P_Sc)
+            (Q + PC_S_times_PC_R_times_P_I)
+                - ((PC_S_times_PC_R * under_sqrt.sqrt_accurate()) / P_Sc)
         };
-        price.get().map_err(|_| Error::<T>::CalculatePriceFailed.into())
+        price
+            .get()
+            .map_err(|_| Error::<T>::CalculatePriceFailed.into())
     }
 
     /// Calculates and returns the current sell price for one main asset.
@@ -468,7 +496,13 @@ impl<T: Trait> Module<T> {
                     desired_amount_in,
                     SwapKind::Buy,
                 )?;
-                (desired_amount_in, output_amount.into())
+                (
+                    desired_amount_in,
+                    output_amount
+                        .into_bits()
+                        .try_into()
+                        .map_err(|_| Error::<T>::CalculatePriceFailed)?,
+                )
             }
             SwapAmount::WithDesiredOutput {
                 desired_amount_out, ..
@@ -478,7 +512,13 @@ impl<T: Trait> Module<T> {
                     desired_amount_out,
                     SwapKind::Buy,
                 )?;
-                (input_amount.into(), desired_amount_out)
+                (
+                    input_amount
+                        .into_bits()
+                        .try_into()
+                        .map_err(|_| Error::<T>::CalculatePriceFailed)?,
+                    desired_amount_out,
+                )
             }
         })
         // TODO: handle min/max limit
@@ -497,7 +537,13 @@ impl<T: Trait> Module<T> {
             } => {
                 let output_amount =
                     Self::price_for_main_asset(main_asset_id, desired_amount_in, SwapKind::Sell)?;
-                (desired_amount_in, output_amount.into())
+                (
+                    desired_amount_in,
+                    output_amount
+                        .into_bits()
+                        .try_into()
+                        .map_err(|_| Error::<T>::CalculatePriceFailed)?,
+                )
             }
 
             SwapAmount::WithDesiredOutput {
@@ -508,7 +554,13 @@ impl<T: Trait> Module<T> {
                     desired_amount_out,
                     SwapKind::Sell,
                 )?;
-                (input_amount.into(), desired_amount_out)
+                (
+                    input_amount
+                        .into_bits()
+                        .try_into()
+                        .map_err(|_| Error::<T>::CalculatePriceFailed)?,
+                    desired_amount_out,
+                )
             }
         })
         // TODO: handle min/max limit
@@ -534,7 +586,10 @@ impl<T: Trait> Module<T> {
                 Technical::<T>::tech_account_id_to_account_id(&reserves_tech_account_id)?;
             let (input_amount, output_amount) = Self::decide_sell_amounts(in_asset_id, amount)?;
             // TODO: deal with fee.
-            let fee_amount = Balance(Self::fee()) * output_amount;
+            let fee_amount = FixedWrapper::from(Self::fee()) * output_amount;
+            let fee_amount = fee_amount
+                .try_into_balance()
+                .map_err(|_| Error::<T>::CalculatePriceFailed)?;
             let transfer_amount = output_amount - fee_amount;
             let reserves_amount = Assets::<T>::total_balance(out_asset_id, &reserves_account_id)?;
             ensure!(
@@ -606,19 +661,17 @@ impl<T: Trait> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Disp
             fail!(CommonError::<T>::CantExchange);
         }
         let base_asset_id = &T::GetBaseAssetId::get();
-        if input_asset_id == base_asset_id {
+        let outcome = if input_asset_id == base_asset_id {
             match swap_amount {
                 SwapAmount::WithDesiredInput {
                     desired_amount_in: base_amount_in,
                     ..
                 } => {
-                    let amount = Self::price_for_main_asset(
-                        input_asset_id,
-                        base_amount_in.into(),
-                        SwapKind::Sell,
-                    )?
-                    .into();
-                    Ok(SwapOutcome::new(amount, amount * Balance(Self::fee())))
+                    let amount =
+                        Self::price_for_main_asset(input_asset_id, base_amount_in, SwapKind::Sell)?;
+                    let fee = FixedWrapper::from(amount) * Self::fee();
+                    let fee = fee.get().map_err(|_| Error::<T>::CalculatePriceFailed)?;
+                    SwapOutcome::new(amount, fee)
                 }
                 SwapAmount::WithDesiredOutput {
                     desired_amount_out: target_amount_out,
@@ -628,9 +681,10 @@ impl<T: Trait> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Disp
                         input_asset_id,
                         target_amount_out,
                         SwapKind::Sell,
-                    )?
-                    .into();
-                    Ok(SwapOutcome::new(amount, amount * Balance(Self::fee())))
+                    )?;
+                    let fee = FixedWrapper::from(amount) * Self::fee();
+                    let fee = fee.get().map_err(|_| Error::<T>::CalculatePriceFailed)?;
+                    SwapOutcome::new(amount, fee)
                 }
             }
         } else {
@@ -643,9 +697,10 @@ impl<T: Trait> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Disp
                         input_asset_id,
                         target_amount_in,
                         SwapKind::Buy,
-                    )?
-                    .into();
-                    Ok(SwapOutcome::new(amount, amount * Balance(Self::fee())))
+                    )?;
+                    let fee = FixedWrapper::from(amount) * Self::fee();
+                    let fee = fee.get().map_err(|_| Error::<T>::CalculatePriceFailed)?;
+                    SwapOutcome::new(amount, fee)
                 }
                 SwapAmount::WithDesiredOutput {
                     desired_amount_out: base_amount_out,
@@ -655,12 +710,16 @@ impl<T: Trait> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Disp
                         output_asset_id,
                         base_amount_out,
                         SwapKind::Buy,
-                    )?
-                    .into();
-                    Ok(SwapOutcome::new(amount, amount * Balance(Self::fee())))
+                    )?;
+                    let fee = FixedWrapper::from(amount) * Self::fee();
+                    let fee = fee.get().map_err(|_| Error::<T>::CalculatePriceFailed)?;
+                    SwapOutcome::new(amount, fee)
                 }
             }
-        }
+        };
+        outcome
+            .try_into()
+            .map_err(|_| Error::<T>::CalculatePriceFailed.into())
     }
 
     fn exchange(

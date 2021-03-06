@@ -1,6 +1,8 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use common::fixnum::ops::Numeric;
+use core::convert::TryInto;
+
+use common::fixnum::ops::One;
 use common::{fixed, prelude::*};
 use frame_support::{
     decl_error, decl_event, decl_module, decl_storage,
@@ -143,11 +145,9 @@ impl<T: Trait<I>, I: Instance> Module<T, I> {
         let fee_fraction: FixedWrapper = T::GetFee::get().into();
         let fee_amount = base_amount_in * fee_fraction;
         let amount_in_with_fee = base_amount_in - fee_amount.clone();
-
         let X: FixedWrapper = base_reserve.into();
         let Y: FixedWrapper = target_reserve.into();
         let d_X: FixedWrapper = amount_in_with_fee.into();
-
         let amount_out = (Y * d_X.clone() / (X + d_X))
             .get()
             .map_err(|_| Error::<T, I>::InsufficientLiquidity)?;
@@ -180,7 +180,6 @@ impl<T: Trait<I>, I: Instance> Module<T, I> {
         let base_amount_in_without_fee = (X * d_Y.clone() / (Y - d_Y))
             .get()
             .map_err(|_| Error::<T, I>::InsufficientLiquidity)?;
-
         let fee_fraction: FixedWrapper = T::GetFee::get().into();
         let base_amount_in_with_fee = FixedWrapper::from(base_amount_in_without_fee)
             / (FixedWrapper::from(Fixed::ONE) - fee_fraction);
@@ -294,51 +293,42 @@ impl<T: Trait<I>, I: Instance>
         output_asset_id: &T::AssetId,
         swap_amount: SwapAmount<Balance>,
     ) -> Result<SwapOutcome<Balance>, DispatchError> {
+        let swap_amount = swap_amount
+            .try_into()
+            .map_err(|_| Error::<T, I>::CalculationError)?;
         let base_asset_id = &T::GetBaseAssetId::get();
         if input_asset_id == base_asset_id {
             let (base_reserve, target_reserve) = <Reserves<T, I>>::get(dex_id, output_asset_id);
-            match swap_amount {
+            Ok(match swap_amount {
                 SwapAmount::WithDesiredInput {
                     desired_amount_in: base_amount_in,
                     ..
-                } => Ok(Self::get_target_amount_out(
-                    base_amount_in.0,
-                    base_reserve,
-                    target_reserve,
-                )?
-                .into()),
+                } => Self::get_target_amount_out(base_amount_in, base_reserve, target_reserve)?
+                    .try_into()
+                    .map_err(|_| Error::<T, I>::CalculationError)?,
                 SwapAmount::WithDesiredOutput {
                     desired_amount_out: target_amount_out,
                     ..
-                } => Ok(Self::get_base_amount_in(
-                    target_amount_out.0,
-                    base_reserve,
-                    target_reserve,
-                )?
-                .into()),
-            }
+                } => Self::get_base_amount_in(target_amount_out, base_reserve, target_reserve)?
+                    .try_into()
+                    .map_err(|_| Error::<T, I>::CalculationError)?,
+            })
         } else if output_asset_id == base_asset_id {
             let (base_reserve, target_reserve) = <Reserves<T, I>>::get(dex_id, input_asset_id);
-            match swap_amount {
+            Ok(match swap_amount {
                 SwapAmount::WithDesiredInput {
                     desired_amount_in: target_amount_in,
                     ..
-                } => Ok(Self::get_base_amount_out(
-                    target_amount_in.0,
-                    base_reserve,
-                    target_reserve,
-                )?
-                .into()),
+                } => Self::get_base_amount_out(target_amount_in, base_reserve, target_reserve)?
+                    .try_into()
+                    .map_err(|_| Error::<T, I>::CalculationError)?,
                 SwapAmount::WithDesiredOutput {
                     desired_amount_out: base_amount_out,
                     ..
-                } => Ok(Self::get_target_amount_in(
-                    base_amount_out.0,
-                    base_reserve,
-                    target_reserve,
-                )?
-                .into()),
-            }
+                } => Self::get_target_amount_in(base_amount_out, base_reserve, target_reserve)?
+                    .try_into()
+                    .map_err(|_| Error::<T, I>::CalculationError)?,
+            })
         } else {
             let (base_reserve_a, target_reserve_a) = <Reserves<T, I>>::get(dex_id, input_asset_id);
             let (base_reserve_b, target_reserve_b) = <Reserves<T, I>>::get(dex_id, output_asset_id);
@@ -346,46 +336,52 @@ impl<T: Trait<I>, I: Instance>
                 SwapAmount::WithDesiredInput {
                     desired_amount_in, ..
                 } => {
-                    let outcome_a: SwapOutcome<Balance> = Self::get_base_amount_out(
-                        desired_amount_in.0,
+                    let outcome_a: SwapOutcome<Fixed> = Self::get_base_amount_out(
+                        desired_amount_in,
                         base_reserve_a,
                         target_reserve_a,
-                    )?
-                    .into();
-                    let outcome_b: SwapOutcome<Balance> = Self::get_target_amount_out(
-                        outcome_a.amount.0,
+                    )?;
+                    let outcome_b: SwapOutcome<Fixed> = Self::get_target_amount_out(
+                        outcome_a.amount,
                         base_reserve_b,
                         target_reserve_b,
-                    )?
-                    .into();
+                    )?;
                     let outcome_a_fee: FixedWrapper = outcome_a.fee.into();
                     let outcome_b_fee: FixedWrapper = outcome_b.fee.into();
-                    let fee = (outcome_a_fee + outcome_b_fee)
-                        .get()
+                    let amount = outcome_b
+                        .amount
+                        .into_bits()
+                        .try_into()
                         .map_err(|_| Error::<T, I>::CalculationError)?;
-                    Ok(SwapOutcome::new(outcome_b.amount, Balance(fee)))
+                    let fee = (outcome_a_fee + outcome_b_fee)
+                        .try_into_balance()
+                        .map_err(|_| Error::<T, I>::CalculationError)?;
+                    Ok(SwapOutcome::new(amount, fee))
                 }
                 SwapAmount::WithDesiredOutput {
                     desired_amount_out, ..
                 } => {
-                    let outcome_b: SwapOutcome<Balance> = Self::get_base_amount_in(
-                        desired_amount_out.0,
+                    let outcome_b: SwapOutcome<Fixed> = Self::get_base_amount_in(
+                        desired_amount_out,
                         base_reserve_b,
                         target_reserve_b,
-                    )?
-                    .into();
-                    let outcome_a: SwapOutcome<Balance> = Self::get_target_amount_in(
-                        outcome_b.amount.0,
+                    )?;
+                    let outcome_a: SwapOutcome<Fixed> = Self::get_target_amount_in(
+                        outcome_b.amount,
                         base_reserve_a,
                         target_reserve_a,
-                    )?
-                    .into();
+                    )?;
                     let outcome_a_fee: FixedWrapper = outcome_a.fee.into();
                     let outcome_b_fee: FixedWrapper = outcome_b.fee.into();
-                    let fee = (outcome_b_fee + outcome_a_fee)
-                        .get()
+                    let amount = outcome_a
+                        .amount
+                        .into_bits()
+                        .try_into()
                         .map_err(|_| Error::<T, I>::CalculationError)?;
-                    Ok(SwapOutcome::new(outcome_a.amount, Balance(fee)))
+                    let fee = (outcome_b_fee + outcome_a_fee)
+                        .try_into_balance()
+                        .map_err(|_| Error::<T, I>::CalculationError)?;
+                    Ok(SwapOutcome::new(amount, fee))
                 }
             }
         }

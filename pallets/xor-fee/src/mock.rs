@@ -1,8 +1,6 @@
-use core::convert::TryInto;
-
 use codec::{Decode, Encode};
 use common::{
-    self, fixed, fixed_from_basis_points,
+    self, balance, fixed_from_basis_points,
     prelude::{Balance, SwapAmount, SwapOutcome},
     Amount, AssetId32, AssetSymbol, Fixed, LiquiditySource, LiquiditySourceFilter,
     LiquiditySourceType, VAL, XOR,
@@ -12,7 +10,7 @@ use currencies::BasicCurrencyAdapter;
 use frame_support::{
     impl_outer_dispatch, impl_outer_event, impl_outer_origin, parameter_types,
     traits::Get,
-    weights::{DispatchInfo, IdentityFee, PostDispatchInfo, Weight},
+    weights::{constants::WEIGHT_PER_SECOND, DispatchInfo, IdentityFee, PostDispatchInfo, Weight},
 };
 use frame_system as system;
 use permissions::{Scope, BURN, MINT, TRANSFER};
@@ -114,12 +112,12 @@ pub type Session = pallet_session::Module<Test>;
 pub struct Test;
 parameter_types! {
     pub const BlockHashCount: u64 = 250;
-    pub const MaximumBlockWeight: Weight = 1024;
+    pub const MaximumBlockWeight: Weight = WEIGHT_PER_SECOND;
     pub const MaximumBlockLength: u32 = 2 * 1024;
     pub const AvailableBlockRatio: Perbill = Perbill::from_percent(75);
-    pub const ReferrerWeight: u32 = 10;
-    pub const XorBurnedWeight: u32 = 40;
-    pub const XorIntoValBurnedWeight: u32 = 50;
+    pub const ReferrerWeight: u32 = 300_000_000;
+    pub const XorBurnedWeight: u32 = 400_000_000;
+    pub const XorIntoValBurnedWeight: u32 = 500_000_000;
     pub const ExistentialDeposit: u32 = 1;
     pub const TransactionByteFee: u32 = 0;
     pub const ExtrinsicBaseWeight: u32 = 0;
@@ -371,7 +369,7 @@ impl liquidity_proxy::LiquidityProxyTrait<DEXId, AccountId, AssetId> for MockLiq
     }
 }
 
-pub const MOCK_WEIGHT: Weight = 10;
+pub const MOCK_WEIGHT: Weight = 600_000_000;
 
 pub const REFERRER_ACCOUNT: u64 = 3;
 pub const FROM_ACCOUNT: u64 = 1;
@@ -380,9 +378,15 @@ pub const STASH_ACCOUNT: u64 = 11;
 pub const STASH_ACCOUNT2: u64 = 21;
 pub const CONTROLLER_ACCOUNT: u64 = 10;
 pub const CONTROLLER_ACCOUNT2: u64 = 20;
-pub const INITIAL_BALANCE: u64 = 1000;
 pub const TRANSFER_AMOUNT: u64 = 69;
-pub const INITIAL_RESERVES: u64 = 10000;
+
+pub fn initial_balance() -> Balance {
+    balance!(1000)
+}
+
+pub fn initial_reserves() -> Balance {
+    balance!(10000)
+}
 
 pub struct ExtBuilder;
 
@@ -398,7 +402,7 @@ impl ExtBuilder {
         .assimilate_storage(&mut t)
         .unwrap();
 
-        let initial_balance: Balance = INITIAL_BALANCE.into();
+        let initial_balance = initial_balance();
         pallet_balances::GenesisConfig::<Test> {
             balances: vec![
                 (FROM_ACCOUNT, initial_balance),
@@ -463,7 +467,7 @@ impl ExtBuilder {
         .unwrap();
 
         tokens::GenesisConfig::<Test> {
-            endowed_accounts: vec![(xor_fee_account_id.clone(), VAL, fixed!(1000))],
+            endowed_accounts: vec![(xor_fee_account_id.clone(), VAL, balance!(1000))],
         }
         .assimilate_storage(&mut t)
         .unwrap();
@@ -473,13 +477,13 @@ impl ExtBuilder {
             (
                 STASH_ACCOUNT,
                 CONTROLLER_ACCOUNT,
-                fixed!(1000),
+                balance!(1000),
                 pallet_staking::StakerStatus::<AccountId>::Validator,
             ),
             (
                 STASH_ACCOUNT2,
                 CONTROLLER_ACCOUNT2,
-                fixed!(1000),
+                balance!(1000),
                 pallet_staking::StakerStatus::<AccountId>::Validator,
             ),
         ];
@@ -513,7 +517,7 @@ impl ExtBuilder {
         .assimilate_storage(&mut t)
         .unwrap();
 
-        let initial_reserves: Fixed = INITIAL_RESERVES.try_into().unwrap();
+        let initial_reserves: Fixed = Fixed::from_bits(initial_reserves() as i128);
         mock_liquidity_source::GenesisConfig::<Test, mock_liquidity_source::Instance1> {
             reserves: vec![(
                 common::DEXId::Polkaswap,

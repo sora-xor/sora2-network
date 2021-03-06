@@ -1,5 +1,5 @@
 use crate::Trait;
-use common::prelude::Balance;
+use common::{balance, prelude::Balance};
 use currencies::BasicCurrencyAdapter;
 use frame_support::{impl_outer_origin, parameter_types, weights::Weight};
 use frame_system as system;
@@ -35,9 +35,9 @@ impl Default for ExtBuilder {
     fn default() -> Self {
         Self {
             endowed_accounts: vec![
-                (ALICE(), RedPepper.into(), 99_000_u128.into()),
-                (ALICE(), BlackPepper.into(), 2000_000_u128.into()),
-                (BOB(), RedPepper.into(), 2000_000_u128.into()),
+                (ALICE(), RedPepper.into(), balance!(99000)),
+                (ALICE(), BlackPepper.into(), balance!(2000000)),
+                (BOB(), RedPepper.into(), balance!(2000000)),
             ],
             initial_permission_owners: vec![
                 (INIT_DEX, Scope::Unlimited, vec![BOB()]),

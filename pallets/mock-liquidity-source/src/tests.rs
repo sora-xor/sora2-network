@@ -1,5 +1,5 @@
 use crate::mock::*;
-use common::{fixed, prelude::*};
+use common::{balance, fixed, prelude::*};
 
 #[test]
 fn test_provides_exchange_should_pass() {
@@ -113,18 +113,18 @@ fn test_quote_base_to_target_should_pass() {
             &DEX_A_ID,
             &GetBaseAssetId::get(),
             &DOT,
-            SwapAmount::with_desired_input(fixed!(100), fixed!(0)),
+            SwapAmount::with_desired_input(balance!(100), 0),
         )
         .unwrap();
-        assert_eq!(outcome.amount, fixed!(136.851187324744592819));
+        assert_eq!(outcome.amount, balance!(136.851187324744592819));
         let outcome = MockLiquiditySource::quote(
             &DEX_A_ID,
             &GetBaseAssetId::get(),
             &DOT,
-            SwapAmount::with_desired_output(fixed!(136.851187324744592819), fixed!(100)),
+            SwapAmount::with_desired_output(balance!(136.851187324744592819), balance!(100)),
         )
         .unwrap();
-        assert_eq!(outcome.amount, fixed!(99.999999999999999999));
+        assert_eq!(outcome.amount, balance!(99.999999999999999999));
     });
 }
 
@@ -144,18 +144,18 @@ fn test_quote_target_to_base_should_pass() {
             &DEX_A_ID,
             &DOT,
             &GetBaseAssetId::get(),
-            SwapAmount::with_desired_input(fixed!(100), fixed!(0)),
+            SwapAmount::with_desired_input(balance!(100), 0),
         )
         .unwrap();
-        assert_eq!(outcome.amount, fixed!(70.211267605633802817));
+        assert_eq!(outcome.amount, balance!(70.211267605633802817));
         let outcome = MockLiquiditySource::quote(
             &DEX_A_ID,
             &DOT,
             &GetBaseAssetId::get(),
-            SwapAmount::with_desired_output(fixed!(70.211267605633802817), fixed!(100)),
+            SwapAmount::with_desired_output(balance!(70.211267605633802817), balance!(100)),
         )
         .unwrap();
-        assert_eq!(outcome.amount, fixed!(99.999999999999999999));
+        assert_eq!(outcome.amount, balance!(99.999999999999999999));
     });
 }
 
@@ -183,18 +183,18 @@ fn test_quote_target_to_target_should_pass() {
             &DEX_A_ID,
             &KSM,
             &DOT,
-            SwapAmount::with_desired_input(fixed!(100), fixed!(0)),
+            SwapAmount::with_desired_input(balance!(100), 0),
         )
         .unwrap();
-        assert_eq!(outcome.amount, fixed!(238.487257161165663484));
+        assert_eq!(outcome.amount, balance!(238.487257161165663484));
         let outcome = MockLiquiditySource::quote(
             &DEX_A_ID,
             &KSM,
             &DOT,
-            SwapAmount::with_desired_output(fixed!(238.487257161165663484), fixed!(100)),
+            SwapAmount::with_desired_output(balance!(238.487257161165663484), balance!(100)),
         )
         .unwrap();
-        assert_eq!(outcome.amount, fixed!(100));
+        assert_eq!(outcome.amount, balance!(100));
     });
 }
 
@@ -222,17 +222,17 @@ fn test_quote_different_modules_should_pass() {
             &DEX_A_ID,
             &GetBaseAssetId::get(),
             &DOT,
-            SwapAmount::with_desired_input(fixed!(100), fixed!(100)),
+            SwapAmount::with_desired_input(balance!(100), balance!(100)),
         )
         .unwrap();
-        assert_eq!(outcome.amount, fixed!(136.851187324744592819));
+        assert_eq!(outcome.amount, balance!(136.851187324744592819));
         let outcome = MockLiquiditySource2::quote(
             &DEX_A_ID,
             &GetBaseAssetId::get(),
             &DOT,
-            SwapAmount::with_desired_input(fixed!(100), fixed!(100)),
+            SwapAmount::with_desired_input(balance!(100), balance!(100)),
         )
         .unwrap();
-        assert_eq!(outcome.amount, fixed!(53.413575727271103809));
+        assert_eq!(outcome.amount, balance!(53.413575727271103809));
     });
 }

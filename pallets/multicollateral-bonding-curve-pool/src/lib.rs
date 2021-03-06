@@ -6,9 +6,11 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
+use core::convert::TryInto;
+
 use common::{
-    fixed, fixed_wrapper,
-    fixnum::ops::Numeric,
+    balance, fixed, fixed_wrapper,
+    fixnum::ops::Zero as _,
     prelude::{
         Balance, Error as CommonError, Fixed, FixedWrapper, QuoteAmount, SwapAmount, SwapOutcome,
     },
@@ -21,8 +23,8 @@ use frame_system::ensure_signed;
 use liquidity_proxy::LiquidityProxyTrait;
 use permissions::{Scope, BURN, MINT, SLASH, TRANSFER};
 use pswap_distribution::OnPswapBurned;
-use sp_arithmetic::traits::{One, Zero};
-use sp_runtime::{traits::Saturating, DispatchError, DispatchResult};
+use sp_arithmetic::traits::Zero;
+use sp_runtime::{DispatchError, DispatchResult};
 use sp_std::collections::btree_set::BTreeSet;
 
 pub trait Trait: common::Trait + assets::Trait + technical::Trait + trading_pair::Trait {
@@ -241,7 +243,11 @@ impl<T: Trait> BuyMainAsset<T> {
                 &self.reserves_tech_account_id,
                 input_amount,
             )?;
-            let free_amount = input_amount * Balance(AlwaysDistributeCoefficient::get());
+            let free_amount = FixedWrapper::from(input_amount)
+                * FixedWrapper::from(AlwaysDistributeCoefficient::get());
+            let free_amount = free_amount
+                .try_into_balance()
+                .map_err(|_| Error::<T>::PriceCalculationFailed)?;
             Ok((free_amount, (input_amount, output_amount, fee_amount)))
         })
     }
@@ -267,6 +273,8 @@ impl<T: Trait> BuyMainAsset<T> {
             Technical::<T>::burn(&self.main_asset_id, reserves_tech_acc, swapped_xor_amount)?;
             Technical::<T>::mint(&self.main_asset_id, reserves_tech_acc, swapped_xor_amount)?;
 
+            let fw_swapped_xor_amount = FixedWrapper::from(swapped_xor_amount);
+
             let distribution_accounts: DistributionAccounts<
                 DistributionAccountData<T::TechAccountId>,
             > = DistributionAccountsEntry::<T>::get();
@@ -275,22 +283,28 @@ impl<T: Trait> BuyMainAsset<T> {
                 .iter()
                 .map(|x| (&x.account_id, x.coefficient))
             {
+                let amount = fw_swapped_xor_amount.clone() * coefficient;
+                let amount = amount
+                    .try_into_balance()
+                    .map_err(|_| Error::<T>::PriceCalculationFailed)?;
                 technical::Module::<T>::transfer(
                     &self.main_asset_id,
                     reserves_tech_acc,
                     to_tech_account_id,
-                    swapped_xor_amount * Balance(coefficient),
+                    amount,
                 )?;
             }
+            let amount =
+                fw_swapped_xor_amount.clone() * distribution_accounts.val_holders.coefficient;
+            let amount = amount
+                .try_into_balance()
+                .map_err(|_| Error::<T>::PriceCalculationFailed)?;
             let val_amount = T::LiquidityProxy::exchange(
                 reserves_acc,
                 reserves_acc,
                 &self.main_asset_id,
                 &VAL.into(),
-                SwapAmount::with_desired_input(
-                    swapped_xor_amount * Balance(distribution_accounts.val_holders.coefficient),
-                    Balance::zero(),
-                ),
+                SwapAmount::with_desired_input(amount, Balance::zero()),
                 Module::<T>::self_excluding_filter(),
             )?
             .amount;
@@ -323,7 +337,9 @@ impl<T: Trait> BuyMainAsset<T> {
         if let Some(multiplier) =
             AssetsWithOptionalRewardMultiplier::<T>::get(&self.collateral_asset_id)
         {
-            pswap_amount = pswap_amount.saturating_mul(Balance(multiplier));
+            pswap_amount = (FixedWrapper::from(pswap_amount) * multiplier)
+                .try_into_balance()
+                .map_err(|_| Error::<T>::PriceCalculationFailed)?;
         }
         if !pswap_amount.is_zero() {
             Rewards::<T>::mutate(&self.from_account_id, |(_, ref mut available)| {
@@ -476,8 +492,13 @@ impl<T: Trait> Module<T> {
             QuoteAmount::WithDesiredOutput {
                 desired_amount_out: main_quantity,
             } => {
-                let new_state: FixedWrapper =
-                    Self::buy_function(main_asset_id, main_quantity.into())?.into();
+                let new_state: FixedWrapper = Self::buy_function(
+                    main_asset_id,
+                    FixedWrapper::from(main_quantity)
+                        .get()
+                        .map_err(|_| Error::<T>::PriceCalculationFailed)?,
+                )?
+                .into();
                 let collateral_reference_in =
                     ((current_state + new_state) / fixed_wrapper!(2.0)) * main_quantity;
                 let collateral_quantity =
@@ -534,7 +555,7 @@ impl<T: Trait> Module<T> {
                     .get()
                     .map_err(|_| Error::<T>::PriceCalculationFailed)?;
                 ensure!(
-                    output_collateral_unwrapped < collateral_supply_unwrapped.into(),
+                    output_collateral_unwrapped < collateral_supply_unwrapped,
                     Error::<T>::NotEnoughReserves
                 );
                 Ok(output_collateral_unwrapped)
@@ -542,8 +563,12 @@ impl<T: Trait> Module<T> {
             QuoteAmount::WithDesiredOutput {
                 desired_amount_out: quantity_collateral,
             } => {
+                let collateral_supply_unwrapped = collateral_supply_unwrapped
+                    .into_bits()
+                    .try_into()
+                    .map_err(|_| Error::<T>::PriceCalculationFailed)?;
                 ensure!(
-                    quantity_collateral < collateral_supply_unwrapped.into(),
+                    quantity_collateral < collateral_supply_unwrapped,
                     Error::<T>::NotEnoughReserves
                 );
                 let output_main =
@@ -584,14 +609,17 @@ impl<T: Trait> Module<T> {
                 desired_amount_in,
                 min_amount_out,
             } => {
-                let mut output_amount: Balance = Self::buy_price(
+                let mut output_amount: Balance = FixedWrapper::from(Self::buy_price(
                     main_asset_id,
                     collateral_asset_id,
                     QuoteAmount::with_desired_input(desired_amount_in),
-                )?
-                .into();
-                let fee_amount = Balance(BaseFee::get()).saturating_mul(output_amount.clone());
-                output_amount = output_amount.saturating_sub(fee_amount.clone());
+                )?)
+                .try_into_balance()
+                .map_err(|_| Error::<T>::PriceCalculationFailed)?;
+                let fee_amount = (FixedWrapper::from(BaseFee::get()) * output_amount)
+                    .try_into_balance()
+                    .map_err(|_| Error::<T>::PriceCalculationFailed)?;
+                output_amount = output_amount.saturating_sub(fee_amount);
                 ensure!(
                     output_amount >= min_amount_out,
                     Error::<T>::SlippageLimitExceeded
@@ -602,14 +630,19 @@ impl<T: Trait> Module<T> {
                 desired_amount_out,
                 max_amount_in,
             } => {
-                let desired_amount_out_with_fee =
-                    desired_amount_out.clone() / (Balance::one() - Balance(BaseFee::get()));
+                let desired_amount_out_with_fee = (FixedWrapper::from(desired_amount_out)
+                    / (fixed_wrapper!(1) - BaseFee::get()))
+                .try_into_balance()
+                .map_err(|_| Error::<T>::PriceCalculationFailed)?;
                 let input_amount = Self::buy_price(
                     main_asset_id,
                     collateral_asset_id,
                     QuoteAmount::with_desired_output(desired_amount_out_with_fee.clone()),
-                )?
-                .into();
+                )?;
+                let input_amount = input_amount
+                    .into_bits()
+                    .try_into()
+                    .map_err(|_| Error::<T>::PriceCalculationFailed)?;
                 ensure!(
                     input_amount <= max_amount_in,
                     Error::<T>::SlippageLimitExceeded
@@ -636,15 +669,21 @@ impl<T: Trait> Module<T> {
                 desired_amount_in,
                 min_amount_out,
             } => {
-                let fee_amount = Balance(BaseFee::get()).saturating_mul(desired_amount_in);
+                let fee_amount = (FixedWrapper::from(BaseFee::get())
+                    * FixedWrapper::from(desired_amount_in))
+                .try_into_balance()
+                .map_err(|_| Error::<T>::PriceCalculationFailed)?;
                 let output_amount = Self::sell_price(
                     main_asset_id,
                     collateral_asset_id,
                     QuoteAmount::with_desired_input(
                         desired_amount_in.saturating_sub(fee_amount.clone()),
                     ),
-                )?
-                .into();
+                )?;
+                let output_amount = output_amount
+                    .into_bits()
+                    .try_into()
+                    .map_err(|_| Error::<T>::PriceCalculationFailed)?;
                 ensure!(
                     output_amount >= min_amount_out,
                     Error::<T>::SlippageLimitExceeded
@@ -655,20 +694,24 @@ impl<T: Trait> Module<T> {
                 desired_amount_out,
                 max_amount_in,
             } => {
-                let input_amount: Balance = Self::sell_price(
+                let input_amount: Balance = FixedWrapper::from(Self::sell_price(
                     main_asset_id,
                     collateral_asset_id,
                     QuoteAmount::with_desired_output(desired_amount_out),
-                )?
-                .into();
+                )?)
+                .try_into_balance()
+                .map_err(|_| Error::<T>::PriceCalculationFailed)?;
                 let input_amount_with_fee =
-                    input_amount.clone() / (Balance::one() - Balance(BaseFee::get()));
+                    FixedWrapper::from(input_amount) / (fixed_wrapper!(1) - BaseFee::get());
+                let input_amount_with_fee = input_amount_with_fee
+                    .try_into_balance()
+                    .map_err(|_| Error::<T>::PriceCalculationFailed)?;
                 ensure!(
-                    input_amount_with_fee <= max_amount_in,
+                    input_amount <= max_amount_in,
                     Error::<T>::SlippageLimitExceeded
                 );
                 (
-                    input_amount_with_fee.clone(),
+                    input_amount_with_fee,
                     desired_amount_out,
                     input_amount_with_fee.saturating_sub(input_amount),
                 )
@@ -743,12 +786,12 @@ impl<T: Trait> Module<T> {
     fn reference_price(asset_id: &T::AssetId) -> Result<Balance, DispatchError> {
         let reference_asset_id = ReferenceAssetId::<T>::get();
         let price = if asset_id == &reference_asset_id {
-            Balance::one()
+            balance!(1)
         } else {
             T::LiquidityProxy::quote(
                 asset_id,
                 &reference_asset_id,
-                SwapAmount::with_desired_input(Balance::one(), Balance::zero()),
+                SwapAmount::with_desired_input(balance!(1), Balance::zero()),
                 Self::self_excluding_filter(),
             )?
             .amount
@@ -762,7 +805,9 @@ impl<T: Trait> Module<T> {
     ) -> Result<Balance, DispatchError> {
         let reserve = Assets::<T>::free_balance(&collateral_asset_id, &reserves_account_id)?;
         let price = Self::reference_price(&collateral_asset_id)?;
-        Ok(reserve.saturating_mul(price))
+        (FixedWrapper::from(reserve) * price)
+            .try_into_balance()
+            .map_err(|_| Error::<T>::PriceCalculationFailed.into())
     }
 
     fn ideal_reserves_reference_price(delta: Fixed) -> Result<Balance, DispatchError> {
@@ -772,11 +817,11 @@ impl<T: Trait> Module<T> {
             FixedWrapper::from(Self::initial_price()) * Self::sell_price_coefficient();
         let current_state = Self::sell_function(&base_asset_id, delta)?;
 
-        let price = (initial_state + current_state) / fixed_wrapper!(2.0) * base_total_supply;
+        let price = (initial_state + current_state) / fixed_wrapper!(2.0)
+            * FixedWrapper::from(base_total_supply);
         price
-            .get()
+            .try_into_balance()
             .map_err(|_| Error::<T>::PriceCalculationFailed.into())
-            .map(|fxd| Balance(fxd))
     }
 
     /// ideal = sell_function(0 to xor_total_supply)
@@ -798,13 +843,19 @@ impl<T: Trait> Module<T> {
 
         // State values.
         let ideal_before: FixedWrapper = Self::ideal_reserves_reference_price(Fixed::ZERO)?.into();
-        let ideal_after: FixedWrapper =
-            Self::ideal_reserves_reference_price(main_asset_amount.0)?.into();
+        let ideal_after: FixedWrapper = Self::ideal_reserves_reference_price(
+            FixedWrapper::from(main_asset_amount)
+                .get()
+                .map_err(|_| Error::<T>::PriceCalculationFailed)?,
+        )?
+        .into();
         let actual_before: FixedWrapper =
             Self::actual_reserves_reference_price(reserves_account_id, collateral_asset_id)?.into();
         let actual_after = actual_before.clone()
-            + collateral_asset_amount * Self::reference_price(collateral_asset_id)?;
-        let N: FixedWrapper = IncentivisedCurrenciesNum::get().into();
+            + FixedWrapper::from(collateral_asset_amount)
+                * Self::reference_price(collateral_asset_id)?;
+        let N: u128 = IncentivisedCurrenciesNum::get().into();
+        let N: FixedWrapper = FixedWrapper::from(N * balance!(1));
 
         // Calculate rewards in USD.
         let a = ideal_before.clone() - actual_before;
@@ -816,10 +867,9 @@ impl<T: Trait> Module<T> {
 
         // Convert to PSWAP.
         let pswap_price = Self::reference_price(&PSWAP.into())?;
-        let pswap_amount = reference_amount / pswap_price;
+        let pswap_amount = reference_amount / FixedWrapper::from(pswap_price);
         pswap_amount
-            .get()
-            .map(|fp| Balance(fp))
+            .try_into_balance()
             .map_err(|_| Error::<T>::PriceCalculationFailed.into())
     }
 
@@ -858,15 +908,19 @@ impl<T: Trait> Module<T> {
 }
 
 impl<T: Trait> OnPswapBurned for Module<T> {
-    fn on_pswap_burned(mut amount: Balance) {
+    fn on_pswap_burned(amount: Balance) {
         let total_rewards = TotalRewards::get();
-        amount = amount.saturating_mul(Balance(PswapBurnedDedicatedForRewards::get()));
+        let amount =
+            FixedWrapper::from(amount) * FixedWrapper::from(PswapBurnedDedicatedForRewards::get());
 
         if !total_rewards.is_zero() {
             Rewards::<T>::translate(|_key: T::AccountId, value: (Balance, Balance)| {
                 let (limit, owned) = value;
-                let limit_to_add = owned.saturating_mul(amount) / (total_rewards);
-                let new_limit = limit.saturating_add(limit_to_add.clone());
+                let limit_to_add =
+                    FixedWrapper::from(owned) * amount.clone() / FixedWrapper::from(total_rewards);
+                let new_limit = (limit_to_add + FixedWrapper::from(limit))
+                    .try_into_balance()
+                    .unwrap_or(limit);
                 Some((new_limit, owned))
             })
         }

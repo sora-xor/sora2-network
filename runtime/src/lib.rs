@@ -33,7 +33,7 @@ use sp_core::{crypto::KeyTypeId, OpaqueMetadata};
 use sp_runtime::{
     create_runtime_str, generic, impl_opaque_keys,
     traits::{
-        BlakeTwo256, Block as BlockT, Bounded, Convert, IdentifyAccount, IdentityLookup, NumberFor,
+        BlakeTwo256, Block as BlockT, Convert, IdentifyAccount, IdentityLookup, NumberFor,
         OpaqueKeys, SaturatedConversion, Saturating, Verify, Zero,
     },
     transaction_validity::{TransactionSource, TransactionValidity},
@@ -50,7 +50,7 @@ use static_assertions::assert_eq_size;
 // A few exports that help ease life for downstream crates.
 pub use common::{
     fixed, fixed_from_basis_points,
-    prelude::{Balance, SwapAmount, SwapOutcome, SwapVariant, WeightToFixedFee},
+    prelude::{Balance, BalanceWrapper, SwapAmount, SwapOutcome, SwapVariant, WeightToFixedFee},
     AssetSymbol, BalancePrecision, BasisPoints, FilterMode, Fixed, FromGenericPair,
     LiquiditySource, LiquiditySourceFilter, LiquiditySourceId, LiquiditySourceType,
 };
@@ -627,7 +627,7 @@ impl xor_fee::Trait for Runtime {
 }
 
 parameter_types! {
-    pub const TransactionByteFee: Balance = Balance(Fixed::from_bits(1_000_000_000_000_i128)); // 10^-6 XOR ~ 10 * MILLICENTS
+    pub const TransactionByteFee: Balance = 1_000_000_000_000; // 10^-6 XOR ~ 10 * MILLICENTS
     pub const TargetBlockFullness: Perquintill = Perquintill::from_percent(25);
     pub AdjustmentVariable: Multiplier = Multiplier::saturating_from_rational(1, 100_000);
     pub MinimumMultiplier: Multiplier = Multiplier::saturating_from_rational(1, 1_000_000_000_u128);
@@ -964,7 +964,7 @@ impl_runtime_apis! {
             liquidity_source_type: LiquiditySourceType,
             input_asset_id: AssetId,
             output_asset_id: AssetId,
-            desired_input_amount: Balance,
+            desired_input_amount: BalanceWrapper,
             swap_variant: SwapVariant,
         ) -> Option<dex_runtime_api::SwapOutcomeInfo<Balance>> {
             // TODO: remove with proper QuoteAmount refactor
@@ -977,7 +977,7 @@ impl_runtime_apis! {
                 &LiquiditySourceId::new(dex_id, liquidity_source_type),
                 &input_asset_id,
                 &output_asset_id,
-                SwapAmount::with_variant(swap_variant, desired_input_amount, limit),
+                SwapAmount::with_variant(swap_variant, desired_input_amount.into(), limit),
             ).ok().map(|sa| dex_runtime_api::SwapOutcomeInfo::<Balance> { amount: sa.amount, fee: sa.fee})
         }
 
@@ -1174,7 +1174,7 @@ impl_runtime_apis! {
             dex_id: DEXId,
             input_asset_id: AssetId,
             output_asset_id: AssetId,
-            amount: Balance,
+            amount: BalanceWrapper,
             swap_variant: SwapVariant,
             selected_source_types: Vec<LiquiditySourceType>,
             filter_mode: FilterMode,
@@ -1188,7 +1188,7 @@ impl_runtime_apis! {
             LiquidityProxy::quote(
                 &input_asset_id,
                 &output_asset_id,
-                SwapAmount::with_variant(swap_variant, amount, limit),
+                SwapAmount::with_variant(swap_variant, amount.into(), limit),
                 LiquiditySourceFilter::with_mode(dex_id, filter_mode, selected_source_types),
             ).ok().map(|asa| liquidity_proxy_runtime_api::SwapOutcomeInfo::<Balance> { amount: asa.amount, fee: asa.fee})
         }

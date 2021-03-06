@@ -1,6 +1,6 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use common::prelude::*;
+use common::{balance, prelude::*};
 pub use domain::*;
 use frame_support::{
     codec::{Decode, Encode},
@@ -57,7 +57,7 @@ mod tests;
 const UPDATE_PRICES_EVERY_N_BLOCK: u32 = 1000;
 
 /// Period 100 = 1 week, if interval is 1000 block where one block each 6 seconds.
-const SMOOTH_PERIOD: u32 = 100;
+const SMOOTH_PERIOD: u128 = 100;
 
 type AccountIdOf<T> = <T as frame_system::Trait>::AccountId;
 type TechAccountIdOf<T> = <T as technical::Trait>::TechAccountId;
@@ -180,16 +180,16 @@ impl<T: Trait> Module<T> {
         let farm_id = NextFarmId::get();
         let current_block = <frame_system::Module<T>>::block_number();
         let farming_state = FarmingState::<Balance, T::BlockNumber> {
-            units_per_blocks: 0u32.into(),
+            units_per_blocks: 0,
             last_change: current_block,
-            units_locked: 0u32.into(),
+            units_locked: 0,
         };
         let incentive_model = IncentiveModel::<T::AssetId, Balance, T::BlockNumber> {
             suitable_for_block: current_block,
             origin_asset_id,
             claim_asset_id,
-            amount_of_origin: Some(99999u32.into()),
-            origin_to_claim_ratio: Some(1u32.into()),
+            amount_of_origin: Some(balance!(99999)),
+            origin_to_claim_ratio: Some(balance!(1)),
         };
         let farm = Farm::<T::AccountId, T::AssetId, T::BlockNumber> {
             id: farm_id,
@@ -229,9 +229,9 @@ impl<T: Trait> Module<T> {
                     id: farmer_id,
                     tech_account_id: tech_id,
                     state: FarmingState::<Balance, T::BlockNumber> {
-                        units_per_blocks: 0u32.into(),
+                        units_per_blocks: 0,
                         last_change: current_block,
-                        units_locked: 0u32.into(),
+                        units_locked: 0,
                     },
                 };
                 Farmers::<T>::insert(farm_id, account_id.clone(), farmer.clone());
@@ -376,52 +376,60 @@ impl<T: Trait> Module<T> {
             .state
             .recalculate(current_block)
             .map_err(|()| Error::<T>::CalculationOrOperationWithFarmingStateIsFailed)?;
-        let total_upb = farm.aggregated_state.units_per_blocks;
-        let mut upb = farmer.state.units_per_blocks;
-        ensure!(upb > 0u32.into(), Error::<T>::NothingToClaim);
-        let peace = total_upb / upb;
-        let amount_of_origin = farm
-            .incentive_model_state
-            .amount_of_origin
-            .ok_or(Error::<T>::SomeValuesIsNotSet)?;
+        let total_upb = FixedWrapper::from(farm.aggregated_state.units_per_blocks);
+        let mut upb = FixedWrapper::from(farmer.state.units_per_blocks);
+        ensure!(upb > FixedWrapper::from(0), Error::<T>::NothingToClaim);
+        let piece = total_upb / upb.clone();
+        let amount_of_origin = FixedWrapper::from(
+            farm.incentive_model_state
+                .amount_of_origin
+                .ok_or(Error::<T>::SomeValuesIsNotSet)?,
+        );
 
         if farm.incentive_model_state.suitable_for_block < current_block {
             //TODO: Now it is limited for xor pswap, that about other assets ?
             farm.incentive_model_state.origin_to_claim_ratio =
                 Module::<T>::get_smooth_price_for_xor_pswap();
         }
-        let origin_to_claim_ratio = farm
-            .incentive_model_state
-            .origin_to_claim_ratio
-            .ok_or(Error::<T>::SomeValuesIsNotSet)?;
+        let origin_to_claim_ratio = FixedWrapper::from(
+            farm.incentive_model_state
+                .origin_to_claim_ratio
+                .ok_or(Error::<T>::SomeValuesIsNotSet)?,
+        );
 
-        let mut peace_of_origin = amount_of_origin / peace;
-        let mut peace_of_claim = peace_of_origin * origin_to_claim_ratio;
+        let mut piece_of_origin = amount_of_origin.clone() / piece;
+        let mut piece_of_claim = piece_of_origin.clone() * origin_to_claim_ratio.clone();
 
         match amount_opt {
             None => (),
             Some(amount) => {
+                let amount = FixedWrapper::from(amount);
                 ensure!(
-                    amount <= peace_of_claim,
+                    amount <= piece_of_claim,
                     Error::<T>::AmountIsOutOfAvailableValue
                 );
-                let down = peace_of_claim / amount;
-                upb /= down;
-                peace_of_origin /= down;
-                peace_of_claim /= down;
+                let down = piece_of_claim.clone() / amount;
+                upb = upb / down.clone();
+                piece_of_origin = piece_of_origin / down.clone();
+                piece_of_claim = piece_of_claim / down.clone();
             }
         }
+
+        let upb = upb.into_balance();
+        let amount_of_origin = amount_of_origin.into_balance();
+        let piece_of_origin = piece_of_origin.into_balance();
+        let piece_of_claim = piece_of_claim.into_balance();
 
         if perform_write_to_database {
             farmer
                 .state
                 .remove_from_upb(Some(&mut farm.aggregated_state), current_block, upb)
                 .map_err(|()| Error::<T>::CalculationOrOperationWithFarmingStateIsFailed)?;
-            farm.incentive_model_state.amount_of_origin = Some(amount_of_origin - peace_of_origin);
+            farm.incentive_model_state.amount_of_origin = Some(amount_of_origin - piece_of_origin);
             T::Currency::deposit(
                 farm.incentive_model_state.claim_asset_id,
                 &who,
-                peace_of_claim,
+                piece_of_claim,
             )?;
             Farms::<T>::insert(farm.id, farm.clone());
             Farmers::<T>::insert(farmer.id.0.clone(), farmer.id.1.clone(), farmer);
@@ -431,8 +439,8 @@ impl<T: Trait> Module<T> {
 
         Ok(DiscoverClaim::<Balance> {
             units_per_blocks: upb,
-            available_origin: peace_of_origin,
-            available_claim: peace_of_claim,
+            available_origin: piece_of_origin,
+            available_claim: piece_of_claim,
         })
     }
 
@@ -504,42 +512,43 @@ impl<T: Trait> Module<T> {
         };
 
         // Prepearing constants.
-        let one: Balance = 1u32.into();
-        let two: Balance = 2u32.into();
-        let smooth: Balance = SMOOTH_PERIOD.into();
-        let smooth_short: Balance = smooth / two.clone();
+        let one: FixedWrapper = FixedWrapper::from(balance!(1));
+        let two: FixedWrapper = FixedWrapper::from(balance!(2));
+        let smooth: FixedWrapper = FixedWrapper::from(SMOOTH_PERIOD * balance!(1));
+        let smooth_short = smooth.clone() / two.clone();
 
         // Getting quick variables for calculations.
-        let p1 = pv_state.weavg_normal.0;
-        let v1 = pv_state.weavg_normal.1;
-        let p2 = pv_state.weavg_short.0;
-        let v2 = pv_state.weavg_short.1;
-        let pc = pv_cur.0;
-        let vc = pv_cur.1;
+        let p1 = FixedWrapper::from(pv_state.weavg_normal.0);
+        let v1 = FixedWrapper::from(pv_state.weavg_normal.1);
+        let p2 = FixedWrapper::from(pv_state.weavg_short.0);
+        let v2 = FixedWrapper::from(pv_state.weavg_short.1);
+        let pc = FixedWrapper::from(pv_cur.0);
+        let vc = FixedWrapper::from(pv_cur.1);
 
         // Calculations for first weavg curve.
-        let voldiv1: Balance = one.clone() + one.clone() / smooth;
-        let ps1 = pc * vc / smooth;
-        let vs1 = v1 + vc / smooth;
-        let p_res1 = (p1 * v1 + ps1) / vs1;
+        let voldiv1 = one.clone() + one.clone() / smooth.clone();
+        let ps1 = pc.clone() * vc.clone() / smooth.clone();
+        let vs1 = v1.clone() + vc.clone() / smooth.clone();
+        let p_res1 = (p1 * v1.clone() + ps1) / vs1.clone();
         let v_res1 = vs1 / voldiv1;
 
         // Calculations for second weavg curve (shorter period).
-        let voldiv2: Balance = one.clone() + one.clone() / smooth_short;
-        let ps2 = pc * vc / smooth_short;
-        let vs2 = v2 + vc / smooth_short;
-        let p_res2 = (p2 * v2 + ps2) / vs2;
+        let voldiv2 = one.clone() + one.clone() / smooth_short.clone();
+        let ps2 = pc * vc.clone() / smooth_short.clone();
+        let vs2 = v2.clone() + vc / smooth_short;
+        let p_res2 = (p2 * v2 + ps2) / vs2.clone();
         let v_res2 = vs2 / voldiv2;
 
         // Compute smooth price as first half of normal distribution,
         // approximated by two weavg curves.
-        let smooth_price = (p_res1 - p_res2 / two.clone()) * two.clone();
+        let smooth_price = (p_res1.clone() - p_res2.clone() / two.clone()) * two.clone();
+        let smooth_price = smooth_price.into_balance();
 
         // Updating smooth price state for this asset pair.
         let pv_state_update = SmoothPriceState {
             smooth_price: smooth_price,
-            weavg_normal: (p_res1, v_res1),
-            weavg_short: (p_res2, v_res2),
+            weavg_normal: (p_res1.into_balance(), v_res1.into_balance()),
+            weavg_short: (p_res2.into_balance(), v_res2.into_balance()),
         };
         PricesStates::insert(XOR, PSWAP, pv_state_update);
         Self::deposit_event(RawEvent::SmoothPriceUpdated(XOR, PSWAP, smooth_price));
@@ -562,6 +571,14 @@ impl<T: Trait> Module<T> {
             Module::<T>::update_xor_pswap_smooth_price(now);
         }
         0u32.into()
+    }
+
+    // This function is used only in tests, that's why the compiler considers it to be unused
+    #[cfg(test)]
+    fn discover_claim(origin: T::Origin, farm_id: FarmId) -> Result<Balance, DispatchError> {
+        let who = ensure_signed(origin)?;
+        let discover = Module::<T>::prepare_and_optional_claim(who, farm_id, None, false)?;
+        Ok(discover.available_claim)
     }
 }
 
@@ -603,13 +620,6 @@ decl_module! {
             let who = ensure_signed(origin)?;
             Module::<T>::prepare_and_optional_claim(who, farm_id, amount_opt, true)?;
             Ok(())
-        }
-
-        #[weight = 0]
-        fn discover_claim(origin, farm_id: FarmId) -> Result<Option<u64>, DispatchError> {
-            let who = ensure_signed(origin)?;
-            let discover = Module::<T>::prepare_and_optional_claim(who, farm_id, None, false)?;
-            Ok(Some(discover.available_claim.into()))
         }
     }
 }

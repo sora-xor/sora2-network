@@ -9,7 +9,7 @@ use dex_api::*;
 
 use codec::Decode;
 use common::{
-    fixed,
+    balance,
     prelude::{Balance, SwapVariant},
     AssetSymbol, DEXId, LiquiditySourceType, DOT, XOR,
 };
@@ -89,31 +89,31 @@ fn setup_benchmark<T: Trait>() -> Result<(), &'static str> {
         owner_origin.clone(),
         XOR.into(),
         owner.clone(),
-        fixed!(10000),
+        balance!(10000),
     )?;
     Assets::<T>::mint(
         owner_origin.clone(),
         DOT.into(),
         owner.clone(),
-        fixed!(20000),
+        balance!(20000),
     )?;
     Assets::<T>::mint(
         owner_origin.clone(),
         XOR.into(),
         repr.clone(),
-        fixed!(1000000),
+        balance!(1000000),
     )?;
     Assets::<T>::mint(
         owner_origin.clone(),
         DOT.into(),
         repr.clone(),
-        fixed!(1500000),
+        balance!(1500000),
     )?;
     Assets::<T>::mint(
         owner_origin.clone(),
         mark_asset.into(),
         owner.clone(),
-        fixed!(1500000000000),
+        balance!(1500000000000),
     )?;
 
     Ok(())
@@ -143,8 +143,8 @@ benchmarks! {
         LiquiditySourceType::XYKPool,
         base_asset.clone(),
         target_asset.clone(),
-        fixed!(1000),
-        fixed!(0),
+        balance!(1000),
+        0,
         SwapVariant::WithDesiredInput,
         None
     )

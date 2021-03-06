@@ -1,5 +1,5 @@
 use super::*;
-use common::balance::Balance;
+use common::prelude::Balance;
 use core::convert::TryInto;
 use frame_support::fail;
 #[cfg(feature = "std")]
@@ -34,7 +34,13 @@ impl<Balance, BlockNumber> FarmingState<Balance, BlockNumber>
 where
     BlockNumber:
         Copy + TryInto<u32> + PartialOrd + Sub<Output = BlockNumber> + Mul<Output = BlockNumber>,
-    Balance: Copy + From<u32> + Mul<Output = Balance> + AddAssign + PartialOrd + SubAssign,
+    Balance: Copy
+        + core::fmt::Debug
+        + From<u32>
+        + Mul<Output = Balance>
+        + AddAssign
+        + PartialOrd
+        + SubAssign,
 {
     /// Recalculate state, update per blocks value and set last change to current point.
     pub fn recalculate(&mut self, current_block: BlockNumber) -> CanFail {

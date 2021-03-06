@@ -6,6 +6,16 @@ macro_rules! fixed {
 }
 
 #[macro_export]
+macro_rules! balance {
+    ($val:literal) => {{
+        use core::convert::TryInto;
+        let fixed: $crate::Fixed = $crate::fixed!($val);
+        let value: u128 = fixed.into_bits().try_into().unwrap();
+        value
+    }};
+}
+
+#[macro_export]
 macro_rules! fixed_wrapper {
     ($val:literal) => {{
         let val: $crate::prelude::FixedWrapper = $crate::fixed!($val);

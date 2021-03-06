@@ -7,18 +7,25 @@ import "./Ownable.sol";
 import "./ERC20Burnable.sol";
 
 /**
- * Provides functionality of bridge contract
+ * Provides functionality of the HASHI bridge
  */
 contract Bridge {
     bool internal initialized_;
+    bool internal preparedForMigration_;
+
     mapping(address => bool) public isPeer;
     uint public peersCount;
+
     /** Substrate proofs used */
     mapping(bytes32 => bool) public used;
     mapping(address => bool) public _uniqueAddresses;
-    /* White list of ERC-20 ethereum native tokens */
+    
+    /** White list of ERC-20 ethereum native tokens */
     mapping(address => bool) public acceptedEthTokens;
-
+    
+    /** White lists of ERC-20 SORA native tokens 
+    * We use several representations of the white list for optimisation purposes.
+    */
     mapping(bytes32 => address) public _sidechainTokens;
     mapping(address => bytes32) public _sidechainTokensByAddress;
     address[] public _sidechainTokenAddressArray;
@@ -26,14 +33,24 @@ contract Bridge {
     event Withdrawal(bytes32 txHash);
     event Deposit(bytes32 destination, uint amount, address token, bytes32 sidechainAsset);
     event ChangePeers(address peerId, bool removal);
-
+    event PreparedForMigration();
+    event Migrated(address to);
+    
+    /**
+     * For XOR and VAL use old token contracts, created for SORA 1 bridge.
+     * Also for XOR and VAL transfers from SORA 2 to Ethereum old bridges will be used.
+     */
     address public _addressVAL;
     address public _addressXOR;
+    /** EVM netowrk ID */
     bytes32 public _networkId;
 
     /**
      * Constructor.
      * @param initialPeers - list of initial bridge validators on substrate side.
+     * @param addressVAL address of VAL token Contract
+     * @param addressXOR address of XOR token Contract
+     * @param networkId id of current EvM network used for bridge purpose.
      */
     constructor(
         address[] memory initialPeers,
@@ -47,6 +64,7 @@ contract Bridge {
         _addressVAL = addressVAL;
         _networkId = networkId;
         initialized_ = true;
+        preparedForMigration_ = false;
 
         acceptedEthTokens[_addressXOR] = true;
         acceptedEthTokens[_addressVAL] = true;
@@ -54,6 +72,16 @@ contract Bridge {
 
     modifier shouldBeInitialized {
         require(initialized_ == true, "Contract should be initialized to use this function");
+        _;
+    }
+
+    modifier shouldNotBePreparedForMigration {
+        require(preparedForMigration_ == false, "Contract should not be prepared for migration to use this function");
+        _;
+    }
+
+    modifier shouldBePreparedForMigration {
+        require(preparedForMigration_ == true, "Contract should be prepared for migration to use this function");
         _;
     }
 
@@ -68,7 +96,15 @@ contract Bridge {
     /**
      * Adds new token to whitelist. 
      * Token should not been already added.
-     * @param newToken token to add
+     * 
+     * @param newToken new token contract address
+     * @param ticker token ticker
+     * @param name token title
+     * @param decimals count of token decimal places
+     * @param txHash transaction hash from sidechain
+     * @param v array of signatures of tx_hash (v-component)
+     * @param r array of signatures of tx_hash (r-component)
+     * @param s array of signatures of tx_hash (s-component)
      */
     function addEthNativeToken(
         address newToken,
@@ -80,7 +116,7 @@ contract Bridge {
         bytes32[] memory r,
         bytes32[] memory s
     )
-    public {
+    public shouldBeInitialized {
         require(acceptedEthTokens[newToken] == false);
         require(checkSignatures(keccak256(abi.encodePacked(newToken, ticker, name, decimals, txHash, _networkId)),
             v,
@@ -89,52 +125,101 @@ contract Bridge {
         );
         acceptedEthTokens[newToken] = true;
     }
-
-    function shutDownAndMigrate(
+    
+    /**
+     * Preparations for migration to new Bridge contract
+     * 
+     * @param thisContractAddress address of this bridge contract
+     * @param salt unique data used for signature
+     * @param v array of signatures of tx_hash (v-component)
+     * @param r array of signatures of tx_hash (r-component)
+     * @param s array of signatures of tx_hash (s-component)
+     */
+    function prepareForMigration(
         address thisContractAddress,
-        string memory salt,
-        address newContractAddress,
-        address[] calldata erc20nativeTokens,  //List of ERC20 tokens with non zero balances for this contract. Can be taken from substrate bridge peers.
+        bytes32 salt,
         uint8[] memory v,
         bytes32[] memory r,
         bytes32[] memory s
     )
     public
-    shouldBeInitialized {
+    shouldBeInitialized shouldBePreparedForMigration {
         require(address(this) == thisContractAddress);
-        require(checkSignatures(keccak256(abi.encodePacked(thisContractAddress, salt, erc20nativeTokens)),
+        require(checkSignatures(keccak256(abi.encodePacked(thisContractAddress, salt, _networkId)),
             v,
             r,
             s), "Peer signatures are invalid"
         );
-        for(uint i=0; i<_sidechainTokenAddressArray.length; i++) {
+        preparedForMigration_ = true;
+        emit PreparedForMigration();
+    }
+
+    /**
+    * Shutdown this contract and migrate tokens ownership to the new contract.
+    * 
+    * @param thisContractAddress this bridge contract address
+    * @param salt unique data used for signature generation
+    * @param newContractAddress address of the new bridge contract
+    * @param erc20nativeTokens list of ERC20 tokens with non zero balances for this contract. Can be taken from substrate bridge peers.
+    * @param v array of signatures of tx_hash (v-component)
+    * @param r array of signatures of tx_hash (r-component)
+    * @param s array of signatures of tx_hash (s-component)
+    */
+    function shutDownAndMigrate(
+        address thisContractAddress,
+        bytes32 salt,
+        address newContractAddress,
+        address[] calldata erc20nativeTokens, 
+        uint8[] memory v,
+        bytes32[] memory r,
+        bytes32[] memory s
+    )
+    public
+    shouldBeInitialized shouldBePreparedForMigration {
+        require(address(this) == thisContractAddress);
+        require(checkSignatures(keccak256(abi.encodePacked(thisContractAddress, newContractAddress, salt, erc20nativeTokens, _networkId)),
+            v,
+            r,
+            s), "Peer signatures are invalid"
+        );
+        for (uint i = 0; i < _sidechainTokenAddressArray.length; i++) {
             Ownable token = Ownable(_sidechainTokenAddressArray[i]);
             token.transferOwnership(newContractAddress);
         }
-        for(uint i=0; i<erc20nativeTokens.length; i++) {
+        for (uint i = 0; i < erc20nativeTokens.length; i++) {
             IERC20 token = IERC20(erc20nativeTokens[i]);
-            token.transfer(newContractAddress,  token.balanceOf(address(this)));
+            token.transfer(newContractAddress, token.balanceOf(address(this)));
         }
         initialized_ = false;
+        emit Migrated(newContractAddress);
     }
 
+    /**
+    * Add new token from sidechain to the bridge white list.
+    * 
+    * @param name token title
+    * @param symbol token symbol
+    * @param decimals number of decimals
+    * @param sidechainAssetId token id on the sidechain
+    * @param txHash sidechain transaction hash
+    * @param v array of signatures of tx_hash (v-component)
+    * @param r array of signatures of tx_hash (r-component)
+    * @param s array of signatures of tx_hash (s-component)
+    */
     function addNewSidechainToken(
         string memory name,
         string memory symbol,
         uint8 decimals,
-        uint256 supply,
         bytes32 sidechainAssetId,
         bytes32 txHash,
         uint8[] memory v,
         bytes32[] memory r,
         bytes32[] memory s)
-    public {
-
+    public shouldBeInitialized {
         require(checkSignatures(keccak256(abi.encodePacked(
                 name,
                 symbol,
                 decimals,
-                supply,
                 sidechainAssetId,
                 txHash,
                 _networkId
@@ -144,40 +229,48 @@ contract Bridge {
             s), "Peer signatures are invalid"
         );
         // Create new instance of the token
-        MasterToken tokenInstance = new MasterToken(name, symbol, decimals, address(this), supply, sidechainAssetId);
+        MasterToken tokenInstance = new MasterToken(name, symbol, decimals, address(this), 0, sidechainAssetId);
         address tokenAddress = address(tokenInstance);
         _sidechainTokens[sidechainAssetId] = tokenAddress;
         _sidechainTokensByAddress[tokenAddress] = sidechainAssetId;
         _sidechainTokenAddressArray.push(tokenAddress);
     }
 
+    /**
+    * Send Ethereum to sidechain.
+    * 
+    * @param to destionation address on sidechain.
+    */
     function sendEthToSidechain(
         bytes32 to
     )
     public
     payable
-    shouldBeInitialized {
+    shouldBeInitialized shouldNotBePreparedForMigration {
         require(msg.value > 0, "ETH VALUE SHOULD BE MORE THAN 0");
         bytes32 empty;
         emit Deposit(to, msg.value, address(0x0), empty);
     }
 
     /**
-     * A special function-like stub to allow ether accepting
+     * Send ERC-20 token to sidechain.
+     * 
+     * @param to destination address on the sidechain
+     * @param amount amount to sendERC20ToSidechain
+     * @param tokenAddress contract address of token to send
      */
     function sendERC20ToSidechain(
         bytes32 to,
         uint amount,
         address tokenAddress)
     external
-    shouldBeInitialized {
-
+    shouldBeInitialized shouldNotBePreparedForMigration {
         IERC20 token = IERC20(tokenAddress);
 
-        require (token.allowance(msg.sender, address(this)) >= amount, "NOT ENOUGH DELEGATED TOKENS ON SENDER BALANCE");
+        require(token.allowance(msg.sender, address(this)) >= amount, "NOT ENOUGH DELEGATED TOKENS ON SENDER BALANCE");
 
         bytes32 sidechainAssetId = _sidechainTokensByAddress[tokenAddress];
-        if(sidechainAssetId.length != 0 || _addressVAL == tokenAddress || _addressXOR == tokenAddress) {
+        if (sidechainAssetId.length != 0 || _addressVAL == tokenAddress || _addressXOR == tokenAddress) {
             ERC20Burnable mtoken = ERC20Burnable(tokenAddress);
             mtoken.burnFrom(msg.sender, amount);
         } else {
@@ -186,7 +279,16 @@ contract Bridge {
         }
         emit Deposit(to, amount, tokenAddress, sidechainAssetId);
     }
-
+    
+    /**
+     * Add new peer using peers quorum.
+     * 
+     * @param newPeerAddress address of the peer to add
+     * @param txHash tx hash from sidechain
+     * @param v array of signatures of tx_hash (v-component)
+     * @param r array of signatures of tx_hash (r-component)
+     * @param s array of signatures of tx_hash (s-component)
+     */
     function addPeerByPeer(
         address newPeerAddress,
         bytes32 txHash,
@@ -211,6 +313,15 @@ contract Bridge {
         return true;
     }
 
+    /**
+     * Remove peer using peers quorum.
+     * 
+     * @param peerAddress address of the peer to remove
+     * @param txHash tx hash from sidechain
+     * @param v array of signatures of tx_hash (v-component)
+     * @param r array of signatures of tx_hash (r-component)
+     * @param s array of signatures of tx_hash (s-component)
+     */
     function removePeerByPeer(
         address peerAddress,
         bytes32 txHash,
@@ -237,15 +348,15 @@ contract Bridge {
     }
 
     /**
-     * Withdraws specified amount of ether or one of ERC-20 tokens to provided address
+     * Withdraws specified amount of ether or one of ERC-20 tokens to provided sidechain address
      * @param tokenAddress address of token to withdraw (0 for ether)
      * @param amount amount of tokens or ether to withdraw
      * @param to target account address
-     * @param txHash hash of transaction from Iroha
+     * @param txHash hash of transaction from sidechain
+     * @param from source of transfer
      * @param v array of signatures of tx_hash (v-component)
      * @param r array of signatures of tx_hash (r-component)
      * @param s array of signatures of tx_hash (s-component)
-     * @param from relay contract address
      */
     function receiveByEthereumAssetAddress(
         address tokenAddress,
@@ -257,7 +368,7 @@ contract Bridge {
         bytes32[] memory r,
         bytes32[] memory s
     )
-    public
+    public shouldBeInitialized
     {
         require(used[txHash] == false);
         require(checkSignatures(
@@ -281,16 +392,16 @@ contract Bridge {
     }
 
     /**
-         * Mint new Token
-         * @param sidechainAssetId id of sidechainToken to mint
-         * @param amount how much to mint
-         * @param to destination address
-         * @param from sender address
-         * @param txHash hash of transaction from Iroha
-         * @param v array of signatures of tx_hash (v-component)
-         * @param r array of signatures of tx_hash (r-component)
-         * @param s array of signatures of tx_hash (s-component)
-         */
+     * Mint new Token
+     * @param sidechainAssetId id of sidechainToken to mint
+     * @param amount how much to mint
+     * @param to destination address
+     * @param from sender address
+     * @param txHash hash of transaction from Iroha
+     * @param v array of signatures of tx_hash (v-component)
+     * @param r array of signatures of tx_hash (r-component)
+     * @param s array of signatures of tx_hash (s-component)
+     */
     function receiveBySidechainAssetId(
         bytes32 sidechainAssetId,
         uint256 amount,
@@ -301,7 +412,7 @@ contract Bridge {
         bytes32[] memory r,
         bytes32[] memory s
     )
-    public
+    public shouldBeInitialized
     {
         require(_sidechainTokens[sidechainAssetId] != address(0x0), "Sidechain asset is not registered");
         require(used[txHash] == false);

@@ -1,6 +1,6 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use common::{fixed, prelude::*};
+use common::{balance, prelude::*};
 use frame_support::{
     decl_error, decl_event, decl_module, decl_storage,
     dispatch::DispatchResult,
@@ -27,7 +27,7 @@ pub const TECH_ACCOUNT_PREFIX: &[u8] = b"faucet";
 pub const TECH_ACCOUNT_MAIN: &[u8] = b"main";
 
 pub fn balance_limit() -> Balance {
-    Balance(fixed!(100))
+    balance!(100)
 }
 
 pub fn transfer_limit_block_count<T: frame_system::Trait>() -> BlockNumberOf<T> {

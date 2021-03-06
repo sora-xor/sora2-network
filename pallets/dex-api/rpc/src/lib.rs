@@ -1,4 +1,5 @@
 use codec::Codec;
+use common::BalanceWrapper;
 use common::InvokeRPCError;
 use jsonrpc_core::{Error as RpcError, ErrorCode, Result};
 use jsonrpc_derive::rpc;
@@ -22,7 +23,7 @@ pub trait DEXAPI<BlockHash, AssetId, DEXId, Balance, LiquiditySourceType, SwapVa
         liquidity_source_type: LiquiditySourceType,
         input_asset_id: AssetId,
         output_asset_id: AssetId,
-        amount: Balance,
+        amount: BalanceWrapper,
         swap_variant: SwapVariant,
         at: Option<BlockHash>,
     ) -> Result<SwapResponse>;
@@ -83,7 +84,7 @@ where
         liquidity_source_type: LiquiditySourceType,
         input_asset_id: AssetId,
         output_asset_id: AssetId,
-        amount: Balance,
+        amount: BalanceWrapper,
         swap_variant: SwapVariant,
         at: Option<<Block as BlockT>::Hash>,
     ) -> Result<Option<SwapOutcomeInfo<Balance>>> {

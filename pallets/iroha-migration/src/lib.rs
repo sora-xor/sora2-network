@@ -120,7 +120,7 @@ decl_storage! {
                     account_id,
                     public_keys
                     .iter()
-                    .map(|key| (false, key.clone()))
+                    .map(|key| (false, key.to_lowercase()))
                     .collect::<Vec<_>>());
                 if public_keys.len() > 1 {
                     Quorums::insert(account_id, *threshold);
@@ -199,6 +199,8 @@ decl_module! {
         ) -> DispatchResult {
             common::with_transaction(|| {
                 let who = ensure_signed(origin)?;
+                let iroha_public_key = iroha_public_key.to_lowercase();
+                let iroha_signature = iroha_signature.to_lowercase();
                 Self::verify_signature(&iroha_address, &iroha_public_key, &iroha_signature)?;
                 ensure!(!MigratedAccounts::<T>::contains_key(&iroha_address), Error::<T>::AccountAlreadyMigrated);
                 ensure!(PublicKeys::contains_key(&iroha_address), Error::<T>::AccountNotFound);
@@ -228,7 +230,7 @@ impl<T: Trait> Module<T> {
 
     fn parse_signature(iroha_signature: &str) -> Result<Signature, DispatchError> {
         let iroha_signature =
-            hex::decode(&iroha_signature).map_err(|_| Error::<T>::SignatureParsingFailed)?;
+            hex::decode(iroha_signature).map_err(|_| Error::<T>::SignatureParsingFailed)?;
         let signature_bytes: [u8; SIGNATURE_LENGTH] = iroha_signature
             .as_slice()
             .try_into()
@@ -254,7 +256,7 @@ impl<T: Trait> Module<T> {
 
     fn approve_with_public_key(
         iroha_address: &String,
-        iroha_public_key: &String,
+        iroha_public_key: &str,
     ) -> Result<(usize, usize), DispatchError> {
         PublicKeys::mutate(iroha_address, |keys| {
             {

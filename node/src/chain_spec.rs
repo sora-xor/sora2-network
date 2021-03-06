@@ -9,8 +9,11 @@ use framenode_runtime::{
     TechnicalConfig, TokensConfig, WASM_BINARY,
 };
 
-use common::prelude::{DEXInfo, FixedWrapper};
-use common::{balance::Balance, fixed, hash, DEXId, Fixed, TechPurpose, PSWAP, VAL, XOR};
+use common::{
+    balance,
+    prelude::{DEXInfo, FixedWrapper},
+};
+use common::{fixed, hash, prelude::Balance, DEXId, Fixed, TechPurpose, PSWAP, VAL, XOR};
 use frame_support::sp_runtime::Percent;
 use framenode_runtime::bonding_curve_pool::{DistributionAccountData, DistributionAccounts};
 use framenode_runtime::eth_bridge::{AssetKind, NetworkConfig};
@@ -21,7 +24,7 @@ use sc_network::config::MultiaddrWithPeerId;
 use sc_service::{ChainType, Properties};
 use sp_consensus_aura::sr25519::AuthorityId as AuraId;
 use sp_consensus_babe::AuthorityId as BabeId;
-use sp_core::{sr25519, Pair, Public};
+use sp_core::{sr25519, Pair, Public, H160};
 use sp_runtime::{
     sp_std::iter::once,
     traits::{IdentifyAccount, Verify, Zero},
@@ -78,6 +81,15 @@ pub fn authority_keys_from_public_keys(
 
 fn session_keys(grandpa: GrandpaId, babe: BabeId) -> SessionKeys {
     SessionKeys { babe, grandpa }
+}
+
+struct EthBridgeParams {
+    xor_master_contract_address: H160,
+    xor_contract_address: H160,
+    val_master_contract_address: H160,
+    val_contract_address: H160,
+    pswap_contract_address: H160,
+    bridge_contract_address: H160,
 }
 
 pub fn dev_net() -> ChainSpec {
@@ -154,6 +166,17 @@ pub fn dev_net() -> ChainSpec {
                 hex!("da723e9d76bd60da0ec846895c5e0ecf795b50ae652c012f27e56293277ef372").into(),
                 hex!("16fec57d383a1875ab4e9786aea7a626e721a491c828f475ae63ef098f98f373").into(),
                 hex!("da723e9d76bd60da0ec846895c5e0ecf795b50ae652c012f27e56293277ef372").into(),
+                EthBridgeParams {
+                    xor_master_contract_address: hex!("12c6a709925783f49fcca0b398d13b0d597e6e1c")
+                        .into(),
+                    xor_contract_address: hex!("02ffdae478412dbde6bbd5cda8ff05c0960e0c45").into(),
+                    val_master_contract_address: hex!("47e229aa491763038f6a505b4f85d8eb463f0962")
+                        .into(),
+                    val_contract_address: hex!("68339de68c9af6577c54867728dbb2db9d7368bf").into(),
+                    pswap_contract_address: hex!("0000000000000000000000000000000000000000").into(),
+                    bridge_contract_address: hex!("64fb0ca483b356832cd97958e6b23df783fb7ced")
+                        .into(),
+                },
             )
         },
         vec![],
@@ -198,6 +221,31 @@ pub fn staging_net(test: bool) -> ChainSpec {
         id,
         ChainType::Live,
         move || {
+            let eth_bridge_params = if test {
+                EthBridgeParams {
+                    xor_master_contract_address: hex!("3520adc7b99e55c77efd0e0d379d07d08a7488cc")
+                        .into(),
+                    xor_contract_address: hex!("83ba842e5e26a4eda2466891221187aabbc33692").into(),
+                    val_master_contract_address: hex!("a55236ad2162a47a52316f86d688fbd71b520945")
+                        .into(),
+                    val_contract_address: hex!("7fcb82ab5a4762f0f18287ece64d4ec74b6071c0").into(),
+                    pswap_contract_address: hex!("0000000000000000000000000000000000000000").into(),
+                    bridge_contract_address: hex!("50e693aaaf4855cdd6cb7ab38e7e2a4006a77022")
+                        .into(),
+                }
+            } else {
+                EthBridgeParams {
+                    xor_master_contract_address: hex!("cceb41100aa2a9a6f144d7c1f876070b810bf7ae")
+                        .into(),
+                    xor_contract_address: hex!("dc1c024535118f6de6d999c23fc31e33bc2cafc9").into(),
+                    val_master_contract_address: hex!("d7f81ed173cb3af28f983670164df30851fba678")
+                        .into(),
+                    val_contract_address: hex!("725c6b8cd3621eba4e0ccc40d532e7025b925a65").into(),
+                    pswap_contract_address: hex!("0000000000000000000000000000000000000000").into(),
+                    bridge_contract_address: hex!("3ef9b59f2a1563f14e683de3724e618b9b69aebb")
+                        .into(),
+                }
+            };
             testnet_genesis(
                 hex!("2c5f3fd607721d5dd9fdf26d69cdcb9294df96a8ff956b1323d69282502aaa2e").into(),
                 vec![
@@ -245,6 +293,7 @@ pub fn staging_net(test: bool) -> ChainSpec {
                 hex!("da723e9d76bd60da0ec846895c5e0ecf795b50ae652c012f27e56293277ef372").into(),
                 hex!("16fec57d383a1875ab4e9786aea7a626e721a491c828f475ae63ef098f98f373").into(),
                 hex!("da723e9d76bd60da0ec846895c5e0ecf795b50ae652c012f27e56293277ef372").into(),
+                eth_bridge_params,
             )
         },
         boot_nodes,
@@ -257,7 +306,7 @@ pub fn staging_net(test: bool) -> ChainSpec {
 
 fn bonding_curve_distribution_accounts(
 ) -> DistributionAccounts<DistributionAccountData<<Runtime as technical::Trait>::TechAccountId>> {
-    use common::{fixed_wrapper, prelude::fixnum::ops::Numeric};
+    use common::{fixed_wrapper, prelude::fixnum::ops::One};
     let val_holders_coefficient = fixed_wrapper!(0.5);
     let val_holders_xor_alloc_coeff = fixed_wrapper!(0.9) * val_holders_coefficient.clone();
     let val_holders_buy_back_coefficient =
@@ -380,6 +429,17 @@ pub fn local_testnet_config() -> ChainSpec {
                 get_account_id_from_seed::<sr25519::Public>("Alice"),
                 get_account_id_from_seed::<sr25519::Public>("Alice"),
                 get_account_id_from_seed::<sr25519::Public>("Alice"),
+                EthBridgeParams {
+                    xor_master_contract_address: hex!("12c6a709925783f49fcca0b398d13b0d597e6e1c")
+                        .into(),
+                    xor_contract_address: hex!("02ffdae478412dbde6bbd5cda8ff05c0960e0c45").into(),
+                    val_master_contract_address: hex!("47e229aa491763038f6a505b4f85d8eb463f0962")
+                        .into(),
+                    val_contract_address: hex!("68339de68c9af6577c54867728dbb2db9d7368bf").into(),
+                    pswap_contract_address: hex!("0000000000000000000000000000000000000000").into(),
+                    bridge_contract_address: hex!("64fb0ca483b356832cd97958e6b23df783fb7ced")
+                        .into(),
+                },
             )
         },
         vec![],
@@ -398,9 +458,10 @@ fn testnet_genesis(
     dex_root: AccountId,
     tech_permissions_owner: AccountId,
     initial_assets_owner: AccountId,
+    eth_bridge_params: EthBridgeParams,
 ) -> GenesisConfig {
-    let initial_balance = 1u128 << 60;
-    let initial_staking: Balance = (initial_balance >> 44).into();
+    let initial_balance = balance!(1000000000);
+    let initial_staking = balance!(1000000);
     let xor_fee_tech_account_id = TechAccountId::Generic(
         xor_fee::TECH_ACCOUNT_PREFIX.to_vec(),
         xor_fee::TECH_ACCOUNT_MAIN.to_vec(),
@@ -415,8 +476,8 @@ fn testnet_genesis(
     let faucet_account_id: AccountId =
         technical::Module::<Runtime>::tech_account_id_to_account_id(&faucet_tech_account_id)
             .expect("Failed to decode account id");
-    let initial_eth_bridge_xor_amount = 350_000_u32;
-    let initial_eth_bridge_val_amount = 33_900_000_u32;
+    let initial_eth_bridge_xor_amount = balance!(350000);
+    let initial_eth_bridge_val_amount = balance!(33900000);
     let eth_bridge_tech_account_id = TechAccountId::Generic(
         eth_bridge::TECH_ACCOUNT_PREFIX.to_vec(),
         eth_bridge::TECH_ACCOUNT_MAIN.to_vec(),
@@ -739,28 +800,25 @@ fn testnet_genesis(
                 tokens: vec![
                     (
                         XOR.into(),
-                        Some(sp_core::H160::from(hex!(
-                            "02ffdae478412dbde6bbd5cda8ff05c0960e0c45"
-                        ))),
+                        Some(eth_bridge_params.xor_contract_address),
                         AssetKind::SidechainOwned,
                     ),
                     (
                         VAL.into(),
-                        Some(sp_core::H160::from(hex!(
-                            "68339de68c9af6577c54867728dbb2db9d7368bf"
-                        ))),
+                        Some(eth_bridge_params.val_contract_address),
                         AssetKind::SidechainOwned,
                     ),
                 ],
-                bridge_contract_address: sp_core::H160(hex!(
-                    "79d6ad8533257fbd8bba0150739289b9953d7217"
-                )),
+                bridge_contract_address: eth_bridge_params.bridge_contract_address,
                 reserves: vec![
-                    (XOR.into(), Balance::from(350_000u32)),
-                    (VAL.into(), Balance::from(33_900_000u32)),
+                    (XOR.into(), balance!(350000)),
+                    (VAL.into(), balance!(33900000)),
                 ],
             }],
             pswap_owners: vec![],
+            xor_master_contract_address: eth_bridge_params.xor_master_contract_address,
+            val_master_contract_address: eth_bridge_params.val_master_contract_address,
+            pswap_contract_address: eth_bridge_params.pswap_contract_address,
         }),
         bridge_multisig: Some(BridgeMultisigConfig {
             accounts: once((
