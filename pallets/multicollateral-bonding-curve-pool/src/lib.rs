@@ -96,7 +96,7 @@ decl_storage! {
         pub AssetsWithOptionalRewardMultiplier: map hasher(twox_64_concat) T::AssetId => Option<Fixed>;
 
         /// Fraction of burned PSWAP that is used in reward vesting.
-        /// TODO: this is wrong.
+        /// TODO: this is wrong. It should be: min(0.55, 1−(−0.000357*(CURR_BLOCK_NUM÷14400)+0.9)−0.1).
         PswapBurnedDedicatedForRewards get(fn pswap_burned_dedicated_for_rewards): Fixed = fixed!(0.2);
     }
 }
