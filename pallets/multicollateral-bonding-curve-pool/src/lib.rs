@@ -514,7 +514,7 @@ impl<T: Trait> Module<T> {
         }
     }
 
-    /// Calculates and returns the current buy price meaning
+    /// Calculates and returns the current sell price, assuming that input is the main asset and output is the collateral asset.
     ///
     /// To calculate sell price for a specific amount of assets:
     /// 1. Current reserves of collateral token are taken
@@ -583,7 +583,9 @@ impl<T: Trait> Module<T> {
         }
     }
 
-    /// Sell function with regards to asset total supply and its change delta.
+    /// Sell function with regards to asset total supply and its change delta. It represents the amount of
+    /// output collateral tokens received by User by indicating exact sold XOR amount. I.e. the price User sells at.
+    ///
     /// Value of `delta` is assumed to be either positive or negative.
     /// Sell function is `P_Sc`% of buy function (see `buy_function`).
     ///
