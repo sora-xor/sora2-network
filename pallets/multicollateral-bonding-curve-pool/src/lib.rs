@@ -180,9 +180,9 @@ decl_module! {
 /// This function is used by `exchange` function to transfer calculated `input_amount` of
 /// `in_asset_id` to reserves and mint `output_amount` of `out_asset_id`.
 ///
-/// If there's enough reserves in the pool, this function will also distribute some free amount
-/// to accounts specified in `DistributionAccounts` struct and buy-back and burn some amount
-/// of VAL asset.
+/// This function always distributes a portion of input tokens (see `AlwaysDistributeCoefficient`), these are
+/// referred as free reserves. After collateral input portion is exchanged to XOR, it's sent out to accounts
+/// specified in `DistributionAccounts` struct and buy-back and burn some amount of VAL asset.
 ///
 struct BuyMainAsset<T: Trait> {
     collateral_asset_id: T::AssetId,
@@ -403,7 +403,10 @@ impl<T: Trait> Module<T> {
         })
     }
 
-    /// Buy function with regards to asset total supply and its change delta.
+    /// Buy function with regards to asset total supply and its change delta. It represents the amount of
+    /// input collateral required from User in order to receive requested XOR amount. I.e. the price User buys at.
+    ///
+    /// XOR is also referred as main asset.
     /// Value of `delta` is assumed to be either positive or negative.
     /// For every `PC_S` tokens the price goes up by `PC_R`.
     ///
@@ -783,6 +786,11 @@ impl<T: Trait> Module<T> {
         DistributionAccountsEntry::<T>::set(distribution_accounts);
     }
 
+    /// This function is used to determine particular asset price in terms of a reference asset, which is set for
+    /// bonding curve (there could be only single token chosen as reference for all comparisons). Basically, the
+    /// reference token is expected to be a USD-bound stablecoin, e.g. DAI.
+    ///
+    /// Example use: understand actual value of two tokens in terms of USD.
     fn reference_price(asset_id: &T::AssetId) -> Result<Balance, DispatchError> {
         let reference_asset_id = ReferenceAssetId::<T>::get();
         let price = if asset_id == &reference_asset_id {
