@@ -24,6 +24,7 @@ use hex_literal::hex;
 use pallet_grandpa::fg_primitives;
 use pallet_grandpa::{AuthorityId as GrandpaId, AuthorityList as GrandpaAuthorityList};
 use pallet_session::historical as pallet_session_historical;
+use pswap_distribution::OnPswapBurned;
 #[cfg(feature = "std")]
 use serde::{Serialize, Serializer};
 use sp_api::impl_runtime_apis;
@@ -39,7 +40,6 @@ use sp_runtime::{
     ApplyExtrinsicResult, DispatchError, FixedPointNumber, MultiSignature, Perbill, Percent,
     Perquintill,
 };
-use sp_std::marker::PhantomData;
 use sp_std::prelude::*;
 use sp_std::vec::Vec;
 #[cfg(feature = "std")]
@@ -167,7 +167,6 @@ parameter_types! {
     pub const EpochDuration: u64 = EPOCH_DURATION_IN_SLOTS;
     pub const ExpectedBlockTime: Moment = MILLISECS_PER_BLOCK;
     pub const UncleGenerations: BlockNumber = 5;
-    pub const GetValAssetId: AssetId = common::AssetId32 { code: [2, 0, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], phantom: PhantomData };
     pub const SessionsPerEra: sp_staking::SessionIndex = 3; // 3 hours
     pub const BondingDuration: pallet_staking::EraIndex = 4; // 12 hours
     pub const SlashDeferDuration: pallet_staking::EraIndex = 2; // 6 hours
@@ -369,14 +368,14 @@ impl tokens::Trait for Runtime {
 
 parameter_types! {
     // This is common::AssetId with 0 index, 2 is size, 0 and 0 is code.
-    pub const XorId: AssetId = common::AssetId32::from_bytes(hex!("0200000000000000000000000000000000000000000000000000000000000000"));
-    pub const DotId: AssetId = common::AssetId32::from_bytes(hex!("0200010000000000000000000000000000000000000000000000000000000000"));
-    pub const KsmId: AssetId = common::AssetId32::from_bytes(hex!("0200020000000000000000000000000000000000000000000000000000000000"));
-    pub const UsdId: AssetId = common::AssetId32::from_bytes(hex!("0200030000000000000000000000000000000000000000000000000000000000"));
-    pub const ValId: AssetId = common::AssetId32::from_bytes(hex!("0200040000000000000000000000000000000000000000000000000000000000"));
-    pub const PswapId: AssetId = common::AssetId32::from_bytes(hex!("0200050000000000000000000000000000000000000000000000000000000000"));
+    pub const GetXorAssetId: AssetId = common::AssetId32::from_bytes(hex!("0200000000000000000000000000000000000000000000000000000000000000"));
+    pub const GetDotAssetId: AssetId = common::AssetId32::from_bytes(hex!("0200010000000000000000000000000000000000000000000000000000000000"));
+    pub const GetKsmAssetId: AssetId = common::AssetId32::from_bytes(hex!("0200020000000000000000000000000000000000000000000000000000000000"));
+    pub const GetUsdAssetId: AssetId = common::AssetId32::from_bytes(hex!("0200030000000000000000000000000000000000000000000000000000000000"));
+    pub const GetValAssetId: AssetId = common::AssetId32::from_bytes(hex!("0200040000000000000000000000000000000000000000000000000000000000"));
+    pub const GetPswapAssetId: AssetId = common::AssetId32::from_bytes(hex!("0200050000000000000000000000000000000000000000000000000000000000"));
 
-    pub const GetBaseAssetId: AssetId = XorId::get();
+    pub const GetBaseAssetId: AssetId = GetXorAssetId::get();
 }
 
 impl currencies::Trait for Runtime {
@@ -620,8 +619,8 @@ impl xor_fee::Trait for Runtime {
     type ReferrerWeight = ReferrerWeight;
     type XorBurnedWeight = XorBurnedWeight;
     type XorIntoValBurnedWeight = XorIntoValBurnedWeight;
-    type XorId = XorId;
-    type ValId = ValId;
+    type XorId = GetXorAssetId;
+    type ValId = GetValAssetId;
     type DEXIdValue = DEXIdValue;
     type LiquidityProxy = LiquidityProxy;
     type ValBurnedNotifier = Staking;
@@ -711,14 +710,40 @@ parameter_types! {
     pub const GetDefaultSubscriptionFrequency: BlockNumber = 14400;
 }
 
+pub struct RuntimeOnPswapBurnedAggregator;
+
+impl OnPswapBurned for RuntimeOnPswapBurnedAggregator {
+    fn on_pswap_burned(amount: Balance) {
+        MulticollateralBondingCurvePool::on_pswap_burned(amount);
+    }
+}
+
 impl pswap_distribution::Trait for Runtime {
     type Event = Event;
-    type GetIncentiveAssetId = PswapId;
+    type GetIncentiveAssetId = GetPswapAssetId;
     type LiquidityProxy = LiquidityProxy;
     type CompatBalance = Balance;
     type GetDefaultSubscriptionFrequency = GetDefaultSubscriptionFrequency;
     type GetTechnicalAccountId = GetPswapDistributionAccountId;
     type EnsureDEXManager = DEXManager;
+    type OnPswapBurnedAggregator = RuntimeOnPswapBurnedAggregator;
+}
+
+parameter_types! {
+    pub GetMbcPoolRewardsTechAccountId: TechAccountId = {
+        let tech_account_id = TechAccountId::from_generic_pair(
+            multicollateral_bonding_curve_pool::TECH_ACCOUNT_PREFIX.to_vec(),
+            multicollateral_bonding_curve_pool::TECH_ACCOUNT_REWARDS.to_vec(),
+        );
+        tech_account_id
+    };
+    pub GetMbcPoolRewardsAccountId: AccountId = {
+        let tech_account_id = GetMbcPoolRewardsTechAccountId::get();
+        let account_id =
+            technical::Module::<Runtime>::tech_account_id_to_account_id(&tech_account_id)
+                .expect("Failed to get ordinary account id for technical account id.");
+        account_id
+    };
 }
 
 impl multicollateral_bonding_curve_pool::Trait for Runtime {

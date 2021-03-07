@@ -1,13 +1,14 @@
 use crate::{Module, Trait};
 use common::{
-    self, balance, hash,
+    self, balance, fixed_wrapper, hash,
     prelude::{Balance, FixedWrapper, SwapAmount, SwapOutcome},
     Amount, AssetId32, AssetSymbol, DEXInfo, LiquiditySourceFilter, LiquiditySourceType,
-    TechPurpose, USDT, VAL, XOR,
+    TechPurpose, PSWAP, USDT, VAL, XOR,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::{impl_outer_origin, parameter_types, weights::Weight, StorageValue};
 use frame_system as system;
+use hex_literal::hex;
 use orml_traits::MultiCurrency;
 use permissions::{Scope, INIT_DEX, MANAGE_DEX};
 use sp_core::{crypto::AccountId32, H256};
@@ -30,8 +31,16 @@ pub fn alice() -> AccountId {
     AccountId32::from([1u8; 32])
 }
 
-pub fn assets_owner() -> AccountId {
+pub fn bob() -> AccountId {
     AccountId32::from([2u8; 32])
+}
+
+pub fn assets_owner() -> AccountId {
+    AccountId32::from([3u8; 32])
+}
+
+pub fn incentives_account() -> AccountId {
+    AccountId32::from([4u8; 32])
 }
 
 impl_outer_origin! {
@@ -39,6 +48,9 @@ impl_outer_origin! {
 }
 
 pub const DEX_A_ID: DEXId = DEXId::Polkaswap;
+pub const DAI: AssetId = common::AssetId32::from_bytes(hex!(
+    "0200060000000000000000000000000000000000000000000000000000000111"
+));
 
 #[derive(Clone, Eq, PartialEq)]
 pub struct Runtime;
@@ -145,10 +157,12 @@ impl MockDEXApi {
             SwapAmount::WithDesiredOutput {
                 desired_amount_out, ..
             } => {
-                let amount_in =
-                    desired_amount_out / get_mock_prices()[&(*input_asset_id, *output_asset_id)];
-                let with_fee = amount_in / balance!(0.997);
-                let fee = with_fee - amount_in;
+                let amount_in = FixedWrapper::from(desired_amount_out)
+                    / get_mock_prices()[&(*input_asset_id, *output_asset_id)];
+                let with_fee = amount_in.clone() / balance!(0.997);
+                let fee = with_fee.clone() - amount_in;
+                let fee = fee.into_balance();
+                let with_fee = with_fee.into_balance();
                 Ok(SwapOutcome::new(with_fee, fee))
             }
         }
@@ -212,17 +226,31 @@ impl MockDEXApi {
     }
 }
 
-fn get_mock_prices() -> HashMap<(AssetId, AssetId), Balance> {
-    vec![
-        ((USDT, XOR), balance!(0.01)),
-        ((XOR, USDT), balance!(100.0)),
-        ((VAL, XOR), balance!(0.5)),
+pub fn get_mock_prices() -> HashMap<(AssetId, AssetId), Balance> {
+    let direct = vec![
         ((XOR, VAL), balance!(2.0)),
-        ((USDT, VAL), balance!(0.02)),
+        // USDT
+        ((XOR, USDT), balance!(100.0)),
         ((VAL, USDT), balance!(50.0)),
-    ]
-    .into_iter()
-    .collect()
+        // DAI
+        ((XOR, DAI), balance!(102.0)),
+        ((VAL, DAI), balance!(51.0)),
+        ((USDT, DAI), balance!(1.02)),
+        // PSWAP
+        ((XOR, PSWAP), balance!(10)),
+        ((VAL, PSWAP), balance!(5)),
+        ((USDT, PSWAP), balance!(0.1)),
+        ((DAI, PSWAP), balance!(0.098)),
+    ];
+    let reverse = direct.clone().into_iter().map(|((a, b), price)| {
+        (
+            (b, a),
+            (fixed_wrapper!(1) / FixedWrapper::from(price))
+                .try_into_balance()
+                .unwrap(),
+        )
+    });
+    direct.into_iter().chain(reverse).collect()
 }
 
 impl liquidity_proxy::LiquidityProxyTrait<DEXId, AccountId, AssetId> for MockDEXApi {
@@ -254,6 +282,19 @@ impl liquidity_proxy::LiquidityProxyTrait<DEXId, AccountId, AssetId> for MockDEX
     }
 }
 
+pub fn get_pool_reserves_account_id() -> AccountId {
+    let reserves_tech_account_id = crate::ReservesAcc::<Runtime>::get();
+    let reserves_account_id =
+        Technical::tech_account_id_to_account_id(&reserves_tech_account_id).unwrap();
+    reserves_account_id
+}
+
+parameter_types! {
+    pub const GetBaseAssetId: AssetId = XOR;
+    pub const GetPswapAssetId: AssetId = PSWAP;
+    pub const GetValAssetId: AssetId = VAL;
+}
+
 impl Trait for Runtime {
     type Event = ();
     type LiquidityProxy = MockDEXApi;
@@ -268,10 +309,6 @@ impl tokens::Trait for Runtime {
     type CurrencyId = <Runtime as assets::Trait>::AssetId;
     type OnReceived = ();
     type WeightInfo = ();
-}
-
-parameter_types! {
-    pub const GetBaseAssetId: AssetId = XOR;
 }
 
 impl currencies::Trait for Runtime {
@@ -412,6 +449,7 @@ impl ExtBuilder {
             distribution_accounts: Default::default(),
             reserves_account_id: Default::default(),
             reference_asset_id: self.reference_asset_id,
+            incentives_account_id: incentives_account(),
         }
         .assimilate_storage(&mut t)
         .unwrap();

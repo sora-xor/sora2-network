@@ -45,6 +45,4 @@ std = [
     'traits/std',
     'assets/std',
     'common/std',
-    'dex-api/std',
-    'dex-manager/std',
 ]

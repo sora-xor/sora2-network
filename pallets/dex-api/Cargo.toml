@@ -50,5 +50,4 @@ std = [
     'dex-manager/std',
     'mock-liquidity-source/std',
     'trading-pair/std',
-    'pool-xyk/std',
 ]
