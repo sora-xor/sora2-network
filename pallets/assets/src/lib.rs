@@ -52,6 +52,7 @@ pub trait WeightInfo {
     fn transfer() -> Weight;
     fn mint() -> Weight;
     fn burn() -> Weight;
+    fn set_non_mintable() -> Weight;
 }
 
 pub type AssetIdOf<T> = <T as Trait>::AssetId;
@@ -317,7 +318,7 @@ decl_module! {
         ///
         /// - `origin`: caller Account, should correspond to Asset owner
         /// - `asset_id`: Id of burned Asset,
-        #[weight = 0]
+        #[weight = <T as Trait>::WeightInfo::set_non_mintable()]
         pub fn set_non_mintable(
             origin,
             asset_id: T::AssetId,

@@ -347,6 +347,7 @@ impl crate::Trait for Test {
     type Event = Event;
     type NetworkId = u32;
     type GetEthNetworkId = EthNetworkId;
+    type WeightInfo = ();
 }
 
 impl sp_runtime::traits::ExtrinsicMetadata for TestExtrinsic {
