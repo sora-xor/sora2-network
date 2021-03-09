@@ -22,7 +22,7 @@ use std::collections::HashMap;
 pub type AccountId = AccountId32;
 pub type BlockNumber = u64;
 pub type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
-type TechAssetId = common::TechAssetId<common::AssetId, DEXId, common::LiquiditySourceType>;
+type TechAssetId = common::TechAssetId<common::AssetId>;
 pub type ReservesAccount =
     mock_liquidity_source::ReservesAcc<Runtime, mock_liquidity_source::Instance1>;
 pub type AssetId = AssetId32<common::AssetId>;
@@ -323,10 +323,14 @@ type DEXId = common::DEXId;
 
 impl common::Trait for Runtime {
     type DEXId = DEXId;
+    type LstId = common::LiquiditySourceType;
 }
 
 impl assets::Trait for Runtime {
     type Event = ();
+    type ExtraAccountId = [u8; 32];
+    type ExtraTupleArg =
+        common::AssetIdExtraTupleArg<common::DEXId, common::LiquiditySourceType, [u8; 32]>;
     type AssetId = AssetId;
     type GetBaseAssetId = GetBaseAssetId;
     type Currency = currencies::Module<Runtime>;

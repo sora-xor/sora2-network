@@ -388,10 +388,13 @@ impl currencies::Trait for Runtime {
 
 impl common::Trait for Runtime {
     type DEXId = DEXId;
+    type LstId = common::LiquiditySourceType;
 }
 
 impl assets::Trait for Runtime {
     type Event = Event;
+    type ExtraAccountId = [u8; 32];
+    type ExtraTupleArg = common::AssetIdExtraTupleArg<DEXId, common::LiquiditySourceType, [u8; 32]>;
     type AssetId = AssetId;
     type GetBaseAssetId = GetBaseAssetId;
     type Currency = currencies::Module<Runtime>;
@@ -414,7 +417,7 @@ impl bonding_curve_pool::Trait for Runtime {
 }
 
 pub type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
-pub type TechAssetId = common::TechAssetId<common::AssetId, DEXId, common::LiquiditySourceType>;
+pub type TechAssetId = common::TechAssetId<common::AssetId>;
 pub type AssetId = common::AssetId32<common::AssetId>;
 
 impl technical::Trait for Runtime {

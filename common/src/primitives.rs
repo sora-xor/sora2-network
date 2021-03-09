@@ -1,4 +1,4 @@
-use crate::traits::Trait;
+use crate::traits::{IsRepresentation, PureOrWrapped, Trait};
 use codec::{Decode, Encode};
 use core::fmt::Debug;
 use frame_support::dispatch::DispatchError;
@@ -117,7 +117,7 @@ pub const USDT: AssetId32<AssetId> = AssetId32::from_asset_id(AssetId::USDT);
 pub const VAL: AssetId32<AssetId> = AssetId32::from_asset_id(AssetId::VAL);
 pub const PSWAP: AssetId32<AssetId> = AssetId32::from_asset_id(AssetId::PSWAP);
 
-impl crate::traits::IsRepresentation for AssetId {
+impl IsRepresentation for AssetId {
     fn is_representation(&self) -> bool {
         false
     }
@@ -144,44 +144,24 @@ pub struct AssetId32<AssetId> {
 }
 
 // LstId is Liquidity Source Type Id.
-impl<AssetId, DEXId, LstId, S> From<MakeTechAssetId<AssetId, DEXId, LstId, S>> for Option<AssetId> {
-    fn from(a: MakeTechAssetId<AssetId, DEXId, LstId, S>) -> Option<AssetId> {
+impl<AssetId> From<TechAssetId<AssetId>> for Option<AssetId> {
+    fn from(a: TechAssetId<AssetId>) -> Option<AssetId> {
         match a {
-            MakeTechAssetId::Wrapped(a) => Some(a),
+            TechAssetId::Wrapped(a) => Some(a),
             _ => None,
         }
     }
 }
 
 // LstId is Liquidity Source Type Id.
-impl<AssetId, DEXId, LstId, S> From<MakeTechAssetId<AssetId, DEXId, LstId, S>>
-    for Result<AssetId32<AssetId>, ()>
+impl<AssetId> From<TechAssetId<AssetId>> for Result<AssetId32<AssetId>, ()>
 where
-    MakeTechAssetId<AssetId, DEXId, LstId, S>: Encode,
-    AssetId: crate::traits::IsRepresentation,
+    TechAssetId<AssetId>: Encode,
+    AssetId: IsRepresentation,
+    AssetId32<AssetId>: From<TechAssetId<AssetId>>,
 {
-    fn from(tech_asset: MakeTechAssetId<AssetId, DEXId, LstId, S>) -> Self {
-        let mut slice = [0_u8; 32];
-        let asset_encoded: Vec<u8> = tech_asset.encode();
-        let asset_length = asset_encoded.len();
-        // Encode size of TechAssetId must be always less or equal to 31.
-        // Recursion of MakeTechAssetId is limited for this to specific number of iterations.
-        // Assert must exist here because it must never heppend in runtime and must be covered by tests.
-        if !(asset_length <= 31) {
-            Err(())?
-        }
-        // Must be not representation, only direct asset must be here.
-        // Assert must exist here because it must never happen in runtime and must be covered by tests.
-        let is_repr = match tech_asset {
-            MakeTechAssetId::Wrapped(a) => !a.is_representation(),
-            _ => true,
-        };
-        ensure!(is_repr, ());
-        slice[0] = asset_length as u8;
-        for i in 0..asset_length {
-            slice[i + 1] = asset_encoded[i];
-        }
-        Ok(AssetId32::new(slice, PhantomData))
+    fn from(tech_asset: TechAssetId<AssetId>) -> Self {
+        Ok(tech_asset.into())
     }
 }
 
@@ -267,21 +247,6 @@ impl<AssetId> From<AssetId32<AssetId>> for H256 {
     }
 }
 
-#[allow(dead_code)]
-impl<AssetId: Clone> AssetId32<AssetId>
-where
-    Result<TechAssetId<AssetId, DEXId, LiquiditySourceType>, codec::Error>:
-        From<AssetId32<AssetId>>,
-{
-    fn try_from_code(code: AssetId32Code) -> Result<Self, codec::Error> {
-        let compat = AssetId32::new(code, PhantomData);
-        Result::<TechAssetId<AssetId, DEXId, LiquiditySourceType>, codec::Error>::from(
-            compat.clone(),
-        )
-        .map(|_| compat)
-    }
-}
-
 impl<AssetId> From<AssetId32<AssetId>> for AssetId32Code {
     fn from(compat: AssetId32<AssetId>) -> Self {
         compat.code
@@ -290,7 +255,7 @@ impl<AssetId> From<AssetId32<AssetId>> for AssetId32Code {
 
 impl<AssetId: Default> Default for AssetId32<AssetId>
 where
-    AssetId32<AssetId>: From<TechAssetId<AssetId, DEXId, LiquiditySourceType>>,
+    AssetId32<AssetId>: From<TechAssetId<AssetId>>,
 {
     fn default() -> Self {
         AssetId32::<AssetId>::from(TechAssetId::Wrapped(AssetId::default()))
@@ -298,19 +263,23 @@ where
 }
 
 // LstId is Liquidity Source Type Id.
-impl<AssetId, DEXId, LstId> TryFrom<AssetId32<AssetId>> for TechAssetId<AssetId, DEXId, LstId>
+impl<AssetId> TryFrom<AssetId32<AssetId>> for TechAssetId<AssetId>
 where
-    TechAssetId<AssetId, DEXId, LstId>: Decode,
+    TechAssetId<AssetId>: Decode,
 {
     type Error = DispatchError;
     fn try_from(compat: AssetId32<AssetId>) -> Result<Self, Self::Error> {
-        let code = compat.code;
-        let end = (code[0] as usize) + 1;
-        if end >= 32 {
-            return Err("Invalid format".into());
+        let can_fail = || {
+            let code = compat.code;
+            let end = (code[0] as usize) + 1;
+            ensure!(end < 32, "Invalid format");
+            let mut frag: &[u8] = &code[1..end];
+            TechAssetId::<AssetId>::decode(&mut frag)
+        };
+        match can_fail() {
+            Ok(v) => Ok(v),
+            Err(_) => Ok(TechAssetId::<AssetId>::Escaped(compat.code)),
         }
-        let mut frag: &[u8] = &code[1..end];
-        TechAssetId::<AssetId, DEXId, LstId>::decode(&mut frag).map_err(|e| e.what().into())
     }
 }
 
@@ -385,134 +354,28 @@ impl Default for AssetSymbol {
     }
 }
 
-/// Technical asset ID.
-/// A special type of asset, DEX marker, is used to obtain legal units for providing liquidity, as
-/// well as the ability to implement these legal units. These are conditionally exchange markers on
-/// liquidity.
-/// LstId is Liquidity Source Type Id.
 #[derive(Encode, Decode, Eq, PartialEq, PartialOrd, Ord, Debug, Copy, Clone, Hash)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-pub enum MakeTechAssetId<AssetId, DEXId, LstId, ShallowerAssetId> {
+pub enum TechAssetId<AssetId> {
     Wrapped(AssetId),
-    DexMarker(DEXId, TradingPair<ShallowerAssetId>),
-    LstTag(LstId, ShallowerAssetId),
+    Escaped(AssetId32Code),
 }
 
-// LstId is Liquidity Source Type Id.
-pub type TechAssetId<A, D, L> =
-    MakeTechAssetId<A, D, L, MakeTechAssetId<A, D, L, MakeTechAssetId<A, D, L, ()>>>;
-
-impl<
-        LstId: Clone + Encode,
-        AssetId: Clone + Encode + crate::traits::IsRepresentation,
-        DEXId: Clone + Encode,
-    > crate::traits::GetLstIdAndTradingPairFromTechAsset<LstId, TradingPair<AssetId32<AssetId>>>
-    for TechAssetId<AssetId, DEXId, LstId>
-{
-    fn get_lst_id_and_trading_pair_from_tech_asset(
-        &self,
-    ) -> Option<(LstId, TradingPair<AssetId32<AssetId>>)> {
-        match self.clone() {
-            MakeTechAssetId::LstTag(lst, next) => match next {
-                MakeTechAssetId::DexMarker(_, tpair) => {
-                    let b: Result<AssetId32<AssetId>, ()> = tpair.base_asset_id.into();
-                    let t: Result<AssetId32<AssetId>, ()> = tpair.target_asset_id.into();
-
-                    if b.is_ok() && t.is_ok() {
-                        Some((
-                            lst,
-                            TradingPair {
-                                base_asset_id: b.unwrap(),
-                                target_asset_id: t.unwrap(),
-                            },
-                        ))
-                    } else {
-                        None
-                    }
-                }
-                _ => None,
-            },
-            _ => None,
-        }
-    }
+#[derive(Encode, Decode, Eq, PartialEq, PartialOrd, Ord, Debug, Copy, Clone, Hash)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+pub enum AssetIdExtraTupleArg<DEXId, LstId, AccountId> {
+    DEXId(DEXId),
+    LstId(LstId),
+    AccountId(AccountId),
 }
 
-// LstId is Liquidity Source Type Id.
-impl<LstId: Clone, AssetId: Clone, DEXId: Clone>
-    crate::traits::GetTechAssetWithLstTag<LstId, AssetId32<AssetId>>
-    for TechAssetId<AssetId, DEXId, LstId>
-where
-    TechAssetId<AssetId, DEXId, LstId>: TryFrom<AssetId32<AssetId>>,
-    MakeTechAssetId<AssetId, DEXId, LstId, TechAssetId<AssetId, DEXId, LstId>>: Encode,
-    AssetId: crate::traits::IsRepresentation,
-{
-    fn get_tech_asset_with_lst_tag(tag: LstId, asset_id: AssetId32<AssetId>) -> Result<Self, ()> {
-        //TODO: Use additional checking that tech_asset_id can be inside LstTag.
-        let tech_asset: TechAssetId<AssetId, DEXId, LstId> = asset_id.try_into().map_err(|_| ())?;
-        let tagged = MakeTechAssetId::LstTag(tag, tech_asset);
-        let middle: Result<AssetId32<AssetId>, ()> = tagged.into();
-        let result: TechAssetId<AssetId, DEXId, LstId> = (middle?).try_into().map_err(|_| ())?;
-        Ok(result)
-    }
-}
-
-// LstId is Liquidity Source Type Id.
-impl<AssetId: Clone, DEXId: Clone, LstId: Clone>
-    crate::traits::ToTechUnitFromDEXAndTradingPair<
-        DEXId,
-        TradingPair<TechAssetId<AssetId, DEXId, LstId>>,
-    > for TechAssetId<AssetId, DEXId, LstId>
-{
-    fn to_tech_unit_from_dex_and_trading_pair(
-        dex_id: DEXId,
-        trading_pair: TradingPair<TechAssetId<AssetId, DEXId, LstId>>,
-    ) -> Self {
-        use MakeTechAssetId::*;
-        match (trading_pair.base_asset_id, trading_pair.target_asset_id) {
-            (Wrapped(a), Wrapped(b)) => {
-                let tp = TradingPair {
-                    base_asset_id: Wrapped(a),
-                    target_asset_id: Wrapped(b),
-                };
-                TechAssetId::DexMarker(dex_id.clone(), tp)
-            }
-            _ => unimplemented!(),
-        }
-    }
-}
-
-// LstId is Liquidity Source Type Id.
-impl<AssetId: Clone, DEXId: Clone, LstId: Clone>
-    crate::traits::ToTechUnitFromDEXAndTradingPair<DEXId, TradingPair<AssetId>>
-    for TechAssetId<AssetId, DEXId, LstId>
-{
-    fn to_tech_unit_from_dex_and_trading_pair(
-        dex_id: DEXId,
-        trading_pair: TradingPair<AssetId>,
-    ) -> Self {
-        use MakeTechAssetId::*;
-        match (
-            trading_pair.clone().base_asset_id,
-            trading_pair.clone().target_asset_id,
-        ) {
-            (a, b) => {
-                let tp = TradingPair {
-                    base_asset_id: Wrapped(a),
-                    target_asset_id: Wrapped(b),
-                };
-                TechAssetId::DexMarker(dex_id.clone(), tp)
-            }
-        }
-    }
-}
-
-impl<AssetId: Default, DEXId, LstId> Default for TechAssetId<AssetId, DEXId, LstId> {
+impl<AssetId: Default> Default for TechAssetId<AssetId> {
     fn default() -> Self {
         TechAssetId::Wrapped(AssetId::default())
     }
 }
 
-impl<AssetId, DEXId, LstId> From<AssetId> for TechAssetId<AssetId, DEXId, LstId> {
+impl<AssetId> From<AssetId> for TechAssetId<AssetId> {
     fn from(a: AssetId) -> Self {
         TechAssetId::Wrapped(a)
     }
@@ -585,9 +448,7 @@ impl<DEXId: Copy, LiquiditySourceIndex: Copy> LiquiditySourceId<DEXId, Liquidity
 }
 
 // LstId is Liquidity Source Type Id.
-impl<AssetId, DEXId, LstId> crate::traits::PureOrWrapped<AssetId>
-    for TechAssetId<AssetId, DEXId, LstId>
-{
+impl<AssetId> PureOrWrapped<AssetId> for TechAssetId<AssetId> {
     fn is_pure(&self) -> bool {
         match self {
             TechAssetId::Wrapped(_) => false,
@@ -634,9 +495,7 @@ pub enum TechAccountId<AccountId, AssetId, DEXId> {
 }
 
 /// Implementation of `IsRepresentation` for `TechAccountId`, because is has `WrappedRepr`.
-impl<AccountId, AssetId, DEXId> crate::traits::IsRepresentation
-    for TechAccountId<AccountId, AssetId, DEXId>
-{
+impl<AccountId, AssetId, DEXId> IsRepresentation for TechAccountId<AccountId, AssetId, DEXId> {
     fn is_representation(&self) -> bool {
         match self {
             TechAccountId::WrappedRepr(_) => true,
@@ -686,35 +545,6 @@ impl<AccountId, AssetId: Clone, DEXId: Clone> crate::traits::ToFeeAccount
     }
 }
 
-// LstId is Liquidity Source Type Id.
-impl<AccountId, AssetId: Clone, DEXId: Clone, LstId: Clone>
-    crate::traits::ToMarkerAsset<TechAssetId<AssetId, DEXId, LstId>, LstId>
-    for TechAccountId<AccountId, TechAssetId<AssetId, DEXId, LstId>, DEXId>
-{
-    fn to_marker_asset(&self, lst_id: LstId) -> Option<TechAssetId<AssetId, DEXId, LstId>> {
-        use MakeTechAssetId::*;
-        match self {
-            TechAccountId::Pure(dex, TechPurpose::LiquidityKeeper(tpair)) => {
-                match (tpair.clone().base_asset_id, tpair.clone().target_asset_id) {
-                    (Wrapped(base_asset_id), Wrapped(target_asset_id)) => {
-                        let trading_pair = TradingPair {
-                            base_asset_id: Wrapped(base_asset_id),
-                            target_asset_id: Wrapped(target_asset_id),
-                        };
-                        Some(TechAssetId::LstTag(
-                            lst_id,
-                            MakeTechAssetId::DexMarker(dex.clone(), trading_pair),
-                        ))
-                    }
-                    //TODO: will be implemented for cases like pool token of pool token.
-                    _ => unimplemented!(),
-                }
-            }
-            _ => None,
-        }
-    }
-}
-
 impl<AccountId, AssetId, DEXId: Clone>
     crate::traits::ToTechUnitFromDEXAndTradingPair<DEXId, TradingPair<AssetId>>
     for TechAccountId<AccountId, AssetId, DEXId>
@@ -729,7 +559,7 @@ impl<AccountId, AssetId, DEXId: Clone>
 
 impl<AccountId, AssetId, DEXId> From<AccountId> for TechAccountId<AccountId, AssetId, DEXId>
 where
-    AccountId: crate::traits::IsRepresentation,
+    AccountId: IsRepresentation,
 {
     fn from(a: AccountId) -> Self {
         if a.is_representation() {
@@ -756,9 +586,9 @@ impl<
         AccountId: Clone + Encode + From<[u8; 32]> + Into<[u8; 32]>,
         AssetId: Encode,
         DEXId: Encode,
-    > crate::traits::PureOrWrapped<AccountId> for TechAccountId<AccountId, AssetId, DEXId>
+    > PureOrWrapped<AccountId> for TechAccountId<AccountId, AssetId, DEXId>
 where
-    AccountId: crate::traits::IsRepresentation,
+    AccountId: IsRepresentation,
 {
     fn is_pure(&self) -> bool {
         match self {
@@ -784,8 +614,8 @@ where
 
 impl<AssetId> From<AssetId> for AssetId32<AssetId>
 where
-    AssetId32<AssetId>: From<TechAssetId<AssetId, DEXId, LiquiditySourceType>>,
-    AssetId: crate::traits::IsRepresentation,
+    AssetId32<AssetId>: From<TechAssetId<AssetId>>,
+    AssetId: IsRepresentation,
 {
     fn from(asset_id: AssetId) -> Self {
         // Must be not representation, only direct asset must be here.
@@ -796,32 +626,34 @@ where
 }
 
 // LstId is Liquidity Source Type Id.
-impl<AssetId, DEXId, LstId> From<TechAssetId<AssetId, DEXId, LstId>> for AssetId32<AssetId>
+impl<AssetId> From<TechAssetId<AssetId>> for AssetId32<AssetId>
 where
-    TechAssetId<AssetId, DEXId, LstId>: Encode,
-    AssetId: crate::traits::IsRepresentation,
+    TechAssetId<AssetId>: Encode,
+    AssetId: IsRepresentation,
 {
-    fn from(tech_asset: TechAssetId<AssetId, DEXId, LstId>) -> Self {
-        let mut slice = [0_u8; 32];
-        let asset_encoded: Vec<u8> = tech_asset.encode();
-        let asset_length = asset_encoded.len();
-        // Encode size of TechAssetId must be always less or equal to 31.
-        // Recursion of MakeTechAssetId is limited for this to specific number of iterations.
-        // Assert must exist here because it must never happen in runtime and must be covered by tests.
-        assert!(asset_length <= 31);
-        // Must be not representation, only direct asset must be here.
-        // Assert must exist here because it must never happen in runtime and must be covered by tests.
-        assert!({
-            match tech_asset {
-                TechAssetId::Wrapped(a) => !a.is_representation(),
-                _ => true,
+    fn from(tech_asset: TechAssetId<AssetId>) -> Self {
+        match tech_asset {
+            TechAssetId::Escaped(code) => AssetId32::new(code, PhantomData),
+            _ => {
+                let mut slice = [0_u8; 32];
+                let asset_encoded: Vec<u8> = tech_asset.encode();
+                let asset_length = asset_encoded.len();
+                // Encode size of TechAssetId must be always less or equal to 31.
+                // Assert must exist here because it must never happen in runtime and must be covered by tests.
+                assert!(asset_length <= 31);
+                // Must be not representation, only direct asset must be here.
+                // Assert must exist here because it must never happen in runtime and must be covered by tests.
+                assert!({
+                    match tech_asset {
+                        TechAssetId::Wrapped(a) => !a.is_representation(),
+                        _ => true,
+                    }
+                });
+                slice[0] = asset_length as u8;
+                slice[1..asset_length + 1].copy_from_slice(&asset_encoded);
+                AssetId32::new(slice, PhantomData)
             }
-        });
-        slice[0] = asset_length as u8;
-        for i in 0..asset_length {
-            slice[i + 1] = asset_encoded[i];
         }
-        AssetId32::new(slice, PhantomData)
     }
 }
 
