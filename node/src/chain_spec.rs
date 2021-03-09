@@ -2,11 +2,11 @@ use framenode_runtime::{
     bonding_curve_pool, eth_bridge, multicollateral_bonding_curve_pool, opaque::SessionKeys,
     AccountId, AssetSymbol, AssetsConfig, BabeConfig, BalancesConfig, BondingCurvePoolConfig,
     BridgeMultisigConfig, DEXAPIConfig, DEXManagerConfig, EthBridgeConfig, FarmingConfig,
-    FaucetConfig, GenesisConfig, GetBaseAssetId, GrandpaConfig, IrohaMigrationConfig,
-    LiquiditySourceType, MulticollateralBondingCurvePoolConfig, PermissionsConfig,
-    PswapDistributionConfig, PswapId, Runtime, SessionConfig, Signature, StakerStatus,
-    StakingConfig, SudoConfig, SystemConfig, TechAccountId, TechnicalConfig, TokensConfig, ValId,
-    XorId, WASM_BINARY,
+    FaucetConfig, GenesisConfig, GetBaseAssetId, GetPswapAssetId, GetValAssetId, GetXorAssetId,
+    GrandpaConfig, IrohaMigrationConfig, LiquiditySourceType,
+    MulticollateralBondingCurvePoolConfig, PermissionsConfig, PswapDistributionConfig, Runtime,
+    SessionConfig, Signature, StakerStatus, StakingConfig, SudoConfig, SystemConfig, TechAccountId,
+    TechnicalConfig, TokensConfig, WASM_BINARY,
 };
 
 use common::{
@@ -461,7 +461,7 @@ fn testnet_genesis(
     eth_bridge_params: EthBridgeParams,
 ) -> GenesisConfig {
     let initial_balance = balance!(1000000000);
-    let initial_staking: Balance = (initial_balance >> 44).into();
+    let initial_staking = balance!(1000000);
     let xor_fee_tech_account_id = TechAccountId::Generic(
         xor_fee::TECH_ACCOUNT_PREFIX.to_vec(),
         xor_fee::TECH_ACCOUNT_MAIN.to_vec(),
@@ -509,6 +509,9 @@ fn testnet_genesis(
         framenode_runtime::GetPswapDistributionTechAccountId::get();
     let pswap_distribution_account_id = framenode_runtime::GetPswapDistributionAccountId::get();
 
+    let mbc_pool_rewards_tech_account_id = framenode_runtime::GetMbcPoolRewardsTechAccountId::get();
+    let mbc_pool_rewards_account_id = framenode_runtime::GetMbcPoolRewardsAccountId::get();
+
     let liquidity_proxy_tech_account_id = framenode_runtime::GetLiquidityProxyTechAccountId::get();
     let liquidity_proxy_account_id = framenode_runtime::GetLiquidityProxyAccountId::get();
 
@@ -530,6 +533,10 @@ fn testnet_genesis(
         (
             liquidity_proxy_account_id.clone(),
             liquidity_proxy_tech_account_id.clone(),
+        ),
+        (
+            mbc_pool_rewards_account_id.clone(),
+            mbc_pool_rewards_tech_account_id.clone(),
         ),
     ];
     let accounts = bonding_curve_distribution_accounts();
@@ -606,7 +613,7 @@ fn testnet_genesis(
         assets: Some(AssetsConfig {
             endowed_assets: vec![
                 (
-                    XorId::get(),
+                    GetXorAssetId::get(),
                     initial_assets_owner.clone(),
                     AssetSymbol(b"XOR".to_vec()),
                     18,
@@ -622,7 +629,7 @@ fn testnet_genesis(
                 //     true,
                 // ),
                 (
-                    ValId::get(),
+                    GetValAssetId::get(),
                     initial_assets_owner.clone(),
                     AssetSymbol(b"VAL".to_vec()),
                     18,
@@ -630,7 +637,7 @@ fn testnet_genesis(
                     true,
                 ),
                 (
-                    PswapId::get(),
+                    GetPswapAssetId::get(),
                     initial_assets_owner.clone(),
                     AssetSymbol(b"PSWAP".to_vec()),
                     18,
@@ -763,10 +770,14 @@ fn testnet_genesis(
             endowed_accounts: vec![
                 (
                     faucet_account_id.clone(),
-                    ValId::get(),
+                    GetValAssetId::get(),
                     initial_balance.into(),
                 ),
-                (faucet_account_id, PswapId::get(), initial_balance.into()),
+                (
+                    faucet_account_id,
+                    GetPswapAssetId::get(),
+                    initial_balance.into(),
+                ),
                 (
                     eth_bridge_account_id.clone(),
                     VAL,
@@ -827,6 +838,7 @@ fn testnet_genesis(
             distribution_accounts: accounts,
             reserves_account_id: multicollateral_bonding_curve_reserves_tech_account_id,
             reference_asset_id: Default::default(),
+            incentives_account_id: mbc_pool_rewards_account_id,
         }),
         farming: Some(FarmingConfig {
             initial_farm: (dex_root, XOR, PSWAP),

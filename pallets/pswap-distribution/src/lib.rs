@@ -33,6 +33,16 @@ type CurrencyIdOf<T> = <T as tokens::Trait>::CurrencyId;
 type Assets<T> = assets::Module<T>;
 type System<T> = frame_system::Module<T>;
 
+pub trait OnPswapBurned {
+    fn on_pswap_burned(amount: Balance);
+}
+
+impl OnPswapBurned for () {
+    fn on_pswap_burned(_amount: Balance) {
+        // do nothing
+    }
+}
+
 pub trait Trait: common::Trait + assets::Trait + technical::Trait {
     type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
     type GetIncentiveAssetId: Get<Self::AssetId>;
@@ -45,6 +55,7 @@ pub trait Trait: common::Trait + assets::Trait + technical::Trait {
     type GetTechnicalAccountId: Get<Self::AccountId>;
     type GetDefaultSubscriptionFrequency: Get<Self::BlockNumber>;
     type EnsureDEXManager: EnsureDEXManager<Self::DEXId, Self::AccountId, DispatchError>;
+    type OnPswapBurnedAggregator: OnPswapBurned;
 }
 
 decl_storage! {
@@ -366,7 +377,7 @@ impl<T: Trait> Module<T> {
         // used in move convinient way.
         if incentive_asset_id.clone() == common::PSWAP.into() {
             let old = BurnedPswapDedicatedForOtherPallets::get();
-            let new: Fixed = (old + incentive_to_burn)
+            let new: Fixed = (old + incentive_to_burn.clone())
                 .get()
                 .map_err(|_| Error::<T>::CalculationError)?;
             BurnedPswapDedicatedForOtherPallets::set(new);
@@ -376,6 +387,14 @@ impl<T: Trait> Module<T> {
         let incentive_total = incentive_to_revive
             .try_into_balance()
             .map_err(|_| Error::<T>::CalculationError)?;
+
+        let incentive_to_burn_unwrapped: Balance = incentive_to_burn
+            .try_into_balance()
+            .map_err(|_| Error::<T>::CalculationError)?;
+        if !incentive_to_burn_unwrapped.is_zero() {
+            T::OnPswapBurnedAggregator::on_pswap_burned(incentive_to_burn_unwrapped);
+        }
+
         let mut claimable_incentives = FixedWrapper::from(assets::Module::<T>::free_balance(
             &incentive_asset_id,
             &tech_account_id,

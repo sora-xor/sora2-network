@@ -24,6 +24,8 @@ dex-api = { path = "../dex-api", default-features = false }
 permissions = { path = "../permissions", default-features = false }
 liquidity-proxy = { path = "../liquidity-proxy", default-features = false }
 bonding-curve-pool = { path = "../bonding-curve-pool", default-features = false }
+pswap-distribution = { path = "../pswap-distribution", default-features = false }
+trading-pair = { path = "../trading-pair", default-features = false }
 
 [dev-dependencies]
 sp-core = { version = "2.0.0", default-features = false }
@@ -32,6 +34,7 @@ pallet-balances = { version = "2.0.0", default-features = false }
 trading-pair = { path = "../trading-pair", default-features = false }
 dex-manager = { path = "../dex-manager", default-features = false }
 mock-liquidity-source = { path = "../mock-liquidity-source", default-features = false }
+hex-literal = { version = '0.3.1' }
 
 [features]
 default = ['std']
@@ -52,4 +55,6 @@ std = [
     'dex-api/std',
     'permissions/std',
     'bonding-curve-pool/std',
+    'pswap-distribution/std',
+    'trading-pair/std',
 ]

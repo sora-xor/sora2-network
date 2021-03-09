@@ -243,6 +243,7 @@ impl pswap_distribution::Trait for Runtime {
     type GetDefaultSubscriptionFrequency = GetDefaultSubscriptionFrequency;
     type GetTechnicalAccountId = GetPswapDistributionAccountId;
     type EnsureDEXManager = ();
+    type OnPswapBurnedAggregator = ();
 }
 
 impl Trait for Runtime {}

@@ -6,6 +6,8 @@ use crate::{
 use alloc::{collections::BTreeSet, string::String};
 use codec::{Decode, Encode};
 use common::prelude::Balance;
+#[cfg(feature = "std")]
+use common::utils::string_serialization;
 use common::{AssetSymbol, BalancePrecision, PSWAP, VAL, XOR};
 use ethabi::{FixedBytes, Token};
 #[allow(unused_imports)]
@@ -95,6 +97,7 @@ pub struct IncomingTransfer<T: Trait> {
     pub to: T::AccountId,
     pub asset_id: AssetIdOf<T>,
     pub asset_kind: AssetKind,
+    #[cfg_attr(feature = "std", serde(with = "string_serialization"))]
     pub amount: Balance,
     pub tx_hash: H256,
     pub at_height: u64,
@@ -328,6 +331,7 @@ pub struct OutgoingTransfer<T: Trait> {
     pub from: T::AccountId,
     pub to: Address,
     pub asset_id: AssetIdOf<T>,
+    #[cfg_attr(feature = "std", serde(with = "string_serialization"))]
     pub amount: Balance,
     pub nonce: T::Index,
     pub network_id: T::NetworkId,
@@ -485,7 +489,6 @@ impl OutgoingTransferEncoded {
 pub struct OutgoingAddAsset<T: Trait> {
     pub author: T::AccountId,
     pub asset_id: AssetIdOf<T>,
-    pub supply: Balance,
     pub nonce: T::Index,
     pub network_id: T::NetworkId,
 }
@@ -497,7 +500,6 @@ impl<T: Trait> OutgoingAddAsset<T> {
         let symbol: String = String::from_utf8_lossy(&symbol.0).into();
         let name = symbol.clone();
         let asset_id_code = <AssetIdOf<T> as Into<H256>>::into(self.asset_id);
-        let supply: U256 = U256::from(self.supply);
         let sidechain_asset_id = asset_id_code.0.to_vec();
         let mut network_id: H256 = H256::default();
         U256::from(
@@ -510,7 +512,6 @@ impl<T: Trait> OutgoingAddAsset<T> {
             Token::String(name.clone()),
             Token::String(symbol.clone()),
             Token::UintSized(precision.into(), 8),
-            Token::Uint(types::U256(supply.0)),
             Token::FixedBytes(sidechain_asset_id.clone()),
             Token::FixedBytes(tx_hash.0.to_vec()),
             Token::FixedBytes(network_id.0.to_vec()),
@@ -520,7 +521,6 @@ impl<T: Trait> OutgoingAddAsset<T> {
             name,
             symbol,
             decimal: precision,
-            supply, // TODO: supply
             sidechain_asset_id,
             hash,
             network_id,
@@ -557,7 +557,6 @@ pub struct OutgoingAddAssetEncoded {
     pub name: String,
     pub symbol: String,
     pub decimal: u8,
-    pub supply: U256,
     pub sidechain_asset_id: FixedBytes,
     pub hash: H256,
     pub network_id: H256,
@@ -571,7 +570,6 @@ impl OutgoingAddAssetEncoded {
             Token::String(self.name.clone()),
             Token::String(self.symbol.clone()),
             Token::Uint(self.decimal.into()),
-            Token::Uint(types::U256(self.supply.0)),
             Token::FixedBytes(self.sidechain_asset_id.clone()),
         ];
         if let Some(sigs) = signatures {

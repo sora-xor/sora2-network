@@ -7,7 +7,7 @@ import "./Ownable.sol";
 import "./ERC20Burnable.sol";
 
 /**
- * Provides functionality of bridge contract
+ * Provides functionality of the HASHI bridge
  */
 contract Bridge {
     bool internal initialized_;
@@ -15,12 +15,17 @@ contract Bridge {
 
     mapping(address => bool) public isPeer;
     uint public peersCount;
+
     /** Substrate proofs used */
     mapping(bytes32 => bool) public used;
     mapping(address => bool) public _uniqueAddresses;
-    /* White list of ERC-20 ethereum native tokens */
+    
+    /** White list of ERC-20 ethereum native tokens */
     mapping(address => bool) public acceptedEthTokens;
-
+    
+    /** White lists of ERC-20 SORA native tokens 
+    * We use several representations of the white list for optimisation purposes.
+    */
     mapping(bytes32 => address) public _sidechainTokens;
     mapping(address => bytes32) public _sidechainTokensByAddress;
     address[] public _sidechainTokenAddressArray;
@@ -30,14 +35,22 @@ contract Bridge {
     event ChangePeers(address peerId, bool removal);
     event PreparedForMigration();
     event Migrated(address to);
-
+    
+    /**
+     * For XOR and VAL use old token contracts, created for SORA 1 bridge.
+     * Also for XOR and VAL transfers from SORA 2 to Ethereum old bridges will be used.
+     */
     address public _addressVAL;
     address public _addressXOR;
+    /** EVM netowrk ID */
     bytes32 public _networkId;
 
     /**
      * Constructor.
      * @param initialPeers - list of initial bridge validators on substrate side.
+     * @param addressVAL address of VAL token Contract
+     * @param addressXOR address of XOR token Contract
+     * @param networkId id of current EvM network used for bridge purpose.
      */
     constructor(
         address[] memory initialPeers,
@@ -83,7 +96,15 @@ contract Bridge {
     /**
      * Adds new token to whitelist. 
      * Token should not been already added.
-     * @param newToken token to add
+     * 
+     * @param newToken new token contract address
+     * @param ticker token ticker
+     * @param name token title
+     * @param decimals count of token decimal places
+     * @param txHash transaction hash from sidechain
+     * @param v array of signatures of tx_hash (v-component)
+     * @param r array of signatures of tx_hash (r-component)
+     * @param s array of signatures of tx_hash (s-component)
      */
     function addEthNativeToken(
         address newToken,
@@ -104,7 +125,16 @@ contract Bridge {
         );
         acceptedEthTokens[newToken] = true;
     }
-
+    
+    /**
+     * Preparations for migration to new Bridge contract
+     * 
+     * @param thisContractAddress address of this bridge contract
+     * @param salt unique data used for signature
+     * @param v array of signatures of tx_hash (v-component)
+     * @param r array of signatures of tx_hash (r-component)
+     * @param s array of signatures of tx_hash (s-component)
+     */
     function prepareForMigration(
         address thisContractAddress,
         bytes32 salt,
@@ -124,11 +154,22 @@ contract Bridge {
         emit PreparedForMigration();
     }
 
+    /**
+    * Shutdown this contract and migrate tokens ownership to the new contract.
+    * 
+    * @param thisContractAddress this bridge contract address
+    * @param salt unique data used for signature generation
+    * @param newContractAddress address of the new bridge contract
+    * @param erc20nativeTokens list of ERC20 tokens with non zero balances for this contract. Can be taken from substrate bridge peers.
+    * @param v array of signatures of tx_hash (v-component)
+    * @param r array of signatures of tx_hash (r-component)
+    * @param s array of signatures of tx_hash (s-component)
+    */
     function shutDownAndMigrate(
         address thisContractAddress,
         bytes32 salt,
         address newContractAddress,
-        address[] calldata erc20nativeTokens, //List of ERC20 tokens with non zero balances for this contract. Can be taken from substrate bridge peers.
+        address[] calldata erc20nativeTokens, 
         uint8[] memory v,
         bytes32[] memory r,
         bytes32[] memory s
@@ -153,11 +194,22 @@ contract Bridge {
         emit Migrated(newContractAddress);
     }
 
+    /**
+    * Add new token from sidechain to the bridge white list.
+    * 
+    * @param name token title
+    * @param symbol token symbol
+    * @param decimals number of decimals
+    * @param sidechainAssetId token id on the sidechain
+    * @param txHash sidechain transaction hash
+    * @param v array of signatures of tx_hash (v-component)
+    * @param r array of signatures of tx_hash (r-component)
+    * @param s array of signatures of tx_hash (s-component)
+    */
     function addNewSidechainToken(
         string memory name,
         string memory symbol,
         uint8 decimals,
-        uint256 supply,
         bytes32 sidechainAssetId,
         bytes32 txHash,
         uint8[] memory v,
@@ -168,7 +220,6 @@ contract Bridge {
                 name,
                 symbol,
                 decimals,
-                supply,
                 sidechainAssetId,
                 txHash,
                 _networkId
@@ -178,13 +229,18 @@ contract Bridge {
             s), "Peer signatures are invalid"
         );
         // Create new instance of the token
-        MasterToken tokenInstance = new MasterToken(name, symbol, decimals, address(this), supply, sidechainAssetId);
+        MasterToken tokenInstance = new MasterToken(name, symbol, decimals, address(this), 0, sidechainAssetId);
         address tokenAddress = address(tokenInstance);
         _sidechainTokens[sidechainAssetId] = tokenAddress;
         _sidechainTokensByAddress[tokenAddress] = sidechainAssetId;
         _sidechainTokenAddressArray.push(tokenAddress);
     }
 
+    /**
+    * Send Ethereum to sidechain.
+    * 
+    * @param to destionation address on sidechain.
+    */
     function sendEthToSidechain(
         bytes32 to
     )
@@ -197,7 +253,11 @@ contract Bridge {
     }
 
     /**
-     * A special function-like stub to allow ether accepting
+     * Send ERC-20 token to sidechain.
+     * 
+     * @param to destination address on the sidechain
+     * @param amount amount to sendERC20ToSidechain
+     * @param tokenAddress contract address of token to send
      */
     function sendERC20ToSidechain(
         bytes32 to,
@@ -219,7 +279,16 @@ contract Bridge {
         }
         emit Deposit(to, amount, tokenAddress, sidechainAssetId);
     }
-
+    
+    /**
+     * Add new peer using peers quorum.
+     * 
+     * @param newPeerAddress address of the peer to add
+     * @param txHash tx hash from sidechain
+     * @param v array of signatures of tx_hash (v-component)
+     * @param r array of signatures of tx_hash (r-component)
+     * @param s array of signatures of tx_hash (s-component)
+     */
     function addPeerByPeer(
         address newPeerAddress,
         bytes32 txHash,
@@ -244,6 +313,15 @@ contract Bridge {
         return true;
     }
 
+    /**
+     * Remove peer using peers quorum.
+     * 
+     * @param peerAddress address of the peer to remove
+     * @param txHash tx hash from sidechain
+     * @param v array of signatures of tx_hash (v-component)
+     * @param r array of signatures of tx_hash (r-component)
+     * @param s array of signatures of tx_hash (s-component)
+     */
     function removePeerByPeer(
         address peerAddress,
         bytes32 txHash,
@@ -270,15 +348,15 @@ contract Bridge {
     }
 
     /**
-     * Withdraws specified amount of ether or one of ERC-20 tokens to provided address
+     * Withdraws specified amount of ether or one of ERC-20 tokens to provided sidechain address
      * @param tokenAddress address of token to withdraw (0 for ether)
      * @param amount amount of tokens or ether to withdraw
      * @param to target account address
-     * @param txHash hash of transaction from Iroha
+     * @param txHash hash of transaction from sidechain
+     * @param from source of transfer
      * @param v array of signatures of tx_hash (v-component)
      * @param r array of signatures of tx_hash (r-component)
      * @param s array of signatures of tx_hash (s-component)
-     * @param from relay contract address
      */
     function receiveByEthereumAssetAddress(
         address tokenAddress,
@@ -314,16 +392,16 @@ contract Bridge {
     }
 
     /**
-         * Mint new Token
-         * @param sidechainAssetId id of sidechainToken to mint
-         * @param amount how much to mint
-         * @param to destination address
-         * @param from sender address
-         * @param txHash hash of transaction from Iroha
-         * @param v array of signatures of tx_hash (v-component)
-         * @param r array of signatures of tx_hash (r-component)
-         * @param s array of signatures of tx_hash (s-component)
-         */
+     * Mint new Token
+     * @param sidechainAssetId id of sidechainToken to mint
+     * @param amount how much to mint
+     * @param to destination address
+     * @param from sender address
+     * @param txHash hash of transaction from Iroha
+     * @param v array of signatures of tx_hash (v-component)
+     * @param r array of signatures of tx_hash (r-component)
+     * @param s array of signatures of tx_hash (s-component)
+     */
     function receiveBySidechainAssetId(
         bytes32 sidechainAssetId,
         uint256 amount,

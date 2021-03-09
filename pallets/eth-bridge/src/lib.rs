@@ -819,7 +819,6 @@ decl_module! {
         pub fn add_asset(
             origin,
             asset_id: AssetIdOf<T>,
-            supply: Balance,
             network_id: BridgeNetworkId<T>,
         ) {
             debug::debug!("called add_asset");
@@ -828,7 +827,6 @@ decl_module! {
             Self::add_request(OffchainRequest::outgoing(OutgoingRequest::AddAsset(OutgoingAddAsset {
                 author: from.clone(),
                 asset_id,
-                supply,
                 nonce,
                 network_id,
             })))?;
