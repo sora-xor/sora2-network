@@ -7,7 +7,7 @@ use alloc::string::String;
 
 /// Constant values used within the runtime.
 pub mod constants;
-use constants::time::*;
+use constants::{currency::*, time::*};
 
 // Make the WASM binary available.
 #[cfg(feature = "std")]
@@ -37,8 +37,7 @@ use sp_runtime::{
         OpaqueKeys, SaturatedConversion, Saturating, Verify, Zero,
     },
     transaction_validity::{TransactionSource, TransactionValidity},
-    ApplyExtrinsicResult, DispatchError, FixedPointNumber, MultiSignature, Perbill, Percent,
-    Perquintill,
+    ApplyExtrinsicResult, DispatchError, MultiSignature, Perbill, Percent, Perquintill,
 };
 use sp_std::prelude::*;
 use sp_std::vec::Vec;
@@ -50,22 +49,24 @@ use static_assertions::assert_eq_size;
 // A few exports that help ease life for downstream crates.
 pub use common::{
     fixed, fixed_from_basis_points,
-    prelude::{Balance, BalanceWrapper, SwapAmount, SwapOutcome, SwapVariant, WeightToFixedFee},
+    prelude::{
+        Balance, BalanceWrapper, PresetWeightInfo, SwapAmount, SwapOutcome, SwapVariant,
+        WeightToFixedFee,
+    },
     AssetSymbol, BalancePrecision, BasisPoints, FilterMode, Fixed, FromGenericPair,
     LiquiditySource, LiquiditySourceFilter, LiquiditySourceId, LiquiditySourceType,
 };
 pub use frame_support::{
     construct_runtime, debug, parameter_types,
-    traits::KeyOwnerProofSystem,
-    traits::Randomness,
-    weights::constants::{BlockExecutionWeight, ExtrinsicBaseWeight, RocksDbWeight},
-    weights::{constants::WEIGHT_PER_SECOND, Weight},
+    traits::{KeyOwnerProofSystem, Randomness},
+    weights::constants::{BlockExecutionWeight, RocksDbWeight, WEIGHT_PER_SECOND},
+    weights::Weight,
     StorageValue,
 };
 pub use pallet_balances::Call as BalancesCall;
 pub use pallet_staking::StakerStatus;
 pub use pallet_timestamp::Call as TimestampCall;
-pub use pallet_transaction_payment::{Multiplier, TargetedFeeAdjustment};
+pub use pallet_transaction_payment::{Multiplier, MultiplierUpdate};
 #[cfg(any(feature = "std", test))]
 pub use sp_runtime::BuildStorage;
 
@@ -160,6 +161,7 @@ parameter_types! {
     /// Assume 10% of weight for average on_initialize calls.
     pub MaximumExtrinsicWeight: Weight = AvailableBlockRatio::get()
         .saturating_sub(Perbill::from_percent(10)) * MaximumBlockWeight::get();
+    pub const ExtrinsicBaseWeight: Weight = 0;
     pub const AvailableBlockRatio: Perbill = Perbill::from_percent(75);
     pub const MaximumBlockLength: u32 = 5 * 1024 * 1024;
     pub const Version: RuntimeVersion = VERSION;
@@ -398,18 +400,18 @@ impl assets::Trait for Runtime {
     type AssetId = AssetId;
     type GetBaseAssetId = GetBaseAssetId;
     type Currency = currencies::Module<Runtime>;
-    type WeightInfo = ();
+    type WeightInfo = PresetWeightInfo;
 }
 
 impl trading_pair::Trait for Runtime {
     type Event = Event;
     type EnsureDEXManager = dex_manager::Module<Runtime>;
-    type WeightInfo = ();
+    type WeightInfo = PresetWeightInfo;
 }
 
 impl dex_manager::Trait for Runtime {
     type Event = Event;
-    type WeightInfo = ();
+    type WeightInfo = PresetWeightInfo;
 }
 
 impl bonding_curve_pool::Trait for Runtime {
@@ -428,7 +430,7 @@ impl technical::Trait for Runtime {
     type Condition = ();
     type SwapAction =
         pool_xyk::PolySwapAction<AssetId, TechAssetId, Balance, AccountId, TechAccountId>;
-    type WeightInfo = ();
+    type WeightInfo = PresetWeightInfo;
 }
 
 impl pool_xyk::Trait for Runtime {
@@ -441,7 +443,7 @@ impl pool_xyk::Trait for Runtime {
     type PolySwapAction =
         pool_xyk::PolySwapAction<AssetId, TechAssetId, Balance, AccountId, TechAccountId>;
     type EnsureDEXManager = dex_manager::Module<Runtime>;
-    type WeightInfo = ();
+    type WeightInfo = PresetWeightInfo;
 }
 
 parameter_types! {
@@ -467,7 +469,7 @@ impl liquidity_proxy::Trait for Runtime {
     type LiquidityRegistry = dex_api::Module<Runtime>;
     type GetNumSamples = GetNumSamples;
     type GetTechnicalAccountId = GetLiquidityProxyAccountId;
-    type WeightInfo = ();
+    type WeightInfo = PresetWeightInfo;
 }
 
 parameter_types! {
@@ -515,7 +517,7 @@ impl dex_api::Trait for Runtime {
     type BondingCurvePool = bonding_curve_pool::Module<Runtime>;
     type MulticollateralBondingCurvePool = multicollateral_bonding_curve_pool::Module<Runtime>;
     type XYKPool = pool_xyk::Module<Runtime>;
-    type WeightInfo = ();
+    type WeightInfo = PresetWeightInfo;
 }
 
 impl farming::Trait for Runtime {
@@ -629,11 +631,27 @@ impl xor_fee::Trait for Runtime {
     type ValBurnedNotifier = Staking;
 }
 
+pub struct ConstantFeeMultiplier;
+
+impl MultiplierUpdate for ConstantFeeMultiplier {
+    fn min() -> Multiplier {
+        Default::default()
+    }
+    fn target() -> Perquintill {
+        Default::default()
+    }
+    fn variability() -> Multiplier {
+        Default::default()
+    }
+}
+impl Convert<Multiplier, Multiplier> for ConstantFeeMultiplier {
+    fn convert(previous: Multiplier) -> Multiplier {
+        previous
+    }
+}
+
 parameter_types! {
-    pub const TransactionByteFee: Balance = 1_000_000_000_000; // 10^-6 XOR ~ 10 * MILLICENTS
-    pub const TargetBlockFullness: Perquintill = Perquintill::from_percent(25);
-    pub AdjustmentVariable: Multiplier = Multiplier::saturating_from_rational(1, 100_000);
-    pub MinimumMultiplier: Multiplier = Multiplier::saturating_from_rational(1, 1_000_000_000_u128);
+    pub const TransactionByteFee: Balance = TRANSACTION_BYTE_FEE;
 }
 
 impl pallet_transaction_payment::Trait for Runtime {
@@ -642,8 +660,7 @@ impl pallet_transaction_payment::Trait for Runtime {
     type OnTransactionPayment = XorFee;
     type TransactionByteFee = TransactionByteFee;
     type WeightToFee = WeightToFixedFee;
-    type FeeMultiplierUpdate =
-        TargetedFeeAdjustment<Self, TargetBlockFullness, AdjustmentVariable, MinimumMultiplier>;
+    type FeeMultiplierUpdate = ConstantFeeMultiplier;
 }
 
 impl pallet_sudo::Trait for Runtime {
@@ -689,6 +706,7 @@ impl eth_bridge::Trait for Runtime {
     type PeerId = eth_bridge::crypto::TestAuthId;
     type NetworkId = NetworkId;
     type GetEthNetworkId = EthNetworkId;
+    type WeightInfo = PresetWeightInfo;
 }
 
 impl faucet::Trait for Runtime {
@@ -754,6 +772,7 @@ impl multicollateral_bonding_curve_pool::Trait for Runtime {
     type LiquidityProxy = LiquidityProxy;
     type EnsureDEXManager = DEXManager;
     type EnsureTradingPairExists = TradingPair;
+    type WeightInfo = PresetWeightInfo;
 }
 
 /// Payload data to be signed when making signed transaction from off-chain workers,

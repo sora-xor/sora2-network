@@ -24,8 +24,6 @@ type DEXInfo<T> = common::prelude::DEXInfo<AssetIdOf<T>>;
 
 pub trait WeightInfo {
     fn initialize_dex() -> Weight;
-    fn set_fee() -> Weight;
-    fn set_protocol_fee() -> Weight;
 }
 
 pub trait Trait: common::Trait + assets::Trait {

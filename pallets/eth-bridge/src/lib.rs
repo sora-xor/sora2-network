@@ -27,7 +27,7 @@ use frame_support::{
         traits::{IdentifyAccount, One},
         KeyTypeId, MultiSigner, Percent,
     },
-    weights::Pays,
+    weights::{Pays, Weight},
     IterableStorageDoubleMap, Parameter, RuntimeDebug, StorageDoubleMap,
 };
 use frame_system::{
@@ -54,8 +54,24 @@ use sp_std::{
 #[cfg(feature = "std")]
 use std::collections::HashMap;
 
+pub trait WeightInfo {
+    fn register_bridge() -> Weight;
+    fn add_asset() -> Weight;
+    fn add_sidechain_token() -> Weight;
+    fn transfer_to_sidechain() -> Weight;
+    fn request_from_sidechain() -> Weight;
+    fn add_peer() -> Weight;
+    fn remove_peer() -> Weight;
+    fn force_add_peer() -> Weight;
+    fn finalize_mark_as_done() -> Weight;
+    fn prepare_for_migration() -> Weight;
+    fn migrate() -> Weight;
+}
+
 type Address = H160;
 type EthereumAddress = Address;
+
+mod weights;
 
 mod contract;
 #[cfg(test)]
@@ -587,6 +603,8 @@ pub trait Trait:
         + Default
         + Debug;
     type GetEthNetworkId: Get<Self::NetworkId>;
+    /// Weight information for extrinsics in this pallet.
+    type WeightInfo: WeightInfo;
 }
 
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
@@ -799,7 +817,7 @@ decl_module! {
 
         fn deposit_event() = default;
 
-        #[weight = 0]
+        #[weight = <T as Trait>::WeightInfo::register_bridge()]
         pub fn register_bridge(origin, bridge_contract_address: Address, initial_peers: BTreeSet<T::AccountId>) {
             let author = ensure_signed(origin)?;
             // TODO: governence
@@ -815,7 +833,7 @@ decl_module! {
             LastNetworkId::<T>::set(net_id + T::NetworkId::one());
         }
 
-        #[weight = 0]
+        #[weight = <T as Trait>::WeightInfo::add_asset()]
         pub fn add_asset(
             origin,
             asset_id: AssetIdOf<T>,
@@ -833,7 +851,7 @@ decl_module! {
             frame_system::Module::<T>::inc_account_nonce(&from);
         }
 
-        #[weight = 0]
+        #[weight = <T as Trait>::WeightInfo::add_sidechain_token()]
         pub fn add_sidechain_token(
             origin,
             token_address: EthereumAddress,
@@ -859,7 +877,7 @@ decl_module! {
             frame_system::Module::<T>::inc_account_nonce(&from);
         }
 
-        #[weight = 0]
+        #[weight = <T as Trait>::WeightInfo::transfer_to_sidechain()]
         pub fn transfer_to_sidechain(
             origin,
             asset_id: AssetIdOf<T>,
@@ -881,7 +899,7 @@ decl_module! {
             frame_system::Module::<T>::inc_account_nonce(&from);
         }
 
-        #[weight = 0]
+        #[weight = <T as Trait>::WeightInfo::request_from_sidechain()]
         pub fn request_from_sidechain(
             origin,
             eth_tx_hash: H256,
@@ -941,7 +959,7 @@ decl_module! {
             Self::remove_request_from_queue(network_id, &hash);
         }
 
-        #[weight = (0, Pays::No)]
+        #[weight = <T as Trait>::WeightInfo::add_peer()]
         pub fn add_peer(
             origin,
             account_id: T::AccountId,
@@ -962,7 +980,7 @@ decl_module! {
             frame_system::Module::<T>::inc_account_nonce(&from);
         }
 
-        #[weight = (0, Pays::No)]
+        #[weight = <T as Trait>::WeightInfo::remove_peer()]
         pub fn remove_peer(origin, account_id: T::AccountId, network_id: BridgeNetworkId<T>) {
             debug::debug!("called change_peers_out");
             let from = ensure_signed(origin)?;
@@ -979,7 +997,7 @@ decl_module! {
             frame_system::Module::<T>::inc_account_nonce(&from);
         }
 
-        #[weight = (0, Pays::No)]
+        #[weight = <T as Trait>::WeightInfo::prepare_for_migration()]
         pub fn prepare_for_migration(origin, network_id: BridgeNetworkId<T>) {
             debug::debug!("called prepare_for_migration");
             let from = ensure_signed(origin)?;
@@ -993,7 +1011,7 @@ decl_module! {
             frame_system::Module::<T>::inc_account_nonce(&from);
         }
 
-        #[weight = (0, Pays::No)]
+        #[weight = <T as Trait>::WeightInfo::migrate()]
         pub fn migrate(
             origin,
             new_contract_address: EthereumAddress,
@@ -1086,7 +1104,7 @@ decl_module! {
         }
 
         // TODO: maybe rewrite to finalize with `finalize_incoming_request`
-        #[weight = (0, Pays::No)]
+        #[weight = <T as Trait>::WeightInfo::finalize_mark_as_done()]
         pub fn finalize_mark_as_done(origin, request_hash: H256, network_id: BridgeNetworkId<T>) {
             debug::debug!("called finalize_mark_as_done");
             let author = ensure_signed(origin)?;
@@ -1109,7 +1127,7 @@ decl_module! {
             Self::offchain();
         }
 
-        #[weight = 0]
+        #[weight = <T as Trait>::WeightInfo::force_add_peer()]
         pub fn force_add_peer(origin, who: T::AccountId, network_id: BridgeNetworkId<T>) {
             let _ = ensure_root(origin)?;
             if !Self::is_peer(&who, network_id) {
