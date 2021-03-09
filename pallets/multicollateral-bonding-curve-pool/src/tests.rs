@@ -782,8 +782,12 @@ mod tests {
             assert!(limit_bob.is_zero());
             assert!(!owned_alice.is_zero());
             assert!(!owned_bob.is_zero());
-            let pswap_to_burn = (FixedWrapper::from(owned_alice + owned_bob) / MBCPool::pswap_burned_dedicated_for_rewards() / fixed_wrapper!(2)).into_balance();
-            MBCPool::on_pswap_burned(pswap_to_burn);
+            let vesting_amount = (FixedWrapper::from(owned_alice + owned_bob) / MBCPool::pswap_burned_dedicated_for_rewards() / fixed_wrapper!(10)).into_balance();
+            let remint_info = pswap_distribution::PswapRemintInfo {
+                vesting: vesting_amount,
+                ..Default::default()
+            };
+            MBCPool::on_pswap_burned(remint_info);
             let (limit_alice, _) = MBCPool::rewards(&alice());
             let (limit_bob, _) = MBCPool::rewards(&bob());
             assert_eq!(limit_alice, balance!(1145.147548375146487267));
@@ -802,7 +806,11 @@ mod tests {
             assert_eq!(Assets::free_balance(&PSWAP, &bob()).unwrap(), owned_bob - remaining_owned_bob);
 
             // claiming remainder
-            MBCPool::on_pswap_burned(pswap_to_burn + balance!(100));
+            let remint_info = pswap_distribution::PswapRemintInfo {
+                vesting: vesting_amount + balance!(100),
+                ..Default::default()
+            };
+            MBCPool::on_pswap_burned(remint_info);
             assert_ok!(MBCPool::claim_incentives(Origin::signed(alice())));
             assert_ok!(MBCPool::claim_incentives(Origin::signed(bob())));
             let (_, empty_owned_alice) = MBCPool::rewards(&alice());

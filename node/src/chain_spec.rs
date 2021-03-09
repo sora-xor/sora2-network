@@ -845,7 +845,7 @@ fn testnet_genesis(
         }),
         pswap_distribution: Some(PswapDistributionConfig {
             subscribed_accounts: Vec::new(),
-            burn_info: (fixed!(0), fixed!(0.000369738339021615), fixed!(0.65), 14400),
+            burn_info: (fixed!(0.1), fixed!(0.000357), fixed!(0.65), 14400),
         }),
         iroha_migration: Some(IrohaMigrationConfig {
             iroha_accounts: include!("iroha_migration_accounts.in"),

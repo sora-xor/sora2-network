@@ -22,7 +22,7 @@ use frame_support::{decl_error, decl_event, decl_module, decl_storage, ensure, f
 use frame_system::ensure_signed;
 use liquidity_proxy::LiquidityProxyTrait;
 use permissions::{Scope, BURN, MINT, SLASH, TRANSFER};
-use pswap_distribution::OnPswapBurned;
+use pswap_distribution::{OnPswapBurned, PswapRemintInfo};
 use sp_arithmetic::traits::Zero;
 use sp_runtime::{DispatchError, DispatchResult};
 use sp_std::collections::btree_set::BTreeSet;
@@ -918,10 +918,13 @@ impl<T: Trait> Module<T> {
 }
 
 impl<T: Trait> OnPswapBurned for Module<T> {
-    fn on_pswap_burned(amount: Balance) {
+    fn on_pswap_burned(distribution: PswapRemintInfo) {
         let total_rewards = TotalRewards::get();
-        let amount =
-            FixedWrapper::from(amount) * FixedWrapper::from(PswapBurnedDedicatedForRewards::get());
+        let amount = FixedWrapper::from(distribution.vesting);
+
+        // TODO: do we use full vesting amount here or portion as before?
+        // let amount =
+        //     FixedWrapper::from(amount) * FixedWrapper::from(PswapBurnedDedicatedForRewards::get());s
 
         if !total_rewards.is_zero() {
             Rewards::<T>::translate(|_key: T::AccountId, value: (Balance, Balance)| {
