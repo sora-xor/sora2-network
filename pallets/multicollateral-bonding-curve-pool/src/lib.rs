@@ -1,5 +1,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
+mod weights;
+
 #[cfg(test)]
 mod mock;
 
@@ -18,7 +20,9 @@ use common::{
     DEXId, LiquiditySource, LiquiditySourceFilter, LiquiditySourceType, ManagementMode, PSWAP, VAL,
 };
 use frame_support::traits::Get;
-use frame_support::{decl_error, decl_event, decl_module, decl_storage, ensure, fail};
+use frame_support::{
+    decl_error, decl_event, decl_module, decl_storage, ensure, fail, weights::Weight,
+};
 use frame_system::ensure_signed;
 use liquidity_proxy::LiquidityProxyTrait;
 use permissions::{Scope, BURN, MINT, SLASH, TRANSFER};
@@ -27,11 +31,20 @@ use sp_arithmetic::traits::Zero;
 use sp_runtime::{DispatchError, DispatchResult};
 use sp_std::collections::btree_set::BTreeSet;
 
+pub trait WeightInfo {
+    fn initialize_pool() -> Weight;
+    fn set_reference_asset() -> Weight;
+    fn set_optional_reward_multiplier() -> Weight;
+    fn claim_incentives() -> Weight;
+}
+
 pub trait Trait: common::Trait + assets::Trait + technical::Trait + trading_pair::Trait {
     type Event: From<Event<Self>> + Into<<Self as frame_system::Trait>::Event>;
     type LiquidityProxy: LiquidityProxyTrait<Self::DEXId, Self::AccountId, Self::AssetId>;
     type EnsureDEXManager: EnsureDEXManager<Self::DEXId, Self::AccountId, DispatchError>;
     type EnsureTradingPairExists: EnsureTradingPairExists<Self::DEXId, Self::AssetId, DispatchError>;
+    /// Weight information for extrinsics in this pallet.
+    type WeightInfo: WeightInfo;
 }
 
 type Assets<T> = assets::Module<T>;
@@ -142,14 +155,14 @@ decl_module! {
         fn deposit_event() = default;
 
         /// Enable exchange path on the pool for pair BaseAsset-CollateralAsset.
-        #[weight = 0]
+        #[weight = <T as Trait>::WeightInfo::initialize_pool()]
         fn initialize_pool(origin, collateral_asset_id: T::AssetId) -> DispatchResult {
             let _who = <T as Trait>::EnsureDEXManager::ensure_can_manage(&DEXId::Polkaswap.into(), origin, ManagementMode::Private)?;
             Self::initialize_pool_unchecked(collateral_asset_id)
         }
 
         /// Change reference asset which is used to determine collateral assets value. Inteded to be e.g. stablecoin DAI.
-        #[weight = 0]
+        #[weight = <T as Trait>::WeightInfo::set_reference_asset()]
         fn set_reference_asset(origin, reference_asset_id: T::AssetId) -> DispatchResult {
             let _who = <T as Trait>::EnsureDEXManager::ensure_can_manage(&DEXId::Polkaswap.into(), origin, ManagementMode::Private)?;
             ReferenceAssetId::<T>::put(reference_asset_id.clone());
@@ -159,7 +172,7 @@ decl_module! {
 
         /// Set multiplier which is applied to rewarded amount when depositing particular collateral assets.
         /// `None` value indicates reward without change, same as Some(1.0).
-        #[weight = 0]
+        #[weight = <T as Trait>::WeightInfo::set_optional_reward_multiplier()]
         fn set_optional_reward_multiplier(origin, collateral_asset_id: T::AssetId, multiplier: Option<Fixed>) -> DispatchResult {
             let _who = <T as Trait>::EnsureDEXManager::ensure_can_manage(&DEXId::Polkaswap.into(), origin, ManagementMode::Private)?;
             ensure!(Self::enabled_targets().contains(&collateral_asset_id), Error::<T>::UnsupportedCollateralAssetId);
@@ -169,7 +182,7 @@ decl_module! {
             Ok(())
         }
 
-        #[weight = 0]
+        #[weight = <T as Trait>::WeightInfo::claim_incentives()]
         fn claim_incentives(origin) -> DispatchResult {
             let who = ensure_signed(origin)?;
             Self::claim_incentives_inner(&who)

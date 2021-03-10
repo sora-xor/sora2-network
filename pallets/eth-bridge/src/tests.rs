@@ -931,7 +931,7 @@ fn should_register_and_find_asset_ids() {
         assert_eq!(
             asset_id,
             AssetId32::from_bytes(hex!(
-                "e1998577153deb622b5d7faabf23846281a8b074e1d4eebd31bca9dbe2c23006"
+                "00998577153deb622b5d7faabf23846281a8b074e1d4eebd31bca9dbe2c23006"
             ))
         );
         assert_eq!(asset_kind, AssetKind::Sidechain);

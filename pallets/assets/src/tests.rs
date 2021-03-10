@@ -16,7 +16,7 @@ mod tests {
             assert_eq!(
                 next_asset_id,
                 AssetId32::from_bytes(hex!(
-                    "97770dfe3392f9bb8ab977ce23d11c92e25140c39a9d8115714168d6e484ea41"
+                    "00770dfe3392f9bb8ab977ce23d11c92e25140c39a9d8115714168d6e484ea41"
                 ))
             );
             assert!(Assets::ensure_asset_exists(&next_asset_id).is_err());

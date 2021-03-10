@@ -67,10 +67,18 @@ parameter_types! {
 
 impl crate::Trait for Runtime {
     type Event = ();
+    type ExtraAccountId = AccountId;
+    type ExtraTupleArg =
+        common::AssetIdExtraTupleArg<common::DEXId, common::LiquiditySourceType, AccountId>;
     type AssetId = AssetId;
     type GetBaseAssetId = GetBaseAssetId;
     type Currency = currencies::Module<Runtime>;
     type WeightInfo = ();
+}
+
+impl common::Trait for Runtime {
+    type DEXId = common::DEXId;
+    type LstId = common::LiquiditySourceType;
 }
 
 impl permissions::Trait for Runtime {

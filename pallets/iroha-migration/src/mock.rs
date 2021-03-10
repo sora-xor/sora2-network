@@ -33,10 +33,10 @@ pub struct MyExtra;
 pub type TestExtrinsic = MyTestXt<Call, MyExtra>;
 type NodeBlock = generic::Block<Header, TestExtrinsic>;
 type DEXId = common::DEXId;
-type AccountId = AccountId32;
+type AccountId = u64;
 type BlockNumber = u64;
 type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
-type TechAssetId = common::TechAssetId<common::AssetId, DEXId, common::LiquiditySourceType>;
+type TechAssetId = common::TechAssetId<common::AssetId>;
 
 pub const XOR: AssetId = AssetId::XOR;
 pub const ALICE: u64 = 1;
@@ -94,7 +94,7 @@ where
     Call:
         'static + Sized + Send + Sync + Clone + Eq + Codec + Debug + Dispatchable<Origin = Origin>,
     Extra: SignedExtension<AccountId = AccountId, Call = Call>,
-    Origin: From<Option<AccountId32>>,
+    Origin: From<Option<AccountId>>,
 {
     type Call = Call;
 
@@ -223,6 +223,8 @@ impl technical::Trait for Test {
 
 impl assets::Trait for Test {
     type Event = Event;
+    type ExtraAccountId = u64;
+    type ExtraTupleArg = common::AssetIdExtraTupleArg<DEXId, common::LiquiditySourceType, u64>;
     type AssetId = common::AssetId32<AssetId>;
     type GetBaseAssetId = GetBaseAssetId;
     type Currency = currencies::Module<Test>;
@@ -231,6 +233,7 @@ impl assets::Trait for Test {
 
 impl common::Trait for Test {
     type DEXId = DEXId;
+    type LstId = common::LiquiditySourceType;
 }
 
 impl permissions::Trait for Test {

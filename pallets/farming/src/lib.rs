@@ -34,7 +34,6 @@ impl WeightInfo for () {
 
 use sp_std::convert::TryInto;
 
-use common::GetLstIdAndTradingPairFromTechAsset;
 //use serde::{Deserialize, Serialize};
 
 /*
@@ -246,19 +245,37 @@ impl<T: Trait> Module<T> {
         asset_id: T::AssetId,
         amount: Balance,
     ) -> Result<Balance, DispatchError> {
-        let tech_asset: TechAssetIdOf<T> = asset_id
-            .try_into()
-            .map_err(|_| Error::<T>::UnableToConvertAssetIdToTechAssetId)?;
-        let (lst, tp) = tech_asset
-            .get_lst_id_and_trading_pair_from_tech_asset()
+        use assets::{Tuple::*, TupleArg::*};
+        use common::AssetIdExtraTupleArg::*;
+        use common::TechAccountId::*;
+        use common::TechPurpose::*;
+        use common::TradingPair;
+        let tuple = assets::Module::<T>::tuple_from_asset_id(&asset_id)
             .ok_or(Error::<T>::UnableToGetPoolInformationFromTechAsset)?;
-        let xor_part = match lst {
-            common::LiquiditySourceType::XYKPool => {
-                pool_xyk::Module::<T>::get_xor_part_from_trading_pair(dex_id, tp, amount)?
+        match tuple {
+            Arity3(GenericU128(tag), Extra(lst_extra), Extra(acc_extra)) => {
+                ensure!(
+                    tag == common::hash_to_u128_pair(b"Marking asset").0,
+                    Error::<T>::UnableToGetPoolInformationFromTechAsset
+                );
+                ensure!(
+                    lst_extra == LstId(common::LiquiditySourceType::XYKPool.into()).into(),
+                    Error::<T>::ThisTypeOfLiquiditySourceIsNotImplementedOrSupported
+                );
+                match acc_extra.into() {
+                    AccountId(extra_acc) => {
+                        let acc: AccountIdOf<T> = extra_acc.into();
+                        pool_xyk::Module::<T>::get_xor_part_from_pool_account(acc, amount)
+                    }
+                    _ => {
+                        return Err(Error::<T>::UnableToGetPoolInformationFromTechAsset.into());
+                    }
+                }
             }
-            _ => Err(Error::<T>::ThisTypeOfLiquiditySourceIsNotImplementedOrSupported)?,
-        };
-        Ok(xor_part)
+            _ => {
+                return Err(Error::<T>::UnableToGetPoolInformationFromTechAsset.into());
+            }
+        }
     }
 
     pub fn lock_to_farm_unchecked(

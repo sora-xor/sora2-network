@@ -297,10 +297,18 @@ impl currencies::Trait for Test {
 
 impl assets::Trait for Test {
     type Event = Event;
+    type ExtraAccountId = [u8; 32];
+    type ExtraTupleArg =
+        common::AssetIdExtraTupleArg<common::DEXId, common::LiquiditySourceType, [u8; 32]>;
     type AssetId = common::AssetId32<AssetId>;
     type GetBaseAssetId = GetBaseAssetId;
     type Currency = currencies::Module<Test>;
     type WeightInfo = ();
+}
+
+impl common::Trait for Test {
+    type DEXId = common::DEXId;
+    type LstId = common::LiquiditySourceType;
 }
 
 impl permissions::Trait for Test {
@@ -339,6 +347,7 @@ impl crate::Trait for Test {
     type Event = Event;
     type NetworkId = u32;
     type GetEthNetworkId = EthNetworkId;
+    type WeightInfo = ();
 }
 
 impl sp_runtime::traits::ExtrinsicMetadata for TestExtrinsic {

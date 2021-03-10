@@ -19,7 +19,7 @@ use sp_runtime::{
 pub type AccountId = AccountId32;
 pub type BlockNumber = u64;
 
-type TechAssetId = common::TechAssetId<common::AssetId, DEXId, common::LiquiditySourceType>;
+type TechAssetId = common::TechAssetId<common::AssetId>;
 type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
 type AssetId = AssetId32<common::AssetId>;
 
@@ -122,6 +122,8 @@ type DEXId = u32;
 
 impl assets::Trait for Runtime {
     type Event = ();
+    type ExtraAccountId = [u8; 32];
+    type ExtraTupleArg = common::AssetIdExtraTupleArg<DEXId, common::LiquiditySourceType, [u8; 32]>;
     type AssetId = AssetId;
     type GetBaseAssetId = GetBaseAssetId;
     type Currency = currencies::Module<Runtime>;
@@ -130,6 +132,7 @@ impl assets::Trait for Runtime {
 
 impl common::Trait for Runtime {
     type DEXId = DEXId;
+    type LstId = common::LiquiditySourceType;
 }
 
 parameter_types! {

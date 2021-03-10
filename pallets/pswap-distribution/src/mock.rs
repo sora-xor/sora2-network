@@ -28,7 +28,7 @@ pub const LIQUIDITY_PROVIDER_B: AccountId = 22;
 pub const LIQUIDITY_PROVIDER_C: AccountId = 23;
 pub const DEX_A_ID: DEXId = common::DEXId::Polkaswap;
 
-type TechAssetId = common::TechAssetId<common::AssetId, DEXId, common::LiquiditySourceType>;
+type TechAssetId = common::TechAssetId<common::AssetId>;
 pub type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
 
 impl_outer_origin! {
@@ -136,6 +136,9 @@ type DEXId = common::DEXId;
 
 impl assets::Trait for Runtime {
     type Event = ();
+    type ExtraAccountId = AccountId;
+    type ExtraTupleArg =
+        common::AssetIdExtraTupleArg<common::DEXId, common::LiquiditySourceType, AccountId>;
     type AssetId = AssetId;
     type GetBaseAssetId = GetBaseAssetId;
     type Currency = currencies::Module<Runtime>;
@@ -144,6 +147,7 @@ impl assets::Trait for Runtime {
 
 impl common::Trait for Runtime {
     type DEXId = DEXId;
+    type LstId = common::LiquiditySourceType;
 }
 
 parameter_types! {

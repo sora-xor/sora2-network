@@ -16,7 +16,7 @@ use sp_runtime::{
 use sp_std::marker::PhantomData;
 use PolySwapActionExample::*;
 
-pub use common::{mock::*, MakeTechAssetId::*, TechPurpose::*, TradingPair};
+pub use common::{mock::*, TechAssetId::*, TechPurpose::*, TradingPair};
 
 pub type Technical = Module<Testtime>;
 
@@ -113,6 +113,7 @@ pub type Amount = i128;
 
 impl common::Trait for Testtime {
     type DEXId = DEXId;
+    type LstId = common::LiquiditySourceType;
 }
 
 parameter_types! {
@@ -155,6 +156,8 @@ impl currencies::Trait for Testtime {
 
 impl assets::Trait for Testtime {
     type Event = ();
+    type ExtraAccountId = [u8; 32];
+    type ExtraTupleArg = common::AssetIdExtraTupleArg<DEXId, common::LiquiditySourceType, [u8; 32]>;
     type AssetId = AssetId;
     type GetBaseAssetId = GetBaseAssetId;
     type Currency = currencies::Module<Testtime>;
@@ -383,8 +386,7 @@ impl common::SwapRulesValidation<AccountId, TechAccountId, Testtime> for PolySwa
 }
 
 type AssetId = common::AssetId32<common::mock::ComicAssetId>;
-type TechAssetId =
-    common::TechAssetId<common::mock::ComicAssetId, DEXId, common::LiquiditySourceType>;
+type TechAssetId = common::TechAssetId<common::mock::ComicAssetId>;
 pub type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
 type TechAmount = Amount;
 type TechBalance = Balance;

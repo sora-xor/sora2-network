@@ -114,6 +114,7 @@ pub type Amount = i128;
 
 impl common::Trait for Testtime {
     type DEXId = DEXId;
+    type LstId = common::LiquiditySourceType;
 }
 
 parameter_types! {
@@ -157,14 +158,15 @@ impl currencies::Trait for Testtime {
 
 impl assets::Trait for Testtime {
     type Event = ();
+    type ExtraAccountId = [u8; 32];
+    type ExtraTupleArg = common::AssetIdExtraTupleArg<DEXId, common::LiquiditySourceType, [u8; 32]>;
     type AssetId = AssetId;
     type GetBaseAssetId = GetBaseAssetId;
     type Currency = currencies::Module<Testtime>;
     type WeightInfo = ();
 }
 
-pub type TechAssetId =
-    common::TechAssetId<common::mock::ComicAssetId, DEXId, common::LiquiditySourceType>;
+pub type TechAssetId = common::TechAssetId<common::mock::ComicAssetId>;
 pub type AssetId = common::AssetId32<common::mock::ComicAssetId>;
 pub type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
 
