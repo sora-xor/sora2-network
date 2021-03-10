@@ -13,7 +13,10 @@ use ethabi::{FixedBytes, Token};
 #[allow(unused_imports)]
 use frame_support::debug;
 use frame_support::sp_runtime::app_crypto::sp_core;
-use frame_support::{dispatch::DispatchError, ensure, RuntimeDebug, StorageDoubleMap, StorageMap};
+use frame_support::traits::Get;
+use frame_support::{
+    dispatch::DispatchError, ensure, RuntimeDebug, StorageDoubleMap, StorageMap, StorageValue,
+};
 use frame_system::RawOrigin;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
@@ -73,15 +76,103 @@ impl<T: Trait> IncomingChangePeers<T> {
             pending_peer == self.peer_account_id,
             Error::<T>::WrongPendingPeer
         );
-        if self.added {
-            let account_id = self.peer_account_id.clone();
-            bridge_multisig::Module::<T>::add_signatory(
-                RawOrigin::Signed(get_bridge_account::<T>(self.network_id)).into(),
-                account_id.clone(),
-            )?;
-            crate::Peers::<T>::mutate(self.network_id, |set| set.insert(account_id));
+        let is_eth_network = self.network_id == T::GetEthNetworkId::get();
+        let eth_sync_peers_opt = if is_eth_network {
+            let mut eth_sync_peers: EthPeersSync = crate::PendingEthPeersSync::get();
+            eth_sync_peers.bridge_ready();
+            Some(eth_sync_peers)
+        } else {
+            None
+        };
+        let is_ready = eth_sync_peers_opt
+            .as_ref()
+            .map(|x| x.is_ready())
+            .unwrap_or(true);
+        if is_ready {
+            if self.added {
+                let account_id = self.peer_account_id.clone();
+                bridge_multisig::Module::<T>::add_signatory(
+                    RawOrigin::Signed(get_bridge_account::<T>(self.network_id)).into(),
+                    account_id.clone(),
+                )?;
+                crate::Peers::<T>::mutate(self.network_id, |set| set.insert(account_id));
+            }
+            crate::PendingPeer::<T>::take(self.network_id);
         }
-        crate::PendingPeer::<T>::take(self.network_id);
+        if let Some(mut eth_sync_peers) = eth_sync_peers_opt {
+            if is_ready {
+                eth_sync_peers.reset();
+            }
+            crate::PendingEthPeersSync::set(eth_sync_peers);
+        }
+        Ok(self.tx_hash)
+    }
+
+    pub fn timepoint(&self) -> Timepoint<T> {
+        self.timepoint
+    }
+}
+
+#[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+pub enum ChangePeersContract {
+    XOR,
+    VAL,
+}
+
+#[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+pub struct IncomingChangePeersCompat<T: Trait> {
+    pub peer_account_id: T::AccountId,
+    pub peer_address: Address,
+    pub added: bool,
+    pub contract: ChangePeersContract,
+    pub tx_hash: H256,
+    pub at_height: u64,
+    pub timepoint: Timepoint<T>,
+    pub network_id: T::NetworkId,
+}
+
+impl<T: Trait> IncomingChangePeersCompat<T> {
+    pub fn finalize(&self) -> Result<H256, DispatchError> {
+        let pending_peer =
+            crate::PendingPeer::<T>::get(self.network_id).ok_or(Error::<T>::NoPendingPeer)?;
+        ensure!(
+            pending_peer == self.peer_account_id,
+            Error::<T>::WrongPendingPeer
+        );
+        let is_eth_network = self.network_id == T::GetEthNetworkId::get();
+        let eth_sync_peers_opt = if is_eth_network {
+            let mut eth_sync_peers: EthPeersSync = crate::PendingEthPeersSync::get();
+            match self.contract {
+                ChangePeersContract::XOR => eth_sync_peers.xor_ready(),
+                ChangePeersContract::VAL => eth_sync_peers.val_ready(),
+            };
+            Some(eth_sync_peers)
+        } else {
+            None
+        };
+        let is_ready = eth_sync_peers_opt
+            .as_ref()
+            .map(|x| x.is_ready())
+            .unwrap_or(true);
+        if is_ready {
+            if self.added {
+                let account_id = self.peer_account_id.clone();
+                bridge_multisig::Module::<T>::add_signatory(
+                    RawOrigin::Signed(get_bridge_account::<T>(self.network_id)).into(),
+                    account_id.clone(),
+                )?;
+                crate::Peers::<T>::mutate(self.network_id, |set| set.insert(account_id));
+            }
+            crate::PendingPeer::<T>::take(self.network_id);
+        }
+        if let Some(mut eth_sync_peers) = eth_sync_peers_opt {
+            if is_ready {
+                eth_sync_peers.reset();
+            }
+            crate::PendingEthPeersSync::set(eth_sync_peers);
+        }
         Ok(self.tx_hash)
     }
 
@@ -226,6 +317,7 @@ impl<T: Trait> IncomingCancelOutgoingRequest<T> {
             crate::Error::<T>::RequestIsNotReady
         );
         let mut method_id = [0u8; 4];
+        ensure!(self.tx_input.len() >= 4, Error::<T>::Other);
         method_id.clone_from_slice(&self.tx_input[..4]);
         let expected_input = encode_outgoing_request_eth_call(method_id, &self.request)?;
         ensure!(
@@ -795,6 +887,69 @@ impl<T: Trait> OutgoingAddPeer<T> {
     }
 }
 
+/// Old contracts-compatible `add peer` request. Will be removed in the future.
+#[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+pub struct OutgoingAddPeerCompat<T: Trait> {
+    pub author: T::AccountId,
+    pub peer_address: Address,
+    pub peer_account_id: T::AccountId,
+    pub nonce: T::Index,
+    pub network_id: T::NetworkId,
+}
+
+impl<T: Trait> OutgoingAddPeerCompat<T> {
+    pub fn to_eth_abi(&self, tx_hash: H256) -> Result<OutgoingAddPeerEncoded, Error<T>> {
+        let tx_hash = H256(tx_hash.0);
+        let peer_address = self.peer_address;
+        let mut network_id: H256 = H256::default();
+        U256::from(
+            <T::NetworkId as TryInto<u128>>::try_into(self.network_id)
+                .ok()
+                .expect("NetworkId can be always converted to u128; qed"),
+        )
+        .to_big_endian(&mut network_id.0);
+        let raw = ethabi::encode_packed(&[
+            Token::Address(types::H160(peer_address.0)),
+            Token::FixedBytes(tx_hash.0.to_vec()),
+        ]);
+        Ok(OutgoingAddPeerEncoded {
+            peer_address,
+            tx_hash,
+            network_id,
+            raw,
+        })
+    }
+
+    pub fn validate(&self) -> Result<BTreeSet<T::AccountId>, DispatchError> {
+        let peers = crate::Peers::<T>::get(self.network_id);
+        ensure!(peers.len() <= MAX_PEERS, Error::<T>::CantAddMorePeers);
+        ensure!(
+            !peers.contains(&self.peer_account_id),
+            Error::<T>::PeerIsAlreadyAdded
+        );
+        let pending_peer = crate::PendingPeer::<T>::get(self.network_id);
+        // Previous `OutgoingAddPeer` should set the pending peer.
+        ensure!(
+            pending_peer.as_ref() == Some(&self.peer_account_id),
+            Error::<T>::Other
+        );
+        Ok(peers)
+    }
+
+    pub fn prepare(&mut self, _validated_state: ()) -> Result<(), DispatchError> {
+        Ok(())
+    }
+
+    pub fn finalize(&self) -> Result<(), DispatchError> {
+        Ok(())
+    }
+
+    pub fn cancel(&self) -> Result<(), DispatchError> {
+        Ok(())
+    }
+}
+
 #[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct OutgoingRemovePeer<T: Trait> {
@@ -854,11 +1009,75 @@ impl<T: Trait> OutgoingRemovePeer<T> {
         )?;
         peers.remove(&self.peer_account_id);
         crate::Peers::<T>::insert(self.network_id, peers);
+        // TODO: remove PeerAccountId and PeerAddress
         Ok(())
     }
 
     pub fn cancel(&self) -> Result<(), DispatchError> {
         crate::PendingPeer::<T>::take(self.network_id);
+        Ok(())
+    }
+}
+
+/// Old contracts-compatible `add peer` request. Will be removed in the future.
+#[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+pub struct OutgoingRemovePeerCompat<T: Trait> {
+    pub author: T::AccountId,
+    pub peer_account_id: T::AccountId,
+    pub peer_address: Address,
+    pub nonce: T::Index,
+    pub network_id: T::NetworkId,
+}
+
+impl<T: Trait> OutgoingRemovePeerCompat<T> {
+    pub fn to_eth_abi(&self, tx_hash: H256) -> Result<OutgoingRemovePeerEncoded, Error<T>> {
+        let tx_hash = H256(tx_hash.0);
+        let peer_address = self.peer_address;
+        let mut network_id: H256 = H256::default();
+        U256::from(
+            <T::NetworkId as TryInto<u128>>::try_into(self.network_id)
+                .ok()
+                .expect("NetworkId can be always converted to u128; qed"),
+        )
+        .to_big_endian(&mut network_id.0);
+        let raw = ethabi::encode_packed(&[
+            Token::Address(types::H160(peer_address.0)),
+            Token::FixedBytes(tx_hash.0.to_vec()),
+        ]);
+        Ok(OutgoingRemovePeerEncoded {
+            peer_address,
+            tx_hash,
+            network_id,
+            raw,
+        })
+    }
+
+    pub fn validate(&self) -> Result<BTreeSet<T::AccountId>, DispatchError> {
+        let peers = crate::Peers::<T>::get(self.network_id);
+        ensure!(peers.len() >= MIN_PEERS, Error::<T>::CantRemoveMorePeers);
+        ensure!(
+            peers.contains(&self.peer_account_id),
+            Error::<T>::UnknownPeerId
+        );
+        let pending_peer = crate::PendingPeer::<T>::get(self.network_id);
+        // Previous `OutgoingRemovePeer` should set the pending peer.
+        ensure!(
+            pending_peer.as_ref() == Some(&self.peer_account_id),
+            Error::<T>::Other
+        );
+        Ok(peers)
+    }
+
+    pub fn prepare(&mut self, _validated_state: ()) -> Result<(), DispatchError> {
+        Ok(())
+    }
+
+    pub fn finalize(&self) -> Result<(), DispatchError> {
+        Ok(())
+    }
+
+    pub fn cancel(&self) -> Result<(), DispatchError> {
         Ok(())
     }
 }
@@ -1067,6 +1286,38 @@ impl OutgoingMigrateEncoded {
             tokens.extend(sig_tokens);
         }
         tokens
+    }
+}
+
+#[derive(Clone, Default, PartialEq, Eq, Encode, Decode, RuntimeDebug)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+pub struct EthPeersSync {
+    is_bridge_ready: bool,
+    is_xor_ready: bool,
+    is_val_ready: bool,
+}
+
+impl EthPeersSync {
+    pub fn is_ready(&self) -> bool {
+        self.is_bridge_ready && self.is_xor_ready && self.is_val_ready
+    }
+
+    pub fn bridge_ready(&mut self) {
+        self.is_bridge_ready = true;
+    }
+
+    pub fn xor_ready(&mut self) {
+        self.is_xor_ready = true;
+    }
+
+    pub fn val_ready(&mut self) {
+        self.is_val_ready = true;
+    }
+
+    pub fn reset(&mut self) {
+        self.is_val_ready = false;
+        self.is_xor_ready = false;
+        self.is_bridge_ready = false;
     }
 }
 
