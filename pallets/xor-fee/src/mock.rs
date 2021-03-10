@@ -296,6 +296,7 @@ parameter_types! {
 }
 
 impl pallet_staking::Trait for Test {
+    type ValidatorsFilter = ();
     type Currency = Balances;
     type MultiCurrency = Tokens;
     type ValTokenId = ValId;

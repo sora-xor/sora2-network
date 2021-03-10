@@ -155,6 +155,14 @@ pub fn native_version() -> NativeVersion {
     }
 }
 
+pub struct ValidatorsFilter;
+impl frame_support::traits::Filter<Balance> for ValidatorsFilter {
+    fn filter(arg: &Balance) -> bool {
+        let barrier: Balance = 5000u32.into();
+        arg >= &barrier
+    }
+}
+
 parameter_types! {
     pub const BlockHashCount: BlockNumber = 250;
     pub const MaximumBlockWeight: Weight = 2 * WEIGHT_PER_SECOND;
@@ -316,6 +324,7 @@ impl Convert<u128, Balance> for CurrencyToVoteHandler {
 }
 
 impl pallet_staking::Trait for Runtime {
+    type ValidatorsFilter = ValidatorsFilter;
     type Currency = Balances;
     type MultiCurrency = Tokens;
     type ValTokenId = GetValAssetId;
