@@ -4860,7 +4860,7 @@ dependencies = [
 [[package]]
 name = "pallet-multisig"
 version = "2.0.0-rc5"
-source = "git+https://github.com/soramitsu/sora2-frame-pallets.git?branch=selected-v2.0.0#e623ded4a58860b421e191fd92d34002a3d6f203"
+source = "git+https://github.com/soramitsu/sora2-frame-pallets.git?branch=selected-v2.0.0-new/draft-barrier-01#e623ded4a58860b421e191fd92d34002a3d6f203"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -4926,7 +4926,7 @@ dependencies = [
 [[package]]
 name = "pallet-staking"
 version = "2.0.0"
-source = "git+https://github.com/soramitsu/sora2-frame-pallets.git?branch=selected-v2.0.0#e623ded4a58860b421e191fd92d34002a3d6f203"
+source = "git+https://github.com/soramitsu/sora2-frame-pallets.git?branch=selected-v2.0.0-new/draft-barrier-01#e623ded4a58860b421e191fd92d34002a3d6f203"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -4980,7 +4980,7 @@ dependencies = [
 [[package]]
 name = "pallet-transaction-payment"
 version = "2.0.0"
-source = "git+https://github.com/soramitsu/sora2-frame-pallets.git?branch=selected-v2.0.0#e623ded4a58860b421e191fd92d34002a3d6f203"
+source = "git+https://github.com/soramitsu/sora2-frame-pallets.git?branch=selected-v2.0.0-new/draft-barrier-01#e623ded4a58860b421e191fd92d34002a3d6f203"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -4997,7 +4997,7 @@ dependencies = [
 [[package]]
 name = "pallet-transaction-payment-rpc"
 version = "2.0.0"
-source = "git+https://github.com/soramitsu/sora2-frame-pallets.git?branch=selected-v2.0.0#e623ded4a58860b421e191fd92d34002a3d6f203"
+source = "git+https://github.com/soramitsu/sora2-frame-pallets.git?branch=selected-v2.0.0-new/draft-barrier-01#e623ded4a58860b421e191fd92d34002a3d6f203"
 dependencies = [
  "jsonrpc-core 15.1.0",
  "jsonrpc-core-client",
@@ -5015,7 +5015,7 @@ dependencies = [
 [[package]]
 name = "pallet-transaction-payment-rpc-runtime-api"
 version = "2.0.0"
-source = "git+https://github.com/soramitsu/sora2-frame-pallets.git?branch=selected-v2.0.0#e623ded4a58860b421e191fd92d34002a3d6f203"
+source = "git+https://github.com/soramitsu/sora2-frame-pallets.git?branch=selected-v2.0.0-new/draft-barrier-01#e623ded4a58860b421e191fd92d34002a3d6f203"
 dependencies = [
  "frame-support",
  "parity-scale-codec",

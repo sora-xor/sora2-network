@@ -20,8 +20,8 @@ frame-system = { version = "2.0.0", default-features = false }
 sp-arithmetic = { version = "2.0.0", default-features = false }
 sp-runtime = { version = "2.0.0", default-features = false }
 sp-std = { version = "2.0.0", default-features = false }
-pallet-staking = { git = "https://github.com/soramitsu/sora2-frame-pallets", default-features = false, branch = "selected-v2.0.0"}
-pallet-transaction-payment = { git = "https://github.com/soramitsu/sora2-frame-pallets", default-features = false, branch = "selected-v2.0.0"}
+pallet-staking = { git = "https://github.com/soramitsu/sora2-frame-pallets", default-features = false, branch = "selected-v2.0.0-new/draft-barrier-01"}
+pallet-transaction-payment = { git = "https://github.com/soramitsu/sora2-frame-pallets", default-features = false, branch = "selected-v2.0.0-new/draft-barrier-01"}
 referral-system = { path = "../referral-system", default-features = false}
 assets = { path = "../assets", default-features = false }
 common = { path = "../../common", default-features = false }
