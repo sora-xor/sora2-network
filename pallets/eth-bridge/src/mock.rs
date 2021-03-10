@@ -449,6 +449,19 @@ impl ExtBuilder {
             .push(reserves);
     }
 
+    pub fn add_currency(
+        &mut self,
+        network_id: u32,
+        currency: (AssetId32<AssetId>, Option<H160>, AssetKind),
+    ) {
+        self.networks
+            .get_mut(&network_id)
+            .unwrap()
+            .config
+            .tokens
+            .push(currency);
+    }
+
     pub fn add_network(
         &mut self,
         tokens: Vec<(AssetId32<AssetId>, Option<H160>, AssetKind)>,
@@ -493,6 +506,9 @@ impl ExtBuilder {
         networks.sort_by(|(x, _), (y, _)| x.cmp(y));
         for (_net_id, ext_network) in networks {
             bridge_network_configs.push(ext_network.config.clone());
+            endowed_accounts.extend(ext_network.config.tokens.iter().cloned().map(
+                |(asset_id, _, _)| (ext_network.config.bridge_account_id.clone(), asset_id, 0),
+            ));
             endowed_accounts.extend(ext_network.config.reserves.iter().cloned().map(
                 |(asset_id, balance)| {
                     (
