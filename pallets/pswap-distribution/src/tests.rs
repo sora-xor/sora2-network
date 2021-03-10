@@ -596,3 +596,84 @@ fn mixed_multiple_pools_should_pass() {
         );
     })
 }
+
+#[test]
+fn calculating_distribution_should_pass() {
+    let mut ext = ExtBuilder::default().build();
+    ext.execute_with(|| {
+        // zero amount
+        let distribution = PswapDistrModule::calculate_pswap_distribution(balance!(0)).unwrap();
+        assert_eq!(distribution.liquidity_providers, balance!(0));
+        assert_eq!(distribution.vesting, balance!(0));
+        assert_eq!(distribution.parliament, balance!(0));
+
+        // indivisible small amount
+        let distribution = PswapDistrModule::calculate_pswap_distribution(1u128).unwrap();
+        assert_eq!(
+            distribution.liquidity_providers + distribution.vesting + distribution.parliament,
+            1u128
+        );
+
+        // divisible small amount
+        let distribution = PswapDistrModule::calculate_pswap_distribution(100u128).unwrap();
+        assert_eq!(distribution.liquidity_providers, 90u128);
+        assert_eq!(distribution.vesting, 0u128);
+        assert_eq!(distribution.parliament, 10u128);
+
+        // regular amount
+        let distribution = PswapDistrModule::calculate_pswap_distribution(balance!(100)).unwrap();
+        assert_eq!(distribution.liquidity_providers, balance!(90));
+        assert_eq!(distribution.vesting, balance!(0));
+        assert_eq!(distribution.parliament, balance!(10));
+
+        for i in 0u64..6 {
+            PswapDistrModule::burn_rate_update_routine(i);
+        }
+        // burn rate should increase to 0.3 after this
+
+        // zero amount
+        let distribution = PswapDistrModule::calculate_pswap_distribution(balance!(0)).unwrap();
+        assert_eq!(distribution.liquidity_providers, balance!(0));
+        assert_eq!(distribution.vesting, balance!(0));
+        assert_eq!(distribution.parliament, balance!(0));
+
+        // indivisible small amount
+        let distribution = PswapDistrModule::calculate_pswap_distribution(1u128).unwrap();
+        assert_eq!(
+            distribution.liquidity_providers + distribution.vesting + distribution.parliament,
+            1u128
+        );
+
+        // divisible small amount
+        let distribution = PswapDistrModule::calculate_pswap_distribution(100u128).unwrap();
+        assert_eq!(distribution.liquidity_providers, 70u128);
+        assert_eq!(distribution.vesting, 20u128);
+        assert_eq!(distribution.parliament, 10u128);
+
+        // regular amount
+        let distribution = PswapDistrModule::calculate_pswap_distribution(balance!(100)).unwrap();
+        assert_eq!(distribution.liquidity_providers, balance!(70));
+        assert_eq!(distribution.vesting, balance!(20));
+        assert_eq!(distribution.parliament, balance!(10));
+
+        // large value, balance is limited to i128 max because of Fixed type calculation
+        let balance_max = 170141183460469231731687303715884105727u128;
+        let distribution = PswapDistrModule::calculate_pswap_distribution(balance_max).unwrap();
+        assert_eq!(
+            distribution.liquidity_providers,
+            119098828422328462212181112601118874008u128
+        );
+        assert_eq!(
+            distribution.vesting,
+            34028236692093846346337460743176821147u128
+        );
+        assert_eq!(
+            distribution.parliament,
+            17014118346046923173168730371588410572u128
+        );
+        assert_eq!(
+            distribution.liquidity_providers + distribution.parliament + distribution.vesting,
+            balance_max
+        );
+    })
+}
