@@ -103,10 +103,6 @@ decl_storage! {
 
         /// Reward multipliers for special assets. Asset Id => Reward Multiplier
         pub AssetsWithOptionalRewardMultiplier: map hasher(twox_64_concat) T::AssetId => Option<Fixed>;
-
-        /// Fraction of burned PSWAP that is used in reward vesting.
-        /// TODO: this is wrong. It should be: min(0.55, 1−(−0.000357*(CURR_BLOCK_NUM÷14400)+0.9)−0.1).
-        PswapBurnedDedicatedForRewards get(fn pswap_burned_dedicated_for_rewards): Fixed = fixed!(0.2);
     }
 }
 
@@ -934,10 +930,6 @@ impl<T: Trait> OnPswapBurned for Module<T> {
     fn on_pswap_burned(distribution: PswapRemintInfo) {
         let total_rewards = TotalRewards::get();
         let amount = FixedWrapper::from(distribution.vesting);
-
-        // TODO: do we use full vesting amount here or portion as before?
-        // let amount =
-        //     FixedWrapper::from(amount) * FixedWrapper::from(PswapBurnedDedicatedForRewards::get());s
 
         if !total_rewards.is_zero() {
             Rewards::<T>::translate(|_key: T::AccountId, value: (Balance, Balance)| {

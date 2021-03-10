@@ -782,7 +782,7 @@ mod tests {
             assert!(limit_bob.is_zero());
             assert!(!owned_alice.is_zero());
             assert!(!owned_bob.is_zero());
-            let vesting_amount = (FixedWrapper::from(owned_alice + owned_bob) / MBCPool::pswap_burned_dedicated_for_rewards() / fixed_wrapper!(10)).into_balance();
+            let vesting_amount = (FixedWrapper::from(owned_alice + owned_bob) / fixed_wrapper!(2)).into_balance();
             let remint_info = pswap_distribution::PswapRemintInfo {
                 vesting: vesting_amount,
                 ..Default::default()
