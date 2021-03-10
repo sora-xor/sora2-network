@@ -74,9 +74,9 @@ fn distribute_existing_pswap_should_pass() {
         let balance_a = Tokens::free_balance(GetIncentiveAssetId::get(), &LIQUIDITY_PROVIDER_A);
         let balance_b = Tokens::free_balance(GetIncentiveAssetId::get(), &LIQUIDITY_PROVIDER_B);
         let balance_c = Tokens::free_balance(GetIncentiveAssetId::get(), &LIQUIDITY_PROVIDER_C);
-        assert_eq!(balance_a, balance!(3));
-        assert_eq!(balance_b, balance!(2));
-        assert_eq!(balance_c, balance!(1));
+        assert_eq!(balance_a, balance!(2.7));
+        assert_eq!(balance_b, balance!(1.8));
+        assert_eq!(balance_c, balance!(0.9));
     })
 }
 
@@ -135,7 +135,7 @@ fn incentive_distribution_routine_should_pass() {
         let balance_a = Tokens::free_balance(GetIncentiveAssetId::get(), &LIQUIDITY_PROVIDER_A);
         let balance_b = Tokens::free_balance(GetIncentiveAssetId::get(), &LIQUIDITY_PROVIDER_B);
         let balance_c = Tokens::free_balance(GetIncentiveAssetId::get(), &LIQUIDITY_PROVIDER_C);
-        assert_eq!(balance_a, balance!(3));
+        assert_eq!(balance_a, balance!(2.7));
         assert_eq!(balance_b, 0);
         assert_eq!(balance_c, 0);
 
@@ -144,8 +144,8 @@ fn incentive_distribution_routine_should_pass() {
         let balance_a = Tokens::free_balance(GetIncentiveAssetId::get(), &LIQUIDITY_PROVIDER_A);
         let balance_b = Tokens::free_balance(GetIncentiveAssetId::get(), &LIQUIDITY_PROVIDER_B);
         let balance_c = Tokens::free_balance(GetIncentiveAssetId::get(), &LIQUIDITY_PROVIDER_C);
-        assert_eq!(balance_a, balance!(3));
-        assert_eq!(balance_b, balance!(2));
+        assert_eq!(balance_a, balance!(2.7));
+        assert_eq!(balance_b, balance!(1.8));
         assert_eq!(balance_c, 0);
 
         PswapDistrModule::claim_incentive(Origin::signed(LIQUIDITY_PROVIDER_C))
@@ -153,9 +153,9 @@ fn incentive_distribution_routine_should_pass() {
         let balance_a = Tokens::free_balance(GetIncentiveAssetId::get(), &LIQUIDITY_PROVIDER_A);
         let balance_b = Tokens::free_balance(GetIncentiveAssetId::get(), &LIQUIDITY_PROVIDER_B);
         let balance_c = Tokens::free_balance(GetIncentiveAssetId::get(), &LIQUIDITY_PROVIDER_C);
-        assert_eq!(balance_a, balance!(3));
-        assert_eq!(balance_b, balance!(2));
-        assert_eq!(balance_c, balance!(1));
+        assert_eq!(balance_a, balance!(2.7));
+        assert_eq!(balance_b, balance!(1.8));
+        assert_eq!(balance_c, balance!(0.9));
 
         for i in 5u64..10 {
             PswapDistrModule::incentive_distribution_routine(i);
@@ -164,9 +164,9 @@ fn incentive_distribution_routine_should_pass() {
         let balance_a = Tokens::free_balance(GetIncentiveAssetId::get(), &LIQUIDITY_PROVIDER_A);
         let balance_b = Tokens::free_balance(GetIncentiveAssetId::get(), &LIQUIDITY_PROVIDER_B);
         let balance_c = Tokens::free_balance(GetIncentiveAssetId::get(), &LIQUIDITY_PROVIDER_C);
-        assert_eq!(balance_a, balance!(3));
-        assert_eq!(balance_b, balance!(2));
-        assert_eq!(balance_c, balance!(1));
+        assert_eq!(balance_a, balance!(2.7));
+        assert_eq!(balance_b, balance!(1.8));
+        assert_eq!(balance_c, balance!(0.9));
     })
 }
 
@@ -174,28 +174,28 @@ fn incentive_distribution_routine_should_pass() {
 fn increasing_burn_rate_should_pass() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
-        assert_eq!(PswapDistrModule::burn_rate(), fixed!(0));
+        assert_eq!(PswapDistrModule::burn_rate(), fixed!(0.1));
         for i in 0u64..3 {
             PswapDistrModule::burn_rate_update_routine(i);
         }
-        assert_eq!(PswapDistrModule::burn_rate(), fixed!(0.1));
+        assert_eq!(PswapDistrModule::burn_rate(), fixed!(0.2));
         for i in 3u64..6 {
             PswapDistrModule::burn_rate_update_routine(i);
         }
-        assert_eq!(PswapDistrModule::burn_rate(), fixed!(0.2));
+        assert_eq!(PswapDistrModule::burn_rate(), fixed!(0.3));
         for i in 6u64..9 {
             PswapDistrModule::burn_rate_update_routine(i);
         }
-        assert_eq!(PswapDistrModule::burn_rate(), fixed!(0.3));
+        assert_eq!(PswapDistrModule::burn_rate(), fixed!(0.4));
         // Observe flatline
         for i in 9u64..12 {
             PswapDistrModule::burn_rate_update_routine(i);
         }
-        assert_eq!(PswapDistrModule::burn_rate(), fixed!(0.3));
+        assert_eq!(PswapDistrModule::burn_rate(), fixed!(0.4));
         for i in 9u64..1000 {
             PswapDistrModule::burn_rate_update_routine(i);
         }
-        assert_eq!(PswapDistrModule::burn_rate(), fixed!(0.3));
+        assert_eq!(PswapDistrModule::burn_rate(), fixed!(0.4));
     })
 }
 
@@ -256,9 +256,9 @@ fn claim_until_zero_should_pass() {
         let balance_b = Tokens::free_balance(GetIncentiveAssetId::get(), &LIQUIDITY_PROVIDER_B);
         let balance_c = Tokens::free_balance(GetIncentiveAssetId::get(), &LIQUIDITY_PROVIDER_C);
         let balance_d = Tokens::free_balance(GetIncentiveAssetId::get(), &tech_account_id);
-        assert_eq!(balance_a, balance!(30));
-        assert_eq!(balance_b, balance!(20));
-        assert_eq!(balance_c, balance!(10));
+        assert_eq!(balance_a, balance!(27));
+        assert_eq!(balance_b, balance!(18));
+        assert_eq!(balance_c, balance!(9));
         assert_eq!(balance_d, 0);
 
         // again period of no incentives, should return error for non claimable
@@ -285,9 +285,9 @@ fn claim_until_zero_should_pass() {
         let balance_b = Tokens::free_balance(GetIncentiveAssetId::get(), &LIQUIDITY_PROVIDER_B);
         let balance_c = Tokens::free_balance(GetIncentiveAssetId::get(), &LIQUIDITY_PROVIDER_C);
         let balance_d = Tokens::free_balance(GetIncentiveAssetId::get(), &tech_account_id);
-        assert_eq!(balance_a, balance!(30));
-        assert_eq!(balance_b, balance!(20));
-        assert_eq!(balance_c, balance!(10));
+        assert_eq!(balance_a, balance!(27));
+        assert_eq!(balance_b, balance!(18));
+        assert_eq!(balance_c, balance!(9));
         assert_eq!(balance_d, 0);
 
         // new pswap was derived from exchange, it should be claimable after distribution, now only one account claims it
@@ -311,10 +311,10 @@ fn claim_until_zero_should_pass() {
         let balance_b = Tokens::free_balance(GetIncentiveAssetId::get(), &LIQUIDITY_PROVIDER_B);
         let balance_c = Tokens::free_balance(GetIncentiveAssetId::get(), &LIQUIDITY_PROVIDER_C);
         let balance_d = Tokens::free_balance(GetIncentiveAssetId::get(), &tech_account_id);
-        assert_eq!(balance_a, balance!(30));
-        assert_eq!(balance_b, balance!(220));
-        assert_eq!(balance_c, balance!(10));
-        assert_eq!(balance_d, balance!(400));
+        assert_eq!(balance_a, balance!(27));
+        assert_eq!(balance_b, balance!(198));
+        assert_eq!(balance_c, balance!(9));
+        assert_eq!(balance_d, balance!(360));
 
         // final pswap arrival, should be consistent for previously claimed and unclaimed
         Assets::mint(
@@ -341,10 +341,14 @@ fn claim_until_zero_should_pass() {
         let balance_b = Tokens::free_balance(GetIncentiveAssetId::get(), &LIQUIDITY_PROVIDER_B);
         let balance_c = Tokens::free_balance(GetIncentiveAssetId::get(), &LIQUIDITY_PROVIDER_C);
         let balance_d = Tokens::free_balance(GetIncentiveAssetId::get(), &tech_account_id);
-        assert_eq!(balance_a, balance!(3330));
-        assert_eq!(balance_b, balance!(2220));
-        assert_eq!(balance_c, balance!(1110));
+        assert_eq!(balance_a, balance!(2997.000000000000005669));
+        assert_eq!(balance_b, balance!(1998.000000000000003599));
+        assert_eq!(balance_c, balance!(998.999999999999990732));
         assert_eq!(balance_d, 0);
+        assert_eq!(
+            balance_a + balance_b + balance_c + balance_d,
+            balance!(5994)
+        );
     })
 }
 
@@ -364,7 +368,7 @@ fn external_transfer_to_tech_account_after_distribution() {
         .expect("Error is not expected during distribution");
 
         let balance_tech = Tokens::free_balance(GetIncentiveAssetId::get(), &tech_account_id);
-        assert_eq!(balance_tech, balance!(6));
+        assert_eq!(balance_tech, balance!(5.4));
 
         // before clre claimable value will be increased
         Assets::mint(
@@ -387,12 +391,12 @@ fn external_transfer_to_tech_account_after_distribution() {
         let balance_c = Tokens::free_balance(GetIncentiveAssetId::get(), &LIQUIDITY_PROVIDER_C);
         let balance_tech = Tokens::free_balance(GetIncentiveAssetId::get(), &tech_account_id);
         // externally added incentive is evenly distributed amoung current unclaimed balances
-        assert_eq!(balance_a, balance!(5558.555555555558972008));
-        assert_eq!(balance_b, balance!(3705.703703703705981338));
-        assert_eq!(balance_c, balance!(1852.851851851846157765));
+        assert_eq!(balance_a, balance!(5558.255555555561844801));
+        assert_eq!(balance_b, balance!(3705.503703703700268335));
+        assert_eq!(balance_c, balance!(1852.751851851848997975));
         assert_eq!(
             balance_a + balance_b + balance_c,
-            balance!(11117.111111111111111111)
+            balance!(11116.511111111111111111)
         );
         assert_eq!(balance_tech, 0);
     })
@@ -454,9 +458,9 @@ fn jump_start_with_unowned_incentive_should_pass() {
         let balance_d = Tokens::free_balance(GetIncentiveAssetId::get(), &tech_account_id);
 
         // first claimer collects unowned incentive, special correction is applied so precision loss is avoided on following claims
-        assert_eq!(balance_a, balance!(11114.111111111111111111));
-        assert_eq!(balance_b, balance!(2.000000000000000000));
-        assert_eq!(balance_c, balance!(1.000000000000000000));
+        assert_eq!(balance_a, balance!(11113.811111111111111111));
+        assert_eq!(balance_b, balance!(1.800000000000000000));
+        assert_eq!(balance_c, balance!(0.900000000000000000));
         assert_eq!(balance_d, balance!(0.000000000000000000));
     })
 }
@@ -479,7 +483,7 @@ fn increasing_volumes_should_pass() {
                 Origin::signed(tech_account_id.clone()),
                 GetIncentiveAssetId::get(),
                 FEES_ACCOUNT_A,
-                6 * decimals_factor,
+                10 * decimals_factor,
             )
             .expect("Minting tokens is not expected to fail.");
             PswapDistrModule::distribute_incentive(
@@ -502,12 +506,12 @@ fn increasing_volumes_should_pass() {
         let balance_b = Tokens::free_balance(GetIncentiveAssetId::get(), &LIQUIDITY_PROVIDER_B);
         let balance_c = Tokens::free_balance(GetIncentiveAssetId::get(), &LIQUIDITY_PROVIDER_C);
         let balance_d = Tokens::free_balance(GetIncentiveAssetId::get(), &tech_account_id);
-        assert_eq!(balance_a, balance!(3333333333.333333333333333333));
-        assert_eq!(balance_b, balance!(2222222222.222222222222222222));
-        assert_eq!(balance_c, balance!(1111111111.111111111111111111));
+        assert_eq!(balance_a, balance!(5000000000.000000000004504507));
+        assert_eq!(balance_b, balance!(3333333333.333333333336336335));
+        assert_eq!(balance_c, balance!(1666666666.666666666659159157));
         assert_eq!(
             balance_a + balance_b + balance_c,
-            balance!(6666666666.666666666666666666)
+            balance!(9999999999.999999999999999999)
         );
         assert_eq!(balance_d, 0);
     })
@@ -518,8 +522,49 @@ fn multiple_pools_should_pass() {
     let mut ext = ExtBuilder::with_accounts(vec![
         (FEES_ACCOUNT_A, common::PSWAP.into(), balance!(20)),
         (FEES_ACCOUNT_B, common::PSWAP.into(), balance!(2)),
-        (LIQUIDITY_PROVIDER_A, PoolTokenAId::get(), balance!(2)),
-        (LIQUIDITY_PROVIDER_B, PoolTokenBId::get(), balance!(10)),
+        (LIQUIDITY_PROVIDER_A, PoolTokenAId::get(), balance!(1)),
+        (LIQUIDITY_PROVIDER_B, PoolTokenBId::get(), balance!(5)),
+        (LIQUIDITY_PROVIDER_C, PoolTokenBId::get(), balance!(5)),
+    ])
+    .build();
+    ext.execute_with(|| {
+        let tech_account_id = GetPswapDistributionAccountId::get();
+
+        for i in 0u64..5 {
+            PswapDistrModule::incentive_distribution_routine(i);
+        }
+
+        PswapDistrModule::claim_incentive(Origin::signed(LIQUIDITY_PROVIDER_A))
+            .expect("Claiming is not expected to fail.");
+        PswapDistrModule::claim_incentive(Origin::signed(LIQUIDITY_PROVIDER_B))
+            .expect("Claiming is not expected to fail.");
+        PswapDistrModule::claim_incentive(Origin::signed(LIQUIDITY_PROVIDER_C))
+            .expect("Claiming is not expected to fail.");
+
+        let balance_a = Tokens::free_balance(GetIncentiveAssetId::get(), &LIQUIDITY_PROVIDER_A);
+        let balance_b = Tokens::free_balance(GetIncentiveAssetId::get(), &LIQUIDITY_PROVIDER_B);
+        let balance_c = Tokens::free_balance(GetIncentiveAssetId::get(), &LIQUIDITY_PROVIDER_C);
+        let balance_d = Tokens::free_balance(GetIncentiveAssetId::get(), &tech_account_id);
+        assert_eq!(balance_a, balance!(18));
+        assert_eq!(balance_b, balance!(0.9));
+        assert_eq!(balance_c, balance!(0.9));
+        assert_eq!(balance_d, 0);
+        assert_eq!(
+            balance_a + balance_b + balance_c + balance_c,
+            balance!(20.7)
+        )
+    })
+}
+
+#[test]
+fn mixed_multiple_pools_should_pass() {
+    let mut ext = ExtBuilder::with_accounts(vec![
+        (FEES_ACCOUNT_A, common::PSWAP.into(), balance!(20)),
+        (FEES_ACCOUNT_B, common::PSWAP.into(), balance!(4)),
+        (LIQUIDITY_PROVIDER_A, PoolTokenAId::get(), balance!(1)),
+        (LIQUIDITY_PROVIDER_A, PoolTokenBId::get(), balance!(5)),
+        (LIQUIDITY_PROVIDER_B, PoolTokenBId::get(), balance!(5)),
+        (LIQUIDITY_PROVIDER_C, PoolTokenAId::get(), balance!(1)),
         (LIQUIDITY_PROVIDER_C, PoolTokenBId::get(), balance!(10)),
     ])
     .build();
@@ -541,46 +586,94 @@ fn multiple_pools_should_pass() {
         let balance_b = Tokens::free_balance(GetIncentiveAssetId::get(), &LIQUIDITY_PROVIDER_B);
         let balance_c = Tokens::free_balance(GetIncentiveAssetId::get(), &LIQUIDITY_PROVIDER_C);
         let balance_d = Tokens::free_balance(GetIncentiveAssetId::get(), &tech_account_id);
-        assert_eq!(balance_a, balance!(20));
-        assert_eq!(balance_b, balance!(1));
-        assert_eq!(balance_c, balance!(1));
+        assert_eq!(balance_a, balance!(9.900000000000000009)); // 9 from A, 0.9 from B
+        assert_eq!(balance_b, balance!(0.899999999999999999)); // 0.9 from B
+        assert_eq!(balance_c, balance!(10.799999999999999992)); // 9 from A, 1.8 from B
         assert_eq!(balance_d, 0);
+        assert_eq!(
+            balance_a + balance_b + balance_c + balance_d,
+            balance!(21.6) // (initial) 24 - (parliament) 10%
+        );
     })
 }
 
 #[test]
-fn mixed_multiple_pools_should_pass() {
-    let mut ext = ExtBuilder::with_accounts(vec![
-        (FEES_ACCOUNT_A, common::PSWAP.into(), balance!(20)),
-        (FEES_ACCOUNT_B, common::PSWAP.into(), balance!(4)),
-        (LIQUIDITY_PROVIDER_A, PoolTokenAId::get(), balance!(2)),
-        (LIQUIDITY_PROVIDER_A, PoolTokenBId::get(), balance!(10)),
-        (LIQUIDITY_PROVIDER_B, PoolTokenBId::get(), balance!(10)),
-        (LIQUIDITY_PROVIDER_C, PoolTokenAId::get(), balance!(2)),
-        (LIQUIDITY_PROVIDER_C, PoolTokenBId::get(), balance!(20)),
-    ])
-    .build();
+fn calculating_distribution_should_pass() {
+    let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
-        let tech_account_id = GetPswapDistributionAccountId::get();
+        // zero amount
+        let distribution = PswapDistrModule::calculate_pswap_distribution(balance!(0)).unwrap();
+        assert_eq!(distribution.liquidity_providers, balance!(0));
+        assert_eq!(distribution.vesting, balance!(0));
+        assert_eq!(distribution.parliament, balance!(0));
 
-        for i in 0u64..5 {
-            PswapDistrModule::incentive_distribution_routine(i);
+        // indivisible small amount
+        let distribution = PswapDistrModule::calculate_pswap_distribution(1u128).unwrap();
+        assert_eq!(
+            distribution.liquidity_providers + distribution.vesting + distribution.parliament,
+            1u128
+        );
+
+        // divisible small amount
+        let distribution = PswapDistrModule::calculate_pswap_distribution(100u128).unwrap();
+        assert_eq!(distribution.liquidity_providers, 90u128);
+        assert_eq!(distribution.vesting, 0u128);
+        assert_eq!(distribution.parliament, 10u128);
+
+        // regular amount
+        let distribution = PswapDistrModule::calculate_pswap_distribution(balance!(100)).unwrap();
+        assert_eq!(distribution.liquidity_providers, balance!(90));
+        assert_eq!(distribution.vesting, balance!(0));
+        assert_eq!(distribution.parliament, balance!(10));
+
+        for i in 0u64..6 {
+            PswapDistrModule::burn_rate_update_routine(i);
         }
+        // burn rate should increase to 0.3 after this
 
-        PswapDistrModule::claim_incentive(Origin::signed(LIQUIDITY_PROVIDER_A))
-            .expect("Claiming is not expected to fail.");
-        PswapDistrModule::claim_incentive(Origin::signed(LIQUIDITY_PROVIDER_B))
-            .expect("Claiming is not expected to fail.");
-        PswapDistrModule::claim_incentive(Origin::signed(LIQUIDITY_PROVIDER_C))
-            .expect("Claiming is not expected to fail.");
+        // zero amount
+        let distribution = PswapDistrModule::calculate_pswap_distribution(balance!(0)).unwrap();
+        assert_eq!(distribution.liquidity_providers, balance!(0));
+        assert_eq!(distribution.vesting, balance!(0));
+        assert_eq!(distribution.parliament, balance!(0));
 
-        let balance_a = Tokens::free_balance(GetIncentiveAssetId::get(), &LIQUIDITY_PROVIDER_A);
-        let balance_b = Tokens::free_balance(GetIncentiveAssetId::get(), &LIQUIDITY_PROVIDER_B);
-        let balance_c = Tokens::free_balance(GetIncentiveAssetId::get(), &LIQUIDITY_PROVIDER_C);
-        let balance_d = Tokens::free_balance(GetIncentiveAssetId::get(), &tech_account_id);
-        assert_eq!(balance_a, balance!(11)); // 10 from A, 2 from B
-        assert_eq!(balance_b, balance!(1)); // 1 from B
-        assert_eq!(balance_c, balance!(12)); // 10 from A, 2 from B
-        assert_eq!(balance_d, 0);
+        // indivisible small amount
+        let distribution = PswapDistrModule::calculate_pswap_distribution(1u128).unwrap();
+        assert_eq!(
+            distribution.liquidity_providers + distribution.vesting + distribution.parliament,
+            1u128
+        );
+
+        // divisible small amount
+        let distribution = PswapDistrModule::calculate_pswap_distribution(100u128).unwrap();
+        assert_eq!(distribution.liquidity_providers, 70u128);
+        assert_eq!(distribution.vesting, 20u128);
+        assert_eq!(distribution.parliament, 10u128);
+
+        // regular amount
+        let distribution = PswapDistrModule::calculate_pswap_distribution(balance!(100)).unwrap();
+        assert_eq!(distribution.liquidity_providers, balance!(70));
+        assert_eq!(distribution.vesting, balance!(20));
+        assert_eq!(distribution.parliament, balance!(10));
+
+        // large value, balance is limited to i128 max because of Fixed type calculation
+        let balance_max = 170141183460469231731687303715884105727u128;
+        let distribution = PswapDistrModule::calculate_pswap_distribution(balance_max).unwrap();
+        assert_eq!(
+            distribution.liquidity_providers,
+            119098828422328462212181112601118874008u128
+        );
+        assert_eq!(
+            distribution.vesting,
+            34028236692093846346337460743176821147u128
+        );
+        assert_eq!(
+            distribution.parliament,
+            17014118346046923173168730371588410572u128
+        );
+        assert_eq!(
+            distribution.liquidity_providers + distribution.parliament + distribution.vesting,
+            balance_max
+        );
     })
 }
