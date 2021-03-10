@@ -819,7 +819,7 @@ construct_runtime! {
         Currencies: currencies::{Module, Call, Event<T>},
         TradingPair: trading_pair::{Module, Call, Event<T>},
         Assets: assets::{Module, Call, Storage, Config<T>, Event<T>},
-        DEXManager: dex_manager::{Module, Call, Storage, Config<T>, Event<T>},
+        DEXManager: dex_manager::{Module, Storage, Config<T>, Event<T>},
         BondingCurvePool: bonding_curve_pool::{Module, Call, Storage, Config<T>},
         MulticollateralBondingCurvePool: multicollateral_bonding_curve_pool::{Module, Call, Storage, Config<T>, Event<T>},
         Technical: technical::{Module, Call, Config<T>, Event<T>},
