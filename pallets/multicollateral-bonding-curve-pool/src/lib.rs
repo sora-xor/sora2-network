@@ -228,16 +228,9 @@ impl<T: Trait> BuyMainAsset<T> {
     /// Assets deposition algorithm:
     ///
     /// ```nocompile
-    /// R_f := A_I * c
-    /// R := R + A_I - R_f
+    /// free_reserves := input_amount * free_amount_coeffecient
+    /// new_reserves := current_reserves + input_amount - free_reserves
     /// ```
-    ///
-    /// where:
-    /// `R` - current reserves
-    /// `R_f` - free reserves, that can be distributed
-    /// `c` - free amount coefficient of extra reserves
-    /// `A_I` - amount of the input asset
-    ///
     /// Returns (free_reserves, (input_amount, output_amount, fee_amount))
     fn deposit_input(&self) -> Result<(Balance, (Balance, Balance, Balance)), DispatchError> {
         common::with_transaction(|| {
@@ -252,12 +245,12 @@ impl<T: Trait> BuyMainAsset<T> {
                 &self.reserves_tech_account_id,
                 input_amount,
             )?;
-            let free_amount = FixedWrapper::from(input_amount)
+            let free_reserves = FixedWrapper::from(input_amount)
                 * FixedWrapper::from(AlwaysDistributeCoefficient::get());
-            let free_amount = free_amount
+            let free_reserves = free_reserves
                 .try_into_balance()
                 .map_err(|_| Error::<T>::PriceCalculationFailed)?;
-            Ok((free_amount, (input_amount, output_amount, fee_amount)))
+            Ok((free_reserves, (input_amount, output_amount, fee_amount)))
         })
     }
 
@@ -332,6 +325,7 @@ impl<T: Trait> BuyMainAsset<T> {
         Ok(())
     }
 
+    /// Calculate and assign PSWAP reward for buying XOR with particular assets.
     fn update_reward(
         &self,
         collateral_asset_amount: Balance,
@@ -361,8 +355,8 @@ impl<T: Trait> BuyMainAsset<T> {
 
     fn swap(&self) -> Result<SwapOutcome<Balance>, DispatchError> {
         common::with_transaction(|| {
-            let (input_amount_free, (input_amount, output_amount, fee)) = self.deposit_input()?;
-            self.distribute_reserves(input_amount_free)?;
+            let (free_reserves, (input_amount, output_amount, fee)) = self.deposit_input()?;
+            self.distribute_reserves(free_reserves)?;
             self.mint_output(output_amount.clone())?;
             self.update_reward(input_amount.clone(), output_amount.clone())?;
             Ok(match self.amount {
@@ -417,24 +411,18 @@ impl<T: Trait> Module<T> {
     ///
     /// XOR is also referred as main asset.
     /// Value of `delta` is assumed to be either positive or negative.
-    /// For every `PC_S` tokens the price goes up by `PC_R`.
+    /// For every `price_change_step` tokens the price goes up by `price_change_rate`.
     ///
-    /// `P_BM1(Q) = (Q + q) / (PC_S * PC_R) + P_I`
+    /// `buy_price_usd = (xor_total_supply + xor_supply_delta) / (price_change_step * price_change_rate) + initial_price_usd`
     ///
-    /// where
-    /// `P_BM1(Q)`: buy price for one asset
-    /// `P_I`: initial asset price
-    /// `PC_R`: price change rate
-    /// `PC_S`: price change step
-    /// `Q`: asset issuance (quantity)
-    /// `q`: asset issuance change
     pub fn buy_function(main_asset_id: &T::AssetId, delta: Fixed) -> Result<Fixed, DispatchError> {
-        let total_issuance = Assets::<T>::total_issuance(main_asset_id)?;
-        let Q: FixedWrapper = total_issuance.into();
-        let P_I = Self::initial_price();
-        let PC_S = Self::price_change_step();
-        let PC_R: FixedWrapper = Self::price_change_rate().into();
-        let price = (Q + delta) / (PC_S * PC_R) + P_I;
+        let total_supply: FixedWrapper = Assets::<T>::total_issuance(main_asset_id)?.into();
+        let initial_price: FixedWrapper = Self::initial_price().into();
+        let price_change_step: FixedWrapper = Self::price_change_step().into();
+        let price_change_rate: FixedWrapper = Self::price_change_rate().into();
+
+        let price =
+            (total_supply + delta) / (price_change_step * price_change_rate) + initial_price;
         price
             .get()
             .map_err(|_| Error::<T>::PriceCalculationFailed.into())
@@ -445,40 +433,53 @@ impl<T: Trait> Module<T> {
     /// To calculate price for a specific amount of assets (with desired main asset output),
     /// one needs to calculate the area of a right trapezoid.
     ///
+    /// `AB` : buy_function(xor_total_supply)
+    /// `CD` : buy_function(xor_total_supply + xor_supply_delta)
     ///
-    /// 1) Amount of collateral tokens needed in USD to get `q` XOR tokens
     /// ```nocompile
-    /// ((AB + CD) / 2) * BH
-    /// In our case:
-    /// `q` is main asset supply delta.
+    ///          ..  C
+    ///        ..  │
+    ///   B  ..    │
+    ///     │   S  │
+    ///     │      │
+    ///   A └──────┘ D
     /// ```
-    /// 2) Amount of XOR tokens received by depositing `S` collateral tokens in USD
-    /// Solving right trapezoid area formula with respect to delta `q`,
+    ///
+    /// 1) Amount of collateral tokens needed in USD to get `xor_supply_delta`(AD) XOR tokens
+    /// ```nocompile
+    /// S = ((AB + CD) / 2) * AD
+    ///
+    /// or
+    ///
+    /// buy_price_usd = ((buy_function(xor_total_supply) + buy_function(xor_total_supply + xor_supply_delta)) / 2) * xor_supply_delta
+    /// ```
+    /// 2) Amount of XOR tokens received by depositing `S` collateral tokens in USD:
+    ///
+    /// Solving right trapezoid area formula with respect to `xor_supply_delta` (AD),
     /// actual square `S` is known and represents collateral amount.
     /// We have a quadratic equation:
     /// ```nocompile
-    /// buy_function(x) = M*x + P_I
+    /// buy_function(x) = price_change_coefficient * x + initial_price
+    /// Assume `M` = price_change_coefficient
     ///
-    /// M * q² + 2 * AB * q - 2 * S = 0
+    /// M * AD² + 2 * AB * AD - 2 * S = 0
     /// equation with two solutions, taking only positive one:
-    /// q = (√((AB * 2 / M)² + 8 * S / M) - 2 * AB / M) / 2
+    /// AD = (√((AB * 2 / M)² + 8 * S / M) - 2 * AB / M) / 2
+    ///
+    /// or
+    ///
+    /// xor_supply_delta = (√((buy_function(xor_total_supply) * 2 / price_change_coeff)²
+    ///                    + 8 * buy_price_usd / price_change_coeff) - 2 * buy_function(xor_total_supply)
+    ///                    / price_change_coeff) / 2
     /// ```
-    /// where
-    /// `Q`: current asset issuance (quantity)
-    /// `q`: asset issuance delta (deposited/received quantity)
-    /// `M` : buy function slope coefficient
-    /// `P_I`: initial asset price
-    /// `AB` : buy_function(Q)
-    /// `CD` : buy_function(Q + q)
-    /// `BH` : = q
     pub fn buy_price(
         main_asset_id: &T::AssetId,
         collateral_asset_id: &T::AssetId,
         quantity: QuoteAmount<Balance>,
     ) -> Result<Fixed, DispatchError> {
-        let PC_S = FixedWrapper::from(Self::price_change_step()); // price change step
-        let PC_R = Self::price_change_rate(); // price change rate
-        let PC = PC_S * PC_R; // price change
+        let price_change_step = FixedWrapper::from(Self::price_change_step()); // price change step
+        let price_change_rate = Self::price_change_rate(); // price change rate
+        let price_change_coeff = price_change_step * price_change_rate; // price change
 
         let current_state: FixedWrapper = Self::buy_function(main_asset_id, Fixed::ZERO)?.into();
         let collateral_price_per_reference_unit: FixedWrapper =
@@ -491,11 +492,12 @@ impl<T: Trait> Module<T> {
                 let collateral_reference_in =
                     collateral_price_per_reference_unit * collateral_quantity;
 
-                let under_pow = current_state.clone() * PC.clone() * fixed_wrapper!(2.0);
+                let under_pow =
+                    current_state.clone() * price_change_coeff.clone() * fixed_wrapper!(2.0);
                 let under_sqrt = under_pow.clone() * under_pow
-                    + fixed_wrapper!(8.0) * PC.clone() * collateral_reference_in;
-                let main_out =
-                    under_sqrt.sqrt_accurate() / fixed_wrapper!(2.0) - PC * current_state;
+                    + fixed_wrapper!(8.0) * price_change_coeff.clone() * collateral_reference_in;
+                let main_out = under_sqrt.sqrt_accurate() / fixed_wrapper!(2.0)
+                    - price_change_coeff * current_state;
                 main_out
                     .get()
                     .map_err(|_| Error::<T>::PriceCalculationFailed.into())
@@ -596,16 +598,15 @@ impl<T: Trait> Module<T> {
     /// output collateral tokens received by User by indicating exact sold XOR amount. I.e. the price User sells at.
     ///
     /// Value of `delta` is assumed to be either positive or negative.
-    /// Sell function is `P_Sc`% of buy function (see `buy_function`).
+    /// Sell function is `sell_price_coefficient`% of buy function (see `buy_function`).
     ///
-    /// `P_S = P_Sc * P_B`
-    /// where
-    /// `P_Sc: sell price coefficient (%)`
+    /// `sell_price = sell_price_coefficient * buy_price`
+    ///
     pub fn sell_function(main_asset_id: &T::AssetId, delta: Fixed) -> Result<Fixed, DispatchError> {
-        let P_B = Self::buy_function(main_asset_id, delta)?;
-        let P_Sc = FixedWrapper::from(Self::sell_price_coefficient());
-        let price = P_Sc * P_B;
-        price
+        let buy_price = Self::buy_function(main_asset_id, delta)?;
+        let sell_price_coefficient = FixedWrapper::from(Self::sell_price_coefficient());
+        let sell_price = sell_price_coefficient * buy_price;
+        sell_price
             .get()
             .map_err(|_| Error::<T>::PriceCalculationFailed.into())
     }
@@ -774,6 +775,7 @@ impl<T: Trait> Module<T> {
         })
     }
 
+    /// Assign account id that is used to store deposited collateral tokens.
     pub fn set_reserves_account_id(account: T::TechAccountId) -> Result<(), DispatchError> {
         common::with_transaction(|| {
             ReservesAcc::<T>::set(account.clone());
@@ -791,6 +793,7 @@ impl<T: Trait> Module<T> {
         })
     }
 
+    /// Assign accounts list to be used for free reserves distribution in config.
     pub fn set_distribution_accounts(
         distribution_accounts: DistributionAccounts<DistributionAccountData<T::TechAccountId>>,
     ) {
@@ -843,6 +846,8 @@ impl<T: Trait> Module<T> {
             .map_err(|_| Error::<T>::PriceCalculationFailed.into())
     }
 
+    /// Calculate amount of PSWAP rewarded for collateralizing XOR in TBC.
+    ///
     /// ideal = sell_function(0 to xor_total_supply)
     /// actual_before = input_currency_reserve * currency_usd_price
     /// actual_after = actual_before + input_currency_amount * input_currency_usd_price
@@ -892,10 +897,13 @@ impl<T: Trait> Module<T> {
             .map_err(|_| Error::<T>::PriceCalculationFailed.into())
     }
 
+    /// Check if particular asset is incentivesed, when depositing it as collateral,
+    /// i.e. will result in PSWAP rewards during buy operation.
     fn collateral_is_incentivised(collateral_asset_id: &T::AssetId) -> bool {
         collateral_asset_id != &PSWAP.into() && collateral_asset_id != &VAL.into()
     }
 
+    /// Perform a claim of collected PSWAP rewards by account.
     fn claim_incentives_inner(account_id: &T::AccountId) -> DispatchResult {
         common::with_transaction(|| {
             let (rewards_limit, rewards_owned) = Rewards::<T>::get(account_id);
@@ -927,6 +935,7 @@ impl<T: Trait> Module<T> {
 }
 
 impl<T: Trait> OnPswapBurned for Module<T> {
+    /// Invoked when pswap is burned after being exchanged from collected liquidity provider fees.
     fn on_pswap_burned(distribution: PswapRemintInfo) {
         let total_rewards = TotalRewards::get();
         let amount = FixedWrapper::from(distribution.vesting);
