@@ -23,7 +23,6 @@ mod tests {
             assert_ok!(Assets::register(
                 Origin::signed(ALICE),
                 AssetSymbol(b"ALIC".to_vec()),
-                18,
                 Balance::zero(),
                 true,
             ));

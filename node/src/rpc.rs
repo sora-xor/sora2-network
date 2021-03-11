@@ -89,6 +89,7 @@ where
         framenode_runtime::NetworkId,
     >,
     C::Api: iroha_migration_rpc::IrohaMigrationRuntimeAPI<Block>,
+    C::Api: pswap_distribution_rpc::PswapDistributionRuntimeAPI<Block, AccountId, Balance>,
     C::Api: BlockBuilder<Block>,
     P: TransactionPool + Send + Sync + 'static,
 {
@@ -100,6 +101,7 @@ where
     use iroha_migration_rpc::{IrohaMigrationAPI, IrohaMigrationClient};
     use liquidity_proxy_rpc::{LiquidityProxyAPI, LiquidityProxyClient};
     use pallet_transaction_payment_rpc::{TransactionPayment, TransactionPaymentApi};
+    use pswap_distribution_rpc::{PswapDistributionAPI, PswapDistributionClient};
     use substrate_frame_rpc_system::{FullSystem, SystemApi};
     use trading_pair_rpc::{TradingPairAPI, TradingPairClient};
 
@@ -131,5 +133,8 @@ where
     io.extend_with(IrohaMigrationAPI::to_delegate(IrohaMigrationClient::new(
         client.clone(),
     )));
+    io.extend_with(PswapDistributionAPI::to_delegate(
+        PswapDistributionClient::new(client.clone()),
+    ));
     io
 }
