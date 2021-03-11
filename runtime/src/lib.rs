@@ -155,6 +155,8 @@ pub fn native_version() -> NativeVersion {
     }
 }
 
+/// Sora network needs to have minimal requirement for staking equal to 5000 XOR.
+/// This is `Filter` trait implementation that just predicate exposure.total in the staking pallet.
 pub struct ValidatorsFilter;
 impl frame_support::traits::Filter<Balance> for ValidatorsFilter {
     fn filter(arg: &Balance) -> bool {
