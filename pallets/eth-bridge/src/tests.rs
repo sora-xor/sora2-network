@@ -1,12 +1,16 @@
 use crate::contract::{functions, FUNCTIONS, RECEIVE_BY_ETHEREUM_ASSET_ADDRESS_ID};
-use crate::requests::encode_outgoing_request_eth_call;
+use crate::requests::{
+    encode_outgoing_request_eth_call, ChangePeersContract, IncomingChangePeersCompat,
+};
+use crate::types::Transaction;
 use crate::{
     majority,
     mock::*,
     types,
     types::{Bytes, Log},
-    Address, AssetKind, BridgeStatus, ContractEvent, IncomingRequest, IncomingRequestKind,
-    OffchainRequest, OutgoingRequest, OutgoingTransfer, RequestStatus, SignatureParams,
+    Address, AssetKind, BridgeStatus, ContractEvent, IncomingPreRequest, IncomingRequest,
+    IncomingRequestKind, OffchainRequest, OutgoingRequest, OutgoingTransfer, RequestStatus,
+    SignatureParams,
 };
 use codec::{Decode, Encode};
 use common::{balance, prelude::Balance, AssetId, AssetId32, AssetSymbol};
@@ -112,8 +116,6 @@ fn should_success_claim_pswap() {
 
 #[test]
 fn should_fail_claim_pswap_already_claimed() {
-    let _ = env_logger::try_init();
-
     let net_id = ETH_NETWORK_ID;
     let mut builder = ExtBuilder::default();
     builder.add_reserves(net_id, (PSWAP.into(), Balance::from(0u32)));
@@ -166,8 +168,6 @@ fn should_fail_claim_pswap_already_claimed() {
 
 #[test]
 fn should_fail_claim_pswap_account_not_found() {
-    let _ = env_logger::try_init();
-
     let net_id = ETH_NETWORK_ID;
     let mut builder = ExtBuilder::default();
     builder.add_reserves(net_id, (PSWAP.into(), Balance::from(0u32)));
@@ -238,13 +238,6 @@ fn approve_request(state: &State, request: OutgoingRequest<Test>) -> Result<(), 
     let encoded = request.to_eth_abi(request_hash).unwrap();
     System::reset_events();
     let net_id = request.network_id();
-    assert_eq!(
-        crate::RequestsQueue::<Test>::get(net_id)
-            .last()
-            .unwrap()
-            .hash(),
-        request.hash()
-    );
     let mut approvals = BTreeSet::new();
     let keypairs = &state.networks[&net_id].ocw_keypairs;
     for (i, (_signer, account_id, seed)) in keypairs.iter().enumerate() {
@@ -319,6 +312,19 @@ fn approve_last_request(
     net_id: u32,
 ) -> Result<OutgoingRequest<Test>, Option<Event>> {
     let request = crate::RequestsQueue::<Test>::get(net_id).pop().unwrap();
+    let outgoing_request = match request {
+        OffchainRequest::Outgoing(r, _) => r,
+        _ => panic!("Unexpected request type"),
+    };
+    approve_request(state, outgoing_request.clone())?;
+    Ok(outgoing_request)
+}
+
+fn approve_next_request(
+    state: &State,
+    net_id: u32,
+) -> Result<OutgoingRequest<Test>, Option<Event>> {
+    let request = crate::RequestsQueue::<Test>::get(net_id).remove(0);
     let outgoing_request = match request {
         OffchainRequest::Outgoing(r, _) => r,
         _ => panic!("Unexpected request type"),
@@ -630,7 +636,7 @@ fn should_not_transfer() {
             100_000_000_u32.into(),
             net_id,
         )
-        .is_err(),);
+        .is_err());
     });
 }
 
@@ -655,7 +661,7 @@ fn should_register_outgoing_transfer() {
             to: Address::from([1; 20]),
             asset_id: AssetId::XOR.into(),
             amount: 100_u32.into(),
-            nonce: 2,
+            nonce: 3,
             network_id: ETH_NETWORK_ID,
         };
         let last_request = crate::RequestsQueue::get(net_id).pop().unwrap();
@@ -895,6 +901,50 @@ fn should_fail_incoming_transfer() {
 }
 
 #[test]
+fn should_fail_registering_incoming_request_if_preparation_failed() {
+    let net_id = ETH_NETWORK_ID;
+    let mut builder = ExtBuilder::default();
+    builder.add_currency(net_id, (PSWAP.into(), None, AssetKind::Thischain));
+    let (mut ext, state) = builder.build();
+
+    ext.execute_with(|| {
+        let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
+        let tx_hash = request_incoming(
+            alice.clone(),
+            H256::from_slice(&[1u8; 32]),
+            IncomingRequestKind::Transfer,
+            net_id,
+        )
+        .unwrap();
+        let incoming_transfer = IncomingRequest::Transfer(crate::IncomingTransfer {
+            from: Address::from([1; 20]),
+            to: alice.clone(),
+            asset_id: AssetId::PSWAP.into(),
+            asset_kind: AssetKind::Thischain,
+            amount: 100u32.into(),
+            tx_hash,
+            at_height: 1,
+            timepoint: Default::default(),
+            network_id: net_id,
+        });
+        let bridge_acc_id = state.networks[&net_id].config.bridge_account_id.clone();
+        assert_err!(
+            EthBridge::register_incoming_request(
+                Origin::signed(bridge_acc_id.clone()),
+                incoming_transfer.clone()
+            ),
+            tokens::Error::<Test>::BalanceTooLow
+        );
+        assert!(!crate::PendingIncomingRequests::<Test>::get(net_id).contains(&tx_hash));
+        assert!(crate::IncomingRequests::<Test>::get(net_id, &tx_hash).is_none());
+        assert_eq!(
+            crate::RequestStatuses::<Test>::get(net_id, &tx_hash).unwrap(),
+            RequestStatus::Failed
+        );
+    });
+}
+
+#[test]
 fn should_register_and_find_asset_ids() {
     let (mut ext, _state) = ExtBuilder::default().build();
     ext.execute_with(|| {
@@ -1048,7 +1098,7 @@ fn should_not_add_token_if_not_bridge_account() {
 }
 
 #[test]
-fn should_force_add_peer() {
+fn should_add_peer_in_eth_network() {
     let (mut ext, state) = ExtBuilder::default().build();
 
     ext.execute_with(|| {
@@ -1072,7 +1122,118 @@ fn should_force_add_peer() {
             crate::PendingPeer::<Test>::get(net_id).unwrap(),
             new_peer_id
         );
-        approve_last_request(&state, net_id).expect("request wasn't approved");
+        approve_next_request(&state, net_id).expect("request wasn't approved");
+        assert_eq!(
+            crate::PendingPeer::<Test>::get(net_id).unwrap(),
+            new_peer_id
+        );
+        assert_eq!(
+            crate::PeerAccountId::<Test>::get(&net_id, &new_peer_address),
+            new_peer_id
+        );
+        assert_eq!(
+            crate::PeerAddress::<Test>::get(net_id, &new_peer_id),
+            new_peer_address
+        );
+        approve_next_request(&state, net_id).expect("request wasn't approved");
+        // incoming request part
+        // peer is added to Bridge contract
+        let tx_hash = request_incoming(
+            alice.clone(),
+            H256::from_slice(&[1u8; 32]),
+            IncomingRequestKind::AddPeer,
+            net_id,
+        )
+        .unwrap();
+        let incoming_request = IncomingRequest::ChangePeers(crate::IncomingChangePeers {
+            peer_account_id: new_peer_id.clone(),
+            peer_address: new_peer_address,
+            added: true,
+            tx_hash,
+            at_height: 1,
+            timepoint: Default::default(),
+            network_id: net_id,
+        });
+        assert_incoming_request_done(&state, incoming_request.clone()).unwrap();
+        assert!(!crate::Peers::<Test>::get(net_id).contains(&new_peer_id));
+        // peer is added to XOR contract
+        let tx_hash = request_incoming(
+            alice.clone(),
+            H256::from_slice(&[2u8; 32]),
+            IncomingRequestKind::AddPeerCompat,
+            net_id,
+        )
+        .unwrap();
+        let incoming_request =
+            IncomingRequest::ChangePeersCompat(crate::IncomingChangePeersCompat {
+                peer_account_id: new_peer_id.clone(),
+                peer_address: new_peer_address,
+                added: true,
+                contract: ChangePeersContract::XOR,
+                tx_hash,
+                at_height: 2,
+                timepoint: Default::default(),
+                network_id: net_id,
+            });
+        assert_incoming_request_done(&state, incoming_request.clone()).unwrap();
+        assert!(!crate::Peers::<Test>::get(net_id).contains(&new_peer_id));
+        // peer is added to VAL contract
+        let tx_hash = request_incoming(
+            alice.clone(),
+            H256::from_slice(&[3u8; 32]),
+            IncomingRequestKind::AddPeerCompat,
+            net_id,
+        )
+        .unwrap();
+        let incoming_request =
+            IncomingRequest::ChangePeersCompat(crate::IncomingChangePeersCompat {
+                peer_account_id: new_peer_id.clone(),
+                peer_address: new_peer_address,
+                added: true,
+                contract: ChangePeersContract::VAL,
+                tx_hash,
+                at_height: 3,
+                timepoint: Default::default(),
+                network_id: net_id,
+            });
+        assert!(!crate::Peers::<Test>::get(net_id).contains(&new_peer_id));
+        assert!(crate::PendingPeer::<Test>::get(net_id).is_some());
+        assert_incoming_request_done(&state, incoming_request.clone()).unwrap();
+        assert!(crate::PendingPeer::<Test>::get(net_id).is_none());
+        assert!(crate::Peers::<Test>::get(net_id).contains(&new_peer_id));
+        assert!(bridge_multisig::Accounts::<Test>::get(&bridge_acc_id)
+            .unwrap()
+            .is_signatory(&new_peer_id));
+    });
+}
+
+#[test]
+fn should_add_peer_in_simple_networks() {
+    let mut builder = ExtBuilder::default();
+    let net_id = builder.add_network(vec![], None, Some(4));
+    let (mut ext, state) = builder.build();
+
+    ext.execute_with(|| {
+        let bridge_acc_id = state.networks[&net_id].config.bridge_account_id.clone();
+        let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
+        let kp = ecdsa::Pair::from_string("//OCW5", None).unwrap();
+        let signer = AccountPublic::from(kp.public());
+        let public = PublicKey::from_secret_key(&SecretKey::parse_slice(&kp.seed()).unwrap());
+
+        // outgoing request part
+        let new_peer_id = signer.into_account();
+        let new_peer_address = crate::public_key_to_eth_address(&public);
+        assert_ok!(EthBridge::add_peer(
+            Origin::signed(state.authority_account_id.clone()),
+            new_peer_id.clone(),
+            new_peer_address,
+            net_id,
+        ));
+        assert_eq!(
+            crate::PendingPeer::<Test>::get(net_id).unwrap(),
+            new_peer_id
+        );
+        approve_next_request(&state, net_id).expect("request wasn't approved");
         assert_eq!(
             crate::PendingPeer::<Test>::get(net_id).unwrap(),
             new_peer_id
@@ -1100,7 +1261,7 @@ fn should_force_add_peer() {
             tx_hash,
             at_height: 1,
             timepoint: Default::default(),
-            network_id: ETH_NETWORK_ID,
+            network_id: net_id,
         });
         assert!(!crate::Peers::<Test>::get(net_id).contains(&new_peer_id));
         assert_incoming_request_done(&state, incoming_request.clone()).unwrap();
@@ -1113,13 +1274,12 @@ fn should_force_add_peer() {
 }
 
 #[test]
-fn should_remove_peer() {
-    let mut builder = ExtBuilder::new();
-    builder.add_network(vec![], None, Some(5));
+fn should_remove_peer_in_simple_network() {
+    let mut builder = ExtBuilder::default();
+    let net_id = builder.add_network(vec![], None, Some(5));
     let (mut ext, state) = builder.build();
 
     ext.execute_with(|| {
-        let net_id = ETH_NETWORK_ID;
         let extended_network_config = &state.networks[&net_id];
         let bridge_acc_id = extended_network_config.config.bridge_account_id.clone();
         let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
@@ -1134,7 +1294,7 @@ fn should_remove_peer() {
         ));
         assert_eq!(&crate::PendingPeer::<Test>::get(net_id).unwrap(), peer_id);
         assert!(crate::Peers::<Test>::get(net_id).contains(&peer_id));
-        approve_last_request(&state, net_id).expect("request wasn't approved");
+        approve_next_request(&state, net_id).expect("request wasn't approved");
         assert_eq!(&crate::PendingPeer::<Test>::get(net_id).unwrap(), peer_id);
         assert!(!crate::Peers::<Test>::get(net_id).contains(&peer_id));
         assert!(!bridge_multisig::Accounts::<Test>::get(&bridge_acc_id)
@@ -1157,10 +1317,113 @@ fn should_remove_peer() {
             tx_hash,
             at_height: 1,
             timepoint: Default::default(),
-            network_id: ETH_NETWORK_ID,
+            network_id: net_id,
         });
         assert_incoming_request_done(&state, incoming_request.clone()).unwrap();
         assert!(crate::PendingPeer::<Test>::get(net_id).is_none());
+        assert!(!crate::Peers::<Test>::get(net_id).contains(&peer_id));
+        assert!(!bridge_multisig::Accounts::<Test>::get(&bridge_acc_id)
+            .unwrap()
+            .is_signatory(&peer_id));
+    });
+}
+
+#[test]
+fn should_remove_peer_in_eth_network() {
+    let mut builder = ExtBuilder::new();
+    builder.add_network(vec![], None, Some(5));
+    let (mut ext, state) = builder.build();
+
+    ext.execute_with(|| {
+        let net_id = ETH_NETWORK_ID;
+        let extended_network_config = &state.networks[&net_id];
+        let bridge_acc_id = extended_network_config.config.bridge_account_id.clone();
+        let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
+        let (_, peer_id, seed) = &extended_network_config.ocw_keypairs[4];
+        let public = PublicKey::from_secret_key(&SecretKey::parse_slice(&seed[..]).unwrap());
+
+        // outgoing request part
+        assert_ok!(EthBridge::remove_peer(
+            Origin::signed(state.authority_account_id.clone()),
+            peer_id.clone(),
+            net_id,
+        ));
+        assert_eq!(&crate::PendingPeer::<Test>::get(net_id).unwrap(), peer_id);
+        assert!(crate::Peers::<Test>::get(net_id).contains(&peer_id));
+        approve_next_request(&state, net_id).expect("request wasn't approved");
+        assert_eq!(&crate::PendingPeer::<Test>::get(net_id).unwrap(), peer_id);
+        assert!(!crate::Peers::<Test>::get(net_id).contains(&peer_id));
+        assert!(!bridge_multisig::Accounts::<Test>::get(&bridge_acc_id)
+            .unwrap()
+            .is_signatory(&peer_id));
+
+        // incoming request part
+        let tx_hash = request_incoming(
+            alice.clone(),
+            H256::from_slice(&[1u8; 32]),
+            IncomingRequestKind::RemovePeer,
+            net_id,
+        )
+        .unwrap();
+        let peer_address = crate::public_key_to_eth_address(&public);
+        let incoming_request = IncomingRequest::ChangePeers(crate::IncomingChangePeers {
+            peer_account_id: peer_id.clone(),
+            peer_address,
+            added: false,
+            tx_hash,
+            at_height: 1,
+            timepoint: Default::default(),
+            network_id: net_id,
+        });
+        assert_incoming_request_done(&state, incoming_request.clone()).unwrap();
+        assert!(!crate::Peers::<Test>::get(net_id).contains(&peer_id));
+        // peer is added to XOR contract
+        let tx_hash = request_incoming(
+            alice.clone(),
+            H256::from_slice(&[2u8; 32]),
+            IncomingRequestKind::AddPeerCompat,
+            net_id,
+        )
+        .unwrap();
+        let incoming_request =
+            IncomingRequest::ChangePeersCompat(crate::IncomingChangePeersCompat {
+                peer_account_id: peer_id.clone(),
+                peer_address,
+                added: false,
+                contract: ChangePeersContract::XOR,
+                tx_hash,
+                at_height: 2,
+                timepoint: Default::default(),
+                network_id: net_id,
+            });
+        assert_incoming_request_done(&state, incoming_request.clone()).unwrap();
+        assert!(!crate::Peers::<Test>::get(net_id).contains(&peer_id));
+        // peer is added to VAL contract
+        let tx_hash = request_incoming(
+            alice.clone(),
+            H256::from_slice(&[3u8; 32]),
+            IncomingRequestKind::AddPeerCompat,
+            net_id,
+        )
+        .unwrap();
+        let incoming_request =
+            IncomingRequest::ChangePeersCompat(crate::IncomingChangePeersCompat {
+                peer_account_id: peer_id.clone(),
+                peer_address,
+                added: false,
+                contract: ChangePeersContract::VAL,
+                tx_hash,
+                at_height: 3,
+                timepoint: Default::default(),
+                network_id: net_id,
+            });
+        assert!(!crate::Peers::<Test>::get(net_id).contains(&peer_id));
+        assert_incoming_request_done(&state, incoming_request.clone()).unwrap();
+        assert!(crate::PendingPeer::<Test>::get(net_id).is_none());
+        assert!(!crate::Peers::<Test>::get(net_id).contains(&peer_id));
+        assert!(!bridge_multisig::Accounts::<Test>::get(&bridge_acc_id)
+            .unwrap()
+            .is_signatory(&peer_id));
     });
 }
 
@@ -1206,7 +1469,7 @@ fn should_not_allow_changing_peers_simultaneously() {
             peer_id.clone(),
             net_id,
         ));
-        approve_last_request(&state, net_id).expect("request wasn't approved");
+        approve_next_request(&state, net_id).expect("request wasn't approved");
         assert_err!(
             EthBridge::remove_peer(
                 Origin::signed(state.authority_account_id.clone()),
@@ -1228,8 +1491,8 @@ fn should_not_allow_changing_peers_simultaneously() {
 }
 
 #[test]
+#[ignore]
 fn should_cancel_ready_outgoing_request() {
-    let _ = env_logger::try_init();
     let (mut ext, state) = ExtBuilder::default().build();
     let _ = FUNCTIONS.get_or_init(functions);
     ext.execute_with(|| {
@@ -1289,6 +1552,7 @@ fn should_cancel_ready_outgoing_request() {
 }
 
 #[test]
+#[ignore]
 fn should_fail_cancel_ready_outgoing_request_with_wrong_approvals() {
     let (mut ext, state) = ExtBuilder::default().build();
     ext.execute_with(|| {
@@ -1361,6 +1625,7 @@ fn should_fail_cancel_ready_outgoing_request_with_wrong_approvals() {
 }
 
 #[test]
+#[ignore]
 fn should_fail_cancel_unfinished_outgoing_request() {
     let (mut ext, state) = ExtBuilder::default().build();
     ext.execute_with(|| {
@@ -2008,6 +2273,108 @@ fn should_ensure_known_contract() {
                 IncomingRequestKind::ClaimPswap,
             ),
             Error::UnknownContractAddress
+        );
+    });
+}
+
+#[test]
+fn should_parse_add_peer_on_old_contract() {
+    let (mut ext, state) = ExtBuilder::default().build();
+    ext.execute_with(|| {
+        let net_id = ETH_NETWORK_ID;
+        let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
+
+        let kp = ecdsa::Pair::from_string("//Bob", None).unwrap();
+        let signer = AccountPublic::from(kp.public());
+        let public = PublicKey::from_secret_key(&SecretKey::parse_slice(&kp.seed()).unwrap());
+        let new_peer_id = signer.into_account();
+        let new_peer_address = crate::public_key_to_eth_address(&public);
+        assert_ok!(EthBridge::add_peer(
+            Origin::signed(state.authority_account_id.clone()),
+            new_peer_id.clone(),
+            new_peer_address,
+            net_id,
+        ));
+        approve_next_request(&state, net_id).expect("request wasn't approved");
+        approve_next_request(&state, net_id).expect("request wasn't approved");
+
+        let tx_hash = H256([1; 32]);
+        // add peer
+        let incoming_request = IncomingPreRequest::<Test> {
+            author: alice.clone(),
+            hash: tx_hash,
+            timepoint: Default::default(),
+            kind: IncomingRequestKind::AddPeer,
+            network_id: net_id,
+        };
+        let tx = Transaction {
+            input: Bytes(hex!("ca70cf6e00000000000000000000000025451a4de12dccc2d166922fa938e900fcc4ed24d209d4cd392dd4c5b37b4feaa2358691a632860735cda5261c4d2a0a7f354ade00000000000000000000000000000000000000000000000000000000000000a000000000000000000000000000000000000000000000000000000000000000e000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000008900000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000").to_vec()),
+            block_number: Some(1u64.into()),
+            to: Some(types::H160(EthBridge::xor_master_contract_address().0)),
+            ..Default::default()
+        };
+        let inc_req = EthBridge::parse_old_incoming_request_method_call(incoming_request, tx).unwrap();
+        assert_eq!(
+            inc_req,
+            IncomingRequest::ChangePeersCompat(IncomingChangePeersCompat {
+                peer_account_id: new_peer_id.clone(),
+                peer_address: new_peer_address,
+                added: true,
+                contract: ChangePeersContract::XOR,
+                tx_hash,
+                at_height: 1,
+                timepoint: Default::default(),
+                network_id: net_id
+            })
+        );
+    });
+}
+
+#[test]
+fn should_parse_remove_peer_on_old_contract() {
+    let (mut ext, state) = ExtBuilder::default().build();
+    ext.execute_with(|| {
+        let net_id = ETH_NETWORK_ID;
+        let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
+
+        let kp = ecdsa::Pair::from_string("//Bob", None).unwrap();
+        let signer = AccountPublic::from(kp.public());
+        let public = PublicKey::from_secret_key(&SecretKey::parse_slice(&kp.seed()).unwrap());
+        let new_peer_id = signer.into_account();
+        let new_peer_address = crate::public_key_to_eth_address(&public);
+        let tx_hash = H256([1; 32]);
+        assert_ok!(EthBridge::force_add_peer(Origin::root(), new_peer_id.clone(), new_peer_address, net_id));
+        assert_ok!(EthBridge::remove_peer(
+            Origin::signed(state.authority_account_id.clone()),
+            new_peer_id.clone(),
+            net_id,
+        ));
+
+        let incoming_request = IncomingPreRequest::<Test> {
+            author: alice.clone(),
+            hash: tx_hash,
+            timepoint: Default::default(),
+            kind: IncomingRequestKind::RemovePeer,
+            network_id: net_id,
+        };
+        let tx = Transaction {
+            input: Bytes(hex!("89c39baf00000000000000000000000025451a4de12dccc2d166922fa938e900fcc4ed2456dcdf93ea580e02742a22e68b8838da01545f8574746a75ad9a1e8ab198479c00000000000000000000000000000000000000000000000000000000000000a000000000000000000000000000000000000000000000000000000000000000c000000000000000000000000000000000000000000000000000000000000000e0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000").to_vec()),
+            block_number: Some(1u64.into()),
+            to: Some(types::H160(EthBridge::val_master_contract_address().0)),
+            ..Default::default()
+        };
+        assert_eq!(
+            EthBridge::parse_old_incoming_request_method_call(incoming_request, tx).unwrap(),
+            IncomingRequest::ChangePeersCompat(IncomingChangePeersCompat {
+                peer_account_id: new_peer_id,
+                peer_address: new_peer_address,
+                added: false,
+                contract: ChangePeersContract::VAL,
+                tx_hash,
+                at_height: 1,
+                timepoint: Default::default(),
+                network_id: net_id
+            })
         );
     });
 }

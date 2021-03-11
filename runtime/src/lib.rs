@@ -745,8 +745,8 @@ parameter_types! {
 pub struct RuntimeOnPswapBurnedAggregator;
 
 impl OnPswapBurned for RuntimeOnPswapBurnedAggregator {
-    fn on_pswap_burned(amount: Balance) {
-        MulticollateralBondingCurvePool::on_pswap_burned(amount);
+    fn on_pswap_burned(distribution: pswap_distribution::PswapRemintInfo) {
+        MulticollateralBondingCurvePool::on_pswap_burned(distribution);
     }
 }
 

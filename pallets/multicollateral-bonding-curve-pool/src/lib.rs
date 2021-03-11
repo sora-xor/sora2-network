@@ -26,7 +26,7 @@ use frame_support::{
 use frame_system::ensure_signed;
 use liquidity_proxy::LiquidityProxyTrait;
 use permissions::{Scope, BURN, MINT, SLASH, TRANSFER};
-use pswap_distribution::OnPswapBurned;
+use pswap_distribution::{OnPswapBurned, PswapRemintInfo};
 use sp_arithmetic::traits::Zero;
 use sp_runtime::{DispatchError, DispatchResult};
 use sp_std::collections::btree_set::BTreeSet;
@@ -103,10 +103,6 @@ decl_storage! {
 
         /// Reward multipliers for special assets. Asset Id => Reward Multiplier
         pub AssetsWithOptionalRewardMultiplier: map hasher(twox_64_concat) T::AssetId => Option<Fixed>;
-
-        /// Fraction of burned PSWAP that is used in reward vesting.
-        /// TODO: this is wrong. It should be: min(0.55, 1−(−0.000357*(CURR_BLOCK_NUM÷14400)+0.9)−0.1).
-        PswapBurnedDedicatedForRewards get(fn pswap_burned_dedicated_for_rewards): Fixed = fixed!(0.2);
     }
 }
 
@@ -931,10 +927,9 @@ impl<T: Trait> Module<T> {
 }
 
 impl<T: Trait> OnPswapBurned for Module<T> {
-    fn on_pswap_burned(amount: Balance) {
+    fn on_pswap_burned(distribution: PswapRemintInfo) {
         let total_rewards = TotalRewards::get();
-        let amount =
-            FixedWrapper::from(amount) * FixedWrapper::from(PswapBurnedDedicatedForRewards::get());
+        let amount = FixedWrapper::from(distribution.vesting);
 
         if !total_rewards.is_zero() {
             Rewards::<T>::translate(|_key: T::AccountId, value: (Balance, Balance)| {
