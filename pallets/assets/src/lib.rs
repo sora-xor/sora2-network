@@ -29,7 +29,9 @@ mod mock;
 mod tests;
 
 use codec::{Decode, Encode};
-use common::{hash, prelude::Balance, Amount, AssetSymbol, BalancePrecision};
+use common::{
+    hash, prelude::Balance, Amount, AssetSymbol, BalancePrecision, DEFAULT_BALANCE_PRECISION,
+};
 use frame_support::dispatch::{DispatchError, DispatchResult};
 use frame_support::sp_runtime::traits::{MaybeSerializeDeserialize, Member};
 use frame_support::{
@@ -250,9 +252,9 @@ decl_module! {
         /// Registers new `AssetId` for the given `origin`.
         /// AssetSymbol should represent string with only uppercase latin chars with max length of 5.
         #[weight = <T as Trait>::WeightInfo::register()]
-        pub fn register(origin, symbol: AssetSymbol, precision: BalancePrecision, initial_supply: Balance, is_mintable: bool) -> DispatchResult {
+        pub fn register(origin, symbol: AssetSymbol, initial_supply: Balance, is_mintable: bool) -> DispatchResult {
             let author = ensure_signed(origin)?;
-            let _asset_id = Self::register_from(&author, symbol, precision, initial_supply, is_mintable)?;
+            let _asset_id = Self::register_from(&author, symbol, DEFAULT_BALANCE_PRECISION, initial_supply, is_mintable)?;
             Ok(())
         }
 
