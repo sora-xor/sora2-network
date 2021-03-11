@@ -20,7 +20,7 @@ serde_json = { version = "1.0", default-features = false, features = ["alloc"] }
 common = { path = "../../common", default-features = false }
 assets = { path = "../assets", default-features = false }
 serde = { version = "1.0", features = ["alloc", "derive"], default-features = false }
-bridge-multisig = { git = "https://github.com/soramitsu/sora2-frame-pallets.git", branch = "selected-v2.0.0-new/draft-barrier-01", package = "pallet-multisig", default-features = false }
+bridge-multisig = { git = "https://github.com/soramitsu/sora2-frame-pallets.git", branch = "selected-v2.0.0-new/draft-barrier-02", package = "pallet-multisig", default-features = false }
 libsecp256k1 = { version = "0.3.5", features = ['hmac'], default-features = false }
 tiny-keccak = { version = "2", default-features = false }
 hex-literal = "0.3.1"

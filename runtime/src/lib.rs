@@ -156,8 +156,21 @@ pub fn native_version() -> NativeVersion {
 }
 
 /// Sora network needs to have minimal requirement for staking equal to 5000 XOR.
-/// This is `Filter` trait implementation that just predicate exposure.total in the staking pallet.
+pub const MIN_STAKE: Balance = 5000u128;
+
+/// This is `Filter` trait implementation that just predicate `exposure.total` in the staking pallet,
+/// exposured_stake field of `ValidatorDataToFilter` structure is used for this.
+/// It is possible to add other fields to this data structure in future if needed more advanced
+/// filtering.
 pub struct ValidatorsFilter;
+impl frame_support::traits::Filter<pallet_staking::ValidatorDataToFilter<Runtime>>
+    for ValidatorsFilter
+{
+    fn filter(validator_data: &pallet_staking::ValidatorDataToFilter<Runtime>) -> bool {
+        validator_data.exposured_stake >= MIN_STAKE
+    }
+}
+
 impl frame_support::traits::Filter<Balance> for ValidatorsFilter {
     fn filter(arg: &Balance) -> bool {
         let barrier: Balance = 5000u32.into();
