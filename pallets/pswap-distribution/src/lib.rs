@@ -1,7 +1,5 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use core::convert::TryInto;
-
 use codec::{Decode, Encode};
 use common::{
     fixed, fixed_wrapper,
@@ -171,7 +169,7 @@ decl_module! {
         #[weight = 0]
         pub fn claim_incentive(origin) -> DispatchResult {
             let who = ensure_signed(origin)?;
-            Self::claim_by_account(who)
+            Self::claim_by_account(&who)
         }
 
         /// Perform exchange and distribution routines for all substribed accounts
@@ -236,44 +234,45 @@ impl<T: Trait> Module<T> {
         Ok(())
     }
 
-    fn claim_by_account(account_id: T::AccountId) -> DispatchResult {
+    /// Query actual amount of PSWAP that can be claimed by account.
+    pub fn claimable_amount(
+        account_id: &T::AccountId,
+    ) -> Result<(Balance, Balance, Fixed), DispatchError> {
+        // get definitions
+        let incentives_asset_id = T::GetIncentiveAssetId::get();
+        let tech_account_id = T::GetTechnicalAccountId::get();
+        let total_claimable =
+            assets::Module::<T>::free_balance(&incentives_asset_id, &tech_account_id)?;
         let current_position = ShareholderAccounts::<T>::get(&account_id);
-        if current_position != fixed!(0) {
-            // get definitions
-            let incentives_asset_id = T::GetIncentiveAssetId::get();
-            let tech_account_id = T::GetTechnicalAccountId::get();
-            let claimable_incentives = FixedWrapper::from(assets::Module::<T>::free_balance(
-                &incentives_asset_id,
-                &tech_account_id,
-            )?);
-            let shares_total = FixedWrapper::from(ClaimableShares::get());
+        if current_position == fixed!(0) {
+            return Ok((Balance::zero(), total_claimable, current_position));
+        }
+        let shares_total = FixedWrapper::from(ClaimableShares::get());
+        // perform claimed tokens transfer
+        let incentives_to_claim =
+            FixedWrapper::from(current_position) / (shares_total / total_claimable.clone());
+        let incentives_to_claim = incentives_to_claim
+            .try_into_balance()
+            .map_err(|_| Error::CalculationError::<T>)?;
+        Ok((incentives_to_claim, total_claimable, current_position))
+    }
 
+    /// Perform claim of PSWAP by account, desired amount is not indicated - all available will be claimed.
+    fn claim_by_account(account_id: &T::AccountId) -> DispatchResult {
+        let (incentives_to_claim, total_claimable, current_position) =
+            Self::claimable_amount(account_id)?;
+        if current_position != fixed!(0) {
+            let claimable_amount_adjusted = incentives_to_claim.min(total_claimable);
             // clean up shares info
             ShareholderAccounts::<T>::mutate(&account_id, |current| *current = fixed!(0));
             ClaimableShares::mutate(|current| *current = current.csub(current_position).unwrap());
-
-            // perform claimed tokens transfer
-            let incentives_to_claim = FixedWrapper::from(current_position)
-                / (shares_total / claimable_incentives.clone());
-            let incentives_to_claim = incentives_to_claim
-                .get()
-                .map_err(|_| Error::CalculationError::<T>)?;
-
-            let amount = incentives_to_claim.min(
-                // TODO: consider cases where this is bad, can it accumulate?
-                claimable_incentives
-                    .get()
-                    .map_err(|_| Error::CalculationError::<T>)?,
-            );
-            let amount = amount
-                .into_bits()
-                .try_into()
-                .map_err(|_| Error::CalculationError::<T>)?;
+            let incentives_asset_id = T::GetIncentiveAssetId::get();
+            let tech_account_id = T::GetTechnicalAccountId::get();
             let _result = Assets::<T>::transfer_from(
                 &incentives_asset_id,
                 &tech_account_id,
                 &account_id,
-                amount,
+                claimable_amount_adjusted,
             )?;
             Ok(())
         } else {

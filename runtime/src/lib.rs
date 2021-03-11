@@ -819,7 +819,7 @@ construct_runtime! {
         Currencies: currencies::{Module, Call, Event<T>},
         TradingPair: trading_pair::{Module, Call, Event<T>},
         Assets: assets::{Module, Call, Storage, Config<T>, Event<T>},
-        DEXManager: dex_manager::{Module, Call, Storage, Config<T>, Event<T>},
+        DEXManager: dex_manager::{Module, Storage, Config<T>, Event<T>},
         BondingCurvePool: bonding_curve_pool::{Module, Call, Storage, Config<T>},
         MulticollateralBondingCurvePool: multicollateral_bonding_curve_pool::{Module, Call, Storage, Config<T>, Event<T>},
         Technical: technical::{Module, Call, Config<T>, Event<T>},
@@ -1216,47 +1216,61 @@ impl_runtime_apis! {
         }
     }
 
-       impl sp_consensus_babe::BabeApi<Block> for Runtime {
-               fn configuration() -> sp_consensus_babe::BabeGenesisConfiguration {
-                       // The choice of `c` parameter (where `1 - c` represents the
-                       // probability of a slot being empty), is done in accordance to the
-                       // slot duration and expected target block time, for safely
-                       // resisting network delays of maximum two seconds.
-                       // <https://research.web3.foundation/en/latest/polkadot/BABE/Babe/#6-practical-results>
-                       sp_consensus_babe::BabeGenesisConfiguration {
-                               slot_duration: Babe::slot_duration(),
-                               epoch_length: EpochDuration::get(),
-                               c: PRIMARY_PROBABILITY,
-                               genesis_authorities: Babe::authorities(),
-                               randomness: Babe::randomness(),
-                               allowed_slots: sp_consensus_babe::AllowedSlots::PrimaryAndSecondaryPlainSlots,
-                       }
-               }
-               fn current_epoch_start() -> sp_consensus_babe::SlotNumber {
-                       Babe::current_epoch_start()
-               }
-               fn generate_key_ownership_proof(
-                       _slot_number: sp_consensus_babe::SlotNumber,
-                       authority_id: sp_consensus_babe::AuthorityId,
-               ) -> Option<sp_consensus_babe::OpaqueKeyOwnershipProof> {
-                       use codec::Encode;
-                       Historical::prove((sp_consensus_babe::KEY_TYPE, authority_id))
-                               .map(|p| p.encode())
-                               .map(sp_consensus_babe::OpaqueKeyOwnershipProof::new)
-               }
-               fn submit_report_equivocation_unsigned_extrinsic(
-                       equivocation_proof: sp_consensus_babe::EquivocationProof<<Block as BlockT>::Header>,
-                       key_owner_proof: sp_consensus_babe::OpaqueKeyOwnershipProof,
-               ) -> Option<()> {
-                       let key_owner_proof = key_owner_proof.decode()?;
-                       Babe::submit_unsigned_equivocation_report(
-                               equivocation_proof,
-                               key_owner_proof,
-                       )
-               }
-       }
+    impl pswap_distribution_runtime_api::PswapDistributionAPI<
+        Block,
+        AccountId,
+        Balance,
+    > for Runtime {
+        fn claimable_amount(
+            account_id: AccountId,
+        ) -> pswap_distribution_runtime_api::BalanceInfo<Balance> {
+            let (claimable, _, _) = PswapDistribution::claimable_amount(&account_id).unwrap_or((0, 0, fixed!(0)));
+            pswap_distribution_runtime_api::BalanceInfo::<Balance> {
+                balance: claimable
+            }
+        }
+    }
 
 
+    impl sp_consensus_babe::BabeApi<Block> for Runtime {
+            fn configuration() -> sp_consensus_babe::BabeGenesisConfiguration {
+                    // The choice of `c` parameter (where `1 - c` represents the
+                    // probability of a slot being empty), is done in accordance to the
+                    // slot duration and expected target block time, for safely
+                    // resisting network delays of maximum two seconds.
+                    // <https://research.web3.foundation/en/latest/polkadot/BABE/Babe/#6-practical-results>
+                    sp_consensus_babe::BabeGenesisConfiguration {
+                            slot_duration: Babe::slot_duration(),
+                            epoch_length: EpochDuration::get(),
+                            c: PRIMARY_PROBABILITY,
+                            genesis_authorities: Babe::authorities(),
+                            randomness: Babe::randomness(),
+                            allowed_slots: sp_consensus_babe::AllowedSlots::PrimaryAndSecondaryPlainSlots,
+                    }
+            }
+            fn current_epoch_start() -> sp_consensus_babe::SlotNumber {
+                    Babe::current_epoch_start()
+            }
+            fn generate_key_ownership_proof(
+                    _slot_number: sp_consensus_babe::SlotNumber,
+                    authority_id: sp_consensus_babe::AuthorityId,
+            ) -> Option<sp_consensus_babe::OpaqueKeyOwnershipProof> {
+                    use codec::Encode;
+                    Historical::prove((sp_consensus_babe::KEY_TYPE, authority_id))
+                            .map(|p| p.encode())
+                            .map(sp_consensus_babe::OpaqueKeyOwnershipProof::new)
+            }
+            fn submit_report_equivocation_unsigned_extrinsic(
+                    equivocation_proof: sp_consensus_babe::EquivocationProof<<Block as BlockT>::Header>,
+                    key_owner_proof: sp_consensus_babe::OpaqueKeyOwnershipProof,
+            ) -> Option<()> {
+                    let key_owner_proof = key_owner_proof.decode()?;
+                    Babe::submit_unsigned_equivocation_report(
+                            equivocation_proof,
+                            key_owner_proof,
+                    )
+            }
+    }
 
     impl frame_system_rpc_runtime_api::AccountNonceApi<Block, AccountId, Index> for Runtime {
         fn account_nonce(account: AccountId) -> Index {
