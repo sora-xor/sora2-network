@@ -482,9 +482,9 @@ impl<T: Trait> Module<T> {
         collateral_asset_id: &T::AssetId,
         quantity: QuoteAmount<Balance>,
     ) -> Result<Fixed, DispatchError> {
-        let price_change_step = FixedWrapper::from(Self::price_change_step()); // price change step
-        let price_change_rate = Self::price_change_rate(); // price change rate
-        let price_change_coeff = price_change_step * price_change_rate; // price change
+        let price_change_step = FixedWrapper::from(Self::price_change_step());
+        let price_change_rate = Self::price_change_rate();
+        let price_change_coeff = price_change_step * price_change_rate;
 
         let current_state: FixedWrapper = Self::buy_function(main_asset_id, Fixed::ZERO)?.into();
         let collateral_price_per_reference_unit: FixedWrapper =
@@ -862,8 +862,9 @@ impl<T: Trait> Module<T> {
     /// actual_reserves_before = collateral_asset_reserves * collateral_asset_usd_price
     /// actual_reserves_after = actual_reserves_before + collateral_asset_input_amount * collateral_asset_usd_price
     ///
-    /// a = (ideal_reserves_before - actual_reserves_before) / ideal_reserves_before
-    /// b = (ideal_reserves_after - actual_reserves_after) / ideal_reserves_after
+    /// unfunded_liabilities = (ideal_reserves_before - actual_reserves_before)
+    /// a = unfunded_liabilities / ideal_reserves_before
+    /// b = unfunded_liabilities / ideal_reserves_after
     /// P = initial_pswap_rewards
     /// N = enabled reserve currencies except PSWAP and VAL
     ///
