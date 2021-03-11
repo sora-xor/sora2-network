@@ -304,7 +304,7 @@ impl Default for DEXId {
 }
 
 pub type BalancePrecision = u8;
-pub const DEFAULT_BALANCE_PRECISION: BalancePrecision = 18;
+pub const DEFAULT_BALANCE_PRECISION: BalancePrecision = crate::FIXED_PRECISION as u8;
 
 #[derive(Encode, Decode, Eq, PartialEq, Clone, Ord, PartialOrd, RuntimeDebug)]
 #[cfg_attr(feature = "std", derive(Hash))]
