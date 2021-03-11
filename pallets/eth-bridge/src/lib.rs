@@ -4,7 +4,11 @@
 extern crate alloc;
 extern crate jsonrpc_core as rpc;
 
-use crate::contract::{functions, FUNCTIONS};
+use crate::contract::{
+    functions, init_add_peer_by_peer_fn, init_remove_peer_by_peer_fn, ADD_PEER_BY_PEER_FN,
+    ADD_PEER_BY_PEER_ID, ADD_PEER_BY_PEER_TX_HASH_ARG_POS, FUNCTIONS, REMOVE_PEER_BY_PEER_FN,
+    REMOVE_PEER_BY_PEER_ID, REMOVE_PEER_BY_PEER_TX_HASH_ARG_POS,
+};
 use crate::types::{Bytes, CallRequest, Log, Transaction, TransactionReceipt};
 use alloc::string::String;
 use codec::{Decode, Encode, FullCodec};
@@ -175,6 +179,10 @@ pub enum OutgoingRequest<T: Trait> {
     PrepareForMigration(OutgoingPrepareForMigration<T>),
     /// 'Migrate' request.
     Migrate(OutgoingMigrate<T>),
+    /// 'Add peer compat' request.
+    AddPeerCompat(OutgoingAddPeerCompat<T>),
+    /// 'Remove peer compat' request.
+    RemovePeerCompat(OutgoingRemovePeerCompat<T>),
 }
 
 impl<T: Trait> OutgoingRequest<T> {
@@ -187,6 +195,8 @@ impl<T: Trait> OutgoingRequest<T> {
             OutgoingRequest::RemovePeer(request) => &request.author,
             OutgoingRequest::PrepareForMigration(request) => &request.author,
             OutgoingRequest::Migrate(request) => &request.author,
+            OutgoingRequest::AddPeerCompat(request) => &request.author,
+            OutgoingRequest::RemovePeerCompat(request) => &request.author,
         }
     }
 
@@ -213,6 +223,12 @@ impl<T: Trait> OutgoingRequest<T> {
             OutgoingRequest::Migrate(request) => request
                 .to_eth_abi(tx_hash)
                 .map(OutgoingRequestEncoded::Migrate),
+            OutgoingRequest::AddPeerCompat(request) => request
+                .to_eth_abi(tx_hash)
+                .map(OutgoingRequestEncoded::AddPeer),
+            OutgoingRequest::RemovePeerCompat(request) => request
+                .to_eth_abi(tx_hash)
+                .map(OutgoingRequestEncoded::RemovePeer),
         }
     }
 
@@ -230,6 +246,8 @@ impl<T: Trait> OutgoingRequest<T> {
             OutgoingRequest::RemovePeer(request) => request.network_id,
             OutgoingRequest::PrepareForMigration(request) => request.network_id,
             OutgoingRequest::Migrate(request) => request.network_id,
+            OutgoingRequest::AddPeerCompat(request) => request.network_id,
+            OutgoingRequest::RemovePeerCompat(request) => request.network_id,
         }
     }
 
@@ -242,6 +260,8 @@ impl<T: Trait> OutgoingRequest<T> {
             OutgoingRequest::RemovePeer(request) => request.validate().map(|_| ()),
             OutgoingRequest::PrepareForMigration(request) => request.validate().map(|_| ()),
             OutgoingRequest::Migrate(request) => request.validate().map(|_| ()),
+            OutgoingRequest::AddPeerCompat(request) => request.validate().map(|_| ()),
+            OutgoingRequest::RemovePeerCompat(request) => request.validate().map(|_| ()),
         }
     }
 
@@ -254,6 +274,8 @@ impl<T: Trait> OutgoingRequest<T> {
             OutgoingRequest::RemovePeer(request) => request.prepare(()),
             OutgoingRequest::PrepareForMigration(request) => request.prepare(()),
             OutgoingRequest::Migrate(request) => request.prepare(()),
+            OutgoingRequest::AddPeerCompat(request) => request.prepare(()),
+            OutgoingRequest::RemovePeerCompat(request) => request.prepare(()),
         }
     }
 
@@ -266,6 +288,8 @@ impl<T: Trait> OutgoingRequest<T> {
             OutgoingRequest::RemovePeer(request) => request.finalize(),
             OutgoingRequest::PrepareForMigration(request) => request.finalize(),
             OutgoingRequest::Migrate(request) => request.finalize(),
+            OutgoingRequest::AddPeerCompat(request) => request.finalize(),
+            OutgoingRequest::RemovePeerCompat(request) => request.finalize(),
         }
     }
 
@@ -278,6 +302,8 @@ impl<T: Trait> OutgoingRequest<T> {
             OutgoingRequest::RemovePeer(request) => request.cancel(),
             OutgoingRequest::PrepareForMigration(request) => request.cancel(),
             OutgoingRequest::Migrate(request) => request.cancel(),
+            OutgoingRequest::AddPeerCompat(request) => request.cancel(),
+            OutgoingRequest::RemovePeerCompat(request) => request.cancel(),
         }
     }
 
@@ -298,6 +324,14 @@ pub enum IncomingRequestKind {
     MarkAsDone,
     PrepareForMigration,
     Migrate,
+    AddPeerCompat,
+    RemovePeerCompat,
+}
+
+impl IncomingRequestKind {
+    pub fn is_compat(&self) -> bool {
+        *self == Self::AddPeerCompat || *self == Self::RemovePeerCompat
+    }
 }
 
 /// The type of request we can send to the offchain worker
@@ -310,9 +344,86 @@ pub enum IncomingRequest<T: Trait> {
     CancelOutgoingRequest(IncomingCancelOutgoingRequest<T>),
     PrepareForMigration(IncomingPrepareForMigration<T>),
     Migrate(IncomingMigrate<T>),
+    ChangePeersCompat(IncomingChangePeersCompat<T>),
 }
 
 impl<T: Trait> IncomingRequest<T> {
+    pub fn try_from_contract_event(
+        event: ContractEvent<T::AssetId, Address, T::AccountId, Balance>,
+        incoming_request: IncomingPreRequest<T>,
+        at_height: u64,
+        tx_hash: H256,
+        tx_receipt: TransactionReceipt,
+    ) -> Result<Self, DispatchError> {
+        let network_id = incoming_request.network_id;
+        let timepoint = incoming_request.timepoint;
+
+        let req = match event {
+            ContractEvent::Deposit(to, amount, token_address, raw_asset_id) => {
+                let (asset_id, asset_kind) = Module::<T>::get_asset_by_raw_asset_id(
+                    raw_asset_id,
+                    &token_address,
+                    network_id,
+                )?
+                .ok_or(Error::<T>::UnsupportedAssetId)?;
+                IncomingRequest::Transfer(IncomingTransfer {
+                    from: Default::default(),
+                    to,
+                    asset_id,
+                    asset_kind,
+                    amount,
+                    tx_hash,
+                    at_height,
+                    timepoint,
+                    network_id,
+                })
+            }
+            ContractEvent::ChangePeers(peer_address, added) => {
+                let peer_account_id = PeerAccountId::<T>::get(network_id, &peer_address);
+                ensure!(
+                    peer_account_id != T::AccountId::default(),
+                    Error::<T>::UnknownPeerAddress
+                );
+                IncomingRequest::ChangePeers(IncomingChangePeers {
+                    peer_account_id,
+                    peer_address,
+                    added,
+                    tx_hash,
+                    at_height,
+                    timepoint,
+                    network_id,
+                })
+            }
+            ContractEvent::ClaimPswap(account_id) => {
+                IncomingRequest::ClaimPswap(IncomingClaimPswap {
+                    account_id,
+                    eth_address: H160(tx_receipt.from.0),
+                    tx_hash,
+                    at_height,
+                    timepoint,
+                    network_id,
+                })
+            }
+            ContractEvent::PreparedForMigration => {
+                IncomingRequest::PrepareForMigration(IncomingPrepareForMigration {
+                    tx_hash,
+                    at_height,
+                    timepoint,
+                    network_id,
+                })
+            }
+            ContractEvent::Migrated(to) => IncomingRequest::Migrate(IncomingMigrate {
+                new_contract_address: to,
+                tx_hash,
+                at_height,
+                timepoint,
+                network_id,
+            }),
+            _ => fail!(Error::<T>::UnknownMethodId),
+        };
+        Ok(req)
+    }
+
     fn hash(&self) -> H256 {
         match self {
             IncomingRequest::Transfer(request) => request.tx_hash,
@@ -322,6 +433,7 @@ impl<T: Trait> IncomingRequest<T> {
             IncomingRequest::CancelOutgoingRequest(request) => request.initial_request_hash,
             IncomingRequest::PrepareForMigration(request) => request.tx_hash,
             IncomingRequest::Migrate(request) => request.tx_hash,
+            IncomingRequest::ChangePeersCompat(request) => request.tx_hash,
         }
     }
 
@@ -334,6 +446,7 @@ impl<T: Trait> IncomingRequest<T> {
             IncomingRequest::CancelOutgoingRequest(request) => request.network_id,
             IncomingRequest::PrepareForMigration(request) => request.network_id,
             IncomingRequest::Migrate(request) => request.network_id,
+            IncomingRequest::ChangePeersCompat(request) => request.network_id,
         }
     }
 
@@ -346,6 +459,7 @@ impl<T: Trait> IncomingRequest<T> {
             IncomingRequest::CancelOutgoingRequest(request) => request.at_height,
             IncomingRequest::PrepareForMigration(request) => request.at_height,
             IncomingRequest::Migrate(request) => request.at_height,
+            IncomingRequest::ChangePeersCompat(request) => request.at_height,
         }
     }
 
@@ -358,6 +472,7 @@ impl<T: Trait> IncomingRequest<T> {
             IncomingRequest::CancelOutgoingRequest(request) => request.prepare(),
             IncomingRequest::PrepareForMigration(request) => request.prepare(),
             IncomingRequest::Migrate(request) => request.prepare(),
+            IncomingRequest::ChangePeersCompat(_request) => Ok(()),
         }
     }
 
@@ -370,6 +485,7 @@ impl<T: Trait> IncomingRequest<T> {
             IncomingRequest::CancelOutgoingRequest(request) => request.cancel(),
             IncomingRequest::PrepareForMigration(request) => request.cancel(),
             IncomingRequest::Migrate(request) => request.cancel(),
+            IncomingRequest::ChangePeersCompat(_request) => Ok(()),
         }
     }
 
@@ -382,6 +498,7 @@ impl<T: Trait> IncomingRequest<T> {
             IncomingRequest::CancelOutgoingRequest(request) => request.finalize(),
             IncomingRequest::PrepareForMigration(request) => request.finalize(),
             IncomingRequest::Migrate(request) => request.finalize(),
+            IncomingRequest::ChangePeersCompat(request) => request.finalize(),
         }
     }
 
@@ -394,6 +511,7 @@ impl<T: Trait> IncomingRequest<T> {
             IncomingRequest::CancelOutgoingRequest(request) => request.timepoint(),
             IncomingRequest::PrepareForMigration(request) => request.timepoint(),
             IncomingRequest::Migrate(request) => request.timepoint(),
+            IncomingRequest::ChangePeersCompat(request) => request.timepoint(),
         }
     }
 }
@@ -670,6 +788,8 @@ decl_storage! {
 
         Peers get(fn peers): map hasher(twox_64_concat) T::NetworkId => BTreeSet<T::AccountId>;
         PendingPeer get(fn pending_peer): map hasher(twox_64_concat) T::NetworkId => Option<T::AccountId>;
+        /// Used for compatibility with XOR and VAL contracts.
+        PendingEthPeersSync: EthPeersSync;
         PeerAccountId get(fn peer_account_id): double_map hasher(twox_64_concat) T::NetworkId, hasher(blake2_128_concat) Address => T::AccountId;
         PeerAddress get(fn peer_address): double_map hasher(twox_64_concat) T::NetworkId, hasher(blake2_128_concat) T::AccountId => Address;
 
@@ -803,6 +923,7 @@ decl_error! {
         ContractIsInMigrationStage,
         ContractIsNotInMigrationStage,
         ContractIsAlreadyInMigrationStage,
+        Unavailable,
         Other,
     }
 }
@@ -908,6 +1029,9 @@ decl_module! {
         ) {
             debug::debug!("called request_from_sidechain");
             let from = ensure_signed(origin)?;
+            if kind == IncomingRequestKind::CancelOutgoingRequest {
+                fail!(Error::<T>::Unavailable);
+            }
             let timepoint = bridge_multisig::Module::<T>::timepoint();
             Self::add_request(OffchainRequest::Incoming(IncomingPreRequest::new(
                 from,
@@ -972,12 +1096,23 @@ decl_module! {
             let nonce = frame_system::Module::<T>::account_nonce(&from);
             Self::add_request(OffchainRequest::outgoing(OutgoingRequest::AddPeer(OutgoingAddPeer {
                 author: from.clone(),
-                peer_account_id: account_id,
+                peer_account_id: account_id.clone(),
                 peer_address: address,
                 nonce,
                 network_id,
             })))?;
             frame_system::Module::<T>::inc_account_nonce(&from);
+            if network_id == T::GetEthNetworkId::get() {
+                let nonce = frame_system::Module::<T>::account_nonce(&from);
+                Self::add_request(OffchainRequest::outgoing(OutgoingRequest::AddPeerCompat(OutgoingAddPeerCompat {
+                    author: from.clone(),
+                    peer_account_id: account_id,
+                    peer_address: address,
+                    nonce,
+                    network_id,
+                })))?;
+                frame_system::Module::<T>::inc_account_nonce(&from);
+            }
         }
 
         #[weight = <T as Trait>::WeightInfo::remove_peer()]
@@ -989,12 +1124,23 @@ decl_module! {
             let nonce = frame_system::Module::<T>::account_nonce(&from);
             Self::add_request(OffchainRequest::outgoing(OutgoingRequest::RemovePeer(OutgoingRemovePeer {
                 author: from.clone(),
-                peer_account_id: account_id,
+                peer_account_id: account_id.clone(),
                 peer_address,
                 nonce,
                 network_id,
             })))?;
             frame_system::Module::<T>::inc_account_nonce(&from);
+            if network_id == T::GetEthNetworkId::get() {
+                let nonce = frame_system::Module::<T>::account_nonce(&from);
+                Self::add_request(OffchainRequest::outgoing(OutgoingRequest::RemovePeerCompat(OutgoingRemovePeerCompat {
+                    author: from.clone(),
+                    peer_account_id: account_id,
+                    peer_address,
+                    nonce,
+                    network_id,
+                })))?;
+                frame_system::Module::<T>::inc_account_nonce(&from);
+            }
         }
 
         #[weight = <T as Trait>::WeightInfo::prepare_for_migration()]
@@ -1036,7 +1182,7 @@ decl_module! {
         #[weight = (0, Pays::No)]
         pub fn register_incoming_request(origin, incoming_request: IncomingRequest<T>) {
             debug::debug!("called register_incoming_request");
-            let author = ensure_signed(origin)?;
+            let author = ensure_signed(origin.clone())?;
             let _ = Self::ensure_bridge_account(&author, incoming_request.network_id())?;
             let tx_hash = incoming_request.hash();
             let net_id = incoming_request.network_id();
@@ -1044,7 +1190,10 @@ decl_module! {
                 !PendingIncomingRequests::<T>::get(net_id).contains(&tx_hash),
                 Error::<T>::TransferIsAlreadyRegistered
             );
-            incoming_request.prepare()?;
+            if let Err(e) = incoming_request.prepare() {
+                Self::finalize_incoming_request(origin, Err((tx_hash, e)), net_id)?;
+                return Err(e);
+            }
             PendingIncomingRequests::<T>::mutate(net_id, |transfers| transfers.insert(tx_hash));
             Self::remove_request_from_queue(net_id, &tx_hash);
             IncomingRequests::<T>::insert(net_id, &tx_hash, incoming_request);
@@ -1128,9 +1277,11 @@ decl_module! {
         }
 
         #[weight = <T as Trait>::WeightInfo::force_add_peer()]
-        pub fn force_add_peer(origin, who: T::AccountId, network_id: BridgeNetworkId<T>) {
+        pub fn force_add_peer(origin, who: T::AccountId, address: EthereumAddress, network_id: BridgeNetworkId<T>) {
             let _ = ensure_root(origin)?;
             if !Self::is_peer(&who, network_id) {
+                PeerAddress::<T>::insert(network_id, &who, address);
+                PeerAccountId::<T>::insert(network_id, &address, who.clone());
                 <Peers<T>>::mutate(network_id, |l| l.insert(who));
             }
         }
@@ -1304,6 +1455,7 @@ impl<T: Trait> Module<T> {
         let can_resubmit = RequestStatuses::<T>::get(net_id, &hash)
             .map(|status| status == RequestStatus::Failed)
             .unwrap_or(false);
+        // TODO: should we cancel the request on resubmission?
         if !can_resubmit {
             ensure!(
                 Request::<T>::get(net_id, &hash).is_none(),
@@ -1478,9 +1630,10 @@ impl<T: Trait> Module<T> {
                 Some(height) => &request_submission_height > height,
                 None => true,
             };
-            let confirmed = current_eth_height >= request.at_height()
-                && current_eth_height - request.at_height() >= CONFIRMATION_INTERVAL;
+            let confirmed =
+                current_eth_height.saturating_sub(request.at_height()) >= CONFIRMATION_INTERVAL;
             if need_to_approve && confirmed {
+                // FIXME: load the transaction again to check if it is presented in the chain.
                 let sent = Self::send_incoming_request_result(Ok(request), network_id).is_ok();
                 if sent {
                     approved.insert(hash, request_submission_height);
@@ -1548,6 +1701,7 @@ impl<T: Trait> Module<T> {
             pre_request.network_id,
             pre_request.kind,
         )?;
+        ensure!(tx.input.0.len() >= 4, Error::<T>::Other);
         let mut method_id = [0u8; 4];
         method_id.clone_from_slice(&tx.input.0[..4]);
         let funs = FUNCTIONS.get_or_init(functions);
@@ -1625,9 +1779,11 @@ impl<T: Trait> Module<T> {
                     }
                     _ => {
                         debug::debug!("Loading approved tx {}", tx_hash);
-                        Self::handle_parsed_incoming_request_result(
+                        let incoming_request_result =
                             Self::load_tx_receipt(tx_hash, network_id, kind)
-                                .and_then(|tx| Self::parse_incoming_request(tx, request)),
+                                .and_then(|tx| Self::parse_incoming_request(tx, request));
+                        Self::handle_parsed_incoming_request_result(
+                            incoming_request_result,
                             timepoint,
                             request_hash,
                             network_id,
@@ -1654,7 +1810,7 @@ impl<T: Trait> Module<T> {
         s_eth_height.set(&current_eth_height);
         let s_handled_requests = StorageValueRef::persistent(b"eth-bridge-ocw::handled-request");
 
-        let finalized_height = match Self::load_substrate_finalized_height() {
+        let substrate_finalized_height = match Self::load_substrate_finalized_height() {
             Ok(v) => v,
             Err(e) => {
                 debug::info!(
@@ -1674,7 +1830,7 @@ impl<T: Trait> Module<T> {
             let request_hash = request.hash();
             let request_submission_height: T::BlockNumber =
                 Self::request_submission_height(network_id, &request_hash);
-            if finalized_height < request_submission_height {
+            if substrate_finalized_height < request_submission_height {
                 continue;
             }
             let need_to_handle = match handled.get(&request_hash) {
@@ -1968,91 +2124,118 @@ impl<T: Trait> Module<T> {
         }
     }
 
+    fn parse_old_incoming_request_method_call(
+        incoming_request: IncomingPreRequest<T>,
+        tx: Transaction,
+    ) -> Result<IncomingRequest<T>, DispatchError> {
+        let (fun, arg_pos, tail, added) = if let Some(tail) = strip_prefix(
+            &tx.input.0,
+            &*ADD_PEER_BY_PEER_ID.get_or_init(init_add_peer_by_peer_fn),
+        ) {
+            (
+                &ADD_PEER_BY_PEER_FN,
+                ADD_PEER_BY_PEER_TX_HASH_ARG_POS,
+                tail,
+                true,
+            )
+        } else if let Some(tail) = strip_prefix(
+            &tx.input.0,
+            &*REMOVE_PEER_BY_PEER_ID.get_or_init(init_remove_peer_by_peer_fn),
+        ) {
+            (
+                &REMOVE_PEER_BY_PEER_FN,
+                REMOVE_PEER_BY_PEER_TX_HASH_ARG_POS,
+                tail,
+                false,
+            )
+        } else {
+            fail!(Error::<T>::UnknownMethodId);
+        };
+
+        let tokens = (*fun.get().unwrap())
+            .decode_input(tail)
+            .map_err(|_| Error::<T>::EthAbiDecodingError)?;
+        let request_hash = parse_hash_from_call::<T>(tokens, arg_pos)?;
+
+        let oc_request: OffchainRequest<T> =
+            Request::<T>::get(T::GetEthNetworkId::get(), request_hash)
+                .ok_or(Error::<T>::UnknownRequest)?;
+        match oc_request {
+            OffchainRequest::Outgoing(
+                OutgoingRequest::AddPeer(OutgoingAddPeer {
+                    peer_address,
+                    peer_account_id,
+                    ..
+                }),
+                _,
+            )
+            | OffchainRequest::Outgoing(
+                OutgoingRequest::RemovePeer(OutgoingRemovePeer {
+                    peer_address,
+                    peer_account_id,
+                    ..
+                }),
+                _,
+            ) => {
+                let contract = match tx.to {
+                    Some(x) if x.0 == Self::xor_master_contract_address().0 => {
+                        ChangePeersContract::XOR
+                    }
+                    Some(x) if x.0 == Self::val_master_contract_address().0 => {
+                        ChangePeersContract::VAL
+                    }
+                    _ => fail!(Error::<T>::UnknownContractAddress),
+                };
+                let at_height = tx
+                    .block_number
+                    .expect("'block_number' is null only when the log/transaction is pending; qed")
+                    .as_u64();
+                let request = IncomingRequest::ChangePeersCompat(IncomingChangePeersCompat {
+                    peer_account_id,
+                    peer_address,
+                    added,
+                    contract,
+                    tx_hash: incoming_request.hash,
+                    at_height,
+                    timepoint: incoming_request.timepoint,
+                    network_id: incoming_request.network_id,
+                });
+                Ok(request)
+            }
+            _ => fail!(Error::<T>::InvalidFunctionInput),
+        }
+    }
+
     fn parse_incoming_request(
         tx_receipt: TransactionReceipt,
-        incoming_request: IncomingPreRequest<T>,
+        incoming_pre_request: IncomingPreRequest<T>,
     ) -> Result<IncomingRequest<T>, DispatchError> {
         let tx_approved = tx_receipt.is_approved();
         ensure!(tx_approved, Error::<T>::EthTransactionIsFailed);
+        let kind = incoming_pre_request.kind;
+        let network_id = incoming_pre_request.network_id;
+
+        // For XOR and VAL contracts compatibility.
+        if kind.is_compat() {
+            let tx = Self::load_tx(H256(tx_receipt.transaction_hash.0), network_id, kind)?;
+            return Self::parse_old_incoming_request_method_call(incoming_pre_request, tx);
+        }
+
         let at_height = tx_receipt
             .block_number
             .expect("'block_number' is null only when the log/transaction is pending; qed")
             .as_u64();
         let tx_hash = H256(tx_receipt.transaction_hash.0);
-        let timepoint = incoming_request.timepoint;
-        let kind = incoming_request.kind;
-        let network_id = incoming_request.network_id;
 
         let call = Self::parse_main_event(&tx_receipt.logs, kind)?;
-
-        Ok(match call {
-            ContractEvent::Deposit(to, amount, token_address, raw_asset_id) => {
-                let (asset_id, asset_kind) = Module::<T>::get_asset_by_raw_asset_id(
-                    raw_asset_id,
-                    &token_address,
-                    network_id,
-                )?
-                .ok_or(Error::<T>::UnsupportedAssetId)?;
-                IncomingRequest::Transfer(IncomingTransfer {
-                    from: Default::default(),
-                    to,
-                    asset_id,
-                    asset_kind,
-                    amount,
-                    tx_hash,
-                    at_height,
-                    timepoint,
-                    network_id,
-                })
-            }
-            ContractEvent::ChangePeers(peer_address, added) => {
-                let peer_account_id = Self::peer_account_id(network_id, &peer_address);
-                ensure!(
-                    peer_account_id != T::AccountId::default(),
-                    Error::<T>::UnknownPeerAddress
-                );
-                IncomingRequest::ChangePeers(IncomingChangePeers {
-                    peer_account_id,
-                    peer_address,
-                    added,
-                    tx_hash,
-                    at_height,
-                    timepoint,
-                    network_id,
-                })
-            }
-            ContractEvent::ClaimPswap(account_id) => {
-                let tx_hash = H256(tx_receipt.transaction_hash.0);
-                IncomingRequest::ClaimPswap(IncomingClaimPswap {
-                    account_id,
-                    eth_address: H160(tx_receipt.from.0),
-                    tx_hash,
-                    at_height,
-                    timepoint,
-                    network_id,
-                })
-            }
-            ContractEvent::PreparedForMigration => {
-                let tx_hash = H256(tx_receipt.transaction_hash.0);
-                IncomingRequest::PrepareForMigration(IncomingPrepareForMigration {
-                    tx_hash,
-                    at_height,
-                    timepoint,
-                    network_id,
-                })
-            }
-            ContractEvent::Migrated(to) => {
-                let tx_hash = H256(tx_receipt.transaction_hash.0);
-                IncomingRequest::Migrate(IncomingMigrate {
-                    new_contract_address: to,
-                    tx_hash,
-                    at_height,
-                    timepoint,
-                    network_id,
-                })
-            }
-            _ => fail!(Error::<T>::UnknownMethodId),
-        })
+        // TODO (optimization): pre-validate the parsed calls.
+        IncomingRequest::<T>::try_from_contract_event(
+            call,
+            incoming_pre_request,
+            at_height,
+            tx_hash,
+            tx_receipt,
+        )
     }
 
     fn send_incoming_request_result(
@@ -2180,6 +2363,7 @@ impl<T: Trait> Module<T> {
         Ok(tx_receipt)
     }
 
+    // TODO: check if transaction failed due to gas limit
     fn load_tx_receipt(
         hash: H256,
         network_id: T::NetworkId,
@@ -2388,4 +2572,19 @@ where
     } else {
         S::iter().map(f).collect()
     }
+}
+
+// TODO: remove when `[T]::strip_prefix` will be stabilized.
+pub fn strip_prefix<'a, T>(slice: &'a [T], prefix: &'a [T]) -> Option<&'a [T]>
+where
+    T: PartialEq,
+{
+    let n = prefix.len();
+    if n <= slice.len() {
+        let (head, tail) = slice.split_at(n);
+        if head == prefix {
+            return Some(tail);
+        }
+    }
+    None
 }

@@ -52,8 +52,6 @@ std = [
     'pool-xyk/std',
     'dex-manager/std',
     'trading-pair/std',
-    'mock-liquidity-source/std',
-    'pswap-distribution/std',
     'sp-core/std',
     'sp-runtime/std',
     'pallet-timestamp/std',
