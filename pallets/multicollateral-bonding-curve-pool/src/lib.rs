@@ -103,6 +103,10 @@ decl_storage! {
 
         /// Reward multipliers for special assets. Asset Id => Reward Multiplier
         pub AssetsWithOptionalRewardMultiplier: map hasher(twox_64_concat) T::AssetId => Option<Fixed>;
+
+        /// Amount of PSWAP initially stored in account dedicated for TBC rewards. Actual account balance will deplete over time,
+        /// however this constant is not modified.
+        pub InitialPswapRewardsSupply: Balance = balance!(25000000);
     }
 }
 
@@ -178,6 +182,7 @@ decl_module! {
             Ok(())
         }
 
+        /// Claim all available PSWAP rewards by account signing this transaction.
         #[weight = <T as Trait>::WeightInfo::claim_incentives()]
         fn claim_incentives(origin) -> DispatchResult {
             let who = ensure_signed(origin)?;
@@ -821,6 +826,8 @@ impl<T: Trait> Module<T> {
         Ok(price)
     }
 
+    /// Calculate USD price for single collateral asset that is stored in reserves account. In other words, find out how much
+    /// reserves worth, considering only one asset type.
     fn actual_reserves_reference_price(
         reserves_account_id: &T::AccountId,
         collateral_asset_id: &T::AssetId,
@@ -832,6 +839,8 @@ impl<T: Trait> Module<T> {
             .map_err(|_| Error::<T>::PriceCalculationFailed.into())
     }
 
+    /// Calculate USD price for all XOR in network, this is done by applying ideal sell function to XOR total supply.
+    /// - `delta` is a XOR supply offset from current total supply.
     fn ideal_reserves_reference_price(delta: Fixed) -> Result<Balance, DispatchError> {
         let base_asset_id = T::GetBaseAssetId::get();
         let base_total_supply = Assets::<T>::total_issuance(&base_asset_id)?;
@@ -848,24 +857,29 @@ impl<T: Trait> Module<T> {
 
     /// Calculate amount of PSWAP rewarded for collateralizing XOR in TBC.
     ///
-    /// ideal = sell_function(0 to xor_total_supply)
-    /// actual_before = input_currency_reserve * currency_usd_price
-    /// actual_after = actual_before + input_currency_amount * input_currency_usd_price
-    /// a = ideal_before - actual_before
-    /// b = ideal_after - actual_after
+    /// ideal_reserves_before = sell_function(0 to xor_total_supply_before_trade)
+    /// ideal_reserves_after = sell_function(0 to xor_total_supply_after_trade)
+    /// actual_reserves_before = collateral_asset_reserves * collateral_asset_usd_price
+    /// actual_reserves_after = actual_reserves_before + collateral_asset_input_amount * collateral_asset_usd_price
+    ///
+    /// a = (ideal_reserves_before - actual_reserves_before) / ideal_reserves_before
+    /// b = (ideal_reserves_after - actual_reserves_after) / ideal_reserves_after
+    /// P = initial_pswap_rewards
     /// N = enabled reserve currencies except PSWAP and VAL
-    /// reward_usd = (a - b) * (mean(a, b) / ideal_after) / (N * 3)
+    ///
+    /// reward_pswap = ((a - b) * mean(a, b) * P) / N
+    ///
     pub fn calculate_buy_reward(
         reserves_account_id: &T::AccountId,
         collateral_asset_id: &T::AssetId,
-        collateral_asset_amount: Balance,
+        _collateral_asset_amount: Balance,
         main_asset_amount: Balance,
     ) -> Result<Balance, DispatchError> {
         if !Self::collateral_is_incentivised(collateral_asset_id) {
             return Ok(Balance::zero());
         }
 
-        // State values.
+        // Get current state values.
         let ideal_before: FixedWrapper = Self::ideal_reserves_reference_price(Fixed::ZERO)?.into();
         let ideal_after: FixedWrapper = Self::ideal_reserves_reference_price(
             FixedWrapper::from(main_asset_amount)
@@ -875,30 +889,23 @@ impl<T: Trait> Module<T> {
         .into();
         let actual_before: FixedWrapper =
             Self::actual_reserves_reference_price(reserves_account_id, collateral_asset_id)?.into();
-        let actual_after = actual_before.clone()
-            + FixedWrapper::from(collateral_asset_amount)
-                * Self::reference_price(collateral_asset_id)?;
-        let N: u128 = IncentivisedCurrenciesNum::get().into();
-        let N: FixedWrapper = FixedWrapper::from(N * balance!(1));
+        let incentivised_currencies_num: u128 = IncentivisedCurrenciesNum::get().into();
+        let N: FixedWrapper = FixedWrapper::from(incentivised_currencies_num * balance!(1));
+        let P: FixedWrapper = FixedWrapper::from(InitialPswapRewardsSupply::get());
 
-        // Calculate rewards in USD.
-        let a = ideal_before.clone() - actual_before;
-        let b = ideal_after.clone() - actual_after;
+        // Calculate reward.
+        let unfunded_liabilities = ideal_before.clone() - actual_before;
+        let a = unfunded_liabilities.clone() / ideal_before;
+        let b = unfunded_liabilities / ideal_after;
         let mean_ab = (a.clone() + b.clone()) / fixed_wrapper!(2);
-        let first_term = a - b;
-        let second_term = mean_ab / ideal_before;
-        let reference_amount = (first_term * second_term) / (N * fixed_wrapper!(3));
-
-        // Convert to PSWAP.
-        let pswap_price = Self::reference_price(&PSWAP.into())?;
-        let pswap_amount = reference_amount / FixedWrapper::from(pswap_price);
-        pswap_amount
+        let reward_pswap = ((a - b) * mean_ab * P) / N;
+        reward_pswap
             .try_into_balance()
             .map_err(|_| Error::<T>::PriceCalculationFailed.into())
     }
 
     /// Check if particular asset is incentivesed, when depositing it as collateral,
-    /// i.e. will result in PSWAP rewards during buy operation.
+    /// i.e. if it will result in PSWAP rewards during buy operation.
     fn collateral_is_incentivised(collateral_asset_id: &T::AssetId) -> bool {
         collateral_asset_id != &PSWAP.into() && collateral_asset_id != &VAL.into()
     }
