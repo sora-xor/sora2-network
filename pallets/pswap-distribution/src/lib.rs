@@ -1,7 +1,8 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
+use codec::{Decode, Encode};
 use common::{
-    fixed,
+    fixed, fixed_wrapper,
     fixnum::ops::{CheckedAdd, CheckedSub},
     prelude::{Balance, FixedWrapper, SwapAmount},
     EnsureDEXManager, Fixed, LiquiditySourceFilter, LiquiditySourceType,
@@ -11,7 +12,7 @@ use frame_support::{
     dispatch::{DispatchError, DispatchResult, Weight},
     ensure, fail,
     traits::Get,
-    IterableStorageDoubleMap, IterableStorageMap,
+    IterableStorageDoubleMap, IterableStorageMap, RuntimeDebug,
 };
 use frame_system::{self as system, ensure_signed};
 use liquidity_proxy::LiquidityProxyTrait;
@@ -32,13 +33,20 @@ type Assets<T> = assets::Module<T>;
 type System<T> = frame_system::Module<T>;
 
 pub trait OnPswapBurned {
-    fn on_pswap_burned(amount: Balance);
+    fn on_pswap_burned(distribution: PswapRemintInfo);
 }
 
 impl OnPswapBurned for () {
-    fn on_pswap_burned(_amount: Balance) {
+    fn on_pswap_burned(_distribution: PswapRemintInfo) {
         // do nothing
     }
+}
+
+#[derive(Encode, Decode, Clone, RuntimeDebug, Default)]
+pub struct PswapRemintInfo {
+    pub liquidity_providers: Balance,
+    pub parliament: Balance,
+    pub vesting: Balance,
 }
 
 pub trait Trait: common::Trait + assets::Trait + technical::Trait {
@@ -77,9 +85,8 @@ decl_storage! {
         /// Sum of all shares of incentive token owners.
         pub ClaimableShares get(fn claimable_shares): Fixed;
 
-        /// This is needed for farm id 0, now it is hardcoded, in future it will be resolved and
-        /// used in a more convenient way.
-        pub BurnedPswapDedicatedForOtherPallets get(fn burned_pswap_dedicated_for_other_pallets): Fixed;
+        /// Fraction of PSWAP that could be reminted for parliament.
+        ParliamentPswapFraction get(fn parliament_pswap_fraction): Fixed = fixed!(0.1);
     }
     add_extra_genesis {
         /// (Fees Account, (DEX Id, Marker Token Id, Distribution Frequency, Block Offset))
@@ -346,53 +353,17 @@ impl<T: Trait> Module<T> {
             return Ok(());
         }
 
-        let incentive_total = FixedWrapper::from(incentive_total);
-        // Adjust values and burn portion of incentive.
-        let incentive_to_burn = incentive_total.clone() * FixedWrapper::from(BurnRate::get());
-        let incentive_to_revive = incentive_total.clone() - incentive_to_burn.clone();
-        let incentive_total = incentive_total
-            .try_into_balance()
-            .map_err(|_| Error::<T>::CalculationError)?;
+        // Calculate actual amounts regarding their destinations to be reminted. Only liquidity providers portion is reminted here, others
+        // are to be reminted in responsible pallets.
+        let distribution = Self::calculate_pswap_distribution(incentive_total)?;
+        // Burn all incentives.
         assets::Module::<T>::burn_from(
             &incentive_asset_id,
             tech_account_id,
             fees_account_id,
             incentive_total,
         )?;
-
-        // This is needed for other pallet that will use this variables, for example this is
-        // farming pallet.
-        Self::deposit_event(RawEvent::IncentivesBurnedAfterExchange(
-            dex_id.clone(),
-            incentive_asset_id.clone(),
-            incentive_total,
-            incentive_to_burn
-                .clone()
-                .try_into_balance()
-                .map_err(|_| Error::<T>::CalculationError)?,
-        ));
-
-        // This is needed for farm id 0, now it is hardcoded, in future it will be resolved and
-        // used in move convinient way.
-        if incentive_asset_id.clone() == common::PSWAP.into() {
-            let old = BurnedPswapDedicatedForOtherPallets::get();
-            let new: Fixed = (old + incentive_to_burn.clone())
-                .get()
-                .map_err(|_| Error::<T>::CalculationError)?;
-            BurnedPswapDedicatedForOtherPallets::set(new);
-        }
-
-        // Shadowing intended, re-mint decreased incentive amount and set it as new total.
-        let incentive_total = incentive_to_revive
-            .try_into_balance()
-            .map_err(|_| Error::<T>::CalculationError)?;
-
-        let incentive_to_burn_unwrapped: Balance = incentive_to_burn
-            .try_into_balance()
-            .map_err(|_| Error::<T>::CalculationError)?;
-        if !incentive_to_burn_unwrapped.is_zero() {
-            T::OnPswapBurnedAggregator::on_pswap_burned(incentive_to_burn_unwrapped);
-        }
+        T::OnPswapBurnedAggregator::on_pswap_burned(distribution.clone());
 
         let mut claimable_incentives = FixedWrapper::from(assets::Module::<T>::free_balance(
             &incentive_asset_id,
@@ -405,7 +376,8 @@ impl<T: Trait> Module<T> {
             if currency_id == into_currency!(T, marker_asset_id.clone()) && !data.free.is_zero() {
                 let pool_tokens: T::CompatBalance = data.free.into();
                 let share = FixedWrapper::from(pool_tokens.into())
-                    / (FixedWrapper::from(marker_total) / FixedWrapper::from(incentive_total));
+                    / (FixedWrapper::from(marker_total)
+                        / FixedWrapper::from(distribution.liquidity_providers));
 
                 let total_claimable_shares = ClaimableShares::get();
                 let claimable_share = if total_claimable_shares == fixed!(0) {
@@ -447,7 +419,7 @@ impl<T: Trait> Module<T> {
             &incentive_asset_id,
             tech_account_id,
             tech_account_id,
-            incentive_total,
+            distribution.liquidity_providers,
         )?;
 
         // TODO: define condition on which IncentiveDistributionFailed event if applicable
@@ -455,10 +427,39 @@ impl<T: Trait> Module<T> {
             dex_id.clone(),
             fees_account_id.clone(),
             incentive_asset_id,
-            incentive_total,
+            distribution.liquidity_providers,
             shareholders_num,
         ));
         Ok(())
+    }
+
+    fn calculate_pswap_distribution(
+        amount_burned: Balance,
+    ) -> Result<PswapRemintInfo, DispatchError> {
+        let amount_burned = FixedWrapper::from(amount_burned);
+        // Calculate amount for parliament and actual remainder after its fraction.
+        let amount_parliament = (amount_burned.clone() * ParliamentPswapFraction::get())
+            .try_into_balance()
+            .map_err(|_| Error::<T>::CalculationError)?;
+        let amount_left = (amount_burned.clone() - amount_parliament)
+            .try_into_balance()
+            .map_err(|_| Error::<T>::CalculationError)?;
+
+        // Calculate amount for liquidity providers considering remaining amount.
+        let fraction_lp = fixed_wrapper!(1) - BurnRate::get();
+        let amount_lp = (FixedWrapper::from(amount_burned) * fraction_lp)
+            .try_into_balance()
+            .map_err(|_| Error::<T>::CalculationError)?;
+        let amount_lp = amount_lp.min(amount_left);
+
+        // Calculate amount for vesting from remaining amount.
+        let amount_vesting = amount_left.saturating_sub(amount_lp); // guaranteed to be >= 0
+
+        Ok(PswapRemintInfo {
+            liquidity_providers: amount_lp,
+            vesting: amount_vesting,
+            parliament: amount_parliament,
+        })
     }
 
     pub fn incentive_distribution_routine(block_num: T::BlockNumber) {
