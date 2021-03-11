@@ -465,7 +465,7 @@ impl<T: Trait> Module<T> {
     /// We have a quadratic equation:
     /// ```nocompile
     /// buy_function(x) = price_change_coefficient * x + initial_price
-    /// Assume `M` = price_change_coefficient
+    /// Assume `M` = 1 / price_change_coefficient = 1 / 1337
     ///
     /// M * AD² + 2 * AB * AD - 2 * S = 0
     /// equation with two solutions, taking only positive one:
