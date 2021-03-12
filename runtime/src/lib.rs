@@ -156,7 +156,7 @@ pub fn native_version() -> NativeVersion {
 }
 
 /// Sora network needs to have minimal requirement for staking equal to 5000 XOR.
-pub const MIN_STAKE: Balance = 5000u128;
+pub const MIN_STAKE: Balance = 5000_000_000_000_000_000_000_u128; // this is equivelant to balance!(5000);
 
 /// This is `Filter` trait implementation that just predicate `exposure.total` in the staking pallet,
 /// exposured_stake field of `ValidatorDataToFilter` structure is used for this.
