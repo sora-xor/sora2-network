@@ -155,6 +155,22 @@ pub fn native_version() -> NativeVersion {
     }
 }
 
+/// Sora network needs to have minimal requirement for staking equal to 5000 XOR.
+pub const MIN_STAKE: Balance = 5000_000_000_000_000_000_000_u128; // this is equivelant to balance!(5000);
+
+/// This is `Filter` trait implementation that just predicate `exposure.total` in the staking pallet,
+/// exposured_stake field of `ValidatorDataToFilter` structure is used for this.
+/// It is possible to add other fields to this data structure in future if needed more advanced
+/// filtering.
+pub struct ValidatorsFilter;
+impl frame_support::traits::Filter<pallet_staking::ValidatorDataToFilter<Runtime>>
+    for ValidatorsFilter
+{
+    fn filter(validator_data: &pallet_staking::ValidatorDataToFilter<Runtime>) -> bool {
+        validator_data.exposured_stake >= MIN_STAKE
+    }
+}
+
 parameter_types! {
     pub const BlockHashCount: BlockNumber = 250;
     pub const MaximumBlockWeight: Weight = 2 * WEIGHT_PER_SECOND;
@@ -316,6 +332,7 @@ impl Convert<u128, Balance> for CurrencyToVoteHandler {
 }
 
 impl pallet_staking::Trait for Runtime {
+    type ValidatorsFilter = ValidatorsFilter;
     type Currency = Balances;
     type MultiCurrency = Tokens;
     type ValTokenId = GetValAssetId;
