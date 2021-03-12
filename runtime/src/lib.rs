@@ -171,13 +171,6 @@ impl frame_support::traits::Filter<pallet_staking::ValidatorDataToFilter<Runtime
     }
 }
 
-impl frame_support::traits::Filter<Balance> for ValidatorsFilter {
-    fn filter(arg: &Balance) -> bool {
-        let barrier: Balance = 5000u32.into();
-        arg >= &barrier
-    }
-}
-
 parameter_types! {
     pub const BlockHashCount: BlockNumber = 250;
     pub const MaximumBlockWeight: Weight = 2 * WEIGHT_PER_SECOND;
