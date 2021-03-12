@@ -505,12 +505,13 @@ impl<T: Trait> OutgoingTransfer<T> {
 
     pub fn finalize(&self) -> Result<(), DispatchError> {
         self.validate()?;
+        // TODO: add a test
+        let bridge_acc = get_bridge_account::<T>(self.network_id);
+        assets::Module::<T>::unreserve(self.asset_id, &bridge_acc, self.amount)?;
         if let Some(AssetKind::Sidechain) =
             Module::<T>::registered_asset(self.network_id, &self.asset_id)
         {
-            let bridge_acc = &get_bridge_account::<T>(self.network_id);
-            assets::Module::<T>::unreserve(self.asset_id, bridge_acc, self.amount)?;
-            assets::Module::<T>::burn_from(&self.asset_id, bridge_acc, bridge_acc, self.amount)?;
+            assets::Module::<T>::burn_from(&self.asset_id, &bridge_acc, &bridge_acc, self.amount)?;
         }
         Ok(())
     }
