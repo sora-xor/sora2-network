@@ -722,8 +722,7 @@ mod tests {
 
             let (limit, owned) = MBCPool::rewards(&alice());
             assert!(limit.is_zero());
-            // FIXME: this does seem too large for a reward, considering PSWAP price $10
-            assert_eq!(owned, balance!(22.911473417890552539));
+            assert_eq!(owned, balance!(22.857232131825000000));
         });
     }
 
@@ -782,27 +781,35 @@ mod tests {
             assert!(limit_bob.is_zero());
             assert!(!owned_alice.is_zero());
             assert!(!owned_bob.is_zero());
-            let pswap_to_burn = (FixedWrapper::from(owned_alice + owned_bob) / MBCPool::pswap_burned_dedicated_for_rewards() / fixed_wrapper!(2)).into_balance();
-            MBCPool::on_pswap_burned(pswap_to_burn);
+            let vesting_amount = (FixedWrapper::from(owned_alice + owned_bob) / fixed_wrapper!(2)).into_balance();
+            let remint_info = pswap_distribution::PswapRemintInfo {
+                vesting: vesting_amount,
+                ..Default::default()
+            };
+            MBCPool::on_pswap_burned(remint_info);
             let (limit_alice, _) = MBCPool::rewards(&alice());
             let (limit_bob, _) = MBCPool::rewards(&bob());
-            assert_eq!(limit_alice, balance!(1145.147548375146487267));
-            assert_eq!(limit_bob, balance!(572.536725117851865203));
+            assert_eq!(limit_alice, balance!(1142.224353616637499999));
+            assert_eq!(limit_bob, balance!(570.936592272849999999));
 
             // claiming incentives partially
             assert_ok!(MBCPool::claim_incentives(Origin::signed(alice())));
             assert_ok!(MBCPool::claim_incentives(Origin::signed(bob())));
             let (limit_alice, remaining_owned_alice) = MBCPool::rewards(&alice());
             let (limit_bob, remaining_owned_bob) = MBCPool::rewards(&bob());
-            assert_eq!(remaining_owned_alice, balance!(1145.147548375146487269));
-            assert_eq!(remaining_owned_bob, balance!(572.536725117851865205));
+            assert_eq!(remaining_owned_alice, balance!(1142.224353616637500001));
+            assert_eq!(remaining_owned_bob, balance!(570.936592272850000001));
             assert!(limit_alice.is_zero());
             assert!(limit_bob.is_zero());
             assert_eq!(Assets::free_balance(&PSWAP, &alice()).unwrap(), owned_alice - remaining_owned_alice);
             assert_eq!(Assets::free_balance(&PSWAP, &bob()).unwrap(), owned_bob - remaining_owned_bob);
 
             // claiming remainder
-            MBCPool::on_pswap_burned(pswap_to_burn + balance!(100));
+            let remint_info = pswap_distribution::PswapRemintInfo {
+                vesting: vesting_amount + balance!(100),
+                ..Default::default()
+            };
+            MBCPool::on_pswap_burned(remint_info);
             assert_ok!(MBCPool::claim_incentives(Origin::signed(alice())));
             assert_ok!(MBCPool::claim_incentives(Origin::signed(bob())));
             let (_, empty_owned_alice) = MBCPool::rewards(&alice());
@@ -955,6 +962,80 @@ mod tests {
             .unwrap();
             assert_eq!(price_c.fee, price_d.fee);
             assert_eq!(price_c.fee, balance!(0.077942042880974657));
+        });
+    }
+
+    #[test]
+    fn sequential_rewards_adequacy_check() {
+        let mut ext = ExtBuilder::new(vec![
+            (alice(), XOR, balance!(250000), AssetSymbol(b"XOR".to_vec()), 18),
+            (alice(), VAL, balance!(2000), AssetSymbol(b"VAL".to_vec()), 18),
+            (alice(), DAI, balance!(2000000), AssetSymbol(b"DAI".to_vec()), 18),
+            (alice(), USDT, balance!(0), AssetSymbol(b"USDT".to_vec()), 18),
+            (alice(), PSWAP, balance!(0), AssetSymbol(b"PSWAP".to_vec()), 18),
+        ])
+        .build();
+        ext.execute_with(|| {
+            MockDEXApi::init().unwrap();
+            let _ = bonding_curve_pool_init(vec![]).unwrap();
+            TradingPair::register(Origin::signed(alice()),DEXId::Polkaswap.into(), XOR, VAL).expect("Failed to register trading pair.");
+            TradingPair::register(Origin::signed(alice()),DEXId::Polkaswap.into(), XOR, DAI).expect("Failed to register trading pair.");
+            MBCPool::initialize_pool_unchecked(VAL).expect("Failed to initialize pool.");
+            MBCPool::initialize_pool_unchecked(DAI).expect("Failed to initialize pool.");
+
+            // XOR total supply in network is 350000
+            let xor_total_supply: FixedWrapper = Assets::total_issuance(&XOR).unwrap().into();
+            assert_eq!(xor_total_supply.clone().into_balance(), balance!(350000));
+            // initial XOR price is $264
+            let xor_ideal_reserves: FixedWrapper = MBCPool::ideal_reserves_reference_price(Default::default()).unwrap().into();
+            assert_eq!((xor_ideal_reserves / xor_total_supply).into_balance(), balance!(264.712041884816753926));
+            // pswap price is $10 on mock secondary market
+            assert_eq!(
+                MockDEXApi::quote(&PSWAP, &DAI, SwapAmount::with_desired_input(balance!(1), balance!(0)), MBCPool::self_excluding_filter()).unwrap().amount,
+                balance!(10.173469387755102041)
+            );
+
+            MBCPool::exchange(
+                &alice(),
+                &alice(),
+                &DEXId::Polkaswap.into(),
+                &DAI,
+                &XOR,
+                SwapAmount::with_desired_input(balance!(1000), Balance::zero()),
+            )
+            .unwrap();
+
+            let (limit, owned_1) = MBCPool::rewards(&alice());
+            assert!(limit.is_zero());
+            assert_eq!(owned_1, balance!(59.626477921775000000));
+
+            MBCPool::exchange(
+                &alice(),
+                &alice(),
+                &DEXId::Polkaswap.into(),
+                &DAI,
+                &XOR,
+                SwapAmount::with_desired_input(balance!(10000), Balance::zero()),
+            )
+            .unwrap();
+
+            let (limit, owned_2) = MBCPool::rewards(&alice());
+            assert!(limit.is_zero());
+            assert_eq!(owned_2, owned_1 + balance!(596.119496428700000000));
+
+            MBCPool::exchange(
+                &alice(),
+                &alice(),
+                &DEXId::Polkaswap.into(),
+                &DAI,
+                &XOR,
+                SwapAmount::with_desired_input(balance!(1000000), Balance::zero()),
+            )
+            .unwrap();
+
+            let (limit, owned_3) = MBCPool::rewards(&alice());
+            assert!(limit.is_zero());
+            assert_eq!(owned_3, owned_2 + balance!(58172.983022759800000000));
         });
     }
 }
