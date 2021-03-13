@@ -1,7 +1,6 @@
 pragma solidity ^0.7.4;
 // "SPDX-License-Identifier: Apache License 2.0"
 
-import "./IERC20.sol";
 import "./MasterToken.sol";
 import "./Ownable.sol";
 import "./ERC20Burnable.sol";
