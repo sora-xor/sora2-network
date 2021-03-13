@@ -1,5 +1,5 @@
 use crate::Trait;
-use common::{balance, prelude::Balance, BasisPoints, DOT, XOR};
+use common::{balance, hash, prelude::Balance, BasisPoints, DEXInfo, DOT, XOR};
 use currencies::BasicCurrencyAdapter;
 use frame_support::{impl_outer_origin, parameter_types, weights::Weight};
 use frame_system as system;
@@ -46,7 +46,10 @@ pub fn FERDIE() -> AccountId {
     AccountId32::from([5; 32])
 }
 
+pub const DEX_A_ID: DEXId = 220;
+
 pub struct ExtBuilder {
+    initial_dex_list: Vec<(DEXId, DEXInfo<AssetId>)>,
     endowed_accounts: Vec<(AccountId, AssetId, Balance)>,
     initial_permission_owners: Vec<(u32, Scope, Vec<AccountId>)>,
     initial_permissions: Vec<(AccountId, Scope, Vec<u32>)>,
@@ -54,14 +57,15 @@ pub struct ExtBuilder {
 
 impl Default for ExtBuilder {
     fn default() -> Self {
-        let preset01 = vec![
-            INIT_DEX,
-            CREATE_FARM,
-            LOCK_TO_FARM,
-            UNLOCK_FROM_FARM,
-            CLAIM_FROM_FARM,
-        ];
+        let preset01 = vec![CREATE_FARM, LOCK_TO_FARM, UNLOCK_FROM_FARM, CLAIM_FROM_FARM];
         Self {
+            initial_dex_list: vec![(
+                DEX_A_ID,
+                DEXInfo {
+                    base_asset_id: XOR,
+                    is_public: true,
+                },
+            )],
             endowed_accounts: vec![
                 (ALICE(), XOR, balance!(99000)),
                 (ALICE(), DOT, balance!(2000000)),
@@ -77,7 +81,7 @@ impl Default for ExtBuilder {
                 (FERDIE(), DOT, balance!(2000000)),
             ],
             initial_permission_owners: vec![
-                (INIT_DEX, Scope::Unlimited, vec![BOB()]),
+                (MANAGE_DEX, Scope::Limited(hash(&DEX_A_ID)), vec![BOB()]),
                 (TRANSFER, Scope::Unlimited, vec![ALICE()]),
                 (CREATE_FARM, Scope::Unlimited, vec![ALICE()]),
                 (LOCK_TO_FARM, Scope::Unlimited, vec![ALICE()]),
@@ -85,6 +89,7 @@ impl Default for ExtBuilder {
                 (CLAIM_FROM_FARM, Scope::Unlimited, vec![ALICE()]),
             ],
             initial_permissions: vec![
+                (BOB(), Scope::Limited(hash(&DEX_A_ID)), vec![MANAGE_DEX]),
                 (ALICE(), Scope::Unlimited, preset01.clone()),
                 (BOB(), Scope::Unlimited, preset01.clone()),
                 (CHARLIE(), Scope::Unlimited, preset01.clone()),
@@ -273,6 +278,12 @@ impl ExtBuilder {
         let mut t = system::GenesisConfig::default()
             .build_storage::<Testtime>()
             .unwrap();
+
+        dex_manager::GenesisConfig::<Testtime> {
+            dex_list: self.initial_dex_list,
+        }
+        .assimilate_storage(&mut t)
+        .unwrap();
 
         tokens::GenesisConfig::<Testtime> {
             endowed_accounts: self.endowed_accounts,

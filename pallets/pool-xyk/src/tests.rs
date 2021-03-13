@@ -23,7 +23,7 @@ impl crate::Module<Testtime> {
         >,
     ) {
         let mut ext = ExtBuilder::default().build();
-        let dex_id = 220;
+        let dex_id = DEX_A_ID;
         let gt: crate::mock::AssetId = GoldenTicket.into();
         let bp: crate::mock::AssetId = BlackPepper.into();
 
@@ -43,14 +43,6 @@ impl crate::Module<Testtime> {
                 AssetSymbol(b"BP".to_vec()),
                 18,
                 Balance::from(0u32),
-                true,
-            ));
-
-            assert_ok!(dex_manager::Module::<Testtime>::initialize_dex(
-                Origin::signed(BOB()),
-                dex_id.clone(),
-                GoldenTicket.into(),
-                BOB(),
                 true,
             ));
 

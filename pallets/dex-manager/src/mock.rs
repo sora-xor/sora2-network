@@ -1,10 +1,10 @@
 use crate::{Module, Trait};
 use common::prelude::Balance;
-use common::{self, fixed_from_basis_points, AssetId32, Fixed, DOT, XOR};
+use common::{self, fixed_from_basis_points, AssetId32, DEXInfo, Fixed, DOT, XOR};
 use currencies::BasicCurrencyAdapter;
 use frame_support::{impl_outer_origin, parameter_types, weights::Weight};
 use frame_system as system;
-use permissions::{Scope, INIT_DEX};
+use permissions::Scope;
 use sp_core::H256;
 use sp_runtime::{
     testing::Header,
@@ -138,20 +138,22 @@ pub type Tokens = tokens::Module<Runtime>;
 pub type DEXModule = Module<Runtime>;
 
 pub struct ExtBuilder {
-    endowed_accounts: Vec<(AccountId, AssetId, Balance)>,
-    initial_permission_owners: Vec<(u32, Scope, Vec<AccountId>)>,
-    initial_permissions: Vec<(AccountId, Scope, Vec<u32>)>,
+    pub initial_dex_list: Vec<(DEXId, DEXInfo<AssetId>)>,
+    pub endowed_accounts: Vec<(AccountId, AssetId, Balance)>,
+    pub initial_permission_owners: Vec<(u32, Scope, Vec<AccountId>)>,
+    pub initial_permissions: Vec<(AccountId, Scope, Vec<u32>)>,
 }
 
 impl Default for ExtBuilder {
     fn default() -> Self {
         Self {
+            initial_dex_list: Vec::new(),
             endowed_accounts: vec![
                 (ALICE, XOR, 1_000_000_000_000_000_000u128.into()),
                 (BOB, DOT, 1_000_000_000_000_000_000u128.into()),
             ],
-            initial_permission_owners: vec![(INIT_DEX, Scope::Unlimited, vec![ALICE])],
-            initial_permissions: vec![(ALICE, Scope::Unlimited, vec![INIT_DEX])],
+            initial_permission_owners: Vec::new(),
+            initial_permissions: Vec::new(),
         }
     }
 }
@@ -161,6 +163,12 @@ impl ExtBuilder {
         let mut t = system::GenesisConfig::default()
             .build_storage::<Runtime>()
             .unwrap();
+
+        crate::GenesisConfig::<Runtime> {
+            dex_list: self.initial_dex_list,
+        }
+        .assimilate_storage(&mut t)
+        .unwrap();
 
         tokens::GenesisConfig::<Runtime> {
             endowed_accounts: self.endowed_accounts,
