@@ -126,6 +126,8 @@ decl_error! {
         RewardsSupplyShortage,
         /// Indicated collateral asset is not enabled for pool.
         UnsupportedCollateralAssetId,
+        /// Could not calculate fee including sell penalty.
+        FeeCalculationFailed,
     }
 }
 
@@ -670,6 +672,47 @@ impl<T: Trait> Module<T> {
         })
     }
 
+    /// Mapping that defines percentage of fee penalty applied for selling XOR with
+    /// low collateralized reserves.
+    fn map_collateralized_fraction_to_penalty(fraction: Fixed) -> Fixed {
+        if fraction < fixed!(0.05) {
+            fixed!(0.09)
+        } else if fraction >= fixed!(0.05) && fraction < fixed!(0.1) {
+            fixed!(0.06)
+        } else if fraction >= fixed!(0.1) && fraction < fixed!(0.2) {
+            fixed!(0.03)
+        } else if fraction >= fixed!(0.2) && fraction < fixed!(0.3) {
+            fixed!(0.01)
+        } else {
+            fixed!(0)
+        }
+    }
+
+    /// Calculate percentage of fee penalty that is applied to trades when XOR is sold while
+    /// reserves are low for target collateral asset.
+    fn sell_penalty(collateral_asset_id: &T::AssetId) -> Result<Fixed, DispatchError> {
+        let reserves_account_id =
+            Technical::<T>::tech_account_id_to_account_id(&Self::reserves_account_id())?;
+        // USD price for XOR supply on network
+        let ideal_reserves_price: FixedWrapper =
+            Self::ideal_reserves_reference_price(Fixed::ZERO)?.into();
+        // USD price for amount of indicated collateral asset stored in reserves
+        let collateral_reserves_price =
+            Self::actual_reserves_reference_price(&reserves_account_id, collateral_asset_id)?;
+        ensure!(
+            !collateral_reserves_price.is_zero(),
+            Error::<T>::NotEnoughReserves
+        );
+        // ratio of stored reserves to ideal reserves
+        let collateralized_fraction = (FixedWrapper::from(collateral_reserves_price)
+            / ideal_reserves_price)
+            .get()
+            .map_err(|_| Error::<T>::FeeCalculationFailed)?;
+        Ok(Self::map_collateralized_fraction_to_penalty(
+            collateralized_fraction,
+        ))
+    }
+
     /// Decompose SwapAmount into particular sell quotation query.
     ///
     /// Returns ordered pair: (input_amount, output_amount, fee_amount).
@@ -683,10 +726,11 @@ impl<T: Trait> Module<T> {
                 desired_amount_in,
                 min_amount_out,
             } => {
-                let fee_amount = (FixedWrapper::from(BaseFee::get())
-                    * FixedWrapper::from(desired_amount_in))
-                .try_into_balance()
-                .map_err(|_| Error::<T>::PriceCalculationFailed)?;
+                let fee_percentage =
+                    FixedWrapper::from(BaseFee::get()) + Self::sell_penalty(collateral_asset_id)?;
+                let fee_amount = (fee_percentage * FixedWrapper::from(desired_amount_in))
+                    .try_into_balance()
+                    .map_err(|_| Error::<T>::PriceCalculationFailed)?;
                 let output_amount = Self::sell_price(
                     main_asset_id,
                     collateral_asset_id,
@@ -715,8 +759,10 @@ impl<T: Trait> Module<T> {
                 )?)
                 .try_into_balance()
                 .map_err(|_| Error::<T>::PriceCalculationFailed)?;
+                let fee_percentage =
+                    FixedWrapper::from(BaseFee::get()) + Self::sell_penalty(collateral_asset_id)?;
                 let input_amount_with_fee =
-                    FixedWrapper::from(input_amount) / (fixed_wrapper!(1) - BaseFee::get());
+                    FixedWrapper::from(input_amount) / (fixed_wrapper!(1) - fee_percentage);
                 let input_amount_with_fee = input_amount_with_fee
                     .try_into_balance()
                     .map_err(|_| Error::<T>::PriceCalculationFailed)?;
