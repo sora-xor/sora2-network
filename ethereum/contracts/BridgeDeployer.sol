@@ -32,7 +32,7 @@ contract BridgeDeployer {
     }
     
     function deployBridgeContract() public {
-        _bridge = new Bridge(_initialPeers, _addressXOR, _addressVAL, _networkId);
+        _bridge = new Bridge(_initialPeers, _addressVAL, _addressXOR, _networkId);
         
         emit NewBridgeDeployed(address(_bridge));
     } 
