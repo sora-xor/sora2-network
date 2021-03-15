@@ -5,10 +5,11 @@
 Provides functionality for cross-chain transfers of assets between Sora and Ethereum-based networks.
 
 ## Overview
-Bridge can be divided in 3 main parts:
+Bridge can be divided into 3 main parts:
 1. Bridge pallet. A Substrate pallet (this one).
 2. Middle-layer. A part of the bridge pallet, more precisely, off-chain workers.
-3. Bridge contracts. A set of smart-contracts deployed on Ethereum-based networks.
+3. [Bridge contracts](https://github.com/sora-xor/sora2-evm-contracts). A set of smart-contracts
+deployed on Ethereum-based networks.
 
 ## Definitions
 _Thischain_ - working chain/network.
@@ -16,17 +17,17 @@ _Sidechain_ - external chain/network.
 _Network_ - an ethereum-based network with a bridge contract.
 
 ## Bridge pallet
-Stores basic information about networks: peers accounts, requests and registered assets/tokens.
+Stores basic information about networks: peers' accounts, requests and registered assets/tokens.
 Networks can be added and managed through requests. Requests can be [incoming](`IncomingRequest`)
-(came from sidechain) and [outgoing](`OutgoingRequest`) (to sidechain). Each request has it's own
+(came from sidechain) or [outgoing](`OutgoingRequest`) (to sidechain). Each request has it's own
 hash (differs from extrinsic hash), status (`RequestStatus`), some specific data and additional information.
-Basically, requests life-cycle consists of 3 stages: validation, preparation and finalization.
+The requests life-cycle consists of 3 stages: validation, preparation and finalization.
 Requests are registered by accounts and finalized by _bridge peers_.
 
 ## Middle-layer
 Works through off-chain workers. Any substrate node can be a bridge peer with its own
 secret key (differs from validator's key) and participate in bridge consensus (after election).
-The bridge peer set (`Peers` in storage) forms a N-of-M-multisignature account (`BridgeAccount`
+The bridge peer set (`Peers` in storage) forms an n-of-m-multisignature account (`BridgeAccount`
 in storage), which is used to finalize all requests.
 
 ## Bridge contract
@@ -207,7 +208,7 @@ pub fn public_key_to_eth_address(pub_key: &PublicKey) -> Address {
 
 /// Outgoing (Thischain->Sidechain) request.
 ///
-/// Each request, has the following properties: author, nonce, network ID and hash (calculates
+/// Each request, has the following properties: author, nonce, network ID, and hash (calculates
 /// just-in-time).
 /// And the following methods: validate, prepare, finalize, cancel.
 #[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug)]
@@ -302,7 +303,7 @@ impl<T: Config> OutgoingRequest<T> {
         }
     }
 
-    /// Checks that the request can be initiated (e.g. verifies that an account has
+    /// Checks that the request can be initiated (e.g., verifies that an account has
     /// sufficient funds for transfer).
     fn validate(&self) -> Result<(), DispatchError> {
         match self {
@@ -365,7 +366,7 @@ impl<T: Config> OutgoingRequest<T> {
     }
 }
 
-/// Types of requests that can be made from sidechain.
+/// Types of requests that can be made from a sidechain.
 #[derive(Clone, Copy, Encode, Decode, RuntimeDebug, PartialEq, Eq)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum IncomingRequestKind {
@@ -391,7 +392,7 @@ impl IncomingRequestKind {
 
 /// Incoming (Sidechain->Thischain) request.
 ///
-/// Each request, has the following properties: transaction hash, height, network ID and timepoint.
+/// Each request, has the following properties: transaction hash, height, network ID, and timepoint.
 /// And the following methods: validate, prepare, finalize, cancel.
 #[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug)]
 pub enum IncomingRequest<T: Config> {
@@ -561,7 +562,8 @@ impl<T: Config> IncomingRequest<T> {
         }
     }
 
-    /// A timepoint at which the request was registered in thischain. Used my `multisig` pallet.
+    /// A timepoint at which the request was registered in thischain. Used my the `bridge-multisig`
+    /// pallet.
     pub fn timepoint(&self) -> Timepoint<T> {
         match self {
             IncomingRequest::Transfer(request) => request.timepoint(),
@@ -577,7 +579,7 @@ impl<T: Config> IncomingRequest<T> {
 }
 
 /// Information needed for a request to be loaded from sidechain. Basically it's
-/// a hash of the transaction and a kind of the request.
+/// a hash of the transaction and the type of the request.
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug)]
 pub struct IncomingPreRequest<T: Config> {
@@ -612,7 +614,7 @@ impl<T: Config> IncomingPreRequest<T> {
 pub enum OffchainRequest<T: Config> {
     /// Thischain->Sidechain request with its hash.
     Outgoing(OutgoingRequest<T>, H256),
-    /// Information required to load corresponding incoming request from the sidechain network.
+    /// Information required to load a corresponding incoming request from the sidechain network.
     Incoming(IncomingPreRequest<T>),
 }
 
@@ -654,7 +656,7 @@ impl<T: Config> OffchainRequest<T> {
         }
     }
 
-    /// Checks that the request can be initiated (e.g. verifies that an account has
+    /// Checks that the request can be initiated (e.g., verifies that an account has
     /// sufficient funds for transfer).
     fn validate(&self) -> Result<(), DispatchError> {
         match self {
@@ -677,7 +679,7 @@ impl<T: Config> OffchainRequest<T> {
         }
     }
 
-    /// Performs additional state changes for the request (e.g. reserves funds for a transfer).
+    /// Performs additional state changes for the request (e.g., reserves funds for a transfer).
     fn prepare(&mut self) -> Result<(), DispatchError> {
         match self {
             OffchainRequest::Outgoing(request, _) => request.prepare(),
@@ -912,7 +914,6 @@ pub mod pallet {
             initial_peers: BTreeSet<T::AccountId>,
         ) -> DispatchResultWithPostInfo {
             let author = ensure_signed(origin)?;
-            // TODO: governence
             let net_id = NextNetworkId::<T>::get();
             let peers_account_id = bridge_multisig::Module::<T>::register_multisig_inner(
                 author,

@@ -312,7 +312,7 @@ pub fn encode_outgoing_request_eth_call<T: Config>(
 }
 
 /// Incoming request for cancelling a broken outgoing request. "Broken" means that the request
-/// signatures were collected, but something changed in the bridge state (e.g. peers set) and
+/// signatures were collected, but something changed in the bridge state (e.g., peers set) and
 /// the signatures became invalid. In this case we want to cancel the request to be able to
 /// re-submit it later.
 #[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug)]
