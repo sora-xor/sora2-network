@@ -13,7 +13,7 @@ use_contract!(
 pub type MethodId = [u8; 4];
 
 pub fn calculate_method_id(function: &Function) -> MethodId {
-    let signature = function.signature();
+    let signature = function.signature(false);
     let mut id = [0u8; 4];
     id.copy_from_slice(&keccak_256(signature.as_bytes())[..4]);
     id
@@ -59,6 +59,18 @@ impl FunctionMeta {
 
 pub static FUNCTIONS: OnceBox<BTreeMap<MethodId, FunctionMeta>> = OnceBox::new();
 
+pub fn init_add_peer_by_peer_fn() -> Box<MethodId> {
+    let add_peer_by_peer_fn = ADD_PEER_BY_PEER_FN
+        .get_or_init(|| Box::new(eth_bridge_contract::functions::add_peer_by_peer::function()));
+    Box::new(calculate_method_id(&add_peer_by_peer_fn))
+}
+
+pub fn init_remove_peer_by_peer_fn() -> Box<MethodId> {
+    let remove_peer_by_peer_fn = REMOVE_PEER_BY_PEER_FN
+        .get_or_init(|| Box::new(eth_bridge_contract::functions::remove_peer_by_peer::function()));
+    Box::new(calculate_method_id(&remove_peer_by_peer_fn))
+}
+
 pub fn functions() -> Box<BTreeMap<MethodId, FunctionMeta>> {
     let add_eth_native_token_fn = ADD_ETH_NATIVE_TOKEN_FN
         .get_or_init(|| Box::new(eth_bridge_contract::functions::add_eth_native_token::function()));
@@ -93,16 +105,14 @@ pub fn functions() -> Box<BTreeMap<MethodId, FunctionMeta>> {
             ),
         ),
         (
-            *ADD_PEER_BY_PEER_ID
-                .get_or_init(|| Box::new(calculate_method_id(&add_peer_by_peer_fn))),
+            *ADD_PEER_BY_PEER_ID.get_or_init(init_add_peer_by_peer_fn),
             FunctionMeta::new(
                 add_peer_by_peer_fn.clone(),
                 ADD_PEER_BY_PEER_TX_HASH_ARG_POS,
             ),
         ),
         (
-            *REMOVE_PEER_BY_PEER_ID
-                .get_or_init(|| Box::new(calculate_method_id(&remove_peer_by_peer_fn))),
+            *REMOVE_PEER_BY_PEER_ID.get_or_init(init_remove_peer_by_peer_fn),
             FunctionMeta::new(
                 remove_peer_by_peer_fn.clone(),
                 REMOVE_PEER_BY_PEER_TX_HASH_ARG_POS,
