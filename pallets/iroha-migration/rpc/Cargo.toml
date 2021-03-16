@@ -7,10 +7,10 @@ edition = "2018"
 jsonrpc-core = { version = "15.0.0", default-features = false }
 jsonrpc-core-client = "15.0.0"
 jsonrpc-derive = "15.0.0"
-sp-runtime = { version = "2.0.0" }
-sp-api = { version = "2.0.0" }
-sp-blockchain = { version = "2.0.0" }
-sp-rpc = { version = "2.0.0" }
+sp-runtime = { version = "3" }
+sp-api = { version = "3" }
+sp-blockchain = { version = "3" }
+sp-rpc = { version = "3" }
 
 # Path dependencies
 common = { path = "../../../common" }

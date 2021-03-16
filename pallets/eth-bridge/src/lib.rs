@@ -12,13 +12,13 @@ use crate::contract::{
 use crate::types::{Bytes, CallRequest, Log, Transaction, TransactionReceipt};
 use alloc::string::String;
 use codec::{Decode, Encode, FullCodec};
-use common::{prelude::Balance, AssetSymbol, BalancePrecision};
+use common::{prelude::Balance, AccountIdOf, AssetSymbol, BalancePrecision};
 use core::{convert::TryFrom, fmt, iter, line, stringify};
 use ethabi::{ParamType, Token};
 use frame_support::sp_runtime::traits::{AtLeast32Bit, MaybeSerializeDeserialize, Member};
 use frame_support::traits::{Get, GetCallName};
 use frame_support::{
-    debug, decl_error, decl_event, decl_module, decl_storage,
+    debug,
     dispatch::{DispatchError, DispatchResult},
     ensure, fail, sp_io,
     sp_runtime::{
@@ -32,7 +32,7 @@ use frame_support::{
         KeyTypeId, MultiSigner, Percent,
     },
     weights::{Pays, Weight},
-    IterableStorageDoubleMap, Parameter, RuntimeDebug, StorageDoubleMap,
+    IterableStorageDoubleMap, Parameter, RuntimeDebug,
 };
 use frame_system::{
     ensure_root, ensure_signed,
@@ -99,9 +99,9 @@ pub const STORAGE_PEER_SECRET_KEY: &[u8] = b"eth-bridge-ocw::secret-key";
 pub const STORAGE_ETH_NODE_PARAMS: &str = "eth-bridge-ocw::node-params";
 pub const STORAGE_NETWORK_IDS_KEY: &[u8] = b"eth-bridge-ocw::network-ids";
 
-type AssetIdOf<T> = <T as assets::Trait>::AssetId;
-type Timepoint<T> = bridge_multisig::Timepoint<<T as frame_system::Trait>::BlockNumber>;
-type BridgeNetworkId<T> = <T as Trait>::NetworkId;
+type AssetIdOf<T> = <T as assets::Config>::AssetId;
+type Timepoint<T> = bridge_multisig::Timepoint<<T as frame_system::Config>::BlockNumber>;
+type BridgeNetworkId<T> = <T as Config>::NetworkId;
 
 pub mod crypto {
     use crate::KEY_TYPE;
@@ -164,7 +164,7 @@ pub fn public_key_to_eth_address(pub_key: &PublicKey) -> Address {
 /// The type of request we can send to the offchain worker
 #[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug)]
 #[cfg_attr(feature = "std", derive(Serialize))]
-pub enum OutgoingRequest<T: Trait> {
+pub enum OutgoingRequest<T: Config> {
     /// Outgoing transfer from Substrate to Ethereum request.
     Transfer(OutgoingTransfer<T>),
     /// 'Add new Substrate asset' request.
@@ -185,7 +185,7 @@ pub enum OutgoingRequest<T: Trait> {
     RemovePeerCompat(OutgoingRemovePeerCompat<T>),
 }
 
-impl<T: Trait> OutgoingRequest<T> {
+impl<T: Config> OutgoingRequest<T> {
     fn author(&self) -> &T::AccountId {
         match self {
             OutgoingRequest::Transfer(transfer) => &transfer.from,
@@ -336,7 +336,7 @@ impl IncomingRequestKind {
 
 /// The type of request we can send to the offchain worker
 #[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug)]
-pub enum IncomingRequest<T: Trait> {
+pub enum IncomingRequest<T: Config> {
     Transfer(IncomingTransfer<T>),
     AddAsset(IncomingAddToken<T>),
     ChangePeers(IncomingChangePeers<T>),
@@ -347,7 +347,7 @@ pub enum IncomingRequest<T: Trait> {
     ChangePeersCompat(IncomingChangePeersCompat<T>),
 }
 
-impl<T: Trait> IncomingRequest<T> {
+impl<T: Config> IncomingRequest<T> {
     pub fn try_from_contract_event(
         event: ContractEvent<T::AssetId, Address, T::AccountId, Balance>,
         incoming_request: IncomingPreRequest<T>,
@@ -518,7 +518,7 @@ impl<T: Trait> IncomingRequest<T> {
 
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug)]
-pub struct IncomingPreRequest<T: Trait> {
+pub struct IncomingPreRequest<T: Config> {
     author: T::AccountId,
     hash: H256,
     timepoint: Timepoint<T>,
@@ -526,7 +526,7 @@ pub struct IncomingPreRequest<T: Trait> {
     network_id: T::NetworkId,
 }
 
-impl<T: Trait> IncomingPreRequest<T> {
+impl<T: Config> IncomingPreRequest<T> {
     pub fn new(
         author: T::AccountId,
         hash: H256,
@@ -546,12 +546,12 @@ impl<T: Trait> IncomingPreRequest<T> {
 
 #[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug)]
 #[cfg_attr(feature = "std", derive(Serialize))]
-pub enum OffchainRequest<T: Trait> {
+pub enum OffchainRequest<T: Config> {
     Outgoing(OutgoingRequest<T>, H256),
     Incoming(IncomingPreRequest<T>),
 }
 
-impl<T: Trait> OffchainRequest<T> {
+impl<T: Config> OffchainRequest<T> {
     pub fn outgoing(request: OutgoingRequest<T>) -> Self {
         let hash = request.hash();
         Self::Outgoing(request, hash)
@@ -698,33 +698,6 @@ pub enum RequestStatus {
     Done,
 }
 
-pub trait Trait:
-    frame_system::Trait
-    + CreateSignedTransaction<Call<Self>>
-    + CreateSignedTransaction<bridge_multisig::Call<Self>>
-    + assets::Trait
-    + bridge_multisig::Trait
-    + fmt::Debug
-{
-    type Event: From<Event<Self>> + Into<<Self as frame_system::Trait>::Event>;
-    /// The identifier type for an offchain worker.
-    type PeerId: AppCrypto<Self::Public, Self::Signature>;
-    /// The overarching dispatch call type.
-    type Call: From<Call<Self>> + Encode;
-    /// Sidechain network ID.
-    type NetworkId: Parameter
-        + Member
-        + AtLeast32Bit
-        + Copy
-        + MaybeSerializeDeserialize
-        + Ord
-        + Default
-        + Debug;
-    type GetEthNetworkId: Get<Self::NetworkId>;
-    /// Weight information for extrinsics in this pallet.
-    type WeightInfo: WeightInfo;
-}
-
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(Clone, Copy, Encode, Decode, PartialEq, Eq, RuntimeDebug)]
 pub enum AssetKind {
@@ -748,7 +721,7 @@ pub struct NetworkParams<AccountId: Ord> {
 
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug)]
-pub struct NetworkConfig<T: Trait> {
+pub struct NetworkConfig<T: Config> {
     pub initial_peers: BTreeSet<T::AccountId>,
     pub bridge_account_id: T::AccountId,
     pub tokens: Vec<(T::AssetId, Option<H160>, AssetKind)>,
@@ -769,102 +742,472 @@ impl Default for BridgeStatus {
     }
 }
 
-decl_storage! {
-    trait Store for Module<T: Trait> as EthBridge {
-        pub RequestsQueue get(fn requests_queue): map hasher(twox_64_concat) T::NetworkId => Vec<OffchainRequest<T>>;
+pub use pallet::*;
 
-        pub IncomingRequests get(fn incoming_requests): double_map hasher(twox_64_concat) T::NetworkId, hasher(identity) H256 => Option<IncomingRequest<T>>;
-        pub PendingIncomingRequests get(fn pending_incoming_requests): map hasher(twox_64_concat) T::NetworkId => BTreeSet<H256>;
+#[frame_support::pallet]
+pub mod pallet {
+    use super::*;
+    use frame_support::pallet_prelude::*;
+    use frame_system::pallet_prelude::*;
 
-        pub Request get(fn request): double_map hasher(twox_64_concat) T::NetworkId, hasher(identity) H256 => Option<OffchainRequest<T>>;
-        pub RequestStatuses get(fn request_status): double_map hasher(twox_64_concat) T::NetworkId, hasher(identity) H256 => Option<RequestStatus>;
-        pub RequestSubmissionHeight get(fn request_submission_height): double_map hasher(twox_64_concat) T::NetworkId, hasher(identity) H256 => T::BlockNumber;
-        RequestApprovals get(fn approvals): double_map hasher(twox_64_concat) T::NetworkId, hasher(identity) H256 => BTreeSet<SignatureParams>;
-        AccountRequests get(fn account_requests): map hasher(blake2_128_concat) T::AccountId => Vec<(T::NetworkId, H256)>; // TODO: should be a linked-set
-
-        RegisteredAsset get(fn registered_asset): double_map hasher(twox_64_concat) T::NetworkId, hasher(identity) T::AssetId => Option<AssetKind>;
-        RegisteredSidechainAsset get(fn registered_sidechain_asset): double_map hasher(twox_64_concat) T::NetworkId, hasher(blake2_128_concat) Address => Option<T::AssetId>;
-        RegisteredSidechainToken get(fn registered_sidechain_token): double_map hasher(twox_64_concat) T::NetworkId, hasher(blake2_128_concat) T::AssetId => Option<Address>;
-
-        Peers get(fn peers): map hasher(twox_64_concat) T::NetworkId => BTreeSet<T::AccountId>;
-        PendingPeer get(fn pending_peer): map hasher(twox_64_concat) T::NetworkId => Option<T::AccountId>;
-        /// Used for compatibility with XOR and VAL contracts.
-        PendingEthPeersSync: EthPeersSync;
-        PeerAccountId get(fn peer_account_id): double_map hasher(twox_64_concat) T::NetworkId, hasher(blake2_128_concat) Address => T::AccountId;
-        PeerAddress get(fn peer_address): double_map hasher(twox_64_concat) T::NetworkId, hasher(blake2_128_concat) T::AccountId => Address;
-
-        /// Multi-signature bridge peers' account. `None` if there is no network with the given ID.
-        BridgeAccount get(fn bridge_account): map hasher(twox_64_concat) T::NetworkId => Option<T::AccountId>;
-        AuthorityAccount get(fn authority_account) config(): T::AccountId;
-
-        BridgeBridgeStatus get(fn bridge_contract_status): map hasher(twox_64_concat) T::NetworkId => BridgeStatus;
-        BridgeContractAddress get(fn bridge_contract_address): map hasher(twox_64_concat) T::NetworkId => Address;
-        XorMasterContractAddress get(fn xor_master_contract_address) config(): Address;
-        ValMasterContractAddress get(fn val_master_contract_address) config(): Address;
-        PswapContractAddress get(fn pswap_contract_address) config(): Address;
-
-        // None means the address owns no pswap.
-        // 0 means the address claimed them.
-        PswapOwners: map hasher(identity) Address => Option<Balance>;
-
-        LastNetworkId: T::NetworkId;
-    }
-    add_extra_genesis {
-        config(networks): Vec<NetworkConfig<T>>;
-        config(pswap_owners): Vec<(H160, Balance)>;
-        build(|config| {
-            for network in &config.networks {
-                let net_id = LastNetworkId::<T>::get();
-                let peers_account_id = &network.bridge_account_id;
-                BridgeContractAddress::<T>::insert(net_id, network.bridge_contract_address);
-                BridgeAccount::<T>::insert(net_id, peers_account_id.clone());
-                Peers::<T>::insert(net_id, network.initial_peers.clone());
-
-                for (asset_id, opt_token_address, kind) in &network.tokens {
-                    if let Some(token_address) = opt_token_address {
-                        let token_address = Address::from(token_address.0);
-                        RegisteredSidechainAsset::<T>::insert(net_id, token_address, *asset_id);
-                        RegisteredSidechainToken::<T>::insert(net_id, &asset_id, token_address);
-                    }
-                    RegisteredAsset::<T>::insert(net_id, asset_id, kind);
-                }
-                // TODO: consider to change to Limited.
-                let scope = Scope::Unlimited;
-                let permission_ids = [MINT];
-                for permission_id in &permission_ids {
-                    permissions::Module::<T>::assign_permission(
-                        peers_account_id.clone(),
-                        &peers_account_id,
-                        *permission_id,
-                        scope,
-                    ).expect("failed to assign permissions for a bridge account");
-                }
-                LastNetworkId::<T>::set(net_id + T::NetworkId::one());
-            }
-
-            for (address, balance) in &config.pswap_owners {
-                PswapOwners::insert(Address::from_slice(address.as_bytes()), balance);
-            }
-        })
-    }
-}
-
-decl_event!(
-    pub enum Event<T>
-    where
-        AccountId = <T as frame_system::Trait>::AccountId,
+    #[pallet::config]
+    pub trait Config:
+        frame_system::Config
+        + CreateSignedTransaction<Call<Self>>
+        + CreateSignedTransaction<bridge_multisig::Call<Self>>
+        + assets::Config
+        + bridge_multisig::Config
+        + fmt::Debug
     {
-        SomethingStored(u32, AccountId),
+        type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+        /// The identifier type for an offchain worker.
+        type PeerId: AppCrypto<Self::Public, Self::Signature>;
+        /// The overarching dispatch call type.
+        type Call: From<Call<Self>> + Encode;
+        /// Sidechain network ID.
+        type NetworkId: Parameter
+            + Member
+            + AtLeast32Bit
+            + Copy
+            + MaybeSerializeDeserialize
+            + Ord
+            + Default
+            + Debug;
+        type GetEthNetworkId: Get<Self::NetworkId>;
+        /// Weight information for extrinsics in this pallet.
+        type WeightInfo: WeightInfo;
+    }
+
+    #[pallet::pallet]
+    #[pallet::generate_store(pub(super) trait Store)]
+    pub struct Pallet<T>(PhantomData<T>);
+
+    #[pallet::hooks]
+    impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
+        fn offchain_worker(block_number: T::BlockNumber) {
+            debug::debug!("Entering off-chain workers {:?}", block_number);
+            if StorageValueRef::persistent(STORAGE_PEER_SECRET_KEY)
+                .get::<Vec<u8>>()
+                .is_none()
+            {
+                debug::debug!("Peer secret key not found. Skipping off-chain procedure.");
+                return;
+            }
+
+            let mut lock = StorageLock::<'_, Time>::new(b"eth-bridge-ocw::lock");
+            let _guard = lock.lock();
+            Self::offchain();
+        }
+    }
+
+    #[pallet::call]
+    impl<T: Config> Pallet<T> {
+        #[pallet::weight(<T as Config>::WeightInfo::register_bridge())]
+        pub fn register_bridge(
+            origin: OriginFor<T>,
+            bridge_contract_address: Address,
+            initial_peers: BTreeSet<T::AccountId>,
+        ) -> DispatchResultWithPostInfo {
+            let author = ensure_signed(origin)?;
+            // TODO: governence
+            let net_id = LastNetworkId::<T>::get();
+            let peers_account_id = bridge_multisig::Module::<T>::register_multisig_inner(
+                author,
+                initial_peers.iter().cloned().collect(),
+                Percent::from_parts(67),
+            )?;
+            BridgeContractAddress::<T>::insert(net_id, bridge_contract_address);
+            BridgeAccount::<T>::insert(net_id, peers_account_id);
+            Peers::<T>::insert(net_id, initial_peers);
+            LastNetworkId::<T>::set(net_id + T::NetworkId::one());
+            Ok(().into())
+        }
+
+        #[pallet::weight(<T as Config>::WeightInfo::add_asset())]
+        pub fn add_asset(
+            origin: OriginFor<T>,
+            asset_id: AssetIdOf<T>,
+            network_id: BridgeNetworkId<T>,
+        ) -> DispatchResultWithPostInfo {
+            debug::debug!("called add_asset");
+            let from = ensure_signed(origin)?;
+            let nonce = frame_system::Module::<T>::account_nonce(&from);
+            Self::add_request(OffchainRequest::outgoing(OutgoingRequest::AddAsset(
+                OutgoingAddAsset {
+                    author: from.clone(),
+                    asset_id,
+                    nonce,
+                    network_id,
+                },
+            )))?;
+            frame_system::Module::<T>::inc_account_nonce(&from);
+            Ok(().into())
+        }
+
+        #[pallet::weight(<T as Config>::WeightInfo::add_sidechain_token())]
+        pub fn add_sidechain_token(
+            origin: OriginFor<T>,
+            token_address: EthereumAddress,
+            ticker: String,
+            name: String,
+            decimals: u8,
+            network_id: BridgeNetworkId<T>,
+        ) -> DispatchResultWithPostInfo {
+            debug::debug!("called add_sidechain_token");
+            let from = ensure_signed(origin)?;
+            let authority_account_id = Self::authority_account();
+            ensure!(from == authority_account_id, Error::<T>::Forbidden);
+            let nonce = frame_system::Module::<T>::account_nonce(&from);
+            Self::add_request(OffchainRequest::outgoing(OutgoingRequest::AddToken(
+                OutgoingAddToken {
+                    author: from.clone(),
+                    token_address,
+                    ticker,
+                    name,
+                    decimals,
+                    nonce,
+                    network_id,
+                },
+            )))?;
+            frame_system::Module::<T>::inc_account_nonce(&from);
+            Ok(().into())
+        }
+
+        #[pallet::weight(<T as Config>::WeightInfo::transfer_to_sidechain())]
+        pub fn transfer_to_sidechain(
+            origin: OriginFor<T>,
+            asset_id: AssetIdOf<T>,
+            to: EthereumAddress,
+            amount: Balance,
+            network_id: BridgeNetworkId<T>,
+        ) -> DispatchResultWithPostInfo {
+            debug::debug!("called transfer_to_sidechain");
+            let from = ensure_signed(origin)?;
+            let nonce = frame_system::Module::<T>::account_nonce(&from);
+            Self::add_request(OffchainRequest::outgoing(OutgoingRequest::Transfer(
+                OutgoingTransfer {
+                    from: from.clone(),
+                    to,
+                    asset_id,
+                    amount,
+                    nonce,
+                    network_id,
+                },
+            )))?;
+            frame_system::Module::<T>::inc_account_nonce(&from);
+            Ok(().into())
+        }
+
+        #[pallet::weight(<T as Config>::WeightInfo::request_from_sidechain())]
+        pub fn request_from_sidechain(
+            origin: OriginFor<T>,
+            eth_tx_hash: H256,
+            kind: IncomingRequestKind,
+            network_id: BridgeNetworkId<T>,
+        ) -> DispatchResultWithPostInfo {
+            debug::debug!("called request_from_sidechain");
+            let from = ensure_signed(origin)?;
+            if kind == IncomingRequestKind::CancelOutgoingRequest {
+                fail!(Error::<T>::Unavailable);
+            }
+            let timepoint = bridge_multisig::Module::<T>::timepoint();
+            Self::add_request(OffchainRequest::Incoming(IncomingPreRequest::new(
+                from,
+                eth_tx_hash,
+                timepoint,
+                kind,
+                network_id,
+            )))?;
+            Ok(().into())
+        }
+
+        #[pallet::weight((0, Pays::No))]
+        pub fn finalize_incoming_request(
+            origin: OriginFor<T>,
+            result: Result<IncomingRequest<T>, (H256, DispatchError)>,
+            network_id: BridgeNetworkId<T>,
+        ) -> DispatchResultWithPostInfo {
+            debug::debug!("called finalize_incoming_request");
+
+            let from = ensure_signed(origin)?;
+            let _ = Self::ensure_bridge_account(&from, network_id)?;
+
+            let result = result.and_then(|req| {
+                let hash = H256(req.hash().0);
+                let result = req.finalize().map_err(|e| (hash, e));
+                if result.is_err() {
+                    if let Err(e) = req.cancel() {
+                        debug::error!("Request cancellation failed: {:?}, {:?}", e, req);
+                    }
+                }
+                result
+            });
+            let hash = match result {
+                Ok(hash) => {
+                    debug::warn!("Incoming request finalized {:?}", hash);
+                    RequestStatuses::<T>::insert(network_id, hash, RequestStatus::Done);
+                    Self::deposit_event(Event::IncomingRequestFinalized(hash));
+                    hash
+                }
+                Err((hash, e)) => {
+                    debug::error!("Incoming request finalization failed {:?} {:?}", hash, e);
+                    RequestStatuses::<T>::insert(network_id, hash, RequestStatus::Failed);
+                    Self::deposit_event(Event::IncomingRequestFinalizationFailed(hash));
+                    hash
+                }
+            };
+            PendingIncomingRequests::<T>::mutate(network_id, |set| set.remove(&hash));
+            Self::remove_request_from_queue(network_id, &hash);
+            Ok(().into())
+        }
+
+        #[pallet::weight(<T as Config>::WeightInfo::add_peer())]
+        pub fn add_peer(
+            origin: OriginFor<T>,
+            account_id: T::AccountId,
+            address: EthereumAddress,
+            network_id: BridgeNetworkId<T>,
+        ) -> DispatchResultWithPostInfo {
+            debug::debug!("called change_peers_out");
+            let from = ensure_signed(origin)?;
+            ensure!(from == Self::authority_account(), Error::<T>::Forbidden);
+            let nonce = frame_system::Module::<T>::account_nonce(&from);
+            Self::add_request(OffchainRequest::outgoing(OutgoingRequest::AddPeer(
+                OutgoingAddPeer {
+                    author: from.clone(),
+                    peer_account_id: account_id.clone(),
+                    peer_address: address,
+                    nonce,
+                    network_id,
+                },
+            )))?;
+            frame_system::Module::<T>::inc_account_nonce(&from);
+            if network_id == T::GetEthNetworkId::get() {
+                let nonce = frame_system::Module::<T>::account_nonce(&from);
+                Self::add_request(OffchainRequest::outgoing(OutgoingRequest::AddPeerCompat(
+                    OutgoingAddPeerCompat {
+                        author: from.clone(),
+                        peer_account_id: account_id,
+                        peer_address: address,
+                        nonce,
+                        network_id,
+                    },
+                )))?;
+                frame_system::Module::<T>::inc_account_nonce(&from);
+            }
+            Ok(().into())
+        }
+
+        #[pallet::weight(<T as Config>::WeightInfo::remove_peer())]
+        pub fn remove_peer(
+            origin: OriginFor<T>,
+            account_id: T::AccountId,
+            network_id: BridgeNetworkId<T>,
+        ) -> DispatchResultWithPostInfo {
+            debug::debug!("called change_peers_out");
+            let from = ensure_signed(origin)?;
+            ensure!(from == Self::authority_account(), Error::<T>::Forbidden);
+            let peer_address = Self::peer_address(network_id, &account_id);
+            let nonce = frame_system::Module::<T>::account_nonce(&from);
+            Self::add_request(OffchainRequest::outgoing(OutgoingRequest::RemovePeer(
+                OutgoingRemovePeer {
+                    author: from.clone(),
+                    peer_account_id: account_id.clone(),
+                    peer_address,
+                    nonce,
+                    network_id,
+                },
+            )))?;
+            frame_system::Module::<T>::inc_account_nonce(&from);
+            if network_id == T::GetEthNetworkId::get() {
+                let nonce = frame_system::Module::<T>::account_nonce(&from);
+                Self::add_request(OffchainRequest::outgoing(
+                    OutgoingRequest::RemovePeerCompat(OutgoingRemovePeerCompat {
+                        author: from.clone(),
+                        peer_account_id: account_id,
+                        peer_address,
+                        nonce,
+                        network_id,
+                    }),
+                ))?;
+                frame_system::Module::<T>::inc_account_nonce(&from);
+            }
+            Ok(().into())
+        }
+
+        #[pallet::weight(<T as Config>::WeightInfo::prepare_for_migration())]
+        pub fn prepare_for_migration(
+            origin: OriginFor<T>,
+            network_id: BridgeNetworkId<T>,
+        ) -> DispatchResultWithPostInfo {
+            debug::debug!("called prepare_for_migration");
+            let from = ensure_signed(origin)?;
+            ensure!(from == Self::authority_account(), Error::<T>::Forbidden);
+            let nonce = frame_system::Module::<T>::account_nonce(&from);
+            Self::add_request(OffchainRequest::outgoing(
+                OutgoingRequest::PrepareForMigration(OutgoingPrepareForMigration {
+                    author: from.clone(),
+                    nonce,
+                    network_id,
+                }),
+            ))?;
+            frame_system::Module::<T>::inc_account_nonce(&from);
+            Ok(().into())
+        }
+
+        #[pallet::weight(<T as Config>::WeightInfo::migrate())]
+        pub fn migrate(
+            origin: OriginFor<T>,
+            new_contract_address: EthereumAddress,
+            erc20_native_tokens: Vec<EthereumAddress>,
+            network_id: BridgeNetworkId<T>,
+        ) -> DispatchResultWithPostInfo {
+            debug::debug!("called prepare_for_migration");
+            let from = ensure_signed(origin)?;
+            ensure!(from == Self::authority_account(), Error::<T>::Forbidden);
+            let nonce = frame_system::Module::<T>::account_nonce(&from);
+            Self::add_request(OffchainRequest::outgoing(OutgoingRequest::Migrate(
+                OutgoingMigrate {
+                    author: from.clone(),
+                    new_contract_address,
+                    erc20_native_tokens,
+                    nonce,
+                    network_id,
+                },
+            )))?;
+            frame_system::Module::<T>::inc_account_nonce(&from);
+            Ok(().into())
+        }
+
+        // TODO: handle incoming requests without register
+        #[pallet::weight((0, Pays::No))]
+        pub fn register_incoming_request(
+            origin: OriginFor<T>,
+            incoming_request: IncomingRequest<T>,
+        ) -> DispatchResultWithPostInfo {
+            debug::debug!("called register_incoming_request");
+            let author = ensure_signed(origin.clone())?;
+            let _ = Self::ensure_bridge_account(&author, incoming_request.network_id())?;
+            let tx_hash = incoming_request.hash();
+            let net_id = incoming_request.network_id();
+            ensure!(
+                !PendingIncomingRequests::<T>::get(net_id).contains(&tx_hash),
+                Error::<T>::TransferIsAlreadyRegistered
+            );
+            if let Err(e) = incoming_request.prepare() {
+                Self::finalize_incoming_request(origin, Err((tx_hash, e)), net_id)?;
+                return Err(e.into());
+            }
+            PendingIncomingRequests::<T>::mutate(net_id, |transfers| transfers.insert(tx_hash));
+            Self::remove_request_from_queue(net_id, &tx_hash);
+            IncomingRequests::<T>::insert(net_id, &tx_hash, incoming_request);
+            Ok(().into())
+        }
+
+        #[pallet::weight((0, Pays::No))]
+        pub fn approve_request(
+            origin: OriginFor<T>,
+            ocw_public: ecdsa::Public,
+            request: OutgoingRequest<T>,
+            request_encoded: OutgoingRequestEncoded,
+            signature_params: SignatureParams,
+        ) -> DispatchResultWithPostInfo {
+            debug::debug!("called approve_request");
+            let author = ensure_signed(origin)?;
+            let net_id = request.network_id();
+            Self::ensure_peer(&author, net_id)?;
+            if !Self::verify_message(
+                request_encoded.as_raw(),
+                &signature_params,
+                &ocw_public,
+                &author,
+            ) {
+                // TODO: punish the off-chain worker
+                return Err(Error::<T>::InvalidSignature.into());
+            }
+            debug::info!("Verified request approve {:?}", request_encoded);
+            let hash = request.hash();
+            let mut approvals = RequestApprovals::<T>::get(net_id, &hash);
+            let pending_peers_len = if PendingPeer::<T>::get(net_id).is_some() {
+                1
+            } else {
+                0
+            };
+            let need_sigs = majority(Self::peers(net_id).len()) + pending_peers_len;
+            approvals.insert(signature_params);
+            RequestApprovals::<T>::insert(net_id, &hash, &approvals);
+            let current_status =
+                RequestStatuses::<T>::get(net_id, &hash).unwrap_or(RequestStatus::Pending);
+            if current_status == RequestStatus::Pending && approvals.len() == need_sigs {
+                if let Err(err) = request.finalize() {
+                    debug::error!("Outgoing request finalization failed: {:?}", err);
+                    RequestStatuses::<T>::insert(net_id, hash, RequestStatus::Failed);
+                    Self::deposit_event(Event::RequestFinalizationFailed(hash));
+                    if let Err(e) = request.cancel() {
+                        debug::error!("Request cancellation failed: {:?}, {:?}", e, request)
+                    }
+                } else {
+                    debug::debug!("Outgoing request finalized {:?}", hash);
+                    RequestStatuses::<T>::insert(net_id, hash, RequestStatus::ApprovalsReady);
+                    Self::deposit_event(Event::ApprovalsCollected(request_encoded, approvals));
+                }
+                Self::remove_request_from_queue(net_id, &hash);
+            }
+            Ok(().into())
+        }
+
+        // TODO: maybe rewrite to finalize with `finalize_incoming_request`
+        #[pallet::weight(<T as Config>::WeightInfo::finalize_mark_as_done())]
+        pub fn finalize_mark_as_done(
+            origin: OriginFor<T>,
+            request_hash: H256,
+            network_id: BridgeNetworkId<T>,
+        ) -> DispatchResultWithPostInfo {
+            debug::debug!("called finalize_mark_as_done");
+            let author = ensure_signed(origin)?;
+            let bridge_account_id = get_bridge_account::<T>(network_id);
+            ensure!(author == bridge_account_id, Error::<T>::Forbidden);
+            let request_status = RequestStatuses::<T>::get(network_id, request_hash)
+                .ok_or(Error::<T>::UnknownRequest)?;
+            ensure!(
+                request_status == RequestStatus::ApprovalsReady,
+                Error::<T>::RequestIsNotReady
+            );
+            RequestStatuses::<T>::insert(network_id, request_hash, RequestStatus::Done);
+            Ok(().into())
+        }
+
+        #[pallet::weight(<T as Config>::WeightInfo::force_add_peer())]
+        pub fn force_add_peer(
+            origin: OriginFor<T>,
+            who: T::AccountId,
+            address: EthereumAddress,
+            network_id: BridgeNetworkId<T>,
+        ) -> DispatchResultWithPostInfo {
+            let _ = ensure_root(origin)?;
+            if !Self::is_peer(&who, network_id) {
+                PeerAddress::<T>::insert(network_id, &who, address);
+                PeerAccountId::<T>::insert(network_id, &address, who.clone());
+                <Peers<T>>::mutate(network_id, |l| l.insert(who));
+            }
+            Ok(().into())
+        }
+    }
+
+    #[pallet::event]
+    #[pallet::metadata(AccountIdOf<T> = "AccountId")]
+    #[pallet::generate_deposit(pub(super) fn deposit_event)]
+    pub enum Event<T: Config> {
+        SomethingStored(u32, AccountIdOf<T>),
         RequestRegistered(H256),
         ApprovalsCollected(OutgoingRequestEncoded, BTreeSet<SignatureParams>),
         RequestFinalizationFailed(H256),
         IncomingRequestFinalizationFailed(H256),
         IncomingRequestFinalized(H256),
     }
-);
 
-decl_error! {
-    pub enum Error for Module<T: Trait> {
+    #[pallet::error]
+    pub enum Error<T> {
         StorageOverflow,
         HttpFetchingError,
         AccountNotFound,
@@ -926,366 +1269,212 @@ decl_error! {
         Unavailable,
         Other,
     }
+
+    #[pallet::storage]
+    #[pallet::getter(fn requests_queue)]
+    pub type RequestsQueue<T: Config> =
+        StorageMap<_, Twox64Concat, T::NetworkId, Vec<OffchainRequest<T>>, ValueQuery>;
+
+    #[pallet::storage]
+    #[pallet::getter(fn incoming_requests)]
+    pub type IncomingRequests<T: Config> =
+        StorageDoubleMap<_, Twox64Concat, T::NetworkId, Identity, H256, IncomingRequest<T>>;
+
+    #[pallet::storage]
+    #[pallet::getter(fn pending_incoming_requests)]
+    pub type PendingIncomingRequests<T: Config> =
+        StorageMap<_, Twox64Concat, T::NetworkId, BTreeSet<H256>, ValueQuery>;
+
+    #[pallet::storage]
+    #[pallet::getter(fn request)]
+    pub type Request<T: Config> =
+        StorageDoubleMap<_, Twox64Concat, T::NetworkId, Identity, H256, OffchainRequest<T>>;
+
+    #[pallet::storage]
+    #[pallet::getter(fn request_status)]
+    pub type RequestStatuses<T: Config> =
+        StorageDoubleMap<_, Twox64Concat, T::NetworkId, Identity, H256, RequestStatus>;
+
+    #[pallet::storage]
+    #[pallet::getter(fn request_submission_height)]
+    pub type RequestSubmissionHeight<T: Config> =
+        StorageDoubleMap<_, Twox64Concat, T::NetworkId, Identity, H256, T::BlockNumber, ValueQuery>;
+
+    #[pallet::storage]
+    #[pallet::getter(fn approvals)]
+    pub(super) type RequestApprovals<T: Config> = StorageDoubleMap<
+        _,
+        Twox64Concat,
+        T::NetworkId,
+        Identity,
+        H256,
+        BTreeSet<SignatureParams>,
+        ValueQuery,
+    >;
+
+    #[pallet::storage]
+    #[pallet::getter(fn account_requests)]
+    pub(super) type AccountRequests<T: Config> =
+        StorageMap<_, Blake2_128Concat, T::AccountId, Vec<(T::NetworkId, H256)>, ValueQuery>;
+
+    #[pallet::storage]
+    #[pallet::getter(fn registered_asset)]
+    pub(super) type RegisteredAsset<T: Config> =
+        StorageDoubleMap<_, Twox64Concat, T::NetworkId, Identity, T::AssetId, AssetKind>;
+
+    #[pallet::storage]
+    #[pallet::getter(fn registered_sidechain_asset)]
+    pub(super) type RegisteredSidechainAsset<T: Config> =
+        StorageDoubleMap<_, Twox64Concat, T::NetworkId, Blake2_128Concat, Address, T::AssetId>;
+
+    #[pallet::storage]
+    #[pallet::getter(fn registered_sidechain_token)]
+    pub(super) type RegisteredSidechainToken<T: Config> =
+        StorageDoubleMap<_, Twox64Concat, T::NetworkId, Blake2_128Concat, T::AssetId, Address>;
+
+    #[pallet::storage]
+    #[pallet::getter(fn peers)]
+    pub(super) type Peers<T: Config> =
+        StorageMap<_, Twox64Concat, T::NetworkId, BTreeSet<T::AccountId>, ValueQuery>;
+
+    #[pallet::storage]
+    #[pallet::getter(fn pending_peer)]
+    pub(super) type PendingPeer<T: Config> =
+        StorageMap<_, Twox64Concat, T::NetworkId, T::AccountId>;
+
+    /// Used for compatibility with XOR and VAL contracts.
+    #[pallet::storage]
+    pub(super) type PendingEthPeersSync<T: Config> = StorageValue<_, EthPeersSync, ValueQuery>;
+
+    #[pallet::storage]
+    #[pallet::getter(fn peer_account_id)]
+    pub(super) type PeerAccountId<T: Config> = StorageDoubleMap<
+        _,
+        Twox64Concat,
+        T::NetworkId,
+        Blake2_128Concat,
+        Address,
+        T::AccountId,
+        ValueQuery,
+    >;
+
+    #[pallet::storage]
+    #[pallet::getter(fn peer_address)]
+    pub(super) type PeerAddress<T: Config> = StorageDoubleMap<
+        _,
+        Twox64Concat,
+        T::NetworkId,
+        Blake2_128Concat,
+        T::AccountId,
+        Address,
+        ValueQuery,
+    >;
+
+    /// Multi-signature bridge peers' account. `None` if there is no network with the given ID.
+    #[pallet::storage]
+    #[pallet::getter(fn bridge_account)]
+    pub(super) type BridgeAccount<T: Config> =
+        StorageMap<_, Twox64Concat, T::NetworkId, T::AccountId>;
+
+    #[pallet::storage]
+    #[pallet::getter(fn authority_account)]
+    pub(super) type AuthorityAccount<T: Config> = StorageValue<_, T::AccountId, ValueQuery>;
+
+    #[pallet::storage]
+    #[pallet::getter(fn bridge_contract_status)]
+    pub(super) type BridgeBridgeStatus<T: Config> =
+        StorageMap<_, Twox64Concat, T::NetworkId, BridgeStatus, ValueQuery>;
+
+    #[pallet::storage]
+    #[pallet::getter(fn bridge_contract_address)]
+    pub(super) type BridgeContractAddress<T: Config> =
+        StorageMap<_, Twox64Concat, T::NetworkId, Address, ValueQuery>;
+
+    #[pallet::storage]
+    #[pallet::getter(fn xor_master_contract_address)]
+    pub(super) type XorMasterContractAddress<T: Config> = StorageValue<_, Address, ValueQuery>;
+
+    #[pallet::storage]
+    #[pallet::getter(fn val_master_contract_address)]
+    pub(super) type ValMasterContractAddress<T: Config> = StorageValue<_, Address, ValueQuery>;
+
+    #[pallet::storage]
+    #[pallet::getter(fn pswap_contract_address)]
+    pub(super) type PswapContractAddress<T: Config> = StorageValue<_, Address, ValueQuery>;
+
+    #[pallet::storage]
+    pub(super) type PswapOwners<T: Config> = StorageMap<_, Identity, Address, Balance>;
+
+    #[pallet::storage]
+    pub(super) type LastNetworkId<T: Config> = StorageValue<_, T::NetworkId, ValueQuery>;
+
+    #[pallet::genesis_config]
+    pub struct GenesisConfig<T: Config> {
+        pub authority_account: T::AccountId,
+        pub xor_master_contract_address: Address,
+        pub val_master_contract_address: Address,
+        pub pswap_contract_address: Address,
+        pub networks: Vec<NetworkConfig<T>>,
+        pub pswap_owners: Vec<(H160, Balance)>,
+    }
+
+    #[cfg(feature = "std")]
+    impl<T: Config> Default for GenesisConfig<T> {
+        fn default() -> Self {
+            Self {
+                authority_account: Default::default(),
+                xor_master_contract_address: Default::default(),
+                val_master_contract_address: Default::default(),
+                pswap_contract_address: Default::default(),
+                networks: Default::default(),
+                pswap_owners: Default::default(),
+            }
+        }
+    }
+
+    #[pallet::genesis_build]
+    impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
+        fn build(&self) {
+            AuthorityAccount::<T>::put(&self.authority_account);
+            XorMasterContractAddress::<T>::put(&self.xor_master_contract_address);
+            ValMasterContractAddress::<T>::put(&self.val_master_contract_address);
+            PswapContractAddress::<T>::put(&self.pswap_contract_address);
+            for network in &self.networks {
+                let net_id = LastNetworkId::<T>::get();
+                let peers_account_id = &network.bridge_account_id;
+                BridgeContractAddress::<T>::insert(net_id, network.bridge_contract_address);
+                BridgeAccount::<T>::insert(net_id, peers_account_id.clone());
+                Peers::<T>::insert(net_id, network.initial_peers.clone());
+                for (asset_id, opt_token_address, kind) in &network.tokens {
+                    if let Some(token_address) = opt_token_address {
+                        let token_address = Address::from(token_address.0);
+                        RegisteredSidechainAsset::<T>::insert(net_id, token_address, *asset_id);
+                        RegisteredSidechainToken::<T>::insert(net_id, &asset_id, token_address);
+                    }
+                    RegisteredAsset::<T>::insert(net_id, asset_id, kind);
+                }
+                let scope = Scope::Unlimited;
+                let permission_ids = [MINT];
+                for permission_id in &permission_ids {
+                    permissions::Module::<T>::assign_permission(
+                        peers_account_id.clone(),
+                        &peers_account_id,
+                        *permission_id,
+                        scope,
+                    )
+                    .expect("failed to assign permissions for a bridge account");
+                }
+                LastNetworkId::<T>::set(net_id + T::NetworkId::one());
+            }
+            for (address, balance) in &self.pswap_owners {
+                PswapOwners::<T>::insert(Address::from_slice(address.as_bytes()), balance);
+            }
+        }
+    }
 }
 
 pub fn majority(peers_count: usize) -> usize {
     peers_count - (peers_count - 1) / 3
-}
-
-decl_module! {
-    pub struct Module<T: Trait> for enum Call where origin: T::Origin {
-        type Error = Error<T>;
-
-        fn deposit_event() = default;
-
-        #[weight = <T as Trait>::WeightInfo::register_bridge()]
-        pub fn register_bridge(origin, bridge_contract_address: Address, initial_peers: BTreeSet<T::AccountId>) {
-            let author = ensure_signed(origin)?;
-            // TODO: governence
-            let net_id = LastNetworkId::<T>::get();
-            let peers_account_id = bridge_multisig::Module::<T>::register_multisig_inner(
-                author,
-                initial_peers.iter().cloned().collect(),
-                Percent::from_parts(67)
-            )?;
-            BridgeContractAddress::<T>::insert(net_id, bridge_contract_address);
-            BridgeAccount::<T>::insert(net_id, peers_account_id);
-            Peers::<T>::insert(net_id, initial_peers);
-            LastNetworkId::<T>::set(net_id + T::NetworkId::one());
-        }
-
-        #[weight = <T as Trait>::WeightInfo::add_asset()]
-        pub fn add_asset(
-            origin,
-            asset_id: AssetIdOf<T>,
-            network_id: BridgeNetworkId<T>,
-        ) {
-            debug::debug!("called add_asset");
-            let from = ensure_signed(origin)?;
-            let nonce = frame_system::Module::<T>::account_nonce(&from);
-            Self::add_request(OffchainRequest::outgoing(OutgoingRequest::AddAsset(OutgoingAddAsset {
-                author: from.clone(),
-                asset_id,
-                nonce,
-                network_id,
-            })))?;
-            frame_system::Module::<T>::inc_account_nonce(&from);
-        }
-
-        #[weight = <T as Trait>::WeightInfo::add_sidechain_token()]
-        pub fn add_sidechain_token(
-            origin,
-            token_address: EthereumAddress,
-            ticker: String,
-            name: String,
-            decimals: u8,
-            network_id: BridgeNetworkId<T>,
-        ) {
-            debug::debug!("called add_sidechain_token");
-            let from = ensure_signed(origin)?;
-            let authority_account_id = Self::authority_account();
-            ensure!(from == authority_account_id, Error::<T>::Forbidden);
-            let nonce = frame_system::Module::<T>::account_nonce(&from);
-            Self::add_request(OffchainRequest::outgoing(OutgoingRequest::AddToken(OutgoingAddToken {
-                author: from.clone(),
-                token_address,
-                ticker,
-                name,
-                decimals,
-                nonce,
-                network_id,
-            })))?;
-            frame_system::Module::<T>::inc_account_nonce(&from);
-        }
-
-        #[weight = <T as Trait>::WeightInfo::transfer_to_sidechain()]
-        pub fn transfer_to_sidechain(
-            origin,
-            asset_id: AssetIdOf<T>,
-            to: EthereumAddress,
-            amount: Balance,
-            network_id: BridgeNetworkId<T>,
-        ) {
-            debug::debug!("called transfer_to_sidechain");
-            let from = ensure_signed(origin)?;
-            let nonce = frame_system::Module::<T>::account_nonce(&from);
-            Self::add_request(OffchainRequest::outgoing(OutgoingRequest::Transfer(OutgoingTransfer {
-                from: from.clone(),
-                to,
-                asset_id,
-                amount,
-                nonce,
-                network_id,
-            })))?;
-            frame_system::Module::<T>::inc_account_nonce(&from);
-        }
-
-        #[weight = <T as Trait>::WeightInfo::request_from_sidechain()]
-        pub fn request_from_sidechain(
-            origin,
-            eth_tx_hash: H256,
-            kind: IncomingRequestKind,
-            network_id: BridgeNetworkId<T>,
-        ) {
-            debug::debug!("called request_from_sidechain");
-            let from = ensure_signed(origin)?;
-            if kind == IncomingRequestKind::CancelOutgoingRequest {
-                fail!(Error::<T>::Unavailable);
-            }
-            let timepoint = bridge_multisig::Module::<T>::timepoint();
-            Self::add_request(OffchainRequest::Incoming(IncomingPreRequest::new(
-                from,
-                eth_tx_hash,
-                timepoint,
-                kind,
-                network_id,
-            )))?;
-        }
-
-        #[weight = (0, Pays::No)]
-        pub fn finalize_incoming_request(
-            origin,
-            result: Result<IncomingRequest<T>, (H256, DispatchError)>,
-            network_id: BridgeNetworkId<T>
-        ) {
-            debug::debug!("called finalize_incoming_request");
-
-            let from = ensure_signed(origin)?;
-            let _ = Self::ensure_bridge_account(&from, network_id)?;
-
-            let result = result.and_then(|req| {
-                let hash = H256(req.hash().0);
-                let result = req.finalize().map_err(|e| (hash, e));
-                if result.is_err() {
-                    if let Err(e) = req.cancel() {
-                        debug::error!("Request cancellation failed: {:?}, {:?}", e, req);
-                    }
-                }
-                result
-            });
-            let hash = match result {
-                Ok(hash) => {
-                    debug::warn!("Incoming request finalized {:?}", hash);
-                    RequestStatuses::<T>::insert(network_id, hash, RequestStatus::Done);
-                    Self::deposit_event(RawEvent::IncomingRequestFinalized(hash));
-                    hash
-                }
-                Err((hash, e)) => {
-                    debug::error!("Incoming request finalization failed {:?} {:?}", hash, e);
-                    RequestStatuses::<T>::insert(network_id, hash, RequestStatus::Failed);
-                    Self::deposit_event(RawEvent::IncomingRequestFinalizationFailed(hash));
-                    hash
-                }
-            };
-            PendingIncomingRequests::<T>::mutate(network_id, |set| {
-                set.remove(&hash)
-            });
-            Self::remove_request_from_queue(network_id, &hash);
-        }
-
-        #[weight = <T as Trait>::WeightInfo::add_peer()]
-        pub fn add_peer(
-            origin,
-            account_id: T::AccountId,
-            address: EthereumAddress,
-            network_id: BridgeNetworkId<T>,
-        ) {
-            debug::debug!("called change_peers_out");
-            let from = ensure_signed(origin)?;
-            ensure!(from == Self::authority_account(), Error::<T>::Forbidden);
-            let nonce = frame_system::Module::<T>::account_nonce(&from);
-            Self::add_request(OffchainRequest::outgoing(OutgoingRequest::AddPeer(OutgoingAddPeer {
-                author: from.clone(),
-                peer_account_id: account_id.clone(),
-                peer_address: address,
-                nonce,
-                network_id,
-            })))?;
-            frame_system::Module::<T>::inc_account_nonce(&from);
-            if network_id == T::GetEthNetworkId::get() {
-                let nonce = frame_system::Module::<T>::account_nonce(&from);
-                Self::add_request(OffchainRequest::outgoing(OutgoingRequest::AddPeerCompat(OutgoingAddPeerCompat {
-                    author: from.clone(),
-                    peer_account_id: account_id,
-                    peer_address: address,
-                    nonce,
-                    network_id,
-                })))?;
-                frame_system::Module::<T>::inc_account_nonce(&from);
-            }
-        }
-
-        #[weight = <T as Trait>::WeightInfo::remove_peer()]
-        pub fn remove_peer(origin, account_id: T::AccountId, network_id: BridgeNetworkId<T>) {
-            debug::debug!("called change_peers_out");
-            let from = ensure_signed(origin)?;
-            ensure!(from == Self::authority_account(), Error::<T>::Forbidden);
-            let peer_address = Self::peer_address(network_id, &account_id);
-            let nonce = frame_system::Module::<T>::account_nonce(&from);
-            Self::add_request(OffchainRequest::outgoing(OutgoingRequest::RemovePeer(OutgoingRemovePeer {
-                author: from.clone(),
-                peer_account_id: account_id.clone(),
-                peer_address,
-                nonce,
-                network_id,
-            })))?;
-            frame_system::Module::<T>::inc_account_nonce(&from);
-            if network_id == T::GetEthNetworkId::get() {
-                let nonce = frame_system::Module::<T>::account_nonce(&from);
-                Self::add_request(OffchainRequest::outgoing(OutgoingRequest::RemovePeerCompat(OutgoingRemovePeerCompat {
-                    author: from.clone(),
-                    peer_account_id: account_id,
-                    peer_address,
-                    nonce,
-                    network_id,
-                })))?;
-                frame_system::Module::<T>::inc_account_nonce(&from);
-            }
-        }
-
-        #[weight = <T as Trait>::WeightInfo::prepare_for_migration()]
-        pub fn prepare_for_migration(origin, network_id: BridgeNetworkId<T>) {
-            debug::debug!("called prepare_for_migration");
-            let from = ensure_signed(origin)?;
-            ensure!(from == Self::authority_account(), Error::<T>::Forbidden);
-            let nonce = frame_system::Module::<T>::account_nonce(&from);
-            Self::add_request(OffchainRequest::outgoing(OutgoingRequest::PrepareForMigration(OutgoingPrepareForMigration {
-                author: from.clone(),
-                nonce,
-                network_id,
-            })))?;
-            frame_system::Module::<T>::inc_account_nonce(&from);
-        }
-
-        #[weight = <T as Trait>::WeightInfo::migrate()]
-        pub fn migrate(
-            origin,
-            new_contract_address: EthereumAddress,
-            erc20_native_tokens: Vec<EthereumAddress>,
-            network_id: BridgeNetworkId<T>
-        ) {
-            debug::debug!("called prepare_for_migration");
-            let from = ensure_signed(origin)?;
-            ensure!(from == Self::authority_account(), Error::<T>::Forbidden);
-            let nonce = frame_system::Module::<T>::account_nonce(&from);
-            Self::add_request(OffchainRequest::outgoing(OutgoingRequest::Migrate(OutgoingMigrate {
-                author: from.clone(),
-                new_contract_address,
-                erc20_native_tokens,
-                nonce,
-                network_id,
-            })))?;
-            frame_system::Module::<T>::inc_account_nonce(&from);
-        }
-
-        // TODO: handle incoming requests without register
-        #[weight = (0, Pays::No)]
-        pub fn register_incoming_request(origin, incoming_request: IncomingRequest<T>) {
-            debug::debug!("called register_incoming_request");
-            let author = ensure_signed(origin.clone())?;
-            let _ = Self::ensure_bridge_account(&author, incoming_request.network_id())?;
-            let tx_hash = incoming_request.hash();
-            let net_id = incoming_request.network_id();
-            ensure!(
-                !PendingIncomingRequests::<T>::get(net_id).contains(&tx_hash),
-                Error::<T>::TransferIsAlreadyRegistered
-            );
-            if let Err(e) = incoming_request.prepare() {
-                Self::finalize_incoming_request(origin, Err((tx_hash, e)), net_id)?;
-                return Err(e);
-            }
-            PendingIncomingRequests::<T>::mutate(net_id, |transfers| transfers.insert(tx_hash));
-            Self::remove_request_from_queue(net_id, &tx_hash);
-            IncomingRequests::<T>::insert(net_id, &tx_hash, incoming_request);
-        }
-
-        #[weight = (0, Pays::No)]
-        pub fn approve_request(
-            origin,
-            ocw_public: ecdsa::Public,
-            request: OutgoingRequest<T>,
-            request_encoded: OutgoingRequestEncoded,
-            signature_params: SignatureParams
-        ) {
-            debug::debug!("called approve_request");
-            let author = ensure_signed(origin)?;
-            let net_id = request.network_id();
-            Self::ensure_peer(&author, net_id)?;
-            if !Self::verify_message(
-                request_encoded.as_raw(),
-                &signature_params,
-                &ocw_public,
-                &author,
-            ) {
-                // TODO: punish the off-chain worker
-                return Err(Error::<T>::InvalidSignature.into());
-            }
-            debug::info!("Verified request approve {:?}", request_encoded);
-            let hash = request.hash();
-            let mut approvals = RequestApprovals::<T>::get(net_id, &hash);
-            let pending_peers_len = if PendingPeer::<T>::get(net_id).is_some() {
-                1
-            } else {
-                0
-            };
-            let need_sigs = majority(Self::peers(net_id).len()) + pending_peers_len;
-            approvals.insert(signature_params);
-            RequestApprovals::<T>::insert(net_id, &hash, &approvals);
-            let current_status = RequestStatuses::<T>::get(net_id, &hash).unwrap_or(RequestStatus::Pending);
-            if current_status == RequestStatus::Pending && approvals.len() == need_sigs {
-                if let Err(err) = request.finalize() {
-                    debug::error!("Outgoing request finalization failed: {:?}", err);
-                    RequestStatuses::<T>::insert(net_id, hash, RequestStatus::Failed);
-                    Self::deposit_event(RawEvent::RequestFinalizationFailed(hash));
-                    if let Err(e) = request.cancel() {
-                        debug::error!("Request cancellation failed: {:?}, {:?}", e, request)
-                    }
-                } else {
-                    debug::debug!("Outgoing request finalized {:?}", hash);
-                    RequestStatuses::<T>::insert(net_id, hash, RequestStatus::ApprovalsReady);
-                    Self::deposit_event(RawEvent::ApprovalsCollected(
-                        request_encoded,
-                        approvals,
-                    ));
-                }
-                Self::remove_request_from_queue(net_id, &hash);
-            }
-        }
-
-        // TODO: maybe rewrite to finalize with `finalize_incoming_request`
-        #[weight = <T as Trait>::WeightInfo::finalize_mark_as_done()]
-        pub fn finalize_mark_as_done(origin, request_hash: H256, network_id: BridgeNetworkId<T>) {
-            debug::debug!("called finalize_mark_as_done");
-            let author = ensure_signed(origin)?;
-            let bridge_account_id = get_bridge_account::<T>(network_id);
-            ensure!(author == bridge_account_id, Error::<T>::Forbidden);
-            let request_status = RequestStatuses::<T>::get(network_id, request_hash).ok_or(Error::<T>::UnknownRequest)?;
-            ensure!(request_status == RequestStatus::ApprovalsReady, Error::<T>::RequestIsNotReady);
-            RequestStatuses::<T>::insert(network_id, request_hash, RequestStatus::Done);
-        }
-
-        fn offchain_worker(block_number: T::BlockNumber) {
-            debug::debug!("Entering off-chain workers {:?}", block_number);
-            if StorageValueRef::persistent(STORAGE_PEER_SECRET_KEY).get::<Vec<u8>>().is_none() {
-                debug::debug!("Peer secret key not found. Skipping off-chain procedure.");
-                return;
-            }
-
-            let mut lock = StorageLock::<'_, Time>::new(b"eth-bridge-ocw::lock");
-            let _guard = lock.lock();
-            Self::offchain();
-        }
-
-        #[weight = <T as Trait>::WeightInfo::force_add_peer()]
-        pub fn force_add_peer(origin, who: T::AccountId, address: EthereumAddress, network_id: BridgeNetworkId<T>) {
-            let _ = ensure_root(origin)?;
-            if !Self::is_peer(&who, network_id) {
-                PeerAddress::<T>::insert(network_id, &who, address);
-                PeerAccountId::<T>::insert(network_id, &address, who.clone());
-                <Peers<T>>::mutate(network_id, |l| l.insert(who));
-            }
-        }
-    }
 }
 
 #[cfg_attr(feature = "std", derive(PartialEq, Eq, RuntimeDebug))]
@@ -1299,12 +1488,12 @@ pub enum ContractEvent<AssetId, Address, AccountId, Balance> {
 }
 
 #[derive(PartialEq)]
-pub struct Decoder<T: Trait> {
+pub struct Decoder<T: Config> {
     tokens: Vec<Token>,
     _phantom: PhantomData<T>,
 }
 
-impl<T: Trait> Decoder<T> {
+impl<T: Config> Decoder<T> {
     pub fn new(tokens: Vec<Token>) -> Self {
         Self {
             tokens,
@@ -1430,13 +1619,13 @@ impl<T: Trait> Decoder<T> {
     }
 }
 
-impl<T: Trait> Decoder<T> {
+impl<T: Config> Decoder<T> {
     pub fn write_string(&mut self, val: String) {
         self.tokens.push(Token::String(val));
     }
 }
 
-impl<T: Trait> Module<T> {
+impl<T: Config> Module<T> {
     fn add_request(mut request: OffchainRequest<T>) -> Result<(), DispatchError> {
         let net_id = request.network_id();
         if let Some(outgoing_req) = request.as_outgoing() {
@@ -1470,7 +1659,7 @@ impl<T: Trait> Module<T> {
         RequestStatuses::<T>::insert(net_id, &hash, RequestStatus::Pending);
         let block_number = frame_system::Module::<T>::current_block_number();
         RequestSubmissionHeight::<T>::insert(net_id, &hash, block_number);
-        Self::deposit_event(RawEvent::RequestRegistered(hash));
+        Self::deposit_event(Event::RequestRegistered(hash));
         Ok(())
     }
 
@@ -1672,7 +1861,7 @@ impl<T: Trait> Module<T> {
                 let call = bridge_multisig::Call::as_multi(
                     get_bridge_account::<T>(network_id),
                     Some(timepoint),
-                    <<T as Trait>::Call>::from(register_call).encode(),
+                    <<T as Config>::Call>::from(register_call).encode(),
                     false,
                     10_000_000_000_000u64,
                 );
@@ -1744,7 +1933,7 @@ impl<T: Trait> Module<T> {
         let call = bridge_multisig::Call::as_multi(
             get_bridge_account::<T>(pre_request.network_id),
             Some(pre_request.timepoint),
-            <<T as Trait>::Call>::from(finalize_mark_as_done).encode(),
+            <<T as Config>::Call>::from(finalize_mark_as_done).encode(),
             false,
             10_000_000_000_000u64,
         );
@@ -2257,7 +2446,7 @@ impl<T: Trait> Module<T> {
         let call = bridge_multisig::Call::as_multi(
             Self::bridge_account(network_id).expect("networks can't be removed; qed"),
             Some(timepoint),
-            <<T as Trait>::Call>::from(transfer_call).encode(),
+            <<T as Config>::Call>::from(transfer_call).encode(),
             false,
             10_000_000_000_000_000u64,
         );
@@ -2406,7 +2595,7 @@ impl<T: Trait> Module<T> {
     }
 }
 
-impl<T: Trait> Module<T> {
+impl<T: Config> Module<T> {
     const ITEMS_LIMIT: usize = 50;
 
     /// Get requests data and their statuses by hash.
@@ -2544,7 +2733,7 @@ impl<T: Trait> Module<T> {
     }
 }
 
-pub fn get_bridge_account<T: Trait>(network_id: T::NetworkId) -> T::AccountId {
+pub fn get_bridge_account<T: Config>(network_id: T::NetworkId) -> T::AccountId {
     crate::BridgeAccount::<T>::get(network_id).expect("networks can't be removed; qed")
 }
 

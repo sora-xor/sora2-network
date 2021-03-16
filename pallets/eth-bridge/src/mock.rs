@@ -1,9 +1,11 @@
-// Creating mock Test here
+// Creating mock Runtime here
 
 use crate as eth_bridge;
-use crate::{AssetKind, NetworkConfig, Trait};
+use crate::{AssetKind, Config, NetworkConfig};
 use codec::{Codec, Decode, Encode};
-use common::{prelude::Balance, Amount, AssetId, AssetId32, AssetSymbol, VAL};
+use common::{
+    mock::ExistentialDeposits, prelude::Balance, Amount, AssetId, AssetId32, AssetSymbol, VAL,
+};
 use currencies::BasicCurrencyAdapter;
 use frame_support::{
     construct_runtime,
@@ -18,35 +20,33 @@ use frame_support::{
                 crypto::AccountId32,
                 ecdsa,
                 offchain::{OffchainExt, TransactionPoolExt},
-                sr25519,
-                testing::KeyStore,
-                traits::KeystoreExt,
-                Pair, Public,
+                sr25519, Pair, Public,
             },
         },
         offchain::testing::{OffchainState, PoolState, TestOffchainExt, TestTransactionPoolExt},
         serde::{Serialize, Serializer},
         traits::{
-            Applyable, Block, Checkable, DispatchInfoOf, Dispatchable, IdentifyAccount,
+            Applyable, Checkable, DispatchInfoOf, Dispatchable, IdentifyAccount,
             PostDispatchInfoOf, SignedExtension, ValidateUnsigned, Verify,
         },
         transaction_validity::TransactionValidityError,
         MultiSigner, Percent,
         {
-            generic,
             testing::Header,
             traits::{self, BlakeTwo256, IdentityLookup},
             transaction_validity::{TransactionSource, TransactionValidity},
             ApplyExtrinsicResultWithInfo, MultiSignature, Perbill,
         },
     },
+    traits::GenesisBuild,
     weights::{Pays, Weight},
 };
-use frame_system as system;
+use frame_system;
 use frame_system::offchain::{Account, SigningTypes};
 use parking_lot::RwLock;
+use sp_keystore::{testing::KeyStore, KeystoreExt};
 // use permissions::{Scope, MINT};
-use sp_core::H160;
+use sp_core::{H160, H256};
 use sp_std::collections::btree_set::BTreeSet;
 use sp_std::{fmt::Debug, str::FromStr, sync::Arc};
 use std::collections::HashMap;
@@ -62,12 +62,17 @@ pub type Signature = MultiSignature;
 /// Some way of identifying an account on the chain. We intentionally make it equivalent
 /// to the public key of our transaction signing scheme.
 pub type AccountId = <<Signature as Verify>::Signer as IdentifyAccount>::AccountId;
+type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
+type Block = frame_system::mocking::MockBlock<Runtime>;
 
-/// Index of a transaction in the chain.
-pub type Index = u64;
-
-/// A hash of some data used by the chain.
-pub type Hash = sp_core::H256;
+parameter_types! {
+    pub const GetBaseAssetId: AssetId32<AssetId> = AssetId32::from_asset_id(XOR);
+    pub const DepositBase: u64 = 1;
+    pub const DepositFactor: u64 = 1;
+    pub const MaxSignatories: u16 = 4;
+    pub const UnsignedPriority: u64 = 100;
+    pub const EthNetworkId: <Runtime as Config>::NetworkId = 0;
+}
 
 #[derive(PartialEq, Eq, Clone, Encode, Decode, Debug)]
 pub struct MyTestXt<Call, Extra> {
@@ -178,7 +183,6 @@ impl<Call: Encode, Extra: Encode> GetDispatchInfo for MyTestXt<Call, Extra> {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Encode, Decode)]
 pub struct MyExtra;
 pub type TestExtrinsic = MyTestXt<Call, MyExtra>;
-type NodeBlock = generic::Block<Header, TestExtrinsic>;
 
 parameter_types! {
     pub const BlockHashCount: u64 = 250;
@@ -188,35 +192,32 @@ parameter_types! {
     pub const ExistentialDeposit: u128 = 0;
 }
 
-impl system::Trait for Test {
+impl frame_system::Config for Runtime {
     type BaseCallFilter = ();
+    type BlockWeights = ();
+    type BlockLength = ();
     type Origin = Origin;
     type Call = Call;
-    type Index = Index;
-    type BlockNumber = BlockNumber;
-    type Hash = Hash;
+    type Index = u64;
+    type BlockNumber = u64;
+    type Hash = H256;
     type Hashing = BlakeTwo256;
     type AccountId = AccountId;
     type Lookup = IdentityLookup<Self::AccountId>;
     type Header = Header;
     type Event = Event;
     type BlockHashCount = BlockHashCount;
-    type MaximumBlockWeight = MaximumBlockWeight;
     type DbWeight = ();
-    type BlockExecutionWeight = ();
-    type ExtrinsicBaseWeight = ();
-    type MaximumExtrinsicWeight = MaximumBlockWeight;
-    type MaximumBlockLength = MaximumBlockLength;
-    type AvailableBlockRatio = AvailableBlockRatio;
     type Version = ();
-    type PalletInfo = ();
     type AccountData = pallet_balances::AccountData<Balance>;
     type OnNewAccount = ();
     type OnKilledAccount = ();
     type SystemWeightInfo = ();
+    type PalletInfo = PalletInfo;
+    type SS58Prefix = ();
 }
 
-impl<T: SigningTypes> system::offchain::SignMessage<T> for Test {
+impl<T: SigningTypes> frame_system::offchain::SignMessage<T> for Runtime {
     type SignatureData = ();
 
     fn sign_message(&self, _message: &[u8]) -> Self::SignatureData {
@@ -226,21 +227,21 @@ impl<T: SigningTypes> system::offchain::SignMessage<T> for Test {
     fn sign<TPayload, F>(&self, _f: F) -> Self::SignatureData
     where
         F: Fn(&Account<T>) -> TPayload,
-        TPayload: system::offchain::SignedPayload<T>,
+        TPayload: frame_system::offchain::SignedPayload<T>,
     {
         unimplemented!()
     }
 }
 
-impl<LocalCall> system::offchain::CreateSignedTransaction<LocalCall> for Test
+impl<LocalCall> frame_system::offchain::CreateSignedTransaction<LocalCall> for Runtime
 where
     Call: From<LocalCall>,
 {
     fn create_transaction<C: frame_system::offchain::AppCrypto<Self::Public, Self::Signature>>(
         call: Call,
         _public: <Signature as Verify>::Signer,
-        account: <Test as system::Trait>::AccountId,
-        _index: <Test as system::Trait>::Index,
+        account: <Runtime as frame_system::Config>::AccountId,
+        _index: <Runtime as frame_system::Config>::Index,
     ) -> Option<(
         Call,
         <TestExtrinsic as sp_runtime::traits::Extrinsic>::SignaturePayload,
@@ -249,12 +250,12 @@ where
     }
 }
 
-impl frame_system::offchain::SigningTypes for Test {
+impl frame_system::offchain::SigningTypes for Runtime {
     type Public = <Signature as Verify>::Signer;
     type Signature = Signature;
 }
 
-impl<C> frame_system::offchain::SendTransactionTypes<C> for Test
+impl<C> frame_system::offchain::SendTransactionTypes<C> for Runtime
 where
     Call: From<C>,
 {
@@ -262,7 +263,7 @@ where
     type Extrinsic = TestExtrinsic;
 }
 
-impl pallet_balances::Trait for Test {
+impl pallet_balances::Config for Runtime {
     /// The type for recording an account's balance.
     type Balance = Balance;
     /// The ubiquitous event type.
@@ -274,54 +275,45 @@ impl pallet_balances::Trait for Test {
     type MaxLocks = ();
 }
 
-impl tokens::Trait for Test {
+impl tokens::Config for Runtime {
     type Event = Event;
     type Balance = Balance;
     type Amount = Amount;
-    type CurrencyId = <Test as assets::Trait>::AssetId;
-    type OnReceived = ();
+    type CurrencyId = <Runtime as assets::Config>::AssetId;
     type WeightInfo = ();
+    type ExistentialDeposits = ExistentialDeposits;
+    type OnDust = ();
 }
 
-parameter_types! {
-    pub const GetBaseAssetId: AssetId32<AssetId> = AssetId32::from_asset_id(XOR);
-}
-
-impl currencies::Trait for Test {
+impl currencies::Config for Runtime {
     type Event = Event;
     type MultiCurrency = Tokens;
-    type NativeCurrency = BasicCurrencyAdapter<Test, Balances, Amount, BlockNumber>;
-    type GetNativeCurrencyId = <Test as assets::Trait>::GetBaseAssetId;
+    type NativeCurrency = BasicCurrencyAdapter<Runtime, Balances, Amount, BlockNumber>;
+    type GetNativeCurrencyId = <Runtime as assets::Config>::GetBaseAssetId;
     type WeightInfo = ();
 }
 
-impl assets::Trait for Test {
+impl assets::Config for Runtime {
     type Event = Event;
     type ExtraAccountId = [u8; 32];
     type ExtraTupleArg =
         common::AssetIdExtraTupleArg<common::DEXId, common::LiquiditySourceType, [u8; 32]>;
     type AssetId = common::AssetId32<AssetId>;
     type GetBaseAssetId = GetBaseAssetId;
-    type Currency = currencies::Module<Test>;
+    type Currency = currencies::Module<Runtime>;
     type WeightInfo = ();
 }
 
-impl common::Trait for Test {
+impl common::Config for Runtime {
     type DEXId = common::DEXId;
     type LstId = common::LiquiditySourceType;
 }
 
-impl permissions::Trait for Test {
+impl permissions::Config for Runtime {
     type Event = Event;
 }
 
-parameter_types! {
-    pub const DepositBase: u64 = 1;
-    pub const DepositFactor: u64 = 1;
-    pub const MaxSignatories: u16 = 4;
-}
-
-impl bridge_multisig::Trait for Test {
+impl bridge_multisig::Config for Runtime {
     type Call = Call;
     type Event = Event;
     type Currency = Balances;
@@ -331,17 +323,12 @@ impl bridge_multisig::Trait for Test {
     type WeightInfo = ();
 }
 
-impl pallet_sudo::Trait for Test {
+impl pallet_sudo::Config for Runtime {
     type Call = Call;
     type Event = Event;
 }
 
-parameter_types! {
-    pub const UnsignedPriority: u64 = 100;
-    pub const EthNetworkId: <Test as Trait>::NetworkId = 0;
-}
-
-impl crate::Trait for Test {
+impl crate::Config for Runtime {
     type PeerId = crate::crypto::TestAuthId;
     type Call = Call;
     type Event = Event;
@@ -356,12 +343,12 @@ impl sp_runtime::traits::ExtrinsicMetadata for TestExtrinsic {
 }
 
 construct_runtime!(
-    pub enum Test where
-        Block = NodeBlock,
-        NodeBlock = NodeBlock,
-        UncheckedExtrinsic = TestExtrinsic
+    pub enum Runtime where
+        Block = Block,
+        NodeBlock = Block,
+        UncheckedExtrinsic = UncheckedExtrinsic
     {
-        System: system::{Module, Call, Config, Storage, Event<T>},
+        System: frame_system::{Module, Call, Config, Storage, Event<T>},
         Balances: pallet_balances::{Module, Call, Storage, Config<T>, Event<T>},
         Multisig: bridge_multisig::{Module, Call, Storage, Config<T>, Event<T>},
         Tokens: tokens::{Module, Call, Storage, Config<T>, Event<T>},
@@ -385,7 +372,7 @@ pub struct State {
 #[derive(Clone, Debug)]
 pub struct ExtendedNetworkConfig {
     pub ocw_keypairs: Vec<(MultiSigner, AccountId32, [u8; 32])>,
-    pub config: NetworkConfig<Test>,
+    pub config: NetworkConfig<Runtime>,
 }
 
 pub struct ExtBuilder {
@@ -469,7 +456,7 @@ impl ExtBuilder {
         peers_num: Option<usize>,
     ) -> u32 {
         let net_id = self.last_network_id;
-        let multisig_account_id = bridge_multisig::Module::<Test>::multi_account_id(
+        let multisig_account_id = bridge_multisig::Module::<Runtime>::multi_account_id(
             &self.root_account_id,
             1,
             net_id as u64 + 10,
@@ -495,9 +482,8 @@ impl ExtBuilder {
     pub fn build(self) -> (TestExternalities, State) {
         let (offchain, offchain_state) = TestOffchainExt::new();
         let (pool, pool_state) = TestTransactionPoolExt::new();
-        let keystore = KeyStore::new();
         let authority_account_id =
-            bridge_multisig::Module::<Test>::multi_account_id(&self.root_account_id, 1, 0);
+            bridge_multisig::Module::<Runtime>::multi_account_id(&self.root_account_id, 1, 0);
 
         let mut bridge_accounts = Vec::new();
         let mut bridge_network_configs = Vec::new();
@@ -531,6 +517,17 @@ impl ExtBuilder {
             ));
         }
 
+        // pallet_balances and orml_tokens no longer accept duplicate elements.
+        let mut unique_endowed_accounts: Vec<(_, AssetId32<AssetId>, _)> = Vec::new();
+        for acc in endowed_accounts {
+            if let Some(unique_acc) = unique_endowed_accounts.iter_mut().find(|a| a.1 == acc.1) {
+                unique_acc.2 += acc.2;
+            } else {
+                unique_endowed_accounts.push(acc);
+            }
+        }
+        let endowed_accounts = unique_endowed_accounts;
+
         let endowed_assets: BTreeSet<_> = endowed_accounts
             .iter()
             .map(|x| {
@@ -546,7 +543,7 @@ impl ExtBuilder {
             .collect();
 
         let mut storage = frame_system::GenesisConfig::default()
-            .build_storage::<Test>()
+            .build_storage::<Runtime>()
             .unwrap();
 
         if !endowed_accounts.is_empty() {
@@ -621,7 +618,7 @@ impl ExtBuilder {
         let mut t = TestExternalities::from(storage);
         t.register_extension(OffchainExt::new(offchain));
         t.register_extension(TransactionPoolExt::new(pool));
-        t.register_extension(KeystoreExt(keystore));
+        t.register_extension(KeystoreExt(Arc::new(KeyStore::new())));
         t.execute_with(|| System::set_block_number(1));
 
         let state = State {

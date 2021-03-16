@@ -3,9 +3,9 @@ use frame_support::{assert_noop, assert_ok};
 
 use crate::{mock::*, *};
 
-type Module = crate::Module<Test>;
-type Assets = assets::Module<Test>;
-type System = frame_system::Module<Test>;
+type Module = crate::Module<Runtime>;
+type Assets = assets::Module<Runtime>;
+type System = frame_system::Module<Runtime>;
 
 #[test]
 fn transfer_passes_unsigned() {
@@ -119,7 +119,7 @@ fn transfer_fails_with_asset_not_supported() {
                 bob(),
                 balance!(0.5)
             ),
-            crate::Error::<Test>::AssetNotSupported
+            crate::Error::<Runtime>::AssetNotSupported
         );
     });
 }
@@ -135,7 +135,7 @@ fn transfer_fails_with_amount_above_limit() {
         ));
         assert_noop!(
             Module::transfer(Origin::signed(alice()), XOR, bob(), balance!(0.2)),
-            crate::Error::<Test>::AmountAboveLimit
+            crate::Error::<Runtime>::AmountAboveLimit
         );
     });
 }
@@ -151,7 +151,7 @@ fn transfer_fails_with_not_enough_reserves() {
         ));
         assert_noop!(
             Module::transfer(Origin::signed(bob()), XOR, alice(), balance!(100)),
-            crate::Error::<Test>::NotEnoughReserves
+            crate::Error::<Runtime>::NotEnoughReserves
         );
     });
 }

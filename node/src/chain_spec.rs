@@ -17,9 +17,9 @@ use common::{fixed, hash, prelude::Balance, DEXId, Fixed, TechPurpose, PSWAP, VA
 use frame_support::sp_runtime::Percent;
 use framenode_runtime::bonding_curve_pool::{DistributionAccountData, DistributionAccounts};
 use framenode_runtime::eth_bridge::{AssetKind, NetworkConfig};
-use grandpa::AuthorityId as GrandpaId;
 use hex_literal::hex;
 use permissions::Scope;
+use sc_finality_grandpa::AuthorityId as GrandpaId;
 use sc_network::config::MultiaddrWithPeerId;
 use sc_service::{ChainType, Properties};
 use sp_consensus_aura::sr25519::AuthorityId as AuraId;
@@ -305,7 +305,7 @@ pub fn staging_net(test: bool) -> ChainSpec {
 }
 
 fn bonding_curve_distribution_accounts(
-) -> DistributionAccounts<DistributionAccountData<<Runtime as technical::Trait>::TechAccountId>> {
+) -> DistributionAccounts<DistributionAccountData<<Runtime as technical::Config>::TechAccountId>> {
     use common::{fixed_wrapper, prelude::fixnum::ops::One};
     let val_holders_coefficient = fixed_wrapper!(0.5);
     let val_holders_xor_alloc_coeff = fixed_wrapper!(0.9) * val_holders_coefficient.clone();
@@ -405,7 +405,6 @@ pub fn local_testnet_config() -> ChainSpec {
                     */
                 ],
                 vec![
-                    get_account_id_from_seed::<sr25519::Public>("Alice"),
                     get_account_id_from_seed::<sr25519::Public>("Bob"),
                     get_account_id_from_seed::<sr25519::Public>("Charlie"),
                     get_account_id_from_seed::<sr25519::Public>("Dave"),

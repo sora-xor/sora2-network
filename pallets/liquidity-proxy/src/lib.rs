@@ -16,10 +16,7 @@ use common::{
     fixed_wrapper,
     prelude::fixnum::ops::{Bounded, CheckedMul, Zero as _},
 };
-use frame_support::{
-    decl_error, decl_event, decl_module, dispatch::DispatchResult, ensure, traits::Get,
-    weights::Weight, RuntimeDebug,
-};
+use frame_support::{ensure, traits::Get, weights::Weight, RuntimeDebug};
 use frame_system::ensure_signed;
 use sp_runtime::{
     traits::{UniqueSaturatedFrom, Zero},
@@ -40,7 +37,7 @@ pub mod algo;
 pub const TECH_ACCOUNT_PREFIX: &[u8] = b"liquidity-proxy";
 pub const TECH_ACCOUNT_MAIN: &[u8] = b"main";
 
-pub enum ExchangePath<T: Trait> {
+pub enum ExchangePath<T: Config> {
     Direct {
         from_asset_id: T::AssetId,
         to_asset_id: T::AssetId,
@@ -52,7 +49,7 @@ pub enum ExchangePath<T: Trait> {
     },
 }
 
-impl<T: Trait> ExchangePath<T> {
+impl<T: Config> ExchangePath<T> {
     pub fn as_vec(self) -> Vec<(T::AssetId, T::AssetId)> {
         match self {
             ExchangePath::Direct {
@@ -147,118 +144,7 @@ pub trait WeightInfo {
     fn swap(amount: SwapVariant) -> Weight;
 }
 
-pub trait Trait: common::Trait + assets::Trait {
-    type Event: From<Event<Self>> + Into<<Self as frame_system::Trait>::Event>;
-    type LiquidityRegistry: LiquidityRegistry<
-        Self::DEXId,
-        Self::AccountId,
-        Self::AssetId,
-        LiquiditySourceType,
-        Balance,
-        DispatchError,
-    >;
-    type GetNumSamples: Get<usize>;
-    type GetTechnicalAccountId: Get<Self::AccountId>;
-
-    /// Weight information for the extrinsics in this pallet.
-    type WeightInfo: WeightInfo;
-}
-
-decl_event!(
-    pub enum Event<T>
-    where
-        AccountId = <T as frame_system::Trait>::AccountId,
-        AssetId = <T as assets::Trait>::AssetId,
-        DEXId = <T as common::Trait>::DEXId,
-    {
-        /// Exchange of tokens has been performed
-        /// [Caller Account, DEX Id, Input Asset Id, Output Asset Id, Input Amount, Output Amount, Fee Amount]
-        Exchange(
-            AccountId,
-            DEXId,
-            AssetId,
-            AssetId,
-            Balance,
-            Balance,
-            Balance,
-        ),
-    }
-);
-
-decl_error! {
-    pub enum Error for Module<T: Trait> {
-        /// No route exists in a given DEX for given parameters to carry out the swap
-        UnavailableExchangePath,
-        /// Max fee exceeded
-        MaxFeeExceeded,
-        /// Fee value outside of the basis points range [0..10000]
-        InvalidFeeValue,
-        /// None of the sources has enough reserves to execute a trade
-        InsufficientLiquidity,
-        /// Path exists but it's not possible to perform exchange with currently available liquidity on pools.
-        AggregationError,
-        /// Specified parameters lead to arithmetic error
-        CalculationError,
-        /// Slippage either exceeds minimum tolerated output or maximum tolerated input.
-        SlippageNotTolerated,
-    }
-}
-
-decl_module! {
-    pub struct Module<T: Trait> for enum Call where origin: T::Origin {
-        type Error = Error<T>;
-
-        fn deposit_event() = default;
-
-        /// Perform swap of tokens (input/output defined via SwapAmount direction).
-        ///
-        /// - `origin`: the account on whose behalf the transaction is being executed,
-        /// - `dex_id`: DEX ID for which liquidity sources aggregation is being done,
-        /// - `input_asset_id`: ID of the asset being sold,
-        /// - `output_asset_id`: ID of the asset being bought,
-        /// - `swap_amount`: the exact amount to be sold (either in input_asset_id or output_asset_id units with corresponding slippage tolerance absolute bound),
-        /// - `selected_source_types`: list of selected LiquiditySource types, selection effect is determined by filter_mode,
-        /// - `filter_mode`: indicate either to allow or forbid selected types only, or disable filtering.
-        #[weight = <T as Trait>::WeightInfo::swap((*swap_amount).into())]
-        pub fn swap(
-            origin,
-            dex_id: T::DEXId,
-            input_asset_id: T::AssetId,
-            output_asset_id: T::AssetId,
-            swap_amount: SwapAmount<Balance>,
-            selected_source_types: Vec<LiquiditySourceType>,
-            filter_mode: FilterMode,
-        ) -> DispatchResult {
-            let who = ensure_signed(origin)?;
-            let outcome = Self::exchange(
-                &who,
-                &who,
-                &input_asset_id,
-                &output_asset_id,
-                swap_amount,
-                LiquiditySourceFilter::with_mode(dex_id, filter_mode, selected_source_types),
-            )?;
-            let (input_amount, output_amount, fee_amount) = match swap_amount {
-                SwapAmount::WithDesiredInput{desired_amount_in, ..} => (desired_amount_in, outcome.amount, outcome.fee),
-                SwapAmount::WithDesiredOutput{desired_amount_out, ..} => (outcome.amount, desired_amount_out, outcome.fee),
-            };
-            Self::deposit_event(
-                RawEvent::Exchange(
-                    who,
-                    dex_id,
-                    input_asset_id,
-                    output_asset_id,
-                    input_amount,
-                    output_amount,
-                    fee_amount,
-                )
-            );
-            Ok(())
-        }
-    }
-}
-
-impl<T: Trait> Module<T> {
+impl<T: Config> Pallet<T> {
     /// Sample a single liquidity source with a range of swap amounts to get respective prices for the exchange.
     fn sample_liquidity_source(
         liquidity_source_id: &LiquiditySourceId<T::DEXId, LiquiditySourceType>,
@@ -657,7 +543,7 @@ impl<T: Trait> Module<T> {
     }
 }
 
-impl<T: Trait> LiquidityProxyTrait<T::DEXId, T::AccountId, T::AssetId> for Module<T> {
+impl<T: Config> LiquidityProxyTrait<T::DEXId, T::AccountId, T::AssetId> for Pallet<T> {
     /// Applies trivial routing (via Base Asset), resulting in a poly-swap which may contain several individual swaps.
     /// Those individual swaps are subject to liquidity aggregation algorithm.
     ///
@@ -828,5 +714,126 @@ impl<T: Trait> LiquidityProxyTrait<T::DEXId, T::AccountId, T::AssetId> for Modul
                 },
             }
         })
+    }
+}
+
+pub use pallet::*;
+
+#[frame_support::pallet]
+pub mod pallet {
+    use super::*;
+    use assets::AssetIdOf;
+    use common::{AccountIdOf, DexIdOf};
+    use frame_support::pallet_prelude::*;
+    use frame_system::pallet_prelude::*;
+
+    #[pallet::config]
+    pub trait Config: frame_system::Config + common::Config + assets::Config {
+        type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+        type LiquidityRegistry: LiquidityRegistry<
+            Self::DEXId,
+            Self::AccountId,
+            Self::AssetId,
+            LiquiditySourceType,
+            Balance,
+            DispatchError,
+        >;
+        type GetNumSamples: Get<usize>;
+        type GetTechnicalAccountId: Get<Self::AccountId>;
+        /// Weight information for the extrinsics in this Pallet.
+        type WeightInfo: WeightInfo;
+    }
+
+    #[pallet::pallet]
+    #[pallet::generate_store(pub(super) trait Store)]
+    pub struct Pallet<T>(PhantomData<T>);
+
+    #[pallet::hooks]
+    impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {}
+
+    #[pallet::call]
+    impl<T: Config> Pallet<T> {
+        /// Perform swap of tokens (input/output defined via SwapAmount direction).
+        ///
+        /// - `origin`: the account on whose behalf the transaction is being executed,
+        /// - `dex_id`: DEX ID for which liquidity sources aggregation is being done,
+        /// - `input_asset_id`: ID of the asset being sold,
+        /// - `output_asset_id`: ID of the asset being bought,
+        /// - `swap_amount`: the exact amount to be sold (either in input_asset_id or output_asset_id units with corresponding slippage tolerance absolute bound),
+        /// - `selected_source_types`: list of selected LiquiditySource types, selection effect is determined by filter_mode,
+        /// - `filter_mode`: indicate either to allow or forbid selected types only, or disable filtering.
+        #[pallet::weight(<T as Config>::WeightInfo::swap((*swap_amount).into()))]
+        pub fn swap(
+            origin: OriginFor<T>,
+            dex_id: T::DEXId,
+            input_asset_id: T::AssetId,
+            output_asset_id: T::AssetId,
+            swap_amount: SwapAmount<Balance>,
+            selected_source_types: Vec<LiquiditySourceType>,
+            filter_mode: FilterMode,
+        ) -> DispatchResultWithPostInfo {
+            let who = ensure_signed(origin)?;
+            let outcome = Self::exchange(
+                &who,
+                &who,
+                &input_asset_id,
+                &output_asset_id,
+                swap_amount,
+                LiquiditySourceFilter::with_mode(dex_id, filter_mode, selected_source_types),
+            )?;
+            let (input_amount, output_amount, fee_amount) = match swap_amount {
+                SwapAmount::WithDesiredInput {
+                    desired_amount_in, ..
+                } => (desired_amount_in, outcome.amount, outcome.fee),
+                SwapAmount::WithDesiredOutput {
+                    desired_amount_out, ..
+                } => (outcome.amount, desired_amount_out, outcome.fee),
+            };
+            Self::deposit_event(Event::<T>::Exchange(
+                who,
+                dex_id,
+                input_asset_id,
+                output_asset_id,
+                input_amount,
+                output_amount,
+                fee_amount,
+            ));
+            Ok(().into())
+        }
+    }
+
+    #[pallet::event]
+    #[pallet::metadata(AccountIdOf<T> = "AccountId", AssetIdOf<T> = "AssetId", DexIdOf<T> = "DEXId")]
+    #[pallet::generate_deposit(pub(super) fn deposit_event)]
+    pub enum Event<T: Config> {
+        /// Exchange of tokens has been performed
+        /// [Caller Account, DEX Id, Input Asset Id, Output Asset Id, Input Amount, Output Amount, Fee Amount]
+        Exchange(
+            AccountIdOf<T>,
+            DexIdOf<T>,
+            AssetIdOf<T>,
+            AssetIdOf<T>,
+            Balance,
+            Balance,
+            Balance,
+        ),
+    }
+
+    #[pallet::error]
+    pub enum Error<T> {
+        /// No route exists in a given DEX for given parameters to carry out the swap
+        UnavailableExchangePath,
+        /// Max fee exceeded
+        MaxFeeExceeded,
+        /// Fee value outside of the basis points range [0..10000]
+        InvalidFeeValue,
+        /// None of the sources has enough reserves to execute a trade
+        InsufficientLiquidity,
+        /// Path exists but it's not possible to perform exchange with currently available liquidity on pools.
+        AggregationError,
+        /// Specified parameters lead to arithmetic error
+        CalculationError,
+        /// Slippage either exceeds minimum tolerated output or maximum tolerated input.
+        SlippageNotTolerated,
     }
 }

@@ -1,12 +1,13 @@
-use crate::{Module, Trait};
+use crate::{self as bonding_curve_pool, Config};
 use common::{
     self, balance,
+    mock::ExistentialDeposits,
     prelude::{Balance, FixedWrapper, SwapAmount, SwapOutcome},
     Amount, AssetId32, AssetSymbol, LiquiditySource, TechPurpose, USDT, VAL, XOR,
 };
 use currencies::BasicCurrencyAdapter;
-use frame_support::{impl_outer_origin, parameter_types, weights::Weight, StorageValue};
-use frame_system as system;
+use frame_support::{construct_runtime, parameter_types, traits::GenesisBuild, weights::Weight};
+use frame_system;
 use orml_traits::MultiCurrency;
 use sp_core::{crypto::AccountId32, H256};
 use sp_runtime::{
@@ -23,28 +24,52 @@ type TechAssetId = common::TechAssetId<common::AssetId>;
 pub type ReservesAccount =
     mock_liquidity_source::ReservesAcc<Runtime, mock_liquidity_source::Instance1>;
 pub type AssetId = AssetId32<common::AssetId>;
+type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
+type Block = frame_system::mocking::MockBlock<Runtime>;
+type DEXId = common::DEXId;
 
 pub fn alice() -> AccountId {
     AccountId32::from([1u8; 32])
 }
 
-impl_outer_origin! {
-    pub enum Origin for Runtime {}
-}
-
-#[derive(Clone, Eq, PartialEq)]
-pub struct Runtime;
 parameter_types! {
     pub const BlockHashCount: u64 = 250;
     pub const MaximumBlockWeight: Weight = 1024;
     pub const MaximumBlockLength: u32 = 2 * 1024;
     pub const AvailableBlockRatio: Perbill = Perbill::from_percent(75);
+    pub const ExistentialDeposit: u128 = 0;
+    pub const TransferFee: u128 = 0;
+    pub const CreationFee: u128 = 0;
+    pub const TransactionByteFee: u128 = 1;
+    pub const GetBaseAssetId: AssetId = XOR;
 }
 
-impl system::Trait for Runtime {
+construct_runtime! {
+    pub enum Runtime where
+        Block = Block,
+        NodeBlock = Block,
+        UncheckedExtrinsic = UncheckedExtrinsic,
+    {
+        System: frame_system::{Module, Call, Config, Storage, Event<T>},
+        DexManager: dex_manager::{Module, Call, Config<T>, Storage, Event<T>},
+        TradingPair: trading_pair::{Module, Call, Config<T>, Storage, Event<T>},
+        MockLiquiditySource: mock_liquidity_source::<Instance1>::{Module, Call, Config<T>, Storage},
+        BondingCurvePool: bonding_curve_pool::{Module, Call, Config<T>, Storage},
+        Tokens: tokens::{Module, Call, Config<T>, Storage, Event<T>},
+        Currencies: currencies::{Module, Call, Storage, Event<T>},
+        Assets: assets::{Module, Call, Config<T>, Storage, Event<T>},
+        Permissions: permissions::{Module, Call, Config<T>, Storage, Event<T>},
+        Technical: technical::{Module, Call, Config<T>, Storage, Event<T>},
+        Balances: pallet_balances::{Module, Call, Storage, Event<T>},
+    }
+}
+
+impl frame_system::Config for Runtime {
     type BaseCallFilter = ();
+    type BlockWeights = ();
+    type BlockLength = ();
     type Origin = Origin;
-    type Call = ();
+    type Call = Call;
     type Index = u64;
     type BlockNumber = u64;
     type Hash = H256;
@@ -52,39 +77,95 @@ impl system::Trait for Runtime {
     type AccountId = AccountId;
     type Lookup = IdentityLookup<Self::AccountId>;
     type Header = Header;
-    type Event = ();
+    type Event = Event;
     type BlockHashCount = BlockHashCount;
-    type MaximumBlockWeight = MaximumBlockWeight;
     type DbWeight = ();
-    type BlockExecutionWeight = ();
-    type ExtrinsicBaseWeight = ();
-    type MaximumExtrinsicWeight = MaximumBlockWeight;
-    type MaximumBlockLength = MaximumBlockLength;
-    type AvailableBlockRatio = AvailableBlockRatio;
     type Version = ();
     type AccountData = pallet_balances::AccountData<Balance>;
     type OnNewAccount = ();
     type OnKilledAccount = ();
     type SystemWeightInfo = ();
-    type PalletInfo = ();
+    type PalletInfo = PalletInfo;
+    type SS58Prefix = ();
 }
 
-impl dex_manager::Trait for Runtime {
-    type Event = ();
+impl dex_manager::Config for Runtime {
+    type Event = Event;
     type WeightInfo = ();
 }
 
-impl trading_pair::Trait for Runtime {
-    type Event = ();
+impl trading_pair::Config for Runtime {
+    type Event = Event;
     type EnsureDEXManager = dex_manager::Module<Runtime>;
     type WeightInfo = ();
 }
 
-impl mock_liquidity_source::Trait<mock_liquidity_source::Instance1> for Runtime {
-    type Event = ();
+impl mock_liquidity_source::Config<mock_liquidity_source::Instance1> for Runtime {
     type GetFee = ();
     type EnsureDEXManager = ();
     type EnsureTradingPairExists = ();
+}
+
+impl Config for Runtime {
+    type DEXApi = MockDEXApi;
+}
+
+impl tokens::Config for Runtime {
+    type Event = Event;
+    type Balance = Balance;
+    type Amount = Amount;
+    type CurrencyId = <Runtime as assets::Config>::AssetId;
+    type WeightInfo = ();
+    type ExistentialDeposits = ExistentialDeposits;
+    type OnDust = ();
+}
+
+impl currencies::Config for Runtime {
+    type Event = Event;
+    type MultiCurrency = Tokens;
+    type NativeCurrency = BasicCurrencyAdapter<Runtime, Balances, Amount, BlockNumber>;
+    type GetNativeCurrencyId = <Runtime as assets::Config>::GetBaseAssetId;
+    type WeightInfo = ();
+}
+
+impl common::Config for Runtime {
+    type DEXId = DEXId;
+    type LstId = common::LiquiditySourceType;
+}
+
+impl assets::Config for Runtime {
+    type Event = Event;
+    type ExtraAccountId = [u8; 32];
+    type ExtraTupleArg =
+        common::AssetIdExtraTupleArg<common::DEXId, common::LiquiditySourceType, [u8; 32]>;
+    type AssetId = AssetId;
+    type GetBaseAssetId = GetBaseAssetId;
+    type Currency = currencies::Module<Runtime>;
+    type WeightInfo = ();
+}
+
+impl permissions::Config for Runtime {
+    type Event = Event;
+}
+
+impl technical::Config for Runtime {
+    type Event = Event;
+    type TechAssetId = TechAssetId;
+    type TechAccountId = TechAccountId;
+    type Trigger = ();
+    type Condition = ();
+    type SwapAction = ();
+    type WeightInfo = ();
+}
+
+impl pallet_balances::Config for Runtime {
+    type Balance = Balance;
+    type Event = Event;
+    type DustRemoval = ();
+    type ExistentialDeposit = ExistentialDeposit;
+    type AccountStore = System;
+    type WeightInfo = ();
+    type MaxLocks = ();
 }
 
 pub struct MockDEXApi;
@@ -163,90 +244,6 @@ impl<DEXId> LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> f
     }
 }
 
-impl Trait for Runtime {
-    type DEXApi = MockDEXApi;
-}
-
-impl tokens::Trait for Runtime {
-    type Event = ();
-    type Balance = Balance;
-    type Amount = Amount;
-    type CurrencyId = <Runtime as assets::Trait>::AssetId;
-    type OnReceived = ();
-    type WeightInfo = ();
-}
-
-parameter_types! {
-    pub const GetBaseAssetId: AssetId = XOR;
-}
-
-impl currencies::Trait for Runtime {
-    type Event = ();
-    type MultiCurrency = Tokens;
-    type NativeCurrency = BasicCurrencyAdapter<Runtime, Balances, Amount, BlockNumber>;
-    type GetNativeCurrencyId = <Runtime as assets::Trait>::GetBaseAssetId;
-    type WeightInfo = ();
-}
-
-type DEXId = common::DEXId;
-
-impl common::Trait for Runtime {
-    type DEXId = DEXId;
-    type LstId = common::LiquiditySourceType;
-}
-
-impl assets::Trait for Runtime {
-    type Event = ();
-    type ExtraAccountId = [u8; 32];
-    type ExtraTupleArg =
-        common::AssetIdExtraTupleArg<common::DEXId, common::LiquiditySourceType, [u8; 32]>;
-    type AssetId = AssetId;
-    type GetBaseAssetId = GetBaseAssetId;
-    type Currency = currencies::Module<Runtime>;
-    type WeightInfo = ();
-}
-
-impl permissions::Trait for Runtime {
-    type Event = ();
-}
-
-impl technical::Trait for Runtime {
-    type Event = ();
-    type TechAssetId = TechAssetId;
-    type TechAccountId = TechAccountId;
-    type Trigger = ();
-    type Condition = ();
-    type SwapAction = ();
-    type WeightInfo = ();
-}
-
-parameter_types! {
-    pub const ExistentialDeposit: u128 = 0;
-    pub const TransferFee: u128 = 0;
-    pub const CreationFee: u128 = 0;
-    pub const TransactionByteFee: u128 = 1;
-}
-
-impl pallet_balances::Trait for Runtime {
-    type Balance = Balance;
-    type Event = ();
-    type DustRemoval = ();
-    type ExistentialDeposit = ExistentialDeposit;
-    type AccountStore = System;
-    type WeightInfo = ();
-    type MaxLocks = ();
-}
-
-pub type System = frame_system::Module<Runtime>;
-pub type Balances = pallet_balances::Module<Runtime>;
-pub type Tokens = tokens::Module<Runtime>;
-pub type Currencies = currencies::Module<Runtime>;
-pub type BondingCurvePool = Module<Runtime>;
-pub type Technical = technical::Module<Runtime>;
-pub type MockLiquiditySource =
-    mock_liquidity_source::Module<Runtime, mock_liquidity_source::Instance1>;
-pub type Assets = assets::Module<Runtime>;
-
 pub struct ExtBuilder {
     endowed_accounts: Vec<(AccountId, AssetId, Balance, AssetSymbol, u8, Balance, bool)>,
 }
@@ -287,7 +284,7 @@ impl ExtBuilder {
     }
 
     pub fn build(self) -> sp_io::TestExternalities {
-        let mut t = system::GenesisConfig::default()
+        let mut t = frame_system::GenesisConfig::default()
             .build_storage::<Runtime>()
             .unwrap();
 

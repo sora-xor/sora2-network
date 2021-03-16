@@ -32,27 +32,27 @@ pub const DEX: DEXId = DEXId::Polkaswap;
 #[cfg(test)]
 mod mock;
 
-pub struct Module<T: Trait>(liquidity_proxy::Module<T>);
-pub trait Trait:
-    liquidity_proxy::Trait
-    + pool_xyk::Trait
-    + mock_liquidity_source::Trait<mock_liquidity_source::Instance1>
-    + mock_liquidity_source::Trait<mock_liquidity_source::Instance2>
-    + mock_liquidity_source::Trait<mock_liquidity_source::Instance3>
-    + mock_liquidity_source::Trait<mock_liquidity_source::Instance4>
+pub struct Module<T: Config>(liquidity_proxy::Module<T>);
+pub trait Config:
+    liquidity_proxy::Config
+    + pool_xyk::Config
+    + mock_liquidity_source::Config<mock_liquidity_source::Instance1>
+    + mock_liquidity_source::Config<mock_liquidity_source::Instance2>
+    + mock_liquidity_source::Config<mock_liquidity_source::Instance3>
+    + mock_liquidity_source::Config<mock_liquidity_source::Instance4>
 {
 }
 
 // Support Functions
-fn alice<T: Trait>() -> T::AccountId {
+fn alice<T: Config>() -> T::AccountId {
     let bytes = hex!("d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d");
     T::AccountId::decode(&mut &bytes[..]).unwrap_or_default()
 }
 
 // Prepare Runtime for running benchmarks
-fn setup_benchmark<T: Trait>() -> Result<(), &'static str> {
+fn setup_benchmark<T: Config>() -> Result<(), &'static str> {
     let owner = alice::<T>();
-    let owner_origin: <T as frame_system::Trait>::Origin = RawOrigin::Signed(owner.clone()).into();
+    let owner_origin: <T as frame_system::Config>::Origin = RawOrigin::Signed(owner.clone()).into();
 
     // Grant permissions to self in case they haven't been explicitly given in genesis config
     Permissions::<T>::grant_permission(owner.clone(), owner.clone(), MINT)?;
@@ -162,13 +162,10 @@ fn setup_benchmark<T: Trait>() -> Result<(), &'static str> {
 }
 
 benchmarks! {
-    // These are the common parameters along with their instancing.
-    _ {}
-
     swap_exact_input {
         let u in 0 .. 1000 => setup_benchmark::<T>()?;
         let caller = alice::<T>();
-        let base_asset: T::AssetId = <T as assets::Trait>::GetBaseAssetId::get();
+        let base_asset: T::AssetId = <T as assets::Config>::GetBaseAssetId::get();
         let target_asset: T::AssetId = DOT.into();
         let initial_base_balance = Assets::<T>::free_balance(&base_asset, &caller).unwrap();
     }: swap(
@@ -190,7 +187,7 @@ benchmarks! {
     swap_exact_output {
         let u in 0 .. 1000 => setup_benchmark::<T>()?;
         let caller = alice::<T>();
-        let base_asset: T::AssetId = <T as assets::Trait>::GetBaseAssetId::get();
+        let base_asset: T::AssetId = <T as assets::Config>::GetBaseAssetId::get();
         let target_asset: T::AssetId = DOT.into();
         let initial_target_balance = Assets::<T>::free_balance(&target_asset, &caller).unwrap();
     }: swap(

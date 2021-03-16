@@ -1,6 +1,11 @@
-use frame_support::weights::{
-    WeightToFeeCoefficient, WeightToFeeCoefficients, WeightToFeePolynomial,
+use frame_support::{
+    parameter_types,
+    weights::{
+        constants::WEIGHT_PER_SECOND, DispatchClass, Weight, WeightToFeeCoefficient,
+        WeightToFeeCoefficients, WeightToFeePolynomial,
+    },
 };
+use frame_system::limits;
 use smallvec::smallvec;
 use sp_arithmetic::Perbill;
 
@@ -12,6 +17,36 @@ pub mod constants {
 }
 
 pub struct PresetWeightInfo;
+
+/// We allow `Normal` extrinsics to fill up the block up to 75%, the rest can be used
+/// by  Operational  extrinsics.
+const NORMAL_DISPATCH_RATIO: Perbill = Perbill::from_percent(75);
+/// We allow for 2 seconds of compute with a 6 second average block time.
+const MAXIMUM_BLOCK_WEIGHT: Weight = 2 * WEIGHT_PER_SECOND;
+
+parameter_types! {
+    /// Block weights base values and limits.
+    pub BlockWeights: limits::BlockWeights = limits::BlockWeights::builder()
+    .base_block(0)
+    .for_class(DispatchClass::all(), |weights| {
+        weights.base_extrinsic = 0;
+    })
+    .for_class(DispatchClass::Normal, |weights| {
+        weights.max_total = Some(NORMAL_DISPATCH_RATIO * MAXIMUM_BLOCK_WEIGHT * 3);
+    })
+    .for_class(DispatchClass::Operational, |weights| {
+        weights.max_total = Some(MAXIMUM_BLOCK_WEIGHT);
+        // Operational transactions have an extra reserved space, so that they
+        // are included even if block reached `MAXIMUM_BLOCK_WEIGHT`.
+        weights.reserved = Some(
+            MAXIMUM_BLOCK_WEIGHT - NORMAL_DISPATCH_RATIO * MAXIMUM_BLOCK_WEIGHT,
+        );
+    })
+    .build_or_panic();
+    pub BlockLength: limits::BlockLength =
+        limits::BlockLength::max_with_normal_ratio(5 * 1024 * 1024, NORMAL_DISPATCH_RATIO);
+    pub const TransactionByteFee: Balance = 0;
+}
 
 pub struct WeightToFixedFee;
 

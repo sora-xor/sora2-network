@@ -1,4 +1,4 @@
-//! # Assets Module
+//! # Assets Pallet
 //!
 //! ## Overview
 //!
@@ -34,10 +34,7 @@ use common::{
 };
 use frame_support::dispatch::{DispatchError, DispatchResult};
 use frame_support::sp_runtime::traits::{MaybeSerializeDeserialize, Member};
-use frame_support::{
-    decl_error, decl_event, decl_module, decl_storage, ensure, traits::Get, weights::Weight,
-    IterableStorageMap, Parameter,
-};
+use frame_support::{ensure, traits::Get, weights::Weight, Parameter};
 use frame_system::ensure_signed;
 use permissions::{Scope, BURN, MINT, SLASH, TRANSFER};
 use sp_core::hash::H512;
@@ -57,17 +54,18 @@ pub trait WeightInfo {
     fn set_non_mintable() -> Weight;
 }
 
-pub type AssetIdOf<T> = <T as Trait>::AssetId;
-pub type Permissions<T> = permissions::Module<T>;
+pub type AssetIdOf<T> = <T as Config>::AssetId;
+pub type Permissions<T> = permissions::Pallet<T>;
 
+type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
 type CurrencyIdOf<T> =
-    <<T as Trait>::Currency as MultiCurrency<<T as frame_system::Trait>::AccountId>>::CurrencyId;
+    <<T as Config>::Currency as MultiCurrency<<T as frame_system::Config>::AccountId>>::CurrencyId;
 
 const ASSET_SYMBOL_MAX_LENGTH: usize = 7;
 const MAX_ALLOWED_PRECISION: u8 = 18;
 
 #[derive(Clone, Copy, Eq, PartialEq, Encode, Decode)]
-pub enum TupleArg<T: Trait> {
+pub enum TupleArg<T: Config> {
     GenericI32(i32),
     GenericU64(u64),
     GenericU128(u128),
@@ -80,7 +78,7 @@ pub enum TupleArg<T: Trait> {
 }
 
 #[derive(Clone, Copy, Eq, PartialEq, Encode, Decode)]
-pub enum Tuple<T: Trait> {
+pub enum Tuple<T: Config> {
     Arity0,
     Arity1(TupleArg<T>),
     Arity2(TupleArg<T>, TupleArg<T>),
@@ -133,97 +131,189 @@ pub enum Tuple<T: Trait> {
     ),
 }
 
-pub trait Trait: frame_system::Trait + permissions::Trait + tokens::Trait + common::Trait {
-    type Event: From<Event<Self>> + Into<<Self as frame_system::Trait>::Event>;
+pub use pallet::*;
 
-    type ExtraAccountId: Clone
-        + Copy
-        + Encode
-        + Decode
-        + Eq
-        + PartialEq
-        + From<Self::AccountId>
-        + Into<Self::AccountId>;
-    type ExtraTupleArg: Clone
-        + Copy
-        + Encode
-        + Decode
-        + Eq
-        + PartialEq
-        + From<common::AssetIdExtraTupleArg<Self::DEXId, Self::LstId, Self::ExtraAccountId>>
-        + Into<common::AssetIdExtraTupleArg<Self::DEXId, Self::LstId, Self::ExtraAccountId>>;
+#[frame_support::pallet]
+pub mod pallet {
+    use super::*;
+    use frame_support::pallet_prelude::*;
+    use frame_system::pallet_prelude::*;
 
-    /// DEX assets (currency) identifier.
-    type AssetId: Parameter
-        + Member
-        + Copy
-        + MaybeSerializeDeserialize
-        + Ord
-        + Default
-        + Into<CurrencyIdOf<Self>>
-        + From<common::AssetId32<common::AssetId>>
-        + From<H256>
-        + Into<H256>
-        + Into<<Self as tokens::Trait>::CurrencyId>;
-
-    /// The base asset as the core asset in all trading pairs
-    type GetBaseAssetId: Get<Self::AssetId>;
-
-    /// Currency to transfer, reserve/unreserve, lock/unlock assets
-    type Currency: MultiLockableCurrency<
-            Self::AccountId,
-            Moment = Self::BlockNumber,
-            CurrencyId = Self::AssetId,
-            Balance = Balance,
-        > + MultiReservableCurrency<Self::AccountId, CurrencyId = Self::AssetId, Balance = Balance>
-        + MultiCurrencyExtended<Self::AccountId, Amount = Amount>;
-
-    /// Weight information for extrinsics in this pallet.
-    type WeightInfo: WeightInfo;
-}
-
-decl_storage! {
-    trait Store for Module<T: Trait> as AssetsModule {
-        /// Asset Id -> Owner Account Id
-        AssetOwners get(fn asset_owners): map hasher(twox_64_concat) T::AssetId => T::AccountId;
-        /// Asset Id -> (Symbol, Precision, Is Mintable)
-        pub AssetInfos get(fn asset_infos): map hasher(twox_64_concat) T::AssetId => (AssetSymbol, BalancePrecision, bool);
-        /// Asset Id -> Tuple<T>
-        pub TupleAssetId get(fn tuple_from_asset_id): map hasher(twox_64_concat) T::AssetId => Option<Tuple<T>>;
-    }
-    add_extra_genesis {
-        config(endowed_assets): Vec<(T::AssetId, T::AccountId, AssetSymbol, BalancePrecision, Balance, bool)>;
-
-        build(|config: &GenesisConfig<T>| {
-            config.endowed_assets.iter().cloned().for_each(|(asset_id, account_id, symbol, precision, initial_supply, is_mintable)| {
-                Module::<T>::register_asset_id(account_id, asset_id, symbol, precision, initial_supply, is_mintable)
-                    .expect("Failed to register asset.");
-            })
-        })
-    }
-}
-
-decl_event!(
-    pub enum Event<T>
-    where
-        AccountId = <T as frame_system::Trait>::AccountId,
-        AssetId = <T as Trait>::AssetId,
+    #[pallet::config]
+    pub trait Config:
+        frame_system::Config + permissions::Config + tokens::Config + common::Config
     {
-        /// New asset has been registered. [Asset Id, Asset Owner Account]
-        AssetRegistered(AssetId, AccountId),
-        /// Asset amount has been transfered. [From Account, To Account, Tranferred Asset Id, Amount Transferred]
-        Transfer(AccountId, AccountId, AssetId, Balance),
-        /// Asset amount has been minted. [Issuer Account, Target Account, Minted Asset Id, Amount Minted]
-        Mint(AccountId, AccountId, AssetId, Balance),
-        /// Asset amount has been burned. [Issuer Account, Burned Asset Id, Amount Burned]
-        Burn(AccountId, AssetId, Balance),
-        /// Asset is set as non-mintable. [Target Asset Id]
-        AssetSetNonMintable(AssetId),
-    }
-);
+        type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 
-decl_error! {
-    pub enum Error for Module<T: Trait> {
+        type ExtraAccountId: Clone
+            + Copy
+            + Encode
+            + Decode
+            + Eq
+            + PartialEq
+            + From<Self::AccountId>
+            + Into<Self::AccountId>;
+        type ExtraTupleArg: Clone
+            + Copy
+            + Encode
+            + Decode
+            + Eq
+            + PartialEq
+            + From<common::AssetIdExtraTupleArg<Self::DEXId, Self::LstId, Self::ExtraAccountId>>
+            + Into<common::AssetIdExtraTupleArg<Self::DEXId, Self::LstId, Self::ExtraAccountId>>;
+
+        /// DEX assets (currency) identifier.
+        type AssetId: Parameter
+            + Member
+            + Copy
+            + MaybeSerializeDeserialize
+            + Ord
+            + Default
+            + Into<CurrencyIdOf<Self>>
+            + From<common::AssetId32<common::AssetId>>
+            + From<H256>
+            + Into<H256>
+            + Into<<Self as tokens::Config>::CurrencyId>;
+
+        /// The base asset as the core asset in all trading pairs
+        type GetBaseAssetId: Get<Self::AssetId>;
+
+        /// Currency to transfer, reserve/unreserve, lock/unlock assets
+        type Currency: MultiLockableCurrency<
+                Self::AccountId,
+                Moment = Self::BlockNumber,
+                CurrencyId = Self::AssetId,
+                Balance = Balance,
+            > + MultiReservableCurrency<Self::AccountId, CurrencyId = Self::AssetId, Balance = Balance>
+            + MultiCurrencyExtended<Self::AccountId, Amount = Amount>;
+
+        /// Weight information for extrinsics in this pallet.
+        type WeightInfo: WeightInfo;
+    }
+
+    #[pallet::pallet]
+    #[pallet::generate_store(pub(super) trait Store)]
+    pub struct Pallet<T>(PhantomData<T>);
+
+    #[pallet::hooks]
+    impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {}
+
+    #[pallet::call]
+    impl<T: Config> Pallet<T> {
+        /// Performs an asset registration.
+        ///
+        /// Registers new `AssetId` for the given `origin`.
+        /// AssetSymbol should represent string with only uppercase latin chars with max length of 5.
+        #[pallet::weight(<T as Config>::WeightInfo::register())]
+        pub fn register(
+            origin: OriginFor<T>,
+            symbol: AssetSymbol,
+            initial_supply: Balance,
+            is_mintable: bool,
+        ) -> DispatchResultWithPostInfo {
+            let author = ensure_signed(origin)?;
+            let _asset_id = Self::register_from(
+                &author,
+                symbol,
+                DEFAULT_BALANCE_PRECISION,
+                initial_supply,
+                is_mintable,
+            )?;
+            Ok(().into())
+        }
+
+        /// Performs a checked Asset transfer.
+        ///
+        /// - `origin`: caller Account, from which Asset amount is withdrawn,
+        /// - `asset_id`: Id of transferred Asset,
+        /// - `to`: Id of Account, to which Asset amount is deposited,
+        /// - `amount`: transferred Asset amount.
+        #[pallet::weight(<T as Config>::WeightInfo::transfer())]
+        pub fn transfer(
+            origin: OriginFor<T>,
+            asset_id: T::AssetId,
+            to: T::AccountId,
+            amount: Balance,
+        ) -> DispatchResultWithPostInfo {
+            let from = ensure_signed(origin.clone())?;
+            Self::transfer_from(&asset_id, &from, &to, amount)?;
+            Self::deposit_event(Event::Transfer(from, to, asset_id, amount));
+            Ok(().into())
+        }
+
+        /// Performs a checked Asset mint, can only be done
+        /// by corresponding asset owner account.
+        ///
+        /// - `origin`: caller Account, which issues Asset minting,
+        /// - `asset_id`: Id of minted Asset,
+        /// - `to`: Id of Account, to which Asset amount is minted,
+        /// - `amount`: minted Asset amount.
+        #[pallet::weight(<T as Config>::WeightInfo::mint())]
+        pub fn mint(
+            origin: OriginFor<T>,
+            asset_id: T::AssetId,
+            to: T::AccountId,
+            amount: Balance,
+        ) -> DispatchResultWithPostInfo {
+            let issuer = ensure_signed(origin.clone())?;
+            Self::mint_to(&asset_id, &issuer, &to, amount)?;
+            Self::deposit_event(Event::Mint(issuer, to, asset_id.clone(), amount));
+            Ok(().into())
+        }
+
+        /// Performs a checked Asset burn, can only be done
+        /// by corresponding asset owner with own account.
+        ///
+        /// - `origin`: caller Account, from which Asset amount is burned,
+        /// - `asset_id`: Id of burned Asset,
+        /// - `amount`: burned Asset amount.
+        #[pallet::weight(<T as Config>::WeightInfo::burn())]
+        pub fn burn(
+            origin: OriginFor<T>,
+            asset_id: T::AssetId,
+            amount: Balance,
+        ) -> DispatchResultWithPostInfo {
+            let issuer = ensure_signed(origin.clone())?;
+            Self::burn_from(&asset_id, &issuer, &issuer, amount)?;
+            Self::deposit_event(Event::Burn(issuer, asset_id.clone(), amount));
+            Ok(().into())
+        }
+
+        /// Set given asset to be non-mintable, i.e. it can no longer be minted, only burned.
+        /// Operation can not be undone.
+        ///
+        /// - `origin`: caller Account, should correspond to Asset owner
+        /// - `asset_id`: Id of burned Asset,
+        #[pallet::weight(<T as Config>::WeightInfo::set_non_mintable())]
+        pub fn set_non_mintable(
+            origin: OriginFor<T>,
+            asset_id: T::AssetId,
+        ) -> DispatchResultWithPostInfo {
+            let who = ensure_signed(origin.clone())?;
+            Self::set_non_mintable_from(&asset_id, &who)?;
+            Self::deposit_event(Event::AssetSetNonMintable(asset_id.clone()));
+            Ok(().into())
+        }
+    }
+
+    #[pallet::event]
+    #[pallet::metadata(AccountIdOf<T> = "AccountId", AssetIdOf<T> = "AssetId")]
+    #[pallet::generate_deposit(pub(super) fn deposit_event)]
+    pub enum Event<T: Config> {
+        /// New asset has been registered. [Asset Id, Asset Owner Account]
+        AssetRegistered(AssetIdOf<T>, AccountIdOf<T>),
+        /// Asset amount has been transfered. [From Account, To Account, Tranferred Asset Id, Amount Transferred]
+        Transfer(AccountIdOf<T>, AccountIdOf<T>, AssetIdOf<T>, Balance),
+        /// Asset amount has been minted. [Issuer Account, Target Account, Minted Asset Id, Amount Minted]
+        Mint(AccountIdOf<T>, AccountIdOf<T>, AssetIdOf<T>, Balance),
+        /// Asset amount has been burned. [Issuer Account, Burned Asset Id, Amount Burned]
+        Burn(AccountIdOf<T>, AssetIdOf<T>, Balance),
+        /// Asset is set as non-mintable. [Target Asset Id]
+        AssetSetNonMintable(AssetIdOf<T>),
+    }
+
+    #[pallet::error]
+    pub enum Error<T> {
         /// An asset with a given ID already exists.
         AssetIdAlreadyExists,
         /// An asset with a given ID not exists.
@@ -239,101 +329,66 @@ decl_error! {
         /// Caller does not own requested asset.
         InvalidAssetOwner,
     }
-}
 
-decl_module! {
-    pub struct Module<T: Trait> for enum Call where origin: T::Origin {
-        type Error = Error<T>;
+    /// Asset Id -> Owner Account Id
+    #[pallet::storage]
+    #[pallet::getter(fn asset_owners)]
+    pub(super) type AssetOwners<T: Config> =
+        StorageMap<_, Twox64Concat, T::AssetId, T::AccountId, ValueQuery>;
 
-        fn deposit_event() = default;
+    /// Asset Id -> (Symbol, Precision, Is Mintable)
+    #[pallet::storage]
+    #[pallet::getter(fn asset_infos)]
+    pub type AssetInfos<T: Config> =
+        StorageMap<_, Twox64Concat, T::AssetId, (AssetSymbol, BalancePrecision, bool), ValueQuery>;
 
-        /// Performs an asset registration.
-        ///
-        /// Registers new `AssetId` for the given `origin`.
-        /// AssetSymbol should represent string with only uppercase latin chars with max length of 5.
-        #[weight = <T as Trait>::WeightInfo::register()]
-        pub fn register(origin, symbol: AssetSymbol, initial_supply: Balance, is_mintable: bool) -> DispatchResult {
-            let author = ensure_signed(origin)?;
-            let _asset_id = Self::register_from(&author, symbol, DEFAULT_BALANCE_PRECISION, initial_supply, is_mintable)?;
-            Ok(())
+    /// Asset Id -> Tuple<T>
+    #[pallet::storage]
+    #[pallet::getter(fn tuple_from_asset_id)]
+    pub type TupleAssetId<T: Config> = StorageMap<_, Twox64Concat, T::AssetId, Tuple<T>>;
+
+    #[pallet::genesis_config]
+    pub struct GenesisConfig<T: Config> {
+        pub endowed_assets: Vec<(
+            T::AssetId,
+            T::AccountId,
+            AssetSymbol,
+            BalancePrecision,
+            Balance,
+            bool,
+        )>,
+    }
+
+    #[cfg(feature = "std")]
+    impl<T: Config> Default for GenesisConfig<T> {
+        fn default() -> Self {
+            Self {
+                endowed_assets: Default::default(),
+            }
         }
+    }
 
-        /// Performs a checked Asset transfer.
-        ///
-        /// - `origin`: caller Account, from which Asset amount is withdrawn,
-        /// - `asset_id`: Id of transferred Asset,
-        /// - `to`: Id of Account, to which Asset amount is deposited,
-        /// - `amount`: transferred Asset amount.
-        #[weight = <T as Trait>::WeightInfo::transfer()]
-        pub fn transfer(
-            origin,
-            asset_id: T::AssetId,
-            to: T::AccountId,
-            amount: Balance
-        ) -> DispatchResult {
-            let from = ensure_signed(origin.clone())?;
-            Self::transfer_from(&asset_id, &from, &to, amount)?;
-            Self::deposit_event(RawEvent::Transfer(from, to, asset_id, amount));
-            Ok(())
-        }
-
-        /// Performs a checked Asset mint, can only be done
-        /// by corresponding asset owner account.
-        ///
-        /// - `origin`: caller Account, which issues Asset minting,
-        /// - `asset_id`: Id of minted Asset,
-        /// - `to`: Id of Account, to which Asset amount is minted,
-        /// - `amount`: minted Asset amount.
-        #[weight = <T as Trait>::WeightInfo::mint()]
-        pub fn mint(
-            origin,
-            asset_id: T::AssetId,
-            to: T::AccountId,
-            amount: Balance,
-        ) -> DispatchResult {
-            let issuer = ensure_signed(origin.clone())?;
-            Self::mint_to(&asset_id, &issuer, &to, amount)?;
-            Self::deposit_event(RawEvent::Mint(issuer, to, asset_id.clone(), amount));
-            Ok(())
-        }
-
-        /// Performs a checked Asset burn, can only be done
-        /// by corresponding asset owner with own account.
-        ///
-        /// - `origin`: caller Account, from which Asset amount is burned,
-        /// - `asset_id`: Id of burned Asset,
-        /// - `amount`: burned Asset amount.
-        #[weight = <T as Trait>::WeightInfo::burn()]
-        pub fn burn(
-            origin,
-            asset_id: T::AssetId,
-            amount: Balance,
-        ) -> DispatchResult {
-            let issuer = ensure_signed(origin.clone())?;
-            Self::burn_from(&asset_id, &issuer, &issuer, amount)?;
-            Self::deposit_event(RawEvent::Burn(issuer, asset_id.clone(), amount));
-            Ok(())
-        }
-
-        /// Set given asset to be non-mintable, i.e. it can no longer be minted, only burned.
-        /// Operation can not be undone.
-        ///
-        /// - `origin`: caller Account, should correspond to Asset owner
-        /// - `asset_id`: Id of burned Asset,
-        #[weight = <T as Trait>::WeightInfo::set_non_mintable()]
-        pub fn set_non_mintable(
-            origin,
-            asset_id: T::AssetId,
-        ) -> DispatchResult {
-            let who = ensure_signed(origin.clone())?;
-            Self::set_non_mintable_from(&asset_id, &who)?;
-            Self::deposit_event(RawEvent::AssetSetNonMintable(asset_id.clone()));
-            Ok(())
+    #[pallet::genesis_build]
+    impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
+        fn build(&self) {
+            self.endowed_assets.iter().cloned().for_each(
+                |(asset_id, account_id, symbol, precision, initial_supply, is_mintable)| {
+                    Pallet::<T>::register_asset_id(
+                        account_id,
+                        asset_id,
+                        symbol,
+                        precision,
+                        initial_supply,
+                        is_mintable,
+                    )
+                    .expect("Failed to register asset.");
+                },
+            )
         }
     }
 }
 
-impl<T: Trait> Module<T> {
+impl<T: Config> Pallet<T> {
     /// Generates an `AssetId` for the given `Tuple<T>`, and insert record to storage map.
     pub fn register_asset_id_from_tuple(tuple: &Tuple<T>) -> T::AssetId {
         let mut keccak = Keccak::v256();
@@ -353,7 +408,7 @@ impl<T: Trait> Module<T> {
         let mut keccak = Keccak::v256();
         keccak.update(b"Sora Asset Id");
         keccak.update(&account_id.encode());
-        keccak.update(&frame_system::Module::<T>::account_nonce(&account_id).encode());
+        keccak.update(&frame_system::Pallet::<T>::account_nonce(&account_id).encode());
         let mut output = [0u8; 32];
         keccak.finalize(&mut output);
         // More safe to escape.
@@ -397,8 +452,8 @@ impl<T: Trait> Module<T> {
         if !initial_supply.is_zero() {
             T::Currency::deposit(asset_id.clone(), &account_id, initial_supply)?;
         }
-        frame_system::Module::<T>::inc_account_nonce(&account_id);
-        Self::deposit_event(RawEvent::AssetRegistered(asset_id, account_id));
+        frame_system::Pallet::<T>::inc_account_nonce(&account_id);
+        Self::deposit_event(Event::AssetRegistered(asset_id, account_id));
         Ok(())
     }
 
