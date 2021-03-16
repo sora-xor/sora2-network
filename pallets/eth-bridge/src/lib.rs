@@ -1026,7 +1026,7 @@ pub mod pallet {
         ///
         /// Parameters:
         /// - `eth_tx_hash` - transaction hash on Sidechain.
-        /// - `kind` - incoming request kind.
+        /// - `kind` - incoming request type.
         /// - `network_id` - network identifier.
         #[pallet::weight(<T as Config>::WeightInfo::request_from_sidechain())]
         pub fn request_from_sidechain(
@@ -1397,8 +1397,8 @@ pub mod pallet {
         AccountNotFound,
         /// Forbidden.
         Forbidden,
-        /// Transfer is already registered.
-        TransferIsAlreadyRegistered,
+        /// Request is already registered.
+        RequestIsAlreadyRegistered,
         /// Failed to load sidechain transaction.
         FailedToLoadTransaction,
         /// Failed to load token precision.
@@ -1590,7 +1590,7 @@ pub mod pallet {
     pub(super) type Peers<T: Config> =
         StorageMap<_, Twox64Concat, T::NetworkId, BTreeSet<T::AccountId>, ValueQuery>;
 
-    /// Network pending peer TODO.
+    /// Network pending (being added/removed) peer.
     #[pallet::storage]
     #[pallet::getter(fn pending_peer)]
     pub(super) type PendingPeer<T: Config> =
@@ -1637,7 +1637,7 @@ pub mod pallet {
     #[pallet::getter(fn authority_account)]
     pub(super) type AuthorityAccount<T: Config> = StorageValue<_, T::AccountId, ValueQuery>;
 
-    /// Thischain authority account. TODO
+    /// Bridge status.
     #[pallet::storage]
     #[pallet::getter(fn bridge_contract_status)]
     pub(super) type BridgeBridgeStatus<T: Config> =
@@ -1699,13 +1699,12 @@ pub mod pallet {
     #[pallet::genesis_build]
     impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
         fn build(&self) {
-            // TODO:
             AuthorityAccount::<T>::put(&self.authority_account);
             XorMasterContractAddress::<T>::put(&self.xor_master_contract_address);
             ValMasterContractAddress::<T>::put(&self.val_master_contract_address);
             PswapContractAddress::<T>::put(&self.pswap_contract_address);
             for network in &self.networks {
-                let net_id = LastNetworkId::<T>::get();
+                let net_id = NextNetworkId::<T>::get();
                 let peers_account_id = &network.bridge_account_id;
                 BridgeContractAddress::<T>::insert(net_id, network.bridge_contract_address);
                 BridgeAccount::<T>::insert(net_id, peers_account_id.clone());
@@ -1943,7 +1942,7 @@ impl<T: Config> Module<T> {
         });
     }
 
-    /// Loops through the given array of logs and finds the first one that matches the kind
+    /// Loops through the given array of logs and finds the first one that matches the type
     /// and topic.
     fn parse_main_event(
         logs: &[Log],
@@ -2220,9 +2219,9 @@ impl<T: Config> Module<T> {
         ))
     }
 
-    /// Handles a special case of incoming request - marking as done.
+    /// Handles a special case of an incoming request - marking as done.
     ///
-    /// This special flow (unlike `parse_incoming_request`) only queries contract's `is_used`
+    /// This special flow (unlike `parse_incoming_request`) only queries the contract's `used`
     /// variable to check if the request was actually made.
     fn handle_mark_as_done_incoming_request(
         pre_request: IncomingPreRequest<T>,
@@ -2243,7 +2242,7 @@ impl<T: Config> Module<T> {
 
     /// Handles the given off-chain request.
     ///
-    /// The function delegates further handling depending on request kind.
+    /// The function delegates further handling depending on request type.
     /// There are 4 flows. 3 for incoming request: handle 'mark as done', handle 'cancel outgoing
     /// request' and for the rest, and only one for all outgoing requests.
     fn handle_offchain_request(
