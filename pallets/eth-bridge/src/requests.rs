@@ -435,6 +435,7 @@ pub struct OutgoingTransfer<T: Config> {
     pub amount: Balance,
     pub nonce: T::Index,
     pub network_id: T::NetworkId,
+    pub timepoint: Timepoint<T>,
 }
 
 impl<T: Config> OutgoingTransfer<T> {
@@ -600,6 +601,7 @@ pub struct OutgoingAddAsset<T: Config> {
     pub asset_id: AssetIdOf<T>,
     pub nonce: T::Index,
     pub network_id: T::NetworkId,
+    pub timepoint: Timepoint<T>,
 }
 
 impl<T: Config> OutgoingAddAsset<T> {
@@ -703,6 +705,7 @@ pub struct OutgoingAddToken<T: Config> {
     pub decimals: u8,
     pub nonce: T::Index,
     pub network_id: T::NetworkId,
+    pub timepoint: Timepoint<T>,
 }
 
 #[derive(Default)]
@@ -853,6 +856,7 @@ pub struct OutgoingAddPeer<T: Config> {
     pub peer_account_id: T::AccountId,
     pub nonce: T::Index,
     pub network_id: T::NetworkId,
+    pub timepoint: Timepoint<T>,
 }
 
 impl<T: Config> OutgoingAddPeer<T> {
@@ -928,6 +932,7 @@ pub struct OutgoingAddPeerCompat<T: Config> {
     pub peer_account_id: T::AccountId,
     pub nonce: T::Index,
     pub network_id: T::NetworkId,
+    pub timepoint: Timepoint<T>,
 }
 
 impl<T: Config> OutgoingAddPeerCompat<T> {
@@ -991,6 +996,7 @@ pub struct OutgoingRemovePeer<T: Config> {
     pub peer_address: Address,
     pub nonce: T::Index,
     pub network_id: T::NetworkId,
+    pub timepoint: Timepoint<T>,
 }
 
 impl<T: Config> OutgoingRemovePeer<T> {
@@ -1068,6 +1074,7 @@ pub struct OutgoingRemovePeerCompat<T: Config> {
     pub peer_address: Address,
     pub nonce: T::Index,
     pub network_id: T::NetworkId,
+    pub timepoint: Timepoint<T>,
 }
 
 impl<T: Config> OutgoingRemovePeerCompat<T> {
@@ -1187,6 +1194,7 @@ pub struct OutgoingPrepareForMigration<T: Config> {
     pub author: T::AccountId,
     pub nonce: T::Index,
     pub network_id: T::NetworkId,
+    pub timepoint: Timepoint<T>,
 }
 
 impl<T: Config> OutgoingPrepareForMigration<T> {
@@ -1268,6 +1276,7 @@ pub struct OutgoingMigrate<T: Config> {
     pub erc20_native_tokens: Vec<Address>,
     pub nonce: T::Index,
     pub network_id: T::NetworkId,
+    pub timepoint: Timepoint<T>,
 }
 
 impl<T: Config> OutgoingMigrate<T> {
@@ -1382,7 +1391,7 @@ impl EthPeersSync {
 pub fn parse_hash_from_call<T: Config>(
     tokens: Vec<Token>,
     tx_hash_arg_pos: usize,
-) -> Result<H256, DispatchError> {
+) -> Result<H256, Error<T>> {
     tokens
         .get(tx_hash_arg_pos)
         .cloned()

@@ -225,7 +225,7 @@ fn assert_incoming_request_done(
     );
     assert_ok!(EthBridge::finalize_incoming_request(
         Origin::signed(bridge_acc_id.clone()),
-        Ok(incoming_request),
+        incoming_request,
         net_id,
     ));
     assert_eq!(
@@ -453,6 +453,7 @@ fn should_register_outgoing_transfer() {
             amount: 100_u32.into(),
             nonce: 3,
             network_id: ETH_NETWORK_ID,
+            timepoint: bridge_multisig::Pallet::<Runtime>::timepoint(),
         };
         let last_request = crate::RequestsQueue::get(net_id).pop().unwrap();
         match last_request {
@@ -619,7 +620,7 @@ fn should_cancel_incoming_transfer() {
         .unwrap();
         assert_ok!(EthBridge::finalize_incoming_request(
             Origin::signed(bridge_acc_id.clone()),
-            Ok(incoming_transfer.clone()),
+            incoming_transfer.clone(),
             net_id,
         ));
         assert_eq!(
@@ -673,9 +674,10 @@ fn should_fail_incoming_transfer() {
             assets::Module::<Runtime>::total_balance(&AssetId::XOR.into(), &alice).unwrap(),
             100000u32.into()
         );
-        assert_ok!(EthBridge::finalize_incoming_request(
+        assert_ok!(EthBridge::abort_request(
             Origin::signed(bridge_acc_id),
-            Err((tx_hash, Error::Other.into())),
+            tx_hash,
+            Error::Other.into(),
             net_id,
         ));
         assert_eq!(
@@ -2097,7 +2099,7 @@ fn should_parse_add_peer_on_old_contract() {
             network_id: net_id,
         };
         let tx = Transaction {
-            input: Bytes(hex!("ca70cf6e00000000000000000000000025451a4de12dccc2d166922fa938e900fcc4ed24d209d4cd392dd4c5b37b4feaa2358691a632860735cda5261c4d2a0a7f354ade00000000000000000000000000000000000000000000000000000000000000a000000000000000000000000000000000000000000000000000000000000000e000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000008900000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000").to_vec()),
+            input: Bytes(hex!("ca70cf6e00000000000000000000000025451a4de12dccc2d166922fa938e900fcc4ed24441b7425bbf44fe617047e8f4cea8c47be35c8828257aa5793c08167e7c715eb00000000000000000000000000000000000000000000000000000000000000a000000000000000000000000000000000000000000000000000000000000000e000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000008900000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000").to_vec()),
             block_number: Some(1u64.into()),
             to: Some(types::H160(EthBridge::xor_master_contract_address().0)),
             ..Default::default()
@@ -2147,7 +2149,7 @@ fn should_parse_remove_peer_on_old_contract() {
             network_id: net_id,
         };
         let tx = Transaction {
-            input: Bytes(hex!("89c39baf00000000000000000000000025451a4de12dccc2d166922fa938e900fcc4ed2456dcdf93ea580e02742a22e68b8838da01545f8574746a75ad9a1e8ab198479c00000000000000000000000000000000000000000000000000000000000000a000000000000000000000000000000000000000000000000000000000000000c000000000000000000000000000000000000000000000000000000000000000e0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000").to_vec()),
+            input: Bytes(hex!("89c39baf00000000000000000000000025451a4de12dccc2d166922fa938e900fcc4ed24451d32cbef7d41bbc741949402308c03fe43ab4efe4aa8f83c21e732c9e1ca1c00000000000000000000000000000000000000000000000000000000000000a000000000000000000000000000000000000000000000000000000000000000c000000000000000000000000000000000000000000000000000000000000000e0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000").to_vec()),
             block_number: Some(1u64.into()),
             to: Some(types::H160(EthBridge::val_master_contract_address().0)),
             ..Default::default()
@@ -2181,6 +2183,7 @@ fn should_use_different_abi_when_sending_xor_val_on_non_eth_network() {
                 amount: 100_u32.into(),
                 nonce: 0,
                 network_id: ETH_NETWORK_ID,
+                timepoint: Default::default(),
             };
             let transfer_to_non_eth = OutgoingTransfer::<Runtime> {
                 from: alice.clone(),
@@ -2189,6 +2192,7 @@ fn should_use_different_abi_when_sending_xor_val_on_non_eth_network() {
                 amount: 100_u32.into(),
                 nonce: 0,
                 network_id: 100,
+                timepoint: Default::default(),
             };
             assert_ne!(
                 transfer_to_eth.to_eth_abi(H256::zero()).unwrap().raw,
