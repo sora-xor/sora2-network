@@ -9,7 +9,7 @@ Content-Type: application/json
   "network": {
     "ethereumConfig": {
       "confirmationPeriod": 20,
-      "gasLimit": 5000000,
+      "gasLimit": 8000000,
       "gasPrice": 100000000000,
       "url": "https://rinkeby.infura.io/v3/24e9c0ee26f048a3b9967ae370faa676"
     },

@@ -113,24 +113,27 @@ class EthController {
         }
     }
 
+
     @PostMapping("/deploy/{project}/bridge")
-    fun deployBridgeSmartContract(@PathVariable("project") project: String, @NotNull @RequestBody request: DeploySORABridgeRequest): ResponseEntity<DeploySORAContractResponse> {
+    fun deployBridgeDeployerSmartContract(@PathVariable("project") project: String, @NotNull @RequestBody request: DeploySORABridgeRequest): ResponseEntity<DeploySORAContractResponse> {
         val deployHelper = createSmartContractDeployHelper(request.network)
         return try {
             if (project != "sora2") {
                 throw IllegalArgumentException("Wrong project name $project")
             }
-            val master = deployHelper.deployBridgeSmartContract(
+            val bridgeDeployer = deployHelper.deployBridgeDeployerSmartContract(
                 request.peerAccounts,
                 request.addressVAL,
                 request.addressXOR,
                 request.networkId
             )
+            val masterAddress = deployHelper.deployBridgeSmartContract(bridgeDeployer)
             ResponseEntity.ok(
                 DeploySORAContractResponse(
-                    master.contractAddress
+                    masterAddress
                 )
             )
+
         } catch (e: Exception) {
             logger.error("Cannot deploy Bridge smart contract", e)
             val response = DeploySORAContractResponse()

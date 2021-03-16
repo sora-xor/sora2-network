@@ -9,14 +9,18 @@ import com.d3.commons.util.createPrettyScheduledThreadPool
 import jp.co.soramitsu.soranet.eth.config.EthereumConfig
 import jp.co.soramitsu.soranet.eth.config.EthereumPasswords
 import jp.co.soramitsu.soranet.eth.contract.Bridge
+import jp.co.soramitsu.soranet.eth.contract.BridgeDeployer
 import jp.co.soramitsu.soranet.eth.contract.NftMigration
 import mu.KLogging
 import okhttp3.*
+import org.web3j.abi.datatypes.Event
 import org.web3j.contracts.eip20.generated.ERC20
 import org.web3j.crypto.WalletUtils
 import org.web3j.protocol.Web3j
+import org.web3j.protocol.core.DefaultBlockParameter
 import org.web3j.protocol.core.DefaultBlockParameterName
 import org.web3j.protocol.core.JsonRpc2_0Web3j.DEFAULT_BLOCK_TIME
+import org.web3j.protocol.core.methods.request.EthFilter
 import org.web3j.protocol.http.HttpService
 import org.web3j.tx.RawTransactionManager
 import org.web3j.tx.gas.DefaultGasProvider
@@ -25,6 +29,9 @@ import java.io.IOException
 import java.math.BigInteger
 import java.util.*
 import java.util.concurrent.TimeUnit
+import org.web3j.abi.EventValues
+import org.web3j.protocol.core.methods.response.TransactionReceipt
+
 
 const val ATTEMPTS_DEFAULT = 240
 
@@ -149,18 +156,17 @@ class DeployHelper(
     /** Max gas limit */
     val gasLimit = BigInteger.valueOf(ethereumConfig.gasLimit)
 
-
     /**
-     * Deploy master smart contract
-     * @return master smart contract object
+     * Deploy bridge deployer smart contract
+     * @return bridge deployer contract object
      */
-    fun deployBridgeSmartContract(
+    fun deployBridgeDeployerSmartContract(
         peers: List<String>,
         addressVAL: String,
         addressXOR: String,
         networkId: BigInteger
-    ): Bridge {
-        val bridge = Bridge.deploy(
+    ): BridgeDeployer {
+        val bridgeDeployer = BridgeDeployer.deploy(
             web3,
             credentials,
             StaticGasProvider(gasPrice, gasLimit),
@@ -169,8 +175,24 @@ class DeployHelper(
             addressXOR,
             Arrays.copyOfRange(BigInteger(networkId.toString(), 16).toByteArray(), 1, 33)
         ).send()
-        logger.info { "Bridge smart contract ${bridge.contractAddress} was deployed" }
-        return bridge
+        logger.info { "Bridge deployer smart contract ${bridgeDeployer.contractAddress} was deployed" }
+        return bridgeDeployer
+    }
+
+    /**
+     * Deploy bridge smart contract
+     * @return bridge smart contract object
+     */
+    fun deployBridgeSmartContract(
+        deployer: BridgeDeployer
+    ): String {
+        val bridge = deployer.deployBridgeContract().send()
+        logger.info { "Bridge smart contract transaction hash ${bridge.transactionHash}" }
+        val transactionReceipt = TransactionReceipt()
+        transactionReceipt.logs = bridge.logs
+        val res = deployer.getNewBridgeDeployedEvents(transactionReceipt)[0];
+        logger.info { "Bridge smart contract address is ${res.bridgeAddress}" }
+        return res.bridgeAddress
     }
 
     fun deployNftMigrationSmartContract(
