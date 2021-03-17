@@ -7,8 +7,7 @@ contract BridgeDeployer {
     
     bytes32 public _networkId;
     address[] public _initialPeers;
-    Bridge public _bridge;
-    
+
     event NewBridgeDeployed(address bridgeAddress);
 
     /**
@@ -24,8 +23,6 @@ contract BridgeDeployer {
     }
     
     function deployBridgeContract() public {
-        _bridge = new Bridge(_initialPeers, _networkId);
-        
-        emit NewBridgeDeployed(address(_bridge));
+        emit NewBridgeDeployed(address(new Bridge(_initialPeers, _networkId)));
     } 
 }
