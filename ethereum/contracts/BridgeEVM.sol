@@ -35,7 +35,7 @@ contract Bridge {
     event PreparedForMigration();
     event Migrated(address to);
 
-    /** EVM netowrk ID */
+    /** EVM network ID */
     bytes32 public _networkId;
 
     /**
