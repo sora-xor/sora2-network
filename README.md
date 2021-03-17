@@ -1,6 +1,6 @@
 # Overview.
 
-This is FRAME-based Substrate node of Sora Pokaswap.
+This is FRAME-based Substrate node of Sora Polkaswap.
 Code of node, pallets, runtime.
 
 # System requirements.
@@ -114,11 +114,11 @@ cargo run --release -- --dev --tmp
 
 ### Selecting a chain.
 
-Use the --chain <chainspec> option to select the chain. Can be local, dev, staring, test, or a custom chain spec.
+Use the --chain <chainspec> option to select the chain. Can be local, dev, staging, test, or a custom chain spec.
 
 ### Archive node.
 
-An archive node does not prune any block or state data. Use the --archive flag. Certain types of nodes like validators must run in archive mode. Likewise, all events are cleared from state in each block, so if you want to store events then you will need an archive node.
+An archive node does not prune any block or state data. Use the ```--pruning archive``` flag. Certain types of nodes like validators must run in archive mode. Likewise, all events are cleared from state in each block, so if you want to store events then you will need an archive node.
 
 ### Exporting blocks.
 
