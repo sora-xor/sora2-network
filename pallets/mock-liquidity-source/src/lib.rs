@@ -1,13 +1,12 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use common::fixed;
-use common::{
-    fixnum::ops::One,
-    prelude::{FixedWrapper, SwapAmount, SwapOutcome},
-    Balance, Fixed, LiquiditySource,
-};
+use common::fixnum::ops::One;
+use common::prelude::{FixedWrapper, SwapAmount, SwapOutcome};
+use common::{fixed, Balance, Fixed, LiquiditySource};
 use core::convert::TryInto;
-use frame_support::{dispatch::DispatchError, ensure, traits::Get};
+use frame_support::dispatch::DispatchError;
+use frame_support::ensure;
+use frame_support::traits::Get;
 use frame_system::ensure_signed;
 use permissions::{Scope, BURN, MINT, SLASH, TRANSFER};
 

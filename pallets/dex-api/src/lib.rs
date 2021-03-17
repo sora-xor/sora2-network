@@ -1,11 +1,12 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
+use common::prelude::{Balance, SwapAmount, SwapOutcome, SwapVariant};
 use common::{
-    prelude::{Balance, SwapAmount, SwapOutcome, SwapVariant},
     LiquidityRegistry, LiquiditySource, LiquiditySourceFilter, LiquiditySourceId,
     LiquiditySourceType,
 };
-use frame_support::{sp_runtime::DispatchError, weights::Weight};
+use frame_support::sp_runtime::DispatchError;
+use frame_support::weights::Weight;
 use frame_system::ensure_signed;
 use sp_std::vec::Vec;
 

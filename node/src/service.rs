@@ -3,27 +3,27 @@
 //! Service implementation. Specialized wrapper over substrate service.
 
 use codec::Encode;
-use framenode_runtime::{
-    self,
-    eth_bridge::{
-        self, PeerConfig, STORAGE_ETH_NODE_PARAMS, STORAGE_NETWORK_IDS_KEY,
-        STORAGE_PEER_SECRET_KEY, STORAGE_SUB_NODE_URL_KEY,
-    },
-    opaque::Block,
-    Runtime, RuntimeApi,
+use framenode_runtime::eth_bridge::{
+    self, PeerConfig, STORAGE_ETH_NODE_PARAMS, STORAGE_NETWORK_IDS_KEY, STORAGE_PEER_SECRET_KEY,
+    STORAGE_SUB_NODE_URL_KEY,
 };
-use sc_client_api::Backend;
-use sc_client_api::{ExecutorProvider, RemoteBackend};
+use framenode_runtime::opaque::Block;
+use framenode_runtime::{self, Runtime, RuntimeApi};
+use sc_client_api::{Backend, ExecutorProvider, RemoteBackend};
 use sc_executor::native_executor_instance;
 pub use sc_executor::NativeExecutor;
 use sc_finality_grandpa::SharedVoterState;
-use sc_service::{error::Error as ServiceError, Configuration, TaskManager};
-use sp_core::{offchain::OffchainStorage, Pair, Public};
+use sc_service::error::Error as ServiceError;
+use sc_service::{Configuration, TaskManager};
+use sp_core::offchain::OffchainStorage;
+use sp_core::{Pair, Public};
 use sp_inherents::InherentDataProviders;
 use sp_keystore::SyncCryptoStore;
 use sp_runtime::offchain::STORAGE_PREFIX;
+use std::collections::BTreeSet;
+use std::fs::File;
+use std::sync::Arc;
 use std::time::Duration;
-use std::{collections::BTreeSet, fs::File, sync::Arc};
 
 // Our native executor instance.
 native_executor_instance!(

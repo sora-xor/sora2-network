@@ -1,22 +1,22 @@
 use crate::{self as mcbcp, Config};
+use common::mock::ExistentialDeposits;
+use common::prelude::{Balance, FixedWrapper, SwapAmount, SwapOutcome};
 use common::{
-    self, balance, fixed_wrapper, hash,
-    mock::ExistentialDeposits,
-    prelude::{Balance, FixedWrapper, SwapAmount, SwapOutcome},
-    Amount, AssetId32, AssetSymbol, DEXInfo, LiquiditySourceFilter, LiquiditySourceType,
-    TechPurpose, PSWAP, USDT, VAL, XOR,
+    self, balance, fixed_wrapper, hash, Amount, AssetId32, AssetSymbol, DEXInfo,
+    LiquiditySourceFilter, LiquiditySourceType, TechPurpose, PSWAP, USDT, VAL, XOR,
 };
 use currencies::BasicCurrencyAdapter;
-use frame_support::{construct_runtime, parameter_types, traits::GenesisBuild, weights::Weight};
+use frame_support::traits::GenesisBuild;
+use frame_support::weights::Weight;
+use frame_support::{construct_runtime, parameter_types};
 use hex_literal::hex;
 use orml_traits::MultiCurrency;
 use permissions::{Scope, INIT_DEX, MANAGE_DEX};
-use sp_core::{crypto::AccountId32, H256};
-use sp_runtime::{
-    testing::Header,
-    traits::{BlakeTwo256, IdentityLookup, Zero},
-    DispatchError, Perbill,
-};
+use sp_core::crypto::AccountId32;
+use sp_core::H256;
+use sp_runtime::testing::Header;
+use sp_runtime::traits::{BlakeTwo256, IdentityLookup, Zero};
+use sp_runtime::{DispatchError, Perbill};
 use std::collections::HashMap;
 
 pub type AccountId = AccountId32;

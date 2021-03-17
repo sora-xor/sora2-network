@@ -8,11 +8,8 @@ extern crate alloc;
 use liquidity_proxy::*;
 
 use codec::Decode;
-use common::{
-    balance, fixed,
-    prelude::{Balance, SwapAmount},
-    AssetSymbol, DEXId, FilterMode, DOT, XOR,
-};
+use common::prelude::{Balance, SwapAmount};
+use common::{balance, fixed, AssetSymbol, DEXId, FilterMode, DOT, XOR};
 use frame_benchmarking::benchmarks;
 use frame_support::traits::Get;
 use frame_system::RawOrigin;

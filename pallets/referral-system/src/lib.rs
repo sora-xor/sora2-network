@@ -1,6 +1,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use frame_support::{ensure, sp_runtime::DispatchError};
+use frame_support::ensure;
+use frame_support::sp_runtime::DispatchError;
 
 impl<T: Config> Module<T> {
     pub fn set_referrer_to(

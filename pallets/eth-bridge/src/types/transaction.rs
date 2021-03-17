@@ -119,8 +119,7 @@ pub struct RawTransactionDetails {
 
 #[cfg(test)]
 mod tests {
-    use super::RawTransaction;
-    use super::Receipt;
+    use super::{RawTransaction, Receipt};
     use serde_json;
 
     #[test]

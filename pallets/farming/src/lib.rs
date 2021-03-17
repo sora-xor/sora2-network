@@ -1,14 +1,12 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use common::{balance, prelude::FixedWrapper, Balance, FromGenericPair, PSWAP, XOR};
+use common::prelude::FixedWrapper;
+use common::{balance, Balance, FromGenericPair, PSWAP, XOR};
 pub use domain::*;
-use frame_support::{
-    codec::{Decode, Encode},
-    dispatch::{DispatchError, DispatchResult},
-    ensure,
-    weights::Weight,
-    RuntimeDebug,
-};
+use frame_support::codec::{Decode, Encode};
+use frame_support::dispatch::{DispatchError, DispatchResult};
+use frame_support::weights::Weight;
+use frame_support::{ensure, RuntimeDebug};
 use frame_system::ensure_signed;
 use orml_traits::currency::MultiCurrency;
 use sp_std::collections::btree_set::BTreeSet;
@@ -158,7 +156,8 @@ impl<T: Config> Pallet<T> {
         asset_id: T::AssetId,
         amount: Balance,
     ) -> Result<Balance, DispatchError> {
-        use assets::{AssetRecord::*, AssetRecordArg::*};
+        use assets::AssetRecord::*;
+        use assets::AssetRecordArg::*;
         use common::AssetIdExtraAssetRecordArg::*;
         let tuple = assets::Module::<T>::tuple_from_asset_id(&asset_id)
             .ok_or(Error::<T>::UnableToGetPoolInformationFromTechAsset)?;

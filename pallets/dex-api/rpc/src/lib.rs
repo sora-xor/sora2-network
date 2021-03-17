@@ -1,12 +1,11 @@
 use codec::Codec;
-use common::BalanceWrapper;
-use common::InvokeRPCError;
+use common::{BalanceWrapper, InvokeRPCError};
 use jsonrpc_core::{Error as RpcError, ErrorCode, Result};
 use jsonrpc_derive::rpc;
 use sp_api::ProvideRuntimeApi;
 use sp_blockchain::HeaderBackend;
-use sp_runtime::traits::{MaybeDisplay, MaybeFromStr};
-use sp_runtime::{generic::BlockId, traits::Block as BlockT};
+use sp_runtime::generic::BlockId;
+use sp_runtime::traits::{Block as BlockT, MaybeDisplay, MaybeFromStr};
 use std::sync::Arc;
 
 // Runtime API imports.

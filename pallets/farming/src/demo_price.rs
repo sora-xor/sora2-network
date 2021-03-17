@@ -1,7 +1,5 @@
-use common::{
-    balance,
-    prelude::{Balance, FixedWrapper},
-};
+use common::balance;
+use common::prelude::{Balance, FixedWrapper};
 
 pub fn get_demo_price(block: u32) -> (Balance, Balance) {
     let a = (block as usize) % DEMO_HIST;

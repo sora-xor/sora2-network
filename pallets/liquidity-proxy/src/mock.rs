@@ -1,21 +1,22 @@
 use crate::{self as liquidity_proxy, Config};
+use common::mock::ExistentialDeposits;
 use common::{
-    self, fixed, fixed_from_basis_points, hash, mock::ExistentialDeposits, Amount, AssetId32,
-    DEXInfo, Fixed, FromGenericPair, LiquiditySourceType, DOT, KSM, XOR,
+    self, fixed, fixed_from_basis_points, hash, Amount, AssetId32, DEXInfo, Fixed, FromGenericPair,
+    LiquiditySourceType, DOT, KSM, XOR,
 };
 use currencies::BasicCurrencyAdapter;
 
-use frame_support::{construct_runtime, parameter_types, traits::GenesisBuild, weights::Weight};
+use frame_support::traits::GenesisBuild;
+use frame_support::weights::Weight;
+use frame_support::{construct_runtime, parameter_types};
 use frame_system;
 
 use common::prelude::Balance;
 use permissions::{Scope, INIT_DEX, MANAGE_DEX};
 use sp_core::H256;
-use sp_runtime::{
-    testing::Header,
-    traits::{BlakeTwo256, IdentityLookup},
-    AccountId32, Perbill,
-};
+use sp_runtime::testing::Header;
+use sp_runtime::traits::{BlakeTwo256, IdentityLookup};
+use sp_runtime::{AccountId32, Perbill};
 
 pub type AccountId = AccountId32;
 pub type BlockNumber = u64;

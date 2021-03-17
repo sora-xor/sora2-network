@@ -1,9 +1,7 @@
-use frame_support::{
-    parameter_types,
-    weights::{
-        constants::WEIGHT_PER_SECOND, DispatchClass, Weight, WeightToFeeCoefficient,
-        WeightToFeeCoefficients, WeightToFeePolynomial,
-    },
+use frame_support::parameter_types;
+use frame_support::weights::constants::WEIGHT_PER_SECOND;
+use frame_support::weights::{
+    DispatchClass, Weight, WeightToFeeCoefficient, WeightToFeeCoefficients, WeightToFeePolynomial,
 };
 use frame_system::limits;
 use smallvec::smallvec;
@@ -65,7 +63,8 @@ impl WeightToFeePolynomial for WeightToFixedFee {
 
 #[cfg(test)]
 mod tests {
-    use super::{super::balance, *};
+    use super::super::balance;
+    use super::*;
     use frame_support::weights::Weight;
 
     type Fee = WeightToFixedFee;

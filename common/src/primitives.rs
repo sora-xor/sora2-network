@@ -2,14 +2,12 @@ use crate::traits::{IsRepresentation, PureOrWrapped};
 use codec::{Decode, Encode};
 use core::fmt::Debug;
 use frame_support::dispatch::DispatchError;
-use frame_support::ensure;
-use frame_support::RuntimeDebug;
+use frame_support::{ensure, RuntimeDebug};
 use rustc_hex::{FromHex, ToHex};
 #[cfg(feature = "std")]
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use sp_core::H256;
-use sp_std::convert::TryFrom;
-use sp_std::convert::TryInto;
+use sp_std::convert::{TryFrom, TryInto};
 use sp_std::fmt::Display;
 use sp_std::marker::PhantomData;
 #[cfg(feature = "std")]

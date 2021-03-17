@@ -1,7 +1,9 @@
-use crate::{mock::*, Module};
+use crate::mock::*;
+use crate::Module;
+use common::prelude::SwapAmount;
 use common::{
-    balance, prelude::SwapAmount, LiquidityRegistry, LiquiditySource, LiquiditySourceFilter,
-    LiquiditySourceId, LiquiditySourceType, DOT, XOR,
+    balance, LiquidityRegistry, LiquiditySource, LiquiditySourceFilter, LiquiditySourceId,
+    LiquiditySourceType, DOT, XOR,
 };
 
 type DexApi = Module<Runtime>;
