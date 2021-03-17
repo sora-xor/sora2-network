@@ -7,7 +7,7 @@ use PolySwapActionExample::*;
 fn should_register_technical_account() {
     let mut ext = ExtBuilder::default().build();
     let tech_account_id = common::TechAccountId::Generic("Test123".into(), "Some data".into());
-    let t01 = crate::Module::<Testtime>::tech_account_id_to_account_id(&tech_account_id).unwrap();
+    let t01 = crate::Module::<Runtime>::tech_account_id_to_account_id(&tech_account_id).unwrap();
 
     ext.execute_with(|| {
         assert_ok!(Technical::register_tech_account_id(TechAccountId::Generic(
@@ -15,7 +15,7 @@ fn should_register_technical_account() {
             "Some data".into()
         )));
         assert_eq!(
-            crate::Module::<Testtime>::lookup_tech_account_id(&t01).unwrap(),
+            crate::Module::<Runtime>::lookup_tech_account_id(&t01).unwrap(),
             tech_account_id
         );
     });
@@ -45,7 +45,7 @@ fn generic_pair_swap_simple() {
         take_account: t01.clone(),
     });
     ext.execute_with(|| {
-        assert_ok!(assets::Module::<Testtime>::register_asset_id(
+        assert_ok!(assets::Module::<Runtime>::register_asset_id(
             get_alice(),
             RedPepper(),
             AssetSymbol(b"RP".to_vec()),
@@ -53,7 +53,7 @@ fn generic_pair_swap_simple() {
             Balance::from(0u32),
             true,
         ));
-        assert_ok!(assets::Module::<Testtime>::register_asset_id(
+        assert_ok!(assets::Module::<Runtime>::register_asset_id(
             repr.clone(),
             BlackPepper(),
             AssetSymbol(b"BP".to_vec()),
@@ -61,13 +61,13 @@ fn generic_pair_swap_simple() {
             Balance::from(0u32),
             true,
         ));
-        assert_ok!(assets::Module::<Testtime>::mint_to(
+        assert_ok!(assets::Module::<Runtime>::mint_to(
             &RedPepper(),
             &get_alice(),
             &get_alice(),
             9000_000u32.into()
         ));
-        assert_ok!(assets::Module::<Testtime>::mint_to(
+        assert_ok!(assets::Module::<Runtime>::mint_to(
             &BlackPepper(),
             &repr,
             &repr,
@@ -75,36 +75,36 @@ fn generic_pair_swap_simple() {
         ));
         assert_ok!(Technical::register_tech_account_id(t01));
         assert_eq!(
-            assets::Module::<Testtime>::free_balance(&a01, &get_alice()).unwrap(),
+            assets::Module::<Runtime>::free_balance(&a01, &get_alice()).unwrap(),
             9099000u32.into()
         );
         assert_eq!(
-            assets::Module::<Testtime>::free_balance(&a02, &get_alice()).unwrap(),
+            assets::Module::<Runtime>::free_balance(&a02, &get_alice()).unwrap(),
             2000000u32.into()
         );
         assert_eq!(
-            assets::Module::<Testtime>::free_balance(&a01, &repr).unwrap(),
+            assets::Module::<Runtime>::free_balance(&a01, &repr).unwrap(),
             0u32.into()
         );
         assert_eq!(
-            assets::Module::<Testtime>::free_balance(&a02, &repr).unwrap(),
+            assets::Module::<Runtime>::free_balance(&a02, &repr).unwrap(),
             9000000u32.into()
         );
         assert_ok!(Technical::create_swap(Origin::signed(get_alice()), s01));
         assert_eq!(
-            assets::Module::<Testtime>::free_balance(&a01, &get_alice()).unwrap(),
+            assets::Module::<Runtime>::free_balance(&a01, &get_alice()).unwrap(),
             8769000u32.into()
         );
         assert_eq!(
-            assets::Module::<Testtime>::free_balance(&a02, &get_alice()).unwrap(),
+            assets::Module::<Runtime>::free_balance(&a02, &get_alice()).unwrap(),
             3000000u32.into()
         );
         assert_eq!(
-            assets::Module::<Testtime>::free_balance(&a02, &repr).unwrap(),
+            assets::Module::<Runtime>::free_balance(&a02, &repr).unwrap(),
             8000000u32.into()
         );
         assert_eq!(
-            assets::Module::<Testtime>::free_balance(&a01, &repr).unwrap(),
+            assets::Module::<Runtime>::free_balance(&a01, &repr).unwrap(),
             330000u32.into()
         );
     });

@@ -17,9 +17,9 @@ use common::{fixed, hash, prelude::Balance, DEXId, Fixed, TechPurpose, PSWAP, VA
 use frame_support::sp_runtime::Percent;
 use framenode_runtime::bonding_curve_pool::{DistributionAccountData, DistributionAccounts};
 use framenode_runtime::eth_bridge::{AssetKind, NetworkConfig};
-use grandpa::AuthorityId as GrandpaId;
 use hex_literal::hex;
 use permissions::Scope;
+use sc_finality_grandpa::AuthorityId as GrandpaId;
 use sc_network::config::MultiaddrWithPeerId;
 use sc_service::{ChainType, Properties};
 use sp_consensus_aura::sr25519::AuthorityId as AuraId;
@@ -174,7 +174,7 @@ pub fn dev_net() -> ChainSpec {
                         .into(),
                     val_contract_address: hex!("68339de68c9af6577c54867728dbb2db9d7368bf").into(),
                     pswap_contract_address: hex!("0000000000000000000000000000000000000000").into(),
-                    bridge_contract_address: hex!("64fb0ca483b356832cd97958e6b23df783fb7ced")
+                    bridge_contract_address: hex!("b7b3060589e5bf6e4a2c76edc229127745c9c13c")
                         .into(),
                 },
             )
@@ -230,7 +230,7 @@ pub fn staging_net(test: bool) -> ChainSpec {
                         .into(),
                     val_contract_address: hex!("7fcb82ab5a4762f0f18287ece64d4ec74b6071c0").into(),
                     pswap_contract_address: hex!("0000000000000000000000000000000000000000").into(),
-                    bridge_contract_address: hex!("50e693aaaf4855cdd6cb7ab38e7e2a4006a77022")
+                    bridge_contract_address: hex!("171928461c7a8ddbcec7d2aa4b43c151b8c8816a")
                         .into(),
                 }
             } else {
@@ -242,7 +242,7 @@ pub fn staging_net(test: bool) -> ChainSpec {
                         .into(),
                     val_contract_address: hex!("725c6b8cd3621eba4e0ccc40d532e7025b925a65").into(),
                     pswap_contract_address: hex!("0000000000000000000000000000000000000000").into(),
-                    bridge_contract_address: hex!("3ef9b59f2a1563f14e683de3724e618b9b69aebb")
+                    bridge_contract_address: hex!("4ff646bff7884f118406aa4beebd9e10de406603")
                         .into(),
                 }
             };
@@ -305,7 +305,7 @@ pub fn staging_net(test: bool) -> ChainSpec {
 }
 
 fn bonding_curve_distribution_accounts(
-) -> DistributionAccounts<DistributionAccountData<<Runtime as technical::Trait>::TechAccountId>> {
+) -> DistributionAccounts<DistributionAccountData<<Runtime as technical::Config>::TechAccountId>> {
     use common::{fixed_wrapper, prelude::fixnum::ops::One};
     let val_holders_coefficient = fixed_wrapper!(0.5);
     let val_holders_xor_alloc_coeff = fixed_wrapper!(0.9) * val_holders_coefficient.clone();
@@ -405,7 +405,6 @@ pub fn local_testnet_config() -> ChainSpec {
                     */
                 ],
                 vec![
-                    get_account_id_from_seed::<sr25519::Public>("Alice"),
                     get_account_id_from_seed::<sr25519::Public>("Bob"),
                     get_account_id_from_seed::<sr25519::Public>("Charlie"),
                     get_account_id_from_seed::<sr25519::Public>("Dave"),

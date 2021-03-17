@@ -1,15 +1,17 @@
-use crate::mock::*;
+use crate::{mock::*, Module};
 use common::{
     balance, prelude::SwapAmount, LiquidityRegistry, LiquiditySource, LiquiditySourceFilter,
     LiquiditySourceId, LiquiditySourceType, DOT, XOR,
 };
+
+type DexApi = Module<Runtime>;
 
 #[test]
 fn test_filter_empty_should_pass() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
         let list =
-            DEXAPI::list_liquidity_sources(&XOR, &DOT, LiquiditySourceFilter::empty(DEX_A_ID))
+            DexApi::list_liquidity_sources(&XOR, &DOT, LiquiditySourceFilter::empty(DEX_A_ID))
                 .expect("Failed to list available sources.");
         assert_eq!(
             &list,
@@ -27,7 +29,7 @@ fn test_filter_empty_should_pass() {
 fn test_filter_with_forbidden_existing_should_pass() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
-        let list = DEXAPI::list_liquidity_sources(
+        let list = DexApi::list_liquidity_sources(
             &XOR,
             &DOT,
             LiquiditySourceFilter::with_forbidden(
@@ -54,7 +56,7 @@ fn test_filter_with_forbidden_existing_should_pass() {
 fn test_filter_with_allowed_existing_should_pass() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
-        let list = DEXAPI::list_liquidity_sources(
+        let list = DexApi::list_liquidity_sources(
             &XOR,
             &DOT,
             LiquiditySourceFilter::with_allowed(

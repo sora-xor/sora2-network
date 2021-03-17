@@ -1,9 +1,8 @@
-use crate::{Module, Trait};
-use common::prelude::Balance;
-use common::{AssetId32, XOR};
+use crate::{self as assets, Config};
+use common::{mock::ExistentialDeposits, prelude::Balance, AssetId32, XOR};
 use currencies::BasicCurrencyAdapter;
-use frame_support::{impl_outer_origin, parameter_types, weights::Weight};
-use frame_system as system;
+use frame_support::{construct_runtime, parameter_types, traits::GenesisBuild, weights::Weight};
+use frame_system;
 use sp_core::H256;
 use sp_runtime::traits::Zero;
 use sp_runtime::{
@@ -11,6 +10,24 @@ use sp_runtime::{
     traits::{BlakeTwo256, IdentityLookup},
     Perbill,
 };
+
+type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
+type Block = frame_system::mocking::MockBlock<Runtime>;
+
+construct_runtime! {
+    pub enum Runtime where
+        Block = Block,
+        NodeBlock = Block,
+        UncheckedExtrinsic = UncheckedExtrinsic,
+    {
+        System: frame_system::{Module, Call, Config, Storage, Event<T>},
+        Assets: assets::{Module, Call, Config<T>, Storage, Event<T>},
+        Tokens: tokens::{Module, Call, Config<T>, Storage, Event<T>},
+        Currencies: currencies::{Module, Call, Storage, Event<T>},
+        Balances: pallet_balances::{Module, Call, Storage, Event<T>},
+        Permissions: permissions::{Module, Call, Config<T>, Storage, Event<T>},
+    }
+}
 
 pub type AccountId = u128;
 pub type BlockNumber = u64;
@@ -20,12 +37,6 @@ type AssetId = AssetId32<common::AssetId>;
 pub const ALICE: AccountId = 1;
 pub const BOB: AccountId = 2;
 
-impl_outer_origin! {
-    pub enum Origin for Runtime {}
-}
-
-#[derive(Clone, Eq, PartialEq)]
-pub struct Runtime;
 parameter_types! {
     pub const BlockHashCount: u64 = 250;
     pub const MaximumBlockWeight: Weight = 1024;
@@ -33,10 +44,12 @@ parameter_types! {
     pub const AvailableBlockRatio: Perbill = Perbill::from_percent(75);
 }
 
-impl system::Trait for Runtime {
+impl frame_system::Config for Runtime {
     type BaseCallFilter = ();
+    type BlockWeights = ();
+    type BlockLength = ();
     type Origin = Origin;
-    type Call = ();
+    type Call = Call;
     type Index = u64;
     type BlockNumber = u64;
     type Hash = H256;
@@ -44,29 +57,24 @@ impl system::Trait for Runtime {
     type AccountId = AccountId;
     type Lookup = IdentityLookup<Self::AccountId>;
     type Header = Header;
-    type Event = ();
+    type Event = Event;
     type BlockHashCount = BlockHashCount;
-    type MaximumBlockWeight = MaximumBlockWeight;
     type DbWeight = ();
-    type BlockExecutionWeight = ();
-    type ExtrinsicBaseWeight = ();
-    type MaximumExtrinsicWeight = MaximumBlockWeight;
-    type MaximumBlockLength = MaximumBlockLength;
-    type AvailableBlockRatio = AvailableBlockRatio;
     type Version = ();
     type AccountData = pallet_balances::AccountData<Balance>;
     type OnNewAccount = ();
     type OnKilledAccount = ();
     type SystemWeightInfo = ();
-    type PalletInfo = ();
+    type PalletInfo = PalletInfo;
+    type SS58Prefix = ();
 }
 
 parameter_types! {
     pub const GetBaseAssetId: AssetId = XOR;
 }
 
-impl crate::Trait for Runtime {
-    type Event = ();
+impl crate::Config for Runtime {
+    type Event = Event;
     type ExtraAccountId = AccountId;
     type ExtraTupleArg =
         common::AssetIdExtraTupleArg<common::DEXId, common::LiquiditySourceType, AccountId>;
@@ -76,29 +84,30 @@ impl crate::Trait for Runtime {
     type WeightInfo = ();
 }
 
-impl common::Trait for Runtime {
+impl common::Config for Runtime {
     type DEXId = common::DEXId;
     type LstId = common::LiquiditySourceType;
 }
 
-impl permissions::Trait for Runtime {
-    type Event = ();
+impl permissions::Config for Runtime {
+    type Event = Event;
 }
 
-impl tokens::Trait for Runtime {
-    type Event = ();
+impl tokens::Config for Runtime {
+    type Event = Event;
     type Balance = Balance;
     type Amount = Amount;
-    type CurrencyId = <Runtime as Trait>::AssetId;
-    type OnReceived = ();
+    type CurrencyId = <Runtime as Config>::AssetId;
     type WeightInfo = ();
+    type ExistentialDeposits = ExistentialDeposits;
+    type OnDust = ();
 }
 
-impl currencies::Trait for Runtime {
-    type Event = ();
+impl currencies::Config for Runtime {
+    type Event = Event;
     type MultiCurrency = Tokens;
     type NativeCurrency = BasicCurrencyAdapter<Runtime, Balances, Amount, BlockNumber>;
-    type GetNativeCurrencyId = <Runtime as Trait>::GetBaseAssetId;
+    type GetNativeCurrencyId = <Runtime as Config>::GetBaseAssetId;
     type WeightInfo = ();
 }
 
@@ -109,20 +118,15 @@ parameter_types! {
     pub const TransactionByteFee: u128 = 1;
 }
 
-impl pallet_balances::Trait for Runtime {
+impl pallet_balances::Config for Runtime {
     type Balance = Balance;
-    type Event = ();
+    type Event = Event;
     type DustRemoval = ();
     type ExistentialDeposit = ExistentialDeposit;
     type AccountStore = System;
     type WeightInfo = ();
     type MaxLocks = ();
 }
-
-pub type System = frame_system::Module<Runtime>;
-pub type Balances = pallet_balances::Module<Runtime>;
-pub type Tokens = tokens::Module<Runtime>;
-pub type Assets = Module<Runtime>;
 
 pub struct ExtBuilder {
     endowed_accounts: Vec<(AccountId, AssetId, Balance)>,
@@ -138,18 +142,16 @@ impl Default for ExtBuilder {
 
 impl ExtBuilder {
     pub fn build(self) -> sp_io::TestExternalities {
-        let mut t = system::GenesisConfig::default()
-            .build_storage::<Runtime>()
-            .unwrap();
+        let mut t = SystemConfig::default().build_storage::<Runtime>().unwrap();
 
-        permissions::GenesisConfig::<Runtime> {
+        PermissionsConfig {
             initial_permission_owners: vec![],
             initial_permissions: vec![],
         }
         .assimilate_storage(&mut t)
         .unwrap();
 
-        tokens::GenesisConfig::<Runtime> {
+        TokensConfig {
             endowed_accounts: self.endowed_accounts,
         }
         .assimilate_storage(&mut t)
