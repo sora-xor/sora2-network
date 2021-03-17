@@ -1,55 +1,73 @@
+# Overview.
 
-# Please use this script first, to run testnet
+This is FRAME-based Substrate node of Sora Pokaswap.
+Code of node, pallets, runtime.
 
-<pre>
-use
-sh run_script.sh
-</pre>
+# System requirements.
 
+## Minimum (for example for small docker container).
+* Cpu 800HZ 1 core.
+* Ram 800Mb.
+* Disk 2Gb.
 
+## Normal.
+* Cpu 1500GZ 2 core.
+* Ram 4Gb.
+* Disk 6Gb.
 
-# Substrate Node Template
+# Build test run.
 
-A new FRAME-based Substrate node, ready for hacking :rocket:
+## Using nix package manager.
 
-## Local Development
+### Install nix package manager.
 
-Follow these steps to prepare a local Substrate development environment :hammer_and_wrench:
+```sh
+curl -L https://nixos.org/nix/install | sh
+```
+Make sure to follow the instructions output by the script.
+The installation script requires that you have sudo access to root.
 
-### Setup
+### Build node binary using nix.
 
-Setup instructions can be found at the
-[Substrate Developer Hub](https://substrate.dev/docs/en/knowledgebase/getting-started).
-
-### Build
-
-Once the development environment is set up, build the node template. This command will build the
-[Wasm](https://substrate.dev/docs/en/knowledgebase/advanced/executor#wasm-execution) and
-[native](https://substrate.dev/docs/en/knowledgebase/advanced/executor#native-execution) code:
-
-```bash
-WASM_BUILD_TOOLCHAIN=nightly-2020-10-05 cargo build --release
+```sh
+nix-shell --run "cargo build --release"
 ```
 
-## Run
+### Test node using nix.
+
+```sh
+nix-shell --run "cargo test --release"
+```
+
+### Run node using nix.
+
+```sh
+nix-shell --run "cargo run --release -- --dev --tmp"
+```
+
+### Running using script, before building.
+
+```sh
+./run_script.sh -d -w -r
+```
 
 ### Single Node Development Chain
 
 Purge any existing dev chain state:
 
-```bash
+```sh
 ./target/release/framenode purge-chain --dev
 ```
 
 Start a dev chain:
 
-```bash
+```sh
 ./target/release/framenode --dev
 ```
 
 Or, start a dev chain with detailed logging:
 
-```bash
+```sh
 RUST_LOG=debug RUST_BACKTRACE=1 ./target/release/framenode -lruntime=debug --dev
 ```
 
@@ -58,119 +76,139 @@ RUST_LOG=debug RUST_BACKTRACE=1 ./target/release/framenode -lruntime=debug --dev
 If you want to see the multi-node consensus algorithm in action, refer to
 [our Start a Private Network tutorial](https://substrate.dev/docs/en/tutorials/start-a-private-network/).
 
-## Template Structure
+## Using docker.
 
-A Substrate project such as this consists of a number of components that are spread across a few
-directories.
+### Build image with node binary, cargo test included.
 
-### Node
+```docker build -t sora/polkaswap/nix .```
 
-A blockchain node is an application that allows users to participate in a blockchain network.
-Substrate-based blockchain nodes expose a number of capabilities:
+### Run this image.
 
--   Networking: Substrate nodes use the [`libp2p`](https://libp2p.io/) networking stack to allow the
-    nodes in the network to communicate with one another.
--   Consensus: Blockchains must have a way to come to
-    [consensus](https://substrate.dev/docs/en/knowledgebase/advanced/consensus) on the state of the
-    network. Substrate makes it possible to supply custom consensus engines and also ships with
-    several consensus mechanisms that have been built on top of
-    [Web3 Foundation research](https://research.web3.foundation/en/latest/polkadot/NPoS/index.html).
--   RPC Server: A remote procedure call (RPC) server is used to interact with Substrate nodes.
+```docker-compose up```
 
-There are several files in the `node` directory - take special note of the following:
+## Using manual rust setup.
 
--   [`chain_spec.rs`](./node/src/chain_spec.rs): A
-    [chain specification](https://substrate.dev/docs/en/knowledgebase/integrate/chain-spec) is a
-    source code file that defines a Substrate chain's initial (genesis) state. Chain specifications
-    are useful for development and testing, and critical when architecting the launch of a
-    production chain. Take note of the `development_config` and `testnet_genesis` functions, which
-    are used to define the genesis state for the local development chain configuration. These
-    functions identify some
-    [well-known accounts](https://substrate.dev/docs/en/knowledgebase/integrate/subkey#well-known-keys)
-    and use them to configure the blockchain's initial state.
--   [`service.rs`](./node/src/service.rs): This file defines the node implementation. Take note of
-    the libraries that this file imports and the names of the functions it invokes. In particular,
-    there are references to consensus-related topics, such as the
-    [longest chain rule](https://substrate.dev/docs/en/knowledgebase/advanced/consensus#longest-chain-rule),
-    the [Aura](https://substrate.dev/docs/en/knowledgebase/advanced/consensus#aura) block authoring
-    mechanism and the
-    [GRANDPA](https://substrate.dev/docs/en/knowledgebase/advanced/consensus#grandpa) finality
-    gadget.
+### Rust Setup
 
-After the node has been [built](#build), refer to the embedded documentation to learn more about the
-capabilities and configuration parameters that it exposes:
+First, complete the [basic Rust setup instructions](https://github.com/substrate-developer-hub/substrate-node-template/blob/master/doc/rust-setup.md).
 
-```shell
-./target/release/framenode --help
+### Build
+
+The cargo run command will perform an initial build. Use the following command to build the node without launching it:
+
+```sh
+cargo build --release
 ```
 
-### Runtime
+### Run
 
-In Substrate, the terms
-"[runtime](https://substrate.dev/docs/en/knowledgebase/getting-started/glossary#runtime)" and
-"[state transition function](https://substrate.dev/docs/en/knowledgebase/getting-started/glossary#stf-state-transition-function)"
-are analogous - they refer to the core logic of the blockchain that is responsible for validating
-blocks and executing the state changes they define. The Substrate project in this repository uses
-the [FRAME](https://substrate.dev/docs/en/knowledgebase/runtime/frame) framework to construct a
-blockchain runtime. FRAME allows runtime developers to declare domain-specific logic in modules
-called "pallets". At the heart of FRAME is a helpful
-[macro language](https://substrate.dev/docs/en/knowledgebase/runtime/macros) that makes it easy to
-create pallets and flexibly compose them to create blockchains that can address
-[a variety of needs](https://www.substrate.io/substrate-users/).
+Use Rust's native cargo command to build and launch the template node:
 
-Review the [FRAME runtime implementation](./runtime/src/lib.rs) included in this template and note
-the following:
-
--   This file configures several pallets to include in the runtime. Each pallet configuration is
-    defined by a code block that begins with `impl $PALLET_NAME::Config for Runtime`.
--   The pallets are composed into a single runtime by way of the
-    [`construct_runtime!`](https://crates.parity.io/frame_support/macro.construct_runtime.html)
-    macro, which is part of the core
-    [FRAME Support](https://substrate.dev/docs/en/knowledgebase/runtime/frame#support-library)
-    library.
-
-### Pallets
-
-The runtime in this project is constructed using many FRAME pallets that ship with the
-[core Substrate repository](https://github.com/paritytech/substrate/tree/master/frame) and a
-template pallet that is [defined in the `pallets`](./pallets/template/src/lib.rs) directory.
-
-A FRAME pallet is composed of a number of blockchain primitives:
-
--   Storage: FRAME defines a rich set of powerful
-    [storage abstractions](https://substrate.dev/docs/en/knowledgebase/runtime/storage) that makes
-    it easy to use Substrate's efficient key-value database to manage the evolving state of a
-    blockchain.
--   Dispatchables: FRAME pallets define special types of functions that can be invoked (dispatched)
-    from outside of the runtime in order to update its state.
--   Events: Substrate uses [events](https://substrate.dev/docs/en/knowledgebase/runtime/events) to
-    notify users of important changes in the runtime.
--   Errors: When a dispatchable fails, it returns an error.
--   Trait: The `Trait` configuration interface is used to define the types and parameters upon which
-    a FRAME pallet depends.
-
-### Run in Docker
-
-First, install [Docker](https://docs.docker.com/get-docker/) and
-[Docker Compose](https://docs.docker.com/compose/install/).
-
-Then run the following command to start a single node development chain.
-
-```bash
-./scripts/docker_run.sh
+```sh
+cargo run --release -- --dev --tmp
 ```
 
-This command will firstly compile your code, and then start a local development network. You can
-also replace the default command (`cargo build --release && ./target/release/framenode --dev --ws-external`)
-by appending your own. A few useful ones are as follow.
+# Configuration parameters.
 
-```bash
-# Run Substrate node without re-compiling
-./scripts/docker_run.sh ./target/release/framenode --dev --ws-external
+## Command line.
 
-# Purge the local dev chain
-./scripts/docker_run.sh ./target/release/framenode purge-chain --dev
+### Selecting a chain.
 
-# Check whether the code is compilable
-./scripts/docker_run.sh cargo check
+Use the --chain <chainspec> option to select the chain. Can be local, dev, staring, test, or a custom chain spec.
+
+### Archive node.
+
+An archive node does not prune any block or state data. Use the --archive flag. Certain types of nodes like validators must run in archive mode. Likewise, all events are cleared from state in each block, so if you want to store events then you will need an archive node.
+
+### Exporting blocks.
+
+To export blocks to a file, use export-blocks. Export in JSON (default) or binary (--binary true).
+
+```polkadot export-blocks --from 0 <output_file>```
+
+### RPC ports.
+
+Use the --rpc-external flag to expose RPC ports and --ws-external to expose websockets. Not all RPC calls are safe to allow and you should use an RPC proxy to filter unsafe calls. Select ports with the --rpc-port and --ws-port options. To limit the hosts who can access, use the --rpc-cors option.
+
+### Offchain worker.
+
+Use --offchain-worker flag to set should execute offchain workers on every block or not
+By default it's only enabled for nodes that are authoring new blocks.
+[default: WhenValidating]  [possible values: Always, Never, WhenValidating]
+
+### Specify custom base path (storage path)
+
+Flag ```-d```, ```--base-path <PATH>```
+
+### Run a temporary node.
+
+Flag ```--tmp```
+            
+A temporary directory will be created to store the configuration and will be deleted at the end of the process.
+            
+Note: the directory is random per process execution. This directory is used as base path which includes: database, node key and keystore.
+
+### Specify a list of bootnodes
+
+Flag ```--bootnodes <ADDR>...```
+
+## Default ports.
+
+* 9933 for HTTP
+* 9944 for WS
+* 9615 for prometeus
+* 30333 p2p traffic
+
+## Other documentation.
+
+### Embedded Docs.
+
+Once the project has been built, the following command can be used to explore all parameters and
+subcommands:
+
+```sh
+./target/release/framenode -h
 ```
+
+### Reading external documentation about ports and flags.
+
+* [Alice and Bob Start Blockchain](https://substrate.dev/docs/en/tutorials/start-a-private-network/alicebob)
+* [Node Management](https://wiki.polkadot.network/docs/en/build-node-management)
+
+## Logging
+
+### The Polkadot client has a number of log targets. The most interesting to users may be:
+
+* afg (Al's Finality Gadget - GRANDPA consensus)
+* babe
+* telemetry
+* txpool
+* usage
+* Other targets include: db, gossip, peerset, state-db, state-trace, sub-libp2p, trie, wasm-executor, wasm-heap.
+
+### The log levels, from least to most verbose, are:
+
+* error
+* warn
+* info
+* debug
+* trace
+
+All targets are set to info logging by default. You can adjust individual log levels using the --log (-l short) option, for example -l afg=trace,sync=debug or globally with -ldebug.
+
+## Monitoring and Telemetry
+
+### Node status
+
+You can check the node's health via RPC with:
+
+curl -H "Content-Type: application/json" --data '{ "jsonrpc":"2.0", "method":"system_health", "params":[],"id":1 }' localhost:9933 
+
+### Telemetry & Metrics
+
+The Parity Polkadot client connects to telemetry by default. You can disable it with --no-telemetry, or connect only to specified telemetry servers with the --telemetry-url option (see the help options for instructions). Connecting to public telemetry may expose information that puts your node at higher risk of attack. You can run your own, private telemetry server or deploy a substrate-telemetry instance to a Kubernetes cluster using this Helm chart.
+
+The node also exposes a Prometheus endpoint by default (disable with --no-prometheus). Substrate has a vizualizing node metrics tutorial which uses this endpoint.
+
+
+
