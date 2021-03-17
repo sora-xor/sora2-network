@@ -2,11 +2,9 @@ use core::convert::TryFrom;
 
 use sp_std::vec::Vec;
 
-use common::{
-    balance, fixed,
-    prelude::{fixnum::ops::CheckedAdd, FixedWrapper},
-    Fixed,
-};
+use common::prelude::fixnum::ops::CheckedAdd;
+use common::prelude::FixedWrapper;
+use common::{balance, fixed, Fixed};
 
 /// Given a set of monotoneous sequences A_i(n), i = 0..M-1, n = 0..N-1 returns a pair of:
 /// - a vector of "weights" [W_i / N], i = 0..M-1, where W_i are lengths of respective

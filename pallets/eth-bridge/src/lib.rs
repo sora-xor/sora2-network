@@ -48,33 +48,29 @@ use crate::contract::{
 use crate::types::{Bytes, CallRequest, Log, Transaction, TransactionReceipt};
 use alloc::string::String;
 use codec::{Decode, Encode, FullCodec};
-use common::{prelude::Balance, AccountIdOf, AssetSymbol, BalancePrecision};
-use core::{convert::TryFrom, fmt, iter, line, stringify};
+use common::prelude::Balance;
+use common::{AccountIdOf, AssetSymbol, BalancePrecision};
+use core::convert::TryFrom;
+use core::{fmt, iter, line, stringify};
 use ethabi::{ParamType, Token};
-use frame_support::sp_runtime::traits::{AtLeast32Bit, MaybeSerializeDeserialize, Member};
+use frame_support::dispatch::{DispatchError, DispatchResult};
+use frame_support::sp_runtime::app_crypto::{ecdsa, sp_core, Public};
+use frame_support::sp_runtime::offchain as rt_offchain;
+use frame_support::sp_runtime::offchain::storage::StorageValueRef;
+use frame_support::sp_runtime::offchain::storage_lock::{BlockNumberProvider, StorageLock, Time};
+use frame_support::sp_runtime::traits::{
+    AtLeast32Bit, IdentifyAccount, MaybeSerializeDeserialize, Member, One,
+};
+use frame_support::sp_runtime::{KeyTypeId, MultiSigner, Percent};
 use frame_support::traits::{Get, GetCallName};
+use frame_support::weights::{Pays, Weight};
 use frame_support::{
-    debug,
-    dispatch::{DispatchError, DispatchResult},
-    ensure, fail, sp_io,
-    sp_runtime::{
-        app_crypto::{ecdsa, sp_core, Public},
-        offchain::{
-            self as rt_offchain,
-            storage::StorageValueRef,
-            storage_lock::{BlockNumberProvider, StorageLock, Time},
-        },
-        traits::{IdentifyAccount, One},
-        KeyTypeId, MultiSigner, Percent,
-    },
-    weights::{Pays, Weight},
-    IterableStorageDoubleMap, Parameter, RuntimeDebug,
+    debug, ensure, fail, sp_io, IterableStorageDoubleMap, Parameter, RuntimeDebug,
 };
-use frame_system::offchain::SignMessage;
-use frame_system::{
-    ensure_root, ensure_signed,
-    offchain::{AppCrypto, CreateSignedTransaction, SendSignedTransaction, Signer},
+use frame_system::offchain::{
+    AppCrypto, CreateSignedTransaction, SendSignedTransaction, SignMessage, Signer,
 };
+use frame_system::{ensure_root, ensure_signed};
 use hex_literal::hex;
 use permissions::{Scope, MINT};
 use requests::*;
@@ -85,13 +81,12 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use sp_core::{H160, H256};
 use sp_io::hashing::{blake2_256, keccak_256};
+use sp_std::collections::btree_map::BTreeMap;
+use sp_std::collections::btree_set::BTreeSet;
+use sp_std::convert::{identity, TryInto};
+use sp_std::fmt::{Debug, Formatter};
 use sp_std::marker::PhantomData;
-use sp_std::{
-    collections::{btree_map::BTreeMap, btree_set::BTreeSet},
-    convert::{identity, TryInto},
-    fmt::{Debug, Formatter},
-    prelude::*,
-};
+use sp_std::prelude::*;
 #[cfg(feature = "std")]
 use std::collections::HashMap;
 
@@ -147,10 +142,8 @@ type BridgeNetworkId<T> = <T as Config>::NetworkId;
 pub mod crypto {
     use crate::KEY_TYPE;
 
-    use frame_support::sp_runtime::{
-        app_crypto::{app_crypto, ecdsa},
-        MultiSignature, MultiSigner,
-    };
+    use frame_support::sp_runtime::app_crypto::{app_crypto, ecdsa};
+    use frame_support::sp_runtime::{MultiSignature, MultiSigner};
 
     app_crypto!(ecdsa, KEY_TYPE);
 

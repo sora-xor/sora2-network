@@ -1,5 +1,6 @@
 use crate::mock::*;
-use common::{prelude::Balance, AssetSymbol};
+use common::prelude::Balance;
+use common::AssetSymbol;
 use frame_support::assert_ok;
 use PolySwapActionExample::*;
 

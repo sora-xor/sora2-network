@@ -1,6 +1,9 @@
-use crate::{mock::*, Error, MigratedAccounts, Module, PendingMultiSigAccounts, PendingReferrals};
-use common::{prelude::Balance, VAL};
-use frame_support::{assert_noop, assert_ok, traits::OnFinalize};
+use crate::mock::*;
+use crate::{Error, MigratedAccounts, Module, PendingMultiSigAccounts, PendingReferrals};
+use common::prelude::Balance;
+use common::VAL;
+use frame_support::traits::OnFinalize;
+use frame_support::{assert_noop, assert_ok};
 use referral_system::Referrers;
 
 type Assets = assets::Module<Runtime>;

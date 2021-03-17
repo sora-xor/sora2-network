@@ -11,16 +11,18 @@ mod tests;
 use core::convert::TryInto;
 
 use assets::AssetIdOf;
-use common::DexIdOf;
+use common::fixnum::ops::Zero as _;
+use common::prelude::{
+    Balance, EnsureDEXManager, EnsureTradingPairExists, Fixed, FixedWrapper, QuoteAmount,
+    SwapAmount, SwapOutcome,
+};
 use common::{
-    balance, fixed, fixed_wrapper,
-    fixnum::ops::Zero as _,
-    prelude::{Balance, Fixed, FixedWrapper, QuoteAmount, SwapAmount, SwapOutcome},
-    prelude::{EnsureDEXManager, EnsureTradingPairExists},
-    DEXId, LiquiditySource, LiquiditySourceFilter, LiquiditySourceType, ManagementMode, PSWAP, VAL,
+    balance, fixed, fixed_wrapper, DEXId, DexIdOf, LiquiditySource, LiquiditySourceFilter,
+    LiquiditySourceType, ManagementMode, PSWAP, VAL,
 };
 use frame_support::traits::Get;
-use frame_support::{ensure, fail, weights::Weight};
+use frame_support::weights::Weight;
+use frame_support::{ensure, fail};
 use frame_system::ensure_signed;
 use liquidity_proxy::LiquidityProxyTrait;
 use permissions::{Scope, BURN, MINT, SLASH, TRANSFER};
@@ -44,8 +46,7 @@ pub const TECH_ACCOUNT_RESERVES: &[u8] = b"reserves";
 pub const TECH_ACCOUNT_REWARDS: &[u8] = b"rewards";
 
 // Reuse distribution account structs from single-collateral bonding curve pallet.
-pub use bonding_curve_pool::DistributionAccountData;
-pub use bonding_curve_pool::DistributionAccounts;
+pub use bonding_curve_pool::{DistributionAccountData, DistributionAccounts};
 
 pub use pallet::*;
 

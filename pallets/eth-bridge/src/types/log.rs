@@ -149,10 +149,8 @@ impl FilterBuilder {
 
 #[cfg(test)]
 mod tests {
-    use crate::types::{
-        log::{Bytes, Log},
-        Address, H160, H256,
-    };
+    use crate::types::log::{Bytes, Log};
+    use crate::types::{Address, H160, H256};
 
     #[test]
     fn is_removed_removed_true() {

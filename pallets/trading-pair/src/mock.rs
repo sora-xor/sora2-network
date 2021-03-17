@@ -1,20 +1,17 @@
 use crate::{self as trading_pair, Config};
-use common::{
-    hash,
-    mock::ExistentialDeposits,
-    prelude::{Balance, DEXInfo},
-    AssetId32, AssetSymbol, BalancePrecision, DOT, KSM, XOR,
-};
+use common::mock::ExistentialDeposits;
+use common::prelude::{Balance, DEXInfo};
+use common::{hash, AssetId32, AssetSymbol, BalancePrecision, DOT, KSM, XOR};
 use currencies::BasicCurrencyAdapter;
-use frame_support::{construct_runtime, parameter_types, traits::GenesisBuild, weights::Weight};
+use frame_support::traits::GenesisBuild;
+use frame_support::weights::Weight;
+use frame_support::{construct_runtime, parameter_types};
 use frame_system;
 use permissions::{Scope, INIT_DEX, MANAGE_DEX};
 use sp_core::H256;
-use sp_runtime::{
-    testing::Header,
-    traits::{BlakeTwo256, IdentityLookup, Zero},
-    Perbill,
-};
+use sp_runtime::testing::Header;
+use sp_runtime::traits::{BlakeTwo256, IdentityLookup, Zero};
+use sp_runtime::Perbill;
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;

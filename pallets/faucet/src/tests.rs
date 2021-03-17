@@ -1,7 +1,8 @@
 use common::balance;
 use frame_support::{assert_noop, assert_ok};
 
-use crate::{mock::*, *};
+use crate::mock::*;
+use crate::*;
 
 type Module = crate::Module<Runtime>;
 type Assets = assets::Module<Runtime>;

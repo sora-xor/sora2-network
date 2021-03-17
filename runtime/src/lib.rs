@@ -15,29 +15,28 @@ include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
 
 use core::time::Duration;
 use currencies::BasicCurrencyAdapter;
-pub use farming::{
-    domain::{FarmInfo, FarmerInfo},
-    FarmId,
-};
+pub use farming::domain::{FarmInfo, FarmerInfo};
+pub use farming::FarmId;
 use frame_system::offchain::{Account, SigningTypes};
 use hex_literal::hex;
-use pallet_grandpa::fg_primitives;
-use pallet_grandpa::{AuthorityId as GrandpaId, AuthorityList as GrandpaAuthorityList};
+use pallet_grandpa::{
+    fg_primitives, AuthorityId as GrandpaId, AuthorityList as GrandpaAuthorityList,
+};
 use pallet_session::historical as pallet_session_historical;
 use pswap_distribution::OnPswapBurned;
 #[cfg(feature = "std")]
 use serde::{Serialize, Serializer};
 use sp_api::impl_runtime_apis;
-use sp_core::Encode;
-use sp_core::{crypto::KeyTypeId, OpaqueMetadata};
+use sp_core::crypto::KeyTypeId;
+use sp_core::{Encode, OpaqueMetadata};
+use sp_runtime::traits::{
+    BlakeTwo256, Block as BlockT, Convert, IdentifyAccount, IdentityLookup, NumberFor, OpaqueKeys,
+    SaturatedConversion, Verify, Zero,
+};
+use sp_runtime::transaction_validity::{TransactionSource, TransactionValidity};
 use sp_runtime::{
-    create_runtime_str, generic, impl_opaque_keys,
-    traits::{
-        BlakeTwo256, Block as BlockT, Convert, IdentifyAccount, IdentityLookup, NumberFor,
-        OpaqueKeys, SaturatedConversion, Verify, Zero,
-    },
-    transaction_validity::{TransactionSource, TransactionValidity},
-    ApplyExtrinsicResult, DispatchError, MultiSignature, Perbill, Percent, Perquintill,
+    create_runtime_str, generic, impl_opaque_keys, ApplyExtrinsicResult, DispatchError,
+    MultiSignature, Perbill, Percent, Perquintill,
 };
 use sp_std::prelude::*;
 use sp_std::vec::Vec;
@@ -48,25 +47,20 @@ use static_assertions::assert_eq_size;
 use traits::parameter_type_with_key;
 
 // A few exports that help ease life for downstream crates.
+pub use common::prelude::{
+    Balance, BalanceWrapper, PresetWeightInfo, SwapAmount, SwapOutcome, SwapVariant,
+    WeightToFixedFee,
+};
+pub use common::weights::{BlockLength, BlockWeights, TransactionByteFee};
 pub use common::{
-    fixed, fixed_from_basis_points,
-    prelude::{
-        Balance, BalanceWrapper, PresetWeightInfo, SwapAmount, SwapOutcome, SwapVariant,
-        WeightToFixedFee,
-    },
-    weights::{BlockLength, BlockWeights, TransactionByteFee},
-    AssetSymbol, BalancePrecision, BasisPoints, FilterMode, Fixed, FromGenericPair,
-    LiquiditySource, LiquiditySourceFilter, LiquiditySourceId, LiquiditySourceType,
+    fixed, fixed_from_basis_points, AssetSymbol, BalancePrecision, BasisPoints, FilterMode, Fixed,
+    FromGenericPair, LiquiditySource, LiquiditySourceFilter, LiquiditySourceId,
+    LiquiditySourceType,
 };
-pub use frame_support::{
-    construct_runtime, debug, parameter_types,
-    traits::{KeyOwnerProofSystem, Randomness, U128CurrencyToVote},
-    weights::{
-        constants::{BlockExecutionWeight, RocksDbWeight},
-        DispatchClass, Weight,
-    },
-    StorageValue,
-};
+pub use frame_support::traits::{KeyOwnerProofSystem, Randomness, U128CurrencyToVote};
+pub use frame_support::weights::constants::{BlockExecutionWeight, RocksDbWeight};
+pub use frame_support::weights::{DispatchClass, Weight};
+pub use frame_support::{construct_runtime, debug, parameter_types, StorageValue};
 pub use pallet_balances::Call as BalancesCall;
 pub use pallet_staking::StakerStatus;
 pub use pallet_timestamp::Call as TimestampCall;
@@ -74,12 +68,10 @@ pub use pallet_transaction_payment::{Multiplier, MultiplierUpdate};
 #[cfg(any(feature = "std", test))]
 pub use sp_runtime::BuildStorage;
 
-pub use bonding_curve_pool;
-pub use eth_bridge;
 use eth_bridge::{
     AssetKind, OffchainRequest, OutgoingRequestEncoded, RequestStatus, SignatureParams,
 };
-pub use multicollateral_bonding_curve_pool;
+pub use {bonding_curve_pool, eth_bridge, multicollateral_bonding_curve_pool};
 
 /// An index to a block.
 pub type BlockNumber = u32;

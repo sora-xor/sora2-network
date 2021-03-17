@@ -1,5 +1,7 @@
-use crate::{mock::*, Error, Module};
-use common::{hash, prelude::DEXInfo, EnsureDEXManager, ManagementMode, VAL, XOR};
+use crate::mock::*;
+use crate::{Error, Module};
+use common::prelude::DEXInfo;
+use common::{hash, EnsureDEXManager, ManagementMode, VAL, XOR};
 use frame_support::{assert_noop, assert_ok};
 
 type DEXModule = Module<Runtime>;

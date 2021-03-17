@@ -17,16 +17,14 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
-use common::{prelude::Balance, VAL};
+use common::prelude::Balance;
+use common::VAL;
 use ed25519_dalek_iroha::{Digest, PublicKey, Signature, SIGNATURE_LENGTH};
-use frame_support::{
-    codec::{Decode, Encode},
-    dispatch::DispatchError,
-    ensure,
-    sp_runtime::traits::Zero,
-    weights::Pays,
-    RuntimeDebug,
-};
+use frame_support::codec::{Decode, Encode};
+use frame_support::dispatch::DispatchError;
+use frame_support::sp_runtime::traits::Zero;
+use frame_support::weights::Pays;
+use frame_support::{ensure, RuntimeDebug};
 use frame_system::ensure_signed;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};

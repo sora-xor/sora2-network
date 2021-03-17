@@ -1,4 +1,5 @@
-use crate::{mock::*, *};
+use crate::mock::*;
+use crate::*;
 use frame_support::assert_ok;
 use sp_core::hash::H512;
 

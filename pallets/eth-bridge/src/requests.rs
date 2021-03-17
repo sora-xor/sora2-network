@@ -3,7 +3,8 @@ use crate::{
     get_bridge_account, types, Address, AssetIdOf, AssetKind, BridgeStatus, Config, Decoder, Error,
     OutgoingRequest, Pallet, PswapOwners, RequestStatus, SignatureParams, Timepoint,
 };
-use alloc::{collections::BTreeSet, string::String};
+use alloc::collections::BTreeSet;
+use alloc::string::String;
 use codec::{Decode, Encode};
 use common::prelude::Balance;
 #[cfg(feature = "std")]
@@ -12,9 +13,10 @@ use common::{AssetSymbol, BalancePrecision, PSWAP, VAL, XOR};
 use ethabi::{FixedBytes, Token};
 #[allow(unused_imports)]
 use frame_support::debug;
+use frame_support::dispatch::DispatchError;
 use frame_support::sp_runtime::app_crypto::sp_core;
 use frame_support::traits::Get;
-use frame_support::{dispatch::DispatchError, ensure, RuntimeDebug};
+use frame_support::{ensure, RuntimeDebug};
 use frame_system::RawOrigin;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};

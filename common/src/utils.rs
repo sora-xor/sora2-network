@@ -1,9 +1,11 @@
 use core::convert::TryFrom;
 
 use codec::{Decode, Encode};
-use fixnum::ops::{RoundMode::*, RoundingDiv};
+use fixnum::ops::RoundMode::*;
+use fixnum::ops::RoundingDiv;
 use frame_support::RuntimeDebug;
-use sp_std::{iter::once, vec::Vec};
+use sp_std::iter::once;
+use sp_std::vec::Vec;
 
 use crate::prelude::{FilterMode, Fixed, FixedInner, FixedWrapper, LiquiditySourceId};
 use crate::{balance, fixed_wrapper};
