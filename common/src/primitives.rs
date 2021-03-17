@@ -348,7 +348,7 @@ pub enum TechAssetId<AssetId> {
 
 #[derive(Encode, Decode, Eq, PartialEq, PartialOrd, Ord, Debug, Copy, Clone, Hash)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-pub enum AssetIdExtraTupleArg<DEXId, LstId, AccountId> {
+pub enum AssetIdExtraAssetRecordArg<DEXId, LstId, AccountId> {
     DEXId(DEXId),
     LstId(LstId),
     AccountId(AccountId),

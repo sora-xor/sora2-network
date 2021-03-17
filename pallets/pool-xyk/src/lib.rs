@@ -1327,8 +1327,8 @@ impl<T: Config> Module<T> {
     pub fn get_marking_asset_repr(
         tech_acc: &TechAccountIdOf<T>,
     ) -> Result<AssetIdOf<T>, DispatchError> {
-        use assets::{Tuple::*, TupleArg::*};
-        use common::AssetIdExtraTupleArg::*;
+        use assets::{AssetRecord::*, AssetRecordArg::*};
+        use common::AssetIdExtraAssetRecordArg::*;
         let repr_extra: ExtraAccountIdOf<T> =
             technical::Module::<T>::tech_account_id_to_account_id(&tech_acc)?.into();
         let tag = GenericU128(common::hash_to_u128_pair(b"Marking asset").0);

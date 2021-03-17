@@ -97,7 +97,8 @@ impl technical::Config for Runtime {
 impl assets::Config for Runtime {
     type Event = Event;
     type ExtraAccountId = u64;
-    type ExtraTupleArg = common::AssetIdExtraTupleArg<DEXId, common::LiquiditySourceType, u64>;
+    type ExtraAssetRecordArg =
+        common::AssetIdExtraAssetRecordArg<DEXId, common::LiquiditySourceType, u64>;
     type AssetId = common::AssetId32<AssetId>;
     type GetBaseAssetId = GetBaseAssetId;
     type Currency = currencies::Module<Runtime>;

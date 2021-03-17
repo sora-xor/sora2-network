@@ -296,8 +296,8 @@ impl currencies::Config for Runtime {
 impl assets::Config for Runtime {
     type Event = Event;
     type ExtraAccountId = [u8; 32];
-    type ExtraTupleArg =
-        common::AssetIdExtraTupleArg<common::DEXId, common::LiquiditySourceType, [u8; 32]>;
+    type ExtraAssetRecordArg =
+        common::AssetIdExtraAssetRecordArg<common::DEXId, common::LiquiditySourceType, [u8; 32]>;
     type AssetId = common::AssetId32<AssetId>;
     type GetBaseAssetId = GetBaseAssetId;
     type Currency = currencies::Module<Runtime>;
