@@ -35,7 +35,7 @@ contract Bridge {
     event PreparedForMigration();
     event Migrated(address to);
 
-    /** EVM network ID */
+    /** EVM netowrk ID */
     bytes32 public _networkId;
 
     /**
@@ -167,8 +167,7 @@ contract Bridge {
             s), "Peer signatures are invalid"
         );
         for (uint i = 0; i < _sidechainTokenAddressArray.length; i++) {
-            Ownable token = Ownable(_sidechainTokenAddressArray[i]);
-            token.transferOwnership(newContractAddress);
+            Ownable(_sidechainTokenAddressArray[i]).transferOwnership(newContractAddress);
         }
         for (uint i = 0; i < erc20nativeTokens.length; i++) {
             IERC20 token = IERC20(erc20nativeTokens[i]);
