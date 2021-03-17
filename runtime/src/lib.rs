@@ -680,7 +680,7 @@ impl pallet_utility::Config for Runtime {
 parameter_types! {
     pub const DepositBase: u64 = 1;
     pub const DepositFactor: u64 = 1;
-    pub const MaxSignatories: u16 = 4;
+    pub const MaxSignatories: u16 = 100;
 }
 
 impl bridge_multisig::Config for Runtime {

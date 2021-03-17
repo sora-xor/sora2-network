@@ -49,27 +49,24 @@ use crate::types::{Bytes, CallRequest, Log, Transaction, TransactionReceipt};
 use alloc::string::String;
 use codec::{Decode, Encode, FullCodec};
 use common::prelude::Balance;
-use common::{AccountIdOf, AssetSymbol, BalancePrecision};
+use common::{AssetSymbol, BalancePrecision};
 use core::convert::TryFrom;
 use core::{fmt, iter, line, stringify};
 use ethabi::{ParamType, Token};
 use frame_support::dispatch::{DispatchError, DispatchResult};
 use frame_support::sp_runtime::app_crypto::{ecdsa, sp_core, Public};
-use frame_support::sp_runtime::offchain as rt_offchain;
 use frame_support::sp_runtime::offchain::storage::StorageValueRef;
 use frame_support::sp_runtime::offchain::storage_lock::{BlockNumberProvider, StorageLock, Time};
 use frame_support::sp_runtime::traits::{
     AtLeast32Bit, IdentifyAccount, MaybeSerializeDeserialize, Member, One,
 };
-use frame_support::sp_runtime::{KeyTypeId, MultiSigner, Percent};
+use frame_support::sp_runtime::{offchain as rt_offchain, KeyTypeId, MultiSigner, Percent};
 use frame_support::traits::{Get, GetCallName};
 use frame_support::weights::{Pays, Weight};
 use frame_support::{
     debug, ensure, fail, sp_io, IterableStorageDoubleMap, Parameter, RuntimeDebug,
 };
-use frame_system::offchain::{
-    AppCrypto, CreateSignedTransaction, SendSignedTransaction, SignMessage, Signer,
-};
+use frame_system::offchain::{AppCrypto, CreateSignedTransaction, SendSignedTransaction, Signer};
 use frame_system::{ensure_root, ensure_signed};
 use hex_literal::hex;
 use permissions::{Scope, MINT};
@@ -903,19 +900,19 @@ pub mod pallet {
         #[pallet::weight(<T as Config>::WeightInfo::register_bridge())]
         pub fn register_bridge(
             origin: OriginFor<T>,
-            bridge_contract_address: Address,
-            initial_peers: BTreeSet<T::AccountId>,
+            bridge_contract_address: EthereumAddress,
+            initial_peers: Vec<T::AccountId>,
         ) -> DispatchResultWithPostInfo {
             let author = ensure_signed(origin)?;
             let net_id = NextNetworkId::<T>::get();
             let peers_account_id = bridge_multisig::Module::<T>::register_multisig_inner(
                 author,
-                initial_peers.iter().cloned().collect(),
+                initial_peers.clone(),
                 Percent::from_parts(67),
             )?;
             BridgeContractAddress::<T>::insert(net_id, bridge_contract_address);
             BridgeAccount::<T>::insert(net_id, peers_account_id);
-            Peers::<T>::insert(net_id, initial_peers);
+            Peers::<T>::insert(net_id, initial_peers.into_iter().collect::<BTreeSet<_>>());
             NextNetworkId::<T>::set(net_id + T::NetworkId::one());
             Ok(().into())
         }
