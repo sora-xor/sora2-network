@@ -8,18 +8,24 @@
 ## Description
 Service provides possibilities to automate DevOps activities.
 
-It is usable for test environments and production. Only difference is that for test environments we 
-may generate blockchain credentials using this service but for production owners of private keys 
-should provide public keys for us.
+It is usable for test environments and production. The differences are:
+1. Different Ethereum network
+2. Different Ethereum wallet
+3. Different set of peers
+4. Different XOR and VAL smart contract address
+5. The example of requests may be found in `test/resources/generated-requests.http`
 
 
 ## Ethereum endpoint
 
 ### Deploy smart contracts
-There are function to deploy all smart contracts by one API call: 'eth/deploy/d3/smartContracts' and functions to deploy initial ethereum contracts separately.
-Only owner can call contracts later.
-The Sequence to call smart contract deployment functions is following:
-1 - 'eth/deploy/D3/masterContract' - then take resulting smart contract address as an argument to the next function
+There is a function for Bridge contract deployment: 'deploy/{project}/bridge'.
+The Sequence to call Bridge contract deployment functions is following:
+1 - 'create/wallet' - create the Ethereum wallet for deploy
+2 - Send ETH for paying commission for deploy to the wallet from step 1
+3 - 'deploy/{project}/bridge' - deploy bridge smart contract
+
+Supported project is `sora2`
 
 ### Generate smart contracts abi and bindings
 Run `buildEthereumContractsBindings` and `buildEthereumContracts` gradle tasks.
