@@ -8,10 +8,8 @@ extern crate alloc;
 use pool_xyk::*;
 
 use codec::Decode;
-use common::{
-    prelude::{Balance, SwapAmount},
-    AssetSymbol, DEXId, DOT, XOR,
-};
+use common::prelude::{Balance, SwapAmount};
+use common::{AssetSymbol, DEXId, DOT, XOR};
 use frame_benchmarking::benchmarks;
 use frame_system::RawOrigin;
 use hex_literal::hex;

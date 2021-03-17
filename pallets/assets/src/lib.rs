@@ -29,12 +29,13 @@ mod mock;
 mod tests;
 
 use codec::{Decode, Encode};
-use common::{
-    hash, prelude::Balance, Amount, AssetSymbol, BalancePrecision, DEFAULT_BALANCE_PRECISION,
-};
+use common::prelude::Balance;
+use common::{hash, Amount, AssetSymbol, BalancePrecision, DEFAULT_BALANCE_PRECISION};
 use frame_support::dispatch::{DispatchError, DispatchResult};
 use frame_support::sp_runtime::traits::{MaybeSerializeDeserialize, Member};
-use frame_support::{ensure, traits::Get, weights::Weight, Parameter};
+use frame_support::traits::Get;
+use frame_support::weights::Weight;
+use frame_support::{ensure, Parameter};
 use frame_system::ensure_signed;
 use permissions::{Scope, BURN, MINT, SLASH, TRANSFER};
 use sp_core::hash::H512;

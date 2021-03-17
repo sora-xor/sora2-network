@@ -1,5 +1,6 @@
 use crate::mock::*;
-use common::{balance, fixed, prelude::*};
+use common::prelude::*;
+use common::{balance, fixed};
 
 #[test]
 fn test_provides_exchange_should_pass() {

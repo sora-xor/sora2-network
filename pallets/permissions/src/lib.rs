@@ -16,10 +16,8 @@
 )]
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use frame_support::{
-    codec::{Decode, Encode},
-    ensure, RuntimeDebug,
-};
+use frame_support::codec::{Decode, Encode};
+use frame_support::{ensure, RuntimeDebug};
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 use sp_core::hash::H512;

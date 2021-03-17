@@ -1,20 +1,21 @@
 #![cfg(test)]
 
 use crate::{Config, *};
+use common::mock::ExistentialDeposits;
+use common::prelude::Balance;
 use common::{
-    fixed_from_basis_points, hash, mock::ExistentialDeposits, prelude::Balance, Amount, AssetId32,
-    DEXInfo, Fixed, FromGenericPair, LiquiditySourceType,
+    fixed_from_basis_points, hash, Amount, AssetId32, DEXInfo, Fixed, FromGenericPair,
+    LiquiditySourceType,
 };
 use currencies::BasicCurrencyAdapter;
 
-use frame_support::{construct_runtime, parameter_types, traits::GenesisBuild};
+use frame_support::traits::GenesisBuild;
+use frame_support::{construct_runtime, parameter_types};
 use permissions::{Scope, BURN, MANAGE_DEX, MINT, TRANSFER};
 use sp_core::H256;
-use sp_runtime::{
-    testing::Header,
-    traits::{BlakeTwo256, IdentityLookup},
-    AccountId32,
-};
+use sp_runtime::testing::Header;
+use sp_runtime::traits::{BlakeTwo256, IdentityLookup};
+use sp_runtime::AccountId32;
 
 pub type DEXId = u32;
 pub type AssetId = AssetId32<common::AssetId>;

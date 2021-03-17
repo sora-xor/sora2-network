@@ -1,54 +1,46 @@
 // Creating mock Runtime here
 
-use crate as eth_bridge;
 use crate::{AssetKind, Config, NetworkConfig};
 use codec::{Codec, Decode, Encode};
-use common::{
-    mock::ExistentialDeposits, prelude::Balance, Amount, AssetId, AssetId32, AssetSymbol, VAL,
-};
+use common::mock::ExistentialDeposits;
+use common::prelude::Balance;
+use common::{Amount, AssetId, AssetId32, AssetSymbol, VAL};
 use currencies::BasicCurrencyAdapter;
-use frame_support::{
-    construct_runtime,
-    dispatch::{DispatchInfo, GetDispatchInfo},
-    parameter_types,
-    sp_io::TestExternalities,
-    sp_runtime::{
-        self,
-        app_crypto::{
-            sp_core,
-            sp_core::{
-                crypto::AccountId32,
-                ecdsa,
-                offchain::{OffchainExt, TransactionPoolExt},
-                sr25519, Pair, Public,
-            },
-        },
-        offchain::testing::{OffchainState, PoolState, TestOffchainExt, TestTransactionPoolExt},
-        serde::{Serialize, Serializer},
-        traits::{
-            Applyable, Checkable, DispatchInfoOf, Dispatchable, IdentifyAccount,
-            PostDispatchInfoOf, SignedExtension, ValidateUnsigned, Verify,
-        },
-        transaction_validity::TransactionValidityError,
-        MultiSigner, Percent,
-        {
-            testing::Header,
-            traits::{self, BlakeTwo256, IdentityLookup},
-            transaction_validity::{TransactionSource, TransactionValidity},
-            ApplyExtrinsicResultWithInfo, MultiSignature, Perbill,
-        },
-    },
-    traits::GenesisBuild,
-    weights::{Pays, Weight},
+use frame_support::dispatch::{DispatchInfo, GetDispatchInfo};
+use frame_support::sp_io::TestExternalities;
+use frame_support::sp_runtime::app_crypto::sp_core;
+use frame_support::sp_runtime::app_crypto::sp_core::crypto::AccountId32;
+use frame_support::sp_runtime::app_crypto::sp_core::offchain::{OffchainExt, TransactionPoolExt};
+use frame_support::sp_runtime::app_crypto::sp_core::{ecdsa, sr25519, Pair, Public};
+use frame_support::sp_runtime::offchain::testing::{
+    OffchainState, PoolState, TestOffchainExt, TestTransactionPoolExt,
 };
-use frame_system;
+use frame_support::sp_runtime::serde::{Serialize, Serializer};
+use frame_support::sp_runtime::testing::Header;
+use frame_support::sp_runtime::traits::{
+    self, Applyable, BlakeTwo256, Checkable, DispatchInfoOf, Dispatchable, IdentifyAccount,
+    IdentityLookup, PostDispatchInfoOf, SignedExtension, ValidateUnsigned, Verify,
+};
+use frame_support::sp_runtime::transaction_validity::{
+    TransactionSource, TransactionValidity, TransactionValidityError,
+};
+use frame_support::sp_runtime::{
+    self, ApplyExtrinsicResultWithInfo, MultiSignature, MultiSigner, Perbill, Percent,
+};
+use frame_support::traits::GenesisBuild;
+use frame_support::weights::{Pays, Weight};
+use frame_support::{construct_runtime, parameter_types};
 use frame_system::offchain::{Account, SigningTypes};
 use parking_lot::RwLock;
-use sp_keystore::{testing::KeyStore, KeystoreExt};
+use sp_keystore::testing::KeyStore;
+use sp_keystore::KeystoreExt;
+use {crate as eth_bridge, frame_system};
 // use permissions::{Scope, MINT};
 use sp_core::{H160, H256};
 use sp_std::collections::btree_set::BTreeSet;
-use sp_std::{fmt::Debug, str::FromStr, sync::Arc};
+use sp_std::fmt::Debug;
+use sp_std::str::FromStr;
+use sp_std::sync::Arc;
 use std::collections::HashMap;
 
 pub const PSWAP: AssetId = AssetId::PSWAP;

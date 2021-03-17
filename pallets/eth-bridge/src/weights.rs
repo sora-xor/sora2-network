@@ -1,6 +1,7 @@
 //! THIS FILE WAS AUTO-GENERATED USING THE SUBSTRATE BENCHMARK CLI VERSION 2.0.0-rc5
 
-use common::weights::{constants::EXTRINSIC_FIXED_WEIGHT, PresetWeightInfo};
+use common::weights::constants::EXTRINSIC_FIXED_WEIGHT;
+use common::weights::PresetWeightInfo;
 use frame_support::weights::Weight;
 
 impl crate::WeightInfo for () {

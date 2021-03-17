@@ -94,10 +94,10 @@ sp_api::decl_runtime_apis! {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use common::prelude::AssetId as ConcrAssetIdUnderlying;
-    use common::prelude::AssetId32 as ConcrAssetId;
-    use common::prelude::AssetSymbol as ConcrAssetSymbol;
-    use common::prelude::BalancePrecision as ConcrBalancePrecision;
+    use common::prelude::{
+        AssetId as ConcrAssetIdUnderlying, AssetId32 as ConcrAssetId,
+        AssetSymbol as ConcrAssetSymbol, BalancePrecision as ConcrBalancePrecision,
+    };
 
     #[test]
     fn should_serialize_and_deserialize_asset_info_properly_with_string() {

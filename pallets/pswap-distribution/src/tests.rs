@@ -1,4 +1,5 @@
-use crate::{mock::*, Error, Module};
+use crate::mock::*;
+use crate::{Error, Module};
 use common::{balance, fixed};
 use frame_support::assert_noop;
 use traits::MultiCurrency;

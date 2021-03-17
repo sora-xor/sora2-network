@@ -7,11 +7,8 @@ mod mock;
 mod tests;
 
 use codec::{Decode, Encode};
-use common::{
-    balance, fixed,
-    prelude::{Balance, Fixed, FixedWrapper, SwapAmount, SwapOutcome},
-    DEXId, LiquiditySource, USDT, VAL,
-};
+use common::prelude::{Balance, Fixed, FixedWrapper, SwapAmount, SwapOutcome};
+use common::{balance, fixed, DEXId, LiquiditySource, USDT, VAL};
 use core::convert::TryInto;
 use frame_support::traits::Get;
 use frame_support::{ensure, fail};

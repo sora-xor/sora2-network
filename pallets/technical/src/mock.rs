@@ -3,21 +3,23 @@ use codec::{Decode, Encode};
 use common::prelude::Balance;
 use currencies::BasicCurrencyAdapter;
 use dispatch::DispatchResult;
-use frame_support::{construct_runtime, dispatch, traits::GenesisBuild};
-use frame_support::{parameter_types, weights::Weight};
+use frame_support::traits::GenesisBuild;
+use frame_support::weights::Weight;
+use frame_support::{construct_runtime, dispatch, parameter_types};
 use frame_system;
 use orml_traits::parameter_type_with_key;
 use sp_core::crypto::AccountId32;
 use sp_core::H256;
-use sp_runtime::{
-    testing::Header,
-    traits::{BlakeTwo256, IdentityLookup},
-    Perbill,
-};
+use sp_runtime::testing::Header;
+use sp_runtime::traits::{BlakeTwo256, IdentityLookup};
+use sp_runtime::Perbill;
 use sp_std::marker::PhantomData;
 use PolySwapActionExample::*;
 
-pub use common::{mock::*, TechAssetId::*, TechPurpose::*, TradingPair};
+pub use common::mock::*;
+pub use common::TechAssetId::*;
+pub use common::TechPurpose::*;
+pub use common::TradingPair;
 
 pub type BlockNumber = u64;
 pub type AccountId = AccountId32;

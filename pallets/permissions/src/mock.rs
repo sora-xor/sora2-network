@@ -1,12 +1,12 @@
 use crate::{self as permissions, Config, Scope, INIT_DEX, MINT, TRANSFER};
-use frame_support::{construct_runtime, parameter_types, traits::GenesisBuild, weights::Weight};
+use frame_support::traits::GenesisBuild;
+use frame_support::weights::Weight;
+use frame_support::{construct_runtime, parameter_types};
 use frame_system;
 use sp_core::{H256, H512};
-use sp_runtime::{
-    testing::Header,
-    traits::{BlakeTwo256, IdentityLookup},
-    Perbill,
-};
+use sp_runtime::testing::Header;
+use sp_runtime::traits::{BlakeTwo256, IdentityLookup};
+use sp_runtime::Perbill;
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;

@@ -1,31 +1,27 @@
 use crate::contract::{functions, FUNCTIONS, RECEIVE_BY_ETHEREUM_ASSET_ADDRESS_ID};
+use crate::mock::*;
 use crate::requests::{
     encode_outgoing_request_eth_call, ChangePeersContract, IncomingChangePeersCompat,
 };
-use crate::types::Transaction;
+use crate::types::{Bytes, Log, Transaction};
 use crate::{
-    majority,
-    mock::*,
-    types,
-    types::{Bytes, Log},
-    Address, AssetKind, BridgeStatus, ContractEvent, IncomingPreRequest, IncomingRequest,
-    IncomingRequestKind, OffchainRequest, OutgoingRequest, OutgoingTransfer, RequestStatus,
-    SignatureParams,
+    majority, types, Address, AssetKind, BridgeStatus, ContractEvent, IncomingPreRequest,
+    IncomingRequest, IncomingRequestKind, OffchainRequest, OutgoingRequest, OutgoingTransfer,
+    RequestStatus, SignatureParams,
 };
 use codec::{Decode, Encode};
-use common::{balance, prelude::Balance, AssetId, AssetId32, AssetSymbol};
-use frame_support::{
-    assert_err, assert_noop, assert_ok, ensure,
-    sp_runtime::{
-        app_crypto::sp_core::{self, crypto::AccountId32, ecdsa, sr25519, Pair, Public},
-        traits::IdentifyAccount,
-    },
-};
+use common::prelude::Balance;
+use common::{balance, AssetId, AssetId32, AssetSymbol};
+use frame_support::sp_runtime::app_crypto::sp_core::crypto::AccountId32;
+use frame_support::sp_runtime::app_crypto::sp_core::{self, ecdsa, sr25519, Pair, Public};
+use frame_support::sp_runtime::traits::IdentifyAccount;
+use frame_support::{assert_err, assert_noop, assert_ok, ensure};
 use hex_literal::hex;
 use rustc_hex::FromHex;
 use secp256k1::{PublicKey, SecretKey};
 use sp_core::{H160, H256};
-use sp_std::{collections::btree_set::BTreeSet, prelude::*};
+use sp_std::collections::btree_set::BTreeSet;
+use sp_std::prelude::*;
 use std::str::FromStr;
 
 type Error = crate::Error<Runtime>;

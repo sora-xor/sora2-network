@@ -3,10 +3,8 @@
 extern crate alloc;
 
 pub use fixnum;
-use fixnum::{
-    typenum::{Unsigned, U18},
-    FixedPoint,
-};
+use fixnum::typenum::{Unsigned, U18};
+use fixnum::FixedPoint;
 
 #[cfg(any(feature = "test", test))]
 pub mod mock;

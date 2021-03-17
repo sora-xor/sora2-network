@@ -1,20 +1,20 @@
 use crate::{self as bonding_curve_pool, Config};
+use common::mock::ExistentialDeposits;
+use common::prelude::{Balance, FixedWrapper, SwapAmount, SwapOutcome};
 use common::{
-    self, balance,
-    mock::ExistentialDeposits,
-    prelude::{Balance, FixedWrapper, SwapAmount, SwapOutcome},
-    Amount, AssetId32, AssetSymbol, LiquiditySource, TechPurpose, USDT, VAL, XOR,
+    self, balance, Amount, AssetId32, AssetSymbol, LiquiditySource, TechPurpose, USDT, VAL, XOR,
 };
 use currencies::BasicCurrencyAdapter;
-use frame_support::{construct_runtime, parameter_types, traits::GenesisBuild, weights::Weight};
+use frame_support::traits::GenesisBuild;
+use frame_support::weights::Weight;
+use frame_support::{construct_runtime, parameter_types};
 use frame_system;
 use orml_traits::MultiCurrency;
-use sp_core::{crypto::AccountId32, H256};
-use sp_runtime::{
-    testing::Header,
-    traits::{BlakeTwo256, IdentityLookup},
-    DispatchError, Perbill,
-};
+use sp_core::crypto::AccountId32;
+use sp_core::H256;
+use sp_runtime::testing::Header;
+use sp_runtime::traits::{BlakeTwo256, IdentityLookup};
+use sp_runtime::{DispatchError, Perbill};
 use std::collections::HashMap;
 
 pub type AccountId = AccountId32;

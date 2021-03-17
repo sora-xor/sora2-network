@@ -1,14 +1,11 @@
-use crate::{
-    prelude::{ManagementMode, SwapAmount, SwapOutcome},
-    Fixed, LiquiditySourceFilter, LiquiditySourceId,
-};
-use frame_support::{
-    dispatch::DispatchResult,
-    pallet_prelude::MaybeSerializeDeserialize,
-    sp_runtime::{traits::BadOrigin, DispatchError},
-    weights::Weight,
-    Parameter,
-};
+use crate::prelude::{ManagementMode, SwapAmount, SwapOutcome};
+use crate::{Fixed, LiquiditySourceFilter, LiquiditySourceId};
+use frame_support::dispatch::DispatchResult;
+use frame_support::pallet_prelude::MaybeSerializeDeserialize;
+use frame_support::sp_runtime::traits::BadOrigin;
+use frame_support::sp_runtime::DispatchError;
+use frame_support::weights::Weight;
+use frame_support::Parameter;
 use frame_system::RawOrigin;
 //FIXME maybe try info or try from is better than From and Option.
 //use sp_std::convert::TryInto;

@@ -1,18 +1,14 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use codec::{Decode, Encode};
+use common::fixnum::ops::{CheckedAdd, CheckedSub};
+use common::prelude::{Balance, FixedWrapper, SwapAmount};
 use common::{
-    fixed, fixed_wrapper,
-    fixnum::ops::{CheckedAdd, CheckedSub},
-    prelude::{Balance, FixedWrapper, SwapAmount},
-    EnsureDEXManager, Fixed, LiquiditySourceFilter, LiquiditySourceType,
+    fixed, fixed_wrapper, EnsureDEXManager, Fixed, LiquiditySourceFilter, LiquiditySourceType,
 };
-use frame_support::{
-    dispatch::{DispatchError, DispatchResult, DispatchResultWithPostInfo, Weight},
-    ensure, fail,
-    traits::Get,
-    RuntimeDebug,
-};
+use frame_support::dispatch::{DispatchError, DispatchResult, DispatchResultWithPostInfo, Weight};
+use frame_support::traits::Get;
+use frame_support::{ensure, fail, RuntimeDebug};
 use frame_system::ensure_signed;
 use liquidity_proxy::LiquidityProxyTrait;
 use sp_arithmetic::traits::{Saturating, Zero};
