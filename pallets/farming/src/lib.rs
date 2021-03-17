@@ -158,8 +158,8 @@ impl<T: Config> Pallet<T> {
         asset_id: T::AssetId,
         amount: Balance,
     ) -> Result<Balance, DispatchError> {
-        use assets::{Tuple::*, TupleArg::*};
-        use common::AssetIdExtraTupleArg::*;
+        use assets::{AssetRecord::*, AssetRecordArg::*};
+        use common::AssetIdExtraAssetRecordArg::*;
         let tuple = assets::Module::<T>::tuple_from_asset_id(&asset_id)
             .ok_or(Error::<T>::UnableToGetPoolInformationFromTechAsset)?;
         match tuple {
