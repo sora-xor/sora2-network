@@ -1,2 +1,9 @@
+.git
 target
 tmp
+**/target
+doc
+Dockerfile
+.dockerignore
+.gitignore
+docker-compose.yml
