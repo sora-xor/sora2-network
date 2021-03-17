@@ -65,7 +65,7 @@ const ASSET_SYMBOL_MAX_LENGTH: usize = 7;
 const MAX_ALLOWED_PRECISION: u8 = 18;
 
 #[derive(Clone, Copy, Eq, PartialEq, Encode, Decode)]
-pub enum TupleArg<T: Config> {
+pub enum AssetRecordArg<T: Config> {
     GenericI32(i32),
     GenericU64(u64),
     GenericU128(u128),
@@ -73,61 +73,66 @@ pub enum TupleArg<T: Config> {
     GenericH256(H256),
     GenericH512(H512),
     LeafAssetId(AssetIdOf<T>),
-    TupleAssetId(AssetIdOf<T>),
-    Extra(T::ExtraTupleArg),
+    AssetRecordAssetId(AssetIdOf<T>),
+    Extra(T::ExtraAssetRecordArg),
 }
 
 #[derive(Clone, Copy, Eq, PartialEq, Encode, Decode)]
-pub enum Tuple<T: Config> {
+pub enum AssetRecord<T: Config> {
     Arity0,
-    Arity1(TupleArg<T>),
-    Arity2(TupleArg<T>, TupleArg<T>),
-    Arity3(TupleArg<T>, TupleArg<T>, TupleArg<T>),
-    Arity4(TupleArg<T>, TupleArg<T>, TupleArg<T>, TupleArg<T>),
+    Arity1(AssetRecordArg<T>),
+    Arity2(AssetRecordArg<T>, AssetRecordArg<T>),
+    Arity3(AssetRecordArg<T>, AssetRecordArg<T>, AssetRecordArg<T>),
+    Arity4(
+        AssetRecordArg<T>,
+        AssetRecordArg<T>,
+        AssetRecordArg<T>,
+        AssetRecordArg<T>,
+    ),
     Arity5(
-        TupleArg<T>,
-        TupleArg<T>,
-        TupleArg<T>,
-        TupleArg<T>,
-        TupleArg<T>,
+        AssetRecordArg<T>,
+        AssetRecordArg<T>,
+        AssetRecordArg<T>,
+        AssetRecordArg<T>,
+        AssetRecordArg<T>,
     ),
     Arity6(
-        TupleArg<T>,
-        TupleArg<T>,
-        TupleArg<T>,
-        TupleArg<T>,
-        TupleArg<T>,
-        TupleArg<T>,
+        AssetRecordArg<T>,
+        AssetRecordArg<T>,
+        AssetRecordArg<T>,
+        AssetRecordArg<T>,
+        AssetRecordArg<T>,
+        AssetRecordArg<T>,
     ),
     Arity7(
-        TupleArg<T>,
-        TupleArg<T>,
-        TupleArg<T>,
-        TupleArg<T>,
-        TupleArg<T>,
-        TupleArg<T>,
-        TupleArg<T>,
+        AssetRecordArg<T>,
+        AssetRecordArg<T>,
+        AssetRecordArg<T>,
+        AssetRecordArg<T>,
+        AssetRecordArg<T>,
+        AssetRecordArg<T>,
+        AssetRecordArg<T>,
     ),
     Arity8(
-        TupleArg<T>,
-        TupleArg<T>,
-        TupleArg<T>,
-        TupleArg<T>,
-        TupleArg<T>,
-        TupleArg<T>,
-        TupleArg<T>,
-        TupleArg<T>,
+        AssetRecordArg<T>,
+        AssetRecordArg<T>,
+        AssetRecordArg<T>,
+        AssetRecordArg<T>,
+        AssetRecordArg<T>,
+        AssetRecordArg<T>,
+        AssetRecordArg<T>,
+        AssetRecordArg<T>,
     ),
     Arity9(
-        TupleArg<T>,
-        TupleArg<T>,
-        TupleArg<T>,
-        TupleArg<T>,
-        TupleArg<T>,
-        TupleArg<T>,
-        TupleArg<T>,
-        TupleArg<T>,
-        TupleArg<T>,
+        AssetRecordArg<T>,
+        AssetRecordArg<T>,
+        AssetRecordArg<T>,
+        AssetRecordArg<T>,
+        AssetRecordArg<T>,
+        AssetRecordArg<T>,
+        AssetRecordArg<T>,
+        AssetRecordArg<T>,
+        AssetRecordArg<T>,
     ),
 }
 
@@ -153,14 +158,14 @@ pub mod pallet {
             + PartialEq
             + From<Self::AccountId>
             + Into<Self::AccountId>;
-        type ExtraTupleArg: Clone
+        type ExtraAssetRecordArg: Clone
             + Copy
             + Encode
             + Decode
             + Eq
             + PartialEq
-            + From<common::AssetIdExtraTupleArg<Self::DEXId, Self::LstId, Self::ExtraAccountId>>
-            + Into<common::AssetIdExtraTupleArg<Self::DEXId, Self::LstId, Self::ExtraAccountId>>;
+            + From<common::AssetIdExtraAssetRecordArg<Self::DEXId, Self::LstId, Self::ExtraAccountId>>
+            + Into<common::AssetIdExtraAssetRecordArg<Self::DEXId, Self::LstId, Self::ExtraAccountId>>;
 
         /// DEX assets (currency) identifier.
         type AssetId: Parameter
@@ -342,10 +347,11 @@ pub mod pallet {
     pub type AssetInfos<T: Config> =
         StorageMap<_, Twox64Concat, T::AssetId, (AssetSymbol, BalancePrecision, bool), ValueQuery>;
 
-    /// Asset Id -> Tuple<T>
+    /// Asset Id -> AssetRecord<T>
     #[pallet::storage]
     #[pallet::getter(fn tuple_from_asset_id)]
-    pub type TupleAssetId<T: Config> = StorageMap<_, Twox64Concat, T::AssetId, Tuple<T>>;
+    pub type AssetRecordAssetId<T: Config> =
+        StorageMap<_, Twox64Concat, T::AssetId, AssetRecord<T>>;
 
     #[pallet::genesis_config]
     pub struct GenesisConfig<T: Config> {
@@ -389,17 +395,17 @@ pub mod pallet {
 }
 
 impl<T: Config> Pallet<T> {
-    /// Generates an `AssetId` for the given `Tuple<T>`, and insert record to storage map.
-    pub fn register_asset_id_from_tuple(tuple: &Tuple<T>) -> T::AssetId {
+    /// Generates an `AssetId` for the given `AssetRecord<T>`, and insert record to storage map.
+    pub fn register_asset_id_from_tuple(tuple: &AssetRecord<T>) -> T::AssetId {
         let mut keccak = Keccak::v256();
-        keccak.update(b"From Tuple");
+        keccak.update(b"From AssetRecord");
         keccak.update(&tuple.encode());
         let mut output = [0u8; 32];
         keccak.finalize(&mut output);
         // More safe to escape.
         output[0] = 0u8;
         let asset_id = T::AssetId::from(H256(output));
-        TupleAssetId::<T>::insert(asset_id, tuple);
+        AssetRecordAssetId::<T>::insert(asset_id, tuple);
         asset_id
     }
 
