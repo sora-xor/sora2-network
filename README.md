@@ -6,13 +6,13 @@ Code of node, pallets, runtime.
 # System requirements.
 
 ## Minimum (for example for small docker container).
-* Cpu 800HZ 1 core.
-* Ram 800Mb.
+* CPU 800MHz 1 core.
+* RAM 800Mb.
 * Disk 2Gb.
 
 ## Normal.
-* Cpu 1500GZ 2 core.
-* Ram 4Gb.
+* CPU 1500MHz 2 cores.
+* RAM 4Gb.
 * Disk 6Gb.
 
 # Build test run.
