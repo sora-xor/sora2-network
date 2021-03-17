@@ -1,6 +1,7 @@
-use crate::{AssetId, AssetId32, TechAssetId};
+use crate::{AssetId, AssetId32, Balance, TechAssetId};
 use codec::{Decode, Encode};
 use frame_support::dispatch::DispatchError;
+use orml_traits::parameter_type_with_key;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 use sp_std::convert::TryFrom;
@@ -86,4 +87,10 @@ impl From<AssetId> for TechAssetId<ComicAssetId> {
     fn from(asset_id: AssetId) -> Self {
         TechAssetId::Wrapped(ComicAssetId::from(asset_id))
     }
+}
+
+parameter_type_with_key! {
+    pub ExistentialDeposits: |_currency_id: AssetId32<AssetId>| -> Balance {
+        0
+    };
 }

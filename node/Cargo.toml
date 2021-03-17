@@ -15,9 +15,9 @@ exit-future = '0.1.4'
 futures = { version = "0.3.1", features = ["compat"] }
 hex-literal = "0.3.1"
 log = '0.4.8'
-parking_lot = '0.9.0'
+parking_lot = '0.11'
 trie-root = '0.15.2'
-codec = { package = 'parity-scale-codec', version = '1.3.1', features = ["derive"]}
+codec = { package = 'parity-scale-codec', version = "2", features = ["derive"]}
 structopt = "0.3.3"
 ansi_term = "0.12.1"
 serde = { version = "1.0.101", features = ["derive"] }
@@ -35,7 +35,7 @@ iroha-migration-rpc = { path = "../pallets/iroha-migration/rpc" }
 trading-pair-rpc = { path = "../pallets/trading-pair/rpc" }
 assets-rpc = { path = "../pallets/assets/rpc" }
 liquidity-proxy-rpc = { path = "../pallets/liquidity-proxy/rpc" }
-bridge-multisig = { git = "https://github.com/soramitsu/sora2-frame-pallets.git", branch = "selected-v2.0.0-new/draft-barrier-02", package = "pallet-multisig" }
+bridge-multisig = { git = "https://github.com/soramitsu/sora2-frame-pallets.git", branch = "v3.0.0", package = "pallet-multisig" }
 farming-rpc = { path = "../pallets/farming/rpc" }
 eth-bridge-rpc = { path = "../pallets/eth-bridge/rpc" }
 pswap-distribution-rpc = { path = "../pallets/pswap-distribution/rpc" }
@@ -45,45 +45,46 @@ libsecp256k1 = { version = "0.3.5", features = ['hmac'], default-features = fals
 framenode-runtime = { path = "../runtime" }
 
 # Substrate dependencies
-sp-runtime = { version = "2.0.0", default-features = false }
-sp-arithmetic = { version = "2.0.0", default-features = false }
-sp-io = { version = "2.0.0", default-features = false }
-sp-api = { version = "2.0.0", default-features = false }
-sp-block-builder = { version = "2.0.0", default-features = false }
-sp-blockchain = { version = "2.0.0", default-features = false }
-sp-core = { version = "2.0.0", default-features = false }
-sp-inherents = { version = "2.0.0", default-features = false }
-sp-consensus = { version = "0.8.0", default-features = false }
-sc-consensus = { version = "0.8.0", default-features = false }
-sc-consensus-slots = { version = "0.8.0", default-features = false }
-sc-consensus-babe = { version = "0.8.0", default-features = false }
-sp-consensus-babe = { version = "0.8.0", default-features = false }
-sc-consensus-aura = { version = "0.8.0", default-features = false }
-sp-consensus-aura = { version = "0.8.0", default-features = false }
-sc-cli = { version = "0.8.0", default-features = false }
-sc-client-api = { version = "2.0.0", default-features = false }
-sc-executor = { version = "0.8.0", default-features = false }
-sc-service = { version = "0.8.0", default-features = false }
-sc-transaction-pool = { version = "2.0.0", default-features = false }
-sp-transaction-pool = { version = "2.0.0", default-features = false }
-sc-network = { version = "0.8.0", default-features = false }
-sc-basic-authorship = { version = "0.8.0", default-features = false }
-sc-rpc = { version = "2.0.0", default-features = false }
-sc-rpc-api = { version = "0.8.0", default-features = false }
-sp-timestamp = { version = "2.0.0", default-features = false }
-sp-trie = { version = "2.0.0", default-features = false }
-grandpa = { package = "sc-finality-grandpa", version = "0.8.0", default-features = false }
-sp-finality-grandpa = { version = "2.0.0", default-features = false }
-sc-informant = { version = "0.8.0", default-features = false }
-sc-chain-spec = { version = "2.0.0", default-features = false }
-frame-support = { version = "2.0.0", default-features = false }
-pallet-transaction-payment-rpc = { git = "https://github.com/soramitsu/sora2-frame-pallets", default-features = false, branch = "selected-v2.0.0-new/draft-barrier-02"}
-frame-benchmarking = '2.0.0'
-frame-benchmarking-cli = '2.0.0'
-substrate-frame-rpc-system = { version = "2.0.0", default-features = false }
+sp-runtime = { version = "3", default-features = false }
+sp-arithmetic = { version = "3", default-features = false }
+sp-io = { version = "3", default-features = false }
+sp-api = { version = "3", default-features = false }
+sp-block-builder = { version = "3", default-features = false }
+sp-blockchain = { version = "3", default-features = false }
+sp-core = { version = "3", default-features = false }
+sp-inherents = { version = "3", default-features = false }
+sp-keystore = { version = "0.9", default-features = false }
+sp-consensus = { version = "0.9", default-features = false }
+sc-consensus = { version = "0.9", default-features = false }
+sc-consensus-slots = { version = "0.9", default-features = false }
+sc-consensus-babe = { version = "0.9", default-features = false }
+sp-consensus-babe = { version = "0.9", default-features = false }
+sc-consensus-aura = { version = "0.9", default-features = false }
+sp-consensus-aura = { version = "0.9", default-features = false }
+sc-cli = { version = "0.9", default-features = false }
+sc-client-api = { version = "3", default-features = false }
+sc-executor = { version = "0.9", default-features = false }
+sc-service = { version = "0.9", default-features = false }
+sc-transaction-pool = { version = "3", default-features = false }
+sp-transaction-pool = { version = "3", default-features = false }
+sc-network = { version = "0.9", default-features = false }
+sc-basic-authorship = { version = "0.9", default-features = false }
+sc-rpc = { version = "3", default-features = false }
+sc-rpc-api = { version = "0.9", default-features = false }
+sp-timestamp = { version = "3", default-features = false }
+sp-trie = { version = "3", default-features = false }
+sc-finality-grandpa = { package = "sc-finality-grandpa", version = "0.9", default-features = false }
+sp-finality-grandpa = { version = "3", default-features = false }
+sc-informant = { version = "0.9", default-features = false }
+sc-chain-spec = { version = "3", default-features = false }
+frame-support = { version = "3", default-features = false }
+pallet-transaction-payment-rpc = { version = "3", default-features = false }
+frame-benchmarking = '3'
+frame-benchmarking-cli = '3'
+substrate-frame-rpc-system = { version = "3", default-features = false }
 
 [build-dependencies]
-substrate-build-script-utils = { version = "2.0.0", default-features = false }
+substrate-build-script-utils = { version = "3", default-features = false }
 
 [dev-dependencies]
 assert_cmd = "0.12"
@@ -91,7 +92,7 @@ nix = "0.17"
 tokio = { version = "0.2.13", features = ["macros"] }
 
 # Substrate dependencies
-pallet-sudo = { version = "2.0.0", default-features = false }
+pallet-sudo = { version = "3", default-features = false }
 
 [features]
 runtime-benchmarks = [

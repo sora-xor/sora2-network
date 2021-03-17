@@ -119,7 +119,7 @@ mod tests {
     fn bonding_curve_pool_init(
         initial_reserves: Vec<(AssetId, Balance)>,
     ) -> Result<
-        DistributionAccounts<DistributionAccountData<<Runtime as technical::Trait>::TechAccountId>>,
+        DistributionAccounts<DistributionAccountData<<Runtime as technical::Config>::TechAccountId>>,
         DispatchError,
     > {
         let bonding_curve_tech_account_id = TechAccountId::Pure(

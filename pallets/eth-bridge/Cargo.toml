@@ -5,67 +5,64 @@ authors = ["Vladislav Markushin <markushin@soramitsu.co.jp>"]
 edition = "2018"
 
 [dependencies]
-frame-support = { version = "2.0.0", default-features = false }
-frame-system = { version = "2.0.0", default-features = false }
-sp-std = { version = "2.0.0", default-features = false }
-sp-core = { version = "2.0.0", default-features = false }
-ethereum-types = { git = "https://github.com/vmarkushin/parity-common.git", branch = "no-std", package = "ethereum-types", default-features = false, features = ['codec'] }
-ethabi = { git = "https://github.com/vmarkushin/ethabi.git", branch = "no-std", package = "ethabi", features = ["alloc"], default-features = false }
-ethabi-contract = { version = "11.0.0", default-features = false, git = "https://github.com/vmarkushin/ethabi.git", branch = "no-std", package = "ethabi-contract" }
-ethabi-derive = { version = "13.0.0", default-features = false, git = "https://github.com/vmarkushin/ethabi.git", branch = "no-std", package = "ethabi-derive" }
-jsonrpc-core = { version = "17.0.0", default-features = false, git = "https://github.com/vmarkushin/jsonrpc.git", branch = "no-std", package = "jsonrpc-core" }
+codec = { package = "parity-scale-codec", version = "2", default-features = false, features = ["derive", "full"] }
+frame-support = { version = "3", default-features = false }
+frame-system = { version = "3", default-features = false }
+hex-literal = "0.3.1"
+libsecp256k1 = { version = "0.3.5", features = ['hmac'], default-features = false }
+once_cell = { version = "1.5.2", default-features = false, features = ['alloc', 'unstable'] }
 rlp = { version = "0.4.6", default-features = false }
 rustc-hex = { version = "2.1.0", default-features = false }
-serde_json = { version = "1.0", default-features = false, features = ["alloc"] }
-common = { path = "../../common", default-features = false }
-assets = { path = "../assets", default-features = false }
 serde = { version = "1.0", features = ["alloc", "derive"], default-features = false }
-bridge-multisig = { git = "https://github.com/soramitsu/sora2-frame-pallets.git", branch = "selected-v2.0.0-new/draft-barrier-02", package = "pallet-multisig", default-features = false }
-libsecp256k1 = { version = "0.3.5", features = ['hmac'], default-features = false }
+serde_json = { version = "1.0", default-features = false, features = ["alloc"] }
+sp-core = { version = "3", default-features = false }
+sp-std = { version = "3", default-features = false }
 tiny-keccak = { version = "2", default-features = false }
-hex-literal = "0.3.1"
-once_cell = { version = "1.5.2", default-features = false, features = ['alloc', 'unstable'] }
+
+bridge-multisig = { git = "https://github.com/soramitsu/sora2-frame-pallets.git", branch = "v3.0.0", package = "pallet-multisig", default-features = false }
+ethabi = { git = "https://github.com/vmarkushin/ethabi.git", branch = "no-std", package = "ethabi", default-features = false, features = ["alloc"] }
+ethabi-contract = { git = "https://github.com/vmarkushin/ethabi.git", branch = "no-std", package = "ethabi-contract", default-features = false }
+ethabi-derive = { git = "https://github.com/vmarkushin/ethabi.git", branch = "no-std", package = "ethabi-derive", default-features = false }
+ethereum-types = { git = "https://github.com/vmarkushin/parity-common.git", branch = "no-std", package = "ethereum-types", default-features = false, features = ['serialize', 'codec'] }
+jsonrpc-core = { git = "https://github.com/vmarkushin/jsonrpc.git", branch = "no-std", package = "jsonrpc-core", default-features = false }
+
+assets = { path = "../assets", default-features = false }
+common = { path = "../../common", default-features = false }
 permissions = { path = "../permissions", default-features = false }
 
 [dev-dependencies]
-parking_lot = "0.10.0"
 async-std = { version = "1.5", features = ["attributes", "unstable"] }
-parity-util-mem = { version = "0.7.0", default-features = false }
-pallet-balances = { version = "2.0.0" }
-pallet-sudo = { version = "2.0.0" }
-frame-executive = { version = "2.0.0", default-features = false }
-common = { path = "../../common", default-features = false, features = ["test"] }
-tokio = { version = "0.2.13", default-features = false, features = ["macros"] }
+currencies = { version = "0.4", package = "orml-currencies", default-features = false }
 env_logger = "0.8.1"
-currencies = { version = "0.3.2", package = "orml-currencies", default-features = false }
-tokens = { version = "0.3.2", package = "orml-tokens", default-features = false }
-orml-traits = { version = "0.3.2", package = "orml-traits", default-features = false }
-sp-core = { version = "2.0.0", default-features = false, features = ["full_crypto"] }
+frame-executive = { version = "3", default-features = false }
+orml-traits = { version = "0.4", package = "orml-traits", default-features = false }
+pallet-balances = { version = "3" }
+pallet-sudo = { version = "3" }
+parity-util-mem = { version = "0.9", default-features = false }
+parking_lot = "0.11.0"
+sp-core = { version = "3", default-features = false, features = ["full_crypto"] }
+sp-keystore = { version = "0.9", default-features = false }
+tokens = { version = "0.4", package = "orml-tokens" }
+tokio = { version = "0.2.13", default-features = false, features = ["macros"] }
 
-[dependencies.codec]
-default-features = false
-features = ['derive', 'full']
-package = 'parity-scale-codec'
-version = '1.3.1'
+assets = { path = "../assets" }
+common = { path = "../../common", features = ["test"] }
+permissions = { path = "../permissions" }
 
 [features]
 default = ['std']
 std = [
-    'serde/std',
+    'bridge-multisig/std',
     'codec/std',
+    'ethereum-types/std',
     'frame-support/std',
     'frame-system/std',
-    'bridge-multisig/std',
-    'assets/std',
-    'sp-std/std',
-    'sp-core/std',
-    'ethereum-types/std',
-    'ethabi/std',
-    'rlp/std',
-    'serde_json/std',
     'jsonrpc-core/std',
-    'rustc-hex/std',
-    'common/std',
-    'permissions/std',
     'libsecp256k1/std',
+    'rlp/std',
+    'rustc-hex/std',
+    'serde_json/std',
+    'serde/std',
+    'sp-core/std',
+    'sp-std/std',
 ]

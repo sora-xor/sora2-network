@@ -1,6 +1,6 @@
 #[rustfmt::skip]
 mod tests {
-    use crate::{mock::*, DistributionAccountData, DistributionAccounts, Error};
+    use crate::{mock::*, DistributionAccountData, Module, DistributionAccounts, Error};
     use common::{
         self, balance, fixed, fixed_wrapper, Fixed, fixnum::ops::One as _, fixnum::ops::Zero as _,
         prelude::{Balance, SwapAmount, SwapOutcome, QuoteAmount, FixedWrapper,},
@@ -13,6 +13,8 @@ mod tests {
     use sp_arithmetic::traits::{Zero};
     use sp_runtime::DispatchError;
     use orml_traits::MultiCurrency;
+
+    type MBCPool = Module<Runtime>;
 
     #[test]
     fn should_calculate_price() {
@@ -154,7 +156,7 @@ mod tests {
     fn bonding_curve_pool_init(
         initial_reserves: Vec<(AssetId, Balance)>,
     ) -> Result<
-        DistributionAccounts<DistributionAccountData<<Runtime as technical::Trait>::TechAccountId>>,
+        DistributionAccounts<DistributionAccountData<<Runtime as technical::Config>::TechAccountId>>,
         DispatchError,
     > {
         let bonding_curve_tech_account_id = TechAccountId::Pure(
