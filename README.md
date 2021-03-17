@@ -45,7 +45,7 @@ nix-shell --run "cargo test --release"
 nix-shell --run "cargo run --release -- --dev --tmp"
 ```
 
-### Running using script, before building.
+### Running using script, after building.
 
 ```sh
 ./run_script.sh -d -w -r
