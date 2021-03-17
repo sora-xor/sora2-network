@@ -56,6 +56,7 @@ pub enum Mode {
 pub const TRANSFER: PermissionId = 1;
 pub const MINT: PermissionId = 2;
 pub const BURN: PermissionId = 3;
+#[deprecated(since = "0.0.1", note = "use BURN instead")]
 pub const SLASH: PermissionId = 4;
 pub const INIT_DEX: PermissionId = 5;
 pub const MANAGE_DEX: PermissionId = 6;
@@ -346,7 +347,6 @@ pub mod pallet {
                 (TRANSFER, Mode::Forbid),
                 (MINT, Mode::Permit),
                 (BURN, Mode::Permit),
-                (SLASH, Mode::Permit),
                 (INIT_DEX, Mode::Permit),
                 (MANAGE_DEX, Mode::Permit),
                 (CREATE_FARM, Mode::Permit),

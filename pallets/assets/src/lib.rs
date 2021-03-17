@@ -37,7 +37,7 @@ use frame_support::traits::Get;
 use frame_support::weights::Weight;
 use frame_support::{ensure, Parameter};
 use frame_system::ensure_signed;
-use permissions::{Scope, BURN, MINT, SLASH, TRANSFER};
+use permissions::{Scope, BURN, MINT, TRANSFER};
 use sp_core::hash::H512;
 use sp_core::H256;
 use sp_runtime::traits::Zero;
@@ -447,7 +447,7 @@ impl<T: Config> Pallet<T> {
             Error::<T>::InvalidPrecision
         );
         let scope = Scope::Limited(hash(&asset_id));
-        let permission_ids = [TRANSFER, MINT, BURN, SLASH];
+        let permission_ids = [TRANSFER, MINT, BURN];
         for permission_id in &permission_ids {
             Permissions::<T>::assign_permission(
                 account_id.clone(),
@@ -561,6 +561,7 @@ impl<T: Config> Pallet<T> {
         amount: Balance,
     ) -> DispatchResult {
         Self::ensure_asset_exists(asset_id)?;
+        Self::check_permission_maybe_with_parameters(who, TRANSFER, asset_id)?;
         T::Currency::ensure_can_withdraw(asset_id.clone(), who, amount)
     }
 
@@ -602,30 +603,11 @@ impl<T: Config> Pallet<T> {
         issuer: &T::AccountId,
         to: &T::AccountId,
         amount: Balance,
-    ) -> DispatchResult {
-        Self::ensure_asset_exists(asset_id)?;
-        Self::check_permission_maybe_with_parameters(issuer, BURN, asset_id)?;
-        T::Currency::withdraw(asset_id.clone(), to, amount)
-    }
-
-    pub fn can_slash(
-        asset_id: &T::AssetId,
-        who: &T::AccountId,
-        amount: Balance,
-    ) -> Result<bool, DispatchError> {
-        Self::ensure_asset_exists(asset_id)?;
-        Self::check_permission_maybe_with_parameters(who, SLASH, asset_id)?;
-        Ok(T::Currency::can_slash(asset_id.clone(), who, amount))
-    }
-
-    pub fn slash(
-        asset_id: &T::AssetId,
-        who: &T::AccountId,
-        amount: Balance,
     ) -> Result<Balance, DispatchError> {
         Self::ensure_asset_exists(asset_id)?;
-        Self::check_permission_maybe_with_parameters(who, SLASH, asset_id)?;
-        Ok(T::Currency::slash(asset_id.clone(), who, amount))
+        Self::check_permission_maybe_with_parameters(issuer, BURN, asset_id)?;
+        let negative_imbalance = T::Currency::slash(asset_id.clone(), to, amount);
+        Ok(negative_imbalance)
     }
 
     pub fn update_balance(
