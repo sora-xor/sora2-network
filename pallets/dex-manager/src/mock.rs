@@ -1,9 +1,9 @@
-use crate::{Module, Trait};
-use common::prelude::Balance;
+use crate::{self as dex_manager, Config};
 use common::{self, fixed_from_basis_points, AssetId32, DEXInfo, Fixed, DOT, XOR};
+use common::{mock::ExistentialDeposits, prelude::Balance};
 use currencies::BasicCurrencyAdapter;
-use frame_support::{impl_outer_origin, parameter_types, weights::Weight};
-use frame_system as system;
+use frame_support::{construct_runtime, parameter_types, traits::GenesisBuild, weights::Weight};
+use frame_system;
 use permissions::Scope;
 use sp_core::H256;
 use sp_runtime::{
@@ -15,30 +15,51 @@ use sp_runtime::{
 pub type AccountId = u128;
 pub type BlockNumber = u64;
 pub type Amount = i128;
+pub type DEXId = u32;
 type AssetId = AssetId32<common::AssetId>;
+type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
+type Block = frame_system::mocking::MockBlock<Runtime>;
 
 pub const ALICE: AccountId = 1;
 pub const BOB: AccountId = 2;
 pub const DEX_A_ID: DEXId = 1;
 pub const DEX_B_ID: DEXId = 2;
 
-impl_outer_origin! {
-    pub enum Origin for Runtime {}
-}
-
-#[derive(Clone, Eq, PartialEq)]
-pub struct Runtime;
 parameter_types! {
     pub const BlockHashCount: u64 = 250;
     pub const MaximumBlockWeight: Weight = 1024;
     pub const MaximumBlockLength: u32 = 2 * 1024;
     pub const AvailableBlockRatio: Perbill = Perbill::from_percent(75);
+    pub const GetBaseAssetId: AssetId = XOR;
+    pub const ExistentialDeposit: u128 = 1;
+    pub const TransferFee: u128 = 0;
+    pub const CreationFee: u128 = 0;
+    pub const TransactionByteFee: u128 = 1;
+    pub GetFee: Fixed = fixed_from_basis_points(30u16);
 }
 
-impl system::Trait for Runtime {
+construct_runtime! {
+    pub enum Runtime where
+        Block = Block,
+        NodeBlock = Block,
+        UncheckedExtrinsic = UncheckedExtrinsic,
+    {
+        System: frame_system::{Module, Call, Config, Storage, Event<T>},
+        DexManager: dex_manager::{Module, Call, Config<T>, Storage, Event<T>},
+        Tokens: tokens::{Module, Call, Config<T>, Storage, Event<T>},
+        Permissions: permissions::{Module, Call, Config<T>, Storage, Event<T>},
+        Currencies: currencies::{Module, Call, Storage, Event<T>},
+        Assets: assets::{Module, Call, Config<T>, Storage, Event<T>},
+        Balances: pallet_balances::{Module, Call, Storage, Event<T>},
+    }
+}
+
+impl frame_system::Config for Runtime {
     type BaseCallFilter = ();
+    type BlockWeights = ();
+    type BlockLength = ();
     type Origin = Origin;
-    type Call = ();
+    type Call = Call;
     type Index = u64;
     type BlockNumber = u64;
     type Hash = H256;
@@ -46,57 +67,47 @@ impl system::Trait for Runtime {
     type AccountId = AccountId;
     type Lookup = IdentityLookup<Self::AccountId>;
     type Header = Header;
-    type Event = ();
+    type Event = Event;
     type BlockHashCount = BlockHashCount;
-    type MaximumBlockWeight = MaximumBlockWeight;
     type DbWeight = ();
-    type BlockExecutionWeight = ();
-    type ExtrinsicBaseWeight = ();
-    type MaximumExtrinsicWeight = MaximumBlockWeight;
-    type MaximumBlockLength = MaximumBlockLength;
-    type AvailableBlockRatio = AvailableBlockRatio;
     type Version = ();
     type AccountData = pallet_balances::AccountData<Balance>;
     type OnNewAccount = ();
     type OnKilledAccount = ();
     type SystemWeightInfo = ();
-    type PalletInfo = ();
+    type PalletInfo = PalletInfo;
+    type SS58Prefix = ();
 }
 
-impl Trait for Runtime {
-    type Event = ();
+impl Config for Runtime {
+    type Event = Event;
     type WeightInfo = ();
 }
 
-impl tokens::Trait for Runtime {
-    type Event = ();
+impl tokens::Config for Runtime {
+    type Event = Event;
     type Balance = Balance;
     type Amount = Amount;
-    type CurrencyId = <Runtime as assets::Trait>::AssetId;
-    type OnReceived = ();
+    type CurrencyId = <Runtime as assets::Config>::AssetId;
     type WeightInfo = ();
+    type ExistentialDeposits = ExistentialDeposits;
+    type OnDust = ();
 }
 
-impl permissions::Trait for Runtime {
-    type Event = ();
+impl permissions::Config for Runtime {
+    type Event = Event;
 }
 
-parameter_types! {
-    pub const GetBaseAssetId: AssetId = XOR;
-}
-
-impl currencies::Trait for Runtime {
-    type Event = ();
+impl currencies::Config for Runtime {
+    type Event = Event;
     type MultiCurrency = Tokens;
     type NativeCurrency = BasicCurrencyAdapter<Runtime, Balances, Amount, BlockNumber>;
-    type GetNativeCurrencyId = <Runtime as assets::Trait>::GetBaseAssetId;
+    type GetNativeCurrencyId = <Runtime as assets::Config>::GetBaseAssetId;
     type WeightInfo = ();
 }
 
-pub type DEXId = u32;
-
-impl assets::Trait for Runtime {
-    type Event = ();
+impl assets::Config for Runtime {
+    type Event = Event;
     type ExtraAccountId = AccountId;
     type ExtraTupleArg =
         common::AssetIdExtraTupleArg<DEXId, common::LiquiditySourceType, AccountId>;
@@ -106,36 +117,20 @@ impl assets::Trait for Runtime {
     type WeightInfo = ();
 }
 
-impl common::Trait for Runtime {
+impl common::Config for Runtime {
     type DEXId = DEXId;
     type LstId = common::LiquiditySourceType;
 }
 
-parameter_types! {
-    pub const ExistentialDeposit: u128 = 1;
-    pub const TransferFee: u128 = 0;
-    pub const CreationFee: u128 = 0;
-    pub const TransactionByteFee: u128 = 1;
-}
-
-impl pallet_balances::Trait for Runtime {
+impl pallet_balances::Config for Runtime {
     type Balance = Balance;
-    type Event = ();
+    type Event = Event;
     type DustRemoval = ();
     type ExistentialDeposit = ExistentialDeposit;
     type AccountStore = System;
     type WeightInfo = ();
     type MaxLocks = ();
 }
-
-parameter_types! {
-    pub GetFee: Fixed = fixed_from_basis_points(30u16);
-}
-
-pub type System = frame_system::Module<Runtime>;
-pub type Balances = pallet_balances::Module<Runtime>;
-pub type Tokens = tokens::Module<Runtime>;
-pub type DEXModule = Module<Runtime>;
 
 pub struct ExtBuilder {
     pub initial_dex_list: Vec<(DEXId, DEXInfo<AssetId>)>,
@@ -160,7 +155,7 @@ impl Default for ExtBuilder {
 
 impl ExtBuilder {
     pub fn build(self) -> sp_io::TestExternalities {
-        let mut t = system::GenesisConfig::default()
+        let mut t = frame_system::GenesisConfig::default()
             .build_storage::<Runtime>()
             .unwrap();
 

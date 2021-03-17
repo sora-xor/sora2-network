@@ -23,7 +23,7 @@ use codec::Encode;
 use sp_core::hash::H512;
 use sp_runtime::TransactionOutcome;
 
-pub use traits::Trait;
+pub use traits::Config;
 pub mod prelude {
     pub use super::fixed_wrapper::*;
     pub use super::primitives::*;

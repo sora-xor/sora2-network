@@ -1,7 +1,9 @@
-use crate::{mock::*, Error};
+use crate::{mock::*, Error, Module};
 use common::{hash, prelude::DEXInfo, EnsureDEXManager, ManagementMode, VAL, XOR};
 use frame_support::{assert_noop, assert_ok};
 use permissions::{Scope, MANAGE_DEX};
+
+type DEXModule = Module<Runtime>;
 
 #[test]
 fn test_initialize_dex_should_pass() {

@@ -4,7 +4,7 @@ ENV RUSTUP_HOME="/opt/rust"
 ENV CARGO_HOME="/opt/rust"
 ENV CARGO_TARGET_DIR="/opt/rust-target"
 ENV PATH="$PATH:$RUSTUP_HOME/bin"
-ENV RUST_VERSION=nightly-2020-10-05
+ENV RUST_VERSION=nightly-2021-03-11
 ARG POLKADOT_COMMIT
 # Install dependencies
 RUN apt-get update && \

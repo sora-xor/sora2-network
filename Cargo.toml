@@ -8,7 +8,7 @@ thread_local = { git = "https://github.com/KalitaAlexey/thread_local-rs.git", br
 
 [workspace]
 members = [
-    "runtime/",
+    "runtime",
     "common",
     "pallets/assets",
     "pallets/permissions",

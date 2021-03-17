@@ -1,15 +1,8 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use common::{balance, prelude::*};
-use frame_support::{
-    decl_error, decl_event, decl_module, decl_storage,
-    dispatch::DispatchResult,
-    ensure,
-    unsigned::{TransactionSource, TransactionValidity, ValidateUnsigned},
-    weights::Pays,
-};
+use common::{balance, Balance, PSWAP, VAL, XOR};
+use frame_support::{ensure, weights::Pays};
 use sp_arithmetic::traits::Saturating;
-use sp_runtime::transaction_validity::{InvalidTransaction, TransactionPriority, ValidTransaction};
 
 mod benchmarking;
 
@@ -21,7 +14,7 @@ mod tests;
 type Assets<T> = assets::Module<T>;
 type System<T> = frame_system::Module<T>;
 type Technical<T> = technical::Module<T>;
-type BlockNumberOf<T> = <T as frame_system::Trait>::BlockNumber;
+type BlockNumberOf<T> = <T as frame_system::Config>::BlockNumber;
 
 pub const TECH_ACCOUNT_PREFIX: &[u8] = b"faucet";
 pub const TECH_ACCOUNT_MAIN: &[u8] = b"main";
@@ -30,48 +23,33 @@ pub fn balance_limit() -> Balance {
     balance!(100)
 }
 
-pub fn transfer_limit_block_count<T: frame_system::Trait>() -> BlockNumberOf<T> {
+pub fn transfer_limit_block_count<T: frame_system::Config>() -> BlockNumberOf<T> {
     14400u32.into()
 }
 
-pub trait Trait: technical::Trait + assets::Trait + frame_system::Trait {
-    type Event: From<Event<Self>> + Into<<Self as frame_system::Trait>::Event>;
-}
+pub use pallet::*;
 
-decl_storage! {
-    trait Store for Module<T: Trait> as FaucetStorage
-    {
-        ReservesAcc get(fn reserves_account_id) config(reserves_account_id): T::TechAccountId;
-        Transfers: double_map hasher(identity) T::AccountId, hasher(opaque_blake2_256) T::AssetId => Option<(BlockNumberOf<T>, Balance)>;
+#[frame_support::pallet]
+pub mod pallet {
+    use super::*;
+    use common::AccountIdOf;
+    use frame_support::pallet_prelude::*;
+    use frame_system::pallet_prelude::*;
+
+    #[pallet::config]
+    pub trait Config: frame_system::Config + assets::Config + technical::Config {
+        type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
     }
-}
 
-decl_event!(
-    pub enum Event<T>
-    where
-        AccountId = <T as frame_system::Trait>::AccountId,
-    {
-        // The amount is transferred to the account. [account, amount]
-        Transferred(AccountId, Balance),
-    }
-);
+    #[pallet::pallet]
+    #[pallet::generate_store(pub(super) trait Store)]
+    pub struct Pallet<T>(PhantomData<T>);
 
-decl_error! {
-    pub enum Error for Module<T: Trait> {
-        /// Asset is not supported.
-        AssetNotSupported,
-        /// Amount is above limit.
-        AmountAboveLimit,
-        /// Not enough reserves.
-        NotEnoughReserves,
-    }
-}
+    #[pallet::hooks]
+    impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {}
 
-decl_module! {
-    pub struct Module<T: Trait> for enum Call where origin: T::Origin {
-        type Error = Error<T>;
-        fn deposit_event() = default;
-
+    #[pallet::call]
+    impl<T: Config> Pallet<T> {
         /// Transfers the specified amount of asset to the specified account.
         /// The supported assets are: XOR, VAL, PSWAP.
         ///
@@ -80,14 +58,20 @@ decl_module! {
         /// AssetNotSupported is returned if `asset_id` is something the function doesn't support.
         /// AmountAboveLimit is returned if `target` has already received their daily limit of `asset_id`.
         /// NotEnoughReserves is returned if `amount` is greater than the reserves
-        #[weight = (0, Pays::No)]
-        pub fn transfer(origin, asset_id: T::AssetId, target: T::AccountId, amount: Balance) -> DispatchResult {
+        #[pallet::weight((0, Pays::No))]
+        pub fn transfer(
+            _origin: OriginFor<T>,
+            asset_id: T::AssetId,
+            target: AccountIdOf<T>,
+            amount: Balance,
+        ) -> DispatchResultWithPostInfo {
             Self::ensure_asset_supported(asset_id)?;
             let block_number = System::<T>::block_number();
-            let (block_number, taken_amount) = Self::prepare_transfer(&target, asset_id, amount, block_number)?;
+            let (block_number, taken_amount) =
+                Self::prepare_transfer(&target, asset_id, amount, block_number)?;
             let reserves_tech_account_id = Self::reserves_account_id();
             let reserves_account_id =
-            Technical::<T>::tech_account_id_to_account_id(&reserves_tech_account_id)?;
+                Technical::<T>::tech_account_id_to_account_id(&reserves_tech_account_id)?;
             let reserves_amount = Assets::<T>::total_balance(&asset_id, &reserves_account_id)?;
             ensure!(amount <= reserves_amount, Error::<T>::NotEnoughReserves);
             technical::Module::<T>::transfer_out(
@@ -97,30 +81,66 @@ decl_module! {
                 amount,
             )?;
             Transfers::<T>::insert(target.clone(), asset_id, (block_number, taken_amount));
-            Self::deposit_event(RawEvent::Transferred(target, amount));
-            Ok(())
+            Self::deposit_event(Event::Transferred(target, amount));
+            Ok(().into())
+        }
+    }
+
+    #[pallet::event]
+    #[pallet::metadata(AccountIdOf<T> = "AccountId")]
+    #[pallet::generate_deposit(pub(super) fn deposit_event)]
+    pub enum Event<T: Config> {
+        // The amount is transferred to the account. [account, amount]
+        Transferred(AccountIdOf<T>, Balance),
+    }
+
+    #[pallet::error]
+    pub enum Error<T> {
+        /// Asset is not supported.
+        AssetNotSupported,
+        /// Amount is above limit.
+        AmountAboveLimit,
+        /// Not enough reserves.
+        NotEnoughReserves,
+    }
+
+    #[pallet::storage]
+    #[pallet::getter(fn reserves_account_id)]
+    pub(super) type ReservesAcc<T: Config> = StorageValue<_, T::TechAccountId, ValueQuery>;
+
+    #[pallet::storage]
+    pub(super) type Transfers<T: Config> = StorageDoubleMap<
+        _,
+        Identity,
+        T::AccountId,
+        Blake2_256,
+        T::AssetId,
+        (BlockNumberOf<T>, Balance),
+    >;
+
+    #[pallet::genesis_config]
+    pub struct GenesisConfig<T: Config> {
+        pub reserves_account_id: T::TechAccountId,
+    }
+
+    #[cfg(feature = "std")]
+    impl<T: Config> Default for GenesisConfig<T> {
+        fn default() -> Self {
+            Self {
+                reserves_account_id: Default::default(),
+            }
+        }
+    }
+
+    #[pallet::genesis_build]
+    impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
+        fn build(&self) {
+            ReservesAcc::<T>::put(&self.reserves_account_id);
         }
     }
 }
 
-impl<T: Trait> ValidateUnsigned for Module<T> {
-    type Call = Call<T>;
-
-    fn validate_unsigned(_source: TransactionSource, call: &Self::Call) -> TransactionValidity {
-        if let Call::transfer(asset_id, target, _) = call {
-            ValidTransaction::with_tag_prefix("Faucet")
-                .priority(TransactionPriority::max_value())
-                .and_provides(asset_id)
-                .and_provides(target)
-                .propagate(true)
-                .build()
-        } else {
-            InvalidTransaction::Call.into()
-        }
-    }
-}
-
-impl<T: Trait> Module<T> {
+impl<T: Config> Pallet<T> {
     fn ensure_asset_supported(asset_id: T::AssetId) -> Result<(), Error<T>> {
         let xor = XOR.into();
         let val = VAL.into();
@@ -154,7 +174,7 @@ impl<T: Trait> Module<T> {
                 // Use `initial_block_number` because the previous transfer has happened recently.
                 Ok((initial_block_number, taken_amount + amount))
             } else {
-                Err(Error::AmountAboveLimit)
+                Err(Error::<T>::AmountAboveLimit)
             }
         } else {
             Ok((current_block_number, amount))

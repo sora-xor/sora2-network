@@ -9,26 +9,17 @@ mod tests;
 use codec::{Decode, Encode};
 use common::{
     balance, fixed,
-    prelude::{Balance, Error as CommonError, Fixed, FixedWrapper, SwapAmount, SwapOutcome},
+    prelude::{Balance, Fixed, FixedWrapper, SwapAmount, SwapOutcome},
     DEXId, LiquiditySource, USDT, VAL,
 };
 use core::convert::TryInto;
 use frame_support::traits::Get;
-use frame_support::{decl_error, decl_module, decl_storage, ensure, fail};
+use frame_support::{ensure, fail};
 use permissions::{Scope, BURN, MINT, SLASH, TRANSFER};
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 use sp_arithmetic::traits::Zero;
 use sp_runtime::DispatchError;
-pub trait Trait: common::Trait + assets::Trait + technical::Trait {
-    type DEXApi: LiquiditySource<
-        Self::DEXId,
-        Self::AccountId,
-        Self::AssetId,
-        Balance,
-        DispatchError,
-    >;
-}
 
 type Assets<T> = assets::Module<T>;
 type Technical<T> = technical::Module<T>;
@@ -107,35 +98,6 @@ impl<DistributionAccountData: Default> Default for DistributionAccounts<Distribu
     }
 }
 
-decl_storage! {
-    trait Store for Module<T: Trait> as BondingCurve {
-        ReservesAcc get(fn reserves_account_id) config(): T::TechAccountId;
-        Fee get(fn fee): Fixed = fixed!(0.001);
-        InitialPrice get(fn initial_price): Fixed = fixed!(99.3);
-        PriceChangeStep get(fn price_change_step): Fixed = fixed!(5000);
-        PriceChangeRate get(fn price_change_rate): Fixed = fixed!(100);
-        SellPriceCoefficient get(fn sell_price_coefficient): Fixed = fixed!(0.8);
-        DistributionAccountsEntry get(fn distribution_accounts) config(): DistributionAccounts<DistributionAccountData<T::TechAccountId>>;
-    }
-}
-
-decl_error! {
-    pub enum Error for Module<T: Trait> {
-        /// An error occurred while calculating the price.
-        CalculatePriceFailed,
-        /// The pool can't perform exchange on itself.
-        CantExchangeOnItself,
-        /// It's not enough reserves in the pool to perform the operation.
-        NotEnoughReserves,
-    }
-}
-
-decl_module! {
-    pub struct Module<T: Trait> for enum Call where origin: T::Origin {
-        type Error = Error<T>;
-    }
-}
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SwapKind {
     Buy,
@@ -150,7 +112,7 @@ pub enum SwapKind {
 /// of VAL asset.
 ///
 /// Note: all fees are going to reserves.
-struct BuyMainAsset<T: Trait> {
+struct BuyMainAsset<T: Config> {
     in_asset_id: T::AssetId,
     out_asset_id: T::AssetId,
     amount: SwapAmount<Balance>,
@@ -160,7 +122,7 @@ struct BuyMainAsset<T: Trait> {
     reserves_account_id: T::AccountId,
 }
 
-impl<T: Trait> BuyMainAsset<T> {
+impl<T: Config> BuyMainAsset<T> {
     pub fn new(
         in_asset_id: T::AssetId,
         out_asset_id: T::AssetId,
@@ -298,7 +260,7 @@ impl<T: Trait> BuyMainAsset<T> {
 
     fn mint_output(&self, output_amount: Balance) -> Result<SwapOutcome<Balance>, DispatchError> {
         // TODO: deal with fee.
-        let fee_amount = FixedWrapper::from(Fee::get()) * FixedWrapper::from(output_amount);
+        let fee_amount = FixedWrapper::from(Fee::<T>::get()) * FixedWrapper::from(output_amount);
         let fee_amount = fee_amount
             .try_into_balance()
             .map_err(|_| Error::<T>::CalculatePriceFailed)?;
@@ -322,7 +284,7 @@ impl<T: Trait> BuyMainAsset<T> {
 }
 
 #[allow(non_snake_case)]
-impl<T: Trait> Module<T> {
+impl<T: Config> Module<T> {
     /// Calculates and returns the current buy price for one main asset.
     ///
     /// For every `PC_S` assets the price goes up by `PC_R`.
@@ -636,7 +598,7 @@ impl<T: Trait> Module<T> {
     }
 }
 
-impl<T: Trait> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, DispatchError>
+impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, DispatchError>
     for Module<T>
 {
     fn can_exchange(
@@ -658,7 +620,7 @@ impl<T: Trait> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Disp
         swap_amount: SwapAmount<Balance>,
     ) -> Result<SwapOutcome<Balance>, DispatchError> {
         if !Self::can_exchange(dex_id, input_asset_id, output_asset_id) {
-            fail!(CommonError::<T>::CantExchange);
+            fail!(Error::<T>::CantExchange);
         }
         let base_asset_id = &T::GetBaseAssetId::get();
         let outcome = if input_asset_id == base_asset_id {
@@ -737,7 +699,7 @@ impl<T: Trait> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Disp
             fail!(Error::<T>::CantExchangeOnItself);
         }
         if !Self::can_exchange(dex_id, input_asset_id, output_asset_id) {
-            fail!(CommonError::<T>::CantExchange);
+            fail!(Error::<T>::CantExchange);
         }
         let base_asset_id = &T::GetBaseAssetId::get();
         if input_asset_id == base_asset_id {
@@ -758,6 +720,134 @@ impl<T: Trait> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Disp
                 receiver.clone(),
             )?
             .swap()
+        }
+    }
+}
+pub use pallet::*;
+
+#[frame_support::pallet]
+pub mod pallet {
+    use super::*;
+    use frame_support::pallet_prelude::*;
+    use frame_system::pallet_prelude::*;
+
+    #[pallet::config]
+    pub trait Config:
+        frame_system::Config + common::Config + assets::Config + technical::Config
+    {
+        type DEXApi: LiquiditySource<
+            Self::DEXId,
+            Self::AccountId,
+            Self::AssetId,
+            Balance,
+            DispatchError,
+        >;
+    }
+
+    #[pallet::pallet]
+    #[pallet::generate_store(pub(super) trait Store)]
+    pub struct Pallet<T>(PhantomData<T>);
+
+    #[pallet::hooks]
+    impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {}
+
+    #[pallet::call]
+    impl<T: Config> Pallet<T> {}
+
+    #[pallet::error]
+    pub enum Error<T> {
+        /// An error occurred while calculating the price.
+        CalculatePriceFailed,
+        /// The pool can't perform exchange on itself.
+        CantExchangeOnItself,
+        /// It's not enough reserves in the pool to perform the operation.
+        NotEnoughReserves,
+        /// Liquidity source can't exchange assets with the given IDs on the given DEXId.
+        CantExchange,
+    }
+
+    #[pallet::storage]
+    #[pallet::getter(fn reserves_account_id)]
+    pub(super) type ReservesAcc<T: Config> = StorageValue<_, T::TechAccountId, ValueQuery>;
+
+    #[pallet::type_value]
+    pub(super) fn DefaultForFee() -> Fixed {
+        fixed!(0.001)
+    }
+
+    #[pallet::storage]
+    #[pallet::getter(fn fee)]
+    pub(super) type Fee<T: Config> = StorageValue<_, Fixed, ValueQuery, DefaultForFee>;
+
+    #[pallet::type_value]
+    pub(super) fn DefaultForInitialPrice() -> Fixed {
+        fixed!(99.3)
+    }
+
+    #[pallet::storage]
+    #[pallet::getter(fn initial_price)]
+    pub(super) type InitialPrice<T: Config> =
+        StorageValue<_, Fixed, ValueQuery, DefaultForInitialPrice>;
+
+    #[pallet::type_value]
+    pub(super) fn DefaultForPriceChangeStep() -> Fixed {
+        fixed!(5000)
+    }
+
+    #[pallet::storage]
+    #[pallet::getter(fn price_change_step)]
+    pub(super) type PriceChangeStep<T: Config> =
+        StorageValue<_, Fixed, ValueQuery, DefaultForPriceChangeStep>;
+
+    #[pallet::type_value]
+    pub(super) fn DefaultForPriceChangeRate() -> Fixed {
+        fixed!(100)
+    }
+
+    #[pallet::storage]
+    #[pallet::getter(fn price_change_rate)]
+    pub(super) type PriceChangeRate<T: Config> =
+        StorageValue<_, Fixed, ValueQuery, DefaultForPriceChangeRate>;
+
+    #[pallet::type_value]
+    pub(super) fn DefaultForSellPriceCoefficient() -> Fixed {
+        fixed!(0.8)
+    }
+
+    #[pallet::storage]
+    #[pallet::getter(fn sell_price_coefficient)]
+    pub(super) type SellPriceCoefficient<T: Config> =
+        StorageValue<_, Fixed, ValueQuery, DefaultForSellPriceCoefficient>;
+
+    #[pallet::storage]
+    #[pallet::getter(fn distribution_accounts)]
+    pub(super) type DistributionAccountsEntry<T: Config> = StorageValue<
+        _,
+        DistributionAccounts<DistributionAccountData<T::TechAccountId>>,
+        ValueQuery,
+    >;
+
+    #[pallet::genesis_config]
+    pub struct GenesisConfig<T: Config> {
+        pub reserves_account_id: T::TechAccountId,
+        pub distribution_accounts: DistributionAccounts<DistributionAccountData<T::TechAccountId>>,
+    }
+
+    #[cfg(feature = "std")]
+    impl<T: Config> Default for GenesisConfig<T> {
+        fn default() -> Self {
+            Self {
+                reserves_account_id: Default::default(),
+                distribution_accounts: Default::default(),
+            }
+        }
+    }
+
+    #[pallet::genesis_build]
+    impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
+        fn build(&self) {
+            ReservesAcc::<T>::put(&self.reserves_account_id);
+            DistributionAccountsEntry::<T>::put(&self.distribution_accounts);
         }
     }
 }

@@ -1,10 +1,9 @@
-use crate::traits::{IsRepresentation, PureOrWrapped, Trait};
+use crate::traits::{IsRepresentation, PureOrWrapped};
 use codec::{Decode, Encode};
 use core::fmt::Debug;
 use frame_support::dispatch::DispatchError;
 use frame_support::ensure;
 use frame_support::RuntimeDebug;
-use frame_support::{decl_error, decl_module};
 use rustc_hex::{FromHex, ToHex};
 #[cfg(feature = "std")]
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
@@ -58,21 +57,6 @@ impl<'de> Deserialize<'de> for BalanceWrapper {
         let s = String::deserialize(deserializer)?;
         let inner = Balance::from_str(&s).map_err(|str_err| serde::de::Error::custom(str_err))?;
         Ok(BalanceWrapper(inner))
-    }
-}
-
-decl_error! {
-    pub enum Error for Module<T: Trait> {
-        /// Liquidity source can't exchange assets with the given IDs on the given DEXId.
-        CantExchange,
-        /// Assets can't be swapped or exchanged with the given method.
-        UnsupportedSwapMethod,
-    }
-}
-
-decl_module! {
-    pub struct Module<T: Trait> for enum Call where origin: T::Origin {
-        type Error = Error<T>;
     }
 }
 
@@ -304,6 +288,7 @@ impl Default for DEXId {
 }
 
 pub type BalancePrecision = u8;
+pub const DEFAULT_BALANCE_PRECISION: BalancePrecision = crate::FIXED_PRECISION as u8;
 
 #[derive(Encode, Decode, Eq, PartialEq, Clone, Ord, PartialOrd, RuntimeDebug)]
 #[cfg_attr(feature = "std", derive(Hash))]

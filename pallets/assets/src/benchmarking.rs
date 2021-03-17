@@ -15,15 +15,15 @@ use common::XOR;
 use crate::Module as Assets;
 
 // Support Functions
-fn alice<T: Trait>() -> T::AccountId {
+fn alice<T: Config>() -> T::AccountId {
     let bytes = hex!("d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d");
     T::AccountId::decode(&mut &bytes[..]).unwrap_or_default()
 }
 
 // Adds `n` assets to the Assets Pallet
-fn add_assets<T: Trait>(n: u32) -> Result<(), &'static str> {
+fn add_assets<T: Config>(n: u32) -> Result<(), &'static str> {
     let owner = alice::<T>();
-    let owner_origin: <T as frame_system::Trait>::Origin = RawOrigin::Signed(owner.clone()).into();
+    let owner_origin: <T as frame_system::Config>::Origin = RawOrigin::Signed(owner.clone()).into();
     for _i in 0..n {
         Assets::<T>::register(
             owner_origin.clone(),
@@ -37,9 +37,9 @@ fn add_assets<T: Trait>(n: u32) -> Result<(), &'static str> {
     Ok(())
 }
 
-fn assert_last_event<T: Trait>(generic_event: <T as Trait>::Event) {
+fn assert_last_event<T: Config>(generic_event: <T as Config>::Event) {
     let events = frame_system::Module::<T>::events();
-    let system_event: <T as frame_system::Trait>::Event = generic_event.into();
+    let system_event: <T as frame_system::Config>::Event = generic_event.into();
     // compare to the last event record
     let EventRecord { event, .. } = &events[events.len() - 1];
     assert_eq!(event, &system_event);
@@ -64,7 +64,7 @@ benchmarks! {
         )?;
     }
     verify {
-        assert_last_event::<T>(RawEvent::AssetRegistered(asset_id, caller).into())
+        assert_last_event::<T>(Event::AssetRegistered(asset_id, caller).into())
     }
 
     transfer {
@@ -85,7 +85,7 @@ benchmarks! {
         100_u32.into()
     )
     verify {
-        assert_last_event::<T>(RawEvent::Transfer(caller.clone(), caller, XOR.into(), 100_u32.into()).into())
+        assert_last_event::<T>(Event::Transfer(caller.clone(), caller, XOR.into(), 100_u32.into()).into())
     }
 
     mint {
@@ -106,7 +106,7 @@ benchmarks! {
         100_u32.into()
     )
     verify {
-        assert_last_event::<T>(RawEvent::Mint(caller.clone(), caller, XOR.into(), 100_u32.into()).into())
+        assert_last_event::<T>(Event::Mint(caller.clone(), caller, XOR.into(), 100_u32.into()).into())
     }
 
     burn {
@@ -130,7 +130,7 @@ benchmarks! {
         100_u32.into()
     )
     verify {
-        assert_last_event::<T>(RawEvent::Burn(caller, XOR.into(), 100_u32.into()).into())
+        assert_last_event::<T>(Event::Burn(caller, XOR.into(), 100_u32.into()).into())
     }
 }
 
