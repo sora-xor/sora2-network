@@ -1,19 +1,17 @@
+use framenode_runtime::opaque::SessionKeys;
 use framenode_runtime::{
-    bonding_curve_pool, eth_bridge, multicollateral_bonding_curve_pool, opaque::SessionKeys,
-    AccountId, AssetSymbol, AssetsConfig, BabeConfig, BalancesConfig, BondingCurvePoolConfig,
-    BridgeMultisigConfig, DEXAPIConfig, DEXManagerConfig, EthBridgeConfig, FarmingConfig,
-    FaucetConfig, GenesisConfig, GetBaseAssetId, GetPswapAssetId, GetValAssetId, GetXorAssetId,
-    GrandpaConfig, IrohaMigrationConfig, LiquiditySourceType,
-    MulticollateralBondingCurvePoolConfig, PermissionsConfig, PswapDistributionConfig, Runtime,
-    SessionConfig, Signature, StakerStatus, StakingConfig, SudoConfig, SystemConfig, TechAccountId,
-    TechnicalConfig, TokensConfig, WASM_BINARY,
+    bonding_curve_pool, eth_bridge, multicollateral_bonding_curve_pool, AccountId, AssetSymbol,
+    AssetsConfig, BabeConfig, BalancesConfig, BondingCurvePoolConfig, BridgeMultisigConfig,
+    DEXAPIConfig, DEXManagerConfig, EthBridgeConfig, FarmingConfig, FaucetConfig, GenesisConfig,
+    GetBaseAssetId, GetPswapAssetId, GetValAssetId, GetXorAssetId, GrandpaConfig,
+    IrohaMigrationConfig, LiquiditySourceType, MulticollateralBondingCurvePoolConfig,
+    PermissionsConfig, PswapDistributionConfig, Runtime, SessionConfig, Signature, StakerStatus,
+    StakingConfig, SudoConfig, SystemConfig, TechAccountId, TechnicalConfig, TokensConfig,
+    WASM_BINARY,
 };
 
-use common::{
-    balance,
-    prelude::{DEXInfo, FixedWrapper},
-};
-use common::{fixed, hash, prelude::Balance, DEXId, Fixed, TechPurpose, PSWAP, VAL, XOR};
+use common::prelude::{Balance, DEXInfo, FixedWrapper};
+use common::{balance, fixed, hash, DEXId, Fixed, TechPurpose, PSWAP, VAL, XOR};
 use frame_support::sp_runtime::Percent;
 use framenode_runtime::bonding_curve_pool::{DistributionAccountData, DistributionAccounts};
 use framenode_runtime::eth_bridge::{AssetKind, NetworkConfig};
@@ -25,11 +23,9 @@ use sc_service::{ChainType, Properties};
 use sp_consensus_aura::sr25519::AuthorityId as AuraId;
 use sp_consensus_babe::AuthorityId as BabeId;
 use sp_core::{sr25519, Pair, Public, H160};
-use sp_runtime::{
-    sp_std::iter::once,
-    traits::{IdentifyAccount, Verify, Zero},
-    Perbill,
-};
+use sp_runtime::sp_std::iter::once;
+use sp_runtime::traits::{IdentifyAccount, Verify, Zero};
+use sp_runtime::Perbill;
 use std::str::FromStr;
 
 /// Specialized `ChainSpec`. This is a specialization of the general Substrate ChainSpec type.
@@ -306,7 +302,8 @@ pub fn staging_net(test: bool) -> ChainSpec {
 
 fn bonding_curve_distribution_accounts(
 ) -> DistributionAccounts<DistributionAccountData<<Runtime as technical::Config>::TechAccountId>> {
-    use common::{fixed_wrapper, prelude::fixnum::ops::One};
+    use common::fixed_wrapper;
+    use common::prelude::fixnum::ops::One;
     let val_holders_coefficient = fixed_wrapper!(0.5);
     let val_holders_xor_alloc_coeff = fixed_wrapper!(0.9) * val_holders_coefficient.clone();
     let val_holders_buy_back_coefficient =

@@ -1,17 +1,17 @@
 use crate::{self as faucet, Config};
-use common::{
-    self, balance, mock::ExistentialDeposits, prelude::Balance, Amount, AssetId32, AssetSymbol,
-    TechPurpose, USDT, VAL, XOR,
-};
+use common::mock::ExistentialDeposits;
+use common::prelude::Balance;
+use common::{self, balance, Amount, AssetId32, AssetSymbol, TechPurpose, USDT, VAL, XOR};
 use currencies::BasicCurrencyAdapter;
-use frame_support::{construct_runtime, parameter_types, traits::GenesisBuild, weights::Weight};
+use frame_support::traits::GenesisBuild;
+use frame_support::weights::Weight;
+use frame_support::{construct_runtime, parameter_types};
 use permissions::{Scope, BURN, MINT};
-use sp_core::{crypto::AccountId32, H256};
-use sp_runtime::{
-    testing::Header,
-    traits::{BlakeTwo256, IdentityLookup},
-    Perbill,
-};
+use sp_core::crypto::AccountId32;
+use sp_core::H256;
+use sp_runtime::testing::Header;
+use sp_runtime::traits::{BlakeTwo256, IdentityLookup};
+use sp_runtime::Perbill;
 
 type DEXId = common::DEXId;
 type AccountId = AccountId32;
@@ -111,8 +111,8 @@ impl technical::Config for Runtime {
 impl assets::Config for Runtime {
     type Event = Event;
     type ExtraAccountId = [u8; 32];
-    type ExtraTupleArg =
-        common::AssetIdExtraTupleArg<common::DEXId, common::LiquiditySourceType, [u8; 32]>;
+    type ExtraAssetRecordArg =
+        common::AssetIdExtraAssetRecordArg<common::DEXId, common::LiquiditySourceType, [u8; 32]>;
     type AssetId = AssetId;
     type GetBaseAssetId = GetBaseAssetId;
     type Currency = currencies::Module<Runtime>;

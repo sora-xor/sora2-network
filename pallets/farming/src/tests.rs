@@ -1,10 +1,7 @@
 use crate::mock::*;
 use crate::FarmId;
-use common::{
-    balance,
-    prelude::{Balance, SwapAmount},
-    AssetSymbol, ToFeeAccount, DOT, PSWAP, XOR,
-};
+use common::prelude::{Balance, SwapAmount};
+use common::{balance, AssetSymbol, ToFeeAccount, DOT, PSWAP, XOR};
 use frame_support::{assert_noop, assert_ok};
 
 impl crate::Module<Runtime> {

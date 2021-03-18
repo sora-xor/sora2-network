@@ -1,9 +1,11 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use codec::{Decode, Encode};
-use common::{prelude::Balance, FromGenericPair, SwapAction, SwapRulesValidation};
+use common::prelude::Balance;
+use common::{FromGenericPair, SwapAction, SwapRulesValidation};
 use frame_support::dispatch::{DispatchError, DispatchResult};
-use frame_support::{ensure, weights::Weight, Parameter};
+use frame_support::weights::Weight;
+use frame_support::{ensure, Parameter};
 use frame_system::ensure_signed;
 use sp_runtime::traits::{MaybeSerializeDeserialize, Member};
 use sp_runtime::RuntimeDebug;

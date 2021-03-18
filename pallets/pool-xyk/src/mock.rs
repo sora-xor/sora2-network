@@ -1,20 +1,24 @@
 use crate::{self as pool_xyk, Config};
-use common::{balance, hash, prelude::Balance, DEXInfo};
+use common::prelude::Balance;
+use common::{balance, hash, DEXInfo};
 use currencies::BasicCurrencyAdapter;
-use frame_support::{construct_runtime, parameter_types, traits::GenesisBuild, weights::Weight};
+use frame_support::traits::GenesisBuild;
+use frame_support::weights::Weight;
+use frame_support::{construct_runtime, parameter_types};
 use frame_system;
 use hex_literal::hex;
 use orml_traits::parameter_type_with_key;
 use permissions::{Scope, MANAGE_DEX, TRANSFER};
 use sp_core::crypto::AccountId32;
 use sp_core::H256;
-use sp_runtime::{
-    testing::Header,
-    traits::{BlakeTwo256, IdentityLookup},
-    Perbill,
-};
+use sp_runtime::testing::Header;
+use sp_runtime::traits::{BlakeTwo256, IdentityLookup};
+use sp_runtime::Perbill;
 
-pub use common::{mock::ComicAssetId::*, mock::*, TechAssetId as Tas, TechPurpose::*};
+pub use common::mock::ComicAssetId::*;
+pub use common::mock::*;
+pub use common::TechAssetId as Tas;
+pub use common::TechPurpose::*;
 
 pub type DEXId = u32;
 pub type BlockNumber = u64;
@@ -141,7 +145,8 @@ impl currencies::Config for Runtime {
 impl assets::Config for Runtime {
     type Event = Event;
     type ExtraAccountId = [u8; 32];
-    type ExtraTupleArg = common::AssetIdExtraTupleArg<DEXId, common::LiquiditySourceType, [u8; 32]>;
+    type ExtraAssetRecordArg =
+        common::AssetIdExtraAssetRecordArg<DEXId, common::LiquiditySourceType, [u8; 32]>;
     type AssetId = AssetId;
     type GetBaseAssetId = GetBaseAssetId;
     type Currency = currencies::Module<Runtime>;

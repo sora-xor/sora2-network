@@ -1,7 +1,8 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use common::{balance, Balance, PSWAP, VAL, XOR};
-use frame_support::{ensure, weights::Pays};
+use frame_support::ensure;
+use frame_support::weights::Pays;
 use sp_arithmetic::traits::Saturating;
 
 mod benchmarking;

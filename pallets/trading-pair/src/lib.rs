@@ -5,12 +5,10 @@
 extern crate alloc;
 
 use common::{EnsureDEXManager, EnsureTradingPairExists, LiquiditySourceType, ManagementMode};
-use frame_support::{
-    dispatch::{DispatchError, DispatchResult},
-    ensure,
-    traits::{Get, IsType},
-    weights::Weight,
-};
+use frame_support::dispatch::{DispatchError, DispatchResult};
+use frame_support::ensure;
+use frame_support::traits::{Get, IsType};
+use frame_support::weights::Weight;
 use sp_std::collections::btree_set::BTreeSet;
 use sp_std::vec::Vec;
 

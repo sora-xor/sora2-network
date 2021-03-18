@@ -1,8 +1,12 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use assets::AssetIdOf;
-use common::{hash, prelude::EnsureDEXManager, ManagementMode};
-use frame_support::{dispatch::DispatchResult, ensure, sp_runtime::DispatchError, weights::Weight};
+use common::prelude::EnsureDEXManager;
+use common::{hash, ManagementMode};
+use frame_support::dispatch::DispatchResult;
+use frame_support::ensure;
+use frame_support::sp_runtime::DispatchError;
+use frame_support::weights::Weight;
 use frame_system::{ensure_signed, RawOrigin};
 use permissions::{Scope, MANAGE_DEX};
 use sp_std::vec::Vec;

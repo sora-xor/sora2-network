@@ -1,18 +1,17 @@
 use crate as iroha_migration; // for construct_runtime
 use crate::{Config, TECH_ACCOUNT_MAIN, TECH_ACCOUNT_PREFIX};
-use common::{
-    mock::ExistentialDeposits, prelude::Balance, Amount, AssetId, AssetId32, AssetSymbol, VAL,
-};
+use common::mock::ExistentialDeposits;
+use common::prelude::Balance;
+use common::{Amount, AssetId, AssetId32, AssetSymbol, VAL};
 use currencies::BasicCurrencyAdapter;
-use frame_support::{construct_runtime, parameter_types, traits::GenesisBuild, weights::Weight};
+use frame_support::traits::GenesisBuild;
+use frame_support::weights::Weight;
+use frame_support::{construct_runtime, parameter_types};
 use permissions::{Scope, MINT};
 use sp_core::H256;
-use sp_runtime::{
-    self,
-    testing::Header,
-    traits::{BlakeTwo256, IdentityLookup},
-    Perbill,
-};
+use sp_runtime::testing::Header;
+use sp_runtime::traits::{BlakeTwo256, IdentityLookup};
+use sp_runtime::{self, Perbill};
 
 type DEXId = common::DEXId;
 type AccountId = u64;
@@ -97,7 +96,8 @@ impl technical::Config for Runtime {
 impl assets::Config for Runtime {
     type Event = Event;
     type ExtraAccountId = u64;
-    type ExtraTupleArg = common::AssetIdExtraTupleArg<DEXId, common::LiquiditySourceType, u64>;
+    type ExtraAssetRecordArg =
+        common::AssetIdExtraAssetRecordArg<DEXId, common::LiquiditySourceType, u64>;
     type AssetId = common::AssetId32<AssetId>;
     type GetBaseAssetId = GetBaseAssetId;
     type Currency = currencies::Module<Runtime>;

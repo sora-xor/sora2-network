@@ -1,16 +1,17 @@
 use crate::{self as dex_manager, Config};
+use common::mock::ExistentialDeposits;
+use common::prelude::Balance;
 use common::{self, fixed_from_basis_points, AssetId32, DEXInfo, Fixed, DOT, XOR};
-use common::{mock::ExistentialDeposits, prelude::Balance};
 use currencies::BasicCurrencyAdapter;
-use frame_support::{construct_runtime, parameter_types, traits::GenesisBuild, weights::Weight};
+use frame_support::traits::GenesisBuild;
+use frame_support::weights::Weight;
+use frame_support::{construct_runtime, parameter_types};
 use frame_system;
 use permissions::Scope;
 use sp_core::H256;
-use sp_runtime::{
-    testing::Header,
-    traits::{BlakeTwo256, IdentityLookup},
-    Perbill,
-};
+use sp_runtime::testing::Header;
+use sp_runtime::traits::{BlakeTwo256, IdentityLookup};
+use sp_runtime::Perbill;
 
 pub type AccountId = u128;
 pub type BlockNumber = u64;
@@ -109,8 +110,8 @@ impl currencies::Config for Runtime {
 impl assets::Config for Runtime {
     type Event = Event;
     type ExtraAccountId = AccountId;
-    type ExtraTupleArg =
-        common::AssetIdExtraTupleArg<DEXId, common::LiquiditySourceType, AccountId>;
+    type ExtraAssetRecordArg =
+        common::AssetIdExtraAssetRecordArg<DEXId, common::LiquiditySourceType, AccountId>;
     type AssetId = AssetId;
     type GetBaseAssetId = GetBaseAssetId;
     type Currency = currencies::Module<Runtime>;

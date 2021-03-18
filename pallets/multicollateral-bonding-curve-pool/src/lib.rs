@@ -11,16 +11,18 @@ mod tests;
 use core::convert::TryInto;
 
 use assets::AssetIdOf;
-use common::DexIdOf;
+use common::fixnum::ops::Zero as _;
+use common::prelude::{
+    Balance, EnsureDEXManager, EnsureTradingPairExists, Fixed, FixedWrapper, QuoteAmount,
+    SwapAmount, SwapOutcome,
+};
 use common::{
-    balance, fixed, fixed_wrapper,
-    fixnum::ops::Zero as _,
-    prelude::{Balance, Fixed, FixedWrapper, QuoteAmount, SwapAmount, SwapOutcome},
-    prelude::{EnsureDEXManager, EnsureTradingPairExists},
-    DEXId, LiquiditySource, LiquiditySourceFilter, LiquiditySourceType, ManagementMode, PSWAP, VAL,
+    balance, fixed, fixed_wrapper, DEXId, DexIdOf, LiquiditySource, LiquiditySourceFilter,
+    LiquiditySourceType, ManagementMode, PSWAP, VAL,
 };
 use frame_support::traits::Get;
-use frame_support::{ensure, fail, weights::Weight};
+use frame_support::weights::Weight;
+use frame_support::{ensure, fail};
 use frame_system::ensure_signed;
 use liquidity_proxy::LiquidityProxyTrait;
 use permissions::{Scope, BURN, MINT, SLASH, TRANSFER};
@@ -44,8 +46,7 @@ pub const TECH_ACCOUNT_RESERVES: &[u8] = b"reserves";
 pub const TECH_ACCOUNT_REWARDS: &[u8] = b"rewards";
 
 // Reuse distribution account structs from single-collateral bonding curve pallet.
-pub use bonding_curve_pool::DistributionAccountData;
-pub use bonding_curve_pool::DistributionAccounts;
+pub use bonding_curve_pool::{DistributionAccountData, DistributionAccounts};
 
 pub use pallet::*;
 
@@ -184,6 +185,8 @@ pub mod pallet {
         RewardsSupplyShortage,
         /// Indicated collateral asset is not enabled for pool.
         UnsupportedCollateralAssetId,
+        /// Could not calculate fee including sell penalty.
+        FeeCalculationFailed,
         /// Liquidity source can't exchange assets with the given IDs on the given DEXId.
         CantExchange,
     }
@@ -834,6 +837,47 @@ impl<T: Config> Module<T> {
         })
     }
 
+    /// Mapping that defines percentage of fee penalty applied for selling XOR with
+    /// low collateralized reserves.
+    fn map_collateralized_fraction_to_penalty(fraction: Fixed) -> Fixed {
+        if fraction < fixed!(0.05) {
+            fixed!(0.09)
+        } else if fraction >= fixed!(0.05) && fraction < fixed!(0.1) {
+            fixed!(0.06)
+        } else if fraction >= fixed!(0.1) && fraction < fixed!(0.2) {
+            fixed!(0.03)
+        } else if fraction >= fixed!(0.2) && fraction < fixed!(0.3) {
+            fixed!(0.01)
+        } else {
+            fixed!(0)
+        }
+    }
+
+    /// Calculate percentage of fee penalty that is applied to trades when XOR is sold while
+    /// reserves are low for target collateral asset.
+    fn sell_penalty(collateral_asset_id: &T::AssetId) -> Result<Fixed, DispatchError> {
+        let reserves_account_id =
+            Technical::<T>::tech_account_id_to_account_id(&Self::reserves_account_id())?;
+        // USD price for XOR supply on network
+        let ideal_reserves_price: FixedWrapper =
+            Self::ideal_reserves_reference_price(Fixed::ZERO)?.into();
+        // USD price for amount of indicated collateral asset stored in reserves
+        let collateral_reserves_price =
+            Self::actual_reserves_reference_price(&reserves_account_id, collateral_asset_id)?;
+        ensure!(
+            !collateral_reserves_price.is_zero(),
+            Error::<T>::NotEnoughReserves
+        );
+        // ratio of stored reserves to ideal reserves
+        let collateralized_fraction = (FixedWrapper::from(collateral_reserves_price)
+            / ideal_reserves_price)
+            .get()
+            .map_err(|_| Error::<T>::FeeCalculationFailed)?;
+        Ok(Self::map_collateralized_fraction_to_penalty(
+            collateralized_fraction,
+        ))
+    }
+
     /// Decompose SwapAmount into particular sell quotation query.
     ///
     /// Returns ordered pair: (input_amount, output_amount, fee_amount).
@@ -847,10 +891,11 @@ impl<T: Config> Module<T> {
                 desired_amount_in,
                 min_amount_out,
             } => {
-                let fee_amount = (FixedWrapper::from(BaseFee::<T>::get())
-                    * FixedWrapper::from(desired_amount_in))
-                .try_into_balance()
-                .map_err(|_| Error::<T>::PriceCalculationFailed)?;
+                let fee_percentage = FixedWrapper::from(BaseFee::<T>::get())
+                    + Self::sell_penalty(collateral_asset_id)?;
+                let fee_amount = (fee_percentage * FixedWrapper::from(desired_amount_in))
+                    .try_into_balance()
+                    .map_err(|_| Error::<T>::PriceCalculationFailed)?;
                 let output_amount = Self::sell_price(
                     main_asset_id,
                     collateral_asset_id,
@@ -879,8 +924,10 @@ impl<T: Config> Module<T> {
                 )?)
                 .try_into_balance()
                 .map_err(|_| Error::<T>::PriceCalculationFailed)?;
+                let fee_percentage = FixedWrapper::from(BaseFee::<T>::get())
+                    + Self::sell_penalty(collateral_asset_id)?;
                 let input_amount_with_fee =
-                    FixedWrapper::from(input_amount) / (fixed_wrapper!(1) - BaseFee::<T>::get());
+                    FixedWrapper::from(input_amount) / (fixed_wrapper!(1) - fee_percentage);
                 let input_amount_with_fee = input_amount_with_fee
                     .try_into_balance()
                     .map_err(|_| Error::<T>::PriceCalculationFailed)?;

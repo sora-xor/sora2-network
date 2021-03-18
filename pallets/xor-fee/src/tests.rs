@@ -1,5 +1,5 @@
-use common::fixed_wrapper;
-use common::{balance, prelude::FixedWrapper};
+use common::prelude::FixedWrapper;
+use common::{balance, fixed_wrapper};
 use pallet_balances::Call as BalancesCall;
 use pallet_transaction_payment::ChargeTransactionPayment;
 use sp_runtime::traits::SignedExtension;

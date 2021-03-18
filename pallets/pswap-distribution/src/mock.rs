@@ -1,19 +1,20 @@
 use crate::{self as pswap_distribution, Config};
-use common::{balance, mock::ExistentialDeposits, prelude::Balance};
+use common::mock::ExistentialDeposits;
+use common::prelude::Balance;
 use common::{
-    fixed, fixed_from_basis_points, AssetSymbol, BalancePrecision, Fixed, FromGenericPair,
+    balance, fixed, fixed_from_basis_points, AssetSymbol, BalancePrecision, Fixed, FromGenericPair,
 };
 use currencies::BasicCurrencyAdapter;
-use frame_support::{construct_runtime, parameter_types, traits::GenesisBuild, weights::Weight};
+use frame_support::traits::GenesisBuild;
+use frame_support::weights::Weight;
+use frame_support::{construct_runtime, parameter_types};
 use frame_system;
 use hex_literal::hex;
 use permissions::Scope;
 use sp_core::H256;
-use sp_runtime::{
-    testing::Header,
-    traits::{BlakeTwo256, IdentityLookup, Zero},
-    Perbill,
-};
+use sp_runtime::testing::Header;
+use sp_runtime::traits::{BlakeTwo256, IdentityLookup, Zero};
+use sp_runtime::Perbill;
 
 pub type AccountId = u32;
 pub type BlockNumber = u64;
@@ -146,8 +147,8 @@ impl currencies::Config for Runtime {
 impl assets::Config for Runtime {
     type Event = Event;
     type ExtraAccountId = AccountId;
-    type ExtraTupleArg =
-        common::AssetIdExtraTupleArg<common::DEXId, common::LiquiditySourceType, AccountId>;
+    type ExtraAssetRecordArg =
+        common::AssetIdExtraAssetRecordArg<common::DEXId, common::LiquiditySourceType, AccountId>;
     type AssetId = AssetId;
     type GetBaseAssetId = GetBaseAssetId;
     type Currency = currencies::Module<Runtime>;

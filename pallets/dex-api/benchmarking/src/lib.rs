@@ -8,11 +8,8 @@ extern crate alloc;
 use dex_api::*;
 
 use codec::Decode;
-use common::{
-    balance,
-    prelude::{Balance, SwapVariant},
-    AssetSymbol, DEXId, LiquiditySourceType, DOT, XOR,
-};
+use common::prelude::{Balance, SwapVariant};
+use common::{balance, AssetSymbol, DEXId, LiquiditySourceType, DOT, XOR};
 use frame_benchmarking::benchmarks;
 use frame_support::traits::Get;
 use frame_system::{EventRecord, RawOrigin};

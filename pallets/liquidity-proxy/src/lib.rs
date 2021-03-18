@@ -7,21 +7,19 @@ use core::convert::{TryFrom, TryInto};
 
 use codec::{Decode, Encode};
 
+use common::prelude::fixnum::ops::{Bounded, CheckedMul, Zero as _};
 use common::prelude::{Balance, FixedWrapper, SwapAmount, SwapOutcome, SwapVariant};
 use common::{
-    fixed, linspace, FilterMode, Fixed, FixedInner, IntervalEndpoints, LiquidityRegistry,
-    LiquiditySource, LiquiditySourceFilter, LiquiditySourceId, LiquiditySourceType,
+    fixed, fixed_wrapper, linspace, FilterMode, Fixed, FixedInner, IntervalEndpoints,
+    LiquidityRegistry, LiquiditySource, LiquiditySourceFilter, LiquiditySourceId,
+    LiquiditySourceType,
 };
-use common::{
-    fixed_wrapper,
-    prelude::fixnum::ops::{Bounded, CheckedMul, Zero as _},
-};
-use frame_support::{ensure, traits::Get, weights::Weight, RuntimeDebug};
+use frame_support::traits::Get;
+use frame_support::weights::Weight;
+use frame_support::{ensure, RuntimeDebug};
 use frame_system::ensure_signed;
-use sp_runtime::{
-    traits::{UniqueSaturatedFrom, Zero},
-    DispatchError,
-};
+use sp_runtime::traits::{UniqueSaturatedFrom, Zero};
+use sp_runtime::DispatchError;
 use sp_std::prelude::*;
 
 mod weights;

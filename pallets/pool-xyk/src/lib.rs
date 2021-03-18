@@ -3,17 +3,18 @@
 use codec::{Decode, Encode};
 use core::convert::TryInto;
 use frame_support::dispatch::{DispatchError, DispatchResult};
-use frame_support::{dispatch, ensure, traits::Get, weights::Weight, Parameter};
+use frame_support::traits::Get;
+use frame_support::weights::Weight;
+use frame_support::{dispatch, ensure, Parameter};
 use frame_system::ensure_signed;
 use sp_runtime::RuntimeDebug;
 use sp_std::collections::btree_set::BTreeSet;
 
-use common::FromGenericPair;
+use common::prelude::{Balance, EnsureDEXManager, FixedWrapper, SwapAmount, SwapOutcome};
 use common::{
-    balance, hash,
-    prelude::{Balance, EnsureDEXManager, FixedWrapper, SwapAmount, SwapOutcome},
-    AssetSymbol, EnsureTradingPairExists, LiquiditySource, LiquiditySourceType, ManagementMode,
-    SwapRulesValidation, ToFeeAccount, ToTechUnitFromDEXAndTradingPair,
+    balance, hash, AssetSymbol, EnsureTradingPairExists, FromGenericPair, LiquiditySource,
+    LiquiditySourceType, ManagementMode, SwapRulesValidation, ToFeeAccount,
+    ToTechUnitFromDEXAndTradingPair,
 };
 use frame_support::debug;
 use orml_traits::currency::MultiCurrency;
@@ -1327,8 +1328,9 @@ impl<T: Config> Module<T> {
     pub fn get_marking_asset_repr(
         tech_acc: &TechAccountIdOf<T>,
     ) -> Result<AssetIdOf<T>, DispatchError> {
-        use assets::{Tuple::*, TupleArg::*};
-        use common::AssetIdExtraTupleArg::*;
+        use assets::AssetRecord::*;
+        use assets::AssetRecordArg::*;
+        use common::AssetIdExtraAssetRecordArg::*;
         let repr_extra: ExtraAccountIdOf<T> =
             technical::Module::<T>::tech_account_id_to_account_id(&tech_acc)?.into();
         let tag = GenericU128(common::hash_to_u128_pair(b"Marking asset").0);

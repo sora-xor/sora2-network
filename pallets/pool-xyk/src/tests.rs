@@ -1,8 +1,5 @@
-use common::{
-    balance,
-    prelude::{SwapAmount, SwapOutcome},
-    AssetSymbol, Balance, LiquiditySource, LiquiditySourceType, ToFeeAccount,
-};
+use common::prelude::{SwapAmount, SwapOutcome};
+use common::{balance, AssetSymbol, Balance, LiquiditySource, LiquiditySourceType, ToFeeAccount};
 use frame_support::{assert_noop, assert_ok};
 
 use crate::mock::*;

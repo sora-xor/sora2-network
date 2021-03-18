@@ -1,15 +1,16 @@
 use crate::{self as assets, Config};
-use common::{mock::ExistentialDeposits, prelude::Balance, AssetId32, XOR};
+use common::mock::ExistentialDeposits;
+use common::prelude::Balance;
+use common::{AssetId32, XOR};
 use currencies::BasicCurrencyAdapter;
-use frame_support::{construct_runtime, parameter_types, traits::GenesisBuild, weights::Weight};
+use frame_support::traits::GenesisBuild;
+use frame_support::weights::Weight;
+use frame_support::{construct_runtime, parameter_types};
 use frame_system;
 use sp_core::H256;
-use sp_runtime::traits::Zero;
-use sp_runtime::{
-    testing::Header,
-    traits::{BlakeTwo256, IdentityLookup},
-    Perbill,
-};
+use sp_runtime::testing::Header;
+use sp_runtime::traits::{BlakeTwo256, IdentityLookup, Zero};
+use sp_runtime::Perbill;
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
@@ -76,8 +77,8 @@ parameter_types! {
 impl crate::Config for Runtime {
     type Event = Event;
     type ExtraAccountId = AccountId;
-    type ExtraTupleArg =
-        common::AssetIdExtraTupleArg<common::DEXId, common::LiquiditySourceType, AccountId>;
+    type ExtraAssetRecordArg =
+        common::AssetIdExtraAssetRecordArg<common::DEXId, common::LiquiditySourceType, AccountId>;
     type AssetId = AssetId;
     type GetBaseAssetId = GetBaseAssetId;
     type Currency = currencies::Module<Runtime>;

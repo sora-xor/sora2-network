@@ -1,27 +1,24 @@
 use codec::{Decode, Encode};
+use common::mock::ExistentialDeposits;
+use common::prelude::{
+    Balance, BlockLength, BlockWeights, SwapAmount, SwapOutcome, TransactionByteFee,
+};
 use common::{
-    self, balance, fixed_from_basis_points,
-    mock::ExistentialDeposits,
-    prelude::{Balance, BlockLength, BlockWeights, SwapAmount, SwapOutcome, TransactionByteFee},
-    Amount, AssetId32, AssetSymbol, Fixed, LiquiditySource, LiquiditySourceFilter,
-    LiquiditySourceType, VAL, XOR,
+    self, balance, fixed_from_basis_points, Amount, AssetId32, AssetSymbol, Fixed, LiquiditySource,
+    LiquiditySourceFilter, LiquiditySourceType, VAL, XOR,
 };
 use core::time::Duration;
 use currencies::BasicCurrencyAdapter;
-use frame_support::{
-    construct_runtime, parameter_types,
-    traits::{GenesisBuild, Get, OneSessionHandler, U128CurrencyToVote},
-    weights::{DispatchInfo, IdentityFee, PostDispatchInfo, Weight},
-};
+use frame_support::traits::{GenesisBuild, Get, OneSessionHandler, U128CurrencyToVote};
+use frame_support::weights::{DispatchInfo, IdentityFee, PostDispatchInfo, Weight};
+use frame_support::{construct_runtime, parameter_types};
 use frame_system;
 use pallet_session::historical;
 use permissions::{Scope, BURN, MINT, TRANSFER};
 use sp_core::H256;
-use sp_runtime::{
-    testing::{Header, TestXt, UintAuthorityId},
-    traits::{BlakeTwo256, IdentityLookup},
-    DispatchError, Perbill, Percent,
-};
+use sp_runtime::testing::{Header, TestXt, UintAuthorityId};
+use sp_runtime::traits::{BlakeTwo256, IdentityLookup};
+use sp_runtime::{DispatchError, Perbill, Percent};
 
 pub use crate::{self as xor_fee, Config, Module};
 
@@ -180,8 +177,8 @@ impl currencies::Config for Runtime {
 impl assets::Config for Runtime {
     type Event = Event;
     type ExtraAccountId = AccountId;
-    type ExtraTupleArg =
-        common::AssetIdExtraTupleArg<common::DEXId, common::LiquiditySourceType, AccountId>;
+    type ExtraAssetRecordArg =
+        common::AssetIdExtraAssetRecordArg<common::DEXId, common::LiquiditySourceType, AccountId>;
     type AssetId = AssetId;
     type GetBaseAssetId = XorId;
     type Currency = currencies::Module<Runtime>;
