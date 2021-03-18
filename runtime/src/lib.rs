@@ -619,6 +619,10 @@ where
 
 impl referral_system::Config for Runtime {}
 
+impl rewards::Config for Runtime {
+    type Event = Event;
+}
+
 parameter_types! {
     pub const DEXIdValue: DEXId = 0;
 }
@@ -800,6 +804,7 @@ construct_runtime! {
         TransactionPayment: pallet_transaction_payment::{Module, Storage},
         Permissions: permissions::{Module, Call, Storage, Config<T>, Event<T>},
         ReferralSystem: referral_system::{Module, Call, Storage},
+        Rewards: rewards::{Module, Call, Config<T>, Storage, Event<T>},
         XorFee: xor_fee::{Module, Call, Storage},
         BridgeMultisig: bridge_multisig::{Module, Call, Storage, Config<T>, Event<T>},
         Utility: pallet_utility::{Module, Call, Event},
@@ -1231,6 +1236,12 @@ impl_runtime_apis! {
             pswap_distribution_runtime_api::BalanceInfo::<Balance> {
                 balance: claimable
             }
+        }
+    }
+
+    impl rewards_runtime_api::RewardsAPI<Block, sp_core::H160, Balance> for Runtime {
+        fn claimables(eth_address: sp_core::H160) -> Vec<rewards_runtime_api::BalanceInfo<Balance>> {
+            Rewards::claimables(&eth_address).into_iter().map(|balance| rewards_runtime_api::BalanceInfo::<Balance> { balance }).collect()
         }
     }
 

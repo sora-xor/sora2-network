@@ -27,6 +27,8 @@ mock-liquidity-source = { path = "../pallets/mock-liquidity-source", default-fea
 permissions = { path = "../pallets/permissions", default-features = false}
 pool-xyk = { path = "../pallets/pool-xyk", default-features = false}
 referral-system = { path = "../pallets/referral-system", default-features = false}
+rewards = { path = "../pallets/rewards", default-features = false }
+rewards-runtime-api = { path = "../pallets/rewards/runtime-api", default-features = false }
 technical = { path = "../pallets/technical", default-features = false}
 trading-pair = { path = "../pallets/trading-pair", default-features = false}
 xor-fee = { path = "../pallets/xor-fee", default-features = false}
@@ -141,6 +143,8 @@ std = [
     'permissions/std',
     'pool-xyk/std',
     'referral-system/std',
+    'rewards/std',
+    'rewards-runtime-api/std',
     'technical/std',
     'trading-pair/std',
     'xor-fee/std',

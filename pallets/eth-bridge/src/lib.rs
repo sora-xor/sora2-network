@@ -49,7 +49,7 @@ use crate::types::{Bytes, CallRequest, Log, Transaction, TransactionReceipt};
 use alloc::string::String;
 use codec::{Decode, Encode, FullCodec};
 use common::prelude::Balance;
-use common::{AssetSymbol, BalancePrecision};
+use common::{eth, AssetSymbol, BalancePrecision};
 use core::convert::TryFrom;
 use core::{fmt, iter, line, stringify};
 use ethabi::{ParamType, Token};
@@ -73,11 +73,10 @@ use permissions::{Scope, MINT};
 use requests::*;
 use rpc::Params;
 use rustc_hex::ToHex;
-use secp256k1::PublicKey;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use sp_core::{H160, H256};
-use sp_io::hashing::{blake2_256, keccak_256};
+use sp_io::hashing::blake2_256;
 use sp_std::collections::btree_map::BTreeMap;
 use sp_std::collections::btree_set::BTreeSet;
 use sp_std::convert::{identity, TryInto};
@@ -188,12 +187,6 @@ impl fmt::Display for SignatureParams {
             [self.v].to_hex::<String>()
         ))
     }
-}
-
-/// Converts secp256k1 public key to an Ethereum address.
-pub fn public_key_to_eth_address(pub_key: &PublicKey) -> Address {
-    let hash = keccak_256(&pub_key.serialize()[1..]);
-    Address::from_slice(&hash[12..])
 }
 
 /// Outgoing (Thischain->Sidechain) request.
@@ -364,7 +357,6 @@ pub enum IncomingRequestKind {
     AddAsset,
     AddPeer,
     RemovePeer,
-    ClaimPswap,
     CancelOutgoingRequest,
     MarkAsDone,
     PrepareForMigration,
@@ -389,7 +381,6 @@ pub enum IncomingRequest<T: Config> {
     Transfer(IncomingTransfer<T>),
     AddAsset(IncomingAddToken<T>),
     ChangePeers(IncomingChangePeers<T>),
-    ClaimPswap(IncomingClaimPswap<T>),
     CancelOutgoingRequest(IncomingCancelOutgoingRequest<T>),
     PrepareForMigration(IncomingPrepareForMigration<T>),
     Migrate(IncomingMigrate<T>),
@@ -402,7 +393,6 @@ impl<T: Config> IncomingRequest<T> {
         incoming_request: IncomingPreRequest<T>,
         at_height: u64,
         tx_hash: H256,
-        tx_receipt: TransactionReceipt,
     ) -> Result<Self, DispatchError> {
         let network_id = incoming_request.network_id;
         let timepoint = incoming_request.timepoint;
@@ -443,16 +433,6 @@ impl<T: Config> IncomingRequest<T> {
                     network_id,
                 })
             }
-            ContractEvent::ClaimPswap(account_id) => {
-                IncomingRequest::ClaimPswap(IncomingClaimPswap {
-                    account_id,
-                    eth_address: H160(tx_receipt.from.0),
-                    tx_hash,
-                    at_height,
-                    timepoint,
-                    network_id,
-                })
-            }
             ContractEvent::PreparedForMigration => {
                 IncomingRequest::PrepareForMigration(IncomingPrepareForMigration {
                     tx_hash,
@@ -478,7 +458,6 @@ impl<T: Config> IncomingRequest<T> {
             IncomingRequest::Transfer(request) => request.tx_hash,
             IncomingRequest::AddAsset(request) => request.tx_hash,
             IncomingRequest::ChangePeers(request) => request.tx_hash,
-            IncomingRequest::ClaimPswap(request) => request.tx_hash,
             IncomingRequest::CancelOutgoingRequest(request) => request.initial_request_hash,
             IncomingRequest::PrepareForMigration(request) => request.tx_hash,
             IncomingRequest::Migrate(request) => request.tx_hash,
@@ -491,7 +470,6 @@ impl<T: Config> IncomingRequest<T> {
             IncomingRequest::Transfer(request) => request.network_id,
             IncomingRequest::AddAsset(request) => request.network_id,
             IncomingRequest::ChangePeers(request) => request.network_id,
-            IncomingRequest::ClaimPswap(request) => request.network_id,
             IncomingRequest::CancelOutgoingRequest(request) => request.network_id,
             IncomingRequest::PrepareForMigration(request) => request.network_id,
             IncomingRequest::Migrate(request) => request.network_id,
@@ -505,7 +483,6 @@ impl<T: Config> IncomingRequest<T> {
             IncomingRequest::Transfer(request) => request.at_height,
             IncomingRequest::AddAsset(request) => request.at_height,
             IncomingRequest::ChangePeers(request) => request.at_height,
-            IncomingRequest::ClaimPswap(request) => request.at_height,
             IncomingRequest::CancelOutgoingRequest(request) => request.at_height,
             IncomingRequest::PrepareForMigration(request) => request.at_height,
             IncomingRequest::Migrate(request) => request.at_height,
@@ -518,7 +495,6 @@ impl<T: Config> IncomingRequest<T> {
             IncomingRequest::Transfer(request) => request.prepare(),
             IncomingRequest::AddAsset(_request) => Ok(()),
             IncomingRequest::ChangePeers(_request) => Ok(()),
-            IncomingRequest::ClaimPswap(_request) => Ok(()),
             IncomingRequest::CancelOutgoingRequest(request) => request.prepare(),
             IncomingRequest::PrepareForMigration(request) => request.prepare(),
             IncomingRequest::Migrate(request) => request.prepare(),
@@ -531,7 +507,6 @@ impl<T: Config> IncomingRequest<T> {
             IncomingRequest::Transfer(request) => request.cancel(),
             IncomingRequest::AddAsset(_request) => Ok(()),
             IncomingRequest::ChangePeers(_request) => Ok(()),
-            IncomingRequest::ClaimPswap(_request) => Ok(()),
             IncomingRequest::CancelOutgoingRequest(request) => request.cancel(),
             IncomingRequest::PrepareForMigration(request) => request.cancel(),
             IncomingRequest::Migrate(request) => request.cancel(),
@@ -544,7 +519,6 @@ impl<T: Config> IncomingRequest<T> {
             IncomingRequest::Transfer(request) => request.finalize(),
             IncomingRequest::AddAsset(request) => request.finalize(),
             IncomingRequest::ChangePeers(request) => request.finalize(),
-            IncomingRequest::ClaimPswap(request) => request.finalize(),
             IncomingRequest::CancelOutgoingRequest(request) => request.finalize(),
             IncomingRequest::PrepareForMigration(request) => request.finalize(),
             IncomingRequest::Migrate(request) => request.finalize(),
@@ -559,7 +533,6 @@ impl<T: Config> IncomingRequest<T> {
             IncomingRequest::Transfer(request) => request.timepoint(),
             IncomingRequest::AddAsset(request) => request.timepoint(),
             IncomingRequest::ChangePeers(request) => request.timepoint(),
-            IncomingRequest::ClaimPswap(request) => request.timepoint(),
             IncomingRequest::CancelOutgoingRequest(request) => request.timepoint(),
             IncomingRequest::PrepareForMigration(request) => request.timepoint(),
             IncomingRequest::Migrate(request) => request.timepoint(),
@@ -1649,15 +1622,6 @@ pub mod pallet {
     #[pallet::getter(fn val_master_contract_address)]
     pub(super) type ValMasterContractAddress<T: Config> = StorageValue<_, Address, ValueQuery>;
 
-    /// Sora PSWAP contract address.
-    #[pallet::storage]
-    #[pallet::getter(fn pswap_contract_address)]
-    pub(super) type PswapContractAddress<T: Config> = StorageValue<_, Address, ValueQuery>;
-
-    /// PSWAP owners on Sidechain. `None` - no owner, `Some(0)` - already claimed.
-    #[pallet::storage]
-    pub(super) type PswapOwners<T: Config> = StorageMap<_, Identity, Address, Balance>;
-
     /// Next Network ID counter.
     #[pallet::storage]
     pub(super) type NextNetworkId<T: Config> = StorageValue<_, T::NetworkId, ValueQuery>;
@@ -1667,9 +1631,7 @@ pub mod pallet {
         pub authority_account: T::AccountId,
         pub xor_master_contract_address: Address,
         pub val_master_contract_address: Address,
-        pub pswap_contract_address: Address,
         pub networks: Vec<NetworkConfig<T>>,
-        pub pswap_owners: Vec<(H160, Balance)>,
     }
 
     #[cfg(feature = "std")]
@@ -1679,9 +1641,7 @@ pub mod pallet {
                 authority_account: Default::default(),
                 xor_master_contract_address: Default::default(),
                 val_master_contract_address: Default::default(),
-                pswap_contract_address: Default::default(),
                 networks: Default::default(),
-                pswap_owners: Default::default(),
             }
         }
     }
@@ -1692,7 +1652,6 @@ pub mod pallet {
             AuthorityAccount::<T>::put(&self.authority_account);
             XorMasterContractAddress::<T>::put(&self.xor_master_contract_address);
             ValMasterContractAddress::<T>::put(&self.val_master_contract_address);
-            PswapContractAddress::<T>::put(&self.pswap_contract_address);
             for network in &self.networks {
                 let net_id = NextNetworkId::<T>::get();
                 let peers_account_id = &network.bridge_account_id;
@@ -1721,9 +1680,6 @@ pub mod pallet {
                 }
                 NextNetworkId::<T>::set(net_id + T::NetworkId::one());
             }
-            for (address, balance) in &self.pswap_owners {
-                PswapOwners::<T>::insert(Address::from_slice(address.as_bytes()), balance);
-            }
         }
     }
 }
@@ -1738,7 +1694,6 @@ pub enum ContractEvent<AssetId, Address, AccountId, Balance> {
     Withdraw(AssetId, Balance, Address, AccountId),
     Deposit(AccountId, Balance, Address, H256),
     ChangePeers(Address, bool),
-    ClaimPswap(AccountId),
     PreparedForMigration,
     Migrated(Address),
 }
@@ -1979,16 +1934,6 @@ impl<T: Config> Module<T> {
                     let peer_address = decoder.next_address()?;
                     return Ok(ContractEvent::ChangePeers(H160(peer_address.0), added));
                 }
-                hex!("4eb3aea69bf61684354f60a43d355c3026751ddd0ea4e1f5afc1274b96c65505")
-                    if kind == IncomingRequestKind::ClaimPswap =>
-                {
-                    let types = [ParamType::FixedBytes(32)];
-                    let decoded =
-                        ethabi::decode(&types, &log.data.0).map_err(|_| Error::<T>::Other)?;
-                    let mut decoder = Decoder::<T>::new(decoded);
-                    let account_id = decoder.next_account_id()?;
-                    return Ok(ContractEvent::ClaimPswap(account_id));
-                }
                 hex!("5389de9593f75e6515eefa796bd2d3324759f441f2c9b2dcda0efb25190378ff")
                     if kind == IncomingRequestKind::PrepareForMigration =>
                 {
@@ -2010,15 +1955,6 @@ impl<T: Config> Module<T> {
         Err(Error::<T>::UnknownEvent.into())
     }
 
-    /// Prepares the message to be signed. Uses an Ethereum recommended scheme.
-    fn prepare_message(msg: &[u8]) -> secp256k1::Message {
-        let hash = keccak_256(msg);
-        let mut prefix = b"\x19Ethereum Signed Message:\n32".to_vec();
-        prefix.extend(&hash);
-        let hash = keccak_256(&prefix);
-        secp256k1::Message::parse_slice(&hash).expect("hash size == 256 bits; qed")
-    }
-
     /// Verifies the message signed by a peer. Also, compares the given `AccountId` with the given
     /// public key.
     fn verify_message(
@@ -2027,7 +1963,7 @@ impl<T: Config> Module<T> {
         ecdsa_public_key: &ecdsa::Public,
         author: &T::AccountId,
     ) -> bool {
-        let message = Self::prepare_message(msg);
+        let message = eth::prepare_message(msg);
         let mut arr = [0u8; 65];
         arr[..32].copy_from_slice(&signature.r[..]);
         arr[32..64].copy_from_slice(&signature.s[..]);
@@ -2054,7 +1990,7 @@ impl<T: Config> Module<T> {
                 .expect("Off-chain worker secret key is not specified."),
         )
         .expect("Invalid off-chain worker secret key.");
-        let message = Self::prepare_message(msg);
+        let message = eth::prepare_message(msg);
         let (sig, v) = secp256k1::sign(&message, &sk);
         let pk = secp256k1::PublicKey::from_secret_key(&sk);
         let v = v.serialize();
@@ -2745,7 +2681,6 @@ impl<T: Config> Module<T> {
             incoming_pre_request,
             at_height,
             tx_hash,
-            tx_receipt,
         )
     }
 
@@ -2830,16 +2765,6 @@ impl<T: Config> Module<T> {
         kind: IncomingRequestKind,
     ) -> DispatchResult {
         match kind {
-            IncomingRequestKind::ClaimPswap => {
-                ensure!(
-                    network_id == T::GetEthNetworkId::get(),
-                    Error::<T>::UnknownContractAddress
-                );
-                ensure!(
-                    to == Self::pswap_contract_address(),
-                    Error::<T>::UnknownContractAddress
-                );
-            }
             _ => {
                 if network_id == T::GetEthNetworkId::get() {
                     ensure!(

@@ -30,6 +30,8 @@ technical = {path = "../pallets/technical" }
 permissions = {path = "../pallets/permissions" }
 xor-fee = { path = "../pallets/xor-fee" }
 faucet = { path = "../pallets/faucet" }
+rewards = { path = "../pallets/rewards" }
+rewards-rpc = { path = "../pallets/rewards/rpc" }
 iroha-migration = { path = "../pallets/iroha-migration" }
 iroha-migration-rpc = { path = "../pallets/iroha-migration/rpc" }
 trading-pair-rpc = { path = "../pallets/trading-pair/rpc" }

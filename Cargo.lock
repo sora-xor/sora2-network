@@ -917,6 +917,7 @@ dependencies = [
  "fixnum",
  "frame-support",
  "frame-system",
+ "libsecp256k1",
  "num-traits",
  "orml-currencies",
  "orml-traits",
@@ -927,6 +928,7 @@ dependencies = [
  "smallvec 1.6.1",
  "sp-arithmetic",
  "sp-core",
+ "sp-io",
  "sp-runtime",
  "sp-std",
  "static_assertions",
@@ -2288,6 +2290,8 @@ dependencies = [
  "parking_lot 0.11.1",
  "permissions",
  "pswap-distribution-rpc",
+ "rewards",
+ "rewards-rpc",
  "sc-basic-authorship",
  "sc-chain-spec",
  "sc-cli",
@@ -2389,6 +2393,8 @@ dependencies = [
  "pswap-distribution",
  "pswap-distribution-runtime-api",
  "referral-system",
+ "rewards",
+ "rewards-runtime-api",
  "serde",
  "sp-api",
  "sp-block-builder",
@@ -6269,6 +6275,60 @@ name = "retain_mut"
 version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "53552c6c49e1e13f1a203ef0080ab3bbef0beb570a528993e83df057a9d9bba1"
+
+[[package]]
+name = "rewards"
+version = "0.1.0"
+dependencies = [
+ "assets",
+ "common",
+ "frame-support",
+ "frame-system",
+ "hex-literal",
+ "libsecp256k1",
+ "orml-currencies",
+ "orml-tokens",
+ "pallet-balances",
+ "parity-scale-codec",
+ "permissions",
+ "serde",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+ "technical",
+]
+
+[[package]]
+name = "rewards-rpc"
+version = "0.1.0"
+dependencies = [
+ "common",
+ "jsonrpc-core 15.1.0",
+ "jsonrpc-core-client",
+ "jsonrpc-derive",
+ "parity-scale-codec",
+ "rewards-runtime-api",
+ "serde",
+ "sp-api",
+ "sp-blockchain",
+ "sp-core",
+ "sp-rpc",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
+name = "rewards-runtime-api"
+version = "0.1.0"
+dependencies = [
+ "common",
+ "parity-scale-codec",
+ "serde",
+ "sp-api",
+ "sp-runtime",
+ "sp-std",
+]
 
 [[package]]
 name = "ring"

@@ -1,7 +1,7 @@
 use crate::contract::{MethodId, FUNCTIONS};
 use crate::{
     get_bridge_account, types, Address, AssetIdOf, AssetKind, BridgeStatus, Config, Decoder, Error,
-    OutgoingRequest, Pallet, PswapOwners, RequestStatus, SignatureParams, Timepoint,
+    OutgoingRequest, Pallet, RequestStatus, SignatureParams, Timepoint,
 };
 use alloc::collections::BTreeSet;
 use alloc::string::String;
@@ -9,7 +9,7 @@ use codec::{Decode, Encode};
 use common::prelude::Balance;
 #[cfg(feature = "std")]
 use common::utils::string_serialization;
-use common::{AssetSymbol, BalancePrecision, PSWAP, VAL, XOR};
+use common::{AssetSymbol, BalancePrecision, VAL, XOR};
 use ethabi::{FixedBytes, Token};
 #[allow(unused_imports)]
 use frame_support::debug;
@@ -257,36 +257,6 @@ impl<T: Config> IncomingTransfer<T> {
                 self.amount,
             )?;
         }
-        Ok(self.tx_hash)
-    }
-
-    pub fn timepoint(&self) -> Timepoint<T> {
-        self.timepoint
-    }
-}
-
-/// Incoming request for claiming PSWAP.
-#[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-pub struct IncomingClaimPswap<T: Config> {
-    pub account_id: T::AccountId,
-    pub eth_address: Address,
-    pub tx_hash: H256,
-    pub at_height: u64,
-    pub timepoint: Timepoint<T>,
-    pub network_id: T::NetworkId,
-}
-
-impl<T: Config> IncomingClaimPswap<T> {
-    /// Mints amount of PSWAP owned by a corresponding account id. If the account not found or
-    /// the amount is zero, an error is thrown.
-    pub fn finalize(&self) -> Result<H256, DispatchError> {
-        let bridge_account_id = get_bridge_account::<T>(self.network_id);
-        let amount = PswapOwners::<T>::get(&self.eth_address).ok_or(Error::<T>::AccountNotFound)?;
-        ensure!(amount != 0, Error::<T>::AlreadyClaimed);
-        let empty_balance = 0;
-        PswapOwners::<T>::insert(&self.eth_address, empty_balance);
-        assets::Pallet::<T>::mint_to(&PSWAP.into(), &bridge_account_id, &self.account_id, amount)?;
         Ok(self.tx_hash)
     }
 

@@ -5,9 +5,9 @@ use framenode_runtime::{
     DEXAPIConfig, DEXManagerConfig, EthBridgeConfig, FarmingConfig, FaucetConfig, GenesisConfig,
     GetBaseAssetId, GetPswapAssetId, GetValAssetId, GetXorAssetId, GrandpaConfig,
     IrohaMigrationConfig, LiquiditySourceType, MulticollateralBondingCurvePoolConfig,
-    PermissionsConfig, PswapDistributionConfig, Runtime, SessionConfig, Signature, StakerStatus,
-    StakingConfig, SudoConfig, SystemConfig, TechAccountId, TechnicalConfig, TokensConfig,
-    WASM_BINARY,
+    PermissionsConfig, PswapDistributionConfig, RewardsConfig, Runtime, SessionConfig, Signature,
+    StakerStatus, StakingConfig, SudoConfig, SystemConfig, TechAccountId, TechnicalConfig,
+    TokensConfig, WASM_BINARY,
 };
 
 use common::prelude::{Balance, DEXInfo, FixedWrapper};
@@ -84,7 +84,6 @@ struct EthBridgeParams {
     xor_contract_address: H160,
     val_master_contract_address: H160,
     val_contract_address: H160,
-    pswap_contract_address: H160,
     bridge_contract_address: H160,
 }
 
@@ -169,7 +168,6 @@ pub fn dev_net() -> ChainSpec {
                     val_master_contract_address: hex!("47e229aa491763038f6a505b4f85d8eb463f0962")
                         .into(),
                     val_contract_address: hex!("68339de68c9af6577c54867728dbb2db9d7368bf").into(),
-                    pswap_contract_address: hex!("0000000000000000000000000000000000000000").into(),
                     bridge_contract_address: hex!("b7b3060589e5bf6e4a2c76edc229127745c9c13c")
                         .into(),
                 },
@@ -225,7 +223,6 @@ pub fn staging_net(test: bool) -> ChainSpec {
                     val_master_contract_address: hex!("a55236ad2162a47a52316f86d688fbd71b520945")
                         .into(),
                     val_contract_address: hex!("7fcb82ab5a4762f0f18287ece64d4ec74b6071c0").into(),
-                    pswap_contract_address: hex!("0000000000000000000000000000000000000000").into(),
                     bridge_contract_address: hex!("171928461c7a8ddbcec7d2aa4b43c151b8c8816a")
                         .into(),
                 }
@@ -237,7 +234,6 @@ pub fn staging_net(test: bool) -> ChainSpec {
                     val_master_contract_address: hex!("d7f81ed173cb3af28f983670164df30851fba678")
                         .into(),
                     val_contract_address: hex!("725c6b8cd3621eba4e0ccc40d532e7025b925a65").into(),
-                    pswap_contract_address: hex!("0000000000000000000000000000000000000000").into(),
                     bridge_contract_address: hex!("4ff646bff7884f118406aa4beebd9e10de406603")
                         .into(),
                 }
@@ -432,7 +428,6 @@ pub fn local_testnet_config() -> ChainSpec {
                     val_master_contract_address: hex!("47e229aa491763038f6a505b4f85d8eb463f0962")
                         .into(),
                     val_contract_address: hex!("68339de68c9af6577c54867728dbb2db9d7368bf").into(),
-                    pswap_contract_address: hex!("0000000000000000000000000000000000000000").into(),
                     bridge_contract_address: hex!("64fb0ca483b356832cd97958e6b23df783fb7ced")
                         .into(),
                 },
@@ -511,6 +506,23 @@ fn testnet_genesis(
     let liquidity_proxy_tech_account_id = framenode_runtime::GetLiquidityProxyTechAccountId::get();
     let liquidity_proxy_account_id = framenode_runtime::GetLiquidityProxyAccountId::get();
 
+    let iroha_migration_tech_account_id = TechAccountId::Generic(
+        iroha_migration::TECH_ACCOUNT_PREFIX.to_vec(),
+        iroha_migration::TECH_ACCOUNT_MAIN.to_vec(),
+    );
+    let iroha_migration_account_id = technical::Module::<Runtime>::tech_account_id_to_account_id(
+        &iroha_migration_tech_account_id,
+    )
+    .unwrap();
+
+    let rewards_tech_account_id = TechAccountId::Generic(
+        rewards::TECH_ACCOUNT_PREFIX.to_vec(),
+        rewards::TECH_ACCOUNT_MAIN.to_vec(),
+    );
+    let rewards_account_id =
+        technical::Module::<Runtime>::tech_account_id_to_account_id(&rewards_tech_account_id)
+            .unwrap();
+
     let mut tech_accounts = vec![
         (xor_fee_account_id.clone(), xor_fee_tech_account_id),
         (faucet_account_id.clone(), faucet_tech_account_id.clone()),
@@ -534,6 +546,11 @@ fn testnet_genesis(
             mbc_pool_rewards_account_id.clone(),
             mbc_pool_rewards_tech_account_id.clone(),
         ),
+        (
+            iroha_migration_account_id.clone(),
+            iroha_migration_tech_account_id.clone(),
+        ),
+        (rewards_account_id.clone(), rewards_tech_account_id.clone()),
     ];
     let accounts = bonding_curve_distribution_accounts();
     tech_accounts.push((
@@ -546,15 +563,6 @@ fn testnet_genesis(
             (*tech_account).to_owned(),
         ));
     }
-
-    let iroha_migration_tech_account_id = TechAccountId::Generic(
-        iroha_migration::TECH_ACCOUNT_PREFIX.to_vec(),
-        iroha_migration::TECH_ACCOUNT_MAIN.to_vec(),
-    );
-    let iroha_migration_account_id = technical::Module::<Runtime>::tech_account_id_to_account_id(
-        &iroha_migration_tech_account_id,
-    )
-    .unwrap();
 
     GenesisConfig {
         frame_system: Some(SystemConfig {
@@ -765,6 +773,16 @@ fn testnet_genesis(
                     initial_balance.into(),
                 ),
                 (
+                    rewards_account_id.clone(),
+                    GetValAssetId::get(),
+                    initial_balance.into(),
+                ),
+                (
+                    rewards_account_id,
+                    GetPswapAssetId::get(),
+                    initial_balance.into(),
+                ),
+                (
                     eth_bridge_account_id.clone(),
                     VAL,
                     initial_eth_bridge_val_amount.into(),
@@ -801,10 +819,8 @@ fn testnet_genesis(
                     (VAL.into(), balance!(33900000)),
                 ],
             }],
-            pswap_owners: vec![],
             xor_master_contract_address: eth_bridge_params.xor_master_contract_address,
             val_master_contract_address: eth_bridge_params.val_master_contract_address,
-            pswap_contract_address: eth_bridge_params.pswap_contract_address,
         }),
         bridge_multisig: Some(BridgeMultisigConfig {
             accounts: once((
@@ -836,6 +852,21 @@ fn testnet_genesis(
         iroha_migration: Some(IrohaMigrationConfig {
             iroha_accounts: include!("iroha_migration_accounts.in"),
             account_id: iroha_migration_account_id,
+        }),
+        rewards: Some(RewardsConfig {
+            reserves_account_id: rewards_tech_account_id,
+            val_owners: vec![(
+                hex!("21Bc9f4a3d9Dc86f142F802668dB7D908cF0A636").into(),
+                balance!(111),
+            )],
+            pswap_farm_owners: vec![(
+                hex!("21Bc9f4a3d9Dc86f142F802668dB7D908cF0A636").into(),
+                balance!(222),
+            )],
+            pswap_waifu_owners: vec![(
+                hex!("21Bc9f4a3d9Dc86f142F802668dB7D908cF0A636").into(),
+                balance!(333),
+            )],
         }),
     }
 }

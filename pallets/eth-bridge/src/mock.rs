@@ -419,15 +419,6 @@ impl ExtBuilder {
         }
     }
 
-    pub fn add_reserves(&mut self, network_id: u32, reserves: (AssetId32<AssetId>, Balance)) {
-        self.networks
-            .get_mut(&network_id)
-            .unwrap()
-            .config
-            .reserves
-            .push(reserves);
-    }
-
     pub fn add_currency(
         &mut self,
         network_id: u32,
@@ -587,20 +578,12 @@ impl ExtBuilder {
         EthBridgeConfig {
             networks: bridge_network_configs,
             authority_account: authority_account_id.clone(),
-            pswap_owners: vec![(
-                sp_core::H160::from_str("40fd72257597aa14c7231a7b1aaa29fce868f677").unwrap(),
-                Balance::from(300u128),
-            )],
             val_master_contract_address: sp_core::H160::from_str(
                 "47e229aa491763038f6a505b4f85d8eb463f0962",
             )
             .unwrap(),
             xor_master_contract_address: sp_core::H160::from_str(
                 "12c6a709925783f49fcca0b398d13b0d597e6e1c",
-            )
-            .unwrap(),
-            pswap_contract_address: sp_core::H160::from_str(
-                "1232131231231231231231231231231231231231",
             )
             .unwrap(),
         }
