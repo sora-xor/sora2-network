@@ -1,13 +1,12 @@
 use framenode_runtime::opaque::SessionKeys;
 use framenode_runtime::{
-    bonding_curve_pool, eth_bridge, multicollateral_bonding_curve_pool, AccountId, AssetSymbol,
-    AssetsConfig, BabeConfig, BalancesConfig, BondingCurvePoolConfig, BridgeMultisigConfig,
-    DEXAPIConfig, DEXManagerConfig, EthBridgeConfig, FarmingConfig, FaucetConfig, GenesisConfig,
-    GetBaseAssetId, GetPswapAssetId, GetValAssetId, GetXorAssetId, GrandpaConfig,
-    IrohaMigrationConfig, LiquiditySourceType, MulticollateralBondingCurvePoolConfig,
-    PermissionsConfig, PswapDistributionConfig, Runtime, SessionConfig, Signature, StakerStatus,
-    StakingConfig, SudoConfig, SystemConfig, TechAccountId, TechnicalConfig, TokensConfig,
-    WASM_BINARY,
+    bonding_curve_pool, eth_bridge, AccountId, AssetSymbol, AssetsConfig, BabeConfig,
+    BalancesConfig, BondingCurvePoolConfig, BridgeMultisigConfig, DEXAPIConfig, DEXManagerConfig,
+    EthBridgeConfig, FarmingConfig, FaucetConfig, GenesisConfig, GetBaseAssetId, GetPswapAssetId,
+    GetValAssetId, GetXorAssetId, GrandpaConfig, IrohaMigrationConfig, LiquiditySourceType,
+    MulticollateralBondingCurvePoolConfig, PermissionsConfig, PswapDistributionConfig, Runtime,
+    SessionConfig, Signature, StakerStatus, StakingConfig, SudoConfig, SystemConfig, TechAccountId,
+    TechnicalConfig, TokensConfig, WASM_BINARY,
 };
 
 use common::prelude::{Balance, DEXInfo, FixedWrapper};
@@ -449,15 +448,21 @@ pub fn local_testnet_config() -> ChainSpec {
 fn testnet_genesis(
     root_key: AccountId,
     initial_authorities: Vec<(AccountId, AccountId, AuraId, BabeId, GrandpaId)>,
-    endowed_accounts: Vec<AccountId>,
+    _endowed_accounts: Vec<AccountId>,
     initial_bridge_peers: Vec<AccountId>,
     dex_root: AccountId,
     tech_permissions_owner: AccountId,
     initial_assets_owner: AccountId,
     eth_bridge_params: EthBridgeParams,
 ) -> GenesisConfig {
-    let initial_balance = balance!(1000000000);
-    let initial_staking = balance!(1000000);
+    // Initial balances
+    let initial_staking = balance!(5000);
+    let initial_eth_bridge_xor_amount = balance!(350000);
+    let initial_eth_bridge_val_amount = balance!(33900000);
+    let initial_faucet_balance = balance!(500000);
+    let initial_pswap_tbc_rewards = balance!(25000000);
+
+    // Initial accounts
     let xor_fee_tech_account_id = TechAccountId::Generic(
         xor_fee::TECH_ACCOUNT_PREFIX.to_vec(),
         xor_fee::TECH_ACCOUNT_MAIN.to_vec(),
@@ -472,8 +477,6 @@ fn testnet_genesis(
     let faucet_account_id: AccountId =
         technical::Module::<Runtime>::tech_account_id_to_account_id(&faucet_tech_account_id)
             .expect("Failed to decode account id");
-    let initial_eth_bridge_xor_amount = balance!(350000);
-    let initial_eth_bridge_val_amount = balance!(33900000);
     let eth_bridge_tech_account_id = TechAccountId::Generic(
         eth_bridge::TECH_ACCOUNT_PREFIX.to_vec(),
         eth_bridge::TECH_ACCOUNT_MAIN.to_vec(),
@@ -496,10 +499,8 @@ fn testnet_genesis(
         bonding_curve_pool::TECH_ACCOUNT_RESERVES.to_vec(),
     );
 
-    let multicollateral_bonding_curve_reserves_tech_account_id = TechAccountId::Generic(
-        multicollateral_bonding_curve_pool::TECH_ACCOUNT_PREFIX.to_vec(),
-        multicollateral_bonding_curve_pool::TECH_ACCOUNT_RESERVES.to_vec(),
-    );
+    let mbc_reserves_tech_account_id = framenode_runtime::GetMbcReservesTechAccountId::get();
+    let mbc_reserves_account_id = framenode_runtime::GetMbcReservesAccountId::get();
 
     let pswap_distribution_tech_account_id =
         framenode_runtime::GetPswapDistributionTechAccountId::get();
@@ -529,6 +530,10 @@ fn testnet_genesis(
         (
             liquidity_proxy_account_id.clone(),
             liquidity_proxy_tech_account_id.clone(),
+        ),
+        (
+            mbc_reserves_account_id.clone(),
+            mbc_reserves_tech_account_id.clone(),
         ),
         (
             mbc_pool_rewards_account_id.clone(),
@@ -694,38 +699,7 @@ fn testnet_genesis(
                 (
                     initial_assets_owner,
                     Scope::Unlimited,
-                    vec![
-                        permissions::MINT,
-                        permissions::BURN,
-                        permissions::CREATE_FARM,
-                        permissions::LOCK_TO_FARM,
-                        permissions::UNLOCK_FROM_FARM,
-                        permissions::CLAIM_FROM_FARM,
-                    ],
-                ),
-                (
-                    endowed_accounts[1].clone(),
-                    Scope::Unlimited,
-                    vec![
-                        permissions::MINT,
-                        permissions::BURN,
-                        permissions::CREATE_FARM,
-                        permissions::LOCK_TO_FARM,
-                        permissions::UNLOCK_FROM_FARM,
-                        permissions::CLAIM_FROM_FARM,
-                    ],
-                ),
-                (
-                    endowed_accounts[2].clone(),
-                    Scope::Unlimited,
-                    vec![
-                        permissions::MINT,
-                        permissions::BURN,
-                        permissions::CREATE_FARM,
-                        permissions::LOCK_TO_FARM,
-                        permissions::UNLOCK_FROM_FARM,
-                        permissions::CLAIM_FROM_FARM,
-                    ],
+                    vec![permissions::MINT, permissions::BURN],
                 ),
                 (
                     pswap_distribution_account_id,
@@ -735,16 +709,25 @@ fn testnet_genesis(
             ],
         }),
         pallet_balances: Some(BalancesConfig {
-            balances: endowed_accounts
-                .iter()
-                .cloned()
-                .chain(vec![root_key, faucet_account_id.clone()].into_iter())
-                .map(|k| (k, initial_balance.into()))
-                .chain(once((
-                    eth_bridge_account_id.clone(),
-                    initial_eth_bridge_xor_amount.into(),
-                )))
-                .collect(),
+            balances: vec![
+                (root_key, balance!(100)),                           // TESTNET ONLY
+                (faucet_account_id.clone(), initial_faucet_balance), // TESTNET ONLY
+                (eth_bridge_account_id.clone(), initial_eth_bridge_xor_amount),
+            ]
+            .into_iter()
+            .chain(
+                initial_authorities
+                    .iter()
+                    .cloned()
+                    .map(|(k1, ..)| (k1, initial_staking)),
+            )
+            .chain(
+                initial_authorities
+                    .iter()
+                    .cloned()
+                    .map(|(_, k2, ..)| (k2, initial_staking)),
+            )
+            .collect(),
         }),
         dex_manager: Some(DEXManagerConfig {
             dex_list: vec![(
@@ -764,20 +747,17 @@ fn testnet_genesis(
         }),
         tokens: Some(TokensConfig {
             endowed_accounts: vec![
-                (
-                    faucet_account_id.clone(),
-                    GetValAssetId::get(),
-                    initial_balance.into(),
-                ),
-                (
-                    faucet_account_id,
-                    GetPswapAssetId::get(),
-                    initial_balance.into(),
-                ),
+                (faucet_account_id.clone(), VAL, initial_faucet_balance),
+                (faucet_account_id, PSWAP, initial_faucet_balance),
                 (
                     eth_bridge_account_id.clone(),
                     VAL,
                     initial_eth_bridge_val_amount.into(),
+                ),
+                (
+                    mbc_pool_rewards_account_id.clone(),
+                    PSWAP,
+                    initial_pswap_tbc_rewards,
                 ),
             ],
         }),
@@ -832,7 +812,7 @@ fn testnet_genesis(
         }),
         multicollateral_bonding_curve_pool: Some(MulticollateralBondingCurvePoolConfig {
             distribution_accounts: accounts,
-            reserves_account_id: multicollateral_bonding_curve_reserves_tech_account_id,
+            reserves_account_id: mbc_reserves_tech_account_id,
             reference_asset_id: Default::default(),
             incentives_account_id: mbc_pool_rewards_account_id,
         }),
