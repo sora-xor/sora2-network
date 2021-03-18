@@ -650,11 +650,6 @@ fn testnet_genesis(
                     vec![tech_permissions_owner.clone()],
                 ),
                 (
-                    permissions::INIT_DEX,
-                    Scope::Unlimited,
-                    vec![tech_permissions_owner.clone()],
-                ),
-                (
                     permissions::MANAGE_DEX,
                     Scope::Limited(hash(&0u32)),
                     vec![tech_permissions_owner.clone()],
@@ -671,11 +666,6 @@ fn testnet_genesis(
                 ),
             ],
             initial_permissions: vec![
-                (
-                    dex_root.clone(),
-                    Scope::Unlimited,
-                    vec![permissions::INIT_DEX],
-                ),
                 (
                     dex_root.clone(),
                     Scope::Limited(hash(&0u32)),

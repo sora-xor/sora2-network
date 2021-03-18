@@ -30,7 +30,7 @@ impl crate::Module<Runtime> {
         >,
     ) {
         let mut ext = ExtBuilder::default().build();
-        let dex_id = 220;
+        let dex_id = DEX_A_ID;
         let gt: crate::mock::AssetId = XOR;
         let bp: crate::mock::AssetId = DOT;
 
@@ -50,14 +50,6 @@ impl crate::Module<Runtime> {
                 AssetSymbol(b"DOT".to_vec()),
                 18,
                 Balance::from(0u32),
-                true,
-            ));
-
-            assert_ok!(dex_manager::Module::<Runtime>::initialize_dex(
-                Origin::signed(BOB()),
-                dex_id.clone(),
-                XOR,
-                BOB(),
                 true,
             ));
 
