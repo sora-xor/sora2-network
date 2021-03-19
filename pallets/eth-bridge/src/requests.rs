@@ -460,7 +460,8 @@ impl<T: Config> OutgoingTransfer<T> {
                 .expect("NetworkId can be always converted to u128; qed"),
         )
         .to_big_endian(&mut network_id.0);
-        let is_old_contract = self.asset_id == XOR.into() || self.asset_id == VAL.into();
+        let is_old_contract = self.network_id == T::GetEthNetworkId::get()
+            && (self.asset_id == XOR.into() || self.asset_id == VAL.into());
         let raw = if is_old_contract {
             ethabi::encode_packed(&[
                 currency_id.to_token(),

@@ -11,7 +11,7 @@ use crate::{
 };
 use codec::{Decode, Encode};
 use common::prelude::Balance;
-use common::{balance, eth, AssetId, AssetId32, AssetSymbol};
+use common::{balance, eth, AssetId, AssetId32, AssetSymbol, VAL, XOR};
 use frame_support::sp_runtime::app_crypto::sp_core::crypto::AccountId32;
 use frame_support::sp_runtime::app_crypto::sp_core::{self, ecdsa, sr25519, Pair, Public};
 use frame_support::sp_runtime::traits::IdentifyAccount;
@@ -2165,5 +2165,35 @@ fn should_parse_remove_peer_on_old_contract() {
                 network_id: net_id
             })
         );
+    });
+}
+
+#[test]
+fn should_use_different_abi_when_sending_xor_val_on_non_eth_network() {
+    let (mut ext, _state) = ExtBuilder::default().build();
+    ext.execute_with(|| {
+        let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
+        for asset_id in &[XOR, VAL] {
+            let transfer_to_eth = OutgoingTransfer::<Runtime> {
+                from: alice.clone(),
+                to: Address::from([1; 20]),
+                asset_id: *asset_id,
+                amount: 100_u32.into(),
+                nonce: 0,
+                network_id: ETH_NETWORK_ID,
+            };
+            let transfer_to_non_eth = OutgoingTransfer::<Runtime> {
+                from: alice.clone(),
+                to: Address::from([1; 20]),
+                asset_id: *asset_id,
+                amount: 100_u32.into(),
+                nonce: 0,
+                network_id: 100,
+            };
+            assert_ne!(
+                transfer_to_eth.to_eth_abi(H256::zero()).unwrap().raw,
+                transfer_to_non_eth.to_eth_abi(H256::zero()).unwrap().raw
+            );
+        }
     });
 }
