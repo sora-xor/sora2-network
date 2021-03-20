@@ -603,11 +603,10 @@ impl<T: Config> Pallet<T> {
         issuer: &T::AccountId,
         to: &T::AccountId,
         amount: Balance,
-    ) -> Result<Balance, DispatchError> {
+    ) -> DispatchResult {
         Self::ensure_asset_exists(asset_id)?;
         Self::check_permission_maybe_with_parameters(issuer, BURN, asset_id)?;
-        let negative_imbalance = T::Currency::slash(asset_id.clone(), to, amount);
-        Ok(negative_imbalance)
+        T::Currency::withdraw(*asset_id, to, amount)
     }
 
     pub fn update_balance(

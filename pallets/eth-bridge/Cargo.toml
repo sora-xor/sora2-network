@@ -42,7 +42,6 @@ parity-util-mem = { version = "0.9", default-features = false }
 parking_lot = "0.11.0"
 sp-core = { version = "3", default-features = false, features = ["full_crypto"] }
 sp-keystore = { version = "0.9", default-features = false }
-sp-state-machine = { version = "0.9" }
 tokens = { version = "0.4", package = "orml-tokens" }
 tokio = { version = "0.2.13", default-features = false, features = ["macros"] }
 

@@ -1716,7 +1716,6 @@ dependencies = [
  "serde_json",
  "sp-core",
  "sp-keystore",
- "sp-state-machine",
  "sp-std",
  "tiny-keccak",
  "tokio 0.2.25",

@@ -1,4 +1,4 @@
-use crate::contract::{MethodId, FUNCTIONS};
+use crate::contract::{MethodId, FUNCTIONS, METHOD_ID_SIZE};
 use crate::{
     get_bridge_account, types, Address, AssetIdOf, AssetKind, BridgeStatus, Config, Decoder, Error,
     OffchainRequest, OutgoingRequest, Pallet, RequestStatus, SignatureParams, Timepoint,
@@ -9,7 +9,7 @@ use codec::{Decode, Encode};
 use common::prelude::Balance;
 #[cfg(feature = "std")]
 use common::utils::string_serialization;
-use common::{with_transaction, AssetSymbol, BalancePrecision, VAL, XOR};
+use common::{AssetSymbol, BalancePrecision, VAL, XOR};
 use ethabi::{FixedBytes, Token};
 #[allow(unused_imports)]
 use frame_support::debug;
@@ -46,7 +46,7 @@ pub struct IncomingAddToken<T: Config> {
 impl<T: Config> IncomingAddToken<T> {
     /// Registers the sidechain asset.
     pub fn finalize(&self) -> Result<H256, DispatchError> {
-        with_transaction(|| {
+        common::with_transaction(|| {
             crate::Pallet::<T>::register_sidechain_asset(
                 self.token_address,
                 self.precision,
@@ -240,7 +240,7 @@ impl<T: Config> IncomingTransfer<T> {
     pub fn finalize(&self) -> Result<H256, DispatchError> {
         let bridge_account_id = get_bridge_account::<T>(self.network_id);
         if self.asset_kind.is_owned() {
-            with_transaction(|| {
+            common::with_transaction(|| {
                 self.unreserve()?;
                 Assets::<T>::transfer_from(
                     &self.asset_id,
@@ -307,9 +307,9 @@ impl<T: Config> IncomingCancelOutgoingRequest<T> {
             req_status == RequestStatus::ApprovalsReady,
             crate::Error::<T>::RequestIsNotReady
         );
-        let mut method_id = [0u8; 4];
+        let mut method_id = [0u8; METHOD_ID_SIZE];
         ensure!(self.tx_input.len() >= 4, Error::<T>::InvalidFunctionInput);
-        method_id.clone_from_slice(&self.tx_input[..4]);
+        method_id.clone_from_slice(&self.tx_input[..METHOD_ID_SIZE]);
         let expected_input = encode_outgoing_request_eth_call(method_id, &self.request)?;
         ensure!(
             expected_input == self.tx_input,
@@ -332,8 +332,8 @@ impl<T: Config> IncomingCancelOutgoingRequest<T> {
     /// Calls `cancel` on the request, changes its status to `Failed` and takes it approvals to
     /// make it available for resubmission.
     pub fn finalize(&self) -> Result<H256, DispatchError> {
-        // TODO: `with_transaction` should be removed in the future after stabilization.
-        with_transaction(|| self.request.cancel())?;
+        // TODO: `common::with_transaction` should be removed in the future after stabilization.
+        common::with_transaction(|| self.request.cancel())?;
         let hash = &self.request.hash();
         let net_id = self.network_id;
         crate::RequestStatuses::<T>::insert(net_id, hash, RequestStatus::Failed);
@@ -502,7 +502,7 @@ impl<T: Config> OutgoingTransfer<T> {
     /// Transfers the given `amount` of `asset_id` to the bridge account and reserve it.
     pub fn prepare(&mut self) -> Result<(), DispatchError> {
         let bridge_account = get_bridge_account::<T>(self.network_id);
-        with_transaction(|| {
+        common::with_transaction(|| {
             Assets::<T>::transfer_from(&self.asset_id, &self.from, &bridge_account, self.amount)?;
             Assets::<T>::reserve(self.asset_id, &bridge_account, self.amount)
         })
@@ -510,7 +510,7 @@ impl<T: Config> OutgoingTransfer<T> {
 
     pub fn cancel(&self) -> Result<(), DispatchError> {
         let bridge_account = get_bridge_account::<T>(self.network_id);
-        with_transaction(|| {
+        common::with_transaction(|| {
             let remainder = Assets::<T>::unreserve(self.asset_id, &bridge_account, self.amount)?;
             ensure!(remainder == 0, Error::<T>::FailedToUnreserve);
             Assets::<T>::transfer_from(&self.asset_id, &bridge_account, &self.from, self.amount)
@@ -521,7 +521,7 @@ impl<T: Config> OutgoingTransfer<T> {
     pub fn finalize(&self) -> Result<(), DispatchError> {
         self.validate()?;
         let bridge_acc = get_bridge_account::<T>(self.network_id);
-        with_transaction(|| {
+        common::with_transaction(|| {
             let remainder = Assets::<T>::unreserve(self.asset_id, &bridge_acc, self.amount)?;
             ensure!(remainder == 0, Error::<T>::FailedToUnreserve);
             let asset_kind: AssetKind =
@@ -800,7 +800,7 @@ impl<T: Config> OutgoingAddToken<T> {
     /// Calls `validate` again and registers the sidechain asset.
     pub fn finalize(&self) -> Result<(), DispatchError> {
         let symbol = self.validate()?;
-        with_transaction(|| {
+        common::with_transaction(|| {
             crate::Pallet::<T>::register_sidechain_asset(
                 self.token_address,
                 self.decimals,
@@ -1400,11 +1400,11 @@ pub fn parse_hash_from_call<T: Config>(
         .ok_or_else(|| Error::<T>::FailedToParseTxHashInCall.into())
 }
 
-macro_rules! impl_from_for_outgoing_request {
-    ($req:ty, $variant:ident) => {
+macro_rules! impl_from_for_outgoing_requests {
+    ($($req:ty, $var:ident);+ $(;)?) => {$(
         impl<T: Config> From<$req> for OutgoingRequest<T> {
             fn from(v: $req) -> Self {
-                Self::$variant(v)
+                Self::$var(v)
             }
         }
 
@@ -1413,13 +1413,7 @@ macro_rules! impl_from_for_outgoing_request {
                 Self::outgoing(v.into())
             }
         }
-    };
-}
-
-macro_rules! impl_from_for_outgoing_requests {
-    ($($req:ty, $var:ident);+ $(;)?) => {
-        $(impl_from_for_outgoing_request!($req, $var);)+
-    }
+    )+};
 }
 
 impl_from_for_outgoing_requests! {
@@ -1434,20 +1428,14 @@ impl_from_for_outgoing_requests! {
     OutgoingMigrate<T>, Migrate;
 }
 
-macro_rules! impl_from_for_incoming_request {
-    ($req:ty, $variant:ident) => {
+macro_rules! impl_from_for_incoming_requests {
+    ($($req:ty, $var:ident);+ $(;)?) => {$(
         impl<T: Config> From<$req> for crate::IncomingRequest<T> {
             fn from(v: $req) -> Self {
-                Self::$variant(v)
+                Self::$var(v)
             }
         }
-    };
-}
-
-macro_rules! impl_from_for_incoming_requests {
-    ($($req:ty, $var:ident);+ $(;)?) => {
-        $(impl_from_for_incoming_request!($req, $var);)+
-    }
+    )+};
 }
 
 impl_from_for_incoming_requests! {

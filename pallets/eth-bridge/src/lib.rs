@@ -42,8 +42,8 @@ extern crate jsonrpc_core as rpc;
 
 use crate::contract::{
     functions, init_add_peer_by_peer_fn, init_remove_peer_by_peer_fn, ADD_PEER_BY_PEER_FN,
-    ADD_PEER_BY_PEER_ID, ADD_PEER_BY_PEER_TX_HASH_ARG_POS, FUNCTIONS, REMOVE_PEER_BY_PEER_FN,
-    REMOVE_PEER_BY_PEER_ID, REMOVE_PEER_BY_PEER_TX_HASH_ARG_POS,
+    ADD_PEER_BY_PEER_ID, ADD_PEER_BY_PEER_TX_HASH_ARG_POS, FUNCTIONS, METHOD_ID_SIZE,
+    REMOVE_PEER_BY_PEER_FN, REMOVE_PEER_BY_PEER_ID, REMOVE_PEER_BY_PEER_TX_HASH_ARG_POS,
 };
 use crate::types::{Bytes, CallRequest, Log, Transaction, TransactionReceipt};
 use alloc::string::String;
@@ -1417,7 +1417,7 @@ pub mod pallet {
         ) -> DispatchResultWithPostInfo {
             debug::debug!("called finalize_mark_as_done");
             let author = ensure_signed(origin)?;
-            let _ = Self::ensure_bridge_account(&author, network_id);
+            let _ = Self::ensure_bridge_account(&author, network_id)?;
             let request_status = RequestStatuses::<T>::get(network_id, request_hash)
                 .ok_or(Error::<T>::UnknownRequest)?;
             ensure!(
@@ -2255,12 +2255,18 @@ impl<T: Config> Pallet<T> {
             pre_request.kind,
         )?;
         ensure!(
-            tx_receipt.gas_used.is_some() && tx_receipt.gas_used.unwrap() != tx.gas,
+            tx_receipt
+                .gas_used
+                .map(|used| used != tx.gas)
+                .unwrap_or(false),
             Error::<T>::TransactionMightHaveFailedDueToGasLimit
         );
-        ensure!(tx.input.0.len() >= 4, Error::<T>::InvalidFunctionInput);
-        let mut method_id = [0u8; 4];
-        method_id.clone_from_slice(&tx.input.0[..4]);
+        ensure!(
+            tx.input.0.len() >= METHOD_ID_SIZE,
+            Error::<T>::InvalidFunctionInput
+        );
+        let mut method_id = [0u8; METHOD_ID_SIZE];
+        method_id.clone_from_slice(&tx.input.0[..METHOD_ID_SIZE]);
         let funs = FUNCTIONS.get_or_init(functions);
         let fun_meta = funs.get(&method_id).ok_or(Error::<T>::UnknownMethodId)?;
         let fun = &fun_meta.function;
