@@ -75,9 +75,7 @@ pub use pallet_transaction_payment::{Multiplier, MultiplierUpdate};
 #[cfg(any(feature = "std", test))]
 pub use sp_runtime::BuildStorage;
 
-use eth_bridge::{
-    AssetKind, OffchainRequest, OutgoingRequestEncoded, RequestStatus, SignatureParams,
-};
+use eth_bridge::{AssetKind, OutgoingRequestEncoded, Request, RequestStatus, SignatureParams};
 use on_unbalanced_democracy_slash::OnUnbalancedDemocracySlash;
 pub use {bonding_curve_pool, eth_bridge, multicollateral_bonding_curve_pool};
 
@@ -1318,7 +1316,7 @@ impl_runtime_apis! {
             AssetKind,
             AssetId,
             sp_core::H160,
-            OffchainRequest<Runtime>,
+            Request<Runtime>,
             RequestStatus,
             OutgoingRequestEncoded,
             NetworkId,
@@ -1329,7 +1327,7 @@ impl_runtime_apis! {
             network_id: Option<NetworkId>
         ) -> Result<
             Vec<(
-                OffchainRequest<Runtime>,
+                Request<Runtime>,
                 RequestStatus,
             )>,
             DispatchError,

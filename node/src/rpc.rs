@@ -84,7 +84,7 @@ where
         eth_bridge::AssetKind,
         AssetId,
         sp_core::H160,
-        eth_bridge::OffchainRequest<Runtime>,
+        eth_bridge::Request<Runtime>,
         eth_bridge::RequestStatus,
         eth_bridge::OutgoingRequestEncoded,
         framenode_runtime::NetworkId,

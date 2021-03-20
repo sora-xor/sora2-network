@@ -265,12 +265,6 @@ impl<T: Config> OutgoingRequest<T> {
         }
     }
 
-    /// Calculates the request's hash.
-    fn hash(&self) -> H256 {
-        let hash = self.using_encoded(blake2_256);
-        H256(hash)
-    }
-
     fn network_id(&self) -> T::NetworkId {
         match self {
             OutgoingRequest::Transfer(request) => request.network_id,
@@ -362,16 +356,14 @@ impl<T: Config> OutgoingRequest<T> {
     }
 }
 
-/// Types of requests that can be made from a sidechain.
+/// Types of transaction-requests that can be made from a sidechain.
 #[derive(Clone, Copy, Encode, Decode, RuntimeDebug, PartialEq, Eq)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-pub enum IncomingRequestKind {
+pub enum IncomingRequestTransactionKind {
     Transfer,
     AddAsset,
     AddPeer,
     RemovePeer,
-    CancelOutgoingRequest,
-    MarkAsDone,
     PrepareForMigration,
     Migrate,
     AddPeerCompat,
@@ -380,7 +372,35 @@ pub enum IncomingRequestKind {
     TransferXOR,
 }
 
-impl IncomingRequestKind {
+/// Types of meta-requests that can be made.
+#[derive(Clone, Copy, Encode, Decode, RuntimeDebug, PartialEq, Eq)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+pub enum IncomingMetaRequestKind {
+    CancelOutgoingRequest,
+    MarkAsDone,
+}
+
+/// Types of requests that can be made from a sidechain.
+#[derive(Clone, Copy, Encode, Decode, RuntimeDebug, PartialEq, Eq)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+pub enum IncomingRequestKind {
+    Transaction(IncomingRequestTransactionKind),
+    Meta(IncomingMetaRequestKind),
+}
+
+impl From<IncomingRequestTransactionKind> for IncomingRequestKind {
+    fn from(v: IncomingRequestTransactionKind) -> Self {
+        Self::Transaction(v)
+    }
+}
+
+impl From<IncomingMetaRequestKind> for IncomingRequestKind {
+    fn from(v: IncomingMetaRequestKind) -> Self {
+        Self::Meta(v)
+    }
+}
+
+impl IncomingRequestTransactionKind {
     /// Returns `true` if the request should be used with XOR and VAL contracts.
     pub fn is_compat(&self) -> bool {
         *self == Self::AddPeerCompat || *self == Self::RemovePeerCompat
@@ -391,11 +411,11 @@ impl IncomingRequestKind {
 ///
 /// Each request, has the following properties: transaction hash, height, network ID, and timepoint.
 /// And the following methods: validate, prepare, finalize, cancel.
+#[cfg_attr(feature = "std", derive(Serialize))]
 #[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug)]
 pub enum IncomingRequest<T: Config> {
     Transfer(IncomingTransfer<T>),
-    // TODO: fix naming
-    AddAsset(IncomingAddToken<T>),
+    AddToken(IncomingAddToken<T>),
     ChangePeers(IncomingChangePeers<T>),
     CancelOutgoingRequest(IncomingCancelOutgoingRequest<T>),
     PrepareForMigration(IncomingPrepareForMigration<T>),
@@ -406,7 +426,7 @@ pub enum IncomingRequest<T: Config> {
 impl<T: Config> IncomingRequest<T> {
     pub fn try_from_contract_event(
         event: ContractEvent<Address, T::AccountId, Balance>,
-        incoming_request: IncomingPreRequest<T>,
+        incoming_request: LoadIncomingTransactionRequest<T>,
         at_height: u64,
         tx_hash: H256,
     ) -> Result<Self, Error<T>> {
@@ -469,10 +489,10 @@ impl<T: Config> IncomingRequest<T> {
         Ok(req)
     }
 
-    fn hash(&self) -> H256 {
+    fn tx_hash(&self) -> H256 {
         match self {
             IncomingRequest::Transfer(request) => request.tx_hash,
-            IncomingRequest::AddAsset(request) => request.tx_hash,
+            IncomingRequest::AddToken(request) => request.tx_hash,
             IncomingRequest::ChangePeers(request) => request.tx_hash,
             IncomingRequest::CancelOutgoingRequest(request) => request.initial_request_hash,
             IncomingRequest::PrepareForMigration(request) => request.tx_hash,
@@ -484,7 +504,7 @@ impl<T: Config> IncomingRequest<T> {
     fn network_id(&self) -> T::NetworkId {
         match self {
             IncomingRequest::Transfer(request) => request.network_id,
-            IncomingRequest::AddAsset(request) => request.network_id,
+            IncomingRequest::AddToken(request) => request.network_id,
             IncomingRequest::ChangePeers(request) => request.network_id,
             IncomingRequest::CancelOutgoingRequest(request) => request.network_id,
             IncomingRequest::PrepareForMigration(request) => request.network_id,
@@ -497,7 +517,7 @@ impl<T: Config> IncomingRequest<T> {
     fn at_height(&self) -> u64 {
         match self {
             IncomingRequest::Transfer(request) => request.at_height,
-            IncomingRequest::AddAsset(request) => request.at_height,
+            IncomingRequest::AddToken(request) => request.at_height,
             IncomingRequest::ChangePeers(request) => request.at_height,
             IncomingRequest::CancelOutgoingRequest(request) => request.at_height,
             IncomingRequest::PrepareForMigration(request) => request.at_height,
@@ -509,7 +529,7 @@ impl<T: Config> IncomingRequest<T> {
     pub fn validate(&self) -> Result<(), DispatchError> {
         match self {
             IncomingRequest::Transfer(request) => request.validate(),
-            IncomingRequest::AddAsset(_request) => Ok(()),
+            IncomingRequest::AddToken(_request) => Ok(()),
             IncomingRequest::ChangePeers(_request) => Ok(()),
             IncomingRequest::CancelOutgoingRequest(_request) => Ok(()),
             IncomingRequest::PrepareForMigration(_request) => Ok(()),
@@ -521,7 +541,7 @@ impl<T: Config> IncomingRequest<T> {
     pub fn prepare(&self) -> Result<(), DispatchError> {
         match self {
             IncomingRequest::Transfer(request) => request.prepare(),
-            IncomingRequest::AddAsset(_request) => Ok(()),
+            IncomingRequest::AddToken(_request) => Ok(()),
             IncomingRequest::ChangePeers(_request) => Ok(()),
             IncomingRequest::CancelOutgoingRequest(request) => request.prepare(),
             IncomingRequest::PrepareForMigration(request) => request.prepare(),
@@ -533,7 +553,7 @@ impl<T: Config> IncomingRequest<T> {
     pub fn cancel(&self) -> Result<(), DispatchError> {
         match self {
             IncomingRequest::Transfer(request) => request.cancel(),
-            IncomingRequest::AddAsset(_request) => Ok(()),
+            IncomingRequest::AddToken(_request) => Ok(()),
             IncomingRequest::ChangePeers(_request) => Ok(()),
             IncomingRequest::CancelOutgoingRequest(request) => request.cancel(),
             IncomingRequest::PrepareForMigration(request) => request.cancel(),
@@ -545,7 +565,7 @@ impl<T: Config> IncomingRequest<T> {
     pub fn finalize(&self) -> Result<H256, DispatchError> {
         match self {
             IncomingRequest::Transfer(request) => request.finalize(),
-            IncomingRequest::AddAsset(request) => request.finalize(),
+            IncomingRequest::AddToken(request) => request.finalize(),
             IncomingRequest::ChangePeers(request) => request.finalize(),
             IncomingRequest::CancelOutgoingRequest(request) => request.finalize(),
             IncomingRequest::PrepareForMigration(request) => request.finalize(),
@@ -559,7 +579,7 @@ impl<T: Config> IncomingRequest<T> {
     pub fn timepoint(&self) -> Timepoint<T> {
         match self {
             IncomingRequest::Transfer(request) => request.timepoint(),
-            IncomingRequest::AddAsset(request) => request.timepoint(),
+            IncomingRequest::AddToken(request) => request.timepoint(),
             IncomingRequest::ChangePeers(request) => request.timepoint(),
             IncomingRequest::CancelOutgoingRequest(request) => request.timepoint(),
             IncomingRequest::PrepareForMigration(request) => request.timepoint(),
@@ -568,46 +588,21 @@ impl<T: Config> IncomingRequest<T> {
         }
     }
 
-    pub fn kind(&self) -> IncomingRequestKind {
-        match self {
-            IncomingRequest::Transfer(_) => IncomingRequestKind::Transfer,
-            IncomingRequest::AddAsset(_) => IncomingRequestKind::AddAsset,
-            IncomingRequest::ChangePeers(request) => {
-                if request.added {
-                    IncomingRequestKind::AddPeer
-                } else {
-                    IncomingRequestKind::RemovePeer
-                }
-            }
-            IncomingRequest::CancelOutgoingRequest(_) => IncomingRequestKind::CancelOutgoingRequest,
-            IncomingRequest::PrepareForMigration(_) => IncomingRequestKind::PrepareForMigration,
-            IncomingRequest::Migrate(_) => IncomingRequestKind::Migrate,
-            IncomingRequest::ChangePeersCompat(request) => {
-                if request.added {
-                    IncomingRequestKind::AddPeerCompat
-                } else {
-                    IncomingRequestKind::RemovePeerCompat
-                }
-            }
-        }
-    }
-
     /// Check that the incoming requests still exists on Sidechain.
     pub fn check_existence(&self) -> bool {
         let network_id = self.network_id();
-        let kind = self.kind();
         match self {
             IncomingRequest::CancelOutgoingRequest(request) => {
                 let hash = request.tx_hash;
-                if let Ok(tx) = Module::<T>::load_tx_receipt(hash, network_id, kind) {
+                if let Ok(tx) = Module::<T>::load_tx_receipt(hash, network_id) {
                     tx.is_approved() == false // TODO: check for gas limit
                 } else {
                     false
                 }
             }
             _ => {
-                let hash = self.hash();
-                if let Ok(tx) = Module::<T>::load_tx_receipt(hash, network_id, kind) {
+                let hash = self.tx_hash();
+                if let Ok(tx) = Module::<T>::load_tx_receipt(hash, network_id) {
                     tx.is_approved()
                 } else {
                     false
@@ -617,27 +612,136 @@ impl<T: Config> IncomingRequest<T> {
     }
 }
 
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+#[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug)]
+pub enum LoadIncomingRequest<T: Config> {
+    Transaction(LoadIncomingTransactionRequest<T>),
+    Meta(LoadIncomingMetaRequest<T>, H256),
+}
+
+impl<T: Config> LoadIncomingRequest<T> {
+    fn hash(&self) -> H256 {
+        match self {
+            Self::Transaction(request) => request.hash,
+            Self::Meta(_, hash) => *hash,
+        }
+    }
+
+    fn set_hash(&mut self, new_hash: H256) {
+        match self {
+            Self::Transaction(_request) => (), // should not be the case
+            Self::Meta(_, hash) => *hash = new_hash,
+        }
+    }
+
+    fn network_id(&self) -> T::NetworkId {
+        match self {
+            Self::Transaction(request) => request.network_id,
+            Self::Meta(request, _) => request.network_id,
+        }
+    }
+
+    fn timepoint(&self) -> Timepoint<T> {
+        match self {
+            Self::Transaction(request) => request.timepoint,
+            Self::Meta(request, _) => request.timepoint,
+        }
+    }
+
+    fn author(&self) -> &T::AccountId {
+        match self {
+            Self::Transaction(request) => &request.author,
+            Self::Meta(request, _) => &request.author,
+        }
+    }
+
+    /// Checks that the request can be initiated.
+    fn validate(&self) -> Result<(), DispatchError> {
+        match self {
+            Self::Transaction(_request) => Ok(()),
+            Self::Meta(request, _) => {
+                match request.kind {
+                    IncomingMetaRequestKind::MarkAsDone => {
+                        let request_status =
+                            RequestStatuses::<T>::get(request.network_id, request.hash)
+                                .ok_or(Error::<T>::UnknownRequest)?;
+                        ensure!(
+                            request_status == RequestStatus::ApprovalsReady,
+                            Error::<T>::RequestIsNotReady
+                        );
+                    }
+                    _ => (),
+                }
+                Ok(())
+                // request.validate()
+            }
+        }
+    }
+
+    fn prepare(&mut self) -> Result<(), DispatchError> {
+        Ok(())
+    }
+
+    fn cancel(&self) -> Result<(), DispatchError> {
+        Ok(())
+    }
+
+    pub fn finalize(&self) -> DispatchResult {
+        Ok(())
+    }
+}
+
 /// Information needed for a request to be loaded from sidechain. Basically it's
 /// a hash of the transaction and the type of the request.
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug)]
-pub struct IncomingPreRequest<T: Config> {
+pub struct LoadIncomingTransactionRequest<T: Config> {
     author: T::AccountId,
     hash: H256,
     timepoint: Timepoint<T>,
-    kind: IncomingRequestKind,
+    kind: IncomingRequestTransactionKind,
     network_id: T::NetworkId,
 }
 
-impl<T: Config> IncomingPreRequest<T> {
+impl<T: Config> LoadIncomingTransactionRequest<T> {
     pub fn new(
         author: T::AccountId,
         hash: H256,
         timepoint: Timepoint<T>,
-        kind: IncomingRequestKind,
+        kind: IncomingRequestTransactionKind,
         network_id: T::NetworkId,
     ) -> Self {
-        IncomingPreRequest {
+        LoadIncomingTransactionRequest {
+            author,
+            hash,
+            timepoint,
+            kind,
+            network_id,
+        }
+    }
+}
+
+/// Information needed for a request to be loaded from sidechain. Basically it's
+/// a hash of the transaction and the type of the request.
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+#[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug)]
+pub struct LoadIncomingMetaRequest<T: Config> {
+    author: T::AccountId,
+    hash: H256,
+    timepoint: Timepoint<T>,
+    kind: IncomingMetaRequestKind,
+    network_id: T::NetworkId,
+}
+
+impl<T: Config> LoadIncomingMetaRequest<T> {
+    pub fn new(
+        author: T::AccountId,
+        hash: H256,
+        timepoint: Timepoint<T>,
+        kind: IncomingMetaRequestKind,
+        network_id: T::NetworkId,
+    ) -> Self {
+        LoadIncomingMetaRequest {
             author,
             hash,
             timepoint,
@@ -650,56 +754,79 @@ impl<T: Config> IncomingPreRequest<T> {
 /// A bridge operation handled by off-chain workers.
 #[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug)]
 #[cfg_attr(feature = "std", derive(Serialize))]
-pub enum OffchainRequest<T: Config> {
+pub enum Request<T: Config> {
     /// Thischain->Sidechain request with its hash.
     Outgoing(OutgoingRequest<T>, H256),
     /// Information required to load a corresponding incoming request from the sidechain network.
-    Incoming(IncomingPreRequest<T>),
+    LoadIncoming(LoadIncomingRequest<T>),
+    /// Sidechain->Thischain request with its hash.
+    Incoming(IncomingRequest<T>, H256),
 }
 
-impl<T: Config> OffchainRequest<T> {
+impl<T: Config> Request<T> {
     pub fn outgoing(request: OutgoingRequest<T>) -> Self {
-        let hash = request.hash();
-        Self::Outgoing(request, hash)
+        let mut request = Self::Outgoing(request, H256::zero());
+        let hash = request.using_encoded(blake2_256);
+        request.set_hash(H256(hash));
+        request
+    }
+
+    pub fn load_incoming_meta(request: LoadIncomingMetaRequest<T>) -> Self {
+        let mut request = Self::LoadIncoming(LoadIncomingRequest::Meta(request, H256::zero()));
+        let hash = request.using_encoded(blake2_256);
+        request.set_hash(H256(hash));
+        request
+    }
+
+    pub fn incoming(request: IncomingRequest<T>) -> Self {
+        let mut request = Self::Incoming(request, H256::zero());
+        let hash = request.using_encoded(blake2_256);
+        request.set_hash(H256(hash));
+        request
     }
 
     /// Calculates or returns an already calculated request hash.
     fn hash(&self) -> H256 {
         match self {
-            OffchainRequest::Outgoing(_request, hash) => *hash,
-            OffchainRequest::Incoming(request) => match request.kind {
-                // We calculate a different hash for these types of requests, to avoid
-                // collisions, because, for example, `MarkAsDone` pre-request contains a hash that
-                // is already added to the storage. One can think of these as 'meta-requests'.
-                IncomingRequestKind::CancelOutgoingRequest | IncomingRequestKind::MarkAsDone => {
-                    H256(self.using_encoded(blake2_256))
-                }
-                _ => H256(request.hash.0),
-            },
+            Request::Outgoing(_request, hash) => *hash,
+            Request::LoadIncoming(request) => request.hash(),
+            Request::Incoming(_request, hash) => *hash,
+        }
+    }
+
+    /// Calculates or returns an already calculated request hash.
+    fn set_hash(&mut self, new_hash: H256) {
+        match self {
+            Request::Outgoing(_request, hash) => *hash = new_hash,
+            Request::LoadIncoming(request) => request.set_hash(new_hash),
+            Request::Incoming(_request, hash) => *hash = new_hash,
         }
     }
 
     /// The request's network.
     fn network_id(&self) -> T::NetworkId {
         match self {
-            OffchainRequest::Outgoing(request, _) => request.network_id(),
-            OffchainRequest::Incoming(request) => request.network_id,
+            Request::Outgoing(request, _) => request.network_id(),
+            Request::LoadIncoming(request) => request.network_id(),
+            Request::Incoming(request, _) => request.network_id(),
         }
     }
 
     /// The request's timepoint.
     fn timepoint(&self) -> Timepoint<T> {
         match self {
-            OffchainRequest::Outgoing(request, _) => request.timepoint(),
-            OffchainRequest::Incoming(request) => request.timepoint,
+            Request::Outgoing(request, _) => request.timepoint(),
+            Request::LoadIncoming(request) => request.timepoint(),
+            Request::Incoming(request, _) => request.timepoint(),
         }
     }
 
     /// An initiator of the request.
     fn author(&self) -> &T::AccountId {
         match self {
-            OffchainRequest::Outgoing(request, _) => request.author(),
-            OffchainRequest::Incoming(request) => &request.author,
+            Request::Outgoing(request, _) => request.author(),
+            Request::LoadIncoming(request) => request.author(),
+            Request::Incoming(_request, _) => unreachable!(), // TODO: maybe save author account id in IncomingRequest
         }
     }
 
@@ -707,56 +834,55 @@ impl<T: Config> OffchainRequest<T> {
     /// sufficient funds for transfer).
     fn validate(&self) -> Result<(), DispatchError> {
         match self {
-            OffchainRequest::Outgoing(request, _) => request.validate(),
-            OffchainRequest::Incoming(request) => {
-                match request.kind {
-                    IncomingRequestKind::MarkAsDone => {
-                        let request_status =
-                            RequestStatuses::<T>::get(request.network_id, request.hash)
-                                .ok_or(Error::<T>::UnknownRequest)?;
-                        ensure!(
-                            request_status == RequestStatus::ApprovalsReady,
-                            Error::<T>::RequestIsNotReady
-                        );
-                    }
-                    _ => (),
-                }
-                Ok(())
-            }
+            Request::Outgoing(request, _) => request.validate(),
+            Request::LoadIncoming(request) => request.validate(),
+            Request::Incoming(request, _) => request.validate(),
         }
     }
 
     /// Performs additional state changes for the request (e.g., reserves funds for a transfer).
     fn prepare(&mut self) -> Result<(), DispatchError> {
         match self {
-            OffchainRequest::Outgoing(request, _) => request.prepare(),
-            OffchainRequest::Incoming(_) => Ok(()),
+            Request::Outgoing(request, _) => request.prepare(),
+            Request::LoadIncoming(request) => request.prepare(),
+            Request::Incoming(request, _) => request.prepare(),
         }
     }
 
     /// Undos the state changes done in the `prepare` function.
     fn cancel(&self) -> Result<(), DispatchError> {
         match self {
-            OffchainRequest::Outgoing(request, _) => request.cancel(),
-            OffchainRequest::Incoming(_) => {
-                if let Some(request) = IncomingRequests::<T>::get(self.network_id(), self.hash()) {
-                    return request.cancel();
-                }
-                Ok(())
-            }
+            Request::Outgoing(request, _) => request.cancel(),
+            Request::LoadIncoming(request) => request.cancel(),
+            Request::Incoming(request, _) => request.cancel(),
         }
     }
 
     pub fn finalize(&self) -> DispatchResult {
         match self {
-            OffchainRequest::Outgoing(r, _) => r.finalize(),
-            _ => Ok(()),
+            Request::Outgoing(r, _) => r.finalize(),
+            Request::Incoming(r, _) => r.finalize().map(|_| ()),
+            Request::LoadIncoming(r) => r.finalize(),
         }
     }
 
-    pub fn as_outgoing(&self) -> Option<&OutgoingRequest<T>> {
+    pub fn as_outgoing(&self) -> Option<(&OutgoingRequest<T>, H256)> {
         match self {
-            OffchainRequest::Outgoing(r, _) => Some(r),
+            Request::Outgoing(r, h) => Some((r, *h)),
+            _ => None,
+        }
+    }
+
+    pub fn into_outgoing(self) -> Option<(OutgoingRequest<T>, H256)> {
+        match self {
+            Request::Outgoing(r, h) => Some((r, h)),
+            _ => None,
+        }
+    }
+
+    pub fn as_incoming(&self) -> Option<(&IncomingRequest<T>, H256)> {
+        match self {
+            Request::Incoming(r, h) => Some((r, *h)),
             _ => None,
         }
     }
@@ -840,7 +966,7 @@ pub enum RequestStatus {
     Pending,
     Frozen,
     ApprovalsReady,
-    Failed,
+    Failed(DispatchError),
     Done,
 }
 
@@ -897,6 +1023,7 @@ impl Default for BridgeStatus {
 }
 
 pub use pallet::*;
+use std::hint::unreachable_unchecked;
 
 #[frame_support::pallet]
 pub mod pallet {
@@ -1003,7 +1130,7 @@ pub mod pallet {
             let from = ensure_signed(origin)?;
             let nonce = frame_system::Module::<T>::account_nonce(&from);
             let timepoint = bridge_multisig::Module::<T>::timepoint();
-            Self::add_request(OffchainRequest::outgoing(OutgoingRequest::AddAsset(
+            Self::add_request(Request::outgoing(OutgoingRequest::AddAsset(
                 OutgoingAddAsset {
                     author: from.clone(),
                     asset_id,
@@ -1039,7 +1166,7 @@ pub mod pallet {
             // ensure!(from == Self::authority_account(), Error::<T>::Forbidden);
             let nonce = frame_system::Module::<T>::account_nonce(&from);
             let timepoint = bridge_multisig::Module::<T>::timepoint();
-            Self::add_request(OffchainRequest::outgoing(OutgoingRequest::AddToken(
+            Self::add_request(Request::outgoing(OutgoingRequest::AddToken(
                 OutgoingAddToken {
                     author: from.clone(),
                     token_address,
@@ -1074,7 +1201,7 @@ pub mod pallet {
             let from = ensure_signed(origin)?;
             let nonce = frame_system::Module::<T>::account_nonce(&from);
             let timepoint = bridge_multisig::Module::<T>::timepoint();
-            Self::add_request(OffchainRequest::outgoing(OutgoingRequest::Transfer(
+            Self::add_request(Request::outgoing(OutgoingRequest::Transfer(
                 OutgoingTransfer {
                     from: from.clone(),
                     to,
@@ -1104,26 +1231,43 @@ pub mod pallet {
         ) -> DispatchResultWithPostInfo {
             debug::debug!("called request_from_sidechain");
             let from = ensure_signed(origin)?;
-            if kind == IncomingRequestKind::CancelOutgoingRequest {
-                fail!(Error::<T>::Unavailable);
-            }
             let timepoint = bridge_multisig::Module::<T>::timepoint();
-            Self::add_request(OffchainRequest::Incoming(IncomingPreRequest::new(
-                from,
-                eth_tx_hash,
-                timepoint,
-                kind,
-                network_id,
-            )))?;
-            let pays_fee = if kind == IncomingRequestKind::TransferXOR {
-                Pays::No
-            } else {
-                Pays::Yes
-            };
-            Ok(PostDispatchInfo {
-                actual_weight: None,
-                pays_fee,
-            })
+            match kind {
+                IncomingRequestKind::Transaction(kind) => {
+                    Self::add_request(Request::LoadIncoming(LoadIncomingRequest::Transaction(
+                        LoadIncomingTransactionRequest::new(
+                            from,
+                            eth_tx_hash,
+                            timepoint,
+                            kind,
+                            network_id,
+                        ),
+                    )))?;
+                    let pays_fee = if kind == IncomingRequestTransactionKind::TransferXOR {
+                        Pays::No
+                    } else {
+                        Pays::Yes
+                    };
+                    Ok(PostDispatchInfo {
+                        actual_weight: None,
+                        pays_fee,
+                    })
+                }
+                IncomingRequestKind::Meta(kind) => {
+                    if kind == IncomingMetaRequestKind::CancelOutgoingRequest {
+                        fail!(Error::<T>::Unavailable);
+                    }
+                    let timepoint = bridge_multisig::Module::<T>::timepoint();
+                    Self::add_request(Request::load_incoming_meta(LoadIncomingMetaRequest::new(
+                        from,
+                        eth_tx_hash,
+                        timepoint,
+                        kind,
+                        network_id,
+                    )))?;
+                    Ok(().into())
+                }
+            }
         }
 
         /// Finalize incoming request.
@@ -1144,25 +1288,26 @@ pub mod pallet {
             network_id: BridgeNetworkId<T>,
         ) -> DispatchResultWithPostInfo {
             debug::debug!("called finalize_incoming_request");
-
             let from = ensure_signed(origin)?;
             let _ = Self::ensure_bridge_account(&from, network_id)?;
             let request =
-                IncomingRequests::<T>::get(network_id, &hash).ok_or(Error::<T>::UnknownRequest)?;
+                Requests::<T>::get(network_id, &hash).ok_or(Error::<T>::UnknownRequest)?;
             let error_opt = request.finalize().err();
             if let Some(e) = error_opt {
                 debug::error!("Incoming request failed {:?} {:?}", hash, e);
-                RequestStatuses::<T>::insert(network_id, hash, RequestStatus::Failed);
                 Self::deposit_event(Event::IncomingRequestFinalizationFailed(hash));
+                RequestStatuses::<T>::insert(network_id, hash, RequestStatus::Failed(e));
                 if let Err(e) = request.cancel() {
                     debug::error!("Request cancellation failed: {:?}, {:?}", e, request);
+                    // Such errors should not occur in general, but we check it in tests, anyway.
+                    #[cfg(not(test))]
+                    debug_assert!(false, "unexpected cancellation error {:?}", e);
                 }
             } else {
                 debug::warn!("Incoming request finalized {:?}", hash);
                 RequestStatuses::<T>::insert(network_id, hash, RequestStatus::Done);
                 Self::deposit_event(Event::IncomingRequestFinalized(hash));
             }
-            PendingIncomingRequests::<T>::mutate(network_id, |set| set.remove(&hash));
             Self::remove_request_from_queue(network_id, &hash);
             Ok(().into())
         }
@@ -1186,7 +1331,7 @@ pub mod pallet {
             // ensure!(from == Self::authority_account(), Error::<T>::Forbidden);
             let nonce = frame_system::Module::<T>::account_nonce(&from);
             let timepoint = bridge_multisig::Module::<T>::timepoint();
-            Self::add_request(OffchainRequest::outgoing(OutgoingRequest::AddPeer(
+            Self::add_request(Request::outgoing(OutgoingRequest::AddPeer(
                 OutgoingAddPeer {
                     author: from.clone(),
                     peer_account_id: account_id.clone(),
@@ -1199,7 +1344,7 @@ pub mod pallet {
             frame_system::Module::<T>::inc_account_nonce(&from);
             if network_id == T::GetEthNetworkId::get() {
                 let nonce = frame_system::Module::<T>::account_nonce(&from);
-                Self::add_request(OffchainRequest::outgoing(OutgoingRequest::AddPeerCompat(
+                Self::add_request(Request::outgoing(OutgoingRequest::AddPeerCompat(
                     OutgoingAddPeerCompat {
                         author: from.clone(),
                         peer_account_id: account_id,
@@ -1232,7 +1377,7 @@ pub mod pallet {
             let peer_address = Self::peer_address(network_id, &account_id);
             let nonce = frame_system::Module::<T>::account_nonce(&from);
             let timepoint = bridge_multisig::Module::<T>::timepoint();
-            Self::add_request(OffchainRequest::outgoing(OutgoingRequest::RemovePeer(
+            Self::add_request(Request::outgoing(OutgoingRequest::RemovePeer(
                 OutgoingRemovePeer {
                     author: from.clone(),
                     peer_account_id: account_id.clone(),
@@ -1245,16 +1390,16 @@ pub mod pallet {
             frame_system::Module::<T>::inc_account_nonce(&from);
             if network_id == T::GetEthNetworkId::get() {
                 let nonce = frame_system::Module::<T>::account_nonce(&from);
-                Self::add_request(OffchainRequest::outgoing(
-                    OutgoingRequest::RemovePeerCompat(OutgoingRemovePeerCompat {
+                Self::add_request(Request::outgoing(OutgoingRequest::RemovePeerCompat(
+                    OutgoingRemovePeerCompat {
                         author: from.clone(),
                         peer_account_id: account_id,
                         peer_address,
                         nonce,
                         network_id,
                         timepoint,
-                    }),
-                ))?;
+                    },
+                )))?;
                 frame_system::Module::<T>::inc_account_nonce(&from);
             }
             Ok(().into())
@@ -1277,14 +1422,14 @@ pub mod pallet {
             // ensure!(from == Self::authority_account(), Error::<T>::Forbidden);
             let nonce = frame_system::Module::<T>::account_nonce(&from);
             let timepoint = bridge_multisig::Module::<T>::timepoint();
-            Self::add_request(OffchainRequest::outgoing(
-                OutgoingRequest::PrepareForMigration(OutgoingPrepareForMigration {
+            Self::add_request(Request::outgoing(OutgoingRequest::PrepareForMigration(
+                OutgoingPrepareForMigration {
                     author: from.clone(),
                     nonce,
                     network_id,
                     timepoint,
-                }),
-            ))?;
+                },
+            )))?;
             frame_system::Module::<T>::inc_account_nonce(&from);
             Ok(().into())
         }
@@ -1310,7 +1455,7 @@ pub mod pallet {
             // ensure!(from == Self::authority_account(), Error::<T>::Forbidden);
             let nonce = frame_system::Module::<T>::account_nonce(&from);
             let timepoint = bridge_multisig::Module::<T>::timepoint();
-            Self::add_request(OffchainRequest::outgoing(OutgoingRequest::Migrate(
+            Self::add_request(Request::outgoing(OutgoingRequest::Migrate(
                 OutgoingMigrate {
                     author: from.clone(),
                     new_contract_address,
@@ -1337,23 +1482,33 @@ pub mod pallet {
         ) -> DispatchResultWithPostInfo {
             debug::debug!("called register_incoming_request");
             let author = ensure_signed(origin.clone())?;
-            let _ = Self::ensure_bridge_account(&author, incoming_request.network_id())?;
-            let tx_hash = incoming_request.hash();
             let net_id = incoming_request.network_id();
+            let _ = Self::ensure_bridge_account(&author, net_id)?;
+            let sidechain_tx_hash = incoming_request.tx_hash();
+            let mut request = Request::incoming(incoming_request);
+            let incoming_request_hash = request.hash();
             ensure!(
-                !PendingIncomingRequests::<T>::get(net_id).contains(&tx_hash),
+                !Requests::<T>::contains_key(net_id, incoming_request_hash),
                 Error::<T>::RequestIsAlreadyRegistered
             );
-            if let Err(e) = incoming_request
-                .validate()
-                .and_then(|_| incoming_request.prepare())
-            {
-                Self::inner_abort_incoming_request(&incoming_request, tx_hash, net_id);
+            Self::remove_request_from_queue(net_id, &sidechain_tx_hash);
+            RequestStatuses::<T>::insert(net_id, sidechain_tx_hash, RequestStatus::Done);
+            LoadToIncomingRequestHash::<T>::insert(
+                net_id,
+                sidechain_tx_hash,
+                incoming_request_hash,
+            );
+            if let Err(e) = request.validate().and_then(|_| request.prepare()) {
+                RequestStatuses::<T>::insert(
+                    net_id,
+                    incoming_request_hash,
+                    RequestStatus::Failed(e),
+                );
                 return Err(e.into());
             }
-            PendingIncomingRequests::<T>::mutate(net_id, |transfers| transfers.insert(tx_hash));
-            Self::remove_request_from_queue(net_id, &tx_hash);
-            IncomingRequests::<T>::insert(net_id, &tx_hash, incoming_request);
+            Requests::<T>::insert(net_id, &incoming_request_hash, request);
+            RequestsQueue::<T>::mutate(net_id, |v| v.push(incoming_request_hash));
+            RequestStatuses::<T>::insert(net_id, incoming_request_hash, RequestStatus::Pending);
             Ok(().into())
         }
 
@@ -1365,13 +1520,17 @@ pub mod pallet {
         pub fn approve_request(
             origin: OriginFor<T>,
             ocw_public: ecdsa::Public,
-            request: OutgoingRequest<T>, // TODO: load request from hash?
-            request_encoded: OutgoingRequestEncoded,
+            hash: H256,
             signature_params: SignatureParams,
+            network_id: T::NetworkId,
         ) -> DispatchResultWithPostInfo {
             debug::debug!("called approve_request");
             let author = ensure_signed(origin)?;
-            let net_id = request.network_id();
+            let net_id = network_id;
+            let request = Requests::<T>::get(net_id, hash)
+                .and_then(|x| x.into_outgoing().map(|x| x.0))
+                .ok_or(Error::<T>::UnknownRequest)?;
+            let request_encoded = request.to_eth_abi(hash)?;
             Self::ensure_peer(&author, net_id)?;
             if !Self::verify_message(
                 request_encoded.as_raw(),
@@ -1383,7 +1542,6 @@ pub mod pallet {
                 return Err(Error::<T>::InvalidSignature.into());
             }
             debug::info!("Verified request approve {:?}", request_encoded);
-            let hash = request.hash();
             let mut approvals = RequestApprovals::<T>::get(net_id, &hash);
             let pending_peers_len = if PendingPeer::<T>::get(net_id).is_some() {
                 1
@@ -1398,10 +1556,11 @@ pub mod pallet {
             if current_status == RequestStatus::Pending && approvals.len() == need_sigs {
                 if let Err(err) = request.finalize() {
                     debug::error!("Outgoing request finalization failed: {:?}", err);
-                    RequestStatuses::<T>::insert(net_id, hash, RequestStatus::Failed);
+                    RequestStatuses::<T>::insert(net_id, hash, RequestStatus::Failed(err));
                     Self::deposit_event(Event::RequestFinalizationFailed(hash));
                     if let Err(e) = request.cancel() {
-                        debug::error!("Request cancellation failed: {:?}, {:?}", e, request)
+                        debug::error!("Request cancellation failed: {:?}, {:?}", e, request);
+                        debug_assert!(false, "unexpected cancellation error {:?}", e);
                     }
                 } else {
                     debug::debug!("Outgoing request approvals collected {:?}", hash);
@@ -1433,8 +1592,8 @@ pub mod pallet {
             );
             let author = ensure_signed(origin)?;
             let _ = Self::ensure_bridge_account(&author, network_id)?;
-            let request = Request::<T>::get(network_id, hash).ok_or(Error::<T>::UnknownRequest)?;
-            Self::inner_abort_request(&request, hash, network_id);
+            let request = Requests::<T>::get(network_id, hash).ok_or(Error::<T>::UnknownRequest)?;
+            Self::inner_abort_request(&request, hash, error, network_id);
             Self::deposit_event(Event::RequestAborted(hash));
             Ok(().into())
         }
@@ -1643,6 +1802,8 @@ pub mod pallet {
         ExpectedXORTransfer,
         /// Unable to pay transfer fees.
         UnableToPayFees,
+        /// The request was purposely cancelled.
+        Cancelled,
         /// Unknown error.
         Other,
     }
@@ -1653,7 +1814,8 @@ pub mod pallet {
                 Self::HttpFetchingError
                 | Self::NoLocalAccountForSigning
                 | Self::FailedToSendSignedTransaction
-                | Self::FailedToSignMessage => true,
+                | Self::FailedToSignMessage
+                | Self::JsonDeserializationError => true,
                 _ => false,
             }
         }
@@ -1663,25 +1825,19 @@ pub mod pallet {
     #[pallet::storage]
     #[pallet::getter(fn requests_queue)]
     pub type RequestsQueue<T: Config> =
-        StorageMap<_, Twox64Concat, T::NetworkId, Vec<OffchainRequest<T>>, ValueQuery>;
-
-    /// Incoming requests.
-    #[pallet::storage]
-    #[pallet::getter(fn incoming_requests)]
-    pub type IncomingRequests<T: Config> =
-        StorageDoubleMap<_, Twox64Concat, T::NetworkId, Identity, H256, IncomingRequest<T>>;
-
-    /// Registered incoming requests queue handled by off-chain workers.
-    #[pallet::storage]
-    #[pallet::getter(fn pending_incoming_requests)]
-    pub type PendingIncomingRequests<T: Config> =
-        StorageMap<_, Twox64Concat, T::NetworkId, BTreeSet<H256>, ValueQuery>; // TODO: check, make as queue?
+        StorageMap<_, Twox64Concat, T::NetworkId, Vec<H256>, ValueQuery>;
 
     /// Registered requests.
     #[pallet::storage]
     #[pallet::getter(fn request)]
-    pub type Request<T: Config> =
-        StorageDoubleMap<_, Twox64Concat, T::NetworkId, Identity, H256, OffchainRequest<T>>;
+    pub type Requests<T: Config> =
+        StorageDoubleMap<_, Twox64Concat, T::NetworkId, Identity, H256, Request<T>>;
+
+    /// Used to identify an incoming request by the corresponding load request.
+    #[pallet::storage]
+    #[pallet::getter(fn load_to_incoming_request_hash)]
+    pub type LoadToIncomingRequestHash<T: Config> =
+        StorageDoubleMap<_, Twox64Concat, T::NetworkId, Identity, H256, H256, ValueQuery>;
 
     /// Requests statuses.
     #[pallet::storage]
@@ -2034,10 +2190,10 @@ impl<T: Config> Pallet<T> {
     /// 3. Request status should be empty or `Failed` (for resubmission).
     /// 4. There is no registered request with the same hash.
     /// 5. The request's `validate` and `prepare` should pass.
-    fn add_request(mut request: OffchainRequest<T>) -> Result<(), DispatchError> {
+    fn add_request(mut request: Request<T>) -> Result<(), DispatchError> {
         let net_id = request.network_id();
         let bridge_status = BridgeStatuses::<T>::get(net_id).ok_or(Error::<T>::UnknownNetwork)?;
-        if let Some(outgoing_req) = request.as_outgoing() {
+        if let Some((outgoing_req, _)) = request.as_outgoing() {
             ensure!(
                 bridge_status != BridgeStatus::Migrating
                     || outgoing_req.is_allowed_during_migration(),
@@ -2046,19 +2202,19 @@ impl<T: Config> Pallet<T> {
         }
         let hash = request.hash();
         let can_resubmit = RequestStatuses::<T>::get(net_id, &hash)
-            .map(|status| status == RequestStatus::Failed)
+            .map(|status| matches!(status, RequestStatus::Failed(_)))
             .unwrap_or(false);
         if !can_resubmit {
             ensure!(
-                Request::<T>::get(net_id, &hash).is_none(),
+                Requests::<T>::get(net_id, &hash).is_none(),
                 Error::<T>::DuplicatedRequest
             );
         }
         request.validate()?;
         request.prepare()?;
         AccountRequests::<T>::mutate(&request.author(), |vec| vec.push((net_id, hash)));
-        Request::<T>::insert(net_id, &hash, request.clone());
-        RequestsQueue::<T>::mutate(net_id, |v| v.push(request));
+        Requests::<T>::insert(net_id, &hash, request.clone());
+        RequestsQueue::<T>::mutate(net_id, |v| v.push(hash));
         RequestStatuses::<T>::insert(net_id, &hash, RequestStatus::Pending);
         let block_number = frame_system::Module::<T>::current_block_number();
         RequestSubmissionHeight::<T>::insert(net_id, &hash, block_number);
@@ -2069,7 +2225,7 @@ impl<T: Config> Pallet<T> {
     /// Finds and removes request from `RequestsQueue` by its hash and network id.
     fn remove_request_from_queue(network_id: T::NetworkId, hash: &H256) {
         RequestsQueue::<T>::mutate(network_id, |queue| {
-            if let Some(pos) = queue.iter().position(|x| x.hash() == *hash) {
+            if let Some(pos) = queue.iter().position(|x| x == hash) {
                 queue.remove(pos);
             }
         });
@@ -2079,7 +2235,7 @@ impl<T: Config> Pallet<T> {
     /// and topic.
     fn parse_main_event(
         logs: &[Log],
-        kind: IncomingRequestKind,
+        kind: IncomingRequestTransactionKind,
     ) -> Result<ContractEvent<Address, T::AccountId, Balance>, Error<T>> {
         for log in logs {
             if log.removed.unwrap_or(false) {
@@ -2092,7 +2248,7 @@ impl<T: Config> Pallet<T> {
             match *topic {
                 // Deposit(bytes32,uint256,address,bytes32)
                 hex!("85c0fa492ded927d3acca961da52b0dda1debb06d8c27fe189315f06bb6e26c8")
-                    if kind == IncomingRequestKind::Transfer =>
+                    if kind == IncomingRequestTransactionKind::Transfer =>
                 {
                     let types = [
                         ParamType::FixedBytes(32),
@@ -2111,8 +2267,8 @@ impl<T: Config> Pallet<T> {
                 }
                 // ChangePeers(address,bool)
                 hex!("a9fac23eb012e72fbd1f453498e7069c380385436763ee2c1c057b170d88d9f9")
-                    if kind == IncomingRequestKind::AddPeer
-                        || kind == IncomingRequestKind::RemovePeer =>
+                    if kind == IncomingRequestTransactionKind::AddPeer
+                        || kind == IncomingRequestTransactionKind::RemovePeer =>
                 {
                     let types = [ParamType::Address, ParamType::Bool];
                     let decoded = ethabi::decode(&types, &log.data.0)
@@ -2123,12 +2279,12 @@ impl<T: Config> Pallet<T> {
                     return Ok(ContractEvent::ChangePeers(H160(peer_address.0), added));
                 }
                 hex!("5389de9593f75e6515eefa796bd2d3324759f441f2c9b2dcda0efb25190378ff")
-                    if kind == IncomingRequestKind::PrepareForMigration =>
+                    if kind == IncomingRequestTransactionKind::PrepareForMigration =>
                 {
                     return Ok(ContractEvent::PreparedForMigration);
                 }
                 hex!("a2e7361c23d7820040603b83c0cd3f494d377bac69736377d75bb56c651a5098")
-                    if kind == IncomingRequestKind::Migrate =>
+                    if kind == IncomingRequestTransactionKind::Migrate =>
                 {
                     let types = [ParamType::Address];
                     let decoded = ethabi::decode(&types, &log.data.0)
@@ -2201,47 +2357,26 @@ impl<T: Config> Pallet<T> {
     /// (`CONFIRMATION_INTERVAL`).
     ///
     /// An off-chain worker keeps track of already handled requests in local storage.
-    fn handle_pending_incoming_requests(network_id: T::NetworkId, current_eth_height: u64) {
-        let s_approved_pending_incoming_requests =
-            StorageValueRef::persistent(b"eth-bridge-ocw::approved-pending-incoming-request");
-        let mut approved = s_approved_pending_incoming_requests
-            .get::<BTreeMap<H256, T::BlockNumber>>()
-            .flatten()
-            .unwrap_or_default();
-        for hash in <Self as Store>::PendingIncomingRequests::get(network_id) {
-            let request: IncomingRequest<T> =
-                <Self as Store>::IncomingRequests::get(network_id, &hash)
-                    .expect("request are never removed; qed");
-            let request_submission_height: T::BlockNumber =
-                Self::request_submission_height(network_id, &hash);
-            let need_to_approve = match approved.get(&hash) {
-                Some(height) => &request_submission_height > height,
-                None => true,
-            };
-            let confirmed =
-                current_eth_height.saturating_sub(request.at_height()) >= CONFIRMATION_INTERVAL;
-            if need_to_approve && confirmed {
-                // Load the transaction receipt again to check that it still exists.
-                // TODO: check for HTTP error.
-                let exists = request.check_existence();
-                let sent = if exists {
-                    Self::send_finalize_incoming_request(hash, request.timepoint(), network_id)
-                        .is_ok()
-                } else {
-                    Self::send_abort_request(
-                        hash,
-                        Error::<T>::EthTransactionIsFailed,
-                        request.timepoint(),
-                        network_id,
-                    )
-                    .is_ok()
-                };
-                if sent {
-                    approved.insert(hash, request_submission_height);
-                }
-            }
-        }
-        s_approved_pending_incoming_requests.set(&approved);
+    fn handle_pending_incoming_requests(
+        request: IncomingRequest<T>,
+        hash: H256,
+    ) -> Result<(), Error<T>> {
+        let network_id = request.network_id();
+
+        // TODO (optimization): send results as batch.
+        // Load the transaction receipt again to check that it still exists.
+        let exists = request.check_existence();
+        if exists {
+            Self::send_finalize_incoming_request(hash, request.timepoint(), network_id)?
+        } else {
+            Self::send_abort_request(
+                hash,
+                Error::<T>::EthTransactionIsFailed,
+                request.timepoint(),
+                network_id,
+            )?
+        };
+        Ok(())
     }
 
     /// Queries the current finalized height of the local node with `chain_getFinalizedHead`
@@ -2285,7 +2420,7 @@ impl<T: Config> Pallet<T> {
     /// because only in this case the initial request can be cancelled.
     fn parse_cancel_incoming_request(
         tx_receipt: TransactionReceipt,
-        pre_request: IncomingPreRequest<T>,
+        pre_request: LoadIncomingMetaRequest<T>,
         pre_request_hash: H256,
     ) -> Result<IncomingRequest<T>, Error<T>> {
         let tx_approved = tx_receipt.is_approved();
@@ -2294,11 +2429,7 @@ impl<T: Config> Pallet<T> {
             .block_number
             .expect("'block_number' is null only when the log/transaction is pending; qed")
             .as_u64();
-        let tx = Self::load_tx(
-            H256(tx_receipt.transaction_hash.0),
-            pre_request.network_id,
-            pre_request.kind,
-        )?;
+        let tx = Self::load_tx(H256(tx_receipt.transaction_hash.0), pre_request.network_id)?;
         ensure!(
             tx_receipt
                 .gas_used
@@ -2319,19 +2450,20 @@ impl<T: Config> Pallet<T> {
             .decode_input(&tx.input.0)
             .map_err(|_| Error::<T>::InvalidFunctionInput)?;
         let hash = parse_hash_from_call::<T>(tokens, fun_meta.tx_hash_arg_pos)?;
-        let oc_request: OffchainRequest<T> = crate::Request::<T>::get(pre_request.network_id, hash)
+        let oc_request: Request<T> = crate::Requests::<T>::get(pre_request.network_id, hash)
             .ok_or(Error::<T>::UnknownRequest)?;
-        let request = match oc_request {
-            OffchainRequest::Outgoing(request, _) => request,
-            OffchainRequest::Incoming(..) => fail!(Error::<T>::ExpectedOutgoingRequest),
-        };
+        let request = oc_request
+            .into_outgoing()
+            .ok_or(Error::<T>::ExpectedOutgoingRequest)?
+            .0;
         ensure!(
             request.author() == &pre_request.author,
             Error::<T>::RequestIsNotOwnedByTheAuthor
         );
         Ok(IncomingRequest::CancelOutgoingRequest(
             IncomingCancelOutgoingRequest {
-                request,
+                outgoing_request: request,
+                outgoing_request_hash: hash,
                 initial_request_hash: pre_request_hash,
                 tx_input: tx.input.0,
                 tx_hash: pre_request.hash,
@@ -2347,7 +2479,7 @@ impl<T: Config> Pallet<T> {
     /// This special flow (unlike `parse_incoming_request`) only queries the contract's `used`
     /// variable to check if the request was actually made.
     fn handle_mark_as_done_incoming_request(
-        pre_request: IncomingPreRequest<T>,
+        pre_request: LoadIncomingMetaRequest<T>,
     ) -> Result<(), Error<T>> {
         let is_used = Self::load_is_used(pre_request.hash, pre_request.network_id)?;
         ensure!(is_used, Error::<T>::RequestNotFinalizedOnSidechain);
@@ -2368,35 +2500,19 @@ impl<T: Config> Pallet<T> {
     /// The function delegates further handling depending on request type.
     /// There are 4 flows. 3 for incoming request: handle 'mark as done', handle 'cancel outgoing
     /// request' and for the rest, and only one for all outgoing requests.
-    fn handle_offchain_request(
-        request: OffchainRequest<T>,
-        request_hash: H256,
-    ) -> Result<(), Error<T>> {
+    fn handle_offchain_request(request: Request<T>) -> Result<(), Error<T>> {
         match request {
-            OffchainRequest::Incoming(request) => {
-                let network_id = request.network_id;
-                let tx_hash = request.hash;
-                let timepoint = request.timepoint;
-                let kind = request.kind;
-                match request.kind {
-                    IncomingRequestKind::MarkAsDone => {
-                        Self::handle_mark_as_done_incoming_request(request)
-                    }
-                    IncomingRequestKind::CancelOutgoingRequest => {
-                        let tx = Self::load_tx_receipt(tx_hash, network_id, kind)?;
-                        let incoming_request =
-                            Self::parse_cancel_incoming_request(tx, request, request_hash)?;
-                        Self::send_register_incoming_request(
-                            incoming_request,
-                            timepoint,
-                            network_id,
-                        )
-                    }
-                    _ => {
+            Request::LoadIncoming(request) => {
+                let network_id = request.network_id();
+                let timepoint = request.timepoint();
+                let tx_hash = request.hash();
+                match request {
+                    LoadIncomingRequest::Transaction(request) => {
+                        let kind = request.kind;
                         debug::debug!("Loading approved tx {}", tx_hash);
-                        let tx = Self::load_tx_receipt(tx_hash, network_id, kind)?;
+                        let tx = Self::load_tx_receipt(tx_hash, network_id)?;
                         let mut incoming_request = Self::parse_incoming_request(tx, request)?;
-                        if kind == IncomingRequestKind::TransferXOR {
+                        if kind == IncomingRequestTransactionKind::TransferXOR {
                             if let IncomingRequest::Transfer(transfer) = &mut incoming_request {
                                 ensure!(
                                     transfer.asset_id == common::XOR.into(),
@@ -2413,9 +2529,30 @@ impl<T: Config> Pallet<T> {
                             network_id,
                         )
                     }
+                    LoadIncomingRequest::Meta(request, hash) => {
+                        let kind = request.kind;
+                        match kind {
+                            IncomingMetaRequestKind::MarkAsDone => {
+                                Self::handle_mark_as_done_incoming_request(request)
+                            }
+                            IncomingMetaRequestKind::CancelOutgoingRequest => {
+                                let tx = Self::load_tx_receipt(tx_hash, network_id)?;
+                                let incoming_request =
+                                    Self::parse_cancel_incoming_request(tx, request, hash)?;
+                                Self::send_register_incoming_request(
+                                    incoming_request,
+                                    timepoint,
+                                    network_id,
+                                )
+                            }
+                        }
+                    }
                 }
             }
-            OffchainRequest::Outgoing(request, _) => Self::handle_outgoing_request(request),
+            Request::Outgoing(request, hash) => Self::handle_outgoing_request(request, hash),
+            Request::Incoming(request, hash) => {
+                Self::handle_pending_incoming_requests(request, hash)
+            }
         }
     }
 
@@ -2458,8 +2595,11 @@ impl<T: Config> Pallet<T> {
             .flatten()
             .unwrap_or_default();
 
-        for request in <Self as Store>::RequestsQueue::get(network_id) {
-            let request_hash = request.hash();
+        for request_hash in RequestsQueue::<T>::get(network_id) {
+            let request = match Requests::<T>::get(network_id, request_hash) {
+                Some(v) => v,
+                _ => continue, // TODO: remove from queue
+            };
             let request_submission_height: T::BlockNumber =
                 Self::request_submission_height(network_id, &request_hash);
             if substrate_finalized_height < request_submission_height {
@@ -2469,9 +2609,15 @@ impl<T: Config> Pallet<T> {
                 Some(height) => &request_submission_height > height,
                 None => true,
             };
-            if need_to_handle {
+            let confirmed = match &request {
+                Request::Incoming(request, _) => {
+                    current_eth_height.saturating_sub(request.at_height()) >= CONFIRMATION_INTERVAL
+                }
+                _ => true,
+            };
+            if need_to_handle && confirmed {
                 let timepoint = request.timepoint();
-                let error = Self::handle_offchain_request(request, request_hash).err();
+                let error = Self::handle_offchain_request(request).err();
                 let mut is_handled = true;
                 if let Some(e) = error {
                     debug::error!(
@@ -2497,8 +2643,6 @@ impl<T: Config> Pallet<T> {
             }
         }
         s_handled_requests.set(&handled);
-
-        Self::handle_pending_incoming_requests(network_id, current_eth_height);
     }
 
     /// Handles registered networks.
@@ -2789,7 +2933,7 @@ impl<T: Config> Pallet<T> {
     /// bridge contract have, and since they can't be changed we have to provide a special parsing
     /// flow for some of the methods that we might use.
     fn parse_old_incoming_request_method_call(
-        incoming_request: IncomingPreRequest<T>,
+        incoming_request: LoadIncomingTransactionRequest<T>,
         tx: Transaction,
     ) -> Result<IncomingRequest<T>, Error<T>> {
         let (fun, arg_pos, tail, added) = if let Some(tail) = strip_prefix(
@@ -2821,20 +2965,19 @@ impl<T: Config> Pallet<T> {
             .map_err(|_| Error::<T>::EthAbiDecodingError)?;
         let request_hash = parse_hash_from_call::<T>(tokens, arg_pos)?;
 
-        let oc_request: OffchainRequest<T> =
-            Request::<T>::get(T::GetEthNetworkId::get(), request_hash)
-                .ok_or(Error::<T>::UnknownRequest)?;
+        let oc_request: Request<T> = Requests::<T>::get(T::GetEthNetworkId::get(), request_hash)
+            .ok_or(Error::<T>::UnknownRequest)?;
         match oc_request {
-            OffchainRequest::Outgoing(
-                OutgoingRequest::AddPeer(OutgoingAddPeer {
+            Request::Outgoing(
+                OutgoingRequest::AddPeerCompat(OutgoingAddPeerCompat {
                     peer_address,
                     peer_account_id,
                     ..
                 }),
                 _,
             )
-            | OffchainRequest::Outgoing(
-                OutgoingRequest::RemovePeer(OutgoingRemovePeer {
+            | Request::Outgoing(
+                OutgoingRequest::RemovePeerCompat(OutgoingRemovePeerCompat {
                     peer_address,
                     peer_account_id,
                     ..
@@ -2876,7 +3019,7 @@ impl<T: Config> Pallet<T> {
     /// is built.
     fn parse_incoming_request(
         tx_receipt: TransactionReceipt,
-        incoming_pre_request: IncomingPreRequest<T>,
+        incoming_pre_request: LoadIncomingTransactionRequest<T>,
     ) -> Result<IncomingRequest<T>, Error<T>> {
         let tx_approved = tx_receipt.is_approved();
         ensure!(tx_approved, Error::<T>::EthTransactionIsFailed);
@@ -2885,7 +3028,7 @@ impl<T: Config> Pallet<T> {
 
         // For XOR and VAL contracts compatibility.
         if kind.is_compat() {
-            let tx = Self::load_tx(H256(tx_receipt.transaction_hash.0), network_id, kind)?;
+            let tx = Self::load_tx(H256(tx_receipt.transaction_hash.0), network_id)?;
             return Self::parse_old_incoming_request_method_call(incoming_pre_request, tx);
         }
 
@@ -2947,22 +3090,22 @@ impl<T: Config> Pallet<T> {
 
     /// Encodes the given outgoing request to Ethereum ABI, then signs the data by off-chain worker's
     /// key and sends the approve as a signed transaction.
-    fn handle_outgoing_request(request: OutgoingRequest<T>) -> Result<(), Error<T>> {
+    fn handle_outgoing_request(request: OutgoingRequest<T>, hash: H256) -> Result<(), Error<T>> {
         let signer = Signer::<T, T::PeerId>::any_account();
         if !signer.can_sign() {
             debug::error!("No local account available");
             return Err(<Error<T>>::NoLocalAccountForSigning);
         }
-        let encoded_request = request.to_eth_abi(request.hash())?;
+        let encoded_request = request.to_eth_abi(hash)?;
 
         let result = signer.send_signed_transaction(|_acc| {
             // Signs `abi.encodePacked(tokenAddress, amount, to, txHash, from)`.
             let (signature, public) = Self::sign_message(encoded_request.as_raw());
             Call::approve_request(
                 ecdsa::Public::from_slice(&public.serialize_compressed()),
-                request.clone(),
-                encoded_request.clone(),
+                hash,
                 signature,
+                request.network_id(),
             )
         });
 
@@ -2992,38 +3135,26 @@ impl<T: Config> Pallet<T> {
 
     /// Checks that the given contract address is known to the bridge network.
     ///
-    /// There are special cases for PSWAP, XOR and VAL contracts.
-    fn ensure_known_contract(
-        to: Address,
-        network_id: T::NetworkId,
-        kind: IncomingRequestKind,
-    ) -> Result<(), Error<T>> {
-        match kind {
-            _ => {
-                if network_id == T::GetEthNetworkId::get() {
-                    ensure!(
-                        to == BridgeContractAddress::<T>::get(network_id)
-                            || to == Self::xor_master_contract_address()
-                            || to == Self::val_master_contract_address(),
-                        Error::<T>::UnknownContractAddress
-                    );
-                } else {
-                    ensure!(
-                        to == BridgeContractAddress::<T>::get(network_id),
-                        Error::<T>::UnknownContractAddress
-                    );
-                }
-            }
+    /// There are special cases for XOR and VAL contracts.
+    fn ensure_known_contract(to: Address, network_id: T::NetworkId) -> Result<(), Error<T>> {
+        if network_id == T::GetEthNetworkId::get() {
+            ensure!(
+                to == BridgeContractAddress::<T>::get(network_id)
+                    || to == Self::xor_master_contract_address()
+                    || to == Self::val_master_contract_address(),
+                Error::<T>::UnknownContractAddress
+            );
+        } else {
+            ensure!(
+                to == BridgeContractAddress::<T>::get(network_id),
+                Error::<T>::UnknownContractAddress
+            );
         }
         Ok(())
     }
 
     /// Loads a Sidechain transaction by the hash and ensures that it came from a known contract.
-    fn load_tx(
-        hash: H256,
-        network_id: T::NetworkId,
-        kind: IncomingRequestKind,
-    ) -> Result<Transaction, Error<T>> {
+    fn load_tx(hash: H256, network_id: T::NetworkId) -> Result<Transaction, Error<T>> {
         let hash = types::H256(hash.0);
         let tx_receipt = Self::eth_json_rpc_request::<_, Transaction>(
             "eth_getTransactionByHash",
@@ -3036,7 +3167,7 @@ impl<T: Config> Pallet<T> {
             .to
             .map(|x| H160(x.0))
             .ok_or(Error::<T>::UnknownContractAddress)?;
-        Self::ensure_known_contract(to, network_id, kind)?;
+        Self::ensure_known_contract(to, network_id)?;
         Ok(tx_receipt)
     }
 
@@ -3045,7 +3176,6 @@ impl<T: Config> Pallet<T> {
     fn load_tx_receipt(
         hash: H256,
         network_id: T::NetworkId,
-        kind: IncomingRequestKind,
     ) -> Result<TransactionReceipt, Error<T>> {
         let hash = types::H256(hash.0);
         let tx_receipt = Self::eth_json_rpc_request::<_, TransactionReceipt>(
@@ -3059,7 +3189,7 @@ impl<T: Config> Pallet<T> {
             .to
             .map(|x| H160(x.0))
             .ok_or(Error::<T>::UnknownContractAddress)?;
-        Self::ensure_known_contract(to, network_id, kind)?;
+        Self::ensure_known_contract(to, network_id)?;
         Ok(tx_receipt)
     }
 
@@ -3085,26 +3215,18 @@ impl<T: Config> Pallet<T> {
         Ok(bridge_account_id)
     }
 
-    fn inner_abort_request(request: &OffchainRequest<T>, hash: H256, network_id: T::NetworkId) {
-        RequestStatuses::<T>::insert(network_id, hash, RequestStatus::Failed);
-        if let Err(e) = request.cancel() {
-            debug::error!("Request cancellation failed: {:?}, {:?}", e, request)
-        }
-        Self::remove_request_from_queue(network_id, &hash);
-        PendingIncomingRequests::<T>::mutate(network_id, |set| set.remove(&hash));
-    }
-
-    fn inner_abort_incoming_request(
-        request: &IncomingRequest<T>,
+    fn inner_abort_request(
+        request: &Request<T>,
         hash: H256,
+        error: DispatchError,
         network_id: T::NetworkId,
     ) {
-        RequestStatuses::<T>::insert(network_id, hash, RequestStatus::Failed);
+        RequestStatuses::<T>::insert(network_id, hash, RequestStatus::Failed(error));
         if let Err(e) = request.cancel() {
-            debug::error!("Request cancellation failed: {:?}, {:?}", e, request)
+            debug::error!("Request cancellation failed: {:?}, {:?}", e, request);
+            debug_assert!(false, "unexpected cancellation error {:?}", e);
         }
         Self::remove_request_from_queue(network_id, &hash);
-        PendingIncomingRequests::<T>::mutate(network_id, |set| set.remove(&hash));
     }
 }
 
@@ -3115,18 +3237,18 @@ impl<T: Config> Module<T> {
     pub fn get_requests(
         hashes: &[H256],
         network_id: Option<T::NetworkId>,
-    ) -> Result<Vec<(OffchainRequest<T>, RequestStatus)>, DispatchError> {
+    ) -> Result<Vec<(Request<T>, RequestStatus)>, DispatchError> {
         Ok(hashes
             .iter()
             .take(Self::ITEMS_LIMIT)
             .flat_map(|hash| {
                 if let Some(net_id) = network_id {
-                    Request::<T>::get(net_id, hash)
+                    Requests::<T>::get(net_id, hash)
                         .zip(Self::request_status(net_id, hash))
                         .map(|x| vec![x])
                         .unwrap_or_default()
                 } else {
-                    Request::<T>::iter()
+                    Requests::<T>::iter()
                         .filter(|(_, h, _)| h == hash)
                         .map(|(net_id, hash, v)| {
                             (
@@ -3152,9 +3274,9 @@ impl<T: Config> Module<T> {
             .filter_map(|hash| {
                 if let Some(net_id) = network_id {
                     if Self::request_status(net_id, hash)? == RequestStatus::ApprovalsReady {
-                        let request: OffchainRequest<T> = Request::get(net_id, hash)?;
+                        let request: Request<T> = Requests::get(net_id, hash)?;
                         match request {
-                            OffchainRequest::Outgoing(request, hash) => {
+                            Request::Outgoing(request, hash) => {
                                 let encoded = request
                                     .to_eth_abi(hash)
                                     .expect("this conversion was already tested; qed");
@@ -3163,7 +3285,7 @@ impl<T: Config> Module<T> {
                                     .pop()
                                     .map(|approvals| vec![(encoded, approvals)])
                             }
-                            OffchainRequest::Incoming(_) => None,
+                            _ => None,
                         }
                     } else {
                         None
@@ -3173,9 +3295,9 @@ impl<T: Config> Module<T> {
                         RequestStatuses::<T>::iter()
                             .filter(|(_, _hash, v)| v == &RequestStatus::ApprovalsReady)
                             .filter_map(|(net_id, hash, _v)| {
-                                let request: OffchainRequest<T> = Request::get(net_id, hash)?;
+                                let request: Request<T> = Requests::get(net_id, hash)?;
                                 match request {
-                                    OffchainRequest::Outgoing(request, hash) => {
+                                    Request::Outgoing(request, hash) => {
                                         let encoded = request
                                             .to_eth_abi(hash)
                                             .expect("this conversion was already tested; qed");
@@ -3184,7 +3306,7 @@ impl<T: Config> Module<T> {
                                             .pop()
                                             .map(|approvals| (encoded, approvals))
                                     }
-                                    OffchainRequest::Incoming(_) => None,
+                                    _ => None,
                                 }
                             })
                             .collect(),

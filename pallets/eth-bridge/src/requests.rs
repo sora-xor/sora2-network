@@ -1,8 +1,7 @@
 use crate::contract::{MethodId, FUNCTIONS, METHOD_ID_SIZE};
 use crate::{
     get_bridge_account, types, Address, AssetIdOf, AssetKind, BridgeStatus, Config, Decoder, Error,
-    OffchainRequest, OutgoingRequest, Pallet, RequestStatus, SignatureParams, Timepoint,
-    WeightInfo,
+    OutgoingRequest, Pallet, Request, RequestStatus, SignatureParams, Timepoint, WeightInfo,
 };
 use alloc::collections::BTreeSet;
 use alloc::string::String;
@@ -297,10 +296,10 @@ impl<T: Config> IncomingTransfer<T> {
 pub fn encode_outgoing_request_eth_call<T: Config>(
     method_id: MethodId,
     request: &OutgoingRequest<T>,
+    request_hash: H256,
 ) -> Result<Vec<u8>, Error<T>> {
     let fun_metas = &FUNCTIONS.get().unwrap();
     let fun_meta = fun_metas.get(&method_id).ok_or(Error::UnknownMethodId)?;
-    let request_hash = request.hash();
     let request_encoded = request.to_eth_abi(request_hash)?;
     let approvals: BTreeSet<SignatureParams> =
         crate::RequestApprovals::<T>::get(request.network_id(), &request_hash);
@@ -318,7 +317,8 @@ pub fn encode_outgoing_request_eth_call<T: Config>(
 #[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug)]
 #[cfg_attr(feature = "std", derive(Serialize))]
 pub struct IncomingCancelOutgoingRequest<T: Config> {
-    pub request: OutgoingRequest<T>,
+    pub outgoing_request: OutgoingRequest<T>,
+    pub outgoing_request_hash: H256,
     pub initial_request_hash: H256,
     pub tx_input: Vec<u8>,
     pub tx_hash: H256,
@@ -332,9 +332,9 @@ impl<T: Config> IncomingCancelOutgoingRequest<T> {
     /// with the `tx_input`, otherwise an error is thrown. After that, a status of the request
     /// is changed to `Frozen` to stop receiving approvals.
     pub fn prepare(&self) -> Result<(), DispatchError> {
-        let request_hash = self.request.hash();
+        let request_hash = self.outgoing_request_hash;
         let net_id = self.network_id;
-        let req_status = crate::RequestStatuses::<T>::get(net_id, &request_hash)
+        let req_status = crate::RequestStatuses::<T>::get(net_id, &self.outgoing_request_hash)
             .ok_or(crate::Error::<T>::UnknownRequest)?;
         ensure!(
             req_status == RequestStatus::ApprovalsReady,
@@ -343,7 +343,11 @@ impl<T: Config> IncomingCancelOutgoingRequest<T> {
         let mut method_id = [0u8; METHOD_ID_SIZE];
         ensure!(self.tx_input.len() >= 4, Error::<T>::InvalidFunctionInput);
         method_id.clone_from_slice(&self.tx_input[..METHOD_ID_SIZE]);
-        let expected_input = encode_outgoing_request_eth_call(method_id, &self.request)?;
+        let expected_input = encode_outgoing_request_eth_call(
+            method_id,
+            &self.outgoing_request,
+            self.outgoing_request_hash,
+        )?;
         ensure!(
             expected_input == self.tx_input,
             crate::Error::<T>::InvalidContractInput
@@ -356,7 +360,7 @@ impl<T: Config> IncomingCancelOutgoingRequest<T> {
     pub fn cancel(&self) -> Result<(), DispatchError> {
         crate::RequestStatuses::<T>::insert(
             self.network_id,
-            &self.request.hash(),
+            &self.outgoing_request_hash,
             RequestStatus::ApprovalsReady,
         );
         Ok(())
@@ -366,10 +370,14 @@ impl<T: Config> IncomingCancelOutgoingRequest<T> {
     /// make it available for resubmission.
     pub fn finalize(&self) -> Result<H256, DispatchError> {
         // TODO: `common::with_transaction` should be removed in the future after stabilization.
-        common::with_transaction(|| self.request.cancel())?;
-        let hash = &self.request.hash();
+        common::with_transaction(|| self.outgoing_request.cancel())?;
+        let hash = &self.outgoing_request_hash;
         let net_id = self.network_id;
-        crate::RequestStatuses::<T>::insert(net_id, hash, RequestStatus::Failed);
+        crate::RequestStatuses::<T>::insert(
+            net_id,
+            hash,
+            RequestStatus::Failed(Error::<T>::Cancelled.into()),
+        );
         crate::RequestApprovals::<T>::take(net_id, hash);
         Ok(self.initial_request_hash)
     }
@@ -1395,7 +1403,13 @@ impl OutgoingMigrateEncoded {
     }
 }
 
-// TODO: docs
+/// A helper structure used to add or remove peer on Ethereum network.
+///
+/// On Ethereum network there are 3 bridge contracts: Main, XOR and VAL. Each of them has a set of
+/// peers' public keys that's need to be almost the same at any time (+- 1 signatory). To
+/// synchronize them, we use this structure, that contains the current readiness state of each
+/// contract. We add or remove peer only when all of them is in `true` state
+/// (see `EthPeersSync::is_ready`).
 #[derive(Clone, Default, PartialEq, Eq, Encode, Decode, RuntimeDebug)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct EthPeersSync {
@@ -1449,7 +1463,7 @@ macro_rules! impl_from_for_outgoing_requests {
             }
         }
 
-        impl<T: Config> From<$req> for OffchainRequest<T> {
+        impl<T: Config> From<$req> for Request<T> {
             fn from(v: $req) -> Self {
                 Self::outgoing(v.into())
             }
@@ -1481,7 +1495,7 @@ macro_rules! impl_from_for_incoming_requests {
 
 impl_from_for_incoming_requests! {
     IncomingTransfer<T>, Transfer;
-    IncomingAddToken<T>, AddAsset;
+    IncomingAddToken<T>, AddToken;
     IncomingChangePeers<T>, ChangePeers;
     IncomingChangePeersCompat<T>, ChangePeersCompat;
     IncomingPrepareForMigration<T>, PrepareForMigration;
