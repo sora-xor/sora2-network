@@ -1,13 +1,12 @@
 use framenode_runtime::opaque::SessionKeys;
 use framenode_runtime::{
-    bonding_curve_pool, eth_bridge, multicollateral_bonding_curve_pool, AccountId, AssetSymbol,
-    AssetsConfig, BabeConfig, BalancesConfig, BondingCurvePoolConfig, BridgeMultisigConfig,
-    DEXAPIConfig, DEXManagerConfig, EthBridgeConfig, FarmingConfig, FaucetConfig, GenesisConfig,
-    GetBaseAssetId, GetPswapAssetId, GetValAssetId, GetXorAssetId, GrandpaConfig,
-    IrohaMigrationConfig, LiquiditySourceType, MulticollateralBondingCurvePoolConfig,
-    PermissionsConfig, PswapDistributionConfig, RewardsConfig, Runtime, SessionConfig, Signature,
-    StakerStatus, StakingConfig, SudoConfig, SystemConfig, TechAccountId, TechnicalConfig,
-    TokensConfig, WASM_BINARY,
+    bonding_curve_pool, eth_bridge, AccountId, AssetSymbol, AssetsConfig, BabeConfig,
+    BalancesConfig, BondingCurvePoolConfig, BridgeMultisigConfig, DEXAPIConfig, DEXManagerConfig,
+    EthBridgeConfig, FarmingConfig, FaucetConfig, GenesisConfig, GetBaseAssetId, GetPswapAssetId,
+    GetValAssetId, GetXorAssetId, GrandpaConfig, IrohaMigrationConfig, LiquiditySourceType,
+    MulticollateralBondingCurvePoolConfig, PermissionsConfig, PswapDistributionConfig,
+    RewardsConfig, Runtime, SessionConfig, Signature, StakerStatus, StakingConfig, SudoConfig,
+    SystemConfig, TechAccountId, TechnicalConfig, TokensConfig, WASM_BINARY,
 };
 
 use common::prelude::{Balance, DEXInfo, FixedWrapper};
@@ -699,10 +698,22 @@ fn testnet_genesis(
                 (
                     initial_assets_owner,
                     Scope::Unlimited,
-                    vec![permissions::MINT, permissions::BURN],
+                    vec![
+                        permissions::MINT,
+                        permissions::BURN,
+                        permissions::CREATE_FARM,
+                        permissions::LOCK_TO_FARM,
+                        permissions::UNLOCK_FROM_FARM,
+                        permissions::CLAIM_FROM_FARM,
+                    ],
                 ),
                 (
                     pswap_distribution_account_id,
+                    Scope::Unlimited,
+                    vec![permissions::MINT, permissions::BURN],
+                ),
+                (
+                    mbc_reserves_account_id,
                     Scope::Unlimited,
                     vec![permissions::MINT, permissions::BURN],
                 ),
@@ -710,7 +721,6 @@ fn testnet_genesis(
         }),
         pallet_balances: Some(BalancesConfig {
             balances: vec![
-                (root_key, balance!(100)),                           // TESTNET ONLY
                 (faucet_account_id.clone(), initial_faucet_balance), // TESTNET ONLY
                 (eth_bridge_account_id.clone(), initial_eth_bridge_xor_amount),
             ]
