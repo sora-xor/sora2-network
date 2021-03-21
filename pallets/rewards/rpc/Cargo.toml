@@ -1,0 +1,20 @@
+[package]
+name = "rewards-rpc"
+version = "0.1.0"
+edition = "2018"
+
+[dependencies]
+codec = { package = "parity-scale-codec", version = "2" }
+jsonrpc-core = "15.0.0"
+jsonrpc-core-client = "15.0.0"
+jsonrpc-derive = "15.0.0"
+serde = { version = "1.0.101", features = ["derive"] }
+sp-api = { version = "3" }
+sp-blockchain = { version = "3" }
+sp-core = { version = "3" }
+sp-rpc = { version = "3" }
+sp-runtime = { version = "3" }
+sp-std = { version = "3" }
+
+common = { path = "../../../common" }
+rewards-runtime-api = { path = "../runtime-api" }

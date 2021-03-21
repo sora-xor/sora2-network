@@ -1,7 +1,7 @@
 use crate::contract::{MethodId, FUNCTIONS};
 use crate::{
     get_bridge_account, types, Address, AssetIdOf, AssetKind, BridgeStatus, Config, Decoder, Error,
-    OutgoingRequest, Pallet, PswapOwners, RequestStatus, SignatureParams, Timepoint,
+    OutgoingRequest, Pallet, RequestStatus, SignatureParams, Timepoint,
 };
 use alloc::collections::BTreeSet;
 use alloc::string::String;
@@ -9,7 +9,7 @@ use codec::{Decode, Encode};
 use common::prelude::Balance;
 #[cfg(feature = "std")]
 use common::utils::string_serialization;
-use common::{AssetSymbol, BalancePrecision, PSWAP, VAL, XOR};
+use common::{AssetSymbol, BalancePrecision, VAL, XOR};
 use ethabi::{FixedBytes, Token};
 #[allow(unused_imports)]
 use frame_support::debug;
@@ -265,36 +265,6 @@ impl<T: Config> IncomingTransfer<T> {
     }
 }
 
-/// Incoming request for claiming PSWAP.
-#[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-pub struct IncomingClaimPswap<T: Config> {
-    pub account_id: T::AccountId,
-    pub eth_address: Address,
-    pub tx_hash: H256,
-    pub at_height: u64,
-    pub timepoint: Timepoint<T>,
-    pub network_id: T::NetworkId,
-}
-
-impl<T: Config> IncomingClaimPswap<T> {
-    /// Mints amount of PSWAP owned by a corresponding account id. If the account not found or
-    /// the amount is zero, an error is thrown.
-    pub fn finalize(&self) -> Result<H256, DispatchError> {
-        let bridge_account_id = get_bridge_account::<T>(self.network_id);
-        let amount = PswapOwners::<T>::get(&self.eth_address).ok_or(Error::<T>::AccountNotFound)?;
-        ensure!(amount != 0, Error::<T>::AlreadyClaimed);
-        let empty_balance = 0;
-        PswapOwners::<T>::insert(&self.eth_address, empty_balance);
-        assets::Pallet::<T>::mint_to(&PSWAP.into(), &bridge_account_id, &self.account_id, amount)?;
-        Ok(self.tx_hash)
-    }
-
-    pub fn timepoint(&self) -> Timepoint<T> {
-        self.timepoint
-    }
-}
-
 /// Encodes the given outgoing request as it should look when it gets called on Sidechain.
 pub fn encode_outgoing_request_eth_call<T: Config>(
     method_id: MethodId,
@@ -465,6 +435,7 @@ pub struct OutgoingTransfer<T: Config> {
     pub amount: Balance,
     pub nonce: T::Index,
     pub network_id: T::NetworkId,
+    pub timepoint: Timepoint<T>,
 }
 
 impl<T: Config> OutgoingTransfer<T> {
@@ -490,7 +461,8 @@ impl<T: Config> OutgoingTransfer<T> {
                 .expect("NetworkId can be always converted to u128; qed"),
         )
         .to_big_endian(&mut network_id.0);
-        let is_old_contract = self.asset_id == XOR.into() || self.asset_id == VAL.into();
+        let is_old_contract = self.network_id == T::GetEthNetworkId::get()
+            && (self.asset_id == XOR.into() || self.asset_id == VAL.into());
         let raw = if is_old_contract {
             ethabi::encode_packed(&[
                 currency_id.to_token(),
@@ -629,6 +601,7 @@ pub struct OutgoingAddAsset<T: Config> {
     pub asset_id: AssetIdOf<T>,
     pub nonce: T::Index,
     pub network_id: T::NetworkId,
+    pub timepoint: Timepoint<T>,
 }
 
 impl<T: Config> OutgoingAddAsset<T> {
@@ -732,6 +705,7 @@ pub struct OutgoingAddToken<T: Config> {
     pub decimals: u8,
     pub nonce: T::Index,
     pub network_id: T::NetworkId,
+    pub timepoint: Timepoint<T>,
 }
 
 #[derive(Default)]
@@ -882,6 +856,7 @@ pub struct OutgoingAddPeer<T: Config> {
     pub peer_account_id: T::AccountId,
     pub nonce: T::Index,
     pub network_id: T::NetworkId,
+    pub timepoint: Timepoint<T>,
 }
 
 impl<T: Config> OutgoingAddPeer<T> {
@@ -957,6 +932,7 @@ pub struct OutgoingAddPeerCompat<T: Config> {
     pub peer_account_id: T::AccountId,
     pub nonce: T::Index,
     pub network_id: T::NetworkId,
+    pub timepoint: Timepoint<T>,
 }
 
 impl<T: Config> OutgoingAddPeerCompat<T> {
@@ -1020,6 +996,7 @@ pub struct OutgoingRemovePeer<T: Config> {
     pub peer_address: Address,
     pub nonce: T::Index,
     pub network_id: T::NetworkId,
+    pub timepoint: Timepoint<T>,
 }
 
 impl<T: Config> OutgoingRemovePeer<T> {
@@ -1097,6 +1074,7 @@ pub struct OutgoingRemovePeerCompat<T: Config> {
     pub peer_address: Address,
     pub nonce: T::Index,
     pub network_id: T::NetworkId,
+    pub timepoint: Timepoint<T>,
 }
 
 impl<T: Config> OutgoingRemovePeerCompat<T> {
@@ -1216,6 +1194,7 @@ pub struct OutgoingPrepareForMigration<T: Config> {
     pub author: T::AccountId,
     pub nonce: T::Index,
     pub network_id: T::NetworkId,
+    pub timepoint: Timepoint<T>,
 }
 
 impl<T: Config> OutgoingPrepareForMigration<T> {
@@ -1297,6 +1276,7 @@ pub struct OutgoingMigrate<T: Config> {
     pub erc20_native_tokens: Vec<Address>,
     pub nonce: T::Index,
     pub network_id: T::NetworkId,
+    pub timepoint: Timepoint<T>,
 }
 
 impl<T: Config> OutgoingMigrate<T> {
@@ -1411,7 +1391,7 @@ impl EthPeersSync {
 pub fn parse_hash_from_call<T: Config>(
     tokens: Vec<Token>,
     tx_hash_arg_pos: usize,
-) -> Result<H256, DispatchError> {
+) -> Result<H256, Error<T>> {
     tokens
         .get(tx_hash_arg_pos)
         .cloned()

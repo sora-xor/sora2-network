@@ -11,7 +11,7 @@ use crate::{
 };
 use codec::{Decode, Encode};
 use common::prelude::Balance;
-use common::{balance, AssetId, AssetId32, AssetSymbol};
+use common::{balance, eth, AssetId, AssetId32, AssetSymbol, VAL, XOR};
 use frame_support::sp_runtime::app_crypto::sp_core::crypto::AccountId32;
 use frame_support::sp_runtime::app_crypto::sp_core::{self, ecdsa, sr25519, Pair, Public};
 use frame_support::sp_runtime::traits::IdentifyAccount;
@@ -54,170 +54,6 @@ fn parses_event() {
     });
 }
 
-#[test]
-fn parses_deposit_pswap() {
-    let (mut ext, _) = ExtBuilder::default().build();
-    ext.execute_with(|| {
-        let mut log = Log::default();
-        log.topics = vec![types::H256(hex!(
-            "4eb3aea69bf61684354f60a43d355c3026751ddd0ea4e1f5afc1274b96c65505"
-        ))];
-        log.data = Bytes(
-            hex!("00aaffaaffaaffaaffaaffaaffaaffaaffaaffaaffaaffaaffaaffaaffaaffaa").to_vec(),
-        );
-        assert_eq!(
-            EthBridge::parse_main_event(&[log], IncomingRequestKind::ClaimPswap).unwrap(),
-            ContractEvent::ClaimPswap(AccountId32::from(hex!(
-                "00aaffaaffaaffaaffaaffaaffaaffaaffaaffaaffaaffaaffaaffaaffaaffaa"
-            )),)
-        )
-    });
-}
-
-#[test]
-fn should_success_claim_pswap() {
-    let net_id = ETH_NETWORK_ID;
-    let mut builder = ExtBuilder::default();
-    builder.add_reserves(net_id, (PSWAP.into(), Balance::from(0u32)));
-    let (mut ext, state) = builder.build();
-    ext.execute_with(|| {
-        let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
-        let tx_hash = request_incoming(
-            alice.clone(),
-            H256::from_slice(&[1u8; 32]),
-            IncomingRequestKind::ClaimPswap,
-            net_id,
-        )
-        .unwrap();
-        let request = IncomingRequest::ClaimPswap(crate::IncomingClaimPswap {
-            eth_address: Address::from_str("40fd72257597aa14c7231a7b1aaa29fce868f677").unwrap(),
-            account_id: alice.clone(),
-            tx_hash,
-            at_height: 1,
-            timepoint: Default::default(),
-            network_id: net_id,
-        });
-        assert_eq!(
-            assets::Module::<Runtime>::total_balance(&AssetId::PSWAP.into(), &alice).unwrap(),
-            0u32.into()
-        );
-        assert_incoming_request_done(&state, request.clone()).unwrap();
-        assert_eq!(
-            assets::Module::<Runtime>::total_balance(&AssetId::PSWAP.into(), &alice).unwrap(),
-            300u32.into()
-        );
-    });
-}
-
-#[test]
-fn should_fail_claim_pswap_already_claimed() {
-    let net_id = ETH_NETWORK_ID;
-    let mut builder = ExtBuilder::default();
-    builder.add_reserves(net_id, (PSWAP.into(), Balance::from(0u32)));
-    let (mut ext, state) = builder.build();
-    ext.execute_with(|| {
-        let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
-        let tx_hash = request_incoming(
-            alice.clone(),
-            H256::from_slice(&[1u8; 32]),
-            IncomingRequestKind::ClaimPswap,
-            net_id,
-        )
-        .unwrap();
-        let request = IncomingRequest::ClaimPswap(crate::IncomingClaimPswap {
-            eth_address: Address::from_str("40fd72257597aa14c7231a7b1aaa29fce868f677").unwrap(),
-            account_id: alice.clone(),
-            tx_hash,
-            at_height: 1,
-            timepoint: Default::default(),
-            network_id: net_id,
-        });
-        assert_eq!(
-            assets::Module::<Runtime>::total_balance(&AssetId::PSWAP.into(), &alice).unwrap(),
-            0u32.into()
-        );
-        assert_incoming_request_done(&state, request.clone()).unwrap();
-        assert_eq!(
-            assets::Module::<Runtime>::total_balance(&AssetId::PSWAP.into(), &alice).unwrap(),
-            300u32.into()
-        );
-        let tx_hash = request_incoming(
-            alice.clone(),
-            H256::from_slice(&[2u8; 32]),
-            IncomingRequestKind::ClaimPswap,
-            net_id,
-        )
-        .unwrap();
-        let request = IncomingRequest::ClaimPswap(crate::IncomingClaimPswap {
-            eth_address: Address::from_str("40fd72257597aa14c7231a7b1aaa29fce868f677").unwrap(),
-            account_id: alice.clone(),
-            tx_hash,
-            at_height: 1,
-            timepoint: Default::default(),
-            network_id: net_id,
-        });
-        // Same eth_address
-        assert_incoming_request_failed(&state, request.clone(), tx_hash).unwrap();
-    });
-}
-
-#[test]
-fn should_fail_claim_pswap_account_not_found() {
-    let net_id = ETH_NETWORK_ID;
-    let mut builder = ExtBuilder::default();
-    builder.add_reserves(net_id, (PSWAP.into(), Balance::from(0u32)));
-    let (mut ext, state) = builder.build();
-    let bridge_acc_id = state.networks[&ETH_NETWORK_ID]
-        .config
-        .bridge_account_id
-        .clone();
-    ext.execute_with(|| {
-        let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
-        let tx_hash = request_incoming(
-            alice.clone(),
-            H256::from_slice(&[1u8; 32]),
-            IncomingRequestKind::ClaimPswap,
-            net_id,
-        )
-        .unwrap();
-        let request = IncomingRequest::ClaimPswap(crate::IncomingClaimPswap {
-            eth_address: Address::from_str("32fd72257597aa14c7231a7b1aaa29fce868f677").unwrap(),
-            account_id: alice.clone(),
-            tx_hash,
-            at_height: 1,
-            timepoint: Default::default(),
-            network_id: net_id,
-        });
-        assert_ok!(EthBridge::register_incoming_request(
-            Origin::signed(bridge_acc_id.clone()),
-            request.clone()
-        ));
-        assert!(crate::PendingIncomingRequests::<Runtime>::get(net_id).contains(&tx_hash));
-        assert_eq!(
-            crate::IncomingRequests::get(net_id, &tx_hash).unwrap(),
-            request
-        );
-        assert_eq!(
-            assets::Module::<Runtime>::total_balance(&AssetId::PSWAP.into(), &alice).unwrap(),
-            0u32.into()
-        );
-        assert_ok!(EthBridge::finalize_incoming_request(
-            Origin::signed(bridge_acc_id),
-            Err((tx_hash, Error::AccountNotFound.into())),
-            net_id
-        ));
-        assert_eq!(
-            crate::RequestStatuses::<Runtime>::get(net_id, &tx_hash).unwrap(),
-            RequestStatus::Failed
-        );
-        assert!(crate::PendingIncomingRequests::<Runtime>::get(net_id).is_empty());
-        assert_eq!(
-            assets::Module::<Runtime>::total_balance(&AssetId::PSWAP.into(), &alice).unwrap(),
-            0u32.into()
-        );
-    });
-}
-
 fn last_event() -> Option<Event> {
     frame_system::Module::<Runtime>::events()
         .pop()
@@ -238,7 +74,7 @@ fn approve_request(state: &State, request: OutgoingRequest<Runtime>) -> Result<(
     for (i, (_signer, account_id, seed)) in keypairs.iter().enumerate() {
         let secret = SecretKey::parse_slice(seed).unwrap();
         let public = PublicKey::from_secret_key(&secret);
-        let msg = EthBridge::prepare_message(encoded.as_raw());
+        let msg = eth::prepare_message(encoded.as_raw());
         let sig_pair = secp256k1::sign(&msg, &secret);
         let signature = sig_pair.into();
         let signature_params = get_signature_params(&signature);
@@ -389,7 +225,7 @@ fn assert_incoming_request_done(
     );
     assert_ok!(EthBridge::finalize_incoming_request(
         Origin::signed(bridge_acc_id.clone()),
-        Ok(incoming_request),
+        incoming_request,
         net_id,
     ));
     assert_eq!(
@@ -422,50 +258,6 @@ fn assert_incoming_request_registration_failed(
         ),
         error
     );
-    Ok(())
-}
-
-fn assert_incoming_request_failed(
-    state: &State,
-    incoming_request: IncomingRequest<Runtime>,
-    tx_hash: H256,
-) -> Result<(), Event> {
-    let net_id = incoming_request.network_id();
-
-    let bridge_acc_id = state.networks[&net_id].config.bridge_account_id.clone();
-    assert_eq!(
-        crate::RequestsQueue::<Runtime>::get(net_id)
-            .last()
-            .unwrap()
-            .hash()
-            .0,
-        incoming_request.hash().0
-    );
-    assert_ok!(EthBridge::register_incoming_request(
-        Origin::signed(bridge_acc_id.clone()),
-        incoming_request.clone()
-    ));
-    assert_ne!(
-        crate::RequestsQueue::<Runtime>::get(net_id)
-            .last()
-            .map(|x| x.hash().0),
-        Some(incoming_request.hash().0)
-    );
-    assert!(crate::PendingIncomingRequests::<Runtime>::get(net_id).contains(&tx_hash));
-    assert_eq!(
-        crate::IncomingRequests::get(net_id, &tx_hash).unwrap(),
-        incoming_request
-    );
-    assert_ok!(EthBridge::finalize_incoming_request(
-        Origin::signed(bridge_acc_id.clone()),
-        Ok(incoming_request),
-        net_id,
-    ));
-    assert_eq!(
-        crate::RequestStatuses::<Runtime>::get(net_id, &tx_hash).unwrap(),
-        RequestStatus::Failed
-    );
-    assert!(crate::PendingIncomingRequests::<Runtime>::get(net_id).is_empty());
     Ok(())
 }
 
@@ -661,6 +453,7 @@ fn should_register_outgoing_transfer() {
             amount: 100_u32.into(),
             nonce: 3,
             network_id: ETH_NETWORK_ID,
+            timepoint: bridge_multisig::Pallet::<Runtime>::timepoint(),
         };
         let last_request = crate::RequestsQueue::get(net_id).pop().unwrap();
         match last_request {
@@ -827,7 +620,7 @@ fn should_cancel_incoming_transfer() {
         .unwrap();
         assert_ok!(EthBridge::finalize_incoming_request(
             Origin::signed(bridge_acc_id.clone()),
-            Ok(incoming_transfer.clone()),
+            incoming_transfer.clone(),
             net_id,
         ));
         assert_eq!(
@@ -881,9 +674,10 @@ fn should_fail_incoming_transfer() {
             assets::Module::<Runtime>::total_balance(&AssetId::XOR.into(), &alice).unwrap(),
             100000u32.into()
         );
-        assert_ok!(EthBridge::finalize_incoming_request(
+        assert_ok!(EthBridge::abort_request(
             Origin::signed(bridge_acc_id),
-            Err((tx_hash, Error::Other.into())),
+            tx_hash,
+            Error::Other.into(),
             net_id,
         ));
         assert_eq!(
@@ -1006,7 +800,7 @@ fn should_convert_to_eth_address() {
         )
         .unwrap();
         assert_eq!(
-            crate::public_key_to_eth_address(&account_id),
+            eth::public_key_to_eth_address(&account_id),
             Address::from_str("8589c3814C3c1d4d2f5C21B74c6A00fb15E5166E").unwrap()
         );
     });
@@ -1109,7 +903,7 @@ fn should_add_peer_in_eth_network() {
 
         // outgoing request part
         let new_peer_id = signer.into_account();
-        let new_peer_address = crate::public_key_to_eth_address(&public);
+        let new_peer_address = eth::public_key_to_eth_address(&public);
         assert_ok!(EthBridge::add_peer(
             Origin::signed(state.authority_account_id.clone()),
             new_peer_id.clone(),
@@ -1220,7 +1014,7 @@ fn should_add_peer_in_simple_networks() {
 
         // outgoing request part
         let new_peer_id = signer.into_account();
-        let new_peer_address = crate::public_key_to_eth_address(&public);
+        let new_peer_address = eth::public_key_to_eth_address(&public);
         assert_ok!(EthBridge::add_peer(
             Origin::signed(state.authority_account_id.clone()),
             new_peer_id.clone(),
@@ -1313,7 +1107,7 @@ fn should_remove_peer_in_simple_network() {
             net_id,
         )
         .unwrap();
-        let peer_address = crate::public_key_to_eth_address(&public);
+        let peer_address = eth::public_key_to_eth_address(&public);
         let incoming_request = IncomingRequest::ChangePeers(crate::IncomingChangePeers {
             peer_account_id: peer_id.clone(),
             peer_address,
@@ -1375,7 +1169,7 @@ fn should_remove_peer_in_eth_network() {
             net_id,
         )
         .unwrap();
-        let peer_address = crate::public_key_to_eth_address(&public);
+        let peer_address = eth::public_key_to_eth_address(&public);
         let incoming_request = IncomingRequest::ChangePeers(crate::IncomingChangePeers {
             peer_account_id: peer_id.clone(),
             peer_address,
@@ -1473,7 +1267,7 @@ fn should_not_allow_changing_peers_simultaneously() {
         let net_id = ETH_NETWORK_ID;
         let (_, peer_id, seed) = &state.networks[&net_id].ocw_keypairs[4];
         let public = PublicKey::from_secret_key(&SecretKey::parse_slice(&seed[..]).unwrap());
-        let address = crate::public_key_to_eth_address(&public);
+        let address = eth::public_key_to_eth_address(&public);
         assert_ok!(EthBridge::remove_peer(
             Origin::signed(state.authority_account_id.clone()),
             peer_id.clone(),
@@ -2271,19 +2065,6 @@ fn should_ensure_known_contract() {
             ),
             Error::UnknownContractAddress
         );
-        assert_ok!(EthBridge::ensure_known_contract(
-            EthBridge::pswap_contract_address(),
-            ETH_NETWORK_ID,
-            IncomingRequestKind::ClaimPswap,
-        ));
-        assert_err!(
-            EthBridge::ensure_known_contract(
-                EthBridge::pswap_contract_address(),
-                100,
-                IncomingRequestKind::ClaimPswap,
-            ),
-            Error::UnknownContractAddress
-        );
     });
 }
 
@@ -2298,7 +2079,7 @@ fn should_parse_add_peer_on_old_contract() {
         let signer = AccountPublic::from(kp.public());
         let public = PublicKey::from_secret_key(&SecretKey::parse_slice(&kp.seed()).unwrap());
         let new_peer_id = signer.into_account();
-        let new_peer_address = crate::public_key_to_eth_address(&public);
+        let new_peer_address = eth::public_key_to_eth_address(&public);
         assert_ok!(EthBridge::add_peer(
             Origin::signed(state.authority_account_id.clone()),
             new_peer_id.clone(),
@@ -2318,7 +2099,7 @@ fn should_parse_add_peer_on_old_contract() {
             network_id: net_id,
         };
         let tx = Transaction {
-            input: Bytes(hex!("ca70cf6e00000000000000000000000025451a4de12dccc2d166922fa938e900fcc4ed24d209d4cd392dd4c5b37b4feaa2358691a632860735cda5261c4d2a0a7f354ade00000000000000000000000000000000000000000000000000000000000000a000000000000000000000000000000000000000000000000000000000000000e000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000008900000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000").to_vec()),
+            input: Bytes(hex!("ca70cf6e00000000000000000000000025451a4de12dccc2d166922fa938e900fcc4ed24441b7425bbf44fe617047e8f4cea8c47be35c8828257aa5793c08167e7c715eb00000000000000000000000000000000000000000000000000000000000000a000000000000000000000000000000000000000000000000000000000000000e000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000008900000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000").to_vec()),
             block_number: Some(1u64.into()),
             to: Some(types::H160(EthBridge::xor_master_contract_address().0)),
             ..Default::default()
@@ -2351,7 +2132,7 @@ fn should_parse_remove_peer_on_old_contract() {
         let signer = AccountPublic::from(kp.public());
         let public = PublicKey::from_secret_key(&SecretKey::parse_slice(&kp.seed()).unwrap());
         let new_peer_id = signer.into_account();
-        let new_peer_address = crate::public_key_to_eth_address(&public);
+        let new_peer_address = eth::public_key_to_eth_address(&public);
         let tx_hash = H256([1; 32]);
         assert_ok!(EthBridge::force_add_peer(Origin::root(), new_peer_id.clone(), new_peer_address, net_id));
         assert_ok!(EthBridge::remove_peer(
@@ -2368,7 +2149,7 @@ fn should_parse_remove_peer_on_old_contract() {
             network_id: net_id,
         };
         let tx = Transaction {
-            input: Bytes(hex!("89c39baf00000000000000000000000025451a4de12dccc2d166922fa938e900fcc4ed2456dcdf93ea580e02742a22e68b8838da01545f8574746a75ad9a1e8ab198479c00000000000000000000000000000000000000000000000000000000000000a000000000000000000000000000000000000000000000000000000000000000c000000000000000000000000000000000000000000000000000000000000000e0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000").to_vec()),
+            input: Bytes(hex!("89c39baf00000000000000000000000025451a4de12dccc2d166922fa938e900fcc4ed24451d32cbef7d41bbc741949402308c03fe43ab4efe4aa8f83c21e732c9e1ca1c00000000000000000000000000000000000000000000000000000000000000a000000000000000000000000000000000000000000000000000000000000000c000000000000000000000000000000000000000000000000000000000000000e0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000").to_vec()),
             block_number: Some(1u64.into()),
             to: Some(types::H160(EthBridge::val_master_contract_address().0)),
             ..Default::default()
@@ -2386,5 +2167,37 @@ fn should_parse_remove_peer_on_old_contract() {
                 network_id: net_id
             })
         );
+    });
+}
+
+#[test]
+fn should_use_different_abi_when_sending_xor_val_on_non_eth_network() {
+    let (mut ext, _state) = ExtBuilder::default().build();
+    ext.execute_with(|| {
+        let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
+        for asset_id in &[XOR, VAL] {
+            let transfer_to_eth = OutgoingTransfer::<Runtime> {
+                from: alice.clone(),
+                to: Address::from([1; 20]),
+                asset_id: *asset_id,
+                amount: 100_u32.into(),
+                nonce: 0,
+                network_id: ETH_NETWORK_ID,
+                timepoint: Default::default(),
+            };
+            let transfer_to_non_eth = OutgoingTransfer::<Runtime> {
+                from: alice.clone(),
+                to: Address::from([1; 20]),
+                asset_id: *asset_id,
+                amount: 100_u32.into(),
+                nonce: 0,
+                network_id: 100,
+                timepoint: Default::default(),
+            };
+            assert_ne!(
+                transfer_to_eth.to_eth_abi(H256::zero()).unwrap().raw,
+                transfer_to_non_eth.to_eth_abi(H256::zero()).unwrap().raw
+            );
+        }
     });
 }

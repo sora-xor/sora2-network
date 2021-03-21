@@ -1,6 +1,6 @@
 use crate::{self as pool_xyk, Config};
-use common::balance;
 use common::prelude::Balance;
+use common::{balance, hash, DEXInfo};
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::GenesisBuild;
 use frame_support::weights::Weight;
@@ -8,7 +8,7 @@ use frame_support::{construct_runtime, parameter_types};
 use frame_system;
 use hex_literal::hex;
 use orml_traits::parameter_type_with_key;
-use permissions::{Scope, INIT_DEX, TRANSFER};
+use permissions::{Scope, MANAGE_DEX, TRANSFER};
 use sp_core::crypto::AccountId32;
 use sp_core::H256;
 use sp_runtime::testing::Header;
@@ -198,7 +198,10 @@ pub fn BOB() -> AccountId {
     AccountId32::from([2; 32])
 }
 
+pub const DEX_A_ID: DEXId = 220;
+
 pub struct ExtBuilder {
+    initial_dex_list: Vec<(DEXId, DEXInfo<AssetId>)>,
     endowed_accounts: Vec<(AccountId, AssetId, Balance)>,
     initial_permission_owners: Vec<(u32, Scope, Vec<AccountId>)>,
     initial_permissions: Vec<(AccountId, Scope, Vec<u32>)>,
@@ -207,16 +210,23 @@ pub struct ExtBuilder {
 impl Default for ExtBuilder {
     fn default() -> Self {
         Self {
+            initial_dex_list: vec![(
+                DEX_A_ID,
+                DEXInfo {
+                    base_asset_id: GoldenTicket.into(),
+                    is_public: true,
+                },
+            )],
             endowed_accounts: vec![
                 (ALICE(), RedPepper.into(), balance!(99000)),
                 (ALICE(), BlackPepper.into(), balance!(2000000)),
                 (BOB(), RedPepper.into(), balance!(2000000)),
             ],
             initial_permission_owners: vec![
-                (INIT_DEX, Scope::Unlimited, vec![BOB()]),
+                (MANAGE_DEX, Scope::Limited(hash(&DEX_A_ID)), vec![BOB()]),
                 (TRANSFER, Scope::Unlimited, vec![ALICE()]),
             ],
-            initial_permissions: vec![(BOB(), Scope::Unlimited, vec![INIT_DEX])],
+            initial_permissions: vec![(BOB(), Scope::Limited(hash(&DEX_A_ID)), vec![MANAGE_DEX])],
         }
     }
 }
@@ -226,6 +236,12 @@ impl ExtBuilder {
         let mut t = frame_system::GenesisConfig::default()
             .build_storage::<Runtime>()
             .unwrap();
+
+        dex_manager::GenesisConfig::<Runtime> {
+            dex_list: self.initial_dex_list,
+        }
+        .assimilate_storage(&mut t)
+        .unwrap();
 
         tokens::GenesisConfig::<Runtime> {
             endowed_accounts: self.endowed_accounts,

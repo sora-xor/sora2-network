@@ -22,6 +22,7 @@ members = [
     "pallets/mock-liquidity-source",
     "pallets/technical",
     "pallets/pool-xyk",
+    "pallets/rewards",
     "pallets/xor-fee",
     "pallets/referral-system",
     "pallets/bonding-curve-pool",

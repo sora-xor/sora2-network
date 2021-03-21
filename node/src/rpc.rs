@@ -90,6 +90,7 @@ where
     >,
     C::Api: iroha_migration_rpc::IrohaMigrationRuntimeAPI<Block>,
     C::Api: pswap_distribution_rpc::PswapDistributionRuntimeAPI<Block, AccountId, Balance>,
+    C::Api: rewards_rpc::RewardsRuntimeAPI<Block, sp_core::H160, Balance>,
     C::Api: BlockBuilder<Block>,
     P: TransactionPool + Send + Sync + 'static,
 {
@@ -102,6 +103,7 @@ where
     use liquidity_proxy_rpc::{LiquidityProxyAPI, LiquidityProxyClient};
     use pallet_transaction_payment_rpc::{TransactionPayment, TransactionPaymentApi};
     use pswap_distribution_rpc::{PswapDistributionAPI, PswapDistributionClient};
+    use rewards_rpc::{RewardsAPI, RewardsClient};
     use substrate_frame_rpc_system::{FullSystem, SystemApi};
     use trading_pair_rpc::{TradingPairAPI, TradingPairClient};
 
@@ -136,5 +138,6 @@ where
     io.extend_with(PswapDistributionAPI::to_delegate(
         PswapDistributionClient::new(client.clone()),
     ));
+    io.extend_with(RewardsAPI::to_delegate(RewardsClient::new(client.clone())));
     io
 }

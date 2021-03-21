@@ -8,7 +8,7 @@ use frame_support::ensure;
 use frame_support::sp_runtime::DispatchError;
 use frame_support::weights::Weight;
 use frame_system::{ensure_signed, RawOrigin};
-use permissions::{Scope, INIT_DEX, MANAGE_DEX};
+use permissions::{Scope, MANAGE_DEX};
 use sp_std::vec::Vec;
 
 mod weights;
@@ -101,46 +101,7 @@ pub mod pallet {
     impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {}
 
     #[pallet::call]
-    impl<T: Config> Pallet<T> {
-        /// Initialize DEX in network with given Id, Base Asset, if fees are not given then defaults are applied.
-        ///
-        /// - `dex_id`: ID of the exchange.
-        /// - `fee`: value of fee on swaps in basis points.
-        /// - `protocol_fee`: value of fee fraction for protocol beneficiary in basis points.
-        #[pallet::weight(<T as Config>::WeightInfo::initialize_dex())]
-        pub fn initialize_dex(
-            origin: OriginFor<T>,
-            dex_id: T::DEXId,
-            base_asset_id: T::AssetId,
-            owner_account_id: T::AccountId,
-            is_public: bool,
-        ) -> DispatchResultWithPostInfo {
-            let who = ensure_signed(origin)?;
-            permissions::Module::<T>::check_permission(who.clone(), INIT_DEX)?;
-            ensure!(
-                !DEXInfos::<T>::contains_key(&dex_id),
-                Error::<T>::DEXIdAlreadyExists
-            );
-            // Construct DEX information.
-            let new_dex_info = DEXInfo::<T> {
-                base_asset_id,
-                is_public,
-            };
-            DEXInfos::<T>::insert(dex_id.clone(), new_dex_info);
-            // Create permission for designated owner account.
-            match permissions::Module::<T>::assign_permission(
-                owner_account_id.clone(),
-                &owner_account_id,
-                MANAGE_DEX,
-                Scope::Limited(hash(&dex_id)),
-            ) {
-                Err(permissions::Error::<T>::PermissionAlreadyExists) => {}
-                result => result?,
-            }
-            Self::deposit_event(Event::DEXInitialized(dex_id));
-            Ok(().into())
-        }
-    }
+    impl<T: Config> Pallet<T> {}
 
     #[pallet::event]
     #[pallet::metadata(DexIdOf<T> = "DEXId")]
