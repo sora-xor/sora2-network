@@ -21,6 +21,7 @@ pub mod utils;
 pub mod weights;
 
 use codec::Encode;
+use frame_support::debug;
 use sp_core::hash::H512;
 use sp_runtime::TransactionOutcome;
 
@@ -75,6 +76,16 @@ pub fn with_transaction<T, E>(f: impl FnOnce() -> Result<T, E>) -> Result<T, E> 
             TransactionOutcome::Rollback(result)
         }
     })
+}
+
+// /// Measures and logs execution time of target code.
+pub fn with_benchmark<T>(id: &str, f: impl FnOnce() -> T) -> T {
+    debug::RuntimeLogger::init();
+    let t0 = frame_benchmarking::benchmarking::current_time();
+    let result = f();
+    let t1 = frame_benchmarking::benchmarking::current_time();
+    debug::print!("BENCHMARK RESULT: {} took {}", id, t1 - t0,);
+    result
 }
 
 pub fn hash<T: Encode>(val: &T) -> H512 {
