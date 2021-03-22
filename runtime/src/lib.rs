@@ -412,18 +412,18 @@ impl assets::Config for Runtime {
     type AssetId = AssetId;
     type GetBaseAssetId = GetBaseAssetId;
     type Currency = currencies::Module<Runtime>;
-    type WeightInfo = PresetWeightInfo;
+    type WeightInfo = ();
 }
 
 impl trading_pair::Config for Runtime {
     type Event = Event;
     type EnsureDEXManager = dex_manager::Module<Runtime>;
-    type WeightInfo = PresetWeightInfo;
+    type WeightInfo = ();
 }
 
 impl dex_manager::Config for Runtime {
     type Event = Event;
-    type WeightInfo = PresetWeightInfo;
+    type WeightInfo = ();
 }
 
 impl bonding_curve_pool::Config for Runtime {
@@ -442,7 +442,7 @@ impl technical::Config for Runtime {
     type Condition = ();
     type SwapAction =
         pool_xyk::PolySwapAction<AssetId, TechAssetId, Balance, AccountId, TechAccountId>;
-    type WeightInfo = PresetWeightInfo;
+    type WeightInfo = ();
 }
 
 impl pool_xyk::Config for Runtime {
@@ -455,7 +455,7 @@ impl pool_xyk::Config for Runtime {
     type PolySwapAction =
         pool_xyk::PolySwapAction<AssetId, TechAssetId, Balance, AccountId, TechAccountId>;
     type EnsureDEXManager = dex_manager::Module<Runtime>;
-    type WeightInfo = PresetWeightInfo;
+    type WeightInfo = ();
 }
 
 parameter_types! {
@@ -473,7 +473,7 @@ parameter_types! {
                 .expect("Failed to get ordinary account id for technical account id.");
         account_id
     };
-    pub const GetNumSamples: usize = 40;
+    pub const GetNumSamples: usize = 5;
 }
 
 impl liquidity_proxy::Config for Runtime {
@@ -481,7 +481,7 @@ impl liquidity_proxy::Config for Runtime {
     type LiquidityRegistry = dex_api::Module<Runtime>;
     type GetNumSamples = GetNumSamples;
     type GetTechnicalAccountId = GetLiquidityProxyAccountId;
-    type WeightInfo = PresetWeightInfo;
+    type WeightInfo = ();
 }
 
 parameter_types! {
@@ -525,7 +525,7 @@ impl dex_api::Config for Runtime {
     type BondingCurvePool = bonding_curve_pool::Module<Runtime>;
     type MulticollateralBondingCurvePool = multicollateral_bonding_curve_pool::Module<Runtime>;
     type XYKPool = pool_xyk::Module<Runtime>;
-    type WeightInfo = PresetWeightInfo;
+    type WeightInfo = ();
 }
 
 impl farming::Config for Runtime {
@@ -709,7 +709,7 @@ impl eth_bridge::Config for Runtime {
     type PeerId = eth_bridge::crypto::TestAuthId;
     type NetworkId = NetworkId;
     type GetEthNetworkId = EthNetworkId;
-    type WeightInfo = PresetWeightInfo;
+    type WeightInfo = ();
 }
 
 impl faucet::Config for Runtime {
@@ -789,7 +789,7 @@ impl multicollateral_bonding_curve_pool::Config for Runtime {
     type LiquidityProxy = LiquidityProxy;
     type EnsureDEXManager = DEXManager;
     type EnsureTradingPairExists = TradingPair;
-    type WeightInfo = PresetWeightInfo;
+    type WeightInfo = ();
 }
 
 /// Payload data to be signed when making signed transaction from off-chain workers,
