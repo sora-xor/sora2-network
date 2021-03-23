@@ -424,6 +424,7 @@ fn should_mint_and_burn_sidechain_asset() {
             at_height: 1,
             timepoint: Default::default(),
             network_id: ETH_NETWORK_ID,
+            should_take_fee: false,
         });
         assert_incoming_request_done(&state, incoming_transfer.clone()).unwrap();
         check_invariant(&asset_id, 100);
@@ -447,7 +448,7 @@ fn should_not_burn_or_mint_sidechain_owned_asset() {
     fn check_invariant() {
         assert_eq!(
             Assets::total_issuance(&XOR.into()).unwrap(),
-            350000u32.into()
+            balance!(350000)
         );
     }
 
@@ -476,6 +477,7 @@ fn should_not_burn_or_mint_sidechain_owned_asset() {
             at_height: 1,
             timepoint: Default::default(),
             network_id: ETH_NETWORK_ID,
+            should_take_fee: false,
         });
         assert_incoming_request_done(&state, incoming_transfer.clone()).unwrap();
         check_invariant();
@@ -602,6 +604,7 @@ fn should_not_accept_approved_incoming_transfer() {
             at_height: 1,
             timepoint: Default::default(),
             network_id: ETH_NETWORK_ID,
+            should_take_fee: false,
         });
         assert_incoming_request_done(&state, incoming_transfer.clone()).unwrap();
         assert_err!(
@@ -639,6 +642,7 @@ fn should_success_incoming_transfer() {
             at_height: 1,
             timepoint: Default::default(),
             network_id: ETH_NETWORK_ID,
+            should_take_fee: false,
         });
         assert_eq!(
             Assets::total_balance(&XOR.into(), &alice).unwrap(),
@@ -687,6 +691,7 @@ fn should_cancel_incoming_transfer() {
             at_height: 1,
             timepoint: Default::default(),
             network_id: ETH_NETWORK_ID,
+            should_take_fee: false,
         });
         assert_ok!(EthBridge::register_incoming_request(
             Origin::signed(bridge_acc_id.clone()),
@@ -739,6 +744,7 @@ fn should_fail_incoming_transfer() {
             at_height: 1,
             timepoint: Default::default(),
             network_id: ETH_NETWORK_ID,
+            should_take_fee: false,
         });
         assert_ok!(EthBridge::register_incoming_request(
             Origin::signed(bridge_acc_id.clone()),
@@ -772,6 +778,77 @@ fn should_fail_incoming_transfer() {
 }
 
 #[test]
+fn should_take_fee_in_incoming_transfer() {
+    let (mut ext, state) = ExtBuilder::default().build();
+    ext.execute_with(|| {
+        let net_id = ETH_NETWORK_ID;
+        let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
+        let tx_hash = request_incoming(
+            alice.clone(),
+            H256::from_slice(&[1u8; 32]),
+            IncomingRequestKind::Transfer,
+            net_id,
+        )
+        .unwrap();
+        let incoming_transfer = IncomingRequest::Transfer(crate::IncomingTransfer {
+            from: Address::from([1; 20]),
+            to: alice.clone(),
+            asset_id: AssetId::XOR.into(),
+            asset_kind: AssetKind::SidechainOwned,
+            amount: balance!(100),
+            tx_hash,
+            at_height: 1,
+            timepoint: Default::default(),
+            network_id: ETH_NETWORK_ID,
+            should_take_fee: true,
+        });
+        assert_eq!(
+            assets::Module::<Runtime>::total_balance(&AssetId::XOR.into(), &alice).unwrap(),
+            0u32.into()
+        );
+        assert_incoming_request_done(&state, incoming_transfer.clone()).unwrap();
+        assert_eq!(
+            assets::Module::<Runtime>::total_balance(&AssetId::XOR.into(), &alice).unwrap(),
+            balance!(99.9993).into()
+        );
+    });
+}
+
+#[test]
+fn should_fail_take_fee_in_incoming_transfer() {
+    let (mut ext, state) = ExtBuilder::default().build();
+    ext.execute_with(|| {
+        let net_id = ETH_NETWORK_ID;
+        let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
+        let tx_hash = request_incoming(
+            alice.clone(),
+            H256::from_slice(&[1u8; 32]),
+            IncomingRequestKind::Transfer,
+            net_id,
+        )
+        .unwrap();
+        let incoming_transfer = IncomingRequest::Transfer(crate::IncomingTransfer {
+            from: Address::from([1; 20]),
+            to: alice.clone(),
+            asset_id: AssetId::XOR.into(),
+            asset_kind: AssetKind::SidechainOwned,
+            amount: 100u32.into(),
+            tx_hash,
+            at_height: 1,
+            timepoint: Default::default(),
+            network_id: ETH_NETWORK_ID,
+            should_take_fee: true,
+        });
+        assert_incoming_request_registration_failed(
+            &state,
+            incoming_transfer.clone(),
+            Error::UnableToPayFees,
+        )
+        .unwrap();
+    });
+}
+
+#[test]
 fn should_fail_registering_incoming_request_if_preparation_failed() {
     let net_id = ETH_NETWORK_ID;
     let mut builder = ExtBuilder::default();
@@ -797,6 +874,7 @@ fn should_fail_registering_incoming_request_if_preparation_failed() {
             at_height: 1,
             timepoint: Default::default(),
             network_id: net_id,
+            should_take_fee: false,
         });
         let bridge_acc_id = state.networks[&net_id].config.bridge_account_id.clone();
         assert_err!(
@@ -1654,6 +1732,7 @@ fn should_not_mark_request_as_done() {
             at_height: 1,
             timepoint: Default::default(),
             network_id: net_id,
+            should_take_fee: false,
         });
         assert_incoming_request_done(&state, incoming_transfer.clone()).unwrap();
         assert_noop!(
@@ -1771,6 +1850,7 @@ fn should_reserve_owned_asset_on_different_networks() {
             at_height: 1,
             timepoint: Default::default(),
             network_id: net_id_0,
+            should_take_fee: false,
         });
         assert_incoming_request_done(&state, incoming_transfer.clone()).unwrap();
         let tx_hash = request_incoming(
@@ -1790,6 +1870,7 @@ fn should_reserve_owned_asset_on_different_networks() {
             at_height: 1,
             timepoint: Default::default(),
             network_id: net_id_1,
+            should_take_fee: false,
         });
         assert_incoming_request_done(&state, incoming_transfer.clone()).unwrap();
         assert_eq!(Assets::total_issuance(&asset_id).unwrap(), supply);
@@ -1859,6 +1940,7 @@ fn should_handle_sidechain_and_thischain_asset_on_different_networks() {
             at_height: 1,
             timepoint: Default::default(),
             network_id: net_id_0,
+            should_take_fee: false,
         });
         assert_incoming_request_done(&state, incoming_transfer.clone()).unwrap();
 
@@ -1888,6 +1970,7 @@ fn should_handle_sidechain_and_thischain_asset_on_different_networks() {
             at_height: 1,
             timepoint: Default::default(),
             network_id: net_id_1,
+            should_take_fee: false,
         });
         assert_incoming_request_done(&state, incoming_transfer.clone()).unwrap();
 
@@ -2477,6 +2560,7 @@ fn should_cancel_incoming_prepared_requests() {
                     network_id: net_id,
                     timepoint: Default::default(),
                     at_height: 0,
+                    should_take_fee: false,
                 }
                 .into(),
             ),
@@ -2492,6 +2576,7 @@ fn should_cancel_incoming_prepared_requests() {
                     network_id: net_id,
                     timepoint: Default::default(),
                     at_height: 0,
+                    should_take_fee: false,
                 }
                 .into(),
             ),
@@ -2507,6 +2592,7 @@ fn should_cancel_incoming_prepared_requests() {
                     network_id: net_id,
                     timepoint: Default::default(),
                     at_height: 0,
+                    should_take_fee: false,
                 }
                 .into(),
             ),

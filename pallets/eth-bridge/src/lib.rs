@@ -376,6 +376,8 @@ pub enum IncomingRequestKind {
     Migrate,
     AddPeerCompat,
     RemovePeerCompat,
+    /// A special case of transferring XOR asset with post-taking fees.
+    TransferXOR,
 }
 
 impl IncomingRequestKind {
@@ -429,6 +431,7 @@ impl<T: Config> IncomingRequest<T> {
                     at_height,
                     timepoint,
                     network_id,
+                    should_take_fee: false,
                 })
             }
             ContractEvent::ChangePeers(peer_address, added) => {
@@ -500,6 +503,18 @@ impl<T: Config> IncomingRequest<T> {
             IncomingRequest::PrepareForMigration(request) => request.at_height,
             IncomingRequest::Migrate(request) => request.at_height,
             IncomingRequest::ChangePeersCompat(request) => request.at_height,
+        }
+    }
+
+    pub fn validate(&self) -> Result<(), DispatchError> {
+        match self {
+            IncomingRequest::Transfer(request) => request.validate(),
+            IncomingRequest::AddAsset(_request) => Ok(()),
+            IncomingRequest::ChangePeers(_request) => Ok(()),
+            IncomingRequest::CancelOutgoingRequest(_request) => Ok(()),
+            IncomingRequest::PrepareForMigration(_request) => Ok(()),
+            IncomingRequest::Migrate(_request) => Ok(()),
+            IncomingRequest::ChangePeersCompat(_request) => Ok(()),
         }
     }
 
@@ -887,7 +902,9 @@ pub use pallet::*;
 pub mod pallet {
     use super::*;
     use frame_support::pallet_prelude::*;
+    use frame_support::weights::PostDispatchInfo;
     use frame_system::pallet_prelude::*;
+    use permissions::BURN;
 
     #[pallet::config]
     pub trait Config:
@@ -1098,7 +1115,15 @@ pub mod pallet {
                 kind,
                 network_id,
             )))?;
-            Ok(().into())
+            let pays_fee = if kind == IncomingRequestKind::TransferXOR {
+                Pays::No
+            } else {
+                Pays::Yes
+            };
+            Ok(PostDispatchInfo {
+                actual_weight: None,
+                pays_fee,
+            })
         }
 
         /// Finalize incoming request.
@@ -1315,7 +1340,10 @@ pub mod pallet {
                 !PendingIncomingRequests::<T>::get(net_id).contains(&tx_hash),
                 Error::<T>::RequestIsAlreadyRegistered
             );
-            if let Err(e) = incoming_request.prepare() {
+            if let Err(e) = incoming_request
+                .validate()
+                .and_then(|_| incoming_request.prepare())
+            {
                 Self::inner_abort_incoming_request(&incoming_request, tx_hash, net_id);
                 return Err(e.into());
             }
@@ -1607,6 +1635,10 @@ pub mod pallet {
         FailedToLoadIsUsed,
         /// Sidechain transaction might have failed due to gas limit.
         TransactionMightHaveFailedDueToGasLimit,
+        /// A transfer of XOR was expected.
+        ExpectedXORTransfer,
+        /// Unable to pay transfer fees.
+        UnableToPayFees,
         /// Unknown error.
         Other,
     }
@@ -2350,7 +2382,18 @@ impl<T: Config> Pallet<T> {
                     _ => {
                         debug::debug!("Loading approved tx {}", tx_hash);
                         let tx = Self::load_tx_receipt(tx_hash, network_id, kind)?;
-                        let incoming_request = Self::parse_incoming_request(tx, request)?;
+                        let mut incoming_request = Self::parse_incoming_request(tx, request)?;
+                        if kind == IncomingRequestKind::TransferXOR {
+                            if let IncomingRequest::Transfer(transfer) = &mut incoming_request {
+                                ensure!(
+                                    transfer.asset_id == common::XOR.into(),
+                                    Error::<T>::ExpectedXORTransfer
+                                );
+                                transfer.enable_taking_fee();
+                            } else {
+                                fail!(Error::<T>::ExpectedXORTransfer)
+                            }
+                        }
                         Self::send_register_incoming_request(
                             incoming_request,
                             timepoint,

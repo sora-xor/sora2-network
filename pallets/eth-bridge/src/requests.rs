@@ -2,11 +2,12 @@ use crate::contract::{MethodId, FUNCTIONS, METHOD_ID_SIZE};
 use crate::{
     get_bridge_account, types, Address, AssetIdOf, AssetKind, BridgeStatus, Config, Decoder, Error,
     OffchainRequest, OutgoingRequest, Pallet, RequestStatus, SignatureParams, Timepoint,
+    WeightInfo,
 };
 use alloc::collections::BTreeSet;
 use alloc::string::String;
 use codec::{Decode, Encode};
-use common::prelude::Balance;
+use common::prelude::{Balance, WeightToFixedFee};
 #[cfg(feature = "std")]
 use common::utils::string_serialization;
 use common::{AssetSymbol, BalancePrecision, VAL, XOR};
@@ -16,6 +17,7 @@ use frame_support::debug;
 use frame_support::dispatch::{DispatchError, DispatchResult};
 use frame_support::sp_runtime::app_crypto::sp_core;
 use frame_support::traits::Get;
+use frame_support::weights::WeightToFeePolynomial;
 use frame_support::{ensure, RuntimeDebug};
 use frame_system::RawOrigin;
 #[cfg(feature = "std")]
@@ -208,9 +210,23 @@ pub struct IncomingTransfer<T: Config> {
     pub at_height: u64,
     pub timepoint: Timepoint<T>,
     pub network_id: T::NetworkId,
+    pub should_take_fee: bool,
 }
 
 impl<T: Config> IncomingTransfer<T> {
+    pub fn fee_amount() -> Balance {
+        let weight = <T as Config>::WeightInfo::request_from_sidechain();
+        WeightToFixedFee::calc(&weight)
+    }
+
+    pub fn validate(&self) -> Result<(), DispatchError> {
+        if self.should_take_fee {
+            let transfer_fee = Self::fee_amount();
+            ensure!(self.amount >= transfer_fee, Error::<T>::UnableToPayFees);
+        }
+        Ok(())
+    }
+
     /// If the asset kind is owned, then the `amount` of funds is reserved on the bridge account.
     pub fn prepare(&self) -> Result<(), DispatchError> {
         if self.asset_kind.is_owned() {
@@ -238,25 +254,40 @@ impl<T: Config> IncomingTransfer<T> {
     /// If the transferring asset kind is owned, the funds are transferred from the bridge account,
     /// otherwise the amount is minted.
     pub fn finalize(&self) -> Result<H256, DispatchError> {
+        self.validate()?;
         let bridge_account_id = get_bridge_account::<T>(self.network_id);
+        let transfer_fee = Self::fee_amount();
+        let amount = if self.should_take_fee {
+            self.amount - transfer_fee
+        } else {
+            self.amount
+        };
         if self.asset_kind.is_owned() {
-            common::with_transaction(|| {
+            common::with_transaction(|| -> Result<_, DispatchError> {
                 self.unreserve()?;
-                Assets::<T>::transfer_from(
-                    &self.asset_id,
-                    &bridge_account_id,
-                    &self.to,
-                    self.amount,
-                )
+                if self.should_take_fee {
+                    assets::Pallet::<T>::burn_from(
+                        &self.asset_id,
+                        &bridge_account_id,
+                        &bridge_account_id,
+                        transfer_fee,
+                    )?;
+                }
+                Assets::<T>::transfer_from(&self.asset_id, &bridge_account_id, &self.to, amount)?;
+                Ok(())
             })?;
         } else {
-            Assets::<T>::mint_to(&self.asset_id, &bridge_account_id, &self.to, self.amount)?;
+            Assets::<T>::mint_to(&self.asset_id, &bridge_account_id, &self.to, amount)?;
         }
         Ok(self.tx_hash)
     }
 
     pub fn timepoint(&self) -> Timepoint<T> {
         self.timepoint
+    }
+
+    pub fn enable_taking_fee(&mut self) {
+        self.should_take_fee = true;
     }
 }
 
