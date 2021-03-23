@@ -621,6 +621,7 @@ impl referral_system::Config for Runtime {}
 
 impl rewards::Config for Runtime {
     type Event = Event;
+    type WeightInfo = PresetWeightInfo;
 }
 
 parameter_types! {
