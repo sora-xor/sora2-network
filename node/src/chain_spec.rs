@@ -859,16 +859,28 @@ fn testnet_genesis(
         }),
         rewards: Some(RewardsConfig {
             reserves_account_id: rewards_tech_account_id,
-            val_owners: vec![(
-                hex!("21Bc9f4a3d9Dc86f142F802668dB7D908cF0A636").into(),
-                balance!(111),
-            )],
-            pswap_farm_owners: vec![(
-                hex!("21Bc9f4a3d9Dc86f142F802668dB7D908cF0A636").into(),
-                balance!(222),
-            )],
+            val_owners: vec![
+                (
+                    hex!("21Bc9f4a3d9Dc86f142F802668dB7D908cF0A636").into(),
+                    balance!(111),
+                ),
+                (
+                    hex!("D67fea281B2C5dC3271509c1b628E0867a9815D7").into(),
+                    balance!(444),
+                ),
+            ],
+            pswap_farm_owners: vec![
+                (
+                    hex!("4fE143cDD48791cB364823A41e018AEC5cBb9AbB").into(),
+                    balance!(222),
+                ),
+                (
+                    hex!("D67fea281B2C5dC3271509c1b628E0867a9815D7").into(),
+                    balance!(555),
+                ),
+            ],
             pswap_waifu_owners: vec![(
-                hex!("21Bc9f4a3d9Dc86f142F802668dB7D908cF0A636").into(),
+                hex!("886021F300dC809269CFC758A2364a2baF63af0c").into(),
                 balance!(333),
             )],
         }),
