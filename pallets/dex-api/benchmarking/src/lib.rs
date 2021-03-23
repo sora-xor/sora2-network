@@ -8,11 +8,8 @@ extern crate alloc;
 use dex_api::*;
 
 use codec::Decode;
-use common::{
-    balance,
-    prelude::{Balance, SwapVariant},
-    AssetSymbol, DEXId, LiquiditySourceType, DOT, XOR,
-};
+use common::prelude::{Balance, SwapVariant};
+use common::{balance, AssetSymbol, DEXId, LiquiditySourceType, DOT, XOR};
 use frame_benchmarking::benchmarks;
 use frame_support::traits::Get;
 use frame_system::{EventRecord, RawOrigin};
@@ -32,18 +29,18 @@ pub const DEX: DEXId = DEXId::Polkaswap;
 #[cfg(test)]
 mod mock;
 
-pub struct Module<T: Trait>(dex_api::Module<T>);
-pub trait Trait: dex_api::Trait + pool_xyk::Trait + technical::Trait {}
+pub struct Module<T: Config>(dex_api::Module<T>);
+pub trait Config: dex_api::Config + pool_xyk::Config + technical::Config {}
 
 // Support Functions
-fn alice<T: Trait>() -> T::AccountId {
+fn alice<T: Config>() -> T::AccountId {
     let bytes = hex!("d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d");
     T::AccountId::decode(&mut &bytes[..]).expect("Failed to decode account ID")
 }
 
-fn setup_benchmark<T: Trait>() -> Result<(), &'static str> {
+fn setup_benchmark<T: Config>() -> Result<(), &'static str> {
     let owner = alice::<T>();
-    let owner_origin: <T as frame_system::Trait>::Origin = RawOrigin::Signed(owner.clone()).into();
+    let owner_origin: <T as frame_system::Config>::Origin = RawOrigin::Signed(owner.clone()).into();
 
     // Grant permissions to self in case they haven't been explicitly given in genesis config
     let _ = Permissions::<T>::grant_permission(owner.clone(), owner.clone(), MINT);
@@ -120,22 +117,20 @@ fn setup_benchmark<T: Trait>() -> Result<(), &'static str> {
 }
 
 #[allow(dead_code)]
-fn assert_last_event<T: Trait>(generic_event: <T as dex_api::Trait>::Event) {
+fn assert_last_event<T: Config>(generic_event: <T as dex_api::Config>::Event) {
     let events = frame_system::Module::<T>::events();
-    let system_event: <T as frame_system::Trait>::Event = generic_event.into();
+    let system_event: <T as frame_system::Config>::Event = generic_event.into();
     // compare to the last event record
     let EventRecord { event, .. } = &events[events.len() - 1];
     assert_eq!(event, &system_event);
 }
 
 benchmarks! {
-    _ {}
-
     swap {
         let n in 1 .. 1000 => setup_benchmark::<T>()?;
 
         let caller = alice::<T>();
-        let base_asset: T::AssetId = <T as assets::Trait>::GetBaseAssetId::get();
+        let base_asset: T::AssetId = <T as assets::Config>::GetBaseAssetId::get();
         let target_asset: T::AssetId = DOT.into();
     }: _(
         RawOrigin::Signed(caller.clone()),
@@ -150,7 +145,7 @@ benchmarks! {
     )
     verify {
         // TODO: implement proper verification method
-        // assert_last_event::<T>(RawEvent::DirectExchange(
+        // assert_last_event::<T>(Event::DirectExchange(
         //     caller.clone(),
         //     caller.clone(),
         //     DEX.into(),

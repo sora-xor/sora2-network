@@ -1,25 +1,33 @@
-use crate::{GenesisConfig, Module, Scope, Trait, INIT_DEX, MINT, TRANSFER};
-use frame_support::{impl_outer_origin, parameter_types, weights::Weight};
-use frame_system as system;
+use crate::{self as permissions, Config, Scope, INIT_DEX, MINT, TRANSFER};
+use frame_support::traits::GenesisBuild;
+use frame_support::weights::Weight;
+use frame_support::{construct_runtime, parameter_types};
+use frame_system;
 use sp_core::{H256, H512};
-use sp_runtime::{
-    testing::Header,
-    traits::{BlakeTwo256, IdentityLookup},
-    Perbill,
-};
+use sp_runtime::testing::Header;
+use sp_runtime::traits::{BlakeTwo256, IdentityLookup};
+use sp_runtime::Perbill;
+
+type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
+type Block = frame_system::mocking::MockBlock<Runtime>;
+
+construct_runtime! {
+    pub enum Runtime where
+        Block = Block,
+        NodeBlock = Block,
+        UncheckedExtrinsic = UncheckedExtrinsic,
+    {
+        System: frame_system::{Module, Call, Config, Storage, Event<T>},
+        Permissions: permissions::{Module, Call, Config<T>, Storage, Event<T>},
+    }
+}
 
 pub type AccountId = u128;
-
-impl_outer_origin! {
-    pub enum Origin for Test {}
-}
 
 pub const ALICE: AccountId = 1;
 pub const BOB: AccountId = 2;
 pub const JOHN: AccountId = 3;
 
-#[derive(Clone, Eq, PartialEq)]
-pub struct Test;
 parameter_types! {
     pub const BlockHashCount: u64 = 250;
     pub const MaximumBlockWeight: Weight = 1024;
@@ -27,10 +35,12 @@ parameter_types! {
     pub const AvailableBlockRatio: Perbill = Perbill::from_percent(75);
 }
 
-impl system::Trait for Test {
+impl frame_system::Config for Runtime {
     type BaseCallFilter = ();
+    type BlockWeights = ();
+    type BlockLength = ();
     type Origin = Origin;
-    type Call = ();
+    type Call = Call;
     type Index = u64;
     type BlockNumber = u64;
     type Hash = H256;
@@ -38,28 +48,21 @@ impl system::Trait for Test {
     type AccountId = AccountId;
     type Lookup = IdentityLookup<Self::AccountId>;
     type Header = Header;
-    type Event = ();
+    type Event = Event;
     type BlockHashCount = BlockHashCount;
-    type MaximumBlockWeight = MaximumBlockWeight;
     type DbWeight = ();
-    type BlockExecutionWeight = ();
-    type ExtrinsicBaseWeight = ();
-    type MaximumExtrinsicWeight = MaximumBlockWeight;
-    type MaximumBlockLength = MaximumBlockLength;
-    type AvailableBlockRatio = AvailableBlockRatio;
     type Version = ();
     type AccountData = ();
     type OnNewAccount = ();
     type OnKilledAccount = ();
     type SystemWeightInfo = ();
-    type PalletInfo = ();
+    type PalletInfo = PalletInfo;
+    type SS58Prefix = ();
 }
 
-impl Trait for Test {
-    type Event = ();
+impl Config for Runtime {
+    type Event = Event;
 }
-
-pub type PermissionsModule = Module<Test>;
 
 pub struct ExtBuilder {
     initial_permission_owners: Vec<(u32, Scope, Vec<AccountId>)>,
@@ -86,11 +89,9 @@ impl Default for ExtBuilder {
 
 impl ExtBuilder {
     pub fn build(self) -> sp_io::TestExternalities {
-        let mut t = system::GenesisConfig::default()
-            .build_storage::<Test>()
-            .unwrap();
+        let mut t = SystemConfig::default().build_storage::<Runtime>().unwrap();
 
-        GenesisConfig::<Test> {
+        PermissionsConfig {
             initial_permission_owners: self.initial_permission_owners,
             initial_permissions: self.initial_permissions,
         }

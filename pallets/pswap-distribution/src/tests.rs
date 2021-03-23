@@ -1,7 +1,10 @@
-use crate::{mock::*, Error};
+use crate::mock::*;
+use crate::{Error, Module};
 use common::{balance, fixed};
 use frame_support::assert_noop;
 use traits::MultiCurrency;
+
+type PswapDistrModule = Module<Runtime>;
 
 #[test]
 fn subscribe_with_default_frequency_should_pass() {

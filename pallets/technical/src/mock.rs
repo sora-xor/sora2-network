@@ -1,24 +1,153 @@
-use crate::{Module, Trait};
+use crate::{self as technical, Config};
 use codec::{Decode, Encode};
 use common::prelude::Balance;
 use currencies::BasicCurrencyAdapter;
 use dispatch::DispatchResult;
-use frame_support::dispatch;
-use frame_support::{impl_outer_origin, parameter_types, weights::Weight};
-use frame_system as system;
+use frame_support::traits::GenesisBuild;
+use frame_support::weights::Weight;
+use frame_support::{construct_runtime, dispatch, parameter_types};
+use frame_system;
+use orml_traits::parameter_type_with_key;
 use sp_core::crypto::AccountId32;
 use sp_core::H256;
-use sp_runtime::{
-    testing::Header,
-    traits::{BlakeTwo256, IdentityLookup},
-    Perbill,
-};
+use sp_runtime::testing::Header;
+use sp_runtime::traits::{BlakeTwo256, IdentityLookup};
+use sp_runtime::Perbill;
 use sp_std::marker::PhantomData;
 use PolySwapActionExample::*;
 
-pub use common::{mock::*, TechAssetId::*, TechPurpose::*, TradingPair};
+pub use common::mock::*;
+pub use common::TechAssetId::*;
+pub use common::TechPurpose::*;
+pub use common::TradingPair;
 
-pub type Technical = Module<Testtime>;
+pub type BlockNumber = u64;
+pub type AccountId = AccountId32;
+pub type Amount = i128;
+pub type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
+type DEXId = u32;
+type AssetId = common::AssetId32<common::mock::ComicAssetId>;
+type TechAssetId = common::TechAssetId<common::mock::ComicAssetId>;
+type TechAmount = Amount;
+type TechBalance = Balance;
+
+type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
+type Block = frame_system::mocking::MockBlock<Runtime>;
+
+parameter_types! {
+    pub const BlockHashCount: u64 = 250;
+    pub const MaximumBlockWeight: Weight = 1024;
+    pub const MaximumBlockLength: u32 = 2 * 1024;
+    pub const AvailableBlockRatio: Perbill = Perbill::from_percent(75);
+    pub const GetBaseAssetId: AssetId = common::AssetId32 { code: [2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], phantom: PhantomData };
+    pub const ExistentialDeposit: u128 = 0;
+}
+
+construct_runtime! {
+    pub enum Runtime where
+        Block = Block,
+        NodeBlock = Block,
+        UncheckedExtrinsic = UncheckedExtrinsic,
+    {
+        System: frame_system::{Module, Call, Config, Storage, Event<T>},
+        Permissions: permissions::{Module, Call, Config<T>, Storage, Event<T>},
+        Balances: pallet_balances::{Module, Call, Storage, Event<T>},
+        Tokens: tokens::{Module, Call, Config<T>, Storage, Event<T>},
+        Currencies: currencies::{Module, Call, Storage, Event<T>},
+        Assets: assets::{Module, Call, Config<T>, Storage, Event<T>},
+        Technical: technical::{Module, Call, Config<T>, Storage, Event<T>},
+    }
+}
+
+impl frame_system::Config for Runtime {
+    type BaseCallFilter = ();
+    type BlockWeights = ();
+    type BlockLength = ();
+    type Origin = Origin;
+    type Call = Call;
+    type Index = u64;
+    type BlockNumber = u64;
+    type Hash = H256;
+    type Hashing = BlakeTwo256;
+    type AccountId = AccountId;
+    type Lookup = IdentityLookup<Self::AccountId>;
+    type Header = Header;
+    type Event = Event;
+    type BlockHashCount = BlockHashCount;
+    type DbWeight = ();
+    type Version = ();
+    type AccountData = pallet_balances::AccountData<Balance>;
+    type OnNewAccount = ();
+    type OnKilledAccount = ();
+    type SystemWeightInfo = ();
+    type PalletInfo = PalletInfo;
+    type SS58Prefix = ();
+}
+
+impl permissions::Config for Runtime {
+    type Event = Event;
+}
+
+impl common::Config for Runtime {
+    type DEXId = DEXId;
+    type LstId = common::LiquiditySourceType;
+}
+
+impl pallet_balances::Config for Runtime {
+    type Balance = Balance;
+    type Event = Event;
+    type DustRemoval = ();
+    type ExistentialDeposit = ExistentialDeposit;
+    type AccountStore = System;
+    type WeightInfo = ();
+    type MaxLocks = ();
+}
+
+impl tokens::Config for Runtime {
+    type Event = Event;
+    type Balance = Balance;
+    type Amount = Amount;
+    type CurrencyId = <Runtime as assets::Config>::AssetId;
+    type WeightInfo = ();
+    type ExistentialDeposits = ExistentialDeposits;
+    type OnDust = ();
+}
+
+impl currencies::Config for Runtime {
+    type Event = Event;
+    type MultiCurrency = tokens::Module<Runtime>;
+    type NativeCurrency =
+        BasicCurrencyAdapter<Runtime, pallet_balances::Module<Runtime>, Amount, BlockNumber>;
+    type GetNativeCurrencyId = <Runtime as assets::Config>::GetBaseAssetId;
+    type WeightInfo = ();
+}
+
+impl assets::Config for Runtime {
+    type Event = Event;
+    type ExtraAccountId = [u8; 32];
+    type ExtraAssetRecordArg =
+        common::AssetIdExtraAssetRecordArg<DEXId, common::LiquiditySourceType, [u8; 32]>;
+    type AssetId = AssetId;
+    type GetBaseAssetId = GetBaseAssetId;
+    type Currency = currencies::Module<Runtime>;
+    type WeightInfo = ();
+}
+
+impl Config for Runtime {
+    type Event = Event;
+    type TechAssetId = TechAssetId;
+    type TechAccountId = TechAccountId;
+    type Trigger = ();
+    type Condition = ();
+    type SwapAction = PolySwapActionExample;
+    type WeightInfo = ();
+}
+
+parameter_type_with_key! {
+    pub ExistentialDeposits: |_currency_id: AssetId| -> Balance {
+        0
+    };
+}
 
 pub fn get_alice() -> AccountId {
     AccountId32::from([1; 32])
@@ -53,117 +182,6 @@ impl Default for ExtBuilder {
     }
 }
 
-impl_outer_origin! {
-    pub enum Origin for Testtime {}
-}
-
-// Configure a mock runtime to test the pallet.
-
-#[derive(Clone, Eq, PartialEq)]
-pub struct Testtime;
-parameter_types! {
-    pub const BlockHashCount: u64 = 250;
-    pub const MaximumBlockWeight: Weight = 1024;
-    pub const MaximumBlockLength: u32 = 2 * 1024;
-    pub const AvailableBlockRatio: Perbill = Perbill::from_percent(75);
-}
-
-impl system::Trait for Testtime {
-    type BaseCallFilter = ();
-    type Origin = Origin;
-    type Call = ();
-    type Index = u64;
-    type BlockNumber = BlockNumber;
-    type Hash = H256;
-    type Hashing = BlakeTwo256;
-    type AccountId = AccountId;
-    type Lookup = IdentityLookup<Self::AccountId>;
-    type Header = Header;
-    type Event = ();
-    type BlockHashCount = BlockHashCount;
-    type MaximumBlockWeight = MaximumBlockWeight;
-    type DbWeight = ();
-    type BlockExecutionWeight = ();
-    type ExtrinsicBaseWeight = ();
-    type MaximumExtrinsicWeight = MaximumBlockWeight;
-    type MaximumBlockLength = MaximumBlockLength;
-    type AvailableBlockRatio = AvailableBlockRatio;
-    type Version = ();
-    type AccountData = pallet_balances::AccountData<Balance>;
-    type OnNewAccount = ();
-    type OnKilledAccount = ();
-    type SystemWeightInfo = ();
-    type PalletInfo = ();
-}
-
-impl permissions::Trait for Testtime {
-    type Event = ();
-}
-
-impl dex_manager::Trait for Testtime {
-    type Event = ();
-    type WeightInfo = ();
-}
-
-type DEXId = u32;
-
-pub type BlockNumber = u64;
-pub type AccountId = AccountId32;
-pub type Amount = i128;
-
-impl common::Trait for Testtime {
-    type DEXId = DEXId;
-    type LstId = common::LiquiditySourceType;
-}
-
-parameter_types! {
-    pub const GetBaseAssetId: AssetId = common::AssetId32 { code: [2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], phantom: PhantomData };
-}
-
-parameter_types! {
-    pub const ExistentialDeposit: u128 = 0;
-}
-
-pub type System = frame_system::Module<Testtime>;
-
-impl pallet_balances::Trait for Testtime {
-    type Balance = Balance;
-    type Event = ();
-    type DustRemoval = ();
-    type ExistentialDeposit = ExistentialDeposit;
-    type AccountStore = System;
-    type WeightInfo = ();
-    type MaxLocks = ();
-}
-
-impl tokens::Trait for Testtime {
-    type Event = ();
-    type Balance = Balance;
-    type Amount = Amount;
-    type CurrencyId = <Testtime as assets::Trait>::AssetId;
-    type OnReceived = ();
-    type WeightInfo = ();
-}
-
-impl currencies::Trait for Testtime {
-    type Event = ();
-    type MultiCurrency = tokens::Module<Testtime>;
-    type NativeCurrency =
-        BasicCurrencyAdapter<Testtime, pallet_balances::Module<Testtime>, Amount, BlockNumber>;
-    type GetNativeCurrencyId = <Testtime as assets::Trait>::GetBaseAssetId;
-    type WeightInfo = ();
-}
-
-impl assets::Trait for Testtime {
-    type Event = ();
-    type ExtraAccountId = [u8; 32];
-    type ExtraTupleArg = common::AssetIdExtraTupleArg<DEXId, common::LiquiditySourceType, [u8; 32]>;
-    type AssetId = AssetId;
-    type GetBaseAssetId = GetBaseAssetId;
-    type Currency = currencies::Module<Testtime>;
-    type WeightInfo = ();
-}
-
 #[derive(Clone, Eq, PartialEq, Encode, Decode, Debug)]
 pub struct GenericPairSwapActionExample {
     pub give_minted: bool,
@@ -175,16 +193,16 @@ pub struct GenericPairSwapActionExample {
     pub take_account: TechAccountId,
 }
 
-impl common::SwapAction<AccountId, TechAccountId, Testtime> for GenericPairSwapActionExample {
+impl common::SwapAction<AccountId, TechAccountId, Runtime> for GenericPairSwapActionExample {
     fn reserve(&self, source: &AccountId) -> dispatch::DispatchResult {
         //FIXME now in this place exist two operations, and it is not lock.
-        crate::Module::<Testtime>::transfer_in(
+        crate::Module::<Runtime>::transfer_in(
             &self.give_asset.into(),
             source,
             &self.take_account,
             self.give_amount,
         )?;
-        crate::Module::<Testtime>::transfer_out(
+        crate::Module::<Runtime>::transfer_out(
             &self.take_asset.into(),
             &self.take_account,
             source,
@@ -205,7 +223,7 @@ impl common::SwapAction<AccountId, TechAccountId, Testtime> for GenericPairSwapA
     }
 }
 
-impl common::SwapRulesValidation<AccountId, TechAccountId, Testtime>
+impl common::SwapRulesValidation<AccountId, TechAccountId, Runtime>
     for GenericPairSwapActionExample
 {
     fn is_abstract_checking(&self) -> bool {
@@ -234,7 +252,7 @@ pub struct MultiSwapActionExample {
     take_amount_e: TechAmount,
 }
 
-impl common::SwapAction<AccountId, TechAccountId, Testtime> for MultiSwapActionExample {
+impl common::SwapAction<AccountId, TechAccountId, Runtime> for MultiSwapActionExample {
     fn reserve(&self, _source: &AccountId) -> dispatch::DispatchResult {
         Ok(())
     }
@@ -249,7 +267,7 @@ impl common::SwapAction<AccountId, TechAccountId, Testtime> for MultiSwapActionE
     }
 }
 
-impl common::SwapRulesValidation<AccountId, TechAccountId, Testtime> for MultiSwapActionExample {
+impl common::SwapRulesValidation<AccountId, TechAccountId, Runtime> for MultiSwapActionExample {
     fn is_abstract_checking(&self) -> bool {
         false
     }
@@ -274,7 +292,7 @@ pub struct CrowdSwapActionExample {
     take_amount: TechAmount,
 }
 
-impl common::SwapAction<AccountId, TechAccountId, Testtime> for CrowdSwapActionExample {
+impl common::SwapAction<AccountId, TechAccountId, Runtime> for CrowdSwapActionExample {
     fn reserve(&self, _source: &AccountId) -> dispatch::DispatchResult {
         unimplemented!()
     }
@@ -289,7 +307,7 @@ impl common::SwapAction<AccountId, TechAccountId, Testtime> for CrowdSwapActionE
     }
 }
 
-impl common::SwapRulesValidation<AccountId, TechAccountId, Testtime> for CrowdSwapActionExample {
+impl common::SwapRulesValidation<AccountId, TechAccountId, Runtime> for CrowdSwapActionExample {
     fn is_abstract_checking(&self) -> bool {
         false
     }
@@ -314,7 +332,7 @@ pub enum PolySwapActionExample {
     Crowd(CrowdSwapActionExample),
 }
 
-impl common::SwapAction<AccountId, TechAccountId, Testtime> for PolySwapActionExample {
+impl common::SwapAction<AccountId, TechAccountId, Runtime> for PolySwapActionExample {
     fn reserve(&self, source: &AccountId) -> dispatch::DispatchResult {
         match self {
             GenericPair(a) => a.reserve(source),
@@ -345,7 +363,7 @@ impl common::SwapAction<AccountId, TechAccountId, Testtime> for PolySwapActionEx
     }
 }
 
-impl common::SwapRulesValidation<AccountId, TechAccountId, Testtime> for PolySwapActionExample {
+impl common::SwapRulesValidation<AccountId, TechAccountId, Runtime> for PolySwapActionExample {
     fn is_abstract_checking(&self) -> bool {
         match self {
             GenericPair(a) => a.is_abstract_checking(),
@@ -385,36 +403,18 @@ impl common::SwapRulesValidation<AccountId, TechAccountId, Testtime> for PolySwa
     }
 }
 
-type AssetId = common::AssetId32<common::mock::ComicAssetId>;
-type TechAssetId = common::TechAssetId<common::mock::ComicAssetId>;
-pub type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
-type TechAmount = Amount;
-type TechBalance = Balance;
-
-impl Trait for Testtime {
-    type Event = ();
-    type TechAssetId = TechAssetId;
-    type TechAccountId = TechAccountId;
-    type Trigger = ();
-    type Condition = ();
-    type SwapAction = PolySwapActionExample;
-    type WeightInfo = ();
-}
-
 impl ExtBuilder {
     pub fn build(self) -> sp_io::TestExternalities {
-        let mut t = system::GenesisConfig::default()
-            .build_storage::<Testtime>()
-            .unwrap();
+        let mut t = SystemConfig::default().build_storage::<Runtime>().unwrap();
 
-        permissions::GenesisConfig::<Testtime> {
+        PermissionsConfig {
             initial_permission_owners: vec![],
             initial_permissions: vec![],
         }
         .assimilate_storage(&mut t)
         .unwrap();
 
-        tokens::GenesisConfig::<Testtime> {
+        TokensConfig {
             endowed_accounts: self.endowed_accounts,
         }
         .assimilate_storage(&mut t)

@@ -3,20 +3,18 @@
 use codec::{Decode, Encode};
 use core::convert::TryInto;
 use frame_support::dispatch::{DispatchError, DispatchResult};
-use frame_support::{
-    decl_error, decl_event, decl_module, decl_storage, dispatch, ensure, traits::Get,
-    weights::Weight, Parameter,
-};
+use frame_support::traits::Get;
+use frame_support::weights::Weight;
+use frame_support::{dispatch, ensure, Parameter};
 use frame_system::ensure_signed;
 use sp_runtime::RuntimeDebug;
 use sp_std::collections::btree_set::BTreeSet;
 
-use common::FromGenericPair;
+use common::prelude::{Balance, EnsureDEXManager, FixedWrapper, SwapAmount, SwapOutcome};
 use common::{
-    balance, hash,
-    prelude::{Balance, EnsureDEXManager, FixedWrapper, SwapAmount, SwapOutcome},
-    AssetSymbol, EnsureTradingPairExists, LiquiditySource, LiquiditySourceType, ManagementMode,
-    SwapRulesValidation, ToFeeAccount, ToTechUnitFromDEXAndTradingPair,
+    balance, hash, AssetSymbol, EnsureTradingPairExists, FromGenericPair, LiquiditySource,
+    LiquiditySourceType, ManagementMode, SwapRulesValidation, ToFeeAccount,
+    ToTechUnitFromDEXAndTradingPair,
 };
 use frame_support::debug;
 use orml_traits::currency::MultiCurrency;
@@ -30,19 +28,17 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
-type LstId = common::LiquiditySourceType;
+type ExtraAccountIdOf<T> = <T as assets::Config>::ExtraAccountId;
 
-type ExtraAccountIdOf<T> = <T as assets::Trait>::ExtraAccountId;
+type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
 
-type AccountIdOf<T> = <T as frame_system::Trait>::AccountId;
+type AssetIdOf<T> = <T as assets::Config>::AssetId;
 
-type AssetIdOf<T> = <T as assets::Trait>::AssetId;
+type TechAssetIdOf<T> = <T as technical::Config>::TechAssetId;
 
-type TechAssetIdOf<T> = <T as technical::Trait>::TechAssetId;
+type TechAccountIdOf<T> = <T as technical::Config>::TechAccountId;
 
-type TechAccountIdOf<T> = <T as technical::Trait>::TechAccountId;
-
-type DEXIdOf<T> = <T as common::Trait>::DEXId;
+type DEXIdOf<T> = <T as common::Config>::DEXId;
 
 type PolySwapActionStructOf<T> =
     PolySwapAction<AssetIdOf<T>, TechAssetIdOf<T>, Balance, AccountIdOf<T>, TechAccountIdOf<T>>;
@@ -202,31 +198,7 @@ pub trait WeightInfo {
     fn initialize_pool() -> Weight;
 }
 
-/// Configure the pallet by specifying the parameters and types on which it depends.
-pub trait Trait:
-    technical::Trait + dex_manager::Trait + trading_pair::Trait + pswap_distribution::Trait
-{
-    /// Because this pallet emits events, it depends on the runtime's definition of an event.
-    type Event: From<Event<Self>> + Into<<Self as frame_system::Trait>::Event>;
-
-    //TODO: implement and use + Into<SwapActionOf<T> for this types.
-    type PairSwapAction: common::SwapAction<AccountIdOf<Self>, TechAccountIdOf<Self>, Self>
-        + Parameter;
-    type DepositLiquidityAction: common::SwapAction<AccountIdOf<Self>, TechAccountIdOf<Self>, Self>
-        + Parameter;
-    type WithdrawLiquidityAction: common::SwapAction<AccountIdOf<Self>, TechAccountIdOf<Self>, Self>
-        + Parameter;
-    type PolySwapAction: common::SwapAction<AccountIdOf<Self>, TechAccountIdOf<Self>, Self>
-        + Parameter
-        + Into<<Self as technical::Trait>::SwapAction>
-        + From<PolySwapActionStructOf<Self>>;
-    type EnsureDEXManager: EnsureDEXManager<Self::DEXId, Self::AccountId, DispatchError>;
-
-    /// Weight information for extrinsics in this pallet.
-    type WeightInfo: WeightInfo;
-}
-
-impl<T: Trait> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, T>
+impl<T: Config> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, T>
     for PairSwapAction<AssetIdOf<T>, Balance, AccountIdOf<T>, TechAccountIdOf<T>>
 {
     fn is_abstract_checking(&self) -> bool {
@@ -524,7 +496,7 @@ impl<T: Trait> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, T
     }
 }
 
-impl<T: Trait> common::SwapAction<AccountIdOf<T>, TechAccountIdOf<T>, T>
+impl<T: Config> common::SwapAction<AccountIdOf<T>, TechAccountIdOf<T>, T>
     for PairSwapAction<AssetIdOf<T>, Balance, AccountIdOf<T>, TechAccountIdOf<T>>
 {
     /// This function is called after validation, and every `Option` is `Some`, and it is safe to do
@@ -608,7 +580,7 @@ impl<T: Trait> common::SwapAction<AccountIdOf<T>, TechAccountIdOf<T>, T>
     }
 }
 
-impl<T: Trait> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, T>
+impl<T: Config> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, T>
     for DepositLiquidityAction<
         AssetIdOf<T>,
         TechAssetIdOf<T>,
@@ -905,7 +877,7 @@ impl<T: Trait> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, T
     }
 }
 
-impl<T: Trait> common::SwapAction<AccountIdOf<T>, TechAccountIdOf<T>, T>
+impl<T: Config> common::SwapAction<AccountIdOf<T>, TechAccountIdOf<T>, T>
     for DepositLiquidityAction<
         AssetIdOf<T>,
         TechAssetIdOf<T>,
@@ -964,7 +936,7 @@ impl<T: Trait> common::SwapAction<AccountIdOf<T>, TechAccountIdOf<T>, T>
     }
 }
 
-impl<T: Trait> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, T>
+impl<T: Config> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, T>
     for WithdrawLiquidityAction<
         AssetIdOf<T>,
         TechAssetIdOf<T>,
@@ -1152,7 +1124,7 @@ impl<T: Trait> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, T
     }
 }
 
-impl<T: Trait> common::SwapAction<AccountIdOf<T>, TechAccountIdOf<T>, T>
+impl<T: Config> common::SwapAction<AccountIdOf<T>, TechAccountIdOf<T>, T>
     for WithdrawLiquidityAction<
         AssetIdOf<T>,
         TechAssetIdOf<T>,
@@ -1211,7 +1183,7 @@ impl<T: Trait> common::SwapAction<AccountIdOf<T>, TechAccountIdOf<T>, T>
     }
 }
 
-impl<T: Trait> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, T>
+impl<T: Config> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, T>
     for PolySwapActionStructOf<T>
 where
     PairSwapAction<AssetIdOf<T>, Balance, AccountIdOf<T>, TechAccountIdOf<T>>:
@@ -1256,7 +1228,7 @@ where
     }
 }
 
-impl<T: Trait> common::SwapAction<AccountIdOf<T>, TechAccountIdOf<T>, T>
+impl<T: Config> common::SwapAction<AccountIdOf<T>, TechAccountIdOf<T>, T>
     for PolySwapActionStructOf<T>
 where
     PairSwapAction<AssetIdOf<T>, Balance, AccountIdOf<T>, TechAccountIdOf<T>>:
@@ -1294,27 +1266,7 @@ where
     }
 }
 
-decl_storage! {
-    trait Store for Module<T: Trait> as PoolXYK {
-        /// Updated after last liquidity change operation.
-        /// [Base Asset Id (XOR) -> Target Asset Id => (Base Balance, Target Balance)].
-        /// This storage records is not used as source of information, but used as quick cache for
-        /// information that comes from balances for assets from technical accounts.
-        /// For example, communication with technical accounts and their storage is not needed, and this
-        /// pair to balance cache can be used quickly.
-        pub Reserves get(fn reserves): double_map
-              hasher(blake2_128_concat) T::AssetId,
-              hasher(blake2_128_concat) T::AssetId => (Balance, Balance);
-        /// Collection of all registered marker tokens.
-        pub MarkerTokensIndex get(fn marker_tokens_index): BTreeSet<T::AssetId>;
-        /// Properties of particular pool. [Reserves Account Id, Fees Account Id, Marker Asset Id]
-        pub Properties get(fn properties): double_map
-              hasher(blake2_128_concat) T::AssetId,
-              hasher(blake2_128_concat) T::AssetId => Option<(T::AccountId, T::AccountId, T::AssetId)>;
-    }
-}
-
-impl<T: Trait> Module<T> {
+impl<T: Config> Module<T> {
     fn initialize_pool_properties(
         dex_id: &T::DEXId,
         asset_a: &T::AssetId,
@@ -1376,8 +1328,9 @@ impl<T: Trait> Module<T> {
     pub fn get_marking_asset_repr(
         tech_acc: &TechAccountIdOf<T>,
     ) -> Result<AssetIdOf<T>, DispatchError> {
-        use assets::{Tuple::*, TupleArg::*};
-        use common::AssetIdExtraTupleArg::*;
+        use assets::AssetRecord::*;
+        use assets::AssetRecordArg::*;
+        use common::AssetIdExtraAssetRecordArg::*;
         let repr_extra: ExtraAccountIdOf<T> =
             technical::Module::<T>::tech_account_id_to_account_id(&tech_acc)?.into();
         let tag = GenericU128(common::hash_to_u128_pair(b"Marking asset").0);
@@ -1398,7 +1351,7 @@ impl<T: Trait> Module<T> {
     }
 }
 
-impl<T: Trait> Module<T> {
+impl<T: Config> Module<T> {
     /// Using try into to get Result with some error, after this convert Result into Option,
     /// after this AssetDecodingError is used if None.
     pub fn try_decode_asset(asset: AssetIdOf<T>) -> Result<TechAssetIdOf<T>, DispatchError> {
@@ -1671,127 +1624,7 @@ impl<T: Trait> Module<T> {
     }
 }
 
-decl_event!(
-    pub enum Event<T>
-    where
-        AccountId = <T as frame_system::Trait>::AccountId,
-    {
-        // New pool for particular pair was initialized. [Reserves Account Id]
-        PoolIsInitialized(AccountId),
-    }
-);
-
-decl_error! {
-    pub enum Error for Module<T: Trait>
-    {
-        /// It is impossible to calculate fee for some pair swap operation, or other operation.
-        UnableToCalculateFee,
-        /// Is is impossible to get balance.
-        UnableToGetBalance,
-        /// Imposible to decide asset pair amounts.
-        ImposibleToDecideAssetPairAmounts,
-        /// Pool pair ratio and pair swap ratio is different.
-        PoolPairRatioAndPairSwapRatioIsDifferent,
-        /// Pair swap action fee is smaller than recommended.
-        PairSwapActionFeeIsSmallerThanRecommended,
-        /// Source balance is not large enough.
-        SourceBalanceIsNotLargeEnough,
-        /// Target balance is not large enough.
-        TargetBalanceIsNotLargeEnough,
-        /// It is unable to derive fee account.
-        UnableToDeriveFeeAccount,
-        /// The fee account is invalid.
-        FeeAccountIsInvalid,
-        /// Source and client accounts do not match as equal.
-        SourceAndClientAccountDoNotMatchAsEqual,
-        /// In this case assets must not be same.
-        AssetsMustNotBeSame,
-        /// Imposible to decice deposit liquidity amounts.
-        ImposibleToDecideDepositLiquidityAmounts,
-        /// Invalid deposit liquidity basic asset amount.
-        InvalidDepositLiquidityBasicAssetAmount,
-        /// Invalid deposit liquidity target asset amount.
-        InvalidDepositLiquidityTargetAssetAmount,
-        /// Pair swap action minimum liquidity is smallet than recommended.
-        PairSwapActionMinimumLiquidityIsSmallerThanRecommended,
-        /// Destination amount of liquidity is not large enough.
-        DestinationAmountOfLiquidityIsNotLargeEnough,
-        /// Source base amount if not large enough.
-        SourceBaseAmountIsNotLargeEnough,
-        /// Target base amount is not large enough.
-        TargetBaseAmountIsNotLargeEnough,
-        /// The balance structure of pool is invalid.
-        PoolIsInvalid,
-        /// The pool has empty liquidity.
-        PoolIsEmpty,
-        /// Amount parameter has zero value, it is invalid.
-        ZeroValueInAmountParameter,
-        /// The account balance is invalid.
-        AccountBalanceIsInvalid,
-        /// Incalid deposit liquidity destination amount.
-        InvalidDepositLiquidityDestinationAmount,
-        /// Initial liquidity deposit ratio must be defined.
-        InitialLiqudityDepositRatioMustBeDefined,
-        /// Technical asset is not representable.
-        TechAssetIsNotRepresentable,
-        /// Unable or imposible to decide marker asset.
-        UnableToDecideMarkerAsset,
-        /// Unable or imposible to get asset representation.
-        UnableToGetAssetRepr,
-        /// Imposible to decide withdraw liquidity amounts.
-        ImposibleToDecideWithdrawLiquidityAmounts,
-        /// Invalid withdraw liquidity base asset amount.
-        InvalidWithdrawLiquidityBasicAssetAmount,
-        /// Invalud withdras liquidity target asset amount.
-        InvalidWithdrawLiquidityTargetAssetAmount,
-        /// Source base amount if tool large.
-        SourceBaseAmountIsTooLarge,
-        /// Source balance if liquidity is not large enough.
-        SourceBalanceOfLiquidityTokensIsNotLargeEnough,
-        /// Destination base balance is not large enough.
-        DestinationBaseBalanceIsNotLargeEnough,
-        /// Destination base balance is not large enough.
-        DestinationTargetBalanceIsNotLargeEnough,
-        /// Asset for liquidity marking is invalid.
-        InvalidAssetForLiquidityMarking,
-        /// Error in asset decoding.
-        AssetDecodingError,
-        /// Calculated value is out of desired bounds.
-        CalculatedValueIsOutOfDesiredBounds,
-        /// The base asset is not matched with any asset arguments.
-        BaseAssetIsNotMatchedWithAnyAssetArguments,
-        /// Some values is need to be same, the destination amount must be same.
-        DestinationAmountMustBeSame,
-        /// Some values is need to be same, the source amount must be same.
-        SourceAmountMustBeSame,
-        /// The pool initialization if invalid and failed.
-        PoolInitializationIsInvalid,
-        /// The pool is already initialized.
-        PoolIsAlreadyInitialized,
-        /// The minimul bound values of balance is invalid.
-        InvalidMinimumBoundValueOfBalance,
-        /// It is imposible to decide valid pair values from range for this pool.
-        ImposibleToDecideValidPairValuesFromRangeForThisPool,
-        /// This range values is not validy by rules of correct range.
-        RangeValuesIsInvalid,
-        /// The values that is calculated is out out of required bounds.
-        CalculatedValueIsNotMeetsRequiredBoundaries,
-        /// In this case getting fee from destination is imposible.
-        GettingFeeFromDestinationIsImposible,
-        /// Math calculation with fixed number if failed to complete.
-        FixedWrapperCalculationFailed,
-        /// This case if not supported by logic of pool of validation code.
-        ThisCaseIsNotSupported,
-        /// Pool becomes invalid after operation
-        PoolBecameInvalidAfterOperation,
-        /// Unable to convert asset to tech asset id.
-        UnableToConvertAssetToTechAssetId,
-        /// Unable to get XOR part from marker asset.
-        UnableToGetXORPartFromMarkerAsset,
-    }
-}
-
-impl<T: Trait> Module<T> {
+impl<T: Config> Module<T> {
     pub fn get_xor_part_from_pool_account(
         pool_acc: T::AccountId,
         liq_amount: Balance,
@@ -2031,97 +1864,7 @@ impl<T: Trait> Module<T> {
     }
 }
 
-decl_module! {
-    pub struct Module<T: Trait> for enum Call where origin: T::Origin
-    {
-        type Error = Error<T>;
-        fn deposit_event() = default;
-
-        #[weight = <T as Trait>::WeightInfo::swap_pair()]
-        pub fn swap_pair(
-            origin, receiver: AccountIdOf<T>, dex_id: DEXIdOf<T>,
-            input_asset_id: AssetIdOf<T>, output_asset_id: AssetIdOf<T>,
-            swap_amount: SwapAmount<Balance>,) -> DispatchResult {
-            let source = ensure_signed(origin)?;
-            Module::<T>::exchange(&source, &receiver, &dex_id, &input_asset_id, &output_asset_id, swap_amount)?;
-            Ok(())
-        }
-
-        #[weight = <T as Trait>::WeightInfo::deposit_liquidity()]
-        pub fn deposit_liquidity(
-            origin,
-            dex_id: DEXIdOf<T>,
-            input_asset_a: AssetIdOf<T>,
-            input_asset_b: AssetIdOf<T>,
-            input_a_desired: Balance,
-            input_b_desired: Balance,
-            input_a_min: Balance,
-            input_b_min: Balance,
-        ) -> DispatchResult {
-            let source = ensure_signed(origin)?;
-            Module::<T>::deposit_liquidity_unchecked(source, dex_id,
-                input_asset_a, input_asset_b, input_a_desired, input_b_desired, input_a_min, input_b_min)?;
-            Ok(())
-        }
-
-        #[weight = <T as Trait>::WeightInfo::withdraw_liquidity()]
-        pub fn withdraw_liquidity(
-            origin,
-            dex_id: DEXIdOf<T>,
-            output_asset_a: AssetIdOf<T>,
-            output_asset_b: AssetIdOf<T>,
-            marker_asset_desired: Balance,
-            output_a_min: Balance,
-            output_b_min: Balance,
-        ) -> DispatchResult
-        {
-            let source = ensure_signed(origin)?;
-            Module::<T>::withdraw_liquidity_unchecked(source, dex_id,
-                output_asset_a, output_asset_b, marker_asset_desired, output_a_min, output_b_min)?;
-            Ok(())
-        }
-
-        #[weight = <T as Trait>::WeightInfo::initialize_pool()]
-        pub fn initialize_pool(
-            origin,
-            dex_id: DEXIdOf<T>,
-            asset_a: AssetIdOf<T>,
-            asset_b: AssetIdOf<T>,
-            ) -> DispatchResult
-        {
-            common::with_transaction(|| {
-                let source = ensure_signed(origin.clone())?;
-                <T as Trait>::EnsureDEXManager::ensure_can_manage(&dex_id, origin.clone(), ManagementMode::Public)?;
-                let (_,tech_account_id, fees_account_id, mark_asset) = Module::<T>::initialize_pool_unchecked(source.clone(), dex_id, asset_a, asset_b)?;
-                let mark_asset_repr: T::AssetId = mark_asset.into();
-                assets::Module::<T>::register_asset_id(source.clone(), mark_asset_repr, AssetSymbol(b"XYKPOOL".to_vec()), 18, 0, true)?;
-                let ta_repr = technical::Module::<T>::tech_account_id_to_account_id(&tech_account_id)?;
-                let fees_ta_repr = technical::Module::<T>::tech_account_id_to_account_id(&fees_account_id)?;
-                // Minting permission is needed for technical account to mint markered tokens of
-                // liquidity into account who deposit liquidity.
-                permissions::Module::<T>::grant_permission_with_scope(
-                   source.clone(),
-                   ta_repr.clone(),
-                   MINT,
-                   Scope::Limited(hash(&Into::<AssetIdOf::<T>>::into(mark_asset.clone())))
-                   )?;
-                permissions::Module::<T>::grant_permission_with_scope(
-                   source,
-                   ta_repr.clone(),
-                   BURN,
-                   Scope::Limited(hash(&Into::<AssetIdOf::<T>>::into(mark_asset.clone())))
-                   )?;
-                Module::<T>::initialize_pool_properties(&dex_id, &asset_a, &asset_b, &ta_repr, &fees_ta_repr, &mark_asset_repr)?;
-                pswap_distribution::Module::<T>::subscribe(fees_ta_repr, dex_id, mark_asset_repr, None)?;
-                MarkerTokensIndex::<T>::mutate( |mti| {mti.insert(mark_asset_repr)});
-                Self::deposit_event(RawEvent::PoolIsInitialized(ta_repr));
-                Ok(())
-            })
-        }
-    }
-}
-
-impl<T: Trait> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, DispatchError>
+impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, DispatchError>
     for Module<T>
 {
     fn can_exchange(
@@ -2129,36 +1872,38 @@ impl<T: Trait> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Disp
         input_asset_id: &T::AssetId,
         output_asset_id: &T::AssetId,
     ) -> bool {
-        // Function clause is used here, because in this case it is other scope and it not
-        // conflicted with bool type.
-        let res = || {
-            let tech_acc_id = T::TechAccountId::from_generic_pair(
-                "PoolXYK".into(),
-                "CanExchangeOperation".into(),
-            );
-            //TODO: Account registration is not needed to do operation, is this ok?
-            //Technical::register_tech_account_id(tech_acc_id)?;
-            let repr = technical::Module::<T>::tech_account_id_to_account_id(&tech_acc_id)?;
-            //FIXME: Use special max variable that is good for this operation.
-            T::Currency::deposit(input_asset_id.clone(), &repr, balance!(999999999))?;
-            let swap_amount = common::prelude::SwapAmount::WithDesiredInput {
+        common::with_benchmark("pool-xyk.can_exchange", || {
+            // Function clause is used here, because in this case it is other scope and it not
+            // conflicted with bool type.
+            let res = || {
+                let tech_acc_id = T::TechAccountId::from_generic_pair(
+                    "PoolXYK".into(),
+                    "CanExchangeOperation".into(),
+                );
+                //TODO: Account registration is not needed to do operation, is this ok?
+                //Technical::register_tech_account_id(tech_acc_id)?;
+                let repr = technical::Module::<T>::tech_account_id_to_account_id(&tech_acc_id)?;
                 //FIXME: Use special max variable that is good for this operation.
-                desired_amount_in: balance!(0.000000001),
-                min_amount_out: 0,
+                T::Currency::deposit(input_asset_id.clone(), &repr, balance!(999999999))?;
+                let swap_amount = common::prelude::SwapAmount::WithDesiredInput {
+                    //FIXME: Use special max variable that is good for this operation.
+                    desired_amount_in: balance!(0.000000001),
+                    min_amount_out: 0,
+                };
+                Module::<T>::exchange(
+                    &repr,
+                    &repr,
+                    dex_id,
+                    input_asset_id,
+                    output_asset_id,
+                    swap_amount,
+                )?;
+                Ok(())
             };
-            Module::<T>::exchange(
-                &repr,
-                &repr,
-                dex_id,
-                input_asset_id,
-                output_asset_id,
-                swap_amount,
-            )?;
-            Ok(())
-        };
-        frame_support::storage::with_transaction(|| {
-            let v: DispatchResult = res();
-            sp_runtime::TransactionOutcome::Rollback(v.is_ok())
+            frame_support::storage::with_transaction(|| {
+                let v: DispatchResult = res();
+                sp_runtime::TransactionOutcome::Rollback(v.is_ok())
+            })
         })
     }
 
@@ -2168,26 +1913,28 @@ impl<T: Trait> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Disp
         output_asset_id: &T::AssetId,
         swap_amount: SwapAmount<Balance>,
     ) -> Result<SwapOutcome<Balance>, DispatchError> {
-        let res = || {
-            let tech_acc_id =
-                T::TechAccountId::from_generic_pair("PoolXYK".into(), "QuoteOperation".into());
-            //TODO: Account registration is not needed to do operation, is this ok?
-            //Technical::register_tech_account_id(tech_acc_id)?;
-            let repr = technical::Module::<T>::tech_account_id_to_account_id(&tech_acc_id)?;
-            //FIXME: Use special max variable that is good for this operation.
-            T::Currency::deposit(input_asset_id.clone(), &repr, balance!(999999999))?;
-            Module::<T>::exchange(
-                &repr,
-                &repr,
-                dex_id,
-                input_asset_id,
-                output_asset_id,
-                swap_amount,
-            )
-        };
-        frame_support::storage::with_transaction(|| {
-            let v: Result<SwapOutcome<Balance>, DispatchError> = res();
-            sp_runtime::TransactionOutcome::Rollback(v)
+        common::with_benchmark("pool-xyk.quote", || {
+            let res = || {
+                let tech_acc_id =
+                    T::TechAccountId::from_generic_pair("PoolXYK".into(), "QuoteOperation".into());
+                //TODO: Account registration is not needed to do operation, is this ok?
+                //Technical::register_tech_account_id(tech_acc_id)?;
+                let repr = technical::Module::<T>::tech_account_id_to_account_id(&tech_acc_id)?;
+                //FIXME: Use special max variable that is good for this operation.
+                T::Currency::deposit(input_asset_id.clone(), &repr, balance!(999999999))?;
+                Module::<T>::exchange(
+                    &repr,
+                    &repr,
+                    dex_id,
+                    input_asset_id,
+                    output_asset_id,
+                    swap_amount,
+                )
+            };
+            frame_support::storage::with_transaction(|| {
+                let v: Result<SwapOutcome<Balance>, DispatchError> = res();
+                sp_runtime::TransactionOutcome::Rollback(v)
+            })
         })
     }
 
@@ -2199,61 +1946,404 @@ impl<T: Trait> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Disp
         output_asset_id: &T::AssetId,
         swap_amount: SwapAmount<Balance>,
     ) -> Result<SwapOutcome<Balance>, DispatchError> {
-        let (_, tech_acc_id) = Module::<T>::tech_account_from_dex_and_asset_pair(
-            *dex_id,
-            *input_asset_id,
-            *output_asset_id,
-        )?;
-        let (source_amount, destination_amount) =
-            Module::<T>::get_bounds_from_swap_amount(swap_amount.clone())?;
-        let mut action = PolySwapActionStructOf::<T>::PairSwap(PairSwapActionOf::<T> {
-            client_account: None,
-            receiver_account: Some(receiver.clone()),
-            pool_account: tech_acc_id,
-            source: Resource {
-                asset: *input_asset_id,
-                amount: source_amount,
-            },
-            destination: Resource {
-                asset: *output_asset_id,
-                amount: destination_amount,
-            },
-            fee: None,
-            fee_account: None,
-            get_fee_from_destination: None,
-        });
-        common::SwapRulesValidation::<AccountIdOf<T>, TechAccountIdOf<T>, T>::prepare_and_validate(
+        common::with_benchmark("pool-xyk.exchange", || {
+            let (_, tech_acc_id) = Module::<T>::tech_account_from_dex_and_asset_pair(
+                *dex_id,
+                *input_asset_id,
+                *output_asset_id,
+            )?;
+            let (source_amount, destination_amount) =
+                Module::<T>::get_bounds_from_swap_amount(swap_amount.clone())?;
+            let mut action = PolySwapActionStructOf::<T>::PairSwap(PairSwapActionOf::<T> {
+                client_account: None,
+                receiver_account: Some(receiver.clone()),
+                pool_account: tech_acc_id,
+                source: Resource {
+                    asset: *input_asset_id,
+                    amount: source_amount,
+                },
+                destination: Resource {
+                    asset: *output_asset_id,
+                    amount: destination_amount,
+                },
+                fee: None,
+                fee_account: None,
+                get_fee_from_destination: None,
+            });
+            common::SwapRulesValidation::<AccountIdOf<T>, TechAccountIdOf<T>, T>::prepare_and_validate(
             &mut action,
             Some(sender),
         )?;
 
-        // It is guarantee that unwrap is always ok.
-        // Clone is used here because action is used for perform_create_swap_unchecked.
-        let retval = match action.clone() {
-            PolySwapAction::PairSwap(a) => {
-                let mut desired_in = false;
-                let (fee, amount) = match swap_amount {
-                    SwapAmount::WithDesiredInput { .. } => {
-                        desired_in = true;
-                        (a.fee.unwrap(), a.destination.amount.unwrap())
+            // It is guarantee that unwrap is always ok.
+            // Clone is used here because action is used for perform_create_swap_unchecked.
+            let retval = match action.clone() {
+                PolySwapAction::PairSwap(a) => {
+                    let mut desired_in = false;
+                    let (fee, amount) = match swap_amount {
+                        SwapAmount::WithDesiredInput { .. } => {
+                            desired_in = true;
+                            (a.fee.unwrap(), a.destination.amount.unwrap())
+                        }
+                        SwapAmount::WithDesiredOutput { .. } => {
+                            (a.fee.unwrap(), a.source.amount.unwrap())
+                        }
+                    };
+                    if a.get_fee_from_destination.unwrap() && desired_in {
+                        Ok(common::prelude::SwapOutcome::new(amount - fee, fee))
+                    } else {
+                        Ok(common::prelude::SwapOutcome::new(amount, fee))
                     }
-                    SwapAmount::WithDesiredOutput { .. } => {
-                        (a.fee.unwrap(), a.source.amount.unwrap())
-                    }
-                };
-                if a.get_fee_from_destination.unwrap() && desired_in {
-                    Ok(common::prelude::SwapOutcome::new(amount - fee, fee))
-                } else {
-                    Ok(common::prelude::SwapOutcome::new(amount, fee))
                 }
-            }
-            _ => unreachable!("we know that always PairSwap is used"),
-        };
+                _ => unreachable!("we know that always PairSwap is used"),
+            };
 
-        let action = T::PolySwapAction::from(action);
-        let mut action = action.into();
-        technical::Module::<T>::perform_create_swap_unchecked(sender.clone(), &mut action)?;
+            let action = T::PolySwapAction::from(action);
+            let mut action = action.into();
+            technical::Module::<T>::perform_create_swap_unchecked(sender.clone(), &mut action)?;
 
-        retval
+            retval
+        })
     }
+}
+
+pub use pallet::*;
+
+#[frame_support::pallet]
+pub mod pallet {
+    use super::*;
+    use frame_support::pallet_prelude::*;
+    use frame_system::pallet_prelude::*;
+
+    #[pallet::config]
+    pub trait Config:
+        frame_system::Config
+        + technical::Config
+        + dex_manager::Config
+        + trading_pair::Config
+        + pswap_distribution::Config
+    {
+        /// Because this pallet emits events, it depends on the runtime's definition of an event.
+        type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+
+        //TODO: implement and use + Into<SwapActionOf<T> for this types.
+        type PairSwapAction: common::SwapAction<AccountIdOf<Self>, TechAccountIdOf<Self>, Self>
+            + Parameter;
+        type DepositLiquidityAction: common::SwapAction<AccountIdOf<Self>, TechAccountIdOf<Self>, Self>
+            + Parameter;
+        type WithdrawLiquidityAction: common::SwapAction<AccountIdOf<Self>, TechAccountIdOf<Self>, Self>
+            + Parameter;
+        type PolySwapAction: common::SwapAction<AccountIdOf<Self>, TechAccountIdOf<Self>, Self>
+            + Parameter
+            + Into<<Self as technical::Config>::SwapAction>
+            + From<PolySwapActionStructOf<Self>>;
+        type EnsureDEXManager: EnsureDEXManager<Self::DEXId, Self::AccountId, DispatchError>;
+
+        /// Weight information for extrinsics in this pallet.
+        type WeightInfo: WeightInfo;
+    }
+
+    #[pallet::pallet]
+    #[pallet::generate_store(pub(super) trait Store)]
+    pub struct Pallet<T>(PhantomData<T>);
+
+    #[pallet::hooks]
+    impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {}
+
+    #[pallet::call]
+    impl<T: Config> Pallet<T> {
+        #[pallet::weight(<T as Config>::WeightInfo::swap_pair())]
+        pub fn swap_pair(
+            origin: OriginFor<T>,
+            receiver: AccountIdOf<T>,
+            dex_id: DEXIdOf<T>,
+            input_asset_id: AssetIdOf<T>,
+            output_asset_id: AssetIdOf<T>,
+            swap_amount: SwapAmount<Balance>,
+        ) -> DispatchResultWithPostInfo {
+            let source = ensure_signed(origin)?;
+            Module::<T>::exchange(
+                &source,
+                &receiver,
+                &dex_id,
+                &input_asset_id,
+                &output_asset_id,
+                swap_amount,
+            )?;
+            Ok(().into())
+        }
+
+        #[pallet::weight(<T as Config>::WeightInfo::deposit_liquidity())]
+        pub fn deposit_liquidity(
+            origin: OriginFor<T>,
+            dex_id: DEXIdOf<T>,
+            input_asset_a: AssetIdOf<T>,
+            input_asset_b: AssetIdOf<T>,
+            input_a_desired: Balance,
+            input_b_desired: Balance,
+            input_a_min: Balance,
+            input_b_min: Balance,
+        ) -> DispatchResultWithPostInfo {
+            common::with_benchmark("pool-xyk.deposit_liquidity", || {
+                let source = ensure_signed(origin)?;
+                Module::<T>::deposit_liquidity_unchecked(
+                    source,
+                    dex_id,
+                    input_asset_a,
+                    input_asset_b,
+                    input_a_desired,
+                    input_b_desired,
+                    input_a_min,
+                    input_b_min,
+                )?;
+                Ok(().into())
+            })
+        }
+
+        #[pallet::weight(<T as Config>::WeightInfo::withdraw_liquidity())]
+        pub fn withdraw_liquidity(
+            origin: OriginFor<T>,
+            dex_id: DEXIdOf<T>,
+            output_asset_a: AssetIdOf<T>,
+            output_asset_b: AssetIdOf<T>,
+            marker_asset_desired: Balance,
+            output_a_min: Balance,
+            output_b_min: Balance,
+        ) -> DispatchResultWithPostInfo {
+            common::with_benchmark("pool-xyk.withdraw_liquidity", || {
+                let source = ensure_signed(origin)?;
+                Module::<T>::withdraw_liquidity_unchecked(
+                    source,
+                    dex_id,
+                    output_asset_a,
+                    output_asset_b,
+                    marker_asset_desired,
+                    output_a_min,
+                    output_b_min,
+                )?;
+                Ok(().into())
+            })
+        }
+
+        #[pallet::weight(<T as Config>::WeightInfo::initialize_pool())]
+        pub fn initialize_pool(
+            origin: OriginFor<T>,
+            dex_id: DEXIdOf<T>,
+            asset_a: AssetIdOf<T>,
+            asset_b: AssetIdOf<T>,
+        ) -> DispatchResultWithPostInfo {
+            common::with_benchmark("pool-xyk.initialize_pool", || {
+                common::with_transaction(|| {
+                    let source = ensure_signed(origin.clone())?;
+                    <T as Config>::EnsureDEXManager::ensure_can_manage(
+                        &dex_id,
+                        origin.clone(),
+                        ManagementMode::Public,
+                    )?;
+                    let (_, tech_account_id, fees_account_id, mark_asset) =
+                        Module::<T>::initialize_pool_unchecked(
+                            source.clone(),
+                            dex_id,
+                            asset_a,
+                            asset_b,
+                        )?;
+                    let mark_asset_repr: T::AssetId = mark_asset.into();
+                    assets::Module::<T>::register_asset_id(
+                        source.clone(),
+                        mark_asset_repr,
+                        AssetSymbol(b"XYKPOOL".to_vec()),
+                        18,
+                        0,
+                        true,
+                    )?;
+                    let ta_repr =
+                        technical::Module::<T>::tech_account_id_to_account_id(&tech_account_id)?;
+                    let fees_ta_repr =
+                        technical::Module::<T>::tech_account_id_to_account_id(&fees_account_id)?;
+                    // Minting permission is needed for technical account to mint markered tokens of
+                    // liquidity into account who deposit liquidity.
+                    permissions::Module::<T>::grant_permission_with_scope(
+                        source.clone(),
+                        ta_repr.clone(),
+                        MINT,
+                        Scope::Limited(hash(&Into::<AssetIdOf<T>>::into(mark_asset.clone()))),
+                    )?;
+                    permissions::Module::<T>::grant_permission_with_scope(
+                        source,
+                        ta_repr.clone(),
+                        BURN,
+                        Scope::Limited(hash(&Into::<AssetIdOf<T>>::into(mark_asset.clone()))),
+                    )?;
+                    Module::<T>::initialize_pool_properties(
+                        &dex_id,
+                        &asset_a,
+                        &asset_b,
+                        &ta_repr,
+                        &fees_ta_repr,
+                        &mark_asset_repr,
+                    )?;
+                    pswap_distribution::Module::<T>::subscribe(
+                        fees_ta_repr,
+                        dex_id,
+                        mark_asset_repr,
+                        None,
+                    )?;
+                    MarkerTokensIndex::<T>::mutate(|mti| mti.insert(mark_asset_repr));
+                    Self::deposit_event(Event::PoolIsInitialized(ta_repr));
+                    Ok(().into())
+                })
+            })
+        }
+    }
+
+    #[pallet::event]
+    #[pallet::metadata(AccountIdOf<T> = "AccountId")]
+    #[pallet::generate_deposit(pub(super) fn deposit_event)]
+    pub enum Event<T: Config> {
+        // New pool for particular pair was initialized. [Reserves Account Id]
+        PoolIsInitialized(AccountIdOf<T>),
+    }
+
+    #[pallet::error]
+    pub enum Error<T> {
+        /// It is impossible to calculate fee for some pair swap operation, or other operation.
+        UnableToCalculateFee,
+        /// Is is impossible to get balance.
+        UnableToGetBalance,
+        /// Imposible to decide asset pair amounts.
+        ImposibleToDecideAssetPairAmounts,
+        /// Pool pair ratio and pair swap ratio is different.
+        PoolPairRatioAndPairSwapRatioIsDifferent,
+        /// Pair swap action fee is smaller than recommended.
+        PairSwapActionFeeIsSmallerThanRecommended,
+        /// Source balance is not large enough.
+        SourceBalanceIsNotLargeEnough,
+        /// Target balance is not large enough.
+        TargetBalanceIsNotLargeEnough,
+        /// It is unable to derive fee account.
+        UnableToDeriveFeeAccount,
+        /// The fee account is invalid.
+        FeeAccountIsInvalid,
+        /// Source and client accounts do not match as equal.
+        SourceAndClientAccountDoNotMatchAsEqual,
+        /// In this case assets must not be same.
+        AssetsMustNotBeSame,
+        /// Imposible to decice deposit liquidity amounts.
+        ImposibleToDecideDepositLiquidityAmounts,
+        /// Invalid deposit liquidity basic asset amount.
+        InvalidDepositLiquidityBasicAssetAmount,
+        /// Invalid deposit liquidity target asset amount.
+        InvalidDepositLiquidityTargetAssetAmount,
+        /// Pair swap action minimum liquidity is smallet than recommended.
+        PairSwapActionMinimumLiquidityIsSmallerThanRecommended,
+        /// Destination amount of liquidity is not large enough.
+        DestinationAmountOfLiquidityIsNotLargeEnough,
+        /// Source base amount if not large enough.
+        SourceBaseAmountIsNotLargeEnough,
+        /// Target base amount is not large enough.
+        TargetBaseAmountIsNotLargeEnough,
+        /// The balance structure of pool is invalid.
+        PoolIsInvalid,
+        /// The pool has empty liquidity.
+        PoolIsEmpty,
+        /// Amount parameter has zero value, it is invalid.
+        ZeroValueInAmountParameter,
+        /// The account balance is invalid.
+        AccountBalanceIsInvalid,
+        /// Incalid deposit liquidity destination amount.
+        InvalidDepositLiquidityDestinationAmount,
+        /// Initial liquidity deposit ratio must be defined.
+        InitialLiqudityDepositRatioMustBeDefined,
+        /// Technical asset is not representable.
+        TechAssetIsNotRepresentable,
+        /// Unable or imposible to decide marker asset.
+        UnableToDecideMarkerAsset,
+        /// Unable or imposible to get asset representation.
+        UnableToGetAssetRepr,
+        /// Imposible to decide withdraw liquidity amounts.
+        ImposibleToDecideWithdrawLiquidityAmounts,
+        /// Invalid withdraw liquidity base asset amount.
+        InvalidWithdrawLiquidityBasicAssetAmount,
+        /// Invalud withdras liquidity target asset amount.
+        InvalidWithdrawLiquidityTargetAssetAmount,
+        /// Source base amount if tool large.
+        SourceBaseAmountIsTooLarge,
+        /// Source balance if liquidity is not large enough.
+        SourceBalanceOfLiquidityTokensIsNotLargeEnough,
+        /// Destination base balance is not large enough.
+        DestinationBaseBalanceIsNotLargeEnough,
+        /// Destination base balance is not large enough.
+        DestinationTargetBalanceIsNotLargeEnough,
+        /// Asset for liquidity marking is invalid.
+        InvalidAssetForLiquidityMarking,
+        /// Error in asset decoding.
+        AssetDecodingError,
+        /// Calculated value is out of desired bounds.
+        CalculatedValueIsOutOfDesiredBounds,
+        /// The base asset is not matched with any asset arguments.
+        BaseAssetIsNotMatchedWithAnyAssetArguments,
+        /// Some values is need to be same, the destination amount must be same.
+        DestinationAmountMustBeSame,
+        /// Some values is need to be same, the source amount must be same.
+        SourceAmountMustBeSame,
+        /// The pool initialization if invalid and failed.
+        PoolInitializationIsInvalid,
+        /// The pool is already initialized.
+        PoolIsAlreadyInitialized,
+        /// The minimul bound values of balance is invalid.
+        InvalidMinimumBoundValueOfBalance,
+        /// It is imposible to decide valid pair values from range for this pool.
+        ImposibleToDecideValidPairValuesFromRangeForThisPool,
+        /// This range values is not validy by rules of correct range.
+        RangeValuesIsInvalid,
+        /// The values that is calculated is out out of required bounds.
+        CalculatedValueIsNotMeetsRequiredBoundaries,
+        /// In this case getting fee from destination is imposible.
+        GettingFeeFromDestinationIsImposible,
+        /// Math calculation with fixed number if failed to complete.
+        FixedWrapperCalculationFailed,
+        /// This case if not supported by logic of pool of validation code.
+        ThisCaseIsNotSupported,
+        /// Pool becomes invalid after operation
+        PoolBecameInvalidAfterOperation,
+        /// Unable to convert asset to tech asset id.
+        UnableToConvertAssetToTechAssetId,
+        /// Unable to get XOR part from marker asset.
+        UnableToGetXORPartFromMarkerAsset,
+    }
+
+    /// Updated after last liquidity change operation.
+    /// [Base Asset Id (XOR) -> Target Asset Id => (Base Balance, Target Balance)].
+    /// This storage records is not used as source of information, but used as quick cache for
+    /// information that comes from balances for assets from technical accounts.
+    /// For example, communication with technical accounts and their storage is not needed, and this
+    /// pair to balance cache can be used quickly.
+    #[pallet::storage]
+    #[pallet::getter(fn reserves)]
+    pub type Reserves<T: Config> = StorageDoubleMap<
+        _,
+        Blake2_128Concat,
+        T::AssetId,
+        Blake2_128Concat,
+        T::AssetId,
+        (Balance, Balance),
+        ValueQuery,
+    >;
+
+    /// Collection of all registered marker tokens.
+    #[pallet::storage]
+    #[pallet::getter(fn marker_tokens_index)]
+    pub type MarkerTokensIndex<T: Config> = StorageValue<_, BTreeSet<T::AssetId>, ValueQuery>;
+
+    /// Properties of particular pool. [Reserves Account Id, Fees Account Id, Marker Asset Id]
+    #[pallet::storage]
+    #[pallet::getter(fn properties)]
+    pub type Properties<T: Config> = StorageDoubleMap<
+        _,
+        Blake2_128Concat,
+        T::AssetId,
+        Blake2_128Concat,
+        T::AssetId,
+        (T::AccountId, T::AccountId, T::AssetId),
+    >;
 }

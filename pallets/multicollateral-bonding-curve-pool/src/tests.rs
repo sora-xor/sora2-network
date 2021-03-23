@@ -1,6 +1,6 @@
 #[rustfmt::skip]
 mod tests {
-    use crate::{mock::*, DistributionAccountData, DistributionAccounts, Error};
+    use crate::{mock::*, DistributionAccountData, Module, DistributionAccounts, Error};
     use common::{
         self, balance, fixed, fixed_wrapper, Fixed, fixnum::ops::One as _, fixnum::ops::Zero as _,
         prelude::{Balance, SwapAmount, SwapOutcome, QuoteAmount, FixedWrapper,},
@@ -13,6 +13,8 @@ mod tests {
     use sp_arithmetic::traits::{Zero};
     use sp_runtime::DispatchError;
     use orml_traits::MultiCurrency;
+
+    type MBCPool = Module<Runtime>;
 
     #[test]
     fn should_calculate_price() {
@@ -154,7 +156,7 @@ mod tests {
     fn bonding_curve_pool_init(
         initial_reserves: Vec<(AssetId, Balance)>,
     ) -> Result<
-        DistributionAccounts<DistributionAccountData<<Runtime as technical::Trait>::TechAccountId>>,
+        DistributionAccounts<DistributionAccountData<<Runtime as technical::Config>::TechAccountId>>,
         DispatchError,
     > {
         let bonding_curve_tech_account_id = TechAccountId::Pure(
@@ -288,8 +290,8 @@ mod tests {
                 )
                 .unwrap(),
                 SwapOutcome::new(
-                    balance!(2.204963991332086241),
-                    balance!(0.003)
+                    balance!(2.100439516374830873),
+                    balance!(0.093)
                 )
             );
         });
@@ -961,7 +963,157 @@ mod tests {
             )
             .unwrap();
             assert_eq!(price_c.fee, price_d.fee);
-            assert_eq!(price_c.fee, balance!(0.077942042880974657));
+            assert_eq!(price_c.fee, balance!(2.655958896716961113));
+        });
+    }
+
+    #[test]
+    fn check_sell_penalty_based_on_collateralized_fraction() {
+        assert_eq!(MBCPool::map_collateralized_fraction_to_penalty(fixed!(0)), fixed!(0.09));
+        assert_eq!(MBCPool::map_collateralized_fraction_to_penalty(fixed!(0.03)), fixed!(0.09));
+        assert_eq!(MBCPool::map_collateralized_fraction_to_penalty(fixed!(0.05)), fixed!(0.06));
+        assert_eq!(MBCPool::map_collateralized_fraction_to_penalty(fixed!(0.075)), fixed!(0.06));
+        assert_eq!(MBCPool::map_collateralized_fraction_to_penalty(fixed!(0.1)), fixed!(0.03));
+        assert_eq!(MBCPool::map_collateralized_fraction_to_penalty(fixed!(0.15)), fixed!(0.03));
+        assert_eq!(MBCPool::map_collateralized_fraction_to_penalty(fixed!(0.2)), fixed!(0.01));
+        assert_eq!(MBCPool::map_collateralized_fraction_to_penalty(fixed!(0.25)), fixed!(0.01));
+        assert_eq!(MBCPool::map_collateralized_fraction_to_penalty(fixed!(0.3)), fixed!(0));
+        assert_eq!(MBCPool::map_collateralized_fraction_to_penalty(fixed!(0.35)), fixed!(0));
+        assert_eq!(MBCPool::map_collateralized_fraction_to_penalty(fixed!(0.5)), fixed!(0));
+        assert_eq!(MBCPool::map_collateralized_fraction_to_penalty(fixed!(1)), fixed!(0));
+        assert_eq!(MBCPool::map_collateralized_fraction_to_penalty(fixed!(2)), fixed!(0));
+        assert_eq!(MBCPool::map_collateralized_fraction_to_penalty(fixed!(10)), fixed!(0));
+    }
+
+    #[test]
+    fn fee_penalties_should_be_applied() {
+        let mut ext = ExtBuilder::new(vec![
+            (alice(), XOR, balance!(0), AssetSymbol(b"XOR".to_vec()), 18),
+            (alice(), VAL, balance!(2000), AssetSymbol(b"VAL".to_vec()), 18),
+            (alice(), DAI, balance!(20000000), AssetSymbol(b"DAI".to_vec()), 18),
+            (alice(), USDT, balance!(0), AssetSymbol(b"USDT".to_vec()), 18),
+            (alice(), PSWAP, balance!(0), AssetSymbol(b"PSWAP".to_vec()), 18),
+        ])
+        .build();
+        ext.execute_with(|| {
+            MockDEXApi::init().unwrap();
+            let _ = bonding_curve_pool_init(vec![]).unwrap();
+            TradingPair::register(Origin::signed(alice()),DEXId::Polkaswap.into(), XOR, DAI).expect("Failed to register trading pair.");
+            MBCPool::initialize_pool_unchecked(DAI).expect("Failed to initialize pool.");
+            MBCPool::set_reference_asset(Origin::signed(alice()), DAI).unwrap();
+
+            let xor_supply = Assets::total_issuance(&XOR).unwrap();
+            assert_eq!(xor_supply, balance!(100000));
+
+            // Depositing collateral #1: under 5% collateralized
+            MBCPool::exchange(
+                &alice(),
+                &alice(),
+                &DEXId::Polkaswap.into(),
+                &DAI,
+                &XOR,
+                SwapAmount::with_desired_input(balance!(200000), Balance::zero()),
+            )
+            .unwrap();
+            let xor_supply = Assets::total_issuance(&XOR).unwrap();
+            assert_eq!(xor_supply, balance!(100724.916324262414175551));
+            
+            let sell_price = MBCPool::quote(
+                &DEXId::Polkaswap.into(),
+                &XOR,
+                &DAI,
+                SwapAmount::with_desired_input(balance!(100), Balance::zero()),
+            )
+            .unwrap();
+            assert_eq!(sell_price.fee, balance!(9.3));
+
+            // Depositing collateral #2: under 10% collateralized
+            MBCPool::exchange(
+                &alice(),
+                &alice(),
+                &DEXId::Polkaswap.into(),
+                &DAI,
+                &XOR,
+                SwapAmount::with_desired_input(balance!(2000000), Balance::zero()),
+            )
+            .unwrap();
+            let xor_supply = Assets::total_issuance(&XOR).unwrap();
+            assert_eq!(xor_supply, balance!(107896.889465954935413179));
+
+            let sell_price = MBCPool::quote(
+                &DEXId::Polkaswap.into(),
+                &XOR,
+                &DAI,
+                SwapAmount::with_desired_input(balance!(100), Balance::zero()),
+            )
+            .unwrap();
+            assert_eq!(sell_price.fee, balance!(6.3));
+
+            // Depositing collateral #3: under 20% collateralized
+            MBCPool::exchange(
+                &alice(),
+                &alice(),
+                &DEXId::Polkaswap.into(),
+                &DAI,
+                &XOR,
+                SwapAmount::with_desired_input(balance!(2000000), Balance::zero()),
+            )
+            .unwrap();
+            let xor_supply = Assets::total_issuance(&XOR).unwrap();
+            assert_eq!(xor_supply, balance!(114934.359190755661046424));
+
+            let sell_price = MBCPool::quote(
+                &DEXId::Polkaswap.into(),
+                &XOR,
+                &DAI,
+                SwapAmount::with_desired_input(balance!(100), Balance::zero()),
+            )
+            .unwrap();
+            assert_eq!(sell_price.fee, balance!(3.3));
+
+            // Depositing collateral #4: under 30% collateralized
+            MBCPool::exchange(
+                &alice(),
+                &alice(),
+                &DEXId::Polkaswap.into(),
+                &DAI,
+                &XOR,
+                SwapAmount::with_desired_input(balance!(3000000), Balance::zero()),
+            )
+            .unwrap();
+            let xor_supply = Assets::total_issuance(&XOR).unwrap();
+            assert_eq!(xor_supply, balance!(125254.015350097078608660));
+
+            let sell_price = MBCPool::quote(
+                &DEXId::Polkaswap.into(),
+                &XOR,
+                &DAI,
+                SwapAmount::with_desired_input(balance!(100), Balance::zero()),
+            )
+            .unwrap();
+            assert_eq!(sell_price.fee, balance!(1.3));
+
+            // Depositing collateral #5: over 30% collateralized
+            MBCPool::exchange(
+                &alice(),
+                &alice(),
+                &DEXId::Polkaswap.into(),
+                &DAI,
+                &XOR,
+                SwapAmount::with_desired_input(balance!(3000000), Balance::zero()),
+            )
+            .unwrap();
+            let xor_supply = Assets::total_issuance(&XOR).unwrap();
+            assert_eq!(xor_supply, balance!(135309.331316886815237511));
+
+            let sell_price = MBCPool::quote(
+                &DEXId::Polkaswap.into(),
+                &XOR,
+                &DAI,
+                SwapAmount::with_desired_input(balance!(100), Balance::zero()),
+            )
+            .unwrap();
+            assert_eq!(sell_price.fee, balance!(0.3));
         });
     }
 

@@ -2,7 +2,8 @@ use core::convert::TryInto;
 use core::ops::*;
 use core::result::Result;
 
-use fixnum::ops::{CheckedAdd, CheckedSub, RoundMode::*, RoundingDiv, RoundingMul};
+use fixnum::ops::RoundMode::*;
+use fixnum::ops::{CheckedAdd, CheckedSub, RoundingDiv, RoundingMul};
 use fixnum::ArithmeticError;
 use static_assertions::_core::cmp::Ordering;
 

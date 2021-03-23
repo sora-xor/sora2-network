@@ -1,40 +1,9 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use frame_support::{
-    decl_error, decl_event, decl_module, decl_storage, ensure, sp_runtime::DispatchError,
-};
+use frame_support::ensure;
+use frame_support::sp_runtime::DispatchError;
 
-pub trait Trait: frame_system::Trait {
-    type Event: From<Event> + Into<<Self as frame_system::Trait>::Event>;
-}
-
-decl_storage! {
-    trait Store for Module<T: Trait> as ReferralSystem {
-        // Referrer's account by the account of the user who was referred.
-        pub Referrers get(fn referrer_account) config(referrers): map hasher(blake2_128_concat) T::AccountId => Option<T::AccountId>;
-    }
-}
-
-decl_event!(
-    pub enum Event {}
-);
-
-decl_error! {
-    pub enum Error for Module<T: Trait> {
-        /// Account already has a referrer.
-        AlreadyHasReferrer
-    }
-}
-
-decl_module! {
-    pub struct Module<T: Trait> for enum Call where origin: T::Origin {
-        type Error = Error<T>;
-
-        fn deposit_event() = default;
-    }
-}
-
-impl<T: Trait> Module<T> {
+impl<T: Config> Module<T> {
     pub fn set_referrer_to(
         referral: &T::AccountId,
         referrer: T::AccountId,
@@ -44,5 +13,59 @@ impl<T: Trait> Module<T> {
             *r = Some(referrer);
             Ok(())
         })
+    }
+}
+
+pub use pallet::*;
+
+#[frame_support::pallet]
+pub mod pallet {
+    use frame_support::pallet_prelude::*;
+    use frame_system::pallet_prelude::*;
+
+    #[pallet::config]
+    pub trait Config: frame_system::Config {}
+
+    #[pallet::pallet]
+    #[pallet::generate_store(pub(super) trait Store)]
+    pub struct Pallet<T>(PhantomData<T>);
+
+    #[pallet::hooks]
+    impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {}
+
+    #[pallet::call]
+    impl<T: Config> Pallet<T> {}
+
+    #[pallet::error]
+    pub enum Error<T> {
+        /// Account already has a referrer.
+        AlreadyHasReferrer,
+    }
+
+    #[pallet::storage]
+    #[pallet::getter(fn referrer_account)]
+    pub type Referrers<T: Config> = StorageMap<_, Blake2_128Concat, T::AccountId, T::AccountId>;
+
+    #[pallet::genesis_config]
+    pub struct GenesisConfig<T: Config> {
+        pub referrers: Vec<(T::AccountId, T::AccountId)>,
+    }
+
+    #[cfg(feature = "std")]
+    impl<T: Config> Default for GenesisConfig<T> {
+        fn default() -> Self {
+            Self {
+                referrers: Default::default(),
+            }
+        }
+    }
+
+    #[pallet::genesis_build]
+    impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
+        fn build(&self) {
+            self.referrers.iter().for_each(|(k, v)| {
+                Referrers::<T>::insert(k, v);
+            });
+        }
     }
 }

@@ -2,44 +2,8 @@ version: "3.2"
 
 services:
   dev:
-    container_name: substrate-polkaswap-parachain
-    # Please run ```docker build -t soraneo-develop-nix .```
-    image: soraneo-develop-nix:latest
-    working_dir: /parachain
-    ports:
-      - "9944:9944"   # relay 0
-      - "9945:9945"   # relay 1
-      - "19744:19744" # parachain 200 fullnode 0
-      - "19745:19745" # parachain 200 fullnode 1
-      - "29744:29744" # parachain 200 collator 0
-      - "29745:29745" # parachain 200 collator 1
-      - "29746:29746" # parachain 200 collator 2
-      - "29747:29747" # parachain 200 collator 3
-
-    environment:
-      - INSIDE_DOCKER=1
-      - INSIDE_DOCKER_USE_COMMIT=${INSIDE_DOCKER_USE_COMMIT}
-      - INSIDE_DOCKER_RUN_COMMANDS=${INSIDE_DOCKER_RUN_COMMANDS}
-      - INSIDE_DOCKER_USE_LAST_COMMIT_BY_DEFAULT=1
-
-    volumes:
-
-      - type: bind
-        read_only: true
-        source: ./
-        target: /repos/parachain
-
-      - type: tmpfs
-        target: /parachain
-
-        # Uncommend this lines if unix socket to be used to pass commands
-        # - type: bind
-        #   source: ./.inside_docker_jobs
-        #   target: /parachain/.inside_docker_jobs
-
-        # Uncommend this lines if external cache to be used
-        # - type: bind
-        #   source: /tmp/cargo_target_cache
-        #   target: /cache
-
-    command: bash /repos/parachain/scripts/inside_docker.sh
+    container_name: sora_polkaswap_nix_local_testnet
+    image: sora/polkaswap/nix:latest
+    # Please run ```docker build -t sora/polkaswap/nix .```
+    working_dir: /workdir
+    command: ./run_script.sh -d -w -r

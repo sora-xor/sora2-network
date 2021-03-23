@@ -1,13 +1,11 @@
-use crate::{
-    prelude::{ManagementMode, SwapAmount, SwapOutcome},
-    Fixed, LiquiditySourceFilter, LiquiditySourceId,
-};
-use frame_support::{
-    dispatch::DispatchResult,
-    sp_runtime::{traits::BadOrigin, DispatchError},
-    weights::Weight,
-    Parameter,
-};
+use crate::prelude::{ManagementMode, SwapAmount, SwapOutcome};
+use crate::{Fixed, LiquiditySourceFilter, LiquiditySourceId};
+use frame_support::dispatch::DispatchResult;
+use frame_support::pallet_prelude::MaybeSerializeDeserialize;
+use frame_support::sp_runtime::traits::BadOrigin;
+use frame_support::sp_runtime::DispatchError;
+use frame_support::weights::Weight;
+use frame_support::Parameter;
 use frame_system::RawOrigin;
 //FIXME maybe try info or try from is better than From and Option.
 //use sp_std::convert::TryInto;
@@ -169,12 +167,14 @@ where
     ) -> Result<Vec<LiquiditySourceId<DEXId, LiquiditySourceIndex>>, Error>;
 }
 
-pub type AccountIdOf<T> = <T as frame_system::Trait>::AccountId;
+pub type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
+pub type DexIdOf<T> = <T as Config>::DEXId;
 
 /// Common DEX trait. Used for DEX-related pallets.
-pub trait Trait: frame_system::Trait + currencies::Trait {
+pub trait Config: frame_system::Config + currencies::Config {
     /// DEX identifier.
     type DEXId: Parameter
+        + MaybeSerializeDeserialize
         + Ord
         + Copy
         + Default
@@ -199,7 +199,7 @@ pub trait Trait: frame_system::Trait + currencies::Trait {
 /// succeeds with best efforts.
 /// - **Claim**: claim any resources reserved in the first phrase.
 /// - **Cancel**: cancel any resources reserved in the first phrase.
-pub trait SwapAction<SourceAccountId, TargetAccountId, T: Trait> {
+pub trait SwapAction<SourceAccountId, TargetAccountId, T: Config> {
     /// Reserve the resources needed for the swap, from the given `source`. The reservation is
     /// allowed to fail. If that is the case, the the full swap creation operation is cancelled.
     fn reserve(&self, source: &SourceAccountId) -> DispatchResult;
@@ -212,7 +212,7 @@ pub trait SwapAction<SourceAccountId, TargetAccountId, T: Trait> {
 }
 
 /// Dummy implementation for cases then () used in runtime as empty SwapAction.
-impl<SourceAccountId, TargetAccountId, T: Trait> SwapAction<SourceAccountId, TargetAccountId, T>
+impl<SourceAccountId, TargetAccountId, T: Config> SwapAction<SourceAccountId, TargetAccountId, T>
     for ()
 {
     fn reserve(&self, _source: &SourceAccountId) -> DispatchResult {
@@ -229,7 +229,7 @@ impl<SourceAccountId, TargetAccountId, T: Trait> SwapAction<SourceAccountId, Tar
     }
 }
 
-pub trait SwapRulesValidation<SourceAccountId, TargetAccountId, T: Trait>:
+pub trait SwapRulesValidation<SourceAccountId, TargetAccountId, T: Config>:
     SwapAction<SourceAccountId, TargetAccountId, T>
 {
     /// If action is only for abstract checking, shoud not apply by `reserve` function.
@@ -251,7 +251,7 @@ pub trait SwapRulesValidation<SourceAccountId, TargetAccountId, T: Trait>:
     fn is_able_to_claim(&self) -> bool;
 }
 
-impl<SourceAccountId, TargetAccountId, T: Trait>
+impl<SourceAccountId, TargetAccountId, T: Config>
     SwapRulesValidation<SourceAccountId, TargetAccountId, T> for ()
 {
     fn is_abstract_checking(&self) -> bool {

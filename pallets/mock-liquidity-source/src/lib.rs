@@ -1,15 +1,12 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use core::convert::TryInto;
-
 use common::fixnum::ops::One;
-use common::{fixed, prelude::*};
-use frame_support::{
-    decl_error, decl_event, decl_module, decl_storage,
-    dispatch::{DispatchError, DispatchResult},
-    ensure,
-    traits::Get,
-};
+use common::prelude::{FixedWrapper, SwapAmount, SwapOutcome};
+use common::{fixed, Balance, Fixed, LiquiditySource};
+use core::convert::TryInto;
+use frame_support::dispatch::DispatchError;
+use frame_support::ensure;
+use frame_support::traits::Get;
 use frame_system::ensure_signed;
 use permissions::{Scope, BURN, MINT, SLASH, TRANSFER};
 
@@ -19,73 +16,8 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
-pub trait Trait<I: Instance>: common::Trait + assets::Trait + technical::Trait {
-    type Event: From<Event<Self, I>> + Into<<Self as frame_system::Trait>::Event>;
-    type GetFee: Get<Fixed>;
-    type EnsureDEXManager: EnsureDEXManager<Self::DEXId, Self::AccountId, DispatchError>;
-    type EnsureTradingPairExists: EnsureTradingPairExists<Self::DEXId, Self::AssetId, DispatchError>;
-}
-
-decl_storage! {
-    trait Store for Module<T: Trait<I>, I: Instance> as MockLiquiditySourceModule {
-        pub Reserves get(fn reserves): double_map hasher(blake2_128_concat) T::DEXId, hasher(blake2_128_concat) T::AssetId => (Fixed, Fixed);
-        pub ReservesAcc get(fn reserves_account_id): T::TechAccountId;
-    }
-
-    add_extra_genesis {
-        config(phantom): sp_std::marker::PhantomData<I>;
-        config(reserves): Vec<(T::DEXId, T::AssetId, (Fixed, Fixed))>;
-        build(|config| Module::<T, I>::initialize_reserves(&config.reserves))
-    }
-}
-
-decl_event!(
-    pub enum Event<T, I>
-    where
-        AccountId = <T as frame_system::Trait>::AccountId,
-        AssetId = <T as assets::Trait>::AssetId,
-    {
-        ReservesUpdated(AccountId, AssetId, Fixed, AssetId, Fixed),
-    }
-);
-
-// Errors inform users that something went wrong.
-decl_error! {
-    pub enum Error for Module<T: Trait<I>, I: Instance> {
-        PairDoesNotExist,
-        InsufficientInputAmount,
-        InsufficientOutputAmount,
-        InsufficientLiquidity,
-        /// Specified parameters lead to arithmetic error
-        CalculationError,
-    }
-}
-
-decl_module! {
-    pub struct Module<T: Trait<I>, I: Instance> for enum Call where origin: T::Origin {
-        type Error = Error<T, I>;
-
-        fn deposit_event() = default;
-
-        // example, this checks should be called at the beginning of management functions of actual liquidity sources, e.g. register, set_fee
-        #[weight = 0]
-        pub fn test_access(origin, dex_id: T::DEXId, target_id: T::AssetId) -> DispatchResult {
-            let _who = T::EnsureDEXManager::ensure_can_manage(&dex_id, origin, ManagementMode::Public)?;
-            T::EnsureTradingPairExists::ensure_trading_pair_exists(&dex_id, &T::GetBaseAssetId::get(), &target_id)?;
-            Ok(())
-        }
-
-        #[weight = 0]
-        pub fn set_reserve(origin, dex_id: T::DEXId, target_id: T::AssetId, base_reserve: Fixed, target_reserve: Fixed) -> DispatchResult {
-            let _who = ensure_signed(origin)?;
-            <Reserves<T, I>>::insert(dex_id, target_id, (base_reserve, target_reserve));
-            Ok(())
-        }
-    }
-}
-
 #[allow(non_snake_case)]
-impl<T: Trait<I>, I: Instance> Module<T, I> {
+impl<T: Config<I>, I: 'static> Pallet<T, I> {
     fn initialize_reserves(reserves: &[(T::DEXId, T::AssetId, (Fixed, Fixed))]) {
         reserves
             .iter()
@@ -251,13 +183,13 @@ impl<T: Trait<I>, I: Instance> Module<T, I> {
     }
 }
 
-impl<T: Trait<I>, I: Instance> Module<T, I> {
+impl<T: Config<I>, I: 'static> Pallet<T, I> {
     pub fn set_reserves_account_id(account: T::TechAccountId) -> Result<(), DispatchError> {
         ReservesAcc::<T, I>::set(account.clone());
-        let account_id = technical::Module::<T>::tech_account_id_to_account_id(&account)?;
+        let account_id = technical::Pallet::<T>::tech_account_id_to_account_id(&account)?;
         let permissions = [BURN, MINT, TRANSFER, SLASH];
         for permission in &permissions {
-            permissions::Module::<T>::assign_permission(
+            permissions::Pallet::<T>::assign_permission(
                 account_id.clone(),
                 &account_id,
                 *permission,
@@ -268,8 +200,8 @@ impl<T: Trait<I>, I: Instance> Module<T, I> {
     }
 }
 
-impl<T: Trait<I>, I: Instance>
-    LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, DispatchError> for Module<T, I>
+impl<T: Config<I>, I: 'static>
+    LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, DispatchError> for Pallet<T, I>
 {
     fn can_exchange(
         dex_id: &T::DEXId,
@@ -397,5 +329,118 @@ impl<T: Trait<I>, I: Instance>
     ) -> Result<SwapOutcome<Balance>, DispatchError> {
         // actual exchange does not happen
         Self::quote(dex_id, input_asset_id, output_asset_id, desired_amount)
+    }
+}
+
+pub use pallet::*;
+
+#[frame_support::pallet]
+pub mod pallet {
+    use super::*;
+    use common::{EnsureDEXManager, EnsureTradingPairExists, ManagementMode};
+    use frame_support::pallet_prelude::*;
+    use frame_system::pallet_prelude::*;
+
+    #[pallet::config]
+    pub trait Config<I: 'static = ()>:
+        frame_system::Config + common::Config + assets::Config + technical::Config
+    {
+        type GetFee: Get<Fixed>;
+        type EnsureDEXManager: EnsureDEXManager<Self::DEXId, Self::AccountId, DispatchError>;
+        type EnsureTradingPairExists: EnsureTradingPairExists<
+            Self::DEXId,
+            Self::AssetId,
+            DispatchError,
+        >;
+    }
+
+    #[pallet::pallet]
+    #[pallet::generate_store(pub(super) trait Store)]
+    pub struct Pallet<T, I = ()>(PhantomData<(T, I)>);
+
+    #[pallet::hooks]
+    impl<T: Config<I>, I: 'static> Hooks<BlockNumberFor<T>> for Pallet<T, I> {}
+
+    #[pallet::call]
+    impl<T: Config<I>, I: 'static> Pallet<T, I> {
+        // example, this checks should be called at the beginning of management functions of actual liquidity sources, e.g. register, set_fee
+        #[pallet::weight(0)]
+        pub fn test_access(
+            origin: OriginFor<T>,
+            dex_id: T::DEXId,
+            target_id: T::AssetId,
+        ) -> DispatchResultWithPostInfo {
+            let _who =
+                T::EnsureDEXManager::ensure_can_manage(&dex_id, origin, ManagementMode::Public)?;
+            T::EnsureTradingPairExists::ensure_trading_pair_exists(
+                &dex_id,
+                &T::GetBaseAssetId::get(),
+                &target_id,
+            )?;
+            Ok(().into())
+        }
+
+        #[pallet::weight(0)]
+        pub fn set_reserve(
+            origin: OriginFor<T>,
+            dex_id: T::DEXId,
+            target_id: T::AssetId,
+            base_reserve: Fixed,
+            target_reserve: Fixed,
+        ) -> DispatchResultWithPostInfo {
+            let _who = ensure_signed(origin)?;
+            <Reserves<T, I>>::insert(dex_id, target_id, (base_reserve, target_reserve));
+            Ok(().into())
+        }
+    }
+
+    #[pallet::error]
+    pub enum Error<T, I = ()> {
+        PairDoesNotExist,
+        InsufficientInputAmount,
+        InsufficientOutputAmount,
+        InsufficientLiquidity,
+        /// Specified parameters lead to arithmetic error
+        CalculationError,
+    }
+
+    #[pallet::storage]
+    #[pallet::getter(fn reserves)]
+    pub type Reserves<T: Config<I>, I: 'static = ()> = StorageDoubleMap<
+        _,
+        Blake2_128Concat,
+        T::DEXId,
+        Blake2_128Concat,
+        T::AssetId,
+        (Fixed, Fixed),
+        ValueQuery,
+    >;
+
+    #[pallet::storage]
+    #[pallet::getter(fn reserves_account_id)]
+    pub type ReservesAcc<T: Config<I>, I: 'static = ()> =
+        StorageValue<_, T::TechAccountId, ValueQuery>;
+
+    #[pallet::genesis_config]
+    pub struct GenesisConfig<T: Config<I>, I: 'static = ()> {
+        pub phantom: sp_std::marker::PhantomData<I>,
+        pub reserves: Vec<(T::DEXId, T::AssetId, (Fixed, Fixed))>,
+    }
+
+    #[cfg(feature = "std")]
+    impl<T: Config<I>, I: 'static> Default for GenesisConfig<T, I> {
+        fn default() -> Self {
+            Self {
+                phantom: Default::default(),
+                reserves: Default::default(),
+            }
+        }
+    }
+
+    #[pallet::genesis_build]
+    impl<T: Config<I>, I: 'static> GenesisBuild<T, I> for GenesisConfig<T, I> {
+        fn build(&self) {
+            Pallet::<T, I>::initialize_reserves(&self.reserves)
+        }
     }
 }

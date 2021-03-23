@@ -1,289 +1,51 @@
 use codec::{Decode, Encode};
+use common::mock::ExistentialDeposits;
+use common::prelude::{
+    Balance, BlockLength, BlockWeights, SwapAmount, SwapOutcome, TransactionByteFee,
+};
 use common::{
-    self, balance, fixed_from_basis_points,
-    prelude::{Balance, SwapAmount, SwapOutcome},
-    Amount, AssetId32, AssetSymbol, Fixed, LiquiditySource, LiquiditySourceFilter,
-    LiquiditySourceType, VAL, XOR,
+    self, balance, fixed_from_basis_points, Amount, AssetId32, AssetSymbol, Fixed, LiquiditySource,
+    LiquiditySourceFilter, LiquiditySourceType, VAL, XOR,
 };
 use core::time::Duration;
 use currencies::BasicCurrencyAdapter;
-use frame_support::{
-    impl_outer_dispatch, impl_outer_event, impl_outer_origin, parameter_types,
-    traits::Get,
-    weights::{constants::WEIGHT_PER_SECOND, DispatchInfo, IdentityFee, PostDispatchInfo, Weight},
-};
-use frame_system as system;
+use frame_support::traits::{GenesisBuild, Get, OneSessionHandler, U128CurrencyToVote};
+use frame_support::weights::{DispatchInfo, IdentityFee, PostDispatchInfo, Weight};
+use frame_support::{construct_runtime, parameter_types};
+use frame_system;
+use pallet_session::historical;
 use permissions::{Scope, BURN, MINT, TRANSFER};
 use sp_core::H256;
-use sp_runtime::{
-    testing::{Header, TestXt, UintAuthorityId},
-    traits::{BlakeTwo256, Convert, IdentityLookup, SaturatedConversion},
-    DispatchError, Perbill, Percent,
-};
+use sp_runtime::testing::{Header, TestXt, UintAuthorityId};
+use sp_runtime::traits::{BlakeTwo256, IdentityLookup};
+use sp_runtime::{DispatchError, Perbill, Percent};
 
-pub use crate::{self as xor_fee, Module, Trait};
+pub use crate::{self as xor_fee, Config, Module};
 
 // Configure a mock runtime to test the pallet.
-type AssetId = AssetId32<common::AssetId>;
-
-/// Simple structure that exposes how u64 currency can be represented as... u64.
-pub struct CurrencyToVoteHandler;
-impl Convert<Balance, u64> for CurrencyToVoteHandler {
-    fn convert(x: Balance) -> u64 {
-        x.saturated_into()
-    }
-}
-impl Convert<u128, Balance> for CurrencyToVoteHandler {
-    fn convert(x: u128) -> Balance {
-        x.saturated_into()
-    }
-}
-
-/// Another session handler struct to test on_disabled.
-pub struct OtherSessionHandler;
-impl pallet_session::OneSessionHandler<AccountId> for OtherSessionHandler {
-    type Key = UintAuthorityId;
-
-    fn on_genesis_session<'a, I: 'a>(_: I)
-    where
-        I: Iterator<Item = (&'a AccountId, Self::Key)>,
-        AccountId: 'a,
-    {
-    }
-
-    fn on_new_session<'a, I: 'a>(_: bool, _validators: I, _: I)
-    where
-        I: Iterator<Item = (&'a AccountId, Self::Key)>,
-        AccountId: 'a,
-    {
-    }
-
-    fn on_disabled(_validator_index: usize) {}
-}
-
-impl sp_runtime::BoundToRuntimeAppPublic for OtherSessionHandler {
-    type Public = UintAuthorityId;
-}
-
-pub struct Period;
-impl Get<BlockNumber> for Period {
-    fn get() -> BlockNumber {
-        1u64
-    }
-}
-
-impl_outer_origin! {
-    pub enum Origin for Test {}
-}
-
-impl_outer_dispatch! {
-    pub enum Call for Test where origin: Origin {
-        pallet_balances::Balances,
-        frame_system::System,
-        pallet_staking::Staking,
-    }
-}
-
-impl_outer_event! {
-    pub enum Event for Test {
-        frame_system<T>,
-        pallet_balances<T>,
-        referral_system,
-        xor_fee,
-    }
-}
-
-pub type System = frame_system::Module<Test>;
-pub type Balances = pallet_balances::Module<Test>;
-pub type XorFee = Module<Test>;
-pub type Timestamp = pallet_timestamp::Module<Test>;
 pub type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
-type TechAssetId = common::TechAssetId<common::AssetId>;
-type DEXId = common::DEXId;
 pub type AccountId = u64;
 pub type BlockNumber = u64;
-pub type MockLiquiditySource =
-    mock_liquidity_source::Module<Test, mock_liquidity_source::Instance1>;
-pub type Tokens = tokens::Module<Test>;
-pub type Staking = pallet_staking::Module<Test>;
-pub type Session = pallet_session::Module<Test>;
+type AssetId = AssetId32<common::AssetId>;
+type TechAssetId = common::TechAssetId<common::AssetId>;
+type DEXId = common::DEXId;
+type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
+type Block = frame_system::mocking::MockBlock<Runtime>;
 
-#[derive(Clone, Eq, PartialEq)]
-pub struct Test;
 parameter_types! {
     pub const BlockHashCount: u64 = 250;
-    pub const MaximumBlockWeight: Weight = WEIGHT_PER_SECOND;
-    pub const MaximumBlockLength: u32 = 2 * 1024;
-    pub const AvailableBlockRatio: Perbill = Perbill::from_percent(75);
     pub const ReferrerWeight: u32 = 300_000_000;
     pub const XorBurnedWeight: u32 = 400_000_000;
     pub const XorIntoValBurnedWeight: u32 = 500_000_000;
     pub const ExistentialDeposit: u32 = 1;
-    pub const TransactionByteFee: u32 = 0;
-    pub const ExtrinsicBaseWeight: u32 = 0;
     pub const XorId: AssetId = XOR;
     pub const ValId: AssetId = VAL;
     pub const DEXIdValue: DEXId = common::DEXId::Polkaswap;
-}
-
-impl system::Trait for Test {
-    type BaseCallFilter = ();
-    type Origin = Origin;
-    type Call = Call;
-    type Index = u64;
-    type BlockNumber = BlockNumber;
-    type Hash = H256;
-    type Hashing = BlakeTwo256;
-    type AccountId = AccountId;
-    type Lookup = IdentityLookup<Self::AccountId>;
-    type Header = Header;
-    type Event = ();
-    type BlockHashCount = BlockHashCount;
-    type MaximumBlockWeight = MaximumBlockWeight;
-    type DbWeight = ();
-    type BlockExecutionWeight = ();
-    type ExtrinsicBaseWeight = ExtrinsicBaseWeight;
-    type MaximumExtrinsicWeight = MaximumBlockWeight;
-    type MaximumBlockLength = MaximumBlockLength;
-    type AvailableBlockRatio = AvailableBlockRatio;
-    type Version = ();
-    type AccountData = pallet_balances::AccountData<Balance>;
-    type OnNewAccount = ();
-    type OnKilledAccount = ();
-    type SystemWeightInfo = ();
-    type PalletInfo = ();
-}
-
-parameter_types! {
     pub GetFee: Fixed = fixed_from_basis_points(0u16);
-}
-
-impl mock_liquidity_source::Trait<mock_liquidity_source::Instance1> for Test {
-    type Event = ();
-    type GetFee = GetFee;
-    type EnsureDEXManager = dex_manager::Module<Test>;
-    type EnsureTradingPairExists = trading_pair::Module<Test>;
-}
-
-impl dex_manager::Trait for Test {
-    type Event = ();
-    type WeightInfo = ();
-}
-
-impl trading_pair::Trait for Test {
-    type Event = ();
-    type EnsureDEXManager = dex_manager::Module<Test>;
-    type WeightInfo = ();
-}
-
-impl referral_system::Trait for Test {
-    type Event = ();
-}
-
-impl pallet_balances::Trait for Test {
-    type Balance = Balance;
-    type Event = ();
-    type DustRemoval = ();
-    type ExistentialDeposit = ExistentialDeposit;
-    type AccountStore = System;
-    type WeightInfo = ();
-    type MaxLocks = ();
-}
-
-impl pallet_transaction_payment::Trait for Test {
-    type Currency = Balances;
-    type OnTransactionPayment = XorFee;
-    type TransactionByteFee = TransactionByteFee;
-    type WeightToFee = IdentityFee<Balance>;
-    type FeeMultiplierUpdate = ();
-}
-
-impl common::Trait for Test {
-    type DEXId = DEXId;
-    type LstId = common::LiquiditySourceType;
-}
-
-impl technical::Trait for Test {
-    type Event = ();
-    type TechAssetId = TechAssetId;
-    type TechAccountId = TechAccountId;
-    type Trigger = ();
-    type Condition = ();
-    type SwapAction = ();
-    type WeightInfo = ();
-}
-
-impl currencies::Trait for Test {
-    type Event = ();
-    type MultiCurrency = Tokens;
-    type NativeCurrency = BasicCurrencyAdapter<Test, Balances, Amount, BlockNumber>;
-    type GetNativeCurrencyId = <Test as assets::Trait>::GetBaseAssetId;
-    type WeightInfo = ();
-}
-
-impl assets::Trait for Test {
-    type Event = ();
-    type ExtraAccountId = AccountId;
-    type ExtraTupleArg =
-        common::AssetIdExtraTupleArg<common::DEXId, common::LiquiditySourceType, AccountId>;
-    type AssetId = AssetId;
-    type GetBaseAssetId = XorId;
-    type Currency = currencies::Module<Test>;
-    type WeightInfo = ();
-}
-
-impl permissions::Trait for Test {
-    type Event = ();
-}
-
-impl tokens::Trait for Test {
-    type Event = ();
-    type Balance = Balance;
-    type Amount = Amount;
-    type CurrencyId = <Test as assets::Trait>::AssetId;
-    type OnReceived = ();
-    type WeightInfo = ();
-}
-
-parameter_types! {
     pub const Offset: BlockNumber = 0;
     pub const UncleGenerations: u64 = 0;
     pub const DisabledValidatorsThreshold: Perbill = Perbill::from_percent(25);
-}
-sp_runtime::impl_opaque_keys! {
-    pub struct SessionKeys {
-        pub other: OtherSessionHandler,
-    }
-}
-impl pallet_session::Trait for Test {
-    type SessionManager = pallet_session::historical::NoteHistoricalRoot<Test, Staking>;
-    type Keys = SessionKeys;
-    type ShouldEndSession = pallet_session::PeriodicSessions<Period, Offset>;
-    type SessionHandler = (OtherSessionHandler,);
-    type Event = ();
-    type ValidatorId = AccountId;
-    type ValidatorIdOf = pallet_staking::StashOf<Test>;
-    type DisabledValidatorsThreshold = DisabledValidatorsThreshold;
-    type NextSessionRotation = ();
-    type WeightInfo = ();
-}
-
-impl pallet_session::historical::Trait for Test {
-    type FullIdentification = pallet_staking::Exposure<AccountId, Balance>;
-    type FullIdentificationOf = pallet_staking::ExposureOf<Test>;
-}
-
-parameter_types! {
     pub const MinimumPeriod: u64 = 5;
-}
-impl pallet_timestamp::Trait for Test {
-    type Moment = u64;
-    type OnTimestampSet = ();
-    type MinimumPeriod = MinimumPeriod;
-    type WeightInfo = ();
-}
-
-parameter_types! {
     pub const BondingDuration: pallet_staking::EraIndex = 3;
     pub const MaxNominatorRewardedPerValidator: u32 = 64;
     pub const UnsignedPriority: u64 = 1 << 20;
@@ -293,17 +55,184 @@ parameter_types! {
         min_val_burned_percentage_reward: Percent::from_percent(35),
         max_val_burned_percentage_reward: Percent::from_percent(90),
     };
+    pub OffchainSolutionWeightLimit: Weight = 600_000_000;
 }
 
-impl pallet_staking::Trait for Test {
+sp_runtime::impl_opaque_keys! {
+    pub struct SessionKeys {
+        pub other: OtherSessionHandler,
+    }
+}
+
+construct_runtime! {
+    pub enum Runtime where
+        Block = Block,
+        NodeBlock = Block,
+        UncheckedExtrinsic = UncheckedExtrinsic,
+    {
+        System: frame_system::{Module, Call, Config, Storage, Event<T>},
+        MockLiquiditySource: mock_liquidity_source::<Instance1>::{Module, Call, Config<T>, Storage},
+        DexManager: dex_manager::{Module, Call, Config<T>, Storage, Event<T>},
+        TradingPair: trading_pair::{Module, Call, Config<T>, Storage, Event<T>},
+        ReferralSystem: referral_system::{Module, Call, Config<T>, Storage},
+        Balances: pallet_balances::{Module, Call, Storage, Event<T>},
+        TransactionPayment: pallet_transaction_payment::{Module, Storage},
+        Technical: technical::{Module, Call, Config<T>, Storage, Event<T>},
+        Currencies: currencies::{Module, Call, Storage, Event<T>},
+        Assets: assets::{Module, Call, Config<T>, Storage, Event<T>},
+        Permissions: permissions::{Module, Call, Config<T>, Storage, Event<T>},
+        Tokens: tokens::{Module, Call, Config<T>, Storage, Event<T>},
+        Session: pallet_session::{Module, Call, Config<T>, Storage, Event},
+        Historical: historical::{Module},
+        Timestamp: pallet_timestamp::{Module, Call, Storage, Inherent},
+        Staking: pallet_staking::{Module, Call, Config<T>, Storage, Event<T>},
+        XorFee: xor_fee::{Module, Call},
+    }
+}
+
+impl frame_system::Config for Runtime {
+    type BaseCallFilter = ();
+    type BlockWeights = BlockWeights;
+    type BlockLength = BlockLength;
+    type Origin = Origin;
+    type Call = Call;
+    type Index = u64;
+    type BlockNumber = u64;
+    type Hash = H256;
+    type Hashing = BlakeTwo256;
+    type AccountId = AccountId;
+    type Lookup = IdentityLookup<Self::AccountId>;
+    type Header = Header;
+    type Event = Event;
+    type BlockHashCount = BlockHashCount;
+    type DbWeight = ();
+    type Version = ();
+    type AccountData = pallet_balances::AccountData<Balance>;
+    type OnNewAccount = ();
+    type OnKilledAccount = ();
+    type SystemWeightInfo = ();
+    type PalletInfo = PalletInfo;
+    type SS58Prefix = ();
+}
+
+impl mock_liquidity_source::Config<mock_liquidity_source::Instance1> for Runtime {
+    type GetFee = GetFee;
+    type EnsureDEXManager = dex_manager::Module<Runtime>;
+    type EnsureTradingPairExists = trading_pair::Module<Runtime>;
+}
+
+impl dex_manager::Config for Runtime {
+    type Event = Event;
+    type WeightInfo = ();
+}
+
+impl trading_pair::Config for Runtime {
+    type Event = Event;
+    type EnsureDEXManager = dex_manager::Module<Runtime>;
+    type WeightInfo = ();
+}
+
+impl referral_system::Config for Runtime {}
+
+impl pallet_balances::Config for Runtime {
+    type Balance = Balance;
+    type Event = Event;
+    type DustRemoval = ();
+    type ExistentialDeposit = ExistentialDeposit;
+    type AccountStore = System;
+    type WeightInfo = ();
+    type MaxLocks = ();
+}
+
+impl pallet_transaction_payment::Config for Runtime {
+    type OnChargeTransaction = XorFee;
+    type TransactionByteFee = TransactionByteFee;
+    type WeightToFee = IdentityFee<Balance>;
+    type FeeMultiplierUpdate = ();
+}
+
+impl common::Config for Runtime {
+    type DEXId = DEXId;
+    type LstId = common::LiquiditySourceType;
+}
+
+impl technical::Config for Runtime {
+    type Event = Event;
+    type TechAssetId = TechAssetId;
+    type TechAccountId = TechAccountId;
+    type Trigger = ();
+    type Condition = ();
+    type SwapAction = ();
+    type WeightInfo = ();
+}
+
+impl currencies::Config for Runtime {
+    type Event = Event;
+    type MultiCurrency = Tokens;
+    type NativeCurrency = BasicCurrencyAdapter<Runtime, Balances, Amount, BlockNumber>;
+    type GetNativeCurrencyId = <Runtime as assets::Config>::GetBaseAssetId;
+    type WeightInfo = ();
+}
+
+impl assets::Config for Runtime {
+    type Event = Event;
+    type ExtraAccountId = AccountId;
+    type ExtraAssetRecordArg =
+        common::AssetIdExtraAssetRecordArg<common::DEXId, common::LiquiditySourceType, AccountId>;
+    type AssetId = AssetId;
+    type GetBaseAssetId = XorId;
+    type Currency = currencies::Module<Runtime>;
+    type WeightInfo = ();
+}
+
+impl permissions::Config for Runtime {
+    type Event = Event;
+}
+
+impl tokens::Config for Runtime {
+    type Event = Event;
+    type Balance = Balance;
+    type Amount = Amount;
+    type CurrencyId = <Runtime as assets::Config>::AssetId;
+    type WeightInfo = ();
+    type ExistentialDeposits = ExistentialDeposits;
+    type OnDust = ();
+}
+
+impl pallet_session::Config for Runtime {
+    type SessionManager = pallet_session::historical::NoteHistoricalRoot<Runtime, Staking>;
+    type Keys = SessionKeys;
+    type ShouldEndSession = pallet_session::PeriodicSessions<Period, Offset>;
+    type SessionHandler = (OtherSessionHandler,);
+    type Event = Event;
+    type ValidatorId = AccountId;
+    type ValidatorIdOf = pallet_staking::StashOf<Runtime>;
+    type DisabledValidatorsThreshold = DisabledValidatorsThreshold;
+    type NextSessionRotation = ();
+    type WeightInfo = ();
+}
+
+impl pallet_session::historical::Config for Runtime {
+    type FullIdentification = pallet_staking::Exposure<AccountId, Balance>;
+    type FullIdentificationOf = pallet_staking::ExposureOf<Runtime>;
+}
+
+impl pallet_timestamp::Config for Runtime {
+    type Moment = u64;
+    type OnTimestampSet = ();
+    type MinimumPeriod = MinimumPeriod;
+    type WeightInfo = ();
+}
+
+impl pallet_staking::Config for Runtime {
     type ValidatorsFilter = ();
     type Currency = Balances;
     type MultiCurrency = Tokens;
     type ValTokenId = ValId;
     type ValRewardCurve = TestValRewardCurve;
     type UnixTime = Timestamp;
-    type CurrencyToVote = CurrencyToVoteHandler;
-    type Event = ();
+    type CurrencyToVote = U128CurrencyToVote;
+    type Event = Event;
     type Slash = ();
     type SessionsPerEra = ();
     type SlashDeferDuration = ();
@@ -317,10 +246,11 @@ impl pallet_staking::Trait for Test {
     type MinSolutionScoreBump = MinSolutionScoreBump;
     type MaxNominatorRewardedPerValidator = MaxNominatorRewardedPerValidator;
     type UnsignedPriority = UnsignedPriority;
+    type OffchainSolutionWeightLimit = OffchainSolutionWeightLimit;
     type WeightInfo = ();
 }
 
-impl<LocalCall> frame_system::offchain::SendTransactionTypes<LocalCall> for Test
+impl<LocalCall> frame_system::offchain::SendTransactionTypes<LocalCall> for Runtime
 where
     Call: From<LocalCall>,
 {
@@ -330,8 +260,7 @@ where
 
 pub type Extrinsic = TestXt<Call, ()>;
 
-impl Trait for Test {
-    type Event = ();
+impl Config for Runtime {
     type XorCurrency = Balances;
     type ReferrerWeight = ReferrerWeight;
     type XorBurnedWeight = XorBurnedWeight;
@@ -393,22 +322,55 @@ pub fn initial_reserves() -> Balance {
     balance!(10000)
 }
 
+/// Another session handler struct to test on_disabled.
+pub struct OtherSessionHandler;
+impl OneSessionHandler<AccountId> for OtherSessionHandler {
+    type Key = UintAuthorityId;
+
+    fn on_genesis_session<'a, I: 'a>(_: I)
+    where
+        I: Iterator<Item = (&'a AccountId, Self::Key)>,
+        AccountId: 'a,
+    {
+    }
+
+    fn on_new_session<'a, I: 'a>(_: bool, _validators: I, _: I)
+    where
+        I: Iterator<Item = (&'a AccountId, Self::Key)>,
+        AccountId: 'a,
+    {
+    }
+
+    fn on_disabled(_validator_index: usize) {}
+}
+
+impl sp_runtime::BoundToRuntimeAppPublic for OtherSessionHandler {
+    type Public = UintAuthorityId;
+}
+
+pub struct Period;
+impl Get<BlockNumber> for Period {
+    fn get() -> BlockNumber {
+        1u64
+    }
+}
+
 pub struct ExtBuilder;
 
 impl ExtBuilder {
     pub fn build() -> sp_io::TestExternalities {
-        let mut t = system::GenesisConfig::default()
-            .build_storage::<Test>()
+        let mut t = frame_system::GenesisConfig::default()
+            .build_storage::<Runtime>()
             .unwrap();
 
-        referral_system::GenesisConfig::<Test> {
+        referral_system::GenesisConfig::<Runtime> {
             referrers: vec![(FROM_ACCOUNT, REFERRER_ACCOUNT)],
         }
         .assimilate_storage(&mut t)
         .unwrap();
 
         let initial_balance = initial_balance();
-        pallet_balances::GenesisConfig::<Test> {
+        pallet_balances::GenesisConfig::<Runtime> {
             balances: vec![
                 (FROM_ACCOUNT, initial_balance),
                 (TO_ACCOUNT, initial_balance),
@@ -428,7 +390,7 @@ impl ExtBuilder {
         let xor_fee_account_id: AccountId =
             AccountId::decode(&mut &repr[..]).expect("Failed to decode account Id");
 
-        technical::GenesisConfig::<Test> {
+        technical::GenesisConfig::<Runtime> {
             account_ids_to_tech_account_ids: vec![(
                 xor_fee_account_id.clone(),
                 tech_account_id.clone(),
@@ -437,7 +399,7 @@ impl ExtBuilder {
         .assimilate_storage(&mut t)
         .unwrap();
 
-        permissions::GenesisConfig::<Test> {
+        permissions::GenesisConfig::<Runtime> {
             initial_permission_owners: vec![
                 (MINT, Scope::Unlimited, vec![xor_fee_account_id]),
                 (BURN, Scope::Unlimited, vec![xor_fee_account_id]),
@@ -448,7 +410,7 @@ impl ExtBuilder {
         .assimilate_storage(&mut t)
         .unwrap();
 
-        assets::GenesisConfig::<Test> {
+        assets::GenesisConfig::<Runtime> {
             endowed_assets: vec![
                 (
                     XOR,
@@ -471,7 +433,7 @@ impl ExtBuilder {
         .assimilate_storage(&mut t)
         .unwrap();
 
-        tokens::GenesisConfig::<Test> {
+        tokens::GenesisConfig::<Runtime> {
             endowed_accounts: vec![(xor_fee_account_id.clone(), VAL, balance!(1000))],
         }
         .assimilate_storage(&mut t)
@@ -493,7 +455,7 @@ impl ExtBuilder {
             ),
         ];
 
-        pallet_staking::GenesisConfig::<Test> {
+        pallet_staking::GenesisConfig::<Runtime> {
             stakers: stakers,
             validator_count: 2_u32,
             minimum_validator_count: 0_u32,
@@ -505,7 +467,7 @@ impl ExtBuilder {
         .unwrap();
 
         let validators = vec![STASH_ACCOUNT as AccountId, STASH_ACCOUNT2 as AccountId];
-        pallet_session::GenesisConfig::<Test> {
+        pallet_session::GenesisConfig::<Runtime> {
             keys: validators
                 .iter()
                 .map(|x| {
@@ -523,7 +485,7 @@ impl ExtBuilder {
         .unwrap();
 
         let initial_reserves: Fixed = Fixed::from_bits(initial_reserves() as i128);
-        mock_liquidity_source::GenesisConfig::<Test, mock_liquidity_source::Instance1> {
+        mock_liquidity_source::GenesisConfig::<Runtime, mock_liquidity_source::Instance1> {
             reserves: vec![(
                 common::DEXId::Polkaswap,
                 VAL,

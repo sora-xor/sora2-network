@@ -19,19 +19,19 @@ use assets::Module as Assets;
 pub const DEX: DEXId = DEXId::Polkaswap;
 
 // Support Functions
-fn alice<T: Trait>() -> T::AccountId {
+fn alice<T: Config>() -> T::AccountId {
     let bytes = hex!("d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d");
     T::AccountId::decode(&mut &bytes[..]).unwrap_or_default()
 }
 
-fn asset<T: Trait>(name: &'static str, index: u32) -> T::AssetId {
+fn asset<T: Config>(name: &'static str, index: u32) -> T::AssetId {
     let entropy: [u8; 32] = (name, index).using_encoded(blake2_256);
     T::AssetId::from(H256(entropy))
 }
 
-fn setup_benchmark<T: Trait>(n: u32) -> Result<(), &'static str> {
+fn setup_benchmark<T: Config>(n: u32) -> Result<(), &'static str> {
     let owner = alice::<T>();
-    let owner_origin: <T as frame_system::Trait>::Origin = RawOrigin::Signed(owner.clone()).into();
+    let owner_origin: <T as frame_system::Config>::Origin = RawOrigin::Signed(owner.clone()).into();
     for i in 0..n {
         let asset_id = asset::<T>("token", i);
         Assets::<T>::register_asset_id(
@@ -51,9 +51,9 @@ fn setup_benchmark<T: Trait>(n: u32) -> Result<(), &'static str> {
     Ok(())
 }
 
-fn assert_last_event<T: Trait>(generic_event: <T as Trait>::Event) {
+fn assert_last_event<T: Config>(generic_event: <T as Config>::Event) {
     let events = frame_system::Module::<T>::events();
-    let system_event: <T as frame_system::Trait>::Event = generic_event.into();
+    let system_event: <T as frame_system::Config>::Event = generic_event.into();
     // compare to the last event record
     let EventRecord { event, .. } = &events[events.len() - 1];
     assert_eq!(event, &system_event);
@@ -77,7 +77,7 @@ benchmarks! {
     )
     verify {
         assert_last_event::<T>(
-            RawEvent::TradingPairStored(
+            Event::TradingPairStored(
                 DEX.into(),
                 trading_pair.clone()
             ).into()

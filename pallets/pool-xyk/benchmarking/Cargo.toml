@@ -7,12 +7,12 @@ version = '0.1.0'
 targets = ['x86_64-unknown-linux-gnu']
 
 [dependencies]
-codec = { package = "parity-scale-codec", version = "1.3.1", default-features = false, features = ["derive"] }
-frame-benchmarking = { version = "2.0.0", default-features = false }
-frame-support = { version = "2.0.0", default-features = false }
-frame-system = { version = "2.0.0", default-features = false }
-sp-std = { version = "2.0.0", default-features = false }
-sp-core = { version = "2.0.0", default-features = false }
+codec = { package = "parity-scale-codec", version = "2", default-features = false, features = ["derive"] }
+frame-benchmarking = { version = "3", default-features = false }
+frame-support = { version = "3", default-features = false }
+frame-system = { version = "3", default-features = false }
+sp-std = { version = "3", default-features = false }
+sp-core = { version = "3", default-features = false }
 common = { path = "../../../common", default-features = false }
 assets = { path = "../../assets", default-features = false }
 pool-xyk = { path = "../../pool-xyk", default-features = false }
@@ -23,13 +23,14 @@ pswap-distribution = { path = "../../pswap-distribution", default-features = fal
 hex-literal = { version = "0.3.1" }
 
 [dev-dependencies]
-sp-io = { version = "2.0.0", default-features = false }
-sp-runtime = { version = "2.0.0", default-features = false }
-pallet-balances = { version = "2.0.0", default-features = false }
+serde = { version = "1.0.101", default-features = false, features = ["derive"] }
+sp-io = { version = "3", default-features = false }
+sp-runtime = { version = "3", default-features = false }
+pallet-balances = { version = "3", default-features = false }
 dex-manager = { path = "../../dex-manager", default-features = false }
 dex-api = { path = "../../dex-api", default-features = false }
-currencies = { version = "0.3.2", package = "orml-currencies", default-features = false }
-tokens = { version = "0.3.2", package = "orml-tokens", default-features = false }
+currencies = { version = "0.4", package = "orml-currencies", default-features = false }
+tokens = { version = "0.4", package = "orml-tokens", default-features = false }
 
 [features]
 default = ['std']

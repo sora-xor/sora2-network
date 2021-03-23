@@ -1,9 +1,8 @@
 mod tests {
-    use crate::{mock::*, Error};
-    use common::{
-        prelude::{AssetSymbol, Balance},
-        AssetId32, DOT, VAL, XOR,
-    };
+    use crate::mock::*;
+    use crate::Error;
+    use common::prelude::{AssetSymbol, Balance};
+    use common::{AssetId32, DOT, VAL, XOR};
     use frame_support::{assert_noop, assert_ok};
     use hex_literal::hex;
     use sp_runtime::traits::Zero;

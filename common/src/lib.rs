@@ -3,14 +3,15 @@
 extern crate alloc;
 
 pub use fixnum;
-use fixnum::{
-    typenum::{Unsigned, U18},
-    FixedPoint,
-};
+use fixnum::typenum::{Unsigned, U18};
+use fixnum::FixedPoint;
 
 #[cfg(any(feature = "test", test))]
 pub mod mock;
+#[cfg(any(feature = "test", test))]
+pub mod test_utils;
 
+pub mod eth;
 mod fixed_wrapper;
 pub mod macros;
 mod primitives;
@@ -20,10 +21,11 @@ pub mod utils;
 pub mod weights;
 
 use codec::Encode;
+use frame_support::debug;
 use sp_core::hash::H512;
 use sp_runtime::TransactionOutcome;
 
-pub use traits::Trait;
+pub use traits::Config;
 pub mod prelude {
     pub use super::fixed_wrapper::*;
     pub use super::primitives::*;
@@ -74,6 +76,16 @@ pub fn with_transaction<T, E>(f: impl FnOnce() -> Result<T, E>) -> Result<T, E> 
             TransactionOutcome::Rollback(result)
         }
     })
+}
+
+// /// Measures and logs execution time of target code.
+pub fn with_benchmark<T>(id: &str, f: impl FnOnce() -> T) -> T {
+    debug::RuntimeLogger::init();
+    let t0 = frame_benchmarking::benchmarking::current_time();
+    let result = f();
+    let t1 = frame_benchmarking::benchmarking::current_time();
+    debug::print!("BENCHMARK RESULT: {} took {}", id, t1 - t0,);
+    result
 }
 
 pub fn hash<T: Encode>(val: &T) -> H512 {

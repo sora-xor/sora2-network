@@ -2,14 +2,12 @@
 
 #![warn(
     anonymous_parameters,
-    missing_copy_implementations,
-    missing_debug_implementations,
     rust_2018_idioms,
-    private_doc_tests,
     trivial_casts,
     trivial_numeric_casts,
     unused,
-    future_incompatible,
+    // The macro construct_runtime! (in mock.rs) expands to other macros and they have trailing semicolon and the compiler doesn't like it
+    //future_incompatible,
     nonstandard_style,
     unsafe_code,
     unused_import_braces,
@@ -18,10 +16,8 @@
 )]
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use frame_support::{
-    codec::{Decode, Encode},
-    decl_error, decl_event, decl_module, decl_storage, ensure, RuntimeDebug,
-};
+use frame_support::codec::{Decode, Encode};
+use frame_support::{ensure, RuntimeDebug};
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 use sp_core::hash::H512;
@@ -34,10 +30,11 @@ mod mock;
 mod tests;
 
 /// The id of the account owning a permission
-pub type OwnerId<T> = <T as frame_system::Trait>::AccountId;
+pub type OwnerId<T> = <T as frame_system::Config>::AccountId;
 /// The id of the account having a permission
-pub type HolderId<T> = <T as frame_system::Trait>::AccountId;
+pub type HolderId<T> = <T as frame_system::Config>::AccountId;
 pub type PermissionId = u32;
+type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
 
 #[derive(PartialEq, Eq, Clone, Copy, RuntimeDebug, Encode, Decode)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
@@ -70,81 +67,8 @@ pub const CLAIM_FROM_FARM: PermissionId = 10;
 pub const GET_FARM_INFO: PermissionId = 11;
 pub const GET_FARMER_INFO: PermissionId = 12;
 
-/// Pallet's configuration with parameters and types on which it depends.
-pub trait Trait: frame_system::Trait {
-    /// Permissions pallet's events.
-    type Event: From<Event<Self>> + Into<<Self as frame_system::Trait>::Event>;
-}
-
-decl_storage! {
-    trait Store for Module<T: Trait> as PermissionsStoreModule {
-        pub Owners build(|config|
-                         config.initial_permission_owners.clone()): double_map hasher(opaque_blake2_256) PermissionId, hasher(opaque_blake2_256) Scope => Vec<OwnerId<T>>;
-        pub Modes build(|_|
-            vec![
-                (TRANSFER, Mode::Forbid),
-                (MINT, Mode::Permit),
-                (BURN, Mode::Permit),
-                (SLASH, Mode::Permit),
-                (INIT_DEX, Mode::Permit),
-                (MANAGE_DEX, Mode::Permit),
-                (CREATE_FARM, Mode::Permit),
-                (CHECK_FARM, Mode::Permit),
-                (LOCK_TO_FARM, Mode::Permit),
-                (UNLOCK_FROM_FARM, Mode::Permit),
-                (CLAIM_FROM_FARM, Mode::Permit),
-                (GET_FARM_INFO, Mode::Permit),
-                (GET_FARMER_INFO, Mode::Permit),
-            ]): map hasher(opaque_blake2_256) PermissionId => Mode = Mode::Permit;
-        pub Permissions build(|config|
-                              config.initial_permissions
-                              .iter()
-                              .cloned()
-                              .map(|(holder, scope, mut permissions)| {
-                                  permissions.sort(); // Binary search requires the vector to be sorted
-                                  (holder, scope, permissions)
-                              })
-                              .collect()): double_map hasher(opaque_blake2_256) HolderId<T>, hasher(opaque_blake2_256) Scope => Vec<PermissionId>;
-    }
-
-    add_extra_genesis {
-        config(initial_permission_owners): Vec<(PermissionId, Scope, Vec<OwnerId<T>>)>;
-        config(initial_permissions): Vec<(HolderId<T>, Scope, Vec<PermissionId>)>;
-    }
-}
-
-decl_event!(
-    pub enum Event<T>
-    where
-        AccountId = <T as frame_system::Trait>::AccountId,
-    {
-        /// Permission was granted to a holder. [permission, who]
-        PermissionGranted(u32, AccountId),
-        /// Permission was transfered to a new owner. [permission, who]
-        PermissionTransfered(u32, AccountId),
-        /// Permission was created with an owner. [permission, who]
-        PermissionCreated(u32, AccountId),
-        /// Permission was assigned to the account in the scope. [permission, who]
-        PermissionAssigned(u32, AccountId),
-    }
-);
-
-decl_error! {
-    /// Errors related to Permissions pallet.
-    pub enum Error for Module<T: Trait> {
-        /// Account doesn't hold a permission.
-        PermissionNotFound,
-        /// Account doesn't own a permission.
-        PermissionNotOwned,
-        /// Permission already exists in the system.
-        PermissionAlreadyExists,
-        /// The account either doesn't have the permission or has the restriction.
-        Forbidden,
-    }
-}
-
 /// Permissions module declaration.
-impl<T: Trait> Module<T> {
+impl<T: Config> Pallet<T> {
     /// Method checks a permission of an Account.
     pub fn check_permission(who: HolderId<T>, permission_id: PermissionId) -> Result<(), Error<T>> {
         Self::check_permission_with_scope(who, permission_id, &Scope::Unlimited)
@@ -157,10 +81,10 @@ impl<T: Trait> Module<T> {
         scope: &Scope,
     ) -> Result<(), Error<T>> {
         ensure!(
-            Modes::contains_key(permission_id),
+            Modes::<T>::contains_key(permission_id),
             Error::PermissionNotFound
         );
-        let mode = Modes::get(permission_id);
+        let mode = Modes::<T>::get(permission_id);
         let mut permission_found = Self::account_has_permission(&who, scope, permission_id);
         if !permission_found && *scope != Scope::Unlimited {
             permission_found = Self::account_has_permission(&who, &Scope::Unlimited, permission_id);
@@ -204,7 +128,7 @@ impl<T: Trait> Module<T> {
                     permissions.insert(index, permission_id);
                 }
             });
-            Self::deposit_event(RawEvent::PermissionGranted(permission_id, account_id));
+            Self::deposit_event(Event::<T>::PermissionGranted(permission_id, account_id));
             Ok(())
         } else if permission_found {
             Err(Error::PermissionNotOwned)
@@ -221,7 +145,7 @@ impl<T: Trait> Module<T> {
         scope: Scope,
     ) -> Result<(), Error<T>> {
         ensure!(
-            Modes::contains_key(&permission_id),
+            Modes::<T>::contains_key(&permission_id),
             Error::PermissionNotFound
         );
         Owners::<T>::mutate(permission_id, scope, |owners| {
@@ -234,7 +158,7 @@ impl<T: Trait> Module<T> {
                 Err(Error::PermissionNotOwned)
             }
         })?;
-        Self::deposit_event(RawEvent::PermissionTransfered(permission_id, account_id));
+        Self::deposit_event(Event::<T>::PermissionTransfered(permission_id, account_id));
         Ok(())
     }
 
@@ -247,10 +171,10 @@ impl<T: Trait> Module<T> {
         mode: Mode,
     ) -> Result<(), Error<T>> {
         ensure!(
-            !Modes::contains_key(permission_id),
+            !Modes::<T>::contains_key(permission_id),
             Error::PermissionAlreadyExists
         );
-        Modes::insert(permission_id, mode);
+        Modes::<T>::insert(permission_id, mode);
         Owners::<T>::mutate(permission_id, scope, |owners| {
             owners.push(owner);
         });
@@ -259,7 +183,7 @@ impl<T: Trait> Module<T> {
                 permissions.insert(index, permission_id);
             }
         });
-        Self::deposit_event(RawEvent::PermissionCreated(permission_id, account_id));
+        Self::deposit_event(Event::<T>::PermissionCreated(permission_id, account_id));
         Ok(())
     }
 
@@ -272,7 +196,7 @@ impl<T: Trait> Module<T> {
         scope: Scope,
     ) -> Result<(), Error<T>> {
         ensure!(
-            Modes::contains_key(permission_id),
+            Modes::<T>::contains_key(permission_id),
             Error::PermissionNotFound
         );
         let made_owner = Owners::<T>::mutate(permission_id, scope, |owners| {
@@ -283,7 +207,7 @@ impl<T: Trait> Module<T> {
                 false
             }
         });
-        let granted_permission = if let Mode::Permit = Modes::get(permission_id) {
+        let granted_permission = if let Mode::Permit = Modes::<T>::get(permission_id) {
             Permissions::<T>::mutate(&holder_id, scope, |permissions| {
                 if let Err(index) = permissions.binary_search(&permission_id) {
                     permissions.insert(index, permission_id);
@@ -312,9 +236,139 @@ impl<T: Trait> Module<T> {
     }
 }
 
-decl_module! {
-    pub struct Module<T: Trait> for enum Call where origin: T::Origin {
-        type Error = Error<T>;
-        fn deposit_event() = default;
+pub use pallet::*;
+
+#[frame_support::pallet]
+pub mod pallet {
+    use super::*;
+    use frame_support::pallet_prelude::*;
+    use frame_system::pallet_prelude::*;
+
+    #[pallet::config]
+    pub trait Config: frame_system::Config {
+        /// Permissions pallet's events.
+        type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+    }
+
+    #[pallet::pallet]
+    #[pallet::generate_store(pub(super) trait Store)]
+    pub struct Pallet<T>(PhantomData<T>);
+
+    #[pallet::hooks]
+    impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {}
+
+    #[pallet::call]
+    impl<T: Config> Pallet<T> {}
+
+    #[pallet::event]
+    #[pallet::metadata(AccountIdOf<T> = "AccountId")]
+    #[pallet::generate_deposit(pub(super) fn deposit_event)]
+    pub enum Event<T: Config> {
+        /// Permission was granted to a holder. [permission, who]
+        PermissionGranted(u32, AccountIdOf<T>),
+        /// Permission was transfered to a new owner. [permission, who]
+        PermissionTransfered(u32, AccountIdOf<T>),
+        /// Permission was created with an owner. [permission, who]
+        PermissionCreated(u32, AccountIdOf<T>),
+        /// Permission was assigned to the account in the scope. [permission, who]
+        PermissionAssigned(u32, AccountIdOf<T>),
+    }
+
+    #[pallet::error]
+    pub enum Error<T> {
+        /// Account doesn't hold a permission.
+        PermissionNotFound,
+        /// Account doesn't own a permission.
+        PermissionNotOwned,
+        /// Permission already exists in the system.
+        PermissionAlreadyExists,
+        /// The account either doesn't have the permission or has the restriction.
+        Forbidden,
+    }
+
+    #[pallet::storage]
+    pub type Owners<T: Config> = StorageDoubleMap<
+        _,
+        Blake2_256,
+        PermissionId,
+        Blake2_256,
+        Scope,
+        Vec<OwnerId<T>>,
+        ValueQuery,
+    >;
+
+    #[pallet::type_value]
+    pub fn DefaultForModes() -> Mode {
+        Mode::Permit
+    }
+
+    #[pallet::storage]
+    pub type Modes<T: Config> =
+        StorageMap<_, Blake2_256, PermissionId, Mode, ValueQuery, DefaultForModes>;
+
+    #[pallet::storage]
+    pub type Permissions<T: Config> = StorageDoubleMap<
+        _,
+        Blake2_256,
+        HolderId<T>,
+        Blake2_256,
+        Scope,
+        Vec<PermissionId>,
+        ValueQuery,
+    >;
+
+    #[pallet::genesis_config]
+    pub struct GenesisConfig<T: Config> {
+        pub initial_permission_owners: Vec<(PermissionId, Scope, Vec<OwnerId<T>>)>,
+        pub initial_permissions: Vec<(HolderId<T>, Scope, Vec<PermissionId>)>,
+    }
+
+    #[cfg(feature = "std")]
+    impl<T: Config> Default for GenesisConfig<T> {
+        fn default() -> Self {
+            Self {
+                initial_permission_owners: Default::default(),
+                initial_permissions: Default::default(),
+            }
+        }
+    }
+
+    #[pallet::genesis_build]
+    impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
+        fn build(&self) {
+            self.initial_permission_owners
+                .iter()
+                .for_each(|(permission, scope, owners)| {
+                    Owners::<T>::insert(permission, scope, owners);
+                });
+
+            [
+                (TRANSFER, Mode::Forbid),
+                (MINT, Mode::Permit),
+                (BURN, Mode::Permit),
+                (SLASH, Mode::Permit),
+                (INIT_DEX, Mode::Permit),
+                (MANAGE_DEX, Mode::Permit),
+                (CREATE_FARM, Mode::Permit),
+                (CHECK_FARM, Mode::Permit),
+                (LOCK_TO_FARM, Mode::Permit),
+                (UNLOCK_FROM_FARM, Mode::Permit),
+                (CLAIM_FROM_FARM, Mode::Permit),
+                (GET_FARM_INFO, Mode::Permit),
+                (GET_FARMER_INFO, Mode::Permit),
+            ]
+            .iter()
+            .for_each(|(permission, mode)| {
+                Modes::<T>::insert(permission, mode);
+            });
+
+            self.initial_permissions
+                .iter()
+                .for_each(|(holder_id, scope, permissions)| {
+                    let mut permissions = permissions.clone();
+                    permissions.sort();
+                    Permissions::<T>::insert(holder_id, scope, permissions);
+                });
+        }
     }
 }

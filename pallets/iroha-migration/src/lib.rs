@@ -17,18 +17,15 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
-use common::{prelude::Balance, VAL};
+use common::prelude::Balance;
+use common::VAL;
 use ed25519_dalek_iroha::{Digest, PublicKey, Signature, SIGNATURE_LENGTH};
-use frame_support::{
-    codec::{Decode, Encode},
-    decl_error, decl_event, decl_module, decl_storage,
-    dispatch::{DispatchError, DispatchResult},
-    ensure,
-    sp_runtime::traits::Zero,
-    weights::Pays,
-    RuntimeDebug,
-};
-use frame_system::{ensure_signed, RawOrigin};
+use frame_support::codec::{Decode, Encode};
+use frame_support::dispatch::DispatchError;
+use frame_support::sp_runtime::traits::Zero;
+use frame_support::weights::Pays;
+use frame_support::{ensure, RuntimeDebug};
+use frame_system::ensure_signed;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 use sha3::Sha3_256;
@@ -40,7 +37,7 @@ pub const TECH_ACCOUNT_MAIN: &[u8] = b"main";
 
 fn blocks_till_migration<T>() -> T::BlockNumber
 where
-    T: frame_system::Trait,
+    T: frame_system::Config,
 {
     // 1 month
     446400u32.into()
@@ -50,7 +47,7 @@ where
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 struct PendingMultisigAccount<T>
 where
-    T: frame_system::Trait,
+    T: frame_system::Config,
 {
     approving_accounts: Vec<T::AccountId>,
     migrate_at: Option<T::BlockNumber>,
@@ -58,7 +55,7 @@ where
 
 impl<T> Default for PendingMultisigAccount<T>
 where
-    T: frame_system::Trait,
+    T: frame_system::Config,
 {
     fn default() -> Self {
         Self {
@@ -68,156 +65,10 @@ where
     }
 }
 
-pub trait Trait:
-    frame_system::Trait + pallet_multisig::Trait + referral_system::Trait + technical::Trait
-where
-    Self::Origin: From<RawOrigin<<Self as frame_system::Trait>::AccountId>>,
-{
-    type Event: From<Event<Self>> + Into<<Self as frame_system::Trait>::Event>;
-}
-
-decl_storage! {
-    trait Store for Module<T: Trait> as IrohaMigration {
-        // Contains balances of Iroha accounts. Iroha account (represented by its address) => VAL balance
-        Balances: map hasher(blake2_128_concat) String => Option<Balance>;
-
-        // Contains referrers of Iroha accounts. Referral Iroha account => Referrer Iroha account
-        Referrers: map hasher(blake2_128_concat) String => Option<String>;
-
-        // Contains public keys that are required to migrate the account.
-        // Iroha account => public keys
-        PublicKeys: map hasher(blake2_128_concat) String => Vec<(bool, String)>;
-
-        // Contains quorums of approval with public keys of Iroha account for Iroha account to be migrated.
-        // If the account has multiple public keys.
-        // Iroha account => number of keys to complete migration
-        Quorums: map hasher(blake2_128_concat) String => u8;
-
-        // Contains the account that VAL is minted with
-        Account config(account_id): T::AccountId;
-
-        // Contains migrated accounts. Iroha account => Substrate account
-        MigratedAccounts: map hasher(blake2_128_concat) String => Option<T::AccountId>;
-
-        // Contains multi-signature accounts that will migrate when the specified block is reached
-        // Iroha address => pending account
-        PendingMultiSigAccounts: map hasher(blake2_128_concat) String => PendingMultisigAccount<T>;
-
-        // Contains pending referrals that wait for their referrer to migrate. Referrer Iroha account => Referral Iroha accounts that migrated to Substrate
-        PendingReferrals: map hasher(blake2_128_concat) String => Vec<T::AccountId>;
-    }
-
-    add_extra_genesis {
-        config(iroha_accounts): Vec<(String, Balance, Option<String>, u8, Vec<String>)>;
-
-        build(|config| {
-            for (account_id, balance, referrer, threshold, public_keys) in &config.iroha_accounts {
-                Balances::insert(account_id, *balance);
-                if let Some(referrer) = referrer {
-                    Referrers::insert(account_id, referrer.clone());
-                }
-                PublicKeys::insert(
-                    account_id,
-                    public_keys
-                    .iter()
-                    .map(|key| (false, key.to_lowercase()))
-                    .collect::<Vec<_>>());
-                if public_keys.len() > 1 {
-                    Quorums::insert(account_id, *threshold);
-                }
-            }
-        })
-    }
-}
-
-decl_event!(
-    pub enum Event<T>
-    where
-        AccountId = <T as frame_system::Trait>::AccountId,
-    {
-        /// Migrated. [source, target]
-        Migrated(String, AccountId),
-    }
-);
-
-decl_error! {
-    pub enum Error for Module<T: Trait> {
-        /// Failed to parse public key
-        PublicKeyParsingFailed,
-        /// Failed to parse signature
-        SignatureParsingFailed,
-        /// Failed to verify signature
-        SignatureVerificationFailed,
-        /// Iroha account is not found
-        AccountNotFound,
-        /// Public key is not found
-        PublicKeyNotFound,
-        /// Public key is already used
-        PublicKeyAlreadyUsed,
-        /// Iroha account is already migrated
-        AccountAlreadyMigrated,
-        /// Referral migration failed
-        ReferralMigrationFailed,
-        /// Milti-signature account creation failed
-        MultiSigCreationFailed,
-        /// Signatory addition to multi-signature account failed
-        SignatoryAdditionFailed,
-    }
-}
-
-decl_module! {
-    pub struct Module<T: Trait> for enum Call where origin: T::Origin {
-        type Error = Error<T>;
-
-        fn deposit_event() = default;
-
-        fn on_finalize(block_number: T::BlockNumber) {
-            // Migrate accounts whose quorum has been reached and enough time has passed since then
-            PendingMultiSigAccounts::<T>::translate(|key, mut value: PendingMultisigAccount<T>| {
-                if let Some(migrate_at) = value.migrate_at {
-                    if block_number >= migrate_at {
-                        value.approving_accounts.sort();
-                        let quorum = Quorums::take(&key);
-                        let multi_account = pallet_multisig::Module::<T>::multi_account_id(&value.approving_accounts, quorum as u16);
-                        let _ = Self::migrate_account(key, multi_account);
-                        None
-                    } else {
-                        Some(value)
-                    }
-                } else {
-                    Some(value)
-                }
-            })
-        }
-
-        #[weight = (0, Pays::No)]
-        pub fn migrate(
-            origin,
-            iroha_address: String,
-            iroha_public_key: String,
-            iroha_signature: String
-        ) -> DispatchResult {
-            common::with_transaction(|| {
-                let who = ensure_signed(origin)?;
-                let iroha_public_key = iroha_public_key.to_lowercase();
-                let iroha_signature = iroha_signature.to_lowercase();
-                Self::verify_signature(&iroha_address, &iroha_public_key, &iroha_signature)?;
-                ensure!(!MigratedAccounts::<T>::contains_key(&iroha_address), Error::<T>::AccountAlreadyMigrated);
-                ensure!(PublicKeys::contains_key(&iroha_address), Error::<T>::AccountNotFound);
-                let (approval_count, key_count) = Self::approve_with_public_key(&iroha_address, &iroha_public_key)?;
-                if key_count == 1 {
-                    Self::migrate_account(iroha_address, who)
-                } else {
-                    Self::on_multisig_account_approved(iroha_address, who, approval_count, key_count)
-                }
-            })
-        }
-    }
-}
-
-impl<T: Trait> Module<T> {
+impl<T: Config> Pallet<T> {
     pub fn needs_migration(iroha_address: &String) -> bool {
-        Balances::contains_key(iroha_address) && !MigratedAccounts::<T>::contains_key(iroha_address)
+        Balances::<T>::contains_key(iroha_address)
+            && !MigratedAccounts::<T>::contains_key(iroha_address)
     }
 
     fn parse_public_key(iroha_public_key: &str) -> Result<PublicKey, DispatchError> {
@@ -258,7 +109,7 @@ impl<T: Trait> Module<T> {
         iroha_address: &String,
         iroha_public_key: &str,
     ) -> Result<(usize, usize), DispatchError> {
-        PublicKeys::mutate(iroha_address, |keys| {
+        PublicKeys::<T>::mutate(iroha_address, |keys| {
             {
                 let already_approved = keys
                     .iter_mut()
@@ -283,7 +134,7 @@ impl<T: Trait> Module<T> {
         public_key_count: usize,
     ) -> Result<(), DispatchError> {
         if approval_count == public_key_count {
-            let quorum = Quorums::take(&iroha_address);
+            let quorum = Quorums::<T>::take(&iroha_address);
             let signatories = {
                 let mut pending_account = PendingMultiSigAccounts::<T>::take(&iroha_address);
                 pending_account.approving_accounts.push(account);
@@ -294,12 +145,12 @@ impl<T: Trait> Module<T> {
                 pallet_multisig::Module::<T>::multi_account_id(&signatories, quorum as u16);
             Self::migrate_account(iroha_address, multi_account)?;
         } else {
-            let quorum = Quorums::get(&iroha_address) as usize;
+            let quorum = Quorums::<T>::get(&iroha_address) as usize;
             if approval_count == quorum {
                 PendingMultiSigAccounts::<T>::mutate(&iroha_address, |a| {
                     a.approving_accounts.push(account);
                     let migrate_at =
-                        frame_system::Module::<T>::block_number() + blocks_till_migration::<T>();
+                        frame_system::Pallet::<T>::block_number() + blocks_till_migration::<T>();
                     a.migrate_at = Some(migrate_at);
                 });
             } else if approval_count < quorum {
@@ -314,9 +165,9 @@ impl<T: Trait> Module<T> {
     fn migrate_account(iroha_address: String, account: T::AccountId) -> Result<(), DispatchError> {
         Self::migrate_balance(&iroha_address, &account)?;
         Self::migrate_referrals(&iroha_address, &account)?;
-        PublicKeys::remove(&iroha_address);
+        PublicKeys::<T>::remove(&iroha_address);
         MigratedAccounts::<T>::insert(&iroha_address, &account);
-        Self::deposit_event(RawEvent::Migrated(iroha_address, account));
+        Self::deposit_event(Event::Migrated(iroha_address, account));
         Ok(())
     }
 
@@ -324,9 +175,9 @@ impl<T: Trait> Module<T> {
         iroha_address: &String,
         account: &T::AccountId,
     ) -> Result<(), DispatchError> {
-        if let Some(balance) = Balances::take(iroha_address) {
+        if let Some(balance) = Balances::<T>::take(iroha_address) {
             if !balance.is_zero() {
-                assets::Module::<T>::mint_to(&VAL.into(), &Account::<T>::get(), account, balance)?;
+                assets::Pallet::<T>::mint_to(&VAL.into(), &Account::<T>::get(), account, balance)?;
             }
         }
         Ok(())
@@ -337,11 +188,11 @@ impl<T: Trait> Module<T> {
         account: &T::AccountId,
     ) -> Result<(), DispatchError> {
         // Migrate a referral to their referrer
-        if let Some(referrer) = Referrers::get(iroha_address) {
+        if let Some(referrer) = Referrers::<T>::get(iroha_address) {
             // Free up memory
-            Referrers::remove(iroha_address);
+            Referrers::<T>::remove(iroha_address);
             if let Some(referrer) = MigratedAccounts::<T>::get(&referrer) {
-                referral_system::Module::<T>::set_referrer_to(&account, referrer)
+                referral_system::Pallet::<T>::set_referrer_to(&account, referrer)
                     .map_err(|_| Error::<T>::ReferralMigrationFailed)?;
             } else {
                 PendingReferrals::<T>::mutate(&referrer, |referrals| {
@@ -352,9 +203,201 @@ impl<T: Trait> Module<T> {
         // Migrate pending referrals to their referrer
         let referrals = PendingReferrals::<T>::take(iroha_address);
         for referral in &referrals {
-            referral_system::Module::<T>::set_referrer_to(referral, account.clone())
+            referral_system::Pallet::<T>::set_referrer_to(referral, account.clone())
                 .map_err(|_| Error::<T>::ReferralMigrationFailed)?;
         }
         Ok(())
+    }
+}
+pub use pallet::*;
+
+#[frame_support::pallet]
+pub mod pallet {
+    use super::*;
+    use common::AccountIdOf;
+    use frame_support::pallet_prelude::*;
+    use frame_system::pallet_prelude::*;
+
+    #[pallet::config]
+    pub trait Config:
+        frame_system::Config + pallet_multisig::Config + referral_system::Config + technical::Config
+    {
+        type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+    }
+
+    #[pallet::pallet]
+    #[pallet::generate_store(pub(super) trait Store)]
+    pub struct Pallet<T>(PhantomData<T>);
+
+    #[pallet::hooks]
+    impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
+        fn on_finalize(block_number: T::BlockNumber) {
+            common::with_benchmark(
+                common::location_stamp!("iroha-migration.on_finalize"),
+                || {
+                    // Migrate accounts whose quorum has been reached and enough time has passed since then
+                    PendingMultiSigAccounts::<T>::translate(
+                        |key, mut value: PendingMultisigAccount<T>| {
+                            if let Some(migrate_at) = value.migrate_at {
+                                if block_number >= migrate_at {
+                                    value.approving_accounts.sort();
+                                    let quorum = Quorums::<T>::take(&key);
+                                    let multi_account =
+                                        pallet_multisig::Module::<T>::multi_account_id(
+                                            &value.approving_accounts,
+                                            quorum as u16,
+                                        );
+                                    let _ = Self::migrate_account(key, multi_account);
+                                    None
+                                } else {
+                                    Some(value)
+                                }
+                            } else {
+                                Some(value)
+                            }
+                        },
+                    )
+                },
+            )
+        }
+    }
+
+    #[pallet::call]
+    impl<T: Config> Pallet<T> {
+        #[pallet::weight((0, Pays::No))]
+        pub fn migrate(
+            origin: OriginFor<T>,
+            iroha_address: String,
+            iroha_public_key: String,
+            iroha_signature: String,
+        ) -> DispatchResultWithPostInfo {
+            common::with_transaction(|| {
+                let who = ensure_signed(origin)?;
+                let iroha_public_key = iroha_public_key.to_lowercase();
+                let iroha_signature = iroha_signature.to_lowercase();
+                Self::verify_signature(&iroha_address, &iroha_public_key, &iroha_signature)?;
+                ensure!(
+                    !MigratedAccounts::<T>::contains_key(&iroha_address),
+                    Error::<T>::AccountAlreadyMigrated
+                );
+                ensure!(
+                    PublicKeys::<T>::contains_key(&iroha_address),
+                    Error::<T>::AccountNotFound
+                );
+                let (approval_count, key_count) =
+                    Self::approve_with_public_key(&iroha_address, &iroha_public_key)?;
+                if key_count == 1 {
+                    Self::migrate_account(iroha_address, who)?;
+                } else {
+                    Self::on_multisig_account_approved(
+                        iroha_address,
+                        who,
+                        approval_count,
+                        key_count,
+                    )?;
+                }
+                Ok(().into())
+            })
+        }
+    }
+
+    #[pallet::event]
+    #[pallet::metadata(AccountIdOf<T> = "AccountId")]
+    #[pallet::generate_deposit(pub(super) fn deposit_event)]
+    pub enum Event<T: Config> {
+        /// Migrated. [source, target]
+        Migrated(String, AccountIdOf<T>),
+    }
+
+    #[pallet::error]
+    pub enum Error<T> {
+        /// Failed to parse public key
+        PublicKeyParsingFailed,
+        /// Failed to parse signature
+        SignatureParsingFailed,
+        /// Failed to verify signature
+        SignatureVerificationFailed,
+        /// Iroha account is not found
+        AccountNotFound,
+        /// Public key is not found
+        PublicKeyNotFound,
+        /// Public key is already used
+        PublicKeyAlreadyUsed,
+        /// Iroha account is already migrated
+        AccountAlreadyMigrated,
+        /// Referral migration failed
+        ReferralMigrationFailed,
+        /// Milti-signature account creation failed
+        MultiSigCreationFailed,
+        /// Signatory addition to multi-signature account failed
+        SignatoryAdditionFailed,
+    }
+
+    #[pallet::storage]
+    pub(super) type Balances<T: Config> = StorageMap<_, Blake2_128Concat, String, Balance>;
+
+    #[pallet::storage]
+    pub(super) type Referrers<T: Config> = StorageMap<_, Blake2_128Concat, String, String>;
+
+    #[pallet::storage]
+    pub(super) type PublicKeys<T: Config> =
+        StorageMap<_, Blake2_128Concat, String, Vec<(bool, String)>, ValueQuery>;
+
+    #[pallet::storage]
+    pub(super) type Quorums<T: Config> = StorageMap<_, Blake2_128Concat, String, u8, ValueQuery>;
+
+    #[pallet::storage]
+    pub(super) type Account<T: Config> = StorageValue<_, T::AccountId, ValueQuery>;
+
+    #[pallet::storage]
+    pub(super) type MigratedAccounts<T: Config> =
+        StorageMap<_, Blake2_128Concat, String, T::AccountId>;
+
+    #[pallet::storage]
+    pub(super) type PendingMultiSigAccounts<T: Config> =
+        StorageMap<_, Blake2_128Concat, String, PendingMultisigAccount<T>, ValueQuery>;
+
+    #[pallet::storage]
+    pub(super) type PendingReferrals<T: Config> =
+        StorageMap<_, Blake2_128Concat, String, Vec<T::AccountId>, ValueQuery>;
+
+    #[pallet::genesis_config]
+    pub struct GenesisConfig<T: Config> {
+        pub account_id: T::AccountId,
+        pub iroha_accounts: Vec<(String, Balance, Option<String>, u8, Vec<String>)>,
+    }
+
+    #[cfg(feature = "std")]
+    impl<T: Config> Default for GenesisConfig<T> {
+        fn default() -> Self {
+            Self {
+                account_id: Default::default(),
+                iroha_accounts: Default::default(),
+            }
+        }
+    }
+
+    #[pallet::genesis_build]
+    impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
+        fn build(&self) {
+            Account::<T>::put(&self.account_id);
+
+            for (account_id, balance, referrer, threshold, public_keys) in &self.iroha_accounts {
+                Balances::<T>::insert(account_id, *balance);
+                if let Some(referrer) = referrer {
+                    Referrers::<T>::insert(account_id, referrer.clone());
+                }
+                PublicKeys::<T>::insert(
+                    account_id,
+                    public_keys
+                        .iter()
+                        .map(|key| (false, key.to_lowercase()))
+                        .collect::<Vec<_>>(),
+                );
+                if public_keys.len() > 1 {
+                    Quorums::<T>::insert(account_id, *threshold);
+                }
+            }
+        }
     }
 }

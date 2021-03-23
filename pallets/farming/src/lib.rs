@@ -1,15 +1,12 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use common::{balance, prelude::*};
+use common::prelude::FixedWrapper;
+use common::{balance, Balance, FromGenericPair, PSWAP, XOR};
 pub use domain::*;
-use frame_support::{
-    codec::{Decode, Encode},
-    decl_error, decl_event, decl_module, decl_storage,
-    dispatch::{DispatchError, DispatchResult},
-    ensure,
-    weights::Weight,
-    RuntimeDebug,
-};
+use frame_support::codec::{Decode, Encode};
+use frame_support::dispatch::{DispatchError, DispatchResult};
+use frame_support::weights::Weight;
+use frame_support::{ensure, RuntimeDebug};
 use frame_system::ensure_signed;
 use orml_traits::currency::MultiCurrency;
 use sp_std::collections::btree_set::BTreeSet;
@@ -58,11 +55,9 @@ const UPDATE_PRICES_EVERY_N_BLOCK: u32 = 1000;
 /// Period 100 = 1 week, if interval is 1000 block where one block each 6 seconds.
 const SMOOTH_PERIOD: u128 = 100;
 
-type AccountIdOf<T> = <T as frame_system::Trait>::AccountId;
-type TechAccountIdOf<T> = <T as technical::Trait>::TechAccountId;
-//type AssetIdOf<T> = <T as assets::Trait>::AssetId;
-type TechAssetIdOf<T> = <T as technical::Trait>::TechAssetId;
-type BlockNumberOf<T> = <T as frame_system::Trait>::BlockNumber;
+type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
+type TechAccountIdOf<T> = <T as technical::Config>::TechAccountId;
+type BlockNumberOf<T> = <T as frame_system::Config>::BlockNumber;
 type FarmerOf<T> = Farmer<AccountIdOf<T>, TechAccountIdOf<T>, BlockNumberOf<T>>;
 
 //#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
@@ -72,20 +67,6 @@ pub struct DiscoverClaim<AmountType> {
     pub units_per_blocks: AmountType,
     pub available_origin: AmountType,
     pub available_claim: AmountType,
-}
-
-pub trait Trait:
-    frame_system::Trait
-    // + timestamp::Trait
-    + permissions::Trait
-    + technical::Trait
-    // + sp_std::fmt::Debug
-    + pool_xyk::Trait
-{
-    type Event: From<Event<Self>> + Into<<Self as frame_system::Trait>::Event>;
-
-    /// Weight information for extrinsics in this pallet.
-    type WeightInfo: WeightInfo;
 }
 
 type Pair<T> = (T, T);
@@ -99,85 +80,15 @@ pub struct SmoothPriceState {
     weavg_short: Pair<Balance>,
 }
 
-decl_storage! {
-    trait Store for Module<T: Trait> as FarmsStoreModule
-    {
-        pub NextFarmId get(fn next_farm_id): FarmId;
-
-        pub Farms:
-              map
-                hasher(identity) FarmId
-                  => Option<Farm<T::AccountId, T::AssetId, T::BlockNumber>>;
-
-        pub Farmers:
-              double_map
-                hasher(identity) FarmId,
-                hasher(blake2_128_concat) T::AccountId
-                  => Option<Farmer<T::AccountId, TechAccountIdOf<T>, T::BlockNumber>>;
-
-        pub PricesStates:
-              double_map
-                hasher(blake2_128_concat) AssetId32<common::AssetId>,
-                hasher(blake2_128_concat) AssetId32<common::AssetId>
-                  => Option<SmoothPriceState>;
-
-        /// Collection of all registered marker tokens for farmer.
-        pub MarkerTokensIndex get(fn marker_token_index): map hasher(blake2_128_concat) (FarmId, T::AccountId) => BTreeSet<T::AssetId>;
-
-    }
-    add_extra_genesis {
-        config(initial_farm): (T::AccountId, T::AssetId, T::AssetId);
-        build(|config: &GenesisConfig<T>| {
-            let tup = config.initial_farm.clone();
-            Module::<T>::create_unchecked(tup.0, tup.1, tup.2).expect("Failed to register farm.");
-        })
-    }
-}
-
-decl_event!(
-    pub enum Event<T>
-    where
-        AccountId = <T as frame_system::Trait>::AccountId,
-        AssetId = AssetId32<common::AssetId>,
-    {
-        FarmCreated(FarmId, AccountId),
-        FarmerCreated(FarmId, AccountId),
-        IncentiveClaimed(FarmId, AccountId),
-        FarmerExit(FarmId, AccountId),
-        SmoothPriceUpdated(AssetId, AssetId, Balance),
-    }
-);
-
-decl_error! {
-    pub enum Error for Module<T: Trait> {
-        NotEnoughPermissions,
-        FarmNotFound,
-        FarmerNotFound,
-        ShareNotFound,
-        TechAccountIsMissing,
-        FarmAlreadyClosed,
-        FarmLocked,
-        CalculationFailed,
-        CalculationOrOperationWithFarmingStateIsFailed,
-        SomeValuesIsNotSet,
-        AmountIsOutOfAvailableValue,
-        UnableToConvertAssetIdToTechAssetId,
-        UnableToGetPoolInformationFromTechAsset,
-        ThisTypeOfLiquiditySourceIsNotImplementedOrSupported,
-        NothingToClaim,
-        CaseIsNotSupported,
-    }
-}
-
-impl<T: Trait> Module<T> {
+impl<T: Config> Pallet<T> {
     pub fn create_unchecked(
         who: T::AccountId,
         origin_asset_id: T::AssetId,
         claim_asset_id: T::AssetId,
     ) -> Result<Option<FarmId>, DispatchError> {
-        permissions::Module::<T>::check_permission(who.clone(), permissions::CREATE_FARM)?;
-        let farm_id = NextFarmId::get();
-        let current_block = <frame_system::Module<T>>::block_number();
+        permissions::Pallet::<T>::check_permission(who.clone(), permissions::CREATE_FARM)?;
+        let farm_id = NextFarmId::<T>::get();
+        let current_block = <frame_system::Pallet<T>>::block_number();
         let farming_state = FarmingState::<Balance, T::BlockNumber> {
             units_per_blocks: 0,
             last_change: current_block,
@@ -205,8 +116,8 @@ impl<T: Trait> Module<T> {
 
         Farms::<T>::insert(farm_id, farm);
 
-        Self::deposit_event(RawEvent::FarmCreated(farm_id, who));
-        NextFarmId::set(farm_id + 1);
+        Self::deposit_event(Event::FarmCreated(farm_id, who));
+        NextFarmId::<T>::set(farm_id + 1);
         Ok(Some(farm_id))
     }
 
@@ -222,8 +133,8 @@ impl<T: Trait> Module<T> {
                     "FARMING_PALLET".into(),
                     farmer_id.encode(),
                 );
-                technical::Module::<T>::register_tech_account_id_if_not_exist(&tech_id)?;
-                let current_block = <frame_system::Module<T>>::block_number();
+                technical::Pallet::<T>::register_tech_account_id_if_not_exist(&tech_id)?;
+                let current_block = <frame_system::Pallet<T>>::block_number();
                 let farmer = FarmerOf::<T> {
                     id: farmer_id,
                     tech_account_id: tech_id,
@@ -234,22 +145,20 @@ impl<T: Trait> Module<T> {
                     },
                 };
                 Farmers::<T>::insert(farm_id, account_id.clone(), farmer.clone());
-                Self::deposit_event(RawEvent::FarmerCreated(farm_id, account_id));
+                Self::deposit_event(Event::FarmerCreated(farm_id, account_id));
                 Ok(farmer)
             }
         }
     }
 
     fn get_xor_part_amount_from_marker(
-        dex_id: T::DEXId,
+        _dex_id: T::DEXId,
         asset_id: T::AssetId,
         amount: Balance,
     ) -> Result<Balance, DispatchError> {
-        use assets::{Tuple::*, TupleArg::*};
-        use common::AssetIdExtraTupleArg::*;
-        use common::TechAccountId::*;
-        use common::TechPurpose::*;
-        use common::TradingPair;
+        use assets::AssetRecord::*;
+        use assets::AssetRecordArg::*;
+        use common::AssetIdExtraAssetRecordArg::*;
         let tuple = assets::Module::<T>::tuple_from_asset_id(&asset_id)
             .ok_or(Error::<T>::UnableToGetPoolInformationFromTechAsset)?;
         match tuple {
@@ -285,17 +194,17 @@ impl<T: Trait> Module<T> {
         asset_id: T::AssetId,
         amount: Balance,
     ) -> DispatchResult {
-        permissions::Module::<T>::check_permission(who.clone(), permissions::LOCK_TO_FARM)?;
-        let xor_part = Module::<T>::get_xor_part_amount_from_marker(dex_id, asset_id, amount)?;
+        permissions::Pallet::<T>::check_permission(who.clone(), permissions::LOCK_TO_FARM)?;
+        let xor_part = Pallet::<T>::get_xor_part_amount_from_marker(dex_id, asset_id, amount)?;
         let mut farm = Farms::<T>::get(&farm_id).ok_or(Error::<T>::FarmNotFound)?;
-        let current_block = <frame_system::Module<T>>::block_number();
+        let current_block = <frame_system::Pallet<T>>::block_number();
         let mut farmer = Self::get_or_create_farmer(who.clone(), farm_id)?;
         farmer
             .state
             .put_to_locked(Some(&mut farm.aggregated_state), current_block, xor_part)
             .map_err(|()| Error::<T>::CalculationOrOperationWithFarmingStateIsFailed)?;
         // Technical account for farmer is unique, so this is lock.
-        technical::Module::<T>::transfer_in(&asset_id, &who, &farmer.tech_account_id, amount)?;
+        technical::Pallet::<T>::transfer_in(&asset_id, &who, &farmer.tech_account_id, amount)?;
         // If previous operation is fail than transfer is not done, and next code is not performed,
         // and this code is about writeing to storage map.
         Farms::<T>::insert(farm.id, farm);
@@ -311,12 +220,12 @@ impl<T: Trait> Module<T> {
         opt_asset_id: Option<T::AssetId>,
         amount_opt: Option<Balance>,
     ) -> DispatchResult {
-        permissions::Module::<T>::check_permission(who.clone(), permissions::UNLOCK_FROM_FARM)?;
+        permissions::Pallet::<T>::check_permission(who.clone(), permissions::UNLOCK_FROM_FARM)?;
         let mut farm = Farms::<T>::get(&farm_id).ok_or(Error::<T>::FarmNotFound)?;
-        let current_block = <frame_system::Module<T>>::block_number();
+        let current_block = <frame_system::Pallet<T>>::block_number();
         let mut farmer = Self::get_or_create_farmer(who.clone(), farm_id)?;
         let ta_repr =
-            technical::Module::<T>::tech_account_id_to_account_id(&farmer.tech_account_id)?;
+            technical::Pallet::<T>::tech_account_id_to_account_id(&farmer.tech_account_id)?;
         let amount_opt = match (amount_opt, opt_asset_id) {
             (_, Some(asset_id)) => {
                 let amount = match amount_opt {
@@ -325,11 +234,11 @@ impl<T: Trait> Module<T> {
                         MarkerTokensIndex::<T>::mutate((farm_id.clone(), who.clone()), |mti| {
                             mti.remove(&asset_id)
                         });
-                        <assets::Module<T>>::free_balance(&asset_id, &ta_repr)?
+                        <assets::Pallet<T>>::free_balance(&asset_id, &ta_repr)?
                     }
                 };
                 let xor_part =
-                    Module::<T>::get_xor_part_amount_from_marker(dex_id, asset_id, amount)?;
+                    Pallet::<T>::get_xor_part_amount_from_marker(dex_id, asset_id, amount)?;
                 farmer
                     .state
                     .remove_from_locked(Some(&mut farm.aggregated_state), current_block, xor_part)
@@ -343,9 +252,9 @@ impl<T: Trait> Module<T> {
                     .map_err(|()| Error::<T>::CalculationOrOperationWithFarmingStateIsFailed)?;
                 let mti = MarkerTokensIndex::<T>::get((farm_id, who.clone()));
                 for asset_id in mti {
-                    let amount = <assets::Module<T>>::free_balance(&asset_id, &ta_repr)?;
+                    let amount = <assets::Pallet<T>>::free_balance(&asset_id, &ta_repr)?;
                     // Asset is None so unlock all assets, this is like exiting from farm.
-                    technical::Module::<T>::transfer_out(
+                    technical::Pallet::<T>::transfer_out(
                         &asset_id,
                         &farmer.tech_account_id,
                         &who,
@@ -362,7 +271,7 @@ impl<T: Trait> Module<T> {
         };
         if let Some(amount) = amount_opt {
             // Technical account for farmer is unique, so this is unlock.
-            technical::Module::<T>::transfer_out(
+            technical::Pallet::<T>::transfer_out(
                 &opt_asset_id.unwrap(),
                 &farmer.tech_account_id,
                 &who,
@@ -382,10 +291,10 @@ impl<T: Trait> Module<T> {
         amount_opt: Option<Balance>,
         perform_write_to_database: bool,
     ) -> Result<DiscoverClaim<Balance>, DispatchError> {
-        permissions::Module::<T>::check_permission(who.clone(), permissions::CLAIM_FROM_FARM)?;
+        permissions::Pallet::<T>::check_permission(who.clone(), permissions::CLAIM_FROM_FARM)?;
         let mut farm = Farms::<T>::get(&farm_id).ok_or(Error::<T>::FarmNotFound)?;
         let mut farmer = Self::get_or_create_farmer(who.clone(), farm_id)?;
-        let current_block = <frame_system::Module<T>>::block_number();
+        let current_block = <frame_system::Pallet<T>>::block_number();
         farm.aggregated_state
             .recalculate(current_block)
             .map_err(|()| Error::<T>::CalculationOrOperationWithFarmingStateIsFailed)?;
@@ -406,7 +315,7 @@ impl<T: Trait> Module<T> {
         if farm.incentive_model_state.suitable_for_block < current_block {
             //TODO: Now it is limited for xor pswap, that about other assets ?
             farm.incentive_model_state.origin_to_claim_ratio =
-                Module::<T>::get_smooth_price_for_xor_pswap();
+                Pallet::<T>::get_smooth_price_for_xor_pswap();
         }
         let origin_to_claim_ratio = FixedWrapper::from(
             farm.incentive_model_state
@@ -451,7 +360,7 @@ impl<T: Trait> Module<T> {
             Farms::<T>::insert(farm.id, farm.clone());
             Farmers::<T>::insert(farmer.id.0.clone(), farmer.id.1.clone(), farmer);
             farm.incentive_model_state.suitable_for_block = current_block;
-            Self::deposit_event(RawEvent::IncentiveClaimed(farm_id, who));
+            Self::deposit_event(Event::IncentiveClaimed(farm_id, who));
         }
 
         Ok(DiscoverClaim::<Balance> {
@@ -465,10 +374,10 @@ impl<T: Trait> Module<T> {
         who: T::AccountId,
         farm_id: FarmId,
     ) -> Result<Option<FarmInfo<T::AccountId, T::AssetId, T::BlockNumber>>, Error<T>> {
-        permissions::Module::<T>::check_permission(who.clone(), permissions::GET_FARM_INFO)
+        permissions::Pallet::<T>::check_permission(who.clone(), permissions::GET_FARM_INFO)
             .map_err(|_| Error::<T>::NotEnoughPermissions)?;
         let farm = Farms::<T>::get(farm_id).ok_or_else(|| Error::<T>::FarmNotFound)?;
-        let current_block = <frame_system::Module<T>>::block_number();
+        let current_block = <frame_system::Pallet<T>>::block_number();
         let mut farm_now = farm.clone();
         farm_now
             .aggregated_state
@@ -485,10 +394,10 @@ impl<T: Trait> Module<T> {
         farm_id: FarmId,
     ) -> Result<Option<FarmerInfo<T::AccountId, TechAccountIdOf<T>, T::BlockNumber>>, Error<T>>
     {
-        permissions::Module::<T>::check_permission(who.clone(), permissions::GET_FARMER_INFO)
+        permissions::Pallet::<T>::check_permission(who.clone(), permissions::GET_FARMER_INFO)
             .map_err(|_| Error::<T>::NotEnoughPermissions)?;
         let farmer = Farmers::<T>::get(farm_id, who).ok_or_else(|| Error::<T>::FarmNotFound)?;
-        let current_block = <frame_system::Module<T>>::block_number();
+        let current_block = <frame_system::Pallet<T>>::block_number();
         let mut farmer_now = farmer.clone();
         farmer_now
             .state
@@ -501,11 +410,11 @@ impl<T: Trait> Module<T> {
     }
 
     pub fn get_smooth_price_for_xor_pswap() -> Option<Balance> {
-        let opt_value = PricesStates::get(XOR, PSWAP).map(|v| v.smooth_price);
-        let current_block = <frame_system::Module<T>>::block_number();
+        let opt_value = PricesStates::<T>::get(XOR, PSWAP).map(|v| v.smooth_price);
+        let current_block = <frame_system::Pallet<T>>::block_number();
         if opt_value.is_none() {
-            Module::<T>::update_xor_pswap_smooth_price(current_block);
-            PricesStates::get(XOR, PSWAP).map(|v| v.smooth_price)
+            Pallet::<T>::update_xor_pswap_smooth_price(current_block);
+            PricesStates::<T>::get(XOR, PSWAP).map(|v| v.smooth_price)
         } else {
             opt_value
         }
@@ -519,7 +428,7 @@ impl<T: Trait> Module<T> {
             _ => unreachable!(),
         };
         let pv_cur = get_demo_price(index);
-        let pv_state = match PricesStates::get(XOR, PSWAP) {
+        let pv_state = match PricesStates::<T>::get(XOR, PSWAP) {
             Some(v) => v,
             None => SmoothPriceState {
                 smooth_price: pv_cur.0.clone(),
@@ -567,8 +476,8 @@ impl<T: Trait> Module<T> {
             weavg_normal: (p_res1.into_balance(), v_res1.into_balance()),
             weavg_short: (p_res2.into_balance(), v_res2.into_balance()),
         };
-        PricesStates::insert(XOR, PSWAP, pv_state_update);
-        Self::deposit_event(RawEvent::SmoothPriceUpdated(XOR, PSWAP, smooth_price));
+        PricesStates::<T>::insert(XOR, PSWAP, pv_state_update);
+        Self::deposit_event(Event::<T>::SmoothPriceUpdated(XOR, PSWAP, smooth_price));
 
         /*
          * This is for debug output to log, and checking graph in gnuplot and comparing,
@@ -585,7 +494,7 @@ impl<T: Trait> Module<T> {
 
     pub fn perform_per_block_update(now: T::BlockNumber) -> Weight {
         if now % UPDATE_PRICES_EVERY_N_BLOCK.into() == 0u32.into() {
-            Module::<T>::update_xor_pswap_smooth_price(now);
+            Pallet::<T>::update_xor_pswap_smooth_price(now);
         }
         0u32.into()
     }
@@ -594,49 +503,189 @@ impl<T: Trait> Module<T> {
     #[cfg(test)]
     fn discover_claim(origin: T::Origin, farm_id: FarmId) -> Result<Balance, DispatchError> {
         let who = ensure_signed(origin)?;
-        let discover = Module::<T>::prepare_and_optional_claim(who, farm_id, None, false)?;
+        let discover = Pallet::<T>::prepare_and_optional_claim(who, farm_id, None, false)?;
         Ok(discover.available_claim)
     }
 }
 
-decl_module! {
-    pub struct Module<T: Trait> for enum Call where origin: T::Origin
+pub use pallet::*;
+
+#[frame_support::pallet]
+pub mod pallet {
+    use super::*;
+    use common::AssetId32;
+    use frame_support::pallet_prelude::*;
+    use frame_system::pallet_prelude::*;
+
+    #[pallet::config]
+    pub trait Config:
+        frame_system::Config + permissions::Config + technical::Config + pool_xyk::Config
     {
-        type Error = Error<T>;
-        fn deposit_event() = default;
+        type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+        /// Weight information for extrinsics in this pallet.
+        type WeightInfo: WeightInfo;
+    }
 
+    #[pallet::pallet]
+    #[pallet::generate_store(pub(super) trait Store)]
+    pub struct Pallet<T>(PhantomData<T>);
+
+    #[pallet::hooks]
+    impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
         fn on_initialize(now: T::BlockNumber) -> Weight {
-            Module::<T>::perform_per_block_update(now)
+            common::with_benchmark("farming.on_initialize", || {
+                Pallet::<T>::perform_per_block_update(now)
+            })
         }
+    }
 
-        #[weight = 0]
-        pub fn create(origin, origin_asset_id: T::AssetId, claim_asset_id: T::AssetId) -> Result<Option<FarmId>, DispatchError> {
+    #[pallet::call]
+    impl<T: Config> Pallet<T> {
+        #[pallet::weight(0)]
+        pub fn create(
+            origin: OriginFor<T>,
+            origin_asset_id: T::AssetId,
+            claim_asset_id: T::AssetId,
+        ) -> DispatchResultWithPostInfo {
             let who = ensure_signed(origin)?;
-            Module::<T>::create_unchecked(who, origin_asset_id, claim_asset_id)
+            Pallet::<T>::create_unchecked(who, origin_asset_id, claim_asset_id)?;
+            Ok(().into())
         }
 
-        #[weight = 0]
-        pub fn lock_to_farm(origin, dex_id: T::DEXId, farm_id: FarmId, asset_id: T::AssetId, amount: Balance) -> DispatchResult
-        {
+        #[pallet::weight(0)]
+        pub fn lock_to_farm(
+            origin: OriginFor<T>,
+            dex_id: T::DEXId,
+            farm_id: FarmId,
+            asset_id: T::AssetId,
+            amount: Balance,
+        ) -> DispatchResultWithPostInfo {
             let who = ensure_signed(origin)?;
-            Module::<T>::lock_to_farm_unchecked(who, dex_id, farm_id, asset_id, amount)
+            Pallet::<T>::lock_to_farm_unchecked(who, dex_id, farm_id, asset_id, amount)?;
+            Ok(().into())
         }
 
-        #[weight = 0]
-        pub fn unlock_from_farm(origin, dex_id: T::DEXId, farm_id: FarmId,
-                                opt_asset_id: Option<T::AssetId>, amount_opt: Option<Balance>) -> DispatchResult
-        {
+        #[pallet::weight(0)]
+        pub fn unlock_from_farm(
+            origin: OriginFor<T>,
+            dex_id: T::DEXId,
+            farm_id: FarmId,
+            opt_asset_id: Option<T::AssetId>,
+            amount_opt: Option<Balance>,
+        ) -> DispatchResultWithPostInfo {
             let who = ensure_signed(origin)?;
             common::with_transaction(|| {
-                Module::<T>::unlock_from_farm_unchecked(who, dex_id, farm_id, opt_asset_id, amount_opt)
+                Pallet::<T>::unlock_from_farm_unchecked(
+                    who,
+                    dex_id,
+                    farm_id,
+                    opt_asset_id,
+                    amount_opt,
+                )?;
+                Ok(().into())
             })
         }
 
-        #[weight = 0]
-        pub fn claim(origin, farm_id: FarmId, amount_opt: Option<Balance>) -> DispatchResult {
+        #[pallet::weight(0)]
+        pub fn claim(
+            origin: OriginFor<T>,
+            farm_id: FarmId,
+            amount_opt: Option<Balance>,
+        ) -> DispatchResultWithPostInfo {
             let who = ensure_signed(origin)?;
-            Module::<T>::prepare_and_optional_claim(who, farm_id, amount_opt, true)?;
-            Ok(())
+            Pallet::<T>::prepare_and_optional_claim(who, farm_id, amount_opt, true)?;
+            Ok(().into())
+        }
+    }
+
+    #[pallet::event]
+    #[pallet::metadata(AccountIdOf<T> = "AccountId", AssetId32<common::AssetId> = "AssetId")]
+    #[pallet::generate_deposit(pub(super) fn deposit_event)]
+    pub enum Event<T: Config> {
+        FarmCreated(FarmId, AccountIdOf<T>),
+        FarmerCreated(FarmId, AccountIdOf<T>),
+        IncentiveClaimed(FarmId, AccountIdOf<T>),
+        FarmerExit(FarmId, AccountIdOf<T>),
+        SmoothPriceUpdated(
+            AssetId32<common::AssetId>,
+            AssetId32<common::AssetId>,
+            Balance,
+        ),
+    }
+
+    #[pallet::error]
+    pub enum Error<T> {
+        NotEnoughPermissions,
+        FarmNotFound,
+        FarmerNotFound,
+        ShareNotFound,
+        TechAccountIsMissing,
+        FarmAlreadyClosed,
+        FarmLocked,
+        CalculationFailed,
+        CalculationOrOperationWithFarmingStateIsFailed,
+        SomeValuesIsNotSet,
+        AmountIsOutOfAvailableValue,
+        UnableToConvertAssetIdToTechAssetId,
+        UnableToGetPoolInformationFromTechAsset,
+        ThisTypeOfLiquiditySourceIsNotImplementedOrSupported,
+        NothingToClaim,
+        CaseIsNotSupported,
+    }
+
+    #[pallet::storage]
+    #[pallet::getter(fn next_farm_id)]
+    pub type NextFarmId<T: Config> = StorageValue<_, FarmId, ValueQuery>;
+
+    #[pallet::storage]
+    pub type Farms<T: Config> =
+        StorageMap<_, Identity, FarmId, Farm<T::AccountId, T::AssetId, T::BlockNumber>>;
+
+    #[pallet::storage]
+    pub type Farmers<T: Config> = StorageDoubleMap<
+        _,
+        Identity,
+        FarmId,
+        Blake2_128Concat,
+        T::AccountId,
+        Farmer<T::AccountId, TechAccountIdOf<T>, T::BlockNumber>,
+    >;
+
+    #[pallet::storage]
+    pub type PricesStates<T: Config> = StorageDoubleMap<
+        _,
+        Blake2_128Concat,
+        AssetId32<common::AssetId>,
+        Blake2_128Concat,
+        AssetId32<common::AssetId>,
+        SmoothPriceState,
+    >;
+
+    /// Collection of all registered marker tokens for farmer.
+    #[pallet::storage]
+    #[pallet::getter(fn marker_token_index)]
+    pub type MarkerTokensIndex<T: Config> =
+        StorageMap<_, Blake2_128Concat, (FarmId, T::AccountId), BTreeSet<T::AssetId>, ValueQuery>;
+
+    #[pallet::genesis_config]
+    pub struct GenesisConfig<T: Config> {
+        pub initial_farm: (T::AccountId, T::AssetId, T::AssetId),
+    }
+
+    #[cfg(feature = "std")]
+    impl<T: Config> Default for GenesisConfig<T> {
+        fn default() -> Self {
+            Self {
+                initial_farm: Default::default(),
+            }
+        }
+    }
+
+    #[pallet::genesis_build]
+    impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
+        fn build(&self) {
+            let tup = self.initial_farm.clone();
+            Pallet::<T>::create_unchecked(tup.0, tup.1, tup.2).expect("Failed to register farm.");
         }
     }
 }

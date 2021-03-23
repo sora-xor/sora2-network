@@ -8,10 +8,8 @@ extern crate alloc;
 use pool_xyk::*;
 
 use codec::Decode;
-use common::{
-    prelude::{Balance, SwapAmount},
-    AssetSymbol, DEXId, DOT, XOR,
-};
+use common::prelude::{Balance, SwapAmount};
+use common::{AssetSymbol, DEXId, DOT, XOR};
 use frame_benchmarking::benchmarks;
 use frame_system::RawOrigin;
 use hex_literal::hex;
@@ -26,20 +24,20 @@ use trading_pair::Module as TradingPair;
 
 #[cfg(test)]
 mod mock;
-pub struct Module<T: Trait>(pool_xyk::Module<T>);
-pub trait Trait: pool_xyk::Trait {}
+pub struct Module<T: Config>(pool_xyk::Module<T>);
+pub trait Config: pool_xyk::Config {}
 
 pub const DEX: DEXId = DEXId::Polkaswap;
 
 // Support Functions
-fn alice<T: Trait>() -> T::AccountId {
+fn alice<T: Config>() -> T::AccountId {
     let bytes = hex!("d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d");
     T::AccountId::decode(&mut &bytes[..]).expect("Failed to decode account ID")
 }
 
-fn setup_benchmark_assets_only<T: Trait>() -> Result<(), &'static str> {
+fn setup_benchmark_assets_only<T: Config>() -> Result<(), &'static str> {
     let owner = alice::<T>();
-    let owner_origin: <T as frame_system::Trait>::Origin = RawOrigin::Signed(owner.clone()).into();
+    let owner_origin: <T as frame_system::Config>::Origin = RawOrigin::Signed(owner.clone()).into();
 
     // Grant permissions to self in case they haven't been explicitly given in genesis config
     Permissions::<T>::grant_permission(owner.clone(), owner.clone(), MINT)?;
@@ -67,9 +65,9 @@ fn setup_benchmark_assets_only<T: Trait>() -> Result<(), &'static str> {
     Ok(())
 }
 
-fn setup_benchmark<T: Trait>() -> Result<(), &'static str> {
+fn setup_benchmark<T: Config>() -> Result<(), &'static str> {
     let owner = alice::<T>();
-    let owner_origin: <T as frame_system::Trait>::Origin = RawOrigin::Signed(owner.clone()).into();
+    let owner_origin: <T as frame_system::Config>::Origin = RawOrigin::Signed(owner.clone()).into();
 
     // Grant permissions to self in case they haven't been explicitly given in genesis config
     Permissions::<T>::grant_permission(owner.clone(), owner.clone(), MINT)?;
@@ -146,8 +144,6 @@ fn setup_benchmark<T: Trait>() -> Result<(), &'static str> {
 }
 
 benchmarks! {
-    _ {}
-
     swap_pair {
         let n in 1 .. 1000 => setup_benchmark::<T>()?;
         let caller = alice::<T>();

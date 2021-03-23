@@ -1,165 +1,49 @@
 use crate as iroha_migration; // for construct_runtime
-use crate::{Trait, TECH_ACCOUNT_MAIN, TECH_ACCOUNT_PREFIX};
-use codec::{Codec, Decode, Encode};
-use common::{prelude::Balance, Amount, AssetId, AssetId32, AssetSymbol, VAL};
+use crate::{Config, TECH_ACCOUNT_MAIN, TECH_ACCOUNT_PREFIX};
+use common::mock::ExistentialDeposits;
+use common::prelude::Balance;
+use common::{Amount, AssetId, AssetId32, AssetSymbol, VAL};
 use currencies::BasicCurrencyAdapter;
-use frame_support::{
-    construct_runtime,
-    dispatch::{DispatchInfo, GetDispatchInfo},
-    parameter_types,
-    weights::{Pays, Weight},
-};
+use frame_support::traits::GenesisBuild;
+use frame_support::weights::Weight;
+use frame_support::{construct_runtime, parameter_types};
 use permissions::{Scope, MINT};
 use sp_core::H256;
-use sp_runtime::{
-    self,
-    app_crypto::sp_core::{self, crypto::AccountId32},
-    generic,
-    serde::{Serialize, Serializer},
-    testing::Header,
-    traits::{
-        self, Applyable, BlakeTwo256, Block, Checkable, DispatchInfoOf, Dispatchable,
-        IdentityLookup, PostDispatchInfoOf, SignedExtension, ValidateUnsigned,
-    },
-    transaction_validity::{TransactionSource, TransactionValidity, TransactionValidityError},
-    ApplyExtrinsicResultWithInfo, Perbill,
-};
-use sp_std::fmt::Debug;
+use sp_runtime::testing::Header;
+use sp_runtime::traits::{BlakeTwo256, IdentityLookup};
+use sp_runtime::{self, Perbill};
 
-// Configure a mock runtime to test the pallet.
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Encode, Decode)]
-pub struct MyExtra;
-pub type TestExtrinsic = MyTestXt<Call, MyExtra>;
-type NodeBlock = generic::Block<Header, TestExtrinsic>;
 type DEXId = common::DEXId;
 type AccountId = u64;
 type BlockNumber = u64;
 type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
 type TechAssetId = common::TechAssetId<common::AssetId>;
+type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
+type Block = frame_system::mocking::MockBlock<Runtime>;
 
 pub const XOR: AssetId = AssetId::XOR;
-pub const ALICE: u64 = 1;
-pub const BOB: u64 = 2;
-pub const CHARLIE: u64 = 3;
-pub const MINTING_ACCOUNT: u64 = 4;
+pub const ALICE: AccountId = 1;
+pub const BOB: AccountId = 2;
+pub const CHARLIE: AccountId = 3;
+pub const MINTING_ACCOUNT: AccountId = 4;
 
-#[derive(PartialEq, Eq, Clone, Encode, Decode, Debug)]
-pub struct MyTestXt<Call, Extra> {
-    /// Signature of the extrinsic.
-    pub signature: Option<(AccountId, Extra)>,
-    /// Call of the extrinsic.
-    pub call: Call,
-}
-
-parity_util_mem::malloc_size_of_is_0!(any: MyTestXt<Call, Extra>);
-
-impl<Call: Codec + Sync + Send, Context, Extra> Checkable<Context> for MyTestXt<Call, Extra> {
-    type Checked = Self;
-    fn check(self, _c: &Context) -> Result<Self::Checked, TransactionValidityError> {
-        Ok(self)
-    }
-}
-
-impl<Call: Codec + Sync + Send, Extra> traits::Extrinsic for MyTestXt<Call, Extra> {
-    type Call = Call;
-    type SignaturePayload = (AccountId, Extra);
-
-    fn is_signed(&self) -> Option<bool> {
-        Some(self.signature.is_some())
-    }
-
-    fn new(c: Call, sig: Option<Self::SignaturePayload>) -> Option<Self> {
-        Some(MyTestXt {
-            signature: sig,
-            call: c,
-        })
-    }
-}
-
-impl SignedExtension for MyExtra {
-    type AccountId = AccountId;
-    type Call = Call;
-    type AdditionalSigned = ();
-    type Pre = ();
-    const IDENTIFIER: &'static str = "testextension";
-
-    fn additional_signed(&self) -> Result<Self::AdditionalSigned, TransactionValidityError> {
-        Ok(())
-    }
-}
-
-impl<Origin, Call, Extra> Applyable for MyTestXt<Call, Extra>
-where
-    Call:
-        'static + Sized + Send + Sync + Clone + Eq + Codec + Debug + Dispatchable<Origin = Origin>,
-    Extra: SignedExtension<AccountId = AccountId, Call = Call>,
-    Origin: From<Option<AccountId>>,
-{
-    type Call = Call;
-
-    /// Checks to see if this is a valid *transaction*. It returns information on it if so.
-    fn validate<U: ValidateUnsigned<Call = Self::Call>>(
-        &self,
-        _source: TransactionSource,
-        _info: &DispatchInfoOf<Self::Call>,
-        _len: usize,
-    ) -> TransactionValidity {
-        Ok(Default::default())
-    }
-
-    /// Executes all necessary logic needed prior to dispatch and deconstructs into function call,
-    /// index and sender.
-    fn apply<U: ValidateUnsigned<Call = Self::Call>>(
-        self,
-        info: &DispatchInfoOf<Self::Call>,
-        len: usize,
-    ) -> ApplyExtrinsicResultWithInfo<PostDispatchInfoOf<Self::Call>> {
-        let maybe_who = if let Some((who, extra)) = self.signature {
-            Extra::pre_dispatch(extra, &who, &self.call, info, len)?;
-            Some(who)
-        } else {
-            Extra::pre_dispatch_unsigned(&self.call, info, len)?;
-            None
-        };
-
-        Ok(self.call.dispatch(maybe_who.into()))
-    }
-}
-
-impl<Call, Extra> Serialize for MyTestXt<Call, Extra>
-where
-    MyTestXt<Call, Extra>: Encode,
-{
-    fn serialize<S>(&self, seq: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        self.using_encoded(|bytes| seq.serialize_bytes(bytes))
-    }
-}
-
-impl<Call: Encode, Extra: Encode> GetDispatchInfo for MyTestXt<Call, Extra> {
-    fn get_dispatch_info(&self) -> DispatchInfo {
-        // for testing: weight == size.
-        DispatchInfo {
-            weight: self.encode().len() as _,
-            pays_fee: Pays::No,
-            ..Default::default()
-        }
-    }
-}
-
-impl sp_runtime::traits::ExtrinsicMetadata for TestExtrinsic {
-    const VERSION: u8 = 1;
-    type SignedExtensions = ();
+parameter_types! {
+    pub const BlockHashCount: u64 = 250;
+    pub const MaximumBlockWeight: Weight = 1024;
+    pub const MaximumBlockLength: u32 = 2 * 1024;
+    pub const AvailableBlockRatio: Perbill = Perbill::from_percent(75);
+    pub const GetBaseAssetId: AssetId32<AssetId> = AssetId32::from_asset_id(XOR);
+    pub const ExistentialDeposit: u128 = 0;
+    pub const DepositBase: u64 = 1;
+    pub const DepositFactor: u64 = 1;
+    pub const MaxSignatories: u16 = 4;
 }
 
 construct_runtime!(
-    pub enum Test where
-        Block = NodeBlock,
-        NodeBlock = NodeBlock,
-        UncheckedExtrinsic = TestExtrinsic
+    pub enum Runtime where
+        Block = Block,
+        NodeBlock = Block,
+        UncheckedExtrinsic = UncheckedExtrinsic,
     {
         System: frame_system::{Module, Call, Config, Storage, Event<T>},
         Balances: pallet_balances::{Module, Call, Storage, Config<T>, Event<T>},
@@ -169,49 +53,37 @@ construct_runtime!(
         Assets: assets::{Module, Call, Storage, Config<T>, Event<T>},
         Technical: technical::{Module, Call, Config<T>, Event<T>},
         Permissions: permissions::{Module, Call, Storage, Config<T>, Event<T>},
-        ReferralSystem: referral_system::{Module, Call, Storage, Config<T>, Event},
+        ReferralSystem: referral_system::{Module, Call, Storage, Config<T>},
         IrohaMigration: iroha_migration::{Module, Call, Storage, Config<T>, Event<T>}
     }
 );
 
-parameter_types! {
-    pub const BlockHashCount: u64 = 250;
-    pub const MaximumBlockWeight: Weight = 1024;
-    pub const MaximumBlockLength: u32 = 2 * 1024;
-    pub const AvailableBlockRatio: Perbill = Perbill::from_percent(75);
-    pub const GetBaseAssetId: AssetId32<AssetId> = AssetId32::from_asset_id(XOR);
-    pub const ExistentialDeposit: u128 = 0;
-}
-
-impl frame_system::Trait for Test {
+impl frame_system::Config for Runtime {
     type BaseCallFilter = ();
+    type BlockWeights = ();
+    type BlockLength = ();
     type Origin = Origin;
     type Call = Call;
     type Index = u64;
     type BlockNumber = u64;
     type Hash = H256;
     type Hashing = BlakeTwo256;
-    type AccountId = u64;
+    type AccountId = AccountId;
     type Lookup = IdentityLookup<Self::AccountId>;
     type Header = Header;
     type Event = Event;
     type BlockHashCount = BlockHashCount;
-    type MaximumBlockWeight = MaximumBlockWeight;
     type DbWeight = ();
-    type BlockExecutionWeight = ();
-    type ExtrinsicBaseWeight = ();
-    type MaximumExtrinsicWeight = MaximumBlockWeight;
-    type MaximumBlockLength = MaximumBlockLength;
-    type AvailableBlockRatio = AvailableBlockRatio;
     type Version = ();
     type AccountData = pallet_balances::AccountData<Balance>;
     type OnNewAccount = ();
     type OnKilledAccount = ();
     type SystemWeightInfo = ();
-    type PalletInfo = ();
+    type PalletInfo = PalletInfo;
+    type SS58Prefix = ();
 }
 
-impl technical::Trait for Test {
+impl technical::Config for Runtime {
     type Event = Event;
     type TechAssetId = TechAssetId;
     type TechAccountId = TechAccountId;
@@ -221,36 +93,37 @@ impl technical::Trait for Test {
     type WeightInfo = ();
 }
 
-impl assets::Trait for Test {
+impl assets::Config for Runtime {
     type Event = Event;
     type ExtraAccountId = u64;
-    type ExtraTupleArg = common::AssetIdExtraTupleArg<DEXId, common::LiquiditySourceType, u64>;
+    type ExtraAssetRecordArg =
+        common::AssetIdExtraAssetRecordArg<DEXId, common::LiquiditySourceType, u64>;
     type AssetId = common::AssetId32<AssetId>;
     type GetBaseAssetId = GetBaseAssetId;
-    type Currency = currencies::Module<Test>;
+    type Currency = currencies::Module<Runtime>;
     type WeightInfo = ();
 }
 
-impl common::Trait for Test {
+impl common::Config for Runtime {
     type DEXId = DEXId;
     type LstId = common::LiquiditySourceType;
 }
 
-impl permissions::Trait for Test {
+impl permissions::Config for Runtime {
     type Event = Event;
 }
 
-// Required by assets::Trait
-impl currencies::Trait for Test {
+// Required by assets::Config
+impl currencies::Config for Runtime {
     type Event = Event;
     type MultiCurrency = Tokens;
-    type NativeCurrency = BasicCurrencyAdapter<Test, Balances, Amount, BlockNumber>;
-    type GetNativeCurrencyId = <Test as assets::Trait>::GetBaseAssetId;
+    type NativeCurrency = BasicCurrencyAdapter<Runtime, Balances, Amount, BlockNumber>;
+    type GetNativeCurrencyId = <Runtime as assets::Config>::GetBaseAssetId;
     type WeightInfo = ();
 }
 
-// Required by currencies::Trait
-impl pallet_balances::Trait for Test {
+// Required by currencies::Config
+impl pallet_balances::Config for Runtime {
     type Balance = Balance;
     type Event = Event;
     type DustRemoval = ();
@@ -260,27 +133,19 @@ impl pallet_balances::Trait for Test {
     type MaxLocks = ();
 }
 
-// Required by assets::Trait
-impl tokens::Trait for Test {
+impl tokens::Config for Runtime {
     type Event = Event;
     type Balance = Balance;
     type Amount = Amount;
-    type CurrencyId = <Test as assets::Trait>::AssetId;
-    type OnReceived = ();
+    type CurrencyId = <Runtime as assets::Config>::AssetId;
     type WeightInfo = ();
+    type ExistentialDeposits = ExistentialDeposits;
+    type OnDust = ();
 }
 
-impl referral_system::Trait for Test {
-    type Event = Event;
-}
+impl referral_system::Config for Runtime {}
 
-parameter_types! {
-    pub const DepositBase: u64 = 1;
-    pub const DepositFactor: u64 = 1;
-    pub const MaxSignatories: u16 = 4;
-}
-
-impl pallet_multisig::Trait for Test {
+impl pallet_multisig::Config for Runtime {
     type Call = Call;
     type Event = Event;
     type Currency = Balances;
@@ -290,7 +155,7 @@ impl pallet_multisig::Trait for Test {
     type WeightInfo = ();
 }
 
-impl Trait for Test {
+impl Config for Runtime {
     type Event = Event;
 }
 
@@ -300,17 +165,17 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
         TechAccountId::Generic(TECH_ACCOUNT_PREFIX.to_vec(), TECH_ACCOUNT_MAIN.to_vec());
 
     let mut t = frame_system::GenesisConfig::default()
-        .build_storage::<Test>()
+        .build_storage::<Runtime>()
         .unwrap();
 
-    permissions::GenesisConfig::<Test> {
+    permissions::GenesisConfig::<Runtime> {
         initial_permission_owners: vec![(MINT, Scope::Unlimited, vec![MINTING_ACCOUNT])],
         initial_permissions: vec![(MINTING_ACCOUNT, Scope::Unlimited, vec![MINT])],
     }
     .assimilate_storage(&mut t)
     .unwrap();
 
-    assets::GenesisConfig::<Test> {
+    assets::GenesisConfig::<Runtime> {
         endowed_assets: vec![(
             VAL,
             ALICE,
@@ -323,13 +188,13 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
     .assimilate_storage(&mut t)
     .unwrap();
 
-    tokens::GenesisConfig::<Test> {
+    tokens::GenesisConfig::<Runtime> {
         endowed_accounts: vec![(ALICE, VAL, 0u128.into())],
     }
     .assimilate_storage(&mut t)
     .unwrap();
 
-    technical::GenesisConfig::<Test> {
+    technical::GenesisConfig::<Runtime> {
         account_ids_to_tech_account_ids: vec![(MINTING_ACCOUNT, tech_account_id.clone())],
     }
     .assimilate_storage(&mut t)

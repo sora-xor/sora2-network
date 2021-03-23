@@ -3,7 +3,8 @@ use core::ops::{Mul, MulAssign};
 use core::result::Result;
 
 use codec::{Decode, Encode};
-use fixnum::ops::{RoundMode::*, RoundingMul};
+use fixnum::ops::RoundMode::*;
+use fixnum::ops::RoundingMul;
 use frame_support::RuntimeDebug;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};

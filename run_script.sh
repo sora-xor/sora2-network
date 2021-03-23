@@ -44,7 +44,7 @@ function local_id() {
     BEGIN { a=1 }
     /Local node identity is: /{
       if (a) {
-        print \$10 > \"$localid\";
+        print \$11 > \"$localid\";
         fflush();
         a=0
       }

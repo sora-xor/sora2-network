@@ -1,16 +1,13 @@
-use crate::traits::{IsRepresentation, PureOrWrapped, Trait};
+use crate::traits::{IsRepresentation, PureOrWrapped};
 use codec::{Decode, Encode};
 use core::fmt::Debug;
 use frame_support::dispatch::DispatchError;
-use frame_support::ensure;
-use frame_support::RuntimeDebug;
-use frame_support::{decl_error, decl_module};
+use frame_support::{ensure, RuntimeDebug};
 use rustc_hex::{FromHex, ToHex};
 #[cfg(feature = "std")]
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use sp_core::H256;
-use sp_std::convert::TryFrom;
-use sp_std::convert::TryInto;
+use sp_std::convert::{TryFrom, TryInto};
 use sp_std::fmt::Display;
 use sp_std::marker::PhantomData;
 #[cfg(feature = "std")]
@@ -58,21 +55,6 @@ impl<'de> Deserialize<'de> for BalanceWrapper {
         let s = String::deserialize(deserializer)?;
         let inner = Balance::from_str(&s).map_err(|str_err| serde::de::Error::custom(str_err))?;
         Ok(BalanceWrapper(inner))
-    }
-}
-
-decl_error! {
-    pub enum Error for Module<T: Trait> {
-        /// Liquidity source can't exchange assets with the given IDs on the given DEXId.
-        CantExchange,
-        /// Assets can't be swapped or exchanged with the given method.
-        UnsupportedSwapMethod,
-    }
-}
-
-decl_module! {
-    pub struct Module<T: Trait> for enum Call where origin: T::Origin {
-        type Error = Error<T>;
     }
 }
 
@@ -364,7 +346,7 @@ pub enum TechAssetId<AssetId> {
 
 #[derive(Encode, Decode, Eq, PartialEq, PartialOrd, Ord, Debug, Copy, Clone, Hash)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-pub enum AssetIdExtraTupleArg<DEXId, LstId, AccountId> {
+pub enum AssetIdExtraAssetRecordArg<DEXId, LstId, AccountId> {
     DEXId(DEXId),
     LstId(LstId),
     AccountId(AccountId),
