@@ -2,7 +2,7 @@ use crate::{self as pswap_distribution, Config};
 use common::mock::ExistentialDeposits;
 use common::prelude::Balance;
 use common::{
-    balance, fixed, fixed_from_basis_points, AssetSymbol, BalancePrecision, Fixed, FromGenericPair,
+    balance, fixed, fixed_from_basis_points, AssetName, AssetSymbol, BalancePrecision, Fixed, FromGenericPair,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::GenesisBuild;
@@ -191,6 +191,7 @@ pub struct ExtBuilder {
         AssetId,
         AccountId,
         AssetSymbol,
+        AssetName,
         BalancePrecision,
         Balance,
         bool,
@@ -209,6 +210,7 @@ impl ExtBuilder {
                 PoolTokenAId::get(),
                 ALICE,
                 AssetSymbol(b"POOL".to_vec()),
+                AssetName(b"Pool Token".to_vec()),
                 18,
                 Balance::from(0u32),
                 true,
@@ -231,6 +233,7 @@ impl ExtBuilder {
                     common::XOR.into(),
                     ALICE,
                     AssetSymbol(b"XOR".to_vec()),
+                    AssetName(b"SORA".to_vec()),
                     18,
                     Balance::zero(),
                     true,
@@ -239,6 +242,7 @@ impl ExtBuilder {
                     common::PSWAP.into(),
                     ALICE,
                     AssetSymbol(b"PSWAP".to_vec()),
+                    AssetName(b"Polkaswap".to_vec()),
                     10,
                     Balance::zero(),
                     true,
@@ -247,6 +251,7 @@ impl ExtBuilder {
                     PoolTokenAId::get(),
                     ALICE,
                     AssetSymbol(b"POOLA".to_vec()),
+                    AssetName(b"Pool A".to_vec()),
                     18,
                     Balance::zero(),
                     true,
@@ -255,6 +260,7 @@ impl ExtBuilder {
                     PoolTokenBId::get(),
                     ALICE,
                     AssetSymbol(b"POOLB".to_vec()),
+                    AssetName(b"Pool B".to_vec()),
                     18,
                     Balance::zero(),
                     true,

@@ -2,7 +2,7 @@ use crate::{self as mcbcp, Config};
 use common::mock::ExistentialDeposits;
 use common::prelude::{Balance, FixedWrapper, SwapAmount, SwapOutcome};
 use common::{
-    self, balance, fixed_wrapper, hash, Amount, AssetId32, AssetSymbol, DEXInfo,
+    self, balance, fixed_wrapper, hash, Amount, AssetId32, AssetName, AssetSymbol, DEXInfo,
     LiquiditySourceFilter, LiquiditySourceType, TechPurpose, PSWAP, USDT, VAL, XOR,
 };
 use currencies::BasicCurrencyAdapter;
@@ -372,7 +372,7 @@ impl liquidity_proxy::LiquidityProxyTrait<DEXId, AccountId, AssetId> for MockDEX
 }
 
 pub struct ExtBuilder {
-    endowed_accounts: Vec<(AccountId, AssetId, Balance, AssetSymbol, u8)>,
+    endowed_accounts: Vec<(AccountId, AssetId, Balance, AssetSymbol, AssetName, u8)>,
     dex_list: Vec<(DEXId, DEXInfo<AssetId>)>,
     initial_permission_owners: Vec<(u32, Scope, Vec<AccountId>)>,
     initial_permissions: Vec<(AccountId, Scope, Vec<u32>)>,
@@ -383,12 +383,13 @@ impl Default for ExtBuilder {
     fn default() -> Self {
         Self {
             endowed_accounts: vec![
-                (alice(), USDT, 0, AssetSymbol(b"USDT".to_vec()), 18),
+                (alice(), USDT, 0, AssetSymbol(b"USDT".to_vec()), AssetName(b"Tether USD".to_vec()), 18),
                 (
                     alice(),
                     XOR,
                     balance!(350000),
                     AssetSymbol(b"XOR".to_vec()),
+                    AssetName(b"SORA".to_vec()),
                     18,
                 ),
                 (
@@ -396,6 +397,7 @@ impl Default for ExtBuilder {
                     VAL,
                     balance!(500000),
                     AssetSymbol(b"VAL".to_vec()),
+                    AssetName(b"SORA Validator Token".to_vec()),
                     18,
                 ),
             ],
@@ -425,7 +427,7 @@ impl Default for ExtBuilder {
 }
 
 impl ExtBuilder {
-    pub fn new(endowed_accounts: Vec<(AccountId, AssetId, Balance, AssetSymbol, u8)>) -> Self {
+    pub fn new(endowed_accounts: Vec<(AccountId, AssetId, Balance, AssetSymbol, AssetName, u8)>) -> Self {
         Self {
             endowed_accounts,
             ..Default::default()
@@ -464,11 +466,12 @@ impl ExtBuilder {
                 .endowed_accounts
                 .iter()
                 .cloned()
-                .map(|(account_id, asset_id, _, symbol, precision)| {
+                .map(|(account_id, asset_id, _, symbol, name, precision)| {
                     (
                         asset_id,
                         account_id,
                         symbol,
+                        name,
                         precision,
                         Balance::zero(),
                         true,
