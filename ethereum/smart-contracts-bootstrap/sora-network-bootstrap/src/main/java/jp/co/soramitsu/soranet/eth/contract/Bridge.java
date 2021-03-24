@@ -339,11 +339,23 @@ public class Bridge extends Contract {
         return executeRemoteCallSingleValueReturn(function, Boolean.class);
     }
 
-    public RemoteFunctionCall<TransactionReceipt> addEthNativeToken(String newToken, String symbol, String name, BigInteger decimals, byte[] txHash, List<BigInteger> v, List<byte[]> r, List<byte[]> s) {
+    /**
+     * 
+     * @param newToken 
+     * @param ticker - a token's ticker (symbol)
+     * @param name - a token's name
+     * @param decimals - precision for a token
+     * @param txHash - bridge transaction hash
+     * @param v - signature component v
+     * @param r - signature component r
+     * @param s - signature component s
+     * @return
+     */
+    public RemoteFunctionCall<TransactionReceipt> addEthNativeToken(String newToken, String ticker, String name, BigInteger decimals, byte[] txHash, List<BigInteger> v, List<byte[]> r, List<byte[]> s) {
         final org.web3j.abi.datatypes.Function function = new org.web3j.abi.datatypes.Function(
                 FUNC_ADDETHNATIVETOKEN, 
                 Arrays.<Type>asList(new org.web3j.abi.datatypes.Address(160, newToken), 
-                new org.web3j.abi.datatypes.Utf8String(symbol), 
+                new org.web3j.abi.datatypes.Utf8String(ticker), 
                 new org.web3j.abi.datatypes.Utf8String(name), 
                 new org.web3j.abi.datatypes.generated.Uint8(decimals), 
                 new org.web3j.abi.datatypes.generated.Bytes32(txHash), 

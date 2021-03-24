@@ -93,6 +93,19 @@ mod tests {
                 ),
                 Error::<Runtime>::InvalidAssetName
             );
+
+            assert_err!(
+                Assets::register_asset_id(
+                    ALICE,
+                    VAL,
+                    AssetSymbol(b"VAL".to_vec()),
+                    AssetName(b"This is a name with numb3rs".to_vec()),
+                    18,
+                    Balance::zero(),
+                    true,
+                ),
+                Error::<Runtime>::InvalidAssetName
+            );
         });
     }
 

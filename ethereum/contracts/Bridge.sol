@@ -97,7 +97,7 @@ contract Bridge {
      * Token should not been already added.
      * 
      * @param newToken new token contract address
-     * @param symbol token symbol
+     * @param ticker token ticker (symbol)
      * @param name token title
      * @param decimals count of token decimal places
      * @param txHash transaction hash from sidechain
@@ -107,7 +107,7 @@ contract Bridge {
      */
     function addEthNativeToken(
         address newToken,
-        string memory symbol,
+        string memory ticker,
         string memory name,
         uint8 decimals,
         bytes32 txHash,
@@ -117,7 +117,7 @@ contract Bridge {
     )
     public shouldBeInitialized {
         require(acceptedEthTokens[newToken] == false);
-        require(checkSignatures(keccak256(abi.encodePacked(newToken, symbol, name, decimals, txHash, _networkId)),
+        require(checkSignatures(keccak256(abi.encodePacked(newToken, ticker, name, decimals, txHash, _networkId)),
             v,
             r,
             s), "Peer signatures are invalid"
@@ -197,7 +197,7 @@ contract Bridge {
     * Add new token from sidechain to the bridge white list.
     * 
     * @param name token title
-    * @param symbol token symbol
+    * @param ticker token ticker (symbol)
     * @param decimals number of decimals
     * @param sidechainAssetId token id on the sidechain
     * @param txHash sidechain transaction hash
@@ -207,7 +207,7 @@ contract Bridge {
     */
     function addNewSidechainToken(
         string memory name,
-        string memory symbol,
+        string memory ticker,
         uint8 decimals,
         bytes32 sidechainAssetId,
         bytes32 txHash,
@@ -217,7 +217,7 @@ contract Bridge {
     public shouldBeInitialized {
         require(checkSignatures(keccak256(abi.encodePacked(
                 name,
-                symbol,
+                ticker,
                 decimals,
                 sidechainAssetId,
                 txHash,
@@ -228,7 +228,7 @@ contract Bridge {
             s), "Peer signatures are invalid"
         );
         // Create new instance of the token
-        MasterToken tokenInstance = new MasterToken(name, symbol, decimals, address(this), 0, sidechainAssetId);
+        MasterToken tokenInstance = new MasterToken(name, ticker, decimals, address(this), 0, sidechainAssetId);
         address tokenAddress = address(tokenInstance);
         _sidechainTokens[sidechainAssetId] = tokenAddress;
         _sidechainTokensByAddress[tokenAddress] = sidechainAssetId;

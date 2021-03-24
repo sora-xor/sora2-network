@@ -211,7 +211,7 @@ pub mod pallet {
         ///
         /// Registers new `AssetId` for the given `origin`.
         /// AssetSymbol should represent string with only uppercase latin chars with max length of 7.
-        /// AssetName should represent string with only uppercase or lowercase latin chars with max length of 50.
+        /// AssetName should represent string with only uppercase or lowercase latin chars and spaces, with max length of 33.
         #[pallet::weight(<T as Config>::WeightInfo::register())]
         pub fn register(
             origin: OriginFor<T>,
@@ -489,7 +489,7 @@ impl<T: Config> Pallet<T> {
     pub fn register_from(
         account_id: &T::AccountId,
         symbol: AssetSymbol,
-        name:AssetName,
+        name: AssetName,
         precision: BalancePrecision,
         initial_supply: Balance,
         is_mintable: bool,
