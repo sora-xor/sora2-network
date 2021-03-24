@@ -53,7 +53,7 @@ pub use common::prelude::{
 };
 pub use common::weights::{BlockLength, BlockWeights, TransactionByteFee};
 pub use common::{
-    fixed, fixed_from_basis_points, AssetSymbol, BalancePrecision, BasisPoints, FilterMode, Fixed,
+    fixed, fixed_from_basis_points, AssetName, AssetSymbol, BalancePrecision, BasisPoints, FilterMode, Fixed,
     FromGenericPair, LiquiditySource, LiquiditySourceFilter, LiquiditySourceId,
     LiquiditySourceType,
 };
@@ -1076,7 +1076,7 @@ impl_runtime_apis! {
         }
     }
 
-    impl assets_runtime_api::AssetsAPI<Block, AccountId, AssetId, Balance, AssetSymbol, BalancePrecision> for Runtime {
+    impl assets_runtime_api::AssetsAPI<Block, AccountId, AssetId, Balance, AssetSymbol, AssetName, BalancePrecision> for Runtime {
         fn free_balance(account_id: AccountId, asset_id: AssetId) -> Option<assets_runtime_api::BalanceInfo<Balance>> {
             Assets::free_balance(&asset_id, &account_id).ok().map(|balance|
                 assets_runtime_api::BalanceInfo::<Balance> {
@@ -1115,18 +1115,18 @@ impl_runtime_apis! {
             Assets::list_registered_asset_ids()
         }
 
-        fn list_asset_infos() -> Vec<assets_runtime_api::AssetInfo<AssetId, AssetSymbol, u8>> {
-            Assets::list_registered_asset_infos().into_iter().map(|(asset_id, symbol, precision, is_mintable)|
-                assets_runtime_api::AssetInfo::<AssetId, AssetSymbol, BalancePrecision> {
-                    asset_id, symbol, precision, is_mintable
+        fn list_asset_infos() -> Vec<assets_runtime_api::AssetInfo<AssetId, AssetSymbol, AssetName, u8>> {
+            Assets::list_registered_asset_infos().into_iter().map(|(asset_id, symbol, name, precision, is_mintable)|
+                assets_runtime_api::AssetInfo::<AssetId, AssetSymbol, AssetName, BalancePrecision> {
+                    asset_id, symbol, name, precision, is_mintable
                 }
             ).collect()
         }
 
-        fn get_asset_info(asset_id: AssetId) -> Option<assets_runtime_api::AssetInfo<AssetId, AssetSymbol, BalancePrecision>> {
-            let (symbol, precision, is_mintable) = Assets::get_asset_info(&asset_id);
-            Some(assets_runtime_api::AssetInfo::<AssetId, AssetSymbol, BalancePrecision> {
-                asset_id, symbol, precision, is_mintable,
+        fn get_asset_info(asset_id: AssetId) -> Option<assets_runtime_api::AssetInfo<AssetId, AssetSymbol, AssetName, BalancePrecision>> {
+            let (symbol, name, precision, is_mintable) = Assets::get_asset_info(&asset_id);
+            Some(assets_runtime_api::AssetInfo::<AssetId, AssetSymbol, AssetName, BalancePrecision> {
+                asset_id, symbol, name, precision, is_mintable,
             })
         }
     }

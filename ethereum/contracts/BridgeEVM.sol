@@ -181,7 +181,7 @@ contract Bridge {
     * Add new token from sidechain to the bridge white list.
     * 
     * @param name token title
-    * @param ticker token symbol
+    * @param symbol token symbol
     * @param decimals number of decimals
     * @param sidechainAssetId token id on the sidechain
     * @param txHash sidechain transaction hash
