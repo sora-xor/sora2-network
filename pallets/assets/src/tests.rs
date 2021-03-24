@@ -270,4 +270,52 @@ mod tests {
             );
         })
     }
+
+    #[test]
+    fn should_burn_from() {
+        let mut ext = ExtBuilder::default().build();
+        ext.execute_with(|| {
+            assert_ok!(Assets::register_asset_id(
+                ALICE,
+                XOR,
+                AssetSymbol(b"XOR".to_vec()),
+                18,
+                Balance::from(10u32),
+                true,
+            ));
+            assert_eq!(
+                Assets::free_balance(&XOR, &ALICE).expect("Failed to query free balance."),
+                Balance::from(10u32),
+            );
+            assert_ok!(Assets::burn_from(
+                &XOR,
+                &ALICE,
+                &ALICE,
+                Balance::from(10u32)
+            ));
+            assert_eq!(
+                Assets::free_balance(&XOR, &ALICE).expect("Failed to query free balance."),
+                Balance::from(0u32),
+            );
+        })
+    }
+
+    #[test]
+    fn should_not_allow_burn_from_due_to_permissions() {
+        let mut ext = ExtBuilder::default().build();
+        ext.execute_with(|| {
+            assert_ok!(Assets::register_asset_id(
+                ALICE,
+                XOR,
+                AssetSymbol(b"XOR".to_vec()),
+                18,
+                Balance::from(10u32),
+                true,
+            ));
+            assert_noop!(
+                Assets::burn_from(&XOR, &BOB, &ALICE, Balance::from(10u32)),
+                permissions::Error::<Runtime>::Forbidden
+            );
+        })
+    }
 }

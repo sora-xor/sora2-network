@@ -212,7 +212,8 @@ impl<T: Config> Pallet<T> {
     ) -> DispatchResult {
         let account_id = Self::tech_account_id_to_account_id(tech_dest)?;
         Self::ensure_account_registered(&account_id)?;
-        assets::Module::<T>::burn_from(asset, &account_id, &account_id, amount)
+        let _ = assets::Module::<T>::burn_from(asset, &account_id, &account_id, amount)?;
+        Ok(())
     }
 
     /// Burn specific asset from the given `TechAccountId`.

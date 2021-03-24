@@ -8,7 +8,7 @@ use frame_support::dispatch::DispatchError;
 use frame_support::ensure;
 use frame_support::traits::Get;
 use frame_system::ensure_signed;
-use permissions::{Scope, BURN, MINT, SLASH, TRANSFER};
+use permissions::{Scope, BURN, MINT, TRANSFER};
 
 #[cfg(test)]
 mod mock;
@@ -187,7 +187,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
     pub fn set_reserves_account_id(account: T::TechAccountId) -> Result<(), DispatchError> {
         ReservesAcc::<T, I>::set(account.clone());
         let account_id = technical::Pallet::<T>::tech_account_id_to_account_id(&account)?;
-        let permissions = [BURN, MINT, TRANSFER, SLASH];
+        let permissions = [BURN, MINT, TRANSFER];
         for permission in &permissions {
             permissions::Pallet::<T>::assign_permission(
                 account_id.clone(),
