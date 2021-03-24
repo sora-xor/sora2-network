@@ -46,9 +46,7 @@ impl FixedWrapper {
         (0..x).fold(fixed!(1), |acc, _| acc * self.clone())
     }
 
-    /// Calculates square root of self using [Babylonian method][babylonian].
-    /// Precision is `1e-10`.
-    /// [babylonian]: https://en.wikipedia.org/wiki/Methods_of_computing_square_roots#Babylonian_method
+    /// Calculates square root of underlying Fixed number.
     pub fn sqrt_accurate(self) -> Self {
         if let Ok(num) = self.inner {
             Self::from(num.rsqrt(Floor))
