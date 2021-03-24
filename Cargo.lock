@@ -2029,9 +2029,9 @@ checksum = "37ab347416e802de484e4d03c7316c48f1ecb56574dfd4a46a80f173ce1de04d"
 
 [[package]]
 name = "fixnum"
-version = "0.4.0"
+version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7f2adf6074bf4d24c49d9000dd65a951bd6c475a642a8fbd6b49c6ebf7a9c989"
+checksum = "7da3b48a12b7b627989d4a008a157b5446facb678cadb775a2f0cc2511ab71b7"
 dependencies = [
  "derive_more 0.99.11",
  "parity-scale-codec",
