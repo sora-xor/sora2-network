@@ -611,7 +611,7 @@ impl<T: Config> OutgoingAddAsset<T> {
         let hash = H256(tx_hash.0);
         let (symbol, name, precision, _) = assets::Pallet::<T>::get_asset_info(&self.asset_id);
         let symbol: String = String::from_utf8_lossy(&symbol.0).into();
-        let name = symbol.clone();
+        let name: String = String::from_utf8_lossy(&name.0).into();
         let asset_id_code = <AssetIdOf<T> as Into<H256>>::into(self.asset_id);
         let sidechain_asset_id = asset_id_code.0.to_vec();
         let mut network_id: H256 = H256::default();

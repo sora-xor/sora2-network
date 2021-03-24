@@ -2,7 +2,7 @@ use crate as iroha_migration; // for construct_runtime
 use crate::{Config, TECH_ACCOUNT_MAIN, TECH_ACCOUNT_PREFIX};
 use common::mock::ExistentialDeposits;
 use common::prelude::Balance;
-use common::{Amount, AssetId, AssetId32, AssetSymbol, VAL};
+use common::{Amount, AssetId, AssetId32, AssetName, AssetSymbol, VAL};
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::GenesisBuild;
 use frame_support::weights::Weight;
@@ -180,6 +180,7 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
             VAL,
             ALICE,
             AssetSymbol(b"VAL".to_vec()),
+            AssetName(b"SORA Validator Token".to_vec()),
             18,
             Balance::from(0u32),
             true,
