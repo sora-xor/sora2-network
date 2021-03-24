@@ -82,7 +82,7 @@ contract Bridge {
      * Token should not been already added.
      * 
      * @param newToken new token contract address
-     * @param ticker token ticker
+     * @param symbol token symbol
      * @param name token title
      * @param decimals count of token decimal places
      * @param txHash transaction hash from sidechain
@@ -92,7 +92,7 @@ contract Bridge {
      */
     function addEthNativeToken(
         address newToken,
-        string memory ticker,
+        string memory symbol,
         string memory name,
         uint8 decimals,
         bytes32 txHash,
@@ -102,7 +102,7 @@ contract Bridge {
     )
     public shouldBeInitialized {
         require(acceptedEthTokens[newToken] == false);
-        require(checkSignatures(keccak256(abi.encodePacked(newToken, ticker, name, decimals, txHash, _networkId)),
+        require(checkSignatures(keccak256(abi.encodePacked(newToken, symbol, name, decimals, txHash, _networkId)),
             v,
             r,
             s), "Peer signatures are invalid"

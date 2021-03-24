@@ -1,9 +1,9 @@
 mod tests {
     use crate::mock::*;
     use crate::Error;
-    use common::prelude::{AssetSymbol, Balance};
+    use common::prelude::{AssetName, AssetSymbol, Balance};
     use common::{AssetId32, DOT, VAL, XOR};
-    use frame_support::{assert_noop, assert_ok};
+    use frame_support::{assert_err, assert_noop, assert_ok};
     use hex_literal::hex;
     use sp_runtime::traits::Zero;
 
@@ -22,6 +22,7 @@ mod tests {
             assert_ok!(Assets::register(
                 Origin::signed(ALICE),
                 AssetSymbol(b"ALIC".to_vec()),
+                AssetName(b"ALICE".to_vec()),
                 Balance::zero(),
                 true,
             ));
@@ -39,6 +40,7 @@ mod tests {
                 ALICE,
                 XOR,
                 AssetSymbol(b"XOR".to_vec()),
+                AssetName(b"SORA".to_vec()),
                 18,
                 Balance::zero(),
                 true,
@@ -55,6 +57,7 @@ mod tests {
                 ALICE,
                 XOR,
                 AssetSymbol(b"XOR".to_vec()),
+                AssetName(b"SORA".to_vec()),
                 18,
                 Balance::zero(),
                 true,
@@ -64,11 +67,31 @@ mod tests {
                     ALICE,
                     XOR,
                     AssetSymbol(b"XOR".to_vec()),
+                    AssetName(b"SORA".to_vec()),
                     18,
                     Balance::zero(),
                     true,
                 ),
                 Error::<Runtime>::AssetIdAlreadyExists
+            );
+        });
+    }
+
+    #[test]
+    fn should_not_register_invalid_asset_name() {
+        let mut ext = ExtBuilder::default().build();
+        ext.execute_with(|| {
+            assert_err!(
+                Assets::register_asset_id(
+                    ALICE,
+                    XOR,
+                    AssetSymbol(b"XOR".to_vec()),
+                    AssetName(b"This is a name with length over thirty three".to_vec()),
+                    18,
+                    Balance::zero(),
+                    true,
+                ),
+                Error::<Runtime>::InvalidAssetName
             );
         });
     }
@@ -81,6 +104,7 @@ mod tests {
                 ALICE,
                 XOR,
                 AssetSymbol(b"XOR".to_vec()),
+                AssetName(b"SORA".to_vec()),
                 18,
                 Balance::zero(),
                 true,
@@ -99,6 +123,7 @@ mod tests {
                 ALICE,
                 XOR,
                 AssetSymbol(b"XOR".to_vec()),
+                AssetName(b"SORA".to_vec()),
                 18,
                 Balance::zero(),
                 true,
@@ -130,9 +155,32 @@ mod tests {
             assert!(crate::is_symbol_valid(&AssetSymbol(b"PSWAP".to_vec())));
             assert!(crate::is_symbol_valid(&AssetSymbol(b"GT".to_vec())));
             assert!(crate::is_symbol_valid(&AssetSymbol(b"BP".to_vec())));
+            
             assert!(!crate::is_symbol_valid(&AssetSymbol(b"ABCDEFGH".to_vec())));
             assert!(!crate::is_symbol_valid(&AssetSymbol(b"AB1".to_vec())));
             assert!(!crate::is_symbol_valid(&AssetSymbol(
+                b"\xF0\x9F\x98\xBF".to_vec()
+            )));
+        })
+    }
+
+    #[test]
+    fn should_check_names_correctly() {
+        let mut ext = ExtBuilder::default().build();
+        ext.execute_with(|| {
+            assert!(crate::is_name_valid(&AssetName(b"XOR".to_vec())));
+            assert!(crate::is_name_valid(&AssetName(b"DOT".to_vec())));
+            assert!(crate::is_name_valid(&AssetName(b"KSM".to_vec())));
+            assert!(crate::is_name_valid(&AssetName(b"USDT".to_vec())));
+            assert!(crate::is_name_valid(&AssetName(b"VAL".to_vec())));
+            assert!(crate::is_name_valid(&AssetName(b"PSWAP".to_vec())));
+            assert!(crate::is_name_valid(&AssetName(b"GT".to_vec())));
+            assert!(crate::is_name_valid(&AssetName(b"BP".to_vec())));
+            assert!(crate::is_name_valid(&AssetName(b"SORA Validator Token".to_vec())));
+
+            assert!(!crate::is_name_valid(&AssetName(b"This is a name with length over thirty three".to_vec())));
+            assert!(!crate::is_name_valid(&AssetName(b"AB1".to_vec())));
+            assert!(!crate::is_name_valid(&AssetName(
                 b"\xF0\x9F\x98\xBF".to_vec()
             )));
         })
@@ -146,6 +194,7 @@ mod tests {
                 ALICE,
                 XOR,
                 AssetSymbol(b"XOR".to_vec()),
+                AssetName(b"SORA".to_vec()),
                 18,
                 Balance::from(123u32),
                 true,
@@ -158,6 +207,7 @@ mod tests {
                 ALICE,
                 VAL,
                 AssetSymbol(b"VAL".to_vec()),
+                AssetName(b"SORA Validator Token".to_vec()),
                 18,
                 Balance::from(321u32),
                 false,
@@ -170,6 +220,7 @@ mod tests {
                 ALICE,
                 DOT,
                 AssetSymbol(b"DOT".to_vec()),
+                AssetName(b"Polkadot".to_vec()),
                 18,
                 Balance::from(0u32),
                 false,
@@ -189,6 +240,7 @@ mod tests {
                 ALICE,
                 XOR,
                 AssetSymbol(b"XOR".to_vec()),
+                AssetName(b"SORA".to_vec()),
                 18,
                 Balance::from(10u32),
                 false,
@@ -218,6 +270,7 @@ mod tests {
                 ALICE,
                 XOR,
                 AssetSymbol(b"XOR".to_vec()),
+                AssetName(b"SORA".to_vec()),
                 18,
                 Balance::from(10u32),
                 true,
@@ -259,6 +312,7 @@ mod tests {
                 ALICE,
                 XOR,
                 AssetSymbol(b"XOR".to_vec()),
+                AssetName(b"SORA".to_vec()),
                 18,
                 Balance::from(10u32),
                 true,

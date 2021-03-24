@@ -2001,7 +2001,8 @@ dependencies = [
 [[package]]
 name = "fixed-hash"
 version = "0.7.0"
-source = "git+https://github.com/vmarkushin/parity-common.git?branch=no-std#fdb5d222d8d87b645219009eef167822e905c8a5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cfcf0ed7fe52a17a03854ec54a9f76d6d84508d1c0e66bc1793301c73fc8493c"
 dependencies = [
  "byteorder",
  "rand 0.8.3",
@@ -2012,8 +2013,7 @@ dependencies = [
 [[package]]
 name = "fixed-hash"
 version = "0.7.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cfcf0ed7fe52a17a03854ec54a9f76d6d84508d1c0e66bc1793301c73fc8493c"
+source = "git+https://github.com/vmarkushin/parity-common.git?branch=no-std#fdb5d222d8d87b645219009eef167822e905c8a5"
 dependencies = [
  "byteorder",
  "rand 0.8.3",
@@ -3089,7 +3089,8 @@ dependencies = [
 [[package]]
 name = "impl-codec"
 version = "0.5.0"
-source = "git+https://github.com/vmarkushin/parity-common.git?branch=no-std#fdb5d222d8d87b645219009eef167822e905c8a5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "df170efa359aebdd5cb7fe78edcc67107748e4737bdca8a8fb40d15ea7a877ed"
 dependencies = [
  "parity-scale-codec",
 ]
@@ -3097,8 +3098,7 @@ dependencies = [
 [[package]]
 name = "impl-codec"
 version = "0.5.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "df170efa359aebdd5cb7fe78edcc67107748e4737bdca8a8fb40d15ea7a877ed"
+source = "git+https://github.com/vmarkushin/parity-common.git?branch=no-std#fdb5d222d8d87b645219009eef167822e905c8a5"
 dependencies = [
  "parity-scale-codec",
 ]
@@ -5587,18 +5587,6 @@ dependencies = [
 [[package]]
 name = "primitive-types"
 version = "0.9.0"
-source = "git+https://github.com/vmarkushin/parity-common.git?branch=no-std#fdb5d222d8d87b645219009eef167822e905c8a5"
-dependencies = [
- "fixed-hash 0.7.0 (git+https://github.com/vmarkushin/parity-common.git?branch=no-std)",
- "funty",
- "impl-codec 0.5.0 (git+https://github.com/vmarkushin/parity-common.git?branch=no-std)",
- "impl-serde 0.3.2",
- "uint 0.9.0 (git+https://github.com/vmarkushin/parity-common.git?branch=no-std)",
-]
-
-[[package]]
-name = "primitive-types"
-version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2415937401cb030a2a0a4d922483f945fa068f52a7dbb22ce0fe5f2b6f6adace"
 dependencies = [
@@ -5606,6 +5594,18 @@ dependencies = [
  "impl-codec 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "impl-serde 0.3.1",
  "uint 0.9.0 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "primitive-types"
+version = "0.9.0"
+source = "git+https://github.com/vmarkushin/parity-common.git?branch=no-std#fdb5d222d8d87b645219009eef167822e905c8a5"
+dependencies = [
+ "fixed-hash 0.7.0 (git+https://github.com/vmarkushin/parity-common.git?branch=no-std)",
+ "funty",
+ "impl-codec 0.5.0 (git+https://github.com/vmarkushin/parity-common.git?branch=no-std)",
+ "impl-serde 0.3.2",
+ "uint 0.9.0 (git+https://github.com/vmarkushin/parity-common.git?branch=no-std)",
 ]
 
 [[package]]
@@ -9326,7 +9326,8 @@ checksum = "56dee185309b50d1f11bfedef0fe6d036842e3fb77413abef29f8f8d1c5d4c1c"
 [[package]]
 name = "uint"
 version = "0.9.0"
-source = "git+https://github.com/vmarkushin/parity-common.git?branch=no-std#fdb5d222d8d87b645219009eef167822e905c8a5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e11fe9a9348741cf134085ad57c249508345fe16411b3d7fb4ff2da2f1d6382e"
 dependencies = [
  "byteorder",
  "crunchy",
@@ -9337,8 +9338,7 @@ dependencies = [
 [[package]]
 name = "uint"
 version = "0.9.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e11fe9a9348741cf134085ad57c249508345fe16411b3d7fb4ff2da2f1d6382e"
+source = "git+https://github.com/vmarkushin/parity-common.git?branch=no-std#fdb5d222d8d87b645219009eef167822e905c8a5"
 dependencies = [
  "byteorder",
  "crunchy",

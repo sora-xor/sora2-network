@@ -4,7 +4,7 @@ use crate::{AssetKind, Config, NetworkConfig};
 use codec::{Codec, Decode, Encode};
 use common::mock::ExistentialDeposits;
 use common::prelude::Balance;
-use common::{Amount, AssetId, AssetId32, AssetSymbol, VAL};
+use common::{Amount, AssetId, AssetId32, AssetName, AssetSymbol, VAL};
 use currencies::BasicCurrencyAdapter;
 use frame_support::dispatch::{DispatchInfo, GetDispatchInfo};
 use frame_support::sp_io::TestExternalities;
@@ -518,6 +518,7 @@ impl ExtBuilder {
                     x.1,
                     self.root_account_id.clone(),
                     AssetSymbol(b"".to_vec()),
+                    AssetName(b"".to_vec()),
                     18,
                     Balance::from(0u32),
                     true,

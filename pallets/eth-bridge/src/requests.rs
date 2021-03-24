@@ -9,7 +9,7 @@ use codec::{Decode, Encode};
 use common::prelude::Balance;
 #[cfg(feature = "std")]
 use common::utils::string_serialization;
-use common::{AssetSymbol, BalancePrecision, VAL, XOR};
+use common::{AssetName, AssetSymbol, BalancePrecision, VAL, XOR};
 use ethabi::{FixedBytes, Token};
 #[allow(unused_imports)]
 use frame_support::debug;
@@ -35,6 +35,7 @@ pub struct IncomingAddToken<T: Config> {
     pub asset_id: T::AssetId,
     pub precision: BalancePrecision,
     pub symbol: AssetSymbol,
+    pub name: AssetName,
     pub tx_hash: H256,
     pub at_height: u64,
     pub timepoint: Timepoint<T>,
@@ -48,6 +49,7 @@ impl<T: Config> IncomingAddToken<T> {
             self.token_address,
             self.precision,
             self.symbol.clone(),
+            self.name.clone(),
             self.network_id,
         )?;
         Ok(self.tx_hash)
@@ -607,7 +609,7 @@ pub struct OutgoingAddAsset<T: Config> {
 impl<T: Config> OutgoingAddAsset<T> {
     pub fn to_eth_abi(&self, tx_hash: H256) -> Result<OutgoingAddAssetEncoded, Error<T>> {
         let hash = H256(tx_hash.0);
-        let (symbol, precision, _) = assets::Pallet::<T>::get_asset_info(&self.asset_id);
+        let (symbol, name, precision, _) = assets::Pallet::<T>::get_asset_info(&self.asset_id);
         let symbol: String = String::from_utf8_lossy(&symbol.0).into();
         let name = symbol.clone();
         let asset_id_code = <AssetIdOf<T> as Into<H256>>::into(self.asset_id);
@@ -668,8 +670,8 @@ impl<T: Config> OutgoingAddAsset<T> {
 #[derive(Clone, PartialEq, Eq, Encode, Decode, RuntimeDebug)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct OutgoingAddAssetEncoded {
-    pub name: String,
     pub symbol: String,
+    pub name: String,
     pub decimal: u8,
     pub sidechain_asset_id: FixedBytes,
     pub hash: H256,
@@ -681,8 +683,8 @@ pub struct OutgoingAddAssetEncoded {
 impl OutgoingAddAssetEncoded {
     pub fn input_tokens(&self, signatures: Option<Vec<SignatureParams>>) -> Vec<Token> {
         let mut tokens = vec![
-            Token::String(self.name.clone()),
             Token::String(self.symbol.clone()),
+            Token::String(self.name.clone()),
             Token::Uint(self.decimal.into()),
             Token::FixedBytes(self.sidechain_asset_id.clone()),
         ];
@@ -700,7 +702,7 @@ impl OutgoingAddAssetEncoded {
 pub struct OutgoingAddToken<T: Config> {
     pub author: T::AccountId,
     pub token_address: Address,
-    pub ticker: String,
+    pub symbol: String,
     pub name: String,
     pub decimals: u8,
     pub nonce: T::Index,
@@ -752,7 +754,7 @@ impl<T: Config> OutgoingAddToken<T> {
     pub fn to_eth_abi(&self, tx_hash: H256) -> Result<OutgoingAddTokenEncoded, Error<T>> {
         let hash = H256(tx_hash.0);
         let token_address = self.token_address;
-        let ticker = self.ticker.clone();
+        let symbol = self.symbol.clone();
         let name = self.name.clone();
         let decimals = self.decimals;
         let mut network_id: H256 = H256::default();
@@ -764,7 +766,7 @@ impl<T: Config> OutgoingAddToken<T> {
         .to_big_endian(&mut network_id.0);
         let raw = ethabi::encode_packed(&[
             Token::Address(types::H160(token_address.0)),
-            Token::String(ticker.clone()),
+            Token::String(symbol.clone()),
             Token::String(name.clone()),
             Token::UintSized(decimals.into(), 8),
             Token::FixedBytes(tx_hash.0.to_vec()),
@@ -772,8 +774,8 @@ impl<T: Config> OutgoingAddToken<T> {
         ]);
         Ok(OutgoingAddTokenEncoded {
             token_address,
+            symbol,
             name,
-            ticker,
             decimals,
             hash,
             network_id,
@@ -782,18 +784,25 @@ impl<T: Config> OutgoingAddToken<T> {
     }
 
     /// Checks that the asset isn't registered yet and the given symbol is valid.
-    pub fn validate(&self) -> Result<AssetSymbol, DispatchError> {
+    pub fn validate(&self) -> Result<(AssetSymbol, AssetName), DispatchError> {
         ensure!(
             crate::RegisteredSidechainAsset::<T>::get(self.network_id, &self.token_address)
                 .is_none(),
             Error::<T>::Other
         );
-        let symbol = AssetSymbol(self.ticker.as_bytes().to_vec());
+        let symbol = AssetSymbol(self.symbol.as_bytes().to_vec());
         ensure!(
             assets::is_symbol_valid(&symbol),
             assets::Error::<T>::InvalidAssetSymbol
         );
-        Ok(symbol)
+
+        let name = AssetName(self.name.as_bytes().to_vec());
+        ensure!(
+            assets::is_name_valid(&name),
+            assets::Error::<T>::InvalidAssetName
+        );
+        
+        Ok((symbol, name))
     }
 
     pub fn prepare(&mut self, _validated_state: ()) -> Result<(), DispatchError> {
@@ -802,11 +811,12 @@ impl<T: Config> OutgoingAddToken<T> {
 
     /// Calls `validate` again and registers the sidechain asset.
     pub fn finalize(&self) -> Result<(), DispatchError> {
-        let symbol = self.validate()?;
+        let (symbol, name) = self.validate()?;
         crate::Pallet::<T>::register_sidechain_asset(
             self.token_address,
             self.decimals,
             symbol,
+            name,
             self.network_id,
         )?;
         Ok(())
@@ -822,7 +832,7 @@ impl<T: Config> OutgoingAddToken<T> {
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct OutgoingAddTokenEncoded {
     pub token_address: Address,
-    pub ticker: String,
+    pub symbol: String,
     pub name: String,
     pub decimals: u8,
     pub hash: H256,
@@ -835,7 +845,7 @@ impl OutgoingAddTokenEncoded {
     pub fn input_tokens(&self, signatures: Option<Vec<SignatureParams>>) -> Vec<Token> {
         let mut tokens = vec![
             Token::Address(types::H160(self.token_address.0)),
-            Token::String(self.ticker.clone()),
+            Token::String(self.symbol.clone()),
             Token::String(self.name.clone()),
             Token::Uint(self.decimals.into()),
         ];

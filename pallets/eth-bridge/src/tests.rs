@@ -11,7 +11,7 @@ use crate::{
 };
 use codec::{Decode, Encode};
 use common::prelude::Balance;
-use common::{balance, eth, AssetId, AssetId32, AssetSymbol, VAL, XOR};
+use common::{balance, eth, AssetId, AssetId32, AssetName, AssetSymbol, VAL, XOR};
 use frame_support::sp_runtime::app_crypto::sp_core::crypto::AccountId32;
 use frame_support::sp_runtime::app_crypto::sp_core::{self, ecdsa, sr25519, Pair, Public};
 use frame_support::sp_runtime::traits::IdentifyAccount;
@@ -309,6 +309,7 @@ fn should_mint_and_burn_sidechain_asset() {
             token_address,
             18,
             AssetSymbol(b"TEST".to_vec()),
+            AssetName(b"TEST Asset".to_vec()),
             net_id,
         )
         .unwrap();
@@ -763,6 +764,7 @@ fn should_register_and_find_asset_ids() {
             token_address,
             18,
             AssetSymbol(b"TEST".to_vec()),
+            AssetName(b"TEST Asset".to_vec()),
             net_id,
         )
         .unwrap();
@@ -816,6 +818,7 @@ fn should_add_asset() {
         let asset_id = assets::Module::<Runtime>::register_from(
             &alice,
             AssetSymbol(b"TEST".to_vec()),
+            AssetName(b"TEST Asset".to_vec()),
             18,
             Balance::from(0u32),
             true,
@@ -842,13 +845,13 @@ fn should_add_token() {
     ext.execute_with(|| {
         let net_id = ETH_NETWORK_ID;
         let token_address = Address::from(hex!("e88f8313e61a97cec1871ee37fbbe2a8bf3ed1e4"));
-        let ticker = "TEST".into();
+        let symbol = "TEST".into();
         let name = "Runtime Token".into();
         let decimals = 18;
         assert_ok!(EthBridge::add_sidechain_token(
             Origin::signed(state.authority_account_id.clone()),
             token_address,
-            ticker,
+            symbol,
             name,
             decimals,
             ETH_NETWORK_ID,
@@ -872,14 +875,14 @@ fn should_not_add_token_if_not_bridge_account() {
         let net_id = ETH_NETWORK_ID;
         let bob = get_account_id_from_seed::<sr25519::Public>("Bob");
         let token_address = Address::from(hex!("e88f8313e61a97cec1871ee37fbbe2a8bf3ed1e4"));
-        let ticker = "TEST".into();
+        let symbol = "TEST".into();
         let name = "Runtime Token".into();
         let decimals = 18;
         assert_err!(
             EthBridge::add_sidechain_token(
                 Origin::signed(bob),
                 token_address,
-                ticker,
+                symbol,
                 name,
                 decimals,
                 net_id,

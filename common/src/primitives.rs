@@ -337,6 +337,55 @@ impl Default for AssetSymbol {
     }
 }
 
+#[derive(Encode, Decode, Eq, PartialEq, Clone, Ord, PartialOrd, RuntimeDebug)]
+#[cfg_attr(feature = "std", derive(Hash))]
+pub struct AssetName(pub Vec<u8>);
+
+#[cfg(feature = "std")]
+impl Serialize for AssetName {
+    fn serialize<S>(&self, serializer: S) -> Result<<S as Serializer>::Ok, <S as Serializer>::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_str(&format!("{}", self))
+    }
+}
+
+#[cfg(feature = "std")]
+impl<'de> Deserialize<'de> for AssetName {
+    fn deserialize<D>(deserializer: D) -> Result<Self, <D as Deserializer<'de>>::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let s = String::deserialize(deserializer)?;
+        Self::from_str(&s).map_err(|str_err| serde::de::Error::custom(str_err))
+    }
+}
+
+#[cfg(feature = "std")]
+impl FromStr for AssetName {
+    type Err = &'static str;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let chars: Vec<u8> = s.chars().map(|un| un as u8).collect();
+        Ok(AssetName(chars))
+    }
+}
+
+#[cfg(feature = "std")]
+impl Display for AssetName {
+    fn fmt(&self, f: &mut Formatter<'_>) -> sp_std::fmt::Result {
+        let s: String = self.0.iter().map(|un| *un as char).collect();
+        write!(f, "{}", s)
+    }
+}
+
+impl Default for AssetName {
+    fn default() -> Self {
+        Self(Vec::new())
+    }
+}
+
 #[derive(Encode, Decode, Eq, PartialEq, PartialOrd, Ord, Debug, Copy, Clone, Hash)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum TechAssetId<AssetId> {
