@@ -48,11 +48,7 @@ impl FixedWrapper {
 
     /// Calculates square root of underlying Fixed number.
     pub fn sqrt_accurate(self) -> Self {
-        if let Ok(num) = self.inner {
-            Self::from(num.rsqrt(Floor))
-        } else {
-            self
-        }
+        self.inner.and_then(|num| num.rsqrt(Floor)).into()
     }
 
     /// Calculates square root of self using fractional representation.
