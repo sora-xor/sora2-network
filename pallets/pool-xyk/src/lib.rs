@@ -64,6 +64,8 @@ type DepositLiquidityActionOf<T> = DepositLiquidityAction<
 
 type DEXManager<T> = dex_manager::Module<T>;
 
+const MIN_LIQUIDITY: u128 = 1000;
+
 /// Bounds enum, used for cases than min max limits is used. Also used for cases than values is
 /// Desired by used or Calculated by forumula. Dummy is used to abstract checking.
 #[derive(Clone, Copy, RuntimeDebug, Eq, PartialEq, Encode, Decode)]
@@ -826,8 +828,7 @@ impl<T: Config> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, 
         }
 
         // Recommended minimum liquidity, will be used if not specified or for checking if specified.
-        let recom_min_liquidity =
-            Module::<T>::get_min_liquidity_for(self.source.0.asset, &self.pool_account);
+        let recom_min_liquidity = MIN_LIQUIDITY;
         // Set recommended or check that `min_liquidity` is correct.
         match self.min_liquidity {
             // Just set it here if it not specified, this is usual case.
@@ -842,7 +843,7 @@ impl<T: Config> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, 
             }
         }
 
-        //TODO: for abstract_checking, check that is enouth liquidity in pool.
+        //TODO: for abstract_checking, check that is enough liquidity in pool.
         if !abstract_checking {
             // Get required values, now it is always Some, it is safe to unwrap().
             let min_liquidity = self.min_liquidity.unwrap();
@@ -862,6 +863,12 @@ impl<T: Config> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, 
             if balance_ts.unwrap() < target_amount {
                 Err(Error::<T>::TargetBaseAmountIsNotLargeEnough)?;
             }
+        }
+
+        if empty_pool {
+            // Previous checks guarantee that unwrap and subtraction are safe.
+            self.destination.amount =
+                Bounds::Calculated(self.destination.amount.unwrap() - self.min_liquidity.unwrap());
         }
 
         Ok(())
@@ -1023,14 +1030,15 @@ impl<T: Config> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, 
         let fxw_balance_bp = FixedWrapper::from(balance_bp);
         let fxw_balance_tp = FixedWrapper::from(balance_tp);
 
-        // Product of pool pair amounts to get k value.
-        let fxw_pool_k = fxw_balance_bp.multiply_and_sqrt(&fxw_balance_tp);
-        let pool_k: Balance = fxw_pool_k
-            .try_into_balance()
-            .map_err(|_| Error::<T>::FixedWrapperCalculationFailed)?;
+        // // Product of pool pair amounts to get k value.
+        // let fxw_pool_k = fxw_balance_bp.multiply_and_sqrt(&fxw_balance_tp);
+        // let pool_k: Balance = fxw_pool_k
+        //     .try_into_balance()
+        //     .map_err(|_| Error::<T>::FixedWrapperCalculationFailed)?;
 
         let total_iss = assets::Module::<T>::total_issuance(&repr_k_asset_id)?;
-        let fxw_total_iss = FixedWrapper::from(total_iss);
+        // Adding min liquidity to pretend that initial provider has locked amount, which actually is not reflected in total supply.
+        let fxw_total_iss = FixedWrapper::from(total_iss) + MIN_LIQUIDITY;
 
         match (
             self.source.amount,
@@ -1040,9 +1048,9 @@ impl<T: Config> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, 
             (Bounds::Desired(source_k), ox, oy) => {
                 ensure!(source_k > 0, Error::<T>::ZeroValueInAmountParameter);
                 let fxw_source_k = FixedWrapper::from(source_k);
-                let fxw_piece_to_take = fxw_total_iss / fxw_source_k;
-                let fxw_recom_x = fxw_balance_bp / fxw_piece_to_take.clone();
-                let fxw_recom_y = fxw_balance_tp / fxw_piece_to_take;
+                // let fxw_piece_to_take = fxw_total_iss / fxw_source_k;
+                let fxw_recom_x = fxw_balance_bp * fxw_source_k.clone() / fxw_total_iss.clone();
+                let fxw_recom_y = fxw_balance_tp * fxw_source_k / fxw_total_iss;
                 let recom_x: Balance = fxw_recom_x
                     .try_into_balance()
                     .map_err(|_| Error::<T>::FixedWrapperCalculationFailed)?;
@@ -1093,9 +1101,9 @@ impl<T: Config> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, 
         let _target_amount = (self.destination.0).amount.unwrap();
         let source_amount = self.source.amount.unwrap();
 
-        if source_amount > pool_k {
-            Err(Error::<T>::SourceBaseAmountIsTooLarge)?;
-        }
+        // if source_amount > pool_k {
+        //     Err(Error::<T>::SourceBaseAmountIsTooLarge)?;
+        // }
 
         if balance_ks < source_amount {
             Err(Error::<T>::SourceBalanceOfLiquidityTokensIsNotLargeEnough)?;
