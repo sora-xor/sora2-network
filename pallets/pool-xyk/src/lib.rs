@@ -340,7 +340,7 @@ impl<T: Config> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, 
                             recom_fee = Some(fee);
                         }
                         _ => {
-                            Err(Error::<T>::ImposibleToDecideAssetPairAmounts)?;
+                            Err(Error::<T>::ImpossibleToDecideAssetPairAmounts)?;
                         }
                     }
                 }
@@ -367,13 +367,13 @@ impl<T: Config> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, 
                             recom_fee = Some(fee);
                         }
                         _ => {
-                            Err(Error::<T>::ImposibleToDecideAssetPairAmounts)?;
+                            Err(Error::<T>::ImpossibleToDecideAssetPairAmounts)?;
                         }
                     }
                 }
-                // Case then no amount is specified, imposible to decide any amounts.
+                // Case then no amount is specified, impossible to decide any amounts.
                 (_, _) => {
-                    Err(Error::<T>::ImposibleToDecideAssetPairAmounts)?;
+                    Err(Error::<T>::ImpossibleToDecideAssetPairAmounts)?;
                 }
             }
         }
@@ -425,7 +425,7 @@ impl<T: Config> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, 
                         Err(Error::<T>::TargetBalanceIsNotLargeEnough)?;
                     }
                     if (self.destination.amount.unwrap() - self.fee.unwrap()) <= 0 {
-                        Err(Error::<T>::GettingFeeFromDestinationIsImposible)?;
+                        Err(Error::<T>::GettingFeeFromDestinationIsImpossible)?;
                     }
                     */
 
@@ -821,7 +821,7 @@ impl<T: Config> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, 
                     // Case then no amount is specified (or something needed is not specified),
                     // impossible to decide any amounts.
                     (_, _, _) => {
-                        Err(Error::<T>::ImposibleToDecideDepositLiquidityAmounts)?;
+                        Err(Error::<T>::ImpossibleToDecideDepositLiquidityAmounts)?;
                     }
                 }
             }
@@ -1030,12 +1030,6 @@ impl<T: Config> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, 
         let fxw_balance_bp = FixedWrapper::from(balance_bp);
         let fxw_balance_tp = FixedWrapper::from(balance_tp);
 
-        // // Product of pool pair amounts to get k value.
-        // let fxw_pool_k = fxw_balance_bp.multiply_and_sqrt(&fxw_balance_tp);
-        // let pool_k: Balance = fxw_pool_k
-        //     .try_into_balance()
-        //     .map_err(|_| Error::<T>::FixedWrapperCalculationFailed)?;
-
         let total_iss = assets::Module::<T>::total_issuance(&repr_k_asset_id)?;
         // Adding min liquidity to pretend that initial provider has locked amount, which actually is not reflected in total supply.
         let fxw_total_iss = FixedWrapper::from(total_iss) + MIN_LIQUIDITY;
@@ -1092,7 +1086,7 @@ impl<T: Config> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, 
             }
 
             _ => {
-                Err(Error::<T>::ImposibleToDecideDepositLiquidityAmounts)?;
+                Err(Error::<T>::ImpossibleToDecideDepositLiquidityAmounts)?;
             }
         }
 
@@ -1100,10 +1094,6 @@ impl<T: Config> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, 
         let _base_amount = (self.destination.1).amount.unwrap();
         let _target_amount = (self.destination.0).amount.unwrap();
         let source_amount = self.source.amount.unwrap();
-
-        // if source_amount > pool_k {
-        //     Err(Error::<T>::SourceBaseAmountIsTooLarge)?;
-        // }
 
         if balance_ks < source_amount {
             Err(Error::<T>::SourceBalanceOfLiquidityTokensIsNotLargeEnough)?;
@@ -1457,13 +1447,13 @@ impl<T: Config> Module<T> {
         if opt_am_b_des <= amount_b_desired {
             ensure!(
                 opt_am_b_des >= amount_b_min,
-                Error::<T>::ImposibleToDecideValidPairValuesFromRangeForThisPool
+                Error::<T>::ImpossibleToDecideValidPairValuesFromRangeForThisPool
             );
             Ok((amount_a_desired, opt_am_b_des))
         } else {
             ensure!(
                 opt_am_a_des >= amount_a_min && opt_am_a_des <= amount_a_desired,
-                Error::<T>::ImposibleToDecideValidPairValuesFromRangeForThisPool
+                Error::<T>::ImpossibleToDecideValidPairValuesFromRangeForThisPool
             );
             Ok((opt_am_a_des, amount_b_desired))
         }
@@ -2218,9 +2208,9 @@ pub mod pallet {
         UnableToCalculateFee,
         /// Is is impossible to get balance.
         UnableToGetBalance,
-        /// Imposible to decide asset pair amounts.
-        ImposibleToDecideAssetPairAmounts,
-        /// Pool pair ratio and pair swap ratio is different.
+        /// Impossible to decide asset pair amounts.
+        ImpossibleToDecideAssetPairAmounts,
+        /// Pool pair ratio and pair swap ratio are different.
         PoolPairRatioAndPairSwapRatioIsDifferent,
         /// Pair swap action fee is smaller than recommended.
         PairSwapActionFeeIsSmallerThanRecommended,
@@ -2228,7 +2218,7 @@ pub mod pallet {
         SourceBalanceIsNotLargeEnough,
         /// Target balance is not large enough.
         TargetBalanceIsNotLargeEnough,
-        /// It is unable to derive fee account.
+        /// It is not possible to derive fee account.
         UnableToDeriveFeeAccount,
         /// The fee account is invalid.
         FeeAccountIsInvalid,
@@ -2236,17 +2226,17 @@ pub mod pallet {
         SourceAndClientAccountDoNotMatchAsEqual,
         /// In this case assets must not be same.
         AssetsMustNotBeSame,
-        /// Imposible to decice deposit liquidity amounts.
-        ImposibleToDecideDepositLiquidityAmounts,
-        /// Invalid deposit liquidity basic asset amount.
+        /// Impossible to decide deposit liquidity amounts.
+        ImpossibleToDecideDepositLiquidityAmounts,
+        /// Invalid deposit liquidity base asset amount.
         InvalidDepositLiquidityBasicAssetAmount,
         /// Invalid deposit liquidity target asset amount.
         InvalidDepositLiquidityTargetAssetAmount,
-        /// Pair swap action minimum liquidity is smallet than recommended.
+        /// Pair swap action minimum liquidity is smaller than recommended.
         PairSwapActionMinimumLiquidityIsSmallerThanRecommended,
         /// Destination amount of liquidity is not large enough.
         DestinationAmountOfLiquidityIsNotLargeEnough,
-        /// Source base amount if not large enough.
+        /// Source base amount is not large enough.
         SourceBaseAmountIsNotLargeEnough,
         /// Target base amount is not large enough.
         TargetBaseAmountIsNotLargeEnough,
@@ -2258,25 +2248,25 @@ pub mod pallet {
         ZeroValueInAmountParameter,
         /// The account balance is invalid.
         AccountBalanceIsInvalid,
-        /// Incalid deposit liquidity destination amount.
+        /// Invalid deposit liquidity destination amount.
         InvalidDepositLiquidityDestinationAmount,
         /// Initial liquidity deposit ratio must be defined.
         InitialLiqudityDepositRatioMustBeDefined,
         /// Technical asset is not representable.
         TechAssetIsNotRepresentable,
-        /// Unable or imposible to decide marker asset.
+        /// Unable or impossible to decide marker asset.
         UnableToDecideMarkerAsset,
-        /// Unable or imposible to get asset representation.
+        /// Unable or impossible to get asset representation.
         UnableToGetAssetRepr,
-        /// Imposible to decide withdraw liquidity amounts.
-        ImposibleToDecideWithdrawLiquidityAmounts,
+        /// Impossible to decide withdraw liquidity amounts.
+        ImpossibleToDecideWithdrawLiquidityAmounts,
         /// Invalid withdraw liquidity base asset amount.
         InvalidWithdrawLiquidityBasicAssetAmount,
-        /// Invalud withdras liquidity target asset amount.
+        /// Invalud withdraw liquidity target asset amount.
         InvalidWithdrawLiquidityTargetAssetAmount,
-        /// Source base amount if tool large.
+        /// Source base amount is too large.
         SourceBaseAmountIsTooLarge,
-        /// Source balance if liquidity is not large enough.
+        /// Source balance of liquidity is not large enough.
         SourceBalanceOfLiquidityTokensIsNotLargeEnough,
         /// Destination base balance is not large enough.
         DestinationBaseBalanceIsNotLargeEnough,
@@ -2290,29 +2280,29 @@ pub mod pallet {
         CalculatedValueIsOutOfDesiredBounds,
         /// The base asset is not matched with any asset arguments.
         BaseAssetIsNotMatchedWithAnyAssetArguments,
-        /// Some values is need to be same, the destination amount must be same.
+        /// Some values need to be same, the destination amount must be same.
         DestinationAmountMustBeSame,
-        /// Some values is need to be same, the source amount must be same.
+        /// Some values need to be same, the source amount must be same.
         SourceAmountMustBeSame,
-        /// The pool initialization if invalid and failed.
+        /// The pool initialization is invalid and has failed.
         PoolInitializationIsInvalid,
         /// The pool is already initialized.
         PoolIsAlreadyInitialized,
-        /// The minimul bound values of balance is invalid.
+        /// The minimum bound values of balance are invalid.
         InvalidMinimumBoundValueOfBalance,
-        /// It is imposible to decide valid pair values from range for this pool.
-        ImposibleToDecideValidPairValuesFromRangeForThisPool,
+        /// It is impossible to decide valid pair values from range for this pool.
+        ImpossibleToDecideValidPairValuesFromRangeForThisPool,
         /// This range values is not validy by rules of correct range.
         RangeValuesIsInvalid,
         /// The values that is calculated is out out of required bounds.
         CalculatedValueIsNotMeetsRequiredBoundaries,
-        /// In this case getting fee from destination is imposible.
-        GettingFeeFromDestinationIsImposible,
-        /// Math calculation with fixed number if failed to complete.
+        /// In this case getting fee from destination is impossible.
+        GettingFeeFromDestinationIsImpossible,
+        /// Math calculation with fixed number has failed to complete.
         FixedWrapperCalculationFailed,
         /// This case if not supported by logic of pool of validation code.
         ThisCaseIsNotSupported,
-        /// Pool becomes invalid after operation
+        /// Pool becomes invalid after operation.
         PoolBecameInvalidAfterOperation,
         /// Unable to convert asset to tech asset id.
         UnableToConvertAssetToTechAssetId,
