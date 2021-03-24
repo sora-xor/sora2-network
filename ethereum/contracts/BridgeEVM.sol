@@ -181,7 +181,7 @@ contract Bridge {
     * Add new token from sidechain to the bridge white list.
     * 
     * @param name token title
-    * @param ticker token ticker (symbol)
+    * @param ticker token symbol
     * @param decimals number of decimals
     * @param sidechainAssetId token id on the sidechain
     * @param txHash sidechain transaction hash
@@ -191,7 +191,7 @@ contract Bridge {
     */
     function addNewSidechainToken(
         string memory name,
-        string memory ticker,
+        string memory symbol,
         uint8 decimals,
         bytes32 sidechainAssetId,
         bytes32 txHash,
@@ -201,7 +201,7 @@ contract Bridge {
     public shouldBeInitialized {
         require(checkSignatures(keccak256(abi.encodePacked(
                 name,
-                ticker,
+                symbol,
                 decimals,
                 sidechainAssetId,
                 txHash,
@@ -212,7 +212,7 @@ contract Bridge {
             s), "Peer signatures are invalid"
         );
         // Create new instance of the token
-        MasterToken tokenInstance = new MasterToken(name, ticker, decimals, address(this), 0, sidechainAssetId);
+        MasterToken tokenInstance = new MasterToken(name, symbol, decimals, address(this), 0, sidechainAssetId);
         address tokenAddress = address(tokenInstance);
         _sidechainTokens[sidechainAssetId] = tokenAddress;
         _sidechainTokensByAddress[tokenAddress] = sidechainAssetId;
