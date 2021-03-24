@@ -412,18 +412,18 @@ impl assets::Config for Runtime {
     type AssetId = AssetId;
     type GetBaseAssetId = GetBaseAssetId;
     type Currency = currencies::Module<Runtime>;
-    type WeightInfo = PresetWeightInfo;
+    type WeightInfo = ();
 }
 
 impl trading_pair::Config for Runtime {
     type Event = Event;
     type EnsureDEXManager = dex_manager::Module<Runtime>;
-    type WeightInfo = PresetWeightInfo;
+    type WeightInfo = ();
 }
 
 impl dex_manager::Config for Runtime {
     type Event = Event;
-    type WeightInfo = PresetWeightInfo;
+    type WeightInfo = ();
 }
 
 impl bonding_curve_pool::Config for Runtime {
@@ -442,7 +442,7 @@ impl technical::Config for Runtime {
     type Condition = ();
     type SwapAction =
         pool_xyk::PolySwapAction<AssetId, TechAssetId, Balance, AccountId, TechAccountId>;
-    type WeightInfo = PresetWeightInfo;
+    type WeightInfo = ();
 }
 
 impl pool_xyk::Config for Runtime {
@@ -455,7 +455,7 @@ impl pool_xyk::Config for Runtime {
     type PolySwapAction =
         pool_xyk::PolySwapAction<AssetId, TechAssetId, Balance, AccountId, TechAccountId>;
     type EnsureDEXManager = dex_manager::Module<Runtime>;
-    type WeightInfo = PresetWeightInfo;
+    type WeightInfo = ();
 }
 
 parameter_types! {
@@ -473,7 +473,7 @@ parameter_types! {
                 .expect("Failed to get ordinary account id for technical account id.");
         account_id
     };
-    pub const GetNumSamples: usize = 40;
+    pub const GetNumSamples: usize = 5;
 }
 
 impl liquidity_proxy::Config for Runtime {
@@ -481,7 +481,7 @@ impl liquidity_proxy::Config for Runtime {
     type LiquidityRegistry = dex_api::Module<Runtime>;
     type GetNumSamples = GetNumSamples;
     type GetTechnicalAccountId = GetLiquidityProxyAccountId;
-    type WeightInfo = PresetWeightInfo;
+    type WeightInfo = ();
 }
 
 parameter_types! {
@@ -525,7 +525,7 @@ impl dex_api::Config for Runtime {
     type BondingCurvePool = bonding_curve_pool::Module<Runtime>;
     type MulticollateralBondingCurvePool = multicollateral_bonding_curve_pool::Module<Runtime>;
     type XYKPool = pool_xyk::Module<Runtime>;
-    type WeightInfo = PresetWeightInfo;
+    type WeightInfo = ();
 }
 
 impl farming::Config for Runtime {
@@ -621,6 +621,7 @@ impl referral_system::Config for Runtime {}
 
 impl rewards::Config for Runtime {
     type Event = Event;
+    type WeightInfo = PresetWeightInfo;
 }
 
 parameter_types! {
@@ -709,7 +710,7 @@ impl eth_bridge::Config for Runtime {
     type PeerId = eth_bridge::crypto::TestAuthId;
     type NetworkId = NetworkId;
     type GetEthNetworkId = EthNetworkId;
-    type WeightInfo = PresetWeightInfo;
+    type WeightInfo = ();
 }
 
 impl faucet::Config for Runtime {
@@ -754,6 +755,20 @@ impl pswap_distribution::Config for Runtime {
 }
 
 parameter_types! {
+    pub GetMbcReservesTechAccountId: TechAccountId = {
+        let tech_account_id = TechAccountId::from_generic_pair(
+            multicollateral_bonding_curve_pool::TECH_ACCOUNT_PREFIX.to_vec(),
+            multicollateral_bonding_curve_pool::TECH_ACCOUNT_RESERVES.to_vec(),
+        );
+        tech_account_id
+    };
+    pub GetMbcReservesAccountId: AccountId = {
+        let tech_account_id = GetMbcReservesTechAccountId::get();
+        let account_id =
+            technical::Module::<Runtime>::tech_account_id_to_account_id(&tech_account_id)
+                .expect("Failed to get ordinary account id for technical account id.");
+        account_id
+    };
     pub GetMbcPoolRewardsTechAccountId: TechAccountId = {
         let tech_account_id = TechAccountId::from_generic_pair(
             multicollateral_bonding_curve_pool::TECH_ACCOUNT_PREFIX.to_vec(),
@@ -775,7 +790,7 @@ impl multicollateral_bonding_curve_pool::Config for Runtime {
     type LiquidityProxy = LiquidityProxy;
     type EnsureDEXManager = DEXManager;
     type EnsureTradingPairExists = TradingPair;
-    type WeightInfo = PresetWeightInfo;
+    type WeightInfo = ();
 }
 
 /// Payload data to be signed when making signed transaction from off-chain workers,
@@ -829,10 +844,6 @@ construct_runtime! {
         Technical: technical::{Module, Call, Config<T>, Event<T>},
         PoolXYK: pool_xyk::{Module, Call, Storage, Event<T>},
         LiquidityProxy: liquidity_proxy::{Module, Call, Event<T>},
-        MockLiquiditySource: mock_liquidity_source::<Instance1>::{Module, Call, Storage, Config<T>},
-        MockLiquiditySource2: mock_liquidity_source::<Instance2>::{Module, Call, Storage, Config<T>},
-        MockLiquiditySource3: mock_liquidity_source::<Instance3>::{Module, Call, Storage, Config<T>},
-        MockLiquiditySource4: mock_liquidity_source::<Instance4>::{Module, Call, Storage, Config<T>},
         DEXAPI: dex_api::{Module, Call, Storage, Config, Event<T>},
         Faucet: faucet::{Module, Call, Config<T>, Event<T>},
         EthBridge: eth_bridge::{Module, Call, Storage, Config<T>, Event<T>},

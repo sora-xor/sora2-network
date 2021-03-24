@@ -10,10 +10,10 @@ use common::prelude::SwapVariant;
 impl crate::WeightInfo for () {
     fn swap(amount: SwapVariant) -> Weight {
         match amount {
-            SwapVariant::WithDesiredInput => (10_700_000_000 as Weight)
+            SwapVariant::WithDesiredInput => (1_337_500_000 as Weight)
                 .saturating_add(DbWeight::get().reads(19 as Weight))
                 .saturating_add(DbWeight::get().writes(5 as Weight)),
-            _ => (19_400_000_000 as Weight)
+            _ => (2_425_000_000 as Weight)
                 .saturating_add(DbWeight::get().reads(19 as Weight))
                 .saturating_add(DbWeight::get().writes(5 as Weight)),
         }

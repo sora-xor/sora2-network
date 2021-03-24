@@ -12,6 +12,7 @@ derive_more = { version = "0.99.11", default-features = false }
 fixnum = { version = "0.4", default-features = false, features = ["i128", "parity"] }
 frame-support = { version = "3", default-features = false }
 frame-system = { version = "3", default-features = false }
+frame-benchmarking = { version = "3", default-features = false }
 libsecp256k1 = { version = "0.3.5", features = ['hmac'], default-features = false }
 num-traits = { version = "0.2.12", default-features = false }
 orml-traits = { version = "0.4", package = "orml-traits", default-features = false }
@@ -38,6 +39,7 @@ std = [
     'num-traits/std',
     'frame-support/std',
     'frame-system/std',
+    'frame-benchmarking/std',
     'fixnum/serde',
     'fixnum/std',
     'sp-core/std',

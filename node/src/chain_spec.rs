@@ -1,13 +1,12 @@
 use framenode_runtime::opaque::SessionKeys;
 use framenode_runtime::{
-    bonding_curve_pool, eth_bridge, multicollateral_bonding_curve_pool, AccountId, AssetSymbol,
-    AssetsConfig, BabeConfig, BalancesConfig, BondingCurvePoolConfig, BridgeMultisigConfig,
-    DEXAPIConfig, DEXManagerConfig, EthBridgeConfig, FarmingConfig, FaucetConfig, GenesisConfig,
-    GetBaseAssetId, GetPswapAssetId, GetValAssetId, GetXorAssetId, GrandpaConfig,
-    IrohaMigrationConfig, LiquiditySourceType, MulticollateralBondingCurvePoolConfig,
-    PermissionsConfig, PswapDistributionConfig, RewardsConfig, Runtime, SessionConfig, Signature,
-    StakerStatus, StakingConfig, SudoConfig, SystemConfig, TechAccountId, TechnicalConfig,
-    TokensConfig, WASM_BINARY,
+    bonding_curve_pool, eth_bridge, AccountId, AssetSymbol, AssetsConfig, BabeConfig,
+    BalancesConfig, BondingCurvePoolConfig, BridgeMultisigConfig, DEXAPIConfig, DEXManagerConfig,
+    EthBridgeConfig, FarmingConfig, FaucetConfig, GenesisConfig, GetBaseAssetId, GetPswapAssetId,
+    GetValAssetId, GetXorAssetId, GrandpaConfig, IrohaMigrationConfig, LiquiditySourceType,
+    MulticollateralBondingCurvePoolConfig, PermissionsConfig, PswapDistributionConfig,
+    RewardsConfig, Runtime, SessionConfig, Signature, StakerStatus, StakingConfig, SudoConfig,
+    SystemConfig, TechAccountId, TechnicalConfig, TokensConfig, WASM_BINARY,
 };
 
 use common::prelude::{Balance, DEXInfo, FixedWrapper};
@@ -265,6 +264,18 @@ pub fn staging_net(test: bool) -> ChainSpec {
                         hex!("1e7ef2261dee2d6fc8ac829e943d547bddacf4371a22555e63d4dbaf1c2e827a"),
                         hex!("04bd6c3c7a8f116a7a4d5578f5c1cc6e61e72d75bd7eac3333e5a300e5c17d9b"),
                     ),
+                    authority_keys_from_public_keys(
+                        hex!("621067638b1d90bfd52450c0569b5318b283bc4eccfaaf0175adada721a86e17"),
+                        hex!("f2ea7d239d82dbc64013f88ffc7837c28fcaeaf2787bc07d0b9bd89d9d672f21"),
+                        hex!("f2ea7d239d82dbc64013f88ffc7837c28fcaeaf2787bc07d0b9bd89d9d672f21"),
+                        hex!("c047e7799daa62017ad18264f704225a140417fe6b726e7cbb97a4c397b78b91"),
+                    ),
+                    authority_keys_from_public_keys(
+                        hex!("664601bab694be726d919e310c3744fd5432ed125e20b46f7ebdcfe01848c72d"),
+                        hex!("98a28d465f3bf349f19c27394a4f4b08fe18e5e75088733c86adb728c1797179"),
+                        hex!("98a28d465f3bf349f19c27394a4f4b08fe18e5e75088733c86adb728c1797179"),
+                        hex!("d4d791cf11cecc39805499e534ab8c07366f444f0efd6d73731f2e3555cbc2d9"),
+                    ),
                 ],
                 vec![
                     hex!("dce47ff231d43281e03dd21e5890db128176d9ee20e65da331d8ae0b64863779").into(),
@@ -275,6 +286,10 @@ pub fn staging_net(test: bool) -> ChainSpec {
                     hex!("8c9a6f997970057925bbc022bee892c7da318f29bbdc9d4645b6c159534d3a67").into(),
                     hex!("00e8f3ad6566b446834f5361d0ed98aca3ab0c59848372f87546897345f9456f").into(),
                     hex!("1e7ef2261dee2d6fc8ac829e943d547bddacf4371a22555e63d4dbaf1c2e827a").into(),
+                    hex!("621067638b1d90bfd52450c0569b5318b283bc4eccfaaf0175adada721a86e17").into(),
+                    hex!("f2ea7d239d82dbc64013f88ffc7837c28fcaeaf2787bc07d0b9bd89d9d672f21").into(),
+                    hex!("664601bab694be726d919e310c3744fd5432ed125e20b46f7ebdcfe01848c72d").into(),
+                    hex!("98a28d465f3bf349f19c27394a4f4b08fe18e5e75088733c86adb728c1797179").into(),
                 ],
                 vec![
                     hex!("9cbca76054814f05364abf691f9166b1be176d9b399d94dc2d88b6c4bc2b0589").into(),
@@ -444,15 +459,22 @@ pub fn local_testnet_config() -> ChainSpec {
 fn testnet_genesis(
     root_key: AccountId,
     initial_authorities: Vec<(AccountId, AccountId, AuraId, BabeId, GrandpaId)>,
-    endowed_accounts: Vec<AccountId>,
+    _endowed_accounts: Vec<AccountId>,
     initial_bridge_peers: Vec<AccountId>,
     dex_root: AccountId,
     tech_permissions_owner: AccountId,
     initial_assets_owner: AccountId,
     eth_bridge_params: EthBridgeParams,
 ) -> GenesisConfig {
-    let initial_balance = balance!(1000000000);
-    let initial_staking = balance!(1000000);
+    // Initial balances
+    let initial_staking = balance!(5000);
+    let initial_eth_bridge_xor_amount = balance!(350000);
+    let initial_eth_bridge_val_amount = balance!(33900000);
+    let initial_faucet_balance = balance!(500000);
+    let initial_pswap_tbc_rewards = balance!(25000000);
+    let initial_rewards = balance!(500000);
+
+    // Initial accounts
     let xor_fee_tech_account_id = TechAccountId::Generic(
         xor_fee::TECH_ACCOUNT_PREFIX.to_vec(),
         xor_fee::TECH_ACCOUNT_MAIN.to_vec(),
@@ -467,8 +489,6 @@ fn testnet_genesis(
     let faucet_account_id: AccountId =
         technical::Module::<Runtime>::tech_account_id_to_account_id(&faucet_tech_account_id)
             .expect("Failed to decode account id");
-    let initial_eth_bridge_xor_amount = balance!(350000);
-    let initial_eth_bridge_val_amount = balance!(33900000);
     let eth_bridge_tech_account_id = TechAccountId::Generic(
         eth_bridge::TECH_ACCOUNT_PREFIX.to_vec(),
         eth_bridge::TECH_ACCOUNT_MAIN.to_vec(),
@@ -491,10 +511,8 @@ fn testnet_genesis(
         bonding_curve_pool::TECH_ACCOUNT_RESERVES.to_vec(),
     );
 
-    let multicollateral_bonding_curve_reserves_tech_account_id = TechAccountId::Generic(
-        multicollateral_bonding_curve_pool::TECH_ACCOUNT_PREFIX.to_vec(),
-        multicollateral_bonding_curve_pool::TECH_ACCOUNT_RESERVES.to_vec(),
-    );
+    let mbc_reserves_tech_account_id = framenode_runtime::GetMbcReservesTechAccountId::get();
+    let mbc_reserves_account_id = framenode_runtime::GetMbcReservesAccountId::get();
 
     let pswap_distribution_tech_account_id =
         framenode_runtime::GetPswapDistributionTechAccountId::get();
@@ -541,6 +559,10 @@ fn testnet_genesis(
         (
             liquidity_proxy_account_id.clone(),
             liquidity_proxy_tech_account_id.clone(),
+        ),
+        (
+            mbc_reserves_account_id.clone(),
+            mbc_reserves_tech_account_id.clone(),
         ),
         (
             mbc_pool_rewards_account_id.clone(),
@@ -702,47 +724,36 @@ fn testnet_genesis(
                     ],
                 ),
                 (
-                    endowed_accounts[1].clone(),
-                    Scope::Unlimited,
-                    vec![
-                        permissions::MINT,
-                        permissions::BURN,
-                        permissions::CREATE_FARM,
-                        permissions::LOCK_TO_FARM,
-                        permissions::UNLOCK_FROM_FARM,
-                        permissions::CLAIM_FROM_FARM,
-                    ],
-                ),
-                (
-                    endowed_accounts[2].clone(),
-                    Scope::Unlimited,
-                    vec![
-                        permissions::MINT,
-                        permissions::BURN,
-                        permissions::CREATE_FARM,
-                        permissions::LOCK_TO_FARM,
-                        permissions::UNLOCK_FROM_FARM,
-                        permissions::CLAIM_FROM_FARM,
-                    ],
-                ),
-                (
                     pswap_distribution_account_id,
+                    Scope::Unlimited,
+                    vec![permissions::MINT, permissions::BURN],
+                ),
+                (
+                    mbc_reserves_account_id,
                     Scope::Unlimited,
                     vec![permissions::MINT, permissions::BURN],
                 ),
             ],
         }),
         pallet_balances: Some(BalancesConfig {
-            balances: endowed_accounts
-                .iter()
-                .cloned()
-                .chain(vec![root_key, faucet_account_id.clone()].into_iter())
-                .map(|k| (k, initial_balance.into()))
-                .chain(once((
-                    eth_bridge_account_id.clone(),
-                    initial_eth_bridge_xor_amount.into(),
-                )))
-                .collect(),
+            balances: vec![
+                (faucet_account_id.clone(), initial_faucet_balance), // TESTNET ONLY
+                (eth_bridge_account_id.clone(), initial_eth_bridge_xor_amount),
+            ]
+            .into_iter()
+            .chain(
+                initial_authorities
+                    .iter()
+                    .cloned()
+                    .map(|(k1, ..)| (k1, initial_staking)),
+            )
+            .chain(
+                initial_authorities
+                    .iter()
+                    .cloned()
+                    .map(|(_, k2, ..)| (k2, initial_staking)),
+            )
+            .collect(),
         }),
         dex_manager: Some(DEXManagerConfig {
             dex_list: vec![(
@@ -753,39 +764,28 @@ fn testnet_genesis(
                 },
             )],
         }),
-        mock_liquidity_source_Instance1: None,
-        mock_liquidity_source_Instance2: None,
-        mock_liquidity_source_Instance3: None,
-        mock_liquidity_source_Instance4: None,
         faucet: Some(FaucetConfig {
             reserves_account_id: faucet_tech_account_id,
         }),
         tokens: Some(TokensConfig {
             endowed_accounts: vec![
-                (
-                    faucet_account_id.clone(),
-                    GetValAssetId::get(),
-                    initial_balance.into(),
-                ),
-                (
-                    faucet_account_id,
-                    GetPswapAssetId::get(),
-                    initial_balance.into(),
-                ),
+                (faucet_account_id.clone(), VAL, initial_faucet_balance),
+                (faucet_account_id, PSWAP, initial_faucet_balance),
                 (
                     rewards_account_id.clone(),
                     GetValAssetId::get(),
-                    initial_balance.into(),
+                    initial_rewards,
                 ),
-                (
-                    rewards_account_id,
-                    GetPswapAssetId::get(),
-                    initial_balance.into(),
-                ),
+                (rewards_account_id, GetPswapAssetId::get(), initial_rewards),
                 (
                     eth_bridge_account_id.clone(),
                     VAL,
-                    initial_eth_bridge_val_amount.into(),
+                    initial_eth_bridge_val_amount,
+                ),
+                (
+                    mbc_pool_rewards_account_id.clone(),
+                    PSWAP,
+                    initial_pswap_tbc_rewards,
                 ),
             ],
         }),
@@ -838,7 +838,7 @@ fn testnet_genesis(
         }),
         multicollateral_bonding_curve_pool: Some(MulticollateralBondingCurvePoolConfig {
             distribution_accounts: accounts,
-            reserves_account_id: multicollateral_bonding_curve_reserves_tech_account_id,
+            reserves_account_id: mbc_reserves_tech_account_id,
             reference_asset_id: Default::default(),
             incentives_account_id: mbc_pool_rewards_account_id,
         }),
@@ -855,16 +855,28 @@ fn testnet_genesis(
         }),
         rewards: Some(RewardsConfig {
             reserves_account_id: rewards_tech_account_id,
-            val_owners: vec![(
-                hex!("21Bc9f4a3d9Dc86f142F802668dB7D908cF0A636").into(),
-                balance!(111),
-            )],
-            pswap_farm_owners: vec![(
-                hex!("21Bc9f4a3d9Dc86f142F802668dB7D908cF0A636").into(),
-                balance!(222),
-            )],
+            val_owners: vec![
+                (
+                    hex!("21Bc9f4a3d9Dc86f142F802668dB7D908cF0A636").into(),
+                    balance!(111),
+                ),
+                (
+                    hex!("D67fea281B2C5dC3271509c1b628E0867a9815D7").into(),
+                    balance!(444),
+                ),
+            ],
+            pswap_farm_owners: vec![
+                (
+                    hex!("4fE143cDD48791cB364823A41e018AEC5cBb9AbB").into(),
+                    balance!(222),
+                ),
+                (
+                    hex!("D67fea281B2C5dC3271509c1b628E0867a9815D7").into(),
+                    balance!(555),
+                ),
+            ],
             pswap_waifu_owners: vec![(
-                hex!("21Bc9f4a3d9Dc86f142F802668dB7D908cF0A636").into(),
+                hex!("886021F300dC809269CFC758A2364a2baF63af0c").into(),
                 balance!(333),
             )],
         }),

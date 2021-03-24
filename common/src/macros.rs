@@ -47,6 +47,13 @@ macro_rules! dbg {
     };
 }
 
+#[macro_export]
+macro_rules! location_stamp {
+    ($name:tt) => {
+        &format!("{} at {}:{}", $name, core::file!(), core::line!())
+    };
+}
+
 #[cfg(test)]
 mod tests {
     #[test]

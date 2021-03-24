@@ -1150,20 +1150,22 @@ impl<T: Config> Module<T> {
 impl<T: Config> OnPswapBurned for Module<T> {
     /// Invoked when pswap is burned after being exchanged from collected liquidity provider fees.
     fn on_pswap_burned(distribution: PswapRemintInfo) {
-        let total_rewards = TotalRewards::<T>::get();
-        let amount = FixedWrapper::from(distribution.vesting);
+        common::with_benchmark("mbc.on_pswap_burned", || {
+            let total_rewards = TotalRewards::<T>::get();
+            let amount = FixedWrapper::from(distribution.vesting);
 
-        if !total_rewards.is_zero() {
-            Rewards::<T>::translate(|_key: T::AccountId, value: (Balance, Balance)| {
-                let (limit, owned) = value;
-                let limit_to_add =
-                    FixedWrapper::from(owned) * amount.clone() / FixedWrapper::from(total_rewards);
-                let new_limit = (limit_to_add + FixedWrapper::from(limit))
-                    .try_into_balance()
-                    .unwrap_or(limit);
-                Some((new_limit, owned))
-            })
-        }
+            if !total_rewards.is_zero() {
+                Rewards::<T>::translate(|_key: T::AccountId, value: (Balance, Balance)| {
+                    let (limit, owned) = value;
+                    let limit_to_add = FixedWrapper::from(owned) * amount.clone()
+                        / FixedWrapper::from(total_rewards);
+                    let new_limit = (limit_to_add + FixedWrapper::from(limit))
+                        .try_into_balance()
+                        .unwrap_or(limit);
+                    Some((new_limit, owned))
+                })
+            }
+        })
     }
 }
 
@@ -1175,14 +1177,16 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         input_asset_id: &T::AssetId,
         output_asset_id: &T::AssetId,
     ) -> bool {
-        if *dex_id != DEXId::Polkaswap.into() {
-            return false;
-        }
-        if input_asset_id == &T::GetBaseAssetId::get() {
-            EnabledTargets::<T>::get().contains(&output_asset_id)
-        } else {
-            EnabledTargets::<T>::get().contains(&input_asset_id)
-        }
+        common::with_benchmark("mbc.can_exchange", || {
+            if *dex_id != DEXId::Polkaswap.into() {
+                return false;
+            }
+            if input_asset_id == &T::GetBaseAssetId::get() {
+                EnabledTargets::<T>::get().contains(&output_asset_id)
+            } else {
+                EnabledTargets::<T>::get().contains(&input_asset_id)
+            }
+        })
     }
 
     fn quote(
@@ -1191,19 +1195,25 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         output_asset_id: &T::AssetId,
         swap_amount: SwapAmount<Balance>,
     ) -> Result<SwapOutcome<Balance>, DispatchError> {
-        if !Self::can_exchange(dex_id, input_asset_id, output_asset_id) {
-            fail!(Error::<T>::CantExchange);
-        }
-        let base_asset_id = &T::GetBaseAssetId::get();
-        let (input_amount, output_amount, fee_amount) = if input_asset_id == base_asset_id {
-            Self::decide_sell_amounts(&input_asset_id, &output_asset_id, swap_amount)?
-        } else {
-            Self::decide_buy_amounts(&output_asset_id, &input_asset_id, swap_amount)?
-        };
-        match swap_amount {
-            SwapAmount::WithDesiredInput { .. } => Ok(SwapOutcome::new(output_amount, fee_amount)),
-            SwapAmount::WithDesiredOutput { .. } => Ok(SwapOutcome::new(input_amount, fee_amount)),
-        }
+        common::with_benchmark("mbc.quote", || {
+            if !Self::can_exchange(dex_id, input_asset_id, output_asset_id) {
+                fail!(Error::<T>::CantExchange);
+            }
+            let base_asset_id = &T::GetBaseAssetId::get();
+            let (input_amount, output_amount, fee_amount) = if input_asset_id == base_asset_id {
+                Self::decide_sell_amounts(&input_asset_id, &output_asset_id, swap_amount)?
+            } else {
+                Self::decide_buy_amounts(&output_asset_id, &input_asset_id, swap_amount)?
+            };
+            match swap_amount {
+                SwapAmount::WithDesiredInput { .. } => {
+                    Ok(SwapOutcome::new(output_amount, fee_amount))
+                }
+                SwapAmount::WithDesiredOutput { .. } => {
+                    Ok(SwapOutcome::new(input_amount, fee_amount))
+                }
+            }
+        })
     }
 
     fn exchange(
@@ -1214,34 +1224,36 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         output_asset_id: &T::AssetId,
         desired_amount: SwapAmount<Balance>,
     ) -> Result<SwapOutcome<Balance>, DispatchError> {
-        if !Self::can_exchange(dex_id, input_asset_id, output_asset_id) {
-            fail!(Error::<T>::CantExchange);
-        }
-        let reserves_account_id =
-            &Technical::<T>::tech_account_id_to_account_id(&Self::reserves_account_id())?;
-        // This is needed to prevent recursion calls.
-        if sender == reserves_account_id && receiver == reserves_account_id {
-            fail!(Error::<T>::CannotExchangeWithSelf);
-        }
-        let base_asset_id = &T::GetBaseAssetId::get();
-        if input_asset_id == base_asset_id {
-            Self::sell_main_asset(
-                dex_id,
-                input_asset_id,
-                output_asset_id,
-                desired_amount,
-                sender,
-                receiver,
-            )
-        } else {
-            BuyMainAsset::<T>::new(
-                *input_asset_id,
-                *output_asset_id,
-                desired_amount,
-                sender.clone(),
-                receiver.clone(),
-            )?
-            .swap()
-        }
+        common::with_benchmark("mbc.exchange", || {
+            if !Self::can_exchange(dex_id, input_asset_id, output_asset_id) {
+                fail!(Error::<T>::CantExchange);
+            }
+            let reserves_account_id =
+                &Technical::<T>::tech_account_id_to_account_id(&Self::reserves_account_id())?;
+            // This is needed to prevent recursion calls.
+            if sender == reserves_account_id && receiver == reserves_account_id {
+                fail!(Error::<T>::CannotExchangeWithSelf);
+            }
+            let base_asset_id = &T::GetBaseAssetId::get();
+            if input_asset_id == base_asset_id {
+                Self::sell_main_asset(
+                    dex_id,
+                    input_asset_id,
+                    output_asset_id,
+                    desired_amount,
+                    sender,
+                    receiver,
+                )
+            } else {
+                BuyMainAsset::<T>::new(
+                    *input_asset_id,
+                    *output_asset_id,
+                    desired_amount,
+                    sender.clone(),
+                    receiver.clone(),
+                )?
+                .swap()
+            }
+        })
     }
 }

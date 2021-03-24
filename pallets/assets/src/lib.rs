@@ -217,15 +217,17 @@ pub mod pallet {
             initial_supply: Balance,
             is_mintable: bool,
         ) -> DispatchResultWithPostInfo {
-            let author = ensure_signed(origin)?;
-            let _asset_id = Self::register_from(
-                &author,
-                symbol,
-                DEFAULT_BALANCE_PRECISION,
-                initial_supply,
-                is_mintable,
-            )?;
-            Ok(().into())
+            common::with_benchmark(common::location_stamp!("assets.register"), || {
+                let author = ensure_signed(origin)?;
+                let _asset_id = Self::register_from(
+                    &author,
+                    symbol,
+                    DEFAULT_BALANCE_PRECISION,
+                    initial_supply,
+                    is_mintable,
+                )?;
+                Ok(().into())
+            })
         }
 
         /// Performs a checked Asset transfer.
@@ -241,10 +243,12 @@ pub mod pallet {
             to: T::AccountId,
             amount: Balance,
         ) -> DispatchResultWithPostInfo {
-            let from = ensure_signed(origin.clone())?;
-            Self::transfer_from(&asset_id, &from, &to, amount)?;
-            Self::deposit_event(Event::Transfer(from, to, asset_id, amount));
-            Ok(().into())
+            common::with_benchmark(common::location_stamp!("assets.transfer"), || {
+                let from = ensure_signed(origin.clone())?;
+                Self::transfer_from(&asset_id, &from, &to, amount)?;
+                Self::deposit_event(Event::Transfer(from, to, asset_id, amount));
+                Ok(().into())
+            })
         }
 
         /// Performs a checked Asset mint, can only be done
@@ -261,10 +265,12 @@ pub mod pallet {
             to: T::AccountId,
             amount: Balance,
         ) -> DispatchResultWithPostInfo {
-            let issuer = ensure_signed(origin.clone())?;
-            Self::mint_to(&asset_id, &issuer, &to, amount)?;
-            Self::deposit_event(Event::Mint(issuer, to, asset_id.clone(), amount));
-            Ok(().into())
+            common::with_benchmark(common::location_stamp!("assets.mint"), || {
+                let issuer = ensure_signed(origin.clone())?;
+                Self::mint_to(&asset_id, &issuer, &to, amount)?;
+                Self::deposit_event(Event::Mint(issuer, to, asset_id.clone(), amount));
+                Ok(().into())
+            })
         }
 
         /// Performs a checked Asset burn, can only be done
@@ -279,10 +285,12 @@ pub mod pallet {
             asset_id: T::AssetId,
             amount: Balance,
         ) -> DispatchResultWithPostInfo {
-            let issuer = ensure_signed(origin.clone())?;
-            Self::burn_from(&asset_id, &issuer, &issuer, amount)?;
-            Self::deposit_event(Event::Burn(issuer, asset_id.clone(), amount));
-            Ok(().into())
+            common::with_benchmark(common::location_stamp!("assets.burn"), || {
+                let issuer = ensure_signed(origin.clone())?;
+                Self::burn_from(&asset_id, &issuer, &issuer, amount)?;
+                Self::deposit_event(Event::Burn(issuer, asset_id.clone(), amount));
+                Ok(().into())
+            })
         }
 
         /// Set given asset to be non-mintable, i.e. it can no longer be minted, only burned.

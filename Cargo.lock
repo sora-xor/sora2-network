@@ -915,6 +915,7 @@ dependencies = [
  "blake2-rfc",
  "derive_more 0.99.11",
  "fixnum",
+ "frame-benchmarking",
  "frame-support",
  "frame-system",
  "libsecp256k1",
