@@ -326,7 +326,7 @@ impl crate::Config for Runtime {
     type Event = Event;
     type NetworkId = u32;
     type GetEthNetworkId = EthNetworkId;
-    type WeightInfo = ();
+    type WeightInfo = common::weights::PresetWeightInfo;
 }
 
 impl sp_runtime::traits::ExtrinsicMetadata for TestExtrinsic {
@@ -401,8 +401,8 @@ impl Default for ExtBuilder {
                 ),
             ],
             Some(vec![
-                (XOR.into(), Balance::from(350_000u32)),
-                (VAL.into(), Balance::from(33_900_000u32)),
+                (XOR.into(), common::balance!(350000)),
+                (VAL.into(), common::balance!(33900000)),
             ]),
             Some(4),
         );

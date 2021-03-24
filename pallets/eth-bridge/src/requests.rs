@@ -1,21 +1,23 @@
-use crate::contract::{MethodId, FUNCTIONS};
+use crate::contract::{MethodId, FUNCTIONS, METHOD_ID_SIZE};
 use crate::{
     get_bridge_account, types, Address, AssetIdOf, AssetKind, BridgeStatus, Config, Decoder, Error,
-    OutgoingRequest, Pallet, RequestStatus, SignatureParams, Timepoint,
+    OffchainRequest, OutgoingRequest, Pallet, RequestStatus, SignatureParams, Timepoint,
+    WeightInfo,
 };
 use alloc::collections::BTreeSet;
 use alloc::string::String;
 use codec::{Decode, Encode};
-use common::prelude::Balance;
+use common::prelude::{Balance, WeightToFixedFee};
 #[cfg(feature = "std")]
 use common::utils::string_serialization;
 use common::{AssetSymbol, BalancePrecision, VAL, XOR};
 use ethabi::{FixedBytes, Token};
 #[allow(unused_imports)]
 use frame_support::debug;
-use frame_support::dispatch::DispatchError;
+use frame_support::dispatch::{DispatchError, DispatchResult};
 use frame_support::sp_runtime::app_crypto::sp_core;
 use frame_support::traits::Get;
+use frame_support::weights::WeightToFeePolynomial;
 use frame_support::{ensure, RuntimeDebug};
 use frame_system::RawOrigin;
 #[cfg(feature = "std")]
@@ -26,6 +28,8 @@ use sp_std::prelude::*;
 
 pub const MIN_PEERS: usize = 4;
 pub const MAX_PEERS: usize = 100;
+
+type Assets<T> = assets::Pallet<T>;
 
 /// Incoming request for adding Sidechain token to a bridge.
 #[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug)]
@@ -44,12 +48,14 @@ pub struct IncomingAddToken<T: Config> {
 impl<T: Config> IncomingAddToken<T> {
     /// Registers the sidechain asset.
     pub fn finalize(&self) -> Result<H256, DispatchError> {
-        crate::Pallet::<T>::register_sidechain_asset(
-            self.token_address,
-            self.precision,
-            self.symbol.clone(),
-            self.network_id,
-        )?;
+        common::with_transaction(|| {
+            crate::Pallet::<T>::register_sidechain_asset(
+                self.token_address,
+                self.precision,
+                self.symbol.clone(),
+                self.network_id,
+            )
+        })?;
         Ok(self.tx_hash)
     }
 
@@ -204,64 +210,84 @@ pub struct IncomingTransfer<T: Config> {
     pub at_height: u64,
     pub timepoint: Timepoint<T>,
     pub network_id: T::NetworkId,
+    pub should_take_fee: bool,
 }
 
 impl<T: Config> IncomingTransfer<T> {
+    pub fn fee_amount() -> Balance {
+        let weight = <T as Config>::WeightInfo::request_from_sidechain();
+        WeightToFixedFee::calc(&weight)
+    }
+
+    pub fn validate(&self) -> Result<(), DispatchError> {
+        if self.should_take_fee {
+            let transfer_fee = Self::fee_amount();
+            ensure!(self.amount >= transfer_fee, Error::<T>::UnableToPayFees);
+        }
+        Ok(())
+    }
+
     /// If the asset kind is owned, then the `amount` of funds is reserved on the bridge account.
     pub fn prepare(&self) -> Result<(), DispatchError> {
         if self.asset_kind.is_owned() {
             let bridge_account = get_bridge_account::<T>(self.network_id);
-            assets::Pallet::<T>::reserve(self.asset_id, &bridge_account, self.amount)?;
+            Assets::<T>::reserve(self.asset_id, &bridge_account, self.amount)?;
         }
         Ok(())
     }
 
     /// Unreserves previously reserved amount of funds if the asset kind is owned.
-    pub fn unreserve(&self) {
+    pub fn unreserve(&self) -> DispatchResult {
         if self.asset_kind.is_owned() {
             let bridge_acc = &get_bridge_account::<T>(self.network_id);
-            if let Err(e) = assets::Pallet::<T>::unreserve(self.asset_id, bridge_acc, self.amount) {
-                debug::error!("Unexpected error: {:?}", e);
-            }
+            let remainder = Assets::<T>::unreserve(self.asset_id, bridge_acc, self.amount)?;
+            ensure!(remainder == 0, Error::<T>::FailedToUnreserve);
         }
+        Ok(())
     }
 
     /// Calls `.unreserve`.
     pub fn cancel(&self) -> Result<(), DispatchError> {
-        self.unreserve();
-        Ok(())
+        self.unreserve()
     }
 
     /// If the transferring asset kind is owned, the funds are transferred from the bridge account,
     /// otherwise the amount is minted.
     pub fn finalize(&self) -> Result<H256, DispatchError> {
+        self.validate()?;
         let bridge_account_id = get_bridge_account::<T>(self.network_id);
-        if self.asset_kind.is_owned() {
-            self.unreserve();
-            assets::Pallet::<T>::ensure_can_withdraw(
-                &self.asset_id,
-                &bridge_account_id,
-                self.amount,
-            )?;
-            assets::Pallet::<T>::transfer_from(
-                &self.asset_id,
-                &bridge_account_id,
-                &self.to,
-                self.amount,
-            )?;
+        let transfer_fee = Self::fee_amount();
+        let amount = if self.should_take_fee {
+            self.amount - transfer_fee
         } else {
-            assets::Pallet::<T>::mint_to(
-                &self.asset_id,
-                &bridge_account_id,
-                &self.to,
-                self.amount,
-            )?;
+            self.amount
+        };
+        if self.asset_kind.is_owned() {
+            common::with_transaction(|| -> Result<_, DispatchError> {
+                self.unreserve()?;
+                if self.should_take_fee {
+                    assets::Pallet::<T>::burn_from(
+                        &self.asset_id,
+                        &bridge_account_id,
+                        &bridge_account_id,
+                        transfer_fee,
+                    )?;
+                }
+                Assets::<T>::transfer_from(&self.asset_id, &bridge_account_id, &self.to, amount)?;
+                Ok(())
+            })?;
+        } else {
+            Assets::<T>::mint_to(&self.asset_id, &bridge_account_id, &self.to, amount)?;
         }
         Ok(self.tx_hash)
     }
 
     pub fn timepoint(&self) -> Timepoint<T> {
         self.timepoint
+    }
+
+    pub fn enable_taking_fee(&mut self) {
+        self.should_take_fee = true;
     }
 }
 
@@ -307,14 +333,14 @@ impl<T: Config> IncomingCancelOutgoingRequest<T> {
         let request_hash = self.request.hash();
         let net_id = self.network_id;
         let req_status = crate::RequestStatuses::<T>::get(net_id, &request_hash)
-            .ok_or(crate::Error::<T>::Other)?;
+            .ok_or(crate::Error::<T>::UnknownRequest)?;
         ensure!(
             req_status == RequestStatus::ApprovalsReady,
             crate::Error::<T>::RequestIsNotReady
         );
-        let mut method_id = [0u8; 4];
-        ensure!(self.tx_input.len() >= 4, Error::<T>::Other);
-        method_id.clone_from_slice(&self.tx_input[..4]);
+        let mut method_id = [0u8; METHOD_ID_SIZE];
+        ensure!(self.tx_input.len() >= 4, Error::<T>::InvalidFunctionInput);
+        method_id.clone_from_slice(&self.tx_input[..METHOD_ID_SIZE]);
         let expected_input = encode_outgoing_request_eth_call(method_id, &self.request)?;
         ensure!(
             expected_input == self.tx_input,
@@ -337,7 +363,8 @@ impl<T: Config> IncomingCancelOutgoingRequest<T> {
     /// Calls `cancel` on the request, changes its status to `Failed` and takes it approvals to
     /// make it available for resubmission.
     pub fn finalize(&self) -> Result<H256, DispatchError> {
-        self.request.cancel()?;
+        // TODO: `common::with_transaction` should be removed in the future after stabilization.
+        common::with_transaction(|| self.request.cancel())?;
         let hash = &self.request.hash();
         let net_id = self.network_id;
         crate::RequestStatuses::<T>::insert(net_id, hash, RequestStatus::Failed);
@@ -365,7 +392,8 @@ impl<T: Config> IncomingPrepareForMigration<T> {
     /// Checks that the current bridge status is `Initialized`, otherwise an error is thrown.
     pub fn prepare(&self) -> Result<(), DispatchError> {
         ensure!(
-            crate::BridgeBridgeStatus::<T>::get(&self.network_id) == BridgeStatus::Initialized,
+            crate::BridgeStatuses::<T>::get(&self.network_id).ok_or(Error::<T>::UnknownNetwork)?
+                == BridgeStatus::Initialized,
             Error::<T>::ContractIsAlreadyInMigrationStage
         );
         Ok(())
@@ -377,7 +405,7 @@ impl<T: Config> IncomingPrepareForMigration<T> {
 
     /// Sets the bridge status to `Migrating`.
     pub fn finalize(&self) -> Result<H256, DispatchError> {
-        crate::BridgeBridgeStatus::<T>::insert(self.network_id, BridgeStatus::Migrating);
+        crate::BridgeStatuses::<T>::insert(self.network_id, BridgeStatus::Migrating);
         Ok(self.tx_hash)
     }
 
@@ -402,7 +430,8 @@ impl<T: Config> IncomingMigrate<T> {
     /// Checks that the current bridge status is `Migrating`, otherwise an error is thrown.
     pub fn prepare(&self) -> Result<(), DispatchError> {
         ensure!(
-            crate::BridgeBridgeStatus::<T>::get(&self.network_id) == BridgeStatus::Migrating,
+            crate::BridgeStatuses::<T>::get(&self.network_id).ok_or(Error::<T>::UnknownNetwork)?
+                == BridgeStatus::Migrating,
             Error::<T>::ContractIsNotInMigrationStage
         );
         Ok(())
@@ -415,7 +444,7 @@ impl<T: Config> IncomingMigrate<T> {
     /// Updates the bridge's contract address and sets its status to `Initialized`.
     pub fn finalize(&self) -> Result<H256, DispatchError> {
         crate::BridgeContractAddress::<T>::insert(self.network_id, self.new_contract_address);
-        crate::BridgeBridgeStatus::<T>::insert(self.network_id, BridgeStatus::Initialized);
+        crate::BridgeStatuses::<T>::insert(self.network_id, BridgeStatus::Initialized);
         Ok(self.tx_hash)
     }
 
@@ -503,43 +532,41 @@ impl<T: Config> OutgoingTransfer<T> {
 
     /// Transfers the given `amount` of `asset_id` to the bridge account and reserve it.
     pub fn prepare(&mut self) -> Result<(), DispatchError> {
-        assets::Pallet::<T>::ensure_can_withdraw(&self.asset_id, &self.from, self.amount)?;
         let bridge_account = get_bridge_account::<T>(self.network_id);
-        assets::Pallet::<T>::transfer_from(
-            &self.asset_id,
-            &self.from,
-            &bridge_account,
-            self.amount,
-        )?;
-        assets::Pallet::<T>::reserve(self.asset_id, &bridge_account, self.amount)?;
-        Ok(())
+        common::with_transaction(|| {
+            Assets::<T>::transfer_from(&self.asset_id, &self.from, &bridge_account, self.amount)?;
+            Assets::<T>::reserve(self.asset_id, &bridge_account, self.amount)
+        })
+    }
+
+    pub fn cancel(&self) -> Result<(), DispatchError> {
+        let bridge_account = get_bridge_account::<T>(self.network_id);
+        common::with_transaction(|| {
+            let remainder = Assets::<T>::unreserve(self.asset_id, &bridge_account, self.amount)?;
+            ensure!(remainder == 0, Error::<T>::FailedToUnreserve);
+            Assets::<T>::transfer_from(&self.asset_id, &bridge_account, &self.from, self.amount)
+        })
     }
 
     /// Validates the request again, then, if the asset is originated in Sidechain, it gets burned.
     pub fn finalize(&self) -> Result<(), DispatchError> {
         self.validate()?;
-        // TODO: add a test
         let bridge_acc = get_bridge_account::<T>(self.network_id);
-        assets::Module::<T>::unreserve(self.asset_id, &bridge_acc, self.amount)?;
-        if let Some(AssetKind::Sidechain) =
-            Pallet::<T>::registered_asset(self.network_id, &self.asset_id)
-        {
-            assets::Module::<T>::burn_from(&self.asset_id, &bridge_acc, &bridge_acc, self.amount)?;
-        }
-        Ok(())
-    }
-
-    /// Unreserves and transfers the given asset back to the request's author.
-    pub fn cancel(&self) -> Result<(), DispatchError> {
-        let bridge_account = get_bridge_account::<T>(self.network_id);
-        assets::Pallet::<T>::unreserve(self.asset_id, &bridge_account, self.amount)?;
-        assets::Pallet::<T>::transfer_from(
-            &self.asset_id,
-            &bridge_account,
-            &self.from,
-            self.amount,
-        )?;
-        Ok(())
+        common::with_transaction(|| {
+            let remainder = Assets::<T>::unreserve(self.asset_id, &bridge_acc, self.amount)?;
+            ensure!(remainder == 0, Error::<T>::FailedToUnreserve);
+            let asset_kind: AssetKind =
+                crate::Module::<T>::registered_asset(self.network_id, &self.asset_id)
+                    .ok_or(Error::<T>::UnknownAssetId)?;
+            if !asset_kind.is_owned() {
+                // The burn shouldn't fail, because we've just unreserved the needed amount of the asset,
+                // the only case it can fail is if the bridge account doesn't have `BURN` permission,
+                // but this permission is always granted when adding sidechain asset to bridge
+                // (see `Module::register_sidechain_asset`).
+                Assets::<T>::burn_from(&self.asset_id, &bridge_acc, &bridge_acc, self.amount)?;
+            }
+            Ok(())
+        })
     }
 }
 
@@ -607,7 +634,7 @@ pub struct OutgoingAddAsset<T: Config> {
 impl<T: Config> OutgoingAddAsset<T> {
     pub fn to_eth_abi(&self, tx_hash: H256) -> Result<OutgoingAddAssetEncoded, Error<T>> {
         let hash = H256(tx_hash.0);
-        let (symbol, precision, _) = assets::Pallet::<T>::get_asset_info(&self.asset_id);
+        let (symbol, precision, _) = Assets::<T>::get_asset_info(&self.asset_id);
         let symbol: String = String::from_utf8_lossy(&symbol.0).into();
         let name = symbol.clone();
         let asset_id_code = <AssetIdOf<T> as Into<H256>>::into(self.asset_id);
@@ -641,6 +668,7 @@ impl<T: Config> OutgoingAddAsset<T> {
 
     /// Checks that the asset isn't registered yet.
     pub fn validate(&self) -> Result<(), DispatchError> {
+        Assets::<T>::ensure_asset_exists(&self.asset_id)?;
         ensure!(
             crate::RegisteredAsset::<T>::get(self.network_id, &self.asset_id).is_none(),
             Error::<T>::TokenIsAlreadyAdded
@@ -786,7 +814,7 @@ impl<T: Config> OutgoingAddToken<T> {
         ensure!(
             crate::RegisteredSidechainAsset::<T>::get(self.network_id, &self.token_address)
                 .is_none(),
-            Error::<T>::Other
+            Error::<T>::SidechainAssetIsAlreadyRegistered
         );
         let symbol = AssetSymbol(self.ticker.as_bytes().to_vec());
         ensure!(
@@ -803,12 +831,14 @@ impl<T: Config> OutgoingAddToken<T> {
     /// Calls `validate` again and registers the sidechain asset.
     pub fn finalize(&self) -> Result<(), DispatchError> {
         let symbol = self.validate()?;
-        crate::Pallet::<T>::register_sidechain_asset(
-            self.token_address,
-            self.decimals,
-            symbol,
-            self.network_id,
-        )?;
+        common::with_transaction(|| {
+            crate::Pallet::<T>::register_sidechain_asset(
+                self.token_address,
+                self.decimals,
+                symbol,
+                self.network_id,
+            )
+        })?;
         Ok(())
     }
 
@@ -969,7 +999,7 @@ impl<T: Config> OutgoingAddPeerCompat<T> {
         // Previous `OutgoingAddPeer` should set the pending peer.
         ensure!(
             pending_peer.as_ref() == Some(&self.peer_account_id),
-            Error::<T>::Other
+            Error::<T>::NoPendingPeer
         );
         Ok(peers)
     }
@@ -1054,7 +1084,9 @@ impl<T: Config> OutgoingRemovePeer<T> {
         .map_err(|e| e.error)?;
         peers.remove(&self.peer_account_id);
         crate::Peers::<T>::insert(self.network_id, peers);
-        // TODO: remove PeerAccountId and PeerAddress
+        // TODO: check it's not conflicting with compat request
+        crate::PeerAccountId::<T>::take(self.network_id, self.peer_address);
+        crate::PeerAddress::<T>::take(self.network_id, &self.peer_account_id);
         Ok(())
     }
 
@@ -1111,7 +1143,7 @@ impl<T: Config> OutgoingRemovePeerCompat<T> {
         // Previous `OutgoingRemovePeer` should set the pending peer.
         ensure!(
             pending_peer.as_ref() == Some(&self.peer_account_id),
-            Error::<T>::Other
+            Error::<T>::NoPendingPeer
         );
         Ok(peers)
     }
@@ -1397,4 +1429,52 @@ pub fn parse_hash_from_call<T: Config>(
         .cloned()
         .and_then(Decoder::<T>::parse_h256)
         .ok_or_else(|| Error::<T>::FailedToParseTxHashInCall.into())
+}
+
+macro_rules! impl_from_for_outgoing_requests {
+    ($($req:ty, $var:ident);+ $(;)?) => {$(
+        impl<T: Config> From<$req> for OutgoingRequest<T> {
+            fn from(v: $req) -> Self {
+                Self::$var(v)
+            }
+        }
+
+        impl<T: Config> From<$req> for OffchainRequest<T> {
+            fn from(v: $req) -> Self {
+                Self::outgoing(v.into())
+            }
+        }
+    )+};
+}
+
+impl_from_for_outgoing_requests! {
+    OutgoingTransfer<T>, Transfer;
+    OutgoingAddAsset<T>, AddAsset;
+    OutgoingAddToken<T>, AddToken;
+    OutgoingAddPeer<T>, AddPeer;
+    OutgoingAddPeerCompat<T>, AddPeerCompat;
+    OutgoingRemovePeer<T>, RemovePeer;
+    OutgoingRemovePeerCompat<T>, RemovePeerCompat;
+    OutgoingPrepareForMigration<T>, PrepareForMigration;
+    OutgoingMigrate<T>, Migrate;
+}
+
+macro_rules! impl_from_for_incoming_requests {
+    ($($req:ty, $var:ident);+ $(;)?) => {$(
+        impl<T: Config> From<$req> for crate::IncomingRequest<T> {
+            fn from(v: $req) -> Self {
+                Self::$var(v)
+            }
+        }
+    )+};
+}
+
+impl_from_for_incoming_requests! {
+    IncomingTransfer<T>, Transfer;
+    IncomingAddToken<T>, AddAsset;
+    IncomingChangePeers<T>, ChangePeers;
+    IncomingChangePeersCompat<T>, ChangePeersCompat;
+    IncomingPrepareForMigration<T>, PrepareForMigration;
+    IncomingMigrate<T>, Migrate;
+    IncomingCancelOutgoingRequest<T>, CancelOutgoingRequest;
 }

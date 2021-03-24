@@ -764,10 +764,6 @@ fn testnet_genesis(
                 },
             )],
         }),
-        mock_liquidity_source_Instance1: None,
-        mock_liquidity_source_Instance2: None,
-        mock_liquidity_source_Instance3: None,
-        mock_liquidity_source_Instance4: None,
         faucet: Some(FaucetConfig {
             reserves_account_id: faucet_tech_account_id,
         }),
