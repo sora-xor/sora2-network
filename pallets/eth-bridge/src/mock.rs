@@ -479,7 +479,7 @@ impl ExtBuilder {
                 |(asset_id, _, _)| (ext_network.config.bridge_account_id.clone(), asset_id, 0),
             ));
             endowed_accounts.extend(ext_network.config.reserves.iter().cloned().map(
-                |(asset_id, balance)| (ext_network.config.bridge_account_id.clone(), asset_id, 0),
+                |(asset_id, _balance)| (ext_network.config.bridge_account_id.clone(), asset_id, 0),
             ));
             bridge_accounts.push((
                 ext_network.config.bridge_account_id.clone(),
