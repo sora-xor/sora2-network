@@ -589,6 +589,8 @@ impl liquidity_proxy::Config for Runtime {
     type GetNumSamples = GetNumSamples;
     type GetTechnicalAccountId = GetLiquidityProxyAccountId;
     type WeightInfo = ();
+    type PrimaryMarket = multicollateral_bonding_curve_pool::Module<Runtime>;
+    type SecondaryMarket = pool_xyk::Module<Runtime>;
 }
 
 parameter_types! {
