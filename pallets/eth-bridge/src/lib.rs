@@ -1860,6 +1860,15 @@ pub mod pallet {
                     )
                     .expect("failed to assign permissions for a bridge account");
                 }
+                for (asset_id, balance) in &network.reserves {
+                    assets::Pallet::<T>::mint_to(
+                        asset_id,
+                        &peers_account_id,
+                        &peers_account_id,
+                        *balance,
+                    )
+                    .unwrap();
+                }
                 NextNetworkId::<T>::set(net_id + T::NetworkId::one());
             }
         }
