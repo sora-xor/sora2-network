@@ -29,9 +29,6 @@ impl crate::WeightInfo for () {
     fn force_add_peer() -> Weight {
         Default::default()
     }
-    fn finalize_mark_as_done() -> Weight {
-        Default::default()
-    }
     fn prepare_for_migration() -> Weight {
         Default::default()
     }
@@ -63,9 +60,6 @@ impl crate::WeightInfo for PresetWeightInfo {
         EXTRINSIC_FIXED_WEIGHT
     }
     fn force_add_peer() -> Weight {
-        EXTRINSIC_FIXED_WEIGHT
-    }
-    fn finalize_mark_as_done() -> Weight {
         EXTRINSIC_FIXED_WEIGHT
     }
     fn prepare_for_migration() -> Weight {

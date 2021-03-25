@@ -94,7 +94,6 @@ pub trait WeightInfo {
     fn add_peer() -> Weight;
     fn remove_peer() -> Weight;
     fn force_add_peer() -> Weight;
-    fn finalize_mark_as_done() -> Weight;
     fn prepare_for_migration() -> Weight;
     fn migrate() -> Weight;
 }
@@ -418,6 +417,7 @@ pub enum IncomingRequest<T: Config> {
     AddToken(IncomingAddToken<T>),
     ChangePeers(IncomingChangePeers<T>),
     CancelOutgoingRequest(IncomingCancelOutgoingRequest<T>),
+    MarkAsDone(IncomingMarkAsDoneRequest<T>),
     PrepareForMigration(IncomingPrepareForMigration<T>),
     Migrate(IncomingMigrate<T>),
     ChangePeersCompat(IncomingChangePeersCompat<T>),
@@ -489,12 +489,13 @@ impl<T: Config> IncomingRequest<T> {
         Ok(req)
     }
 
-    fn tx_hash(&self) -> H256 {
+    fn hash(&self) -> H256 {
         match self {
             IncomingRequest::Transfer(request) => request.tx_hash,
             IncomingRequest::AddToken(request) => request.tx_hash,
             IncomingRequest::ChangePeers(request) => request.tx_hash,
             IncomingRequest::CancelOutgoingRequest(request) => request.initial_request_hash,
+            IncomingRequest::MarkAsDone(request) => request.initial_request_hash,
             IncomingRequest::PrepareForMigration(request) => request.tx_hash,
             IncomingRequest::Migrate(request) => request.tx_hash,
             IncomingRequest::ChangePeersCompat(request) => request.tx_hash,
@@ -507,6 +508,7 @@ impl<T: Config> IncomingRequest<T> {
             IncomingRequest::AddToken(request) => request.network_id,
             IncomingRequest::ChangePeers(request) => request.network_id,
             IncomingRequest::CancelOutgoingRequest(request) => request.network_id,
+            IncomingRequest::MarkAsDone(request) => request.network_id,
             IncomingRequest::PrepareForMigration(request) => request.network_id,
             IncomingRequest::Migrate(request) => request.network_id,
             IncomingRequest::ChangePeersCompat(request) => request.network_id,
@@ -520,6 +522,7 @@ impl<T: Config> IncomingRequest<T> {
             IncomingRequest::AddToken(request) => request.at_height,
             IncomingRequest::ChangePeers(request) => request.at_height,
             IncomingRequest::CancelOutgoingRequest(request) => request.at_height,
+            IncomingRequest::MarkAsDone(request) => request.at_height,
             IncomingRequest::PrepareForMigration(request) => request.at_height,
             IncomingRequest::Migrate(request) => request.at_height,
             IncomingRequest::ChangePeersCompat(request) => request.at_height,
@@ -532,6 +535,7 @@ impl<T: Config> IncomingRequest<T> {
             IncomingRequest::AddToken(_request) => Ok(()),
             IncomingRequest::ChangePeers(_request) => Ok(()),
             IncomingRequest::CancelOutgoingRequest(_request) => Ok(()),
+            IncomingRequest::MarkAsDone(request) => request.validate(),
             IncomingRequest::PrepareForMigration(_request) => Ok(()),
             IncomingRequest::Migrate(_request) => Ok(()),
             IncomingRequest::ChangePeersCompat(_request) => Ok(()),
@@ -544,6 +548,7 @@ impl<T: Config> IncomingRequest<T> {
             IncomingRequest::AddToken(_request) => Ok(()),
             IncomingRequest::ChangePeers(_request) => Ok(()),
             IncomingRequest::CancelOutgoingRequest(request) => request.prepare(),
+            IncomingRequest::MarkAsDone(request) => request.prepare(),
             IncomingRequest::PrepareForMigration(request) => request.prepare(),
             IncomingRequest::Migrate(request) => request.prepare(),
             IncomingRequest::ChangePeersCompat(_request) => Ok(()),
@@ -556,6 +561,7 @@ impl<T: Config> IncomingRequest<T> {
             IncomingRequest::AddToken(_request) => Ok(()),
             IncomingRequest::ChangePeers(_request) => Ok(()),
             IncomingRequest::CancelOutgoingRequest(request) => request.cancel(),
+            IncomingRequest::MarkAsDone(request) => request.cancel(),
             IncomingRequest::PrepareForMigration(request) => request.cancel(),
             IncomingRequest::Migrate(request) => request.cancel(),
             IncomingRequest::ChangePeersCompat(_request) => Ok(()),
@@ -568,6 +574,7 @@ impl<T: Config> IncomingRequest<T> {
             IncomingRequest::AddToken(request) => request.finalize(),
             IncomingRequest::ChangePeers(request) => request.finalize(),
             IncomingRequest::CancelOutgoingRequest(request) => request.finalize(),
+            IncomingRequest::MarkAsDone(request) => request.finalize(),
             IncomingRequest::PrepareForMigration(request) => request.finalize(),
             IncomingRequest::Migrate(request) => request.finalize(),
             IncomingRequest::ChangePeersCompat(request) => request.finalize(),
@@ -582,6 +589,7 @@ impl<T: Config> IncomingRequest<T> {
             IncomingRequest::AddToken(request) => request.timepoint(),
             IncomingRequest::ChangePeers(request) => request.timepoint(),
             IncomingRequest::CancelOutgoingRequest(request) => request.timepoint(),
+            IncomingRequest::MarkAsDone(request) => request.timepoint(),
             IncomingRequest::PrepareForMigration(request) => request.timepoint(),
             IncomingRequest::Migrate(request) => request.timepoint(),
             IncomingRequest::ChangePeersCompat(request) => request.timepoint(),
@@ -589,24 +597,21 @@ impl<T: Config> IncomingRequest<T> {
     }
 
     /// Check that the incoming requests still exists on Sidechain.
-    pub fn check_existence(&self) -> bool {
+    pub fn check_existence(&self) -> Result<bool, Error<T>> {
         let network_id = self.network_id();
         match self {
             IncomingRequest::CancelOutgoingRequest(request) => {
                 let hash = request.tx_hash;
-                if let Ok(tx) = Module::<T>::load_tx_receipt(hash, network_id) {
-                    tx.is_approved() == false // TODO: check for gas limit
-                } else {
-                    false
-                }
+                let tx = Pallet::<T>::load_tx_receipt(hash, network_id)?;
+                Ok(tx.is_approved() == false) // TODO: check for gas limit
+            }
+            IncomingRequest::MarkAsDone(request) => {
+                Pallet::<T>::load_is_used(request.outgoing_request_hash, request.network_id)
             }
             _ => {
-                let hash = self.tx_hash();
-                if let Ok(tx) = Module::<T>::load_tx_receipt(hash, network_id) {
-                    tx.is_approved()
-                } else {
-                    false
-                }
+                let hash = self.hash();
+                let tx = Pallet::<T>::load_tx_receipt(hash, network_id)?;
+                Ok(tx.is_approved())
             }
         }
     }
@@ -673,7 +678,6 @@ impl<T: Config> LoadIncomingRequest<T> {
                     _ => (),
                 }
                 Ok(())
-                // request.validate()
             }
         }
     }
@@ -1023,7 +1027,6 @@ impl Default for BridgeStatus {
 }
 
 pub use pallet::*;
-use std::hint::unreachable_unchecked;
 
 #[frame_support::pallet]
 pub mod pallet {
@@ -1484,7 +1487,7 @@ pub mod pallet {
             let author = ensure_signed(origin.clone())?;
             let net_id = incoming_request.network_id();
             let _ = Self::ensure_bridge_account(&author, net_id)?;
-            let sidechain_tx_hash = incoming_request.tx_hash();
+            let sidechain_tx_hash = incoming_request.hash();
             let mut request = Request::incoming(incoming_request);
             let incoming_request_hash = request.hash();
             ensure!(
@@ -1595,27 +1598,6 @@ pub mod pallet {
             let request = Requests::<T>::get(network_id, hash).ok_or(Error::<T>::UnknownRequest)?;
             Self::inner_abort_request(&request, hash, error, network_id);
             Self::deposit_event(Event::RequestAborted(hash));
-            Ok(().into())
-        }
-
-        /// Finalizes `MarkAsDone` incoming request.
-        // TODO: maybe rewrite to finalize with `finalize_incoming_request`
-        #[pallet::weight(<T as Config>::WeightInfo::finalize_mark_as_done())]
-        pub fn finalize_mark_as_done(
-            origin: OriginFor<T>,
-            request_hash: H256,
-            network_id: BridgeNetworkId<T>,
-        ) -> DispatchResultWithPostInfo {
-            debug::debug!("called finalize_mark_as_done");
-            let author = ensure_signed(origin)?;
-            let _ = Self::ensure_bridge_account(&author, network_id)?;
-            let request_status = RequestStatuses::<T>::get(network_id, request_hash)
-                .ok_or(Error::<T>::UnknownRequest)?;
-            ensure!(
-                request_status == RequestStatus::ApprovalsReady,
-                Error::<T>::RequestIsNotReady
-            );
-            RequestStatuses::<T>::insert(network_id, request_hash, RequestStatus::Done);
             Ok(().into())
         }
 
@@ -2365,7 +2347,7 @@ impl<T: Config> Pallet<T> {
 
         // TODO (optimization): send results as batch.
         // Load the transaction receipt again to check that it still exists.
-        let exists = request.check_existence();
+        let exists = request.check_existence()?;
         if exists {
             Self::send_finalize_incoming_request(hash, request.timepoint(), network_id)?
         } else {
@@ -2480,19 +2462,21 @@ impl<T: Config> Pallet<T> {
     /// variable to check if the request was actually made.
     fn handle_mark_as_done_incoming_request(
         pre_request: LoadIncomingMetaRequest<T>,
+        pre_request_hash: H256,
     ) -> Result<(), Error<T>> {
-        let is_used = Self::load_is_used(pre_request.hash, pre_request.network_id)?;
+        let network_id = pre_request.network_id;
+        let at_height = Self::load_current_height(network_id)?;
+        let timepoint = pre_request.timepoint;
+        let request = IncomingRequest::MarkAsDone(IncomingMarkAsDoneRequest {
+            outgoing_request_hash: pre_request_hash,
+            initial_request_hash: pre_request.hash,
+            at_height,
+            timepoint,
+            network_id,
+        });
+        let is_used = request.check_existence()?;
         ensure!(is_used, Error::<T>::RequestNotFinalizedOnSidechain);
-        let finalize_mark_as_done =
-            Call::<T>::finalize_mark_as_done(pre_request.hash, pre_request.network_id);
-        let call = bridge_multisig::Call::as_multi(
-            get_bridge_account::<T>(pre_request.network_id),
-            Some(pre_request.timepoint),
-            <<T as Config>::Call>::from(finalize_mark_as_done).encode(),
-            false,
-            10_000_000_000_000u64,
-        );
-        Self::send_signed_transaction::<bridge_multisig::Call<T>>(call)
+        Self::send_register_incoming_request(request, timepoint, network_id)
     }
 
     /// Handles the given off-chain request.
@@ -2505,9 +2489,9 @@ impl<T: Config> Pallet<T> {
             Request::LoadIncoming(request) => {
                 let network_id = request.network_id();
                 let timepoint = request.timepoint();
-                let tx_hash = request.hash();
                 match request {
                     LoadIncomingRequest::Transaction(request) => {
+                        let tx_hash = request.hash;
                         let kind = request.kind;
                         debug::debug!("Loading approved tx {}", tx_hash);
                         let tx = Self::load_tx_receipt(tx_hash, network_id)?;
@@ -2533,9 +2517,10 @@ impl<T: Config> Pallet<T> {
                         let kind = request.kind;
                         match kind {
                             IncomingMetaRequestKind::MarkAsDone => {
-                                Self::handle_mark_as_done_incoming_request(request)
+                                Self::handle_mark_as_done_incoming_request(request, hash)
                             }
                             IncomingMetaRequestKind::CancelOutgoingRequest => {
+                                let tx_hash = request.hash;
                                 let tx = Self::load_tx_receipt(tx_hash, network_id)?;
                                 let incoming_request =
                                     Self::parse_cancel_incoming_request(tx, request, hash)?;
@@ -3126,10 +3111,10 @@ impl<T: Config> Pallet<T> {
     }
 
     /// Queries current height of Sidechain.
-    fn load_current_height(network_id: T::NetworkId) -> Result<u64, DispatchError> {
+    fn load_current_height(network_id: T::NetworkId) -> Result<u64, Error<T>> {
         Self::eth_json_rpc_request::<_, types::U64>("eth_blockNumber", &(), network_id)?
             .first()
-            .ok_or(Error::<T>::LoadCurrentSidechainHeight.into())
+            .ok_or(Error::<T>::LoadCurrentSidechainHeight)
             .map(|x| x.as_u64())
     }
 

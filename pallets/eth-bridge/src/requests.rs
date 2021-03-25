@@ -310,7 +310,7 @@ pub fn encode_outgoing_request_eth_call<T: Config>(
         .map_err(|_| Error::EthAbiEncodingError)
 }
 
-/// Incoming request for cancelling a broken outgoing request. "Broken" means that the request
+/// Incoming request for cancelling a obsolete outgoing request. "Obsolete" means that the request
 /// signatures were collected, but something changed in the bridge state (e.g., peers set) and
 /// the signatures became invalid. In this case we want to cancel the request to be able to
 /// re-submit it later.
@@ -379,6 +379,56 @@ impl<T: Config> IncomingCancelOutgoingRequest<T> {
             RequestStatus::Failed(Error::<T>::Cancelled.into()),
         );
         crate::RequestApprovals::<T>::take(net_id, hash);
+        Ok(self.initial_request_hash)
+    }
+
+    pub fn timepoint(&self) -> Timepoint<T> {
+        self.timepoint
+    }
+}
+
+/// Incoming request that's used to mark outgoing requests as done.
+/// Since off-chain workers query Sidechain networks lazily, we should force them to check
+/// if some outgoing request was finalized on Sidechain.
+#[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug)]
+#[cfg_attr(feature = "std", derive(Serialize))]
+pub struct IncomingMarkAsDoneRequest<T: Config> {
+    pub outgoing_request_hash: H256,
+    pub initial_request_hash: H256,
+    pub at_height: u64,
+    pub timepoint: Timepoint<T>,
+    pub network_id: T::NetworkId,
+}
+
+impl<T: Config> IncomingMarkAsDoneRequest<T> {
+    /// Checks that the marking request status is `ApprovalsReady`.
+    pub fn validate(&self) -> Result<(), DispatchError> {
+        let request_status =
+            crate::RequestStatuses::<T>::get(self.network_id, self.outgoing_request_hash)
+                .ok_or(Error::<T>::UnknownRequest)?;
+        ensure!(
+            request_status == RequestStatus::ApprovalsReady,
+            Error::<T>::RequestIsNotReady
+        );
+        Ok(())
+    }
+
+    pub fn prepare(&self) -> Result<(), DispatchError> {
+        Ok(())
+    }
+
+    pub fn cancel(&self) -> Result<(), DispatchError> {
+        Ok(())
+    }
+
+    /// Validates the request again and changes the status of the marking request to `Done`.
+    pub fn finalize(&self) -> Result<H256, DispatchError> {
+        self.validate()?;
+        crate::RequestStatuses::<T>::insert(
+            self.network_id,
+            self.outgoing_request_hash,
+            RequestStatus::Done,
+        );
         Ok(self.initial_request_hash)
     }
 

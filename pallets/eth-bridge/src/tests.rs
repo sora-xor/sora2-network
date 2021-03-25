@@ -2,9 +2,10 @@ use crate::contract::{functions, FUNCTIONS, RECEIVE_BY_ETHEREUM_ASSET_ADDRESS_ID
 use crate::mock::*;
 use crate::requests::{
     encode_outgoing_request_eth_call, ChangePeersContract, IncomingAddToken,
-    IncomingChangePeersCompat, IncomingMigrate, IncomingPrepareForMigration, IncomingTransfer,
-    OutgoingAddAsset, OutgoingAddPeer, OutgoingAddPeerCompat, OutgoingAddToken, OutgoingMigrate,
-    OutgoingPrepareForMigration, OutgoingRemovePeer, OutgoingRemovePeerCompat,
+    IncomingChangePeersCompat, IncomingMarkAsDoneRequest, IncomingMigrate,
+    IncomingPrepareForMigration, IncomingTransfer, OutgoingAddAsset, OutgoingAddPeer,
+    OutgoingAddPeerCompat, OutgoingAddToken, OutgoingMigrate, OutgoingPrepareForMigration,
+    OutgoingRemovePeer, OutgoingRemovePeerCompat,
 };
 use crate::types::{Bytes, Log, Transaction};
 use crate::{
@@ -203,7 +204,7 @@ fn assert_incoming_request_done(
 ) -> Result<(), Option<Event>> {
     let net_id = incoming_request.network_id();
     let bridge_acc_id = state.networks[&net_id].config.bridge_account_id.clone();
-    let sidechain_req_hash = incoming_request.tx_hash();
+    let sidechain_req_hash = incoming_request.hash();
     assert_eq!(
         crate::RequestsQueue::<Runtime>::get(net_id)
             .last()
@@ -256,7 +257,7 @@ fn assert_incoming_request_registration_failed(
             .last()
             .unwrap()
             .0,
-        incoming_request.tx_hash().0
+        incoming_request.hash().0
     );
     assert_err!(
         EthBridge::register_incoming_request(
@@ -977,7 +978,6 @@ fn should_convert_to_eth_address() {
 
 #[test]
 fn should_add_asset() {
-    env_logger::try_init();
     let (mut ext, state) = ExtBuilder::default().build();
 
     ext.execute_with(|| {
@@ -1174,7 +1174,6 @@ fn should_add_peer_in_eth_network() {
 
 #[test]
 fn should_add_peer_in_simple_networks() {
-    env_logger::try_init();
     let mut builder = ExtBuilder::default();
     let net_id = builder.add_network(vec![], None, Some(4));
     assert_ne!(net_id, ETH_NETWORK_ID);
@@ -1691,18 +1690,21 @@ fn should_mark_request_as_done() {
         ));
         let (_outgoing_req, outgoing_req_hash) =
             approve_last_request(&state, net_id).expect("request wasn't approved");
-        let _request_hash = request_incoming(
+        let request_hash = request_incoming(
             alice.clone(),
             outgoing_req_hash,
             IncomingMetaRequestKind::MarkAsDone.into(),
             net_id,
         )
         .unwrap();
-        assert_ok!(EthBridge::finalize_mark_as_done(
-            Origin::signed(state.networks[&net_id].config.bridge_account_id.clone()),
-            outgoing_req_hash,
-            net_id,
-        ));
+        let request = IncomingRequest::MarkAsDone(IncomingMarkAsDoneRequest {
+            outgoing_request_hash: outgoing_req_hash,
+            initial_request_hash: request_hash,
+            at_height: 1,
+            timepoint: Default::default(),
+            network_id: ETH_NETWORK_ID,
+        });
+        assert_incoming_request_done(&state, request).unwrap();
         assert_eq!(
             crate::RequestStatuses::<Runtime>::get(net_id, outgoing_req_hash).unwrap(),
             RequestStatus::Done
@@ -1724,7 +1726,7 @@ fn should_not_mark_request_as_done() {
             100_u32.into(),
             net_id,
         ));
-        let (outgoing_req, outgoing_req_hash) =
+        let (_outgoing_req, outgoing_req_hash) =
             last_outgoing_request(net_id).expect("request wasn't approved");
         assert_noop!(
             EthBridge::request_from_sidechain(
@@ -1732,14 +1734,6 @@ fn should_not_mark_request_as_done() {
                 outgoing_req_hash,
                 IncomingMetaRequestKind::MarkAsDone.into(),
                 net_id
-            ),
-            Error::RequestIsNotReady
-        );
-        assert_noop!(
-            EthBridge::finalize_mark_as_done(
-                Origin::signed(state.networks[&net_id].config.bridge_account_id.clone()),
-                outgoing_req_hash,
-                net_id,
             ),
             Error::RequestIsNotReady
         );
@@ -1765,10 +1759,11 @@ fn should_not_mark_request_as_done() {
         });
         assert_incoming_request_done(&state, incoming_transfer.clone()).unwrap();
         assert_noop!(
-            EthBridge::finalize_mark_as_done(
-                Origin::signed(state.networks[&net_id].config.bridge_account_id.clone()),
+            EthBridge::request_from_sidechain(
+                Origin::signed(alice.clone()),
                 req_hash,
-                net_id,
+                IncomingMetaRequestKind::MarkAsDone.into(),
+                net_id
             ),
             Error::RequestIsNotReady
         );
