@@ -89,7 +89,6 @@ struct EthBridgeParams {
 pub fn dev_net() -> ChainSpec {
     let mut properties = Properties::new();
     properties.insert("tokenSymbol".into(), "XOR".into());
-    properties.insert("tokenName".into(), "SORA".into());
     properties.insert("tokenDecimals".into(), 18.into());
     ChainSpec::from_genesis(
         "SORA-dev Testnet",
@@ -186,7 +185,6 @@ pub fn dev_net() -> ChainSpec {
 pub fn staging_net(test: bool) -> ChainSpec {
     let mut properties = Properties::new();
     properties.insert("tokenSymbol".into(), "XOR".into());
-    properties.insert("tokenName".into(), "SORA".into());
     properties.insert("tokenDecimals".into(), 18.into());
     let (name, id, boot_nodes) = if test {
         (
@@ -396,7 +394,6 @@ fn bonding_curve_distribution_accounts(
 pub fn local_testnet_config() -> ChainSpec {
     let mut properties = Properties::new();
     properties.insert("tokenSymbol".into(), "XOR".into());
-    properties.insert("tokenName".into(), "SORA".into());
     properties.insert("tokenDecimals".into(), 18.into());
     ChainSpec::from_genesis(
         "SORA-local Testnet",

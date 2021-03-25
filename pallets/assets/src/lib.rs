@@ -211,7 +211,7 @@ pub mod pallet {
         ///
         /// Registers new `AssetId` for the given `origin`.
         /// AssetSymbol should represent string with only uppercase latin chars with max length of 7.
-        /// AssetName should represent string with only uppercase or lowercase latin chars and spaces, with max length of 33.
+        /// AssetName should represent string with only uppercase or lowercase latin chars or numbers or spaces, with max length of 33.
         #[pallet::weight(<T as Config>::WeightInfo::register())]
         pub fn register(
             origin: OriginFor<T>,
@@ -340,7 +340,7 @@ pub mod pallet {
         InsufficientBalance,
         /// Symbol is not valid. It must contain only uppercase latin characters, length <= 7.
         InvalidAssetSymbol,
-        /// Name is not valid. It must contain only uppercase or lowercase latin characters, length <= 33.
+        /// Name is not valid. It must contain only uppercase or lowercase latin characters or numbers or spaces, length <= 33.
         InvalidAssetName,
         /// Precision value is not valid, it should represent a number of decimal places for number, max is 30.
         InvalidPrecision,
@@ -727,7 +727,9 @@ pub fn is_symbol_valid(symbol: &AssetSymbol) -> bool {
 /// to ASCII range and are of single byte, therefore passing check in range 'A' to 'z'
 /// guarantees that all graphemes are of length 1, therefore length check is valid.
 pub fn is_name_valid(name: &AssetName) -> bool {
-    let mut allowed_graphemes = (b'A'..=b'z').collect::<Vec<_>>();
+    let mut allowed_graphemes = (b'A'..=b'Z').collect::<Vec<_>>();
+    allowed_graphemes.extend(b'a'..=b'z');
+    allowed_graphemes.extend(b'0'..=b'9');
     allowed_graphemes.push(b' ');
     name.0.len() <= ASSET_NAME_MAX_LENGTH
         && name.0.iter().all(|byte| allowed_graphemes.contains(&byte))

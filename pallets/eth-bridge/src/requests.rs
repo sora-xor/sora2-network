@@ -45,13 +45,15 @@ pub struct IncomingAddToken<T: Config> {
 impl<T: Config> IncomingAddToken<T> {
     /// Registers the sidechain asset.
     pub fn finalize(&self) -> Result<H256, DispatchError> {
-        crate::Pallet::<T>::register_sidechain_asset(
-            self.token_address,
-            self.precision,
-            self.symbol.clone(),
-            self.name.clone(),
-            self.network_id,
-        )?;
+        common::with_transaction(|| {
+            crate::Pallet::<T>::register_sidechain_asset(
+                self.token_address,
+                self.precision,
+                self.symbol.clone(),
+                self.name.clone(),
+                self.network_id,
+            )
+        })?;
         Ok(self.tx_hash)
     }
 

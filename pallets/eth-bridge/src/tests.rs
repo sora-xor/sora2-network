@@ -11,7 +11,7 @@ use crate::{
 };
 use codec::{Decode, Encode};
 use common::prelude::Balance;
-use common::{balance, eth, AssetId, AssetId32, AssetName, AssetSymbol, VAL, XOR};
+use common::{balance, eth, AssetId, AssetId32, AssetName, AssetSymbol, DOT, KSM, USDT, VAL, XOR};
 use frame_support::sp_runtime::app_crypto::sp_core::crypto::AccountId32;
 use frame_support::sp_runtime::app_crypto::sp_core::{self, ecdsa, sr25519, Pair, Public};
 use frame_support::sp_runtime::traits::IdentifyAccount;
