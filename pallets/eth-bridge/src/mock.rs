@@ -326,7 +326,7 @@ impl crate::Config for Runtime {
     type Event = Event;
     type NetworkId = u32;
     type GetEthNetworkId = EthNetworkId;
-    type WeightInfo = ();
+    type WeightInfo = common::weights::PresetWeightInfo;
 }
 
 impl sp_runtime::traits::ExtrinsicMetadata for TestExtrinsic {
@@ -401,8 +401,8 @@ impl Default for ExtBuilder {
                 ),
             ],
             Some(vec![
-                (XOR.into(), Balance::from(350_000u32)),
-                (VAL.into(), Balance::from(33_900_000u32)),
+                (XOR.into(), common::balance!(350000)),
+                (VAL.into(), common::balance!(33900000)),
             ]),
             Some(4),
         );
@@ -479,13 +479,7 @@ impl ExtBuilder {
                 |(asset_id, _, _)| (ext_network.config.bridge_account_id.clone(), asset_id, 0),
             ));
             endowed_accounts.extend(ext_network.config.reserves.iter().cloned().map(
-                |(asset_id, balance)| {
-                    (
-                        ext_network.config.bridge_account_id.clone(),
-                        asset_id,
-                        balance,
-                    )
-                },
+                |(asset_id, _balance)| (ext_network.config.bridge_account_id.clone(), asset_id, 0),
             ));
             bridge_accounts.push((
                 ext_network.config.bridge_account_id.clone(),
@@ -539,16 +533,7 @@ impl ExtBuilder {
         }
 
         BalancesConfig {
-            balances: endowed_accounts
-                .iter()
-                .filter_map(|(account_id, asset_id, balance)| {
-                    if asset_id == &GetBaseAssetId::get() {
-                        Some((account_id.clone(), balance.clone()))
-                    } else {
-                        None
-                    }
-                })
-                .collect(),
+            balances: Default::default(),
         }
         .assimilate_storage(&mut storage)
         .unwrap();
