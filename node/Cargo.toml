@@ -29,7 +29,7 @@ dex-manager-rpc = { path = "../pallets/dex-manager/rpc" }
 technical = {path = "../pallets/technical" }
 permissions = {path = "../pallets/permissions" }
 xor-fee = { path = "../pallets/xor-fee" }
-faucet = { path = "../pallets/faucet" }
+faucet = { path = "../pallets/faucet", optional = true }
 rewards = { path = "../pallets/rewards" }
 rewards-rpc = { path = "../pallets/rewards/rpc" }
 iroha-migration = { path = "../pallets/iroha-migration" }
@@ -97,6 +97,10 @@ tokio = { version = "0.2.13", features = ["macros"] }
 pallet-sudo = { version = "3", default-features = false }
 
 [features]
+test-net = [
+    "faucet",
+    "framenode-runtime/test-net",
+]
 runtime-benchmarks = [
     "framenode-runtime/runtime-benchmarks",
     "sc-executor/wasmtime",

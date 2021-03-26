@@ -3,3 +3,6 @@ debug = false
 
 [profile.test]
 debug = false
+
+[unstable]
+weak-dep-features = true

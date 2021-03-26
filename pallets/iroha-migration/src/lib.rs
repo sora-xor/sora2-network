@@ -104,7 +104,10 @@ impl<T: Config> Pallet<T> {
             let mut prehashed_message = Sha3_256::default();
             prehashed_message.update(&message[..]);
             let hashed_message = prehashed_message.finalize();
-            frame_support::debug::error!("faucet: hashed_message: {}", hex::encode(hashed_message.as_slice()));
+            frame_support::debug::error!(
+                "faucet: hashed_message: {}",
+                hex::encode(hashed_message.as_slice())
+            );
         }
         public_key
             .verify_prehashed(prehashed_message, None, &signature)
