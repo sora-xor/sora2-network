@@ -212,13 +212,13 @@ parameter_types! {
     .max_extrinsic
     .expect("Normal extrinsics have weight limit configured by default; qed")
     .saturating_sub(BlockExecutionWeight::get());
-    pub const DemocracyEnactmentPeriod: BlockNumber = 30 * 24 * 60 * MINUTES;
-    pub const DemocracyLaunchPeriod: BlockNumber = 28 * 24 * 60 * MINUTES;
-    pub const DemocracyVotingPeriod: BlockNumber = 28 * 24 * 60 * MINUTES;
+    pub const DemocracyEnactmentPeriod: BlockNumber = 30 * DAYS;
+    pub const DemocracyLaunchPeriod: BlockNumber = 28 * DAYS;
+    pub const DemocracyVotingPeriod: BlockNumber = 28 * DAYS;
     pub const DemocracyMinimumDeposit: Balance = balance!(0.01);
-    pub const DemocracyFastTrackVotingPeriod: BlockNumber = 2 * 24 * 60 * MINUTES;
+    pub const DemocracyFastTrackVotingPeriod: BlockNumber = 2 * DAYS;
     pub const DemocracyInstantAllowed: bool = false;
-    pub const DemocracyCooloffPeriod: BlockNumber = 28 * 24 * 60 * MINUTES;
+    pub const DemocracyCooloffPeriod: BlockNumber = 28 * DAYS;
     pub const DemocracyPreimageByteDeposit: Balance = balance!(0.00000000001); // 10 ^ -11
     pub const DemocracyMaxVotes: u32 = 100;
     pub const DemocracyMaxProposals: u32 = 100;
@@ -228,7 +228,7 @@ parameter_types! {
     pub const TechnicalCollectiveMotionDuration: BlockNumber = 5 * DAYS;
     pub const TechnicalCollectiveMaxProposals: u32 = 100;
     pub const TechnicalCollectiveMaxMembers: u32 = 100;
-    pub const SchedulerWeightMax: Weight = 1024;
+    pub const SchedulerMaxWeight: Weight = 1024;
 }
 
 impl frame_system::Config for Runtime {
@@ -445,7 +445,7 @@ impl pallet_scheduler::Config for Runtime {
     type Origin = Origin;
     type PalletsOrigin = OriginCaller;
     type Call = Call;
-    type MaximumWeight = SchedulerWeightMax;
+    type MaximumWeight = SchedulerMaxWeight;
     type ScheduleOrigin = frame_system::EnsureRoot<AccountId>;
     type MaxScheduledPerBlock = ();
     type WeightInfo = ();
