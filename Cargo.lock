@@ -1955,6 +1955,7 @@ dependencies = [
  "pallet-timestamp",
  "parity-scale-codec",
  "permissions",
+ "rewards",
  "serde",
  "sp-arithmetic",
  "sp-core",

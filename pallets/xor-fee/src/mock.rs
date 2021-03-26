@@ -72,7 +72,7 @@ construct_runtime! {
     {
         System: frame_system::{Module, Call, Config, Storage, Event<T>},
         MockLiquiditySource: mock_liquidity_source::<Instance1>::{Module, Call, Config<T>, Storage},
-        DexManager: dex_manager::{Module, Call, Config<T>, Storage, Event<T>},
+        DexManager: dex_manager::{Module, Call, Config<T>, Storage},
         TradingPair: trading_pair::{Module, Call, Config<T>, Storage, Event<T>},
         ReferralSystem: referral_system::{Module, Call, Config<T>, Storage},
         Balances: pallet_balances::{Module, Call, Storage, Event<T>},
@@ -122,7 +122,6 @@ impl mock_liquidity_source::Config<mock_liquidity_source::Instance1> for Runtime
 }
 
 impl dex_manager::Config for Runtime {
-    type Event = Event;
     type WeightInfo = ();
 }
 

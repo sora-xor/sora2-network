@@ -1035,8 +1035,8 @@ pub mod pallet {
         ) -> DispatchResultWithPostInfo {
             debug::debug!("called add_sidechain_token");
             let from = ensure_signed(origin)?;
-            let authority_account_id = Self::authority_account();
-            ensure!(from == authority_account_id, Error::<T>::Forbidden);
+            // TODO: enable authority account check
+            // ensure!(from == Self::authority_account(), Error::<T>::Forbidden);
             let nonce = frame_system::Module::<T>::account_nonce(&from);
             let timepoint = bridge_multisig::Module::<T>::timepoint();
             Self::add_request(OffchainRequest::outgoing(OutgoingRequest::AddToken(
@@ -1182,7 +1182,8 @@ pub mod pallet {
         ) -> DispatchResultWithPostInfo {
             debug::debug!("called change_peers_out");
             let from = ensure_signed(origin)?;
-            ensure!(from == Self::authority_account(), Error::<T>::Forbidden);
+            // TODO: enable authority account check
+            // ensure!(from == Self::authority_account(), Error::<T>::Forbidden);
             let nonce = frame_system::Module::<T>::account_nonce(&from);
             let timepoint = bridge_multisig::Module::<T>::timepoint();
             Self::add_request(OffchainRequest::outgoing(OutgoingRequest::AddPeer(
@@ -1226,7 +1227,8 @@ pub mod pallet {
         ) -> DispatchResultWithPostInfo {
             debug::debug!("called change_peers_out");
             let from = ensure_signed(origin)?;
-            ensure!(from == Self::authority_account(), Error::<T>::Forbidden);
+            // TODO: enable authority account check
+            // ensure!(from == Self::authority_account(), Error::<T>::Forbidden);
             let peer_address = Self::peer_address(network_id, &account_id);
             let nonce = frame_system::Module::<T>::account_nonce(&from);
             let timepoint = bridge_multisig::Module::<T>::timepoint();
@@ -1271,7 +1273,8 @@ pub mod pallet {
         ) -> DispatchResultWithPostInfo {
             debug::debug!("called prepare_for_migration");
             let from = ensure_signed(origin)?;
-            ensure!(from == Self::authority_account(), Error::<T>::Forbidden);
+            // TODO: enable authority account check
+            // ensure!(from == Self::authority_account(), Error::<T>::Forbidden);
             let nonce = frame_system::Module::<T>::account_nonce(&from);
             let timepoint = bridge_multisig::Module::<T>::timepoint();
             Self::add_request(OffchainRequest::outgoing(
@@ -1303,7 +1306,8 @@ pub mod pallet {
         ) -> DispatchResultWithPostInfo {
             debug::debug!("called prepare_for_migration");
             let from = ensure_signed(origin)?;
-            ensure!(from == Self::authority_account(), Error::<T>::Forbidden);
+            // TODO: enable authority account check
+            // ensure!(from == Self::authority_account(), Error::<T>::Forbidden);
             let nonce = frame_system::Module::<T>::account_nonce(&from);
             let timepoint = bridge_multisig::Module::<T>::timepoint();
             Self::add_request(OffchainRequest::outgoing(OutgoingRequest::Migrate(

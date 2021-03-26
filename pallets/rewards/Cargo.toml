@@ -38,9 +38,13 @@ technical = { path = "../technical" }
 
 [features]
 default = ['std']
+
 std = [
     'codec/std',
     'frame-support/std',
     'frame-system/std',
     'serde',
+    'sp-core/std',
+    'sp-io/std',
+    'sp-std/std',
 ]
