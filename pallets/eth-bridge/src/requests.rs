@@ -1,7 +1,8 @@
 use crate::contract::{MethodId, FUNCTIONS, METHOD_ID_SIZE};
 use crate::{
     get_bridge_account, types, Address, AssetIdOf, AssetKind, BridgeStatus, Config, Decoder, Error,
-    OutgoingRequest, Pallet, Request, RequestStatus, SignatureParams, Timepoint, WeightInfo,
+    OffchainRequest, OutgoingRequest, Pallet, RequestStatus, SignatureParams, Timepoint,
+    WeightInfo,
 };
 use alloc::collections::BTreeSet;
 use alloc::string::String;
@@ -39,6 +40,7 @@ pub struct IncomingAddToken<T: Config> {
     pub precision: BalancePrecision,
     pub symbol: AssetSymbol,
     pub name: AssetName,
+    pub author: T::AccountId,
     pub tx_hash: H256,
     pub at_height: u64,
     pub timepoint: Timepoint<T>,
@@ -63,6 +65,10 @@ impl<T: Config> IncomingAddToken<T> {
     pub fn timepoint(&self) -> Timepoint<T> {
         self.timepoint
     }
+
+    pub fn author(&self) -> &T::AccountId {
+        &self.author
+    }
 }
 
 /// Incoming request for adding/removing peer in a bridge.
@@ -72,6 +78,7 @@ pub struct IncomingChangePeers<T: Config> {
     pub peer_account_id: T::AccountId,
     pub peer_address: Address,
     pub added: bool,
+    pub author: T::AccountId,
     pub tx_hash: H256,
     pub at_height: u64,
     pub timepoint: Timepoint<T>,
@@ -126,6 +133,10 @@ impl<T: Config> IncomingChangePeers<T> {
     pub fn timepoint(&self) -> Timepoint<T> {
         self.timepoint
     }
+
+    pub fn author(&self) -> &T::AccountId {
+        &self.author
+    }
 }
 
 #[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug)]
@@ -142,6 +153,7 @@ pub struct IncomingChangePeersCompat<T: Config> {
     pub peer_address: Address,
     pub added: bool,
     pub contract: ChangePeersContract,
+    pub author: T::AccountId,
     pub tx_hash: H256,
     pub at_height: u64,
     pub timepoint: Timepoint<T>,
@@ -195,6 +207,10 @@ impl<T: Config> IncomingChangePeersCompat<T> {
     pub fn timepoint(&self) -> Timepoint<T> {
         self.timepoint
     }
+
+    pub fn author(&self) -> &T::AccountId {
+        &self.author
+    }
 }
 
 /// Incoming request for transferring token from Sidechain to Thischain.
@@ -207,6 +223,7 @@ pub struct IncomingTransfer<T: Config> {
     pub asset_kind: AssetKind,
     #[cfg_attr(feature = "std", serde(with = "string_serialization"))]
     pub amount: Balance,
+    pub author: T::AccountId,
     pub tx_hash: H256,
     pub at_height: u64,
     pub timepoint: Timepoint<T>,
@@ -287,6 +304,10 @@ impl<T: Config> IncomingTransfer<T> {
         self.timepoint
     }
 
+    pub fn author(&self) -> &T::AccountId {
+        &self.author
+    }
+
     pub fn enable_taking_fee(&mut self) {
         self.should_take_fee = true;
     }
@@ -321,6 +342,7 @@ pub struct IncomingCancelOutgoingRequest<T: Config> {
     pub outgoing_request_hash: H256,
     pub initial_request_hash: H256,
     pub tx_input: Vec<u8>,
+    pub author: T::AccountId,
     pub tx_hash: H256,
     pub at_height: u64,
     pub timepoint: Timepoint<T>,
@@ -385,6 +407,10 @@ impl<T: Config> IncomingCancelOutgoingRequest<T> {
     pub fn timepoint(&self) -> Timepoint<T> {
         self.timepoint
     }
+
+    pub fn author(&self) -> &T::AccountId {
+        &self.author
+    }
 }
 
 /// Incoming request that's used to mark outgoing requests as done.
@@ -395,6 +421,7 @@ impl<T: Config> IncomingCancelOutgoingRequest<T> {
 pub struct IncomingMarkAsDoneRequest<T: Config> {
     pub outgoing_request_hash: H256,
     pub initial_request_hash: H256,
+    pub author: T::AccountId,
     pub at_height: u64,
     pub timepoint: Timepoint<T>,
     pub network_id: T::NetworkId,
@@ -435,6 +462,10 @@ impl<T: Config> IncomingMarkAsDoneRequest<T> {
     pub fn timepoint(&self) -> Timepoint<T> {
         self.timepoint
     }
+
+    pub fn author(&self) -> &T::AccountId {
+        &self.author
+    }
 }
 
 /// Incoming request that acts as an acknowledgement to a corresponding
@@ -442,6 +473,7 @@ impl<T: Config> IncomingMarkAsDoneRequest<T> {
 #[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug)]
 #[cfg_attr(feature = "std", derive(Serialize))]
 pub struct IncomingPrepareForMigration<T: Config> {
+    pub author: T::AccountId,
     pub tx_hash: H256,
     pub at_height: u64,
     pub timepoint: Timepoint<T>,
@@ -472,6 +504,10 @@ impl<T: Config> IncomingPrepareForMigration<T> {
     pub fn timepoint(&self) -> Timepoint<T> {
         self.timepoint
     }
+
+    pub fn author(&self) -> &T::AccountId {
+        &self.author
+    }
 }
 
 /// Incoming request that acts as an acknowledgement to a corresponding
@@ -480,6 +516,7 @@ impl<T: Config> IncomingPrepareForMigration<T> {
 #[cfg_attr(feature = "std", derive(Serialize))]
 pub struct IncomingMigrate<T: Config> {
     pub new_contract_address: Address,
+    pub author: T::AccountId,
     pub tx_hash: H256,
     pub at_height: u64,
     pub timepoint: Timepoint<T>,
@@ -510,6 +547,10 @@ impl<T: Config> IncomingMigrate<T> {
 
     pub fn timepoint(&self) -> Timepoint<T> {
         self.timepoint
+    }
+
+    pub fn author(&self) -> &T::AccountId {
+        &self.author
     }
 }
 
@@ -1513,7 +1554,7 @@ macro_rules! impl_from_for_outgoing_requests {
             }
         }
 
-        impl<T: Config> From<$req> for Request<T> {
+        impl<T: Config> From<$req> for OffchainRequest<T> {
             fn from(v: $req) -> Self {
                 Self::outgoing(v.into())
             }

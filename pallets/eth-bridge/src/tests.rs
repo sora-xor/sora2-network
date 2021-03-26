@@ -11,8 +11,8 @@ use crate::types::{Bytes, Log, Transaction};
 use crate::{
     majority, types, Address, AssetKind, BridgeStatus, ContractEvent, IncomingMetaRequestKind,
     IncomingRequest, IncomingRequestKind, IncomingTransactionRequestKind,
-    LoadIncomingTransactionRequest, OutgoingRequest, OutgoingTransfer, Request, RequestStatus,
-    SignatureParams,
+    LoadIncomingTransactionRequest, OffchainRequest, OutgoingRequest, OutgoingTransfer,
+    RequestStatus, SignatureParams,
 };
 use codec::{Decode, Encode};
 use common::prelude::Balance;
@@ -136,7 +136,7 @@ fn approve_request(
     Ok(())
 }
 
-fn last_request(net_id: u32) -> Option<Request<Runtime>> {
+fn last_request(net_id: u32) -> Option<OffchainRequest<Runtime>> {
     let request_hash = crate::RequestsQueue::<Runtime>::get(net_id)
         .last()
         .cloned()?;
@@ -146,7 +146,7 @@ fn last_request(net_id: u32) -> Option<Request<Runtime>> {
 fn last_outgoing_request(net_id: u32) -> Option<(OutgoingRequest<Runtime>, H256)> {
     let request = last_request(net_id)?;
     match request {
-        Request::Outgoing(r, hash) => Some((r, hash)),
+        OffchainRequest::Outgoing(r, hash) => Some((r, hash)),
         _ => panic!("Unexpected request type"),
     }
 }
@@ -185,9 +185,9 @@ fn request_incoming(
         kind,
         net_id
     ));
-    let last_request: Request<Runtime> = last_request(net_id).unwrap();
+    let last_request: OffchainRequest<Runtime> = last_request(net_id).unwrap();
     match last_request {
-        Request::LoadIncoming(..) => (),
+        OffchainRequest::LoadIncoming(..) => (),
         _ => panic!("Invalid off-chain request"),
     }
     let hash = last_request.hash();
@@ -424,6 +424,7 @@ fn should_mint_and_burn_sidechain_asset() {
             asset_id,
             asset_kind,
             amount: 100u32.into(),
+            author: alice.clone(),
             tx_hash,
             at_height: 1,
             timepoint: Default::default(),
@@ -477,6 +478,7 @@ fn should_not_burn_or_mint_sidechain_owned_asset() {
             asset_id: XOR.into(),
             asset_kind: AssetKind::SidechainOwned,
             amount: 100u32.into(),
+            author: alice.clone(),
             tx_hash,
             at_height: 1,
             timepoint: Default::default(),
@@ -551,7 +553,7 @@ fn should_register_outgoing_transfer() {
         };
         let last_request = last_request(net_id).unwrap();
         match last_request {
-            Request::Outgoing(OutgoingRequest::Transfer(r), _) => {
+            OffchainRequest::Outgoing(OutgoingRequest::Transfer(r), _) => {
                 assert_eq!(r, outgoing_transfer)
             }
             _ => panic!("Invalid off-chain request"),
@@ -604,6 +606,7 @@ fn should_not_accept_approved_incoming_transfer() {
             asset_id: XOR.into(),
             asset_kind: AssetKind::Thischain,
             amount: 100u32.into(),
+            author: alice.clone(),
             tx_hash,
             at_height: 1,
             timepoint: Default::default(),
@@ -642,6 +645,7 @@ fn should_success_incoming_transfer() {
             asset_id: XOR.into(),
             asset_kind: AssetKind::Thischain,
             amount: 100u32.into(),
+            author: alice.clone(),
             tx_hash,
             at_height: 1,
             timepoint: Default::default(),
@@ -691,6 +695,7 @@ fn should_cancel_incoming_transfer() {
             asset_id: XOR.into(),
             asset_kind: AssetKind::Thischain,
             amount: 100u32.into(),
+            author: alice.clone(),
             tx_hash,
             at_height: 1,
             timepoint: Default::default(),
@@ -745,6 +750,7 @@ fn should_fail_incoming_transfer() {
             asset_id: XOR.into(),
             asset_kind: AssetKind::Thischain,
             amount: 100u32.into(),
+            author: alice.clone(),
             tx_hash,
             at_height: 1,
             timepoint: Default::default(),
@@ -806,6 +812,7 @@ fn should_take_fee_in_incoming_transfer() {
             asset_id: AssetId::XOR.into(),
             asset_kind: AssetKind::SidechainOwned,
             amount: balance!(100),
+            author: alice.clone(),
             tx_hash,
             at_height: 1,
             timepoint: Default::default(),
@@ -843,6 +850,7 @@ fn should_fail_take_fee_in_incoming_transfer() {
             asset_id: AssetId::XOR.into(),
             asset_kind: AssetKind::SidechainOwned,
             amount: 100u32.into(),
+            author: alice.clone(),
             tx_hash,
             at_height: 1,
             timepoint: Default::default(),
@@ -880,6 +888,7 @@ fn should_fail_registering_incoming_request_if_preparation_failed() {
             asset_id: PSWAP.into(),
             asset_kind: AssetKind::Thischain,
             amount: 100u32.into(),
+            author: alice.clone(),
             tx_hash,
             at_height: 1,
             timepoint: Default::default(),
@@ -1114,6 +1123,7 @@ fn should_add_peer_in_eth_network() {
             peer_account_id: new_peer_id.clone(),
             peer_address: new_peer_address,
             added: true,
+            author: alice.clone(),
             tx_hash,
             at_height: 1,
             timepoint: Default::default(),
@@ -1135,6 +1145,7 @@ fn should_add_peer_in_eth_network() {
                 peer_address: new_peer_address,
                 added: true,
                 contract: ChangePeersContract::XOR,
+                author: alice.clone(),
                 tx_hash,
                 at_height: 2,
                 timepoint: Default::default(),
@@ -1156,6 +1167,7 @@ fn should_add_peer_in_eth_network() {
                 peer_address: new_peer_address,
                 added: true,
                 contract: ChangePeersContract::VAL,
+                author: alice.clone(),
                 tx_hash,
                 at_height: 3,
                 timepoint: Default::default(),
@@ -1224,6 +1236,7 @@ fn should_add_peer_in_simple_networks() {
             peer_account_id: new_peer_id.clone(),
             peer_address: new_peer_address,
             added: true,
+            author: alice.clone(),
             tx_hash,
             at_height: 1,
             timepoint: Default::default(),
@@ -1286,6 +1299,7 @@ fn should_remove_peer_in_simple_network() {
             peer_account_id: peer_id.clone(),
             peer_address,
             added: false,
+            author: alice.clone(),
             tx_hash,
             at_height: 1,
             timepoint: Default::default(),
@@ -1348,6 +1362,7 @@ fn should_remove_peer_in_eth_network() {
             peer_account_id: peer_id.clone(),
             peer_address,
             added: false,
+            author: alice.clone(),
             tx_hash,
             at_height: 1,
             timepoint: Default::default(),
@@ -1369,6 +1384,7 @@ fn should_remove_peer_in_eth_network() {
                 peer_address,
                 added: false,
                 contract: ChangePeersContract::XOR,
+                author: alice.clone(),
                 tx_hash,
                 at_height: 2,
                 timepoint: Default::default(),
@@ -1390,6 +1406,7 @@ fn should_remove_peer_in_eth_network() {
                 peer_address,
                 added: false,
                 contract: ChangePeersContract::VAL,
+                author: alice.clone(),
                 tx_hash,
                 at_height: 3,
                 timepoint: Default::default(),
@@ -1519,6 +1536,7 @@ fn should_cancel_ready_outgoing_request() {
                 outgoing_request_hash: outgoing_req_hash,
                 initial_request_hash: request_hash,
                 tx_input: tx_input.clone(),
+                author: alice.clone(),
                 tx_hash,
                 at_height: 1,
                 timepoint: Default::default(),
@@ -1581,6 +1599,7 @@ fn should_fail_cancel_ready_outgoing_request_with_wrong_approvals() {
                 outgoing_request_hash: outgoing_req_hash,
                 initial_request_hash: request_hash,
                 tx_input: tx_input.clone(),
+                author: alice.clone(),
                 tx_hash,
                 at_height: 1,
                 timepoint: Default::default(),
@@ -1656,6 +1675,7 @@ fn should_fail_cancel_unfinished_outgoing_request() {
                 outgoing_request_hash: outgoing_req_hash,
                 initial_request_hash: request_hash,
                 tx_input,
+                author: alice.clone(),
                 tx_hash,
                 at_height: 1,
                 timepoint: Default::default(),
@@ -1700,6 +1720,7 @@ fn should_mark_request_as_done() {
         let request = IncomingRequest::MarkAsDone(IncomingMarkAsDoneRequest {
             outgoing_request_hash: outgoing_req_hash,
             initial_request_hash: request_hash,
+            author: alice.clone(),
             at_height: 1,
             timepoint: Default::default(),
             network_id: ETH_NETWORK_ID,
@@ -1751,6 +1772,7 @@ fn should_not_mark_request_as_done() {
             asset_id: XOR.into(),
             asset_kind: AssetKind::Thischain,
             amount: 100u32.into(),
+            author: alice.clone(),
             tx_hash: req_hash,
             at_height: 1,
             timepoint: Default::default(),
@@ -1870,6 +1892,7 @@ fn should_reserve_owned_asset_on_different_networks() {
             asset_id,
             asset_kind: AssetKind::Thischain,
             amount: 50u32.into(),
+            author: alice.clone(),
             tx_hash,
             at_height: 1,
             timepoint: Default::default(),
@@ -1890,6 +1913,7 @@ fn should_reserve_owned_asset_on_different_networks() {
             asset_id,
             asset_kind: AssetKind::Thischain,
             amount: 50u32.into(),
+            author: alice.clone(),
             tx_hash,
             at_height: 1,
             timepoint: Default::default(),
@@ -1960,6 +1984,7 @@ fn should_handle_sidechain_and_thischain_asset_on_different_networks() {
             asset_id,
             asset_kind: AssetKind::Sidechain,
             amount: 50u32.into(),
+            author: alice.clone(),
             tx_hash,
             at_height: 1,
             timepoint: Default::default(),
@@ -1990,6 +2015,7 @@ fn should_handle_sidechain_and_thischain_asset_on_different_networks() {
             asset_id,
             asset_kind: AssetKind::Thischain,
             amount: 50u32.into(),
+            author: alice.clone(),
             tx_hash,
             at_height: 1,
             timepoint: Default::default(),
@@ -2039,6 +2065,7 @@ fn should_migrate() {
         .unwrap();
         let incoming_transfer =
             IncomingRequest::PrepareForMigration(crate::IncomingPrepareForMigration {
+                author: alice.clone(),
                 tx_hash,
                 at_height: 1,
                 timepoint: Default::default(),
@@ -2090,6 +2117,7 @@ fn should_migrate() {
         .unwrap();
         let incoming_transfer = IncomingRequest::Migrate(crate::IncomingMigrate {
             new_contract_address,
+            author: alice.clone(),
             tx_hash,
             at_height: 2,
             timepoint: Default::default(),
@@ -2131,6 +2159,7 @@ fn should_not_allow_duplicate_migration_requests() {
         .unwrap();
         let incoming_transfer =
             IncomingRequest::PrepareForMigration(crate::IncomingPrepareForMigration {
+                author: alice.clone(),
                 tx_hash,
                 at_height: 1,
                 timepoint: Default::default(),
@@ -2147,6 +2176,7 @@ fn should_not_allow_duplicate_migration_requests() {
         .unwrap();
         let incoming_transfer =
             IncomingRequest::PrepareForMigration(crate::IncomingPrepareForMigration {
+                author: alice.clone(),
                 tx_hash,
                 at_height: 2,
                 timepoint: Default::default(),
@@ -2179,6 +2209,7 @@ fn should_not_allow_duplicate_migration_requests() {
         .unwrap();
         let incoming_transfer = IncomingRequest::Migrate(crate::IncomingMigrate {
             new_contract_address,
+            author: alice.clone(),
             tx_hash,
             at_height: 2,
             timepoint: Default::default(),
@@ -2195,6 +2226,7 @@ fn should_not_allow_duplicate_migration_requests() {
         .unwrap();
         let incoming_transfer = IncomingRequest::Migrate(crate::IncomingMigrate {
             new_contract_address,
+            author: alice.clone(),
             tx_hash,
             at_height: 2,
             timepoint: Default::default(),
@@ -2278,6 +2310,7 @@ fn should_parse_add_peer_on_old_contract() {
                 peer_address: new_peer_address,
                 added: true,
                 contract: ChangePeersContract::XOR,
+                author: alice.clone(),
                 tx_hash,
                 at_height: 1,
                 timepoint: Default::default(),
@@ -2327,6 +2360,7 @@ fn should_parse_remove_peer_on_old_contract() {
                 peer_address: new_peer_address,
                 added: false,
                 contract: ChangePeersContract::VAL,
+                author: alice.clone(),
                 tx_hash,
                 at_height: 1,
                 timepoint: Default::default(),
@@ -2390,7 +2424,7 @@ fn should_cancel_outgoing_prepared_requests() {
         Assets::mint_to(&XOR.into(), &alice, bridge_acc, 100u32.into()).unwrap();
         let ocw0_account_id = &state.networks[&net_id].ocw_keypairs[0].1;
         // Paris (preparation requests, testable request).
-        let requests: Vec<(Vec<Request<Runtime>>, Request<Runtime>)> = vec![
+        let requests: Vec<(Vec<OffchainRequest<Runtime>>, OffchainRequest<Runtime>)> = vec![
             (
                 vec![],
                 OutgoingTransfer {
@@ -2575,6 +2609,7 @@ fn should_cancel_incoming_prepared_requests() {
                     asset_id: XOR.into(),
                     asset_kind: AssetKind::SidechainOwned,
                     amount: 1_u32.into(),
+                    author: alice.clone(),
                     tx_hash: Default::default(),
                     network_id: net_id,
                     timepoint: Default::default(),
@@ -2591,6 +2626,7 @@ fn should_cancel_incoming_prepared_requests() {
                     asset_id: DOT.into(),
                     asset_kind: AssetKind::Thischain,
                     amount: 1_u32.into(),
+                    author: alice.clone(),
                     tx_hash: Default::default(),
                     network_id: net_id,
                     timepoint: Default::default(),
@@ -2607,6 +2643,7 @@ fn should_cancel_incoming_prepared_requests() {
                     asset_id: USDT.into(),
                     asset_kind: AssetKind::Sidechain,
                     amount: 1_u32.into(),
+                    author: alice.clone(),
                     tx_hash: Default::default(),
                     network_id: net_id,
                     timepoint: Default::default(),
@@ -2623,6 +2660,7 @@ fn should_cancel_incoming_prepared_requests() {
                     precision: 18,
                     symbol: Default::default(),
                     name: Default::default(),
+                    author: alice.clone(),
                     tx_hash: Default::default(),
                     network_id: net_id,
                     timepoint: Default::default(),
@@ -2633,6 +2671,7 @@ fn should_cancel_incoming_prepared_requests() {
             (
                 vec![],
                 IncomingPrepareForMigration {
+                    author: alice.clone(),
                     tx_hash: Default::default(),
                     network_id: net_id,
                     timepoint: Default::default(),
@@ -2642,6 +2681,7 @@ fn should_cancel_incoming_prepared_requests() {
             ),
             (
                 vec![IncomingPrepareForMigration {
+                    author: alice.clone(),
                     tx_hash: Default::default(),
                     network_id: net_id,
                     timepoint: Default::default(),
@@ -2650,6 +2690,7 @@ fn should_cancel_incoming_prepared_requests() {
                 .into()],
                 IncomingMigrate {
                     new_contract_address: Default::default(),
+                    author: alice.clone(),
                     tx_hash: Default::default(),
                     network_id: net_id,
                     timepoint: Default::default(),

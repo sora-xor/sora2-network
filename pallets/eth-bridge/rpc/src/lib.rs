@@ -32,6 +32,7 @@ pub trait EthBridgeApi<
         &self,
         request_hashes: Vec<Hash>,
         network_id: Option<NetworkId>,
+        redirect_finished_load_requests: Option<bool>,
         at: Option<BlockHash>,
     ) -> RpcResult<Result<Vec<(OffchainRequest, RequestStatus)>, DispatchError>>;
 
@@ -141,16 +142,22 @@ where
         &self,
         request_hashes: Vec<Hash>,
         network_id: Option<NetworkId>,
+        redirect_finished_load_requests: Option<bool>,
         at: Option<<Block as BlockT>::Hash>,
     ) -> RpcResult<Result<Vec<(OffchainRequest, RequestStatus)>, DispatchError>> {
         let api = self.client.runtime_api();
         let at = BlockId::hash(at.unwrap_or_else(|| self.client.info().best_hash));
-        api.get_requests(&at, request_hashes, network_id)
-            .map_err(|e| RpcError {
-                code: ErrorCode::ServerError(InvokeRPCError::RuntimeError.into()),
-                message: "Unable to get off-chain requests and statuses.".into(),
-                data: Some(format!("{:?}", e).into()),
-            })
+        api.get_requests(
+            &at,
+            request_hashes,
+            network_id,
+            redirect_finished_load_requests.unwrap_or(true),
+        )
+        .map_err(|e| RpcError {
+            code: ErrorCode::ServerError(InvokeRPCError::RuntimeError.into()),
+            message: "Unable to get off-chain requests and statuses.".into(),
+            data: Some(format!("{:?}", e).into()),
+        })
     }
 
     fn get_approved_requests(
