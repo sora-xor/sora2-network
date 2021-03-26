@@ -358,7 +358,7 @@ impl<T: Config> OutgoingRequest<T> {
 /// Types of transaction-requests that can be made from a sidechain.
 #[derive(Clone, Copy, Encode, Decode, RuntimeDebug, PartialEq, Eq)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-pub enum IncomingRequestTransactionKind {
+pub enum IncomingTransactionRequestKind {
     Transfer,
     AddAsset,
     AddPeer,
@@ -383,12 +383,12 @@ pub enum IncomingMetaRequestKind {
 #[derive(Clone, Copy, Encode, Decode, RuntimeDebug, PartialEq, Eq)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum IncomingRequestKind {
-    Transaction(IncomingRequestTransactionKind),
+    Transaction(IncomingTransactionRequestKind),
     Meta(IncomingMetaRequestKind),
 }
 
-impl From<IncomingRequestTransactionKind> for IncomingRequestKind {
-    fn from(v: IncomingRequestTransactionKind) -> Self {
+impl From<IncomingTransactionRequestKind> for IncomingRequestKind {
+    fn from(v: IncomingTransactionRequestKind) -> Self {
         Self::Transaction(v)
     }
 }
@@ -399,7 +399,7 @@ impl From<IncomingMetaRequestKind> for IncomingRequestKind {
     }
 }
 
-impl IncomingRequestTransactionKind {
+impl IncomingTransactionRequestKind {
     /// Returns `true` if the request should be used with XOR and VAL contracts.
     pub fn is_compat(&self) -> bool {
         *self == Self::AddPeerCompat || *self == Self::RemovePeerCompat
@@ -634,7 +634,9 @@ impl<T: Config> LoadIncomingRequest<T> {
 
     fn set_hash(&mut self, new_hash: H256) {
         match self {
-            Self::Transaction(_request) => (), // should not be the case
+            Self::Transaction(_request) => {
+                debug::warn!("Attempt to set hash for a 'load transaction' request.");
+            } // should not be the case
             Self::Meta(_, hash) => *hash = new_hash,
         }
     }
@@ -703,7 +705,7 @@ pub struct LoadIncomingTransactionRequest<T: Config> {
     author: T::AccountId,
     hash: H256,
     timepoint: Timepoint<T>,
-    kind: IncomingRequestTransactionKind,
+    kind: IncomingTransactionRequestKind,
     network_id: T::NetworkId,
 }
 
@@ -712,7 +714,7 @@ impl<T: Config> LoadIncomingTransactionRequest<T> {
         author: T::AccountId,
         hash: H256,
         timepoint: Timepoint<T>,
-        kind: IncomingRequestTransactionKind,
+        kind: IncomingTransactionRequestKind,
         network_id: T::NetworkId,
     ) -> Self {
         LoadIncomingTransactionRequest {
@@ -1246,7 +1248,7 @@ pub mod pallet {
                             network_id,
                         ),
                     )))?;
-                    let pays_fee = if kind == IncomingRequestTransactionKind::TransferXOR {
+                    let pays_fee = if kind == IncomingTransactionRequestKind::TransferXOR {
                         Pays::No
                     } else {
                         Pays::Yes
@@ -2217,7 +2219,7 @@ impl<T: Config> Pallet<T> {
     /// and topic.
     fn parse_main_event(
         logs: &[Log],
-        kind: IncomingRequestTransactionKind,
+        kind: IncomingTransactionRequestKind,
     ) -> Result<ContractEvent<Address, T::AccountId, Balance>, Error<T>> {
         for log in logs {
             if log.removed.unwrap_or(false) {
@@ -2230,7 +2232,7 @@ impl<T: Config> Pallet<T> {
             match *topic {
                 // Deposit(bytes32,uint256,address,bytes32)
                 hex!("85c0fa492ded927d3acca961da52b0dda1debb06d8c27fe189315f06bb6e26c8")
-                    if kind == IncomingRequestTransactionKind::Transfer =>
+                    if kind == IncomingTransactionRequestKind::Transfer =>
                 {
                     let types = [
                         ParamType::FixedBytes(32),
@@ -2249,8 +2251,8 @@ impl<T: Config> Pallet<T> {
                 }
                 // ChangePeers(address,bool)
                 hex!("a9fac23eb012e72fbd1f453498e7069c380385436763ee2c1c057b170d88d9f9")
-                    if kind == IncomingRequestTransactionKind::AddPeer
-                        || kind == IncomingRequestTransactionKind::RemovePeer =>
+                    if kind == IncomingTransactionRequestKind::AddPeer
+                        || kind == IncomingTransactionRequestKind::RemovePeer =>
                 {
                     let types = [ParamType::Address, ParamType::Bool];
                     let decoded = ethabi::decode(&types, &log.data.0)
@@ -2261,12 +2263,12 @@ impl<T: Config> Pallet<T> {
                     return Ok(ContractEvent::ChangePeers(H160(peer_address.0), added));
                 }
                 hex!("5389de9593f75e6515eefa796bd2d3324759f441f2c9b2dcda0efb25190378ff")
-                    if kind == IncomingRequestTransactionKind::PrepareForMigration =>
+                    if kind == IncomingTransactionRequestKind::PrepareForMigration =>
                 {
                     return Ok(ContractEvent::PreparedForMigration);
                 }
                 hex!("a2e7361c23d7820040603b83c0cd3f494d377bac69736377d75bb56c651a5098")
-                    if kind == IncomingRequestTransactionKind::Migrate =>
+                    if kind == IncomingTransactionRequestKind::Migrate =>
                 {
                     let types = [ParamType::Address];
                     let decoded = ethabi::decode(&types, &log.data.0)
@@ -2344,21 +2346,11 @@ impl<T: Config> Pallet<T> {
         hash: H256,
     ) -> Result<(), Error<T>> {
         let network_id = request.network_id();
-
         // TODO (optimization): send results as batch.
         // Load the transaction receipt again to check that it still exists.
         let exists = request.check_existence()?;
-        if exists {
-            Self::send_finalize_incoming_request(hash, request.timepoint(), network_id)?
-        } else {
-            Self::send_abort_request(
-                hash,
-                Error::<T>::EthTransactionIsFailed,
-                request.timepoint(),
-                network_id,
-            )?
-        };
-        Ok(())
+        ensure!(exists, Error::<T>::EthTransactionIsFailed);
+        Self::send_finalize_incoming_request(hash, request.timepoint(), network_id)
     }
 
     /// Queries the current finalized height of the local node with `chain_getFinalizedHead`
@@ -2496,7 +2488,7 @@ impl<T: Config> Pallet<T> {
                         debug::debug!("Loading approved tx {}", tx_hash);
                         let tx = Self::load_tx_receipt(tx_hash, network_id)?;
                         let mut incoming_request = Self::parse_incoming_request(tx, request)?;
-                        if kind == IncomingRequestTransactionKind::TransferXOR {
+                        if kind == IncomingTransactionRequestKind::TransferXOR {
                             if let IncomingRequest::Transfer(transfer) = &mut incoming_request {
                                 ensure!(
                                     transfer.asset_id == common::XOR.into(),

@@ -10,7 +10,7 @@ use crate::requests::{
 use crate::types::{Bytes, Log, Transaction};
 use crate::{
     majority, types, Address, AssetKind, BridgeStatus, ContractEvent, IncomingMetaRequestKind,
-    IncomingRequest, IncomingRequestKind, IncomingRequestTransactionKind,
+    IncomingRequest, IncomingRequestKind, IncomingTransactionRequestKind,
     LoadIncomingTransactionRequest, OutgoingRequest, OutgoingTransfer, Request, RequestStatus,
     SignatureParams,
 };
@@ -50,7 +50,7 @@ fn parses_event() {
         log.topics = vec![types::H256(hex!("85c0fa492ded927d3acca961da52b0dda1debb06d8c27fe189315f06bb6e26c8"))];
         log.data = Bytes(hex!("111111111111111111111111111111111111111111111111111111111111111100000000000000000000000000000000000000000000000246ddf9797668000000000000000000000000000022222222222222222222222222222222222222220200040000000000000000000000000000000000000000000000000000000011").to_vec());
         assert_eq!(
-            EthBridge::parse_main_event(&[log], IncomingRequestTransactionKind::Transfer).unwrap(),
+            EthBridge::parse_main_event(&[log], IncomingTransactionRequestKind::Transfer).unwrap(),
             ContractEvent::Deposit(
                 AccountId32::from(hex!("1111111111111111111111111111111111111111111111111111111111111111")),
                 balance!(42),
@@ -414,7 +414,7 @@ fn should_mint_and_burn_sidechain_asset() {
         let tx_hash = request_incoming(
             alice.clone(),
             H256::from_slice(&[1u8; 32]),
-            IncomingRequestTransactionKind::Transfer.into(),
+            IncomingTransactionRequestKind::Transfer.into(),
             net_id,
         )
         .unwrap();
@@ -467,7 +467,7 @@ fn should_not_burn_or_mint_sidechain_owned_asset() {
         let tx_hash = request_incoming(
             alice.clone(),
             H256::from_slice(&[1u8; 32]),
-            IncomingRequestTransactionKind::Transfer.into(),
+            IncomingTransactionRequestKind::Transfer.into(),
             net_id,
         )
         .unwrap();
@@ -569,14 +569,14 @@ fn should_not_accept_duplicated_incoming_transfer() {
         assert_ok!(EthBridge::request_from_sidechain(
             Origin::signed(alice.clone()),
             H256::from_slice(&[1u8; 32]),
-            IncomingRequestTransactionKind::Transfer.into(),
+            IncomingTransactionRequestKind::Transfer.into(),
             net_id,
         ));
         assert_err!(
             EthBridge::request_from_sidechain(
                 Origin::signed(alice.clone()),
                 H256::from_slice(&[1u8; 32]),
-                IncomingRequestTransactionKind::Transfer.into(),
+                IncomingTransactionRequestKind::Transfer.into(),
                 net_id,
             ),
             Error::DuplicatedRequest
@@ -594,7 +594,7 @@ fn should_not_accept_approved_incoming_transfer() {
         let tx_hash = request_incoming(
             alice.clone(),
             H256::from_slice(&[1u8; 32]),
-            IncomingRequestTransactionKind::Transfer.into(),
+            IncomingTransactionRequestKind::Transfer.into(),
             net_id,
         )
         .unwrap();
@@ -615,7 +615,7 @@ fn should_not_accept_approved_incoming_transfer() {
             EthBridge::request_from_sidechain(
                 Origin::signed(alice.clone()),
                 H256::from_slice(&[1u8; 32]),
-                IncomingRequestTransactionKind::Transfer.into(),
+                IncomingTransactionRequestKind::Transfer.into(),
                 net_id,
             ),
             Error::DuplicatedRequest
@@ -632,7 +632,7 @@ fn should_success_incoming_transfer() {
         let tx_hash = request_incoming(
             alice.clone(),
             H256::from_slice(&[1u8; 32]),
-            IncomingRequestTransactionKind::Transfer.into(),
+            IncomingTransactionRequestKind::Transfer.into(),
             net_id,
         )
         .unwrap();
@@ -681,7 +681,7 @@ fn should_cancel_incoming_transfer() {
         let tx_hash = request_incoming(
             alice.clone(),
             H256::from_slice(&[1u8; 32]),
-            IncomingRequestTransactionKind::Transfer.into(),
+            IncomingTransactionRequestKind::Transfer.into(),
             net_id,
         )
         .unwrap();
@@ -735,7 +735,7 @@ fn should_fail_incoming_transfer() {
         let tx_hash = request_incoming(
             alice.clone(),
             H256::from_slice(&[1u8; 32]),
-            IncomingRequestTransactionKind::Transfer.into(),
+            IncomingTransactionRequestKind::Transfer.into(),
             net_id,
         )
         .unwrap();
@@ -796,7 +796,7 @@ fn should_take_fee_in_incoming_transfer() {
         let tx_hash = request_incoming(
             alice.clone(),
             H256::from_slice(&[1u8; 32]),
-            IncomingRequestTransactionKind::Transfer.into(),
+            IncomingTransactionRequestKind::Transfer.into(),
             net_id,
         )
         .unwrap();
@@ -833,7 +833,7 @@ fn should_fail_take_fee_in_incoming_transfer() {
         let tx_hash = request_incoming(
             alice.clone(),
             H256::from_slice(&[1u8; 32]),
-            IncomingRequestTransactionKind::Transfer.into(),
+            IncomingTransactionRequestKind::Transfer.into(),
             net_id,
         )
         .unwrap();
@@ -870,7 +870,7 @@ fn should_fail_registering_incoming_request_if_preparation_failed() {
         let tx_hash = request_incoming(
             alice.clone(),
             H256::from_slice(&[1u8; 32]),
-            IncomingRequestTransactionKind::Transfer.into(),
+            IncomingTransactionRequestKind::Transfer.into(),
             net_id,
         )
         .unwrap();
@@ -1106,7 +1106,7 @@ fn should_add_peer_in_eth_network() {
         let tx_hash = request_incoming(
             alice.clone(),
             H256::from_slice(&[1u8; 32]),
-            IncomingRequestTransactionKind::AddPeer.into(),
+            IncomingTransactionRequestKind::AddPeer.into(),
             net_id,
         )
         .unwrap();
@@ -1125,7 +1125,7 @@ fn should_add_peer_in_eth_network() {
         let tx_hash = request_incoming(
             alice.clone(),
             H256::from_slice(&[2u8; 32]),
-            IncomingRequestTransactionKind::AddPeerCompat.into(),
+            IncomingTransactionRequestKind::AddPeerCompat.into(),
             net_id,
         )
         .unwrap();
@@ -1146,7 +1146,7 @@ fn should_add_peer_in_eth_network() {
         let tx_hash = request_incoming(
             alice.clone(),
             H256::from_slice(&[3u8; 32]),
-            IncomingRequestTransactionKind::AddPeerCompat.into(),
+            IncomingTransactionRequestKind::AddPeerCompat.into(),
             net_id,
         )
         .unwrap();
@@ -1216,7 +1216,7 @@ fn should_add_peer_in_simple_networks() {
         let tx_hash = request_incoming(
             alice.clone(),
             H256::from_slice(&[1u8; 32]),
-            IncomingRequestTransactionKind::AddPeer.into(),
+            IncomingTransactionRequestKind::AddPeer.into(),
             net_id,
         )
         .unwrap();
@@ -1277,7 +1277,7 @@ fn should_remove_peer_in_simple_network() {
         let tx_hash = request_incoming(
             alice.clone(),
             H256::from_slice(&[1u8; 32]),
-            IncomingRequestTransactionKind::RemovePeer.into(),
+            IncomingTransactionRequestKind::RemovePeer.into(),
             net_id,
         )
         .unwrap();
@@ -1339,7 +1339,7 @@ fn should_remove_peer_in_eth_network() {
         let tx_hash = request_incoming(
             alice.clone(),
             H256::from_slice(&[1u8; 32]),
-            IncomingRequestTransactionKind::RemovePeer.into(),
+            IncomingTransactionRequestKind::RemovePeer.into(),
             net_id,
         )
         .unwrap();
@@ -1359,7 +1359,7 @@ fn should_remove_peer_in_eth_network() {
         let tx_hash = request_incoming(
             alice.clone(),
             H256::from_slice(&[2u8; 32]),
-            IncomingRequestTransactionKind::AddPeerCompat.into(),
+            IncomingTransactionRequestKind::AddPeerCompat.into(),
             net_id,
         )
         .unwrap();
@@ -1380,7 +1380,7 @@ fn should_remove_peer_in_eth_network() {
         let tx_hash = request_incoming(
             alice.clone(),
             H256::from_slice(&[3u8; 32]),
-            IncomingRequestTransactionKind::AddPeerCompat.into(),
+            IncomingTransactionRequestKind::AddPeerCompat.into(),
             net_id,
         )
         .unwrap();
@@ -1741,7 +1741,7 @@ fn should_not_mark_request_as_done() {
         let req_hash = request_incoming(
             alice.clone(),
             H256::from_slice(&[1u8; 32]),
-            IncomingRequestTransactionKind::Transfer.into(),
+            IncomingTransactionRequestKind::Transfer.into(),
             net_id,
         )
         .unwrap();
@@ -1799,7 +1799,7 @@ fn should_fail_request_to_unknown_network() {
             EthBridge::request_from_sidechain(
                 Origin::signed(alice),
                 H256::from_slice(&[1u8; 32]),
-                IncomingRequestTransactionKind::Transfer.into(),
+                IncomingTransactionRequestKind::Transfer.into(),
                 net_id
             ),
             Error::UnknownNetwork
@@ -1860,7 +1860,7 @@ fn should_reserve_owned_asset_on_different_networks() {
         let tx_hash = request_incoming(
             alice.clone(),
             H256::from_slice(&[1u8; 32]),
-            IncomingRequestTransactionKind::Transfer.into(),
+            IncomingTransactionRequestKind::Transfer.into(),
             net_id_0,
         )
         .unwrap();
@@ -1880,7 +1880,7 @@ fn should_reserve_owned_asset_on_different_networks() {
         let tx_hash = request_incoming(
             alice.clone(),
             H256::from_slice(&[2; 32]),
-            IncomingRequestTransactionKind::Transfer.into(),
+            IncomingTransactionRequestKind::Transfer.into(),
             net_id_1,
         )
         .unwrap();
@@ -1950,7 +1950,7 @@ fn should_handle_sidechain_and_thischain_asset_on_different_networks() {
         let tx_hash = request_incoming(
             alice.clone(),
             H256::from_slice(&[1u8; 32]),
-            IncomingRequestTransactionKind::Transfer.into(),
+            IncomingTransactionRequestKind::Transfer.into(),
             net_id_0,
         )
         .unwrap();
@@ -1980,7 +1980,7 @@ fn should_handle_sidechain_and_thischain_asset_on_different_networks() {
         let tx_hash = request_incoming(
             alice.clone(),
             H256::from_slice(&[2; 32]),
-            IncomingRequestTransactionKind::Transfer.into(),
+            IncomingTransactionRequestKind::Transfer.into(),
             net_id_1,
         )
         .unwrap();
@@ -2033,7 +2033,7 @@ fn should_migrate() {
         let tx_hash = request_incoming(
             alice.clone(),
             H256::from_slice(&[10; 32]),
-            IncomingRequestTransactionKind::PrepareForMigration.into(),
+            IncomingTransactionRequestKind::PrepareForMigration.into(),
             net_id,
         )
         .unwrap();
@@ -2084,7 +2084,7 @@ fn should_migrate() {
         let tx_hash = request_incoming(
             alice.clone(),
             H256::from_slice(&[20; 32]),
-            IncomingRequestTransactionKind::Migrate.into(),
+            IncomingTransactionRequestKind::Migrate.into(),
             net_id,
         )
         .unwrap();
@@ -2125,7 +2125,7 @@ fn should_not_allow_duplicate_migration_requests() {
         let tx_hash = request_incoming(
             alice.clone(),
             H256::from_slice(&[10; 32]),
-            IncomingRequestTransactionKind::PrepareForMigration.into(),
+            IncomingTransactionRequestKind::PrepareForMigration.into(),
             net_id,
         )
         .unwrap();
@@ -2141,7 +2141,7 @@ fn should_not_allow_duplicate_migration_requests() {
         let tx_hash = request_incoming(
             alice.clone(),
             H256::from_slice(&[100; 32]),
-            IncomingRequestTransactionKind::PrepareForMigration.into(),
+            IncomingTransactionRequestKind::PrepareForMigration.into(),
             net_id,
         )
         .unwrap();
@@ -2173,7 +2173,7 @@ fn should_not_allow_duplicate_migration_requests() {
         let tx_hash = request_incoming(
             alice.clone(),
             H256::from_slice(&[20; 32]),
-            IncomingRequestTransactionKind::Migrate.into(),
+            IncomingTransactionRequestKind::Migrate.into(),
             net_id,
         )
         .unwrap();
@@ -2189,7 +2189,7 @@ fn should_not_allow_duplicate_migration_requests() {
         let tx_hash = request_incoming(
             alice.clone(),
             H256::from_slice(&[200; 32]),
-            IncomingRequestTransactionKind::Migrate.into(),
+            IncomingTransactionRequestKind::Migrate.into(),
             net_id,
         )
         .unwrap();
@@ -2260,7 +2260,7 @@ fn should_parse_add_peer_on_old_contract() {
             author: alice.clone(),
             hash: tx_hash,
             timepoint: Default::default(),
-            kind: IncomingRequestTransactionKind::AddPeer,
+            kind: IncomingTransactionRequestKind::AddPeer,
             network_id: net_id,
         };
         let tx = Transaction {
@@ -2311,7 +2311,7 @@ fn should_parse_remove_peer_on_old_contract() {
             author: alice.clone(),
             hash: tx_hash,
             timepoint: Default::default(),
-            kind: IncomingRequestTransactionKind::RemovePeer,
+            kind: IncomingTransactionRequestKind::RemovePeer,
             network_id: net_id,
         };
         let tx = Transaction {
