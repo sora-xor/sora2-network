@@ -186,8 +186,9 @@ impl crate::Module<Runtime> {
                     .into();
                 assert_eq!(
                     assets::Module::<Runtime>::free_balance(&tech_asset, &ALICE()).unwrap(),
-                    balance!(227683.9915321233119034),
+                    balance!(227683.9915321233119024),
                 );
+                //TODO: total supply check
             },
         ];
         let mut tests_to_add = tests.clone();
@@ -562,19 +563,19 @@ fn swap_pair_desired_output_and_withdraw_cascade() {
 
             assert_eq!(
                 assets::Module::<Runtime>::free_balance(&gt, &ALICE()).unwrap(),
-                450668729188225185979315
+                450668729188225185978702
             );
             assert_eq!(
                 assets::Module::<Runtime>::free_balance(&bp, &ALICE()).unwrap(),
-                1893282356407400019291548
+                1893282356407400019291402
             );
             assert_eq!(
                 assets::Module::<Runtime>::free_balance(&gt, &repr.clone()).unwrap(),
-                449009223589025484952356
+                449009223589025484952969
             );
             assert_eq!(
                 assets::Module::<Runtime>::free_balance(&bp, &repr.clone()).unwrap(),
-                106717643592599980708452
+                106717643592599980708598
             );
             assert_eq!(
                 assets::Module::<Runtime>::free_balance(&gt, &fee_repr.clone()).unwrap(),
@@ -595,23 +596,23 @@ fn swap_pair_desired_output_and_withdraw_cascade() {
 
             assert_eq!(
                 assets::Module::<Runtime>::free_balance(&gt, &ALICE()).unwrap(),
-                249063125369447164992796
+                249063125369447164991908
             );
             assert_eq!(
                 assets::Module::<Runtime>::free_balance(&bp, &ALICE()).unwrap(),
-                1926282356407400019291548
+                1926282356407400019291402
             );
             assert_eq!(
                 assets::Module::<Runtime>::free_balance(&gt, &repr.clone()).unwrap(),
-                650010010596347171875916
+                650010010596347171876803
             );
             assert_eq!(
                 assets::Module::<Runtime>::free_balance(&bp, &repr.clone()).unwrap(),
-                73717643592599980708452
+                73717643592599980708598
             );
             assert_eq!(
                 assets::Module::<Runtime>::free_balance(&gt, &fee_repr.clone()).unwrap(),
-                926864034205663131288
+                926864034205663131289
             );
         },
     ]);
@@ -994,17 +995,25 @@ fn withdraw_all_liquidity() {
                 balance!(1856000.0),
             );
 
+            let tech_asset: AssetId = crate::Module::<Runtime>::get_marking_asset(&tech_acc_id)
+                .expect("Failed to get marking asset")
+                .into();
+            assert_eq!(
+                assets::Module::<Runtime>::free_balance(&tech_asset, &ALICE()).unwrap(),
+                balance!(227683.9915321233119024),
+            );
+
             assert_noop!(
                 crate::Module::<Runtime>::withdraw_liquidity(
                     Origin::signed(ALICE()),
                     dex_id,
                     GoldenTicket.into(),
                     BlackPepper.into(),
-                    balance!(227683.9915321233119035),
+                    balance!(227683.9915321233119025),
                     0,
                     0
                 ),
-                crate::Error::<Runtime>::SourceBaseAmountIsTooLarge
+                crate::Error::<Runtime>::SourceBalanceOfLiquidityTokensIsNotLargeEnough
             );
 
             assert_ok!(crate::Module::<Runtime>::withdraw_liquidity(
@@ -1012,7 +1021,7 @@ fn withdraw_all_liquidity() {
                 dex_id,
                 GoldenTicket.into(),
                 BlackPepper.into(),
-                balance!(227683.9915321233119034),
+                balance!(227683.9915321233119024),
                 0,
                 0
             ));
@@ -1027,14 +1036,16 @@ fn withdraw_all_liquidity() {
 
             assert_eq!(
                 assets::Module::<Runtime>::free_balance(&gt, &ALICE()).unwrap(),
-                balance!(900000.0),
+                balance!(899999.999999999999998418),
             );
             assert_eq!(
                 assets::Module::<Runtime>::free_balance(&bp, &ALICE()).unwrap(),
-                balance!(2000000.0),
+                balance!(1999999.999999999999999367),
             );
-            //900000.0 - 540000.0 = 360000.0
-            //2000000.0 - 1856000.0 = 144000.0
+            // small fractions are lost due to min_liquidity locked for initial provider
+            // and also rounding proportions such that user does not withdraw more thus breaking the pool
+            // 900000.0 - 540000.0 = 360000.0
+            // 2000000.0 - 1856000.0 = 144000.0
         },
     ]);
 }
