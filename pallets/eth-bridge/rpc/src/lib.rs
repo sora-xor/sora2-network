@@ -25,6 +25,7 @@ pub trait EthBridgeApi<
     OutgoingRequestEncoded,
     DispatchError,
     NetworkId,
+    BalancePrecision,
 >
 {
     #[rpc(name = "ethBridge_getRequests")]
@@ -64,7 +65,16 @@ pub trait EthBridgeApi<
         &self,
         network_id: Option<NetworkId>,
         at: Option<BlockHash>,
-    ) -> RpcResult<Result<Vec<(AssetKind, AssetId, Option<Address>)>, DispatchError>>;
+    ) -> RpcResult<
+        Result<
+            Vec<(
+                AssetKind,
+                (AssetId, BalancePrecision),
+                Option<(Address, BalancePrecision)>,
+            )>,
+            DispatchError,
+        >,
+    >;
 }
 
 pub struct EthBridgeRpc<C, B> {
@@ -94,6 +104,7 @@ impl<
         RequestStatus,
         OutgoingRequestEncoded,
         NetworkId,
+        BalancePrecision,
     >
     EthBridgeApi<
         <Block as BlockT>::Hash,
@@ -108,6 +119,7 @@ impl<
         OutgoingRequestEncoded,
         DispatchError,
         NetworkId,
+        BalancePrecision,
     > for EthBridgeRpc<C, Block>
 where
     Block: BlockT,
@@ -125,6 +137,7 @@ where
         RequestStatus,
         OutgoingRequestEncoded,
         NetworkId,
+        BalancePrecision,
     >,
     Approval: Codec,
     Hash: Codec,
@@ -136,6 +149,7 @@ where
     RequestStatus: Codec,
     OutgoingRequestEncoded: Codec,
     NetworkId: Codec,
+    BalancePrecision: Codec,
 {
     fn get_requests(
         &self,
@@ -205,7 +219,16 @@ where
         &self,
         network_id: Option<NetworkId>,
         at: Option<<Block as BlockT>::Hash>,
-    ) -> RpcResult<Result<Vec<(AssetKind, AssetId, Option<Address>)>, DispatchError>> {
+    ) -> RpcResult<
+        Result<
+            Vec<(
+                AssetKind,
+                (AssetId, BalancePrecision),
+                Option<(Address, BalancePrecision)>,
+            )>,
+            DispatchError,
+        >,
+    > {
         let api = self.client.runtime_api();
         let at = BlockId::hash(at.unwrap_or_else(|| self.client.info().best_hash));
         api.get_registered_assets(&at, network_id)

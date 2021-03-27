@@ -14,7 +14,10 @@ use crate::{
 };
 use codec::{Decode, Encode};
 use common::prelude::Balance;
-use common::{balance, eth, AssetId, AssetId32, AssetSymbol, DOT, KSM, USDT, VAL, XOR};
+use common::{
+    balance, eth, AssetId, AssetId32, AssetSymbol, DEFAULT_BALANCE_PRECISION, DOT, KSM, USDT, VAL,
+    XOR,
+};
 use frame_support::sp_runtime::app_crypto::sp_core::crypto::AccountId32;
 use frame_support::sp_runtime::app_crypto::sp_core::{self, ecdsa, sr25519, Pair, Public};
 use frame_support::sp_runtime::traits::IdentifyAccount;
@@ -2661,5 +2664,174 @@ fn should_cancel_incoming_prepared_requests() {
                 TransactionOutcome::Rollback(())
             });
         }
+    });
+}
+
+#[test]
+fn should_convert_amount_for_a_token_with_non_default_precision() {
+    let (mut ext, state) = ExtBuilder::default().build();
+
+    ext.execute_with(|| {
+        let net_id = ETH_NETWORK_ID;
+        let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
+        let token_address = Address::from(hex!("e88f8313e61a97cec1871ee37fbbe2a8bf3ed1e4"));
+        let ticker = "USDT".into();
+        let name = "Tether USD".into();
+        let decimals = 6;
+        assert_ok!(EthBridge::add_sidechain_token(
+            Origin::signed(state.authority_account_id.clone()),
+            token_address,
+            ticker,
+            name,
+            decimals,
+            net_id,
+        ));
+        assert!(EthBridge::registered_sidechain_asset(net_id, &token_address).is_none());
+        approve_last_request(&state, net_id).expect("request wasn't approved");
+        let asset_id = EthBridge::registered_sidechain_asset(net_id, &token_address)
+            .expect("failed to register sidechain asset");
+        assert_eq!(
+            EthBridge::registered_asset(net_id, &asset_id).unwrap(),
+            AssetKind::Sidechain
+        );
+        assert_eq!(
+            EthBridge::sidechain_asset_precision(net_id, &asset_id),
+            decimals
+        );
+        assert_eq!(
+            Assets::get_asset_info(&asset_id).1,
+            DEFAULT_BALANCE_PRECISION
+        );
+        // Incoming transfer part.
+        assert_eq!(
+            Assets::total_balance(&asset_id, &alice).unwrap(),
+            balance!(0)
+        );
+        let tx_hash = request_incoming(
+            alice.clone(),
+            H256::from_slice(&[1; 32]),
+            IncomingRequestKind::Transfer,
+            net_id,
+        )
+        .unwrap();
+        let sidechain_amount = 1 * 10_u128.pow(decimals as u32);
+        let incoming_trasfer = IncomingRequest::try_from_contract_event(
+            ContractEvent::Deposit(alice.clone(), sidechain_amount, token_address, H256::zero()),
+            IncomingPreRequest::new(
+                alice.clone(),
+                tx_hash,
+                Default::default(),
+                IncomingRequestKind::Transfer,
+                net_id,
+            ),
+            1,
+            tx_hash,
+        )
+        .unwrap();
+        assert_incoming_request_done(&state, incoming_trasfer).unwrap();
+        assert_eq!(
+            Assets::total_balance(&asset_id, &alice).unwrap(),
+            balance!(1)
+        );
+        // Outgoing transfer part.
+        assert_ok!(EthBridge::transfer_to_sidechain(
+            Origin::signed(alice.clone()),
+            asset_id.clone(),
+            Address::from_str("19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A").unwrap(),
+            balance!(1),
+            net_id,
+        ));
+        let outgoing_transfer =
+            match approve_last_request(&state, net_id).expect("request wasn't approved") {
+                OutgoingRequest::Transfer(transfer) => transfer,
+                _ => unreachable!(),
+            };
+        assert_eq!(outgoing_transfer.amount, balance!(1));
+        assert_eq!(
+            outgoing_transfer.sidechain_amount().unwrap(),
+            sidechain_amount
+        );
+        assert_eq!(
+            Assets::total_balance(&asset_id, &alice).unwrap(),
+            balance!(0)
+        );
+    });
+}
+
+#[test]
+fn should_fail_convert_amount_for_a_token_with_non_default_precision() {
+    let (mut ext, state) = ExtBuilder::default().build();
+
+    ext.execute_with(|| {
+        let net_id = ETH_NETWORK_ID;
+        let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
+        let token_address = Address::from(hex!("e88f8313e61a97cec1871ee37fbbe2a8bf3ed1e4"));
+        let ticker = "USDT".into();
+        let name = "Tether USD".into();
+        let decimals = 6;
+        assert_ok!(EthBridge::add_sidechain_token(
+            Origin::signed(state.authority_account_id.clone()),
+            token_address,
+            ticker,
+            name,
+            decimals,
+            net_id,
+        ));
+        assert!(EthBridge::registered_sidechain_asset(net_id, &token_address).is_none());
+        approve_last_request(&state, net_id).expect("request wasn't approved");
+        let asset_id = EthBridge::registered_sidechain_asset(net_id, &token_address)
+            .expect("failed to register sidechain asset");
+        assert_eq!(
+            Assets::total_balance(&asset_id, &alice).unwrap(),
+            balance!(0)
+        );
+        let tx_hash = request_incoming(
+            alice.clone(),
+            H256::from_slice(&[1; 32]),
+            IncomingRequestKind::Transfer,
+            net_id,
+        )
+        .unwrap();
+        let sidechain_amount = 1_000_000_000_000_000_000_000 * 10_u128.pow(decimals as u32);
+        let incoming_trasfer_result = IncomingRequest::try_from_contract_event(
+            ContractEvent::Deposit(alice.clone(), sidechain_amount, token_address, H256::zero()),
+            IncomingPreRequest::new(
+                alice.clone(),
+                tx_hash,
+                Default::default(),
+                IncomingRequestKind::Transfer,
+                net_id,
+            ),
+            1,
+            tx_hash,
+        );
+        assert_eq!(
+            incoming_trasfer_result,
+            Err(Error::UnsupportedAssetPrecision)
+        );
+    });
+}
+
+#[test]
+fn should_not_allow_registering_sidechain_token_with_big_precision() {
+    let (mut ext, state) = ExtBuilder::default().build();
+
+    ext.execute_with(|| {
+        let net_id = ETH_NETWORK_ID;
+        let token_address = Address::from(hex!("e88f8313e61a97cec1871ee37fbbe2a8bf3ed1e4"));
+        let ticker = "USDT".into();
+        let name = "Tether USD".into();
+        let decimals = DEFAULT_BALANCE_PRECISION + 1;
+        assert_noop!(
+            EthBridge::add_sidechain_token(
+                Origin::signed(state.authority_account_id.clone()),
+                token_address,
+                ticker,
+                name,
+                decimals,
+                net_id,
+            ),
+            Error::UnsupportedAssetPrecision
+        );
     });
 }
