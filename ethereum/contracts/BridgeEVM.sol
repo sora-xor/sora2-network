@@ -82,7 +82,7 @@ contract Bridge {
      * Token should not been already added.
      * 
      * @param newToken new token contract address
-     * @param ticker token ticker
+     * @param ticker token ticker (symbol)
      * @param name token title
      * @param decimals count of token decimal places
      * @param txHash transaction hash from sidechain

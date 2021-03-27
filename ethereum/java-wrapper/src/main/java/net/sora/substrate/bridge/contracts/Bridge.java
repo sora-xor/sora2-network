@@ -185,6 +185,9 @@ public class Bridge extends Contract {
         return executeRemoteCallSingleValueReturn(function, Boolean.class);
     }
 
+    /**
+     * WARNING: in the ERC-20 code, NAME comes first, then SYMBOL.
+     */
     public RemoteFunctionCall<TransactionReceipt> addNewSidechainToken(String name, String symbol, BigInteger decimals, BigInteger supply, byte[] sidechainAssetId, List<BigInteger> v, List<byte[]> r, List<byte[]> s) {
         final org.web3j.abi.datatypes.Function function = new org.web3j.abi.datatypes.Function(
                 FUNC_ADDNEWSIDECHAINTOKEN, 

@@ -3,7 +3,7 @@
 use common::TradingPair;
 use framenode_runtime::opaque::Block;
 use framenode_runtime::{
-    eth_bridge, AccountId, AssetId, AssetSymbol, Balance, BalancePrecision, BlockNumber, DEXId,
+    eth_bridge, AccountId, AssetId, AssetName, AssetSymbol, Balance, BalancePrecision, BlockNumber, DEXId,
     FarmId, FarmInfo, FarmerInfo, FilterMode, Index, LiquiditySourceType, Runtime, SwapVariant,
     TechAccountId,
 };
@@ -57,6 +57,7 @@ where
         AssetId,
         Balance,
         AssetSymbol,
+        AssetName,
         BalancePrecision,
     >,
     C::Api: liquidity_proxy_rpc::LiquidityProxyRuntimeAPI<

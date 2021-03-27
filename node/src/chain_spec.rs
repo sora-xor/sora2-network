@@ -2,14 +2,14 @@ use framenode_runtime::opaque::SessionKeys;
 #[cfg(feature = "faucet")]
 use framenode_runtime::FaucetConfig;
 use framenode_runtime::{
-    bonding_curve_pool, eth_bridge, AccountId, AssetSymbol, AssetsConfig, BabeConfig,
+    bonding_curve_pool, eth_bridge, AccountId, AssetName, AssetSymbol, AssetsConfig, BabeConfig,
     BalancesConfig, BondingCurvePoolConfig, BridgeMultisigConfig, CouncilConfig, DEXAPIConfig,
     DEXManagerConfig, DemocracyConfig, EthBridgeConfig, FarmingConfig, GenesisConfig,
     GetBaseAssetId, GetPswapAssetId, GetValAssetId, GetXorAssetId, GrandpaConfig,
     IrohaMigrationConfig, LiquiditySourceType, MulticollateralBondingCurvePoolConfig,
     PermissionsConfig, PswapDistributionConfig, RewardsConfig, Runtime, SessionConfig, Signature,
     StakerStatus, StakingConfig, SudoConfig, SystemConfig, TechAccountId, TechnicalCommitteeConfig,
-    TechnicalConfig, TokensConfig, WASM_BINARY,
+    TechnicalConfig, TokensConfig, WASM_BINARY
 };
 
 use common::prelude::{Balance, DEXInfo, FixedWrapper};
@@ -690,6 +690,7 @@ fn testnet_genesis(
                     GetXorAssetId::get(),
                     initial_assets_owner.clone(),
                     AssetSymbol(b"XOR".to_vec()),
+                    AssetName(b"SORA".to_vec()),
                     18,
                     Balance::zero(),
                     true,
@@ -698,6 +699,7 @@ fn testnet_genesis(
                 //     UsdId::get(),
                 //     initial_assets_owner.clone(),
                 //     AssetSymbol(b"USDT".to_vec()),
+                //     AssetName(b"Tether USD".to_vec()),
                 //     18,
                 //     Balance::zero(),
                 //     true,
@@ -706,6 +708,7 @@ fn testnet_genesis(
                     GetValAssetId::get(),
                     initial_assets_owner.clone(),
                     AssetSymbol(b"VAL".to_vec()),
+                    AssetName(b"SORA Validator Token".to_vec()),
                     18,
                     Balance::zero(),
                     true,
@@ -714,6 +717,7 @@ fn testnet_genesis(
                     GetPswapAssetId::get(),
                     initial_assets_owner.clone(),
                     AssetSymbol(b"PSWAP".to_vec()),
+                    AssetName(b"Polkaswap".to_vec()),
                     18,
                     Balance::zero(),
                     true,

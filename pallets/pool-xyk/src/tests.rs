@@ -1,5 +1,5 @@
 use common::prelude::{SwapAmount, SwapOutcome};
-use common::{balance, AssetSymbol, Balance, LiquiditySource, LiquiditySourceType, ToFeeAccount};
+use common::{balance, AssetName, AssetSymbol, Balance, LiquiditySource, LiquiditySourceType, ToFeeAccount};
 use frame_support::{assert_noop, assert_ok};
 
 use crate::mock::*;
@@ -29,6 +29,7 @@ impl crate::Module<Runtime> {
                 ALICE(),
                 GoldenTicket.into(),
                 AssetSymbol(b"GT".to_vec()),
+                AssetName(b"Golden Ticket".to_vec()),
                 18,
                 Balance::from(0u32),
                 true,
@@ -38,6 +39,7 @@ impl crate::Module<Runtime> {
                 ALICE(),
                 BlackPepper.into(),
                 AssetSymbol(b"BP".to_vec()),
+                AssetName(b"Black Pepper".to_vec()),
                 18,
                 Balance::from(0u32),
                 true,
