@@ -50,6 +50,8 @@ dex-api-benchmarking = { path = "../pallets/dex-api/benchmarking", default-featu
 
 # Substrate dependencies
 frame-benchmarking = { default-features = false, optional = true, version = '3' }
+pallet-collective = { default-features = false, version = '3' }
+pallet-democracy = { default-features = false, version = '3' }
 frame-executive = { default-features = false, version = '3' }
 frame-support = { default-features = false, version = '3' }
 frame-system = { default-features = false, version = '3' }
@@ -63,6 +65,7 @@ pallet-multisig = { version = "3", default-features = false }
 pallet-randomness-collective-flip = { default-features = false, version = '3' }
 pallet-sudo = { default-features = false, version = '3' }
 pallet-timestamp = { default-features = false, version = '3' }
+pallet-scheduler = { default-features = false, version = '3' }
 #pallet-session = { default-features = false, version = '3' }
 pallet-session = { default-features = false, features = ["historical"], version = '3' }
 pallet-staking = { git = "https://github.com/soramitsu/sora2-frame-pallets", default-features = false, branch = "v3.0.0"}
@@ -104,8 +107,11 @@ std = [
     'pallet-aura/std',
     'pallet-babe/std',
     'pallet-balances/std',
+    'pallet-collective/std',
+    'pallet-democracy/std',
     'pallet-grandpa/std',
     'pallet-randomness-collective-flip/std',
+    'pallet-scheduler/std',
     'pallet-sudo/std',
     'pallet-timestamp/std',
     'pallet-transaction-payment/std',
