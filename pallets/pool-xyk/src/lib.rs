@@ -2262,7 +2262,7 @@ pub mod pallet {
         ImpossibleToDecideWithdrawLiquidityAmounts,
         /// Invalid withdraw liquidity base asset amount.
         InvalidWithdrawLiquidityBasicAssetAmount,
-        /// Invalud withdraw liquidity target asset amount.
+        /// Invalid withdraw liquidity target asset amount.
         InvalidWithdrawLiquidityTargetAssetAmount,
         /// Source base amount is too large.
         SourceBaseAmountIsTooLarge,
