@@ -136,7 +136,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
     spec_name: create_runtime_str!("sora-substrate"),
     impl_name: create_runtime_str!("sora-substrate"),
     authoring_version: 1,
-    spec_version: 1,
+    spec_version: 3,
     impl_version: 1,
     apis: RUNTIME_API_VERSIONS,
     transaction_version: 1,
@@ -422,7 +422,6 @@ impl trading_pair::Config for Runtime {
 }
 
 impl dex_manager::Config for Runtime {
-    type Event = Event;
     type WeightInfo = ();
 }
 
@@ -713,6 +712,7 @@ impl eth_bridge::Config for Runtime {
     type WeightInfo = ();
 }
 
+#[cfg(feature = "faucet")]
 impl faucet::Config for Runtime {
     type Event = Event;
 }
@@ -804,6 +804,7 @@ parameter_types! {
     pub const XorIntoValBurnedWeight: u32 = 50;
 }
 
+#[cfg(feature = "test-net")]
 construct_runtime! {
     pub enum Runtime where
         Block = Block,
@@ -838,14 +839,65 @@ construct_runtime! {
         Currencies: currencies::{Module, Call, Event<T>},
         TradingPair: trading_pair::{Module, Call, Event<T>},
         Assets: assets::{Module, Call, Storage, Config<T>, Event<T>},
-        DEXManager: dex_manager::{Module, Storage, Config<T>, Event<T>},
+        DEXManager: dex_manager::{Module, Storage, Config<T>},
         BondingCurvePool: bonding_curve_pool::{Module, Call, Storage, Config<T>},
         MulticollateralBondingCurvePool: multicollateral_bonding_curve_pool::{Module, Call, Storage, Config<T>, Event<T>},
         Technical: technical::{Module, Call, Config<T>, Event<T>},
         PoolXYK: pool_xyk::{Module, Call, Storage, Event<T>},
         LiquidityProxy: liquidity_proxy::{Module, Call, Event<T>},
         DEXAPI: dex_api::{Module, Call, Storage, Config, Event<T>},
+        EthBridge: eth_bridge::{Module, Call, Storage, Config<T>, Event<T>},
+        Farming: farming::{Module, Call, Storage, Config<T>, Event<T>},
+        PswapDistribution: pswap_distribution::{Module, Call, Storage, Config<T>, Event<T>},
+        Multisig: pallet_multisig::{Module, Call, Storage, Event<T>},
+        IrohaMigration: iroha_migration::{Module, Call, Storage, Config<T>, Event<T>},
+        // Available only for test net
         Faucet: faucet::{Module, Call, Config<T>, Event<T>},
+    }
+}
+
+#[cfg(not(feature = "test-net"))]
+construct_runtime! {
+    pub enum Runtime where
+        Block = Block,
+        NodeBlock = opaque::Block,
+        UncheckedExtrinsic = UncheckedExtrinsic
+    {
+        System: frame_system::{Module, Call, Storage, Config, Event<T>},
+        Timestamp: pallet_timestamp::{Module, Call, Storage, Inherent},
+        // Balances in native currency - XOR.
+        Balances: pallet_balances::{Module, Call, Storage, Config<T>, Event<T>},
+        Sudo: pallet_sudo::{Module, Call, Storage, Config<T>, Event<T>},
+        RandomnessCollectiveFlip: pallet_randomness_collective_flip::{Module, Call, Storage},
+        TransactionPayment: pallet_transaction_payment::{Module, Storage},
+        Permissions: permissions::{Module, Call, Storage, Config<T>, Event<T>},
+        ReferralSystem: referral_system::{Module, Call, Storage},
+        Rewards: rewards::{Module, Call, Config<T>, Storage, Event<T>},
+        XorFee: xor_fee::{Module, Call, Storage},
+        BridgeMultisig: bridge_multisig::{Module, Call, Storage, Config<T>, Event<T>},
+        Utility: pallet_utility::{Module, Call, Event},
+
+        // Consensus and staking.
+        Session: pallet_session::{Module, Call, Storage, Event, Config<T>},
+        Historical: pallet_session_historical::{Module},
+        Babe: pallet_babe::{Module, Call, Storage, Config, Inherent, ValidateUnsigned},
+        Grandpa: pallet_grandpa::{Module, Call, Storage, Config, Event},
+        Authorship: pallet_authorship::{Module, Call, Storage, Inherent},
+        Staking: pallet_staking::{Module, Call, Config<T>, Storage, Event<T>},
+
+        // Non-native tokens - everything apart of XOR.
+        Tokens: tokens::{Module, Storage, Config<T>, Event<T>},
+        // Unified interface for XOR and non-native tokens.
+        Currencies: currencies::{Module, Call, Event<T>},
+        TradingPair: trading_pair::{Module, Call, Event<T>},
+        Assets: assets::{Module, Call, Storage, Config<T>, Event<T>},
+        DEXManager: dex_manager::{Module, Storage, Config<T>},
+        BondingCurvePool: bonding_curve_pool::{Module, Call, Storage, Config<T>},
+        MulticollateralBondingCurvePool: multicollateral_bonding_curve_pool::{Module, Call, Storage, Config<T>, Event<T>},
+        Technical: technical::{Module, Call, Config<T>, Event<T>},
+        PoolXYK: pool_xyk::{Module, Call, Storage, Event<T>},
+        LiquidityProxy: liquidity_proxy::{Module, Call, Event<T>},
+        DEXAPI: dex_api::{Module, Call, Storage, Config, Event<T>},
         EthBridge: eth_bridge::{Module, Call, Storage, Config<T>, Event<T>},
         Farming: farming::{Module, Call, Storage, Config<T>, Event<T>},
         PswapDistribution: pswap_distribution::{Module, Call, Storage, Config<T>, Event<T>},
@@ -1379,6 +1431,7 @@ impl_runtime_apis! {
             add_benchmark!(params, batches, assets, Assets);
             add_benchmark!(params, batches, dex_api, DEXAPIBench::<Runtime>);
             add_benchmark!(params, batches, dex_manager, DEXManager);
+            #[cfg(feature = "faucet")]
             add_benchmark!(params, batches, faucet, Faucet);
             add_benchmark!(params, batches, liquidity_proxy, LiquidityProxyBench::<Runtime>);
             add_benchmark!(params, batches, trading_pair, TradingPair);

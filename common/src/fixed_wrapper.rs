@@ -3,7 +3,7 @@ use core::ops::*;
 use core::result::Result;
 
 use fixnum::ops::RoundMode::*;
-use fixnum::ops::{CheckedAdd, CheckedSub, RoundingDiv, RoundingMul};
+use fixnum::ops::{CheckedAdd, CheckedSub, RoundingDiv, RoundingMul, RoundingSqrt};
 use fixnum::ArithmeticError;
 use static_assertions::_core::cmp::Ordering;
 
@@ -46,41 +46,9 @@ impl FixedWrapper {
         (0..x).fold(fixed!(1), |acc, _| acc * self.clone())
     }
 
-    /// Calculates square root of self using [Babylonian method][babylonian].
-    /// Precision is `1e-10`.
-    /// [babylonian]: https://en.wikipedia.org/wiki/Methods_of_computing_square_roots#Babylonian_method
+    /// Calculates square root of underlying Fixed number.
     pub fn sqrt_accurate(self) -> Self {
-        fn eq_eps(left: Fixed, right: Fixed, eps: Fixed) -> bool {
-            let delta = left.csub(right).unwrap();
-            if delta < fixed!(0) {
-                delta.cneg().unwrap() < eps
-            } else {
-                delta < eps
-            }
-        }
-
-        fn half_sum(a: Fixed, b: Fixed) -> Fixed {
-            a.cadd(b).unwrap().rdiv(2, Floor).unwrap()
-        }
-
-        let eps = fixed!(0.0000000001);
-        #[cfg(feature = "std")]
-        let initial_sqrt = self.sqrt().inner;
-        #[cfg(not(feature = "std"))]
-        let initial_sqrt = self.inner.clone().map(|x| x.rdiv(2, Floor).unwrap());
-        let sqrt_opt = zip(&self.inner, &initial_sqrt).map(|(&s, &n_prev)| {
-            let mut n_prev = n_prev;
-            let mut n;
-            loop {
-                n = half_sum(n_prev, s.rdiv(n_prev, Floor).unwrap());
-                if eq_eps(n.rmul(n, Floor).unwrap(), s, eps) {
-                    break;
-                }
-                n_prev = n;
-            }
-            n
-        });
-        Self::from(sqrt_opt)
+        self.inner.and_then(|num| num.rsqrt(Floor)).into()
     }
 
     /// Calculates square root of self using fractional representation.
@@ -279,3 +247,36 @@ macro_rules! impl_fixed_wrapper_for_type {
 // Here one can add more custom implementations.
 impl_fixed_wrapper_for_type!(Fixed);
 impl_fixed_wrapper_for_type!(u128);
+
+#[cfg(test)]
+mod tests {
+    use crate::*;
+    #[test]
+    fn fixed_wrapper_sqrt_small_sanity_check() {
+        // basic
+        assert_eq!(fixed_wrapper!(4).sqrt_accurate(), fixed_wrapper!(2));
+        // zero
+        assert_eq!(fixed_wrapper!(0).sqrt_accurate(), fixed_wrapper!(0));
+        // negative
+        assert!((fixed_wrapper!(0) - fixed_wrapper!(4))
+            .sqrt_accurate()
+            .get()
+            .is_err());
+        // max balance
+        assert_eq!(
+            fixed_wrapper!(170141183460469231731.687303715884105727).sqrt_accurate(),
+            fixed_wrapper!(13043817825.332782212349571806)
+        );
+        // over the max
+        assert!((fixed_wrapper!(170141183460469231731.687303715884105727)
+            + fixed_wrapper!(0.000000000000000001))
+        .sqrt_accurate()
+        .get()
+        .is_err());
+        // normal large
+        assert_eq!(
+            fixed_wrapper!(3743450969434.400440997399628828).sqrt_accurate(),
+            fixed_wrapper!(1934799.981764110013554299)
+        )
+    }
+}

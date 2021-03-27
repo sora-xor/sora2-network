@@ -66,6 +66,7 @@ construct_runtime! {
         Currencies: currencies::{Module, Call, Storage, Event<T>},
         Balances: pallet_balances::{Module, Call, Config<T>, Storage, Event<T>},
         Tokens: tokens::{Module, Call, Config<T>, Storage, Event<T>},
+        Rewards: rewards::{Module, Event<T>},
     }
 }
 
@@ -96,6 +97,11 @@ impl frame_system::Config for Runtime {
     type SystemWeightInfo = ();
     type PalletInfo = PalletInfo;
     type SS58Prefix = ();
+}
+
+impl rewards::Config for Runtime {
+    type Event = Event;
+    type WeightInfo = ();
 }
 
 impl technical::Config for Runtime {

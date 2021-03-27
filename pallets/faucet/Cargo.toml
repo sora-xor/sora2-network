@@ -15,15 +15,17 @@ codec = { package = "parity-scale-codec", version = "2", default-features = fals
 frame-benchmarking = { version = "3", default-features = false, optional = true }
 frame-support = { version = "3", default-features = false }
 frame-system = { version = "3", default-features = false }
-hex-literal = { version = "0.3.1", optional = true }
+hex-literal = { version = "0.3.1" }
 pallet-timestamp = { version = "3", default-features = false }
 serde = { version = "1.0.101", optional = true, features = ["derive"] }
 sp-arithmetic = { version = "3", default-features = false }
+sp-core = { version = "3", default-features = false }
 sp-runtime = { version = "3", default-features = false }
 sp-std = { version = "3", default-features = false }
 
 assets = { path = "../assets", default-features = false }
 common = { path = "../../common", default-features = false }
+rewards = { path = "../rewards", default-features = false }
 technical = { path = "../technical", default-features = false }
 
 [dev-dependencies]
@@ -40,20 +42,22 @@ technical = { path = "../technical" }
 
 [features]
 default = ['std']
+
 std = [
     'codec/std',
     'frame-support/std',
     'frame-system/std',
     'pallet-timestamp/std',
+    'rewards/std',
     'serde',
     'sp-arithmetic/std',
+    'sp-core/std',
     'sp-runtime/std',
     'sp-std/std',
 ]
+
 runtime-benchmarks = [
     "frame-benchmarking",
     "frame-system/runtime-benchmarks",
     "frame-support/runtime-benchmarks",
-
-    "hex-literal",
 ]

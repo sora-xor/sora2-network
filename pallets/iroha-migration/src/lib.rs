@@ -97,8 +97,18 @@ impl<T: Config> Pallet<T> {
         let public_key = Self::parse_public_key(iroha_public_key)?;
         let signature = Self::parse_signature(iroha_signature)?;
         let message = format!("{}{}", iroha_address, iroha_public_key);
+        frame_support::debug::error!("faucet: message: {}", message);
         let mut prehashed_message = Sha3_256::default();
         prehashed_message.update(&message[..]);
+        {
+            let mut prehashed_message = Sha3_256::default();
+            prehashed_message.update(&message[..]);
+            let hashed_message = prehashed_message.finalize();
+            frame_support::debug::error!(
+                "faucet: hashed_message: {}",
+                hex::encode(hashed_message.as_slice())
+            );
+        }
         public_key
             .verify_prehashed(prehashed_message, None, &signature)
             .map_err(|_| Error::<T>::SignatureVerificationFailed)?;
@@ -275,6 +285,8 @@ pub mod pallet {
                 let who = ensure_signed(origin)?;
                 let iroha_public_key = iroha_public_key.to_lowercase();
                 let iroha_signature = iroha_signature.to_lowercase();
+                frame_support::debug::error!("faucet: iroha_public_key: {}", iroha_public_key);
+                frame_support::debug::error!("faucet: iroha_signature: {}", iroha_signature);
                 Self::verify_signature(&iroha_address, &iroha_public_key, &iroha_signature)?;
                 ensure!(
                     !MigratedAccounts::<T>::contains_key(&iroha_address),
