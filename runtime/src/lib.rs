@@ -147,7 +147,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
     spec_name: create_runtime_str!("sora-substrate"),
     impl_name: create_runtime_str!("sora-substrate"),
     authoring_version: 1,
-    spec_version: 4,
+    spec_version: 5,
     impl_version: 1,
     apis: RUNTIME_API_VERSIONS,
     transaction_version: 1,
@@ -736,6 +736,7 @@ parameter_types! {
 }
 
 impl xor_fee::Config for Runtime {
+    type Event = Event;
     // Pass native currency.
     type XorCurrency = Balances;
     type ReferrerWeight = ReferrerWeight;
@@ -985,7 +986,7 @@ construct_runtime! {
         Permissions: permissions::{Module, Call, Storage, Config<T>, Event<T>},
         ReferralSystem: referral_system::{Module, Call, Storage},
         Rewards: rewards::{Module, Call, Config<T>, Storage, Event<T>},
-        XorFee: xor_fee::{Module, Call, Storage},
+        XorFee: xor_fee::{Module, Call, Storage, Event<T>},
         BridgeMultisig: bridge_multisig::{Module, Call, Storage, Config<T>, Event<T>},
         Utility: pallet_utility::{Module, Call, Event},
 

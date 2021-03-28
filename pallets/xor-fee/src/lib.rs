@@ -19,6 +19,8 @@ type NegativeImbalanceOf<T> = <<T as Config>::XorCurrency as Currency<
     <T as frame_system::Config>::AccountId,
 >>::NegativeImbalance;
 
+type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
+
 type BalanceOf<T> =
     <<T as Config>::XorCurrency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
 type Technical<T> = technical::Pallet<T>;
@@ -86,6 +88,7 @@ impl<T: Config> OnChargeTransaction<T> for Pallet<T> {
                 let adjusted_paid = paid
                     .offset(refund_imbalance)
                     .map_err(|_| TransactionValidityError::Invalid(InvalidTransaction::Payment))?;
+                Self::deposit_event(Event::FeeWithdrawn(who.clone(), corrected_fee));
                 let xor_burned_weight = T::XorBurnedWeight::get();
                 let xor_into_val_burned_weight = T::XorIntoValBurnedWeight::get();
                 let (referrer_xor, adjusted_paid) = adjusted_paid.ration(
@@ -172,6 +175,7 @@ pub mod pallet {
         + technical::Config
         + pallet_transaction_payment::Config
     {
+        type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
         /// XOR - The native currency of this blockchain.
         type XorCurrency: Currency<Self::AccountId> + Send + Sync;
         type XorId: Get<Self::AssetId>;
@@ -193,4 +197,12 @@ pub mod pallet {
 
     #[pallet::call]
     impl<T: Config> Pallet<T> {}
+
+    #[pallet::event]
+    #[pallet::metadata(AccountIdOf<T> = "AccountId", BalanceOf<T> = "Balance")]
+    #[pallet::generate_deposit(pub(super) fn deposit_event)]
+    pub enum Event<T: Config> {
+        /// Fee has been withdrawn from user. [Account Id to withdraw from, Fee Amount]
+        FeeWithdrawn(AccountIdOf<T>, BalanceOf<T>),
+    }
 }

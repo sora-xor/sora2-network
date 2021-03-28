@@ -86,7 +86,7 @@ construct_runtime! {
         Historical: historical::{Module},
         Timestamp: pallet_timestamp::{Module, Call, Storage, Inherent},
         Staking: pallet_staking::{Module, Call, Config<T>, Storage, Event<T>},
-        XorFee: xor_fee::{Module, Call},
+        XorFee: xor_fee::{Module, Call, Event<T>},
     }
 }
 
@@ -260,6 +260,7 @@ where
 pub type Extrinsic = TestXt<Call, ()>;
 
 impl Config for Runtime {
+    type Event = Event;
     type XorCurrency = Balances;
     type ReferrerWeight = ReferrerWeight;
     type XorBurnedWeight = XorBurnedWeight;
