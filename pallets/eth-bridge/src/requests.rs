@@ -468,12 +468,11 @@ pub struct OutgoingTransfer<T: Config> {
 }
 
 impl<T: Config> OutgoingTransfer<T> {
-    pub fn sidechain_amount(&self) -> Result<u128, Error<T>> {
+    pub fn sidechain_amount(&self) -> Result<(u128, Balance), Error<T>> {
         let sidechain_precision =
             crate::SidechainAssetPrecision::<T>::get(self.network_id, &self.asset_id);
         let thischain_precision = assets::Pallet::<T>::get_asset_info(&self.asset_id).1;
         Pallet::<T>::convert_precision(thischain_precision, sidechain_precision, self.amount)
-            .map(|x| x.0)
     }
 
     pub fn to_eth_abi(&self, tx_hash: H256) -> Result<OutgoingTransferEncoded, Error<T>> {
@@ -486,7 +485,8 @@ impl<T: Config> OutgoingTransfer<T> {
             Pallet::<T>::registered_sidechain_token(self.network_id, &self.asset_id)
         {
             currency_id = CurrencyIdEncoded::TokenAddress(token_address);
-            amount = U256::from(self.sidechain_amount()?);
+            let converted_amount = self.sidechain_amount().map(|x| x.0)?;
+            amount = U256::from(converted_amount);
         } else {
             let x = <T::AssetId as Into<H256>>::into(self.asset_id);
             currency_id = CurrencyIdEncoded::AssetId(H256(x.0));
@@ -533,10 +533,14 @@ impl<T: Config> OutgoingTransfer<T> {
 
     /// Checks that the given asset can be transferred through the bridge.
     pub fn validate(&self) -> Result<(), DispatchError> {
-        ensure!(
-            crate::RegisteredAsset::<T>::get(self.network_id, &self.asset_id).is_some(),
-            Error::<T>::UnsupportedToken
-        );
+        if let Some(kind) = crate::RegisteredAsset::<T>::get(self.network_id, &self.asset_id) {
+            if !kind.is_owned() {
+                let dust = self.sidechain_amount().map(|x| x.1)?;
+                ensure!(dust == 0, Error::<T>::NonZeroDust);
+            }
+        } else {
+            frame_support::fail!(Error::<T>::UnsupportedToken)
+        }
         Ok(())
     }
 

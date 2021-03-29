@@ -876,6 +876,38 @@ impl AssetKind {
     }
 }
 
+/// Bridge asset parameters.
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+#[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug)]
+pub enum AssetConfig<AssetId> {
+    Thischain {
+        id: AssetId,
+    },
+    Sidechain {
+        id: AssetId,
+        sidechain_id: sp_core::H160,
+        owned: bool,
+        precision: BalancePrecision,
+    },
+}
+
+impl<AssetId> AssetConfig<AssetId> {
+    pub fn asset_id(&self) -> &AssetId {
+        match self {
+            AssetConfig::Thischain { id, .. } => id,
+            AssetConfig::Sidechain { id, .. } => id,
+        }
+    }
+
+    pub fn kind(&self) -> AssetKind {
+        match self {
+            AssetConfig::Thischain { .. } => AssetKind::Thischain,
+            AssetConfig::Sidechain { owned: false, .. } => AssetKind::Sidechain,
+            AssetConfig::Sidechain { owned: true, .. } => AssetKind::SidechainOwned,
+        }
+    }
+}
+
 /// Network-specific parameters.
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug)]
@@ -890,7 +922,7 @@ pub struct NetworkParams<AccountId: Ord> {
 pub struct NetworkConfig<T: Config> {
     pub initial_peers: BTreeSet<T::AccountId>,
     pub bridge_account_id: T::AccountId,
-    pub tokens: Vec<(T::AssetId, Option<H160>, AssetKind)>,
+    pub assets: Vec<AssetConfig<T::AssetId>>,
     pub bridge_contract_address: Address,
     pub reserves: Vec<(T::AssetId, Balance)>,
 }
@@ -914,6 +946,7 @@ pub use pallet::*;
 #[frame_support::pallet]
 pub mod pallet {
     use super::*;
+    use crate::AssetConfig;
     use frame_support::pallet_prelude::*;
     use frame_support::weights::PostDispatchInfo;
     use frame_system::pallet_prelude::*;
@@ -1069,6 +1102,13 @@ pub mod pallet {
         }
 
         /// Transfer some amount of the given asset to Sidechain address.
+        ///
+        /// Note: if the asset kind is `Sidechain`, the amount should fit in the asset's precision
+        /// on sidechain (`SidechainAssetPrecision`) without extra digits. For example, assume
+        /// some ERC-20 (`T`) token has `decimals=6`, and the corresponding asset on substrate has
+        /// `7`. Alice's balance on thischain is `0.1000009`. If Alice would want to transfer all
+        /// the amount, she will get an error `NonZeroDust`, because of the `9` at the end, so, the
+        /// correct amount would be `0.100000` (only 6 digits after the decimal point).
         ///
         /// Parameters:
         /// - `asset_id` - thischain asset id.
@@ -1658,6 +1698,8 @@ pub mod pallet {
         UnableToPayFees,
         /// Unsupported asset precision.
         UnsupportedAssetPrecision,
+        /// Non-zero dust.
+        NonZeroDust,
         /// Unknown error.
         Other,
     }
@@ -1873,11 +1915,19 @@ pub mod pallet {
                 BridgeAccount::<T>::insert(net_id, peers_account_id.clone());
                 BridgeStatuses::<T>::insert(net_id, BridgeStatus::Initialized);
                 Peers::<T>::insert(net_id, network.initial_peers.clone());
-                for (asset_id, opt_token_address, kind) in &network.tokens {
-                    if let Some(token_address) = opt_token_address {
-                        let token_address = Address::from(token_address.0);
+                for asset_config in &network.assets {
+                    let kind = asset_config.kind();
+                    let asset_id = asset_config.asset_id();
+                    if let AssetConfig::Sidechain {
+                        sidechain_id,
+                        precision,
+                        ..
+                    } = &asset_config
+                    {
+                        let token_address = Address::from(sidechain_id.0);
                         RegisteredSidechainAsset::<T>::insert(net_id, token_address, *asset_id);
-                        RegisteredSidechainToken::<T>::insert(net_id, &asset_id, token_address);
+                        RegisteredSidechainToken::<T>::insert(net_id, asset_id, token_address);
+                        SidechainAssetPrecision::<T>::insert(net_id, asset_id, precision);
                     }
                     RegisteredAsset::<T>::insert(net_id, asset_id, kind);
                 }

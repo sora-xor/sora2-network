@@ -8,9 +8,9 @@ use crate::requests::{
 };
 use crate::types::{Bytes, Log, Transaction};
 use crate::{
-    majority, types, Address, AssetKind, BridgeStatus, ContractEvent, IncomingPreRequest,
-    IncomingRequest, IncomingRequestKind, OffchainRequest, OutgoingRequest, OutgoingTransfer,
-    RequestStatus, SignatureParams,
+    majority, types, Address, AssetConfig, AssetKind, BridgeStatus, ContractEvent,
+    IncomingPreRequest, IncomingRequest, IncomingRequestKind, OffchainRequest, OutgoingRequest,
+    OutgoingTransfer, RequestStatus, SignatureParams,
 };
 use codec::{Decode, Encode};
 use common::prelude::Balance;
@@ -301,11 +301,12 @@ fn should_reserve_and_burn_sidechain_asset_in_outgoing_transfer() {
     let net_id = ETH_NETWORK_ID;
     let mut builder = ExtBuilder::new();
     builder.add_network(
-        vec![(
-            USDT.into(),
-            Some(H160(hex!("dAC17F958D2ee523a2206206994597C13D831ec7"))),
-            AssetKind::Sidechain,
-        )],
+        vec![AssetConfig::Sidechain {
+            id: USDT.into(),
+            sidechain_id: H160(hex!("dAC17F958D2ee523a2206206994597C13D831ec7")),
+            owned: false,
+            precision: 18,
+        }],
         None,
         None,
     );
@@ -348,7 +349,11 @@ fn should_reserve_and_burn_sidechain_asset_in_outgoing_transfer() {
 fn should_reserve_and_unreserve_thischain_asset_in_outgoing_transfer() {
     let net_id = ETH_NETWORK_ID;
     let mut builder = ExtBuilder::new();
-    builder.add_network(vec![(PSWAP.into(), None, AssetKind::Thischain)], None, None);
+    builder.add_network(
+        vec![AssetConfig::Thischain { id: PSWAP.into() }],
+        None,
+        None,
+    );
     let (mut ext, state) = builder.build();
 
     ext.execute_with(|| {
@@ -663,11 +668,13 @@ fn should_success_incoming_transfer() {
 fn should_cancel_incoming_transfer() {
     let mut builder = ExtBuilder::new();
     let net_id = builder.add_network(
-        vec![(
-            XOR.into(),
-            Some(sp_core::H160::from_str("40fd72257597aa14c7231a7b1aaa29fce868f677").unwrap()),
-            AssetKind::SidechainOwned,
-        )],
+        vec![AssetConfig::Sidechain {
+            id: XOR.into(),
+            sidechain_id: sp_core::H160::from_str("40fd72257597aa14c7231a7b1aaa29fce868f677")
+                .unwrap(),
+            owned: true,
+            precision: DEFAULT_BALANCE_PRECISION,
+        }],
         Some(vec![(XOR.into(), Balance::from(100u32))]),
         None,
     );
@@ -855,7 +862,7 @@ fn should_fail_take_fee_in_incoming_transfer() {
 fn should_fail_registering_incoming_request_if_preparation_failed() {
     let net_id = ETH_NETWORK_ID;
     let mut builder = ExtBuilder::default();
-    builder.add_currency(net_id, (PSWAP.into(), None, AssetKind::Thischain));
+    builder.add_currency(net_id, AssetConfig::Thischain { id: PSWAP.into() });
     let (mut ext, state) = builder.build();
 
     ext.execute_with(|| {
@@ -2537,14 +2544,15 @@ fn should_cancel_outgoing_prepared_requests() {
 fn should_cancel_incoming_prepared_requests() {
     let net_id = ETH_NETWORK_ID;
     let mut builder = ExtBuilder::default();
-    builder.add_currency(net_id, (DOT.into(), None, AssetKind::Thischain));
+    builder.add_currency(net_id, AssetConfig::Thischain { id: DOT.into() });
     builder.add_currency(
         net_id,
-        (
-            USDT.into(),
-            Some(H160(hex!("dAC17F958D2ee523a2206206994597C13D831ec7"))),
-            AssetKind::Sidechain,
-        ),
+        AssetConfig::Sidechain {
+            id: USDT.into(),
+            sidechain_id: H160(hex!("dAC17F958D2ee523a2206206994597C13D831ec7")),
+            owned: false,
+            precision: 18,
+        },
     );
     let (mut ext, state) = builder.build();
     ext.execute_with(|| {
@@ -2748,7 +2756,7 @@ fn should_convert_amount_for_a_token_with_non_default_precision() {
             };
         assert_eq!(outgoing_transfer.amount, balance!(1));
         assert_eq!(
-            outgoing_transfer.sidechain_amount().unwrap(),
+            outgoing_transfer.sidechain_amount().unwrap().0,
             sidechain_amount
         );
         assert_eq!(
@@ -2808,6 +2816,53 @@ fn should_fail_convert_amount_for_a_token_with_non_default_precision() {
         assert_eq!(
             incoming_trasfer_result,
             Err(Error::UnsupportedAssetPrecision)
+        );
+    });
+}
+
+#[test]
+fn should_fail_tranfer_amount_with_dust_for_a_token_with_non_default_precision() {
+    let (mut ext, state) = ExtBuilder::default().build();
+
+    ext.execute_with(|| {
+        let net_id = ETH_NETWORK_ID;
+        let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
+        let token_address = Address::from(hex!("e88f8313e61a97cec1871ee37fbbe2a8bf3ed1e4"));
+        let ticker = "USDT".into();
+        let name = "Tether USD".into();
+        let decimals = 6;
+        assert_ok!(EthBridge::add_sidechain_token(
+            Origin::signed(state.authority_account_id.clone()),
+            token_address,
+            ticker,
+            name,
+            decimals,
+            net_id,
+        ));
+        assert!(EthBridge::registered_sidechain_asset(net_id, &token_address).is_none());
+        approve_last_request(&state, net_id).expect("request wasn't approved");
+        let asset_id = EthBridge::registered_sidechain_asset(net_id, &token_address)
+            .expect("failed to register sidechain asset");
+        assert_eq!(
+            Assets::total_balance(&asset_id, &alice).unwrap(),
+            balance!(0)
+        );
+        Assets::mint_to(
+            &asset_id,
+            &state.networks[&net_id].config.bridge_account_id,
+            &alice,
+            balance!(0.1000009),
+        )
+        .unwrap();
+        assert_noop!(
+            EthBridge::transfer_to_sidechain(
+                Origin::signed(alice.clone()),
+                asset_id.clone(),
+                Address::from_str("19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A").unwrap(),
+                balance!(0.1000009),
+                net_id,
+            ),
+            Error::NonZeroDust
         );
     });
 }
