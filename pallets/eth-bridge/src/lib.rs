@@ -49,7 +49,7 @@ use crate::types::{Bytes, CallRequest, Log, Transaction, TransactionReceipt};
 use alloc::string::String;
 use codec::{Decode, Encode, FullCodec};
 use common::prelude::Balance;
-use common::{eth, AssetSymbol, BalancePrecision};
+use common::{eth, AssetName, AssetSymbol, BalancePrecision};
 use core::convert::{TryFrom, TryInto};
 use core::{iter, line, stringify};
 use ethabi::{ParamType, Token};
@@ -1020,7 +1020,7 @@ pub mod pallet {
         ///
         /// Parameters:
         /// - `token_address` - token contract address.
-        /// - `ticker` - token ticker (symbol).
+        /// - `symbol` - token symbol (ticker).
         /// - `name` - token name.
         /// - `decimals` -  token precision.
         /// - `network_id` - network identifier.
@@ -1028,22 +1028,22 @@ pub mod pallet {
         pub fn add_sidechain_token(
             origin: OriginFor<T>,
             token_address: EthereumAddress,
-            ticker: String,
+            symbol: String,
             name: String,
             decimals: u8,
             network_id: BridgeNetworkId<T>,
         ) -> DispatchResultWithPostInfo {
             debug::debug!("called add_sidechain_token");
             let from = ensure_signed(origin)?;
-            let authority_account_id = Self::authority_account();
-            ensure!(from == authority_account_id, Error::<T>::Forbidden);
+            // TODO: enable authority account check
+            // ensure!(from == Self::authority_account(), Error::<T>::Forbidden);
             let nonce = frame_system::Module::<T>::account_nonce(&from);
             let timepoint = bridge_multisig::Module::<T>::timepoint();
             Self::add_request(OffchainRequest::outgoing(OutgoingRequest::AddToken(
                 OutgoingAddToken {
                     author: from.clone(),
                     token_address,
-                    ticker,
+                    symbol,
                     name,
                     decimals,
                     nonce,
@@ -1182,7 +1182,8 @@ pub mod pallet {
         ) -> DispatchResultWithPostInfo {
             debug::debug!("called change_peers_out");
             let from = ensure_signed(origin)?;
-            ensure!(from == Self::authority_account(), Error::<T>::Forbidden);
+            // TODO: enable authority account check
+            // ensure!(from == Self::authority_account(), Error::<T>::Forbidden);
             let nonce = frame_system::Module::<T>::account_nonce(&from);
             let timepoint = bridge_multisig::Module::<T>::timepoint();
             Self::add_request(OffchainRequest::outgoing(OutgoingRequest::AddPeer(
@@ -1226,7 +1227,8 @@ pub mod pallet {
         ) -> DispatchResultWithPostInfo {
             debug::debug!("called change_peers_out");
             let from = ensure_signed(origin)?;
-            ensure!(from == Self::authority_account(), Error::<T>::Forbidden);
+            // TODO: enable authority account check
+            // ensure!(from == Self::authority_account(), Error::<T>::Forbidden);
             let peer_address = Self::peer_address(network_id, &account_id);
             let nonce = frame_system::Module::<T>::account_nonce(&from);
             let timepoint = bridge_multisig::Module::<T>::timepoint();
@@ -1271,7 +1273,8 @@ pub mod pallet {
         ) -> DispatchResultWithPostInfo {
             debug::debug!("called prepare_for_migration");
             let from = ensure_signed(origin)?;
-            ensure!(from == Self::authority_account(), Error::<T>::Forbidden);
+            // TODO: enable authority account check
+            // ensure!(from == Self::authority_account(), Error::<T>::Forbidden);
             let nonce = frame_system::Module::<T>::account_nonce(&from);
             let timepoint = bridge_multisig::Module::<T>::timepoint();
             Self::add_request(OffchainRequest::outgoing(
@@ -1303,7 +1306,8 @@ pub mod pallet {
         ) -> DispatchResultWithPostInfo {
             debug::debug!("called prepare_for_migration");
             let from = ensure_signed(origin)?;
-            ensure!(from == Self::authority_account(), Error::<T>::Forbidden);
+            // TODO: enable authority account check
+            // ensure!(from == Self::authority_account(), Error::<T>::Forbidden);
             let nonce = frame_system::Module::<T>::account_nonce(&from);
             let timepoint = bridge_multisig::Module::<T>::timepoint();
             Self::add_request(OffchainRequest::outgoing(OutgoingRequest::Migrate(
@@ -2713,6 +2717,7 @@ impl<T: Config> Pallet<T> {
         token_address: Address,
         precision: BalancePrecision,
         symbol: AssetSymbol,
+        name: AssetName,
         network_id: T::NetworkId,
     ) -> Result<T::AssetId, DispatchError> {
         ensure!(
@@ -2724,6 +2729,7 @@ impl<T: Config> Pallet<T> {
         let asset_id = assets::Module::<T>::register_from(
             &bridge_account,
             symbol,
+            name,
             precision,
             Balance::from(0u32),
             true,

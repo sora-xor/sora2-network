@@ -7,7 +7,7 @@ use frame_support::dispatch::DispatchResult;
 use frame_support::ensure;
 use frame_support::sp_runtime::DispatchError;
 use frame_support::weights::Weight;
-use frame_system::{ensure_signed, RawOrigin};
+use frame_system::RawOrigin;
 use permissions::{Scope, MANAGE_DEX};
 use sp_std::vec::Vec;
 
@@ -82,13 +82,11 @@ pub use pallet::*;
 #[frame_support::pallet]
 pub mod pallet {
     use super::*;
-    use common::DexIdOf;
     use frame_support::pallet_prelude::*;
     use frame_system::pallet_prelude::*;
 
     #[pallet::config]
     pub trait Config: frame_system::Config + common::Config + assets::Config {
-        type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
         /// Weight information for extrinsics in this pallet.
         type WeightInfo: WeightInfo;
     }
@@ -102,18 +100,6 @@ pub mod pallet {
 
     #[pallet::call]
     impl<T: Config> Pallet<T> {}
-
-    #[pallet::event]
-    #[pallet::metadata(DexIdOf<T> = "DEXId")]
-    #[pallet::generate_deposit(pub(super) fn deposit_event)]
-    pub enum Event<T: Config> {
-        /// New DEX has been registered. [DEX Id]
-        DEXInitialized(DexIdOf<T>),
-        /// Default fee setting has been changed. [DEX Id, Swap fee in basis points]
-        FeeChanged(DexIdOf<T>, u16),
-        /// Default protocol fee setting has been changed. [DEX Id, Protocol fee in basis points]
-        ProtocolFeeChanged(DexIdOf<T>, u16),
-    }
 
     #[pallet::error]
     pub enum Error<T> {

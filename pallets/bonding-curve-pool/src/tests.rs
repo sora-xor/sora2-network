@@ -2,7 +2,7 @@
 mod tests {
     use core::convert::TryInto;
     use crate::{mock::*, DistributionAccountData, DistributionAccounts, Error, SwapKind};
-    use common::{self, AssetSymbol, DEXId, LiquiditySource, TechPurpose, USDT, VAL, XOR, balance, fixed, fixed_wrapper, fixnum::FixedPoint};
+    use common::{self, AssetName, AssetSymbol, DEXId, LiquiditySource, TechPurpose, USDT, VAL, XOR, balance, fixed, fixed_wrapper, fixnum::FixedPoint};
     use common::prelude::{Balance, Fixed, SwapAmount, SwapOutcome, FixedWrapper};
     use common::prelude::fixnum::ops::One;
     use frame_support::assert_err;
@@ -216,12 +216,13 @@ mod tests {
                 USDT,
                 balance!(10000),
                 AssetSymbol(b"USDT".to_vec()),
+                AssetName(b"Tether USD".to_vec()),
                 18,
                 Balance::from(0u32),
                 true,
             ),
-            (alice(), XOR, 0u32.into(), AssetSymbol(b"XOR".to_vec()), 18, Balance::from(0u32), true),
-            (alice(), VAL, 0u32.into(), AssetSymbol(b"VAL".to_vec()), 18, Balance::from(0u32), true),
+            (alice(), XOR, 0u32.into(), AssetSymbol(b"XOR".to_vec()), AssetName(b"SORA".to_vec()), 18, Balance::from(0u32), true),
+            (alice(), VAL, 0u32.into(), AssetSymbol(b"VAL".to_vec()), AssetName(b"SORA Validator Token".to_vec()), 18, Balance::from(0u32), true),
         ])
         .build();
         ext.execute_with(|| {
@@ -273,12 +274,13 @@ mod tests {
                 USDT,
                 balance!(10000),
                 AssetSymbol(b"USDT".to_vec()),
+                AssetName(b"Tether USD".to_vec()),
                 18,
                 Balance::from(0u32),
                 true,
             ),
-            (alice(), XOR, balance!(10), AssetSymbol(b"XOR".to_vec()), 18, 0, true),
-            (alice(), VAL, 0, AssetSymbol(b"VAL".to_vec()), 18, 0, true),
+            (alice(), XOR, balance!(10), AssetSymbol(b"XOR".to_vec()), AssetName(b"SORA".to_vec()), 18, 0, true),
+            (alice(), VAL, 0, AssetSymbol(b"VAL".to_vec()), AssetName(b"SORA Validator Token".to_vec()), 18, 0, true),
         ])
         .build();
         ext.execute_with(|| {
@@ -350,12 +352,13 @@ mod tests {
                 USDT,
                 balance!(10000),
                 AssetSymbol(b"USDT".to_vec()),
+                AssetName(b"Tether USD".to_vec()),
                 18,
                 Balance::from(0u32),
                 true,
             ),
-            (alice(), XOR, balance!(10), AssetSymbol(b"XOR".to_vec()), 18, 0, true),
-            (alice(), VAL, 0, AssetSymbol(b"VAL".to_vec()), 18, 0, true),
+            (alice(), XOR, balance!(10), AssetSymbol(b"XOR".to_vec()), AssetName(b"SORA".to_vec()), 18, 0, true),
+            (alice(), VAL, 0, AssetSymbol(b"VAL".to_vec()), AssetName(b"SORA Validator Token".to_vec()), 18, 0, true),
         ])
         .build();
         ext.execute_with(|| {
@@ -419,9 +422,9 @@ mod tests {
     #[test]
     fn should_not_sell_without_reserves() {
         let mut ext = ExtBuilder::new(vec![
-            (alice(), USDT, 0u32.into(), AssetSymbol(b"USDT".to_vec()), 18, 0, true),
-            (alice(), XOR, balance!(1), AssetSymbol(b"XOR".to_vec()), 18, 0, true),
-            (alice(), VAL, 0u32.into(), AssetSymbol(b"VAL".to_vec()), 18, 0, true),
+            (alice(), USDT, 0u32.into(), AssetSymbol(b"USDT".to_vec()), AssetName(b"Tether USD".to_vec()), 18, 0, true),
+            (alice(), XOR, balance!(1), AssetSymbol(b"XOR".to_vec()), AssetName(b"SORA".to_vec()), 18, 0, true),
+            (alice(), VAL, 0u32.into(), AssetSymbol(b"VAL".to_vec()), AssetName(b"SORA Validator Token".to_vec()), 18, 0, true),
         ])
         .build();
         ext.execute_with(|| {
@@ -450,12 +453,13 @@ mod tests {
                 USDT,
                 balance!(10000),
                 AssetSymbol(b"USDT".to_vec()),
+                AssetName(b"Tether USD".to_vec()),
                 18,
                 Balance::from(0u32),
                 true,
             ),
-            (alice(), XOR, 0, AssetSymbol(b"XOR".to_vec()), 18, 0, true,),
-            (alice(), VAL, 0, AssetSymbol(b"VAL".to_vec()), 18, 0, true,),
+            (alice(), XOR, 0, AssetSymbol(b"XOR".to_vec()), AssetName(b"SORA".to_vec()), 18, 0, true,),
+            (alice(), VAL, 0, AssetSymbol(b"VAL".to_vec()), AssetName(b"SORA Validator Token".to_vec()), 18, 0, true,),
         ])
         .build();
         ext.execute_with(|| {

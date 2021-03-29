@@ -1,12 +1,15 @@
 use framenode_runtime::opaque::SessionKeys;
+#[cfg(feature = "faucet")]
+use framenode_runtime::FaucetConfig;
 use framenode_runtime::{
-    bonding_curve_pool, eth_bridge, AccountId, AssetSymbol, AssetsConfig, BabeConfig,
-    BalancesConfig, BondingCurvePoolConfig, BridgeMultisigConfig, DEXAPIConfig, DEXManagerConfig,
-    EthBridgeConfig, FarmingConfig, FaucetConfig, GenesisConfig, GetBaseAssetId, GetPswapAssetId,
-    GetValAssetId, GetXorAssetId, GrandpaConfig, IrohaMigrationConfig, LiquiditySourceType,
-    MulticollateralBondingCurvePoolConfig, PermissionsConfig, PswapDistributionConfig,
-    RewardsConfig, Runtime, SessionConfig, Signature, StakerStatus, StakingConfig, SudoConfig,
-    SystemConfig, TechAccountId, TechnicalConfig, TokensConfig, WASM_BINARY,
+    bonding_curve_pool, eth_bridge, AccountId, AssetName, AssetSymbol, AssetsConfig, BabeConfig,
+    BalancesConfig, BondingCurvePoolConfig, BridgeMultisigConfig, CouncilConfig, DEXAPIConfig,
+    DEXManagerConfig, DemocracyConfig, EthBridgeConfig, FarmingConfig, GenesisConfig,
+    GetBaseAssetId, GetPswapAssetId, GetValAssetId, GetXorAssetId, GrandpaConfig,
+    IrohaMigrationConfig, LiquiditySourceType, MulticollateralBondingCurvePoolConfig,
+    PermissionsConfig, PswapDistributionConfig, RewardsConfig, Runtime, SessionConfig, Signature,
+    StakerStatus, StakingConfig, SudoConfig, SystemConfig, TechAccountId, TechnicalCommitteeConfig,
+    TechnicalConfig, TokensConfig, WASM_BINARY
 };
 
 use common::prelude::{Balance, DEXInfo, FixedWrapper};
@@ -456,10 +459,12 @@ pub fn local_testnet_config() -> ChainSpec {
     )
 }
 
+// Some variables are only changed if faucet is enabled
+#[allow(unused_mut)]
 fn testnet_genesis(
     root_key: AccountId,
     initial_authorities: Vec<(AccountId, AccountId, AuraId, BabeId, GrandpaId)>,
-    _endowed_accounts: Vec<AccountId>,
+    endowed_accounts: Vec<AccountId>,
     initial_bridge_peers: Vec<AccountId>,
     dex_root: AccountId,
     tech_permissions_owner: AccountId,
@@ -470,7 +475,6 @@ fn testnet_genesis(
     let initial_staking = balance!(5000);
     let initial_eth_bridge_xor_amount = balance!(350000);
     let initial_eth_bridge_val_amount = balance!(33900000);
-    let initial_faucet_balance = balance!(500000);
     let initial_pswap_tbc_rewards = balance!(25000000);
     let initial_rewards = balance!(500000);
 
@@ -482,13 +486,7 @@ fn testnet_genesis(
     let xor_fee_account_id: AccountId =
         technical::Module::<Runtime>::tech_account_id_to_account_id(&xor_fee_tech_account_id)
             .expect("Failed to decode account Id");
-    let faucet_tech_account_id = TechAccountId::Generic(
-        faucet::TECH_ACCOUNT_PREFIX.to_vec(),
-        faucet::TECH_ACCOUNT_MAIN.to_vec(),
-    );
-    let faucet_account_id: AccountId =
-        technical::Module::<Runtime>::tech_account_id_to_account_id(&faucet_tech_account_id)
-            .expect("Failed to decode account id");
+
     let eth_bridge_tech_account_id = TechAccountId::Generic(
         eth_bridge::TECH_ACCOUNT_PREFIX.to_vec(),
         eth_bridge::TECH_ACCOUNT_MAIN.to_vec(),
@@ -543,7 +541,6 @@ fn testnet_genesis(
 
     let mut tech_accounts = vec![
         (xor_fee_account_id.clone(), xor_fee_tech_account_id),
-        (faucet_account_id.clone(), faucet_tech_account_id.clone()),
         (
             eth_bridge_account_id.clone(),
             eth_bridge_tech_account_id.clone(),
@@ -585,6 +582,57 @@ fn testnet_genesis(
             (*tech_account).to_owned(),
         ));
     }
+    let mut balances = vec![(eth_bridge_account_id.clone(), initial_eth_bridge_xor_amount)]
+        .into_iter()
+        .chain(
+            initial_authorities
+                .iter()
+                .cloned()
+                .map(|(k1, ..)| (k1, initial_staking)),
+        )
+        .chain(
+            initial_authorities
+                .iter()
+                .cloned()
+                .map(|(_, k2, ..)| (k2, initial_staking)),
+        )
+        .collect::<Vec<_>>();
+    let mut tokens_endowed_accounts = vec![
+        (
+            rewards_account_id.clone(),
+            GetValAssetId::get(),
+            initial_rewards,
+        ),
+        (rewards_account_id, GetPswapAssetId::get(), initial_rewards),
+        (
+            eth_bridge_account_id.clone(),
+            VAL,
+            initial_eth_bridge_val_amount,
+        ),
+        (
+            mbc_pool_rewards_account_id.clone(),
+            PSWAP,
+            initial_pswap_tbc_rewards,
+        ),
+    ];
+    #[cfg(feature = "faucet")]
+    let faucet_config = {
+        let initial_faucet_balance = balance!(500000);
+        let faucet_tech_account_id = TechAccountId::Generic(
+            faucet::TECH_ACCOUNT_PREFIX.to_vec(),
+            faucet::TECH_ACCOUNT_MAIN.to_vec(),
+        );
+        let faucet_account_id: AccountId =
+            technical::Module::<Runtime>::tech_account_id_to_account_id(&faucet_tech_account_id)
+                .expect("Failed to decode account id");
+        tech_accounts.push((faucet_account_id.clone(), faucet_tech_account_id.clone()));
+        balances.push((faucet_account_id.clone(), initial_faucet_balance));
+        tokens_endowed_accounts.push((faucet_account_id.clone(), VAL, initial_faucet_balance));
+        tokens_endowed_accounts.push((faucet_account_id, PSWAP, initial_faucet_balance));
+        FaucetConfig {
+            reserves_account_id: faucet_tech_account_id,
+        }
+    };
 
     GenesisConfig {
         frame_system: Some(SystemConfig {
@@ -642,6 +690,7 @@ fn testnet_genesis(
                     GetXorAssetId::get(),
                     initial_assets_owner.clone(),
                     AssetSymbol(b"XOR".to_vec()),
+                    AssetName(b"SORA".to_vec()),
                     18,
                     Balance::zero(),
                     true,
@@ -650,6 +699,7 @@ fn testnet_genesis(
                 //     UsdId::get(),
                 //     initial_assets_owner.clone(),
                 //     AssetSymbol(b"USDT".to_vec()),
+                //     AssetName(b"Tether USD".to_vec()),
                 //     18,
                 //     Balance::zero(),
                 //     true,
@@ -658,6 +708,7 @@ fn testnet_genesis(
                     GetValAssetId::get(),
                     initial_assets_owner.clone(),
                     AssetSymbol(b"VAL".to_vec()),
+                    AssetName(b"SORA Validator Token".to_vec()),
                     18,
                     Balance::zero(),
                     true,
@@ -666,6 +717,7 @@ fn testnet_genesis(
                     GetPswapAssetId::get(),
                     initial_assets_owner.clone(),
                     AssetSymbol(b"PSWAP".to_vec()),
+                    AssetName(b"Polkaswap".to_vec()),
                     18,
                     Balance::zero(),
                     true,
@@ -735,26 +787,7 @@ fn testnet_genesis(
                 ),
             ],
         }),
-        pallet_balances: Some(BalancesConfig {
-            balances: vec![
-                (faucet_account_id.clone(), initial_faucet_balance), // TESTNET ONLY
-                (eth_bridge_account_id.clone(), initial_eth_bridge_xor_amount),
-            ]
-            .into_iter()
-            .chain(
-                initial_authorities
-                    .iter()
-                    .cloned()
-                    .map(|(k1, ..)| (k1, initial_staking)),
-            )
-            .chain(
-                initial_authorities
-                    .iter()
-                    .cloned()
-                    .map(|(_, k2, ..)| (k2, initial_staking)),
-            )
-            .collect(),
-        }),
+        pallet_balances: Some(BalancesConfig { balances }),
         dex_manager: Some(DEXManagerConfig {
             dex_list: vec![(
                 0,
@@ -764,30 +797,10 @@ fn testnet_genesis(
                 },
             )],
         }),
-        faucet: Some(FaucetConfig {
-            reserves_account_id: faucet_tech_account_id,
-        }),
+        #[cfg(feature = "faucet")]
+        faucet: Some(faucet_config),
         tokens: Some(TokensConfig {
-            endowed_accounts: vec![
-                (faucet_account_id.clone(), VAL, initial_faucet_balance),
-                (faucet_account_id, PSWAP, initial_faucet_balance),
-                (
-                    rewards_account_id.clone(),
-                    GetValAssetId::get(),
-                    initial_rewards,
-                ),
-                (rewards_account_id, GetPswapAssetId::get(), initial_rewards),
-                (
-                    eth_bridge_account_id.clone(),
-                    VAL,
-                    initial_eth_bridge_val_amount,
-                ),
-                (
-                    mbc_pool_rewards_account_id.clone(),
-                    PSWAP,
-                    initial_pswap_tbc_rewards,
-                ),
-            ],
+            endowed_accounts: tokens_endowed_accounts,
         }),
         dex_api: Some(DEXAPIConfig {
             source_types: [
@@ -880,5 +893,15 @@ fn testnet_genesis(
                 balance!(333),
             )],
         }),
+        pallet_collective_Instance1: Some(CouncilConfig::default()),
+        pallet_collective_Instance2: Some(TechnicalCommitteeConfig {
+            members: endowed_accounts
+                .iter()
+                .take((endowed_accounts.len() + 1) / 2)
+                .cloned()
+                .collect(),
+            phantom: Default::default(),
+        }),
+        pallet_democracy: Some(DemocracyConfig::default()),
     }
 }

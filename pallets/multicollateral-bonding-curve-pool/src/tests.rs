@@ -4,7 +4,7 @@ mod tests {
     use common::{
         self, balance, fixed, fixed_wrapper, Fixed, fixnum::ops::One as _, fixnum::ops::Zero as _,
         prelude::{Balance, SwapAmount, SwapOutcome, QuoteAmount, FixedWrapper,},
-        AssetSymbol, DEXId, LiquiditySource, TechPurpose, USDT, VAL, XOR, PSWAP, LiquiditySourceFilter,
+        AssetName, AssetSymbol, DEXId, LiquiditySource, TechPurpose, USDT, VAL, XOR, PSWAP, LiquiditySourceFilter,
     };
     use pswap_distribution::OnPswapBurned;
     use liquidity_proxy::LiquidityProxyTrait;
@@ -254,10 +254,11 @@ mod tests {
                 USDT,
                 balance!(10000),
                 AssetSymbol(b"USDT".to_vec()),
+                AssetName(b"Tether USD".to_vec()),
                 18,
             ),
-            (alice(), XOR, 0, AssetSymbol(b"XOR".to_vec()), 18),
-            (alice(), VAL, balance!(205), AssetSymbol(b"VAL".to_vec()), 18),
+            (alice(), XOR, 0, AssetSymbol(b"XOR".to_vec()), AssetName(b"SORA".to_vec()), 18),
+            (alice(), VAL, balance!(205), AssetSymbol(b"VAL".to_vec()), AssetName(b"SORA Validator Token".to_vec()), 18),
         ])
         .build();
         ext.execute_with(|| {
@@ -300,8 +301,8 @@ mod tests {
     #[test]
     fn should_exchange_with_nearly_full_reserves() {
         let mut ext = ExtBuilder::new(vec![
-            (alice(), XOR, balance!(10), AssetSymbol(b"XOR".to_vec()), 18),
-            (alice(), VAL, balance!(10000), AssetSymbol(b"VAL".to_vec()), 18),
+            (alice(), XOR, balance!(10), AssetSymbol(b"XOR".to_vec()), AssetName(b"SORA".to_vec()), 18),
+            (alice(), VAL, balance!(10000), AssetSymbol(b"VAL".to_vec()), AssetName(b"SORA Validator Token".to_vec()), 18),
         ])
         .build();
         ext.execute_with(|| {
@@ -369,8 +370,8 @@ mod tests {
     #[test]
     fn should_exchange_with_full_reserves() {
         let mut ext = ExtBuilder::new(vec![
-            (alice(), XOR, balance!(10), AssetSymbol(b"XOR".to_vec()), 18),
-            (alice(), VAL, balance!(10000), AssetSymbol(b"VAL".to_vec()), 18),
+            (alice(), XOR, balance!(10), AssetSymbol(b"XOR".to_vec()), AssetName(b"SORA".to_vec()), 18),
+            (alice(), VAL, balance!(10000), AssetSymbol(b"VAL".to_vec()), AssetName(b"SORA Validator Token".to_vec()), 18),
         ])
         .build();
         ext.execute_with(|| {
@@ -439,9 +440,9 @@ mod tests {
     #[test]
     fn should_not_sell_without_reserves() {
         let mut ext = ExtBuilder::new(vec![
-            (alice(), USDT, 0, AssetSymbol(b"USDT".to_vec()), 18),
-            (alice(), XOR, balance!(1), AssetSymbol(b"XOR".to_vec()), 18),
-            (alice(), VAL, 0, AssetSymbol(b"VAL".to_vec()), 18),
+            (alice(), USDT, 0, AssetSymbol(b"USDT".to_vec()), AssetName(b"Tether USD".to_vec()), 18),
+            (alice(), XOR, balance!(1), AssetSymbol(b"XOR".to_vec()), AssetName(b"SORA".to_vec()), 18),
+            (alice(), VAL, 0, AssetSymbol(b"VAL".to_vec()), AssetName(b"SORA Validator Token".to_vec()), 18),
         ])
         .build();
         ext.execute_with(|| {
@@ -474,10 +475,11 @@ mod tests {
                 USDT,
                 0,
                 AssetSymbol(b"USDT".to_vec()),
+                AssetName(b"Tether USD".to_vec()),
                 18,
             ),
-            (alice(), XOR, 0, AssetSymbol(b"XOR".to_vec()), 18),
-            (alice(), VAL, balance!(10000), AssetSymbol(b"VAL".to_vec()), 18),
+            (alice(), XOR, 0, AssetSymbol(b"XOR".to_vec()), AssetName(b"SORA".to_vec()), 18),
+            (alice(), VAL, balance!(10000), AssetSymbol(b"VAL".to_vec()), AssetName(b"SORA Validator Token".to_vec()), 18),
         ])
         .build();
         ext.execute_with(|| {
@@ -532,10 +534,10 @@ mod tests {
     #[test]
     fn should_set_new_reference_token() {
         let mut ext = ExtBuilder::new(vec![
-            (alice(), DAI, balance!(0), AssetSymbol(b"DAI".to_vec()), 18),
-            (alice(), USDT, balance!(0), AssetSymbol(b"USDT".to_vec()), 18),
-            (alice(), XOR, balance!(1), AssetSymbol(b"XOR".to_vec()), 18),
-            (alice(), VAL, balance!(0), AssetSymbol(b"VAL".to_vec()), 18),
+            (alice(), DAI, balance!(0), AssetSymbol(b"DAI".to_vec()), AssetName(b"DAI".to_vec()), 18),
+            (alice(), USDT, balance!(0), AssetSymbol(b"USDT".to_vec()), AssetName(b"Tether USD".to_vec()), 18),
+            (alice(), XOR, balance!(1), AssetSymbol(b"XOR".to_vec()), AssetName(b"SORA".to_vec()), 18),
+            (alice(), VAL, balance!(0), AssetSymbol(b"VAL".to_vec()), AssetName(b"SORA Validator Token".to_vec()), 18),
         ])
         .build();
         ext.execute_with(|| {
@@ -569,10 +571,10 @@ mod tests {
     #[test]
     fn similar_returns_should_be_identical() {
         let mut ext = ExtBuilder::new(vec![
-            (alice(), DAI, balance!(0), AssetSymbol(b"DAI".to_vec()), 18),
-            (alice(), USDT, balance!(0), AssetSymbol(b"USDT".to_vec()), 18),
-            (alice(), XOR, balance!(0), AssetSymbol(b"XOR".to_vec()), 18),
-            (alice(), VAL, balance!(4000), AssetSymbol(b"VAL".to_vec()), 18),
+            (alice(), DAI, balance!(0), AssetSymbol(b"DAI".to_vec()), AssetName(b"DAI".to_vec()), 18),
+            (alice(), USDT, balance!(0), AssetSymbol(b"USDT".to_vec()), AssetName(b"Tether USD".to_vec()), 18),
+            (alice(), XOR, balance!(0), AssetSymbol(b"XOR".to_vec()), AssetName(b"SORA".to_vec()), 18),
+            (alice(), VAL, balance!(4000), AssetSymbol(b"VAL".to_vec()), AssetName(b"SORA Validator Token".to_vec()), 18),
         ])
         .build();
         ext.execute_with(|| {
@@ -682,11 +684,11 @@ mod tests {
     #[test]
     fn should_receive_pswap_reward() {
         let mut ext = ExtBuilder::new(vec![
-            (alice(), XOR, balance!(700000), AssetSymbol(b"XOR".to_vec()), 18),
-            (alice(), VAL, balance!(2000), AssetSymbol(b"VAL".to_vec()), 18),
-            (alice(), DAI, balance!(200000), AssetSymbol(b"DAI".to_vec()), 18),
-            (alice(), USDT, balance!(0), AssetSymbol(b"USDT".to_vec()), 18),
-            (alice(), PSWAP, balance!(0), AssetSymbol(b"PSWAP".to_vec()), 18),
+            (alice(), XOR, balance!(700000), AssetSymbol(b"XOR".to_vec()), AssetName(b"SORA".to_vec()), 18),
+            (alice(), VAL, balance!(2000), AssetSymbol(b"VAL".to_vec()), AssetName(b"SORA Validator Token".to_vec()), 18),
+            (alice(), DAI, balance!(200000), AssetSymbol(b"DAI".to_vec()), AssetName(b"DAI".to_vec()), 18),
+            (alice(), USDT, balance!(0), AssetSymbol(b"USDT".to_vec()), AssetName(b"Tether USD".to_vec()), 18),
+            (alice(), PSWAP, balance!(0), AssetSymbol(b"PSWAP".to_vec()), AssetName(b"Polkaswap".to_vec()), 18),
         ])
         .build();
         ext.execute_with(|| {
@@ -731,11 +733,11 @@ mod tests {
     #[test]
     fn multiple_users_should_be_able_to_claim_rewards() {
         let mut ext = ExtBuilder::new(vec![
-            (alice(), XOR, balance!(700000), AssetSymbol(b"XOR".to_vec()), 18),
-            (alice(), VAL, balance!(2000), AssetSymbol(b"VAL".to_vec()), 18),
-            (alice(), DAI, balance!(200000), AssetSymbol(b"DAI".to_vec()), 18),
-            (alice(), USDT, balance!(0), AssetSymbol(b"USDT".to_vec()), 18),
-            (alice(), PSWAP, balance!(0), AssetSymbol(b"PSWAP".to_vec()), 18),
+            (alice(), XOR, balance!(700000), AssetSymbol(b"XOR".to_vec()), AssetName(b"SORA".to_vec()), 18),
+            (alice(), VAL, balance!(2000), AssetSymbol(b"VAL".to_vec()), AssetName(b"SORA Validator Token".to_vec()), 18),
+            (alice(), DAI, balance!(200000), AssetSymbol(b"DAI".to_vec()), AssetName(b"DAI".to_vec()), 18),
+            (alice(), USDT, balance!(0), AssetSymbol(b"USDT".to_vec()), AssetName(b"Tether USD".to_vec()), 18),
+            (alice(), PSWAP, balance!(0), AssetSymbol(b"PSWAP".to_vec()), AssetName(b"Polkaswap".to_vec()), 18),
         ])
         .build();
         ext.execute_with(|| {
@@ -826,9 +828,9 @@ mod tests {
     #[test]
     fn should_calculate_ideal_reserves() {
         let mut ext = ExtBuilder::new(vec![
-            (alice(), XOR, balance!(0), AssetSymbol(b"XOR".to_vec()), 18),
-            (alice(), VAL, balance!(2000), AssetSymbol(b"VAL".to_vec()), 18),
-            (alice(), USDT, balance!(0), AssetSymbol(b"USDT".to_vec()), 18),
+            (alice(), XOR, balance!(0), AssetSymbol(b"XOR".to_vec()), AssetName(b"SORA".to_vec()), 18),
+            (alice(), VAL, balance!(2000), AssetSymbol(b"VAL".to_vec()), AssetName(b"SORA Validator Token".to_vec()), 18),
+            (alice(), USDT, balance!(0), AssetSymbol(b"USDT".to_vec()), AssetName(b"Tether USD".to_vec()), 18),
         ])
         .build();
         ext.execute_with(|| {
@@ -854,11 +856,11 @@ mod tests {
     #[test]
     fn should_calculate_actual_reserves() {
         let mut ext = ExtBuilder::new(vec![
-            (alice(), XOR, balance!(0), AssetSymbol(b"XOR".to_vec()), 18),
-            (alice(), VAL, balance!(2000), AssetSymbol(b"VAL".to_vec()), 18),
-            (alice(), DAI, balance!(200000), AssetSymbol(b"DAI".to_vec()), 18),
-            (alice(), USDT, balance!(0), AssetSymbol(b"USDT".to_vec()), 18),
-            (alice(), PSWAP, balance!(0), AssetSymbol(b"PSWAP".to_vec()), 18),
+            (alice(), XOR, balance!(0), AssetSymbol(b"XOR".to_vec()), AssetName(b"SORA".to_vec()), 18),
+            (alice(), VAL, balance!(2000), AssetSymbol(b"VAL".to_vec()), AssetName(b"SORA Validator Token".to_vec()), 18),
+            (alice(), DAI, balance!(200000), AssetSymbol(b"DAI".to_vec()), AssetName(b"DAI".to_vec()), 18),
+            (alice(), USDT, balance!(0), AssetSymbol(b"USDT".to_vec()), AssetName(b"Tether USD".to_vec()), 18),
+            (alice(), PSWAP, balance!(0), AssetSymbol(b"PSWAP".to_vec()), AssetName(b"Polkaswap".to_vec()), 18),
         ])
         .build();
         ext.execute_with(|| {
@@ -907,10 +909,10 @@ mod tests {
     #[test]
     fn fees_for_equivalent_trades_should_match() {
         let mut ext = ExtBuilder::new(vec![
-            (alice(), DAI, balance!(0), AssetSymbol(b"DAI".to_vec()), 18),
-            (alice(), USDT, balance!(0), AssetSymbol(b"USDT".to_vec()), 18),
-            (alice(), XOR, balance!(0), AssetSymbol(b"XOR".to_vec()), 18),
-            (alice(), VAL, balance!(2000), AssetSymbol(b"VAL".to_vec()), 18),
+            (alice(), DAI, balance!(0), AssetSymbol(b"DAI".to_vec()), AssetName(b"DAI".to_vec()), 18),
+            (alice(), USDT, balance!(0), AssetSymbol(b"USDT".to_vec()), AssetName(b"Tether USD".to_vec()), 18),
+            (alice(), XOR, balance!(0), AssetSymbol(b"XOR".to_vec()), AssetName(b"SORA".to_vec()), 18),
+            (alice(), VAL, balance!(2000), AssetSymbol(b"VAL".to_vec()), AssetName(b"SORA Validator Token".to_vec()), 18),
         ])
         .build();
         ext.execute_with(|| {
@@ -988,11 +990,11 @@ mod tests {
     #[test]
     fn fee_penalties_should_be_applied() {
         let mut ext = ExtBuilder::new(vec![
-            (alice(), XOR, balance!(0), AssetSymbol(b"XOR".to_vec()), 18),
-            (alice(), VAL, balance!(2000), AssetSymbol(b"VAL".to_vec()), 18),
-            (alice(), DAI, balance!(20000000), AssetSymbol(b"DAI".to_vec()), 18),
-            (alice(), USDT, balance!(0), AssetSymbol(b"USDT".to_vec()), 18),
-            (alice(), PSWAP, balance!(0), AssetSymbol(b"PSWAP".to_vec()), 18),
+            (alice(), XOR, balance!(0), AssetSymbol(b"XOR".to_vec()), AssetName(b"SORA".to_vec()), 18),
+            (alice(), VAL, balance!(2000), AssetSymbol(b"VAL".to_vec()), AssetName(b"SORA Validator Token".to_vec()), 18),
+            (alice(), DAI, balance!(20000000), AssetSymbol(b"DAI".to_vec()), AssetName(b"DAI".to_vec()), 18),
+            (alice(), USDT, balance!(0), AssetSymbol(b"USDT".to_vec()), AssetName(b"Tether USD".to_vec()), 18),
+            (alice(), PSWAP, balance!(0), AssetSymbol(b"PSWAP".to_vec()), AssetName(b"Polkaswap".to_vec()), 18),
         ])
         .build();
         ext.execute_with(|| {
@@ -1120,11 +1122,11 @@ mod tests {
     #[test]
     fn sequential_rewards_adequacy_check() {
         let mut ext = ExtBuilder::new(vec![
-            (alice(), XOR, balance!(250000), AssetSymbol(b"XOR".to_vec()), 18),
-            (alice(), VAL, balance!(2000), AssetSymbol(b"VAL".to_vec()), 18),
-            (alice(), DAI, balance!(2000000), AssetSymbol(b"DAI".to_vec()), 18),
-            (alice(), USDT, balance!(0), AssetSymbol(b"USDT".to_vec()), 18),
-            (alice(), PSWAP, balance!(0), AssetSymbol(b"PSWAP".to_vec()), 18),
+            (alice(), XOR, balance!(250000), AssetSymbol(b"XOR".to_vec()), AssetName(b"SORA".to_vec()), 18),
+            (alice(), VAL, balance!(2000), AssetSymbol(b"VAL".to_vec()), AssetName(b"SORA Validator Token".to_vec()), 18),
+            (alice(), DAI, balance!(2000000), AssetSymbol(b"DAI".to_vec()), AssetName(b"DAI".to_vec()), 18),
+            (alice(), USDT, balance!(0), AssetSymbol(b"USDT".to_vec()), AssetName(b"Tether USD".to_vec()), 18),
+            (alice(), PSWAP, balance!(0), AssetSymbol(b"PSWAP".to_vec()), AssetName(b"Polkaswap".to_vec()), 18),
         ])
         .build();
         ext.execute_with(|| {

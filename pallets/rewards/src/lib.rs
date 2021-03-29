@@ -170,15 +170,14 @@ pub mod pallet {
     pub(super) type ReservesAcc<T: Config> = StorageValue<_, T::TechAccountId, ValueQuery>;
 
     #[pallet::storage]
-    pub(super) type ValOwners<T: Config> =
+    pub type ValOwners<T: Config> = StorageMap<_, Identity, EthereumAddress, Balance, ValueQuery>;
+
+    #[pallet::storage]
+    pub type PswapFarmOwners<T: Config> =
         StorageMap<_, Identity, EthereumAddress, Balance, ValueQuery>;
 
     #[pallet::storage]
-    pub(super) type PswapFarmOwners<T: Config> =
-        StorageMap<_, Identity, EthereumAddress, Balance, ValueQuery>;
-
-    #[pallet::storage]
-    pub(super) type PswapWaifuOwners<T: Config> =
+    pub type PswapWaifuOwners<T: Config> =
         StorageMap<_, Identity, EthereumAddress, Balance, ValueQuery>;
 
     #[pallet::genesis_config]
