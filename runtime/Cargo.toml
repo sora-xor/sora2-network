@@ -95,7 +95,7 @@ tokens = { version = "0.4", package = "orml-tokens", default-features = false }
 traits = { version = "0.4", package = "orml-traits", default-features = false }
 
 [features]
-default = ['std']
+default = ['std', 'runtime-benchmarks']
 
 std = [
     'codec/std',
@@ -173,6 +173,7 @@ runtime-benchmarks = [
     "frame-system/runtime-benchmarks",
     "frame-support/runtime-benchmarks",
     "frame-system-benchmarking",
+    "pallet-collective/runtime-benchmarks",
     "assets/runtime-benchmarks",
     "dex-api-benchmarking",
     "dex-manager/runtime-benchmarks",

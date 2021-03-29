@@ -18,11 +18,11 @@ use hex_literal::hex;
 use permissions::{BURN, MINT};
 use sp_std::prelude::*;
 
-use assets::Module as Assets;
-use permissions::Module as Permissions;
-use pool_xyk::Module as XYKPool;
-use technical::Module as Technical;
-use trading_pair::Module as TradingPair;
+use assets::Pallet as Assets;
+use permissions::Pallet as Permissions;
+use pool_xyk::Pallet as XYKPool;
+use technical::Pallet as Technical;
+use trading_pair::Pallet as TradingPair;
 
 pub const DEX: DEXId = DEXId::Polkaswap;
 

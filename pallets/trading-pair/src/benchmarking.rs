@@ -5,16 +5,16 @@
 use super::*;
 
 use codec::{Decode, Encode};
-use common::{AssetSymbol, DEXId, DOT, XOR};
-use frame_benchmarking::benchmarks;
+use common::{AssetName, AssetSymbol, Balance, DEXId, DOT, XOR};
+use frame_benchmarking::{benchmarks, Zero};
 use frame_system::{EventRecord, RawOrigin};
 use hex_literal::hex;
 use sp_core::H256;
 use sp_io::hashing::blake2_256;
 use sp_std::prelude::*;
 
-use crate::Module as TradingPairModule;
-use assets::Module as Assets;
+use crate::Pallet as TradingPairModule;
+use assets::Pallet as Assets;
 
 pub const DEX: DEXId = DEXId::Polkaswap;
 
@@ -38,7 +38,10 @@ fn setup_benchmark<T: Config>(n: u32) -> Result<(), &'static str> {
             owner.clone(),
             asset_id.clone(),
             AssetSymbol(b"TOKEN".to_vec()),
+            AssetName(b"Token".to_vec()),
             18,
+            Balance::zero(),
+            true,
         )?;
         TradingPairModule::<T>::register(
             owner_origin.clone(),
@@ -60,8 +63,6 @@ fn assert_last_event<T: Config>(generic_event: <T as Config>::Event) {
 }
 
 benchmarks! {
-    _ {}
-
     register {
         let n in 1 .. 1000 => setup_benchmark::<T>(n)?;
         let caller = alice::<T>();

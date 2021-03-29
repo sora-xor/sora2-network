@@ -1546,7 +1546,6 @@ impl_runtime_apis! {
 
             add_benchmark!(params, batches, assets, Assets);
             add_benchmark!(params, batches, dex_api, DEXAPIBench::<Runtime>);
-            add_benchmark!(params, batches, dex_manager, DEXManager);
             #[cfg(feature = "faucet")]
             add_benchmark!(params, batches, faucet, Faucet);
             add_benchmark!(params, batches, liquidity_proxy, LiquidityProxyBench::<Runtime>);
