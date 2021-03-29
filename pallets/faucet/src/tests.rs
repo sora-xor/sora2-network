@@ -16,44 +16,44 @@ fn transfer_passes_unsigned() {
             Origin::none(),
             XOR,
             bob(),
-            balance!(49.91)
+            balance!(2999.91)
         ));
         assert_ok!(Module::transfer(
             Origin::none(),
             XOR,
             bob(),
-            balance!(50.09)
+            balance!(3000.09)
         ));
         assert_eq!(
             Assets::free_balance(&XOR, &account_id()).unwrap(),
-            balance!(50)
+            balance!(3000)
         );
-        assert_eq!(Assets::free_balance(&XOR, &bob()).unwrap(), balance!(100));
+        assert_eq!(Assets::free_balance(&XOR, &bob()).unwrap(), balance!(6000));
     });
 }
 
 #[test]
 fn transfer_passes_native_currency() {
     ExtBuilder::build().execute_with(|| {
-        // Receive 100 (Limit) in two transfers
+        // Receive 6000 (Limit) in two transfers
         assert_ok!(Module::transfer(
             Origin::signed(alice()),
             XOR,
             bob(),
-            balance!(49.91)
+            balance!(2999.91)
         ));
         assert_ok!(Module::transfer(
             Origin::signed(alice()),
             XOR,
             bob(),
-            balance!(50.09)
+            balance!(3000.09)
         ));
         assert_eq!(
             Assets::free_balance(&XOR, &account_id()).unwrap(),
-            balance!(50)
+            balance!(3000)
         );
         assert_eq!(Assets::free_balance(&XOR, &alice()).unwrap(), 0);
-        assert_eq!(Assets::free_balance(&XOR, &bob()).unwrap(), balance!(100));
+        assert_eq!(Assets::free_balance(&XOR, &bob()).unwrap(), balance!(6000));
     });
 }
 
@@ -64,27 +64,27 @@ fn transfer_passes_multiple_assets() {
             Origin::signed(alice()),
             XOR,
             bob(),
-            balance!(100)
+            balance!(6000)
         ));
         assert_eq!(
             Assets::free_balance(&XOR, &account_id()).unwrap(),
-            balance!(50)
+            balance!(3000)
         );
         assert_eq!(Assets::free_balance(&XOR, &alice()).unwrap(), 0);
-        assert_eq!(Assets::free_balance(&XOR, &bob()).unwrap(), balance!(100));
+        assert_eq!(Assets::free_balance(&XOR, &bob()).unwrap(), balance!(6000));
 
         assert_ok!(Module::transfer(
             Origin::signed(alice()),
             VAL,
             bob(),
-            balance!(50.43)
+            balance!(3000.43)
         ));
         assert_eq!(
             Assets::free_balance(&VAL, &account_id()).unwrap(),
-            balance!(99.57)
+            balance!(5999.57)
         );
         assert_eq!(Assets::free_balance(&VAL, &alice()).unwrap(), 0);
-        assert_eq!(Assets::free_balance(&VAL, &bob()).unwrap(), balance!(50.43));
+        assert_eq!(Assets::free_balance(&VAL, &bob()).unwrap(), balance!(3000.43));
     });
 }
 
@@ -95,18 +95,18 @@ fn transfer_passes_after_limit_is_reset() {
             Origin::signed(alice()),
             XOR,
             bob(),
-            balance!(100)
+            balance!(6000)
         ));
         System::set_block_number(14401);
         assert_ok!(Module::transfer(
             Origin::signed(alice()),
             XOR,
             bob(),
-            balance!(50)
+            balance!(3000)
         ));
         assert_eq!(Assets::free_balance(&XOR, &account_id()).unwrap(), 0);
         assert_eq!(Assets::free_balance(&XOR, &alice()).unwrap(), 0);
-        assert_eq!(Assets::free_balance(&XOR, &bob()).unwrap(), balance!(150));
+        assert_eq!(Assets::free_balance(&XOR, &bob()).unwrap(), balance!(9000));
     });
 }
 
@@ -132,7 +132,7 @@ fn transfer_fails_with_amount_above_limit() {
             Origin::signed(alice()),
             XOR,
             bob(),
-            balance!(100)
+            balance!(6000)
         ));
         assert_noop!(
             Module::transfer(Origin::signed(alice()), XOR, bob(), balance!(0.2)),
@@ -148,10 +148,10 @@ fn transfer_fails_with_not_enough_reserves() {
             Origin::signed(alice()),
             XOR,
             bob(),
-            balance!(100)
+            balance!(6000)
         ));
         assert_noop!(
-            Module::transfer(Origin::signed(bob()), XOR, alice(), balance!(100)),
+            Module::transfer(Origin::signed(bob()), XOR, alice(), balance!(6000)),
             crate::Error::<Runtime>::NotEnoughReserves
         );
     });

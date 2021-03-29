@@ -617,7 +617,7 @@ fn testnet_genesis(
     ];
     #[cfg(feature = "faucet")]
     let faucet_config = {
-        let initial_faucet_balance = balance!(500000);
+        let initial_faucet_balance = balance!(6000000000);
         let faucet_tech_account_id = TechAccountId::Generic(
             faucet::TECH_ACCOUNT_PREFIX.to_vec(),
             faucet::TECH_ACCOUNT_MAIN.to_vec(),
