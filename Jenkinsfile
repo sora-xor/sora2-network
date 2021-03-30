@@ -67,8 +67,8 @@ pipeline {
                     }
                     docker.withRegistry('https://index.docker.io/v1/', 'docker-hub-credentials') {
                         sh """
-                            docker tag ${appImageName} soramitsu/sora2-substrate:${baseImageTag}
-                            docker push soramitsu/sora2-substrate:${baseImageTag}
+                            docker tag ${appImageName} sora2/substrate:${baseImageTag}
+                            docker push sora2/substrate:${baseImageTag}
                         """
                     }
                 }
