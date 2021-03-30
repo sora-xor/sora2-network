@@ -12,8 +12,8 @@ use sp_std::collections::btree_set::BTreeSet;
 
 use common::prelude::{Balance, EnsureDEXManager, FixedWrapper, SwapAmount, SwapOutcome};
 use common::{
-    balance, hash, AssetSymbol, EnsureTradingPairExists, FromGenericPair, LiquiditySource,
-    LiquiditySourceType, ManagementMode, SwapRulesValidation, ToFeeAccount,
+    balance, hash, AssetName, AssetSymbol, EnsureTradingPairExists, FromGenericPair,
+    LiquiditySource, LiquiditySourceType, ManagementMode, SwapRulesValidation, ToFeeAccount,
     ToTechUnitFromDEXAndTradingPair,
 };
 use frame_support::debug;
@@ -2150,6 +2150,7 @@ pub mod pallet {
                         source.clone(),
                         mark_asset_repr,
                         AssetSymbol(b"XYKPOOL".to_vec()),
+                        AssetName(b"XYK LP Tokens".to_vec()),
                         18,
                         0,
                         true,

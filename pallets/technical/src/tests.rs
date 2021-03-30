@@ -1,6 +1,6 @@
 use crate::mock::*;
 use common::prelude::Balance;
-use common::AssetSymbol;
+use common::{AssetName, AssetSymbol};
 use frame_support::assert_ok;
 use PolySwapActionExample::*;
 
@@ -50,6 +50,7 @@ fn generic_pair_swap_simple() {
             get_alice(),
             RedPepper(),
             AssetSymbol(b"RP".to_vec()),
+            AssetName(b"Red Pepper".to_vec()),
             18,
             Balance::from(0u32),
             true,
@@ -58,6 +59,7 @@ fn generic_pair_swap_simple() {
             repr.clone(),
             BlackPepper(),
             AssetSymbol(b"BP".to_vec()),
+            AssetName(b"Black Pepper".to_vec()),
             18,
             Balance::from(0u32),
             true,

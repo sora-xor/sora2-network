@@ -29,7 +29,7 @@ pub struct BalanceInfo<Balance> {
 
 #[derive(Eq, PartialEq, Encode, Decode, Default)]
 #[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
-pub struct AssetInfo<AssetId, AssetSymbol, Precision> {
+pub struct AssetInfo<AssetId, AssetSymbol, AssetName, Precision> {
     #[cfg_attr(
         feature = "std",
         serde(
@@ -41,6 +41,7 @@ pub struct AssetInfo<AssetId, AssetSymbol, Precision> {
         )
     )]
     pub asset_id: AssetId,
+
     #[cfg_attr(
         feature = "std",
         serde(
@@ -52,6 +53,19 @@ pub struct AssetInfo<AssetId, AssetSymbol, Precision> {
         )
     )]
     pub symbol: AssetSymbol,
+
+    #[cfg_attr(
+        feature = "std",
+        serde(
+            bound(
+                serialize = "AssetName: std::fmt::Display",
+                deserialize = "AssetName: std::str::FromStr"
+            ),
+            with = "string_serialization"
+        )
+    )]
+    pub name: AssetName,
+
     #[cfg_attr(
         feature = "std",
         serde(
@@ -63,16 +77,18 @@ pub struct AssetInfo<AssetId, AssetSymbol, Precision> {
         )
     )]
     pub precision: Precision,
+
     #[cfg_attr(feature = "std", serde(with = "string_serialization"))]
     pub is_mintable: bool,
 }
 
 sp_api::decl_runtime_apis! {
-    pub trait AssetsAPI<AccountId, AssetId, Balance, AssetSymbol, Precision> where
+    pub trait AssetsAPI<AccountId, AssetId, Balance, AssetSymbol, AssetName, Precision> where
         AccountId: Codec,
         AssetId: Codec,
         Balance: Codec + MaybeFromStr + MaybeDisplay,
         AssetSymbol: Codec + MaybeFromStr + MaybeDisplay,
+        AssetName: Codec + MaybeFromStr + MaybeDisplay,
         Precision: Codec + MaybeFromStr + MaybeDisplay,
     {
         fn free_balance(account_id: AccountId, asset_id: AssetId) -> Option<BalanceInfo<Balance>>;
@@ -85,9 +101,9 @@ sp_api::decl_runtime_apis! {
 
         fn list_asset_ids() -> Vec<AssetId>;
 
-        fn list_asset_infos() -> Vec<AssetInfo<AssetId, AssetSymbol, Precision>>;
+        fn list_asset_infos() -> Vec<AssetInfo<AssetId, AssetSymbol, AssetName, Precision>>;
 
-        fn get_asset_info(asset_id: AssetId) -> Option<AssetInfo<AssetId, AssetSymbol, Precision>>;
+        fn get_asset_info(asset_id: AssetId) -> Option<AssetInfo<AssetId, AssetSymbol, AssetName, Precision>>;
     }
 }
 
@@ -95,7 +111,7 @@ sp_api::decl_runtime_apis! {
 mod tests {
     use super::*;
     use common::prelude::{
-        AssetId as ConcrAssetIdUnderlying, AssetId32 as ConcrAssetId,
+        AssetId as ConcrAssetIdUnderlying, AssetId32 as ConcrAssetId, AssetName as ConcrAssetName,
         AssetSymbol as ConcrAssetSymbol, BalancePrecision as ConcrBalancePrecision,
     };
 
@@ -104,6 +120,7 @@ mod tests {
         type AssetInfoTy = AssetInfo<
             ConcrAssetId<ConcrAssetIdUnderlying>,
             ConcrAssetSymbol,
+            ConcrAssetName,
             ConcrBalancePrecision,
         >;
         let asset_info = AssetInfoTy {
@@ -115,11 +132,12 @@ mod tests {
                 phantom: Default::default(),
             },
             symbol: ConcrAssetSymbol(b"XOR".to_vec()),
+            name: ConcrAssetName(b"SORA".to_vec()),
             precision: 18,
             is_mintable: true,
         };
 
-        let json_str = r#"{"asset_id":"0x020003000400050006000700080009000a000b000c000d000e000f0001000200","symbol":"XOR","precision":"18","is_mintable":"true"}"#;
+        let json_str = r#"{"asset_id":"0x020003000400050006000700080009000a000b000c000d000e000f0001000200","symbol":"XOR","name":"SORA","precision":"18","is_mintable":"true"}"#;
 
         assert_eq!(serde_json::to_string(&asset_info).unwrap(), json_str);
         assert_eq!(

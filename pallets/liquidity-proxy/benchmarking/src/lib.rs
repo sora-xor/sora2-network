@@ -9,7 +9,7 @@ use liquidity_proxy::*;
 
 use codec::Decode;
 use common::prelude::{Balance, SwapAmount};
-use common::{balance, fixed, AssetSymbol, DEXId, FilterMode, DOT, XOR};
+use common::{balance, fixed, AssetName, AssetSymbol, DEXId, FilterMode, DOT, XOR};
 use frame_benchmarking::benchmarks;
 use frame_support::traits::Get;
 use frame_system::RawOrigin;
@@ -59,6 +59,7 @@ fn setup_benchmark<T: Config>() -> Result<(), &'static str> {
         owner.clone(),
         XOR.into(),
         AssetSymbol(b"XOR".to_vec()),
+        AssetName(b"SORA".to_vec()),
         18,
         Balance::from(0u32),
         true,
@@ -67,6 +68,7 @@ fn setup_benchmark<T: Config>() -> Result<(), &'static str> {
         owner.clone(),
         DOT.into(),
         AssetSymbol(b"DOT".to_vec()),
+        AssetName(b"Polkadot".to_vec()),
         18,
         Balance::from(0u32),
         true,
@@ -81,6 +83,7 @@ fn setup_benchmark<T: Config>() -> Result<(), &'static str> {
         owner.clone(),
         mark_asset.clone().into(),
         AssetSymbol(b"PSWAP".to_vec()),
+        AssetName(b"Polkaswap".to_vec()),
         18,
         Balance::from(0u32),
         true,

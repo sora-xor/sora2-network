@@ -49,7 +49,7 @@ use crate::types::{Bytes, CallRequest, Log, Transaction, TransactionReceipt};
 use alloc::string::String;
 use codec::{Decode, Encode, FullCodec};
 use common::prelude::Balance;
-use common::{eth, AssetSymbol, BalancePrecision};
+use common::{eth, AssetName, AssetSymbol, BalancePrecision};
 use core::convert::{TryFrom, TryInto};
 use core::{iter, line, stringify};
 use ethabi::{ParamType, Token};
@@ -1020,7 +1020,7 @@ pub mod pallet {
         ///
         /// Parameters:
         /// - `token_address` - token contract address.
-        /// - `ticker` - token ticker (symbol).
+        /// - `symbol` - token symbol (ticker).
         /// - `name` - token name.
         /// - `decimals` -  token precision.
         /// - `network_id` - network identifier.
@@ -1028,7 +1028,7 @@ pub mod pallet {
         pub fn add_sidechain_token(
             origin: OriginFor<T>,
             token_address: EthereumAddress,
-            ticker: String,
+            symbol: String,
             name: String,
             decimals: u8,
             network_id: BridgeNetworkId<T>,
@@ -1043,7 +1043,7 @@ pub mod pallet {
                 OutgoingAddToken {
                     author: from.clone(),
                     token_address,
-                    ticker,
+                    symbol,
                     name,
                     decimals,
                     nonce,
@@ -2717,6 +2717,7 @@ impl<T: Config> Pallet<T> {
         token_address: Address,
         precision: BalancePrecision,
         symbol: AssetSymbol,
+        name: AssetName,
         network_id: T::NetworkId,
     ) -> Result<T::AssetId, DispatchError> {
         ensure!(
@@ -2728,6 +2729,7 @@ impl<T: Config> Pallet<T> {
         let asset_id = assets::Module::<T>::register_from(
             &bridge_account,
             symbol,
+            name,
             precision,
             Balance::from(0u32),
             true,

@@ -9,7 +9,7 @@ use pool_xyk::*;
 
 use codec::Decode;
 use common::prelude::{Balance, SwapAmount};
-use common::{AssetSymbol, DEXId, DOT, XOR};
+use common::{AssetName, AssetSymbol, DEXId, DOT, XOR};
 use frame_benchmarking::benchmarks;
 use frame_system::RawOrigin;
 use hex_literal::hex;
@@ -47,6 +47,7 @@ fn setup_benchmark_assets_only<T: Config>() -> Result<(), &'static str> {
         owner.clone(),
         XOR.into(),
         AssetSymbol(b"XOR".to_vec()),
+        AssetName(b"SORA".to_vec()),
         18,
         Balance::from(0u32),
         true,
@@ -55,6 +56,7 @@ fn setup_benchmark_assets_only<T: Config>() -> Result<(), &'static str> {
         owner.clone(),
         DOT.into(),
         AssetSymbol(b"DOT".to_vec()),
+        AssetName(b"Polkadot".to_vec()),
         18,
         Balance::from(0u32),
         true,
@@ -77,6 +79,7 @@ fn setup_benchmark<T: Config>() -> Result<(), &'static str> {
         owner.clone(),
         XOR.into(),
         AssetSymbol(b"XOR".to_vec()),
+        AssetName(b"SORA".to_vec()),
         18,
         Balance::from(0u32),
         true,
@@ -85,6 +88,7 @@ fn setup_benchmark<T: Config>() -> Result<(), &'static str> {
         owner.clone(),
         DOT.into(),
         AssetSymbol(b"DOT".to_vec()),
+        AssetName(b"Polkadot".to_vec()),
         18,
         Balance::from(0u32),
         true,
@@ -99,6 +103,7 @@ fn setup_benchmark<T: Config>() -> Result<(), &'static str> {
         owner.clone(),
         mark_asset.clone().into(),
         AssetSymbol(b"PSWAP".to_vec()),
+        AssetName(b"Polkaswap".to_vec()),
         18,
         Balance::from(0u32),
         true,
