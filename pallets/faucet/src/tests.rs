@@ -84,7 +84,10 @@ fn transfer_passes_multiple_assets() {
             balance!(5999.57)
         );
         assert_eq!(Assets::free_balance(&VAL, &alice()).unwrap(), 0);
-        assert_eq!(Assets::free_balance(&VAL, &bob()).unwrap(), balance!(3000.43));
+        assert_eq!(
+            Assets::free_balance(&VAL, &bob()).unwrap(),
+            balance!(3000.43)
+        );
     });
 }
 
