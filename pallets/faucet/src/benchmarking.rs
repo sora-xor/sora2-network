@@ -5,14 +5,14 @@
 use super::{Call, Config, Event, Module};
 
 use codec::Decode;
-use frame_benchmarking::benchmarks;
+use frame_benchmarking::{benchmarks, Zero};
 use frame_system::{EventRecord, RawOrigin};
 use hex_literal::hex;
 use sp_std::prelude::*;
 
-use common::{AssetSymbol, XOR};
+use common::{AssetName, AssetSymbol, Balance, XOR};
 
-use assets::Module as Assets;
+use assets::Pallet as Assets;
 
 // Support Functions
 fn alice<T: Config>() -> T::AccountId {
@@ -24,7 +24,13 @@ fn add_assets<T: Config>(n: u32) -> Result<(), &'static str> {
     let owner = alice::<T>();
     let owner_origin: <T as frame_system::Config>::Origin = RawOrigin::Signed(owner.clone()).into();
     for _i in 0..n {
-        Assets::<T>::register(owner_origin.clone(), AssetSymbol(b"TOKEN".to_vec()), 18)?;
+        Assets::<T>::register(
+            owner_origin.clone(),
+            AssetSymbol(b"TOKEN".to_vec()),
+            AssetName(b"TOKEN".to_vec()),
+            Balance::zero(),
+            true,
+        )?;
     }
 
     Ok(())
@@ -39,8 +45,6 @@ fn assert_last_event<T: Config>(generic_event: <T as Config>::Event) {
 }
 
 benchmarks! {
-    _ {}
-
     transfer {
         let n in 1 .. 1000 => add_assets::<T>(n)?;
         // let n in 1 .. 1000 => (); //setup_benchmark()?;
@@ -59,7 +63,7 @@ benchmarks! {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::mock::{ExtBuilder, Test};
+    use crate::mock::{ExtBuilder, Runtime};
     use frame_support::assert_ok;
 
     #[test]

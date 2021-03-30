@@ -38,7 +38,7 @@ pub type BlockNumber = u64;
 pub type Amount = i128;
 
 pub const ALICE: AccountId = 1;
-pub const DEX_ID: DEXId = 1;
+pub const DEX_ID: DEXId = 0;
 type AssetId = AssetId32<common::AssetId>;
 
 parameter_types! {
