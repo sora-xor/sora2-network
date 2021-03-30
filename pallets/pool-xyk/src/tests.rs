@@ -1,5 +1,7 @@
 use common::prelude::{SwapAmount, SwapOutcome};
-use common::{balance, AssetName, AssetSymbol, Balance, LiquiditySource, LiquiditySourceType, ToFeeAccount};
+use common::{
+    balance, AssetName, AssetSymbol, Balance, LiquiditySource, LiquiditySourceType, ToFeeAccount,
+};
 use frame_support::{assert_noop, assert_ok};
 
 use crate::mock::*;
@@ -239,14 +241,80 @@ impl crate::Module<Runtime> {
         new_tests.append(&mut tests_to_add);
         crate::Module::<Runtime>::preset01(new_tests);
     }
+
+    fn run_tests_with_different_slippage_behavior_01(
+        tests_to_run_inside_behavior: Vec<
+            fn(
+                crate::mock::DEXId,
+                AssetId,
+                AssetId,
+                common::TradingPair<crate::mock::TechAssetId>,
+                crate::mock::TechAccountId,
+                crate::mock::TechAccountId,
+                AccountId,
+                AccountId,
+            ) -> (),
+        >,
+    ) {
+        // List of cases for different slippage behavior.
+        let cases: Vec<
+            fn(
+                crate::mock::DEXId,
+                AssetId,
+                AssetId,
+                common::TradingPair<crate::mock::TechAssetId>,
+                crate::mock::TechAccountId,
+                crate::mock::TechAccountId,
+                AccountId,
+                AccountId,
+            ) -> (),
+        > = vec![
+            |dex_id, _, _, _, _, _, _, _| {
+                assert_ok!(crate::Module::<Runtime>::swap_pair(
+                    Origin::signed(ALICE()),
+                    ALICE(),
+                    dex_id,
+                    GoldenTicket.into(),
+                    BlackPepper.into(),
+                    SwapAmount::WithDesiredOutput {
+                        desired_amount_out: balance!(2999),
+                        max_amount_in: balance!(99999999),
+                    }
+                ));
+            },
+            |dex_id, _, _, _, _, _, _, _| {
+                assert_ok!(crate::Module::<Runtime>::swap_pair(
+                    Origin::signed(ALICE()),
+                    ALICE(),
+                    dex_id,
+                    BlackPepper.into(),
+                    GoldenTicket.into(),
+                    SwapAmount::WithDesiredInput {
+                        desired_amount_in: balance!(2999),
+                        min_amount_out: balance!(0),
+                    }
+                ));
+            },
+        ];
+
+        // Run tests inside each behavior.
+        for case in &cases {
+            let mut new_tests = vec![case.clone()];
+            new_tests.append(&mut tests_to_run_inside_behavior.clone());
+            crate::Module::<Runtime>::preset02(new_tests);
+        }
+
+        // Case with original pool state, behavior is not prepended.
+        crate::Module::<Runtime>::preset02(tests_to_run_inside_behavior.clone());
+    }
 }
 
 macro_rules! simplify_swap_outcome(
-     ($a: expr) => ({
-         match $a {
-             SwapOutcome { amount, fee } => (amount.into(), fee.into())
-         }
-     })
+ ($a: expr) => ({
+     match $a {
+         SwapOutcome { amount, fee } => (amount.into(), fee.into())
+     }
+ })
 );
 
 #[test]
@@ -496,7 +564,6 @@ fn swap_pair_desired_output_and_withdraw_cascade() {
                     max_amount_in: balance!(99999999),
                 }
             ));
-
             assert_eq!(
                 assets::Module::<Runtime>::free_balance(&gt, &ALICE()).unwrap(),
                 432650925750223643890137
@@ -1048,6 +1115,55 @@ fn withdraw_all_liquidity() {
             // and also rounding proportions such that user does not withdraw more thus breaking the pool
             // 900000.0 - 540000.0 = 360000.0
             // 2000000.0 - 1856000.0 = 144000.0
+        },
+    ]);
+}
+
+#[test]
+fn deposit_liquidity_with_different_slippage_behavior_01() {
+    crate::Module::<Runtime>::run_tests_with_different_slippage_behavior_01(vec![
+        |dex_id,
+         _gt,
+         _bp,
+         _,
+         _tech_acc_id: crate::mock::TechAccountId,
+         _,
+         _repr: AccountId,
+         _fee_repr: AccountId| {
+            assert_ok!(crate::Module::<Runtime>::deposit_liquidity(
+                Origin::signed(ALICE()),
+                dex_id,
+                GoldenTicket.into(),
+                BlackPepper.into(),
+                balance!(360000),
+                balance!(144000),
+                balance!(345000),
+                balance!(137000),
+            ));
+        },
+    ]);
+}
+
+#[test]
+fn withdraw_liquidity_with_different_slippage_behavior_01() {
+    crate::Module::<Runtime>::run_tests_with_different_slippage_behavior_01(vec![
+        |dex_id,
+         _gt,
+         _bp,
+         _,
+         _tech_acc_id: crate::mock::TechAccountId,
+         _,
+         _repr: AccountId,
+         _fee_repr: AccountId| {
+            assert_ok!(crate::Module::<Runtime>::withdraw_liquidity(
+                Origin::signed(ALICE()),
+                dex_id,
+                GoldenTicket.into(),
+                BlackPepper.into(),
+                balance!(227683),
+                balance!(352000),
+                balance!(141000),
+            ));
         },
     ]);
 }
