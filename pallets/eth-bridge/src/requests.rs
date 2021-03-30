@@ -829,7 +829,7 @@ impl<T: Config> OutgoingAddToken<T> {
             assets::is_name_valid(&name),
             assets::Error::<T>::InvalidAssetName
         );
-        
+
         Ok((symbol, name))
     }
 

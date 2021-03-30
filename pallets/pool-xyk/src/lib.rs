@@ -12,8 +12,8 @@ use sp_std::collections::btree_set::BTreeSet;
 
 use common::prelude::{Balance, EnsureDEXManager, FixedWrapper, SwapAmount, SwapOutcome};
 use common::{
-    balance, hash, AssetName, AssetSymbol, EnsureTradingPairExists, FromGenericPair, LiquiditySource,
-    LiquiditySourceType, ManagementMode, SwapRulesValidation, ToFeeAccount,
+    balance, hash, AssetName, AssetSymbol, EnsureTradingPairExists, FromGenericPair,
+    LiquiditySource, LiquiditySourceType, ManagementMode, SwapRulesValidation, ToFeeAccount,
     ToTechUnitFromDEXAndTradingPair,
 };
 use frame_support::debug;

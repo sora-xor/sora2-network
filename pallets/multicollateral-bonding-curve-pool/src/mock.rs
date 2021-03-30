@@ -382,7 +382,14 @@ impl Default for ExtBuilder {
     fn default() -> Self {
         Self {
             endowed_accounts: vec![
-                (alice(), USDT, 0, AssetSymbol(b"USDT".to_vec()), AssetName(b"Tether USD".to_vec()), 18),
+                (
+                    alice(),
+                    USDT,
+                    0,
+                    AssetSymbol(b"USDT".to_vec()),
+                    AssetName(b"Tether USD".to_vec()),
+                    18,
+                ),
                 (
                     alice(),
                     XOR,
@@ -426,7 +433,9 @@ impl Default for ExtBuilder {
 }
 
 impl ExtBuilder {
-    pub fn new(endowed_accounts: Vec<(AccountId, AssetId, Balance, AssetSymbol, AssetName, u8)>) -> Self {
+    pub fn new(
+        endowed_accounts: Vec<(AccountId, AssetId, Balance, AssetSymbol, AssetName, u8)>,
+    ) -> Self {
         Self {
             endowed_accounts,
             ..Default::default()

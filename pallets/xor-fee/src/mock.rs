@@ -4,8 +4,8 @@ use common::prelude::{
     Balance, BlockLength, BlockWeights, SwapAmount, SwapOutcome, TransactionByteFee,
 };
 use common::{
-    self, balance, fixed_from_basis_points, Amount, AssetId32, AssetName, AssetSymbol, Fixed, LiquiditySource,
-    LiquiditySourceFilter, LiquiditySourceType, VAL, XOR,
+    self, balance, fixed_from_basis_points, Amount, AssetId32, AssetName, AssetSymbol, Fixed,
+    LiquiditySource, LiquiditySourceFilter, LiquiditySourceType, VAL, XOR,
 };
 use core::time::Duration;
 use currencies::BasicCurrencyAdapter;
