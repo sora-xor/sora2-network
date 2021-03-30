@@ -75,7 +75,7 @@ macro_rules! to_balance(
 );
 
 /// Quick macro for better looking code, rust compiler is clever to optimize this.
-macro_rules! fxw(
+macro_rules! to_fixed_wrapper(
     ($a: expr) => ({
         FixedWrapper::from($a.clone()).clone()
     })
@@ -1415,10 +1415,14 @@ impl<T: Config> Module<T> {
         amount_a_min: Balance,
         amount_b_min: Balance,
     ) -> Result<(Balance, Balance), DispatchError> {
-        let opt_am_a_des =
-            to_balance!(fxw!(amount_b_desired) / (fxw!(reserve_b) / fxw!(reserve_a)));
-        let opt_am_b_des =
-            to_balance!(fxw!(amount_a_desired) / (fxw!(reserve_a) / fxw!(reserve_b)));
+        let opt_am_a_des = to_balance!(
+            to_fixed_wrapper!(amount_b_desired)
+                / (to_fixed_wrapper!(reserve_b) / to_fixed_wrapper!(reserve_a))
+        );
+        let opt_am_b_des = to_balance!(
+            to_fixed_wrapper!(amount_a_desired)
+                / (to_fixed_wrapper!(reserve_a) / to_fixed_wrapper!(reserve_b))
+        );
 
         if opt_am_b_des <= amount_b_desired {
             ensure!(
@@ -1453,8 +1457,14 @@ impl<T: Config> Module<T> {
             amount_a_min,
             amount_b_min,
         )?;
-        let lhs = to_balance!(fxw!(am_a_des) / (fxw!(reserve_a) / fxw!(total_supply)));
-        let rhs = to_balance!(fxw!(am_b_des) / (fxw!(reserve_b) / fxw!(total_supply)));
+        let lhs = to_balance!(
+            to_fixed_wrapper!(am_a_des)
+                / (to_fixed_wrapper!(reserve_a) / to_fixed_wrapper!(total_supply))
+        );
+        let rhs = to_balance!(
+            to_fixed_wrapper!(am_b_des)
+                / (to_fixed_wrapper!(reserve_b) / to_fixed_wrapper!(total_supply))
+        );
         let min_value = lhs.min(rhs);
         Ok((am_a_des, am_b_des, min_value))
     }
