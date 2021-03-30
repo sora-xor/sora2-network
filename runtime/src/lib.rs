@@ -930,7 +930,7 @@ construct_runtime! {
         Permissions: permissions::{Module, Call, Storage, Config<T>, Event<T>},
         ReferralSystem: referral_system::{Module, Call, Storage},
         Rewards: rewards::{Module, Call, Config<T>, Storage, Event<T>},
-        XorFee: xor_fee::{Module, Call, Storage},
+        XorFee: xor_fee::{Module, Call, Storage, Event<T>},
         BridgeMultisig: bridge_multisig::{Module, Call, Storage, Config<T>, Event<T>},
         Utility: pallet_utility::{Module, Call, Event},
 
