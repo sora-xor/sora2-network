@@ -9,7 +9,7 @@ use framenode_runtime::{
     IrohaMigrationConfig, LiquiditySourceType, MulticollateralBondingCurvePoolConfig,
     PermissionsConfig, PswapDistributionConfig, RewardsConfig, Runtime, SessionConfig, Signature,
     StakerStatus, StakingConfig, SudoConfig, SystemConfig, TechAccountId, TechnicalCommitteeConfig,
-    TechnicalConfig, TokensConfig, WASM_BINARY
+    TechnicalConfig, TokensConfig, WASM_BINARY,
 };
 
 use common::prelude::{Balance, DEXInfo, FixedWrapper};

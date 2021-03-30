@@ -11,7 +11,9 @@ use sp_runtime::{MultiSignature, Perbill};
 
 use common::mock::ExistentialDeposits;
 use common::prelude::Balance;
-use common::{self, balance, Amount, AssetId32, AssetName, AssetSymbol, TechPurpose, PSWAP, VAL, XOR};
+use common::{
+    self, balance, Amount, AssetId32, AssetName, AssetSymbol, TechPurpose, PSWAP, VAL, XOR,
+};
 use permissions::{Scope, BURN, MINT};
 
 use crate::{self as rewards, Config};
