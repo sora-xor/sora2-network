@@ -200,6 +200,7 @@ impl crate::Module<Runtime> {
                     balance!(360000),
                     balance!(144000),
                 ));
+
                 let tech_asset: AssetId = crate::Module::<Runtime>::get_marking_asset(&tech_acc_id)
                     .expect("Failed to get marking asset")
                     .into();
@@ -1172,4 +1173,39 @@ fn withdraw_liquidity_with_different_slippage_behavior_01() {
             }],
         },
     );
+}
+
+fn deposit_liquidity_twice_01() {
+    crate::Module::<Runtime>::preset01(vec![
+        |dex_id,
+         gt,
+         bp,
+         _,
+         tech_acc_id: crate::mock::TechAccountId,
+         _,
+         _repr: AccountId,
+         _fee_repr: AccountId| {
+            assert_ok!(crate::Module::<Runtime>::deposit_liquidity(
+                Origin::signed(ALICE()),
+                dex_id,
+                GoldenTicket.into(),
+                BlackPepper.into(),
+                balance!(101.3097),
+                balance!(80.9525),
+                balance!(0),
+                balance!(0),
+            ));
+
+            assert_ok!(crate::Module::<Runtime>::deposit_liquidity(
+                Origin::signed(ALICE()),
+                dex_id,
+                GoldenTicket.into(),
+                BlackPepper.into(),
+                balance!(200),
+                balance!(159.829140043283972334),
+                balance!(199),
+                balance!(159.0299943430675),
+            ));
+        },
+    ]);
 }
