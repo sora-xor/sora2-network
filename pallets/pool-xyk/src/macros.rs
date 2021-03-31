@@ -13,6 +13,6 @@ macro_rules! to_balance(
 #[macro_export]
 macro_rules! to_fixed_wrapper(
     ($a: expr) => ({
-        FixedWrapper::from($a.clone()).clone()
+        FixedWrapper::from($a.clone())
     })
 );
