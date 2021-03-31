@@ -38,6 +38,14 @@ impl<T: Config> Module<T> {
         Ok(to_balance!(result))
     }
 
+    // https://github.com/Uniswap/uniswap-v2-periphery/blob/dda62473e2da448bc9cb8f4514dadda4aeede5f4/contracts/UniswapV2Router02.sol#L48
+    // https://github.com/Uniswap/uniswap-v2-periphery/blob/dda62473e2da448bc9cb8f4514dadda4aeede5f4/contracts/libraries/UniswapV2Library.sol#L36
+    // Original uniswap code.
+
+    /// Calculate optimal deposit using pool reserves and desired value.
+    /// Pool reserves used to calculate it and quote, so important that information about pool
+    /// reserves is used.
+    /// Only one side is corrected, better is selected.
     pub fn calculate_optimal_deposit(
         _total_supply: Balance,
         reserve_a: Balance,
@@ -71,6 +79,11 @@ impl<T: Config> Module<T> {
         }
     }
 
+    // https://github.com/Uniswap/uniswap-v2-core/blob/4dd59067c76dea4a0e8e4bfdda41877a6b16dedc/contracts/UniswapV2Pair.sol#L123
+    // Original uniswap code.
+
+    /// Additional function to calculate deposit liquidity, that using total_supply to calculate
+    /// amount of pool tokens (liquidity markers).
     pub fn calc_deposit_liquidity_1(
         total_supply: Balance,
         reserve_a: Balance,
