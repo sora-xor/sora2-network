@@ -6,6 +6,21 @@ use frame_support::{assert_noop, assert_ok};
 
 use crate::mock::*;
 
+struct RunTestsWithSlippageBehaviors {
+    tests: Vec<
+        fn(
+            crate::mock::DEXId,
+            AssetId,
+            AssetId,
+            common::TradingPair<crate::mock::TechAssetId>,
+            crate::mock::TechAccountId,
+            crate::mock::TechAccountId,
+            AccountId,
+            AccountId,
+        ) -> (),
+    >,
+}
+
 impl crate::Module<Runtime> {
     fn preset01(
         tests: Vec<
@@ -148,7 +163,7 @@ impl crate::Module<Runtime> {
         });
     }
 
-    fn preset02(
+    fn preset_deposited_pool(
         tests: Vec<
             fn(
                 crate::mock::DEXId,
@@ -242,20 +257,7 @@ impl crate::Module<Runtime> {
         crate::Module::<Runtime>::preset01(new_tests);
     }
 
-    fn run_tests_with_different_slippage_behavior_01(
-        tests_to_run_inside_behavior: Vec<
-            fn(
-                crate::mock::DEXId,
-                AssetId,
-                AssetId,
-                common::TradingPair<crate::mock::TechAssetId>,
-                crate::mock::TechAccountId,
-                crate::mock::TechAccountId,
-                AccountId,
-                AccountId,
-            ) -> (),
-        >,
-    ) {
+    fn run_tests_with_different_slippage_behavior_01(descriptor: RunTestsWithSlippageBehaviors) {
         // List of cases for different slippage behavior.
         let cases: Vec<
             fn(
@@ -300,12 +302,12 @@ impl crate::Module<Runtime> {
         // Run tests inside each behavior.
         for case in &cases {
             let mut new_tests = vec![case.clone()];
-            new_tests.append(&mut tests_to_run_inside_behavior.clone());
-            crate::Module::<Runtime>::preset02(new_tests);
+            new_tests.append(&mut descriptor.tests.clone());
+            crate::Module::<Runtime>::preset_deposited_pool(new_tests);
         }
 
         // Case with original pool state, behavior is not prepended.
-        crate::Module::<Runtime>::preset02(tests_to_run_inside_behavior.clone());
+        crate::Module::<Runtime>::preset_deposited_pool(descriptor.tests.clone());
     }
 }
 
@@ -501,7 +503,7 @@ fn depositliq_large_values() {
 
 #[test]
 fn depositliq_valid_range_but_desired_is_corrected() {
-    crate::Module::<Runtime>::preset02(vec![|dex_id, _, _, _, _, _, _, _| {
+    crate::Module::<Runtime>::preset_deposited_pool(vec![|dex_id, _, _, _, _, _, _, _| {
         assert_ok!(crate::Module::<Runtime>::deposit_liquidity(
             Origin::signed(ALICE()),
             dex_id,
@@ -517,7 +519,7 @@ fn depositliq_valid_range_but_desired_is_corrected() {
 
 #[test]
 fn pool_is_already_initialized_and_other_after_depositliq() {
-    crate::Module::<Runtime>::preset02(vec![
+    crate::Module::<Runtime>::preset_deposited_pool(vec![
         |dex_id, gt, bp, _, _, _, repr: AccountId, fee_repr: AccountId| {
             assert_eq!(
                 assets::Module::<Runtime>::free_balance(&bp, &repr.clone()).unwrap(),
@@ -551,7 +553,7 @@ fn pool_is_already_initialized_and_other_after_depositliq() {
 
 #[test]
 fn swap_pair_desired_output_and_withdraw_cascade() {
-    crate::Module::<Runtime>::preset02(vec![
+    crate::Module::<Runtime>::preset_deposited_pool(vec![
         |dex_id, gt, bp, _, _, _, repr: AccountId, fee_repr: AccountId| {
             assert_ok!(crate::Module::<Runtime>::swap_pair(
                 Origin::signed(ALICE()),
@@ -689,7 +691,7 @@ fn swap_pair_desired_output_and_withdraw_cascade() {
 
 #[test]
 fn swap_pair_desired_input() {
-    crate::Module::<Runtime>::preset02(vec![
+    crate::Module::<Runtime>::preset_deposited_pool(vec![
         |dex_id, gt, bp, _, _, _, repr: AccountId, fee_repr: AccountId| {
             assert_ok!(crate::Module::<Runtime>::swap_pair(
                 Origin::signed(ALICE()),
@@ -728,7 +730,7 @@ fn swap_pair_desired_input() {
 
 #[test]
 fn swap_pair_invalid_dex_id() {
-    crate::Module::<Runtime>::preset02(vec![|_, _, _, _, _, _, _, _| {
+    crate::Module::<Runtime>::preset_deposited_pool(vec![|_, _, _, _, _, _, _, _| {
         assert_noop!(
             crate::Module::<Runtime>::swap_pair(
                 Origin::signed(ALICE()),
@@ -748,7 +750,7 @@ fn swap_pair_invalid_dex_id() {
 
 #[test]
 fn swap_pair_different_asset_pair() {
-    crate::Module::<Runtime>::preset02(vec![|dex_id, _, _, _, _, _, _, _| {
+    crate::Module::<Runtime>::preset_deposited_pool(vec![|dex_id, _, _, _, _, _, _, _| {
         assert_noop!(
             crate::Module::<Runtime>::swap_pair(
                 Origin::signed(ALICE()),
@@ -768,7 +770,7 @@ fn swap_pair_different_asset_pair() {
 
 #[test]
 fn swap_pair_swap_fail_with_invalid_balance() {
-    crate::Module::<Runtime>::preset02(vec![|dex_id, _, _, _, _, _, _, _| {
+    crate::Module::<Runtime>::preset_deposited_pool(vec![|dex_id, _, _, _, _, _, _, _| {
         assert_noop!(
             crate::Module::<Runtime>::swap_pair(
                 Origin::signed(BOB()),
@@ -788,7 +790,7 @@ fn swap_pair_swap_fail_with_invalid_balance() {
 
 #[test]
 fn swap_pair_outcome_should_match_actual_1() {
-    crate::Module::<Runtime>::preset02(vec![
+    crate::Module::<Runtime>::preset_deposited_pool(vec![
         |dex_id, gt, bp, _, _, _, _repr: AccountId, _fee_repr: AccountId| {
             use sp_core::crypto::AccountId32;
             let new_account = AccountId32::from([33; 32]);
@@ -848,7 +850,7 @@ fn swap_pair_outcome_should_match_actual_1() {
 
 #[test]
 fn swap_pair_outcome_should_match_actual_2() {
-    crate::Module::<Runtime>::preset02(vec![
+    crate::Module::<Runtime>::preset_deposited_pool(vec![
         |dex_id, gt, bp, _, _, _, _repr: AccountId, _fee_repr: AccountId| {
             use sp_core::crypto::AccountId32;
             let new_account = AccountId32::from([3; 32]);
@@ -908,7 +910,7 @@ fn swap_pair_outcome_should_match_actual_2() {
 
 #[test]
 fn swap_pair_outcome_should_match_actual_3() {
-    crate::Module::<Runtime>::preset02(vec![
+    crate::Module::<Runtime>::preset_deposited_pool(vec![
         |dex_id, gt, bp, _, _, _, _repr: AccountId, _fee_repr: AccountId| {
             use sp_core::crypto::AccountId32;
             let new_account = AccountId32::from([3; 32]);
@@ -968,7 +970,7 @@ fn swap_pair_outcome_should_match_actual_3() {
 
 #[test]
 fn swap_pair_outcome_should_match_actual_4() {
-    crate::Module::<Runtime>::preset02(vec![
+    crate::Module::<Runtime>::preset_deposited_pool(vec![
         |dex_id, gt, bp, _, _, _, _repr: AccountId, _fee_repr: AccountId| {
             use sp_core::crypto::AccountId32;
             let new_account = AccountId32::from([3; 32]);
@@ -1046,7 +1048,7 @@ fn swap_pair_liquidity_after_operation_check() {
 
 #[test]
 fn withdraw_all_liquidity() {
-    crate::Module::<Runtime>::preset02(vec![
+    crate::Module::<Runtime>::preset_deposited_pool(vec![
         |dex_id,
          gt,
          bp,
@@ -1121,49 +1123,53 @@ fn withdraw_all_liquidity() {
 
 #[test]
 fn deposit_liquidity_with_different_slippage_behavior_01() {
-    crate::Module::<Runtime>::run_tests_with_different_slippage_behavior_01(vec![
-        |dex_id,
-         _gt,
-         _bp,
-         _,
-         _tech_acc_id: crate::mock::TechAccountId,
-         _,
-         _repr: AccountId,
-         _fee_repr: AccountId| {
-            assert_ok!(crate::Module::<Runtime>::deposit_liquidity(
-                Origin::signed(ALICE()),
-                dex_id,
-                GoldenTicket.into(),
-                BlackPepper.into(),
-                balance!(360000),
-                balance!(144000),
-                balance!(345000),
-                balance!(137000),
-            ));
+    crate::Module::<Runtime>::run_tests_with_different_slippage_behavior_01(
+        RunTestsWithSlippageBehaviors {
+            tests: vec![|dex_id,
+                         _gt,
+                         _bp,
+                         _,
+                         _tech_acc_id: crate::mock::TechAccountId,
+                         _,
+                         _repr: AccountId,
+                         _fee_repr: AccountId| {
+                assert_ok!(crate::Module::<Runtime>::deposit_liquidity(
+                    Origin::signed(ALICE()),
+                    dex_id,
+                    GoldenTicket.into(),
+                    BlackPepper.into(),
+                    balance!(360000),
+                    balance!(144000),
+                    balance!(345000),
+                    balance!(137000),
+                ));
+            }],
         },
-    ]);
+    );
 }
 
 #[test]
 fn withdraw_liquidity_with_different_slippage_behavior_01() {
-    crate::Module::<Runtime>::run_tests_with_different_slippage_behavior_01(vec![
-        |dex_id,
-         _gt,
-         _bp,
-         _,
-         _tech_acc_id: crate::mock::TechAccountId,
-         _,
-         _repr: AccountId,
-         _fee_repr: AccountId| {
-            assert_ok!(crate::Module::<Runtime>::withdraw_liquidity(
-                Origin::signed(ALICE()),
-                dex_id,
-                GoldenTicket.into(),
-                BlackPepper.into(),
-                balance!(227683),
-                balance!(352000),
-                balance!(141000),
-            ));
+    crate::Module::<Runtime>::run_tests_with_different_slippage_behavior_01(
+        RunTestsWithSlippageBehaviors {
+            tests: vec![|dex_id,
+                         _gt,
+                         _bp,
+                         _,
+                         _tech_acc_id: crate::mock::TechAccountId,
+                         _,
+                         _repr: AccountId,
+                         _fee_repr: AccountId| {
+                assert_ok!(crate::Module::<Runtime>::withdraw_liquidity(
+                    Origin::signed(ALICE()),
+                    dex_id,
+                    GoldenTicket.into(),
+                    BlackPepper.into(),
+                    balance!(227683),
+                    balance!(352000),
+                    balance!(141000),
+                ));
+            }],
         },
-    ]);
+    );
 }
