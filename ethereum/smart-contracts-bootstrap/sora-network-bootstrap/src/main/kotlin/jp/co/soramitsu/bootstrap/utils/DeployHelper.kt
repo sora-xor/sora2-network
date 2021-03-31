@@ -10,18 +10,20 @@ import jp.co.soramitsu.soranet.eth.config.EthereumConfig
 import jp.co.soramitsu.soranet.eth.config.EthereumPasswords
 import jp.co.soramitsu.soranet.eth.contract.Bridge
 import jp.co.soramitsu.soranet.eth.contract.BridgeDeployer
+import jp.co.soramitsu.soranet.eth.contract.BridgeDeployerEVM
 import jp.co.soramitsu.soranet.eth.contract.NftMigration
 import mu.KLogging
 import okhttp3.*
-import org.web3j.abi.datatypes.Event
 import org.web3j.contracts.eip20.generated.ERC20
 import org.web3j.crypto.WalletUtils
 import org.web3j.protocol.Web3j
-import org.web3j.protocol.core.DefaultBlockParameter
 import org.web3j.protocol.core.DefaultBlockParameterName
 import org.web3j.protocol.core.JsonRpc2_0Web3j.DEFAULT_BLOCK_TIME
-import org.web3j.protocol.core.methods.request.EthFilter
+import org.web3j.protocol.core.RemoteCall
+import org.web3j.protocol.core.RemoteFunctionCall
+import org.web3j.protocol.core.methods.response.TransactionReceipt
 import org.web3j.protocol.http.HttpService
+import org.web3j.tx.Contract
 import org.web3j.tx.RawTransactionManager
 import org.web3j.tx.gas.DefaultGasProvider
 import org.web3j.tx.gas.StaticGasProvider
@@ -29,8 +31,6 @@ import java.io.IOException
 import java.math.BigInteger
 import java.util.*
 import java.util.concurrent.TimeUnit
-import org.web3j.abi.EventValues
-import org.web3j.protocol.core.methods.response.TransactionReceipt
 
 
 const val ATTEMPTS_DEFAULT = 240
@@ -165,18 +165,31 @@ class DeployHelper(
         addressVAL: String,
         addressXOR: String,
         networkId: BigInteger
-    ): BridgeDeployer {
-        val bridgeDeployer = BridgeDeployer.deploy(
-            web3,
-            credentials,
-            StaticGasProvider(gasPrice, gasLimit),
-            peers,
-            addressVAL,
-            addressXOR,
-            Arrays.copyOfRange(BigInteger(networkId.toString(), 16).toByteArray(), 1, 33)
-        ).send()
-        logger.info { "Bridge deployer smart contract ${bridgeDeployer.contractAddress} was deployed" }
-        return bridgeDeployer
+    ): Contract {
+        val bridgeDeployerContract: RemoteCall<out Contract>
+        if (BigInteger.ZERO == networkId) {
+            bridgeDeployerContract = BridgeDeployer.deploy(
+                web3,
+                credentials,
+                StaticGasProvider(gasPrice, gasLimit),
+                peers,
+                addressVAL,
+                addressXOR,
+                Arrays.copyOfRange(BigInteger(networkId.toString(), 16).toByteArray(), 1, 33)
+            )
+        } else {
+            bridgeDeployerContract = BridgeDeployerEVM.deploy(
+                web3,
+                credentials,
+                StaticGasProvider(gasPrice, gasLimit),
+                peers,
+                Arrays.copyOfRange(BigInteger(networkId.toString(), 16).toByteArray(), 1, 33)
+            )
+        }
+
+        val contract = bridgeDeployerContract.send()
+        logger.info { "Bridge deployer smart contract ${contract.contractAddress} was deployed" }
+        return contract
     }
 
     /**
@@ -184,15 +197,32 @@ class DeployHelper(
      * @return bridge smart contract object
      */
     fun deployBridgeSmartContract(
-        deployer: BridgeDeployer
+        deployer: Contract
     ): String {
-        val bridge = deployer.deployBridgeContract().send()
-        logger.info { "Bridge smart contract transaction hash ${bridge.transactionHash}" }
+        val bridgeContract: RemoteFunctionCall<TransactionReceipt>
         val transactionReceipt = TransactionReceipt()
+        val bridgeAddressFunction: (TransactionReceipt) -> String
+        when (deployer) {
+            is BridgeDeployer -> {
+                logger.info { "Deploying Ethereum bridge ..." }
+                bridgeContract = deployer.deployBridgeContract()
+                bridgeAddressFunction = { deployer.getNewBridgeDeployedEvents(transactionReceipt)[0].bridgeAddress }
+            }
+            is BridgeDeployerEVM -> {
+                logger.info("Deploying Generic EVM bridge")
+                bridgeContract = deployer.deployBridgeContract()
+                bridgeAddressFunction = { deployer.getNewBridgeDeployedEVMEvents(transactionReceipt)[0].bridgeAddress }
+            }
+            else -> {
+                throw RuntimeException("Unsupported type of network ${deployer.javaClass.name}");
+            }
+        }
+        val bridge = bridgeContract.send()
+        logger.info { "Bridge smart contract transaction hash ${bridge.transactionHash}" }
         transactionReceipt.logs = bridge.logs
-        val res = deployer.getNewBridgeDeployedEvents(transactionReceipt)[0];
-        logger.info { "Bridge smart contract address is ${res.bridgeAddress}" }
-        return res.bridgeAddress
+        val contractAddress = bridgeAddressFunction.invoke(transactionReceipt)
+        logger.info { "Bridge smart contract address is ${contractAddress}" }
+        return contractAddress
     }
 
     fun deployNftMigrationSmartContract(
