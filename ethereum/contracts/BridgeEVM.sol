@@ -253,7 +253,7 @@ contract BridgeEVM {
         require(token.allowance(msg.sender, address(this)) >= amount, "NOT ENOUGH DELEGATED TOKENS ON SENDER BALANCE");
 
         bytes32 sidechainAssetId = _sidechainTokensByAddress[tokenAddress];
-        if (sidechainAssetId.length != 0) {
+        if (sidechainAssetId != "") {
             ERC20Burnable mtoken = ERC20Burnable(tokenAddress);
             mtoken.burnFrom(msg.sender, amount);
         } else {
