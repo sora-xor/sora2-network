@@ -189,6 +189,8 @@ pub mod pallet {
         FeeCalculationFailed,
         /// Liquidity source can't exchange assets with the given IDs on the given DEXId.
         CantExchange,
+        /// Increment account reference error.
+        IncRefError,
     }
 
     /// Technical account used to store collateral tokens.
@@ -352,6 +354,7 @@ pub mod pallet {
     #[pallet::genesis_build]
     impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
         fn build(&self) {
+            frame_system::Pallet::<T>::inc_consumers(&self.incentives_account_id).unwrap();
             ReservesAcc::<T>::put(&self.reserves_account_id);
             DistributionAccountsEntry::<T>::put(&self.distribution_accounts);
             ReferenceAssetId::<T>::put(&self.reference_asset_id);
@@ -526,6 +529,10 @@ impl<T: Config> BuyMainAsset<T> {
                 .map_err(|_| Error::<T>::PriceCalculationFailed)?;
         }
         if !pswap_amount.is_zero() {
+            if !Rewards::<T>::contains_key(&self.from_account_id) {
+                frame_system::Pallet::<T>::inc_consumers(&self.from_account_id)
+                    .map_err(|_| Error::<T>::IncRefError)?;
+            }
             Rewards::<T>::mutate(&self.from_account_id, |(_, ref mut available)| {
                 *available = available.saturating_add(pswap_amount)
             });

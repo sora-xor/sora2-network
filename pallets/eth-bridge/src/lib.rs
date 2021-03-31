@@ -1881,6 +1881,8 @@ pub mod pallet {
         UnsupportedAssetPrecision,
         /// Non-zero dust.
         NonZeroDust,
+        /// Increment account reference error.
+        IncRefError,
         /// Unknown error.
         Other,
     }
@@ -2088,6 +2090,7 @@ pub mod pallet {
                 let net_id = NextNetworkId::<T>::get();
                 let peers_account_id = &network.bridge_account_id;
                 BridgeContractAddress::<T>::insert(net_id, network.bridge_contract_address);
+                frame_system::Pallet::<T>::inc_consumers(&peers_account_id).unwrap();
                 BridgeAccount::<T>::insert(net_id, peers_account_id.clone());
                 BridgeStatuses::<T>::insert(net_id, BridgeStatus::Initialized);
                 Peers::<T>::insert(net_id, network.initial_peers.clone());
