@@ -147,7 +147,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
     spec_name: create_runtime_str!("sora-substrate"),
     impl_name: create_runtime_str!("sora-substrate"),
     authoring_version: 1,
-    spec_version: 6,
+    spec_version: 7,
     impl_version: 1,
     apis: RUNTIME_API_VERSIONS,
     transaction_version: 1,
@@ -589,6 +589,8 @@ impl liquidity_proxy::Config for Runtime {
     type GetNumSamples = GetNumSamples;
     type GetTechnicalAccountId = GetLiquidityProxyAccountId;
     type WeightInfo = ();
+    type PrimaryMarket = multicollateral_bonding_curve_pool::Module<Runtime>;
+    type SecondaryMarket = pool_xyk::Module<Runtime>;
 }
 
 parameter_types! {

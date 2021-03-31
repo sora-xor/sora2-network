@@ -10,7 +10,7 @@ use sp_std::collections::btree_set::BTreeSet;
 use common::prelude::{Balance, EnsureDEXManager, SwapAmount, SwapOutcome};
 use common::{
     balance, hash, AssetName, AssetSymbol, EnsureTradingPairExists, FromGenericPair,
-    LiquiditySource, LiquiditySourceType, ManagementMode, ToFeeAccount,
+    GetPoolReserves, LiquiditySource, LiquiditySourceType, ManagementMode, ToFeeAccount,
 };
 use orml_traits::currency::MultiCurrency;
 use permissions::{Scope, BURN, MINT};
@@ -385,6 +385,12 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
 
             retval
         })
+    }
+}
+
+impl<T: Config> GetPoolReserves<T::AssetId> for Module<T> {
+    fn reserves(base_asset: &T::AssetId, other_asset: &T::AssetId) -> (Balance, Balance) {
+        Reserves::<T>::get(base_asset, other_asset)
     }
 }
 

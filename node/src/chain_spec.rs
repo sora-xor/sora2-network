@@ -170,7 +170,7 @@ pub fn dev_net() -> ChainSpec {
                     val_master_contract_address: hex!("47e229aa491763038f6a505b4f85d8eb463f0962")
                         .into(),
                     val_contract_address: hex!("68339de68c9af6577c54867728dbb2db9d7368bf").into(),
-                    bridge_contract_address: hex!("b7b3060589e5bf6e4a2c76edc229127745c9c13c")
+                    bridge_contract_address: hex!("46dcecb63180c116f58212b1eea2e171d5840dd8")
                         .into(),
                 },
             )
