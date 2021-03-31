@@ -159,10 +159,6 @@ mod tests {
                 permissions::Error::<Runtime>::Forbidden
             );
             assert_noop!(
-                Assets::burn_from(&XOR, &BOB, &BOB, 100u32.into()),
-                permissions::Error::<Runtime>::Forbidden
-            );
-            assert_noop!(
                 Assets::update_balance(&XOR, &BOB, 100u32.into()),
                 permissions::Error::<Runtime>::Forbidden
             );
@@ -402,6 +398,32 @@ mod tests {
             assert_noop!(
                 Assets::burn_from(&XOR, &BOB, &ALICE, Balance::from(10u32)),
                 permissions::Error::<Runtime>::Forbidden
+            );
+        })
+    }
+
+    #[test]
+    fn should_allow_burn_from_self_without_a_permissions() {
+        let mut ext = ExtBuilder::default().build();
+        ext.execute_with(|| {
+            assert_ok!(Assets::register_asset_id(
+                ALICE,
+                XOR,
+                AssetSymbol(b"XOR".to_vec()),
+                AssetName(b"SORA".to_vec()),
+                18,
+                Balance::from(10u32),
+                true,
+            ));
+            assert_ok!(Assets::mint_to(&XOR, &ALICE, &BOB, Balance::from(10u32)));
+            assert_eq!(
+                Assets::free_balance(&XOR, &BOB).expect("Failed to query free balance."),
+                Balance::from(10u32)
+            );
+            assert_ok!(Assets::burn_from(&XOR, &BOB, &BOB, Balance::from(10u32)));
+            assert_eq!(
+                Assets::free_balance(&XOR, &BOB).expect("Failed to query free balance."),
+                Balance::from(0u32)
             );
         })
     }
