@@ -38,8 +38,22 @@ impl<T: Config> Module<T> {
         Ok(to_balance!(result))
     }
 
-    // https://github.com/Uniswap/uniswap-v2-periphery/blob/dda62473e2da448bc9cb8f4514dadda4aeede5f4/contracts/UniswapV2Router02.sol#L48
     // https://github.com/Uniswap/uniswap-v2-periphery/blob/dda62473e2da448bc9cb8f4514dadda4aeede5f4/contracts/libraries/UniswapV2Library.sol#L36
+    // Original uniswap code.
+
+    /// Given some amount of an asset and pair reserves, returns an equivalent amount of the other asset.
+    pub fn calculate_quote(
+        amount_a: &Balance,
+        reserve_a: &Balance,
+        reserve_b: &Balance,
+    ) -> Result<Balance, DispatchError> {
+        Ok(to_balance!(
+            (to_fixed_wrapper!(amount_a) * to_fixed_wrapper!(reserve_b))
+                / to_fixed_wrapper!(reserve_a)
+        ))
+    }
+
+    // https://github.com/Uniswap/uniswap-v2-periphery/blob/dda62473e2da448bc9cb8f4514dadda4aeede5f4/contracts/UniswapV2Router02.sol#L48
     // Original uniswap code.
 
     /// Calculate optimal deposit using pool reserves and desired value.
@@ -55,15 +69,8 @@ impl<T: Config> Module<T> {
         amount_a_min: Balance,
         amount_b_min: Balance,
     ) -> Result<(Balance, Balance), DispatchError> {
-        let opt_am_a_des = to_balance!(
-            to_fixed_wrapper!(amount_b_desired)
-                / (to_fixed_wrapper!(reserve_b) / to_fixed_wrapper!(reserve_a))
-        );
-        let opt_am_b_des = to_balance!(
-            to_fixed_wrapper!(amount_a_desired)
-                / (to_fixed_wrapper!(reserve_a) / to_fixed_wrapper!(reserve_b))
-        );
-
+        let opt_am_a_des = Module::<T>::calculate_quote(&amount_b_desired, &reserve_b, &reserve_a)?;
+        let opt_am_b_des = Module::<T>::calculate_quote(&amount_a_desired, &reserve_a, &reserve_b)?;
         if opt_am_b_des <= amount_b_desired {
             ensure!(
                 opt_am_b_des >= amount_b_min,
