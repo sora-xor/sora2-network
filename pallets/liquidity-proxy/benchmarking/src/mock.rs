@@ -115,6 +115,8 @@ impl liquidity_proxy::Config for Runtime {
     type GetNumSamples = GetNumSamples;
     type GetTechnicalAccountId = GetLiquidityProxyAccountId;
     type WeightInfo = ();
+    type PrimaryMarket = ();
+    type SecondaryMarket = ();
 }
 
 impl tokens::Config for Runtime {

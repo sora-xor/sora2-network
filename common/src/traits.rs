@@ -346,3 +346,50 @@ impl<A> PureOrWrapped<A> for A {
 pub trait FromGenericPair {
     fn from_generic_pair(tag: Vec<u8>, data: Vec<u8>) -> Self;
 }
+
+/// Trait for bounding liquidity proxy associated type representing primary market.
+pub trait GetMarketInfo<AssetId> {
+    /// The price in terms of the `collateral_asset` at which one can buy
+    /// a unit of the `base_asset` on the primary market (e.g. from the bonding curve pool).
+    fn buy_price(base_asset: &AssetId, collateral_asset: &AssetId) -> Result<Fixed, DispatchError>;
+    /// The price in terms of the `collateral_asset` at which one can sell
+    /// a unit of the `base_asset` on the primary market (e.g. to the bonding curve pool).
+    fn sell_price(base_asset: &AssetId, collateral_asset: &AssetId)
+        -> Result<Fixed, DispatchError>;
+    /// The amount of the `asset_id` token reserves stored with the primary market liquidity provider
+    /// (a multi-collateral bonding curve pool) that backs a part of the base currency in circulation.
+    fn collateral_reserves(asset_id: &AssetId) -> Result<Balance, DispatchError>;
+}
+
+impl<AssetId> GetMarketInfo<AssetId> for () {
+    fn buy_price(
+        _base_asset: &AssetId,
+        _collateral_asset: &AssetId,
+    ) -> Result<Fixed, DispatchError> {
+        Ok(Default::default())
+    }
+
+    fn sell_price(
+        _base_asset: &AssetId,
+        _collateral_asset: &AssetId,
+    ) -> Result<Fixed, DispatchError> {
+        Ok(Default::default())
+    }
+
+    fn collateral_reserves(_asset_id: &AssetId) -> Result<Balance, DispatchError> {
+        Ok(Default::default())
+    }
+}
+
+/// Trait for bounding liquidity proxy associated type representing secondary market.
+pub trait GetPoolReserves<AssetId> {
+    /// Returns the amount of the `(base_asset, other_asset)` pair reserves in a liquidity pool
+    /// or the default value if such pair doesn't exist.
+    fn reserves(base_asset: &AssetId, other_asset: &AssetId) -> (Balance, Balance);
+}
+
+impl<AssetId> GetPoolReserves<AssetId> for () {
+    fn reserves(_base_asset: &AssetId, _other_asset: &AssetId) -> (Balance, Balance) {
+        Default::default()
+    }
+}
