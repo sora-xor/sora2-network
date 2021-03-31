@@ -117,7 +117,6 @@ impl<T: Config> Module<T> {
         let fxw_x_in = FixedWrapper::from(x_in.clone());
         if get_fee_from_destination {
             Module::<T>::guard_fee_from_destination(asset_a, asset_b)?;
-            //let fxw_y1 = (fxw_x_in.clone() * fxw_y) / (fxw_x + fxw_x_in);
             let fxw_y1 = fxw_x_in.clone() / ((fxw_x + fxw_x_in) / fxw_y);
             let y1 = to_balance!(fxw_y1);
             let fee_of_y1 = Module::<T>::get_fee_for_destination(asset_a, tech_acc, &y1)?;
@@ -125,11 +124,7 @@ impl<T: Config> Module<T> {
         } else {
             Module::<T>::guard_fee_from_source(asset_a, asset_b)?;
             let fee_of_x_in = Module::<T>::get_fee_for_source(asset_a, tech_acc, x_in)?;
-            let fxw_fee_of_x_in = FixedWrapper::from(fee_of_x_in);
-            let fxw_x_in_subfee = fxw_x_in - fxw_fee_of_x_in;
-            //TODO: this comments exist now for comparation of multiplication version, please remove it
-            //than precision problems will finally set to best solution.
-            //let fxw_y_out = (fxw_x_in_subfee.clone() * fxw_y) / (fxw_x + fxw_x_in_subfee);
+            let fxw_x_in_subfee = fxw_x_in - to_fixed_wrapper!(fee_of_x_in);
             let fxw_y_out = fxw_x_in_subfee.clone() / ((fxw_x + fxw_x_in_subfee) / fxw_y);
             let y_out = to_balance!(fxw_y_out);
             Ok((y_out, fee_of_x_in))
@@ -155,9 +150,7 @@ impl<T: Config> Module<T> {
             let unit = balance!(1);
             let fract_a: Balance = Module::<T>::get_fee_for_destination(asset_a, tech_acc, &unit)?;
             let fract_b: Balance = unit - fract_a;
-            let fxw_fract_b = FixedWrapper::from(fract_b);
-            let fxw_y1 = fxw_y_out.clone() / fxw_fract_b;
-            //let fxw_x_in = (fxw_x * fxw_y1.clone()) / (fxw_y - fxw_y1.clone());
+            let fxw_y1 = fxw_y_out.clone() / to_fixed_wrapper!(fract_b);
             let fxw_x_in = fxw_x / ((fxw_y - fxw_y1.clone()) / fxw_y1.clone());
             let fxw_fee = fxw_y1 - fxw_y_out;
             let x_in = to_balance!(fxw_x_in);
@@ -168,11 +161,7 @@ impl<T: Config> Module<T> {
             let y_minus_y_out = *y - *y_out;
             let ymyo_fee = Module::<T>::get_fee_for_source(asset_a, tech_acc, &y_minus_y_out)?;
             let ymyo_subfee = y_minus_y_out - ymyo_fee;
-            let fxw_ymyo_subfee = FixedWrapper::from(ymyo_subfee);
-            //TODO: this comments exist now for comparation of multiplication version, please remove it
-            //than precision problems will finally set to best solution.
-            //let fxw_x_in = (fxw_x * fxw_y_out) / fxw_ymyo_subfee;
-            let fxw_x_in = fxw_x / (fxw_ymyo_subfee / fxw_y_out);
+            let fxw_x_in = fxw_x / (to_fixed_wrapper!(ymyo_subfee) / fxw_y_out);
             let x_in = to_balance!(fxw_x_in);
             let fee = Module::<T>::get_fee_for_source(asset_a, tech_acc, &x_in)?;
             Ok((x_in, fee))
