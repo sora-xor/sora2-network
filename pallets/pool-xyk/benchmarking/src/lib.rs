@@ -189,8 +189,8 @@ benchmarks! {
         DOT.into(),
         2_000_u128.into(),
         3_000_u128.into(),
-        1_000_u128.into(),
-        1_000_u128.into()
+        0_u128.into(),
+        0_u128.into()
     )
     verify {
         assert_eq!(
@@ -199,7 +199,7 @@ benchmarks! {
         );
         assert_eq!(
             Into::<u128>::into(Assets::<T>::free_balance(&DOT.into(), &caller.clone()).unwrap()),
-            Into::<u128>::into(initial_dot_balance) - 3_000_u128
+            Into::<u128>::into(initial_dot_balance)
         );
     }
 

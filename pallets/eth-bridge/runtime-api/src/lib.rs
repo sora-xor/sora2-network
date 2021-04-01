@@ -30,7 +30,7 @@ sp_api::decl_runtime_apis! {
         OutgoingRequestEncoded: Codec,
         NetworkId: Codec,
     {
-        fn get_requests(hashes: Vec<Hash>, network_id: Option<NetworkId>) -> Result<Vec<(OffchainRequest, RequestStatus)>, DispatchError>;
+        fn get_requests(hashes: Vec<Hash>, network_id: Option<NetworkId>, redirect_finished_load_requests: bool) -> Result<Vec<(OffchainRequest, RequestStatus)>, DispatchError>;
         fn get_approved_requests(hashes: Vec<Hash>, network_id: Option<NetworkId>) -> Result<Vec<(OutgoingRequestEncoded, Vec<Approval>)>, DispatchError>;
         fn get_approvals(hashes: Vec<Hash>, network_id: Option<NetworkId>) -> Result<Vec<Vec<Approval>>, DispatchError>;
         fn get_account_requests(account_id: AccountId, status_filter: Option<RequestStatus>) -> Result<Vec<(NetworkId, Hash)>, DispatchError>;

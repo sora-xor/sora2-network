@@ -2,14 +2,16 @@ use crate::contract::{functions, FUNCTIONS, RECEIVE_BY_ETHEREUM_ASSET_ADDRESS_ID
 use crate::mock::*;
 use crate::requests::{
     encode_outgoing_request_eth_call, ChangePeersContract, IncomingAddToken,
-    IncomingChangePeersCompat, IncomingMigrate, IncomingPrepareForMigration, IncomingTransfer,
-    OutgoingAddAsset, OutgoingAddPeer, OutgoingAddPeerCompat, OutgoingAddToken, OutgoingMigrate,
-    OutgoingPrepareForMigration, OutgoingRemovePeer, OutgoingRemovePeerCompat,
+    IncomingChangePeersCompat, IncomingMarkAsDoneRequest, IncomingMigrate,
+    IncomingPrepareForMigration, IncomingTransfer, OutgoingAddAsset, OutgoingAddPeer,
+    OutgoingAddPeerCompat, OutgoingAddToken, OutgoingMigrate, OutgoingPrepareForMigration,
+    OutgoingRemovePeer, OutgoingRemovePeerCompat,
 };
 use crate::types::{Bytes, Log, Transaction};
 use crate::{
-    majority, types, Address, AssetKind, BridgeStatus, ContractEvent, IncomingPreRequest,
-    IncomingRequest, IncomingRequestKind, OffchainRequest, OutgoingRequest, OutgoingTransfer,
+    majority, types, Address, AssetKind, BridgeStatus, ContractEvent, IncomingMetaRequestKind,
+    IncomingRequest, IncomingRequestKind, IncomingTransactionRequestKind,
+    LoadIncomingTransactionRequest, OffchainRequest, OutgoingRequest, OutgoingTransfer,
     RequestStatus, SignatureParams,
 };
 use codec::{Decode, Encode};
@@ -48,7 +50,7 @@ fn parses_event() {
         log.topics = vec![types::H256(hex!("85c0fa492ded927d3acca961da52b0dda1debb06d8c27fe189315f06bb6e26c8"))];
         log.data = Bytes(hex!("111111111111111111111111111111111111111111111111111111111111111100000000000000000000000000000000000000000000000246ddf9797668000000000000000000000000000022222222222222222222222222222222222222220200040000000000000000000000000000000000000000000000000000000011").to_vec());
         assert_eq!(
-            EthBridge::parse_main_event(&[log], IncomingRequestKind::Transfer).unwrap(),
+            EthBridge::parse_main_event(&[log], IncomingTransactionRequestKind::Transfer).unwrap(),
             ContractEvent::Deposit(
                 AccountId32::from(hex!("1111111111111111111111111111111111111111111111111111111111111111")),
                 balance!(42),
@@ -69,8 +71,11 @@ fn no_event() -> bool {
     frame_system::Module::<Runtime>::events().pop().is_none()
 }
 
-fn approve_request(state: &State, request: OutgoingRequest<Runtime>) -> Result<(), Option<Event>> {
-    let request_hash = request.hash();
+fn approve_request(
+    state: &State,
+    request: OutgoingRequest<Runtime>,
+    request_hash: H256,
+) -> Result<(), Option<Event>> {
     let encoded = request.to_eth_abi(request_hash).unwrap();
     System::reset_events();
     let net_id = request.network_id();
@@ -90,15 +95,14 @@ fn approve_request(state: &State, request: OutgoingRequest<Runtime>) -> Result<(
             0
         };
         let sigs_needed = majority(keypairs.len()) + additional_sigs;
-        let current_status =
-            crate::RequestStatuses::<Runtime>::get(net_id, &request.hash()).unwrap();
+        let current_status = crate::RequestStatuses::<Runtime>::get(net_id, &request_hash).unwrap();
         ensure!(
             EthBridge::approve_request(
                 Origin::signed(account_id.clone()),
                 ecdsa::Public::from_slice(&public.serialize_compressed()),
-                request.clone(),
-                encoded.clone(),
-                signature_params
+                request_hash,
+                signature_params,
+                net_id
             )
             .is_ok(),
             None
@@ -112,10 +116,8 @@ fn approve_request(state: &State, request: OutgoingRequest<Runtime>) -> Result<(
                     }
                     e => {
                         assert_ne!(
-                            crate::RequestsQueue::<Runtime>::get(net_id)
-                                .last()
-                                .map(|x| x.hash()),
-                            Some(request.hash())
+                            crate::RequestsQueue::<Runtime>::get(net_id).last(),
+                            Some(&request_hash)
                         );
                         return Err(Some(Event::eth_bridge(e)));
                     }
@@ -128,20 +130,23 @@ fn approve_request(state: &State, request: OutgoingRequest<Runtime>) -> Result<(
         System::reset_events();
     }
     assert_ne!(
-        crate::RequestsQueue::<Runtime>::get(net_id)
-            .last()
-            .map(|x| x.hash()),
-        Some(request.hash())
+        crate::RequestsQueue::<Runtime>::get(net_id).last(),
+        Some(&request_hash)
     );
     Ok(())
 }
 
-fn last_outgoing_request(net_id: u32) -> Option<OutgoingRequest<Runtime>> {
-    let request = crate::RequestsQueue::<Runtime>::get(net_id)
+fn last_request(net_id: u32) -> Option<OffchainRequest<Runtime>> {
+    let request_hash = crate::RequestsQueue::<Runtime>::get(net_id)
         .last()
         .cloned()?;
+    crate::Requests::<Runtime>::get(net_id, request_hash)
+}
+
+fn last_outgoing_request(net_id: u32) -> Option<(OutgoingRequest<Runtime>, H256)> {
+    let request = last_request(net_id)?;
     match request {
-        OffchainRequest::Outgoing(r, _) => Some(r),
+        OffchainRequest::Outgoing(r, hash) => Some((r, hash)),
         _ => panic!("Unexpected request type"),
     }
 }
@@ -149,27 +154,23 @@ fn last_outgoing_request(net_id: u32) -> Option<OutgoingRequest<Runtime>> {
 fn approve_last_request(
     state: &State,
     net_id: u32,
-) -> Result<OutgoingRequest<Runtime>, Option<Event>> {
-    let request = crate::RequestsQueue::<Runtime>::get(net_id).pop().unwrap();
-    let outgoing_request = match request {
-        OffchainRequest::Outgoing(r, _) => r,
-        _ => panic!("Unexpected request type"),
-    };
-    approve_request(state, outgoing_request.clone())?;
-    Ok(outgoing_request)
+) -> Result<(OutgoingRequest<Runtime>, H256), Option<Event>> {
+    let (outgoing_request, hash) = last_outgoing_request(net_id).ok_or(None)?;
+    approve_request(state, outgoing_request.clone(), hash)?;
+    Ok((outgoing_request, hash))
 }
 
 fn approve_next_request(
     state: &State,
     net_id: u32,
-) -> Result<OutgoingRequest<Runtime>, Option<Event>> {
-    let request = crate::RequestsQueue::<Runtime>::get(net_id).remove(0);
-    let outgoing_request = match request {
-        OffchainRequest::Outgoing(r, _) => r,
-        _ => panic!("Unexpected request type"),
-    };
-    approve_request(state, outgoing_request.clone())?;
-    Ok(outgoing_request)
+) -> Result<(OutgoingRequest<Runtime>, H256), Option<Event>> {
+    let request_hash = crate::RequestsQueue::<Runtime>::get(net_id).remove(0);
+    let (outgoing_request, hash) = crate::Requests::<Runtime>::get(net_id, request_hash)
+        .ok_or(None)?
+        .into_outgoing()
+        .unwrap();
+    approve_request(state, outgoing_request.clone(), hash)?;
+    Ok((outgoing_request, hash))
 }
 
 fn request_incoming(
@@ -184,10 +185,9 @@ fn request_incoming(
         kind,
         net_id
     ));
-    let requests_queue = crate::RequestsQueue::get(net_id);
-    let last_request: &OffchainRequest<Runtime> = requests_queue.last().unwrap();
+    let last_request: OffchainRequest<Runtime> = last_request(net_id).unwrap();
     match last_request {
-        OffchainRequest::Incoming(..) => (),
+        OffchainRequest::LoadIncoming(..) => (),
         _ => panic!("Invalid off-chain request"),
     }
     let hash = last_request.hash();
@@ -204,28 +204,32 @@ fn assert_incoming_request_done(
 ) -> Result<(), Option<Event>> {
     let net_id = incoming_request.network_id();
     let bridge_acc_id = state.networks[&net_id].config.bridge_account_id.clone();
-    let req_hash = incoming_request.hash();
+    let sidechain_req_hash = incoming_request.hash();
     assert_eq!(
         crate::RequestsQueue::<Runtime>::get(net_id)
             .last()
             .unwrap()
-            .hash()
             .0,
-        req_hash.0
+        sidechain_req_hash.0
     );
     assert_ok!(EthBridge::register_incoming_request(
         Origin::signed(bridge_acc_id.clone()),
-        incoming_request.clone()
+        incoming_request.clone(),
     ));
+    let req_hash = crate::LoadToIncomingRequestHash::<Runtime>::get(net_id, sidechain_req_hash);
     assert_ne!(
         crate::RequestsQueue::<Runtime>::get(net_id)
             .last()
-            .map(|x| x.hash().0),
-        Some(req_hash.0)
+            .map(|x| x.0),
+        Some(sidechain_req_hash.0)
     );
-    assert!(crate::PendingIncomingRequests::<Runtime>::get(net_id).contains(&req_hash));
+    assert!(crate::RequestsQueue::<Runtime>::get(net_id).contains(&req_hash));
     assert_eq!(
-        crate::IncomingRequests::get(net_id, &req_hash).unwrap(),
+        *crate::Requests::get(net_id, &req_hash)
+            .unwrap()
+            .as_incoming()
+            .unwrap()
+            .0,
         incoming_request
     );
     assert_ok!(EthBridge::finalize_incoming_request(
@@ -237,7 +241,7 @@ fn assert_incoming_request_done(
         crate::RequestStatuses::<Runtime>::get(net_id, &req_hash).unwrap(),
         RequestStatus::Done
     );
-    assert!(crate::PendingIncomingRequests::<Runtime>::get(net_id).is_empty());
+    assert!(!crate::RequestsQueue::<Runtime>::get(net_id).contains(&req_hash));
     Ok(())
 }
 
@@ -252,14 +256,13 @@ fn assert_incoming_request_registration_failed(
         crate::RequestsQueue::<Runtime>::get(net_id)
             .last()
             .unwrap()
-            .hash()
             .0,
         incoming_request.hash().0
     );
     assert_err!(
         EthBridge::register_incoming_request(
             Origin::signed(bridge_acc_id.clone()),
-            incoming_request.clone()
+            incoming_request.clone(),
         ),
         error
     );
@@ -411,7 +414,7 @@ fn should_mint_and_burn_sidechain_asset() {
         let tx_hash = request_incoming(
             alice.clone(),
             H256::from_slice(&[1u8; 32]),
-            IncomingRequestKind::Transfer,
+            IncomingTransactionRequestKind::Transfer.into(),
             net_id,
         )
         .unwrap();
@@ -421,6 +424,7 @@ fn should_mint_and_burn_sidechain_asset() {
             asset_id,
             asset_kind,
             amount: 100u32.into(),
+            author: alice.clone(),
             tx_hash,
             at_height: 1,
             timepoint: Default::default(),
@@ -464,7 +468,7 @@ fn should_not_burn_or_mint_sidechain_owned_asset() {
         let tx_hash = request_incoming(
             alice.clone(),
             H256::from_slice(&[1u8; 32]),
-            IncomingRequestKind::Transfer,
+            IncomingTransactionRequestKind::Transfer.into(),
             net_id,
         )
         .unwrap();
@@ -474,6 +478,7 @@ fn should_not_burn_or_mint_sidechain_owned_asset() {
             asset_id: XOR.into(),
             asset_kind: AssetKind::SidechainOwned,
             amount: 100u32.into(),
+            author: alice.clone(),
             tx_hash,
             at_height: 1,
             timepoint: Default::default(),
@@ -546,7 +551,7 @@ fn should_register_outgoing_transfer() {
             network_id: ETH_NETWORK_ID,
             timepoint: bridge_multisig::Pallet::<Runtime>::timepoint(),
         };
-        let last_request = crate::RequestsQueue::get(net_id).pop().unwrap();
+        let last_request = last_request(net_id).unwrap();
         match last_request {
             OffchainRequest::Outgoing(OutgoingRequest::Transfer(r), _) => {
                 assert_eq!(r, outgoing_transfer)
@@ -566,14 +571,14 @@ fn should_not_accept_duplicated_incoming_transfer() {
         assert_ok!(EthBridge::request_from_sidechain(
             Origin::signed(alice.clone()),
             H256::from_slice(&[1u8; 32]),
-            IncomingRequestKind::Transfer,
+            IncomingTransactionRequestKind::Transfer.into(),
             net_id,
         ));
         assert_err!(
             EthBridge::request_from_sidechain(
                 Origin::signed(alice.clone()),
                 H256::from_slice(&[1u8; 32]),
-                IncomingRequestKind::Transfer,
+                IncomingTransactionRequestKind::Transfer.into(),
                 net_id,
             ),
             Error::DuplicatedRequest
@@ -591,7 +596,7 @@ fn should_not_accept_approved_incoming_transfer() {
         let tx_hash = request_incoming(
             alice.clone(),
             H256::from_slice(&[1u8; 32]),
-            IncomingRequestKind::Transfer,
+            IncomingTransactionRequestKind::Transfer.into(),
             net_id,
         )
         .unwrap();
@@ -601,6 +606,7 @@ fn should_not_accept_approved_incoming_transfer() {
             asset_id: XOR.into(),
             asset_kind: AssetKind::Thischain,
             amount: 100u32.into(),
+            author: alice.clone(),
             tx_hash,
             at_height: 1,
             timepoint: Default::default(),
@@ -612,7 +618,7 @@ fn should_not_accept_approved_incoming_transfer() {
             EthBridge::request_from_sidechain(
                 Origin::signed(alice.clone()),
                 H256::from_slice(&[1u8; 32]),
-                IncomingRequestKind::Transfer,
+                IncomingTransactionRequestKind::Transfer.into(),
                 net_id,
             ),
             Error::DuplicatedRequest
@@ -629,7 +635,7 @@ fn should_success_incoming_transfer() {
         let tx_hash = request_incoming(
             alice.clone(),
             H256::from_slice(&[1u8; 32]),
-            IncomingRequestKind::Transfer,
+            IncomingTransactionRequestKind::Transfer.into(),
             net_id,
         )
         .unwrap();
@@ -639,6 +645,7 @@ fn should_success_incoming_transfer() {
             asset_id: XOR.into(),
             asset_kind: AssetKind::Thischain,
             amount: 100u32.into(),
+            author: alice.clone(),
             tx_hash,
             at_height: 1,
             timepoint: Default::default(),
@@ -678,7 +685,7 @@ fn should_cancel_incoming_transfer() {
         let tx_hash = request_incoming(
             alice.clone(),
             H256::from_slice(&[1u8; 32]),
-            IncomingRequestKind::Transfer,
+            IncomingTransactionRequestKind::Transfer.into(),
             net_id,
         )
         .unwrap();
@@ -688,6 +695,7 @@ fn should_cancel_incoming_transfer() {
             asset_id: XOR.into(),
             asset_kind: AssetKind::Thischain,
             amount: 100u32.into(),
+            author: alice.clone(),
             tx_hash,
             at_height: 1,
             timepoint: Default::default(),
@@ -696,7 +704,7 @@ fn should_cancel_incoming_transfer() {
         });
         assert_ok!(EthBridge::register_incoming_request(
             Origin::signed(bridge_acc_id.clone()),
-            incoming_transfer.clone()
+            incoming_transfer.clone(),
         ));
         assert_eq!(
             Assets::total_balance(&XOR.into(), &alice).unwrap(),
@@ -704,15 +712,16 @@ fn should_cancel_incoming_transfer() {
         );
         Assets::unreserve(XOR.into(), &bridge_acc_id, 100u32.into()).unwrap();
         Assets::transfer_from(&XOR.into(), &bridge_acc_id, &bob, 100u32.into()).unwrap();
+        let req_hash = crate::LoadToIncomingRequestHash::<Runtime>::get(net_id, tx_hash);
         assert_ok!(EthBridge::finalize_incoming_request(
             Origin::signed(bridge_acc_id.clone()),
-            tx_hash,
+            req_hash,
             net_id,
         ));
-        assert_eq!(
-            crate::RequestStatuses::<Runtime>::get(net_id, incoming_transfer.hash()).unwrap(),
-            RequestStatus::Failed
-        );
+        assert!(matches!(
+            crate::RequestStatuses::<Runtime>::get(net_id, req_hash).unwrap(),
+            RequestStatus::Failed(_)
+        ));
         assert_eq!(
             Assets::total_balance(&XOR.into(), &alice).unwrap(),
             100000u32.into()
@@ -731,7 +740,7 @@ fn should_fail_incoming_transfer() {
         let tx_hash = request_incoming(
             alice.clone(),
             H256::from_slice(&[1u8; 32]),
-            IncomingRequestKind::Transfer,
+            IncomingTransactionRequestKind::Transfer.into(),
             net_id,
         )
         .unwrap();
@@ -741,6 +750,7 @@ fn should_fail_incoming_transfer() {
             asset_id: XOR.into(),
             asset_kind: AssetKind::Thischain,
             amount: 100u32.into(),
+            author: alice.clone(),
             tx_hash,
             at_height: 1,
             timepoint: Default::default(),
@@ -749,11 +759,16 @@ fn should_fail_incoming_transfer() {
         });
         assert_ok!(EthBridge::register_incoming_request(
             Origin::signed(bridge_acc_id.clone()),
-            incoming_transfer.clone()
+            incoming_transfer.clone(),
         ));
-        assert!(crate::PendingIncomingRequests::<Runtime>::get(net_id).contains(&tx_hash));
+        let req_hash = crate::LoadToIncomingRequestHash::<Runtime>::get(net_id, tx_hash);
+        assert!(crate::RequestsQueue::<Runtime>::get(net_id).contains(&req_hash));
         assert_eq!(
-            crate::IncomingRequests::get(net_id, &tx_hash).unwrap(),
+            *crate::Requests::get(net_id, &req_hash)
+                .unwrap()
+                .as_incoming()
+                .unwrap()
+                .0,
             incoming_transfer
         );
         assert_eq!(
@@ -762,15 +777,15 @@ fn should_fail_incoming_transfer() {
         );
         assert_ok!(EthBridge::abort_request(
             Origin::signed(bridge_acc_id),
-            tx_hash,
+            req_hash,
             Error::Other.into(),
             net_id,
         ));
-        assert_eq!(
-            crate::RequestStatuses::<Runtime>::get(net_id, &tx_hash).unwrap(),
-            RequestStatus::Failed
-        );
-        assert!(crate::PendingIncomingRequests::<Runtime>::get(net_id).is_empty());
+        assert!(matches!(
+            crate::RequestStatuses::<Runtime>::get(net_id, &req_hash).unwrap(),
+            RequestStatus::Failed(_)
+        ));
+        assert!(!crate::RequestsQueue::<Runtime>::get(net_id).contains(&req_hash));
         assert_eq!(
             Assets::total_balance(&XOR.into(), &alice).unwrap(),
             100000u32.into()
@@ -787,7 +802,7 @@ fn should_take_fee_in_incoming_transfer() {
         let tx_hash = request_incoming(
             alice.clone(),
             H256::from_slice(&[1u8; 32]),
-            IncomingRequestKind::Transfer,
+            IncomingTransactionRequestKind::Transfer.into(),
             net_id,
         )
         .unwrap();
@@ -797,6 +812,7 @@ fn should_take_fee_in_incoming_transfer() {
             asset_id: AssetId::XOR.into(),
             asset_kind: AssetKind::SidechainOwned,
             amount: balance!(100),
+            author: alice.clone(),
             tx_hash,
             at_height: 1,
             timepoint: Default::default(),
@@ -824,7 +840,7 @@ fn should_fail_take_fee_in_incoming_transfer() {
         let tx_hash = request_incoming(
             alice.clone(),
             H256::from_slice(&[1u8; 32]),
-            IncomingRequestKind::Transfer,
+            IncomingTransactionRequestKind::Transfer.into(),
             net_id,
         )
         .unwrap();
@@ -834,6 +850,7 @@ fn should_fail_take_fee_in_incoming_transfer() {
             asset_id: AssetId::XOR.into(),
             asset_kind: AssetKind::SidechainOwned,
             amount: 100u32.into(),
+            author: alice.clone(),
             tx_hash,
             at_height: 1,
             timepoint: Default::default(),
@@ -861,7 +878,7 @@ fn should_fail_registering_incoming_request_if_preparation_failed() {
         let tx_hash = request_incoming(
             alice.clone(),
             H256::from_slice(&[1u8; 32]),
-            IncomingRequestKind::Transfer,
+            IncomingTransactionRequestKind::Transfer.into(),
             net_id,
         )
         .unwrap();
@@ -871,6 +888,7 @@ fn should_fail_registering_incoming_request_if_preparation_failed() {
             asset_id: PSWAP.into(),
             asset_kind: AssetKind::Thischain,
             amount: 100u32.into(),
+            author: alice.clone(),
             tx_hash,
             at_height: 1,
             timepoint: Default::default(),
@@ -881,16 +899,18 @@ fn should_fail_registering_incoming_request_if_preparation_failed() {
         assert_err!(
             EthBridge::register_incoming_request(
                 Origin::signed(bridge_acc_id.clone()),
-                incoming_transfer.clone()
+                incoming_transfer.clone(),
             ),
             tokens::Error::<Runtime>::BalanceTooLow
         );
-        assert!(!crate::PendingIncomingRequests::<Runtime>::get(net_id).contains(&tx_hash));
-        assert!(crate::IncomingRequests::<Runtime>::get(net_id, &tx_hash).is_none());
-        assert_eq!(
-            crate::RequestStatuses::<Runtime>::get(net_id, &tx_hash).unwrap(),
-            RequestStatus::Failed
-        );
+        let req_hash = crate::LoadToIncomingRequestHash::<Runtime>::get(net_id, tx_hash);
+        assert!(!crate::RequestsQueue::<Runtime>::get(net_id).contains(&tx_hash));
+        assert!(!crate::RequestsQueue::<Runtime>::get(net_id).contains(&req_hash));
+        assert!(crate::Requests::<Runtime>::get(net_id, &req_hash).is_none());
+        assert!(matches!(
+            crate::RequestStatuses::<Runtime>::get(net_id, &req_hash).unwrap(),
+            RequestStatus::Failed(_)
+        ));
     });
 }
 
@@ -1095,7 +1115,7 @@ fn should_add_peer_in_eth_network() {
         let tx_hash = request_incoming(
             alice.clone(),
             H256::from_slice(&[1u8; 32]),
-            IncomingRequestKind::AddPeer,
+            IncomingTransactionRequestKind::AddPeer.into(),
             net_id,
         )
         .unwrap();
@@ -1103,6 +1123,7 @@ fn should_add_peer_in_eth_network() {
             peer_account_id: new_peer_id.clone(),
             peer_address: new_peer_address,
             added: true,
+            author: alice.clone(),
             tx_hash,
             at_height: 1,
             timepoint: Default::default(),
@@ -1114,7 +1135,7 @@ fn should_add_peer_in_eth_network() {
         let tx_hash = request_incoming(
             alice.clone(),
             H256::from_slice(&[2u8; 32]),
-            IncomingRequestKind::AddPeerCompat,
+            IncomingTransactionRequestKind::AddPeerCompat.into(),
             net_id,
         )
         .unwrap();
@@ -1124,6 +1145,7 @@ fn should_add_peer_in_eth_network() {
                 peer_address: new_peer_address,
                 added: true,
                 contract: ChangePeersContract::XOR,
+                author: alice.clone(),
                 tx_hash,
                 at_height: 2,
                 timepoint: Default::default(),
@@ -1135,7 +1157,7 @@ fn should_add_peer_in_eth_network() {
         let tx_hash = request_incoming(
             alice.clone(),
             H256::from_slice(&[3u8; 32]),
-            IncomingRequestKind::AddPeerCompat,
+            IncomingTransactionRequestKind::AddPeerCompat.into(),
             net_id,
         )
         .unwrap();
@@ -1145,6 +1167,7 @@ fn should_add_peer_in_eth_network() {
                 peer_address: new_peer_address,
                 added: true,
                 contract: ChangePeersContract::VAL,
+                author: alice.clone(),
                 tx_hash,
                 at_height: 3,
                 timepoint: Default::default(),
@@ -1165,6 +1188,7 @@ fn should_add_peer_in_eth_network() {
 fn should_add_peer_in_simple_networks() {
     let mut builder = ExtBuilder::default();
     let net_id = builder.add_network(vec![], None, Some(4));
+    assert_ne!(net_id, ETH_NETWORK_ID);
     let (mut ext, state) = builder.build();
 
     ext.execute_with(|| {
@@ -1204,7 +1228,7 @@ fn should_add_peer_in_simple_networks() {
         let tx_hash = request_incoming(
             alice.clone(),
             H256::from_slice(&[1u8; 32]),
-            IncomingRequestKind::AddPeer,
+            IncomingTransactionRequestKind::AddPeer.into(),
             net_id,
         )
         .unwrap();
@@ -1212,6 +1236,7 @@ fn should_add_peer_in_simple_networks() {
             peer_account_id: new_peer_id.clone(),
             peer_address: new_peer_address,
             added: true,
+            author: alice.clone(),
             tx_hash,
             at_height: 1,
             timepoint: Default::default(),
@@ -1265,7 +1290,7 @@ fn should_remove_peer_in_simple_network() {
         let tx_hash = request_incoming(
             alice.clone(),
             H256::from_slice(&[1u8; 32]),
-            IncomingRequestKind::RemovePeer,
+            IncomingTransactionRequestKind::RemovePeer.into(),
             net_id,
         )
         .unwrap();
@@ -1274,6 +1299,7 @@ fn should_remove_peer_in_simple_network() {
             peer_account_id: peer_id.clone(),
             peer_address,
             added: false,
+            author: alice.clone(),
             tx_hash,
             at_height: 1,
             timepoint: Default::default(),
@@ -1327,7 +1353,7 @@ fn should_remove_peer_in_eth_network() {
         let tx_hash = request_incoming(
             alice.clone(),
             H256::from_slice(&[1u8; 32]),
-            IncomingRequestKind::RemovePeer,
+            IncomingTransactionRequestKind::RemovePeer.into(),
             net_id,
         )
         .unwrap();
@@ -1336,6 +1362,7 @@ fn should_remove_peer_in_eth_network() {
             peer_account_id: peer_id.clone(),
             peer_address,
             added: false,
+            author: alice.clone(),
             tx_hash,
             at_height: 1,
             timepoint: Default::default(),
@@ -1347,7 +1374,7 @@ fn should_remove_peer_in_eth_network() {
         let tx_hash = request_incoming(
             alice.clone(),
             H256::from_slice(&[2u8; 32]),
-            IncomingRequestKind::AddPeerCompat,
+            IncomingTransactionRequestKind::AddPeerCompat.into(),
             net_id,
         )
         .unwrap();
@@ -1357,6 +1384,7 @@ fn should_remove_peer_in_eth_network() {
                 peer_address,
                 added: false,
                 contract: ChangePeersContract::XOR,
+                author: alice.clone(),
                 tx_hash,
                 at_height: 2,
                 timepoint: Default::default(),
@@ -1368,7 +1396,7 @@ fn should_remove_peer_in_eth_network() {
         let tx_hash = request_incoming(
             alice.clone(),
             H256::from_slice(&[3u8; 32]),
-            IncomingRequestKind::AddPeerCompat,
+            IncomingTransactionRequestKind::AddPeerCompat.into(),
             net_id,
         )
         .unwrap();
@@ -1378,6 +1406,7 @@ fn should_remove_peer_in_eth_network() {
                 peer_address,
                 added: false,
                 contract: ChangePeersContract::VAL,
+                author: alice.clone(),
                 tx_hash,
                 at_height: 3,
                 timepoint: Default::default(),
@@ -1483,27 +1512,31 @@ fn should_cancel_ready_outgoing_request() {
             Assets::total_balance(&XOR.into(), &alice).unwrap(),
             0u32.into()
         );
-        let outgoing_req = approve_last_request(&state, net_id).expect("request wasn't approved");
+        let (outgoing_req, outgoing_req_hash) =
+            approve_last_request(&state, net_id).expect("request wasn't approved");
 
         // Cancelling request part
         let tx_hash = H256::from_slice(&[1u8; 32]);
         let request_hash = request_incoming(
             alice.clone(),
             tx_hash,
-            IncomingRequestKind::CancelOutgoingRequest,
+            IncomingMetaRequestKind::CancelOutgoingRequest.into(),
             net_id,
         )
         .unwrap();
         let tx_input = encode_outgoing_request_eth_call::<Runtime>(
             *RECEIVE_BY_ETHEREUM_ASSET_ADDRESS_ID.get().unwrap(),
             &outgoing_req,
+            outgoing_req_hash,
         )
         .unwrap();
         let incoming_transfer =
             IncomingRequest::CancelOutgoingRequest(crate::IncomingCancelOutgoingRequest {
-                request: outgoing_req.clone(),
+                outgoing_request: outgoing_req.clone(),
+                outgoing_request_hash: outgoing_req_hash,
                 initial_request_hash: request_hash,
                 tx_input: tx_input.clone(),
+                author: alice.clone(),
                 tx_hash,
                 at_height: 1,
                 timepoint: Default::default(),
@@ -1542,27 +1575,31 @@ fn should_fail_cancel_ready_outgoing_request_with_wrong_approvals() {
             Assets::total_balance(&XOR.into(), &alice).unwrap(),
             0u32.into()
         );
-        let outgoing_req = approve_last_request(&state, net_id).expect("request wasn't approved");
+        let (outgoing_req, outgoing_req_hash) =
+            approve_last_request(&state, net_id).expect("request wasn't approved");
 
         // Cancelling request part
         let tx_hash = H256::from_slice(&[1u8; 32]);
         let request_hash = request_incoming(
             alice.clone(),
             tx_hash,
-            IncomingRequestKind::CancelOutgoingRequest,
+            IncomingMetaRequestKind::CancelOutgoingRequest.into(),
             net_id,
         )
         .unwrap();
         let tx_input = encode_outgoing_request_eth_call::<Runtime>(
             *RECEIVE_BY_ETHEREUM_ASSET_ADDRESS_ID.get().unwrap(),
             &outgoing_req,
+            outgoing_req_hash,
         )
         .unwrap();
         let incoming_transfer =
             IncomingRequest::CancelOutgoingRequest(crate::IncomingCancelOutgoingRequest {
-                request: outgoing_req.clone(),
+                outgoing_request: outgoing_req.clone(),
+                outgoing_request_hash: outgoing_req_hash,
                 initial_request_hash: request_hash,
                 tx_input: tx_input.clone(),
+                author: alice.clone(),
                 tx_hash,
                 at_height: 1,
                 timepoint: Default::default(),
@@ -1570,7 +1607,7 @@ fn should_fail_cancel_ready_outgoing_request_with_wrong_approvals() {
             });
 
         // Insert some signature
-        crate::RequestApprovals::<Runtime>::mutate(net_id, outgoing_req.hash(), |v| {
+        crate::RequestApprovals::<Runtime>::mutate(net_id, outgoing_req_hash, |v| {
             v.insert(SignatureParams {
                 r: [1; 32],
                 s: [1; 32],
@@ -1614,27 +1651,31 @@ fn should_fail_cancel_unfinished_outgoing_request() {
             Assets::total_balance(&XOR.into(), &alice).unwrap(),
             0u32.into()
         );
-        let outgoing_req = last_outgoing_request(net_id).expect("request wasn't found");
+        let (outgoing_req, outgoing_req_hash) =
+            last_outgoing_request(net_id).expect("request wasn't found");
 
         // Cancelling request part
         let tx_hash = H256::from_slice(&[1u8; 32]);
         let request_hash = request_incoming(
             alice.clone(),
             tx_hash,
-            IncomingRequestKind::CancelOutgoingRequest,
+            IncomingMetaRequestKind::CancelOutgoingRequest.into(),
             net_id,
         )
         .unwrap();
         let tx_input = encode_outgoing_request_eth_call::<Runtime>(
             *RECEIVE_BY_ETHEREUM_ASSET_ADDRESS_ID.get().unwrap(),
             &outgoing_req,
+            outgoing_req_hash,
         )
         .unwrap();
         let incoming_transfer =
             IncomingRequest::CancelOutgoingRequest(crate::IncomingCancelOutgoingRequest {
-                request: outgoing_req,
+                outgoing_request: outgoing_req,
+                outgoing_request_hash: outgoing_req_hash,
                 initial_request_hash: request_hash,
                 tx_input,
+                author: alice.clone(),
                 tx_hash,
                 at_height: 1,
                 timepoint: Default::default(),
@@ -1667,20 +1708,24 @@ fn should_mark_request_as_done() {
             100_u32.into(),
             net_id,
         ));
-        let outgoing_req = approve_last_request(&state, net_id).expect("request wasn't approved");
-        let outgoing_req_hash = outgoing_req.hash();
-        let _request_hash = request_incoming(
+        let (_outgoing_req, outgoing_req_hash) =
+            approve_last_request(&state, net_id).expect("request wasn't approved");
+        let request_hash = request_incoming(
             alice.clone(),
             outgoing_req_hash,
-            IncomingRequestKind::MarkAsDone,
+            IncomingMetaRequestKind::MarkAsDone.into(),
             net_id,
         )
         .unwrap();
-        assert_ok!(EthBridge::finalize_mark_as_done(
-            Origin::signed(state.networks[&net_id].config.bridge_account_id.clone()),
-            outgoing_req_hash,
-            net_id,
-        ));
+        let request = IncomingRequest::MarkAsDone(IncomingMarkAsDoneRequest {
+            outgoing_request_hash: outgoing_req_hash,
+            initial_request_hash: request_hash,
+            author: alice.clone(),
+            at_height: 1,
+            timepoint: Default::default(),
+            network_id: ETH_NETWORK_ID,
+        });
+        assert_incoming_request_done(&state, request).unwrap();
         assert_eq!(
             crate::RequestStatuses::<Runtime>::get(net_id, outgoing_req_hash).unwrap(),
             RequestStatus::Done
@@ -1702,22 +1747,14 @@ fn should_not_mark_request_as_done() {
             100_u32.into(),
             net_id,
         ));
-        let outgoing_req = last_outgoing_request(net_id).expect("request wasn't approved");
-        let outgoing_req_hash = outgoing_req.hash();
+        let (_outgoing_req, outgoing_req_hash) =
+            last_outgoing_request(net_id).expect("request wasn't approved");
         assert_noop!(
             EthBridge::request_from_sidechain(
                 Origin::signed(alice.clone()),
                 outgoing_req_hash,
-                IncomingRequestKind::MarkAsDone,
+                IncomingMetaRequestKind::MarkAsDone.into(),
                 net_id
-            ),
-            Error::RequestIsNotReady
-        );
-        assert_noop!(
-            EthBridge::finalize_mark_as_done(
-                Origin::signed(state.networks[&net_id].config.bridge_account_id.clone()),
-                outgoing_req_hash,
-                net_id,
             ),
             Error::RequestIsNotReady
         );
@@ -1725,7 +1762,7 @@ fn should_not_mark_request_as_done() {
         let req_hash = request_incoming(
             alice.clone(),
             H256::from_slice(&[1u8; 32]),
-            IncomingRequestKind::Transfer,
+            IncomingTransactionRequestKind::Transfer.into(),
             net_id,
         )
         .unwrap();
@@ -1735,6 +1772,7 @@ fn should_not_mark_request_as_done() {
             asset_id: XOR.into(),
             asset_kind: AssetKind::Thischain,
             amount: 100u32.into(),
+            author: alice.clone(),
             tx_hash: req_hash,
             at_height: 1,
             timepoint: Default::default(),
@@ -1743,10 +1781,11 @@ fn should_not_mark_request_as_done() {
         });
         assert_incoming_request_done(&state, incoming_transfer.clone()).unwrap();
         assert_noop!(
-            EthBridge::finalize_mark_as_done(
-                Origin::signed(state.networks[&net_id].config.bridge_account_id.clone()),
+            EthBridge::request_from_sidechain(
+                Origin::signed(alice.clone()),
                 req_hash,
-                net_id,
+                IncomingMetaRequestKind::MarkAsDone.into(),
+                net_id
             ),
             Error::RequestIsNotReady
         );
@@ -1782,7 +1821,7 @@ fn should_fail_request_to_unknown_network() {
             EthBridge::request_from_sidechain(
                 Origin::signed(alice),
                 H256::from_slice(&[1u8; 32]),
-                IncomingRequestKind::Transfer,
+                IncomingTransactionRequestKind::Transfer.into(),
                 net_id
             ),
             Error::UnknownNetwork
@@ -1843,7 +1882,7 @@ fn should_reserve_owned_asset_on_different_networks() {
         let tx_hash = request_incoming(
             alice.clone(),
             H256::from_slice(&[1u8; 32]),
-            IncomingRequestKind::Transfer,
+            IncomingTransactionRequestKind::Transfer.into(),
             net_id_0,
         )
         .unwrap();
@@ -1853,6 +1892,7 @@ fn should_reserve_owned_asset_on_different_networks() {
             asset_id,
             asset_kind: AssetKind::Thischain,
             amount: 50u32.into(),
+            author: alice.clone(),
             tx_hash,
             at_height: 1,
             timepoint: Default::default(),
@@ -1863,7 +1903,7 @@ fn should_reserve_owned_asset_on_different_networks() {
         let tx_hash = request_incoming(
             alice.clone(),
             H256::from_slice(&[2; 32]),
-            IncomingRequestKind::Transfer,
+            IncomingTransactionRequestKind::Transfer.into(),
             net_id_1,
         )
         .unwrap();
@@ -1873,6 +1913,7 @@ fn should_reserve_owned_asset_on_different_networks() {
             asset_id,
             asset_kind: AssetKind::Thischain,
             amount: 50u32.into(),
+            author: alice.clone(),
             tx_hash,
             at_height: 1,
             timepoint: Default::default(),
@@ -1933,7 +1974,7 @@ fn should_handle_sidechain_and_thischain_asset_on_different_networks() {
         let tx_hash = request_incoming(
             alice.clone(),
             H256::from_slice(&[1u8; 32]),
-            IncomingRequestKind::Transfer,
+            IncomingTransactionRequestKind::Transfer.into(),
             net_id_0,
         )
         .unwrap();
@@ -1943,6 +1984,7 @@ fn should_handle_sidechain_and_thischain_asset_on_different_networks() {
             asset_id,
             asset_kind: AssetKind::Sidechain,
             amount: 50u32.into(),
+            author: alice.clone(),
             tx_hash,
             at_height: 1,
             timepoint: Default::default(),
@@ -1963,7 +2005,7 @@ fn should_handle_sidechain_and_thischain_asset_on_different_networks() {
         let tx_hash = request_incoming(
             alice.clone(),
             H256::from_slice(&[2; 32]),
-            IncomingRequestKind::Transfer,
+            IncomingTransactionRequestKind::Transfer.into(),
             net_id_1,
         )
         .unwrap();
@@ -1973,6 +2015,7 @@ fn should_handle_sidechain_and_thischain_asset_on_different_networks() {
             asset_id,
             asset_kind: AssetKind::Thischain,
             amount: 50u32.into(),
+            author: alice.clone(),
             tx_hash,
             at_height: 1,
             timepoint: Default::default(),
@@ -2016,12 +2059,13 @@ fn should_migrate() {
         let tx_hash = request_incoming(
             alice.clone(),
             H256::from_slice(&[10; 32]),
-            IncomingRequestKind::PrepareForMigration,
+            IncomingTransactionRequestKind::PrepareForMigration.into(),
             net_id,
         )
         .unwrap();
         let incoming_transfer =
             IncomingRequest::PrepareForMigration(crate::IncomingPrepareForMigration {
+                author: alice.clone(),
                 tx_hash,
                 at_height: 1,
                 timepoint: Default::default(),
@@ -2067,12 +2111,13 @@ fn should_migrate() {
         let tx_hash = request_incoming(
             alice.clone(),
             H256::from_slice(&[20; 32]),
-            IncomingRequestKind::Migrate,
+            IncomingTransactionRequestKind::Migrate.into(),
             net_id,
         )
         .unwrap();
         let incoming_transfer = IncomingRequest::Migrate(crate::IncomingMigrate {
             new_contract_address,
+            author: alice.clone(),
             tx_hash,
             at_height: 2,
             timepoint: Default::default(),
@@ -2108,12 +2153,13 @@ fn should_not_allow_duplicate_migration_requests() {
         let tx_hash = request_incoming(
             alice.clone(),
             H256::from_slice(&[10; 32]),
-            IncomingRequestKind::PrepareForMigration,
+            IncomingTransactionRequestKind::PrepareForMigration.into(),
             net_id,
         )
         .unwrap();
         let incoming_transfer =
             IncomingRequest::PrepareForMigration(crate::IncomingPrepareForMigration {
+                author: alice.clone(),
                 tx_hash,
                 at_height: 1,
                 timepoint: Default::default(),
@@ -2124,12 +2170,13 @@ fn should_not_allow_duplicate_migration_requests() {
         let tx_hash = request_incoming(
             alice.clone(),
             H256::from_slice(&[100; 32]),
-            IncomingRequestKind::PrepareForMigration,
+            IncomingTransactionRequestKind::PrepareForMigration.into(),
             net_id,
         )
         .unwrap();
         let incoming_transfer =
             IncomingRequest::PrepareForMigration(crate::IncomingPrepareForMigration {
+                author: alice.clone(),
                 tx_hash,
                 at_height: 2,
                 timepoint: Default::default(),
@@ -2156,12 +2203,13 @@ fn should_not_allow_duplicate_migration_requests() {
         let tx_hash = request_incoming(
             alice.clone(),
             H256::from_slice(&[20; 32]),
-            IncomingRequestKind::Migrate,
+            IncomingTransactionRequestKind::Migrate.into(),
             net_id,
         )
         .unwrap();
         let incoming_transfer = IncomingRequest::Migrate(crate::IncomingMigrate {
             new_contract_address,
+            author: alice.clone(),
             tx_hash,
             at_height: 2,
             timepoint: Default::default(),
@@ -2172,12 +2220,13 @@ fn should_not_allow_duplicate_migration_requests() {
         let tx_hash = request_incoming(
             alice.clone(),
             H256::from_slice(&[200; 32]),
-            IncomingRequestKind::Migrate,
+            IncomingTransactionRequestKind::Migrate.into(),
             net_id,
         )
         .unwrap();
         let incoming_transfer = IncomingRequest::Migrate(crate::IncomingMigrate {
             new_contract_address,
+            author: alice.clone(),
             tx_hash,
             at_height: 2,
             timepoint: Default::default(),
@@ -2200,24 +2249,17 @@ fn should_ensure_known_contract() {
         assert_ok!(EthBridge::ensure_known_contract(
             EthBridge::xor_master_contract_address(),
             ETH_NETWORK_ID,
-            IncomingRequestKind::Transfer,
         ));
         assert_ok!(EthBridge::ensure_known_contract(
             EthBridge::val_master_contract_address(),
             ETH_NETWORK_ID,
-            IncomingRequestKind::Transfer,
         ));
         assert_ok!(EthBridge::ensure_known_contract(
             crate::BridgeContractAddress::<Runtime>::get(ETH_NETWORK_ID),
             ETH_NETWORK_ID,
-            IncomingRequestKind::Transfer,
         ));
         assert_err!(
-            EthBridge::ensure_known_contract(
-                EthBridge::xor_master_contract_address(),
-                100,
-                IncomingRequestKind::Transfer,
-            ),
+            EthBridge::ensure_known_contract(EthBridge::xor_master_contract_address(), 100,),
             Error::UnknownContractAddress
         );
     });
@@ -2246,20 +2288,21 @@ fn should_parse_add_peer_on_old_contract() {
 
         let tx_hash = H256([1; 32]);
         // add peer
-        let incoming_request = IncomingPreRequest::<Runtime> {
+        let incoming_request = LoadIncomingTransactionRequest::<Runtime> {
             author: alice.clone(),
             hash: tx_hash,
             timepoint: Default::default(),
-            kind: IncomingRequestKind::AddPeer,
+            kind: IncomingTransactionRequestKind::AddPeer,
             network_id: net_id,
         };
         let tx = Transaction {
-            input: Bytes(hex!("ca70cf6e00000000000000000000000025451a4de12dccc2d166922fa938e900fcc4ed24441b7425bbf44fe617047e8f4cea8c47be35c8828257aa5793c08167e7c715eb00000000000000000000000000000000000000000000000000000000000000a000000000000000000000000000000000000000000000000000000000000000e000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000008900000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000").to_vec()),
+            input: Bytes(hex!("ca70cf6e00000000000000000000000025451a4de12dccc2d166922fa938e900fcc4ed2404f11457b19ef557e6065fe37ab030b6dd953a206e057317516abf5eab3e750100000000000000000000000000000000000000000000000000000000000000a000000000000000000000000000000000000000000000000000000000000000e000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000008900000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000").to_vec()),
             block_number: Some(1u64.into()),
             to: Some(types::H160(EthBridge::xor_master_contract_address().0)),
             ..Default::default()
         };
-        let inc_req = EthBridge::parse_old_incoming_request_method_call(incoming_request, tx).unwrap();
+        let inc_req =
+            EthBridge::parse_old_incoming_request_method_call(incoming_request, tx).unwrap();
         assert_eq!(
             inc_req,
             IncomingRequest::ChangePeersCompat(IncomingChangePeersCompat {
@@ -2267,6 +2310,7 @@ fn should_parse_add_peer_on_old_contract() {
                 peer_address: new_peer_address,
                 added: true,
                 contract: ChangePeersContract::XOR,
+                author: alice.clone(),
                 tx_hash,
                 at_height: 1,
                 timepoint: Default::default(),
@@ -2296,15 +2340,15 @@ fn should_parse_remove_peer_on_old_contract() {
             net_id,
         ));
 
-        let incoming_request = IncomingPreRequest::<Runtime> {
+        let incoming_request = LoadIncomingTransactionRequest::<Runtime> {
             author: alice.clone(),
             hash: tx_hash,
             timepoint: Default::default(),
-            kind: IncomingRequestKind::RemovePeer,
+            kind: IncomingTransactionRequestKind::RemovePeer,
             network_id: net_id,
         };
         let tx = Transaction {
-            input: Bytes(hex!("89c39baf00000000000000000000000025451a4de12dccc2d166922fa938e900fcc4ed24451d32cbef7d41bbc741949402308c03fe43ab4efe4aa8f83c21e732c9e1ca1c00000000000000000000000000000000000000000000000000000000000000a000000000000000000000000000000000000000000000000000000000000000c000000000000000000000000000000000000000000000000000000000000000e0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000").to_vec()),
+            input: Bytes(hex!("89c39baf00000000000000000000000025451a4de12dccc2d166922fa938e900fcc4ed24729299733880cd3b2f635e9c30cd7e99234dbd049fad99fe82fd8f1f87fdd43c00000000000000000000000000000000000000000000000000000000000000a000000000000000000000000000000000000000000000000000000000000000c000000000000000000000000000000000000000000000000000000000000000e0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000").to_vec()),
             block_number: Some(1u64.into()),
             to: Some(types::H160(EthBridge::val_master_contract_address().0)),
             ..Default::default()
@@ -2316,6 +2360,7 @@ fn should_parse_remove_peer_on_old_contract() {
                 peer_address: new_peer_address,
                 added: false,
                 contract: ChangePeersContract::VAL,
+                author: alice.clone(),
                 tx_hash,
                 at_height: 1,
                 timepoint: Default::default(),
@@ -2564,6 +2609,7 @@ fn should_cancel_incoming_prepared_requests() {
                     asset_id: XOR.into(),
                     asset_kind: AssetKind::SidechainOwned,
                     amount: 1_u32.into(),
+                    author: alice.clone(),
                     tx_hash: Default::default(),
                     network_id: net_id,
                     timepoint: Default::default(),
@@ -2580,6 +2626,7 @@ fn should_cancel_incoming_prepared_requests() {
                     asset_id: DOT.into(),
                     asset_kind: AssetKind::Thischain,
                     amount: 1_u32.into(),
+                    author: alice.clone(),
                     tx_hash: Default::default(),
                     network_id: net_id,
                     timepoint: Default::default(),
@@ -2596,6 +2643,7 @@ fn should_cancel_incoming_prepared_requests() {
                     asset_id: USDT.into(),
                     asset_kind: AssetKind::Sidechain,
                     amount: 1_u32.into(),
+                    author: alice.clone(),
                     tx_hash: Default::default(),
                     network_id: net_id,
                     timepoint: Default::default(),
@@ -2612,6 +2660,7 @@ fn should_cancel_incoming_prepared_requests() {
                     precision: 18,
                     symbol: Default::default(),
                     name: Default::default(),
+                    author: alice.clone(),
                     tx_hash: Default::default(),
                     network_id: net_id,
                     timepoint: Default::default(),
@@ -2622,6 +2671,7 @@ fn should_cancel_incoming_prepared_requests() {
             (
                 vec![],
                 IncomingPrepareForMigration {
+                    author: alice.clone(),
                     tx_hash: Default::default(),
                     network_id: net_id,
                     timepoint: Default::default(),
@@ -2631,6 +2681,7 @@ fn should_cancel_incoming_prepared_requests() {
             ),
             (
                 vec![IncomingPrepareForMigration {
+                    author: alice.clone(),
                     tx_hash: Default::default(),
                     network_id: net_id,
                     timepoint: Default::default(),
@@ -2639,6 +2690,7 @@ fn should_cancel_incoming_prepared_requests() {
                 .into()],
                 IncomingMigrate {
                     new_contract_address: Default::default(),
+                    author: alice.clone(),
                     tx_hash: Default::default(),
                     network_id: net_id,
                     timepoint: Default::default(),

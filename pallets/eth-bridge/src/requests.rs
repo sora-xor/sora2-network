@@ -40,6 +40,7 @@ pub struct IncomingAddToken<T: Config> {
     pub precision: BalancePrecision,
     pub symbol: AssetSymbol,
     pub name: AssetName,
+    pub author: T::AccountId,
     pub tx_hash: H256,
     pub at_height: u64,
     pub timepoint: Timepoint<T>,
@@ -64,6 +65,10 @@ impl<T: Config> IncomingAddToken<T> {
     pub fn timepoint(&self) -> Timepoint<T> {
         self.timepoint
     }
+
+    pub fn author(&self) -> &T::AccountId {
+        &self.author
+    }
 }
 
 /// Incoming request for adding/removing peer in a bridge.
@@ -73,6 +78,7 @@ pub struct IncomingChangePeers<T: Config> {
     pub peer_account_id: T::AccountId,
     pub peer_address: Address,
     pub added: bool,
+    pub author: T::AccountId,
     pub tx_hash: H256,
     pub at_height: u64,
     pub timepoint: Timepoint<T>,
@@ -127,6 +133,10 @@ impl<T: Config> IncomingChangePeers<T> {
     pub fn timepoint(&self) -> Timepoint<T> {
         self.timepoint
     }
+
+    pub fn author(&self) -> &T::AccountId {
+        &self.author
+    }
 }
 
 #[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug)]
@@ -143,6 +153,7 @@ pub struct IncomingChangePeersCompat<T: Config> {
     pub peer_address: Address,
     pub added: bool,
     pub contract: ChangePeersContract,
+    pub author: T::AccountId,
     pub tx_hash: H256,
     pub at_height: u64,
     pub timepoint: Timepoint<T>,
@@ -196,6 +207,10 @@ impl<T: Config> IncomingChangePeersCompat<T> {
     pub fn timepoint(&self) -> Timepoint<T> {
         self.timepoint
     }
+
+    pub fn author(&self) -> &T::AccountId {
+        &self.author
+    }
 }
 
 /// Incoming request for transferring token from Sidechain to Thischain.
@@ -208,6 +223,7 @@ pub struct IncomingTransfer<T: Config> {
     pub asset_kind: AssetKind,
     #[cfg_attr(feature = "std", serde(with = "string_serialization"))]
     pub amount: Balance,
+    pub author: T::AccountId,
     pub tx_hash: H256,
     pub at_height: u64,
     pub timepoint: Timepoint<T>,
@@ -288,6 +304,10 @@ impl<T: Config> IncomingTransfer<T> {
         self.timepoint
     }
 
+    pub fn author(&self) -> &T::AccountId {
+        &self.author
+    }
+
     pub fn enable_taking_fee(&mut self) {
         self.should_take_fee = true;
     }
@@ -297,10 +317,10 @@ impl<T: Config> IncomingTransfer<T> {
 pub fn encode_outgoing_request_eth_call<T: Config>(
     method_id: MethodId,
     request: &OutgoingRequest<T>,
+    request_hash: H256,
 ) -> Result<Vec<u8>, Error<T>> {
     let fun_metas = &FUNCTIONS.get().unwrap();
     let fun_meta = fun_metas.get(&method_id).ok_or(Error::UnknownMethodId)?;
-    let request_hash = request.hash();
     let request_encoded = request.to_eth_abi(request_hash)?;
     let approvals: BTreeSet<SignatureParams> =
         crate::RequestApprovals::<T>::get(request.network_id(), &request_hash);
@@ -311,16 +331,18 @@ pub fn encode_outgoing_request_eth_call<T: Config>(
         .map_err(|_| Error::EthAbiEncodingError)
 }
 
-/// Incoming request for cancelling a broken outgoing request. "Broken" means that the request
+/// Incoming request for cancelling a obsolete outgoing request. "Obsolete" means that the request
 /// signatures were collected, but something changed in the bridge state (e.g., peers set) and
 /// the signatures became invalid. In this case we want to cancel the request to be able to
 /// re-submit it later.
 #[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug)]
 #[cfg_attr(feature = "std", derive(Serialize))]
 pub struct IncomingCancelOutgoingRequest<T: Config> {
-    pub request: OutgoingRequest<T>,
+    pub outgoing_request: OutgoingRequest<T>,
+    pub outgoing_request_hash: H256,
     pub initial_request_hash: H256,
     pub tx_input: Vec<u8>,
+    pub author: T::AccountId,
     pub tx_hash: H256,
     pub at_height: u64,
     pub timepoint: Timepoint<T>,
@@ -332,9 +354,9 @@ impl<T: Config> IncomingCancelOutgoingRequest<T> {
     /// with the `tx_input`, otherwise an error is thrown. After that, a status of the request
     /// is changed to `Frozen` to stop receiving approvals.
     pub fn prepare(&self) -> Result<(), DispatchError> {
-        let request_hash = self.request.hash();
+        let request_hash = self.outgoing_request_hash;
         let net_id = self.network_id;
-        let req_status = crate::RequestStatuses::<T>::get(net_id, &request_hash)
+        let req_status = crate::RequestStatuses::<T>::get(net_id, &self.outgoing_request_hash)
             .ok_or(crate::Error::<T>::UnknownRequest)?;
         ensure!(
             req_status == RequestStatus::ApprovalsReady,
@@ -343,7 +365,11 @@ impl<T: Config> IncomingCancelOutgoingRequest<T> {
         let mut method_id = [0u8; METHOD_ID_SIZE];
         ensure!(self.tx_input.len() >= 4, Error::<T>::InvalidFunctionInput);
         method_id.clone_from_slice(&self.tx_input[..METHOD_ID_SIZE]);
-        let expected_input = encode_outgoing_request_eth_call(method_id, &self.request)?;
+        let expected_input = encode_outgoing_request_eth_call(
+            method_id,
+            &self.outgoing_request,
+            self.outgoing_request_hash,
+        )?;
         ensure!(
             expected_input == self.tx_input,
             crate::Error::<T>::InvalidContractInput
@@ -356,7 +382,7 @@ impl<T: Config> IncomingCancelOutgoingRequest<T> {
     pub fn cancel(&self) -> Result<(), DispatchError> {
         crate::RequestStatuses::<T>::insert(
             self.network_id,
-            &self.request.hash(),
+            &self.outgoing_request_hash,
             RequestStatus::ApprovalsReady,
         );
         Ok(())
@@ -366,16 +392,79 @@ impl<T: Config> IncomingCancelOutgoingRequest<T> {
     /// make it available for resubmission.
     pub fn finalize(&self) -> Result<H256, DispatchError> {
         // TODO: `common::with_transaction` should be removed in the future after stabilization.
-        common::with_transaction(|| self.request.cancel())?;
-        let hash = &self.request.hash();
+        common::with_transaction(|| self.outgoing_request.cancel())?;
+        let hash = &self.outgoing_request_hash;
         let net_id = self.network_id;
-        crate::RequestStatuses::<T>::insert(net_id, hash, RequestStatus::Failed);
+        crate::RequestStatuses::<T>::insert(
+            net_id,
+            hash,
+            RequestStatus::Failed(Error::<T>::Cancelled.into()),
+        );
         crate::RequestApprovals::<T>::take(net_id, hash);
         Ok(self.initial_request_hash)
     }
 
     pub fn timepoint(&self) -> Timepoint<T> {
         self.timepoint
+    }
+
+    pub fn author(&self) -> &T::AccountId {
+        &self.author
+    }
+}
+
+/// Incoming request that's used to mark outgoing requests as done.
+/// Since off-chain workers query Sidechain networks lazily, we should force them to check
+/// if some outgoing request was finalized on Sidechain.
+#[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug)]
+#[cfg_attr(feature = "std", derive(Serialize))]
+pub struct IncomingMarkAsDoneRequest<T: Config> {
+    pub outgoing_request_hash: H256,
+    pub initial_request_hash: H256,
+    pub author: T::AccountId,
+    pub at_height: u64,
+    pub timepoint: Timepoint<T>,
+    pub network_id: T::NetworkId,
+}
+
+impl<T: Config> IncomingMarkAsDoneRequest<T> {
+    /// Checks that the marking request status is `ApprovalsReady`.
+    pub fn validate(&self) -> Result<(), DispatchError> {
+        let request_status =
+            crate::RequestStatuses::<T>::get(self.network_id, self.outgoing_request_hash)
+                .ok_or(Error::<T>::UnknownRequest)?;
+        ensure!(
+            request_status == RequestStatus::ApprovalsReady,
+            Error::<T>::RequestIsNotReady
+        );
+        Ok(())
+    }
+
+    pub fn prepare(&self) -> Result<(), DispatchError> {
+        Ok(())
+    }
+
+    pub fn cancel(&self) -> Result<(), DispatchError> {
+        Ok(())
+    }
+
+    /// Validates the request again and changes the status of the marking request to `Done`.
+    pub fn finalize(&self) -> Result<H256, DispatchError> {
+        self.validate()?;
+        crate::RequestStatuses::<T>::insert(
+            self.network_id,
+            self.outgoing_request_hash,
+            RequestStatus::Done,
+        );
+        Ok(self.initial_request_hash)
+    }
+
+    pub fn timepoint(&self) -> Timepoint<T> {
+        self.timepoint
+    }
+
+    pub fn author(&self) -> &T::AccountId {
+        &self.author
     }
 }
 
@@ -384,6 +473,7 @@ impl<T: Config> IncomingCancelOutgoingRequest<T> {
 #[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug)]
 #[cfg_attr(feature = "std", derive(Serialize))]
 pub struct IncomingPrepareForMigration<T: Config> {
+    pub author: T::AccountId,
     pub tx_hash: H256,
     pub at_height: u64,
     pub timepoint: Timepoint<T>,
@@ -414,6 +504,10 @@ impl<T: Config> IncomingPrepareForMigration<T> {
     pub fn timepoint(&self) -> Timepoint<T> {
         self.timepoint
     }
+
+    pub fn author(&self) -> &T::AccountId {
+        &self.author
+    }
 }
 
 /// Incoming request that acts as an acknowledgement to a corresponding
@@ -422,6 +516,7 @@ impl<T: Config> IncomingPrepareForMigration<T> {
 #[cfg_attr(feature = "std", derive(Serialize))]
 pub struct IncomingMigrate<T: Config> {
     pub new_contract_address: Address,
+    pub author: T::AccountId,
     pub tx_hash: H256,
     pub at_height: u64,
     pub timepoint: Timepoint<T>,
@@ -452,6 +547,10 @@ impl<T: Config> IncomingMigrate<T> {
 
     pub fn timepoint(&self) -> Timepoint<T> {
         self.timepoint
+    }
+
+    pub fn author(&self) -> &T::AccountId {
+        &self.author
     }
 }
 
@@ -1395,7 +1494,13 @@ impl OutgoingMigrateEncoded {
     }
 }
 
-// TODO: docs
+/// A helper structure used to add or remove peer on Ethereum network.
+///
+/// On Ethereum network there are 3 bridge contracts: Main, XOR and VAL. Each of them has a set of
+/// peers' public keys that's need to be almost the same at any time (+- 1 signatory). To
+/// synchronize them, we use this structure, that contains the current readiness state of each
+/// contract. We add or remove peer only when all of them is in `true` state
+/// (see `EthPeersSync::is_ready`).
 #[derive(Clone, Default, PartialEq, Eq, Encode, Decode, RuntimeDebug)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct EthPeersSync {
@@ -1481,7 +1586,7 @@ macro_rules! impl_from_for_incoming_requests {
 
 impl_from_for_incoming_requests! {
     IncomingTransfer<T>, Transfer;
-    IncomingAddToken<T>, AddAsset;
+    IncomingAddToken<T>, AddToken;
     IncomingChangePeers<T>, ChangePeers;
     IncomingChangePeersCompat<T>, ChangePeersCompat;
     IncomingPrepareForMigration<T>, PrepareForMigration;
