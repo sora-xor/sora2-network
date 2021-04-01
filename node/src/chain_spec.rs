@@ -9,7 +9,7 @@ use framenode_runtime::{
     IrohaMigrationConfig, LiquiditySourceType, MulticollateralBondingCurvePoolConfig,
     PermissionsConfig, PswapDistributionConfig, RewardsConfig, Runtime, SessionConfig, Signature,
     StakerStatus, StakingConfig, SudoConfig, SystemConfig, TechAccountId, TechnicalCommitteeConfig,
-    TechnicalConfig, TokensConfig, WASM_BINARY
+    TechnicalConfig, TokensConfig, WASM_BINARY,
 };
 
 use common::prelude::{Balance, DEXInfo, FixedWrapper};
@@ -170,7 +170,7 @@ pub fn dev_net() -> ChainSpec {
                     val_master_contract_address: hex!("47e229aa491763038f6a505b4f85d8eb463f0962")
                         .into(),
                     val_contract_address: hex!("68339de68c9af6577c54867728dbb2db9d7368bf").into(),
-                    bridge_contract_address: hex!("b7b3060589e5bf6e4a2c76edc229127745c9c13c")
+                    bridge_contract_address: hex!("46dcecb63180c116f58212b1eea2e171d5840dd8")
                         .into(),
                 },
             )
@@ -617,7 +617,7 @@ fn testnet_genesis(
     ];
     #[cfg(feature = "faucet")]
     let faucet_config = {
-        let initial_faucet_balance = balance!(500000);
+        let initial_faucet_balance = balance!(6000000000);
         let faucet_tech_account_id = TechAccountId::Generic(
             faucet::TECH_ACCOUNT_PREFIX.to_vec(),
             faucet::TECH_ACCOUNT_MAIN.to_vec(),

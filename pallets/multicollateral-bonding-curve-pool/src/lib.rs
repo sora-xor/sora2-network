@@ -17,8 +17,8 @@ use common::prelude::{
     SwapAmount, SwapOutcome,
 };
 use common::{
-    balance, fixed, fixed_wrapper, DEXId, DexIdOf, LiquiditySource, LiquiditySourceFilter,
-    LiquiditySourceType, ManagementMode, PSWAP, VAL,
+    balance, fixed, fixed_wrapper, DEXId, DexIdOf, GetMarketInfo, LiquiditySource,
+    LiquiditySourceFilter, LiquiditySourceType, ManagementMode, PSWAP, VAL,
 };
 use frame_support::traits::Get;
 use frame_support::weights::Weight;
@@ -1255,5 +1255,41 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
                 .swap()
             }
         })
+    }
+}
+
+impl<T: Config> GetMarketInfo<T::AssetId> for Module<T> {
+    fn buy_price(
+        base_asset: &T::AssetId,
+        collateral_asset: &T::AssetId,
+    ) -> Result<Fixed, DispatchError> {
+        let base_price_wrt_ref: FixedWrapper = Self::buy_function(base_asset, fixed!(0))?.into();
+        let collateral_price_per_reference_unit: FixedWrapper =
+            Self::reference_price(collateral_asset)?.into();
+        let output = (base_price_wrt_ref / collateral_price_per_reference_unit)
+            .get()
+            .map_err(|_| Error::<T>::PriceCalculationFailed)?;
+        Ok(output)
+    }
+
+    fn sell_price(
+        base_asset: &T::AssetId,
+        collateral_asset: &T::AssetId,
+    ) -> Result<Fixed, DispatchError> {
+        let base_price_wrt_ref: FixedWrapper = Self::sell_function(base_asset, fixed!(0))?.into();
+        let collateral_price_per_reference_unit: FixedWrapper =
+            Self::reference_price(collateral_asset)?.into();
+        let output = (base_price_wrt_ref / collateral_price_per_reference_unit)
+            .get()
+            .map_err(|_| Error::<T>::PriceCalculationFailed)?;
+        Ok(output)
+    }
+
+    fn collateral_reserves(asset_id: &T::AssetId) -> Result<Balance, DispatchError> {
+        let reserves_tech_account_id = ReservesAcc::<T>::get();
+        let reserves_account_id =
+            Technical::<T>::tech_account_id_to_account_id(&reserves_tech_account_id)?;
+        let collateral_supply = Assets::<T>::free_balance(asset_id, &reserves_account_id)?;
+        Ok(collateral_supply)
     }
 }

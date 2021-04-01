@@ -1,7 +1,9 @@
 use crate::{self as faucet, Config};
 use common::mock::ExistentialDeposits;
 use common::prelude::Balance;
-use common::{self, balance, Amount, AssetId32, AssetName, AssetSymbol, TechPurpose, USDT, VAL, XOR};
+use common::{
+    self, balance, Amount, AssetId32, AssetName, AssetSymbol, TechPurpose, USDT, VAL, XOR,
+};
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::GenesisBuild;
 use frame_support::weights::Weight;
@@ -175,7 +177,7 @@ impl ExtBuilder {
         let account_id: AccountId = account_id();
 
         BalancesConfig {
-            balances: vec![(account_id.clone(), balance!(150))],
+            balances: vec![(account_id.clone(), balance!(9000))],
         }
         .assimilate_storage(&mut t)
         .unwrap();
@@ -216,7 +218,7 @@ impl ExtBuilder {
         .unwrap();
 
         TokensConfig {
-            endowed_accounts: vec![(account_id.clone(), VAL.into(), balance!(150))],
+            endowed_accounts: vec![(account_id.clone(), VAL.into(), balance!(9000))],
         }
         .assimilate_storage(&mut t)
         .unwrap();

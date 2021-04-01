@@ -181,7 +181,7 @@ mod tests {
             assert!(crate::is_symbol_valid(&AssetSymbol(b"PSWAP".to_vec())));
             assert!(crate::is_symbol_valid(&AssetSymbol(b"GT".to_vec())));
             assert!(crate::is_symbol_valid(&AssetSymbol(b"BP".to_vec())));
-            
+
             assert!(!crate::is_symbol_valid(&AssetSymbol(b"ABCDEFGH".to_vec())));
             assert!(!crate::is_symbol_valid(&AssetSymbol(b"AB1".to_vec())));
             assert!(!crate::is_symbol_valid(&AssetSymbol(
@@ -202,10 +202,14 @@ mod tests {
             assert!(crate::is_name_valid(&AssetName(b"PSWAP".to_vec())));
             assert!(crate::is_name_valid(&AssetName(b"GT".to_vec())));
             assert!(crate::is_name_valid(&AssetName(b"BP".to_vec())));
-            assert!(crate::is_name_valid(&AssetName(b"SORA Validator Token".to_vec())));
+            assert!(crate::is_name_valid(&AssetName(
+                b"SORA Validator Token".to_vec()
+            )));
             assert!(crate::is_name_valid(&AssetName(b"AB1".to_vec())));
 
-            assert!(!crate::is_name_valid(&AssetName(b"This is a name with length over thirty three".to_vec())));
+            assert!(!crate::is_name_valid(&AssetName(
+                b"This is a name with length over thirty three".to_vec()
+            )));
             assert!(!crate::is_name_valid(&AssetName(b"AB1_".to_vec())));
             assert!(!crate::is_name_valid(&AssetName(
                 b"\xF0\x9F\x98\xBF".to_vec()

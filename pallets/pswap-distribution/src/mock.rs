@@ -2,7 +2,8 @@ use crate::{self as pswap_distribution, Config};
 use common::mock::ExistentialDeposits;
 use common::prelude::Balance;
 use common::{
-    balance, fixed, fixed_from_basis_points, AssetName, AssetSymbol, BalancePrecision, Fixed, FromGenericPair,
+    balance, fixed, fixed_from_basis_points, AssetName, AssetSymbol, BalancePrecision, Fixed,
+    FromGenericPair,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::GenesisBuild;

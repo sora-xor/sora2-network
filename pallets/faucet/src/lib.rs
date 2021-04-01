@@ -21,7 +21,7 @@ pub const TECH_ACCOUNT_PREFIX: &[u8] = b"faucet";
 pub const TECH_ACCOUNT_MAIN: &[u8] = b"main";
 
 pub fn balance_limit() -> Balance {
-    balance!(100)
+    balance!(6000)
 }
 
 pub fn transfer_limit_block_count<T: frame_system::Config>() -> BlockNumberOf<T> {
