@@ -49,7 +49,7 @@ use crate::types::{Bytes, CallRequest, Log, Transaction, TransactionReceipt};
 use alloc::string::String;
 use codec::{Decode, Encode, FullCodec};
 use common::prelude::Balance;
-use common::{eth, AssetName, AssetSymbol, BalancePrecision};
+use common::{eth, AssetName, AssetSymbol, BalancePrecision, DEFAULT_BALANCE_PRECISION};
 use core::convert::{TryFrom, TryInto};
 use core::{iter, line, stringify};
 use ethabi::{ParamType, Token};
@@ -442,6 +442,19 @@ impl<T: Config> IncomingRequest<T> {
                     network_id,
                 )?
                 .ok_or(Error::<T>::UnsupportedAssetId)?;
+                let amount = if !asset_kind.is_owned() {
+                    let sidechain_precision =
+                        SidechainAssetPrecision::<T>::get(network_id, &asset_id);
+                    let thischain_precision = assets::Pallet::<T>::get_asset_info(&asset_id).2;
+                    Pallet::<T>::convert_precision(
+                        sidechain_precision,
+                        thischain_precision,
+                        amount,
+                    )?
+                    .0
+                } else {
+                    amount
+                };
                 IncomingRequest::Transfer(IncomingTransfer {
                     from: Default::default(),
                     to,
@@ -1020,6 +1033,38 @@ impl AssetKind {
     }
 }
 
+/// Bridge asset parameters.
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+#[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug)]
+pub enum AssetConfig<AssetId> {
+    Thischain {
+        id: AssetId,
+    },
+    Sidechain {
+        id: AssetId,
+        sidechain_id: sp_core::H160,
+        owned: bool,
+        precision: BalancePrecision,
+    },
+}
+
+impl<AssetId> AssetConfig<AssetId> {
+    pub fn asset_id(&self) -> &AssetId {
+        match self {
+            AssetConfig::Thischain { id, .. } => id,
+            AssetConfig::Sidechain { id, .. } => id,
+        }
+    }
+
+    pub fn kind(&self) -> AssetKind {
+        match self {
+            AssetConfig::Thischain { .. } => AssetKind::Thischain,
+            AssetConfig::Sidechain { owned: false, .. } => AssetKind::Sidechain,
+            AssetConfig::Sidechain { owned: true, .. } => AssetKind::SidechainOwned,
+        }
+    }
+}
+
 /// Network-specific parameters.
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug)]
@@ -1034,7 +1079,7 @@ pub struct NetworkParams<AccountId: Ord> {
 pub struct NetworkConfig<T: Config> {
     pub initial_peers: BTreeSet<T::AccountId>,
     pub bridge_account_id: T::AccountId,
-    pub tokens: Vec<(T::AssetId, Option<H160>, AssetKind)>,
+    pub assets: Vec<AssetConfig<T::AssetId>>,
     pub bridge_contract_address: Address,
     pub reserves: Vec<(T::AssetId, Balance)>,
 }
@@ -1058,6 +1103,7 @@ pub use pallet::*;
 #[frame_support::pallet]
 pub mod pallet {
     use super::*;
+    use crate::AssetConfig;
     use frame_support::pallet_prelude::*;
     use frame_support::weights::PostDispatchInfo;
     use frame_system::pallet_prelude::*;
@@ -1213,6 +1259,13 @@ pub mod pallet {
         }
 
         /// Transfer some amount of the given asset to Sidechain address.
+        ///
+        /// Note: if the asset kind is `Sidechain`, the amount should fit in the asset's precision
+        /// on sidechain (`SidechainAssetPrecision`) without extra digits. For example, assume
+        /// some ERC-20 (`T`) token has `decimals=6`, and the corresponding asset on substrate has
+        /// `7`. Alice's balance on thischain is `0.1000009`. If Alice would want to transfer all
+        /// the amount, she will get an error `NonZeroDust`, because of the `9` at the end, so, the
+        /// correct amount would be `0.100000` (only 6 digits after the decimal point).
         ///
         /// Parameters:
         /// - `asset_id` - thischain asset id.
@@ -1819,6 +1872,10 @@ pub mod pallet {
         UnableToPayFees,
         /// The request was purposely cancelled.
         Cancelled,
+        /// Unsupported asset precision.
+        UnsupportedAssetPrecision,
+        /// Non-zero dust.
+        NonZeroDust,
         /// Unknown error.
         Other,
     }
@@ -1890,6 +1947,20 @@ pub mod pallet {
     #[pallet::getter(fn registered_asset)]
     pub(super) type RegisteredAsset<T: Config> =
         StorageDoubleMap<_, Twox64Concat, T::NetworkId, Identity, T::AssetId, AssetKind>;
+
+    /// Precision (decimals) of a registered sidechain asset. Should be the same as in the ERC-20
+    /// contract.
+    #[pallet::storage]
+    #[pallet::getter(fn sidechain_asset_precision)]
+    pub(super) type SidechainAssetPrecision<T: Config> = StorageDoubleMap<
+        _,
+        Twox64Concat,
+        T::NetworkId,
+        Identity,
+        T::AssetId,
+        BalancePrecision,
+        ValueQuery,
+    >;
 
     /// Registered token `AssetId` on Thischain.
     #[pallet::storage]
@@ -2015,11 +2086,19 @@ pub mod pallet {
                 BridgeAccount::<T>::insert(net_id, peers_account_id.clone());
                 BridgeStatuses::<T>::insert(net_id, BridgeStatus::Initialized);
                 Peers::<T>::insert(net_id, network.initial_peers.clone());
-                for (asset_id, opt_token_address, kind) in &network.tokens {
-                    if let Some(token_address) = opt_token_address {
-                        let token_address = Address::from(token_address.0);
+                for asset_config in &network.assets {
+                    let kind = asset_config.kind();
+                    let asset_id = asset_config.asset_id();
+                    if let AssetConfig::Sidechain {
+                        sidechain_id,
+                        precision,
+                        ..
+                    } = &asset_config
+                    {
+                        let token_address = Address::from(sidechain_id.0);
                         RegisteredSidechainAsset::<T>::insert(net_id, token_address, *asset_id);
-                        RegisteredSidechainToken::<T>::insert(net_id, &asset_id, token_address);
+                        RegisteredSidechainToken::<T>::insert(net_id, asset_id, token_address);
+                        SidechainAssetPrecision::<T>::insert(net_id, asset_id, precision);
                     }
                     RegisteredAsset::<T>::insert(net_id, asset_id, kind);
                 }
@@ -2882,19 +2961,24 @@ impl<T: Config> Pallet<T> {
             RegisteredSidechainAsset::<T>::get(network_id, &token_address).is_none(),
             Error::<T>::TokenIsAlreadyAdded
         );
+        ensure!(
+            precision <= DEFAULT_BALANCE_PRECISION,
+            Error::<T>::UnsupportedAssetPrecision
+        );
         let bridge_account =
             Self::bridge_account(network_id).expect("networks can't be removed; qed");
         let asset_id = assets::Module::<T>::register_from(
             &bridge_account,
             symbol,
             name,
-            precision,
+            DEFAULT_BALANCE_PRECISION,
             Balance::from(0u32),
             true,
         )?;
         RegisteredAsset::<T>::insert(network_id, &asset_id, AssetKind::Sidechain);
         RegisteredSidechainAsset::<T>::insert(network_id, &token_address, asset_id);
         RegisteredSidechainToken::<T>::insert(network_id, &asset_id, token_address);
+        SidechainAssetPrecision::<T>::insert(network_id, &asset_id, precision);
         let scope = Scope::Unlimited;
         let permission_ids = [MINT, BURN];
         for permission_id in &permission_ids {
@@ -3244,6 +3328,36 @@ impl<T: Config> Pallet<T> {
         }
         Self::remove_request_from_queue(network_id, &hash);
     }
+
+    /// Converts amount from one precision to another and and returns it with a difference of the
+    /// amounts. It also checks that no information was lost during multiplication, otherwise
+    /// returns an error.
+    pub fn convert_precision(
+        precision_from: BalancePrecision,
+        precision_to: BalancePrecision,
+        amount: Balance,
+    ) -> Result<(Balance, Balance), Error<T>> {
+        if precision_from == precision_to {
+            return Ok((amount, 0));
+        }
+        let pair = if precision_from < precision_to {
+            let exp = (precision_to - precision_from) as u32;
+            let coeff = 10_u128.pow(exp);
+            let coerced_amount = amount.saturating_mul(coeff);
+            ensure!(
+                coerced_amount / coeff == amount,
+                Error::<T>::UnsupportedAssetPrecision
+            );
+            (coerced_amount, 0)
+        } else {
+            let exp = (precision_from - precision_to) as u32;
+            let coeff = 10_u128.pow(exp);
+            let coerced_amount = amount / coeff;
+            let diff = amount - coerced_amount * coeff;
+            (coerced_amount, diff)
+        };
+        Ok(pair)
+    }
 }
 
 impl<T: Config> Module<T> {
@@ -3408,13 +3522,25 @@ impl<T: Config> Module<T> {
     /// Get registered assets and tokens.
     pub fn get_registered_assets(
         network_id: Option<T::NetworkId>,
-    ) -> Result<Vec<(AssetKind, AssetIdOf<T>, Option<H160>)>, DispatchError> {
+    ) -> Result<
+        Vec<(
+            AssetKind,
+            (AssetIdOf<T>, BalancePrecision),
+            Option<(H160, BalancePrecision)>,
+        )>,
+        DispatchError,
+    > {
         Ok(iter_storage::<RegisteredAsset<T>, _, _, _, _, _>(
             network_id,
             |(network_id, asset_id, kind)| {
-                let token_addr =
-                    RegisteredSidechainToken::<T>::get(network_id, &asset_id).map(|x| H160(x.0));
-                (kind, asset_id, token_addr)
+                let token_info = RegisteredSidechainToken::<T>::get(network_id, &asset_id)
+                    .map(|x| H160(x.0))
+                    .map(|address| {
+                        let precision = SidechainAssetPrecision::<T>::get(network_id, &asset_id);
+                        (address, precision)
+                    });
+                let asset_precision = assets::Pallet::<T>::get_asset_info(&asset_id).2;
+                (kind, (asset_id, asset_precision), token_info)
             },
         ))
     }

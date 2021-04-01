@@ -1328,6 +1328,7 @@ impl_runtime_apis! {
             RequestStatus,
             OutgoingRequestEncoded,
             NetworkId,
+            BalancePrecision,
         > for Runtime
     {
         fn get_requests(
@@ -1370,7 +1371,11 @@ impl_runtime_apis! {
 
         fn get_registered_assets(
             network_id: Option<NetworkId>
-        ) -> Result<Vec<(AssetKind, AssetId, Option<sp_core::H160>)>, DispatchError> {
+        ) -> Result<Vec<(
+                AssetKind,
+                (AssetId, BalancePrecision),
+                Option<(sp_core::H160, BalancePrecision)
+        >)>, DispatchError> {
             EthBridge::get_registered_assets(network_id)
         }
     }
