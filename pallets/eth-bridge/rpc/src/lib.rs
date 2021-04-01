@@ -25,6 +25,7 @@ pub trait EthBridgeApi<
     OutgoingRequestEncoded,
     DispatchError,
     NetworkId,
+    BalancePrecision,
 >
 {
     #[rpc(name = "ethBridge_getRequests")]
@@ -32,6 +33,7 @@ pub trait EthBridgeApi<
         &self,
         request_hashes: Vec<Hash>,
         network_id: Option<NetworkId>,
+        redirect_finished_load_requests: Option<bool>,
         at: Option<BlockHash>,
     ) -> RpcResult<Result<Vec<(OffchainRequest, RequestStatus)>, DispatchError>>;
 
@@ -64,7 +66,16 @@ pub trait EthBridgeApi<
         &self,
         network_id: Option<NetworkId>,
         at: Option<BlockHash>,
-    ) -> RpcResult<Result<Vec<(AssetKind, AssetId, Option<Address>)>, DispatchError>>;
+    ) -> RpcResult<
+        Result<
+            Vec<(
+                AssetKind,
+                (AssetId, BalancePrecision),
+                Option<(Address, BalancePrecision)>,
+            )>,
+            DispatchError,
+        >,
+    >;
 }
 
 pub struct EthBridgeRpc<C, B> {
@@ -94,6 +105,7 @@ impl<
         RequestStatus,
         OutgoingRequestEncoded,
         NetworkId,
+        BalancePrecision,
     >
     EthBridgeApi<
         <Block as BlockT>::Hash,
@@ -108,6 +120,7 @@ impl<
         OutgoingRequestEncoded,
         DispatchError,
         NetworkId,
+        BalancePrecision,
     > for EthBridgeRpc<C, Block>
 where
     Block: BlockT,
@@ -125,6 +138,7 @@ where
         RequestStatus,
         OutgoingRequestEncoded,
         NetworkId,
+        BalancePrecision,
     >,
     Approval: Codec,
     Hash: Codec,
@@ -136,21 +150,28 @@ where
     RequestStatus: Codec,
     OutgoingRequestEncoded: Codec,
     NetworkId: Codec,
+    BalancePrecision: Codec,
 {
     fn get_requests(
         &self,
         request_hashes: Vec<Hash>,
         network_id: Option<NetworkId>,
+        redirect_finished_load_requests: Option<bool>,
         at: Option<<Block as BlockT>::Hash>,
     ) -> RpcResult<Result<Vec<(OffchainRequest, RequestStatus)>, DispatchError>> {
         let api = self.client.runtime_api();
         let at = BlockId::hash(at.unwrap_or_else(|| self.client.info().best_hash));
-        api.get_requests(&at, request_hashes, network_id)
-            .map_err(|e| RpcError {
-                code: ErrorCode::ServerError(InvokeRPCError::RuntimeError.into()),
-                message: "Unable to get off-chain requests and statuses.".into(),
-                data: Some(format!("{:?}", e).into()),
-            })
+        api.get_requests(
+            &at,
+            request_hashes,
+            network_id,
+            redirect_finished_load_requests.unwrap_or(true),
+        )
+        .map_err(|e| RpcError {
+            code: ErrorCode::ServerError(InvokeRPCError::RuntimeError.into()),
+            message: "Unable to get off-chain requests and statuses.".into(),
+            data: Some(format!("{:?}", e).into()),
+        })
     }
 
     fn get_approved_requests(
@@ -205,7 +226,16 @@ where
         &self,
         network_id: Option<NetworkId>,
         at: Option<<Block as BlockT>::Hash>,
-    ) -> RpcResult<Result<Vec<(AssetKind, AssetId, Option<Address>)>, DispatchError>> {
+    ) -> RpcResult<
+        Result<
+            Vec<(
+                AssetKind,
+                (AssetId, BalancePrecision),
+                Option<(Address, BalancePrecision)>,
+            )>,
+            DispatchError,
+        >,
+    > {
         let api = self.client.runtime_api();
         let at = BlockId::hash(at.unwrap_or_else(|| self.client.info().best_hash));
         api.get_registered_assets(&at, network_id)
