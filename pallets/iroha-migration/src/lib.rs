@@ -17,11 +17,13 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
+mod weights;
+
 use common::prelude::Balance;
 use common::VAL;
 use ed25519_dalek_iroha::{Digest, PublicKey, Signature, SIGNATURE_LENGTH};
 use frame_support::codec::{Decode, Encode};
-use frame_support::dispatch::DispatchError;
+use frame_support::dispatch::{DispatchError, Weight};
 use frame_support::sp_runtime::traits::Zero;
 use frame_support::weights::Pays;
 use frame_support::{ensure, RuntimeDebug};
@@ -32,8 +34,14 @@ use sha3::Sha3_256;
 use sp_std::convert::TryInto;
 use sp_std::prelude::*;
 
+type WeightInfoOf<T> = <T as Config>::WeightInfo;
+
 pub const TECH_ACCOUNT_PREFIX: &[u8] = b"iroha-migration";
 pub const TECH_ACCOUNT_MAIN: &[u8] = b"main";
+
+pub trait WeightInfo {
+    fn migrate() -> Weight;
+}
 
 fn blocks_till_migration<T>() -> T::BlockNumber
 where
@@ -69,6 +77,51 @@ impl<T: Config> Pallet<T> {
     pub fn needs_migration(iroha_address: &String) -> bool {
         Balances::<T>::contains_key(iroha_address)
             && !MigratedAccounts::<T>::contains_key(iroha_address)
+    }
+
+    fn migrate_weight(
+        iroha_address: &String,
+        iroha_public_key: &String,
+        iroha_signature: &String,
+    ) -> (Weight, Pays) {
+        let pays = if Self::check_migrate(iroha_address, iroha_public_key, iroha_signature).is_ok()
+        {
+            Pays::No
+        } else {
+            Pays::Yes
+        };
+        (WeightInfoOf::<T>::migrate(), pays)
+    }
+
+    /// Checks if migration would succeed if the parameters were passed to migrate extrinsic.
+    fn check_migrate(
+        iroha_address: &String,
+        iroha_public_key: &String,
+        iroha_signature: &String,
+    ) -> Result<(), DispatchError> {
+        let iroha_public_key = iroha_public_key.to_lowercase();
+        let iroha_signature = iroha_signature.to_lowercase();
+        ensure!(
+            !MigratedAccounts::<T>::contains_key(&iroha_address),
+            Error::<T>::AccountAlreadyMigrated
+        );
+        // This account isn't migrated so the abusers couldn't copy signature from the blockchain for single-signature accounts.
+        Self::verify_signature(&iroha_address, &iroha_public_key, &iroha_signature)?;
+        // However, for multi-signature accounts, their signatures can be abused so we continue checking.
+        let public_keys =
+            PublicKeys::<T>::try_get(&iroha_address).map_err(|_| Error::<T>::PublicKeyNotFound)?;
+        let already_migrated = public_keys
+            .iter()
+            .find_map(|(already_migrated, key)| {
+                if key == &iroha_public_key {
+                    Some(already_migrated)
+                } else {
+                    None
+                }
+            })
+            .ok_or(Error::<T>::AccountNotFound)?;
+        ensure!(!already_migrated, Error::<T>::PublicKeyAlreadyUsed);
+        Ok(())
     }
 
     fn parse_public_key(iroha_public_key: &str) -> Result<PublicKey, DispatchError> {
@@ -225,6 +278,7 @@ pub use pallet::*;
 pub mod pallet {
     use super::*;
     use common::AccountIdOf;
+    use frame_support::dispatch::PostDispatchInfo;
     use frame_support::pallet_prelude::*;
     use frame_system::pallet_prelude::*;
 
@@ -233,6 +287,7 @@ pub mod pallet {
         frame_system::Config + pallet_multisig::Config + referral_system::Config + technical::Config
     {
         type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+        type WeightInfo: WeightInfo;
     }
 
     #[pallet::pallet]
@@ -274,7 +329,7 @@ pub mod pallet {
 
     #[pallet::call]
     impl<T: Config> Pallet<T> {
-        #[pallet::weight((0, Pays::No))]
+        #[pallet::weight(Pallet::<T>::migrate_weight(iroha_address, iroha_public_key, iroha_signature))]
         pub fn migrate(
             origin: OriginFor<T>,
             iroha_address: String,
@@ -308,7 +363,11 @@ pub mod pallet {
                         key_count,
                     )?;
                 }
-                Ok(().into())
+                // The user doesn't have to pay fees if the migration is succeeded
+                Ok(PostDispatchInfo {
+                    actual_weight: None,
+                    pays_fee: Pays::No,
+                })
             })
         }
     }

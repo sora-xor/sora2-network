@@ -37,7 +37,7 @@ pipeline {
                 script {
                     docker.withRegistry( "https://" + registry, dockerRegistryRWUserId) {
                         docker.image(baseImageName).inside() {
-                            sh "cd ${env.WORKSPACE} && cargo build --release --features test-net"
+                            sh "cd ${env.WORKSPACE} && cargo fmt -- --check > /dev/null && cargo build --release --features test-net"
                             sh "cp /opt/rust-target/release/framenode ${env.WORKSPACE}/housekeeping/framenode"
                             sh "cargo test --release"
                         }
@@ -67,8 +67,8 @@ pipeline {
                     }
                     docker.withRegistry('https://index.docker.io/v1/', 'docker-hub-credentials') {
                         sh """
-                            docker tag ${appImageName} soramitsu/sora2-substrate:${baseImageTag}
-                            docker push soramitsu/sora2-substrate:${baseImageTag}
+                            docker tag ${appImageName} sora2/substrate:${baseImageTag}
+                            docker push sora2/substrate:${baseImageTag}
                         """
                     }
                 }

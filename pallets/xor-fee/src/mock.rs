@@ -4,8 +4,8 @@ use common::prelude::{
     Balance, BlockLength, BlockWeights, SwapAmount, SwapOutcome, TransactionByteFee,
 };
 use common::{
-    self, balance, fixed_from_basis_points, Amount, AssetId32, AssetSymbol, Fixed, LiquiditySource,
-    LiquiditySourceFilter, LiquiditySourceType, VAL, XOR,
+    self, balance, fixed_from_basis_points, Amount, AssetId32, AssetName, AssetSymbol, Fixed,
+    LiquiditySource, LiquiditySourceFilter, LiquiditySourceType, VAL, XOR,
 };
 use core::time::Duration;
 use currencies::BasicCurrencyAdapter;
@@ -86,7 +86,7 @@ construct_runtime! {
         Historical: historical::{Module},
         Timestamp: pallet_timestamp::{Module, Call, Storage, Inherent},
         Staking: pallet_staking::{Module, Call, Config<T>, Storage, Event<T>},
-        XorFee: xor_fee::{Module, Call},
+        XorFee: xor_fee::{Module, Call, Event<T>},
     }
 }
 
@@ -260,6 +260,7 @@ where
 pub type Extrinsic = TestXt<Call, ()>;
 
 impl Config for Runtime {
+    type Event = Event;
     type XorCurrency = Balances;
     type ReferrerWeight = ReferrerWeight;
     type XorBurnedWeight = XorBurnedWeight;
@@ -415,6 +416,7 @@ impl ExtBuilder {
                     XOR,
                     xor_fee_account_id,
                     AssetSymbol(b"XOR".to_vec()),
+                    AssetName(b"SORA".to_vec()),
                     18,
                     Balance::from(0u32),
                     true,
@@ -423,6 +425,7 @@ impl ExtBuilder {
                     VAL,
                     xor_fee_account_id,
                     AssetSymbol(b"VAL".to_vec()),
+                    AssetName(b"SORA Validator Token".to_vec()),
                     18,
                     Balance::from(0u32),
                     true,

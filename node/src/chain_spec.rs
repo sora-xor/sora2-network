@@ -2,7 +2,7 @@ use framenode_runtime::opaque::SessionKeys;
 #[cfg(feature = "faucet")]
 use framenode_runtime::FaucetConfig;
 use framenode_runtime::{
-    bonding_curve_pool, eth_bridge, AccountId, AssetSymbol, AssetsConfig, BabeConfig,
+    bonding_curve_pool, eth_bridge, AccountId, AssetName, AssetSymbol, AssetsConfig, BabeConfig,
     BalancesConfig, BondingCurvePoolConfig, BridgeMultisigConfig, CouncilConfig, DEXAPIConfig,
     DEXManagerConfig, DemocracyConfig, EthBridgeConfig, FarmingConfig, GenesisConfig,
     GetBaseAssetId, GetPswapAssetId, GetValAssetId, GetXorAssetId, GrandpaConfig,
@@ -172,7 +172,7 @@ pub fn dev_net() -> ChainSpec {
                     val_master_contract_address: hex!("47e229aa491763038f6a505b4f85d8eb463f0962")
                         .into(),
                     val_contract_address: hex!("68339de68c9af6577c54867728dbb2db9d7368bf").into(),
-                    bridge_contract_address: hex!("b7b3060589e5bf6e4a2c76edc229127745c9c13c")
+                    bridge_contract_address: hex!("46dcecb63180c116f58212b1eea2e171d5840dd8")
                         .into(),
                 },
             )
@@ -619,7 +619,7 @@ fn testnet_genesis(
     ];
     #[cfg(feature = "faucet")]
     let faucet_config = {
-        let initial_faucet_balance = balance!(500000);
+        let initial_faucet_balance = balance!(6000000000);
         let faucet_tech_account_id = TechAccountId::Generic(
             faucet::TECH_ACCOUNT_PREFIX.to_vec(),
             faucet::TECH_ACCOUNT_MAIN.to_vec(),
@@ -692,6 +692,7 @@ fn testnet_genesis(
                     GetXorAssetId::get(),
                     initial_assets_owner.clone(),
                     AssetSymbol(b"XOR".to_vec()),
+                    AssetName(b"SORA".to_vec()),
                     18,
                     Balance::zero(),
                     true,
@@ -700,6 +701,7 @@ fn testnet_genesis(
                 //     UsdId::get(),
                 //     initial_assets_owner.clone(),
                 //     AssetSymbol(b"USDT".to_vec()),
+                //     AssetName(b"Tether USD".to_vec()),
                 //     18,
                 //     Balance::zero(),
                 //     true,
@@ -708,6 +710,7 @@ fn testnet_genesis(
                     GetValAssetId::get(),
                     initial_assets_owner.clone(),
                     AssetSymbol(b"VAL".to_vec()),
+                    AssetName(b"SORA Validator Token".to_vec()),
                     18,
                     Balance::zero(),
                     true,
@@ -716,6 +719,7 @@ fn testnet_genesis(
                     GetPswapAssetId::get(),
                     initial_assets_owner.clone(),
                     AssetSymbol(b"PSWAP".to_vec()),
+                    AssetName(b"Polkaswap".to_vec()),
                     18,
                     Balance::zero(),
                     true,

@@ -16,7 +16,9 @@ RUN useradd substrate -u 10000
 
 COPY ./housekeeping/framenode /usr/local/bin/framenode
 COPY --chown=10000:10000 ./housekeeping/docker/release/parachain_registration.sh /opt/sora2/parachain_registration.sh
-RUN chmod +x /opt/sora2/parachain_registration.sh
+RUN chmod +x /opt/sora2/parachain_registration.sh  && \
+    mkdir /chain && \
+    chown 10000:10000 /chain
 
 COPY --chown=10000:10000 ./misc/rococo-custom.json /chain.spec
 
