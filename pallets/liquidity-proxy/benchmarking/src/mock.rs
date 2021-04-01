@@ -4,8 +4,8 @@ use crate::{Config, *};
 use common::mock::ExistentialDeposits;
 use common::prelude::Balance;
 use common::{
-    fixed_from_basis_points, hash, Amount, AssetId32, DEXInfo, Fixed, FromGenericPair,
-    LiquiditySourceType,
+    fixed_from_basis_points, hash, Amount, AssetId32, BalancePrecision, DEXInfo, Fixed,
+    FromGenericPair, LiquiditySourceType, TechPurpose,
 };
 use currencies::BasicCurrencyAdapter;
 
@@ -71,15 +71,12 @@ construct_runtime! {
         Assets: assets::{Module, Call, Config<T>, Storage, Event<T>},
         Balances: pallet_balances::{Module, Call, Storage, Event<T>},
         DexManager: dex_manager::{Module, Call, Config<T>, Storage},
-        MockLiquiditySource: mock_liquidity_source::<Instance1>::{Module, Call, Config<T>, Storage},
-        MockLiquiditySource2: mock_liquidity_source::<Instance2>::{Module, Call, Config<T>, Storage},
-        MockLiquiditySource3: mock_liquidity_source::<Instance3>::{Module, Call, Config<T>, Storage},
-        MockLiquiditySource4: mock_liquidity_source::<Instance4>::{Module, Call, Config<T>, Storage},
         Technical: technical::{Module, Call, Config<T>, Storage, Event<T>},
         Permissions: permissions::{Module, Call, Config<T>, Storage, Event<T>},
         DexApi: dex_api::{Module, Call, Config, Storage, Event<T>},
         TradingPair: trading_pair::{Module, Call, Config<T>, Storage, Event<T>},
         PoolXyk: pool_xyk::{Module, Call, Storage, Event<T>},
+        MBCPool: multicollateral_bonding_curve_pool::{Module, Call, Storage, Event<T>},
         PswapDistribution: pswap_distribution::{Module, Call, Config<T>, Storage, Event<T>},
     }
 }
@@ -206,17 +203,13 @@ impl permissions::Config for Runtime {
 
 impl dex_api::Config for Runtime {
     type Event = Event;
-    type MockLiquiditySource =
-        mock_liquidity_source::Module<Runtime, mock_liquidity_source::Instance1>;
-    type MockLiquiditySource2 =
-        mock_liquidity_source::Module<Runtime, mock_liquidity_source::Instance2>;
-    type MockLiquiditySource3 =
-        mock_liquidity_source::Module<Runtime, mock_liquidity_source::Instance3>;
-    type MockLiquiditySource4 =
-        mock_liquidity_source::Module<Runtime, mock_liquidity_source::Instance4>;
+    type MockLiquiditySource = ();
+    type MockLiquiditySource2 = ();
+    type MockLiquiditySource3 = ();
+    type MockLiquiditySource4 = ();
     type XYKPool = pool_xyk::Module<Runtime>;
     type BondingCurvePool = ();
-    type MulticollateralBondingCurvePool = ();
+    type MulticollateralBondingCurvePool = multicollateral_bonding_curve_pool::Module<Runtime>;
     type WeightInfo = ();
 }
 
@@ -236,6 +229,97 @@ impl pool_xyk::Config for Runtime {
     type PolySwapAction =
         pool_xyk::PolySwapAction<AssetId, TechAssetId, Balance, AccountId, TechAccountId>;
     type EnsureDEXManager = dex_manager::Module<Runtime>;
+    type WeightInfo = ();
+}
+
+fn bonding_curve_distribution_accounts(
+) -> DistributionAccounts<DistributionAccountData<<Runtime as technical::Config>::TechAccountId>> {
+    use common::fixed_wrapper;
+    use common::prelude::fixnum::ops::One;
+    let val_holders_coefficient = fixed_wrapper!(0.5);
+    let val_holders_xor_alloc_coeff = fixed_wrapper!(0.9) * val_holders_coefficient.clone();
+    let val_holders_buy_back_coefficient =
+        val_holders_coefficient.clone() * (fixed_wrapper!(1) - fixed_wrapper!(0.9));
+    let projects_coefficient = fixed_wrapper!(1) - val_holders_coefficient;
+    let projects_sora_citizens_coeff = projects_coefficient.clone() * fixed_wrapper!(0.01);
+    let projects_stores_and_shops_coeff = projects_coefficient.clone() * fixed_wrapper!(0.04);
+    let projects_parliament_and_development_coeff =
+        projects_coefficient.clone() * fixed_wrapper!(0.05);
+    let projects_other_coeff = projects_coefficient.clone() * fixed_wrapper!(0.9);
+
+    let xor_allocation = DistributionAccountData::new(
+        TechAccountId::Pure(0u32, TechPurpose::Identifier(b"xor_allocation".to_vec())),
+        val_holders_xor_alloc_coeff.get().unwrap(),
+    );
+    let sora_citizens = DistributionAccountData::new(
+        TechAccountId::Pure(0u32, TechPurpose::Identifier(b"sora_citizens".to_vec())),
+        projects_sora_citizens_coeff.get().unwrap(),
+    );
+    let stores_and_shops = DistributionAccountData::new(
+        TechAccountId::Pure(0u32, TechPurpose::Identifier(b"stores_and_shops".to_vec())),
+        projects_stores_and_shops_coeff.get().unwrap(),
+    );
+    let parliament_and_development = DistributionAccountData::new(
+        TechAccountId::Pure(
+            0u32,
+            TechPurpose::Identifier(b"parliament_and_development".to_vec()),
+        ),
+        projects_parliament_and_development_coeff.get().unwrap(),
+    );
+    let projects = DistributionAccountData::new(
+        TechAccountId::Pure(0u32, TechPurpose::Identifier(b"projects".to_vec())),
+        projects_other_coeff.get().unwrap(),
+    );
+    let val_holders = DistributionAccountData::new(
+        TechAccountId::Pure(0u32, TechPurpose::Identifier(b"val_holders".to_vec())),
+        val_holders_buy_back_coefficient.get().unwrap(),
+    );
+    DistributionAccounts::<_> {
+        xor_allocation,
+        sora_citizens,
+        stores_and_shops,
+        parliament_and_development,
+        projects,
+        val_holders,
+    }
+}
+
+parameter_types! {
+    pub GetMbcReservesTechAccountId: TechAccountId = {
+        let tech_account_id = TechAccountId::from_generic_pair(
+            multicollateral_bonding_curve_pool::TECH_ACCOUNT_PREFIX.to_vec(),
+            multicollateral_bonding_curve_pool::TECH_ACCOUNT_RESERVES.to_vec(),
+        );
+        tech_account_id
+    };
+    pub GetMbcReservesAccountId: AccountId = {
+        let tech_account_id = GetMbcReservesTechAccountId::get();
+        let account_id =
+            technical::Module::<Runtime>::tech_account_id_to_account_id(&tech_account_id)
+                .expect("Failed to get ordinary account id for technical account id.");
+        account_id
+    };
+    pub GetMbcRewardsTechAccountId: TechAccountId = {
+        let tech_account_id = TechAccountId::from_generic_pair(
+            multicollateral_bonding_curve_pool::TECH_ACCOUNT_PREFIX.to_vec(),
+            multicollateral_bonding_curve_pool::TECH_ACCOUNT_REWARDS.to_vec(),
+        );
+        tech_account_id
+    };
+    pub GetMbcRewardsAccountId: AccountId = {
+        let tech_account_id = GetMbcRewardsTechAccountId::get();
+        let account_id =
+            technical::Module::<Runtime>::tech_account_id_to_account_id(&tech_account_id)
+                .expect("Failed to get ordinary account id for technical account id.");
+        account_id
+    };
+}
+
+impl multicollateral_bonding_curve_pool::Config for Runtime {
+    type Event = Event;
+    type LiquidityProxy = liquidity_proxy::Module<Runtime>;
+    type EnsureDEXManager = dex_manager::Module<Runtime>;
+    type EnsureTradingPairExists = trading_pair::Module<Runtime>;
     type WeightInfo = ();
 }
 
@@ -261,6 +345,16 @@ pub struct ExtBuilder {
     initial_permission_owners: Vec<(u32, Scope, Vec<AccountId>)>,
     initial_permissions: Vec<(AccountId, Scope, Vec<u32>)>,
     source_types: Vec<LiquiditySourceType>,
+    tech_accounts: Vec<(AccountId, TechAccountId)>,
+    endowed_assets: Vec<(
+        AssetId,
+        AccountId,
+        AssetSymbol,
+        AssetName,
+        BalancePrecision,
+        Balance,
+        bool,
+    )>,
 }
 
 impl Default for ExtBuilder {
@@ -288,11 +382,65 @@ impl Default for ExtBuilder {
                 (alice(), Scope::Limited(hash(&0_u32)), vec![MANAGE_DEX]),
             ],
             source_types: vec![
-                LiquiditySourceType::MockPool,
-                LiquiditySourceType::MockPool2,
-                LiquiditySourceType::MockPool3,
-                LiquiditySourceType::MockPool4,
+                LiquiditySourceType::MulticollateralBondingCurvePool,
                 LiquiditySourceType::XYKPool,
+            ],
+            tech_accounts: vec![
+                (
+                    GetMbcReservesAccountId::get(),
+                    GetMbcReservesTechAccountId::get(),
+                ),
+                (
+                    GetMbcRewardsAccountId::get(),
+                    GetMbcRewardsTechAccountId::get(),
+                ),
+            ],
+            endowed_assets: vec![
+                (
+                    common::XOR.into(),
+                    alice(),
+                    AssetSymbol(b"XOR".to_vec()),
+                    AssetName(b"SORA".to_vec()),
+                    18,
+                    balance!(40000),
+                    true,
+                ),
+                (
+                    common::DOT.into(),
+                    alice(),
+                    AssetSymbol(b"DOT".to_vec()),
+                    AssetName(b"DOT".to_vec()),
+                    10,
+                    balance!(10000),
+                    true,
+                ),
+                (
+                    common::VAL.into(),
+                    alice(),
+                    AssetSymbol(b"VAL".to_vec()),
+                    AssetName(b"VAL".to_vec()),
+                    18,
+                    balance!(10000),
+                    true,
+                ),
+                (
+                    common::USDT.into(),
+                    alice(),
+                    AssetSymbol(b"USDT".to_vec()),
+                    AssetName(b"USDT".to_vec()),
+                    18,
+                    balance!(10000),
+                    true,
+                ),
+                (
+                    common::PSWAP.into(),
+                    alice(),
+                    AssetSymbol(b"PSWAP".to_vec()),
+                    AssetName(b"PSWAP".to_vec()),
+                    18,
+                    balance!(10000),
+                    true,
+                ),
             ],
         }
     }
@@ -304,12 +452,6 @@ impl ExtBuilder {
             .build_storage::<Runtime>()
             .unwrap();
 
-        dex_manager::GenesisConfig::<Runtime> {
-            dex_list: self.dex_list,
-        }
-        .assimilate_storage(&mut t)
-        .unwrap();
-
         permissions::GenesisConfig::<Runtime> {
             initial_permission_owners: self.initial_permission_owners,
             initial_permissions: self.initial_permissions,
@@ -317,30 +459,20 @@ impl ExtBuilder {
         .assimilate_storage(&mut t)
         .unwrap();
 
-        mock_liquidity_source::GenesisConfig::<Runtime, mock_liquidity_source::Instance1> {
-            reserves: self.reserves,
-            phantom: Default::default(),
+        dex_manager::GenesisConfig::<Runtime> {
+            dex_list: self.dex_list,
         }
         .assimilate_storage(&mut t)
         .unwrap();
 
-        mock_liquidity_source::GenesisConfig::<Runtime, mock_liquidity_source::Instance2> {
-            reserves: self.reserves_2,
-            phantom: Default::default(),
+        AssetsConfig {
+            endowed_assets: self.endowed_assets,
         }
         .assimilate_storage(&mut t)
         .unwrap();
 
-        mock_liquidity_source::GenesisConfig::<Runtime, mock_liquidity_source::Instance3> {
-            reserves: self.reserves_3,
-            phantom: Default::default(),
-        }
-        .assimilate_storage(&mut t)
-        .unwrap();
-
-        mock_liquidity_source::GenesisConfig::<Runtime, mock_liquidity_source::Instance4> {
-            reserves: self.reserves_4,
-            phantom: Default::default(),
+        technical::GenesisConfig::<Runtime> {
+            account_ids_to_tech_account_ids: self.tech_accounts,
         }
         .assimilate_storage(&mut t)
         .unwrap();
@@ -351,6 +483,15 @@ impl ExtBuilder {
             },
             &mut t,
         )
+        .unwrap();
+
+        multicollateral_bonding_curve_pool::GenesisConfig::<Runtime> {
+            distribution_accounts: bonding_curve_distribution_accounts(),
+            reserves_account_id: GetMbcReservesTechAccountId::get(),
+            reference_asset_id: USDT.into(),
+            incentives_account_id: GetMbcRewardsAccountId::get(),
+        }
+        .assimilate_storage(&mut t)
         .unwrap();
 
         t.into()

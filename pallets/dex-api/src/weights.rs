@@ -5,11 +5,19 @@ use common::weights::PresetWeightInfo;
 use frame_support::weights::constants::RocksDbWeight as DbWeight;
 use frame_support::weights::Weight;
 
+// impl crate::WeightInfo for () {
+//     fn swap() -> Weight {
+//         (600_000_000 as Weight)
+//             .saturating_add(DbWeight::get().reads(15 as Weight))
+//             .saturating_add(DbWeight::get().writes(5 as Weight))
+//     }
+// }
+
 impl crate::WeightInfo for () {
     fn swap() -> Weight {
-        (600_000_000 as Weight)
+        (5_645_699_000 as Weight)
             .saturating_add(DbWeight::get().reads(15 as Weight))
-            .saturating_add(DbWeight::get().writes(5 as Weight))
+            .saturating_add(DbWeight::get().writes(6 as Weight))
     }
 }
 

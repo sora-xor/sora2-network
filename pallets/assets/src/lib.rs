@@ -359,8 +359,13 @@ pub mod pallet {
     /// Asset Id -> (Symbol, Precision, Is Mintable)
     #[pallet::storage]
     #[pallet::getter(fn asset_infos)]
-    pub type AssetInfos<T: Config> =
-        StorageMap<_, Twox64Concat, T::AssetId, (AssetSymbol, AssetName, BalancePrecision, bool), ValueQuery>;
+    pub type AssetInfos<T: Config> = StorageMap<
+        _,
+        Twox64Concat,
+        T::AssetId,
+        (AssetSymbol, AssetName, BalancePrecision, bool),
+        ValueQuery,
+    >;
 
     /// Asset Id -> AssetRecord<T>
     #[pallet::storage]
@@ -458,10 +463,7 @@ impl<T: Config> Pallet<T> {
             crate::is_symbol_valid(&symbol),
             Error::<T>::InvalidAssetSymbol
         );
-        ensure!(
-            crate::is_name_valid(&name),
-            Error::<T>::InvalidAssetName
-        );
+        ensure!(crate::is_name_valid(&name), Error::<T>::InvalidAssetName);
         AssetInfos::<T>::insert(asset_id, (symbol, name, precision, is_mintable));
         ensure!(
             precision <= MAX_ALLOWED_PRECISION,
@@ -525,6 +527,8 @@ impl<T: Config> Pallet<T> {
 
     pub fn ensure_asset_exists(asset_id: &T::AssetId) -> DispatchResult {
         if !Self::asset_exists(asset_id) {
+            #[cfg(feature = "std")]
+            println!("ASSET ID {:?}", asset_id.clone());
             return Err(Error::<T>::AssetIdNotExists.into());
         }
         Ok(())
@@ -685,13 +689,18 @@ impl<T: Config> Pallet<T> {
         AssetInfos::<T>::iter().map(|(key, _)| key).collect()
     }
 
-    pub fn list_registered_asset_infos() -> Vec<(T::AssetId, AssetSymbol, AssetName, BalancePrecision, bool)> {
+    pub fn list_registered_asset_infos(
+    ) -> Vec<(T::AssetId, AssetSymbol, AssetName, BalancePrecision, bool)> {
         AssetInfos::<T>::iter()
-            .map(|(key, (symbol, name, precision, is_mintable))| (key, symbol, name, precision, is_mintable))
+            .map(|(key, (symbol, name, precision, is_mintable))| {
+                (key, symbol, name, precision, is_mintable)
+            })
             .collect()
     }
 
-    pub fn get_asset_info(asset_id: &T::AssetId) -> (AssetSymbol, AssetName, BalancePrecision, bool) {
+    pub fn get_asset_info(
+        asset_id: &T::AssetId,
+    ) -> (AssetSymbol, AssetName, BalancePrecision, bool) {
         AssetInfos::<T>::get(asset_id)
     }
 }

@@ -7,9 +7,13 @@ extern crate alloc;
 
 use liquidity_proxy::*;
 
+use bonding_curve_pool::{DistributionAccountData, DistributionAccounts};
 use codec::Decode;
 use common::prelude::{Balance, SwapAmount};
-use common::{balance, fixed, AssetName, AssetSymbol, DEXId, FilterMode, DOT, XOR};
+use common::{
+    balance, fixed, AssetName, AssetSymbol, DEXId, FilterMode, LiquiditySource,
+    LiquiditySourceFilter, LiquiditySourceType, TechPurpose, DOT, PSWAP, USDT, VAL, XOR,
+};
 use frame_benchmarking::benchmarks;
 use frame_support::traits::Get;
 use frame_system::RawOrigin;
@@ -18,7 +22,7 @@ use permissions::{BURN, MINT};
 use sp_std::prelude::*;
 
 use assets::Module as Assets;
-use mock_liquidity_source::Module as MockLiquiditySource;
+use multicollateral_bonding_curve_pool::Module as MBCPool;
 use permissions::Module as Permissions;
 use pool_xyk::Module as XYKPool;
 use technical::Module as Technical;
@@ -31,12 +35,7 @@ mod mock;
 
 pub struct Module<T: Config>(liquidity_proxy::Module<T>);
 pub trait Config:
-    liquidity_proxy::Config
-    + pool_xyk::Config
-    + mock_liquidity_source::Config<mock_liquidity_source::Instance1>
-    + mock_liquidity_source::Config<mock_liquidity_source::Instance2>
-    + mock_liquidity_source::Config<mock_liquidity_source::Instance3>
-    + mock_liquidity_source::Config<mock_liquidity_source::Instance4>
+    liquidity_proxy::Config + pool_xyk::Config + multicollateral_bonding_curve_pool::Config
 {
 }
 
@@ -55,108 +54,56 @@ fn setup_benchmark<T: Config>() -> Result<(), &'static str> {
     Permissions::<T>::grant_permission(owner.clone(), owner.clone(), MINT)?;
     Permissions::<T>::grant_permission(owner.clone(), owner.clone(), BURN)?;
 
-    let _ = Assets::<T>::register_asset_id(
-        owner.clone(),
-        XOR.into(),
-        AssetSymbol(b"XOR".to_vec()),
-        AssetName(b"SORA".to_vec()),
-        18,
-        Balance::from(0u32),
-        true,
-    );
-    let _ = Assets::<T>::register_asset_id(
-        owner.clone(),
-        DOT.into(),
-        AssetSymbol(b"DOT".to_vec()),
-        AssetName(b"Polkadot".to_vec()),
-        18,
-        Balance::from(0u32),
-        true,
-    );
-
     TradingPair::<T>::register(owner_origin.clone(), DEX.into(), XOR.into(), DOT.into())?;
+    TradingPair::<T>::register(owner_origin.clone(), DEX.into(), XOR.into(), USDT.into())?;
+    TradingPair::<T>::register(owner_origin.clone(), DEX.into(), XOR.into(), VAL.into())?;
+    TradingPair::<T>::register(owner_origin.clone(), DEX.into(), XOR.into(), PSWAP.into())?;
 
-    let (_, tech_acc_id, _fee_acc_id, mark_asset) =
-        XYKPool::<T>::initialize_pool_unchecked(owner.clone(), DEX.into(), XOR.into(), DOT.into())?;
+    XYKPool::<T>::initialize_pool(owner_origin.clone(), DEX.into(), XOR.into(), DOT.into())?;
+    XYKPool::<T>::initialize_pool(owner_origin.clone(), DEX.into(), XOR.into(), VAL.into())?;
+    XYKPool::<T>::initialize_pool(owner_origin.clone(), DEX.into(), XOR.into(), PSWAP.into())?;
 
-    let _ = Assets::<T>::register_asset_id(
-        owner.clone(),
-        mark_asset.clone().into(),
-        AssetSymbol(b"PSWAP".to_vec()),
-        AssetName(b"Polkaswap".to_vec()),
-        18,
-        Balance::from(0u32),
-        true,
-    );
-
-    let repr: T::AccountId = Technical::<T>::tech_account_id_to_account_id(&tech_acc_id).unwrap();
-
-    Permissions::<T>::grant_permission(owner.clone(), repr.clone(), MINT)?;
-    Permissions::<T>::grant_permission(owner.clone(), repr.clone(), BURN)?;
-
-    Assets::<T>::mint(
+    XYKPool::<T>::deposit_liquidity(
         owner_origin.clone(),
+        DEX.into(),
         XOR.into(),
-        owner.clone(),
-        balance!(10000),
-    )?;
-    Assets::<T>::mint(
-        owner_origin.clone(),
         DOT.into(),
-        owner.clone(),
-        balance!(20000),
-    )?;
-    Assets::<T>::mint(
-        owner_origin.clone(),
-        XOR.into(),
-        repr.clone(),
-        balance!(1000000),
-    )?;
-    Assets::<T>::mint(
-        owner_origin.clone(),
-        DOT.into(),
-        repr.clone(),
-        balance!(1500000),
-    )?;
-    Assets::<T>::mint(
-        owner_origin.clone(),
-        mark_asset.into(),
-        owner.clone(),
-        balance!(1500000000000),
+        balance!(1000),
+        balance!(2000),
+        balance!(0),
+        balance!(0),
     )?;
 
-    // Adding reserves to mock sources
-    // We don't want mock sources to contribute into an actual swap but still need to
-    // include them in calculation of the optimal exchange path
-    // Hence large imbalance in mock sources reserves (to ensure 100% of a swap likely go to XYKPool)
-    MockLiquiditySource::<T, mock_liquidity_source::Instance1>::set_reserve(
+    XYKPool::<T>::deposit_liquidity(
         owner_origin.clone(),
         DEX.into(),
-        DOT.into(),
-        fixed!(10000000000000),
-        fixed!(11000),
+        XOR.into(),
+        VAL.into(),
+        balance!(1000),
+        balance!(2000),
+        balance!(0),
+        balance!(0),
     )?;
-    MockLiquiditySource::<T, mock_liquidity_source::Instance2>::set_reserve(
+
+    XYKPool::<T>::deposit_liquidity(
         owner_origin.clone(),
         DEX.into(),
-        DOT.into(),
-        fixed!(11000000000000),
-        fixed!(14000),
+        XOR.into(),
+        PSWAP.into(),
+        balance!(1000),
+        balance!(2000),
+        balance!(0),
+        balance!(0),
     )?;
-    MockLiquiditySource::<T, mock_liquidity_source::Instance3>::set_reserve(
-        owner_origin.clone(),
-        DEX.into(),
-        DOT.into(),
-        fixed!(8000000000000),
-        fixed!(8000),
-    )?;
-    MockLiquiditySource::<T, mock_liquidity_source::Instance4>::set_reserve(
-        owner_origin.clone(),
-        DEX.into(),
-        DOT.into(),
-        fixed!(26000000000000),
-        fixed!(36000),
-    )?;
+
+    MBCPool::<T>::initialize_pool(owner_origin.clone(), USDT.into())?;
+    MBCPool::<T>::initialize_pool(owner_origin.clone(), VAL.into())?;
+
+    assert!(MBCPool::<T>::can_exchange(
+        &DEXId::Polkaswap.into(),
+        &USDT.into(),
+        &XOR.into()
+    ));
 
     Ok(())
 }
@@ -173,14 +120,14 @@ benchmarks! {
         DEX.into(),
         base_asset.clone(),
         target_asset.clone(),
-        SwapAmount::with_desired_input(balance!(1000), 0),
+        SwapAmount::with_desired_input(balance!(100), 0),
         Vec::new(),
         FilterMode::Disabled
     )
     verify {
         assert_eq!(
             Into::<u128>::into(Assets::<T>::free_balance(&base_asset, &caller).unwrap()),
-            Into::<u128>::into(initial_base_balance) - balance!(1000)
+            Into::<u128>::into(initial_base_balance) - balance!(100)
         );
     }
 
@@ -195,17 +142,39 @@ benchmarks! {
         DEX.into(),
         base_asset.clone(),
         target_asset.clone(),
-        SwapAmount::with_desired_output(balance!(1000), balance!(1000)),
+        SwapAmount::with_desired_output(balance!(100), balance!(100)),
         Vec::new(),
         FilterMode::Disabled
     )
     verify {
         assert_eq!(
             Into::<u128>::into(Assets::<T>::free_balance(&target_asset, &caller).unwrap()),
-            Into::<u128>::into(initial_target_balance) + balance!(1000)
+            Into::<u128>::into(initial_target_balance) + balance!(100)
         );
     }
 }
+
+// swap_exact_input_multiple {
+//     let u in 0 .. 1000 => setup_benchmark::<T>()?;
+//     let caller = alice::<T>();
+//     let from_asset: T::AssetId = VAL.into();
+//     let to_asset: T::AssetId = XOR.into();
+//     let initial_from_balance = Assets::<T>::free_balance(&from_asset, &caller).unwrap();
+// }: swap(
+//     RawOrigin::Signed(caller.clone()),
+//     DEX.into(),
+//     from_asset.clone(),
+//     to_asset.clone(),
+//     SwapAmount::with_desired_input(balance!(10), 0),
+//     vec![LiquiditySourceType::XYKPool],
+//     FilterMode::ForbidSelected
+// )
+// verify {
+//     assert_eq!(
+//         Into::<u128>::into(Assets::<T>::free_balance(&from_asset, &caller).unwrap()),
+//         Into::<u128>::into(initial_from_balance) - balance!(100)
+//     );
+// }
 
 #[cfg(test)]
 mod tests {
@@ -218,6 +187,7 @@ mod tests {
         ExtBuilder::default().build().execute_with(|| {
             assert_ok!(test_benchmark_swap_exact_input::<Runtime>());
             assert_ok!(test_benchmark_swap_exact_output::<Runtime>());
+            // assert_ok!(test_benchmark_swap_exact_input_multiple::<Runtime>());
         });
     }
 }

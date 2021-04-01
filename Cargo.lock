@@ -4026,6 +4026,7 @@ name = "liquidity-proxy-benchmarking"
 version = "0.1.0"
 dependencies = [
  "assets",
+ "bonding-curve-pool",
  "common",
  "dex-api",
  "dex-manager",
@@ -4035,6 +4036,7 @@ dependencies = [
  "hex-literal",
  "liquidity-proxy",
  "mock-liquidity-source",
+ "multicollateral-bonding-curve-pool",
  "orml-currencies",
  "orml-tokens",
  "pallet-balances",

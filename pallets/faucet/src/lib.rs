@@ -1,9 +1,11 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
+use common::{balance, Balance, PSWAP, VAL, XOR};
 use frame_support::ensure;
+use frame_support::weights::Weight;
 use sp_arithmetic::traits::Saturating;
 
-use common::{balance, Balance, PSWAP, VAL, XOR};
+mod weights;
 
 mod benchmarking;
 
@@ -28,6 +30,10 @@ pub fn transfer_limit_block_count<T: frame_system::Config>() -> BlockNumberOf<T>
     14400u32.into()
 }
 
+pub trait WeightInfo {
+    fn transfer() -> Weight;
+}
+
 pub use pallet::*;
 
 #[frame_support::pallet]
@@ -47,6 +53,8 @@ pub mod pallet {
         frame_system::Config + assets::Config + rewards::Config + technical::Config
     {
         type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+        /// Weight information for extrinsics in this pallet.
+        type WeightInfo: WeightInfo;
     }
 
     #[pallet::pallet]
@@ -66,7 +74,7 @@ pub mod pallet {
         /// AssetNotSupported is returned if `asset_id` is something the function doesn't support.
         /// AmountAboveLimit is returned if `target` has already received their daily limit of `asset_id`.
         /// NotEnoughReserves is returned if `amount` is greater than the reserves
-        #[pallet::weight((0, Pays::No))]
+        #[pallet::weight((<T as Config>::WeightInfo::transfer(), Pays::No))]
         pub fn transfer(
             _origin: OriginFor<T>,
             asset_id: T::AssetId,

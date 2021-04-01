@@ -95,7 +95,7 @@ tokens = { version = "0.4", package = "orml-tokens", default-features = false }
 traits = { version = "0.4", package = "orml-traits", default-features = false }
 
 [features]
-default = ['std', 'runtime-benchmarks']
+default = ['std']
 
 std = [
     'codec/std',

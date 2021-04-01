@@ -1526,6 +1526,7 @@ impl_runtime_apis! {
             impl liquidity_proxy_benchmarking::Config for Runtime {}
             impl pool_xyk_benchmarking::Config for Runtime {}
 
+
             let whitelist: Vec<TrackedStorageKey> = vec![
                 // Block Number
                 hex_literal::hex!("26aa394eea5630e07c48ae0c9558cef702a5c1b19ab7a04f536c519aca4983ac").to_vec().into(),

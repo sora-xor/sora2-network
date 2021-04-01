@@ -493,6 +493,14 @@ impl<T: Config> Pallet<T> {
                     filter,
                 )?;
 
+                #[cfg(feature = "std")]
+                println!(
+                    "{:?} {:?} {:?}",
+                    input_asset_id.clone(),
+                    output_asset_id.clone(),
+                    sources.is_empty()
+                );
+
                 ensure!(!sources.is_empty(), Error::<T>::UnavailableExchangePath);
 
                 let amount = <SwapAmount<Fixed>>::unique_saturated_from(amount);
