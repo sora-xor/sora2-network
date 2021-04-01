@@ -572,7 +572,7 @@ impl<T: Config> OutgoingTransfer<T> {
     pub fn sidechain_amount(&self) -> Result<(u128, Balance), Error<T>> {
         let sidechain_precision =
             crate::SidechainAssetPrecision::<T>::get(self.network_id, &self.asset_id);
-        let thischain_precision = assets::Pallet::<T>::get_asset_info(&self.asset_id).1;
+        let thischain_precision = assets::Pallet::<T>::get_asset_info(&self.asset_id).2;
         Pallet::<T>::convert_precision(thischain_precision, sidechain_precision, self.amount)
     }
 

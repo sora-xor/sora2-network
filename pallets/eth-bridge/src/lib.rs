@@ -445,7 +445,7 @@ impl<T: Config> IncomingRequest<T> {
                 let amount = if !asset_kind.is_owned() {
                     let sidechain_precision =
                         SidechainAssetPrecision::<T>::get(network_id, &asset_id);
-                    let thischain_precision = assets::Pallet::<T>::get_asset_info(&asset_id).1;
+                    let thischain_precision = assets::Pallet::<T>::get_asset_info(&asset_id).2;
                     Pallet::<T>::convert_precision(
                         sidechain_precision,
                         thischain_precision,
@@ -3539,7 +3539,7 @@ impl<T: Config> Module<T> {
                         let precision = SidechainAssetPrecision::<T>::get(network_id, &asset_id);
                         (address, precision)
                     });
-                let asset_precision = assets::Pallet::<T>::get_asset_info(&asset_id).1;
+                let asset_precision = assets::Pallet::<T>::get_asset_info(&asset_id).2;
                 (kind, (asset_id, asset_precision), token_info)
             },
         ))

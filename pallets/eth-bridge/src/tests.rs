@@ -9,8 +9,8 @@ use crate::requests::{
 };
 use crate::types::{Bytes, Log, Transaction};
 use crate::{
-    majority, types, Address, AssetKind, BridgeStatus, ContractEvent, IncomingMetaRequestKind,
-    IncomingRequest, IncomingRequestKind, IncomingTransactionRequestKind,
+    majority, types, Address, AssetConfig, AssetKind, BridgeStatus, ContractEvent,
+    IncomingMetaRequestKind, IncomingRequest, IncomingRequestKind, IncomingTransactionRequestKind,
     LoadIncomingTransactionRequest, OffchainRequest, OutgoingRequest, OutgoingTransfer,
     RequestStatus, SignatureParams,
 };
@@ -2764,7 +2764,7 @@ fn should_convert_amount_for_a_token_with_non_default_precision() {
             decimals
         );
         assert_eq!(
-            Assets::get_asset_info(&asset_id).1,
+            Assets::get_asset_info(&asset_id).2,
             DEFAULT_BALANCE_PRECISION
         );
         // Incoming transfer part.
@@ -2775,18 +2775,18 @@ fn should_convert_amount_for_a_token_with_non_default_precision() {
         let tx_hash = request_incoming(
             alice.clone(),
             H256::from_slice(&[1; 32]),
-            IncomingRequestKind::Transfer,
+            IncomingTransactionRequestKind::Transfer.into(),
             net_id,
         )
         .unwrap();
         let sidechain_amount = 1 * 10_u128.pow(decimals as u32);
         let incoming_trasfer = IncomingRequest::try_from_contract_event(
             ContractEvent::Deposit(alice.clone(), sidechain_amount, token_address, H256::zero()),
-            IncomingPreRequest::new(
+            LoadIncomingTransactionRequest::new(
                 alice.clone(),
                 tx_hash,
                 Default::default(),
-                IncomingRequestKind::Transfer,
+                IncomingTransactionRequestKind::Transfer,
                 net_id,
             ),
             1,
@@ -2808,7 +2808,7 @@ fn should_convert_amount_for_a_token_with_non_default_precision() {
         ));
         let outgoing_transfer =
             match approve_last_request(&state, net_id).expect("request wasn't approved") {
-                OutgoingRequest::Transfer(transfer) => transfer,
+                (OutgoingRequest::Transfer(transfer), _) => transfer,
                 _ => unreachable!(),
             };
         assert_eq!(outgoing_transfer.amount, balance!(1));
@@ -2853,18 +2853,18 @@ fn should_fail_convert_amount_for_a_token_with_non_default_precision() {
         let tx_hash = request_incoming(
             alice.clone(),
             H256::from_slice(&[1; 32]),
-            IncomingRequestKind::Transfer,
+            IncomingTransactionRequestKind::Transfer.into(),
             net_id,
         )
         .unwrap();
         let sidechain_amount = 1_000_000_000_000_000_000_000 * 10_u128.pow(decimals as u32);
         let incoming_trasfer_result = IncomingRequest::try_from_contract_event(
             ContractEvent::Deposit(alice.clone(), sidechain_amount, token_address, H256::zero()),
-            IncomingPreRequest::new(
+            LoadIncomingTransactionRequest::new(
                 alice.clone(),
                 tx_hash,
                 Default::default(),
-                IncomingRequestKind::Transfer,
+                IncomingTransactionRequestKind::Transfer,
                 net_id,
             ),
             1,
