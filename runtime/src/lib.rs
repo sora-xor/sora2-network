@@ -654,6 +654,7 @@ impl pallet_multisig::Config for Runtime {
 
 impl iroha_migration::Config for Runtime {
     type Event = Event;
+    type WeightInfo = PresetWeightInfo;
 }
 
 impl<T: SigningTypes> frame_system::offchain::SignMessage<T> for Runtime {
