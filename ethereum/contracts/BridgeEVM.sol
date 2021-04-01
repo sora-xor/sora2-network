@@ -8,7 +8,7 @@ import "./ERC20Burnable.sol";
 /**
  * Provides functionality of the HASHI bridge
  */
-contract Bridge {
+contract BridgeEVM {
     bool internal initialized_;
     bool internal preparedForMigration_;
 
