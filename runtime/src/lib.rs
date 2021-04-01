@@ -7,7 +7,9 @@ use alloc::string::String;
 
 /// Constant values used within the runtime.
 pub mod constants;
+mod extensions;
 mod on_unbalanced_democracy_slash;
+
 use constants::time::*;
 
 // Make the WASM binary available.
@@ -78,7 +80,9 @@ pub use sp_runtime::BuildStorage;
 use eth_bridge::{
     AssetKind, OffchainRequest, OutgoingRequestEncoded, RequestStatus, SignatureParams,
 };
+use extensions::PrintCall;
 use on_unbalanced_democracy_slash::OnUnbalancedDemocracySlash;
+
 pub use {bonding_curve_pool, eth_bridge, multicollateral_bonding_curve_pool};
 
 /// An index to a block.
@@ -697,6 +701,7 @@ where
             frame_system::CheckEra::<Runtime>::from(generic::Era::mortal(period, current_block)),
             frame_system::CheckNonce::<Runtime>::from(index),
             frame_system::CheckWeight::<Runtime>::new(),
+            PrintCall,
             pallet_transaction_payment::ChargeTransactionPayment::<Runtime>::from(tip.into()),
         );
         #[cfg_attr(not(feature = "std"), allow(unused_variables))]
@@ -1058,6 +1063,7 @@ pub type SignedExtra = (
     frame_system::CheckEra<Runtime>,
     frame_system::CheckNonce<Runtime>,
     frame_system::CheckWeight<Runtime>,
+    PrintCall,
     pallet_transaction_payment::ChargeTransactionPayment<Runtime>,
 );
 /// Unchecked extrinsic type as expected by this runtime.
