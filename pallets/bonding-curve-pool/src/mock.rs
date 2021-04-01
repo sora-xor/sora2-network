@@ -324,11 +324,38 @@ impl ExtBuilder {
         .assimilate_storage(&mut t)
         .unwrap();
 
-        assets::GenesisConfig::<Runtime> {
-            endowed_assets: self
+        pallet_balances::GenesisConfig::<Runtime> {
+            balances: self
                 .endowed_accounts
                 .iter()
                 .cloned()
+                .filter_map(|(account_id, asset_id, balance, ..)| {
+                    if asset_id == GetBaseAssetId::get() {
+                        Some((account_id, balance))
+                    } else {
+                        None
+                    }
+                })
+                .collect(),
+        }
+        .assimilate_storage(&mut t)
+        .unwrap();
+
+        tokens::GenesisConfig::<Runtime> {
+            endowed_accounts: self
+                .endowed_accounts
+                .iter()
+                .cloned()
+                .map(|(account_id, asset_id, balance, ..)| (account_id, asset_id, balance))
+                .collect(),
+        }
+        .assimilate_storage(&mut t)
+        .unwrap();
+
+        assets::GenesisConfig::<Runtime> {
+            endowed_assets: self
+                .endowed_accounts
+                .into_iter()
                 .map(
                     |(
                         account_id,
@@ -351,33 +378,6 @@ impl ExtBuilder {
                         )
                     },
                 )
-                .collect(),
-        }
-        .assimilate_storage(&mut t)
-        .unwrap();
-
-        pallet_balances::GenesisConfig::<Runtime> {
-            balances: self
-                .endowed_accounts
-                .iter()
-                .cloned()
-                .filter_map(|(account_id, asset_id, balance, ..)| {
-                    if asset_id == GetBaseAssetId::get() {
-                        Some((account_id, balance))
-                    } else {
-                        None
-                    }
-                })
-                .collect(),
-        }
-        .assimilate_storage(&mut t)
-        .unwrap();
-
-        tokens::GenesisConfig::<Runtime> {
-            endowed_accounts: self
-                .endowed_accounts
-                .into_iter()
-                .map(|(account_id, asset_id, balance, ..)| (account_id, asset_id, balance))
                 .collect(),
         }
         .assimilate_storage(&mut t)

@@ -21,6 +21,7 @@ sp-std = { version = "3", default-features = false }
 [dev-dependencies]
 sp-io = { version = "3", default-features = false }
 sp-runtime = { version = "3", default-features = false }
+pallet-balances = { version = "3" }
 
 [features]
 default = ['std']

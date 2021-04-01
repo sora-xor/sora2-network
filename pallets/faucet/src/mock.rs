@@ -178,7 +178,7 @@ impl ExtBuilder {
         let account_id: AccountId = account_id();
 
         BalancesConfig {
-            balances: vec![(account_id.clone(), balance!(9000))],
+            balances: vec![(account_id.clone(), balance!(9000)), (alice(), balance!(0))],
         }
         .assimilate_storage(&mut t)
         .unwrap();

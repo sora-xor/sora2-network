@@ -201,7 +201,6 @@ impl<T: Config> Pallet<T> {
 
     /// Makes `owner` be the owner of `permission_id` in `scope`.
     /// Also, if the permission, that `permission_id` represents, has mode `Mode::Permit`, adds the permission to `holder_id`
-    #[frame_support::transactional]
     pub fn assign_permission(
         owner: OwnerId<T>,
         holder_id: &HolderId<T>,

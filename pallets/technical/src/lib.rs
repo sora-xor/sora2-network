@@ -411,11 +411,7 @@ pub mod pallet {
             self.account_ids_to_tech_account_ids
                 .iter()
                 .for_each(|(k, v)| {
-                    frame_system::Pallet::<T>::inc_consumers(k).unwrap();
-                    let acc_id = Pallet::<T>::tech_account_id_to_account_id(v).unwrap();
-                    if acc_id != *k {
-                        frame_system::Pallet::<T>::inc_providers(&acc_id);
-                    }
+                    frame_system::Pallet::<T>::inc_providers(k);
                     TechAccounts::<T>::insert(k, v);
                 });
         }
