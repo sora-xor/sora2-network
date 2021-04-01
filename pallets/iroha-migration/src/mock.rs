@@ -157,6 +157,7 @@ impl pallet_multisig::Config for Runtime {
 
 impl Config for Runtime {
     type Event = Event;
+    type WeightInfo = ();
 }
 
 // Build genesis storage according to the mock runtime.
