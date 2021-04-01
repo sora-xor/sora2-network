@@ -13,10 +13,12 @@ use framenode_runtime::{
 };
 
 use common::prelude::{Balance, DEXInfo, FixedWrapper};
-use common::{balance, fixed, hash, DEXId, Fixed, TechPurpose, PSWAP, VAL, XOR};
+use common::{
+    balance, fixed, hash, DEXId, Fixed, TechPurpose, DEFAULT_BALANCE_PRECISION, PSWAP, VAL, XOR,
+};
 use frame_support::sp_runtime::Percent;
 use framenode_runtime::bonding_curve_pool::{DistributionAccountData, DistributionAccounts};
-use framenode_runtime::eth_bridge::{AssetKind, NetworkConfig};
+use framenode_runtime::eth_bridge::{AssetConfig, NetworkConfig};
 use hex_literal::hex;
 use permissions::Scope;
 use sc_finality_grandpa::AuthorityId as GrandpaId;
@@ -814,17 +816,19 @@ fn testnet_genesis(
             networks: vec![NetworkConfig {
                 initial_peers: initial_bridge_peers.iter().cloned().collect(),
                 bridge_account_id: eth_bridge_account_id.clone(),
-                tokens: vec![
-                    (
-                        XOR.into(),
-                        Some(eth_bridge_params.xor_contract_address),
-                        AssetKind::SidechainOwned,
-                    ),
-                    (
-                        VAL.into(),
-                        Some(eth_bridge_params.val_contract_address),
-                        AssetKind::SidechainOwned,
-                    ),
+                assets: vec![
+                    AssetConfig::Sidechain {
+                        id: XOR.into(),
+                        sidechain_id: eth_bridge_params.xor_contract_address,
+                        owned: true,
+                        precision: DEFAULT_BALANCE_PRECISION,
+                    },
+                    AssetConfig::Sidechain {
+                        id: VAL.into(),
+                        sidechain_id: eth_bridge_params.val_contract_address,
+                        owned: true,
+                        precision: DEFAULT_BALANCE_PRECISION,
+                    },
                 ],
                 bridge_contract_address: eth_bridge_params.bridge_contract_address,
                 reserves: vec![

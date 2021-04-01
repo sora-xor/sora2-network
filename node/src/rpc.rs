@@ -88,6 +88,7 @@ where
         eth_bridge::RequestStatus,
         eth_bridge::OutgoingRequestEncoded,
         framenode_runtime::NetworkId,
+        framenode_runtime::BalancePrecision,
     >,
     C::Api: iroha_migration_rpc::IrohaMigrationRuntimeAPI<Block>,
     C::Api: pswap_distribution_rpc::PswapDistributionRuntimeAPI<Block, AccountId, Balance>,

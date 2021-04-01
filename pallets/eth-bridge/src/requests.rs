@@ -569,20 +569,30 @@ pub struct OutgoingTransfer<T: Config> {
 }
 
 impl<T: Config> OutgoingTransfer<T> {
+    pub fn sidechain_amount(&self) -> Result<(u128, Balance), Error<T>> {
+        let sidechain_precision =
+            crate::SidechainAssetPrecision::<T>::get(self.network_id, &self.asset_id);
+        let thischain_precision = assets::Pallet::<T>::get_asset_info(&self.asset_id).2;
+        Pallet::<T>::convert_precision(thischain_precision, sidechain_precision, self.amount)
+    }
+
     pub fn to_eth_abi(&self, tx_hash: H256) -> Result<OutgoingTransferEncoded, Error<T>> {
         // TODO: Incorrect type (Address != AccountId).
         let from = Address::from_slice(&self.from.encode()[..20]);
         let to = self.to;
         let currency_id;
+        let amount;
         if let Some(token_address) =
             Pallet::<T>::registered_sidechain_token(self.network_id, &self.asset_id)
         {
             currency_id = CurrencyIdEncoded::TokenAddress(token_address);
+            let converted_amount = self.sidechain_amount().map(|x| x.0)?;
+            amount = U256::from(converted_amount);
         } else {
             let x = <T::AssetId as Into<H256>>::into(self.asset_id);
             currency_id = CurrencyIdEncoded::AssetId(H256(x.0));
+            amount = U256::from(self.amount);
         }
-        let amount = U256::from(self.amount);
         let tx_hash = H256(tx_hash.0);
         let mut network_id: H256 = H256::default();
         U256::from(
@@ -624,10 +634,14 @@ impl<T: Config> OutgoingTransfer<T> {
 
     /// Checks that the given asset can be transferred through the bridge.
     pub fn validate(&self) -> Result<(), DispatchError> {
-        ensure!(
-            crate::RegisteredAsset::<T>::get(self.network_id, &self.asset_id).is_some(),
-            Error::<T>::UnsupportedToken
-        );
+        if let Some(kind) = crate::RegisteredAsset::<T>::get(self.network_id, &self.asset_id) {
+            if !kind.is_owned() {
+                let dust = self.sidechain_amount().map(|x| x.1)?;
+                ensure!(dust == 0, Error::<T>::NonZeroDust);
+            }
+        } else {
+            frame_support::fail!(Error::<T>::UnsupportedToken)
+        }
         Ok(())
     }
 
@@ -912,6 +926,10 @@ impl<T: Config> OutgoingAddToken<T> {
 
     /// Checks that the asset isn't registered yet and the given symbol is valid.
     pub fn validate(&self) -> Result<(AssetSymbol, AssetName), DispatchError> {
+        ensure!(
+            self.decimals <= common::DEFAULT_BALANCE_PRECISION,
+            Error::<T>::UnsupportedAssetPrecision
+        );
         ensure!(
             crate::RegisteredSidechainAsset::<T>::get(self.network_id, &self.token_address)
                 .is_none(),
