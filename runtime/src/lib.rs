@@ -823,6 +823,7 @@ impl eth_bridge::Config for Runtime {
 #[cfg(feature = "faucet")]
 impl faucet::Config for Runtime {
     type Event = Event;
+    type WeightInfo = ();
 }
 
 parameter_types! {

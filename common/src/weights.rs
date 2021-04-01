@@ -1,5 +1,7 @@
 use frame_support::parameter_types;
-use frame_support::weights::constants::WEIGHT_PER_SECOND;
+use frame_support::weights::constants::{
+    BlockExecutionWeight, ExtrinsicBaseWeight, WEIGHT_PER_SECOND,
+};
 use frame_support::weights::{
     DispatchClass, Weight, WeightToFeeCoefficient, WeightToFeeCoefficients, WeightToFeePolynomial,
 };
@@ -21,16 +23,17 @@ pub struct PresetWeightInfo;
 const NORMAL_DISPATCH_RATIO: Perbill = Perbill::from_percent(75);
 /// We allow for 2 seconds of compute with a 6 second average block time.
 const MAXIMUM_BLOCK_WEIGHT: Weight = 2 * WEIGHT_PER_SECOND;
+pub const ON_INITIALIZE_RATIO: Perbill = Perbill::from_perthousand(20);
 
 parameter_types! {
     /// Block weights base values and limits.
     pub BlockWeights: limits::BlockWeights = limits::BlockWeights::builder()
-    .base_block(0)
+    .base_block(BlockExecutionWeight::get())
     .for_class(DispatchClass::all(), |weights| {
-        weights.base_extrinsic = 0;
+        weights.base_extrinsic = ExtrinsicBaseWeight::get();
     })
     .for_class(DispatchClass::Normal, |weights| {
-        weights.max_total = Some(NORMAL_DISPATCH_RATIO * MAXIMUM_BLOCK_WEIGHT * 3);
+        weights.max_total = Some(NORMAL_DISPATCH_RATIO * MAXIMUM_BLOCK_WEIGHT);
     })
     .for_class(DispatchClass::Operational, |weights| {
         weights.max_total = Some(MAXIMUM_BLOCK_WEIGHT);
@@ -40,6 +43,7 @@ parameter_types! {
             MAXIMUM_BLOCK_WEIGHT - NORMAL_DISPATCH_RATIO * MAXIMUM_BLOCK_WEIGHT,
         );
     })
+    .avg_block_initialization(ON_INITIALIZE_RATIO)
     .build_or_panic();
     pub BlockLength: limits::BlockLength =
         limits::BlockLength::max_with_normal_ratio(5 * 1024 * 1024, NORMAL_DISPATCH_RATIO);

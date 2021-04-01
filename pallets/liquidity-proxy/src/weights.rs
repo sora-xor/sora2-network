@@ -7,13 +7,26 @@ use frame_support::weights::Weight;
 
 use common::prelude::SwapVariant;
 
+// impl crate::WeightInfo for () {
+//     fn swap(amount: SwapVariant) -> Weight {
+//         match amount {
+//             SwapVariant::WithDesiredInput => (1_337_500_000 as Weight)
+//                 .saturating_add(DbWeight::get().reads(19 as Weight))
+//                 .saturating_add(DbWeight::get().writes(5 as Weight)),
+//             _ => (2_425_000_000 as Weight)
+//                 .saturating_add(DbWeight::get().reads(19 as Weight))
+//                 .saturating_add(DbWeight::get().writes(5 as Weight)),
+//         }
+//     }
+// }
+
 impl crate::WeightInfo for () {
     fn swap(amount: SwapVariant) -> Weight {
         match amount {
-            SwapVariant::WithDesiredInput => (1_337_500_000 as Weight)
+            SwapVariant::WithDesiredInput => (9_362_500_000 as Weight)
                 .saturating_add(DbWeight::get().reads(19 as Weight))
                 .saturating_add(DbWeight::get().writes(5 as Weight)),
-            _ => (2_425_000_000 as Weight)
+            _ => (16_975_000_000 as Weight)
                 .saturating_add(DbWeight::get().reads(19 as Weight))
                 .saturating_add(DbWeight::get().writes(5 as Weight)),
         }
