@@ -1,17 +1,3 @@
-use framenode_runtime::opaque::SessionKeys;
-#[cfg(feature = "faucet")]
-use framenode_runtime::FaucetConfig;
-use framenode_runtime::{
-    bonding_curve_pool, eth_bridge, AccountId, AssetName, AssetSymbol, AssetsConfig, BabeConfig,
-    BalancesConfig, BondingCurvePoolConfig, BridgeMultisigConfig, CouncilConfig, DEXAPIConfig,
-    DEXManagerConfig, DemocracyConfig, EthBridgeConfig, FarmingConfig, GenesisConfig,
-    GetBaseAssetId, GetPswapAssetId, GetValAssetId, GetXorAssetId, GrandpaConfig,
-    IrohaMigrationConfig, LiquiditySourceType, MulticollateralBondingCurvePoolConfig,
-    PermissionsConfig, PswapDistributionConfig, RewardsConfig, Runtime, SessionConfig, Signature,
-    StakerStatus, StakingConfig, SudoConfig, SystemConfig, TechAccountId, TechnicalCommitteeConfig,
-    TechnicalConfig, TokensConfig, WASM_BINARY,
-};
-
 use common::prelude::{Balance, DEXInfo, FixedWrapper};
 use common::{
     balance, fixed, hash, DEXId, Fixed, TechPurpose, DEFAULT_BALANCE_PRECISION, PSWAP, VAL, XOR,
@@ -19,6 +5,19 @@ use common::{
 use frame_support::sp_runtime::Percent;
 use framenode_runtime::bonding_curve_pool::{DistributionAccountData, DistributionAccounts};
 use framenode_runtime::eth_bridge::{AssetConfig, NetworkConfig};
+use framenode_runtime::opaque::SessionKeys;
+#[cfg(feature = "faucet")]
+use framenode_runtime::FaucetConfig;
+use framenode_runtime::{
+    bonding_curve_pool, eth_bridge, AccountId, AssetName, AssetSymbol, AssetsConfig, BabeConfig,
+    BalancesConfig, BondingCurvePoolConfig, BridgeMultisigConfig, CouncilConfig, DEXAPIConfig,
+    DEXManagerConfig, DemocracyConfig, EthBridgeConfig, FarmingConfig, GenesisConfig,
+    GetBaseAssetId, GetPswapAssetId, GetValAssetId, GetXorAssetId, GrandpaConfig, ImOnlineId,
+    IrohaMigrationConfig, LiquiditySourceType, MulticollateralBondingCurvePoolConfig,
+    PermissionsConfig, PswapDistributionConfig, RewardsConfig, Runtime, SessionConfig, Signature,
+    StakerStatus, StakingConfig, SudoConfig, SystemConfig, TechAccountId, TechnicalCommitteeConfig,
+    TechnicalConfig, TokensConfig, WASM_BINARY,
+};
 use hex_literal::hex;
 use permissions::Scope;
 use sc_finality_grandpa::AuthorityId as GrandpaId;
@@ -54,13 +53,16 @@ where
 }
 
 /// Generate an Babe authority key.
-pub fn authority_keys_from_seed(seed: &str) -> (AccountId, AccountId, AuraId, BabeId, GrandpaId) {
+pub fn authority_keys_from_seed(
+    seed: &str,
+) -> (AccountId, AccountId, AuraId, BabeId, GrandpaId, ImOnlineId) {
     (
         get_account_id_from_seed::<sr25519::Public>(&format!("{}//stash", seed)),
         get_account_id_from_seed::<sr25519::Public>(seed),
         get_from_seed::<AuraId>(seed),
         get_from_seed::<BabeId>(seed),
         get_from_seed::<GrandpaId>(seed),
+        get_from_seed::<ImOnlineId>(seed),
     )
 }
 
@@ -69,18 +71,23 @@ pub fn authority_keys_from_public_keys(
     controller_address: [u8; 32],
     sr25519_key: [u8; 32],
     ed25519_key: [u8; 32],
-) -> (AccountId, AccountId, AuraId, BabeId, GrandpaId) {
+) -> (AccountId, AccountId, AuraId, BabeId, GrandpaId, ImOnlineId) {
     (
         stash_address.into(),
         controller_address.into(),
         AuraId::from_slice(&sr25519_key),
         BabeId::from_slice(&sr25519_key),
         GrandpaId::from_slice(&ed25519_key),
+        ImOnlineId::from_slice(&sr25519_key),
     )
 }
 
-fn session_keys(grandpa: GrandpaId, babe: BabeId) -> SessionKeys {
-    SessionKeys { babe, grandpa }
+fn session_keys(grandpa: GrandpaId, babe: BabeId, im_online: ImOnlineId) -> SessionKeys {
+    SessionKeys {
+        babe,
+        grandpa,
+        im_online,
+    }
 }
 
 struct EthBridgeParams {
@@ -465,7 +472,7 @@ pub fn local_testnet_config() -> ChainSpec {
 #[allow(unused_mut)]
 fn testnet_genesis(
     root_key: AccountId,
-    initial_authorities: Vec<(AccountId, AccountId, AuraId, BabeId, GrandpaId)>,
+    initial_authorities: Vec<(AccountId, AccountId, AuraId, BabeId, GrandpaId, ImOnlineId)>,
     endowed_accounts: Vec<AccountId>,
     initial_bridge_peers: Vec<AccountId>,
     dex_root: AccountId,
@@ -656,11 +663,11 @@ fn testnet_genesis(
         pallet_session: Some(SessionConfig {
             keys: initial_authorities
                 .iter()
-                .map(|(account, _, _, babe_id, grandpa_id)| {
+                .map(|(account, _, _, babe_id, grandpa_id, im_online_id)| {
                     (
                         account.clone(),
                         account.clone(),
-                        session_keys(grandpa_id.clone(), babe_id.clone()),
+                        session_keys(grandpa_id.clone(), babe_id.clone(), im_online_id.clone()),
                     )
                 })
                 .collect::<Vec<_>>(),
@@ -670,7 +677,7 @@ fn testnet_genesis(
             minimum_validator_count: 1,
             stakers: initial_authorities
                 .iter()
-                .map(|(stash_account, account, _, _, _)| {
+                .map(|(stash_account, account, _, _, _, _)| {
                     (
                         stash_account.clone(),
                         account.clone(),
@@ -681,7 +688,7 @@ fn testnet_genesis(
                 .collect(),
             invulnerables: initial_authorities
                 .iter()
-                .map(|(stash_account, _, _, _, _)| stash_account.clone())
+                .map(|(stash_account, _, _, _, _, _)| stash_account.clone())
                 .collect(),
             slash_reward_fraction: Perbill::from_percent(10),
             ..Default::default()
@@ -907,5 +914,6 @@ fn testnet_genesis(
             phantom: Default::default(),
         }),
         pallet_democracy: Some(DemocracyConfig::default()),
+        pallet_im_online: Default::default(),
     }
 }
