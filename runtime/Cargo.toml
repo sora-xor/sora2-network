@@ -186,3 +186,5 @@ runtime-benchmarks = [
     "technical/runtime-benchmarks",
     "trading-pair/runtime-benchmarks",
 ]
+
+reduced-pswap-reward-periods = []

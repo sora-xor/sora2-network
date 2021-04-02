@@ -18,7 +18,7 @@ use common::prelude::{
 };
 use common::{
     balance, fixed, fixed_wrapper, DEXId, DexIdOf, GetMarketInfo, LiquiditySource,
-    LiquiditySourceFilter, LiquiditySourceType, ManagementMode, PSWAP, VAL,
+    LiquiditySourceFilter, LiquiditySourceType, ManagementMode, PSWAP, USDT, VAL,
 };
 use frame_support::traits::Get;
 use frame_support::weights::Weight;
@@ -327,6 +327,8 @@ pub mod pallet {
         pub reference_asset_id: T::AssetId,
         /// Account which stores actual PSWAP intended for rewards.
         pub incentives_account_id: T::AccountId,
+        /// List of tokens enabled as collaterals initially.
+        pub initial_collateral_assets: Vec<T::AssetId>,
     }
 
     #[cfg(feature = "std")]
@@ -335,8 +337,9 @@ pub mod pallet {
             Self {
                 reserves_account_id: Default::default(),
                 distribution_accounts: Default::default(),
-                reference_asset_id: Default::default(),
+                reference_asset_id: USDT.into(),
                 incentives_account_id: Default::default(),
+                initial_collateral_assets: [USDT.into(), VAL.into(), PSWAP.into()].into(),
             }
         }
     }
@@ -348,6 +351,13 @@ pub mod pallet {
             DistributionAccountsEntry::<T>::put(&self.distribution_accounts);
             ReferenceAssetId::<T>::put(&self.reference_asset_id);
             IncentivesAccountId::<T>::put(&self.incentives_account_id);
+            self.initial_collateral_assets
+                .iter()
+                .cloned()
+                .for_each(|asset_id| {
+                    Pallet::<T>::initialize_pool_unchecked(asset_id)
+                        .expect("Failed to initialize bonding curve.")
+                });
         }
     }
 }

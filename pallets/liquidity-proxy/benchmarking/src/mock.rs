@@ -55,6 +55,7 @@ parameter_types! {
     pub GetFee: Fixed = fixed_from_basis_points(0u16);
     pub GetPswapDistributionAccountId: AccountId = AccountId32::from([3; 32]);
     pub const GetDefaultSubscriptionFrequency: BlockNumber = 10;
+    pub const GetBurnUpdateFrequency: BlockNumber = 10;
     pub GetIncentiveAssetId: AssetId = common::PSWAP.into();
 }
 
@@ -247,6 +248,7 @@ impl pswap_distribution::Config for Runtime {
     type LiquidityProxy = liquidity_proxy::Module<Runtime>;
     type CompatBalance = Balance;
     type GetDefaultSubscriptionFrequency = GetDefaultSubscriptionFrequency;
+    type GetBurnUpdateFrequency = GetBurnUpdateFrequency;
     type GetTechnicalAccountId = GetPswapDistributionAccountId;
     type EnsureDEXManager = ();
     type OnPswapBurnedAggregator = ();

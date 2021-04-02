@@ -452,6 +452,7 @@ impl ExtBuilder {
             reserves_account_id: Default::default(),
             reference_asset_id: self.reference_asset_id,
             incentives_account_id: incentives_account(),
+            initial_collateral_assets: Default::default(),
         }
         .assimilate_storage(&mut t)
         .unwrap();
