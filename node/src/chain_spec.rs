@@ -767,6 +767,11 @@ fn testnet_genesis(
                     vec![permissions::MANAGE_DEX],
                 ),
                 (
+                    dex_root.clone(),
+                    Scope::Unlimited,
+                    vec![permissions::CREATE_FARM],
+                ),
+                (
                     xor_fee_account_id,
                     Scope::Unlimited,
                     vec![permissions::MINT, permissions::BURN],
@@ -782,7 +787,6 @@ fn testnet_genesis(
                     vec![
                         permissions::MINT,
                         permissions::BURN,
-                        permissions::CREATE_FARM,
                         permissions::LOCK_TO_FARM,
                         permissions::UNLOCK_FROM_FARM,
                         permissions::CLAIM_FROM_FARM,
