@@ -1237,9 +1237,8 @@ pub mod pallet {
             network_id: BridgeNetworkId<T>,
         ) -> DispatchResultWithPostInfo {
             debug::debug!("called add_sidechain_token");
-            let from = ensure_signed(origin)?;
-            // TODO: enable authority account check
-            // ensure!(from == Self::authority_account(), Error::<T>::Forbidden);
+            ensure_root(origin)?;
+            let from = Self::authority_account();
             let nonce = frame_system::Module::<T>::account_nonce(&from);
             let timepoint = bridge_multisig::Module::<T>::timepoint();
             Self::add_request(OffchainRequest::outgoing(OutgoingRequest::AddToken(
@@ -1411,9 +1410,8 @@ pub mod pallet {
             network_id: BridgeNetworkId<T>,
         ) -> DispatchResultWithPostInfo {
             debug::debug!("called change_peers_out");
-            let from = ensure_signed(origin)?;
-            // TODO: enable authority account check
-            // ensure!(from == Self::authority_account(), Error::<T>::Forbidden);
+            ensure_root(origin)?;
+            let from = Self::authority_account();
             let nonce = frame_system::Module::<T>::account_nonce(&from);
             let timepoint = bridge_multisig::Module::<T>::timepoint();
             Self::add_request(OffchainRequest::outgoing(OutgoingRequest::AddPeer(
@@ -1456,9 +1454,8 @@ pub mod pallet {
             network_id: BridgeNetworkId<T>,
         ) -> DispatchResultWithPostInfo {
             debug::debug!("called change_peers_out");
-            let from = ensure_signed(origin)?;
-            // TODO: enable authority account check
-            // ensure!(from == Self::authority_account(), Error::<T>::Forbidden);
+            ensure_root(origin)?;
+            let from = Self::authority_account();
             let peer_address = Self::peer_address(network_id, &account_id);
             let nonce = frame_system::Module::<T>::account_nonce(&from);
             let timepoint = bridge_multisig::Module::<T>::timepoint();
@@ -1502,9 +1499,8 @@ pub mod pallet {
             network_id: BridgeNetworkId<T>,
         ) -> DispatchResultWithPostInfo {
             debug::debug!("called prepare_for_migration");
-            let from = ensure_signed(origin)?;
-            // TODO: enable authority account check
-            // ensure!(from == Self::authority_account(), Error::<T>::Forbidden);
+            ensure_root(origin)?;
+            let from = Self::authority_account();
             let nonce = frame_system::Module::<T>::account_nonce(&from);
             let timepoint = bridge_multisig::Module::<T>::timepoint();
             Self::add_request(OffchainRequest::outgoing(
@@ -1535,9 +1531,8 @@ pub mod pallet {
             network_id: BridgeNetworkId<T>,
         ) -> DispatchResultWithPostInfo {
             debug::debug!("called prepare_for_migration");
-            let from = ensure_signed(origin)?;
-            // TODO: enable authority account check
-            // ensure!(from == Self::authority_account(), Error::<T>::Forbidden);
+            ensure_root(origin)?;
+            let from = Self::authority_account();
             let nonce = frame_system::Module::<T>::account_nonce(&from);
             let timepoint = bridge_multisig::Module::<T>::timepoint();
             Self::add_request(OffchainRequest::outgoing(OutgoingRequest::Migrate(
