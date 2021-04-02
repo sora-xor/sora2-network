@@ -224,7 +224,6 @@ impl pallet_timestamp::Config for Runtime {
 }
 
 impl pallet_staking::Config for Runtime {
-    type ValidatorsFilter = ();
     type Currency = Balances;
     type MultiCurrency = Tokens;
     type ValTokenId = ValId;
