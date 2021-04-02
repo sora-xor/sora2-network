@@ -61,6 +61,7 @@ parameter_types! {
         account_id
     };
     pub const GetDefaultSubscriptionFrequency: BlockNumber = 10;
+    pub const GetBurnUpdateFrequency: BlockNumber = 3;
     pub const ExistentialDeposit: u128 = 1;
     pub const TransferFee: u128 = 0;
     pub const CreationFee: u128 = 0;
@@ -117,6 +118,7 @@ impl Config for Runtime {
     type LiquidityProxy = ();
     type CompatBalance = Balance;
     type GetDefaultSubscriptionFrequency = GetDefaultSubscriptionFrequency;
+    type GetBurnUpdateFrequency = GetBurnUpdateFrequency;
     type GetTechnicalAccountId = GetPswapDistributionAccountId;
     type EnsureDEXManager = DexManager;
     type OnPswapBurnedAggregator = ();
@@ -276,7 +278,7 @@ impl ExtBuilder {
                 (FEES_ACCOUNT_A, (DEX_A_ID, PoolTokenAId::get(), 5, 0)),
                 (FEES_ACCOUNT_B, (DEX_A_ID, PoolTokenBId::get(), 7, 0)),
             ],
-            burn_info: (fixed!(0.1), fixed!(0.10), fixed!(0.40), 3),
+            burn_info: (fixed!(0.1), fixed!(0.10), fixed!(0.40)),
         }
     }
 }

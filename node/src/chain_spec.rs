@@ -170,8 +170,6 @@ pub fn dev_net() -> ChainSpec {
                     hex!("05918034f4a7f7c5d99cd0382aa6574ec2aba148aa3d769e50e0ac7663e36d58").into(),
                 ],
                 hex!("da723e9d76bd60da0ec846895c5e0ecf795b50ae652c012f27e56293277ef372").into(),
-                hex!("16fec57d383a1875ab4e9786aea7a626e721a491c828f475ae63ef098f98f373").into(),
-                hex!("da723e9d76bd60da0ec846895c5e0ecf795b50ae652c012f27e56293277ef372").into(),
                 EthBridgeParams {
                     xor_master_contract_address: hex!("12c6a709925783f49fcca0b398d13b0d597e6e1c")
                         .into(),
@@ -310,8 +308,6 @@ pub fn staging_net(test: bool) -> ChainSpec {
                     hex!("211bb96e9f746183c05a1d583bccf513f9d8f679d6f36ecbd06609615a55b1cc").into(),
                 ],
                 hex!("da723e9d76bd60da0ec846895c5e0ecf795b50ae652c012f27e56293277ef372").into(),
-                hex!("16fec57d383a1875ab4e9786aea7a626e721a491c828f475ae63ef098f98f373").into(),
-                hex!("da723e9d76bd60da0ec846895c5e0ecf795b50ae652c012f27e56293277ef372").into(),
                 eth_bridge_params,
             )
         },
@@ -446,8 +442,6 @@ pub fn local_testnet_config() -> ChainSpec {
                     hex!("05918034f4a7f7c5d99cd0382aa6574ec2aba148aa3d769e50e0ac7663e36d58").into(),
                 ],
                 get_account_id_from_seed::<sr25519::Public>("Alice"),
-                get_account_id_from_seed::<sr25519::Public>("Alice"),
-                get_account_id_from_seed::<sr25519::Public>("Alice"),
                 EthBridgeParams {
                     xor_master_contract_address: hex!("12c6a709925783f49fcca0b398d13b0d597e6e1c")
                         .into(),
@@ -476,8 +470,6 @@ fn testnet_genesis(
     endowed_accounts: Vec<AccountId>,
     initial_bridge_peers: Vec<AccountId>,
     dex_root: AccountId,
-    tech_permissions_owner: AccountId,
-    initial_assets_owner: AccountId,
     eth_bridge_params: EthBridgeParams,
 ) -> GenesisConfig {
     // Initial balances
@@ -548,6 +540,14 @@ fn testnet_genesis(
         technical::Module::<Runtime>::tech_account_id_to_account_id(&rewards_tech_account_id)
             .unwrap();
 
+    let assets_and_permissions_tech_account_id =
+        TechAccountId::Generic(b"SYSTEM_ACCOUNT".to_vec(), b"ASSETS_PERMISSIONS".to_vec());
+    let assets_and_permissions_account_id =
+        technical::Module::<Runtime>::tech_account_id_to_account_id(
+            &assets_and_permissions_tech_account_id,
+        )
+        .unwrap();
+
     let mut tech_accounts = vec![
         (xor_fee_account_id.clone(), xor_fee_tech_account_id),
         (
@@ -579,6 +579,10 @@ fn testnet_genesis(
             iroha_migration_tech_account_id.clone(),
         ),
         (rewards_account_id.clone(), rewards_tech_account_id.clone()),
+        (
+            assets_and_permissions_account_id.clone(),
+            assets_and_permissions_tech_account_id.clone(),
+        ),
     ];
     let accounts = bonding_curve_distribution_accounts();
     tech_accounts.push((
@@ -697,7 +701,7 @@ fn testnet_genesis(
             endowed_assets: vec![
                 (
                     GetXorAssetId::get(),
-                    initial_assets_owner.clone(),
+                    assets_and_permissions_account_id.clone(),
                     AssetSymbol(b"XOR".to_vec()),
                     AssetName(b"SORA".to_vec()),
                     18,
@@ -706,7 +710,7 @@ fn testnet_genesis(
                 ),
                 // (
                 //     UsdId::get(),
-                //     initial_assets_owner.clone(),
+                //     assets_and_permissions_account_id.clone(),
                 //     AssetSymbol(b"USDT".to_vec()),
                 //     AssetName(b"Tether USD".to_vec()),
                 //     18,
@@ -715,7 +719,7 @@ fn testnet_genesis(
                 // ),
                 (
                     GetValAssetId::get(),
-                    initial_assets_owner.clone(),
+                    assets_and_permissions_account_id.clone(),
                     AssetSymbol(b"VAL".to_vec()),
                     AssetName(b"SORA Validator Token".to_vec()),
                     18,
@@ -724,7 +728,7 @@ fn testnet_genesis(
                 ),
                 (
                     GetPswapAssetId::get(),
-                    initial_assets_owner.clone(),
+                    assets_and_permissions_account_id.clone(),
                     AssetSymbol(b"PSWAP".to_vec()),
                     AssetName(b"Polkaswap".to_vec()),
                     18,
@@ -738,22 +742,22 @@ fn testnet_genesis(
                 (
                     permissions::TRANSFER,
                     Scope::Unlimited,
-                    vec![tech_permissions_owner.clone()],
+                    vec![assets_and_permissions_account_id.clone()],
                 ),
                 (
                     permissions::MANAGE_DEX,
                     Scope::Limited(hash(&0u32)),
-                    vec![tech_permissions_owner.clone()],
+                    vec![assets_and_permissions_account_id.clone()],
                 ),
                 (
                     permissions::MINT,
                     Scope::Unlimited,
-                    vec![tech_permissions_owner.clone()],
+                    vec![assets_and_permissions_account_id.clone()],
                 ),
                 (
                     permissions::BURN,
                     Scope::Unlimited,
-                    vec![tech_permissions_owner.clone()],
+                    vec![assets_and_permissions_account_id.clone()],
                 ),
             ],
             initial_permissions: vec![
@@ -773,7 +777,7 @@ fn testnet_genesis(
                     vec![permissions::MINT],
                 ),
                 (
-                    initial_assets_owner,
+                    assets_and_permissions_account_id,
                     Scope::Unlimited,
                     vec![
                         permissions::MINT,
@@ -865,13 +869,14 @@ fn testnet_genesis(
             reserves_account_id: mbc_reserves_tech_account_id,
             reference_asset_id: Default::default(),
             incentives_account_id: mbc_pool_rewards_account_id,
+            initial_collateral_assets: Vec::new(),
         }),
         farming: Some(FarmingConfig {
             initial_farm: (dex_root, XOR, PSWAP),
         }),
         pswap_distribution: Some(PswapDistributionConfig {
             subscribed_accounts: Vec::new(),
-            burn_info: (fixed!(0.1), fixed!(0.000357), fixed!(0.65), 14400),
+            burn_info: (fixed!(0.1), fixed!(0.000357), fixed!(0.65)),
         }),
         iroha_migration: Some(IrohaMigrationConfig {
             iroha_accounts: include!("iroha_migration_accounts.in"),

@@ -357,7 +357,7 @@ impl<T: Config> Pallet<T> {
     }
 
     pub fn burn_rate_update_routine(block_num: T::BlockNumber) {
-        if (block_num % BurnUpdateFrequency::<T>::get()).is_zero() {
+        if (block_num % T::GetBurnUpdateFrequency::get()).is_zero() {
             Self::update_burn_rate();
         }
     }
@@ -386,6 +386,7 @@ pub mod pallet {
             + Zero;
         type GetTechnicalAccountId: Get<Self::AccountId>;
         type GetDefaultSubscriptionFrequency: Get<Self::BlockNumber>;
+        type GetBurnUpdateFrequency: Get<Self::BlockNumber>;
         type EnsureDEXManager: EnsureDEXManager<Self::DEXId, Self::AccountId, DispatchError>;
         type OnPswapBurnedAggregator: OnPswapBurned;
     }
@@ -497,11 +498,6 @@ pub mod pallet {
     #[pallet::getter(fn burn_update_info)]
     pub(super) type BurnUpdateInfo<T: Config> = StorageValue<_, (Fixed, Fixed), ValueQuery>;
 
-    /// Burn Rate update frequency in blocks. MUST be non-zero.
-    #[pallet::storage]
-    #[pallet::getter(fn burn_update_frequency)]
-    pub(super) type BurnUpdateFrequency<T: Config> = StorageValue<_, T::BlockNumber, ValueQuery>;
-
     /// Information about owned portion of stored incentive tokens. Shareholder -> Owned Fraction
     #[pallet::storage]
     #[pallet::getter(fn shareholder_accounts)]
@@ -531,8 +527,8 @@ pub mod pallet {
             T::AccountId,
             (DexIdOf<T>, AssetIdOf<T>, T::BlockNumber, T::BlockNumber),
         )>,
-        /// (Initial Burn Rate, Burn Rate Increase Delta, Burn Rate Max, Update Frequency)
-        pub burn_info: (Fixed, Fixed, Fixed, T::BlockNumber),
+        /// (Initial Burn Rate, Burn Rate Increase Delta, Burn Rate Max)
+        pub burn_info: (Fixed, Fixed, Fixed),
     }
 
     #[cfg(feature = "std")]
@@ -556,10 +552,9 @@ pub mod pallet {
                     );
                 },
             );
-            let (initial_rate, increase_delta, max, freq) = self.burn_info;
+            let (initial_rate, increase_delta, max) = self.burn_info;
             BurnRate::<T>::mutate(|rate| *rate = initial_rate);
             BurnUpdateInfo::<T>::mutate(|info| *info = (increase_delta, max));
-            BurnUpdateFrequency::<T>::mutate(|f| *f = freq);
         }
     }
 }
