@@ -2,7 +2,8 @@ use crate::{self as bonding_curve_pool, Config};
 use common::mock::ExistentialDeposits;
 use common::prelude::{Balance, FixedWrapper, SwapAmount, SwapOutcome};
 use common::{
-    self, balance, Amount, AssetId32, AssetSymbol, LiquiditySource, TechPurpose, USDT, VAL, XOR,
+    self, balance, Amount, AssetId32, AssetName, AssetSymbol, LiquiditySource, TechPurpose, USDT,
+    VAL, XOR,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::GenesisBuild;
@@ -51,7 +52,7 @@ construct_runtime! {
         UncheckedExtrinsic = UncheckedExtrinsic,
     {
         System: frame_system::{Module, Call, Config, Storage, Event<T>},
-        DexManager: dex_manager::{Module, Call, Config<T>, Storage, Event<T>},
+        DexManager: dex_manager::{Module, Call, Config<T>, Storage},
         TradingPair: trading_pair::{Module, Call, Config<T>, Storage, Event<T>},
         MockLiquiditySource: mock_liquidity_source::<Instance1>::{Module, Call, Config<T>, Storage},
         BondingCurvePool: bonding_curve_pool::{Module, Call, Config<T>, Storage},
@@ -90,7 +91,6 @@ impl frame_system::Config for Runtime {
 }
 
 impl dex_manager::Config for Runtime {
-    type Event = Event;
     type WeightInfo = ();
 }
 
@@ -245,19 +245,38 @@ impl<DEXId> LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> f
 }
 
 pub struct ExtBuilder {
-    endowed_accounts: Vec<(AccountId, AssetId, Balance, AssetSymbol, u8, Balance, bool)>,
+    endowed_accounts: Vec<(
+        AccountId,
+        AssetId,
+        Balance,
+        AssetSymbol,
+        AssetName,
+        u8,
+        Balance,
+        bool,
+    )>,
 }
 
 impl Default for ExtBuilder {
     fn default() -> Self {
         Self {
             endowed_accounts: vec![
-                (alice(), USDT, 0, AssetSymbol(b"USDT".to_vec()), 18, 0, true),
+                (
+                    alice(),
+                    USDT,
+                    0,
+                    AssetSymbol(b"USDT".to_vec()),
+                    AssetName(b"Tether USD".to_vec()),
+                    18,
+                    0,
+                    true,
+                ),
                 (
                     alice(),
                     XOR,
                     balance!(350000),
                     AssetSymbol(b"XOR".to_vec()),
+                    AssetName(b"SORA".to_vec()),
                     18,
                     Balance::from(0u32),
                     true,
@@ -267,6 +286,7 @@ impl Default for ExtBuilder {
                     VAL,
                     0u128.into(),
                     AssetSymbol(b"VAL".to_vec()),
+                    AssetName(b"SORA Validator Token".to_vec()),
                     18,
                     Balance::from(0u32),
                     true,
@@ -278,7 +298,16 @@ impl Default for ExtBuilder {
 
 impl ExtBuilder {
     pub fn new(
-        endowed_accounts: Vec<(AccountId, AssetId, Balance, AssetSymbol, u8, Balance, bool)>,
+        endowed_accounts: Vec<(
+            AccountId,
+            AssetId,
+            Balance,
+            AssetSymbol,
+            AssetName,
+            u8,
+            Balance,
+            bool,
+        )>,
     ) -> Self {
         Self { endowed_accounts }
     }
@@ -301,11 +330,21 @@ impl ExtBuilder {
                 .iter()
                 .cloned()
                 .map(
-                    |(account_id, asset_id, _, symbol, precision, initial_supply, is_mintable)| {
+                    |(
+                        account_id,
+                        asset_id,
+                        _,
+                        symbol,
+                        name,
+                        precision,
+                        initial_supply,
+                        is_mintable,
+                    )| {
                         (
                             asset_id,
                             account_id,
                             symbol,
+                            name,
                             precision,
                             initial_supply,
                             is_mintable,

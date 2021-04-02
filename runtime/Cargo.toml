@@ -14,7 +14,7 @@ codec = { package = "parity-scale-codec", version = "2", default-features = fals
 hex-literal = { version = '0.3.1' }
 serde = { features = ['derive'], optional = true, version = '1.0.101' }
 common = { path = "../common", default-features = false }
-faucet = { path = "../pallets/faucet", default-features = false }
+faucet = { path = "../pallets/faucet", default-features = false, optional = true }
 assets = { path = "../pallets/assets", default-features = false }
 bonding-curve-pool = { path = "../pallets/bonding-curve-pool", default-features = false }
 multicollateral-bonding-curve-pool = { path = "../pallets/multicollateral-bonding-curve-pool", default-features = false }
@@ -50,6 +50,8 @@ dex-api-benchmarking = { path = "../pallets/dex-api/benchmarking", default-featu
 
 # Substrate dependencies
 frame-benchmarking = { default-features = false, optional = true, version = '3' }
+pallet-collective = { default-features = false, version = '3' }
+pallet-democracy = { default-features = false, version = '3' }
 frame-executive = { default-features = false, version = '3' }
 frame-support = { default-features = false, version = '3' }
 frame-system = { default-features = false, version = '3' }
@@ -59,10 +61,13 @@ pallet-aura = { default-features = false, version = '3' }
 pallet-balances = { default-features = false, version = '3' }
 pallet-grandpa = { default-features = false, version = '3' }
 pallet-babe = { default-features = false, version = '3' }
+pallet-im-online = { default-features = false, version = '3' }
 pallet-multisig = { version = "3", default-features = false }
+pallet-offences = { default-features = false, version = '3' }
 pallet-randomness-collective-flip = { default-features = false, version = '3' }
 pallet-sudo = { default-features = false, version = '3' }
 pallet-timestamp = { default-features = false, version = '3' }
+pallet-scheduler = { default-features = false, version = '3' }
 #pallet-session = { default-features = false, version = '3' }
 pallet-session = { default-features = false, features = ["historical"], version = '3' }
 pallet-staking = { git = "https://github.com/soramitsu/sora2-frame-pallets", default-features = false, branch = "v3.0.0"}
@@ -87,12 +92,13 @@ pallet-authorship = { default-features = false, version = '3' }
 
 # Other
 currencies = { version = "0.4", package = "orml-currencies", default-features = false }
+static_assertions = "1.1.0"
 tokens = { version = "0.4", package = "orml-tokens", default-features = false }
 traits = { version = "0.4", package = "orml-traits", default-features = false }
-static_assertions = "1.1.0"
 
 [features]
 default = ['std']
+
 std = [
     'codec/std',
     'serde',
@@ -103,8 +109,13 @@ std = [
     'pallet-aura/std',
     'pallet-babe/std',
     'pallet-balances/std',
+    'pallet-collective/std',
+    'pallet-democracy/std',
     'pallet-grandpa/std',
+    'pallet-im-online/std',
+    'pallet-offences/std',
     'pallet-randomness-collective-flip/std',
+    'pallet-scheduler/std',
     'pallet-sudo/std',
     'pallet-timestamp/std',
     'pallet-transaction-payment/std',
@@ -135,8 +146,10 @@ std = [
     'eth-bridge/std',
     'eth-bridge-runtime-api/std',
     'farming/std',
-    'faucet/std',
+    'farming-runtime-api/std',
+    'faucet?/std',
     'iroha-migration/std',
+    'iroha-migration-runtime-api/std',
     'liquidity-proxy/std',
     'mock-liquidity-source/std',
     'bridge-multisig/std',
@@ -157,6 +170,8 @@ std = [
     'pswap-distribution-runtime-api/std',
 ]
 
+test-net = ["faucet"]
+
 runtime-benchmarks = [
     "frame-benchmarking",
     "frame-system/runtime-benchmarks",
@@ -165,7 +180,7 @@ runtime-benchmarks = [
     "assets/runtime-benchmarks",
     "dex-api-benchmarking",
     "dex-manager/runtime-benchmarks",
-    "faucet/runtime-benchmarks",
+    "faucet?/runtime-benchmarks",
     "liquidity-proxy-benchmarking",
     "pool-xyk-benchmarking",
     "technical/runtime-benchmarks",

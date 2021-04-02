@@ -18,11 +18,11 @@ contract Bridge {
     /** Substrate proofs used */
     mapping(bytes32 => bool) public used;
     mapping(address => bool) public _uniqueAddresses;
-    
+
     /** White list of ERC-20 ethereum native tokens */
     mapping(address => bool) public acceptedEthTokens;
-    
-    /** White lists of ERC-20 SORA native tokens 
+
+    /** White lists of ERC-20 SORA native tokens
     * We use several representations of the white list for optimisation purposes.
     */
     mapping(bytes32 => address) public _sidechainTokens;
@@ -34,7 +34,7 @@ contract Bridge {
     event ChangePeers(address peerId, bool removal);
     event PreparedForMigration();
     event Migrated(address to);
-    
+
     /**
      * For XOR and VAL use old token contracts, created for SORA 1 bridge.
      * Also for XOR and VAL transfers from SORA 2 to Ethereum old bridges will be used.
@@ -93,11 +93,11 @@ contract Bridge {
     }
 
     /**
-     * Adds new token to whitelist. 
+     * Adds new token to whitelist.
      * Token should not been already added.
-     * 
+     *
      * @param newToken new token contract address
-     * @param ticker token ticker
+     * @param ticker token ticker (symbol)
      * @param name token title
      * @param decimals count of token decimal places
      * @param txHash transaction hash from sidechain
@@ -124,10 +124,10 @@ contract Bridge {
         );
         acceptedEthTokens[newToken] = true;
     }
-    
+
     /**
      * Preparations for migration to new Bridge contract
-     * 
+     *
      * @param thisContractAddress address of this bridge contract
      * @param salt unique data used for signature
      * @param v array of signatures of tx_hash (v-component)
@@ -155,7 +155,7 @@ contract Bridge {
 
     /**
     * Shutdown this contract and migrate tokens ownership to the new contract.
-    * 
+    *
     * @param thisContractAddress this bridge contract address
     * @param salt unique data used for signature generation
     * @param newContractAddress address of the new bridge contract
@@ -168,7 +168,7 @@ contract Bridge {
         address thisContractAddress,
         bytes32 salt,
         address newContractAddress,
-        address[] calldata erc20nativeTokens, 
+        address[] calldata erc20nativeTokens,
         uint8[] memory v,
         bytes32[] memory r,
         bytes32[] memory s
@@ -195,7 +195,7 @@ contract Bridge {
 
     /**
     * Add new token from sidechain to the bridge white list.
-    * 
+    *
     * @param name token title
     * @param symbol token symbol
     * @param decimals number of decimals
@@ -237,7 +237,7 @@ contract Bridge {
 
     /**
     * Send Ethereum to sidechain.
-    * 
+    *
     * @param to destionation address on sidechain.
     */
     function sendEthToSidechain(
@@ -253,7 +253,7 @@ contract Bridge {
 
     /**
      * Send ERC-20 token to sidechain.
-     * 
+     *
      * @param to destination address on the sidechain
      * @param amount amount to sendERC20ToSidechain
      * @param tokenAddress contract address of token to send
@@ -269,7 +269,7 @@ contract Bridge {
         require(token.allowance(msg.sender, address(this)) >= amount, "NOT ENOUGH DELEGATED TOKENS ON SENDER BALANCE");
 
         bytes32 sidechainAssetId = _sidechainTokensByAddress[tokenAddress];
-        if (sidechainAssetId.length != 0 || _addressVAL == tokenAddress || _addressXOR == tokenAddress) {
+        if (sidechainAssetId != "" || _addressVAL == tokenAddress || _addressXOR == tokenAddress) {
             ERC20Burnable mtoken = ERC20Burnable(tokenAddress);
             mtoken.burnFrom(msg.sender, amount);
         } else {
@@ -278,10 +278,10 @@ contract Bridge {
         }
         emit Deposit(to, amount, tokenAddress, sidechainAssetId);
     }
-    
+
     /**
      * Add new peer using peers quorum.
-     * 
+     *
      * @param newPeerAddress address of the peer to add
      * @param txHash tx hash from sidechain
      * @param v array of signatures of tx_hash (v-component)
@@ -314,7 +314,7 @@ contract Bridge {
 
     /**
      * Remove peer using peers quorum.
-     * 
+     *
      * @param peerAddress address of the peer to remove
      * @param txHash tx hash from sidechain
      * @param v array of signatures of tx_hash (v-component)
@@ -498,7 +498,7 @@ contract Bridge {
     }
 
     /**
-     * Adds new peer to list of signature verifiers. 
+     * Adds new peer to list of signature verifiers.
      * Internal function
      * @param newAddress address of new peer
      */

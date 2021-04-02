@@ -4,8 +4,8 @@ use common::prelude::{
     Balance, BlockLength, BlockWeights, SwapAmount, SwapOutcome, TransactionByteFee,
 };
 use common::{
-    self, balance, fixed_from_basis_points, Amount, AssetId32, AssetSymbol, Fixed, LiquiditySource,
-    LiquiditySourceFilter, LiquiditySourceType, VAL, XOR,
+    self, balance, fixed_from_basis_points, Amount, AssetId32, AssetName, AssetSymbol, Fixed,
+    LiquiditySource, LiquiditySourceFilter, LiquiditySourceType, VAL, XOR,
 };
 use core::time::Duration;
 use currencies::BasicCurrencyAdapter;
@@ -72,7 +72,7 @@ construct_runtime! {
     {
         System: frame_system::{Module, Call, Config, Storage, Event<T>},
         MockLiquiditySource: mock_liquidity_source::<Instance1>::{Module, Call, Config<T>, Storage},
-        DexManager: dex_manager::{Module, Call, Config<T>, Storage, Event<T>},
+        DexManager: dex_manager::{Module, Call, Config<T>, Storage},
         TradingPair: trading_pair::{Module, Call, Config<T>, Storage, Event<T>},
         ReferralSystem: referral_system::{Module, Call, Config<T>, Storage},
         Balances: pallet_balances::{Module, Call, Storage, Event<T>},
@@ -86,7 +86,7 @@ construct_runtime! {
         Historical: historical::{Module},
         Timestamp: pallet_timestamp::{Module, Call, Storage, Inherent},
         Staking: pallet_staking::{Module, Call, Config<T>, Storage, Event<T>},
-        XorFee: xor_fee::{Module, Call},
+        XorFee: xor_fee::{Module, Call, Event<T>},
     }
 }
 
@@ -122,7 +122,6 @@ impl mock_liquidity_source::Config<mock_liquidity_source::Instance1> for Runtime
 }
 
 impl dex_manager::Config for Runtime {
-    type Event = Event;
     type WeightInfo = ();
 }
 
@@ -225,7 +224,6 @@ impl pallet_timestamp::Config for Runtime {
 }
 
 impl pallet_staking::Config for Runtime {
-    type ValidatorsFilter = ();
     type Currency = Balances;
     type MultiCurrency = Tokens;
     type ValTokenId = ValId;
@@ -261,6 +259,7 @@ where
 pub type Extrinsic = TestXt<Call, ()>;
 
 impl Config for Runtime {
+    type Event = Event;
     type XorCurrency = Balances;
     type ReferrerWeight = ReferrerWeight;
     type XorBurnedWeight = XorBurnedWeight;
@@ -416,6 +415,7 @@ impl ExtBuilder {
                     XOR,
                     xor_fee_account_id,
                     AssetSymbol(b"XOR".to_vec()),
+                    AssetName(b"SORA".to_vec()),
                     18,
                     Balance::from(0u32),
                     true,
@@ -424,6 +424,7 @@ impl ExtBuilder {
                     VAL,
                     xor_fee_account_id,
                     AssetSymbol(b"VAL".to_vec()),
+                    AssetName(b"SORA Validator Token".to_vec()),
                     18,
                     Balance::from(0u32),
                     true,

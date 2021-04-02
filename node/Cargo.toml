@@ -10,13 +10,13 @@ name = 'framenode'
 path = 'src/main.rs'
 
 [dependencies]
-derive_more = '0.15.0'
-exit-future = '0.1.4'
+derive_more = '0.99.13'
+exit-future = '0.2.0'
 futures = { version = "0.3.1", features = ["compat"] }
 hex-literal = "0.3.1"
 log = '0.4.8'
 parking_lot = '0.11'
-trie-root = '0.15.2'
+trie-root = '0.16.0'
 codec = { package = 'parity-scale-codec', version = "2", features = ["derive"]}
 structopt = "0.3.3"
 ansi_term = "0.12.1"
@@ -29,7 +29,7 @@ dex-manager-rpc = { path = "../pallets/dex-manager/rpc" }
 technical = {path = "../pallets/technical" }
 permissions = {path = "../pallets/permissions" }
 xor-fee = { path = "../pallets/xor-fee" }
-faucet = { path = "../pallets/faucet" }
+faucet = { path = "../pallets/faucet", optional = true }
 rewards = { path = "../pallets/rewards" }
 rewards-rpc = { path = "../pallets/rewards/rpc" }
 iroha-migration = { path = "../pallets/iroha-migration" }
@@ -90,13 +90,17 @@ substrate-build-script-utils = { version = "3", default-features = false }
 
 [dev-dependencies]
 assert_cmd = "0.12"
-nix = "0.17"
+nix = "0.20"
 tokio = { version = "0.2.13", features = ["macros"] }
 
 # Substrate dependencies
 pallet-sudo = { version = "3", default-features = false }
 
 [features]
+test-net = [
+    "faucet",
+    "framenode-runtime/test-net",
+]
 runtime-benchmarks = [
     "framenode-runtime/runtime-benchmarks",
     "sc-executor/wasmtime",

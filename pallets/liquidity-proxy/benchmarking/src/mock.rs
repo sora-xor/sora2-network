@@ -70,7 +70,7 @@ construct_runtime! {
         Currencies: currencies::{Module, Call, Storage, Event<T>},
         Assets: assets::{Module, Call, Config<T>, Storage, Event<T>},
         Balances: pallet_balances::{Module, Call, Storage, Event<T>},
-        DexManager: dex_manager::{Module, Call, Config<T>, Storage, Event<T>},
+        DexManager: dex_manager::{Module, Call, Config<T>, Storage},
         MockLiquiditySource: mock_liquidity_source::<Instance1>::{Module, Call, Config<T>, Storage},
         MockLiquiditySource2: mock_liquidity_source::<Instance2>::{Module, Call, Config<T>, Storage},
         MockLiquiditySource3: mock_liquidity_source::<Instance3>::{Module, Call, Config<T>, Storage},
@@ -115,6 +115,8 @@ impl liquidity_proxy::Config for Runtime {
     type GetNumSamples = GetNumSamples;
     type GetTechnicalAccountId = GetLiquidityProxyAccountId;
     type WeightInfo = ();
+    type PrimaryMarket = ();
+    type SecondaryMarket = ();
 }
 
 impl tokens::Config for Runtime {
@@ -162,7 +164,6 @@ impl pallet_balances::Config for Runtime {
 }
 
 impl dex_manager::Config for Runtime {
-    type Event = Event;
     type WeightInfo = ();
 }
 

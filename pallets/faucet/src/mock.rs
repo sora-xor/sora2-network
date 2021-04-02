@@ -1,7 +1,9 @@
 use crate::{self as faucet, Config};
 use common::mock::ExistentialDeposits;
 use common::prelude::Balance;
-use common::{self, balance, Amount, AssetId32, AssetSymbol, TechPurpose, USDT, VAL, XOR};
+use common::{
+    self, balance, Amount, AssetId32, AssetName, AssetSymbol, TechPurpose, USDT, VAL, XOR,
+};
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::GenesisBuild;
 use frame_support::weights::Weight;
@@ -66,6 +68,7 @@ construct_runtime! {
         Currencies: currencies::{Module, Call, Storage, Event<T>},
         Balances: pallet_balances::{Module, Call, Config<T>, Storage, Event<T>},
         Tokens: tokens::{Module, Call, Config<T>, Storage, Event<T>},
+        Rewards: rewards::{Module, Event<T>},
     }
 }
 
@@ -96,6 +99,11 @@ impl frame_system::Config for Runtime {
     type SystemWeightInfo = ();
     type PalletInfo = PalletInfo;
     type SS58Prefix = ();
+}
+
+impl rewards::Config for Runtime {
+    type Event = Event;
+    type WeightInfo = ();
 }
 
 impl technical::Config for Runtime {
@@ -169,7 +177,7 @@ impl ExtBuilder {
         let account_id: AccountId = account_id();
 
         BalancesConfig {
-            balances: vec![(account_id.clone(), balance!(150))],
+            balances: vec![(account_id.clone(), balance!(9000))],
         }
         .assimilate_storage(&mut t)
         .unwrap();
@@ -190,6 +198,7 @@ impl ExtBuilder {
                     XOR,
                     alice(),
                     AssetSymbol(b"XOR".to_vec()),
+                    AssetName(b"SORA".to_vec()),
                     18,
                     Balance::from(0u32),
                     true,
@@ -198,6 +207,7 @@ impl ExtBuilder {
                     VAL.into(),
                     alice(),
                     AssetSymbol(b"VAL".to_vec()),
+                    AssetName(b"SORA Validator Token".to_vec()),
                     18,
                     Balance::from(0u32),
                     true,
@@ -208,7 +218,7 @@ impl ExtBuilder {
         .unwrap();
 
         TokensConfig {
-            endowed_accounts: vec![(account_id.clone(), VAL.into(), balance!(150))],
+            endowed_accounts: vec![(account_id.clone(), VAL.into(), balance!(9000))],
         }
         .assimilate_storage(&mut t)
         .unwrap();

@@ -11,7 +11,9 @@ use sp_runtime::{MultiSignature, Perbill};
 
 use common::mock::ExistentialDeposits;
 use common::prelude::Balance;
-use common::{self, balance, Amount, AssetId32, AssetSymbol, TechPurpose, PSWAP, VAL, XOR};
+use common::{
+    self, balance, Amount, AssetId32, AssetName, AssetSymbol, TechPurpose, PSWAP, VAL, XOR,
+};
 use permissions::{Scope, BURN, MINT};
 
 use crate::{self as rewards, Config};
@@ -70,6 +72,7 @@ construct_runtime! {
 
 impl Config for Runtime {
     type Event = Event;
+    type WeightInfo = ();
 }
 
 impl frame_system::Config for Runtime {
@@ -186,6 +189,7 @@ impl ExtBuilder {
                     PSWAP,
                     alice(),
                     AssetSymbol(b"XOR".to_vec()),
+                    AssetName(b"SORA".to_vec()),
                     18,
                     Balance::from(0u32),
                     true,
@@ -194,6 +198,7 @@ impl ExtBuilder {
                     VAL.into(),
                     alice(),
                     AssetSymbol(b"VAL".to_vec()),
+                    AssetName(b"SORA Validator Token".to_vec()),
                     18,
                     Balance::from(0u32),
                     true,

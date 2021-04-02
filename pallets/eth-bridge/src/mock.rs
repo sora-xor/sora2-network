@@ -1,10 +1,10 @@
 // Creating mock Runtime here
 
-use crate::{AssetKind, Config, NetworkConfig};
+use crate::{AssetConfig, Config, NetworkConfig};
 use codec::{Codec, Decode, Encode};
 use common::mock::ExistentialDeposits;
 use common::prelude::Balance;
-use common::{Amount, AssetId, AssetId32, AssetSymbol, VAL};
+use common::{Amount, AssetId, AssetId32, AssetName, AssetSymbol, DEFAULT_BALANCE_PRECISION, VAL};
 use currencies::BasicCurrencyAdapter;
 use frame_support::dispatch::{DispatchInfo, GetDispatchInfo};
 use frame_support::sp_io::TestExternalities;
@@ -32,16 +32,15 @@ use frame_support::weights::{Pays, Weight};
 use frame_support::{construct_runtime, parameter_types};
 use frame_system::offchain::{Account, SigningTypes};
 use parking_lot::RwLock;
+use sp_core::H256;
 use sp_keystore::testing::KeyStore;
 use sp_keystore::KeystoreExt;
-use {crate as eth_bridge, frame_system};
-// use permissions::{Scope, MINT};
-use sp_core::{H160, H256};
 use sp_std::collections::btree_set::BTreeSet;
 use sp_std::fmt::Debug;
 use sp_std::str::FromStr;
 use sp_std::sync::Arc;
 use std::collections::HashMap;
+use {crate as eth_bridge, frame_system};
 
 pub const PSWAP: AssetId = AssetId::PSWAP;
 pub const XOR: AssetId = AssetId::XOR;
@@ -326,7 +325,7 @@ impl crate::Config for Runtime {
     type Event = Event;
     type NetworkId = u32;
     type GetEthNetworkId = EthNetworkId;
-    type WeightInfo = ();
+    type WeightInfo = common::weights::PresetWeightInfo;
 }
 
 impl sp_runtime::traits::ExtrinsicMetadata for TestExtrinsic {
@@ -382,27 +381,29 @@ impl Default for ExtBuilder {
         };
         builder.add_network(
             vec![
-                (AssetId::PSWAP.into(), None, AssetKind::Thischain),
-                (
-                    AssetId::XOR.into(),
-                    Some(
-                        sp_core::H160::from_str("40fd72257597aa14c7231a7b1aaa29fce868f677")
-                            .unwrap(),
-                    ),
-                    AssetKind::SidechainOwned,
-                ),
-                (
-                    AssetId::VAL.into(),
-                    Some(
-                        sp_core::H160::from_str("3f9feac97e5feb15d8bf98042a9a01b515da3dfb")
-                            .unwrap(),
-                    ),
-                    AssetKind::SidechainOwned,
-                ),
+                AssetConfig::Thischain { id: PSWAP.into() },
+                AssetConfig::Sidechain {
+                    id: XOR.into(),
+                    sidechain_id: sp_core::H160::from_str(
+                        "40fd72257597aa14c7231a7b1aaa29fce868f677",
+                    )
+                    .unwrap(),
+                    owned: true,
+                    precision: DEFAULT_BALANCE_PRECISION,
+                },
+                AssetConfig::Sidechain {
+                    id: VAL.into(),
+                    sidechain_id: sp_core::H160::from_str(
+                        "3f9feac97e5feb15d8bf98042a9a01b515da3dfb",
+                    )
+                    .unwrap(),
+                    owned: true,
+                    precision: DEFAULT_BALANCE_PRECISION,
+                },
             ],
             Some(vec![
-                (XOR.into(), Balance::from(350_000u32)),
-                (VAL.into(), Balance::from(33_900_000u32)),
+                (XOR.into(), common::balance!(350000)),
+                (VAL.into(), common::balance!(33900000)),
             ]),
             Some(4),
         );
@@ -419,22 +420,18 @@ impl ExtBuilder {
         }
     }
 
-    pub fn add_currency(
-        &mut self,
-        network_id: u32,
-        currency: (AssetId32<AssetId>, Option<H160>, AssetKind),
-    ) {
+    pub fn add_currency(&mut self, network_id: u32, currency: AssetConfig<AssetId32<AssetId>>) {
         self.networks
             .get_mut(&network_id)
             .unwrap()
             .config
-            .tokens
+            .assets
             .push(currency);
     }
 
     pub fn add_network(
         &mut self,
-        tokens: Vec<(AssetId32<AssetId>, Option<H160>, AssetKind)>,
+        assets: Vec<AssetConfig<AssetId32<AssetId>>>,
         reserves: Option<Vec<(AssetId32<AssetId>, Balance)>>,
         peers_num: Option<usize>,
     ) -> u32 {
@@ -451,7 +448,7 @@ impl ExtBuilder {
                 config: NetworkConfig {
                     initial_peers: peers_keys.iter().map(|(_, id, _)| id).cloned().collect(),
                     bridge_account_id: multisig_account_id.clone(),
-                    tokens,
+                    assets,
                     bridge_contract_address: Default::default(),
                     reserves: reserves.unwrap_or_default(),
                 },
@@ -475,17 +472,17 @@ impl ExtBuilder {
         networks.sort_by(|(x, _), (y, _)| x.cmp(y));
         for (_net_id, ext_network) in networks {
             bridge_network_configs.push(ext_network.config.clone());
-            endowed_accounts.extend(ext_network.config.tokens.iter().cloned().map(
-                |(asset_id, _, _)| (ext_network.config.bridge_account_id.clone(), asset_id, 0),
-            ));
-            endowed_accounts.extend(ext_network.config.reserves.iter().cloned().map(
-                |(asset_id, balance)| {
+            endowed_accounts.extend(ext_network.config.assets.iter().cloned().map(
+                |asset_config| {
                     (
                         ext_network.config.bridge_account_id.clone(),
-                        asset_id,
-                        balance,
+                        asset_config.asset_id().clone(),
+                        0,
                     )
                 },
+            ));
+            endowed_accounts.extend(ext_network.config.reserves.iter().cloned().map(
+                |(asset_id, _balance)| (ext_network.config.bridge_account_id.clone(), asset_id, 0),
             ));
             bridge_accounts.push((
                 ext_network.config.bridge_account_id.clone(),
@@ -518,6 +515,7 @@ impl ExtBuilder {
                     x.1,
                     self.root_account_id.clone(),
                     AssetSymbol(b"".to_vec()),
+                    AssetName(b"".to_vec()),
                     18,
                     Balance::from(0u32),
                     true,
@@ -538,16 +536,7 @@ impl ExtBuilder {
         }
 
         BalancesConfig {
-            balances: endowed_accounts
-                .iter()
-                .filter_map(|(account_id, asset_id, balance)| {
-                    if asset_id == &GetBaseAssetId::get() {
-                        Some((account_id.clone(), balance.clone()))
-                    } else {
-                        None
-                    }
-                })
-                .collect(),
+            balances: Default::default(),
         }
         .assimilate_storage(&mut storage)
         .unwrap();

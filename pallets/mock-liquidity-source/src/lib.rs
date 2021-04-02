@@ -2,13 +2,13 @@
 
 use common::fixnum::ops::One;
 use common::prelude::{FixedWrapper, SwapAmount, SwapOutcome};
-use common::{fixed, Balance, Fixed, LiquiditySource};
+use common::{balance, fixed, Balance, Fixed, GetPoolReserves, LiquiditySource};
 use core::convert::TryInto;
 use frame_support::dispatch::DispatchError;
 use frame_support::ensure;
 use frame_support::traits::Get;
 use frame_system::ensure_signed;
-use permissions::{Scope, BURN, MINT, SLASH, TRANSFER};
+use permissions::{Scope, BURN, MINT, TRANSFER};
 
 #[cfg(test)]
 mod mock;
@@ -187,7 +187,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
     pub fn set_reserves_account_id(account: T::TechAccountId) -> Result<(), DispatchError> {
         ReservesAcc::<T, I>::set(account.clone());
         let account_id = technical::Pallet::<T>::tech_account_id_to_account_id(&account)?;
-        let permissions = [BURN, MINT, TRANSFER, SLASH];
+        let permissions = [BURN, MINT, TRANSFER];
         for permission in &permissions {
             permissions::Pallet::<T>::assign_permission(
                 account_id.clone(),
@@ -225,6 +225,19 @@ impl<T: Config<I>, I: 'static>
         output_asset_id: &T::AssetId,
         swap_amount: SwapAmount<Balance>,
     ) -> Result<SwapOutcome<Balance>, DispatchError> {
+        let swap_amount = match swap_amount {
+            SwapAmount::WithDesiredOutput {
+                desired_amount_out,
+                max_amount_in,
+            } => {
+                if max_amount_in > Balance::MAX / 2 {
+                    SwapAmount::with_desired_output(desired_amount_out, Balance::MAX / 2)
+                } else {
+                    swap_amount
+                }
+            }
+            _ => swap_amount,
+        };
         let swap_amount = swap_amount
             .try_into()
             .map_err(|_| Error::<T, I>::CalculationError)?;
@@ -329,6 +342,20 @@ impl<T: Config<I>, I: 'static>
     ) -> Result<SwapOutcome<Balance>, DispatchError> {
         // actual exchange does not happen
         Self::quote(dex_id, input_asset_id, output_asset_id, desired_amount)
+    }
+}
+
+impl<T: Config<I>, I: 'static> GetPoolReserves<T::AssetId> for Pallet<T, I> {
+    fn reserves(_base_asset: &T::AssetId, other_asset: &T::AssetId) -> (Balance, Balance) {
+        // This will only work for the dex_id being common::DEXId::Polkaswap
+        // Letting the dex_id being passed as a parameter by the caller would require changing
+        // the trait interface which is not desirable
+        let dex_id: T::DEXId = common::DEXId::Polkaswap.into();
+        let (base_reserve, target_reserve) = <Reserves<T, I>>::get(dex_id, other_asset);
+        (
+            base_reserve.into_bits().try_into().unwrap_or(balance!(0)),
+            target_reserve.into_bits().try_into().unwrap_or(balance!(0)),
+        )
     }
 }
 

@@ -1,7 +1,7 @@
 use crate::{self as trading_pair, Config};
 use common::mock::ExistentialDeposits;
 use common::prelude::{Balance, DEXInfo};
-use common::{hash, AssetId32, AssetSymbol, BalancePrecision, DOT, KSM, XOR};
+use common::{hash, AssetId32, AssetName, AssetSymbol, BalancePrecision, DOT, KSM, XOR};
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::GenesisBuild;
 use frame_support::weights::Weight;
@@ -29,7 +29,7 @@ construct_runtime! {
         Assets: assets::{Module, Call, Config<T>, Storage, Event<T>},
         Balances: pallet_balances::{Module, Call, Storage, Event<T>},
         Permissions: permissions::{Module, Call, Config<T>, Storage, Event<T>},
-        DexManager: dex_manager::{Module, Call, Config<T>, Storage, Event<T>},
+        DexManager: dex_manager::{Module, Call, Config<T>, Storage},
     }
 }
 
@@ -141,7 +141,6 @@ impl permissions::Config for Runtime {
 }
 
 impl dex_manager::Config for Runtime {
-    type Event = Event;
     type WeightInfo = ();
 }
 
@@ -150,6 +149,7 @@ pub struct ExtBuilder {
         AssetId,
         AccountId,
         AssetSymbol,
+        AssetName,
         BalancePrecision,
         Balance,
         bool,
@@ -168,6 +168,7 @@ impl ExtBuilder {
                     XOR,
                     ALICE,
                     AssetSymbol(b"XOR".to_vec()),
+                    AssetName(b"SORA".to_vec()),
                     18,
                     Balance::from(0u32),
                     true,
@@ -176,6 +177,7 @@ impl ExtBuilder {
                     DOT,
                     ALICE,
                     AssetSymbol(b"DOT".to_vec()),
+                    AssetName(b"Polkadot".to_vec()),
                     18,
                     Balance::from(0u32),
                     true,
@@ -183,7 +185,8 @@ impl ExtBuilder {
                 (
                     KSM,
                     ALICE,
-                    AssetSymbol(b"DOT".to_vec()),
+                    AssetSymbol(b"KSM".to_vec()),
+                    AssetName(b"Kusama".to_vec()),
                     18,
                     Balance::from(0u32),
                     true,
@@ -205,6 +208,7 @@ impl Default for ExtBuilder {
                     XOR,
                     ALICE,
                     AssetSymbol(b"XOR".to_vec()),
+                    AssetName(b"SORA".to_vec()),
                     18,
                     Balance::zero(),
                     true,
@@ -213,6 +217,7 @@ impl Default for ExtBuilder {
                     DOT,
                     ALICE,
                     AssetSymbol(b"DOT".to_vec()),
+                    AssetName(b"Polkadot".to_vec()),
                     18,
                     Balance::zero(),
                     true,
@@ -221,6 +226,7 @@ impl Default for ExtBuilder {
                     KSM,
                     ALICE,
                     AssetSymbol(b"KSM".to_vec()),
+                    AssetName(b"Kusama".to_vec()),
                     18,
                     Balance::zero(),
                     true,

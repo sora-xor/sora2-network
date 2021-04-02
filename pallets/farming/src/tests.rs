@@ -1,7 +1,7 @@
 use crate::mock::*;
 use crate::FarmId;
 use common::prelude::{Balance, SwapAmount};
-use common::{balance, AssetSymbol, ToFeeAccount, DOT, PSWAP, XOR};
+use common::{balance, AssetName, AssetSymbol, ToFeeAccount, DOT, PSWAP, XOR};
 use frame_support::{assert_noop, assert_ok};
 
 impl crate::Module<Runtime> {
@@ -39,6 +39,7 @@ impl crate::Module<Runtime> {
                 ALICE(),
                 XOR,
                 AssetSymbol(b"XOR".to_vec()),
+                AssetName(b"SORA".to_vec()),
                 18,
                 Balance::from(0u32),
                 true,
@@ -48,6 +49,7 @@ impl crate::Module<Runtime> {
                 ALICE(),
                 DOT,
                 AssetSymbol(b"DOT".to_vec()),
+                AssetName(b"Polkadot".to_vec()),
                 18,
                 Balance::from(0u32),
                 true,

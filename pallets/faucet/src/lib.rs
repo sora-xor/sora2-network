@@ -1,9 +1,9 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use common::{balance, Balance, PSWAP, VAL, XOR};
 use frame_support::ensure;
-use frame_support::weights::Pays;
 use sp_arithmetic::traits::Saturating;
+
+use common::{balance, Balance, PSWAP, VAL, XOR};
 
 mod benchmarking;
 
@@ -21,7 +21,7 @@ pub const TECH_ACCOUNT_PREFIX: &[u8] = b"faucet";
 pub const TECH_ACCOUNT_MAIN: &[u8] = b"main";
 
 pub fn balance_limit() -> Balance {
-    balance!(100)
+    balance!(6000)
 }
 
 pub fn transfer_limit_block_count<T: frame_system::Config>() -> BlockNumberOf<T> {
@@ -32,13 +32,20 @@ pub use pallet::*;
 
 #[frame_support::pallet]
 pub mod pallet {
-    use super::*;
-    use common::AccountIdOf;
     use frame_support::pallet_prelude::*;
     use frame_system::pallet_prelude::*;
+    use hex_literal::hex;
+    use sp_core::H160;
+
+    use common::AccountIdOf;
+    use rewards::{PswapFarmOwners, PswapWaifuOwners, ValOwners};
+
+    use super::*;
 
     #[pallet::config]
-    pub trait Config: frame_system::Config + assets::Config + technical::Config {
+    pub trait Config:
+        frame_system::Config + assets::Config + rewards::Config + technical::Config
+    {
         type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
     }
 
@@ -86,6 +93,37 @@ pub mod pallet {
                 Self::deposit_event(Event::Transferred(target, amount));
                 Ok(().into())
             })
+        }
+
+        #[pallet::weight((0, Pays::No))]
+        pub fn reset_rewards(_origin: OriginFor<T>) -> DispatchResultWithPostInfo {
+            ValOwners::<T>::remove_all();
+            ValOwners::<T>::insert(
+                H160::from(hex!("21Bc9f4a3d9Dc86f142F802668dB7D908cF0A636")),
+                balance!(111),
+            );
+            ValOwners::<T>::insert(
+                H160::from(hex!("D67fea281B2C5dC3271509c1b628E0867a9815D7")),
+                balance!(444),
+            );
+
+            PswapFarmOwners::<T>::remove_all();
+            PswapFarmOwners::<T>::insert(
+                H160::from(hex!("4fE143cDD48791cB364823A41e018AEC5cBb9AbB")),
+                balance!(222),
+            );
+            PswapFarmOwners::<T>::insert(
+                H160::from(hex!("D67fea281B2C5dC3271509c1b628E0867a9815D7")),
+                balance!(555),
+            );
+
+            PswapWaifuOwners::<T>::remove_all();
+            PswapWaifuOwners::<T>::insert(
+                H160::from(hex!("886021F300dC809269CFC758A2364a2baF63af0c")),
+                balance!(333),
+            );
+
+            Ok(().into())
         }
     }
 

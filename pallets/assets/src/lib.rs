@@ -30,14 +30,14 @@ mod tests;
 
 use codec::{Decode, Encode};
 use common::prelude::Balance;
-use common::{hash, Amount, AssetSymbol, BalancePrecision, DEFAULT_BALANCE_PRECISION};
+use common::{hash, Amount, AssetName, AssetSymbol, BalancePrecision, DEFAULT_BALANCE_PRECISION};
 use frame_support::dispatch::{DispatchError, DispatchResult};
 use frame_support::sp_runtime::traits::{MaybeSerializeDeserialize, Member};
 use frame_support::traits::Get;
 use frame_support::weights::Weight;
 use frame_support::{ensure, Parameter};
 use frame_system::ensure_signed;
-use permissions::{Scope, BURN, MINT, SLASH, TRANSFER};
+use permissions::{Scope, BURN, MINT, TRANSFER};
 use sp_core::hash::H512;
 use sp_core::H256;
 use sp_runtime::traits::Zero;
@@ -63,6 +63,7 @@ type CurrencyIdOf<T> =
     <<T as Config>::Currency as MultiCurrency<<T as frame_system::Config>::AccountId>>::CurrencyId;
 
 const ASSET_SYMBOL_MAX_LENGTH: usize = 7;
+const ASSET_NAME_MAX_LENGTH: usize = 33;
 const MAX_ALLOWED_PRECISION: u8 = 18;
 
 #[derive(Clone, Copy, Eq, PartialEq, Encode, Decode)]
@@ -209,11 +210,13 @@ pub mod pallet {
         /// Performs an asset registration.
         ///
         /// Registers new `AssetId` for the given `origin`.
-        /// AssetSymbol should represent string with only uppercase latin chars with max length of 5.
+        /// AssetSymbol should represent string with only uppercase latin chars with max length of 7.
+        /// AssetName should represent string with only uppercase or lowercase latin chars or numbers or spaces, with max length of 33.
         #[pallet::weight(<T as Config>::WeightInfo::register())]
         pub fn register(
             origin: OriginFor<T>,
             symbol: AssetSymbol,
+            name: AssetName,
             initial_supply: Balance,
             is_mintable: bool,
         ) -> DispatchResultWithPostInfo {
@@ -222,6 +225,7 @@ pub mod pallet {
                 let _asset_id = Self::register_from(
                     &author,
                     symbol,
+                    name,
                     DEFAULT_BALANCE_PRECISION,
                     initial_supply,
                     is_mintable,
@@ -336,6 +340,8 @@ pub mod pallet {
         InsufficientBalance,
         /// Symbol is not valid. It must contain only uppercase latin characters, length <= 7.
         InvalidAssetSymbol,
+        /// Name is not valid. It must contain only uppercase or lowercase latin characters or numbers or spaces, length <= 33.
+        InvalidAssetName,
         /// Precision value is not valid, it should represent a number of decimal places for number, max is 30.
         InvalidPrecision,
         /// Minting for particular asset id is disabled.
@@ -353,8 +359,13 @@ pub mod pallet {
     /// Asset Id -> (Symbol, Precision, Is Mintable)
     #[pallet::storage]
     #[pallet::getter(fn asset_infos)]
-    pub type AssetInfos<T: Config> =
-        StorageMap<_, Twox64Concat, T::AssetId, (AssetSymbol, BalancePrecision, bool), ValueQuery>;
+    pub type AssetInfos<T: Config> = StorageMap<
+        _,
+        Twox64Concat,
+        T::AssetId,
+        (AssetSymbol, AssetName, BalancePrecision, bool),
+        ValueQuery,
+    >;
 
     /// Asset Id -> AssetRecord<T>
     #[pallet::storage]
@@ -368,6 +379,7 @@ pub mod pallet {
             T::AssetId,
             T::AccountId,
             AssetSymbol,
+            AssetName,
             BalancePrecision,
             Balance,
             bool,
@@ -387,11 +399,12 @@ pub mod pallet {
     impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
         fn build(&self) {
             self.endowed_assets.iter().cloned().for_each(
-                |(asset_id, account_id, symbol, precision, initial_supply, is_mintable)| {
+                |(asset_id, account_id, symbol, name, precision, initial_supply, is_mintable)| {
                     Pallet::<T>::register_asset_id(
                         account_id,
                         asset_id,
                         symbol,
+                        name,
                         precision,
                         initial_supply,
                         is_mintable,
@@ -436,6 +449,7 @@ impl<T: Config> Pallet<T> {
         account_id: T::AccountId,
         asset_id: T::AssetId,
         symbol: AssetSymbol,
+        name: AssetName,
         precision: BalancePrecision,
         initial_supply: Balance,
         is_mintable: bool,
@@ -449,13 +463,14 @@ impl<T: Config> Pallet<T> {
             crate::is_symbol_valid(&symbol),
             Error::<T>::InvalidAssetSymbol
         );
-        AssetInfos::<T>::insert(asset_id, (symbol, precision, is_mintable));
+        ensure!(crate::is_name_valid(&name), Error::<T>::InvalidAssetName);
+        AssetInfos::<T>::insert(asset_id, (symbol, name, precision, is_mintable));
         ensure!(
             precision <= MAX_ALLOWED_PRECISION,
             Error::<T>::InvalidPrecision
         );
         let scope = Scope::Limited(hash(&asset_id));
-        let permission_ids = [TRANSFER, MINT, BURN, SLASH];
+        let permission_ids = [TRANSFER, MINT, BURN];
         for permission_id in &permission_ids {
             Permissions::<T>::assign_permission(
                 account_id.clone(),
@@ -476,6 +491,7 @@ impl<T: Config> Pallet<T> {
     pub fn register_from(
         account_id: &T::AccountId,
         symbol: AssetSymbol,
+        name: AssetName,
         precision: BalancePrecision,
         initial_supply: Balance,
         is_mintable: bool,
@@ -486,6 +502,7 @@ impl<T: Config> Pallet<T> {
                 account_id.clone(),
                 asset_id,
                 symbol,
+                name,
                 precision,
                 initial_supply,
                 is_mintable,
@@ -569,6 +586,7 @@ impl<T: Config> Pallet<T> {
         amount: Balance,
     ) -> DispatchResult {
         Self::ensure_asset_exists(asset_id)?;
+        Self::check_permission_maybe_with_parameters(who, TRANSFER, asset_id)?;
         T::Currency::ensure_can_withdraw(asset_id.clone(), who, amount)
     }
 
@@ -600,7 +618,7 @@ impl<T: Config> Pallet<T> {
     ) -> DispatchResult {
         Self::ensure_asset_exists(asset_id)?;
         Self::check_permission_maybe_with_parameters(issuer, MINT, asset_id)?;
-        let (_, _, is_mintable) = AssetInfos::<T>::get(asset_id);
+        let (_, _, _, is_mintable) = AssetInfos::<T>::get(asset_id);
         ensure!(is_mintable, Error::<T>::AssetSupplyIsNotMintable);
         T::Currency::deposit(asset_id.clone(), to, amount)
     }
@@ -612,28 +630,11 @@ impl<T: Config> Pallet<T> {
         amount: Balance,
     ) -> DispatchResult {
         Self::ensure_asset_exists(asset_id)?;
-        Self::check_permission_maybe_with_parameters(issuer, BURN, asset_id)?;
-        T::Currency::withdraw(asset_id.clone(), to, amount)
-    }
-
-    pub fn can_slash(
-        asset_id: &T::AssetId,
-        who: &T::AccountId,
-        amount: Balance,
-    ) -> Result<bool, DispatchError> {
-        Self::ensure_asset_exists(asset_id)?;
-        Self::check_permission_maybe_with_parameters(who, SLASH, asset_id)?;
-        Ok(T::Currency::can_slash(asset_id.clone(), who, amount))
-    }
-
-    pub fn slash(
-        asset_id: &T::AssetId,
-        who: &T::AccountId,
-        amount: Balance,
-    ) -> Result<Balance, DispatchError> {
-        Self::ensure_asset_exists(asset_id)?;
-        Self::check_permission_maybe_with_parameters(who, SLASH, asset_id)?;
-        Ok(T::Currency::slash(asset_id.clone(), who, amount))
+        // Holder can burn its funds.
+        if issuer != to {
+            Self::check_permission_maybe_with_parameters(issuer, BURN, asset_id)?;
+        }
+        T::Currency::withdraw(*asset_id, to, amount)
     }
 
     pub fn update_balance(
@@ -644,7 +645,7 @@ impl<T: Config> Pallet<T> {
         Self::check_permission_maybe_with_parameters(who, MINT, asset_id)?;
         Self::check_permission_maybe_with_parameters(who, BURN, asset_id)?;
         if by_amount.is_positive() {
-            let (_, _, is_mintable) = AssetInfos::<T>::get(asset_id);
+            let (_, _, _, is_mintable) = AssetInfos::<T>::get(asset_id);
             ensure!(is_mintable, Error::<T>::AssetSupplyIsNotMintable);
         }
         T::Currency::update_balance(asset_id.clone(), who, by_amount)
@@ -678,7 +679,7 @@ impl<T: Config> Pallet<T> {
             Self::is_asset_owner(asset_id, who),
             Error::<T>::InvalidAssetOwner
         );
-        AssetInfos::<T>::mutate(asset_id, |(_, _, ref mut is_mintable)| {
+        AssetInfos::<T>::mutate(asset_id, |(_, _, _, ref mut is_mintable)| {
             ensure!(*is_mintable, Error::<T>::AssetSupplyIsNotMintable);
             *is_mintable = false;
             Ok(())
@@ -689,13 +690,18 @@ impl<T: Config> Pallet<T> {
         AssetInfos::<T>::iter().map(|(key, _)| key).collect()
     }
 
-    pub fn list_registered_asset_infos() -> Vec<(T::AssetId, AssetSymbol, BalancePrecision, bool)> {
+    pub fn list_registered_asset_infos(
+    ) -> Vec<(T::AssetId, AssetSymbol, AssetName, BalancePrecision, bool)> {
         AssetInfos::<T>::iter()
-            .map(|(key, (symbol, precision, is_mintable))| (key, symbol, precision, is_mintable))
+            .map(|(key, (symbol, name, precision, is_mintable))| {
+                (key, symbol, name, precision, is_mintable)
+            })
             .collect()
     }
 
-    pub fn get_asset_info(asset_id: &T::AssetId) -> (AssetSymbol, BalancePrecision, bool) {
+    pub fn get_asset_info(
+        asset_id: &T::AssetId,
+    ) -> (AssetSymbol, AssetName, BalancePrecision, bool) {
         AssetInfos::<T>::get(asset_id)
     }
 }
@@ -706,4 +712,16 @@ impl<T: Config> Pallet<T> {
 pub fn is_symbol_valid(symbol: &AssetSymbol) -> bool {
     symbol.0.len() <= ASSET_SYMBOL_MAX_LENGTH
         && symbol.0.iter().all(|byte| (b'A'..=b'Z').contains(&byte))
+}
+
+/// According to UTF-8 encoding, graphemes that start with byte 0b0XXXXXXX belong
+/// to ASCII range and are of single byte, therefore passing check in range 'A' to 'z'
+/// guarantees that all graphemes are of length 1, therefore length check is valid.
+pub fn is_name_valid(name: &AssetName) -> bool {
+    let mut allowed_graphemes = (b'A'..=b'Z').collect::<Vec<_>>();
+    allowed_graphemes.extend(b'a'..=b'z');
+    allowed_graphemes.extend(b'0'..=b'9');
+    allowed_graphemes.push(b' ');
+    name.0.len() <= ASSET_NAME_MAX_LENGTH
+        && name.0.iter().all(|byte| allowed_graphemes.contains(&byte))
 }

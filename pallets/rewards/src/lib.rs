@@ -7,7 +7,7 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use frame_support::dispatch::DispatchErrorWithPostInfo;
+use frame_support::dispatch::{DispatchErrorWithPostInfo, Weight};
 use frame_support::storage::StorageMap as StorageMapTrait;
 use sp_core::H160;
 use sp_std::prelude::*;
@@ -17,15 +17,22 @@ use common::{eth, AccountIdOf, Balance};
 
 pub use self::pallet::*;
 
+mod weights;
+
 #[cfg(test)]
 mod mock;
 #[cfg(test)]
 mod tests;
 
 type EthereumAddress = H160;
+type WeightInfoOf<T> = <T as Config>::WeightInfo;
 
 pub const TECH_ACCOUNT_PREFIX: &[u8] = b"rewards";
 pub const TECH_ACCOUNT_MAIN: &[u8] = b"main";
+
+pub trait WeightInfo {
+    fn claim() -> Weight;
+}
 
 impl<T: Config> Pallet<T> {
     pub fn claimables(eth_address: &EthereumAddress) -> Vec<Balance> {
@@ -73,6 +80,7 @@ pub mod pallet {
     #[pallet::config]
     pub trait Config: frame_system::Config + assets::Config + technical::Config {
         type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+        type WeightInfo: WeightInfo;
     }
 
     #[pallet::pallet]
@@ -84,8 +92,7 @@ pub mod pallet {
 
     #[pallet::call]
     impl<T: Config> Pallet<T> {
-        // TODO: Provide benchmarks
-        #[pallet::weight((0, Pays::No))]
+        #[pallet::weight(WeightInfoOf::<T>::claim())]
         #[transactional]
         pub fn claim(origin: OriginFor<T>, signature: Vec<u8>) -> DispatchResultWithPostInfo {
             let account_id = ensure_signed(origin)?;
@@ -163,15 +170,14 @@ pub mod pallet {
     pub(super) type ReservesAcc<T: Config> = StorageValue<_, T::TechAccountId, ValueQuery>;
 
     #[pallet::storage]
-    pub(super) type ValOwners<T: Config> =
+    pub type ValOwners<T: Config> = StorageMap<_, Identity, EthereumAddress, Balance, ValueQuery>;
+
+    #[pallet::storage]
+    pub type PswapFarmOwners<T: Config> =
         StorageMap<_, Identity, EthereumAddress, Balance, ValueQuery>;
 
     #[pallet::storage]
-    pub(super) type PswapFarmOwners<T: Config> =
-        StorageMap<_, Identity, EthereumAddress, Balance, ValueQuery>;
-
-    #[pallet::storage]
-    pub(super) type PswapWaifuOwners<T: Config> =
+    pub type PswapWaifuOwners<T: Config> =
         StorageMap<_, Identity, EthereumAddress, Balance, ValueQuery>;
 
     #[pallet::genesis_config]

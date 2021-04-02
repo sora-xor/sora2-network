@@ -46,7 +46,7 @@ construct_runtime! {
         UncheckedExtrinsic = UncheckedExtrinsic,
     {
         System: frame_system::{Module, Call, Config, Storage, Event<T>},
-        DexManager: dex_manager::{Module, Call, Config<T>, Storage, Event<T>},
+        DexManager: dex_manager::{Module, Call, Config<T>, Storage},
         Tokens: tokens::{Module, Call, Config<T>, Storage, Event<T>},
         Permissions: permissions::{Module, Call, Config<T>, Storage, Event<T>},
         Currencies: currencies::{Module, Call, Storage, Event<T>},
@@ -81,7 +81,6 @@ impl frame_system::Config for Runtime {
 }
 
 impl Config for Runtime {
-    type Event = Event;
     type WeightInfo = ();
 }
 
