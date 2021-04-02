@@ -19,7 +19,8 @@ use frame_support::sp_runtime::serde::{Serialize, Serializer};
 use frame_support::sp_runtime::testing::Header;
 use frame_support::sp_runtime::traits::{
     self, Applyable, BlakeTwo256, Checkable, DispatchInfoOf, Dispatchable, IdentifyAccount,
-    IdentityLookup, PostDispatchInfoOf, SignedExtension, ValidateUnsigned, Verify,
+    IdentityLookup, MaybeMallocSizeOf, PostDispatchInfoOf, SignedExtension, ValidateUnsigned,
+    Verify,
 };
 use frame_support::sp_runtime::transaction_validity::{
     TransactionSource, TransactionValidity, TransactionValidityError,
@@ -74,6 +75,10 @@ pub struct MyTestXt<Call, Extra> {
 }
 
 parity_util_mem::malloc_size_of_is_0!(any: MyTestXt<Call, Extra>);
+
+// impl<Call, Extra> MaybeMallocSizeOf for MyTestXt<Call, Extra> {
+//
+// }
 
 impl<Call: Codec + Sync + Send, Context, Extra> Checkable<Context> for MyTestXt<Call, Extra> {
     type Checked = Self;

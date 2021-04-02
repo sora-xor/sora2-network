@@ -103,6 +103,7 @@ type EthereumAddress = Address;
 
 mod weights;
 
+mod benchmarking;
 mod contract;
 #[cfg(test)]
 mod mock;
@@ -169,6 +170,7 @@ pub struct PeerConfig<NetworkId: std::hash::Hash + Eq> {
 /// Separated components of a secp256k1 signature.
 #[derive(Encode, Decode, Eq, PartialEq, Clone, PartialOrd, Ord, RuntimeDebug)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+#[cfg_attr(any(test, feature = "runtime-benchmarks"), derive(Default))]
 #[repr(C)]
 pub struct SignatureParams {
     r: [u8; 32],
@@ -1107,6 +1109,7 @@ pub mod pallet {
     use frame_support::pallet_prelude::*;
     use frame_support::weights::PostDispatchInfo;
     use frame_system::pallet_prelude::*;
+    use frame_system::RawOrigin;
     use permissions::BURN;
 
     #[pallet::config]
@@ -1654,7 +1657,7 @@ pub mod pallet {
                 } else {
                     debug::debug!("Outgoing request approvals collected {:?}", hash);
                     RequestStatuses::<T>::insert(net_id, hash, RequestStatus::ApprovalsReady);
-                    Self::deposit_event(Event::ApprovalsCollected(request_encoded, approvals));
+                    Self::deposit_event(Event::ApprovalsCollected(hash));
                 }
                 Self::remove_request_from_queue(net_id, &hash);
             }
@@ -1699,6 +1702,11 @@ pub mod pallet {
         ) -> DispatchResultWithPostInfo {
             let _ = ensure_root(origin)?;
             if !Self::is_peer(&who, network_id) {
+                bridge_multisig::Pallet::<T>::add_signatory(
+                    RawOrigin::Signed(get_bridge_account::<T>(network_id)).into(),
+                    who.clone(),
+                )
+                .map_err(|e| e.error)?;
                 PeerAddress::<T>::insert(network_id, &who, address);
                 PeerAccountId::<T>::insert(network_id, &address, who.clone());
                 <Peers<T>>::mutate(network_id, |l| l.insert(who));
@@ -1714,7 +1722,7 @@ pub mod pallet {
         /// New request has been registered. [Request Hash]
         RequestRegistered(H256),
         /// The request's approvals have been collected. [Encoded Outgoing Request, Signatures]
-        ApprovalsCollected(OutgoingRequestEncoded, BTreeSet<SignatureParams>),
+        ApprovalsCollected(H256),
         /// The request finalization has been failed. [Request Hash]
         RequestFinalizationFailed(H256),
         /// The incoming request finalization has been failed. [Request Hash]
@@ -2419,18 +2427,13 @@ impl<T: Config> Pallet<T> {
     }
 
     /// Signs a message with a peer's secret key.
-    fn sign_message(msg: &[u8]) -> (SignatureParams, secp256k1::PublicKey) {
-        let secret_s = StorageValueRef::persistent(STORAGE_PEER_SECRET_KEY);
-        let sk = secp256k1::SecretKey::parse_slice(
-            &secret_s
-                .get::<Vec<u8>>()
-                .flatten()
-                .expect("Off-chain worker secret key is not specified."),
-        )
-        .expect("Invalid off-chain worker secret key.");
+    fn sign_message(
+        msg: &[u8],
+        secret_key: &secp256k1::SecretKey,
+    ) -> (SignatureParams, secp256k1::PublicKey) {
         let message = eth::prepare_message(msg);
-        let (sig, v) = secp256k1::sign(&message, &sk);
-        let pk = secp256k1::PublicKey::from_secret_key(&sk);
+        let (sig, v) = secp256k1::sign(&message, secret_key);
+        let pk = secp256k1::PublicKey::from_secret_key(secret_key);
         let v = v.serialize();
         let sig_ser = sig.serialize();
         (
@@ -3199,8 +3202,16 @@ impl<T: Config> Pallet<T> {
         let encoded_request = request.to_eth_abi(hash)?;
 
         let result = signer.send_signed_transaction(|_acc| {
+            let secret_s = StorageValueRef::persistent(STORAGE_PEER_SECRET_KEY);
+            let sk = secp256k1::SecretKey::parse_slice(
+                &secret_s
+                    .get::<Vec<u8>>()
+                    .flatten()
+                    .expect("Off-chain worker secret key is not specified."),
+            )
+            .expect("Invalid off-chain worker secret key.");
             // Signs `abi.encodePacked(tokenAddress, amount, to, txHash, from)`.
-            let (signature, public) = Self::sign_message(encoded_request.as_raw());
+            let (signature, public) = Self::sign_message(encoded_request.as_raw(), &sk);
             Call::approve_request(
                 ecdsa::Public::from_slice(&public.serialize_compressed()),
                 hash,
