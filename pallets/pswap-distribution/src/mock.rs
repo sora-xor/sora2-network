@@ -201,7 +201,7 @@ pub struct ExtBuilder {
     initial_permission_owners: Vec<(u32, Scope, Vec<AccountId>)>,
     initial_permissions: Vec<(AccountId, Scope, Vec<u32>)>,
     subscribed_accounts: Vec<(AccountId, (DEXId, AssetId, BlockNumber, BlockNumber))>,
-    burn_info: (Fixed, Fixed, Fixed, BlockNumber),
+    burn_info: (Fixed, Fixed, Fixed),
 }
 
 impl ExtBuilder {
@@ -220,7 +220,7 @@ impl ExtBuilder {
             initial_permission_owners: Vec::new(),
             initial_permissions: Vec::new(),
             subscribed_accounts: Vec::new(),
-            burn_info: (fixed!(0), fixed!(0.10), fixed!(0.30), 3),
+            burn_info: (fixed!(0), fixed!(0.10), fixed!(0.30)),
         }
     }
 }
