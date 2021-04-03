@@ -93,7 +93,12 @@ If you want to see the multi-node consensus algorithm in action, refer to
 
 ### Rust Setup
 
-First, complete the [basic Rust setup instructions](https://github.com/substrate-developer-hub/substrate-node-template/blob/master/doc/rust-setup.md).
+First, complete the [guide for Rust setup](https://substrate.dev/docs/en/knowledgebase/getting-started/).
+For the SORA2 network nightly build should be used. Execute the following command:
+```
+rustup install nightly
+rustup default nightly
+```
 
 ### Build
 
