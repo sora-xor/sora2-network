@@ -1,7 +1,9 @@
+<img alt="SORA logo" src="https://static.tildacdn.com/tild3664-3939-4236-b762-306663333564/sora_small.svg"/>
+
 # Overview.
 
-This is FRAME-based Substrate node of Sora Polkaswap.
-Code of node, pallets, runtime.
+This is FRAME-based Substrate node of SORA2.
+This repo contains code of node, pallets, runtime.
 
 # System requirements for development
 
