@@ -845,7 +845,18 @@ parameter_types! {
                 .expect("Failed to get ordinary account id for technical account id.");
         account_id
     };
+}
+
+#[cfg(feature = "reduced-pswap-reward-periods")]
+parameter_types! {
+    pub const GetDefaultSubscriptionFrequency: BlockNumber = 150;
+    pub const GetBurnUpdateFrequency: BlockNumber = 150;
+}
+
+#[cfg(not(feature = "reduced-pswap-reward-periods"))]
+parameter_types! {
     pub const GetDefaultSubscriptionFrequency: BlockNumber = 14400;
+    pub const GetBurnUpdateFrequency: BlockNumber = 14400;
 }
 
 pub struct RuntimeOnPswapBurnedAggregator;
@@ -862,6 +873,7 @@ impl pswap_distribution::Config for Runtime {
     type LiquidityProxy = LiquidityProxy;
     type CompatBalance = Balance;
     type GetDefaultSubscriptionFrequency = GetDefaultSubscriptionFrequency;
+    type GetBurnUpdateFrequency = GetBurnUpdateFrequency;
     type GetTechnicalAccountId = GetPswapDistributionAccountId;
     type EnsureDEXManager = DEXManager;
     type OnPswapBurnedAggregator = RuntimeOnPswapBurnedAggregator;
