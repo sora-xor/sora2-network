@@ -3,7 +3,7 @@
 This is FRAME-based Substrate node of Sora Polkaswap.
 Code of node, pallets, runtime.
 
-# System requirements.
+# System requirements for development
 
 ## Minimum (for example for small docker container).
 * CPU 800MHz 1 core.
@@ -14,6 +14,9 @@ Code of node, pallets, runtime.
 * CPU 1500MHz 2 cores.
 * RAM 4Gb.
 * Disk 6Gb.
+
+# System requirement for validator node
+//todo
 
 # Build test run.
 
