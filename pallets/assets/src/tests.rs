@@ -159,10 +159,6 @@ mod tests {
                 permissions::Error::<Runtime>::Forbidden
             );
             assert_noop!(
-                Assets::burn_from(&XOR, &BOB, &BOB, 100u32.into()),
-                permissions::Error::<Runtime>::Forbidden
-            );
-            assert_noop!(
                 Assets::update_balance(&XOR, &BOB, 100u32.into()),
                 permissions::Error::<Runtime>::Forbidden
             );
@@ -181,7 +177,7 @@ mod tests {
             assert!(crate::is_symbol_valid(&AssetSymbol(b"PSWAP".to_vec())));
             assert!(crate::is_symbol_valid(&AssetSymbol(b"GT".to_vec())));
             assert!(crate::is_symbol_valid(&AssetSymbol(b"BP".to_vec())));
-            
+
             assert!(!crate::is_symbol_valid(&AssetSymbol(b"ABCDEFGH".to_vec())));
             assert!(!crate::is_symbol_valid(&AssetSymbol(b"AB1".to_vec())));
             assert!(!crate::is_symbol_valid(&AssetSymbol(
@@ -202,10 +198,14 @@ mod tests {
             assert!(crate::is_name_valid(&AssetName(b"PSWAP".to_vec())));
             assert!(crate::is_name_valid(&AssetName(b"GT".to_vec())));
             assert!(crate::is_name_valid(&AssetName(b"BP".to_vec())));
-            assert!(crate::is_name_valid(&AssetName(b"SORA Validator Token".to_vec())));
+            assert!(crate::is_name_valid(&AssetName(
+                b"SORA Validator Token".to_vec()
+            )));
             assert!(crate::is_name_valid(&AssetName(b"AB1".to_vec())));
 
-            assert!(!crate::is_name_valid(&AssetName(b"This is a name with length over thirty three".to_vec())));
+            assert!(!crate::is_name_valid(&AssetName(
+                b"This is a name with length over thirty three".to_vec()
+            )));
             assert!(!crate::is_name_valid(&AssetName(b"AB1_".to_vec())));
             assert!(!crate::is_name_valid(&AssetName(
                 b"\xF0\x9F\x98\xBF".to_vec()
@@ -398,6 +398,32 @@ mod tests {
             assert_noop!(
                 Assets::burn_from(&XOR, &BOB, &ALICE, Balance::from(10u32)),
                 permissions::Error::<Runtime>::Forbidden
+            );
+        })
+    }
+
+    #[test]
+    fn should_allow_burn_from_self_without_a_permissions() {
+        let mut ext = ExtBuilder::default().build();
+        ext.execute_with(|| {
+            assert_ok!(Assets::register_asset_id(
+                ALICE,
+                XOR,
+                AssetSymbol(b"XOR".to_vec()),
+                AssetName(b"SORA".to_vec()),
+                18,
+                Balance::from(10u32),
+                true,
+            ));
+            assert_ok!(Assets::mint_to(&XOR, &ALICE, &BOB, Balance::from(10u32)));
+            assert_eq!(
+                Assets::free_balance(&XOR, &BOB).expect("Failed to query free balance."),
+                Balance::from(10u32)
+            );
+            assert_ok!(Assets::burn_from(&XOR, &BOB, &BOB, Balance::from(10u32)));
+            assert_eq!(
+                Assets::free_balance(&XOR, &BOB).expect("Failed to query free balance."),
+                Balance::from(0u32)
             );
         })
     }

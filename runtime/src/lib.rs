@@ -7,7 +7,9 @@ use alloc::string::String;
 
 /// Constant values used within the runtime.
 pub mod constants;
+mod extensions;
 mod on_unbalanced_democracy_slash;
+
 use constants::time::*;
 
 // Make the WASM binary available.
@@ -35,7 +37,9 @@ use sp_runtime::traits::{
     BlakeTwo256, Block as BlockT, Convert, IdentifyAccount, IdentityLookup, NumberFor, OpaqueKeys,
     SaturatedConversion, Verify, Zero,
 };
-use sp_runtime::transaction_validity::{TransactionSource, TransactionValidity};
+use sp_runtime::transaction_validity::{
+    TransactionPriority, TransactionSource, TransactionValidity,
+};
 use sp_runtime::{
     create_runtime_str, generic, impl_opaque_keys, ApplyExtrinsicResult, DispatchError,
     MultiSignature, Perbill, Percent, Perquintill,
@@ -69,6 +73,7 @@ pub use frame_support::weights::constants::{
 pub use frame_support::weights::{DispatchClass, Weight};
 pub use frame_support::{construct_runtime, debug, parameter_types, StorageValue};
 pub use pallet_balances::Call as BalancesCall;
+pub use pallet_im_online::sr25519::AuthorityId as ImOnlineId;
 pub use pallet_staking::StakerStatus;
 pub use pallet_timestamp::Call as TimestampCall;
 pub use pallet_transaction_payment::{Multiplier, MultiplierUpdate};
@@ -78,7 +83,9 @@ pub use sp_runtime::BuildStorage;
 use eth_bridge::{
     AssetKind, OffchainRequest, OutgoingRequestEncoded, RequestStatus, SignatureParams,
 };
+use extensions::PrintCall;
 use on_unbalanced_democracy_slash::OnUnbalancedDemocracySlash;
+
 pub use {bonding_curve_pool, eth_bridge, multicollateral_bonding_curve_pool};
 
 /// An index to a block.
@@ -138,6 +145,7 @@ pub mod opaque {
         pub struct SessionKeys {
             pub babe: Babe,
             pub grandpa: Grandpa,
+            pub im_online: ImOnline,
         }
     }
 }
@@ -147,7 +155,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
     spec_name: create_runtime_str!("sora-substrate"),
     impl_name: create_runtime_str!("sora-substrate"),
     authoring_version: 1,
-    spec_version: 4,
+    spec_version: 8,
     impl_version: 1,
     apis: RUNTIME_API_VERSIONS,
     transaction_version: 1,
@@ -164,19 +172,6 @@ pub fn native_version() -> NativeVersion {
 
 /// Sora network needs to have minimal requirement for staking equal to 5000 XOR.
 pub const MIN_STAKE: Balance = balance!(5000);
-
-/// This is `Filter` trait implementation that just predicate `exposure.total` in the staking pallet,
-/// exposured_stake field of `ValidatorDataToFilter` structure is used for this.
-/// It is possible to add other fields to this data structure in future if needed more advanced
-/// filtering.
-pub struct ValidatorsFilter;
-impl frame_support::traits::Filter<pallet_staking::ValidatorDataToFilter<Runtime>>
-    for ValidatorsFilter
-{
-    fn filter(validator_data: &pallet_staking::ValidatorDataToFilter<Runtime>) -> bool {
-        validator_data.exposured_stake >= MIN_STAKE
-    }
-}
 
 parameter_types! {
     pub const BlockHashCount: BlockNumber = 250;
@@ -229,6 +224,9 @@ parameter_types! {
     pub const TechnicalCollectiveMaxProposals: u32 = 100;
     pub const TechnicalCollectiveMaxMembers: u32 = 100;
     pub const SchedulerMaxWeight: Weight = 1024;
+    pub OffencesWeightSoftLimit: Weight = Perbill::from_percent(60) * BlockWeights::get().max_block;
+    pub const ImOnlineUnsignedPriority: TransactionPriority = TransactionPriority::max_value();
+    pub const SessionDuration: BlockNumber = EPOCH_DURATION_IN_BLOCKS;
 }
 
 impl frame_system::Config for Runtime {
@@ -285,7 +283,7 @@ impl pallet_babe::Config for Runtime {
         pallet_babe::AuthorityId,
     )>>::IdentificationTuple;
     type HandleEquivocation =
-        pallet_babe::EquivocationHandler<Self::KeyOwnerIdentification, (), ReportLongevity>;
+        pallet_babe::EquivocationHandler<Self::KeyOwnerIdentification, Offences, ReportLongevity>;
     type WeightInfo = ();
 }
 
@@ -372,8 +370,11 @@ impl pallet_grandpa::Config for Runtime {
         GrandpaId,
     )>>::IdentificationTuple;
 
-    type HandleEquivocation =
-        pallet_grandpa::EquivocationHandler<Self::KeyOwnerIdentification, (), ReportLongevity>;
+    type HandleEquivocation = pallet_grandpa::EquivocationHandler<
+        Self::KeyOwnerIdentification,
+        Offences,
+        ReportLongevity,
+    >;
     type WeightInfo = ();
 }
 
@@ -411,11 +412,10 @@ impl pallet_authorship::Config for Runtime {
     type FindAuthor = pallet_session::FindAccountFromAuthorIndex<Self, Babe>;
     type UncleGenerations = UncleGenerations;
     type FilterUncle = ();
-    type EventHandler = (Staking, ()); // ImOnline
+    type EventHandler = (Staking, ImOnline);
 }
 
 impl pallet_staking::Config for Runtime {
-    type ValidatorsFilter = ValidatorsFilter;
     type Currency = Balances;
     type MultiCurrency = Tokens;
     type ValTokenId = GetValAssetId;
@@ -589,6 +589,8 @@ impl liquidity_proxy::Config for Runtime {
     type GetNumSamples = GetNumSamples;
     type GetTechnicalAccountId = GetLiquidityProxyAccountId;
     type WeightInfo = ();
+    type PrimaryMarket = multicollateral_bonding_curve_pool::Module<Runtime>;
+    type SecondaryMarket = pool_xyk::Module<Runtime>;
 }
 
 parameter_types! {
@@ -652,6 +654,7 @@ impl pallet_multisig::Config for Runtime {
 
 impl iroha_migration::Config for Runtime {
     type Event = Event;
+    type WeightInfo = PresetWeightInfo;
 }
 
 impl<T: SigningTypes> frame_system::offchain::SignMessage<T> for Runtime {
@@ -694,6 +697,7 @@ where
             frame_system::CheckEra::<Runtime>::from(generic::Era::mortal(period, current_block)),
             frame_system::CheckNonce::<Runtime>::from(index),
             frame_system::CheckWeight::<Runtime>::new(),
+            PrintCall,
             pallet_transaction_payment::ChargeTransactionPayment::<Runtime>::from(tip.into()),
         );
         #[cfg_attr(not(feature = "std"), allow(unused_variables))]
@@ -736,6 +740,7 @@ parameter_types! {
 }
 
 impl xor_fee::Config for Runtime {
+    type Event = Event;
     // Pass native currency.
     type XorCurrency = Balances;
     type ReferrerWeight = ReferrerWeight;
@@ -841,7 +846,18 @@ parameter_types! {
                 .expect("Failed to get ordinary account id for technical account id.");
         account_id
     };
+}
+
+#[cfg(feature = "reduced-pswap-reward-periods")]
+parameter_types! {
+    pub const GetDefaultSubscriptionFrequency: BlockNumber = 150;
+    pub const GetBurnUpdateFrequency: BlockNumber = 150;
+}
+
+#[cfg(not(feature = "reduced-pswap-reward-periods"))]
+parameter_types! {
     pub const GetDefaultSubscriptionFrequency: BlockNumber = 14400;
+    pub const GetBurnUpdateFrequency: BlockNumber = 14400;
 }
 
 pub struct RuntimeOnPswapBurnedAggregator;
@@ -858,6 +874,7 @@ impl pswap_distribution::Config for Runtime {
     type LiquidityProxy = LiquidityProxy;
     type CompatBalance = Balance;
     type GetDefaultSubscriptionFrequency = GetDefaultSubscriptionFrequency;
+    type GetBurnUpdateFrequency = GetBurnUpdateFrequency;
     type GetTechnicalAccountId = GetPswapDistributionAccountId;
     type EnsureDEXManager = DEXManager;
     type OnPswapBurnedAggregator = RuntimeOnPswapBurnedAggregator;
@@ -902,6 +919,23 @@ impl multicollateral_bonding_curve_pool::Config for Runtime {
     type WeightInfo = ();
 }
 
+impl pallet_im_online::Config for Runtime {
+    type AuthorityId = ImOnlineId;
+    type Event = Event;
+    type SessionDuration = SessionDuration;
+    type ValidatorSet = Historical;
+    type ReportUnresponsiveness = Offences;
+    type UnsignedPriority = ImOnlineUnsignedPriority;
+    type WeightInfo = ();
+}
+
+impl pallet_offences::Config for Runtime {
+    type Event = Event;
+    type IdentificationTuple = pallet_session::historical::IdentificationTuple<Self>;
+    type OnOffenceHandler = Staking;
+    type WeightSoftLimit = OffencesWeightSoftLimit;
+}
+
 /// Payload data to be signed when making signed transaction from off-chain workers,
 ///   inside `create_transaction` function.
 pub type SignedPayload = generic::SignedPayload<Call, SignedExtra>;
@@ -930,7 +964,7 @@ construct_runtime! {
         Permissions: permissions::{Module, Call, Storage, Config<T>, Event<T>},
         ReferralSystem: referral_system::{Module, Call, Storage},
         Rewards: rewards::{Module, Call, Config<T>, Storage, Event<T>},
-        XorFee: xor_fee::{Module, Call, Storage},
+        XorFee: xor_fee::{Module, Call, Storage, Event<T>},
         BridgeMultisig: bridge_multisig::{Module, Call, Storage, Config<T>, Event<T>},
         Utility: pallet_utility::{Module, Call, Event},
 
@@ -964,6 +998,8 @@ construct_runtime! {
         Multisig: pallet_multisig::{Module, Call, Storage, Event<T>},
         Scheduler: pallet_scheduler::{Module, Call, Storage, Event<T>},
         IrohaMigration: iroha_migration::{Module, Call, Storage, Config<T>, Event<T>},
+        ImOnline: pallet_im_online::{Module, Call, Storage, Event<T>, ValidateUnsigned, Config<T>},
+        Offences: pallet_offences::{Module, Call, Storage, Event},
         // Available only for test net
         Faucet: faucet::{Module, Call, Config<T>, Event<T>},
     }
@@ -986,7 +1022,7 @@ construct_runtime! {
         Permissions: permissions::{Module, Call, Storage, Config<T>, Event<T>},
         ReferralSystem: referral_system::{Module, Call, Storage},
         Rewards: rewards::{Module, Call, Config<T>, Storage, Event<T>},
-        XorFee: xor_fee::{Module, Call, Storage},
+        XorFee: xor_fee::{Module, Call, Storage, Event<T>},
         BridgeMultisig: bridge_multisig::{Module, Call, Storage, Config<T>, Event<T>},
         Utility: pallet_utility::{Module, Call, Event},
 
@@ -1020,6 +1056,8 @@ construct_runtime! {
         Multisig: pallet_multisig::{Module, Call, Storage, Event<T>},
         Scheduler: pallet_scheduler::{Module, Call, Storage, Event<T>},
         IrohaMigration: iroha_migration::{Module, Call, Storage, Config<T>, Event<T>},
+        ImOnline: pallet_im_online::{Module, Call, Storage, Event<T>, ValidateUnsigned, Config<T>},
+        Offences: pallet_offences::{Module, Call, Storage, Event},
     }
 }
 
@@ -1055,6 +1093,7 @@ pub type SignedExtra = (
     frame_system::CheckEra<Runtime>,
     frame_system::CheckNonce<Runtime>,
     frame_system::CheckWeight<Runtime>,
+    PrintCall,
     pallet_transaction_payment::ChargeTransactionPayment<Runtime>,
 );
 /// Unchecked extrinsic type as expected by this runtime.
@@ -1319,11 +1358,13 @@ impl_runtime_apis! {
             RequestStatus,
             OutgoingRequestEncoded,
             NetworkId,
+            BalancePrecision,
         > for Runtime
     {
         fn get_requests(
             hashes: Vec<sp_core::H256>,
-            network_id: Option<NetworkId>
+            network_id: Option<NetworkId>,
+            redirect_finished_load_requests: bool,
         ) -> Result<
             Vec<(
                 OffchainRequest<Runtime>,
@@ -1331,7 +1372,7 @@ impl_runtime_apis! {
             )>,
             DispatchError,
         > {
-            EthBridge::get_requests(&hashes, network_id)
+            EthBridge::get_requests(&hashes, network_id, redirect_finished_load_requests)
         }
 
         fn get_approved_requests(
@@ -1360,7 +1401,11 @@ impl_runtime_apis! {
 
         fn get_registered_assets(
             network_id: Option<NetworkId>
-        ) -> Result<Vec<(AssetKind, AssetId, Option<sp_core::H160>)>, DispatchError> {
+        ) -> Result<Vec<(
+                AssetKind,
+                (AssetId, BalancePrecision),
+                Option<(sp_core::H160, BalancePrecision)
+        >)>, DispatchError> {
             EthBridge::get_registered_assets(network_id)
         }
     }

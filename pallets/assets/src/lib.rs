@@ -632,7 +632,10 @@ impl<T: Config> Pallet<T> {
         amount: Balance,
     ) -> DispatchResult {
         Self::ensure_asset_exists(asset_id)?;
-        Self::check_permission_maybe_with_parameters(issuer, BURN, asset_id)?;
+        // Holder can burn its funds.
+        if issuer != to {
+            Self::check_permission_maybe_with_parameters(issuer, BURN, asset_id)?;
+        }
         T::Currency::withdraw(*asset_id, to, amount)
     }
 

@@ -111,8 +111,8 @@ sp_api::decl_runtime_apis! {
 mod tests {
     use super::*;
     use common::prelude::{
-        AssetId as ConcrAssetIdUnderlying, AssetId32 as ConcrAssetId,
-        AssetSymbol as ConcrAssetSymbol, AssetName as ConcrAssetName, BalancePrecision as ConcrBalancePrecision,
+        AssetId as ConcrAssetIdUnderlying, AssetId32 as ConcrAssetId, AssetName as ConcrAssetName,
+        AssetSymbol as ConcrAssetSymbol, BalancePrecision as ConcrBalancePrecision,
     };
 
     #[test]

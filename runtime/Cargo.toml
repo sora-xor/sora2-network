@@ -61,7 +61,9 @@ pallet-aura = { default-features = false, version = '3' }
 pallet-balances = { default-features = false, version = '3' }
 pallet-grandpa = { default-features = false, version = '3' }
 pallet-babe = { default-features = false, version = '3' }
+pallet-im-online = { default-features = false, version = '3' }
 pallet-multisig = { version = "3", default-features = false }
+pallet-offences = { default-features = false, version = '3' }
 pallet-randomness-collective-flip = { default-features = false, version = '3' }
 pallet-sudo = { default-features = false, version = '3' }
 pallet-timestamp = { default-features = false, version = '3' }
@@ -110,6 +112,8 @@ std = [
     'pallet-collective/std',
     'pallet-democracy/std',
     'pallet-grandpa/std',
+    'pallet-im-online/std',
+    'pallet-offences/std',
     'pallet-randomness-collective-flip/std',
     'pallet-scheduler/std',
     'pallet-sudo/std',
@@ -183,3 +187,5 @@ runtime-benchmarks = [
     "technical/runtime-benchmarks",
     "trading-pair/runtime-benchmarks",
 ]
+
+reduced-pswap-reward-periods = []

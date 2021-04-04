@@ -3,9 +3,9 @@
 use common::TradingPair;
 use framenode_runtime::opaque::Block;
 use framenode_runtime::{
-    eth_bridge, AccountId, AssetId, AssetName, AssetSymbol, Balance, BalancePrecision, BlockNumber, DEXId,
-    FarmId, FarmInfo, FarmerInfo, FilterMode, Index, LiquiditySourceType, Runtime, SwapVariant,
-    TechAccountId,
+    eth_bridge, AccountId, AssetId, AssetName, AssetSymbol, Balance, BalancePrecision, BlockNumber,
+    DEXId, FarmId, FarmInfo, FarmerInfo, FilterMode, Index, LiquiditySourceType, Runtime,
+    SwapVariant, TechAccountId,
 };
 pub use sc_rpc::{DenyUnsafe, SubscriptionTaskExecutor};
 use sp_api::ProvideRuntimeApi;
@@ -88,6 +88,7 @@ where
         eth_bridge::RequestStatus,
         eth_bridge::OutgoingRequestEncoded,
         framenode_runtime::NetworkId,
+        framenode_runtime::BalancePrecision,
     >,
     C::Api: iroha_migration_rpc::IrohaMigrationRuntimeAPI<Block>,
     C::Api: pswap_distribution_rpc::PswapDistributionRuntimeAPI<Block, AccountId, Balance>,

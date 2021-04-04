@@ -3,12 +3,12 @@ pragma solidity ^0.7.4;
 
 import "./BridgeEVM.sol";
 
-contract BridgeDeployer {
-    
+contract BridgeDeployerEVM {
+
     bytes32 public _networkId;
     address[] public _initialPeers;
 
-    event NewBridgeDeployed(address bridgeAddress);
+    event NewBridgeDeployedEVM(address bridgeAddress);
 
     /**
      * Constructor.
@@ -21,8 +21,8 @@ contract BridgeDeployer {
         _initialPeers = initialPeers;
         _networkId = networkId;
     }
-    
+
     function deployBridgeContract() public {
-        emit NewBridgeDeployed(address(new Bridge(_initialPeers, _networkId)));
-    } 
+        emit NewBridgeDeployedEVM(address(new BridgeEVM(_initialPeers, _networkId)));
+    }
 }

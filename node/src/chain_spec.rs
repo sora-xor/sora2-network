@@ -1,3 +1,10 @@
+use common::prelude::{Balance, DEXInfo, FixedWrapper};
+use common::{
+    balance, fixed, hash, DEXId, Fixed, TechPurpose, DEFAULT_BALANCE_PRECISION, PSWAP, VAL, XOR,
+};
+use frame_support::sp_runtime::Percent;
+use framenode_runtime::bonding_curve_pool::{DistributionAccountData, DistributionAccounts};
+use framenode_runtime::eth_bridge::{AssetConfig, NetworkConfig};
 use framenode_runtime::opaque::SessionKeys;
 #[cfg(feature = "faucet")]
 use framenode_runtime::FaucetConfig;
@@ -5,18 +12,12 @@ use framenode_runtime::{
     bonding_curve_pool, eth_bridge, AccountId, AssetName, AssetSymbol, AssetsConfig, BabeConfig,
     BalancesConfig, BondingCurvePoolConfig, BridgeMultisigConfig, CouncilConfig, DEXAPIConfig,
     DEXManagerConfig, DemocracyConfig, EthBridgeConfig, FarmingConfig, GenesisConfig,
-    GetBaseAssetId, GetPswapAssetId, GetValAssetId, GetXorAssetId, GrandpaConfig,
+    GetBaseAssetId, GetPswapAssetId, GetValAssetId, GetXorAssetId, GrandpaConfig, ImOnlineId,
     IrohaMigrationConfig, LiquiditySourceType, MulticollateralBondingCurvePoolConfig,
     PermissionsConfig, PswapDistributionConfig, RewardsConfig, Runtime, SessionConfig, Signature,
     StakerStatus, StakingConfig, SudoConfig, SystemConfig, TechAccountId, TechnicalCommitteeConfig,
-    TechnicalConfig, TokensConfig, WASM_BINARY
+    TechnicalConfig, TokensConfig, WASM_BINARY,
 };
-
-use common::prelude::{Balance, DEXInfo, FixedWrapper};
-use common::{balance, fixed, hash, DEXId, Fixed, TechPurpose, PSWAP, VAL, XOR};
-use frame_support::sp_runtime::Percent;
-use framenode_runtime::bonding_curve_pool::{DistributionAccountData, DistributionAccounts};
-use framenode_runtime::eth_bridge::{AssetKind, NetworkConfig};
 use hex_literal::hex;
 use permissions::Scope;
 use sc_finality_grandpa::AuthorityId as GrandpaId;
@@ -52,13 +53,16 @@ where
 }
 
 /// Generate an Babe authority key.
-pub fn authority_keys_from_seed(seed: &str) -> (AccountId, AccountId, AuraId, BabeId, GrandpaId) {
+pub fn authority_keys_from_seed(
+    seed: &str,
+) -> (AccountId, AccountId, AuraId, BabeId, GrandpaId, ImOnlineId) {
     (
         get_account_id_from_seed::<sr25519::Public>(&format!("{}//stash", seed)),
         get_account_id_from_seed::<sr25519::Public>(seed),
         get_from_seed::<AuraId>(seed),
         get_from_seed::<BabeId>(seed),
         get_from_seed::<GrandpaId>(seed),
+        get_from_seed::<ImOnlineId>(seed),
     )
 }
 
@@ -67,18 +71,23 @@ pub fn authority_keys_from_public_keys(
     controller_address: [u8; 32],
     sr25519_key: [u8; 32],
     ed25519_key: [u8; 32],
-) -> (AccountId, AccountId, AuraId, BabeId, GrandpaId) {
+) -> (AccountId, AccountId, AuraId, BabeId, GrandpaId, ImOnlineId) {
     (
         stash_address.into(),
         controller_address.into(),
         AuraId::from_slice(&sr25519_key),
         BabeId::from_slice(&sr25519_key),
         GrandpaId::from_slice(&ed25519_key),
+        ImOnlineId::from_slice(&sr25519_key),
     )
 }
 
-fn session_keys(grandpa: GrandpaId, babe: BabeId) -> SessionKeys {
-    SessionKeys { babe, grandpa }
+fn session_keys(grandpa: GrandpaId, babe: BabeId, im_online: ImOnlineId) -> SessionKeys {
+    SessionKeys {
+        babe,
+        grandpa,
+        im_online,
+    }
 }
 
 struct EthBridgeParams {
@@ -161,8 +170,6 @@ pub fn dev_net() -> ChainSpec {
                     hex!("05918034f4a7f7c5d99cd0382aa6574ec2aba148aa3d769e50e0ac7663e36d58").into(),
                 ],
                 hex!("da723e9d76bd60da0ec846895c5e0ecf795b50ae652c012f27e56293277ef372").into(),
-                hex!("16fec57d383a1875ab4e9786aea7a626e721a491c828f475ae63ef098f98f373").into(),
-                hex!("da723e9d76bd60da0ec846895c5e0ecf795b50ae652c012f27e56293277ef372").into(),
                 EthBridgeParams {
                     xor_master_contract_address: hex!("12c6a709925783f49fcca0b398d13b0d597e6e1c")
                         .into(),
@@ -170,7 +177,7 @@ pub fn dev_net() -> ChainSpec {
                     val_master_contract_address: hex!("47e229aa491763038f6a505b4f85d8eb463f0962")
                         .into(),
                     val_contract_address: hex!("68339de68c9af6577c54867728dbb2db9d7368bf").into(),
-                    bridge_contract_address: hex!("b7b3060589e5bf6e4a2c76edc229127745c9c13c")
+                    bridge_contract_address: hex!("46dcecb63180c116f58212b1eea2e171d5840dd8")
                         .into(),
                 },
             )
@@ -300,8 +307,6 @@ pub fn staging_net(test: bool) -> ChainSpec {
                     hex!("07f5670d08b8f3bd493ff829482a489d94494fd50dd506957e44e9fdc2e98684").into(),
                     hex!("211bb96e9f746183c05a1d583bccf513f9d8f679d6f36ecbd06609615a55b1cc").into(),
                 ],
-                hex!("da723e9d76bd60da0ec846895c5e0ecf795b50ae652c012f27e56293277ef372").into(),
-                hex!("16fec57d383a1875ab4e9786aea7a626e721a491c828f475ae63ef098f98f373").into(),
                 hex!("da723e9d76bd60da0ec846895c5e0ecf795b50ae652c012f27e56293277ef372").into(),
                 eth_bridge_params,
             )
@@ -437,8 +442,6 @@ pub fn local_testnet_config() -> ChainSpec {
                     hex!("05918034f4a7f7c5d99cd0382aa6574ec2aba148aa3d769e50e0ac7663e36d58").into(),
                 ],
                 get_account_id_from_seed::<sr25519::Public>("Alice"),
-                get_account_id_from_seed::<sr25519::Public>("Alice"),
-                get_account_id_from_seed::<sr25519::Public>("Alice"),
                 EthBridgeParams {
                     xor_master_contract_address: hex!("12c6a709925783f49fcca0b398d13b0d597e6e1c")
                         .into(),
@@ -463,12 +466,10 @@ pub fn local_testnet_config() -> ChainSpec {
 #[allow(unused_mut)]
 fn testnet_genesis(
     root_key: AccountId,
-    initial_authorities: Vec<(AccountId, AccountId, AuraId, BabeId, GrandpaId)>,
+    initial_authorities: Vec<(AccountId, AccountId, AuraId, BabeId, GrandpaId, ImOnlineId)>,
     endowed_accounts: Vec<AccountId>,
     initial_bridge_peers: Vec<AccountId>,
     dex_root: AccountId,
-    tech_permissions_owner: AccountId,
-    initial_assets_owner: AccountId,
     eth_bridge_params: EthBridgeParams,
 ) -> GenesisConfig {
     // Initial balances
@@ -539,6 +540,14 @@ fn testnet_genesis(
         technical::Module::<Runtime>::tech_account_id_to_account_id(&rewards_tech_account_id)
             .unwrap();
 
+    let assets_and_permissions_tech_account_id =
+        TechAccountId::Generic(b"SYSTEM_ACCOUNT".to_vec(), b"ASSETS_PERMISSIONS".to_vec());
+    let assets_and_permissions_account_id =
+        technical::Module::<Runtime>::tech_account_id_to_account_id(
+            &assets_and_permissions_tech_account_id,
+        )
+        .unwrap();
+
     let mut tech_accounts = vec![
         (xor_fee_account_id.clone(), xor_fee_tech_account_id),
         (
@@ -570,6 +579,10 @@ fn testnet_genesis(
             iroha_migration_tech_account_id.clone(),
         ),
         (rewards_account_id.clone(), rewards_tech_account_id.clone()),
+        (
+            assets_and_permissions_account_id.clone(),
+            assets_and_permissions_tech_account_id.clone(),
+        ),
     ];
     let accounts = bonding_curve_distribution_accounts();
     tech_accounts.push((
@@ -617,7 +630,7 @@ fn testnet_genesis(
     ];
     #[cfg(feature = "faucet")]
     let faucet_config = {
-        let initial_faucet_balance = balance!(500000);
+        let initial_faucet_balance = balance!(6000000000);
         let faucet_tech_account_id = TechAccountId::Generic(
             faucet::TECH_ACCOUNT_PREFIX.to_vec(),
             faucet::TECH_ACCOUNT_MAIN.to_vec(),
@@ -654,11 +667,11 @@ fn testnet_genesis(
         pallet_session: Some(SessionConfig {
             keys: initial_authorities
                 .iter()
-                .map(|(account, _, _, babe_id, grandpa_id)| {
+                .map(|(account, _, _, babe_id, grandpa_id, im_online_id)| {
                     (
                         account.clone(),
                         account.clone(),
-                        session_keys(grandpa_id.clone(), babe_id.clone()),
+                        session_keys(grandpa_id.clone(), babe_id.clone(), im_online_id.clone()),
                     )
                 })
                 .collect::<Vec<_>>(),
@@ -668,7 +681,7 @@ fn testnet_genesis(
             minimum_validator_count: 1,
             stakers: initial_authorities
                 .iter()
-                .map(|(stash_account, account, _, _, _)| {
+                .map(|(stash_account, account, _, _, _, _)| {
                     (
                         stash_account.clone(),
                         account.clone(),
@@ -679,7 +692,7 @@ fn testnet_genesis(
                 .collect(),
             invulnerables: initial_authorities
                 .iter()
-                .map(|(stash_account, _, _, _, _)| stash_account.clone())
+                .map(|(stash_account, _, _, _, _, _)| stash_account.clone())
                 .collect(),
             slash_reward_fraction: Perbill::from_percent(10),
             ..Default::default()
@@ -688,7 +701,7 @@ fn testnet_genesis(
             endowed_assets: vec![
                 (
                     GetXorAssetId::get(),
-                    initial_assets_owner.clone(),
+                    assets_and_permissions_account_id.clone(),
                     AssetSymbol(b"XOR".to_vec()),
                     AssetName(b"SORA".to_vec()),
                     18,
@@ -697,7 +710,7 @@ fn testnet_genesis(
                 ),
                 // (
                 //     UsdId::get(),
-                //     initial_assets_owner.clone(),
+                //     assets_and_permissions_account_id.clone(),
                 //     AssetSymbol(b"USDT".to_vec()),
                 //     AssetName(b"Tether USD".to_vec()),
                 //     18,
@@ -706,7 +719,7 @@ fn testnet_genesis(
                 // ),
                 (
                     GetValAssetId::get(),
-                    initial_assets_owner.clone(),
+                    assets_and_permissions_account_id.clone(),
                     AssetSymbol(b"VAL".to_vec()),
                     AssetName(b"SORA Validator Token".to_vec()),
                     18,
@@ -715,7 +728,7 @@ fn testnet_genesis(
                 ),
                 (
                     GetPswapAssetId::get(),
-                    initial_assets_owner.clone(),
+                    assets_and_permissions_account_id.clone(),
                     AssetSymbol(b"PSWAP".to_vec()),
                     AssetName(b"Polkaswap".to_vec()),
                     18,
@@ -729,22 +742,22 @@ fn testnet_genesis(
                 (
                     permissions::TRANSFER,
                     Scope::Unlimited,
-                    vec![tech_permissions_owner.clone()],
+                    vec![assets_and_permissions_account_id.clone()],
                 ),
                 (
                     permissions::MANAGE_DEX,
                     Scope::Limited(hash(&0u32)),
-                    vec![tech_permissions_owner.clone()],
+                    vec![assets_and_permissions_account_id.clone()],
                 ),
                 (
                     permissions::MINT,
                     Scope::Unlimited,
-                    vec![tech_permissions_owner.clone()],
+                    vec![assets_and_permissions_account_id.clone()],
                 ),
                 (
                     permissions::BURN,
                     Scope::Unlimited,
-                    vec![tech_permissions_owner.clone()],
+                    vec![assets_and_permissions_account_id.clone()],
                 ),
             ],
             initial_permissions: vec![
@@ -752,6 +765,11 @@ fn testnet_genesis(
                     dex_root.clone(),
                     Scope::Limited(hash(&0u32)),
                     vec![permissions::MANAGE_DEX],
+                ),
+                (
+                    dex_root.clone(),
+                    Scope::Unlimited,
+                    vec![permissions::CREATE_FARM],
                 ),
                 (
                     xor_fee_account_id,
@@ -764,12 +782,11 @@ fn testnet_genesis(
                     vec![permissions::MINT],
                 ),
                 (
-                    initial_assets_owner,
+                    assets_and_permissions_account_id,
                     Scope::Unlimited,
                     vec![
                         permissions::MINT,
                         permissions::BURN,
-                        permissions::CREATE_FARM,
                         permissions::LOCK_TO_FARM,
                         permissions::UNLOCK_FROM_FARM,
                         permissions::CLAIM_FROM_FARM,
@@ -814,17 +831,19 @@ fn testnet_genesis(
             networks: vec![NetworkConfig {
                 initial_peers: initial_bridge_peers.iter().cloned().collect(),
                 bridge_account_id: eth_bridge_account_id.clone(),
-                tokens: vec![
-                    (
-                        XOR.into(),
-                        Some(eth_bridge_params.xor_contract_address),
-                        AssetKind::SidechainOwned,
-                    ),
-                    (
-                        VAL.into(),
-                        Some(eth_bridge_params.val_contract_address),
-                        AssetKind::SidechainOwned,
-                    ),
+                assets: vec![
+                    AssetConfig::Sidechain {
+                        id: XOR.into(),
+                        sidechain_id: eth_bridge_params.xor_contract_address,
+                        owned: true,
+                        precision: DEFAULT_BALANCE_PRECISION,
+                    },
+                    AssetConfig::Sidechain {
+                        id: VAL.into(),
+                        sidechain_id: eth_bridge_params.val_contract_address,
+                        owned: true,
+                        precision: DEFAULT_BALANCE_PRECISION,
+                    },
                 ],
                 bridge_contract_address: eth_bridge_params.bridge_contract_address,
                 reserves: vec![
@@ -854,13 +873,14 @@ fn testnet_genesis(
             reserves_account_id: mbc_reserves_tech_account_id,
             reference_asset_id: Default::default(),
             incentives_account_id: mbc_pool_rewards_account_id,
+            initial_collateral_assets: Vec::new(),
         }),
         farming: Some(FarmingConfig {
             initial_farm: (dex_root, XOR, PSWAP),
         }),
         pswap_distribution: Some(PswapDistributionConfig {
             subscribed_accounts: Vec::new(),
-            burn_info: (fixed!(0.1), fixed!(0.000357), fixed!(0.65), 14400),
+            burn_info: (fixed!(0.1), fixed!(0.000357), fixed!(0.65)),
         }),
         iroha_migration: Some(IrohaMigrationConfig {
             iroha_accounts: include!("iroha_migration_accounts.in"),
@@ -903,5 +923,6 @@ fn testnet_genesis(
             phantom: Default::default(),
         }),
         pallet_democracy: Some(DemocracyConfig::default()),
+        pallet_im_online: Default::default(),
     }
 }
