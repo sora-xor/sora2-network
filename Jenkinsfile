@@ -33,6 +33,9 @@ pipeline {
             }
         }
         stage('Build & Tests') {
+            environment {
+                RUSTFLAGS = "-Dwarnings"
+            }
             steps{
                 script {
                     docker.withRegistry( "https://" + registry, dockerRegistryRWUserId) {
