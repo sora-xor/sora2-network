@@ -20,6 +20,8 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
+mod benchmarking;
+
 pub const TECH_ACCOUNT_PREFIX: &[u8] = b"pswap-distribution";
 pub const TECH_ACCOUNT_MAIN: &[u8] = b"main";
 

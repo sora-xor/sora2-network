@@ -5779,6 +5779,7 @@ dependencies = [
  "bonding-curve-pool",
  "common",
  "dex-manager",
+ "frame-benchmarking",
  "frame-support",
  "frame-system",
  "hex-literal",
@@ -5797,6 +5798,7 @@ dependencies = [
  "sp-runtime",
  "sp-std",
  "technical",
+ "trading-pair",
 ]
 
 [[package]]

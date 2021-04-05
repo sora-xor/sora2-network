@@ -187,6 +187,7 @@ runtime-benchmarks = [
     "technical/runtime-benchmarks",
     "trading-pair/runtime-benchmarks",
     "multicollateral-bonding-curve-pool/runtime-benchmarks",
+    "pswap-distribution/runtime-benchmarks",
 ]
 
 reduced-pswap-reward-periods = []

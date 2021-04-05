@@ -35,7 +35,7 @@ fn assert_last_event<T: Config>(generic_event: <T as Config>::Event) {
 benchmarks! {
     register {
         let caller = alice::<T>();
-        Assets::<T>::register_asset_id(
+        let _ = Assets::<T>::register_asset_id(
             caller.clone(),
             DOT.into(),
             AssetSymbol(b"DOT".to_vec()),
@@ -43,7 +43,7 @@ benchmarks! {
             18,
             Balance::zero(),
             true,
-        )?;
+        );
         let trading_pair = TradingPair::<T> {
             base_asset_id: XOR.into(),
             target_asset_id: DOT.into(),
