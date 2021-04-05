@@ -1208,3 +1208,34 @@ fn deposit_liquidity_twice_02() {
         },
     );
 }
+
+#[test]
+fn deposit_liquidity_twice_03() {
+    crate::Module::<Runtime>::run_tests_with_different_slippage_behavior_01(
+        RunTestsWithSlippageBehaviors {
+            initial_deposit: (balance!(10130.97), balance!(8095.25)),
+            desired_amount: balance!(0.5),
+            tests: vec![Rc::new(
+                |dex_id,
+                 _gt,
+                 _bp,
+                 _,
+                 _tech_acc_id: crate::mock::TechAccountId,
+                 _,
+                 _repr: AccountId,
+                 _fee_repr: AccountId| {
+                    assert_ok!(crate::Module::<Runtime>::deposit_liquidity(
+                        Origin::signed(ALICE()),
+                        dex_id,
+                        GoldenTicket.into(),
+                        BlackPepper.into(),
+                        balance!(20000),
+                        balance!(15982.9140043283972334),
+                        balance!(19900),
+                        balance!(15902.99943430675),
+                    ));
+                },
+            )],
+        },
+    );
+}
