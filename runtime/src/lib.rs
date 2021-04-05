@@ -1596,6 +1596,7 @@ impl_runtime_apis! {
             #[cfg(feature = "faucet")]
             add_benchmark!(params, batches, faucet, Faucet);
             add_benchmark!(params, batches, liquidity_proxy, LiquidityProxyBench::<Runtime>);
+            add_benchmark!(params, batches, multicollateral_bonding_curve_pool, MulticollateralBondingCurvePool);
             add_benchmark!(params, batches, trading_pair, TradingPair);
             add_benchmark!(params, batches, pool_xyk, XYKPoolBench::<Runtime>);
 
