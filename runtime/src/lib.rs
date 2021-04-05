@@ -8,7 +8,7 @@ use alloc::string::String;
 /// Constant values used within the runtime.
 pub mod constants;
 mod extensions;
-mod on_unbalanced_democracy_slash;
+mod impls;
 
 use constants::time::*;
 
@@ -84,7 +84,7 @@ use eth_bridge::{
     AssetKind, OffchainRequest, OutgoingRequestEncoded, RequestStatus, SignatureParams,
 };
 use extensions::PrintCall;
-use on_unbalanced_democracy_slash::OnUnbalancedDemocracySlash;
+use impls::OnUnbalancedDemocracySlash;
 
 pub use {bonding_curve_pool, eth_bridge, multicollateral_bonding_curve_pool};
 
@@ -209,12 +209,12 @@ parameter_types! {
     .saturating_sub(BlockExecutionWeight::get());
     pub const DemocracyEnactmentPeriod: BlockNumber = 30 * DAYS;
     pub const DemocracyLaunchPeriod: BlockNumber = 28 * DAYS;
-    pub const DemocracyVotingPeriod: BlockNumber = 28 * DAYS;
-    pub const DemocracyMinimumDeposit: Balance = balance!(0.01);
+    pub const DemocracyVotingPeriod: BlockNumber = 14 * DAYS;
+    pub const DemocracyMinimumDeposit: Balance = balance!(1);
     pub const DemocracyFastTrackVotingPeriod: BlockNumber = 2 * DAYS;
     pub const DemocracyInstantAllowed: bool = false;
     pub const DemocracyCooloffPeriod: BlockNumber = 28 * DAYS;
-    pub const DemocracyPreimageByteDeposit: Balance = balance!(0.00000000001); // 10 ^ -11
+    pub const DemocracyPreimageByteDeposit: Balance = balance!(0.00000001); // 10 ^ -8
     pub const DemocracyMaxVotes: u32 = 100;
     pub const DemocracyMaxProposals: u32 = 100;
     pub const CouncilCollectiveMotionDuration: BlockNumber = 5 * DAYS;

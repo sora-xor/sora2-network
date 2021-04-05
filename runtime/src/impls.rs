@@ -13,5 +13,7 @@ pub struct OnUnbalancedDemocracySlash<T> {
 impl<T: frame_system::Config + pallet_staking::Config> OnUnbalanced<NegativeImbalanceOf<T>>
     for OnUnbalancedDemocracySlash<T>
 {
+    /// This implementation allows us to handle the funds that were burned in democracy pallet.
+    /// Democracy pallet already did `slash_reserved` for them.
     fn on_nonzero_unbalanced(_amount: NegativeImbalanceOf<T>) {}
 }
