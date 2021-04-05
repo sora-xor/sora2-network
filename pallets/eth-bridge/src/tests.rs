@@ -113,9 +113,8 @@ fn approve_request(
         if current_status == RequestStatus::Pending && i + 1 == sigs_needed {
             match last_event().ok_or(None)? {
                 Event::eth_bridge(bridge_event) => match bridge_event {
-                    crate::Event::ApprovalsCollected(e, a) => {
-                        assert_eq!(e, encoded);
-                        assert_eq!(a, approvals);
+                    crate::Event::ApprovalsCollected(h) => {
+                        assert_eq!(h, request_hash);
                     }
                     e => {
                         assert_ne!(
