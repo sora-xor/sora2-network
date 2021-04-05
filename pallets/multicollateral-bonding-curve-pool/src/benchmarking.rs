@@ -8,17 +8,17 @@ use codec::Decode;
 use frame_benchmarking::benchmarks;
 use frame_system::{EventRecord, RawOrigin};
 use hex_literal::hex;
-use sp_std::prelude::*;
 use orml_traits::MultiCurrencyExtended;
+use sp_std::prelude::*;
 
-use common::{AssetSymbol, AssetName, fixed, XOR, USDT};
+use common::{fixed, AssetName, AssetSymbol, USDT, XOR};
 
 use crate::Pallet as MBCPool;
 use assets::Pallet as Assets;
 use permissions::Pallet as Permissions;
-use trading_pair::Pallet as TradingPair;
-use tokens::Pallet as Tokens;
 use sp_std::convert::TryFrom;
+use tokens::Pallet as Tokens;
+use trading_pair::Pallet as TradingPair;
 
 // Support Functions
 fn alice<T: Config>() -> T::AccountId {

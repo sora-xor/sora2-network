@@ -11,6 +11,7 @@ use currencies::BasicCurrencyAdapter;
 
 use frame_support::traits::GenesisBuild;
 use frame_support::{construct_runtime, parameter_types};
+use multicollateral_bonding_curve_pool::{DistributionAccountData, DistributionAccounts};
 use permissions::{Scope, BURN, MANAGE_DEX, MINT, TRANSFER};
 use sp_core::H256;
 use sp_runtime::testing::Header;
@@ -23,7 +24,6 @@ pub type TechAssetId = common::TechAssetId<common::AssetId>;
 pub type AccountId = AccountId32;
 pub type BlockNumber = u64;
 type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
-type ReservesInit = Vec<(DEXId, AssetId, (Fixed, Fixed))>;
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
 
@@ -341,10 +341,6 @@ impl pswap_distribution::Config for Runtime {
 impl Config for Runtime {}
 
 pub struct ExtBuilder {
-    reserves: ReservesInit,
-    reserves_2: ReservesInit,
-    reserves_3: ReservesInit,
-    reserves_4: ReservesInit,
     dex_list: Vec<(DEXId, DEXInfo<AssetId>)>,
     initial_permission_owners: Vec<(u32, Scope, Vec<AccountId>)>,
     initial_permissions: Vec<(AccountId, Scope, Vec<u32>)>,
@@ -364,10 +360,6 @@ pub struct ExtBuilder {
 impl Default for ExtBuilder {
     fn default() -> Self {
         Self {
-            reserves: ReservesInit::new(),
-            reserves_2: ReservesInit::new(),
-            reserves_3: ReservesInit::new(),
-            reserves_4: ReservesInit::new(),
             dex_list: vec![(
                 0_u32,
                 DEXInfo {
@@ -384,6 +376,11 @@ impl Default for ExtBuilder {
             initial_permissions: vec![
                 (alice(), Scope::Unlimited, vec![MINT, BURN]),
                 (alice(), Scope::Limited(hash(&0_u32)), vec![MANAGE_DEX]),
+                (
+                    GetMbcReservesAccountId::get(),
+                    Scope::Unlimited,
+                    vec![MINT, BURN],
+                ),
             ],
             source_types: vec![
                 LiquiditySourceType::MulticollateralBondingCurvePool,
@@ -398,6 +395,10 @@ impl Default for ExtBuilder {
                     GetMbcRewardsAccountId::get(),
                     GetMbcRewardsTechAccountId::get(),
                 ),
+                (
+                    GetLiquidityProxyAccountId::get(),
+                    GetLiquidityProxyTechAccountId::get(),
+                ),
             ],
             endowed_assets: vec![
                 (
@@ -406,7 +407,7 @@ impl Default for ExtBuilder {
                     AssetSymbol(b"XOR".to_vec()),
                     AssetName(b"SORA".to_vec()),
                     18,
-                    balance!(40000),
+                    balance!(350000),
                     true,
                 ),
                 (
@@ -415,7 +416,7 @@ impl Default for ExtBuilder {
                     AssetSymbol(b"DOT".to_vec()),
                     AssetName(b"DOT".to_vec()),
                     10,
-                    balance!(10000),
+                    balance!(0),
                     true,
                 ),
                 (
@@ -424,7 +425,7 @@ impl Default for ExtBuilder {
                     AssetSymbol(b"VAL".to_vec()),
                     AssetName(b"VAL".to_vec()),
                     18,
-                    balance!(10000),
+                    balance!(0),
                     true,
                 ),
                 (
@@ -433,7 +434,7 @@ impl Default for ExtBuilder {
                     AssetSymbol(b"USDT".to_vec()),
                     AssetName(b"USDT".to_vec()),
                     18,
-                    balance!(10000),
+                    balance!(0),
                     true,
                 ),
                 (
@@ -442,7 +443,7 @@ impl Default for ExtBuilder {
                     AssetSymbol(b"PSWAP".to_vec()),
                     AssetName(b"PSWAP".to_vec()),
                     18,
-                    balance!(10000),
+                    balance!(0),
                     true,
                 ),
             ],
@@ -455,6 +456,19 @@ impl ExtBuilder {
         let mut t = frame_system::GenesisConfig::default()
             .build_storage::<Runtime>()
             .unwrap();
+
+        let accounts = bonding_curve_distribution_accounts();
+        let mut tech_accounts = self.tech_accounts.clone();
+        tech_accounts.push((
+            Technical::tech_account_id_to_account_id(&accounts.val_holders.account_id).unwrap(),
+            accounts.val_holders.account_id.clone(),
+        ));
+        for tech_account in &accounts.xor_distribution_accounts_as_array() {
+            tech_accounts.push((
+                Technical::tech_account_id_to_account_id(&tech_account).unwrap(),
+                (*tech_account).to_owned(),
+            ));
+        }
 
         permissions::GenesisConfig::<Runtime> {
             initial_permission_owners: self.initial_permission_owners,
@@ -476,7 +490,7 @@ impl ExtBuilder {
         .unwrap();
 
         technical::GenesisConfig::<Runtime> {
-            account_ids_to_tech_account_ids: self.tech_accounts,
+            account_ids_to_tech_account_ids: tech_accounts,
         }
         .assimilate_storage(&mut t)
         .unwrap();
@@ -490,7 +504,7 @@ impl ExtBuilder {
         .unwrap();
 
         multicollateral_bonding_curve_pool::GenesisConfig::<Runtime> {
-            distribution_accounts: bonding_curve_distribution_accounts(),
+            distribution_accounts: accounts,
             reserves_account_id: GetMbcReservesTechAccountId::get(),
             reference_asset_id: USDT.into(),
             incentives_account_id: GetMbcRewardsAccountId::get(),

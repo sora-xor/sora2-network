@@ -4,16 +4,13 @@
 
 use super::*;
 
-use codec::{Decode, Encode};
+use codec::Decode;
 use common::{AssetName, AssetSymbol, Balance, DEXId, DOT, XOR};
 use frame_benchmarking::{benchmarks, Zero};
 use frame_system::{EventRecord, RawOrigin};
 use hex_literal::hex;
-use sp_core::H256;
-use sp_io::hashing::blake2_256;
 use sp_std::prelude::*;
 
-use crate::Pallet as TradingPairModule;
 use assets::Pallet as Assets;
 
 pub const DEX: DEXId = DEXId::Polkaswap;

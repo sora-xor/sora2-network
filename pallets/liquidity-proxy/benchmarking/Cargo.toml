@@ -26,6 +26,7 @@ trading-pair = { path = "../../trading-pair", default-features = false }
 multicollateral-bonding-curve-pool = { path = "../../multicollateral-bonding-curve-pool", default-features = false }
 dex-manager = { path = "../../dex-manager", default-features = false }
 bonding-curve-pool = { path = "../../bonding-curve-pool", default-features = false }
+dex-api = { path = "../../dex-api", default-features = false}
 
 [dev-dependencies]
 currencies = { version = "0.4", package = "orml-currencies", default-features = false }
@@ -35,7 +36,6 @@ sp-core = { version = "3", default-features = false }
 sp-io = { version = "3", default-features = false }
 tokens = { version = "0.4", package = "orml-tokens", default-features = false }
 common = { path = "../../../common", default-features = false, features = ["test"] }
-dex-api = { path = "../../dex-api" }
 mock-liquidity-source = { path = "../../mock-liquidity-source" }
 
 [features]
@@ -59,4 +59,5 @@ std = [
     'multicollateral-bonding-curve-pool/std',
     'dex-manager/std',
     'bonding-curve-pool/std',
+    'dex-api/std',
 ]
