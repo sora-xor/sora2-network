@@ -494,6 +494,7 @@ impl ExtBuilder {
             reserves_account_id: GetMbcReservesTechAccountId::get(),
             reference_asset_id: USDT.into(),
             incentives_account_id: GetMbcRewardsAccountId::get(),
+            initial_collateral_assets: Default::default(),
         }
         .assimilate_storage(&mut t)
         .unwrap();

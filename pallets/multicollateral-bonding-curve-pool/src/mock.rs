@@ -406,6 +406,14 @@ impl Default for ExtBuilder {
                     AssetName(b"SORA Validator Token".to_vec()),
                     18,
                 ),
+                (
+                    alice(),
+                    PSWAP,
+                    balance!(0),
+                    AssetSymbol(b"PSWAP".to_vec()),
+                    AssetName(b"Polkaswap Token".to_vec()),
+                    18,
+                ),
             ],
             dex_list: vec![(
                 DEX_A_ID,

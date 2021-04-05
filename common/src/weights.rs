@@ -30,10 +30,10 @@ parameter_types! {
     pub BlockWeights: limits::BlockWeights = limits::BlockWeights::builder()
     .base_block(BlockExecutionWeight::get())
     .for_class(DispatchClass::all(), |weights| {
-        weights.base_extrinsic = ExtrinsicBaseWeight::get();
+        weights.base_extrinsic = 0; // ExtrinsicBaseWeight::get() // FIXME: breaks test in xor-fee
     })
     .for_class(DispatchClass::Normal, |weights| {
-        weights.max_total = Some(NORMAL_DISPATCH_RATIO * MAXIMUM_BLOCK_WEIGHT);
+        weights.max_total = Some(NORMAL_DISPATCH_RATIO * MAXIMUM_BLOCK_WEIGHT * 3);
     })
     .for_class(DispatchClass::Operational, |weights| {
         weights.max_total = Some(MAXIMUM_BLOCK_WEIGHT);

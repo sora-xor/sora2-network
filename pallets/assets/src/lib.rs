@@ -527,8 +527,6 @@ impl<T: Config> Pallet<T> {
 
     pub fn ensure_asset_exists(asset_id: &T::AssetId) -> DispatchResult {
         if !Self::asset_exists(asset_id) {
-            #[cfg(feature = "std")]
-            println!("ASSET ID {:?}", asset_id.clone());
             return Err(Error::<T>::AssetIdNotExists.into());
         }
         Ok(())

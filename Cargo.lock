@@ -4363,6 +4363,7 @@ dependencies = [
  "common",
  "dex-api",
  "dex-manager",
+ "frame-benchmarking",
  "frame-support",
  "frame-system",
  "hex-literal",
