@@ -30,7 +30,7 @@ struct RunTestsWithSlippageBehaviors<'a> {
 }
 
 impl<'a> crate::Module<Runtime> {
-    fn preset01(tests: Vec<PresetFunction<'a>>) {
+    fn preset_initial(tests: Vec<PresetFunction<'a>>) {
         let mut ext = ExtBuilder::default().build();
         let dex_id = DEX_A_ID;
         let gt: crate::mock::AssetId = GoldenTicket.into();
@@ -184,10 +184,10 @@ impl<'a> crate::Module<Runtime> {
         )];
         let mut tests_to_add = tests.clone();
         new_tests.append(&mut tests_to_add);
-        crate::Module::<Runtime>::preset01(new_tests);
+        crate::Module::<Runtime>::preset_initial(new_tests);
     }
 
-    fn preset03(tests: Vec<PresetFunction<'a>>) {
+    fn preset_deposited_small(tests: Vec<PresetFunction<'a>>) {
         let mut new_tests: Vec<PresetFunction<'a>> =
             vec![Rc::new(|dex_id, _, _, _, _, _, _, _| {
                 assert_ok!(crate::Module::<Runtime>::deposit_liquidity(
@@ -203,7 +203,7 @@ impl<'a> crate::Module<Runtime> {
             })];
         let mut tests_to_add = tests.clone();
         new_tests.append(&mut tests_to_add);
-        crate::Module::<Runtime>::preset01(new_tests);
+        crate::Module::<Runtime>::preset_initial(new_tests);
     }
 
     fn run_tests_with_different_slippage_behavior_01(
@@ -260,13 +260,13 @@ impl<'a> crate::Module<Runtime> {
         for case in &cases {
             let mut new_tests = vec![prepare.clone(), case.clone()];
             new_tests.append(&mut descriptor.tests.clone());
-            crate::Module::<Runtime>::preset01(new_tests);
+            crate::Module::<Runtime>::preset_initial(new_tests);
         }
 
         // Case with original pool state, behavior is not prepended.
         let mut new_tests = vec![prepare.clone()];
         new_tests.append(&mut descriptor.tests.clone());
-        crate::Module::<Runtime>::preset01(new_tests);
+        crate::Module::<Runtime>::preset_initial(new_tests);
     }
 }
 
@@ -280,7 +280,7 @@ macro_rules! simplify_swap_outcome(
 
 #[test]
 fn can_exchange_all_directions() {
-    crate::Module::<Runtime>::preset01(vec![Rc::new(|dex_id, gt, bp, _, _, _, _, _| {
+    crate::Module::<Runtime>::preset_initial(vec![Rc::new(|dex_id, gt, bp, _, _, _, _, _| {
         assert_ok!(crate::Module::<Runtime>::deposit_liquidity(
             Origin::signed(ALICE()),
             dex_id,
@@ -299,7 +299,7 @@ fn can_exchange_all_directions() {
 
 #[test]
 fn quote_case_exact_input_for_output_base_first() {
-    crate::Module::<Runtime>::preset01(vec![Rc::new(|dex_id, gt, bp, _, _, _, _, _| {
+    crate::Module::<Runtime>::preset_initial(vec![Rc::new(|dex_id, gt, bp, _, _, _, _, _| {
         assert_ok!(crate::Module::<Runtime>::deposit_liquidity(
             Origin::signed(ALICE()),
             dex_id,
@@ -328,7 +328,7 @@ fn quote_case_exact_input_for_output_base_first() {
 
 #[test]
 fn quote_case_exact_input_for_output_base_second() {
-    crate::Module::<Runtime>::preset01(vec![Rc::new(|dex_id, gt, bp, _, _, _, _, _| {
+    crate::Module::<Runtime>::preset_initial(vec![Rc::new(|dex_id, gt, bp, _, _, _, _, _| {
         assert_ok!(crate::Module::<Runtime>::deposit_liquidity(
             Origin::signed(ALICE()),
             dex_id,
@@ -357,7 +357,7 @@ fn quote_case_exact_input_for_output_base_second() {
 
 #[test]
 fn quote_case_exact_output_for_input_base_first() {
-    crate::Module::<Runtime>::preset01(vec![Rc::new(|dex_id, gt, bp, _, _, _, _, _| {
+    crate::Module::<Runtime>::preset_initial(vec![Rc::new(|dex_id, gt, bp, _, _, _, _, _| {
         assert_ok!(crate::Module::<Runtime>::deposit_liquidity(
             Origin::signed(ALICE()),
             dex_id,
@@ -386,7 +386,7 @@ fn quote_case_exact_output_for_input_base_first() {
 
 #[test]
 fn quote_case_exact_output_for_input_base_second() {
-    crate::Module::<Runtime>::preset01(vec![Rc::new(|dex_id, gt, bp, _, _, _, _, _| {
+    crate::Module::<Runtime>::preset_initial(vec![Rc::new(|dex_id, gt, bp, _, _, _, _, _| {
         assert_ok!(crate::Module::<Runtime>::deposit_liquidity(
             Origin::signed(ALICE()),
             dex_id,
@@ -415,7 +415,7 @@ fn quote_case_exact_output_for_input_base_second() {
 
 #[test]
 fn quote_case_exact_output_for_input_base_second_fail_with_out_of_bounds() {
-    crate::Module::<Runtime>::preset01(vec![Rc::new(|dex_id, gt, bp, _, _, _, _, _| {
+    crate::Module::<Runtime>::preset_initial(vec![Rc::new(|dex_id, gt, bp, _, _, _, _, _| {
         assert_ok!(crate::Module::<Runtime>::deposit_liquidity(
             Origin::signed(ALICE()),
             dex_id,
@@ -443,7 +443,7 @@ fn quote_case_exact_output_for_input_base_second_fail_with_out_of_bounds() {
 
 #[test]
 fn depositliq_large_values() {
-    crate::Module::<Runtime>::preset01(vec![Rc::new(|dex_id, _, _, _, _, _, _, _| {
+    crate::Module::<Runtime>::preset_initial(vec![Rc::new(|dex_id, _, _, _, _, _, _, _| {
         assert_noop!(
             crate::Module::<Runtime>::deposit_liquidity(
                 Origin::signed(ALICE()),
@@ -991,7 +991,7 @@ fn swap_pair_outcome_should_match_actual_4() {
 
 #[test]
 fn swap_pair_liquidity_after_operation_check() {
-    crate::Module::<Runtime>::preset03(vec![Rc::new(
+    crate::Module::<Runtime>::preset_deposited_small(vec![Rc::new(
         |dex_id, _gt, _bp, _, _, _, _repr: AccountId, _fee_repr: AccountId| {
             assert_noop!(
                 crate::Module::<Runtime>::swap_pair(
