@@ -1148,125 +1148,36 @@ fn withdraw_liquidity_with_different_slippage_behavior_01() {
 }
 
 #[test]
-fn deposit_liquidity_twice_01() {
-    crate::Module::<Runtime>::run_tests_with_different_slippage_behavior_01(
-        RunTestsWithSlippageBehaviors {
-            initial_deposit: (balance!(101.3097), balance!(80.9525)),
-            desired_amount: balance!(0.005),
-            tests: vec![Rc::new(
-                |dex_id,
-                 _gt,
-                 _bp,
-                 _,
-                 _tech_acc_id: crate::mock::TechAccountId,
-                 _,
-                 _repr: AccountId,
-                 _fee_repr: AccountId| {
-                    assert_ok!(crate::Module::<Runtime>::deposit_liquidity(
-                        Origin::signed(ALICE()),
-                        dex_id,
-                        GoldenTicket.into(),
-                        BlackPepper.into(),
-                        balance!(200),
-                        balance!(159.829140043283972334),
-                        balance!(199),
-                        balance!(159.0299943430675),
-                    ));
-                },
-            )],
-        },
-    );
-}
+fn variants_of_deposit_liquidity_twice() {
+    let variants: Vec<Balance> = vec![1u128, 10u128, 100u128, 1000u128, 10000u128];
 
-#[test]
-fn deposit_liquidity_twice_02() {
-    crate::Module::<Runtime>::run_tests_with_different_slippage_behavior_01(
-        RunTestsWithSlippageBehaviors {
-            initial_deposit: (balance!(1013.097), balance!(809.525)),
-            desired_amount: balance!(0.05),
-            tests: vec![Rc::new(
-                |dex_id,
-                 _gt,
-                 _bp,
-                 _,
-                 _tech_acc_id: crate::mock::TechAccountId,
-                 _,
-                 _repr: AccountId,
-                 _fee_repr: AccountId| {
-                    assert_ok!(crate::Module::<Runtime>::deposit_liquidity(
-                        Origin::signed(ALICE()),
-                        dex_id,
-                        GoldenTicket.into(),
-                        BlackPepper.into(),
-                        balance!(2000),
-                        balance!(1598.29140043283972334),
-                        balance!(1990),
-                        balance!(1590.299943430675),
-                    ));
-                },
-            )],
-        },
-    );
-}
-
-#[test]
-fn deposit_liquidity_twice_03() {
-    crate::Module::<Runtime>::run_tests_with_different_slippage_behavior_01(
-        RunTestsWithSlippageBehaviors {
-            initial_deposit: (balance!(10130.97), balance!(8095.25)),
-            desired_amount: balance!(0.5),
-            tests: vec![Rc::new(
-                |dex_id,
-                 _gt,
-                 _bp,
-                 _,
-                 _tech_acc_id: crate::mock::TechAccountId,
-                 _,
-                 _repr: AccountId,
-                 _fee_repr: AccountId| {
-                    assert_ok!(crate::Module::<Runtime>::deposit_liquidity(
-                        Origin::signed(ALICE()),
-                        dex_id,
-                        GoldenTicket.into(),
-                        BlackPepper.into(),
-                        balance!(20000),
-                        balance!(15982.9140043283972334),
-                        balance!(19900),
-                        balance!(15902.99943430675),
-                    ));
-                },
-            )],
-        },
-    );
-}
-
-#[test]
-fn deposit_liquidity_twice_04() {
-    crate::Module::<Runtime>::run_tests_with_different_slippage_behavior_01(
-        RunTestsWithSlippageBehaviors {
-            initial_deposit: (balance!(10.13097), balance!(8.09525)),
-            desired_amount: balance!(0.0005),
-            tests: vec![Rc::new(
-                |dex_id,
-                 _gt,
-                 _bp,
-                 _,
-                 _tech_acc_id: crate::mock::TechAccountId,
-                 _,
-                 _repr: AccountId,
-                 _fee_repr: AccountId| {
-                    assert_ok!(crate::Module::<Runtime>::deposit_liquidity(
-                        Origin::signed(ALICE()),
-                        dex_id,
-                        GoldenTicket.into(),
-                        BlackPepper.into(),
-                        balance!(20),
-                        balance!(15.98291400432839),
-                        balance!(19.9),
-                        balance!(15.90299943430675),
-                    ));
-                },
-            )],
-        },
-    );
+    for scale in variants {
+        crate::Module::<Runtime>::run_tests_with_different_slippage_behavior_01(
+            RunTestsWithSlippageBehaviors {
+                initial_deposit: (balance!(10.13097) * scale, balance!(8.09525) * scale),
+                desired_amount: balance!(0.0005) * scale,
+                tests: vec![Rc::new(
+                    |dex_id,
+                     _gt,
+                     _bp,
+                     _,
+                     _tech_acc_id: crate::mock::TechAccountId,
+                     _,
+                     _repr: AccountId,
+                     _fee_repr: AccountId| {
+                        assert_ok!(crate::Module::<Runtime>::deposit_liquidity(
+                            Origin::signed(ALICE()),
+                            dex_id,
+                            GoldenTicket.into(),
+                            BlackPepper.into(),
+                            balance!(20) * scale,
+                            balance!(15.98291400432839) * scale,
+                            balance!(19.9) * scale,
+                            balance!(15.90299943430675) * scale,
+                        ));
+                    },
+                )],
+            },
+        );
+    }
 }
