@@ -101,6 +101,7 @@ contract BridgeEVM {
         bytes32[] memory s
     )
     public shouldBeInitialized {
+        require(used[txHash] == false);
         require(acceptedEthTokens[newToken] == false);
         require(checkSignatures(keccak256(abi.encodePacked(newToken, ticker, name, decimals, txHash, _networkId)),
             v,
@@ -108,6 +109,7 @@ contract BridgeEVM {
             s), "Peer signatures are invalid"
         );
         acceptedEthTokens[newToken] = true;
+        used[txHash] = true;
     }
 
     /**
@@ -128,6 +130,7 @@ contract BridgeEVM {
     )
     public
     shouldBeInitialized shouldBePreparedForMigration {
+        require(preparedForMigration_ == false);
         require(address(this) == thisContractAddress);
         require(checkSignatures(keccak256(abi.encodePacked(thisContractAddress, salt, _networkId)),
             v,
@@ -199,6 +202,7 @@ contract BridgeEVM {
         bytes32[] memory r,
         bytes32[] memory s)
     public shouldBeInitialized {
+        require(used[txHash] == false);
         require(checkSignatures(keccak256(abi.encodePacked(
                 name,
                 symbol,
@@ -217,6 +221,7 @@ contract BridgeEVM {
         _sidechainTokens[sidechainAssetId] = tokenAddress;
         _sidechainTokensByAddress[tokenAddress] = sidechainAssetId;
         _sidechainTokenAddressArray.push(tokenAddress);
+        used[txHash] = true;
     }
 
     /**
