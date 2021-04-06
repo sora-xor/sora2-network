@@ -752,7 +752,7 @@ fn swap_pair_swap_fail_with_invalid_balance() {
 }
 
 #[test]
-fn swap_pair_outcome_should_match_actual_1() {
+fn swap_pair_outcome_should_match_actual_desired_amount_in_with_basic_asset() {
     crate::Module::<Runtime>::preset_deposited_pool(vec![Rc::new(
         |dex_id, gt, bp, _, _, _, _repr: AccountId, _fee_repr: AccountId| {
             use sp_core::crypto::AccountId32;
@@ -812,7 +812,7 @@ fn swap_pair_outcome_should_match_actual_1() {
 }
 
 #[test]
-fn swap_pair_outcome_should_match_actual_2() {
+fn swap_pair_outcome_should_match_actual_desired_amount_in() {
     crate::Module::<Runtime>::preset_deposited_pool(vec![Rc::new(
         |dex_id, gt, bp, _, _, _, _repr: AccountId, _fee_repr: AccountId| {
             use sp_core::crypto::AccountId32;
@@ -872,7 +872,7 @@ fn swap_pair_outcome_should_match_actual_2() {
 }
 
 #[test]
-fn swap_pair_outcome_should_match_actual_3() {
+fn swap_pair_outcome_should_match_actual_desired_amount_out_with_values_for_math_error_testing() {
     crate::Module::<Runtime>::preset_deposited_pool(vec![Rc::new(
         |dex_id, gt, bp, _, _, _, _repr: AccountId, _fee_repr: AccountId| {
             use sp_core::crypto::AccountId32;
@@ -932,7 +932,7 @@ fn swap_pair_outcome_should_match_actual_3() {
 }
 
 #[test]
-fn swap_pair_outcome_should_match_actual_4() {
+fn swap_pair_outcome_should_match_actual_desired_amount_out() {
     crate::Module::<Runtime>::preset_deposited_pool(vec![Rc::new(
         |dex_id, gt, bp, _, _, _, _repr: AccountId, _fee_repr: AccountId| {
             use sp_core::crypto::AccountId32;
