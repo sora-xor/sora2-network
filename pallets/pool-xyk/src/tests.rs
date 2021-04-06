@@ -206,9 +206,7 @@ impl<'a> crate::Module<Runtime> {
         crate::Module::<Runtime>::preset_initial(new_tests);
     }
 
-    fn run_tests_with_different_slippage_behavior_01(
-        descriptor: RunTestsWithSlippageBehaviors<'a>,
-    ) {
+    fn run_tests_with_different_slippage_behavior(descriptor: RunTestsWithSlippageBehaviors<'a>) {
         let initial_deposit = descriptor.initial_deposit;
         let desired_amount = descriptor.desired_amount;
         let prepare: PresetFunction<'a> = Rc::new({
@@ -1087,8 +1085,8 @@ fn withdraw_all_liquidity() {
 }
 
 #[test]
-fn deposit_liquidity_with_different_slippage_behavior_01() {
-    crate::Module::<Runtime>::run_tests_with_different_slippage_behavior_01(
+fn deposit_liquidity_with_different_slippage_behavior() {
+    crate::Module::<Runtime>::run_tests_with_different_slippage_behavior(
         RunTestsWithSlippageBehaviors {
             initial_deposit: (balance!(360000), balance!(144000)),
             desired_amount: balance!(2999),
@@ -1118,8 +1116,8 @@ fn deposit_liquidity_with_different_slippage_behavior_01() {
 }
 
 #[test]
-fn withdraw_liquidity_with_different_slippage_behavior_01() {
-    crate::Module::<Runtime>::run_tests_with_different_slippage_behavior_01(
+fn withdraw_liquidity_with_different_slippage_behavior() {
+    crate::Module::<Runtime>::run_tests_with_different_slippage_behavior(
         RunTestsWithSlippageBehaviors {
             initial_deposit: (balance!(360000), balance!(144000)),
             desired_amount: balance!(2999),
@@ -1152,7 +1150,7 @@ fn variants_of_deposit_liquidity_twice() {
     let variants: Vec<Balance> = vec![1u128, 10u128, 100u128, 1000u128, 10000u128];
 
     for scale in variants {
-        crate::Module::<Runtime>::run_tests_with_different_slippage_behavior_01(
+        crate::Module::<Runtime>::run_tests_with_different_slippage_behavior(
             RunTestsWithSlippageBehaviors {
                 initial_deposit: (balance!(10.13097) * scale, balance!(8.09525) * scale),
                 desired_amount: balance!(0.0005) * scale,
