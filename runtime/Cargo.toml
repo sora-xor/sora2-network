@@ -181,7 +181,6 @@ runtime-benchmarks = [
     "assets/runtime-benchmarks",
     "eth-bridge/runtime-benchmarks",
     "dex-api-benchmarking",
-    "dex-manager/runtime-benchmarks",
     "faucet?/runtime-benchmarks",
     "liquidity-proxy-benchmarking",
     "pool-xyk-benchmarking",

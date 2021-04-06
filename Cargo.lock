@@ -1387,7 +1387,6 @@ version = "0.1.0"
 dependencies = [
  "assets",
  "common",
- "frame-benchmarking",
  "frame-support",
  "frame-system",
  "hex-literal",

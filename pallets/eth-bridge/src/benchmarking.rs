@@ -11,7 +11,6 @@ use common::{balance, XOR};
 use frame_benchmarking::benchmarks;
 use frame_system::{EventRecord, RawOrigin};
 use hex_literal::hex;
-use sp_core::sr25519;
 
 type Assets<T> = assets::Pallet<T>;
 

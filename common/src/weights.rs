@@ -1,7 +1,5 @@
 use frame_support::parameter_types;
-use frame_support::weights::constants::{
-    BlockExecutionWeight, ExtrinsicBaseWeight, WEIGHT_PER_SECOND,
-};
+use frame_support::weights::constants::{BlockExecutionWeight, WEIGHT_PER_SECOND};
 use frame_support::weights::{
     DispatchClass, Weight, WeightToFeeCoefficient, WeightToFeeCoefficients, WeightToFeePolynomial,
 };

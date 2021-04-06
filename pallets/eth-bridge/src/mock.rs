@@ -19,8 +19,7 @@ use frame_support::sp_runtime::serde::{Serialize, Serializer};
 use frame_support::sp_runtime::testing::Header;
 use frame_support::sp_runtime::traits::{
     self, Applyable, BlakeTwo256, Checkable, DispatchInfoOf, Dispatchable, IdentifyAccount,
-    IdentityLookup, MaybeMallocSizeOf, PostDispatchInfoOf, SignedExtension, ValidateUnsigned,
-    Verify,
+    IdentityLookup, PostDispatchInfoOf, SignedExtension, ValidateUnsigned, Verify,
 };
 use frame_support::sp_runtime::transaction_validity::{
     TransactionSource, TransactionValidity, TransactionValidityError,

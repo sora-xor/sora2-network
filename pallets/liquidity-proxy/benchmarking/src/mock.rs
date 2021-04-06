@@ -238,7 +238,6 @@ impl pool_xyk::Config for Runtime {
 fn bonding_curve_distribution_accounts(
 ) -> DistributionAccounts<DistributionAccountData<<Runtime as technical::Config>::TechAccountId>> {
     use common::fixed_wrapper;
-    use common::prelude::fixnum::ops::One;
     let val_holders_coefficient = fixed_wrapper!(0.5);
     let val_holders_xor_alloc_coeff = fixed_wrapper!(0.9) * val_holders_coefficient.clone();
     let val_holders_buy_back_coefficient =
