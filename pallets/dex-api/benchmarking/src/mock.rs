@@ -64,6 +64,7 @@ construct_runtime! {
         TradingPair: trading_pair::{Module, Call, Config<T>, Storage, Event<T>},
         PoolXyk: pool_xyk::{Module, Call, Storage, Event<T>},
         PswapDistribution: pswap_distribution::{Module, Call, Config<T>, Storage, Event<T>},
+        MBCPool: multicollateral_bonding_curve_pool::{Module, Call, Config<T>, Storage, Event<T>},
     }
 }
 
@@ -194,6 +195,14 @@ impl pswap_distribution::Config for Runtime {
     type GetTechnicalAccountId = GetPswapDistributionAccountId;
     type EnsureDEXManager = ();
     type OnPswapBurnedAggregator = ();
+    type WeightInfo = ();
+}
+
+impl multicollateral_bonding_curve_pool::Config for Runtime {
+    type Event = Event;
+    type LiquidityProxy = ();
+    type EnsureDEXManager = dex_manager::Module<Runtime>;
+    type EnsureTradingPairExists = trading_pair::Module<Runtime>;
     type WeightInfo = ();
 }
 
