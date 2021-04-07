@@ -10,7 +10,7 @@ use frame_system::{EventRecord, RawOrigin};
 use hex_literal::hex;
 use sp_std::prelude::*;
 
-use common::XOR;
+use common::{USDT, XOR};
 
 use crate::Pallet as Assets;
 
@@ -91,70 +91,70 @@ benchmarks! {
     mint {
         let n in 1 .. 1000 => add_assets::<T>(n)?;
         let caller = alice::<T>();
-        let _ = Assets::<T>::register_asset_id(
+        Assets::<T>::register_asset_id(
             caller.clone(),
-            XOR.into(),
-            AssetSymbol(b"XOR".to_vec()),
-            AssetName(b"XOR".to_vec()),
+            USDT.into(),
+            AssetSymbol(b"USDT".to_vec()),
+            AssetName(b"USDT".to_vec()),
             18,
             Balance::zero(),
             true,
-        );
+        ).unwrap();
     }: _(
         RawOrigin::Signed(caller.clone()),
-        XOR.into(),
+        USDT.into(),
         caller.clone(),
         100_u32.into()
     )
     verify {
-        assert_last_event::<T>(Event::Mint(caller.clone(), caller, XOR.into(), 100_u32.into()).into())
+        assert_last_event::<T>(Event::Mint(caller.clone(), caller, USDT.into(), 100_u32.into()).into())
     }
 
     burn {
         let n in 1 .. 1000 => add_assets::<T>(n)?;
         let caller = alice::<T>();
-        let _ = Assets::<T>::register_asset_id(
+        Assets::<T>::register_asset_id(
             caller.clone(),
-            XOR.into(),
-            AssetSymbol(b"XOR".to_vec()),
-            AssetName(b"Sora Token".to_vec()),
+            USDT.into(),
+            AssetSymbol(b"USDT".to_vec()),
+            AssetName(b"USDT".to_vec()),
             18,
             Balance::zero(),
             true,
-        );
+        ).unwrap();
         Assets::<T>::mint(
             RawOrigin::Signed(caller.clone()).into(),
-            XOR.into(),
+            USDT.into(),
             caller.clone(),
             1000_u32.into()
-        )?;
+        ).unwrap();
     }: _(
         RawOrigin::Signed(caller.clone()),
-        XOR.into(),
+        USDT.into(),
         100_u32.into()
     )
     verify {
-        assert_last_event::<T>(Event::Burn(caller, XOR.into(), 100_u32.into()).into())
+        assert_last_event::<T>(Event::Burn(caller, USDT.into(), 100_u32.into()).into())
     }
 
     set_non_mintable {
         let n in 1 .. 1000 => add_assets::<T>(n)?;
         let caller = alice::<T>();
-        let _ = Assets::<T>::register_asset_id(
+        Assets::<T>::register_asset_id(
             caller.clone(),
-            XOR.into(),
-            AssetSymbol(b"XOR".to_vec()),
-            AssetName(b"Sora Token".to_vec()),
+            USDT.into(),
+            AssetSymbol(b"USDT".to_vec()),
+            AssetName(b"USDT".to_vec()),
             18,
             Balance::zero(),
             true,
-        );
+        ).unwrap();
     }: _(
         RawOrigin::Signed(caller.clone()),
-        XOR.into()
+        USDT.into()
     )
     verify {
-        assert_last_event::<T>(Event::AssetSetNonMintable(XOR.into()).into())
+        assert_last_event::<T>(Event::AssetSetNonMintable(USDT.into()).into())
     }
 }
 
