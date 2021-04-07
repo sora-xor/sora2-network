@@ -779,6 +779,7 @@ impl pallet_transaction_payment::Config for Runtime {
     type FeeMultiplierUpdate = ConstantFeeMultiplier;
 }
 
+#[cfg(feature = "test-net")]
 impl pallet_sudo::Config for Runtime {
     type Call = Call;
     type Event = Event;
@@ -1016,7 +1017,6 @@ construct_runtime! {
         Timestamp: pallet_timestamp::{Module, Call, Storage, Inherent},
         // Balances in native currency - XOR.
         Balances: pallet_balances::{Module, Call, Storage, Config<T>, Event<T>},
-        Sudo: pallet_sudo::{Module, Call, Storage, Config<T>, Event<T>},
         RandomnessCollectiveFlip: pallet_randomness_collective_flip::{Module, Call, Storage},
         TransactionPayment: pallet_transaction_payment::{Module, Storage},
         Permissions: permissions::{Module, Call, Storage, Config<T>, Event<T>},
