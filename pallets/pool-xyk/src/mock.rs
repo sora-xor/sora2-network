@@ -41,6 +41,7 @@ parameter_types! {
     pub GetPswapDistributionAccountId: AccountId = AccountId32::from([3; 32]);
     pub const GetDefaultSubscriptionFrequency: BlockNumber = 10;
     pub const GetBurnUpdateFrequency: BlockNumber = 14400;
+    pub GetParliamentAccountId: AccountId = AccountId32::from([8; 32]);
 }
 
 parameter_type_with_key! {
@@ -174,6 +175,7 @@ impl pswap_distribution::Config for Runtime {
     type GetTechnicalAccountId = GetPswapDistributionAccountId;
     type EnsureDEXManager = ();
     type OnPswapBurnedAggregator = ();
+    type GetParliamentAccountId = GetParliamentAccountId;
 }
 
 impl Config for Runtime {

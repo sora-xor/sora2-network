@@ -40,6 +40,7 @@ parameter_types! {
     pub const GetDefaultSubscriptionFrequency: BlockNumber = 10;
     pub const GetBurnUpdateFrequency: BlockNumber = 14400;
     pub GetIncentiveAssetId: AssetId = common::PSWAP.into();
+    pub GetParliamentAccountId: AccountId = AccountId32::from([8; 32]);
 }
 
 construct_runtime! {
@@ -192,6 +193,7 @@ impl pswap_distribution::Config for Runtime {
     type GetTechnicalAccountId = GetPswapDistributionAccountId;
     type EnsureDEXManager = ();
     type OnPswapBurnedAggregator = ();
+    type GetParliamentAccountId = GetParliamentAccountId;
 }
 
 impl Config for Runtime {}
