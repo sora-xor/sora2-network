@@ -11,7 +11,7 @@ substrate-wasm-builder = "3.0.0"
 
 [dependencies]
 codec = { package = "parity-scale-codec", version = "2", default-features = false, features = ["derive"] }
-hex-literal = { version = '0.3.1' }
+hex-literal = "0.3.1"
 serde = { features = ['derive'], optional = true, version = '1.0.101' }
 common = { path = "../common", default-features = false }
 faucet = { path = "../pallets/faucet", default-features = false, optional = true }
@@ -173,17 +173,19 @@ std = [
 test-net = ["faucet"]
 
 runtime-benchmarks = [
-    "frame-benchmarking",
-    "frame-system/runtime-benchmarks",
-    "frame-support/runtime-benchmarks",
-    "frame-system-benchmarking",
-    "pallet-collective/runtime-benchmarks",
     "assets/runtime-benchmarks",
     "eth-bridge/runtime-benchmarks",
     "dex-api-benchmarking",
     "faucet?/runtime-benchmarks",
+    "frame-benchmarking",
+    "frame-support/runtime-benchmarks",
+    "frame-system-benchmarking",
+    "frame-system/runtime-benchmarks",
+    "iroha-migration/runtime-benchmarks",
     "liquidity-proxy-benchmarking",
+    "pallet-collective/runtime-benchmarks",
     "pool-xyk-benchmarking",
+    "rewards/runtime-benchmarks",
     "technical/runtime-benchmarks",
     "trading-pair/runtime-benchmarks",
     "multicollateral-bonding-curve-pool/runtime-benchmarks",

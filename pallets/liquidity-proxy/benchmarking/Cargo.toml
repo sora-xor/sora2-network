@@ -11,7 +11,7 @@ codec = { package = "parity-scale-codec", version = "2", default-features = fals
 frame-benchmarking = { version = "3", default-features = false }
 frame-support = { version = "3", default-features = false }
 frame-system = { version = "3", default-features = false }
-hex-literal = { version = "0.3.1" }
+hex-literal = "0.3.1"
 sp-runtime = { version = "3", default-features = false }
 sp-std = { version = "3", default-features = false }
 assets = { path = "../../assets", default-features = false }

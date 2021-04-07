@@ -1,5 +1,18 @@
 # Contributing
 
+## Requirements
+* Nightly Rust of same version as defined in [housekeeping/docker/develop/Dockerfile](housekeeping/docker/develop/Dockerfile)
+ ```
+ rustup default set nightly-2021-03-11
+ rustup target add wasm32-unknown-unknown --toolchain nightly-2021-03-11
+ ```
+
+## Steps to do before opening a PR
+Unless all the steps are executed, CI will fail the build
+* Format the code `cargo fmt`
+* Fix all warnings `RUSTFLAGS="-Dwarnings" cargo check`
+* Execute tests `RUSTFLAGS="-Dwarnings" cargo test`
+
 ## Build
 
 ### Docker Image
@@ -88,7 +101,7 @@ or
 make a397f7451d80205abf5e535ecee95073ad49e369
 ```
 
-#### Debug version 
+#### Debug version
 
 ```bash
 make a397f7451d80205abf5e535ecee95073ad49e369-debug
@@ -112,4 +125,3 @@ make docker-localtestnet-debug
 docker build -f housekeeping/docker/develop/Dockerfile -t soraneo-develop .
 docker run -ti -v $(pwd):/app -w /app --rm soraneo-develop cargo build --release
 ```
-

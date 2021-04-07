@@ -6,23 +6,22 @@ use super::*;
 
 use codec::Decode;
 use frame_benchmarking::benchmarks;
-use frame_system::RawOrigin;
 use frame_support::traits::OnInitialize;
+use frame_system::RawOrigin;
 use hex_literal::hex;
+use sp_core::{H256, H512};
+use sp_io::hashing::blake2_256;
 use sp_std::prelude::*;
 use traits::MultiCurrencyExtended;
-use sp_io::hashing::blake2_256;
-use sp_core::H256;
-use sp_core::H512;
 
-use common::{FromGenericPair, TechAccountId, fixnum::ops::One};
-use common::{balance, Fixed, PSWAP, AssetName, AssetSymbol, XOR};
+use common::fixnum::ops::One;
+use common::{balance, AssetName, AssetSymbol, Fixed, FromGenericPair, TechAccountId, PSWAP, XOR};
 
-use sp_std::convert::TryFrom;
-use tokens::Pallet as Tokens;
-use technical::Pallet as Technical;
 use assets::Pallet as Assets;
 use permissions::Pallet as Permissions;
+use sp_std::convert::TryFrom;
+use technical::Pallet as Technical;
+use tokens::Pallet as Tokens;
 
 // Support Functions
 fn alice<T: Config>() -> T::AccountId {
@@ -31,7 +30,8 @@ fn alice<T: Config>() -> T::AccountId {
 }
 
 fn create_account<T: Config>(prefix: Vec<u8>, index: u128) -> T::AccountId {
-    let tech_account: T::TechAccountId = T::TechAccountId::from_generic_pair(prefix, index.encode());
+    let tech_account: T::TechAccountId =
+        T::TechAccountId::from_generic_pair(prefix, index.encode());
     Technical::<T>::tech_account_id_to_account_id(&tech_account).unwrap()
 }
 
@@ -51,12 +51,28 @@ fn prepare_for_distribution<T: Config>(distribution_freq: u32) {
     for i in 1u128..10 {
         let pool_account = create_account::<T>(b"pool".to_vec(), i);
         let pool_asset = create_asset::<T>(b"pool".to_vec(), i);
-        Assets::<T>::register_asset_id(authority.clone(), pool_asset.clone(), AssetSymbol(b"POOL".to_vec()), AssetName(b"POOL".to_vec()), 18, balance!(0), true).unwrap();
-        Assets::<T>::mint_to(&PSWAP.into(), &authority, &pool_account, balance!(1000));
-        Pallet::<T>::subscribe(pool_account.clone(), common::DEXId::Polkaswap.into(), pool_asset.clone(), Some(distribution_freq.into())).unwrap();
+        Assets::<T>::register_asset_id(
+            authority.clone(),
+            pool_asset.clone(),
+            AssetSymbol(b"POOL".to_vec()),
+            AssetName(b"POOL".to_vec()),
+            18,
+            balance!(0),
+            true,
+        )
+        .unwrap();
+        let _ = Assets::<T>::mint_to(&PSWAP.into(), &authority, &pool_account, balance!(1000));
+        Pallet::<T>::subscribe(
+            pool_account.clone(),
+            common::DEXId::Polkaswap.into(),
+            pool_asset.clone(),
+            Some(distribution_freq.into()),
+        )
+        .unwrap();
         for j in 1u128..1000 {
             let liquidity_provider = create_account::<T>(b"liquidity_provider".to_vec(), j);
-            Assets::<T>::mint_to(&pool_asset, &authority, &liquidity_provider, balance!(100));
+            let _ =
+                Assets::<T>::mint_to(&pool_asset, &authority, &liquidity_provider, balance!(100));
         }
     }
 }
@@ -66,9 +82,16 @@ fn validate_distribution<T: Config>() {
         let pool_asset = create_asset::<T>(b"pool".to_vec(), i);
         for j in 1u128..1000 {
             let liquidity_provider = create_account::<T>(b"liquidity_provider".to_vec(), j);
-            Pallet::<T>::claim_incentive(RawOrigin::Signed(liquidity_provider.clone()).into());
-            assert_eq!(Assets::<T>::free_balance(&pool_asset, &liquidity_provider).unwrap(), balance!(100));
-            assert!(Assets::<T>::free_balance(&PSWAP.into(), &liquidity_provider).unwrap() > balance!(0));
+            let _ =
+                Pallet::<T>::claim_incentive(RawOrigin::Signed(liquidity_provider.clone()).into());
+            assert_eq!(
+                Assets::<T>::free_balance(&pool_asset, &liquidity_provider).unwrap(),
+                balance!(100)
+            );
+            assert!(
+                Assets::<T>::free_balance(&PSWAP.into(), &liquidity_provider).unwrap()
+                    > balance!(0)
+            );
         }
     }
 }

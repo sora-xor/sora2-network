@@ -5,8 +5,6 @@ use frame_support::ensure;
 use frame_support::weights::Weight;
 use sp_arithmetic::traits::Saturating;
 
-mod weights;
-
 mod benchmarking;
 
 #[cfg(test)]
@@ -14,10 +12,18 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
+pub mod weights;
+
+pub trait WeightInfo {
+    fn transfer() -> Weight;
+    fn reset_rewards() -> Weight;
+}
+
 type Assets<T> = assets::Module<T>;
 type System<T> = frame_system::Module<T>;
 type Technical<T> = technical::Module<T>;
 type BlockNumberOf<T> = <T as frame_system::Config>::BlockNumber;
+type WeightInfoOf<T> = <T as Config>::WeightInfo;
 
 pub const TECH_ACCOUNT_PREFIX: &[u8] = b"faucet";
 pub const TECH_ACCOUNT_MAIN: &[u8] = b"main";
@@ -28,10 +34,6 @@ pub fn balance_limit() -> Balance {
 
 pub fn transfer_limit_block_count<T: frame_system::Config>() -> BlockNumberOf<T> {
     14400u32.into()
-}
-
-pub trait WeightInfo {
-    fn transfer() -> Weight;
 }
 
 pub use pallet::*;
@@ -53,7 +55,6 @@ pub mod pallet {
         frame_system::Config + assets::Config + rewards::Config + technical::Config
     {
         type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
-        /// Weight information for extrinsics in this pallet.
         type WeightInfo: WeightInfo;
     }
 
@@ -74,7 +75,7 @@ pub mod pallet {
         /// AssetNotSupported is returned if `asset_id` is something the function doesn't support.
         /// AmountAboveLimit is returned if `target` has already received their daily limit of `asset_id`.
         /// NotEnoughReserves is returned if `amount` is greater than the reserves
-        #[pallet::weight((<T as Config>::WeightInfo::transfer(), Pays::No))]
+        #[pallet::weight((WeightInfoOf::<T>::transfer(), Pays::No))]
         pub fn transfer(
             _origin: OriginFor<T>,
             asset_id: T::AssetId,
@@ -103,7 +104,7 @@ pub mod pallet {
             })
         }
 
-        #[pallet::weight((0, Pays::No))]
+        #[pallet::weight((WeightInfoOf::<T>::reset_rewards(), Pays::No))]
         pub fn reset_rewards(_origin: OriginFor<T>) -> DispatchResultWithPostInfo {
             ValOwners::<T>::remove_all();
             ValOwners::<T>::insert(

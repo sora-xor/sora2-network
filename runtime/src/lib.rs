@@ -8,7 +8,7 @@ use alloc::string::String;
 /// Constant values used within the runtime.
 pub mod constants;
 mod extensions;
-mod on_unbalanced_democracy_slash;
+mod impls;
 
 use constants::time::*;
 
@@ -84,7 +84,7 @@ use eth_bridge::{
     AssetKind, OffchainRequest, OutgoingRequestEncoded, RequestStatus, SignatureParams,
 };
 use extensions::PrintCall;
-use on_unbalanced_democracy_slash::OnUnbalancedDemocracySlash;
+use impls::OnUnbalancedDemocracySlash;
 
 pub use {bonding_curve_pool, eth_bridge, multicollateral_bonding_curve_pool};
 
@@ -209,12 +209,12 @@ parameter_types! {
     .saturating_sub(BlockExecutionWeight::get());
     pub const DemocracyEnactmentPeriod: BlockNumber = 30 * DAYS;
     pub const DemocracyLaunchPeriod: BlockNumber = 28 * DAYS;
-    pub const DemocracyVotingPeriod: BlockNumber = 28 * DAYS;
-    pub const DemocracyMinimumDeposit: Balance = balance!(0.01);
+    pub const DemocracyVotingPeriod: BlockNumber = 14 * DAYS;
+    pub const DemocracyMinimumDeposit: Balance = balance!(1);
     pub const DemocracyFastTrackVotingPeriod: BlockNumber = 2 * DAYS;
     pub const DemocracyInstantAllowed: bool = false;
     pub const DemocracyCooloffPeriod: BlockNumber = 28 * DAYS;
-    pub const DemocracyPreimageByteDeposit: Balance = balance!(0.00000000001); // 10 ^ -11
+    pub const DemocracyPreimageByteDeposit: Balance = balance!(0.00000001); // 10 ^ -8
     pub const DemocracyMaxVotes: u32 = 100;
     pub const DemocracyMaxProposals: u32 = 100;
     pub const CouncilCollectiveMotionDuration: BlockNumber = 5 * DAYS;
@@ -654,7 +654,7 @@ impl pallet_multisig::Config for Runtime {
 
 impl iroha_migration::Config for Runtime {
     type Event = Event;
-    type WeightInfo = PresetWeightInfo;
+    type WeightInfo = iroha_migration::weights::WeightInfo<Runtime>;
 }
 
 impl<T: SigningTypes> frame_system::offchain::SignMessage<T> for Runtime {
@@ -732,7 +732,7 @@ impl referral_system::Config for Runtime {}
 
 impl rewards::Config for Runtime {
     type Event = Event;
-    type WeightInfo = PresetWeightInfo;
+    type WeightInfo = rewards::weights::WeightInfo<Runtime>;
 }
 
 parameter_types! {
@@ -828,7 +828,7 @@ impl eth_bridge::Config for Runtime {
 #[cfg(feature = "faucet")]
 impl faucet::Config for Runtime {
     type Event = Event;
-    type WeightInfo = ();
+    type WeightInfo = faucet::weights::WeightInfo<Runtime>;
 }
 
 parameter_types! {
@@ -1595,9 +1595,11 @@ impl_runtime_apis! {
             add_benchmark!(params, batches, dex_api, DEXAPIBench::<Runtime>);
             #[cfg(feature = "faucet")]
             add_benchmark!(params, batches, faucet, Faucet);
+            add_benchmark!(params, batches, iroha_migration, IrohaMigration);
             add_benchmark!(params, batches, liquidity_proxy, LiquidityProxyBench::<Runtime>);
             add_benchmark!(params, batches, multicollateral_bonding_curve_pool, MulticollateralBondingCurvePool);
             add_benchmark!(params, batches, pswap_distribution, PswapDistribution);
+            add_benchmark!(params, batches, rewards, Rewards);
             add_benchmark!(params, batches, trading_pair, TradingPair);
             add_benchmark!(params, batches, pool_xyk, XYKPoolBench::<Runtime>);
             add_benchmark!(params, batches, eth_bridge, EthBridge);

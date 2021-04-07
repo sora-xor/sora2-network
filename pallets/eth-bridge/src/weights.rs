@@ -37,7 +37,7 @@ impl crate::WeightInfo for () {
     }
 }
 
-impl crate::WeightInfo for PresetWeightInfo {
+impl<T> crate::WeightInfo for PresetWeightInfo<T> {
     fn register_bridge() -> Weight {
         EXTRINSIC_FIXED_WEIGHT
     }
