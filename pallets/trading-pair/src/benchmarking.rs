@@ -5,7 +5,7 @@
 use super::*;
 
 use codec::{Decode, Encode};
-use common::{AssetSymbol, DEXId, DOT, XOR};
+use common::{AssetName, AssetSymbol, DEXId, DOT, XOR};
 use frame_benchmarking::benchmarks;
 use frame_system::{EventRecord, RawOrigin};
 use hex_literal::hex;
@@ -38,7 +38,10 @@ fn setup_benchmark<T: Config>(n: u32) -> Result<(), &'static str> {
             owner.clone(),
             asset_id.clone(),
             AssetSymbol(b"TOKEN".to_vec()),
+            AssetName(b"TOKEN".to_vec()),
             18,
+            0,
+            true,
         )?;
         TradingPairModule::<T>::register(
             owner_origin.clone(),
@@ -60,8 +63,6 @@ fn assert_last_event<T: Config>(generic_event: <T as Config>::Event) {
 }
 
 benchmarks! {
-    _ {}
-
     register {
         let n in 1 .. 1000 => setup_benchmark::<T>(n)?;
         let caller = alice::<T>();
