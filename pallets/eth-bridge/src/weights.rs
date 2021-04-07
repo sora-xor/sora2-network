@@ -1,10 +1,11 @@
-//! THIS FILE WAS AUTO-GENERATED USING THE SUBSTRATE BENCHMARK CLI VERSION 2.0.0-rc5
-
 use common::weights::constants::EXTRINSIC_FIXED_WEIGHT;
-use common::weights::PresetWeightInfo;
+use core::marker::PhantomData;
+use frame_support::traits::Get;
 use frame_support::weights::Weight;
 
-impl crate::WeightInfo for () {
+pub struct WeightInfo<T>(PhantomData<T>);
+
+impl<T: frame_system::Config> crate::WeightInfo for WeightInfo<T> {
     fn register_bridge() -> Weight {
         Default::default()
     }
@@ -15,10 +16,14 @@ impl crate::WeightInfo for () {
         Default::default()
     }
     fn transfer_to_sidechain() -> Weight {
-        Default::default()
+        (157_969_000 as Weight)
+            .saturating_add(T::DbWeight::get().reads(14 as Weight))
+            .saturating_add(T::DbWeight::get().writes(7 as Weight))
     }
     fn request_from_sidechain() -> Weight {
-        Default::default()
+        (53_020_000 as Weight)
+            .saturating_add(T::DbWeight::get().reads(6 as Weight))
+            .saturating_add(T::DbWeight::get().writes(5 as Weight))
     }
     fn add_peer() -> Weight {
         Default::default()
@@ -35,9 +40,36 @@ impl crate::WeightInfo for () {
     fn migrate() -> Weight {
         Default::default()
     }
+
+    // FIXME: how to map those?
+    // fn register_incoming_request() -> Weight {
+    // 	(75_024_000 as Weight)
+    // 		.saturating_add(T::DbWeight::get().reads(6 as Weight))
+    // 		.saturating_add(T::DbWeight::get().writes(7 as Weight))
+    // }
+    // fn finalize_incoming_request() -> Weight {
+    // 	(125_610_000 as Weight)
+    // 		.saturating_add(T::DbWeight::get().reads(9 as Weight))
+    // 		.saturating_add(T::DbWeight::get().writes(4 as Weight))
+    // }
+    // fn approve_request() -> Weight {
+    // 	(288_688_000 as Weight)
+    // 		.saturating_add(T::DbWeight::get().reads(8 as Weight))
+    // 		.saturating_add(T::DbWeight::get().writes(1 as Weight))
+    // }
+    // fn approve_request_finalize() -> Weight {
+    // 	(357_267_000 as Weight)
+    // 		.saturating_add(T::DbWeight::get().reads(13 as Weight))
+    // 		.saturating_add(T::DbWeight::get().writes(4 as Weight))
+    // }
+    // fn abort_request() -> Weight {
+    // 	(88_293_000 as Weight)
+    // 		.saturating_add(T::DbWeight::get().reads(8 as Weight))
+    // 		.saturating_add(T::DbWeight::get().writes(3 as Weight))
+    // }
 }
 
-impl<T> crate::WeightInfo for PresetWeightInfo<T> {
+impl crate::WeightInfo for () {
     fn register_bridge() -> Weight {
         EXTRINSIC_FIXED_WEIGHT
     }

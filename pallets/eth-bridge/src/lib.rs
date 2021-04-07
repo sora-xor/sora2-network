@@ -101,7 +101,7 @@ pub trait WeightInfo {
 type Address = H160;
 type EthereumAddress = Address;
 
-mod weights;
+pub mod weights;
 
 mod benchmarking;
 mod contract;

@@ -136,9 +136,7 @@ impl pallet_balances::Config for Runtime {
     type MaxLocks = ();
 }
 
-impl dex_manager::Config for Runtime {
-    type WeightInfo = ();
-}
+impl dex_manager::Config for Runtime {}
 
 impl technical::Config for Runtime {
     type Event = Event;
@@ -196,6 +194,7 @@ impl pswap_distribution::Config for Runtime {
     type GetTechnicalAccountId = GetPswapDistributionAccountId;
     type EnsureDEXManager = ();
     type OnPswapBurnedAggregator = ();
+    type WeightInfo = ();
 }
 
 impl Config for Runtime {}

@@ -14,6 +14,8 @@ use liquidity_proxy::LiquidityProxyTrait;
 use sp_arithmetic::traits::{Saturating, Zero};
 use tokens::Accounts;
 
+pub mod weights;
+
 #[cfg(test)]
 mod mock;
 
@@ -39,6 +41,11 @@ impl OnPswapBurned for () {
     fn on_pswap_burned(_distribution: PswapRemintInfo) {
         // do nothing
     }
+}
+
+pub trait WeightInfo {
+    fn claim_incentive() -> Weight;
+    fn on_initialize(is_distributing: bool) -> Weight;
 }
 
 #[derive(Encode, Decode, Clone, RuntimeDebug, Default)]
@@ -330,8 +337,10 @@ impl<T: Config> Pallet<T> {
         })
     }
 
-    pub fn incentive_distribution_routine(block_num: T::BlockNumber) {
+    pub fn incentive_distribution_routine(block_num: T::BlockNumber) -> bool {
         let tech_account_id = T::GetTechnicalAccountId::get();
+
+        let mut distributing_count = 0;
 
         for (fees_account, (dex_id, pool_token, frequency, block_offset)) in
             SubscribedAccounts::<T>::iter()
@@ -344,8 +353,10 @@ impl<T: Config> Pallet<T> {
                     &pool_token,
                     &tech_account_id,
                 );
+                distributing_count += 1;
             }
         }
+        distributing_count > 0
     }
 
     fn update_burn_rate() {
@@ -391,6 +402,7 @@ pub mod pallet {
         type GetBurnUpdateFrequency: Get<Self::BlockNumber>;
         type EnsureDEXManager: EnsureDEXManager<Self::DEXId, Self::AccountId, DispatchError>;
         type OnPswapBurnedAggregator: OnPswapBurned;
+        type WeightInfo: WeightInfo;
     }
 
     #[pallet::pallet]
@@ -403,9 +415,10 @@ pub mod pallet {
         /// with respect to thir configured frequencies.
         fn on_initialize(block_num: T::BlockNumber) -> Weight {
             common::with_benchmark("pswap-distribution.on_initialize", || {
-                Self::incentive_distribution_routine(block_num);
+                let is_distributing = Self::incentive_distribution_routine(block_num);
                 Self::burn_rate_update_routine(block_num);
-                0
+
+                <T as Config>::WeightInfo::on_initialize(is_distributing)
             })
         }
     }

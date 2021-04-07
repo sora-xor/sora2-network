@@ -1,25 +1,33 @@
-//! THIS FILE WAS AUTO-GENERATED USING THE SUBSTRATE BENCHMARK CLI VERSION 2.0.0-rc5
-
 use common::weights::constants::EXTRINSIC_FIXED_WEIGHT;
-use common::weights::PresetWeightInfo;
+use frame_support::traits::Get;
 use frame_support::weights::Weight;
+use sp_std::marker::PhantomData;
 
-impl crate::WeightInfo for () {
+pub struct WeightInfo<T>(PhantomData<T>);
+impl<T: frame_system::Config> crate::WeightInfo for WeightInfo<T> {
     fn initialize_pool() -> Weight {
-        Default::default()
+        (65_100_000 as Weight)
+            .saturating_add(T::DbWeight::get().reads(6 as Weight))
+            .saturating_add(T::DbWeight::get().writes(3 as Weight))
     }
     fn set_reference_asset() -> Weight {
-        Default::default()
+        (36_800_000 as Weight)
+            .saturating_add(T::DbWeight::get().reads(3 as Weight))
+            .saturating_add(T::DbWeight::get().writes(1 as Weight))
     }
     fn set_optional_reward_multiplier() -> Weight {
-        Default::default()
+        (44_700_000 as Weight)
+            .saturating_add(T::DbWeight::get().reads(5 as Weight))
+            .saturating_add(T::DbWeight::get().writes(1 as Weight))
     }
     fn claim_incentives() -> Weight {
-        Default::default()
+        (100_300_000 as Weight)
+            .saturating_add(T::DbWeight::get().reads(10 as Weight))
+            .saturating_add(T::DbWeight::get().writes(5 as Weight))
     }
 }
 
-impl<T> crate::WeightInfo for PresetWeightInfo<T> {
+impl crate::WeightInfo for () {
     fn initialize_pool() -> Weight {
         EXTRINSIC_FIXED_WEIGHT
     }

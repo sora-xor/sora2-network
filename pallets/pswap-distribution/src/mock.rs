@@ -140,6 +140,7 @@ impl Config for Runtime {
     type GetTechnicalAccountId = GetPswapDistributionAccountId;
     type EnsureDEXManager = DexManager;
     type OnPswapBurnedAggregator = ();
+    type WeightInfo = ();
 }
 
 impl tokens::Config for Runtime {
@@ -201,9 +202,7 @@ impl technical::Config for Runtime {
     type WeightInfo = ();
 }
 
-impl dex_manager::Config for Runtime {
-    type WeightInfo = ();
-}
+impl dex_manager::Config for Runtime {}
 
 pub struct ExtBuilder {
     endowed_accounts: Vec<(AccountId, AssetId, Balance)>,

@@ -140,9 +140,7 @@ impl permissions::Config for Runtime {
     type Event = Event;
 }
 
-impl dex_manager::Config for Runtime {
-    type WeightInfo = ();
-}
+impl dex_manager::Config for Runtime {}
 
 pub struct ExtBuilder {
     endowed_assets: Vec<(

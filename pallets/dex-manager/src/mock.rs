@@ -80,9 +80,7 @@ impl frame_system::Config for Runtime {
     type SS58Prefix = ();
 }
 
-impl Config for Runtime {
-    type WeightInfo = ();
-}
+impl Config for Runtime {}
 
 impl tokens::Config for Runtime {
     type Event = Event;

@@ -520,7 +520,7 @@ impl assets::Config for Runtime {
     type AssetId = AssetId;
     type GetBaseAssetId = GetBaseAssetId;
     type Currency = currencies::Module<Runtime>;
-    type WeightInfo = ();
+    type WeightInfo = assets::weights::WeightInfo<Runtime>;
 }
 
 impl trading_pair::Config for Runtime {
@@ -529,9 +529,7 @@ impl trading_pair::Config for Runtime {
     type WeightInfo = ();
 }
 
-impl dex_manager::Config for Runtime {
-    type WeightInfo = ();
-}
+impl dex_manager::Config for Runtime {}
 
 impl bonding_curve_pool::Config for Runtime {
     type DEXApi = ();
@@ -562,7 +560,7 @@ impl pool_xyk::Config for Runtime {
     type PolySwapAction =
         pool_xyk::PolySwapAction<AssetId, TechAssetId, Balance, AccountId, TechAccountId>;
     type EnsureDEXManager = dex_manager::Module<Runtime>;
-    type WeightInfo = ();
+    type WeightInfo = pool_xyk::weights::WeightInfo<Runtime>;
 }
 
 parameter_types! {
@@ -588,9 +586,9 @@ impl liquidity_proxy::Config for Runtime {
     type LiquidityRegistry = dex_api::Module<Runtime>;
     type GetNumSamples = GetNumSamples;
     type GetTechnicalAccountId = GetLiquidityProxyAccountId;
-    type WeightInfo = ();
     type PrimaryMarket = multicollateral_bonding_curve_pool::Module<Runtime>;
     type SecondaryMarket = pool_xyk::Module<Runtime>;
+    type WeightInfo = liquidity_proxy::weights::WeightInfo<Runtime>;
 }
 
 parameter_types! {
@@ -634,7 +632,7 @@ impl dex_api::Config for Runtime {
     type BondingCurvePool = bonding_curve_pool::Module<Runtime>;
     type MulticollateralBondingCurvePool = multicollateral_bonding_curve_pool::Module<Runtime>;
     type XYKPool = pool_xyk::Module<Runtime>;
-    type WeightInfo = ();
+    type WeightInfo = dex_api::weights::WeightInfo<Runtime>;
 }
 
 impl farming::Config for Runtime {
@@ -822,7 +820,7 @@ impl eth_bridge::Config for Runtime {
     type PeerId = eth_bridge::crypto::TestAuthId;
     type NetworkId = NetworkId;
     type GetEthNetworkId = EthNetworkId;
-    type WeightInfo = ();
+    type WeightInfo = eth_bridge::weights::WeightInfo<Runtime>;
 }
 
 #[cfg(feature = "faucet")]
@@ -878,6 +876,7 @@ impl pswap_distribution::Config for Runtime {
     type GetTechnicalAccountId = GetPswapDistributionAccountId;
     type EnsureDEXManager = DEXManager;
     type OnPswapBurnedAggregator = RuntimeOnPswapBurnedAggregator;
+    type WeightInfo = pswap_distribution::weights::WeightInfo<Runtime>;
 }
 
 parameter_types! {
@@ -916,7 +915,7 @@ impl multicollateral_bonding_curve_pool::Config for Runtime {
     type LiquidityProxy = LiquidityProxy;
     type EnsureDEXManager = DEXManager;
     type EnsureTradingPairExists = TradingPair;
-    type WeightInfo = ();
+    type WeightInfo = multicollateral_bonding_curve_pool::weights::WeightInfo<Runtime>;
 }
 
 impl pallet_im_online::Config for Runtime {

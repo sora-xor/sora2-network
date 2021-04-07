@@ -10,7 +10,7 @@ use frame_support::weights::Weight;
 use frame_system::ensure_signed;
 use sp_std::vec::Vec;
 
-mod weights;
+pub mod weights;
 
 #[cfg(test)]
 mod mock;

@@ -18,7 +18,7 @@
 #[macro_use]
 extern crate alloc;
 
-mod weights;
+pub mod weights;
 
 mod benchmarking;
 
