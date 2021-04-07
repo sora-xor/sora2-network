@@ -1036,7 +1036,7 @@ fn should_add_token() {
         let name = "Runtime Token".into();
         let decimals = 18;
         assert_ok!(EthBridge::add_sidechain_token(
-            Origin::signed(state.authority_account_id.clone()),
+            Origin::root(),
             token_address,
             symbol,
             name,
@@ -1054,7 +1054,6 @@ fn should_add_token() {
     });
 }
 
-// TODO: enable authority account check
 #[ignore]
 #[test]
 fn should_not_add_token_if_not_bridge_account() {
@@ -1097,7 +1096,7 @@ fn should_add_peer_in_eth_network() {
         let new_peer_id = signer.into_account();
         let new_peer_address = eth::public_key_to_eth_address(&public);
         assert_ok!(EthBridge::add_peer(
-            Origin::signed(state.authority_account_id.clone()),
+            Origin::root(),
             new_peer_id.clone(),
             new_peer_address,
             net_id,
@@ -1212,7 +1211,7 @@ fn should_add_peer_in_simple_networks() {
         let new_peer_id = signer.into_account();
         let new_peer_address = eth::public_key_to_eth_address(&public);
         assert_ok!(EthBridge::add_peer(
-            Origin::signed(state.authority_account_id.clone()),
+            Origin::root(),
             new_peer_id.clone(),
             new_peer_address,
             net_id,
@@ -1277,7 +1276,7 @@ fn should_remove_peer_in_simple_network() {
 
         // outgoing request part
         assert_ok!(EthBridge::remove_peer(
-            Origin::signed(state.authority_account_id.clone()),
+            Origin::root(),
             peer_id.clone(),
             net_id,
         ));
@@ -1340,7 +1339,7 @@ fn should_remove_peer_in_eth_network() {
 
         // outgoing request part
         assert_ok!(EthBridge::remove_peer(
-            Origin::signed(state.authority_account_id.clone()),
+            Origin::root(),
             peer_id.clone(),
             net_id,
         ));
@@ -1443,7 +1442,6 @@ fn should_not_allow_add_and_remove_peer_only_to_authority() {
         let net_id = ETH_NETWORK_ID;
         let bob = get_account_id_from_seed::<sr25519::Public>("Bob");
         let (_, peer_id, _) = &state.networks[&net_id].ocw_keypairs[4];
-        // TODO: enable authority account check
         assert_err!(
             EthBridge::remove_peer(Origin::signed(bob.clone()), peer_id.clone(), net_id),
             Error::Forbidden
@@ -1472,26 +1470,17 @@ fn should_not_allow_changing_peers_simultaneously() {
         let public = PublicKey::from_secret_key(&SecretKey::parse_slice(&seed[..]).unwrap());
         let address = eth::public_key_to_eth_address(&public);
         assert_ok!(EthBridge::remove_peer(
-            Origin::signed(state.authority_account_id.clone()),
+            Origin::root(),
             peer_id.clone(),
             net_id,
         ));
         approve_next_request(&state, net_id).expect("request wasn't approved");
         assert_err!(
-            EthBridge::remove_peer(
-                Origin::signed(state.authority_account_id.clone()),
-                peer_id.clone(),
-                net_id,
-            ),
+            EthBridge::remove_peer(Origin::root(), peer_id.clone(), net_id,),
             Error::UnknownPeerId
         );
         assert_err!(
-            EthBridge::add_peer(
-                Origin::signed(state.authority_account_id.clone()),
-                peer_id.clone(),
-                address,
-                net_id,
-            ),
+            EthBridge::add_peer(Origin::root(), peer_id.clone(), address, net_id,),
             Error::TooManyPendingPeers
         );
     });
@@ -1947,7 +1936,7 @@ fn should_handle_sidechain_and_thischain_asset_on_different_networks() {
         // Register token on the first network.
         let token_address = Address::from(hex!("e88f8313e61a97cec1871ee37fbbe2a8bf3ed1e4"));
         assert_ok!(EthBridge::add_sidechain_token(
-            Origin::signed(state.authority_account_id.clone()),
+            Origin::root(),
             token_address,
             "TEST".into(),
             "Runtime Token".into(),
@@ -2055,10 +2044,7 @@ fn should_migrate() {
         let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
 
         // preparation phase
-        assert_ok!(EthBridge::prepare_for_migration(
-            Origin::signed(state.authority_account_id.clone()),
-            net_id,
-        ));
+        assert_ok!(EthBridge::prepare_for_migration(Origin::root(), net_id,));
         approve_last_request(&state, net_id).expect("request wasn't approved");
         assert_eq!(
             crate::BridgeStatuses::<Runtime>::get(net_id).unwrap(),
@@ -2103,7 +2089,7 @@ fn should_migrate() {
         let new_contract_address = Address::from([2u8; 20]);
         let erc20_native_tokens = vec![Address::from([11u8; 20]), Address::from([22u8; 20])];
         assert_ok!(EthBridge::migrate(
-            Origin::signed(state.authority_account_id.clone()),
+            Origin::root(),
             new_contract_address,
             erc20_native_tokens,
             net_id,
@@ -2154,10 +2140,7 @@ fn should_not_allow_duplicate_migration_requests() {
         let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
 
         // preparation phase
-        assert_ok!(EthBridge::prepare_for_migration(
-            Origin::signed(state.authority_account_id.clone()),
-            net_id,
-        ));
+        assert_ok!(EthBridge::prepare_for_migration(Origin::root(), net_id,));
         approve_last_request(&state, net_id).expect("request wasn't approved");
 
         let tx_hash = request_incoming(
@@ -2203,7 +2186,7 @@ fn should_not_allow_duplicate_migration_requests() {
         let new_contract_address = Address::from([2u8; 20]);
         let erc20_native_tokens = vec![Address::from([11u8; 20]), Address::from([22u8; 20])];
         assert_ok!(EthBridge::migrate(
-            Origin::signed(state.authority_account_id.clone()),
+            Origin::root(),
             new_contract_address,
             erc20_native_tokens.clone(),
             net_id,
@@ -2288,7 +2271,7 @@ fn should_parse_add_peer_on_old_contract() {
         let new_peer_id = signer.into_account();
         let new_peer_address = eth::public_key_to_eth_address(&public);
         assert_ok!(EthBridge::add_peer(
-            Origin::signed(state.authority_account_id.clone()),
+            Origin::root(),
             new_peer_id.clone(),
             new_peer_address,
             net_id,
@@ -2332,7 +2315,7 @@ fn should_parse_add_peer_on_old_contract() {
 
 #[test]
 fn should_parse_remove_peer_on_old_contract() {
-    let (mut ext, state) = ExtBuilder::default().build();
+    let (mut ext, _state) = ExtBuilder::default().build();
     ext.execute_with(|| {
         let net_id = ETH_NETWORK_ID;
         let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
@@ -2345,7 +2328,7 @@ fn should_parse_remove_peer_on_old_contract() {
         let tx_hash = H256([1; 32]);
         assert_ok!(EthBridge::force_add_peer(Origin::root(), new_peer_id.clone(), new_peer_address, net_id));
         assert_ok!(EthBridge::remove_peer(
-            Origin::signed(state.authority_account_id.clone()),
+            Origin::root(),
             new_peer_id.clone(),
             net_id,
         ));
@@ -2744,7 +2727,7 @@ fn should_convert_amount_for_a_token_with_non_default_precision() {
         let name = "Tether USD".into();
         let decimals = 6;
         assert_ok!(EthBridge::add_sidechain_token(
-            Origin::signed(state.authority_account_id.clone()),
+            Origin::root(),
             token_address,
             ticker,
             name,
@@ -2835,7 +2818,7 @@ fn should_fail_convert_amount_for_a_token_with_non_default_precision() {
         let name = "Tether USD".into();
         let decimals = 6;
         assert_ok!(EthBridge::add_sidechain_token(
-            Origin::signed(state.authority_account_id.clone()),
+            Origin::root(),
             token_address,
             ticker,
             name,
@@ -2889,7 +2872,7 @@ fn should_fail_tranfer_amount_with_dust_for_a_token_with_non_default_precision()
         let name = "Tether USD".into();
         let decimals = 6;
         assert_ok!(EthBridge::add_sidechain_token(
-            Origin::signed(state.authority_account_id.clone()),
+            Origin::root(),
             token_address,
             ticker,
             name,
@@ -2926,7 +2909,7 @@ fn should_fail_tranfer_amount_with_dust_for_a_token_with_non_default_precision()
 
 #[test]
 fn should_not_allow_registering_sidechain_token_with_big_precision() {
-    let (mut ext, state) = ExtBuilder::default().build();
+    let (mut ext, _state) = ExtBuilder::default().build();
 
     ext.execute_with(|| {
         let net_id = ETH_NETWORK_ID;
@@ -2936,7 +2919,7 @@ fn should_not_allow_registering_sidechain_token_with_big_precision() {
         let decimals = DEFAULT_BALANCE_PRECISION + 1;
         assert_noop!(
             EthBridge::add_sidechain_token(
-                Origin::signed(state.authority_account_id.clone()),
+                Origin::root(),
                 token_address,
                 ticker,
                 name,
