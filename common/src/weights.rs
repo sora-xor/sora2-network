@@ -1,5 +1,7 @@
 use frame_support::parameter_types;
-use frame_support::weights::constants::{BlockExecutionWeight, WEIGHT_PER_SECOND};
+use frame_support::weights::constants::{
+    BlockExecutionWeight, ExtrinsicBaseWeight, WEIGHT_PER_SECOND,
+};
 use frame_support::weights::{
     DispatchClass, Weight, WeightToFeeCoefficient, WeightToFeeCoefficients, WeightToFeePolynomial,
 };
@@ -29,10 +31,10 @@ parameter_types! {
     pub BlockWeights: limits::BlockWeights = limits::BlockWeights::builder()
     .base_block(BlockExecutionWeight::get())
     .for_class(DispatchClass::all(), |weights| {
-        weights.base_extrinsic = 0; // ExtrinsicBaseWeight::get() // FIXME: breaks test in xor-fee
+        weights.base_extrinsic = ExtrinsicBaseWeight::get();
     })
     .for_class(DispatchClass::Normal, |weights| {
-        weights.max_total = Some(NORMAL_DISPATCH_RATIO * MAXIMUM_BLOCK_WEIGHT * 3);
+        weights.max_total = Some(NORMAL_DISPATCH_RATIO * MAXIMUM_BLOCK_WEIGHT);
     })
     .for_class(DispatchClass::Operational, |weights| {
         weights.max_total = Some(MAXIMUM_BLOCK_WEIGHT);

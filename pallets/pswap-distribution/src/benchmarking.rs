@@ -9,13 +9,13 @@ use frame_benchmarking::benchmarks;
 use frame_support::traits::OnInitialize;
 use frame_system::RawOrigin;
 use hex_literal::hex;
-use sp_core::{H256, H512};
+use sp_core::H256;
 use sp_io::hashing::blake2_256;
 use sp_std::prelude::*;
 use traits::MultiCurrencyExtended;
 
 use common::fixnum::ops::One;
-use common::{balance, AssetName, AssetSymbol, Fixed, FromGenericPair, TechAccountId, PSWAP, XOR};
+use common::{balance, AssetName, AssetSymbol, Fixed, FromGenericPair, PSWAP};
 
 use assets::Pallet as Assets;
 use permissions::Pallet as Permissions;

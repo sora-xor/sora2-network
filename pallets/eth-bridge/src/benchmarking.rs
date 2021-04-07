@@ -1,4 +1,4 @@
-//! Assets module benchmarking.
+//! Ethereum bridge module benchmarking.
 
 #![cfg(feature = "runtime-benchmarks")]
 
