@@ -17,7 +17,10 @@ use common::{eth, AccountIdOf, Balance};
 
 pub use self::pallet::*;
 
-mod weights;
+pub mod weights;
+
+#[cfg(feature = "runtime-benchmarks")]
+mod benchmarking;
 
 #[cfg(test)]
 mod mock;

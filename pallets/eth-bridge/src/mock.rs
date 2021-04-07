@@ -325,7 +325,7 @@ impl crate::Config for Runtime {
     type Event = Event;
     type NetworkId = u32;
     type GetEthNetworkId = EthNetworkId;
-    type WeightInfo = common::weights::PresetWeightInfo;
+    type WeightInfo = common::weights::PresetWeightInfo<Runtime>;
 }
 
 impl sp_runtime::traits::ExtrinsicMetadata for TestExtrinsic {

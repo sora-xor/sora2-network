@@ -11,13 +11,16 @@
 extern crate alloc;
 use alloc::string::String;
 
+#[cfg(feature = "runtime-benchmarks")]
+mod benchmarking;
+
 #[cfg(test)]
 mod mock;
 
 #[cfg(test)]
 mod tests;
 
-mod weights;
+pub mod weights;
 
 use common::prelude::Balance;
 use common::VAL;
@@ -41,6 +44,7 @@ pub const TECH_ACCOUNT_MAIN: &[u8] = b"main";
 
 pub trait WeightInfo {
     fn migrate() -> Weight;
+    fn on_initialize() -> Weight;
 }
 
 fn blocks_till_migration<T>() -> T::BlockNumber
@@ -296,15 +300,15 @@ pub mod pallet {
 
     #[pallet::hooks]
     impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
-        fn on_finalize(block_number: T::BlockNumber) {
+        fn on_initialize(block_number: T::BlockNumber) -> Weight {
             common::with_benchmark(
-                common::location_stamp!("iroha-migration.on_finalize"),
+                common::location_stamp!("iroha-migration.on_initialize"),
                 || {
                     // Migrate accounts whose quorum has been reached and enough time has passed since then
                     PendingMultiSigAccounts::<T>::translate(
                         |key, mut value: PendingMultisigAccount<T>| {
                             if let Some(migrate_at) = value.migrate_at {
-                                if block_number >= migrate_at {
+                                if block_number > migrate_at {
                                     value.approving_accounts.sort();
                                     let quorum = Quorums::<T>::take(&key);
                                     let multi_account =
@@ -321,7 +325,8 @@ pub mod pallet {
                                 Some(value)
                             }
                         },
-                    )
+                    );
+                    WeightInfoOf::<T>::on_initialize()
                 },
             )
         }

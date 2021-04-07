@@ -654,7 +654,7 @@ impl pallet_multisig::Config for Runtime {
 
 impl iroha_migration::Config for Runtime {
     type Event = Event;
-    type WeightInfo = PresetWeightInfo;
+    type WeightInfo = iroha_migration::weights::WeightInfo<Runtime>;
 }
 
 impl<T: SigningTypes> frame_system::offchain::SignMessage<T> for Runtime {
@@ -732,7 +732,7 @@ impl referral_system::Config for Runtime {}
 
 impl rewards::Config for Runtime {
     type Event = Event;
-    type WeightInfo = PresetWeightInfo;
+    type WeightInfo = rewards::weights::WeightInfo<Runtime>;
 }
 
 parameter_types! {
@@ -828,6 +828,7 @@ impl eth_bridge::Config for Runtime {
 #[cfg(feature = "faucet")]
 impl faucet::Config for Runtime {
     type Event = Event;
+    type WeightInfo = faucet::weights::WeightInfo<Runtime>;
 }
 
 parameter_types! {
@@ -1591,10 +1592,11 @@ impl_runtime_apis! {
 
             add_benchmark!(params, batches, assets, Assets);
             add_benchmark!(params, batches, dex_api, DEXAPIBench::<Runtime>);
-            add_benchmark!(params, batches, dex_manager, DEXManager);
             #[cfg(feature = "faucet")]
             add_benchmark!(params, batches, faucet, Faucet);
+            add_benchmark!(params, batches, iroha_migration, IrohaMigration);
             add_benchmark!(params, batches, liquidity_proxy, LiquidityProxyBench::<Runtime>);
+            add_benchmark!(params, batches, rewards, Rewards);
             add_benchmark!(params, batches, trading_pair, TradingPair);
             add_benchmark!(params, batches, pool_xyk, XYKPoolBench::<Runtime>);
 

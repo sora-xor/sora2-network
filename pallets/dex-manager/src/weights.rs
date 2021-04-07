@@ -13,7 +13,7 @@ impl crate::WeightInfo for () {
     }
 }
 
-impl crate::WeightInfo for PresetWeightInfo {
+impl<T> crate::WeightInfo for PresetWeightInfo<T> {
     fn initialize_dex() -> Weight {
         EXTRINSIC_FIXED_WEIGHT
     }

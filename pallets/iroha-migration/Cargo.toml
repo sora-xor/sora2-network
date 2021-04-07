@@ -1,16 +1,18 @@
 [package]
-edition = '2018'
-name = 'iroha-migration'
-version = '0.1.0'
+edition = "2018"
+name = "iroha-migration"
+version = "0.1.0"
 
 [package.metadata.docs.rs]
-targets = ['x86_64-unknown-linux-gnu']
+targets = ["x86_64-unknown-linux-gnu"]
 
 [dependencies]
 codec = { package = "parity-scale-codec", version = "2", default-features = false, features = ["derive"] }
+frame-benchmarking = { version = "3", default-features = false, optional = true }
 frame-support = { version = "3", default-features = false }
 frame-system = { version = "3", default-features = false }
 hex = { version = "0.4.2", default-features = false }
+hex-literal = { version = "0.3.1", optional = true }
 pallet-multisig = { version = "3", default-features = false }
 serde = { version = "1.0.101", default-features = false, optional = true, features = ["derive"] }
 sha3 = { version = "0.9.1", default-features = false }
@@ -25,7 +27,7 @@ technical = { path = "../technical", default-features = false }
 
 [dev-dependencies]
 currencies = { version = "0.4", package = "orml-currencies" }
-pallet-balances = { version = "3" }
+pallet-balances = "3"
 parity-util-mem = { version = "0.9", default-features = false }
 sp-core = { version = "3", default-features = false }
 sp-io = { version = "3", default-features = false }
@@ -39,11 +41,20 @@ referral-system = { path = "../referral-system" }
 technical = { path = "../technical" }
 
 [features]
-default = ['std']
+default = ["std"]
+
 std = [
-    'codec/std',
-    'frame-support/std',
-    'frame-system/std',
-    'pallet-multisig/std',
-    'serde',
+    "codec/std",
+    "frame-benchmarking?/std",
+    "frame-support/std",
+    "frame-system/std",
+    "pallet-multisig/std",
+    "serde",
+]
+
+runtime-benchmarks = [
+    "frame-benchmarking",
+    "frame-system/runtime-benchmarks",
+    "frame-support/runtime-benchmarks",
+    "hex-literal"
 ]

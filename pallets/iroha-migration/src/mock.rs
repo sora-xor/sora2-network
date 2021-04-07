@@ -160,8 +160,7 @@ impl Config for Runtime {
     type WeightInfo = ();
 }
 
-// Build genesis storage according to the mock runtime.
-pub fn new_test_ext() -> sp_io::TestExternalities {
+pub fn test_ext(add_iroha_accounts: bool) -> sp_io::TestExternalities {
     let tech_account_id =
         TechAccountId::Generic(TECH_ACCOUNT_PREFIX.to_vec(), TECH_ACCOUNT_MAIN.to_vec());
 
@@ -202,8 +201,8 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
     .assimilate_storage(&mut t)
     .unwrap();
 
-    IrohaMigrationConfig {
-        iroha_accounts: vec![
+    let iroha_accounts = if add_iroha_accounts {
+        vec![
             (
                 "did_sora_d9bda3688c6f608ab15c@sora".to_string(),
                 Balance::from(0u128),
@@ -251,11 +250,22 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
                     "57571ec82cff710143eba60c05d88de14a22799048137162d63c534a8b02dc20".to_string(),
                 ],
             ),
-        ],
+        ]
+    } else {
+        Vec::new()
+    };
+
+    IrohaMigrationConfig {
+        iroha_accounts,
         account_id: MINTING_ACCOUNT,
     }
     .assimilate_storage(&mut t)
     .unwrap();
 
     t.into()
+}
+
+// Build genesis storage according to the mock runtime.
+pub fn new_test_ext() -> sp_io::TestExternalities {
+    test_ext(true)
 }

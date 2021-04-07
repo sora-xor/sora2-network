@@ -9,11 +9,11 @@ codec = { package = "parity-scale-codec", version = "2" }
 jsonrpc-core = "15.0.0"
 jsonrpc-core-client = "15.0.0"
 jsonrpc-derive = "15.0.0"
-sp-runtime = { version = "3" }
-sp-api = { version = "3" }
-sp-blockchain = { version = "3" }
-sp-std = { version = "3" }
-sp-core = { version = "3" }
-sp-rpc = { version = "3" }
+sp-runtime = "3"
+sp-api = "3"
+sp-blockchain = "3"
+sp-std = "3"
+sp-core = "3"
+sp-rpc = "3"
 assets-runtime-api = { path = "../runtime-api" }
 common = { path = "../../../common" }
