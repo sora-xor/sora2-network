@@ -33,11 +33,14 @@ pipeline {
             }
         }
         stage('Build & Tests') {
+            environment {
+                RUSTFLAGS = "-Dwarnings"
+            }
             steps{
                 script {
                     docker.withRegistry( "https://" + registry, dockerRegistryRWUserId) {
                         docker.image(baseImageName).inside() {
-                            sh "cd ${env.WORKSPACE} && cargo fmt -- --check > /dev/null && cargo build --release --features test-net"
+                            sh "cd ${env.WORKSPACE} && cargo fmt -- --check > /dev/null && cargo build --release --features \"test-net reduced-pswap-reward-periods\""
                             sh "cp /opt/rust-target/release/framenode ${env.WORKSPACE}/housekeeping/framenode"
                             sh "cargo test --release"
                         }

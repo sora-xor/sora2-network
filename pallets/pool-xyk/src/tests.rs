@@ -1175,13 +1175,14 @@ fn withdraw_liquidity_with_different_slippage_behavior_01() {
     );
 }
 
+#[test]
 fn deposit_liquidity_twice_01() {
     crate::Module::<Runtime>::preset01(vec![
         |dex_id,
-         gt,
-         bp,
+         _gt,
+         _bp,
          _,
-         tech_acc_id: crate::mock::TechAccountId,
+         _tech_acc_id: crate::mock::TechAccountId,
          _,
          _repr: AccountId,
          _fee_repr: AccountId| {
