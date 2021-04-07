@@ -40,7 +40,7 @@ pipeline {
                 script {
                     docker.withRegistry( "https://" + registry, dockerRegistryRWUserId) {
                         docker.image(baseImageName).inside() {
-                            sh "cd ${env.WORKSPACE} && cargo fmt -- --check > /dev/null && cargo build --release --features \"test-net reduced-pswap-reward-periods\""
+                            sh "cd ${env.WORKSPACE} && cargo fmt -- --check > /dev/null && cargo build --release --features \"test-net reduced-pswap-reward-periods runtime-benchmarks\""
                             sh "cp /opt/rust-target/release/framenode ${env.WORKSPACE}/housekeeping/framenode"
                             sh "cargo test --release"
                         }
