@@ -50,21 +50,10 @@ fn assert_last_event<T: Config>(generic_event: <T as Config>::Event) {
     assert_eq!(event, &system_event);
 }
 
-// Assets::<T>::register_asset_id(
-//     caller.clone(),
-//     asset_id.clone(),
-//     AssetSymbol(b"NEWT".to_vec()),
-//     AssetName(b"NEWT".to_vec()),
-//     18,
-//     Balance::zero(),
-//     true,
-// )?;
-
 benchmarks! {
     register {
         let n in 1 .. 1000 => add_assets::<T>(n)?;
         let caller = bob::<T>();
-        // let asset_id = Assets::<T>::gen_asset_id(&caller);
     }: _(
         RawOrigin::Signed(caller.clone()),
         AssetSymbol(b"NEWT".to_vec()),

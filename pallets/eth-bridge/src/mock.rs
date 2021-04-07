@@ -75,10 +75,6 @@ pub struct MyTestXt<Call, Extra> {
 
 parity_util_mem::malloc_size_of_is_0!(any: MyTestXt<Call, Extra>);
 
-// impl<Call, Extra> MaybeMallocSizeOf for MyTestXt<Call, Extra> {
-//
-// }
-
 impl<Call: Codec + Sync + Send, Context, Extra> Checkable<Context> for MyTestXt<Call, Extra> {
     type Checked = Self;
     fn check(self, _c: &Context) -> Result<Self::Checked, TransactionValidityError> {

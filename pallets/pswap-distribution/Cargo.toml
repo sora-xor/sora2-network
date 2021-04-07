@@ -26,17 +26,17 @@ common = { path = "../../common", default-features = false }
 liquidity-proxy = { path = "../liquidity-proxy", default-features = false }
 technical = { path = "../technical", default-features = false }
 trading-pair = { path = "../trading-pair", default-features = false }
+sp-core = { version = "3", default-features = false }
+permissions = { path = "../permissions", default-features = false }
+sp-io = { version = "3", default-features = false }
 
 [dev-dependencies]
 hex-literal = { version = '0.3.1' }
-sp-core = { version = "3", default-features = false}
-sp-io = { version = "3", default-features = false}
-sp-runtime = { version = "3", default-features = false}
+sp-runtime = { version = "3" }
 bonding-curve-pool = { path = "../bonding-curve-pool" }
 common = { path = "../../common", features = ["test"] }
 dex-manager = { path = "../dex-manager" }
 mock-liquidity-source = { path = "../mock-liquidity-source" }
-permissions = { path = "../permissions" }
 technical = { path = "../technical" }
 
 [features]
@@ -52,6 +52,9 @@ std = [
     'tokens/std',
     'traits/std',
     'trading-pair/std',
+    'sp-core/std',
+    'permissions/std',
+    'sp-io/std',
 ]
 runtime-benchmarks = [
     "frame-benchmarking",
