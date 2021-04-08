@@ -129,7 +129,12 @@ fn calculate_reserves(accounts: &Vec<(H160, Balance)>) -> Balance {
 }
 
 #[cfg(feature = "test-net")]
-pub fn dev_net() -> ChainSpec {
+pub fn dev_net() -> Result<ChainSpec, String> {
+    ChainSpec::from_json_bytes(&include_bytes!("./bytes/chain_spec_dev.json")[..])
+}
+
+#[cfg(feature = "test-net")]
+pub fn dev_net_coded() -> ChainSpec {
     let mut properties = Properties::new();
     properties.insert("tokenSymbol".into(), "XOR".into());
     properties.insert("tokenDecimals".into(), 18.into());
