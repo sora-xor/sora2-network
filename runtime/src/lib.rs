@@ -1443,6 +1443,16 @@ impl_runtime_apis! {
                 LiquiditySourceFilter::with_mode(dex_id, filter_mode, selected_source_types),
             ).ok().map(|asa| liquidity_proxy_runtime_api::SwapOutcomeInfo::<Balance> { amount: asa.amount, fee: asa.fee})
         }
+
+        fn is_path_available(
+            dex_id: DEXId,
+            input_asset_id: AssetId,
+            output_asset_id: AssetId
+        ) -> bool {
+            LiquidityProxy::is_path_available(
+                dex_id, input_asset_id, output_asset_id
+            ).unwrap_or(false)
+        }
     }
 
     impl pswap_distribution_runtime_api::PswapDistributionAPI<
