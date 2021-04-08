@@ -9,14 +9,14 @@ use framenode_runtime::opaque::SessionKeys;
 #[cfg(feature = "faucet")]
 use framenode_runtime::FaucetConfig;
 use framenode_runtime::{
-    bonding_curve_pool, eth_bridge, AccountId, AssetName, AssetSymbol, AssetsConfig, BabeConfig,
-    BalancesConfig, BondingCurvePoolConfig, BridgeMultisigConfig, CouncilConfig, DEXAPIConfig,
-    DEXManagerConfig, DemocracyConfig, EthBridgeConfig, FarmingConfig, GenesisConfig,
-    GetBaseAssetId, GetPswapAssetId, GetValAssetId, GetXorAssetId, GrandpaConfig, ImOnlineId,
-    IrohaMigrationConfig, LiquiditySourceType, MulticollateralBondingCurvePoolConfig,
-    PermissionsConfig, PswapDistributionConfig, RewardsConfig, Runtime, SessionConfig, Signature,
-    StakerStatus, StakingConfig, SudoConfig, SystemConfig, TechAccountId, TechnicalCommitteeConfig,
-    TechnicalConfig, TokensConfig, WASM_BINARY,
+    eth_bridge, AccountId, AssetName, AssetSymbol, AssetsConfig, BabeConfig, BalancesConfig,
+    BridgeMultisigConfig, CouncilConfig, DEXAPIConfig, DEXManagerConfig, DemocracyConfig,
+    EthBridgeConfig, FarmingConfig, GenesisConfig, GetBaseAssetId, GetPswapAssetId, GetValAssetId,
+    GetXorAssetId, GrandpaConfig, ImOnlineId, IrohaMigrationConfig, LiquiditySourceType,
+    MulticollateralBondingCurvePoolConfig, PermissionsConfig, PswapDistributionConfig,
+    RewardsConfig, Runtime, SessionConfig, Signature, StakerStatus, StakingConfig, SudoConfig,
+    SystemConfig, TechAccountId, TechnicalCommitteeConfig, TechnicalConfig, TokensConfig,
+    WASM_BINARY,
 };
 use hex_literal::hex;
 use permissions::Scope;
@@ -505,11 +505,6 @@ fn testnet_genesis(
         )
         .unwrap();
 
-    let bonding_curve_reserves_tech_account_id = TechAccountId::Generic(
-        bonding_curve_pool::TECH_ACCOUNT_PREFIX.to_vec(),
-        bonding_curve_pool::TECH_ACCOUNT_RESERVES.to_vec(),
-    );
-
     let mbc_reserves_tech_account_id = framenode_runtime::GetMbcReservesTechAccountId::get();
     let mbc_reserves_account_id = framenode_runtime::GetMbcReservesAccountId::get();
 
@@ -863,10 +858,6 @@ fn testnet_genesis(
                 ),
             ))
             .collect(),
-        }),
-        bonding_curve_pool: Some(BondingCurvePoolConfig {
-            distribution_accounts: accounts.clone(),
-            reserves_account_id: bonding_curve_reserves_tech_account_id,
         }),
         multicollateral_bonding_curve_pool: Some(MulticollateralBondingCurvePoolConfig {
             distribution_accounts: accounts,
