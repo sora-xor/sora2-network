@@ -317,6 +317,12 @@ pub mod pallet {
     pub(super) type InitialPswapRewardsSupply<T: Config> =
         StorageValue<_, Balance, ValueQuery, DefaultForInitialPswapRewardsSupply>;
 
+    /// Current reserves balance for collateral tokens, used for client usability.
+    #[pallet::storage]
+    #[pallet::getter(fn collateral_reserves)]
+    pub(super) type CollateralReserves<T: Config> =
+        StorageMap<_, Twox64Concat, T::AssetId, Balance>;
+
     #[pallet::genesis_config]
     pub struct GenesisConfig<T: Config> {
         /// Technical account used to store collateral tokens.
@@ -545,6 +551,16 @@ impl<T: Config> BuyMainAsset<T> {
 
 #[allow(non_snake_case)]
 impl<T: Config> Module<T> {
+    #[inline]
+    fn update_collateral_reserves(
+        collateral_asset: &T::AssetId,
+        reserves_account: &T::AccountId,
+    ) -> DispatchResult {
+        let collateral_balance = Assets::<T>::free_balance(collateral_asset, reserves_account)?;
+        CollateralReserves::<T>::insert(collateral_asset, collateral_balance);
+        Ok(())
+    }
+
     #[inline]
     fn self_excluding_filter() -> LiquiditySourceFilter<T::DEXId, LiquiditySourceType> {
         LiquiditySourceFilter::with_forbidden(
@@ -1246,23 +1262,27 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
             }
             let base_asset_id = &T::GetBaseAssetId::get();
             if input_asset_id == base_asset_id {
-                Self::sell_main_asset(
+                let outcome = Self::sell_main_asset(
                     dex_id,
                     input_asset_id,
                     output_asset_id,
                     desired_amount,
                     sender,
                     receiver,
-                )
+                );
+                Module::<T>::update_collateral_reserves(output_asset_id, reserves_account_id)?;
+                outcome
             } else {
-                BuyMainAsset::<T>::new(
+                let outcome = BuyMainAsset::<T>::new(
                     *input_asset_id,
                     *output_asset_id,
                     desired_amount,
                     sender.clone(),
                     receiver.clone(),
                 )?
-                .swap()
+                .swap();
+                Module::<T>::update_collateral_reserves(input_asset_id, reserves_account_id)?;
+                outcome
             }
         })
     }
