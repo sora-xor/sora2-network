@@ -41,6 +41,25 @@ type Technical = technical::Module<Runtime>;
 #[cfg(feature = "test-net")]
 type AccountPublic = <Signature as Verify>::Signer;
 
+#[cfg(feature = "test-net")]
+enum ChainSpecKind {
+    Dev,
+    Test,
+    Staging,
+}
+
+macro_rules! vec_push {
+    ($($x:expr),+ $(,)?) => (
+        {
+            let mut vec = Vec::new();
+            $(
+                vec.push($x);
+            )+
+            vec
+        }
+    );
+}
+
 /// Helper function to generate a crypto pair from seed
 #[cfg(feature = "test-net")]
 fn get_from_seed<TPublic: Public>(seed: &str) -> <TPublic::Pair as Pair>::Public {
@@ -105,6 +124,10 @@ struct EthBridgeParams {
     bridge_contract_address: H160,
 }
 
+fn calculate_reserves(accounts: &Vec<(H160, Balance)>) -> Balance {
+    accounts.iter().fold(0, |sum, (_, balance)| sum + balance)
+}
+
 #[cfg(feature = "test-net")]
 pub fn dev_net() -> ChainSpec {
     let mut properties = Properties::new();
@@ -116,6 +139,7 @@ pub fn dev_net() -> ChainSpec {
         ChainType::Live,
         move || {
             testnet_genesis(
+                ChainSpecKind::Dev,
                 hex!("92c4ff71ae7492a1e6fef5d80546ea16307c560ac1063ffaa5e0e084df1e2b7e").into(),
                 vec![
                     authority_keys_from_public_keys(
@@ -257,6 +281,11 @@ pub fn staging_net(test: bool) -> ChainSpec {
                 }
             };
             testnet_genesis(
+                if test {
+                    ChainSpecKind::Test
+                } else {
+                    ChainSpecKind::Staging
+                },
                 hex!("2c5f3fd607721d5dd9fdf26d69cdcb9294df96a8ff956b1323d69282502aaa2e").into(),
                 vec![
                     authority_keys_from_public_keys(
@@ -419,6 +448,7 @@ pub fn local_testnet_config() -> ChainSpec {
         ChainType::Local,
         move || {
             testnet_genesis(
+                ChainSpecKind::Dev,
                 get_account_id_from_seed::<sr25519::Public>("Alice"),
                 vec![
                     authority_keys_from_seed("Alice"),
@@ -475,6 +505,7 @@ pub fn local_testnet_config() -> ChainSpec {
 // Some variables are only changed if faucet is enabled
 #[cfg(feature = "test-net")]
 fn testnet_genesis(
+    chain_spec_kind: ChainSpecKind,
     root_key: AccountId,
     initial_authorities: Vec<(AccountId, AccountId, AuraId, BabeId, GrandpaId, ImOnlineId)>,
     endowed_accounts: Vec<AccountId>,
@@ -487,7 +518,6 @@ fn testnet_genesis(
     let initial_eth_bridge_xor_amount = balance!(350000);
     let initial_eth_bridge_val_amount = balance!(33900000);
     let initial_pswap_tbc_rewards = balance!(25000000);
-    let initial_rewards = balance!(500000);
 
     // Initial accounts
     let xor_fee_tech_account_id = TechAccountId::Generic(
@@ -620,13 +650,56 @@ fn testnet_genesis(
                 .map(|(_, k2, ..)| (k2, initial_staking)),
         )
         .collect::<Vec<_>>();
+    let rewards_config = if let ChainSpecKind::Dev = chain_spec_kind {
+        RewardsConfig {
+            reserves_account_id: rewards_tech_account_id,
+            val_owners: vec![
+                (
+                    hex!("21Bc9f4a3d9Dc86f142F802668dB7D908cF0A636").into(),
+                    balance!(111),
+                ),
+                (
+                    hex!("D67fea281B2C5dC3271509c1b628E0867a9815D7").into(),
+                    balance!(444),
+                ),
+            ],
+            pswap_farm_owners: vec![
+                (
+                    hex!("4fE143cDD48791cB364823A41e018AEC5cBb9AbB").into(),
+                    balance!(222),
+                ),
+                (
+                    hex!("D67fea281B2C5dC3271509c1b628E0867a9815D7").into(),
+                    balance!(555),
+                ),
+            ],
+            pswap_waifu_owners: vec![(
+                hex!("886021F300dC809269CFC758A2364a2baF63af0c").into(),
+                balance!(333),
+            )],
+        }
+    } else {
+        RewardsConfig {
+            reserves_account_id: rewards_tech_account_id,
+            val_owners: include!("bytes/rewards_val_owners.in"),
+            pswap_farm_owners: include!("bytes/rewards_pswap_farm_owners.in"),
+            pswap_waifu_owners: include!("bytes/rewards_pswap_waifu_owners.in"),
+        }
+    };
+    let rewards_val_reserves = calculate_reserves(&rewards_config.val_owners);
+    let rewards_pswap_reserves = calculate_reserves(&rewards_config.pswap_farm_owners)
+        + calculate_reserves(&rewards_config.pswap_waifu_owners);
     let mut tokens_endowed_accounts = vec![
         (
             rewards_account_id.clone(),
             GetValAssetId::get(),
-            initial_rewards,
+            rewards_val_reserves,
         ),
-        (rewards_account_id, GetPswapAssetId::get(), initial_rewards),
+        (
+            rewards_account_id,
+            GetPswapAssetId::get(),
+            rewards_pswap_reserves,
+        ),
         (
             eth_bridge_account_id.clone(),
             VAL,
@@ -889,33 +962,7 @@ fn testnet_genesis(
             iroha_accounts: include!("bytes/iroha_migration_accounts.in"),
             account_id: iroha_migration_account_id,
         }),
-        rewards: Some(RewardsConfig {
-            reserves_account_id: rewards_tech_account_id,
-            val_owners: vec![
-                (
-                    hex!("21Bc9f4a3d9Dc86f142F802668dB7D908cF0A636").into(),
-                    balance!(111),
-                ),
-                (
-                    hex!("D67fea281B2C5dC3271509c1b628E0867a9815D7").into(),
-                    balance!(444),
-                ),
-            ],
-            pswap_farm_owners: vec![
-                (
-                    hex!("4fE143cDD48791cB364823A41e018AEC5cBb9AbB").into(),
-                    balance!(222),
-                ),
-                (
-                    hex!("D67fea281B2C5dC3271509c1b628E0867a9815D7").into(),
-                    balance!(555),
-                ),
-            ],
-            pswap_waifu_owners: vec![(
-                hex!("886021F300dC809269CFC758A2364a2baF63af0c").into(),
-                balance!(333),
-            )],
-        }),
+        rewards: Some(rewards_config),
         pallet_collective_Instance1: Some(CouncilConfig::default()),
         pallet_collective_Instance2: Some(TechnicalCommitteeConfig {
             members: endowed_accounts
@@ -1015,8 +1062,6 @@ fn mainnet_genesis(
     let initial_eth_bridge_val_amount = balance!(33900000);
     // Initial token bonding curve PSWAP rewards
     let initial_pswap_tbc_rewards = balance!(25000000);
-    // Balance should be prepared from airdrop snapshots
-    let initial_rewards = balance!(0);
 
     // Initial accounts
     let xor_fee_tech_account_id = TechAccountId::Generic(
@@ -1134,7 +1179,12 @@ fn mainnet_genesis(
             (*tech_account).to_owned(),
         ));
     }
-
+    let rewards_config = RewardsConfig {
+        reserves_account_id: rewards_tech_account_id,
+        val_owners: include!("bytes/rewards_val_owners.in"),
+        pswap_farm_owners: include!("bytes/rewards_pswap_farm_owners.in"),
+        pswap_waifu_owners: include!("bytes/rewards_pswap_waifu_owners.in"),
+    };
     GenesisConfig {
         frame_system: Some(SystemConfig {
             code: WASM_BINARY.unwrap().to_vec(),
@@ -1306,9 +1356,14 @@ fn mainnet_genesis(
                 (
                     rewards_account_id.clone(),
                     GetValAssetId::get(),
-                    initial_rewards,
+                    calculate_reserves(&rewards_config.val_owners),
                 ),
-                (rewards_account_id, GetPswapAssetId::get(), initial_rewards),
+                (
+                    rewards_account_id,
+                    GetPswapAssetId::get(),
+                    calculate_reserves(&rewards_config.pswap_farm_owners)
+                        + calculate_reserves(&rewards_config.pswap_waifu_owners),
+                ),
                 (
                     eth_bridge_account_id.clone(),
                     VAL,
@@ -1388,15 +1443,36 @@ fn mainnet_genesis(
             iroha_accounts: include!("bytes/iroha_migration_accounts.in"),
             account_id: iroha_migration_account_id,
         }),
-        rewards: Some(RewardsConfig {
-            reserves_account_id: rewards_tech_account_id,
-            val_owners: include!("bytes/rewards_val_owners.in"),
-            pswap_farm_owners: include!("bytes/rewards_pswap_farm_owners.in"),
-            pswap_waifu_owners: include!("bytes/rewards_pswap_waifu_owners.in"),
-        }),
+        rewards: Some(rewards_config),
         pallet_collective_Instance1: Some(CouncilConfig::default()),
         pallet_collective_Instance2: Default::default(),
         pallet_democracy: Some(DemocracyConfig::default()),
         pallet_im_online: Default::default(),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use hex_literal::hex;
+
+    use common::balance;
+
+    #[test]
+    fn calculate_reserves() {
+        let accounts = vec![
+            (
+                hex!("3520adc7b99e55c77efd0e0d379d07d08a7488cc").into(),
+                balance!(100),
+            ),
+            (
+                hex!("3520adc7b99e55c77efd0e0d379d07d08a7488cc").into(),
+                balance!(23.4000000),
+            ),
+            (
+                hex!("3520adc7b99e55c77efd0e0d379d07d08a7488cc").into(),
+                balance!(0.05678),
+            ),
+        ];
+        assert_eq!(super::calculate_reserves(&accounts), balance!(123.45678));
     }
 }
