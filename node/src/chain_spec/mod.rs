@@ -185,7 +185,7 @@ pub fn dev_net() -> ChainSpec {
                     val_master_contract_address: hex!("47e229aa491763038f6a505b4f85d8eb463f0962")
                         .into(),
                     val_contract_address: hex!("68339de68c9af6577c54867728dbb2db9d7368bf").into(),
-                    bridge_contract_address: hex!("46dcecb63180c116f58212b1eea2e171d5840dd8")
+                    bridge_contract_address: hex!("24390c8f6cbd5d152c30226f809f4e3f153b88d4")
                         .into(),
                 },
             )
@@ -241,7 +241,7 @@ pub fn staging_net(test: bool) -> ChainSpec {
                     val_master_contract_address: hex!("a55236ad2162a47a52316f86d688fbd71b520945")
                         .into(),
                     val_contract_address: hex!("7fcb82ab5a4762f0f18287ece64d4ec74b6071c0").into(),
-                    bridge_contract_address: hex!("171928461c7a8ddbcec7d2aa4b43c151b8c8816a")
+                    bridge_contract_address: hex!("c3d1366ad8ffd17acc484d66aa403b490b9ef134")
                         .into(),
                 }
             } else {
@@ -252,7 +252,7 @@ pub fn staging_net(test: bool) -> ChainSpec {
                     val_master_contract_address: hex!("d7f81ed173cb3af28f983670164df30851fba678")
                         .into(),
                     val_contract_address: hex!("725c6b8cd3621eba4e0ccc40d532e7025b925a65").into(),
-                    bridge_contract_address: hex!("4ff646bff7884f118406aa4beebd9e10de406603")
+                    bridge_contract_address: hex!("077c2ec37d28709ce01ae740209bfbe185bd1eaa")
                         .into(),
                 }
             };
