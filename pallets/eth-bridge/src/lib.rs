@@ -96,6 +96,11 @@ pub trait WeightInfo {
     fn force_add_peer() -> Weight;
     fn prepare_for_migration() -> Weight;
     fn migrate() -> Weight;
+    fn register_incoming_request() -> (Weight, Pays);
+    fn finalize_incoming_request() -> (Weight, Pays);
+    fn approve_request() -> (Weight, Pays);
+    fn approve_request_finalize() -> (Weight, Pays);
+    fn abort_request() -> (Weight, Pays);
 }
 
 type Address = H160;
@@ -1368,7 +1373,7 @@ pub mod pallet {
         /// Parameters:
         /// - `request` - an incoming request.
         /// - `network_id` - network identifier.
-        #[pallet::weight((0, Pays::No))]
+        #[pallet::weight(<T as Config>::WeightInfo::finalize_incoming_request())]
         pub fn finalize_incoming_request(
             origin: OriginFor<T>,
             hash: H256,
@@ -1558,7 +1563,7 @@ pub mod pallet {
         /// corresponding pre-incoming request from requests queue.
         ///
         /// Can only be called by a bridge account.
-        #[pallet::weight((0, Pays::No))]
+        #[pallet::weight(<T as Config>::WeightInfo::register_incoming_request())]
         pub fn register_incoming_request(
             origin: OriginFor<T>,
             incoming_request: IncomingRequest<T>,
@@ -1603,7 +1608,7 @@ pub mod pallet {
         ///
         /// Verifies the peer signature of the given request and adds it to `RequestApprovals`.
         /// Once quorum is collected, the request gets finalized and removed from request queue.
-        #[pallet::weight((0, Pays::No))]
+        #[pallet::weight(<T as Config>::WeightInfo::approve_request())]
         pub fn approve_request(
             origin: OriginFor<T>,
             ocw_public: ecdsa::Public,
@@ -1655,6 +1660,8 @@ pub mod pallet {
                     Self::deposit_event(Event::ApprovalsCollected(hash));
                 }
                 Self::remove_request_from_queue(net_id, &hash);
+                let weight_info = <T as Config>::WeightInfo::approve_request_finalize();
+                return Ok((Some(weight_info.0), weight_info.1).into());
             }
             Ok(().into())
         }
@@ -1665,7 +1672,7 @@ pub mod pallet {
         /// removes it from the request queues.
         ///
         /// Can only be called from a bridge account.
-        #[pallet::weight((0, Pays::No))]
+        #[pallet::weight(<T as Config>::WeightInfo::abort_request())]
         pub fn abort_request(
             origin: OriginFor<T>,
             hash: H256,

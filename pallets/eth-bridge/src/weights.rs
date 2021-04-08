@@ -1,7 +1,7 @@
 use common::weights::constants::EXTRINSIC_FIXED_WEIGHT;
 use core::marker::PhantomData;
 use frame_support::traits::Get;
-use frame_support::weights::Weight;
+use frame_support::weights::{Pays, Weight};
 
 pub struct WeightInfo<T>(PhantomData<T>);
 
@@ -40,33 +40,46 @@ impl<T: frame_system::Config> crate::WeightInfo for WeightInfo<T> {
     fn migrate() -> Weight {
         Default::default()
     }
-
-    // FIXME: how to map those?
-    // fn register_incoming_request() -> Weight {
-    // 	(75_024_000 as Weight)
-    // 		.saturating_add(T::DbWeight::get().reads(6 as Weight))
-    // 		.saturating_add(T::DbWeight::get().writes(7 as Weight))
-    // }
-    // fn finalize_incoming_request() -> Weight {
-    // 	(125_610_000 as Weight)
-    // 		.saturating_add(T::DbWeight::get().reads(9 as Weight))
-    // 		.saturating_add(T::DbWeight::get().writes(4 as Weight))
-    // }
-    // fn approve_request() -> Weight {
-    // 	(288_688_000 as Weight)
-    // 		.saturating_add(T::DbWeight::get().reads(8 as Weight))
-    // 		.saturating_add(T::DbWeight::get().writes(1 as Weight))
-    // }
-    // fn approve_request_finalize() -> Weight {
-    // 	(357_267_000 as Weight)
-    // 		.saturating_add(T::DbWeight::get().reads(13 as Weight))
-    // 		.saturating_add(T::DbWeight::get().writes(4 as Weight))
-    // }
-    // fn abort_request() -> Weight {
-    // 	(88_293_000 as Weight)
-    // 		.saturating_add(T::DbWeight::get().reads(8 as Weight))
-    // 		.saturating_add(T::DbWeight::get().writes(3 as Weight))
-    // }
+    fn register_incoming_request() -> (Weight, Pays) {
+        (
+            (75_024_000 as Weight)
+                .saturating_add(T::DbWeight::get().reads(6 as Weight))
+                .saturating_add(T::DbWeight::get().writes(7 as Weight)),
+            Pays::No,
+        )
+    }
+    fn finalize_incoming_request() -> (Weight, Pays) {
+        (
+            (125_610_000 as Weight)
+                .saturating_add(T::DbWeight::get().reads(9 as Weight))
+                .saturating_add(T::DbWeight::get().writes(4 as Weight)),
+            Pays::No,
+        )
+    }
+    fn approve_request() -> (Weight, Pays) {
+        (
+            (288_688_000 as Weight)
+                .saturating_add(T::DbWeight::get().reads(8 as Weight))
+                .saturating_add(T::DbWeight::get().writes(1 as Weight)),
+            Pays::No,
+        )
+    }
+    fn approve_request_finalize() -> (Weight, Pays) {
+        (
+            (357_267_000 as Weight)
+                .saturating_add(T::DbWeight::get().reads(13 as Weight))
+                .saturating_add(T::DbWeight::get().writes(4 as Weight)),
+            Pays::No,
+        )
+    }
+    fn abort_request() -> (Weight, Pays) {
+        (
+            (88_293_000 as Weight)
+                .saturating_add(T::DbWeight::get().reads(8 as Weight))
+                .saturating_add(T::DbWeight::get().writes(3 as Weight)),
+            Pays::No,
+        )
+    }
 }
 
 impl crate::WeightInfo for () {
@@ -99,5 +112,20 @@ impl crate::WeightInfo for () {
     }
     fn migrate() -> Weight {
         EXTRINSIC_FIXED_WEIGHT
+    }
+    fn register_incoming_request() -> (Weight, Pays) {
+        (EXTRINSIC_FIXED_WEIGHT, Pays::No)
+    }
+    fn finalize_incoming_request() -> (Weight, Pays) {
+        (EXTRINSIC_FIXED_WEIGHT, Pays::No)
+    }
+    fn approve_request() -> (Weight, Pays) {
+        (EXTRINSIC_FIXED_WEIGHT, Pays::No)
+    }
+    fn approve_request_finalize() -> (Weight, Pays) {
+        (EXTRINSIC_FIXED_WEIGHT, Pays::No)
+    }
+    fn abort_request() -> (Weight, Pays) {
+        (EXTRINSIC_FIXED_WEIGHT, Pays::No)
     }
 }
