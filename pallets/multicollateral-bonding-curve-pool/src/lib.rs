@@ -319,9 +319,8 @@ pub mod pallet {
 
     /// Current reserves balance for collateral tokens, used for client usability.
     #[pallet::storage]
-    #[pallet::getter(fn collateral_reserves)]
     pub(super) type CollateralReserves<T: Config> =
-        StorageMap<_, Twox64Concat, T::AssetId, Balance>;
+        StorageMap<_, Twox64Concat, T::AssetId, Balance, ValueQuery>;
 
     #[pallet::genesis_config]
     pub struct GenesisConfig<T: Config> {
