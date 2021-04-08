@@ -686,7 +686,7 @@ fn testnet_genesis(
                 .collect::<Vec<_>>(),
         }),
         pallet_staking: Some(StakingConfig {
-            validator_count: initial_authorities.len() as u32 * 2,
+            validator_count: 69,
             minimum_validator_count: 1,
             stakers: initial_authorities
                 .iter()
@@ -1162,7 +1162,7 @@ fn mainnet_genesis(
                 .collect::<Vec<_>>(),
         }),
         pallet_staking: Some(StakingConfig {
-            validator_count: initial_authorities.len() as u32 * 2,
+            validator_count: 69,
             minimum_validator_count: 1,
             stakers: initial_authorities
                 .iter()
