@@ -56,5 +56,11 @@ sp_api::decl_runtime_apis! {
             selected_source_types: Vec<LiquiditySourceType>,
             filter_mode: FilterMode,
         ) -> Option<SwapOutcomeInfo<Balance>>;
+
+        fn is_path_available(
+            dex_id: DEXId,
+            input_asset_id: AssetId,
+            output_asset_id: AssetId,
+        ) -> bool;
     }
 }

@@ -21,6 +21,12 @@ use framenode_runtime::Block;
 use sc_cli::{ChainSpec, Role, RuntimeVersion, SubstrateCli};
 use sc_service::PartialComponents;
 
+fn set_default_ss58_version() {
+    sp_core::crypto::set_default_ss58_version(sp_core::crypto::Ss58AddressFormat::Custom(
+        framenode_runtime::SS58Prefix::get() as u16,
+    ));
+}
+
 impl SubstrateCli for Cli {
     fn impl_name() -> String {
         "SORA-staging Node".into()
@@ -50,7 +56,8 @@ impl SubstrateCli for Cli {
         #[cfg(feature = "test-net")]
         let chain_spec = match id {
             "" | "local" => Box::new(chain_spec::local_testnet_config()),
-            "dev" => Box::new(chain_spec::dev_net()),
+            "dev" => Box::new(chain_spec::dev_net()?),
+            "dev-coded" => Box::new(chain_spec::dev_net_coded()),
             "staging" => Box::new(chain_spec::staging_net(false)),
             "test" => Box::new(chain_spec::staging_net(true)),
             path => Box::new(chain_spec::ChainSpec::from_json_file(
@@ -82,10 +89,12 @@ pub fn run() -> sc_cli::Result<()> {
         Some(Subcommand::Key(cmd)) => cmd.run(&cli),
         Some(Subcommand::BuildSpec(cmd)) => {
             let runner = cli.create_runner(cmd)?;
+            set_default_ss58_version();
             runner.sync_run(|config| cmd.run(config.chain_spec, config.network))
         }
         Some(Subcommand::CheckBlock(cmd)) => {
             let runner = cli.create_runner(cmd)?;
+            set_default_ss58_version();
             runner.async_run(|config| {
                 let PartialComponents {
                     client,
@@ -98,6 +107,7 @@ pub fn run() -> sc_cli::Result<()> {
         }
         Some(Subcommand::ExportBlocks(cmd)) => {
             let runner = cli.create_runner(cmd)?;
+            set_default_ss58_version();
             runner.async_run(|config| {
                 let PartialComponents {
                     client,
@@ -109,6 +119,7 @@ pub fn run() -> sc_cli::Result<()> {
         }
         Some(Subcommand::ExportState(cmd)) => {
             let runner = cli.create_runner(cmd)?;
+            set_default_ss58_version();
             runner.async_run(|config| {
                 let PartialComponents {
                     client,
@@ -120,6 +131,7 @@ pub fn run() -> sc_cli::Result<()> {
         }
         Some(Subcommand::ImportBlocks(cmd)) => {
             let runner = cli.create_runner(cmd)?;
+            set_default_ss58_version();
             runner.async_run(|config| {
                 let PartialComponents {
                     client,
@@ -132,10 +144,12 @@ pub fn run() -> sc_cli::Result<()> {
         }
         Some(Subcommand::PurgeChain(cmd)) => {
             let runner = cli.create_runner(cmd)?;
+            set_default_ss58_version();
             runner.sync_run(|config| cmd.run(config.database))
         }
         Some(Subcommand::Revert(cmd)) => {
             let runner = cli.create_runner(cmd)?;
+            set_default_ss58_version();
             runner.async_run(|config| {
                 let PartialComponents {
                     client,
@@ -149,7 +163,7 @@ pub fn run() -> sc_cli::Result<()> {
         Some(Subcommand::Benchmark(cmd)) => {
             if cfg!(feature = "runtime-benchmarks") {
                 let runner = cli.create_runner(cmd)?;
-
+                set_default_ss58_version();
                 runner.sync_run(|config| cmd.run::<Block, service::Executor>(config))
             } else {
                 Err("Benchmarking wasn't enabled when building the node. \
@@ -159,6 +173,7 @@ pub fn run() -> sc_cli::Result<()> {
         }
         None => {
             let runner = cli.create_runner(&cli.run)?;
+            set_default_ss58_version();
             runner.run_node_until_exit(|config| async move {
                 match config.role {
                     Role::Light => service::new_light(config),
