@@ -16,12 +16,12 @@ impl<T: frame_system::Config> crate::WeightInfo for WeightInfo<T> {
         Default::default()
     }
     fn transfer_to_sidechain() -> Weight {
-        (157_969_000 as Weight)
+        (1_244_777_000 as Weight)
             .saturating_add(T::DbWeight::get().reads(14 as Weight))
             .saturating_add(T::DbWeight::get().writes(7 as Weight))
     }
     fn request_from_sidechain() -> Weight {
-        (53_020_000 as Weight)
+        (310_784_000 as Weight)
             .saturating_add(T::DbWeight::get().reads(6 as Weight))
             .saturating_add(T::DbWeight::get().writes(5 as Weight))
     }
@@ -42,7 +42,7 @@ impl<T: frame_system::Config> crate::WeightInfo for WeightInfo<T> {
     }
     fn register_incoming_request() -> (Weight, Pays) {
         (
-            (75_024_000 as Weight)
+            (720_660_000 as Weight)
                 .saturating_add(T::DbWeight::get().reads(6 as Weight))
                 .saturating_add(T::DbWeight::get().writes(7 as Weight)),
             Pays::No,
@@ -50,7 +50,7 @@ impl<T: frame_system::Config> crate::WeightInfo for WeightInfo<T> {
     }
     fn finalize_incoming_request() -> (Weight, Pays) {
         (
-            (125_610_000 as Weight)
+            (1_187_607_000 as Weight)
                 .saturating_add(T::DbWeight::get().reads(9 as Weight))
                 .saturating_add(T::DbWeight::get().writes(4 as Weight)),
             Pays::No,
@@ -58,7 +58,7 @@ impl<T: frame_system::Config> crate::WeightInfo for WeightInfo<T> {
     }
     fn approve_request() -> (Weight, Pays) {
         (
-            (288_688_000 as Weight)
+            (19_640_054_000 as Weight)
                 .saturating_add(T::DbWeight::get().reads(8 as Weight))
                 .saturating_add(T::DbWeight::get().writes(1 as Weight)),
             Pays::No,
@@ -66,7 +66,7 @@ impl<T: frame_system::Config> crate::WeightInfo for WeightInfo<T> {
     }
     fn approve_request_finalize() -> (Weight, Pays) {
         (
-            (357_267_000 as Weight)
+            (20_243_062_000 as Weight)
                 .saturating_add(T::DbWeight::get().reads(13 as Weight))
                 .saturating_add(T::DbWeight::get().writes(4 as Weight)),
             Pays::No,
@@ -74,7 +74,7 @@ impl<T: frame_system::Config> crate::WeightInfo for WeightInfo<T> {
     }
     fn abort_request() -> (Weight, Pays) {
         (
-            (88_293_000 as Weight)
+            (776_940_000 as Weight)
                 .saturating_add(T::DbWeight::get().reads(8 as Weight))
                 .saturating_add(T::DbWeight::get().writes(3 as Weight)),
             Pays::No,

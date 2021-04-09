@@ -6,22 +6,22 @@ use sp_std::marker::PhantomData;
 pub struct WeightInfo<T>(PhantomData<T>);
 impl<T: frame_system::Config> crate::WeightInfo for WeightInfo<T> {
     fn swap_pair() -> Weight {
-        (5_763_813_000 as Weight)
+        (2_785_805_000 as Weight)
             .saturating_add(T::DbWeight::get().reads(15 as Weight))
             .saturating_add(T::DbWeight::get().writes(6 as Weight))
     }
     fn deposit_liquidity() -> Weight {
-        (6_074_732_000 as Weight)
-            .saturating_add(T::DbWeight::get().reads(19 as Weight))
-            .saturating_add(T::DbWeight::get().writes(8 as Weight))
+        (2_532_754_000 as Weight)
+            .saturating_add(T::DbWeight::get().reads(18 as Weight))
+            .saturating_add(T::DbWeight::get().writes(4 as Weight))
     }
     fn withdraw_liquidity() -> Weight {
-        (4_389_551_000 as Weight)
+        (2_114_113_000 as Weight)
             .saturating_add(T::DbWeight::get().reads(15 as Weight))
             .saturating_add(T::DbWeight::get().writes(4 as Weight))
     }
     fn initialize_pool() -> Weight {
-        (4_087_898_000 as Weight)
+        (1_828_872_000 as Weight)
             .saturating_add(T::DbWeight::get().reads(15 as Weight))
             .saturating_add(T::DbWeight::get().writes(15 as Weight))
     }
