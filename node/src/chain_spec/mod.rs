@@ -1,6 +1,7 @@
 use common::prelude::{Balance, DEXInfo, FixedWrapper};
 use common::{
-    balance, fixed, hash, DEXId, Fixed, TechPurpose, DEFAULT_BALANCE_PRECISION, PSWAP, VAL, XOR,
+    balance, fixed, hash, DEXId, Fixed, TechPurpose, DEFAULT_BALANCE_PRECISION, PSWAP, USDT, VAL,
+    XOR,
 };
 use frame_support::sp_runtime::Percent;
 use framenode_runtime::bonding_curve_pool::{DistributionAccountData, DistributionAccounts};
@@ -206,7 +207,6 @@ pub fn dev_net_coded() -> ChainSpec {
                     hex!("70d61e980602e09ac8b5fb50658ebd345774e73b8248d3b61862ba1a9a035082").into(),
                     hex!("05918034f4a7f7c5d99cd0382aa6574ec2aba148aa3d769e50e0ac7663e36d58").into(),
                 ],
-                hex!("da723e9d76bd60da0ec846895c5e0ecf795b50ae652c012f27e56293277ef372").into(),
                 EthBridgeParams {
                     xor_master_contract_address: hex!("12c6a709925783f49fcca0b398d13b0d597e6e1c")
                         .into(),
@@ -350,7 +350,6 @@ pub fn staging_net(test: bool) -> ChainSpec {
                     hex!("07f5670d08b8f3bd493ff829482a489d94494fd50dd506957e44e9fdc2e98684").into(),
                     hex!("211bb96e9f746183c05a1d583bccf513f9d8f679d6f36ecbd06609615a55b1cc").into(),
                 ],
-                hex!("da723e9d76bd60da0ec846895c5e0ecf795b50ae652c012f27e56293277ef372").into(),
                 eth_bridge_params,
             )
         },
@@ -486,7 +485,6 @@ pub fn local_testnet_config() -> ChainSpec {
                     hex!("70d61e980602e09ac8b5fb50658ebd345774e73b8248d3b61862ba1a9a035082").into(),
                     hex!("05918034f4a7f7c5d99cd0382aa6574ec2aba148aa3d769e50e0ac7663e36d58").into(),
                 ],
-                get_account_id_from_seed::<sr25519::Public>("Alice"),
                 EthBridgeParams {
                     xor_master_contract_address: hex!("12c6a709925783f49fcca0b398d13b0d597e6e1c")
                         .into(),
@@ -515,7 +513,6 @@ fn testnet_genesis(
     initial_authorities: Vec<(AccountId, AccountId, AuraId, BabeId, GrandpaId, ImOnlineId)>,
     endowed_accounts: Vec<AccountId>,
     initial_bridge_peers: Vec<AccountId>,
-    dex_root: AccountId,
     eth_bridge_params: EthBridgeParams,
 ) -> GenesisConfig {
     // Initial balances
@@ -592,6 +589,12 @@ fn testnet_genesis(
             &assets_and_permissions_tech_account_id,
         )
         .unwrap();
+
+    let dex_root_tech_account_id =
+        TechAccountId::Generic(b"SYSTEM_ACCOUNT".to_vec(), b"DEX_ROOT".to_vec());
+    let dex_root_account_id =
+        technical::Module::<Runtime>::tech_account_id_to_account_id(&dex_root_tech_account_id)
+            .unwrap();
 
     let mut tech_accounts = vec![
         (xor_fee_account_id.clone(), xor_fee_tech_account_id),
@@ -844,12 +847,12 @@ fn testnet_genesis(
             ],
             initial_permissions: vec![
                 (
-                    dex_root.clone(),
+                    dex_root_account_id.clone(),
                     Scope::Limited(hash(&0u32)),
                     vec![permissions::MANAGE_DEX],
                 ),
                 (
-                    dex_root.clone(),
+                    dex_root_account_id.clone(),
                     Scope::Unlimited,
                     vec![permissions::CREATE_FARM],
                 ),
@@ -957,7 +960,7 @@ fn testnet_genesis(
             initial_collateral_assets: Vec::new(),
         }),
         farming: Some(FarmingConfig {
-            initial_farm: (dex_root, XOR, PSWAP),
+            initial_farm: (dex_root_account_id, XOR, PSWAP),
         }),
         pswap_distribution: Some(PswapDistributionConfig {
             subscribed_accounts: Vec::new(),
@@ -1039,7 +1042,6 @@ pub fn main_net() -> ChainSpec {
                     hex!("9cbca76054814f05364abf691f9166b1be176d9b399d94dc2d88b6c4bc2b0589").into(),
                     hex!("3b2e166bca8913d9b88d7a8acdfc54c3fe92c15e347deda6a13c191c6e0cc19c").into(),
                 ],
-                hex!("da723e9d76bd60da0ec846895c5e0ecf795b50ae652c012f27e56293277ef372").into(),
                 eth_bridge_params,
             )
         },
@@ -1056,7 +1058,6 @@ fn mainnet_genesis(
     initial_authorities: Vec<(AccountId, AccountId, AuraId, BabeId, GrandpaId, ImOnlineId)>,
     _endowed_accounts: Vec<AccountId>,
     initial_bridge_peers: Vec<AccountId>,
-    dex_root: AccountId,
     eth_bridge_params: EthBridgeParams,
 ) -> GenesisConfig {
     // Minimum stake for an active validator
@@ -1140,6 +1141,12 @@ fn mainnet_genesis(
             &assets_and_permissions_tech_account_id,
         )
         .unwrap();
+
+    let dex_root_tech_account_id =
+        TechAccountId::Generic(b"SYSTEM_ACCOUNT".to_vec(), b"DEX_ROOT".to_vec());
+    let dex_root_account_id =
+        technical::Module::<Runtime>::tech_account_id_to_account_id(&dex_root_tech_account_id)
+            .unwrap();
 
     let mut tech_accounts = vec![
         (xor_fee_account_id.clone(), xor_fee_tech_account_id),
@@ -1288,12 +1295,12 @@ fn mainnet_genesis(
             ],
             initial_permissions: vec![
                 (
-                    dex_root.clone(),
+                    dex_root_account_id.clone(),
                     Scope::Limited(hash(&0u32)),
                     vec![permissions::MANAGE_DEX],
                 ),
                 (
-                    dex_root.clone(),
+                    dex_root_account_id.clone(),
                     Scope::Unlimited,
                     vec![permissions::CREATE_FARM],
                 ),
@@ -1433,12 +1440,17 @@ fn mainnet_genesis(
         multicollateral_bonding_curve_pool: Some(MulticollateralBondingCurvePoolConfig {
             distribution_accounts: accounts,
             reserves_account_id: mbc_reserves_tech_account_id,
-            reference_asset_id: Default::default(),
+            reference_asset_id: USDT.into(), // TODO: should be DAI
             incentives_account_id: mbc_pool_rewards_account_id,
-            initial_collateral_assets: Vec::new(),
+            initial_collateral_assets: [
+                VAL.into(),
+                PSWAP.into(),
+                USDT.into(), /*ETH.into(), DAI.into()*/
+            ]
+            .into(),
         }),
         farming: Some(FarmingConfig {
-            initial_farm: (dex_root, XOR, PSWAP),
+            initial_farm: (dex_root_account_id, XOR, PSWAP),
         }),
         pswap_distribution: Some(PswapDistributionConfig {
             subscribed_accounts: Vec::new(),
