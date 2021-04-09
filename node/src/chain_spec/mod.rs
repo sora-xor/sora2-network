@@ -1,4 +1,6 @@
 use common::prelude::{Balance, DEXInfo, FixedWrapper};
+#[cfg(feature = "test-net")]
+use common::DAI;
 use common::{
     balance, fixed, hash, DEXId, Fixed, TechPurpose, DEFAULT_BALANCE_PRECISION, PSWAP, VAL, XOR,
 };
@@ -632,24 +634,21 @@ fn testnet_genesis(
             (*tech_account).to_owned(),
         ));
     }
-    let mut balances = vec![
-        (eth_bridge_account_id.clone(), initial_eth_bridge_xor_amount),
-        (dex_root_account_id.clone(), 0),
-    ]
-    .into_iter()
-    .chain(
-        initial_authorities
-            .iter()
-            .cloned()
-            .map(|(k1, ..)| (k1, initial_staking)),
-    )
-    .chain(
-        initial_authorities
-            .iter()
-            .cloned()
-            .map(|(_, k2, ..)| (k2, initial_staking)),
-    )
-    .collect::<Vec<_>>();
+    let mut balances = vec![(eth_bridge_account_id.clone(), initial_eth_bridge_xor_amount)]
+        .into_iter()
+        .chain(
+            initial_authorities
+                .iter()
+                .cloned()
+                .map(|(k1, ..)| (k1, initial_staking)),
+        )
+        .chain(
+            initial_authorities
+                .iter()
+                .cloned()
+                .map(|(_, k2, ..)| (k2, initial_staking)),
+        )
+        .collect::<Vec<_>>();
     let rewards_config = if let ChainSpecKind::Dev = chain_spec_kind {
         RewardsConfig {
             reserves_account_id: rewards_tech_account_id,
@@ -958,9 +957,9 @@ fn testnet_genesis(
         multicollateral_bonding_curve_pool: Some(MulticollateralBondingCurvePoolConfig {
             distribution_accounts: accounts,
             reserves_account_id: mbc_reserves_tech_account_id,
-            reference_asset_id: Default::default(),
+            reference_asset_id: DAI.into(),
             incentives_account_id: mbc_pool_rewards_account_id,
-            initial_collateral_assets: Vec::new(),
+            initial_collateral_assets: [DAI.into(), VAL.into(), PSWAP.into()].into(),
         }),
         farming: Some(FarmingConfig {
             initial_farm: (dex_root, XOR, PSWAP),
@@ -1332,24 +1331,21 @@ fn mainnet_genesis(
             ],
         }),
         pallet_balances: Some(BalancesConfig {
-            balances: vec![
-                (eth_bridge_account_id.clone(), initial_eth_bridge_xor_amount),
-                (dex_root_account_id.clone(), 0),
-            ]
-            .into_iter()
-            .chain(
-                initial_authorities
-                    .iter()
-                    .cloned()
-                    .map(|(k1, ..)| (k1, initial_staking)),
-            )
-            .chain(
-                initial_authorities
-                    .iter()
-                    .cloned()
-                    .map(|(_, k2, ..)| (k2, initial_staking)),
-            )
-            .collect(),
+            balances: vec![(eth_bridge_account_id.clone(), initial_eth_bridge_xor_amount)]
+                .into_iter()
+                .chain(
+                    initial_authorities
+                        .iter()
+                        .cloned()
+                        .map(|(k1, ..)| (k1, initial_staking)),
+                )
+                .chain(
+                    initial_authorities
+                        .iter()
+                        .cloned()
+                        .map(|(_, k2, ..)| (k2, initial_staking)),
+                )
+                .collect(),
         }),
         dex_manager: Some(DEXManagerConfig {
             dex_list: vec![(
