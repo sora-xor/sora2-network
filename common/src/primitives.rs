@@ -90,6 +90,7 @@ pub enum AssetId {
     USDT = 3,
     VAL = 4,
     PSWAP = 5,
+    DAI = 6,
 }
 
 pub const XOR: AssetId32<AssetId> = AssetId32::from_asset_id(AssetId::XOR);
@@ -98,6 +99,7 @@ pub const KSM: AssetId32<AssetId> = AssetId32::from_asset_id(AssetId::KSM);
 pub const USDT: AssetId32<AssetId> = AssetId32::from_asset_id(AssetId::USDT);
 pub const VAL: AssetId32<AssetId> = AssetId32::from_asset_id(AssetId::VAL);
 pub const PSWAP: AssetId32<AssetId> = AssetId32::from_asset_id(AssetId::PSWAP);
+pub const DAI: AssetId32<AssetId> = AssetId32::from_asset_id(AssetId::DAI);
 
 impl IsRepresentation for AssetId {
     fn is_representation(&self) -> bool {

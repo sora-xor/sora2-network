@@ -3,6 +3,9 @@
 
 use framenode_runtime::GenesisConfig;
 
+#[cfg(all(feature = "private-net", feature = "coded-nets"))]
+use common::DAI;
+
 #[cfg(feature = "coded-nets")]
 use {
     common::prelude::{Balance, DEXInfo, FixedWrapper},
@@ -882,6 +885,15 @@ fn testnet_genesis(
                     Balance::zero(),
                     true,
                 ),
+                (
+                    DAI.into(),
+                    eth_bridge_account_id.clone(),
+                    AssetSymbol(b"DAI".to_vec()),
+                    AssetName(b"Dai Stablecoin".to_vec()),
+                    18,
+                    Balance::zero(),
+                    true,
+                ),
             ],
         }),
         permissions: Some(PermissionsConfig {
@@ -985,6 +997,12 @@ fn testnet_genesis(
                         owned: true,
                         precision: DEFAULT_BALANCE_PRECISION,
                     },
+                    AssetConfig::Sidechain {
+                        id: DAI.into(),
+                        sidechain_id: hex!("5592ec0cfb4dbc12d3ab100b257153436a1f0fea").into(),
+                        owned: false,
+                        precision: DEFAULT_BALANCE_PRECISION,
+                    },
                 ],
                 bridge_contract_address: eth_bridge_params.bridge_contract_address,
                 reserves: vec![
@@ -1008,9 +1026,9 @@ fn testnet_genesis(
         multicollateral_bonding_curve_pool: Some(MulticollateralBondingCurvePoolConfig {
             distribution_accounts: accounts,
             reserves_account_id: mbc_reserves_tech_account_id,
-            reference_asset_id: Default::default(),
+            reference_asset_id: DAI.into(),
             incentives_account_id: mbc_pool_rewards_account_id,
-            initial_collateral_assets: Vec::new(),
+            initial_collateral_assets: [DAI.into(), VAL.into(), PSWAP.into()].into(),
         }),
         farming: Some(FarmingConfig {
             initial_farm: (dex_root, XOR, PSWAP),

@@ -48,6 +48,7 @@ impl From<AssetId> for ComicAssetId {
             AssetId::USDT => Teapot,
             AssetId::VAL => Flower,
             AssetId::PSWAP => RedPepper,
+            AssetId::DAI => BlackPepper,
         }
     }
 }
