@@ -243,3 +243,9 @@ NFT_OWNERS = {
     "0x00000000000000000000000043f5969b76440779afd03d435c0a3874c0cd22a9": {6929: 3},
     "0x0000000000000000000000007c41f39b8d12409486d9ed36134aed9b2345cb6c": {6929: 1},
 }
+
+total = 0
+
+for tokens in NFT_OWNERS.values():
+    total += sum(tokens.values())
+print(total * 12000)

@@ -170,7 +170,7 @@ std = [
     'pswap-distribution-runtime-api/std',
 ]
 
-test-net = ["faucet"]
+private-net = ["faucet"]
 
 runtime-benchmarks = [
     "assets/runtime-benchmarks",
