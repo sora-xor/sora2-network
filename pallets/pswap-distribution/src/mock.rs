@@ -33,6 +33,7 @@ pub const FEES_ACCOUNT_B: AccountId = 12;
 pub const LIQUIDITY_PROVIDER_A: AccountId = 21;
 pub const LIQUIDITY_PROVIDER_B: AccountId = 22;
 pub const LIQUIDITY_PROVIDER_C: AccountId = 23;
+pub const PARLIAMENT_ACCOUNT: AccountId = 31;
 pub const DEX_A_ID: DEXId = common::DEXId::Polkaswap;
 
 parameter_types! {
@@ -67,6 +68,7 @@ parameter_types! {
     pub const CreationFee: u128 = 0;
     pub const TransactionByteFee: u128 = 1;
     pub GetFee: Fixed = fixed_from_basis_points(30u16);
+    pub GetParliamentAccountId: AccountId = PARLIAMENT_ACCOUNT;
 }
 
 construct_runtime! {
@@ -122,6 +124,7 @@ impl Config for Runtime {
     type GetTechnicalAccountId = GetPswapDistributionAccountId;
     type EnsureDEXManager = DexManager;
     type OnPswapBurnedAggregator = ();
+    type GetParliamentAccountId = GetParliamentAccountId;
 }
 
 impl tokens::Config for Runtime {

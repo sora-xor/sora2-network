@@ -291,6 +291,13 @@ impl<T: Config> Pallet<T> {
             distribution.liquidity_providers,
         )?;
 
+        assets::Module::<T>::mint_to(
+            &incentive_asset_id,
+            tech_account_id,
+            &T::GetParliamentAccountId::get(),
+            distribution.parliament,
+        )?;
+
         // TODO: define condition on which IncentiveDistributionFailed event if applicable
         Self::deposit_event(Event::<T>::IncentiveDistributed(
             dex_id.clone(),
@@ -392,6 +399,7 @@ pub mod pallet {
         type GetBurnUpdateFrequency: Get<Self::BlockNumber>;
         type EnsureDEXManager: EnsureDEXManager<Self::DEXId, Self::AccountId, DispatchError>;
         type OnPswapBurnedAggregator: OnPswapBurned;
+        type GetParliamentAccountId: Get<Self::AccountId>;
     }
 
     #[pallet::pallet]

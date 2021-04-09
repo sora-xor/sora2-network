@@ -10,11 +10,11 @@ use framenode_runtime::{
     bonding_curve_pool, eth_bridge, AccountId, AssetName, AssetSymbol, AssetsConfig, BabeConfig,
     BalancesConfig, BondingCurvePoolConfig, BridgeMultisigConfig, CouncilConfig, DEXAPIConfig,
     DEXManagerConfig, DemocracyConfig, EthBridgeConfig, FarmingConfig, GenesisConfig,
-    GetBaseAssetId, GetPswapAssetId, GetValAssetId, GetXorAssetId, GrandpaConfig, ImOnlineId,
-    IrohaMigrationConfig, LiquiditySourceType, MulticollateralBondingCurvePoolConfig,
-    PermissionsConfig, PswapDistributionConfig, RewardsConfig, Runtime, SessionConfig,
-    StakerStatus, StakingConfig, SystemConfig, TechAccountId, TechnicalConfig, TokensConfig,
-    WASM_BINARY,
+    GetBaseAssetId, GetParliamentTechAccountId, GetPswapAssetId, GetValAssetId, GetXorAssetId,
+    GrandpaConfig, ImOnlineId, IrohaMigrationConfig, LiquiditySourceType,
+    MulticollateralBondingCurvePoolConfig, PermissionsConfig, PswapDistributionConfig,
+    RewardsConfig, Runtime, SessionConfig, StakerStatus, StakingConfig, SystemConfig,
+    TechAccountId, TechnicalConfig, TokensConfig, WASM_BINARY,
 };
 #[cfg(feature = "test-net")]
 use framenode_runtime::{FaucetConfig, Signature, SudoConfig, TechnicalCommitteeConfig};
@@ -129,6 +129,7 @@ fn calculate_reserves(accounts: &Vec<(H160, Balance)>) -> Balance {
 }
 
 #[cfg(feature = "test-net")]
+#[allow(unused)]
 pub fn dev_net() -> Result<ChainSpec, String> {
     ChainSpec::from_json_bytes(&include_bytes!("./bytes/chain_spec_dev.json")[..])
 }
@@ -412,10 +413,7 @@ fn bonding_curve_distribution_accounts(
         projects_stores_and_shops_coeff.get().unwrap(),
     );
     let parliament_and_development = DistributionAccountData::new(
-        TechAccountId::Pure(
-            DEXId::Polkaswap.into(),
-            TechPurpose::Identifier(b"parliament_and_development".to_vec()),
-        ),
+        GetParliamentTechAccountId::get(),
         projects_parliament_and_development_coeff.get().unwrap(),
     );
     let projects = DistributionAccountData::new(

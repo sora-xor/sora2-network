@@ -153,7 +153,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
     spec_name: create_runtime_str!("sora-substrate"),
     impl_name: create_runtime_str!("sora-substrate"),
     authoring_version: 1,
-    spec_version: 9,
+    spec_version: 10,
     impl_version: 1,
     apis: RUNTIME_API_VERSIONS,
     transaction_version: 1,
@@ -844,6 +844,17 @@ parameter_types! {
                 .expect("Failed to get ordinary account id for technical account id.");
         account_id
     };
+    pub GetParliamentTechAccountId: TechAccountId = {
+        TechAccountId::Pure(
+            common::DEXId::Polkaswap.into(),
+            common::TechPurpose::Identifier(b"parliament_and_development".to_vec()),
+        )
+    };
+    pub GetParliamentAccountId: AccountId = {
+        let tech_account_id = GetParliamentTechAccountId::get();
+        technical::Module::<Runtime>::tech_account_id_to_account_id(&tech_account_id)
+            .expect("Failed to get ordinary account id for technical account id.")
+    };
 }
 
 #[cfg(feature = "reduced-pswap-reward-periods")]
@@ -876,6 +887,7 @@ impl pswap_distribution::Config for Runtime {
     type GetTechnicalAccountId = GetPswapDistributionAccountId;
     type EnsureDEXManager = DEXManager;
     type OnPswapBurnedAggregator = RuntimeOnPswapBurnedAggregator;
+    type GetParliamentAccountId = GetParliamentAccountId;
 }
 
 parameter_types! {
