@@ -19,6 +19,7 @@ construct_runtime! {
     {
         System: frame_system::{Module, Call, Config, Storage, Event<T>},
         Permissions: permissions::{Module, Call, Config<T>, Storage, Event<T>},
+        Balances: pallet_balances::{Module, Call, Storage, Config<T>, Event<T>},
     }
 }
 
@@ -33,6 +34,17 @@ parameter_types! {
     pub const MaximumBlockWeight: Weight = 1024;
     pub const MaximumBlockLength: u32 = 2 * 1024;
     pub const AvailableBlockRatio: Perbill = Perbill::from_percent(75);
+    pub const ExistentialDeposit: u128 = 0;
+}
+
+impl pallet_balances::Config for Runtime {
+    type Balance = u128;
+    type Event = Event;
+    type DustRemoval = ();
+    type ExistentialDeposit = ExistentialDeposit;
+    type AccountStore = System;
+    type WeightInfo = ();
+    type MaxLocks = ();
 }
 
 impl frame_system::Config for Runtime {
@@ -52,7 +64,7 @@ impl frame_system::Config for Runtime {
     type BlockHashCount = BlockHashCount;
     type DbWeight = ();
     type Version = ();
-    type AccountData = ();
+    type AccountData = pallet_balances::AccountData<u128>;
     type OnNewAccount = ();
     type OnKilledAccount = ();
     type SystemWeightInfo = ();
@@ -89,7 +101,15 @@ impl Default for ExtBuilder {
 
 impl ExtBuilder {
     pub fn build(self) -> sp_io::TestExternalities {
-        let mut t = SystemConfig::default().build_storage::<Runtime>().unwrap();
+        let mut t = frame_system::GenesisConfig::default()
+            .build_storage::<Runtime>()
+            .unwrap();
+
+        pallet_balances::GenesisConfig::<Runtime> {
+            balances: vec![(ALICE, 0), (BOB, 0), (JOHN, 0)],
+        }
+        .assimilate_storage(&mut t)
+        .unwrap();
 
         PermissionsConfig {
             initial_permission_owners: self.initial_permission_owners,

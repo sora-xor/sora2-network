@@ -82,6 +82,8 @@ impl<T: Config> Pallet<T> {
         ensure!(!frequency.is_zero(), Error::<T>::InvalidFrequency);
         Assets::<T>::ensure_asset_exists(&marker_token_id)?;
         let current_block = System::<T>::block_number();
+        frame_system::Pallet::<T>::inc_consumers(&fees_account_id)
+            .map_err(|_| Error::<T>::IncRefError)?;
         SubscribedAccounts::<T>::insert(
             fees_account_id.clone(),
             (dex_id, marker_token_id, frequency, current_block),
@@ -95,6 +97,7 @@ impl<T: Config> Pallet<T> {
     pub fn unsubscribe(fees_account_id: T::AccountId) -> DispatchResult {
         let value = SubscribedAccounts::<T>::take(&fees_account_id);
         ensure!(value.is_some(), Error::<T>::UnknownSubscription);
+        frame_system::Pallet::<T>::dec_consumers(&fees_account_id);
         Ok(())
     }
 
@@ -483,6 +486,8 @@ pub mod pallet {
         InvalidFrequency,
         /// Can't claim incentives as none is available for account at the moment.
         ZeroClaimableIncentives,
+        /// Increment account reference error.
+        IncRefError,
     }
 
     /// Store for information about accounts containing fees, that participate in incentive distribution mechanism.
@@ -554,6 +559,7 @@ pub mod pallet {
         fn build(&self) {
             self.subscribed_accounts.iter().for_each(
                 |(fees_account, (dex_id, pool_asset, freq, block_offset))| {
+                    frame_system::Pallet::<T>::inc_consumers(&fees_account).unwrap();
                     SubscribedAccounts::<T>::insert(
                         fees_account,
                         (dex_id, pool_asset, freq, block_offset),

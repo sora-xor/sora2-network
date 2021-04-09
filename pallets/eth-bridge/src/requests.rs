@@ -118,6 +118,8 @@ impl<T: Config> IncomingChangePeers<T> {
                 )
                 .map_err(|e| e.error)?;
                 crate::Peers::<T>::mutate(self.network_id, |set| set.insert(account_id));
+            } else {
+                frame_system::Pallet::<T>::dec_consumers(&self.peer_account_id);
             }
             crate::PendingPeer::<T>::take(self.network_id);
         }
@@ -184,14 +186,16 @@ impl<T: Config> IncomingChangePeersCompat<T> {
             .map(|x| x.is_ready())
             .unwrap_or(true);
         if is_ready {
+            let account_id = self.peer_account_id.clone();
             if self.added {
-                let account_id = self.peer_account_id.clone();
                 bridge_multisig::Module::<T>::add_signatory(
                     RawOrigin::Signed(get_bridge_account::<T>(self.network_id)).into(),
                     account_id.clone(),
                 )
                 .map_err(|e| e.error)?;
                 crate::Peers::<T>::mutate(self.network_id, |set| set.insert(account_id));
+            } else {
+                frame_system::Pallet::<T>::dec_consumers(&account_id);
             }
             crate::PendingPeer::<T>::take(self.network_id);
         }
@@ -1059,6 +1063,8 @@ impl<T: Config> OutgoingAddPeer<T> {
     pub fn prepare(&mut self, _validated_state: ()) -> Result<(), DispatchError> {
         let pending_peer = crate::PendingPeer::<T>::get(self.network_id);
         ensure!(pending_peer.is_none(), Error::<T>::TooManyPendingPeers);
+        frame_system::Pallet::<T>::inc_consumers(&self.peer_account_id)
+            .map_err(|_| Error::<T>::IncRefError)?;
         crate::PendingPeer::<T>::insert(self.network_id, self.peer_account_id.clone());
         Ok(())
     }
@@ -1078,7 +1084,9 @@ impl<T: Config> OutgoingAddPeer<T> {
 
     /// Cleans the current pending peer value.
     pub fn cancel(&self) -> Result<(), DispatchError> {
-        crate::PendingPeer::<T>::take(self.network_id);
+        if let Some(account_id) = crate::PendingPeer::<T>::take(self.network_id) {
+            frame_system::Pallet::<T>::dec_consumers(&account_id);
+        }
         Ok(())
     }
 }
@@ -1199,6 +1207,8 @@ impl<T: Config> OutgoingRemovePeer<T> {
     pub fn prepare(&mut self, _validated_state: ()) -> Result<(), DispatchError> {
         let pending_peer = crate::PendingPeer::<T>::get(self.network_id);
         ensure!(pending_peer.is_none(), Error::<T>::TooManyPendingPeers);
+        frame_system::Pallet::<T>::inc_consumers(&self.peer_account_id)
+            .map_err(|_| Error::<T>::IncRefError)?;
         crate::PendingPeer::<T>::insert(self.network_id, self.peer_account_id.clone());
         Ok(())
     }
@@ -1222,7 +1232,9 @@ impl<T: Config> OutgoingRemovePeer<T> {
 
     /// Cleans the current pending peer value.
     pub fn cancel(&self) -> Result<(), DispatchError> {
-        crate::PendingPeer::<T>::take(self.network_id);
+        if let Some(account_id) = crate::PendingPeer::<T>::take(self.network_id) {
+            frame_system::Pallet::<T>::dec_consumers(&account_id);
+        }
         Ok(())
     }
 }

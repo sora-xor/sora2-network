@@ -527,6 +527,22 @@ impl ExtBuilder {
             .build_storage::<Runtime>()
             .unwrap();
 
+        let mut balances: Vec<_> = endowed_accounts
+            .iter()
+            .map(|(acc, ..)| acc)
+            .chain(vec![&self.root_account_id, &authority_account_id])
+            .map(|x| (x.clone(), Balance::from(0u32)))
+            .collect();
+        balances.extend(bridge_accounts.iter().map(|(acc, _)| (acc.clone(), 0)));
+        for (_net_id, ext_network) in &self.networks {
+            balances.extend(ext_network.ocw_keypairs.iter().map(|x| (x.1.clone(), 0)));
+        }
+        balances.sort_by_key(|x| x.0.clone());
+        balances.dedup_by_key(|x| x.0.clone());
+        BalancesConfig { balances }
+            .assimilate_storage(&mut storage)
+            .unwrap();
+
         if !endowed_accounts.is_empty() {
             SudoConfig {
                 key: endowed_accounts[0].0.clone(),
@@ -535,11 +551,6 @@ impl ExtBuilder {
             .unwrap();
         }
 
-        BalancesConfig {
-            balances: Default::default(),
-        }
-        .assimilate_storage(&mut storage)
-        .unwrap();
         MultisigConfig {
             accounts: bridge_accounts,
         }
@@ -558,6 +569,7 @@ impl ExtBuilder {
         }
         .assimilate_storage(&mut storage)
         .unwrap();
+
         AssetsConfig {
             endowed_assets: endowed_assets.into_iter().collect(),
         }

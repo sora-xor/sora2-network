@@ -37,7 +37,7 @@ parameter_types! {
     pub const ReferrerWeight: u32 = 300_000_000;
     pub const XorBurnedWeight: u32 = 400_000_000;
     pub const XorIntoValBurnedWeight: u32 = 500_000_000;
-    pub const ExistentialDeposit: u32 = 1;
+    pub const ExistentialDeposit: u32 = 0;
     pub const XorId: AssetId = XOR;
     pub const ValId: AssetId = VAL;
     pub const DEXIdValue: DEXId = common::DEXId::Polkaswap;
@@ -362,12 +362,6 @@ impl ExtBuilder {
             .build_storage::<Runtime>()
             .unwrap();
 
-        referral_system::GenesisConfig::<Runtime> {
-            referrers: vec![(FROM_ACCOUNT, REFERRER_ACCOUNT)],
-        }
-        .assimilate_storage(&mut t)
-        .unwrap();
-
         let initial_balance = initial_balance();
         pallet_balances::GenesisConfig::<Runtime> {
             balances: vec![
@@ -377,6 +371,12 @@ impl ExtBuilder {
                 (STASH_ACCOUNT, initial_balance),
                 (STASH_ACCOUNT2, initial_balance),
             ],
+        }
+        .assimilate_storage(&mut t)
+        .unwrap();
+
+        referral_system::GenesisConfig::<Runtime> {
+            referrers: vec![(FROM_ACCOUNT, REFERRER_ACCOUNT)],
         }
         .assimilate_storage(&mut t)
         .unwrap();

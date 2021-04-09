@@ -9,7 +9,7 @@ use frame_support::{construct_runtime, parameter_types};
 use frame_system;
 use sp_core::H256;
 use sp_runtime::testing::Header;
-use sp_runtime::traits::{BlakeTwo256, IdentityLookup, Zero};
+use sp_runtime::traits::{BlakeTwo256, IdentityLookup};
 use sp_runtime::Perbill;
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
@@ -136,7 +136,7 @@ pub struct ExtBuilder {
 impl Default for ExtBuilder {
     fn default() -> Self {
         Self {
-            endowed_accounts: vec![(ALICE, XOR, Balance::zero())],
+            endowed_accounts: vec![(ALICE, XOR, 0), (BOB, XOR, 0)],
         }
     }
 }
@@ -144,6 +144,16 @@ impl Default for ExtBuilder {
 impl ExtBuilder {
     pub fn build(self) -> sp_io::TestExternalities {
         let mut t = SystemConfig::default().build_storage::<Runtime>().unwrap();
+
+        pallet_balances::GenesisConfig::<Runtime> {
+            balances: self
+                .endowed_accounts
+                .iter()
+                .map(|(acc, _, balance)| (*acc, *balance))
+                .collect(),
+        }
+        .assimilate_storage(&mut t)
+        .unwrap();
 
         PermissionsConfig {
             initial_permission_owners: vec![],

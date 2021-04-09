@@ -407,6 +407,12 @@ impl ExtBuilder {
     pub fn build(self) -> sp_io::TestExternalities {
         let mut t = SystemConfig::default().build_storage::<Runtime>().unwrap();
 
+        pallet_balances::GenesisConfig::<Runtime> {
+            balances: vec![(get_alice(), 0), (get_bob(), 0)],
+        }
+        .assimilate_storage(&mut t)
+        .unwrap();
+
         PermissionsConfig {
             initial_permission_owners: vec![],
             initial_permissions: vec![],

@@ -133,6 +133,8 @@ impl<T: Config> Pallet<T> {
                     "FARMING_PALLET".into(),
                     farmer_id.encode(),
                 );
+                frame_system::Pallet::<T>::inc_consumers(&account_id)
+                    .map_err(|_| Error::<T>::IncRefError)?;
                 technical::Pallet::<T>::register_tech_account_id_if_not_exist(&tech_id)?;
                 let current_block = <frame_system::Pallet<T>>::block_number();
                 let farmer = FarmerOf::<T> {
@@ -631,6 +633,8 @@ pub mod pallet {
         ThisTypeOfLiquiditySourceIsNotImplementedOrSupported,
         NothingToClaim,
         CaseIsNotSupported,
+        /// Increment account reference error.
+        IncRefError,
     }
 
     #[pallet::storage]

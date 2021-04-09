@@ -168,6 +168,16 @@ pub fn test_ext(add_iroha_accounts: bool) -> sp_io::TestExternalities {
         .build_storage::<Runtime>()
         .unwrap();
 
+    pallet_balances::GenesisConfig::<Runtime> {
+        balances: vec![
+            (ALICE, 0u128.into()),
+            (BOB, 0u128.into()),
+            (MINTING_ACCOUNT, 0u128.into()),
+        ],
+    }
+    .assimilate_storage(&mut t)
+    .unwrap();
+
     permissions::GenesisConfig::<Runtime> {
         initial_permission_owners: vec![(MINT, Scope::Unlimited, vec![MINTING_ACCOUNT])],
         initial_permissions: vec![(MINTING_ACCOUNT, Scope::Unlimited, vec![MINT])],
