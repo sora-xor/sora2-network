@@ -730,6 +730,33 @@ impl rewards::Config for Runtime {
     type WeightInfo = rewards::weights::WeightInfo<Runtime>;
 }
 
+pub struct ExtrinsicsFlatFees;
+
+// Flat fees implementation for the selected extrinsics.
+// Returns a value if the extirnsic is subject to manual fee adjustment
+// and `None` otherwise
+impl xor_fee::ApplyCustomFees<Call> for ExtrinsicsFlatFees {
+    fn compute_fee(call: &Call) -> Option<Balance> {
+        match call {
+            Call::Assets(assets::Call::register(..))
+            | Call::EthBridge(eth_bridge::Call::transfer_to_sidechain(..))
+            | Call::PoolXYK(pool_xyk::Call::withdraw_liquidity(..)) => Some(balance!(0.007)),
+            Call::EthBridge(eth_bridge::Call::register_incoming_request(..))
+            | Call::EthBridge(eth_bridge::Call::finalize_incoming_request(..))
+            | Call::EthBridge(eth_bridge::Call::approve_request(..)) => None,
+            Call::Assets(..)
+            | Call::EthBridge(..)
+            | Call::LiquidityProxy(..)
+            | Call::MulticollateralBondingCurvePool(..)
+            | Call::PoolXYK(..)
+            | Call::Rewards(..)
+            | Call::Staking(pallet_staking::Call::payout_stakers(..))
+            | Call::TradingPair(..) => Some(balance!(0.0007)),
+            _ => None,
+        }
+    }
+}
+
 parameter_types! {
     pub const DEXIdValue: DEXId = 0;
 }
@@ -746,6 +773,7 @@ impl xor_fee::Config for Runtime {
     type DEXIdValue = DEXIdValue;
     type LiquidityProxy = LiquidityProxy;
     type ValBurnedNotifier = Staking;
+    type CustomFees = ExtrinsicsFlatFees;
 }
 
 pub struct ConstantFeeMultiplier;
@@ -1191,11 +1219,21 @@ impl_runtime_apis! {
         Balance,
     > for Runtime {
         fn query_info(uxt: <Block as BlockT>::Extrinsic, len: u32) -> pallet_transaction_payment_rpc_runtime_api::RuntimeDispatchInfo<Balance> {
-            TransactionPayment::query_info(uxt, len)
+            let maybe_dispatch_info = XorFee::query_info(&uxt, len);
+            let output = match maybe_dispatch_info {
+                Some(dispatch_info) => dispatch_info,
+                _ => TransactionPayment::query_info(uxt, len),
+            };
+            output
         }
 
         fn query_fee_details(uxt: <Block as BlockT>::Extrinsic, len: u32) -> pallet_transaction_payment_rpc_runtime_api::FeeDetails<Balance> {
-            TransactionPayment::query_fee_details(uxt, len)
+            let maybe_fee_details = XorFee::query_fee_details(&uxt, len);
+            let output = match maybe_fee_details {
+                Some(fee_details) => fee_details,
+                _ => TransactionPayment::query_fee_details(uxt, len),
+            };
+            output
         }
     }
 
