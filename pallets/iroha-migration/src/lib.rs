@@ -456,6 +456,7 @@ pub mod pallet {
     #[pallet::genesis_build]
     impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
         fn build(&self) {
+            frame_system::Pallet::<T>::inc_consumers(&self.account_id).unwrap();
             Account::<T>::put(&self.account_id);
 
             for (account_id, balance, referrer, threshold, public_keys) in &self.iroha_accounts {

@@ -453,6 +453,28 @@ impl ExtBuilder {
             .build_storage::<Runtime>()
             .unwrap();
 
+        pallet_balances::GenesisConfig::<Runtime> {
+            balances: self
+                .endowed_accounts
+                .iter()
+                .cloned()
+                .filter_map(|(account_id, asset_id, balance, ..)| {
+                    if asset_id == GetBaseAssetId::get() {
+                        Some((account_id, balance))
+                    } else {
+                        None
+                    }
+                })
+                .chain(vec![
+                    (bob(), 0),
+                    (assets_owner(), 0),
+                    (incentives_account(), 0),
+                ])
+                .collect(),
+        }
+        .assimilate_storage(&mut t)
+        .unwrap();
+
         crate::GenesisConfig::<Runtime> {
             distribution_accounts: Default::default(),
             reserves_account_id: Default::default(),
@@ -491,23 +513,6 @@ impl ExtBuilder {
                         Balance::zero(),
                         true,
                     )
-                })
-                .collect(),
-        }
-        .assimilate_storage(&mut t)
-        .unwrap();
-
-        pallet_balances::GenesisConfig::<Runtime> {
-            balances: self
-                .endowed_accounts
-                .iter()
-                .cloned()
-                .filter_map(|(account_id, asset_id, balance, ..)| {
-                    if asset_id == GetBaseAssetId::get() {
-                        Some((account_id, balance))
-                    } else {
-                        None
-                    }
                 })
                 .collect(),
         }

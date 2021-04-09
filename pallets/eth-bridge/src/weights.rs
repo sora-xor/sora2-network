@@ -1,3 +1,4 @@
+use crate::{IncomingRequestKind, IncomingTransactionRequestKind};
 use common::weights::constants::EXTRINSIC_FIXED_WEIGHT;
 use core::marker::PhantomData;
 use frame_support::traits::Get;
@@ -20,10 +21,20 @@ impl<T: frame_system::Config> crate::WeightInfo for WeightInfo<T> {
             .saturating_add(T::DbWeight::get().reads(14 as Weight))
             .saturating_add(T::DbWeight::get().writes(7 as Weight))
     }
-    fn request_from_sidechain() -> Weight {
-        (310_784_000 as Weight)
-            .saturating_add(T::DbWeight::get().reads(6 as Weight))
-            .saturating_add(T::DbWeight::get().writes(5 as Weight))
+    fn request_from_sidechain(kind: &IncomingRequestKind) -> (Weight, Pays) {
+        let pays = if kind
+            == &IncomingRequestKind::Transaction(IncomingTransactionRequestKind::TransferXOR)
+        {
+            Pays::No
+        } else {
+            Pays::Yes
+        };
+        (
+            (310_784_000 as Weight)
+                .saturating_add(T::DbWeight::get().reads(6 as Weight))
+                .saturating_add(T::DbWeight::get().writes(5 as Weight)),
+            pays,
+        )
     }
     fn add_peer() -> Weight {
         Default::default()
@@ -95,8 +106,15 @@ impl crate::WeightInfo for () {
     fn transfer_to_sidechain() -> Weight {
         10 * EXTRINSIC_FIXED_WEIGHT
     }
-    fn request_from_sidechain() -> Weight {
-        EXTRINSIC_FIXED_WEIGHT
+    fn request_from_sidechain(kind: &IncomingRequestKind) -> (Weight, Pays) {
+        let pays = if kind
+            == &IncomingRequestKind::Transaction(IncomingTransactionRequestKind::TransferXOR)
+        {
+            Pays::No
+        } else {
+            Pays::Yes
+        };
+        (EXTRINSIC_FIXED_WEIGHT, pays)
     }
     fn add_peer() -> Weight {
         EXTRINSIC_FIXED_WEIGHT

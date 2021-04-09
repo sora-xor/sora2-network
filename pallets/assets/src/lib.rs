@@ -348,6 +348,8 @@ pub mod pallet {
         AssetSupplyIsNotMintable,
         /// Caller does not own requested asset.
         InvalidAssetOwner,
+        /// Increment account reference error.
+        IncRefError,
     }
 
     /// Asset Id -> Owner Account Id
@@ -458,6 +460,8 @@ impl<T: Config> Pallet<T> {
             Self::asset_owner(&asset_id).is_none(),
             Error::<T>::AssetIdAlreadyExists
         );
+        frame_system::Pallet::<T>::inc_consumers(&account_id)
+            .map_err(|_| Error::<T>::IncRefError)?;
         AssetOwners::<T>::insert(asset_id, account_id.clone());
         ensure!(
             crate::is_symbol_valid(&symbol),

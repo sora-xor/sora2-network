@@ -3,16 +3,15 @@
 #[macro_use]
 extern crate alloc;
 
-use core::convert::{TryFrom, TryInto};
-
 use codec::{Decode, Encode};
+use core::convert::{TryFrom, TryInto};
 
 use common::prelude::fixnum::ops::{Bounded, CheckedMul, One, Zero as _};
 use common::prelude::{Balance, FixedWrapper, SwapAmount, SwapOutcome, SwapVariant};
 use common::{
     fixed, fixed_wrapper, linspace, FilterMode, Fixed, FixedInner, GetMarketInfo, GetPoolReserves,
     IntervalEndpoints, LiquidityRegistry, LiquiditySource, LiquiditySourceFilter,
-    LiquiditySourceId, LiquiditySourceType,
+    LiquiditySourceId, LiquiditySourceType, TradingPair,
 };
 use frame_support::traits::Get;
 use frame_support::weights::Weight;
@@ -548,6 +547,66 @@ impl<T: Config> Pallet<T> {
                 from_asset_id: input_asset_id,
                 intermediate_asset_id: base_asset_id,
                 to_asset_id: output_asset_id,
+            }
+        }
+    }
+
+    /// Check if given two arbitrary tokens can be used to perform an exchange via any available sources.
+    pub fn is_path_available(
+        dex_id: T::DEXId,
+        input_asset_id: T::AssetId,
+        output_asset_id: T::AssetId,
+    ) -> Result<bool, DispatchError> {
+        let path = Self::construct_trivial_path(input_asset_id, output_asset_id);
+        let path_exists = match path {
+            ExchangePath::Direct {
+                from_asset_id,
+                to_asset_id,
+            } => {
+                let pair = Self::weak_sort_pair(from_asset_id, to_asset_id);
+                !trading_pair::Pallet::<T>::list_enabled_sources_for_trading_pair(
+                    &dex_id,
+                    &pair.base_asset_id,
+                    &pair.target_asset_id,
+                )?
+                .is_empty()
+            }
+            ExchangePath::Twofold {
+                from_asset_id,
+                intermediate_asset_id,
+                to_asset_id,
+            } => {
+                !trading_pair::Pallet::<T>::list_enabled_sources_for_trading_pair(
+                    &dex_id,
+                    &intermediate_asset_id,
+                    &from_asset_id,
+                )?
+                .is_empty()
+                    && !trading_pair::Pallet::<T>::list_enabled_sources_for_trading_pair(
+                        &dex_id,
+                        &intermediate_asset_id,
+                        &to_asset_id,
+                    )?
+                    .is_empty()
+            }
+        };
+        Ok(path_exists)
+    }
+
+    // Not full sort, just ensure that if there is XOR then it's first.
+    fn weak_sort_pair(
+        input_asset_id: T::AssetId,
+        output_asset_id: T::AssetId,
+    ) -> TradingPair<T::AssetId> {
+        if input_asset_id == T::GetBaseAssetId::get() {
+            TradingPair {
+                base_asset_id: input_asset_id,
+                target_asset_id: output_asset_id,
+            }
+        } else {
+            TradingPair {
+                base_asset_id: output_asset_id,
+                target_asset_id: input_asset_id,
             }
         }
     }
@@ -1173,7 +1232,9 @@ pub mod pallet {
     use frame_system::pallet_prelude::*;
 
     #[pallet::config]
-    pub trait Config: frame_system::Config + common::Config + assets::Config {
+    pub trait Config:
+        frame_system::Config + common::Config + assets::Config + trading_pair::Config
+    {
         type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
         type LiquidityRegistry: LiquidityRegistry<
             Self::DEXId,

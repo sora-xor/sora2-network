@@ -36,6 +36,15 @@ pub trait LiquidityProxyAPI<
         filter_mode: FilterMode,
         at: Option<BlockHash>,
     ) -> Result<OutputTy>;
+
+    #[rpc(name = "liquidityProxy_isPathAvailable")]
+    fn is_path_available(
+        &self,
+        dex_id: DEXId,
+        input_asset_id: AssetId,
+        output_asset_id: AssetId,
+        at: Option<BlockHash>,
+    ) -> Result<bool>;
 }
 
 pub struct LiquidityProxyClient<C, B> {
@@ -115,5 +124,25 @@ where
             message: "Unable to quote price.".into(),
             data: Some(format!("{:?}", e).into()),
         })
+    }
+
+    fn is_path_available(
+        &self,
+        dex_id: DEXId,
+        input_asset_id: AssetId,
+        output_asset_id: AssetId,
+        at: Option<<Block as BlockT>::Hash>,
+    ) -> Result<bool> {
+        let api = self.client.runtime_api();
+        let at = BlockId::hash(at.unwrap_or(
+            // If the block hash is not supplied assume the best block.
+            self.client.info().best_hash,
+        ));
+        api.is_path_available(&at, dex_id, input_asset_id, output_asset_id)
+            .map_err(|e| RpcError {
+                code: ErrorCode::ServerError(InvokeRPCError::RuntimeError.into()),
+                message: "Unable to query path availability.".into(),
+                data: Some(format!("{:?}", e).into()),
+            })
     }
 }

@@ -7,7 +7,6 @@ use alloc::string::String;
 
 /// Constant values used within the runtime.
 pub mod constants;
-mod extensions;
 mod impls;
 
 use constants::time::*;
@@ -83,7 +82,6 @@ pub use sp_runtime::BuildStorage;
 use eth_bridge::{
     AssetKind, OffchainRequest, OutgoingRequestEncoded, RequestStatus, SignatureParams,
 };
-use extensions::PrintCall;
 use impls::OnUnbalancedDemocracySlash;
 
 pub use {bonding_curve_pool, eth_bridge, multicollateral_bonding_curve_pool};
@@ -155,7 +153,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
     spec_name: create_runtime_str!("sora-substrate"),
     impl_name: create_runtime_str!("sora-substrate"),
     authoring_version: 1,
-    spec_version: 8,
+    spec_version: 9,
     impl_version: 1,
     apis: RUNTIME_API_VERSIONS,
     transaction_version: 1,
@@ -197,7 +195,7 @@ parameter_types! {
     };
     pub const SessionPeriod: BlockNumber = 150;
     pub const SessionOffset: BlockNumber = 0;
-    pub const SS58Prefix: u8 = 42;
+    pub const SS58Prefix: u8 = 69;
     /// A limit for off-chain phragmen unsigned solution submission.
     ///
     /// We want to keep it as high as possible, but can't risk having it reject,
@@ -695,7 +693,6 @@ where
             frame_system::CheckEra::<Runtime>::from(generic::Era::mortal(period, current_block)),
             frame_system::CheckNonce::<Runtime>::from(index),
             frame_system::CheckWeight::<Runtime>::new(),
-            PrintCall,
             pallet_transaction_payment::ChargeTransactionPayment::<Runtime>::from(tip.into()),
         );
         #[cfg_attr(not(feature = "std"), allow(unused_variables))]
@@ -777,6 +774,7 @@ impl pallet_transaction_payment::Config for Runtime {
     type FeeMultiplierUpdate = ConstantFeeMultiplier;
 }
 
+#[cfg(feature = "test-net")]
 impl pallet_sudo::Config for Runtime {
     type Call = Call;
     type Event = Event;
@@ -1014,7 +1012,6 @@ construct_runtime! {
         Timestamp: pallet_timestamp::{Module, Call, Storage, Inherent},
         // Balances in native currency - XOR.
         Balances: pallet_balances::{Module, Call, Storage, Config<T>, Event<T>},
-        Sudo: pallet_sudo::{Module, Call, Storage, Config<T>, Event<T>},
         RandomnessCollectiveFlip: pallet_randomness_collective_flip::{Module, Call, Storage},
         TransactionPayment: pallet_transaction_payment::{Module, Storage},
         Permissions: permissions::{Module, Call, Storage, Config<T>, Event<T>},
@@ -1090,7 +1087,6 @@ pub type SignedExtra = (
     frame_system::CheckEra<Runtime>,
     frame_system::CheckNonce<Runtime>,
     frame_system::CheckWeight<Runtime>,
-    PrintCall,
     pallet_transaction_payment::ChargeTransactionPayment<Runtime>,
 );
 /// Unchecked extrinsic type as expected by this runtime.
@@ -1443,6 +1439,16 @@ impl_runtime_apis! {
                 SwapAmount::with_variant(swap_variant, amount.into(), limit),
                 LiquiditySourceFilter::with_mode(dex_id, filter_mode, selected_source_types),
             ).ok().map(|asa| liquidity_proxy_runtime_api::SwapOutcomeInfo::<Balance> { amount: asa.amount, fee: asa.fee})
+        }
+
+        fn is_path_available(
+            dex_id: DEXId,
+            input_asset_id: AssetId,
+            output_asset_id: AssetId
+        ) -> bool {
+            LiquidityProxy::is_path_available(
+                dex_id, input_asset_id, output_asset_id
+            ).unwrap_or(false)
         }
     }
 

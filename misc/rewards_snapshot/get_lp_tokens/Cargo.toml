@@ -1,0 +1,12 @@
+[package]
+name = "get_lp_tokens"
+version = "0.1.0"
+authors = ["Alexey Kalita <kalita.alexey@outlook.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+fixnum = { version = "0.5", features = ["i128"] }
+reqwest = { version = "0.11.2", features = ["blocking", "json"] }
+serde = { version = "1.0.125", features = ["derive"] }

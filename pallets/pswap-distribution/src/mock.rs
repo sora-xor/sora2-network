@@ -80,7 +80,7 @@ parameter_types! {
     };
     pub const GetDefaultSubscriptionFrequency: BlockNumber = 10;
     pub const GetBurnUpdateFrequency: BlockNumber = 3;
-    pub const ExistentialDeposit: u128 = 1;
+    pub const ExistentialDeposit: u128 = 0;
     pub const TransferFee: u128 = 0;
     pub const CreationFee: u128 = 0;
     pub const TransactionByteFee: u128 = 1;
@@ -99,7 +99,7 @@ construct_runtime! {
         Permissions: permissions::{Module, Call, Config<T>, Storage, Event<T>},
         Currencies: currencies::{Module, Call, Storage, Event<T>},
         Assets: assets::{Module, Call, Config<T>, Storage, Event<T>},
-        Balances: pallet_balances::{Module, Call, Storage, Event<T>},
+        Balances: pallet_balances::{Module, Call, Config<T>, Storage, Event<T>},
         Technical: technical::{Module, Call, Storage, Event<T>},
         DexManager: dex_manager::{Module, Call, Storage},
     }
@@ -318,6 +318,24 @@ impl Default for ExtBuilder {
 impl ExtBuilder {
     pub fn build(self) -> sp_io::TestExternalities {
         let mut t = SystemConfig::default().build_storage::<Runtime>().unwrap();
+
+        let mut vec = self
+            .endowed_accounts
+            .iter()
+            .map(|(acc, ..)| (acc.clone(), 0))
+            .chain(vec![
+                (alice(), 0),
+                (fees_account_a(), 0),
+                (fees_account_b(), 0),
+                (GetPswapDistributionAccountId::get(), 0),
+            ])
+            .collect::<Vec<_>>();
+
+        vec.sort_by_key(|x| x.0.clone());
+        vec.dedup_by(|x, y| x.0 == y.0);
+        BalancesConfig { balances: vec }
+            .assimilate_storage(&mut t)
+            .unwrap();
 
         PermissionsConfig {
             initial_permissions: self.initial_permissions,

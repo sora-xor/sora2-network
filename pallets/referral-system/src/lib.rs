@@ -10,6 +10,10 @@ impl<T: Config> Module<T> {
     ) -> Result<(), DispatchError> {
         Referrers::<T>::mutate(&referral, |r| {
             ensure!(r.is_none(), Error::<T>::AlreadyHasReferrer);
+            frame_system::Pallet::<T>::inc_consumers(referral)
+                .map_err(|_| Error::<T>::IncRefError)?;
+            frame_system::Pallet::<T>::inc_consumers(&referrer)
+                .map_err(|_| Error::<T>::IncRefError)?;
             *r = Some(referrer);
             Ok(())
         })
@@ -40,6 +44,8 @@ pub mod pallet {
     pub enum Error<T> {
         /// Account already has a referrer.
         AlreadyHasReferrer,
+        /// Increment account reference error.
+        IncRefError,
     }
 
     #[pallet::storage]
@@ -64,6 +70,8 @@ pub mod pallet {
     impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
         fn build(&self) {
             self.referrers.iter().for_each(|(k, v)| {
+                frame_system::Pallet::<T>::inc_consumers(k).unwrap();
+                frame_system::Pallet::<T>::inc_consumers(v).unwrap();
                 Referrers::<T>::insert(k, v);
             });
         }

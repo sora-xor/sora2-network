@@ -185,8 +185,10 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 
 impl<T: Config<I>, I: 'static> Pallet<T, I> {
     pub fn set_reserves_account_id(account: T::TechAccountId) -> Result<(), DispatchError> {
-        ReservesAcc::<T, I>::set(account.clone());
         let account_id = technical::Pallet::<T>::tech_account_id_to_account_id(&account)?;
+        frame_system::Pallet::<T>::inc_consumers(&account_id)
+            .map_err(|_| Error::<T, I>::IncRefError)?;
+        ReservesAcc::<T, I>::set(account.clone());
         let permissions = [BURN, MINT, TRANSFER];
         for permission in &permissions {
             permissions::Pallet::<T>::assign_permission(
@@ -429,6 +431,8 @@ pub mod pallet {
         InsufficientLiquidity,
         /// Specified parameters lead to arithmetic error
         CalculationError,
+        /// Increment account reference error.
+        IncRefError,
     }
 
     #[pallet::storage]

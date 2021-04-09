@@ -63,7 +63,7 @@ parameter_types! {
     };
     pub const GetNumSamples: usize = 40;
     pub const GetBaseAssetId: AssetId = XOR;
-    pub const ExistentialDeposit: u128 = 1;
+    pub const ExistentialDeposit: u128 = 0;
     pub GetFee0: Fixed = fixed_from_basis_points(0u16);
     pub GetFee10: Fixed = fixed_from_basis_points(10u16);
     pub GetFee20: Fixed = fixed_from_basis_points(20u16);
@@ -552,6 +552,12 @@ impl ExtBuilder {
         let mut t = frame_system::GenesisConfig::default()
             .build_storage::<Runtime>()
             .unwrap();
+
+        pallet_balances::GenesisConfig::<Runtime> {
+            balances: vec![(alice(), 0)],
+        }
+        .assimilate_storage(&mut t)
+        .unwrap();
 
         dex_manager::GenesisConfig::<Runtime> {
             dex_list: self.dex_list,

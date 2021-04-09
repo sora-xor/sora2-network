@@ -120,7 +120,7 @@ impl assets::Config for Runtime {
 }
 
 parameter_types! {
-    pub const ExistentialDeposit: u128 = 1;
+    pub const ExistentialDeposit: u128 = 0;
     pub const TransferFee: u128 = 0;
     pub const CreationFee: u128 = 0;
     pub const TransactionByteFee: u128 = 1;
@@ -255,6 +255,12 @@ impl ExtBuilder {
         let mut t = frame_system::GenesisConfig::default()
             .build_storage::<Runtime>()
             .unwrap();
+
+        pallet_balances::GenesisConfig::<Runtime> {
+            balances: vec![(ALICE, 0)],
+        }
+        .assimilate_storage(&mut t)
+        .unwrap();
 
         permissions::GenesisConfig::<Runtime> {
             initial_permission_owners: self.initial_permission_owners,

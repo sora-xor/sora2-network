@@ -80,6 +80,17 @@ impl<TechAccountId> DistributionAccounts<DistributionAccountData<TechAccountId>>
             &self.projects.account_id,
         ]
     }
+
+    pub fn accounts(&self) -> [&TechAccountId; 6] {
+        [
+            &self.xor_allocation.account_id,
+            &self.sora_citizens.account_id,
+            &self.stores_and_shops.account_id,
+            &self.parliament_and_development.account_id,
+            &self.projects.account_id,
+            &self.val_holders.account_id,
+        ]
+    }
 }
 
 impl<DistributionAccountData: Default> Default for DistributionAccounts<DistributionAccountData> {
