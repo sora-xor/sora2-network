@@ -129,6 +129,7 @@ fn calculate_reserves(accounts: &Vec<(H160, Balance)>) -> Balance {
 }
 
 #[cfg(feature = "test-net")]
+#[allow(unused)]
 pub fn dev_net() -> Result<ChainSpec, String> {
     ChainSpec::from_json_bytes(&include_bytes!("./bytes/chain_spec_dev.json")[..])
 }
