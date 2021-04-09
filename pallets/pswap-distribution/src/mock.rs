@@ -85,6 +85,7 @@ parameter_types! {
     pub const CreationFee: u128 = 0;
     pub const TransactionByteFee: u128 = 1;
     pub GetFee: Fixed = fixed_from_basis_points(30u16);
+    pub GetParliamentAccountId: AccountId = AccountId32::from([7u8; 32]);
 }
 
 construct_runtime! {
@@ -141,6 +142,7 @@ impl Config for Runtime {
     type EnsureDEXManager = DexManager;
     type OnPswapBurnedAggregator = ();
     type WeightInfo = ();
+    type GetParliamentAccountId = GetParliamentAccountId;
 }
 
 impl tokens::Config for Runtime {
@@ -328,6 +330,7 @@ impl ExtBuilder {
                 (fees_account_a(), 0),
                 (fees_account_b(), 0),
                 (GetPswapDistributionAccountId::get(), 0),
+                (GetParliamentAccountId::get(), 0),
             ])
             .collect::<Vec<_>>();
 

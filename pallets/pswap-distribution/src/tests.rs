@@ -122,6 +122,10 @@ fn distribute_with_zero_balance_should_pass() {
 fn incentive_distribution_routine_should_pass() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
+        let parliament =
+            Tokens::free_balance(GetIncentiveAssetId::get(), &GetParliamentAccountId::get());
+        assert_eq!(parliament, balance!(0));
+
         for i in 0u64..5 {
             PswapDistrModule::incentive_distribution_routine(i);
         }
@@ -129,36 +133,48 @@ fn incentive_distribution_routine_should_pass() {
         let balance_a = Tokens::free_balance(GetIncentiveAssetId::get(), &liquidity_provider_a());
         let balance_b = Tokens::free_balance(GetIncentiveAssetId::get(), &liquidity_provider_b());
         let balance_c = Tokens::free_balance(GetIncentiveAssetId::get(), &liquidity_provider_c());
+        let parliament =
+            Tokens::free_balance(GetIncentiveAssetId::get(), &GetParliamentAccountId::get());
         assert_eq!(balance_a, 0);
         assert_eq!(balance_b, 0);
         assert_eq!(balance_c, 0);
+        assert_eq!(parliament, balance!(0.6));
 
         PswapDistrModule::claim_incentive(Origin::signed(liquidity_provider_a()))
             .expect("Failed to claim.");
         let balance_a = Tokens::free_balance(GetIncentiveAssetId::get(), &liquidity_provider_a());
         let balance_b = Tokens::free_balance(GetIncentiveAssetId::get(), &liquidity_provider_b());
         let balance_c = Tokens::free_balance(GetIncentiveAssetId::get(), &liquidity_provider_c());
+        let parliament =
+            Tokens::free_balance(GetIncentiveAssetId::get(), &GetParliamentAccountId::get());
         assert_eq!(balance_a, balance!(2.7));
         assert_eq!(balance_b, 0);
         assert_eq!(balance_c, 0);
+        assert_eq!(parliament, balance!(0.6));
 
         PswapDistrModule::claim_incentive(Origin::signed(liquidity_provider_b()))
             .expect("Failed to claim.");
         let balance_a = Tokens::free_balance(GetIncentiveAssetId::get(), &liquidity_provider_a());
         let balance_b = Tokens::free_balance(GetIncentiveAssetId::get(), &liquidity_provider_b());
         let balance_c = Tokens::free_balance(GetIncentiveAssetId::get(), &liquidity_provider_c());
+        let parliament =
+            Tokens::free_balance(GetIncentiveAssetId::get(), &GetParliamentAccountId::get());
         assert_eq!(balance_a, balance!(2.7));
         assert_eq!(balance_b, balance!(1.8));
         assert_eq!(balance_c, 0);
+        assert_eq!(parliament, balance!(0.6));
 
         PswapDistrModule::claim_incentive(Origin::signed(liquidity_provider_c()))
             .expect("Failed to claim.");
         let balance_a = Tokens::free_balance(GetIncentiveAssetId::get(), &liquidity_provider_a());
         let balance_b = Tokens::free_balance(GetIncentiveAssetId::get(), &liquidity_provider_b());
         let balance_c = Tokens::free_balance(GetIncentiveAssetId::get(), &liquidity_provider_c());
+        let parliament =
+            Tokens::free_balance(GetIncentiveAssetId::get(), &GetParliamentAccountId::get());
         assert_eq!(balance_a, balance!(2.7));
         assert_eq!(balance_b, balance!(1.8));
         assert_eq!(balance_c, balance!(0.9));
+        assert_eq!(parliament, balance!(0.6));
 
         for i in 5u64..10 {
             PswapDistrModule::incentive_distribution_routine(i);
@@ -167,9 +183,16 @@ fn incentive_distribution_routine_should_pass() {
         let balance_a = Tokens::free_balance(GetIncentiveAssetId::get(), &liquidity_provider_a());
         let balance_b = Tokens::free_balance(GetIncentiveAssetId::get(), &liquidity_provider_b());
         let balance_c = Tokens::free_balance(GetIncentiveAssetId::get(), &liquidity_provider_c());
+        let parliament =
+            Tokens::free_balance(GetIncentiveAssetId::get(), &GetParliamentAccountId::get());
         assert_eq!(balance_a, balance!(2.7));
         assert_eq!(balance_b, balance!(1.8));
         assert_eq!(balance_c, balance!(0.9));
+        assert_eq!(parliament, balance!(0.6));
+
+        let total = balance_a + balance_b + balance_c + parliament;
+        assert_eq!(total, balance!(6));
+        assert_eq!(total / parliament, 10);
     })
 }
 
