@@ -632,21 +632,24 @@ fn testnet_genesis(
             (*tech_account).to_owned(),
         ));
     }
-    let mut balances = vec![(eth_bridge_account_id.clone(), initial_eth_bridge_xor_amount)]
-        .into_iter()
-        .chain(
-            initial_authorities
-                .iter()
-                .cloned()
-                .map(|(k1, ..)| (k1, initial_staking)),
-        )
-        .chain(
-            initial_authorities
-                .iter()
-                .cloned()
-                .map(|(_, k2, ..)| (k2, initial_staking)),
-        )
-        .collect::<Vec<_>>();
+    let mut balances = vec![
+        (eth_bridge_account_id.clone(), initial_eth_bridge_xor_amount),
+        (dex_root_account_id.clone(), 0),
+    ]
+    .into_iter()
+    .chain(
+        initial_authorities
+            .iter()
+            .cloned()
+            .map(|(k1, ..)| (k1, initial_staking)),
+    )
+    .chain(
+        initial_authorities
+            .iter()
+            .cloned()
+            .map(|(_, k2, ..)| (k2, initial_staking)),
+    )
+    .collect::<Vec<_>>();
     let rewards_config = if let ChainSpecKind::Dev = chain_spec_kind {
         RewardsConfig {
             reserves_account_id: rewards_tech_account_id,
@@ -814,6 +817,15 @@ fn testnet_genesis(
                     Balance::zero(),
                     true,
                 ),
+                (
+                    DAI.into(),
+                    eth_bridge_account_id.clone(),
+                    AssetSymbol(b"DAI".to_vec()),
+                    AssetName(b"Dai Stablecoin".to_vec()),
+                    18,
+                    Balance::zero(),
+                    true,
+                ),
             ],
         }),
         permissions: Some(PermissionsConfig {
@@ -915,6 +927,12 @@ fn testnet_genesis(
                         id: VAL.into(),
                         sidechain_id: eth_bridge_params.val_contract_address,
                         owned: true,
+                        precision: DEFAULT_BALANCE_PRECISION,
+                    },
+                    AssetConfig::Sidechain {
+                        id: DAI.into(),
+                        sidechain_id: hex!("5592ec0cfb4dbc12d3ab100b257153436a1f0fea").into(),
+                        owned: false,
                         precision: DEFAULT_BALANCE_PRECISION,
                     },
                 ],
@@ -1314,21 +1332,24 @@ fn mainnet_genesis(
             ],
         }),
         pallet_balances: Some(BalancesConfig {
-            balances: vec![(eth_bridge_account_id.clone(), initial_eth_bridge_xor_amount)]
-                .into_iter()
-                .chain(
-                    initial_authorities
-                        .iter()
-                        .cloned()
-                        .map(|(k1, ..)| (k1, initial_staking)),
-                )
-                .chain(
-                    initial_authorities
-                        .iter()
-                        .cloned()
-                        .map(|(_, k2, ..)| (k2, initial_staking)),
-                )
-                .collect(),
+            balances: vec![
+                (eth_bridge_account_id.clone(), initial_eth_bridge_xor_amount),
+                (dex_root_account_id.clone(), 0),
+            ]
+            .into_iter()
+            .chain(
+                initial_authorities
+                    .iter()
+                    .cloned()
+                    .map(|(k1, ..)| (k1, initial_staking)),
+            )
+            .chain(
+                initial_authorities
+                    .iter()
+                    .cloned()
+                    .map(|(_, k2, ..)| (k2, initial_staking)),
+            )
+            .collect(),
         }),
         dex_manager: Some(DEXManagerConfig {
             dex_list: vec![(
