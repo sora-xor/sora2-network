@@ -35,12 +35,12 @@ pub struct WeightInfo<T>(PhantomData<T>);
 
 impl<T: frame_system::Config> crate::WeightInfo for WeightInfo<T> {
     fn migrate() -> Weight {
-        (853_397_000 as Weight)
+        (24_464_143_000 as Weight)
             .saturating_add(T::DbWeight::get().reads(13 as Weight))
             .saturating_add(T::DbWeight::get().writes(6 as Weight))
     }
     fn on_initialize() -> Weight {
-        (215_881_000 as Weight)
+        (890_442_000 as Weight)
             .saturating_add(T::DbWeight::get().reads(14 as Weight))
             .saturating_add(T::DbWeight::get().writes(8 as Weight))
     }

@@ -40,8 +40,18 @@ fn setup_benchmark_assets_only<T: Config>() -> Result<(), &'static str> {
     let owner_origin: <T as frame_system::Config>::Origin = RawOrigin::Signed(owner.clone()).into();
 
     // Grant permissions to self in case they haven't been explicitly given in genesis config
-    Permissions::<T>::grant_permission(owner.clone(), owner.clone(), MINT)?;
-    Permissions::<T>::grant_permission(owner.clone(), owner.clone(), BURN)?;
+    let _ = Permissions::<T>::assign_permission(
+        owner.clone(),
+        &owner,
+        permissions::MINT,
+        permissions::Scope::Unlimited,
+    );
+    let _ = Permissions::<T>::assign_permission(
+        owner.clone(),
+        &owner,
+        permissions::BURN,
+        permissions::Scope::Unlimited,
+    );
 
     let _ = Assets::<T>::register_asset_id(
         owner.clone(),
@@ -72,8 +82,18 @@ fn setup_benchmark<T: Config>() -> Result<(), &'static str> {
     let owner_origin: <T as frame_system::Config>::Origin = RawOrigin::Signed(owner.clone()).into();
 
     // Grant permissions to self in case they haven't been explicitly given in genesis config
-    Permissions::<T>::grant_permission(owner.clone(), owner.clone(), MINT)?;
-    Permissions::<T>::grant_permission(owner.clone(), owner.clone(), BURN)?;
+    let _ = Permissions::<T>::assign_permission(
+        owner.clone(),
+        &owner,
+        permissions::MINT,
+        permissions::Scope::Unlimited,
+    );
+    let _ = Permissions::<T>::assign_permission(
+        owner.clone(),
+        &owner,
+        permissions::BURN,
+        permissions::Scope::Unlimited,
+    );
 
     let _ = Assets::<T>::register_asset_id(
         owner.clone(),

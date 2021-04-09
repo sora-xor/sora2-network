@@ -1,12 +1,14 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
-mod weights;
+pub mod weights;
 
 #[cfg(test)]
 mod mock;
 
 #[cfg(test)]
 mod tests;
+
+mod benchmarking;
 
 use core::convert::TryInto;
 

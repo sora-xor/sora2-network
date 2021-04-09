@@ -23,7 +23,7 @@ use sp_std::prelude::*;
 
 type LiquiditySourceIdOf<T> = LiquiditySourceId<<T as common::Config>::DEXId, LiquiditySourceType>;
 
-mod weights;
+pub mod weights;
 
 #[cfg(test)]
 mod mock;

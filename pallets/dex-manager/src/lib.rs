@@ -6,12 +6,9 @@ use common::{hash, ManagementMode};
 use frame_support::dispatch::DispatchResult;
 use frame_support::ensure;
 use frame_support::sp_runtime::DispatchError;
-use frame_support::weights::Weight;
 use frame_system::RawOrigin;
 use permissions::{Scope, MANAGE_DEX};
 use sp_std::vec::Vec;
-
-mod weights;
 
 #[cfg(test)]
 mod mock;
@@ -20,10 +17,6 @@ mod mock;
 mod tests;
 
 type DEXInfo<T> = common::prelude::DEXInfo<AssetIdOf<T>>;
-
-pub trait WeightInfo {
-    fn initialize_dex() -> Weight;
-}
 
 impl<T: Config> EnsureDEXManager<T::DEXId, T::AccountId, DispatchError> for Module<T> {
     fn ensure_can_manage<OuterOrigin>(
@@ -84,10 +77,7 @@ pub mod pallet {
     use frame_system::pallet_prelude::*;
 
     #[pallet::config]
-    pub trait Config: frame_system::Config + common::Config + assets::Config {
-        /// Weight information for extrinsics in this pallet.
-        type WeightInfo: WeightInfo;
-    }
+    pub trait Config: frame_system::Config + common::Config + assets::Config {}
 
     #[pallet::pallet]
     #[pallet::generate_store(pub(super) trait Store)]

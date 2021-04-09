@@ -7,14 +7,13 @@ use framenode_runtime::bonding_curve_pool::{DistributionAccountData, Distributio
 use framenode_runtime::eth_bridge::{AssetConfig, NetworkConfig};
 use framenode_runtime::opaque::SessionKeys;
 use framenode_runtime::{
-    bonding_curve_pool, eth_bridge, AccountId, AssetName, AssetSymbol, AssetsConfig, BabeConfig,
-    BalancesConfig, BondingCurvePoolConfig, BridgeMultisigConfig, CouncilConfig, DEXAPIConfig,
-    DEXManagerConfig, DemocracyConfig, EthBridgeConfig, FarmingConfig, GenesisConfig,
-    GetBaseAssetId, GetParliamentTechAccountId, GetPswapAssetId, GetValAssetId, GetXorAssetId,
-    GrandpaConfig, ImOnlineId, IrohaMigrationConfig, LiquiditySourceType,
-    MulticollateralBondingCurvePoolConfig, PermissionsConfig, PswapDistributionConfig,
-    RewardsConfig, Runtime, SessionConfig, StakerStatus, StakingConfig, SystemConfig,
-    TechAccountId, TechnicalConfig, TokensConfig, WASM_BINARY,
+    eth_bridge, AccountId, AssetName, AssetSymbol, AssetsConfig, BabeConfig, BalancesConfig,
+    BridgeMultisigConfig, CouncilConfig, DEXAPIConfig, DEXManagerConfig, DemocracyConfig,
+    EthBridgeConfig, FarmingConfig, GenesisConfig, GetBaseAssetId, GetParliamentTechAccountId,
+    GetPswapAssetId, GetValAssetId, GetXorAssetId, GrandpaConfig, ImOnlineId, IrohaMigrationConfig,
+    LiquiditySourceType, MulticollateralBondingCurvePoolConfig, PermissionsConfig,
+    PswapDistributionConfig, RewardsConfig, Runtime, SessionConfig, StakerStatus, StakingConfig,
+    SystemConfig, TechAccountId, TechnicalConfig, TokensConfig, WASM_BINARY,
 };
 #[cfg(feature = "test-net")]
 use framenode_runtime::{FaucetConfig, Signature, SudoConfig, TechnicalCommitteeConfig};
@@ -548,11 +547,6 @@ fn testnet_genesis(
         )
         .unwrap();
 
-    let bonding_curve_reserves_tech_account_id = TechAccountId::Generic(
-        bonding_curve_pool::TECH_ACCOUNT_PREFIX.to_vec(),
-        bonding_curve_pool::TECH_ACCOUNT_RESERVES.to_vec(),
-    );
-
     let mbc_reserves_tech_account_id = framenode_runtime::GetMbcReservesTechAccountId::get();
     let mbc_reserves_account_id = framenode_runtime::GetMbcReservesAccountId::get();
 
@@ -943,10 +937,6 @@ fn testnet_genesis(
             ))
             .collect(),
         }),
-        bonding_curve_pool: Some(BondingCurvePoolConfig {
-            distribution_accounts: accounts.clone(),
-            reserves_account_id: bonding_curve_reserves_tech_account_id,
-        }),
         multicollateral_bonding_curve_pool: Some(MulticollateralBondingCurvePoolConfig {
             distribution_accounts: accounts,
             reserves_account_id: mbc_reserves_tech_account_id,
@@ -1095,11 +1085,6 @@ fn mainnet_genesis(
             &eth_bridge_authority_tech_account_id,
         )
         .unwrap();
-    // Main MBC reserves account id
-    let bonding_curve_reserves_tech_account_id = TechAccountId::Generic(
-        bonding_curve_pool::TECH_ACCOUNT_PREFIX.to_vec(),
-        bonding_curve_pool::TECH_ACCOUNT_RESERVES.to_vec(),
-    );
 
     let mbc_reserves_tech_account_id = framenode_runtime::GetMbcReservesTechAccountId::get();
     let mbc_reserves_account_id = framenode_runtime::GetMbcReservesAccountId::get();
@@ -1423,10 +1408,6 @@ fn mainnet_genesis(
                 ),
             ))
             .collect(),
-        }),
-        bonding_curve_pool: Some(BondingCurvePoolConfig {
-            distribution_accounts: accounts.clone(),
-            reserves_account_id: bonding_curve_reserves_tech_account_id,
         }),
         multicollateral_bonding_curve_pool: Some(MulticollateralBondingCurvePoolConfig {
             distribution_accounts: accounts,

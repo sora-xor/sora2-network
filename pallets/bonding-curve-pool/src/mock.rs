@@ -90,9 +90,7 @@ impl frame_system::Config for Runtime {
     type SS58Prefix = ();
 }
 
-impl dex_manager::Config for Runtime {
-    type WeightInfo = ();
-}
+impl dex_manager::Config for Runtime {}
 
 impl trading_pair::Config for Runtime {
     type Event = Event;

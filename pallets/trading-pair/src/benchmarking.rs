@@ -4,17 +4,14 @@
 
 use super::*;
 
-use codec::{Decode, Encode};
-use common::{AssetName, AssetSymbol, DEXId, DOT, XOR};
-use frame_benchmarking::benchmarks;
+use codec::Decode;
+use common::{AssetName, AssetSymbol, Balance, DEXId, DOT, XOR};
+use frame_benchmarking::{benchmarks, Zero};
 use frame_system::{EventRecord, RawOrigin};
 use hex_literal::hex;
-use sp_core::H256;
-use sp_io::hashing::blake2_256;
 use sp_std::prelude::*;
 
-use crate::Module as TradingPairModule;
-use assets::Module as Assets;
+use assets::Pallet as Assets;
 
 pub const DEX: DEXId = DEXId::Polkaswap;
 
@@ -22,36 +19,6 @@ pub const DEX: DEXId = DEXId::Polkaswap;
 fn alice<T: Config>() -> T::AccountId {
     let bytes = hex!("d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d");
     T::AccountId::decode(&mut &bytes[..]).unwrap_or_default()
-}
-
-fn asset<T: Config>(name: &'static str, index: u32) -> T::AssetId {
-    let entropy: [u8; 32] = (name, index).using_encoded(blake2_256);
-    T::AssetId::from(H256(entropy))
-}
-
-fn setup_benchmark<T: Config>(n: u32) -> Result<(), &'static str> {
-    let owner = alice::<T>();
-    let owner_origin: <T as frame_system::Config>::Origin = RawOrigin::Signed(owner.clone()).into();
-    for i in 0..n {
-        let asset_id = asset::<T>("token", i);
-        Assets::<T>::register_asset_id(
-            owner.clone(),
-            asset_id.clone(),
-            AssetSymbol(b"TOKEN".to_vec()),
-            AssetName(b"TOKEN".to_vec()),
-            18,
-            0,
-            true,
-        )?;
-        TradingPairModule::<T>::register(
-            owner_origin.clone(),
-            DEX.into(),
-            XOR.into(),
-            asset_id.clone(),
-        )?;
-    }
-
-    Ok(())
 }
 
 fn assert_last_event<T: Config>(generic_event: <T as Config>::Event) {
@@ -64,8 +31,16 @@ fn assert_last_event<T: Config>(generic_event: <T as Config>::Event) {
 
 benchmarks! {
     register {
-        let n in 1 .. 1000 => setup_benchmark::<T>(n)?;
         let caller = alice::<T>();
+        let _ = Assets::<T>::register_asset_id(
+            caller.clone(),
+            DOT.into(),
+            AssetSymbol(b"DOT".to_vec()),
+            AssetName(b"Polkadot Token".to_vec()),
+            18,
+            Balance::zero(),
+            true,
+        );
         let trading_pair = TradingPair::<T> {
             base_asset_id: XOR.into(),
             target_asset_id: DOT.into(),

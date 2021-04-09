@@ -24,6 +24,7 @@ permissions = { path = "../../permissions", default-features = false }
 trading-pair = { path = "../../trading-pair", default-features = false }
 technical = { path = "../../technical", default-features = false }
 pswap-distribution = { path = "../../pswap-distribution", default-features = false }
+multicollateral-bonding-curve-pool = { path = "../../multicollateral-bonding-curve-pool", default-features = false }
 hex-literal = "0.3.1"
 
 [dev-dependencies]
@@ -49,4 +50,5 @@ std = [
     'permissions/std',
     'trading-pair/std',
     'technical/std',
+    'multicollateral-bonding-curve-pool/std',
 ]

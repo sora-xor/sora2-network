@@ -21,7 +21,7 @@ use aliases::{
     PolySwapActionStructOf, TechAccountIdOf, TechAssetIdOf, WithdrawLiquidityActionOf,
 };
 
-mod weights;
+pub mod weights;
 
 #[cfg(test)]
 mod mock;
