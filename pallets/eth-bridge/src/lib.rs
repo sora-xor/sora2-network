@@ -64,7 +64,7 @@ use frame_support::sp_runtime::{offchain as rt_offchain, KeyTypeId, MultiSigner,
 use frame_support::traits::{Get, GetCallName};
 use frame_support::weights::{Pays, Weight};
 use frame_support::{
-    debug, ensure, fail, sp_io, IterableStorageDoubleMap, Parameter, RuntimeDebug,
+    debug, ensure, fail, sp_io, transactional, IterableStorageDoubleMap, Parameter, RuntimeDebug,
 };
 use frame_system::offchain::{AppCrypto, CreateSignedTransaction, SendSignedTransaction, Signer};
 use frame_system::{ensure_root, ensure_signed};
@@ -90,7 +90,7 @@ pub trait WeightInfo {
     fn add_asset() -> Weight;
     fn add_sidechain_token() -> Weight;
     fn transfer_to_sidechain() -> Weight;
-    fn request_from_sidechain() -> Weight;
+    fn request_from_sidechain(kind: &IncomingRequestKind) -> (Weight, Pays);
     fn add_peer() -> Weight;
     fn remove_peer() -> Weight;
     fn force_add_peer() -> Weight;
@@ -1170,6 +1170,7 @@ pub mod pallet {
         /// - `bridge_contract_address` - address of smart-contract deployed on a corresponding
         /// network.
         /// - `initial_peers` - a set of initial network peers.
+        #[transactional]
         #[pallet::weight(<T as Config>::WeightInfo::register_bridge())]
         pub fn register_bridge(
             origin: OriginFor<T>,
@@ -1196,6 +1197,7 @@ pub mod pallet {
         /// Parameters:
         /// - `asset_id` - Thischain asset identifier.
         /// - `network_id` - network identifier to which the asset should be added.
+        #[transactional]
         #[pallet::weight(<T as Config>::WeightInfo::add_asset())]
         pub fn add_asset(
             origin: OriginFor<T>,
@@ -1227,6 +1229,7 @@ pub mod pallet {
         /// - `name` - token name.
         /// - `decimals` -  token precision.
         /// - `network_id` - network identifier.
+        #[transactional]
         #[pallet::weight(<T as Config>::WeightInfo::add_sidechain_token())]
         pub fn add_sidechain_token(
             origin: OriginFor<T>,
@@ -1271,6 +1274,7 @@ pub mod pallet {
         /// - `to` - sidechain account id.
         /// - `amount` - amount of the asset.
         /// - `network_id` - network identifier.
+        #[transactional]
         #[pallet::weight(<T as Config>::WeightInfo::transfer_to_sidechain())]
         pub fn transfer_to_sidechain(
             origin: OriginFor<T>,
@@ -1304,7 +1308,8 @@ pub mod pallet {
         /// - `eth_tx_hash` - transaction hash on Sidechain.
         /// - `kind` - incoming request type.
         /// - `network_id` - network identifier.
-        #[pallet::weight(<T as Config>::WeightInfo::request_from_sidechain())]
+        #[transactional]
+        #[pallet::weight(<T as Config>::WeightInfo::request_from_sidechain(kind))]
         pub fn request_from_sidechain(
             origin: OriginFor<T>,
             eth_tx_hash: H256,
@@ -1402,6 +1407,7 @@ pub mod pallet {
         /// - `account_id` - account id on thischain.
         /// - `address` - account id on sidechain.
         /// - `network_id` - network identifier.
+        #[transactional]
         #[pallet::weight(<T as Config>::WeightInfo::add_peer())]
         pub fn add_peer(
             origin: OriginFor<T>,
@@ -1447,6 +1453,7 @@ pub mod pallet {
         /// Parameters:
         /// - `account_id` - account id on thischain.
         /// - `network_id` - network identifier.
+        #[transactional]
         #[pallet::weight(<T as Config>::WeightInfo::remove_peer())]
         pub fn remove_peer(
             origin: OriginFor<T>,
@@ -1493,6 +1500,7 @@ pub mod pallet {
         ///
         /// Parameters:
         /// - `network_id` - bridge network identifier.
+        #[transactional]
         #[pallet::weight(<T as Config>::WeightInfo::prepare_for_migration())]
         pub fn prepare_for_migration(
             origin: OriginFor<T>,
@@ -1523,6 +1531,7 @@ pub mod pallet {
         /// - `new_contract_address` - new sidechain ocntract address.
         /// - `erc20_native_tokens` - migrated assets ids.
         /// - `network_id` - bridge network identifier.
+        #[transactional]
         #[pallet::weight(<T as Config>::WeightInfo::migrate())]
         pub fn migrate(
             origin: OriginFor<T>,
@@ -1611,18 +1620,18 @@ pub mod pallet {
             debug::debug!("called approve_request");
             let author = ensure_signed(origin)?;
             let net_id = network_id;
+            Self::ensure_peer(&author, net_id)?;
             let request = Requests::<T>::get(net_id, hash)
                 .and_then(|x| x.into_outgoing().map(|x| x.0))
                 .ok_or(Error::<T>::UnknownRequest)?;
             let request_encoded = request.to_eth_abi(hash)?;
-            Self::ensure_peer(&author, net_id)?;
             if !Self::verify_message(
                 request_encoded.as_raw(),
                 &signature_params,
                 &ocw_public,
                 &author,
             ) {
-                // TODO: punish the off-chain worker
+                // TODO: punish the peer.
                 return Err(Error::<T>::InvalidSignature.into());
             }
             debug::info!("Verified request approve {:?}", request_encoded);
@@ -1685,6 +1694,7 @@ pub mod pallet {
         /// Add the given peer to the peers set without additional checks.
         ///
         /// Can only be called by a root account.
+        #[transactional]
         #[pallet::weight(<T as Config>::WeightInfo::force_add_peer())]
         pub fn force_add_peer(
             origin: OriginFor<T>,
@@ -3029,20 +3039,22 @@ impl<T: Config> Pallet<T> {
         incoming_request: LoadIncomingTransactionRequest<T>,
         tx: Transaction,
     ) -> Result<IncomingRequest<T>, Error<T>> {
-        let (fun, arg_pos, tail, added) = if let Some(tail) = strip_prefix(
-            &tx.input.0,
-            &*ADD_PEER_BY_PEER_ID.get_or_init(init_add_peer_by_peer_fn),
-        ) {
+        let (fun, arg_pos, tail, added) = if let Some(tail) = tx
+            .input
+            .0
+            .strip_prefix(&*ADD_PEER_BY_PEER_ID.get_or_init(init_add_peer_by_peer_fn))
+        {
             (
                 &ADD_PEER_BY_PEER_FN,
                 ADD_PEER_BY_PEER_TX_HASH_ARG_POS,
                 tail,
                 true,
             )
-        } else if let Some(tail) = strip_prefix(
-            &tx.input.0,
-            &*REMOVE_PEER_BY_PEER_ID.get_or_init(init_remove_peer_by_peer_fn),
-        ) {
+        } else if let Some(tail) = tx
+            .input
+            .0
+            .strip_prefix(&*REMOVE_PEER_BY_PEER_ID.get_or_init(init_remove_peer_by_peer_fn))
+        {
             (
                 &REMOVE_PEER_BY_PEER_FN,
                 REMOVE_PEER_BY_PEER_TX_HASH_ARG_POS,
@@ -3569,19 +3581,4 @@ where
     } else {
         S::iter().map(f).collect()
     }
-}
-
-// TODO: remove when `[T]::strip_prefix` will be stabilized.
-pub fn strip_prefix<'a, T>(slice: &'a [T], prefix: &'a [T]) -> Option<&'a [T]>
-where
-    T: PartialEq,
-{
-    let n = prefix.len();
-    if n <= slice.len() {
-        let (head, tail) = slice.split_at(n);
-        if head == prefix {
-            return Some(tail);
-        }
-    }
-    None
 }
