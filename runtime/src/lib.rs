@@ -153,7 +153,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
     spec_name: create_runtime_str!("sora-substrate"),
     impl_name: create_runtime_str!("sora-substrate"),
     authoring_version: 1,
-    spec_version: 11,
+    spec_version: 20,
     impl_version: 1,
     apis: RUNTIME_API_VERSIONS,
     transaction_version: 1,
@@ -774,7 +774,7 @@ impl pallet_transaction_payment::Config for Runtime {
     type FeeMultiplierUpdate = ConstantFeeMultiplier;
 }
 
-#[cfg(feature = "test-net")]
+#[cfg(feature = "private-net")]
 impl pallet_sudo::Config for Runtime {
     type Call = Call;
     type Event = Event;
@@ -821,7 +821,7 @@ impl eth_bridge::Config for Runtime {
     type WeightInfo = eth_bridge::weights::WeightInfo<Runtime>;
 }
 
-#[cfg(feature = "faucet")]
+#[cfg(feature = "private-net")]
 impl faucet::Config for Runtime {
     type Event = Event;
     type WeightInfo = faucet::weights::WeightInfo<Runtime>;
@@ -956,7 +956,7 @@ parameter_types! {
     pub const XorIntoValBurnedWeight: u32 = 50;
 }
 
-#[cfg(feature = "test-net")]
+#[cfg(feature = "private-net")]
 construct_runtime! {
     pub enum Runtime where
         Block = Block,
@@ -1013,7 +1013,7 @@ construct_runtime! {
     }
 }
 
-#[cfg(not(feature = "test-net"))]
+#[cfg(not(feature = "private-net"))]
 construct_runtime! {
     pub enum Runtime where
         Block = Block,
@@ -1608,7 +1608,7 @@ impl_runtime_apis! {
 
             add_benchmark!(params, batches, assets, Assets);
             add_benchmark!(params, batches, dex_api, DEXAPIBench::<Runtime>);
-            #[cfg(feature = "faucet")]
+            #[cfg(feature = "private-net")]
             add_benchmark!(params, batches, faucet, Faucet);
             add_benchmark!(params, batches, iroha_migration, IrohaMigration);
             add_benchmark!(params, batches, liquidity_proxy, LiquidityProxyBench::<Runtime>);

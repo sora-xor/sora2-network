@@ -15,6 +15,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use std::collections::HashMap;
+
 use crate::cli::{Cli, Subcommand};
 use crate::{chain_spec, service};
 use framenode_runtime::Block;
@@ -53,27 +55,68 @@ impl SubstrateCli for Cli {
     }
 
     fn load_spec(&self, id: &str) -> Result<Box<dyn sc_service::ChainSpec>, String> {
-        #[cfg(feature = "test-net")]
-        let chain_spec = match id {
-            "" | "local" => Box::new(chain_spec::local_testnet_config()),
-            "dev" | // => Box::new(chain_spec::dev_net()?), // TODO: temporary override to avoid rebuilding json file
-            "dev-coded" => Box::new(chain_spec::dev_net_coded()),
-            "staging" => Box::new(chain_spec::staging_net(false)),
-            "test" => Box::new(chain_spec::staging_net(true)),
-            path => Box::new(chain_spec::ChainSpec::from_json_file(
-                std::path::PathBuf::from(path),
-            )?),
-        };
+        // The compiler asked for the type
+        let mut handlers: HashMap<&str, Box<dyn Fn() -> Result<chain_spec::ChainSpec, String>>> =
+            HashMap::new();
 
-        #[cfg(not(feature = "test-net"))]
-        let chain_spec = match id {
-            "" | "main" => Box::new(chain_spec::main_net()),
-            path => Box::new(chain_spec::ChainSpec::from_json_file(
-                std::path::PathBuf::from(path),
-            )?),
-        };
+        // It's not possible to match arms with #[cfg].
+        // It's the least obscure way I know of.
 
-        Ok(chain_spec)
+        #[cfg(all(feature = "private-net", feature = "coded-nets"))]
+        handlers.insert("local", Box::new(|| Ok(chain_spec::local_testnet_config())));
+
+        // dev currently uses code
+        // #[cfg(all(feature = "dev-net", not(feature = "coded-nets")))]
+        // handlers.insert("dev", Box::new(|| chain_spec::dev_net()));
+
+        // Rename dev to dev-coded
+        #[cfg(all(feature = "dev-net", feature = "coded-nets"))]
+        handlers.insert("dev", Box::new(|| Ok(chain_spec::dev_net_coded())));
+
+        #[cfg(all(feature = "test-net", not(feature = "coded-nets")))]
+        handlers.insert("test", Box::new(|| chain_spec::test_net()));
+
+        #[cfg(all(feature = "test-net", feature = "coded-nets"))]
+        handlers.insert(
+            "test-coded",
+            Box::new(|| Ok(chain_spec::staging_net_coded(true))),
+        );
+
+        #[cfg(all(feature = "stage-net", not(feature = "coded-nets")))]
+        handlers.insert("staging", Box::new(|| chain_spec::staging_net()));
+
+        #[cfg(all(feature = "stage-net", feature = "coded-nets"))]
+        handlers.insert(
+            "staging-coded",
+            Box::new(|| Ok(chain_spec::staging_net_coded(false))),
+        );
+
+        #[cfg(all(not(feature = "private-net"), not(feature = "coded-nets")))]
+        // See chain_spec::main_net
+        // handlers.insert("main", Box::new(|| chain_spec::main_net()));
+        // Once it's ready, uncomment the line above and remove the line below.
+        handlers.insert(
+            "main",
+            Box::new(|| Err("main net is not ready yet".to_string())),
+        );
+
+        #[cfg(all(not(feature = "private-net"), feature = "coded-nets"))]
+        handlers.insert("main-coded", Box::new(|| Ok(chain_spec::main_net_coded())));
+
+        let chain_spec = if id == "" {
+            if handlers.len() == 1 {
+                let handler = handlers.values().next().unwrap();
+                handler()
+            } else {
+                Err("too many available chain specs, use --chain".to_string())
+            }
+        } else if let Some(handler) = handlers.remove(id) {
+            handler()
+        } else {
+            chain_spec::ChainSpec::from_json_file(std::path::PathBuf::from(id))
+        }?;
+
+        Ok(Box::new(chain_spec))
     }
 
     fn native_runtime_version(_: &Box<dyn ChainSpec>) -> &'static RuntimeVersion {

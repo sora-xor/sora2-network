@@ -8,7 +8,8 @@ String baseImageName = "docker.soramitsu.co.jp/sora2/substrate-env:latest"
 String appImageName = "docker.soramitsu.co.jp/sora2/substrate"
 String secretScannerExclusion = '.*Cargo.toml'
 Boolean disableSecretScanner = false
-def pushTags=['master': 'latest', 'develop': 'dev', 'staging': 'stage']
+def pushTags=['master': 'latest', 'develop': 'dev']
+def featureTags=['master': 'test', 'develop': 'dev']
 
 pipeline {
     options {
@@ -40,18 +41,20 @@ pipeline {
                 script {
                     docker.withRegistry( "https://" + registry, dockerRegistryRWUserId) {
                         docker.image(baseImageName).inside() {
-                            sh "cd ${env.WORKSPACE} && cargo fmt -- --check > /dev/null && cargo build --release --features \"test-net reduced-pswap-reward-periods\""
-                            sh "cp /opt/rust-target/release/framenode ${env.WORKSPACE}/housekeeping/framenode"
-                            sh "cargo test --release"
+                            sh "cd ${env.WORKSPACE}"
+                            if (getPushVersion(pushTags)){
+                                flag = env.TAG_NAME ? "stage" : featureTags[env.GIT_BRANCH]
+                                sh "cargo build --release --features \"${flag}-net reduced-pswap-reward-periods\""
+                                sh "cargo test --release"
+                                sh "cp /opt/rust-target/release/framenode ${env.WORKSPACE}/housekeeping/framenode"
+                            } else {
+                                sh "cargo fmt -- --check > /dev/null"
+                                // It slows the build down too much. There is some bug.
+                                // sh "./housekeeping/docker/release/check_with_different_features.sh"
+                                // sh "cargo test"
+                            }
                         }
                     }
-                }
-            }
-        }
-        stage('Build image') {
-            steps{
-                script {
-                    sh "docker build -f housekeeping/docker/release/Dockerfile -t ${appImageName} ."
                 }
             }
         }
@@ -61,6 +64,7 @@ pipeline {
             }
             steps{
                 script {
+                    sh "docker build -f housekeeping/docker/release/Dockerfile -t ${appImageName} ."
                     baseImageTag = "${getPushVersion(pushTags)}"
                     docker.withRegistry( "https://" + registry, dockerRegistryRWUserId) {
                         sh """

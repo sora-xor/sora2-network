@@ -97,10 +97,22 @@ tokio = { version = "0.2.13", features = ["macros"] }
 pallet-sudo = "3"
 
 [features]
-test-net = [
-    "faucet",
-    "framenode-runtime/test-net",
+coded-nets = []
+
+# At the moment dev-net uses dev_net_coded
+dev-net = [
+    "private-net",
+    "coded-nets"
 ]
+
+test-net = ["private-net"]
+stage-net = ["private-net"]
+
+private-net = [
+    "faucet",
+    "framenode-runtime/private-net",
+]
+
 runtime-benchmarks = [
     "framenode-runtime/runtime-benchmarks",
     "sc-executor/wasmtime",
