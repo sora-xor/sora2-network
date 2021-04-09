@@ -7,7 +7,6 @@ use alloc::string::String;
 
 /// Constant values used within the runtime.
 pub mod constants;
-mod extensions;
 mod impls;
 
 use constants::time::*;
@@ -83,7 +82,6 @@ pub use sp_runtime::BuildStorage;
 use eth_bridge::{
     AssetKind, OffchainRequest, OutgoingRequestEncoded, RequestStatus, SignatureParams,
 };
-use extensions::PrintCall;
 use impls::OnUnbalancedDemocracySlash;
 
 pub use {bonding_curve_pool, eth_bridge, multicollateral_bonding_curve_pool};
@@ -654,7 +652,7 @@ impl pallet_multisig::Config for Runtime {
 
 impl iroha_migration::Config for Runtime {
     type Event = Event;
-    type WeightInfo = PresetWeightInfo;
+    type WeightInfo = iroha_migration::weights::WeightInfo<Runtime>;
 }
 
 impl<T: SigningTypes> frame_system::offchain::SignMessage<T> for Runtime {
@@ -697,7 +695,6 @@ where
             frame_system::CheckEra::<Runtime>::from(generic::Era::mortal(period, current_block)),
             frame_system::CheckNonce::<Runtime>::from(index),
             frame_system::CheckWeight::<Runtime>::new(),
-            PrintCall,
             pallet_transaction_payment::ChargeTransactionPayment::<Runtime>::from(tip.into()),
         );
         #[cfg_attr(not(feature = "std"), allow(unused_variables))]
@@ -732,7 +729,7 @@ impl referral_system::Config for Runtime {}
 
 impl rewards::Config for Runtime {
     type Event = Event;
-    type WeightInfo = PresetWeightInfo;
+    type WeightInfo = rewards::weights::WeightInfo<Runtime>;
 }
 
 parameter_types! {
@@ -779,6 +776,7 @@ impl pallet_transaction_payment::Config for Runtime {
     type FeeMultiplierUpdate = ConstantFeeMultiplier;
 }
 
+#[cfg(feature = "test-net")]
 impl pallet_sudo::Config for Runtime {
     type Call = Call;
     type Event = Event;
@@ -828,6 +826,7 @@ impl eth_bridge::Config for Runtime {
 #[cfg(feature = "faucet")]
 impl faucet::Config for Runtime {
     type Event = Event;
+    type WeightInfo = faucet::weights::WeightInfo<Runtime>;
 }
 
 parameter_types! {
@@ -1015,7 +1014,6 @@ construct_runtime! {
         Timestamp: pallet_timestamp::{Module, Call, Storage, Inherent},
         // Balances in native currency - XOR.
         Balances: pallet_balances::{Module, Call, Storage, Config<T>, Event<T>},
-        Sudo: pallet_sudo::{Module, Call, Storage, Config<T>, Event<T>},
         RandomnessCollectiveFlip: pallet_randomness_collective_flip::{Module, Call, Storage},
         TransactionPayment: pallet_transaction_payment::{Module, Storage},
         Permissions: permissions::{Module, Call, Storage, Config<T>, Event<T>},
@@ -1092,7 +1090,6 @@ pub type SignedExtra = (
     frame_system::CheckEra<Runtime>,
     frame_system::CheckNonce<Runtime>,
     frame_system::CheckWeight<Runtime>,
-    PrintCall,
     pallet_transaction_payment::ChargeTransactionPayment<Runtime>,
 );
 /// Unchecked extrinsic type as expected by this runtime.
@@ -1446,6 +1443,16 @@ impl_runtime_apis! {
                 LiquiditySourceFilter::with_mode(dex_id, filter_mode, selected_source_types),
             ).ok().map(|asa| liquidity_proxy_runtime_api::SwapOutcomeInfo::<Balance> { amount: asa.amount, fee: asa.fee})
         }
+
+        fn is_path_available(
+            dex_id: DEXId,
+            input_asset_id: AssetId,
+            output_asset_id: AssetId
+        ) -> bool {
+            LiquidityProxy::is_path_available(
+                dex_id, input_asset_id, output_asset_id
+            ).unwrap_or(false)
+        }
     }
 
     impl pswap_distribution_runtime_api::PswapDistributionAPI<
@@ -1591,10 +1598,11 @@ impl_runtime_apis! {
 
             add_benchmark!(params, batches, assets, Assets);
             add_benchmark!(params, batches, dex_api, DEXAPIBench::<Runtime>);
-            add_benchmark!(params, batches, dex_manager, DEXManager);
             #[cfg(feature = "faucet")]
             add_benchmark!(params, batches, faucet, Faucet);
+            add_benchmark!(params, batches, iroha_migration, IrohaMigration);
             add_benchmark!(params, batches, liquidity_proxy, LiquidityProxyBench::<Runtime>);
+            add_benchmark!(params, batches, rewards, Rewards);
             add_benchmark!(params, batches, trading_pair, TradingPair);
             add_benchmark!(params, batches, pool_xyk, XYKPoolBench::<Runtime>);
 

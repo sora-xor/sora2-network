@@ -6,6 +6,7 @@ use frame_support::weights::{
 use frame_system::limits;
 use smallvec::smallvec;
 use sp_arithmetic::Perbill;
+use sp_std::marker::PhantomData;
 
 use crate::primitives::Balance;
 pub mod constants {
@@ -14,7 +15,7 @@ pub mod constants {
     pub const EXTRINSIC_FIXED_WEIGHT: Weight = 100_000_000;
 }
 
-pub struct PresetWeightInfo;
+pub struct PresetWeightInfo<T>(PhantomData<T>);
 
 /// We allow `Normal` extrinsics to fill up the block up to 75%, the rest can be used
 /// by  Operational  extrinsics.

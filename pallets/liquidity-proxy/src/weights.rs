@@ -20,7 +20,7 @@ impl crate::WeightInfo for () {
     }
 }
 
-impl crate::WeightInfo for PresetWeightInfo {
+impl<T> crate::WeightInfo for PresetWeightInfo<T> {
     fn swap(_amount: SwapVariant) -> Weight {
         EXTRINSIC_FIXED_WEIGHT
     }

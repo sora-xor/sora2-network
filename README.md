@@ -3,6 +3,8 @@
 This is FRAME-based Substrate node of Sora Polkaswap.
 Code of node, pallets, runtime.
 
+[CONTRIBUTING.md](CONTRIBUTING.md)
+
 # System requirements.
 
 ## Minimum (for example for small docker container).
@@ -149,9 +151,9 @@ Flag ```-d```, ```--base-path <PATH>```
 ### Run a temporary node.
 
 Flag ```--tmp```
-            
+
 A temporary directory will be created to store the configuration and will be deleted at the end of the process.
-            
+
 Note: the directory is random per process execution. This directory is used as base path which includes: database, node key and keystore.
 
 ### Specify a list of bootnodes
@@ -209,7 +211,7 @@ All targets are set to info logging by default. You can adjust individual log le
 You can check the node's health via RPC with:
 
 ```
-curl -H "Content-Type: application/json" --data '{ "jsonrpc":"2.0", "method":"system_health", "params":[],"id":1 }' localhost:9933 
+curl -H "Content-Type: application/json" --data '{ "jsonrpc":"2.0", "method":"system_health", "params":[],"id":1 }' localhost:9933
 ```
 
 ### Telemetry & Metrics
@@ -217,5 +219,3 @@ curl -H "Content-Type: application/json" --data '{ "jsonrpc":"2.0", "method":"sy
 The Parity Polkadot client connects to telemetry by default. You can disable it with ```--no-telemetry```, or connect only to specified telemetry servers with the ```--telemetry-url``` option (see the help options for instructions). Connecting to public telemetry may expose information that puts your node at higher risk of attack. You can run your own, private telemetry server or deploy a substrate-telemetry instance to a Kubernetes cluster using this Helm chart.
 
 The node also exposes a Prometheus endpoint by default (disable with ```--no-prometheus```). Substrate has a vizualizing node metrics tutorial which uses this endpoint.
-
-

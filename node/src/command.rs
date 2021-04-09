@@ -53,15 +53,27 @@ impl SubstrateCli for Cli {
     }
 
     fn load_spec(&self, id: &str) -> Result<Box<dyn sc_service::ChainSpec>, String> {
-        Ok(match id {
+        #[cfg(feature = "test-net")]
+        let chain_spec = match id {
             "" | "local" => Box::new(chain_spec::local_testnet_config()),
-            "dev" => Box::new(chain_spec::dev_net()),
+            "dev" => Box::new(chain_spec::dev_net()?),
+            "dev-coded" => Box::new(chain_spec::dev_net_coded()),
             "staging" => Box::new(chain_spec::staging_net(false)),
             "test" => Box::new(chain_spec::staging_net(true)),
             path => Box::new(chain_spec::ChainSpec::from_json_file(
                 std::path::PathBuf::from(path),
             )?),
-        })
+        };
+
+        #[cfg(not(feature = "test-net"))]
+        let chain_spec = match id {
+            "" | "main" => Box::new(chain_spec::main_net()),
+            path => Box::new(chain_spec::ChainSpec::from_json_file(
+                std::path::PathBuf::from(path),
+            )?),
+        };
+
+        Ok(chain_spec)
     }
 
     fn native_runtime_version(_: &Box<dyn ChainSpec>) -> &'static RuntimeVersion {

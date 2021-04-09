@@ -74,6 +74,7 @@ construct_runtime! {
 
 impl Config for Runtime {
     type Event = Event;
+    type WeightInfo = ();
 }
 
 impl frame_system::Config for Runtime {

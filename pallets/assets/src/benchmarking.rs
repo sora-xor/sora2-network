@@ -28,7 +28,7 @@ fn add_assets<T: Config>(n: u32) -> Result<(), &'static str> {
         Assets::<T>::register(
             owner_origin.clone(),
             AssetSymbol(b"TOKEN".to_vec()),
-            18,
+            AssetName(b"XOR".to_vec()),
             Balance::zero(),
             true,
         )?;
@@ -46,8 +46,6 @@ fn assert_last_event<T: Config>(generic_event: <T as Config>::Event) {
 }
 
 benchmarks! {
-    _ {}
-
     register {
         let n in 1 .. 1000 => add_assets::<T>(n)?;
         let caller = alice::<T>();
@@ -58,6 +56,7 @@ benchmarks! {
             caller.clone(),
             asset_id.clone(),
             AssetSymbol(b"NEWT".to_vec()),
+            AssetName(b"NEWT".to_vec()),
             18,
             Balance::zero(),
             true,
@@ -74,6 +73,7 @@ benchmarks! {
             caller.clone(),
             XOR.into(),
             AssetSymbol(b"XOR".to_vec()),
+            AssetName(b"XOR".to_vec()),
             18,
             Balance::zero(),
             true,
@@ -95,6 +95,7 @@ benchmarks! {
             caller.clone(),
             XOR.into(),
             AssetSymbol(b"XOR".to_vec()),
+            AssetName(b"XOR".to_vec()),
             18,
             Balance::zero(),
             true,
@@ -116,7 +117,10 @@ benchmarks! {
             caller.clone(),
             XOR.into(),
             AssetSymbol(b"XOR".to_vec()),
-            18
+            AssetName(b"XOR".to_vec()),
+            18,
+            0,
+            true
         );
         Assets::<T>::mint(
             RawOrigin::Signed(caller.clone()).into(),
