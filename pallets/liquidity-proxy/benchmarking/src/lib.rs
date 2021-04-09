@@ -10,8 +10,8 @@ use liquidity_proxy::*;
 use codec::Decode;
 use common::prelude::{Balance, SwapAmount};
 use common::{
-    balance, AssetName, AssetSymbol, DEXId, FilterMode, LiquiditySource, LiquiditySourceType, DOT,
-    PSWAP, USDT, VAL, XOR,
+    balance, AssetName, AssetSymbol, DEXId, FilterMode, LiquiditySourceType, DOT, PSWAP, USDT, VAL,
+    XOR,
 };
 use frame_benchmarking::{benchmarks, Zero};
 use frame_support::traits::Get;
@@ -315,7 +315,6 @@ mod tests {
     use frame_support::assert_ok;
 
     #[test]
-    #[ignore]
     fn test_benchmarks() {
         ExtBuilder::default().build().execute_with(|| {
             assert_ok!(test_benchmark_swap_exact_input_primary_only::<Runtime>());

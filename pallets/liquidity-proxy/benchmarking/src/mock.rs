@@ -467,9 +467,19 @@ impl ExtBuilder {
                 (*tech_account).to_owned(),
             ));
         }
-        
+
         pallet_balances::GenesisConfig::<Runtime> {
-            balances: vec![(alice(), 0)],
+            balances: vec![
+                (alice(), 0),
+                (
+                    Technical::tech_account_id_to_account_id(&accounts.val_holders.account_id)
+                        .unwrap(),
+                    0,
+                ),
+                (GetMbcReservesAccountId::get(), 0),
+                (GetMbcRewardsAccountId::get(), 0),
+                (GetLiquidityProxyAccountId::get(), 0),
+            ],
         }
         .assimilate_storage(&mut t)
         .unwrap();
