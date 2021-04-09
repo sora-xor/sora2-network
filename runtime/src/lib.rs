@@ -195,7 +195,7 @@ parameter_types! {
     };
     pub const SessionPeriod: BlockNumber = 150;
     pub const SessionOffset: BlockNumber = 0;
-    pub const SS58Prefix: u8 = 42;
+    pub const SS58Prefix: u8 = 69;
     /// A limit for off-chain phragmen unsigned solution submission.
     ///
     /// We want to keep it as high as possible, but can't risk having it reject,
