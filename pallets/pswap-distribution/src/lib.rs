@@ -425,12 +425,10 @@ pub mod pallet {
         /// Perform exchange and distribution routines for all substribed accounts
         /// with respect to thir configured frequencies.
         fn on_initialize(block_num: T::BlockNumber) -> Weight {
-            common::with_benchmark("pswap-distribution.on_initialize", || {
-                let is_distributing = Self::incentive_distribution_routine(block_num);
-                Self::burn_rate_update_routine(block_num);
+            let is_distributing = Self::incentive_distribution_routine(block_num);
+            Self::burn_rate_update_routine(block_num);
 
-                <T as Config>::WeightInfo::on_initialize(is_distributing)
-            })
+            <T as Config>::WeightInfo::on_initialize(is_distributing)
         }
     }
 

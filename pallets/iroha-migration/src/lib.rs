@@ -301,34 +301,26 @@ pub mod pallet {
     #[pallet::hooks]
     impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
         fn on_initialize(block_number: T::BlockNumber) -> Weight {
-            common::with_benchmark(
-                common::location_stamp!("iroha-migration.on_initialize"),
-                || {
-                    // Migrate accounts whose quorum has been reached and enough time has passed since then
-                    PendingMultiSigAccounts::<T>::translate(
-                        |key, mut value: PendingMultisigAccount<T>| {
-                            if let Some(migrate_at) = value.migrate_at {
-                                if block_number > migrate_at {
-                                    value.approving_accounts.sort();
-                                    let quorum = Quorums::<T>::take(&key);
-                                    let multi_account =
-                                        pallet_multisig::Module::<T>::multi_account_id(
-                                            &value.approving_accounts,
-                                            quorum as u16,
-                                        );
-                                    let _ = Self::migrate_account(key, multi_account);
-                                    None
-                                } else {
-                                    Some(value)
-                                }
-                            } else {
-                                Some(value)
-                            }
-                        },
-                    );
-                    WeightInfoOf::<T>::on_initialize()
-                },
-            )
+            // Migrate accounts whose quorum has been reached and enough time has passed since then
+            PendingMultiSigAccounts::<T>::translate(|key, mut value: PendingMultisigAccount<T>| {
+                if let Some(migrate_at) = value.migrate_at {
+                    if block_number > migrate_at {
+                        value.approving_accounts.sort();
+                        let quorum = Quorums::<T>::take(&key);
+                        let multi_account = pallet_multisig::Module::<T>::multi_account_id(
+                            &value.approving_accounts,
+                            quorum as u16,
+                        );
+                        let _ = Self::migrate_account(key, multi_account);
+                        None
+                    } else {
+                        Some(value)
+                    }
+                } else {
+                    Some(value)
+                }
+            });
+            WeightInfoOf::<T>::on_initialize()
         }
     }
 

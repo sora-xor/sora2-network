@@ -19,7 +19,6 @@ use std::collections::HashMap;
 
 use crate::cli::{Cli, Subcommand};
 use crate::{chain_spec, service};
-use framenode_runtime::Block;
 use sc_cli::{ChainSpec, Role, RuntimeVersion, SubstrateCli};
 use sc_service::PartialComponents;
 
@@ -203,16 +202,11 @@ pub fn run() -> sc_cli::Result<()> {
                 Ok((cmd.run(client, backend), task_manager))
             })
         }
+        #[cfg(feature = "runtime-benchmarks")]
         Some(Subcommand::Benchmark(cmd)) => {
-            if cfg!(feature = "runtime-benchmarks") {
-                let runner = cli.create_runner(cmd)?;
-                set_default_ss58_version();
-                runner.sync_run(|config| cmd.run::<Block, service::Executor>(config))
-            } else {
-                Err("Benchmarking wasn't enabled when building the node. \
-				You can enable it with `--features runtime-benchmarks`."
-                    .into())
-            }
+            let runner = cli.create_runner(cmd)?;
+            set_default_ss58_version();
+            runner.sync_run(|config| cmd.run::<framenode_runtime::Block, service::Executor>(config))
         }
         None => {
             let runner = cli.create_runner(&cli.run)?;

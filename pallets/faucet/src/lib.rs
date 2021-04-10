@@ -82,26 +82,24 @@ pub mod pallet {
             target: AccountIdOf<T>,
             amount: Balance,
         ) -> DispatchResultWithPostInfo {
-            common::with_benchmark("faucet.transfer", || {
-                Self::ensure_asset_supported(asset_id)?;
-                let block_number = System::<T>::block_number();
-                let (block_number, taken_amount) =
-                    Self::prepare_transfer(&target, asset_id, amount, block_number)?;
-                let reserves_tech_account_id = Self::reserves_account_id();
-                let reserves_account_id =
-                    Technical::<T>::tech_account_id_to_account_id(&reserves_tech_account_id)?;
-                let reserves_amount = Assets::<T>::total_balance(&asset_id, &reserves_account_id)?;
-                ensure!(amount <= reserves_amount, Error::<T>::NotEnoughReserves);
-                technical::Module::<T>::transfer_out(
-                    &asset_id,
-                    &reserves_tech_account_id,
-                    &target,
-                    amount,
-                )?;
-                Transfers::<T>::insert(target.clone(), asset_id, (block_number, taken_amount));
-                Self::deposit_event(Event::Transferred(target, amount));
-                Ok(().into())
-            })
+            Self::ensure_asset_supported(asset_id)?;
+            let block_number = System::<T>::block_number();
+            let (block_number, taken_amount) =
+                Self::prepare_transfer(&target, asset_id, amount, block_number)?;
+            let reserves_tech_account_id = Self::reserves_account_id();
+            let reserves_account_id =
+                Technical::<T>::tech_account_id_to_account_id(&reserves_tech_account_id)?;
+            let reserves_amount = Assets::<T>::total_balance(&asset_id, &reserves_account_id)?;
+            ensure!(amount <= reserves_amount, Error::<T>::NotEnoughReserves);
+            technical::Module::<T>::transfer_out(
+                &asset_id,
+                &reserves_tech_account_id,
+                &target,
+                amount,
+            )?;
+            Transfers::<T>::insert(target.clone(), asset_id, (block_number, taken_amount));
+            Self::deposit_event(Event::Transferred(target, amount));
+            Ok(().into())
         }
 
         #[pallet::weight((WeightInfoOf::<T>::reset_rewards(), Pays::No))]

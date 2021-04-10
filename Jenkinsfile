@@ -49,6 +49,7 @@ pipeline {
                                 sh "cp /opt/rust-target/release/framenode ${env.WORKSPACE}/housekeeping/framenode"
                             } else {
                                 sh "cargo fmt -- --check > /dev/null"
+                                // sh "cargo check"
                                 // It slows the build down too much. There is some bug.
                                 // sh "./housekeeping/docker/release/check_with_different_features.sh"
                                 // sh "cargo test"
