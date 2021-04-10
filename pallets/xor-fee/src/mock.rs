@@ -286,6 +286,20 @@ where
 
 pub type Extrinsic = TestXt<Call, ()>;
 
+pub struct CustomFees;
+
+impl xor_fee::ApplyCustomFees<Call> for CustomFees {
+    fn compute_fee(call: &Call) -> Option<Balance> {
+        match call {
+            Call::Assets(assets::Call::register(..)) => Some(balance!(0.007)),
+            Call::Assets(..)
+            | Call::Staking(pallet_staking::Call::payout_stakers(..))
+            | Call::TradingPair(..) => Some(balance!(0.0007)),
+            _ => None,
+        }
+    }
+}
+
 impl Config for Runtime {
     type Event = Event;
     type XorCurrency = Balances;
@@ -297,6 +311,7 @@ impl Config for Runtime {
     type DEXIdValue = DEXIdValue;
     type LiquidityProxy = MockLiquidityProxy;
     type ValBurnedNotifier = Staking;
+    type CustomFees = CustomFees;
 }
 
 pub struct MockLiquidityProxy;

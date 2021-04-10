@@ -48,14 +48,11 @@ pipeline {
                                 sh "cargo test --release"
                                 sh "cp /opt/rust-target/release/framenode ${env.WORKSPACE}/housekeeping/framenode"
                             } else {
-                                sh "cargo fmt -- --check > /dev/null"
-                                sh "cargo check --release"
-                                sh "cargo test --release"
-                                sh "cargo check --release --features private-net"
-                                sh "cargo test --release --features private-net"
-                                // It slows the build down too much. There is some bug.
-                                // sh "./housekeeping/docker/release/check_with_different_features.sh"
+                                // sh "cargo fmt -- --check > /dev/null"
+                                // sh "cargo check"
                                 // sh "cargo test"
+                                // sh "cargo check --features private-net"
+                                // sh "cargo test --features private-net"
                             }
                         }
                     }

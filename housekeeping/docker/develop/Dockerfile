@@ -3,7 +3,6 @@ FROM debian:buster-slim
 # Set environment variables
 ENV RUSTUP_HOME="/opt/rust"
 ENV CARGO_HOME="/opt/rust"
-ENV CARGO_TARGET_DIR="/opt/rust-target"
 ENV PATH="$PATH:$RUSTUP_HOME/bin"
 ENV RUST_VERSION=nightly-2021-03-11
 
@@ -35,7 +34,7 @@ RUN curl https://sh.rustup.rs -sSf | sh -s -- -y --no-modify-path --default-tool
 # Build project
 ADD . /app
 WORKDIR /app
-RUN cargo build --release
+RUN cargo build
 
 # Remove source code
 WORKDIR /
