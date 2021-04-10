@@ -43,8 +43,8 @@ use sp_runtime::Perbill;
 
 pub type AccountId = AccountId32;
 pub type BlockNumber = u64;
-type AssetId = AssetId32<common::AssetId>;
-type TechAssetId = common::TechAssetId<common::AssetId>;
+type AssetId = AssetId32<common::PredefinedAssetId>;
+type TechAssetId = common::TechAssetId<common::PredefinedAssetId>;
 type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
 type DEXId = u32;
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;

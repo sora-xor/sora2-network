@@ -516,7 +516,7 @@ impl tokens::Config for Runtime {
 }
 
 parameter_types! {
-    // This is common::AssetId with 0 index, 2 is size, 0 and 0 is code.
+    // This is common::PredefinedAssetId with 0 index, 2 is size, 0 and 0 is code.
     pub const GetXorAssetId: AssetId = common::AssetId32::from_bytes(hex!("0200000000000000000000000000000000000000000000000000000000000000"));
     pub const GetDotAssetId: AssetId = common::AssetId32::from_bytes(hex!("0200010000000000000000000000000000000000000000000000000000000000"));
     pub const GetKsmAssetId: AssetId = common::AssetId32::from_bytes(hex!("0200020000000000000000000000000000000000000000000000000000000000"));
@@ -1019,7 +1019,7 @@ construct_runtime! {
         Tokens: tokens::{Module, Storage, Config<T>, Event<T>},
         // Unified interface for XOR and non-native tokens.
         Currencies: currencies::{Module, Call, Event<T>},
-        TradingPair: trading_pair::{Module, Call, Event<T>},
+        TradingPair: trading_pair::{Module, Call, Storage, Config<T>, Event<T>},
         Assets: assets::{Module, Call, Storage, Config<T>, Event<T>},
         DEXManager: dex_manager::{Module, Storage, Config<T>},
         MulticollateralBondingCurvePool: multicollateral_bonding_curve_pool::{Module, Call, Storage, Config<T>, Event<T>},
@@ -1075,7 +1075,7 @@ construct_runtime! {
         Tokens: tokens::{Module, Storage, Config<T>, Event<T>},
         // Unified interface for XOR and non-native tokens.
         Currencies: currencies::{Module, Call, Event<T>},
-        TradingPair: trading_pair::{Module, Call, Event<T>},
+        TradingPair: trading_pair::{Module, Call, Storage, Config<T>, Event<T>},
         Assets: assets::{Module, Call, Storage, Config<T>, Event<T>},
         DEXManager: dex_manager::{Module, Storage, Config<T>},
         MulticollateralBondingCurvePool: multicollateral_bonding_curve_pool::{Module, Call, Storage, Config<T>, Event<T>},

@@ -47,7 +47,7 @@ pub type AccountId = u128;
 pub type BlockNumber = u64;
 pub type Amount = i128;
 pub type DEXId = u32;
-type AssetId = AssetId32<common::AssetId>;
+type AssetId = AssetId32<common::PredefinedAssetId>;
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
 

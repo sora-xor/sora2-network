@@ -54,8 +54,8 @@ type DEXId = common::DEXId;
 type Signature = MultiSignature;
 type BlockNumber = u64;
 type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
-type TechAssetId = common::TechAssetId<common::AssetId>;
-type AssetId = AssetId32<common::AssetId>;
+type TechAssetId = common::TechAssetId<common::PredefinedAssetId>;
+type AssetId = AssetId32<common::PredefinedAssetId>;
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
 

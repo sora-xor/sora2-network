@@ -128,7 +128,7 @@ pub mod pallet {
                 origin,
                 ManagementMode::Private,
             )?;
-            Self::initialize_pool_unchecked(collateral_asset_id)?;
+            Self::initialize_pool_unchecked(collateral_asset_id, true)?;
             Ok(().into())
         }
 
@@ -395,7 +395,7 @@ pub mod pallet {
                 .iter()
                 .cloned()
                 .for_each(|asset_id| {
-                    Pallet::<T>::initialize_pool_unchecked(asset_id)
+                    Pallet::<T>::initialize_pool_unchecked(asset_id, false)
                         .expect("Failed to initialize bonding curve.")
                 });
         }
@@ -607,8 +607,11 @@ impl<T: Config> Module<T> {
         )
     }
 
-    fn initialize_pool_unchecked(collateral_asset_id: T::AssetId) -> DispatchResult {
-        common::with_transaction(|| {
+    fn initialize_pool_unchecked(
+        collateral_asset_id: T::AssetId,
+        transactional: bool,
+    ) -> DispatchResult {
+        let code = || {
             ensure!(
                 !EnabledTargets::<T>::get().contains(&collateral_asset_id),
                 Error::<T>::PoolAlreadyInitializedForPair
@@ -633,7 +636,12 @@ impl<T: Config> Module<T> {
                 collateral_asset_id,
             ));
             Ok(())
-        })
+        };
+        if transactional {
+            common::with_transaction(|| code())
+        } else {
+            code()
+        }
     }
 
     /// Buy function with regards to asset total supply and its change delta. It represents the amount of

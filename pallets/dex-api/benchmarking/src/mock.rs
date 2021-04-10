@@ -47,8 +47,8 @@ use sp_runtime::traits::{BlakeTwo256, IdentityLookup};
 use sp_runtime::AccountId32;
 
 pub type DEXId = u32;
-pub type AssetId = AssetId32<common::AssetId>;
-pub type TechAssetId = common::TechAssetId<common::AssetId>;
+pub type AssetId = AssetId32<common::PredefinedAssetId>;
+pub type TechAssetId = common::TechAssetId<common::PredefinedAssetId>;
 pub type AccountId = AccountId32;
 pub type BlockNumber = u64;
 type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
