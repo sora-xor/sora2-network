@@ -1,6 +1,5 @@
 [package]
 name = "eth-bridge-rpc"
-authors = []
 description = 'Polkaswap RPC for farming operations.'
 edition = "2018"
 authors = ['Polka Biome Ltd. <jihoon@tutanota.de>']
