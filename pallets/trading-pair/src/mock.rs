@@ -38,8 +38,8 @@ pub type BlockNumber = u64;
 pub type Amount = i128;
 
 pub const ALICE: AccountId = 1;
-pub const DEX_ID: DEXId = 1;
-type AssetId = AssetId32<common::AssetId>;
+pub const DEX_ID: DEXId = 0;
+type AssetId = AssetId32<common::PredefinedAssetId>;
 
 parameter_types! {
     pub const BlockHashCount: u64 = 250;
@@ -120,7 +120,7 @@ impl assets::Config for Runtime {
 }
 
 parameter_types! {
-    pub const ExistentialDeposit: u128 = 1;
+    pub const ExistentialDeposit: u128 = 0;
     pub const TransferFee: u128 = 0;
     pub const CreationFee: u128 = 0;
     pub const TransactionByteFee: u128 = 1;
@@ -140,9 +140,7 @@ impl permissions::Config for Runtime {
     type Event = Event;
 }
 
-impl dex_manager::Config for Runtime {
-    type WeightInfo = ();
-}
+impl dex_manager::Config for Runtime {}
 
 pub struct ExtBuilder {
     endowed_assets: Vec<(
@@ -257,6 +255,12 @@ impl ExtBuilder {
         let mut t = frame_system::GenesisConfig::default()
             .build_storage::<Runtime>()
             .unwrap();
+
+        pallet_balances::GenesisConfig::<Runtime> {
+            balances: vec![(ALICE, 0)],
+        }
+        .assimilate_storage(&mut t)
+        .unwrap();
 
         permissions::GenesisConfig::<Runtime> {
             initial_permission_owners: self.initial_permission_owners,

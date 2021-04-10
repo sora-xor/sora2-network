@@ -8,6 +8,7 @@ edition = "2018"
 codec = { package = "parity-scale-codec", version = "2", default-features = false, features = ["derive", "full"] }
 frame-support = { version = "3", default-features = false }
 frame-system = { version = "3", default-features = false }
+frame-benchmarking = { version = "3", default-features = false, optional = true }
 hex-literal = "0.3.1"
 libsecp256k1 = { version = "0.3.5", features = ['hmac'], default-features = false }
 once_cell = { version = "1.5.2", default-features = false, features = ['alloc', 'unstable'] }
@@ -36,8 +37,8 @@ currencies = { version = "0.4", package = "orml-currencies", default-features = 
 env_logger = "0.8.1"
 frame-executive = { version = "3", default-features = false }
 orml-traits = { version = "0.4", package = "orml-traits", default-features = false }
-pallet-balances = { version = "3" }
-pallet-sudo = { version = "3" }
+pallet-balances = "3"
+pallet-sudo = "3"
 parity-util-mem = { version = "0.9", default-features = false }
 parking_lot = "0.11.0"
 sp-core = { version = "3", default-features = false, features = ["full_crypto"] }
@@ -65,4 +66,9 @@ std = [
     'serde/std',
     'sp-core/std',
     'sp-std/std',
+]
+runtime-benchmarks = [
+    "frame-benchmarking",
+    "frame-system/runtime-benchmarks",
+    "frame-support/runtime-benchmarks",
 ]

@@ -32,7 +32,7 @@ technical = { path = "../technical", default-features = false }
 trading-pair = { path = "../trading-pair", default-features = false }
 
 [dev-dependencies]
-hex-literal = { version = '0.3.1' }
+hex-literal = "0.3.1"
 pallet-balances = { version = "3", default-features = false }
 sp-io = { version = "3", default-features = false }
 tokens = { version = "0.4", package = "orml-tokens", default-features = false }

@@ -10,7 +10,7 @@ use frame_support::weights::Weight;
 use frame_system::ensure_signed;
 use sp_std::vec::Vec;
 
-mod weights;
+pub mod weights;
 
 #[cfg(test)]
 mod mock;
@@ -143,29 +143,27 @@ impl<T: Config>
         output_asset_id: &T::AssetId,
         filter: LiquiditySourceFilter<T::DEXId, LiquiditySourceType>,
     ) -> Result<Vec<LiquiditySourceId<T::DEXId, LiquiditySourceType>>, DispatchError> {
-        common::with_benchmark("dex-api.list_liquidity_sources", || {
-            let supported_types = Self::get_supported_types();
-            DEXManager::<T>::ensure_dex_exists(&filter.dex_id)?;
-            Ok(supported_types
-                .iter()
-                .filter_map(|source_type| {
-                    if filter.matches_index(*source_type)
-                        && Self::can_exchange(
-                            &LiquiditySourceId::new(filter.dex_id, *source_type),
-                            input_asset_id,
-                            output_asset_id,
-                        )
-                    {
-                        Some(LiquiditySourceId::new(
-                            filter.dex_id.clone(),
-                            source_type.clone(),
-                        ))
-                    } else {
-                        None
-                    }
-                })
-                .collect())
-        })
+        let supported_types = Self::get_supported_types();
+        DEXManager::<T>::ensure_dex_exists(&filter.dex_id)?;
+        Ok(supported_types
+            .iter()
+            .filter_map(|source_type| {
+                if filter.matches_index(*source_type)
+                    && Self::can_exchange(
+                        &LiquiditySourceId::new(filter.dex_id, *source_type),
+                        input_asset_id,
+                        output_asset_id,
+                    )
+                {
+                    Some(LiquiditySourceId::new(
+                        filter.dex_id.clone(),
+                        source_type.clone(),
+                    ))
+                } else {
+                    None
+                }
+            })
+            .collect())
     }
 }
 pub use pallet::*;

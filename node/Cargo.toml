@@ -1,23 +1,23 @@
 [package]
-name = 'framenode'
-version = '0.1.0'
+name = "framenode"
+version = "0.1.0"
 authors = ["Parity Technologies <admin@parity.io>"]
-build = 'build.rs'
-edition = '2018'
+build = "build.rs"
+edition = "2018"
 
 [[bin]]
-name = 'framenode'
-path = 'src/main.rs'
+name = "framenode"
+path = "src/main.rs"
 
 [dependencies]
-derive_more = '0.99.13'
-exit-future = '0.2.0'
+derive_more = "0.99.13"
+exit-future = "0.2.0"
 futures = { version = "0.3.1", features = ["compat"] }
 hex-literal = "0.3.1"
-log = '0.4.8'
-parking_lot = '0.11'
-trie-root = '0.16.0'
-codec = { package = 'parity-scale-codec', version = "2", features = ["derive"]}
+log = "0.4.8"
+parking_lot = "0.11"
+trie-root = "0.16.0"
+codec = { package = "parity-scale-codec", version = "2", features = ["derive"]}
 structopt = "0.3.3"
 ansi_term = "0.12.1"
 serde = { version = "1.0.101", features = ["derive"] }
@@ -41,52 +41,52 @@ bridge-multisig = { git = "https://github.com/soramitsu/sora2-frame-pallets.git"
 farming-rpc = { path = "../pallets/farming/rpc" }
 eth-bridge-rpc = { path = "../pallets/eth-bridge/rpc" }
 pswap-distribution-rpc = { path = "../pallets/pswap-distribution/rpc" }
-libsecp256k1 = { version = "0.3.5", features = ['hmac'], default-features = false }
+libsecp256k1 = { version = "0.3.5", features = ["hmac"] }
 
 # Parachain dependencies
 framenode-runtime = { path = "../runtime" }
 
 # Substrate dependencies
-sp-runtime = { version = "3", default-features = false }
-sp-arithmetic = { version = "3", default-features = false }
-sp-io = { version = "3", default-features = false }
-sp-api = { version = "3", default-features = false }
-sp-block-builder = { version = "3", default-features = false }
-sp-blockchain = { version = "3", default-features = false }
-sp-core = { version = "3", default-features = false }
-sp-inherents = { version = "3", default-features = false }
-sp-keystore = { version = "0.9", default-features = false }
-sp-consensus = { version = "0.9", default-features = false }
-sc-consensus = { version = "0.9", default-features = false }
-sc-consensus-slots = { version = "0.9", default-features = false }
-sc-consensus-babe = { version = "0.9", default-features = false }
-sp-consensus-babe = { version = "0.9", default-features = false }
-sc-consensus-aura = { version = "0.9", default-features = false }
-sp-consensus-aura = { version = "0.9", default-features = false }
-sc-cli = { version = "0.9", default-features = false }
-sc-client-api = { version = "3", default-features = false }
-sc-executor = { version = "0.9", default-features = false }
-sc-service = { version = "0.9", default-features = false }
-sc-transaction-pool = { version = "3", default-features = false }
-sp-transaction-pool = { version = "3", default-features = false }
-sc-network = { version = "0.9", default-features = false }
-sc-basic-authorship = { version = "0.9", default-features = false }
-sc-rpc = { version = "3", default-features = false }
-sc-rpc-api = { version = "0.9", default-features = false }
-sp-timestamp = { version = "3", default-features = false }
-sp-trie = { version = "3", default-features = false }
-sc-finality-grandpa = { package = "sc-finality-grandpa", version = "0.9", default-features = false }
-sp-finality-grandpa = { version = "3", default-features = false }
-sc-informant = { version = "0.9", default-features = false }
-sc-chain-spec = { version = "3", default-features = false }
-frame-support = { version = "3", default-features = false }
-pallet-transaction-payment-rpc = { version = "3", default-features = false }
-frame-benchmarking = '3'
-frame-benchmarking-cli = '3'
-substrate-frame-rpc-system = { version = "3", default-features = false }
+sp-runtime = "3"
+sp-arithmetic = "3"
+sp-io = "3"
+sp-api = "3"
+sp-block-builder = "3"
+sp-blockchain = "3"
+sp-core = "3"
+sp-inherents = "3"
+sp-keystore = "0.9"
+sp-consensus = "0.9"
+sc-consensus = "0.9"
+sc-consensus-slots = "0.9"
+sc-consensus-babe = "0.9"
+sp-consensus-babe = "0.9"
+sc-consensus-aura = "0.9"
+sp-consensus-aura = "0.9"
+sc-cli = "0.9"
+sc-client-api = "3"
+sc-executor = "0.9"
+sc-service = "0.9"
+sc-transaction-pool = "3"
+sp-transaction-pool = "3"
+sc-network = "0.9"
+sc-basic-authorship = "0.9"
+sc-rpc = "3"
+sc-rpc-api = "0.9"
+sp-timestamp = "3"
+sp-trie = "3"
+sc-finality-grandpa = { package = "sc-finality-grandpa", version = "0.9" }
+sp-finality-grandpa = "3"
+sc-informant = "0.9"
+sc-chain-spec = "3"
+frame-support = "3"
+pallet-transaction-payment-rpc = "3"
+frame-benchmarking = "3"
+frame-benchmarking-cli = { version = "3", optional = true }
+substrate-frame-rpc-system = "3"
 
 [build-dependencies]
-substrate-build-script-utils = { version = "3", default-features = false }
+substrate-build-script-utils = "3"
 
 [dev-dependencies]
 assert_cmd = "0.12"
@@ -94,14 +94,18 @@ nix = "0.20"
 tokio = { version = "0.2.13", features = ["macros"] }
 
 # Substrate dependencies
-pallet-sudo = { version = "3", default-features = false }
+pallet-sudo = "3"
 
 [features]
-test-net = [
+include-real-files = []
+
+private-net = [
     "faucet",
-    "framenode-runtime/test-net",
+    "framenode-runtime/private-net",
 ]
+
 runtime-benchmarks = [
+    "frame-benchmarking-cli",
     "framenode-runtime/runtime-benchmarks",
     "sc-executor/wasmtime",
     "sc-cli/wasmtime",

@@ -221,8 +221,8 @@ mod tests {
                 Balance::from(0u32),
                 true,
             ),
-            (alice(), XOR, 0u32.into(), AssetSymbol(b"XOR".to_vec()), AssetName(b"SORA".to_vec()), 18, Balance::from(0u32), true),
-            (alice(), VAL, 0u32.into(), AssetSymbol(b"VAL".to_vec()), AssetName(b"SORA Validator Token".to_vec()), 18, Balance::from(0u32), true),
+            (alice(), XOR, 0, AssetSymbol(b"XOR".to_vec()), AssetName(b"SORA".to_vec()), 18, Balance::from(0u32), true),
+            (alice(), VAL, 0, AssetSymbol(b"VAL".to_vec()), AssetName(b"SORA Validator Token".to_vec()), 18, Balance::from(0u32), true),
         ])
         .build();
         ext.execute_with(|| {
@@ -286,7 +286,7 @@ mod tests {
         ext.execute_with(|| {
             MockDEXApi::init().unwrap();
             let total_issuance = Assets::total_issuance(&XOR).unwrap();
-            let reserve_amount_expected = 
+            let reserve_amount_expected =
                 BondingCurvePool::price_for_main_asset(&XOR, total_issuance, SwapKind::Sell)
                     .unwrap();
             let pool_usd_amount = reserve_amount_expected
@@ -364,7 +364,7 @@ mod tests {
         ext.execute_with(|| {
             MockDEXApi::init().unwrap();
             let total_issuance = Assets::total_issuance(&XOR).unwrap();
-            let reserve_amount_expected = 
+            let reserve_amount_expected =
                 BondingCurvePool::price_for_main_asset(&XOR, total_issuance, SwapKind::Sell)
                     .unwrap();
             let reserve_amount_expected = reserve_amount_expected.into_bits().try_into().unwrap();
@@ -422,9 +422,9 @@ mod tests {
     #[test]
     fn should_not_sell_without_reserves() {
         let mut ext = ExtBuilder::new(vec![
-            (alice(), USDT, 0u32.into(), AssetSymbol(b"USDT".to_vec()), AssetName(b"Tether USD".to_vec()), 18, 0, true),
+            (alice(), USDT, 0, AssetSymbol(b"USDT".to_vec()), AssetName(b"Tether USD".to_vec()), 18, 0, true),
             (alice(), XOR, balance!(1), AssetSymbol(b"XOR".to_vec()), AssetName(b"SORA".to_vec()), 18, 0, true),
-            (alice(), VAL, 0u32.into(), AssetSymbol(b"VAL".to_vec()), AssetName(b"SORA Validator Token".to_vec()), 18, 0, true),
+            (alice(), VAL, 0, AssetSymbol(b"VAL".to_vec()), AssetName(b"SORA Validator Token".to_vec()), 18, 0, true),
         ])
         .build();
         ext.execute_with(|| {
@@ -506,7 +506,7 @@ mod tests {
                     },
                 );
             assert_eq!(whole_outcome, cumulative_outcome);
-            
+
             let whole_outcome = with_transaction(|| {
                 let whole_outcome = BondingCurvePool::exchange(
                     alice,

@@ -13,8 +13,8 @@ use sp_runtime::Perbill;
 
 pub type AccountId = AccountId32;
 pub type BlockNumber = u64;
-type AssetId = AssetId32<common::AssetId>;
-type TechAssetId = common::TechAssetId<common::AssetId>;
+type AssetId = AssetId32<common::PredefinedAssetId>;
+type TechAssetId = common::TechAssetId<common::PredefinedAssetId>;
 type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
 type DEXId = u32;
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
@@ -34,7 +34,7 @@ parameter_types! {
     pub const AvailableBlockRatio: Perbill = Perbill::from_percent(75);
     pub GetFee: Fixed = fixed_from_basis_points(30u16);
     pub const GetBaseAssetId: AssetId = XOR;
-    pub const ExistentialDeposit: u128 = 1;
+    pub const ExistentialDeposit: u128 = 0;
     pub const TransferFee: u128 = 0;
     pub const CreationFee: u128 = 0;
     pub const TransactionByteFee: u128 = 1;
@@ -155,9 +155,7 @@ impl permissions::Config for Runtime {
     type Event = Event;
 }
 
-impl dex_manager::Config for Runtime {
-    type WeightInfo = ();
-}
+impl dex_manager::Config for Runtime {}
 
 impl trading_pair::Config for Runtime {
     type Event = Event;

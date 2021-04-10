@@ -1,35 +1,37 @@
-//! THIS FILE WAS AUTO-GENERATED USING THE SUBSTRATE BENCHMARK CLI VERSION 2.0.0-rc5
-
 use common::weights::constants::EXTRINSIC_FIXED_WEIGHT;
-use common::weights::PresetWeightInfo;
-use frame_support::weights::constants::RocksDbWeight as DbWeight;
+use core::marker::PhantomData;
+use frame_support::traits::Get;
 use frame_support::weights::Weight;
 
-impl crate::WeightInfo for () {
+pub struct WeightInfo<T>(PhantomData<T>);
+
+impl<T: frame_system::Config> crate::WeightInfo for WeightInfo<T> {
     fn register() -> Weight {
-        (220_000_000 as Weight)
-            .saturating_add(DbWeight::get().reads(10 as Weight))
-            .saturating_add(DbWeight::get().writes(7 as Weight))
+        (783_115_000 as Weight)
+            .saturating_add(T::DbWeight::get().reads(9 as Weight))
+            .saturating_add(T::DbWeight::get().writes(7 as Weight))
     }
     fn transfer() -> Weight {
-        (130_000_000 as Weight).saturating_add(DbWeight::get().reads(4 as Weight))
+        (360_872_000 as Weight).saturating_add(T::DbWeight::get().reads(4 as Weight))
     }
     fn mint() -> Weight {
-        (180_000_000 as Weight)
-            .saturating_add(DbWeight::get().reads(6 as Weight))
-            .saturating_add(DbWeight::get().writes(2 as Weight))
+        (604_771_000 as Weight)
+            .saturating_add(T::DbWeight::get().reads(7 as Weight))
+            .saturating_add(T::DbWeight::get().writes(3 as Weight))
     }
     fn burn() -> Weight {
-        (200_000_000 as Weight)
-            .saturating_add(DbWeight::get().reads(6 as Weight))
-            .saturating_add(DbWeight::get().writes(2 as Weight))
+        (465_776_000 as Weight)
+            .saturating_add(T::DbWeight::get().reads(3 as Weight))
+            .saturating_add(T::DbWeight::get().writes(2 as Weight))
     }
     fn set_non_mintable() -> Weight {
-        Default::default()
+        (177_752_000 as Weight)
+            .saturating_add(T::DbWeight::get().reads(2 as Weight))
+            .saturating_add(T::DbWeight::get().writes(1 as Weight))
     }
 }
 
-impl crate::WeightInfo for PresetWeightInfo {
+impl crate::WeightInfo for () {
     fn register() -> Weight {
         10 * EXTRINSIC_FIXED_WEIGHT
     }

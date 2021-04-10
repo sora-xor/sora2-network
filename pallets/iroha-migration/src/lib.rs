@@ -11,13 +11,16 @@
 extern crate alloc;
 use alloc::string::String;
 
+#[cfg(feature = "runtime-benchmarks")]
+mod benchmarking;
+
 #[cfg(test)]
 mod mock;
 
 #[cfg(test)]
 mod tests;
 
-mod weights;
+pub mod weights;
 
 use common::prelude::Balance;
 use common::VAL;
@@ -41,6 +44,7 @@ pub const TECH_ACCOUNT_MAIN: &[u8] = b"main";
 
 pub trait WeightInfo {
     fn migrate() -> Weight;
+    fn on_initialize() -> Weight;
 }
 
 fn blocks_till_migration<T>() -> T::BlockNumber
@@ -296,34 +300,27 @@ pub mod pallet {
 
     #[pallet::hooks]
     impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
-        fn on_finalize(block_number: T::BlockNumber) {
-            common::with_benchmark(
-                common::location_stamp!("iroha-migration.on_finalize"),
-                || {
-                    // Migrate accounts whose quorum has been reached and enough time has passed since then
-                    PendingMultiSigAccounts::<T>::translate(
-                        |key, mut value: PendingMultisigAccount<T>| {
-                            if let Some(migrate_at) = value.migrate_at {
-                                if block_number >= migrate_at {
-                                    value.approving_accounts.sort();
-                                    let quorum = Quorums::<T>::take(&key);
-                                    let multi_account =
-                                        pallet_multisig::Module::<T>::multi_account_id(
-                                            &value.approving_accounts,
-                                            quorum as u16,
-                                        );
-                                    let _ = Self::migrate_account(key, multi_account);
-                                    None
-                                } else {
-                                    Some(value)
-                                }
-                            } else {
-                                Some(value)
-                            }
-                        },
-                    )
-                },
-            )
+        fn on_initialize(block_number: T::BlockNumber) -> Weight {
+            // Migrate accounts whose quorum has been reached and enough time has passed since then
+            PendingMultiSigAccounts::<T>::translate(|key, mut value: PendingMultisigAccount<T>| {
+                if let Some(migrate_at) = value.migrate_at {
+                    if block_number > migrate_at {
+                        value.approving_accounts.sort();
+                        let quorum = Quorums::<T>::take(&key);
+                        let multi_account = pallet_multisig::Module::<T>::multi_account_id(
+                            &value.approving_accounts,
+                            quorum as u16,
+                        );
+                        let _ = Self::migrate_account(key, multi_account);
+                        None
+                    } else {
+                        Some(value)
+                    }
+                } else {
+                    Some(value)
+                }
+            });
+            WeightInfoOf::<T>::on_initialize()
         }
     }
 
@@ -451,6 +448,7 @@ pub mod pallet {
     #[pallet::genesis_build]
     impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
         fn build(&self) {
+            frame_system::Pallet::<T>::inc_consumers(&self.account_id).unwrap();
             Account::<T>::put(&self.account_id);
 
             for (account_id, balance, referrer, threshold, public_keys) in &self.iroha_accounts {

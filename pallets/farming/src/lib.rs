@@ -133,6 +133,8 @@ impl<T: Config> Pallet<T> {
                     "FARMING_PALLET".into(),
                     farmer_id.encode(),
                 );
+                frame_system::Pallet::<T>::inc_consumers(&account_id)
+                    .map_err(|_| Error::<T>::IncRefError)?;
                 technical::Pallet::<T>::register_tech_account_id_if_not_exist(&tech_id)?;
                 let current_block = <frame_system::Pallet<T>>::block_number();
                 let farmer = FarmerOf::<T> {
@@ -533,9 +535,7 @@ pub mod pallet {
     #[pallet::hooks]
     impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
         fn on_initialize(now: T::BlockNumber) -> Weight {
-            common::with_benchmark("farming.on_initialize", || {
-                Pallet::<T>::perform_per_block_update(now)
-            })
+            Pallet::<T>::perform_per_block_update(now)
         }
     }
 
@@ -599,7 +599,7 @@ pub mod pallet {
     }
 
     #[pallet::event]
-    #[pallet::metadata(AccountIdOf<T> = "AccountId", AssetId32<common::AssetId> = "AssetId")]
+    #[pallet::metadata(AccountIdOf<T> = "AccountId", AssetId32<common::PredefinedAssetId> = "AssetId")]
     #[pallet::generate_deposit(pub(super) fn deposit_event)]
     pub enum Event<T: Config> {
         FarmCreated(FarmId, AccountIdOf<T>),
@@ -607,8 +607,8 @@ pub mod pallet {
         IncentiveClaimed(FarmId, AccountIdOf<T>),
         FarmerExit(FarmId, AccountIdOf<T>),
         SmoothPriceUpdated(
-            AssetId32<common::AssetId>,
-            AssetId32<common::AssetId>,
+            AssetId32<common::PredefinedAssetId>,
+            AssetId32<common::PredefinedAssetId>,
             Balance,
         ),
     }
@@ -631,6 +631,8 @@ pub mod pallet {
         ThisTypeOfLiquiditySourceIsNotImplementedOrSupported,
         NothingToClaim,
         CaseIsNotSupported,
+        /// Increment account reference error.
+        IncRefError,
     }
 
     #[pallet::storage]
@@ -655,9 +657,9 @@ pub mod pallet {
     pub type PricesStates<T: Config> = StorageDoubleMap<
         _,
         Blake2_128Concat,
-        AssetId32<common::AssetId>,
+        AssetId32<common::PredefinedAssetId>,
         Blake2_128Concat,
-        AssetId32<common::AssetId>,
+        AssetId32<common::PredefinedAssetId>,
         SmoothPriceState,
     >;
 

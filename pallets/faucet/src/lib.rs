@@ -1,9 +1,9 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use frame_support::ensure;
-use sp_arithmetic::traits::Saturating;
-
 use common::{balance, Balance, PSWAP, VAL, XOR};
+use frame_support::ensure;
+use frame_support::weights::Weight;
+use sp_arithmetic::traits::Saturating;
 
 mod benchmarking;
 
@@ -12,10 +12,18 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
+pub mod weights;
+
+pub trait WeightInfo {
+    fn transfer() -> Weight;
+    fn reset_rewards() -> Weight;
+}
+
 type Assets<T> = assets::Module<T>;
 type System<T> = frame_system::Module<T>;
 type Technical<T> = technical::Module<T>;
 type BlockNumberOf<T> = <T as frame_system::Config>::BlockNumber;
+type WeightInfoOf<T> = <T as Config>::WeightInfo;
 
 pub const TECH_ACCOUNT_PREFIX: &[u8] = b"faucet";
 pub const TECH_ACCOUNT_MAIN: &[u8] = b"main";
@@ -47,6 +55,7 @@ pub mod pallet {
         frame_system::Config + assets::Config + rewards::Config + technical::Config
     {
         type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+        type WeightInfo: WeightInfo;
     }
 
     #[pallet::pallet]
@@ -66,36 +75,34 @@ pub mod pallet {
         /// AssetNotSupported is returned if `asset_id` is something the function doesn't support.
         /// AmountAboveLimit is returned if `target` has already received their daily limit of `asset_id`.
         /// NotEnoughReserves is returned if `amount` is greater than the reserves
-        #[pallet::weight((0, Pays::No))]
+        #[pallet::weight((WeightInfoOf::<T>::transfer(), Pays::No))]
         pub fn transfer(
             _origin: OriginFor<T>,
             asset_id: T::AssetId,
             target: AccountIdOf<T>,
             amount: Balance,
         ) -> DispatchResultWithPostInfo {
-            common::with_benchmark("faucet.transfer", || {
-                Self::ensure_asset_supported(asset_id)?;
-                let block_number = System::<T>::block_number();
-                let (block_number, taken_amount) =
-                    Self::prepare_transfer(&target, asset_id, amount, block_number)?;
-                let reserves_tech_account_id = Self::reserves_account_id();
-                let reserves_account_id =
-                    Technical::<T>::tech_account_id_to_account_id(&reserves_tech_account_id)?;
-                let reserves_amount = Assets::<T>::total_balance(&asset_id, &reserves_account_id)?;
-                ensure!(amount <= reserves_amount, Error::<T>::NotEnoughReserves);
-                technical::Module::<T>::transfer_out(
-                    &asset_id,
-                    &reserves_tech_account_id,
-                    &target,
-                    amount,
-                )?;
-                Transfers::<T>::insert(target.clone(), asset_id, (block_number, taken_amount));
-                Self::deposit_event(Event::Transferred(target, amount));
-                Ok(().into())
-            })
+            Self::ensure_asset_supported(asset_id)?;
+            let block_number = System::<T>::block_number();
+            let (block_number, taken_amount) =
+                Self::prepare_transfer(&target, asset_id, amount, block_number)?;
+            let reserves_tech_account_id = Self::reserves_account_id();
+            let reserves_account_id =
+                Technical::<T>::tech_account_id_to_account_id(&reserves_tech_account_id)?;
+            let reserves_amount = Assets::<T>::total_balance(&asset_id, &reserves_account_id)?;
+            ensure!(amount <= reserves_amount, Error::<T>::NotEnoughReserves);
+            technical::Module::<T>::transfer_out(
+                &asset_id,
+                &reserves_tech_account_id,
+                &target,
+                amount,
+            )?;
+            Transfers::<T>::insert(target.clone(), asset_id, (block_number, taken_amount));
+            Self::deposit_event(Event::Transferred(target, amount));
+            Ok(().into())
         }
 
-        #[pallet::weight((0, Pays::No))]
+        #[pallet::weight((WeightInfoOf::<T>::reset_rewards(), Pays::No))]
         pub fn reset_rewards(_origin: OriginFor<T>) -> DispatchResultWithPostInfo {
             ValOwners::<T>::remove_all();
             ValOwners::<T>::insert(

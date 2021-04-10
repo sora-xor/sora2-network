@@ -1,18 +1,11 @@
 {
     "rust-analyzer.procMacro.enable": true,
-    "rust-analyzer.cargo.loadOutDirsFromCheck": true,
     "rust-analyzer.server.extraEnv": {
         "SKIP_WASM_BUILD": "true"
     },
-    "rust-analyzer.checkOnSave.allTargets": false,
-    "rust-analyzer.checkOnSave.extraArgs": [
-        "--lib",
-        "--tests"
-    ],
-    "rust-analyzer.checkOnSave.overrideCommand": [
-        "./check"
-    ],
+    "rust-analyzer.cargo.features": ["private-net"],
     "rust-analyzer.diagnostics.disabled": [
         "macro-error"
-    ]
+    ],
+    "rust-analyzer.diagnostics.enableExperimental": false
 }

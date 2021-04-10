@@ -2,7 +2,7 @@ use crate as iroha_migration; // for construct_runtime
 use crate::{Config, TECH_ACCOUNT_MAIN, TECH_ACCOUNT_PREFIX};
 use common::mock::ExistentialDeposits;
 use common::prelude::Balance;
-use common::{Amount, AssetId, AssetId32, AssetName, AssetSymbol, VAL};
+use common::{Amount, AssetId32, AssetName, AssetSymbol, PredefinedAssetId, VAL};
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::GenesisBuild;
 use frame_support::weights::Weight;
@@ -17,11 +17,11 @@ type DEXId = common::DEXId;
 type AccountId = u64;
 type BlockNumber = u64;
 type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
-type TechAssetId = common::TechAssetId<common::AssetId>;
+type TechAssetId = common::TechAssetId<common::PredefinedAssetId>;
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
 
-pub const XOR: AssetId = AssetId::XOR;
+pub const XOR: PredefinedAssetId = PredefinedAssetId::XOR;
 pub const ALICE: AccountId = 1;
 pub const BOB: AccountId = 2;
 pub const CHARLIE: AccountId = 3;
@@ -32,7 +32,7 @@ parameter_types! {
     pub const MaximumBlockWeight: Weight = 1024;
     pub const MaximumBlockLength: u32 = 2 * 1024;
     pub const AvailableBlockRatio: Perbill = Perbill::from_percent(75);
-    pub const GetBaseAssetId: AssetId32<AssetId> = AssetId32::from_asset_id(XOR);
+    pub const GetBaseAssetId: AssetId32<PredefinedAssetId> = AssetId32::from_asset_id(XOR);
     pub const ExistentialDeposit: u128 = 0;
     pub const DepositBase: u64 = 1;
     pub const DepositFactor: u64 = 1;
@@ -98,7 +98,7 @@ impl assets::Config for Runtime {
     type ExtraAccountId = u64;
     type ExtraAssetRecordArg =
         common::AssetIdExtraAssetRecordArg<DEXId, common::LiquiditySourceType, u64>;
-    type AssetId = common::AssetId32<AssetId>;
+    type AssetId = common::AssetId32<PredefinedAssetId>;
     type GetBaseAssetId = GetBaseAssetId;
     type Currency = currencies::Module<Runtime>;
     type WeightInfo = ();
@@ -160,14 +160,23 @@ impl Config for Runtime {
     type WeightInfo = ();
 }
 
-// Build genesis storage according to the mock runtime.
-pub fn new_test_ext() -> sp_io::TestExternalities {
+pub fn test_ext(add_iroha_accounts: bool) -> sp_io::TestExternalities {
     let tech_account_id =
         TechAccountId::Generic(TECH_ACCOUNT_PREFIX.to_vec(), TECH_ACCOUNT_MAIN.to_vec());
 
     let mut t = frame_system::GenesisConfig::default()
         .build_storage::<Runtime>()
         .unwrap();
+
+    pallet_balances::GenesisConfig::<Runtime> {
+        balances: vec![
+            (ALICE, 0u128.into()),
+            (BOB, 0u128.into()),
+            (MINTING_ACCOUNT, 0u128.into()),
+        ],
+    }
+    .assimilate_storage(&mut t)
+    .unwrap();
 
     permissions::GenesisConfig::<Runtime> {
         initial_permission_owners: vec![(MINT, Scope::Unlimited, vec![MINTING_ACCOUNT])],
@@ -202,8 +211,8 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
     .assimilate_storage(&mut t)
     .unwrap();
 
-    IrohaMigrationConfig {
-        iroha_accounts: vec![
+    let iroha_accounts = if add_iroha_accounts {
+        vec![
             (
                 "did_sora_d9bda3688c6f608ab15c@sora".to_string(),
                 Balance::from(0u128),
@@ -251,11 +260,22 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
                     "57571ec82cff710143eba60c05d88de14a22799048137162d63c534a8b02dc20".to_string(),
                 ],
             ),
-        ],
+        ]
+    } else {
+        Vec::new()
+    };
+
+    IrohaMigrationConfig {
+        iroha_accounts,
         account_id: MINTING_ACCOUNT,
     }
     .assimilate_storage(&mut t)
     .unwrap();
 
     t.into()
+}
+
+// Build genesis storage according to the mock runtime.
+pub fn new_test_ext() -> sp_io::TestExternalities {
+    test_ext(true)
 }

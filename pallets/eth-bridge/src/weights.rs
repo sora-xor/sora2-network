@@ -1,10 +1,12 @@
-//! THIS FILE WAS AUTO-GENERATED USING THE SUBSTRATE BENCHMARK CLI VERSION 2.0.0-rc5
-
+use crate::{IncomingRequestKind, IncomingTransactionRequestKind};
 use common::weights::constants::EXTRINSIC_FIXED_WEIGHT;
-use common::weights::PresetWeightInfo;
-use frame_support::weights::Weight;
+use core::marker::PhantomData;
+use frame_support::traits::Get;
+use frame_support::weights::{Pays, Weight};
 
-impl crate::WeightInfo for () {
+pub struct WeightInfo<T>(PhantomData<T>);
+
+impl<T: frame_system::Config> crate::WeightInfo for WeightInfo<T> {
     fn register_bridge() -> Weight {
         Default::default()
     }
@@ -15,10 +17,24 @@ impl crate::WeightInfo for () {
         Default::default()
     }
     fn transfer_to_sidechain() -> Weight {
-        Default::default()
+        (1_244_777_000 as Weight)
+            .saturating_add(T::DbWeight::get().reads(14 as Weight))
+            .saturating_add(T::DbWeight::get().writes(7 as Weight))
     }
-    fn request_from_sidechain() -> Weight {
-        Default::default()
+    fn request_from_sidechain(kind: &IncomingRequestKind) -> (Weight, Pays) {
+        let pays = if kind
+            == &IncomingRequestKind::Transaction(IncomingTransactionRequestKind::TransferXOR)
+        {
+            Pays::No
+        } else {
+            Pays::Yes
+        };
+        (
+            (310_784_000 as Weight)
+                .saturating_add(T::DbWeight::get().reads(6 as Weight))
+                .saturating_add(T::DbWeight::get().writes(5 as Weight)),
+            pays,
+        )
     }
     fn add_peer() -> Weight {
         Default::default()
@@ -35,9 +51,49 @@ impl crate::WeightInfo for () {
     fn migrate() -> Weight {
         Default::default()
     }
+    fn register_incoming_request() -> (Weight, Pays) {
+        (
+            (720_660_000 as Weight)
+                .saturating_add(T::DbWeight::get().reads(6 as Weight))
+                .saturating_add(T::DbWeight::get().writes(7 as Weight)),
+            Pays::No,
+        )
+    }
+    fn finalize_incoming_request() -> (Weight, Pays) {
+        (
+            (1_187_607_000 as Weight)
+                .saturating_add(T::DbWeight::get().reads(9 as Weight))
+                .saturating_add(T::DbWeight::get().writes(4 as Weight)),
+            Pays::No,
+        )
+    }
+    fn approve_request() -> (Weight, Pays) {
+        (
+            (19_640_054_000 as Weight)
+                .saturating_add(T::DbWeight::get().reads(8 as Weight))
+                .saturating_add(T::DbWeight::get().writes(1 as Weight)),
+            Pays::No,
+        )
+    }
+    fn approve_request_finalize() -> (Weight, Pays) {
+        (
+            (20_243_062_000 as Weight)
+                .saturating_add(T::DbWeight::get().reads(13 as Weight))
+                .saturating_add(T::DbWeight::get().writes(4 as Weight)),
+            Pays::No,
+        )
+    }
+    fn abort_request() -> (Weight, Pays) {
+        (
+            (776_940_000 as Weight)
+                .saturating_add(T::DbWeight::get().reads(8 as Weight))
+                .saturating_add(T::DbWeight::get().writes(3 as Weight)),
+            Pays::No,
+        )
+    }
 }
 
-impl crate::WeightInfo for PresetWeightInfo {
+impl crate::WeightInfo for () {
     fn register_bridge() -> Weight {
         EXTRINSIC_FIXED_WEIGHT
     }
@@ -50,8 +106,15 @@ impl crate::WeightInfo for PresetWeightInfo {
     fn transfer_to_sidechain() -> Weight {
         10 * EXTRINSIC_FIXED_WEIGHT
     }
-    fn request_from_sidechain() -> Weight {
-        EXTRINSIC_FIXED_WEIGHT
+    fn request_from_sidechain(kind: &IncomingRequestKind) -> (Weight, Pays) {
+        let pays = if kind
+            == &IncomingRequestKind::Transaction(IncomingTransactionRequestKind::TransferXOR)
+        {
+            Pays::No
+        } else {
+            Pays::Yes
+        };
+        (EXTRINSIC_FIXED_WEIGHT, pays)
     }
     fn add_peer() -> Weight {
         EXTRINSIC_FIXED_WEIGHT
@@ -67,5 +130,20 @@ impl crate::WeightInfo for PresetWeightInfo {
     }
     fn migrate() -> Weight {
         EXTRINSIC_FIXED_WEIGHT
+    }
+    fn register_incoming_request() -> (Weight, Pays) {
+        (EXTRINSIC_FIXED_WEIGHT, Pays::No)
+    }
+    fn finalize_incoming_request() -> (Weight, Pays) {
+        (EXTRINSIC_FIXED_WEIGHT, Pays::No)
+    }
+    fn approve_request() -> (Weight, Pays) {
+        (EXTRINSIC_FIXED_WEIGHT, Pays::No)
+    }
+    fn approve_request_finalize() -> (Weight, Pays) {
+        (EXTRINSIC_FIXED_WEIGHT, Pays::No)
+    }
+    fn abort_request() -> (Weight, Pays) {
+        (EXTRINSIC_FIXED_WEIGHT, Pays::No)
     }
 }

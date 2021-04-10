@@ -27,8 +27,8 @@ pub type AccountId = AccountId32;
 pub type BlockNumber = u64;
 pub type DEXId = u32;
 type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
-type TechAssetId = common::TechAssetId<common::AssetId>;
-type AssetId = AssetId32<common::AssetId>;
+type TechAssetId = common::TechAssetId<common::PredefinedAssetId>;
+type AssetId = AssetId32<common::PredefinedAssetId>;
 type ReservesInit = Vec<(DEXId, AssetId, (Fixed, Fixed))>;
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
@@ -63,7 +63,7 @@ parameter_types! {
     };
     pub const GetNumSamples: usize = 40;
     pub const GetBaseAssetId: AssetId = XOR;
-    pub const ExistentialDeposit: u128 = 1;
+    pub const ExistentialDeposit: u128 = 0;
     pub GetFee0: Fixed = fixed_from_basis_points(0u16);
     pub GetFee10: Fixed = fixed_from_basis_points(10u16);
     pub GetFee20: Fixed = fixed_from_basis_points(20u16);
@@ -173,9 +173,7 @@ impl pallet_balances::Config for Runtime {
     type MaxLocks = ();
 }
 
-impl dex_manager::Config for Runtime {
-    type WeightInfo = ();
-}
+impl dex_manager::Config for Runtime {}
 
 impl mock_liquidity_source::Config<mock_liquidity_source::Instance1> for Runtime {
     type GetFee = GetFee0;
@@ -554,6 +552,12 @@ impl ExtBuilder {
         let mut t = frame_system::GenesisConfig::default()
             .build_storage::<Runtime>()
             .unwrap();
+
+        pallet_balances::GenesisConfig::<Runtime> {
+            balances: vec![(alice(), 0)],
+        }
+        .assimilate_storage(&mut t)
+        .unwrap();
 
         dex_manager::GenesisConfig::<Runtime> {
             dex_list: self.dex_list,

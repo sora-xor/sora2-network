@@ -17,8 +17,8 @@ use sp_runtime::traits::{BlakeTwo256, IdentityLookup};
 use sp_runtime::AccountId32;
 
 pub type DEXId = u32;
-pub type AssetId = AssetId32<common::AssetId>;
-pub type TechAssetId = common::TechAssetId<common::AssetId>;
+pub type AssetId = AssetId32<common::PredefinedAssetId>;
+pub type TechAssetId = common::TechAssetId<common::PredefinedAssetId>;
 pub type AccountId = AccountId32;
 pub type BlockNumber = u64;
 type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
@@ -35,7 +35,7 @@ parameter_types! {
     pub const BlockHashCount: u64 = 250;
     pub const GetNumSamples: usize = 40;
     pub const GetBaseAssetId: AssetId = XOR;
-    pub const ExistentialDeposit: u128 = 1;
+    pub const ExistentialDeposit: u128 = 0;
     pub GetFee0: Fixed = fixed_from_basis_points(0u16);
     pub GetFee10: Fixed = fixed_from_basis_points(10u16);
     pub GetFee20: Fixed = fixed_from_basis_points(20u16);
@@ -44,6 +44,7 @@ parameter_types! {
     pub const GetDefaultSubscriptionFrequency: BlockNumber = 10;
     pub const GetBurnUpdateFrequency: BlockNumber = 14400;
     pub GetIncentiveAssetId: AssetId = common::PSWAP.into();
+    pub GetParliamentAccountId: AccountId = AccountId32::from([8; 32]);
 }
 
 construct_runtime! {
@@ -64,6 +65,7 @@ construct_runtime! {
         TradingPair: trading_pair::{Module, Call, Config<T>, Storage, Event<T>},
         PoolXyk: pool_xyk::{Module, Call, Storage, Event<T>},
         PswapDistribution: pswap_distribution::{Module, Call, Config<T>, Storage, Event<T>},
+        MBCPool: multicollateral_bonding_curve_pool::{Module, Call, Config<T>, Storage, Event<T>},
     }
 }
 
@@ -136,9 +138,7 @@ impl pallet_balances::Config for Runtime {
     type MaxLocks = ();
 }
 
-impl dex_manager::Config for Runtime {
-    type WeightInfo = ();
-}
+impl dex_manager::Config for Runtime {}
 
 impl technical::Config for Runtime {
     type Event = Event;
@@ -196,6 +196,16 @@ impl pswap_distribution::Config for Runtime {
     type GetTechnicalAccountId = GetPswapDistributionAccountId;
     type EnsureDEXManager = ();
     type OnPswapBurnedAggregator = ();
+    type WeightInfo = ();
+    type GetParliamentAccountId = GetParliamentAccountId;
+}
+
+impl multicollateral_bonding_curve_pool::Config for Runtime {
+    type Event = Event;
+    type LiquidityProxy = ();
+    type EnsureDEXManager = dex_manager::Module<Runtime>;
+    type EnsureTradingPairExists = trading_pair::Module<Runtime>;
+    type WeightInfo = ();
 }
 
 impl Config for Runtime {}
@@ -235,6 +245,12 @@ impl ExtBuilder {
         let mut t = frame_system::GenesisConfig::default()
             .build_storage::<Runtime>()
             .unwrap();
+
+        pallet_balances::GenesisConfig::<Runtime> {
+            balances: vec![(alice(), 0)],
+        }
+        .assimilate_storage(&mut t)
+        .unwrap();
 
         dex_manager::GenesisConfig::<Runtime> {
             dex_list: self.dex_list,

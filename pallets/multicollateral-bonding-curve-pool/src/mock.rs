@@ -22,10 +22,10 @@ use std::collections::HashMap;
 pub type AccountId = AccountId32;
 pub type BlockNumber = u64;
 pub type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
-type TechAssetId = common::TechAssetId<common::AssetId>;
+type TechAssetId = common::TechAssetId<common::PredefinedAssetId>;
 pub type ReservesAccount =
     mock_liquidity_source::ReservesAcc<Runtime, mock_liquidity_source::Instance1>;
-pub type AssetId = AssetId32<common::AssetId>;
+pub type AssetId = AssetId32<common::PredefinedAssetId>;
 type DEXId = common::DEXId;
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
@@ -118,9 +118,7 @@ impl frame_system::Config for Runtime {
     type SS58Prefix = ();
 }
 
-impl dex_manager::Config for Runtime {
-    type WeightInfo = ();
-}
+impl dex_manager::Config for Runtime {}
 
 impl trading_pair::Config for Runtime {
     type Event = Event;
@@ -406,6 +404,14 @@ impl Default for ExtBuilder {
                     AssetName(b"SORA Validator Token".to_vec()),
                     18,
                 ),
+                (
+                    alice(),
+                    PSWAP,
+                    balance!(0),
+                    AssetSymbol(b"PSWAP".to_vec()),
+                    AssetName(b"Polkaswap Token".to_vec()),
+                    18,
+                ),
             ],
             dex_list: vec![(
                 DEX_A_ID,
@@ -447,6 +453,28 @@ impl ExtBuilder {
             .build_storage::<Runtime>()
             .unwrap();
 
+        pallet_balances::GenesisConfig::<Runtime> {
+            balances: self
+                .endowed_accounts
+                .iter()
+                .cloned()
+                .filter_map(|(account_id, asset_id, balance, ..)| {
+                    if asset_id == GetBaseAssetId::get() {
+                        Some((account_id, balance))
+                    } else {
+                        None
+                    }
+                })
+                .chain(vec![
+                    (bob(), 0),
+                    (assets_owner(), 0),
+                    (incentives_account(), 0),
+                ])
+                .collect(),
+        }
+        .assimilate_storage(&mut t)
+        .unwrap();
+
         crate::GenesisConfig::<Runtime> {
             distribution_accounts: Default::default(),
             reserves_account_id: Default::default(),
@@ -485,23 +513,6 @@ impl ExtBuilder {
                         Balance::zero(),
                         true,
                     )
-                })
-                .collect(),
-        }
-        .assimilate_storage(&mut t)
-        .unwrap();
-
-        pallet_balances::GenesisConfig::<Runtime> {
-            balances: self
-                .endowed_accounts
-                .iter()
-                .cloned()
-                .filter_map(|(account_id, asset_id, balance, ..)| {
-                    if asset_id == GetBaseAssetId::get() {
-                        Some((account_id, balance))
-                    } else {
-                        None
-                    }
                 })
                 .collect(),
         }

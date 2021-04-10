@@ -21,7 +21,7 @@ use aliases::{
     PolySwapActionStructOf, TechAccountIdOf, TechAssetIdOf, WithdrawLiquidityActionOf,
 };
 
-mod weights;
+pub mod weights;
 
 #[cfg(test)]
 mod mock;
@@ -253,38 +253,36 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         input_asset_id: &T::AssetId,
         output_asset_id: &T::AssetId,
     ) -> bool {
-        common::with_benchmark("pool-xyk.can_exchange", || {
-            // Function clause is used here, because in this case it is other scope and it not
-            // conflicted with bool type.
-            let res = || {
-                let tech_acc_id = T::TechAccountId::from_generic_pair(
-                    "PoolXYK".into(),
-                    "CanExchangeOperation".into(),
-                );
-                //TODO: Account registration is not needed to do operation, is this ok?
-                //Technical::register_tech_account_id(tech_acc_id)?;
-                let repr = technical::Module::<T>::tech_account_id_to_account_id(&tech_acc_id)?;
+        // Function clause is used here, because in this case it is other scope and it not
+        // conflicted with bool type.
+        let res = || {
+            let tech_acc_id = T::TechAccountId::from_generic_pair(
+                "PoolXYK".into(),
+                "CanExchangeOperation".into(),
+            );
+            //TODO: Account registration is not needed to do operation, is this ok?
+            //Technical::register_tech_account_id(tech_acc_id)?;
+            let repr = technical::Module::<T>::tech_account_id_to_account_id(&tech_acc_id)?;
+            //FIXME: Use special max variable that is good for this operation.
+            T::Currency::deposit(input_asset_id.clone(), &repr, balance!(999999999))?;
+            let swap_amount = common::prelude::SwapAmount::WithDesiredInput {
                 //FIXME: Use special max variable that is good for this operation.
-                T::Currency::deposit(input_asset_id.clone(), &repr, balance!(999999999))?;
-                let swap_amount = common::prelude::SwapAmount::WithDesiredInput {
-                    //FIXME: Use special max variable that is good for this operation.
-                    desired_amount_in: balance!(0.000000001),
-                    min_amount_out: 0,
-                };
-                Module::<T>::exchange(
-                    &repr,
-                    &repr,
-                    dex_id,
-                    input_asset_id,
-                    output_asset_id,
-                    swap_amount,
-                )?;
-                Ok(())
+                desired_amount_in: balance!(0.000000001),
+                min_amount_out: 0,
             };
-            frame_support::storage::with_transaction(|| {
-                let v: DispatchResult = res();
-                sp_runtime::TransactionOutcome::Rollback(v.is_ok())
-            })
+            Module::<T>::exchange(
+                &repr,
+                &repr,
+                dex_id,
+                input_asset_id,
+                output_asset_id,
+                swap_amount,
+            )?;
+            Ok(())
+        };
+        frame_support::storage::with_transaction(|| {
+            let v: DispatchResult = res();
+            sp_runtime::TransactionOutcome::Rollback(v.is_ok())
         })
     }
 
@@ -294,28 +292,26 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         output_asset_id: &T::AssetId,
         swap_amount: SwapAmount<Balance>,
     ) -> Result<SwapOutcome<Balance>, DispatchError> {
-        common::with_benchmark("pool-xyk.quote", || {
-            let res = || {
-                let tech_acc_id =
-                    T::TechAccountId::from_generic_pair("PoolXYK".into(), "QuoteOperation".into());
-                //TODO: Account registration is not needed to do operation, is this ok?
-                //Technical::register_tech_account_id(tech_acc_id)?;
-                let repr = technical::Module::<T>::tech_account_id_to_account_id(&tech_acc_id)?;
-                //FIXME: Use special max variable that is good for this operation.
-                T::Currency::deposit(input_asset_id.clone(), &repr, balance!(999999999))?;
-                Module::<T>::exchange(
-                    &repr,
-                    &repr,
-                    dex_id,
-                    input_asset_id,
-                    output_asset_id,
-                    swap_amount,
-                )
-            };
-            frame_support::storage::with_transaction(|| {
-                let v: Result<SwapOutcome<Balance>, DispatchError> = res();
-                sp_runtime::TransactionOutcome::Rollback(v)
-            })
+        let res = || {
+            let tech_acc_id =
+                T::TechAccountId::from_generic_pair("PoolXYK".into(), "QuoteOperation".into());
+            //TODO: Account registration is not needed to do operation, is this ok?
+            //Technical::register_tech_account_id(tech_acc_id)?;
+            let repr = technical::Module::<T>::tech_account_id_to_account_id(&tech_acc_id)?;
+            //FIXME: Use special max variable that is good for this operation.
+            T::Currency::deposit(input_asset_id.clone(), &repr, balance!(999999999))?;
+            Module::<T>::exchange(
+                &repr,
+                &repr,
+                dex_id,
+                input_asset_id,
+                output_asset_id,
+                swap_amount,
+            )
+        };
+        frame_support::storage::with_transaction(|| {
+            let v: Result<SwapOutcome<Balance>, DispatchError> = res();
+            sp_runtime::TransactionOutcome::Rollback(v)
         })
     }
 
@@ -327,64 +323,62 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         output_asset_id: &T::AssetId,
         swap_amount: SwapAmount<Balance>,
     ) -> Result<SwapOutcome<Balance>, DispatchError> {
-        common::with_benchmark("pool-xyk.exchange", || {
-            let (_, tech_acc_id) = Module::<T>::tech_account_from_dex_and_asset_pair(
-                *dex_id,
-                *input_asset_id,
-                *output_asset_id,
-            )?;
-            let (source_amount, destination_amount) =
-                Module::<T>::get_bounds_from_swap_amount(swap_amount.clone())?;
-            let mut action = PolySwapActionStructOf::<T>::PairSwap(PairSwapActionOf::<T> {
-                client_account: None,
-                receiver_account: Some(receiver.clone()),
-                pool_account: tech_acc_id,
-                source: Resource {
-                    asset: *input_asset_id,
-                    amount: source_amount,
-                },
-                destination: Resource {
-                    asset: *output_asset_id,
-                    amount: destination_amount,
-                },
-                fee: None,
-                fee_account: None,
-                get_fee_from_destination: None,
-            });
-            common::SwapRulesValidation::<AccountIdOf<T>, TechAccountIdOf<T>, T>::prepare_and_validate(
+        let (_, tech_acc_id) = Module::<T>::tech_account_from_dex_and_asset_pair(
+            *dex_id,
+            *input_asset_id,
+            *output_asset_id,
+        )?;
+        let (source_amount, destination_amount) =
+            Module::<T>::get_bounds_from_swap_amount(swap_amount.clone())?;
+        let mut action = PolySwapActionStructOf::<T>::PairSwap(PairSwapActionOf::<T> {
+            client_account: None,
+            receiver_account: Some(receiver.clone()),
+            pool_account: tech_acc_id,
+            source: Resource {
+                asset: *input_asset_id,
+                amount: source_amount,
+            },
+            destination: Resource {
+                asset: *output_asset_id,
+                amount: destination_amount,
+            },
+            fee: None,
+            fee_account: None,
+            get_fee_from_destination: None,
+        });
+        common::SwapRulesValidation::<AccountIdOf<T>, TechAccountIdOf<T>, T>::prepare_and_validate(
             &mut action,
             Some(sender),
         )?;
 
-            // It is guarantee that unwrap is always ok.
-            // Clone is used here because action is used for perform_create_swap_unchecked.
-            let retval = match action.clone() {
-                PolySwapAction::PairSwap(a) => {
-                    let mut desired_in = false;
-                    let (fee, amount) = match swap_amount {
-                        SwapAmount::WithDesiredInput { .. } => {
-                            desired_in = true;
-                            (a.fee.unwrap(), a.destination.amount.unwrap())
-                        }
-                        SwapAmount::WithDesiredOutput { .. } => {
-                            (a.fee.unwrap(), a.source.amount.unwrap())
-                        }
-                    };
-                    if a.get_fee_from_destination.unwrap() && desired_in {
-                        Ok(common::prelude::SwapOutcome::new(amount - fee, fee))
-                    } else {
-                        Ok(common::prelude::SwapOutcome::new(amount, fee))
+        // It is guarantee that unwrap is always ok.
+        // Clone is used here because action is used for perform_create_swap_unchecked.
+        let retval = match action.clone() {
+            PolySwapAction::PairSwap(a) => {
+                let mut desired_in = false;
+                let (fee, amount) = match swap_amount {
+                    SwapAmount::WithDesiredInput { .. } => {
+                        desired_in = true;
+                        (a.fee.unwrap(), a.destination.amount.unwrap())
                     }
+                    SwapAmount::WithDesiredOutput { .. } => {
+                        (a.fee.unwrap(), a.source.amount.unwrap())
+                    }
+                };
+                if a.get_fee_from_destination.unwrap() && desired_in {
+                    Ok(common::prelude::SwapOutcome::new(amount - fee, fee))
+                } else {
+                    Ok(common::prelude::SwapOutcome::new(amount, fee))
                 }
-                _ => unreachable!("we know that always PairSwap is used"),
-            };
+            }
+            _ => unreachable!("we know that always PairSwap is used"),
+        };
 
-            let action = T::PolySwapAction::from(action);
-            let mut action = action.into();
-            technical::Module::<T>::perform_create_swap_unchecked(sender.clone(), &mut action)?;
+        let action = T::PolySwapAction::from(action);
+        let mut action = action.into();
+        technical::Module::<T>::perform_create_swap_unchecked(sender.clone(), &mut action)?;
 
-            retval
-        })
+        retval
     }
 }
 
@@ -471,20 +465,18 @@ pub mod pallet {
             input_a_min: Balance,
             input_b_min: Balance,
         ) -> DispatchResultWithPostInfo {
-            common::with_benchmark("pool-xyk.deposit_liquidity", || {
-                let source = ensure_signed(origin)?;
-                Module::<T>::deposit_liquidity_unchecked(
-                    source,
-                    dex_id,
-                    input_asset_a,
-                    input_asset_b,
-                    input_a_desired,
-                    input_b_desired,
-                    input_a_min,
-                    input_b_min,
-                )?;
-                Ok(().into())
-            })
+            let source = ensure_signed(origin)?;
+            Module::<T>::deposit_liquidity_unchecked(
+                source,
+                dex_id,
+                input_asset_a,
+                input_asset_b,
+                input_a_desired,
+                input_b_desired,
+                input_a_min,
+                input_b_min,
+            )?;
+            Ok(().into())
         }
 
         #[pallet::weight(<T as Config>::WeightInfo::withdraw_liquidity())]
@@ -497,19 +489,17 @@ pub mod pallet {
             output_a_min: Balance,
             output_b_min: Balance,
         ) -> DispatchResultWithPostInfo {
-            common::with_benchmark("pool-xyk.withdraw_liquidity", || {
-                let source = ensure_signed(origin)?;
-                Module::<T>::withdraw_liquidity_unchecked(
-                    source,
-                    dex_id,
-                    output_asset_a,
-                    output_asset_b,
-                    marker_asset_desired,
-                    output_a_min,
-                    output_b_min,
-                )?;
-                Ok(().into())
-            })
+            let source = ensure_signed(origin)?;
+            Module::<T>::withdraw_liquidity_unchecked(
+                source,
+                dex_id,
+                output_asset_a,
+                output_asset_b,
+                marker_asset_desired,
+                output_a_min,
+                output_b_min,
+            )?;
+            Ok(().into())
         }
 
         #[pallet::weight(<T as Config>::WeightInfo::initialize_pool())]
@@ -519,67 +509,65 @@ pub mod pallet {
             asset_a: AssetIdOf<T>,
             asset_b: AssetIdOf<T>,
         ) -> DispatchResultWithPostInfo {
-            common::with_benchmark("pool-xyk.initialize_pool", || {
-                common::with_transaction(|| {
-                    let source = ensure_signed(origin.clone())?;
-                    <T as Config>::EnsureDEXManager::ensure_can_manage(
-                        &dex_id,
-                        origin.clone(),
-                        ManagementMode::Public,
-                    )?;
-                    let (_, tech_account_id, fees_account_id, mark_asset) =
-                        Module::<T>::initialize_pool_unchecked(
-                            source.clone(),
-                            dex_id,
-                            asset_a,
-                            asset_b,
-                        )?;
-                    let mark_asset_repr: T::AssetId = mark_asset.into();
-                    assets::Module::<T>::register_asset_id(
+            common::with_transaction(|| {
+                let source = ensure_signed(origin.clone())?;
+                <T as Config>::EnsureDEXManager::ensure_can_manage(
+                    &dex_id,
+                    origin.clone(),
+                    ManagementMode::Public,
+                )?;
+                let (_, tech_account_id, fees_account_id, mark_asset) =
+                    Module::<T>::initialize_pool_unchecked(
                         source.clone(),
-                        mark_asset_repr,
-                        AssetSymbol(b"XYKPOOL".to_vec()),
-                        AssetName(b"XYK LP Tokens".to_vec()),
-                        18,
-                        0,
-                        true,
-                    )?;
-                    let ta_repr =
-                        technical::Module::<T>::tech_account_id_to_account_id(&tech_account_id)?;
-                    let fees_ta_repr =
-                        technical::Module::<T>::tech_account_id_to_account_id(&fees_account_id)?;
-                    // Minting permission is needed for technical account to mint markered tokens of
-                    // liquidity into account who deposit liquidity.
-                    permissions::Module::<T>::grant_permission_with_scope(
-                        source.clone(),
-                        ta_repr.clone(),
-                        MINT,
-                        Scope::Limited(hash(&Into::<AssetIdOf<T>>::into(mark_asset.clone()))),
-                    )?;
-                    permissions::Module::<T>::grant_permission_with_scope(
-                        source,
-                        ta_repr.clone(),
-                        BURN,
-                        Scope::Limited(hash(&Into::<AssetIdOf<T>>::into(mark_asset.clone()))),
-                    )?;
-                    Module::<T>::initialize_pool_properties(
-                        &dex_id,
-                        &asset_a,
-                        &asset_b,
-                        &ta_repr,
-                        &fees_ta_repr,
-                        &mark_asset_repr,
-                    )?;
-                    pswap_distribution::Module::<T>::subscribe(
-                        fees_ta_repr,
                         dex_id,
-                        mark_asset_repr,
-                        None,
+                        asset_a,
+                        asset_b,
                     )?;
-                    MarkerTokensIndex::<T>::mutate(|mti| mti.insert(mark_asset_repr));
-                    Self::deposit_event(Event::PoolIsInitialized(ta_repr));
-                    Ok(().into())
-                })
+                let mark_asset_repr: T::AssetId = mark_asset.into();
+                assets::Module::<T>::register_asset_id(
+                    source.clone(),
+                    mark_asset_repr,
+                    AssetSymbol(b"XYKPOOL".to_vec()),
+                    AssetName(b"XYK LP Tokens".to_vec()),
+                    18,
+                    0,
+                    true,
+                )?;
+                let ta_repr =
+                    technical::Module::<T>::tech_account_id_to_account_id(&tech_account_id)?;
+                let fees_ta_repr =
+                    technical::Module::<T>::tech_account_id_to_account_id(&fees_account_id)?;
+                // Minting permission is needed for technical account to mint markered tokens of
+                // liquidity into account who deposit liquidity.
+                permissions::Module::<T>::grant_permission_with_scope(
+                    source.clone(),
+                    ta_repr.clone(),
+                    MINT,
+                    Scope::Limited(hash(&Into::<AssetIdOf<T>>::into(mark_asset.clone()))),
+                )?;
+                permissions::Module::<T>::grant_permission_with_scope(
+                    source,
+                    ta_repr.clone(),
+                    BURN,
+                    Scope::Limited(hash(&Into::<AssetIdOf<T>>::into(mark_asset.clone()))),
+                )?;
+                Module::<T>::initialize_pool_properties(
+                    &dex_id,
+                    &asset_a,
+                    &asset_b,
+                    &ta_repr,
+                    &fees_ta_repr,
+                    &mark_asset_repr,
+                )?;
+                pswap_distribution::Module::<T>::subscribe(
+                    fees_ta_repr,
+                    dex_id,
+                    mark_asset_repr,
+                    None,
+                )?;
+                MarkerTokensIndex::<T>::mutate(|mti| mti.insert(mark_asset_repr));
+                Self::deposit_event(Event::PoolIsInitialized(ta_repr));
+                Ok(().into())
             })
         }
     }

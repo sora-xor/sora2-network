@@ -20,14 +20,12 @@ sp-std = { version = "3", default-features = false }
 tiny-keccak = { version = "2.0.2", features = ["keccak"] }
 tokens = { version = "0.4", package = "orml-tokens", default-features = false }
 traits = { version = "0.4", package = "orml-traits", default-features = false }
-
 common = { path = "../../common", default-features = false }
 permissions = { path = "../permissions", default-features = false }
 
 [dev-dependencies]
 pallet-balances = { version = "3", default-features = false }
 sp-io = { version = "3", default-features = false }
-
 common = { path = "../../common", features = ["test"] }
 permissions = { path = "../permissions" }
 

@@ -17,13 +17,14 @@ use crate::{
 use codec::{Decode, Encode};
 use common::prelude::Balance;
 use common::{
-    balance, eth, AssetId, AssetId32, AssetName, AssetSymbol, DEFAULT_BALANCE_PRECISION, DOT, KSM,
-    USDT, VAL, XOR,
+    balance, eth, AssetId32, AssetName, AssetSymbol, PredefinedAssetId, DEFAULT_BALANCE_PRECISION,
+    DOT, KSM, USDT, VAL, XOR,
 };
 use frame_support::sp_runtime::app_crypto::sp_core::crypto::AccountId32;
 use frame_support::sp_runtime::app_crypto::sp_core::{self, ecdsa, sr25519, Pair, Public};
 use frame_support::sp_runtime::traits::IdentifyAccount;
 use frame_support::storage::TransactionOutcome;
+use frame_support::traits::Currency;
 use frame_support::{assert_err, assert_noop, assert_ok, ensure};
 use hex_literal::hex;
 use rustc_hex::FromHex;
@@ -113,9 +114,8 @@ fn approve_request(
         if current_status == RequestStatus::Pending && i + 1 == sigs_needed {
             match last_event().ok_or(None)? {
                 Event::eth_bridge(bridge_event) => match bridge_event {
-                    crate::Event::ApprovalsCollected(e, a) => {
-                        assert_eq!(e, encoded);
-                        assert_eq!(a, approvals);
+                    crate::Event::ApprovalsCollected(h) => {
+                        assert_eq!(h, request_hash);
                     }
                     e => {
                         assert_ne!(
@@ -326,10 +326,7 @@ fn should_reserve_and_burn_sidechain_asset_in_outgoing_transfer() {
             100_u32.into(),
             net_id,
         ));
-        assert_eq!(
-            Assets::free_balance(&USDT.into(), &bridge_acc).unwrap(),
-            0u32.into()
-        );
+        assert_eq!(Assets::free_balance(&USDT.into(), &bridge_acc).unwrap(), 0);
         // Sidechain asset was reserved.
         assert_eq!(
             Assets::total_balance(&USDT.into(), &bridge_acc).unwrap(),
@@ -337,10 +334,7 @@ fn should_reserve_and_burn_sidechain_asset_in_outgoing_transfer() {
         );
         approve_last_request(&state, net_id).expect("request wasn't approved");
         // Sidechain asset was burnt.
-        assert_eq!(
-            Assets::total_balance(&USDT.into(), &bridge_acc).unwrap(),
-            0u32.into()
-        );
+        assert_eq!(Assets::total_balance(&USDT.into(), &bridge_acc).unwrap(), 0);
         assert_eq!(
             Assets::free_balance(&USDT.into(), &bridge_acc).unwrap(),
             Assets::total_balance(&USDT.into(), &bridge_acc).unwrap()
@@ -370,10 +364,7 @@ fn should_reserve_and_unreserve_thischain_asset_in_outgoing_transfer() {
             100_u32.into(),
             net_id,
         ));
-        assert_eq!(
-            Assets::free_balance(&PSWAP.into(), &bridge_acc).unwrap(),
-            0u32.into()
-        );
+        assert_eq!(Assets::free_balance(&PSWAP.into(), &bridge_acc).unwrap(), 0);
         // Thischain asset was reserved.
         assert_eq!(
             Assets::total_balance(&PSWAP.into(), &bridge_acc).unwrap(),
@@ -397,7 +388,7 @@ fn should_mint_and_burn_sidechain_asset() {
     let (mut ext, state) = ExtBuilder::default().build();
 
     #[track_caller]
-    fn check_invariant(asset_id: &AssetId32<AssetId>, val: u32) {
+    fn check_invariant(asset_id: &AssetId32<PredefinedAssetId>, val: u32) {
         assert_eq!(Assets::total_issuance(asset_id).unwrap(), val.into());
     }
 
@@ -660,10 +651,7 @@ fn should_success_incoming_transfer() {
             network_id: ETH_NETWORK_ID,
             should_take_fee: false,
         });
-        assert_eq!(
-            Assets::total_balance(&XOR.into(), &alice).unwrap(),
-            0u32.into()
-        );
+        assert_eq!(Assets::total_balance(&XOR.into(), &alice).unwrap(), 0);
         assert_incoming_request_done(&state, incoming_transfer.clone()).unwrap();
         assert_eq!(
             Assets::total_balance(&XOR.into(), &alice).unwrap(),
@@ -819,7 +807,7 @@ fn should_take_fee_in_incoming_transfer() {
         let incoming_transfer = IncomingRequest::Transfer(crate::IncomingTransfer {
             from: Address::from([1; 20]),
             to: alice.clone(),
-            asset_id: AssetId::XOR.into(),
+            asset_id: PredefinedAssetId::XOR.into(),
             asset_kind: AssetKind::SidechainOwned,
             amount: balance!(100),
             author: alice.clone(),
@@ -830,12 +818,14 @@ fn should_take_fee_in_incoming_transfer() {
             should_take_fee: true,
         });
         assert_eq!(
-            assets::Module::<Runtime>::total_balance(&AssetId::XOR.into(), &alice).unwrap(),
-            0u32.into()
+            assets::Module::<Runtime>::total_balance(&PredefinedAssetId::XOR.into(), &alice)
+                .unwrap(),
+            0
         );
         assert_incoming_request_done(&state, incoming_transfer.clone()).unwrap();
         assert_eq!(
-            assets::Module::<Runtime>::total_balance(&AssetId::XOR.into(), &alice).unwrap(),
+            assets::Module::<Runtime>::total_balance(&PredefinedAssetId::XOR.into(), &alice)
+                .unwrap(),
             balance!(99.9993).into()
         );
     });
@@ -857,7 +847,7 @@ fn should_fail_take_fee_in_incoming_transfer() {
         let incoming_transfer = IncomingRequest::Transfer(crate::IncomingTransfer {
             from: Address::from([1; 20]),
             to: alice.clone(),
-            asset_id: AssetId::XOR.into(),
+            asset_id: PredefinedAssetId::XOR.into(),
             asset_kind: AssetKind::SidechainOwned,
             amount: 100u32.into(),
             author: alice.clone(),
@@ -931,7 +921,7 @@ fn should_register_and_find_asset_ids() {
         let net_id = ETH_NETWORK_ID;
         // gets a known asset
         let (asset_id, asset_kind) = EthBridge::get_asset_by_raw_asset_id(
-            H256(AssetId32::<AssetId>::from_asset_id(AssetId::XOR).code),
+            H256(AssetId32::<PredefinedAssetId>::from_asset_id(PredefinedAssetId::XOR).code),
             &Address::zero(),
             net_id,
         )
@@ -1094,6 +1084,7 @@ fn should_add_peer_in_eth_network() {
 
         // outgoing request part
         let new_peer_id = signer.into_account();
+        let _ = pallet_balances::Pallet::<Runtime>::deposit_creating(&new_peer_id, 1u32.into());
         let new_peer_address = eth::public_key_to_eth_address(&public);
         assert_ok!(EthBridge::add_peer(
             Origin::root(),
@@ -1210,6 +1201,7 @@ fn should_add_peer_in_simple_networks() {
         // outgoing request part
         let new_peer_id = signer.into_account();
         let new_peer_address = eth::public_key_to_eth_address(&public);
+        let _ = pallet_balances::Pallet::<Runtime>::deposit_creating(&new_peer_id, 1u32.into());
         assert_ok!(EthBridge::add_peer(
             Origin::root(),
             new_peer_id.clone(),
@@ -1507,10 +1499,7 @@ fn should_cancel_ready_outgoing_request() {
             100_u32.into(),
             net_id,
         ));
-        assert_eq!(
-            Assets::total_balance(&XOR.into(), &alice).unwrap(),
-            0u32.into()
-        );
+        assert_eq!(Assets::total_balance(&XOR.into(), &alice).unwrap(), 0);
         let (outgoing_req, outgoing_req_hash) =
             approve_last_request(&state, net_id).expect("request wasn't approved");
 
@@ -1570,10 +1559,7 @@ fn should_fail_cancel_ready_outgoing_request_with_wrong_approvals() {
             100_u32.into(),
             net_id,
         ));
-        assert_eq!(
-            Assets::total_balance(&XOR.into(), &alice).unwrap(),
-            0u32.into()
-        );
+        assert_eq!(Assets::total_balance(&XOR.into(), &alice).unwrap(), 0);
         let (outgoing_req, outgoing_req_hash) =
             approve_last_request(&state, net_id).expect("request wasn't approved");
 
@@ -1619,10 +1605,7 @@ fn should_fail_cancel_ready_outgoing_request_with_wrong_approvals() {
             Error::InvalidContractInput,
         )
         .unwrap();
-        assert_eq!(
-            Assets::total_balance(&XOR.into(), &alice).unwrap(),
-            0u32.into()
-        );
+        assert_eq!(Assets::total_balance(&XOR.into(), &alice).unwrap(), 0);
     });
 }
 
@@ -1646,10 +1629,7 @@ fn should_fail_cancel_unfinished_outgoing_request() {
             100_u32.into(),
             net_id,
         ));
-        assert_eq!(
-            Assets::total_balance(&XOR.into(), &alice).unwrap(),
-            0u32.into()
-        );
+        assert_eq!(Assets::total_balance(&XOR.into(), &alice).unwrap(), 0);
         let (outgoing_req, outgoing_req_hash) =
             last_outgoing_request(net_id).expect("request wasn't found");
 
@@ -1686,10 +1666,7 @@ fn should_fail_cancel_unfinished_outgoing_request() {
             Error::RequestIsNotReady,
         )
         .unwrap();
-        assert_eq!(
-            Assets::total_balance(&XOR.into(), &alice).unwrap(),
-            0u32.into()
-        );
+        assert_eq!(Assets::total_balance(&XOR.into(), &alice).unwrap(), 0);
     });
 }
 
@@ -2269,6 +2246,7 @@ fn should_parse_add_peer_on_old_contract() {
         let signer = AccountPublic::from(kp.public());
         let public = PublicKey::from_secret_key(&SecretKey::parse_slice(&kp.seed()).unwrap());
         let new_peer_id = signer.into_account();
+        let _ = pallet_balances::Pallet::<Runtime>::deposit_creating(&new_peer_id, 1u32.into());
         let new_peer_address = eth::public_key_to_eth_address(&public);
         assert_ok!(EthBridge::add_peer(
             Origin::root(),
@@ -2326,6 +2304,7 @@ fn should_parse_remove_peer_on_old_contract() {
         let new_peer_id = signer.into_account();
         let new_peer_address = eth::public_key_to_eth_address(&public);
         let tx_hash = H256([1; 32]);
+        let _ = pallet_balances::Pallet::<Runtime>::deposit_creating(&new_peer_id, 1u32.into());
         assert_ok!(EthBridge::force_add_peer(Origin::root(), new_peer_id.clone(), new_peer_address, net_id));
         assert_ok!(EthBridge::remove_peer(
             Origin::root(),
@@ -2417,6 +2396,8 @@ fn should_cancel_outgoing_prepared_requests() {
         Assets::mint_to(&XOR.into(), &alice, bridge_acc, 100u32.into()).unwrap();
         let ocw0_account_id = &state.networks[&net_id].ocw_keypairs[0].1;
         // Paris (preparation requests, testable request).
+        let test_acc = AccountId32::new([10u8; 32]);
+        let _ = pallet_balances::Pallet::<Runtime>::deposit_creating(&test_acc, 1u32.into());
         let requests: Vec<(Vec<OffchainRequest<Runtime>>, OffchainRequest<Runtime>)> = vec![
             (
                 vec![],
@@ -2463,7 +2444,7 @@ fn should_cancel_outgoing_prepared_requests() {
                     peer_address: Address::from([10u8; 20]),
                     nonce: 0,
                     network_id: net_id,
-                    peer_account_id: AccountId32::new([10u8; 32]),
+                    peer_account_id: test_acc.clone(),
                     timepoint: Default::default(),
                 }
                 .into(),
@@ -2474,7 +2455,7 @@ fn should_cancel_outgoing_prepared_requests() {
                     peer_address: Address::from([10u8; 20]),
                     nonce: 0,
                     network_id: net_id,
-                    peer_account_id: AccountId32::new([10u8; 32]),
+                    peer_account_id: test_acc.clone(),
                     timepoint: Default::default(),
                 }
                 .into()],
@@ -2483,7 +2464,7 @@ fn should_cancel_outgoing_prepared_requests() {
                     peer_address: Address::from([10u8; 20]),
                     nonce: 0,
                     network_id: net_id,
-                    peer_account_id: AccountId32::new([10u8; 32]),
+                    peer_account_id: test_acc.clone(),
                     timepoint: Default::default(),
                 }
                 .into(),
@@ -2554,7 +2535,6 @@ fn should_cancel_outgoing_prepared_requests() {
                 for mut preparation_request in preparations {
                     preparation_request.validate().unwrap();
                     preparation_request.prepare().unwrap();
-                    // preparation_request.finalize().unwrap();
                 }
                 // Save the current storage root hash, apply transaction preparation,
                 // cancel it and compare with the final root hash.

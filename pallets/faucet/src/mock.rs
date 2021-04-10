@@ -19,8 +19,8 @@ type DEXId = common::DEXId;
 type AccountId = AccountId32;
 type BlockNumber = u64;
 type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
-type TechAssetId = common::TechAssetId<common::AssetId>;
-type AssetId = AssetId32<common::AssetId>;
+type TechAssetId = common::TechAssetId<common::PredefinedAssetId>;
+type AssetId = AssetId32<common::PredefinedAssetId>;
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
 
@@ -74,6 +74,7 @@ construct_runtime! {
 
 impl Config for Runtime {
     type Event = Event;
+    type WeightInfo = ();
 }
 
 impl frame_system::Config for Runtime {
@@ -177,7 +178,7 @@ impl ExtBuilder {
         let account_id: AccountId = account_id();
 
         BalancesConfig {
-            balances: vec![(account_id.clone(), balance!(9000))],
+            balances: vec![(account_id.clone(), balance!(9000)), (alice(), balance!(0))],
         }
         .assimilate_storage(&mut t)
         .unwrap();

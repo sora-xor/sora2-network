@@ -24,8 +24,8 @@ type DEXId = common::DEXId;
 type Signature = MultiSignature;
 type BlockNumber = u64;
 type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
-type TechAssetId = common::TechAssetId<common::AssetId>;
-type AssetId = AssetId32<common::AssetId>;
+type TechAssetId = common::TechAssetId<common::PredefinedAssetId>;
+type AssetId = AssetId32<common::PredefinedAssetId>;
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
 
@@ -161,17 +161,23 @@ impl tokens::Config for Runtime {
     type OnDust = ();
 }
 
-pub struct ExtBuilder {}
+pub struct ExtBuilder {
+    with_rewards: bool,
+}
 
 impl ExtBuilder {
-    pub fn build() -> sp_io::TestExternalities {
+    pub fn with_rewards(with_rewards: bool) -> Self {
+        Self { with_rewards }
+    }
+
+    pub fn build(self) -> sp_io::TestExternalities {
         let mut t = SystemConfig::default().build_storage::<Runtime>().unwrap();
 
         let tech_account_id = tech_account_id();
         let account_id: AccountId = account_id();
 
         BalancesConfig {
-            balances: vec![(account_id.clone(), balance!(150))],
+            balances: vec![(account_id.clone(), balance!(150)), (alice(), balance!(0))],
         }
         .assimilate_storage(&mut t)
         .unwrap();
@@ -223,26 +229,35 @@ impl ExtBuilder {
         .assimilate_storage(&mut t)
         .unwrap();
 
+        let (val_owners, pswap_farm_owners, pswap_waifu_owners) = if self.with_rewards {
+            (
+                vec![(
+                    hex!("21Bc9f4a3d9Dc86f142F802668dB7D908cF0A636").into(),
+                    balance!(111),
+                )],
+                vec![(
+                    hex!("21Bc9f4a3d9Dc86f142F802668dB7D908cF0A636").into(),
+                    balance!(222),
+                )],
+                vec![
+                    (
+                        hex!("21Bc9f4a3d9Dc86f142F802668dB7D908cF0A636").into(),
+                        balance!(333),
+                    ),
+                    (
+                        hex!("886021f300dc809269cfc758a2364a2baf63af0c").into(),
+                        balance!(10000),
+                    ),
+                ],
+            )
+        } else {
+            (vec![], vec![], vec![])
+        };
         RewardsConfig {
             reserves_account_id: tech_account_id,
-            val_owners: vec![(
-                hex!("21Bc9f4a3d9Dc86f142F802668dB7D908cF0A636").into(),
-                balance!(111),
-            )],
-            pswap_farm_owners: vec![(
-                hex!("21Bc9f4a3d9Dc86f142F802668dB7D908cF0A636").into(),
-                balance!(222),
-            )],
-            pswap_waifu_owners: vec![
-                (
-                    hex!("21Bc9f4a3d9Dc86f142F802668dB7D908cF0A636").into(),
-                    balance!(333),
-                ),
-                (
-                    hex!("886021f300dc809269cfc758a2364a2baf63af0c").into(),
-                    balance!(10000),
-                ),
-            ],
+            val_owners,
+            pswap_farm_owners,
+            pswap_waifu_owners,
         }
         .assimilate_storage(&mut t)
         .unwrap();

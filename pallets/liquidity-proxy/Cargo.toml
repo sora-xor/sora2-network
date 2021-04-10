@@ -19,6 +19,7 @@ sp-runtime = { version = "3", default-features = false }
 sp-std = { version = "3", default-features = false }
 common = { path = "../../common", default-features = false }
 assets = { path = "../assets", default-features = false }
+trading-pair = { path = "../trading-pair", default-features = false }
 
 [dev-dependencies]
 serde = { version = "1.0.101", default-features = false, features = ["derive"] }
@@ -28,7 +29,6 @@ common = { path = "../../common", features = ["test"] }
 dex-api = { path = "../dex-api" }
 dex-manager = { path = "../dex-manager" }
 mock-liquidity-source = { path = "../mock-liquidity-source" }
-trading-pair = { path = "../trading-pair" }
 technical = { path = "../technical" }
 permissions = { path = "../permissions" }
 
@@ -45,4 +45,5 @@ std = [
     'sp-std/std',
     'tokens/std',
     'traits/std',
+    'trading-pair/std',
 ]
