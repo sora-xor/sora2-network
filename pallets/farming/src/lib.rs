@@ -609,8 +609,8 @@ pub mod pallet {
         IncentiveClaimed(FarmId, AccountIdOf<T>),
         FarmerExit(FarmId, AccountIdOf<T>),
         SmoothPriceUpdated(
-            AssetId32<common::AssetId>,
-            AssetId32<common::AssetId>,
+            AssetId32<common::PredefinedAssetId>,
+            AssetId32<common::PredefinedAssetId>,
             Balance,
         ),
     }
@@ -659,9 +659,9 @@ pub mod pallet {
     pub type PricesStates<T: Config> = StorageDoubleMap<
         _,
         Blake2_128Concat,
-        AssetId32<common::AssetId>,
+        AssetId32<common::PredefinedAssetId>,
         Blake2_128Concat,
-        AssetId32<common::AssetId>,
+        AssetId32<common::PredefinedAssetId>,
         SmoothPriceState,
     >;
 

@@ -534,8 +534,8 @@ impl bonding_curve_pool::Config for Runtime {
 }
 
 pub type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
-pub type TechAssetId = common::TechAssetId<common::AssetId>;
-pub type AssetId = common::AssetId32<common::AssetId>;
+pub type TechAssetId = common::TechAssetId<common::PredefinedAssetId>;
+pub type AssetId = common::AssetId32<common::PredefinedAssetId>;
 
 impl technical::Config for Runtime {
     type Event = Event;

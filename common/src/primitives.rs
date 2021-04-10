@@ -83,7 +83,7 @@ pub struct TradingPair<AssetId> {
 #[derive(Encode, Decode, Eq, PartialEq, Copy, Clone, PartialOrd, Ord, RuntimeDebug)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize, Hash))]
 #[repr(u8)]
-pub enum AssetId {
+pub enum PredefinedAssetId {
     XOR = 0,
     DOT = 1,
     KSM = 2,
@@ -93,21 +93,21 @@ pub enum AssetId {
     DAI = 6,
 }
 
-pub const XOR: AssetId32<AssetId> = AssetId32::from_asset_id(AssetId::XOR);
-pub const DOT: AssetId32<AssetId> = AssetId32::from_asset_id(AssetId::DOT);
-pub const KSM: AssetId32<AssetId> = AssetId32::from_asset_id(AssetId::KSM);
-pub const USDT: AssetId32<AssetId> = AssetId32::from_asset_id(AssetId::USDT);
-pub const VAL: AssetId32<AssetId> = AssetId32::from_asset_id(AssetId::VAL);
-pub const PSWAP: AssetId32<AssetId> = AssetId32::from_asset_id(AssetId::PSWAP);
-pub const DAI: AssetId32<AssetId> = AssetId32::from_asset_id(AssetId::DAI);
+pub const XOR: AssetId32<PredefinedAssetId> = AssetId32::from_asset_id(PredefinedAssetId::XOR);
+pub const DOT: AssetId32<PredefinedAssetId> = AssetId32::from_asset_id(PredefinedAssetId::DOT);
+pub const KSM: AssetId32<PredefinedAssetId> = AssetId32::from_asset_id(PredefinedAssetId::KSM);
+pub const USDT: AssetId32<PredefinedAssetId> = AssetId32::from_asset_id(PredefinedAssetId::USDT);
+pub const VAL: AssetId32<PredefinedAssetId> = AssetId32::from_asset_id(PredefinedAssetId::VAL);
+pub const PSWAP: AssetId32<PredefinedAssetId> = AssetId32::from_asset_id(PredefinedAssetId::PSWAP);
+pub const DAI: AssetId32<PredefinedAssetId> = AssetId32::from_asset_id(PredefinedAssetId::DAI);
 
-impl IsRepresentation for AssetId {
+impl IsRepresentation for PredefinedAssetId {
     fn is_representation(&self) -> bool {
         false
     }
 }
 
-impl Default for AssetId {
+impl Default for PredefinedAssetId {
     fn default() -> Self {
         Self::XOR
     }
@@ -211,7 +211,7 @@ impl<AssetId> AssetId32<AssetId> {
         }
     }
 
-    pub const fn from_asset_id(asset_id: super::AssetId) -> Self {
+    pub const fn from_asset_id(asset_id: PredefinedAssetId) -> Self {
         let mut bytes = [0u8; 32];
         bytes[0] = 2;
         bytes[2] = asset_id as u8;
@@ -722,7 +722,7 @@ mod tests {
 
         assert_eq!(serde_json::to_string(&asset_id).unwrap(), json_str);
         assert_eq!(
-            serde_json::from_str::<AssetId32<AssetId>>(json_str).unwrap(),
+            serde_json::from_str::<AssetId32<PredefinedAssetId>>(json_str).unwrap(),
             asset_id
         );
 

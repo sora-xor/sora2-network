@@ -177,7 +177,7 @@ pub mod pallet {
             + Ord
             + Default
             + Into<CurrencyIdOf<Self>>
-            + From<common::AssetId32<common::AssetId>>
+            + From<common::AssetId32<common::PredefinedAssetId>>
             + From<H256>
             + Into<H256>
             + Into<<Self as tokens::Config>::CurrencyId>;
