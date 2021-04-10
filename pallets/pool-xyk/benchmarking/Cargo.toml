@@ -1,6 +1,10 @@
 [package]
 edition = '2018'
 name = 'pool-xyk-benchmarking'
+authors = ['Polka Biome Ltd. <jihoon@tutanota.de>']
+license = "BSD-4-Clause"
+homepage = 'https://sora.org'
+repository = 'https://github.com/sora-xor/sora2-network'
 version = '0.1.0'
 
 [package.metadata.docs.rs]

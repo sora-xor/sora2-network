@@ -2,6 +2,10 @@
 edition = '2018'
 name = 'liquidity-proxy-benchmarking'
 version = '0.1.0'
+authors = ['Polka Biome Ltd. <jihoon@tutanota.de>']
+license = "BSD-4-Clause"
+homepage = 'https://sora.org'
+repository = 'https://github.com/sora-xor/sora2-network'
 
 [package.metadata.docs.rs]
 targets = ['x86_64-unknown-linux-gnu']
