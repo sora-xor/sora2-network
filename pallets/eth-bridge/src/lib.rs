@@ -2395,7 +2395,8 @@ impl<T: Config> Pallet<T> {
             match *topic {
                 // Deposit(bytes32,uint256,address,bytes32)
                 hex!("85c0fa492ded927d3acca961da52b0dda1debb06d8c27fe189315f06bb6e26c8")
-                    if kind == IncomingTransactionRequestKind::Transfer =>
+                    if kind == IncomingTransactionRequestKind::Transfer
+                        || kind == IncomingTransactionRequestKind::TransferXOR =>
                 {
                     let types = [
                         ParamType::FixedBytes(32),
