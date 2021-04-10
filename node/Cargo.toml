@@ -97,16 +97,7 @@ tokio = { version = "0.2.13", features = ["macros"] }
 pallet-sudo = "3"
 
 [features]
-coded-nets = []
-
-# At the moment dev-net uses dev_net_coded
-dev-net = [
-    "private-net",
-    "coded-nets"
-]
-
-test-net = ["private-net"]
-stage-net = ["private-net"]
+include-real-files = []
 
 private-net = [
     "faucet",

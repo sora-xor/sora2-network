@@ -599,7 +599,7 @@ pub mod pallet {
     }
 
     #[pallet::event]
-    #[pallet::metadata(AccountIdOf<T> = "AccountId", AssetId32<common::AssetId> = "AssetId")]
+    #[pallet::metadata(AccountIdOf<T> = "AccountId", AssetId32<common::PredefinedAssetId> = "AssetId")]
     #[pallet::generate_deposit(pub(super) fn deposit_event)]
     pub enum Event<T: Config> {
         FarmCreated(FarmId, AccountIdOf<T>),

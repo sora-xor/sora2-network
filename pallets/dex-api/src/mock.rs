@@ -21,9 +21,9 @@ pub type AccountId = AccountId32;
 pub type BlockNumber = u64;
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
-type TechAssetId = common::TechAssetId<common::AssetId>;
+type TechAssetId = common::TechAssetId<common::PredefinedAssetId>;
 type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
-type AssetId = AssetId32<common::AssetId>;
+type AssetId = AssetId32<common::PredefinedAssetId>;
 type DEXId = u32;
 type ReservesInit = Vec<(DEXId, AssetId, (Fixed, Fixed))>;
 

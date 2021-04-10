@@ -39,7 +39,7 @@ pub type Amount = i128;
 
 pub const ALICE: AccountId = 1;
 pub const DEX_ID: DEXId = 0;
-type AssetId = AssetId32<common::AssetId>;
+type AssetId = AssetId32<common::PredefinedAssetId>;
 
 parameter_types! {
     pub const BlockHashCount: u64 = 250;
