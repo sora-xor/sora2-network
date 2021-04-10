@@ -6,6 +6,7 @@ homepage = 'https://sora.org'
 repository = 'https://github.com/sora-xor/sora2-network'
 name = 'farming'
 version = '0.1.0'
+edition = '2018'
 
 [package.metadata.docs.rs]
 targets = ['x86_64-unknown-linux-gnu']
