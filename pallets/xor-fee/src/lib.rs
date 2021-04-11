@@ -31,9 +31,11 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use common::prelude::SwapAmount;
-use common::{Balance, LiquiditySourceFilter, LiquiditySourceType};
+use common::{Balance, FilterMode, LiquiditySourceFilter, LiquiditySourceType};
 use frame_support::pallet_prelude::InvalidTransaction;
-use frame_support::traits::{Currency, ExistenceRequirement, Get, Imbalance, WithdrawReasons};
+use frame_support::traits::{
+    Currency, ExistenceRequirement, Get, Imbalance, IsSubType, WithdrawReasons,
+};
 use frame_support::unsigned::TransactionValidityError;
 use frame_support::weights::{DispatchInfo, GetDispatchInfo};
 use liquidity_proxy::LiquidityProxyTrait;
@@ -69,26 +71,68 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
-impl<T: Config> OnChargeTransaction<T> for Pallet<T> {
+impl<T: Config> OnChargeTransaction<T> for Pallet<T>
+where
+    T::Call: IsSubType<liquidity_proxy::Call<T>>,
+    <T::XorCurrency as Currency<T::AccountId>>::Balance: Into<u128>,
+{
     type Balance = BalanceOf<T>;
     type LiquidityInfo = Option<NegativeImbalanceOf<T>>;
 
     fn withdraw_fee(
         who: &T::AccountId,
-        call: &CallOf<T>,
-        _dispatch_info: &DispatchInfoOf<CallOf<T>>,
+        call: &T::Call,
+        _dispatch_info: &DispatchInfoOf<T::Call>,
         fee: Self::Balance,
         tip: Self::Balance,
     ) -> Result<Self::LiquidityInfo, TransactionValidityError> {
-        if fee.is_zero() {
-            return Ok(None);
-        }
-
         let maybe_custom_fee = T::CustomFees::compute_fee(call);
         let final_fee: BalanceOf<T> = match maybe_custom_fee {
             Some(value) => BalanceOf::<T>::saturated_from(value),
             _ => fee,
         };
+
+        // In case we are producing XOR, we perform exchange before fees are withdraw to allow 0-XOR accounts to trade
+        if let Some(liquidity_proxy::Call::swap(
+            dex_id,
+            input_asset_id,
+            output_asset_id,
+            amount,
+            _selected_source_types,
+            _filter_mode,
+        )) = call.is_sub_type()
+        {
+            // This custom logic should only apply for transactions that result in XOR
+            if &T::XorId::get() == output_asset_id {
+                let filter = LiquiditySourceFilter::with_mode(
+                    *dex_id,
+                    FilterMode::AllowSelected,
+                    [LiquiditySourceType::XYKPool].to_vec(),
+                );
+
+                // Quote to see if there will be enough funds for the fee
+                let swap = <T::LiquidityProxy as LiquidityProxyTrait<
+                    T::DEXId,
+                    T::AccountId,
+                    T::AssetId,
+                >>::quote(
+                    input_asset_id, output_asset_id, *amount, filter.clone()
+                )
+                .map_err(|_| InvalidTransaction::Payment)?;
+
+                // Check the swap result + existing balance is enough for fee
+                if T::XorCurrency::free_balance(who).into() + swap.amount
+                    - T::XorCurrency::minimum_balance().into()
+                    >= final_fee.into()
+                {
+                    return Ok(None);
+                }
+            }
+        }
+
+        if fee.is_zero() {
+            return Ok(None);
+        }
 
         let withdraw_reason = if tip.is_zero() {
             WithdrawReasons::TRANSACTION_PAYMENT
@@ -165,7 +209,7 @@ impl<T: Config> OnChargeTransaction<T> for Pallet<T> {
                 adjusted_paid.ration(xor_burned_weight, xor_into_val_burned_weight);
 
             let xor_to_val = xor_to_val.peek().unique_saturated_into();
-            let tech_account_id = T::GetTechnicalAccountId::get();
+            let tech_account_id = <T as Config>::GetTechnicalAccountId::get();
 
             // Re-minting the `xor_to_val` tokens amount to `tech_account_id` of this pallet.
             // The tokens being re-minted had initially been withdrawn as a part of the fee.
@@ -342,6 +386,7 @@ pub mod pallet {
         + assets::Config
         + common::Config
         + pallet_transaction_payment::Config
+        + liquidity_proxy::Config
     {
         type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
         /// XOR - The native currency of this blockchain.
