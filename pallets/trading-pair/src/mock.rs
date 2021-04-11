@@ -38,8 +38,8 @@ pub type BlockNumber = u64;
 pub type Amount = i128;
 
 pub const ALICE: AccountId = 1;
-pub const DEX_ID: DEXId = 1;
-type AssetId = AssetId32<common::AssetId>;
+pub const DEX_ID: DEXId = 0;
+type AssetId = AssetId32<common::PredefinedAssetId>;
 
 parameter_types! {
     pub const BlockHashCount: u64 = 250;
@@ -140,9 +140,7 @@ impl permissions::Config for Runtime {
     type Event = Event;
 }
 
-impl dex_manager::Config for Runtime {
-    type WeightInfo = ();
-}
+impl dex_manager::Config for Runtime {}
 
 pub struct ExtBuilder {
     endowed_assets: Vec<(

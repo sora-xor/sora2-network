@@ -170,10 +170,11 @@ std = [
     'pswap-distribution-runtime-api/std',
 ]
 
-test-net = ["faucet"]
+private-net = ["faucet"]
 
 runtime-benchmarks = [
     "assets/runtime-benchmarks",
+    "eth-bridge/runtime-benchmarks",
     "dex-api-benchmarking",
     "faucet?/runtime-benchmarks",
     "frame-benchmarking",
@@ -187,6 +188,8 @@ runtime-benchmarks = [
     "rewards/runtime-benchmarks",
     "technical/runtime-benchmarks",
     "trading-pair/runtime-benchmarks",
+    "multicollateral-bonding-curve-pool/runtime-benchmarks",
+    "pswap-distribution/runtime-benchmarks",
 ]
 
 reduced-pswap-reward-periods = []

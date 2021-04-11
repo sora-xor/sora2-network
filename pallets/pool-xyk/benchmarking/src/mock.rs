@@ -17,8 +17,8 @@ use sp_runtime::traits::{BlakeTwo256, IdentityLookup};
 use sp_runtime::AccountId32;
 
 pub type DEXId = u32;
-pub type AssetId = common::AssetId32<common::AssetId>;
-pub type TechAssetId = common::TechAssetId<common::AssetId>;
+pub type AssetId = common::AssetId32<common::PredefinedAssetId>;
+pub type TechAssetId = common::TechAssetId<common::PredefinedAssetId>;
 pub type AccountId = AccountId32;
 pub type BlockNumber = u64;
 type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
@@ -40,6 +40,7 @@ parameter_types! {
     pub const GetDefaultSubscriptionFrequency: BlockNumber = 10;
     pub const GetBurnUpdateFrequency: BlockNumber = 14400;
     pub GetIncentiveAssetId: AssetId = common::PSWAP.into();
+    pub GetParliamentAccountId: AccountId = AccountId32::from([8; 32]);
 }
 
 construct_runtime! {
@@ -132,9 +133,7 @@ impl pallet_balances::Config for Runtime {
     type MaxLocks = ();
 }
 
-impl dex_manager::Config for Runtime {
-    type WeightInfo = ();
-}
+impl dex_manager::Config for Runtime {}
 
 impl trading_pair::Config for Runtime {
     type Event = Event;
@@ -192,6 +191,8 @@ impl pswap_distribution::Config for Runtime {
     type GetTechnicalAccountId = GetPswapDistributionAccountId;
     type EnsureDEXManager = ();
     type OnPswapBurnedAggregator = ();
+    type WeightInfo = ();
+    type GetParliamentAccountId = GetParliamentAccountId;
 }
 
 impl Config for Runtime {}

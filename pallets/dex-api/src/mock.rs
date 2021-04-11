@@ -21,9 +21,9 @@ pub type AccountId = AccountId32;
 pub type BlockNumber = u64;
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
-type TechAssetId = common::TechAssetId<common::AssetId>;
+type TechAssetId = common::TechAssetId<common::PredefinedAssetId>;
 type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
-type AssetId = AssetId32<common::AssetId>;
+type AssetId = AssetId32<common::PredefinedAssetId>;
 type DEXId = u32;
 type ReservesInit = Vec<(DEXId, AssetId, (Fixed, Fixed))>;
 
@@ -55,6 +55,7 @@ parameter_types! {
     pub const GetDefaultSubscriptionFrequency: BlockNumber = 10;
     pub const GetBurnUpdateFrequency: BlockNumber = 14400;
     pub GetIncentiveAssetId: AssetId = common::PSWAP.into();
+    pub GetParliamentAccountId: AccountId = AccountId32::from([8; 32]);
 }
 
 construct_runtime! {
@@ -206,9 +207,7 @@ impl technical::Config for Runtime {
     type WeightInfo = ();
 }
 
-impl dex_manager::Config for Runtime {
-    type WeightInfo = ();
-}
+impl dex_manager::Config for Runtime {}
 
 impl trading_pair::Config for Runtime {
     type Event = Event;
@@ -239,6 +238,8 @@ impl pswap_distribution::Config for Runtime {
     type GetTechnicalAccountId = GetPswapDistributionAccountId;
     type EnsureDEXManager = ();
     type OnPswapBurnedAggregator = ();
+    type WeightInfo = ();
+    type GetParliamentAccountId = GetParliamentAccountId;
 }
 
 pub struct ExtBuilder {

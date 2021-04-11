@@ -35,7 +35,7 @@ pub struct WeightInfo<T>(PhantomData<T>);
 
 impl<T: frame_system::Config> crate::WeightInfo for WeightInfo<T> {
     fn claim() -> Weight {
-        (600_732_000 as Weight)
+        (21_316_821_000 as Weight)
             .saturating_add(T::DbWeight::get().reads(16 as Weight))
             .saturating_add(T::DbWeight::get().writes(8 as Weight))
     }

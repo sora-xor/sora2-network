@@ -26,8 +26,8 @@ pub use crate::{self as xor_fee, Config, Module};
 pub type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
 pub type AccountId = u64;
 pub type BlockNumber = u64;
-type AssetId = AssetId32<common::AssetId>;
-type TechAssetId = common::TechAssetId<common::AssetId>;
+type AssetId = AssetId32<common::PredefinedAssetId>;
+type TechAssetId = common::TechAssetId<common::PredefinedAssetId>;
 type DEXId = common::DEXId;
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
@@ -121,9 +121,7 @@ impl mock_liquidity_source::Config<mock_liquidity_source::Instance1> for Runtime
     type EnsureTradingPairExists = trading_pair::Module<Runtime>;
 }
 
-impl dex_manager::Config for Runtime {
-    type WeightInfo = ();
-}
+impl dex_manager::Config for Runtime {}
 
 impl trading_pair::Config for Runtime {
     type Event = Event;
@@ -258,6 +256,20 @@ where
 
 pub type Extrinsic = TestXt<Call, ()>;
 
+pub struct CustomFees;
+
+impl xor_fee::ApplyCustomFees<Call> for CustomFees {
+    fn compute_fee(call: &Call) -> Option<Balance> {
+        match call {
+            Call::Assets(assets::Call::register(..)) => Some(balance!(0.007)),
+            Call::Assets(..)
+            | Call::Staking(pallet_staking::Call::payout_stakers(..))
+            | Call::TradingPair(..) => Some(balance!(0.0007)),
+            _ => None,
+        }
+    }
+}
+
 impl Config for Runtime {
     type Event = Event;
     type XorCurrency = Balances;
@@ -269,6 +281,7 @@ impl Config for Runtime {
     type DEXIdValue = DEXIdValue;
     type LiquidityProxy = MockLiquidityProxy;
     type ValBurnedNotifier = Staking;
+    type CustomFees = CustomFees;
 }
 
 pub struct MockLiquidityProxy;

@@ -1,3 +1,5 @@
+total = 0
+
 with open('sora-farm-DB.csv') as f:
     lines = f.readlines()
     lines = lines[1:]
@@ -9,6 +11,10 @@ with open('sora-farm-DB.csv') as f:
             if balance == '0':
                 continue
             addr = parts[1].rstrip().replace('000000000000000000000000', '').replace('0x', '')
-            balance = 'balance!(%.18f)' % float(balance)
+            balance = float(balance) * 100
+            total += balance
+            balance = 'balance!(%.18f)' % balance
             print('    (hex!("{}").into(), {}),'.format(addr, balance), file=f)
         print(']', file=f)
+
+print(total)

@@ -4,7 +4,9 @@ use crate::{AssetConfig, Config, NetworkConfig};
 use codec::{Codec, Decode, Encode};
 use common::mock::ExistentialDeposits;
 use common::prelude::Balance;
-use common::{Amount, AssetId, AssetId32, AssetName, AssetSymbol, DEFAULT_BALANCE_PRECISION, VAL};
+use common::{
+    Amount, AssetId32, AssetName, AssetSymbol, PredefinedAssetId, DEFAULT_BALANCE_PRECISION, VAL,
+};
 use currencies::BasicCurrencyAdapter;
 use frame_support::dispatch::{DispatchInfo, GetDispatchInfo};
 use frame_support::sp_io::TestExternalities;
@@ -42,8 +44,8 @@ use sp_std::sync::Arc;
 use std::collections::HashMap;
 use {crate as eth_bridge, frame_system};
 
-pub const PSWAP: AssetId = AssetId::PSWAP;
-pub const XOR: AssetId = AssetId::XOR;
+pub const PSWAP: PredefinedAssetId = PredefinedAssetId::PSWAP;
+pub const XOR: PredefinedAssetId = PredefinedAssetId::XOR;
 
 /// An index to a block.
 pub type BlockNumber = u64;
@@ -57,7 +59,7 @@ type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>
 type Block = frame_system::mocking::MockBlock<Runtime>;
 
 parameter_types! {
-    pub const GetBaseAssetId: AssetId32<AssetId> = AssetId32::from_asset_id(XOR);
+    pub const GetBaseAssetId: AssetId32<PredefinedAssetId> = AssetId32::from_asset_id(XOR);
     pub const DepositBase: u64 = 1;
     pub const DepositFactor: u64 = 1;
     pub const MaxSignatories: u16 = 4;
@@ -289,7 +291,7 @@ impl assets::Config for Runtime {
     type ExtraAccountId = [u8; 32];
     type ExtraAssetRecordArg =
         common::AssetIdExtraAssetRecordArg<common::DEXId, common::LiquiditySourceType, [u8; 32]>;
-    type AssetId = common::AssetId32<AssetId>;
+    type AssetId = common::AssetId32<PredefinedAssetId>;
     type GetBaseAssetId = GetBaseAssetId;
     type Currency = currencies::Module<Runtime>;
     type WeightInfo = ();
@@ -325,7 +327,7 @@ impl crate::Config for Runtime {
     type Event = Event;
     type NetworkId = u32;
     type GetEthNetworkId = EthNetworkId;
-    type WeightInfo = common::weights::PresetWeightInfo<Runtime>;
+    type WeightInfo = ();
 }
 
 impl sp_runtime::traits::ExtrinsicMetadata for TestExtrinsic {
@@ -420,7 +422,11 @@ impl ExtBuilder {
         }
     }
 
-    pub fn add_currency(&mut self, network_id: u32, currency: AssetConfig<AssetId32<AssetId>>) {
+    pub fn add_currency(
+        &mut self,
+        network_id: u32,
+        currency: AssetConfig<AssetId32<PredefinedAssetId>>,
+    ) {
         self.networks
             .get_mut(&network_id)
             .unwrap()
@@ -431,8 +437,8 @@ impl ExtBuilder {
 
     pub fn add_network(
         &mut self,
-        assets: Vec<AssetConfig<AssetId32<AssetId>>>,
-        reserves: Option<Vec<(AssetId32<AssetId>, Balance)>>,
+        assets: Vec<AssetConfig<AssetId32<PredefinedAssetId>>>,
+        reserves: Option<Vec<(AssetId32<PredefinedAssetId>, Balance)>>,
         peers_num: Option<usize>,
     ) -> u32 {
         let net_id = self.last_network_id;
@@ -467,7 +473,7 @@ impl ExtBuilder {
 
         let mut bridge_accounts = Vec::new();
         let mut bridge_network_configs = Vec::new();
-        let mut endowed_accounts: Vec<(_, AssetId32<AssetId>, _)> = Vec::new();
+        let mut endowed_accounts: Vec<(_, AssetId32<PredefinedAssetId>, _)> = Vec::new();
         let mut networks: Vec<_> = self.networks.clone().into_iter().collect();
         networks.sort_by(|(x, _), (y, _)| x.cmp(y));
         for (_net_id, ext_network) in networks {
@@ -498,7 +504,7 @@ impl ExtBuilder {
         }
 
         // pallet_balances and orml_tokens no longer accept duplicate elements.
-        let mut unique_endowed_accounts: Vec<(_, AssetId32<AssetId>, _)> = Vec::new();
+        let mut unique_endowed_accounts: Vec<(_, AssetId32<PredefinedAssetId>, _)> = Vec::new();
         for acc in endowed_accounts {
             if let Some(unique_acc) = unique_endowed_accounts.iter_mut().find(|a| a.1 == acc.1) {
                 unique_acc.2 += acc.2;

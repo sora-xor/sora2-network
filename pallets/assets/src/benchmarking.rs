@@ -10,13 +10,18 @@ use frame_system::{EventRecord, RawOrigin};
 use hex_literal::hex;
 use sp_std::prelude::*;
 
-use common::XOR;
+use common::{USDT, XOR};
 
-use crate::Module as Assets;
+use crate::Pallet as Assets;
 
 // Support Functions
 fn alice<T: Config>() -> T::AccountId {
     let bytes = hex!("d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d");
+    T::AccountId::decode(&mut &bytes[..]).unwrap_or_default()
+}
+
+fn bob<T: Config>() -> T::AccountId {
+    let bytes = hex!("8eaf04151687736326c9fea17e25fc5287613693c912909cb226aa4794f26a48");
     T::AccountId::decode(&mut &bytes[..]).unwrap_or_default()
 }
 
@@ -28,7 +33,7 @@ fn add_assets<T: Config>(n: u32) -> Result<(), &'static str> {
         Assets::<T>::register(
             owner_origin.clone(),
             AssetSymbol(b"TOKEN".to_vec()),
-            AssetName(b"XOR".to_vec()),
+            AssetName(b"TOKEN".to_vec()),
             Balance::zero(),
             true,
         )?;
@@ -48,21 +53,16 @@ fn assert_last_event<T: Config>(generic_event: <T as Config>::Event) {
 benchmarks! {
     register {
         let n in 1 .. 1000 => add_assets::<T>(n)?;
-        let caller = alice::<T>();
-        let asset_id = Assets::<T>::gen_asset_id(&caller);
-    }:
-    {
-        Assets::<T>::register_asset_id(
-            caller.clone(),
-            asset_id.clone(),
-            AssetSymbol(b"NEWT".to_vec()),
-            AssetName(b"NEWT".to_vec()),
-            18,
-            Balance::zero(),
-            true,
-        )?;
-    }
+        let caller = bob::<T>();
+    }: _(
+        RawOrigin::Signed(caller.clone()),
+        AssetSymbol(b"NEWT".to_vec()),
+        AssetName(b"NEWT".to_vec()),
+        Balance::zero(),
+        true
+    )
     verify {
+        let (asset_id, _) = AssetOwners::<T>::iter().find(|(k, v)| v == &caller).unwrap();
         assert_last_event::<T>(Event::AssetRegistered(asset_id, caller).into())
     }
 
@@ -91,50 +91,70 @@ benchmarks! {
     mint {
         let n in 1 .. 1000 => add_assets::<T>(n)?;
         let caller = alice::<T>();
-        let _ = Assets::<T>::register_asset_id(
+        Assets::<T>::register_asset_id(
             caller.clone(),
-            XOR.into(),
-            AssetSymbol(b"XOR".to_vec()),
-            AssetName(b"XOR".to_vec()),
+            USDT.into(),
+            AssetSymbol(b"USDT".to_vec()),
+            AssetName(b"USDT".to_vec()),
             18,
             Balance::zero(),
             true,
-        );
+        ).unwrap();
     }: _(
         RawOrigin::Signed(caller.clone()),
-        XOR.into(),
+        USDT.into(),
         caller.clone(),
         100_u32.into()
     )
     verify {
-        assert_last_event::<T>(Event::Mint(caller.clone(), caller, XOR.into(), 100_u32.into()).into())
+        assert_last_event::<T>(Event::Mint(caller.clone(), caller, USDT.into(), 100_u32.into()).into())
     }
 
     burn {
         let n in 1 .. 1000 => add_assets::<T>(n)?;
         let caller = alice::<T>();
-        let _ = Assets::<T>::register_asset_id(
+        Assets::<T>::register_asset_id(
             caller.clone(),
-            XOR.into(),
-            AssetSymbol(b"XOR".to_vec()),
-            AssetName(b"XOR".to_vec()),
+            USDT.into(),
+            AssetSymbol(b"USDT".to_vec()),
+            AssetName(b"USDT".to_vec()),
             18,
-            0,
-            true
-        );
+            Balance::zero(),
+            true,
+        ).unwrap();
         Assets::<T>::mint(
             RawOrigin::Signed(caller.clone()).into(),
-            XOR.into(),
+            USDT.into(),
             caller.clone(),
             1000_u32.into()
-        )?;
+        ).unwrap();
     }: _(
         RawOrigin::Signed(caller.clone()),
-        XOR.into(),
+        USDT.into(),
         100_u32.into()
     )
     verify {
-        assert_last_event::<T>(Event::Burn(caller, XOR.into(), 100_u32.into()).into())
+        assert_last_event::<T>(Event::Burn(caller, USDT.into(), 100_u32.into()).into())
+    }
+
+    set_non_mintable {
+        let n in 1 .. 1000 => add_assets::<T>(n)?;
+        let caller = alice::<T>();
+        Assets::<T>::register_asset_id(
+            caller.clone(),
+            USDT.into(),
+            AssetSymbol(b"USDT".to_vec()),
+            AssetName(b"USDT".to_vec()),
+            18,
+            Balance::zero(),
+            true,
+        ).unwrap();
+    }: _(
+        RawOrigin::Signed(caller.clone()),
+        USDT.into()
+    )
+    verify {
+        assert_last_event::<T>(Event::AssetSetNonMintable(USDT.into()).into())
     }
 }
 
@@ -145,12 +165,14 @@ mod tests {
     use frame_support::assert_ok;
 
     #[test]
+    #[ignore]
     fn test_benchmarks() {
         ExtBuilder::default().build().execute_with(|| {
             assert_ok!(test_benchmark_register::<Runtime>());
             assert_ok!(test_benchmark_transfer::<Runtime>());
             assert_ok!(test_benchmark_mint::<Runtime>());
             assert_ok!(test_benchmark_burn::<Runtime>());
+            assert_ok!(test_benchmark_set_non_mintable::<Runtime>());
         });
     }
 }

@@ -1,3 +1,12 @@
+// Tips:
+// * not(feature = "private-net") means "main net", however, given that "main net" is the default option and Cargo doesn't provide any way to disable "main net" if any "private net" is specified, we have to rely on such constructions.
+
+#![allow(unused_imports, unused_macros, dead_code)]
+
+use framenode_runtime::GenesisConfig;
+
+use common::DAI;
+
 use common::prelude::{Balance, DEXInfo, FixedWrapper};
 use common::{
     balance, fixed, hash, DEXId, Fixed, TechPurpose, DEFAULT_BALANCE_PRECISION, PSWAP, USDT, VAL,
@@ -8,17 +17,14 @@ use framenode_runtime::bonding_curve_pool::{DistributionAccountData, Distributio
 use framenode_runtime::eth_bridge::{AssetConfig, NetworkConfig};
 use framenode_runtime::opaque::SessionKeys;
 use framenode_runtime::{
-    bonding_curve_pool, eth_bridge, AccountId, AssetName, AssetSymbol, AssetsConfig, BabeConfig,
-    BalancesConfig, BondingCurvePoolConfig, BridgeMultisigConfig, CouncilConfig, DEXAPIConfig,
-    DEXManagerConfig, DemocracyConfig, EthBridgeConfig, FarmingConfig, GenesisConfig,
-    GetBaseAssetId, GetPswapAssetId, GetValAssetId, GetXorAssetId, GrandpaConfig, ImOnlineId,
-    IrohaMigrationConfig, LiquiditySourceType, MulticollateralBondingCurvePoolConfig,
-    PermissionsConfig, PswapDistributionConfig, RewardsConfig, Runtime, SessionConfig,
-    StakerStatus, StakingConfig, SystemConfig, TechAccountId, TechnicalConfig, TokensConfig,
-    WASM_BINARY,
+    eth_bridge, AccountId, AssetId, AssetName, AssetSymbol, AssetsConfig, BabeConfig,
+    BalancesConfig, BridgeMultisigConfig, CouncilConfig, DEXAPIConfig, DEXManagerConfig,
+    DemocracyConfig, EthBridgeConfig, FarmingConfig, GetBaseAssetId, GetParliamentTechAccountId,
+    GetPswapAssetId, GetValAssetId, GetXorAssetId, GrandpaConfig, ImOnlineId, IrohaMigrationConfig,
+    LiquiditySourceType, MulticollateralBondingCurvePoolConfig, PermissionsConfig,
+    PswapDistributionConfig, RewardsConfig, Runtime, SessionConfig, StakerStatus, StakingConfig,
+    SystemConfig, TechAccountId, TechnicalConfig, TokensConfig, TradingPairConfig, WASM_BINARY,
 };
-#[cfg(feature = "test-net")]
-use framenode_runtime::{FaucetConfig, Signature, SudoConfig, TechnicalCommitteeConfig};
 use hex_literal::hex;
 use permissions::Scope;
 use sc_finality_grandpa::AuthorityId as GrandpaId;
@@ -26,29 +32,25 @@ use sc_network::config::MultiaddrWithPeerId;
 use sc_service::{ChainType, Properties};
 use sp_consensus_aura::sr25519::AuthorityId as AuraId;
 use sp_consensus_babe::AuthorityId as BabeId;
-#[cfg(feature = "test-net")]
-use sp_core::{sr25519, Pair};
 use sp_core::{Public, H160};
 use sp_runtime::sp_std::iter::once;
 use sp_runtime::traits::Zero;
-#[cfg(feature = "test-net")]
-use sp_runtime::traits::{IdentifyAccount, Verify};
 use sp_runtime::Perbill;
 use std::str::FromStr;
+
+#[cfg(feature = "private-net")]
+use framenode_runtime::{FaucetConfig, SudoConfig};
+use framenode_runtime::{Signature, TechnicalCommitteeConfig};
+use sp_core::{sr25519, Pair};
+use sp_runtime::traits::{IdentifyAccount, Verify};
 
 /// Specialized `ChainSpec`. This is a specialization of the general Substrate ChainSpec type.
 pub type ChainSpec = sc_service::GenericChainSpec<GenesisConfig>;
 type Technical = technical::Module<Runtime>;
-#[cfg(feature = "test-net")]
 type AccountPublic = <Signature as Verify>::Signer;
 
-#[cfg(feature = "test-net")]
-enum ChainSpecKind {
-    Dev,
-    Test,
-    Staging,
-}
-
+// The macro is used in rewards_*.in.
+// It's required instead of vec! because vec! places all data on the stack and it causes overflow.
 macro_rules! vec_push {
     ($($x:expr),+ $(,)?) => (
         {
@@ -61,8 +63,31 @@ macro_rules! vec_push {
     );
 }
 
+macro_rules! our_include {
+    ($x:expr) => {{
+        #[cfg(feature = "include-real-files")]
+        let output = include!($x);
+
+        #[cfg(not(feature = "include-real-files"))]
+        let output = Default::default();
+
+        output
+    }};
+}
+
+macro_rules! our_include_bytes {
+    ($x:expr) => {{
+        #[cfg(feature = "include-real-files")]
+        static OUTPUT: &'static [u8] = include_bytes!($x);
+
+        #[cfg(not(feature = "include-real-files"))]
+        static OUTPUT: &'static [u8] = &[];
+
+        OUTPUT
+    }};
+}
+
 /// Helper function to generate a crypto pair from seed
-#[cfg(feature = "test-net")]
 fn get_from_seed<TPublic: Public>(seed: &str) -> <TPublic::Pair as Pair>::Public {
     TPublic::Pair::from_string(&format!("//{}", seed), None)
         .expect("static values are valid; qed")
@@ -70,7 +95,6 @@ fn get_from_seed<TPublic: Public>(seed: &str) -> <TPublic::Pair as Pair>::Public
 }
 
 /// Helper function to generate an account ID from seed
-#[cfg(feature = "test-net")]
 fn get_account_id_from_seed<TPublic: Public>(seed: &str) -> AccountId
 where
     AccountPublic: From<<TPublic::Pair as Pair>::Public>,
@@ -79,7 +103,6 @@ where
 }
 
 /// Generate an Babe authority key.
-#[cfg(feature = "test-net")]
 pub fn authority_keys_from_seed(
     seed: &str,
 ) -> (AccountId, AccountId, AuraId, BabeId, GrandpaId, ImOnlineId) {
@@ -129,12 +152,28 @@ fn calculate_reserves(accounts: &Vec<(H160, Balance)>) -> Balance {
     accounts.iter().fold(0, |sum, (_, balance)| sum + balance)
 }
 
-#[cfg(feature = "test-net")]
-pub fn dev_net() -> Result<ChainSpec, String> {
-    ChainSpec::from_json_bytes(&include_bytes!("./bytes/chain_spec_dev.json")[..])
+// dev uses code
+// #[cfg(all(feature = "dev-net", not(feature = "coded-nets")))]
+// pub fn dev_net() -> Result<ChainSpec, String> {
+//     ChainSpec::from_json_bytes(&our_include_bytes!("./bytes/chain_spec_dev.json")[..])
+// }
+
+pub fn staging_net() -> Result<ChainSpec, String> {
+    ChainSpec::from_json_bytes(&our_include_bytes!("./bytes/chain_spec_staging.json")[..])
 }
 
-#[cfg(feature = "test-net")]
+pub fn test_net() -> Result<ChainSpec, String> {
+    ChainSpec::from_json_bytes(&our_include_bytes!("./bytes/chain_spec_test.json")[..])
+}
+
+// Main net is not ready yet.
+// It still uses staging nodes.
+// #[cfg(all(not(feature = "private-net"), not(feature = "coded-nets")))]
+// pub fn main_net() -> Result<ChainSpec, String> {
+//     ChainSpec::from_json_bytes(&our_include_bytes!("./bytes/chain_spec_main.json")[..])
+// }
+
+#[cfg(feature = "private-net")]
 pub fn dev_net_coded() -> ChainSpec {
     let mut properties = Properties::new();
     properties.insert("tokenSymbol".into(), "XOR".into());
@@ -145,7 +184,6 @@ pub fn dev_net_coded() -> ChainSpec {
         ChainType::Live,
         move || {
             testnet_genesis(
-                ChainSpecKind::Dev,
                 hex!("92c4ff71ae7492a1e6fef5d80546ea16307c560ac1063ffaa5e0e084df1e2b7e").into(),
                 vec![
                     authority_keys_from_public_keys(
@@ -229,8 +267,8 @@ pub fn dev_net_coded() -> ChainSpec {
 
 /// # Parameters
 /// * `test` - indicates if the chain spec is to be used in test environment
-#[cfg(feature = "test-net")]
-pub fn staging_net(test: bool) -> ChainSpec {
+#[cfg(feature = "private-net")]
+pub fn staging_net_coded(test: bool) -> ChainSpec {
     let mut properties = Properties::new();
     properties.insert("tokenSymbol".into(), "XOR".into());
     properties.insert("tokenDecimals".into(), 18.into());
@@ -286,11 +324,6 @@ pub fn staging_net(test: bool) -> ChainSpec {
                 }
             };
             testnet_genesis(
-                if test {
-                    ChainSpecKind::Test
-                } else {
-                    ChainSpecKind::Staging
-                },
                 hex!("2c5f3fd607721d5dd9fdf26d69cdcb9294df96a8ff956b1323d69282502aaa2e").into(),
                 vec![
                     authority_keys_from_public_keys(
@@ -411,10 +444,7 @@ fn bonding_curve_distribution_accounts(
         projects_stores_and_shops_coeff.get().unwrap(),
     );
     let parliament_and_development = DistributionAccountData::new(
-        TechAccountId::Pure(
-            DEXId::Polkaswap.into(),
-            TechPurpose::Identifier(b"parliament_and_development".to_vec()),
-        ),
+        GetParliamentTechAccountId::get(),
         projects_parliament_and_development_coeff.get().unwrap(),
     );
     let projects = DistributionAccountData::new(
@@ -441,7 +471,7 @@ fn bonding_curve_distribution_accounts(
     }
 }
 
-#[cfg(feature = "test-net")]
+#[cfg(feature = "private-net")]
 pub fn local_testnet_config() -> ChainSpec {
     let mut properties = Properties::new();
     properties.insert("tokenSymbol".into(), "XOR".into());
@@ -452,7 +482,6 @@ pub fn local_testnet_config() -> ChainSpec {
         ChainType::Local,
         move || {
             testnet_genesis(
-                ChainSpecKind::Dev,
                 get_account_id_from_seed::<sr25519::Public>("Alice"),
                 vec![
                     authority_keys_from_seed("Alice"),
@@ -506,9 +535,8 @@ pub fn local_testnet_config() -> ChainSpec {
 }
 
 // Some variables are only changed if faucet is enabled
-#[cfg(feature = "test-net")]
+#[cfg(feature = "private-net")]
 fn testnet_genesis(
-    chain_spec_kind: ChainSpecKind,
     root_key: AccountId,
     initial_authorities: Vec<(AccountId, AccountId, AuraId, BabeId, GrandpaId, ImOnlineId)>,
     endowed_accounts: Vec<AccountId>,
@@ -546,11 +574,6 @@ fn testnet_genesis(
             &eth_bridge_authority_tech_account_id,
         )
         .unwrap();
-
-    let bonding_curve_reserves_tech_account_id = TechAccountId::Generic(
-        bonding_curve_pool::TECH_ACCOUNT_PREFIX.to_vec(),
-        bonding_curve_pool::TECH_ACCOUNT_RESERVES.to_vec(),
-    );
 
     let mbc_reserves_tech_account_id = framenode_runtime::GetMbcReservesTechAccountId::get();
     let mbc_reserves_account_id = framenode_runtime::GetMbcReservesAccountId::get();
@@ -643,57 +666,67 @@ fn testnet_genesis(
             (*tech_account).to_owned(),
         ));
     }
-    let mut balances = vec![(eth_bridge_account_id.clone(), initial_eth_bridge_xor_amount)]
-        .into_iter()
-        .chain(
-            initial_authorities
-                .iter()
-                .cloned()
-                .map(|(k1, ..)| (k1, initial_staking)),
-        )
-        .chain(
-            initial_authorities
-                .iter()
-                .cloned()
-                .map(|(_, k2, ..)| (k2, initial_staking)),
-        )
-        .collect::<Vec<_>>();
-    let rewards_config = if let ChainSpecKind::Dev = chain_spec_kind {
-        RewardsConfig {
-            reserves_account_id: rewards_tech_account_id,
-            val_owners: vec![
-                (
-                    hex!("21Bc9f4a3d9Dc86f142F802668dB7D908cF0A636").into(),
-                    balance!(111),
-                ),
-                (
-                    hex!("D67fea281B2C5dC3271509c1b628E0867a9815D7").into(),
-                    balance!(444),
-                ),
-            ],
-            pswap_farm_owners: vec![
-                (
-                    hex!("4fE143cDD48791cB364823A41e018AEC5cBb9AbB").into(),
-                    balance!(222),
-                ),
-                (
-                    hex!("D67fea281B2C5dC3271509c1b628E0867a9815D7").into(),
-                    balance!(555),
-                ),
-            ],
-            pswap_waifu_owners: vec![(
-                hex!("886021F300dC809269CFC758A2364a2baF63af0c").into(),
-                balance!(333),
-            )],
-        }
-    } else {
-        RewardsConfig {
-            reserves_account_id: rewards_tech_account_id,
-            val_owners: include!("bytes/rewards_val_owners.in"),
-            pswap_farm_owners: include!("bytes/rewards_pswap_farm_owners.in"),
-            pswap_waifu_owners: include!("bytes/rewards_pswap_waifu_owners.in"),
-        }
+    let mut balances = vec![
+        (eth_bridge_account_id.clone(), initial_eth_bridge_xor_amount),
+        (assets_and_permissions_account_id.clone(), 0),
+        (xor_fee_account_id.clone(), 0),
+        (dex_root.clone(), 0),
+        (iroha_migration_account_id.clone(), 0),
+        (pswap_distribution_account_id.clone(), 0),
+        (mbc_reserves_account_id.clone(), 0),
+    ]
+    .into_iter()
+    .chain(
+        initial_authorities
+            .iter()
+            .cloned()
+            .map(|(k1, ..)| (k1, initial_staking)),
+    )
+    .chain(
+        initial_authorities
+            .iter()
+            .cloned()
+            .map(|(_, k2, ..)| (k2, initial_staking)),
+    )
+    .collect::<Vec<_>>();
+
+    #[cfg(not(feature = "include-real-files"))]
+    let rewards_config = RewardsConfig {
+        reserves_account_id: rewards_tech_account_id,
+        val_owners: vec![
+            (
+                hex!("21Bc9f4a3d9Dc86f142F802668dB7D908cF0A636").into(),
+                balance!(111),
+            ),
+            (
+                hex!("D67fea281B2C5dC3271509c1b628E0867a9815D7").into(),
+                balance!(444),
+            ),
+        ],
+        pswap_farm_owners: vec![
+            (
+                hex!("4fE143cDD48791cB364823A41e018AEC5cBb9AbB").into(),
+                balance!(222),
+            ),
+            (
+                hex!("D67fea281B2C5dC3271509c1b628E0867a9815D7").into(),
+                balance!(555),
+            ),
+        ],
+        pswap_waifu_owners: vec![(
+            hex!("886021F300dC809269CFC758A2364a2baF63af0c").into(),
+            balance!(333),
+        )],
     };
+
+    #[cfg(feature = "include-real-files")]
+    let rewards_config = RewardsConfig {
+        reserves_account_id: rewards_tech_account_id,
+        val_owners: include!("bytes/rewards_val_owners.in"),
+        pswap_farm_owners: include!("bytes/rewards_pswap_farm_owners.in"),
+        pswap_waifu_owners: include!("bytes/rewards_pswap_waifu_owners.in"),
+    };
+
     let rewards_val_reserves = calculate_reserves(&rewards_config.val_owners);
     let rewards_pswap_reserves = calculate_reserves(&rewards_config.pswap_farm_owners)
         + calculate_reserves(&rewards_config.pswap_waifu_owners);
@@ -737,6 +770,11 @@ fn testnet_genesis(
         }
     };
 
+    let iroha_migration_config = IrohaMigrationConfig {
+        iroha_accounts: our_include!("bytes/iroha_migration_accounts.in"),
+        account_id: iroha_migration_account_id.clone(),
+    };
+    let initial_collateral_assets = vec![DAI.into(), VAL.into(), PSWAP.into()];
     GenesisConfig {
         frame_system: Some(SystemConfig {
             code: WASM_BINARY.unwrap().to_vec(),
@@ -825,6 +863,15 @@ fn testnet_genesis(
                     Balance::zero(),
                     true,
                 ),
+                (
+                    DAI.into(),
+                    eth_bridge_account_id.clone(),
+                    AssetSymbol(b"DAI".to_vec()),
+                    AssetName(b"Dai Stablecoin".to_vec()),
+                    18,
+                    Balance::zero(),
+                    true,
+                ),
             ],
         }),
         permissions: Some(PermissionsConfig {
@@ -862,7 +909,7 @@ fn testnet_genesis(
                     vec![permissions::MINT, permissions::BURN],
                 ),
                 (
-                    iroha_migration_account_id.clone(),
+                    iroha_migration_account_id,
                     Scope::Limited(hash(&VAL)),
                     vec![permissions::MINT],
                 ),
@@ -903,6 +950,21 @@ fn testnet_genesis(
         tokens: Some(TokensConfig {
             endowed_accounts: tokens_endowed_accounts,
         }),
+        trading_pair: Some(TradingPairConfig {
+            trading_pairs: initial_collateral_assets
+                .iter()
+                .cloned()
+                .map(|target_asset_id| {
+                    (
+                        DEXId::Polkaswap.into(),
+                        common::TradingPair {
+                            base_asset_id: XOR.into(),
+                            target_asset_id,
+                        },
+                    )
+                })
+                .collect(),
+        }),
         dex_api: Some(DEXAPIConfig {
             source_types: [
                 LiquiditySourceType::XYKPool,
@@ -928,6 +990,12 @@ fn testnet_genesis(
                         owned: true,
                         precision: DEFAULT_BALANCE_PRECISION,
                     },
+                    AssetConfig::Sidechain {
+                        id: DAI.into(),
+                        sidechain_id: hex!("5592ec0cfb4dbc12d3ab100b257153436a1f0fea").into(),
+                        owned: false,
+                        precision: DEFAULT_BALANCE_PRECISION,
+                    },
                 ],
                 bridge_contract_address: eth_bridge_params.bridge_contract_address,
                 reserves: vec![
@@ -948,16 +1016,12 @@ fn testnet_genesis(
             ))
             .collect(),
         }),
-        bonding_curve_pool: Some(BondingCurvePoolConfig {
-            distribution_accounts: accounts.clone(),
-            reserves_account_id: bonding_curve_reserves_tech_account_id,
-        }),
         multicollateral_bonding_curve_pool: Some(MulticollateralBondingCurvePoolConfig {
             distribution_accounts: accounts,
             reserves_account_id: mbc_reserves_tech_account_id,
-            reference_asset_id: Default::default(),
+            reference_asset_id: DAI.into(),
             incentives_account_id: mbc_pool_rewards_account_id,
-            initial_collateral_assets: Vec::new(),
+            initial_collateral_assets,
         }),
         farming: Some(FarmingConfig {
             initial_farm: (dex_root_account_id, XOR, PSWAP),
@@ -966,10 +1030,7 @@ fn testnet_genesis(
             subscribed_accounts: Vec::new(),
             burn_info: (fixed!(0.1), fixed!(0.000357), fixed!(0.65)),
         }),
-        iroha_migration: Some(IrohaMigrationConfig {
-            iroha_accounts: include!("bytes/iroha_migration_accounts.in"),
-            account_id: iroha_migration_account_id,
-        }),
+        iroha_migration: Some(iroha_migration_config),
         rewards: Some(rewards_config),
         pallet_collective_Instance1: Some(CouncilConfig::default()),
         pallet_collective_Instance2: Some(TechnicalCommitteeConfig {
@@ -986,14 +1047,14 @@ fn testnet_genesis(
 }
 
 /// # Parameters
-#[cfg(not(feature = "test-net"))]
-pub fn main_net() -> ChainSpec {
+#[cfg(not(feature = "private-net"))]
+pub fn main_net_coded() -> ChainSpec {
     let mut properties = Properties::new();
     properties.insert("tokenSymbol".into(), "XOR".into());
     properties.insert("tokenDecimals".into(), 18.into());
     let name = "SORA";
     let id = "sora-substrate-main-net";
-    //SORA main-net node address. We should have 22 node. As much as possible from Community and other from Soramitsu.
+    // SORA main-net node address. We should have 22 node. As much as possible from Community and other from Soramitsu.
     // Currently filled with staging values
     let boot_nodes =  vec![
               MultiaddrWithPeerId::from_str("/dns/s1.stg1.sora2.soramitsu.co.jp/tcp/30333/p2p/12D3KooWQf9AXopgwHsfKCweXtuePnWKieythwNa7AFwNfyemcjX").unwrap(),
@@ -1053,7 +1114,7 @@ pub fn main_net() -> ChainSpec {
     )
 }
 
-#[cfg(not(feature = "test-net"))]
+#[cfg(not(feature = "private-net"))]
 fn mainnet_genesis(
     initial_authorities: Vec<(AccountId, AccountId, AuraId, BabeId, GrandpaId, ImOnlineId)>,
     _endowed_accounts: Vec<AccountId>,
@@ -1098,11 +1159,6 @@ fn mainnet_genesis(
             &eth_bridge_authority_tech_account_id,
         )
         .unwrap();
-    // Main MBC reserves account id
-    let bonding_curve_reserves_tech_account_id = TechAccountId::Generic(
-        bonding_curve_pool::TECH_ACCOUNT_PREFIX.to_vec(),
-        bonding_curve_pool::TECH_ACCOUNT_RESERVES.to_vec(),
-    );
 
     let mbc_reserves_tech_account_id = framenode_runtime::GetMbcReservesTechAccountId::get();
     let mbc_reserves_account_id = framenode_runtime::GetMbcReservesAccountId::get();
@@ -1193,10 +1249,12 @@ fn mainnet_genesis(
     }
     let rewards_config = RewardsConfig {
         reserves_account_id: rewards_tech_account_id,
-        val_owners: include!("bytes/rewards_val_owners.in"),
-        pswap_farm_owners: include!("bytes/rewards_pswap_farm_owners.in"),
-        pswap_waifu_owners: include!("bytes/rewards_pswap_waifu_owners.in"),
+        val_owners: our_include!("bytes/rewards_val_owners.in"),
+        pswap_farm_owners: our_include!("bytes/rewards_pswap_farm_owners.in"),
+        pswap_waifu_owners: our_include!("bytes/rewards_pswap_waifu_owners.in"),
     };
+    let initial_collateral_assets = vec![]; // TODO: set mainnet collaterals - VAL, PSWAP, DAI, ETH ?
+
     GenesisConfig {
         frame_system: Some(SystemConfig {
             code: WASM_BINARY.unwrap().to_vec(),
@@ -1388,6 +1446,21 @@ fn mainnet_genesis(
                 ),
             ],
         }),
+        trading_pair: Some(TradingPairConfig {
+            trading_pairs: initial_collateral_assets
+                .iter()
+                .cloned()
+                .map(|target_asset_id| {
+                    (
+                        DEXId::Polkaswap.into(),
+                        common::TradingPair {
+                            base_asset_id: XOR.into(),
+                            target_asset_id,
+                        },
+                    )
+                })
+                .collect(),
+        }),
         dex_api: Some(DEXAPIConfig {
             source_types: [
                 LiquiditySourceType::XYKPool,
@@ -1413,6 +1486,7 @@ fn mainnet_genesis(
                         owned: true,
                         precision: DEFAULT_BALANCE_PRECISION,
                     },
+                    // TODO: add mainnet DAI
                 ],
                 bridge_contract_address: eth_bridge_params.bridge_contract_address,
                 reserves: vec![
@@ -1433,21 +1507,12 @@ fn mainnet_genesis(
             ))
             .collect(),
         }),
-        bonding_curve_pool: Some(BondingCurvePoolConfig {
-            distribution_accounts: accounts.clone(),
-            reserves_account_id: bonding_curve_reserves_tech_account_id,
-        }),
         multicollateral_bonding_curve_pool: Some(MulticollateralBondingCurvePoolConfig {
             distribution_accounts: accounts,
             reserves_account_id: mbc_reserves_tech_account_id,
-            reference_asset_id: USDT.into(), // TODO: should be DAI
+            reference_asset_id: Default::default(), // TODO: set mainnet DAI
             incentives_account_id: mbc_pool_rewards_account_id,
-            initial_collateral_assets: [
-                VAL.into(),
-                PSWAP.into(),
-                USDT.into(), /*ETH.into(), DAI.into()*/
-            ]
-            .into(),
+            initial_collateral_assets,
         }),
         farming: Some(FarmingConfig {
             initial_farm: (dex_root_account_id, XOR, PSWAP),
@@ -1457,7 +1522,7 @@ fn mainnet_genesis(
             burn_info: (fixed!(0.1), fixed!(0.000357), fixed!(0.65)),
         }),
         iroha_migration: Some(IrohaMigrationConfig {
-            iroha_accounts: include!("bytes/iroha_migration_accounts.in"),
+            iroha_accounts: our_include!("bytes/iroha_migration_accounts.in"),
             account_id: iroha_migration_account_id,
         }),
         rewards: Some(rewards_config),

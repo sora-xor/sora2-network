@@ -1,4 +1,4 @@
-use crate::{AssetId, AssetId32, Balance, TechAssetId};
+use crate::{AssetId32, Balance, PredefinedAssetId, TechAssetId};
 use codec::{Decode, Encode};
 use frame_support::dispatch::DispatchError;
 use orml_traits::parameter_type_with_key;
@@ -31,23 +31,24 @@ impl crate::traits::IsRepresentation for ComicAssetId {
     }
 }
 
-impl From<AssetId> for AssetId32<ComicAssetId> {
-    fn from(asset: AssetId) -> Self {
+impl From<PredefinedAssetId> for AssetId32<ComicAssetId> {
+    fn from(asset: PredefinedAssetId) -> Self {
         let comic = ComicAssetId::from(asset);
         AssetId32::<ComicAssetId>::from(comic)
     }
 }
 
-impl From<AssetId> for ComicAssetId {
-    fn from(asset_id: AssetId) -> Self {
+impl From<PredefinedAssetId> for ComicAssetId {
+    fn from(asset_id: PredefinedAssetId) -> Self {
         use ComicAssetId::*;
         match asset_id {
-            AssetId::XOR => GoldenTicket,
-            AssetId::DOT => AppleTree,
-            AssetId::KSM => Apple,
-            AssetId::USDT => Teapot,
-            AssetId::VAL => Flower,
-            AssetId::PSWAP => RedPepper,
+            PredefinedAssetId::XOR => GoldenTicket,
+            PredefinedAssetId::DOT => AppleTree,
+            PredefinedAssetId::KSM => Apple,
+            PredefinedAssetId::USDT => Teapot,
+            PredefinedAssetId::VAL => Flower,
+            PredefinedAssetId::PSWAP => RedPepper,
+            PredefinedAssetId::DAI => BlackPepper,
         }
     }
 }
@@ -59,38 +60,38 @@ impl Default for ComicAssetId {
 }
 
 // This is never used, and just makes some tests compatible.
-impl From<AssetId32<AssetId>> for AssetId32<ComicAssetId> {
-    fn from(_asset: AssetId32<AssetId>) -> Self {
+impl From<AssetId32<PredefinedAssetId>> for AssetId32<ComicAssetId> {
+    fn from(_asset: AssetId32<PredefinedAssetId>) -> Self {
         unreachable!()
     }
 }
 
 // This is never used, and just makes some tests compatible.
-impl From<TechAssetId<AssetId>> for AssetId {
-    fn from(_tech: TechAssetId<AssetId>) -> Self {
+impl From<TechAssetId<PredefinedAssetId>> for PredefinedAssetId {
+    fn from(_tech: TechAssetId<PredefinedAssetId>) -> Self {
         unimplemented!()
     }
 }
 
 // This is never used, and just makes some tests compatible.
-impl TryFrom<AssetId> for TechAssetId<TechAssetId<AssetId>>
+impl TryFrom<PredefinedAssetId> for TechAssetId<TechAssetId<PredefinedAssetId>>
 where
-    TechAssetId<AssetId>: Decode,
+    TechAssetId<PredefinedAssetId>: Decode,
 {
     type Error = DispatchError;
-    fn try_from(_asset: AssetId) -> Result<Self, Self::Error> {
+    fn try_from(_asset: PredefinedAssetId) -> Result<Self, Self::Error> {
         unimplemented!()
     }
 }
 
-impl From<AssetId> for TechAssetId<ComicAssetId> {
-    fn from(asset_id: AssetId) -> Self {
+impl From<PredefinedAssetId> for TechAssetId<ComicAssetId> {
+    fn from(asset_id: PredefinedAssetId) -> Self {
         TechAssetId::Wrapped(ComicAssetId::from(asset_id))
     }
 }
 
 parameter_type_with_key! {
-    pub ExistentialDeposits: |_currency_id: AssetId32<AssetId>| -> Balance {
+    pub ExistentialDeposits: |_currency_id: AssetId32<PredefinedAssetId>| -> Balance {
         0
     };
 }

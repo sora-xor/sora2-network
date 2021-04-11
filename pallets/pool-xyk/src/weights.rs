@@ -1,34 +1,33 @@
-//! THIS FILE WAS AUTO-GENERATED USING THE SUBSTRATE BENCHMARK CLI VERSION 2.0.0-rc5
-
 use common::weights::constants::EXTRINSIC_FIXED_WEIGHT;
-use common::weights::PresetWeightInfo;
-use frame_support::weights::constants::RocksDbWeight as DbWeight;
+use frame_support::traits::Get;
 use frame_support::weights::Weight;
+use sp_std::marker::PhantomData;
 
-impl crate::WeightInfo for () {
+pub struct WeightInfo<T>(PhantomData<T>);
+impl<T: frame_system::Config> crate::WeightInfo for WeightInfo<T> {
     fn swap_pair() -> Weight {
-        (550_000_000 as Weight)
-            .saturating_add(DbWeight::get().reads(15 as Weight))
-            .saturating_add(DbWeight::get().writes(5 as Weight))
+        (2_785_805_000 as Weight)
+            .saturating_add(T::DbWeight::get().reads(15 as Weight))
+            .saturating_add(T::DbWeight::get().writes(6 as Weight))
     }
     fn deposit_liquidity() -> Weight {
-        (500_000_000 as Weight)
-            .saturating_add(DbWeight::get().reads(18 as Weight))
-            .saturating_add(DbWeight::get().writes(6 as Weight))
+        (2_532_754_000 as Weight)
+            .saturating_add(T::DbWeight::get().reads(18 as Weight))
+            .saturating_add(T::DbWeight::get().writes(4 as Weight))
     }
     fn withdraw_liquidity() -> Weight {
-        (500_000_000 as Weight)
-            .saturating_add(DbWeight::get().reads(17 as Weight))
-            .saturating_add(DbWeight::get().writes(6 as Weight))
+        (2_114_113_000 as Weight)
+            .saturating_add(T::DbWeight::get().reads(15 as Weight))
+            .saturating_add(T::DbWeight::get().writes(4 as Weight))
     }
     fn initialize_pool() -> Weight {
-        (200_000_000 as Weight)
-            .saturating_add(DbWeight::get().reads(14 as Weight))
-            .saturating_add(DbWeight::get().writes(9 as Weight))
+        (1_828_872_000 as Weight)
+            .saturating_add(T::DbWeight::get().reads(15 as Weight))
+            .saturating_add(T::DbWeight::get().writes(15 as Weight))
     }
 }
 
-impl<T> crate::WeightInfo for PresetWeightInfo<T> {
+impl crate::WeightInfo for () {
     fn swap_pair() -> Weight {
         EXTRINSIC_FIXED_WEIGHT
     }

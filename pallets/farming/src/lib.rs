@@ -535,9 +535,7 @@ pub mod pallet {
     #[pallet::hooks]
     impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
         fn on_initialize(now: T::BlockNumber) -> Weight {
-            common::with_benchmark("farming.on_initialize", || {
-                Pallet::<T>::perform_per_block_update(now)
-            })
+            Pallet::<T>::perform_per_block_update(now)
         }
     }
 
@@ -601,7 +599,7 @@ pub mod pallet {
     }
 
     #[pallet::event]
-    #[pallet::metadata(AccountIdOf<T> = "AccountId", AssetId32<common::AssetId> = "AssetId")]
+    #[pallet::metadata(AccountIdOf<T> = "AccountId", AssetId32<common::PredefinedAssetId> = "AssetId")]
     #[pallet::generate_deposit(pub(super) fn deposit_event)]
     pub enum Event<T: Config> {
         FarmCreated(FarmId, AccountIdOf<T>),
@@ -609,8 +607,8 @@ pub mod pallet {
         IncentiveClaimed(FarmId, AccountIdOf<T>),
         FarmerExit(FarmId, AccountIdOf<T>),
         SmoothPriceUpdated(
-            AssetId32<common::AssetId>,
-            AssetId32<common::AssetId>,
+            AssetId32<common::PredefinedAssetId>,
+            AssetId32<common::PredefinedAssetId>,
             Balance,
         ),
     }
@@ -659,9 +657,9 @@ pub mod pallet {
     pub type PricesStates<T: Config> = StorageDoubleMap<
         _,
         Blake2_128Concat,
-        AssetId32<common::AssetId>,
+        AssetId32<common::PredefinedAssetId>,
         Blake2_128Concat,
-        AssetId32<common::AssetId>,
+        AssetId32<common::PredefinedAssetId>,
         SmoothPriceState,
     >;
 

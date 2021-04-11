@@ -17,8 +17,8 @@ use crate::{
 use codec::{Decode, Encode};
 use common::prelude::Balance;
 use common::{
-    balance, eth, AssetId, AssetId32, AssetName, AssetSymbol, DEFAULT_BALANCE_PRECISION, DOT, KSM,
-    USDT, VAL, XOR,
+    balance, eth, AssetId32, AssetName, AssetSymbol, PredefinedAssetId, DEFAULT_BALANCE_PRECISION,
+    DOT, KSM, USDT, VAL, XOR,
 };
 use frame_support::sp_runtime::app_crypto::sp_core::crypto::AccountId32;
 use frame_support::sp_runtime::app_crypto::sp_core::{self, ecdsa, sr25519, Pair, Public};
@@ -114,9 +114,8 @@ fn approve_request(
         if current_status == RequestStatus::Pending && i + 1 == sigs_needed {
             match last_event().ok_or(None)? {
                 Event::eth_bridge(bridge_event) => match bridge_event {
-                    crate::Event::ApprovalsCollected(e, a) => {
-                        assert_eq!(e, encoded);
-                        assert_eq!(a, approvals);
+                    crate::Event::ApprovalsCollected(h) => {
+                        assert_eq!(h, request_hash);
                     }
                     e => {
                         assert_ne!(
@@ -389,7 +388,7 @@ fn should_mint_and_burn_sidechain_asset() {
     let (mut ext, state) = ExtBuilder::default().build();
 
     #[track_caller]
-    fn check_invariant(asset_id: &AssetId32<AssetId>, val: u32) {
+    fn check_invariant(asset_id: &AssetId32<PredefinedAssetId>, val: u32) {
         assert_eq!(Assets::total_issuance(asset_id).unwrap(), val.into());
     }
 
@@ -808,7 +807,7 @@ fn should_take_fee_in_incoming_transfer() {
         let incoming_transfer = IncomingRequest::Transfer(crate::IncomingTransfer {
             from: Address::from([1; 20]),
             to: alice.clone(),
-            asset_id: AssetId::XOR.into(),
+            asset_id: PredefinedAssetId::XOR.into(),
             asset_kind: AssetKind::SidechainOwned,
             amount: balance!(100),
             author: alice.clone(),
@@ -819,12 +818,14 @@ fn should_take_fee_in_incoming_transfer() {
             should_take_fee: true,
         });
         assert_eq!(
-            assets::Module::<Runtime>::total_balance(&AssetId::XOR.into(), &alice).unwrap(),
+            assets::Module::<Runtime>::total_balance(&PredefinedAssetId::XOR.into(), &alice)
+                .unwrap(),
             0
         );
         assert_incoming_request_done(&state, incoming_transfer.clone()).unwrap();
         assert_eq!(
-            assets::Module::<Runtime>::total_balance(&AssetId::XOR.into(), &alice).unwrap(),
+            assets::Module::<Runtime>::total_balance(&PredefinedAssetId::XOR.into(), &alice)
+                .unwrap(),
             balance!(99.9993).into()
         );
     });
@@ -846,7 +847,7 @@ fn should_fail_take_fee_in_incoming_transfer() {
         let incoming_transfer = IncomingRequest::Transfer(crate::IncomingTransfer {
             from: Address::from([1; 20]),
             to: alice.clone(),
-            asset_id: AssetId::XOR.into(),
+            asset_id: PredefinedAssetId::XOR.into(),
             asset_kind: AssetKind::SidechainOwned,
             amount: 100u32.into(),
             author: alice.clone(),
@@ -920,7 +921,7 @@ fn should_register_and_find_asset_ids() {
         let net_id = ETH_NETWORK_ID;
         // gets a known asset
         let (asset_id, asset_kind) = EthBridge::get_asset_by_raw_asset_id(
-            H256(AssetId32::<AssetId>::from_asset_id(AssetId::XOR).code),
+            H256(AssetId32::<PredefinedAssetId>::from_asset_id(PredefinedAssetId::XOR).code),
             &Address::zero(),
             net_id,
         )

@@ -17,7 +17,7 @@ pub type AccountId = u128;
 pub type BlockNumber = u64;
 pub type Amount = i128;
 pub type DEXId = u32;
-type AssetId = AssetId32<common::AssetId>;
+type AssetId = AssetId32<common::PredefinedAssetId>;
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
 
@@ -80,9 +80,7 @@ impl frame_system::Config for Runtime {
     type SS58Prefix = ();
 }
 
-impl Config for Runtime {
-    type WeightInfo = ();
-}
+impl Config for Runtime {}
 
 impl tokens::Config for Runtime {
     type Event = Event;

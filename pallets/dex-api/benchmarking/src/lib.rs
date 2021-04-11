@@ -9,20 +9,22 @@ use dex_api::*;
 
 use codec::Decode;
 use common::prelude::{Balance, SwapVariant};
-use common::{balance, AssetName, AssetSymbol, DEXId, LiquiditySourceType, DOT, XOR};
+use common::{
+    balance, AssetName, AssetSymbol, DEXId, LiquiditySourceType, DOT, PSWAP, USDT, VAL, XOR,
+};
 use frame_benchmarking::benchmarks;
 use frame_support::traits::Get;
 use frame_system::{EventRecord, RawOrigin};
 
+use frame_benchmarking::Zero;
 use hex_literal::hex;
-use permissions::{BURN, MINT};
 use sp_std::prelude::*;
 
-use assets::Module as Assets;
-use permissions::Module as Permissions;
-use pool_xyk::Module as XYKPool;
-use technical::Module as Technical;
-use trading_pair::Module as TradingPair;
+use assets::Pallet as Assets;
+use multicollateral_bonding_curve_pool::Pallet as MBCPool;
+use permissions::Pallet as Permissions;
+use pool_xyk::Pallet as XYKPool;
+use trading_pair::Pallet as TradingPair;
 
 pub const DEX: DEXId = DEXId::Polkaswap;
 
@@ -30,7 +32,10 @@ pub const DEX: DEXId = DEXId::Polkaswap;
 mod mock;
 
 pub struct Module<T: Config>(dex_api::Module<T>);
-pub trait Config: dex_api::Config + pool_xyk::Config + technical::Config {}
+pub trait Config:
+    dex_api::Config + pool_xyk::Config + technical::Config + multicollateral_bonding_curve_pool::Config
+{
+}
 
 // Support Functions
 fn alice<T: Config>() -> T::AccountId {
@@ -38,83 +43,161 @@ fn alice<T: Config>() -> T::AccountId {
     T::AccountId::decode(&mut &bytes[..]).expect("Failed to decode account ID")
 }
 
+// Prepare Runtime for running benchmarks
 fn setup_benchmark<T: Config>() -> Result<(), &'static str> {
     let owner = alice::<T>();
     let owner_origin: <T as frame_system::Config>::Origin = RawOrigin::Signed(owner.clone()).into();
+    let dex_id: T::DEXId = DEX.into();
 
     // Grant permissions to self in case they haven't been explicitly given in genesis config
-    let _ = Permissions::<T>::grant_permission(owner.clone(), owner.clone(), MINT);
-    let _ = Permissions::<T>::grant_permission(owner.clone(), owner.clone(), BURN);
+    Permissions::<T>::assign_permission(
+        owner.clone(),
+        &owner,
+        permissions::MANAGE_DEX,
+        permissions::Scope::Limited(common::hash(&dex_id)),
+    )
+    .unwrap();
+    let _ = Permissions::<T>::assign_permission(
+        owner.clone(),
+        &owner,
+        permissions::MINT,
+        permissions::Scope::Unlimited,
+    );
+    let _ = Permissions::<T>::assign_permission(
+        owner.clone(),
+        &owner,
+        permissions::BURN,
+        permissions::Scope::Unlimited,
+    );
 
     let _ = Assets::<T>::register_asset_id(
         owner.clone(),
         XOR.into(),
         AssetSymbol(b"XOR".to_vec()),
-        AssetName(b"SORA".to_vec()),
+        AssetName(b"XOR".to_vec()),
         18,
-        Balance::from(0u32),
+        Balance::zero(),
+        true,
+    );
+    let _ = Assets::<T>::register_asset_id(
+        owner.clone(),
+        VAL.into(),
+        AssetSymbol(b"VAL".to_vec()),
+        AssetName(b"VAL".to_vec()),
+        18,
+        Balance::zero(),
+        true,
+    );
+    let _ = Assets::<T>::register_asset_id(
+        owner.clone(),
+        PSWAP.into(),
+        AssetSymbol(b"PSWAP".to_vec()),
+        AssetName(b"PSWAP".to_vec()),
+        18,
+        Balance::zero(),
+        true,
+    );
+    let _ = Assets::<T>::register_asset_id(
+        owner.clone(),
+        USDT.into(),
+        AssetSymbol(b"USDT".to_vec()),
+        AssetName(b"USDT".to_vec()),
+        18,
+        Balance::zero(),
         true,
     );
     let _ = Assets::<T>::register_asset_id(
         owner.clone(),
         DOT.into(),
         AssetSymbol(b"DOT".to_vec()),
-        AssetName(b"Polkadot".to_vec()),
+        AssetName(b"DOT".to_vec()),
         18,
-        Balance::from(0u32),
+        Balance::zero(),
         true,
     );
+    Assets::<T>::mint_to(&XOR.into(), &owner.clone(), &owner.clone(), balance!(50000)).unwrap();
+    Assets::<T>::mint_to(
+        &DOT.into(),
+        &owner.clone(),
+        &owner.clone(),
+        balance!(50000000),
+    )
+    .unwrap();
+    Assets::<T>::mint_to(
+        &USDT.into(),
+        &owner.clone(),
+        &owner.clone(),
+        balance!(50000000),
+    )
+    .unwrap();
+    Assets::<T>::mint_to(
+        &VAL.into(),
+        &owner.clone(),
+        &owner.clone(),
+        balance!(50000000),
+    )
+    .unwrap();
+    Assets::<T>::mint_to(
+        &PSWAP.into(),
+        &owner.clone(),
+        &owner.clone(),
+        balance!(50000000),
+    )
+    .unwrap();
 
-    TradingPair::<T>::register(owner_origin.clone(), DEX.into(), XOR.into(), DOT.into())?;
+    TradingPair::<T>::register(owner_origin.clone(), DEX.into(), XOR.into(), DOT.into()).unwrap();
+    TradingPair::<T>::register(owner_origin.clone(), DEX.into(), XOR.into(), USDT.into()).unwrap();
+    TradingPair::<T>::register(owner_origin.clone(), DEX.into(), XOR.into(), VAL.into()).unwrap();
+    TradingPair::<T>::register(owner_origin.clone(), DEX.into(), XOR.into(), PSWAP.into()).unwrap();
 
-    let (_, tech_acc_id, _fee_acc_id, mark_asset) =
-        XYKPool::<T>::initialize_pool_unchecked(owner.clone(), DEX.into(), XOR.into(), DOT.into())?;
+    XYKPool::<T>::initialize_pool(owner_origin.clone(), DEX.into(), XOR.into(), DOT.into())?;
+    XYKPool::<T>::initialize_pool(owner_origin.clone(), DEX.into(), XOR.into(), VAL.into())?;
+    XYKPool::<T>::initialize_pool(owner_origin.clone(), DEX.into(), XOR.into(), PSWAP.into())?;
+    XYKPool::<T>::initialize_pool(owner_origin.clone(), DEX.into(), XOR.into(), USDT.into())?;
 
-    let _ = Assets::<T>::register_asset_id(
-        owner.clone(),
-        mark_asset.clone().into(),
-        AssetSymbol(b"PSWAP".to_vec()),
-        AssetName(b"Polkaswap".to_vec()),
-        18,
-        Balance::from(0u32),
-        true,
-    );
-
-    let repr: <T>::AccountId = Technical::<T>::tech_account_id_to_account_id(&tech_acc_id).unwrap();
-
-    let _ = Permissions::<T>::grant_permission(owner.clone(), repr.clone(), MINT);
-    let _ = Permissions::<T>::grant_permission(owner.clone(), repr.clone(), BURN);
-
-    Assets::<T>::mint(
+    XYKPool::<T>::deposit_liquidity(
         owner_origin.clone(),
+        DEX.into(),
         XOR.into(),
-        owner.clone(),
-        balance!(10000),
-    )?;
-    Assets::<T>::mint(
-        owner_origin.clone(),
         DOT.into(),
-        owner.clone(),
-        balance!(20000),
+        balance!(1000),
+        balance!(2000),
+        balance!(0),
+        balance!(0),
     )?;
-    Assets::<T>::mint(
+    XYKPool::<T>::deposit_liquidity(
         owner_origin.clone(),
+        DEX.into(),
         XOR.into(),
-        repr.clone(),
-        balance!(1000000),
+        VAL.into(),
+        balance!(1000),
+        balance!(2000),
+        balance!(0),
+        balance!(0),
     )?;
-    Assets::<T>::mint(
+    XYKPool::<T>::deposit_liquidity(
         owner_origin.clone(),
-        DOT.into(),
-        repr.clone(),
-        balance!(1500000),
+        DEX.into(),
+        XOR.into(),
+        PSWAP.into(),
+        balance!(1000),
+        balance!(2000),
+        balance!(0),
+        balance!(0),
     )?;
-    Assets::<T>::mint(
+    XYKPool::<T>::deposit_liquidity(
         owner_origin.clone(),
-        mark_asset.into(),
-        owner.clone(),
-        balance!(1500000000000),
+        DEX.into(),
+        XOR.into(),
+        USDT.into(),
+        balance!(1000),
+        balance!(2000),
+        balance!(0),
+        balance!(0),
     )?;
+
+    MBCPool::<T>::initialize_pool(owner_origin.clone(), USDT.into())?;
+    MBCPool::<T>::initialize_pool(owner_origin.clone(), VAL.into())?;
 
     Ok(())
 }
