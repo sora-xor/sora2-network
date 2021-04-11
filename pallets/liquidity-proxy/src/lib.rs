@@ -50,6 +50,7 @@ use frame_system::ensure_signed;
 use sp_runtime::traits::{UniqueSaturatedFrom, Zero};
 use sp_runtime::DispatchError;
 use sp_std::prelude::*;
+use traits::MultiCurrency;
 
 type LiquiditySourceIdOf<T> = LiquiditySourceId<<T as common::Config>::DEXId, LiquiditySourceType>;
 
@@ -1311,6 +1312,7 @@ pub mod pallet {
             filter_mode: FilterMode,
         ) -> DispatchResultWithPostInfo {
             let who = ensure_signed(origin)?;
+
             let outcome = Self::exchange(
                 &who,
                 &who,
@@ -1319,6 +1321,7 @@ pub mod pallet {
                 swap_amount,
                 LiquiditySourceFilter::with_mode(dex_id, filter_mode, selected_source_types),
             )?;
+
             let (input_amount, output_amount, fee_amount) = match swap_amount {
                 SwapAmount::WithDesiredInput {
                     desired_amount_in, ..
@@ -1328,7 +1331,7 @@ pub mod pallet {
                 } => (outcome.amount, desired_amount_out, outcome.fee),
             };
             Self::deposit_event(Event::<T>::Exchange(
-                who,
+                who.clone(),
                 dex_id,
                 input_asset_id,
                 output_asset_id,
@@ -1336,6 +1339,16 @@ pub mod pallet {
                 output_amount,
                 fee_amount,
             ));
+
+            // For Any -> XOR exchanges we must apply the fee afterwards
+            if output_asset_id
+                == T::AssetId::from(common::AssetId32::from_asset_id(
+                    common::PredefinedAssetId::XOR,
+                ))
+            {
+                T::Currency::withdraw(output_asset_id, &who, fee_amount)?;
+            }
+
             Ok(().into())
         }
     }
