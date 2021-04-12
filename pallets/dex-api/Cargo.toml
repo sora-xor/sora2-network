@@ -1,9 +1,12 @@
 [package]
 description = 'Pallet for aggregation of available liquidity sources for other pallets and external api.'
-authors = ["Maxim Surkov <modbrin@gmail.com>"]
 version = '0.1.0'
 name = 'dex-api'
 edition = '2018'
+authors = ['Polka Biome Ltd. <jihoon@tutanota.de>']
+license = "BSD-4-Clause"
+homepage = 'https://sora.org'
+repository = 'https://github.com/sora-xor/sora2-network'
 
 [package.metadata.docs.rs]
 targets = ['x86_64-unknown-linux-gnu']
