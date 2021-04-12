@@ -48,11 +48,11 @@ pipeline {
                                 sh "cargo test --release"
                                 sh "cp /opt/rust-target/release/framenode ${env.WORKSPACE}/housekeeping/framenode"
                             } else {
-                                // sh "cargo fmt -- --check > /dev/null"
-                                // sh "cargo check"
-                                // sh "cargo test"
-                                // sh "cargo check --features private-net"
-                                // sh "cargo test --features private-net"
+                                sh "cargo fmt -- --check > /dev/null"
+                                sh "cargo check"
+                                sh "cargo test"
+                                sh "cargo check --features private-net"
+                                sh "cargo test --features private-net"
                             }
                         }
                     }
