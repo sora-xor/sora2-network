@@ -102,8 +102,9 @@ If you want to see the multi-node consensus algorithm in action, refer to
 First, complete the [guide for Rust setup](https://substrate.dev/docs/en/knowledgebase/getting-started/).
 For the SORA2 network nightly build should be used. Execute the following command:
 ```
-rustup install nightly
-rustup default nightly
+rustup uninstall nigthly
+rustup default nightly-2021-03-11
+rustup target add wasm32-unknown-unknown --toolchain nightly-2021-03-11
 ```
 
 ### Build
