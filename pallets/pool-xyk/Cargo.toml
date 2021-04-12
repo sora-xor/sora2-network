@@ -1,11 +1,11 @@
 [package]
-authors = ['Evgeni Zhukov <zhukov@soramitsu.co.jp>']
+authors = ['Polka Biome Ltd. <jihoon@tutanota.de>']
+license = "BSD-4-Clause"
+homepage = 'https://sora.org'
+repository = 'https://github.com/sora-xor/sora2-network'
 description = 'Pool XYK'
 edition = '2018'
-homepage = 'https://github.com/soramitsu/SoraNeo-substrate'
-license = 'Unlicense'
 name = 'pool-xyk'
-repository = 'https://github.com/soramitsu/sora2-substrate'
 version = '0.1.0'
 
 [package.metadata.docs.rs]

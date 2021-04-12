@@ -1,10 +1,11 @@
 [package]
-authors = ['Nikita Puzankov <puzankov@soramitsu.co.jp>']
 description = 'Polkaswap RPC for farming operations.'
 edition = "2018"
-license = 'MIT OR Apache-2.0'
+authors = ['Polka Biome Ltd. <jihoon@tutanota.de>']
+license = "BSD-4-Clause"
+homepage = 'https://sora.org'
+repository = 'https://github.com/sora-xor/sora2-network'
 name = "farming-rpc"
-repository = 'https://github.com/soramitsu/sora2-substrate/'
 version = "0.1.0"
 
 [dependencies]
