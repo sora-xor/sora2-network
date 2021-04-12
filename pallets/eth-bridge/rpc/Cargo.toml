@@ -1,10 +1,11 @@
 [package]
 name = "eth-bridge-rpc"
-authors = []
 description = 'Polkaswap RPC for farming operations.'
 edition = "2018"
-license = 'MIT OR Apache-2.0'
-repository = 'https://github.com/soramitsu/sora2-substrate/'
+authors = ['Polka Biome Ltd. <jihoon@tutanota.de>']
+license = "BSD-4-Clause"
+homepage = 'https://sora.org'
+repository = 'https://github.com/sora-xor/sora2-network'
 version = "0.1.0"
 
 [dependencies]

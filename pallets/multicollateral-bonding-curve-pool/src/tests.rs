@@ -1,3 +1,33 @@
+// This file is part of the SORA network and Polkaswap app.
+
+// Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
+// SPDX-License-Identifier: BSD-4-Clause
+
+// Redistribution and use in source and binary forms, with or without modification,
+// are permitted provided that the following conditions are met:
+
+// Redistributions of source code must retain the above copyright notice, this list
+// of conditions and the following disclaimer.
+// Redistributions in binary form must reproduce the above copyright notice, this
+// list of conditions and the following disclaimer in the documentation and/or other
+// materials provided with the distribution.
+//
+// All advertising materials mentioning features or use of this software must display
+// the following acknowledgement: This product includes software developed by Polka Biome
+// Ltd., SORA, and Polkaswap.
+//
+// Neither the name of the Polka Biome Ltd. nor the names of its contributors may be used
+// to endorse or promote products derived from this software without specific prior written permission.
+
+// THIS SOFTWARE IS PROVIDED BY Polka Biome Ltd. AS IS AND ANY EXPRESS OR IMPLIED WARRANTIES,
+// INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+// A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL Polka Biome Ltd. BE LIABLE FOR ANY
+// DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+// BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
+// OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
+// STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
+// USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
 #[rustfmt::skip]
 mod tests {
     use crate::{mock::*, DistributionAccountData, Module, DistributionAccounts, Error};
@@ -726,7 +756,7 @@ mod tests {
 
             let (limit, owned) = MBCPool::rewards(&alice());
             assert!(limit.is_zero());
-            assert_eq!(owned, balance!(22.857232131825000000));
+            assert_eq!(owned, balance!(228.572321318250000000));
         });
     }
 
@@ -793,16 +823,16 @@ mod tests {
             MBCPool::on_pswap_burned(remint_info);
             let (limit_alice, _) = MBCPool::rewards(&alice());
             let (limit_bob, _) = MBCPool::rewards(&bob());
-            assert_eq!(limit_alice, balance!(1142.224353616637499999));
-            assert_eq!(limit_bob, balance!(570.936592272849999999));
+            assert_eq!(limit_alice, balance!(11422.243536166374999999));
+            assert_eq!(limit_bob, balance!(5709.365922728499999999));
 
             // claiming incentives partially
             assert_ok!(MBCPool::claim_incentives(Origin::signed(alice())));
             assert_ok!(MBCPool::claim_incentives(Origin::signed(bob())));
             let (limit_alice, remaining_owned_alice) = MBCPool::rewards(&alice());
             let (limit_bob, remaining_owned_bob) = MBCPool::rewards(&bob());
-            assert_eq!(remaining_owned_alice, balance!(1142.224353616637500001));
-            assert_eq!(remaining_owned_bob, balance!(570.936592272850000001));
+            assert_eq!(remaining_owned_alice, balance!(11422.243536166375000001));
+            assert_eq!(remaining_owned_bob, balance!(5709.365922728500000001));
             assert!(limit_alice.is_zero());
             assert!(limit_bob.is_zero());
             assert_eq!(Assets::free_balance(&PSWAP, &alice()).unwrap(), owned_alice - remaining_owned_alice);
@@ -1161,7 +1191,7 @@ mod tests {
 
             let (limit, owned_1) = MBCPool::rewards(&alice());
             assert!(limit.is_zero());
-            assert_eq!(owned_1, balance!(59.626477921775000000));
+            assert_eq!(owned_1, balance!(596.264779217750000000));
 
             MBCPool::exchange(
                 &alice(),
@@ -1175,7 +1205,7 @@ mod tests {
 
             let (limit, owned_2) = MBCPool::rewards(&alice());
             assert!(limit.is_zero());
-            assert_eq!(owned_2, owned_1 + balance!(596.119496428700000000));
+            assert_eq!(owned_2, owned_1 + balance!(5961.194964287000000000));
 
             MBCPool::exchange(
                 &alice(),
@@ -1189,7 +1219,7 @@ mod tests {
 
             let (limit, owned_3) = MBCPool::rewards(&alice());
             assert!(limit.is_zero());
-            assert_eq!(owned_3, owned_2 + balance!(58172.983022759800000000));
+            assert_eq!(owned_3, owned_2 + balance!(581729.830227598000000000));
         });
     }
 }

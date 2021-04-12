@@ -1,5 +1,9 @@
 [package]
 edition = '2018'
+authors = ['Polka Biome Ltd. <jihoon@tutanota.de>']
+license = "BSD-4-Clause"
+homepage = 'https://sora.org'
+repository = 'https://github.com/sora-xor/sora2-network'
 name = 'liquidity-proxy'
 version = '0.1.0'
 
