@@ -183,7 +183,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
     spec_name: create_runtime_str!("sora-substrate"),
     impl_name: create_runtime_str!("sora-substrate"),
     authoring_version: 1,
-    spec_version: 21,
+    spec_version: 22,
     impl_version: 1,
     apis: RUNTIME_API_VERSIONS,
     transaction_version: 1,
@@ -798,12 +798,15 @@ impl xor_fee::Config for Runtime {
     type ReferrerWeight = ReferrerWeight;
     type XorBurnedWeight = XorBurnedWeight;
     type XorIntoValBurnedWeight = XorIntoValBurnedWeight;
+    type SoraParliamentShare = SoraParliamentShare;
     type XorId = GetXorAssetId;
     type ValId = GetValAssetId;
     type DEXIdValue = DEXIdValue;
     type LiquidityProxy = LiquidityProxy;
     type ValBurnedNotifier = Staking;
     type CustomFees = ExtrinsicsFlatFees;
+    type GetTechnicalAccountId = GetXorFeeAccountId;
+    type GetParliamentAccountId = GetParliamentAccountId;
 }
 
 pub struct ConstantFeeMultiplier;
@@ -911,6 +914,17 @@ parameter_types! {
         technical::Module::<Runtime>::tech_account_id_to_account_id(&tech_account_id)
             .expect("Failed to get ordinary account id for technical account id.")
     };
+    pub GetXorFeeTechAccountId: TechAccountId = {
+        TechAccountId::from_generic_pair(
+            xor_fee::TECH_ACCOUNT_PREFIX.to_vec(),
+            xor_fee::TECH_ACCOUNT_MAIN.to_vec(),
+        )
+    };
+    pub GetXorFeeAccountId: AccountId = {
+        let tech_account_id = GetXorFeeTechAccountId::get();
+        technical::Module::<Runtime>::tech_account_id_to_account_id(&tech_account_id)
+            .expect("Failed to get ordinary account id for technical account id.")
+    };
 }
 
 #[cfg(feature = "reduced-pswap-reward-periods")]
@@ -1012,6 +1026,7 @@ parameter_types! {
     pub const ReferrerWeight: u32 = 10;
     pub const XorBurnedWeight: u32 = 40;
     pub const XorIntoValBurnedWeight: u32 = 50;
+    pub const SoraParliamentShare: Percent = Percent::from_percent(10);
 }
 
 #[cfg(feature = "private-net")]

@@ -40,7 +40,7 @@ use common::{
 use core::time::Duration;
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{GenesisBuild, Get, OneSessionHandler, U128CurrencyToVote};
-use frame_support::weights::{DispatchInfo, IdentityFee, PostDispatchInfo, Weight};
+use frame_support::weights::{DispatchInfo, IdentityFee, Pays, PostDispatchInfo, Weight};
 use frame_support::{construct_runtime, parameter_types};
 use frame_system;
 use pallet_session::historical;
@@ -64,9 +64,10 @@ type Block = frame_system::mocking::MockBlock<Runtime>;
 
 parameter_types! {
     pub const BlockHashCount: u64 = 250;
-    pub const ReferrerWeight: u32 = 300_000_000;
-    pub const XorBurnedWeight: u32 = 400_000_000;
-    pub const XorIntoValBurnedWeight: u32 = 500_000_000;
+    pub const ReferrerWeight: u32 = 10;
+    pub const XorBurnedWeight: u32 = 40;
+    pub const XorIntoValBurnedWeight: u32 = 50;
+    pub const SoraParliamentShare: Percent = Percent::from_percent(10);
     pub const ExistentialDeposit: u32 = 0;
     pub const XorId: AssetId = XOR;
     pub const ValId: AssetId = VAL;
@@ -86,6 +87,18 @@ parameter_types! {
         max_val_burned_percentage_reward: Percent::from_percent(90),
     };
     pub OffchainSolutionWeightLimit: Weight = 600_000_000;
+    pub GetXorFeeTechAccountId: TechAccountId = {
+        TechAccountId::Generic(
+            crate::TECH_ACCOUNT_PREFIX.to_vec(),
+            crate::TECH_ACCOUNT_MAIN.to_vec(),
+        )
+    };
+    pub GetXorFeeAccountId: AccountId = {
+        let tech_account_id = GetXorFeeTechAccountId::get();
+        let repr = technical::tech_account_id_encoded_to_account_id_32(&tech_account_id.encode());
+        AccountId::decode(&mut &repr[..]).expect("Failed to decode account Id")
+    };
+    pub GetParliamentAccountId: AccountId = SORA_PARLIAMENT_ACCOUNT;
 }
 
 sp_runtime::impl_opaque_keys! {
@@ -306,12 +319,15 @@ impl Config for Runtime {
     type ReferrerWeight = ReferrerWeight;
     type XorBurnedWeight = XorBurnedWeight;
     type XorIntoValBurnedWeight = XorIntoValBurnedWeight;
+    type SoraParliamentShare = SoraParliamentShare;
     type XorId = XorId;
     type ValId = ValId;
     type DEXIdValue = DEXIdValue;
     type LiquidityProxy = MockLiquidityProxy;
     type ValBurnedNotifier = Staking;
     type CustomFees = CustomFees;
+    type GetTechnicalAccountId = GetXorFeeAccountId;
+    type GetParliamentAccountId = GetParliamentAccountId;
 }
 
 pub struct MockLiquidityProxy;
@@ -355,6 +371,7 @@ pub const STASH_ACCOUNT2: u64 = 21;
 pub const CONTROLLER_ACCOUNT: u64 = 10;
 pub const CONTROLLER_ACCOUNT2: u64 = 20;
 pub const TRANSFER_AMOUNT: u64 = 69;
+pub const SORA_PARLIAMENT_ACCOUNT: u64 = 7;
 
 pub fn initial_balance() -> Balance {
     balance!(1000)
@@ -557,5 +574,19 @@ pub fn default_post_info() -> PostDispatchInfo {
     PostDispatchInfo {
         actual_weight: None,
         pays_fee: Default::default(),
+    }
+}
+
+pub fn post_info_from_weight(w: Weight) -> PostDispatchInfo {
+    PostDispatchInfo {
+        actual_weight: Some(w),
+        pays_fee: Default::default(),
+    }
+}
+
+pub fn post_info_pays_no() -> PostDispatchInfo {
+    PostDispatchInfo {
+        actual_weight: None,
+        pays_fee: Pays::No,
     }
 }
