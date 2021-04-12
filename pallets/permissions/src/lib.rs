@@ -1,3 +1,33 @@
+// This file is part of the SORA network and Polkaswap app.
+
+// Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
+// SPDX-License-Identifier: BSD-4-Clause
+
+// Redistribution and use in source and binary forms, with or without modification,
+// are permitted provided that the following conditions are met:
+
+// Redistributions of source code must retain the above copyright notice, this list
+// of conditions and the following disclaimer.
+// Redistributions in binary form must reproduce the above copyright notice, this
+// list of conditions and the following disclaimer in the documentation and/or other
+// materials provided with the distribution.
+//
+// All advertising materials mentioning features or use of this software must display
+// the following acknowledgement: This product includes software developed by Polka Biome
+// Ltd., SORA, and Polkaswap.
+//
+// Neither the name of the Polka Biome Ltd. nor the names of its contributors may be used
+// to endorse or promote products derived from this software without specific prior written permission.
+
+// THIS SOFTWARE IS PROVIDED BY Polka Biome Ltd. AS IS AND ANY EXPRESS OR IMPLIED WARRANTIES,
+// INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+// A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL Polka Biome Ltd. BE LIABLE FOR ANY
+// DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+// BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
+// OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
+// STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
+// USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
 //! Permissions pallet provides an ability to configure an access via permissions.
 
 #![warn(
@@ -123,6 +153,10 @@ impl<T: Config> Pallet<T> {
             }
         };
         if owns_permission {
+            if Permissions::<T>::iter_prefix_values(&account_id).count() == 0 {
+                frame_system::Pallet::<T>::inc_consumers(&account_id)
+                    .map_err(|_| Error::<T>::IncRefError)?;
+            }
             Permissions::<T>::mutate(&account_id, &scope, |permissions| {
                 if let Err(index) = permissions.binary_search(&permission_id) {
                     permissions.insert(index, permission_id);
@@ -151,12 +185,15 @@ impl<T: Config> Pallet<T> {
         Owners::<T>::mutate(permission_id, scope, |owners| {
             if let Some(pos) = owners.iter().position(|o| o == &who) {
                 owners[pos] = account_id.clone();
-                Ok(())
             } else if owners.is_empty() {
-                Err(Error::PermissionNotFound)
+                return Err(Error::PermissionNotFound);
             } else {
-                Err(Error::PermissionNotOwned)
+                return Err(Error::PermissionNotOwned);
             }
+            frame_system::Pallet::<T>::dec_consumers(&who);
+            frame_system::Pallet::<T>::inc_consumers(&account_id)
+                .map_err(|_| Error::<T>::IncRefError)?;
+            Ok(())
         })?;
         Self::deposit_event(Event::<T>::PermissionTransfered(permission_id, account_id));
         Ok(())
@@ -174,6 +211,11 @@ impl<T: Config> Pallet<T> {
             !Modes::<T>::contains_key(permission_id),
             Error::PermissionAlreadyExists
         );
+        if Permissions::<T>::iter_prefix_values(&account_id).count() == 0 {
+            frame_system::Pallet::<T>::inc_consumers(&account_id)
+                .map_err(|_| Error::<T>::IncRefError)?;
+        }
+        frame_system::Pallet::<T>::inc_consumers(&owner).map_err(|_| Error::<T>::IncRefError)?;
         Modes::<T>::insert(permission_id, mode);
         Owners::<T>::mutate(permission_id, scope, |owners| {
             owners.push(owner);
@@ -199,6 +241,7 @@ impl<T: Config> Pallet<T> {
             Modes::<T>::contains_key(permission_id),
             Error::PermissionNotFound
         );
+        frame_system::Pallet::<T>::inc_consumers(&owner).map_err(|_| Error::<T>::IncRefError)?;
         let made_owner = Owners::<T>::mutate(permission_id, scope, |owners| {
             if !owners.contains(&owner) {
                 owners.push(owner);
@@ -208,6 +251,10 @@ impl<T: Config> Pallet<T> {
             }
         });
         let granted_permission = if let Mode::Permit = Modes::<T>::get(permission_id) {
+            if Permissions::<T>::iter_prefix_values(&holder_id).count() == 0 {
+                frame_system::Pallet::<T>::inc_consumers(&holder_id)
+                    .map_err(|_| Error::<T>::IncRefError)?;
+            }
             Permissions::<T>::mutate(&holder_id, scope, |permissions| {
                 if let Err(index) = permissions.binary_search(&permission_id) {
                     permissions.insert(index, permission_id);
@@ -284,6 +331,8 @@ pub mod pallet {
         PermissionAlreadyExists,
         /// The account either doesn't have the permission or has the restriction.
         Forbidden,
+        /// Increment account reference error.
+        IncRefError,
     }
 
     #[pallet::storage]
@@ -339,6 +388,9 @@ pub mod pallet {
             self.initial_permission_owners
                 .iter()
                 .for_each(|(permission, scope, owners)| {
+                    for owner in owners {
+                        frame_system::Pallet::<T>::inc_consumers(owner).unwrap();
+                    }
                     Owners::<T>::insert(permission, scope, owners);
                 });
 
@@ -367,6 +419,7 @@ pub mod pallet {
                 .for_each(|(holder_id, scope, permissions)| {
                     let mut permissions = permissions.clone();
                     permissions.sort();
+                    frame_system::Pallet::<T>::inc_consumers(&holder_id).unwrap();
                     Permissions::<T>::insert(holder_id, scope, permissions);
                 });
         }

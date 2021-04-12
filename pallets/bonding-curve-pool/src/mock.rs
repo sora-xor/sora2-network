@@ -1,3 +1,33 @@
+// This file is part of the SORA network and Polkaswap app.
+
+// Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
+// SPDX-License-Identifier: BSD-4-Clause
+
+// Redistribution and use in source and binary forms, with or without modification,
+// are permitted provided that the following conditions are met:
+
+// Redistributions of source code must retain the above copyright notice, this list
+// of conditions and the following disclaimer.
+// Redistributions in binary form must reproduce the above copyright notice, this
+// list of conditions and the following disclaimer in the documentation and/or other
+// materials provided with the distribution.
+//
+// All advertising materials mentioning features or use of this software must display
+// the following acknowledgement: This product includes software developed by Polka Biome
+// Ltd., SORA, and Polkaswap.
+//
+// Neither the name of the Polka Biome Ltd. nor the names of its contributors may be used
+// to endorse or promote products derived from this software without specific prior written permission.
+
+// THIS SOFTWARE IS PROVIDED BY Polka Biome Ltd. AS IS AND ANY EXPRESS OR IMPLIED WARRANTIES,
+// INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+// A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL Polka Biome Ltd. BE LIABLE FOR ANY
+// DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+// BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
+// OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
+// STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
+// USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
 use crate::{self as bonding_curve_pool, Config};
 use common::mock::ExistentialDeposits;
 use common::prelude::{Balance, FixedWrapper, SwapAmount, SwapOutcome};
@@ -21,10 +51,10 @@ use std::collections::HashMap;
 pub type AccountId = AccountId32;
 pub type BlockNumber = u64;
 pub type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
-type TechAssetId = common::TechAssetId<common::AssetId>;
+type TechAssetId = common::TechAssetId<common::PredefinedAssetId>;
 pub type ReservesAccount =
     mock_liquidity_source::ReservesAcc<Runtime, mock_liquidity_source::Instance1>;
-pub type AssetId = AssetId32<common::AssetId>;
+pub type AssetId = AssetId32<common::PredefinedAssetId>;
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
 type DEXId = common::DEXId;
@@ -90,9 +120,7 @@ impl frame_system::Config for Runtime {
     type SS58Prefix = ();
 }
 
-impl dex_manager::Config for Runtime {
-    type WeightInfo = ();
-}
+impl dex_manager::Config for Runtime {}
 
 impl trading_pair::Config for Runtime {
     type Event = Event;
@@ -324,11 +352,38 @@ impl ExtBuilder {
         .assimilate_storage(&mut t)
         .unwrap();
 
-        assets::GenesisConfig::<Runtime> {
-            endowed_assets: self
+        pallet_balances::GenesisConfig::<Runtime> {
+            balances: self
                 .endowed_accounts
                 .iter()
                 .cloned()
+                .filter_map(|(account_id, asset_id, balance, ..)| {
+                    if asset_id == GetBaseAssetId::get() {
+                        Some((account_id, balance))
+                    } else {
+                        None
+                    }
+                })
+                .collect(),
+        }
+        .assimilate_storage(&mut t)
+        .unwrap();
+
+        tokens::GenesisConfig::<Runtime> {
+            endowed_accounts: self
+                .endowed_accounts
+                .iter()
+                .cloned()
+                .map(|(account_id, asset_id, balance, ..)| (account_id, asset_id, balance))
+                .collect(),
+        }
+        .assimilate_storage(&mut t)
+        .unwrap();
+
+        assets::GenesisConfig::<Runtime> {
+            endowed_assets: self
+                .endowed_accounts
+                .into_iter()
                 .map(
                     |(
                         account_id,
@@ -351,33 +406,6 @@ impl ExtBuilder {
                         )
                     },
                 )
-                .collect(),
-        }
-        .assimilate_storage(&mut t)
-        .unwrap();
-
-        pallet_balances::GenesisConfig::<Runtime> {
-            balances: self
-                .endowed_accounts
-                .iter()
-                .cloned()
-                .filter_map(|(account_id, asset_id, balance, ..)| {
-                    if asset_id == GetBaseAssetId::get() {
-                        Some((account_id, balance))
-                    } else {
-                        None
-                    }
-                })
-                .collect(),
-        }
-        .assimilate_storage(&mut t)
-        .unwrap();
-
-        tokens::GenesisConfig::<Runtime> {
-            endowed_accounts: self
-                .endowed_accounts
-                .into_iter()
-                .map(|(account_id, asset_id, balance, ..)| (account_id, asset_id, balance))
                 .collect(),
         }
         .assimilate_storage(&mut t)

@@ -1,13 +1,17 @@
 [package]
 name = "eth-bridge"
 version = "0.1.0"
-authors = ["Vladislav Markushin <markushin@soramitsu.co.jp>"]
 edition = "2018"
+authors = ['Polka Biome Ltd. <jihoon@tutanota.de>']
+license = "BSD-4-Clause"
+homepage = 'https://sora.org'
+repository = 'https://github.com/sora-xor/sora2-network'
 
 [dependencies]
 codec = { package = "parity-scale-codec", version = "2", default-features = false, features = ["derive", "full"] }
 frame-support = { version = "3", default-features = false }
 frame-system = { version = "3", default-features = false }
+frame-benchmarking = { version = "3", default-features = false, optional = true }
 hex-literal = "0.3.1"
 libsecp256k1 = { version = "0.3.5", features = ['hmac'], default-features = false }
 once_cell = { version = "1.5.2", default-features = false, features = ['alloc', 'unstable'] }
@@ -65,4 +69,9 @@ std = [
     'serde/std',
     'sp-core/std',
     'sp-std/std',
+]
+runtime-benchmarks = [
+    "frame-benchmarking",
+    "frame-system/runtime-benchmarks",
+    "frame-support/runtime-benchmarks",
 ]

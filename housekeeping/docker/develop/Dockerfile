@@ -3,7 +3,6 @@ FROM debian:buster-slim
 # Set environment variables
 ENV RUSTUP_HOME="/opt/rust"
 ENV CARGO_HOME="/opt/rust"
-ENV CARGO_TARGET_DIR="/opt/rust-target"
 ENV PATH="$PATH:$RUSTUP_HOME/bin"
 ENV RUST_VERSION=nightly-2021-03-11
 
@@ -32,10 +31,15 @@ RUN curl https://sh.rustup.rs -sSf | sh -s -- -y --no-modify-path --default-tool
     rustup default ${RUST_VERSION} && \
     rustup target add wasm32-unknown-unknown
 
+RUN cargo install sccache
+ENV RUSTC_WRAPPER=sccache
+ENV CARGO_INCREMENTAL=0
+
 # Build project
 ADD . /app
 WORKDIR /app
-RUN cargo build --release --features test-net
+RUN cargo check
+RUN cargo test
 
 # Remove source code
 WORKDIR /

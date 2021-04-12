@@ -17,7 +17,6 @@
 
 use crate::cli::{Cli, Subcommand};
 use crate::{chain_spec, service};
-use framenode_runtime::Block;
 use sc_cli::{ChainSpec, Role, RuntimeVersion, SubstrateCli};
 use sc_service::PartialComponents;
 
@@ -53,27 +52,29 @@ impl SubstrateCli for Cli {
     }
 
     fn load_spec(&self, id: &str) -> Result<Box<dyn sc_service::ChainSpec>, String> {
-        #[cfg(feature = "test-net")]
+        #[cfg(feature = "private-net")]
         let chain_spec = match id {
-            "" | "local" => Box::new(chain_spec::local_testnet_config()),
-            "dev" => Box::new(chain_spec::dev_net()?),
-            "dev-coded" => Box::new(chain_spec::dev_net_coded()),
-            "staging" => Box::new(chain_spec::staging_net(false)),
-            "test" => Box::new(chain_spec::staging_net(true)),
-            path => Box::new(chain_spec::ChainSpec::from_json_file(
-                std::path::PathBuf::from(path),
-            )?),
+            "" | "local" => Ok(chain_spec::local_testnet_config()),
+            // dev doesn't use json chain spec to make development easier
+            // "dev" => chain_spec::dev_net(),
+            // "dev-coded" => Ok(chain_spec::dev_net_coded()),
+            "dev" => Ok(chain_spec::dev_net_coded()),
+            "test" => chain_spec::test_net(),
+            "test-coded" => Ok(chain_spec::staging_net_coded(true)),
+            "staging" => chain_spec::staging_net(),
+            "staging-coded" => Ok(chain_spec::staging_net_coded(false)),
+            path => chain_spec::ChainSpec::from_json_file(std::path::PathBuf::from(path)),
         };
 
-        #[cfg(not(feature = "test-net"))]
+        #[cfg(not(feature = "private-net"))]
         let chain_spec = match id {
-            "" | "main" => Box::new(chain_spec::main_net()),
-            path => Box::new(chain_spec::ChainSpec::from_json_file(
-                std::path::PathBuf::from(path),
-            )?),
+            // main isn't ready yet
+            // "main" => chain_spec::main_net(),
+            "" | "main" => Ok(chain_spec::main_net_coded()),
+            path => chain_spec::ChainSpec::from_json_file(std::path::PathBuf::from(path)),
         };
 
-        Ok(chain_spec)
+        Ok(Box::new(chain_spec?))
     }
 
     fn native_runtime_version(_: &Box<dyn ChainSpec>) -> &'static RuntimeVersion {
@@ -160,16 +161,11 @@ pub fn run() -> sc_cli::Result<()> {
                 Ok((cmd.run(client, backend), task_manager))
             })
         }
+        #[cfg(feature = "runtime-benchmarks")]
         Some(Subcommand::Benchmark(cmd)) => {
-            if cfg!(feature = "runtime-benchmarks") {
-                let runner = cli.create_runner(cmd)?;
-                set_default_ss58_version();
-                runner.sync_run(|config| cmd.run::<Block, service::Executor>(config))
-            } else {
-                Err("Benchmarking wasn't enabled when building the node. \
-				You can enable it with `--features runtime-benchmarks`."
-                    .into())
-            }
+            let runner = cli.create_runner(cmd)?;
+            set_default_ss58_version();
+            runner.sync_run(|config| cmd.run::<framenode_runtime::Block, service::Executor>(config))
         }
         None => {
             let runner = cli.create_runner(&cli.run)?;

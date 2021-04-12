@@ -1,3 +1,33 @@
+// This file is part of the SORA network and Polkaswap app.
+
+// Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
+// SPDX-License-Identifier: BSD-4-Clause
+
+// Redistribution and use in source and binary forms, with or without modification,
+// are permitted provided that the following conditions are met:
+
+// Redistributions of source code must retain the above copyright notice, this list
+// of conditions and the following disclaimer.
+// Redistributions in binary form must reproduce the above copyright notice, this
+// list of conditions and the following disclaimer in the documentation and/or other
+// materials provided with the distribution.
+//
+// All advertising materials mentioning features or use of this software must display
+// the following acknowledgement: This product includes software developed by Polka Biome
+// Ltd., SORA, and Polkaswap.
+//
+// Neither the name of the Polka Biome Ltd. nor the names of its contributors may be used
+// to endorse or promote products derived from this software without specific prior written permission.
+
+// THIS SOFTWARE IS PROVIDED BY Polka Biome Ltd. AS IS AND ANY EXPRESS OR IMPLIED WARRANTIES,
+// INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+// A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL Polka Biome Ltd. BE LIABLE FOR ANY
+// DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+// BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
+// OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
+// STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
+// USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
 use crate::contract::{MethodId, FUNCTIONS, METHOD_ID_SIZE};
 use crate::{
     get_bridge_account, types, Address, AssetIdOf, AssetKind, BridgeStatus, Config, Decoder, Error,
@@ -118,6 +148,8 @@ impl<T: Config> IncomingChangePeers<T> {
                 )
                 .map_err(|e| e.error)?;
                 crate::Peers::<T>::mutate(self.network_id, |set| set.insert(account_id));
+            } else {
+                frame_system::Pallet::<T>::dec_consumers(&self.peer_account_id);
             }
             crate::PendingPeer::<T>::take(self.network_id);
         }
@@ -184,14 +216,16 @@ impl<T: Config> IncomingChangePeersCompat<T> {
             .map(|x| x.is_ready())
             .unwrap_or(true);
         if is_ready {
+            let account_id = self.peer_account_id.clone();
             if self.added {
-                let account_id = self.peer_account_id.clone();
                 bridge_multisig::Module::<T>::add_signatory(
                     RawOrigin::Signed(get_bridge_account::<T>(self.network_id)).into(),
                     account_id.clone(),
                 )
                 .map_err(|e| e.error)?;
                 crate::Peers::<T>::mutate(self.network_id, |set| set.insert(account_id));
+            } else {
+                frame_system::Pallet::<T>::dec_consumers(&account_id);
             }
             crate::PendingPeer::<T>::take(self.network_id);
         }
@@ -1059,6 +1093,8 @@ impl<T: Config> OutgoingAddPeer<T> {
     pub fn prepare(&mut self, _validated_state: ()) -> Result<(), DispatchError> {
         let pending_peer = crate::PendingPeer::<T>::get(self.network_id);
         ensure!(pending_peer.is_none(), Error::<T>::TooManyPendingPeers);
+        frame_system::Pallet::<T>::inc_consumers(&self.peer_account_id)
+            .map_err(|_| Error::<T>::IncRefError)?;
         crate::PendingPeer::<T>::insert(self.network_id, self.peer_account_id.clone());
         Ok(())
     }
@@ -1078,7 +1114,9 @@ impl<T: Config> OutgoingAddPeer<T> {
 
     /// Cleans the current pending peer value.
     pub fn cancel(&self) -> Result<(), DispatchError> {
-        crate::PendingPeer::<T>::take(self.network_id);
+        if let Some(account_id) = crate::PendingPeer::<T>::take(self.network_id) {
+            frame_system::Pallet::<T>::dec_consumers(&account_id);
+        }
         Ok(())
     }
 }
@@ -1199,6 +1237,8 @@ impl<T: Config> OutgoingRemovePeer<T> {
     pub fn prepare(&mut self, _validated_state: ()) -> Result<(), DispatchError> {
         let pending_peer = crate::PendingPeer::<T>::get(self.network_id);
         ensure!(pending_peer.is_none(), Error::<T>::TooManyPendingPeers);
+        frame_system::Pallet::<T>::inc_consumers(&self.peer_account_id)
+            .map_err(|_| Error::<T>::IncRefError)?;
         crate::PendingPeer::<T>::insert(self.network_id, self.peer_account_id.clone());
         Ok(())
     }
@@ -1222,7 +1262,9 @@ impl<T: Config> OutgoingRemovePeer<T> {
 
     /// Cleans the current pending peer value.
     pub fn cancel(&self) -> Result<(), DispatchError> {
-        crate::PendingPeer::<T>::take(self.network_id);
+        if let Some(account_id) = crate::PendingPeer::<T>::take(self.network_id) {
+            frame_system::Pallet::<T>::dec_consumers(&account_id);
+        }
         Ok(())
     }
 }

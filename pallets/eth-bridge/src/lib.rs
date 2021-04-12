@@ -1,3 +1,33 @@
+// This file is part of the SORA network and Polkaswap app.
+
+// Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
+// SPDX-License-Identifier: BSD-4-Clause
+
+// Redistribution and use in source and binary forms, with or without modification,
+// are permitted provided that the following conditions are met:
+
+// Redistributions of source code must retain the above copyright notice, this list
+// of conditions and the following disclaimer.
+// Redistributions in binary form must reproduce the above copyright notice, this
+// list of conditions and the following disclaimer in the documentation and/or other
+// materials provided with the distribution.
+//
+// All advertising materials mentioning features or use of this software must display
+// the following acknowledgement: This product includes software developed by Polka Biome
+// Ltd., SORA, and Polkaswap.
+//
+// Neither the name of the Polka Biome Ltd. nor the names of its contributors may be used
+// to endorse or promote products derived from this software without specific prior written permission.
+
+// THIS SOFTWARE IS PROVIDED BY Polka Biome Ltd. AS IS AND ANY EXPRESS OR IMPLIED WARRANTIES,
+// INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+// A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL Polka Biome Ltd. BE LIABLE FOR ANY
+// DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+// BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
+// OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
+// STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
+// USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
 /*!
 # Multi-network Ethereum Bridge pallet
 
@@ -96,13 +126,19 @@ pub trait WeightInfo {
     fn force_add_peer() -> Weight;
     fn prepare_for_migration() -> Weight;
     fn migrate() -> Weight;
+    fn register_incoming_request() -> (Weight, Pays);
+    fn finalize_incoming_request() -> (Weight, Pays);
+    fn approve_request() -> (Weight, Pays);
+    fn approve_request_finalize() -> (Weight, Pays);
+    fn abort_request() -> (Weight, Pays);
 }
 
 type Address = H160;
 type EthereumAddress = Address;
 
-mod weights;
+pub mod weights;
 
+mod benchmarking;
 mod contract;
 #[cfg(test)]
 mod mock;
@@ -169,6 +205,7 @@ pub struct PeerConfig<NetworkId: std::hash::Hash + Eq> {
 /// Separated components of a secp256k1 signature.
 #[derive(Encode, Decode, Eq, PartialEq, Clone, PartialOrd, Ord, RuntimeDebug)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+#[cfg_attr(any(test, feature = "runtime-benchmarks"), derive(Default))]
 #[repr(C)]
 pub struct SignatureParams {
     r: [u8; 32],
@@ -1107,6 +1144,7 @@ pub mod pallet {
     use frame_support::pallet_prelude::*;
     use frame_support::weights::PostDispatchInfo;
     use frame_system::pallet_prelude::*;
+    use frame_system::RawOrigin;
     use permissions::BURN;
 
     #[pallet::config]
@@ -1370,7 +1408,7 @@ pub mod pallet {
         /// Parameters:
         /// - `request` - an incoming request.
         /// - `network_id` - network identifier.
-        #[pallet::weight((0, Pays::No))]
+        #[pallet::weight(<T as Config>::WeightInfo::finalize_incoming_request())]
         pub fn finalize_incoming_request(
             origin: OriginFor<T>,
             hash: H256,
@@ -1564,7 +1602,7 @@ pub mod pallet {
         /// corresponding pre-incoming request from requests queue.
         ///
         /// Can only be called by a bridge account.
-        #[pallet::weight((0, Pays::No))]
+        #[pallet::weight(<T as Config>::WeightInfo::register_incoming_request())]
         pub fn register_incoming_request(
             origin: OriginFor<T>,
             incoming_request: IncomingRequest<T>,
@@ -1609,7 +1647,7 @@ pub mod pallet {
         ///
         /// Verifies the peer signature of the given request and adds it to `RequestApprovals`.
         /// Once quorum is collected, the request gets finalized and removed from request queue.
-        #[pallet::weight((0, Pays::No))]
+        #[pallet::weight(<T as Config>::WeightInfo::approve_request())]
         pub fn approve_request(
             origin: OriginFor<T>,
             ocw_public: ecdsa::Public,
@@ -1658,9 +1696,11 @@ pub mod pallet {
                 } else {
                     debug::debug!("Outgoing request approvals collected {:?}", hash);
                     RequestStatuses::<T>::insert(net_id, hash, RequestStatus::ApprovalsReady);
-                    Self::deposit_event(Event::ApprovalsCollected(request_encoded, approvals));
+                    Self::deposit_event(Event::ApprovalsCollected(hash));
                 }
                 Self::remove_request_from_queue(net_id, &hash);
+                let weight_info = <T as Config>::WeightInfo::approve_request_finalize();
+                return Ok((Some(weight_info.0), weight_info.1).into());
             }
             Ok(().into())
         }
@@ -1671,7 +1711,7 @@ pub mod pallet {
         /// removes it from the request queues.
         ///
         /// Can only be called from a bridge account.
-        #[pallet::weight((0, Pays::No))]
+        #[pallet::weight(<T as Config>::WeightInfo::abort_request())]
         pub fn abort_request(
             origin: OriginFor<T>,
             hash: H256,
@@ -1704,6 +1744,11 @@ pub mod pallet {
         ) -> DispatchResultWithPostInfo {
             let _ = ensure_root(origin)?;
             if !Self::is_peer(&who, network_id) {
+                bridge_multisig::Pallet::<T>::add_signatory(
+                    RawOrigin::Signed(get_bridge_account::<T>(network_id)).into(),
+                    who.clone(),
+                )
+                .map_err(|e| e.error)?;
                 PeerAddress::<T>::insert(network_id, &who, address);
                 PeerAccountId::<T>::insert(network_id, &address, who.clone());
                 <Peers<T>>::mutate(network_id, |l| l.insert(who));
@@ -1719,7 +1764,7 @@ pub mod pallet {
         /// New request has been registered. [Request Hash]
         RequestRegistered(H256),
         /// The request's approvals have been collected. [Encoded Outgoing Request, Signatures]
-        ApprovalsCollected(OutgoingRequestEncoded, BTreeSet<SignatureParams>),
+        ApprovalsCollected(H256),
         /// The request finalization has been failed. [Request Hash]
         RequestFinalizationFailed(H256),
         /// The incoming request finalization has been failed. [Request Hash]
@@ -1881,6 +1926,8 @@ pub mod pallet {
         UnsupportedAssetPrecision,
         /// Non-zero dust.
         NonZeroDust,
+        /// Increment account reference error.
+        IncRefError,
         /// Unknown error.
         Other,
     }
@@ -2088,6 +2135,7 @@ pub mod pallet {
                 let net_id = NextNetworkId::<T>::get();
                 let peers_account_id = &network.bridge_account_id;
                 BridgeContractAddress::<T>::insert(net_id, network.bridge_contract_address);
+                frame_system::Pallet::<T>::inc_consumers(&peers_account_id).unwrap();
                 BridgeAccount::<T>::insert(net_id, peers_account_id.clone());
                 BridgeStatuses::<T>::insert(net_id, BridgeStatus::Initialized);
                 Peers::<T>::insert(net_id, network.initial_peers.clone());
@@ -2424,18 +2472,13 @@ impl<T: Config> Pallet<T> {
     }
 
     /// Signs a message with a peer's secret key.
-    fn sign_message(msg: &[u8]) -> (SignatureParams, secp256k1::PublicKey) {
-        let secret_s = StorageValueRef::persistent(STORAGE_PEER_SECRET_KEY);
-        let sk = secp256k1::SecretKey::parse_slice(
-            &secret_s
-                .get::<Vec<u8>>()
-                .flatten()
-                .expect("Off-chain worker secret key is not specified."),
-        )
-        .expect("Invalid off-chain worker secret key.");
+    fn sign_message(
+        msg: &[u8],
+        secret_key: &secp256k1::SecretKey,
+    ) -> (SignatureParams, secp256k1::PublicKey) {
         let message = eth::prepare_message(msg);
-        let (sig, v) = secp256k1::sign(&message, &sk);
-        let pk = secp256k1::PublicKey::from_secret_key(&sk);
+        let (sig, v) = secp256k1::sign(&message, secret_key);
+        let pk = secp256k1::PublicKey::from_secret_key(secret_key);
         let v = v.serialize();
         let sig_ser = sig.serialize();
         (
@@ -3206,8 +3249,16 @@ impl<T: Config> Pallet<T> {
         let encoded_request = request.to_eth_abi(hash)?;
 
         let result = signer.send_signed_transaction(|_acc| {
+            let secret_s = StorageValueRef::persistent(STORAGE_PEER_SECRET_KEY);
+            let sk = secp256k1::SecretKey::parse_slice(
+                &secret_s
+                    .get::<Vec<u8>>()
+                    .flatten()
+                    .expect("Off-chain worker secret key is not specified."),
+            )
+            .expect("Invalid off-chain worker secret key.");
             // Signs `abi.encodePacked(tokenAddress, amount, to, txHash, from)`.
-            let (signature, public) = Self::sign_message(encoded_request.as_raw());
+            let (signature, public) = Self::sign_message(encoded_request.as_raw(), &sk);
             Call::approve_request(
                 ecdsa::Public::from_slice(&public.serialize_compressed()),
                 hash,

@@ -1,3 +1,33 @@
+// This file is part of the SORA network and Polkaswap app.
+
+// Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
+// SPDX-License-Identifier: BSD-4-Clause
+
+// Redistribution and use in source and binary forms, with or without modification,
+// are permitted provided that the following conditions are met:
+
+// Redistributions of source code must retain the above copyright notice, this list
+// of conditions and the following disclaimer.
+// Redistributions in binary form must reproduce the above copyright notice, this
+// list of conditions and the following disclaimer in the documentation and/or other
+// materials provided with the distribution.
+//
+// All advertising materials mentioning features or use of this software must display
+// the following acknowledgement: This product includes software developed by Polka Biome
+// Ltd., SORA, and Polkaswap.
+//
+// Neither the name of the Polka Biome Ltd. nor the names of its contributors may be used
+// to endorse or promote products derived from this software without specific prior written permission.
+
+// THIS SOFTWARE IS PROVIDED BY Polka Biome Ltd. AS IS AND ANY EXPRESS OR IMPLIED WARRANTIES,
+// INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+// A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL Polka Biome Ltd. BE LIABLE FOR ANY
+// DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+// BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
+// OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
+// STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
+// USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
 #[rustfmt::skip]
 mod tests {
     use core::convert::TryInto;
@@ -221,8 +251,8 @@ mod tests {
                 Balance::from(0u32),
                 true,
             ),
-            (alice(), XOR, 0u32.into(), AssetSymbol(b"XOR".to_vec()), AssetName(b"SORA".to_vec()), 18, Balance::from(0u32), true),
-            (alice(), VAL, 0u32.into(), AssetSymbol(b"VAL".to_vec()), AssetName(b"SORA Validator Token".to_vec()), 18, Balance::from(0u32), true),
+            (alice(), XOR, 0, AssetSymbol(b"XOR".to_vec()), AssetName(b"SORA".to_vec()), 18, Balance::from(0u32), true),
+            (alice(), VAL, 0, AssetSymbol(b"VAL".to_vec()), AssetName(b"SORA Validator Token".to_vec()), 18, Balance::from(0u32), true),
         ])
         .build();
         ext.execute_with(|| {
@@ -286,7 +316,7 @@ mod tests {
         ext.execute_with(|| {
             MockDEXApi::init().unwrap();
             let total_issuance = Assets::total_issuance(&XOR).unwrap();
-            let reserve_amount_expected = 
+            let reserve_amount_expected =
                 BondingCurvePool::price_for_main_asset(&XOR, total_issuance, SwapKind::Sell)
                     .unwrap();
             let pool_usd_amount = reserve_amount_expected
@@ -364,7 +394,7 @@ mod tests {
         ext.execute_with(|| {
             MockDEXApi::init().unwrap();
             let total_issuance = Assets::total_issuance(&XOR).unwrap();
-            let reserve_amount_expected = 
+            let reserve_amount_expected =
                 BondingCurvePool::price_for_main_asset(&XOR, total_issuance, SwapKind::Sell)
                     .unwrap();
             let reserve_amount_expected = reserve_amount_expected.into_bits().try_into().unwrap();
@@ -422,9 +452,9 @@ mod tests {
     #[test]
     fn should_not_sell_without_reserves() {
         let mut ext = ExtBuilder::new(vec![
-            (alice(), USDT, 0u32.into(), AssetSymbol(b"USDT".to_vec()), AssetName(b"Tether USD".to_vec()), 18, 0, true),
+            (alice(), USDT, 0, AssetSymbol(b"USDT".to_vec()), AssetName(b"Tether USD".to_vec()), 18, 0, true),
             (alice(), XOR, balance!(1), AssetSymbol(b"XOR".to_vec()), AssetName(b"SORA".to_vec()), 18, 0, true),
-            (alice(), VAL, 0u32.into(), AssetSymbol(b"VAL".to_vec()), AssetName(b"SORA Validator Token".to_vec()), 18, 0, true),
+            (alice(), VAL, 0, AssetSymbol(b"VAL".to_vec()), AssetName(b"SORA Validator Token".to_vec()), 18, 0, true),
         ])
         .build();
         ext.execute_with(|| {
@@ -506,7 +536,7 @@ mod tests {
                     },
                 );
             assert_eq!(whole_outcome, cumulative_outcome);
-            
+
             let whole_outcome = with_transaction(|| {
                 let whole_outcome = BondingCurvePool::exchange(
                     alice,

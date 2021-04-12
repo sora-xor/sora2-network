@@ -1,3 +1,33 @@
+// This file is part of the SORA network and Polkaswap app.
+
+// Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
+// SPDX-License-Identifier: BSD-4-Clause
+
+// Redistribution and use in source and binary forms, with or without modification,
+// are permitted provided that the following conditions are met:
+
+// Redistributions of source code must retain the above copyright notice, this list
+// of conditions and the following disclaimer.
+// Redistributions in binary form must reproduce the above copyright notice, this
+// list of conditions and the following disclaimer in the documentation and/or other
+// materials provided with the distribution.
+//
+// All advertising materials mentioning features or use of this software must display
+// the following acknowledgement: This product includes software developed by Polka Biome
+// Ltd., SORA, and Polkaswap.
+//
+// Neither the name of the Polka Biome Ltd. nor the names of its contributors may be used
+// to endorse or promote products derived from this software without specific prior written permission.
+
+// THIS SOFTWARE IS PROVIDED BY Polka Biome Ltd. AS IS AND ANY EXPRESS OR IMPLIED WARRANTIES,
+// INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+// A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL Polka Biome Ltd. BE LIABLE FOR ANY
+// DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+// BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
+// OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
+// STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
+// USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
 use crate::{self as pswap_distribution, Config};
 use common::mock::ExistentialDeposits;
 use common::prelude::Balance;
@@ -15,24 +45,42 @@ use permissions::Scope;
 use sp_core::H256;
 use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentityLookup, Zero};
-use sp_runtime::Perbill;
+use sp_runtime::{AccountId32, Perbill};
 
-pub type AccountId = u32;
+pub type AccountId = AccountId32;
 pub type BlockNumber = u64;
 pub type Amount = i128;
-pub type AssetId = common::AssetId32<common::AssetId>;
+pub type AssetId = common::AssetId32<common::PredefinedAssetId>;
 pub type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
-type TechAssetId = common::TechAssetId<common::AssetId>;
+type TechAssetId = common::TechAssetId<common::PredefinedAssetId>;
 type DEXId = common::DEXId;
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
 
-pub const ALICE: AccountId = 1;
-pub const FEES_ACCOUNT_A: AccountId = 11;
-pub const FEES_ACCOUNT_B: AccountId = 12;
-pub const LIQUIDITY_PROVIDER_A: AccountId = 21;
-pub const LIQUIDITY_PROVIDER_B: AccountId = 22;
-pub const LIQUIDITY_PROVIDER_C: AccountId = 23;
+pub fn alice() -> AccountId {
+    AccountId32::from([1u8; 32])
+}
+
+pub fn fees_account_a() -> AccountId {
+    AccountId32::from([2u8; 32])
+}
+
+pub fn fees_account_b() -> AccountId {
+    AccountId32::from([3u8; 32])
+}
+
+pub fn liquidity_provider_a() -> AccountId {
+    AccountId32::from([4u8; 32])
+}
+
+pub fn liquidity_provider_b() -> AccountId {
+    AccountId32::from([5u8; 32])
+}
+
+pub fn liquidity_provider_c() -> AccountId {
+    AccountId32::from([6u8; 32])
+}
+
 pub const DEX_A_ID: DEXId = common::DEXId::Polkaswap;
 
 parameter_types! {
@@ -62,11 +110,12 @@ parameter_types! {
     };
     pub const GetDefaultSubscriptionFrequency: BlockNumber = 10;
     pub const GetBurnUpdateFrequency: BlockNumber = 3;
-    pub const ExistentialDeposit: u128 = 1;
+    pub const ExistentialDeposit: u128 = 0;
     pub const TransferFee: u128 = 0;
     pub const CreationFee: u128 = 0;
     pub const TransactionByteFee: u128 = 1;
     pub GetFee: Fixed = fixed_from_basis_points(30u16);
+    pub GetParliamentAccountId: AccountId = AccountId32::from([7u8; 32]);
 }
 
 construct_runtime! {
@@ -81,7 +130,7 @@ construct_runtime! {
         Permissions: permissions::{Module, Call, Config<T>, Storage, Event<T>},
         Currencies: currencies::{Module, Call, Storage, Event<T>},
         Assets: assets::{Module, Call, Config<T>, Storage, Event<T>},
-        Balances: pallet_balances::{Module, Call, Storage, Event<T>},
+        Balances: pallet_balances::{Module, Call, Config<T>, Storage, Event<T>},
         Technical: technical::{Module, Call, Storage, Event<T>},
         DexManager: dex_manager::{Module, Call, Storage},
     }
@@ -122,6 +171,8 @@ impl Config for Runtime {
     type GetTechnicalAccountId = GetPswapDistributionAccountId;
     type EnsureDEXManager = DexManager;
     type OnPswapBurnedAggregator = ();
+    type WeightInfo = ();
+    type GetParliamentAccountId = GetParliamentAccountId;
 }
 
 impl tokens::Config for Runtime {
@@ -149,9 +200,9 @@ impl currencies::Config for Runtime {
 
 impl assets::Config for Runtime {
     type Event = Event;
-    type ExtraAccountId = AccountId;
+    type ExtraAccountId = [u8; 32];
     type ExtraAssetRecordArg =
-        common::AssetIdExtraAssetRecordArg<common::DEXId, common::LiquiditySourceType, AccountId>;
+        common::AssetIdExtraAssetRecordArg<common::DEXId, common::LiquiditySourceType, [u8; 32]>;
     type AssetId = AssetId;
     type GetBaseAssetId = GetBaseAssetId;
     type Currency = currencies::Module<Runtime>;
@@ -183,9 +234,7 @@ impl technical::Config for Runtime {
     type WeightInfo = ();
 }
 
-impl dex_manager::Config for Runtime {
-    type WeightInfo = ();
-}
+impl dex_manager::Config for Runtime {}
 
 pub struct ExtBuilder {
     endowed_accounts: Vec<(AccountId, AssetId, Balance)>,
@@ -210,7 +259,7 @@ impl ExtBuilder {
             endowed_accounts: Vec::new(),
             endowed_assets: vec![(
                 PoolTokenAId::get(),
-                ALICE,
+                alice(),
                 AssetSymbol(b"POOL".to_vec()),
                 AssetName(b"Pool Token".to_vec()),
                 18,
@@ -233,7 +282,7 @@ impl ExtBuilder {
             endowed_assets: vec![
                 (
                     common::XOR.into(),
-                    ALICE,
+                    alice(),
                     AssetSymbol(b"XOR".to_vec()),
                     AssetName(b"SORA".to_vec()),
                     18,
@@ -242,7 +291,7 @@ impl ExtBuilder {
                 ),
                 (
                     common::PSWAP.into(),
-                    ALICE,
+                    alice(),
                     AssetSymbol(b"PSWAP".to_vec()),
                     AssetName(b"Polkaswap".to_vec()),
                     10,
@@ -251,7 +300,7 @@ impl ExtBuilder {
                 ),
                 (
                     PoolTokenAId::get(),
-                    ALICE,
+                    alice(),
                     AssetSymbol(b"POOLA".to_vec()),
                     AssetName(b"Pool A".to_vec()),
                     18,
@@ -260,7 +309,7 @@ impl ExtBuilder {
                 ),
                 (
                     PoolTokenBId::get(),
-                    ALICE,
+                    alice(),
                     AssetSymbol(b"POOLB".to_vec()),
                     AssetName(b"Pool B".to_vec()),
                     18,
@@ -275,8 +324,8 @@ impl ExtBuilder {
                 vec![permissions::MINT, permissions::BURN],
             )],
             subscribed_accounts: vec![
-                (FEES_ACCOUNT_A, (DEX_A_ID, PoolTokenAId::get(), 5, 0)),
-                (FEES_ACCOUNT_B, (DEX_A_ID, PoolTokenBId::get(), 7, 0)),
+                (fees_account_a(), (DEX_A_ID, PoolTokenAId::get(), 5, 0)),
+                (fees_account_b(), (DEX_A_ID, PoolTokenBId::get(), 7, 0)),
             ],
             burn_info: (fixed!(0.1), fixed!(0.10), fixed!(0.40)),
         }
@@ -286,14 +335,14 @@ impl ExtBuilder {
 impl Default for ExtBuilder {
     fn default() -> Self {
         ExtBuilder::with_accounts(vec![
-            (FEES_ACCOUNT_A, common::XOR.into(), balance!(1)),
-            (FEES_ACCOUNT_A, common::PSWAP.into(), balance!(6)),
-            (LIQUIDITY_PROVIDER_A, PoolTokenAId::get(), balance!(3)),
-            (LIQUIDITY_PROVIDER_B, PoolTokenAId::get(), balance!(2)),
-            (LIQUIDITY_PROVIDER_C, PoolTokenAId::get(), balance!(1)),
-            (LIQUIDITY_PROVIDER_A, PoolTokenBId::get(), balance!(10)),
-            (LIQUIDITY_PROVIDER_B, PoolTokenBId::get(), balance!(10)),
-            (LIQUIDITY_PROVIDER_C, PoolTokenBId::get(), balance!(10)),
+            (fees_account_a(), common::XOR.into(), balance!(1)),
+            (fees_account_a(), common::PSWAP.into(), balance!(6)),
+            (liquidity_provider_a(), PoolTokenAId::get(), balance!(3)),
+            (liquidity_provider_b(), PoolTokenAId::get(), balance!(2)),
+            (liquidity_provider_c(), PoolTokenAId::get(), balance!(1)),
+            (liquidity_provider_a(), PoolTokenBId::get(), balance!(10)),
+            (liquidity_provider_b(), PoolTokenBId::get(), balance!(10)),
+            (liquidity_provider_c(), PoolTokenBId::get(), balance!(10)),
         ])
     }
 }
@@ -301,6 +350,25 @@ impl Default for ExtBuilder {
 impl ExtBuilder {
     pub fn build(self) -> sp_io::TestExternalities {
         let mut t = SystemConfig::default().build_storage::<Runtime>().unwrap();
+
+        let mut vec = self
+            .endowed_accounts
+            .iter()
+            .map(|(acc, ..)| (acc.clone(), 0))
+            .chain(vec![
+                (alice(), 0),
+                (fees_account_a(), 0),
+                (fees_account_b(), 0),
+                (GetPswapDistributionAccountId::get(), 0),
+                (GetParliamentAccountId::get(), 0),
+            ])
+            .collect::<Vec<_>>();
+
+        vec.sort_by_key(|x| x.0.clone());
+        vec.dedup_by(|x, y| x.0 == y.0);
+        BalancesConfig { balances: vec }
+            .assimilate_storage(&mut t)
+            .unwrap();
 
         PermissionsConfig {
             initial_permissions: self.initial_permissions,

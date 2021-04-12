@@ -1,5 +1,9 @@
 [package]
 edition = '2018'
+authors = ['Polka Biome Ltd. <jihoon@tutanota.de>']
+license = "BSD-4-Clause"
+homepage = 'https://sora.org'
+repository = 'https://github.com/sora-xor/sora2-network'
 name = 'framenode-runtime'
 version = '0.1.0'
 
@@ -170,10 +174,11 @@ std = [
     'pswap-distribution-runtime-api/std',
 ]
 
-test-net = ["faucet"]
+private-net = ["faucet"]
 
 runtime-benchmarks = [
     "assets/runtime-benchmarks",
+    "eth-bridge/runtime-benchmarks",
     "dex-api-benchmarking",
     "faucet?/runtime-benchmarks",
     "frame-benchmarking",
@@ -187,6 +192,8 @@ runtime-benchmarks = [
     "rewards/runtime-benchmarks",
     "technical/runtime-benchmarks",
     "trading-pair/runtime-benchmarks",
+    "multicollateral-bonding-curve-pool/runtime-benchmarks",
+    "pswap-distribution/runtime-benchmarks",
 ]
 
 reduced-pswap-reward-periods = []

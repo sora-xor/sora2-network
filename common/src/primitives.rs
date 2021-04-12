@@ -1,3 +1,33 @@
+// This file is part of the SORA network and Polkaswap app.
+
+// Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
+// SPDX-License-Identifier: BSD-4-Clause
+
+// Redistribution and use in source and binary forms, with or without modification,
+// are permitted provided that the following conditions are met:
+
+// Redistributions of source code must retain the above copyright notice, this list
+// of conditions and the following disclaimer.
+// Redistributions in binary form must reproduce the above copyright notice, this
+// list of conditions and the following disclaimer in the documentation and/or other
+// materials provided with the distribution.
+//
+// All advertising materials mentioning features or use of this software must display
+// the following acknowledgement: This product includes software developed by Polka Biome
+// Ltd., SORA, and Polkaswap.
+//
+// Neither the name of the Polka Biome Ltd. nor the names of its contributors may be used
+// to endorse or promote products derived from this software without specific prior written permission.
+
+// THIS SOFTWARE IS PROVIDED BY Polka Biome Ltd. AS IS AND ANY EXPRESS OR IMPLIED WARRANTIES,
+// INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+// A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL Polka Biome Ltd. BE LIABLE FOR ANY
+// DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+// BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
+// OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
+// STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
+// USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
 use crate::traits::{IsRepresentation, PureOrWrapped};
 use codec::{Decode, Encode};
 use core::fmt::Debug;
@@ -83,29 +113,33 @@ pub struct TradingPair<AssetId> {
 #[derive(Encode, Decode, Eq, PartialEq, Copy, Clone, PartialOrd, Ord, RuntimeDebug)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize, Hash))]
 #[repr(u8)]
-pub enum AssetId {
+pub enum PredefinedAssetId {
     XOR = 0,
     DOT = 1,
     KSM = 2,
     USDT = 3,
     VAL = 4,
     PSWAP = 5,
+    DAI = 6,
+    ETH = 7,
 }
 
-pub const XOR: AssetId32<AssetId> = AssetId32::from_asset_id(AssetId::XOR);
-pub const DOT: AssetId32<AssetId> = AssetId32::from_asset_id(AssetId::DOT);
-pub const KSM: AssetId32<AssetId> = AssetId32::from_asset_id(AssetId::KSM);
-pub const USDT: AssetId32<AssetId> = AssetId32::from_asset_id(AssetId::USDT);
-pub const VAL: AssetId32<AssetId> = AssetId32::from_asset_id(AssetId::VAL);
-pub const PSWAP: AssetId32<AssetId> = AssetId32::from_asset_id(AssetId::PSWAP);
+pub const XOR: AssetId32<PredefinedAssetId> = AssetId32::from_asset_id(PredefinedAssetId::XOR);
+pub const DOT: AssetId32<PredefinedAssetId> = AssetId32::from_asset_id(PredefinedAssetId::DOT);
+pub const KSM: AssetId32<PredefinedAssetId> = AssetId32::from_asset_id(PredefinedAssetId::KSM);
+pub const USDT: AssetId32<PredefinedAssetId> = AssetId32::from_asset_id(PredefinedAssetId::USDT);
+pub const VAL: AssetId32<PredefinedAssetId> = AssetId32::from_asset_id(PredefinedAssetId::VAL);
+pub const PSWAP: AssetId32<PredefinedAssetId> = AssetId32::from_asset_id(PredefinedAssetId::PSWAP);
+pub const DAI: AssetId32<PredefinedAssetId> = AssetId32::from_asset_id(PredefinedAssetId::DAI);
+pub const ETH: AssetId32<PredefinedAssetId> = AssetId32::from_asset_id(PredefinedAssetId::ETH);
 
-impl IsRepresentation for AssetId {
+impl IsRepresentation for PredefinedAssetId {
     fn is_representation(&self) -> bool {
         false
     }
 }
 
-impl Default for AssetId {
+impl Default for PredefinedAssetId {
     fn default() -> Self {
         Self::XOR
     }
@@ -209,7 +243,7 @@ impl<AssetId> AssetId32<AssetId> {
         }
     }
 
-    pub const fn from_asset_id(asset_id: super::AssetId) -> Self {
+    pub const fn from_asset_id(asset_id: PredefinedAssetId) -> Self {
         let mut bytes = [0u8; 32];
         bytes[0] = 2;
         bytes[2] = asset_id as u8;
@@ -720,7 +754,7 @@ mod tests {
 
         assert_eq!(serde_json::to_string(&asset_id).unwrap(), json_str);
         assert_eq!(
-            serde_json::from_str::<AssetId32<AssetId>>(json_str).unwrap(),
+            serde_json::from_str::<AssetId32<PredefinedAssetId>>(json_str).unwrap(),
             asset_id
         );
 
