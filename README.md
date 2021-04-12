@@ -22,7 +22,7 @@ This repo contains code of node, pallets, runtime.
 # System requirement for validator node
 * Intel(R) Core(TM) i7-7700K CPU @ 4.20GHz.
 * A NVMe solid state drive. Starting around 80GB - 160GB will be okay for the first six months of SORA, but will need to be re-evaluated every six months, as the blockchain grows.
-* 64 Gb.
+* 32 Gb.
 
 # Build test run.
 
