@@ -30,7 +30,6 @@
 
 use common::prelude::{AssetName, AssetSymbol, FixedWrapper};
 use common::{balance, fixed_wrapper, XOR};
-use pallet_balances::Call as BalancesCall;
 use pallet_transaction_payment::ChargeTransactionPayment;
 use sp_runtime::traits::SignedExtension;
 use traits::MultiCurrency;

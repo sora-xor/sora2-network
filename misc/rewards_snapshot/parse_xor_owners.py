@@ -85,6 +85,7 @@ def write_to_file(data):
         for addr, balance in data.items():
             addr = addr.replace('0x', '')
             if balance > 0.0037:  # Given the price of VAL being 2.7$, 1 cent is 0.0037 of VAL. All values below that are discarded
+                balance *= 10.0 # we give 10 VAL per XOR
                 print('    (hex!("{}").into(), balance!({:.18f})),'.format(addr, balance), file=f)
         print(']', file=f)
 
