@@ -198,6 +198,8 @@ mod tests {
         for (asset_id, balance) in initial_reserves {
             Technical::mint(&asset_id, &bonding_curve_tech_account_id, balance)?;
         }
+        let initial_price: Fixed = fixed!(200);
+        crate::InitialPrice::<Runtime>::put(initial_price);
 
         let val_holders_coefficient = fixed_wrapper!(0.5);
         let val_holders_xor_alloc_coeff = val_holders_coefficient.clone() * fixed_wrapper!(0.9);
@@ -337,6 +339,8 @@ mod tests {
         .build();
         ext.execute_with(|| {
             MockDEXApi::init().unwrap();
+            let initial_price: Fixed = fixed!(200);
+            crate::InitialPrice::<Runtime>::put(initial_price);
             TradingPair::register(Origin::signed(alice()),DEXId::Polkaswap.into(), XOR, VAL).expect("Failed to register trading pair.");
             MBCPool::initialize_pool_unchecked(VAL, false).expect("Failed to initialize pool.");
             let total_issuance = Assets::total_issuance(&XOR).unwrap();
@@ -406,6 +410,8 @@ mod tests {
         .build();
         ext.execute_with(|| {
             MockDEXApi::init().unwrap();
+            let initial_price: Fixed = fixed!(200);
+            crate::InitialPrice::<Runtime>::put(initial_price);
             let total_issuance = Assets::total_issuance(&XOR).unwrap();
             TradingPair::register(Origin::signed(alice()),DEXId::Polkaswap.into(), XOR, VAL).expect("Failed to register trading pair.");
             MBCPool::initialize_pool_unchecked(VAL, false).expect("Failed to initialize pool.");
