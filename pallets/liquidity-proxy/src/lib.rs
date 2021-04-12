@@ -591,7 +591,11 @@ impl<T: Config> Pallet<T> {
                     &pair.base_asset_id,
                     &pair.target_asset_id,
                 )?;
-                Ok(sources.into_iter().collect())
+                if sources.is_empty() {
+                    fail!(Error::<T>::UnavailableExchangePath);
+                } else {
+                    Ok(sources.into_iter().collect())
+                }
             }
             ExchangePath::Twofold {
                 from_asset_id,
