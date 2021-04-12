@@ -202,7 +202,7 @@ pub mod pallet {
 
     #[pallet::type_value]
     pub(super) fn DefaultForInitialPrice() -> Fixed {
-        fixed!(200)
+        fixed!(634)
     }
 
     /// Buy price starting constant. This is the price users pay for new XOR.

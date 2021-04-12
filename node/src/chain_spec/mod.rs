@@ -542,7 +542,7 @@ fn testnet_genesis(
     eth_bridge_params: EthBridgeParams,
 ) -> GenesisConfig {
     // Initial balances
-    let initial_staking = balance!(5000);
+    let initial_staking = balance!(1);
     let initial_eth_bridge_xor_amount = balance!(350000);
     let initial_eth_bridge_val_amount = balance!(33900000);
     let initial_pswap_tbc_rewards = balance!(25000000);
@@ -1089,7 +1089,7 @@ pub fn main_net_coded() -> ChainSpec {
                 bridge_contract_address: hex!("64fb0ca483b356832cd97958e6b23df783fb7ced").into(),
             };
 
-            //SORA main-net node address. We should have 22 node. As much as possible from Community and other from Soramitsu.
+            // SORA main-net node address. We should have 22 node. As much as possible from Community and other from Soramitsu.
             // Currently filled with staging example values
             mainnet_genesis(
                 vec![
@@ -1135,7 +1135,7 @@ fn mainnet_genesis(
     eth_bridge_params: EthBridgeParams,
 ) -> GenesisConfig {
     // Minimum stake for an active validator
-    let initial_staking = balance!(5000);
+    let initial_staking = balance!(1);
     // XOR amount which already exists on Ethereum
     let initial_eth_bridge_xor_amount = balance!(350000);
     // VAL amount which already exists on SORA_1 and Ethereum. Partially can be migrated directly from SORA_1. Not yet decided finally.
