@@ -312,7 +312,7 @@ pub mod pallet {
 
     #[pallet::type_value]
     pub(super) fn DefaultForInitialPswapRewardsSupply() -> Balance {
-        balance!(25000000)
+        balance!(2500000000)
     }
 
     /// Amount of PSWAP initially stored in account dedicated for TBC rewards. Actual account balance will deplete over time,
@@ -1137,8 +1137,8 @@ impl<T: Config> Module<T> {
         .into();
         let actual_before: FixedWrapper =
             Self::actual_reserves_reference_price(reserves_account_id, collateral_asset_id)?.into();
-        let incentivised_currencies_num: u128 = IncentivisedCurrenciesNum::<T>::get().into();
-        let N: FixedWrapper = FixedWrapper::from(incentivised_currencies_num * balance!(1));
+        // let incentivised_currencies_num: u128 = IncentivisedCurrenciesNum::<T>::get().into();
+        let N: FixedWrapper = FixedWrapper::from(7); //TODO: fix this at 7 for launch //incentivised_currencies_num * balance!(1));
         let P: FixedWrapper = FixedWrapper::from(InitialPswapRewardsSupply::<T>::get());
 
         // Calculate reward.
