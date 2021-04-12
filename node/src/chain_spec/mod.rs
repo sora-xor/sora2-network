@@ -5,12 +5,10 @@
 
 use framenode_runtime::GenesisConfig;
 
-use common::DAI;
-
 use common::prelude::{Balance, DEXInfo, FixedWrapper};
 use common::{
-    balance, fixed, hash, DEXId, Fixed, TechPurpose, DEFAULT_BALANCE_PRECISION, PSWAP, USDT, VAL,
-    XOR,
+    balance, fixed, hash, DEXId, Fixed, TechPurpose, DAI, DEFAULT_BALANCE_PRECISION, ETH, PSWAP,
+    USDT, VAL, XOR,
 };
 use frame_support::sp_runtime::Percent;
 use framenode_runtime::bonding_curve_pool::{DistributionAccountData, DistributionAccounts};
@@ -670,7 +668,7 @@ fn testnet_genesis(
         (eth_bridge_account_id.clone(), initial_eth_bridge_xor_amount),
         (assets_and_permissions_account_id.clone(), 0),
         (xor_fee_account_id.clone(), 0),
-        (dex_root.clone(), 0),
+        (dex_root_account_id.clone(), 0),
         (iroha_migration_account_id.clone(), 0),
         (pswap_distribution_account_id.clone(), 0),
         (mbc_reserves_account_id.clone(), 0),
@@ -774,7 +772,7 @@ fn testnet_genesis(
         iroha_accounts: our_include!("bytes/iroha_migration_accounts.in"),
         account_id: iroha_migration_account_id.clone(),
     };
-    let initial_collateral_assets = vec![DAI.into(), VAL.into(), PSWAP.into()];
+    let initial_collateral_assets = vec![DAI.into(), VAL.into(), PSWAP.into(), ETH.into()];
     GenesisConfig {
         frame_system: Some(SystemConfig {
             code: WASM_BINARY.unwrap().to_vec(),
@@ -868,6 +866,15 @@ fn testnet_genesis(
                     eth_bridge_account_id.clone(),
                     AssetSymbol(b"DAI".to_vec()),
                     AssetName(b"Dai Stablecoin".to_vec()),
+                    18,
+                    Balance::zero(),
+                    true,
+                ),
+                (
+                    ETH.into(),
+                    eth_bridge_account_id.clone(),
+                    AssetSymbol(b"ETH".to_vec()),
+                    AssetName(b"Ether".to_vec()),
                     18,
                     Balance::zero(),
                     true,
@@ -993,6 +1000,12 @@ fn testnet_genesis(
                     AssetConfig::Sidechain {
                         id: DAI.into(),
                         sidechain_id: hex!("5592ec0cfb4dbc12d3ab100b257153436a1f0fea").into(),
+                        owned: false,
+                        precision: DEFAULT_BALANCE_PRECISION,
+                    },
+                    AssetConfig::Sidechain {
+                        id: ETH.into(),
+                        sidechain_id: hex!("0000000000000000000000000000000000000000").into(),
                         owned: false,
                         precision: DEFAULT_BALANCE_PRECISION,
                     },
@@ -1253,7 +1266,7 @@ fn mainnet_genesis(
         pswap_farm_owners: our_include!("bytes/rewards_pswap_farm_owners.in"),
         pswap_waifu_owners: our_include!("bytes/rewards_pswap_waifu_owners.in"),
     };
-    let initial_collateral_assets = vec![]; // TODO: set mainnet collaterals - VAL, PSWAP, DAI, ETH ?
+    let initial_collateral_assets = vec![DAI.into(), VAL.into(), PSWAP.into(), ETH.into()];
 
     GenesisConfig {
         frame_system: Some(SystemConfig {
@@ -1327,6 +1340,24 @@ fn mainnet_genesis(
                     assets_and_permissions_account_id.clone(),
                     AssetSymbol(b"PSWAP".to_vec()),
                     AssetName(b"Polkaswap".to_vec()),
+                    18,
+                    Balance::zero(),
+                    true,
+                ),
+                (
+                    DAI.into(),
+                    eth_bridge_account_id.clone(),
+                    AssetSymbol(b"DAI".to_vec()),
+                    AssetName(b"Dai Stablecoin".to_vec()),
+                    18,
+                    Balance::zero(),
+                    true,
+                ),
+                (
+                    ETH.into(),
+                    eth_bridge_account_id.clone(),
+                    AssetSymbol(b"ETH".to_vec()),
+                    AssetName(b"Ether".to_vec()),
                     18,
                     Balance::zero(),
                     true,
@@ -1486,7 +1517,18 @@ fn mainnet_genesis(
                         owned: true,
                         precision: DEFAULT_BALANCE_PRECISION,
                     },
-                    // TODO: add mainnet DAI
+                    AssetConfig::Sidechain {
+                        id: DAI.into(),
+                        sidechain_id: hex!("6b175474e89094c44da98b954eedeac495271d0f").into(),
+                        owned: false,
+                        precision: DEFAULT_BALANCE_PRECISION,
+                    },
+                    AssetConfig::Sidechain {
+                        id: ETH.into(),
+                        sidechain_id: hex!("0000000000000000000000000000000000000000").into(),
+                        owned: false,
+                        precision: DEFAULT_BALANCE_PRECISION,
+                    },
                 ],
                 bridge_contract_address: eth_bridge_params.bridge_contract_address,
                 reserves: vec![
@@ -1510,7 +1552,7 @@ fn mainnet_genesis(
         multicollateral_bonding_curve_pool: Some(MulticollateralBondingCurvePoolConfig {
             distribution_accounts: accounts,
             reserves_account_id: mbc_reserves_tech_account_id,
-            reference_asset_id: Default::default(), // TODO: set mainnet DAI
+            reference_asset_id: DAI.into(),
             incentives_account_id: mbc_pool_rewards_account_id,
             initial_collateral_assets,
         }),
