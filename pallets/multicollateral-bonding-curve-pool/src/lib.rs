@@ -1,3 +1,33 @@
+// This file is part of the SORA network and Polkaswap app.
+
+// Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
+// SPDX-License-Identifier: BSD-4-Clause
+
+// Redistribution and use in source and binary forms, with or without modification,
+// are permitted provided that the following conditions are met:
+
+// Redistributions of source code must retain the above copyright notice, this list
+// of conditions and the following disclaimer.
+// Redistributions in binary form must reproduce the above copyright notice, this
+// list of conditions and the following disclaimer in the documentation and/or other
+// materials provided with the distribution.
+//
+// All advertising materials mentioning features or use of this software must display
+// the following acknowledgement: This product includes software developed by Polka Biome
+// Ltd., SORA, and Polkaswap.
+//
+// Neither the name of the Polka Biome Ltd. nor the names of its contributors may be used
+// to endorse or promote products derived from this software without specific prior written permission.
+
+// THIS SOFTWARE IS PROVIDED BY Polka Biome Ltd. AS IS AND ANY EXPRESS OR IMPLIED WARRANTIES,
+// INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+// A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL Polka Biome Ltd. BE LIABLE FOR ANY
+// DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+// BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
+// OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
+// STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
+// USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
 #![cfg_attr(not(feature = "std"), no_std)]
 
 pub mod weights;
@@ -98,7 +128,7 @@ pub mod pallet {
                 origin,
                 ManagementMode::Private,
             )?;
-            Self::initialize_pool_unchecked(collateral_asset_id)?;
+            Self::initialize_pool_unchecked(collateral_asset_id, true)?;
             Ok(().into())
         }
 
@@ -312,7 +342,7 @@ pub mod pallet {
 
     #[pallet::type_value]
     pub(super) fn DefaultForInitialPswapRewardsSupply() -> Balance {
-        balance!(25000000)
+        balance!(2500000000)
     }
 
     /// Amount of PSWAP initially stored in account dedicated for TBC rewards. Actual account balance will deplete over time,
@@ -365,7 +395,7 @@ pub mod pallet {
                 .iter()
                 .cloned()
                 .for_each(|asset_id| {
-                    Pallet::<T>::initialize_pool_unchecked(asset_id)
+                    Pallet::<T>::initialize_pool_unchecked(asset_id, false)
                         .expect("Failed to initialize bonding curve.")
                 });
         }
@@ -577,8 +607,11 @@ impl<T: Config> Module<T> {
         )
     }
 
-    fn initialize_pool_unchecked(collateral_asset_id: T::AssetId) -> DispatchResult {
-        common::with_transaction(|| {
+    fn initialize_pool_unchecked(
+        collateral_asset_id: T::AssetId,
+        transactional: bool,
+    ) -> DispatchResult {
+        let code = || {
             ensure!(
                 !EnabledTargets::<T>::get().contains(&collateral_asset_id),
                 Error::<T>::PoolAlreadyInitializedForPair
@@ -603,7 +636,12 @@ impl<T: Config> Module<T> {
                 collateral_asset_id,
             ));
             Ok(())
-        })
+        };
+        if transactional {
+            common::with_transaction(|| code())
+        } else {
+            code()
+        }
     }
 
     /// Buy function with regards to asset total supply and its change delta. It represents the amount of
@@ -1129,8 +1167,8 @@ impl<T: Config> Module<T> {
         .into();
         let actual_before: FixedWrapper =
             Self::actual_reserves_reference_price(reserves_account_id, collateral_asset_id)?.into();
-        let incentivised_currencies_num: u128 = IncentivisedCurrenciesNum::<T>::get().into();
-        let N: FixedWrapper = FixedWrapper::from(incentivised_currencies_num * balance!(1));
+        // let incentivised_currencies_num: u128 = IncentivisedCurrenciesNum::<T>::get().into();
+        let N: FixedWrapper = FixedWrapper::from(balance!(10)); //TODO: fix this at 10 for launch //incentivised_currencies_num * balance!(1));
         let P: FixedWrapper = FixedWrapper::from(InitialPswapRewardsSupply::<T>::get());
 
         // Calculate reward.
@@ -1184,22 +1222,20 @@ impl<T: Config> Module<T> {
 impl<T: Config> OnPswapBurned for Module<T> {
     /// Invoked when pswap is burned after being exchanged from collected liquidity provider fees.
     fn on_pswap_burned(distribution: PswapRemintInfo) {
-        common::with_benchmark("mbc.on_pswap_burned", || {
-            let total_rewards = TotalRewards::<T>::get();
-            let amount = FixedWrapper::from(distribution.vesting);
+        let total_rewards = TotalRewards::<T>::get();
+        let amount = FixedWrapper::from(distribution.vesting);
 
-            if !total_rewards.is_zero() {
-                Rewards::<T>::translate(|_key: T::AccountId, value: (Balance, Balance)| {
-                    let (limit, owned) = value;
-                    let limit_to_add = FixedWrapper::from(owned) * amount.clone()
-                        / FixedWrapper::from(total_rewards);
-                    let new_limit = (limit_to_add + FixedWrapper::from(limit))
-                        .try_into_balance()
-                        .unwrap_or(limit);
-                    Some((new_limit, owned))
-                })
-            }
-        })
+        if !total_rewards.is_zero() {
+            Rewards::<T>::translate(|_key: T::AccountId, value: (Balance, Balance)| {
+                let (limit, owned) = value;
+                let limit_to_add =
+                    FixedWrapper::from(owned) * amount.clone() / FixedWrapper::from(total_rewards);
+                let new_limit = (limit_to_add + FixedWrapper::from(limit))
+                    .try_into_balance()
+                    .unwrap_or(limit);
+                Some((new_limit, owned))
+            })
+        }
     }
 }
 
@@ -1211,16 +1247,14 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         input_asset_id: &T::AssetId,
         output_asset_id: &T::AssetId,
     ) -> bool {
-        common::with_benchmark("mbc.can_exchange", || {
-            if *dex_id != DEXId::Polkaswap.into() {
-                return false;
-            }
-            if input_asset_id == &T::GetBaseAssetId::get() {
-                EnabledTargets::<T>::get().contains(&output_asset_id)
-            } else {
-                EnabledTargets::<T>::get().contains(&input_asset_id)
-            }
-        })
+        if *dex_id != DEXId::Polkaswap.into() {
+            return false;
+        }
+        if input_asset_id == &T::GetBaseAssetId::get() {
+            EnabledTargets::<T>::get().contains(&output_asset_id)
+        } else {
+            EnabledTargets::<T>::get().contains(&input_asset_id)
+        }
     }
 
     fn quote(
@@ -1229,25 +1263,19 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         output_asset_id: &T::AssetId,
         swap_amount: SwapAmount<Balance>,
     ) -> Result<SwapOutcome<Balance>, DispatchError> {
-        common::with_benchmark("mbc.quote", || {
-            if !Self::can_exchange(dex_id, input_asset_id, output_asset_id) {
-                fail!(Error::<T>::CantExchange);
-            }
-            let base_asset_id = &T::GetBaseAssetId::get();
-            let (input_amount, output_amount, fee_amount) = if input_asset_id == base_asset_id {
-                Self::decide_sell_amounts(&input_asset_id, &output_asset_id, swap_amount)?
-            } else {
-                Self::decide_buy_amounts(&output_asset_id, &input_asset_id, swap_amount)?
-            };
-            match swap_amount {
-                SwapAmount::WithDesiredInput { .. } => {
-                    Ok(SwapOutcome::new(output_amount, fee_amount))
-                }
-                SwapAmount::WithDesiredOutput { .. } => {
-                    Ok(SwapOutcome::new(input_amount, fee_amount))
-                }
-            }
-        })
+        if !Self::can_exchange(dex_id, input_asset_id, output_asset_id) {
+            fail!(Error::<T>::CantExchange);
+        }
+        let base_asset_id = &T::GetBaseAssetId::get();
+        let (input_amount, output_amount, fee_amount) = if input_asset_id == base_asset_id {
+            Self::decide_sell_amounts(&input_asset_id, &output_asset_id, swap_amount)?
+        } else {
+            Self::decide_buy_amounts(&output_asset_id, &input_asset_id, swap_amount)?
+        };
+        match swap_amount {
+            SwapAmount::WithDesiredInput { .. } => Ok(SwapOutcome::new(output_amount, fee_amount)),
+            SwapAmount::WithDesiredOutput { .. } => Ok(SwapOutcome::new(input_amount, fee_amount)),
+        }
     }
 
     fn exchange(
@@ -1258,41 +1286,39 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         output_asset_id: &T::AssetId,
         desired_amount: SwapAmount<Balance>,
     ) -> Result<SwapOutcome<Balance>, DispatchError> {
-        common::with_benchmark("mbc.exchange", || {
-            if !Self::can_exchange(dex_id, input_asset_id, output_asset_id) {
-                fail!(Error::<T>::CantExchange);
-            }
-            let reserves_account_id =
-                &Technical::<T>::tech_account_id_to_account_id(&Self::reserves_account_id())?;
-            // This is needed to prevent recursion calls.
-            if sender == reserves_account_id && receiver == reserves_account_id {
-                fail!(Error::<T>::CannotExchangeWithSelf);
-            }
-            let base_asset_id = &T::GetBaseAssetId::get();
-            if input_asset_id == base_asset_id {
-                let outcome = Self::sell_main_asset(
-                    dex_id,
-                    input_asset_id,
-                    output_asset_id,
-                    desired_amount,
-                    sender,
-                    receiver,
-                );
-                Module::<T>::update_collateral_reserves(output_asset_id, reserves_account_id)?;
-                outcome
-            } else {
-                let outcome = BuyMainAsset::<T>::new(
-                    *input_asset_id,
-                    *output_asset_id,
-                    desired_amount,
-                    sender.clone(),
-                    receiver.clone(),
-                )?
-                .swap();
-                Module::<T>::update_collateral_reserves(input_asset_id, reserves_account_id)?;
-                outcome
-            }
-        })
+        if !Self::can_exchange(dex_id, input_asset_id, output_asset_id) {
+            fail!(Error::<T>::CantExchange);
+        }
+        let reserves_account_id =
+            &Technical::<T>::tech_account_id_to_account_id(&Self::reserves_account_id())?;
+        // This is needed to prevent recursion calls.
+        if sender == reserves_account_id && receiver == reserves_account_id {
+            fail!(Error::<T>::CannotExchangeWithSelf);
+        }
+        let base_asset_id = &T::GetBaseAssetId::get();
+        if input_asset_id == base_asset_id {
+            let outcome = Self::sell_main_asset(
+                dex_id,
+                input_asset_id,
+                output_asset_id,
+                desired_amount,
+                sender,
+                receiver,
+            );
+            Module::<T>::update_collateral_reserves(output_asset_id, reserves_account_id)?;
+            outcome
+        } else {
+            let outcome = BuyMainAsset::<T>::new(
+                *input_asset_id,
+                *output_asset_id,
+                desired_amount,
+                sender.clone(),
+                receiver.clone(),
+            )?
+            .swap();
+            Module::<T>::update_collateral_reserves(input_asset_id, reserves_account_id)?;
+            outcome
+        }
     }
 }
 

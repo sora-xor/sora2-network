@@ -1,3 +1,33 @@
+// This file is part of the SORA network and Polkaswap app.
+
+// Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
+// SPDX-License-Identifier: BSD-4-Clause
+
+// Redistribution and use in source and binary forms, with or without modification,
+// are permitted provided that the following conditions are met:
+
+// Redistributions of source code must retain the above copyright notice, this list
+// of conditions and the following disclaimer.
+// Redistributions in binary form must reproduce the above copyright notice, this
+// list of conditions and the following disclaimer in the documentation and/or other
+// materials provided with the distribution.
+//
+// All advertising materials mentioning features or use of this software must display
+// the following acknowledgement: This product includes software developed by Polka Biome
+// Ltd., SORA, and Polkaswap.
+//
+// Neither the name of the Polka Biome Ltd. nor the names of its contributors may be used
+// to endorse or promote products derived from this software without specific prior written permission.
+
+// THIS SOFTWARE IS PROVIDED BY Polka Biome Ltd. AS IS AND ANY EXPRESS OR IMPLIED WARRANTIES,
+// INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+// A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL Polka Biome Ltd. BE LIABLE FOR ANY
+// DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+// BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
+// OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
+// STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
+// USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
 //! # Assets Pallet
 //!
 //! ## Overview
@@ -177,7 +207,7 @@ pub mod pallet {
             + Ord
             + Default
             + Into<CurrencyIdOf<Self>>
-            + From<common::AssetId32<common::AssetId>>
+            + From<common::AssetId32<common::PredefinedAssetId>>
             + From<H256>
             + Into<H256>
             + Into<<Self as tokens::Config>::CurrencyId>;
@@ -220,18 +250,16 @@ pub mod pallet {
             initial_supply: Balance,
             is_mintable: bool,
         ) -> DispatchResultWithPostInfo {
-            common::with_benchmark(common::location_stamp!("assets.register"), || {
-                let author = ensure_signed(origin)?;
-                let _asset_id = Self::register_from(
-                    &author,
-                    symbol,
-                    name,
-                    DEFAULT_BALANCE_PRECISION,
-                    initial_supply,
-                    is_mintable,
-                )?;
-                Ok(().into())
-            })
+            let author = ensure_signed(origin)?;
+            let _asset_id = Self::register_from(
+                &author,
+                symbol,
+                name,
+                DEFAULT_BALANCE_PRECISION,
+                initial_supply,
+                is_mintable,
+            )?;
+            Ok(().into())
         }
 
         /// Performs a checked Asset transfer.
@@ -247,12 +275,10 @@ pub mod pallet {
             to: T::AccountId,
             amount: Balance,
         ) -> DispatchResultWithPostInfo {
-            common::with_benchmark(common::location_stamp!("assets.transfer"), || {
-                let from = ensure_signed(origin.clone())?;
-                Self::transfer_from(&asset_id, &from, &to, amount)?;
-                Self::deposit_event(Event::Transfer(from, to, asset_id, amount));
-                Ok(().into())
-            })
+            let from = ensure_signed(origin.clone())?;
+            Self::transfer_from(&asset_id, &from, &to, amount)?;
+            Self::deposit_event(Event::Transfer(from, to, asset_id, amount));
+            Ok(().into())
         }
 
         /// Performs a checked Asset mint, can only be done
@@ -269,12 +295,10 @@ pub mod pallet {
             to: T::AccountId,
             amount: Balance,
         ) -> DispatchResultWithPostInfo {
-            common::with_benchmark(common::location_stamp!("assets.mint"), || {
-                let issuer = ensure_signed(origin.clone())?;
-                Self::mint_to(&asset_id, &issuer, &to, amount)?;
-                Self::deposit_event(Event::Mint(issuer, to, asset_id.clone(), amount));
-                Ok(().into())
-            })
+            let issuer = ensure_signed(origin.clone())?;
+            Self::mint_to(&asset_id, &issuer, &to, amount)?;
+            Self::deposit_event(Event::Mint(issuer, to, asset_id.clone(), amount));
+            Ok(().into())
         }
 
         /// Performs a checked Asset burn, can only be done
@@ -289,12 +313,10 @@ pub mod pallet {
             asset_id: T::AssetId,
             amount: Balance,
         ) -> DispatchResultWithPostInfo {
-            common::with_benchmark(common::location_stamp!("assets.burn"), || {
-                let issuer = ensure_signed(origin.clone())?;
-                Self::burn_from(&asset_id, &issuer, &issuer, amount)?;
-                Self::deposit_event(Event::Burn(issuer, asset_id.clone(), amount));
-                Ok(().into())
-            })
+            let issuer = ensure_signed(origin.clone())?;
+            Self::burn_from(&asset_id, &issuer, &issuer, amount)?;
+            Self::deposit_event(Event::Burn(issuer, asset_id.clone(), amount));
+            Ok(().into())
         }
 
         /// Set given asset to be non-mintable, i.e. it can no longer be minted, only burned.

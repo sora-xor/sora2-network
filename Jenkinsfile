@@ -44,14 +44,15 @@ pipeline {
                             sh "cd ${env.WORKSPACE}"
                             if (getPushVersion(pushTags)){
                                 flag = env.TAG_NAME ? "stage" : featureTags[env.GIT_BRANCH]
-                                sh "cargo build --release --features \"${flag}-net reduced-pswap-reward-periods\""
+                                sh "cargo build --release --features \"private-net include-real-files reduced-pswap-reward-periods\""
                                 sh "cargo test --release"
                                 sh "cp /opt/rust-target/release/framenode ${env.WORKSPACE}/housekeeping/framenode"
                             } else {
                                 sh "cargo fmt -- --check > /dev/null"
-                                // It slows the build down too much. There is some bug.
-                                // sh "./housekeeping/docker/release/check_with_different_features.sh"
-                                // sh "cargo test"
+                                sh "cargo check"
+                                sh "cargo test"
+                                sh "cargo check --features private-net"
+                                sh "cargo test --features private-net"
                             }
                         }
                     }

@@ -1,3 +1,33 @@
+// This file is part of the SORA network and Polkaswap app.
+
+// Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
+// SPDX-License-Identifier: BSD-4-Clause
+
+// Redistribution and use in source and binary forms, with or without modification,
+// are permitted provided that the following conditions are met:
+
+// Redistributions of source code must retain the above copyright notice, this list
+// of conditions and the following disclaimer.
+// Redistributions in binary form must reproduce the above copyright notice, this
+// list of conditions and the following disclaimer in the documentation and/or other
+// materials provided with the distribution.
+//
+// All advertising materials mentioning features or use of this software must display
+// the following acknowledgement: This product includes software developed by Polka Biome
+// Ltd., SORA, and Polkaswap.
+//
+// Neither the name of the Polka Biome Ltd. nor the names of its contributors may be used
+// to endorse or promote products derived from this software without specific prior written permission.
+
+// THIS SOFTWARE IS PROVIDED BY Polka Biome Ltd. AS IS AND ANY EXPRESS OR IMPLIED WARRANTIES,
+// INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+// A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL Polka Biome Ltd. BE LIABLE FOR ANY
+// DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+// BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
+// OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
+// STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
+// USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
 #![cfg_attr(not(feature = "std"), no_std)]
 // `construct_runtime!` does a lot of recursion and requires us to increase the limit to 256.
 #![recursion_limit = "256"]
@@ -153,7 +183,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
     spec_name: create_runtime_str!("sora-substrate"),
     impl_name: create_runtime_str!("sora-substrate"),
     authoring_version: 1,
-    spec_version: 20,
+    spec_version: 22,
     impl_version: 1,
     apis: RUNTIME_API_VERSIONS,
     transaction_version: 1,
@@ -486,7 +516,7 @@ impl tokens::Config for Runtime {
 }
 
 parameter_types! {
-    // This is common::AssetId with 0 index, 2 is size, 0 and 0 is code.
+    // This is common::PredefinedAssetId with 0 index, 2 is size, 0 and 0 is code.
     pub const GetXorAssetId: AssetId = common::AssetId32::from_bytes(hex!("0200000000000000000000000000000000000000000000000000000000000000"));
     pub const GetDotAssetId: AssetId = common::AssetId32::from_bytes(hex!("0200010000000000000000000000000000000000000000000000000000000000"));
     pub const GetKsmAssetId: AssetId = common::AssetId32::from_bytes(hex!("0200020000000000000000000000000000000000000000000000000000000000"));
@@ -534,8 +564,8 @@ impl bonding_curve_pool::Config for Runtime {
 }
 
 pub type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
-pub type TechAssetId = common::TechAssetId<common::AssetId>;
-pub type AssetId = common::AssetId32<common::AssetId>;
+pub type TechAssetId = common::TechAssetId<common::PredefinedAssetId>;
+pub type AssetId = common::AssetId32<common::PredefinedAssetId>;
 
 impl technical::Config for Runtime {
     type Event = Event;
@@ -730,6 +760,33 @@ impl rewards::Config for Runtime {
     type WeightInfo = rewards::weights::WeightInfo<Runtime>;
 }
 
+pub struct ExtrinsicsFlatFees;
+
+// Flat fees implementation for the selected extrinsics.
+// Returns a value if the extirnsic is subject to manual fee adjustment
+// and `None` otherwise
+impl xor_fee::ApplyCustomFees<Call> for ExtrinsicsFlatFees {
+    fn compute_fee(call: &Call) -> Option<Balance> {
+        match call {
+            Call::Assets(assets::Call::register(..))
+            | Call::EthBridge(eth_bridge::Call::transfer_to_sidechain(..))
+            | Call::PoolXYK(pool_xyk::Call::withdraw_liquidity(..)) => Some(balance!(0.007)),
+            Call::EthBridge(eth_bridge::Call::register_incoming_request(..))
+            | Call::EthBridge(eth_bridge::Call::finalize_incoming_request(..))
+            | Call::EthBridge(eth_bridge::Call::approve_request(..)) => None,
+            Call::Assets(..)
+            | Call::EthBridge(..)
+            | Call::LiquidityProxy(..)
+            | Call::MulticollateralBondingCurvePool(..)
+            | Call::PoolXYK(..)
+            | Call::Rewards(..)
+            | Call::Staking(pallet_staking::Call::payout_stakers(..))
+            | Call::TradingPair(..) => Some(balance!(0.0007)),
+            _ => None,
+        }
+    }
+}
+
 parameter_types! {
     pub const DEXIdValue: DEXId = 0;
 }
@@ -741,11 +798,15 @@ impl xor_fee::Config for Runtime {
     type ReferrerWeight = ReferrerWeight;
     type XorBurnedWeight = XorBurnedWeight;
     type XorIntoValBurnedWeight = XorIntoValBurnedWeight;
+    type SoraParliamentShare = SoraParliamentShare;
     type XorId = GetXorAssetId;
     type ValId = GetValAssetId;
     type DEXIdValue = DEXIdValue;
     type LiquidityProxy = LiquidityProxy;
     type ValBurnedNotifier = Staking;
+    type CustomFees = ExtrinsicsFlatFees;
+    type GetTechnicalAccountId = GetXorFeeAccountId;
+    type GetParliamentAccountId = GetParliamentAccountId;
 }
 
 pub struct ConstantFeeMultiplier;
@@ -853,6 +914,17 @@ parameter_types! {
         technical::Module::<Runtime>::tech_account_id_to_account_id(&tech_account_id)
             .expect("Failed to get ordinary account id for technical account id.")
     };
+    pub GetXorFeeTechAccountId: TechAccountId = {
+        TechAccountId::from_generic_pair(
+            xor_fee::TECH_ACCOUNT_PREFIX.to_vec(),
+            xor_fee::TECH_ACCOUNT_MAIN.to_vec(),
+        )
+    };
+    pub GetXorFeeAccountId: AccountId = {
+        let tech_account_id = GetXorFeeTechAccountId::get();
+        technical::Module::<Runtime>::tech_account_id_to_account_id(&tech_account_id)
+            .expect("Failed to get ordinary account id for technical account id.")
+    };
 }
 
 #[cfg(feature = "reduced-pswap-reward-periods")]
@@ -954,6 +1026,7 @@ parameter_types! {
     pub const ReferrerWeight: u32 = 10;
     pub const XorBurnedWeight: u32 = 40;
     pub const XorIntoValBurnedWeight: u32 = 50;
+    pub const SoraParliamentShare: Percent = Percent::from_percent(10);
 }
 
 #[cfg(feature = "private-net")]
@@ -989,7 +1062,7 @@ construct_runtime! {
         Tokens: tokens::{Module, Storage, Config<T>, Event<T>},
         // Unified interface for XOR and non-native tokens.
         Currencies: currencies::{Module, Call, Event<T>},
-        TradingPair: trading_pair::{Module, Call, Event<T>},
+        TradingPair: trading_pair::{Module, Call, Storage, Config<T>, Event<T>},
         Assets: assets::{Module, Call, Storage, Config<T>, Event<T>},
         DEXManager: dex_manager::{Module, Storage, Config<T>},
         MulticollateralBondingCurvePool: multicollateral_bonding_curve_pool::{Module, Call, Storage, Config<T>, Event<T>},
@@ -1045,7 +1118,7 @@ construct_runtime! {
         Tokens: tokens::{Module, Storage, Config<T>, Event<T>},
         // Unified interface for XOR and non-native tokens.
         Currencies: currencies::{Module, Call, Event<T>},
-        TradingPair: trading_pair::{Module, Call, Event<T>},
+        TradingPair: trading_pair::{Module, Call, Storage, Config<T>, Event<T>},
         Assets: assets::{Module, Call, Storage, Config<T>, Event<T>},
         DEXManager: dex_manager::{Module, Storage, Config<T>},
         MulticollateralBondingCurvePool: multicollateral_bonding_curve_pool::{Module, Call, Storage, Config<T>, Event<T>},
@@ -1191,11 +1264,21 @@ impl_runtime_apis! {
         Balance,
     > for Runtime {
         fn query_info(uxt: <Block as BlockT>::Extrinsic, len: u32) -> pallet_transaction_payment_rpc_runtime_api::RuntimeDispatchInfo<Balance> {
-            TransactionPayment::query_info(uxt, len)
+            let maybe_dispatch_info = XorFee::query_info(&uxt, len);
+            let output = match maybe_dispatch_info {
+                Some(dispatch_info) => dispatch_info,
+                _ => TransactionPayment::query_info(uxt, len),
+            };
+            output
         }
 
         fn query_fee_details(uxt: <Block as BlockT>::Extrinsic, len: u32) -> pallet_transaction_payment_rpc_runtime_api::FeeDetails<Balance> {
-            TransactionPayment::query_fee_details(uxt, len)
+            let maybe_fee_details = XorFee::query_fee_details(&uxt, len);
+            let output = match maybe_fee_details {
+                Some(fee_details) => fee_details,
+                _ => TransactionPayment::query_fee_details(uxt, len),
+            };
+            output
         }
     }
 
