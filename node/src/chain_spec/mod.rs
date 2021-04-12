@@ -17,8 +17,8 @@ use framenode_runtime::opaque::SessionKeys;
 use framenode_runtime::{
     eth_bridge, AccountId, AssetId, AssetName, AssetSymbol, AssetsConfig, BabeConfig,
     BalancesConfig, BridgeMultisigConfig, CouncilConfig, DEXAPIConfig, DEXManagerConfig,
-    DemocracyConfig, EthBridgeConfig, FarmingConfig, GetBaseAssetId, GetParliamentTechAccountId,
-    GetPswapAssetId, GetValAssetId, GetXorAssetId, GrandpaConfig, ImOnlineId, IrohaMigrationConfig,
+    DemocracyConfig, EthBridgeConfig, GetBaseAssetId, GetParliamentTechAccountId, GetPswapAssetId,
+    GetValAssetId, GetXorAssetId, GrandpaConfig, ImOnlineId, IrohaMigrationConfig,
     LiquiditySourceType, MulticollateralBondingCurvePoolConfig, PermissionsConfig,
     PswapDistributionConfig, RewardsConfig, Runtime, SessionConfig, StakerStatus, StakingConfig,
     SystemConfig, TechAccountId, TechnicalConfig, TokensConfig, TradingPairConfig, WASM_BINARY,
@@ -1036,9 +1036,6 @@ fn testnet_genesis(
             incentives_account_id: mbc_pool_rewards_account_id,
             initial_collateral_assets,
         }),
-        farming: Some(FarmingConfig {
-            initial_farm: (dex_root_account_id, XOR, PSWAP),
-        }),
         pswap_distribution: Some(PswapDistributionConfig {
             subscribed_accounts: Vec::new(),
             burn_info: (fixed!(0.1), fixed!(0.000357), fixed!(0.65)),
@@ -1558,9 +1555,6 @@ fn mainnet_genesis(
             reference_asset_id: DAI.into(),
             incentives_account_id: mbc_pool_rewards_account_id,
             initial_collateral_assets,
-        }),
-        farming: Some(FarmingConfig {
-            initial_farm: (dex_root_account_id, XOR, PSWAP),
         }),
         pswap_distribution: Some(PswapDistributionConfig {
             subscribed_accounts: Vec::new(),

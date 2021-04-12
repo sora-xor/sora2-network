@@ -534,9 +534,10 @@ pub mod pallet {
 
     #[pallet::hooks]
     impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
-        fn on_initialize(now: T::BlockNumber) -> Weight {
-            Pallet::<T>::perform_per_block_update(now)
-        }
+        // TODO: re-enable when needed
+        // fn on_initialize(now: T::BlockNumber) -> Weight {
+        //     Pallet::<T>::perform_per_block_update(now)
+        // }
     }
 
     #[pallet::call]
