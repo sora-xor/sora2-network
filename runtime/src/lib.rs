@@ -1515,6 +1515,16 @@ impl_runtime_apis! {
                 dex_id, input_asset_id, output_asset_id
             ).unwrap_or(false)
         }
+
+        fn list_enabled_sources_for_path(
+            dex_id: DEXId,
+            input_asset_id: AssetId,
+            output_asset_id: AssetId,
+        ) -> Vec<LiquiditySourceType> {
+            LiquidityProxy::list_enabled_sources_for_path(
+                dex_id, input_asset_id, output_asset_id
+            ).unwrap_or(Vec::new())
+        }
     }
 
     impl pswap_distribution_runtime_api::PswapDistributionAPI<

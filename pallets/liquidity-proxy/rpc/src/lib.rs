@@ -45,6 +45,15 @@ pub trait LiquidityProxyAPI<
         output_asset_id: AssetId,
         at: Option<BlockHash>,
     ) -> Result<bool>;
+
+    #[rpc(name = "liquidityProxy_listEnabledSourcesForPath")]
+    fn list_enabled_sources_for_path(
+        &self,
+        dex_id: DEXId,
+        input_asset_id: AssetId,
+        output_asset_id: AssetId,
+        at: Option<BlockHash>,
+    ) -> Result<Vec<LiquiditySourceType>>;
 }
 
 pub struct LiquidityProxyClient<C, B> {
@@ -142,6 +151,26 @@ where
             .map_err(|e| RpcError {
                 code: ErrorCode::ServerError(InvokeRPCError::RuntimeError.into()),
                 message: "Unable to query path availability.".into(),
+                data: Some(format!("{:?}", e).into()),
+            })
+    }
+
+    fn list_enabled_sources_for_path(
+        &self,
+        dex_id: DEXId,
+        input_asset_id: AssetId,
+        output_asset_id: AssetId,
+        at: Option<<Block as BlockT>::Hash>,
+    ) -> Result<Vec<LiquiditySourceType>> {
+        let api = self.client.runtime_api();
+        let at = BlockId::hash(at.unwrap_or(
+            // If the block hash is not supplied assume the best block.
+            self.client.info().best_hash,
+        ));
+        api.list_enabled_sources_for_path(&at, dex_id, input_asset_id, output_asset_id)
+            .map_err(|e| RpcError {
+                code: ErrorCode::ServerError(InvokeRPCError::RuntimeError.into()),
+                message: "Unable to query sources for path.".into(),
                 data: Some(format!("{:?}", e).into()),
             })
     }

@@ -62,5 +62,11 @@ sp_api::decl_runtime_apis! {
             input_asset_id: AssetId,
             output_asset_id: AssetId,
         ) -> bool;
+
+        fn list_enabled_sources_for_path(
+            dex_id: DEXId,
+            input_asset_id: AssetId,
+            output_asset_id: AssetId,
+        ) -> Vec<LiquiditySourceType>;
     }
 }
