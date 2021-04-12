@@ -1427,21 +1427,24 @@ fn mainnet_genesis(
             ],
         }),
         pallet_balances: Some(BalancesConfig {
-            balances: vec![(eth_bridge_account_id.clone(), initial_eth_bridge_xor_amount)]
-                .into_iter()
-                .chain(
-                    initial_authorities
-                        .iter()
-                        .cloned()
-                        .map(|(k1, ..)| (k1, initial_staking)),
-                )
-                .chain(
-                    initial_authorities
-                        .iter()
-                        .cloned()
-                        .map(|(_, k2, ..)| (k2, initial_staking)),
-                )
-                .collect(),
+            balances: vec![
+                (eth_bridge_account_id.clone(), initial_eth_bridge_xor_amount),
+                (dex_root_account_id.clone(), 0),
+            ]
+            .into_iter()
+            .chain(
+                initial_authorities
+                    .iter()
+                    .cloned()
+                    .map(|(k1, ..)| (k1, initial_staking)),
+            )
+            .chain(
+                initial_authorities
+                    .iter()
+                    .cloned()
+                    .map(|(_, k2, ..)| (k2, initial_staking)),
+            )
+            .collect(),
         }),
         dex_manager: Some(DEXManagerConfig {
             dex_list: vec![(
