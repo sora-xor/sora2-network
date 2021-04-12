@@ -756,7 +756,7 @@ mod tests {
 
             let (limit, owned) = MBCPool::rewards(&alice());
             assert!(limit.is_zero());
-            assert_eq!(owned, balance!(22.857232131825000000));
+            assert_eq!(owned, balance!(228.572321318250000000));
         });
     }
 
@@ -823,16 +823,16 @@ mod tests {
             MBCPool::on_pswap_burned(remint_info);
             let (limit_alice, _) = MBCPool::rewards(&alice());
             let (limit_bob, _) = MBCPool::rewards(&bob());
-            assert_eq!(limit_alice, balance!(1142.224353616637499999));
-            assert_eq!(limit_bob, balance!(570.936592272849999999));
+            assert_eq!(limit_alice, balance!(11422.243536166374999999));
+            assert_eq!(limit_bob, balance!(5709.365922728499999999));
 
             // claiming incentives partially
             assert_ok!(MBCPool::claim_incentives(Origin::signed(alice())));
             assert_ok!(MBCPool::claim_incentives(Origin::signed(bob())));
             let (limit_alice, remaining_owned_alice) = MBCPool::rewards(&alice());
             let (limit_bob, remaining_owned_bob) = MBCPool::rewards(&bob());
-            assert_eq!(remaining_owned_alice, balance!(1142.224353616637500001));
-            assert_eq!(remaining_owned_bob, balance!(570.936592272850000001));
+            assert_eq!(remaining_owned_alice, balance!(11422.243536166375000001));
+            assert_eq!(remaining_owned_bob, balance!(5709.365922728500000001));
             assert!(limit_alice.is_zero());
             assert!(limit_bob.is_zero());
             assert_eq!(Assets::free_balance(&PSWAP, &alice()).unwrap(), owned_alice - remaining_owned_alice);
@@ -1191,7 +1191,7 @@ mod tests {
 
             let (limit, owned_1) = MBCPool::rewards(&alice());
             assert!(limit.is_zero());
-            assert_eq!(owned_1, balance!(59.626477921775000000));
+            assert_eq!(owned_1, balance!(596.264779217750000000));
 
             MBCPool::exchange(
                 &alice(),
@@ -1205,7 +1205,7 @@ mod tests {
 
             let (limit, owned_2) = MBCPool::rewards(&alice());
             assert!(limit.is_zero());
-            assert_eq!(owned_2, owned_1 + balance!(596.119496428700000000));
+            assert_eq!(owned_2, owned_1 + balance!(5961.194964287000000000));
 
             MBCPool::exchange(
                 &alice(),
@@ -1219,7 +1219,7 @@ mod tests {
 
             let (limit, owned_3) = MBCPool::rewards(&alice());
             assert!(limit.is_zero());
-            assert_eq!(owned_3, owned_2 + balance!(58172.983022759800000000));
+            assert_eq!(owned_3, owned_2 + balance!(581729.830227598000000000));
         });
     }
 }
