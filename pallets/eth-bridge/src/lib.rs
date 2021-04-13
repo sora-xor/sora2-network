@@ -81,9 +81,7 @@ use crate::types::{
 use alloc::string::String;
 use codec::{Decode, Encode, FullCodec};
 use common::prelude::Balance;
-use common::{
-    eth, AssetName, AssetSymbol, BalancePrecision, PureOrWrapped, DEFAULT_BALANCE_PRECISION,
-};
+use common::{eth, AssetName, AssetSymbol, BalancePrecision, DEFAULT_BALANCE_PRECISION};
 use core::convert::{TryFrom, TryInto};
 use core::{iter, line, stringify};
 use ethabi::{ParamType, Token};

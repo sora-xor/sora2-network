@@ -84,12 +84,12 @@ fn parses_event() {
         log.topics = vec![types::H256(hex!("85c0fa492ded927d3acca961da52b0dda1debb06d8c27fe189315f06bb6e26c8"))];
         log.data = Bytes(hex!("111111111111111111111111111111111111111111111111111111111111111100000000000000000000000000000000000000000000000246ddf9797668000000000000000000000000000022222222222222222222222222222222222222220200040000000000000000000000000000000000000000000000000000000011").to_vec());
         log.removed = Some(false);
-        let transfer_event = ContractEvent::Deposit(
+        let transfer_event = ContractEvent::Deposit(DepositEvent::new(
             AccountId32::from(hex!("1111111111111111111111111111111111111111111111111111111111111111")),
             balance!(42),
             H160::from(&hex!("2222222222222222222222222222222222222222")),
             H256(hex!("0200040000000000000000000000000000000000000000000000000000000011"))
-        );
+        ));
         assert_eq!(
             &EthBridge::parse_main_event(&[log.clone()], IncomingTransactionRequestKind::Transfer).unwrap(),
             &transfer_event
@@ -2991,5 +2991,51 @@ fn should_import_incoming_request() {
             LoadIncomingRequest::Transaction(load_incoming_transaction_request),
             incoming_transfer_result
         ));
+    });
+}
+
+#[test]
+fn should_not_import_incoming_request_twice() {
+    let (mut ext, state) = ExtBuilder::default().build();
+
+    ext.execute_with(|| {
+        let net_id = ETH_NETWORK_ID;
+        let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
+        let hash = H256([1; 32]);
+        let load_incoming_transaction_request = LoadIncomingTransactionRequest::new(
+            alice.clone(),
+            hash,
+            Default::default(),
+            IncomingTransactionRequestKind::Transfer,
+            net_id,
+        );
+        let incoming_transfer_result = IncomingRequest::try_from_contract_event(
+            ContractEvent::Deposit(DepositEvent::new(
+                alice.clone(),
+                1,
+                crate::RegisteredSidechainToken::<Runtime>::get(net_id, AssetId32::from(XOR))
+                    .unwrap(),
+                H256::zero(),
+            )),
+            load_incoming_transaction_request.clone(),
+            1,
+        )
+        .map_err(|e| e.into());
+        assert!(incoming_transfer_result.is_ok());
+        let bridge_account_id = &state.networks[&net_id].config.bridge_account_id;
+        assert_ok!(EthBridge::import_incoming_request(
+            Origin::signed(bridge_account_id.clone()),
+            LoadIncomingRequest::Transaction(load_incoming_transaction_request),
+            incoming_transfer_result
+        ));
+        assert_noop!(
+            EthBridge::request_from_sidechain(
+                Origin::signed(alice),
+                hash,
+                IncomingRequestKind::Transaction(IncomingTransactionRequestKind::TransferXOR),
+                net_id
+            ),
+            Error::DuplicatedRequest
+        );
     });
 }
