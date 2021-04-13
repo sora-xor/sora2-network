@@ -84,15 +84,20 @@ fn parses_event() {
         log.topics = vec![types::H256(hex!("85c0fa492ded927d3acca961da52b0dda1debb06d8c27fe189315f06bb6e26c8"))];
         log.data = Bytes(hex!("111111111111111111111111111111111111111111111111111111111111111100000000000000000000000000000000000000000000000246ddf9797668000000000000000000000000000022222222222222222222222222222222222222220200040000000000000000000000000000000000000000000000000000000011").to_vec());
         log.removed = Some(false);
+        let transfer_event = ContractEvent::Deposit(
+            AccountId32::from(hex!("1111111111111111111111111111111111111111111111111111111111111111")),
+            balance!(42),
+            H160::from(&hex!("2222222222222222222222222222222222222222")),
+            H256(hex!("0200040000000000000000000000000000000000000000000000000000000011"))
+        );
         assert_eq!(
-            EthBridge::parse_main_event(&[log], IncomingTransactionRequestKind::Transfer).unwrap(),
-            ContractEvent::Deposit(DepositEvent::new(
-                AccountId32::from(hex!("1111111111111111111111111111111111111111111111111111111111111111")),
-                balance!(42),
-                H160::from(&hex!("2222222222222222222222222222222222222222")),
-                H256(hex!("0200040000000000000000000000000000000000000000000000000000000011"))
-            ))
-        )
+            &EthBridge::parse_main_event(&[log.clone()], IncomingTransactionRequestKind::Transfer).unwrap(),
+            &transfer_event
+        );
+        assert_eq!(
+            &EthBridge::parse_main_event(&[log], IncomingTransactionRequestKind::TransferXOR).unwrap(),
+            &transfer_event
+        );
     });
 }
 

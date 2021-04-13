@@ -1,7 +1,9 @@
+<img alt="SORA logo" src="https://static.tildacdn.com/tild3664-3939-4236-b762-306663333564/sora_small.svg"/>
+
 # Overview.
 
-This is FRAME-based Substrate node of SORA network with Polkaswap.
-Code of node, pallets, runtime.
+This is FRAME-based Substrate node of SORA2.
+This repo contains code of node, pallets, runtime.
 
 [CONTRIBUTING.md](CONTRIBUTING.md)
 
@@ -16,6 +18,11 @@ Code of node, pallets, runtime.
 * CPU 1500MHz 2 cores.
 * RAM 4Gb.
 * Disk 6Gb.
+
+# System requirement for validator node
+* Intel(R) Core(TM) i7-7700K CPU @ 4.20GHz.
+* A NVMe solid state drive. Starting around 80GB - 160GB will be okay for the first six months of SORA, but will need to be re-evaluated every six months, as the blockchain grows.
+* 32 Gb.
 
 # Build test run.
 
@@ -92,7 +99,13 @@ If you want to see the multi-node consensus algorithm in action, refer to
 
 ### Rust Setup
 
-First, complete the [basic Rust setup instructions](https://github.com/substrate-developer-hub/substrate-node-template/blob/master/doc/rust-setup.md).
+First, complete the [guide for Rust setup](https://substrate.dev/docs/en/knowledgebase/getting-started/).
+For the SORA2 network nightly build should be used. Execute the following command:
+```
+rustup uninstall nigthly
+rustup default nightly-2021-03-11
+rustup target add wasm32-unknown-unknown --toolchain nightly-2021-03-11
+```
 
 ### Build
 
