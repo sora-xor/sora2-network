@@ -1,0 +1,113 @@
+[package]
+name = "framenode"
+version = "0.1.0"
+authors = ["Parity Technologies <admin@parity.io>"]
+build = "build.rs"
+edition = "2018"
+
+[[bin]]
+name = "framenode"
+path = "src/main.rs"
+
+[dependencies]
+derive_more = "0.99.13"
+exit-future = "0.2.0"
+futures = { version = "0.3.1", features = ["compat"] }
+hex-literal = "0.3.1"
+log = "0.4.8"
+parking_lot = "0.11"
+trie-root = "0.16.0"
+codec = { package = "parity-scale-codec", version = "2", features = ["derive"]}
+structopt = "0.3.3"
+ansi_term = "0.12.1"
+serde = { version = "1.0.101", features = ["derive"] }
+serde_json = "1.0.61"
+common = { path = "../common" }
+jsonrpc-core = "15.0.0"
+dex-api-rpc = { path = "../pallets/dex-api/rpc" }
+dex-manager-rpc = { path = "../pallets/dex-manager/rpc" }
+technical = {path = "../pallets/technical" }
+permissions = {path = "../pallets/permissions" }
+xor-fee = { path = "../pallets/xor-fee" }
+faucet = { path = "../pallets/faucet", optional = true }
+rewards = { path = "../pallets/rewards" }
+rewards-rpc = { path = "../pallets/rewards/rpc" }
+iroha-migration = { path = "../pallets/iroha-migration" }
+iroha-migration-rpc = { path = "../pallets/iroha-migration/rpc" }
+trading-pair-rpc = { path = "../pallets/trading-pair/rpc" }
+assets-rpc = { path = "../pallets/assets/rpc" }
+liquidity-proxy-rpc = { path = "../pallets/liquidity-proxy/rpc" }
+bridge-multisig = { git = "https://github.com/soramitsu/sora2-frame-pallets.git", branch = "v3.0.0", package = "pallet-multisig" }
+farming-rpc = { path = "../pallets/farming/rpc" }
+eth-bridge-rpc = { path = "../pallets/eth-bridge/rpc" }
+pswap-distribution-rpc = { path = "../pallets/pswap-distribution/rpc" }
+libsecp256k1 = { version = "0.3.5", features = ["hmac"] }
+
+# Parachain dependencies
+framenode-runtime = { path = "../runtime" }
+
+# Substrate dependencies
+sp-runtime = "3"
+sp-arithmetic = "3"
+sp-io = "3"
+sp-api = "3"
+sp-block-builder = "3"
+sp-blockchain = "3"
+sp-core = "3"
+sp-inherents = "3"
+sp-keystore = "0.9"
+sp-consensus = "0.9"
+sc-consensus = "0.9"
+sc-consensus-slots = "0.9"
+sc-consensus-babe = "0.9"
+sp-consensus-babe = "0.9"
+sc-consensus-aura = "0.9"
+sp-consensus-aura = "0.9"
+sc-cli = "0.9"
+sc-client-api = "3"
+sc-executor = "0.9"
+sc-service = "0.9"
+sc-transaction-pool = "3"
+sp-transaction-pool = "3"
+sc-network = "0.9"
+sc-basic-authorship = "0.9"
+sc-rpc = "3"
+sc-rpc-api = "0.9"
+sp-timestamp = "3"
+sp-trie = "3"
+sc-finality-grandpa = { package = "sc-finality-grandpa", version = "0.9" }
+sp-finality-grandpa = "3"
+sc-informant = "0.9"
+sc-chain-spec = "3"
+frame-support = "3"
+pallet-transaction-payment-rpc = "3"
+frame-benchmarking = "3"
+frame-benchmarking-cli = { version = "3", optional = true }
+substrate-frame-rpc-system = "3"
+
+[build-dependencies]
+substrate-build-script-utils = "3"
+
+[dev-dependencies]
+assert_cmd = "0.12"
+nix = "0.20"
+tokio = { version = "0.2.13", features = ["macros"] }
+
+# Substrate dependencies
+pallet-sudo = "3"
+
+[features]
+include-real-files = []
+
+private-net = [
+    "faucet",
+    "framenode-runtime/private-net",
+]
+
+runtime-benchmarks = [
+    "frame-benchmarking-cli",
+    "framenode-runtime/runtime-benchmarks",
+    "sc-executor/wasmtime",
+    "sc-cli/wasmtime",
+    "sc-service/wasmtime",
+]

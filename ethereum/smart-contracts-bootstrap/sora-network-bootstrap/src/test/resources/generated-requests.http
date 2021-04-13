@@ -1,0 +1,58 @@
+###
+POST http://localhost:8080/eth/deploy/sora2/bridge
+Content-Type: application/json
+
+{
+  "addressVAL": "0x725c6b8cd3621eba4e0ccc40d532e7025b925a65",
+  "addressXOR": "0xdc1c024535118f6de6d999c23fc31e33bc2cafc9",
+  "networkId": 0,
+  "network": {
+    "ethereumConfig": {
+      "confirmationPeriod": 20,
+      "gasLimit": 8000000,
+      "gasPrice": 100000000000,
+      "url": "https://rinkeby.infura.io/v3/24e9c0ee26f048a3b9967ae370faa676"
+    },
+    "ethereumCredentials": {
+      "credentials": "{    \"address\": \"e0b88dd1187fd4fad376964013ce17eb7cb2cdad\",    \"id\": \"15bb59d4-3f6b-4db6-ab32-ee9689eb4f7a\",    \"version\": 3,    \"crypto\": {      \"cipher\": \"aes-128-ctr\",      \"ciphertext\": \"28027a6fbf82afca2ca947fbdca4d752551c1223ff8b78fd167bfdd9d17e4025\",      \"cipherparams\": {        \"iv\": \"4d219a3d93e53d0f48886765a6447891\"      },      \"kdf\": \"scrypt\",      \"kdfparams\": {        \"dklen\": 32,        \"n\": 262144,        \"p\": 1,        \"r\": 8,        \"salt\": \"4cdce9bc2759bf44bf04c6c0b8a5b4321ef63a20d5bfe0464758baae56756ba6\"      },      \"mac\": \"26480f5fb75aeacf4eca1561caf1fa82c6aed483500eb27c0e117c3933c06491\"    }  }",
+      "credentialsPassword": "123",
+      "nodeLogin": "practical-tesla",
+      "nodePassword": "booth-vision-kimono-gully-mango-curdle"
+    }
+  },
+  "peerAccounts": [
+    "981bccf6d8593dc49c22cf744a59afa5a2b23118",
+    "90dca3c91c10e802093318123ad8bb8809061765",
+    "457d710255184dbf63c019ab50f65743c6cb072f",
+    "6d04423c97e8ce36d04c9b614926ce0d029d04df"
+  ]
+}
+
+
+###
+POST http://localhost:8080/eth/deploy/sora2/nftMigration
+Content-Type: application/json
+
+{
+  "network": {
+    "ethereumConfig": {
+      "confirmationPeriod": 20,
+      "gasLimit": 1000000,
+      "gasPrice": 50000000000,
+      "url": "https://ropsten.infura.io/v3/24e9c0ee26f048a3b9967ae370faa676"
+    },
+    "ethereumCredentials": {
+      "credentials": "{    \"address\": \"6d18a5361cd88fd2a1b43176d1583d77635ec015\",    \"id\": \"e641a454-d9c7-4705-beaf-61f830c84ba2\",    \"version\": 3,    \"crypto\": {      \"cipher\": \"aes-128-ctr\",      \"ciphertext\": \"6a4cd9f5024e18ce0daea8f509f4deda355fd028f6330ba3e2e4e998815c62ab\",      \"cipherparams\": {        \"iv\": \"5b8a1e06d3cd4f7d5d333892f9845a33\"      },      \"kdf\": \"scrypt\",      \"kdfparams\": {        \"dklen\": 32,        \"n\": 262144,        \"p\": 1,        \"r\": 8,        \"salt\": \"4284b7b64175722f953b40e25e07be5907c958ec2f78bc55585d19555cc1d370\"      },      \"mac\": \"35df3749ba1afe6153e24fb891b53868a832b1eebde43d92625ec77117888506\"    }  }",
+      "credentialsPassword": "123",
+      "nodeLogin": "practical-tesla",
+      "nodePassword": "booth-vision-kimono-gully-mango-curdle"
+    }
+  },
+  "peerAccounts": [
+    "48f2f6e2ef0cc6ebbadb295dd896dc63de1225a9"
+  ]
+}
+
+###
+GET http://localhost:8080/eth/create/wallet?password=123
+

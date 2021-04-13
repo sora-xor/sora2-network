@@ -1,0 +1,52 @@
+[package]
+name = "common"
+version = "0.1.0"
+authors = ["Polka Biome Ltd. <jihoon@tutanota.de>"]
+license = "BSD-4-Clause"
+homepage = 'https://sora.org'
+repository = 'https://github.com/sora-xor/sora2-network'
+edition = "2018"
+
+[dependencies]
+blake2-rfc = { version = "0.2.18", default-features = false }
+codec = { package = "parity-scale-codec", version = "2", default-features = false, features = ["derive"] }
+currencies = { version = "0.4", package = "orml-currencies", default-features = false }
+derive_more = { version = "0.99.11", default-features = false }
+fixnum = { version = "0.5", default-features = false, features = ["i128", "parity"] }
+frame-support = { version = "3", default-features = false }
+frame-system = { version = "3", default-features = false }
+libsecp256k1 = { version = "0.3.5", features = ['hmac'], default-features = false }
+num-traits = { version = "0.2.12", default-features = false }
+orml-traits = { version = "0.4", package = "orml-traits", default-features = false }
+rustc-hex = { version = "2.1.0", default-features = false }
+serde = { version = "1.0", features = ["derive"], optional = true, default-features = false }
+smallvec = "1.5.0"
+sp-arithmetic = { version = "3", default-features = false }
+sp-core = { version = "3", default-features = false }
+sp-io = { version = "3", default-features = false }
+sp-runtime = { version = "3", default-features = false }
+sp-std = { version = "3", default-features = false }
+static_assertions = "1.1.0"
+
+[dev-dependencies]
+serde_json = "1.0.41"
+
+[features]
+default = ['std']
+std = [
+    'codec/std',
+    'serde',
+    'rustc-hex/std',
+    'blake2-rfc/std',
+    'num-traits/std',
+    'frame-support/std',
+    'frame-system/std',
+    'fixnum/serde',
+    'fixnum/std',
+    'sp-core/std',
+    'sp-runtime/std',
+    'sp-std/std',
+    'currencies/std',
+    'orml-traits/std',
+]
+test = []

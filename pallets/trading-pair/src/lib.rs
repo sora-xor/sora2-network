@@ -1,0 +1,267 @@
+// This file is part of the SORA network and Polkaswap app.
+
+// Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
+// SPDX-License-Identifier: BSD-4-Clause
+
+// Redistribution and use in source and binary forms, with or without modification,
+// are permitted provided that the following conditions are met:
+
+// Redistributions of source code must retain the above copyright notice, this list
+// of conditions and the following disclaimer.
+// Redistributions in binary form must reproduce the above copyright notice, this
+// list of conditions and the following disclaimer in the documentation and/or other
+// materials provided with the distribution.
+//
+// All advertising materials mentioning features or use of this software must display
+// the following acknowledgement: This product includes software developed by Polka Biome
+// Ltd., SORA, and Polkaswap.
+//
+// Neither the name of the Polka Biome Ltd. nor the names of its contributors may be used
+// to endorse or promote products derived from this software without specific prior written permission.
+
+// THIS SOFTWARE IS PROVIDED BY Polka Biome Ltd. AS IS AND ANY EXPRESS OR IMPLIED WARRANTIES,
+// INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+// A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL Polka Biome Ltd. BE LIABLE FOR ANY
+// DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+// BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
+// OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
+// STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
+// USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+#![cfg_attr(not(feature = "std"), no_std)]
+
+#[allow(unused_imports)]
+#[macro_use]
+extern crate alloc;
+
+use common::{EnsureDEXManager, EnsureTradingPairExists, LiquiditySourceType, ManagementMode};
+use frame_support::dispatch::{DispatchError, DispatchResult};
+use frame_support::ensure;
+use frame_support::traits::{Get, IsType};
+use frame_support::weights::Weight;
+use sp_std::collections::btree_set::BTreeSet;
+use sp_std::vec::Vec;
+
+mod weights;
+
+mod benchmarking;
+
+#[cfg(test)]
+mod mock;
+
+#[cfg(test)]
+mod tests;
+
+type TradingPair<T> = common::prelude::TradingPair<<T as assets::Config>::AssetId>;
+type Assets<T> = assets::Pallet<T>;
+type DEXManager<T> = dex_manager::Pallet<T>;
+
+pub trait WeightInfo {
+    fn register() -> Weight;
+}
+
+impl<T: Config> EnsureTradingPairExists<T::DEXId, T::AssetId, DispatchError> for Pallet<T> {
+    fn ensure_trading_pair_exists(
+        dex_id: &T::DEXId,
+        base_asset_id: &T::AssetId,
+        target_asset_id: &T::AssetId,
+    ) -> DispatchResult {
+        ensure!(
+            Self::is_trading_pair_enabled(dex_id, base_asset_id, target_asset_id)?,
+            Error::<T>::TradingPairDoesntExist
+        );
+        Ok(())
+    }
+}
+
+impl<T: Config> Pallet<T> {
+    pub fn list_trading_pairs(dex_id: &T::DEXId) -> Result<Vec<TradingPair<T>>, DispatchError> {
+        DEXManager::<T>::ensure_dex_exists(dex_id)?;
+        Ok(EnabledSources::<T>::iter_prefix(dex_id)
+            .map(|(pair, _)| pair)
+            .collect())
+    }
+
+    pub fn is_trading_pair_enabled(
+        dex_id: &T::DEXId,
+        &base_asset_id: &T::AssetId,
+        &target_asset_id: &T::AssetId,
+    ) -> Result<bool, DispatchError> {
+        DEXManager::<T>::ensure_dex_exists(dex_id)?;
+        let pair = TradingPair::<T> {
+            base_asset_id,
+            target_asset_id,
+        };
+        Ok(Self::enabled_sources(dex_id, &pair).is_some())
+    }
+
+    pub fn list_enabled_sources_for_trading_pair(
+        dex_id: &T::DEXId,
+        &base_asset_id: &T::AssetId,
+        &target_asset_id: &T::AssetId,
+    ) -> Result<BTreeSet<LiquiditySourceType>, DispatchError> {
+        DEXManager::<T>::ensure_dex_exists(dex_id)?;
+        let pair = TradingPair::<T> {
+            base_asset_id,
+            target_asset_id,
+        };
+        Ok(Self::enabled_sources(dex_id, &pair).ok_or(Error::<T>::TradingPairDoesntExist)?)
+    }
+
+    pub fn is_source_enabled_for_trading_pair(
+        dex_id: &T::DEXId,
+        base_asset_id: &T::AssetId,
+        target_asset_id: &T::AssetId,
+        source_type: LiquiditySourceType,
+    ) -> Result<bool, DispatchError> {
+        Ok(
+            Self::list_enabled_sources_for_trading_pair(dex_id, base_asset_id, target_asset_id)?
+                .contains(&source_type),
+        )
+    }
+
+    pub fn enable_source_for_trading_pair(
+        dex_id: &T::DEXId,
+        &base_asset_id: &T::AssetId,
+        &target_asset_id: &T::AssetId,
+        source_type: LiquiditySourceType,
+    ) -> DispatchResult {
+        Self::ensure_trading_pair_exists(dex_id, &base_asset_id, &target_asset_id)?;
+        let pair = TradingPair::<T> {
+            base_asset_id,
+            target_asset_id,
+        };
+        // This logic considers Ok if source is already enabled.
+        // unwrap() is safe, check done in `ensure_trading_pair_exists`.
+        EnabledSources::<T>::mutate(dex_id, &pair, |opt_set| {
+            opt_set.as_mut().unwrap().insert(source_type)
+        });
+        Ok(())
+    }
+}
+
+pub use pallet::*;
+
+#[frame_support::pallet]
+pub mod pallet {
+    use super::*;
+    use common::DexIdOf;
+    use frame_support::pallet_prelude::*;
+    use frame_system::pallet_prelude::*;
+
+    #[pallet::config]
+    pub trait Config:
+        frame_system::Config + common::Config + assets::Config + dex_manager::Config
+    {
+        type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+        type EnsureDEXManager: EnsureDEXManager<Self::DEXId, Self::AccountId, DispatchError>;
+        /// Weight information for extrinsics in this pallet.
+        type WeightInfo: WeightInfo;
+    }
+
+    #[pallet::pallet]
+    #[pallet::generate_store(pub(super) trait Store)]
+    pub struct Pallet<T>(PhantomData<T>);
+
+    #[pallet::hooks]
+    impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {}
+
+    #[pallet::call]
+    impl<T: Config> Pallet<T> {
+        /// Register trading pair on the given DEX.
+        /// Can be only called by the DEX owner.
+        ///
+        /// - `dex_id`: ID of the exchange.
+        /// - `base_asset_id`: base asset ID.
+        /// - `target_asset_id`: target asset ID.
+        #[pallet::weight(<T as Config>::WeightInfo::register())]
+        pub fn register(
+            origin: OriginFor<T>,
+            dex_id: T::DEXId,
+            base_asset_id: T::AssetId,
+            target_asset_id: T::AssetId,
+        ) -> DispatchResultWithPostInfo {
+            let _author =
+                T::EnsureDEXManager::ensure_can_manage(&dex_id, origin, ManagementMode::Public)?;
+            Assets::<T>::ensure_asset_exists(&base_asset_id)?;
+            Assets::<T>::ensure_asset_exists(&target_asset_id)?;
+            ensure!(
+                base_asset_id != target_asset_id,
+                Error::<T>::IdenticalAssetIds
+            );
+            ensure!(
+                base_asset_id == T::GetBaseAssetId::get(),
+                Error::<T>::ForbiddenBaseAssetId
+            );
+            let trading_pair = TradingPair::<T> {
+                base_asset_id,
+                target_asset_id,
+            };
+            ensure!(
+                Self::enabled_sources(&dex_id, &trading_pair).is_none(),
+                Error::<T>::TradingPairExists
+            );
+            EnabledSources::<T>::insert(
+                &dex_id,
+                &trading_pair,
+                BTreeSet::<LiquiditySourceType>::new(),
+            );
+            Self::deposit_event(Event::TradingPairStored(dex_id, trading_pair));
+            Ok(().into())
+        }
+    }
+
+    #[pallet::event]
+    #[pallet::metadata(DexIdOf<T> = "DEXId", TradingPair<T> = "TradingPair")]
+    #[pallet::generate_deposit(pub(super) fn deposit_event)]
+    pub enum Event<T: Config> {
+        /// Trading pair has been redistered on a DEX. [DEX Id, Trading Pair]
+        TradingPairStored(DexIdOf<T>, TradingPair<T>),
+    }
+
+    #[pallet::error]
+    pub enum Error<T> {
+        /// Registering trading pair already exists.
+        TradingPairExists,
+        /// The specified base asset ID for the trading pair is not allowed.
+        ForbiddenBaseAssetId,
+        /// The specified base asset ID is the same as target asset ID.
+        IdenticalAssetIds,
+        /// Trading pair is not registered for given DEXId.
+        TradingPairDoesntExist,
+    }
+
+    #[pallet::storage]
+    #[pallet::getter(fn enabled_sources)]
+    pub(super) type EnabledSources<T: Config> = StorageDoubleMap<
+        _,
+        Twox64Concat,
+        T::DEXId,
+        Blake2_128Concat,
+        TradingPair<T>,
+        BTreeSet<LiquiditySourceType>,
+    >;
+
+    #[pallet::genesis_config]
+    pub struct GenesisConfig<T: Config> {
+        pub trading_pairs: Vec<(T::DEXId, TradingPair<T>)>,
+    }
+
+    #[cfg(feature = "std")]
+    impl<T: Config> Default for GenesisConfig<T> {
+        fn default() -> Self {
+            Self {
+                trading_pairs: Default::default(),
+            }
+        }
+    }
+
+    #[pallet::genesis_build]
+    impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
+        fn build(&self) {
+            self.trading_pairs.iter().for_each(|(dex_id, pair)| {
+                EnabledSources::<T>::insert(&dex_id, &pair, BTreeSet::<LiquiditySourceType>::new());
+            })
+        }
+    }
+}

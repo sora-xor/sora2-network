@@ -1,0 +1,64 @@
+[package]
+authors = ['Polka Biome Ltd. <jihoon@tutanota.de>']
+license = "BSD-4-Clause"
+homepage = 'https://sora.org'
+repository = 'https://github.com/sora-xor/sora2-network'
+description = 'Pallet for transferring tokens from technical accounts'
+edition = '2018'
+name = 'faucet'
+version = '0.1.0'
+
+[package.metadata.docs.rs]
+targets = ['x86_64-unknown-linux-gnu']
+
+[dependencies]
+codec = { package = "parity-scale-codec", version = "2", default-features = false, features = ["derive"] }
+frame-benchmarking = { version = "3", default-features = false, optional = true }
+frame-support = { version = "3", default-features = false }
+frame-system = { version = "3", default-features = false }
+hex-literal = "0.3.1"
+pallet-timestamp = { version = "3", default-features = false }
+serde = { version = "1.0.101", optional = true, features = ["derive"] }
+sp-arithmetic = { version = "3", default-features = false }
+sp-core = { version = "3", default-features = false }
+sp-runtime = { version = "3", default-features = false }
+sp-std = { version = "3", default-features = false }
+
+assets = { path = "../assets", default-features = false }
+common = { path = "../../common", default-features = false }
+rewards = { path = "../rewards", default-features = false }
+technical = { path = "../technical", default-features = false }
+
+[dev-dependencies]
+currencies = { version = "0.4", package = "orml-currencies", default-features = false }
+pallet-balances = { version = "3", default-features = false }
+sp-core = { version = "3", default-features = false }
+sp-io = { version = "3", default-features = false }
+tokens = { version = "0.4", package = "orml-tokens", default-features = false }
+
+assets = { path = "../assets" }
+common = { path = "../../common", features = ["test"] }
+permissions = { path = "../permissions" }
+technical = { path = "../technical" }
+
+[features]
+default = ['std']
+
+std = [
+    'codec/std',
+    'frame-support/std',
+    'frame-system/std',
+    'pallet-timestamp/std',
+    'rewards/std',
+    'serde',
+    'sp-arithmetic/std',
+    'sp-core/std',
+    'sp-runtime/std',
+    'sp-std/std',
+]
+
+runtime-benchmarks = [
+    "frame-benchmarking",
+    "frame-system/runtime-benchmarks",
+    "frame-support/runtime-benchmarks",
+]

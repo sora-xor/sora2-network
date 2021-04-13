@@ -1,0 +1,25 @@
+[package]
+name = "farming-runtime-api"
+version = "0.1.0"
+edition = "2018"
+authors = ['Polka Biome Ltd. <jihoon@tutanota.de>']
+license = "BSD-4-Clause"
+homepage = 'https://sora.org'
+repository = 'https://github.com/sora-xor/sora2-network'
+
+[dependencies]
+serde = { version = "1.0.101", optional = true, features = ["derive"] }
+codec = { package = "parity-scale-codec", version = "2", default-features = false, features = ["derive"] }
+sp-api = { version = "3", default-features = false }
+sp-runtime = { version = "3", default-features = false }
+sp-std = { version = "3", default-features = false }
+
+[features]
+default = ["std"]
+std = [
+	"serde",
+	"codec/std",
+	"sp-api/std",
+	"sp-runtime/std",
+	"sp-std/std",
+]

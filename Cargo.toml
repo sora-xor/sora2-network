@@ -1,0 +1,37 @@
+[patch.crates-io]
+jsonrpc-core = { git = "https://github.com/soramitsu/jsonrpc.git", branch = "new_fragment_capacity" }
+jsonrpc-ws-server = { git = "https://github.com/soramitsu/jsonrpc.git", branch = "new_fragment_capacity" }
+jsonrpc-server-utils = { git = "https://github.com/soramitsu/jsonrpc.git", branch = "new_fragment_capacity" }
+
+# The latest versions of thread_local (1.1.2) had a memory leak. This version doesn't have it.
+thread_local = { git = "https://github.com/KalitaAlexey/thread_local-rs.git", branch = "patch-1.0.1" }
+
+[workspace]
+members = [
+    "runtime",
+    "common",
+    "pallets/assets",
+    "pallets/permissions",
+    "pallets/trading-pair",
+    "pallets/dex-manager",
+    "pallets/dex-api",
+    "pallets/farming",
+    "pallets/faucet",
+    "pallets/iroha-migration",
+    "pallets/liquidity-proxy",
+    "pallets/mock-liquidity-source",
+    "pallets/technical",
+    "pallets/pool-xyk",
+    "pallets/rewards",
+    "pallets/xor-fee",
+    "pallets/referral-system",
+    "pallets/bonding-curve-pool",
+    "pallets/eth-bridge",
+    "pallets/pswap-distribution",
+    "pallets/multicollateral-bonding-curve-pool",
+    "node/",
+]
+resolver = "2"
+
+[profile.release]
+panic = 'unwind'

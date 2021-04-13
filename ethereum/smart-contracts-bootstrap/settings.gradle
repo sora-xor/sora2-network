@@ -1,0 +1,9 @@
+/*
+ * Copyright D3 Ledger, Inc. All Rights Reserved.
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+rootProject.name = 'sora-network-bootstrap-root'
+
+include 'sora-network-bootstrap'
+project(':sora-network-bootstrap').projectDir = 'sora-network-bootstrap' as File
