@@ -1310,6 +1310,10 @@ fn mainnet_genesis(
             iroha_migration_tech_account_id.clone(),
         ),
         (rewards_account_id.clone(), rewards_tech_account_id.clone()),
+        (
+            assets_and_permissions_account_id.clone(),
+            assets_and_permissions_tech_account_id.clone(),
+        ),
     ];
     let accounts = bonding_curve_distribution_accounts();
     tech_accounts.push((
