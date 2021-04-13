@@ -103,8 +103,10 @@ use frame_support::{
     debug, ensure, fail, sp_io, transactional, IterableStorageDoubleMap, Parameter, RuntimeDebug,
 };
 use frame_system::offchain::{AppCrypto, CreateSignedTransaction, SendSignedTransaction, Signer};
+use frame_system::pallet_prelude::OriginFor;
 use frame_system::{ensure_root, ensure_signed};
 use hex_literal::hex;
+pub use pallet::*;
 use permissions::{Scope, BURN, MINT};
 use requests::*;
 use rpc::Params;
@@ -183,6 +185,7 @@ pub const STORAGE_NETWORK_IDS_KEY: &[u8] = b"eth-bridge-ocw::network-ids";
 pub const DEPOSIT_TOPIC: H256 = H256(hex!(
     "85c0fa492ded927d3acca961da52b0dda1debb06d8c27fe189315f06bb6e26c8"
 ));
+pub const OFFCHAIN_TRANSACTION_WEIGHT_LIMIT: u64 = 10_000_000_000_000_000u64;
 
 type AssetIdOf<T> = <T as assets::Config>::AssetId;
 type Timepoint<T> = bridge_multisig::Timepoint<<T as frame_system::Config>::BlockNumber>;
@@ -1173,9 +1176,6 @@ impl Default for BridgeStatus {
         Self::Initialized
     }
 }
-
-use frame_system::pallet_prelude::OriginFor;
-pub use pallet::*;
 
 #[frame_support::pallet]
 pub mod pallet {
@@ -2720,7 +2720,7 @@ impl<T: Config> Pallet<T> {
             Some(timepoint),
             <<T as Config>::Call>::from(register_call).encode(),
             false,
-            10_000_000_000_000u64,
+            OFFCHAIN_TRANSACTION_WEIGHT_LIMIT,
         );
         Self::send_signed_transaction::<bridge_multisig::Call<T>>(call)
     }
@@ -3450,7 +3450,7 @@ impl<T: Config> Pallet<T> {
             Some(timepoint),
             <<T as Config>::Call>::from(transfer_call).encode(),
             false,
-            10_000_000_000_000_000u64,
+            OFFCHAIN_TRANSACTION_WEIGHT_LIMIT,
         );
         Self::send_signed_transaction::<bridge_multisig::Call<T>>(call)?;
         Ok(())
@@ -3473,7 +3473,7 @@ impl<T: Config> Pallet<T> {
             Some(timepoint),
             <<T as Config>::Call>::from(import_call).encode(),
             false,
-            10_000_000_000_000_000u64,
+            OFFCHAIN_TRANSACTION_WEIGHT_LIMIT,
         );
         Self::send_signed_transaction::<bridge_multisig::Call<T>>(call)?;
         Ok(())
@@ -3494,7 +3494,7 @@ impl<T: Config> Pallet<T> {
             Some(timepoint),
             <<T as Config>::Call>::from(abort_request_call).encode(),
             false,
-            10_000_000_000_000_000u64,
+            OFFCHAIN_TRANSACTION_WEIGHT_LIMIT,
         );
         Self::send_signed_transaction::<bridge_multisig::Call<T>>(call)?;
         Ok(())
