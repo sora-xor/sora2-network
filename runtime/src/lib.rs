@@ -1,3 +1,33 @@
+// This file is part of the SORA network and Polkaswap app.
+
+// Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
+// SPDX-License-Identifier: BSD-4-Clause
+
+// Redistribution and use in source and binary forms, with or without modification,
+// are permitted provided that the following conditions are met:
+
+// Redistributions of source code must retain the above copyright notice, this list
+// of conditions and the following disclaimer.
+// Redistributions in binary form must reproduce the above copyright notice, this
+// list of conditions and the following disclaimer in the documentation and/or other
+// materials provided with the distribution.
+//
+// All advertising materials mentioning features or use of this software must display
+// the following acknowledgement: This product includes software developed by Polka Biome
+// Ltd., SORA, and Polkaswap.
+//
+// Neither the name of the Polka Biome Ltd. nor the names of its contributors may be used
+// to endorse or promote products derived from this software without specific prior written permission.
+
+// THIS SOFTWARE IS PROVIDED BY Polka Biome Ltd. AS IS AND ANY EXPRESS OR IMPLIED WARRANTIES,
+// INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+// A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL Polka Biome Ltd. BE LIABLE FOR ANY
+// DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+// BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
+// OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
+// STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
+// USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
 #![cfg_attr(not(feature = "std"), no_std)]
 // `construct_runtime!` does a lot of recursion and requires us to increase the limit to 256.
 #![recursion_limit = "256"]
@@ -153,7 +183,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
     spec_name: create_runtime_str!("sora-substrate"),
     impl_name: create_runtime_str!("sora-substrate"),
     authoring_version: 1,
-    spec_version: 22,
+    spec_version: 23,
     impl_version: 1,
     apis: RUNTIME_API_VERSIONS,
     transaction_version: 1,
@@ -633,11 +663,6 @@ impl dex_api::Config for Runtime {
     type WeightInfo = dex_api::weights::WeightInfo<Runtime>;
 }
 
-impl farming::Config for Runtime {
-    type Event = Event;
-    type WeightInfo = ();
-}
-
 impl pallet_multisig::Config for Runtime {
     type Call = Call;
     type Event = Event;
@@ -1044,7 +1069,6 @@ construct_runtime! {
         Democracy: pallet_democracy::{Module, Call, Storage, Config, Event<T>},
         DEXAPI: dex_api::{Module, Call, Storage, Config, Event<T>},
         EthBridge: eth_bridge::{Module, Call, Storage, Config<T>, Event<T>},
-        Farming: farming::{Module, Call, Storage, Config<T>, Event<T>},
         PswapDistribution: pswap_distribution::{Module, Call, Storage, Config<T>, Event<T>},
         Multisig: pallet_multisig::{Module, Call, Storage, Event<T>},
         Scheduler: pallet_scheduler::{Module, Call, Storage, Event<T>},
@@ -1100,7 +1124,6 @@ construct_runtime! {
         Democracy: pallet_democracy::{Module, Call, Storage, Config, Event<T>},
         DEXAPI: dex_api::{Module, Storage, Config, Event<T>},
         EthBridge: eth_bridge::{Module, Call, Storage, Config<T>, Event<T>},
-        Farming: farming::{Module, Call, Storage, Config<T>, Event<T>},
         PswapDistribution: pswap_distribution::{Module, Call, Storage, Config<T>, Event<T>},
         Multisig: pallet_multisig::{Module, Call, Storage, Event<T>},
         Scheduler: pallet_scheduler::{Module, Call, Storage, Event<T>},
@@ -1394,12 +1417,16 @@ impl_runtime_apis! {
     }
 
     impl farming_runtime_api::FarmingRuntimeApi<Block, AccountId, FarmId, FarmInfo<AccountId, AssetId, BlockNumber>, FarmerInfo<AccountId, TechAccountId, BlockNumber>> for Runtime {
-        fn get_farm_info(who: AccountId, name: FarmId) -> Option<FarmInfo<AccountId, AssetId, BlockNumber>> {
-            Farming::get_farm_info(who, name).ok()?
+        fn get_farm_info(_who: AccountId, _name: FarmId) -> Option<FarmInfo<AccountId, AssetId, BlockNumber>> {
+            // TODO: re-enable when needed
+            // Farming::get_farm_info(who, name).ok()?
+            None
         }
 
-        fn get_farmer_info(who: AccountId, name: FarmId) -> Option<FarmerInfo<AccountId, TechAccountId, BlockNumber>> {
-            Farming::get_farmer_info(who, name).ok()?
+        fn get_farmer_info(_who: AccountId, _name: FarmId) -> Option<FarmerInfo<AccountId, TechAccountId, BlockNumber>> {
+            // TODO: re-enable when needed
+            // Farming::get_farmer_info(who, name).ok()?
+            None
         }
     }
 

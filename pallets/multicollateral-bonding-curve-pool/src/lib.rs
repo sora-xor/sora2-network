@@ -1,3 +1,33 @@
+// This file is part of the SORA network and Polkaswap app.
+
+// Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
+// SPDX-License-Identifier: BSD-4-Clause
+
+// Redistribution and use in source and binary forms, with or without modification,
+// are permitted provided that the following conditions are met:
+
+// Redistributions of source code must retain the above copyright notice, this list
+// of conditions and the following disclaimer.
+// Redistributions in binary form must reproduce the above copyright notice, this
+// list of conditions and the following disclaimer in the documentation and/or other
+// materials provided with the distribution.
+//
+// All advertising materials mentioning features or use of this software must display
+// the following acknowledgement: This product includes software developed by Polka Biome
+// Ltd., SORA, and Polkaswap.
+//
+// Neither the name of the Polka Biome Ltd. nor the names of its contributors may be used
+// to endorse or promote products derived from this software without specific prior written permission.
+
+// THIS SOFTWARE IS PROVIDED BY Polka Biome Ltd. AS IS AND ANY EXPRESS OR IMPLIED WARRANTIES,
+// INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+// A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL Polka Biome Ltd. BE LIABLE FOR ANY
+// DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+// BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
+// OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
+// STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
+// USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
 #![cfg_attr(not(feature = "std"), no_std)]
 
 pub mod weights;
@@ -202,7 +232,7 @@ pub mod pallet {
 
     #[pallet::type_value]
     pub(super) fn DefaultForInitialPrice() -> Fixed {
-        fixed!(200)
+        fixed!(634)
     }
 
     /// Buy price starting constant. This is the price users pay for new XOR.
@@ -312,7 +342,7 @@ pub mod pallet {
 
     #[pallet::type_value]
     pub(super) fn DefaultForInitialPswapRewardsSupply() -> Balance {
-        balance!(25000000)
+        balance!(2500000000)
     }
 
     /// Amount of PSWAP initially stored in account dedicated for TBC rewards. Actual account balance will deplete over time,
@@ -1137,8 +1167,8 @@ impl<T: Config> Module<T> {
         .into();
         let actual_before: FixedWrapper =
             Self::actual_reserves_reference_price(reserves_account_id, collateral_asset_id)?.into();
-        let incentivised_currencies_num: u128 = IncentivisedCurrenciesNum::<T>::get().into();
-        let N: FixedWrapper = FixedWrapper::from(incentivised_currencies_num * balance!(1));
+        // let incentivised_currencies_num: u128 = IncentivisedCurrenciesNum::<T>::get().into();
+        let N: FixedWrapper = FixedWrapper::from(balance!(10)); //TODO: fix this at 10 for launch //incentivised_currencies_num * balance!(1));
         let P: FixedWrapper = FixedWrapper::from(InitialPswapRewardsSupply::<T>::get());
 
         // Calculate reward.
