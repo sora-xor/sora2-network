@@ -71,7 +71,7 @@ impl<C, Block, DEXId, AssetId, Balance, SwapVariant, LiquiditySourceType, Filter
         SwapVariant,
         LiquiditySourceType,
         FilterMode,
-        Option<SwapOutcomeInfo<Balance>>,
+        Option<SwapOutcomeInfo<Balance, AssetId>>,
     > for LiquidityProxyClient<C, Block>
 where
     Block: BlockT,
@@ -87,7 +87,7 @@ where
         FilterMode,
     >,
     DEXId: Codec,
-    AssetId: Codec,
+    AssetId: Codec + MaybeFromStr + MaybeDisplay,
     Balance: Codec + MaybeFromStr + MaybeDisplay,
     SwapVariant: Codec,
     LiquiditySourceType: Codec,
@@ -103,7 +103,7 @@ where
         selected_source_types: Vec<LiquiditySourceType>,
         filter_mode: FilterMode,
         at: Option<<Block as BlockT>::Hash>,
-    ) -> Result<Option<SwapOutcomeInfo<Balance>>> {
+    ) -> Result<Option<SwapOutcomeInfo<Balance, AssetId>>> {
         let api = self.client.runtime_api();
         let at = BlockId::hash(at.unwrap_or(
             // If the block hash is not supplied assume the best block.

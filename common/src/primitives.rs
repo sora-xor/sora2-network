@@ -706,6 +706,22 @@ impl From<InvokeRPCError> for i64 {
     }
 }
 
+/// Reason for particular reward during swap.
+#[derive(Encode, Decode, Eq, PartialEq, Clone, PartialOrd, Ord, Debug)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+pub enum RewardReason {
+    /// Reason is unknown.
+    Unspecified,
+    /// Buying XOR with collateral tokens (except PSWAP and VAL) is rewarded.
+    BuyOnBondingCurve,
+}
+
+impl Default for RewardReason {
+    fn default() -> Self {
+        Self::Unspecified
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

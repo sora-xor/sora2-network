@@ -5,7 +5,7 @@
 use codec::{Codec, Decode, Encode};
 #[cfg(feature = "std")]
 use common::utils::string_serialization;
-use common::BalanceWrapper;
+use common::{BalanceWrapper, RewardReason};
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 use sp_runtime::traits::{MaybeDisplay, MaybeFromStr};
@@ -13,7 +13,7 @@ use sp_std::prelude::*;
 
 #[derive(Eq, PartialEq, Encode, Decode, Default)]
 #[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
-pub struct SwapOutcomeInfo<Balance> {
+pub struct SwapOutcomeInfo<Balance, AssetId: MaybeDisplay + MaybeFromStr> {
     #[cfg_attr(
         feature = "std",
         serde(
@@ -36,12 +36,52 @@ pub struct SwapOutcomeInfo<Balance> {
         )
     )]
     pub fee: Balance,
+    pub rewards: Vec<RewardsInfo<Balance, AssetId>>,
+    #[cfg_attr(
+        feature = "std",
+        serde(
+            bound(
+                serialize = "Balance: std::fmt::Display",
+                deserialize = "Balance: std::str::FromStr"
+            ),
+            with = "string_serialization"
+        )
+    )]
+    pub amount_without_impact: Balance,
+}
+
+#[derive(Eq, PartialEq, Encode, Decode, Default)]
+#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
+pub struct RewardsInfo<Balance, AssetId> {
+    #[cfg_attr(
+        feature = "std",
+        serde(
+            bound(
+                serialize = "Balance: std::fmt::Display",
+                deserialize = "Balance: std::str::FromStr"
+            ),
+            with = "string_serialization"
+        )
+    )]
+    amount: Balance,
+    #[cfg_attr(
+        feature = "std",
+        serde(
+            bound(
+                serialize = "AssetId: std::fmt::Display",
+                deserialize = "AssetId: std::str::FromStr"
+            ),
+            with = "string_serialization"
+        )
+    )]
+    currency: AssetId,
+    reason: RewardReason,
 }
 
 sp_api::decl_runtime_apis! {
     pub trait LiquidityProxyAPI<DEXId, AssetId, Balance, SwapVariant, LiquiditySourceType, FilterMode> where
         DEXId: Codec,
-        AssetId: Codec,
+        AssetId: Codec + MaybeFromStr + MaybeDisplay,
         Balance: Codec + MaybeFromStr + MaybeDisplay,
         SwapVariant: Codec,
         LiquiditySourceType: Codec,
@@ -55,7 +95,7 @@ sp_api::decl_runtime_apis! {
             swap_variant: SwapVariant,
             selected_source_types: Vec<LiquiditySourceType>,
             filter_mode: FilterMode,
-        ) -> Option<SwapOutcomeInfo<Balance>>;
+        ) -> Option<SwapOutcomeInfo<Balance, AssetId>>;
 
         fn is_path_available(
             dex_id: DEXId,
