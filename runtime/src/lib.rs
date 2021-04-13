@@ -183,7 +183,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
     spec_name: create_runtime_str!("sora-substrate"),
     impl_name: create_runtime_str!("sora-substrate"),
     authoring_version: 1,
-    spec_version: 23,
+    spec_version: 24,
     impl_version: 1,
     apis: RUNTIME_API_VERSIONS,
     transaction_version: 1,
@@ -1541,6 +1541,16 @@ impl_runtime_apis! {
             LiquidityProxy::is_path_available(
                 dex_id, input_asset_id, output_asset_id
             ).unwrap_or(false)
+        }
+
+        fn list_enabled_sources_for_path(
+            dex_id: DEXId,
+            input_asset_id: AssetId,
+            output_asset_id: AssetId,
+        ) -> Vec<LiquiditySourceType> {
+            LiquidityProxy::list_enabled_sources_for_path(
+                dex_id, input_asset_id, output_asset_id
+            ).unwrap_or(Vec::new())
         }
     }
 
