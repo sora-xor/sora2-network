@@ -183,7 +183,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
     spec_name: create_runtime_str!("sora-substrate"),
     impl_name: create_runtime_str!("sora-substrate"),
     authoring_version: 1,
-    spec_version: 22,
+    spec_version: 23,
     impl_version: 1,
     apis: RUNTIME_API_VERSIONS,
     transaction_version: 1,
@@ -663,11 +663,6 @@ impl dex_api::Config for Runtime {
     type WeightInfo = dex_api::weights::WeightInfo<Runtime>;
 }
 
-impl farming::Config for Runtime {
-    type Event = Event;
-    type WeightInfo = ();
-}
-
 impl pallet_multisig::Config for Runtime {
     type Call = Call;
     type Event = Event;
@@ -1074,7 +1069,6 @@ construct_runtime! {
         Democracy: pallet_democracy::{Module, Call, Storage, Config, Event<T>},
         DEXAPI: dex_api::{Module, Call, Storage, Config, Event<T>},
         EthBridge: eth_bridge::{Module, Call, Storage, Config<T>, Event<T>},
-        Farming: farming::{Module, Call, Storage, Config<T>, Event<T>},
         PswapDistribution: pswap_distribution::{Module, Call, Storage, Config<T>, Event<T>},
         Multisig: pallet_multisig::{Module, Call, Storage, Event<T>},
         Scheduler: pallet_scheduler::{Module, Call, Storage, Event<T>},
@@ -1130,7 +1124,6 @@ construct_runtime! {
         Democracy: pallet_democracy::{Module, Call, Storage, Config, Event<T>},
         DEXAPI: dex_api::{Module, Storage, Config, Event<T>},
         EthBridge: eth_bridge::{Module, Call, Storage, Config<T>, Event<T>},
-        Farming: farming::{Module, Call, Storage, Config<T>, Event<T>},
         PswapDistribution: pswap_distribution::{Module, Call, Storage, Config<T>, Event<T>},
         Multisig: pallet_multisig::{Module, Call, Storage, Event<T>},
         Scheduler: pallet_scheduler::{Module, Call, Storage, Event<T>},
@@ -1424,12 +1417,16 @@ impl_runtime_apis! {
     }
 
     impl farming_runtime_api::FarmingRuntimeApi<Block, AccountId, FarmId, FarmInfo<AccountId, AssetId, BlockNumber>, FarmerInfo<AccountId, TechAccountId, BlockNumber>> for Runtime {
-        fn get_farm_info(who: AccountId, name: FarmId) -> Option<FarmInfo<AccountId, AssetId, BlockNumber>> {
-            Farming::get_farm_info(who, name).ok()?
+        fn get_farm_info(_who: AccountId, _name: FarmId) -> Option<FarmInfo<AccountId, AssetId, BlockNumber>> {
+            // TODO: re-enable when needed
+            // Farming::get_farm_info(who, name).ok()?
+            None
         }
 
-        fn get_farmer_info(who: AccountId, name: FarmId) -> Option<FarmerInfo<AccountId, TechAccountId, BlockNumber>> {
-            Farming::get_farmer_info(who, name).ok()?
+        fn get_farmer_info(_who: AccountId, _name: FarmId) -> Option<FarmerInfo<AccountId, TechAccountId, BlockNumber>> {
+            // TODO: re-enable when needed
+            // Farming::get_farmer_info(who, name).ok()?
+            None
         }
     }
 
