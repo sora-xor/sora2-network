@@ -283,6 +283,22 @@ pub fn dev_net_coded() -> ChainSpec {
                     bridge_contract_address: hex!("24390c8f6cbd5d152c30226f809f4e3f153b88d4")
                         .into(),
                 },
+                vec![
+                    hex!("a63e5398515c405aba87c13b56d344f1a7d32d2226062fac396d58154d45380a").into(),
+                    hex!("62f53d93e5ab9b26ccb7b9625abfe76a3d5fb3b732c039f3322bfe3f35503401").into(),
+                    hex!("c84c2c4395322b7935bf9eba08a392e5c485b0a984b5c38c8174a89c6b24750c").into(),
+                    hex!("8af75f561b714320205491d7571cf6d3df650143e2862b36c7b823d1de0bd244").into(),
+                    hex!("a492d53531934d57acc5c2a852a724272b0a0d6571cc5b0e2433bebbb334e13c").into(),
+                    hex!("5c6e091530ae1891eb33a9abc24727239b84bf8e458306b7cd4740662343b84c").into(),
+                ],
+                vec![
+                    hex!("7653840f435e7412fbaf0eb6331206b325de62e036435458a16155c43393f504").into(),
+                    hex!("e813415062749d4bbea338d8a69b9cc5be02af0fdf8c96ba2d50733aaf32cb50").into(),
+                    hex!("e08d567d824152adcf53b8dca949756be895b6b8bebb5f9fa55959e9473e0c7f").into(),
+                    hex!("b217cc211587498b648046a4ad9a3efaa25c23e32bc47ea95ce0469d146df974").into(),
+                    hex!("042ec6550acc2a8dcdca83467242356aece89e4349b3d5cb3bc6e704976a7009").into(),
+                    hex!("7cb70220af20157acf6f4d6704f7f4aa6d70e0d521317ff06c90b4702f483e00").into(),
+                ],
             )
         },
         vec![],
@@ -412,6 +428,8 @@ pub fn staging_net_coded(test: bool) -> ChainSpec {
                     hex!("211bb96e9f746183c05a1d583bccf513f9d8f679d6f36ecbd06609615a55b1cc").into(),
                 ],
                 eth_bridge_params,
+                vec![],
+                vec![],
             )
         },
         boot_nodes,
@@ -552,6 +570,22 @@ pub fn local_testnet_config() -> ChainSpec {
                     bridge_contract_address: hex!("64fb0ca483b356832cd97958e6b23df783fb7ced")
                         .into(),
                 },
+                vec![
+                    hex!("7edf2a2d157cc835131581bc068b7172a00af1a10008049f05a2308737912633").into(),
+                    hex!("aa7c410fe2d9a0b96ba392c4cef95d3bf8761047297747e9118ee6d1df9f6558").into(),
+                    hex!("30e87994d26e4123d585d5d8c46116bbc196a6f5a4ed87a3ee24a2dbada9a66d").into(),
+                    hex!("30fbd05409cf5f6a8ae6afaa05e9861405d8fa710d0b4c8d088f155cb0b87749").into(),
+                    hex!("20c706cba79f03fc2ed233da544a3e75a81dcae43b0a4edf72719307fd21cb1b").into(),
+                    hex!("8297172611ad3b085258d518f849a5533271d760f729669c9f8863971d70c372").into(),
+                ],
+                vec![
+                    hex!("4a2fe11a37dfb548c64def2cbd8d5332bbd56571627b91b81c82970ceb7eec2b").into(),
+                    hex!("903a885138c4a187f13383fdb08b8e6b308c7021fdab12dc20e3aef9870e1146").into(),
+                    hex!("d0d773018d19aab81052c4d038783ecfee77fb4b5fdc266b5a25568c0102640b").into(),
+                    hex!("18553bd000a9bf50b884754bd763c9554a587e3f77476b82ae740b75a798a32c").into(),
+                    hex!("2a4603eb0895ce519a04c02e43a3494c6920dd92b51e92115a445b8504493c42").into(),
+                    hex!("98a869239c93ab4a5eff5636bc46d75411ccf2fa4790669711e3aa8c80f10b32").into(),
+                ],
             )
         },
         vec![],
@@ -567,9 +601,11 @@ pub fn local_testnet_config() -> ChainSpec {
 fn testnet_genesis(
     root_key: AccountId,
     initial_authorities: Vec<(AccountId, AccountId, AuraId, BabeId, GrandpaId, ImOnlineId)>,
-    endowed_accounts: Vec<AccountId>,
+    _endowed_accounts: Vec<AccountId>,
     initial_bridge_peers: Vec<AccountId>,
     eth_bridge_params: EthBridgeParams,
+    council_accounts: Vec<AccountId>,
+    technical_committee_accounts: Vec<AccountId>,
 ) -> GenesisConfig {
     // Initial balances
     let initial_staking = balance!(1);
@@ -1072,13 +1108,12 @@ fn testnet_genesis(
         }),
         iroha_migration: Some(iroha_migration_config),
         rewards: Some(rewards_config),
-        pallet_collective_Instance1: Some(CouncilConfig::default()),
+        pallet_collective_Instance1: Some(CouncilConfig {
+            members: council_accounts,
+            phantom: Default::default(),
+        }),
         pallet_collective_Instance2: Some(TechnicalCommitteeConfig {
-            members: endowed_accounts
-                .iter()
-                .take((endowed_accounts.len() + 1) / 2)
-                .cloned()
-                .collect(),
+            members: technical_committee_accounts,
             phantom: Default::default(),
         }),
         pallet_democracy: Some(DemocracyConfig::default()),
