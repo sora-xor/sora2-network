@@ -31,9 +31,9 @@
 use crate::{self as liquidity_proxy, Config};
 use common::mock::ExistentialDeposits;
 use common::{
-    self, balance, fixed, fixed_from_basis_points, fixed_wrapper, hash, Amount, AssetId32, DEXInfo,
-    Fixed, FromGenericPair, GetMarketInfo, LiquiditySource, LiquiditySourceType, TechPurpose, DOT,
-    KSM, PSWAP, USDT, VAL, XOR,
+    self, balance, fixed, fixed_from_basis_points, fixed_wrapper, hash, Amount, AssetId32,
+    AssetName, AssetSymbol, DEXInfo, Fixed, FromGenericPair, GetMarketInfo, LiquiditySource,
+    LiquiditySourceType, TechPurpose, DOT, KSM, PSWAP, USDT, VAL, XOR,
 };
 use currencies::BasicCurrencyAdapter;
 
@@ -274,6 +274,7 @@ pub struct ExtBuilder {
     pub initial_permission_owners: Vec<(u32, Scope, Vec<AccountId>)>,
     pub initial_permissions: Vec<(AccountId, Scope, Vec<u32>)>,
     pub source_types: Vec<LiquiditySourceType>,
+    pub endowed_accounts: Vec<(AccountId, AssetId, Balance, AssetSymbol, AssetName, u8)>,
 }
 
 impl Default for ExtBuilder {
@@ -352,6 +353,32 @@ impl Default for ExtBuilder {
                 LiquiditySourceType::MockPool2,
                 LiquiditySourceType::MockPool3,
                 LiquiditySourceType::MockPool4,
+            ],
+            endowed_accounts: vec![
+                (
+                    alice(),
+                    XOR,
+                    balance!(0),
+                    AssetSymbol(b"XOR".to_vec()),
+                    AssetName(b"SORA".to_vec()),
+                    18,
+                ),
+                (
+                    alice(),
+                    VAL,
+                    balance!(0),
+                    AssetSymbol(b"VAL".to_vec()),
+                    AssetName(b"SORA Validator Token".to_vec()),
+                    18,
+                ),
+                (
+                    alice(),
+                    PSWAP,
+                    balance!(0),
+                    AssetSymbol(b"PSWAP".to_vec()),
+                    AssetName(b"Polkaswap Token".to_vec()),
+                    18,
+                ),
             ],
         }
     }
@@ -636,6 +663,27 @@ impl ExtBuilder {
             },
             &mut t,
         )
+        .unwrap();
+
+        assets::GenesisConfig::<Runtime> {
+            endowed_assets: self
+                .endowed_accounts
+                .iter()
+                .cloned()
+                .map(|(account_id, asset_id, _, symbol, name, precision)| {
+                    (
+                        asset_id,
+                        account_id,
+                        symbol,
+                        name,
+                        precision,
+                        balance!(0),
+                        true,
+                    )
+                })
+                .collect(),
+        }
+        .assimilate_storage(&mut t)
         .unwrap();
 
         t.into()
