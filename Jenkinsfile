@@ -46,7 +46,7 @@ pipeline {
                                 flag = env.TAG_NAME ? "stage" : featureTags[env.GIT_BRANCH]
                                 sh "cargo build --release --features \"private-net include-real-files reduced-pswap-reward-periods\""
                                 sh "cargo test --release"
-                                sh "cp /opt/rust-target/release/framenode ${env.WORKSPACE}/housekeeping/framenode"
+                                sh "cp target/release/framenode ${env.WORKSPACE}/housekeeping/framenode"
                             } else {
                                 sh "cargo fmt -- --check > /dev/null"
                                 sh "cargo check"
