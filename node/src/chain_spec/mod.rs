@@ -1129,11 +1129,10 @@ pub fn main_net_coded() -> ChainSpec {
     properties.insert("tokenDecimals".into(), 18.into());
     let name = "SORA";
     let id = "sora-substrate-main-net";
-    // SORA main-net node address. We should have 22 node. As much as possible from Community and other from Soramitsu.
-    // Currently filled with staging values
+    // SORA main-net node address. We should have 2 nodes. 
     let boot_nodes =  vec![
-              MultiaddrWithPeerId::from_str("/dns/s1.stg1.sora2.soramitsu.co.jp/tcp/30333/p2p/12D3KooWQf9AXopgwHsfKCweXtuePnWKieythwNa7AFwNfyemcjX").unwrap(),
-              MultiaddrWithPeerId::from_str("/dns/s1.stg1.sora2.soramitsu.co.jp/tcp/30334/p2p/12D3KooWGXhnvgvUwbU831p19sy2gEdPbusN1B8P8ShuKi4JfLDH").unwrap()
+              MultiaddrWithPeerId::from_str("/dns/v1.sora2.soramitsu.co.jp/tcp/30333/p2p/12D3KooWDQmg87ET849KaCjNn8ZL59pQ9giXiZDmmAvNZNNgAmLp").unwrap(), //Prod value
+              MultiaddrWithPeerId::from_str("/dns/v2.sora2.soramitsu.co.jp/tcp/30334/p2p/12D3KooWHDMg3N6nZB2o8FD41vEDP8vrTfRnZrbZSf2CiH87EELW").unwrap()  //Prod value
             ];
     ChainSpec::from_genesis(
         name,
@@ -1141,42 +1140,37 @@ pub fn main_net_coded() -> ChainSpec {
         ChainType::Live,
         move || {
             let eth_bridge_params = EthBridgeParams {
-                xor_master_contract_address: hex!("c08edf13be9b9cc584c5da8004ce7e6be63c1316")
+                xor_master_contract_address: hex!("c08edf13be9b9cc584c5da8004ce7e6be63c1316")  //Prod value
                     .into(),
-                xor_contract_address: hex!("40fd72257597aa14c7231a7b1aaa29fce868f677").into(),
-                val_master_contract_address: hex!("d1eeb2f30016fffd746233ee12c486e7ca8efef1")
+                xor_contract_address: hex!("40fd72257597aa14c7231a7b1aaa29fce868f677").into(), //Prod value
+                val_master_contract_address: hex!("d1eeb2f30016fffd746233ee12c486e7ca8efef1")  //Prod value
                     .into(),
-                val_contract_address: hex!("e88f8313e61a97cec1871ee37fbbe2a8bf3ed1e4").into(),
+                val_contract_address: hex!("e88f8313e61a97cec1871ee37fbbe2a8bf3ed1e4").into(), //Prod value
                 // Bridge contract address taken from test-net
                 bridge_contract_address: hex!("64fb0ca483b356832cd97958e6b23df783fb7ced").into(),
             };
 
-            // SORA main-net node address. We should have 22 node. As much as possible from Community and other from Soramitsu.
+            // SORA main-net node address. We should have 2 nodes.
             // Currently filled with staging example values
             mainnet_genesis(
                 vec![
                     authority_keys_from_public_keys(
-                        hex!("dce47ff231d43281e03dd21e5890db128176d9ee20e65da331d8ae0b64863779"),
-                        hex!("5683cf2ddb87bfed4f4f10ceefd44a61c0eda4fe7c63bd046cb5b3673c41c66b"),
-                        hex!("5683cf2ddb87bfed4f4f10ceefd44a61c0eda4fe7c63bd046cb5b3673c41c66b"),
-                        hex!("51d7f9c7f9da7a72a78f50470e56e39b7923339988506060d94f6c2e9c516be8"),
+                        hex!("207ed7bbf6fa0685dca5f24d6773a58ab9c710512d1087db5e47e0fe0f357239"), //Prod value
+                        hex!("14d500b666dbacc20535f8d2d4f039a8ace624c58e880d573980553774d7ff1a"), //Prod value
+                        hex!("14d500b666dbacc20535f8d2d4f039a8ace624c58e880d573980553774d7ff1a"), //Prod value
+                        hex!("71e6acfa06696ae5d962a36b88ddf4b0c7d5751a7107a2db1e6947ee2442f573"), //Prod value
                     ),
                     authority_keys_from_public_keys(
-                        hex!("2a57402736d2b5ada9ee900e506a84436556470de7abd382031e1d90b182bd48"),
-                        hex!("9a014ecc9f8d87b0315a21d2e3be84409c2fbbd9b5236910660aaa6d5e1ac05e"),
-                        hex!("9a014ecc9f8d87b0315a21d2e3be84409c2fbbd9b5236910660aaa6d5e1ac05e"),
-                        hex!("f0c30bbb51dd66d2111e534cd47ac553a3a342d60c4d4f44b5566c9ad26e3346"),
+                        hex!("94ee828c3455a327dde32f577e27f0b8a4c42b3fb626ee27f0004f7cf02bd332"), //Prod value
+                        hex!("38364b218e599f78f2b52f34748908addce908881b2c76296c50b2494261c004"), //Prod value
+                        hex!("38364b218e599f78f2b52f34748908addce908881b2c76296c50b2494261c004"), //Prod value
+                        hex!("d603aea460c53393cfd2e2eb2820bb138738288502488fd6431fa93f7b59642d"), //Prod value
                     ),
                 ],
                 vec![
-                    hex!("dce47ff231d43281e03dd21e5890db128176d9ee20e65da331d8ae0b64863779").into(),
-                    hex!("5683cf2ddb87bfed4f4f10ceefd44a61c0eda4fe7c63bd046cb5b3673c41c66b").into(),
-                    hex!("2a57402736d2b5ada9ee900e506a84436556470de7abd382031e1d90b182bd48").into(),
-                    hex!("9a014ecc9f8d87b0315a21d2e3be84409c2fbbd9b5236910660aaa6d5e1ac05e").into(),
-                ],
-                vec![
-                    hex!("9cbca76054814f05364abf691f9166b1be176d9b399d94dc2d88b6c4bc2b0589").into(),
-                    hex!("3b2e166bca8913d9b88d7a8acdfc54c3fe92c15e347deda6a13c191c6e0cc19c").into(),
+                    hex!("a3bcbf3044069ac13c30d662a204d8368c266e2f0e8cf603c7bfb2b7b5daae55").into(), //Prod value
+                          
+                    hex!("297c03e65c2930daa7c6067a2bb853819b61ed49b70de2f3219a2eb6ec0364aa").into(), //Prod value
                 ],
                 eth_bridge_params,
             )
@@ -1192,7 +1186,6 @@ pub fn main_net_coded() -> ChainSpec {
 #[cfg(not(feature = "private-net"))]
 fn mainnet_genesis(
     initial_authorities: Vec<(AccountId, AccountId, AuraId, BabeId, GrandpaId, ImOnlineId)>,
-    _endowed_accounts: Vec<AccountId>,
     initial_bridge_peers: Vec<AccountId>,
     eth_bridge_params: EthBridgeParams,
 ) -> GenesisConfig {
