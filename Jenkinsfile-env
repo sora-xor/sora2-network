@@ -20,17 +20,28 @@ pipeline {
     }
 
     stages {
-        stage('Secret scanner'){
+        stage('Secret scanner') {
             steps {
                 script {
                     gitNotify("env-CI", "PENDING", "This commit is being built")
                     docker.withRegistry( "https://" + registry, dockerBuildToolsUserId) {
-                        secretScanner(disableSecretScanner, secretScannerExclusion) 
+                        secretScanner(disableSecretScanner, secretScannerExclusion)
                     }
                 }
             }
         }
         stage('Build image') {
+            // Build image for PRs to master to check if everything is okay.
+            // Build image for commits on master to prepare to push.
+            // Build image on branches that has changing something related to image
+            when { anyOf {
+                expression { env.CHANGE_TARGET ==~ /master/ }
+                expression { env.GIT_BRANCH ==~ /master/ }
+                expression {
+                    status = sh(script: "set +e; git diff origin/${env.CHANGE_TARGET}..origin/${env.GIT_BRANCH} --name-only | grep housekeeping", returnStatus: true, returnStdout: true)
+                    status == 0
+                }
+            } }
             steps{
                 script {
                     sh "docker build -f housekeeping/docker/develop/Dockerfile -t ${baseImageName} ."
@@ -52,13 +63,13 @@ pipeline {
     }
     post {
         success {
-            script { gitNotify("env-CI", "SUCCESS", "Success")}
+            script { gitNotify("env-CI", "SUCCESS", "Success") }
         }
         failure {
-            script { gitNotify("env-CI", "FAILURE", "Failure")}
+            script { gitNotify("env-CI", "FAILURE", "Failure") }
         }
         aborted {
-            script { gitNotify("env-CI", "FAILURE", "Aborted")}
+            script { gitNotify("env-CI", "FAILURE", "Aborted") }
         }
         cleanup { cleanWs() }
     }

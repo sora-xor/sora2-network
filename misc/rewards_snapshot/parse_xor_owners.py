@@ -29,7 +29,7 @@
 # USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 def parse_token_holders():
-    with open('export-tokenholders-for-contract-0x40FD72257597aA14C7231A7B1aaa29Fce868F677(3).csv') as f:
+    with open('xor_tokenholders.csv') as f:
         lines = f.readlines()
     data = {}
     for line in lines[1:]:
@@ -41,12 +41,14 @@ def parse_token_holders():
 
 
 def exclude_transfers_since_snapshot(data):
-    with open('export-token-0x40FD72257597aA14C7231A7B1aaa29Fce868F677(1).csv') as f:
+    with open('xor_transfers.csv') as f:
         lines = f.readlines()
     for line in lines[::-1]:
+        if 'Txhash' in line:
+            continue
         parts = line.split(',')
         block = int(parts[1].strip('"'))
-        if block <= 12186814:
+        if block <= 12225000:
             continue
         source = parts[4].strip('"').replace('000000000000000000000000', '')
         target = parts[5].strip('"').replace('000000000000000000000000', '')
@@ -80,7 +82,7 @@ def remove_zeros(data):
 
 
 def write_to_file(data):
-    with open('rewards_val_owners.in', 'w') as f:
+    with open('../../node/src/chain_spec/bytes/rewards_val_owners.in', 'w') as f:
         print('vec_push![', file=f)
         for addr, balance in data.items():
             addr = addr.replace('0x', '')
