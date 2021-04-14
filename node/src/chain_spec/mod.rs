@@ -1195,8 +1195,8 @@ fn mainnet_genesis(
     let initial_eth_bridge_xor_amount = balance!(350000);
     // VAL amount which already exists on SORA_1 and Ethereum. Partially can be migrated directly from SORA_1. Not yet decided finally.
     let initial_eth_bridge_val_amount = balance!(33900000);
-    // Initial token bonding curve PSWAP rewards
-    let initial_pswap_tbc_rewards = balance!(25000000);
+    // Initial token bonding curve PSWAP rewards according to 10 bln PSWAP total supply.
+    let initial_pswap_tbc_rewards = balance!(2500000000);
 
     // Initial accounts
     let xor_fee_tech_account_id = TechAccountId::Generic(
