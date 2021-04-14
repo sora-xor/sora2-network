@@ -11,7 +11,7 @@ use core::convert::TryInto;
 
 use frame_support::traits::GenesisBuild;
 use frame_support::weights::Weight;
-use frame_support::{construct_runtime, parameter_types};
+use frame_support::{construct_runtime, fail, parameter_types};
 use frame_system;
 use traits::MultiCurrency;
 
@@ -244,6 +244,15 @@ pub struct ExtBuilder {
     pub initial_permission_owners: Vec<(u32, Scope, Vec<AccountId>)>,
     pub initial_permissions: Vec<(AccountId, Scope, Vec<u32>)>,
     pub source_types: Vec<LiquiditySourceType>,
+}
+
+impl ExtBuilder {
+    pub fn with_enabled_sources(sources: Vec<LiquiditySourceType>) -> Self {
+        Self {
+            source_types: sources,
+            ..Default::default()
+        }
+    }
 }
 
 impl Default for ExtBuilder {
@@ -488,11 +497,20 @@ impl LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> for Mock
     fn check_rewards(
         _dex_id: &DEXId,
         _input_asset_id: &AssetId,
-        _output_asset_id: &AssetId,
+        output_asset_id: &AssetId,
         _input_amount: Balance,
-        _output_amount: Balance,
+        output_amount: Balance,
     ) -> Result<Vec<(Balance, AssetId, RewardReason)>, DispatchError> {
-        Ok(Vec::new())
+        // for mock just return like in input
+        if output_asset_id == &GetBaseAssetId::get() {
+            Ok(vec![(
+                output_amount,
+                output_asset_id.clone(),
+                RewardReason::BuyOnBondingCurve,
+            )])
+        } else {
+            fail!(crate::Error::<Runtime>::UnavailableExchangePath);
+        }
     }
 }
 

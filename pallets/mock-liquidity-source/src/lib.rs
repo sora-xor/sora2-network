@@ -201,6 +201,10 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
         }
         Ok(())
     }
+
+    pub fn add_reward(entry: (Balance, T::AssetId, RewardReason)) {
+        Rewards::<T, I>::mutate(|vec| vec.push(entry));
+    }
 }
 
 impl<T: Config<I>, I: 'static>
@@ -354,7 +358,9 @@ impl<T: Config<I>, I: 'static>
         _input_amount: Balance,
         _output_amount: Balance,
     ) -> Result<Vec<(Balance, T::AssetId, RewardReason)>, DispatchError> {
-        Ok(Vec::new())
+        #[cfg(feature = "std")]
+        println!("REWARDS {:?}", Rewards::<T, I>::get());
+        Ok(Rewards::<T, I>::get())
     }
 }
 
@@ -462,6 +468,10 @@ pub mod pallet {
     #[pallet::getter(fn reserves_account_id)]
     pub type ReservesAcc<T: Config<I>, I: 'static = ()> =
         StorageValue<_, T::TechAccountId, ValueQuery>;
+
+    #[pallet::storage]
+    pub type Rewards<T: Config<I>, I: 'static = ()> =
+        StorageValue<_, Vec<(Balance, T::AssetId, RewardReason)>, ValueQuery>;
 
     #[pallet::genesis_config]
     pub struct GenesisConfig<T: Config<I>, I: 'static = ()> {

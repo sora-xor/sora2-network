@@ -4,7 +4,7 @@ use common::prelude::fixnum::ops::CheckedSub;
 use common::prelude::{Balance, SwapAmount};
 use common::{
     balance, fixed, FilterMode, Fixed, LiquiditySourceFilter, LiquiditySourceId,
-    LiquiditySourceType, DOT, KSM, VAL,
+    LiquiditySourceType, RewardReason, DOT, KSM, PSWAP, VAL, XOR,
 };
 use core::convert::TryInto;
 use frame_support::assert_noop;
@@ -77,7 +77,7 @@ fn test_quote_exact_input_target_should_pass() {
     let mut ext = ExtBuilder::default().build();
     let amount = balance!(500);
     ext.execute_with(|| {
-        let (quotes, _rewards) = LiquidityProxy::quote_single(
+        let (quotes, rewards) = LiquidityProxy::quote_single(
             &DOT,
             &GetBaseAssetId::get(),
             SwapAmount::with_desired_input(amount, 0),
@@ -97,6 +97,7 @@ fn test_quote_exact_input_target_should_pass() {
         let mut dist = quotes.distribution;
         dist.sort_by(|a, b| a.0.cmp(&b.0));
 
+        assert_eq!(rewards, Vec::new());
         assert_eq!(quotes.amount, balance!(363.569067258883248761));
         assert_eq!(quotes.fee, balance!(0.551491116751269035));
         assert_eq!(ls_quote.amount, quotes.amount);
@@ -130,7 +131,7 @@ fn test_quote_exact_output_target_should_pass() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
         let amount: Balance = balance!(250);
-        let (quotes, _rewards) = LiquidityProxy::quote_single(
+        let (quotes, rewards) = LiquidityProxy::quote_single(
             &GetBaseAssetId::get(),
             &DOT,
             SwapAmount::with_desired_output(amount, balance!(10000)),
@@ -152,6 +153,7 @@ fn test_quote_exact_output_target_should_pass() {
 
         let tolerance = fixed!(0.0000000001);
         let approx_expected_base_amount = fixed!(205.339009250744456360);
+        assert_eq!(rewards, Vec::new());
         assert!(
             (Fixed::from_bits(quotes.amount.try_into().unwrap())
                 .csub(approx_expected_base_amount)
@@ -194,7 +196,7 @@ fn test_quote_exact_output_base_should_pass() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
         let amount = balance!(250);
-        let (quotes, _rewards) = LiquidityProxy::quote_single(
+        let (quotes, rewards) = LiquidityProxy::quote_single(
             &DOT,
             &GetBaseAssetId::get(),
             SwapAmount::with_desired_output(amount, balance!(10000)),
@@ -1005,7 +1007,7 @@ fn test_quote_fast_split_exact_output_base_should_pass() {
         );
 
         // Buying XOR for VAL
-        let (quotes, _rewards) = LiquidityProxy::quote_single(
+        let (quotes, rewards) = LiquidityProxy::quote_single(
             &VAL,
             &GetBaseAssetId::get(),
             SwapAmount::with_desired_output(balance!(100), Balance::MAX),
@@ -1017,6 +1019,14 @@ fn test_quote_fast_split_exact_output_base_should_pass() {
         let mut dist = quotes.distribution;
         dist.sort_by(|a, b| a.0.cmp(&b.0));
 
+        assert_eq!(
+            rewards,
+            vec![(
+                balance!(23.258770902877438500),
+                XOR.into(),
+                RewardReason::BuyOnBondingCurve
+            )]
+        );
         assert_eq!(quotes.amount, balance!(22081.292525857240241897));
         assert_eq!(quotes.fee, balance!(0));
         assert_eq!(
@@ -1117,7 +1127,7 @@ fn test_quote_fast_split_exact_input_target_should_pass() {
         );
 
         // Buying XOR for VAL
-        let (quotes, _rewards) = LiquidityProxy::quote_single(
+        let (quotes, rewards) = LiquidityProxy::quote_single(
             &VAL,
             &GetBaseAssetId::get(),
             SwapAmount::with_desired_input(balance!(20000), 0),
@@ -1129,6 +1139,14 @@ fn test_quote_fast_split_exact_input_target_should_pass() {
         let mut dist = quotes.distribution;
         dist.sort_by(|a, b| a.0.cmp(&b.0));
 
+        assert_eq!(
+            rewards,
+            vec![(
+                balance!(14.388332979612792044),
+                XOR.into(),
+                RewardReason::BuyOnBondingCurve
+            )]
+        );
         assert_eq!(quotes.amount, balance!(91.129562076735353497));
         assert_eq!(quotes.fee, balance!(0));
         assert_eq!(
@@ -1233,7 +1251,7 @@ fn test_quote_fast_split_exact_ouput_target_undercollateralized_should_pass() {
         // collateral reserves in MCBC unless specifically guarded
         // - VAL reserves in MCBC: 5,000
         // - the default requested VAL (after split at the price equillibrium): ~13,755
-        let (quotes, _rewards) = LiquidityProxy::quote_single(
+        let (quotes, rewards) = LiquidityProxy::quote_single(
             &GetBaseAssetId::get(),
             &VAL,
             SwapAmount::with_desired_output(balance!(20000), balance!(1000)),
@@ -1245,6 +1263,7 @@ fn test_quote_fast_split_exact_ouput_target_undercollateralized_should_pass() {
         let mut dist = quotes.distribution;
         dist.sort_by(|a, b| a.0.cmp(&b.0));
 
+        assert_eq!(rewards, Vec::new());
         assert_eq!(quotes.amount, balance!(323.750240809708188590));
         assert_eq!(quotes.fee, balance!(0));
         assert_eq!(
@@ -1325,6 +1344,81 @@ fn test_quote_fast_split_exact_ouput_target_undercollateralized_should_pass() {
                     LiquiditySourceId::new(DEX_D_ID, LiquiditySourceType::MockPool),
                     fixed!(0.82),
                 ),
+            ]
+        );
+    });
+}
+
+#[test]
+fn test_quote_should_return_rewards_for_single_source() {
+    let mut ext = ExtBuilder::with_enabled_sources(vec![
+        LiquiditySourceType::MulticollateralBondingCurvePool,
+    ])
+    .build();
+    ext.execute_with(|| {
+        MockMCBCPool::init(get_mcbc_reserves_normal()).unwrap();
+        let filter = LiquiditySourceFilter::empty(DEX_D_ID);
+
+        let (_, rewards_forward) = LiquidityProxy::quote_single(
+            &VAL,
+            &GetBaseAssetId::get(),
+            SwapAmount::with_desired_output(balance!(100), balance!(1000)),
+            filter.clone(),
+            false,
+        )
+        .expect("Failed to get a quote");
+
+        let (_, rewards_backward) = LiquidityProxy::quote_single(
+            &GetBaseAssetId::get(),
+            &VAL,
+            SwapAmount::with_desired_output(balance!(100), balance!(1000)),
+            filter.clone(),
+            false,
+        )
+        .expect("Failed to get a quote");
+
+        // Mock tbc defined reward as output token amount.
+        assert_eq!(
+            rewards_forward,
+            vec![(balance!(100), XOR.into(), RewardReason::BuyOnBondingCurve)]
+        );
+        assert_eq!(rewards_backward, vec![]);
+    });
+}
+
+#[test]
+#[ignore] // FIXME: should be fixed with generic_split integration
+fn test_quote_should_return_rewards_for_multiple_sources() {
+    let mut ext = ExtBuilder::with_enabled_sources(vec![
+        LiquiditySourceType::MockPool,
+        LiquiditySourceType::MockPool2,
+        LiquiditySourceType::MockPool3,
+        LiquiditySourceType::MockPool4,
+    ])
+    .build();
+    ext.execute_with(|| {
+        MockLiquiditySource::add_reward((balance!(101), PSWAP.into(), RewardReason::Unspecified));
+        MockLiquiditySource2::add_reward((balance!(201), VAL.into(), RewardReason::Unspecified));
+        MockLiquiditySource2::add_reward((balance!(202), XOR.into(), RewardReason::Unspecified));
+        MockLiquiditySource3::add_reward((balance!(301), DOT.into(), RewardReason::Unspecified));
+
+        let amount: Balance = balance!(500);
+        let (_, rewards) = LiquidityProxy::quote(
+            &GetBaseAssetId::get(),
+            &DOT,
+            SwapAmount::with_desired_input(amount, 0),
+            mcbc_excluding_filter(DEX_C_ID),
+            false,
+        )
+        .expect("Failed to get a quote");
+
+        assert_eq!(
+            rewards,
+            vec![
+                (balance!(101), PSWAP.into(), RewardReason::Unspecified),
+                (balance!(201), VAL.into(), RewardReason::Unspecified),
+                (balance!(202), XOR.into(), RewardReason::Unspecified),
+                (balance!(301), DOT.into(), RewardReason::Unspecified)
             ]
         );
     });
