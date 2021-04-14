@@ -78,7 +78,7 @@ pub const TECH_ACCOUNT_RESERVES: &[u8] = b"reserves";
 pub const TECH_ACCOUNT_REWARDS: &[u8] = b"rewards";
 
 // Reuse distribution account structs from single-collateral bonding curve pallet.
-pub use bonding_curve_pool::{DistributionAccountData, DistributionAccounts};
+pub use bonding_curve_pool::{DistributionAccount, DistributionAccountData, DistributionAccounts};
 
 pub use pallet::*;
 
@@ -300,7 +300,9 @@ pub mod pallet {
     #[pallet::getter(fn distribution_accounts)]
     pub(super) type DistributionAccountsEntry<T: Config> = StorageValue<
         _,
-        DistributionAccounts<DistributionAccountData<T::TechAccountId>>,
+        DistributionAccounts<
+            DistributionAccountData<DistributionAccount<T::AccountId, T::TechAccountId>>,
+        >,
         ValueQuery,
     >;
 
@@ -361,7 +363,9 @@ pub mod pallet {
         /// Technical account used to store collateral tokens.
         pub reserves_account_id: T::TechAccountId,
         /// Accounts that receive 20% buy/sell margin according predefined proportions.
-        pub distribution_accounts: DistributionAccounts<DistributionAccountData<T::TechAccountId>>,
+        pub distribution_accounts: DistributionAccounts<
+            DistributionAccountData<DistributionAccount<T::AccountId, T::TechAccountId>>,
+        >,
         /// Asset that is used to compare collateral assets by value, e.g., DAI.
         pub reference_asset_id: T::AssetId,
         /// Account which stores actual PSWAP intended for rewards.
@@ -494,23 +498,37 @@ impl<T: Config> BuyMainAsset<T> {
             let fw_swapped_xor_amount = FixedWrapper::from(swapped_xor_amount);
 
             let distribution_accounts: DistributionAccounts<
-                DistributionAccountData<T::TechAccountId>,
+                DistributionAccountData<DistributionAccount<T::AccountId, T::TechAccountId>>,
             > = DistributionAccountsEntry::<T>::get();
-            for (to_tech_account_id, coefficient) in distribution_accounts
+            for (account, coefficient) in distribution_accounts
                 .xor_distribution_as_array()
                 .iter()
-                .map(|x| (&x.account_id, x.coefficient))
+                .map(|x| (&x.account, x.coefficient))
             {
                 let amount = fw_swapped_xor_amount.clone() * coefficient;
                 let amount = amount
                     .try_into_balance()
                     .map_err(|_| Error::<T>::PriceCalculationFailed)?;
-                technical::Module::<T>::transfer(
-                    &self.main_asset_id,
-                    reserves_tech_acc,
-                    to_tech_account_id,
-                    amount,
-                )?;
+                match account {
+                    DistributionAccount::Account(account) => {
+                        let reserves_acc =
+                            Technical::<T>::tech_account_id_to_account_id(reserves_tech_acc)?;
+                        Assets::<T>::transfer_from(
+                            &self.main_asset_id,
+                            &reserves_acc,
+                            account,
+                            amount,
+                        )?;
+                    }
+                    DistributionAccount::TechAccount(account) => {
+                        Technical::<T>::transfer(
+                            &self.main_asset_id,
+                            reserves_tech_acc,
+                            account,
+                            amount,
+                        )?;
+                    }
+                }
             }
             let amount =
                 fw_swapped_xor_amount.clone() * distribution_accounts.val_holders.coefficient;
@@ -1077,7 +1095,9 @@ impl<T: Config> Module<T> {
 
     /// Assign accounts list to be used for free reserves distribution in config.
     pub fn set_distribution_accounts(
-        distribution_accounts: DistributionAccounts<DistributionAccountData<T::TechAccountId>>,
+        distribution_accounts: DistributionAccounts<
+            DistributionAccountData<DistributionAccount<T::AccountId, T::TechAccountId>>,
+        >,
     ) {
         DistributionAccountsEntry::<T>::set(distribution_accounts);
     }

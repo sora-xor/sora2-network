@@ -41,13 +41,15 @@ use common::{
     USDT, VAL, XOR,
 };
 use frame_support::sp_runtime::Percent;
-use framenode_runtime::bonding_curve_pool::{DistributionAccountData, DistributionAccounts};
+use framenode_runtime::bonding_curve_pool::{
+    DistributionAccount, DistributionAccountData, DistributionAccounts,
+};
 use framenode_runtime::eth_bridge::{AssetConfig, NetworkConfig};
 use framenode_runtime::opaque::SessionKeys;
 use framenode_runtime::{
     eth_bridge, AccountId, AssetId, AssetName, AssetSymbol, AssetsConfig, BabeConfig,
     BalancesConfig, BridgeMultisigConfig, CouncilConfig, DEXAPIConfig, DEXManagerConfig,
-    DemocracyConfig, EthBridgeConfig, GetBaseAssetId, GetParliamentTechAccountId, GetPswapAssetId,
+    DemocracyConfig, EthBridgeConfig, GetBaseAssetId, GetParliamentAccountId, GetPswapAssetId,
     GetValAssetId, GetXorAssetId, GrandpaConfig, ImOnlineId, IrohaMigrationConfig,
     LiquiditySourceType, MulticollateralBondingCurvePoolConfig, PermissionsConfig,
     PswapDistributionConfig, RewardsConfig, Runtime, SessionConfig, StakerStatus, StakingConfig,
@@ -441,7 +443,7 @@ pub fn staging_net_coded(test: bool) -> ChainSpec {
 }
 
 fn bonding_curve_distribution_accounts(
-) -> DistributionAccounts<DistributionAccountData<<Runtime as technical::Config>::TechAccountId>> {
+) -> DistributionAccounts<DistributionAccountData<DistributionAccount<AccountId, TechAccountId>>> {
     use common::fixed_wrapper;
     use common::prelude::fixnum::ops::One;
     let val_holders_coefficient = fixed_wrapper!(0.5);
@@ -469,42 +471,42 @@ fn bonding_curve_distribution_accounts(
     );
 
     let xor_allocation = DistributionAccountData::new(
-        TechAccountId::Pure(
+        DistributionAccount::TechAccount(TechAccountId::Pure(
             DEXId::Polkaswap.into(),
             TechPurpose::Identifier(b"xor_allocation".to_vec()),
-        ),
+        )),
         val_holders_xor_alloc_coeff.get().unwrap(),
     );
     let sora_citizens = DistributionAccountData::new(
-        TechAccountId::Pure(
+        DistributionAccount::TechAccount(TechAccountId::Pure(
             DEXId::Polkaswap.into(),
             TechPurpose::Identifier(b"sora_citizens".to_vec()),
-        ),
+        )),
         projects_sora_citizens_coeff.get().unwrap(),
     );
     let stores_and_shops = DistributionAccountData::new(
-        TechAccountId::Pure(
+        DistributionAccount::TechAccount(TechAccountId::Pure(
             DEXId::Polkaswap.into(),
             TechPurpose::Identifier(b"stores_and_shops".to_vec()),
-        ),
+        )),
         projects_stores_and_shops_coeff.get().unwrap(),
     );
     let parliament_and_development = DistributionAccountData::new(
-        GetParliamentTechAccountId::get(),
+        DistributionAccount::Account(GetParliamentAccountId::get()),
         projects_parliament_and_development_coeff.get().unwrap(),
     );
     let projects = DistributionAccountData::new(
-        TechAccountId::Pure(
+        DistributionAccount::TechAccount(TechAccountId::Pure(
             DEXId::Polkaswap.into(),
             TechPurpose::Identifier(b"projects".to_vec()),
-        ),
+        )),
         projects_other_coeff.get().unwrap(),
     );
     let val_holders = DistributionAccountData::new(
-        TechAccountId::Pure(
+        DistributionAccount::TechAccount(TechAccountId::Pure(
             DEXId::Polkaswap.into(),
             TechPurpose::Identifier(b"val_holders".to_vec()),
-        ),
+        )),
         val_holders_buy_back_coefficient.get().unwrap(),
     );
     DistributionAccounts::<_> {
@@ -613,6 +615,9 @@ fn testnet_genesis(
     let initial_eth_bridge_val_amount = balance!(33900000);
     let initial_pswap_tbc_rewards = balance!(25000000);
 
+    let parliament_investment_fund = hex!("048cfcacbdebe828dffa1267d830d45135cd40238286f838f5a95432a1bbf851").into();
+    let parliament_investment_fund_balance = balance!(33000000);
+
     // Initial accounts
     let xor_fee_tech_account_id = TechAccountId::Generic(
         xor_fee::TECH_ACCOUNT_PREFIX.to_vec(),
@@ -720,15 +725,16 @@ fn testnet_genesis(
         ),
     ];
     let accounts = bonding_curve_distribution_accounts();
-    tech_accounts.push((
-        Technical::tech_account_id_to_account_id(&accounts.val_holders.account_id).unwrap(),
-        accounts.val_holders.account_id.clone(),
-    ));
-    for tech_account in &accounts.xor_distribution_accounts_as_array() {
-        tech_accounts.push((
-            Technical::tech_account_id_to_account_id(&tech_account).unwrap(),
-            (*tech_account).to_owned(),
-        ));
+    for account in &accounts.accounts() {
+        match account {
+            DistributionAccount::Account(_) => continue,
+            DistributionAccount::TechAccount(account) => {
+                tech_accounts.push((
+                    Technical::tech_account_id_to_account_id(account).unwrap(),
+                    account.to_owned(),
+                ));
+            }
+        }
     }
     let mut balances = vec![
         (eth_bridge_account_id.clone(), initial_eth_bridge_xor_amount),
@@ -814,6 +820,11 @@ fn testnet_genesis(
             mbc_pool_rewards_account_id.clone(),
             PSWAP,
             initial_pswap_tbc_rewards,
+        ),
+        (
+            parliament_investment_fund,
+            VAL,
+            parliament_investment_fund_balance,
         ),
     ];
     let faucet_config = {
@@ -1129,8 +1140,8 @@ pub fn main_net_coded() -> ChainSpec {
     properties.insert("tokenDecimals".into(), 18.into());
     let name = "SORA";
     let id = "sora-substrate-main-net";
-    // SORA main-net node address. We should have 2 nodes. 
-    let boot_nodes =  vec![
+    // SORA main-net node address. We should have 2 nodes.
+    let boot_nodes = vec![
               MultiaddrWithPeerId::from_str("/dns/v1.sora2.soramitsu.co.jp/tcp/30333/p2p/12D3KooWDQmg87ET849KaCjNn8ZL59pQ9giXiZDmmAvNZNNgAmLp").unwrap(), //Prod value
               MultiaddrWithPeerId::from_str("/dns/v2.sora2.soramitsu.co.jp/tcp/30334/p2p/12D3KooWHDMg3N6nZB2o8FD41vEDP8vrTfRnZrbZSf2CiH87EELW").unwrap()  //Prod value
             ];
@@ -1140,10 +1151,10 @@ pub fn main_net_coded() -> ChainSpec {
         ChainType::Live,
         move || {
             let eth_bridge_params = EthBridgeParams {
-                xor_master_contract_address: hex!("c08edf13be9b9cc584c5da8004ce7e6be63c1316")  //Prod value
+                xor_master_contract_address: hex!("c08edf13be9b9cc584c5da8004ce7e6be63c1316") //Prod value
                     .into(),
                 xor_contract_address: hex!("40fd72257597aa14c7231a7b1aaa29fce868f677").into(), //Prod value
-                val_master_contract_address: hex!("d1eeb2f30016fffd746233ee12c486e7ca8efef1")  //Prod value
+                val_master_contract_address: hex!("d1eeb2f30016fffd746233ee12c486e7ca8efef1") //Prod value
                     .into(),
                 val_contract_address: hex!("e88f8313e61a97cec1871ee37fbbe2a8bf3ed1e4").into(), //Prod value
                 // Bridge contract address taken from test-net
@@ -1169,7 +1180,6 @@ pub fn main_net_coded() -> ChainSpec {
                 ],
                 vec![
                     hex!("a3bcbf3044069ac13c30d662a204d8368c266e2f0e8cf603c7bfb2b7b5daae55").into(), //Prod value
-                          
                     hex!("297c03e65c2930daa7c6067a2bb853819b61ed49b70de2f3219a2eb6ec0364aa").into(), //Prod value
                 ],
                 eth_bridge_params,
@@ -1197,6 +1207,9 @@ fn mainnet_genesis(
     let initial_eth_bridge_val_amount = balance!(33900000);
     // Initial token bonding curve PSWAP rewards according to 10 bln PSWAP total supply.
     let initial_pswap_tbc_rewards = balance!(2500000000);
+
+    let parliament_investment_fund = hex!("048cfcacbdebe828dffa1267d830d45135cd40238286f838f5a95432a1bbf851").into();
+    let parliament_investment_fund_balance = balance!(33000000);
 
     // Initial accounts
     let xor_fee_tech_account_id = TechAccountId::Generic(
@@ -1309,15 +1322,16 @@ fn mainnet_genesis(
         ),
     ];
     let accounts = bonding_curve_distribution_accounts();
-    tech_accounts.push((
-        Technical::tech_account_id_to_account_id(&accounts.val_holders.account_id).unwrap(),
-        accounts.val_holders.account_id.clone(),
-    ));
-    for tech_account in &accounts.xor_distribution_accounts_as_array() {
-        tech_accounts.push((
-            Technical::tech_account_id_to_account_id(&tech_account).unwrap(),
-            (*tech_account).to_owned(),
-        ));
+    for account in &accounts.accounts() {
+        match account {
+            DistributionAccount::Account(_) => continue,
+            DistributionAccount::TechAccount(account) => {
+                tech_accounts.push((
+                    Technical::tech_account_id_to_account_id(account).unwrap(),
+                    account.to_owned(),
+                ));
+            }
+        }
     }
     let rewards_config = RewardsConfig {
         reserves_account_id: rewards_tech_account_id,
@@ -1536,6 +1550,11 @@ fn mainnet_genesis(
                     mbc_pool_rewards_account_id.clone(),
                     PSWAP,
                     initial_pswap_tbc_rewards,
+                ),
+                (
+                    parliament_investment_fund,
+                    VAL,
+                    parliament_investment_fund_balance,
                 ),
             ],
         }),

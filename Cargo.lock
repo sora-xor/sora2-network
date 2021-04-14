@@ -691,6 +691,7 @@ dependencies = [
  "dex-manager",
  "frame-support",
  "frame-system",
+ "hex-literal",
  "mock-liquidity-source",
  "orml-currencies",
  "orml-tokens",
