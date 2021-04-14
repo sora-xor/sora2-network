@@ -275,6 +275,10 @@ impl ExtBuilder {
                         balance!(333),
                     ),
                     (
+                        hex!("d170a274320333243b9f860e8891c6792de1ec19").into(),
+                        balance!(100),
+                    ),
+                    (
                         hex!("886021f300dc809269cfc758a2364a2baf63af0c").into(),
                         balance!(10000),
                     ),
