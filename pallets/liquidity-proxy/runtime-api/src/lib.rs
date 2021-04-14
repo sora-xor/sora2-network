@@ -63,7 +63,7 @@ pub struct RewardsInfo<Balance, AssetId> {
             with = "string_serialization"
         )
     )]
-    amount: Balance,
+    pub amount: Balance,
     #[cfg_attr(
         feature = "std",
         serde(
@@ -74,8 +74,8 @@ pub struct RewardsInfo<Balance, AssetId> {
             with = "string_serialization"
         )
     )]
-    currency: AssetId,
-    reason: RewardReason,
+    pub currency: AssetId,
+    pub reason: RewardReason,
 }
 
 sp_api::decl_runtime_apis! {

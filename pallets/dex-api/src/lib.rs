@@ -3,7 +3,7 @@
 use common::prelude::{Balance, SwapAmount, SwapOutcome, SwapVariant};
 use common::{
     LiquidityRegistry, LiquiditySource, LiquiditySourceFilter, LiquiditySourceId,
-    LiquiditySourceType,
+    LiquiditySourceType, RewardReason,
 };
 use frame_support::sp_runtime::DispatchError;
 use frame_support::weights::Weight;
@@ -116,6 +116,36 @@ impl<T: Config>
             MockPool2 => exchange!(MockLiquiditySource2),
             MockPool3 => exchange!(MockLiquiditySource3),
             MockPool4 => exchange!(MockLiquiditySource4),
+        }
+    }
+
+    fn check_rewards(
+        liquidity_source_id: &LiquiditySourceId<T::DEXId, LiquiditySourceType>,
+        input_asset_id: &T::AssetId,
+        output_asset_id: &T::AssetId,
+        input_amount: Balance,
+        output_amount: Balance,
+    ) -> Result<Vec<(Balance, T::AssetId, RewardReason)>, DispatchError> {
+        use LiquiditySourceType::*;
+        macro_rules! check_rewards {
+            ($source_type:ident) => {
+                T::$source_type::check_rewards(
+                    &liquidity_source_id.dex_id,
+                    input_asset_id,
+                    output_asset_id,
+                    input_amount,
+                    output_amount,
+                )
+            };
+        }
+        match liquidity_source_id.liquidity_source_index {
+            XYKPool => check_rewards!(XYKPool),
+            BondingCurvePool => check_rewards!(BondingCurvePool),
+            MulticollateralBondingCurvePool => check_rewards!(MulticollateralBondingCurvePool),
+            MockPool => check_rewards!(MockLiquiditySource),
+            MockPool2 => check_rewards!(MockLiquiditySource2),
+            MockPool3 => check_rewards!(MockLiquiditySource3),
+            MockPool4 => check_rewards!(MockLiquiditySource4),
         }
     }
 }

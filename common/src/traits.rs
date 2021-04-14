@@ -1,5 +1,5 @@
 use crate::prelude::{ManagementMode, SwapAmount, SwapOutcome};
-use crate::{Fixed, LiquiditySourceFilter, LiquiditySourceId};
+use crate::{Fixed, LiquiditySourceFilter, LiquiditySourceId, RewardReason};
 use frame_support::dispatch::DispatchResult;
 use frame_support::pallet_prelude::MaybeSerializeDeserialize;
 use frame_support::sp_runtime::traits::BadOrigin;
@@ -86,6 +86,15 @@ pub trait LiquiditySource<TargetId, AccountId, AssetId, Amount, Error> {
         output_asset_id: &AssetId,
         swap_amount: SwapAmount<Amount>,
     ) -> Result<SwapOutcome<Amount>, DispatchError>;
+
+    /// Get rewards that are given for perfoming given exchange.
+    fn check_rewards(
+        target_id: &TargetId,
+        input_asset_id: &AssetId,
+        output_asset_id: &AssetId,
+        input_amount: Amount,
+        output_amount: Amount,
+    ) -> Result<Vec<(Amount, AssetId, RewardReason)>, DispatchError>;
 }
 
 impl<DEXId, AccountId, AssetId> LiquiditySource<DEXId, AccountId, AssetId, Fixed, DispatchError>
@@ -118,6 +127,16 @@ impl<DEXId, AccountId, AssetId> LiquiditySource<DEXId, AccountId, AssetId, Fixed
     ) -> Result<SwapOutcome<Fixed>, DispatchError> {
         Err(DispatchError::CannotLookup)
     }
+
+    fn check_rewards(
+        _target_id: &DEXId,
+        _input_asset_id: &AssetId,
+        _output_asset_id: &AssetId,
+        _input_amount: Fixed,
+        _output_amount: Fixed,
+    ) -> Result<Vec<(Fixed, AssetId, RewardReason)>, DispatchError> {
+        Err(DispatchError::CannotLookup)
+    }
 }
 
 impl<DEXId, AccountId, AssetId> LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError>
@@ -148,6 +167,16 @@ impl<DEXId, AccountId, AssetId> LiquiditySource<DEXId, AccountId, AssetId, Balan
         _output_asset_id: &AssetId,
         _swap_amount: SwapAmount<Balance>,
     ) -> Result<SwapOutcome<Balance>, DispatchError> {
+        Err(DispatchError::CannotLookup)
+    }
+
+    fn check_rewards(
+        _target_id: &DEXId,
+        _input_asset_id: &AssetId,
+        _output_asset_id: &AssetId,
+        _input_amount: Balance,
+        _output_amount: Balance,
+    ) -> Result<Vec<(Balance, AssetId, RewardReason)>, DispatchError> {
         Err(DispatchError::CannotLookup)
     }
 }

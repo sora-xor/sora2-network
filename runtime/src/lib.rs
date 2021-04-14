@@ -1503,7 +1503,18 @@ impl_runtime_apis! {
                 &output_asset_id,
                 SwapAmount::with_variant(swap_variant, amount.into(), limit),
                 LiquiditySourceFilter::with_mode(dex_id, filter_mode, selected_source_types),
-            ).ok().map(|asa| liquidity_proxy_runtime_api::SwapOutcomeInfo::<Balance, AssetId> { amount: asa.amount, fee: asa.fee, ..Default::default()})
+                false,
+            ).ok().map(|(asa, rewards)| liquidity_proxy_runtime_api::SwapOutcomeInfo::<Balance, AssetId> {
+                amount: asa.amount,
+                fee: asa.fee,
+                rewards: rewards.into_iter()
+                                .map(|(amount, currency, reason)| liquidity_proxy_runtime_api::RewardsInfo::<Balance, AssetId> {
+                                    amount,
+                                    currency,
+                                    reason
+                                })
+                                .collect(),
+                ..Default::default()})
         }
 
         fn is_path_available(

@@ -7,7 +7,7 @@ mod mock;
 mod tests;
 
 use codec::{Decode, Encode};
-use common::prelude::{Balance, Fixed, FixedWrapper, SwapAmount, SwapOutcome};
+use common::prelude::{Balance, Fixed, FixedWrapper, RewardReason, SwapAmount, SwapOutcome};
 use common::{balance, fixed, DEXId, LiquiditySource, USDT, VAL};
 use core::convert::TryInto;
 use frame_support::traits::Get;
@@ -17,6 +17,7 @@ use permissions::{Scope, BURN, MINT, TRANSFER};
 use serde::{Deserialize, Serialize};
 use sp_arithmetic::traits::Zero;
 use sp_runtime::DispatchError;
+use sp_std::vec::Vec;
 
 type Assets<T> = assets::Module<T>;
 type Technical<T> = technical::Module<T>;
@@ -729,6 +730,17 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
             )?
             .swap()
         }
+    }
+
+    fn check_rewards(
+        _target_id: &T::DEXId,
+        _input_asset_id: &T::AssetId,
+        _output_asset_id: &T::AssetId,
+        _input_amount: Balance,
+        _output_amount: Balance,
+    ) -> Result<Vec<(Balance, T::AssetId, RewardReason)>, DispatchError> {
+        // This implementation has no rewards.
+        Ok(Vec::new())
     }
 }
 pub use pallet::*;

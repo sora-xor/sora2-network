@@ -6,11 +6,13 @@ use frame_support::weights::Weight;
 use frame_support::{ensure, Parameter};
 use frame_system::ensure_signed;
 use sp_std::collections::btree_set::BTreeSet;
+use sp_std::vec::Vec;
 
 use common::prelude::{Balance, EnsureDEXManager, SwapAmount, SwapOutcome};
 use common::{
     balance, hash, AssetName, AssetSymbol, EnsureTradingPairExists, FromGenericPair,
-    GetPoolReserves, LiquiditySource, LiquiditySourceType, ManagementMode, ToFeeAccount,
+    GetPoolReserves, LiquiditySource, LiquiditySourceType, ManagementMode, RewardReason,
+    ToFeeAccount,
 };
 use orml_traits::currency::MultiCurrency;
 use permissions::{Scope, BURN, MINT};
@@ -379,6 +381,17 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         technical::Module::<T>::perform_create_swap_unchecked(sender.clone(), &mut action)?;
 
         retval
+    }
+
+    fn check_rewards(
+        _target_id: &T::DEXId,
+        _input_asset_id: &T::AssetId,
+        _output_asset_id: &T::AssetId,
+        _input_amount: Balance,
+        _output_amount: Balance,
+    ) -> Result<Vec<(Balance, T::AssetId, RewardReason)>, DispatchError> {
+        // XYK Pool has no rewards currently
+        Ok(Vec::new())
     }
 }
 

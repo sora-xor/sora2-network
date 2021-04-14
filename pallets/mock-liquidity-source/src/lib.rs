@@ -2,13 +2,14 @@
 
 use common::fixnum::ops::One;
 use common::prelude::{FixedWrapper, SwapAmount, SwapOutcome};
-use common::{balance, fixed, Balance, Fixed, GetPoolReserves, LiquiditySource};
+use common::{balance, fixed, Balance, Fixed, GetPoolReserves, LiquiditySource, RewardReason};
 use core::convert::TryInto;
 use frame_support::dispatch::DispatchError;
 use frame_support::ensure;
 use frame_support::traits::Get;
 use frame_system::ensure_signed;
 use permissions::{Scope, BURN, MINT, TRANSFER};
+use sp_std::vec::Vec;
 
 #[cfg(test)]
 mod mock;
@@ -344,6 +345,16 @@ impl<T: Config<I>, I: 'static>
     ) -> Result<SwapOutcome<Balance>, DispatchError> {
         // actual exchange does not happen
         Self::quote(dex_id, input_asset_id, output_asset_id, desired_amount)
+    }
+
+    fn check_rewards(
+        _target_id: &T::DEXId,
+        _input_asset_id: &T::AssetId,
+        _output_asset_id: &T::AssetId,
+        _input_amount: Balance,
+        _output_amount: Balance,
+    ) -> Result<Vec<(Balance, T::AssetId, RewardReason)>, DispatchError> {
+        unimplemented!()
     }
 }
 
