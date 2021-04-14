@@ -49,6 +49,7 @@ impl From<PredefinedAssetId> for ComicAssetId {
             PredefinedAssetId::VAL => Flower,
             PredefinedAssetId::PSWAP => RedPepper,
             PredefinedAssetId::DAI => BlackPepper,
+            PredefinedAssetId::ETH => AcmeSpyKit,
         }
     }
 }

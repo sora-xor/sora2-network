@@ -2,8 +2,8 @@ use crate::{self as liquidity_proxy, Config};
 use common::mock::ExistentialDeposits;
 use common::{
     self, balance, fixed, fixed_from_basis_points, fixed_wrapper, hash, Amount, AssetId32, DEXInfo,
-    Fixed, FromGenericPair, GetMarketInfo, LiquiditySource, LiquiditySourceType, TechPurpose, DOT,
-    KSM, PSWAP, USDT, VAL, XOR,
+    Fixed, FromGenericPair, GetMarketInfo, LiquiditySource, LiquiditySourceType, RewardReason,
+    TechPurpose, DOT, KSM, PSWAP, USDT, VAL, XOR,
 };
 use currencies::BasicCurrencyAdapter;
 
@@ -28,7 +28,7 @@ pub type BlockNumber = u64;
 pub type DEXId = u32;
 type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
 type TechAssetId = common::TechAssetId<common::PredefinedAssetId>;
-type AssetId = AssetId32<common::PredefinedAssetId>;
+pub type AssetId = AssetId32<common::PredefinedAssetId>;
 type ReservesInit = Vec<(DEXId, AssetId, (Fixed, Fixed))>;
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
@@ -483,6 +483,16 @@ impl LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> for Mock
         _desired_amount: SwapAmount<Balance>,
     ) -> Result<SwapOutcome<Balance>, DispatchError> {
         unimplemented!()
+    }
+
+    fn check_rewards(
+        _dex_id: &DEXId,
+        _input_asset_id: &AssetId,
+        _output_asset_id: &AssetId,
+        _input_amount: Balance,
+        _output_amount: Balance,
+    ) -> Result<Vec<(Balance, AssetId, RewardReason)>, DispatchError> {
+        Ok(Vec::new())
     }
 }
 

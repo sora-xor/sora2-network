@@ -354,7 +354,7 @@ impl<T: Config<I>, I: 'static>
         _input_amount: Balance,
         _output_amount: Balance,
     ) -> Result<Vec<(Balance, T::AssetId, RewardReason)>, DispatchError> {
-        unimplemented!()
+        Ok(Vec::new())
     }
 }
 

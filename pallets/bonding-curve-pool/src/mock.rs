@@ -2,8 +2,8 @@ use crate::{self as bonding_curve_pool, Config};
 use common::mock::ExistentialDeposits;
 use common::prelude::{Balance, FixedWrapper, SwapAmount, SwapOutcome};
 use common::{
-    self, balance, Amount, AssetId32, AssetName, AssetSymbol, LiquiditySource, TechPurpose, USDT,
-    VAL, XOR,
+    self, balance, Amount, AssetId32, AssetName, AssetSymbol, LiquiditySource, RewardReason,
+    TechPurpose, USDT, VAL, XOR,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::GenesisBuild;
@@ -239,6 +239,16 @@ impl<DEXId> LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> f
             }
             _ => Err(DispatchError::Other("Bad swap amount.")),
         }
+    }
+
+    fn check_rewards(
+        _target_id: &DEXId,
+        _input_asset_id: &AssetId,
+        _output_asset_id: &AssetId,
+        _input_amount: Balance,
+        _outupt_amount: Balance,
+    ) -> Result<Vec<(Balance, AssetId, RewardReason)>, DispatchError> {
+        Ok(Vec::new())
     }
 }
 
