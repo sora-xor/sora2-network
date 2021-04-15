@@ -782,6 +782,26 @@ impl xor_fee::ApplyCustomFees<Call> for ExtrinsicsFlatFees {
     }
 }
 
+impl xor_fee::ExtractProxySwap for Call {
+    type DexId = DEXId;
+    type AssetId = AssetId;
+    type Amount = SwapAmount<u128>;
+    fn extract(&self) -> Option<(Self::DexId, Self::AssetId, Self::AssetId, Self::Amount)> {
+        if let Call::LiquidityProxy(liquidity_proxy::Call::swap(
+            dex,
+            asset_in,
+            asset_out,
+            amount,
+            ..,
+        )) = self
+        {
+            Some((*dex, *asset_in, *asset_out, *amount))
+        } else {
+            None
+        }
+    }
+}
+
 parameter_types! {
     pub const DEXIdValue: DEXId = 0;
 }
