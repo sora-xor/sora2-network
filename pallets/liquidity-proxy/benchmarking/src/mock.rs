@@ -1,3 +1,33 @@
+// This file is part of the SORA network and Polkaswap app.
+
+// Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
+// SPDX-License-Identifier: BSD-4-Clause
+
+// Redistribution and use in source and binary forms, with or without modification,
+// are permitted provided that the following conditions are met:
+
+// Redistributions of source code must retain the above copyright notice, this list
+// of conditions and the following disclaimer.
+// Redistributions in binary form must reproduce the above copyright notice, this
+// list of conditions and the following disclaimer in the documentation and/or other
+// materials provided with the distribution.
+//
+// All advertising materials mentioning features or use of this software must display
+// the following acknowledgement: This product includes software developed by Polka Biome
+// Ltd., SORA, and Polkaswap.
+//
+// Neither the name of the Polka Biome Ltd. nor the names of its contributors may be used
+// to endorse or promote products derived from this software without specific prior written permission.
+
+// THIS SOFTWARE IS PROVIDED BY Polka Biome Ltd. AS IS AND ANY EXPRESS OR IMPLIED WARRANTIES,
+// INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+// A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL Polka Biome Ltd. BE LIABLE FOR ANY
+// DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+// BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
+// OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
+// STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
+// USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
 #![cfg(test)]
 
 use crate::{Config, *};
@@ -11,7 +41,9 @@ use currencies::BasicCurrencyAdapter;
 
 use frame_support::traits::GenesisBuild;
 use frame_support::{construct_runtime, parameter_types};
-use multicollateral_bonding_curve_pool::{DistributionAccountData, DistributionAccounts};
+use multicollateral_bonding_curve_pool::{
+    DistributionAccount, DistributionAccountData, DistributionAccounts,
+};
 use permissions::{Scope, BURN, MANAGE_DEX, MINT, TRANSFER};
 use sp_core::H256;
 use sp_runtime::testing::Header;
@@ -234,8 +266,14 @@ impl pool_xyk::Config for Runtime {
     type WeightInfo = ();
 }
 
-fn bonding_curve_distribution_accounts(
-) -> DistributionAccounts<DistributionAccountData<<Runtime as technical::Config>::TechAccountId>> {
+fn bonding_curve_distribution_accounts() -> DistributionAccounts<
+    DistributionAccountData<
+        DistributionAccount<
+            <Runtime as frame_system::Config>::AccountId,
+            <Runtime as technical::Config>::TechAccountId,
+        >,
+    >,
+> {
     use common::fixed_wrapper;
     let val_holders_coefficient = fixed_wrapper!(0.5);
     let val_holders_xor_alloc_coeff = fixed_wrapper!(0.9) * val_holders_coefficient.clone();
@@ -249,30 +287,44 @@ fn bonding_curve_distribution_accounts(
     let projects_other_coeff = projects_coefficient.clone() * fixed_wrapper!(0.9);
 
     let xor_allocation = DistributionAccountData::new(
-        TechAccountId::Pure(0u32, TechPurpose::Identifier(b"xor_allocation".to_vec())),
+        DistributionAccount::TechAccount(TechAccountId::Pure(
+            0u32,
+            TechPurpose::Identifier(b"xor_allocation".to_vec()),
+        )),
         val_holders_xor_alloc_coeff.get().unwrap(),
     );
     let sora_citizens = DistributionAccountData::new(
-        TechAccountId::Pure(0u32, TechPurpose::Identifier(b"sora_citizens".to_vec())),
+        DistributionAccount::TechAccount(TechAccountId::Pure(
+            0u32,
+            TechPurpose::Identifier(b"sora_citizens".to_vec()),
+        )),
         projects_sora_citizens_coeff.get().unwrap(),
     );
     let stores_and_shops = DistributionAccountData::new(
-        TechAccountId::Pure(0u32, TechPurpose::Identifier(b"stores_and_shops".to_vec())),
+        DistributionAccount::TechAccount(TechAccountId::Pure(
+            0u32,
+            TechPurpose::Identifier(b"stores_and_shops".to_vec()),
+        )),
         projects_stores_and_shops_coeff.get().unwrap(),
     );
     let parliament_and_development = DistributionAccountData::new(
-        TechAccountId::Pure(
-            0u32,
-            TechPurpose::Identifier(b"parliament_and_development".to_vec()),
+        DistributionAccount::Account(
+            hex!("881b87c9f83664b95bd13e2bb40675bfa186287da93becc0b22683334d411e4e").into(),
         ),
         projects_parliament_and_development_coeff.get().unwrap(),
     );
     let projects = DistributionAccountData::new(
-        TechAccountId::Pure(0u32, TechPurpose::Identifier(b"projects".to_vec())),
+        DistributionAccount::TechAccount(TechAccountId::Pure(
+            0u32,
+            TechPurpose::Identifier(b"projects".to_vec()),
+        )),
         projects_other_coeff.get().unwrap(),
     );
     let val_holders = DistributionAccountData::new(
-        TechAccountId::Pure(0u32, TechPurpose::Identifier(b"val_holders".to_vec())),
+        DistributionAccount::TechAccount(TechAccountId::Pure(
+            0u32,
+            TechPurpose::Identifier(b"val_holders".to_vec()),
+        )),
         val_holders_buy_back_coefficient.get().unwrap(),
     );
     DistributionAccounts::<_> {
@@ -459,23 +511,29 @@ impl ExtBuilder {
 
         let accounts = bonding_curve_distribution_accounts();
         let mut tech_accounts = self.tech_accounts.clone();
-        tech_accounts.push((
-            Technical::tech_account_id_to_account_id(&accounts.val_holders.account_id).unwrap(),
-            accounts.val_holders.account_id.clone(),
-        ));
-        for tech_account in &accounts.xor_distribution_accounts_as_array() {
-            tech_accounts.push((
-                Technical::tech_account_id_to_account_id(&tech_account).unwrap(),
-                (*tech_account).to_owned(),
-            ));
+        for account in &accounts.accounts() {
+            match account {
+                DistributionAccount::Account(_) => continue,
+                DistributionAccount::TechAccount(account_id) => {
+                    tech_accounts.push((
+                        Technical::tech_account_id_to_account_id(&account_id).unwrap(),
+                        account_id.clone(),
+                    ));
+                }
+            }
         }
 
         pallet_balances::GenesisConfig::<Runtime> {
             balances: vec![
                 (alice(), 0),
                 (
-                    Technical::tech_account_id_to_account_id(&accounts.val_holders.account_id)
-                        .unwrap(),
+                    if let DistributionAccount::TechAccount(account_id) =
+                        &accounts.val_holders.account
+                    {
+                        Technical::tech_account_id_to_account_id(account_id).unwrap()
+                    } else {
+                        panic!("not a tech account")
+                    },
                     0,
                 ),
                 (GetMbcReservesAccountId::get(), 0),

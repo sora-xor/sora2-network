@@ -1,3 +1,33 @@
+// This file is part of the SORA network and Polkaswap app.
+
+// Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
+// SPDX-License-Identifier: BSD-4-Clause
+
+// Redistribution and use in source and binary forms, with or without modification,
+// are permitted provided that the following conditions are met:
+
+// Redistributions of source code must retain the above copyright notice, this list
+// of conditions and the following disclaimer.
+// Redistributions in binary form must reproduce the above copyright notice, this
+// list of conditions and the following disclaimer in the documentation and/or other
+// materials provided with the distribution.
+//
+// All advertising materials mentioning features or use of this software must display
+// the following acknowledgement: This product includes software developed by Polka Biome
+// Ltd., SORA, and Polkaswap.
+//
+// Neither the name of the Polka Biome Ltd. nor the names of its contributors may be used
+// to endorse or promote products derived from this software without specific prior written permission.
+
+// THIS SOFTWARE IS PROVIDED BY Polka Biome Ltd. AS IS AND ANY EXPRESS OR IMPLIED WARRANTIES,
+// INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+// A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL Polka Biome Ltd. BE LIABLE FOR ANY
+// DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+// BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
+// OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
+// STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
+// USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
 use crate::mock::*;
 use crate::{Error, LiquidityProxyTrait};
 use common::prelude::fixnum::ops::CheckedSub;
@@ -1233,7 +1263,7 @@ fn test_quote_fast_split_exact_input_target_should_pass() {
 }
 
 #[test]
-fn test_quote_fast_split_exact_ouput_target_undercollateralized_should_pass() {
+fn test_quote_fast_split_exact_output_target_undercollateralized_should_pass() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
         MockMCBCPool::init(get_mcbc_reserves_undercollateralized()).unwrap();
@@ -1421,5 +1451,185 @@ fn test_quote_should_return_rewards_for_multiple_sources() {
                 (balance!(301), DOT.into(), RewardReason::Unspecified)
             ]
         );
+    });
+}
+
+#[test]
+#[rustfmt::skip]
+fn test_list_enabled_sources_for_path_query_should_pass_1() {
+    let mut ext = ExtBuilder::default().build();
+    ext.execute_with(|| {
+        use LiquiditySourceType::*;
+        TradingPair::register(Origin::signed(alice()), 0, XOR, VAL).expect("failed to register pair");
+        TradingPair::register(Origin::signed(alice()), 0, XOR, PSWAP).expect("failed to register pair");
+        TradingPair::enable_source_for_trading_pair(&0, &XOR, &PSWAP, XYKPool).expect("failed to enable source");
+        let query_a = LiquidityProxy::list_enabled_sources_for_path(0, XOR, VAL);
+        let query_b = LiquidityProxy::list_enabled_sources_for_path(0, VAL, XOR);
+        let query_c = LiquidityProxy::list_enabled_sources_for_path(0, XOR, PSWAP);
+        let query_d = LiquidityProxy::list_enabled_sources_for_path(0, PSWAP, XOR);
+        let query_e = LiquidityProxy::list_enabled_sources_for_path(0, VAL, PSWAP);
+        let query_f = LiquidityProxy::list_enabled_sources_for_path(0, PSWAP, VAL);
+        assert_eq!(query_a.unwrap_err(), Error::<Runtime>::UnavailableExchangePath.into());
+        assert_eq!(query_b.unwrap_err(), Error::<Runtime>::UnavailableExchangePath.into());
+        assert_eq!(query_c.unwrap(), vec![XYKPool]);
+        assert_eq!(query_d.unwrap(), vec![XYKPool]);
+        assert_eq!(query_e.unwrap_err(), Error::<Runtime>::UnavailableExchangePath.into());
+        assert_eq!(query_f.unwrap_err(), Error::<Runtime>::UnavailableExchangePath.into());
+    });
+}
+
+#[test]
+#[rustfmt::skip]
+fn test_list_enabled_sources_for_path_query_should_pass_2() {
+    let mut ext = ExtBuilder::default().build();
+    ext.execute_with(|| {
+        use LiquiditySourceType::*;
+        TradingPair::register(Origin::signed(alice()), 0, XOR, VAL).expect("failed to register pair");
+        TradingPair::register(Origin::signed(alice()), 0, XOR, PSWAP).expect("failed to register pair");
+        TradingPair::enable_source_for_trading_pair(&0, &XOR, &VAL, MulticollateralBondingCurvePool).expect("failed to enable source");
+        TradingPair::enable_source_for_trading_pair(&0, &XOR, &PSWAP, XYKPool).expect("failed to enable source");
+        let query_a = LiquidityProxy::list_enabled_sources_for_path(0, XOR, VAL);
+        let query_b = LiquidityProxy::list_enabled_sources_for_path(0, VAL, XOR);
+        let query_c = LiquidityProxy::list_enabled_sources_for_path(0, XOR, PSWAP);
+        let query_d = LiquidityProxy::list_enabled_sources_for_path(0, PSWAP, XOR);
+        let query_e = LiquidityProxy::list_enabled_sources_for_path(0, VAL, PSWAP);
+        let query_f = LiquidityProxy::list_enabled_sources_for_path(0, PSWAP, VAL);
+        assert_eq!(query_a.unwrap(), vec![MulticollateralBondingCurvePool]);
+        assert_eq!(query_b.unwrap(), vec![MulticollateralBondingCurvePool]);
+        assert_eq!(query_c.unwrap(), vec![XYKPool]);
+        assert_eq!(query_d.unwrap(), vec![XYKPool]);
+        assert_eq!(query_e.unwrap(), vec![XYKPool, MulticollateralBondingCurvePool]);
+        assert_eq!(query_f.unwrap(), vec![XYKPool, MulticollateralBondingCurvePool]);
+    });
+}
+
+#[test]
+#[rustfmt::skip]
+fn test_list_enabled_sources_for_path_query_should_pass_3() {
+    let mut ext = ExtBuilder::default().build();
+    ext.execute_with(|| {
+        use LiquiditySourceType::*;
+        TradingPair::register(Origin::signed(alice()), 0, XOR, VAL).expect("failed to register pair");
+        TradingPair::register(Origin::signed(alice()), 0, XOR, PSWAP).expect("failed to register pair");
+        TradingPair::enable_source_for_trading_pair(&0, &XOR, &VAL, MulticollateralBondingCurvePool).expect("failed to enable source");
+        TradingPair::enable_source_for_trading_pair(&0, &XOR, &PSWAP, XYKPool).expect("failed to enable source");
+        TradingPair::enable_source_for_trading_pair(&0, &XOR, &PSWAP, MulticollateralBondingCurvePool).expect("failed to enable source");
+        let query_a = LiquidityProxy::list_enabled_sources_for_path(0, XOR, VAL);
+        let query_b = LiquidityProxy::list_enabled_sources_for_path(0, VAL, XOR);
+        let query_c = LiquidityProxy::list_enabled_sources_for_path(0, XOR, PSWAP);
+        let query_d = LiquidityProxy::list_enabled_sources_for_path(0, PSWAP, XOR);
+        let query_e = LiquidityProxy::list_enabled_sources_for_path(0, VAL, PSWAP);
+        let query_f = LiquidityProxy::list_enabled_sources_for_path(0, PSWAP, VAL);
+        assert_eq!(query_a.unwrap(), vec![MulticollateralBondingCurvePool]);
+        assert_eq!(query_b.unwrap(), vec![MulticollateralBondingCurvePool]);
+        assert_eq!(query_c.unwrap(), vec![XYKPool, MulticollateralBondingCurvePool]);
+        assert_eq!(query_d.unwrap(), vec![XYKPool, MulticollateralBondingCurvePool]);
+        assert_eq!(query_e.unwrap(), vec![XYKPool, MulticollateralBondingCurvePool]);
+        assert_eq!(query_f.unwrap(), vec![XYKPool, MulticollateralBondingCurvePool]);
+    });
+}
+
+#[test]
+#[rustfmt::skip]
+fn test_list_enabled_sources_for_path_query_should_pass_4() {
+    let mut ext = ExtBuilder::default().build();
+    ext.execute_with(|| {
+        use LiquiditySourceType::*;
+        TradingPair::register(Origin::signed(alice()), 0, XOR, VAL).expect("failed to register pair");
+        TradingPair::register(Origin::signed(alice()), 0, XOR, PSWAP).expect("failed to register pair");
+        TradingPair::enable_source_for_trading_pair(&0, &XOR, &VAL, XYKPool).expect("failed to enable source");
+        TradingPair::enable_source_for_trading_pair(&0, &XOR, &VAL, MulticollateralBondingCurvePool).expect("failed to enable source");
+        TradingPair::enable_source_for_trading_pair(&0, &XOR, &VAL, MockPool2).expect("failed to enable source");
+        TradingPair::enable_source_for_trading_pair(&0, &XOR, &PSWAP, XYKPool).expect("failed to enable source");
+        TradingPair::enable_source_for_trading_pair(&0, &XOR, &PSWAP, MulticollateralBondingCurvePool).expect("failed to enable source");
+        TradingPair::enable_source_for_trading_pair(&0, &XOR, &PSWAP, MockPool3).expect("failed to enable source");
+        let query_a = LiquidityProxy::list_enabled_sources_for_path(0, XOR, VAL);
+        let query_b = LiquidityProxy::list_enabled_sources_for_path(0, VAL, XOR);
+        let query_c = LiquidityProxy::list_enabled_sources_for_path(0, XOR, PSWAP);
+        let query_d = LiquidityProxy::list_enabled_sources_for_path(0, PSWAP, XOR);
+        let query_e = LiquidityProxy::list_enabled_sources_for_path(0, VAL, PSWAP);
+        let query_f = LiquidityProxy::list_enabled_sources_for_path(0, PSWAP, VAL);
+        assert_eq!(query_a.unwrap(), vec![XYKPool, MulticollateralBondingCurvePool, MockPool2]);
+        assert_eq!(query_b.unwrap(), vec![XYKPool, MulticollateralBondingCurvePool, MockPool2]);
+        assert_eq!(query_c.unwrap(), vec![XYKPool, MulticollateralBondingCurvePool, MockPool3]);
+        assert_eq!(query_d.unwrap(), vec![XYKPool, MulticollateralBondingCurvePool, MockPool3]);
+        assert_eq!(query_e.unwrap(), vec![XYKPool, MulticollateralBondingCurvePool, MockPool2, MockPool3]);
+        assert_eq!(query_f.unwrap(), vec![XYKPool, MulticollateralBondingCurvePool, MockPool2, MockPool3]);
+    });
+}
+
+#[test]
+#[rustfmt::skip]
+fn test_is_path_available_should_pass_1() {
+    let mut ext = ExtBuilder::default().build();
+    ext.execute_with(|| {
+        use LiquiditySourceType::*;
+        TradingPair::register(Origin::signed(alice()), 0, XOR, VAL).expect("failed to register pair");
+        TradingPair::register(Origin::signed(alice()), 0, XOR, PSWAP).expect("failed to register pair");
+        TradingPair::enable_source_for_trading_pair(&0, &XOR, &VAL, XYKPool).expect("failed to enable source");
+        TradingPair::enable_source_for_trading_pair(&0, &XOR, &PSWAP, MulticollateralBondingCurvePool).expect("failed to enable source");
+        assert_eq!(LiquidityProxy::is_path_available(0, XOR, VAL).unwrap(), true);
+        assert_eq!(LiquidityProxy::is_path_available(0, VAL, XOR).unwrap(), true);
+        assert_eq!(LiquidityProxy::is_path_available(0, XOR, PSWAP).unwrap(), true);
+        assert_eq!(LiquidityProxy::is_path_available(0, PSWAP, XOR).unwrap(), true);
+        assert_eq!(LiquidityProxy::is_path_available(0, VAL, PSWAP).unwrap(), true);
+        assert_eq!(LiquidityProxy::is_path_available(0, PSWAP, VAL).unwrap(), true);
+    });
+}
+
+#[test]
+#[rustfmt::skip]
+fn test_is_path_available_should_pass_2() {
+    let mut ext = ExtBuilder::default().build();
+    ext.execute_with(|| {
+        use LiquiditySourceType::*;
+        TradingPair::register(Origin::signed(alice()), 0, XOR, VAL).expect("failed to register pair");
+        TradingPair::register(Origin::signed(alice()), 0, XOR, PSWAP).expect("failed to register pair");
+        TradingPair::enable_source_for_trading_pair(&0, &XOR, &PSWAP, MulticollateralBondingCurvePool).expect("failed to enable source");
+        assert_eq!(LiquidityProxy::is_path_available(0, XOR, VAL).unwrap(), false);
+        assert_eq!(LiquidityProxy::is_path_available(0, VAL, XOR).unwrap(), false);
+        assert_eq!(LiquidityProxy::is_path_available(0, XOR, PSWAP).unwrap(), true);
+        assert_eq!(LiquidityProxy::is_path_available(0, PSWAP, XOR).unwrap(), true);
+        assert_eq!(LiquidityProxy::is_path_available(0, VAL, PSWAP).unwrap(), false);
+        assert_eq!(LiquidityProxy::is_path_available(0, PSWAP, VAL).unwrap(), false);
+    });
+}
+
+#[test]
+#[rustfmt::skip]
+fn test_is_path_available_should_pass_3() {
+    let mut ext = ExtBuilder::default().build();
+    ext.execute_with(|| {
+        use LiquiditySourceType::*;
+        TradingPair::register(Origin::signed(alice()), 0, XOR, VAL).expect("failed to register pair");
+        TradingPair::register(Origin::signed(alice()), 0, XOR, PSWAP).expect("failed to register pair");
+        TradingPair::enable_source_for_trading_pair(&0, &XOR, &VAL, XYKPool).expect("failed to enable source");
+        TradingPair::enable_source_for_trading_pair(&0, &XOR, &VAL, MulticollateralBondingCurvePool).expect("failed to enable source");
+        assert_eq!(LiquidityProxy::is_path_available(0, XOR, VAL).unwrap(), true);
+        assert_eq!(LiquidityProxy::is_path_available(0, VAL, XOR).unwrap(), true);
+        assert_eq!(LiquidityProxy::is_path_available(0, XOR, PSWAP).unwrap(), false);
+        assert_eq!(LiquidityProxy::is_path_available(0, PSWAP, XOR).unwrap(), false);
+        assert_eq!(LiquidityProxy::is_path_available(0, VAL, PSWAP).unwrap(), false);
+        assert_eq!(LiquidityProxy::is_path_available(0, PSWAP, VAL).unwrap(), false);
+    });
+}
+
+#[test]
+#[rustfmt::skip]
+fn test_is_path_available_should_pass_4() {
+    let mut ext = ExtBuilder::default().build();
+    ext.execute_with(|| {
+        use LiquiditySourceType::*;
+        TradingPair::register(Origin::signed(alice()), 0, XOR, VAL).expect("failed to register pair");
+        TradingPair::register(Origin::signed(alice()), 0, XOR, PSWAP).expect("failed to register pair");
+        TradingPair::enable_source_for_trading_pair(&0, &XOR, &VAL, XYKPool).expect("failed to enable source");
+        TradingPair::enable_source_for_trading_pair(&0, &XOR, &PSWAP, XYKPool).expect("failed to enable source");
+        TradingPair::enable_source_for_trading_pair(&0, &XOR, &PSWAP, MulticollateralBondingCurvePool).expect("failed to enable source");
+        assert_eq!(LiquidityProxy::is_path_available(0, XOR, VAL).unwrap(), true);
+        assert_eq!(LiquidityProxy::is_path_available(0, VAL, XOR).unwrap(), true);
+        assert_eq!(LiquidityProxy::is_path_available(0, XOR, PSWAP).unwrap(), true);
+        assert_eq!(LiquidityProxy::is_path_available(0, PSWAP, XOR).unwrap(), true);
+        assert_eq!(LiquidityProxy::is_path_available(0, VAL, PSWAP).unwrap(), true);
+        assert_eq!(LiquidityProxy::is_path_available(0, PSWAP, VAL).unwrap(), true);
     });
 }

@@ -1,3 +1,33 @@
+// This file is part of the SORA network and Polkaswap app.
+
+// Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
+// SPDX-License-Identifier: BSD-4-Clause
+
+// Redistribution and use in source and binary forms, with or without modification,
+// are permitted provided that the following conditions are met:
+
+// Redistributions of source code must retain the above copyright notice, this list
+// of conditions and the following disclaimer.
+// Redistributions in binary form must reproduce the above copyright notice, this
+// list of conditions and the following disclaimer in the documentation and/or other
+// materials provided with the distribution.
+//
+// All advertising materials mentioning features or use of this software must display
+// the following acknowledgement: This product includes software developed by Polka Biome
+// Ltd., SORA, and Polkaswap.
+//
+// Neither the name of the Polka Biome Ltd. nor the names of its contributors may be used
+// to endorse or promote products derived from this software without specific prior written permission.
+
+// THIS SOFTWARE IS PROVIDED BY Polka Biome Ltd. AS IS AND ANY EXPRESS OR IMPLIED WARRANTIES,
+// INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+// A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL Polka Biome Ltd. BE LIABLE FOR ANY
+// DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+// BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
+// OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
+// STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
+// USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
 use crate::contract::{functions, FUNCTIONS, RECEIVE_BY_ETHEREUM_ASSET_ADDRESS_ID};
 use crate::mock::*;
 use crate::requests::{
@@ -9,10 +39,10 @@ use crate::requests::{
 };
 use crate::types::{Bytes, Log, Transaction};
 use crate::{
-    majority, types, Address, AssetConfig, AssetKind, BridgeStatus, ContractEvent,
+    majority, types, Address, AssetConfig, AssetKind, BridgeStatus, ContractEvent, DepositEvent,
     IncomingMetaRequestKind, IncomingRequest, IncomingRequestKind, IncomingTransactionRequestKind,
-    LoadIncomingTransactionRequest, OffchainRequest, OutgoingRequest, OutgoingTransfer,
-    RequestStatus, SignatureParams,
+    LoadIncomingRequest, LoadIncomingTransactionRequest, OffchainRequest, OutgoingRequest,
+    OutgoingTransfer, RequestStatus, SignatureParams,
 };
 use codec::{Decode, Encode};
 use common::prelude::Balance;
@@ -53,15 +83,21 @@ fn parses_event() {
         let mut log = Log::default();
         log.topics = vec![types::H256(hex!("85c0fa492ded927d3acca961da52b0dda1debb06d8c27fe189315f06bb6e26c8"))];
         log.data = Bytes(hex!("111111111111111111111111111111111111111111111111111111111111111100000000000000000000000000000000000000000000000246ddf9797668000000000000000000000000000022222222222222222222222222222222222222220200040000000000000000000000000000000000000000000000000000000011").to_vec());
+        log.removed = Some(false);
+        let transfer_event = ContractEvent::Deposit(DepositEvent::new(
+            AccountId32::from(hex!("1111111111111111111111111111111111111111111111111111111111111111")),
+            balance!(42),
+            H160::from(&hex!("2222222222222222222222222222222222222222")),
+            H256(hex!("0200040000000000000000000000000000000000000000000000000000000011"))
+        ));
         assert_eq!(
-            EthBridge::parse_main_event(&[log], IncomingTransactionRequestKind::Transfer).unwrap(),
-            ContractEvent::Deposit(
-                AccountId32::from(hex!("1111111111111111111111111111111111111111111111111111111111111111")),
-                balance!(42),
-                H160::from(&hex!("2222222222222222222222222222222222222222")),
-                H256(hex!("0200040000000000000000000000000000000000000000000000000000000011"))
-            )
-        )
+            &EthBridge::parse_main_event(&[log.clone()], IncomingTransactionRequestKind::Transfer).unwrap(),
+            &transfer_event
+        );
+        assert_eq!(
+            &EthBridge::parse_main_event(&[log], IncomingTransactionRequestKind::TransferXOR).unwrap(),
+            &transfer_event
+        );
     });
 }
 
@@ -711,11 +747,14 @@ fn should_cancel_incoming_transfer() {
         Assets::unreserve(XOR.into(), &bridge_acc_id, 100u32.into()).unwrap();
         Assets::transfer_from(&XOR.into(), &bridge_acc_id, &bob, 100u32.into()).unwrap();
         let req_hash = crate::LoadToIncomingRequestHash::<Runtime>::get(net_id, tx_hash);
-        assert_ok!(EthBridge::finalize_incoming_request(
-            Origin::signed(bridge_acc_id.clone()),
-            req_hash,
-            net_id,
-        ));
+        assert_err!(
+            EthBridge::finalize_incoming_request(
+                Origin::signed(bridge_acc_id.clone()),
+                req_hash,
+                net_id,
+            ),
+            Error::FailedToUnreserve
+        );
         assert!(matches!(
             crate::RequestStatuses::<Runtime>::get(net_id, req_hash).unwrap(),
             RequestStatus::Failed(_)
@@ -2530,9 +2569,9 @@ fn should_cancel_outgoing_prepared_requests() {
                 .into(),
             ),
         ];
-        for (preparations, mut request) in requests {
+        for (preparations, request) in requests {
             frame_support::storage::with_transaction(|| {
-                for mut preparation_request in preparations {
+                for preparation_request in preparations {
                     preparation_request.validate().unwrap();
                     preparation_request.prepare().unwrap();
                 }
@@ -2744,7 +2783,12 @@ fn should_convert_amount_for_a_token_with_non_default_precision() {
         .unwrap();
         let sidechain_amount = 1 * 10_u128.pow(decimals as u32);
         let incoming_trasfer = IncomingRequest::try_from_contract_event(
-            ContractEvent::Deposit(alice.clone(), sidechain_amount, token_address, H256::zero()),
+            ContractEvent::Deposit(DepositEvent::new(
+                alice.clone(),
+                sidechain_amount,
+                token_address,
+                H256::zero(),
+            )),
             LoadIncomingTransactionRequest::new(
                 alice.clone(),
                 tx_hash,
@@ -2753,7 +2797,6 @@ fn should_convert_amount_for_a_token_with_non_default_precision() {
                 net_id,
             ),
             1,
-            tx_hash,
         )
         .unwrap();
         assert_incoming_request_done(&state, incoming_trasfer).unwrap();
@@ -2822,7 +2865,12 @@ fn should_fail_convert_amount_for_a_token_with_non_default_precision() {
         .unwrap();
         let sidechain_amount = 1_000_000_000_000_000_000_000 * 10_u128.pow(decimals as u32);
         let incoming_trasfer_result = IncomingRequest::try_from_contract_event(
-            ContractEvent::Deposit(alice.clone(), sidechain_amount, token_address, H256::zero()),
+            ContractEvent::Deposit(DepositEvent::new(
+                alice.clone(),
+                sidechain_amount,
+                token_address,
+                H256::zero(),
+            )),
             LoadIncomingTransactionRequest::new(
                 alice.clone(),
                 tx_hash,
@@ -2831,7 +2879,6 @@ fn should_fail_convert_amount_for_a_token_with_non_default_precision() {
                 net_id,
             ),
             1,
-            tx_hash,
         );
         assert_eq!(
             incoming_trasfer_result,
@@ -2907,6 +2954,88 @@ fn should_not_allow_registering_sidechain_token_with_big_precision() {
                 net_id,
             ),
             Error::UnsupportedAssetPrecision
+        );
+    });
+}
+
+#[test]
+fn should_import_incoming_request() {
+    let (mut ext, state) = ExtBuilder::default().build();
+
+    ext.execute_with(|| {
+        let net_id = ETH_NETWORK_ID;
+        let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
+        let load_incoming_transaction_request = LoadIncomingTransactionRequest::new(
+            alice.clone(),
+            H256([1; 32]),
+            Default::default(),
+            IncomingTransactionRequestKind::Transfer,
+            net_id,
+        );
+        let incoming_transfer_result = IncomingRequest::try_from_contract_event(
+            ContractEvent::Deposit(DepositEvent::new(
+                alice.clone(),
+                1,
+                crate::RegisteredSidechainToken::<Runtime>::get(net_id, AssetId32::from(XOR))
+                    .unwrap(),
+                H256::zero(),
+            )),
+            load_incoming_transaction_request.clone(),
+            1,
+        )
+        .map_err(|e| e.into());
+        assert!(incoming_transfer_result.is_ok());
+        let bridge_account_id = &state.networks[&net_id].config.bridge_account_id;
+        assert_ok!(EthBridge::import_incoming_request(
+            Origin::signed(bridge_account_id.clone()),
+            LoadIncomingRequest::Transaction(load_incoming_transaction_request),
+            incoming_transfer_result
+        ));
+    });
+}
+
+#[test]
+fn should_not_import_incoming_request_twice() {
+    let (mut ext, state) = ExtBuilder::default().build();
+
+    ext.execute_with(|| {
+        let net_id = ETH_NETWORK_ID;
+        let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
+        let hash = H256([1; 32]);
+        let load_incoming_transaction_request = LoadIncomingTransactionRequest::new(
+            alice.clone(),
+            hash,
+            Default::default(),
+            IncomingTransactionRequestKind::Transfer,
+            net_id,
+        );
+        let incoming_transfer_result = IncomingRequest::try_from_contract_event(
+            ContractEvent::Deposit(DepositEvent::new(
+                alice.clone(),
+                1,
+                crate::RegisteredSidechainToken::<Runtime>::get(net_id, AssetId32::from(XOR))
+                    .unwrap(),
+                H256::zero(),
+            )),
+            load_incoming_transaction_request.clone(),
+            1,
+        )
+        .map_err(|e| e.into());
+        assert!(incoming_transfer_result.is_ok());
+        let bridge_account_id = &state.networks[&net_id].config.bridge_account_id;
+        assert_ok!(EthBridge::import_incoming_request(
+            Origin::signed(bridge_account_id.clone()),
+            LoadIncomingRequest::Transaction(load_incoming_transaction_request),
+            incoming_transfer_result
+        ));
+        assert_noop!(
+            EthBridge::request_from_sidechain(
+                Origin::signed(alice),
+                hash,
+                IncomingRequestKind::Transaction(IncomingTransactionRequestKind::TransferXOR),
+                net_id
+            ),
+            Error::DuplicatedRequest
         );
     });
 }

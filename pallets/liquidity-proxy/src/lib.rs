@@ -1,3 +1,33 @@
+// This file is part of the SORA network and Polkaswap app.
+
+// Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
+// SPDX-License-Identifier: BSD-4-Clause
+
+// Redistribution and use in source and binary forms, with or without modification,
+// are permitted provided that the following conditions are met:
+
+// Redistributions of source code must retain the above copyright notice, this list
+// of conditions and the following disclaimer.
+// Redistributions in binary form must reproduce the above copyright notice, this
+// list of conditions and the following disclaimer in the documentation and/or other
+// materials provided with the distribution.
+//
+// All advertising materials mentioning features or use of this software must display
+// the following acknowledgement: This product includes software developed by Polka Biome
+// Ltd., SORA, and Polkaswap.
+//
+// Neither the name of the Polka Biome Ltd. nor the names of its contributors may be used
+// to endorse or promote products derived from this software without specific prior written permission.
+
+// THIS SOFTWARE IS PROVIDED BY Polka Biome Ltd. AS IS AND ANY EXPRESS OR IMPLIED WARRANTIES,
+// INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+// A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL Polka Biome Ltd. BE LIABLE FOR ANY
+// DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+// BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
+// OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
+// STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
+// USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
 #![cfg_attr(not(feature = "std"), no_std)]
 
 #[macro_use]
@@ -15,7 +45,7 @@ use common::{
 };
 use frame_support::traits::Get;
 use frame_support::weights::Weight;
-use frame_support::{ensure, RuntimeDebug};
+use frame_support::{ensure, fail, RuntimeDebug};
 use frame_system::ensure_signed;
 use sp_runtime::traits::{UniqueSaturatedFrom, Zero};
 use sp_runtime::DispatchError;
@@ -617,6 +647,54 @@ impl<T: Config> Pallet<T> {
             }
         };
         Ok(path_exists)
+    }
+
+    /// Given two arbitrary tokens return all sources that can be used in exchange if path exists.
+    pub fn list_enabled_sources_for_path(
+        dex_id: T::DEXId,
+        input_asset_id: T::AssetId,
+        output_asset_id: T::AssetId,
+    ) -> Result<Vec<LiquiditySourceType>, DispatchError> {
+        let path = Self::construct_trivial_path(input_asset_id, output_asset_id);
+        match path {
+            ExchangePath::Direct {
+                from_asset_id,
+                to_asset_id,
+            } => {
+                let pair = Self::weak_sort_pair(from_asset_id, to_asset_id);
+                let sources = trading_pair::Pallet::<T>::list_enabled_sources_for_trading_pair(
+                    &dex_id,
+                    &pair.base_asset_id,
+                    &pair.target_asset_id,
+                )?;
+                if sources.is_empty() {
+                    fail!(Error::<T>::UnavailableExchangePath);
+                } else {
+                    Ok(sources.into_iter().collect())
+                }
+            }
+            ExchangePath::Twofold {
+                from_asset_id,
+                intermediate_asset_id,
+                to_asset_id,
+            } => {
+                let first_swap = trading_pair::Pallet::<T>::list_enabled_sources_for_trading_pair(
+                    &dex_id,
+                    &intermediate_asset_id,
+                    &from_asset_id,
+                )?;
+                let second_swap = trading_pair::Pallet::<T>::list_enabled_sources_for_trading_pair(
+                    &dex_id,
+                    &intermediate_asset_id,
+                    &to_asset_id,
+                )?;
+                if !first_swap.is_empty() && !second_swap.is_empty() {
+                    Ok(first_swap.union(&second_swap).cloned().collect())
+                } else {
+                    fail!(Error::<T>::UnavailableExchangePath);
+                }
+            }
+        }
     }
 
     // Not full sort, just ensure that if there is XOR then it's first.

@@ -1,3 +1,33 @@
+// This file is part of the SORA network and Polkaswap app.
+
+// Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
+// SPDX-License-Identifier: BSD-4-Clause
+
+// Redistribution and use in source and binary forms, with or without modification,
+// are permitted provided that the following conditions are met:
+
+// Redistributions of source code must retain the above copyright notice, this list
+// of conditions and the following disclaimer.
+// Redistributions in binary form must reproduce the above copyright notice, this
+// list of conditions and the following disclaimer in the documentation and/or other
+// materials provided with the distribution.
+//
+// All advertising materials mentioning features or use of this software must display
+// the following acknowledgement: This product includes software developed by Polka Biome
+// Ltd., SORA, and Polkaswap.
+//
+// Neither the name of the Polka Biome Ltd. nor the names of its contributors may be used
+// to endorse or promote products derived from this software without specific prior written permission.
+
+// THIS SOFTWARE IS PROVIDED BY Polka Biome Ltd. AS IS AND ANY EXPRESS OR IMPLIED WARRANTIES,
+// INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+// A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL Polka Biome Ltd. BE LIABLE FOR ANY
+// DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+// BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
+// OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
+// STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
+// USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
 #![cfg_attr(not(feature = "std"), no_std)]
 
 #[cfg(test)]
@@ -27,24 +57,37 @@ pub const TECH_ACCOUNT_RESERVES: &[u8] = b"reserves";
 
 #[derive(Debug, Encode, Decode, Clone)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-pub struct DistributionAccountData<TechAccountId> {
-    pub account_id: TechAccountId,
+pub enum DistributionAccount<AccountId, TechAccountId> {
+    Account(AccountId),
+    TechAccount(TechAccountId),
+}
+
+impl<AccountId, TechAccountId: Default> Default for DistributionAccount<AccountId, TechAccountId> {
+    fn default() -> Self {
+        Self::TechAccount(TechAccountId::default())
+    }
+}
+
+#[derive(Debug, Encode, Decode, Clone)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+pub struct DistributionAccountData<DistributionAccount> {
+    pub account: DistributionAccount,
     pub coefficient: Fixed,
 }
 
-impl<TechAccountId: Default> Default for DistributionAccountData<TechAccountId> {
+impl<DistributionAccount: Default> Default for DistributionAccountData<DistributionAccount> {
     fn default() -> Self {
         Self {
-            account_id: Default::default(),
+            account: Default::default(),
             coefficient: Default::default(),
         }
     }
 }
 
-impl<TechAccountId> DistributionAccountData<TechAccountId> {
-    pub fn new(account_id: TechAccountId, coefficient: Fixed) -> Self {
+impl<DistributionAccount> DistributionAccountData<DistributionAccount> {
+    pub fn new(account: DistributionAccount, coefficient: Fixed) -> Self {
         DistributionAccountData {
-            account_id,
+            account,
             coefficient,
         }
     }
@@ -61,8 +104,12 @@ pub struct DistributionAccounts<DistributionAccountData> {
     pub val_holders: DistributionAccountData,
 }
 
-impl<TechAccountId> DistributionAccounts<DistributionAccountData<TechAccountId>> {
-    pub fn xor_distribution_as_array(&self) -> [&DistributionAccountData<TechAccountId>; 5] {
+impl<AccountId, TechAccountId>
+    DistributionAccounts<DistributionAccountData<DistributionAccount<AccountId, TechAccountId>>>
+{
+    pub fn xor_distribution_as_array(
+        &self,
+    ) -> [&DistributionAccountData<DistributionAccount<AccountId, TechAccountId>>; 5] {
         [
             &self.xor_allocation,
             &self.sora_citizens,
@@ -72,24 +119,26 @@ impl<TechAccountId> DistributionAccounts<DistributionAccountData<TechAccountId>>
         ]
     }
 
-    pub fn xor_distribution_accounts_as_array(&self) -> [&TechAccountId; 5] {
+    pub fn xor_distribution_accounts_as_array(
+        &self,
+    ) -> [&DistributionAccount<AccountId, TechAccountId>; 5] {
         [
-            &self.xor_allocation.account_id,
-            &self.sora_citizens.account_id,
-            &self.stores_and_shops.account_id,
-            &self.parliament_and_development.account_id,
-            &self.projects.account_id,
+            &self.xor_allocation.account,
+            &self.sora_citizens.account,
+            &self.stores_and_shops.account,
+            &self.parliament_and_development.account,
+            &self.projects.account,
         ]
     }
 
-    pub fn accounts(&self) -> [&TechAccountId; 6] {
+    pub fn accounts(&self) -> [&DistributionAccount<AccountId, TechAccountId>; 6] {
         [
-            &self.xor_allocation.account_id,
-            &self.sora_citizens.account_id,
-            &self.stores_and_shops.account_id,
-            &self.parliament_and_development.account_id,
-            &self.projects.account_id,
-            &self.val_holders.account_id,
+            &self.xor_allocation.account,
+            &self.sora_citizens.account,
+            &self.stores_and_shops.account,
+            &self.parliament_and_development.account,
+            &self.projects.account,
+            &self.val_holders.account,
         ]
     }
 }
@@ -228,24 +277,27 @@ impl<T: Config> BuyMainAsset<T> {
             Technical::<T>::mint(out_asset, reserves_tech_acc, swapped_xor_amount)?;
 
             let distribution_accounts: DistributionAccounts<
-                DistributionAccountData<T::TechAccountId>,
+                DistributionAccountData<DistributionAccount<T::AccountId, T::TechAccountId>>,
             > = DistributionAccountsEntry::<T>::get();
-            for (to_tech_account_id, coefficient) in distribution_accounts
+            for (account, coefficient) in distribution_accounts
                 .xor_distribution_as_array()
                 .iter()
-                .map(|x| (&x.account_id, x.coefficient))
+                .map(|x| (&x.account, x.coefficient))
             {
                 let amount = FixedWrapper::from(swapped_xor_amount) * coefficient;
                 let amount = amount
                     .try_into_balance()
                     .map_err(|_| Error::<T>::CalculatePriceFailed)?;
-
-                technical::Module::<T>::transfer(
-                    out_asset,
-                    reserves_tech_acc,
-                    to_tech_account_id,
-                    amount,
-                )?;
+                match account {
+                    DistributionAccount::Account(account) => {
+                        let reserves_acc =
+                            Technical::<T>::tech_account_id_to_account_id(reserves_tech_acc)?;
+                        Assets::<T>::transfer_from(out_asset, &reserves_acc, account, amount)?;
+                    }
+                    DistributionAccount::TechAccount(account) => {
+                        Technical::<T>::transfer(out_asset, reserves_tech_acc, account, amount)?;
+                    }
+                }
             }
 
             let desired_amount_in = FixedWrapper::from(swapped_xor_amount)
@@ -601,7 +653,9 @@ impl<T: Config> Module<T> {
     }
 
     pub fn set_distribution_accounts(
-        distribution_accounts: DistributionAccounts<DistributionAccountData<T::TechAccountId>>,
+        distribution_accounts: DistributionAccounts<
+            DistributionAccountData<DistributionAccount<T::AccountId, T::TechAccountId>>,
+        >,
     ) {
         DistributionAccountsEntry::<T>::set(distribution_accounts);
     }
@@ -843,14 +897,18 @@ pub mod pallet {
     #[pallet::getter(fn distribution_accounts)]
     pub(super) type DistributionAccountsEntry<T: Config> = StorageValue<
         _,
-        DistributionAccounts<DistributionAccountData<T::TechAccountId>>,
+        DistributionAccounts<
+            DistributionAccountData<DistributionAccount<T::AccountId, T::TechAccountId>>,
+        >,
         ValueQuery,
     >;
 
     #[pallet::genesis_config]
     pub struct GenesisConfig<T: Config> {
         pub reserves_account_id: T::TechAccountId,
-        pub distribution_accounts: DistributionAccounts<DistributionAccountData<T::TechAccountId>>,
+        pub distribution_accounts: DistributionAccounts<
+            DistributionAccountData<DistributionAccount<T::AccountId, T::TechAccountId>>,
+        >,
     }
 
     #[cfg(feature = "std")]
