@@ -865,8 +865,10 @@ impl<T: Config> Pallet<T> {
             .unzip();
 
         let (distr, best) = match amount {
-            SwapAmount::WithDesiredInput { .. } => algo::find_distribution(sample_data, false),
-            _ => algo::find_distribution(sample_data, true),
+            SwapAmount::WithDesiredInput { .. } => {
+                algo::find_distribution(sample_data.clone(), false)
+            }
+            _ => algo::find_distribution(sample_data.clone(), true),
         };
 
         ensure!(
@@ -887,6 +889,46 @@ impl<T: Config> Pallet<T> {
         });
         let total_fee = total_fee.get().map_err(|_| Error::CalculationError::<T>)?;
 
+        let mut rewards = Vec::new();
+        if !skip_info {
+            for i in 0..distr.len() {
+                let idx = match distr[i].cmul(num_samples) {
+                    Err(_) => continue,
+                    Ok(index) => index.rounding_to_i64(),
+                };
+                let amount_a = match sample_data[i]
+                    .get((idx - 1) as usize)
+                    .unwrap_or(&Fixed::ZERO)
+                    .into_bits()
+                    .try_into()
+                {
+                    Err(_) => continue,
+                    Ok(amt) => amt,
+                };
+                let amount_b = match (distr[i] * amount).amount().into_bits().try_into() {
+                    Err(_) => continue,
+                    Ok(amt) => amt,
+                };
+                let (input_amount, output_amount) = match amount {
+                    SwapAmount::WithDesiredInput { .. } => (amount_b, amount_a),
+                    SwapAmount::WithDesiredOutput { .. } => (amount_a, amount_b),
+                };
+                let source = match sources.get(i) {
+                    None => continue,
+                    Some(source) => source,
+                };
+                let mut current_rewards = T::LiquidityRegistry::check_rewards(
+                    source,
+                    input_asset_id,
+                    output_asset_id,
+                    input_amount,
+                    output_amount,
+                )
+                .unwrap_or(Vec::new());
+                rewards.append(&mut current_rewards);
+            }
+        }
+
         Ok((
             AggregatedSwapOutcome::new(
                 sources
@@ -901,7 +943,7 @@ impl<T: Config> Pallet<T> {
                     .try_into()
                     .map_err(|_| Error::CalculationError::<T>)?,
             ),
-            Vec::new(),
+            rewards,
         ))
     }
 

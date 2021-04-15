@@ -226,7 +226,7 @@ fn test_quote_exact_output_base_should_pass() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
         let amount = balance!(250);
-        let (quotes, rewards) = LiquidityProxy::quote_single(
+        let (quotes, _rewards) = LiquidityProxy::quote_single(
             &DOT,
             &GetBaseAssetId::get(),
             SwapAmount::with_desired_output(amount, balance!(10000)),
@@ -1417,7 +1417,6 @@ fn test_quote_should_return_rewards_for_single_source() {
 }
 
 #[test]
-#[ignore] // FIXME: should be fixed with generic_split integration
 fn test_quote_should_return_rewards_for_multiple_sources() {
     let mut ext = ExtBuilder::with_enabled_sources(vec![
         LiquiditySourceType::MockPool,
