@@ -28,11 +28,12 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use common::prelude::{AssetName, AssetSymbol, FixedWrapper};
-use common::{balance, fixed_wrapper, XOR};
-use pallet_transaction_payment::ChargeTransactionPayment;
+use common::prelude::{AssetName, AssetSymbol, FixedWrapper, SwapAmount};
+use common::{balance, fixed_wrapper, VAL, XOR};
+use pallet_transaction_payment::{ChargeTransactionPayment, OnChargeTransaction};
 use sp_runtime::traits::SignedExtension;
 use traits::MultiCurrency;
+use xor_fee::LiquidityInfo;
 
 use crate::mock::*;
 
@@ -350,5 +351,87 @@ fn reminting_for_sora_parliament_works() {
                 && Balances::free_balance(SORA_PARLIAMENT_ACCOUNT)
                     <= (expected_balance + FixedWrapper::from(1)).into_balance()
         );
+    });
+}
+
+/// No special fee handling should be performed
+#[test]
+fn xorless_swap_regular_fee() {
+    ExtBuilder::build().execute_with(|| {
+        let dex_id = common::DEXId::Polkaswap;
+        let dispatch_info = info_from_weight(100_000_000);
+
+        let call = Call::LiquidityProxy(mock_liquidity_proxy::Call::swap(
+            dex_id,
+            VAL,
+            XOR,
+            SwapAmount::WithDesiredInput {
+                desired_amount_in: balance!(100),
+                min_amount_out: balance!(100),
+            },
+        ));
+
+        let regular_fee =
+            xor_fee::Pallet::<Runtime>::withdraw_fee(&FROM_ACCOUNT, &call, &dispatch_info, 1337, 0);
+
+        assert!(matches!(regular_fee, Ok(LiquidityInfo::Paid(_))));
+    });
+}
+
+/// Fee should be postponed until after the transaction
+#[test]
+fn xorless_swap_postponed_fee() {
+    ExtBuilder::build().execute_with(|| {
+        let dex_id = common::DEXId::Polkaswap;
+        let dispatch_info = info_from_weight(100_000_000);
+
+        let call = Call::LiquidityProxy(mock_liquidity_proxy::Call::swap(
+            dex_id,
+            VAL,
+            XOR,
+            SwapAmount::WithDesiredInput {
+                desired_amount_in: balance!(100),
+                min_amount_out: balance!(100),
+            },
+        ));
+
+        let quoted_fee = xor_fee::Pallet::<Runtime>::withdraw_fee(
+            &EMPTY_ACCOUNT,
+            &call,
+            &dispatch_info,
+            1337,
+            0,
+        );
+
+        assert!(matches!(quoted_fee, Ok(LiquidityInfo::Postponed(1337))));
+    });
+}
+
+/// Payment should not be postponed if we are not producing XOR
+#[test]
+fn xorless_swap_no_postpone() {
+    ExtBuilder::build().execute_with(|| {
+        let dex_id = common::DEXId::Polkaswap;
+        let dispatch_info = info_from_weight(100_000_000);
+
+        let call = Call::LiquidityProxy(mock_liquidity_proxy::Call::swap(
+            dex_id,
+            XOR,
+            VAL,
+            SwapAmount::WithDesiredInput {
+                desired_amount_in: balance!(100),
+                min_amount_out: balance!(100),
+            },
+        ));
+
+        let quoted_fee = xor_fee::Pallet::<Runtime>::withdraw_fee(
+            &EMPTY_ACCOUNT,
+            &call,
+            &dispatch_info,
+            1337,
+            0,
+        );
+
+        assert!(matches!(quoted_fee, Err(_)));
     });
 }

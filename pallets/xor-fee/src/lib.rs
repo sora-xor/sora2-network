@@ -90,28 +90,28 @@ impl<T: Config> From<Option<NegativeImbalanceOf<T>>> for LiquidityInfo<T> {
 
 impl<T: Config> OnChargeTransaction<T> for Pallet<T>
 where
-    T::Call: ExtractProxySwap<DexId = T::DEXId, AssetId = T::AssetId, Amount = SwapAmount<u128>>,
-    <T::XorCurrency as Currency<T::AccountId>>::Balance: Into<u128>,
+    CallOf<T>: ExtractProxySwap<DexId = T::DEXId, AssetId = T::AssetId, Amount = SwapAmount<u128>>,
+    BalanceOf<T>: Into<u128>,
 {
     type Balance = BalanceOf<T>;
     type LiquidityInfo = LiquidityInfo<T>;
 
     fn withdraw_fee(
         who: &T::AccountId,
-        call: &T::Call,
-        _dispatch_info: &DispatchInfoOf<T::Call>,
+        call: &CallOf<T>,
+        _dispatch_info: &DispatchInfoOf<CallOf<T>>,
         fee: Self::Balance,
         tip: Self::Balance,
     ) -> Result<Self::LiquidityInfo, TransactionValidityError> {
+        if fee.is_zero() {
+            return Ok(None.into());
+        }
+
         let maybe_custom_fee = T::CustomFees::compute_fee(call);
         let final_fee: BalanceOf<T> = match maybe_custom_fee {
             Some(value) => BalanceOf::<T>::saturated_from(value),
             _ => fee,
         };
-
-        if final_fee.is_zero() {
-            return Ok(None.into());
-        }
 
         let withdraw_reason = if tip.is_zero() {
             WithdrawReasons::TRANSACTION_PAYMENT
