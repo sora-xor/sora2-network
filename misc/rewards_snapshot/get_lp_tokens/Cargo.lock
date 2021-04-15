@@ -172,7 +172,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "get_lp_tokens"
+name = "get-lp-tokens"
 version = "0.1.0"
 dependencies = [
  "fixnum",

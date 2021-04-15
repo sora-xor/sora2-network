@@ -765,6 +765,10 @@ fn testnet_genesis(
         reserves_account_id: rewards_tech_account_id,
         val_owners: vec![
             (
+                hex!("d170A274320333243b9F860e8891C6792DE1eC19").into(),
+                balance!(995),
+            ),
+            (
                 hex!("21Bc9f4a3d9Dc86f142F802668dB7D908cF0A636").into(),
                 balance!(111),
             ),

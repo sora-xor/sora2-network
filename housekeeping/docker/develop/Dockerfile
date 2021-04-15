@@ -28,7 +28,6 @@ RUN add-apt-repository \
 
 # Install rust
 RUN curl https://sh.rustup.rs -sSf | sh -s -- -y --no-modify-path --default-toolchain ${RUST_VERSION} && \
-    rustup default ${RUST_VERSION} && \
     rustup target add wasm32-unknown-unknown
 
 RUN cargo install sccache
