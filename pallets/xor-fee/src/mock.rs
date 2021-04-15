@@ -133,6 +133,16 @@ construct_runtime! {
     }
 }
 
+impl xor_fee::ExtractProxySwap for Call {
+    type DexId = DEXId;
+    type AssetId = AssetId;
+    type Amount = SwapAmount<u128>;
+
+    fn extract(&self) -> Option<(Self::DexId, Self::AssetId, Self::AssetId, Self::Amount)> {
+        None
+    }
+}
+
 impl frame_system::Config for Runtime {
     type BaseCallFilter = ();
     type BlockWeights = BlockWeights;

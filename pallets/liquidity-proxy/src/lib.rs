@@ -50,7 +50,6 @@ use frame_system::ensure_signed;
 use sp_runtime::traits::{UniqueSaturatedFrom, Zero};
 use sp_runtime::DispatchError;
 use sp_std::prelude::*;
-use traits::MultiCurrency;
 
 type LiquiditySourceIdOf<T> = LiquiditySourceId<<T as common::Config>::DEXId, LiquiditySourceType>;
 
@@ -1339,15 +1338,6 @@ pub mod pallet {
                 output_amount,
                 fee_amount,
             ));
-
-            // For Any -> XOR exchanges we must apply the fee afterwards
-            if output_asset_id
-                == T::AssetId::from(common::AssetId32::from_asset_id(
-                    common::PredefinedAssetId::XOR,
-                ))
-            {
-                T::Currency::withdraw(output_asset_id, &who, fee_amount)?;
-            }
 
             Ok(().into())
         }
