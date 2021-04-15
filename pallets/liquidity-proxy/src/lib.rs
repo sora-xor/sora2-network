@@ -573,14 +573,57 @@ impl<T: Config> Pallet<T> {
                 }
             }
             if let (Some(mcbc), Some(xyk)) = (primary_market, secondary_market) {
-                return Self::fast_split_primary_vs_secondary(
-                    mcbc,
-                    xyk,
+                let smart_outcome = Self::fast_split_primary_vs_secondary(
+                    mcbc.clone(),
+                    xyk.clone(),
                     input_asset_id,
                     output_asset_id,
-                    amount,
+                    amount.clone(),
                     skip_info,
-                );
+                )?;
+
+                // To account for a potentially inaccurate result due to the way smart algo works
+                // (especially when selling XOR to the MCBC), compare the outcome with a purely
+                // secondary market exchange - whichever is better
+                // TODO: through exhaustive testing prove that this can only be relevant when
+                // XOR is being sold to the MCBC and only do this check if that's the case
+                let (is_better, bottom): (fn(a: Balance, b: Balance) -> bool, Balance) =
+                    match amount {
+                        SwapAmount::WithDesiredInput { .. } => (|a, b| a > b, Balance::zero()),
+                        _ => (|a, b| a < b, Balance::MAX),
+                    };
+
+                let secondary_outcome =
+                    T::LiquidityRegistry::quote(&xyk, input_asset_id, output_asset_id, amount)
+                        .unwrap_or(SwapOutcome::new(bottom, Default::default()));
+
+                let res = if is_better(smart_outcome.0.amount, secondary_outcome.amount) {
+                    smart_outcome
+                } else {
+                    let rewards = if skip_info {
+                        Vec::new()
+                    } else {
+                        let (input_amount, output_amount) =
+                            Self::sort_amount_outcome(amount, secondary_outcome.clone());
+                        T::LiquidityRegistry::check_rewards(
+                            &xyk,
+                            input_asset_id,
+                            output_asset_id,
+                            input_amount,
+                            output_amount,
+                        )
+                        .unwrap_or(Vec::new())
+                    };
+                    (
+                        AggregatedSwapOutcome::new(
+                            vec![(mcbc, fixed!(0.0)), (xyk, fixed!(1.0))],
+                            secondary_outcome.amount,
+                            secondary_outcome.fee,
+                        ),
+                        rewards,
+                    )
+                };
+                return Ok(res);
             }
         }
 
@@ -1240,7 +1283,7 @@ impl<T: Config> Pallet<T> {
                     T::PrimaryMarket::collateral_reserves(collateral_asset_id)
                         .unwrap_or(Balance::zero())
                         .into();
-                if collateral_reserves < amount_to_sell {
+                if collateral_reserves <= amount_to_sell {
                     fraction_prim = (fixed_wrapper!(0.9) * collateral_reserves
                         / wrapped_amount.clone())
                     .get()

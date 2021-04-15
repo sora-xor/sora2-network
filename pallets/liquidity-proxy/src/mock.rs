@@ -33,15 +33,13 @@ use common::mock::ExistentialDeposits;
 use common::{
     self, balance, fixed, fixed_from_basis_points, fixed_wrapper, hash, Amount, AssetId32,
     AssetName, AssetSymbol, DEXInfo, Fixed, FromGenericPair, GetMarketInfo, LiquiditySource,
-    LiquiditySourceType, RewardReason, TechPurpose, DOT, KSM, PSWAP, USDT, VAL, XOR,
+    LiquiditySourceType, RewardReason, DOT, KSM, PSWAP, USDT, VAL, XOR,
 };
 use currencies::BasicCurrencyAdapter;
 
-use core::convert::TryInto;
-
 use frame_support::traits::GenesisBuild;
 use frame_support::weights::Weight;
-use frame_support::{construct_runtime, fail, parameter_types};
+use frame_support::{construct_runtime, ensure, fail, parameter_types};
 use frame_system;
 use traits::MultiCurrency;
 
@@ -266,6 +264,7 @@ impl trading_pair::Config for Runtime {
 }
 
 pub struct ExtBuilder {
+    pub total_supply: Balance,
     pub reserves: ReservesInit,
     pub reserves_2: ReservesInit,
     pub reserves_3: ReservesInit,
@@ -289,6 +288,7 @@ impl ExtBuilder {
 impl Default for ExtBuilder {
     fn default() -> Self {
         Self {
+            total_supply: balance!(360000),
             reserves: vec![
                 (DEX_A_ID, DOT, (fixed!(5000), fixed!(7000))),
                 (DEX_A_ID, KSM, (fixed!(5500), fixed!(4000))),
@@ -397,10 +397,8 @@ pub struct MockMCBCPool;
 
 impl MockMCBCPool {
     pub fn init(reserves: Vec<(AssetId, Balance)>) -> Result<(), DispatchError> {
-        let reserves_tech_account_id = TechAccountId::Pure(
-            DEX_C_ID.into(),
-            TechPurpose::Identifier(b"reserves_holder".to_vec()),
-        );
+        let reserves_tech_account_id =
+            TechAccountId::Generic(b"mcbc_pool".to_vec(), b"main".to_vec());
         let reserves_account_id =
             Technical::tech_account_id_to_account_id(&reserves_tech_account_id)?;
         Technical::register_tech_account_id(reserves_tech_account_id.clone())?;
@@ -412,11 +410,12 @@ impl MockMCBCPool {
     }
 
     fn _spot_price(collateral_asset: &AssetId) -> Fixed {
-        let (total_supply, initial_price) = get_mcbc_params();
-        Self::_price_at(collateral_asset, total_supply, initial_price)
+        let total_supply = pallet_balances::Module::<Runtime>::total_issuance();
+        Self::_price_at(collateral_asset, total_supply)
     }
 
-    fn _price_at(collateral_asset: &AssetId, base_supply: Balance, initial_price: Fixed) -> Fixed {
+    fn _price_at(collateral_asset: &AssetId, base_supply: Balance) -> Fixed {
+        let initial_price = get_initial_price();
         let x: FixedWrapper = base_supply.into();
         let b: FixedWrapper = initial_price.into();
         let m: FixedWrapper = fixed_wrapper!(1) / fixed_wrapper!(1337);
@@ -436,10 +435,8 @@ impl LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> for Mock
         if output_asset_id == &XOR.into() {
             return true;
         }
-        let reserves_tech_account_id = TechAccountId::Pure(
-            DEX_C_ID.into(),
-            TechPurpose::Identifier(b"reserves_holder".to_vec()),
-        );
+        let reserves_tech_account_id =
+            TechAccountId::Generic(b"mcbc_pool".to_vec(), b"main".to_vec());
         let reserves_account_id =
             Technical::tech_account_id_to_account_id(&reserves_tech_account_id).unwrap();
         let free_balance = Currencies::free_balance(*output_asset_id, &reserves_account_id);
@@ -456,10 +453,8 @@ impl LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> for Mock
             panic!("Can't exchange");
         }
         let base_asset_id = &XOR.into();
-        let reserves_tech_account_id = TechAccountId::Pure(
-            DEX_C_ID.into(),
-            TechPurpose::Identifier(b"reserves_holder".to_vec()),
-        );
+        let reserves_tech_account_id =
+            TechAccountId::Generic(b"mcbc_pool".to_vec(), b"main".to_vec());
         let reserves_account_id =
             Technical::tech_account_id_to_account_id(&reserves_tech_account_id)?;
 
@@ -469,30 +464,41 @@ impl LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> for Mock
                 Currencies::free_balance(*output_asset_id, &reserves_account_id).into();
             let buy_spot_price: FixedWrapper = Self::_spot_price(output_asset_id).into();
             let sell_spot_price: FixedWrapper = buy_spot_price * fixed_wrapper!(0.8);
-            let pretended_base_reserves = collateral_reserves.clone() / sell_spot_price;
+            let pretended_base_reserves = collateral_reserves.clone() / sell_spot_price.clone();
+
+            let collateralization = (collateral_reserves.clone() / sell_spot_price)
+                .get()
+                .unwrap();
+
+            let extra_fee = FixedWrapper::from(undercollaterization_charge(collateralization));
 
             match swap_amount {
                 SwapAmount::WithDesiredInput {
                     desired_amount_in, ..
                 } => {
                     let input_wrapped: FixedWrapper = desired_amount_in.into();
-                    let output_collateral = (input_wrapped.clone() * collateral_reserves)
-                        / (pretended_base_reserves + input_wrapped);
-                    let output_collateral_unwrapped: Fixed = output_collateral.get().unwrap();
-                    let output_amount: Balance =
-                        output_collateral_unwrapped.into_bits().try_into().unwrap();
+                    let input_after_fee: FixedWrapper =
+                        input_wrapped * (fixed_wrapper!(1) - extra_fee.clone());
+                    let output_collateral = (input_after_fee.clone() * collateral_reserves)
+                        / (pretended_base_reserves + input_after_fee);
+                    let output_amount: Balance = output_collateral.try_into_balance().unwrap();
+
                     (desired_amount_in, output_amount, 0)
                 }
                 SwapAmount::WithDesiredOutput {
                     desired_amount_out, ..
                 } => {
                     let output_wrapped: FixedWrapper = desired_amount_out.into();
+                    ensure!(
+                        output_wrapped < collateral_reserves,
+                        DispatchError::Other("Insufficient reserves")
+                    );
                     let input_base = (pretended_base_reserves * output_wrapped.clone())
                         / (collateral_reserves - output_wrapped);
 
-                    let input_base_unwrapped: Fixed = input_base.get().unwrap();
-                    let input_amount: Balance =
-                        input_base_unwrapped.into_bits().try_into().unwrap();
+                    let input_base_after_fee = input_base / (fixed_wrapper!(1) - extra_fee);
+
+                    let input_amount: Balance = input_base_after_fee.try_into_balance().unwrap();
                     (input_amount, desired_amount_out, 0)
                 }
             }
@@ -511,24 +517,20 @@ impl LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> for Mock
                         + fixed_wrapper!(8.0) * collateral_quantity / m.clone();
                     let base_output =
                         under_sqrt.sqrt_accurate() / fixed_wrapper!(2.0) - buy_spot_price / m;
-                    let base_output_unwrapped = base_output.get().unwrap();
-                    let output_amount: Balance =
-                        base_output_unwrapped.into_bits().try_into().unwrap();
+                    let output_amount: Balance = base_output.try_into_balance().unwrap();
                     (collateral_quantity, output_amount, 0)
                 }
                 SwapAmount::WithDesiredOutput {
                     desired_amount_out: base_quantity,
                     ..
                 } => {
-                    let (current_supply, initial_price) = get_mcbc_params();
+                    let current_supply = pallet_balances::Module::<Runtime>::total_issuance();
                     let projected_supply: Balance = current_supply + base_quantity;
                     let new_buy_price: FixedWrapper =
-                        Self::_price_at(input_asset_id, projected_supply, initial_price).into();
+                        Self::_price_at(input_asset_id, projected_supply).into();
                     let collateral_input =
                         ((buy_spot_price + new_buy_price) / fixed_wrapper!(2.0)) * base_quantity;
-                    let collateral_input_unwrapped = collateral_input.get().unwrap();
-                    let input_amount: Balance =
-                        collateral_input_unwrapped.into_bits().try_into().unwrap();
+                    let input_amount: Balance = collateral_input.try_into_balance().unwrap();
 
                     (input_amount, base_quantity, 0)
                 }
@@ -589,10 +591,8 @@ impl GetMarketInfo<AssetId> for MockMCBCPool {
     }
 
     fn collateral_reserves(asset_id: &AssetId) -> Result<Balance, DispatchError> {
-        let reserves_tech_account_id = TechAccountId::Pure(
-            DEX_C_ID.into(),
-            TechPurpose::Identifier(b"reserves_holder".to_vec()),
-        );
+        let reserves_tech_account_id =
+            TechAccountId::Generic(b"mcbc_pool".to_vec(), b"main".to_vec());
         let reserves_account_id =
             Technical::tech_account_id_to_account_id(&reserves_tech_account_id).unwrap();
         Ok(Currencies::free_balance(*asset_id, &reserves_account_id))
@@ -626,10 +626,22 @@ pub fn get_mcbc_reserves_undercollateralized() -> Vec<(AssetId, Balance)> {
     ]
 }
 
-pub fn get_mcbc_params() -> (Balance, Fixed) {
-    let total_supply = balance!(360000);
-    let initial_price = fixed!(200);
-    (total_supply, initial_price)
+pub fn get_initial_price() -> Fixed {
+    fixed!(200)
+}
+
+fn undercollaterization_charge(fraction: Fixed) -> Fixed {
+    if fraction < fixed!(0.05) {
+        fixed!(0.09)
+    } else if fraction >= fixed!(0.05) && fraction < fixed!(0.1) {
+        fixed!(0.06)
+    } else if fraction >= fixed!(0.1) && fraction < fixed!(0.2) {
+        fixed!(0.03)
+    } else if fraction >= fixed!(0.2) && fraction < fixed!(0.3) {
+        fixed!(0.01)
+    } else {
+        fixed!(0)
+    }
 }
 
 impl ExtBuilder {
@@ -639,7 +651,7 @@ impl ExtBuilder {
             .unwrap();
 
         pallet_balances::GenesisConfig::<Runtime> {
-            balances: vec![(alice(), 0)],
+            balances: vec![(alice(), self.total_supply)],
         }
         .assimilate_storage(&mut t)
         .unwrap();
