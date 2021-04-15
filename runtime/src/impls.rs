@@ -40,10 +40,69 @@ pub type NegativeImbalanceOf<T> = <<T as pallet_staking::Config>::Currency as Cu
     <T as frame_system::Config>::AccountId,
 >>::NegativeImbalance;
 
+pub struct CollectiveWeightInfo<T>(PhantomData<T>);
+
 pub struct DemocracyWeightInfo;
 
 pub struct OnUnbalancedDemocracySlash<T> {
     _marker: PhantomData<T>,
+}
+
+const MAX_PREIMAGE_BYTES: u32 = 5 * 1024 * 1024;
+
+impl<T: frame_system::Config> pallet_collective::WeightInfo for CollectiveWeightInfo<T> {
+    fn set_members(m: u32, n: u32, p: u32) -> Weight {
+        <() as pallet_collective::WeightInfo>::set_members(m, n, p)
+    }
+    fn execute(b: u32, m: u32) -> Weight {
+        <() as pallet_collective::WeightInfo>::execute(b, m)
+    }
+    fn propose_execute(b: u32, m: u32) -> Weight {
+        <() as pallet_collective::WeightInfo>::propose_execute(b, m)
+    }
+    fn propose_proposed(b: u32, m: u32, p: u32) -> Weight {
+        <() as pallet_collective::WeightInfo>::propose_proposed(b, m, p)
+    }
+    fn vote(m: u32) -> Weight {
+        <() as pallet_collective::WeightInfo>::vote(m)
+    }
+    fn close_early_disapproved(m: u32, p: u32) -> Weight {
+        <() as pallet_collective::WeightInfo>::close_early_disapproved(m, p)
+    }
+    fn close_early_approved(bytes: u32, m: u32, p: u32) -> Weight {
+        let max_weight: Weight = BlockWeights::get()
+            .get(DispatchClass::Normal)
+            .max_extrinsic
+            .expect("Collective pallet must have max extrinsic weight");
+        if bytes > MAX_PREIMAGE_BYTES {
+            return max_weight.saturating_add(1);
+        }
+        let weight = <() as pallet_collective::WeightInfo>::close_early_approved(bytes, m, p);
+        let max_dispatch_weight: Weight = max_weight.saturating_sub(BlockExecutionWeight::get());
+        // We want to keep it as high as possible, but can't risk having it reject,
+        // so we always the base block execution weight as a max
+        max_dispatch_weight.min(weight)
+    }
+    fn close_disapproved(m: u32, p: u32) -> Weight {
+        <() as pallet_collective::WeightInfo>::close_disapproved(m, p)
+    }
+    fn close_approved(bytes: u32, m: u32, p: u32) -> Weight {
+        let max_weight: Weight = BlockWeights::get()
+            .get(DispatchClass::Normal)
+            .max_extrinsic
+            .expect("Collective pallet must have max extrinsic weight");
+        if bytes > MAX_PREIMAGE_BYTES {
+            return max_weight.saturating_add(1);
+        }
+        let weight = <() as pallet_collective::WeightInfo>::close_approved(bytes, m, p);
+        let max_dispatch_weight: Weight = max_weight.saturating_sub(BlockExecutionWeight::get());
+        // We want to keep it as high as possible, but can't risk having it reject,
+        // so we always the base block execution weight as a max
+        max_dispatch_weight.min(weight)
+    }
+    fn disapprove_proposal(p: u32) -> Weight {
+        <() as pallet_collective::WeightInfo>::disapprove_proposal(p)
+    }
 }
 
 impl pallet_democracy::WeightInfo for DemocracyWeightInfo {
@@ -102,7 +161,6 @@ impl pallet_democracy::WeightInfo for DemocracyWeightInfo {
         <() as pallet_democracy::WeightInfo>::clear_public_proposals()
     }
     fn note_preimage(bytes: u32) -> Weight {
-        const MAX_PREIMAGE_BYTES: u32 = 5 * 1024 * 1024;
         let max_weight: Weight = BlockWeights::get()
             .get(DispatchClass::Normal)
             .max_extrinsic
