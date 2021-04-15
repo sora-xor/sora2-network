@@ -112,7 +112,7 @@ pub use sp_runtime::BuildStorage;
 use eth_bridge::{
     AssetKind, OffchainRequest, OutgoingRequestEncoded, RequestStatus, SignatureParams,
 };
-use impls::OnUnbalancedDemocracySlash;
+use impls::{DemocracyWeightInfo, OnUnbalancedDemocracySlash};
 
 pub use {bonding_curve_pool, eth_bridge, multicollateral_bonding_curve_pool};
 
@@ -380,7 +380,7 @@ impl pallet_democracy::Config for Runtime {
     type Scheduler = Scheduler;
     type PalletsOrigin = OriginCaller;
     type MaxVotes = DemocracyMaxVotes;
-    type WeightInfo = ();
+    type WeightInfo = DemocracyWeightInfo;
     type MaxProposals = DemocracyMaxProposals;
 }
 
