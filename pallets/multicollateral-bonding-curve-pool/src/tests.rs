@@ -30,12 +30,13 @@
 
 #[rustfmt::skip]
 mod tests {
-    use crate::{mock::*, DistributionAccountData, Module, DistributionAccounts, Error};
+    use crate::{mock::*, DistributionAccountData, Module, DistributionAccounts, DistributionAccount, Error};
     use common::{
         self, balance, fixed, fixed_wrapper, Fixed, fixnum::ops::One as _, fixnum::ops::Zero as _,
         prelude::{Balance, SwapAmount, SwapOutcome, QuoteAmount, FixedWrapper,},
         AssetName, AssetSymbol, DEXId, LiquiditySource, TechPurpose, USDT, VAL, XOR, PSWAP, LiquiditySourceFilter,
     };
+    use hex_literal::hex;
     use pswap_distribution::OnPswapBurned;
     use liquidity_proxy::LiquidityProxyTrait;
     use frame_support::{assert_err, assert_noop, assert_ok};
@@ -186,7 +187,9 @@ mod tests {
     fn bonding_curve_pool_init(
         initial_reserves: Vec<(AssetId, Balance)>,
     ) -> Result<
-        DistributionAccounts<DistributionAccountData<<Runtime as technical::Config>::TechAccountId>>,
+        DistributionAccounts<DistributionAccountData<DistributionAccount<
+            <Runtime as frame_system::Config>::AccountId,
+            <Runtime as technical::Config>::TechAccountId>>>,
         DispatchError,
     > {
         let bonding_curve_tech_account_id = TechAccountId::Pure(
@@ -222,45 +225,42 @@ mod tests {
         );
 
         let xor_allocation = DistributionAccountData::new(
-            TechAccountId::Pure(
+            DistributionAccount::TechAccount(TechAccountId::Pure(
                 DEXId::Polkaswap,
                 TechPurpose::Identifier(b"xor_allocation".to_vec()),
-            ),
+            )),
             val_holders_xor_alloc_coeff.get().unwrap(),
         );
         let sora_citizens = DistributionAccountData::new(
-            TechAccountId::Pure(
+            DistributionAccount::TechAccount(TechAccountId::Pure(
                 DEXId::Polkaswap,
                 TechPurpose::Identifier(b"sora_citizens".to_vec()),
-            ),
+            )),
             projects_sora_citizens_coeff.get().unwrap(),
         );
         let stores_and_shops = DistributionAccountData::new(
-            TechAccountId::Pure(
+            DistributionAccount::TechAccount(TechAccountId::Pure(
                 DEXId::Polkaswap,
                 TechPurpose::Identifier(b"stores_and_shops".to_vec()),
-            ),
+            )),
             projects_stores_and_shops_coeff.get().unwrap(),
         );
         let parliament_and_development = DistributionAccountData::new(
-            TechAccountId::Pure(
-                DEXId::Polkaswap,
-                TechPurpose::Identifier(b"parliament_and_development".to_vec()),
-            ),
+            DistributionAccount::Account(hex!("881b87c9f83664b95bd13e2bb40675bfa186287da93becc0b22683334d411e4e").into()),
             projects_parliament_and_development_coeff.get().unwrap(),
         );
         let projects = DistributionAccountData::new(
-            TechAccountId::Pure(
+            DistributionAccount::TechAccount(TechAccountId::Pure(
                 DEXId::Polkaswap,
                 TechPurpose::Identifier(b"projects".to_vec()),
-            ),
+            )),
             projects_other_coeff.get().unwrap(),
         );
         let val_holders = DistributionAccountData::new(
-            TechAccountId::Pure(
+            DistributionAccount::TechAccount(TechAccountId::Pure(
                 DEXId::Polkaswap,
                 TechPurpose::Identifier(b"val_holders".to_vec()),
-            ),
+            )),
             val_holders_buy_back_coefficient.get().unwrap(),
         );
         let accounts = DistributionAccounts::<_> {
@@ -271,8 +271,13 @@ mod tests {
             projects,
             val_holders,
         };
-        for tech_account in &accounts.xor_distribution_accounts_as_array() {
-            Technical::register_tech_account_id((*tech_account).clone())?;
+        for account in &accounts.xor_distribution_accounts_as_array() {
+            match account {
+                DistributionAccount::Account(_) => continue,
+                DistributionAccount::TechAccount(account) => {
+                    Technical::register_tech_account_id(account.clone())?;
+                }
+            }
         }
         MBCPool::set_distribution_accounts(accounts.clone());
         Ok(accounts)
@@ -373,15 +378,25 @@ mod tests {
                 balance!(13.800245332614921123),
                 balance!(248.404415987068580219),
             ];
-            for (account_id, balance) in distribution_accounts_array
+            for (account, balance) in distribution_accounts_array
                 .to_vec()
                 .into_iter()
                 .zip(balances)
             {
-                assert_eq!(
-                    Technical::total_balance(&XOR, &account_id).unwrap(),
-                    balance,
-                );
+                match account {
+                    DistributionAccount::Account(account_id) => {
+                        assert_eq!(
+                            Assets::total_balance(&XOR, &account_id).unwrap(),
+                            balance,
+                        );
+                    }
+                    DistributionAccount::TechAccount(account_id) => {
+                        assert_eq!(
+                            Technical::total_balance(&XOR, &account_id).unwrap(),
+                            balance,
+                        );
+                    }
+                }
             }
             assert_eq!(
                 MBCPool::exchange(
@@ -445,15 +460,25 @@ mod tests {
                 balance!(13.800245332614921123),
                 balance!(248.404415987068580219),
             ];
-            for (account_id, balance) in distribution_accounts_array
+            for (account, balance) in distribution_accounts_array
                 .to_vec()
                 .into_iter()
                 .zip(balances)
             {
-                assert_eq!(
-                    Technical::total_balance(&XOR, &account_id).unwrap(),
-                    balance,
-                );
+                match account {
+                    DistributionAccount::Account(account_id) => {
+                        assert_eq!(
+                            Assets::total_balance(&XOR, &account_id).unwrap(),
+                            balance,
+                        );
+                    }
+                    DistributionAccount::TechAccount(account_id) => {
+                        assert_eq!(
+                            Technical::total_balance(&XOR, &account_id).unwrap(),
+                            balance,
+                        );
+                    }
+                }
             }
             assert_eq!(
                 MBCPool::exchange(
