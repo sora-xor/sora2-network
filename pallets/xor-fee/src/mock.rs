@@ -130,6 +130,7 @@ construct_runtime! {
         Timestamp: pallet_timestamp::{Module, Call, Storage, Inherent},
         Staking: pallet_staking::{Module, Call, Config<T>, Storage, Event<T>},
         XorFee: xor_fee::{Module, Call, Event<T>},
+        LiquidityProxy: mock_liquidity_proxy::{Module, Call, Event<T>},
     }
 }
 
@@ -139,7 +140,18 @@ impl xor_fee::ExtractProxySwap for Call {
     type Amount = SwapAmount<u128>;
 
     fn extract(&self) -> Option<(Self::DexId, Self::AssetId, Self::AssetId, Self::Amount)> {
-        None
+        if let Call::LiquidityProxy(mock_liquidity_proxy::Call::swap(
+            dex,
+            asset_in,
+            asset_out,
+            amount,
+            ..,
+        )) = self
+        {
+            Some((*dex, *asset_in, *asset_out, *amount))
+        } else {
+            None
+        }
     }
 }
 
@@ -340,7 +352,55 @@ impl Config for Runtime {
     type GetParliamentAccountId = GetParliamentAccountId;
 }
 
-pub struct MockLiquidityProxy;
+// Allow dead_code because we never call swap, just use its Call variant
+#[allow(dead_code)]
+#[frame_support::pallet]
+pub mod mock_liquidity_proxy {
+    use super::*;
+    use assets::AssetIdOf;
+    use common::DexIdOf;
+    use frame_support::pallet_prelude::*;
+    use frame_system::pallet_prelude::*;
+
+    #[pallet::config]
+    pub trait Config: frame_system::Config + assets::Config {
+        type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+    }
+
+    #[pallet::pallet]
+    #[pallet::generate_store(pub(super) trait Store)]
+    pub struct Pallet<T>(PhantomData<T>);
+
+    #[pallet::hooks]
+    impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {}
+
+    #[pallet::call]
+    impl<T: Config> Pallet<T> {
+        #[pallet::weight(0)]
+        pub fn swap(
+            _origin: OriginFor<T>,
+            _dex_id: DexIdOf<T>,
+            _input_asset_id: AssetIdOf<T>,
+            _output_asset_id: AssetIdOf<T>,
+            _swap_amount: SwapAmount<Balance>,
+        ) -> DispatchResultWithPostInfo {
+            return Ok(().into());
+        }
+    }
+
+    #[pallet::event]
+    #[pallet::metadata(AccountIdOf<T> = "AccountId", AssetIdOf<T> = "AssetId", DexIdOf<T> = "DEXId")]
+    pub enum Event<T: Config> {}
+
+    #[pallet::error]
+    pub enum Error<T> {}
+}
+
+type MockLiquidityProxy = mock_liquidity_proxy::Module<Runtime>;
+
+impl mock_liquidity_proxy::Config for Runtime {
+    type Event = Event;
+}
 
 impl liquidity_proxy::LiquidityProxyTrait<DEXId, AccountId, AssetId> for MockLiquidityProxy {
     fn exchange(
@@ -382,6 +442,7 @@ pub const CONTROLLER_ACCOUNT: u64 = 10;
 pub const CONTROLLER_ACCOUNT2: u64 = 20;
 pub const TRANSFER_AMOUNT: u64 = 69;
 pub const SORA_PARLIAMENT_ACCOUNT: u64 = 7;
+pub const EMPTY_ACCOUNT: u64 = 420;
 
 pub fn initial_balance() -> Balance {
     balance!(1000)
@@ -437,6 +498,7 @@ impl ExtBuilder {
             balances: vec![
                 (FROM_ACCOUNT, initial_balance),
                 (TO_ACCOUNT, initial_balance),
+                (EMPTY_ACCOUNT, 0),
                 (REFERRER_ACCOUNT, initial_balance),
                 (STASH_ACCOUNT, initial_balance),
                 (STASH_ACCOUNT2, initial_balance),
