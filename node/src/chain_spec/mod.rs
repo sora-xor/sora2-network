@@ -615,7 +615,8 @@ fn testnet_genesis(
     let initial_eth_bridge_val_amount = balance!(33900000);
     let initial_pswap_tbc_rewards = balance!(25000000);
 
-    let parliament_investment_fund = hex!("048cfcacbdebe828dffa1267d830d45135cd40238286f838f5a95432a1bbf851").into();
+    let parliament_investment_fund =
+        hex!("048cfcacbdebe828dffa1267d830d45135cd40238286f838f5a95432a1bbf851").into();
     let parliament_investment_fund_balance = balance!(33000000);
 
     // Initial accounts
@@ -1212,7 +1213,8 @@ fn mainnet_genesis(
     // Initial token bonding curve PSWAP rewards according to 10 bln PSWAP total supply.
     let initial_pswap_tbc_rewards = balance!(2500000000);
 
-    let parliament_investment_fund = hex!("048cfcacbdebe828dffa1267d830d45135cd40238286f838f5a95432a1bbf851").into();
+    let parliament_investment_fund =
+        hex!("048cfcacbdebe828dffa1267d830d45135cd40238286f838f5a95432a1bbf851").into();
     let parliament_investment_fund_balance = balance!(33000000);
 
     // Initial accounts
