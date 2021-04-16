@@ -372,7 +372,6 @@ mod tests {
                 SwapOutcome::new(balance!(5536.708257819426729513), balance!(3.009027081243731193))
             );
             let balances: Vec<Balance> = vec![
-                balance!(248.404415987068580219),
                 balance!(2.760049066522984224),
                 balance!(11.040196266091936898),
                 balance!(13.800245332614921123),
@@ -454,7 +453,6 @@ mod tests {
                 SwapOutcome::new(balance!(5536.708257819426729513), balance!(3.009027081243731193))
             );
             let balances: Vec<Balance> = vec![
-                balance!(248.404415987068580219),
                 balance!(2.760049066522984224),
                 balance!(11.040196266091936898),
                 balance!(13.800245332614921123),

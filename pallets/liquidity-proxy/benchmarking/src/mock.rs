@@ -366,6 +366,20 @@ parameter_types! {
                 .expect("Failed to get ordinary account id for technical account id.");
         account_id
     };
+    pub GetMbcFreeReservesTechAccountId: TechAccountId = {
+        let tech_account_id = TechAccountId::from_generic_pair(
+            multicollateral_bonding_curve_pool::TECH_ACCOUNT_PREFIX.to_vec(),
+            multicollateral_bonding_curve_pool::TECH_ACCOUNT_FREE_RESERVES.to_vec(),
+        );
+        tech_account_id
+    };
+    pub GetMbcFreeReservesAccountId: AccountId = {
+        let tech_account_id = GetMbcFreeReservesTechAccountId::get();
+        let account_id =
+            technical::Module::<Runtime>::tech_account_id_to_account_id(&tech_account_id)
+                .expect("Failed to get ordinary account id for technical account id.");
+        account_id
+    };
 }
 
 impl multicollateral_bonding_curve_pool::Config for Runtime {
@@ -583,6 +597,7 @@ impl ExtBuilder {
             reference_asset_id: USDT.into(),
             incentives_account_id: GetMbcRewardsAccountId::get(),
             initial_collateral_assets: Default::default(),
+            free_reserves_account_id: GetMbcFreeReservesAccountId::get(),
         }
         .assimilate_storage(&mut t)
         .unwrap();

@@ -1032,6 +1032,11 @@ fn testnet_genesis(
                     Scope::Unlimited,
                     vec![permissions::MINT, permissions::BURN],
                 ),
+                (
+                    mbc_pool_free_reserves_account_id.clone(),
+                    Scope::Unlimited,
+                    vec![permissions::MINT, permissions::BURN],
+                ),
             ],
         }),
         pallet_balances: Some(BalancesConfig { balances }),
@@ -1519,6 +1524,11 @@ fn mainnet_genesis(
                 ),
                 (
                     mbc_reserves_account_id,
+                    Scope::Unlimited,
+                    vec![permissions::MINT, permissions::BURN],
+                ),
+                (
+                    mbc_pool_free_reserves_account_id.clone(),
                     Scope::Unlimited,
                     vec![permissions::MINT, permissions::BURN],
                 ),

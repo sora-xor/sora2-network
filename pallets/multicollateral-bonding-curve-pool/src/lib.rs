@@ -722,7 +722,6 @@ impl<T: Config> Module<T> {
             )?
             .amount
             .into();
-
             Assets::<T>::burn_from(&base_asset_id, &holder, &holder, swapped_xor_amount)?;
 
             let fw_swapped_xor_amount = FixedWrapper::from(swapped_xor_amount);
@@ -752,6 +751,7 @@ impl<T: Config> Module<T> {
                 Assets::<T>::mint_to(&base_asset_id, &holder, &account, amount)?;
                 undistributed_xor_amount = undistributed_xor_amount.saturating_sub(amount);
             }
+            Assets::<T>::mint_to(&base_asset_id, &holder, &holder, undistributed_xor_amount)?;
             // undistributed_xor_amount includes xor_allocation and val_holders portions
             let val_amount = T::LiquidityProxy::exchange(
                 holder,

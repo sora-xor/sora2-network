@@ -77,7 +77,7 @@ pub fn incentives_account() -> AccountId {
 }
 
 pub fn free_reserves_account() -> AccountId {
-    AccountId32::from([4u8; 32])
+    AccountId32::from([5u8; 32])
 }
 
 pub fn get_pool_reserves_account_id() -> AccountId {
@@ -463,6 +463,11 @@ impl Default for ExtBuilder {
                 (alice(), Scope::Limited(hash(&DEX_A_ID)), vec![MANAGE_DEX]),
                 (
                     assets_owner(),
+                    Scope::Unlimited,
+                    vec![permissions::MINT, permissions::BURN],
+                ),
+                (
+                    free_reserves_account(),
                     Scope::Unlimited,
                     vec![permissions::MINT, permissions::BURN],
                 ),
