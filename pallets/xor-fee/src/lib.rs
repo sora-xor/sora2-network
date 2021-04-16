@@ -35,7 +35,7 @@ use common::{Balance, LiquiditySourceFilter, LiquiditySourceType};
 use frame_support::pallet_prelude::InvalidTransaction;
 use frame_support::traits::{Currency, ExistenceRequirement, Get, Imbalance, WithdrawReasons};
 use frame_support::unsigned::TransactionValidityError;
-use frame_support::weights::{DispatchInfo, GetDispatchInfo};
+use frame_support::weights::{DispatchInfo, GetDispatchInfo, Pays};
 use liquidity_proxy::LiquidityProxyTrait;
 use pallet_staking::ValBurnedNotifier;
 use pallet_transaction_payment::{
@@ -284,7 +284,15 @@ impl<T: Config> Pallet<T> {
         <T as frame_system::Config>::Call: Dispatchable<Info = DispatchInfo>,
     {
         let dispatch_info = <Extrinsic as GetDispatchInfo>::get_dispatch_info(unchecked_extrinsic);
-        let DispatchInfo { weight, class, .. } = dispatch_info;
+        let DispatchInfo {
+            weight,
+            class,
+            pays_fee,
+        } = dispatch_info;
+
+        if pays_fee == Pays::No {
+            return None;
+        }
 
         let call = <Extrinsic as GetCall<CallOf<T>>>::get_call(&unchecked_extrinsic);
 
