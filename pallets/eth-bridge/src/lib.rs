@@ -75,6 +75,8 @@ use crate::contract::{
     ADD_PEER_BY_PEER_ID, ADD_PEER_BY_PEER_TX_HASH_ARG_POS, FUNCTIONS, METHOD_ID_SIZE,
     REMOVE_PEER_BY_PEER_FN, REMOVE_PEER_BY_PEER_ID, REMOVE_PEER_BY_PEER_TX_HASH_ARG_POS,
 };
+#[cfg(test)]
+use crate::mock::Mock;
 use crate::types::{
     BlockNumber, Bytes, CallRequest, FilterBuilder, Log, Transaction, TransactionReceipt,
 };
@@ -1191,7 +1193,7 @@ pub mod pallet {
         + CreateSignedTransaction<Call<Self>>
         + CreateSignedTransaction<bridge_multisig::Call<Self>>
         + assets::Config
-        + bridge_multisig::Config
+        + bridge_multisig::Config<Call = <Self as Config>::Call>
         + fmt::Debug
     {
         type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
@@ -1211,6 +1213,8 @@ pub mod pallet {
         type GetEthNetworkId: Get<Self::NetworkId>;
         /// Weight information for extrinsics in this pallet.
         type WeightInfo: WeightInfo;
+        #[cfg(test)]
+        type Mock: mock::Mock;
     }
 
     #[pallet::pallet]
@@ -1947,7 +1951,7 @@ pub mod pallet {
         /// Failed to load sidechain node parameters.
         FailedToLoadSidechainNodeParams,
         /// Failed to load current sidechain height.
-        LoadCurrentSidechainHeight,
+        FailedToLoadCurrentSidechainHeight,
         /// Failed to query sidechain 'used' variable.
         FailedToLoadIsUsed,
         /// Sidechain transaction might have failed due to gas limit.
@@ -2468,6 +2472,7 @@ impl<T: Config> Pallet<T> {
                 incoming_request_hash,
                 RequestStatus::Failed(e),
             );
+            debug::warn!("{:?}", e);
             return Err(e.into());
         }
         Requests::<T>::insert(network_id, &incoming_request_hash, incoming_request);
@@ -2670,15 +2675,11 @@ impl<T: Config> Pallet<T> {
     /// RPC call.
     fn load_substrate_finalized_height() -> Result<T::BlockNumber, DispatchError> {
         let hash =
-            Self::substrate_json_rpc_request::<_, types::H256>("chain_getFinalizedHead", &())?
-                .pop()
-                .ok_or(Error::<T>::FailedToLoadFinalizedHead)?;
+            Self::substrate_json_rpc_request::<_, types::H256>("chain_getFinalizedHead", &())?;
         let header = Self::substrate_json_rpc_request::<_, types::SubstrateHeaderLimited>(
             "chain_getHeader",
             &[hash],
-        )?
-        .pop()
-        .ok_or(Error::<T>::FailedToLoadBlockHeader)?;
+        )?;
         let number = <T::BlockNumber as From<u32>>::from(header.number.as_u32());
         Ok(number)
     }
@@ -2691,7 +2692,7 @@ impl<T: Config> Pallet<T> {
         from_block: u64,
         to_block: u64,
     ) -> Result<Vec<Log>, Error<T>> {
-        Self::eth_json_rpc_request::<_, Log>(
+        Self::eth_json_rpc_request(
             "eth_getLogs",
             &[FilterBuilder::default()
                 .topics(Some(vec![types::H256(DEPOSIT_TOPIC.0)]), None, None, None)
@@ -2713,14 +2714,7 @@ impl<T: Config> Pallet<T> {
         network_id: T::NetworkId,
     ) -> Result<(), Error<T>> {
         let register_call = Call::<T>::register_incoming_request(incoming_request);
-        let call = bridge_multisig::Call::as_multi(
-            get_bridge_account::<T>(network_id),
-            Some(timepoint),
-            <<T as Config>::Call>::from(register_call).encode(),
-            false,
-            OFFCHAIN_TRANSACTION_WEIGHT_LIMIT,
-        );
-        Self::send_signed_transaction::<bridge_multisig::Call<T>>(call)
+        Self::send_multisig_transaction(register_call, timepoint, network_id)
     }
 
     /// Parses a 'cancel' incoming request from the given transaction receipt and pre-request.
@@ -2879,7 +2873,7 @@ impl<T: Config> Pallet<T> {
     fn handle_logs(
         from_block: u64,
         to_block: u64,
-        handled_height: &mut u64,
+        new_to_handle_height: &mut u64,
         network_id: T::NetworkId,
     ) -> Result<(), Error<T>> {
         let logs = Self::load_transfers_logs(network_id, from_block, to_block)?;
@@ -2889,8 +2883,12 @@ impl<T: Config> Pallet<T> {
             // the invalid ones.
             let event = match Self::parse_deposit_event(&log) {
                 Ok(v) => v,
-                _ => continue,
+                Err(e) => {
+                    debug::debug!("Skipped {:?}, error: {:?}", log, e);
+                    continue;
+                }
             };
+            debug::trace!("Got log {:?}", log);
             let at_height = log
                 .block_number
                 .ok_or(Error::<T>::EthTransactionIsPending)?
@@ -2917,9 +2915,10 @@ impl<T: Config> Pallet<T> {
                 inc_request_result.map_err(|e| e.into()),
                 network_id,
             )?;
-            assert!(*handled_height <= at_height);
-            *handled_height = at_height;
+            assert!(*new_to_handle_height <= at_height);
+            *new_to_handle_height = at_height + 1;
         }
+        *new_to_handle_height = to_block + 1;
         Ok(())
     }
 
@@ -2957,20 +2956,25 @@ impl<T: Config> Pallet<T> {
             }
         };
 
-        let s_eth_handled_height = StorageValueRef::persistent(string.as_bytes());
-        let from_block_opt = s_eth_handled_height.get::<u64>();
+        let string = format!("eth-bridge-ocw::eth-to-handle-from-height-{:?}", network_id);
+        let s_eth_to_handle_from_height = StorageValueRef::persistent(string.as_bytes());
+        let from_block_opt = s_eth_to_handle_from_height.get::<u64>();
         if from_block_opt.is_none() {
-            s_eth_handled_height.set(&current_eth_height);
+            s_eth_to_handle_from_height.set(&current_eth_height);
         }
         let from_block = from_block_opt.flatten().unwrap_or(current_eth_height);
-        let to_block = current_eth_height.saturating_sub(CONFIRMATION_INTERVAL);
-        if to_block >= from_block {
-            let mut handled_height = from_block;
-            let err_opt =
-                Self::handle_logs(from_block, to_block, &mut handled_height, network_id).err();
-            s_eth_handled_height.set(&handled_height);
-            if let Some(err) = err_opt {
-                debug::warn!("Failed to load handle logs: {:?}.", err);
+        let to_block_opt = current_eth_height.checked_sub(CONFIRMATION_INTERVAL);
+        if let Some(to_block) = to_block_opt {
+            if to_block >= from_block {
+                let mut new_height = from_block;
+                let err_opt =
+                    Self::handle_logs(from_block, to_block, &mut new_height, network_id).err();
+                if new_height != from_block {
+                    s_eth_to_handle_from_height.set(&new_height);
+                }
+                if let Some(err) = err_opt {
+                    debug::warn!("Failed to load handle logs: {:?}.", err);
+                }
             }
         }
 
@@ -3048,17 +3052,20 @@ impl<T: Config> Pallet<T> {
         headers: &[(&'static str, String)],
     ) -> Result<Vec<u8>, Error<T>> {
         debug::trace!("Sending request to: {}", url);
-        let mut request = rt_offchain::http::Request::post(url, vec![body]);
+        let mut request = rt_offchain::http::Request::post(url, vec![body.clone()]);
         let timeout = sp_io::offchain::timestamp().add(rt_offchain::Duration::from_millis(
             HTTP_REQUEST_TIMEOUT_SECS * 1000,
         ));
         for (key, value) in headers {
             request = request.add_header(*key, &*value);
         }
-        let pending = request.deadline(timeout).send().map_err(|e| {
+        #[allow(unused_mut)]
+        let mut pending = request.deadline(timeout).send().map_err(|e| {
             debug::error!("Failed to send a request {:?}", e);
             <Error<T>>::HttpFetchingError
         })?;
+        #[cfg(test)]
+        T::Mock::on_request(&mut pending, url, String::from_utf8_lossy(&body));
         let response = pending
             .try_wait(timeout)
             .map_err(|e| {
@@ -3084,7 +3091,7 @@ impl<T: Config> Pallet<T> {
         method: &str,
         params: &I,
         headers: &[(&'static str, String)],
-    ) -> Result<Vec<O>, Error<T>> {
+    ) -> Result<O, Error<T>> {
         let params = match serialize(params) {
             Value::Null => Params::None,
             Value::Array(v) => Params::Array(v),
@@ -3097,12 +3104,14 @@ impl<T: Config> Pallet<T> {
 
         let raw_response = Self::http_request(
             url,
-            serde_json::to_vec(&rpc::Call::MethodCall(rpc::MethodCall {
-                jsonrpc: Some(rpc::Version::V2),
-                method: method.into(),
-                params,
-                id: rpc::Id::Num(id as u64),
-            }))
+            serde_json::to_vec(&rpc::Request::Single(rpc::Call::MethodCall(
+                rpc::MethodCall {
+                    jsonrpc: Some(rpc::Version::V2),
+                    method: method.into(),
+                    params,
+                    id: rpc::Id::Num(id as u64),
+                },
+            )))
             .map_err(|_| Error::<T>::JsonSerializationError)?,
             &headers,
         )
@@ -3117,23 +3126,20 @@ impl<T: Config> Pallet<T> {
                 debug::error!("json_rpc_request: from_json failed, {}", e);
             })
             .map_err(|_| Error::<T>::JsonDeserializationError)?;
-        let results = match response {
-            rpc::Response::Batch(xs) => xs,
-            rpc::Response::Single(x) => vec![x],
+        let result = match response {
+            rpc::Response::Batch(_xs) => unreachable!("we've just sent a `Single` request; qed"),
+            rpc::Response::Single(x) => x,
         };
-        results
-            .into_iter()
-            .map(|x| match x {
-                rpc::Output::Success(s) => serde_json::from_value(s.result).map_err(|e| {
-                    debug::error!("json_rpc_request: from_value failed, {}", e);
-                    Error::<T>::JsonDeserializationError.into()
-                }),
-                _ => {
-                    debug::error!("json_rpc_request: request failed");
-                    Err(Error::<T>::JsonDeserializationError.into())
-                }
-            })
-            .collect::<Result<Vec<_>, _>>()
+        match result {
+            rpc::Output::Success(s) => serde_json::from_value(s.result).map_err(|e| {
+                debug::error!("json_rpc_request: from_value failed, {}", e);
+                Error::<T>::JsonDeserializationError.into()
+            }),
+            _ => {
+                debug::error!("json_rpc_request: request failed");
+                Err(Error::<T>::JsonDeserializationError.into())
+            }
+        }
     }
 
     /// Makes request to a Sidechain node. The node URL and credentials are stored in the local
@@ -3142,7 +3148,7 @@ impl<T: Config> Pallet<T> {
         method: &str,
         params: &I,
         network_id: T::NetworkId,
-    ) -> Result<Vec<O>, Error<T>> {
+    ) -> Result<O, Error<T>> {
         let string = format!("{}-{:?}", STORAGE_ETH_NODE_PARAMS, network_id);
         let s_node_params = StorageValueRef::persistent(string.as_bytes());
         let node_params = match s_node_params.get::<NodeParams>().flatten() {
@@ -3156,14 +3162,14 @@ impl<T: Config> Pallet<T> {
         if let Some(node_credentials) = node_params.credentials {
             headers.push(("Authorization", node_credentials));
         }
-        Self::json_rpc_request(&node_params.url, 1, method, params, &headers)
+        Self::json_rpc_request(&node_params.url, 0, method, params, &headers)
     }
 
     /// Makes request to the local node. The node URL is stored in the local storage.
     fn substrate_json_rpc_request<I: Serialize, O: for<'de> Deserialize<'de>>(
         method: &str,
         params: &I,
-    ) -> Result<Vec<O>, Error<T>> {
+    ) -> Result<O, Error<T>> {
         let s_node_url = StorageValueRef::persistent(STORAGE_SUB_NODE_URL_KEY);
         let node_url = s_node_url
             .get::<String>()
@@ -3203,6 +3209,32 @@ impl<T: Config> Pallet<T> {
         Ok(())
     }
 
+    fn send_multisig_transaction(
+        call: Call<T>,
+        timepoint: Timepoint<T>,
+        network_id: T::NetworkId,
+    ) -> Result<(), Error<T>> {
+        let bridge_account = get_bridge_account::<T>(network_id);
+        let threshold = bridge_multisig::Accounts::<T>::get(&bridge_account)
+            .unwrap()
+            .threshold_num();
+        let call = if threshold == 1 {
+            bridge_multisig::Call::as_multi_threshold_1(
+                bridge_account,
+                Box::new(<<T as Config>::Call>::from(call)),
+            )
+        } else {
+            bridge_multisig::Call::as_multi(
+                bridge_account,
+                Some(timepoint),
+                <<T as Config>::Call>::from(call).encode(),
+                false,
+                OFFCHAIN_TRANSACTION_WEIGHT_LIMIT,
+            )
+        };
+        Self::send_signed_transaction::<bridge_multisig::Call<T>>(call)
+    }
+
     /// Queries Sidechain's contract variable `used`.
     fn load_is_used(hash: H256, network_id: T::NetworkId) -> Result<bool, Error<T>> {
         // `used(bytes32)`
@@ -3230,9 +3262,7 @@ impl<T: Config> Pallet<T> {
                     Value::String("latest".into()),
                 ],
                 network_id,
-            )?
-            .pop()
-            .ok_or(Error::<T>::FailedToLoadIsUsed)?;
+            )?;
             if is_used {
                 return Ok(true);
             }
@@ -3443,15 +3473,7 @@ impl<T: Config> Pallet<T> {
     ) -> Result<(), Error<T>> {
         debug::debug!("send_incoming_request_result: {:?}", hash);
         let transfer_call = Call::<T>::finalize_incoming_request(hash, network_id);
-        let call = bridge_multisig::Call::as_multi(
-            Self::bridge_account(network_id).expect("networks can't be removed; qed"),
-            Some(timepoint),
-            <<T as Config>::Call>::from(transfer_call).encode(),
-            false,
-            OFFCHAIN_TRANSACTION_WEIGHT_LIMIT,
-        );
-        Self::send_signed_transaction::<bridge_multisig::Call<T>>(call)?;
-        Ok(())
+        Self::send_multisig_transaction(transfer_call, timepoint, network_id)
     }
 
     fn send_import_incoming_request(
@@ -3466,15 +3488,7 @@ impl<T: Config> Pallet<T> {
         );
         let import_call =
             Call::<T>::import_incoming_request(load_incoming_request, incoming_request_result);
-        let call = bridge_multisig::Call::as_multi(
-            Self::bridge_account(network_id).expect("networks can't be removed; qed"),
-            Some(timepoint),
-            <<T as Config>::Call>::from(import_call).encode(),
-            false,
-            OFFCHAIN_TRANSACTION_WEIGHT_LIMIT,
-        );
-        Self::send_signed_transaction::<bridge_multisig::Call<T>>(call)?;
-        Ok(())
+        Self::send_multisig_transaction(import_call, timepoint, network_id)
     }
 
     /// Send 'abort request' transaction.
@@ -3487,15 +3501,7 @@ impl<T: Config> Pallet<T> {
         debug::debug!("send_abort_request: {:?}", request_hash);
         let abort_request_call =
             Call::<T>::abort_request(request_hash, request_error.into(), network_id);
-        let call = bridge_multisig::Call::as_multi(
-            Self::bridge_account(network_id).expect("networks can't be removed; qed"),
-            Some(timepoint),
-            <<T as Config>::Call>::from(abort_request_call).encode(),
-            false,
-            OFFCHAIN_TRANSACTION_WEIGHT_LIMIT,
-        );
-        Self::send_signed_transaction::<bridge_multisig::Call<T>>(call)?;
-        Ok(())
+        Self::send_multisig_transaction(abort_request_call, timepoint, network_id)
     }
 
     /// Encodes the given outgoing request to Ethereum ABI, then signs the data by off-chain worker's
@@ -3545,9 +3551,7 @@ impl<T: Config> Pallet<T> {
 
     /// Queries current height of Sidechain.
     fn load_current_height(network_id: T::NetworkId) -> Result<u64, Error<T>> {
-        Self::eth_json_rpc_request::<_, types::U64>("eth_blockNumber", &(), network_id)?
-            .first()
-            .ok_or(Error::<T>::LoadCurrentSidechainHeight)
+        Self::eth_json_rpc_request::<_, types::U64>("eth_blockNumber", &(), network_id)
             .map(|x| x.as_u64())
     }
 
@@ -3578,9 +3582,7 @@ impl<T: Config> Pallet<T> {
             "eth_getTransactionByHash",
             &vec![hash],
             network_id,
-        )?
-        .pop()
-        .ok_or(Error::<T>::FailedToLoadTransaction)?;
+        )?;
         let to = tx_receipt
             .to
             .map(|x| H160(x.0))
@@ -3600,9 +3602,7 @@ impl<T: Config> Pallet<T> {
             "eth_getTransactionReceipt",
             &vec![hash],
             network_id,
-        )?
-        .pop()
-        .ok_or(Error::<T>::FailedToLoadTransaction)?;
+        )?;
         let to = tx_receipt
             .to
             .map(|x| H160(x.0))

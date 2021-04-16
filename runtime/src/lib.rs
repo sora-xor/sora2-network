@@ -112,7 +112,7 @@ pub use sp_runtime::BuildStorage;
 use eth_bridge::{
     AssetKind, OffchainRequest, OutgoingRequestEncoded, RequestStatus, SignatureParams,
 };
-use impls::OnUnbalancedDemocracySlash;
+use impls::{DemocracyWeightInfo, OnUnbalancedDemocracySlash};
 
 pub use {bonding_curve_pool, eth_bridge, multicollateral_bonding_curve_pool};
 
@@ -183,7 +183,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
     spec_name: create_runtime_str!("sora-substrate"),
     impl_name: create_runtime_str!("sora-substrate"),
     authoring_version: 1,
-    spec_version: 25,
+    spec_version: 26,
     impl_version: 1,
     apis: RUNTIME_API_VERSIONS,
     transaction_version: 1,
@@ -380,7 +380,7 @@ impl pallet_democracy::Config for Runtime {
     type Scheduler = Scheduler;
     type PalletsOrigin = OriginCaller;
     type MaxVotes = DemocracyMaxVotes;
-    type WeightInfo = ();
+    type WeightInfo = DemocracyWeightInfo;
     type MaxProposals = DemocracyMaxProposals;
 }
 
@@ -1528,7 +1528,7 @@ impl_runtime_apis! {
             swap_variant: SwapVariant,
             selected_source_types: Vec<LiquiditySourceType>,
             filter_mode: FilterMode,
-        ) -> Option<liquidity_proxy_runtime_api::SwapOutcomeInfo<Balance>> {
+        ) -> Option<liquidity_proxy_runtime_api::SwapOutcomeInfo<Balance, AssetId>> {
             // TODO: remove with proper QuoteAmount refactor
             let limit = if swap_variant == SwapVariant::WithDesiredInput {
                 Balance::zero()
@@ -1540,7 +1540,18 @@ impl_runtime_apis! {
                 &output_asset_id,
                 SwapAmount::with_variant(swap_variant, amount.into(), limit),
                 LiquiditySourceFilter::with_mode(dex_id, filter_mode, selected_source_types),
-            ).ok().map(|asa| liquidity_proxy_runtime_api::SwapOutcomeInfo::<Balance> { amount: asa.amount, fee: asa.fee})
+                false,
+            ).ok().map(|(asa, rewards)| liquidity_proxy_runtime_api::SwapOutcomeInfo::<Balance, AssetId> {
+                amount: asa.amount,
+                fee: asa.fee,
+                rewards: rewards.into_iter()
+                                .map(|(amount, currency, reason)| liquidity_proxy_runtime_api::RewardsInfo::<Balance, AssetId> {
+                                    amount,
+                                    currency,
+                                    reason
+                                })
+                                .collect(),
+                ..Default::default()})
         }
 
         fn is_path_available(

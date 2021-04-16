@@ -50,7 +50,7 @@ use common::prelude::{
 };
 use common::{
     balance, fixed, fixed_wrapper, DEXId, DexIdOf, GetMarketInfo, LiquiditySource,
-    LiquiditySourceFilter, LiquiditySourceType, ManagementMode, PSWAP, USDT, VAL,
+    LiquiditySourceFilter, LiquiditySourceType, ManagementMode, RewardReason, PSWAP, USDT, VAL,
 };
 use frame_support::traits::Get;
 use frame_support::weights::Weight;
@@ -62,6 +62,7 @@ use pswap_distribution::{OnPswapBurned, PswapRemintInfo};
 use sp_arithmetic::traits::Zero;
 use sp_runtime::{DispatchError, DispatchResult};
 use sp_std::collections::btree_set::BTreeSet;
+use sp_std::vec::Vec;
 
 pub trait WeightInfo {
     fn initialize_pool() -> Weight;
@@ -1338,6 +1339,43 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
             .swap();
             Module::<T>::update_collateral_reserves(input_asset_id, reserves_account_id)?;
             outcome
+        }
+    }
+
+    fn check_rewards(
+        dex_id: &T::DEXId,
+        input_asset_id: &T::AssetId,
+        output_asset_id: &T::AssetId,
+        input_amount: Balance,
+        output_amount: Balance,
+    ) -> Result<Vec<(Balance, T::AssetId, RewardReason)>, DispatchError> {
+        if !Self::can_exchange(dex_id, input_asset_id, output_asset_id) {
+            fail!(Error::<T>::CantExchange);
+        }
+        let base_asset_id = &T::GetBaseAssetId::get();
+        if output_asset_id == base_asset_id {
+            let reserves_tech_account_id = ReservesAcc::<T>::get();
+            let reserves_account_id =
+                Technical::<T>::tech_account_id_to_account_id(&reserves_tech_account_id)?;
+            let mut pswap_amount = Module::<T>::calculate_buy_reward(
+                &reserves_account_id,
+                input_asset_id,
+                input_amount,
+                output_amount,
+            )?;
+            if let Some(multiplier) = AssetsWithOptionalRewardMultiplier::<T>::get(&input_asset_id)
+            {
+                pswap_amount = (FixedWrapper::from(pswap_amount) * multiplier)
+                    .try_into_balance()
+                    .map_err(|_| Error::<T>::PriceCalculationFailed)?;
+            }
+            if !pswap_amount.is_zero() {
+                Ok([(pswap_amount, PSWAP.into(), RewardReason::BuyOnBondingCurve)].into())
+            } else {
+                Ok(Vec::new())
+            }
+        } else {
+            Ok(Vec::new()) // no rewards on sell
         }
     }
 }

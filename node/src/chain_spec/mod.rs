@@ -569,7 +569,7 @@ pub fn local_testnet_config() -> ChainSpec {
                     val_master_contract_address: hex!("47e229aa491763038f6a505b4f85d8eb463f0962")
                         .into(),
                     val_contract_address: hex!("68339de68c9af6577c54867728dbb2db9d7368bf").into(),
-                    bridge_contract_address: hex!("64fb0ca483b356832cd97958e6b23df783fb7ced")
+                    bridge_contract_address: hex!("24390c8f6cbd5d152c30226f809f4e3f153b88d4")
                         .into(),
                 },
                 vec![
