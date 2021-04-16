@@ -393,7 +393,7 @@ fn fee_payment_postponed() {
             XOR,
             SwapAmount::WithDesiredInput {
                 desired_amount_in: balance!(100),
-                min_amount_out: balance!(100),
+                min_amount_out: balance!(50),
             },
             vec![],
             FilterMode::Disabled,
