@@ -37,6 +37,7 @@ use alloc::string::String;
 
 /// Constant values used within the runtime.
 pub mod constants;
+mod extensions;
 mod impls;
 
 use constants::time::*;
@@ -47,6 +48,7 @@ include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
 
 use core::time::Duration;
 use currencies::BasicCurrencyAdapter;
+use extensions::ChargeTransactionPayment;
 pub use farming::domain::{FarmInfo, FarmerInfo};
 pub use farming::FarmId;
 use frame_system::offchain::{Account, SigningTypes};
@@ -711,14 +713,13 @@ where
         let current_block = System::block_number()
             .saturated_into::<u64>()
             .saturating_sub(1);
-        let tip = 0u32;
         let extra: SignedExtra = (
             frame_system::CheckTxVersion::<Runtime>::new(),
             frame_system::CheckGenesis::<Runtime>::new(),
             frame_system::CheckEra::<Runtime>::from(generic::Era::mortal(period, current_block)),
             frame_system::CheckNonce::<Runtime>::from(index),
             frame_system::CheckWeight::<Runtime>::new(),
-            pallet_transaction_payment::ChargeTransactionPayment::<Runtime>::from(tip.into()),
+            ChargeTransactionPayment::<Runtime>::new(),
         );
         #[cfg_attr(not(feature = "std"), allow(unused_variables))]
         let raw_payload = SignedPayload::new(call, extra)
@@ -1183,7 +1184,7 @@ pub type SignedExtra = (
     frame_system::CheckEra<Runtime>,
     frame_system::CheckNonce<Runtime>,
     frame_system::CheckWeight<Runtime>,
-    pallet_transaction_payment::ChargeTransactionPayment<Runtime>,
+    ChargeTransactionPayment<Runtime>,
 );
 /// Unchecked extrinsic type as expected by this runtime.
 pub type UncheckedExtrinsic = generic::UncheckedExtrinsic<Address, Call, Signature, SignedExtra>;
