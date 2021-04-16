@@ -75,7 +75,11 @@ use crate::contract::{
     ADD_PEER_BY_PEER_ID, ADD_PEER_BY_PEER_TX_HASH_ARG_POS, FUNCTIONS, METHOD_ID_SIZE,
     REMOVE_PEER_BY_PEER_FN, REMOVE_PEER_BY_PEER_ID, REMOVE_PEER_BY_PEER_TX_HASH_ARG_POS,
 };
-use crate::types::{Bytes, CallRequest, Log, Transaction, TransactionReceipt};
+#[cfg(test)]
+use crate::mock::Mock;
+use crate::types::{
+    BlockNumber, Bytes, CallRequest, FilterBuilder, Log, Transaction, TransactionReceipt,
+};
 use alloc::string::String;
 use codec::{Decode, Encode, FullCodec};
 use common::prelude::Balance;
@@ -90,15 +94,19 @@ use frame_support::sp_runtime::offchain::storage_lock::{BlockNumberProvider, Sto
 use frame_support::sp_runtime::traits::{
     AtLeast32Bit, IdentifyAccount, MaybeSerializeDeserialize, Member, One,
 };
-use frame_support::sp_runtime::{offchain as rt_offchain, KeyTypeId, MultiSigner, Percent};
+use frame_support::sp_runtime::{
+    offchain as rt_offchain, DispatchErrorWithPostInfo, KeyTypeId, MultiSigner, Percent,
+};
 use frame_support::traits::{Get, GetCallName};
-use frame_support::weights::{Pays, Weight};
+use frame_support::weights::{Pays, PostDispatchInfo, Weight};
 use frame_support::{
     debug, ensure, fail, sp_io, transactional, IterableStorageDoubleMap, Parameter, RuntimeDebug,
 };
 use frame_system::offchain::{AppCrypto, CreateSignedTransaction, SendSignedTransaction, Signer};
+use frame_system::pallet_prelude::OriginFor;
 use frame_system::{ensure_root, ensure_signed};
 use hex_literal::hex;
+pub use pallet::*;
 use permissions::{Scope, BURN, MINT};
 use requests::*;
 use rpc::Params;
@@ -131,6 +139,15 @@ pub trait WeightInfo {
     fn approve_request() -> (Weight, Pays);
     fn approve_request_finalize() -> (Weight, Pays);
     fn abort_request() -> (Weight, Pays);
+    fn import_incoming_request(is_ok: bool) -> (Weight, Pays) {
+        let weight = Self::register_incoming_request().0
+            + if is_ok {
+                Self::finalize_incoming_request().0
+            } else {
+                Self::abort_request().0
+            };
+        (weight, Pays::No)
+    }
 }
 
 type Address = H160;
@@ -163,6 +180,12 @@ pub const STORAGE_SUB_NODE_URL_KEY: &[u8] = b"eth-bridge-ocw::sub-node-url";
 pub const STORAGE_PEER_SECRET_KEY: &[u8] = b"eth-bridge-ocw::secret-key";
 pub const STORAGE_ETH_NODE_PARAMS: &str = "eth-bridge-ocw::node-params";
 pub const STORAGE_NETWORK_IDS_KEY: &[u8] = b"eth-bridge-ocw::network-ids";
+
+/// Contract's `Deposit(bytes32,uint256,address,bytes32)` event topic.
+pub const DEPOSIT_TOPIC: H256 = H256(hex!(
+    "85c0fa492ded927d3acca961da52b0dda1debb06d8c27fe189315f06bb6e26c8"
+));
+pub const OFFCHAIN_TRANSACTION_WEIGHT_LIMIT: u64 = 10_000_000_000_000_000u64;
 
 type AssetIdOf<T> = <T as assets::Config>::AssetId;
 type Timepoint<T> = bridge_multisig::Timepoint<<T as frame_system::Config>::BlockNumber>;
@@ -345,7 +368,7 @@ impl<T: Config> OutgoingRequest<T> {
         }
     }
 
-    fn prepare(&mut self) -> Result<(), DispatchError> {
+    fn prepare(&self) -> Result<(), DispatchError> {
         match self {
             OutgoingRequest::Transfer(request) => request.prepare(),
             OutgoingRequest::AddAsset(request) => request.prepare(()),
@@ -465,14 +488,19 @@ impl<T: Config> IncomingRequest<T> {
         event: ContractEvent<Address, T::AccountId, Balance>,
         incoming_request: LoadIncomingTransactionRequest<T>,
         at_height: u64,
-        tx_hash: H256,
     ) -> Result<Self, Error<T>> {
         let network_id = incoming_request.network_id;
         let timepoint = incoming_request.timepoint;
         let author = incoming_request.author;
+        let tx_hash = incoming_request.hash;
 
         let req = match event {
-            ContractEvent::Deposit(to, amount, token_address, raw_asset_id) => {
+            ContractEvent::Deposit(DepositEvent {
+                destination: to,
+                amount,
+                token: token_address,
+                sidechain_asset: raw_asset_id,
+            }) => {
                 let (asset_id, asset_kind) = Module::<T>::get_asset_by_raw_asset_id(
                     raw_asset_id,
                     &token_address,
@@ -752,7 +780,7 @@ impl<T: Config> LoadIncomingRequest<T> {
         }
     }
 
-    fn prepare(&mut self) -> Result<(), DispatchError> {
+    fn prepare(&self) -> Result<(), DispatchError> {
         Ok(())
     }
 
@@ -915,7 +943,7 @@ impl<T: Config> OffchainRequest<T> {
     }
 
     /// Performs additional state changes for the request (e.g., reserves funds for a transfer).
-    fn prepare(&mut self) -> Result<(), DispatchError> {
+    fn prepare(&self) -> Result<(), DispatchError> {
         match self {
             OffchainRequest::Outgoing(request, _) => request.prepare(),
             OffchainRequest::LoadIncoming(request) => request.prepare(),
@@ -954,6 +982,13 @@ impl<T: Config> OffchainRequest<T> {
         }
     }
 
+    pub fn into_incoming(self) -> Option<(IncomingRequest<T>, H256)> {
+        match self {
+            OffchainRequest::Incoming(r, h) => Some((r, h)),
+            _ => None,
+        }
+    }
+
     pub fn as_incoming(&self) -> Option<(&IncomingRequest<T>, H256)> {
         match self {
             OffchainRequest::Incoming(r, h) => Some((r, *h)),
@@ -964,6 +999,13 @@ impl<T: Config> OffchainRequest<T> {
     pub fn is_load_incoming(&self) -> bool {
         match self {
             OffchainRequest::LoadIncoming(..) => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_incoming(&self) -> bool {
+        match self {
+            OffchainRequest::Incoming(..) => true,
             _ => false,
         }
     }
@@ -1135,8 +1177,6 @@ impl Default for BridgeStatus {
     }
 }
 
-pub use pallet::*;
-
 #[frame_support::pallet]
 pub mod pallet {
     use super::*;
@@ -1153,7 +1193,7 @@ pub mod pallet {
         + CreateSignedTransaction<Call<Self>>
         + CreateSignedTransaction<bridge_multisig::Call<Self>>
         + assets::Config
-        + bridge_multisig::Config
+        + bridge_multisig::Config<Call = <Self as Config>::Call>
         + fmt::Debug
     {
         type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
@@ -1173,6 +1213,8 @@ pub mod pallet {
         type GetEthNetworkId: Get<Self::NetworkId>;
         /// Weight information for extrinsics in this pallet.
         type WeightInfo: WeightInfo;
+        #[cfg(test)]
+        type Mock: mock::Mock;
     }
 
     #[pallet::pallet]
@@ -1246,7 +1288,7 @@ pub mod pallet {
             let from = ensure_signed(origin)?;
             let nonce = frame_system::Module::<T>::account_nonce(&from);
             let timepoint = bridge_multisig::Module::<T>::timepoint();
-            Self::add_request(OffchainRequest::outgoing(OutgoingRequest::AddAsset(
+            Self::add_request(&OffchainRequest::outgoing(OutgoingRequest::AddAsset(
                 OutgoingAddAsset {
                     author: from.clone(),
                     asset_id,
@@ -1282,7 +1324,7 @@ pub mod pallet {
             let from = Self::authority_account();
             let nonce = frame_system::Module::<T>::account_nonce(&from);
             let timepoint = bridge_multisig::Module::<T>::timepoint();
-            Self::add_request(OffchainRequest::outgoing(OutgoingRequest::AddToken(
+            Self::add_request(&OffchainRequest::outgoing(OutgoingRequest::AddToken(
                 OutgoingAddToken {
                     author: from.clone(),
                     token_address,
@@ -1325,7 +1367,7 @@ pub mod pallet {
             let from = ensure_signed(origin)?;
             let nonce = frame_system::Module::<T>::account_nonce(&from);
             let timepoint = bridge_multisig::Module::<T>::timepoint();
-            Self::add_request(OffchainRequest::outgoing(OutgoingRequest::Transfer(
+            Self::add_request(&OffchainRequest::outgoing(OutgoingRequest::Transfer(
                 OutgoingTransfer {
                     from: from.clone(),
                     to,
@@ -1359,7 +1401,7 @@ pub mod pallet {
             let timepoint = bridge_multisig::Module::<T>::timepoint();
             match kind {
                 IncomingRequestKind::Transaction(kind) => {
-                    Self::add_request(OffchainRequest::LoadIncoming(
+                    Self::add_request(&OffchainRequest::LoadIncoming(
                         LoadIncomingRequest::Transaction(LoadIncomingTransactionRequest::new(
                             from,
                             eth_tx_hash,
@@ -1383,7 +1425,7 @@ pub mod pallet {
                         fail!(Error::<T>::Unavailable);
                     }
                     let timepoint = bridge_multisig::Module::<T>::timepoint();
-                    Self::add_request(OffchainRequest::load_incoming_meta(
+                    Self::add_request(&OffchainRequest::load_incoming_meta(
                         LoadIncomingMetaRequest::new(
                             from,
                             eth_tx_hash,
@@ -1397,11 +1439,7 @@ pub mod pallet {
             }
         }
 
-        /// Finalize incoming request.
-        ///
-        /// At first, `finalize` is called on the request, if it fails, the `cancel` function
-        /// gets called. Request status changes depending on the result (`Done` or `Failed`), and
-        /// finally the request gets removed from the queue.
+        /// Finalize incoming request (see `Pallet::finalize_incoming_request_inner`).
         ///
         /// Can be only called from a bridge account.
         ///
@@ -1415,27 +1453,13 @@ pub mod pallet {
             network_id: BridgeNetworkId<T>,
         ) -> DispatchResultWithPostInfo {
             debug::debug!("called finalize_incoming_request");
-            let from = ensure_signed(origin)?;
-            let _ = Self::ensure_bridge_account(&from, network_id)?;
+            let _ = Self::ensure_bridge_account(origin, network_id)?;
             let request =
                 Requests::<T>::get(network_id, &hash).ok_or(Error::<T>::UnknownRequest)?;
-            let error_opt = request.finalize().err();
-            if let Some(e) = error_opt {
-                debug::error!("Incoming request failed {:?} {:?}", hash, e);
-                Self::deposit_event(Event::IncomingRequestFinalizationFailed(hash));
-                RequestStatuses::<T>::insert(network_id, hash, RequestStatus::Failed(e));
-                if let Err(e) = request.cancel() {
-                    debug::error!("Request cancellation failed: {:?}, {:?}", e, request);
-                    // Such errors should not occur in general, but we check it in tests, anyway.
-                    #[cfg(not(test))]
-                    debug_assert!(false, "unexpected cancellation error {:?}", e);
-                }
-            } else {
-                debug::warn!("Incoming request finalized {:?}", hash);
-                RequestStatuses::<T>::insert(network_id, hash, RequestStatus::Done);
-                Self::deposit_event(Event::IncomingRequestFinalized(hash));
-            }
-            Self::remove_request_from_queue(network_id, &hash);
+            let (request, hash) = request
+                .as_incoming()
+                .ok_or(Error::<T>::ExpectedIncomingRequest)?;
+            Self::finalize_incoming_request_inner(request, hash, network_id)?;
             Ok(().into())
         }
 
@@ -1458,7 +1482,7 @@ pub mod pallet {
             let from = Self::authority_account();
             let nonce = frame_system::Module::<T>::account_nonce(&from);
             let timepoint = bridge_multisig::Module::<T>::timepoint();
-            Self::add_request(OffchainRequest::outgoing(OutgoingRequest::AddPeer(
+            Self::add_request(&OffchainRequest::outgoing(OutgoingRequest::AddPeer(
                 OutgoingAddPeer {
                     author: from.clone(),
                     peer_account_id: account_id.clone(),
@@ -1471,7 +1495,7 @@ pub mod pallet {
             frame_system::Module::<T>::inc_account_nonce(&from);
             if network_id == T::GetEthNetworkId::get() {
                 let nonce = frame_system::Module::<T>::account_nonce(&from);
-                Self::add_request(OffchainRequest::outgoing(OutgoingRequest::AddPeerCompat(
+                Self::add_request(&OffchainRequest::outgoing(OutgoingRequest::AddPeerCompat(
                     OutgoingAddPeerCompat {
                         author: from.clone(),
                         peer_account_id: account_id,
@@ -1504,7 +1528,7 @@ pub mod pallet {
             let peer_address = Self::peer_address(network_id, &account_id);
             let nonce = frame_system::Module::<T>::account_nonce(&from);
             let timepoint = bridge_multisig::Module::<T>::timepoint();
-            Self::add_request(OffchainRequest::outgoing(OutgoingRequest::RemovePeer(
+            Self::add_request(&OffchainRequest::outgoing(OutgoingRequest::RemovePeer(
                 OutgoingRemovePeer {
                     author: from.clone(),
                     peer_account_id: account_id.clone(),
@@ -1517,7 +1541,7 @@ pub mod pallet {
             frame_system::Module::<T>::inc_account_nonce(&from);
             if network_id == T::GetEthNetworkId::get() {
                 let nonce = frame_system::Module::<T>::account_nonce(&from);
-                Self::add_request(OffchainRequest::outgoing(
+                Self::add_request(&OffchainRequest::outgoing(
                     OutgoingRequest::RemovePeerCompat(OutgoingRemovePeerCompat {
                         author: from.clone(),
                         peer_account_id: account_id,
@@ -1549,7 +1573,7 @@ pub mod pallet {
             let from = Self::authority_account();
             let nonce = frame_system::Module::<T>::account_nonce(&from);
             let timepoint = bridge_multisig::Module::<T>::timepoint();
-            Self::add_request(OffchainRequest::outgoing(
+            Self::add_request(&OffchainRequest::outgoing(
                 OutgoingRequest::PrepareForMigration(OutgoingPrepareForMigration {
                     author: from.clone(),
                     nonce,
@@ -1582,7 +1606,7 @@ pub mod pallet {
             let from = Self::authority_account();
             let nonce = frame_system::Module::<T>::account_nonce(&from);
             let timepoint = bridge_multisig::Module::<T>::timepoint();
-            Self::add_request(OffchainRequest::outgoing(OutgoingRequest::Migrate(
+            Self::add_request(&OffchainRequest::outgoing(OutgoingRequest::Migrate(
                 OutgoingMigrate {
                     author: from.clone(),
                     new_contract_address,
@@ -1598,8 +1622,8 @@ pub mod pallet {
 
         /// Register the given incoming request and add it to the queue.
         ///
-        /// Calls `prepare` on the request, adds it to incoming requests queue and map, and removes
-        /// corresponding pre-incoming request from requests queue.
+        /// Calls `validate` and `prepare` on the request, adds it to the queue and maps it with the
+        /// corresponding load-incoming-request and removes the load-request from the queue.
         ///
         /// Can only be called by a bridge account.
         #[pallet::weight(<T as Config>::WeightInfo::register_incoming_request())]
@@ -1608,38 +1632,49 @@ pub mod pallet {
             incoming_request: IncomingRequest<T>,
         ) -> DispatchResultWithPostInfo {
             debug::debug!("called register_incoming_request");
-            let author = ensure_signed(origin.clone())?;
             let net_id = incoming_request.network_id();
-            let _ = Self::ensure_bridge_account(&author, net_id)?;
-            let sidechain_tx_hash = incoming_request.hash();
-            let request_author = incoming_request.author().clone();
-            let mut request = OffchainRequest::incoming(incoming_request);
-            let incoming_request_hash = request.hash();
-            ensure!(
-                !Requests::<T>::contains_key(net_id, incoming_request_hash),
-                Error::<T>::RequestIsAlreadyRegistered
-            );
-            Self::remove_request_from_queue(net_id, &sidechain_tx_hash);
-            RequestStatuses::<T>::insert(net_id, sidechain_tx_hash, RequestStatus::Done);
-            LoadToIncomingRequestHash::<T>::insert(
+            let _ = Self::ensure_bridge_account(origin, net_id)?;
+            Self::register_incoming_request_inner(
+                &OffchainRequest::incoming(incoming_request),
                 net_id,
-                sidechain_tx_hash,
-                incoming_request_hash,
-            );
-            if let Err(e) = request.validate().and_then(|_| request.prepare()) {
-                RequestStatuses::<T>::insert(
-                    net_id,
-                    incoming_request_hash,
-                    RequestStatus::Failed(e),
-                );
-                return Err(e.into());
+            )?;
+            Ok(().into())
+        }
+
+        /// Import the given incoming request.
+        ///
+        /// Register's the load request, then registers and finalizes the incoming request if it
+        /// succeeded, otherwise aborts the load request.
+        ///
+        /// Can only be called by a bridge account.
+        #[pallet::weight(<T as Config>::WeightInfo::import_incoming_request(incoming_request_result.is_ok()))]
+        pub fn import_incoming_request(
+            origin: OriginFor<T>,
+            load_incoming_request: LoadIncomingRequest<T>,
+            incoming_request_result: Result<IncomingRequest<T>, DispatchError>,
+        ) -> DispatchResultWithPostInfo {
+            debug::debug!("called import_incoming_request");
+            let net_id = load_incoming_request.network_id();
+            let _ = Self::ensure_bridge_account(origin, net_id)?;
+            let sidechain_tx_hash = load_incoming_request.hash();
+            let load_incoming = OffchainRequest::LoadIncoming(load_incoming_request);
+            Self::add_request(&load_incoming)?;
+            match incoming_request_result {
+                Ok(incoming_request) => {
+                    assert_eq!(net_id, incoming_request.network_id());
+                    let incoming = OffchainRequest::incoming(incoming_request.clone());
+                    let incoming_request_hash = incoming.hash();
+                    Self::add_request(&incoming)?;
+                    Self::finalize_incoming_request_inner(
+                        &incoming_request,
+                        incoming_request_hash,
+                        net_id,
+                    )?;
+                }
+                Err(e) => {
+                    Self::inner_abort_request(&load_incoming, sidechain_tx_hash, e, net_id);
+                }
             }
-            Requests::<T>::insert(net_id, &incoming_request_hash, request);
-            RequestsQueue::<T>::mutate(net_id, |v| v.push(incoming_request_hash));
-            RequestStatuses::<T>::insert(net_id, incoming_request_hash, RequestStatus::Pending);
-            AccountRequests::<T>::mutate(request_author, |v| {
-                v.push((net_id, incoming_request_hash))
-            });
             Ok(().into())
         }
 
@@ -1723,8 +1758,7 @@ pub mod pallet {
                 hash,
                 error
             );
-            let author = ensure_signed(origin)?;
-            let _ = Self::ensure_bridge_account(&author, network_id)?;
+            let _ = Self::ensure_bridge_account(origin, network_id)?;
             let request = Requests::<T>::get(network_id, hash).ok_or(Error::<T>::UnknownRequest)?;
             Self::inner_abort_request(&request, hash, error, network_id);
             Self::deposit_event(Event::RequestAborted(hash));
@@ -1848,7 +1882,11 @@ pub mod pallet {
         EthTransactionIsFailed,
         /// Ethereum transaction is succeeded.
         EthTransactionIsSucceeded,
-        /// Ethereum transaction is succeeded.
+        /// Ethereum transaction is pending.
+        EthTransactionIsPending,
+        /// Ethereum log was removed.
+        EthLogWasRemoved,
+        /// No pending peer.
         NoPendingPeer,
         /// Wrong pending peer.
         WrongPendingPeer,
@@ -1902,6 +1940,8 @@ pub mod pallet {
         SidechainAssetIsAlreadyRegistered,
         /// Expected an outgoing request.
         ExpectedOutgoingRequest,
+        /// Expected an incoming request.
+        ExpectedIncomingRequest,
         /// Unknown asset id.
         UnknownAssetId,
         /// Failed to serialize JSON.
@@ -1911,7 +1951,7 @@ pub mod pallet {
         /// Failed to load sidechain node parameters.
         FailedToLoadSidechainNodeParams,
         /// Failed to load current sidechain height.
-        LoadCurrentSidechainHeight,
+        FailedToLoadCurrentSidechainHeight,
         /// Failed to query sidechain 'used' variable.
         FailedToLoadIsUsed,
         /// Sidechain transaction might have failed due to gas limit.
@@ -2186,10 +2226,36 @@ pub fn majority(peers_count: usize) -> usize {
     peers_count - (peers_count - 1) / 3
 }
 
+/// Contract's deposit event, means that someone transferred some amount of the token/asset to the
+/// bridge contract.
+#[cfg_attr(feature = "std", derive(PartialEq, Eq, RuntimeDebug))]
+pub struct DepositEvent<Address, AccountId, Balance> {
+    destination: AccountId,
+    amount: Balance,
+    token: Address,
+    sidechain_asset: H256,
+}
+
+impl<Address, AccountId, Balance> DepositEvent<Address, AccountId, Balance> {
+    pub fn new(
+        destination: AccountId,
+        amount: Balance,
+        token: Address,
+        sidechain_asset: H256,
+    ) -> Self {
+        DepositEvent {
+            destination,
+            amount,
+            token,
+            sidechain_asset,
+        }
+    }
+}
+
 /// Events that can be emitted by Sidechain smart-contract.
 #[cfg_attr(feature = "std", derive(PartialEq, Eq, RuntimeDebug))]
 pub enum ContractEvent<Address, AccountId, Balance> {
-    Deposit(AccountId, Balance, Address, H256),
+    Deposit(DepositEvent<Address, AccountId, Balance>),
     ChangePeers(Address, bool),
     PreparedForMigration,
     Migrated(Address),
@@ -2337,9 +2403,13 @@ impl<T: Config> Pallet<T> {
     /// 3. Request status should be empty or `Failed` (for resubmission).
     /// 4. There is no registered request with the same hash.
     /// 5. The request's `validate` and `prepare` should pass.
-    fn add_request(mut request: OffchainRequest<T>) -> Result<(), DispatchError> {
+    fn add_request(request: &OffchainRequest<T>) -> Result<(), DispatchError> {
         let net_id = request.network_id();
         let bridge_status = BridgeStatuses::<T>::get(net_id).ok_or(Error::<T>::UnknownNetwork)?;
+        if request.is_incoming() {
+            Self::register_incoming_request_inner(request, net_id)?;
+            return Ok(());
+        }
         if let Some((outgoing_req, _)) = request.as_outgoing() {
             ensure!(
                 bridge_status != BridgeStatus::Migrating
@@ -2360,12 +2430,87 @@ impl<T: Config> Pallet<T> {
         request.validate()?;
         request.prepare()?;
         AccountRequests::<T>::mutate(&request.author(), |vec| vec.push((net_id, hash)));
-        Requests::<T>::insert(net_id, &hash, request.clone());
+        Requests::<T>::insert(net_id, &hash, request);
         RequestsQueue::<T>::mutate(net_id, |v| v.push(hash));
         RequestStatuses::<T>::insert(net_id, &hash, RequestStatus::Pending);
         let block_number = frame_system::Module::<T>::current_block_number();
         RequestSubmissionHeight::<T>::insert(net_id, &hash, block_number);
         Self::deposit_event(Event::RequestRegistered(hash));
+        Ok(())
+    }
+
+    /// Prepares and validates the request, then adds it to the queue and maps it with the
+    /// corresponding load request and removes the load request from the queue.
+    fn register_incoming_request_inner(
+        incoming_request: &OffchainRequest<T>,
+        network_id: T::NetworkId,
+    ) -> Result<H256, DispatchError> {
+        let sidechain_tx_hash = incoming_request
+            .as_incoming()
+            .expect("request is always 'incoming'; qed")
+            .0
+            .hash();
+        let incoming_request_hash = incoming_request.hash();
+        let request_author = incoming_request.author().clone();
+        ensure!(
+            !Requests::<T>::contains_key(network_id, incoming_request_hash),
+            Error::<T>::RequestIsAlreadyRegistered
+        );
+        Self::remove_request_from_queue(network_id, &sidechain_tx_hash);
+        RequestStatuses::<T>::insert(network_id, sidechain_tx_hash, RequestStatus::Done);
+        LoadToIncomingRequestHash::<T>::insert(
+            network_id,
+            sidechain_tx_hash,
+            incoming_request_hash,
+        );
+        if let Err(e) = incoming_request
+            .validate()
+            .and_then(|_| incoming_request.prepare())
+        {
+            RequestStatuses::<T>::insert(
+                network_id,
+                incoming_request_hash,
+                RequestStatus::Failed(e),
+            );
+            debug::warn!("{:?}", e);
+            return Err(e.into());
+        }
+        Requests::<T>::insert(network_id, &incoming_request_hash, incoming_request);
+        RequestsQueue::<T>::mutate(network_id, |v| v.push(incoming_request_hash));
+        RequestStatuses::<T>::insert(network_id, incoming_request_hash, RequestStatus::Pending);
+        AccountRequests::<T>::mutate(request_author, |v| {
+            v.push((network_id, incoming_request_hash))
+        });
+        Ok(incoming_request_hash)
+    }
+
+    /// At first, `finalize` is called on the request, if it fails, the `cancel` function
+    /// gets called. Request status changes depending on the result (`Done` or `Failed`), and
+    /// finally the request gets removed from the queue.
+    fn finalize_incoming_request_inner(
+        request: &IncomingRequest<T>,
+        hash: H256,
+        network_id: T::NetworkId,
+    ) -> DispatchResult {
+        let error_opt = request.finalize().err();
+        if let Some(e) = error_opt {
+            debug::error!("Incoming request failed {:?} {:?}", hash, e);
+            Self::deposit_event(Event::IncomingRequestFinalizationFailed(hash));
+            RequestStatuses::<T>::insert(network_id, hash, RequestStatus::Failed(e));
+            if let Err(e) = request.cancel() {
+                debug::error!("Request cancellation failed: {:?}, {:?}", e, request);
+                // Such errors should not occur in general, but we check it in tests, anyway.
+                #[cfg(not(test))]
+                debug_assert!(false, "unexpected cancellation error {:?}", e);
+            }
+            Self::remove_request_from_queue(network_id, &hash);
+            return Err(e);
+        } else {
+            debug::warn!("Incoming request finalized {:?}", hash);
+            RequestStatuses::<T>::insert(network_id, hash, RequestStatus::Done);
+            Self::deposit_event(Event::IncomingRequestFinalized(hash));
+        }
+        Self::remove_request_from_queue(network_id, &hash);
         Ok(())
     }
 
@@ -2378,6 +2523,33 @@ impl<T: Config> Pallet<T> {
         });
     }
 
+    fn parse_deposit_event(
+        log: &Log,
+    ) -> Result<DepositEvent<Address, T::AccountId, Balance>, Error<T>> {
+        if log.removed.unwrap_or(true) {
+            return Err(Error::<T>::EthLogWasRemoved);
+        }
+        let types = [
+            ParamType::FixedBytes(32),
+            ParamType::Uint(256),
+            ParamType::Address,
+            ParamType::FixedBytes(32),
+        ];
+        let decoded =
+            ethabi::decode(&types, &log.data.0).map_err(|_| Error::<T>::EthAbiDecodingError)?;
+        let mut decoder = Decoder::<T>::new(decoded);
+        let sidechain_asset = decoder.next_h256()?;
+        let token = decoder.next_address()?;
+        let amount = decoder.next_amount()?;
+        let destination = decoder.next_account_id()?;
+        Ok(DepositEvent {
+            destination,
+            amount,
+            token,
+            sidechain_asset,
+        })
+    }
+
     /// Loops through the given array of logs and finds the first one that matches the type
     /// and topic.
     fn parse_main_event(
@@ -2385,7 +2557,7 @@ impl<T: Config> Pallet<T> {
         kind: IncomingTransactionRequestKind,
     ) -> Result<ContractEvent<Address, T::AccountId, Balance>, Error<T>> {
         for log in logs {
-            if log.removed.unwrap_or(false) {
+            if log.removed.unwrap_or(true) {
                 continue;
             }
             let topic = match log.topics.get(0) {
@@ -2393,25 +2565,12 @@ impl<T: Config> Pallet<T> {
                 None => continue,
             };
             match *topic {
-                // Deposit(bytes32,uint256,address,bytes32)
-                hex!("85c0fa492ded927d3acca961da52b0dda1debb06d8c27fe189315f06bb6e26c8")
-                    if kind == IncomingTransactionRequestKind::Transfer
-                        || kind == IncomingTransactionRequestKind::TransferXOR =>
+                topic
+                    if topic == DEPOSIT_TOPIC.0
+                        && (kind == IncomingTransactionRequestKind::Transfer
+                            || kind == IncomingTransactionRequestKind::TransferXOR) =>
                 {
-                    let types = [
-                        ParamType::FixedBytes(32),
-                        ParamType::Uint(256),
-                        ParamType::Address,
-                        ParamType::FixedBytes(32),
-                    ];
-                    let decoded = ethabi::decode(&types, &log.data.0)
-                        .map_err(|_| Error::<T>::EthAbiDecodingError)?;
-                    let mut decoder = Decoder::<T>::new(decoded);
-                    let asset_id = decoder.next_h256()?;
-                    let token = decoder.next_address()?;
-                    let amount = decoder.next_amount()?;
-                    let to = decoder.next_account_id()?;
-                    return Ok(ContractEvent::Deposit(to, amount, H160(token.0), asset_id));
+                    return Ok(ContractEvent::Deposit(Self::parse_deposit_event(log)?));
                 }
                 // ChangePeers(address,bool)
                 hex!("a9fac23eb012e72fbd1f453498e7069c380385436763ee2c1c057b170d88d9f9")
@@ -2516,17 +2675,35 @@ impl<T: Config> Pallet<T> {
     /// RPC call.
     fn load_substrate_finalized_height() -> Result<T::BlockNumber, DispatchError> {
         let hash =
-            Self::substrate_json_rpc_request::<_, types::H256>("chain_getFinalizedHead", &())?
-                .pop()
-                .ok_or(Error::<T>::FailedToLoadFinalizedHead)?;
+            Self::substrate_json_rpc_request::<_, types::H256>("chain_getFinalizedHead", &())?;
         let header = Self::substrate_json_rpc_request::<_, types::SubstrateHeaderLimited>(
             "chain_getHeader",
             &[hash],
-        )?
-        .pop()
-        .ok_or(Error::<T>::FailedToLoadBlockHeader)?;
+        )?;
         let number = <T::BlockNumber as From<u32>>::from(header.number.as_u32());
         Ok(number)
+    }
+
+    /// Queries the sidechain node for the transfer logs emitted within `from_block` and `to_block`.
+    ///
+    /// Uses the `eth_getLogs` method with a filter on log topic.
+    fn load_transfers_logs(
+        network_id: T::NetworkId,
+        from_block: u64,
+        to_block: u64,
+    ) -> Result<Vec<Log>, Error<T>> {
+        Self::eth_json_rpc_request(
+            "eth_getLogs",
+            &[FilterBuilder::default()
+                .topics(Some(vec![types::H256(DEPOSIT_TOPIC.0)]), None, None, None)
+                .from_block(BlockNumber::Number(from_block.into()))
+                .to_block(BlockNumber::Number(to_block.into()))
+                .address(vec![types::H160(
+                    BridgeContractAddress::<T>::get(network_id).0,
+                )])
+                .build()],
+            network_id,
+        )
     }
 
     /// Sends a multisig transaction to register the parsed (from pre-incoming) incoming request.
@@ -2537,14 +2714,7 @@ impl<T: Config> Pallet<T> {
         network_id: T::NetworkId,
     ) -> Result<(), Error<T>> {
         let register_call = Call::<T>::register_incoming_request(incoming_request);
-        let call = bridge_multisig::Call::as_multi(
-            get_bridge_account::<T>(network_id),
-            Some(timepoint),
-            <<T as Config>::Call>::from(register_call).encode(),
-            false,
-            10_000_000_000_000u64,
-        );
-        Self::send_signed_transaction::<bridge_multisig::Call<T>>(call)
+        Self::send_multisig_transaction(register_call, timepoint, network_id)
     }
 
     /// Parses a 'cancel' incoming request from the given transaction receipt and pre-request.
@@ -2698,6 +2868,60 @@ impl<T: Config> Pallet<T> {
         }
     }
 
+    /// Parses the logs emitted on the Sidechain's contract to an `IncomingRequest` and imports it
+    /// to Thischain.
+    fn handle_logs(
+        from_block: u64,
+        to_block: u64,
+        new_to_handle_height: &mut u64,
+        network_id: T::NetworkId,
+    ) -> Result<(), Error<T>> {
+        let logs = Self::load_transfers_logs(network_id, from_block, to_block)?;
+        let timepoint = bridge_multisig::Pallet::<T>::timepoint();
+        for log in logs {
+            // We assume that all events issued by our contracts are valid and, therefore, ignore
+            // the invalid ones.
+            let event = match Self::parse_deposit_event(&log) {
+                Ok(v) => v,
+                Err(e) => {
+                    debug::debug!("Skipped {:?}, error: {:?}", log, e);
+                    continue;
+                }
+            };
+            debug::trace!("Got log {:?}", log);
+            let at_height = log
+                .block_number
+                .ok_or(Error::<T>::EthTransactionIsPending)?
+                .as_u64();
+            let tx_hash = H256(
+                log.transaction_hash
+                    .ok_or(Error::<T>::EthTransactionIsPending)?
+                    .0,
+            );
+            let load_incoming_transaction_request = LoadIncomingTransactionRequest::new(
+                event.destination.clone(),
+                tx_hash,
+                timepoint,
+                IncomingTransactionRequestKind::Transfer,
+                network_id,
+            );
+            let inc_request_result = IncomingRequest::try_from_contract_event(
+                ContractEvent::Deposit(event),
+                load_incoming_transaction_request.clone(),
+                at_height,
+            );
+            Self::send_import_incoming_request(
+                LoadIncomingRequest::Transaction(load_incoming_transaction_request),
+                inc_request_result.map_err(|e| e.into()),
+                network_id,
+            )?;
+            assert!(*new_to_handle_height <= at_height);
+            *new_to_handle_height = at_height + 1;
+        }
+        *new_to_handle_height = to_block + 1;
+        Ok(())
+    }
+
     /// Retrieves latest needed information about networks and handles corresponding
     /// requests queues.
     ///
@@ -2731,6 +2955,28 @@ impl<T: Config> Pallet<T> {
                 return;
             }
         };
+
+        let string = format!("eth-bridge-ocw::eth-to-handle-from-height-{:?}", network_id);
+        let s_eth_to_handle_from_height = StorageValueRef::persistent(string.as_bytes());
+        let from_block_opt = s_eth_to_handle_from_height.get::<u64>();
+        if from_block_opt.is_none() {
+            s_eth_to_handle_from_height.set(&current_eth_height);
+        }
+        let from_block = from_block_opt.flatten().unwrap_or(current_eth_height);
+        let to_block_opt = current_eth_height.checked_sub(CONFIRMATION_INTERVAL);
+        if let Some(to_block) = to_block_opt {
+            if to_block >= from_block {
+                let mut new_height = from_block;
+                let err_opt =
+                    Self::handle_logs(from_block, to_block, &mut new_height, network_id).err();
+                if new_height != from_block {
+                    s_eth_to_handle_from_height.set(&new_height);
+                }
+                if let Some(err) = err_opt {
+                    debug::warn!("Failed to load handle logs: {:?}.", err);
+                }
+            }
+        }
 
         let mut handled = s_handled_requests
             .get::<BTreeMap<H256, T::BlockNumber>>()
@@ -2806,17 +3052,20 @@ impl<T: Config> Pallet<T> {
         headers: &[(&'static str, String)],
     ) -> Result<Vec<u8>, Error<T>> {
         debug::trace!("Sending request to: {}", url);
-        let mut request = rt_offchain::http::Request::post(url, vec![body]);
+        let mut request = rt_offchain::http::Request::post(url, vec![body.clone()]);
         let timeout = sp_io::offchain::timestamp().add(rt_offchain::Duration::from_millis(
             HTTP_REQUEST_TIMEOUT_SECS * 1000,
         ));
         for (key, value) in headers {
             request = request.add_header(*key, &*value);
         }
-        let pending = request.deadline(timeout).send().map_err(|e| {
+        #[allow(unused_mut)]
+        let mut pending = request.deadline(timeout).send().map_err(|e| {
             debug::error!("Failed to send a request {:?}", e);
             <Error<T>>::HttpFetchingError
         })?;
+        #[cfg(test)]
+        T::Mock::on_request(&mut pending, url, String::from_utf8_lossy(&body));
         let response = pending
             .try_wait(timeout)
             .map_err(|e| {
@@ -2842,7 +3091,7 @@ impl<T: Config> Pallet<T> {
         method: &str,
         params: &I,
         headers: &[(&'static str, String)],
-    ) -> Result<Vec<O>, Error<T>> {
+    ) -> Result<O, Error<T>> {
         let params = match serialize(params) {
             Value::Null => Params::None,
             Value::Array(v) => Params::Array(v),
@@ -2855,12 +3104,14 @@ impl<T: Config> Pallet<T> {
 
         let raw_response = Self::http_request(
             url,
-            serde_json::to_vec(&rpc::Call::MethodCall(rpc::MethodCall {
-                jsonrpc: Some(rpc::Version::V2),
-                method: method.into(),
-                params,
-                id: rpc::Id::Num(id as u64),
-            }))
+            serde_json::to_vec(&rpc::Request::Single(rpc::Call::MethodCall(
+                rpc::MethodCall {
+                    jsonrpc: Some(rpc::Version::V2),
+                    method: method.into(),
+                    params,
+                    id: rpc::Id::Num(id as u64),
+                },
+            )))
             .map_err(|_| Error::<T>::JsonSerializationError)?,
             &headers,
         )
@@ -2875,23 +3126,20 @@ impl<T: Config> Pallet<T> {
                 debug::error!("json_rpc_request: from_json failed, {}", e);
             })
             .map_err(|_| Error::<T>::JsonDeserializationError)?;
-        let results = match response {
-            rpc::Response::Batch(xs) => xs,
-            rpc::Response::Single(x) => vec![x],
+        let result = match response {
+            rpc::Response::Batch(_xs) => unreachable!("we've just sent a `Single` request; qed"),
+            rpc::Response::Single(x) => x,
         };
-        results
-            .into_iter()
-            .map(|x| match x {
-                rpc::Output::Success(s) => serde_json::from_value(s.result).map_err(|e| {
-                    debug::error!("json_rpc_request: from_value failed, {}", e);
-                    Error::<T>::JsonDeserializationError.into()
-                }),
-                _ => {
-                    debug::error!("json_rpc_request: request failed");
-                    Err(Error::<T>::JsonDeserializationError.into())
-                }
-            })
-            .collect::<Result<Vec<_>, _>>()
+        match result {
+            rpc::Output::Success(s) => serde_json::from_value(s.result).map_err(|e| {
+                debug::error!("json_rpc_request: from_value failed, {}", e);
+                Error::<T>::JsonDeserializationError.into()
+            }),
+            _ => {
+                debug::error!("json_rpc_request: request failed");
+                Err(Error::<T>::JsonDeserializationError.into())
+            }
+        }
     }
 
     /// Makes request to a Sidechain node. The node URL and credentials are stored in the local
@@ -2900,7 +3148,7 @@ impl<T: Config> Pallet<T> {
         method: &str,
         params: &I,
         network_id: T::NetworkId,
-    ) -> Result<Vec<O>, Error<T>> {
+    ) -> Result<O, Error<T>> {
         let string = format!("{}-{:?}", STORAGE_ETH_NODE_PARAMS, network_id);
         let s_node_params = StorageValueRef::persistent(string.as_bytes());
         let node_params = match s_node_params.get::<NodeParams>().flatten() {
@@ -2914,14 +3162,14 @@ impl<T: Config> Pallet<T> {
         if let Some(node_credentials) = node_params.credentials {
             headers.push(("Authorization", node_credentials));
         }
-        Self::json_rpc_request(&node_params.url, 1, method, params, &headers)
+        Self::json_rpc_request(&node_params.url, 0, method, params, &headers)
     }
 
     /// Makes request to the local node. The node URL is stored in the local storage.
     fn substrate_json_rpc_request<I: Serialize, O: for<'de> Deserialize<'de>>(
         method: &str,
         params: &I,
-    ) -> Result<Vec<O>, Error<T>> {
+    ) -> Result<O, Error<T>> {
         let s_node_url = StorageValueRef::persistent(STORAGE_SUB_NODE_URL_KEY);
         let node_url = s_node_url
             .get::<String>()
@@ -2961,6 +3209,32 @@ impl<T: Config> Pallet<T> {
         Ok(())
     }
 
+    fn send_multisig_transaction(
+        call: Call<T>,
+        timepoint: Timepoint<T>,
+        network_id: T::NetworkId,
+    ) -> Result<(), Error<T>> {
+        let bridge_account = get_bridge_account::<T>(network_id);
+        let threshold = bridge_multisig::Accounts::<T>::get(&bridge_account)
+            .unwrap()
+            .threshold_num();
+        let call = if threshold == 1 {
+            bridge_multisig::Call::as_multi_threshold_1(
+                bridge_account,
+                Box::new(<<T as Config>::Call>::from(call)),
+            )
+        } else {
+            bridge_multisig::Call::as_multi(
+                bridge_account,
+                Some(timepoint),
+                <<T as Config>::Call>::from(call).encode(),
+                false,
+                OFFCHAIN_TRANSACTION_WEIGHT_LIMIT,
+            )
+        };
+        Self::send_signed_transaction::<bridge_multisig::Call<T>>(call)
+    }
+
     /// Queries Sidechain's contract variable `used`.
     fn load_is_used(hash: H256, network_id: T::NetworkId) -> Result<bool, Error<T>> {
         // `used(bytes32)`
@@ -2988,9 +3262,7 @@ impl<T: Config> Pallet<T> {
                     Value::String("latest".into()),
                 ],
                 network_id,
-            )?
-            .pop()
-            .ok_or(Error::<T>::FailedToLoadIsUsed)?;
+            )?;
             if is_used {
                 return Ok(true);
             }
@@ -3187,16 +3459,10 @@ impl<T: Config> Pallet<T> {
             .block_number
             .expect("'block_number' is null only when the log/transaction is pending; qed")
             .as_u64();
-        let tx_hash = H256(tx_receipt.transaction_hash.0);
 
         let call = Self::parse_main_event(&tx_receipt.logs, kind)?;
         // TODO (optimization): pre-validate the parsed calls.
-        IncomingRequest::<T>::try_from_contract_event(
-            call,
-            incoming_pre_request,
-            at_height,
-            tx_hash,
-        )
+        IncomingRequest::<T>::try_from_contract_event(call, incoming_pre_request, at_height)
     }
 
     /// Send a transaction to finalize the incoming request.
@@ -3207,15 +3473,22 @@ impl<T: Config> Pallet<T> {
     ) -> Result<(), Error<T>> {
         debug::debug!("send_incoming_request_result: {:?}", hash);
         let transfer_call = Call::<T>::finalize_incoming_request(hash, network_id);
-        let call = bridge_multisig::Call::as_multi(
-            Self::bridge_account(network_id).expect("networks can't be removed; qed"),
-            Some(timepoint),
-            <<T as Config>::Call>::from(transfer_call).encode(),
-            false,
-            10_000_000_000_000_000u64,
+        Self::send_multisig_transaction(transfer_call, timepoint, network_id)
+    }
+
+    fn send_import_incoming_request(
+        load_incoming_request: LoadIncomingRequest<T>,
+        incoming_request_result: Result<IncomingRequest<T>, DispatchError>,
+        network_id: T::NetworkId,
+    ) -> Result<(), Error<T>> {
+        let timepoint = load_incoming_request.timepoint();
+        debug::debug!(
+            "send_import_incoming_request: {:?}",
+            incoming_request_result
         );
-        Self::send_signed_transaction::<bridge_multisig::Call<T>>(call)?;
-        Ok(())
+        let import_call =
+            Call::<T>::import_incoming_request(load_incoming_request, incoming_request_result);
+        Self::send_multisig_transaction(import_call, timepoint, network_id)
     }
 
     /// Send 'abort request' transaction.
@@ -3228,15 +3501,7 @@ impl<T: Config> Pallet<T> {
         debug::debug!("send_abort_request: {:?}", request_hash);
         let abort_request_call =
             Call::<T>::abort_request(request_hash, request_error.into(), network_id);
-        let call = bridge_multisig::Call::as_multi(
-            Self::bridge_account(network_id).expect("networks can't be removed; qed"),
-            Some(timepoint),
-            <<T as Config>::Call>::from(abort_request_call).encode(),
-            false,
-            10_000_000_000_000_000u64,
-        );
-        Self::send_signed_transaction::<bridge_multisig::Call<T>>(call)?;
-        Ok(())
+        Self::send_multisig_transaction(abort_request_call, timepoint, network_id)
     }
 
     /// Encodes the given outgoing request to Ethereum ABI, then signs the data by off-chain worker's
@@ -3286,9 +3551,7 @@ impl<T: Config> Pallet<T> {
 
     /// Queries current height of Sidechain.
     fn load_current_height(network_id: T::NetworkId) -> Result<u64, Error<T>> {
-        Self::eth_json_rpc_request::<_, types::U64>("eth_blockNumber", &(), network_id)?
-            .first()
-            .ok_or(Error::<T>::LoadCurrentSidechainHeight)
+        Self::eth_json_rpc_request::<_, types::U64>("eth_blockNumber", &(), network_id)
             .map(|x| x.as_u64())
     }
 
@@ -3319,9 +3582,7 @@ impl<T: Config> Pallet<T> {
             "eth_getTransactionByHash",
             &vec![hash],
             network_id,
-        )?
-        .pop()
-        .ok_or(Error::<T>::FailedToLoadTransaction)?;
+        )?;
         let to = tx_receipt
             .to
             .map(|x| H160(x.0))
@@ -3341,9 +3602,7 @@ impl<T: Config> Pallet<T> {
             "eth_getTransactionReceipt",
             &vec![hash],
             network_id,
-        )?
-        .pop()
-        .ok_or(Error::<T>::FailedToLoadTransaction)?;
+        )?;
         let to = tx_receipt
             .to
             .map(|x| H160(x.0))
@@ -3365,12 +3624,13 @@ impl<T: Config> Pallet<T> {
 
     /// Ensures that the account is a bridge multisig account.
     fn ensure_bridge_account(
-        who: &T::AccountId,
+        origin: OriginFor<T>,
         network_id: T::NetworkId,
-    ) -> Result<T::AccountId, DispatchError> {
+    ) -> Result<T::AccountId, DispatchErrorWithPostInfo<PostDispatchInfo>> {
+        let who = ensure_signed(origin)?;
         let bridge_account_id =
             Self::bridge_account(network_id).ok_or(Error::<T>::UnknownNetwork)?;
-        ensure!(who == &bridge_account_id, Error::<T>::Forbidden);
+        ensure!(who == bridge_account_id, Error::<T>::Forbidden);
         Ok(bridge_account_id)
     }
 

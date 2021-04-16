@@ -33,7 +33,7 @@ use common::mock::ExistentialDeposits;
 use common::{
     self, balance, fixed, fixed_from_basis_points, fixed_wrapper, hash, Amount, AssetId32,
     AssetName, AssetSymbol, DEXInfo, Fixed, FromGenericPair, GetMarketInfo, LiquiditySource,
-    LiquiditySourceType, TechPurpose, DOT, KSM, PSWAP, USDT, VAL, XOR,
+    LiquiditySourceType, RewardReason, TechPurpose, DOT, KSM, PSWAP, USDT, VAL, XOR,
 };
 use currencies::BasicCurrencyAdapter;
 
@@ -41,7 +41,7 @@ use core::convert::TryInto;
 
 use frame_support::traits::GenesisBuild;
 use frame_support::weights::Weight;
-use frame_support::{construct_runtime, parameter_types};
+use frame_support::{construct_runtime, fail, parameter_types};
 use frame_system;
 use traits::MultiCurrency;
 
@@ -58,7 +58,7 @@ pub type BlockNumber = u64;
 pub type DEXId = u32;
 type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
 type TechAssetId = common::TechAssetId<common::PredefinedAssetId>;
-type AssetId = AssetId32<common::PredefinedAssetId>;
+pub type AssetId = AssetId32<common::PredefinedAssetId>;
 type ReservesInit = Vec<(DEXId, AssetId, (Fixed, Fixed))>;
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
@@ -275,6 +275,15 @@ pub struct ExtBuilder {
     pub initial_permissions: Vec<(AccountId, Scope, Vec<u32>)>,
     pub source_types: Vec<LiquiditySourceType>,
     pub endowed_accounts: Vec<(AccountId, AssetId, Balance, AssetSymbol, AssetName, u8)>,
+}
+
+impl ExtBuilder {
+    pub fn with_enabled_sources(sources: Vec<LiquiditySourceType>) -> Self {
+        Self {
+            source_types: sources,
+            ..Default::default()
+        }
+    }
 }
 
 impl Default for ExtBuilder {
@@ -540,6 +549,25 @@ impl LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> for Mock
         _desired_amount: SwapAmount<Balance>,
     ) -> Result<SwapOutcome<Balance>, DispatchError> {
         unimplemented!()
+    }
+
+    fn check_rewards(
+        _dex_id: &DEXId,
+        _input_asset_id: &AssetId,
+        output_asset_id: &AssetId,
+        _input_amount: Balance,
+        output_amount: Balance,
+    ) -> Result<Vec<(Balance, AssetId, RewardReason)>, DispatchError> {
+        // for mock just return like in input
+        if output_asset_id == &GetBaseAssetId::get() {
+            Ok(vec![(
+                output_amount,
+                output_asset_id.clone(),
+                RewardReason::BuyOnBondingCurve,
+            )])
+        } else {
+            fail!(crate::Error::<Runtime>::UnavailableExchangePath);
+        }
     }
 }
 

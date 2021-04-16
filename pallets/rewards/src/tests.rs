@@ -60,6 +60,20 @@ fn claim_fails_signature_invalid() {
 }
 
 #[test]
+fn claim_succeeds_zero_v() {
+    let account_id: AccountId =
+        hex!("7c0f877cd5720eee40d1183556f1fbd34931a6ee08c5299b4de2b2b43176831a").into();
+    ExtBuilder::with_rewards(true).build().execute_with(|| {
+        let signature = hex!("22bea4c62999dc1be10cb603956b5731dfd296c9e0b0040e5fe8056db1e8df5648c519b704acdcdcf0d04ab01f81f2ed899edef437a4be8f36980d7f1119d7ce00").into();
+        assert_ok!(Pallet::claim(Origin::signed(account_id.clone()), signature));
+        assert_eq!(
+            Assets::free_balance(&PSWAP, &account_id).unwrap(),
+            balance!(100)
+        );
+    });
+}
+
+#[test]
 fn claim_succeeds() {
     ExtBuilder::with_rewards(true).build().execute_with(|| {
         let signature = hex!("eb7009c977888910a96d499f802e4524a939702aa6fc8ed473829bffce9289d850b97a720aa05d4a7e70e15733eeebc4fe862dcb60e018c0bf560b2de013078f1c").into();

@@ -683,7 +683,7 @@ impl<T: Config> OutgoingTransfer<T> {
     }
 
     /// Transfers the given `amount` of `asset_id` to the bridge account and reserve it.
-    pub fn prepare(&mut self) -> Result<(), DispatchError> {
+    pub fn prepare(&self) -> Result<(), DispatchError> {
         let bridge_account = get_bridge_account::<T>(self.network_id);
         common::with_transaction(|| {
             Assets::<T>::transfer_from(&self.asset_id, &self.from, &bridge_account, self.amount)?;
@@ -828,7 +828,7 @@ impl<T: Config> OutgoingAddAsset<T> {
         Ok(())
     }
 
-    pub fn prepare(&mut self, _validated_state: ()) -> Result<(), DispatchError> {
+    pub fn prepare(&self, _validated_state: ()) -> Result<(), DispatchError> {
         Ok(())
     }
 
@@ -987,7 +987,7 @@ impl<T: Config> OutgoingAddToken<T> {
         Ok((symbol, name))
     }
 
-    pub fn prepare(&mut self, _validated_state: ()) -> Result<(), DispatchError> {
+    pub fn prepare(&self, _validated_state: ()) -> Result<(), DispatchError> {
         Ok(())
     }
 
@@ -1090,7 +1090,7 @@ impl<T: Config> OutgoingAddPeer<T> {
     }
 
     /// Checks that the current pending peer value is none and inserts the given one.
-    pub fn prepare(&mut self, _validated_state: ()) -> Result<(), DispatchError> {
+    pub fn prepare(&self, _validated_state: ()) -> Result<(), DispatchError> {
         let pending_peer = crate::PendingPeer::<T>::get(self.network_id);
         ensure!(pending_peer.is_none(), Error::<T>::TooManyPendingPeers);
         frame_system::Pallet::<T>::inc_consumers(&self.peer_account_id)
@@ -1172,7 +1172,7 @@ impl<T: Config> OutgoingAddPeerCompat<T> {
         Ok(peers)
     }
 
-    pub fn prepare(&mut self, _validated_state: ()) -> Result<(), DispatchError> {
+    pub fn prepare(&self, _validated_state: ()) -> Result<(), DispatchError> {
         Ok(())
     }
 
@@ -1234,7 +1234,7 @@ impl<T: Config> OutgoingRemovePeer<T> {
     }
 
     /// Checks that the current pending peer value is none and inserts the given one.
-    pub fn prepare(&mut self, _validated_state: ()) -> Result<(), DispatchError> {
+    pub fn prepare(&self, _validated_state: ()) -> Result<(), DispatchError> {
         let pending_peer = crate::PendingPeer::<T>::get(self.network_id);
         ensure!(pending_peer.is_none(), Error::<T>::TooManyPendingPeers);
         frame_system::Pallet::<T>::inc_consumers(&self.peer_account_id)
@@ -1320,7 +1320,7 @@ impl<T: Config> OutgoingRemovePeerCompat<T> {
         Ok(peers)
     }
 
-    pub fn prepare(&mut self, _validated_state: ()) -> Result<(), DispatchError> {
+    pub fn prepare(&self, _validated_state: ()) -> Result<(), DispatchError> {
         Ok(())
     }
 
@@ -1432,7 +1432,7 @@ impl<T: Config> OutgoingPrepareForMigration<T> {
         Ok(())
     }
 
-    pub fn prepare(&mut self, _validated_state: ()) -> Result<(), DispatchError> {
+    pub fn prepare(&self, _validated_state: ()) -> Result<(), DispatchError> {
         Ok(())
     }
 
@@ -1520,7 +1520,7 @@ impl<T: Config> OutgoingMigrate<T> {
         Ok(())
     }
 
-    pub fn prepare(&mut self, _validated_state: ()) -> Result<(), DispatchError> {
+    pub fn prepare(&self, _validated_state: ()) -> Result<(), DispatchError> {
         Ok(())
     }
 

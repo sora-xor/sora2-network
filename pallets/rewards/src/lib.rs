@@ -133,7 +133,12 @@ pub mod pallet {
                 signature.len() == SIGNATURE_SIZE + 1,
                 Error::<T>::SignatureInvalid
             );
-            let recovery_id = RecoveryId::parse(signature[SIGNATURE_SIZE] - 27)
+            let recovery_id = if signature[SIGNATURE_SIZE] >= 27 {
+                signature[SIGNATURE_SIZE] - 27
+            } else {
+                signature[SIGNATURE_SIZE]
+            };
+            let recovery_id = RecoveryId::parse(recovery_id)
                 .map_err(|_| Error::<T>::SignatureVerificationFailed)?;
             let signature = Signature::parse_slice(&signature[..SIGNATURE_SIZE])
                 .map_err(|_| Error::<T>::SignatureInvalid)?;

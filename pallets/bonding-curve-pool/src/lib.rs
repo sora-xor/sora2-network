@@ -37,7 +37,7 @@ mod mock;
 mod tests;
 
 use codec::{Decode, Encode};
-use common::prelude::{Balance, Fixed, FixedWrapper, SwapAmount, SwapOutcome};
+use common::prelude::{Balance, Fixed, FixedWrapper, RewardReason, SwapAmount, SwapOutcome};
 use common::{balance, fixed, DEXId, LiquiditySource, USDT, VAL};
 use core::convert::TryInto;
 use frame_support::traits::Get;
@@ -47,6 +47,7 @@ use permissions::{Scope, BURN, MINT, TRANSFER};
 use serde::{Deserialize, Serialize};
 use sp_arithmetic::traits::Zero;
 use sp_runtime::DispatchError;
+use sp_std::vec::Vec;
 
 type Assets<T> = assets::Module<T>;
 type Technical<T> = technical::Module<T>;
@@ -56,24 +57,37 @@ pub const TECH_ACCOUNT_RESERVES: &[u8] = b"reserves";
 
 #[derive(Debug, Encode, Decode, Clone)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-pub struct DistributionAccountData<TechAccountId> {
-    pub account_id: TechAccountId,
+pub enum DistributionAccount<AccountId, TechAccountId> {
+    Account(AccountId),
+    TechAccount(TechAccountId),
+}
+
+impl<AccountId, TechAccountId: Default> Default for DistributionAccount<AccountId, TechAccountId> {
+    fn default() -> Self {
+        Self::TechAccount(TechAccountId::default())
+    }
+}
+
+#[derive(Debug, Encode, Decode, Clone)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+pub struct DistributionAccountData<DistributionAccount> {
+    pub account: DistributionAccount,
     pub coefficient: Fixed,
 }
 
-impl<TechAccountId: Default> Default for DistributionAccountData<TechAccountId> {
+impl<DistributionAccount: Default> Default for DistributionAccountData<DistributionAccount> {
     fn default() -> Self {
         Self {
-            account_id: Default::default(),
+            account: Default::default(),
             coefficient: Default::default(),
         }
     }
 }
 
-impl<TechAccountId> DistributionAccountData<TechAccountId> {
-    pub fn new(account_id: TechAccountId, coefficient: Fixed) -> Self {
+impl<DistributionAccount> DistributionAccountData<DistributionAccount> {
+    pub fn new(account: DistributionAccount, coefficient: Fixed) -> Self {
         DistributionAccountData {
-            account_id,
+            account,
             coefficient,
         }
     }
@@ -90,8 +104,12 @@ pub struct DistributionAccounts<DistributionAccountData> {
     pub val_holders: DistributionAccountData,
 }
 
-impl<TechAccountId> DistributionAccounts<DistributionAccountData<TechAccountId>> {
-    pub fn xor_distribution_as_array(&self) -> [&DistributionAccountData<TechAccountId>; 5] {
+impl<AccountId, TechAccountId>
+    DistributionAccounts<DistributionAccountData<DistributionAccount<AccountId, TechAccountId>>>
+{
+    pub fn xor_distribution_as_array(
+        &self,
+    ) -> [&DistributionAccountData<DistributionAccount<AccountId, TechAccountId>>; 5] {
         [
             &self.xor_allocation,
             &self.sora_citizens,
@@ -101,24 +119,26 @@ impl<TechAccountId> DistributionAccounts<DistributionAccountData<TechAccountId>>
         ]
     }
 
-    pub fn xor_distribution_accounts_as_array(&self) -> [&TechAccountId; 5] {
+    pub fn xor_distribution_accounts_as_array(
+        &self,
+    ) -> [&DistributionAccount<AccountId, TechAccountId>; 5] {
         [
-            &self.xor_allocation.account_id,
-            &self.sora_citizens.account_id,
-            &self.stores_and_shops.account_id,
-            &self.parliament_and_development.account_id,
-            &self.projects.account_id,
+            &self.xor_allocation.account,
+            &self.sora_citizens.account,
+            &self.stores_and_shops.account,
+            &self.parliament_and_development.account,
+            &self.projects.account,
         ]
     }
 
-    pub fn accounts(&self) -> [&TechAccountId; 6] {
+    pub fn accounts(&self) -> [&DistributionAccount<AccountId, TechAccountId>; 6] {
         [
-            &self.xor_allocation.account_id,
-            &self.sora_citizens.account_id,
-            &self.stores_and_shops.account_id,
-            &self.parliament_and_development.account_id,
-            &self.projects.account_id,
-            &self.val_holders.account_id,
+            &self.xor_allocation.account,
+            &self.sora_citizens.account,
+            &self.stores_and_shops.account,
+            &self.parliament_and_development.account,
+            &self.projects.account,
+            &self.val_holders.account,
         ]
     }
 }
@@ -257,24 +277,27 @@ impl<T: Config> BuyMainAsset<T> {
             Technical::<T>::mint(out_asset, reserves_tech_acc, swapped_xor_amount)?;
 
             let distribution_accounts: DistributionAccounts<
-                DistributionAccountData<T::TechAccountId>,
+                DistributionAccountData<DistributionAccount<T::AccountId, T::TechAccountId>>,
             > = DistributionAccountsEntry::<T>::get();
-            for (to_tech_account_id, coefficient) in distribution_accounts
+            for (account, coefficient) in distribution_accounts
                 .xor_distribution_as_array()
                 .iter()
-                .map(|x| (&x.account_id, x.coefficient))
+                .map(|x| (&x.account, x.coefficient))
             {
                 let amount = FixedWrapper::from(swapped_xor_amount) * coefficient;
                 let amount = amount
                     .try_into_balance()
                     .map_err(|_| Error::<T>::CalculatePriceFailed)?;
-
-                technical::Module::<T>::transfer(
-                    out_asset,
-                    reserves_tech_acc,
-                    to_tech_account_id,
-                    amount,
-                )?;
+                match account {
+                    DistributionAccount::Account(account) => {
+                        let reserves_acc =
+                            Technical::<T>::tech_account_id_to_account_id(reserves_tech_acc)?;
+                        Assets::<T>::transfer_from(out_asset, &reserves_acc, account, amount)?;
+                    }
+                    DistributionAccount::TechAccount(account) => {
+                        Technical::<T>::transfer(out_asset, reserves_tech_acc, account, amount)?;
+                    }
+                }
             }
 
             let desired_amount_in = FixedWrapper::from(swapped_xor_amount)
@@ -630,7 +653,9 @@ impl<T: Config> Module<T> {
     }
 
     pub fn set_distribution_accounts(
-        distribution_accounts: DistributionAccounts<DistributionAccountData<T::TechAccountId>>,
+        distribution_accounts: DistributionAccounts<
+            DistributionAccountData<DistributionAccount<T::AccountId, T::TechAccountId>>,
+        >,
     ) {
         DistributionAccountsEntry::<T>::set(distribution_accounts);
     }
@@ -760,6 +785,17 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
             .swap()
         }
     }
+
+    fn check_rewards(
+        _target_id: &T::DEXId,
+        _input_asset_id: &T::AssetId,
+        _output_asset_id: &T::AssetId,
+        _input_amount: Balance,
+        _output_amount: Balance,
+    ) -> Result<Vec<(Balance, T::AssetId, RewardReason)>, DispatchError> {
+        // This implementation has no rewards.
+        Ok(Vec::new())
+    }
 }
 pub use pallet::*;
 
@@ -861,14 +897,18 @@ pub mod pallet {
     #[pallet::getter(fn distribution_accounts)]
     pub(super) type DistributionAccountsEntry<T: Config> = StorageValue<
         _,
-        DistributionAccounts<DistributionAccountData<T::TechAccountId>>,
+        DistributionAccounts<
+            DistributionAccountData<DistributionAccount<T::AccountId, T::TechAccountId>>,
+        >,
         ValueQuery,
     >;
 
     #[pallet::genesis_config]
     pub struct GenesisConfig<T: Config> {
         pub reserves_account_id: T::TechAccountId,
-        pub distribution_accounts: DistributionAccounts<DistributionAccountData<T::TechAccountId>>,
+        pub distribution_accounts: DistributionAccounts<
+            DistributionAccountData<DistributionAccount<T::AccountId, T::TechAccountId>>,
+        >,
     }
 
     #[cfg(feature = "std")]
