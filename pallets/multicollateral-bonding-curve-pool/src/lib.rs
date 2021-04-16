@@ -68,6 +68,7 @@ use sp_std::collections::btree_set::BTreeSet;
 use sp_std::vec::Vec;
 
 pub trait WeightInfo {
+    fn on_initialize(_elems: u32) -> Weight;
     fn initialize_pool() -> Weight;
     fn set_reference_asset() -> Weight;
     fn set_optional_reward_multiplier() -> Weight;
@@ -80,6 +81,7 @@ type Technical<T> = technical::Module<T>;
 pub const TECH_ACCOUNT_PREFIX: &[u8] = b"multicollateral-bonding-curve-pool";
 pub const TECH_ACCOUNT_RESERVES: &[u8] = b"reserves";
 pub const TECH_ACCOUNT_REWARDS: &[u8] = b"rewards";
+pub const TECH_ACCOUNT_FREE_RESERVES: &[u8] = b"free_reserves";
 
 pub use pallet::*;
 
@@ -125,11 +127,11 @@ impl<DistributionAccount> DistributionAccountData<DistributionAccount> {
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct DistributionAccounts<DistributionAccountData> {
     pub xor_allocation: DistributionAccountData,
+    pub val_holders: DistributionAccountData,
     pub sora_citizens: DistributionAccountData,
     pub stores_and_shops: DistributionAccountData,
     pub parliament_and_development: DistributionAccountData,
     pub projects: DistributionAccountData,
-    pub val_holders: DistributionAccountData,
 }
 
 impl<AccountId, TechAccountId>
@@ -137,9 +139,8 @@ impl<AccountId, TechAccountId>
 {
     pub fn xor_distribution_as_array(
         &self,
-    ) -> [&DistributionAccountData<DistributionAccount<AccountId, TechAccountId>>; 5] {
+    ) -> [&DistributionAccountData<DistributionAccount<AccountId, TechAccountId>>; 4] {
         [
-            &self.xor_allocation,
             &self.sora_citizens,
             &self.stores_and_shops,
             &self.parliament_and_development,
@@ -149,9 +150,8 @@ impl<AccountId, TechAccountId>
 
     pub fn xor_distribution_accounts_as_array(
         &self,
-    ) -> [&DistributionAccount<AccountId, TechAccountId>; 5] {
+    ) -> [&DistributionAccount<AccountId, TechAccountId>; 4] {
         [
-            &self.xor_allocation.account,
             &self.sora_citizens.account,
             &self.stores_and_shops.account,
             &self.parliament_and_development.account,
@@ -162,11 +162,11 @@ impl<AccountId, TechAccountId>
     pub fn accounts(&self) -> [&DistributionAccount<AccountId, TechAccountId>; 6] {
         [
             &self.xor_allocation.account,
+            &self.val_holders.account,
             &self.sora_citizens.account,
             &self.stores_and_shops.account,
             &self.parliament_and_development.account,
             &self.projects.account,
-            &self.val_holders.account,
         ]
     }
 }
@@ -175,11 +175,11 @@ impl<DistributionAccountData: Default> Default for DistributionAccounts<Distribu
     fn default() -> Self {
         Self {
             xor_allocation: Default::default(),
+            val_holders: Default::default(),
             sora_citizens: Default::default(),
             stores_and_shops: Default::default(),
             parliament_and_development: Default::default(),
             projects: Default::default(),
-            val_holders: Default::default(),
         }
     }
 }
@@ -215,7 +215,16 @@ pub mod pallet {
     pub struct Pallet<T>(PhantomData<T>);
 
     #[pallet::hooks]
-    impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {}
+    impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
+        fn on_initialize(block_number: T::BlockNumber) -> Weight {
+            if (block_number % 1000u32.into()).is_zero() {
+                let elems = Module::<T>::free_reserves_distribution_routine();
+                <T as Config>::WeightInfo::on_initialize(elems)
+            } else {
+                <T as Config>::WeightInfo::on_initialize(0)
+            }
+        }
+    }
 
     #[pallet::call]
     impl<T: Config> Pallet<T> {
@@ -483,6 +492,8 @@ pub mod pallet {
         pub incentives_account_id: T::AccountId,
         /// List of tokens enabled as collaterals initially.
         pub initial_collateral_assets: Vec<T::AssetId>,
+        /// Account that is used to store undistributed free reserves.
+        pub free_reserves_account_id: T::AccountId,
     }
 
     #[cfg(feature = "std")]
@@ -494,6 +505,7 @@ pub mod pallet {
                 reference_asset_id: USDT.into(),
                 incentives_account_id: Default::default(),
                 initial_collateral_assets: [USDT.into(), VAL.into(), PSWAP.into()].into(),
+                free_reserves_account_id: Default::default(),
             }
         }
     }
@@ -506,6 +518,7 @@ pub mod pallet {
             DistributionAccountsEntry::<T>::put(&self.distribution_accounts);
             ReferenceAssetId::<T>::put(&self.reference_asset_id);
             IncentivesAccountId::<T>::put(&self.incentives_account_id);
+            FreeReservesAccountId::<T>::put(&self.free_reserves_account_id);
             self.initial_collateral_assets
                 .iter()
                 .cloned()
@@ -666,7 +679,7 @@ impl<T: Config> BuyMainAsset<T> {
 
 #[allow(non_snake_case)]
 impl<T: Config> Module<T> {
-    fn free_reserves_distribution_routine() {
+    fn free_reserves_distribution_routine() -> u32 {
         let free_reserves_acc = FreeReservesAccountId::<T>::get();
         PendingFreeReserves::<T>::mutate(|vec| {
             vec.retain(|(collateral_asset_id, free_amount)| {
@@ -678,6 +691,7 @@ impl<T: Config> Module<T> {
                 .is_ok()
             })
         });
+        1
     }
 
     fn add_free_reserves_to_pending_list(
@@ -712,6 +726,10 @@ impl<T: Config> Module<T> {
             Assets::<T>::burn_from(&base_asset_id, &holder, &holder, swapped_xor_amount)?;
 
             let fw_swapped_xor_amount = FixedWrapper::from(swapped_xor_amount);
+            let mut undistributed_xor_amount = fw_swapped_xor_amount
+                .clone()
+                .try_into_balance()
+                .map_err(|_| Error::<T>::PriceCalculationFailed)?;
 
             let distribution_accounts: DistributionAccounts<
                 DistributionAccountData<DistributionAccount<T::AccountId, T::TechAccountId>>,
@@ -732,19 +750,15 @@ impl<T: Config> Module<T> {
                     }
                 };
                 Assets::<T>::mint_to(&base_asset_id, &holder, &account, amount)?;
+                undistributed_xor_amount = undistributed_xor_amount.saturating_sub(amount);
             }
-            let amount: FixedWrapper = fw_swapped_xor_amount.clone()
-                * (FixedWrapper::from(distribution_accounts.val_holders.coefficient)
-                    + distribution_accounts.xor_allocation.coefficient);
-            let amount = amount
-                .try_into_balance()
-                .map_err(|_| Error::<T>::PriceCalculationFailed)?;
+            // undistributed_xor_amount includes xor_allocation and val_holders portions
             let val_amount = T::LiquidityProxy::exchange(
                 holder,
                 holder,
                 &base_asset_id,
                 &VAL.into(),
-                SwapAmount::with_desired_input(amount, Balance::zero()),
+                SwapAmount::with_desired_input(undistributed_xor_amount, Balance::zero()),
                 Module::<T>::self_excluding_filter(),
             )?
             .amount;

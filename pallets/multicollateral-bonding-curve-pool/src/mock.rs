@@ -76,6 +76,10 @@ pub fn incentives_account() -> AccountId {
     AccountId32::from([4u8; 32])
 }
 
+pub fn free_reserves_account() -> AccountId {
+    AccountId32::from([4u8; 32])
+}
+
 pub fn get_pool_reserves_account_id() -> AccountId {
     let reserves_tech_account_id = crate::ReservesAcc::<Runtime>::get();
     let reserves_account_id =
@@ -499,6 +503,7 @@ impl ExtBuilder {
                     (bob(), 0),
                     (assets_owner(), 0),
                     (incentives_account(), 0),
+                    (free_reserves_account(), 0),
                 ])
                 .collect(),
         }
@@ -511,6 +516,7 @@ impl ExtBuilder {
             reference_asset_id: self.reference_asset_id,
             incentives_account_id: incentives_account(),
             initial_collateral_assets: Default::default(),
+            free_reserves_account_id: free_reserves_account(),
         }
         .assimilate_storage(&mut t)
         .unwrap();

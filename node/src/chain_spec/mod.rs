@@ -655,6 +655,11 @@ fn testnet_genesis(
     let mbc_pool_rewards_tech_account_id = framenode_runtime::GetMbcPoolRewardsTechAccountId::get();
     let mbc_pool_rewards_account_id = framenode_runtime::GetMbcPoolRewardsAccountId::get();
 
+    let mbc_pool_free_reserves_tech_account_id =
+        framenode_runtime::GetMbcPoolFreeReservesTechAccountId::get();
+    let mbc_pool_free_reserves_account_id =
+        framenode_runtime::GetMbcPoolFreeReservesAccountId::get();
+
     let liquidity_proxy_tech_account_id = framenode_runtime::GetLiquidityProxyTechAccountId::get();
     let liquidity_proxy_account_id = framenode_runtime::GetLiquidityProxyAccountId::get();
 
@@ -714,6 +719,10 @@ fn testnet_genesis(
         (
             mbc_pool_rewards_account_id.clone(),
             mbc_pool_rewards_tech_account_id.clone(),
+        ),
+        (
+            mbc_pool_free_reserves_account_id.clone(),
+            mbc_pool_free_reserves_tech_account_id.clone(),
         ),
         (
             iroha_migration_account_id.clone(),
@@ -1117,6 +1126,7 @@ fn testnet_genesis(
             reference_asset_id: DAI.into(),
             incentives_account_id: mbc_pool_rewards_account_id,
             initial_collateral_assets,
+            free_reserves_account_id: mbc_pool_free_reserves_account_id,
         }),
         pswap_distribution: Some(PswapDistributionConfig {
             subscribed_accounts: Vec::new(),
@@ -1257,6 +1267,11 @@ fn mainnet_genesis(
     let mbc_pool_rewards_tech_account_id = framenode_runtime::GetMbcPoolRewardsTechAccountId::get();
     let mbc_pool_rewards_account_id = framenode_runtime::GetMbcPoolRewardsAccountId::get();
 
+    let mbc_pool_free_reserves_tech_account_id =
+        framenode_runtime::GetMbcPoolFreeReservesTechAccountId::get();
+    let mbc_pool_free_reserves_account_id =
+        framenode_runtime::GetMbcPoolFreeReservesAccountId::get();
+
     let liquidity_proxy_tech_account_id = framenode_runtime::GetLiquidityProxyTechAccountId::get();
     let liquidity_proxy_account_id = framenode_runtime::GetLiquidityProxyAccountId::get();
 
@@ -1316,6 +1331,10 @@ fn mainnet_genesis(
         (
             mbc_pool_rewards_account_id.clone(),
             mbc_pool_rewards_tech_account_id.clone(),
+        ),
+        (
+            mbc_pool_free_reserves_account_id.clone(),
+            mbc_pool_free_reserves_tech_account_id.clone(),
         ),
         (
             iroha_migration_account_id.clone(),
@@ -1642,6 +1661,7 @@ fn mainnet_genesis(
             reference_asset_id: DAI.into(),
             incentives_account_id: mbc_pool_rewards_account_id,
             initial_collateral_assets,
+            free_reserves_account_id: mbc_pool_free_reserves_account_id,
         }),
         pswap_distribution: Some(PswapDistributionConfig {
             subscribed_accounts: Vec::new(),

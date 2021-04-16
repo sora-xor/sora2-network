@@ -35,6 +35,12 @@ use sp_std::marker::PhantomData;
 
 pub struct WeightInfo<T>(PhantomData<T>);
 impl<T: frame_system::Config> crate::WeightInfo for WeightInfo<T> {
+    fn on_initialize(_elems: u32) -> Weight {
+        (100_000_000 as Weight)
+            .saturating_add(T::DbWeight::get().reads(3 as Weight))
+            .saturating_add(T::DbWeight::get().writes(3 as Weight))
+    }
+
     fn initialize_pool() -> Weight {
         (387_780_000 as Weight)
             .saturating_add(T::DbWeight::get().reads(6 as Weight))
@@ -58,6 +64,9 @@ impl<T: frame_system::Config> crate::WeightInfo for WeightInfo<T> {
 }
 
 impl crate::WeightInfo for () {
+    fn on_initialize(_elems: u32) -> Weight {
+        EXTRINSIC_FIXED_WEIGHT
+    }
     fn initialize_pool() -> Weight {
         EXTRINSIC_FIXED_WEIGHT
     }
