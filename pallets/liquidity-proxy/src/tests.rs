@@ -825,7 +825,9 @@ fn test_quote_fast_split_exact_input_base_should_pass() {
         let mut dist = quotes.distribution;
         dist.sort_by(|a, b| a.0.cmp(&b.0));
 
-        assert_eq!(quotes.amount, balance!(17530.059712310552788491));
+        // The "smart" split produces the outcome which is worse than purely XYK pool swap
+        // Hence the latter result use used resulting in the dist == [0.0, 1.0]
+        assert_eq!(quotes.amount, balance!(18181.818181818181818181));
         assert_eq!(quotes.fee, balance!(0));
         assert_eq!(
             &dist,
@@ -835,11 +837,11 @@ fn test_quote_fast_split_exact_input_base_should_pass() {
                         DEX_D_ID,
                         LiquiditySourceType::MulticollateralBondingCurvePool
                     ),
-                    fixed!(0.67765313719130581),
+                    fixed!(0.0),
                 ),
                 (
                     LiquiditySourceId::new(DEX_D_ID, LiquiditySourceType::MockPool),
-                    fixed!(0.32234686280869419),
+                    fixed!(1.0),
                 ),
             ]
         );
@@ -937,7 +939,9 @@ fn test_quote_fast_split_exact_ouput_target_should_pass() {
         let mut dist = quotes.distribution;
         dist.sort_by(|a, b| a.0.cmp(&b.0));
 
-        assert_eq!(quotes.amount, balance!(117.197946263858078312));
+        // The "smart" split produces the outcome which is worse than purely XYK pool swap
+        // Hence the latter result use used resulting in the dist == [0.0, 1.0]
+        assert_eq!(quotes.amount, balance!(111.111111111111111112));
         assert_eq!(quotes.fee, balance!(0));
         assert_eq!(
             &dist,
@@ -947,11 +951,11 @@ fn test_quote_fast_split_exact_ouput_target_should_pass() {
                         DEX_D_ID,
                         LiquiditySourceType::MulticollateralBondingCurvePool
                     ),
-                    fixed!(0.687719404227631117),
+                    fixed!(0.0),
                 ),
                 (
                     LiquiditySourceId::new(DEX_D_ID, LiquiditySourceType::MockPool),
-                    fixed!(0.312280595772368883),
+                    fixed!(1.0),
                 ),
             ]
         );
@@ -1281,6 +1285,8 @@ fn test_quote_fast_split_exact_output_target_undercollateralized_should_pass() {
         // collateral reserves in MCBC unless specifically guarded
         // - VAL reserves in MCBC: 5,000
         // - the default requested VAL (after split at the price equillibrium): ~13,755
+        // As a result, the price at TBC becomes too high so that the "Smart" algo is dropped
+        // so that the entire amount ends up being exchanged at the XYK pool
         let (quotes, rewards) = LiquidityProxy::quote_single(
             &GetBaseAssetId::get(),
             &VAL,
@@ -1294,7 +1300,7 @@ fn test_quote_fast_split_exact_output_target_undercollateralized_should_pass() {
         dist.sort_by(|a, b| a.0.cmp(&b.0));
 
         assert_eq!(rewards, Vec::new());
-        assert_eq!(quotes.amount, balance!(323.750240809708188590));
+        assert_eq!(quotes.amount, balance!(111.111111111111111112));
         assert_eq!(quotes.fee, balance!(0));
         assert_eq!(
             &dist,
@@ -1304,11 +1310,11 @@ fn test_quote_fast_split_exact_output_target_undercollateralized_should_pass() {
                         DEX_D_ID,
                         LiquiditySourceType::MulticollateralBondingCurvePool
                     ),
-                    fixed!(0.225),
+                    fixed!(0.0),
                 ),
                 (
                     LiquiditySourceId::new(DEX_D_ID, LiquiditySourceType::MockPool),
-                    fixed!(0.775),
+                    fixed!(1.0),
                 ),
             ]
         );
@@ -1326,7 +1332,7 @@ fn test_quote_fast_split_exact_output_target_undercollateralized_should_pass() {
         dist = quotes.distribution;
         dist.sort_by(|a, b| a.0.cmp(&b.0));
 
-        assert_eq!(quotes.amount, balance!(1202.422808773859499438));
+        assert_eq!(quotes.amount, balance!(250.0));
         assert_eq!(quotes.fee, balance!(0));
         assert_eq!(
             &dist,
@@ -1336,11 +1342,11 @@ fn test_quote_fast_split_exact_output_target_undercollateralized_should_pass() {
                         DEX_D_ID,
                         LiquiditySourceType::MulticollateralBondingCurvePool
                     ),
-                    fixed!(0.45),
+                    fixed!(0.0),
                 ),
                 (
                     LiquiditySourceId::new(DEX_D_ID, LiquiditySourceType::MockPool),
-                    fixed!(0.55),
+                    fixed!(1.0),
                 ),
             ]
         );
@@ -1358,7 +1364,7 @@ fn test_quote_fast_split_exact_output_target_undercollateralized_should_pass() {
         dist = quotes.distribution;
         dist.sort_by(|a, b| a.0.cmp(&b.0));
 
-        assert_eq!(quotes.amount, balance!(339.983899478813217049));
+        assert_eq!(quotes.amount, balance!(125.0));
         assert_eq!(quotes.fee, balance!(0));
         assert_eq!(
             &dist,
@@ -1368,11 +1374,11 @@ fn test_quote_fast_split_exact_output_target_undercollateralized_should_pass() {
                         DEX_D_ID,
                         LiquiditySourceType::MulticollateralBondingCurvePool
                     ),
-                    fixed!(0.18),
+                    fixed!(0.0),
                 ),
                 (
                     LiquiditySourceId::new(DEX_D_ID, LiquiditySourceType::MockPool),
-                    fixed!(0.82),
+                    fixed!(1.0),
                 ),
             ]
         );
