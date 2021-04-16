@@ -41,10 +41,10 @@ use common::{
     USDT, VAL, XOR,
 };
 use frame_support::sp_runtime::Percent;
-use framenode_runtime::bonding_curve_pool::{
+use framenode_runtime::eth_bridge::{AssetConfig, NetworkConfig};
+use framenode_runtime::multicollateral_bonding_curve_pool::{
     DistributionAccount, DistributionAccountData, DistributionAccounts,
 };
-use framenode_runtime::eth_bridge::{AssetConfig, NetworkConfig};
 use framenode_runtime::opaque::SessionKeys;
 use framenode_runtime::{
     eth_bridge, AccountId, AssetId, AssetName, AssetSymbol, AssetsConfig, BabeConfig,

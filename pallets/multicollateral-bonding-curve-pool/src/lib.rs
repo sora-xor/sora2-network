@@ -43,6 +43,7 @@ mod benchmarking;
 use core::convert::TryInto;
 
 use assets::AssetIdOf;
+use codec::{Decode, Encode};
 use common::fixnum::ops::Zero as _;
 use common::prelude::{
     Balance, EnsureDEXManager, EnsureTradingPairExists, Fixed, FixedWrapper, QuoteAmount,
@@ -59,6 +60,8 @@ use frame_system::ensure_signed;
 use liquidity_proxy::LiquidityProxyTrait;
 use permissions::{Scope, BURN, MINT, TRANSFER};
 use pswap_distribution::{OnPswapBurned, PswapRemintInfo};
+#[cfg(feature = "std")]
+use serde::{Deserialize, Serialize};
 use sp_arithmetic::traits::Zero;
 use sp_runtime::{DispatchError, DispatchResult};
 use sp_std::collections::btree_set::BTreeSet;
@@ -78,10 +81,108 @@ pub const TECH_ACCOUNT_PREFIX: &[u8] = b"multicollateral-bonding-curve-pool";
 pub const TECH_ACCOUNT_RESERVES: &[u8] = b"reserves";
 pub const TECH_ACCOUNT_REWARDS: &[u8] = b"rewards";
 
-// Reuse distribution account structs from single-collateral bonding curve pallet.
-pub use bonding_curve_pool::{DistributionAccount, DistributionAccountData, DistributionAccounts};
-
 pub use pallet::*;
+
+#[derive(Debug, Encode, Decode, Clone)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+pub enum DistributionAccount<AccountId, TechAccountId> {
+    Account(AccountId),
+    TechAccount(TechAccountId),
+}
+
+impl<AccountId, TechAccountId: Default> Default for DistributionAccount<AccountId, TechAccountId> {
+    fn default() -> Self {
+        Self::TechAccount(TechAccountId::default())
+    }
+}
+
+#[derive(Debug, Encode, Decode, Clone)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+pub struct DistributionAccountData<DistributionAccount> {
+    pub account: DistributionAccount,
+    pub coefficient: Fixed,
+}
+
+impl<DistributionAccount: Default> Default for DistributionAccountData<DistributionAccount> {
+    fn default() -> Self {
+        Self {
+            account: Default::default(),
+            coefficient: Default::default(),
+        }
+    }
+}
+
+impl<DistributionAccount> DistributionAccountData<DistributionAccount> {
+    pub fn new(account: DistributionAccount, coefficient: Fixed) -> Self {
+        DistributionAccountData {
+            account,
+            coefficient,
+        }
+    }
+}
+
+#[derive(Debug, Encode, Decode, Clone)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+pub struct DistributionAccounts<DistributionAccountData> {
+    pub xor_allocation: DistributionAccountData,
+    pub sora_citizens: DistributionAccountData,
+    pub stores_and_shops: DistributionAccountData,
+    pub parliament_and_development: DistributionAccountData,
+    pub projects: DistributionAccountData,
+    pub val_holders: DistributionAccountData,
+}
+
+impl<AccountId, TechAccountId>
+    DistributionAccounts<DistributionAccountData<DistributionAccount<AccountId, TechAccountId>>>
+{
+    pub fn xor_distribution_as_array(
+        &self,
+    ) -> [&DistributionAccountData<DistributionAccount<AccountId, TechAccountId>>; 5] {
+        [
+            &self.xor_allocation,
+            &self.sora_citizens,
+            &self.stores_and_shops,
+            &self.parliament_and_development,
+            &self.projects,
+        ]
+    }
+
+    pub fn xor_distribution_accounts_as_array(
+        &self,
+    ) -> [&DistributionAccount<AccountId, TechAccountId>; 5] {
+        [
+            &self.xor_allocation.account,
+            &self.sora_citizens.account,
+            &self.stores_and_shops.account,
+            &self.parliament_and_development.account,
+            &self.projects.account,
+        ]
+    }
+
+    pub fn accounts(&self) -> [&DistributionAccount<AccountId, TechAccountId>; 6] {
+        [
+            &self.xor_allocation.account,
+            &self.sora_citizens.account,
+            &self.stores_and_shops.account,
+            &self.parliament_and_development.account,
+            &self.projects.account,
+            &self.val_holders.account,
+        ]
+    }
+}
+
+impl<DistributionAccountData: Default> Default for DistributionAccounts<DistributionAccountData> {
+    fn default() -> Self {
+        Self {
+            xor_allocation: Default::default(),
+            sora_citizens: Default::default(),
+            stores_and_shops: Default::default(),
+            parliament_and_development: Default::default(),
+            projects: Default::default(),
+            val_holders: Default::default(),
+        }
+    }
+}
 
 #[frame_support::pallet]
 pub mod pallet {
@@ -230,6 +331,15 @@ pub mod pallet {
     #[pallet::storage]
     #[pallet::getter(fn reserves_account_id)]
     pub type ReservesAcc<T: Config> = StorageValue<_, T::TechAccountId, ValueQuery>;
+
+    #[pallet::storage]
+    #[pallet::getter(fn free_reserves_account_id)]
+    pub type FreeReservesAccountId<T: Config> = StorageValue<_, T::AccountId, ValueQuery>;
+
+    #[pallet::storage]
+    #[pallet::getter(fn pending_free_reserves)]
+    pub type PendingFreeReserves<T: Config> =
+        StorageValue<_, Vec<(T::AssetId, Balance)>, ValueQuery>;
 
     #[pallet::type_value]
     pub(super) fn DefaultForInitialPrice() -> Fixed {
@@ -481,71 +591,19 @@ impl<T: Config> BuyMainAsset<T> {
                 return Ok(());
             }
 
-            let reserves_tech_acc = &self.reserves_tech_account_id;
-            let reserves_acc = &self.reserves_account_id;
-            let swapped_xor_amount = T::LiquidityProxy::exchange(
-                reserves_acc,
-                reserves_acc,
+            if !Module::<T>::attempt_free_reserves_distribution(
+                &self.reserves_account_id,
                 &self.collateral_asset_id,
-                &self.main_asset_id,
-                SwapAmount::with_desired_input(free_amount, Balance::zero()).into(),
-                Module::<T>::self_excluding_filter(),
-            )?
-            .amount
-            .into();
-            Technical::<T>::burn(&self.main_asset_id, reserves_tech_acc, swapped_xor_amount)?;
-            Technical::<T>::mint(&self.main_asset_id, reserves_tech_acc, swapped_xor_amount)?;
-
-            let fw_swapped_xor_amount = FixedWrapper::from(swapped_xor_amount);
-
-            let distribution_accounts: DistributionAccounts<
-                DistributionAccountData<DistributionAccount<T::AccountId, T::TechAccountId>>,
-            > = DistributionAccountsEntry::<T>::get();
-            for (account, coefficient) in distribution_accounts
-                .xor_distribution_as_array()
-                .iter()
-                .map(|x| (&x.account, x.coefficient))
+                free_amount,
+            )
+            .is_ok()
             {
-                let amount = fw_swapped_xor_amount.clone() * coefficient;
-                let amount = amount
-                    .try_into_balance()
-                    .map_err(|_| Error::<T>::PriceCalculationFailed)?;
-                match account {
-                    DistributionAccount::Account(account) => {
-                        let reserves_acc =
-                            Technical::<T>::tech_account_id_to_account_id(reserves_tech_acc)?;
-                        Assets::<T>::transfer_from(
-                            &self.main_asset_id,
-                            &reserves_acc,
-                            account,
-                            amount,
-                        )?;
-                    }
-                    DistributionAccount::TechAccount(account) => {
-                        Technical::<T>::transfer(
-                            &self.main_asset_id,
-                            reserves_tech_acc,
-                            account,
-                            amount,
-                        )?;
-                    }
-                }
+                Module::<T>::add_free_reserves_to_pending_list(
+                    &self.reserves_account_id,
+                    self.collateral_asset_id.clone(),
+                    free_amount,
+                )?;
             }
-            let amount =
-                fw_swapped_xor_amount.clone() * distribution_accounts.val_holders.coefficient;
-            let amount = amount
-                .try_into_balance()
-                .map_err(|_| Error::<T>::PriceCalculationFailed)?;
-            let val_amount = T::LiquidityProxy::exchange(
-                reserves_acc,
-                reserves_acc,
-                &self.main_asset_id,
-                &VAL.into(),
-                SwapAmount::with_desired_input(amount, Balance::zero()),
-                Module::<T>::self_excluding_filter(),
-            )?
-            .amount;
-            Technical::<T>::burn(&VAL.into(), reserves_tech_acc, val_amount)?;
             Ok(())
         })
     }
@@ -608,6 +666,93 @@ impl<T: Config> BuyMainAsset<T> {
 
 #[allow(non_snake_case)]
 impl<T: Config> Module<T> {
+    fn free_reserves_distribution_routine() {
+        let free_reserves_acc = FreeReservesAccountId::<T>::get();
+        PendingFreeReserves::<T>::mutate(|vec| {
+            vec.retain(|(collateral_asset_id, free_amount)| {
+                !Module::<T>::attempt_free_reserves_distribution(
+                    &free_reserves_acc,
+                    &collateral_asset_id,
+                    *free_amount,
+                )
+                .is_ok()
+            })
+        });
+    }
+
+    fn add_free_reserves_to_pending_list(
+        holder: &T::AccountId,
+        collateral_asset_id: T::AssetId,
+        amount: Balance,
+    ) -> DispatchResult {
+        let free_reserves_acc = FreeReservesAccountId::<T>::get();
+        Assets::<T>::transfer_from(&collateral_asset_id, holder, &free_reserves_acc, amount)?;
+        PendingFreeReserves::<T>::mutate(|vec| vec.push((collateral_asset_id, amount)));
+        Ok(())
+    }
+
+    fn attempt_free_reserves_distribution(
+        holder: &T::AccountId,
+        collateral_asset_id: &T::AssetId,
+        free_amount: Balance,
+    ) -> DispatchResult {
+        common::with_transaction(|| {
+            let base_asset_id = T::GetBaseAssetId::get();
+            let swapped_xor_amount = T::LiquidityProxy::exchange(
+                holder,
+                holder,
+                &collateral_asset_id,
+                &base_asset_id,
+                SwapAmount::with_desired_input(free_amount, Balance::zero()).into(),
+                Module::<T>::self_excluding_filter(),
+            )?
+            .amount
+            .into();
+
+            Assets::<T>::burn_from(&base_asset_id, &holder, &holder, swapped_xor_amount)?;
+
+            let fw_swapped_xor_amount = FixedWrapper::from(swapped_xor_amount);
+
+            let distribution_accounts: DistributionAccounts<
+                DistributionAccountData<DistributionAccount<T::AccountId, T::TechAccountId>>,
+            > = DistributionAccountsEntry::<T>::get();
+            for (account, coefficient) in distribution_accounts
+                .xor_distribution_as_array()
+                .iter()
+                .map(|x| (&x.account, x.coefficient))
+            {
+                let amount = fw_swapped_xor_amount.clone() * coefficient;
+                let amount = amount
+                    .try_into_balance()
+                    .map_err(|_| Error::<T>::PriceCalculationFailed)?;
+                let account = match account {
+                    DistributionAccount::Account(account) => account.clone(),
+                    DistributionAccount::TechAccount(account) => {
+                        Technical::<T>::tech_account_id_to_account_id(account)?
+                    }
+                };
+                Assets::<T>::mint_to(&base_asset_id, &holder, &account, amount)?;
+            }
+            let amount: FixedWrapper = fw_swapped_xor_amount.clone()
+                * (FixedWrapper::from(distribution_accounts.val_holders.coefficient)
+                    + distribution_accounts.xor_allocation.coefficient);
+            let amount = amount
+                .try_into_balance()
+                .map_err(|_| Error::<T>::PriceCalculationFailed)?;
+            let val_amount = T::LiquidityProxy::exchange(
+                holder,
+                holder,
+                &base_asset_id,
+                &VAL.into(),
+                SwapAmount::with_desired_input(amount, Balance::zero()),
+                Module::<T>::self_excluding_filter(),
+            )?
+            .amount;
+            Assets::<T>::burn_from(&VAL.into(), holder, holder, val_amount)?;
+            Ok(())
+        })
+    }
+
     #[inline]
     fn update_collateral_reserves(
         collateral_asset: &T::AssetId,
