@@ -1,14 +1,45 @@
+// This file is part of the SORA network and Polkaswap app.
+
+// Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
+// SPDX-License-Identifier: BSD-4-Clause
+
+// Redistribution and use in source and binary forms, with or without modification,
+// are permitted provided that the following conditions are met:
+
+// Redistributions of source code must retain the above copyright notice, this list
+// of conditions and the following disclaimer.
+// Redistributions in binary form must reproduce the above copyright notice, this
+// list of conditions and the following disclaimer in the documentation and/or other
+// materials provided with the distribution.
+//
+// All advertising materials mentioning features or use of this software must display
+// the following acknowledgement: This product includes software developed by Polka Biome
+// Ltd., SORA, and Polkaswap.
+//
+// Neither the name of the Polka Biome Ltd. nor the names of its contributors may be used
+// to endorse or promote products derived from this software without specific prior written permission.
+
+// THIS SOFTWARE IS PROVIDED BY Polka Biome Ltd. AS IS AND ANY EXPRESS OR IMPLIED WARRANTIES,
+// INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+// A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL Polka Biome Ltd. BE LIABLE FOR ANY
+// DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+// BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
+// OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
+// STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
+// USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use common::fixnum::ops::One;
 use common::prelude::{FixedWrapper, SwapAmount, SwapOutcome};
-use common::{balance, fixed, Balance, Fixed, GetPoolReserves, LiquiditySource};
+use common::{balance, fixed, Balance, Fixed, GetPoolReserves, LiquiditySource, RewardReason};
 use core::convert::TryInto;
 use frame_support::dispatch::DispatchError;
 use frame_support::ensure;
 use frame_support::traits::Get;
 use frame_system::ensure_signed;
 use permissions::{Scope, BURN, MINT, TRANSFER};
+use sp_std::vec::Vec;
 
 #[cfg(test)]
 mod mock;
@@ -200,6 +231,10 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
         }
         Ok(())
     }
+
+    pub fn add_reward(entry: (Balance, T::AssetId, RewardReason)) {
+        Rewards::<T, I>::mutate(|vec| vec.push(entry));
+    }
 }
 
 impl<T: Config<I>, I: 'static>
@@ -345,6 +380,18 @@ impl<T: Config<I>, I: 'static>
         // actual exchange does not happen
         Self::quote(dex_id, input_asset_id, output_asset_id, desired_amount)
     }
+
+    fn check_rewards(
+        _target_id: &T::DEXId,
+        _input_asset_id: &T::AssetId,
+        _output_asset_id: &T::AssetId,
+        _input_amount: Balance,
+        _output_amount: Balance,
+    ) -> Result<Vec<(Balance, T::AssetId, RewardReason)>, DispatchError> {
+        #[cfg(feature = "std")]
+        println!("REWARDS {:?}", Rewards::<T, I>::get());
+        Ok(Rewards::<T, I>::get())
+    }
 }
 
 impl<T: Config<I>, I: 'static> GetPoolReserves<T::AssetId> for Pallet<T, I> {
@@ -451,6 +498,10 @@ pub mod pallet {
     #[pallet::getter(fn reserves_account_id)]
     pub type ReservesAcc<T: Config<I>, I: 'static = ()> =
         StorageValue<_, T::TechAccountId, ValueQuery>;
+
+    #[pallet::storage]
+    pub type Rewards<T: Config<I>, I: 'static = ()> =
+        StorageValue<_, Vec<(Balance, T::AssetId, RewardReason)>, ValueQuery>;
 
     #[pallet::genesis_config]
     pub struct GenesisConfig<T: Config<I>, I: 'static = ()> {

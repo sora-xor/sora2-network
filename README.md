@@ -1,7 +1,9 @@
+<img alt="SORA logo" src="https://static.tildacdn.com/tild3664-3939-4236-b762-306663333564/sora_small.svg"/>
+
 # Overview.
 
-This is FRAME-based Substrate node of Sora Polkaswap.
-Code of node, pallets, runtime.
+This is FRAME-based Substrate node of SORA2.
+This repo contains code of node, pallets, runtime.
 
 [CONTRIBUTING.md](CONTRIBUTING.md)
 
@@ -16,6 +18,11 @@ Code of node, pallets, runtime.
 * CPU 1500MHz 2 cores.
 * RAM 4Gb.
 * Disk 6Gb.
+
+# System requirement for validator node
+* Intel(R) Core(TM) i7-7700K CPU @ 4.20GHz.
+* A NVMe solid state drive. Starting around 80GB - 160GB will be okay for the first six months of SORA, but will need to be re-evaluated every six months, as the blockchain grows.
+* 32 Gb.
 
 # Build test run.
 
@@ -92,7 +99,13 @@ If you want to see the multi-node consensus algorithm in action, refer to
 
 ### Rust Setup
 
-First, complete the [basic Rust setup instructions](https://github.com/substrate-developer-hub/substrate-node-template/blob/master/doc/rust-setup.md).
+First, complete the [guide for Rust setup](https://substrate.dev/docs/en/knowledgebase/getting-started/).
+For the SORA2 network nightly build should be used. Execute the following command:
+```
+rustup uninstall nigthly
+rustup default nightly-2021-03-11
+rustup target add wasm32-unknown-unknown --toolchain nightly-2021-03-11
+```
 
 ### Build
 
@@ -219,3 +232,18 @@ curl -H "Content-Type: application/json" --data '{ "jsonrpc":"2.0", "method":"sy
 The Parity Polkadot client connects to telemetry by default. You can disable it with ```--no-telemetry```, or connect only to specified telemetry servers with the ```--telemetry-url``` option (see the help options for instructions). Connecting to public telemetry may expose information that puts your node at higher risk of attack. You can run your own, private telemetry server or deploy a substrate-telemetry instance to a Kubernetes cluster using this Helm chart.
 
 The node also exposes a Prometheus endpoint by default (disable with ```--no-prometheus```). Substrate has a vizualizing node metrics tutorial which uses this endpoint.
+
+# License
+
+License is original "BSD License" (BSD 4-clause license)
+SPDX-License-Identifier: BSD-4-Clause
+Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
+
+Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
+
+    Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
+    Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution.
+    All advertising materials mentioning features or use of this software must display the following acknowledgement: This product includes software developed by Polka Biome Ltd., SORA, and Polkaswap.
+    Neither the name of the Polka Biome Ltd. nor the names of its contributors may be used to endorse or promote products derived from this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY Polka Biome Ltd. AS IS AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL Polka Biome Ltd. BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.

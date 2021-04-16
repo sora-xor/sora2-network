@@ -1,5 +1,35 @@
+// This file is part of the SORA network and Polkaswap app.
+
+// Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
+// SPDX-License-Identifier: BSD-4-Clause
+
+// Redistribution and use in source and binary forms, with or without modification,
+// are permitted provided that the following conditions are met:
+
+// Redistributions of source code must retain the above copyright notice, this list
+// of conditions and the following disclaimer.
+// Redistributions in binary form must reproduce the above copyright notice, this
+// list of conditions and the following disclaimer in the documentation and/or other
+// materials provided with the distribution.
+//
+// All advertising materials mentioning features or use of this software must display
+// the following acknowledgement: This product includes software developed by Polka Biome
+// Ltd., SORA, and Polkaswap.
+//
+// Neither the name of the Polka Biome Ltd. nor the names of its contributors may be used
+// to endorse or promote products derived from this software without specific prior written permission.
+
+// THIS SOFTWARE IS PROVIDED BY Polka Biome Ltd. AS IS AND ANY EXPRESS OR IMPLIED WARRANTIES,
+// INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+// A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL Polka Biome Ltd. BE LIABLE FOR ANY
+// DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+// BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
+// OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
+// STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
+// USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
 use crate::prelude::{ManagementMode, SwapAmount, SwapOutcome};
-use crate::{Fixed, LiquiditySourceFilter, LiquiditySourceId};
+use crate::{Fixed, LiquiditySourceFilter, LiquiditySourceId, RewardReason};
 use frame_support::dispatch::DispatchResult;
 use frame_support::pallet_prelude::MaybeSerializeDeserialize;
 use frame_support::sp_runtime::traits::BadOrigin;
@@ -86,6 +116,15 @@ pub trait LiquiditySource<TargetId, AccountId, AssetId, Amount, Error> {
         output_asset_id: &AssetId,
         swap_amount: SwapAmount<Amount>,
     ) -> Result<SwapOutcome<Amount>, DispatchError>;
+
+    /// Get rewards that are given for perfoming given exchange.
+    fn check_rewards(
+        target_id: &TargetId,
+        input_asset_id: &AssetId,
+        output_asset_id: &AssetId,
+        input_amount: Amount,
+        output_amount: Amount,
+    ) -> Result<Vec<(Amount, AssetId, RewardReason)>, DispatchError>;
 }
 
 impl<DEXId, AccountId, AssetId> LiquiditySource<DEXId, AccountId, AssetId, Fixed, DispatchError>
@@ -118,6 +157,16 @@ impl<DEXId, AccountId, AssetId> LiquiditySource<DEXId, AccountId, AssetId, Fixed
     ) -> Result<SwapOutcome<Fixed>, DispatchError> {
         Err(DispatchError::CannotLookup)
     }
+
+    fn check_rewards(
+        _target_id: &DEXId,
+        _input_asset_id: &AssetId,
+        _output_asset_id: &AssetId,
+        _input_amount: Fixed,
+        _output_amount: Fixed,
+    ) -> Result<Vec<(Fixed, AssetId, RewardReason)>, DispatchError> {
+        Err(DispatchError::CannotLookup)
+    }
 }
 
 impl<DEXId, AccountId, AssetId> LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError>
@@ -148,6 +197,16 @@ impl<DEXId, AccountId, AssetId> LiquiditySource<DEXId, AccountId, AssetId, Balan
         _output_asset_id: &AssetId,
         _swap_amount: SwapAmount<Balance>,
     ) -> Result<SwapOutcome<Balance>, DispatchError> {
+        Err(DispatchError::CannotLookup)
+    }
+
+    fn check_rewards(
+        _target_id: &DEXId,
+        _input_asset_id: &AssetId,
+        _output_asset_id: &AssetId,
+        _input_amount: Balance,
+        _output_amount: Balance,
+    ) -> Result<Vec<(Balance, AssetId, RewardReason)>, DispatchError> {
         Err(DispatchError::CannotLookup)
     }
 }

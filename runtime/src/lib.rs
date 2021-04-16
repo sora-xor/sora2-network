@@ -1,3 +1,33 @@
+// This file is part of the SORA network and Polkaswap app.
+
+// Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
+// SPDX-License-Identifier: BSD-4-Clause
+
+// Redistribution and use in source and binary forms, with or without modification,
+// are permitted provided that the following conditions are met:
+
+// Redistributions of source code must retain the above copyright notice, this list
+// of conditions and the following disclaimer.
+// Redistributions in binary form must reproduce the above copyright notice, this
+// list of conditions and the following disclaimer in the documentation and/or other
+// materials provided with the distribution.
+//
+// All advertising materials mentioning features or use of this software must display
+// the following acknowledgement: This product includes software developed by Polka Biome
+// Ltd., SORA, and Polkaswap.
+//
+// Neither the name of the Polka Biome Ltd. nor the names of its contributors may be used
+// to endorse or promote products derived from this software without specific prior written permission.
+
+// THIS SOFTWARE IS PROVIDED BY Polka Biome Ltd. AS IS AND ANY EXPRESS OR IMPLIED WARRANTIES,
+// INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+// A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL Polka Biome Ltd. BE LIABLE FOR ANY
+// DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+// BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
+// OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
+// STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
+// USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
 #![cfg_attr(not(feature = "std"), no_std)]
 // `construct_runtime!` does a lot of recursion and requires us to increase the limit to 256.
 #![recursion_limit = "256"]
@@ -82,7 +112,7 @@ pub use sp_runtime::BuildStorage;
 use eth_bridge::{
     AssetKind, OffchainRequest, OutgoingRequestEncoded, RequestStatus, SignatureParams,
 };
-use impls::OnUnbalancedDemocracySlash;
+use impls::{DemocracyWeightInfo, OnUnbalancedDemocracySlash};
 
 pub use {bonding_curve_pool, eth_bridge, multicollateral_bonding_curve_pool};
 
@@ -153,7 +183,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
     spec_name: create_runtime_str!("sora-substrate"),
     impl_name: create_runtime_str!("sora-substrate"),
     authoring_version: 1,
-    spec_version: 21,
+    spec_version: 26,
     impl_version: 1,
     apis: RUNTIME_API_VERSIONS,
     transaction_version: 1,
@@ -350,7 +380,7 @@ impl pallet_democracy::Config for Runtime {
     type Scheduler = Scheduler;
     type PalletsOrigin = OriginCaller;
     type MaxVotes = DemocracyMaxVotes;
-    type WeightInfo = ();
+    type WeightInfo = DemocracyWeightInfo;
     type MaxProposals = DemocracyMaxProposals;
 }
 
@@ -633,11 +663,6 @@ impl dex_api::Config for Runtime {
     type WeightInfo = dex_api::weights::WeightInfo<Runtime>;
 }
 
-impl farming::Config for Runtime {
-    type Event = Event;
-    type WeightInfo = ();
-}
-
 impl pallet_multisig::Config for Runtime {
     type Call = Call;
     type Event = Event;
@@ -768,12 +793,15 @@ impl xor_fee::Config for Runtime {
     type ReferrerWeight = ReferrerWeight;
     type XorBurnedWeight = XorBurnedWeight;
     type XorIntoValBurnedWeight = XorIntoValBurnedWeight;
+    type SoraParliamentShare = SoraParliamentShare;
     type XorId = GetXorAssetId;
     type ValId = GetValAssetId;
     type DEXIdValue = DEXIdValue;
     type LiquidityProxy = LiquidityProxy;
     type ValBurnedNotifier = Staking;
     type CustomFees = ExtrinsicsFlatFees;
+    type GetTechnicalAccountId = GetXorFeeAccountId;
+    type GetParliamentAccountId = GetParliamentAccountId;
 }
 
 pub struct ConstantFeeMultiplier;
@@ -870,14 +898,15 @@ parameter_types! {
                 .expect("Failed to get ordinary account id for technical account id.");
         account_id
     };
-    pub GetParliamentTechAccountId: TechAccountId = {
-        TechAccountId::Pure(
-            common::DEXId::Polkaswap.into(),
-            common::TechPurpose::Identifier(b"parliament_and_development".to_vec()),
+    pub GetParliamentAccountId: AccountId = hex!("881b87c9f83664b95bd13e2bb40675bfa186287da93becc0b22683334d411e4e").into();
+    pub GetXorFeeTechAccountId: TechAccountId = {
+        TechAccountId::from_generic_pair(
+            xor_fee::TECH_ACCOUNT_PREFIX.to_vec(),
+            xor_fee::TECH_ACCOUNT_MAIN.to_vec(),
         )
     };
-    pub GetParliamentAccountId: AccountId = {
-        let tech_account_id = GetParliamentTechAccountId::get();
+    pub GetXorFeeAccountId: AccountId = {
+        let tech_account_id = GetXorFeeTechAccountId::get();
         technical::Module::<Runtime>::tech_account_id_to_account_id(&tech_account_id)
             .expect("Failed to get ordinary account id for technical account id.")
     };
@@ -982,6 +1011,7 @@ parameter_types! {
     pub const ReferrerWeight: u32 = 10;
     pub const XorBurnedWeight: u32 = 40;
     pub const XorIntoValBurnedWeight: u32 = 50;
+    pub const SoraParliamentShare: Percent = Percent::from_percent(10);
 }
 
 #[cfg(feature = "private-net")]
@@ -1029,7 +1059,6 @@ construct_runtime! {
         Democracy: pallet_democracy::{Module, Call, Storage, Config, Event<T>},
         DEXAPI: dex_api::{Module, Call, Storage, Config, Event<T>},
         EthBridge: eth_bridge::{Module, Call, Storage, Config<T>, Event<T>},
-        Farming: farming::{Module, Call, Storage, Config<T>, Event<T>},
         PswapDistribution: pswap_distribution::{Module, Call, Storage, Config<T>, Event<T>},
         Multisig: pallet_multisig::{Module, Call, Storage, Event<T>},
         Scheduler: pallet_scheduler::{Module, Call, Storage, Event<T>},
@@ -1085,7 +1114,6 @@ construct_runtime! {
         Democracy: pallet_democracy::{Module, Call, Storage, Config, Event<T>},
         DEXAPI: dex_api::{Module, Storage, Config, Event<T>},
         EthBridge: eth_bridge::{Module, Call, Storage, Config<T>, Event<T>},
-        Farming: farming::{Module, Call, Storage, Config<T>, Event<T>},
         PswapDistribution: pswap_distribution::{Module, Call, Storage, Config<T>, Event<T>},
         Multisig: pallet_multisig::{Module, Call, Storage, Event<T>},
         Scheduler: pallet_scheduler::{Module, Call, Storage, Event<T>},
@@ -1379,12 +1407,16 @@ impl_runtime_apis! {
     }
 
     impl farming_runtime_api::FarmingRuntimeApi<Block, AccountId, FarmId, FarmInfo<AccountId, AssetId, BlockNumber>, FarmerInfo<AccountId, TechAccountId, BlockNumber>> for Runtime {
-        fn get_farm_info(who: AccountId, name: FarmId) -> Option<FarmInfo<AccountId, AssetId, BlockNumber>> {
-            Farming::get_farm_info(who, name).ok()?
+        fn get_farm_info(_who: AccountId, _name: FarmId) -> Option<FarmInfo<AccountId, AssetId, BlockNumber>> {
+            // TODO: re-enable when needed
+            // Farming::get_farm_info(who, name).ok()?
+            None
         }
 
-        fn get_farmer_info(who: AccountId, name: FarmId) -> Option<FarmerInfo<AccountId, TechAccountId, BlockNumber>> {
-            Farming::get_farmer_info(who, name).ok()?
+        fn get_farmer_info(_who: AccountId, _name: FarmId) -> Option<FarmerInfo<AccountId, TechAccountId, BlockNumber>> {
+            // TODO: re-enable when needed
+            // Farming::get_farmer_info(who, name).ok()?
+            None
         }
     }
 
@@ -1476,7 +1508,7 @@ impl_runtime_apis! {
             swap_variant: SwapVariant,
             selected_source_types: Vec<LiquiditySourceType>,
             filter_mode: FilterMode,
-        ) -> Option<liquidity_proxy_runtime_api::SwapOutcomeInfo<Balance>> {
+        ) -> Option<liquidity_proxy_runtime_api::SwapOutcomeInfo<Balance, AssetId>> {
             // TODO: remove with proper QuoteAmount refactor
             let limit = if swap_variant == SwapVariant::WithDesiredInput {
                 Balance::zero()
@@ -1488,7 +1520,18 @@ impl_runtime_apis! {
                 &output_asset_id,
                 SwapAmount::with_variant(swap_variant, amount.into(), limit),
                 LiquiditySourceFilter::with_mode(dex_id, filter_mode, selected_source_types),
-            ).ok().map(|asa| liquidity_proxy_runtime_api::SwapOutcomeInfo::<Balance> { amount: asa.amount, fee: asa.fee})
+                false,
+            ).ok().map(|(asa, rewards)| liquidity_proxy_runtime_api::SwapOutcomeInfo::<Balance, AssetId> {
+                amount: asa.amount,
+                fee: asa.fee,
+                rewards: rewards.into_iter()
+                                .map(|(amount, currency, reason)| liquidity_proxy_runtime_api::RewardsInfo::<Balance, AssetId> {
+                                    amount,
+                                    currency,
+                                    reason
+                                })
+                                .collect(),
+                ..Default::default()})
         }
 
         fn is_path_available(
@@ -1499,6 +1542,16 @@ impl_runtime_apis! {
             LiquidityProxy::is_path_available(
                 dex_id, input_asset_id, output_asset_id
             ).unwrap_or(false)
+        }
+
+        fn list_enabled_sources_for_path(
+            dex_id: DEXId,
+            input_asset_id: AssetId,
+            output_asset_id: AssetId,
+        ) -> Vec<LiquiditySourceType> {
+            LiquidityProxy::list_enabled_sources_for_path(
+                dex_id, input_asset_id, output_asset_id
+            ).unwrap_or(Vec::new())
         }
     }
 

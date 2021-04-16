@@ -72,7 +72,7 @@ fn query<'a, 'b, 'c>(
     data: &mut Vec<(&'a str, &'b str, &'c str, FixedPoint)>,
     invalid_queries: &mut Vec<(&'a str, &'b str, &'c str)>,
 ) -> Option<FixedPoint> {
-    let query = r#"{ "query" : "query { liquidityPositionSnapshots(where: { user: \"$user\", pair: \"$pair\", block_lt: 12186814 }, orderBy: block ) { liquidityTokenBalance, token0PriceUSD, token1PriceUSD, pair { token0Price, token1Price, totalSupply, reserve0, reserve1 } } }" }"#;
+    let query = r#"{ "query" : "query { liquidityPositionSnapshots(where: { user: \"$user\", pair: \"$pair\", block_lt: 12225000 }, orderBy: block ) { liquidityTokenBalance, token0PriceUSD, token1PriceUSD, pair { token0Price, token1Price, totalSupply, reserve0, reserve1 } } }" }"#;
     let query = query.replace("$user", &address).replace("$pair", pair);
     let response = if let Ok(response) = Client::new().post(uri).body(query).send() {
         response

@@ -28,13 +28,17 @@ RUN add-apt-repository \
 
 # Install rust
 RUN curl https://sh.rustup.rs -sSf | sh -s -- -y --no-modify-path --default-toolchain ${RUST_VERSION} && \
-    rustup default ${RUST_VERSION} && \
     rustup target add wasm32-unknown-unknown
+
+RUN cargo install sccache
+ENV RUSTC_WRAPPER=sccache
+ENV CARGO_INCREMENTAL=0
 
 # Build project
 ADD . /app
 WORKDIR /app
-RUN cargo build
+RUN cargo check
+RUN cargo test
 
 # Remove source code
 WORKDIR /

@@ -1,12 +1,47 @@
+// This file is part of the SORA network and Polkaswap app.
+
+// Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
+// SPDX-License-Identifier: BSD-4-Clause
+
+// Redistribution and use in source and binary forms, with or without modification,
+// are permitted provided that the following conditions are met:
+
+// Redistributions of source code must retain the above copyright notice, this list
+// of conditions and the following disclaimer.
+// Redistributions in binary form must reproduce the above copyright notice, this
+// list of conditions and the following disclaimer in the documentation and/or other
+// materials provided with the distribution.
+//
+// All advertising materials mentioning features or use of this software must display
+// the following acknowledgement: This product includes software developed by Polka Biome
+// Ltd., SORA, and Polkaswap.
+//
+// Neither the name of the Polka Biome Ltd. nor the names of its contributors may be used
+// to endorse or promote products derived from this software without specific prior written permission.
+
+// THIS SOFTWARE IS PROVIDED BY Polka Biome Ltd. AS IS AND ANY EXPRESS OR IMPLIED WARRANTIES,
+// INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+// A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL Polka Biome Ltd. BE LIABLE FOR ANY
+// DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+// BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
+// OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
+// STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
+// USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
 // Creating mock Runtime here
 
-use crate::{AssetConfig, Config, NetworkConfig};
+use crate::types::{SubstrateHeaderLimited, U64};
+use crate::{
+    AssetConfig, Config, NetworkConfig, NodeParams, CONFIRMATION_INTERVAL, STORAGE_ETH_NODE_PARAMS,
+    STORAGE_NETWORK_IDS_KEY, STORAGE_PEER_SECRET_KEY, STORAGE_SUB_NODE_URL_KEY,
+};
 use codec::{Codec, Decode, Encode};
 use common::mock::ExistentialDeposits;
 use common::prelude::Balance;
 use common::{
     Amount, AssetId32, AssetName, AssetSymbol, PredefinedAssetId, DEFAULT_BALANCE_PRECISION, VAL,
 };
+use core::cell::RefCell;
 use currencies::BasicCurrencyAdapter;
 use frame_support::dispatch::{DispatchInfo, GetDispatchInfo};
 use frame_support::sp_io::TestExternalities;
@@ -14,6 +49,7 @@ use frame_support::sp_runtime::app_crypto::sp_core;
 use frame_support::sp_runtime::app_crypto::sp_core::crypto::AccountId32;
 use frame_support::sp_runtime::app_crypto::sp_core::offchain::{OffchainExt, TransactionPoolExt};
 use frame_support::sp_runtime::app_crypto::sp_core::{ecdsa, sr25519, Pair, Public};
+use frame_support::sp_runtime::offchain::http;
 use frame_support::sp_runtime::offchain::testing::{
     OffchainState, PoolState, TestOffchainExt, TestTransactionPoolExt,
 };
@@ -34,13 +70,16 @@ use frame_support::weights::{Pays, Weight};
 use frame_support::{construct_runtime, parameter_types};
 use frame_system::offchain::{Account, SigningTypes};
 use parking_lot::RwLock;
+use rustc_hex::ToHex;
+use sp_core::offchain::OffchainStorage;
 use sp_core::H256;
 use sp_keystore::testing::KeyStore;
-use sp_keystore::KeystoreExt;
+use sp_keystore::{KeystoreExt, SyncCryptoStore};
 use sp_std::collections::btree_set::BTreeSet;
 use sp_std::fmt::Debug;
 use sp_std::str::FromStr;
 use sp_std::sync::Arc;
+use std::borrow::Cow;
 use std::collections::HashMap;
 use {crate as eth_bridge, frame_system};
 
@@ -328,6 +367,7 @@ impl crate::Config for Runtime {
     type NetworkId = u32;
     type GetEthNetworkId = EthNetworkId;
     type WeightInfo = ();
+    type Mock = State;
 }
 
 impl sp_runtime::traits::ExtrinsicMetadata for TestExtrinsic {
@@ -355,11 +395,125 @@ construct_runtime!(
 
 pub type SubstrateAccountId = <<Signature as Verify>::Signer as IdentifyAccount>::AccountId;
 
+pub trait Mock {
+    fn on_request(pending_request: &http::PendingRequest, url: &str, body: Cow<'_, str>);
+}
+
+thread_local! {
+    pub static RESPONSES: RefCell<Vec<Vec<u8>>> = RefCell::new(Vec::new());
+    pub static OFFCHAIN_STATE: RefCell<Option<Arc<RwLock<OffchainState>>>> = RefCell::new(None);
+}
+
+fn push_response(data: Vec<u8>) {
+    RESPONSES.with(|ref_cell| {
+        ref_cell.borrow_mut().push(data);
+    });
+}
+
+fn json_rpc_response<T: Serialize>(value: T) -> jsonrpc_core::Response {
+    use jsonrpc_core::{Output, Response, Success};
+    Response::Single(Output::Success(Success {
+        jsonrpc: Some(jsonrpc_core::Version::V2),
+        result: serde_json::to_value(value).unwrap(),
+        id: jsonrpc_core::Id::Num(0),
+    }))
+}
+
+fn push_json_rpc_response<T: Serialize>(value: T) {
+    let json_rpc_response = json_rpc_response(value);
+    push_response(serde_json::to_vec(&json_rpc_response).unwrap());
+}
+
 pub struct State {
     pub networks: HashMap<u32, ExtendedNetworkConfig>,
     pub authority_account_id: AccountId32,
     pub pool_state: Arc<RwLock<PoolState>>,
     pub offchain_state: Arc<RwLock<OffchainState>>,
+    responses: Vec<Vec<u8>>,
+}
+
+impl Mock for State {
+    fn on_request(pending_request: &http::PendingRequest, url: &str, body: Cow<'_, str>) {
+        OFFCHAIN_STATE.with(|oc_state_ref_cell| {
+            RESPONSES.with(|ref_cell| {
+                let oc_state_opt = oc_state_ref_cell.borrow();
+                let mut offchain_state = oc_state_opt.as_ref().unwrap().write();
+                let mut responses = ref_cell.borrow_mut();
+                assert!(
+                    !responses.is_empty(),
+                    "expected response to {}:\n{}",
+                    url,
+                    body
+                );
+                let response = responses.remove(0);
+                offchain_state
+                    .requests
+                    .get_mut(&pending_request.id)
+                    .unwrap()
+                    .response = Some(response);
+            });
+        });
+    }
+}
+
+impl State {
+    pub fn push_response_raw(&mut self, data: Vec<u8>) {
+        self.responses.push(data);
+    }
+
+    pub fn push_response<T: Serialize>(&mut self, value: T) {
+        let data = serde_json::to_vec(&json_rpc_response(value)).unwrap();
+        self.push_response_raw(data);
+    }
+
+    pub fn run_next_offchain_with_params(
+        &mut self,
+        sidechain_height: u64,
+        finalized_thischain_height: BlockNumber,
+    ) {
+        // Sidechain height.
+        push_json_rpc_response(U64::from(sidechain_height));
+        // Thischain finalized head.
+        push_json_rpc_response(H256([0; 32]));
+        let sub_block_number = frame_system::Pallet::<Runtime>::block_number();
+        frame_system::Pallet::<Runtime>::set_block_number(sub_block_number + 1);
+        // Thischain finalized height.
+        push_json_rpc_response(SubstrateHeaderLimited {
+            parent_hash: Default::default(),
+            number: finalized_thischain_height.into(),
+            state_root: Default::default(),
+            extrinsics_root: Default::default(),
+            digest: (),
+        });
+        let mut responses = Vec::new();
+        std::mem::swap(&mut self.responses, &mut responses);
+        for resp in responses {
+            push_response(resp);
+        }
+        EthBridge::offchain();
+        self.dispatch_offchain_transactions();
+    }
+
+    pub fn run_next_offchain(&mut self) {
+        self.run_next_offchain_with_params(
+            CONFIRMATION_INTERVAL,
+            frame_system::Pallet::<Runtime>::block_number() + 1,
+        );
+    }
+
+    fn dispatch_offchain_transactions(&self) {
+        let mut txs = Vec::new();
+        let mut guard = self.pool_state.write();
+        std::mem::swap(&mut guard.transactions, &mut txs);
+        for tx in txs {
+            let e = TestExtrinsic::decode(&mut &*tx).unwrap();
+            let (who, _) = e.signature.unwrap();
+            let call = e.call;
+            // In reality you would do `e.apply`, but this is a test. we assume we don't care
+            // about validation etc.
+            let _ = call.dispatch(Some(who).into()).unwrap();
+        }
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -474,9 +628,22 @@ impl ExtBuilder {
         let mut bridge_accounts = Vec::new();
         let mut bridge_network_configs = Vec::new();
         let mut endowed_accounts: Vec<(_, AssetId32<PredefinedAssetId>, _)> = Vec::new();
+        let network_ids: Vec<_> = self.networks.iter().map(|(id, _)| *id).collect();
         let mut networks: Vec<_> = self.networks.clone().into_iter().collect();
         networks.sort_by(|(x, _), (y, _)| x.cmp(y));
-        for (_net_id, ext_network) in networks {
+        let mut offchain_guard = offchain.0.write();
+        let offchain_storage = &mut offchain_guard.persistent_storage;
+        for (net_id, ext_network) in networks {
+            let key = format!("{}-{:?}", STORAGE_ETH_NODE_PARAMS, net_id);
+            offchain_storage.set(
+                b"",
+                key.as_bytes(),
+                &NodeParams {
+                    url: "http://eth.node".to_string(),
+                    credentials: None,
+                }
+                .encode(),
+            );
             bridge_network_configs.push(ext_network.config.clone());
             endowed_accounts.extend(ext_network.config.assets.iter().cloned().map(
                 |asset_config| {
@@ -502,6 +669,27 @@ impl ExtBuilder {
                 ),
             ));
         }
+        offchain_storage.set(b"", STORAGE_NETWORK_IDS_KEY, &network_ids.encode());
+        offchain_storage.set(
+            b"",
+            STORAGE_SUB_NODE_URL_KEY,
+            &String::from("http://sub.node").encode(),
+        );
+        let ocw_keys = &self.networks[&0].ocw_keypairs[0];
+        offchain_storage.set(
+            b"",
+            STORAGE_PEER_SECRET_KEY,
+            &Vec::from(ocw_keys.2).encode(),
+        );
+        drop(offchain_guard);
+        let key_store = KeyStore::new();
+        key_store
+            .insert_unknown(
+                crate::KEY_TYPE,
+                &format!("0x{}", ocw_keys.2.to_hex::<String>()),
+                ocw_keys.0.as_ref(),
+            )
+            .unwrap();
 
         // pallet_balances and orml_tokens no longer accept duplicate elements.
         let mut unique_endowed_accounts: Vec<(_, AssetId32<PredefinedAssetId>, _)> = Vec::new();
@@ -596,11 +784,10 @@ impl ExtBuilder {
         }
         .assimilate_storage(&mut storage)
         .unwrap();
-
         let mut t = TestExternalities::from(storage);
         t.register_extension(OffchainExt::new(offchain));
         t.register_extension(TransactionPoolExt::new(pool));
-        t.register_extension(KeystoreExt(Arc::new(KeyStore::new())));
+        t.register_extension(KeystoreExt(Arc::new(key_store)));
         t.execute_with(|| System::set_block_number(1));
 
         let state = State {
@@ -608,7 +795,9 @@ impl ExtBuilder {
             authority_account_id,
             pool_state,
             offchain_state,
+            responses: vec![],
         };
+        OFFCHAIN_STATE.with(|x| *x.borrow_mut() = Some(state.offchain_state.clone()));
         (t, state)
     }
 }
