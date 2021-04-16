@@ -33,7 +33,7 @@
 use common::prelude::SwapAmount;
 use common::{Balance, FilterMode, LiquiditySourceFilter, LiquiditySourceType};
 use frame_support::pallet_prelude::InvalidTransaction;
-use frame_support::traits::{Currency, ExistenceRequirement, Get, Imbalance, WithdrawReasons};
+use frame_support::traits::{Currency, ExistenceRequirement, Get, Imbalance, Vec, WithdrawReasons};
 use frame_support::unsigned::TransactionValidityError;
 use frame_support::weights::{DispatchInfo, GetDispatchInfo};
 use liquidity_proxy::LiquidityProxyTrait;
@@ -129,7 +129,14 @@ where
         }
 
         // In case we are producing XOR, we perform exchange before fees are withdraw to allow 0-XOR accounts to trade
-        let (dex_id, input_asset_id, output_asset_id, amount) = call
+        let SwapInfo {
+            dex_id,
+            input_asset_id,
+            output_asset_id,
+            amount,
+            filter_mode,
+            selected_source_types,
+        } = call
             .extract()
             .ok_or(TransactionValidityError::from(InvalidTransaction::Payment))?;
 
@@ -137,11 +144,7 @@ where
             return Err(InvalidTransaction::Payment.into());
         }
 
-        let filter = LiquiditySourceFilter::with_mode(
-            dex_id,
-            FilterMode::AllowSelected,
-            [LiquiditySourceType::XYKPool].to_vec(),
-        );
+        let filter = LiquiditySourceFilter::with_mode(dex_id, filter_mode, selected_source_types);
 
         // Quote to see if there will be enough funds for the fee
         let swap =
@@ -319,11 +322,21 @@ impl<Call> ApplyCustomFees<Call> for () {
     }
 }
 
+pub struct SwapInfo<DexId, AssetId, Amount> {
+    pub dex_id: DexId,
+    pub input_asset_id: AssetId,
+    pub output_asset_id: AssetId,
+    pub amount: Amount,
+    pub selected_source_types: Vec<LiquiditySourceType>,
+    pub filter_mode: FilterMode,
+}
+
+/// A trait for extracting call information out of liquidity_proxy.swap calls
 pub trait ExtractProxySwap {
     type DexId;
     type AssetId;
     type Amount;
-    fn extract(&self) -> Option<(Self::DexId, Self::AssetId, Self::AssetId, Self::Amount)>;
+    fn extract(&self) -> Option<SwapInfo<Self::DexId, Self::AssetId, Self::Amount>>;
 }
 
 /// A trait whose purpose is to extract the `Call` variant of an extrinsic

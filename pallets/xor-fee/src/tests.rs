@@ -29,7 +29,7 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use common::prelude::{AssetName, AssetSymbol, FixedWrapper, SwapAmount};
-use common::{balance, fixed_wrapper, VAL, XOR};
+use common::{balance, fixed_wrapper, FilterMode, VAL, XOR};
 use pallet_transaction_payment::{ChargeTransactionPayment, OnChargeTransaction};
 use sp_runtime::traits::SignedExtension;
 use traits::MultiCurrency;
@@ -356,7 +356,7 @@ fn reminting_for_sora_parliament_works() {
 
 /// No special fee handling should be performed
 #[test]
-fn xorless_swap_regular_fee() {
+fn fee_payment_regular_swap() {
     ExtBuilder::build().execute_with(|| {
         let dex_id = common::DEXId::Polkaswap;
         let dispatch_info = info_from_weight(100_000_000);
@@ -369,6 +369,8 @@ fn xorless_swap_regular_fee() {
                 desired_amount_in: balance!(100),
                 min_amount_out: balance!(100),
             },
+            vec![],
+            FilterMode::Disabled,
         ));
 
         let regular_fee =
@@ -380,7 +382,7 @@ fn xorless_swap_regular_fee() {
 
 /// Fee should be postponed until after the transaction
 #[test]
-fn xorless_swap_postponed_fee() {
+fn fee_payment_postponed() {
     ExtBuilder::build().execute_with(|| {
         let dex_id = common::DEXId::Polkaswap;
         let dispatch_info = info_from_weight(100_000_000);
@@ -393,6 +395,8 @@ fn xorless_swap_postponed_fee() {
                 desired_amount_in: balance!(100),
                 min_amount_out: balance!(100),
             },
+            vec![],
+            FilterMode::Disabled,
         ));
 
         let quoted_fee = xor_fee::Pallet::<Runtime>::withdraw_fee(
@@ -409,7 +413,7 @@ fn xorless_swap_postponed_fee() {
 
 /// Payment should not be postponed if we are not producing XOR
 #[test]
-fn xorless_swap_no_postpone() {
+fn fee_payment_should_not_postpone() {
     ExtBuilder::build().execute_with(|| {
         let dex_id = common::DEXId::Polkaswap;
         let dispatch_info = info_from_weight(100_000_000);
@@ -422,6 +426,8 @@ fn xorless_swap_no_postpone() {
                 desired_amount_in: balance!(100),
                 min_amount_out: balance!(100),
             },
+            vec![],
+            FilterMode::Disabled,
         ));
 
         let quoted_fee = xor_fee::Pallet::<Runtime>::withdraw_fee(

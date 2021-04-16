@@ -139,16 +139,24 @@ impl xor_fee::ExtractProxySwap for Call {
     type AssetId = AssetId;
     type Amount = SwapAmount<u128>;
 
-    fn extract(&self) -> Option<(Self::DexId, Self::AssetId, Self::AssetId, Self::Amount)> {
+    fn extract(&self) -> Option<xor_fee::SwapInfo<Self::DexId, Self::AssetId, Self::Amount>> {
         if let Call::LiquidityProxy(mock_liquidity_proxy::Call::swap(
-            dex,
-            asset_in,
-            asset_out,
+            dex_id,
+            input_asset_id,
+            output_asset_id,
             amount,
-            ..,
+            selected_source_types,
+            filter_mode,
         )) = self
         {
-            Some((*dex, *asset_in, *asset_out, *amount))
+            Some(xor_fee::SwapInfo {
+                dex_id: *dex_id,
+                input_asset_id: *input_asset_id,
+                output_asset_id: *output_asset_id,
+                amount: *amount,
+                selected_source_types: selected_source_types.to_vec(),
+                filter_mode: filter_mode.clone(),
+            })
         } else {
             None
         }
@@ -358,7 +366,7 @@ impl Config for Runtime {
 pub mod mock_liquidity_proxy {
     use super::*;
     use assets::AssetIdOf;
-    use common::DexIdOf;
+    use common::{DexIdOf, FilterMode};
     use frame_support::pallet_prelude::*;
     use frame_system::pallet_prelude::*;
 
@@ -383,6 +391,8 @@ pub mod mock_liquidity_proxy {
             _input_asset_id: AssetIdOf<T>,
             _output_asset_id: AssetIdOf<T>,
             _swap_amount: SwapAmount<Balance>,
+            _selected_source_types: Vec<LiquiditySourceType>,
+            _filter_mode: FilterMode,
         ) -> DispatchResultWithPostInfo {
             return Ok(().into());
         }

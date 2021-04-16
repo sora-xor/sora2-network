@@ -183,7 +183,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
     spec_name: create_runtime_str!("sora-substrate"),
     impl_name: create_runtime_str!("sora-substrate"),
     authoring_version: 1,
-    spec_version: 26,
+    spec_version: 27,
     impl_version: 1,
     apis: RUNTIME_API_VERSIONS,
     transaction_version: 1,
@@ -786,16 +786,24 @@ impl xor_fee::ExtractProxySwap for Call {
     type DexId = DEXId;
     type AssetId = AssetId;
     type Amount = SwapAmount<u128>;
-    fn extract(&self) -> Option<(Self::DexId, Self::AssetId, Self::AssetId, Self::Amount)> {
+    fn extract(&self) -> Option<xor_fee::SwapInfo<Self::DexId, Self::AssetId, Self::Amount>> {
         if let Call::LiquidityProxy(liquidity_proxy::Call::swap(
-            dex,
-            asset_in,
-            asset_out,
+            dex_id,
+            input_asset_id,
+            output_asset_id,
             amount,
-            ..,
+            selected_source_types,
+            filter_mode,
         )) = self
         {
-            Some((*dex, *asset_in, *asset_out, *amount))
+            Some(xor_fee::SwapInfo {
+                dex_id: *dex_id,
+                input_asset_id: *input_asset_id,
+                output_asset_id: *output_asset_id,
+                amount: *amount,
+                selected_source_types: selected_source_types.to_vec(),
+                filter_mode: filter_mode.clone(),
+            })
         } else {
             None
         }
