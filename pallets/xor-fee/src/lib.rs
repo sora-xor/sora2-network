@@ -156,8 +156,13 @@ where
             )
             .map_err(|_| InvalidTransaction::Payment)?;
 
+        let output_amount = match amount {
+            SwapAmount::WithDesiredInput { .. } => swap.amount,
+            SwapAmount::WithDesiredOutput { desired_amount_out, .. } => desired_amount_out,
+        };
+
         // Check the swap result + existing balance is enough for fee
-        if T::XorCurrency::free_balance(who).into() + swap.amount
+        if T::XorCurrency::free_balance(who).into() + output_amount
             - T::XorCurrency::minimum_balance().into()
             >= final_fee.into()
         {

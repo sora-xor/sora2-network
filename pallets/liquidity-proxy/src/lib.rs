@@ -1553,7 +1553,7 @@ pub mod pallet {
                 } => (outcome.amount, desired_amount_out, outcome.fee),
             };
             Self::deposit_event(Event::<T>::Exchange(
-                who.clone(),
+                who,
                 dex_id,
                 input_asset_id,
                 output_asset_id,
