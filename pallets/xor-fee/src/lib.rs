@@ -31,9 +31,9 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use common::prelude::SwapAmount;
-use common::{Balance, LiquiditySourceFilter, LiquiditySourceType};
+use common::{Balance, FilterMode, LiquiditySourceFilter, LiquiditySourceType};
 use frame_support::pallet_prelude::InvalidTransaction;
-use frame_support::traits::{Currency, ExistenceRequirement, Get, Imbalance, WithdrawReasons};
+use frame_support::traits::{Currency, ExistenceRequirement, Get, Imbalance, Vec, WithdrawReasons};
 use frame_support::unsigned::TransactionValidityError;
 use frame_support::weights::{DispatchInfo, GetDispatchInfo, Pays};
 use liquidity_proxy::LiquidityProxyTrait;
@@ -69,9 +69,32 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
-impl<T: Config> OnChargeTransaction<T> for Pallet<T> {
+pub enum LiquidityInfo<T: Config> {
+    /// Fees operate as normal
+    Paid(Option<NegativeImbalanceOf<T>>),
+    /// The fee payment has been postponed to after the transaction
+    Postponed(BalanceOf<T>),
+}
+
+impl<T: Config> Default for LiquidityInfo<T> {
+    fn default() -> Self {
+        LiquidityInfo::Paid(None)
+    }
+}
+
+impl<T: Config> From<Option<NegativeImbalanceOf<T>>> for LiquidityInfo<T> {
+    fn from(paid: Option<NegativeImbalanceOf<T>>) -> Self {
+        LiquidityInfo::Paid(paid)
+    }
+}
+
+impl<T: Config> OnChargeTransaction<T> for Pallet<T>
+where
+    CallOf<T>: ExtractProxySwap<DexId = T::DEXId, AssetId = T::AssetId, Amount = SwapAmount<u128>>,
+    BalanceOf<T>: Into<u128>,
+{
     type Balance = BalanceOf<T>;
-    type LiquidityInfo = Option<NegativeImbalanceOf<T>>;
+    type LiquidityInfo = LiquidityInfo<T>;
 
     fn withdraw_fee(
         who: &T::AccountId,
@@ -81,7 +104,7 @@ impl<T: Config> OnChargeTransaction<T> for Pallet<T> {
         tip: Self::Balance,
     ) -> Result<Self::LiquidityInfo, TransactionValidityError> {
         if fee.is_zero() {
-            return Ok(None);
+            return Ok(None.into());
         }
 
         let maybe_custom_fee = T::CustomFees::compute_fee(call);
@@ -96,15 +119,66 @@ impl<T: Config> OnChargeTransaction<T> for Pallet<T> {
             WithdrawReasons::TRANSACTION_PAYMENT | WithdrawReasons::TIP
         };
 
-        match T::XorCurrency::withdraw(
+        if let Ok(imbalance) = T::XorCurrency::withdraw(
             who,
             final_fee,
             withdraw_reason,
             ExistenceRequirement::KeepAlive,
         ) {
-            Ok(imbalance) => Ok(Some(imbalance)),
-            Err(_) => Err(InvalidTransaction::Payment.into()),
+            return Ok(Some(imbalance).into());
         }
+
+        // In case we are producing XOR, we perform exchange before fees are withdraw to allow 0-XOR accounts to trade
+        let SwapInfo {
+            dex_id,
+            input_asset_id,
+            output_asset_id,
+            amount,
+            filter_mode,
+            selected_source_types,
+        } = call
+            .extract()
+            .ok_or(TransactionValidityError::from(InvalidTransaction::Payment))?;
+
+        if output_asset_id != T::XorId::get() {
+            return Err(InvalidTransaction::Payment.into());
+        }
+
+        let filter = LiquiditySourceFilter::with_mode(dex_id, filter_mode, selected_source_types);
+
+        // Quote to see if there will be enough funds for the fee
+        let swap =
+            <T::LiquidityProxy as LiquidityProxyTrait<T::DEXId, T::AccountId, T::AssetId>>::quote(
+                &input_asset_id,
+                &output_asset_id,
+                amount,
+                filter.clone(),
+            )
+            .map_err(|_| InvalidTransaction::Payment)?;
+
+        // Quote does not check if max_in or min_out are respected
+        let (limits_ok, output_amount) = match amount {
+            SwapAmount::WithDesiredInput { min_amount_out, .. } => {
+                (swap.amount >= min_amount_out, swap.amount)
+            }
+            SwapAmount::WithDesiredOutput {
+                desired_amount_out,
+                max_amount_in,
+                ..
+            } => (swap.amount <= max_amount_in, desired_amount_out),
+        };
+
+        // Check the swap result + existing balance is enough for fee
+        if limits_ok
+            && T::XorCurrency::free_balance(who).into() + output_amount
+                - T::XorCurrency::minimum_balance().into()
+                >= final_fee.into()
+        {
+            // The fee is applied afterwards, in correct_and_deposit_fee
+            return Ok(LiquidityInfo::Postponed(final_fee));
+        }
+
+        Err(InvalidTransaction::Payment.into())
     }
 
     fn correct_and_deposit_fee(
@@ -112,10 +186,24 @@ impl<T: Config> OnChargeTransaction<T> for Pallet<T> {
         _dispatch_info: &DispatchInfoOf<CallOf<T>>,
         _post_info: &PostDispatchInfoOf<CallOf<T>>,
         corrected_fee: Self::Balance,
-        _tip: Self::Balance,
+        tip: Self::Balance,
         already_withdrawn: Self::LiquidityInfo,
     ) -> Result<(), TransactionValidityError> {
-        if let Some(paid) = already_withdrawn {
+        let withdrawn = match already_withdrawn {
+            LiquidityInfo::Paid(opt) => opt,
+            LiquidityInfo::Postponed(fee) => {
+                let withdraw_reason = if tip.is_zero() {
+                    WithdrawReasons::TRANSACTION_PAYMENT
+                } else {
+                    WithdrawReasons::TRANSACTION_PAYMENT | WithdrawReasons::TIP
+                };
+
+                T::XorCurrency::withdraw(who, fee, withdraw_reason, ExistenceRequirement::KeepAlive)
+                    .ok()
+            }
+        };
+
+        if let Some(paid) = withdrawn {
             // Calculate the amount to refund to the caller
             // A refund is possible in two cases:
             //  - the `Dispatchable:PostInfo` structure has the `pays_fee` field changed
@@ -165,7 +253,7 @@ impl<T: Config> OnChargeTransaction<T> for Pallet<T> {
                 adjusted_paid.ration(xor_burned_weight, xor_into_val_burned_weight);
 
             let xor_to_val = xor_to_val.peek().unique_saturated_into();
-            let tech_account_id = T::GetTechnicalAccountId::get();
+            let tech_account_id = <T as Config>::GetTechnicalAccountId::get();
 
             // Re-minting the `xor_to_val` tokens amount to `tech_account_id` of this pallet.
             // The tokens being re-minted had initially been withdrawn as a part of the fee.
@@ -245,6 +333,23 @@ impl<Call> ApplyCustomFees<Call> for () {
     fn compute_fee(_call: &Call) -> Option<Balance> {
         None
     }
+}
+
+pub struct SwapInfo<DexId, AssetId, Amount> {
+    pub dex_id: DexId,
+    pub input_asset_id: AssetId,
+    pub output_asset_id: AssetId,
+    pub amount: Amount,
+    pub selected_source_types: Vec<LiquiditySourceType>,
+    pub filter_mode: FilterMode,
+}
+
+/// A trait for extracting call information out of liquidity_proxy.swap calls
+pub trait ExtractProxySwap {
+    type DexId;
+    type AssetId;
+    type Amount;
+    fn extract(&self) -> Option<SwapInfo<Self::DexId, Self::AssetId, Self::Amount>>;
 }
 
 /// A trait whose purpose is to extract the `Call` variant of an extrinsic

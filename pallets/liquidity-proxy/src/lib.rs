@@ -1534,6 +1534,7 @@ pub mod pallet {
             filter_mode: FilterMode,
         ) -> DispatchResultWithPostInfo {
             let who = ensure_signed(origin)?;
+
             let outcome = Self::exchange(
                 &who,
                 &who,
@@ -1542,6 +1543,7 @@ pub mod pallet {
                 swap_amount,
                 LiquiditySourceFilter::with_mode(dex_id, filter_mode, selected_source_types),
             )?;
+
             let (input_amount, output_amount, fee_amount) = match swap_amount {
                 SwapAmount::WithDesiredInput {
                     desired_amount_in, ..
@@ -1559,6 +1561,7 @@ pub mod pallet {
                 output_amount,
                 fee_amount,
             ));
+
             Ok(().into())
         }
     }
