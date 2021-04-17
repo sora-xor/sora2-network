@@ -28,7 +28,7 @@ fn set_default_ss58_version() {
 
 impl SubstrateCli for Cli {
     fn impl_name() -> String {
-        "SORA-staging Node".into()
+        "SORA".into()
     }
 
     fn impl_version() -> String {
@@ -44,7 +44,7 @@ impl SubstrateCli for Cli {
     }
 
     fn support_url() -> String {
-        "support.anonymous.an".into()
+        "https://github.com/sora-xor/sora2-network/issues/new".into()
     }
 
     fn copyright_start_year() -> i32 {

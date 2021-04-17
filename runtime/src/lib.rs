@@ -37,6 +37,7 @@ use alloc::string::String;
 
 /// Constant values used within the runtime.
 pub mod constants;
+mod extensions;
 mod impls;
 
 use constants::time::*;
@@ -47,6 +48,7 @@ include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
 
 use core::time::Duration;
 use currencies::BasicCurrencyAdapter;
+use extensions::ChargeTransactionPayment;
 pub use farming::domain::{FarmInfo, FarmerInfo};
 pub use farming::FarmId;
 use frame_system::offchain::{Account, SigningTypes};
@@ -183,7 +185,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
     spec_name: create_runtime_str!("sora-substrate"),
     impl_name: create_runtime_str!("sora-substrate"),
     authoring_version: 1,
-    spec_version: 26,
+    spec_version: 27,
     impl_version: 1,
     apis: RUNTIME_API_VERSIONS,
     transaction_version: 1,
@@ -711,14 +713,13 @@ where
         let current_block = System::block_number()
             .saturated_into::<u64>()
             .saturating_sub(1);
-        let tip = 0u32;
         let extra: SignedExtra = (
             frame_system::CheckTxVersion::<Runtime>::new(),
             frame_system::CheckGenesis::<Runtime>::new(),
             frame_system::CheckEra::<Runtime>::from(generic::Era::mortal(period, current_block)),
             frame_system::CheckNonce::<Runtime>::from(index),
             frame_system::CheckWeight::<Runtime>::new(),
-            pallet_transaction_payment::ChargeTransactionPayment::<Runtime>::from(tip.into()),
+            ChargeTransactionPayment::<Runtime>::new(),
         );
         #[cfg_attr(not(feature = "std"), allow(unused_variables))]
         let raw_payload = SignedPayload::new(call, extra)
@@ -778,6 +779,34 @@ impl xor_fee::ApplyCustomFees<Call> for ExtrinsicsFlatFees {
             | Call::Staking(pallet_staking::Call::payout_stakers(..))
             | Call::TradingPair(..) => Some(balance!(0.0007)),
             _ => None,
+        }
+    }
+}
+
+impl xor_fee::ExtractProxySwap for Call {
+    type DexId = DEXId;
+    type AssetId = AssetId;
+    type Amount = SwapAmount<u128>;
+    fn extract(&self) -> Option<xor_fee::SwapInfo<Self::DexId, Self::AssetId, Self::Amount>> {
+        if let Call::LiquidityProxy(liquidity_proxy::Call::swap(
+            dex_id,
+            input_asset_id,
+            output_asset_id,
+            amount,
+            selected_source_types,
+            filter_mode,
+        )) = self
+        {
+            Some(xor_fee::SwapInfo {
+                dex_id: *dex_id,
+                input_asset_id: *input_asset_id,
+                output_asset_id: *output_asset_id,
+                amount: *amount,
+                selected_source_types: selected_source_types.to_vec(),
+                filter_mode: filter_mode.clone(),
+            })
+        } else {
+            None
         }
     }
 }
@@ -1169,7 +1198,7 @@ pub type SignedExtra = (
     frame_system::CheckEra<Runtime>,
     frame_system::CheckNonce<Runtime>,
     frame_system::CheckWeight<Runtime>,
-    pallet_transaction_payment::ChargeTransactionPayment<Runtime>,
+    ChargeTransactionPayment<Runtime>,
 );
 /// Unchecked extrinsic type as expected by this runtime.
 pub type UncheckedExtrinsic = generic::UncheckedExtrinsic<Address, Call, Signature, SignedExtra>;

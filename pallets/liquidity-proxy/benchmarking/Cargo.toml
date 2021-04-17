@@ -64,4 +64,5 @@ std = [
     'dex-manager/std',
     'bonding-curve-pool/std',
     'dex-api/std',
+    'pswap-distribution/std',
 ]
