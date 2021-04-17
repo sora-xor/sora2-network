@@ -83,6 +83,8 @@ pub const TECH_ACCOUNT_RESERVES: &[u8] = b"reserves";
 pub const TECH_ACCOUNT_REWARDS: &[u8] = b"rewards";
 pub const TECH_ACCOUNT_FREE_RESERVES: &[u8] = b"free_reserves";
 
+pub const RETRY_DISTRIBUTION_FREQUENCY: u32 = 1000;
+
 pub use pallet::*;
 
 #[derive(Debug, Encode, Decode, Clone)]
@@ -217,7 +219,7 @@ pub mod pallet {
     #[pallet::hooks]
     impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
         fn on_initialize(block_number: T::BlockNumber) -> Weight {
-            if (block_number % 1000u32.into()).is_zero() {
+            if (block_number % RETRY_DISTRIBUTION_FREQUENCY.into()).is_zero() {
                 let elems = Module::<T>::free_reserves_distribution_routine();
                 <T as Config>::WeightInfo::on_initialize(elems)
             } else {

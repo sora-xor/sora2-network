@@ -235,16 +235,31 @@ impl pallet_balances::Config for Runtime {
 pub struct MockDEXApi;
 
 impl MockDEXApi {
-    pub fn init() -> Result<(), DispatchError> {
-        let mock_liquidity_source_tech_account_id =
+    fn get_mock_source_account() -> Result<(TechAccountId, AccountId), DispatchError> {
+        let tech_account_id =
             TechAccountId::Pure(DEXId::Polkaswap.into(), TechPurpose::FeeCollector);
-        let account_id =
-            Technical::tech_account_id_to_account_id(&mock_liquidity_source_tech_account_id)?;
-        Technical::register_tech_account_id(mock_liquidity_source_tech_account_id.clone())?;
-        MockLiquiditySource::set_reserves_account_id(mock_liquidity_source_tech_account_id)?;
+        let account_id = Technical::tech_account_id_to_account_id(&tech_account_id)?;
+        Ok((tech_account_id, account_id))
+    }
+
+    pub fn init_without_reserves() -> Result<(), DispatchError> {
+        let (tech_account_id, _) = Self::get_mock_source_account()?;
+        Technical::register_tech_account_id(tech_account_id.clone())?;
+        MockLiquiditySource::set_reserves_account_id(tech_account_id)?;
+        Ok(())
+    }
+
+    pub fn add_reserves() -> Result<(), DispatchError> {
+        let (_, account_id) = Self::get_mock_source_account()?;
         Currencies::deposit(XOR, &account_id, balance!(100000))?;
         Currencies::deposit(VAL, &account_id, balance!(100000))?;
         Currencies::deposit(USDT, &account_id, balance!(1000000))?;
+        Ok(())
+    }
+
+    pub fn init() -> Result<(), DispatchError> {
+        Self::init_without_reserves()?;
+        Self::add_reserves()?;
         Ok(())
     }
 
