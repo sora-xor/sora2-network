@@ -1245,7 +1245,7 @@ mod tests {
                 18,
             ),
             (alice(), XOR, 0, AssetSymbol(b"XOR".to_vec()), AssetName(b"SORA".to_vec()), 18),
-            (alice(), VAL, balance!(205), AssetSymbol(b"VAL".to_vec()), AssetName(b"SORA Validator Token".to_vec()), 18),
+            (alice(), VAL, 0, AssetSymbol(b"VAL".to_vec()), AssetName(b"SORA Validator Token".to_vec()), 18),
         ])
         .build();
         ext.execute_with(|| {
@@ -1309,7 +1309,7 @@ mod tests {
                 18,
             ),
             (alice(), XOR, 0, AssetSymbol(b"XOR".to_vec()), AssetName(b"SORA".to_vec()), 18),
-            (alice(), VAL, balance!(205), AssetSymbol(b"VAL".to_vec()), AssetName(b"SORA Validator Token".to_vec()), 18),
+            (alice(), VAL, 0, AssetSymbol(b"VAL".to_vec()), AssetName(b"SORA Validator Token".to_vec()), 18),
         ])
         .build();
         ext.execute_with(|| {
@@ -1352,7 +1352,7 @@ mod tests {
             assert_eq!(free_reserves_balance_2, free_reserves_balance);
 
             // exchange becomes possible for stored free reserves
-            MockDEXApi::add_reserves().unwrap();
+            MockDEXApi::add_reserves(vec![(XOR, balance!(100000)), (VAL, balance!(100000)), (USDT, balance!(1000000))]).unwrap();
 
             // actual accounts check before distribution
             ensure_distribution_accounts_balances(distribution_accounts.clone(), vec![
@@ -1396,7 +1396,7 @@ mod tests {
                 18,
             ),
             (alice(), XOR, 0, AssetSymbol(b"XOR".to_vec()), AssetName(b"SORA".to_vec()), 18),
-            (alice(), VAL, balance!(205), AssetSymbol(b"VAL".to_vec()), AssetName(b"SORA Validator Token".to_vec()), 18),
+            (alice(), VAL, 0, AssetSymbol(b"VAL".to_vec()), AssetName(b"SORA Validator Token".to_vec()), 18),
         ])
         .build();
         ext.execute_with(|| {
@@ -1458,7 +1458,7 @@ mod tests {
             assert_eq!(free_reserves_balance, expected_balances.iter().fold(balance!(0), |a, b| a + b));
 
             // exchange becomes available
-            MockDEXApi::add_reserves().unwrap();
+            MockDEXApi::add_reserves(vec![(XOR, balance!(100000)), (VAL, balance!(100000)), (USDT, balance!(1000000))]).unwrap();
             MBCPool::on_initialize(RETRY_DISTRIBUTION_FREQUENCY.into());
             let free_reserves_balance = Assets::free_balance(&USDT, &MBCPool::free_reserves_account_id()).unwrap();
             assert_eq!(MBCPool::pending_free_reserves(), vec![]);
@@ -1478,7 +1478,7 @@ mod tests {
                 18,
             ),
             (alice(), XOR, 0, AssetSymbol(b"XOR".to_vec()), AssetName(b"SORA".to_vec()), 18),
-            (alice(), VAL, balance!(205), AssetSymbol(b"VAL".to_vec()), AssetName(b"SORA Validator Token".to_vec()), 18),
+            (alice(), VAL, 0, AssetSymbol(b"VAL".to_vec()), AssetName(b"SORA Validator Token".to_vec()), 18),
         ])
         .build();
         ext.execute_with(|| {
@@ -1547,7 +1547,7 @@ mod tests {
                 18,
             ),
             (alice(), XOR, 0, AssetSymbol(b"XOR".to_vec()), AssetName(b"SORA".to_vec()), 18),
-            (alice(), VAL, balance!(205), AssetSymbol(b"VAL".to_vec()), AssetName(b"SORA Validator Token".to_vec()), 18),
+            (alice(), VAL, 0, AssetSymbol(b"VAL".to_vec()), AssetName(b"SORA Validator Token".to_vec()), 18),
         ])
         .build();
         ext.execute_with(|| {
@@ -1595,7 +1595,7 @@ mod tests {
             assert_eq!(free_reserves_balance, expected_balances.iter().fold(balance!(0), |a, b| a + b));
 
             // funds are added and one of exchanges becomes available, unavailable is left as pending
-            MockDEXApi::add_reserves().unwrap();
+            MockDEXApi::add_reserves(vec![(XOR, balance!(100000)), (VAL, balance!(100000)), (USDT, balance!(1000000))]).unwrap();
             MBCPool::on_initialize(RETRY_DISTRIBUTION_FREQUENCY.into());
             let free_reserves_balance = Assets::free_balance(&USDT, &MBCPool::free_reserves_account_id()).unwrap();
             assert_eq!(MBCPool::pending_free_reserves(), vec![(USDT, expected_balances[0])]);
@@ -1605,6 +1605,117 @@ mod tests {
 
     #[test]
     fn xor_exchange_passes_but_val_exchange_fails_reserves_are_reverted() {
-        // TODO
+        let mut ext = ExtBuilder::new(vec![
+            (
+                alice(),
+                USDT,
+                balance!(10000),
+                AssetSymbol(b"USDT".to_vec()),
+                AssetName(b"Tether USD".to_vec()),
+                18,
+            ),
+            (alice(), XOR, 0, AssetSymbol(b"XOR".to_vec()), AssetName(b"SORA".to_vec()), 18),
+            (alice(), VAL, 0, AssetSymbol(b"VAL".to_vec()), AssetName(b"SORA Validator Token".to_vec()), 18),
+        ])
+        .build();
+        ext.execute_with(|| {
+            // secondary market is initialized without funds
+            MockDEXApi::init_without_reserves().unwrap();
+            let distribution_accounts = bonding_curve_pool_init(Vec::new()).unwrap();
+            let alice = &alice();
+            TradingPair::register(Origin::signed(alice.clone()),DEXId::Polkaswap.into(), XOR, USDT).expect("Failed to register trading pair.");
+            TradingPair::register(Origin::signed(alice.clone()),DEXId::Polkaswap.into(), XOR, VAL).expect("Failed to register trading pair.");
+            MBCPool::initialize_pool_unchecked(USDT, false).expect("Failed to initialize pool.");
+            
+            // perform buy on tbc
+            assert_eq!(
+                MBCPool::exchange(
+                    alice,
+                    alice,
+                    &DEXId::Polkaswap.into(),
+                    &USDT,
+                    &XOR,
+                    SwapAmount::with_desired_output(balance!(1), Balance::max_value()),
+                )
+                .unwrap(),
+                SwapOutcome::new(balance!(200.602181641794148765), balance!(0.003009027081243731))
+            );
+
+            // check pending list and free reserves account
+            let free_reserves_balance = Assets::free_balance(&USDT, &MBCPool::free_reserves_account_id()).unwrap();
+            assert_eq!(MBCPool::pending_free_reserves(), vec![(USDT, free_reserves_balance.clone())]);
+            assert_eq!(free_reserves_balance, balance!(40.120436328358829753));
+
+            // exchange becomes possible, but not for val, so second part of distribution fails
+            MockDEXApi::add_reserves(vec![(XOR, balance!(100000)), (VAL, balance!(0)), (USDT, balance!(1000000))]).unwrap();
+            
+            // check pending list
+            MBCPool::on_initialize(RETRY_DISTRIBUTION_FREQUENCY.into());
+            let free_reserves_balance_2 = Assets::free_balance(&USDT, &MBCPool::free_reserves_account_id()).unwrap();
+            assert_eq!(MBCPool::pending_free_reserves(), vec![(USDT, free_reserves_balance.clone())]);
+            
+            // val buy back and burn failed so exchanged xor is reverted
+            assert_eq!(free_reserves_balance_2, free_reserves_balance);
+            ensure_distribution_accounts_balances(distribution_accounts.clone(), vec![
+                balance!(0),
+                balance!(0),
+                balance!(0),
+                balance!(0),
+            ]);
+            
+            // another buy is performed
+            assert_eq!(
+                MBCPool::exchange(
+                    alice,
+                    alice,
+                    &DEXId::Polkaswap.into(),
+                    &USDT,
+                    &XOR,
+                    SwapAmount::with_desired_output(balance!(1), Balance::max_value()),
+                )
+                .unwrap(),
+                SwapOutcome::new(balance!(275.622305588803463906), balance!(0.003009027081243731))
+            );
+
+            // there are two pending distributions
+            let free_reserves_balance_3 = Assets::free_balance(&USDT, &MBCPool::free_reserves_account_id()).unwrap();
+            let second_pending_balance = balance!(55.124461117760692781);
+            assert_eq!(MBCPool::pending_free_reserves(), vec![(USDT, free_reserves_balance), (USDT, second_pending_balance)]);
+            assert_eq!(free_reserves_balance_3, free_reserves_balance + second_pending_balance);
+
+            // exchange becomes possible, but val is enough only to fulfill one of pending distributions
+            MockDEXApi::add_reserves(vec![(VAL, balance!(0.4))]).unwrap();
+
+            // val is not enough for one of distributions, it's still present
+            MBCPool::on_initialize(RETRY_DISTRIBUTION_FREQUENCY.into());
+            let free_reserves_balance_4 = Assets::free_balance(&USDT, &MBCPool::free_reserves_account_id()).unwrap();
+            assert_eq!(MBCPool::pending_free_reserves(), vec![(USDT, second_pending_balance)]);
+            assert_eq!(free_reserves_balance_4, second_pending_balance);
+            
+            // check distribution accounts
+            ensure_distribution_accounts_balances(distribution_accounts.clone(), vec![
+                balance!(0.002000003750968687),
+                balance!(0.008000015003874750),
+                balance!(0.010000018754843438),
+                balance!(0.180000337587181889),
+            ]);
+
+            // enough val is added to fulfill second exchange
+            MockDEXApi::add_reserves(vec![(VAL, balance!(1))]).unwrap();
+
+            // second pending distribution is performed
+            MBCPool::on_initialize(RETRY_DISTRIBUTION_FREQUENCY.into());
+            let free_reserves_balance_5 = Assets::free_balance(&USDT, &MBCPool::free_reserves_account_id()).unwrap();
+            assert_eq!(MBCPool::pending_free_reserves(), vec![]);
+            assert_eq!(free_reserves_balance_5, balance!(0));
+            
+            // check distribution accounts
+            ensure_distribution_accounts_balances(distribution_accounts, vec![
+                balance!(0.004747958137689057),
+                balance!(0.018991832550756232),
+                balance!(0.023739790688445290),
+                balance!(0.427316232392015237),
+            ]);
+        })
     }
 }

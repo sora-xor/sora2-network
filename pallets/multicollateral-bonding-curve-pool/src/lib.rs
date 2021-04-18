@@ -684,6 +684,7 @@ impl<T: Config> Module<T> {
     fn free_reserves_distribution_routine() -> u32 {
         let free_reserves_acc = FreeReservesAccountId::<T>::get();
         PendingFreeReserves::<T>::mutate(|vec| {
+            let len = vec.len();
             vec.retain(|(collateral_asset_id, free_amount)| {
                 !Module::<T>::attempt_free_reserves_distribution(
                     &free_reserves_acc,
@@ -691,9 +692,9 @@ impl<T: Config> Module<T> {
                     *free_amount,
                 )
                 .is_ok()
-            })
-        });
-        1
+            });
+            len.try_into().unwrap_or(u32::max_value())
+        })
     }
 
     fn add_free_reserves_to_pending_list(

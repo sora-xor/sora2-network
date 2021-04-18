@@ -249,17 +249,21 @@ impl MockDEXApi {
         Ok(())
     }
 
-    pub fn add_reserves() -> Result<(), DispatchError> {
+    pub fn add_reserves(funds: Vec<(AssetId, Balance)>) -> Result<(), DispatchError> {
         let (_, account_id) = Self::get_mock_source_account()?;
-        Currencies::deposit(XOR, &account_id, balance!(100000))?;
-        Currencies::deposit(VAL, &account_id, balance!(100000))?;
-        Currencies::deposit(USDT, &account_id, balance!(1000000))?;
+        for (asset_id, balance) in funds {
+            Currencies::deposit(asset_id, &account_id, balance)?;
+        }
         Ok(())
     }
 
     pub fn init() -> Result<(), DispatchError> {
         Self::init_without_reserves()?;
-        Self::add_reserves()?;
+        Self::add_reserves(vec![
+            (XOR, balance!(100000)),
+            (VAL, balance!(100000)),
+            (USDT, balance!(1000000)),
+        ])?;
         Ok(())
     }
 
