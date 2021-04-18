@@ -57,7 +57,7 @@ pub type DEXId = u32;
 type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
 type TechAssetId = common::TechAssetId<common::PredefinedAssetId>;
 pub type AssetId = AssetId32<common::PredefinedAssetId>;
-type ReservesInit = Vec<(DEXId, AssetId, (Fixed, Fixed))>;
+pub(crate) type ReservesInit = Vec<(DEXId, AssetId, (Fixed, Fixed))>;
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
 
@@ -274,15 +274,6 @@ pub struct ExtBuilder {
     pub initial_permissions: Vec<(AccountId, Scope, Vec<u32>)>,
     pub source_types: Vec<LiquiditySourceType>,
     pub endowed_accounts: Vec<(AccountId, AssetId, Balance, AssetSymbol, AssetName, u8)>,
-}
-
-impl ExtBuilder {
-    pub fn with_enabled_sources(sources: Vec<LiquiditySourceType>) -> Self {
-        Self {
-            source_types: sources,
-            ..Default::default()
-        }
-    }
 }
 
 impl Default for ExtBuilder {
@@ -645,6 +636,71 @@ fn undercollaterization_charge(fraction: Fixed) -> Fixed {
 }
 
 impl ExtBuilder {
+    pub fn with_enabled_sources(sources: Vec<LiquiditySourceType>) -> Self {
+        Self {
+            source_types: sources,
+            ..Default::default()
+        }
+    }
+
+    pub fn with_total_supply_and_reserves(
+        base_total_supply: Balance,
+        xyk_reserves: ReservesInit,
+    ) -> Self {
+        Self {
+            total_supply: base_total_supply,
+            reserves: xyk_reserves, //vec![(0_u32, collateral_asset_id, pool_reserves)],
+            reserves_2: vec![],
+            reserves_3: vec![],
+            reserves_4: vec![],
+            dex_list: vec![(
+                0,
+                DEXInfo {
+                    base_asset_id: GetBaseAssetId::get(),
+                    is_public: true,
+                },
+            )],
+            initial_permission_owners: vec![
+                (INIT_DEX, Scope::Unlimited, vec![alice()]),
+                (MANAGE_DEX, Scope::Unlimited, vec![alice()]),
+            ],
+            initial_permissions: vec![
+                (alice(), Scope::Unlimited, vec![INIT_DEX]),
+                (alice(), Scope::Unlimited, vec![MANAGE_DEX]),
+            ],
+            source_types: vec![
+                LiquiditySourceType::MulticollateralBondingCurvePool,
+                LiquiditySourceType::MockPool,
+            ],
+            endowed_accounts: vec![
+                (
+                    alice(),
+                    XOR,
+                    balance!(0),
+                    AssetSymbol(b"XOR".to_vec()),
+                    AssetName(b"SORA".to_vec()),
+                    18,
+                ),
+                (
+                    alice(),
+                    VAL,
+                    balance!(0),
+                    AssetSymbol(b"VAL".to_vec()),
+                    AssetName(b"SORA Validator Token".to_vec()),
+                    18,
+                ),
+                (
+                    alice(),
+                    PSWAP,
+                    balance!(0),
+                    AssetSymbol(b"PSWAP".to_vec()),
+                    AssetName(b"Polkaswap Token".to_vec()),
+                    18,
+                ),
+            ],
+        }
+    }
+
     pub fn build(self) -> sp_io::TestExternalities {
         let mut t = frame_system::GenesisConfig::default()
             .build_storage::<Runtime>()
