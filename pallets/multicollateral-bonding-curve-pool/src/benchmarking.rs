@@ -36,24 +36,36 @@ use super::*;
 
 use codec::Decode;
 use frame_benchmarking::benchmarks;
+use frame_support::traits::OnInitialize;
 use frame_system::{EventRecord, RawOrigin};
 use hex_literal::hex;
-use orml_traits::MultiCurrencyExtended;
+use orml_traits::{MultiCurrency, MultiCurrencyExtended};
 use sp_std::prelude::*;
 
-use common::{fixed, AssetName, AssetSymbol, USDT, XOR};
+use common::{fixed, AssetName, AssetSymbol, DAI, USDT, XOR};
 
 use crate::Pallet as MBCPool;
 use assets::Pallet as Assets;
+use currencies::Pallet as Currencies;
 use permissions::Pallet as Permissions;
+use pool_xyk::Pallet as XYKPool;
 use sp_std::convert::TryFrom;
 use tokens::Pallet as Tokens;
 use trading_pair::Pallet as TradingPair;
 
+pub const DEX: DEXId = DEXId::Polkaswap;
+
 // Support Functions
 fn alice<T: Config>() -> T::AccountId {
     let bytes = hex!("d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d");
-    T::AccountId::decode(&mut &bytes[..]).unwrap_or_default()
+    let account_id = T::AccountId::decode(&mut &bytes[..]).unwrap_or_default();
+    Currencies::<T>::deposit(
+        <T as currencies::Config>::GetNativeCurrencyId::get(),
+        &account_id,
+        1000u32.into(),
+    )
+    .unwrap();
+    account_id
 }
 
 fn assert_last_event<T: Config>(generic_event: <T as Config>::Event) {
@@ -62,6 +74,95 @@ fn assert_last_event<T: Config>(generic_event: <T as Config>::Event) {
     // compare to the last event record
     let EventRecord { event, .. } = &events[events.len() - 1];
     assert_eq!(event, &system_event);
+}
+
+fn setup_benchmark<T: Config>() -> Result<(), &'static str> {
+    let owner = alice::<T>();
+    let owner_origin: <T as frame_system::Config>::Origin = RawOrigin::Signed(owner.clone()).into();
+
+    // Grant permissions to self in case they haven't been explicitly given in genesis config
+    let _ = Permissions::<T>::assign_permission(
+        owner.clone(),
+        &owner,
+        permissions::MINT,
+        permissions::Scope::Unlimited,
+    );
+    let _ = Permissions::<T>::assign_permission(
+        owner.clone(),
+        &owner,
+        permissions::BURN,
+        permissions::Scope::Unlimited,
+    );
+    let _ = Assets::<T>::register_asset_id(
+        owner.clone(),
+        DAI.into(),
+        AssetSymbol(b"TESTDAI".to_vec()),
+        AssetName(b"DAI".to_vec()),
+        18,
+        Balance::zero(),
+        true,
+    );
+    let _ = Assets::<T>::register_asset_id(
+        owner.clone(),
+        VAL.into(),
+        AssetSymbol(b"TESTVAL".to_vec()),
+        AssetName(b"DOT".to_vec()),
+        18,
+        Balance::zero(),
+        true,
+    );
+    Assets::<T>::mint_to(&XOR.into(), &owner.clone(), &owner.clone(), balance!(5000)).unwrap();
+    Assets::<T>::mint_to(
+        &DAI.into(),
+        &owner.clone(),
+        &owner.clone(),
+        balance!(50000000),
+    )
+    .unwrap();
+    Assets::<T>::mint_to(
+        &VAL.into(),
+        &owner.clone(),
+        &owner.clone(),
+        balance!(50000000),
+    )
+    .unwrap();
+
+    let _ = TradingPair::<T>::register(owner_origin.clone(), DEX.into(), XOR.into(), DAI.into());
+    let _ = TradingPair::<T>::register(owner_origin.clone(), DEX.into(), XOR.into(), VAL.into());
+
+    XYKPool::<T>::initialize_pool(owner_origin.clone(), DEX.into(), XOR.into(), DAI.into())?;
+    XYKPool::<T>::initialize_pool(owner_origin.clone(), DEX.into(), XOR.into(), VAL.into())?;
+
+    XYKPool::<T>::deposit_liquidity(
+        owner_origin.clone(),
+        DEX.into(),
+        XOR.into(),
+        DAI.into(),
+        balance!(1000),
+        balance!(2000),
+        balance!(0),
+        balance!(0),
+    )?;
+    XYKPool::<T>::deposit_liquidity(
+        owner_origin.clone(),
+        DEX.into(),
+        XOR.into(),
+        VAL.into(),
+        balance!(1000),
+        balance!(2000),
+        balance!(0),
+        balance!(0),
+    )?;
+
+    Ok(())
+}
+
+fn add_pending<T: Config>(n: u32) {
+    let mut pending = Vec::new();
+    for _i in 0..n {
+        pending.push((DAI.into(), balance!(1)))
+    }
+    PendingFreeReserves::<T>::set(pending);
 }
 
 benchmarks! {
@@ -139,6 +240,14 @@ benchmarks! {
         assert_eq!(limit, balance!(0));
         assert_eq!(owned, balance!(100));
     }
+
+    on_initialize {
+        let _ = setup_benchmark::<T>();
+        let n in 0 .. 10 => add_pending::<T>(n);
+    }: {
+        Pallet::<T>::on_initialize(crate::RETRY_DISTRIBUTION_FREQUENCY.into());
+    }
+    verify {}
 }
 
 #[cfg(test)]

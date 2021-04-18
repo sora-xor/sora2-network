@@ -754,6 +754,8 @@ fn testnet_genesis(
         (iroha_migration_account_id.clone(), 0),
         (pswap_distribution_account_id.clone(), 0),
         (mbc_reserves_account_id.clone(), 0),
+        (mbc_pool_rewards_account_id.clone(), 0),
+        (mbc_pool_free_reserves_account_id.clone(), 0),
     ]
     .into_iter()
     .chain(

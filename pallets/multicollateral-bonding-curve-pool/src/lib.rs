@@ -199,6 +199,7 @@ pub mod pallet {
         + assets::Config
         + technical::Config
         + trading_pair::Config
+        + pool_xyk::Config
     {
         type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
         type LiquidityProxy: LiquidityProxyTrait<Self::DEXId, Self::AccountId, Self::AssetId>;
@@ -715,7 +716,7 @@ impl<T: Config> Module<T> {
     ) -> DispatchResult {
         common::with_transaction(|| {
             let base_asset_id = T::GetBaseAssetId::get();
-            let swapped_xor_amount = T::LiquidityProxy::exchange(
+            let swapped_xor_amount = <T as pallet::Config>::LiquidityProxy::exchange(
                 holder,
                 holder,
                 &collateral_asset_id,
@@ -756,7 +757,7 @@ impl<T: Config> Module<T> {
             }
             Assets::<T>::mint_to(&base_asset_id, &holder, &holder, undistributed_xor_amount)?;
             // undistributed_xor_amount includes xor_allocation and val_holders portions
-            let val_amount = T::LiquidityProxy::exchange(
+            let val_amount = <T as pallet::Config>::LiquidityProxy::exchange(
                 holder,
                 holder,
                 &base_asset_id,
@@ -1275,7 +1276,7 @@ impl<T: Config> Module<T> {
         let price = if asset_id == &reference_asset_id {
             balance!(1)
         } else {
-            T::LiquidityProxy::quote(
+            <T as pallet::Config>::LiquidityProxy::quote(
                 asset_id,
                 &reference_asset_id,
                 SwapAmount::with_desired_input(balance!(1), Balance::zero()),
