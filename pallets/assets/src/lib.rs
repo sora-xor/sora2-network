@@ -360,7 +360,7 @@ pub mod pallet {
         AssetIdNotExists,
         /// A number is out of range of the balance type.
         InsufficientBalance,
-        /// Symbol is not valid. It must contain only uppercase latin characters, length <= 7.
+        /// Symbol is not valid. It must contain only uppercase latin characters or numbers, length <= 7.
         InvalidAssetSymbol,
         /// Name is not valid. It must contain only uppercase or lowercase latin characters or numbers or spaces, length <= 33.
         InvalidAssetName,
@@ -734,10 +734,12 @@ impl<T: Config> Pallet<T> {
 
 /// According to UTF-8 encoding, graphemes that start with byte 0b0XXXXXXX belong
 /// to ASCII range and are of single byte, therefore passing check in range 'A' to 'Z'
-/// guarantees that all graphemes are of length 1, therefore length check is valid.
+/// and '0' to '9' guarantees that all graphemes are of length 1, therefore length check is valid.
 pub fn is_symbol_valid(symbol: &AssetSymbol) -> bool {
+    let mut allowed_graphemes = (b'A'..=b'Z').collect::<Vec<_>>();
+    allowed_graphemes.extend(b'0'..=b'9');
     symbol.0.len() <= ASSET_SYMBOL_MAX_LENGTH
-        && symbol.0.iter().all(|byte| (b'A'..=b'Z').contains(&byte))
+        && symbol.0.iter().all(|byte| allowed_graphemes.contains(&byte))
 }
 
 /// According to UTF-8 encoding, graphemes that start with byte 0b0XXXXXXX belong

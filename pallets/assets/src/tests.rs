@@ -153,6 +153,51 @@ mod tests {
     }
 
     #[test]
+    fn should_not_register_invalid_asset_symbol() {
+        let mut ext = ExtBuilder::default().build();
+        ext.execute_with(|| {
+            assert_err!(
+                Assets::register_asset_id(
+                    ALICE,
+                    XOR,
+                    AssetSymbol(b"xor".to_vec()),
+                    AssetName(b"Super Sora".to_vec()),
+                    18,
+                    Balance::zero(),
+                    true,
+                ),
+                Error::<Runtime>::InvalidAssetSymbol
+            );
+
+            assert_err!(
+                Assets::register_asset_id(
+                    ALICE,
+                    VAL,
+                    AssetSymbol(b"VAL IS SUPER LONG".to_vec()),
+                    AssetName(b"Validator".to_vec()),
+                    18,
+                    Balance::zero(),
+                    true,
+                ),
+                Error::<Runtime>::InvalidAssetSymbol
+            );
+
+            assert_err!(
+                Assets::register_asset_id(
+                    ALICE,
+                    DOT,
+                    AssetSymbol(b"D_OT".to_vec()),
+                    AssetName(b"Bad Symbol".to_vec()),
+                    18,
+                    Balance::zero(),
+                    true,
+                ),
+                Error::<Runtime>::InvalidAssetSymbol
+            );
+        });
+    }
+
+    #[test]
     fn should_allow_operation() {
         let mut ext = ExtBuilder::default().build();
         ext.execute_with(|| {
@@ -207,9 +252,10 @@ mod tests {
             assert!(crate::is_symbol_valid(&AssetSymbol(b"PSWAP".to_vec())));
             assert!(crate::is_symbol_valid(&AssetSymbol(b"GT".to_vec())));
             assert!(crate::is_symbol_valid(&AssetSymbol(b"BP".to_vec())));
+            assert!(crate::is_symbol_valid(&AssetSymbol(b"AB1".to_vec())));
 
             assert!(!crate::is_symbol_valid(&AssetSymbol(b"ABCDEFGH".to_vec())));
-            assert!(!crate::is_symbol_valid(&AssetSymbol(b"AB1".to_vec())));
+            assert!(!crate::is_symbol_valid(&AssetSymbol(b"xor".to_vec())));
             assert!(!crate::is_symbol_valid(&AssetSymbol(
                 b"\xF0\x9F\x98\xBF".to_vec()
             )));
