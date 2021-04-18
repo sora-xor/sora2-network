@@ -39,14 +39,13 @@ use frame_benchmarking::benchmarks;
 use frame_support::traits::OnInitialize;
 use frame_system::{EventRecord, RawOrigin};
 use hex_literal::hex;
-use orml_traits::{MultiCurrency, MultiCurrencyExtended};
+use orml_traits::MultiCurrencyExtended;
 use sp_std::prelude::*;
 
 use common::{fixed, AssetName, AssetSymbol, DAI, USDT, XOR};
 
 use crate::Pallet as MBCPool;
 use assets::Pallet as Assets;
-use currencies::Pallet as Currencies;
 use permissions::Pallet as Permissions;
 use pool_xyk::Pallet as XYKPool;
 use sp_std::convert::TryFrom;
@@ -58,14 +57,7 @@ pub const DEX: DEXId = DEXId::Polkaswap;
 // Support Functions
 fn alice<T: Config>() -> T::AccountId {
     let bytes = hex!("d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d");
-    let account_id = T::AccountId::decode(&mut &bytes[..]).unwrap_or_default();
-    Currencies::<T>::deposit(
-        <T as currencies::Config>::GetNativeCurrencyId::get(),
-        &account_id,
-        1000u32.into(),
-    )
-    .unwrap();
-    account_id
+    T::AccountId::decode(&mut &bytes[..]).unwrap_or_default()
 }
 
 fn assert_last_event<T: Config>(generic_event: <T as Config>::Event) {
