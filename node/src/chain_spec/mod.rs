@@ -41,10 +41,10 @@ use common::{
     USDT, VAL, XOR,
 };
 use frame_support::sp_runtime::Percent;
-use framenode_runtime::bonding_curve_pool::{
+use framenode_runtime::eth_bridge::{AssetConfig, NetworkConfig};
+use framenode_runtime::multicollateral_bonding_curve_pool::{
     DistributionAccount, DistributionAccountData, DistributionAccounts,
 };
-use framenode_runtime::eth_bridge::{AssetConfig, NetworkConfig};
 use framenode_runtime::opaque::SessionKeys;
 use framenode_runtime::{
     eth_bridge, AccountId, AssetId, AssetName, AssetSymbol, AssetsConfig, BabeConfig,
@@ -634,6 +634,11 @@ fn testnet_genesis(
     let mbc_pool_rewards_tech_account_id = framenode_runtime::GetMbcPoolRewardsTechAccountId::get();
     let mbc_pool_rewards_account_id = framenode_runtime::GetMbcPoolRewardsAccountId::get();
 
+    let mbc_pool_free_reserves_tech_account_id =
+        framenode_runtime::GetMbcPoolFreeReservesTechAccountId::get();
+    let mbc_pool_free_reserves_account_id =
+        framenode_runtime::GetMbcPoolFreeReservesAccountId::get();
+
     let liquidity_proxy_tech_account_id = framenode_runtime::GetLiquidityProxyTechAccountId::get();
     let liquidity_proxy_account_id = framenode_runtime::GetLiquidityProxyAccountId::get();
 
@@ -695,6 +700,10 @@ fn testnet_genesis(
             mbc_pool_rewards_tech_account_id.clone(),
         ),
         (
+            mbc_pool_free_reserves_account_id.clone(),
+            mbc_pool_free_reserves_tech_account_id.clone(),
+        ),
+        (
             iroha_migration_account_id.clone(),
             iroha_migration_tech_account_id.clone(),
         ),
@@ -724,6 +733,8 @@ fn testnet_genesis(
         (iroha_migration_account_id.clone(), 0),
         (pswap_distribution_account_id.clone(), 0),
         (mbc_reserves_account_id.clone(), 0),
+        (mbc_pool_rewards_account_id.clone(), 0),
+        (mbc_pool_free_reserves_account_id.clone(), 0),
     ]
     .into_iter()
     .chain(
@@ -1008,6 +1019,11 @@ fn testnet_genesis(
                     Scope::Unlimited,
                     vec![permissions::MINT, permissions::BURN],
                 ),
+                (
+                    mbc_pool_free_reserves_account_id.clone(),
+                    Scope::Unlimited,
+                    vec![permissions::MINT, permissions::BURN],
+                ),
             ],
         }),
         pallet_balances: Some(BalancesConfig { balances }),
@@ -1102,6 +1118,7 @@ fn testnet_genesis(
             reference_asset_id: DAI.into(),
             incentives_account_id: mbc_pool_rewards_account_id,
             initial_collateral_assets,
+            free_reserves_account_id: mbc_pool_free_reserves_account_id,
         }),
         pswap_distribution: Some(PswapDistributionConfig {
             subscribed_accounts: Vec::new(),
@@ -1244,6 +1261,11 @@ fn mainnet_genesis(
     let mbc_pool_rewards_tech_account_id = framenode_runtime::GetMbcPoolRewardsTechAccountId::get();
     let mbc_pool_rewards_account_id = framenode_runtime::GetMbcPoolRewardsAccountId::get();
 
+    let mbc_pool_free_reserves_tech_account_id =
+        framenode_runtime::GetMbcPoolFreeReservesTechAccountId::get();
+    let mbc_pool_free_reserves_account_id =
+        framenode_runtime::GetMbcPoolFreeReservesAccountId::get();
+
     let liquidity_proxy_tech_account_id = framenode_runtime::GetLiquidityProxyTechAccountId::get();
     let liquidity_proxy_account_id = framenode_runtime::GetLiquidityProxyAccountId::get();
 
@@ -1303,6 +1325,10 @@ fn mainnet_genesis(
         (
             mbc_pool_rewards_account_id.clone(),
             mbc_pool_rewards_tech_account_id.clone(),
+        ),
+        (
+            mbc_pool_free_reserves_account_id.clone(),
+            mbc_pool_free_reserves_tech_account_id.clone(),
         ),
         (
             iroha_migration_account_id.clone(),
@@ -1490,6 +1516,11 @@ fn mainnet_genesis(
                     Scope::Unlimited,
                     vec![permissions::MINT, permissions::BURN],
                 ),
+                (
+                    mbc_pool_free_reserves_account_id.clone(),
+                    Scope::Unlimited,
+                    vec![permissions::MINT, permissions::BURN],
+                ),
             ],
         }),
         pallet_balances: Some(BalancesConfig {
@@ -1629,6 +1660,7 @@ fn mainnet_genesis(
             reference_asset_id: DAI.into(),
             incentives_account_id: mbc_pool_rewards_account_id,
             initial_collateral_assets,
+            free_reserves_account_id: mbc_pool_free_reserves_account_id,
         }),
         pswap_distribution: Some(PswapDistributionConfig {
             subscribed_accounts: Vec::new(),
