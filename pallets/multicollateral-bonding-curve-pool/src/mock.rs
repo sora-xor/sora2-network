@@ -76,6 +76,10 @@ pub fn incentives_account() -> AccountId {
     AccountId32::from([4u8; 32])
 }
 
+pub fn free_reserves_account() -> AccountId {
+    AccountId32::from([5u8; 32])
+}
+
 pub fn get_pool_reserves_account_id() -> AccountId {
     let reserves_tech_account_id = crate::ReservesAcc::<Runtime>::get();
     let reserves_account_id =
@@ -101,6 +105,11 @@ parameter_types! {
     pub const CreationFee: u128 = 0;
     pub const TransactionByteFee: u128 = 1;
     pub const GetNumSamples: usize = 40;
+    pub GetIncentiveAssetId: AssetId = common::AssetId32::from_bytes(hex!("0200050000000000000000000000000000000000000000000000000000000000").into());
+    pub GetPswapDistributionAccountId: AccountId = AccountId32::from([151; 32]);
+    pub const GetDefaultSubscriptionFrequency: BlockNumber = 10;
+    pub const GetBurnUpdateFrequency: BlockNumber = 14400;
+    pub GetParliamentAccountId: AccountId = AccountId32::from([152; 32]);
 }
 
 construct_runtime! {
@@ -120,6 +129,8 @@ construct_runtime! {
         Permissions: permissions::{Module, Call, Config<T>, Storage, Event<T>},
         Technical: technical::{Module, Call, Storage, Event<T>},
         Balances: pallet_balances::{Module, Call, Storage, Event<T>},
+        PoolXyk: pool_xyk::{Module, Call, Storage, Event<T>},
+        PswapDistribution: pswap_distribution::{Module, Call, Storage, Event<T>},
     }
 }
 
@@ -214,7 +225,8 @@ impl technical::Config for Runtime {
     type TechAccountId = TechAccountId;
     type Trigger = ();
     type Condition = ();
-    type SwapAction = ();
+    type SwapAction =
+        pool_xyk::PolySwapAction<AssetId, TechAssetId, Balance, AccountId, TechAccountId>;
     type WeightInfo = ();
 }
 
@@ -228,19 +240,65 @@ impl pallet_balances::Config for Runtime {
     type MaxLocks = ();
 }
 
+impl pswap_distribution::Config for Runtime {
+    type Event = Event;
+    type GetIncentiveAssetId = GetIncentiveAssetId;
+    type LiquidityProxy = ();
+    type CompatBalance = Balance;
+    type GetDefaultSubscriptionFrequency = GetDefaultSubscriptionFrequency;
+    type GetBurnUpdateFrequency = GetBurnUpdateFrequency;
+    type GetTechnicalAccountId = GetPswapDistributionAccountId;
+    type EnsureDEXManager = ();
+    type OnPswapBurnedAggregator = ();
+    type WeightInfo = ();
+    type GetParliamentAccountId = GetParliamentAccountId;
+}
+
+impl pool_xyk::Config for Runtime {
+    type Event = Event;
+    type PairSwapAction = pool_xyk::PairSwapAction<AssetId, Balance, AccountId, TechAccountId>;
+    type DepositLiquidityAction =
+        pool_xyk::DepositLiquidityAction<AssetId, TechAssetId, Balance, AccountId, TechAccountId>;
+    type WithdrawLiquidityAction =
+        pool_xyk::WithdrawLiquidityAction<AssetId, TechAssetId, Balance, AccountId, TechAccountId>;
+    type PolySwapAction =
+        pool_xyk::PolySwapAction<AssetId, TechAssetId, Balance, AccountId, TechAccountId>;
+    type EnsureDEXManager = dex_manager::Module<Runtime>;
+    type WeightInfo = ();
+}
+
 pub struct MockDEXApi;
 
 impl MockDEXApi {
-    pub fn init() -> Result<(), DispatchError> {
-        let mock_liquidity_source_tech_account_id =
+    fn get_mock_source_account() -> Result<(TechAccountId, AccountId), DispatchError> {
+        let tech_account_id =
             TechAccountId::Pure(DEXId::Polkaswap.into(), TechPurpose::FeeCollector);
-        let account_id =
-            Technical::tech_account_id_to_account_id(&mock_liquidity_source_tech_account_id)?;
-        Technical::register_tech_account_id(mock_liquidity_source_tech_account_id.clone())?;
-        MockLiquiditySource::set_reserves_account_id(mock_liquidity_source_tech_account_id)?;
-        Currencies::deposit(XOR, &account_id, balance!(100000))?;
-        Currencies::deposit(VAL, &account_id, balance!(100000))?;
-        Currencies::deposit(USDT, &account_id, balance!(1000000))?;
+        let account_id = Technical::tech_account_id_to_account_id(&tech_account_id)?;
+        Ok((tech_account_id, account_id))
+    }
+
+    pub fn init_without_reserves() -> Result<(), DispatchError> {
+        let (tech_account_id, _) = Self::get_mock_source_account()?;
+        Technical::register_tech_account_id(tech_account_id.clone())?;
+        MockLiquiditySource::set_reserves_account_id(tech_account_id)?;
+        Ok(())
+    }
+
+    pub fn add_reserves(funds: Vec<(AssetId, Balance)>) -> Result<(), DispatchError> {
+        let (_, account_id) = Self::get_mock_source_account()?;
+        for (asset_id, balance) in funds {
+            Currencies::deposit(asset_id, &account_id, balance)?;
+        }
+        Ok(())
+    }
+
+    pub fn init() -> Result<(), DispatchError> {
+        Self::init_without_reserves()?;
+        Self::add_reserves(vec![
+            (XOR, balance!(100000)),
+            (VAL, balance!(100000)),
+            (USDT, balance!(1000000)),
+        ])?;
         Ok(())
     }
 
@@ -462,6 +520,11 @@ impl Default for ExtBuilder {
                     Scope::Unlimited,
                     vec![permissions::MINT, permissions::BURN],
                 ),
+                (
+                    free_reserves_account(),
+                    Scope::Unlimited,
+                    vec![permissions::MINT, permissions::BURN],
+                ),
             ],
             reference_asset_id: USDT,
         }
@@ -499,6 +562,7 @@ impl ExtBuilder {
                     (bob(), 0),
                     (assets_owner(), 0),
                     (incentives_account(), 0),
+                    (free_reserves_account(), 0),
                 ])
                 .collect(),
         }
@@ -511,6 +575,7 @@ impl ExtBuilder {
             reference_asset_id: self.reference_asset_id,
             incentives_account_id: incentives_account(),
             initial_collateral_assets: Default::default(),
+            free_reserves_account_id: free_reserves_account(),
         }
         .assimilate_storage(&mut t)
         .unwrap();

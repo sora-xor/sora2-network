@@ -192,7 +192,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
     spec_name: create_runtime_str!("sora-substrate"),
     impl_name: create_runtime_str!("sora-substrate"),
     authoring_version: 1,
-    spec_version: 27,
+    spec_version: 28,
     impl_version: 1,
     apis: RUNTIME_API_VERSIONS,
     transaction_version: 1,
@@ -1046,6 +1046,20 @@ parameter_types! {
     };
     pub GetMbcPoolRewardsAccountId: AccountId = {
         let tech_account_id = GetMbcPoolRewardsTechAccountId::get();
+        let account_id =
+            technical::Module::<Runtime>::tech_account_id_to_account_id(&tech_account_id)
+                .expect("Failed to get ordinary account id for technical account id.");
+        account_id
+    };
+    pub GetMbcPoolFreeReservesTechAccountId: TechAccountId = {
+        let tech_account_id = TechAccountId::from_generic_pair(
+            multicollateral_bonding_curve_pool::TECH_ACCOUNT_PREFIX.to_vec(),
+            multicollateral_bonding_curve_pool::TECH_ACCOUNT_FREE_RESERVES.to_vec(),
+        );
+        tech_account_id
+    };
+    pub GetMbcPoolFreeReservesAccountId: AccountId = {
+        let tech_account_id = GetMbcPoolFreeReservesTechAccountId::get();
         let account_id =
             technical::Module::<Runtime>::tech_account_id_to_account_id(&tech_account_id)
                 .expect("Failed to get ordinary account id for technical account id.");
