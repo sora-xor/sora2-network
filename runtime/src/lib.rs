@@ -52,6 +52,7 @@ use extensions::ChargeTransactionPayment;
 pub use farming::domain::{FarmInfo, FarmerInfo};
 pub use farming::FarmId;
 use frame_system::offchain::{Account, SigningTypes};
+use frame_system::{EnsureOneOf, EnsureRoot};
 use hex_literal::hex;
 use pallet_grandpa::{
     fg_primitives, AuthorityId as GrandpaId, AuthorityList as GrandpaAuthorityList,
@@ -96,7 +97,7 @@ pub use common::{
 };
 pub use frame_support::traits::schedule::Named as ScheduleNamed;
 pub use frame_support::traits::{
-    KeyOwnerProofSystem, OnUnbalanced, Randomness, U128CurrencyToVote,
+    KeyOwnerProofSystem, LockIdentifier, OnUnbalanced, Randomness, U128CurrencyToVote,
 };
 pub use frame_support::weights::constants::{
     BlockExecutionWeight, RocksDbWeight, WEIGHT_PER_SECOND,
@@ -114,7 +115,7 @@ pub use sp_runtime::BuildStorage;
 use eth_bridge::{
     AssetKind, OffchainRequest, OutgoingRequestEncoded, RequestStatus, SignatureParams,
 };
-use impls::{DemocracyWeightInfo, OnUnbalancedDemocracySlash};
+use impls::{CollectiveWeightInfo, DemocracyWeightInfo, OnUnbalancedDemocracySlash};
 
 pub use {bonding_curve_pool, eth_bridge, multicollateral_bonding_curve_pool};
 
@@ -154,6 +155,12 @@ pub type PeriodicSessions = pallet_session::PeriodicSessions<SessionPeriod, Sess
 
 type CouncilCollective = pallet_collective::Instance1;
 type TechnicalCollective = pallet_collective::Instance2;
+
+type MoreThanHalfCouncil = EnsureOneOf<
+    AccountId,
+    EnsureRoot<AccountId>,
+    pallet_collective::EnsureProportionMoreThan<_1, _2, AccountId, CouncilCollective>,
+>;
 
 /// Opaque types. These are used by the CLI to instantiate machinery that don't need to know
 /// the specifics of the runtime. They can then be made to be agnostic over specific formats
@@ -257,6 +264,17 @@ parameter_types! {
     pub OffencesWeightSoftLimit: Weight = Perbill::from_percent(60) * BlockWeights::get().max_block;
     pub const ImOnlineUnsignedPriority: TransactionPriority = TransactionPriority::max_value();
     pub const SessionDuration: BlockNumber = EPOCH_DURATION_IN_BLOCKS;
+    pub const ElectionsCandidacyBond: Balance = balance!(1);
+    // 1 storage item created, key size is 32 bytes, value size is 16+16.
+    pub const ElectionsVotingBondBase: Balance = balance!(0.000001);
+    // additional data per vote is 32 bytes (account id).
+    pub const ElectionsVotingBondFactor: Balance = balance!(0.000001);
+    /// Weekly council elections; scaling up to monthly eventually.
+    pub const ElectionsTermDuration: BlockNumber = 7 * DAYS;
+    /// 13 members initially, to be increased to 23 eventually.
+    pub const ElectionsDesiredMembers: u32 = 13;
+    pub const ElectionsDesiredRunnersUp: u32 = 20;
+    pub const ElectionsModuleId: LockIdentifier = *b"phrelect";
 }
 
 impl frame_system::Config for Runtime {
@@ -325,7 +343,7 @@ impl pallet_collective::Config<CouncilCollective> for Runtime {
     type MaxProposals = CouncilCollectiveMaxProposals;
     type MaxMembers = CouncilCollectiveMaxMembers;
     type DefaultVote = pallet_collective::PrimeDefaultVote;
-    type WeightInfo = ();
+    type WeightInfo = CollectiveWeightInfo<Self>;
 }
 
 impl pallet_collective::Config<TechnicalCollective> for Runtime {
@@ -336,7 +354,7 @@ impl pallet_collective::Config<TechnicalCollective> for Runtime {
     type MaxProposals = TechnicalCollectiveMaxProposals;
     type MaxMembers = TechnicalCollectiveMaxMembers;
     type DefaultVote = pallet_collective::PrimeDefaultVote;
-    type WeightInfo = ();
+    type WeightInfo = CollectiveWeightInfo<Self>;
 }
 
 impl pallet_democracy::Config for Runtime {
@@ -384,6 +402,35 @@ impl pallet_democracy::Config for Runtime {
     type MaxVotes = DemocracyMaxVotes;
     type WeightInfo = DemocracyWeightInfo;
     type MaxProposals = DemocracyMaxProposals;
+}
+
+impl pallet_elections_phragmen::Config for Runtime {
+    type Event = Event;
+    type ModuleId = ElectionsModuleId;
+    type Currency = Balances;
+    type ChangeMembers = Council;
+    type InitializeMembers = Council;
+    type CurrencyToVote = frame_support::traits::U128CurrencyToVote;
+    type CandidacyBond = ElectionsCandidacyBond;
+    type VotingBondBase = ElectionsVotingBondBase;
+    type VotingBondFactor = ElectionsVotingBondFactor;
+    type LoserCandidate = OnUnbalancedDemocracySlash<Self>;
+    type KickedMember = OnUnbalancedDemocracySlash<Self>;
+    type DesiredMembers = ElectionsDesiredMembers;
+    type DesiredRunnersUp = ElectionsDesiredRunnersUp;
+    type TermDuration = ElectionsTermDuration;
+    type WeightInfo = ();
+}
+
+impl pallet_membership::Config<pallet_membership::Instance1> for Runtime {
+    type Event = Event;
+    type AddOrigin = MoreThanHalfCouncil;
+    type RemoveOrigin = MoreThanHalfCouncil;
+    type SwapOrigin = MoreThanHalfCouncil;
+    type ResetOrigin = MoreThanHalfCouncil;
+    type PrimeOrigin = MoreThanHalfCouncil;
+    type MembershipInitialized = TechnicalCommittee;
+    type MembershipChanged = TechnicalCommittee;
 }
 
 impl pallet_grandpa::Config for Runtime {
@@ -1108,6 +1155,8 @@ construct_runtime! {
         IrohaMigration: iroha_migration::{Module, Call, Storage, Config<T>, Event<T>},
         ImOnline: pallet_im_online::{Module, Call, Storage, Event<T>, ValidateUnsigned, Config<T>},
         Offences: pallet_offences::{Module, Call, Storage, Event},
+        TechnicalMembership: pallet_membership::<Instance1>::{Module, Call, Storage, Event<T>, Config<T>},
+        ElectionsPhragmen: pallet_elections_phragmen::{Module, Call, Storage, Event<T>, Config<T>},
         // Available only for test net
         Faucet: faucet::{Module, Call, Config<T>, Event<T>},
     }
@@ -1163,6 +1212,8 @@ construct_runtime! {
         IrohaMigration: iroha_migration::{Module, Call, Storage, Config<T>, Event<T>},
         ImOnline: pallet_im_online::{Module, Call, Storage, Event<T>, ValidateUnsigned, Config<T>},
         Offences: pallet_offences::{Module, Call, Storage, Event},
+        TechnicalMembership: pallet_membership::<Instance1>::{Module, Call, Storage, Event<T>, Config<T>},
+        ElectionsPhragmen: pallet_elections_phragmen::{Module, Call, Storage, Event<T>, Config<T>},
     }
 }
 
