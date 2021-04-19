@@ -40,8 +40,8 @@ pub fn get_demo_price(block: u32) -> (Balance, Balance) {
     };
     let b: FixedWrapper = balance!(70000).into();
     let c: FixedWrapper = balance!(1000000).into();
-    let price: FixedWrapper = (pair.0 as u128 * balance!(1)).into();
-    let volume: FixedWrapper = (pair.1 as u128 * balance!(1)).into();
+    let price: FixedWrapper = balance!(pair.0).into();
+    let volume: FixedWrapper = balance!(pair.1).into();
     ((price / b).into_balance(), (volume / c).into_balance())
 }
 

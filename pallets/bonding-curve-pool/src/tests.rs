@@ -88,7 +88,7 @@ mod tests {
         let mut ext = ExtBuilder::default().build();
         ext.execute_with(|| {
             for q in 0u128..10_000 {
-                let q = q * balance!(1);
+                let q = balance!(q);
                 let direct_price = BondingCurvePool::price_for_main_asset(&XOR, q, SwapKind::Buy)
                     .expect("failed to calculate buy assets price");
                 let inverse_price = BondingCurvePool::price_for_collateral_asset(&XOR, direct_price.into_bits().try_into().unwrap(), SwapKind::Buy)
@@ -97,7 +97,7 @@ mod tests {
             }
 
             for q in (100u128..200_000).step_by(123) {
-                let q = q * balance!(1);
+                let q = balance!(q);
                 let direct_price = BondingCurvePool::price_for_main_asset(&XOR, q, SwapKind::Buy)
                     .expect("failed to calculate buy assets price");
                 let inverse_price = BondingCurvePool::price_for_collateral_asset(&XOR, direct_price.into_bits().try_into().unwrap(), SwapKind::Buy)
@@ -112,7 +112,7 @@ mod tests {
         let mut ext = ExtBuilder::default().build();
         ext.execute_with(|| {
             for q in 0u128..10_000 {
-                let q = q * balance!(1);
+                let q = balance!(q);
                 let direct_price = BondingCurvePool::price_for_main_asset(&XOR, q, SwapKind::Sell)
                     .expect("failed to calculate buy assets price");
                 let inverse_price = BondingCurvePool::price_for_collateral_asset(&XOR, direct_price.into_bits().try_into().unwrap(), SwapKind::Sell)
@@ -121,7 +121,7 @@ mod tests {
             }
 
             for q in (100u128..200_000).step_by(123) {
-                let q = q * balance!(1);
+                let q = balance!(q);
                 let direct_price = BondingCurvePool::price_for_main_asset(&XOR, q, SwapKind::Sell)
                     .expect("failed to calculate buy assets price");
                 let inverse_price = BondingCurvePool::price_for_collateral_asset(&XOR, direct_price.into_bits().try_into().unwrap(), SwapKind::Sell)
