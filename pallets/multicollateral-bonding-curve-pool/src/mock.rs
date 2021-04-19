@@ -105,6 +105,11 @@ parameter_types! {
     pub const CreationFee: u128 = 0;
     pub const TransactionByteFee: u128 = 1;
     pub const GetNumSamples: usize = 40;
+    pub GetIncentiveAssetId: AssetId = common::AssetId32::from_bytes(hex!("0200050000000000000000000000000000000000000000000000000000000000").into());
+    pub GetPswapDistributionAccountId: AccountId = AccountId32::from([151; 32]);
+    pub const GetDefaultSubscriptionFrequency: BlockNumber = 10;
+    pub const GetBurnUpdateFrequency: BlockNumber = 14400;
+    pub GetParliamentAccountId: AccountId = AccountId32::from([152; 32]);
 }
 
 construct_runtime! {
@@ -124,6 +129,8 @@ construct_runtime! {
         Permissions: permissions::{Module, Call, Config<T>, Storage, Event<T>},
         Technical: technical::{Module, Call, Storage, Event<T>},
         Balances: pallet_balances::{Module, Call, Storage, Event<T>},
+        PoolXyk: pool_xyk::{Module, Call, Storage, Event<T>},
+        PswapDistribution: pswap_distribution::{Module, Call, Storage, Event<T>},
     }
 }
 
@@ -218,7 +225,8 @@ impl technical::Config for Runtime {
     type TechAccountId = TechAccountId;
     type Trigger = ();
     type Condition = ();
-    type SwapAction = ();
+    type SwapAction =
+        pool_xyk::PolySwapAction<AssetId, TechAssetId, Balance, AccountId, TechAccountId>;
     type WeightInfo = ();
 }
 
@@ -230,6 +238,33 @@ impl pallet_balances::Config for Runtime {
     type AccountStore = System;
     type WeightInfo = ();
     type MaxLocks = ();
+}
+
+impl pswap_distribution::Config for Runtime {
+    type Event = Event;
+    type GetIncentiveAssetId = GetIncentiveAssetId;
+    type LiquidityProxy = ();
+    type CompatBalance = Balance;
+    type GetDefaultSubscriptionFrequency = GetDefaultSubscriptionFrequency;
+    type GetBurnUpdateFrequency = GetBurnUpdateFrequency;
+    type GetTechnicalAccountId = GetPswapDistributionAccountId;
+    type EnsureDEXManager = ();
+    type OnPswapBurnedAggregator = ();
+    type WeightInfo = ();
+    type GetParliamentAccountId = GetParliamentAccountId;
+}
+
+impl pool_xyk::Config for Runtime {
+    type Event = Event;
+    type PairSwapAction = pool_xyk::PairSwapAction<AssetId, Balance, AccountId, TechAccountId>;
+    type DepositLiquidityAction =
+        pool_xyk::DepositLiquidityAction<AssetId, TechAssetId, Balance, AccountId, TechAccountId>;
+    type WithdrawLiquidityAction =
+        pool_xyk::WithdrawLiquidityAction<AssetId, TechAssetId, Balance, AccountId, TechAccountId>;
+    type PolySwapAction =
+        pool_xyk::PolySwapAction<AssetId, TechAssetId, Balance, AccountId, TechAccountId>;
+    type EnsureDEXManager = dex_manager::Module<Runtime>;
+    type WeightInfo = ();
 }
 
 pub struct MockDEXApi;
