@@ -50,6 +50,11 @@ macro_rules! balance {
         const VALUE: $crate::Balance = VALUE_SIGNED.abs() as u128;
         VALUE
     }};
+    ($e:expr) => {{
+        use sp_std::convert::TryFrom;
+        let fixed = $crate::Fixed::try_from($e).unwrap();
+        $crate::Balance::try_from(fixed.into_bits()).unwrap()
+    }};
 }
 
 #[macro_export]

@@ -4415,6 +4415,7 @@ dependencies = [
  "pallet-balances",
  "parity-scale-codec",
  "permissions",
+ "pool-xyk",
  "pswap-distribution",
  "serde",
  "sp-arithmetic",

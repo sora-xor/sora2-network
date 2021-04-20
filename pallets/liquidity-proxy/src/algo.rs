@@ -92,14 +92,14 @@ pub fn find_distribution(sample_data: Vec<Vec<Fixed>>, inversed: bool) -> (Vec<F
 
     while parts_left > 0 && cur_exchange != 0 {
         cur_exchange -= 1;
-        let distribution_part = (FixedWrapper::from(parts_left as u128 * balance!(1))
-            - foreign[cur_exchange][parts_left] as u128 * balance!(1))
-            / total_parts;
+        let foreign = foreign[cur_exchange][parts_left];
+        let distribution_part =
+            (FixedWrapper::from(balance!(parts_left)) - balance!(foreign)) / total_parts;
         distribution[cur_exchange] = match distribution_part.get() {
             Err(_) => return default(),
             Ok(value) => value,
         };
-        parts_left = foreign[cur_exchange][parts_left];
+        parts_left = foreign;
     }
 
     let best_amount = accumulator[n - 1][s];

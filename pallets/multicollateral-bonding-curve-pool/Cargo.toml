@@ -32,6 +32,7 @@ permissions = { path = "../permissions", default-features = false }
 pswap-distribution = { path = "../pswap-distribution", default-features = false }
 technical = { path = "../technical", default-features = false }
 trading-pair = { path = "../trading-pair", default-features = false }
+pool-xyk = { path = "../pool-xyk", default-features = false }
 
 [dev-dependencies]
 hex-literal = "0.3.1"
@@ -59,6 +60,7 @@ std = [
     'sp-runtime/std',
     'sp-std/std',
     'tokens/std',
+    'pool-xyk/std',
 ]
 runtime-benchmarks = [
     "frame-benchmarking",
