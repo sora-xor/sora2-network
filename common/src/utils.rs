@@ -111,12 +111,11 @@ pub fn linspace(a: Fixed, b: Fixed, n: usize, endpoints: IntervalEndpoints) -> V
 fn linspace_inner(a: Fixed, b: Fixed, n: usize) -> Vec<Fixed> {
     let a: FixedWrapper = a.into();
     let b: FixedWrapper = b.into();
-    let width = FixedWrapper::from(n as u128 * balance!(1)) + fixed_wrapper!(1);
+    let width = FixedWrapper::from(balance!(n)) + fixed_wrapper!(1);
     (1..=n)
         .map(|x| -> Fixed {
             let x: FixedWrapper = a.clone()
-                + (b.clone() - a.clone())
-                    / (width.clone() / FixedWrapper::from(x as u128 * balance!(1)));
+                + (b.clone() - a.clone()) / (width.clone() / FixedWrapper::from(balance!(x)));
             x.get().unwrap()
         })
         .collect()

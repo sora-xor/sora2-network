@@ -472,7 +472,7 @@ impl<T: Config> Pallet<T> {
         // Prepearing constants.
         let one: FixedWrapper = FixedWrapper::from(balance!(1));
         let two: FixedWrapper = FixedWrapper::from(balance!(2));
-        let smooth: FixedWrapper = FixedWrapper::from(SMOOTH_PERIOD * balance!(1));
+        let smooth: FixedWrapper = FixedWrapper::from(balance!(SMOOTH_PERIOD));
         let smooth_short = smooth.clone() / two.clone();
 
         // Getting quick variables for calculations.
