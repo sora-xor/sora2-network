@@ -4,7 +4,7 @@ authors = ['Polka Biome Ltd. <jihoon@tutanota.de>']
 license = "BSD-4-Clause"
 homepage = 'https://sora.org'
 repository = 'https://github.com/sora-xor/sora2-network'
-name = 'liquidity-proxy'
+name = 'vested-rewards'
 version = '0.1.0'
 
 [package.metadata.docs.rs]
@@ -13,29 +13,28 @@ targets = ['x86_64-unknown-linux-gnu']
 [dependencies]
 codec = { package = "parity-scale-codec", version = "2", default-features = false, features = ["derive"] }
 currencies = { version = "0.4", package = "orml-currencies", default-features = false }
-tokens = { version = "0.4", package = "orml-tokens", default-features = false }
-traits = { version = "0.4", package = "orml-traits", default-features = false }
 frame-support = { version = "3", default-features = false }
 frame-system = { version = "3", default-features = false }
-pallet-balances = { version = "3", default-features = false }
-sp-arithmetic = { version = "3", default-features = false }
-sp-runtime = { version = "3", default-features = false }
-sp-std = { version = "3", default-features = false }
-common = { path = "../../common", default-features = false }
-assets = { path = "../assets", default-features = false }
-trading-pair = { path = "../trading-pair", default-features = false }
-vested-rewards = { path = "../vested-rewards", default-features = false }
-
-[dev-dependencies]
-serde = { version = "1.0.101", default-features = false, features = ["derive"] }
+hex-literal = { version = "0.3.1", optional = true }
+serde = { version = "1.0.101", optional = true, features = ["derive"], default-features = false }
 sp-core = { version = "3", default-features = false }
 sp-io = { version = "3", default-features = false }
+sp-std = { version = "3", default-features = false }
+tokens = { version = "0.4", package = "orml-tokens", default-features = false }
+traits = { version = "0.4", package = "orml-traits", default-features = false }
+assets = { path = "../assets", default-features = false }
+common = { path = "../../common", default-features = false }
+dex-manager = { path = "../dex-manager", default-features = false }
+sp-runtime = { version = "3", default-features = false }
+
+[dev-dependencies]
+pallet-balances = { version = "3"}
+assets = { path = "../assets" }
 common = { path = "../../common", features = ["test"] }
-dex-api = { path = "../dex-api" }
 dex-manager = { path = "../dex-manager" }
-mock-liquidity-source = { path = "../mock-liquidity-source" }
-technical = { path = "../technical" }
 permissions = { path = "../permissions" }
+trading-pair = { path = "../trading-pair" }
+
 
 [features]
 default = ['std']
@@ -44,12 +43,11 @@ std = [
     'currencies/std',
     'frame-support/std',
     'frame-system/std',
-    'pallet-balances/std',
-    'sp-arithmetic/std',
-    'sp-runtime/std',
+    'serde/std',
+    'sp-core/std',
+    'sp-io/std',
     'sp-std/std',
     'tokens/std',
     'traits/std',
-    'trading-pair/std',
-    'vested-rewards/std',
+    'sp-runtime/std',
 ]

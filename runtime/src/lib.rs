@@ -1092,6 +1092,11 @@ impl pallet_offences::Config for Runtime {
     type WeightSoftLimit = OffencesWeightSoftLimit;
 }
 
+impl vested_rewards::Config for Runtime {
+    type Event = Event;
+    type WeightInfo = vested_rewards::weights::WeightInfo<Runtime>;
+}
+
 /// Payload data to be signed when making signed transaction from off-chain workers,
 ///   inside `create_transaction` function.
 pub type SignedPayload = generic::SignedPayload<Call, SignedExtra>;
@@ -1157,6 +1162,7 @@ construct_runtime! {
         Offences: pallet_offences::{Module, Call, Storage, Event},
         TechnicalMembership: pallet_membership::<Instance1>::{Module, Call, Storage, Event<T>, Config<T>},
         ElectionsPhragmen: pallet_elections_phragmen::{Module, Call, Storage, Event<T>, Config<T>},
+        VestedRewards: vested_rewards::{Module, Call, Storage, Event<T>},
         // Available only for test net
         Faucet: faucet::{Module, Call, Config<T>, Event<T>},
     }
@@ -1214,6 +1220,7 @@ construct_runtime! {
         Offences: pallet_offences::{Module, Call, Storage, Event},
         TechnicalMembership: pallet_membership::<Instance1>::{Module, Call, Storage, Event<T>, Config<T>},
         ElectionsPhragmen: pallet_elections_phragmen::{Module, Call, Storage, Event<T>, Config<T>},
+        VestedRewards: vested_rewards::{Module, Call, Storage, Event<T>},
     }
 }
 

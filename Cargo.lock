@@ -2427,6 +2427,7 @@ dependencies = [
  "technical",
  "trading-pair",
  "trading-pair-runtime-api",
+ "vested-rewards",
  "xor-fee",
 ]
 
@@ -4029,6 +4030,7 @@ dependencies = [
  "sp-std",
  "technical",
  "trading-pair",
+ "vested-rewards",
 ]
 
 [[package]]
