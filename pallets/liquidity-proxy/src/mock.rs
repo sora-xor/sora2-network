@@ -119,6 +119,7 @@ construct_runtime! {
         Permissions: permissions::{Module, Call, Config<T>, Storage, Event<T>},
         DexApi: dex_api::{Module, Call, Config, Storage, Event<T>},
         TradingPair: trading_pair::{Module, Call, Storage, Event<T>},
+        VestedRewards: vested_rewards::{Module, Call, Storage, Event<T>},
     }
 }
 
@@ -260,6 +261,11 @@ impl dex_api::Config for Runtime {
 impl trading_pair::Config for Runtime {
     type Event = Event;
     type EnsureDEXManager = dex_manager::Module<Runtime>;
+    type WeightInfo = ();
+}
+
+impl vested_rewards::Config for Runtime {
+    type Event = Event;
     type WeightInfo = ();
 }
 

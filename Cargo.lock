@@ -4063,6 +4063,7 @@ dependencies = [
  "sp-std",
  "technical",
  "trading-pair",
+ "vested-rewards",
 ]
 
 [[package]]
