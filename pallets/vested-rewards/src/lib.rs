@@ -49,6 +49,9 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
+pub const TECH_ACCOUNT_PREFIX: &[u8] = b"vested-rewards";
+pub const TECH_ACCOUNT_MARKET_MAKERS: &[u8] = b"market-makers";
+
 #[derive(Encode, Decode, Eq, PartialEq, Clone, PartialOrd, Ord, Debug, Default)]
 pub struct RewardInfo {
     limit: Balance,
