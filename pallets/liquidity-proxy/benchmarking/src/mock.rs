@@ -112,6 +112,7 @@ construct_runtime! {
         PoolXyk: pool_xyk::{Module, Call, Storage, Event<T>},
         MBCPool: multicollateral_bonding_curve_pool::{Module, Call, Storage, Event<T>},
         PswapDistribution: pswap_distribution::{Module, Call, Config<T>, Storage, Event<T>},
+        VestedRewards: vested_rewards::{Module, Call, Storage, Event<T>},
     }
 }
 
@@ -266,6 +267,11 @@ impl pool_xyk::Config for Runtime {
     type WeightInfo = ();
 }
 
+impl vested_rewards::Config for Runtime {
+    type Event = Event;
+    type WeightInfo = ();
+}
+
 fn bonding_curve_distribution_accounts() -> DistributionAccounts<
     DistributionAccountData<
         DistributionAccount<
@@ -361,6 +367,20 @@ parameter_types! {
     };
     pub GetMbcRewardsAccountId: AccountId = {
         let tech_account_id = GetMbcRewardsTechAccountId::get();
+        let account_id =
+            technical::Module::<Runtime>::tech_account_id_to_account_id(&tech_account_id)
+                .expect("Failed to get ordinary account id for technical account id.");
+        account_id
+    };
+    pub GetMbcFreeReservesTechAccountId: TechAccountId = {
+        let tech_account_id = TechAccountId::from_generic_pair(
+            multicollateral_bonding_curve_pool::TECH_ACCOUNT_PREFIX.to_vec(),
+            multicollateral_bonding_curve_pool::TECH_ACCOUNT_FREE_RESERVES.to_vec(),
+        );
+        tech_account_id
+    };
+    pub GetMbcFreeReservesAccountId: AccountId = {
+        let tech_account_id = GetMbcFreeReservesTechAccountId::get();
         let account_id =
             technical::Module::<Runtime>::tech_account_id_to_account_id(&tech_account_id)
                 .expect("Failed to get ordinary account id for technical account id.");
@@ -583,6 +603,7 @@ impl ExtBuilder {
             reference_asset_id: USDT.into(),
             incentives_account_id: GetMbcRewardsAccountId::get(),
             initial_collateral_assets: Default::default(),
+            free_reserves_account_id: GetMbcFreeReservesAccountId::get(),
         }
         .assimilate_storage(&mut t)
         .unwrap();

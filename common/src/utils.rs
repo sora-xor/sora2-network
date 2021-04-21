@@ -39,6 +39,7 @@ use sp_std::vec::Vec;
 
 use crate::prelude::{FilterMode, Fixed, FixedInner, FixedWrapper, LiquiditySourceId};
 use crate::{balance, fixed_wrapper};
+use rustc_hex::FromHex;
 
 /// Basis points range (0..10000) corresponds to 0.01%..100.00%.
 const BASIS_POINTS_RANGE: u16 = 10000;
@@ -111,12 +112,11 @@ pub fn linspace(a: Fixed, b: Fixed, n: usize, endpoints: IntervalEndpoints) -> V
 fn linspace_inner(a: Fixed, b: Fixed, n: usize) -> Vec<Fixed> {
     let a: FixedWrapper = a.into();
     let b: FixedWrapper = b.into();
-    let width = FixedWrapper::from(n as u128 * balance!(1)) + fixed_wrapper!(1);
+    let width = FixedWrapper::from(balance!(n)) + fixed_wrapper!(1);
     (1..=n)
         .map(|x| -> Fixed {
             let x: FixedWrapper = a.clone()
-                + (b.clone() - a.clone())
-                    / (width.clone() / FixedWrapper::from(x as u128 * balance!(1)));
+                + (b.clone() - a.clone()) / (width.clone() / FixedWrapper::from(balance!(x)));
             x.get().unwrap()
         })
         .collect()
@@ -503,4 +503,8 @@ mod tests {
             ]
         );
     }
+}
+
+pub fn parse_hex_string(s: &str) -> Option<Vec<u8>> {
+    s.strip_prefix("0x").and_then(|x| x.from_hex().ok())
 }

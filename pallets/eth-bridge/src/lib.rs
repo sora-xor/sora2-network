@@ -77,8 +77,10 @@ use crate::contract::{
 };
 #[cfg(test)]
 use crate::mock::Mock;
+use crate::offchain::SignedTransactionData;
 use crate::types::{
-    BlockNumber, Bytes, CallRequest, FilterBuilder, Log, Transaction, TransactionReceipt,
+    BlockNumber, Bytes, CallRequest, FilterBuilder, Log, SubstrateBlockLimited, Transaction,
+    TransactionReceipt,
 };
 use alloc::string::String;
 use codec::{Decode, Encode, FullCodec};
@@ -102,7 +104,9 @@ use frame_support::weights::{Pays, PostDispatchInfo, Weight};
 use frame_support::{
     debug, ensure, fail, sp_io, transactional, IterableStorageDoubleMap, Parameter, RuntimeDebug,
 };
-use frame_system::offchain::{AppCrypto, CreateSignedTransaction, SendSignedTransaction, Signer};
+use frame_system::offchain::{
+    Account, AppCrypto, CreateSignedTransaction, SendSignedTransaction, Signer,
+};
 use frame_system::pallet_prelude::OriginFor;
 use frame_system::{ensure_root, ensure_signed};
 use hex_literal::hex;
@@ -159,6 +163,7 @@ mod benchmarking;
 mod contract;
 #[cfg(test)]
 mod mock;
+pub mod offchain;
 pub mod requests;
 #[cfg(test)]
 mod tests;
@@ -167,6 +172,8 @@ pub mod types;
 /// Substrate node RPC URL.
 const SUB_NODE_URL: &str = "http://127.0.0.1:9954";
 const HTTP_REQUEST_TIMEOUT_SECS: u64 = 10;
+/// Substrate maximum amount of blocks for which an extrinsic is expecting to be finalized.
+const SUBSTRATE_MAX_BLOCK_NUM_EXPECTING_UNTIL_FINALIZATION: u32 = 10;
 
 pub const TECH_ACCOUNT_PREFIX: &[u8] = b"bridge";
 pub const TECH_ACCOUNT_MAIN: &[u8] = b"main";
@@ -180,6 +187,7 @@ pub const STORAGE_SUB_NODE_URL_KEY: &[u8] = b"eth-bridge-ocw::sub-node-url";
 pub const STORAGE_PEER_SECRET_KEY: &[u8] = b"eth-bridge-ocw::secret-key";
 pub const STORAGE_ETH_NODE_PARAMS: &str = "eth-bridge-ocw::node-params";
 pub const STORAGE_NETWORK_IDS_KEY: &[u8] = b"eth-bridge-ocw::network-ids";
+pub const STORAGE_PENDING_TRANSACTIONS_KEY: &[u8] = b"eth-bridge-ocw::pending-transactions";
 
 /// Contract's `Deposit(bytes32,uint256,address,bytes32)` event topic.
 pub const DEPOSIT_TOPIC: H256 = H256(hex!(
@@ -1181,7 +1189,9 @@ impl Default for BridgeStatus {
 pub mod pallet {
     use super::*;
     use crate::AssetConfig;
+    use codec::Codec;
     use frame_support::pallet_prelude::*;
+    use frame_support::traits::GetCallMetadata;
     use frame_support::weights::PostDispatchInfo;
     use frame_system::pallet_prelude::*;
     use frame_system::RawOrigin;
@@ -1200,7 +1210,11 @@ pub mod pallet {
         /// The identifier type for an offchain worker.
         type PeerId: AppCrypto<Self::Public, Self::Signature>;
         /// The overarching dispatch call type.
-        type Call: From<Call<Self>> + Encode;
+        type Call: From<Call<Self>>
+            + From<bridge_multisig::Call<Self>>
+            + Codec
+            + Clone
+            + GetCallMetadata;
         /// Sidechain network ID.
         type NetworkId: Parameter
             + Member
@@ -1222,7 +1236,10 @@ pub mod pallet {
     pub struct Pallet<T>(PhantomData<T>);
 
     #[pallet::hooks]
-    impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
+    impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T>
+    where
+        T: CreateSignedTransaction<<T as Config>::Call>,
+    {
         /// Main off-chain worker procedure.
         ///
         /// Note: only one worker is expected to be used.
@@ -1287,7 +1304,7 @@ pub mod pallet {
             debug::debug!("called add_asset");
             let from = ensure_signed(origin)?;
             let nonce = frame_system::Module::<T>::account_nonce(&from);
-            let timepoint = bridge_multisig::Module::<T>::timepoint();
+            let timepoint = bridge_multisig::Module::<T>::thischain_timepoint();
             Self::add_request(&OffchainRequest::outgoing(OutgoingRequest::AddAsset(
                 OutgoingAddAsset {
                     author: from.clone(),
@@ -1323,7 +1340,7 @@ pub mod pallet {
             ensure_root(origin)?;
             let from = Self::authority_account();
             let nonce = frame_system::Module::<T>::account_nonce(&from);
-            let timepoint = bridge_multisig::Module::<T>::timepoint();
+            let timepoint = bridge_multisig::Module::<T>::thischain_timepoint();
             Self::add_request(&OffchainRequest::outgoing(OutgoingRequest::AddToken(
                 OutgoingAddToken {
                     author: from.clone(),
@@ -1366,7 +1383,7 @@ pub mod pallet {
             debug::debug!("called transfer_to_sidechain");
             let from = ensure_signed(origin)?;
             let nonce = frame_system::Module::<T>::account_nonce(&from);
-            let timepoint = bridge_multisig::Module::<T>::timepoint();
+            let timepoint = bridge_multisig::Module::<T>::thischain_timepoint();
             Self::add_request(&OffchainRequest::outgoing(OutgoingRequest::Transfer(
                 OutgoingTransfer {
                     from: from.clone(),
@@ -1398,7 +1415,7 @@ pub mod pallet {
         ) -> DispatchResultWithPostInfo {
             debug::debug!("called request_from_sidechain");
             let from = ensure_signed(origin)?;
-            let timepoint = bridge_multisig::Module::<T>::timepoint();
+            let timepoint = bridge_multisig::Module::<T>::thischain_timepoint();
             match kind {
                 IncomingRequestKind::Transaction(kind) => {
                     Self::add_request(&OffchainRequest::LoadIncoming(
@@ -1424,7 +1441,7 @@ pub mod pallet {
                     if kind == IncomingMetaRequestKind::CancelOutgoingRequest {
                         fail!(Error::<T>::Unavailable);
                     }
-                    let timepoint = bridge_multisig::Module::<T>::timepoint();
+                    let timepoint = bridge_multisig::Module::<T>::thischain_timepoint();
                     Self::add_request(&OffchainRequest::load_incoming_meta(
                         LoadIncomingMetaRequest::new(
                             from,
@@ -1481,7 +1498,7 @@ pub mod pallet {
             ensure_root(origin)?;
             let from = Self::authority_account();
             let nonce = frame_system::Module::<T>::account_nonce(&from);
-            let timepoint = bridge_multisig::Module::<T>::timepoint();
+            let timepoint = bridge_multisig::Module::<T>::thischain_timepoint();
             Self::add_request(&OffchainRequest::outgoing(OutgoingRequest::AddPeer(
                 OutgoingAddPeer {
                     author: from.clone(),
@@ -1527,7 +1544,7 @@ pub mod pallet {
             let from = Self::authority_account();
             let peer_address = Self::peer_address(network_id, &account_id);
             let nonce = frame_system::Module::<T>::account_nonce(&from);
-            let timepoint = bridge_multisig::Module::<T>::timepoint();
+            let timepoint = bridge_multisig::Module::<T>::thischain_timepoint();
             Self::add_request(&OffchainRequest::outgoing(OutgoingRequest::RemovePeer(
                 OutgoingRemovePeer {
                     author: from.clone(),
@@ -1572,7 +1589,7 @@ pub mod pallet {
             ensure_root(origin)?;
             let from = Self::authority_account();
             let nonce = frame_system::Module::<T>::account_nonce(&from);
-            let timepoint = bridge_multisig::Module::<T>::timepoint();
+            let timepoint = bridge_multisig::Module::<T>::thischain_timepoint();
             Self::add_request(&OffchainRequest::outgoing(
                 OutgoingRequest::PrepareForMigration(OutgoingPrepareForMigration {
                     author: from.clone(),
@@ -1605,7 +1622,7 @@ pub mod pallet {
             ensure_root(origin)?;
             let from = Self::authority_account();
             let nonce = frame_system::Module::<T>::account_nonce(&from);
-            let timepoint = bridge_multisig::Module::<T>::timepoint();
+            let timepoint = bridge_multisig::Module::<T>::thischain_timepoint();
             Self::add_request(&OffchainRequest::outgoing(OutgoingRequest::Migrate(
                 OutgoingMigrate {
                     author: from.clone(),
@@ -1977,7 +1994,6 @@ pub mod pallet {
             match self {
                 Self::HttpFetchingError
                 | Self::NoLocalAccountForSigning
-                | Self::FailedToSendSignedTransaction
                 | Self::FailedToSignMessage
                 | Self::JsonDeserializationError => true,
                 _ => false,
@@ -2671,17 +2687,60 @@ impl<T: Config> Pallet<T> {
         Self::send_finalize_incoming_request(hash, request.timepoint(), network_id)
     }
 
-    /// Queries the current finalized height of the local node with `chain_getFinalizedHead`
-    /// RPC call.
-    fn load_substrate_finalized_height() -> Result<T::BlockNumber, DispatchError> {
+    /// Removes all extrinsics presented in the `block` from pending transactions storage. If some
+    /// extrinsic weren't sent or finalized for a long time
+    /// (`SUBSTRATE_MAX_BLOCK_NUM_EXPECTING_UNTIL_FINALIZATION`), it's re-sent.
+    fn handle_substrate_finalized_block(
+        block: SubstrateBlockLimited,
+    ) -> Result<T::BlockNumber, Error<T>>
+    where
+        T: CreateSignedTransaction<<T as Config>::Call>,
+    {
+        let finalized_height = <T::BlockNumber as From<u32>>::from(block.header.number.as_u32());
+        let s_pending_txs = StorageValueRef::persistent(STORAGE_PENDING_TRANSACTIONS_KEY);
+        if let Some(mut txs) = s_pending_txs
+            .get::<BTreeMap<H256, SignedTransactionData<T>>>()
+            .flatten()
+        {
+            for ext in block.extrinsics {
+                let vec = ext.encode();
+                let hash = H256(blake2_256(&vec));
+                // Transaction has been finalized, remove it from pending txs.
+                txs.remove(&hash);
+            }
+            let signer = Self::get_signer()?;
+            // Re-send all transactions that weren't sent or finalized.
+            for tx in txs.values_mut() {
+                let should_resend = tx
+                    .submitted_at
+                    .map(|submitted_height| {
+                        finalized_height
+                            > submitted_height
+                                + SUBSTRATE_MAX_BLOCK_NUM_EXPECTING_UNTIL_FINALIZATION.into()
+                    })
+                    .unwrap_or(true);
+                if should_resend {
+                    tx.resend(&signer);
+                }
+            }
+            s_pending_txs.set(&txs);
+        }
+        Ok(finalized_height)
+    }
+
+    /// Queries the current finalized block of the local node with `chain_getFinalizedHead` and
+    /// `chain_getBlock` RPC calls.
+    fn load_substrate_finalized_block() -> Result<SubstrateBlockLimited, DispatchError>
+    where
+        T: CreateSignedTransaction<<T as Config>::Call>,
+    {
         let hash =
             Self::substrate_json_rpc_request::<_, types::H256>("chain_getFinalizedHead", &())?;
-        let header = Self::substrate_json_rpc_request::<_, types::SubstrateHeaderLimited>(
-            "chain_getHeader",
+        let block = Self::substrate_json_rpc_request::<_, types::SubstrateSignedBlockLimited>(
+            "chain_getBlock",
             &[hash],
         )?;
-        let number = <T::BlockNumber as From<u32>>::from(header.number.as_u32());
-        Ok(number)
+        Ok(block.block)
     }
 
     /// Queries the sidechain node for the transfer logs emitted within `from_block` and `to_block`.
@@ -2877,20 +2936,22 @@ impl<T: Config> Pallet<T> {
         network_id: T::NetworkId,
     ) -> Result<(), Error<T>> {
         let logs = Self::load_transfers_logs(network_id, from_block, to_block)?;
-        let timepoint = bridge_multisig::Pallet::<T>::timepoint();
         for log in logs {
             // We assume that all events issued by our contracts are valid and, therefore, ignore
             // the invalid ones.
             let event = match Self::parse_deposit_event(&log) {
                 Ok(v) => v,
                 Err(e) => {
-                    debug::debug!("Skipped {:?}, error: {:?}", log, e);
+                    debug::info!("Skipped {:?}, error: {:?}", log, e);
                     continue;
                 }
             };
-            debug::trace!("Got log {:?}", log);
             let at_height = log
                 .block_number
+                .ok_or(Error::<T>::EthTransactionIsPending)?
+                .as_u64();
+            let transaction_index = log
+                .transaction_index
                 .ok_or(Error::<T>::EthTransactionIsPending)?
                 .as_u64();
             let tx_hash = H256(
@@ -2898,6 +2959,11 @@ impl<T: Config> Pallet<T> {
                     .ok_or(Error::<T>::EthTransactionIsPending)?
                     .0,
             );
+            let timepoint = bridge_multisig::Pallet::<T>::sidechain_timepoint(
+                at_height,
+                transaction_index as u32, // TODO: can it exceed u32?
+            );
+            debug::info!("Got log [{}], {:?}", at_height, log);
             let load_incoming_transaction_request = LoadIncomingTransactionRequest::new(
                 event.destination.clone(),
                 tx_hash,
@@ -2915,9 +2981,12 @@ impl<T: Config> Pallet<T> {
                 inc_request_result.map_err(|e| e.into()),
                 network_id,
             )?;
-            assert!(*new_to_handle_height <= at_height);
-            *new_to_handle_height = at_height + 1;
+            // Update 'handled height' value when all logs at `at_height` were processed.
+            if at_height > *new_to_handle_height {
+                *new_to_handle_height = at_height;
+            }
         }
+        // All logs in the given range were processed.
         *new_to_handle_height = to_block + 1;
         Ok(())
     }
@@ -2929,7 +2998,10 @@ impl<T: Config> Pallet<T> {
     /// Then it handles each request in the requests queue if it was submitted at least at
     /// the finalized height. The same is done with incoming requests queue. All handled requests
     /// are added to local storage to not be handled twice by the off-chain worker.
-    fn handle_network(network_id: T::NetworkId) {
+    fn handle_network(network_id: T::NetworkId)
+    where
+        T: CreateSignedTransaction<<T as Config>::Call>,
+    {
         let string = format!("eth-bridge-ocw::eth-height-{:?}", network_id);
         let s_eth_height = StorageValueRef::persistent(string.as_bytes());
         let current_eth_height = match Self::load_current_height(network_id) {
@@ -2945,13 +3017,25 @@ impl<T: Config> Pallet<T> {
         s_eth_height.set(&current_eth_height);
         let s_handled_requests = StorageValueRef::persistent(b"eth-bridge-ocw::handled-request");
 
-        let substrate_finalized_height = match Self::load_substrate_finalized_height() {
+        let substrate_finalized_block = match Self::load_substrate_finalized_block() {
             Ok(v) => v,
             Err(e) => {
                 debug::info!(
-                    "Failed to load substrate finalized block height ({:?}). Skipping off-chain procedure.",
+                    "Failed to load substrate finalized block ({:?}). Skipping off-chain procedure.",
                     e
                 );
+                return;
+            }
+        };
+        let substrate_finalized_height = match Self::handle_substrate_finalized_block(
+            substrate_finalized_block,
+        ) {
+            Ok(v) => v,
+            Err(e) => {
+                debug::info!(
+                        "Failed to handle substrate finalized block ({:?}). Skipping off-chain procedure.",
+                        e
+                    );
                 return;
             }
         };
@@ -3034,7 +3118,10 @@ impl<T: Config> Pallet<T> {
     }
 
     /// Handles registered networks.
-    fn offchain() {
+    fn offchain()
+    where
+        T: CreateSignedTransaction<<T as Config>::Call>,
+    {
         let s_networks_ids = StorageValueRef::persistent(STORAGE_NETWORK_IDS_KEY);
         let network_ids = s_networks_ids
             .get::<BTreeSet<T::NetworkId>>()
@@ -3180,30 +3267,68 @@ impl<T: Config> Pallet<T> {
         Self::json_rpc_request(&node_url, 0, method, params, &headers)
     }
 
-    /// Sends a substrate transaction signed by an off-chain worker.
-    fn send_signed_transaction<LocalCall: Clone + GetCallName>(
-        call: LocalCall,
-    ) -> Result<(), Error<T>>
-    where
-        T: CreateSignedTransaction<LocalCall>,
-    {
+    fn get_signer() -> Result<Signer<T, T::PeerId>, Error<T>> {
         let signer = Signer::<T, T::PeerId>::any_account();
         if !signer.can_sign() {
-            debug::error!("No local account available");
+            debug::error!("[Ethereum bridge] No local account available");
             fail!(<Error<T>>::NoLocalAccountForSigning);
         }
+        Ok(signer)
+    }
+
+    fn add_pending_extrinsic<LocalCall>(call: LocalCall, account: &Account<T>, added_to_pool: bool)
+    where
+        T: CreateSignedTransaction<LocalCall>,
+        LocalCall: Clone + GetCallName + Encode + Into<<T as Config>::Call>,
+    {
+        let s_signed_txs = StorageValueRef::persistent(STORAGE_PENDING_TRANSACTIONS_KEY);
+        let mut transactions = s_signed_txs
+            .get::<BTreeMap<H256, SignedTransactionData<T>>>()
+            .flatten()
+            .unwrap_or_default();
+        let submitted_at = if !added_to_pool {
+            None
+        } else {
+            Some(frame_system::Pallet::<T>::current_block_number())
+        };
+        let signed_transaction_data =
+            SignedTransactionData::from_local_call(call, account, submitted_at)
+                .expect("we've just successfully signed the same data; qed");
+        transactions.insert(
+            signed_transaction_data.extrinsic_hash,
+            signed_transaction_data,
+        );
+        s_signed_txs.set(&transactions);
+    }
+
+    /// Sends a substrate transaction signed by an off-chain worker. After a successful signing
+    /// information about the extrinsic is added to pending transactions storage, because according
+    /// to [`sp_runtime::ApplyExtrinsicResult`](https://substrate.dev/rustdocs/v3.0.0/sp_runtime/type.ApplyExtrinsicResult.html)
+    /// an extrinsic may not be imported to the block and thus should be re-sent.
+    fn send_signed_transaction<LocalCall>(call: LocalCall) -> Result<(), Error<T>>
+    where
+        T: CreateSignedTransaction<LocalCall>,
+        LocalCall: Clone + GetCallName + Encode + Into<<T as Config>::Call>,
+    {
+        let signer = Self::get_signer()?;
         debug::debug!("Sending signed transaction: {}", call.get_call_name());
         let result = signer.send_signed_transaction(|_acc| call.clone());
 
         match result {
-            Some((_acc, Ok(_))) => {}
-            Some((acc, Err(e))) => {
-                debug::error!("[{:?}] Failed to send signed transaction: {:?}", acc.id, e);
-                fail!(<Error<T>>::FailedToSendSignedTransaction);
+            Some((account, res)) => {
+                Self::add_pending_extrinsic(call, &account, res.is_ok());
+                if let Err(e) = res {
+                    debug::error!(
+                        "[{:?}] Failed to send signed transaction: {:?}",
+                        account.id,
+                        e
+                    );
+                    fail!(<Error<T>>::FailedToSendSignedTransaction);
+                }
             }
             _ => {
                 debug::error!("Failed to send signed transaction");
-                fail!(<Error<T>>::FailedToSendSignedTransaction);
+                fail!(<Error<T>>::NoLocalAccountForSigning);
             }
         };
         Ok(())
@@ -3224,10 +3349,11 @@ impl<T: Config> Pallet<T> {
                 Box::new(<<T as Config>::Call>::from(call)),
             )
         } else {
+            let vec = <<T as Config>::Call>::from(call).encode();
             bridge_multisig::Call::as_multi(
                 bridge_account,
                 Some(timepoint),
-                <<T as Config>::Call>::from(call).encode(),
+                vec,
                 false,
                 OFFCHAIN_TRANSACTION_WEIGHT_LIMIT,
             )
@@ -3513,37 +3639,42 @@ impl<T: Config> Pallet<T> {
             return Err(<Error<T>>::NoLocalAccountForSigning);
         }
         let encoded_request = request.to_eth_abi(hash)?;
-
-        let result = signer.send_signed_transaction(|_acc| {
-            let secret_s = StorageValueRef::persistent(STORAGE_PEER_SECRET_KEY);
-            let sk = secp256k1::SecretKey::parse_slice(
-                &secret_s
-                    .get::<Vec<u8>>()
-                    .flatten()
-                    .expect("Off-chain worker secret key is not specified."),
-            )
-            .expect("Invalid off-chain worker secret key.");
-            // Signs `abi.encodePacked(tokenAddress, amount, to, txHash, from)`.
-            let (signature, public) = Self::sign_message(encoded_request.as_raw(), &sk);
-            Call::approve_request(
-                ecdsa::Public::from_slice(&public.serialize_compressed()),
-                hash,
-                signature,
-                request.network_id(),
-            )
-        });
+        let secret_s = StorageValueRef::persistent(STORAGE_PEER_SECRET_KEY);
+        let sk = secp256k1::SecretKey::parse_slice(
+            &secret_s
+                .get::<Vec<u8>>()
+                .flatten()
+                .expect("Off-chain worker secret key is not specified."),
+        )
+        .expect("Invalid off-chain worker secret key.");
+        // Signs `abi.encodePacked(tokenAddress, amount, to, txHash, from)`.
+        let (signature, public) = Self::sign_message(encoded_request.as_raw(), &sk);
+        let call = Call::approve_request(
+            ecdsa::Public::from_slice(&public.serialize_compressed()),
+            hash,
+            signature,
+            request.network_id(),
+        );
+        let result = signer.send_signed_transaction(|_acc| call.clone());
 
         match result {
-            Some((_acc, Ok(_))) => {
-                debug::trace!("Signed transaction sent");
-            }
-            Some((acc, Err(e))) => {
-                debug::error!("[{:?}] Failed in handle_outgoing_transfer: {:?}", acc.id, e);
-                return Err(<Error<T>>::FailedToSendSignedTransaction);
+            Some((account, res)) => {
+                Self::add_pending_extrinsic(call, &account, res.is_ok());
+                match res {
+                    Ok(_) => debug::trace!("Signed transaction sent"),
+                    Err(e) => {
+                        debug::error!(
+                            "[{:?}] Failed in handle_outgoing_transfer: {:?}",
+                            account.id,
+                            e
+                        );
+                        return Err(<Error<T>>::FailedToSendSignedTransaction);
+                    }
+                }
             }
             _ => {
                 debug::error!("Failed in handle_outgoing_transfer");
-                return Err(<Error<T>>::FailedToSendSignedTransaction);
+                return Err(<Error<T>>::NoLocalAccountForSigning);
             }
         };
         Ok(())

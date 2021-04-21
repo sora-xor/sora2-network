@@ -24,6 +24,7 @@ sp-std = { version = "3", default-features = false }
 common = { path = "../../common", default-features = false }
 assets = { path = "../assets", default-features = false }
 trading-pair = { path = "../trading-pair", default-features = false }
+vested-rewards = { path = "../vested-rewards", default-features = false }
 
 [dev-dependencies]
 serde = { version = "1.0.101", default-features = false, features = ["derive"] }
@@ -50,4 +51,5 @@ std = [
     'tokens/std',
     'traits/std',
     'trading-pair/std',
+    'vested-rewards/std',
 ]

@@ -51,11 +51,10 @@ pswap-distribution-runtime-api = { path = "../pallets/pswap-distribution/runtime
 liquidity-proxy-benchmarking = { path = "../pallets/liquidity-proxy/benchmarking", default-features = false, optional = true }
 pool-xyk-benchmarking = { path = "../pallets/pool-xyk/benchmarking", default-features = false, optional = true }
 dex-api-benchmarking = { path = "../pallets/dex-api/benchmarking", default-features = false, optional = true }
+vested-rewards = { path = "../pallets/vested-rewards", default-features = false}
 
 # Substrate dependencies
 frame-benchmarking = { default-features = false, optional = true, version = '3' }
-pallet-collective = { default-features = false, version = '3' }
-pallet-democracy = { default-features = false, version = '3' }
 frame-executive = { default-features = false, version = '3' }
 frame-support = { default-features = false, version = '3' }
 frame-system = { default-features = false, version = '3' }
@@ -63,9 +62,13 @@ frame-system-benchmarking = { default-features = false, optional = true, version
 frame-system-rpc-runtime-api = { default-features = false, version = '3' }
 pallet-aura = { default-features = false, version = '3' }
 pallet-balances = { default-features = false, version = '3' }
+pallet-collective = { default-features = false, version = '3' }
+pallet-democracy = { default-features = false, version = '3' }
+pallet-elections-phragmen = { default-features = false, version = '3' }
 pallet-grandpa = { default-features = false, version = '3' }
 pallet-babe = { default-features = false, version = '3' }
 pallet-im-online = { default-features = false, version = '3' }
+pallet-membership = { default-features = false, version = '3' }
 pallet-multisig = { version = "3", default-features = false }
 pallet-offences = { default-features = false, version = '3' }
 pallet-randomness-collective-flip = { default-features = false, version = '3' }
@@ -115,8 +118,10 @@ std = [
     'pallet-balances/std',
     'pallet-collective/std',
     'pallet-democracy/std',
+    'pallet-elections-phragmen/std',
     'pallet-grandpa/std',
     'pallet-im-online/std',
+    'pallet-membership/std',
     'pallet-offences/std',
     'pallet-randomness-collective-flip/std',
     'pallet-scheduler/std',
@@ -172,6 +177,7 @@ std = [
     'liquidity-proxy-runtime-api/std',
     'pswap-distribution/std',
     'pswap-distribution-runtime-api/std',
+    'vested-rewards/std',
 ]
 
 private-net = ["faucet"]

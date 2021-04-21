@@ -44,7 +44,7 @@ type TransactionByteFee = <Runtime as pallet_transaction_payment::Config>::Trans
 fn referrer_gets_bonus_from_tx_fee() {
     ExtBuilder::build().execute_with(|| {
         let call: &<Runtime as frame_system::Config>::Call = &Call::Balances(
-            pallet_balances::Call::transfer(TO_ACCOUNT, TRANSFER_AMOUNT as u128 * balance!(1)),
+            pallet_balances::Call::transfer(TO_ACCOUNT, balance!(TRANSFER_AMOUNT)),
         );
 
         let len = 10;
@@ -74,11 +74,10 @@ fn referrer_gets_bonus_from_tx_fee() {
             Balances::free_balance(FROM_ACCOUNT),
             balance_after_reserving_fee
         );
-        let weights_sum: FixedWrapper =
-            FixedWrapper::from(ReferrerWeight::get() as u128 * balance!(1))
-                + FixedWrapper::from(XorBurnedWeight::get() as u128 * balance!(1))
-                + FixedWrapper::from(XorIntoValBurnedWeight::get() as u128 * balance!(1));
-        let referrer_weight = FixedWrapper::from(ReferrerWeight::get() as u128 * balance!(1));
+        let weights_sum: FixedWrapper = FixedWrapper::from(balance!(ReferrerWeight::get()))
+            + FixedWrapper::from(balance!(XorBurnedWeight::get()))
+            + FixedWrapper::from(balance!(XorIntoValBurnedWeight::get()));
+        let referrer_weight = FixedWrapper::from(balance!(ReferrerWeight::get()));
         let initial_balance = FixedWrapper::from(initial_balance());
         let expected_referrer_balance =
             FixedWrapper::from(weight_fee) * referrer_weight / weights_sum + initial_balance;
@@ -99,7 +98,7 @@ fn notify_val_burned_works() {
             0_u128.into()
         );
         let call: &<Runtime as frame_system::Config>::Call = &Call::Balances(
-            pallet_balances::Call::transfer(TO_ACCOUNT, TRANSFER_AMOUNT as u128 * balance!(1)),
+            pallet_balances::Call::transfer(TO_ACCOUNT, balance!(TRANSFER_AMOUNT)),
         );
 
         let len = 10;
@@ -202,7 +201,7 @@ fn custom_fees_work() {
 
         // An extrinsic without manual fee adjustment
         let call: &<Runtime as frame_system::Config>::Call = &Call::Balances(
-            pallet_balances::Call::transfer(TO_ACCOUNT, TRANSFER_AMOUNT as u128 * balance!(1)),
+            pallet_balances::Call::transfer(TO_ACCOUNT, balance!(TRANSFER_AMOUNT)),
         );
 
         let pre = ChargeTransactionPayment::<Runtime>::from(0u128.into())
@@ -279,7 +278,7 @@ fn actual_weight_is_ignored_works() {
         let weight_fee = MOCK_WEIGHT as u128;
 
         let call: &<Runtime as frame_system::Config>::Call = &Call::Balances(
-            pallet_balances::Call::transfer(TO_ACCOUNT, TRANSFER_AMOUNT as u128 * balance!(1)),
+            pallet_balances::Call::transfer(TO_ACCOUNT, balance!(TRANSFER_AMOUNT)),
         );
 
         let pre = ChargeTransactionPayment::<Runtime>::from(0u128.into())
