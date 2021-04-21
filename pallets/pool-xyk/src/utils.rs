@@ -28,15 +28,14 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#![cfg_attr(not(feature = "std"), no_std)]
-
+use assets::{AssetRecord, AssetRecordArg};
 use core::convert::TryInto;
 use frame_support::dispatch::{DispatchError, DispatchResult};
 use frame_support::ensure;
 use frame_support::traits::Get;
 
 use common::prelude::{Balance, SwapAmount};
-use common::{ToFeeAccount, ToTechUnitFromDEXAndTradingPair};
+use common::{AssetIdExtraAssetRecordArg, ToFeeAccount, ToTechUnitFromDEXAndTradingPair};
 
 use crate::aliases::{AssetIdOf, DEXManager, ExtraAccountIdOf, TechAccountIdOf, TechAssetIdOf};
 use crate::bounds::*;
@@ -219,5 +218,35 @@ impl<T: Config> Module<T> {
             destination_amount_b,
             tech_acc_id,
         ))
+    }
+
+    pub fn get_pool_account(token_id: &T::AssetId) -> Result<T::AccountId, DispatchError> {
+        let tuple =
+            assets::Module::<T>::tuple_from_asset_id(token_id).ok_or(Error::<T>::PoolIsInvalid)?;
+        match tuple {
+            AssetRecord::Arity3(
+                AssetRecordArg::GenericU128(tag),
+                AssetRecordArg::Extra(lst_extra),
+                AssetRecordArg::Extra(acc_extra),
+            ) => {
+                ensure!(
+                    tag == common::hash_to_u128_pair(b"Marking asset").0,
+                    Error::<T>::PoolIsInvalid
+                );
+                ensure!(
+                    lst_extra
+                        == AssetIdExtraAssetRecordArg::LstId(
+                            common::LiquiditySourceType::XYKPool.into()
+                        )
+                        .into(),
+                    Error::<T>::PoolIsInvalid
+                );
+                match acc_extra.into() {
+                    AssetIdExtraAssetRecordArg::AccountId(extra_acc) => Ok(extra_acc.into()),
+                    _ => Err(Error::<T>::PoolIsInvalid.into()),
+                }
+            }
+            _ => Err(Error::<T>::PoolIsInvalid.into()),
+        }
     }
 }

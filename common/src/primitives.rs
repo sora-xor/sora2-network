@@ -109,6 +109,12 @@ pub struct TradingPair<AssetId> {
     pub target_asset_id: AssetId,
 }
 
+impl<AssetId: Eq> TradingPair<AssetId> {
+    pub fn consists_of(&self, asset_id: &AssetId) -> bool {
+        &self.base_asset_id == asset_id || &self.target_asset_id == asset_id
+    }
+}
+
 /// Asset identifier.
 #[derive(Encode, Decode, Eq, PartialEq, Copy, Clone, PartialOrd, Ord, RuntimeDebug)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize, Hash))]

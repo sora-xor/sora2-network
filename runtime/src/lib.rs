@@ -49,8 +49,6 @@ include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
 use core::time::Duration;
 use currencies::BasicCurrencyAdapter;
 use extensions::ChargeTransactionPayment;
-pub use farming::domain::{FarmInfo, FarmerInfo};
-pub use farming::FarmId;
 use frame_system::offchain::{Account, SigningTypes};
 use frame_system::{EnsureOneOf, EnsureRoot};
 use hex_literal::hex;
@@ -209,6 +207,13 @@ pub fn native_version() -> NativeVersion {
 
 /// Sora network needs to have minimal requirement for staking equal to 5000 XOR.
 pub const MIN_STAKE: Balance = balance!(5000);
+pub const FARMING_PSWAP_PER_DAY: Balance = balance!(2500000);
+// Every 2 hours
+pub const FARMING_REFRESH_FREQUENCY: BlockNumber = 1200;
+// Defined in the article
+pub const FARMING_VESTING_COEFF: u32 = 3;
+// Every 8 hours
+pub const FARMING_VESTING_FREQUENCY: BlockNumber = 4800;
 
 parameter_types! {
     pub const BlockHashCount: BlockNumber = 250;
@@ -275,6 +280,7 @@ parameter_types! {
     pub const ElectionsDesiredMembers: u32 = 13;
     pub const ElectionsDesiredRunnersUp: u32 = 20;
     pub const ElectionsModuleId: LockIdentifier = *b"phrelect";
+    pub FarmingRewardDoublingAssets: Vec<AssetId> = vec![GetPswapAssetId::get(), GetValAssetId::get()];
 }
 
 impl frame_system::Config for Runtime {
@@ -986,6 +992,17 @@ parameter_types! {
         technical::Module::<Runtime>::tech_account_id_to_account_id(&tech_account_id)
             .expect("Failed to get ordinary account id for technical account id.")
     };
+    pub GetFarmingTechAccountId: TechAccountId = {
+        TechAccountId::from_generic_pair(
+            farming::TECH_ACCOUNT_PREFIX.to_vec(),
+            farming::TECH_ACCOUNT_MAIN.to_vec(),
+        )
+    };
+    pub GetFarmingAccountId: AccountId = {
+        let tech_account_id = GetFarmingTechAccountId::get();
+        technical::Module::<Runtime>::tech_account_id_to_account_id(&tech_account_id)
+            .expect("Failed to get ordinary account id for technical account id")
+    };
 }
 
 #[cfg(feature = "reduced-pswap-reward-periods")]
@@ -1006,6 +1023,16 @@ impl OnPswapBurned for RuntimeOnPswapBurnedAggregator {
     fn on_pswap_burned(distribution: pswap_distribution::PswapRemintInfo) {
         MulticollateralBondingCurvePool::on_pswap_burned(distribution);
     }
+}
+
+impl farming::Config for Runtime {
+    const PSWAP_PER_DAY: Balance = FARMING_PSWAP_PER_DAY;
+    const REFRESH_FREQUENCY: BlockNumber = FARMING_REFRESH_FREQUENCY;
+    const VESTING_COEFF: u32 = FARMING_VESTING_COEFF;
+    const VESTING_FREQUENCY: BlockNumber = FARMING_VESTING_FREQUENCY;
+    const BLOCKS_PER_DAY: BlockNumber = 1 * DAYS;
+    type RewardDoublingAssets: = FarmingRewardDoublingAssets;
+    type WeightInfo = ();
 }
 
 impl pswap_distribution::Config for Runtime {
@@ -1518,20 +1545,6 @@ impl_runtime_apis! {
             Some(assets_runtime_api::AssetInfo::<AssetId, AssetSymbol, AssetName, BalancePrecision> {
                 asset_id, symbol, name, precision, is_mintable,
             })
-        }
-    }
-
-    impl farming_runtime_api::FarmingRuntimeApi<Block, AccountId, FarmId, FarmInfo<AccountId, AssetId, BlockNumber>, FarmerInfo<AccountId, TechAccountId, BlockNumber>> for Runtime {
-        fn get_farm_info(_who: AccountId, _name: FarmId) -> Option<FarmInfo<AccountId, AssetId, BlockNumber>> {
-            // TODO: re-enable when needed
-            // Farming::get_farm_info(who, name).ok()?
-            None
-        }
-
-        fn get_farmer_info(_who: AccountId, _name: FarmId) -> Option<FarmerInfo<AccountId, TechAccountId, BlockNumber>> {
-            // TODO: re-enable when needed
-            // Farming::get_farmer_info(who, name).ok()?
-            None
         }
     }
 

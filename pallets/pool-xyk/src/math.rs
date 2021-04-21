@@ -28,8 +28,6 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#![cfg_attr(not(feature = "std"), no_std)]
-
 use frame_support::dispatch::DispatchError;
 use frame_support::ensure;
 
@@ -219,10 +217,10 @@ impl<T: Config> Module<T> {
     }
 
     pub fn get_xor_part_from_pool_account(
-        pool_acc: T::AccountId,
+        pool_acc: &T::AccountId,
         liq_amount: Balance,
     ) -> Result<Balance, DispatchError> {
-        let tech_acc = technical::Module::<T>::lookup_tech_account_id(&pool_acc)?;
+        let tech_acc = technical::Module::<T>::lookup_tech_account_id(pool_acc)?;
         let trading_pair = match tech_acc.into() {
             common::TechAccountId::Pure(_, common::TechPurpose::LiquidityKeeper(trading_pair)) => {
                 trading_pair
@@ -232,9 +230,9 @@ impl<T: Config> Module<T> {
             }
         };
         let b_in_pool =
-            assets::Module::<T>::free_balance(&trading_pair.base_asset_id.into(), &pool_acc)?;
+            assets::Module::<T>::free_balance(&trading_pair.base_asset_id.into(), pool_acc)?;
         let t_in_pool =
-            assets::Module::<T>::free_balance(&trading_pair.target_asset_id.into(), &pool_acc)?;
+            assets::Module::<T>::free_balance(&trading_pair.target_asset_id.into(), pool_acc)?;
         let fxw_liq_in_pool =
             to_fixed_wrapper!(b_in_pool).multiply_and_sqrt(&to_fixed_wrapper!(t_in_pool));
         let fxw_piece = fxw_liq_in_pool / to_fixed_wrapper!(liq_amount);

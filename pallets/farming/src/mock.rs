@@ -31,12 +31,12 @@
 use crate::{self as farming, Config};
 use common::mock::ExistentialDeposits;
 use common::prelude::Balance;
-use common::{balance, hash, DEXInfo, DOT, XOR};
+use common::{balance, hash, DEXInfo, DOT, PSWAP, VAL, XOR};
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::GenesisBuild;
 use frame_support::weights::Weight;
 use frame_support::{construct_runtime, parameter_types};
-use frame_system;
+use frame_system::pallet_prelude::BlockNumberFor;
 use permissions::*;
 use sp_core::crypto::AccountId32;
 use sp_core::H256;
@@ -58,6 +58,12 @@ pub type AssetId = common::AssetId32<common::PredefinedAssetId>;
 pub type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
+
+pub const PSWAP_PER_DAY: Balance = balance!(2500000);
+pub const REFRESH_FREQUENCY: BlockNumberFor<Runtime> = 200;
+pub const VESTING_COEFF: u32 = 3;
+pub const VESTING_FREQUENCY: BlockNumberFor<Runtime> = 400;
+pub const BLOCKS_PER_DAY: BlockNumberFor<Runtime> = 14_440;
 
 #[allow(non_snake_case)]
 pub fn ALICE() -> AccountId {
@@ -103,6 +109,7 @@ parameter_types! {
     pub const GetBurnUpdateFrequency: BlockNumber = 14400;
     pub GetIncentiveAssetId: AssetId = common::PSWAP.into();
     pub GetParliamentAccountId: AccountId = AccountId32::from([8; 32]);
+    pub RewardDoublingAssets: Vec<AssetId> = vec![VAL.into(), PSWAP.into()];
 }
 
 construct_runtime! {
@@ -122,7 +129,7 @@ construct_runtime! {
         Technical: technical::{Module, Call, Config<T>, Storage, Event<T>},
         PoolXyk: pool_xyk::{Module, Call, Storage, Event<T>},
         PswapDistribution: pswap_distribution::{Module, Call, Config<T>, Storage, Event<T>},
-        Farming: farming::{Module, Call, Config<T>, Storage, Event<T>},
+        Farming: farming::{Module, Call, Storage},
     }
 }
 
@@ -247,7 +254,12 @@ impl pswap_distribution::Config for Runtime {
 }
 
 impl Config for Runtime {
-    type Event = Event;
+    const PSWAP_PER_DAY: Balance = PSWAP_PER_DAY;
+    const REFRESH_FREQUENCY: BlockNumberFor<Self> = REFRESH_FREQUENCY;
+    const VESTING_COEFF: u32 = VESTING_COEFF;
+    const VESTING_FREQUENCY: BlockNumberFor<Self> = VESTING_FREQUENCY;
+    const BLOCKS_PER_DAY: BlockNumberFor<Self> = BLOCKS_PER_DAY;
+    type RewardDoublingAssets = RewardDoublingAssets;
     type WeightInfo = ();
 }
 

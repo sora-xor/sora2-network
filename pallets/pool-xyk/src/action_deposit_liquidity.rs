@@ -28,8 +28,6 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#![cfg_attr(not(feature = "std"), no_std)]
-
 use frame_support::dispatch::DispatchResult;
 use frame_support::weights::Weight;
 use frame_support::{dispatch, ensure};
@@ -246,7 +244,11 @@ impl<T: Config> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, 
                             Error::<T>::RangeValuesIsInvalid
                         );
 
-                        let total_iss = assets::Module::<T>::total_issuance(&repr_k_asset_id)?;
+                        // Adding min liquidity to pretend that initial provider has locked amount,
+                        // which actually is not reflected in total supply.
+                        let total_iss = assets::Module::<T>::total_issuance(&repr_k_asset_id)?
+                            .checked_add(MIN_LIQUIDITY)
+                            .ok_or(Error::<T>::PoolTokenSupplyOverflow)?;
 
                         let (calc_xdes, calc_ydes, calc_marker) =
                             Module::<T>::calc_deposit_liquidity_1(

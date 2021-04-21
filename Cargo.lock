@@ -1889,43 +1889,13 @@ dependencies = [
  "pool-xyk",
  "pswap-distribution",
  "serde",
+ "sp-arithmetic",
  "sp-core",
  "sp-io",
  "sp-runtime",
  "sp-std",
  "technical",
  "trading-pair",
-]
-
-[[package]]
-name = "farming-rpc"
-version = "0.1.0"
-dependencies = [
- "common",
- "farming",
- "farming-runtime-api",
- "jsonrpc-core 15.1.0",
- "jsonrpc-core-client",
- "jsonrpc-derive",
- "parity-scale-codec",
- "serde",
- "sp-api",
- "sp-blockchain",
- "sp-core",
- "sp-rpc",
- "sp-runtime",
- "sp-std",
-]
-
-[[package]]
-name = "farming-runtime-api"
-version = "0.1.0"
-dependencies = [
- "parity-scale-codec",
- "serde",
- "sp-api",
- "sp-runtime",
- "sp-std",
 ]
 
 [[package]]
@@ -2268,7 +2238,6 @@ dependencies = [
  "dex-manager-rpc",
  "eth-bridge-rpc",
  "exit-future",
- "farming-rpc",
  "faucet",
  "frame-benchmarking",
  "frame-benchmarking-cli",
@@ -2352,7 +2321,6 @@ dependencies = [
  "eth-bridge",
  "eth-bridge-runtime-api",
  "farming",
- "farming-runtime-api",
  "faucet",
  "frame-benchmarking",
  "frame-executive",

@@ -44,7 +44,6 @@ liquidity-proxy-runtime-api = { path = "../pallets/liquidity-proxy/runtime-api",
 eth-bridge = { path = "../pallets/eth-bridge", default-features = false }
 eth-bridge-runtime-api = { path = "../pallets/eth-bridge/runtime-api", default-features = false }
 bridge-multisig = { git = "https://github.com/soramitsu/sora2-frame-pallets.git", branch = "v3.0.0", package = "pallet-multisig", default-features = false }
-farming-runtime-api = { path = "../pallets/farming/runtime-api", default-features = false}
 iroha-migration-runtime-api = { path = "../pallets/iroha-migration/runtime-api", default-features = false }
 pswap-distribution = { path = "../pallets/pswap-distribution", default-features = false }
 pswap-distribution-runtime-api = { path = "../pallets/pswap-distribution/runtime-api", default-features = false }
@@ -155,7 +154,6 @@ std = [
     'eth-bridge/std',
     'eth-bridge-runtime-api/std',
     'farming/std',
-    'farming-runtime-api/std',
     'faucet?/std',
     'iroha-migration/std',
     'iroha-migration-runtime-api/std',

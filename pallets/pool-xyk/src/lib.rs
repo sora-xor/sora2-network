@@ -42,7 +42,7 @@ use common::prelude::{Balance, EnsureDEXManager, SwapAmount, SwapOutcome};
 use common::{
     balance, hash, AssetName, AssetSymbol, EnsureTradingPairExists, FromGenericPair,
     GetPoolReserves, LiquiditySource, LiquiditySourceType, ManagementMode, RewardReason,
-    ToFeeAccount,
+    TechAccountId, TechPurpose, ToFeeAccount, TradingPair,
 };
 use orml_traits::currency::MultiCurrency;
 use permissions::{Scope, BURN, MINT};
@@ -274,6 +274,19 @@ impl<T: Config> Module<T> {
         let mut action = action.into();
         technical::Module::<T>::perform_create_swap(source, &mut action)?;
         Ok(())
+    }
+
+    pub fn get_pool_trading_pair(
+        pool_account: &T::AccountId,
+    ) -> Result<TradingPair<T::AssetId>, DispatchError> {
+        let tech_acc = technical::Module::<T>::lookup_tech_account_id(pool_account)?;
+        match tech_acc.into() {
+            TechAccountId::Pure(_, TechPurpose::LiquidityKeeper(trading_pair)) => Ok(TradingPair {
+                base_asset_id: trading_pair.base_asset_id.into(),
+                target_asset_id: trading_pair.target_asset_id.into(),
+            }),
+            _ => Err(Error::<T>::PoolIsInvalid.into()),
+        }
     }
 }
 
@@ -729,6 +742,8 @@ pub mod pallet {
         UnableToConvertAssetToTechAssetId,
         /// Unable to get XOR part from marker asset.
         UnableToGetXORPartFromMarkerAsset,
+        /// Pool token supply overflow.
+        PoolTokenSupplyOverflow,
     }
 
     /// Updated after last liquidity change operation.
