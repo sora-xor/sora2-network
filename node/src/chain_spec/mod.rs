@@ -1211,6 +1211,16 @@ pub fn main_net_coded() -> ChainSpec {
                     ),
                 ],
                 vec![
+                    hex!("4cd5a4a244bc53f6f1458757ed0af8680e8faa860deca32976bbd9a951bf6c1c").into(),
+                    hex!("54d7aa0bba9a5dbb1bb77973f344625df346f6a65840b8534ee22e93fbad767a").into(),
+                    hex!("e811eac3cf718caa98d77bb479227e8cc512e51e79d6ba1494dd089093f5707f").into(),
+                    hex!("a648c659a86eeb7cf84ddcedac64f33de6966b8853dd636ba693fce100bd8858").into(),
+                    hex!("60a17ce8550db4e1358db54bc3791026a285ab88e9c988ad54c3dc282475fe14").into(),
+                    hex!("de06bf70964d8aff4816e3cfd576d8d8f774663906a6e40d316860a3d4c55b6c").into(),
+                    hex!("4a4371f63db17fb4f33bec3ce7c8f588e3258c3b268b450647f4870d964dca6f").into(),
+                    hex!("d8815601fc99d9afa27a09fc5e46ebcc2472edc466fbb5c6fbae7a8566e50318").into(),
+                ],
+                vec![
                     hex!("a3bcbf3044069ac13c30d662a204d8368c266e2f0e8cf603c7bfb2b7b5daae55").into(), //Prod value
                     hex!("297c03e65c2930daa7c6067a2bb853819b61ed49b70de2f3219a2eb6ec0364aa").into(), //Prod value
                 ],
@@ -1228,11 +1238,12 @@ pub fn main_net_coded() -> ChainSpec {
 #[cfg(not(feature = "private-net"))]
 fn mainnet_genesis(
     initial_authorities: Vec<(AccountId, AccountId, AuraId, BabeId, GrandpaId, ImOnlineId)>,
+    additional_validators: Vec<AccountId>,
     initial_bridge_peers: Vec<AccountId>,
     eth_bridge_params: EthBridgeParams,
 ) -> GenesisConfig {
     // Minimum stake for an active validator
-    let initial_staking = balance!(1);
+    let initial_staking = balance!(0.2);
     // XOR amount which already exists on Ethereum
     let initial_eth_bridge_xor_amount = balance!(350000);
     // VAL amount which already exists on SORA_1 and Ethereum. Partially can be migrated directly from SORA_1. Not yet decided finally.
@@ -1581,6 +1592,12 @@ fn mainnet_genesis(
                     .iter()
                     .cloned()
                     .map(|(_, k2, ..)| (k2, initial_staking)),
+            )
+            .chain(
+                additional_validators
+                    .iter()
+                    .cloned()
+                    .map(|account_id| (account_id, initial_staking)),
             )
             .collect(),
         }),
