@@ -30,10 +30,14 @@
 
 // Creating mock Runtime here
 
-use crate::types::{SubstrateHeaderLimited, U64};
+use crate::offchain::SignedTransactionData;
+use crate::types::{
+    SubstrateBlockLimited, SubstrateHeaderLimited, SubstrateSignedBlockLimited, U64,
+};
 use crate::{
     AssetConfig, Config, NetworkConfig, NodeParams, CONFIRMATION_INTERVAL, STORAGE_ETH_NODE_PARAMS,
-    STORAGE_NETWORK_IDS_KEY, STORAGE_PEER_SECRET_KEY, STORAGE_SUB_NODE_URL_KEY,
+    STORAGE_NETWORK_IDS_KEY, STORAGE_PEER_SECRET_KEY, STORAGE_PENDING_TRANSACTIONS_KEY,
+    STORAGE_SUB_NODE_URL_KEY,
 };
 use codec::{Codec, Decode, Encode};
 use common::mock::ExistentialDeposits;
@@ -75,6 +79,7 @@ use sp_core::offchain::OffchainStorage;
 use sp_core::H256;
 use sp_keystore::testing::KeyStore;
 use sp_keystore::{KeystoreExt, SyncCryptoStore};
+use sp_std::collections::btree_map::BTreeMap;
 use sp_std::collections::btree_set::BTreeSet;
 use sp_std::fmt::Debug;
 use sp_std::str::FromStr;
@@ -470,6 +475,7 @@ impl State {
         &mut self,
         sidechain_height: u64,
         finalized_thischain_height: BlockNumber,
+        dispatch_txs: bool,
     ) {
         // Sidechain height.
         push_json_rpc_response(U64::from(sidechain_height));
@@ -478,12 +484,17 @@ impl State {
         let sub_block_number = frame_system::Pallet::<Runtime>::block_number();
         frame_system::Pallet::<Runtime>::set_block_number(sub_block_number + 1);
         // Thischain finalized height.
-        push_json_rpc_response(SubstrateHeaderLimited {
-            parent_hash: Default::default(),
-            number: finalized_thischain_height.into(),
-            state_root: Default::default(),
-            extrinsics_root: Default::default(),
-            digest: (),
+        push_json_rpc_response(SubstrateSignedBlockLimited {
+            block: SubstrateBlockLimited {
+                header: SubstrateHeaderLimited {
+                    parent_hash: Default::default(),
+                    number: finalized_thischain_height.into(),
+                    state_root: Default::default(),
+                    extrinsics_root: Default::default(),
+                    digest: (),
+                },
+                extrinsics: vec![],
+            },
         });
         let mut responses = Vec::new();
         std::mem::swap(&mut self.responses, &mut responses);
@@ -491,13 +502,16 @@ impl State {
             push_response(resp);
         }
         EthBridge::offchain();
-        self.dispatch_offchain_transactions();
+        if dispatch_txs {
+            self.dispatch_offchain_transactions();
+        }
     }
 
-    pub fn run_next_offchain(&mut self) {
+    pub fn run_next_offchain_and_dispatch_txs(&mut self) {
         self.run_next_offchain_with_params(
             CONFIRMATION_INTERVAL,
             frame_system::Pallet::<Runtime>::block_number() + 1,
+            true,
         );
     }
 
@@ -513,6 +527,15 @@ impl State {
             // about validation etc.
             let _ = call.dispatch(Some(who).into()).unwrap();
         }
+    }
+
+    pub fn pending_txs(&self) -> BTreeMap<H256, SignedTransactionData<Runtime>> {
+        self.offchain_state
+            .read()
+            .persistent_storage
+            .get(STORAGE_PENDING_TRANSACTIONS_KEY)
+            .and_then(|x| Decode::decode(&mut &x[..]).ok())
+            .unwrap_or_default()
     }
 }
 

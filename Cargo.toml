@@ -29,6 +29,7 @@ members = [
     "pallets/eth-bridge",
     "pallets/pswap-distribution",
     "pallets/multicollateral-bonding-curve-pool",
+    "pallets/vested-rewards",
     "node/",
 ]
 resolver = "2"

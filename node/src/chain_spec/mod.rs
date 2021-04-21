@@ -596,7 +596,8 @@ fn testnet_genesis(
     let initial_staking = balance!(100);
     let initial_eth_bridge_xor_amount = balance!(350000);
     let initial_eth_bridge_val_amount = balance!(33900000);
-    let initial_pswap_tbc_rewards = balance!(25000000);
+    let initial_pswap_tbc_rewards = balance!(2500000000);
+    let initial_pswap_market_maker_rewards = balance!(400000000);
 
     let parliament_investment_fund =
         hex!("048cfcacbdebe828dffa1267d830d45135cd40238286f838f5a95432a1bbf851").into();
@@ -642,6 +643,10 @@ fn testnet_genesis(
         framenode_runtime::GetMbcPoolFreeReservesTechAccountId::get();
     let mbc_pool_free_reserves_account_id =
         framenode_runtime::GetMbcPoolFreeReservesAccountId::get();
+
+    let market_maker_rewards_tech_account_id =
+        framenode_runtime::GetMarketMakerRewardsTechAccountId::get();
+    let market_maker_rewards_account_id = framenode_runtime::GetMarketMakerRewardsAccountId::get();
 
     let liquidity_proxy_tech_account_id = framenode_runtime::GetLiquidityProxyTechAccountId::get();
     let liquidity_proxy_account_id = framenode_runtime::GetLiquidityProxyAccountId::get();
@@ -716,6 +721,10 @@ fn testnet_genesis(
             assets_and_permissions_account_id.clone(),
             assets_and_permissions_tech_account_id.clone(),
         ),
+        (
+            market_maker_rewards_account_id.clone(),
+            market_maker_rewards_tech_account_id.clone(),
+        ),
     ];
     let accounts = bonding_curve_distribution_accounts();
     for account in &accounts.accounts() {
@@ -739,6 +748,7 @@ fn testnet_genesis(
         (mbc_reserves_account_id.clone(), 0),
         (mbc_pool_rewards_account_id.clone(), 0),
         (mbc_pool_free_reserves_account_id.clone(), 0),
+        (market_maker_rewards_account_id.clone(), 0),
     ]
     .into_iter()
     .chain(
@@ -830,6 +840,11 @@ fn testnet_genesis(
             parliament_investment_fund,
             VAL,
             parliament_investment_fund_balance,
+        ),
+        (
+            market_maker_rewards_account_id.clone(),
+            PSWAP,
+            initial_pswap_market_maker_rewards,
         ),
     ];
     let faucet_config = {
@@ -1224,6 +1239,8 @@ fn mainnet_genesis(
     let initial_eth_bridge_val_amount = balance!(33900000);
     // Initial token bonding curve PSWAP rewards according to 10 bln PSWAP total supply.
     let initial_pswap_tbc_rewards = balance!(2500000000);
+    // Initial market maker PSWAP rewards.
+    let initial_pswap_market_maker_rewards = balance!(400000000);
 
     let parliament_investment_fund =
         hex!("048cfcacbdebe828dffa1267d830d45135cd40238286f838f5a95432a1bbf851").into();
@@ -1273,6 +1290,10 @@ fn mainnet_genesis(
         framenode_runtime::GetMbcPoolFreeReservesTechAccountId::get();
     let mbc_pool_free_reserves_account_id =
         framenode_runtime::GetMbcPoolFreeReservesAccountId::get();
+
+    let market_maker_rewards_tech_account_id =
+        framenode_runtime::GetMarketMakerRewardsTechAccountId::get();
+    let market_maker_rewards_account_id = framenode_runtime::GetMarketMakerRewardsAccountId::get();
 
     let liquidity_proxy_tech_account_id = framenode_runtime::GetLiquidityProxyTechAccountId::get();
     let liquidity_proxy_account_id = framenode_runtime::GetLiquidityProxyAccountId::get();
@@ -1346,6 +1367,10 @@ fn mainnet_genesis(
         (
             assets_and_permissions_account_id.clone(),
             assets_and_permissions_tech_account_id.clone(),
+        ),
+        (
+            market_maker_rewards_account_id.clone(),
+            market_maker_rewards_tech_account_id.clone(),
         ),
     ];
     let accounts = bonding_curve_distribution_accounts();
@@ -1494,7 +1519,7 @@ fn mainnet_genesis(
                     vec![permissions::CREATE_FARM],
                 ),
                 (
-                    xor_fee_account_id,
+                    xor_fee_account_id.clone(),
                     Scope::Unlimited,
                     vec![permissions::MINT, permissions::BURN],
                 ),
@@ -1504,7 +1529,7 @@ fn mainnet_genesis(
                     vec![permissions::MINT],
                 ),
                 (
-                    assets_and_permissions_account_id,
+                    assets_and_permissions_account_id.clone(),
                     Scope::Unlimited,
                     vec![
                         permissions::MINT,
@@ -1515,12 +1540,12 @@ fn mainnet_genesis(
                     ],
                 ),
                 (
-                    pswap_distribution_account_id,
+                    pswap_distribution_account_id.clone(),
                     Scope::Unlimited,
                     vec![permissions::MINT, permissions::BURN],
                 ),
                 (
-                    mbc_reserves_account_id,
+                    mbc_reserves_account_id.clone(),
                     Scope::Unlimited,
                     vec![permissions::MINT, permissions::BURN],
                 ),
@@ -1534,7 +1559,15 @@ fn mainnet_genesis(
         pallet_balances: Some(BalancesConfig {
             balances: vec![
                 (eth_bridge_account_id.clone(), initial_eth_bridge_xor_amount),
+                (assets_and_permissions_account_id.clone(), 0),
+                (xor_fee_account_id.clone(), 0),
                 (dex_root_account_id.clone(), 0),
+                (iroha_migration_account_id.clone(), 0),
+                (pswap_distribution_account_id.clone(), 0),
+                (mbc_reserves_account_id.clone(), 0),
+                (mbc_pool_rewards_account_id.clone(), 0),
+                (mbc_pool_free_reserves_account_id.clone(), 0),
+                (market_maker_rewards_account_id.clone(), 0),
             ]
             .into_iter()
             .chain(
@@ -1587,6 +1620,11 @@ fn mainnet_genesis(
                     parliament_investment_fund,
                     VAL,
                     parliament_investment_fund_balance,
+                ),
+                (
+                    market_maker_rewards_account_id.clone(),
+                    PSWAP,
+                    initial_pswap_market_maker_rewards,
                 ),
             ],
         }),

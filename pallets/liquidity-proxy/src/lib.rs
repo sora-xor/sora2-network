@@ -55,6 +55,8 @@ type LiquiditySourceIdOf<T> = LiquiditySourceId<<T as common::Config>::DEXId, Li
 
 type Rewards<AssetId> = Vec<(Balance, AssetId, RewardReason)>;
 
+type VestedRewards<T> = vested_rewards::Pallet<T>;
+
 pub mod weights;
 
 #[cfg(test)]
@@ -267,14 +269,20 @@ impl<T: Config> Pallet<T> {
                 ExchangePath::Direct {
                     from_asset_id,
                     to_asset_id,
-                } => Self::exchange_single(
-                    sender,
-                    receiver,
-                    &from_asset_id,
-                    &to_asset_id,
-                    amount,
-                    filter,
-                ),
+                } => {
+                    let outcome = Self::exchange_single(
+                        sender,
+                        receiver,
+                        &from_asset_id,
+                        &to_asset_id,
+                        amount,
+                        filter,
+                    )?;
+                    let xor_volume =
+                        Self::get_xor_amount(from_asset_id, to_asset_id, amount, outcome.clone());
+                    VestedRewards::<T>::update_market_maker_records(&sender, xor_volume, 1)?;
+                    Ok(outcome)
+                }
                 ExchangePath::Twofold {
                     from_asset_id,
                     intermediate_asset_id,
@@ -305,6 +313,11 @@ impl<T: Config> Pallet<T> {
                             second_swap.amount >= min_amount_out,
                             Error::<T>::SlippageNotTolerated
                         );
+                        VestedRewards::<T>::update_market_maker_records(
+                            &sender,
+                            first_swap.amount,
+                            2,
+                        )?;
                         let cumulative_fee = first_swap
                             .fee
                             .checked_add(second_swap.fee)
@@ -349,6 +362,11 @@ impl<T: Config> Pallet<T> {
                             &to_asset_id,
                             SwapAmount::with_desired_input(first_swap.amount, Balance::zero()),
                             filter,
+                        )?;
+                        VestedRewards::<T>::update_market_maker_records(
+                            &sender,
+                            first_swap.amount,
+                            2,
                         )?;
                         let cumulative_fee = first_swap
                             .fee
@@ -713,6 +731,35 @@ impl<T: Config> Pallet<T> {
             TradingPair {
                 base_asset_id: output_asset_id,
                 target_asset_id: input_asset_id,
+            }
+        }
+    }
+
+    /// For direct path (when input token or output token are xor), extract xor portions of exchange result.
+    fn get_xor_amount(
+        input_asset_id: T::AssetId,
+        _output_asset_id: T::AssetId,
+        amount: SwapAmount<Balance>,
+        outcome: SwapOutcome<Balance>,
+    ) -> Balance {
+        match amount {
+            SwapAmount::WithDesiredInput {
+                desired_amount_in, ..
+            } => {
+                if &input_asset_id == &T::GetBaseAssetId::get() {
+                    desired_amount_in
+                } else {
+                    outcome.amount
+                }
+            }
+            SwapAmount::WithDesiredOutput {
+                desired_amount_out, ..
+            } => {
+                if &input_asset_id == &T::GetBaseAssetId::get() {
+                    outcome.amount
+                } else {
+                    desired_amount_out
+                }
             }
         }
     }
@@ -1327,14 +1374,20 @@ impl<T: Config> LiquidityProxyTrait<T::DEXId, T::AccountId, T::AssetId> for Pall
                 ExchangePath::Direct {
                     from_asset_id,
                     to_asset_id,
-                } => Self::exchange_single(
-                    sender,
-                    receiver,
-                    &from_asset_id,
-                    &to_asset_id,
-                    amount,
-                    filter,
-                ),
+                } => {
+                    let outcome = Self::exchange_single(
+                        sender,
+                        receiver,
+                        &from_asset_id,
+                        &to_asset_id,
+                        amount.clone(),
+                        filter,
+                    )?;
+                    let xor_volume =
+                        Self::get_xor_amount(from_asset_id, to_asset_id, amount, outcome.clone());
+                    VestedRewards::<T>::update_market_maker_records(&sender, xor_volume, 1)?;
+                    Ok(outcome)
+                }
                 ExchangePath::Twofold {
                     from_asset_id,
                     intermediate_asset_id,
@@ -1365,6 +1418,11 @@ impl<T: Config> LiquidityProxyTrait<T::DEXId, T::AccountId, T::AssetId> for Pall
                             second_swap.amount >= min_amount_out,
                             Error::<T>::SlippageNotTolerated
                         );
+                        VestedRewards::<T>::update_market_maker_records(
+                            &sender,
+                            first_swap.amount,
+                            2,
+                        )?;
                         let cumulative_fee = first_swap.fee + second_swap.fee;
                         Ok(SwapOutcome::new(second_swap.amount, cumulative_fee))
                     }
@@ -1407,6 +1465,11 @@ impl<T: Config> LiquidityProxyTrait<T::DEXId, T::AccountId, T::AssetId> for Pall
                             SwapAmount::with_desired_input(first_swap.amount, Balance::zero()),
                             filter,
                         )?;
+                        VestedRewards::<T>::update_market_maker_records(
+                            &sender,
+                            first_swap.amount,
+                            2,
+                        )?;
                         let cumulative_fee = first_swap.fee + second_swap.fee;
                         Ok(SwapOutcome::new(first_quote.amount, cumulative_fee))
                     }
@@ -1428,7 +1491,11 @@ pub mod pallet {
 
     #[pallet::config]
     pub trait Config:
-        frame_system::Config + common::Config + assets::Config + trading_pair::Config
+        frame_system::Config
+        + common::Config
+        + assets::Config
+        + trading_pair::Config
+        + vested_rewards::Config
     {
         type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
         type LiquidityRegistry: LiquidityRegistry<
