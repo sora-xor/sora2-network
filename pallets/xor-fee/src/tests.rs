@@ -28,11 +28,12 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use common::prelude::{AssetName, AssetSymbol, FixedWrapper};
-use common::{balance, fixed_wrapper, XOR};
-use pallet_transaction_payment::ChargeTransactionPayment;
+use common::prelude::{AssetName, AssetSymbol, FixedWrapper, SwapAmount};
+use common::{balance, fixed_wrapper, FilterMode, VAL, XOR};
+use pallet_transaction_payment::{ChargeTransactionPayment, OnChargeTransaction};
 use sp_runtime::traits::SignedExtension;
 use traits::MultiCurrency;
+use xor_fee::LiquidityInfo;
 
 use crate::mock::*;
 
@@ -43,7 +44,7 @@ type TransactionByteFee = <Runtime as pallet_transaction_payment::Config>::Trans
 fn referrer_gets_bonus_from_tx_fee() {
     ExtBuilder::build().execute_with(|| {
         let call: &<Runtime as frame_system::Config>::Call = &Call::Balances(
-            pallet_balances::Call::transfer(TO_ACCOUNT, TRANSFER_AMOUNT as u128 * balance!(1)),
+            pallet_balances::Call::transfer(TO_ACCOUNT, balance!(TRANSFER_AMOUNT)),
         );
 
         let len = 10;
@@ -73,11 +74,10 @@ fn referrer_gets_bonus_from_tx_fee() {
             Balances::free_balance(FROM_ACCOUNT),
             balance_after_reserving_fee
         );
-        let weights_sum: FixedWrapper =
-            FixedWrapper::from(ReferrerWeight::get() as u128 * balance!(1))
-                + FixedWrapper::from(XorBurnedWeight::get() as u128 * balance!(1))
-                + FixedWrapper::from(XorIntoValBurnedWeight::get() as u128 * balance!(1));
-        let referrer_weight = FixedWrapper::from(ReferrerWeight::get() as u128 * balance!(1));
+        let weights_sum: FixedWrapper = FixedWrapper::from(balance!(ReferrerWeight::get()))
+            + FixedWrapper::from(balance!(XorBurnedWeight::get()))
+            + FixedWrapper::from(balance!(XorIntoValBurnedWeight::get()));
+        let referrer_weight = FixedWrapper::from(balance!(ReferrerWeight::get()));
         let initial_balance = FixedWrapper::from(initial_balance());
         let expected_referrer_balance =
             FixedWrapper::from(weight_fee) * referrer_weight / weights_sum + initial_balance;
@@ -98,7 +98,7 @@ fn notify_val_burned_works() {
             0_u128.into()
         );
         let call: &<Runtime as frame_system::Config>::Call = &Call::Balances(
-            pallet_balances::Call::transfer(TO_ACCOUNT, TRANSFER_AMOUNT as u128 * balance!(1)),
+            pallet_balances::Call::transfer(TO_ACCOUNT, balance!(TRANSFER_AMOUNT)),
         );
 
         let len = 10;
@@ -201,7 +201,7 @@ fn custom_fees_work() {
 
         // An extrinsic without manual fee adjustment
         let call: &<Runtime as frame_system::Config>::Call = &Call::Balances(
-            pallet_balances::Call::transfer(TO_ACCOUNT, TRANSFER_AMOUNT as u128 * balance!(1)),
+            pallet_balances::Call::transfer(TO_ACCOUNT, balance!(TRANSFER_AMOUNT)),
         );
 
         let pre = ChargeTransactionPayment::<Runtime>::from(0u128.into())
@@ -278,7 +278,7 @@ fn actual_weight_is_ignored_works() {
         let weight_fee = MOCK_WEIGHT as u128;
 
         let call: &<Runtime as frame_system::Config>::Call = &Call::Balances(
-            pallet_balances::Call::transfer(TO_ACCOUNT, TRANSFER_AMOUNT as u128 * balance!(1)),
+            pallet_balances::Call::transfer(TO_ACCOUNT, balance!(TRANSFER_AMOUNT)),
         );
 
         let pre = ChargeTransactionPayment::<Runtime>::from(0u128.into())
@@ -350,5 +350,93 @@ fn reminting_for_sora_parliament_works() {
                 && Balances::free_balance(SORA_PARLIAMENT_ACCOUNT)
                     <= (expected_balance + FixedWrapper::from(1)).into_balance()
         );
+    });
+}
+
+/// No special fee handling should be performed
+#[test]
+fn fee_payment_regular_swap() {
+    ExtBuilder::build().execute_with(|| {
+        let dex_id = common::DEXId::Polkaswap;
+        let dispatch_info = info_from_weight(100_000_000);
+
+        let call = Call::LiquidityProxy(mock_liquidity_proxy::Call::swap(
+            dex_id,
+            VAL,
+            XOR,
+            SwapAmount::WithDesiredInput {
+                desired_amount_in: balance!(100),
+                min_amount_out: balance!(100),
+            },
+            vec![],
+            FilterMode::Disabled,
+        ));
+
+        let regular_fee =
+            xor_fee::Pallet::<Runtime>::withdraw_fee(&FROM_ACCOUNT, &call, &dispatch_info, 1337, 0);
+
+        assert!(matches!(regular_fee, Ok(LiquidityInfo::Paid(_))));
+    });
+}
+
+/// Fee should be postponed until after the transaction
+#[test]
+fn fee_payment_postponed() {
+    ExtBuilder::build().execute_with(|| {
+        let dex_id = common::DEXId::Polkaswap;
+        let dispatch_info = info_from_weight(100_000_000);
+
+        let call = Call::LiquidityProxy(mock_liquidity_proxy::Call::swap(
+            dex_id,
+            VAL,
+            XOR,
+            SwapAmount::WithDesiredInput {
+                desired_amount_in: balance!(100),
+                min_amount_out: balance!(50),
+            },
+            vec![],
+            FilterMode::Disabled,
+        ));
+
+        let quoted_fee = xor_fee::Pallet::<Runtime>::withdraw_fee(
+            &EMPTY_ACCOUNT,
+            &call,
+            &dispatch_info,
+            1337,
+            0,
+        );
+
+        assert!(matches!(quoted_fee, Ok(LiquidityInfo::Postponed(1337))));
+    });
+}
+
+/// Payment should not be postponed if we are not producing XOR
+#[test]
+fn fee_payment_should_not_postpone() {
+    ExtBuilder::build().execute_with(|| {
+        let dex_id = common::DEXId::Polkaswap;
+        let dispatch_info = info_from_weight(100_000_000);
+
+        let call = Call::LiquidityProxy(mock_liquidity_proxy::Call::swap(
+            dex_id,
+            XOR,
+            VAL,
+            SwapAmount::WithDesiredInput {
+                desired_amount_in: balance!(100),
+                min_amount_out: balance!(100),
+            },
+            vec![],
+            FilterMode::Disabled,
+        ));
+
+        let quoted_fee = xor_fee::Pallet::<Runtime>::withdraw_fee(
+            &EMPTY_ACCOUNT,
+            &call,
+            &dispatch_info,
+            1337,
+            0,
+        );
+
+        assert!(matches!(quoted_fee, Err(_)));
     });
 }

@@ -14,7 +14,7 @@ targets = ['x86_64-unknown-linux-gnu']
 substrate-wasm-builder = "3.0.0"
 
 [dependencies]
-codec = { package = "parity-scale-codec", version = "2", default-features = false, features = ["derive"] }
+codec = { package = "parity-scale-codec", version = "2", default-features = false, features = ["derive", "chain-error"] }
 hex-literal = "0.3.1"
 serde = { features = ['derive'], optional = true, version = '1.0.101' }
 common = { path = "../common", default-features = false }
@@ -54,8 +54,6 @@ dex-api-benchmarking = { path = "../pallets/dex-api/benchmarking", default-featu
 
 # Substrate dependencies
 frame-benchmarking = { default-features = false, optional = true, version = '3' }
-pallet-collective = { default-features = false, version = '3' }
-pallet-democracy = { default-features = false, version = '3' }
 frame-executive = { default-features = false, version = '3' }
 frame-support = { default-features = false, version = '3' }
 frame-system = { default-features = false, version = '3' }
@@ -63,9 +61,13 @@ frame-system-benchmarking = { default-features = false, optional = true, version
 frame-system-rpc-runtime-api = { default-features = false, version = '3' }
 pallet-aura = { default-features = false, version = '3' }
 pallet-balances = { default-features = false, version = '3' }
+pallet-collective = { default-features = false, version = '3' }
+pallet-democracy = { default-features = false, version = '3' }
+pallet-elections-phragmen = { default-features = false, version = '3' }
 pallet-grandpa = { default-features = false, version = '3' }
 pallet-babe = { default-features = false, version = '3' }
 pallet-im-online = { default-features = false, version = '3' }
+pallet-membership = { default-features = false, version = '3' }
 pallet-multisig = { version = "3", default-features = false }
 pallet-offences = { default-features = false, version = '3' }
 pallet-randomness-collective-flip = { default-features = false, version = '3' }
@@ -115,8 +117,10 @@ std = [
     'pallet-balances/std',
     'pallet-collective/std',
     'pallet-democracy/std',
+    'pallet-elections-phragmen/std',
     'pallet-grandpa/std',
     'pallet-im-online/std',
+    'pallet-membership/std',
     'pallet-offences/std',
     'pallet-randomness-collective-flip/std',
     'pallet-scheduler/std',

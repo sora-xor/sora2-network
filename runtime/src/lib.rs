@@ -37,6 +37,7 @@ use alloc::string::String;
 
 /// Constant values used within the runtime.
 pub mod constants;
+mod extensions;
 mod impls;
 
 use constants::time::*;
@@ -47,9 +48,11 @@ include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
 
 use core::time::Duration;
 use currencies::BasicCurrencyAdapter;
+use extensions::ChargeTransactionPayment;
 pub use farming::domain::{FarmInfo, FarmerInfo};
 pub use farming::FarmId;
 use frame_system::offchain::{Account, SigningTypes};
+use frame_system::{EnsureOneOf, EnsureRoot};
 use hex_literal::hex;
 use pallet_grandpa::{
     fg_primitives, AuthorityId as GrandpaId, AuthorityList as GrandpaAuthorityList,
@@ -94,7 +97,7 @@ pub use common::{
 };
 pub use frame_support::traits::schedule::Named as ScheduleNamed;
 pub use frame_support::traits::{
-    KeyOwnerProofSystem, OnUnbalanced, Randomness, U128CurrencyToVote,
+    KeyOwnerProofSystem, LockIdentifier, OnUnbalanced, Randomness, U128CurrencyToVote,
 };
 pub use frame_support::weights::constants::{
     BlockExecutionWeight, RocksDbWeight, WEIGHT_PER_SECOND,
@@ -112,7 +115,7 @@ pub use sp_runtime::BuildStorage;
 use eth_bridge::{
     AssetKind, OffchainRequest, OutgoingRequestEncoded, RequestStatus, SignatureParams,
 };
-use impls::{DemocracyWeightInfo, OnUnbalancedDemocracySlash};
+use impls::{CollectiveWeightInfo, DemocracyWeightInfo, OnUnbalancedDemocracySlash};
 
 pub use {bonding_curve_pool, eth_bridge, multicollateral_bonding_curve_pool};
 
@@ -153,6 +156,12 @@ pub type PeriodicSessions = pallet_session::PeriodicSessions<SessionPeriod, Sess
 type CouncilCollective = pallet_collective::Instance1;
 type TechnicalCollective = pallet_collective::Instance2;
 
+type MoreThanHalfCouncil = EnsureOneOf<
+    AccountId,
+    EnsureRoot<AccountId>,
+    pallet_collective::EnsureProportionMoreThan<_1, _2, AccountId, CouncilCollective>,
+>;
+
 /// Opaque types. These are used by the CLI to instantiate machinery that don't need to know
 /// the specifics of the runtime. They can then be made to be agnostic over specific formats
 /// of data like extrinsics, allowing for them to continue syncing the network through upgrades
@@ -183,7 +192,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
     spec_name: create_runtime_str!("sora-substrate"),
     impl_name: create_runtime_str!("sora-substrate"),
     authoring_version: 1,
-    spec_version: 26,
+    spec_version: 28,
     impl_version: 1,
     apis: RUNTIME_API_VERSIONS,
     transaction_version: 1,
@@ -255,6 +264,17 @@ parameter_types! {
     pub OffencesWeightSoftLimit: Weight = Perbill::from_percent(60) * BlockWeights::get().max_block;
     pub const ImOnlineUnsignedPriority: TransactionPriority = TransactionPriority::max_value();
     pub const SessionDuration: BlockNumber = EPOCH_DURATION_IN_BLOCKS;
+    pub const ElectionsCandidacyBond: Balance = balance!(1);
+    // 1 storage item created, key size is 32 bytes, value size is 16+16.
+    pub const ElectionsVotingBondBase: Balance = balance!(0.000001);
+    // additional data per vote is 32 bytes (account id).
+    pub const ElectionsVotingBondFactor: Balance = balance!(0.000001);
+    /// Weekly council elections; scaling up to monthly eventually.
+    pub const ElectionsTermDuration: BlockNumber = 7 * DAYS;
+    /// 13 members initially, to be increased to 23 eventually.
+    pub const ElectionsDesiredMembers: u32 = 13;
+    pub const ElectionsDesiredRunnersUp: u32 = 20;
+    pub const ElectionsModuleId: LockIdentifier = *b"phrelect";
 }
 
 impl frame_system::Config for Runtime {
@@ -323,7 +343,7 @@ impl pallet_collective::Config<CouncilCollective> for Runtime {
     type MaxProposals = CouncilCollectiveMaxProposals;
     type MaxMembers = CouncilCollectiveMaxMembers;
     type DefaultVote = pallet_collective::PrimeDefaultVote;
-    type WeightInfo = ();
+    type WeightInfo = CollectiveWeightInfo<Self>;
 }
 
 impl pallet_collective::Config<TechnicalCollective> for Runtime {
@@ -334,7 +354,7 @@ impl pallet_collective::Config<TechnicalCollective> for Runtime {
     type MaxProposals = TechnicalCollectiveMaxProposals;
     type MaxMembers = TechnicalCollectiveMaxMembers;
     type DefaultVote = pallet_collective::PrimeDefaultVote;
-    type WeightInfo = ();
+    type WeightInfo = CollectiveWeightInfo<Self>;
 }
 
 impl pallet_democracy::Config for Runtime {
@@ -382,6 +402,35 @@ impl pallet_democracy::Config for Runtime {
     type MaxVotes = DemocracyMaxVotes;
     type WeightInfo = DemocracyWeightInfo;
     type MaxProposals = DemocracyMaxProposals;
+}
+
+impl pallet_elections_phragmen::Config for Runtime {
+    type Event = Event;
+    type ModuleId = ElectionsModuleId;
+    type Currency = Balances;
+    type ChangeMembers = Council;
+    type InitializeMembers = Council;
+    type CurrencyToVote = frame_support::traits::U128CurrencyToVote;
+    type CandidacyBond = ElectionsCandidacyBond;
+    type VotingBondBase = ElectionsVotingBondBase;
+    type VotingBondFactor = ElectionsVotingBondFactor;
+    type LoserCandidate = OnUnbalancedDemocracySlash<Self>;
+    type KickedMember = OnUnbalancedDemocracySlash<Self>;
+    type DesiredMembers = ElectionsDesiredMembers;
+    type DesiredRunnersUp = ElectionsDesiredRunnersUp;
+    type TermDuration = ElectionsTermDuration;
+    type WeightInfo = ();
+}
+
+impl pallet_membership::Config<pallet_membership::Instance1> for Runtime {
+    type Event = Event;
+    type AddOrigin = MoreThanHalfCouncil;
+    type RemoveOrigin = MoreThanHalfCouncil;
+    type SwapOrigin = MoreThanHalfCouncil;
+    type ResetOrigin = MoreThanHalfCouncil;
+    type PrimeOrigin = MoreThanHalfCouncil;
+    type MembershipInitialized = TechnicalCommittee;
+    type MembershipChanged = TechnicalCommittee;
 }
 
 impl pallet_grandpa::Config for Runtime {
@@ -711,14 +760,13 @@ where
         let current_block = System::block_number()
             .saturated_into::<u64>()
             .saturating_sub(1);
-        let tip = 0u32;
         let extra: SignedExtra = (
             frame_system::CheckTxVersion::<Runtime>::new(),
             frame_system::CheckGenesis::<Runtime>::new(),
             frame_system::CheckEra::<Runtime>::from(generic::Era::mortal(period, current_block)),
             frame_system::CheckNonce::<Runtime>::from(index),
             frame_system::CheckWeight::<Runtime>::new(),
-            pallet_transaction_payment::ChargeTransactionPayment::<Runtime>::from(tip.into()),
+            ChargeTransactionPayment::<Runtime>::new(),
         );
         #[cfg_attr(not(feature = "std"), allow(unused_variables))]
         let raw_payload = SignedPayload::new(call, extra)
@@ -778,6 +826,34 @@ impl xor_fee::ApplyCustomFees<Call> for ExtrinsicsFlatFees {
             | Call::Staking(pallet_staking::Call::payout_stakers(..))
             | Call::TradingPair(..) => Some(balance!(0.0007)),
             _ => None,
+        }
+    }
+}
+
+impl xor_fee::ExtractProxySwap for Call {
+    type DexId = DEXId;
+    type AssetId = AssetId;
+    type Amount = SwapAmount<u128>;
+    fn extract(&self) -> Option<xor_fee::SwapInfo<Self::DexId, Self::AssetId, Self::Amount>> {
+        if let Call::LiquidityProxy(liquidity_proxy::Call::swap(
+            dex_id,
+            input_asset_id,
+            output_asset_id,
+            amount,
+            selected_source_types,
+            filter_mode,
+        )) = self
+        {
+            Some(xor_fee::SwapInfo {
+                dex_id: *dex_id,
+                input_asset_id: *input_asset_id,
+                output_asset_id: *output_asset_id,
+                amount: *amount,
+                selected_source_types: selected_source_types.to_vec(),
+                filter_mode: filter_mode.clone(),
+            })
+        } else {
+            None
         }
     }
 }
@@ -975,6 +1051,20 @@ parameter_types! {
                 .expect("Failed to get ordinary account id for technical account id.");
         account_id
     };
+    pub GetMbcPoolFreeReservesTechAccountId: TechAccountId = {
+        let tech_account_id = TechAccountId::from_generic_pair(
+            multicollateral_bonding_curve_pool::TECH_ACCOUNT_PREFIX.to_vec(),
+            multicollateral_bonding_curve_pool::TECH_ACCOUNT_FREE_RESERVES.to_vec(),
+        );
+        tech_account_id
+    };
+    pub GetMbcPoolFreeReservesAccountId: AccountId = {
+        let tech_account_id = GetMbcPoolFreeReservesTechAccountId::get();
+        let account_id =
+            technical::Module::<Runtime>::tech_account_id_to_account_id(&tech_account_id)
+                .expect("Failed to get ordinary account id for technical account id.");
+        account_id
+    };
 }
 
 impl multicollateral_bonding_curve_pool::Config for Runtime {
@@ -1065,6 +1155,8 @@ construct_runtime! {
         IrohaMigration: iroha_migration::{Module, Call, Storage, Config<T>, Event<T>},
         ImOnline: pallet_im_online::{Module, Call, Storage, Event<T>, ValidateUnsigned, Config<T>},
         Offences: pallet_offences::{Module, Call, Storage, Event},
+        TechnicalMembership: pallet_membership::<Instance1>::{Module, Call, Storage, Event<T>, Config<T>},
+        ElectionsPhragmen: pallet_elections_phragmen::{Module, Call, Storage, Event<T>, Config<T>},
         // Available only for test net
         Faucet: faucet::{Module, Call, Config<T>, Event<T>},
     }
@@ -1120,6 +1212,8 @@ construct_runtime! {
         IrohaMigration: iroha_migration::{Module, Call, Storage, Config<T>, Event<T>},
         ImOnline: pallet_im_online::{Module, Call, Storage, Event<T>, ValidateUnsigned, Config<T>},
         Offences: pallet_offences::{Module, Call, Storage, Event},
+        TechnicalMembership: pallet_membership::<Instance1>::{Module, Call, Storage, Event<T>, Config<T>},
+        ElectionsPhragmen: pallet_elections_phragmen::{Module, Call, Storage, Event<T>, Config<T>},
     }
 }
 
@@ -1155,7 +1249,7 @@ pub type SignedExtra = (
     frame_system::CheckEra<Runtime>,
     frame_system::CheckNonce<Runtime>,
     frame_system::CheckWeight<Runtime>,
-    pallet_transaction_payment::ChargeTransactionPayment<Runtime>,
+    ChargeTransactionPayment<Runtime>,
 );
 /// Unchecked extrinsic type as expected by this runtime.
 pub type UncheckedExtrinsic = generic::UncheckedExtrinsic<Address, Call, Signature, SignedExtra>;
