@@ -2427,6 +2427,7 @@ dependencies = [
  "technical",
  "trading-pair",
  "trading-pair-runtime-api",
+ "vested-rewards",
  "xor-fee",
 ]
 
@@ -4029,6 +4030,7 @@ dependencies = [
  "sp-std",
  "technical",
  "trading-pair",
+ "vested-rewards",
 ]
 
 [[package]]
@@ -4061,6 +4063,7 @@ dependencies = [
  "sp-std",
  "technical",
  "trading-pair",
+ "vested-rewards",
 ]
 
 [[package]]
@@ -9496,6 +9499,30 @@ name = "version_check"
 version = "0.9.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5fecdca9a5291cc2b8dcf7dc02453fee791a280f3743cb0905f8822ae463b3fe"
+
+[[package]]
+name = "vested-rewards"
+version = "0.1.0"
+dependencies = [
+ "assets",
+ "common",
+ "dex-manager",
+ "frame-support",
+ "frame-system",
+ "hex-literal",
+ "orml-currencies",
+ "orml-tokens",
+ "orml-traits",
+ "pallet-balances",
+ "parity-scale-codec",
+ "permissions",
+ "serde",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+ "trading-pair",
+]
 
 [[package]]
 name = "void"
