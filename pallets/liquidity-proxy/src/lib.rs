@@ -1467,7 +1467,7 @@ impl<T: Config> LiquidityProxyTrait<T::DEXId, T::AccountId, T::AssetId> for Pall
                         )?;
                         VestedRewards::<T>::update_market_maker_records(
                             &sender,
-                            second_swap.amount,
+                            first_swap.amount,
                             2,
                         )?;
                         let cumulative_fee = first_swap.fee + second_swap.fee;
