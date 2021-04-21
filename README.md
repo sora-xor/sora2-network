@@ -167,43 +167,6 @@ Flag ```--bootnodes <ADDR>...```
 * 9615 for prometheus
 * 30333 p2p traffic
 
-## Other documentation.
-
-### Embedded Docs.
-
-Once the project has been built, the following command can be used to explore all parameters and
-subcommands:
-
-```sh
-./target/release/framenode -h
-```
-
-### Reading external documentation about ports and flags.
-
-* [Alice and Bob Start Blockchain](https://substrate.dev/docs/en/tutorials/start-a-private-network/alicebob)
-* [Node Management](https://wiki.polkadot.network/docs/en/build-node-management)
-
-## Logging
-
-### The Polkadot client has a number of log targets. The most interesting to users may be:
-
-* afg (Al's Finality Gadget - GRANDPA consensus)
-* babe
-* telemetry
-* txpool
-* usage
-* Other targets include: db, gossip, peerset, state-db, state-trace, sub-libp2p, trie, wasm-executor, wasm-heap.
-
-### The log levels, from least to most verbose, are:
-
-* error
-* warn
-* info
-* debug
-* trace
-
-All targets are set to info logging by default. You can adjust individual log levels using the ```--log``` (```-l``` short) option, for example -l afg=trace,sync=debug or globally with -ldebug.
-
 ## Monitoring and Telemetry
 
 ### Node status
