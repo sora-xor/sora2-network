@@ -41,6 +41,7 @@ sp-io = { version = "3", default-features = false }
 tokens = { version = "0.4", package = "orml-tokens", default-features = false }
 common = { path = "../../../common", default-features = false, features = ["test"] }
 mock-liquidity-source = { path = "../../mock-liquidity-source" }
+vested-rewards = { path = "../../vested-rewards" }
 
 [features]
 default = ['std']

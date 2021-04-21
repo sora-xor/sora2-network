@@ -41,10 +41,10 @@ use common::{
     USDT, VAL, XOR,
 };
 use frame_support::sp_runtime::Percent;
-use framenode_runtime::bonding_curve_pool::{
+use framenode_runtime::eth_bridge::{AssetConfig, NetworkConfig};
+use framenode_runtime::multicollateral_bonding_curve_pool::{
     DistributionAccount, DistributionAccountData, DistributionAccounts,
 };
-use framenode_runtime::eth_bridge::{AssetConfig, NetworkConfig};
 use framenode_runtime::opaque::SessionKeys;
 use framenode_runtime::{
     eth_bridge, AccountId, AssetId, AssetName, AssetSymbol, AssetsConfig, BabeConfig,
@@ -214,6 +214,7 @@ pub fn dev_net_coded() -> ChainSpec {
         ChainType::Live,
         move || {
             testnet_genesis(
+                true,
                 hex!("92c4ff71ae7492a1e6fef5d80546ea16307c560ac1063ffaa5e0e084df1e2b7e").into(),
                 vec![
                     authority_keys_from_public_keys(
@@ -364,6 +365,7 @@ pub fn staging_net_coded(test: bool) -> ChainSpec {
                 }
             };
             testnet_genesis(
+                false,
                 hex!("2c5f3fd607721d5dd9fdf26d69cdcb9294df96a8ff956b1323d69282502aaa2e").into(),
                 vec![
                     authority_keys_from_public_keys(
@@ -511,6 +513,7 @@ pub fn local_testnet_config() -> ChainSpec {
         ChainType::Local,
         move || {
             testnet_genesis(
+                false,
                 get_account_id_from_seed::<sr25519::Public>("Alice"),
                 vec![
                     authority_keys_from_seed("Alice"),
@@ -580,6 +583,7 @@ pub fn local_testnet_config() -> ChainSpec {
 // Some variables are only changed if faucet is enabled
 #[cfg(feature = "private-net")]
 fn testnet_genesis(
+    dev: bool,
     root_key: AccountId,
     initial_authorities: Vec<(AccountId, AccountId, AuraId, BabeId, GrandpaId, ImOnlineId)>,
     endowed_accounts: Vec<AccountId>,
@@ -592,7 +596,8 @@ fn testnet_genesis(
     let initial_staking = balance!(100);
     let initial_eth_bridge_xor_amount = balance!(350000);
     let initial_eth_bridge_val_amount = balance!(33900000);
-    let initial_pswap_tbc_rewards = balance!(25000000);
+    let initial_pswap_tbc_rewards = balance!(2500000000);
+    let initial_pswap_market_maker_rewards = balance!(400000000);
 
     let parliament_investment_fund =
         hex!("048cfcacbdebe828dffa1267d830d45135cd40238286f838f5a95432a1bbf851").into();
@@ -633,6 +638,15 @@ fn testnet_genesis(
 
     let mbc_pool_rewards_tech_account_id = framenode_runtime::GetMbcPoolRewardsTechAccountId::get();
     let mbc_pool_rewards_account_id = framenode_runtime::GetMbcPoolRewardsAccountId::get();
+
+    let mbc_pool_free_reserves_tech_account_id =
+        framenode_runtime::GetMbcPoolFreeReservesTechAccountId::get();
+    let mbc_pool_free_reserves_account_id =
+        framenode_runtime::GetMbcPoolFreeReservesAccountId::get();
+
+    let market_maker_rewards_tech_account_id =
+        framenode_runtime::GetMarketMakerRewardsTechAccountId::get();
+    let market_maker_rewards_account_id = framenode_runtime::GetMarketMakerRewardsAccountId::get();
 
     let liquidity_proxy_tech_account_id = framenode_runtime::GetLiquidityProxyTechAccountId::get();
     let liquidity_proxy_account_id = framenode_runtime::GetLiquidityProxyAccountId::get();
@@ -695,6 +709,10 @@ fn testnet_genesis(
             mbc_pool_rewards_tech_account_id.clone(),
         ),
         (
+            mbc_pool_free_reserves_account_id.clone(),
+            mbc_pool_free_reserves_tech_account_id.clone(),
+        ),
+        (
             iroha_migration_account_id.clone(),
             iroha_migration_tech_account_id.clone(),
         ),
@@ -702,6 +720,10 @@ fn testnet_genesis(
         (
             assets_and_permissions_account_id.clone(),
             assets_and_permissions_tech_account_id.clone(),
+        ),
+        (
+            market_maker_rewards_account_id.clone(),
+            market_maker_rewards_tech_account_id.clone(),
         ),
     ];
     let accounts = bonding_curve_distribution_accounts();
@@ -724,6 +746,9 @@ fn testnet_genesis(
         (iroha_migration_account_id.clone(), 0),
         (pswap_distribution_account_id.clone(), 0),
         (mbc_reserves_account_id.clone(), 0),
+        (mbc_pool_rewards_account_id.clone(), 0),
+        (mbc_pool_free_reserves_account_id.clone(), 0),
+        (market_maker_rewards_account_id.clone(), 0),
     ]
     .into_iter()
     .chain(
@@ -816,6 +841,11 @@ fn testnet_genesis(
             VAL,
             parliament_investment_fund_balance,
         ),
+        (
+            market_maker_rewards_account_id.clone(),
+            PSWAP,
+            initial_pswap_market_maker_rewards,
+        ),
     ];
     let faucet_config = {
         let initial_faucet_balance = balance!(6000000000);
@@ -836,7 +866,11 @@ fn testnet_genesis(
     };
 
     let iroha_migration_config = IrohaMigrationConfig {
-        iroha_accounts: our_include!("bytes/iroha_migration_accounts.in"),
+        iroha_accounts: if dev {
+            our_include!("bytes/iroha_migration_accounts_dev.in")
+        } else {
+            our_include!("bytes/iroha_migration_accounts_staging.in")
+        },
         account_id: iroha_migration_account_id.clone(),
     };
     let initial_collateral_assets = vec![DAI.into(), VAL.into(), PSWAP.into(), ETH.into()];
@@ -1008,6 +1042,11 @@ fn testnet_genesis(
                     Scope::Unlimited,
                     vec![permissions::MINT, permissions::BURN],
                 ),
+                (
+                    mbc_pool_free_reserves_account_id.clone(),
+                    Scope::Unlimited,
+                    vec![permissions::MINT, permissions::BURN],
+                ),
             ],
         }),
         pallet_balances: Some(BalancesConfig { balances }),
@@ -1102,6 +1141,7 @@ fn testnet_genesis(
             reference_asset_id: DAI.into(),
             incentives_account_id: mbc_pool_rewards_account_id,
             initial_collateral_assets,
+            free_reserves_account_id: mbc_pool_free_reserves_account_id,
         }),
         pswap_distribution: Some(PswapDistributionConfig {
             subscribed_accounts: Vec::new(),
@@ -1171,6 +1211,16 @@ pub fn main_net_coded() -> ChainSpec {
                     ),
                 ],
                 vec![
+                    hex!("4cd5a4a244bc53f6f1458757ed0af8680e8faa860deca32976bbd9a951bf6c1c").into(),
+                    hex!("54d7aa0bba9a5dbb1bb77973f344625df346f6a65840b8534ee22e93fbad767a").into(),
+                    hex!("e811eac3cf718caa98d77bb479227e8cc512e51e79d6ba1494dd089093f5707f").into(),
+                    hex!("a648c659a86eeb7cf84ddcedac64f33de6966b8853dd636ba693fce100bd8858").into(),
+                    hex!("60a17ce8550db4e1358db54bc3791026a285ab88e9c988ad54c3dc282475fe14").into(),
+                    hex!("de06bf70964d8aff4816e3cfd576d8d8f774663906a6e40d316860a3d4c55b6c").into(),
+                    hex!("4a4371f63db17fb4f33bec3ce7c8f588e3258c3b268b450647f4870d964dca6f").into(),
+                    hex!("d8815601fc99d9afa27a09fc5e46ebcc2472edc466fbb5c6fbae7a8566e50318").into(),
+                ],
+                vec![
                     hex!("a3bcbf3044069ac13c30d662a204d8368c266e2f0e8cf603c7bfb2b7b5daae55").into(), //Prod value
                     hex!("297c03e65c2930daa7c6067a2bb853819b61ed49b70de2f3219a2eb6ec0364aa").into(), //Prod value
                 ],
@@ -1188,17 +1238,20 @@ pub fn main_net_coded() -> ChainSpec {
 #[cfg(not(feature = "private-net"))]
 fn mainnet_genesis(
     initial_authorities: Vec<(AccountId, AccountId, AuraId, BabeId, GrandpaId, ImOnlineId)>,
+    additional_validators: Vec<AccountId>,
     initial_bridge_peers: Vec<AccountId>,
     eth_bridge_params: EthBridgeParams,
 ) -> GenesisConfig {
     // Minimum stake for an active validator
-    let initial_staking = balance!(1);
+    let initial_staking = balance!(0.2);
     // XOR amount which already exists on Ethereum
     let initial_eth_bridge_xor_amount = balance!(350000);
     // VAL amount which already exists on SORA_1 and Ethereum. Partially can be migrated directly from SORA_1. Not yet decided finally.
     let initial_eth_bridge_val_amount = balance!(33900000);
     // Initial token bonding curve PSWAP rewards according to 10 bln PSWAP total supply.
     let initial_pswap_tbc_rewards = balance!(2500000000);
+    // Initial market maker PSWAP rewards.
+    let initial_pswap_market_maker_rewards = balance!(400000000);
 
     let parliament_investment_fund =
         hex!("048cfcacbdebe828dffa1267d830d45135cd40238286f838f5a95432a1bbf851").into();
@@ -1243,6 +1296,15 @@ fn mainnet_genesis(
 
     let mbc_pool_rewards_tech_account_id = framenode_runtime::GetMbcPoolRewardsTechAccountId::get();
     let mbc_pool_rewards_account_id = framenode_runtime::GetMbcPoolRewardsAccountId::get();
+
+    let mbc_pool_free_reserves_tech_account_id =
+        framenode_runtime::GetMbcPoolFreeReservesTechAccountId::get();
+    let mbc_pool_free_reserves_account_id =
+        framenode_runtime::GetMbcPoolFreeReservesAccountId::get();
+
+    let market_maker_rewards_tech_account_id =
+        framenode_runtime::GetMarketMakerRewardsTechAccountId::get();
+    let market_maker_rewards_account_id = framenode_runtime::GetMarketMakerRewardsAccountId::get();
 
     let liquidity_proxy_tech_account_id = framenode_runtime::GetLiquidityProxyTechAccountId::get();
     let liquidity_proxy_account_id = framenode_runtime::GetLiquidityProxyAccountId::get();
@@ -1305,6 +1367,10 @@ fn mainnet_genesis(
             mbc_pool_rewards_tech_account_id.clone(),
         ),
         (
+            mbc_pool_free_reserves_account_id.clone(),
+            mbc_pool_free_reserves_tech_account_id.clone(),
+        ),
+        (
             iroha_migration_account_id.clone(),
             iroha_migration_tech_account_id.clone(),
         ),
@@ -1312,6 +1378,10 @@ fn mainnet_genesis(
         (
             assets_and_permissions_account_id.clone(),
             assets_and_permissions_tech_account_id.clone(),
+        ),
+        (
+            market_maker_rewards_account_id.clone(),
+            market_maker_rewards_tech_account_id.clone(),
         ),
     ];
     let accounts = bonding_curve_distribution_accounts();
@@ -1460,7 +1530,7 @@ fn mainnet_genesis(
                     vec![permissions::CREATE_FARM],
                 ),
                 (
-                    xor_fee_account_id,
+                    xor_fee_account_id.clone(),
                     Scope::Unlimited,
                     vec![permissions::MINT, permissions::BURN],
                 ),
@@ -1470,7 +1540,7 @@ fn mainnet_genesis(
                     vec![permissions::MINT],
                 ),
                 (
-                    assets_and_permissions_account_id,
+                    assets_and_permissions_account_id.clone(),
                     Scope::Unlimited,
                     vec![
                         permissions::MINT,
@@ -1481,12 +1551,17 @@ fn mainnet_genesis(
                     ],
                 ),
                 (
-                    pswap_distribution_account_id,
+                    pswap_distribution_account_id.clone(),
                     Scope::Unlimited,
                     vec![permissions::MINT, permissions::BURN],
                 ),
                 (
-                    mbc_reserves_account_id,
+                    mbc_reserves_account_id.clone(),
+                    Scope::Unlimited,
+                    vec![permissions::MINT, permissions::BURN],
+                ),
+                (
+                    mbc_pool_free_reserves_account_id.clone(),
                     Scope::Unlimited,
                     vec![permissions::MINT, permissions::BURN],
                 ),
@@ -1495,7 +1570,15 @@ fn mainnet_genesis(
         pallet_balances: Some(BalancesConfig {
             balances: vec![
                 (eth_bridge_account_id.clone(), initial_eth_bridge_xor_amount),
+                (assets_and_permissions_account_id.clone(), 0),
+                (xor_fee_account_id.clone(), 0),
                 (dex_root_account_id.clone(), 0),
+                (iroha_migration_account_id.clone(), 0),
+                (pswap_distribution_account_id.clone(), 0),
+                (mbc_reserves_account_id.clone(), 0),
+                (mbc_pool_rewards_account_id.clone(), 0),
+                (mbc_pool_free_reserves_account_id.clone(), 0),
+                (market_maker_rewards_account_id.clone(), 0),
             ]
             .into_iter()
             .chain(
@@ -1509,6 +1592,12 @@ fn mainnet_genesis(
                     .iter()
                     .cloned()
                     .map(|(_, k2, ..)| (k2, initial_staking)),
+            )
+            .chain(
+                additional_validators
+                    .iter()
+                    .cloned()
+                    .map(|account_id| (account_id, initial_staking)),
             )
             .collect(),
         }),
@@ -1548,6 +1637,11 @@ fn mainnet_genesis(
                     parliament_investment_fund,
                     VAL,
                     parliament_investment_fund_balance,
+                ),
+                (
+                    market_maker_rewards_account_id.clone(),
+                    PSWAP,
+                    initial_pswap_market_maker_rewards,
                 ),
             ],
         }),
@@ -1629,6 +1723,7 @@ fn mainnet_genesis(
             reference_asset_id: DAI.into(),
             incentives_account_id: mbc_pool_rewards_account_id,
             initial_collateral_assets,
+            free_reserves_account_id: mbc_pool_free_reserves_account_id,
         }),
         pswap_distribution: Some(PswapDistributionConfig {
             subscribed_accounts: Vec::new(),

@@ -51,6 +51,7 @@ pswap-distribution-runtime-api = { path = "../pallets/pswap-distribution/runtime
 liquidity-proxy-benchmarking = { path = "../pallets/liquidity-proxy/benchmarking", default-features = false, optional = true }
 pool-xyk-benchmarking = { path = "../pallets/pool-xyk/benchmarking", default-features = false, optional = true }
 dex-api-benchmarking = { path = "../pallets/dex-api/benchmarking", default-features = false, optional = true }
+vested-rewards = { path = "../pallets/vested-rewards", default-features = false}
 
 # Substrate dependencies
 frame-benchmarking = { default-features = false, optional = true, version = '3' }
@@ -176,6 +177,7 @@ std = [
     'liquidity-proxy-runtime-api/std',
     'pswap-distribution/std',
     'pswap-distribution-runtime-api/std',
+    'vested-rewards/std',
 ]
 
 private-net = ["faucet"]

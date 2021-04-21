@@ -192,7 +192,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
     spec_name: create_runtime_str!("sora-substrate"),
     impl_name: create_runtime_str!("sora-substrate"),
     authoring_version: 1,
-    spec_version: 27,
+    spec_version: 29,
     impl_version: 1,
     apis: RUNTIME_API_VERSIONS,
     transaction_version: 1,
@@ -1051,6 +1051,34 @@ parameter_types! {
                 .expect("Failed to get ordinary account id for technical account id.");
         account_id
     };
+    pub GetMbcPoolFreeReservesTechAccountId: TechAccountId = {
+        let tech_account_id = TechAccountId::from_generic_pair(
+            multicollateral_bonding_curve_pool::TECH_ACCOUNT_PREFIX.to_vec(),
+            multicollateral_bonding_curve_pool::TECH_ACCOUNT_FREE_RESERVES.to_vec(),
+        );
+        tech_account_id
+    };
+    pub GetMbcPoolFreeReservesAccountId: AccountId = {
+        let tech_account_id = GetMbcPoolFreeReservesTechAccountId::get();
+        let account_id =
+            technical::Module::<Runtime>::tech_account_id_to_account_id(&tech_account_id)
+                .expect("Failed to get ordinary account id for technical account id.");
+        account_id
+    };
+    pub GetMarketMakerRewardsTechAccountId: TechAccountId = {
+        let tech_account_id = TechAccountId::from_generic_pair(
+            vested_rewards::TECH_ACCOUNT_PREFIX.to_vec(),
+            vested_rewards::TECH_ACCOUNT_MARKET_MAKERS.to_vec(),
+        );
+        tech_account_id
+    };
+    pub GetMarketMakerRewardsAccountId: AccountId = {
+        let tech_account_id = GetMarketMakerRewardsTechAccountId::get();
+        let account_id =
+            technical::Module::<Runtime>::tech_account_id_to_account_id(&tech_account_id)
+                .expect("Failed to get ordinary account id for technical account id.");
+        account_id
+    };
 }
 
 impl multicollateral_bonding_curve_pool::Config for Runtime {
@@ -1076,6 +1104,11 @@ impl pallet_offences::Config for Runtime {
     type IdentificationTuple = pallet_session::historical::IdentificationTuple<Self>;
     type OnOffenceHandler = Staking;
     type WeightSoftLimit = OffencesWeightSoftLimit;
+}
+
+impl vested_rewards::Config for Runtime {
+    type Event = Event;
+    type WeightInfo = vested_rewards::weights::WeightInfo<Runtime>;
 }
 
 /// Payload data to be signed when making signed transaction from off-chain workers,
@@ -1143,6 +1176,7 @@ construct_runtime! {
         Offences: pallet_offences::{Module, Call, Storage, Event},
         TechnicalMembership: pallet_membership::<Instance1>::{Module, Call, Storage, Event<T>, Config<T>},
         ElectionsPhragmen: pallet_elections_phragmen::{Module, Call, Storage, Event<T>, Config<T>},
+        VestedRewards: vested_rewards::{Module, Call, Storage, Event<T>},
         // Available only for test net
         Faucet: faucet::{Module, Call, Config<T>, Event<T>},
     }
@@ -1200,6 +1234,7 @@ construct_runtime! {
         Offences: pallet_offences::{Module, Call, Storage, Event},
         TechnicalMembership: pallet_membership::<Instance1>::{Module, Call, Storage, Event<T>, Config<T>},
         ElectionsPhragmen: pallet_elections_phragmen::{Module, Call, Storage, Event<T>, Config<T>},
+        VestedRewards: vested_rewards::{Module, Call, Storage, Event<T>},
     }
 }
 
