@@ -33,7 +33,7 @@ use codec::{Decode, Encode};
 use core::fmt::Debug;
 use frame_support::dispatch::DispatchError;
 use frame_support::{ensure, RuntimeDebug};
-use rustc_hex::{FromHex, ToHex};
+use rustc_hex::ToHex;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use sp_core::H256;
@@ -207,14 +207,8 @@ impl<AssetId> FromStr for AssetId32<AssetId> {
     type Err = &'static str;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let mut s = s.to_owned();
-        if s.starts_with("0x") {
-            s = (&s[2..]).to_owned();
-        } else {
-            return Err("expected hex string, e.g. 0x00..00");
-        }
-        let code: Vec<u8> = s.from_hex().map_err(|_| "error parsing hex string")?;
-        let code: [u8; 32] = code
+        let vec: Vec<u8> = crate::utils::parse_hex_string(s).ok_or("error parsing hex string")?;
+        let code: [u8; 32] = vec
             .try_into()
             .map_err(|_| "expected hex string representing 32-byte object")?;
         Ok(AssetId32 {
