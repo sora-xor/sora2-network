@@ -35,11 +35,15 @@
 extern crate alloc;
 
 use codec::{Decode, Encode};
-use common::prelude::Balance;
-use common::{balance, RewardReason};
-use frame_support::dispatch::DispatchResult;
+use common::prelude::{Balance, FixedWrapper};
+use common::{balance, RewardReason, PSWAP, PswapRemintInfo};
+use frame_support::dispatch::{DispatchResult, DispatchError};
 use frame_support::traits::IsType;
+use frame_support::fail;
 use sp_std::collections::btree_map::BTreeMap;
+use frame_support::traits::Get;
+use sp_runtime::traits::Zero;
+use common::OnPswapBurned;
 
 pub mod weights;
 
@@ -51,6 +55,8 @@ mod tests;
 
 pub const TECH_ACCOUNT_PREFIX: &[u8] = b"vested-rewards";
 pub const TECH_ACCOUNT_MARKET_MAKERS: &[u8] = b"market-makers";
+
+type Assets<T> = assets::Pallet<T>;
 
 #[derive(Encode, Decode, Eq, PartialEq, Clone, PartialOrd, Ord, Debug, Default)]
 pub struct RewardInfo {
@@ -85,6 +91,60 @@ impl<T: Config> Pallet<T> {
         });
         Ok(())
     }
+
+    pub fn claim_rewards(account_id: T::AccountId) -> DispatchResult {
+        Rewards::<T>::mutate(&account_id, |info| {
+            if info.total_available.is_zero() || info.limit.is_zero() {
+                fail!(Error::<T>::NothingToClaim);
+            } else {
+                for (&reward_reason, amount) in info.rewards.iter_mut() {
+                    let claimable = amount.clone().min(info.limit);
+                    let actual_claimed = Self::claim_reward_by_reason(&account_id, reward_reason, *amount).unwrap_or(balance!(0));
+                    info.limit = info.limit.saturating_sub(actual_claimed);
+                    *amount = amount.saturating_sub(actual_claimed);
+                }
+                Ok(())
+            }
+
+        })
+    }
+
+    pub fn claim_reward_by_reason(account_id: &T::AccountId, reason: RewardReason, amount: Balance) -> Result<Balance, DispatchError> {
+        let source_account = match reason {
+            RewardReason::BuyOnBondingCurve => T::GetBondingCurveRewardsAccountId::get(),
+            RewardReason::LiquidityProvisionFarming => T::GetFarmingRewardsAccountId::get(),
+            RewardReason::MarketMakerVolume => T::GetMarketMakerRewardsAccountId::get(),
+            _ => fail!(Error::<T>::UnhandledRewardType)
+        };
+        let total_rewards = Assets::<T>::free_balance(&PSWAP.into(), &source_account)?;
+        unimplemented!()
+    }
+
+    pub fn distribute_limits(vested_amount: Balance) -> DispatchResult {
+        let total_rewards = TotalRewards::<T>::get();
+        unimplemented!()
+    }
+}
+
+impl<T: Config> OnPswapBurned for Module<T> {
+    /// Invoked when pswap is burned after being exchanged from collected liquidity provider fees.
+    fn on_pswap_burned(distribution: PswapRemintInfo) {
+        // let total_rewards = TotalRewards::<T>::get();
+        // let amount = FixedWrapper::from(distribution.vesting);
+
+        // if !total_rewards.is_zero() {
+        //     Rewards::<T>::translate(|_key: T::AccountId, value: (Balance, Balance)| {
+        //         let (limit, owned) = value;
+        //         let limit_to_add =
+        //             FixedWrapper::from(owned) * amount.clone() / FixedWrapper::from(total_rewards);
+        //         let new_limit = (limit_to_add + FixedWrapper::from(limit))
+        //             .try_into_balance()
+        //             .unwrap_or(limit);
+        //         Some((new_limit, owned))
+        //     })
+        // }
+        unimplemented!()
+    }
 }
 
 pub use pallet::*;
@@ -96,8 +156,12 @@ pub mod pallet {
     use frame_system::pallet_prelude::*;
 
     #[pallet::config]
-    pub trait Config: frame_system::Config + common::Config {
+    pub trait Config: frame_system::Config + common::Config + assets::Config {
         type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+        /// Accounts holding PSWAP dedicated for rewards.
+        type GetMarketMakerRewardsAccountId: Get<Self::AccountId>;
+        type GetFarmingRewardsAccountId: Get<Self::AccountId>;
+        type GetBondingCurveRewardsAccountId: Get<Self::AccountId>;
         /// Weight information for extrinsics in this pallet.
         type WeightInfo: WeightInfo;
     }

@@ -35,7 +35,6 @@ dex-manager = { path = "../dex-manager" }
 permissions = { path = "../permissions" }
 trading-pair = { path = "../trading-pair" }
 
-
 [features]
 default = ['std']
 std = [

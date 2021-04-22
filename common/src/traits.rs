@@ -29,7 +29,7 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use crate::prelude::{ManagementMode, SwapAmount, SwapOutcome};
-use crate::{Fixed, LiquiditySourceFilter, LiquiditySourceId, RewardReason};
+use crate::{Fixed, LiquiditySourceFilter, LiquiditySourceId, RewardReason, PswapRemintInfo};
 use frame_support::dispatch::DispatchResult;
 use frame_support::pallet_prelude::MaybeSerializeDeserialize;
 use frame_support::sp_runtime::traits::BadOrigin;
@@ -450,5 +450,15 @@ pub trait GetPoolReserves<AssetId> {
 impl<AssetId> GetPoolReserves<AssetId> for () {
     fn reserves(_base_asset: &AssetId, _other_asset: &AssetId) -> (Balance, Balance) {
         Default::default()
+    }
+}
+
+pub trait OnPswapBurned {
+    fn on_pswap_burned(distribution: PswapRemintInfo);
+}
+
+impl OnPswapBurned for () {
+    fn on_pswap_burned(_distribution: PswapRemintInfo) {
+        // do nothing
     }
 }

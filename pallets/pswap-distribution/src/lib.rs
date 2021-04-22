@@ -34,7 +34,7 @@ use codec::{Decode, Encode};
 use common::fixnum::ops::{CheckedAdd, CheckedSub};
 use common::prelude::{Balance, FixedWrapper, SwapAmount};
 use common::{
-    fixed, fixed_wrapper, EnsureDEXManager, Fixed, LiquiditySourceFilter, LiquiditySourceType,
+    fixed, fixed_wrapper, EnsureDEXManager, Fixed, LiquiditySourceFilter, LiquiditySourceType, OnPswapBurned, PswapRemintInfo,
 };
 use frame_support::dispatch::{DispatchError, DispatchResult, DispatchResultWithPostInfo, Weight};
 use frame_support::traits::Get;
@@ -63,26 +63,9 @@ type AssetIdOf<T> = <T as assets::Config>::AssetId;
 type Assets<T> = assets::Module<T>;
 type System<T> = frame_system::Module<T>;
 
-pub trait OnPswapBurned {
-    fn on_pswap_burned(distribution: PswapRemintInfo);
-}
-
-impl OnPswapBurned for () {
-    fn on_pswap_burned(_distribution: PswapRemintInfo) {
-        // do nothing
-    }
-}
-
 pub trait WeightInfo {
     fn claim_incentive() -> Weight;
     fn on_initialize(is_distributing: bool) -> Weight;
-}
-
-#[derive(Encode, Decode, Clone, RuntimeDebug, Default)]
-pub struct PswapRemintInfo {
-    pub liquidity_providers: Balance,
-    pub parliament: Balance,
-    pub vesting: Balance,
 }
 
 macro_rules! into_currency {

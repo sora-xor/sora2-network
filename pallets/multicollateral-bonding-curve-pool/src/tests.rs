@@ -34,10 +34,9 @@ mod tests {
     use common::{
         self, balance, fixed, fixed_wrapper, Fixed, fixnum::ops::One as _, fixnum::ops::Zero as _,
         prelude::{Balance, SwapAmount, SwapOutcome, QuoteAmount, FixedWrapper,},
-        AssetName, AssetSymbol, DEXId, LiquiditySource, TechPurpose, USDT, VAL, XOR, PSWAP, LiquiditySourceFilter,
+        AssetName, AssetSymbol, DEXId, LiquiditySource, TechPurpose, USDT, VAL, XOR, PSWAP, LiquiditySourceFilter, OnPswapBurned,
     };
     use hex_literal::hex;
-    use pswap_distribution::OnPswapBurned;
     use frame_support::traits::OnInitialize;
     use liquidity_proxy::LiquidityProxyTrait;
     use frame_support::{assert_err, assert_noop, assert_ok};
