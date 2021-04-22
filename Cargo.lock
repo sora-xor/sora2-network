@@ -4959,7 +4959,7 @@ dependencies = [
 [[package]]
 name = "pallet-multisig"
 version = "3.0.0-rc5"
-source = "git+https://github.com/soramitsu/sora2-frame-pallets.git?branch=v3.0.0#5ab3454a9b1c0727f9b9e988bc49ff655669dc69"
+source = "git+https://github.com/soramitsu/sora2-frame-pallets.git?branch=v3.0.0#fb15838147acab53222c0620fc39988023d487f6"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -5057,7 +5057,7 @@ dependencies = [
 [[package]]
 name = "pallet-staking"
 version = "3.0.0"
-source = "git+https://github.com/soramitsu/sora2-frame-pallets.git?branch=v3.0.0#5ab3454a9b1c0727f9b9e988bc49ff655669dc69"
+source = "git+https://github.com/soramitsu/sora2-frame-pallets.git?branch=v3.0.0#fb15838147acab53222c0620fc39988023d487f6"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -8650,9 +8650,9 @@ checksum = "1e81da0851ada1f3e9d4312c704aa4f8806f0f9d69faaf8df2f3464b4a9437c2"
 
 [[package]]
 name = "syn"
-version = "1.0.69"
+version = "1.0.70"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "48fe99c6bd8b1cc636890bcc071842de909d902c81ac7dab53ba33c421ab8ffb"
+checksum = "b9505f307c872bab8eb46f77ae357c8eba1fdacead58ee5a850116b1d7f82883"
 dependencies = [
  "proc-macro2",
  "quote",
