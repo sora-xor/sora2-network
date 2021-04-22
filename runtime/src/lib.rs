@@ -1031,7 +1031,7 @@ impl farming::Config for Runtime {
     const VESTING_COEFF: u32 = FARMING_VESTING_COEFF;
     const VESTING_FREQUENCY: BlockNumber = FARMING_VESTING_FREQUENCY;
     const BLOCKS_PER_DAY: BlockNumber = 1 * DAYS;
-    type RewardDoublingAssets: = FarmingRewardDoublingAssets;
+    type RewardDoublingAssets = FarmingRewardDoublingAssets;
     type WeightInfo = ();
 }
 
