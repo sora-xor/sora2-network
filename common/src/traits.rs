@@ -29,7 +29,7 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use crate::prelude::{ManagementMode, SwapAmount, SwapOutcome};
-use crate::{Fixed, LiquiditySourceFilter, LiquiditySourceId, RewardReason, PswapRemintInfo};
+use crate::{Fixed, LiquiditySourceFilter, LiquiditySourceId, PswapRemintInfo, RewardReason};
 use frame_support::dispatch::DispatchResult;
 use frame_support::pallet_prelude::MaybeSerializeDeserialize;
 use frame_support::sp_runtime::traits::BadOrigin;

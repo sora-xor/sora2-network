@@ -36,14 +36,12 @@ extern crate alloc;
 
 use codec::{Decode, Encode};
 use common::prelude::{Balance, FixedWrapper};
-use common::{balance, RewardReason, PSWAP, PswapRemintInfo};
-use frame_support::dispatch::{DispatchResult, DispatchError};
-use frame_support::traits::IsType;
+use common::{balance, OnPswapBurned, PswapRemintInfo, RewardReason, PSWAP};
+use frame_support::dispatch::{DispatchError, DispatchResult};
 use frame_support::fail;
-use sp_std::collections::btree_map::BTreeMap;
-use frame_support::traits::Get;
+use frame_support::traits::{Get, IsType};
 use sp_runtime::traits::Zero;
-use common::OnPswapBurned;
+use sp_std::collections::btree_map::BTreeMap;
 
 pub mod weights;
 
@@ -92,58 +90,80 @@ impl<T: Config> Pallet<T> {
         Ok(())
     }
 
-    pub fn claim_rewards(account_id: T::AccountId) -> DispatchResult {
-        Rewards::<T>::mutate(&account_id, |info| {
+    pub fn add_pending_reward(
+        account_id: &T::AccountId,
+        reason: RewardReason,
+        amount: Balance,
+    ) -> DispatchResult {
+        Rewards::<T>::mutate(account_id, |info| {
+            let entry = info.rewards.entry(reason).or_insert(Default::default());
+            *entry = entry.saturating_add(amount);
+            Ok(())
+        })
+    }
+
+    /// General claim function, which updates user reward status.
+    pub fn claim_rewards(account_id: &T::AccountId) -> DispatchResult {
+        Rewards::<T>::mutate(account_id, |info| {
             if info.total_available.is_zero() || info.limit.is_zero() {
                 fail!(Error::<T>::NothingToClaim);
             } else {
                 for (&reward_reason, amount) in info.rewards.iter_mut() {
                     let claimable = amount.clone().min(info.limit);
-                    let actual_claimed = Self::claim_reward_by_reason(&account_id, reward_reason, *amount).unwrap_or(balance!(0));
+                    let actual_claimed =
+                        Self::claim_reward_by_reason(account_id, reward_reason, claimable)
+                            .unwrap_or(balance!(0));
+                    // TODO: maybe throw event on error for better detalisation
                     info.limit = info.limit.saturating_sub(actual_claimed);
                     *amount = amount.saturating_sub(actual_claimed);
                 }
                 Ok(())
             }
-
         })
     }
 
-    pub fn claim_reward_by_reason(account_id: &T::AccountId, reason: RewardReason, amount: Balance) -> Result<Balance, DispatchError> {
+    /// Claim rewards from account with reserves dedicated for particular reward type.
+    pub fn claim_reward_by_reason(
+        account_id: &T::AccountId,
+        reason: RewardReason,
+        amount: Balance,
+    ) -> Result<Balance, DispatchError> {
         let source_account = match reason {
             RewardReason::BuyOnBondingCurve => T::GetBondingCurveRewardsAccountId::get(),
             RewardReason::LiquidityProvisionFarming => T::GetFarmingRewardsAccountId::get(),
             RewardReason::MarketMakerVolume => T::GetMarketMakerRewardsAccountId::get(),
-            _ => fail!(Error::<T>::UnhandledRewardType)
+            _ => fail!(Error::<T>::UnhandledRewardType),
         };
-        let total_rewards = Assets::<T>::free_balance(&PSWAP.into(), &source_account)?;
-        unimplemented!()
+        let available_rewards = Assets::<T>::free_balance(&PSWAP.into(), &source_account)?;
+        if available_rewards.is_zero() {
+            fail!(Error::<T>::RewardsSupplyShortage);
+        }
+        let amount = amount.min(available_rewards);
+        Assets::<T>::transfer_from(&PSWAP.into(), &source_account, account_id, amount)?;
+        Ok(amount)
     }
 
-    pub fn distribute_limits(vested_amount: Balance) -> DispatchResult {
+    pub fn distribute_limits(vested_amount: Balance) {
         let total_rewards = TotalRewards::<T>::get();
-        unimplemented!()
+        // TODO: what to do if there's no accounts to receive vesting?
+        if !total_rewards.is_zero() {
+            Rewards::<T>::translate(|_key: T::AccountId, mut info: RewardInfo| {
+                let limit_to_add = FixedWrapper::from(info.limit)
+                    * FixedWrapper::from(vested_amount)
+                    / FixedWrapper::from(total_rewards);
+                info.limit = (limit_to_add + FixedWrapper::from(info.limit))
+                    .try_into_balance()
+                    .unwrap_or(info.limit);
+                Some(info)
+            })
+        };
     }
 }
 
 impl<T: Config> OnPswapBurned for Module<T> {
     /// Invoked when pswap is burned after being exchanged from collected liquidity provider fees.
     fn on_pswap_burned(distribution: PswapRemintInfo) {
-        // let total_rewards = TotalRewards::<T>::get();
-        // let amount = FixedWrapper::from(distribution.vesting);
-
-        // if !total_rewards.is_zero() {
-        //     Rewards::<T>::translate(|_key: T::AccountId, value: (Balance, Balance)| {
-        //         let (limit, owned) = value;
-        //         let limit_to_add =
-        //             FixedWrapper::from(owned) * amount.clone() / FixedWrapper::from(total_rewards);
-        //         let new_limit = (limit_to_add + FixedWrapper::from(limit))
-        //             .try_into_balance()
-        //             .unwrap_or(limit);
-        //         Some((new_limit, owned))
-        //     })
-        // }
-        unimplemented!()
+        Pallet::<T>::distribute_limits(distribution.vesting)
     }
 }
 
@@ -182,6 +202,8 @@ pub mod pallet {
         NothingToClaim,
         /// Attempt to claim rewards of type, which is not handled.
         UnhandledRewardType,
+        /// Trying to claim PSWAP, but account with reward reserves is empty. This likely means that reward programme has finished.
+        RewardsSupplyShortage,
     }
 
     #[pallet::event]

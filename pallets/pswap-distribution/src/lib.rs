@@ -34,7 +34,8 @@ use codec::{Decode, Encode};
 use common::fixnum::ops::{CheckedAdd, CheckedSub};
 use common::prelude::{Balance, FixedWrapper, SwapAmount};
 use common::{
-    fixed, fixed_wrapper, EnsureDEXManager, Fixed, LiquiditySourceFilter, LiquiditySourceType, OnPswapBurned, PswapRemintInfo,
+    fixed, fixed_wrapper, EnsureDEXManager, Fixed, LiquiditySourceFilter, LiquiditySourceType,
+    OnPswapBurned, PswapRemintInfo,
 };
 use frame_support::dispatch::{DispatchError, DispatchResult, DispatchResultWithPostInfo, Weight};
 use frame_support::traits::Get;
