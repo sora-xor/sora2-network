@@ -1174,8 +1174,8 @@ pub fn main_net_coded() -> ChainSpec {
     let id = "sora-substrate-main-net";
     // SORA main-net node address. We should have 2 nodes.
     let boot_nodes = vec![
-              MultiaddrWithPeerId::from_str("/dns/v1.sora2.soramitsu.co.jp/tcp/30333/p2p/12D3KooWDQmg87ET849KaCjNn8ZL59pQ9giXiZDmmAvNZNNgAmLp").unwrap(), //Prod value
-              MultiaddrWithPeerId::from_str("/dns/v2.sora2.soramitsu.co.jp/tcp/30334/p2p/12D3KooWHDMg3N6nZB2o8FD41vEDP8vrTfRnZrbZSf2CiH87EELW").unwrap()  //Prod value
+              MultiaddrWithPeerId::from_str("/dns/v1.sora2.soramitsu.co.jp/tcp/30333/p2p/12D3KooWLHZRLHeVPdrXuNNdzpKuPqo6Sm6f9rjVtp5XsEvhXvyG").unwrap(), //Prod value
+              MultiaddrWithPeerId::from_str("/dns/v2.sora2.soramitsu.co.jp/tcp/30333/p2p/12D3KooWGiemoYceJ1y5nQR1YNxysjbCH8MbW5ps1uApLfN36VQa").unwrap()  //Prod value
             ];
     ChainSpec::from_genesis(
         name,
