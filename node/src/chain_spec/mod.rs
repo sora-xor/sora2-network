@@ -1174,8 +1174,8 @@ pub fn main_net_coded() -> ChainSpec {
     let id = "sora-substrate-main-net";
     // SORA main-net node address. We should have 2 nodes.
     let boot_nodes = vec![
-              MultiaddrWithPeerId::from_str("/dns/v1.sora2.soramitsu.co.jp/tcp/30333/p2p/12D3KooWDQmg87ET849KaCjNn8ZL59pQ9giXiZDmmAvNZNNgAmLp").unwrap(), //Prod value
-              MultiaddrWithPeerId::from_str("/dns/v2.sora2.soramitsu.co.jp/tcp/30334/p2p/12D3KooWHDMg3N6nZB2o8FD41vEDP8vrTfRnZrbZSf2CiH87EELW").unwrap()  //Prod value
+              MultiaddrWithPeerId::from_str("/dns/v1.sora2.soramitsu.co.jp/tcp/30333/p2p/12D3KooWLHZRLHeVPdrXuNNdzpKuPqo6Sm6f9rjVtp5XsEvhXvyG").unwrap(), //Prod value
+              MultiaddrWithPeerId::from_str("/dns/v2.sora2.soramitsu.co.jp/tcp/30333/p2p/12D3KooWGiemoYceJ1y5nQR1YNxysjbCH8MbW5ps1uApLfN36VQa").unwrap()  //Prod value
             ];
     ChainSpec::from_genesis(
         name,
@@ -1225,6 +1225,26 @@ pub fn main_net_coded() -> ChainSpec {
                     hex!("297c03e65c2930daa7c6067a2bb853819b61ed49b70de2f3219a2eb6ec0364aa").into(), //Prod value
                 ],
                 eth_bridge_params,
+                vec![
+                    hex!("3449d09bd0d8db3e925b1a7260dbfbf340e48ae6e6b845ad8799a8e9d90f3419").into(),
+                    hex!("aea4a9cde3671cfcef190f4bab6c09cb8aaaf86b601a3480a1911258e6333b31").into(),
+                    hex!("7abbc1462576cdf687e2b701e2aaca008cfed0445a02fcde19067814d1507273").into(),
+                    hex!("fc6239c9a5647036fc27fcb1ddcba1963930f9bbec3085d37949f2c69c0f8542").into(),
+                    hex!("ce87ff3c35a5811baaa435750e5c7f093fb5a75a6caf4bc2dd52dd0c31cf2915").into(),
+                    hex!("22946844899b7329e242e7366b68b2388297b6c20bd55bc16018138fb918e136").into(),
+                    hex!("d982a770961ccb5dc410dc43cec18cec7f75e35bd24cf258b836d7ed1912b42e").into(),
+                    hex!("22b8381f123c514b5cc8f10db489fc2f13bc6e0c2482f71fa06c506483136a38").into(),
+                    hex!("70e17c41c468aa2ddee29945683d07ae695fbe4c31e8fb1ade53f6634b03265f").into(),
+                    hex!("f0d8f9f778885c08bd92ef6b3ab8842c0d7fc8c16c315ff5ec5f59415b8a6c47").into(),
+                    hex!("2e533300bf71154cf45c80c1e8927fb0c686cc94a74b69693f3cee8e55ffd238").into(),
+                    hex!("14f2c52c094820f11e468dc9822b9bbd56be5b65fe15508279680ad8fab9184d").into(),
+                    hex!("aa1d35e511ba5f58926340f769b04c456c3d02ce70e3835716ccae6a89fe081c").into(),
+                ],
+                vec![
+                    hex!("c4ce370e3ef70681909725fb7385000effe1d88fdf8499df94b53b31e82d9a6e").into(),
+                    hex!("e44c7c00f98ae6acf86dc366d082307388c750ceb70696ca305a7bfd761aee26").into(),
+                    hex!("603fb3e17b49ab8f90e839020f2473278c4f01626ef63976df35ccfbaaae0c1b").into(),
+                ],
             )
         },
         boot_nodes,
@@ -1241,6 +1261,8 @@ fn mainnet_genesis(
     additional_validators: Vec<AccountId>,
     initial_bridge_peers: Vec<AccountId>,
     eth_bridge_params: EthBridgeParams,
+    council_accounts: Vec<AccountId>,
+    technical_committee_accounts: Vec<AccountId>,
 ) -> GenesisConfig {
     // Minimum stake for an active validator
     let initial_staking = balance!(0.2);
@@ -1734,8 +1756,14 @@ fn mainnet_genesis(
             account_id: iroha_migration_account_id,
         }),
         rewards: Some(rewards_config),
-        pallet_collective_Instance1: Some(CouncilConfig::default()),
-        pallet_collective_Instance2: Some(TechnicalCommitteeConfig::default()),
+        pallet_collective_Instance1: Some(CouncilConfig {
+            members: council_accounts,
+            phantom: Default::default(),
+        }),
+        pallet_collective_Instance2: Some(TechnicalCommitteeConfig {
+            members: technical_committee_accounts,
+            phantom: Default::default(),
+        }),
         pallet_democracy: Some(DemocracyConfig::default()),
         pallet_elections_phragmen: Default::default(),
         pallet_membership_Instance1: Default::default(),
