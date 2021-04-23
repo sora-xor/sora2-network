@@ -45,7 +45,7 @@ use common::{
 };
 use frame_support::traits::Get;
 use frame_support::weights::Weight;
-use frame_support::{ensure, fail, RuntimeDebug};
+use frame_support::{ensure, RuntimeDebug};
 use frame_system::ensure_signed;
 use sp_runtime::traits::{UniqueSaturatedFrom, Zero};
 use sp_runtime::DispatchError;
