@@ -891,7 +891,7 @@ fn test_quote_fast_split_exact_input_base_should_pass() {
         dist = quotes.distribution;
         dist.sort_by(|a, b| a.0.cmp(&b.0));
 
-        assert_eq!(quotes.amount, balance!(1562.994117765899819763));
+        assert_eq!(quotes.amount, balance!(1516.342527519604340764));
         assert_eq!(quotes.fee, balance!(0));
         assert_eq!(
             &dist,
@@ -913,7 +913,7 @@ fn test_quote_fast_split_exact_input_base_should_pass() {
 }
 
 #[test]
-fn test_quote_fast_split_exact_ouput_target_should_pass() {
+fn test_quote_fast_split_exact_output_target_should_pass() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
         MockMCBCPool::init(get_mcbc_reserves_normal()).unwrap();
@@ -1005,7 +1005,7 @@ fn test_quote_fast_split_exact_ouput_target_should_pass() {
         dist = quotes.distribution;
         dist.sort_by(|a, b| a.0.cmp(&b.0));
 
-        assert_eq!(quotes.amount, balance!(124.256775151618382704));
+        assert_eq!(quotes.amount, balance!(125.000000000000000000));
         assert_eq!(quotes.fee, balance!(0));
         assert_eq!(
             &dist,
@@ -1015,11 +1015,11 @@ fn test_quote_fast_split_exact_ouput_target_should_pass() {
                         DEX_D_ID,
                         LiquiditySourceType::MulticollateralBondingCurvePool
                     ),
-                    fixed!(0.220302501954229723),
+                    fixed!(0.0),
                 ),
                 (
                     LiquiditySourceId::new(DEX_D_ID, LiquiditySourceType::MockPool),
-                    fixed!(0.779697498045770277),
+                    fixed!(1.0),
                 ),
             ]
         );
@@ -2149,7 +2149,7 @@ fn test_smart_split_selling_xor_should_fail() {
                 filter_both.clone(),
                 false,
             );
-            assert_noop!(result, DispatchError::Other("Insufficient reserves"));
+            assert_noop!(result, crate::Error::<Runtime>::InsufficientLiquidity);
         });
     }
 
@@ -2199,4 +2199,59 @@ fn test_smart_split_selling_xor_should_fail() {
             run_test(DOT, *r, *t, balance!(350000), balance!(200), balance!(1000));
         }
     }
+}
+
+#[test]
+fn test_smart_split_error_handling_works() {
+    fn run_test(
+        collateral_asset_id: AssetId,
+        xyk_pool_reserves: (Fixed, Fixed),
+        tbc_reserves: Balance,
+        amount: SwapAmount<Balance>,
+        expected_error: DispatchError,
+    ) {
+        let mut ext = ExtBuilder::with_total_supply_and_reserves(
+            balance!(350000),
+            vec![(0, collateral_asset_id, xyk_pool_reserves.clone())],
+        )
+        .build();
+        ext.execute_with(|| {
+            MockMCBCPool::init(vec![(collateral_asset_id, tbc_reserves)]).unwrap();
+
+            let result = LiquidityProxy::quote_single(
+                &GetBaseAssetId::get(),
+                &collateral_asset_id,
+                amount,
+                LiquiditySourceFilter::empty(0),
+                false,
+            );
+
+            assert_noop!(result, expected_error);
+        });
+    }
+
+    // XYK pool has zero reserves, the whole trade will be directed to the MCBC pool.
+    // Quote at the MCBC pool fails due to insufficient collateral reserves.
+    // Subsequent quote from the XYK pool also fails since it doesn't have any reserves.
+    // Error from the MCBC pool quote should be returned as the outcome.
+    run_test(
+        VAL,
+        (fixed!(0), fixed!(0)),
+        balance!(1000),
+        SwapAmount::with_desired_output(balance!(5000), balance!(1000000)),
+        crate::Error::<Runtime>::InsufficientLiquidity.into(),
+    );
+
+    // MCBC will fail trying to get the sell price for the `special_asset`.
+    // The entire trade will be directed to the XYK pool.
+    // Quote at the MCBC pool will never be attempted.
+    // Quote from the XYK pool should fail due to insufficient reserves.
+    // Error from the XYK pool quote should be returned as the outcome.
+    run_test(
+        special_asset(),
+        (fixed!(500), fixed!(500)),
+        balance!(1000),
+        SwapAmount::with_desired_output(balance!(5000), balance!(1000000)),
+        mock_liquidity_source::Error::<Runtime, mock_liquidity_source::Instance1>::InsufficientLiquidity.into(),
+    );
 }
