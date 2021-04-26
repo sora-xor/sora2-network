@@ -43,7 +43,9 @@ pipeline {
                         docker.image(baseImageName).inside() {
                             sh "cd ${env.WORKSPACE}"
                             if (getPushVersion(pushTags)){
-                                featureList = (env.TAG_NAME =~ 'stage.*') ? featureList : 'include-real-files'
+                                if (env.TAG_NAME) {
+                                    featureList = (env.TAG_NAME =~ 'stage.*') ? featureList : 'include-real-files'
+                                }
                                 sh """
                                     cargo build --release --features \"${featureList}\"
                                     cargo test --release
