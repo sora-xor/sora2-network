@@ -299,7 +299,8 @@ impl<T: Config> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, 
                 to_fixed_wrapper!(balance_st) + to_fixed_wrapper!(self.source.amount.unwrap());
             let fxw_y =
                 to_fixed_wrapper!(balance_tt) - to_fixed_wrapper!(self.destination.amount.unwrap());
-            (fxw_x * fxw_y).try_into_balance().unwrap_or(balance!(0)) != balance!(0)
+            fxw_x.try_into_balance().unwrap_or(balance!(0)) != balance!(0)
+                && fxw_y.try_into_balance().unwrap_or(balance!(0)) != balance!(0)
         };
         ensure!(
             pool_is_valid_after_op_test,
