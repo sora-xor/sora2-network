@@ -1503,8 +1503,8 @@ fn test_list_enabled_sources_for_path_query_should_pass_2() {
         assert_eq!(query_b.unwrap(), vec![MulticollateralBondingCurvePool]);
         assert_eq!(query_c.unwrap(), vec![XYKPool]);
         assert_eq!(query_d.unwrap(), vec![XYKPool]);
-        assert_eq!(query_e.unwrap(), vec![XYKPool, MulticollateralBondingCurvePool]);
-        assert_eq!(query_f.unwrap(), vec![XYKPool, MulticollateralBondingCurvePool]);
+        assert_eq!(query_e.unwrap(), vec![]);
+        assert_eq!(query_f.unwrap(), vec![]);
     });
 }
 
@@ -1529,8 +1529,8 @@ fn test_list_enabled_sources_for_path_query_should_pass_3() {
         assert_eq!(query_b.unwrap(), vec![MulticollateralBondingCurvePool]);
         assert_eq!(query_c.unwrap(), vec![XYKPool, MulticollateralBondingCurvePool]);
         assert_eq!(query_d.unwrap(), vec![XYKPool, MulticollateralBondingCurvePool]);
-        assert_eq!(query_e.unwrap(), vec![XYKPool, MulticollateralBondingCurvePool]);
-        assert_eq!(query_f.unwrap(), vec![XYKPool, MulticollateralBondingCurvePool]);
+        assert_eq!(query_e.unwrap(), vec![MulticollateralBondingCurvePool]);
+        assert_eq!(query_f.unwrap(), vec![MulticollateralBondingCurvePool]);
     });
 }
 
@@ -1558,8 +1558,8 @@ fn test_list_enabled_sources_for_path_query_should_pass_4() {
         assert_eq!(query_b.unwrap(), vec![XYKPool, MulticollateralBondingCurvePool, MockPool2]);
         assert_eq!(query_c.unwrap(), vec![XYKPool, MulticollateralBondingCurvePool, MockPool3]);
         assert_eq!(query_d.unwrap(), vec![XYKPool, MulticollateralBondingCurvePool, MockPool3]);
-        assert_eq!(query_e.unwrap(), vec![XYKPool, MulticollateralBondingCurvePool, MockPool2, MockPool3]);
-        assert_eq!(query_f.unwrap(), vec![XYKPool, MulticollateralBondingCurvePool, MockPool2, MockPool3]);
+        assert_eq!(query_e.unwrap(), vec![XYKPool, MulticollateralBondingCurvePool]);
+        assert_eq!(query_f.unwrap(), vec![XYKPool, MulticollateralBondingCurvePool]);
     });
 }
 
