@@ -964,7 +964,7 @@ impl<T: Config> Pallet<T> {
 
         // Regardless whether we have got any result so far, we still must do
         // calculations for the secondary market alone
-        let final_result = T::LiquidityRegistry::quote(
+        let xyk_result = T::LiquidityRegistry::quote(
             secondary_source_id,
             input_asset_id,
             output_asset_id,
@@ -994,9 +994,16 @@ impl<T: Config> Pallet<T> {
             Ok(())
         });
 
-        if final_result.is_err() {
+        // Check if we have got a result at either of the steps
+        if let Err(err) = xyk_result {
+            // If both attempts to get the price failed, return the first error
             if let Some(e) = maybe_error {
+                // Quote at the first step was attempted and failed
                 return Err(e);
+            }
+            if best == extremum {
+                // The quote at first step was never attempted, returning the current error
+                return Err(err);
             }
         }
 
