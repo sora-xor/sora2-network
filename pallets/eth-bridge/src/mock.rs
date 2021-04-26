@@ -477,8 +477,6 @@ impl State {
         finalized_thischain_height: BlockNumber,
         dispatch_txs: bool,
     ) {
-        // Sidechain height.
-        push_json_rpc_response(U64::from(sidechain_height));
         // Thischain finalized head.
         push_json_rpc_response(H256([0; 32]));
         let sub_block_number = frame_system::Pallet::<Runtime>::block_number();
@@ -496,6 +494,8 @@ impl State {
                 extrinsics: vec![],
             },
         });
+        // Sidechain height.
+        push_json_rpc_response(U64::from(sidechain_height));
         let mut responses = Vec::new();
         std::mem::swap(&mut self.responses, &mut responses);
         for resp in responses {
