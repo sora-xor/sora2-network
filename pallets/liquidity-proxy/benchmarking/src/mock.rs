@@ -34,7 +34,7 @@ use crate::{Config, *};
 use common::mock::ExistentialDeposits;
 use common::prelude::Balance;
 use common::{
-    fixed_from_basis_points, hash, Amount, AssetId32, BalancePrecision, DEXInfo, Fixed,
+    fixed, fixed_from_basis_points, hash, Amount, AssetId32, BalancePrecision, DEXInfo, Fixed,
     FromGenericPair, LiquiditySourceType, TechPurpose,
 };
 use currencies::BasicCurrencyAdapter;
@@ -90,6 +90,7 @@ parameter_types! {
     pub const GetBurnUpdateFrequency: BlockNumber = 10;
     pub GetIncentiveAssetId: AssetId = common::PSWAP.into();
     pub GetParliamentAccountId: AccountId = AccountId32::from([8; 32]);
+    pub GetXykFee: Fixed = fixed!(0.003);
 }
 
 construct_runtime! {
@@ -264,6 +265,7 @@ impl pool_xyk::Config for Runtime {
     type PolySwapAction =
         pool_xyk::PolySwapAction<AssetId, TechAssetId, Balance, AccountId, TechAccountId>;
     type EnsureDEXManager = dex_manager::Module<Runtime>;
+    type GetFee = GetXykFee;
     type WeightInfo = ();
 }
 
