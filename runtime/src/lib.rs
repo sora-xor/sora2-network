@@ -1204,6 +1204,7 @@ construct_runtime! {
         TechnicalMembership: pallet_membership::<Instance1>::{Module, Call, Storage, Event<T>, Config<T>},
         ElectionsPhragmen: pallet_elections_phragmen::{Module, Call, Storage, Event<T>, Config<T>},
         VestedRewards: vested_rewards::{Module, Call, Storage, Event<T>},
+        Farming: farming::{Module, Storage},
         // Available only for test net
         Faucet: faucet::{Module, Call, Config<T>, Event<T>},
     }
@@ -1262,6 +1263,7 @@ construct_runtime! {
         TechnicalMembership: pallet_membership::<Instance1>::{Module, Call, Storage, Event<T>, Config<T>},
         ElectionsPhragmen: pallet_elections_phragmen::{Module, Call, Storage, Event<T>, Config<T>},
         VestedRewards: vested_rewards::{Module, Call, Storage, Event<T>},
+        Farming: farming::{Module, Storage},
     }
 }
 
@@ -1829,6 +1831,7 @@ impl_runtime_apis! {
             add_benchmark!(params, batches, dex_api, DEXAPIBench::<Runtime>);
             #[cfg(feature = "private-net")]
             add_benchmark!(params, batches, faucet, Faucet);
+            add_benchmark!(params, batches, farming, Farming);
             add_benchmark!(params, batches, iroha_migration, IrohaMigration);
             add_benchmark!(params, batches, liquidity_proxy, LiquidityProxyBench::<Runtime>);
             add_benchmark!(params, batches, multicollateral_bonding_curve_pool, MulticollateralBondingCurvePool);

@@ -28,13 +28,15 @@ common = { path = "../../common", default-features = false }
 permissions = { path = "../permissions", default-features = false }
 
 [dev-dependencies]
-pallet-balances = { version = "3", default-features = false }
+pallet-balances = { version = "3" }
 sp-io = { version = "3", default-features = false }
+
 common = { path = "../../common", features = ["test"] }
 permissions = { path = "../permissions" }
 
 [features]
 default = ['std']
+
 std = [
     'codec/std',
     'currencies/std',
@@ -47,6 +49,7 @@ std = [
     'tokens/std',
     'traits/std',
 ]
+
 runtime-benchmarks = [
     "frame-benchmarking",
     "frame-system/runtime-benchmarks",

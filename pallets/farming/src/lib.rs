@@ -30,6 +30,13 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
+#[cfg(feature = "runtime-benchmarks")]
+mod benchmarking;
+#[cfg(test)]
+mod mock;
+#[cfg(test)]
+mod tests;
+
 use common::prelude::FixedWrapper;
 use common::{balance, Balance};
 use frame_support::traits::Get;
@@ -59,11 +66,6 @@ impl WeightInfo for () {
         100_000_000
     }
 }
-
-#[cfg(test)]
-mod mock;
-#[cfg(test)]
-mod tests;
 
 impl<T: Config> Pallet<T> {
     fn refresh_farmers(now: T::BlockNumber) -> Weight {
@@ -96,7 +98,7 @@ impl<T: Config> Pallet<T> {
                     } else {
                         now
                     };
-                    entry.insert((farmer_weight, block_number));
+                entry.insert((farmer_weight, block_number));
 
                     function_weight = function_weight.saturating_add(T::DbWeight::get().reads(1));
                 }

@@ -185,6 +185,7 @@ runtime-benchmarks = [
     "eth-bridge/runtime-benchmarks",
     "dex-api-benchmarking",
     "faucet?/runtime-benchmarks",
+    "farming/runtime-benchmarks",
     "frame-benchmarking",
     "frame-support/runtime-benchmarks",
     "frame-system-benchmarking",

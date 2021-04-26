@@ -376,9 +376,9 @@ pub mod pallet {
 
     /// Asset Id -> Owner Account Id
     #[pallet::storage]
-    #[pallet::getter(fn asset_owners)]
+    #[pallet::getter(fn asset_owner)]
     pub(super) type AssetOwners<T: Config> =
-        StorageMap<_, Twox64Concat, T::AssetId, T::AccountId, ValueQuery>;
+        StorageMap<_, Twox64Concat, T::AssetId, T::AccountId, OptionQuery>;
 
     /// Asset Id -> (Symbol, Precision, Is Mintable)
     #[pallet::storage]
@@ -535,15 +535,6 @@ impl<T: Config> Pallet<T> {
             )?;
             Ok(asset_id)
         })
-    }
-
-    pub fn asset_owner(asset_id: &T::AssetId) -> Option<T::AccountId> {
-        let account_id = Self::asset_owners(&asset_id);
-        if account_id == T::AccountId::default() {
-            None
-        } else {
-            Some(account_id)
-        }
     }
 
     #[inline]
