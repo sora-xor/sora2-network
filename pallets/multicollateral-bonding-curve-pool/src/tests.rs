@@ -1736,7 +1736,7 @@ mod tests {
         .build();
         ext.execute_with(|| {
             MockDEXApi::init_without_reserves().unwrap();
-            let distribution_accounts = bonding_curve_pool_init(Vec::new()).unwrap();
+            let _ = bonding_curve_pool_init(Vec::new()).unwrap();
             let alice = &alice();
             TradingPair::register(Origin::signed(alice.clone()),DEXId::Polkaswap.into(), XOR, USDT).expect("Failed to register trading pair.");
             TradingPair::register(Origin::signed(alice.clone()),DEXId::Polkaswap.into(), XOR, VAL).expect("Failed to register trading pair.");
