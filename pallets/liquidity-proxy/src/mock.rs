@@ -49,6 +49,7 @@ use sp_core::H256;
 use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentityLookup};
 use sp_runtime::{AccountId32, DispatchError, Perbill};
+use sp_std::str::FromStr;
 use std::collections::HashMap;
 
 pub type AccountId = AccountId32;
@@ -57,7 +58,7 @@ pub type DEXId = u32;
 type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
 type TechAssetId = common::TechAssetId<common::PredefinedAssetId>;
 pub type AssetId = AssetId32<common::PredefinedAssetId>;
-pub(crate) type ReservesInit = Vec<(DEXId, AssetId, (Fixed, Fixed))>;
+type ReservesInit = Vec<(DEXId, AssetId, (Fixed, Fixed))>;
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
 
@@ -69,6 +70,10 @@ pub const DEX_A_ID: DEXId = 1;
 pub const DEX_B_ID: DEXId = 2;
 pub const DEX_C_ID: DEXId = 3;
 pub const DEX_D_ID: DEXId = 0;
+
+pub fn special_asset() -> AssetId {
+    AssetId::from_str("0x02ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff").unwrap()
+}
 
 parameter_types! {
     pub const BlockHashCount: u64 = 250;
@@ -412,6 +417,9 @@ impl MockMCBCPool {
     }
 
     fn _price_at(collateral_asset: &AssetId, base_supply: Balance) -> Fixed {
+        if *collateral_asset == GetBaseAssetId::get() {
+            return fixed!(1.0);
+        }
         let initial_price = get_initial_price();
         let x: FixedWrapper = base_supply.into();
         let b: FixedWrapper = initial_price.into();
@@ -449,21 +457,27 @@ impl LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> for Mock
         if !Self::can_exchange(dex_id, input_asset_id, output_asset_id) {
             panic!("Can't exchange");
         }
-        let base_asset_id = &XOR.into();
+        let base_asset_id = &GetBaseAssetId::get();
         let reserves_tech_account_id =
             TechAccountId::Generic(b"mcbc_pool".to_vec(), b"main".to_vec());
         let reserves_account_id =
             Technical::tech_account_id_to_account_id(&reserves_tech_account_id)?;
+        let current_supply = pallet_balances::Module::<Runtime>::total_issuance();
 
         let (input_amount, output_amount, fee_amount) = if input_asset_id == base_asset_id {
             // Selling XOR
             let collateral_reserves: FixedWrapper =
                 Currencies::free_balance(*output_asset_id, &reserves_account_id).into();
             let buy_spot_price: FixedWrapper = Self::_spot_price(output_asset_id).into();
-            let sell_spot_price: FixedWrapper = buy_spot_price * fixed_wrapper!(0.8);
+            let sell_spot_price: FixedWrapper = buy_spot_price.clone() * fixed_wrapper!(0.8);
             let pretended_base_reserves = collateral_reserves.clone() / sell_spot_price.clone();
 
-            let collateralization = (collateral_reserves.clone() / sell_spot_price)
+            let ideal_reserves: FixedWrapper = (buy_spot_price
+                + get_initial_price()
+                    / FixedWrapper::from(get_reference_prices()[output_asset_id]))
+                * fixed_wrapper!(0.4)
+                * FixedWrapper::from(current_supply);
+            let collateralization = (collateral_reserves.clone() / ideal_reserves)
                 .get()
                 .unwrap();
 
@@ -488,7 +502,7 @@ impl LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> for Mock
                     let output_wrapped: FixedWrapper = desired_amount_out.into();
                     ensure!(
                         output_wrapped < collateral_reserves,
-                        DispatchError::Other("Insufficient reserves")
+                        crate::Error::<Runtime>::InsufficientLiquidity
                     );
                     let input_base = (pretended_base_reserves * output_wrapped.clone())
                         / (collateral_reserves - output_wrapped);
@@ -521,7 +535,6 @@ impl LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> for Mock
                     desired_amount_out: base_quantity,
                     ..
                 } => {
-                    let current_supply = pallet_balances::Module::<Runtime>::total_issuance();
                     let projected_supply: Balance = current_supply + base_quantity;
                     let new_buy_price: FixedWrapper =
                         Self::_price_at(input_asset_id, projected_supply).into();
@@ -575,14 +588,18 @@ impl GetMarketInfo<AssetId> for MockMCBCPool {
         _base_asset: &AssetId,
         collateral_asset: &AssetId,
     ) -> Result<Fixed, DispatchError> {
+        if collateral_asset == &special_asset() {
+            fail!(crate::Error::<Runtime>::CalculationError);
+        }
         Ok(Self::_spot_price(collateral_asset))
     }
 
     fn sell_price(
-        _base_asset: &AssetId,
+        base_asset: &AssetId,
         collateral_asset: &AssetId,
     ) -> Result<Fixed, DispatchError> {
-        let buy_price: FixedWrapper = Self::_spot_price(collateral_asset).into();
+        let buy_price = Self::buy_price(base_asset, collateral_asset)?;
+        let buy_price: FixedWrapper = FixedWrapper::from(buy_price);
         let output = (buy_price * fixed_wrapper!(0.8)).get().unwrap();
         Ok(output)
     }
@@ -630,11 +647,11 @@ pub fn get_initial_price() -> Fixed {
 fn undercollaterization_charge(fraction: Fixed) -> Fixed {
     if fraction < fixed!(0.05) {
         fixed!(0.09)
-    } else if fraction >= fixed!(0.05) && fraction < fixed!(0.1) {
+    } else if fraction < fixed!(0.1) {
         fixed!(0.06)
-    } else if fraction >= fixed!(0.1) && fraction < fixed!(0.2) {
+    } else if fraction < fixed!(0.2) {
         fixed!(0.03)
-    } else if fraction >= fixed!(0.2) && fraction < fixed!(0.3) {
+    } else if fraction < fixed!(0.3) {
         fixed!(0.01)
     } else {
         fixed!(0)
@@ -655,10 +672,7 @@ impl ExtBuilder {
     ) -> Self {
         Self {
             total_supply: base_total_supply,
-            reserves: xyk_reserves, //vec![(0_u32, collateral_asset_id, pool_reserves)],
-            reserves_2: vec![],
-            reserves_3: vec![],
-            reserves_4: vec![],
+            reserves: xyk_reserves,
             dex_list: vec![(
                 0,
                 DEXInfo {
@@ -666,44 +680,7 @@ impl ExtBuilder {
                     is_public: true,
                 },
             )],
-            initial_permission_owners: vec![
-                (INIT_DEX, Scope::Unlimited, vec![alice()]),
-                (MANAGE_DEX, Scope::Unlimited, vec![alice()]),
-            ],
-            initial_permissions: vec![
-                (alice(), Scope::Unlimited, vec![INIT_DEX]),
-                (alice(), Scope::Unlimited, vec![MANAGE_DEX]),
-            ],
-            source_types: vec![
-                LiquiditySourceType::MulticollateralBondingCurvePool,
-                LiquiditySourceType::MockPool,
-            ],
-            endowed_accounts: vec![
-                (
-                    alice(),
-                    XOR,
-                    balance!(0),
-                    AssetSymbol(b"XOR".to_vec()),
-                    AssetName(b"SORA".to_vec()),
-                    18,
-                ),
-                (
-                    alice(),
-                    VAL,
-                    balance!(0),
-                    AssetSymbol(b"VAL".to_vec()),
-                    AssetName(b"SORA Validator Token".to_vec()),
-                    18,
-                ),
-                (
-                    alice(),
-                    PSWAP,
-                    balance!(0),
-                    AssetSymbol(b"PSWAP".to_vec()),
-                    AssetName(b"Polkaswap Token".to_vec()),
-                    18,
-                ),
-            ],
+            ..Default::default()
         }
     }
 
