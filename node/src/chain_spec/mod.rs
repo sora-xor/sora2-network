@@ -1189,8 +1189,7 @@ pub fn main_net_coded() -> ChainSpec {
                 val_master_contract_address: hex!("d1eeb2f30016fffd746233ee12c486e7ca8efef1") //Prod value
                     .into(),
                 val_contract_address: hex!("e88f8313e61a97cec1871ee37fbbe2a8bf3ed1e4").into(), //Prod value
-                // Bridge contract address taken from test-net
-                bridge_contract_address: hex!("64fb0ca483b356832cd97958e6b23df783fb7ced").into(),
+                bridge_contract_address: hex!("1485e9852ac841b52ed44d573036429504f4f602").into(),
             };
 
             // SORA main-net node address. We should have 2 nodes.
