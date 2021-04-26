@@ -33,8 +33,8 @@
 use frame_support::dispatch::DispatchError;
 use frame_support::ensure;
 
-use common::balance;
 use common::prelude::{Balance, FixedWrapper};
+use common::{balance, fixed_wrapper};
 
 use crate::aliases::{AssetIdOf, TechAccountIdOf};
 use crate::{to_balance, to_fixed_wrapper};
@@ -140,12 +140,12 @@ impl<T: Config> Module<T> {
             amount_b_min,
         )?;
         let lhs = to_balance!(
-            to_fixed_wrapper!(am_a_des)
-                / (to_fixed_wrapper!(reserve_a) / to_fixed_wrapper!(total_supply))
+            to_fixed_wrapper!(am_a_des) * to_fixed_wrapper!(total_supply)
+                / to_fixed_wrapper!(reserve_a)
         );
         let rhs = to_balance!(
-            to_fixed_wrapper!(am_b_des)
-                / (to_fixed_wrapper!(reserve_b) / to_fixed_wrapper!(total_supply))
+            to_fixed_wrapper!(am_b_des) * to_fixed_wrapper!(total_supply)
+                / to_fixed_wrapper!(reserve_b)
         );
         let min_value = lhs.min(rhs);
         Ok((am_a_des, am_b_des, min_value))
@@ -154,9 +154,9 @@ impl<T: Config> Module<T> {
     /// Calulate (y_output,fee) pair where fee can be fee_of_y1 or fee_of_x_in, and output is
     /// without fee.
     pub fn calc_output_for_exact_input(
-        asset_a: &AssetIdOf<T>,
-        asset_b: &AssetIdOf<T>,
-        tech_acc: &TechAccountIdOf<T>,
+        _asset_a: &AssetIdOf<T>,
+        _asset_b: &AssetIdOf<T>,
+        _tech_acc: &TechAccountIdOf<T>,
         get_fee_from_destination: bool,
         x: &Balance,
         y: &Balance,
@@ -165,28 +165,37 @@ impl<T: Config> Module<T> {
         let fxw_x = FixedWrapper::from(x.clone());
         let fxw_y = FixedWrapper::from(y.clone());
         let fxw_x_in = FixedWrapper::from(x_in.clone());
+        let fee_fraction = fixed_wrapper!(0.003);
         if get_fee_from_destination {
-            Module::<T>::guard_fee_from_destination(asset_a, asset_b)?;
-            let fxw_y1 = fxw_x_in.clone() / ((fxw_x + fxw_x_in) / fxw_y);
-            let y1 = to_balance!(fxw_y1);
-            let fee_of_y1 = Module::<T>::get_fee_for_destination(asset_a, tech_acc, &y1)?;
-            Ok((y1, fee_of_y1))
+            // output token is xor, user indicates desired input amount
+            // y_1 = (x_in * y) / (x + x_in)
+            // y_out = y_1 * (1 - fee)
+            let nominator = fxw_x_in.clone() * fxw_y;
+            let denominator = fxw_x + fxw_x_in;
+            let y_out_with_fee = nominator / denominator;
+            let y_out = y_out_with_fee.clone() * (fixed_wrapper!(1) - fee_fraction);
+            Ok((
+                to_balance!(y_out.clone()),
+                to_balance!(y_out_with_fee - y_out),
+            ))
         } else {
-            Module::<T>::guard_fee_from_source(asset_a, asset_b)?;
-            let fee_of_x_in = Module::<T>::get_fee_for_source(asset_a, tech_acc, x_in)?;
-            let fxw_x_in_subfee = fxw_x_in - to_fixed_wrapper!(fee_of_x_in);
-            let fxw_y_out = fxw_x_in_subfee.clone() / ((fxw_x + fxw_x_in_subfee) / fxw_y);
-            let y_out = to_balance!(fxw_y_out);
-            Ok((y_out, fee_of_x_in))
+            // input token is xor, user indicates desired input amount
+            // x_1 = x_in * (1 - fee)
+            // y_out = (x_1 * y) / (x + x_1)
+            let x_in_without_fee = fxw_x_in.clone() * (fixed_wrapper!(1) - fee_fraction);
+            let nominator = x_in_without_fee.clone() * fxw_y;
+            let denominator = fxw_x + x_in_without_fee.clone();
+            let y_out = nominator / denominator;
+            Ok((to_balance!(y_out), to_balance!(fxw_x_in - x_in_without_fee)))
         }
     }
 
     /// Calulate (x_input,fee) pair where fee can be fee_of_y1 or fee_of_x_in, and input is
     /// without fee.
     pub fn calc_input_for_exact_output(
-        asset_a: &AssetIdOf<T>,
-        asset_b: &AssetIdOf<T>,
-        tech_acc: &TechAccountIdOf<T>,
+        _asset_a: &AssetIdOf<T>,
+        _asset_b: &AssetIdOf<T>,
+        _tech_acc: &TechAccountIdOf<T>,
         get_fee_from_destination: bool,
         x: &Balance,
         y: &Balance,
@@ -195,26 +204,27 @@ impl<T: Config> Module<T> {
         let fxw_x = FixedWrapper::from(x.clone());
         let fxw_y = FixedWrapper::from(y.clone());
         let fxw_y_out = FixedWrapper::from(y_out.clone());
+        let fee_fraction = fixed_wrapper!(0.003);
         if get_fee_from_destination {
-            Module::<T>::guard_fee_from_destination(asset_a, asset_b)?;
-            let unit = balance!(1);
-            let fract_a: Balance = Module::<T>::get_fee_for_destination(asset_a, tech_acc, &unit)?;
-            let fract_b: Balance = unit - fract_a;
-            let fxw_y1 = fxw_y_out.clone() / to_fixed_wrapper!(fract_b);
-            let fxw_x_in = fxw_x / ((fxw_y - fxw_y1.clone()) / fxw_y1.clone());
-            let fxw_fee = fxw_y1 - fxw_y_out;
-            let x_in = to_balance!(fxw_x_in);
-            let fee = to_balance!(fxw_fee);
-            Ok((x_in, fee))
+            // output token is xor, user indicates desired output amount:
+            // y_1 = y_out / (1 - fee)
+            // x_in = (x * y_1) / (y - y_1)
+            let y_out_with_fee = fxw_y_out.clone() / (fixed_wrapper!(1) - fee_fraction);
+            let nominator = fxw_x * y_out_with_fee.clone();
+            let denominator = fxw_y - y_out_with_fee.clone();
+            let x_in = nominator / denominator;
+            Ok((to_balance!(x_in), to_balance!(y_out_with_fee - fxw_y_out)))
         } else {
-            Module::<T>::guard_fee_from_source(asset_a, asset_b)?;
-            let y_minus_y_out = *y - *y_out;
-            let ymyo_fee = Module::<T>::get_fee_for_source(asset_a, tech_acc, &y_minus_y_out)?;
-            let ymyo_subfee = y_minus_y_out - ymyo_fee;
-            let fxw_x_in = fxw_x / (to_fixed_wrapper!(ymyo_subfee) / fxw_y_out);
-            let x_in = to_balance!(fxw_x_in);
-            let fee = Module::<T>::get_fee_for_source(asset_a, tech_acc, &x_in)?;
-            Ok((x_in, fee))
+            // input token is xor, user indicates desired output amount:
+            // x_in * (1 - fee) = (x * y_out) / (y - y_out)
+            let nominator = fxw_x * fxw_y_out.clone();
+            let denominator = fxw_y - fxw_y_out;
+            let x_in_without_fee = nominator / denominator;
+            let x_in = x_in_without_fee.clone() / (fixed_wrapper!(1) - fee_fraction);
+            Ok((
+                to_balance!(x_in.clone()),
+                to_balance!(x_in - x_in_without_fee),
+            ))
         }
     }
 
