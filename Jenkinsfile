@@ -8,8 +8,8 @@ String baseImageName = "docker.soramitsu.co.jp/sora2/substrate-env:latest"
 String appImageName = "docker.soramitsu.co.jp/sora2/substrate"
 String secretScannerExclusion = '.*Cargo.toml'
 Boolean disableSecretScanner = false
+String featureList = 'private-net include-real-files reduced-pswap-reward-periods'
 def pushTags=['master': 'latest', 'develop': 'dev']
-def featureTags=['master': 'test', 'develop': 'dev']
 
 pipeline {
     options {
@@ -43,16 +43,20 @@ pipeline {
                         docker.image(baseImageName).inside() {
                             sh "cd ${env.WORKSPACE}"
                             if (getPushVersion(pushTags)){
-                                flag = env.TAG_NAME ? "stage" : featureTags[env.GIT_BRANCH]
-                                sh "cargo build --release --features \"private-net include-real-files reduced-pswap-reward-periods\""
-                                sh "cargo test --release"
-                                sh "cp target/release/framenode ${env.WORKSPACE}/housekeeping/framenode"
+                                featureList = (env.TAG_NAME =~ 'stage.*') ? featureList : 'include-real-files'
+                                sh """
+                                    cargo build --release --features \"${featureList}\"
+                                    cargo test --release
+                                    cp target/release/framenode ${env.WORKSPACE}/housekeeping/framenode
+                                """
                             } else {
-                                sh "cargo fmt -- --check > /dev/null"
-                                sh "cargo check"
-                                sh "cargo test"
-                                sh "cargo check --features private-net"
-                                sh "cargo test --features private-net"
+                                sh '''
+                                    cargo fmt -- --check > /dev/null
+                                    cargo check
+                                    cargo test
+                                    cargo check --features private-net
+                                    cargo test --features private-net
+                                '''
                             }
                         }
                     }
