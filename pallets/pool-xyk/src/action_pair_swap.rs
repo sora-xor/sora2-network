@@ -31,14 +31,14 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use frame_support::dispatch::DispatchResult;
+use frame_support::traits::Get;
 use frame_support::weights::Weight;
 use frame_support::{dispatch, ensure};
 
+use common::balance;
 use common::prelude::{Balance, FixedWrapper};
-use common::{balance, fixed_wrapper};
-use frame_support::debug;
 
-use crate::{to_balance, to_fixed_wrapper};
+use crate::to_fixed_wrapper;
 
 use crate::bounds::*;
 
@@ -141,18 +141,14 @@ impl<T: Config> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, 
                     ensure!(sa > 0, Error::<T>::ZeroValueInAmountParameter);
                     ensure!(ta > 0, Error::<T>::ZeroValueInAmountParameter);
                     let y_out_pair = Module::<T>::calc_output_for_exact_input(
-                        &self.source.asset,
-                        &self.destination.asset,
-                        &self.pool_account,
+                        T::GetFee::get(),
                         self.get_fee_from_destination.unwrap(),
                         &balance_st,
                         &balance_tt,
                         &sa,
                     )?;
                     let x_in_pair = Module::<T>::calc_input_for_exact_output(
-                        &self.source.asset,
-                        &self.destination.asset,
-                        &self.pool_account,
+                        T::GetFee::get(),
                         self.get_fee_from_destination.unwrap(),
                         &balance_st,
                         &balance_tt,
@@ -169,9 +165,7 @@ impl<T: Config> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, 
                     match ta_bnd {
                         Bounds::Min(ta_min) => {
                             let (calculated, fee) = Module::<T>::calc_output_for_exact_input(
-                                &self.source.asset,
-                                &self.destination.asset,
-                                &self.pool_account,
+                                T::GetFee::get(),
                                 self.get_fee_from_destination.unwrap(),
                                 &balance_st,
                                 &balance_tt,
@@ -196,9 +190,7 @@ impl<T: Config> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, 
                     match sa_bnd {
                         Bounds::Max(sa_max) => {
                             let (calculated, fee) = Module::<T>::calc_input_for_exact_output(
-                                &self.source.asset,
-                                &self.destination.asset,
-                                &self.pool_account,
+                                T::GetFee::get(),
                                 self.get_fee_from_destination.unwrap(),
                                 &balance_st,
                                 &balance_tt,

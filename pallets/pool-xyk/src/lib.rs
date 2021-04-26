@@ -38,7 +38,7 @@ use frame_system::ensure_signed;
 use sp_std::collections::btree_set::BTreeSet;
 use sp_std::vec::Vec;
 
-use common::prelude::{Balance, EnsureDEXManager, SwapAmount, SwapOutcome};
+use common::prelude::{Balance, EnsureDEXManager, Fixed, SwapAmount, SwapOutcome};
 use common::{
     balance, hash, AssetName, AssetSymbol, EnsureTradingPairExists, FromGenericPair,
     GetPoolReserves, LiquiditySource, LiquiditySourceType, ManagementMode, RewardReason,
@@ -456,6 +456,7 @@ pub mod pallet {
             + Into<<Self as technical::Config>::SwapAction>
             + From<PolySwapActionStructOf<Self>>;
         type EnsureDEXManager: EnsureDEXManager<Self::DEXId, Self::AccountId, DispatchError>;
+        type GetFee: Get<Fixed>;
 
         /// Weight information for extrinsics in this pallet.
         type WeightInfo: WeightInfo;

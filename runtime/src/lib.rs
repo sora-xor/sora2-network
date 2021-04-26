@@ -627,6 +627,10 @@ impl technical::Config for Runtime {
     type WeightInfo = ();
 }
 
+parameter_types! {
+    pub GetFee: Fixed = fixed!(0.003);
+}
+
 impl pool_xyk::Config for Runtime {
     type Event = Event;
     type PairSwapAction = pool_xyk::PairSwapAction<AssetId, Balance, AccountId, TechAccountId>;
@@ -637,6 +641,7 @@ impl pool_xyk::Config for Runtime {
     type PolySwapAction =
         pool_xyk::PolySwapAction<AssetId, TechAssetId, Balance, AccountId, TechAccountId>;
     type EnsureDEXManager = dex_manager::Module<Runtime>;
+    type GetFee = GetFee;
     type WeightInfo = pool_xyk::weights::WeightInfo<Runtime>;
 }
 
@@ -666,10 +671,6 @@ impl liquidity_proxy::Config for Runtime {
     type PrimaryMarket = multicollateral_bonding_curve_pool::Module<Runtime>;
     type SecondaryMarket = pool_xyk::Module<Runtime>;
     type WeightInfo = liquidity_proxy::weights::WeightInfo<Runtime>;
-}
-
-parameter_types! {
-    pub GetFee: Fixed = fixed_from_basis_points(30u16);
 }
 
 impl mock_liquidity_source::Config<mock_liquidity_source::Instance1> for Runtime {
