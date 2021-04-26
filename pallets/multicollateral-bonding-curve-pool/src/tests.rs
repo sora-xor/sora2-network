@@ -766,7 +766,7 @@ mod tests {
 
             let (limit, owned) = MBCPool::rewards(&alice());
             assert!(limit.is_zero());
-            assert_eq!(owned, balance!(2285.723213182500000000));
+            assert_eq!(owned, balance!(2285.723213183077032149));
         });
     }
 
@@ -833,16 +833,16 @@ mod tests {
             MBCPool::on_pswap_burned(remint_info);
             let (limit_alice, _) = MBCPool::rewards(&alice());
             let (limit_bob, _) = MBCPool::rewards(&bob());
-            assert_eq!(limit_alice, balance!(114222.435361663749999999));
-            assert_eq!(limit_bob, balance!(57093.659227284999999999));
+            assert_eq!(limit_alice, balance!(114222.435361664001811945));
+            assert_eq!(limit_bob, balance!(57093.659227285572355551));
 
             // claiming incentives partially
             assert_ok!(MBCPool::claim_incentives(Origin::signed(alice())));
             assert_ok!(MBCPool::claim_incentives(Origin::signed(bob())));
             let (limit_alice, remaining_owned_alice) = MBCPool::rewards(&alice());
             let (limit_bob, remaining_owned_bob) = MBCPool::rewards(&bob());
-            assert_eq!(remaining_owned_alice, balance!(114222.435361663750000001));
-            assert_eq!(remaining_owned_bob, balance!(57093.659227285000000001));
+            assert_eq!(remaining_owned_alice, balance!(114222.435361664001811947));
+            assert_eq!(remaining_owned_bob, balance!(57093.659227285572355553));
             assert!(limit_alice.is_zero());
             assert!(limit_bob.is_zero());
             assert_eq!(Assets::free_balance(&PSWAP, &alice()).unwrap(), owned_alice - remaining_owned_alice);
@@ -1201,7 +1201,7 @@ mod tests {
 
             let (limit, owned_1) = MBCPool::rewards(&alice());
             assert!(limit.is_zero());
-            assert_eq!(owned_1, balance!(5962.647792177500000000));
+            assert_eq!(owned_1, balance!(5962.647792179707772518));
 
             MBCPool::exchange(
                 &alice(),
@@ -1215,7 +1215,7 @@ mod tests {
 
             let (limit, owned_2) = MBCPool::rewards(&alice());
             assert!(limit.is_zero());
-            assert_eq!(owned_2, owned_1 + balance!(59611.949642870000000000));
+            assert_eq!(owned_2, owned_1 + balance!(59611.949642870042863089));
 
             MBCPool::exchange(
                 &alice(),
@@ -1229,7 +1229,7 @@ mod tests {
 
             let (limit, owned_3) = MBCPool::rewards(&alice());
             assert!(limit.is_zero());
-            assert_eq!(owned_3, owned_2 + balance!(5817298.302275980000000000));
+            assert_eq!(owned_3, owned_2 + balance!(5817298.302275982010191881));
         });
     }
 
@@ -1716,6 +1716,35 @@ mod tests {
                 balance!(0.023739790688445290),
                 balance!(0.427316232392015237),
             ]);
+        })
+    }
+
+    #[test]
+    fn rewards_for_small_values() {
+        let mut ext = ExtBuilder::new(vec![
+            (
+                alice(),
+                USDT,
+                balance!(0),
+                AssetSymbol(b"USDT".to_vec()),
+                AssetName(b"Tether USD".to_vec()),
+                18,
+            ),
+            (alice(), XOR, balance!(6000000000), AssetSymbol(b"XOR".to_vec()), AssetName(b"SORA".to_vec()), 18),
+            (alice(), VAL, 0, AssetSymbol(b"VAL".to_vec()), AssetName(b"SORA Validator Token".to_vec()), 18),
+        ])
+        .build();
+        ext.execute_with(|| {
+            MockDEXApi::init_without_reserves().unwrap();
+            let _ = bonding_curve_pool_init(Vec::new()).unwrap();
+            let alice = &alice();
+            TradingPair::register(Origin::signed(alice.clone()),DEXId::Polkaswap.into(), XOR, USDT).expect("Failed to register trading pair.");
+            TradingPair::register(Origin::signed(alice.clone()),DEXId::Polkaswap.into(), XOR, VAL).expect("Failed to register trading pair.");
+            MBCPool::initialize_pool_unchecked(USDT, false).expect("Failed to initialize pool.");
+            let reward = MBCPool::calculate_buy_reward(alice, &USDT, balance!(0.000000002499999999), balance!(0.000000000000001));
+            assert_eq!(reward.unwrap(), balance!(0.000000002499999999));
+            let reward = MBCPool::calculate_buy_reward(alice, &USDT, balance!(0.000000002499999999), balance!(0.00000000000000001));
+            assert_eq!(reward.unwrap(), balance!(0));
         })
     }
 }

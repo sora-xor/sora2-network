@@ -28,7 +28,7 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use common::prelude::{SwapAmount, SwapOutcome};
+use common::prelude::{FixedWrapper, SwapAmount, SwapOutcome};
 use common::{
     balance, AssetName, AssetSymbol, Balance, LiquiditySource, LiquiditySourceType, ToFeeAccount,
 };
@@ -217,25 +217,6 @@ impl<'a> crate::Module<Runtime> {
         crate::Module::<Runtime>::preset_initial(new_tests);
     }
 
-    fn preset_deposited_small(tests: Vec<PresetFunction<'a>>) {
-        let mut new_tests: Vec<PresetFunction<'a>> =
-            vec![Rc::new(|dex_id, _, _, _, _, _, _, _| {
-                assert_ok!(crate::Module::<Runtime>::deposit_liquidity(
-                    Origin::signed(ALICE()),
-                    dex_id,
-                    GoldenTicket.into(),
-                    BlackPepper.into(),
-                    balance!(0.01),
-                    balance!(0.01),
-                    balance!(0),
-                    balance!(0),
-                ));
-            })];
-        let mut tests_to_add = tests.clone();
-        new_tests.append(&mut tests_to_add);
-        crate::Module::<Runtime>::preset_initial(new_tests);
-    }
-
     fn run_tests_with_different_slippage_behavior(descriptor: RunTestsWithSlippageBehaviors<'a>) {
         let initial_deposit = descriptor.initial_deposit;
         let desired_amount = descriptor.desired_amount;
@@ -378,7 +359,10 @@ fn quote_case_exact_input_for_output_base_second() {
                 }
             )
             .unwrap()),
-            (33233333333333333333334, 99999999999999999999)
+            (
+                balance!(33233.333333333333333333),
+                balance!(100.000000000000000000)
+            )
         );
     })]);
 }
@@ -407,7 +391,7 @@ fn quote_case_exact_output_for_input_base_first() {
                 }
             )
             .unwrap()),
-            (100300902708124373119358, 300902708124373119358)
+            (100300902708124373119360, 300902708124373119358)
         );
     })]);
 }
@@ -436,7 +420,7 @@ fn quote_case_exact_output_for_input_base_second() {
                 }
             )
             .unwrap()),
-            (201207243460764587525150, 150451354062186559679)
+            (201207243460764587525158, 150451354062186559679)
         );
     })]);
 }
@@ -557,7 +541,7 @@ fn swap_pair_desired_output_and_withdraw_cascade() {
             ));
             assert_eq!(
                 assets::Module::<Runtime>::free_balance(&gt, &ALICE()).unwrap(),
-                432650925750223643890137
+                balance!(432650.925750223643904684)
             );
             assert_eq!(
                 assets::Module::<Runtime>::free_balance(&bp, &ALICE()).unwrap(),
@@ -565,7 +549,7 @@ fn swap_pair_desired_output_and_withdraw_cascade() {
             );
             assert_eq!(
                 assets::Module::<Runtime>::free_balance(&gt, &repr.clone()).unwrap(),
-                467027027027027027041534
+                balance!(467027.027027027027027031)
             );
             assert_eq!(
                 assets::Module::<Runtime>::free_balance(&bp, &repr.clone()).unwrap(),
@@ -573,7 +557,7 @@ fn swap_pair_desired_output_and_withdraw_cascade() {
             );
             assert_eq!(
                 assets::Module::<Runtime>::free_balance(&gt, &fee_repr.clone()).unwrap(),
-                322047222749329068329
+                balance!(322.047222749329068285)
             );
 
             // a = sqrt ( 467027 * 111000 ) / 8784 = 25.92001146000573
@@ -623,7 +607,7 @@ fn swap_pair_desired_output_and_withdraw_cascade() {
 
             assert_eq!(
                 assets::Module::<Runtime>::free_balance(&gt, &ALICE()).unwrap(),
-                450668729188225185978702
+                450668729188225185992689
             );
             assert_eq!(
                 assets::Module::<Runtime>::free_balance(&bp, &ALICE()).unwrap(),
@@ -631,7 +615,7 @@ fn swap_pair_desired_output_and_withdraw_cascade() {
             );
             assert_eq!(
                 assets::Module::<Runtime>::free_balance(&gt, &repr.clone()).unwrap(),
-                449009223589025484952969
+                449009223589025484939026
             );
             assert_eq!(
                 assets::Module::<Runtime>::free_balance(&bp, &repr.clone()).unwrap(),
@@ -639,7 +623,7 @@ fn swap_pair_desired_output_and_withdraw_cascade() {
             );
             assert_eq!(
                 assets::Module::<Runtime>::free_balance(&gt, &fee_repr.clone()).unwrap(),
-                322047222749329068329
+                322047222749329068285
             );
 
             assert_ok!(crate::Module::<Runtime>::swap_pair(
@@ -656,7 +640,7 @@ fn swap_pair_desired_output_and_withdraw_cascade() {
 
             assert_eq!(
                 assets::Module::<Runtime>::free_balance(&gt, &ALICE()).unwrap(),
-                249063125369447164991908
+                249063125369447165043616
             );
             assert_eq!(
                 assets::Module::<Runtime>::free_balance(&bp, &ALICE()).unwrap(),
@@ -664,7 +648,7 @@ fn swap_pair_desired_output_and_withdraw_cascade() {
             );
             assert_eq!(
                 assets::Module::<Runtime>::free_balance(&gt, &repr.clone()).unwrap(),
-                650010010596347171876803
+                650010010596347171825252
             );
             assert_eq!(
                 assets::Module::<Runtime>::free_balance(&bp, &repr.clone()).unwrap(),
@@ -672,7 +656,7 @@ fn swap_pair_desired_output_and_withdraw_cascade() {
             );
             assert_eq!(
                 assets::Module::<Runtime>::free_balance(&gt, &fee_repr.clone()).unwrap(),
-                926864034205663131289
+                926864034205663131132
             );
         },
     )]);
@@ -699,7 +683,7 @@ fn swap_pair_desired_input() {
             );
             assert_eq!(
                 assets::Module::<Runtime>::free_balance(&bp, &ALICE()).unwrap(),
-                1868058365847885345166231
+                balance!(1868058.365847885345163285)
             );
             assert_eq!(
                 assets::Module::<Runtime>::free_balance(&gt, &repr.clone()).unwrap(),
@@ -707,7 +691,7 @@ fn swap_pair_desired_input() {
             );
             assert_eq!(
                 assets::Module::<Runtime>::free_balance(&bp, &repr.clone()).unwrap(),
-                131941634152114654833769
+                balance!(131941.634152114654836715)
             );
             assert_eq!(
                 assets::Module::<Runtime>::free_balance(&gt, &fee_repr.clone()).unwrap(),
@@ -782,7 +766,7 @@ fn swap_pair_swap_fail_with_invalid_balance() {
 }
 
 #[test]
-fn swap_pair_outcome_should_match_actual_desired_amount_in_with_basic_asset() {
+fn swap_pair_outcome_should_match_actual_desired_amount_in_with_input_base() {
     crate::Module::<Runtime>::preset_deposited_pool(vec![Rc::new(
         |dex_id, gt, bp, _, _, _, _repr: AccountId, _fee_repr: AccountId| {
             use sp_core::crypto::AccountId32;
@@ -827,7 +811,7 @@ fn swap_pair_outcome_should_match_actual_desired_amount_in_with_basic_asset() {
             );
             assert_eq!(
                 assets::Module::<Runtime>::free_balance(&bp, &new_account.clone()).unwrap(),
-                balance!(31230.802697411355232759),
+                balance!(31230.802697411355231672),
             );
             assert_eq!(
                 assets::Module::<Runtime>::free_balance(&bp, &new_account.clone()).unwrap(),
@@ -842,7 +826,7 @@ fn swap_pair_outcome_should_match_actual_desired_amount_in_with_basic_asset() {
 }
 
 #[test]
-fn swap_pair_outcome_should_match_actual_desired_amount_in() {
+fn swap_pair_outcome_should_match_actual_desired_amount_in_with_output_base() {
     crate::Module::<Runtime>::preset_deposited_pool(vec![Rc::new(
         |dex_id, gt, bp, _, _, _, _repr: AccountId, _fee_repr: AccountId| {
             use sp_core::crypto::AccountId32;
@@ -887,7 +871,7 @@ fn swap_pair_outcome_should_match_actual_desired_amount_in() {
             );
             assert_eq!(
                 assets::Module::<Runtime>::free_balance(&gt, &new_account.clone()).unwrap(),
-                147098360655737705086834,
+                balance!(147098.360655737704918032),
             );
             assert_eq!(
                 assets::Module::<Runtime>::free_balance(&gt, &new_account.clone()).unwrap(),
@@ -902,7 +886,7 @@ fn swap_pair_outcome_should_match_actual_desired_amount_in() {
 }
 
 #[test]
-fn swap_pair_outcome_should_match_actual_desired_amount_out_with_values_for_math_error_testing() {
+fn swap_pair_outcome_should_match_actual_desired_amount_out_with_input_base() {
     crate::Module::<Runtime>::preset_deposited_pool(vec![Rc::new(
         |dex_id, gt, bp, _, _, _, _repr: AccountId, _fee_repr: AccountId| {
             use sp_core::crypto::AccountId32;
@@ -911,33 +895,33 @@ fn swap_pair_outcome_should_match_actual_desired_amount_out_with_values_for_math
                 Origin::signed(ALICE()),
                 gt.clone(),
                 new_account.clone(),
-                balance!(100000.000000000000027777), // FIXME: why such a huge calculation error compared to WithDesiredInput(100000): ...027777?
+                balance!(100000),
             )
             .expect("Failed to transfer balance");
 
-            // TODO: uncomment when ..027777 error is fixed
-            // assert_eq!(
-            //     assets::Module::<Runtime>::free_balance(&gt, &ALICE()).unwrap(),
-            //     balance!(440000),
-            // );
+            assert_eq!(
+                assets::Module::<Runtime>::free_balance(&gt, &ALICE()).unwrap(),
+                balance!(440000),
+            );
+            let desired_out = balance!(31230.802697411355231672);
             let quote_outcome = crate::Module::<Runtime>::quote(
                 &dex_id,
                 &GoldenTicket.into(),
                 &BlackPepper.into(),
                 SwapAmount::WithDesiredOutput {
-                    desired_amount_out: balance!(31230.802697411355232759),
+                    desired_amount_out: desired_out,
                     max_amount_in: Balance::MAX,
                 },
             )
             .expect("Failed to quote.");
-            let _outcome = crate::Module::<Runtime>::exchange(
+            let outcome = crate::Module::<Runtime>::exchange(
                 &new_account,
                 &new_account,
                 &dex_id,
                 &GoldenTicket.into(),
                 &BlackPepper.into(),
                 SwapAmount::WithDesiredOutput {
-                    desired_amount_out: balance!(31230.802697411355232759),
+                    desired_amount_out: desired_out,
                     max_amount_in: Balance::MAX,
                 },
             )
@@ -948,21 +932,16 @@ fn swap_pair_outcome_should_match_actual_desired_amount_out_with_values_for_math
             );
             assert_eq!(
                 assets::Module::<Runtime>::free_balance(&bp, &new_account.clone()).unwrap(),
-                balance!(31230.802697411355232759),
+                desired_out,
             );
-            assert_eq!(
-                balance!(100000.000000000000027777), // FIXME: why such a huge calculation error compared to WithDesiredInput(100000): ...027777?
-                quote_outcome.amount,
-            );
-            // TODO: FIXME: for case with desired output, outcome indicates calculated input
-            // 100000.000000000000027777
-            //assert_eq!(balance!(100000), outcome.amount);
+            assert_eq!(balance!(100000), quote_outcome.amount,);
+            assert_eq!(balance!(100000), outcome.amount);
         },
     )]);
 }
 
 #[test]
-fn swap_pair_outcome_should_match_actual_desired_amount_out() {
+fn swap_pair_outcome_should_match_actual_desired_amount_out_with_output_base() {
     crate::Module::<Runtime>::preset_deposited_pool(vec![Rc::new(
         |dex_id, gt, bp, _, _, _, _repr: AccountId, _fee_repr: AccountId| {
             use sp_core::crypto::AccountId32;
@@ -979,12 +958,13 @@ fn swap_pair_outcome_should_match_actual_desired_amount_out() {
                 assets::Module::<Runtime>::free_balance(&bp, &ALICE()).unwrap(),
                 balance!(1756000),
             );
+            let desired_out = balance!(147098.360655737704918032);
             let quote_outcome = crate::Module::<Runtime>::quote(
                 &dex_id,
                 &BlackPepper.into(),
                 &GoldenTicket.into(),
                 SwapAmount::WithDesiredOutput {
-                    desired_amount_out: balance!(147098.360655737704918033),
+                    desired_amount_out: desired_out,
                     max_amount_in: Balance::MAX,
                 },
             )
@@ -996,45 +976,21 @@ fn swap_pair_outcome_should_match_actual_desired_amount_out() {
                 &BlackPepper.into(),
                 &GoldenTicket.into(),
                 SwapAmount::WithDesiredOutput {
-                    desired_amount_out: balance!(147098.360655737704918033),
+                    desired_amount_out: desired_out,
                     max_amount_in: Balance::MAX,
                 },
             )
             .expect("Failed to perform swap.");
             assert_eq!(
                 assets::Module::<Runtime>::free_balance(&bp, &new_account.clone()).unwrap(),
-                0,
+                1, // TODO: still not enough overestimation due to duducing fee from output, find workaroud to improve precision
             );
             assert_eq!(
                 assets::Module::<Runtime>::free_balance(&gt, &new_account.clone()).unwrap(),
-                //TODO: what is the problem here ?
-                //balance!(147098.360655737704918033),
-                balance!(146655.737704918032786886),
+                desired_out
             );
-            assert_eq!(balance!(100000), quote_outcome.amount);
-            assert_eq!(balance!(100000), outcome.amount);
-        },
-    )]);
-}
-
-#[test]
-fn swap_pair_liquidity_after_operation_check() {
-    crate::Module::<Runtime>::preset_deposited_small(vec![Rc::new(
-        |dex_id, _gt, _bp, _, _, _, _repr: AccountId, _fee_repr: AccountId| {
-            assert_noop!(
-                crate::Module::<Runtime>::swap_pair(
-                    Origin::signed(ALICE()),
-                    ALICE(),
-                    dex_id,
-                    GoldenTicket.into(),
-                    BlackPepper.into(),
-                    SwapAmount::WithDesiredOutput {
-                        desired_amount_out: balance!(0.0099999),
-                        max_amount_in: Balance::MAX,
-                    }
-                ),
-                crate::Error::<Runtime>::PoolBecameInvalidAfterOperation
-            );
+            assert_eq!(balance!(100000) - 1, quote_outcome.amount);
+            assert_eq!(balance!(100000) - 1, outcome.amount);
         },
     )]);
 }
@@ -1208,4 +1164,255 @@ fn variants_of_deposit_liquidity_twice() {
             },
         );
     }
+}
+
+fn distance(a: Balance, b: Balance) -> Balance {
+    if a < b {
+        b - a
+    } else {
+        a - b
+    }
+}
+
+#[test]
+/// WithDesiredOutput, Reserves with fractional numbers, Input is base asset
+fn swapping_should_not_affect_k_1() {
+    crate::Module::<Runtime>::preset_initial(vec![Rc::new(|dex_id, _, _, _, _, _, _, _| {
+        let base_asset_id: AssetId = GoldenTicket.into();
+        let target_asset_id: AssetId = BlackPepper.into();
+        let initial_reserve_base = balance!(9.000000000000000001);
+        let initial_reserve_target = balance!(5.999999999999999999);
+        let desired_out = balance!(4);
+        let expected_in = balance!(18.054162487462387185);
+        let expected_fee = balance!(0.054162487462387161);
+
+        assert_ok!(crate::Module::<Runtime>::deposit_liquidity(
+            Origin::signed(ALICE()),
+            dex_id,
+            GoldenTicket.into(),
+            BlackPepper.into(),
+            initial_reserve_base,
+            initial_reserve_target,
+            initial_reserve_base,
+            initial_reserve_target,
+        ));
+        let (reserve_base, reserve_target) =
+            crate::Reserves::<Runtime>::get(base_asset_id, target_asset_id);
+        assert_eq!(reserve_base, initial_reserve_base);
+        assert_eq!(reserve_target, initial_reserve_target);
+        let k_before_swap =
+            (FixedWrapper::from(reserve_base) * FixedWrapper::from(reserve_target)).into_balance();
+
+        assert_eq!(
+            crate::Module::<Runtime>::exchange(
+                &ALICE(),
+                &ALICE(),
+                &dex_id,
+                &GoldenTicket.into(),
+                &BlackPepper.into(),
+                SwapAmount::WithDesiredOutput {
+                    desired_amount_out: desired_out,
+                    max_amount_in: expected_in,
+                }
+            )
+            .unwrap(),
+            SwapOutcome {
+                amount: expected_in,
+                fee: expected_fee,
+            }
+        );
+        let (reserve_base, reserve_target) =
+            crate::Reserves::<Runtime>::get(base_asset_id, target_asset_id);
+        assert_eq!(
+            reserve_base,
+            initial_reserve_base + (expected_in - expected_fee)
+        );
+        assert_eq!(reserve_target, initial_reserve_target - desired_out);
+        let k_after_swap =
+            (FixedWrapper::from(reserve_base) * FixedWrapper::from(reserve_target)).into_balance();
+        assert!(distance(k_after_swap, k_before_swap) < balance!(0.000000000000000030));
+    })]);
+}
+
+#[test]
+/// WithDesiredOutput, Reserves with fractional numbers, Output is base asset
+fn swapping_should_not_affect_k_2() {
+    crate::Module::<Runtime>::preset_initial(vec![Rc::new(|dex_id, _, _, _, _, _, _, _| {
+        let base_asset_id: AssetId = GoldenTicket.into();
+        let target_asset_id: AssetId = BlackPepper.into();
+        let initial_reserve_base = balance!(9.000000000000000001);
+        let initial_reserve_target = balance!(5.999999999999999999);
+        let desired_out = balance!(4);
+        let expected_in = balance!(4.826060727930826461);
+        let expected_fee = balance!(0.012036108324974924);
+
+        assert_ok!(crate::Module::<Runtime>::deposit_liquidity(
+            Origin::signed(ALICE()),
+            dex_id,
+            GoldenTicket.into(),
+            BlackPepper.into(),
+            initial_reserve_base,
+            initial_reserve_target,
+            initial_reserve_base,
+            initial_reserve_target,
+        ));
+        let (reserve_base, reserve_target) =
+            crate::Reserves::<Runtime>::get(base_asset_id, target_asset_id);
+        assert_eq!(reserve_base, initial_reserve_base);
+        assert_eq!(reserve_target, initial_reserve_target);
+        let k_before_swap =
+            (FixedWrapper::from(reserve_base) * FixedWrapper::from(reserve_target)).into_balance();
+
+        assert_eq!(
+            crate::Module::<Runtime>::exchange(
+                &ALICE(),
+                &ALICE(),
+                &dex_id,
+                &BlackPepper.into(),
+                &GoldenTicket.into(),
+                SwapAmount::WithDesiredOutput {
+                    desired_amount_out: desired_out,
+                    max_amount_in: expected_in,
+                }
+            )
+            .unwrap(),
+            SwapOutcome {
+                amount: expected_in,
+                fee: expected_fee,
+            }
+        );
+        let (reserve_base, reserve_target) =
+            crate::Reserves::<Runtime>::get(base_asset_id, target_asset_id);
+        assert_eq!(
+            reserve_base,
+            initial_reserve_base - (desired_out + expected_fee)
+        );
+        assert_eq!(reserve_target, initial_reserve_target + expected_in);
+
+        let k_after_swap =
+            (FixedWrapper::from(reserve_base) * FixedWrapper::from(reserve_target)).into_balance();
+        assert!(distance(k_after_swap, k_before_swap) < balance!(0.000000000000000015));
+    })]);
+}
+
+#[test]
+/// WithDesiredInput, Reserves with fractional numbers, Input is base asset
+fn swapping_should_not_affect_k_3() {
+    crate::Module::<Runtime>::preset_initial(vec![Rc::new(|dex_id, _, _, _, _, _, _, _| {
+        let base_asset_id: AssetId = GoldenTicket.into();
+        let target_asset_id: AssetId = BlackPepper.into();
+        let initial_reserve_base = balance!(9.000000000000000001);
+        let initial_reserve_target = balance!(5.999999999999999999);
+        let desired_in = balance!(4);
+        let expected_out = balance!(1.842315983985217123);
+        let expected_fee = balance!(0.012000000000000000);
+
+        assert_ok!(crate::Module::<Runtime>::deposit_liquidity(
+            Origin::signed(ALICE()),
+            dex_id,
+            GoldenTicket.into(),
+            BlackPepper.into(),
+            initial_reserve_base,
+            initial_reserve_target,
+            initial_reserve_base,
+            initial_reserve_target,
+        ));
+        let (reserve_base, reserve_target) =
+            crate::Reserves::<Runtime>::get(base_asset_id, target_asset_id);
+        assert_eq!(reserve_base, initial_reserve_base);
+        assert_eq!(reserve_target, initial_reserve_target);
+        let k_before_swap =
+            (FixedWrapper::from(reserve_base) * FixedWrapper::from(reserve_target)).into_balance();
+
+        assert_eq!(
+            crate::Module::<Runtime>::exchange(
+                &ALICE(),
+                &ALICE(),
+                &dex_id,
+                &GoldenTicket.into(),
+                &BlackPepper.into(),
+                SwapAmount::WithDesiredInput {
+                    desired_amount_in: desired_in,
+                    min_amount_out: expected_out,
+                }
+            )
+            .unwrap(),
+            SwapOutcome {
+                amount: expected_out,
+                fee: expected_fee,
+            }
+        );
+        let (reserve_base, reserve_target) =
+            crate::Reserves::<Runtime>::get(base_asset_id, target_asset_id);
+        assert_eq!(
+            reserve_base,
+            initial_reserve_base + (desired_in - expected_fee)
+        );
+        assert_eq!(reserve_target, initial_reserve_target - expected_out);
+
+        let k_after_swap =
+            (FixedWrapper::from(reserve_base) * FixedWrapper::from(reserve_target)).into_balance();
+        assert!(distance(k_after_swap, k_before_swap) < balance!(0.000000000000000015));
+    })]);
+}
+
+#[test]
+/// WithDesiredInput, Reserves with fractional numbers, Output is base asset
+fn swapping_should_not_affect_k_4() {
+    crate::Module::<Runtime>::preset_initial(vec![Rc::new(|dex_id, _, _, _, _, _, _, _| {
+        let base_asset_id: AssetId = GoldenTicket.into();
+        let target_asset_id: AssetId = BlackPepper.into();
+        let initial_reserve_base = balance!(9.000000000000000001);
+        let initial_reserve_target = balance!(5.999999999999999999);
+        let desired_in = balance!(4);
+        let expected_out = balance!(3.589200000000000000);
+        let expected_fee = balance!(0.010800000000000000);
+
+        assert_ok!(crate::Module::<Runtime>::deposit_liquidity(
+            Origin::signed(ALICE()),
+            dex_id,
+            GoldenTicket.into(),
+            BlackPepper.into(),
+            initial_reserve_base,
+            initial_reserve_target,
+            initial_reserve_base,
+            initial_reserve_target,
+        ));
+        let (reserve_base, reserve_target) =
+            crate::Reserves::<Runtime>::get(base_asset_id, target_asset_id);
+        assert_eq!(reserve_base, initial_reserve_base);
+        assert_eq!(reserve_target, initial_reserve_target);
+        let k_before_swap =
+            (FixedWrapper::from(reserve_base) * FixedWrapper::from(reserve_target)).into_balance();
+
+        assert_eq!(
+            crate::Module::<Runtime>::exchange(
+                &ALICE(),
+                &ALICE(),
+                &dex_id,
+                &BlackPepper.into(),
+                &GoldenTicket.into(),
+                SwapAmount::WithDesiredInput {
+                    desired_amount_in: desired_in,
+                    min_amount_out: expected_out,
+                }
+            )
+            .unwrap(),
+            SwapOutcome {
+                amount: expected_out,
+                fee: expected_fee,
+            }
+        );
+        let (reserve_base, reserve_target) =
+            crate::Reserves::<Runtime>::get(base_asset_id, target_asset_id);
+        assert_eq!(
+            reserve_base,
+            initial_reserve_base - (expected_out + expected_fee)
+        );
+        assert_eq!(reserve_target, initial_reserve_target + desired_in);
+
+        let k_after_swap =
+            (FixedWrapper::from(reserve_base) * FixedWrapper::from(reserve_target)).into_balance();
+        assert!(distance(k_after_swap, k_before_swap) < balance!(0.000000000000000015));
+    })]);
 }
