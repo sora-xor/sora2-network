@@ -32,8 +32,7 @@ total = 0
 
 with open('sora-farm-DB.csv') as f:
     lines = f.readlines()
-    lines = lines[1:]
-    with open('rewards_pswap_farm_owners.in', 'w') as f:
+    with open('../../node/src/chain_spec/bytes/rewards_pswap_farm_owners.in', 'w') as f:
         print('vec_push![', file=f)
         for line in lines:
             parts = line.split(',')
