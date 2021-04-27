@@ -7,7 +7,7 @@ for entry in data:
     if 'invitees' in entry:
         for invitee in entry['invitees']:
             referrers[invitee] = entry['account']
-with open('../../node/src/chain_spec/bytes/iroha_migration_accounts_staging.in', 'w') as f:
+with open('../../node/src/chain_spec/bytes/iroha_migration_accounts_main.in', 'w') as f:
     print('{', file=f)
     print('    use common::balance;', file=f)
     print('    vec_push![', file=f)

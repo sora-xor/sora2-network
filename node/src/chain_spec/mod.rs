@@ -185,12 +185,10 @@ pub fn test_net() -> Result<ChainSpec, String> {
     ChainSpec::from_json_bytes(&our_include_bytes!("./bytes/chain_spec_test.json")[..])
 }
 
-// Main net is not ready yet.
-// It still uses staging nodes.
-// #[cfg(all(not(feature = "private-net"), not(feature = "coded-nets")))]
-// pub fn main_net() -> Result<ChainSpec, String> {
-//     ChainSpec::from_json_bytes(&our_include_bytes!("./bytes/chain_spec_main.json")[..])
-// }
+#[cfg(not(feature = "private-net"))]
+pub fn main_net() -> Result<ChainSpec, String> {
+    ChainSpec::from_json_bytes(&our_include_bytes!("./bytes/chain_spec_main.json")[..])
+}
 
 #[cfg(feature = "private-net")]
 pub fn dev_net_coded() -> ChainSpec {
@@ -1154,7 +1152,7 @@ fn testnet_genesis(
 }
 
 /// # Parameters
-#[cfg(not(feature = "private-net"))]
+#[cfg(feature = "main-net-coded")]
 pub fn main_net_coded() -> ChainSpec {
     let mut properties = Properties::new();
     properties.insert("tokenSymbol".into(), "XOR".into());
@@ -1243,7 +1241,7 @@ pub fn main_net_coded() -> ChainSpec {
     )
 }
 
-#[cfg(not(feature = "private-net"))]
+#[cfg(feature = "main-net-coded")]
 fn mainnet_genesis(
     initial_authorities: Vec<(AccountId, AccountId, AuraId, BabeId, GrandpaId, ImOnlineId)>,
     additional_validators: Vec<AccountId>,
@@ -1611,7 +1609,7 @@ fn mainnet_genesis(
         }),
         pallet_balances: Some(BalancesConfig {
             balances: vec![
-                (eth_bridge_account_id.clone(), initial_eth_bridge_xor_amount),
+                (eth_bridge_account_id.clone(), 0),
                 (assets_and_permissions_account_id.clone(), 0),
                 (xor_fee_account_id.clone(), 0),
                 (dex_root_account_id.clone(), 0),
@@ -1666,11 +1664,6 @@ fn mainnet_genesis(
                         + calculate_reserves(&rewards_config.pswap_waifu_owners),
                 ),
                 (
-                    eth_bridge_account_id.clone(),
-                    VAL,
-                    initial_eth_bridge_val_amount,
-                ),
-                (
                     mbc_pool_rewards_account_id.clone(),
                     PSWAP,
                     initial_pswap_tbc_rewards,
@@ -1717,8 +1710,8 @@ fn mainnet_genesis(
                 assets: bridge_assets,
                 bridge_contract_address: eth_bridge_params.bridge_contract_address,
                 reserves: vec![
-                    (XOR.into(), balance!(350000)),
-                    (VAL.into(), balance!(33900000)),
+                    (XOR.into(), initial_eth_bridge_xor_amount),
+                    (VAL.into(), initial_eth_bridge_val_amount),
                 ],
             }],
             xor_master_contract_address: eth_bridge_params.xor_master_contract_address,
@@ -1747,7 +1740,7 @@ fn mainnet_genesis(
             burn_info: (fixed!(0.1), fixed!(0.000357), fixed!(0.65)),
         }),
         iroha_migration: Some(IrohaMigrationConfig {
-            iroha_accounts: our_include!("bytes/iroha_migration_accounts.in"),
+            iroha_accounts: our_include!("bytes/iroha_migration_accounts_main.in"),
             account_id: iroha_migration_account_id,
         }),
         rewards: Some(rewards_config),
