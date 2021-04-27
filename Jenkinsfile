@@ -47,17 +47,14 @@ pipeline {
                                     featureList = (env.TAG_NAME =~ 'stage.*') ? featureList : 'include-real-files'
                                 }
                                 sh """
-                                    cargo build --release --features \"${featureList}\"
-                                    cargo test --release
-                                    cp target/release/framenode ${env.WORKSPACE}/housekeeping/framenode
+                                    cargo build --features \"${featureList}\"
+                                    cp target/debug/framenode ${env.WORKSPACE}/housekeeping/framenode
                                 """
                             } else {
                                 sh '''
                                     cargo fmt -- --check > /dev/null
                                     cargo check
                                     cargo test
-                                    cargo check --features private-net
-                                    cargo test --features private-net
                                 '''
                             }
                         }
