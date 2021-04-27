@@ -4,6 +4,7 @@ use frame_support::debug;
 use frame_support::dispatch::GetCallMetadata;
 use frame_support::sp_io::hashing::blake2_256;
 use frame_support::sp_runtime::offchain::storage_lock::BlockNumberProvider;
+use frame_support::sp_runtime::traits::Saturating;
 use frame_system::offchain::{
     Account, CreateSignedTransaction, SendSignedTransaction, SendTransactionTypes, Signer,
 };
@@ -50,12 +51,17 @@ impl<T: Config> SignedTransactionData<T> {
         use frame_support::inherent::Extrinsic;
         let overarching_call: Call<T> = call.clone().into();
         let account_data = frame_system::Account::<T>::get(&account.id);
+        let nonce = if submitted_at.is_some() {
+            account_data.nonce.saturating_sub(1u32.into())
+        } else {
+            account_data.nonce
+        };
         let (call, signature) =
             <T as CreateSignedTransaction<LocalCall>>::create_transaction::<T::PeerId>(
                 <T as SendTransactionTypes<LocalCall>>::OverarchingCall::from(call),
                 account.public.clone(),
                 account.id.clone(),
-                account_data.nonce - 1u32.into(),
+                nonce,
             )?;
         let xt = <T as SendTransactionTypes<LocalCall>>::Extrinsic::new(call, Some(signature))?;
         let vec = xt.encode();
