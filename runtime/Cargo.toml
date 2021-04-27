@@ -16,7 +16,7 @@ substrate-wasm-builder = "3.0.0"
 [dependencies]
 codec = { package = "parity-scale-codec", version = "2", default-features = false, features = ["derive", "chain-error"] }
 hex-literal = "0.3.1"
-log = { version = "0.4.14", features = ["release_max_level_error"] }
+log = { version = "0.4.14", features = ["release_max_level_info"] }
 serde = { features = ['derive'], optional = true, version = '1.0.101' }
 common = { path = "../common", default-features = false }
 faucet = { path = "../pallets/faucet", default-features = false, optional = true }
