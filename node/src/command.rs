@@ -68,9 +68,8 @@ impl SubstrateCli for Cli {
 
         #[cfg(not(feature = "private-net"))]
         let chain_spec = match id {
-            // main isn't ready yet
-            // "main" => chain_spec::main_net(),
-            "" | "main" => Ok(chain_spec::main_net_coded()),
+            "main" => chain_spec::main_net(),
+            "" | "main-coded" => Ok(chain_spec::main_net_coded()),
             path => chain_spec::ChainSpec::from_json_file(std::path::PathBuf::from(path)),
         };
 

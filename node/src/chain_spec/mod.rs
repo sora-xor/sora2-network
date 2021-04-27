@@ -198,10 +198,10 @@ pub fn test_net() -> Result<ChainSpec, String> {
 
 // Main net is not ready yet.
 // It still uses staging nodes.
-// #[cfg(all(not(feature = "private-net"), not(feature = "coded-nets")))]
-// pub fn main_net() -> Result<ChainSpec, String> {
-//     ChainSpec::from_json_bytes(&our_include_bytes!("./bytes/chain_spec_main.json")[..])
-// }
+#[cfg(not(feature = "private-net"))]
+pub fn main_net() -> Result<ChainSpec, String> {
+    ChainSpec::from_json_bytes(&our_include_bytes!("./bytes/chain_spec_main.json")[..])
+}
 
 #[cfg(feature = "private-net")]
 pub fn dev_net_coded() -> ChainSpec {
@@ -1164,7 +1164,6 @@ fn testnet_genesis(
     }
 }
 
-/// # Parameters
 #[cfg(not(feature = "private-net"))]
 pub fn main_net_coded() -> ChainSpec {
     let mut properties = Properties::new();
@@ -1174,8 +1173,8 @@ pub fn main_net_coded() -> ChainSpec {
     let id = "sora-substrate-main-net";
     // SORA main-net node address. We should have 2 nodes.
     let boot_nodes = vec![
-              MultiaddrWithPeerId::from_str("/dns/v1.sora2.soramitsu.co.jp/tcp/30333/p2p/12D3KooWLHZRLHeVPdrXuNNdzpKuPqo6Sm6f9rjVtp5XsEvhXvyG").unwrap(), //Prod value
-              MultiaddrWithPeerId::from_str("/dns/v2.sora2.soramitsu.co.jp/tcp/30333/p2p/12D3KooWGiemoYceJ1y5nQR1YNxysjbCH8MbW5ps1uApLfN36VQa").unwrap()  //Prod value
+              MultiaddrWithPeerId::from_str("/dns/v1.sora2.soramitsu.co.jp/tcp/30333/p2p/12D3KooWLHZRLHeVPdrXuNNdzpKuPqo6Sm6f9rjVtp5XsEvhXvyG").unwrap(), 
+              MultiaddrWithPeerId::from_str("/dns/v2.sora2.soramitsu.co.jp/tcp/30333/p2p/12D3KooWGiemoYceJ1y5nQR1YNxysjbCH8MbW5ps1uApLfN36VQa").unwrap()  
             ];
     ChainSpec::from_genesis(
         name,
@@ -1183,12 +1182,12 @@ pub fn main_net_coded() -> ChainSpec {
         ChainType::Live,
         move || {
             let eth_bridge_params = EthBridgeParams {
-                xor_master_contract_address: hex!("c08edf13be9b9cc584c5da8004ce7e6be63c1316") //Prod value
+                xor_master_contract_address: hex!("c08edf13be9b9cc584c5da8004ce7e6be63c1316") 
                     .into(),
-                xor_contract_address: hex!("40fd72257597aa14c7231a7b1aaa29fce868f677").into(), //Prod value
-                val_master_contract_address: hex!("d1eeb2f30016fffd746233ee12c486e7ca8efef1") //Prod value
+                xor_contract_address: hex!("40fd72257597aa14c7231a7b1aaa29fce868f677").into(), 
+                val_master_contract_address: hex!("d1eeb2f30016fffd746233ee12c486e7ca8efef1") 
                     .into(),
-                val_contract_address: hex!("e88f8313e61a97cec1871ee37fbbe2a8bf3ed1e4").into(), //Prod value
+                val_contract_address: hex!("e88f8313e61a97cec1871ee37fbbe2a8bf3ed1e4").into(), 
                 bridge_contract_address: hex!("1485e9852ac841b52ed44d573036429504f4f602").into(),
             };
 
@@ -1197,16 +1196,16 @@ pub fn main_net_coded() -> ChainSpec {
             mainnet_genesis(
                 vec![
                     authority_keys_from_public_keys(
-                        hex!("207ed7bbf6fa0685dca5f24d6773a58ab9c710512d1087db5e47e0fe0f357239"), //Prod value
-                        hex!("14d500b666dbacc20535f8d2d4f039a8ace624c58e880d573980553774d7ff1a"), //Prod value
-                        hex!("14d500b666dbacc20535f8d2d4f039a8ace624c58e880d573980553774d7ff1a"), //Prod value
-                        hex!("71e6acfa06696ae5d962a36b88ddf4b0c7d5751a7107a2db1e6947ee2442f573"), //Prod value
+                        hex!("207ed7bbf6fa0685dca5f24d6773a58ab9c710512d1087db5e47e0fe0f357239"), 
+                        hex!("14d500b666dbacc20535f8d2d4f039a8ace624c58e880d573980553774d7ff1a"), 
+                        hex!("14d500b666dbacc20535f8d2d4f039a8ace624c58e880d573980553774d7ff1a"), 
+                        hex!("71e6acfa06696ae5d962a36b88ddf4b0c7d5751a7107a2db1e6947ee2442f573"), 
                     ),
                     authority_keys_from_public_keys(
-                        hex!("94ee828c3455a327dde32f577e27f0b8a4c42b3fb626ee27f0004f7cf02bd332"), //Prod value
-                        hex!("38364b218e599f78f2b52f34748908addce908881b2c76296c50b2494261c004"), //Prod value
-                        hex!("38364b218e599f78f2b52f34748908addce908881b2c76296c50b2494261c004"), //Prod value
-                        hex!("d603aea460c53393cfd2e2eb2820bb138738288502488fd6431fa93f7b59642d"), //Prod value
+                        hex!("94ee828c3455a327dde32f577e27f0b8a4c42b3fb626ee27f0004f7cf02bd332"), 
+                        hex!("38364b218e599f78f2b52f34748908addce908881b2c76296c50b2494261c004"), 
+                        hex!("38364b218e599f78f2b52f34748908addce908881b2c76296c50b2494261c004"), 
+                        hex!("d603aea460c53393cfd2e2eb2820bb138738288502488fd6431fa93f7b59642d"), 
                     ),
                 ],
                 vec![
@@ -1220,8 +1219,8 @@ pub fn main_net_coded() -> ChainSpec {
                     hex!("d8815601fc99d9afa27a09fc5e46ebcc2472edc466fbb5c6fbae7a8566e50318").into(),
                 ],
                 vec![
-                    hex!("a3bcbf3044069ac13c30d662a204d8368c266e2f0e8cf603c7bfb2b7b5daae55").into(), //Prod value
-                    hex!("297c03e65c2930daa7c6067a2bb853819b61ed49b70de2f3219a2eb6ec0364aa").into(), //Prod value
+                    hex!("a3bcbf3044069ac13c30d662a204d8368c266e2f0e8cf603c7bfb2b7b5daae55").into(), 
+                    hex!("297c03e65c2930daa7c6067a2bb853819b61ed49b70de2f3219a2eb6ec0364aa").into(), 
                 ],
                 eth_bridge_params,
                 vec![
@@ -1751,7 +1750,7 @@ fn mainnet_genesis(
             burn_info: (fixed!(0.1), fixed!(0.000357), fixed!(0.65)),
         }),
         iroha_migration: Some(IrohaMigrationConfig {
-            iroha_accounts: our_include!("bytes/iroha_migration_accounts.in"),
+            iroha_accounts: our_include!("bytes/iroha_migration_accounts_main.in"),
             account_id: iroha_migration_account_id,
         }),
         rewards: Some(rewards_config),
