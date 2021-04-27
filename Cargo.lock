@@ -2366,6 +2366,7 @@ dependencies = [
  "liquidity-proxy",
  "liquidity-proxy-benchmarking",
  "liquidity-proxy-runtime-api",
+ "log",
  "mock-liquidity-source",
  "multicollateral-bonding-curve-pool",
  "orml-currencies",
