@@ -244,9 +244,9 @@ parameter_types! {
     .max_extrinsic
     .expect("Normal extrinsics have weight limit configured by default; qed")
     .saturating_sub(BlockExecutionWeight::get());
-    pub const DemocracyEnactmentPeriod: BlockNumber = 30 * DAYS;
-    pub const DemocracyLaunchPeriod: BlockNumber = 28 * DAYS;
-    pub const DemocracyVotingPeriod: BlockNumber = 14 * DAYS;
+    pub const DemocracyEnactmentPeriod: BlockNumber = 1 * DAYS;
+    pub const DemocracyLaunchPeriod: BlockNumber = 2 * DAYS;
+    pub const DemocracyVotingPeriod: BlockNumber = 1 * DAYS;
     pub const DemocracyMinimumDeposit: Balance = balance!(1);
     pub const DemocracyFastTrackVotingPeriod: BlockNumber = 2 * DAYS;
     pub const DemocracyInstantAllowed: bool = false;
