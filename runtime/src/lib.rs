@@ -192,7 +192,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
     spec_name: create_runtime_str!("sora-substrate"),
     impl_name: create_runtime_str!("sora-substrate"),
     authoring_version: 1,
-    spec_version: 30,
+    spec_version: 31,
     impl_version: 1,
     apis: RUNTIME_API_VERSIONS,
     transaction_version: 1,
@@ -214,14 +214,14 @@ parameter_types! {
     pub const BlockHashCount: BlockNumber = 250;
     pub const Version: RuntimeVersion = VERSION;
     pub const DisabledValidatorsThreshold: Perbill = Perbill::from_percent(17);
-    pub const EpochDuration: u64 = EPOCH_DURATION_IN_SLOTS;
+    pub const EpochDuration: u64 = EPOCH_DURATION_IN_BLOCKS as u64;
     pub const ExpectedBlockTime: Moment = MILLISECS_PER_BLOCK;
-    pub const UncleGenerations: BlockNumber = 5;
-    pub const SessionsPerEra: sp_staking::SessionIndex = 3; // 3 hours
-    pub const BondingDuration: pallet_staking::EraIndex = 4; // 12 hours
+    pub const UncleGenerations: BlockNumber = 0;
+    pub const SessionsPerEra: sp_staking::SessionIndex = 6; // 6 hours
+    pub const BondingDuration: pallet_staking::EraIndex = 28; // 28 eras for unbonding (7 days).
     pub const ReportLongevity: u64 =
         BondingDuration::get() as u64 * SessionsPerEra::get() as u64 * EpochDuration::get();
-    pub const SlashDeferDuration: pallet_staking::EraIndex = 2; // 6 hours
+    pub const SlashDeferDuration: pallet_staking::EraIndex = 27; // 27 eras in which slashes can be cancelled (slightly less than 7 days).
     pub const MaxNominatorRewardedPerValidator: u32 = 256;
     pub const ElectionLookahead: BlockNumber = EPOCH_DURATION_IN_BLOCKS / 4;
     pub const MaxIterations: u32 = 10;
@@ -475,7 +475,7 @@ impl pallet_session::Config for Runtime {
     type Event = Event;
     type ValidatorId = AccountId;
     type ValidatorIdOf = pallet_staking::StashOf<Self>;
-    type DisabledValidatorsThreshold = ();
+    type DisabledValidatorsThreshold = DisabledValidatorsThreshold;
     type NextSessionRotation = Babe;
     type WeightInfo = ();
 }
@@ -532,6 +532,7 @@ parameter_types! {
     pub const ExistentialDeposit: u128 = 0;
     pub const TransferFee: u128 = 0;
     pub const CreationFee: u128 = 0;
+    pub const MaxLocks: u32 = 50;
 }
 
 impl pallet_balances::Config for Runtime {
@@ -543,7 +544,7 @@ impl pallet_balances::Config for Runtime {
     type ExistentialDeposit = ExistentialDeposit;
     type AccountStore = System;
     type WeightInfo = ();
-    type MaxLocks = ();
+    type MaxLocks = MaxLocks;
 }
 
 pub type Amount = i128;
