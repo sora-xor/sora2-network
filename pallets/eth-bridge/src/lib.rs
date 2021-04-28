@@ -174,7 +174,7 @@ pub mod types;
 const SUB_NODE_URL: &str = "http://127.0.0.1:9954";
 const HTTP_REQUEST_TIMEOUT_SECS: u64 = 10;
 /// Substrate maximum amount of blocks for which an extrinsic is expecting to be finalized.
-const SUBSTRATE_MAX_BLOCK_NUM_EXPECTING_UNTIL_FINALIZATION: u32 = 10;
+const SUBSTRATE_MAX_BLOCK_NUM_EXPECTING_UNTIL_FINALIZATION: u32 = 100;
 
 pub const TECH_ACCOUNT_PREFIX: &[u8] = b"bridge";
 pub const TECH_ACCOUNT_MAIN: &[u8] = b"main";
@@ -2751,6 +2751,7 @@ impl<T: Config> Pallet<T> {
             .get::<BTreeMap<H256, SignedTransactionData<T>>>()
             .flatten()
         {
+            debug::debug!("Pending txs count: {}", txs.len());
             for ext in block.extrinsics {
                 let vec = ext.encode();
                 let hash = H256(blake2_256(&vec));
@@ -2759,6 +2760,8 @@ impl<T: Config> Pallet<T> {
             }
             let signer = Self::get_signer()?;
             // Re-send all transactions that weren't sent or finalized.
+            let max_resend = 10;
+            let mut resent_num = 0;
             for tx in txs.values_mut() {
                 let should_resend = tx
                     .submitted_at
@@ -2769,6 +2772,10 @@ impl<T: Config> Pallet<T> {
                     })
                     .unwrap_or(true);
                 if should_resend {
+                    resent_num += 1;
+                    if resent_num > max_resend {
+                        break;
+                    }
                     tx.resend(&signer);
                 }
             }
@@ -2918,6 +2925,7 @@ impl<T: Config> Pallet<T> {
     /// There are 4 flows. 3 for incoming request: handle 'mark as done', handle 'cancel outgoing
     /// request' and for the rest, and only one for all outgoing requests.
     fn handle_offchain_request(request: OffchainRequest<T>) -> Result<(), Error<T>> {
+        debug::debug!("Handling request: {:?}", request.hash());
         match request {
             OffchainRequest::LoadIncoming(request) => {
                 let network_id = request.network_id();
@@ -3064,7 +3072,6 @@ impl<T: Config> Pallet<T> {
             }
         };
         s_eth_height.set(&current_eth_height);
-        let s_handled_requests = StorageValueRef::persistent(b"eth-bridge-ocw::handled-request");
 
         let substrate_finalized_block = match Self::load_substrate_finalized_block() {
             Ok(v) => v,
@@ -3111,11 +3118,6 @@ impl<T: Config> Pallet<T> {
             }
         }
 
-        let mut handled = s_handled_requests
-            .get::<BTreeMap<H256, T::BlockNumber>>()
-            .flatten()
-            .unwrap_or_default();
-
         for request_hash in RequestsQueue::<T>::get(network_id) {
             let request = match Requests::<T>::get(network_id, request_hash) {
                 Some(v) => v,
@@ -3126,8 +3128,12 @@ impl<T: Config> Pallet<T> {
             if substrate_finalized_height < request_submission_height {
                 continue;
             }
-            let need_to_handle = match handled.get(&request_hash) {
-                Some(height) => &request_submission_height > height,
+            let handled_key = format!("eth-bridge-ocw::handled-request-{:?}", request_hash);
+            let s_handled_request = StorageValueRef::persistent(handled_key.as_bytes());
+            let height_opt = s_handled_request.get::<T::BlockNumber>().flatten();
+
+            let need_to_handle = match height_opt {
+                Some(height) => request_submission_height > height,
                 None => true,
             };
             let confirmed = match &request {
@@ -3159,11 +3165,10 @@ impl<T: Config> Pallet<T> {
                     }
                 }
                 if is_handled {
-                    handled.insert(request_hash, request_submission_height);
+                    s_handled_request.set(&request_submission_height);
                 }
             }
         }
-        s_handled_requests.set(&handled);
     }
 
     /// Handles registered networks.
