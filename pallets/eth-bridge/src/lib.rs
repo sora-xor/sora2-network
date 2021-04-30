@@ -174,7 +174,7 @@ pub mod types;
 const SUB_NODE_URL: &str = "http://127.0.0.1:9954";
 const HTTP_REQUEST_TIMEOUT_SECS: u64 = 10;
 /// Substrate maximum amount of blocks for which an extrinsic is expecting to be finalized.
-const SUBSTRATE_MAX_BLOCK_NUM_EXPECTING_UNTIL_FINALIZATION: u32 = 50;
+const SUBSTRATE_MAX_BLOCK_NUM_EXPECTING_UNTIL_FINALIZATION: u32 = 100;
 const MAX_SEND_SIGNED_TX_RETRIES: u8 = 5;
 
 pub const TECH_ACCOUNT_PREFIX: &[u8] = b"bridge";
@@ -184,6 +184,8 @@ pub const TECH_ACCOUNT_AUTHORITY: &[u8] = b"authority";
 pub const KEY_TYPE: KeyTypeId = KeyTypeId(*b"ethb");
 /// A number of sidechain blocks needed to consider transaction as confirmed.
 pub const CONFIRMATION_INTERVAL: u64 = 30;
+/// Maximum number of `Log` items per `eth_getLogs` request.
+pub const MAX_GET_LOGS_ITEMS: u64 = 50;
 // Off-chain worker storage paths.
 pub const STORAGE_SUB_NODE_URL_KEY: &[u8] = b"eth-bridge-ocw::sub-node-url";
 pub const STORAGE_PEER_SECRET_KEY: &[u8] = b"eth-bridge-ocw::secret-key";
@@ -192,6 +194,7 @@ pub const STORAGE_NETWORK_IDS_KEY: &[u8] = b"eth-bridge-ocw::network-ids";
 pub const STORAGE_PENDING_TRANSACTIONS_KEY: &[u8] = b"eth-bridge-ocw::pending-transactions";
 pub const STORAGE_FAILED_PENDING_TRANSACTIONS_KEY: &[u8] =
     b"eth-bridge-ocw::failed-pending-transactions";
+pub const STORAGE_CLEAN_ABORT_REQUESTS_FLAG: &[u8] = b"eth-bridge-ocw::clear-abort-requests-flag";
 
 /// Contract's `Deposit(bytes32,uint256,address,bytes32)` event topic.
 pub const DEPOSIT_TOPIC: H256 = H256(hex!(
@@ -2051,6 +2054,13 @@ pub mod pallet {
                 _ => false,
             }
         }
+
+        pub fn should_abort(&self) -> bool {
+            match self {
+                Self::FailedToSendSignedTransaction => false,
+                _ => true,
+            }
+        }
     }
 
     /// Registered requests queue handled by off-chain workers.
@@ -2750,11 +2760,13 @@ impl<T: Config> Pallet<T> {
     {
         let finalized_height = <T::BlockNumber as From<u32>>::from(block.header.number.as_u32());
         let s_pending_txs = StorageValueRef::persistent(STORAGE_PENDING_TRANSACTIONS_KEY);
+        let s_clean_abort_requests_flag =
+            StorageValueRef::persistent(STORAGE_CLEAN_ABORT_REQUESTS_FLAG);
         if let Some(mut txs) = s_pending_txs
             .get::<BTreeMap<H256, SignedTransactionData<T>>>()
             .flatten()
         {
-            debug::debug!("Pending txs count: {}", txs.len());
+            debug::info!("Pending txs count: {}", txs.len());
             for ext in block.extrinsics {
                 let vec = ext.encode();
                 let hash = H256(blake2_256(&vec));
@@ -2763,52 +2775,79 @@ impl<T: Config> Pallet<T> {
             }
             let signer = Self::get_signer()?;
             // Re-send all transactions that weren't sent or finalized.
-            let max_resend = 50;
+            let max_resend = 10;
             let mut resent_num = 0;
-            let mut to_remove = Vec::new();
-            for tx in txs.values_mut() {
-                let should_resend = tx
-                    .submitted_at
-                    .map(|submitted_height| {
-                        finalized_height
-                            > submitted_height
-                                + SUBSTRATE_MAX_BLOCK_NUM_EXPECTING_UNTIL_FINALIZATION.into()
-                    })
-                    .unwrap_or(true);
-                if should_resend {
-                    if tx.resend(&signer) {
-                        let key = format!(
-                            "eth-bridge-ocw::pending-transactions-retries-{}",
-                            tx.extrinsic_hash
-                        );
-                        let mut s_retries = StorageValueRef::persistent(key.as_bytes());
-                        let mut retries: u8 = s_retries.get().flatten().unwrap_or_default();
-                        retries = retries.saturating_add(1);
-                        if retries > MAX_SEND_SIGNED_TX_RETRIES {
-                            to_remove.push(tx.extrinsic_hash);
-                            s_retries.clear();
-                        } else {
-                            s_retries.set(&retries);
+            let mut failed_txs_tmp = Vec::new();
+            // TODO: remove the code in a future version.
+            // Should remove all 'abort_request' calls with `SubmitSignedTransactionFailed` error.
+            let should_clean_abort_requests = !s_clean_abort_requests_flag
+                .get::<bool>()
+                .flatten()
+                .unwrap_or_default();
+            let txs = txs
+                .into_iter()
+                .filter_map(|(mut hash, mut tx)| {
+                    if should_clean_abort_requests {
+                        let encoded = tx.call.encode();
+                        let abort_request_call_index = 0x0d;
+                        let multisig_abort_request_call_offset = 35;
+                        let multisig_abort_request_call_length = 75;
+                        // Detect `abort_request` call ID.
+                        if encoded.len() == multisig_abort_request_call_length
+                            && encoded.get(multisig_abort_request_call_offset)
+                                == Some(&abort_request_call_index)
+                        {
+                            return None;
                         }
-
-                        resent_num += 1;
-                        if resent_num > max_resend {
-                            break;
-                        }
+                        // Update the hash in case it's different.
+                        hash = tx.extrinsic_hash;
                     }
-                }
+                    let too_long_finalization = tx
+                        .submitted_at
+                        .map(|submitted_height| {
+                            finalized_height
+                                > submitted_height
+                                    + SUBSTRATE_MAX_BLOCK_NUM_EXPECTING_UNTIL_FINALIZATION.into()
+                        })
+                        .unwrap_or(true);
+                    let should_resend = too_long_finalization && resent_num < max_resend;
+                    if should_resend {
+                        if tx.resend(&signer) {
+                            resent_num += 1;
+                            let key = format!(
+                                "eth-bridge-ocw::pending-transactions-retries-{}",
+                                tx.extrinsic_hash
+                            );
+                            let mut s_retries = StorageValueRef::persistent(key.as_bytes());
+                            let mut retries: u8 = s_retries.get().flatten().unwrap_or_default();
+                            retries = retries.saturating_add(1);
+                            if retries > MAX_SEND_SIGNED_TX_RETRIES {
+                                failed_txs_tmp.push(tx);
+                                s_retries.clear();
+                                return None;
+                            } else {
+                                s_retries.set(&retries);
+                            }
+                        }
+                        // Update key = extrinsic hash.
+                        hash = tx.extrinsic_hash;
+                    }
+                    Some((hash, tx))
+                })
+                .collect::<BTreeMap<H256, SignedTransactionData<T>>>();
+            // We removed all the 'abort' calls, set the flag to do not do it again.
+            if should_clean_abort_requests {
+                s_clean_abort_requests_flag.set(&true);
             }
-            if !to_remove.is_empty() {
+            if !failed_txs_tmp.is_empty() {
                 let s_failed_pending_txs =
                     StorageValueRef::persistent(STORAGE_FAILED_PENDING_TRANSACTIONS_KEY);
                 let mut failed_txs = s_failed_pending_txs
                     .get::<BTreeMap<H256, SignedTransactionData<T>>>()
                     .flatten()
                     .unwrap_or_default();
-                for hash in to_remove {
-                    if let Some(elem) = txs.remove(&hash) {
-                        failed_txs.insert(hash, elem);
-                    }
+                for tx in failed_txs_tmp {
+                    failed_txs.insert(tx.extrinsic_hash, tx);
                 }
                 s_failed_pending_txs.set(&failed_txs);
             }
@@ -3136,7 +3175,9 @@ impl<T: Config> Pallet<T> {
             s_eth_to_handle_from_height.set(&current_eth_height);
         }
         let from_block = from_block_opt.flatten().unwrap_or(current_eth_height);
-        let to_block_opt = current_eth_height.checked_sub(CONFIRMATION_INTERVAL);
+        let to_block_opt = current_eth_height
+            .checked_sub(CONFIRMATION_INTERVAL)
+            .map(|to_block| (from_block + MAX_GET_LOGS_ITEMS).min(to_block));
         if let Some(to_block) = to_block_opt {
             if to_block >= from_block {
                 let mut new_height = from_block;
@@ -3177,6 +3218,10 @@ impl<T: Config> Pallet<T> {
             };
             if need_to_handle && confirmed {
                 let timepoint = request.timepoint();
+                // TODO: enable incoming requests when multisig fixed.
+                if request.is_incoming() {
+                    continue;
+                }
                 let error = Self::handle_offchain_request(request).err();
                 let mut is_handled = true;
                 if let Some(e) = error {
@@ -3184,16 +3229,19 @@ impl<T: Config> Pallet<T> {
                         "An error occurred while processing off-chain request: {:?}",
                         e
                     );
+
                     if e.should_retry() {
                         is_handled = false;
                     } else {
-                        if let Err(abort_err) =
-                            Self::send_abort_request(request_hash, e, timepoint, network_id)
-                        {
-                            debug::error!(
-                                "An error occurred while trying to send abort request: {:?}",
-                                abort_err
-                            );
+                        if e.should_abort() {
+                            if let Err(abort_err) =
+                                Self::send_abort_request(request_hash, e, timepoint, network_id)
+                            {
+                                debug::error!(
+                                    "An error occurred while trying to send abort request: {:?}",
+                                    abort_err
+                                );
+                            }
                         }
                     }
                 }
@@ -3712,6 +3760,10 @@ impl<T: Config> Pallet<T> {
         network_id: T::NetworkId,
     ) -> Result<(), Error<T>> {
         debug::debug!("send_abort_request: {:?}", request_hash);
+        ensure!(
+            RequestStatuses::<T>::get(network_id, request_hash) == Some(RequestStatus::Pending),
+            Error::<T>::Other // TODO: change error
+        );
         let abort_request_call =
             Call::<T>::abort_request(request_hash, request_error.into(), network_id);
         Self::send_multisig_transaction(abort_request_call, timepoint, network_id)
