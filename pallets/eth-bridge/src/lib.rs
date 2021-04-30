@@ -194,7 +194,7 @@ pub const STORAGE_NETWORK_IDS_KEY: &[u8] = b"eth-bridge-ocw::network-ids";
 pub const STORAGE_PENDING_TRANSACTIONS_KEY: &[u8] = b"eth-bridge-ocw::pending-transactions";
 pub const STORAGE_FAILED_PENDING_TRANSACTIONS_KEY: &[u8] =
     b"eth-bridge-ocw::failed-pending-transactions";
-pub const STORAGE_CLEAN_ABORT_REQUESTS_FLAG: &[u8] = b"eth-bridge-ocw::clear-abort-requests-flag";
+pub const STORAGE_SHOULD_CLEAN_ABORT_REQUESTS: &[u8] = b"eth-bridge-ocw::clean-abort-requests-flag";
 
 /// Contract's `Deposit(bytes32,uint256,address,bytes32)` event topic.
 pub const DEPOSIT_TOPIC: H256 = H256(hex!(
@@ -2760,8 +2760,8 @@ impl<T: Config> Pallet<T> {
     {
         let finalized_height = <T::BlockNumber as From<u32>>::from(block.header.number.as_u32());
         let s_pending_txs = StorageValueRef::persistent(STORAGE_PENDING_TRANSACTIONS_KEY);
-        let s_clean_abort_requests_flag =
-            StorageValueRef::persistent(STORAGE_CLEAN_ABORT_REQUESTS_FLAG);
+        let s_should_clean_abort_requests =
+            StorageValueRef::persistent(STORAGE_SHOULD_CLEAN_ABORT_REQUESTS);
         if let Some(mut txs) = s_pending_txs
             .get::<BTreeMap<H256, SignedTransactionData<T>>>()
             .flatten()
@@ -2780,7 +2780,7 @@ impl<T: Config> Pallet<T> {
             let mut failed_txs_tmp = Vec::new();
             // TODO: remove the code in a future version.
             // Should remove all 'abort_request' calls with `SubmitSignedTransactionFailed` error.
-            let should_clean_abort_requests = !s_clean_abort_requests_flag
+            let should_clean_abort_requests = !s_should_clean_abort_requests
                 .get::<bool>()
                 .flatten()
                 .unwrap_or_default();
@@ -2838,7 +2838,7 @@ impl<T: Config> Pallet<T> {
                 .collect::<BTreeMap<H256, SignedTransactionData<T>>>();
             // We removed all the 'abort' calls, set the flag to do not do it again.
             if should_clean_abort_requests {
-                s_clean_abort_requests_flag.set(&true);
+                s_should_clean_abort_requests.set(&true);
             }
             if !failed_txs_tmp.is_empty() {
                 let s_failed_pending_txs =
