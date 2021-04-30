@@ -43,7 +43,7 @@ use crate::{
     IncomingMetaRequestKind, IncomingRequest, IncomingRequestKind, IncomingTransactionRequestKind,
     LoadIncomingRequest, LoadIncomingTransactionRequest, OffchainRequest, OutgoingRequest,
     OutgoingTransfer, RequestStatus, SignatureParams, CONFIRMATION_INTERVAL,
-    SUBSTRATE_MAX_BLOCK_NUM_EXPECTING_UNTIL_FINALIZATION,
+    MAX_SEND_SIGNED_TX_RETRIES, SUBSTRATE_MAX_BLOCK_NUM_EXPECTING_UNTIL_FINALIZATION,
 };
 use codec::{Decode, Encode};
 use common::prelude::Balance;
@@ -3458,5 +3458,54 @@ fn ocw_should_resend_signed_transaction_on_timeout() {
         );
         assert_eq!(state.pending_txs().len(), 1);
         assert_eq!(state.pool_state.read().transactions.len(), 2);
+    });
+}
+
+#[test]
+fn ocw_should_remove_pending_transaction_on_max_retries() {
+    let (mut ext, mut state) = ExtBuilder::default().build();
+    ext.execute_with(|| {
+        let net_id = ETH_NETWORK_ID;
+        let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
+        Assets::mint_to(&XOR.into(), &alice, &alice, 100).unwrap();
+        assert_ok!(EthBridge::transfer_to_sidechain(
+            Origin::signed(alice.clone()),
+            XOR.into(),
+            Address::from_str("19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A").unwrap(),
+            100,
+            net_id,
+        ));
+        state.run_next_offchain_with_params(
+            0,
+            frame_system::Pallet::<Runtime>::block_number() + 1,
+            false,
+        );
+        assert_eq!(state.pending_txs().len(), 1);
+        assert_eq!(state.pool_state.read().transactions.len(), 1);
+        for i in 0..MAX_SEND_SIGNED_TX_RETRIES {
+            state.run_next_offchain_with_params(
+                0,
+                frame_system::Pallet::<Runtime>::block_number()
+                    + 1
+                    + SUBSTRATE_MAX_BLOCK_NUM_EXPECTING_UNTIL_FINALIZATION as u64,
+                false,
+            );
+            assert_eq!(state.pending_txs().len(), 1);
+            assert_eq!(state.failed_pending_txs().len(), 0);
+            assert_eq!(state.pool_state.read().transactions.len(), 2 + i as usize);
+        }
+        state.run_next_offchain_with_params(
+            0,
+            frame_system::Pallet::<Runtime>::block_number()
+                + 1
+                + SUBSTRATE_MAX_BLOCK_NUM_EXPECTING_UNTIL_FINALIZATION as u64,
+            false,
+        );
+        assert_eq!(state.pending_txs().len(), 0);
+        assert_eq!(state.failed_pending_txs().len(), 1);
+        assert_eq!(
+            state.pool_state.read().transactions.len(),
+            2 + MAX_SEND_SIGNED_TX_RETRIES as usize
+        );
     });
 }

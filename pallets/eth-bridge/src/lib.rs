@@ -174,7 +174,8 @@ pub mod types;
 const SUB_NODE_URL: &str = "http://127.0.0.1:9954";
 const HTTP_REQUEST_TIMEOUT_SECS: u64 = 10;
 /// Substrate maximum amount of blocks for which an extrinsic is expecting to be finalized.
-const SUBSTRATE_MAX_BLOCK_NUM_EXPECTING_UNTIL_FINALIZATION: u32 = 100;
+const SUBSTRATE_MAX_BLOCK_NUM_EXPECTING_UNTIL_FINALIZATION: u32 = 50;
+const MAX_SEND_SIGNED_TX_RETRIES: u8 = 5;
 
 pub const TECH_ACCOUNT_PREFIX: &[u8] = b"bridge";
 pub const TECH_ACCOUNT_MAIN: &[u8] = b"main";
@@ -189,6 +190,8 @@ pub const STORAGE_PEER_SECRET_KEY: &[u8] = b"eth-bridge-ocw::secret-key";
 pub const STORAGE_ETH_NODE_PARAMS: &str = "eth-bridge-ocw::node-params";
 pub const STORAGE_NETWORK_IDS_KEY: &[u8] = b"eth-bridge-ocw::network-ids";
 pub const STORAGE_PENDING_TRANSACTIONS_KEY: &[u8] = b"eth-bridge-ocw::pending-transactions";
+pub const STORAGE_FAILED_PENDING_TRANSACTIONS_KEY: &[u8] =
+    b"eth-bridge-ocw::failed-pending-transactions";
 
 /// Contract's `Deposit(bytes32,uint256,address,bytes32)` event topic.
 pub const DEPOSIT_TOPIC: H256 = H256(hex!(
@@ -2760,8 +2763,9 @@ impl<T: Config> Pallet<T> {
             }
             let signer = Self::get_signer()?;
             // Re-send all transactions that weren't sent or finalized.
-            let max_resend = 10;
+            let max_resend = 50;
             let mut resent_num = 0;
+            let mut to_remove = Vec::new();
             for tx in txs.values_mut() {
                 let should_resend = tx
                     .submitted_at
@@ -2772,12 +2776,41 @@ impl<T: Config> Pallet<T> {
                     })
                     .unwrap_or(true);
                 if should_resend {
-                    resent_num += 1;
-                    if resent_num > max_resend {
-                        break;
+                    if tx.resend(&signer) {
+                        let key = format!(
+                            "eth-bridge-ocw::pending-transactions-retries-{}",
+                            tx.extrinsic_hash
+                        );
+                        let mut s_retries = StorageValueRef::persistent(key.as_bytes());
+                        let mut retries: u8 = s_retries.get().flatten().unwrap_or_default();
+                        retries = retries.saturating_add(1);
+                        if retries > MAX_SEND_SIGNED_TX_RETRIES {
+                            to_remove.push(tx.extrinsic_hash);
+                            s_retries.clear();
+                        } else {
+                            s_retries.set(&retries);
+                        }
+
+                        resent_num += 1;
+                        if resent_num > max_resend {
+                            break;
+                        }
                     }
-                    tx.resend(&signer);
                 }
+            }
+            if !to_remove.is_empty() {
+                let s_failed_pending_txs =
+                    StorageValueRef::persistent(STORAGE_FAILED_PENDING_TRANSACTIONS_KEY);
+                let mut failed_txs = s_failed_pending_txs
+                    .get::<BTreeMap<H256, SignedTransactionData<T>>>()
+                    .flatten()
+                    .unwrap_or_default();
+                for hash in to_remove {
+                    if let Some(elem) = txs.remove(&hash) {
+                        failed_txs.insert(hash, elem);
+                    }
+                }
+                s_failed_pending_txs.set(&failed_txs);
             }
             s_pending_txs.set(&txs);
         }

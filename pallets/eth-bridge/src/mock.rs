@@ -36,8 +36,8 @@ use crate::types::{
 };
 use crate::{
     AssetConfig, Config, NetworkConfig, NodeParams, CONFIRMATION_INTERVAL, STORAGE_ETH_NODE_PARAMS,
-    STORAGE_NETWORK_IDS_KEY, STORAGE_PEER_SECRET_KEY, STORAGE_PENDING_TRANSACTIONS_KEY,
-    STORAGE_SUB_NODE_URL_KEY,
+    STORAGE_FAILED_PENDING_TRANSACTIONS_KEY, STORAGE_NETWORK_IDS_KEY, STORAGE_PEER_SECRET_KEY,
+    STORAGE_PENDING_TRANSACTIONS_KEY, STORAGE_SUB_NODE_URL_KEY,
 };
 use codec::{Codec, Decode, Encode};
 use common::mock::ExistentialDeposits;
@@ -534,6 +534,15 @@ impl State {
             .read()
             .persistent_storage
             .get(STORAGE_PENDING_TRANSACTIONS_KEY)
+            .and_then(|x| Decode::decode(&mut &x[..]).ok())
+            .unwrap_or_default()
+    }
+
+    pub fn failed_pending_txs(&self) -> BTreeMap<H256, SignedTransactionData<Runtime>> {
+        self.offchain_state
+            .read()
+            .persistent_storage
+            .get(STORAGE_FAILED_PENDING_TRANSACTIONS_KEY)
             .and_then(|x| Decode::decode(&mut &x[..]).ok())
             .unwrap_or_default()
     }

@@ -69,8 +69,8 @@ impl<T: Config> SignedTransactionData<T> {
         Some(Self::new(ext_hash, submitted_at, overarching_call))
     }
 
-    /// Re-sends current call and updates self.
-    pub fn resend(&mut self, signer: &Signer<T, T::PeerId>)
+    /// Re-sends current call and updates self. Returns `true` if sent.
+    pub fn resend(&mut self, signer: &Signer<T, T::PeerId>) -> bool
     where
         T: CreateSignedTransaction<Call<T>>,
     {
@@ -90,6 +90,9 @@ impl<T: Config> SignedTransactionData<T> {
                 SignedTransactionData::from_local_call(self.call.clone(), &account, submitted_at)
                     .expect("we've just successfully signed the same data; qed");
             *self = signed_transaction_data;
+            res.is_ok()
+        } else {
+            false
         }
     }
 }
