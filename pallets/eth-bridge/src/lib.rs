@@ -175,7 +175,7 @@ const SUB_NODE_URL: &str = "http://127.0.0.1:9954";
 const HTTP_REQUEST_TIMEOUT_SECS: u64 = 10;
 /// Substrate maximum amount of blocks for which an extrinsic is expecting to be finalized.
 const SUBSTRATE_MAX_BLOCK_NUM_EXPECTING_UNTIL_FINALIZATION: u32 = 100;
-const MAX_SEND_SIGNED_TX_RETRIES: u8 = 5;
+const MAX_SEND_SIGNED_TX_RETRIES: u8 = 50;
 
 pub const TECH_ACCOUNT_PREFIX: &[u8] = b"bridge";
 pub const TECH_ACCOUNT_MAIN: &[u8] = b"main";
@@ -2814,6 +2814,9 @@ impl<T: Config> Pallet<T> {
                     if should_resend {
                         if tx.resend(&signer) {
                             resent_num += 1;
+                            // Update key = extrinsic hash.
+                            hash = tx.extrinsic_hash;
+                        } else {
                             let key = format!(
                                 "eth-bridge-ocw::pending-transactions-retries-{}",
                                 tx.extrinsic_hash
@@ -2829,8 +2832,6 @@ impl<T: Config> Pallet<T> {
                                 s_retries.set(&retries);
                             }
                         }
-                        // Update key = extrinsic hash.
-                        hash = tx.extrinsic_hash;
                     }
                     Some((hash, tx))
                 })
@@ -3175,6 +3176,9 @@ impl<T: Config> Pallet<T> {
             s_eth_to_handle_from_height.set(&current_eth_height);
         }
         let from_block = from_block_opt.flatten().unwrap_or(current_eth_height);
+        // The upper bound of range of blocks to download logs for. Limit the value to
+        // `MAX_GET_LOGS_ITEMS` if the OCW is lagging behind Ethereum to avoid downloading too many
+        // logs.
         let to_block_opt = current_eth_height
             .checked_sub(CONFIRMATION_INTERVAL)
             .map(|to_block| (from_block + MAX_GET_LOGS_ITEMS).min(to_block));
