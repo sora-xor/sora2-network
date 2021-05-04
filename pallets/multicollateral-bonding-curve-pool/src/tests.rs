@@ -487,7 +487,7 @@ mod tests {
         ext.execute_with(|| {
             MockDEXApi::init().unwrap();
             let _ = bonding_curve_pool_init(vec![]).unwrap();
-            TradingPair::register(Origin::signed(alice()),DEXId::Polkaswap.into(), XOR, VAL).expect("Failed to register trading pair.");
+            TradingPair::register(Origin::signed(alice()), DEXId::Polkaswap.into(), XOR, VAL).expect("Failed to register trading pair.");
             MBCPool::initialize_pool_unchecked(VAL, false).expect("Failed to initialize pool.");
             let alice = &alice();
 
@@ -765,7 +765,7 @@ mod tests {
 
             let (limit, owned) = MBCPool::rewards(&alice());
             assert!(limit.is_zero());
-            assert_eq!(owned, balance!(228.572321318250000000));
+            assert_eq!(owned, balance!(2285.723213182500000000));
         });
     }
 
@@ -787,7 +787,7 @@ mod tests {
             MBCPool::initialize_pool_unchecked(VAL, false).expect("Failed to initialize pool.");
             MBCPool::initialize_pool_unchecked(DAI, false).expect("Failed to initialize pool.");
             Assets::transfer(Origin::signed(alice()), DAI, bob(), balance!(50000)).unwrap();
-            Currencies::deposit(PSWAP, &incentives_account(), balance!(250000)).unwrap();
+            Currencies::deposit(PSWAP, &incentives_account(), balance!(25000000)).unwrap();
 
             // performing exchanges which are eligible for rewards
             MBCPool::exchange(
@@ -832,16 +832,16 @@ mod tests {
             MBCPool::on_pswap_burned(remint_info);
             let (limit_alice, _) = MBCPool::rewards(&alice());
             let (limit_bob, _) = MBCPool::rewards(&bob());
-            assert_eq!(limit_alice, balance!(11422.243536166374999999));
-            assert_eq!(limit_bob, balance!(5709.365922728499999999));
+            assert_eq!(limit_alice, balance!(114222.435361663749999999));
+            assert_eq!(limit_bob, balance!(57093.659227284999999999));
 
             // claiming incentives partially
             assert_ok!(MBCPool::claim_incentives(Origin::signed(alice())));
             assert_ok!(MBCPool::claim_incentives(Origin::signed(bob())));
             let (limit_alice, remaining_owned_alice) = MBCPool::rewards(&alice());
             let (limit_bob, remaining_owned_bob) = MBCPool::rewards(&bob());
-            assert_eq!(remaining_owned_alice, balance!(11422.243536166375000001));
-            assert_eq!(remaining_owned_bob, balance!(5709.365922728500000001));
+            assert_eq!(remaining_owned_alice, balance!(114222.435361663750000001));
+            assert_eq!(remaining_owned_bob, balance!(57093.659227285000000001));
             assert!(limit_alice.is_zero());
             assert!(limit_bob.is_zero());
             assert_eq!(Assets::free_balance(&PSWAP, &alice()).unwrap(), owned_alice - remaining_owned_alice);
@@ -1200,7 +1200,7 @@ mod tests {
 
             let (limit, owned_1) = MBCPool::rewards(&alice());
             assert!(limit.is_zero());
-            assert_eq!(owned_1, balance!(596.264779217750000000));
+            assert_eq!(owned_1, balance!(5962.647792177500000000));
 
             MBCPool::exchange(
                 &alice(),
@@ -1214,7 +1214,7 @@ mod tests {
 
             let (limit, owned_2) = MBCPool::rewards(&alice());
             assert!(limit.is_zero());
-            assert_eq!(owned_2, owned_1 + balance!(5961.194964287000000000));
+            assert_eq!(owned_2, owned_1 + balance!(59611.949642870000000000));
 
             MBCPool::exchange(
                 &alice(),
@@ -1228,7 +1228,7 @@ mod tests {
 
             let (limit, owned_3) = MBCPool::rewards(&alice());
             assert!(limit.is_zero());
-            assert_eq!(owned_3, owned_2 + balance!(581729.830227598000000000));
+            assert_eq!(owned_3, owned_2 + balance!(5817298.302275980000000000));
         });
     }
 

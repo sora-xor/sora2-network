@@ -1174,8 +1174,8 @@ pub fn main_net_coded() -> ChainSpec {
     let id = "sora-substrate-main-net";
     // SORA main-net node address. We should have 2 nodes.
     let boot_nodes = vec![
-              MultiaddrWithPeerId::from_str("/dns/v1.sora2.soramitsu.co.jp/tcp/30333/p2p/12D3KooWDQmg87ET849KaCjNn8ZL59pQ9giXiZDmmAvNZNNgAmLp").unwrap(), //Prod value
-              MultiaddrWithPeerId::from_str("/dns/v2.sora2.soramitsu.co.jp/tcp/30334/p2p/12D3KooWHDMg3N6nZB2o8FD41vEDP8vrTfRnZrbZSf2CiH87EELW").unwrap()  //Prod value
+              MultiaddrWithPeerId::from_str("/dns/v1.sora2.soramitsu.co.jp/tcp/30333/p2p/12D3KooWLHZRLHeVPdrXuNNdzpKuPqo6Sm6f9rjVtp5XsEvhXvyG").unwrap(), //Prod value
+              MultiaddrWithPeerId::from_str("/dns/v2.sora2.soramitsu.co.jp/tcp/30333/p2p/12D3KooWGiemoYceJ1y5nQR1YNxysjbCH8MbW5ps1uApLfN36VQa").unwrap()  //Prod value
             ];
     ChainSpec::from_genesis(
         name,
@@ -1189,8 +1189,7 @@ pub fn main_net_coded() -> ChainSpec {
                 val_master_contract_address: hex!("d1eeb2f30016fffd746233ee12c486e7ca8efef1") //Prod value
                     .into(),
                 val_contract_address: hex!("e88f8313e61a97cec1871ee37fbbe2a8bf3ed1e4").into(), //Prod value
-                // Bridge contract address taken from test-net
-                bridge_contract_address: hex!("64fb0ca483b356832cd97958e6b23df783fb7ced").into(),
+                bridge_contract_address: hex!("1485e9852ac841b52ed44d573036429504f4f602").into(),
             };
 
             // SORA main-net node address. We should have 2 nodes.
@@ -1211,10 +1210,40 @@ pub fn main_net_coded() -> ChainSpec {
                     ),
                 ],
                 vec![
+                    hex!("4cd5a4a244bc53f6f1458757ed0af8680e8faa860deca32976bbd9a951bf6c1c").into(),
+                    hex!("54d7aa0bba9a5dbb1bb77973f344625df346f6a65840b8534ee22e93fbad767a").into(),
+                    hex!("e811eac3cf718caa98d77bb479227e8cc512e51e79d6ba1494dd089093f5707f").into(),
+                    hex!("a648c659a86eeb7cf84ddcedac64f33de6966b8853dd636ba693fce100bd8858").into(),
+                    hex!("60a17ce8550db4e1358db54bc3791026a285ab88e9c988ad54c3dc282475fe14").into(),
+                    hex!("de06bf70964d8aff4816e3cfd576d8d8f774663906a6e40d316860a3d4c55b6c").into(),
+                    hex!("4a4371f63db17fb4f33bec3ce7c8f588e3258c3b268b450647f4870d964dca6f").into(),
+                    hex!("d8815601fc99d9afa27a09fc5e46ebcc2472edc466fbb5c6fbae7a8566e50318").into(),
+                ],
+                vec![
                     hex!("a3bcbf3044069ac13c30d662a204d8368c266e2f0e8cf603c7bfb2b7b5daae55").into(), //Prod value
                     hex!("297c03e65c2930daa7c6067a2bb853819b61ed49b70de2f3219a2eb6ec0364aa").into(), //Prod value
                 ],
                 eth_bridge_params,
+                vec![
+                    hex!("3449d09bd0d8db3e925b1a7260dbfbf340e48ae6e6b845ad8799a8e9d90f3419").into(),
+                    hex!("aea4a9cde3671cfcef190f4bab6c09cb8aaaf86b601a3480a1911258e6333b31").into(),
+                    hex!("7abbc1462576cdf687e2b701e2aaca008cfed0445a02fcde19067814d1507273").into(),
+                    hex!("fc6239c9a5647036fc27fcb1ddcba1963930f9bbec3085d37949f2c69c0f8542").into(),
+                    hex!("ce87ff3c35a5811baaa435750e5c7f093fb5a75a6caf4bc2dd52dd0c31cf2915").into(),
+                    hex!("22946844899b7329e242e7366b68b2388297b6c20bd55bc16018138fb918e136").into(),
+                    hex!("d982a770961ccb5dc410dc43cec18cec7f75e35bd24cf258b836d7ed1912b42e").into(),
+                    hex!("22b8381f123c514b5cc8f10db489fc2f13bc6e0c2482f71fa06c506483136a38").into(),
+                    hex!("70e17c41c468aa2ddee29945683d07ae695fbe4c31e8fb1ade53f6634b03265f").into(),
+                    hex!("f0d8f9f778885c08bd92ef6b3ab8842c0d7fc8c16c315ff5ec5f59415b8a6c47").into(),
+                    hex!("2e533300bf71154cf45c80c1e8927fb0c686cc94a74b69693f3cee8e55ffd238").into(),
+                    hex!("14f2c52c094820f11e468dc9822b9bbd56be5b65fe15508279680ad8fab9184d").into(),
+                    hex!("aa1d35e511ba5f58926340f769b04c456c3d02ce70e3835716ccae6a89fe081c").into(),
+                ],
+                vec![
+                    hex!("c4ce370e3ef70681909725fb7385000effe1d88fdf8499df94b53b31e82d9a6e").into(),
+                    hex!("e44c7c00f98ae6acf86dc366d082307388c750ceb70696ca305a7bfd761aee26").into(),
+                    hex!("603fb3e17b49ab8f90e839020f2473278c4f01626ef63976df35ccfbaaae0c1b").into(),
+                ],
             )
         },
         boot_nodes,
@@ -1228,11 +1257,14 @@ pub fn main_net_coded() -> ChainSpec {
 #[cfg(not(feature = "private-net"))]
 fn mainnet_genesis(
     initial_authorities: Vec<(AccountId, AccountId, AuraId, BabeId, GrandpaId, ImOnlineId)>,
+    additional_validators: Vec<AccountId>,
     initial_bridge_peers: Vec<AccountId>,
     eth_bridge_params: EthBridgeParams,
+    council_accounts: Vec<AccountId>,
+    technical_committee_accounts: Vec<AccountId>,
 ) -> GenesisConfig {
     // Minimum stake for an active validator
-    let initial_staking = balance!(1);
+    let initial_staking = balance!(0.2);
     // XOR amount which already exists on Ethereum
     let initial_eth_bridge_xor_amount = balance!(350000);
     // VAL amount which already exists on SORA_1 and Ethereum. Partially can be migrated directly from SORA_1. Not yet decided finally.
@@ -1582,6 +1614,12 @@ fn mainnet_genesis(
                     .cloned()
                     .map(|(_, k2, ..)| (k2, initial_staking)),
             )
+            .chain(
+                additional_validators
+                    .iter()
+                    .cloned()
+                    .map(|account_id| (account_id, initial_staking)),
+            )
             .collect(),
         }),
         dex_manager: Some(DEXManagerConfig {
@@ -1717,8 +1755,14 @@ fn mainnet_genesis(
             account_id: iroha_migration_account_id,
         }),
         rewards: Some(rewards_config),
-        pallet_collective_Instance1: Some(CouncilConfig::default()),
-        pallet_collective_Instance2: Some(TechnicalCommitteeConfig::default()),
+        pallet_collective_Instance1: Some(CouncilConfig {
+            members: council_accounts,
+            phantom: Default::default(),
+        }),
+        pallet_collective_Instance2: Some(TechnicalCommitteeConfig {
+            members: technical_committee_accounts,
+            phantom: Default::default(),
+        }),
         pallet_democracy: Some(DemocracyConfig::default()),
         pallet_elections_phragmen: Default::default(),
         pallet_membership_Instance1: Default::default(),

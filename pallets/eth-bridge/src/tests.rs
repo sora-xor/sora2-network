@@ -43,6 +43,7 @@ use crate::{
     IncomingMetaRequestKind, IncomingRequest, IncomingRequestKind, IncomingTransactionRequestKind,
     LoadIncomingRequest, LoadIncomingTransactionRequest, OffchainRequest, OutgoingRequest,
     OutgoingTransfer, RequestStatus, SignatureParams, CONFIRMATION_INTERVAL,
+    SUBSTRATE_MAX_BLOCK_NUM_EXPECTING_UNTIL_FINALIZATION,
 };
 use codec::{Decode, Encode};
 use common::prelude::Balance;
@@ -584,7 +585,7 @@ fn should_register_outgoing_transfer() {
             amount: 100_u32.into(),
             nonce: 3,
             network_id: ETH_NETWORK_ID,
-            timepoint: bridge_multisig::Pallet::<Runtime>::timepoint(),
+            timepoint: bridge_multisig::Pallet::<Runtime>::thischain_timepoint(),
         };
         let last_request = last_request(net_id).unwrap();
         match last_request {
@@ -2306,7 +2307,7 @@ fn should_parse_add_peer_on_old_contract() {
             network_id: net_id,
         };
         let tx = Transaction {
-            input: Bytes(hex!("ca70cf6e00000000000000000000000025451a4de12dccc2d166922fa938e900fcc4ed2404f11457b19ef557e6065fe37ab030b6dd953a206e057317516abf5eab3e750100000000000000000000000000000000000000000000000000000000000000a000000000000000000000000000000000000000000000000000000000000000e000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000008900000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000").to_vec()),
+            input: Bytes(hex!("ca70cf6e00000000000000000000000025451a4de12dccc2d166922fa938e900fcc4ed246c47988669c11ca53e19e2f41b5bc8b7ce1188509235a6470d14fefaffc063b300000000000000000000000000000000000000000000000000000000000000a000000000000000000000000000000000000000000000000000000000000000e000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000008900000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000").to_vec()),
             block_number: Some(1u64.into()),
             to: Some(types::H160(EthBridge::xor_master_contract_address().0)),
             ..Default::default()
@@ -2359,7 +2360,7 @@ fn should_parse_remove_peer_on_old_contract() {
             network_id: net_id,
         };
         let tx = Transaction {
-            input: Bytes(hex!("89c39baf00000000000000000000000025451a4de12dccc2d166922fa938e900fcc4ed24729299733880cd3b2f635e9c30cd7e99234dbd049fad99fe82fd8f1f87fdd43c00000000000000000000000000000000000000000000000000000000000000a000000000000000000000000000000000000000000000000000000000000000c000000000000000000000000000000000000000000000000000000000000000e0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000").to_vec()),
+            input: Bytes(hex!("89c39baf00000000000000000000000025451a4de12dccc2d166922fa938e900fcc4ed24f900298875549765970cd1d139eabba0f29461a71b8ef1777ed722f03e93d6b000000000000000000000000000000000000000000000000000000000000000a000000000000000000000000000000000000000000000000000000000000000c000000000000000000000000000000000000000000000000000000000000000e0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000").to_vec()),
             block_number: Some(1u64.into()),
             to: Some(types::H160(EthBridge::val_master_contract_address().0)),
             ..Default::default()
@@ -3054,7 +3055,7 @@ fn ocw_should_handle_outgoing_request() {
             100,
             net_id,
         ));
-        state.run_next_offchain();
+        state.run_next_offchain_and_dispatch_txs();
         let hash = last_outgoing_request(net_id).unwrap().1;
         assert_eq!(
             crate::RequestApprovals::<Runtime>::get(net_id, hash).len(),
@@ -3077,13 +3078,13 @@ fn ocw_should_not_handle_outgoing_request_twice() {
             100,
             net_id,
         ));
-        state.run_next_offchain();
+        state.run_next_offchain_and_dispatch_txs();
         let hash = last_outgoing_request(net_id).unwrap().1;
         assert_eq!(
             crate::RequestApprovals::<Runtime>::get(net_id, hash).len(),
             1
         );
-        state.run_next_offchain();
+        state.run_next_offchain_and_dispatch_txs();
         assert_eq!(
             crate::RequestApprovals::<Runtime>::get(net_id, hash).len(),
             1
@@ -3105,7 +3106,7 @@ fn ocw_should_not_handle_non_finalized_outgoing_request() {
             100,
             net_id,
         ));
-        state.run_next_offchain_with_params(0, 0);
+        state.run_next_offchain_with_params(0, 0, true);
         let hash = last_outgoing_request(net_id).unwrap().1;
         assert_eq!(
             crate::RequestApprovals::<Runtime>::get(net_id, hash).len(),
@@ -3166,7 +3167,7 @@ fn ocw_should_handle_incoming_request() {
             ..Default::default()
         };
         state.push_response(receipt.clone());
-        state.run_next_offchain();
+        state.run_next_offchain_and_dispatch_txs();
         assert_eq!(
             crate::RequestStatuses::<Runtime>::get(net_id, tx_hash).unwrap(),
             RequestStatus::Done
@@ -3177,7 +3178,7 @@ fn ocw_should_handle_incoming_request() {
             RequestStatus::Pending
         );
         state.push_response(receipt);
-        state.run_next_offchain();
+        state.run_next_offchain_and_dispatch_txs();
         assert_eq!(
             crate::RequestStatuses::<Runtime>::get(net_id, hash).unwrap(),
             RequestStatus::Done
@@ -3239,13 +3240,13 @@ fn ocw_should_not_register_pending_incoming_request() {
             ..Default::default()
         };
         state.push_response(receipt.clone());
-        state.run_next_offchain();
+        state.run_next_offchain_and_dispatch_txs();
         assert_eq!(
             crate::RequestStatuses::<Runtime>::get(net_id, tx_hash).unwrap(),
             RequestStatus::Done
         );
         state.push_response(receipt.clone());
-        state.run_next_offchain();
+        state.run_next_offchain_and_dispatch_txs();
         let hash = crate::LoadToIncomingRequestHash::<Runtime>::get(net_id, &tx_hash);
         assert_eq!(
             crate::RequestStatuses::<Runtime>::get(net_id, hash).unwrap(),
@@ -3291,12 +3292,18 @@ fn ocw_should_import_incoming_request() {
         log.removed = Some(false);
         log.transaction_hash = Some(types::H256(tx_hash.0));
         log.block_number = Some(0u64.into());
-        state.run_next_offchain_with_params(0, frame_system::Pallet::<Runtime>::block_number() + 1);
+        log.transaction_index = Some(0u64.into());
+        state.run_next_offchain_with_params(
+            0,
+            frame_system::Pallet::<Runtime>::block_number() + 1,
+            true,
+        );
         state.push_response([log]);
         // "Wait" `CONFIRMATION_INTERVAL` blocks on sidechain.
         state.run_next_offchain_with_params(
             CONFIRMATION_INTERVAL,
             frame_system::Pallet::<Runtime>::block_number() + 1,
+            true,
         );
         assert_eq!(
             crate::RequestStatuses::<Runtime>::get(net_id, tx_hash).unwrap(),
@@ -3312,49 +3319,50 @@ fn ocw_should_import_incoming_request() {
 
 #[test]
 fn ocw_should_import_incoming_request_raw_response() {
+    let _ = env_logger::try_init();
     let mut builder = ExtBuilder::new();
     builder.add_network(
         vec![AssetConfig::Sidechain {
-            id: XOR.into(),
-            sidechain_id: sp_core::H160::from_str("02ffdae478412dbde6bbd5cda8ff05c0960e0c45")
+            id: VAL.into(),
+            sidechain_id: sp_core::H160::from_str("0x725c6b8cd3621eba4e0ccc40d532e7025b925a65")
                 .unwrap(),
             owned: true,
             precision: DEFAULT_BALANCE_PRECISION,
         }],
-        Some(vec![(XOR.into(), common::balance!(350000))]),
+        Some(vec![(VAL.into(), common::balance!(350000))]),
         Some(2),
     );
     let (mut ext, mut state) = builder.build();
     ext.execute_with(|| {
         let net_id = ETH_NETWORK_ID;
         let block_num = 8416395;
-        state.run_next_offchain_with_params(block_num, frame_system::Pallet::<Runtime>::block_number() + 1);
+        state.run_next_offchain_with_params(block_num, frame_system::Pallet::<Runtime>::block_number() + 1,true );
         let raw_response = r#"{
-   "jsonrpc":"2.0",
-   "id":0,
-   "result":[
-      {
-         "address":"0x24390c8f6cbd5d152c30226f809f4e3f153b88d4",
-         "topics":[
-            "0x85c0fa492ded927d3acca961da52b0dda1debb06d8c27fe189315f06bb6e26c8"
-         ],
-         "data":"0xda96bc5065020df6d5ccc9659ae3007ddc04a6fd7f52cabe76e87b6219026b650000000000000000000000000000000000000000000000000de0b6b3a764000000000000000000000000000002ffdae478412dbde6bbd5cda8ff05c0960e0c450000000000000000000000000000000000000000000000000000000000000000",
-         "blockNumber":"0x806c8b",
-         "transactionHash":"0x44c1ff34c38d2e14238e4da30546ee035c62754ea0d8764ef65508b818670bdf",
-         "transactionIndex":"0xc",
-         "blockHash":"0xf1d878f000b2a53e3e9308884751eb3363406c4b1e51a4343df43b099c4be4ea",
-         "logIndex":"0xe",
-         "removed":false
-      }
-   ]
+"jsonrpc": "2.0",
+  "id": 0,
+  "result": [
+    {
+      "address": "0x077c2ec37d28709ce01ae740209bfbe185bd1eaa",
+      "topics": [
+        "0x85c0fa492ded927d3acca961da52b0dda1debb06d8c27fe189315f06bb6e26c8"
+      ],
+      "data": "0x3ec517d6e13491e575b6ab58bfb3c110a7782b4eb065d280a0d1725c4a850f440000000000000000000000000000000000000000000000000de0b6b3a7640000000000000000000000000000725c6b8cd3621eba4e0ccc40d532e7025b925a650000000000000000000000000000000000000000000000000000000000000000",
+      "blockNumber": "0x808b3b",
+      "transactionHash": "0xfb5ad3cc57f66d9903e70d23fb878634d7119bcff17d25944d21466500ce7238",
+      "transactionIndex": "0x5",
+      "blockHash": "0x3869ca9d4ad1871291ec2d736ad647e1a5dd2af8d5bf370fa32ec1c54b0502e5",
+      "logIndex": "0x3",
+      "removed": false
+    }
+  ]
 }"#;
         state.push_response_raw(raw_response.as_bytes().to_owned());
         // "Wait" `CONFIRMATION_INTERVAL` blocks on sidechain.
         state.run_next_offchain_with_params(
             block_num + CONFIRMATION_INTERVAL,
-            frame_system::Pallet::<Runtime>::block_number() + 1,
+            frame_system::Pallet::<Runtime>::block_number() + 1,true
         );
-        let tx_hash = H256(hex!("44c1ff34c38d2e14238e4da30546ee035c62754ea0d8764ef65508b818670bdf"));
+        let tx_hash = H256(hex!("fb5ad3cc57f66d9903e70d23fb878634d7119bcff17d25944d21466500ce7238"));
         assert_eq!(
             crate::RequestStatuses::<Runtime>::get(net_id, tx_hash).unwrap(),
             RequestStatus::Done
@@ -3404,13 +3412,51 @@ fn ocw_should_not_import_pending_incoming_request() {
         log.removed = Some(false);
         log.transaction_hash = Some(types::H256(tx_hash.0));
         log.block_number = Some(0u64.into());
-        state.run_next_offchain_with_params(0, frame_system::Pallet::<Runtime>::block_number() + 1);
+        state.run_next_offchain_with_params(
+            0,
+            frame_system::Pallet::<Runtime>::block_number() + 1,
+            true,
+        );
         state.push_response([log]);
         // "Wait" `CONFIRMATION_INTERVAL` blocks on sidechain.
         state.run_next_offchain_with_params(
             CONFIRMATION_INTERVAL - 1,
             frame_system::Pallet::<Runtime>::block_number() + 1,
+            true,
         );
         assert!(crate::RequestStatuses::<Runtime>::get(net_id, tx_hash).is_none(),);
+    });
+}
+
+#[test]
+fn ocw_should_resend_signed_transaction_on_timeout() {
+    let (mut ext, mut state) = ExtBuilder::default().build();
+    ext.execute_with(|| {
+        let net_id = ETH_NETWORK_ID;
+        let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
+        Assets::mint_to(&XOR.into(), &alice, &alice, 100).unwrap();
+        assert_ok!(EthBridge::transfer_to_sidechain(
+            Origin::signed(alice.clone()),
+            XOR.into(),
+            Address::from_str("19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A").unwrap(),
+            100,
+            net_id,
+        ));
+        state.run_next_offchain_with_params(
+            0,
+            frame_system::Pallet::<Runtime>::block_number() + 1,
+            false,
+        );
+        assert_eq!(state.pending_txs().len(), 1);
+        assert_eq!(state.pool_state.read().transactions.len(), 1);
+        state.run_next_offchain_with_params(
+            0,
+            frame_system::Pallet::<Runtime>::block_number()
+                + 1
+                + SUBSTRATE_MAX_BLOCK_NUM_EXPECTING_UNTIL_FINALIZATION as u64,
+            false,
+        );
+        assert_eq!(state.pending_txs().len(), 1);
+        assert_eq!(state.pool_state.read().transactions.len(), 2);
     });
 }

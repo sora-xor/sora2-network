@@ -136,6 +136,11 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
             <Error<T, I>>::InsufficientLiquidity
         );
 
+        ensure!(
+            target_amount_out < target_reserve,
+            <Error<T, I>>::InsufficientLiquidity
+        );
+
         let X: FixedWrapper = base_reserve.into();
         let Y: FixedWrapper = target_reserve.into();
         let d_Y: FixedWrapper = target_amount_out.into();

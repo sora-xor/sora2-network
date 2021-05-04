@@ -39,6 +39,7 @@ use sp_std::vec::Vec;
 
 use crate::prelude::{FilterMode, Fixed, FixedInner, FixedWrapper, LiquiditySourceId};
 use crate::{balance, fixed_wrapper};
+use rustc_hex::FromHex;
 
 /// Basis points range (0..10000) corresponds to 0.01%..100.00%.
 const BASIS_POINTS_RANGE: u16 = 10000;
@@ -502,4 +503,8 @@ mod tests {
             ]
         );
     }
+}
+
+pub fn parse_hex_string(s: &str) -> Option<Vec<u8>> {
+    s.strip_prefix("0x").and_then(|x| x.from_hex().ok())
 }

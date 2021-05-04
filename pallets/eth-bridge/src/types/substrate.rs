@@ -29,9 +29,44 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use crate::types::{H256, U64};
-use serde::{Deserialize, Serialize};
+use alloc::string::String;
+use codec::{Decode, Encode};
+use serde::Deserialize;
+#[cfg(test)]
+use serde::Serialize;
+use sp_std::vec::Vec;
 
-#[derive(Serialize, Deserialize)]
+/// Simple blob to hold an extrinsic without committing to its format and ensure it is serialized
+/// correctly.
+#[derive(PartialEq, Eq, Clone, Default, Encode, Decode)]
+pub struct OpaqueExtrinsic(Vec<u8>);
+
+#[cfg(test)]
+impl ::serde::Serialize for OpaqueExtrinsic {
+    fn serialize<S>(&self, seq: S) -> Result<S::Ok, S::Error>
+    where
+        S: ::serde::Serializer,
+    {
+        codec::Encode::using_encoded(&self.0, |bytes| ::sp_core::bytes::serialize(bytes, seq))
+    }
+}
+
+impl<'a> serde::Deserialize<'a> for OpaqueExtrinsic {
+    fn deserialize<D>(de: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'a>,
+    {
+        let s: String = Deserialize::deserialize(de)?;
+        let r = common::utils::parse_hex_string(&s).ok_or(serde::de::Error::custom(format!(
+            "Expected hex string \"0x..\""
+        )))?;
+        Decode::decode(&mut &r[..])
+            .map_err(|e| serde::de::Error::custom(format!("Decode error: {}", e)))
+    }
+}
+
+#[derive(Deserialize)]
+#[cfg_attr(test, derive(Serialize))]
 #[serde(rename_all = "camelCase")]
 pub struct SubstrateHeaderLimited {
     /// The parent hash.
@@ -48,4 +83,22 @@ pub struct SubstrateHeaderLimited {
     /// A chain-specific digest of data useful for light clients or referencing auxiliary data.
     #[serde(skip)]
     pub digest: (),
+}
+
+#[derive(Deserialize)]
+#[cfg_attr(test, derive(Serialize))]
+#[serde(rename_all = "camelCase")]
+pub struct SubstrateBlockLimited {
+    /// The block header.
+    pub header: SubstrateHeaderLimited,
+    /// The accompanying extrinsics.
+    pub extrinsics: Vec<OpaqueExtrinsic>,
+}
+
+#[derive(Deserialize)]
+#[cfg_attr(test, derive(Serialize))]
+#[serde(rename_all = "camelCase")]
+pub struct SubstrateSignedBlockLimited {
+    /// Full block.
+    pub block: SubstrateBlockLimited,
 }
