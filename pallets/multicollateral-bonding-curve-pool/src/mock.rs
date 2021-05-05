@@ -110,6 +110,8 @@ parameter_types! {
     pub const GetDefaultSubscriptionFrequency: BlockNumber = 10;
     pub const GetBurnUpdateFrequency: BlockNumber = 14400;
     pub GetParliamentAccountId: AccountId = AccountId32::from([152; 32]);
+    pub GetMarketMakerRewardsAccountId: AccountId = AccountId32::from([153; 32]);
+    pub GetBondingCurveRewardsAccountId: AccountId = AccountId32::from([154; 32]);
 }
 
 construct_runtime! {

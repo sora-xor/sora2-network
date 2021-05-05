@@ -90,6 +90,8 @@ parameter_types! {
     pub const GetBurnUpdateFrequency: BlockNumber = 10;
     pub GetIncentiveAssetId: AssetId = common::PSWAP.into();
     pub GetParliamentAccountId: AccountId = AccountId32::from([8; 32]);
+    pub GetMarketMakerRewardsAccountId: AccountId = AccountId32::from([9; 32]);
+    pub GetBondingCurveRewardsAccountId: AccountId = AccountId32::from([10; 32]);
 }
 
 construct_runtime! {
@@ -149,6 +151,7 @@ impl liquidity_proxy::Config for Runtime {
     type WeightInfo = ();
     type PrimaryMarket = ();
     type SecondaryMarket = ();
+    type VestedRewardsAggregator = vested_rewards::Module<Runtime>;
 }
 
 impl tokens::Config for Runtime {
@@ -269,6 +272,8 @@ impl pool_xyk::Config for Runtime {
 
 impl vested_rewards::Config for Runtime {
     type Event = Event;
+    type GetMarketMakerRewardsAccountId = GetMarketMakerRewardsAccountId;
+    type GetBondingCurveRewardsAccountId = GetBondingCurveRewardsAccountId;
     type WeightInfo = ();
 }
 

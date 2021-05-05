@@ -825,7 +825,7 @@ mod tests {
             assert!(!owned_alice.is_zero());
             assert!(!owned_bob.is_zero());
             let vesting_amount = (FixedWrapper::from(owned_alice + owned_bob) / fixed_wrapper!(2)).into_balance();
-            let remint_info = pswap_distribution::PswapRemintInfo {
+            let remint_info = common::PswapRemintInfo {
                 vesting: vesting_amount,
                 ..Default::default()
             };
@@ -848,7 +848,7 @@ mod tests {
             assert_eq!(Assets::free_balance(&PSWAP, &bob()).unwrap(), owned_bob - remaining_owned_bob);
 
             // claiming remainder
-            let remint_info = pswap_distribution::PswapRemintInfo {
+            let remint_info = common::PswapRemintInfo {
                 vesting: vesting_amount + balance!(100),
                 ..Default::default()
             };

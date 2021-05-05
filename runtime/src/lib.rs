@@ -665,6 +665,7 @@ impl liquidity_proxy::Config for Runtime {
     type PrimaryMarket = multicollateral_bonding_curve_pool::Module<Runtime>;
     type SecondaryMarket = pool_xyk::Module<Runtime>;
     type WeightInfo = liquidity_proxy::weights::WeightInfo<Runtime>;
+    type VestedRewardsAggregator = vested_rewards::Module<Runtime>;
 }
 
 parameter_types! {
@@ -1002,7 +1003,7 @@ parameter_types! {
 pub struct RuntimeOnPswapBurnedAggregator;
 
 impl OnPswapBurned for RuntimeOnPswapBurnedAggregator {
-    fn on_pswap_burned(distribution: pswap_distribution::PswapRemintInfo) {
+    fn on_pswap_burned(distribution: common::PswapRemintInfo) {
         MulticollateralBondingCurvePool::on_pswap_burned(distribution);
     }
 }
@@ -1107,6 +1108,8 @@ impl pallet_offences::Config for Runtime {
 
 impl vested_rewards::Config for Runtime {
     type Event = Event;
+    type GetBondingCurveRewardsAccountId = GetMbcPoolRewardsAccountId;
+    type GetMarketMakerRewardsAccountId = GetMarketMakerRewardsAccountId;
     type WeightInfo = vested_rewards::weights::WeightInfo<Runtime>;
 }
 

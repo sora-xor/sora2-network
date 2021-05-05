@@ -51,7 +51,8 @@ use common::prelude::{
 };
 use common::{
     balance, fixed, fixed_wrapper, DEXId, DexIdOf, GetMarketInfo, LiquiditySource,
-    LiquiditySourceFilter, LiquiditySourceType, ManagementMode, RewardReason, PSWAP, USDT, VAL,
+    LiquiditySourceFilter, LiquiditySourceType, ManagementMode, OnPswapBurned, PswapRemintInfo,
+    RewardReason, PSWAP, USDT, VAL,
 };
 use frame_support::traits::Get;
 use frame_support::weights::Weight;
@@ -59,7 +60,6 @@ use frame_support::{ensure, fail};
 use frame_system::ensure_signed;
 use liquidity_proxy::LiquidityProxyTrait;
 use permissions::{Scope, BURN, MINT, TRANSFER};
-use pswap_distribution::{OnPswapBurned, PswapRemintInfo};
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 use sp_arithmetic::traits::Zero;

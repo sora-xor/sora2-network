@@ -30,14 +30,14 @@
 
 use crate::mock::*;
 use crate::MarketMakerInfo;
-use common::balance;
+use common::{balance, VestedRewardsTrait};
 
 #[test]
 fn should_add_market_maker_infos_single_user() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
         assert_eq!(
-            VestedRewards::market_makers_registry(&ALICE),
+            VestedRewards::market_makers_registry(&alice()),
             MarketMakerInfo {
                 count: 0,
                 volume: balance!(0)
@@ -45,35 +45,35 @@ fn should_add_market_maker_infos_single_user() {
         );
 
         // first add
-        VestedRewards::update_market_maker_records(&ALICE, balance!(123), 1).unwrap();
+        VestedRewards::update_market_maker_records(&alice(), balance!(123), 1).unwrap();
         let expected_1 = MarketMakerInfo {
             count: 1,
             volume: balance!(123),
         };
-        assert_eq!(VestedRewards::market_makers_registry(&ALICE), expected_1);
+        assert_eq!(VestedRewards::market_makers_registry(&alice()), expected_1);
 
         // second add
-        VestedRewards::update_market_maker_records(&ALICE, balance!(123), 1).unwrap();
+        VestedRewards::update_market_maker_records(&alice(), balance!(123), 1).unwrap();
         let expected_2 = MarketMakerInfo {
             count: 2,
             volume: balance!(246),
         };
         assert_eq!(
-            VestedRewards::market_makers_registry(&ALICE),
+            VestedRewards::market_makers_registry(&alice()),
             expected_2.clone()
         );
 
         // add with less than 1 xor
-        VestedRewards::update_market_maker_records(&ALICE, balance!(0.9), 1).unwrap();
-        assert_eq!(VestedRewards::market_makers_registry(&ALICE), expected_2);
+        VestedRewards::update_market_maker_records(&alice(), balance!(0.9), 1).unwrap();
+        assert_eq!(VestedRewards::market_makers_registry(&alice()), expected_2);
 
         // add with multiplier
-        VestedRewards::update_market_maker_records(&ALICE, balance!(123), 2).unwrap();
+        VestedRewards::update_market_maker_records(&alice(), balance!(123), 2).unwrap();
         let expected_3 = MarketMakerInfo {
             count: 4,
             volume: balance!(492),
         };
-        assert_eq!(VestedRewards::market_makers_registry(&ALICE), expected_3);
+        assert_eq!(VestedRewards::market_makers_registry(&alice()), expected_3);
     });
 }
 
@@ -81,25 +81,25 @@ fn should_add_market_maker_infos_single_user() {
 fn should_add_market_maker_infos_multiple_users() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
-        VestedRewards::update_market_maker_records(&ALICE, balance!(111), 1).unwrap();
-        VestedRewards::update_market_maker_records(&BOB, balance!(111), 2).unwrap();
-        VestedRewards::update_market_maker_records(&EVE, balance!(111), 3).unwrap();
+        VestedRewards::update_market_maker_records(&alice(), balance!(111), 1).unwrap();
+        VestedRewards::update_market_maker_records(&bob(), balance!(111), 2).unwrap();
+        VestedRewards::update_market_maker_records(&eve(), balance!(111), 3).unwrap();
         assert_eq!(
-            VestedRewards::market_makers_registry(&ALICE),
+            VestedRewards::market_makers_registry(&alice()),
             MarketMakerInfo {
                 count: 1,
                 volume: balance!(111)
             }
         );
         assert_eq!(
-            VestedRewards::market_makers_registry(&BOB),
+            VestedRewards::market_makers_registry(&bob()),
             MarketMakerInfo {
                 count: 2,
                 volume: balance!(222)
             }
         );
         assert_eq!(
-            VestedRewards::market_makers_registry(&EVE),
+            VestedRewards::market_makers_registry(&eve()),
             MarketMakerInfo {
                 count: 3,
                 volume: balance!(333)

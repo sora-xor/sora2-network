@@ -30,7 +30,6 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use codec::{Decode, Encode};
 use common::fixnum::ops::{CheckedAdd, CheckedSub};
 use common::prelude::{Balance, FixedWrapper, SwapAmount};
 use common::{
@@ -39,7 +38,7 @@ use common::{
 };
 use frame_support::dispatch::{DispatchError, DispatchResult, DispatchResultWithPostInfo, Weight};
 use frame_support::traits::Get;
-use frame_support::{ensure, fail, RuntimeDebug};
+use frame_support::{ensure, fail};
 use frame_system::ensure_signed;
 use liquidity_proxy::LiquidityProxyTrait;
 use sp_arithmetic::traits::{Saturating, Zero};

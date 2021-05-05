@@ -36,13 +36,15 @@ extern crate alloc;
 
 use codec::{Decode, Encode};
 use common::prelude::{Balance, FixedWrapper};
-use common::{balance, OnPswapBurned, PswapRemintInfo, RewardReason, PSWAP};
+use common::{balance, OnPswapBurned, PswapRemintInfo, RewardReason, VestedRewardsTrait, PSWAP};
 use frame_support::dispatch::{DispatchError, DispatchResult};
 use frame_support::fail;
-use frame_support::traits::{Get, IsType};
+use frame_support::traits::{Get, IsType, PalletVersion};
+use frame_support::weights::Weight;
 use sp_runtime::traits::Zero;
 use sp_std::collections::btree_map::BTreeMap;
 
+pub mod migration;
 pub mod weights;
 
 #[cfg(test)]
@@ -72,24 +74,6 @@ pub struct MarketMakerInfo {
 pub trait WeightInfo {}
 
 impl<T: Config> Pallet<T> {
-    /// Check if volume is eligible to be counted for market maker rewards and add it to registry.
-    /// `count` is used as a multiplier if multiple times single volume is transferred inside transaction.
-    pub fn update_market_maker_records(
-        account_id: &T::AccountId,
-        xor_volume: Balance,
-        count: u32,
-    ) -> DispatchResult {
-        MarketMakersRegistry::<T>::mutate(account_id, |info| {
-            if xor_volume > balance!(1) {
-                info.count = info.count.saturating_add(count);
-                info.volume = info
-                    .volume
-                    .saturating_add(xor_volume.saturating_mul(count as Balance));
-            }
-        });
-        Ok(())
-    }
-
     pub fn add_pending_reward(
         account_id: &T::AccountId,
         reason: RewardReason,
@@ -130,7 +114,7 @@ impl<T: Config> Pallet<T> {
     ) -> Result<Balance, DispatchError> {
         let source_account = match reason {
             RewardReason::BuyOnBondingCurve => T::GetBondingCurveRewardsAccountId::get(),
-            RewardReason::LiquidityProvisionFarming => T::GetFarmingRewardsAccountId::get(),
+            // RewardReason::LiquidityProvisionFarming => T::GetFarmingRewardsAccountId::get(), // TODO: handle with farming rewards
             RewardReason::MarketMakerVolume => T::GetMarketMakerRewardsAccountId::get(),
             _ => fail!(Error::<T>::UnhandledRewardType),
         };
@@ -167,6 +151,26 @@ impl<T: Config> OnPswapBurned for Module<T> {
     }
 }
 
+impl<T: Config> VestedRewardsTrait<T::AccountId> for Module<T> {
+    /// Check if volume is eligible to be counted for market maker rewards and add it to registry.
+    /// `count` is used as a multiplier if multiple times single volume is transferred inside transaction.
+    fn update_market_maker_records(
+        account_id: &T::AccountId,
+        xor_volume: Balance,
+        count: u32,
+    ) -> DispatchResult {
+        MarketMakersRegistry::<T>::mutate(account_id, |info| {
+            if xor_volume >= balance!(1) {
+                info.count = info.count.saturating_add(count);
+                info.volume = info
+                    .volume
+                    .saturating_add(xor_volume.saturating_mul(count as Balance));
+            }
+        });
+        Ok(())
+    }
+}
+
 pub use pallet::*;
 
 #[frame_support::pallet]
@@ -176,11 +180,16 @@ pub mod pallet {
     use frame_system::pallet_prelude::*;
 
     #[pallet::config]
-    pub trait Config: frame_system::Config + common::Config + assets::Config {
+    pub trait Config:
+        frame_system::Config
+        + common::Config
+        + assets::Config
+        + multicollateral_bonding_curve_pool::Config
+    {
         type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
         /// Accounts holding PSWAP dedicated for rewards.
         type GetMarketMakerRewardsAccountId: Get<Self::AccountId>;
-        type GetFarmingRewardsAccountId: Get<Self::AccountId>;
+        // type GetFarmingRewardsAccountId: Get<Self::AccountId>; // TODO: implement with farming rewards
         type GetBondingCurveRewardsAccountId: Get<Self::AccountId>;
         /// Weight information for extrinsics in this pallet.
         type WeightInfo: WeightInfo;
@@ -191,7 +200,11 @@ pub mod pallet {
     pub struct Pallet<T>(PhantomData<T>);
 
     #[pallet::hooks]
-    impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {}
+    impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
+        fn on_runtime_upgrade() -> Weight {
+            migration::migrate::<T>()
+        }
+    }
 
     #[pallet::call]
     impl<T: Config> Pallet<T> {}

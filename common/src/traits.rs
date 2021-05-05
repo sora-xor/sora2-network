@@ -462,3 +462,11 @@ impl OnPswapBurned for () {
         // do nothing
     }
 }
+
+pub trait VestedRewardsTrait<AccountId> {
+    fn update_market_maker_records(
+        account_id: &AccountId,
+        xor_volume: Balance,
+        count: u32,
+    ) -> DispatchResult;
+}

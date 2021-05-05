@@ -41,7 +41,7 @@ use common::prelude::{Balance, FixedWrapper, SwapAmount, SwapOutcome, SwapVarian
 use common::{
     fixed, fixed_wrapper, linspace, FilterMode, Fixed, FixedInner, GetMarketInfo, GetPoolReserves,
     IntervalEndpoints, LiquidityRegistry, LiquiditySource, LiquiditySourceFilter,
-    LiquiditySourceId, LiquiditySourceType, RewardReason, TradingPair,
+    LiquiditySourceId, LiquiditySourceType, RewardReason, TradingPair, VestedRewardsTrait,
 };
 use frame_support::traits::Get;
 use frame_support::weights::Weight;
@@ -54,8 +54,6 @@ use sp_std::prelude::*;
 type LiquiditySourceIdOf<T> = LiquiditySourceId<<T as common::Config>::DEXId, LiquiditySourceType>;
 
 type Rewards<AssetId> = Vec<(Balance, AssetId, RewardReason)>;
-
-type VestedRewards<T> = vested_rewards::Pallet<T>;
 
 pub mod weights;
 
@@ -280,7 +278,9 @@ impl<T: Config> Pallet<T> {
                     )?;
                     let xor_volume =
                         Self::get_xor_amount(from_asset_id, to_asset_id, amount, outcome.clone());
-                    VestedRewards::<T>::update_market_maker_records(&sender, xor_volume, 1)?;
+                    T::VestedRewardsAggregator::update_market_maker_records(
+                        &sender, xor_volume, 1,
+                    )?;
                     Ok(outcome)
                 }
                 ExchangePath::Twofold {
@@ -313,7 +313,7 @@ impl<T: Config> Pallet<T> {
                             second_swap.amount >= min_amount_out,
                             Error::<T>::SlippageNotTolerated
                         );
-                        VestedRewards::<T>::update_market_maker_records(
+                        T::VestedRewardsAggregator::update_market_maker_records(
                             &sender,
                             first_swap.amount,
                             2,
@@ -363,7 +363,7 @@ impl<T: Config> Pallet<T> {
                             SwapAmount::with_desired_input(first_swap.amount, Balance::zero()),
                             filter,
                         )?;
-                        VestedRewards::<T>::update_market_maker_records(
+                        T::VestedRewardsAggregator::update_market_maker_records(
                             &sender,
                             first_swap.amount,
                             2,
@@ -1392,7 +1392,9 @@ impl<T: Config> LiquidityProxyTrait<T::DEXId, T::AccountId, T::AssetId> for Pall
                     )?;
                     let xor_volume =
                         Self::get_xor_amount(from_asset_id, to_asset_id, amount, outcome.clone());
-                    VestedRewards::<T>::update_market_maker_records(&sender, xor_volume, 1)?;
+                    T::VestedRewardsAggregator::update_market_maker_records(
+                        &sender, xor_volume, 1,
+                    )?;
                     Ok(outcome)
                 }
                 ExchangePath::Twofold {
@@ -1425,7 +1427,7 @@ impl<T: Config> LiquidityProxyTrait<T::DEXId, T::AccountId, T::AssetId> for Pall
                             second_swap.amount >= min_amount_out,
                             Error::<T>::SlippageNotTolerated
                         );
-                        VestedRewards::<T>::update_market_maker_records(
+                        T::VestedRewardsAggregator::update_market_maker_records(
                             &sender,
                             first_swap.amount,
                             2,
@@ -1472,7 +1474,7 @@ impl<T: Config> LiquidityProxyTrait<T::DEXId, T::AccountId, T::AssetId> for Pall
                             SwapAmount::with_desired_input(first_swap.amount, Balance::zero()),
                             filter,
                         )?;
-                        VestedRewards::<T>::update_market_maker_records(
+                        T::VestedRewardsAggregator::update_market_maker_records(
                             &sender,
                             first_swap.amount,
                             2,
@@ -1498,11 +1500,7 @@ pub mod pallet {
 
     #[pallet::config]
     pub trait Config:
-        frame_system::Config
-        + common::Config
-        + assets::Config
-        + trading_pair::Config
-        + vested_rewards::Config
+        frame_system::Config + common::Config + assets::Config + trading_pair::Config
     {
         type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
         type LiquidityRegistry: LiquidityRegistry<
@@ -1517,6 +1515,7 @@ pub mod pallet {
         type GetTechnicalAccountId: Get<Self::AccountId>;
         type PrimaryMarket: GetMarketInfo<Self::AssetId>;
         type SecondaryMarket: GetPoolReserves<Self::AssetId>;
+        type VestedRewardsAggregator: VestedRewardsTrait<Self::AccountId>;
         /// Weight information for the extrinsics in this Pallet.
         type WeightInfo: WeightInfo;
     }
