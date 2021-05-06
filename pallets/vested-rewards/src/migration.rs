@@ -29,32 +29,21 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use crate::{Config, Pallet, RewardInfo, Weight};
+use common::prelude::Balance;
 use common::RewardReason;
+use frame_support::debug;
 use frame_support::traits::{Get, GetPalletVersion, PalletVersion};
+use sp_runtime::traits::Zero;
 
 pub fn migrate<T: Config>() -> Weight {
     let mut weight: Weight = 0;
 
-    #[cfg(feature = "std")]
-    println!("{:?}", Pallet::<T>::storage_version());
-
     match Pallet::<T>::storage_version() {
-        Some(version) if version == PalletVersion::new(1, 0, 0) => {
-            for (account, (vested_amount, tbc_rewards_amount)) in
-                multicollateral_bonding_curve_pool::Rewards::<T>::iter()
-            {
-                let reward_info = RewardInfo {
-                    limit: vested_amount,
-                    total_available: tbc_rewards_amount,
-                    rewards: [(RewardReason::BuyOnBondingCurve, tbc_rewards_amount)]
-                        .iter()
-                        .cloned()
-                        .collect(),
-                };
-                // assuming target storage is empty before migration
-                crate::Rewards::<T>::insert(account, reward_info);
-                weight = weight.saturating_add(T::DbWeight::get().reads_writes(1, 1));
-            }
+        // Initial version is 0.1.0 which has unutilized rewards storage
+        // Version 0.2.0 converts and moves rewards from multicollateral-bonding-curve-pool
+        Some(version) if version == PalletVersion::new(0, 1, 0) => {
+            let migrated_weight = migrate_rewards_from_tbc::<T>();
+            weight = weight.saturating_add(migrated_weight)
         }
         _ => (),
     }
@@ -62,6 +51,46 @@ pub fn migrate<T: Config>() -> Weight {
     weight
 }
 
-pub fn get_storage_version<T: Config>() -> Option<PalletVersion> {
-    Pallet::<T>::storage_version()
+pub fn migrate_rewards_from_tbc<T: Config>() -> Weight {
+    let mut weight: Weight = 0;
+    let mut calculated_total_rewards = Balance::zero();
+    debug::RuntimeLogger::init();
+    for (account, (vested_amount, tbc_rewards_amount)) in
+        multicollateral_bonding_curve_pool::Rewards::<T>::drain()
+    {
+        let reward_info = RewardInfo {
+            limit: vested_amount,
+            total_available: tbc_rewards_amount,
+            rewards: [(RewardReason::BuyOnBondingCurve, tbc_rewards_amount)]
+                .iter()
+                .cloned()
+                .collect(),
+        };
+        // Assuming target storage is empty before migration.
+        crate::Rewards::<T>::insert(account, reward_info);
+        calculated_total_rewards = calculated_total_rewards.saturating_add(tbc_rewards_amount);
+        weight = weight.saturating_add(T::DbWeight::get().reads_writes(1, 1));
+    }
+
+    // Set stored total rewards in tbc to zero.
+    let tbc_total_rewards = multicollateral_bonding_curve_pool::TotalRewards::<T>::get();
+    multicollateral_bonding_curve_pool::TotalRewards::<T>::put(Balance::zero());
+    crate::TotalRewards::<T>::put(calculated_total_rewards);
+    weight = weight.saturating_add(T::DbWeight::get().reads_writes(1, 1));
+
+    if tbc_total_rewards != calculated_total_rewards {
+        debug::warn!(
+            target: "runtime",
+            "stored tbc rewards total doesn't match calculated total: {} != {}",
+            tbc_total_rewards, calculated_total_rewards
+        );
+    } else {
+        debug::info!(
+            target: "runtime",
+            "stored tbc rewards total match calculated total: {}",
+            calculated_total_rewards
+        );
+    }
+
+    weight
 }

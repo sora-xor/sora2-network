@@ -72,7 +72,6 @@ pub trait WeightInfo {
     fn initialize_pool() -> Weight;
     fn set_reference_asset() -> Weight;
     fn set_optional_reward_multiplier() -> Weight;
-    fn claim_incentives() -> Weight;
 }
 
 type Assets<T> = assets::Module<T>;
@@ -287,14 +286,6 @@ pub mod pallet {
                 collateral_asset_id,
                 multiplier,
             ));
-            Ok(().into())
-        }
-
-        /// Claim all available PSWAP rewards by account signing this transaction.
-        #[pallet::weight(<T as Config>::WeightInfo::claim_incentives())]
-        pub fn claim_incentives(origin: OriginFor<T>) -> DispatchResultWithPostInfo {
-            let who = ensure_signed(origin)?;
-            Self::claim_incentives_inner(&who)?;
             Ok(().into())
         }
     }
@@ -572,37 +563,31 @@ impl<T: Config> BuyMainAsset<T> {
         })
     }
 
+    /// Make transfer from user account to
+    fn deposit_input(&self, input_amount: Balance) -> Result<(), DispatchError> {
+        Technical::<T>::transfer_in(
+            &self.collateral_asset_id,
+            &self.from_account_id,
+            &self.reserves_tech_account_id,
+            input_amount,
+        )?;
+
+        Ok(())
+    }
+
     /// Assets deposition algorithm:
     ///
     /// ```nocompile
     /// free_reserves := input_amount * free_amount_coeffecient
     /// new_reserves := current_reserves + input_amount - free_reserves
     /// ```
-    /// Returns (free_reserves, (input_amount, output_amount, fee_amount))
-    fn deposit_input(&self) -> Result<(Balance, (Balance, Balance, Balance)), DispatchError> {
+    fn distribute_reserves(&self, input_amount: Balance) -> Result<(), DispatchError> {
         common::with_transaction(|| {
-            let (input_amount, output_amount, fee_amount) = Module::<T>::decide_buy_amounts(
-                &self.main_asset_id,
-                &self.collateral_asset_id,
-                self.amount,
-            )?;
-            Technical::<T>::transfer_in(
-                &self.collateral_asset_id,
-                &self.from_account_id,
-                &self.reserves_tech_account_id,
-                input_amount,
-            )?;
-            let free_reserves = FixedWrapper::from(input_amount)
+            let free_amount = FixedWrapper::from(input_amount)
                 * FixedWrapper::from(AlwaysDistributeCoefficient::<T>::get());
-            let free_reserves = free_reserves
+            let free_amount = free_amount
                 .try_into_balance()
                 .map_err(|_| Error::<T>::PriceCalculationFailed)?;
-            Ok((free_reserves, (input_amount, output_amount, fee_amount)))
-        })
-    }
-
-    fn distribute_reserves(&self, free_amount: Balance) -> Result<(), DispatchError> {
-        common::with_transaction(|| {
             if free_amount == Balance::zero() {
                 return Ok(());
             }
@@ -668,13 +653,19 @@ impl<T: Config> BuyMainAsset<T> {
 
     fn swap(&self) -> Result<SwapOutcome<Balance>, DispatchError> {
         common::with_transaction(|| {
-            let (free_reserves, (input_amount, output_amount, fee)) = self.deposit_input()?;
-            self.distribute_reserves(free_reserves)?;
+            let (input_amount, output_amount, fee_amount) = Module::<T>::decide_buy_amounts(
+                &self.main_asset_id,
+                &self.collateral_asset_id,
+                self.amount,
+            )?;
+            // reward needs to be updated before actual changes to reserves
+            self.update_reward(input_amount, output_amount)?;
+            self.deposit_input(input_amount)?;
+            self.distribute_reserves(input_amount)?;
             self.mint_output(output_amount.clone())?;
-            self.update_reward(input_amount.clone(), output_amount.clone())?;
             Ok(match self.amount {
-                SwapAmount::WithDesiredInput { .. } => SwapOutcome::new(output_amount, fee),
-                SwapAmount::WithDesiredOutput { .. } => SwapOutcome::new(input_amount, fee),
+                SwapAmount::WithDesiredInput { .. } => SwapOutcome::new(output_amount, fee_amount),
+                SwapAmount::WithDesiredOutput { .. } => SwapOutcome::new(input_amount, fee_amount),
             })
         })
     }
@@ -1310,7 +1301,7 @@ impl<T: Config> Module<T> {
         let current_state = Self::sell_function(&base_asset_id, delta)?;
 
         let price = (initial_state + current_state) / fixed_wrapper!(2.0)
-            * FixedWrapper::from(base_total_supply);
+            * (FixedWrapper::from(base_total_supply) + delta);
         price
             .try_into_balance()
             .map_err(|_| Error::<T>::PriceCalculationFailed.into())

@@ -71,7 +71,9 @@ pub struct MarketMakerInfo {
     volume: Balance,
 }
 
-pub trait WeightInfo {}
+pub trait WeightInfo {
+    fn claim_incentives() -> Weight;
+}
 
 impl<T: Config> Pallet<T> {
     pub fn add_pending_reward(
@@ -87,7 +89,7 @@ impl<T: Config> Pallet<T> {
     }
 
     /// General claim function, which updates user reward status.
-    pub fn claim_rewards(account_id: &T::AccountId) -> DispatchResult {
+    pub fn claim_rewards_inner(account_id: &T::AccountId) -> DispatchResult {
         Rewards::<T>::mutate(account_id, |info| {
             if info.total_available.is_zero() || info.limit.is_zero() {
                 fail!(Error::<T>::NothingToClaim);
@@ -207,7 +209,15 @@ pub mod pallet {
     }
 
     #[pallet::call]
-    impl<T: Config> Pallet<T> {}
+    impl<T: Config> Pallet<T> {
+        /// Claim all available PSWAP rewards by account signing this transaction.
+        #[pallet::weight(<T as Config>::WeightInfo::claim_incentives())]
+        pub fn claim_rewards(origin: OriginFor<T>) -> DispatchResultWithPostInfo {
+            let who = ensure_signed(origin)?;
+            Self::claim_rewards_inner(&who)?;
+            Ok(().into())
+        }
+    }
 
     #[pallet::error]
     pub enum Error<T> {

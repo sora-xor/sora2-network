@@ -28,9 +28,22 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+use common::weights::constants::EXTRINSIC_FIXED_WEIGHT;
+use frame_support::traits::Get;
+use frame_support::weights::Weight;
 use sp_std::marker::PhantomData;
 
 pub struct WeightInfo<T>(PhantomData<T>);
-impl<T: frame_system::Config> crate::WeightInfo for WeightInfo<T> {}
+impl<T: frame_system::Config> crate::WeightInfo for WeightInfo<T> {
+    fn claim_incentives() -> Weight {
+        (740_250_000 as Weight)
+            .saturating_add(T::DbWeight::get().reads(10 as Weight))
+            .saturating_add(T::DbWeight::get().writes(5 as Weight))
+    }
+}
 
-impl crate::WeightInfo for () {}
+impl crate::WeightInfo for () {
+    fn claim_incentives() -> Weight {
+        EXTRINSIC_FIXED_WEIGHT
+    }
+}
