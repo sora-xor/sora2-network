@@ -63,7 +63,7 @@ use pswap_distribution::OnPswapBurned;
 use serde::{Serialize, Serializer};
 use sp_api::impl_runtime_apis;
 use sp_core::crypto::KeyTypeId;
-use sp_core::u32_trait::{_1, _2, _3, _4};
+use sp_core::u32_trait::{_1, _2, _3};
 use sp_core::{Encode, OpaqueMetadata};
 use sp_runtime::traits::{
     BlakeTwo256, Block as BlockT, Convert, IdentifyAccount, IdentityLookup, NumberFor, OpaqueKeys,
@@ -163,6 +163,16 @@ type MoreThanHalfCouncil = EnsureOneOf<
     EnsureRoot<AccountId>,
     pallet_collective::EnsureProportionMoreThan<_1, _2, AccountId, CouncilCollective>,
 >;
+type AtLeastHalfCouncil = EnsureOneOf<
+    AccountId,
+    pallet_collective::EnsureProportionAtLeast<_1, _2, AccountId, CouncilCollective>,
+    EnsureRoot<AccountId>,
+>;
+type AtLeastTwoThirdsCouncil = EnsureOneOf<
+    AccountId,
+    pallet_collective::EnsureProportionAtLeast<_2, _3, AccountId, CouncilCollective>,
+    EnsureRoot<AccountId>,
+>;
 
 /// Opaque types. These are used by the CLI to instantiate machinery that don't need to know
 /// the specifics of the runtime. They can then be made to be agnostic over specific formats
@@ -243,12 +253,12 @@ parameter_types! {
     .max_extrinsic
     .expect("Normal extrinsics have weight limit configured by default; qed")
     .saturating_sub(BlockExecutionWeight::get());
-    pub const DemocracyEnactmentPeriod: BlockNumber = 1 * DAYS;
-    pub const DemocracyLaunchPeriod: BlockNumber = 2 * DAYS;
-    pub const DemocracyVotingPeriod: BlockNumber = 1 * DAYS;
+    pub const DemocracyEnactmentPeriod: BlockNumber = 30 * DAYS;
+    pub const DemocracyLaunchPeriod: BlockNumber = 28 * DAYS;
+    pub const DemocracyVotingPeriod: BlockNumber = 14 * DAYS;
     pub const DemocracyMinimumDeposit: Balance = balance!(1);
-    pub const DemocracyFastTrackVotingPeriod: BlockNumber = 2 * DAYS;
-    pub const DemocracyInstantAllowed: bool = false;
+    pub const DemocracyFastTrackVotingPeriod: BlockNumber = 3 * HOURS;
+    pub const DemocracyInstantAllowed: bool = true;
     pub const DemocracyCooloffPeriod: BlockNumber = 28 * DAYS;
     pub const DemocracyPreimageByteDeposit: Balance = balance!(0.00000001); // 10 ^ -8
     pub const DemocracyMaxVotes: u32 = 100;
@@ -268,7 +278,6 @@ parameter_types! {
     pub const ElectionsVotingBondBase: Balance = balance!(0.000001);
     // additional data per vote is 32 bytes (account id).
     pub const ElectionsVotingBondFactor: Balance = balance!(0.000001);
-    /// Weekly council elections; scaling up to monthly eventually.
     pub const ElectionsTermDuration: BlockNumber = 7 * DAYS;
     /// 13 members initially, to be increased to 23 eventually.
     pub const ElectionsDesiredMembers: u32 = 13;
@@ -365,31 +374,31 @@ impl pallet_democracy::Config for Runtime {
     type VotingPeriod = DemocracyVotingPeriod;
     type MinimumDeposit = DemocracyMinimumDeposit;
     /// `external_propose` call condition
-    type ExternalOrigin =
-        pallet_collective::EnsureProportionAtLeast<_1, _2, AccountId, CouncilCollective>;
+    type ExternalOrigin = AtLeastHalfCouncil;
     /// A super-majority can have the next scheduled referendum be a straight majority-carries vote.
     /// `external_propose_majority` call condition
-    type ExternalMajorityOrigin =
-        pallet_collective::EnsureProportionAtLeast<_3, _4, AccountId, CouncilCollective>;
+    type ExternalMajorityOrigin = AtLeastHalfCouncil;
     /// `external_propose_default` call condition
-    type ExternalDefaultOrigin =
-        pallet_collective::EnsureProportionAtLeast<_1, _2, AccountId, CouncilCollective>;
+    type ExternalDefaultOrigin = AtLeastHalfCouncil;
     /// Two thirds of the technical committee can have an ExternalMajority/ExternalDefault vote
     /// be tabled immediately and with a shorter voting/enactment period.
-    type FastTrackOrigin =
-        pallet_collective::EnsureProportionAtLeast<_2, _3, AccountId, TechnicalCollective>;
-    type InstantOrigin =
-        pallet_collective::EnsureProportionAtLeast<_2, _3, AccountId, CouncilCollective>;
+    type FastTrackOrigin = EnsureOneOf<
+        AccountId,
+        pallet_collective::EnsureProportionMoreThan<_1, _2, AccountId, TechnicalCollective>,
+        EnsureRoot<AccountId>,
+    >;
+    type InstantOrigin = EnsureOneOf<
+        AccountId,
+        pallet_collective::EnsureProportionAtLeast<_2, _3, AccountId, TechnicalCollective>,
+        EnsureRoot<AccountId>,
+    >;
     type InstantAllowed = DemocracyInstantAllowed;
     type FastTrackVotingPeriod = DemocracyFastTrackVotingPeriod;
     /// To cancel a proposal which has been passed, 2/3 of the council must agree to it.
     /// `emergency_cancel` call condition.
-    type CancellationOrigin =
-        pallet_collective::EnsureProportionAtLeast<_2, _3, AccountId, CouncilCollective>;
-    type CancelProposalOrigin =
-        pallet_collective::EnsureProportionAtLeast<_2, _3, AccountId, CouncilCollective>;
-    type BlacklistOrigin =
-        pallet_collective::EnsureProportionAtLeast<_2, _3, AccountId, CouncilCollective>;
+    type CancellationOrigin = AtLeastTwoThirdsCouncil;
+    type CancelProposalOrigin = AtLeastTwoThirdsCouncil;
+    type BlacklistOrigin = EnsureRoot<AccountId>;
     /// `veto_external` - vetoes and blacklists the external proposal hash
     type VetoOrigin = pallet_collective::EnsureMember<AccountId, TechnicalCollective>;
     type CooloffPeriod = DemocracyCooloffPeriod;
