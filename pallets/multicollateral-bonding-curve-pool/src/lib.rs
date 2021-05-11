@@ -57,7 +57,6 @@ use common::{
 use frame_support::traits::Get;
 use frame_support::weights::Weight;
 use frame_support::{ensure, fail};
-use frame_system::ensure_signed;
 use liquidity_proxy::LiquidityProxyTrait;
 use permissions::{Scope, BURN, MINT, TRANSFER};
 #[cfg(feature = "std")]
@@ -1361,36 +1360,6 @@ impl<T: Config> Module<T> {
     /// i.e. if it will result in PSWAP rewards during buy operation.
     fn collateral_is_incentivised(collateral_asset_id: &T::AssetId) -> bool {
         collateral_asset_id != &PSWAP.into() && collateral_asset_id != &VAL.into()
-    }
-
-    /// Perform a claim of collected PSWAP rewards by account.
-    fn claim_incentives_inner(account_id: &T::AccountId) -> DispatchResult {
-        common::with_transaction(|| {
-            let (rewards_limit, rewards_owned) = Rewards::<T>::get(account_id);
-            let pswap_asset_id = PSWAP.into();
-            let incentives_account_id = IncentivesAccountId::<T>::get();
-            let available_rewards =
-                Assets::<T>::free_balance(&pswap_asset_id, &incentives_account_id)?;
-            let mut to_claim = rewards_limit.min(rewards_owned);
-            ensure!(!to_claim.is_zero(), Error::<T>::NothingToClaim);
-            to_claim = to_claim.min(available_rewards);
-            ensure!(!to_claim.is_zero(), Error::<T>::RewardsSupplyShortage);
-            Assets::<T>::transfer_from(
-                &pswap_asset_id,
-                &incentives_account_id,
-                &account_id,
-                to_claim,
-            )?;
-            Rewards::<T>::insert(
-                account_id,
-                (
-                    rewards_limit.saturating_sub(to_claim),
-                    rewards_owned.saturating_sub(to_claim),
-                ),
-            );
-            TotalRewards::<T>::mutate(|balance| *balance = balance.saturating_sub(to_claim));
-            Ok(())
-        })
     }
 }
 

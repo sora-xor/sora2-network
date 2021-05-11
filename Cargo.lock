@@ -5863,7 +5863,7 @@ dependencies = [
 
 [[package]]
 name = "pswap-distribution"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "assets",
  "bonding-curve-pool",

@@ -39,7 +39,7 @@ use common::prelude::{Balance, FixedWrapper};
 use common::{balance, OnPswapBurned, PswapRemintInfo, RewardReason, VestedRewardsTrait, PSWAP};
 use frame_support::dispatch::{DispatchError, DispatchResult};
 use frame_support::fail;
-use frame_support::traits::{Get, IsType, PalletVersion};
+use frame_support::traits::{Get, IsType};
 use frame_support::weights::Weight;
 use sp_runtime::traits::Zero;
 use sp_std::collections::btree_map::BTreeMap;

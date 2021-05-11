@@ -397,9 +397,9 @@ fn claim_until_zero_should_pass() {
         let balance_b = Tokens::free_balance(GetIncentiveAssetId::get(), &liquidity_provider_b());
         let balance_c = Tokens::free_balance(GetIncentiveAssetId::get(), &liquidity_provider_c());
         let balance_d = Tokens::free_balance(GetIncentiveAssetId::get(), &tech_account_id);
-        assert_eq!(balance_a, balance!(2996.999999999999990010));
-        assert_eq!(balance_b, balance!(1998.000000000000008999));
-        assert_eq!(balance_c, balance!(999.000000000000000991));
+        assert_eq!(balance_a, balance!(2997.0));
+        assert_eq!(balance_b, balance!(1998.0));
+        assert_eq!(balance_c, balance!(999.0));
         assert_eq!(balance_d, 0);
         assert_eq!(
             balance_a + balance_b + balance_c + balance_d,
@@ -446,15 +446,16 @@ fn external_transfer_to_tech_account_after_distribution() {
         let balance_b = Tokens::free_balance(GetIncentiveAssetId::get(), &liquidity_provider_b());
         let balance_c = Tokens::free_balance(GetIncentiveAssetId::get(), &liquidity_provider_c());
         let balance_tech = Tokens::free_balance(GetIncentiveAssetId::get(), &tech_account_id);
-        // externally added incentive is evenly distributed amoung current unclaimed balances
-        assert_eq!(balance_a, balance!(5558.255555555561844801));
-        assert_eq!(balance_b, balance!(3705.503703703700268335));
-        assert_eq!(balance_c, balance!(1852.751851851848997975));
+        // externally added incentive is not distributed amoung current unclaimed balances
+        assert_eq!(balance_a, balance!(2.700000000000000000));
+        assert_eq!(balance_b, balance!(1.800000000000000000));
+        assert_eq!(balance_c, balance!(0.900000000000000000));
         assert_eq!(
             balance_a + balance_b + balance_c,
-            balance!(11116.511111111111111111)
+            balance!(5.400000000000000000)
         );
-        assert_eq!(balance_tech, 0);
+        // externally added incentive is present
+        assert_eq!(balance_tech, balance!(11111.111111111111111111));
     })
 }
 
@@ -513,12 +514,12 @@ fn jump_start_with_unowned_incentive_should_pass() {
         let balance_c = Tokens::free_balance(GetIncentiveAssetId::get(), &liquidity_provider_c());
         let balance_d = Tokens::free_balance(GetIncentiveAssetId::get(), &tech_account_id);
 
-        // one of claimers collects unowned incentive, special correction is applied so precision loss is avoided on following claims
-        assert_eq!(balance_a, balance!(2.70000000000000000));
+        // none of claimers collect unowned pswap, only receiving their shares
+        assert_eq!(balance_a, balance!(2.700000000000000000));
         assert_eq!(balance_b, balance!(1.800000000000000000));
-        assert_eq!(balance_c, balance!(11112.011111111111111111));
+        assert_eq!(balance_c, balance!(0.900000000000000000));
 
-        assert_eq!(balance_d, balance!(0.000000000000000000));
+        assert_eq!(balance_d, balance!(11111.111111111111111111));
     })
 }
 
@@ -563,12 +564,12 @@ fn increasing_volumes_should_pass() {
         let balance_b = Tokens::free_balance(GetIncentiveAssetId::get(), &liquidity_provider_b());
         let balance_c = Tokens::free_balance(GetIncentiveAssetId::get(), &liquidity_provider_c());
         let balance_d = Tokens::free_balance(GetIncentiveAssetId::get(), &tech_account_id);
-        assert_eq!(balance_a, balance!(5000000000.000000000004504507));
-        assert_eq!(balance_b, balance!(3333333333.333333333336336335));
-        assert_eq!(balance_c, balance!(1666666666.666666666659159157));
+        assert_eq!(balance_a, balance!(4999999999.999999999999999999));
+        assert_eq!(balance_b, balance!(3333333333.333333333333333333));
+        assert_eq!(balance_c, balance!(1666666666.666666666666666666));
         assert_eq!(
             balance_a + balance_b + balance_c,
-            balance!(9999999999.999999999999999999)
+            balance!(9999999999.999999999999999998)
         );
         assert_eq!(balance_d, 0);
     })
@@ -602,13 +603,13 @@ fn multiple_pools_should_pass() {
         let balance_b = Tokens::free_balance(GetIncentiveAssetId::get(), &liquidity_provider_b());
         let balance_c = Tokens::free_balance(GetIncentiveAssetId::get(), &liquidity_provider_c());
         let balance_d = Tokens::free_balance(GetIncentiveAssetId::get(), &tech_account_id);
-        assert_eq!(balance_a, balance!(18.000000000000000017));
-        assert_eq!(balance_b, balance!(0.899999999999999991));
-        assert_eq!(balance_c, balance!(0.899999999999999992));
+        assert_eq!(balance_a, balance!(18.0));
+        assert_eq!(balance_b, balance!(0.9));
+        assert_eq!(balance_c, balance!(0.9));
         assert_eq!(balance_d, 0);
         assert_eq!(
-            balance_a + balance_b + balance_c + balance_c,
-            balance!(20.699999999999999992)
+            balance_a + balance_b + balance_c + balance_d,
+            balance!(19.8)
         )
     })
 }
@@ -643,9 +644,9 @@ fn mixed_multiple_pools_should_pass() {
         let balance_b = Tokens::free_balance(GetIncentiveAssetId::get(), &liquidity_provider_b());
         let balance_c = Tokens::free_balance(GetIncentiveAssetId::get(), &liquidity_provider_c());
         let balance_d = Tokens::free_balance(GetIncentiveAssetId::get(), &tech_account_id);
-        assert_eq!(balance_a, balance!(9.900000000000000009)); // 9 from A, 0.9 from B
-        assert_eq!(balance_b, balance!(0.899999999999999999)); // 0.9 from B
-        assert_eq!(balance_c, balance!(10.799999999999999992)); // 9 from A, 1.8 from B
+        assert_eq!(balance_a, balance!(9.900000000000000000)); // 9 from A, 0.9 from B
+        assert_eq!(balance_b, balance!(0.900000000000000000)); // 0.9 from B
+        assert_eq!(balance_c, balance!(10.800000000000000000)); // 9 from A, 1.8 from B
         assert_eq!(balance_d, 0);
         assert_eq!(
             balance_a + balance_b + balance_c + balance_d,

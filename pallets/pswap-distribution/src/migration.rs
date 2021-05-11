@@ -39,10 +39,10 @@ pub fn migrate<T: Config>() -> Weight {
     let mut weight: Weight = 0;
 
     match Pallet::<T>::storage_version() {
-        // Initial version is 0.1.0 which has unutilized rewards storage
-        // Version 0.2.0 converts and moves rewards from multicollateral-bonding-curve-pool
+        // Initial version is 0.1.0 which uses shares from total amount to determine owned pswap by users
+        // Version 0.2.0 performs share calculated on distribution, so only absolute pswap amounts are stored
         Some(version) if version == PalletVersion::new(0, 1, 0) => {
-            let migrated_weight = migrate_rewards_from_tbc::<T>();
+            let migrated_weight = migrate_from_shares_to_absolute_rewards::<T>();
             weight = weight.saturating_add(migrated_weight)
         }
         _ => (),
@@ -51,45 +51,39 @@ pub fn migrate<T: Config>() -> Weight {
     weight
 }
 
-pub fn migrate_rewards_from_tbc<T: Config>() -> Weight {
+pub fn migrate_from_shares_to_absolute_rewards<T: Config>() -> Weight {
     let mut weight: Weight = 0;
-    let mut calculated_total_rewards = Balance::zero();
-    debug::RuntimeLogger::init();
-    for (account, (vested_amount, tbc_rewards_amount)) in
-        multicollateral_bonding_curve_pool::Rewards::<T>::drain()
-    {
-        let reward_info = RewardInfo {
-            limit: vested_amount,
-            total_available: tbc_rewards_amount,
-            rewards: [(RewardReason::BuyOnBondingCurve, tbc_rewards_amount)]
-                .iter()
-                .cloned()
-                .collect(),
-        };
-        // Assuming target storage is empty before migration.
-        crate::Rewards::<T>::insert(account, reward_info);
-        calculated_total_rewards = calculated_total_rewards.saturating_add(tbc_rewards_amount);
-        weight = weight.saturating_add(T::DbWeight::get().reads_writes(1, 1));
+    
+    let incentives_asset_id = T::GetIncentiveAssetId::get();
+    let tech_account_id = T::GetTechnicalAccountId::get();
+    let total_claimable =
+        assets::Module::<T>::free_balance(&incentives_asset_id, &tech_account_id)?;
+    let shares_total = FixedWrapper::from(ClaimableShares::<T>::get());
+
+    
+    ShareholderAccounts::<T>::translate(|_key: T::AccountId, current_position: Fixed| {
+        let claimable_incentives =
+            FixedWrapper::from(current_position) * total_claimable.clone() / shares_total;
+        let claimable_incentives: Fixed = claimable_incentives.get().unwrap_or(current_position);
+        Some(claimable_incentives)
+    });
+
+    let mut calculated_total_shares = Fixed::zero();
+    for (acc, val) in ShareholderAccounts::<T>::iter() {
+        calculated_total_shares = calculated_total_shares.saturating_add(val);
+        weight = weight.saturating_add(T::DbWeight::get().reads_writes(2, 2));
     }
+    ClaimableShares::<T>::put(calculated_total_shares);
+    weight = weight.saturating_add(T::DbWeight::get().reads_writes(1, 1));
 
-    // Set stored total rewards in tbc to zero.
-    let tbc_total_rewards = multicollateral_bonding_curve_pool::TotalRewards::<T>::get();
-    multicollateral_bonding_curve_pool::TotalRewards::<T>::put(Balance::zero());
-    crate::TotalRewards::<T>::put(calculated_total_rewards);
-    weight = weight.saturating_add(T::DbWeight::get().reads_writes(1, 2));
-
-    if tbc_total_rewards != calculated_total_rewards {
-        debug::warn!(
-            target: "runtime",
-            "stored tbc rewards total doesn't match calculated total: {} != {}",
-            tbc_total_rewards, calculated_total_rewards
-        );
-    } else {
-        debug::info!(
-            target: "runtime",
-            "stored tbc rewards total match calculated total: {}",
-            calculated_total_rewards
-        );
+    let distribution_remainder = total_claimable.saturating_sub(calculated_total_shares.into_bits().try_into().unwrap_or(balance!(0)));
+    if distribution_remainer > 0 {
+        Assets::<T>::transfer_from(
+            &incentives_asset_id,
+            &tech_account_id,
+            &T::GetParliamentAccountId::get(),
+            distribution_remainder,
+        )?;
     }
 
     weight

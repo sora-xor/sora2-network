@@ -36,6 +36,7 @@ use common::{
     fixed, fixed_wrapper, EnsureDEXManager, Fixed, LiquiditySourceFilter, LiquiditySourceType,
     OnPswapBurned, PswapRemintInfo,
 };
+use core::convert::TryInto;
 use frame_support::dispatch::{DispatchError, DispatchResult, DispatchResultWithPostInfo, Weight};
 use frame_support::traits::Get;
 use frame_support::{ensure, fail};
@@ -124,38 +125,21 @@ impl<T: Config> Pallet<T> {
     }
 
     /// Query actual amount of PSWAP that can be claimed by account.
-    pub fn claimable_amount(
-        account_id: &T::AccountId,
-    ) -> Result<(Balance, Balance, Fixed), DispatchError> {
-        // get definitions
-        let incentives_asset_id = T::GetIncentiveAssetId::get();
-        let tech_account_id = T::GetTechnicalAccountId::get();
-        let total_claimable =
-            assets::Module::<T>::free_balance(&incentives_asset_id, &tech_account_id)?;
+    pub fn claimable_amount(account_id: &T::AccountId) -> Result<Balance, DispatchError> {
         let current_position = ShareholderAccounts::<T>::get(&account_id);
-        if current_position == fixed!(0) {
-            return Ok((Balance::zero(), total_claimable, current_position));
-        }
-        let shares_total = FixedWrapper::from(ClaimableShares::<T>::get());
-        // perform claimed tokens transfer
-        let incentives_to_claim =
-            FixedWrapper::from(current_position) / (shares_total / total_claimable.clone());
-        let incentives_to_claim = incentives_to_claim
-            .try_into_balance()
-            .map_err(|_| Error::CalculationError::<T>)?;
-        Ok((incentives_to_claim, total_claimable, current_position))
+        Ok(current_position
+            .into_bits()
+            .try_into()
+            .map_err(|_| Error::<T>::CalculationError)?)
     }
 
     /// Perform claim of PSWAP by account, desired amount is not indicated - all available will be claimed.
     fn claim_by_account(account_id: &T::AccountId) -> DispatchResult {
-        let (incentives_to_claim, total_claimable, current_position) =
-            Self::claimable_amount(account_id)?;
+        let current_position = ShareholderAccounts::<T>::get(&account_id);
         if current_position != fixed!(0) {
-            let claimable_amount_adjusted = incentives_to_claim.min(total_claimable);
-            // clean up shares info
             ShareholderAccounts::<T>::mutate(&account_id, |current| *current = fixed!(0));
             ClaimableShares::<T>::mutate(|current| {
-                *current = current.csub(current_position).unwrap()
+                *current = current.saturating_sub(current_position)
             });
             let incentives_asset_id = T::GetIncentiveAssetId::get();
             let tech_account_id = T::GetTechnicalAccountId::get();
@@ -163,7 +147,10 @@ impl<T: Config> Pallet<T> {
                 &incentives_asset_id,
                 &tech_account_id,
                 &account_id,
-                claimable_amount_adjusted,
+                current_position
+                    .into_bits()
+                    .try_into()
+                    .map_err(|_| Error::<T>::CalculationError)?,
             )?;
             Ok(().into())
         } else {
@@ -234,9 +221,9 @@ impl<T: Config> Pallet<T> {
     ) -> DispatchResult {
         // Get state of incentive availability and corresponding definitions.
         let incentive_asset_id = T::GetIncentiveAssetId::get();
-        let marker_total = Assets::<T>::total_issuance(&marker_asset_id)?;
+        let pool_tokens_total = Assets::<T>::total_issuance(&marker_asset_id)?;
         let incentive_total = Assets::<T>::free_balance(&incentive_asset_id, &fees_account_id)?;
-        if incentive_total == 0 {
+        if incentive_total == 0 || pool_tokens_total == 0 {
             Self::deposit_event(Event::<T>::NothingToDistribute(
                 dex_id.clone(),
                 fees_account_id.clone(),
@@ -246,7 +233,7 @@ impl<T: Config> Pallet<T> {
 
         // Calculate actual amounts regarding their destinations to be reminted. Only liquidity providers portion is reminted here, others
         // are to be reminted in responsible pallets.
-        let distribution = Self::calculate_pswap_distribution(incentive_total)?;
+        let mut distribution = Self::calculate_pswap_distribution(incentive_total)?;
         // Burn all incentives.
         assets::Module::<T>::burn_from(
             &incentive_asset_id,
@@ -256,54 +243,42 @@ impl<T: Config> Pallet<T> {
         )?;
         T::OnPswapBurnedAggregator::on_pswap_burned(distribution.clone());
 
-        let mut claimable_incentives = FixedWrapper::from(assets::Module::<T>::free_balance(
-            &incentive_asset_id,
-            &tech_account_id,
-        )?);
+        let mut shareholders_distributed_amount = fixed_wrapper!(0);
 
         // Distribute incentive to shareholders.
         let mut shareholders_num = 0u128;
         for (account_id, currency_id, data) in Accounts::<T>::iter() {
             if currency_id == into_currency!(T, marker_asset_id.clone()) && !data.free.is_zero() {
                 let pool_tokens: T::CompatBalance = data.free.into();
-                let share = FixedWrapper::from(pool_tokens.into())
-                    / (FixedWrapper::from(marker_total)
-                        / FixedWrapper::from(distribution.liquidity_providers));
 
-                let total_claimable_shares = ClaimableShares::<T>::get();
-                let claimable_share = if total_claimable_shares == fixed!(0) {
-                    share
-                        .clone()
-                        .get()
-                        .map_err(|_| Error::<T>::CalculationError)?
-                } else {
-                    let claimable_share = share.clone()
-                        / (claimable_incentives.clone()
-                            / FixedWrapper::from(total_claimable_shares));
-                    claimable_share
-                        .get()
-                        .map_err(|_| Error::<T>::CalculationError)?
-                };
-                let claimable_share_delta =
-                    if total_claimable_shares == fixed!(0) && claimable_incentives != fixed!(0) {
-                        // this case is triggered when there is unowned incentives, first
-                        // claim should posess it, but share needs to be corrected to avoid
-                        // precision loss by following claims
-                        (claimable_incentives.clone() + share)
-                            .get()
-                            .map_err(|_| Error::<T>::CalculationError)?
-                    } else {
-                        claimable_share
-                    };
+                let share = FixedWrapper::from(pool_tokens.into())
+                    * FixedWrapper::from(distribution.liquidity_providers)
+                    / FixedWrapper::from(pool_tokens_total);
+                let share = share.get().map_err(|_| Error::<T>::CalculationError)?;
+
                 ShareholderAccounts::<T>::mutate(&account_id, |current| {
-                    *current = current.cadd(claimable_share_delta).unwrap()
+                    *current = current.saturating_add(share)
                 });
-                ClaimableShares::<T>::mutate(|current| {
-                    *current = current.cadd(claimable_share_delta).unwrap()
-                });
-                claimable_incentives = claimable_incentives + claimable_share;
+                ClaimableShares::<T>::mutate(|current| *current = current.saturating_add(share));
+                shareholders_distributed_amount = shareholders_distributed_amount + share;
+
                 shareholders_num += 1;
             }
+        }
+
+        let undistributed_lp_amount = distribution.liquidity_providers.saturating_sub(
+            shareholders_distributed_amount
+                .try_into_balance()
+                .map_err(|_| Error::<T>::CalculationError)?,
+        );
+        if undistributed_lp_amount > 0 {
+            // utilize precision error from distribution calculation, so it won't accumulate on tech account
+            distribution.liquidity_providers = distribution
+                .liquidity_providers
+                .saturating_sub(undistributed_lp_amount);
+            distribution.parliament = distribution
+                .parliament
+                .saturating_add(undistributed_lp_amount);
         }
 
         assets::Module::<T>::mint_to(

@@ -1680,7 +1680,7 @@ impl_runtime_apis! {
         fn claimable_amount(
             account_id: AccountId,
         ) -> pswap_distribution_runtime_api::BalanceInfo<Balance> {
-            let (claimable, _, _) = PswapDistribution::claimable_amount(&account_id).unwrap_or((0, 0, fixed!(0)));
+            let claimable = PswapDistribution::claimable_amount(&account_id).unwrap_or(0);
             pswap_distribution_runtime_api::BalanceInfo::<Balance> {
                 balance: claimable
             }
