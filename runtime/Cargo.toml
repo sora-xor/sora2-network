@@ -68,6 +68,7 @@ pallet-elections-phragmen = { default-features = false, version = '3' }
 pallet-grandpa = { default-features = false, version = '3' }
 pallet-babe = { default-features = false, version = '3' }
 pallet-im-online = { default-features = false, version = '3' }
+pallet-identity = { default-features = false, version = '3' }
 pallet-membership = { default-features = false, version = '3' }
 pallet-multisig = { version = "3", default-features = false }
 pallet-offences = { default-features = false, version = '3' }
@@ -120,6 +121,7 @@ std = [
     'pallet-democracy/std',
     'pallet-elections-phragmen/std',
     'pallet-grandpa/std',
+    'pallet-identity/std',
     'pallet-im-online/std',
     'pallet-membership/std',
     'pallet-offences/std',
