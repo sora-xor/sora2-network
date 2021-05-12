@@ -182,8 +182,8 @@ impl<T: Config> Pallet<T> {
     pub fn is_forbidden_filter(
         input_asset_id: &T::AssetId,
         output_asset_id: &T::AssetId,
-        selected_source_types: Vec<LiquiditySourceType>,
-        filter_mode: FilterMode,
+        selected_source_types: &Vec<LiquiditySourceType>,
+        filter_mode: &FilterMode,
     ) -> bool {
         let tbc_reserve_assets = [
             common::VAL.into(),
@@ -195,11 +195,11 @@ impl<T: Config> Pallet<T> {
         let is_xyk_only = selected_source_types.contains(&LiquiditySourceType::XYKPool)
             && !selected_source_types
                 .contains(&LiquiditySourceType::MulticollateralBondingCurvePool)
-            && filter_mode == FilterMode::AllowSelected
+            && filter_mode == &FilterMode::AllowSelected
             || selected_source_types
                 .contains(&LiquiditySourceType::MulticollateralBondingCurvePool)
                 && !selected_source_types.contains(&LiquiditySourceType::XYKPool)
-                && filter_mode == FilterMode::ForbidSelected;
+                && filter_mode == &FilterMode::ForbidSelected;
         // check if either of tbc reserve assets is present
         let reserve_asset_present = tbc_reserve_assets.contains(input_asset_id)
             || tbc_reserve_assets.contains(output_asset_id);
@@ -1604,8 +1604,8 @@ pub mod pallet {
             if Self::is_forbidden_filter(
                 &input_asset_id,
                 &output_asset_id,
-                selected_source_types.clone(),
-                filter_mode.clone(),
+                &selected_source_types,
+                &filter_mode,
             ) {
                 fail!(Error::<T>::ForbiddenFilter);
             }

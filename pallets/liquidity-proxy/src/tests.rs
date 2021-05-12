@@ -2265,89 +2265,89 @@ fn selecting_xyk_only_filter_is_forbidden() {
         use FilterMode::*;
 
         // xyk only selection, base case
-        assert_eq!(LiquidityProxy::is_forbidden_filter(&XOR, &VAL, [XYKPool].into(), AllowSelected), true);
-        assert_eq!(LiquidityProxy::is_forbidden_filter(&XOR, &PSWAP, [XYKPool].into(), AllowSelected), true);
-        assert_eq!(LiquidityProxy::is_forbidden_filter(&XOR, &DAI, [XYKPool].into(), AllowSelected), true);
-        assert_eq!(LiquidityProxy::is_forbidden_filter(&XOR, &ETH, [XYKPool].into(), AllowSelected), true);
-        assert_eq!(LiquidityProxy::is_forbidden_filter(&VAL, &XOR, [XYKPool].into(), AllowSelected), true);
-        assert_eq!(LiquidityProxy::is_forbidden_filter(&PSWAP, &XOR, [XYKPool].into(), AllowSelected), true);
-        assert_eq!(LiquidityProxy::is_forbidden_filter(&DAI, &XOR, [XYKPool].into(), AllowSelected), true);
-        assert_eq!(LiquidityProxy::is_forbidden_filter(&ETH, &XOR, [XYKPool].into(), AllowSelected), true);
+        assert_eq!(LiquidityProxy::is_forbidden_filter(&XOR, &VAL, &vec![XYKPool], &AllowSelected), true);
+        assert_eq!(LiquidityProxy::is_forbidden_filter(&XOR, &PSWAP, &vec![XYKPool], &AllowSelected), true);
+        assert_eq!(LiquidityProxy::is_forbidden_filter(&XOR, &DAI, &vec![XYKPool], &AllowSelected), true);
+        assert_eq!(LiquidityProxy::is_forbidden_filter(&XOR, &ETH, &vec![XYKPool], &AllowSelected), true);
+        assert_eq!(LiquidityProxy::is_forbidden_filter(&VAL, &XOR, &vec![XYKPool], &AllowSelected), true);
+        assert_eq!(LiquidityProxy::is_forbidden_filter(&PSWAP, &XOR, &vec![XYKPool], &AllowSelected), true);
+        assert_eq!(LiquidityProxy::is_forbidden_filter(&DAI, &XOR, &vec![XYKPool], &AllowSelected), true);
+        assert_eq!(LiquidityProxy::is_forbidden_filter(&ETH, &XOR, &vec![XYKPool], &AllowSelected), true);
 
         // xyk only selection, indirect swaps
-        assert_eq!(LiquidityProxy::is_forbidden_filter(&DAI, &PSWAP, [XYKPool].into(), AllowSelected), true);
-        assert_eq!(LiquidityProxy::is_forbidden_filter(&PSWAP, &VAL, [XYKPool].into(), AllowSelected), true);
-        assert_eq!(LiquidityProxy::is_forbidden_filter(&USDT, &VAL, [XYKPool].into(), AllowSelected), true);
+        assert_eq!(LiquidityProxy::is_forbidden_filter(&DAI, &PSWAP, &vec![XYKPool], &AllowSelected), true);
+        assert_eq!(LiquidityProxy::is_forbidden_filter(&PSWAP, &VAL, &vec![XYKPool], &AllowSelected), true);
+        assert_eq!(LiquidityProxy::is_forbidden_filter(&USDT, &VAL, &vec![XYKPool], &AllowSelected), true);
 
         // xyk only selection, non-reserve assets
-        assert_eq!(LiquidityProxy::is_forbidden_filter(&XOR, &USDT, [XYKPool].into(), AllowSelected), false);
-        assert_eq!(LiquidityProxy::is_forbidden_filter(&USDT, &XOR, [XYKPool].into(), AllowSelected), false);
+        assert_eq!(LiquidityProxy::is_forbidden_filter(&XOR, &USDT, &vec![XYKPool], &AllowSelected), false);
+        assert_eq!(LiquidityProxy::is_forbidden_filter(&USDT, &XOR, &vec![XYKPool], &AllowSelected), false);
 
         // xyk only selection, base case
-        assert_eq!(LiquidityProxy::is_forbidden_filter(&XOR, &VAL, [MulticollateralBondingCurvePool].into(), ForbidSelected), true);
-        assert_eq!(LiquidityProxy::is_forbidden_filter(&XOR, &PSWAP, [MulticollateralBondingCurvePool].into(), ForbidSelected), true);
-        assert_eq!(LiquidityProxy::is_forbidden_filter(&XOR, &DAI, [MulticollateralBondingCurvePool].into(), ForbidSelected), true);
-        assert_eq!(LiquidityProxy::is_forbidden_filter(&XOR, &ETH, [MulticollateralBondingCurvePool].into(), ForbidSelected), true);
-        assert_eq!(LiquidityProxy::is_forbidden_filter(&VAL, &XOR, [MulticollateralBondingCurvePool].into(), ForbidSelected), true);
-        assert_eq!(LiquidityProxy::is_forbidden_filter(&PSWAP, &XOR, [MulticollateralBondingCurvePool].into(), ForbidSelected), true);
-        assert_eq!(LiquidityProxy::is_forbidden_filter(&DAI, &XOR, [MulticollateralBondingCurvePool].into(), ForbidSelected), true);
-        assert_eq!(LiquidityProxy::is_forbidden_filter(&ETH, &XOR, [MulticollateralBondingCurvePool].into(), ForbidSelected), true);
+        assert_eq!(LiquidityProxy::is_forbidden_filter(&XOR, &VAL, &vec![MulticollateralBondingCurvePool], &ForbidSelected), true);
+        assert_eq!(LiquidityProxy::is_forbidden_filter(&XOR, &PSWAP, &vec![MulticollateralBondingCurvePool], &ForbidSelected), true);
+        assert_eq!(LiquidityProxy::is_forbidden_filter(&XOR, &DAI, &vec![MulticollateralBondingCurvePool], &ForbidSelected), true);
+        assert_eq!(LiquidityProxy::is_forbidden_filter(&XOR, &ETH, &vec![MulticollateralBondingCurvePool], &ForbidSelected), true);
+        assert_eq!(LiquidityProxy::is_forbidden_filter(&VAL, &XOR, &vec![MulticollateralBondingCurvePool], &ForbidSelected), true);
+        assert_eq!(LiquidityProxy::is_forbidden_filter(&PSWAP, &XOR, &vec![MulticollateralBondingCurvePool], &ForbidSelected), true);
+        assert_eq!(LiquidityProxy::is_forbidden_filter(&DAI, &XOR, &vec![MulticollateralBondingCurvePool], &ForbidSelected), true);
+        assert_eq!(LiquidityProxy::is_forbidden_filter(&ETH, &XOR, &vec![MulticollateralBondingCurvePool], &ForbidSelected), true);
 
         // xyk only selection, indirect swaps
-        assert_eq!(LiquidityProxy::is_forbidden_filter(&DAI, &PSWAP, [MulticollateralBondingCurvePool].into(), ForbidSelected), true);
-        assert_eq!(LiquidityProxy::is_forbidden_filter(&PSWAP, &VAL, [MulticollateralBondingCurvePool].into(), ForbidSelected), true);
-        assert_eq!(LiquidityProxy::is_forbidden_filter(&USDT, &VAL, [MulticollateralBondingCurvePool].into(), ForbidSelected), true);
+        assert_eq!(LiquidityProxy::is_forbidden_filter(&DAI, &PSWAP, &vec![MulticollateralBondingCurvePool], &ForbidSelected), true);
+        assert_eq!(LiquidityProxy::is_forbidden_filter(&PSWAP, &VAL, &vec![MulticollateralBondingCurvePool], &ForbidSelected), true);
+        assert_eq!(LiquidityProxy::is_forbidden_filter(&USDT, &VAL, &vec![MulticollateralBondingCurvePool], &ForbidSelected), true);
         
         // xyk only selection, non-reserve assets
-        assert_eq!(LiquidityProxy::is_forbidden_filter(&XOR, &USDT, [MulticollateralBondingCurvePool].into(), ForbidSelected), false);
-        assert_eq!(LiquidityProxy::is_forbidden_filter(&USDT, &XOR, [MulticollateralBondingCurvePool].into(), ForbidSelected), false);
+        assert_eq!(LiquidityProxy::is_forbidden_filter(&XOR, &USDT, &vec![MulticollateralBondingCurvePool], &ForbidSelected), false);
+        assert_eq!(LiquidityProxy::is_forbidden_filter(&USDT, &XOR, &vec![MulticollateralBondingCurvePool], &ForbidSelected), false);
 
         // smart selection, base case
-        assert_eq!(LiquidityProxy::is_forbidden_filter(&XOR, &VAL, [].into(), Disabled), false);
-        assert_eq!(LiquidityProxy::is_forbidden_filter(&XOR, &PSWAP, [].into(), Disabled), false);
-        assert_eq!(LiquidityProxy::is_forbidden_filter(&XOR, &DAI, [].into(), Disabled), false);
-        assert_eq!(LiquidityProxy::is_forbidden_filter(&XOR, &ETH, [].into(), Disabled), false);
-        assert_eq!(LiquidityProxy::is_forbidden_filter(&VAL, &XOR, [].into(), Disabled), false);
-        assert_eq!(LiquidityProxy::is_forbidden_filter(&PSWAP, &XOR, [].into(), Disabled), false);
-        assert_eq!(LiquidityProxy::is_forbidden_filter(&DAI, &XOR, [].into(), Disabled), false);
-        assert_eq!(LiquidityProxy::is_forbidden_filter(&XOR, &DAI, [].into(), Disabled), false);
+        assert_eq!(LiquidityProxy::is_forbidden_filter(&XOR, &VAL, &vec![], &Disabled), false);
+        assert_eq!(LiquidityProxy::is_forbidden_filter(&XOR, &PSWAP, &vec![], &Disabled), false);
+        assert_eq!(LiquidityProxy::is_forbidden_filter(&XOR, &DAI, &vec![], &Disabled), false);
+        assert_eq!(LiquidityProxy::is_forbidden_filter(&XOR, &ETH, &vec![], &Disabled), false);
+        assert_eq!(LiquidityProxy::is_forbidden_filter(&VAL, &XOR, &vec![], &Disabled), false);
+        assert_eq!(LiquidityProxy::is_forbidden_filter(&PSWAP, &XOR, &vec![], &Disabled), false);
+        assert_eq!(LiquidityProxy::is_forbidden_filter(&DAI, &XOR, &vec![], &Disabled), false);
+        assert_eq!(LiquidityProxy::is_forbidden_filter(&XOR, &DAI, &vec![], &Disabled), false);
 
         // smart selection, indirect swaps
-        assert_eq!(LiquidityProxy::is_forbidden_filter(&DAI, &PSWAP, [].into(), Disabled), false);
-        assert_eq!(LiquidityProxy::is_forbidden_filter(&PSWAP, &VAL, [].into(), Disabled), false);
-        assert_eq!(LiquidityProxy::is_forbidden_filter(&USDT, &VAL, [].into(), Disabled), false);
+        assert_eq!(LiquidityProxy::is_forbidden_filter(&DAI, &PSWAP, &vec![], &Disabled), false);
+        assert_eq!(LiquidityProxy::is_forbidden_filter(&PSWAP, &VAL, &vec![], &Disabled), false);
+        assert_eq!(LiquidityProxy::is_forbidden_filter(&USDT, &VAL, &vec![], &Disabled), false);
 
         // smart selection, non-reserve assets
-        assert_eq!(LiquidityProxy::is_forbidden_filter(&XOR, &USDT, [].into(), Disabled), false);
-        assert_eq!(LiquidityProxy::is_forbidden_filter(&USDT, &XOR, [].into(), Disabled), false);
+        assert_eq!(LiquidityProxy::is_forbidden_filter(&XOR, &USDT, &vec![], &Disabled), false);
+        assert_eq!(LiquidityProxy::is_forbidden_filter(&USDT, &XOR, &vec![], &Disabled), false);
 
         // tbc only selection, base case
-        assert_eq!(LiquidityProxy::is_forbidden_filter(&XOR, &VAL, [MulticollateralBondingCurvePool].into(), AllowSelected), false);
-        assert_eq!(LiquidityProxy::is_forbidden_filter(&XOR, &PSWAP, [MulticollateralBondingCurvePool].into(), AllowSelected), false);
-        assert_eq!(LiquidityProxy::is_forbidden_filter(&XOR, &DAI, [MulticollateralBondingCurvePool].into(), AllowSelected), false);
-        assert_eq!(LiquidityProxy::is_forbidden_filter(&XOR, &ETH, [MulticollateralBondingCurvePool].into(), AllowSelected), false);
-        assert_eq!(LiquidityProxy::is_forbidden_filter(&VAL, &XOR, [MulticollateralBondingCurvePool].into(), AllowSelected), false);
-        assert_eq!(LiquidityProxy::is_forbidden_filter(&PSWAP, &XOR, [MulticollateralBondingCurvePool].into(), AllowSelected), false);
-        assert_eq!(LiquidityProxy::is_forbidden_filter(&DAI, &XOR, [MulticollateralBondingCurvePool].into(), AllowSelected), false);
-        assert_eq!(LiquidityProxy::is_forbidden_filter(&ETH, &XOR, [MulticollateralBondingCurvePool].into(), AllowSelected), false);
+        assert_eq!(LiquidityProxy::is_forbidden_filter(&XOR, &VAL, &vec![MulticollateralBondingCurvePool], &AllowSelected), false);
+        assert_eq!(LiquidityProxy::is_forbidden_filter(&XOR, &PSWAP, &vec![MulticollateralBondingCurvePool], &AllowSelected), false);
+        assert_eq!(LiquidityProxy::is_forbidden_filter(&XOR, &DAI, &vec![MulticollateralBondingCurvePool], &AllowSelected), false);
+        assert_eq!(LiquidityProxy::is_forbidden_filter(&XOR, &ETH, &vec![MulticollateralBondingCurvePool], &AllowSelected), false);
+        assert_eq!(LiquidityProxy::is_forbidden_filter(&VAL, &XOR, &vec![MulticollateralBondingCurvePool], &AllowSelected), false);
+        assert_eq!(LiquidityProxy::is_forbidden_filter(&PSWAP, &XOR, &vec![MulticollateralBondingCurvePool], &AllowSelected), false);
+        assert_eq!(LiquidityProxy::is_forbidden_filter(&DAI, &XOR, &vec![MulticollateralBondingCurvePool], &AllowSelected), false);
+        assert_eq!(LiquidityProxy::is_forbidden_filter(&ETH, &XOR, &vec![MulticollateralBondingCurvePool], &AllowSelected), false);
 
         // tbc only selection, indirect swaps
-        assert_eq!(LiquidityProxy::is_forbidden_filter(&DAI, &PSWAP, [].into(), Disabled), false);
-        assert_eq!(LiquidityProxy::is_forbidden_filter(&PSWAP, &VAL, [].into(), Disabled), false);
-        assert_eq!(LiquidityProxy::is_forbidden_filter(&USDT, &VAL, [].into(), Disabled), false);
+        assert_eq!(LiquidityProxy::is_forbidden_filter(&DAI, &PSWAP, &vec![], &Disabled), false);
+        assert_eq!(LiquidityProxy::is_forbidden_filter(&PSWAP, &VAL, &vec![], &Disabled), false);
+        assert_eq!(LiquidityProxy::is_forbidden_filter(&USDT, &VAL, &vec![], &Disabled), false);
 
         // tbc only selection, non-reserve assets
-        assert_eq!(LiquidityProxy::is_forbidden_filter(&XOR, &USDT, [MulticollateralBondingCurvePool].into(), AllowSelected), false);
-        assert_eq!(LiquidityProxy::is_forbidden_filter(&USDT, &XOR, [MulticollateralBondingCurvePool].into(), AllowSelected), false);
+        assert_eq!(LiquidityProxy::is_forbidden_filter(&XOR, &USDT, &vec![MulticollateralBondingCurvePool], &AllowSelected), false);
+        assert_eq!(LiquidityProxy::is_forbidden_filter(&USDT, &XOR, &vec![MulticollateralBondingCurvePool], &AllowSelected), false);
 
         // hack cases with unavailable sources
-        assert_eq!(LiquidityProxy::is_forbidden_filter(&XOR, &VAL, [MockPool, XYKPool].into(), AllowSelected), true);
-        assert_eq!(LiquidityProxy::is_forbidden_filter(&VAL, &PSWAP, [MockPool, XYKPool].into(), AllowSelected), true);
-        assert_eq!(LiquidityProxy::is_forbidden_filter(&XOR, &USDT, [MockPool, XYKPool].into(), AllowSelected), false);
+        assert_eq!(LiquidityProxy::is_forbidden_filter(&XOR, &VAL, &vec![MockPool, XYKPool], &AllowSelected), true);
+        assert_eq!(LiquidityProxy::is_forbidden_filter(&VAL, &PSWAP, &vec![MockPool, XYKPool], &AllowSelected), true);
+        assert_eq!(LiquidityProxy::is_forbidden_filter(&XOR, &USDT, &vec![MockPool, XYKPool], &AllowSelected), false);
 
-        assert_eq!(LiquidityProxy::is_forbidden_filter(&XOR, &VAL, [MockPool, MulticollateralBondingCurvePool].into(), ForbidSelected), true);
-        assert_eq!(LiquidityProxy::is_forbidden_filter(&VAL, &PSWAP, [MockPool, MulticollateralBondingCurvePool].into(), ForbidSelected), true);
-        assert_eq!(LiquidityProxy::is_forbidden_filter(&XOR, &USDT, [MockPool, MulticollateralBondingCurvePool].into(), ForbidSelected), false);
+        assert_eq!(LiquidityProxy::is_forbidden_filter(&XOR, &VAL, &vec![MockPool, MulticollateralBondingCurvePool], &ForbidSelected), true);
+        assert_eq!(LiquidityProxy::is_forbidden_filter(&VAL, &PSWAP, &vec![MockPool, MulticollateralBondingCurvePool], &ForbidSelected), true);
+        assert_eq!(LiquidityProxy::is_forbidden_filter(&XOR, &USDT, &vec![MockPool, MulticollateralBondingCurvePool], &ForbidSelected), false);
     });
 }
 

@@ -1653,7 +1653,7 @@ impl_runtime_apis! {
             selected_source_types: Vec<LiquiditySourceType>,
             filter_mode: FilterMode,
         ) -> Option<liquidity_proxy_runtime_api::SwapOutcomeInfo<Balance, AssetId>> {
-            if LiquidityProxy::is_forbidden_filter(&input_asset_id, &output_asset_id, selected_source_types.clone(), filter_mode.clone()) {
+            if LiquidityProxy::is_forbidden_filter(&input_asset_id, &output_asset_id, &selected_source_types, &filter_mode) {
                 return None;
             }
 
