@@ -967,6 +967,17 @@ impl bridge_multisig::Config for Runtime {
 
 parameter_types! {
     pub const EthNetworkId: u32 = 0;
+    pub const RemoveTemporaryPeerAccountId: AccountId = AccountId::new(hex!("614e20b93522be9874e48f1e18b9bf2dfd4cdc4dafc1887ca353d544c92526cc"));
+}
+
+#[cfg(not(feature = "private-net"))]
+parameter_types! {
+    pub const RemovePendingOutgoingRequestsAfter: BlockNumber = 1 * DAYS;
+}
+
+#[cfg(feature = "private-net")]
+parameter_types! {
+    pub const RemovePendingOutgoingRequestsAfter: BlockNumber = 30 * MINUTES;
 }
 
 pub type NetworkId = u32;
@@ -978,6 +989,8 @@ impl eth_bridge::Config for Runtime {
     type NetworkId = NetworkId;
     type GetEthNetworkId = EthNetworkId;
     type WeightInfo = eth_bridge::weights::WeightInfo<Runtime>;
+    type RemovePendingOutgoingRequestsAfter = RemovePendingOutgoingRequestsAfter;
+    type RemoveTemporaryPeerAccountId = RemoveTemporaryPeerAccountId;
 }
 
 #[cfg(feature = "private-net")]

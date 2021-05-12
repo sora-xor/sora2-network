@@ -1128,10 +1128,7 @@ fn testnet_genesis(
         bridge_multisig: Some(BridgeMultisigConfig {
             accounts: once((
                 eth_bridge_account_id.clone(),
-                bridge_multisig::MultisigAccount::new(
-                    initial_bridge_peers,
-                    Percent::from_parts(67),
-                ),
+                bridge_multisig::MultisigAccount::new(initial_bridge_peers),
             ))
             .collect(),
         }),
@@ -1731,10 +1728,7 @@ fn mainnet_genesis(
         bridge_multisig: Some(BridgeMultisigConfig {
             accounts: once((
                 eth_bridge_account_id.clone(),
-                bridge_multisig::MultisigAccount::new(
-                    initial_bridge_peers,
-                    Percent::from_parts(67),
-                ),
+                bridge_multisig::MultisigAccount::new(initial_bridge_peers),
             ))
             .collect(),
         }),
