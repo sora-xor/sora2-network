@@ -16,6 +16,7 @@ substrate-wasm-builder = "3.0.0"
 [dependencies]
 codec = { package = "parity-scale-codec", version = "2", default-features = false, features = ["derive", "chain-error"] }
 hex-literal = "0.3.1"
+log = { version = "0.4.14" }
 serde = { features = ['derive'], optional = true, version = '1.0.101' }
 common = { path = "../common", default-features = false }
 faucet = { path = "../pallets/faucet", default-features = false, optional = true }
@@ -43,7 +44,7 @@ assets-runtime-api = { path = "../pallets/assets/runtime-api", default-features 
 liquidity-proxy-runtime-api = { path = "../pallets/liquidity-proxy/runtime-api", default-features = false}
 eth-bridge = { path = "../pallets/eth-bridge", default-features = false }
 eth-bridge-runtime-api = { path = "../pallets/eth-bridge/runtime-api", default-features = false }
-bridge-multisig = { git = "https://github.com/soramitsu/sora2-frame-pallets.git", branch = "v3.0.0", package = "pallet-multisig", default-features = false }
+bridge-multisig = { git = "https://github.com/soramitsu/sora2-frame-pallets.git", branch = "v3.1.0", package = "pallet-multisig", default-features = false }
 farming-runtime-api = { path = "../pallets/farming/runtime-api", default-features = false}
 iroha-migration-runtime-api = { path = "../pallets/iroha-migration/runtime-api", default-features = false }
 pswap-distribution = { path = "../pallets/pswap-distribution", default-features = false }
