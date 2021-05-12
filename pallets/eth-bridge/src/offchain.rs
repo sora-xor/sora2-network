@@ -50,15 +50,21 @@ impl<T: Config> SignedTransactionData<T> {
         use frame_support::inherent::Extrinsic;
         let overarching_call: Call<T> = call.clone().into();
         let account_data = frame_system::Account::<T>::get(&account.id);
+        let nonce = if submitted_at.is_some() {
+            account_data.nonce - 1u32.into()
+        } else {
+            account_data.nonce
+        };
         let (call, signature) =
             <T as CreateSignedTransaction<LocalCall>>::create_transaction::<T::PeerId>(
                 <T as SendTransactionTypes<LocalCall>>::OverarchingCall::from(call),
                 account.public.clone(),
                 account.id.clone(),
-                account_data.nonce - 1u32.into(),
+                nonce,
             )?;
         let xt = <T as SendTransactionTypes<LocalCall>>::Extrinsic::new(call, Some(signature))?;
         let vec = xt.encode();
+        // TODO (optimize): consider skipping the hash calculation if the extrinsic weren't submitted.
         let ext_hash = H256(blake2_256(&vec));
         Some(Self::new(ext_hash, submitted_at, overarching_call))
     }

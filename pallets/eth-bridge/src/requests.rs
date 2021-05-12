@@ -30,9 +30,9 @@
 
 use crate::contract::{MethodId, FUNCTIONS, METHOD_ID_SIZE};
 use crate::{
-    get_bridge_account, types, Address, AssetIdOf, AssetKind, BridgeStatus, Config, Decoder, Error,
-    IncomingTransactionRequestKind, OffchainRequest, OutgoingRequest, Pallet, RequestStatus,
-    SignatureParams, Timepoint, WeightInfo,
+    get_bridge_account, types, Address, AssetIdOf, AssetKind, BridgeNetworkId, BridgeStatus,
+    BridgeTimepoint, Config, Decoder, Error, IncomingTransactionRequestKind, OffchainRequest,
+    OutgoingRequest, Pallet, RequestStatus, SignatureParams, Timepoint, WeightInfo,
 };
 use alloc::collections::BTreeSet;
 use alloc::string::String;
@@ -73,8 +73,8 @@ pub struct IncomingAddToken<T: Config> {
     pub author: T::AccountId,
     pub tx_hash: H256,
     pub at_height: u64,
-    pub timepoint: Timepoint<T>,
-    pub network_id: T::NetworkId,
+    pub timepoint: BridgeTimepoint<T>,
+    pub network_id: BridgeNetworkId<T>,
 }
 
 impl<T: Config> IncomingAddToken<T> {
@@ -111,8 +111,8 @@ pub struct IncomingChangePeers<T: Config> {
     pub author: T::AccountId,
     pub tx_hash: H256,
     pub at_height: u64,
-    pub timepoint: Timepoint<T>,
-    pub network_id: T::NetworkId,
+    pub timepoint: BridgeTimepoint<T>,
+    pub network_id: BridgeNetworkId<T>,
 }
 
 impl<T: Config> IncomingChangePeers<T> {
@@ -188,8 +188,8 @@ pub struct IncomingChangePeersCompat<T: Config> {
     pub author: T::AccountId,
     pub tx_hash: H256,
     pub at_height: u64,
-    pub timepoint: Timepoint<T>,
-    pub network_id: T::NetworkId,
+    pub timepoint: BridgeTimepoint<T>,
+    pub network_id: BridgeNetworkId<T>,
 }
 
 impl<T: Config> IncomingChangePeersCompat<T> {
@@ -260,8 +260,8 @@ pub struct IncomingTransfer<T: Config> {
     pub author: T::AccountId,
     pub tx_hash: H256,
     pub at_height: u64,
-    pub timepoint: Timepoint<T>,
-    pub network_id: T::NetworkId,
+    pub timepoint: BridgeTimepoint<T>,
+    pub network_id: BridgeNetworkId<T>,
     pub should_take_fee: bool,
 }
 
@@ -382,8 +382,8 @@ pub struct IncomingCancelOutgoingRequest<T: Config> {
     pub author: T::AccountId,
     pub tx_hash: H256,
     pub at_height: u64,
-    pub timepoint: Timepoint<T>,
-    pub network_id: T::NetworkId,
+    pub timepoint: BridgeTimepoint<T>,
+    pub network_id: BridgeNetworkId<T>,
 }
 
 impl<T: Config> IncomingCancelOutgoingRequest<T> {
@@ -460,8 +460,8 @@ pub struct IncomingMarkAsDoneRequest<T: Config> {
     pub initial_request_hash: H256,
     pub author: T::AccountId,
     pub at_height: u64,
-    pub timepoint: Timepoint<T>,
-    pub network_id: T::NetworkId,
+    pub timepoint: BridgeTimepoint<T>,
+    pub network_id: BridgeNetworkId<T>,
 }
 
 impl<T: Config> IncomingMarkAsDoneRequest<T> {
@@ -513,8 +513,8 @@ pub struct IncomingPrepareForMigration<T: Config> {
     pub author: T::AccountId,
     pub tx_hash: H256,
     pub at_height: u64,
-    pub timepoint: Timepoint<T>,
-    pub network_id: T::NetworkId,
+    pub timepoint: BridgeTimepoint<T>,
+    pub network_id: BridgeNetworkId<T>,
 }
 
 impl<T: Config> IncomingPrepareForMigration<T> {
@@ -556,8 +556,8 @@ pub struct IncomingMigrate<T: Config> {
     pub author: T::AccountId,
     pub tx_hash: H256,
     pub at_height: u64,
-    pub timepoint: Timepoint<T>,
-    pub network_id: T::NetworkId,
+    pub timepoint: BridgeTimepoint<T>,
+    pub network_id: BridgeNetworkId<T>,
 }
 
 impl<T: Config> IncomingMigrate<T> {
@@ -601,8 +601,8 @@ pub struct OutgoingTransfer<T: Config> {
     #[cfg_attr(feature = "std", serde(with = "string_serialization"))]
     pub amount: Balance,
     pub nonce: T::Index,
-    pub network_id: T::NetworkId,
-    pub timepoint: Timepoint<T>,
+    pub network_id: BridgeNetworkId<T>,
+    pub timepoint: BridgeTimepoint<T>,
 }
 
 impl<T: Config> OutgoingTransfer<T> {
@@ -779,8 +779,8 @@ pub struct OutgoingAddAsset<T: Config> {
     pub author: T::AccountId,
     pub asset_id: AssetIdOf<T>,
     pub nonce: T::Index,
-    pub network_id: T::NetworkId,
-    pub timepoint: Timepoint<T>,
+    pub network_id: BridgeNetworkId<T>,
+    pub timepoint: BridgeTimepoint<T>,
 }
 
 impl<T: Config> OutgoingAddAsset<T> {
@@ -884,8 +884,8 @@ pub struct OutgoingAddToken<T: Config> {
     pub name: String,
     pub decimals: u8,
     pub nonce: T::Index,
-    pub network_id: T::NetworkId,
-    pub timepoint: Timepoint<T>,
+    pub network_id: BridgeNetworkId<T>,
+    pub timepoint: BridgeTimepoint<T>,
 }
 
 #[derive(Default)]
@@ -1049,8 +1049,8 @@ pub struct OutgoingAddPeer<T: Config> {
     pub peer_address: Address,
     pub peer_account_id: T::AccountId,
     pub nonce: T::Index,
-    pub network_id: T::NetworkId,
-    pub timepoint: Timepoint<T>,
+    pub network_id: BridgeNetworkId<T>,
+    pub timepoint: BridgeTimepoint<T>,
 }
 
 impl<T: Config> OutgoingAddPeer<T> {
@@ -1129,8 +1129,8 @@ pub struct OutgoingAddPeerCompat<T: Config> {
     pub peer_address: Address,
     pub peer_account_id: T::AccountId,
     pub nonce: T::Index,
-    pub network_id: T::NetworkId,
-    pub timepoint: Timepoint<T>,
+    pub network_id: BridgeNetworkId<T>,
+    pub timepoint: BridgeTimepoint<T>,
 }
 
 impl<T: Config> OutgoingAddPeerCompat<T> {
@@ -1193,8 +1193,8 @@ pub struct OutgoingRemovePeer<T: Config> {
     pub peer_account_id: T::AccountId,
     pub peer_address: Address,
     pub nonce: T::Index,
-    pub network_id: T::NetworkId,
-    pub timepoint: Timepoint<T>,
+    pub network_id: BridgeNetworkId<T>,
+    pub timepoint: BridgeTimepoint<T>,
 }
 
 impl<T: Config> OutgoingRemovePeer<T> {
@@ -1277,8 +1277,8 @@ pub struct OutgoingRemovePeerCompat<T: Config> {
     pub peer_account_id: T::AccountId,
     pub peer_address: Address,
     pub nonce: T::Index,
-    pub network_id: T::NetworkId,
-    pub timepoint: Timepoint<T>,
+    pub network_id: BridgeNetworkId<T>,
+    pub timepoint: BridgeTimepoint<T>,
 }
 
 impl<T: Config> OutgoingRemovePeerCompat<T> {
@@ -1397,8 +1397,8 @@ impl OutgoingRemovePeerEncoded {
 pub struct OutgoingPrepareForMigration<T: Config> {
     pub author: T::AccountId,
     pub nonce: T::Index,
-    pub network_id: T::NetworkId,
-    pub timepoint: Timepoint<T>,
+    pub network_id: BridgeNetworkId<T>,
+    pub timepoint: BridgeTimepoint<T>,
 }
 
 impl<T: Config> OutgoingPrepareForMigration<T> {
@@ -1479,8 +1479,8 @@ pub struct OutgoingMigrate<T: Config> {
     pub new_contract_address: Address,
     pub erc20_native_tokens: Vec<Address>,
     pub nonce: T::Index,
-    pub network_id: T::NetworkId,
-    pub timepoint: Timepoint<T>,
+    pub network_id: BridgeNetworkId<T>,
+    pub timepoint: BridgeTimepoint<T>,
 }
 
 impl<T: Config> OutgoingMigrate<T> {

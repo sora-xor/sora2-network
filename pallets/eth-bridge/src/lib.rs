@@ -197,6 +197,7 @@ pub const OFFCHAIN_TRANSACTION_WEIGHT_LIMIT: u64 = 10_000_000_000_000_000u64;
 
 type AssetIdOf<T> = <T as assets::Config>::AssetId;
 type Timepoint<T> = bridge_multisig::Timepoint<<T as frame_system::Config>::BlockNumber>;
+type BridgeTimepoint<T> = Timepoint<T>;
 type BridgeNetworkId<T> = <T as Config>::NetworkId;
 
 /// Cryptography used by off-chain workers.
@@ -808,9 +809,9 @@ impl<T: Config> LoadIncomingRequest<T> {
 pub struct LoadIncomingTransactionRequest<T: Config> {
     author: T::AccountId,
     hash: H256,
-    timepoint: Timepoint<T>,
+    timepoint: BridgeTimepoint<T>,
     kind: IncomingTransactionRequestKind,
-    network_id: T::NetworkId,
+    network_id: BridgeNetworkId<T>,
 }
 
 impl<T: Config> LoadIncomingTransactionRequest<T> {
@@ -838,9 +839,9 @@ impl<T: Config> LoadIncomingTransactionRequest<T> {
 pub struct LoadIncomingMetaRequest<T: Config> {
     author: T::AccountId,
     hash: H256,
-    timepoint: Timepoint<T>,
+    timepoint: BridgeTimepoint<T>,
     kind: IncomingMetaRequestKind,
-    network_id: T::NetworkId,
+    network_id: BridgeNetworkId<T>,
 }
 
 impl<T: Config> LoadIncomingMetaRequest<T> {
@@ -1705,7 +1706,7 @@ pub mod pallet {
             ocw_public: ecdsa::Public,
             hash: H256,
             signature_params: SignatureParams,
-            network_id: T::NetworkId,
+            network_id: BridgeNetworkId<T>,
         ) -> DispatchResultWithPostInfo {
             debug::debug!("called approve_request");
             let author = ensure_signed(origin)?;
@@ -2005,31 +2006,38 @@ pub mod pallet {
     #[pallet::storage]
     #[pallet::getter(fn requests_queue)]
     pub type RequestsQueue<T: Config> =
-        StorageMap<_, Twox64Concat, T::NetworkId, Vec<H256>, ValueQuery>;
+        StorageMap<_, Twox64Concat, BridgeNetworkId<T>, Vec<H256>, ValueQuery>;
 
     /// Registered requests.
     #[pallet::storage]
     #[pallet::getter(fn request)]
     pub type Requests<T: Config> =
-        StorageDoubleMap<_, Twox64Concat, T::NetworkId, Identity, H256, OffchainRequest<T>>;
+        StorageDoubleMap<_, Twox64Concat, BridgeNetworkId<T>, Identity, H256, OffchainRequest<T>>;
 
     /// Used to identify an incoming request by the corresponding load request.
     #[pallet::storage]
     #[pallet::getter(fn load_to_incoming_request_hash)]
     pub type LoadToIncomingRequestHash<T: Config> =
-        StorageDoubleMap<_, Twox64Concat, T::NetworkId, Identity, H256, H256, ValueQuery>;
+        StorageDoubleMap<_, Twox64Concat, BridgeNetworkId<T>, Identity, H256, H256, ValueQuery>;
 
     /// Requests statuses.
     #[pallet::storage]
     #[pallet::getter(fn request_status)]
     pub type RequestStatuses<T: Config> =
-        StorageDoubleMap<_, Twox64Concat, T::NetworkId, Identity, H256, RequestStatus>;
+        StorageDoubleMap<_, Twox64Concat, BridgeNetworkId<T>, Identity, H256, RequestStatus>;
 
     /// Requests submission height map (on substrate).
     #[pallet::storage]
     #[pallet::getter(fn request_submission_height)]
-    pub type RequestSubmissionHeight<T: Config> =
-        StorageDoubleMap<_, Twox64Concat, T::NetworkId, Identity, H256, T::BlockNumber, ValueQuery>;
+    pub type RequestSubmissionHeight<T: Config> = StorageDoubleMap<
+        _,
+        Twox64Concat,
+        BridgeNetworkId<T>,
+        Identity,
+        H256,
+        T::BlockNumber,
+        ValueQuery,
+    >;
 
     /// Outgoing requests approvals.
     #[pallet::storage]
@@ -2037,7 +2045,7 @@ pub mod pallet {
     pub(super) type RequestApprovals<T: Config> = StorageDoubleMap<
         _,
         Twox64Concat,
-        T::NetworkId,
+        BridgeNetworkId<T>,
         Identity,
         H256,
         BTreeSet<SignatureParams>,
@@ -2048,13 +2056,13 @@ pub mod pallet {
     #[pallet::storage]
     #[pallet::getter(fn account_requests)]
     pub(super) type AccountRequests<T: Config> =
-        StorageMap<_, Blake2_128Concat, T::AccountId, Vec<(T::NetworkId, H256)>, ValueQuery>;
+        StorageMap<_, Blake2_128Concat, T::AccountId, Vec<(BridgeNetworkId<T>, H256)>, ValueQuery>;
 
     /// Registered asset kind.
     #[pallet::storage]
     #[pallet::getter(fn registered_asset)]
     pub(super) type RegisteredAsset<T: Config> =
-        StorageDoubleMap<_, Twox64Concat, T::NetworkId, Identity, T::AssetId, AssetKind>;
+        StorageDoubleMap<_, Twox64Concat, BridgeNetworkId<T>, Identity, T::AssetId, AssetKind>;
 
     /// Precision (decimals) of a registered sidechain asset. Should be the same as in the ERC-20
     /// contract.
@@ -2063,7 +2071,7 @@ pub mod pallet {
     pub(super) type SidechainAssetPrecision<T: Config> = StorageDoubleMap<
         _,
         Twox64Concat,
-        T::NetworkId,
+        BridgeNetworkId<T>,
         Identity,
         T::AssetId,
         BalancePrecision,
@@ -2073,26 +2081,38 @@ pub mod pallet {
     /// Registered token `AssetId` on Thischain.
     #[pallet::storage]
     #[pallet::getter(fn registered_sidechain_asset)]
-    pub(super) type RegisteredSidechainAsset<T: Config> =
-        StorageDoubleMap<_, Twox64Concat, T::NetworkId, Blake2_128Concat, Address, T::AssetId>;
+    pub(super) type RegisteredSidechainAsset<T: Config> = StorageDoubleMap<
+        _,
+        Twox64Concat,
+        BridgeNetworkId<T>,
+        Blake2_128Concat,
+        Address,
+        T::AssetId,
+    >;
 
     /// Registered asset address on Sidechain.
     #[pallet::storage]
     #[pallet::getter(fn registered_sidechain_token)]
-    pub(super) type RegisteredSidechainToken<T: Config> =
-        StorageDoubleMap<_, Twox64Concat, T::NetworkId, Blake2_128Concat, T::AssetId, Address>;
+    pub(super) type RegisteredSidechainToken<T: Config> = StorageDoubleMap<
+        _,
+        Twox64Concat,
+        BridgeNetworkId<T>,
+        Blake2_128Concat,
+        T::AssetId,
+        Address,
+    >;
 
     /// Network peers set.
     #[pallet::storage]
     #[pallet::getter(fn peers)]
     pub(super) type Peers<T: Config> =
-        StorageMap<_, Twox64Concat, T::NetworkId, BTreeSet<T::AccountId>, ValueQuery>;
+        StorageMap<_, Twox64Concat, BridgeNetworkId<T>, BTreeSet<T::AccountId>, ValueQuery>;
 
     /// Network pending (being added/removed) peer.
     #[pallet::storage]
     #[pallet::getter(fn pending_peer)]
     pub(super) type PendingPeer<T: Config> =
-        StorageMap<_, Twox64Concat, T::NetworkId, T::AccountId>;
+        StorageMap<_, Twox64Concat, BridgeNetworkId<T>, T::AccountId>;
 
     /// Used for compatibility with XOR and VAL contracts.
     #[pallet::storage]
@@ -2104,7 +2124,7 @@ pub mod pallet {
     pub(super) type PeerAccountId<T: Config> = StorageDoubleMap<
         _,
         Twox64Concat,
-        T::NetworkId,
+        BridgeNetworkId<T>,
         Blake2_128Concat,
         Address,
         T::AccountId,
@@ -2117,7 +2137,7 @@ pub mod pallet {
     pub(super) type PeerAddress<T: Config> = StorageDoubleMap<
         _,
         Twox64Concat,
-        T::NetworkId,
+        BridgeNetworkId<T>,
         Blake2_128Concat,
         T::AccountId,
         Address,
@@ -2128,7 +2148,7 @@ pub mod pallet {
     #[pallet::storage]
     #[pallet::getter(fn bridge_account)]
     pub(super) type BridgeAccount<T: Config> =
-        StorageMap<_, Twox64Concat, T::NetworkId, T::AccountId>;
+        StorageMap<_, Twox64Concat, BridgeNetworkId<T>, T::AccountId>;
 
     /// Thischain authority account.
     #[pallet::storage]
@@ -2139,13 +2159,13 @@ pub mod pallet {
     #[pallet::storage]
     #[pallet::getter(fn bridge_contract_status)]
     pub(super) type BridgeStatuses<T: Config> =
-        StorageMap<_, Twox64Concat, T::NetworkId, BridgeStatus>;
+        StorageMap<_, Twox64Concat, BridgeNetworkId<T>, BridgeStatus>;
 
     /// Smart-contract address on Sidechain.
     #[pallet::storage]
     #[pallet::getter(fn bridge_contract_address)]
     pub(super) type BridgeContractAddress<T: Config> =
-        StorageMap<_, Twox64Concat, T::NetworkId, Address, ValueQuery>;
+        StorageMap<_, Twox64Concat, BridgeNetworkId<T>, Address, ValueQuery>;
 
     /// Sora XOR master contract address.
     #[pallet::storage]
@@ -2159,7 +2179,7 @@ pub mod pallet {
 
     /// Next Network ID counter.
     #[pallet::storage]
-    pub(super) type NextNetworkId<T: Config> = StorageValue<_, T::NetworkId, ValueQuery>;
+    pub(super) type NextNetworkId<T: Config> = StorageValue<_, BridgeNetworkId<T>, ValueQuery>;
 
     #[pallet::genesis_config]
     pub struct GenesisConfig<T: Config> {
@@ -2994,11 +3014,11 @@ impl<T: Config> Pallet<T> {
     /// Retrieves latest needed information about networks and handles corresponding
     /// requests queues.
     ///
-    /// At first, it loads current Sidechain height and current finalized Thischain height.
+    /// At first, it loads current Sidechain height.
     /// Then it handles each request in the requests queue if it was submitted at least at
     /// the finalized height. The same is done with incoming requests queue. All handled requests
     /// are added to local storage to not be handled twice by the off-chain worker.
-    fn handle_network(network_id: T::NetworkId)
+    fn handle_network(network_id: T::NetworkId, substrate_finalized_height: T::BlockNumber)
     where
         T: CreateSignedTransaction<<T as Config>::Call>,
     {
@@ -3016,29 +3036,6 @@ impl<T: Config> Pallet<T> {
         };
         s_eth_height.set(&current_eth_height);
         let s_handled_requests = StorageValueRef::persistent(b"eth-bridge-ocw::handled-request");
-
-        let substrate_finalized_block = match Self::load_substrate_finalized_block() {
-            Ok(v) => v,
-            Err(e) => {
-                debug::info!(
-                    "Failed to load substrate finalized block ({:?}). Skipping off-chain procedure.",
-                    e
-                );
-                return;
-            }
-        };
-        let substrate_finalized_height = match Self::handle_substrate_finalized_block(
-            substrate_finalized_block,
-        ) {
-            Ok(v) => v,
-            Err(e) => {
-                debug::info!(
-                        "Failed to handle substrate finalized block ({:?}). Skipping off-chain procedure.",
-                        e
-                    );
-                return;
-            }
-        };
 
         let string = format!("eth-bridge-ocw::eth-to-handle-from-height-{:?}", network_id);
         let s_eth_to_handle_from_height = StorageValueRef::persistent(string.as_bytes());
@@ -3123,12 +3120,36 @@ impl<T: Config> Pallet<T> {
         T: CreateSignedTransaction<<T as Config>::Call>,
     {
         let s_networks_ids = StorageValueRef::persistent(STORAGE_NETWORK_IDS_KEY);
+
+        let substrate_finalized_block = match Self::load_substrate_finalized_block() {
+            Ok(v) => v,
+            Err(e) => {
+                debug::info!(
+                    "Failed to load substrate finalized block ({:?}). Skipping off-chain procedure.",
+                    e
+                );
+                return;
+            }
+        };
+        let substrate_finalized_height = match Self::handle_substrate_finalized_block(
+            substrate_finalized_block,
+        ) {
+            Ok(v) => v,
+            Err(e) => {
+                debug::info!(
+                    "Failed to handle substrate finalized block ({:?}). Skipping off-chain procedure.",
+                    e
+                );
+                return;
+            }
+        };
+
         let network_ids = s_networks_ids
             .get::<BTreeSet<T::NetworkId>>()
             .flatten()
             .unwrap_or_default();
         for network_id in network_ids {
-            Self::handle_network(network_id);
+            Self::handle_network(network_id, substrate_finalized_height);
         }
     }
 
