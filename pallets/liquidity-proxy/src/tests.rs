@@ -34,7 +34,7 @@ use common::prelude::fixnum::ops::CheckedSub;
 use common::prelude::{Balance, SwapAmount};
 use common::{
     balance, fixed, fixed_wrapper, FilterMode, Fixed, LiquiditySourceFilter, LiquiditySourceId,
-    LiquiditySourceType, RewardReason, DOT, KSM, PSWAP, VAL, XOR,
+    LiquiditySourceType, RewardReason, DAI, DOT, ETH, KSM, PSWAP, USDT, VAL, XOR,
 };
 use core::convert::TryInto;
 use frame_support::assert_noop;
@@ -2254,4 +2254,212 @@ fn test_smart_split_error_handling_works() {
         SwapAmount::with_desired_output(balance!(5000), balance!(1000000)),
         mock_liquidity_source::Error::<Runtime, mock_liquidity_source::Instance1>::InsufficientLiquidity.into(),
     );
+}
+
+#[test]
+#[rustfmt::skip]
+fn selecting_xyk_only_filter_is_forbidden() {
+    let mut ext = ExtBuilder::default().build();
+    ext.execute_with(|| {
+        use LiquiditySourceType::*;
+        use FilterMode::*;
+
+        // xyk only selection, base case
+        assert_eq!(LiquidityProxy::is_forbidden_filter(&XOR, &VAL, [XYKPool].into(), AllowSelected), true);
+        assert_eq!(LiquidityProxy::is_forbidden_filter(&XOR, &PSWAP, [XYKPool].into(), AllowSelected), true);
+        assert_eq!(LiquidityProxy::is_forbidden_filter(&XOR, &DAI, [XYKPool].into(), AllowSelected), true);
+        assert_eq!(LiquidityProxy::is_forbidden_filter(&XOR, &ETH, [XYKPool].into(), AllowSelected), true);
+        assert_eq!(LiquidityProxy::is_forbidden_filter(&VAL, &XOR, [XYKPool].into(), AllowSelected), true);
+        assert_eq!(LiquidityProxy::is_forbidden_filter(&PSWAP, &XOR, [XYKPool].into(), AllowSelected), true);
+        assert_eq!(LiquidityProxy::is_forbidden_filter(&DAI, &XOR, [XYKPool].into(), AllowSelected), true);
+        assert_eq!(LiquidityProxy::is_forbidden_filter(&ETH, &XOR, [XYKPool].into(), AllowSelected), true);
+
+        // xyk only selection, indirect swaps
+        assert_eq!(LiquidityProxy::is_forbidden_filter(&DAI, &PSWAP, [XYKPool].into(), AllowSelected), true);
+        assert_eq!(LiquidityProxy::is_forbidden_filter(&PSWAP, &VAL, [XYKPool].into(), AllowSelected), true);
+        assert_eq!(LiquidityProxy::is_forbidden_filter(&USDT, &VAL, [XYKPool].into(), AllowSelected), true);
+
+        // xyk only selection, non-reserve assets
+        assert_eq!(LiquidityProxy::is_forbidden_filter(&XOR, &USDT, [XYKPool].into(), AllowSelected), false);
+        assert_eq!(LiquidityProxy::is_forbidden_filter(&USDT, &XOR, [XYKPool].into(), AllowSelected), false);
+
+        // xyk only selection, base case
+        assert_eq!(LiquidityProxy::is_forbidden_filter(&XOR, &VAL, [MulticollateralBondingCurvePool].into(), ForbidSelected), true);
+        assert_eq!(LiquidityProxy::is_forbidden_filter(&XOR, &PSWAP, [MulticollateralBondingCurvePool].into(), ForbidSelected), true);
+        assert_eq!(LiquidityProxy::is_forbidden_filter(&XOR, &DAI, [MulticollateralBondingCurvePool].into(), ForbidSelected), true);
+        assert_eq!(LiquidityProxy::is_forbidden_filter(&XOR, &ETH, [MulticollateralBondingCurvePool].into(), ForbidSelected), true);
+        assert_eq!(LiquidityProxy::is_forbidden_filter(&VAL, &XOR, [MulticollateralBondingCurvePool].into(), ForbidSelected), true);
+        assert_eq!(LiquidityProxy::is_forbidden_filter(&PSWAP, &XOR, [MulticollateralBondingCurvePool].into(), ForbidSelected), true);
+        assert_eq!(LiquidityProxy::is_forbidden_filter(&DAI, &XOR, [MulticollateralBondingCurvePool].into(), ForbidSelected), true);
+        assert_eq!(LiquidityProxy::is_forbidden_filter(&ETH, &XOR, [MulticollateralBondingCurvePool].into(), ForbidSelected), true);
+
+        // xyk only selection, indirect swaps
+        assert_eq!(LiquidityProxy::is_forbidden_filter(&DAI, &PSWAP, [MulticollateralBondingCurvePool].into(), ForbidSelected), true);
+        assert_eq!(LiquidityProxy::is_forbidden_filter(&PSWAP, &VAL, [MulticollateralBondingCurvePool].into(), ForbidSelected), true);
+        assert_eq!(LiquidityProxy::is_forbidden_filter(&USDT, &VAL, [MulticollateralBondingCurvePool].into(), ForbidSelected), true);
+        
+        // xyk only selection, non-reserve assets
+        assert_eq!(LiquidityProxy::is_forbidden_filter(&XOR, &USDT, [MulticollateralBondingCurvePool].into(), ForbidSelected), false);
+        assert_eq!(LiquidityProxy::is_forbidden_filter(&USDT, &XOR, [MulticollateralBondingCurvePool].into(), ForbidSelected), false);
+
+        // smart selection, base case
+        assert_eq!(LiquidityProxy::is_forbidden_filter(&XOR, &VAL, [].into(), Disabled), false);
+        assert_eq!(LiquidityProxy::is_forbidden_filter(&XOR, &PSWAP, [].into(), Disabled), false);
+        assert_eq!(LiquidityProxy::is_forbidden_filter(&XOR, &DAI, [].into(), Disabled), false);
+        assert_eq!(LiquidityProxy::is_forbidden_filter(&XOR, &ETH, [].into(), Disabled), false);
+        assert_eq!(LiquidityProxy::is_forbidden_filter(&VAL, &XOR, [].into(), Disabled), false);
+        assert_eq!(LiquidityProxy::is_forbidden_filter(&PSWAP, &XOR, [].into(), Disabled), false);
+        assert_eq!(LiquidityProxy::is_forbidden_filter(&DAI, &XOR, [].into(), Disabled), false);
+        assert_eq!(LiquidityProxy::is_forbidden_filter(&XOR, &DAI, [].into(), Disabled), false);
+
+        // smart selection, indirect swaps
+        assert_eq!(LiquidityProxy::is_forbidden_filter(&DAI, &PSWAP, [].into(), Disabled), false);
+        assert_eq!(LiquidityProxy::is_forbidden_filter(&PSWAP, &VAL, [].into(), Disabled), false);
+        assert_eq!(LiquidityProxy::is_forbidden_filter(&USDT, &VAL, [].into(), Disabled), false);
+
+        // smart selection, non-reserve assets
+        assert_eq!(LiquidityProxy::is_forbidden_filter(&XOR, &USDT, [].into(), Disabled), false);
+        assert_eq!(LiquidityProxy::is_forbidden_filter(&USDT, &XOR, [].into(), Disabled), false);
+
+        // tbc only selection, base case
+        assert_eq!(LiquidityProxy::is_forbidden_filter(&XOR, &VAL, [MulticollateralBondingCurvePool].into(), AllowSelected), false);
+        assert_eq!(LiquidityProxy::is_forbidden_filter(&XOR, &PSWAP, [MulticollateralBondingCurvePool].into(), AllowSelected), false);
+        assert_eq!(LiquidityProxy::is_forbidden_filter(&XOR, &DAI, [MulticollateralBondingCurvePool].into(), AllowSelected), false);
+        assert_eq!(LiquidityProxy::is_forbidden_filter(&XOR, &ETH, [MulticollateralBondingCurvePool].into(), AllowSelected), false);
+        assert_eq!(LiquidityProxy::is_forbidden_filter(&VAL, &XOR, [MulticollateralBondingCurvePool].into(), AllowSelected), false);
+        assert_eq!(LiquidityProxy::is_forbidden_filter(&PSWAP, &XOR, [MulticollateralBondingCurvePool].into(), AllowSelected), false);
+        assert_eq!(LiquidityProxy::is_forbidden_filter(&DAI, &XOR, [MulticollateralBondingCurvePool].into(), AllowSelected), false);
+        assert_eq!(LiquidityProxy::is_forbidden_filter(&ETH, &XOR, [MulticollateralBondingCurvePool].into(), AllowSelected), false);
+
+        // tbc only selection, indirect swaps
+        assert_eq!(LiquidityProxy::is_forbidden_filter(&DAI, &PSWAP, [].into(), Disabled), false);
+        assert_eq!(LiquidityProxy::is_forbidden_filter(&PSWAP, &VAL, [].into(), Disabled), false);
+        assert_eq!(LiquidityProxy::is_forbidden_filter(&USDT, &VAL, [].into(), Disabled), false);
+
+        // tbc only selection, non-reserve assets
+        assert_eq!(LiquidityProxy::is_forbidden_filter(&XOR, &USDT, [MulticollateralBondingCurvePool].into(), AllowSelected), false);
+        assert_eq!(LiquidityProxy::is_forbidden_filter(&USDT, &XOR, [MulticollateralBondingCurvePool].into(), AllowSelected), false);
+
+        // hack cases with unavailable sources
+        assert_eq!(LiquidityProxy::is_forbidden_filter(&XOR, &VAL, [MockPool, XYKPool].into(), AllowSelected), true);
+        assert_eq!(LiquidityProxy::is_forbidden_filter(&VAL, &PSWAP, [MockPool, XYKPool].into(), AllowSelected), true);
+        assert_eq!(LiquidityProxy::is_forbidden_filter(&XOR, &USDT, [MockPool, XYKPool].into(), AllowSelected), false);
+
+        assert_eq!(LiquidityProxy::is_forbidden_filter(&XOR, &VAL, [MockPool, MulticollateralBondingCurvePool].into(), ForbidSelected), true);
+        assert_eq!(LiquidityProxy::is_forbidden_filter(&VAL, &PSWAP, [MockPool, MulticollateralBondingCurvePool].into(), ForbidSelected), true);
+        assert_eq!(LiquidityProxy::is_forbidden_filter(&XOR, &USDT, [MockPool, MulticollateralBondingCurvePool].into(), ForbidSelected), false);
+    });
+}
+
+#[test]
+#[rustfmt::skip]
+fn test_list_enabled_sources_for_path_with_xyk_forbidden_1() {
+    let mut ext = ExtBuilder::default().build();
+    ext.execute_with(|| {
+        use LiquiditySourceType::*;
+        TradingPair::register(Origin::signed(alice()), 0, XOR, VAL).expect("failed to register pair");
+        TradingPair::register(Origin::signed(alice()), 0, XOR, PSWAP).expect("failed to register pair");
+        TradingPair::register(Origin::signed(alice()), 0, XOR, USDT).expect("failed to register pair");
+        TradingPair::enable_source_for_trading_pair(&0, &XOR, &PSWAP, XYKPool).expect("failed to enable source");
+        TradingPair::enable_source_for_trading_pair(&0, &XOR, &USDT, XYKPool).expect("failed to enable source");
+        let query_a = LiquidityProxy::list_enabled_sources_for_path_with_xyk_forbidden(0, XOR, VAL);
+        let query_b = LiquidityProxy::list_enabled_sources_for_path_with_xyk_forbidden(0, VAL, XOR);
+        let query_c = LiquidityProxy::list_enabled_sources_for_path_with_xyk_forbidden(0, XOR, PSWAP);
+        let query_d = LiquidityProxy::list_enabled_sources_for_path_with_xyk_forbidden(0, PSWAP, XOR);
+        let query_e = LiquidityProxy::list_enabled_sources_for_path_with_xyk_forbidden(0, XOR, USDT);
+        let query_f = LiquidityProxy::list_enabled_sources_for_path_with_xyk_forbidden(0, USDT, XOR);
+        let query_g = LiquidityProxy::list_enabled_sources_for_path_with_xyk_forbidden(0, PSWAP, USDT);
+        let query_h = LiquidityProxy::list_enabled_sources_for_path_with_xyk_forbidden(0, USDT, VAL);
+        
+        assert_eq!(query_a.unwrap_err(), Error::<Runtime>::UnavailableExchangePath.into());
+        assert_eq!(query_b.unwrap_err(), Error::<Runtime>::UnavailableExchangePath.into());
+        assert_eq!(query_c.unwrap(), vec![]);
+        assert_eq!(query_d.unwrap(), vec![]);
+        assert_eq!(query_e.unwrap(), vec![XYKPool]);
+        assert_eq!(query_f.unwrap(), vec![XYKPool]);
+        assert_eq!(query_g.unwrap(), vec![]);
+        assert_eq!(query_h.unwrap_err(), Error::<Runtime>::UnavailableExchangePath.into());
+    });
+}
+
+#[test]
+#[rustfmt::skip]
+fn test_list_enabled_sources_for_path_with_xyk_forbidden_2() {
+    let mut ext = ExtBuilder::default().build();
+    ext.execute_with(|| {
+        use LiquiditySourceType::*;
+        TradingPair::register(Origin::signed(alice()), 0, XOR, VAL).expect("failed to register pair");
+        TradingPair::register(Origin::signed(alice()), 0, XOR, PSWAP).expect("failed to register pair");
+        TradingPair::enable_source_for_trading_pair(&0, &XOR, &VAL, MulticollateralBondingCurvePool).expect("failed to enable source");
+        TradingPair::enable_source_for_trading_pair(&0, &XOR, &PSWAP, XYKPool).expect("failed to enable source");
+        let query_a = LiquidityProxy::list_enabled_sources_for_path_with_xyk_forbidden(0, XOR, VAL);
+        let query_b = LiquidityProxy::list_enabled_sources_for_path_with_xyk_forbidden(0, VAL, XOR);
+        let query_c = LiquidityProxy::list_enabled_sources_for_path_with_xyk_forbidden(0, XOR, PSWAP);
+        let query_d = LiquidityProxy::list_enabled_sources_for_path_with_xyk_forbidden(0, PSWAP, XOR);
+        let query_e = LiquidityProxy::list_enabled_sources_for_path_with_xyk_forbidden(0, VAL, PSWAP);
+        let query_f = LiquidityProxy::list_enabled_sources_for_path_with_xyk_forbidden(0, PSWAP, VAL);
+        assert_eq!(query_a.unwrap(), vec![MulticollateralBondingCurvePool]);
+        assert_eq!(query_b.unwrap(), vec![MulticollateralBondingCurvePool]);
+        assert_eq!(query_c.unwrap(), vec![]);
+        assert_eq!(query_d.unwrap(), vec![]);
+        assert_eq!(query_e.unwrap(), vec![MulticollateralBondingCurvePool]);
+        assert_eq!(query_f.unwrap(), vec![MulticollateralBondingCurvePool]);
+    });
+}
+
+#[test]
+#[rustfmt::skip]
+fn test_list_enabled_sources_for_path_with_xyk_forbidden_3() {
+    let mut ext = ExtBuilder::default().build();
+    ext.execute_with(|| {
+        use LiquiditySourceType::*;
+        TradingPair::register(Origin::signed(alice()), 0, XOR, VAL).expect("failed to register pair");
+        TradingPair::register(Origin::signed(alice()), 0, XOR, PSWAP).expect("failed to register pair");
+        TradingPair::enable_source_for_trading_pair(&0, &XOR, &VAL, MulticollateralBondingCurvePool).expect("failed to enable source");
+        TradingPair::enable_source_for_trading_pair(&0, &XOR, &PSWAP, XYKPool).expect("failed to enable source");
+        TradingPair::enable_source_for_trading_pair(&0, &XOR, &PSWAP, MulticollateralBondingCurvePool).expect("failed to enable source");
+        let query_a = LiquidityProxy::list_enabled_sources_for_path_with_xyk_forbidden(0, XOR, VAL);
+        let query_b = LiquidityProxy::list_enabled_sources_for_path_with_xyk_forbidden(0, VAL, XOR);
+        let query_c = LiquidityProxy::list_enabled_sources_for_path_with_xyk_forbidden(0, XOR, PSWAP);
+        let query_d = LiquidityProxy::list_enabled_sources_for_path_with_xyk_forbidden(0, PSWAP, XOR);
+        let query_e = LiquidityProxy::list_enabled_sources_for_path_with_xyk_forbidden(0, VAL, PSWAP);
+        let query_f = LiquidityProxy::list_enabled_sources_for_path_with_xyk_forbidden(0, PSWAP, VAL);
+        assert_eq!(query_a.unwrap(), vec![MulticollateralBondingCurvePool]);
+        assert_eq!(query_b.unwrap(), vec![MulticollateralBondingCurvePool]);
+        assert_eq!(query_c.unwrap(), vec![MulticollateralBondingCurvePool]);
+        assert_eq!(query_d.unwrap(), vec![MulticollateralBondingCurvePool]);
+        assert_eq!(query_e.unwrap(), vec![MulticollateralBondingCurvePool]);
+        assert_eq!(query_f.unwrap(), vec![MulticollateralBondingCurvePool]);
+    });
+}
+
+#[test]
+#[rustfmt::skip]
+fn test_list_enabled_sources_for_path_with_xyk_forbidden_4() {
+    let mut ext = ExtBuilder::default().build();
+    ext.execute_with(|| {
+        use LiquiditySourceType::*;
+        TradingPair::register(Origin::signed(alice()), 0, XOR, VAL).expect("failed to register pair");
+        TradingPair::register(Origin::signed(alice()), 0, XOR, PSWAP).expect("failed to register pair");
+        TradingPair::register(Origin::signed(alice()), 0, XOR, USDT).expect("failed to register pair");
+        
+        TradingPair::enable_source_for_trading_pair(&0, &XOR, &VAL, XYKPool).expect("failed to enable source");
+        TradingPair::enable_source_for_trading_pair(&0, &XOR, &VAL, MulticollateralBondingCurvePool).expect("failed to enable source");
+        TradingPair::enable_source_for_trading_pair(&0, &XOR, &VAL, MockPool2).expect("failed to enable source");
+        TradingPair::enable_source_for_trading_pair(&0, &XOR, &PSWAP, XYKPool).expect("failed to enable source");
+        TradingPair::enable_source_for_trading_pair(&0, &XOR, &PSWAP, MulticollateralBondingCurvePool).expect("failed to enable source");
+        TradingPair::enable_source_for_trading_pair(&0, &XOR, &PSWAP, MockPool3).expect("failed to enable source");
+        let query_a = LiquidityProxy::list_enabled_sources_for_path_with_xyk_forbidden(0, XOR, VAL);
+        let query_b = LiquidityProxy::list_enabled_sources_for_path_with_xyk_forbidden(0, VAL, XOR);
+        let query_c = LiquidityProxy::list_enabled_sources_for_path_with_xyk_forbidden(0, XOR, PSWAP);
+        let query_d = LiquidityProxy::list_enabled_sources_for_path_with_xyk_forbidden(0, PSWAP, XOR);
+        let query_e = LiquidityProxy::list_enabled_sources_for_path_with_xyk_forbidden(0, VAL, PSWAP);
+        let query_f = LiquidityProxy::list_enabled_sources_for_path_with_xyk_forbidden(0, PSWAP, VAL);
+        assert_eq!(query_a.unwrap(), vec![MulticollateralBondingCurvePool, MockPool2]);
+        assert_eq!(query_b.unwrap(), vec![MulticollateralBondingCurvePool, MockPool2]);
+        assert_eq!(query_c.unwrap(), vec![MulticollateralBondingCurvePool, MockPool3]);
+        assert_eq!(query_d.unwrap(), vec![MulticollateralBondingCurvePool, MockPool3]);
+        assert_eq!(query_e.unwrap(), vec![MulticollateralBondingCurvePool, MockPool2, MockPool3]);
+        assert_eq!(query_f.unwrap(), vec![MulticollateralBondingCurvePool, MockPool2, MockPool3]);
+    });
 }

@@ -390,6 +390,14 @@ impl Default for ExtBuilder {
                     AssetName(b"Polkaswap Token".to_vec()),
                     18,
                 ),
+                (
+                    alice(),
+                    USDT,
+                    balance!(0),
+                    AssetSymbol(b"USDT".to_vec()),
+                    AssetName(b"Tether".to_vec()),
+                    18,
+                ),
             ],
         }
     }

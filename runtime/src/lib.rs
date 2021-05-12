@@ -1624,6 +1624,10 @@ impl_runtime_apis! {
             selected_source_types: Vec<LiquiditySourceType>,
             filter_mode: FilterMode,
         ) -> Option<liquidity_proxy_runtime_api::SwapOutcomeInfo<Balance, AssetId>> {
+            if LiquidityProxy::is_forbidden_filter(&input_asset_id, &output_asset_id, selected_source_types.clone(), filter_mode.clone()) {
+                return None;
+            }
+
             // TODO: remove with proper QuoteAmount refactor
             let limit = if swap_variant == SwapVariant::WithDesiredInput {
                 Balance::zero()
@@ -1664,7 +1668,7 @@ impl_runtime_apis! {
             input_asset_id: AssetId,
             output_asset_id: AssetId,
         ) -> Vec<LiquiditySourceType> {
-            LiquidityProxy::list_enabled_sources_for_path(
+            LiquidityProxy::list_enabled_sources_for_path_with_xyk_forbidden(
                 dex_id, input_asset_id, output_asset_id
             ).unwrap_or(Vec::new())
         }
