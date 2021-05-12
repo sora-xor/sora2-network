@@ -185,12 +185,7 @@ impl<T: Config> Pallet<T> {
         selected_source_types: &Vec<LiquiditySourceType>,
         filter_mode: &FilterMode,
     ) -> bool {
-        let tbc_reserve_assets = [
-            common::VAL.into(),
-            common::PSWAP.into(),
-            common::DAI.into(),
-            common::ETH.into(),
-        ];
+        let tbc_reserve_assets = T::PrimaryMarket::enabled_collaterals();
         // check if user has selected only xyk either explicitly or by excluding other types
         let is_xyk_only = selected_source_types.contains(&LiquiditySourceType::XYKPool)
             && !selected_source_types
@@ -751,12 +746,7 @@ impl<T: Config> Pallet<T> {
         input_asset_id: T::AssetId,
         output_asset_id: T::AssetId,
     ) -> Result<Vec<LiquiditySourceType>, DispatchError> {
-        let tbc_reserve_assets = [
-            common::VAL.into(),
-            common::PSWAP.into(),
-            common::DAI.into(),
-            common::ETH.into(),
-        ];
+        let tbc_reserve_assets = T::PrimaryMarket::enabled_collaterals();
         let mut initial_result =
             Self::list_enabled_sources_for_path(dex_id, input_asset_id, output_asset_id)?;
         if tbc_reserve_assets.contains(&input_asset_id)
