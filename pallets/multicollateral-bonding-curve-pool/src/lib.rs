@@ -1327,11 +1327,11 @@ impl<T: Config> Module<T> {
         let base_asset_id = T::GetBaseAssetId::get();
         let base_total_supply = Assets::<T>::total_issuance(&base_asset_id)?;
         let initial_state =
-            FixedWrapper::from(Self::initial_price()) * SellPriceCoefficient::<T>::get();
+            FixedWrapper::from(Self::initial_price()) * Self::sell_price_coefficient();
         let current_state = Self::sell_function(&base_asset_id, delta)?;
 
         let price = (initial_state + current_state) / fixed_wrapper!(2.0)
-            * (FixedWrapper::from(base_total_supply));
+            * FixedWrapper::from(base_total_supply);
         price
             .try_into_balance()
             .map_err(|_| Error::<T>::PriceCalculationFailed.into())

@@ -29,8 +29,9 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use crate::mock::*;
-use crate::{Error, Module};
-use common::{balance, fixed};
+use crate::{ClaimableShares, Error, Module, ShareholderAccounts};
+use common::prelude::Fixed;
+use common::{balance, fixed, PSWAP};
 use frame_support::assert_noop;
 use traits::MultiCurrency;
 
@@ -734,4 +735,54 @@ fn calculating_distribution_should_pass() {
             balance_max
         );
     })
+}
+
+#[test]
+fn migration_v0_1_0_to_v0_2_0() {
+    let mut ext = ExtBuilder::default().build();
+    ext.execute_with(|| {
+        Currencies::deposit(PSWAP, &GetPswapDistributionAccountId::get(), balance!(30))
+            .expect("Failed to deposit");
+        let claimable_shares: Fixed = fixed!(6);
+        let account_a_share: Fixed = fixed!(1);
+        let account_b_share: Fixed = fixed!(2);
+        let account_c_share: Fixed = fixed!(3);
+        ClaimableShares::<Runtime>::put(claimable_shares);
+        ShareholderAccounts::<Runtime>::insert(alice(), account_a_share);
+        ShareholderAccounts::<Runtime>::insert(bob(), account_b_share);
+        ShareholderAccounts::<Runtime>::insert(eve(), account_c_share);
+
+        crate::migration::migrate_from_shares_to_absolute_rewards::<Runtime>()
+            .expect("Failed to migrate");
+
+        let claimable_shares_expected: Fixed = fixed!(30);
+        let account_a_share_expected: Fixed = fixed!(5);
+        let account_b_share_expected: Fixed = fixed!(10);
+        let account_c_share_expected: Fixed = fixed!(15);
+        assert_eq!(ClaimableShares::<Runtime>::get(), claimable_shares_expected);
+        assert_eq!(
+            ShareholderAccounts::<Runtime>::get(alice()),
+            account_a_share_expected
+        );
+        assert_eq!(
+            ShareholderAccounts::<Runtime>::get(bob()),
+            account_b_share_expected
+        );
+        assert_eq!(
+            ShareholderAccounts::<Runtime>::get(eve()),
+            account_c_share_expected
+        );
+
+        PswapDistribution::claim_by_account(&alice()).expect("Failed to claim");
+        PswapDistribution::claim_by_account(&bob()).expect("Failed to claim");
+        PswapDistribution::claim_by_account(&eve()).expect("Failed to claim");
+
+        assert_eq!(
+            Currencies::free_balance(PSWAP, &GetPswapDistributionAccountId::get()),
+            balance!(0)
+        );
+        assert_eq!(Currencies::free_balance(PSWAP, &alice()), balance!(5));
+        assert_eq!(Currencies::free_balance(PSWAP, &bob()), balance!(10));
+        assert_eq!(Currencies::free_balance(PSWAP, &eve()), balance!(15));
+    });
 }

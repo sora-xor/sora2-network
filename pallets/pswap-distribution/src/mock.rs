@@ -58,27 +58,35 @@ type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>
 type Block = frame_system::mocking::MockBlock<Runtime>;
 
 pub fn alice() -> AccountId {
-    AccountId32::from([1u8; 32])
+    AccountId32::from([10u8; 32])
+}
+
+pub fn bob() -> AccountId {
+    AccountId32::from([11u8; 32])
+}
+
+pub fn eve() -> AccountId {
+    AccountId32::from([12u8; 32])
 }
 
 pub fn fees_account_a() -> AccountId {
-    AccountId32::from([2u8; 32])
+    AccountId32::from([20u8; 32])
 }
 
 pub fn fees_account_b() -> AccountId {
-    AccountId32::from([3u8; 32])
+    AccountId32::from([21u8; 32])
 }
 
 pub fn liquidity_provider_a() -> AccountId {
-    AccountId32::from([4u8; 32])
+    AccountId32::from([30u8; 32])
 }
 
 pub fn liquidity_provider_b() -> AccountId {
-    AccountId32::from([5u8; 32])
+    AccountId32::from([31u8; 32])
 }
 
 pub fn liquidity_provider_c() -> AccountId {
-    AccountId32::from([6u8; 32])
+    AccountId32::from([32u8; 32])
 }
 
 pub const DEX_A_ID: DEXId = common::DEXId::Polkaswap;
