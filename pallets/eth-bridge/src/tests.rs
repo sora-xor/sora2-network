@@ -44,7 +44,7 @@ use crate::{
     DepositEvent, IncomingMetaRequestKind, IncomingRequest, IncomingRequestKind,
     IncomingTransactionRequestKind, LoadIncomingRequest, LoadIncomingTransactionRequest,
     OffchainRequest, OutgoingRequest, OutgoingTransfer, RequestStatus, SignatureParams,
-    CONFIRMATION_INTERVAL, MAX_FAILED_SEND_SIGNED_TX_RETRIES, MAX_SEND_SIGNED_TX_RETRIES,
+    CONFIRMATION_INTERVAL, MAX_FAILED_SEND_SIGNED_TX_RETRIES,
     SUBSTRATE_MAX_BLOCK_NUM_EXPECTING_UNTIL_FINALIZATION,
 };
 use codec::{Decode, Encode};

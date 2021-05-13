@@ -2825,8 +2825,7 @@ impl<T: Config> Pallet<T> {
             .get::<BTreeMap<H256, SignedTransactionData<T>>>()
             .flatten()
         {
-            debug::info!("Pending txs count: {}", txs.len());
-            // TODO: handle each substrate block, not only finalized.
+            debug::debug!("Pending txs count: {}", txs.len());
             for ext in block.extrinsics {
                 let vec = ext.encode();
                 let hash = H256(blake2_256(&vec));
@@ -2884,20 +2883,6 @@ impl<T: Config> Pallet<T> {
                     .unwrap_or_default();
                 for tx in failed_txs_tmp {
                     failed_txs.insert(tx.extrinsic_hash, tx);
-                }
-                s_failed_pending_txs.set(&failed_txs);
-            }
-            if !to_remove.is_empty() {
-                let s_failed_pending_txs =
-                    StorageValueRef::persistent(STORAGE_FAILED_PENDING_TRANSACTIONS_KEY);
-                let mut failed_txs = s_failed_pending_txs
-                    .get::<BTreeMap<H256, SignedTransactionData<T>>>()
-                    .flatten()
-                    .unwrap_or_default();
-                for hash in to_remove {
-                    if let Some(elem) = txs.remove(&hash) {
-                        failed_txs.insert(hash, elem);
-                    }
                 }
                 s_failed_pending_txs.set(&failed_txs);
             }
