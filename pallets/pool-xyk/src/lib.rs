@@ -38,7 +38,7 @@ use frame_system::ensure_signed;
 use sp_std::collections::btree_set::BTreeSet;
 use sp_std::vec::Vec;
 
-use common::prelude::{Balance, EnsureDEXManager, SwapAmount, SwapOutcome};
+use common::prelude::{Balance, EnsureDEXManager, Fixed, SwapAmount, SwapOutcome};
 use common::{
     balance, hash, AssetName, AssetSymbol, EnsureTradingPairExists, FromGenericPair,
     GetPoolReserves, LiquiditySource, LiquiditySourceType, ManagementMode, RewardReason,
@@ -387,21 +387,15 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         // Clone is used here because action is used for perform_create_swap_unchecked.
         let retval = match action.clone() {
             PolySwapAction::PairSwap(a) => {
-                let mut desired_in = false;
                 let (fee, amount) = match swap_amount {
                     SwapAmount::WithDesiredInput { .. } => {
-                        desired_in = true;
                         (a.fee.unwrap(), a.destination.amount.unwrap())
                     }
                     SwapAmount::WithDesiredOutput { .. } => {
                         (a.fee.unwrap(), a.source.amount.unwrap())
                     }
                 };
-                if a.get_fee_from_destination.unwrap() && desired_in {
-                    Ok(common::prelude::SwapOutcome::new(amount - fee, fee))
-                } else {
-                    Ok(common::prelude::SwapOutcome::new(amount, fee))
-                }
+                Ok(common::prelude::SwapOutcome::new(amount, fee))
             }
             _ => unreachable!("we know that always PairSwap is used"),
         };
@@ -462,6 +456,7 @@ pub mod pallet {
             + Into<<Self as technical::Config>::SwapAction>
             + From<PolySwapActionStructOf<Self>>;
         type EnsureDEXManager: EnsureDEXManager<Self::DEXId, Self::AccountId, DispatchError>;
+        type GetFee: Get<Fixed>;
 
         /// Weight information for extrinsics in this pallet.
         type WeightInfo: WeightInfo;
@@ -729,6 +724,8 @@ pub mod pallet {
         UnableToConvertAssetToTechAssetId,
         /// Unable to get XOR part from marker asset.
         UnableToGetXORPartFromMarkerAsset,
+        /// Pool token supply has reached limit of data type.
+        PoolTokenSupplyOverflow,
     }
 
     /// Updated after last liquidity change operation.

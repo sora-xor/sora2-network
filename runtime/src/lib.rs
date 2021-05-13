@@ -117,7 +117,9 @@ use eth_bridge::{
 };
 use impls::{CollectiveWeightInfo, DemocracyWeightInfo, OnUnbalancedDemocracySlash};
 
-pub use {bonding_curve_pool, eth_bridge, multicollateral_bonding_curve_pool};
+pub use {
+    assets, bonding_curve_pool, eth_bridge, frame_system, multicollateral_bonding_curve_pool,
+};
 
 /// An index to a block.
 pub type BlockNumber = u32;
@@ -213,21 +215,18 @@ pub fn native_version() -> NativeVersion {
     }
 }
 
-/// Sora network needs to have minimal requirement for staking equal to 5000 XOR.
-pub const MIN_STAKE: Balance = balance!(5000);
-
 parameter_types! {
     pub const BlockHashCount: BlockNumber = 250;
     pub const Version: RuntimeVersion = VERSION;
     pub const DisabledValidatorsThreshold: Perbill = Perbill::from_percent(17);
-    pub const EpochDuration: u64 = EPOCH_DURATION_IN_SLOTS;
+    pub const EpochDuration: u64 = EPOCH_DURATION_IN_BLOCKS as u64;
     pub const ExpectedBlockTime: Moment = MILLISECS_PER_BLOCK;
-    pub const UncleGenerations: BlockNumber = 5;
-    pub const SessionsPerEra: sp_staking::SessionIndex = 3; // 3 hours
-    pub const BondingDuration: pallet_staking::EraIndex = 4; // 12 hours
+    pub const UncleGenerations: BlockNumber = 0;
+    pub const SessionsPerEra: sp_staking::SessionIndex = 6; // 6 hours
+    pub const BondingDuration: pallet_staking::EraIndex = 28; // 28 eras for unbonding (7 days).
     pub const ReportLongevity: u64 =
         BondingDuration::get() as u64 * SessionsPerEra::get() as u64 * EpochDuration::get();
-    pub const SlashDeferDuration: pallet_staking::EraIndex = 2; // 6 hours
+    pub const SlashDeferDuration: pallet_staking::EraIndex = 27; // 27 eras in which slashes can be cancelled (slightly less than 7 days).
     pub const MaxNominatorRewardedPerValidator: u32 = 256;
     pub const ElectionLookahead: BlockNumber = EPOCH_DURATION_IN_BLOCKS / 4;
     pub const MaxIterations: u32 = 10;
@@ -250,9 +249,9 @@ parameter_types! {
     .max_extrinsic
     .expect("Normal extrinsics have weight limit configured by default; qed")
     .saturating_sub(BlockExecutionWeight::get());
-    pub const DemocracyEnactmentPeriod: BlockNumber = 30 * DAYS;
-    pub const DemocracyLaunchPeriod: BlockNumber = 28 * DAYS;
-    pub const DemocracyVotingPeriod: BlockNumber = 14 * DAYS;
+    pub const DemocracyEnactmentPeriod: BlockNumber = 1 * DAYS;
+    pub const DemocracyLaunchPeriod: BlockNumber = 2 * DAYS;
+    pub const DemocracyVotingPeriod: BlockNumber = 1 * DAYS;
     pub const DemocracyMinimumDeposit: Balance = balance!(1);
     pub const DemocracyFastTrackVotingPeriod: BlockNumber = 2 * DAYS;
     pub const DemocracyInstantAllowed: bool = false;
@@ -481,7 +480,7 @@ impl pallet_session::Config for Runtime {
     type Event = Event;
     type ValidatorId = AccountId;
     type ValidatorIdOf = pallet_staking::StashOf<Self>;
-    type DisabledValidatorsThreshold = ();
+    type DisabledValidatorsThreshold = DisabledValidatorsThreshold;
     type NextSessionRotation = Babe;
     type WeightInfo = ();
 }
@@ -538,6 +537,7 @@ parameter_types! {
     pub const ExistentialDeposit: u128 = 0;
     pub const TransferFee: u128 = 0;
     pub const CreationFee: u128 = 0;
+    pub const MaxLocks: u32 = 50;
 }
 
 impl pallet_balances::Config for Runtime {
@@ -549,7 +549,7 @@ impl pallet_balances::Config for Runtime {
     type ExistentialDeposit = ExistentialDeposit;
     type AccountStore = System;
     type WeightInfo = ();
-    type MaxLocks = ();
+    type MaxLocks = MaxLocks;
 }
 
 pub type Amount = i128;
@@ -633,6 +633,10 @@ impl technical::Config for Runtime {
     type WeightInfo = ();
 }
 
+parameter_types! {
+    pub GetFee: Fixed = fixed!(0.003);
+}
+
 impl pool_xyk::Config for Runtime {
     type Event = Event;
     type PairSwapAction = pool_xyk::PairSwapAction<AssetId, Balance, AccountId, TechAccountId>;
@@ -643,6 +647,7 @@ impl pool_xyk::Config for Runtime {
     type PolySwapAction =
         pool_xyk::PolySwapAction<AssetId, TechAssetId, Balance, AccountId, TechAccountId>;
     type EnsureDEXManager = dex_manager::Module<Runtime>;
+    type GetFee = GetFee;
     type WeightInfo = pool_xyk::weights::WeightInfo<Runtime>;
 }
 
@@ -678,10 +683,6 @@ impl liquidity_proxy::Config for Runtime {
     type PrimaryMarket = multicollateral_bonding_curve_pool::Module<Runtime>;
     type SecondaryMarket = pool_xyk::Module<Runtime>;
     type WeightInfo = liquidity_proxy::weights::WeightInfo<Runtime>;
-}
-
-parameter_types! {
-    pub GetFee: Fixed = fixed_from_basis_points(30u16);
 }
 
 impl mock_liquidity_source::Config<mock_liquidity_source::Instance1> for Runtime {

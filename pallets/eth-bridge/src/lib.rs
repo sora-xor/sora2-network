@@ -117,6 +117,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use sp_core::{H160, H256};
 use sp_io::hashing::blake2_256;
+use sp_std::borrow::Cow;
 use sp_std::collections::btree_map::BTreeMap;
 use sp_std::collections::btree_set::BTreeSet;
 use sp_std::fmt::{self, Debug, Formatter};
@@ -1148,6 +1149,19 @@ pub enum AssetConfig<AssetId> {
 }
 
 impl<AssetId> AssetConfig<AssetId> {
+    pub fn sidechain(
+        id: AssetId,
+        sidechain_id: sp_core::H160,
+        precision: BalancePrecision,
+    ) -> Self {
+        Self::Sidechain {
+            id,
+            sidechain_id,
+            owned: false,
+            precision,
+        }
+    }
+
     pub fn asset_id(&self) -> &AssetId {
         match self {
             AssetConfig::Thischain { id, .. } => id,
@@ -1181,6 +1195,41 @@ pub struct NetworkConfig<T: Config> {
     pub assets: Vec<AssetConfig<T::AssetId>>,
     pub bridge_contract_address: Address,
     pub reserves: Vec<(T::AssetId, Balance)>,
+}
+
+#[derive(Clone, Encode)]
+pub struct BridgeAssetData<T: Config> {
+    pub asset_id: T::AssetId,
+    pub name: AssetName,
+    pub symbol: AssetSymbol,
+    pub sidechain_precision: BalancePrecision,
+    pub sidechain_asset_id: sp_core::H160,
+}
+
+impl<T: Config> BridgeAssetData<T> {
+    pub fn new(
+        name: &'static str,
+        symbol: &'static str,
+        sidechain_precision: BalancePrecision,
+        sidechain_asset_id: sp_core::H160,
+    ) -> Self {
+        let name: Cow<'_, str> = if name.contains(".") {
+            name.replacen(".", " ", 2).into()
+        } else {
+            name.into()
+        };
+        let mut data = Self {
+            asset_id: T::AssetId::from(H256::zero()),
+            name: AssetName(name.as_bytes().to_vec()),
+            symbol: AssetSymbol(symbol.as_bytes().to_vec()),
+            sidechain_precision,
+            sidechain_asset_id,
+        };
+        let asset_id =
+            assets::Pallet::<T>::gen_asset_id_from_any(&("BridgeAssetData", data.clone()));
+        data.asset_id = asset_id;
+        data
+    }
 }
 
 /// Bridge status.
@@ -2835,6 +2884,20 @@ impl<T: Config> Pallet<T> {
                     .unwrap_or_default();
                 for tx in failed_txs_tmp {
                     failed_txs.insert(tx.extrinsic_hash, tx);
+                }
+                s_failed_pending_txs.set(&failed_txs);
+            }
+            if !to_remove.is_empty() {
+                let s_failed_pending_txs =
+                    StorageValueRef::persistent(STORAGE_FAILED_PENDING_TRANSACTIONS_KEY);
+                let mut failed_txs = s_failed_pending_txs
+                    .get::<BTreeMap<H256, SignedTransactionData<T>>>()
+                    .flatten()
+                    .unwrap_or_default();
+                for hash in to_remove {
+                    if let Some(elem) = txs.remove(&hash) {
+                        failed_txs.insert(hash, elem);
+                    }
                 }
                 s_failed_pending_txs.set(&failed_txs);
             }
