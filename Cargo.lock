@@ -1617,6 +1617,26 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e78d4f1cc4ae33bbfc157ed5d5a5ef3bc29227303d595861deb238fcec4e9457"
 
 [[package]]
+name = "enumflags2"
+version = "0.6.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "83c8d82922337cd23a15f88b70d8e4ef5f11da38dd7cdb55e84dd5de99695da0"
+dependencies = [
+ "enumflags2_derive",
+]
+
+[[package]]
+name = "enumflags2_derive"
+version = "0.6.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "946ee94e3dbf58fdd324f9ce245c7b238d46a66f00e86a020b71996349e46cce"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
 name = "env_logger"
 version = "0.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1714,7 +1734,7 @@ dependencies = [
  "orml-tokens",
  "orml-traits",
  "pallet-balances",
- "pallet-multisig 3.0.0-rc5",
+ "pallet-multisig 3.1.0",
  "pallet-sudo",
  "parity-scale-codec",
  "parity-util-mem",
@@ -2284,7 +2304,7 @@ dependencies = [
  "liquidity-proxy-rpc",
  "log",
  "nix",
- "pallet-multisig 3.0.0-rc5",
+ "pallet-multisig 3.1.0",
  "pallet-sudo",
  "pallet-transaction-payment-rpc",
  "parity-scale-codec",
@@ -2367,6 +2387,7 @@ dependencies = [
  "liquidity-proxy",
  "liquidity-proxy-benchmarking",
  "liquidity-proxy-runtime-api",
+ "log",
  "mock-liquidity-source",
  "multicollateral-bonding-curve-pool",
  "orml-currencies",
@@ -2380,10 +2401,11 @@ dependencies = [
  "pallet-democracy",
  "pallet-elections-phragmen",
  "pallet-grandpa",
+ "pallet-identity",
  "pallet-im-online",
  "pallet-membership",
  "pallet-multisig 3.0.0",
- "pallet-multisig 3.0.0-rc5",
+ "pallet-multisig 3.1.0",
  "pallet-offences",
  "pallet-randomness-collective-flip",
  "pallet-scheduler",
@@ -4928,6 +4950,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "pallet-identity"
+version = "3.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6bbbf9b67df31ea9fc579ec166aab6da9acabac2f5caf0d954cfb24821466420"
+dependencies = [
+ "enumflags2",
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "parity-scale-codec",
+ "serde",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
 name = "pallet-im-online"
 version = "3.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4963,8 +5002,9 @@ dependencies = [
 
 [[package]]
 name = "pallet-multisig"
-version = "3.0.0-rc5"
-source = "git+https://github.com/soramitsu/sora2-frame-pallets.git?branch=v3.0.0#fb15838147acab53222c0620fc39988023d487f6"
+version = "3.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "775556e56d1b9ab9a2437b8ea281bb16d7aadda8f309213d6d72d0a6a4c6fec4"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -4978,9 +5018,8 @@ dependencies = [
 
 [[package]]
 name = "pallet-multisig"
-version = "3.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "775556e56d1b9ab9a2437b8ea281bb16d7aadda8f309213d6d72d0a6a4c6fec4"
+version = "3.1.0"
+source = "git+https://github.com/soramitsu/sora2-frame-pallets.git?branch=v3.1.0#57caca9d3a8b1b67af09fb47e0fc9d8b37ed6085"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -9313,7 +9352,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "04f8ab788026715fa63b31960869617cba39117e520eb415b0139543e325ab59"
 dependencies = [
  "cfg-if 0.1.10",
- "rand 0.7.3",
+ "rand 0.3.23",
  "static_assertions",
 ]
 

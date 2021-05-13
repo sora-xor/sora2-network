@@ -1605,4 +1605,8 @@ impl<T: Config> GetMarketInfo<T::AssetId> for Module<T> {
         let collateral_supply = Assets::<T>::free_balance(asset_id, &reserves_account_id)?;
         Ok(collateral_supply)
     }
+
+    fn enabled_collaterals() -> BTreeSet<T::AssetId> {
+        EnabledTargets::<T>::get()
+    }
 }

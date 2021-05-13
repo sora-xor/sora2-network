@@ -41,6 +41,7 @@ use frame_system::RawOrigin;
 //use sp_std::convert::TryInto;
 use crate::primitives::Balance;
 use codec::{Decode, Encode};
+use sp_std::collections::btree_set::BTreeSet;
 use sp_std::vec::Vec;
 
 /// Check on origin that it is a DEX owner.
@@ -418,9 +419,11 @@ pub trait GetMarketInfo<AssetId> {
     /// The amount of the `asset_id` token reserves stored with the primary market liquidity provider
     /// (a multi-collateral bonding curve pool) that backs a part of the base currency in circulation.
     fn collateral_reserves(asset_id: &AssetId) -> Result<Balance, DispatchError>;
+    /// Returns set of enabled collateral/reserve assets on bonding curve.
+    fn enabled_collaterals() -> BTreeSet<AssetId>;
 }
 
-impl<AssetId> GetMarketInfo<AssetId> for () {
+impl<AssetId: Ord> GetMarketInfo<AssetId> for () {
     fn buy_price(
         _base_asset: &AssetId,
         _collateral_asset: &AssetId,
@@ -437,6 +440,10 @@ impl<AssetId> GetMarketInfo<AssetId> for () {
 
     fn collateral_reserves(_asset_id: &AssetId) -> Result<Balance, DispatchError> {
         Ok(Default::default())
+    }
+
+    fn enabled_collaterals() -> BTreeSet<AssetId> {
+        Default::default()
     }
 }
 
