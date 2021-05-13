@@ -39,7 +39,7 @@ mod tests {
     use hex_literal::hex;
     use frame_support::traits::OnInitialize;
     use liquidity_proxy::LiquidityProxyTrait;
-    use frame_support::{assert_err, assert_noop, assert_ok};
+    use frame_support::{assert_err, assert_noop};
     use frame_support::storage::{with_transaction, TransactionOutcome};
     use sp_arithmetic::traits::{Zero};
     use sp_runtime::DispatchError;
@@ -721,7 +721,7 @@ mod tests {
     }
 
     #[test]
-    fn should_receive_pswap_reward() {
+    fn should_receive_pswap_reward_old() {
         let mut ext = ExtBuilder::new(vec![
             (alice(), XOR, balance!(700000), AssetSymbol(b"XOR".to_vec()), AssetName(b"SORA".to_vec()), 18),
             (alice(), VAL, balance!(2000), AssetSymbol(b"VAL".to_vec()), AssetName(b"SORA Validator Token".to_vec()), 18),
@@ -765,7 +765,7 @@ mod tests {
 
             let (limit, owned) = MBCPool::rewards(&alice());
             assert!(limit.is_zero());
-            assert_eq!(owned, balance!(6099.239593177500000000));
+            assert_eq!(owned, balance!(2285.736489572500000000));
         });
     }
 
@@ -866,7 +866,7 @@ mod tests {
     }
 
     #[test]
-    fn should_calculate_ideal_reserves() {
+    fn should_calculate_ideal_reserves_old() {
         let mut ext = ExtBuilder::new(vec![
             (alice(), XOR, balance!(0), AssetSymbol(b"XOR".to_vec()), AssetName(b"SORA".to_vec()), 18),
             (alice(), VAL, balance!(2000), AssetSymbol(b"VAL".to_vec()), AssetName(b"SORA Validator Token".to_vec()), 18),
@@ -886,7 +886,7 @@ mod tests {
             let buy_amount: Balance = ((FixedWrapper::from(initial_state) + FixedWrapper::from(current_state)) / fixed_wrapper!(2) * FixedWrapper::from(xor_supply)).try_into_balance().unwrap();
 
             // get ideal reserves
-            let ideal_reserves = MBCPool::ideal_reserves_reference_price(Fixed::ZERO).unwrap();
+            let ideal_reserves = MBCPool::ideal_reserves_reference_price_old(Fixed::ZERO).unwrap();
 
             // actual amount should match to 80% of buy amount
             assert_eq!((FixedWrapper::from(buy_amount) * fixed_wrapper!(0.8)).into_balance(), ideal_reserves);
@@ -1120,11 +1120,11 @@ mod tests {
                 &DEXId::Polkaswap.into(),
                 &DAI,
                 &XOR,
-                SwapAmount::with_desired_input(balance!(3000000), Balance::zero()),
+                SwapAmount::with_desired_input(balance!(4000000), Balance::zero()),
             )
             .unwrap();
             let xor_supply = Assets::total_issuance(&XOR).unwrap();
-            assert_eq!(xor_supply, balance!(125254.015350097078608660));
+            assert_eq!(xor_supply, balance!(128633.975165230400026502));
 
             let sell_price = MBCPool::quote(
                 &DEXId::Polkaswap.into(),
@@ -1142,11 +1142,11 @@ mod tests {
                 &DEXId::Polkaswap.into(),
                 &DAI,
                 &XOR,
-                SwapAmount::with_desired_input(balance!(3000000), Balance::zero()),
+                SwapAmount::with_desired_input(balance!(7000000), Balance::zero()),
             )
             .unwrap();
             let xor_supply = Assets::total_issuance(&XOR).unwrap();
-            assert_eq!(xor_supply, balance!(135309.331316886815237511));
+            assert_eq!(xor_supply, balance!(151530.994236602104652386));
 
             let sell_price = MBCPool::quote(
                 &DEXId::Polkaswap.into(),
@@ -1160,7 +1160,7 @@ mod tests {
     }
 
     #[test]
-    fn sequential_rewards_adequacy_check() {
+    fn sequential_rewards_adequacy_check_old() {
         let mut ext = ExtBuilder::new(vec![
             (alice(), XOR, balance!(250000), AssetSymbol(b"XOR".to_vec()), AssetName(b"SORA".to_vec()), 18),
             (alice(), VAL, balance!(2000), AssetSymbol(b"VAL".to_vec()), AssetName(b"SORA Validator Token".to_vec()), 18),
@@ -1181,7 +1181,7 @@ mod tests {
             let xor_total_supply: FixedWrapper = Assets::total_issuance(&XOR).unwrap().into();
             assert_eq!(xor_total_supply.clone().into_balance(), balance!(350000));
             // initial XOR price is $264
-            let xor_ideal_reserves: FixedWrapper = MBCPool::ideal_reserves_reference_price(Default::default()).unwrap().into();
+            let xor_ideal_reserves: FixedWrapper = MBCPool::ideal_reserves_reference_price_old(Default::default()).unwrap().into();
             assert_eq!((xor_ideal_reserves / xor_total_supply).into_balance(), balance!(264.712041884816753926));
             // pswap price is $10 on mock secondary market
             assert_eq!(
@@ -1201,7 +1201,7 @@ mod tests {
 
             let (limit, owned_1) = MBCPool::rewards(&alice());
             assert!(limit.is_zero());
-            assert_eq!(owned_1, balance!(21036.472370352500000000));
+            assert_eq!(owned_1, balance!(5962.762664067500000000));
 
             MBCPool::exchange(
                 &alice(),
@@ -1215,7 +1215,7 @@ mod tests {
 
             let (limit, owned_2) = MBCPool::rewards(&alice());
             assert!(limit.is_zero());
-            assert_eq!(owned_2, owned_1 + balance!(210335.499324130000000000));
+            assert_eq!(owned_2, owned_1 + balance!(59623.434472572500000000));
 
             MBCPool::exchange(
                 &alice(),
@@ -1229,7 +1229,7 @@ mod tests {
 
             let (limit, owned_3) = MBCPool::rewards(&alice());
             assert!(limit.is_zero());
-            assert_eq!(owned_3, owned_2 + balance!(20768299.225658647500000000));
+            assert_eq!(owned_3, owned_2 + balance!(5929937.194935915000000000));
         });
     }
 

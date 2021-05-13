@@ -1086,6 +1086,7 @@ impl multicollateral_bonding_curve_pool::Config for Runtime {
     type LiquidityProxy = LiquidityProxy;
     type EnsureDEXManager = DEXManager;
     type EnsureTradingPairExists = TradingPair;
+    type VestedRewardsAggregator = VestedRewards;
     type WeightInfo = multicollateral_bonding_curve_pool::weights::WeightInfo<Runtime>;
 }
 

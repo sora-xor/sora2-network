@@ -453,7 +453,9 @@ impl<AssetId> GetPoolReserves<AssetId> for () {
     }
 }
 
+/// General trait for passing pswap amount burned information to required pallets.
 pub trait OnPswapBurned {
+    /// Report amount and fractions of burned pswap at the moment of invokation.
     fn on_pswap_burned(distribution: PswapRemintInfo);
 }
 
@@ -463,10 +465,18 @@ impl OnPswapBurned for () {
     }
 }
 
+/// Trait to abstract interface of VestedRewards pallet, in order for pallets with rewards sources avoid having dependency issues.
 pub trait VestedRewardsTrait<AccountId> {
+    /// Report that swaps with xor were performed.
+    /// - `account_id`: account performing transaction.
+    /// - `xor_volume`: amount of xor passed in transaction.
+    /// - `count`: number of equal swaps, if there are multiple - means that each has amount equal to `xor_volume`.
     fn update_market_maker_records(
         account_id: &AccountId,
         xor_volume: Balance,
         count: u32,
     ) -> DispatchResult;
+
+    /// Report that account has received pswap reward for buying from tbc.
+    fn add_tbc_reward(account_id: &AccountId, pswap_amount: Balance) -> DispatchResult;
 }

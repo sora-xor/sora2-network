@@ -28,7 +28,7 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use crate::{self as mcbcp, Config};
+use crate::{self as multicollateral_bonding_curve_pool, Config};
 use common::mock::ExistentialDeposits;
 use common::prelude::{Balance, FixedWrapper, SwapAmount, SwapOutcome};
 use common::{
@@ -124,7 +124,8 @@ construct_runtime! {
         DexManager: dex_manager::{Module, Call, Storage},
         TradingPair: trading_pair::{Module, Call, Storage, Event<T>},
         MockLiquiditySource: mock_liquidity_source::<Instance1>::{Module, Call, Config<T>, Storage},
-        Mcbcp: mcbcp::{Module, Call, Config<T>, Storage, Event<T>},
+        VestedRewards: vested_rewards::{Module, Call, Storage, Event<T>},
+        Mcbcp: multicollateral_bonding_curve_pool::{Module, Call, Storage, Event<T>},
         Tokens: tokens::{Module, Call, Config<T>, Storage, Event<T>},
         Currencies: currencies::{Module, Call, Storage, Event<T>},
         Assets: assets::{Module, Call, Config<T>, Storage, Event<T>},
@@ -175,11 +176,19 @@ impl mock_liquidity_source::Config<mock_liquidity_source::Instance1> for Runtime
     type EnsureTradingPairExists = ();
 }
 
+impl vested_rewards::Config for Runtime {
+    type Event = Event;
+    type GetBondingCurveRewardsAccountId = GetBondingCurveRewardsAccountId;
+    type GetMarketMakerRewardsAccountId = GetMarketMakerRewardsAccountId;
+    type WeightInfo = ();
+}
+
 impl Config for Runtime {
     type Event = Event;
     type LiquidityProxy = MockDEXApi;
     type EnsureTradingPairExists = trading_pair::Module<Runtime>;
     type EnsureDEXManager = dex_manager::Module<Runtime>;
+    type VestedRewardsAggregator = VestedRewards;
     type WeightInfo = ();
 }
 

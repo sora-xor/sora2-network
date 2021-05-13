@@ -44,7 +44,6 @@ use frame_support::weights::Weight;
 use sp_runtime::traits::Zero;
 use sp_std::collections::btree_map::BTreeMap;
 
-pub mod migration;
 pub mod weights;
 
 #[cfg(test)]
@@ -81,11 +80,16 @@ impl<T: Config> Pallet<T> {
         reason: RewardReason,
         amount: Balance,
     ) -> DispatchResult {
+        if !Rewards::<T>::contains_key(account_id) {
+            frame_system::Pallet::<T>::inc_consumers(account_id)
+                .map_err(|_| Error::<T>::IncRefError)?;
+        }
         Rewards::<T>::mutate(account_id, |info| {
             let entry = info.rewards.entry(reason).or_insert(Default::default());
             *entry = entry.saturating_add(amount);
-            Ok(())
-        })
+        });
+        TotalRewards::<T>::mutate(|balance| *balance = balance.saturating_add(amount));
+        Ok(())
     }
 
     /// General claim function, which updates user reward status.
@@ -94,15 +98,21 @@ impl<T: Config> Pallet<T> {
             if info.total_available.is_zero() || info.limit.is_zero() {
                 fail!(Error::<T>::NothingToClaim);
             } else {
+                let mut total_actual_claimed: Balance = 0;
                 for (&reward_reason, amount) in info.rewards.iter_mut() {
                     let claimable = amount.clone().min(info.limit);
                     let actual_claimed =
                         Self::claim_reward_by_reason(account_id, reward_reason, claimable)
                             .unwrap_or(balance!(0));
+                    total_actual_claimed = total_actual_claimed.saturating_add(actual_claimed);
                     // TODO: maybe throw event on error for better detalisation
                     info.limit = info.limit.saturating_sub(actual_claimed);
                     *amount = amount.saturating_sub(actual_claimed);
                 }
+                info.total_available = info.total_available.saturating_sub(total_actual_claimed);
+                TotalRewards::<T>::mutate(|total| {
+                    *total = total.saturating_sub(total_actual_claimed)
+                });
                 Ok(())
             }
         })
@@ -134,7 +144,7 @@ impl<T: Config> Pallet<T> {
         // TODO: what to do if there's no accounts to receive vesting?
         if !total_rewards.is_zero() {
             Rewards::<T>::translate(|_key: T::AccountId, mut info: RewardInfo| {
-                let limit_to_add = FixedWrapper::from(info.limit)
+                let limit_to_add = FixedWrapper::from(info.total_available)
                     * FixedWrapper::from(vested_amount)
                     / FixedWrapper::from(total_rewards);
                 info.limit = (limit_to_add + FixedWrapper::from(info.limit))
@@ -147,6 +157,7 @@ impl<T: Config> Pallet<T> {
 }
 
 impl<T: Config> OnPswapBurned for Module<T> {
+    /// NOTE: currently is not invoked.
     /// Invoked when pswap is burned after being exchanged from collected liquidity provider fees.
     fn on_pswap_burned(distribution: PswapRemintInfo) {
         Pallet::<T>::distribute_limits(distribution.vesting)
@@ -171,6 +182,10 @@ impl<T: Config> VestedRewardsTrait<T::AccountId> for Module<T> {
         });
         Ok(())
     }
+
+    fn add_tbc_reward(account_id: &T::AccountId, pswap_amount: Balance) -> DispatchResult {
+        Pallet::<T>::add_pending_reward(account_id, RewardReason::BuyOnBondingCurve, pswap_amount)
+    }
 }
 
 pub use pallet::*;
@@ -182,12 +197,7 @@ pub mod pallet {
     use frame_system::pallet_prelude::*;
 
     #[pallet::config]
-    pub trait Config:
-        frame_system::Config
-        + common::Config
-        + assets::Config
-        + multicollateral_bonding_curve_pool::Config
-    {
+    pub trait Config: frame_system::Config + common::Config + assets::Config {
         type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
         /// Accounts holding PSWAP dedicated for rewards.
         type GetMarketMakerRewardsAccountId: Get<Self::AccountId>;
@@ -202,22 +212,10 @@ pub mod pallet {
     pub struct Pallet<T>(PhantomData<T>);
 
     #[pallet::hooks]
-    impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
-        fn on_runtime_upgrade() -> Weight {
-            migration::migrate::<T>()
-        }
-    }
+    impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {}
 
     #[pallet::call]
-    impl<T: Config> Pallet<T> {
-        /// Claim all available PSWAP rewards by account signing this transaction.
-        #[pallet::weight(<T as Config>::WeightInfo::claim_incentives())]
-        pub fn claim_rewards(origin: OriginFor<T>) -> DispatchResultWithPostInfo {
-            let who = ensure_signed(origin)?;
-            Self::claim_rewards_inner(&who)?;
-            Ok(().into())
-        }
-    }
+    impl<T: Config> Pallet<T> {}
 
     #[pallet::error]
     pub enum Error<T> {
@@ -227,6 +225,8 @@ pub mod pallet {
         UnhandledRewardType,
         /// Trying to claim PSWAP, but account with reward reserves is empty. This likely means that reward programme has finished.
         RewardsSupplyShortage,
+        /// Increment account reference error.
+        IncRefError,
     }
 
     #[pallet::event]

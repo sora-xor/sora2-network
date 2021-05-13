@@ -30,13 +30,9 @@
 
 use crate::{self as vested_rewards, Config};
 use common::mock::ExistentialDeposits;
-use common::prelude::{Balance, DEXInfo, SwapAmount, SwapOutcome};
-use common::{
-    hash, AssetId32, AssetName, AssetSymbol, BalancePrecision, LiquiditySourceFilter,
-    LiquiditySourceType, DOT, KSM, XOR,
-};
+use common::prelude::{Balance, DEXInfo};
+use common::{hash, AssetId32, AssetName, AssetSymbol, BalancePrecision, DOT, KSM, XOR};
 use currencies::BasicCurrencyAdapter;
-use frame_support::dispatch::DispatchError;
 use frame_support::traits::GenesisBuild;
 use frame_support::weights::Weight;
 use frame_support::{construct_runtime, parameter_types};
@@ -225,6 +221,7 @@ impl multicollateral_bonding_curve_pool::Config for Runtime {
     type LiquidityProxy = ();
     type EnsureTradingPairExists = trading_pair::Module<Runtime>;
     type EnsureDEXManager = dex_manager::Module<Runtime>;
+    type VestedRewardsAggregator = VestedRewards;
     type WeightInfo = ();
 }
 
