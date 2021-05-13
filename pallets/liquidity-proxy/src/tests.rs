@@ -1503,8 +1503,8 @@ fn test_list_enabled_sources_for_path_query_should_pass_2() {
         assert_eq!(query_b.unwrap(), vec![MulticollateralBondingCurvePool]);
         assert_eq!(query_c.unwrap(), vec![XYKPool]);
         assert_eq!(query_d.unwrap(), vec![XYKPool]);
-        assert_eq!(query_e.unwrap(), vec![XYKPool, MulticollateralBondingCurvePool]);
-        assert_eq!(query_f.unwrap(), vec![XYKPool, MulticollateralBondingCurvePool]);
+        assert_eq!(query_e.unwrap(), vec![]);
+        assert_eq!(query_f.unwrap(), vec![]);
     });
 }
 
@@ -1529,8 +1529,8 @@ fn test_list_enabled_sources_for_path_query_should_pass_3() {
         assert_eq!(query_b.unwrap(), vec![MulticollateralBondingCurvePool]);
         assert_eq!(query_c.unwrap(), vec![XYKPool, MulticollateralBondingCurvePool]);
         assert_eq!(query_d.unwrap(), vec![XYKPool, MulticollateralBondingCurvePool]);
-        assert_eq!(query_e.unwrap(), vec![XYKPool, MulticollateralBondingCurvePool]);
-        assert_eq!(query_f.unwrap(), vec![XYKPool, MulticollateralBondingCurvePool]);
+        assert_eq!(query_e.unwrap(), vec![MulticollateralBondingCurvePool]);
+        assert_eq!(query_f.unwrap(), vec![MulticollateralBondingCurvePool]);
     });
 }
 
@@ -1558,8 +1558,8 @@ fn test_list_enabled_sources_for_path_query_should_pass_4() {
         assert_eq!(query_b.unwrap(), vec![XYKPool, MulticollateralBondingCurvePool, MockPool2]);
         assert_eq!(query_c.unwrap(), vec![XYKPool, MulticollateralBondingCurvePool, MockPool3]);
         assert_eq!(query_d.unwrap(), vec![XYKPool, MulticollateralBondingCurvePool, MockPool3]);
-        assert_eq!(query_e.unwrap(), vec![XYKPool, MulticollateralBondingCurvePool, MockPool2, MockPool3]);
-        assert_eq!(query_f.unwrap(), vec![XYKPool, MulticollateralBondingCurvePool, MockPool2, MockPool3]);
+        assert_eq!(query_e.unwrap(), vec![XYKPool, MulticollateralBondingCurvePool]);
+        assert_eq!(query_f.unwrap(), vec![XYKPool, MulticollateralBondingCurvePool]);
     });
 }
 
@@ -2297,7 +2297,7 @@ fn selecting_xyk_only_filter_is_forbidden() {
         assert_eq!(LiquidityProxy::is_forbidden_filter(&DAI, &PSWAP, &vec![MulticollateralBondingCurvePool], &ForbidSelected), true);
         assert_eq!(LiquidityProxy::is_forbidden_filter(&PSWAP, &VAL, &vec![MulticollateralBondingCurvePool], &ForbidSelected), true);
         assert_eq!(LiquidityProxy::is_forbidden_filter(&USDT, &VAL, &vec![MulticollateralBondingCurvePool], &ForbidSelected), true);
-        
+
         // xyk only selection, non-reserve assets
         assert_eq!(LiquidityProxy::is_forbidden_filter(&XOR, &USDT, &vec![MulticollateralBondingCurvePool], &ForbidSelected), false);
         assert_eq!(LiquidityProxy::is_forbidden_filter(&USDT, &XOR, &vec![MulticollateralBondingCurvePool], &ForbidSelected), false);
@@ -2370,7 +2370,7 @@ fn test_list_enabled_sources_for_path_with_xyk_forbidden_1() {
         let query_f = LiquidityProxy::list_enabled_sources_for_path_with_xyk_forbidden(0, USDT, XOR);
         let query_g = LiquidityProxy::list_enabled_sources_for_path_with_xyk_forbidden(0, PSWAP, USDT);
         let query_h = LiquidityProxy::list_enabled_sources_for_path_with_xyk_forbidden(0, USDT, VAL);
-        
+
         assert_eq!(query_a.unwrap_err(), Error::<Runtime>::UnavailableExchangePath.into());
         assert_eq!(query_b.unwrap_err(), Error::<Runtime>::UnavailableExchangePath.into());
         assert_eq!(query_c.unwrap(), vec![]);
@@ -2402,8 +2402,8 @@ fn test_list_enabled_sources_for_path_with_xyk_forbidden_2() {
         assert_eq!(query_b.unwrap(), vec![MulticollateralBondingCurvePool]);
         assert_eq!(query_c.unwrap(), vec![]);
         assert_eq!(query_d.unwrap(), vec![]);
-        assert_eq!(query_e.unwrap(), vec![MulticollateralBondingCurvePool]);
-        assert_eq!(query_f.unwrap(), vec![MulticollateralBondingCurvePool]);
+        assert_eq!(query_e.unwrap(), vec![]);
+        assert_eq!(query_f.unwrap(), vec![]);
     });
 }
 
@@ -2442,7 +2442,7 @@ fn test_list_enabled_sources_for_path_with_xyk_forbidden_4() {
         TradingPair::register(Origin::signed(alice()), 0, XOR, VAL).expect("failed to register pair");
         TradingPair::register(Origin::signed(alice()), 0, XOR, PSWAP).expect("failed to register pair");
         TradingPair::register(Origin::signed(alice()), 0, XOR, USDT).expect("failed to register pair");
-        
+
         TradingPair::enable_source_for_trading_pair(&0, &XOR, &VAL, XYKPool).expect("failed to enable source");
         TradingPair::enable_source_for_trading_pair(&0, &XOR, &VAL, MulticollateralBondingCurvePool).expect("failed to enable source");
         TradingPair::enable_source_for_trading_pair(&0, &XOR, &VAL, MockPool2).expect("failed to enable source");
@@ -2459,7 +2459,7 @@ fn test_list_enabled_sources_for_path_with_xyk_forbidden_4() {
         assert_eq!(query_b.unwrap(), vec![MulticollateralBondingCurvePool, MockPool2]);
         assert_eq!(query_c.unwrap(), vec![MulticollateralBondingCurvePool, MockPool3]);
         assert_eq!(query_d.unwrap(), vec![MulticollateralBondingCurvePool, MockPool3]);
-        assert_eq!(query_e.unwrap(), vec![MulticollateralBondingCurvePool, MockPool2, MockPool3]);
-        assert_eq!(query_f.unwrap(), vec![MulticollateralBondingCurvePool, MockPool2, MockPool3]);
+        assert_eq!(query_e.unwrap(), vec![MulticollateralBondingCurvePool]);
+        assert_eq!(query_f.unwrap(), vec![MulticollateralBondingCurvePool]);
     });
 }
