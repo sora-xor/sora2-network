@@ -1764,7 +1764,7 @@ dependencies = [
 [[package]]
 name = "ethabi"
 version = "13.0.0"
-source = "git+https://github.com/vmarkushin/ethabi.git?branch=no-std#7b4ade505aaf1a33c923a99b640c20c7d3bfbde3"
+source = "git+https://github.com/vmarkushin/ethabi.git?branch=no-std#c6c060c4b02e0ac552db5610da2760bcfa478108"
 dependencies = [
  "anyhow",
  "ethereum-types",
@@ -1778,12 +1778,12 @@ dependencies = [
 [[package]]
 name = "ethabi-contract"
 version = "11.0.0"
-source = "git+https://github.com/vmarkushin/ethabi.git?branch=no-std#7b4ade505aaf1a33c923a99b640c20c7d3bfbde3"
+source = "git+https://github.com/vmarkushin/ethabi.git?branch=no-std#c6c060c4b02e0ac552db5610da2760bcfa478108"
 
 [[package]]
 name = "ethabi-derive"
 version = "13.0.0"
-source = "git+https://github.com/vmarkushin/ethabi.git?branch=no-std#7b4ade505aaf1a33c923a99b640c20c7d3bfbde3"
+source = "git+https://github.com/vmarkushin/ethabi.git?branch=no-std#c6c060c4b02e0ac552db5610da2760bcfa478108"
 dependencies = [
  "anyhow",
  "ethabi",
