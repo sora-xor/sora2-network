@@ -33,7 +33,7 @@ use common::mock::ExistentialDeposits;
 use common::{
     self, balance, fixed, fixed_from_basis_points, fixed_wrapper, hash, Amount, AssetId32,
     AssetName, AssetSymbol, DEXInfo, Fixed, FromGenericPair, GetMarketInfo, LiquiditySource,
-    LiquiditySourceType, RewardReason, DOT, KSM, PSWAP, USDT, VAL, XOR,
+    LiquiditySourceType, RewardReason, DAI, DOT, ETH, KSM, PSWAP, USDT, VAL, XOR,
 };
 use currencies::BasicCurrencyAdapter;
 
@@ -50,7 +50,7 @@ use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentityLookup};
 use sp_runtime::{AccountId32, DispatchError, Perbill};
 use sp_std::str::FromStr;
-use std::collections::HashMap;
+use std::collections::{BTreeSet, HashMap};
 
 pub type AccountId = AccountId32;
 pub type BlockNumber = u64;
@@ -390,6 +390,14 @@ impl Default for ExtBuilder {
                     AssetName(b"Polkaswap Token".to_vec()),
                     18,
                 ),
+                (
+                    alice(),
+                    USDT,
+                    balance!(0),
+                    AssetSymbol(b"USDT".to_vec()),
+                    AssetName(b"Tether".to_vec()),
+                    18,
+                ),
             ],
         }
     }
@@ -610,6 +618,10 @@ impl GetMarketInfo<AssetId> for MockMCBCPool {
         let reserves_account_id =
             Technical::tech_account_id_to_account_id(&reserves_tech_account_id).unwrap();
         Ok(Currencies::free_balance(*asset_id, &reserves_account_id))
+    }
+
+    fn enabled_collaterals() -> BTreeSet<AssetId> {
+        [VAL, PSWAP, DAI, ETH].iter().cloned().collect()
     }
 }
 

@@ -1,14 +1,19 @@
-use crate::Config;
+#[cfg(test)]
+use crate::mock::Mock;
+use crate::{Config, Pallet};
 use codec::{Decode, Encode};
 use frame_support::debug;
 use frame_support::dispatch::GetCallMetadata;
 use frame_support::sp_io::hashing::blake2_256;
 use frame_support::sp_runtime::offchain::storage_lock::BlockNumberProvider;
 use frame_support::sp_runtime::traits::Saturating;
+#[cfg(test)]
+use frame_system::offchain::SignMessage;
 use frame_system::offchain::{
     Account, CreateSignedTransaction, SendSignedTransaction, SendTransactionTypes, Signer,
 };
 use sp_core::H256;
+
 type Call<T> = <T as Config>::Call;
 
 /// Information about an extrinsic sent by an off-chain worker. Used to identify extrinsics in
@@ -65,6 +70,7 @@ impl<T: Config> SignedTransactionData<T> {
             )?;
         let xt = <T as SendTransactionTypes<LocalCall>>::Extrinsic::new(call, Some(signature))?;
         let vec = xt.encode();
+        // TODO (optimize): consider skipping the hash calculation if the extrinsic weren't submitted.
         let ext_hash = H256(blake2_256(&vec));
         Some(Self::new(ext_hash, submitted_at, overarching_call))
     }
@@ -78,7 +84,7 @@ impl<T: Config> SignedTransactionData<T> {
             "Re-sending signed transaction: {:?}",
             self.call.get_call_metadata()
         );
-        let result = signer.send_signed_transaction(|_acc| self.call.clone());
+        let result = Pallet::<T>::send_signed_transaction(signer, &self.call);
 
         if let Some((account, res)) = result {
             let submitted_at = if res.is_err() {
@@ -94,5 +100,28 @@ impl<T: Config> SignedTransactionData<T> {
         } else {
             false
         }
+    }
+}
+
+impl<T: Config> Pallet<T> {
+    pub fn send_signed_transaction<LocalCall: Clone>(
+        signer: &Signer<T, T::PeerId>,
+        call: &LocalCall,
+    ) -> <Signer<T, T::PeerId> as SendSignedTransaction<T, T::PeerId, LocalCall>>::Result
+    where
+        T: CreateSignedTransaction<LocalCall>,
+    {
+        #[cfg(test)]
+        let result = {
+            if T::Mock::should_fail_send_signed_transaction() {
+                let account_id = signer.sign_message(&[]).unwrap().0;
+                Some((account_id, Err(())))
+            } else {
+                signer.send_signed_transaction(|_acc| call.clone())
+            }
+        };
+        #[cfg(not(test))]
+        let result = signer.send_signed_transaction(|_acc| call.clone());
+        result
     }
 }

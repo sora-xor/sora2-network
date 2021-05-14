@@ -164,6 +164,12 @@ type MoreThanHalfCouncil = EnsureOneOf<
     pallet_collective::EnsureProportionMoreThan<_1, _2, AccountId, CouncilCollective>,
 >;
 
+type SlashCancelOrigin = EnsureOneOf<
+    AccountId,
+    EnsureRoot<AccountId>,
+    pallet_collective::EnsureProportionAtLeast<_1, _2, AccountId, CouncilCollective>,
+>;
+
 /// Opaque types. These are used by the CLI to instantiate machinery that don't need to know
 /// the specifics of the runtime. They can then be made to be agnostic over specific formats
 /// of data like extrinsics, allowing for them to continue syncing the network through upgrades
@@ -194,10 +200,10 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
     spec_name: create_runtime_str!("sora-substrate"),
     impl_name: create_runtime_str!("sora-substrate"),
     authoring_version: 1,
-    spec_version: 1,
+    spec_version: 2,
     impl_version: 1,
     apis: RUNTIME_API_VERSIONS,
-    transaction_version: 1,
+    transaction_version: 2,
 };
 
 /// The version infromation used to identify this runtime when compiled natively.
@@ -503,7 +509,7 @@ impl pallet_staking::Config for Runtime {
     type SessionsPerEra = SessionsPerEra;
     type BondingDuration = BondingDuration;
     type SlashDeferDuration = SlashDeferDuration;
-    type SlashCancelOrigin = frame_system::EnsureRoot<Self::AccountId>;
+    type SlashCancelOrigin = SlashCancelOrigin;
     type SessionInterface = Self;
     type NextNewSession = Session;
     type ElectionLookahead = ElectionLookahead;
@@ -661,6 +667,12 @@ parameter_types! {
         account_id
     };
     pub const GetNumSamples: usize = 5;
+    pub const BasicDeposit: Balance = balance!(0.01);
+    pub const FieldDeposit: Balance = balance!(0.01);
+    pub const SubAccountDeposit: Balance = balance!(0.01);
+    pub const MaxSubAccounts: u32 = 100;
+    pub const MaxAdditionalFields: u32 = 100;
+    pub const MaxRegistrars: u32 = 20;
 }
 
 impl liquidity_proxy::Config for Runtime {
@@ -726,6 +738,21 @@ impl pallet_multisig::Config for Runtime {
 impl iroha_migration::Config for Runtime {
     type Event = Event;
     type WeightInfo = iroha_migration::weights::WeightInfo<Runtime>;
+}
+
+impl pallet_identity::Config for Runtime {
+    type Event = Event;
+    type Currency = Balances;
+    type BasicDeposit = BasicDeposit;
+    type FieldDeposit = FieldDeposit;
+    type SubAccountDeposit = SubAccountDeposit;
+    type MaxSubAccounts = MaxSubAccounts;
+    type MaxAdditionalFields = MaxAdditionalFields;
+    type MaxRegistrars = MaxRegistrars;
+    type Slashed = ();
+    type ForceOrigin = MoreThanHalfCouncil;
+    type RegistrarOrigin = MoreThanHalfCouncil;
+    type WeightInfo = ();
 }
 
 impl<T: SigningTypes> frame_system::offchain::SignMessage<T> for Runtime {
@@ -814,7 +841,8 @@ impl xor_fee::ApplyCustomFees<Call> for ExtrinsicsFlatFees {
         match call {
             Call::Assets(assets::Call::register(..))
             | Call::EthBridge(eth_bridge::Call::transfer_to_sidechain(..))
-            | Call::PoolXYK(pool_xyk::Call::withdraw_liquidity(..)) => Some(balance!(0.007)),
+            | Call::PoolXYK(pool_xyk::Call::withdraw_liquidity(..))
+            | Call::Rewards(rewards::Call::claim(..)) => Some(balance!(0.007)),
             Call::EthBridge(eth_bridge::Call::register_incoming_request(..))
             | Call::EthBridge(eth_bridge::Call::finalize_incoming_request(..))
             | Call::EthBridge(eth_bridge::Call::approve_request(..)) => None,
@@ -941,6 +969,17 @@ impl bridge_multisig::Config for Runtime {
 
 parameter_types! {
     pub const EthNetworkId: u32 = 0;
+    pub const RemoveTemporaryPeerAccountId: AccountId = AccountId::new(hex!("614e20b93522be9874e48f1e18b9bf2dfd4cdc4dafc1887ca353d544c92526cc"));
+}
+
+#[cfg(not(feature = "private-net"))]
+parameter_types! {
+    pub const RemovePendingOutgoingRequestsAfter: BlockNumber = 1 * DAYS;
+}
+
+#[cfg(feature = "private-net")]
+parameter_types! {
+    pub const RemovePendingOutgoingRequestsAfter: BlockNumber = 30 * MINUTES;
 }
 
 pub type NetworkId = u32;
@@ -952,6 +991,8 @@ impl eth_bridge::Config for Runtime {
     type NetworkId = NetworkId;
     type GetEthNetworkId = EthNetworkId;
     type WeightInfo = eth_bridge::weights::WeightInfo<Runtime>;
+    type RemovePendingOutgoingRequestsAfter = RemovePendingOutgoingRequestsAfter;
+    type RemoveTemporaryPeerAccountId = RemoveTemporaryPeerAccountId;
 }
 
 #[cfg(feature = "private-net")]
@@ -1178,6 +1219,7 @@ construct_runtime! {
         TechnicalMembership: pallet_membership::<Instance1>::{Module, Call, Storage, Event<T>, Config<T>},
         ElectionsPhragmen: pallet_elections_phragmen::{Module, Call, Storage, Event<T>, Config<T>},
         VestedRewards: vested_rewards::{Module, Call, Storage, Event<T>},
+        Identity: pallet_identity::{Module, Call, Storage, Event<T>},
         // Available only for test net
         Faucet: faucet::{Module, Call, Config<T>, Event<T>},
     }
@@ -1236,6 +1278,7 @@ construct_runtime! {
         TechnicalMembership: pallet_membership::<Instance1>::{Module, Call, Storage, Event<T>, Config<T>},
         ElectionsPhragmen: pallet_elections_phragmen::{Module, Call, Storage, Event<T>, Config<T>},
         VestedRewards: vested_rewards::{Module, Call, Storage, Event<T>},
+        Identity: pallet_identity::{Module, Call, Storage, Event<T>},
     }
 }
 
@@ -1625,6 +1668,10 @@ impl_runtime_apis! {
             selected_source_types: Vec<LiquiditySourceType>,
             filter_mode: FilterMode,
         ) -> Option<liquidity_proxy_runtime_api::SwapOutcomeInfo<Balance, AssetId>> {
+            if LiquidityProxy::is_forbidden_filter(&input_asset_id, &output_asset_id, &selected_source_types, &filter_mode) {
+                return None;
+            }
+
             // TODO: remove with proper QuoteAmount refactor
             let limit = if swap_variant == SwapVariant::WithDesiredInput {
                 Balance::zero()
@@ -1665,7 +1712,7 @@ impl_runtime_apis! {
             input_asset_id: AssetId,
             output_asset_id: AssetId,
         ) -> Vec<LiquiditySourceType> {
-            LiquidityProxy::list_enabled_sources_for_path(
+            LiquidityProxy::list_enabled_sources_for_path_with_xyk_forbidden(
                 dex_id, input_asset_id, output_asset_id
             ).unwrap_or(Vec::new())
         }

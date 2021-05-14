@@ -45,7 +45,7 @@ use common::{
 };
 use frame_support::traits::Get;
 use frame_support::weights::Weight;
-use frame_support::{ensure, RuntimeDebug};
+use frame_support::{ensure, fail, RuntimeDebug};
 use frame_system::ensure_signed;
 use sp_runtime::traits::{UniqueSaturatedFrom, Zero};
 use sp_runtime::DispatchError;
@@ -178,6 +178,30 @@ pub trait WeightInfo {
 }
 
 impl<T: Config> Pallet<T> {
+    /// Temporary workaround to prevent tbc oracle exploit with xyk-only filter.
+    pub fn is_forbidden_filter(
+        input_asset_id: &T::AssetId,
+        output_asset_id: &T::AssetId,
+        selected_source_types: &Vec<LiquiditySourceType>,
+        filter_mode: &FilterMode,
+    ) -> bool {
+        let tbc_reserve_assets = T::PrimaryMarket::enabled_collaterals();
+        // check if user has selected only xyk either explicitly or by excluding other types
+        let is_xyk_only = selected_source_types.contains(&LiquiditySourceType::XYKPool)
+            && !selected_source_types
+                .contains(&LiquiditySourceType::MulticollateralBondingCurvePool)
+            && filter_mode == &FilterMode::AllowSelected
+            || selected_source_types
+                .contains(&LiquiditySourceType::MulticollateralBondingCurvePool)
+                && !selected_source_types.contains(&LiquiditySourceType::XYKPool)
+                && filter_mode == &FilterMode::ForbidSelected;
+        // check if either of tbc reserve assets is present
+        let reserve_asset_present = tbc_reserve_assets.contains(input_asset_id)
+            || tbc_reserve_assets.contains(output_asset_id);
+
+        is_xyk_only && reserve_asset_present
+    }
+
     /// Sample a single liquidity source with a range of swap amounts to get respective prices for the exchange.
     fn sample_liquidity_source(
         liquidity_source_id: &LiquiditySourceIdOf<T>,
@@ -713,6 +737,22 @@ impl<T: Config> Pallet<T> {
                 Ok(first_swap.intersection(&second_swap).cloned().collect())
             }
         }
+    }
+
+    pub fn list_enabled_sources_for_path_with_xyk_forbidden(
+        dex_id: T::DEXId,
+        input_asset_id: T::AssetId,
+        output_asset_id: T::AssetId,
+    ) -> Result<Vec<LiquiditySourceType>, DispatchError> {
+        let tbc_reserve_assets = T::PrimaryMarket::enabled_collaterals();
+        let mut initial_result =
+            Self::list_enabled_sources_for_path(dex_id, input_asset_id, output_asset_id)?;
+        if tbc_reserve_assets.contains(&input_asset_id)
+            || tbc_reserve_assets.contains(&output_asset_id)
+        {
+            initial_result.retain(|&lst| lst != LiquiditySourceType::XYKPool);
+        }
+        Ok(initial_result)
     }
 
     // Not full sort, just ensure that if there is XOR then it's first.
@@ -1549,6 +1589,15 @@ pub mod pallet {
         ) -> DispatchResultWithPostInfo {
             let who = ensure_signed(origin)?;
 
+            if Self::is_forbidden_filter(
+                &input_asset_id,
+                &output_asset_id,
+                &selected_source_types,
+                &filter_mode,
+            ) {
+                fail!(Error::<T>::ForbiddenFilter);
+            }
+
             let outcome = Self::exchange(
                 &who,
                 &who,
@@ -1613,5 +1662,7 @@ pub mod pallet {
         CalculationError,
         /// Slippage either exceeds minimum tolerated output or maximum tolerated input.
         SlippageNotTolerated,
+        /// Selected filtering request is not allowed.
+        ForbiddenFilter,
     }
 }

@@ -38,6 +38,7 @@ use crate::{
     AssetConfig, Config, NetworkConfig, NodeParams, CONFIRMATION_INTERVAL, STORAGE_ETH_NODE_PARAMS,
     STORAGE_FAILED_PENDING_TRANSACTIONS_KEY, STORAGE_NETWORK_IDS_KEY, STORAGE_PEER_SECRET_KEY,
     STORAGE_PENDING_TRANSACTIONS_KEY, STORAGE_SUB_NODE_URL_KEY,
+    STORAGE_SUB_TO_HANDLE_FROM_HEIGHT_KEY,
 };
 use codec::{Codec, Decode, Encode};
 use common::mock::ExistentialDeposits;
@@ -67,12 +68,13 @@ use frame_support::sp_runtime::transaction_validity::{
     TransactionSource, TransactionValidity, TransactionValidityError,
 };
 use frame_support::sp_runtime::{
-    self, ApplyExtrinsicResultWithInfo, MultiSignature, MultiSigner, Perbill, Percent,
+    self, ApplyExtrinsicResultWithInfo, MultiSignature, MultiSigner, Perbill,
 };
 use frame_support::traits::GenesisBuild;
 use frame_support::weights::{Pays, Weight};
 use frame_support::{construct_runtime, parameter_types};
 use frame_system::offchain::{Account, SigningTypes};
+use hex_literal::hex;
 use parking_lot::RwLock;
 use rustc_hex::ToHex;
 use sp_core::offchain::OffchainStorage;
@@ -227,6 +229,8 @@ parameter_types! {
     pub const MaximumBlockLength: u32 = 2 * 1024;
     pub const AvailableBlockRatio: Perbill = Perbill::from_percent(75);
     pub const ExistentialDeposit: u128 = 0;
+    pub const RemovePendingOutgoingRequestsAfter: BlockNumber = 100;
+    pub const RemoveTemporaryPeerAccountId: AccountId = AccountId32::new(hex!("0000000000000000000000000000000000000000000000000000000000000001"));
 }
 
 impl frame_system::Config for Runtime {
@@ -366,13 +370,15 @@ impl pallet_sudo::Config for Runtime {
 }
 
 impl crate::Config for Runtime {
+    type Event = Event;
     type PeerId = crate::crypto::TestAuthId;
     type Call = Call;
-    type Event = Event;
     type NetworkId = u32;
     type GetEthNetworkId = EthNetworkId;
     type WeightInfo = ();
     type Mock = State;
+    type RemovePendingOutgoingRequestsAfter = RemovePendingOutgoingRequestsAfter;
+    type RemoveTemporaryPeerAccountId = RemoveTemporaryPeerAccountId;
 }
 
 impl sp_runtime::traits::ExtrinsicMetadata for TestExtrinsic {
@@ -402,11 +408,13 @@ pub type SubstrateAccountId = <<Signature as Verify>::Signer as IdentifyAccount>
 
 pub trait Mock {
     fn on_request(pending_request: &http::PendingRequest, url: &str, body: Cow<'_, str>);
+    fn should_fail_send_signed_transaction() -> bool;
 }
 
 thread_local! {
     pub static RESPONSES: RefCell<Vec<Vec<u8>>> = RefCell::new(Vec::new());
     pub static OFFCHAIN_STATE: RefCell<Option<Arc<RwLock<OffchainState>>>> = RefCell::new(None);
+    pub static SHOULD_FAIL_SEND_SIGNED_TRANSACTION: RefCell<bool> = RefCell::new(false);
 }
 
 fn push_response(data: Vec<u8>) {
@@ -459,6 +467,10 @@ impl Mock for State {
             });
         });
     }
+
+    fn should_fail_send_signed_transaction() -> bool {
+        SHOULD_FAIL_SEND_SIGNED_TRANSACTION.with(|x| *x.borrow())
+    }
 }
 
 impl State {
@@ -477,13 +489,21 @@ impl State {
         finalized_thischain_height: BlockNumber,
         dispatch_txs: bool,
     ) {
-        // Sidechain height.
-        push_json_rpc_response(U64::from(sidechain_height));
+        let finalized_block_hash = H256([0; 32]);
         // Thischain finalized head.
-        push_json_rpc_response(H256([0; 32]));
+        push_json_rpc_response(finalized_block_hash);
         let sub_block_number = frame_system::Pallet::<Runtime>::block_number();
         frame_system::Pallet::<Runtime>::set_block_number(sub_block_number + 1);
-        // Thischain finalized height.
+        // Thischain finalized header.
+        push_json_rpc_response(SubstrateHeaderLimited {
+            parent_hash: Default::default(),
+            number: finalized_thischain_height.into(),
+            state_root: Default::default(),
+            extrinsics_root: Default::default(),
+            digest: (),
+        });
+        // Thischain block.
+        push_json_rpc_response(finalized_block_hash);
         push_json_rpc_response(SubstrateSignedBlockLimited {
             block: SubstrateBlockLimited {
                 header: SubstrateHeaderLimited {
@@ -496,6 +516,9 @@ impl State {
                 extrinsics: vec![],
             },
         });
+        // Sidechain height.
+        push_json_rpc_response(U64::from(sidechain_height));
+
         let mut responses = Vec::new();
         std::mem::swap(&mut self.responses, &mut responses);
         for resp in responses {
@@ -529,22 +552,29 @@ impl State {
         }
     }
 
-    pub fn pending_txs(&self) -> BTreeMap<H256, SignedTransactionData<Runtime>> {
+    pub fn storage_read<T: Decode + Default>(&self, key: &[u8]) -> T {
         self.offchain_state
             .read()
             .persistent_storage
-            .get(STORAGE_PENDING_TRANSACTIONS_KEY)
+            .get(key)
             .and_then(|x| Decode::decode(&mut &x[..]).ok())
             .unwrap_or_default()
     }
 
+    pub fn pending_txs(&self) -> BTreeMap<H256, SignedTransactionData<Runtime>> {
+        self.storage_read(STORAGE_PENDING_TRANSACTIONS_KEY)
+    }
+
     pub fn failed_pending_txs(&self) -> BTreeMap<H256, SignedTransactionData<Runtime>> {
-        self.offchain_state
-            .read()
-            .persistent_storage
-            .get(STORAGE_FAILED_PENDING_TRANSACTIONS_KEY)
-            .and_then(|x| Decode::decode(&mut &x[..]).ok())
-            .unwrap_or_default()
+        self.storage_read(STORAGE_FAILED_PENDING_TRANSACTIONS_KEY)
+    }
+
+    pub fn substrate_to_handle_from_height(&self) -> BlockNumber {
+        self.storage_read(STORAGE_SUB_TO_HANDLE_FROM_HEIGHT_KEY)
+    }
+
+    pub fn set_should_fail_send_signed_transactions(&self, flag: bool) {
+        SHOULD_FAIL_SEND_SIGNED_TRANSACTION.with(|x| *x.borrow_mut() = flag);
     }
 }
 
@@ -697,7 +727,6 @@ impl ExtBuilder {
                         .iter()
                         .map(|x| x.1.clone())
                         .collect(),
-                    Percent::from_parts(67),
                 ),
             ));
         }
@@ -830,6 +859,7 @@ impl ExtBuilder {
             responses: vec![],
         };
         OFFCHAIN_STATE.with(|x| *x.borrow_mut() = Some(state.offchain_state.clone()));
+        state.set_should_fail_send_signed_transactions(false);
         (t, state)
     }
 }

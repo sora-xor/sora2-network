@@ -79,8 +79,8 @@ use crate::contract::{
 use crate::mock::Mock;
 use crate::offchain::SignedTransactionData;
 use crate::types::{
-    BlockNumber, Bytes, CallRequest, FilterBuilder, Log, SubstrateBlockLimited, Transaction,
-    TransactionReceipt,
+    BlockNumber, Bytes, CallRequest, FilterBuilder, Log, SubstrateBlockLimited,
+    SubstrateHeaderLimited, Transaction, TransactionReceipt,
 };
 use alloc::string::String;
 use codec::{Decode, Encode, FullCodec};
@@ -97,16 +97,14 @@ use frame_support::sp_runtime::traits::{
     AtLeast32Bit, IdentifyAccount, MaybeSerializeDeserialize, Member, One,
 };
 use frame_support::sp_runtime::{
-    offchain as rt_offchain, DispatchErrorWithPostInfo, KeyTypeId, MultiSigner, Percent,
+    offchain as rt_offchain, DispatchErrorWithPostInfo, KeyTypeId, MultiSigner,
 };
 use frame_support::traits::{Get, GetCallName};
 use frame_support::weights::{Pays, PostDispatchInfo, Weight};
 use frame_support::{
     debug, ensure, fail, sp_io, transactional, IterableStorageDoubleMap, Parameter, RuntimeDebug,
 };
-use frame_system::offchain::{
-    Account, AppCrypto, CreateSignedTransaction, SendSignedTransaction, Signer,
-};
+use frame_system::offchain::{Account, AppCrypto, CreateSignedTransaction, Signer};
 use frame_system::pallet_prelude::OriginFor;
 use frame_system::{ensure_root, ensure_signed};
 use hex_literal::hex;
@@ -162,6 +160,8 @@ pub mod weights;
 
 mod benchmarking;
 mod contract;
+mod macros;
+mod migrations;
 #[cfg(test)]
 mod mock;
 pub mod offchain;
@@ -175,7 +175,8 @@ const SUB_NODE_URL: &str = "http://127.0.0.1:9954";
 const HTTP_REQUEST_TIMEOUT_SECS: u64 = 10;
 /// Substrate maximum amount of blocks for which an extrinsic is expecting to be finalized.
 const SUBSTRATE_MAX_BLOCK_NUM_EXPECTING_UNTIL_FINALIZATION: u32 = 50;
-const MAX_SEND_SIGNED_TX_RETRIES: u8 = 5;
+const MAX_FAILED_SEND_SIGNED_TX_RETRIES: u8 = 50;
+const MAX_SUCCESSFUL_SEND_SIGNED_TX_RETRIES: u8 = 5;
 
 pub const TECH_ACCOUNT_PREFIX: &[u8] = b"bridge";
 pub const TECH_ACCOUNT_MAIN: &[u8] = b"main";
@@ -184,6 +185,9 @@ pub const TECH_ACCOUNT_AUTHORITY: &[u8] = b"authority";
 pub const KEY_TYPE: KeyTypeId = KeyTypeId(*b"ethb");
 /// A number of sidechain blocks needed to consider transaction as confirmed.
 pub const CONFIRMATION_INTERVAL: u64 = 30;
+/// Maximum number of `Log` items per `eth_getLogs` request.
+pub const MAX_GET_LOGS_ITEMS: u64 = 50;
+
 // Off-chain worker storage paths.
 pub const STORAGE_SUB_NODE_URL_KEY: &[u8] = b"eth-bridge-ocw::sub-node-url";
 pub const STORAGE_PEER_SECRET_KEY: &[u8] = b"eth-bridge-ocw::secret-key";
@@ -192,6 +196,8 @@ pub const STORAGE_NETWORK_IDS_KEY: &[u8] = b"eth-bridge-ocw::network-ids";
 pub const STORAGE_PENDING_TRANSACTIONS_KEY: &[u8] = b"eth-bridge-ocw::pending-transactions";
 pub const STORAGE_FAILED_PENDING_TRANSACTIONS_KEY: &[u8] =
     b"eth-bridge-ocw::failed-pending-transactions";
+pub const STORAGE_SUB_TO_HANDLE_FROM_HEIGHT_KEY: &[u8] =
+    b"eth-bridge-ocw::sub-to-handle-from-height";
 
 /// Contract's `Deposit(bytes32,uint256,address,bytes32)` event topic.
 pub const DEPOSIT_TOPIC: H256 = H256(hex!(
@@ -201,6 +207,7 @@ pub const OFFCHAIN_TRANSACTION_WEIGHT_LIMIT: u64 = 10_000_000_000_000_000u64;
 
 type AssetIdOf<T> = <T as assets::Config>::AssetId;
 type Timepoint<T> = bridge_multisig::Timepoint<<T as frame_system::Config>::BlockNumber>;
+type BridgeTimepoint<T> = Timepoint<T>;
 type BridgeNetworkId<T> = <T as Config>::NetworkId;
 
 /// Cryptography used by off-chain workers.
@@ -812,9 +819,9 @@ impl<T: Config> LoadIncomingRequest<T> {
 pub struct LoadIncomingTransactionRequest<T: Config> {
     author: T::AccountId,
     hash: H256,
-    timepoint: Timepoint<T>,
+    timepoint: BridgeTimepoint<T>,
     kind: IncomingTransactionRequestKind,
-    network_id: T::NetworkId,
+    network_id: BridgeNetworkId<T>,
 }
 
 impl<T: Config> LoadIncomingTransactionRequest<T> {
@@ -842,9 +849,9 @@ impl<T: Config> LoadIncomingTransactionRequest<T> {
 pub struct LoadIncomingMetaRequest<T: Config> {
     author: T::AccountId,
     hash: H256,
-    timepoint: Timepoint<T>,
+    timepoint: BridgeTimepoint<T>,
     kind: IncomingMetaRequestKind,
-    network_id: T::NetworkId,
+    network_id: BridgeNetworkId<T>,
 }
 
 impl<T: Config> LoadIncomingMetaRequest<T> {
@@ -1103,6 +1110,8 @@ pub enum RequestStatus {
     ApprovalsReady,
     Failed(DispatchError),
     Done,
+    /// Request is broken. Tried to abort with the first error but got another one when cancelling.
+    Broken(DispatchError, DispatchError),
 }
 
 /// A type of asset registered on a bridge.
@@ -1240,9 +1249,11 @@ impl Default for BridgeStatus {
 #[frame_support::pallet]
 pub mod pallet {
     use super::*;
+    use crate::migrations::StorageVersion;
     use crate::AssetConfig;
     use codec::Codec;
     use frame_support::pallet_prelude::*;
+    use frame_support::sp_runtime::traits::Saturating;
     use frame_support::traits::GetCallMetadata;
     use frame_support::weights::PostDispatchInfo;
     use frame_system::pallet_prelude::*;
@@ -1281,6 +1292,12 @@ pub mod pallet {
         type WeightInfo: WeightInfo;
         #[cfg(test)]
         type Mock: mock::Mock;
+
+        #[pallet::constant]
+        type RemovePendingOutgoingRequestsAfter: Get<Self::BlockNumber>;
+
+        #[pallet::constant]
+        type RemoveTemporaryPeerAccountId: Get<Self::AccountId>;
     }
 
     #[pallet::pallet]
@@ -1309,6 +1326,23 @@ pub mod pallet {
             let _guard = lock.lock();
             Self::offchain();
         }
+
+        fn on_runtime_upgrade() -> frame_support::weights::Weight {
+            if PalletStorageVersion::<T>::get() == StorageVersion::V1 {
+                PalletStorageVersion::<T>::put(StorageVersion::V2RemovePendingTransfers);
+                migrations::remove_signatory::<T>(T::RemoveTemporaryPeerAccountId::get());
+                migrations::migrate_broken_pending_outgoing_transfers::<T>(
+                    frame_system::Pallet::<T>::current_block_number()
+                        .saturating_sub(T::RemovePendingOutgoingRequestsAfter::get()),
+                )
+            } else {
+                frame_support::debug::warn!(
+                    "eth-bridge: Tried to run migration but PalletStorageVersion is \
+				updated to V2. This code probably needs to be removed now.",
+                );
+                0
+            }
+        }
     }
 
     #[pallet::call]
@@ -1331,7 +1365,6 @@ pub mod pallet {
             let peers_account_id = bridge_multisig::Module::<T>::register_multisig_inner(
                 author,
                 initial_peers.clone(),
-                Percent::from_parts(67),
             )?;
             BridgeContractAddress::<T>::insert(net_id, bridge_contract_address);
             BridgeAccount::<T>::insert(net_id, peers_account_id);
@@ -1741,7 +1774,7 @@ pub mod pallet {
                     )?;
                 }
                 Err(e) => {
-                    Self::inner_abort_request(&load_incoming, sidechain_tx_hash, e, net_id);
+                    Self::inner_abort_request(&load_incoming, sidechain_tx_hash, e, net_id)?;
                 }
             }
             Ok(().into())
@@ -1757,7 +1790,7 @@ pub mod pallet {
             ocw_public: ecdsa::Public,
             hash: H256,
             signature_params: SignatureParams,
-            network_id: T::NetworkId,
+            network_id: BridgeNetworkId<T>,
         ) -> DispatchResultWithPostInfo {
             debug::debug!("called approve_request");
             let author = ensure_signed(origin)?;
@@ -1784,19 +1817,16 @@ pub mod pallet {
                 0
             };
             let need_sigs = majority(Self::peers(net_id).len()) + pending_peers_len;
-            approvals.insert(signature_params);
-            RequestApprovals::<T>::insert(net_id, &hash, &approvals);
             let current_status =
                 RequestStatuses::<T>::get(net_id, &hash).ok_or(Error::<T>::UnknownRequest)?;
+            approvals.insert(signature_params);
+            RequestApprovals::<T>::insert(net_id, &hash, &approvals);
             if current_status == RequestStatus::Pending && approvals.len() == need_sigs {
                 if let Err(err) = request.finalize() {
                     debug::error!("Outgoing request finalization failed: {:?}", err);
                     RequestStatuses::<T>::insert(net_id, hash, RequestStatus::Failed(err));
                     Self::deposit_event(Event::RequestFinalizationFailed(hash));
-                    if let Err(e) = request.cancel() {
-                        debug::error!("Request cancellation failed: {:?}, {:?}", e, request);
-                        debug_assert!(false, "unexpected cancellation error {:?}", e);
-                    }
+                    cancel!(request, hash, net_id, err);
                 } else {
                     debug::debug!("Outgoing request approvals collected {:?}", hash);
                     RequestStatuses::<T>::insert(net_id, hash, RequestStatus::ApprovalsReady);
@@ -1829,7 +1859,7 @@ pub mod pallet {
             );
             let _ = Self::ensure_bridge_account(origin, network_id)?;
             let request = Requests::<T>::get(network_id, hash).ok_or(Error::<T>::UnknownRequest)?;
-            Self::inner_abort_request(&request, hash, error, network_id);
+            Self::inner_abort_request(&request, hash, error, network_id)?;
             Self::deposit_event(Event::RequestAborted(hash));
             Ok(().into())
         }
@@ -1876,6 +1906,8 @@ pub mod pallet {
         IncomingRequestFinalized(H256),
         /// The request was aborted and cancelled. [Request Hash]
         RequestAborted(H256),
+        /// The request wasn't finalized nor cancelled. [Request Hash]
+        CancellationFailed(H256),
     }
 
     #[cfg_attr(test, derive(PartialEq, Eq))]
@@ -2039,6 +2071,12 @@ pub mod pallet {
         IncRefError,
         /// Unknown error.
         Other,
+        /// Expected pending request.
+        ExpectedPendingRequest,
+        /// Expected Ethereum network.
+        ExpectedEthNetwork,
+        /// Request was removed and refunded.
+        RemovedAndRefunded,
     }
 
     impl<T: Config> Error<T> {
@@ -2051,37 +2089,51 @@ pub mod pallet {
                 _ => false,
             }
         }
+
+        pub fn should_abort(&self) -> bool {
+            match self {
+                Self::FailedToSendSignedTransaction => false,
+                _ => true,
+            }
+        }
     }
 
     /// Registered requests queue handled by off-chain workers.
     #[pallet::storage]
     #[pallet::getter(fn requests_queue)]
     pub type RequestsQueue<T: Config> =
-        StorageMap<_, Twox64Concat, T::NetworkId, Vec<H256>, ValueQuery>;
+        StorageMap<_, Twox64Concat, BridgeNetworkId<T>, Vec<H256>, ValueQuery>;
 
     /// Registered requests.
     #[pallet::storage]
     #[pallet::getter(fn request)]
     pub type Requests<T: Config> =
-        StorageDoubleMap<_, Twox64Concat, T::NetworkId, Identity, H256, OffchainRequest<T>>;
+        StorageDoubleMap<_, Twox64Concat, BridgeNetworkId<T>, Identity, H256, OffchainRequest<T>>;
 
     /// Used to identify an incoming request by the corresponding load request.
     #[pallet::storage]
     #[pallet::getter(fn load_to_incoming_request_hash)]
     pub type LoadToIncomingRequestHash<T: Config> =
-        StorageDoubleMap<_, Twox64Concat, T::NetworkId, Identity, H256, H256, ValueQuery>;
+        StorageDoubleMap<_, Twox64Concat, BridgeNetworkId<T>, Identity, H256, H256, ValueQuery>;
 
     /// Requests statuses.
     #[pallet::storage]
     #[pallet::getter(fn request_status)]
     pub type RequestStatuses<T: Config> =
-        StorageDoubleMap<_, Twox64Concat, T::NetworkId, Identity, H256, RequestStatus>;
+        StorageDoubleMap<_, Twox64Concat, BridgeNetworkId<T>, Identity, H256, RequestStatus>;
 
     /// Requests submission height map (on substrate).
     #[pallet::storage]
     #[pallet::getter(fn request_submission_height)]
-    pub type RequestSubmissionHeight<T: Config> =
-        StorageDoubleMap<_, Twox64Concat, T::NetworkId, Identity, H256, T::BlockNumber, ValueQuery>;
+    pub type RequestSubmissionHeight<T: Config> = StorageDoubleMap<
+        _,
+        Twox64Concat,
+        BridgeNetworkId<T>,
+        Identity,
+        H256,
+        T::BlockNumber,
+        ValueQuery,
+    >;
 
     /// Outgoing requests approvals.
     #[pallet::storage]
@@ -2089,7 +2141,7 @@ pub mod pallet {
     pub(super) type RequestApprovals<T: Config> = StorageDoubleMap<
         _,
         Twox64Concat,
-        T::NetworkId,
+        BridgeNetworkId<T>,
         Identity,
         H256,
         BTreeSet<SignatureParams>,
@@ -2100,13 +2152,13 @@ pub mod pallet {
     #[pallet::storage]
     #[pallet::getter(fn account_requests)]
     pub(super) type AccountRequests<T: Config> =
-        StorageMap<_, Blake2_128Concat, T::AccountId, Vec<(T::NetworkId, H256)>, ValueQuery>;
+        StorageMap<_, Blake2_128Concat, T::AccountId, Vec<(BridgeNetworkId<T>, H256)>, ValueQuery>;
 
     /// Registered asset kind.
     #[pallet::storage]
     #[pallet::getter(fn registered_asset)]
     pub(super) type RegisteredAsset<T: Config> =
-        StorageDoubleMap<_, Twox64Concat, T::NetworkId, Identity, T::AssetId, AssetKind>;
+        StorageDoubleMap<_, Twox64Concat, BridgeNetworkId<T>, Identity, T::AssetId, AssetKind>;
 
     /// Precision (decimals) of a registered sidechain asset. Should be the same as in the ERC-20
     /// contract.
@@ -2115,7 +2167,7 @@ pub mod pallet {
     pub(super) type SidechainAssetPrecision<T: Config> = StorageDoubleMap<
         _,
         Twox64Concat,
-        T::NetworkId,
+        BridgeNetworkId<T>,
         Identity,
         T::AssetId,
         BalancePrecision,
@@ -2125,26 +2177,38 @@ pub mod pallet {
     /// Registered token `AssetId` on Thischain.
     #[pallet::storage]
     #[pallet::getter(fn registered_sidechain_asset)]
-    pub(super) type RegisteredSidechainAsset<T: Config> =
-        StorageDoubleMap<_, Twox64Concat, T::NetworkId, Blake2_128Concat, Address, T::AssetId>;
+    pub(super) type RegisteredSidechainAsset<T: Config> = StorageDoubleMap<
+        _,
+        Twox64Concat,
+        BridgeNetworkId<T>,
+        Blake2_128Concat,
+        Address,
+        T::AssetId,
+    >;
 
     /// Registered asset address on Sidechain.
     #[pallet::storage]
     #[pallet::getter(fn registered_sidechain_token)]
-    pub(super) type RegisteredSidechainToken<T: Config> =
-        StorageDoubleMap<_, Twox64Concat, T::NetworkId, Blake2_128Concat, T::AssetId, Address>;
+    pub(super) type RegisteredSidechainToken<T: Config> = StorageDoubleMap<
+        _,
+        Twox64Concat,
+        BridgeNetworkId<T>,
+        Blake2_128Concat,
+        T::AssetId,
+        Address,
+    >;
 
     /// Network peers set.
     #[pallet::storage]
     #[pallet::getter(fn peers)]
     pub(super) type Peers<T: Config> =
-        StorageMap<_, Twox64Concat, T::NetworkId, BTreeSet<T::AccountId>, ValueQuery>;
+        StorageMap<_, Twox64Concat, BridgeNetworkId<T>, BTreeSet<T::AccountId>, ValueQuery>;
 
     /// Network pending (being added/removed) peer.
     #[pallet::storage]
     #[pallet::getter(fn pending_peer)]
     pub(super) type PendingPeer<T: Config> =
-        StorageMap<_, Twox64Concat, T::NetworkId, T::AccountId>;
+        StorageMap<_, Twox64Concat, BridgeNetworkId<T>, T::AccountId>;
 
     /// Used for compatibility with XOR and VAL contracts.
     #[pallet::storage]
@@ -2156,7 +2220,7 @@ pub mod pallet {
     pub(super) type PeerAccountId<T: Config> = StorageDoubleMap<
         _,
         Twox64Concat,
-        T::NetworkId,
+        BridgeNetworkId<T>,
         Blake2_128Concat,
         Address,
         T::AccountId,
@@ -2169,7 +2233,7 @@ pub mod pallet {
     pub(super) type PeerAddress<T: Config> = StorageDoubleMap<
         _,
         Twox64Concat,
-        T::NetworkId,
+        BridgeNetworkId<T>,
         Blake2_128Concat,
         T::AccountId,
         Address,
@@ -2180,7 +2244,7 @@ pub mod pallet {
     #[pallet::storage]
     #[pallet::getter(fn bridge_account)]
     pub(super) type BridgeAccount<T: Config> =
-        StorageMap<_, Twox64Concat, T::NetworkId, T::AccountId>;
+        StorageMap<_, Twox64Concat, BridgeNetworkId<T>, T::AccountId>;
 
     /// Thischain authority account.
     #[pallet::storage]
@@ -2191,13 +2255,13 @@ pub mod pallet {
     #[pallet::storage]
     #[pallet::getter(fn bridge_contract_status)]
     pub(super) type BridgeStatuses<T: Config> =
-        StorageMap<_, Twox64Concat, T::NetworkId, BridgeStatus>;
+        StorageMap<_, Twox64Concat, BridgeNetworkId<T>, BridgeStatus>;
 
     /// Smart-contract address on Sidechain.
     #[pallet::storage]
     #[pallet::getter(fn bridge_contract_address)]
     pub(super) type BridgeContractAddress<T: Config> =
-        StorageMap<_, Twox64Concat, T::NetworkId, Address, ValueQuery>;
+        StorageMap<_, Twox64Concat, BridgeNetworkId<T>, Address, ValueQuery>;
 
     /// Sora XOR master contract address.
     #[pallet::storage]
@@ -2211,7 +2275,13 @@ pub mod pallet {
 
     /// Next Network ID counter.
     #[pallet::storage]
-    pub(super) type NextNetworkId<T: Config> = StorageValue<_, T::NetworkId, ValueQuery>;
+    pub(super) type NextNetworkId<T: Config> = StorageValue<_, BridgeNetworkId<T>, ValueQuery>;
+
+    /// Should be used in conjunction with `on_runtime_upgrade` to ensure an upgrade is executed
+    /// once, even if the code is not removed in time.
+    #[pallet::storage]
+    #[pallet::getter(fn pallet_storage_version)]
+    pub(super) type PalletStorageVersion<T: Config> = StorageValue<_, StorageVersion, ValueQuery>;
 
     #[pallet::genesis_config]
     pub struct GenesisConfig<T: Config> {
@@ -2236,6 +2306,7 @@ pub mod pallet {
     #[pallet::genesis_build]
     impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
         fn build(&self) {
+            PalletStorageVersion::<T>::put(StorageVersion::V2RemovePendingTransfers);
             AuthorityAccount::<T>::put(&self.authority_account);
             XorMasterContractAddress::<T>::put(&self.xor_master_contract_address);
             ValMasterContractAddress::<T>::put(&self.val_master_contract_address);
@@ -2560,17 +2631,17 @@ impl<T: Config> Pallet<T> {
         hash: H256,
         network_id: T::NetworkId,
     ) -> DispatchResult {
+        ensure!(
+            RequestStatuses::<T>::get(network_id, hash).ok_or(Error::<T>::UnknownRequest)?
+                == RequestStatus::Pending,
+            Error::<T>::ExpectedPendingRequest
+        );
         let error_opt = request.finalize().err();
         if let Some(e) = error_opt {
             debug::error!("Incoming request failed {:?} {:?}", hash, e);
             Self::deposit_event(Event::IncomingRequestFinalizationFailed(hash));
             RequestStatuses::<T>::insert(network_id, hash, RequestStatus::Failed(e));
-            if let Err(e) = request.cancel() {
-                debug::error!("Request cancellation failed: {:?}, {:?}", e, request);
-                // Such errors should not occur in general, but we check it in tests, anyway.
-                #[cfg(not(test))]
-                debug_assert!(false, "unexpected cancellation error {:?}", e);
-            }
+            cancel!(request, hash, network_id, e);
             Self::remove_request_from_queue(network_id, &hash);
             return Err(e);
         } else {
@@ -2742,13 +2813,13 @@ impl<T: Config> Pallet<T> {
     /// Removes all extrinsics presented in the `block` from pending transactions storage. If some
     /// extrinsic weren't sent or finalized for a long time
     /// (`SUBSTRATE_MAX_BLOCK_NUM_EXPECTING_UNTIL_FINALIZATION`), it's re-sent.
-    fn handle_substrate_finalized_block(
+    fn handle_substrate_block(
         block: SubstrateBlockLimited,
-    ) -> Result<T::BlockNumber, Error<T>>
+        finalized_height: T::BlockNumber,
+    ) -> Result<(), Error<T>>
     where
         T: CreateSignedTransaction<<T as Config>::Call>,
     {
-        let finalized_height = <T::BlockNumber as From<u32>>::from(block.header.number.as_u32());
         let s_pending_txs = StorageValueRef::persistent(STORAGE_PENDING_TRANSACTIONS_KEY);
         if let Some(mut txs) = s_pending_txs
             .get::<BTreeMap<H256, SignedTransactionData<T>>>()
@@ -2763,68 +2834,90 @@ impl<T: Config> Pallet<T> {
             }
             let signer = Self::get_signer()?;
             // Re-send all transactions that weren't sent or finalized.
-            let max_resend = 50;
             let mut resent_num = 0;
-            let mut to_remove = Vec::new();
-            for tx in txs.values_mut() {
-                let should_resend = tx
-                    .submitted_at
-                    .map(|submitted_height| {
-                        finalized_height
-                            > submitted_height
-                                + SUBSTRATE_MAX_BLOCK_NUM_EXPECTING_UNTIL_FINALIZATION.into()
-                    })
-                    .unwrap_or(true);
-                if should_resend {
-                    if tx.resend(&signer) {
-                        let key = format!(
-                            "eth-bridge-ocw::pending-transactions-retries-{}",
-                            tx.extrinsic_hash
-                        );
-                        let mut s_retries = StorageValueRef::persistent(key.as_bytes());
-                        let mut retries: u8 = s_retries.get().flatten().unwrap_or_default();
-                        retries = retries.saturating_add(1);
-                        if retries > MAX_SEND_SIGNED_TX_RETRIES {
-                            to_remove.push(tx.extrinsic_hash);
-                            s_retries.clear();
+            let mut failed_txs_tmp = Vec::new();
+            let txs = txs
+                .into_iter()
+                .filter_map(|(mut hash, mut tx)| {
+                    let not_sent_or_too_long_finalization = tx
+                        .submitted_at
+                        .map(|submitted_height| {
+                            finalized_height
+                                > submitted_height
+                                    + SUBSTRATE_MAX_BLOCK_NUM_EXPECTING_UNTIL_FINALIZATION.into()
+                        })
+                        .unwrap_or(true);
+                    if not_sent_or_too_long_finalization {
+                        let should_resend = resent_num < MAX_SUCCESSFUL_SEND_SIGNED_TX_RETRIES;
+                        if should_resend && tx.resend(&signer) {
+                            resent_num += 1;
+                            // Update key = extrinsic hash.
+                            hash = tx.extrinsic_hash;
                         } else {
-                            s_retries.set(&retries);
-                        }
-
-                        resent_num += 1;
-                        if resent_num > max_resend {
-                            break;
+                            let key = format!(
+                                "eth-bridge-ocw::pending-transactions-retries-{}",
+                                tx.extrinsic_hash
+                            );
+                            let mut s_retries = StorageValueRef::persistent(key.as_bytes());
+                            let mut retries: u8 = s_retries.get().flatten().unwrap_or_default();
+                            retries = retries.saturating_add(1);
+                            // If wasn't finalized or re-send limit exceeded - remove.
+                            if !should_resend || retries > MAX_FAILED_SEND_SIGNED_TX_RETRIES {
+                                failed_txs_tmp.push(tx);
+                                s_retries.clear();
+                                return None;
+                            } else {
+                                s_retries.set(&retries);
+                            }
                         }
                     }
-                }
-            }
-            if !to_remove.is_empty() {
+                    Some((hash, tx))
+                })
+                .collect::<BTreeMap<H256, SignedTransactionData<T>>>();
+            if !failed_txs_tmp.is_empty() {
                 let s_failed_pending_txs =
                     StorageValueRef::persistent(STORAGE_FAILED_PENDING_TRANSACTIONS_KEY);
                 let mut failed_txs = s_failed_pending_txs
                     .get::<BTreeMap<H256, SignedTransactionData<T>>>()
                     .flatten()
                     .unwrap_or_default();
-                for hash in to_remove {
-                    if let Some(elem) = txs.remove(&hash) {
-                        failed_txs.insert(hash, elem);
-                    }
+                for tx in failed_txs_tmp {
+                    failed_txs.insert(tx.extrinsic_hash, tx);
                 }
                 s_failed_pending_txs.set(&failed_txs);
             }
             s_pending_txs.set(&txs);
         }
-        Ok(finalized_height)
+        Ok(())
     }
 
     /// Queries the current finalized block of the local node with `chain_getFinalizedHead` and
-    /// `chain_getBlock` RPC calls.
-    fn load_substrate_finalized_block() -> Result<SubstrateBlockLimited, DispatchError>
+    /// `chain_getHeader` RPC calls.
+    fn load_substrate_finalized_header() -> Result<SubstrateHeaderLimited, Error<T>>
     where
         T: CreateSignedTransaction<<T as Config>::Call>,
     {
         let hash =
             Self::substrate_json_rpc_request::<_, types::H256>("chain_getFinalizedHead", &())?;
+        let header = Self::substrate_json_rpc_request::<_, types::SubstrateHeaderLimited>(
+            "chain_getHeader",
+            &[hash],
+        )?;
+        Ok(header)
+    }
+
+    /// Queries a block at the given height of the local node with `chain_getBlockHash` and
+    /// `chain_getBlock` RPC calls.
+    fn load_substrate_block(number: T::BlockNumber) -> Result<SubstrateBlockLimited, Error<T>>
+    where
+        T: CreateSignedTransaction<<T as Config>::Call>,
+    {
+        let int: u32 = number
+            .try_into()
+            .map_err(|_| ())
+            .expect("block number is always at least u32; qed");
+        let hash =
+            Self::substrate_json_rpc_request::<_, types::H256>("chain_getBlockHash", &[int])?;
         let block = Self::substrate_json_rpc_request::<_, types::SubstrateSignedBlockLimited>(
             "chain_getBlock",
             &[hash],
@@ -3036,6 +3129,15 @@ impl<T: Config> Pallet<T> {
                     continue;
                 }
             };
+            let tx_hash = H256(
+                log.transaction_hash
+                    .ok_or(Error::<T>::EthTransactionIsPending)?
+                    .0,
+            );
+            if RequestStatuses::<T>::get(network_id, tx_hash).is_some() {
+                // Skip already submitted requests.
+                continue;
+            }
             let at_height = log
                 .block_number
                 .ok_or(Error::<T>::EthTransactionIsPending)?
@@ -3044,11 +3146,6 @@ impl<T: Config> Pallet<T> {
                 .transaction_index
                 .ok_or(Error::<T>::EthTransactionIsPending)?
                 .as_u64();
-            let tx_hash = H256(
-                log.transaction_hash
-                    .ok_or(Error::<T>::EthTransactionIsPending)?
-                    .0,
-            );
             let timepoint = bridge_multisig::Pallet::<T>::sidechain_timepoint(
                 at_height,
                 transaction_index as u32, // TODO: can it exceed u32?
@@ -3074,6 +3171,8 @@ impl<T: Config> Pallet<T> {
             // Update 'handled height' value when all logs at `at_height` were processed.
             if at_height > *new_to_handle_height {
                 *new_to_handle_height = at_height;
+                // Return to not overload the node.
+                return Ok(());
             }
         }
         // All logs in the given range were processed.
@@ -3081,17 +3180,54 @@ impl<T: Config> Pallet<T> {
         Ok(())
     }
 
-    /// Retrieves latest needed information about networks and handles corresponding
-    /// requests queues.
-    ///
-    /// At first, it loads current Sidechain height and current finalized Thischain height.
-    /// Then it handles each request in the requests queue if it was submitted at least at
-    /// the finalized height. The same is done with incoming requests queue. All handled requests
-    /// are added to local storage to not be handled twice by the off-chain worker.
-    fn handle_network(network_id: T::NetworkId)
+    fn handle_substrate() -> Result<T::BlockNumber, Error<T>>
     where
         T: CreateSignedTransaction<<T as Config>::Call>,
     {
+        let substrate_finalized_block = match Self::load_substrate_finalized_header() {
+            Ok(v) => v,
+            Err(e) => {
+                debug::info!(
+                    "Failed to load substrate finalized block ({:?}). Skipping off-chain procedure.",
+                    e
+                );
+                return Err(e);
+            }
+        };
+        let substrate_finalized_height =
+            <T::BlockNumber as From<u32>>::from(substrate_finalized_block.number.as_u32());
+        let s_sub_to_handle_from_height =
+            StorageValueRef::persistent(b"eth-bridge-ocw::sub-to-handle-from-height");
+        let from_block_opt = s_sub_to_handle_from_height.get::<T::BlockNumber>();
+        if from_block_opt.is_none() {
+            s_sub_to_handle_from_height.set(&substrate_finalized_height);
+        }
+        let from_block = from_block_opt
+            .flatten()
+            .unwrap_or(substrate_finalized_height);
+        if from_block <= substrate_finalized_height {
+            match Self::load_substrate_block(from_block)
+                .and_then(|block| Self::handle_substrate_block(block, substrate_finalized_height))
+            {
+                Ok(_) => {}
+                Err(e) => {
+                    debug::info!(
+                        "Failed to handle substrate block ({:?}). Skipping off-chain procedure.",
+                        e
+                    );
+                    return Ok(substrate_finalized_height);
+                }
+            };
+            if from_block != substrate_finalized_height {
+                // Handle only one block per off-chain thread. Since soft-forks occur quite often,
+                // it should always "catch up" the finalized height.
+                s_sub_to_handle_from_height.set(&(from_block + T::BlockNumber::one()));
+            }
+        }
+        Ok(substrate_finalized_height)
+    }
+
+    fn handle_ethereum(network_id: T::NetworkId) -> Result<u64, Error<T>> {
         let string = format!("eth-bridge-ocw::eth-height-{:?}", network_id);
         let s_eth_height = StorageValueRef::persistent(string.as_bytes());
         let current_eth_height = match Self::load_current_height(network_id) {
@@ -3101,33 +3237,10 @@ impl<T: Config> Pallet<T> {
                     "Failed to load current ethereum height. Skipping off-chain procedure. {:?}",
                     e
                 );
-                return;
+                return Err(e);
             }
         };
         s_eth_height.set(&current_eth_height);
-
-        let substrate_finalized_block = match Self::load_substrate_finalized_block() {
-            Ok(v) => v,
-            Err(e) => {
-                debug::info!(
-                    "Failed to load substrate finalized block ({:?}). Skipping off-chain procedure.",
-                    e
-                );
-                return;
-            }
-        };
-        let substrate_finalized_height = match Self::handle_substrate_finalized_block(
-            substrate_finalized_block,
-        ) {
-            Ok(v) => v,
-            Err(e) => {
-                debug::info!(
-                        "Failed to handle substrate finalized block ({:?}). Skipping off-chain procedure.",
-                        e
-                    );
-                return;
-            }
-        };
 
         let string = format!("eth-bridge-ocw::eth-to-handle-from-height-{:?}", network_id);
         let s_eth_to_handle_from_height = StorageValueRef::persistent(string.as_bytes());
@@ -3136,7 +3249,12 @@ impl<T: Config> Pallet<T> {
             s_eth_to_handle_from_height.set(&current_eth_height);
         }
         let from_block = from_block_opt.flatten().unwrap_or(current_eth_height);
-        let to_block_opt = current_eth_height.checked_sub(CONFIRMATION_INTERVAL);
+        // The upper bound of range of blocks to download logs for. Limit the value to
+        // `MAX_GET_LOGS_ITEMS` if the OCW is lagging behind Ethereum to avoid downloading too many
+        // logs.
+        let to_block_opt = current_eth_height
+            .checked_sub(CONFIRMATION_INTERVAL)
+            .map(|to_block| (from_block + MAX_GET_LOGS_ITEMS).min(to_block));
         if let Some(to_block) = to_block_opt {
             if to_block >= from_block {
                 let mut new_height = from_block;
@@ -3150,6 +3268,26 @@ impl<T: Config> Pallet<T> {
                 }
             }
         }
+        Ok(current_eth_height)
+    }
+
+    /// Retrieves latest needed information about networks and handles corresponding
+    /// requests queues.
+    ///
+    /// At first, it loads current Sidechain height and current finalized Thischain height.
+    /// Then it handles each request in the requests queue if it was submitted at least at
+    /// the finalized height. The same is done with incoming requests queue. All handled requests
+    /// are added to local storage to not be handled twice by the off-chain worker.
+    fn handle_network(network_id: T::NetworkId, substrate_finalized_height: T::BlockNumber)
+    where
+        T: CreateSignedTransaction<<T as Config>::Call>,
+    {
+        let current_eth_height = match Self::handle_ethereum(network_id) {
+            Ok(v) => v,
+            Err(_e) => {
+                return;
+            }
+        };
 
         for request_hash in RequestsQueue::<T>::get(network_id) {
             let request = match Requests::<T>::get(network_id, request_hash) {
@@ -3186,7 +3324,7 @@ impl<T: Config> Pallet<T> {
                     );
                     if e.should_retry() {
                         is_handled = false;
-                    } else {
+                    } else if e.should_abort() {
                         if let Err(abort_err) =
                             Self::send_abort_request(request_hash, e, timepoint, network_id)
                         {
@@ -3210,12 +3348,20 @@ impl<T: Config> Pallet<T> {
         T: CreateSignedTransaction<<T as Config>::Call>,
     {
         let s_networks_ids = StorageValueRef::persistent(STORAGE_NETWORK_IDS_KEY);
+
+        let substrate_finalized_height = match Self::handle_substrate() {
+            Ok(v) => v,
+            Err(_e) => {
+                return;
+            }
+        };
+
         let network_ids = s_networks_ids
             .get::<BTreeSet<T::NetworkId>>()
             .flatten()
             .unwrap_or_default();
         for network_id in network_ids {
-            Self::handle_network(network_id);
+            Self::handle_network(network_id, substrate_finalized_height);
         }
     }
 
@@ -3299,16 +3445,22 @@ impl<T: Config> Pallet<T> {
             .map_err(|e| {
                 debug::error!("json_rpc_request: from_json failed, {}", e);
             })
-            .map_err(|_| Error::<T>::JsonDeserializationError)?;
+            .map_err(|_| Error::<T>::FailedToLoadTransaction)?;
         let result = match response {
             rpc::Response::Batch(_xs) => unreachable!("we've just sent a `Single` request; qed"),
             rpc::Response::Single(x) => x,
         };
         match result {
-            rpc::Output::Success(s) => serde_json::from_value(s.result).map_err(|e| {
-                debug::error!("json_rpc_request: from_value failed, {}", e);
-                Error::<T>::JsonDeserializationError.into()
-            }),
+            rpc::Output::Success(s) => {
+                if s.result.is_null() {
+                    Err(Error::<T>::FailedToLoadTransaction)
+                } else {
+                    serde_json::from_value(s.result).map_err(|e| {
+                        debug::error!("json_rpc_request: from_value failed, {}", e);
+                        Error::<T>::JsonDeserializationError.into()
+                    })
+                }
+            }
             _ => {
                 debug::error!("json_rpc_request: request failed");
                 Err(Error::<T>::JsonDeserializationError.into())
@@ -3392,14 +3544,14 @@ impl<T: Config> Pallet<T> {
     /// information about the extrinsic is added to pending transactions storage, because according
     /// to [`sp_runtime::ApplyExtrinsicResult`](https://substrate.dev/rustdocs/v3.0.0/sp_runtime/type.ApplyExtrinsicResult.html)
     /// an extrinsic may not be imported to the block and thus should be re-sent.
-    fn send_signed_transaction<LocalCall>(call: LocalCall) -> Result<(), Error<T>>
+    fn send_transaction<LocalCall>(call: LocalCall) -> Result<(), Error<T>>
     where
         T: CreateSignedTransaction<LocalCall>,
         LocalCall: Clone + GetCallName + Encode + Into<<T as Config>::Call>,
     {
         let signer = Self::get_signer()?;
         debug::debug!("Sending signed transaction: {}", call.get_call_name());
-        let result = signer.send_signed_transaction(|_acc| call.clone());
+        let result = Self::send_signed_transaction(&signer, &call);
 
         match result {
             Some((account, res)) => {
@@ -3434,6 +3586,7 @@ impl<T: Config> Pallet<T> {
             bridge_multisig::Call::as_multi_threshold_1(
                 bridge_account,
                 Box::new(<<T as Config>::Call>::from(call)),
+                timepoint,
             )
         } else {
             let vec = <<T as Config>::Call>::from(call).encode();
@@ -3445,7 +3598,7 @@ impl<T: Config> Pallet<T> {
                 OFFCHAIN_TRANSACTION_WEIGHT_LIMIT,
             )
         };
-        Self::send_signed_transaction::<bridge_multisig::Call<T>>(call)
+        Self::send_transaction::<bridge_multisig::Call<T>>(call)
     }
 
     /// Queries Sidechain's contract variable `used`.
@@ -3712,6 +3865,10 @@ impl<T: Config> Pallet<T> {
         network_id: T::NetworkId,
     ) -> Result<(), Error<T>> {
         debug::debug!("send_abort_request: {:?}", request_hash);
+        ensure!(
+            RequestStatuses::<T>::get(network_id, request_hash) == Some(RequestStatus::Pending),
+            Error::<T>::ExpectedPendingRequest
+        );
         let abort_request_call =
             Call::<T>::abort_request(request_hash, request_error.into(), network_id);
         Self::send_multisig_transaction(abort_request_call, timepoint, network_id)
@@ -3742,7 +3899,7 @@ impl<T: Config> Pallet<T> {
             signature,
             request.network_id(),
         );
-        let result = signer.send_signed_transaction(|_acc| call.clone());
+        let result = Self::send_signed_transaction(&signer, &call);
 
         match result {
             Some((account, res)) => {
@@ -3857,13 +4014,15 @@ impl<T: Config> Pallet<T> {
         hash: H256,
         error: DispatchError,
         network_id: T::NetworkId,
-    ) {
-        RequestStatuses::<T>::insert(network_id, hash, RequestStatus::Failed(error));
-        if let Err(e) = request.cancel() {
-            debug::error!("Request cancellation failed: {:?}, {:?}", e, request);
-            debug_assert!(false, "unexpected cancellation error {:?}", e);
-        }
+    ) -> Result<(), DispatchError> {
+        ensure!(
+            RequestStatuses::<T>::get(network_id, hash).ok_or(Error::<T>::UnknownRequest)?
+                == RequestStatus::Pending,
+            Error::<T>::ExpectedPendingRequest
+        );
+        cancel!(request, hash, network_id, error);
         Self::remove_request_from_queue(network_id, &hash);
+        Ok(())
     }
 
     /// Converts amount from one precision to another and and returns it with a difference of the

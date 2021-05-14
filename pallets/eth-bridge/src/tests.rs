@@ -29,9 +29,10 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use crate::contract::{functions, FUNCTIONS, RECEIVE_BY_ETHEREUM_ASSET_ADDRESS_ID};
+use crate::migrations::StorageVersion;
 use crate::mock::*;
 use crate::requests::{
-    encode_outgoing_request_eth_call, ChangePeersContract, IncomingAddToken,
+    encode_outgoing_request_eth_call, ChangePeersContract, IncomingAddToken, IncomingChangePeers,
     IncomingChangePeersCompat, IncomingMarkAsDoneRequest, IncomingMigrate,
     IncomingPrepareForMigration, IncomingTransfer, OutgoingAddAsset, OutgoingAddPeer,
     OutgoingAddPeerCompat, OutgoingAddToken, OutgoingMigrate, OutgoingPrepareForMigration,
@@ -39,11 +40,12 @@ use crate::requests::{
 };
 use crate::types::{Bytes, Log, Transaction, TransactionReceipt};
 use crate::{
-    majority, types, Address, AssetConfig, AssetKind, BridgeStatus, ContractEvent, DepositEvent,
-    IncomingMetaRequestKind, IncomingRequest, IncomingRequestKind, IncomingTransactionRequestKind,
-    LoadIncomingRequest, LoadIncomingTransactionRequest, OffchainRequest, OutgoingRequest,
-    OutgoingTransfer, RequestStatus, SignatureParams, CONFIRMATION_INTERVAL,
-    MAX_SEND_SIGNED_TX_RETRIES, SUBSTRATE_MAX_BLOCK_NUM_EXPECTING_UNTIL_FINALIZATION,
+    majority, types, Address, AssetConfig, AssetKind, BridgeStatus, Config, ContractEvent,
+    DepositEvent, IncomingMetaRequestKind, IncomingRequest, IncomingRequestKind,
+    IncomingTransactionRequestKind, LoadIncomingRequest, LoadIncomingTransactionRequest,
+    OffchainRequest, OutgoingRequest, OutgoingTransfer, RequestStatus, SignatureParams,
+    CONFIRMATION_INTERVAL, MAX_FAILED_SEND_SIGNED_TX_RETRIES,
+    SUBSTRATE_MAX_BLOCK_NUM_EXPECTING_UNTIL_FINALIZATION,
 };
 use codec::{Decode, Encode};
 use common::prelude::Balance;
@@ -51,12 +53,14 @@ use common::{
     balance, eth, AssetId32, AssetName, AssetSymbol, PredefinedAssetId, DEFAULT_BALANCE_PRECISION,
     DOT, KSM, USDT, VAL, XOR,
 };
+use frame_support::dispatch::DispatchError;
 use frame_support::sp_runtime::app_crypto::sp_core::crypto::AccountId32;
 use frame_support::sp_runtime::app_crypto::sp_core::{self, ecdsa, sr25519, Pair, Public};
 use frame_support::sp_runtime::traits::IdentifyAccount;
 use frame_support::storage::TransactionOutcome;
-use frame_support::traits::Currency;
+use frame_support::traits::{Currency, OnRuntimeUpgrade};
 use frame_support::{assert_err, assert_noop, assert_ok, ensure};
+use frame_system::RawOrigin;
 use hex_literal::hex;
 use rustc_hex::FromHex;
 use secp256k1::{PublicKey, SecretKey};
@@ -758,7 +762,7 @@ fn should_cancel_incoming_transfer() {
         );
         assert!(matches!(
             crate::RequestStatuses::<Runtime>::get(net_id, req_hash).unwrap(),
-            RequestStatus::Failed(_)
+            RequestStatus::Broken(_, _)
         ));
         assert_eq!(
             Assets::total_balance(&XOR.into(), &alice).unwrap(),
@@ -2417,7 +2421,31 @@ fn should_use_different_abi_when_sending_xor_val_on_non_eth_network() {
 #[test]
 fn should_cancel_outgoing_prepared_requests() {
     let net_id = ETH_NETWORK_ID;
-    let builder = ExtBuilder::default();
+    let mut builder = ExtBuilder::default();
+    builder.add_network(
+        vec![
+            AssetConfig::Thischain { id: PSWAP.into() },
+            AssetConfig::Sidechain {
+                id: XOR.into(),
+                sidechain_id: sp_core::H160::from_str("40fd72257597aa14c7231a7b1aaa29fce868f677")
+                    .unwrap(),
+                owned: true,
+                precision: DEFAULT_BALANCE_PRECISION,
+            },
+            AssetConfig::Sidechain {
+                id: VAL.into(),
+                sidechain_id: sp_core::H160::from_str("3f9feac97e5feb15d8bf98042a9a01b515da3dfb")
+                    .unwrap(),
+                owned: true,
+                precision: DEFAULT_BALANCE_PRECISION,
+            },
+        ],
+        Some(vec![
+            (XOR.into(), common::balance!(350000)),
+            (VAL.into(), common::balance!(33900000)),
+        ]),
+        Some(5),
+    );
     let (mut ext, state) = builder.build();
     ext.execute_with(|| {
         let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
@@ -2490,6 +2518,18 @@ fn should_cancel_outgoing_prepared_requests() {
                 .into(),
             ),
             (
+                vec![],
+                OutgoingAddPeer {
+                    author: alice.clone(),
+                    peer_address: Address::from([10u8; 20]),
+                    nonce: 0,
+                    network_id: net_id + 1,
+                    peer_account_id: test_acc.clone(),
+                    timepoint: Default::default(),
+                }
+                .into(),
+            ),
+            (
                 vec![OutgoingAddPeer {
                     author: alice.clone(),
                     peer_address: Address::from([10u8; 20]),
@@ -2510,13 +2550,34 @@ fn should_cancel_outgoing_prepared_requests() {
                 .into(),
             ),
             (
-                vec![],
+                vec![
+                    OutgoingAddPeer {
+                        author: alice.clone(),
+                        peer_address: Address::from([10u8; 20]),
+                        nonce: 0,
+                        network_id: net_id + 1,
+                        peer_account_id: test_acc.clone(),
+                        timepoint: Default::default(),
+                    }
+                    .into(),
+                    IncomingChangePeers {
+                        peer_account_id: test_acc.clone(),
+                        peer_address: Address::from([10u8; 20]),
+                        added: true,
+                        author: alice.clone(),
+                        tx_hash: H256([11; 32]),
+                        at_height: 0,
+                        timepoint: Default::default(),
+                        network_id: net_id + 1,
+                    }
+                    .into(),
+                ],
                 OutgoingRemovePeer {
                     author: alice.clone(),
-                    peer_address: crate::PeerAddress::<Runtime>::get(&net_id, &ocw0_account_id),
+                    peer_address: Address::from([10u8; 20]),
                     nonce: 0,
-                    network_id: net_id,
-                    peer_account_id: ocw0_account_id.clone(),
+                    network_id: net_id + 1,
+                    peer_account_id: test_acc.clone(),
                     timepoint: Default::default(),
                 }
                 .into(),
@@ -2552,13 +2613,23 @@ fn should_cancel_outgoing_prepared_requests() {
                 .into(),
             ),
             (
-                vec![OutgoingPrepareForMigration {
-                    author: alice.clone(),
-                    nonce: 0,
-                    network_id: net_id,
-                    timepoint: Default::default(),
-                }
-                .into()],
+                vec![
+                    OutgoingPrepareForMigration {
+                        author: alice.clone(),
+                        nonce: 0,
+                        network_id: net_id,
+                        timepoint: Default::default(),
+                    }
+                    .into(),
+                    IncomingPrepareForMigration {
+                        author: alice.clone(),
+                        tx_hash: [1u8; 32].into(),
+                        at_height: 0,
+                        timepoint: Default::default(),
+                        network_id: net_id,
+                    }
+                    .into(),
+                ],
                 OutgoingMigrate {
                     author: alice.clone(),
                     new_contract_address: Default::default(),
@@ -2572,9 +2643,18 @@ fn should_cancel_outgoing_prepared_requests() {
         ];
         for (preparations, request) in requests {
             frame_support::storage::with_transaction(|| {
-                for preparation_request in preparations {
+                for preparation_request in &preparations {
                     preparation_request.validate().unwrap();
                     preparation_request.prepare().unwrap();
+                    match preparation_request {
+                        // Do not finalize add/remove peer requests for ethereum network,
+                        // because of XOR and VAL contracts (see `OutgoingAddPeerCompat`).
+                        OffchainRequest::Outgoing(OutgoingRequest::AddPeer(req), ..)
+                            if req.network_id == ETH_NETWORK_ID => {}
+                        OffchainRequest::Outgoing(OutgoingRequest::RemovePeer(req), ..)
+                            if req.network_id == ETH_NETWORK_ID => {}
+                        _ => preparation_request.finalize().unwrap(),
+                    }
                 }
                 // Save the current storage root hash, apply transaction preparation,
                 // cancel it and compare with the final root hash.
@@ -3127,7 +3207,7 @@ fn ocw_should_handle_incoming_request() {
             precision: DEFAULT_BALANCE_PRECISION,
         }],
         Some(vec![(XOR.into(), common::balance!(350000))]),
-        Some(2),
+        Some(1),
     );
     let (mut ext, mut state) = builder.build();
     ext.execute_with(|| {
@@ -3198,7 +3278,7 @@ fn ocw_should_not_register_pending_incoming_request() {
             precision: DEFAULT_BALANCE_PRECISION,
         }],
         Some(vec![(XOR.into(), common::balance!(350000))]),
-        Some(2),
+        Some(1),
     );
     let (mut ext, mut state) = builder.build();
     ext.execute_with(|| {
@@ -3267,7 +3347,7 @@ fn ocw_should_import_incoming_request() {
             precision: DEFAULT_BALANCE_PRECISION,
         }],
         Some(vec![(XOR.into(), common::balance!(350000))]),
-        Some(2),
+        Some(1),
     );
     let (mut ext, mut state) = builder.build();
     ext.execute_with(|| {
@@ -3319,7 +3399,6 @@ fn ocw_should_import_incoming_request() {
 
 #[test]
 fn ocw_should_import_incoming_request_raw_response() {
-    let _ = env_logger::try_init();
     let mut builder = ExtBuilder::new();
     builder.add_network(
         vec![AssetConfig::Sidechain {
@@ -3330,7 +3409,7 @@ fn ocw_should_import_incoming_request_raw_response() {
             precision: DEFAULT_BALANCE_PRECISION,
         }],
         Some(vec![(VAL.into(), common::balance!(350000))]),
-        Some(2),
+        Some(1),
     );
     let (mut ext, mut state) = builder.build();
     ext.execute_with(|| {
@@ -3448,6 +3527,10 @@ fn ocw_should_resend_signed_transaction_on_timeout() {
             false,
         );
         assert_eq!(state.pending_txs().len(), 1);
+        assert!(state
+            .pending_txs()
+            .iter()
+            .all(|(hash, x)| hash == &x.extrinsic_hash));
         assert_eq!(state.pool_state.read().transactions.len(), 1);
         state.run_next_offchain_with_params(
             0,
@@ -3457,6 +3540,10 @@ fn ocw_should_resend_signed_transaction_on_timeout() {
             false,
         );
         assert_eq!(state.pending_txs().len(), 1);
+        assert!(state
+            .pending_txs()
+            .iter()
+            .all(|(hash, x)| hash == &x.extrinsic_hash));
         assert_eq!(state.pool_state.read().transactions.len(), 2);
     });
 }
@@ -3475,37 +3562,216 @@ fn ocw_should_remove_pending_transaction_on_max_retries() {
             100,
             net_id,
         ));
-        state.run_next_offchain_with_params(
-            0,
-            frame_system::Pallet::<Runtime>::block_number() + 1,
-            false,
-        );
+        state.set_should_fail_send_signed_transactions(true);
+        state.run_next_offchain_and_dispatch_txs();
         assert_eq!(state.pending_txs().len(), 1);
-        assert_eq!(state.pool_state.read().transactions.len(), 1);
-        for i in 0..MAX_SEND_SIGNED_TX_RETRIES {
-            state.run_next_offchain_with_params(
-                0,
-                frame_system::Pallet::<Runtime>::block_number()
-                    + 1
-                    + SUBSTRATE_MAX_BLOCK_NUM_EXPECTING_UNTIL_FINALIZATION as u64,
-                false,
-            );
+        assert_eq!(state.pool_state.read().transactions.len(), 0);
+        for _ in 0..MAX_FAILED_SEND_SIGNED_TX_RETRIES {
+            state.run_next_offchain_and_dispatch_txs();
             assert_eq!(state.pending_txs().len(), 1);
             assert_eq!(state.failed_pending_txs().len(), 0);
-            assert_eq!(state.pool_state.read().transactions.len(), 2 + i as usize);
+            assert_eq!(state.pool_state.read().transactions.len(), 0);
         }
-        state.run_next_offchain_with_params(
-            0,
-            frame_system::Pallet::<Runtime>::block_number()
-                + 1
-                + SUBSTRATE_MAX_BLOCK_NUM_EXPECTING_UNTIL_FINALIZATION as u64,
-            false,
-        );
+        state.run_next_offchain_and_dispatch_txs();
         assert_eq!(state.pending_txs().len(), 0);
         assert_eq!(state.failed_pending_txs().len(), 1);
+        assert_eq!(state.pool_state.read().transactions.len(), 0);
+    });
+}
+
+#[test]
+fn should_not_abort_request_with_failed_to_send_signed_tx_error() {
+    assert_eq!(Error::FailedToSendSignedTransaction.should_abort(), false);
+
+    let mut builder = ExtBuilder::new();
+    builder.add_network(
+        vec![AssetConfig::Sidechain {
+            id: XOR.into(),
+            sidechain_id: sp_core::H160::from_str("40fd72257597aa14c7231a7b1aaa29fce868f677")
+                .unwrap(),
+            owned: true,
+            precision: DEFAULT_BALANCE_PRECISION,
+        }],
+        Some(vec![(XOR.into(), common::balance!(350000))]),
+        Some(2),
+    );
+    let (mut ext, mut state) = builder.build();
+    ext.execute_with(|| {
+        let net_id = ETH_NETWORK_ID;
+        let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
+        Assets::mint_to(&XOR.into(), &alice, &alice, 100).unwrap();
+        assert_ok!(EthBridge::transfer_to_sidechain(
+            Origin::signed(alice.clone()),
+            XOR.into(),
+            Address::from_str("19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A").unwrap(),
+            100,
+            net_id,
+        ));
+        state.set_should_fail_send_signed_transactions(true);
+        state.run_next_offchain_and_dispatch_txs();
+        let request_hash = last_request(net_id).unwrap().hash();
         assert_eq!(
-            state.pool_state.read().transactions.len(),
-            2 + MAX_SEND_SIGNED_TX_RETRIES as usize
+            crate::RequestStatuses::<Runtime>::get(net_id, request_hash).unwrap(),
+            RequestStatus::Pending
+        );
+    });
+}
+
+#[test]
+fn should_not_register_and_finalize_incoming_request_twice() {
+    let (mut ext, state) = ExtBuilder::default().build();
+    ext.execute_with(|| {
+        let net_id = ETH_NETWORK_ID;
+        let bridge_acc_id = state.networks[&net_id].config.bridge_account_id.clone();
+        let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
+        Assets::mint_to(&XOR.into(), &alice, &alice, 100000u32.into()).unwrap();
+        let tx_hash = request_incoming(
+            alice.clone(),
+            H256::from_slice(&[1u8; 32]),
+            IncomingTransactionRequestKind::Transfer.into(),
+            net_id,
+        )
+        .unwrap();
+        let incoming_transfer = IncomingRequest::Transfer(crate::IncomingTransfer {
+            from: Address::from([1; 20]),
+            to: alice.clone(),
+            asset_id: XOR.into(),
+            asset_kind: AssetKind::Thischain,
+            amount: 100u32.into(),
+            author: alice.clone(),
+            tx_hash,
+            at_height: 1,
+            timepoint: Default::default(),
+            network_id: ETH_NETWORK_ID,
+            should_take_fee: false,
+        });
+        assert_ok!(EthBridge::register_incoming_request(
+            Origin::signed(bridge_acc_id.clone()),
+            incoming_transfer.clone(),
+        ));
+        assert_noop!(
+            EthBridge::register_incoming_request(
+                Origin::signed(bridge_acc_id.clone()),
+                incoming_transfer.clone(),
+            ),
+            Error::RequestIsAlreadyRegistered
+        );
+        let req_hash = crate::LoadToIncomingRequestHash::<Runtime>::get(net_id, tx_hash);
+        assert_ok!(EthBridge::finalize_incoming_request(
+            Origin::signed(bridge_acc_id.clone()),
+            req_hash,
+            net_id,
+        ));
+    });
+}
+
+#[test]
+fn should_migrate_to_v2() {
+    let (mut ext, state) = ExtBuilder::default().build();
+    ext.execute_with(|| {
+        let net_id = ETH_NETWORK_ID;
+        let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
+        crate::PalletStorageVersion::<Runtime>::put(StorageVersion::V1);
+        let bridge_acc_id = state.networks[&net_id].config.bridge_account_id.clone();
+        // Add a peer to multisig only (as on mainnet).
+        let temp_peer_id = <Runtime as Config>::RemoveTemporaryPeerAccountId::get();
+        bridge_multisig::Pallet::<Runtime>::add_signatory(
+            RawOrigin::Signed(bridge_acc_id.clone()).into(),
+            temp_peer_id.clone(),
+        )
+        .unwrap();
+        Assets::mint_to(&XOR.into(), &alice, &alice, 100).unwrap();
+        assert_ok!(EthBridge::transfer_to_sidechain(
+            Origin::signed(alice.clone()),
+            XOR.into(),
+            Address::from_str("19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A").unwrap(),
+            10,
+            net_id,
+        ));
+        frame_system::Pallet::<Runtime>::set_block_number(
+            <Runtime as Config>::RemovePendingOutgoingRequestsAfter::get() + 1,
+        );
+        assert_ok!(EthBridge::transfer_to_sidechain(
+            Origin::signed(alice.clone()),
+            XOR.into(),
+            Address::from_str("19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A").unwrap(),
+            20,
+            net_id,
+        ));
+        let request_hash = last_outgoing_request(net_id).unwrap().1;
+        assert_eq!(crate::RequestsQueue::<Runtime>::get(net_id).len(), 2);
+        EthBridge::on_runtime_upgrade();
+        assert_eq!(
+            crate::PalletStorageVersion::<Runtime>::get(),
+            StorageVersion::V2RemovePendingTransfers
+        );
+        // Should remove only the old one request.
+        assert_eq!(crate::RequestsQueue::<Runtime>::get(net_id).len(), 1);
+        assert_eq!(last_outgoing_request(net_id).unwrap().1, request_hash);
+        assert!(!bridge_multisig::Accounts::<Runtime>::get(&bridge_acc_id)
+            .unwrap()
+            .is_signatory(&temp_peer_id));
+    });
+}
+
+#[test]
+fn ocw_should_load_substrate_blocks_sequentially() {
+    let (mut ext, mut state) = ExtBuilder::default().build();
+    ext.execute_with(|| {
+        assert_eq!(state.substrate_to_handle_from_height(), 0);
+        let finalized_height = 10;
+        state.run_next_offchain_with_params(0, finalized_height, false);
+        assert_eq!(state.substrate_to_handle_from_height(), finalized_height);
+        let blocks_passed = 10;
+        for i in 1..=blocks_passed {
+            // Assume the new finalized height doesn't change.
+            state.run_next_offchain_with_params(0, finalized_height + blocks_passed, false);
+            // Then off-chain workers should load each block sequentially up to the finalized one.
+            assert_eq!(
+                state.substrate_to_handle_from_height(),
+                finalized_height + i
+            );
+        }
+    });
+}
+
+#[test]
+fn ocw_should_abort_missing_transaction() {
+    let mut builder = ExtBuilder::new();
+    builder.add_network(
+        vec![AssetConfig::Sidechain {
+            id: VAL.into(),
+            sidechain_id: sp_core::H160::from_str("0x725c6b8cd3621eba4e0ccc40d532e7025b925a65")
+                .unwrap(),
+            owned: true,
+            precision: DEFAULT_BALANCE_PRECISION,
+        }],
+        Some(vec![(VAL.into(), common::balance!(350000))]),
+        Some(1),
+    );
+    let (mut ext, mut state) = builder.build();
+    let _ = env_logger::init();
+    ext.execute_with(|| {
+        let net_id = ETH_NETWORK_ID;
+        let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
+        let tx_hash = H256([1; 32]);
+        assert_ok!(EthBridge::request_from_sidechain(
+            Origin::signed(alice.clone()),
+            tx_hash,
+            IncomingRequestKind::Transaction(IncomingTransactionRequestKind::Transfer),
+            net_id
+        ));
+        let raw_response = r#"{
+ "jsonrpc": "2.0",
+   "id": 0,
+   "result":
+ }"#;
+        state.push_response_raw(raw_response.as_bytes().to_owned());
+        state.run_next_offchain_and_dispatch_txs();
+        let dispatch_error: DispatchError = Error::FailedToLoadTransaction.into();
+        assert_eq!(
+            crate::RequestStatuses::<Runtime>::get(net_id, tx_hash).unwrap(),
+            RequestStatus::Failed(dispatch_error.stripped()),
         );
     });
 }
