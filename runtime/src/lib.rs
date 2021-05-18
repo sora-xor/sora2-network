@@ -1045,7 +1045,7 @@ pub struct RuntimeOnPswapBurnedAggregator;
 
 impl OnPswapBurned for RuntimeOnPswapBurnedAggregator {
     fn on_pswap_burned(distribution: common::PswapRemintInfo) {
-        MulticollateralBondingCurvePool::on_pswap_burned(distribution);
+        VestedRewards::on_pswap_burned(distribution);
     }
 }
 

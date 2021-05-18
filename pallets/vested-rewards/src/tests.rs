@@ -30,7 +30,8 @@
 
 use crate::mock::*;
 use crate::MarketMakerInfo;
-use common::{balance, VestedRewardsTrait};
+use common::{balance, RewardReason, VestedRewardsTrait};
+use sp_std::collections::btree_map::BTreeMap;
 
 #[test]
 fn should_add_market_maker_infos_single_user() {
@@ -104,6 +105,112 @@ fn should_add_market_maker_infos_multiple_users() {
                 count: 3,
                 volume: balance!(333)
             }
+        );
+    });
+}
+
+#[test]
+fn migration_v0_1_0_to_v0_2_0() {
+    let mut ext = ExtBuilder::default().build();
+    ext.execute_with(|| {
+        use crate::{Rewards as VRewards, TotalRewards as VTotalRewards};
+        use multicollateral_bonding_curve_pool::{
+            Rewards as MBCRewards, TotalRewards as MBCTotalRewards,
+        };
+
+        MBCRewards::<Runtime>::insert(alice(), (balance!(0.5), balance!(100)));
+        MBCRewards::<Runtime>::insert(bob(), (balance!(0), balance!(10)));
+        MBCRewards::<Runtime>::insert(eve(), (balance!(0.5), balance!(1)));
+
+        assert_eq!(
+            MBCRewards::<Runtime>::get(alice()),
+            (balance!(0.5), balance!(100))
+        );
+        assert_eq!(
+            MBCRewards::<Runtime>::get(bob()),
+            (balance!(0), balance!(10))
+        );
+        assert_eq!(
+            MBCRewards::<Runtime>::get(eve()),
+            (balance!(0.5), balance!(1))
+        );
+
+        assert_eq!(
+            VRewards::<Runtime>::get(alice()),
+            crate::RewardInfo {
+                limit: 0,
+                total_available: 0,
+                rewards: BTreeMap::new()
+            }
+        );
+        assert_eq!(
+            VRewards::<Runtime>::get(bob()),
+            crate::RewardInfo {
+                limit: 0,
+                total_available: 0,
+                rewards: BTreeMap::new()
+            }
+        );
+        assert_eq!(
+            VRewards::<Runtime>::get(eve()),
+            crate::RewardInfo {
+                limit: 0,
+                total_available: 0,
+                rewards: BTreeMap::new()
+            }
+        );
+
+        crate::migration::migrate_rewards_from_tbc::<Runtime>();
+
+        assert_eq!(
+            MBCRewards::<Runtime>::get(alice()),
+            (balance!(0), balance!(0))
+        );
+        assert_eq!(
+            MBCRewards::<Runtime>::get(bob()),
+            (balance!(0), balance!(0))
+        );
+        assert_eq!(
+            MBCRewards::<Runtime>::get(eve()),
+            (balance!(0), balance!(0))
+        );
+
+        assert_eq!(
+            VRewards::<Runtime>::get(alice()),
+            crate::RewardInfo {
+                limit: balance!(0.5),
+                total_available: balance!(680),
+                rewards: [(RewardReason::BuyOnBondingCurve, balance!(680))]
+                    .iter()
+                    .cloned()
+                    .collect()
+            }
+        );
+        assert_eq!(
+            VRewards::<Runtime>::get(bob()),
+            crate::RewardInfo {
+                limit: balance!(0),
+                total_available: balance!(68),
+                rewards: [(RewardReason::BuyOnBondingCurve, balance!(68))]
+                    .iter()
+                    .cloned()
+                    .collect()
+            }
+        );
+        assert_eq!(
+            VRewards::<Runtime>::get(eve()),
+            crate::RewardInfo {
+                limit: balance!(0.5),
+                total_available: balance!(6.8),
+                rewards: [(RewardReason::BuyOnBondingCurve, balance!(6.8))]
+                    .iter()
+                    .cloned()
+                    .collect()
+            }
+        );
+        assert_eq!(
+            VTotalRewards::<Runtime>::get(),
+            balance!(680) + balance!(68) + balance!(6.8)
         );
     });
 }

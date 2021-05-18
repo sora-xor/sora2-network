@@ -33,7 +33,8 @@ use common::mock::ExistentialDeposits;
 use common::prelude::{Balance, FixedWrapper, SwapAmount, SwapOutcome};
 use common::{
     self, balance, fixed_wrapper, hash, Amount, AssetId32, AssetName, AssetSymbol, DEXInfo,
-    LiquiditySourceFilter, LiquiditySourceType, TechPurpose, PSWAP, USDT, VAL, XOR,
+    LiquiditySourceFilter, LiquiditySourceType, TechPurpose, VestedRewardsTrait, PSWAP, USDT, VAL,
+    XOR,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::GenesisBuild;
@@ -124,7 +125,7 @@ construct_runtime! {
         DexManager: dex_manager::{Module, Call, Storage},
         TradingPair: trading_pair::{Module, Call, Storage, Event<T>},
         MockLiquiditySource: mock_liquidity_source::<Instance1>::{Module, Call, Config<T>, Storage},
-        VestedRewards: vested_rewards::{Module, Call, Storage, Event<T>},
+        // VestedRewards: vested_rewards::{Module, Call, Storage, Event<T>},
         Mcbcp: multicollateral_bonding_curve_pool::{Module, Call, Storage, Event<T>},
         Tokens: tokens::{Module, Call, Config<T>, Storage, Event<T>},
         Currencies: currencies::{Module, Call, Storage, Event<T>},
@@ -176,20 +177,34 @@ impl mock_liquidity_source::Config<mock_liquidity_source::Instance1> for Runtime
     type EnsureTradingPairExists = ();
 }
 
-impl vested_rewards::Config for Runtime {
-    type Event = Event;
-    type GetBondingCurveRewardsAccountId = GetBondingCurveRewardsAccountId;
-    type GetMarketMakerRewardsAccountId = GetMarketMakerRewardsAccountId;
-    type WeightInfo = ();
-}
-
-impl Config for Runtime {
+impl multicollateral_bonding_curve_pool::Config for Runtime {
     type Event = Event;
     type LiquidityProxy = MockDEXApi;
     type EnsureTradingPairExists = trading_pair::Module<Runtime>;
     type EnsureDEXManager = dex_manager::Module<Runtime>;
-    type VestedRewardsAggregator = VestedRewards;
+    type VestedRewardsAggregator = MockVestedRewards;
     type WeightInfo = ();
+}
+
+// FIXME: unclear dependency conflict
+// impl vested_rewards::Config for Runtime {
+//     type Event = Event;
+//     type GetBondingCurveRewardsAccountId = GetBondingCurveRewardsAccountId;
+//     type GetMarketMakerRewardsAccountId = GetMarketMakerRewardsAccountId;
+//     type WeightInfo = ();
+// }
+
+pub struct MockVestedRewards;
+
+impl VestedRewardsTrait<AccountId> for MockVestedRewards {
+    fn update_market_maker_records(_: &AccountId, _: u128, _: u32) -> Result<(), DispatchError> {
+        //do nothing
+        Ok(())
+    }
+    fn add_tbc_reward(_: &AccountId, _: u128) -> Result<(), DispatchError> {
+        //do nothing
+        Ok(())
+    }
 }
 
 impl tokens::Config for Runtime {

@@ -38,12 +38,13 @@ use codec::{Decode, Encode};
 use common::prelude::{Balance, FixedWrapper};
 use common::{balance, OnPswapBurned, PswapRemintInfo, RewardReason, VestedRewardsTrait, PSWAP};
 use frame_support::dispatch::{DispatchError, DispatchResult};
-use frame_support::fail;
 use frame_support::traits::{Get, IsType};
 use frame_support::weights::Weight;
+use frame_support::{fail, transactional};
 use sp_runtime::traits::Zero;
 use sp_std::collections::btree_map::BTreeMap;
 
+mod migration;
 pub mod weights;
 
 #[cfg(test)]
@@ -85,8 +86,10 @@ impl<T: Config> Pallet<T> {
                 .map_err(|_| Error::<T>::IncRefError)?;
         }
         Rewards::<T>::mutate(account_id, |info| {
-            let entry = info.rewards.entry(reason).or_insert(Default::default());
-            *entry = entry.saturating_add(amount);
+            info.rewards
+                .entry(reason)
+                .and_modify(|e| *e = e.saturating_add(amount))
+                .or_insert(amount);
         });
         TotalRewards::<T>::mutate(|balance| *balance = balance.saturating_add(amount));
         Ok(())
@@ -166,7 +169,7 @@ impl<T: Config> OnPswapBurned for Module<T> {
 
 impl<T: Config> VestedRewardsTrait<T::AccountId> for Module<T> {
     /// Check if volume is eligible to be counted for market maker rewards and add it to registry.
-    /// `count` is used as a multiplier if multiple times single volume is transferred inside transaction.
+    /// `count` is used as a multiplier if multiple times same volume is transferred inside transaction.
     fn update_market_maker_records(
         account_id: &T::AccountId,
         xor_volume: Balance,
@@ -197,7 +200,12 @@ pub mod pallet {
     use frame_system::pallet_prelude::*;
 
     #[pallet::config]
-    pub trait Config: frame_system::Config + common::Config + assets::Config {
+    pub trait Config:
+        frame_system::Config
+        + common::Config
+        + assets::Config
+        + multicollateral_bonding_curve_pool::Config
+    {
         type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
         /// Accounts holding PSWAP dedicated for rewards.
         type GetMarketMakerRewardsAccountId: Get<Self::AccountId>;
@@ -212,10 +220,23 @@ pub mod pallet {
     pub struct Pallet<T>(PhantomData<T>);
 
     #[pallet::hooks]
-    impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {}
+    impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
+        fn on_runtime_upgrade() -> Weight {
+            migration::migrate::<T>()
+        }
+    }
 
     #[pallet::call]
-    impl<T: Config> Pallet<T> {}
+    impl<T: Config> Pallet<T> {
+        /// Claim all available PSWAP rewards by account signing this transaction.
+        #[pallet::weight(<T as Config>::WeightInfo::claim_incentives())]
+        #[transactional]
+        pub fn claim_rewards(origin: OriginFor<T>) -> DispatchResultWithPostInfo {
+            let who = ensure_signed(origin)?;
+            Self::claim_rewards_inner(&who)?;
+            Ok(().into())
+        }
+    }
 
     #[pallet::error]
     pub enum Error<T> {

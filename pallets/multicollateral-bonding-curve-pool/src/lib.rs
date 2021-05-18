@@ -51,8 +51,8 @@ use common::prelude::{
 };
 use common::{
     balance, fixed, fixed_wrapper, DEXId, DexIdOf, GetMarketInfo, LiquiditySource,
-    LiquiditySourceFilter, LiquiditySourceType, ManagementMode, OnPswapBurned, PswapRemintInfo,
-    RewardReason, VestedRewardsTrait, PSWAP, USDT, VAL,
+    LiquiditySourceFilter, LiquiditySourceType, ManagementMode, RewardReason, VestedRewardsTrait,
+    PSWAP, USDT, VAL,
 };
 use frame_support::traits::Get;
 use frame_support::weights::Weight;
@@ -632,37 +632,15 @@ impl<T: Config> BuyMainAsset<T> {
             collateral_asset_amount,
             main_asset_amount,
         )?;
-        let mut pswap_amount_old = Module::<T>::calculate_buy_reward_old(
-            &self.reserves_account_id,
-            &self.collateral_asset_id,
-            collateral_asset_amount,
-            main_asset_amount,
-        )?;
         if let Some(multiplier) =
             AssetsWithOptionalRewardMultiplier::<T>::get(&self.collateral_asset_id)
         {
             pswap_amount = (FixedWrapper::from(pswap_amount) * multiplier)
                 .try_into_balance()
                 .map_err(|_| Error::<T>::PriceCalculationFailed)?;
-            pswap_amount_old = (FixedWrapper::from(pswap_amount_old) * multiplier)
-                .try_into_balance()
-                .map_err(|_| Error::<T>::PriceCalculationFailed)?;
         }
         if !pswap_amount.is_zero() {
-            // Add reward according to new formula
             T::VestedRewardsAggregator::add_tbc_reward(&self.from_account_id, pswap_amount)?;
-
-            // Add reward according to old formula
-            if !Rewards::<T>::contains_key(&self.from_account_id) {
-                frame_system::Pallet::<T>::inc_consumers(&self.from_account_id)
-                    .map_err(|_| Error::<T>::IncRefError)?;
-            }
-            Rewards::<T>::mutate(&self.from_account_id, |(_, ref mut available)| {
-                *available = available.saturating_add(pswap_amount_old)
-            });
-            TotalRewards::<T>::mutate(|balance| {
-                *balance = balance.saturating_add(pswap_amount_old)
-            });
         }
         Ok(())
     }
@@ -1322,21 +1300,6 @@ impl<T: Config> Module<T> {
             .map_err(|_| Error::<T>::PriceCalculationFailed.into())
     }
 
-    /// Ideal reserves function from pallet version 0.1.0, needed while migration is in progress.
-    fn ideal_reserves_reference_price_old(delta: Fixed) -> Result<Balance, DispatchError> {
-        let base_asset_id = T::GetBaseAssetId::get();
-        let base_total_supply = Assets::<T>::total_issuance(&base_asset_id)?;
-        let initial_state =
-            FixedWrapper::from(Self::initial_price()) * Self::sell_price_coefficient();
-        let current_state = Self::sell_function(&base_asset_id, delta)?;
-
-        let price = (initial_state + current_state) / fixed_wrapper!(2.0)
-            * FixedWrapper::from(base_total_supply);
-        price
-            .try_into_balance()
-            .map_err(|_| Error::<T>::PriceCalculationFailed.into())
-    }
-
     /// Calculate amount of PSWAP rewarded for collateralizing XOR in TBC.
     ///
     /// ideal_reserves_before = sell_function(0 to xor_total_supply_before_trade)
@@ -1387,67 +1350,10 @@ impl<T: Config> Module<T> {
             .map_err(|_| Error::<T>::PriceCalculationFailed.into())
     }
 
-    /// Buying in TBC reward formula from pallet version 0.1.0, needed while migration is in progress.
-    pub fn calculate_buy_reward_old(
-        reserves_account_id: &T::AccountId,
-        collateral_asset_id: &T::AssetId,
-        _collateral_asset_amount: Balance,
-        main_asset_amount: Balance,
-    ) -> Result<Balance, DispatchError> {
-        if !Self::collateral_is_incentivised(collateral_asset_id) {
-            return Ok(Balance::zero());
-        }
-
-        // Get current state values.
-        let ideal_before: FixedWrapper =
-            Self::ideal_reserves_reference_price_old(Fixed::ZERO)?.into();
-        let ideal_after: FixedWrapper = Self::ideal_reserves_reference_price_old(
-            FixedWrapper::from(main_asset_amount)
-                .get()
-                .map_err(|_| Error::<T>::PriceCalculationFailed)?,
-        )?
-        .into();
-        let actual_before: FixedWrapper =
-            Self::actual_reserves_reference_price(reserves_account_id, collateral_asset_id)?.into();
-        let incentivised_currencies_num: u128 = IncentivisedCurrenciesNum::<T>::get().into();
-        let N: FixedWrapper = FixedWrapper::from(incentivised_currencies_num * balance!(1));
-        let P: FixedWrapper = FixedWrapper::from(InitialPswapRewardsSupply::<T>::get());
-
-        // Calculate reward.
-        let unfunded_liabilities = ideal_before.clone() - actual_before;
-        let a = unfunded_liabilities.clone() / ideal_before;
-        let b = unfunded_liabilities / ideal_after;
-        let mean_ab = (a.clone() + b.clone()) / fixed_wrapper!(2);
-        let reward_pswap = ((a - b) * mean_ab * P) / N;
-        reward_pswap
-            .try_into_balance()
-            .map_err(|_| Error::<T>::PriceCalculationFailed.into())
-    }
-
     /// Check if particular asset is incentivesed, when depositing it as collateral,
     /// i.e. if it will result in PSWAP rewards during buy operation.
     fn collateral_is_incentivised(collateral_asset_id: &T::AssetId) -> bool {
         collateral_asset_id != &PSWAP.into() && collateral_asset_id != &VAL.into()
-    }
-}
-
-impl<T: Config> OnPswapBurned for Module<T> {
-    /// Invoked when pswap is burned after being exchanged from collected liquidity provider fees.
-    fn on_pswap_burned(distribution: PswapRemintInfo) {
-        let total_rewards = TotalRewards::<T>::get();
-        let amount = FixedWrapper::from(distribution.vesting);
-
-        if !total_rewards.is_zero() {
-            Rewards::<T>::translate(|_key: T::AccountId, value: (Balance, Balance)| {
-                let (limit, owned) = value;
-                let limit_to_add =
-                    FixedWrapper::from(owned) * amount.clone() / FixedWrapper::from(total_rewards);
-                let new_limit = (limit_to_add + FixedWrapper::from(limit))
-                    .try_into_balance()
-                    .unwrap_or(limit);
-                Some((new_limit, owned))
-            })
-        }
     }
 }
 
