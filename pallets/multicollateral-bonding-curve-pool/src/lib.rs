@@ -1344,7 +1344,7 @@ impl<T: Config> Module<T> {
         let a = unfunded_liabilities.clone() / ideal_before;
         let b = unfunded_liabilities / ideal_after;
         let mean_ab = (a.clone() + b.clone()) / fixed_wrapper!(2);
-        let reward_pswap = ((a - b) * mean_ab * P) / N;
+        let reward_pswap = ((a - b) * P * mean_ab) / N;
         reward_pswap
             .try_into_balance()
             .map_err(|_| Error::<T>::PriceCalculationFailed.into())

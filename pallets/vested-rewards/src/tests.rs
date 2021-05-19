@@ -114,9 +114,7 @@ fn migration_v0_1_0_to_v0_2_0() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
         use crate::{Rewards as VRewards, TotalRewards as VTotalRewards};
-        use multicollateral_bonding_curve_pool::{
-            Rewards as MBCRewards, TotalRewards as MBCTotalRewards,
-        };
+        use multicollateral_bonding_curve_pool::Rewards as MBCRewards;
 
         MBCRewards::<Runtime>::insert(alice(), (balance!(0.5), balance!(100)));
         MBCRewards::<Runtime>::insert(bob(), (balance!(0), balance!(10)));
@@ -214,3 +212,98 @@ fn migration_v0_1_0_to_v0_2_0() {
         );
     });
 }
+
+// #[test]
+// fn multiple_users_should_be_able_to_claim_rewards() {
+//     let mut ext = ExtBuilder::new(vec![
+//         (alice(), XOR, balance!(700000), AssetSymbol(b"XOR".to_vec()), AssetName(b"SORA".to_vec()), 18),
+//         (alice(), VAL, balance!(2000), AssetSymbol(b"VAL".to_vec()), AssetName(b"SORA Validator Token".to_vec()), 18),
+//         (alice(), DAI, balance!(200000), AssetSymbol(b"DAI".to_vec()), AssetName(b"DAI".to_vec()), 18),
+//         (alice(), USDT, balance!(0), AssetSymbol(b"USDT".to_vec()), AssetName(b"Tether USD".to_vec()), 18),
+//         (alice(), PSWAP, balance!(0), AssetSymbol(b"PSWAP".to_vec()), AssetName(b"Polkaswap".to_vec()), 18),
+//     ])
+//     .build();
+//     ext.execute_with(|| {
+//         MockDEXApi::init().unwrap();
+//         let _ = bonding_curve_pool_init(vec![]).unwrap();
+//         TradingPair::register(Origin::signed(alice()),DEXId::Polkaswap.into(), XOR, VAL).expect("Failed to register trading pair.");
+//         TradingPair::register(Origin::signed(alice()),DEXId::Polkaswap.into(), XOR, DAI).expect("Failed to register trading pair.");
+//         MBCPool::initialize_pool_unchecked(VAL, false).expect("Failed to initialize pool.");
+//         MBCPool::initialize_pool_unchecked(DAI, false).expect("Failed to initialize pool.");
+//         Assets::transfer(Origin::signed(alice()), DAI, bob(), balance!(50000)).unwrap();
+//         Currencies::deposit(PSWAP, &incentives_account(), balance!(25000000)).unwrap();
+
+//         // performing exchanges which are eligible for rewards
+//         MBCPool::exchange(
+//             &alice(),
+//             &alice(),
+//             &DEXId::Polkaswap.into(),
+//             &DAI,
+//             &XOR,
+//             SwapAmount::with_desired_input(balance!(100000), Balance::zero()),
+//         )
+//         .unwrap();
+//         MBCPool::exchange(
+//             &bob(),
+//             &bob(),
+//             &DEXId::Polkaswap.into(),
+//             &DAI,
+//             &XOR,
+//             SwapAmount::with_desired_input(balance!(50000), Balance::zero()),
+//         )
+//         .unwrap();
+
+//         // trying to claim with limit of 0
+//         assert!(Assets::free_balance(&PSWAP, &alice()).unwrap().is_zero());
+//         assert!(Assets::free_balance(&PSWAP, &bob()).unwrap().is_zero());
+//         // assert_noop!(MBCPool::claim_incentives(Origin::signed(alice())), Error::<Runtime>::NothingToClaim);
+//         // assert_noop!(MBCPool::claim_incentives(Origin::signed(bob())), Error::<Runtime>::NothingToClaim);
+//         assert!(Assets::free_balance(&PSWAP, &alice()).unwrap().is_zero());
+//         assert!(Assets::free_balance(&PSWAP, &bob()).unwrap().is_zero());
+
+//         // limit is updated via PSWAP burn
+//         let (limit_alice, owned_alice) = MBCPool::rewards(&alice());
+//         let (limit_bob, owned_bob) = MBCPool::rewards(&bob());
+//         assert!(limit_alice.is_zero());
+//         assert!(limit_bob.is_zero());
+//         assert!(!owned_alice.is_zero());
+//         assert!(!owned_bob.is_zero());
+//         let vesting_amount = (FixedWrapper::from(owned_alice + owned_bob) / fixed_wrapper!(2)).into_balance();
+//         let remint_info = common::PswapRemintInfo {
+//             vesting: vesting_amount,
+//             ..Default::default()
+//         };
+//         // MBCPool::on_pswap_burned(remint_info);
+//         let (limit_alice, _) = MBCPool::rewards(&alice());
+//         let (limit_bob, _) = MBCPool::rewards(&bob());
+//         assert_eq!(limit_alice, balance!(114222.435361663749999999));
+//         assert_eq!(limit_bob, balance!(57093.659227284999999999));
+
+//         // claiming incentives partially
+//         // assert_ok!(MBCPool::claim_incentives(Origin::signed(alice())));
+//         // assert_ok!(MBCPool::claim_incentives(Origin::signed(bob())));
+//         let (limit_alice, remaining_owned_alice) = MBCPool::rewards(&alice());
+//         let (limit_bob, remaining_owned_bob) = MBCPool::rewards(&bob());
+//         assert_eq!(remaining_owned_alice, balance!(114222.435361663750000001));
+//         assert_eq!(remaining_owned_bob, balance!(57093.659227285000000001));
+//         assert!(limit_alice.is_zero());
+//         assert!(limit_bob.is_zero());
+//         assert_eq!(Assets::free_balance(&PSWAP, &alice()).unwrap(), owned_alice - remaining_owned_alice);
+//         assert_eq!(Assets::free_balance(&PSWAP, &bob()).unwrap(), owned_bob - remaining_owned_bob);
+
+//         // claiming remainder
+//         let remint_info = common::PswapRemintInfo {
+//             vesting: vesting_amount + balance!(100),
+//             ..Default::default()
+//         };
+//         // MBCPool::on_pswap_burned(remint_info);
+//         // assert_ok!(MBCPool::claim_incentives(Origin::signed(alice())));
+//         // assert_ok!(MBCPool::claim_incentives(Origin::signed(bob())));
+//         let (_, empty_owned_alice) = MBCPool::rewards(&alice());
+//         let (_, empty_owned_bob) = MBCPool::rewards(&bob());
+//         assert!(empty_owned_alice.is_zero());
+//         assert!(empty_owned_bob.is_zero());
+//         assert_eq!(Assets::free_balance(&PSWAP, &alice()).unwrap(), owned_alice);
+//         assert_eq!(Assets::free_balance(&PSWAP, &bob()).unwrap(), owned_bob);
+//     });
+// }

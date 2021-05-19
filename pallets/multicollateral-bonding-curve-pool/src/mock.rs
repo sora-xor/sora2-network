@@ -28,7 +28,7 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use crate::{self as multicollateral_bonding_curve_pool, Config};
+use crate::{self as multicollateral_bonding_curve_pool, Config, Rewards, TotalRewards};
 use common::mock::ExistentialDeposits;
 use common::prelude::{Balance, FixedWrapper, SwapAmount, SwapOutcome};
 use common::{
@@ -177,7 +177,7 @@ impl mock_liquidity_source::Config<mock_liquidity_source::Instance1> for Runtime
     type EnsureTradingPairExists = ();
 }
 
-impl multicollateral_bonding_curve_pool::Config for Runtime {
+impl Config for Runtime {
     type Event = Event;
     type LiquidityProxy = MockDEXApi;
     type EnsureTradingPairExists = trading_pair::Module<Runtime>;
@@ -186,23 +186,20 @@ impl multicollateral_bonding_curve_pool::Config for Runtime {
     type WeightInfo = ();
 }
 
-// FIXME: unclear dependency conflict
-// impl vested_rewards::Config for Runtime {
-//     type Event = Event;
-//     type GetBondingCurveRewardsAccountId = GetBondingCurveRewardsAccountId;
-//     type GetMarketMakerRewardsAccountId = GetMarketMakerRewardsAccountId;
-//     type WeightInfo = ();
-// }
-
 pub struct MockVestedRewards;
 
 impl VestedRewardsTrait<AccountId> for MockVestedRewards {
-    fn update_market_maker_records(_: &AccountId, _: u128, _: u32) -> Result<(), DispatchError> {
+    fn update_market_maker_records(_: &AccountId, _: Balance, _: u32) -> Result<(), DispatchError> {
         //do nothing
         Ok(())
     }
-    fn add_tbc_reward(_: &AccountId, _: u128) -> Result<(), DispatchError> {
-        //do nothing
+    fn add_tbc_reward(account: &AccountId, amount: Balance) -> Result<(), DispatchError> {
+        Rewards::<Runtime>::mutate(account, |(_, old_amount)| {
+            *old_amount = old_amount.saturating_add(amount)
+        });
+        TotalRewards::<Runtime>::mutate(|old_amount| {
+            *old_amount = old_amount.saturating_add(amount)
+        });
         Ok(())
     }
 }
