@@ -29,9 +29,18 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use crate::mock::*;
-use crate::MarketMakerInfo;
-use common::{balance, RewardReason, VestedRewardsTrait};
+use crate::{Error, MarketMakerInfo, RewardInfo};
+use common::{
+    balance, Balance, OnPswapBurned, PswapRemintInfo, RewardReason, VestedRewardsTrait, PSWAP,
+};
+use frame_support::assert_noop;
 use sp_std::collections::btree_map::BTreeMap;
+use traits::currency::MultiCurrency;
+
+fn deposit_rewards_to_reserves(amount: Balance) {
+    Currencies::deposit(PSWAP, &GetBondingCurveRewardsAccountId::get(), amount).unwrap();
+    Currencies::deposit(PSWAP, &GetMarketMakerRewardsAccountId::get(), amount).unwrap();
+}
 
 #[test]
 fn should_add_market_maker_infos_single_user() {
@@ -213,97 +222,394 @@ fn migration_v0_1_0_to_v0_2_0() {
     });
 }
 
-// #[test]
-// fn multiple_users_should_be_able_to_claim_rewards() {
-//     let mut ext = ExtBuilder::new(vec![
-//         (alice(), XOR, balance!(700000), AssetSymbol(b"XOR".to_vec()), AssetName(b"SORA".to_vec()), 18),
-//         (alice(), VAL, balance!(2000), AssetSymbol(b"VAL".to_vec()), AssetName(b"SORA Validator Token".to_vec()), 18),
-//         (alice(), DAI, balance!(200000), AssetSymbol(b"DAI".to_vec()), AssetName(b"DAI".to_vec()), 18),
-//         (alice(), USDT, balance!(0), AssetSymbol(b"USDT".to_vec()), AssetName(b"Tether USD".to_vec()), 18),
-//         (alice(), PSWAP, balance!(0), AssetSymbol(b"PSWAP".to_vec()), AssetName(b"Polkaswap".to_vec()), 18),
-//     ])
-//     .build();
-//     ext.execute_with(|| {
-//         MockDEXApi::init().unwrap();
-//         let _ = bonding_curve_pool_init(vec![]).unwrap();
-//         TradingPair::register(Origin::signed(alice()),DEXId::Polkaswap.into(), XOR, VAL).expect("Failed to register trading pair.");
-//         TradingPair::register(Origin::signed(alice()),DEXId::Polkaswap.into(), XOR, DAI).expect("Failed to register trading pair.");
-//         MBCPool::initialize_pool_unchecked(VAL, false).expect("Failed to initialize pool.");
-//         MBCPool::initialize_pool_unchecked(DAI, false).expect("Failed to initialize pool.");
-//         Assets::transfer(Origin::signed(alice()), DAI, bob(), balance!(50000)).unwrap();
-//         Currencies::deposit(PSWAP, &incentives_account(), balance!(25000000)).unwrap();
+#[test]
+fn claiming_single_user() {
+    let mut ext = ExtBuilder::default().build();
+    ext.execute_with(|| {
+        deposit_rewards_to_reserves(balance!(1000));
+        VestedRewards::add_tbc_reward(&alice(), balance!(100)).expect("Failed to add reward.");
+        VestedRewards::on_pswap_burned(PswapRemintInfo {
+            vesting: balance!(12),
+            ..Default::default()
+        });
+        assert_eq!(
+            VestedRewards::rewards(&alice()),
+            RewardInfo {
+                limit: balance!(12),
+                total_available: balance!(100),
+                rewards: [(RewardReason::BuyOnBondingCurve, balance!(100))]
+                    .iter()
+                    .cloned()
+                    .collect(),
+            }
+        );
+        assert_eq!(Assets::free_balance(&PSWAP, &alice()).unwrap(), balance!(0));
+        VestedRewards::claim_rewards_inner(&alice()).expect("Failed to claim");
+        assert_eq!(
+            VestedRewards::rewards(&alice()),
+            RewardInfo {
+                limit: balance!(0),
+                total_available: balance!(88),
+                rewards: [(RewardReason::BuyOnBondingCurve, balance!(88))]
+                    .iter()
+                    .cloned()
+                    .collect(),
+            }
+        );
+        assert_eq!(
+            Assets::free_balance(&PSWAP, &alice()).unwrap(),
+            balance!(12)
+        );
+    });
+}
 
-//         // performing exchanges which are eligible for rewards
-//         MBCPool::exchange(
-//             &alice(),
-//             &alice(),
-//             &DEXId::Polkaswap.into(),
-//             &DAI,
-//             &XOR,
-//             SwapAmount::with_desired_input(balance!(100000), Balance::zero()),
-//         )
-//         .unwrap();
-//         MBCPool::exchange(
-//             &bob(),
-//             &bob(),
-//             &DEXId::Polkaswap.into(),
-//             &DAI,
-//             &XOR,
-//             SwapAmount::with_desired_input(balance!(50000), Balance::zero()),
-//         )
-//         .unwrap();
+#[test]
+fn claiming_single_user_multiple_rewards() {
+    let mut ext = ExtBuilder::default().build();
+    ext.execute_with(|| {
+        deposit_rewards_to_reserves(balance!(1000));
+        VestedRewards::add_tbc_reward(&alice(), balance!(100)).expect("Failed to add reward.");
+        VestedRewards::add_market_maker_reward(&alice(), balance!(200))
+            .expect("Failed to add reward.");
+        VestedRewards::on_pswap_burned(PswapRemintInfo {
+            vesting: balance!(170),
+            ..Default::default()
+        });
+        assert_eq!(
+            VestedRewards::rewards(&alice()),
+            RewardInfo {
+                limit: balance!(170),
+                total_available: balance!(300),
+                rewards: [
+                    (RewardReason::BuyOnBondingCurve, balance!(100)),
+                    (RewardReason::MarketMakerVolume, balance!(200))
+                ]
+                .iter()
+                .cloned()
+                .collect(),
+            }
+        );
+        assert_eq!(Assets::free_balance(&PSWAP, &alice()).unwrap(), balance!(0));
+        VestedRewards::claim_rewards_inner(&alice()).expect("Failed to claim");
+        assert_eq!(
+            VestedRewards::rewards(&alice()),
+            RewardInfo {
+                limit: balance!(0),
+                total_available: balance!(130),
+                rewards: [
+                    (RewardReason::BuyOnBondingCurve, balance!(0)),
+                    (RewardReason::MarketMakerVolume, balance!(130))
+                ]
+                .iter()
+                .cloned()
+                .collect(),
+            }
+        );
+        assert_eq!(
+            Assets::free_balance(&PSWAP, &alice()).unwrap(),
+            balance!(170)
+        );
+    });
+}
 
-//         // trying to claim with limit of 0
-//         assert!(Assets::free_balance(&PSWAP, &alice()).unwrap().is_zero());
-//         assert!(Assets::free_balance(&PSWAP, &bob()).unwrap().is_zero());
-//         // assert_noop!(MBCPool::claim_incentives(Origin::signed(alice())), Error::<Runtime>::NothingToClaim);
-//         // assert_noop!(MBCPool::claim_incentives(Origin::signed(bob())), Error::<Runtime>::NothingToClaim);
-//         assert!(Assets::free_balance(&PSWAP, &alice()).unwrap().is_zero());
-//         assert!(Assets::free_balance(&PSWAP, &bob()).unwrap().is_zero());
+#[test]
+fn claiming_multiple_users() {
+    let mut ext = ExtBuilder::default().build();
+    ext.execute_with(|| {
+        let total_rewards = balance!(1 + 2 + 30 + 40 + 500 + 600);
+        deposit_rewards_to_reserves(total_rewards);
+        VestedRewards::add_tbc_reward(&alice(), balance!(1)).expect("Failed to add reward.");
+        VestedRewards::add_market_maker_reward(&alice(), balance!(2))
+            .expect("Failed to add reward.");
+        VestedRewards::add_tbc_reward(&bob(), balance!(30)).expect("Failed to add reward.");
+        VestedRewards::add_market_maker_reward(&bob(), balance!(40))
+            .expect("Failed to add reward.");
+        VestedRewards::add_tbc_reward(&eve(), balance!(500)).expect("Failed to add reward.");
+        VestedRewards::add_market_maker_reward(&eve(), balance!(600))
+            .expect("Failed to add reward.");
 
-//         // limit is updated via PSWAP burn
-//         let (limit_alice, owned_alice) = MBCPool::rewards(&alice());
-//         let (limit_bob, owned_bob) = MBCPool::rewards(&bob());
-//         assert!(limit_alice.is_zero());
-//         assert!(limit_bob.is_zero());
-//         assert!(!owned_alice.is_zero());
-//         assert!(!owned_bob.is_zero());
-//         let vesting_amount = (FixedWrapper::from(owned_alice + owned_bob) / fixed_wrapper!(2)).into_balance();
-//         let remint_info = common::PswapRemintInfo {
-//             vesting: vesting_amount,
-//             ..Default::default()
-//         };
-//         // MBCPool::on_pswap_burned(remint_info);
-//         let (limit_alice, _) = MBCPool::rewards(&alice());
-//         let (limit_bob, _) = MBCPool::rewards(&bob());
-//         assert_eq!(limit_alice, balance!(114222.435361663749999999));
-//         assert_eq!(limit_bob, balance!(57093.659227284999999999));
+        VestedRewards::on_pswap_burned(PswapRemintInfo {
+            vesting: total_rewards,
+            ..Default::default()
+        });
+        assert_eq!(
+            VestedRewards::rewards(&alice()),
+            RewardInfo {
+                limit: balance!(3),
+                total_available: balance!(3),
+                rewards: [
+                    (RewardReason::BuyOnBondingCurve, balance!(1)),
+                    (RewardReason::MarketMakerVolume, balance!(2))
+                ]
+                .iter()
+                .cloned()
+                .collect(),
+            }
+        );
+        assert_eq!(
+            VestedRewards::rewards(&bob()),
+            RewardInfo {
+                limit: balance!(70),
+                total_available: balance!(70),
+                rewards: [
+                    (RewardReason::BuyOnBondingCurve, balance!(30)),
+                    (RewardReason::MarketMakerVolume, balance!(40))
+                ]
+                .iter()
+                .cloned()
+                .collect(),
+            }
+        );
+        assert_eq!(
+            VestedRewards::rewards(&eve()),
+            RewardInfo {
+                limit: balance!(1100),
+                total_available: balance!(1100),
+                rewards: [
+                    (RewardReason::BuyOnBondingCurve, balance!(500)),
+                    (RewardReason::MarketMakerVolume, balance!(600))
+                ]
+                .iter()
+                .cloned()
+                .collect(),
+            }
+        );
+        assert_eq!(Assets::free_balance(&PSWAP, &alice()).unwrap(), balance!(0));
+        assert_eq!(Assets::free_balance(&PSWAP, &bob()).unwrap(), balance!(0));
+        assert_eq!(Assets::free_balance(&PSWAP, &eve()).unwrap(), balance!(0));
+        VestedRewards::claim_rewards_inner(&alice()).expect("Failed to claim");
+        VestedRewards::claim_rewards_inner(&bob()).expect("Failed to claim");
+        VestedRewards::claim_rewards_inner(&eve()).expect("Failed to claim");
+        assert_eq!(
+            VestedRewards::rewards(&alice()),
+            RewardInfo {
+                limit: balance!(0),
+                total_available: balance!(0),
+                rewards: [
+                    (RewardReason::BuyOnBondingCurve, balance!(0)),
+                    (RewardReason::MarketMakerVolume, balance!(0))
+                ]
+                .iter()
+                .cloned()
+                .collect(),
+            }
+        );
+        assert_eq!(
+            VestedRewards::rewards(&alice()),
+            RewardInfo {
+                limit: balance!(0),
+                total_available: balance!(0),
+                rewards: [
+                    (RewardReason::BuyOnBondingCurve, balance!(0)),
+                    (RewardReason::MarketMakerVolume, balance!(0))
+                ]
+                .iter()
+                .cloned()
+                .collect(),
+            }
+        );
+        assert_eq!(
+            VestedRewards::rewards(&alice()),
+            RewardInfo {
+                limit: balance!(0),
+                total_available: balance!(0),
+                rewards: [
+                    (RewardReason::BuyOnBondingCurve, balance!(0)),
+                    (RewardReason::MarketMakerVolume, balance!(0))
+                ]
+                .iter()
+                .cloned()
+                .collect(),
+            }
+        );
+        assert_eq!(Assets::free_balance(&PSWAP, &alice()).unwrap(), balance!(3));
+        assert_eq!(Assets::free_balance(&PSWAP, &bob()).unwrap(), balance!(70));
+        assert_eq!(
+            Assets::free_balance(&PSWAP, &eve()).unwrap(),
+            balance!(1100)
+        );
+    });
+}
 
-//         // claiming incentives partially
-//         // assert_ok!(MBCPool::claim_incentives(Origin::signed(alice())));
-//         // assert_ok!(MBCPool::claim_incentives(Origin::signed(bob())));
-//         let (limit_alice, remaining_owned_alice) = MBCPool::rewards(&alice());
-//         let (limit_bob, remaining_owned_bob) = MBCPool::rewards(&bob());
-//         assert_eq!(remaining_owned_alice, balance!(114222.435361663750000001));
-//         assert_eq!(remaining_owned_bob, balance!(57093.659227285000000001));
-//         assert!(limit_alice.is_zero());
-//         assert!(limit_bob.is_zero());
-//         assert_eq!(Assets::free_balance(&PSWAP, &alice()).unwrap(), owned_alice - remaining_owned_alice);
-//         assert_eq!(Assets::free_balance(&PSWAP, &bob()).unwrap(), owned_bob - remaining_owned_bob);
+#[test]
+fn sequential_claims_until_reserves_are_depleted() {
+    let mut ext = ExtBuilder::default().build();
+    ext.execute_with(|| {
+        deposit_rewards_to_reserves(balance!(60));
+        // reward amount greater than reserves is added
+        VestedRewards::add_tbc_reward(&alice(), balance!(61)).expect("Failed to add reward.");
+        // portion of reward is vested
+        VestedRewards::on_pswap_burned(PswapRemintInfo {
+            vesting: balance!(10),
+            ..Default::default()
+        });
+        assert_eq!(
+            VestedRewards::rewards(&alice()),
+            RewardInfo {
+                limit: balance!(10),
+                total_available: balance!(61),
+                rewards: [(RewardReason::BuyOnBondingCurve, balance!(61))]
+                    .iter()
+                    .cloned()
+                    .collect(),
+            }
+        );
+        // no claim yet, another portion of reward is vested
+        VestedRewards::on_pswap_burned(PswapRemintInfo {
+            vesting: balance!(20),
+            ..Default::default()
+        });
+        assert_eq!(
+            VestedRewards::rewards(&alice()),
+            RewardInfo {
+                limit: balance!(30),
+                total_available: balance!(61),
+                rewards: [(RewardReason::BuyOnBondingCurve, balance!(61))]
+                    .iter()
+                    .cloned()
+                    .collect(),
+            }
+        );
+        // user claims existing reward
+        assert_eq!(Assets::free_balance(&PSWAP, &alice()).unwrap(), balance!(0));
+        VestedRewards::claim_rewards_inner(&alice()).expect("Failed to claim");
+        assert_eq!(
+            VestedRewards::rewards(&alice()),
+            RewardInfo {
+                limit: balance!(0),
+                total_available: balance!(31),
+                rewards: [(RewardReason::BuyOnBondingCurve, balance!(31))]
+                    .iter()
+                    .cloned()
+                    .collect(),
+            }
+        );
+        assert_eq!(
+            Assets::free_balance(&PSWAP, &alice()).unwrap(),
+            balance!(30)
+        );
+        // remaining portion is vested
+        VestedRewards::on_pswap_burned(PswapRemintInfo {
+            vesting: balance!(30),
+            ..Default::default()
+        });
+        assert_eq!(
+            VestedRewards::rewards(&alice()),
+            RewardInfo {
+                limit: balance!(30),
+                total_available: balance!(31),
+                rewards: [(RewardReason::BuyOnBondingCurve, balance!(31))]
+                    .iter()
+                    .cloned()
+                    .collect(),
+            }
+        );
+        // remaining portion is vested
+        VestedRewards::on_pswap_burned(PswapRemintInfo {
+            vesting: balance!(40),
+            ..Default::default()
+        });
+        assert_eq!(
+            VestedRewards::rewards(&alice()),
+            RewardInfo {
+                limit: balance!(70),
+                total_available: balance!(31),
+                rewards: [(RewardReason::BuyOnBondingCurve, balance!(31))]
+                    .iter()
+                    .cloned()
+                    .collect(),
+            }
+        );
+        // trying to claim remaining amount, amount is limited because reserves are depleted
+        VestedRewards::claim_rewards_inner(&alice()).expect("Failed to claim");
+        assert_eq!(
+            VestedRewards::rewards(&alice()),
+            RewardInfo {
+                limit: balance!(40),
+                total_available: balance!(1),
+                rewards: [(RewardReason::BuyOnBondingCurve, balance!(1))]
+                    .iter()
+                    .cloned()
+                    .collect(),
+            }
+        );
+        assert_eq!(
+            Assets::free_balance(&PSWAP, &alice()).unwrap(),
+            balance!(60)
+        );
+        assert_noop!(
+            VestedRewards::claim_rewards_inner(&alice()),
+            Error::<Runtime>::RewardsSupplyShortage
+        );
+        assert_eq!(
+            VestedRewards::rewards(&alice()),
+            RewardInfo {
+                limit: balance!(40),
+                total_available: balance!(1),
+                rewards: [(RewardReason::BuyOnBondingCurve, balance!(1))]
+                    .iter()
+                    .cloned()
+                    .collect(),
+            }
+        );
+        assert_eq!(
+            Assets::free_balance(&PSWAP, &alice()).unwrap(),
+            balance!(60)
+        );
+    });
+}
 
-//         // claiming remainder
-//         let remint_info = common::PswapRemintInfo {
-//             vesting: vesting_amount + balance!(100),
-//             ..Default::default()
-//         };
-//         // MBCPool::on_pswap_burned(remint_info);
-//         // assert_ok!(MBCPool::claim_incentives(Origin::signed(alice())));
-//         // assert_ok!(MBCPool::claim_incentives(Origin::signed(bob())));
-//         let (_, empty_owned_alice) = MBCPool::rewards(&alice());
-//         let (_, empty_owned_bob) = MBCPool::rewards(&bob());
-//         assert!(empty_owned_alice.is_zero());
-//         assert!(empty_owned_bob.is_zero());
-//         assert_eq!(Assets::free_balance(&PSWAP, &alice()).unwrap(), owned_alice);
-//         assert_eq!(Assets::free_balance(&PSWAP, &bob()).unwrap(), owned_bob);
-//     });
-// }
+#[test]
+fn some_rewards_reserves_are_depleted() {
+    let mut ext = ExtBuilder::default().build();
+    ext.execute_with(|| {
+        // deposit pswap only to tbc rewards account
+        Currencies::deposit(PSWAP, &GetMarketMakerRewardsAccountId::get(), balance!(100)).unwrap();
+        // reward amount greater than reserves is added
+        VestedRewards::add_tbc_reward(&alice(), balance!(10)).expect("Failed to add reward.");
+        VestedRewards::add_market_maker_reward(&alice(), balance!(20))
+            .expect("Failed to add reward.");
+        // full amount is vested
+        VestedRewards::on_pswap_burned(PswapRemintInfo {
+            vesting: balance!(30),
+            ..Default::default()
+        });
+        assert_eq!(
+            VestedRewards::rewards(&alice()),
+            RewardInfo {
+                limit: balance!(30),
+                total_available: balance!(30),
+                rewards: [
+                    (RewardReason::BuyOnBondingCurve, balance!(10)),
+                    (RewardReason::MarketMakerVolume, balance!(20))
+                ]
+                .iter()
+                .cloned()
+                .collect(),
+            }
+        );
+        VestedRewards::claim_rewards_inner(&alice()).unwrap();
+        assert_eq!(
+            VestedRewards::rewards(&alice()),
+            RewardInfo {
+                limit: balance!(10),
+                total_available: balance!(10),
+                rewards: [
+                    (RewardReason::BuyOnBondingCurve, balance!(10)),
+                    (RewardReason::MarketMakerVolume, balance!(0))
+                ]
+                .iter()
+                .cloned()
+                .collect(),
+            }
+        );
+        assert_noop!(
+            VestedRewards::claim_rewards_inner(&alice()),
+            Error::<Runtime>::RewardsSupplyShortage
+        );
+    });
+}
+
+// claiming with limit: none rewards, less than one reward, exactly one reward, less than two rewards, exactly two rewards, limit is greater than available
+// claiming with not enough reserves: in all accs, in single acc, in multiple accs
+// trying to claim error cases

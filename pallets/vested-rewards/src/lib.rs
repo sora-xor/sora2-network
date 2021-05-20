@@ -86,6 +86,7 @@ impl<T: Config> Pallet<T> {
                 .map_err(|_| Error::<T>::IncRefError)?;
         }
         Rewards::<T>::mutate(account_id, |info| {
+            info.total_available = info.total_available.saturating_add(amount);
             info.rewards
                 .entry(reason)
                 .and_modify(|e| *e = e.saturating_add(amount))
@@ -98,8 +99,10 @@ impl<T: Config> Pallet<T> {
     /// General claim function, which updates user reward status.
     pub fn claim_rewards_inner(account_id: &T::AccountId) -> DispatchResult {
         Rewards::<T>::mutate(account_id, |info| {
-            if info.total_available.is_zero() || info.limit.is_zero() {
+            if info.total_available.is_zero() {
                 fail!(Error::<T>::NothingToClaim);
+            } else if info.limit.is_zero() {
+                fail!(Error::<T>::ClaimLimitExceeded);
             } else {
                 let mut total_actual_claimed: Balance = 0;
                 for (&reward_reason, amount) in info.rewards.iter_mut() {
@@ -107,10 +110,13 @@ impl<T: Config> Pallet<T> {
                     let actual_claimed =
                         Self::claim_reward_by_reason(account_id, reward_reason, claimable)
                             .unwrap_or(balance!(0));
+                    info.limit = info.limit.saturating_sub(actual_claimed);
                     total_actual_claimed = total_actual_claimed.saturating_add(actual_claimed);
                     // TODO: maybe throw event on error for better detalisation
-                    info.limit = info.limit.saturating_sub(actual_claimed);
                     *amount = amount.saturating_sub(actual_claimed);
+                }
+                if total_actual_claimed.is_zero() {
+                    fail!(Error::<T>::RewardsSupplyShortage);
                 }
                 info.total_available = info.total_available.saturating_sub(total_actual_claimed);
                 TotalRewards::<T>::mutate(|total| {
@@ -189,6 +195,18 @@ impl<T: Config> VestedRewardsTrait<T::AccountId> for Module<T> {
     fn add_tbc_reward(account_id: &T::AccountId, pswap_amount: Balance) -> DispatchResult {
         Pallet::<T>::add_pending_reward(account_id, RewardReason::BuyOnBondingCurve, pswap_amount)
     }
+
+    fn add_farming_reward(account_id: &T::AccountId, pswap_amount: Balance) -> DispatchResult {
+        Pallet::<T>::add_pending_reward(
+            account_id,
+            RewardReason::LiquidityProvisionFarming,
+            pswap_amount,
+        )
+    }
+
+    fn add_market_maker_reward(account_id: &T::AccountId, pswap_amount: Balance) -> DispatchResult {
+        Pallet::<T>::add_pending_reward(account_id, RewardReason::MarketMakerVolume, pswap_amount)
+    }
 }
 
 pub use pallet::*;
@@ -242,9 +260,11 @@ pub mod pallet {
     pub enum Error<T> {
         /// Account has no pending rewards to claim.
         NothingToClaim,
+        /// Account has pending rewards but it has not been vested yet.
+        ClaimLimitExceeded,
         /// Attempt to claim rewards of type, which is not handled.
         UnhandledRewardType,
-        /// Trying to claim PSWAP, but account with reward reserves is empty. This likely means that reward programme has finished.
+        /// Account holding dedicated reward reserves is empty. This likely means that some of reward programmes have finished.
         RewardsSupplyShortage,
         /// Increment account reference error.
         IncRefError,

@@ -31,7 +31,7 @@
 use crate::{self as vested_rewards, Config};
 use common::mock::ExistentialDeposits;
 use common::prelude::{Balance, DEXInfo};
-use common::{hash, AssetId32, AssetName, AssetSymbol, BalancePrecision, DOT, KSM, XOR};
+use common::{hash, AssetId32, AssetName, AssetSymbol, BalancePrecision, DOT, KSM, PSWAP, XOR};
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::GenesisBuild;
 use frame_support::weights::Weight;
@@ -82,6 +82,9 @@ pub fn bob() -> AccountId {
 }
 pub fn eve() -> AccountId {
     AccountId32::from([3u8; 32])
+}
+pub fn initial_assets_owner() -> AccountId {
+    AccountId32::from([4u8; 32])
 }
 pub const DEX_ID: DEXId = 0;
 type AssetId = AssetId32<common::PredefinedAssetId>;
@@ -270,7 +273,7 @@ impl Default for ExtBuilder {
             endowed_assets: vec![
                 (
                     XOR,
-                    alice(),
+                    initial_assets_owner(),
                     AssetSymbol(b"XOR".to_vec()),
                     AssetName(b"SORA".to_vec()),
                     18,
@@ -279,7 +282,7 @@ impl Default for ExtBuilder {
                 ),
                 (
                     DOT,
-                    alice(),
+                    initial_assets_owner(),
                     AssetSymbol(b"DOT".to_vec()),
                     AssetName(b"Polkadot".to_vec()),
                     18,
@@ -288,9 +291,18 @@ impl Default for ExtBuilder {
                 ),
                 (
                     KSM,
-                    alice(),
+                    initial_assets_owner(),
                     AssetSymbol(b"KSM".to_vec()),
                     AssetName(b"Kusama".to_vec()),
+                    18,
+                    Balance::zero(),
+                    true,
+                ),
+                (
+                    PSWAP,
+                    initial_assets_owner(),
+                    AssetSymbol(b"PSWAP".to_vec()),
+                    AssetName(b"Polkaswap".to_vec()),
                     18,
                     Balance::zero(),
                     true,
@@ -323,7 +335,12 @@ impl ExtBuilder {
             .unwrap();
 
         pallet_balances::GenesisConfig::<Runtime> {
-            balances: vec![(alice(), 0)],
+            balances: vec![
+                (alice(), 0),
+                (bob(), 0),
+                (eve(), 0),
+                (initial_assets_owner(), 0),
+            ],
         }
         .assimilate_storage(&mut t)
         .unwrap();

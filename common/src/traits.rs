@@ -486,4 +486,10 @@ pub trait VestedRewardsTrait<AccountId> {
 
     /// Report that account has received pswap reward for buying from tbc.
     fn add_tbc_reward(account_id: &AccountId, pswap_amount: Balance) -> DispatchResult;
+
+    /// Report that account has received farmed pswap reward for providing liquidity on secondary market.
+    fn add_farming_reward(account_id: &AccountId, pswap_amount: Balance) -> DispatchResult;
+
+    /// Report that account has received pswap reward for performing large volume trade over month.
+    fn add_market_maker_reward(account_id: &AccountId, pswap_amount: Balance) -> DispatchResult;
 }
