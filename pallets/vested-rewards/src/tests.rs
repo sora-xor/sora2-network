@@ -512,7 +512,7 @@ fn sequential_claims_until_reserves_are_depleted() {
         assert_eq!(
             VestedRewards::rewards(&alice()),
             RewardInfo {
-                limit: balance!(70),
+                limit: balance!(31),
                 total_available: balance!(31),
                 rewards: [(RewardReason::BuyOnBondingCurve, balance!(31))]
                     .iter()
@@ -525,7 +525,7 @@ fn sequential_claims_until_reserves_are_depleted() {
         assert_eq!(
             VestedRewards::rewards(&alice()),
             RewardInfo {
-                limit: balance!(40),
+                limit: balance!(1),
                 total_available: balance!(1),
                 rewards: [(RewardReason::BuyOnBondingCurve, balance!(1))]
                     .iter()
@@ -544,7 +544,7 @@ fn sequential_claims_until_reserves_are_depleted() {
         assert_eq!(
             VestedRewards::rewards(&alice()),
             RewardInfo {
-                limit: balance!(40),
+                limit: balance!(1),
                 total_available: balance!(1),
                 rewards: [(RewardReason::BuyOnBondingCurve, balance!(1))]
                     .iter()

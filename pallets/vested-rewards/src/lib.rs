@@ -34,6 +34,8 @@
 #[macro_use]
 extern crate alloc;
 
+use std::convert::TryInto;
+
 use codec::{Decode, Encode};
 use common::prelude::{Balance, FixedWrapper};
 use common::{balance, OnPswapBurned, PswapRemintInfo, RewardReason, VestedRewardsTrait, PSWAP};
@@ -55,8 +57,12 @@ mod tests;
 
 pub const TECH_ACCOUNT_PREFIX: &[u8] = b"vested-rewards";
 pub const TECH_ACCOUNT_MARKET_MAKERS: &[u8] = b"market-makers";
+pub const MARKET_MAKER_ELIGIBILITY_TX_COUNT: u32 = 500;
+pub const SINGLE_MARKET_MAKER_DISTRIBUTION_AMOUNT: Balance = balance!(20000000);
+pub const MARKET_MAKER_REWARDS_DISTRIBUTION_FREQUENCY: u32 = 432000;
 
 type Assets<T> = assets::Pallet<T>;
+type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
 
 #[derive(Encode, Decode, Eq, PartialEq, Clone, PartialOrd, Ord, Debug, Default)]
 pub struct RewardInfo {
@@ -73,6 +79,7 @@ pub struct MarketMakerInfo {
 
 pub trait WeightInfo {
     fn claim_incentives() -> Weight;
+    fn on_initialize(_n: u32) -> Weight;
 }
 
 impl<T: Config> Pallet<T> {
@@ -112,7 +119,9 @@ impl<T: Config> Pallet<T> {
                             .unwrap_or(balance!(0));
                     info.limit = info.limit.saturating_sub(actual_claimed);
                     total_actual_claimed = total_actual_claimed.saturating_add(actual_claimed);
-                    // TODO: maybe throw event on error for better detalisation
+                    if claimable > actual_claimed {
+                        Self::deposit_event(Event::<T>::ActualDoesntMatchAvailable(reward_reason));
+                    }
                     *amount = amount.saturating_sub(actual_claimed);
                 }
                 if total_actual_claimed.is_zero() {
@@ -150,7 +159,7 @@ impl<T: Config> Pallet<T> {
 
     pub fn distribute_limits(vested_amount: Balance) {
         let total_rewards = TotalRewards::<T>::get();
-        // TODO: what to do if there's no accounts to receive vesting?
+        // if there's no accounts to vest, then amount is not utilized nor stored
         if !total_rewards.is_zero() {
             Rewards::<T>::translate(|_key: T::AccountId, mut info: RewardInfo| {
                 let limit_to_add = FixedWrapper::from(info.total_available)
@@ -159,9 +168,46 @@ impl<T: Config> Pallet<T> {
                 info.limit = (limit_to_add + FixedWrapper::from(info.limit))
                     .try_into_balance()
                     .unwrap_or(info.limit);
+                // don't vest more than available
+                info.limit = info.limit.min(info.total_available);
                 Some(info)
             })
         };
+    }
+
+    /// Returns number of accounts who received rewards.
+    pub fn market_maker_rewards_distribution_routine() -> u32 {
+        // collect list of accounts with volume info
+        let mut eligible_accounts = Vec::new();
+        let mut total_eligible_volume = balance!(0);
+        for (account, info) in MarketMakersRegistry::<T>::iter() {
+            if info.count > MARKET_MAKER_ELIGIBILITY_TX_COUNT {
+                eligible_accounts.push((account, info.volume));
+                total_eligible_volume = total_eligible_volume.saturating_add(info.volume);
+            }
+        }
+        let eligible_accounts_count = eligible_accounts.len();
+        if total_eligible_volume > 0 {
+            for (account, volume) in eligible_accounts {
+                let reward = volume
+                    .checked_mul(SINGLE_MARKET_MAKER_DISTRIBUTION_AMOUNT)
+                    .unwrap_or(0)
+                    .checked_div(total_eligible_volume)
+                    .unwrap_or(0);
+                if reward > 0 {
+                    let res =
+                        Self::add_pending_reward(&account, RewardReason::MarketMakerVolume, reward);
+                    if res.is_err() {
+                        Self::deposit_event(Event::<T>::FailedToSaveCalculatedReward(account))
+                    }
+                } else {
+                    Self::deposit_event(Event::<T>::AddingZeroMarketMakerReward(account));
+                }
+            }
+        } else {
+            Self::deposit_event(Event::<T>::NoEligibleMarketMakers);
+        }
+        eligible_accounts_count.try_into().unwrap_or(u32::MAX)
     }
 }
 
@@ -242,6 +288,15 @@ pub mod pallet {
         fn on_runtime_upgrade() -> Weight {
             migration::migrate::<T>()
         }
+
+        fn on_initialize(block_number: T::BlockNumber) -> Weight {
+            if (block_number % MARKET_MAKER_REWARDS_DISTRIBUTION_FREQUENCY.into()).is_zero() {
+                let elems = Module::<T>::market_maker_rewards_distribution_routine();
+                <T as Config>::WeightInfo::on_initialize(elems)
+            } else {
+                <T as Config>::WeightInfo::on_initialize(0)
+            }
+        }
     }
 
     #[pallet::call]
@@ -271,11 +326,19 @@ pub mod pallet {
     }
 
     #[pallet::event]
-    #[pallet::metadata(DexIdOf<T> = "DEXId", TradingPair<T> = "TradingPair")]
-    // #[pallet::generate_deposit(pub(super) fn deposit_event)]
+    #[pallet::metadata(AccountIdOf<T> = "AccountId")]
+    #[pallet::generate_deposit(pub(super) fn deposit_event)]
     pub enum Event<T: Config> {
         /// Rewards vested, limits were raised. [vested amount]
         RewardsVested(Balance),
+        /// Attempted to claim reward, but actual claimed amount is less than expected. [reason for reward]
+        ActualDoesntMatchAvailable(RewardReason),
+        /// Saving reward for account has failed in a distribution series. [account]
+        FailedToSaveCalculatedReward(AccountIdOf<T>),
+        /// Account was chosen as eligible for market maker rewards, however calculated reward turned into 0. [account]
+        AddingZeroMarketMakerReward(AccountIdOf<T>),
+        /// Couldn't find any account with enough transactions to count market maker rewards.
+        NoEligibleMarketMakers,
     }
 
     /// Reserved for future use
