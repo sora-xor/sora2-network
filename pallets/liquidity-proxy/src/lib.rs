@@ -41,7 +41,7 @@ use common::prelude::{Balance, FixedWrapper, SwapAmount, SwapOutcome, SwapVarian
 use common::{
     fixed, fixed_wrapper, linspace, FilterMode, Fixed, FixedInner, GetMarketInfo, GetPoolReserves,
     IntervalEndpoints, LiquidityRegistry, LiquiditySource, LiquiditySourceFilter,
-    LiquiditySourceId, LiquiditySourceType, RewardReason, TradingPair, VestedRewardsTrait,
+    LiquiditySourceId, LiquiditySourceType, RewardReason, TradingPair, VestedRewardsPallet,
 };
 use frame_support::traits::Get;
 use frame_support::weights::Weight;
@@ -302,9 +302,7 @@ impl<T: Config> Pallet<T> {
                     )?;
                     let xor_volume =
                         Self::get_xor_amount(from_asset_id, to_asset_id, amount, outcome.clone());
-                    T::VestedRewardsAggregator::update_market_maker_records(
-                        &sender, xor_volume, 1,
-                    )?;
+                    T::VestedRewardsPallet::update_market_maker_records(&sender, xor_volume, 1)?;
                     Ok(outcome)
                 }
                 ExchangePath::Twofold {
@@ -337,7 +335,7 @@ impl<T: Config> Pallet<T> {
                             second_swap.amount >= min_amount_out,
                             Error::<T>::SlippageNotTolerated
                         );
-                        T::VestedRewardsAggregator::update_market_maker_records(
+                        T::VestedRewardsPallet::update_market_maker_records(
                             &sender,
                             first_swap.amount,
                             2,
@@ -387,7 +385,7 @@ impl<T: Config> Pallet<T> {
                             SwapAmount::with_desired_input(first_swap.amount, Balance::zero()),
                             filter,
                         )?;
-                        T::VestedRewardsAggregator::update_market_maker_records(
+                        T::VestedRewardsPallet::update_market_maker_records(
                             &sender,
                             first_swap.amount,
                             2,
@@ -1430,9 +1428,7 @@ impl<T: Config> LiquidityProxyTrait<T::DEXId, T::AccountId, T::AssetId> for Pall
                     )?;
                     let xor_volume =
                         Self::get_xor_amount(from_asset_id, to_asset_id, amount, outcome.clone());
-                    T::VestedRewardsAggregator::update_market_maker_records(
-                        &sender, xor_volume, 1,
-                    )?;
+                    T::VestedRewardsPallet::update_market_maker_records(&sender, xor_volume, 1)?;
                     Ok(outcome)
                 }
                 ExchangePath::Twofold {
@@ -1465,7 +1461,7 @@ impl<T: Config> LiquidityProxyTrait<T::DEXId, T::AccountId, T::AssetId> for Pall
                             second_swap.amount >= min_amount_out,
                             Error::<T>::SlippageNotTolerated
                         );
-                        T::VestedRewardsAggregator::update_market_maker_records(
+                        T::VestedRewardsPallet::update_market_maker_records(
                             &sender,
                             first_swap.amount,
                             2,
@@ -1512,7 +1508,7 @@ impl<T: Config> LiquidityProxyTrait<T::DEXId, T::AccountId, T::AssetId> for Pall
                             SwapAmount::with_desired_input(first_swap.amount, Balance::zero()),
                             filter,
                         )?;
-                        T::VestedRewardsAggregator::update_market_maker_records(
+                        T::VestedRewardsPallet::update_market_maker_records(
                             &sender,
                             first_swap.amount,
                             2,
@@ -1553,7 +1549,7 @@ pub mod pallet {
         type GetTechnicalAccountId: Get<Self::AccountId>;
         type PrimaryMarket: GetMarketInfo<Self::AssetId>;
         type SecondaryMarket: GetPoolReserves<Self::AssetId>;
-        type VestedRewardsAggregator: VestedRewardsTrait<Self::AccountId>;
+        type VestedRewardsPallet: VestedRewardsPallet<Self::AccountId>;
         /// Weight information for the extrinsics in this Pallet.
         type WeightInfo: WeightInfo;
     }

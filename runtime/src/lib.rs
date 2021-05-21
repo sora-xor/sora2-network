@@ -682,7 +682,7 @@ impl liquidity_proxy::Config for Runtime {
     type PrimaryMarket = multicollateral_bonding_curve_pool::Module<Runtime>;
     type SecondaryMarket = pool_xyk::Module<Runtime>;
     type WeightInfo = liquidity_proxy::weights::WeightInfo<Runtime>;
-    type VestedRewardsAggregator = vested_rewards::Module<Runtime>;
+    type VestedRewardsPallet = vested_rewards::Module<Runtime>;
 }
 
 impl mock_liquidity_source::Config<mock_liquidity_source::Instance1> for Runtime {
@@ -1128,7 +1128,7 @@ impl multicollateral_bonding_curve_pool::Config for Runtime {
     type LiquidityProxy = LiquidityProxy;
     type EnsureDEXManager = DEXManager;
     type EnsureTradingPairExists = TradingPair;
-    type VestedRewardsAggregator = VestedRewards;
+    type VestedRewardsPallet = VestedRewards;
     type WeightInfo = multicollateral_bonding_curve_pool::weights::WeightInfo<Runtime>;
 }
 

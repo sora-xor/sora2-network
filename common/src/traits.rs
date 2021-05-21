@@ -473,7 +473,7 @@ impl OnPswapBurned for () {
 }
 
 /// Trait to abstract interface of VestedRewards pallet, in order for pallets with rewards sources avoid having dependency issues.
-pub trait VestedRewardsTrait<AccountId> {
+pub trait VestedRewardsPallet<AccountId> {
     /// Report that swaps with xor were performed.
     /// - `account_id`: account performing transaction.
     /// - `xor_volume`: amount of xor passed in transaction.

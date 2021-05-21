@@ -33,7 +33,7 @@ use common::mock::ExistentialDeposits;
 use common::prelude::{Balance, FixedWrapper, SwapAmount, SwapOutcome};
 use common::{
     self, balance, fixed, fixed_wrapper, hash, Amount, AssetId32, AssetName, AssetSymbol, DEXInfo,
-    Fixed, LiquiditySourceFilter, LiquiditySourceType, TechPurpose, VestedRewardsTrait, PSWAP,
+    Fixed, LiquiditySourceFilter, LiquiditySourceType, TechPurpose, VestedRewardsPallet, PSWAP,
     USDT, VAL, XOR,
 };
 use currencies::BasicCurrencyAdapter;
@@ -183,13 +183,13 @@ impl Config for Runtime {
     type LiquidityProxy = MockDEXApi;
     type EnsureTradingPairExists = trading_pair::Module<Runtime>;
     type EnsureDEXManager = dex_manager::Module<Runtime>;
-    type VestedRewardsAggregator = MockVestedRewards;
+    type VestedRewardsPallet = MockVestedRewards;
     type WeightInfo = ();
 }
 
 pub struct MockVestedRewards;
 
-impl VestedRewardsTrait<AccountId> for MockVestedRewards {
+impl VestedRewardsPallet<AccountId> for MockVestedRewards {
     fn update_market_maker_records(_: &AccountId, _: Balance, _: u32) -> DispatchResult {
         // do nothing
         Ok(())

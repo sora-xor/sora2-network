@@ -51,7 +51,7 @@ use common::prelude::{
 };
 use common::{
     balance, fixed, fixed_wrapper, DEXId, DexIdOf, GetMarketInfo, LiquiditySource,
-    LiquiditySourceFilter, LiquiditySourceType, ManagementMode, RewardReason, VestedRewardsTrait,
+    LiquiditySourceFilter, LiquiditySourceType, ManagementMode, RewardReason, VestedRewardsPallet,
     PSWAP, USDT, VAL,
 };
 use frame_support::traits::Get;
@@ -187,7 +187,7 @@ impl<DistributionAccountData: Default> Default for DistributionAccounts<Distribu
 #[frame_support::pallet]
 pub mod pallet {
     use super::*;
-    use common::VestedRewardsTrait;
+    use common::VestedRewardsPallet;
     use frame_support::pallet_prelude::*;
     use frame_system::pallet_prelude::*;
 
@@ -208,7 +208,7 @@ pub mod pallet {
             Self::AssetId,
             DispatchError,
         >;
-        type VestedRewardsAggregator: VestedRewardsTrait<Self::AccountId>;
+        type VestedRewardsPallet: VestedRewardsPallet<Self::AccountId>;
         /// Weight information for extrinsics in this pallet.
         type WeightInfo: WeightInfo;
     }
@@ -564,7 +564,7 @@ impl<T: Config> BuyMainAsset<T> {
         })
     }
 
-    /// Make transfer from user account to
+    /// Make transfer from user account to collateral reserves account.
     fn deposit_input(&self, input_amount: Balance) -> Result<(), DispatchError> {
         Technical::<T>::transfer_in(
             &self.collateral_asset_id,
@@ -640,7 +640,7 @@ impl<T: Config> BuyMainAsset<T> {
                 .map_err(|_| Error::<T>::PriceCalculationFailed)?;
         }
         if !pswap_amount.is_zero() {
-            T::VestedRewardsAggregator::add_tbc_reward(&self.from_account_id, pswap_amount)?;
+            T::VestedRewardsPallet::add_tbc_reward(&self.from_account_id, pswap_amount)?;
         }
         Ok(())
     }
@@ -652,7 +652,9 @@ impl<T: Config> BuyMainAsset<T> {
                 &self.collateral_asset_id,
                 self.amount,
             )?;
-            // reward needs to be updated before actual changes to reserves
+            // Reward needs to be updated before actual changes to reserves, because reward
+            // calculations depend upon current state - actual reserves and xor supply, i.e. rewards depend
+            // on values before transferring tokens from user.
             self.update_reward(input_amount, output_amount)?;
             self.deposit_input(input_amount)?;
             self.distribute_reserves(input_amount)?;

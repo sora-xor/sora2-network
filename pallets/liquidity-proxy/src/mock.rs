@@ -172,7 +172,7 @@ impl Config for Runtime {
     type WeightInfo = ();
     type PrimaryMarket = MockMCBCPool;
     type SecondaryMarket = mock_liquidity_source::Module<Runtime, mock_liquidity_source::Instance1>;
-    type VestedRewardsAggregator = vested_rewards::Module<Runtime>;
+    type VestedRewardsPallet = vested_rewards::Module<Runtime>;
 }
 
 impl tokens::Config for Runtime {
@@ -315,7 +315,7 @@ impl multicollateral_bonding_curve_pool::Config for Runtime {
     type LiquidityProxy = ();
     type EnsureTradingPairExists = trading_pair::Module<Runtime>;
     type EnsureDEXManager = dex_manager::Module<Runtime>;
-    type VestedRewardsAggregator = VestedRewards;
+    type VestedRewardsPallet = VestedRewards;
     type WeightInfo = ();
 }
 

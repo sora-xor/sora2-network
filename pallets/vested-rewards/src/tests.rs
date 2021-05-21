@@ -31,7 +31,7 @@
 use crate::mock::*;
 use crate::{Error, MarketMakerInfo, RewardInfo, MARKET_MAKER_REWARDS_DISTRIBUTION_FREQUENCY};
 use common::{
-    balance, Balance, OnPswapBurned, PswapRemintInfo, RewardReason, VestedRewardsTrait, PSWAP,
+    balance, Balance, OnPswapBurned, PswapRemintInfo, RewardReason, VestedRewardsPallet, PSWAP,
 };
 use frame_support::assert_noop;
 use frame_support::traits::OnInitialize;
@@ -312,13 +312,10 @@ fn claiming_single_user_multiple_rewards() {
             RewardInfo {
                 limit: balance!(0),
                 total_available: balance!(130),
-                rewards: [
-                    (RewardReason::BuyOnBondingCurve, balance!(0)),
-                    (RewardReason::MarketMakerVolume, balance!(130))
-                ]
-                .iter()
-                .cloned()
-                .collect(),
+                rewards: [(RewardReason::MarketMakerVolume, balance!(130))]
+                    .iter()
+                    .cloned()
+                    .collect(),
             }
         );
         assert_eq!(
@@ -401,41 +398,23 @@ fn claiming_multiple_users() {
             RewardInfo {
                 limit: balance!(0),
                 total_available: balance!(0),
-                rewards: [
-                    (RewardReason::BuyOnBondingCurve, balance!(0)),
-                    (RewardReason::MarketMakerVolume, balance!(0))
-                ]
-                .iter()
-                .cloned()
-                .collect(),
+                rewards: Default::default(),
             }
         );
         assert_eq!(
-            VestedRewards::rewards(&alice()),
+            VestedRewards::rewards(&bob()),
             RewardInfo {
                 limit: balance!(0),
                 total_available: balance!(0),
-                rewards: [
-                    (RewardReason::BuyOnBondingCurve, balance!(0)),
-                    (RewardReason::MarketMakerVolume, balance!(0))
-                ]
-                .iter()
-                .cloned()
-                .collect(),
+                rewards: Default::default(),
             }
         );
         assert_eq!(
-            VestedRewards::rewards(&alice()),
+            VestedRewards::rewards(&eve()),
             RewardInfo {
                 limit: balance!(0),
                 total_available: balance!(0),
-                rewards: [
-                    (RewardReason::BuyOnBondingCurve, balance!(0)),
-                    (RewardReason::MarketMakerVolume, balance!(0))
-                ]
-                .iter()
-                .cloned()
-                .collect(),
+                rewards: Default::default(),
             }
         );
         assert_eq!(Assets::free_balance(&PSWAP, &alice()).unwrap(), balance!(3));
@@ -610,13 +589,10 @@ fn some_rewards_reserves_are_depleted() {
             RewardInfo {
                 limit: balance!(10),
                 total_available: balance!(10),
-                rewards: [
-                    (RewardReason::BuyOnBondingCurve, balance!(10)),
-                    (RewardReason::MarketMakerVolume, balance!(0))
-                ]
-                .iter()
-                .cloned()
-                .collect(),
+                rewards: [(RewardReason::BuyOnBondingCurve, balance!(10))]
+                    .iter()
+                    .cloned()
+                    .collect(),
             }
         );
         assert_noop!(
@@ -704,7 +680,102 @@ fn claiming_without_rewards() {
 }
 
 #[test]
-fn distributing_market_maker_rewards_until_reserves_run_out() {
+fn empty_reward_entries_are_removed() {
+    let mut ext = ExtBuilder::default().build();
+    ext.execute_with(|| {
+        // deposit pswap for one user
+        Currencies::deposit(
+            PSWAP,
+            &GetBondingCurveRewardsAccountId::get(),
+            balance!(100),
+        )
+        .unwrap();
+        Currencies::deposit(PSWAP, &GetMarketMakerRewardsAccountId::get(), balance!(100)).unwrap();
+        VestedRewards::add_tbc_reward(&alice(), balance!(10)).expect("Failed to add reward.");
+        VestedRewards::add_market_maker_reward(&alice(), balance!(15))
+            .expect("Failed to add reward.");
+        VestedRewards::on_pswap_burned(PswapRemintInfo {
+            vesting: balance!(20),
+            ..Default::default()
+        });
+        assert_eq!(
+            VestedRewards::rewards(&alice()),
+            RewardInfo {
+                limit: balance!(20),
+                total_available: balance!(25),
+                rewards: [
+                    (RewardReason::BuyOnBondingCurve, balance!(10)),
+                    (RewardReason::MarketMakerVolume, balance!(15))
+                ]
+                .iter()
+                .cloned()
+                .collect(),
+            }
+        );
+        VestedRewards::claim_rewards(Origin::signed(alice())).unwrap();
+        // zeroed entry is removed
+        assert_eq!(
+            VestedRewards::rewards(&alice()),
+            RewardInfo {
+                limit: balance!(0),
+                total_available: balance!(5),
+                rewards: [(RewardReason::MarketMakerVolume, balance!(5))]
+                    .iter()
+                    .cloned()
+                    .collect(),
+            }
+        );
+    });
+}
+
+#[test]
+fn accounts_with_no_rewards_are_removed() {
+    let mut ext = ExtBuilder::default().build();
+    ext.execute_with(|| {
+        // deposit pswap for one user
+        Currencies::deposit(
+            PSWAP,
+            &GetBondingCurveRewardsAccountId::get(),
+            balance!(100),
+        )
+        .unwrap();
+        VestedRewards::add_tbc_reward(&alice(), balance!(10)).expect("Failed to add reward.");
+        VestedRewards::on_pswap_burned(PswapRemintInfo {
+            vesting: balance!(10),
+            ..Default::default()
+        });
+        assert_eq!(
+            VestedRewards::rewards(&alice()),
+            RewardInfo {
+                limit: balance!(10),
+                total_available: balance!(10),
+                rewards: [(RewardReason::BuyOnBondingCurve, balance!(10))]
+                    .iter()
+                    .cloned()
+                    .collect(),
+            }
+        );
+        let accounts: Vec<_> = crate::Rewards::<Runtime>::iter().collect();
+        assert_eq!(accounts.len(), 1);
+
+        VestedRewards::claim_rewards(Origin::signed(alice())).unwrap();
+        // account has zeroed values, default is returned on query:
+        assert_eq!(
+            VestedRewards::rewards(&alice()),
+            RewardInfo {
+                limit: balance!(0),
+                total_available: balance!(0),
+                rewards: Default::default(),
+            }
+        );
+
+        let accounts: Vec<_> = crate::Rewards::<Runtime>::iter().collect();
+        assert!(accounts.is_empty());
+    });
+}
+
+#[test]
+fn distributing_with_all_eligible_accounts() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
         Currencies::deposit(
@@ -803,6 +874,11 @@ fn distributing_market_maker_rewards_until_reserves_run_out() {
                     .collect(),
             }
         );
+        // close to 20M but with precision mismatch
+        assert_eq!(
+            reward_alice + reward_bob + reward_eve,
+            balance!(19999999.999999999999999998)
+        );
         // values are reset after distribution
         assert_eq!(
             VestedRewards::market_makers_registry(&alice()),
@@ -824,6 +900,196 @@ fn distributing_market_maker_rewards_until_reserves_run_out() {
                 count: 0,
                 volume: balance!(0),
             }
+        );
+    });
+}
+
+#[test]
+fn distributing_with_partially_eligible_accounts() {
+    let mut ext = ExtBuilder::default().build();
+    ext.execute_with(|| {
+        let initial_reserve = balance!(400000000);
+        Currencies::deposit(
+            PSWAP,
+            &GetMarketMakerRewardsAccountId::get(),
+            initial_reserve,
+        )
+        .unwrap();
+        VestedRewards::update_market_maker_records(&alice(), balance!(10), 499).unwrap();
+        VestedRewards::update_market_maker_records(&bob(), balance!(0.9), 1000).unwrap();
+        VestedRewards::update_market_maker_records(&eve(), balance!(30), 2000).unwrap();
+
+        for block_n in 1..MARKET_MAKER_REWARDS_DISTRIBUTION_FREQUENCY {
+            VestedRewards::on_initialize(block_n.into());
+        }
+        assert_eq!(
+            VestedRewards::market_makers_registry(&alice()),
+            MarketMakerInfo {
+                count: 499,
+                volume: balance!(4990),
+            }
+        );
+        assert_eq!(
+            VestedRewards::market_makers_registry(&bob()),
+            MarketMakerInfo {
+                count: 0,
+                volume: balance!(0),
+            }
+        );
+        assert_eq!(
+            VestedRewards::market_makers_registry(&eve()),
+            MarketMakerInfo {
+                count: 2000,
+                volume: balance!(60000),
+            }
+        );
+        // invoking distribution routine
+        VestedRewards::on_initialize(MARKET_MAKER_REWARDS_DISTRIBUTION_FREQUENCY.into());
+        let reward_alice = balance!(0);
+        let reward_bob = balance!(0);
+        let reward_eve = balance!(20000000);
+        assert_eq!(
+            VestedRewards::rewards(&alice()),
+            RewardInfo {
+                limit: balance!(0),
+                total_available: reward_alice,
+                rewards: Default::default(),
+            }
+        );
+        assert_eq!(
+            VestedRewards::rewards(&bob()),
+            RewardInfo {
+                limit: balance!(0),
+                total_available: reward_bob,
+                rewards: Default::default(),
+            }
+        );
+        assert_eq!(
+            VestedRewards::rewards(&eve()),
+            RewardInfo {
+                limit: balance!(0),
+                total_available: reward_eve,
+                rewards: [(RewardReason::MarketMakerVolume, reward_eve)]
+                    .iter()
+                    .cloned()
+                    .collect(),
+            }
+        );
+        assert_eq!(reward_alice + reward_bob + reward_eve, balance!(20000000));
+        // values are reset after distribution
+        assert_eq!(
+            VestedRewards::market_makers_registry(&alice()),
+            MarketMakerInfo {
+                count: 0,
+                volume: balance!(0),
+            }
+        );
+        assert_eq!(
+            VestedRewards::market_makers_registry(&bob()),
+            MarketMakerInfo {
+                count: 0,
+                volume: balance!(0),
+            }
+        );
+        assert_eq!(
+            VestedRewards::market_makers_registry(&eve()),
+            MarketMakerInfo {
+                count: 0,
+                volume: balance!(0),
+            }
+        );
+
+        assert_eq!(
+            Currencies::free_balance(PSWAP, &GetMarketMakerRewardsAccountId::get()),
+            initial_reserve
+        );
+
+        // check balance for market makers reserve
+        VestedRewards::on_pswap_burned(PswapRemintInfo {
+            vesting: reward_eve,
+            ..Default::default()
+        });
+        VestedRewards::claim_rewards(Origin::signed(eve())).unwrap();
+        assert_eq!(
+            Currencies::free_balance(PSWAP, &GetMarketMakerRewardsAccountId::get()),
+            initial_reserve - reward_eve
+        );
+    });
+}
+
+#[test]
+fn distributing_with_no_eligible_accounts_is_postponed() {
+    let mut ext = ExtBuilder::default().build();
+    ext.execute_with(|| {
+        let initial_reserve = balance!(400000000);
+        Currencies::deposit(
+            PSWAP,
+            &GetMarketMakerRewardsAccountId::get(),
+            initial_reserve,
+        )
+        .unwrap();
+        VestedRewards::update_market_maker_records(&alice(), balance!(0.5), 10).unwrap();
+        VestedRewards::update_market_maker_records(&bob(), balance!(0.7), 20).unwrap();
+        VestedRewards::update_market_maker_records(&eve(), balance!(0.9), 30).unwrap();
+        for block_n in 1..MARKET_MAKER_REWARDS_DISTRIBUTION_FREQUENCY * 10 {
+            VestedRewards::on_initialize(block_n.into());
+        }
+
+        assert_eq!(VestedRewards::rewards(&alice()), Default::default());
+        assert_eq!(VestedRewards::rewards(&bob()), Default::default());
+        assert_eq!(VestedRewards::rewards(&eve()), Default::default());
+
+        assert_eq!(
+            VestedRewards::market_makers_registry(&alice()),
+            Default::default()
+        );
+        assert_eq!(
+            VestedRewards::market_makers_registry(&bob()),
+            Default::default()
+        );
+        assert_eq!(
+            VestedRewards::market_makers_registry(&eve()),
+            Default::default()
+        );
+
+        assert_eq!(
+            Currencies::free_balance(PSWAP, &GetMarketMakerRewardsAccountId::get()),
+            initial_reserve
+        );
+    });
+}
+
+#[test]
+fn distributing_with_no_accounts_is_postponed() {
+    let mut ext = ExtBuilder::default().build();
+    ext.execute_with(|| {
+        let initial_reserve = balance!(400000000);
+        Currencies::deposit(
+            PSWAP,
+            &GetMarketMakerRewardsAccountId::get(),
+            initial_reserve,
+        )
+        .unwrap();
+        for block_n in 1..MARKET_MAKER_REWARDS_DISTRIBUTION_FREQUENCY * 10 {
+            VestedRewards::on_initialize(block_n.into());
+        }
+
+        assert_noop!(
+            VestedRewards::claim_rewards(Origin::signed(alice())),
+            Error::<Runtime>::NothingToClaim
+        );
+        assert_noop!(
+            VestedRewards::claim_rewards(Origin::signed(bob())),
+            Error::<Runtime>::NothingToClaim
+        );
+        assert_noop!(
+            VestedRewards::claim_rewards(Origin::signed(eve())),
+            Error::<Runtime>::NothingToClaim
+        );
+
+        assert_eq!(
+            Currencies::free_balance(PSWAP, &GetMarketMakerRewardsAccountId::get()),
+            initial_reserve
         );
     });
 }

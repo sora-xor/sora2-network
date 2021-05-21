@@ -36,7 +36,7 @@ extern crate alloc;
 
 use codec::{Decode, Encode};
 use common::prelude::{Balance, FixedWrapper};
-use common::{balance, OnPswapBurned, PswapRemintInfo, RewardReason, VestedRewardsTrait, PSWAP};
+use common::{balance, OnPswapBurned, PswapRemintInfo, RewardReason, VestedRewardsPallet, PSWAP};
 use frame_support::dispatch::{DispatchError, DispatchResult};
 use frame_support::traits::{Get, IsType};
 use frame_support::weights::Weight;
@@ -105,7 +105,8 @@ impl<T: Config> Pallet<T> {
 
     /// General claim function, which updates user reward status.
     pub fn claim_rewards_inner(account_id: &T::AccountId) -> DispatchResult {
-        Rewards::<T>::mutate(account_id, |info| {
+        let mut remove_after_mutate = false;
+        let result = Rewards::<T>::mutate(account_id, |info| {
             if info.total_available.is_zero() {
                 fail!(Error::<T>::NothingToClaim);
             } else if info.limit.is_zero() {
@@ -124,6 +125,14 @@ impl<T: Config> Pallet<T> {
                     }
                     *amount = amount.saturating_sub(actual_claimed);
                 }
+                // clear zeroed entries
+                // NOTE: .retain() is an unstable feature yet
+                info.rewards = info
+                    .rewards
+                    .clone()
+                    .into_iter()
+                    .filter(|&(_, reward)| reward > balance!(0))
+                    .collect();
                 if total_actual_claimed.is_zero() {
                     fail!(Error::<T>::RewardsSupplyShortage);
                 }
@@ -131,9 +140,15 @@ impl<T: Config> Pallet<T> {
                 TotalRewards::<T>::mutate(|total| {
                     *total = total.saturating_sub(total_actual_claimed)
                 });
+                remove_after_mutate = info.total_available == 0;
                 Ok(())
             }
-        })
+        });
+        if result.is_ok() && remove_after_mutate {
+            Rewards::<T>::remove(account_id);
+            frame_system::Pallet::<T>::dec_consumers(account_id);
+        }
+        result
     }
 
     /// Claim rewards from account with reserves dedicated for particular reward type.
@@ -219,7 +234,7 @@ impl<T: Config> OnPswapBurned for Module<T> {
     }
 }
 
-impl<T: Config> VestedRewardsTrait<T::AccountId> for Module<T> {
+impl<T: Config> VestedRewardsPallet<T::AccountId> for Module<T> {
     /// Check if volume is eligible to be counted for market maker rewards and add it to registry.
     /// `count` is used as a multiplier if multiple times same volume is transferred inside transaction.
     fn update_market_maker_records(
