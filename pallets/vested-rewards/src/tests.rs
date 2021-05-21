@@ -29,11 +29,12 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use crate::mock::*;
-use crate::{Error, MarketMakerInfo, RewardInfo};
+use crate::{Error, MarketMakerInfo, RewardInfo, MARKET_MAKER_REWARDS_DISTRIBUTION_FREQUENCY};
 use common::{
     balance, Balance, OnPswapBurned, PswapRemintInfo, RewardReason, VestedRewardsTrait, PSWAP,
 };
 use frame_support::assert_noop;
+use frame_support::traits::OnInitialize;
 use sp_std::collections::btree_map::BTreeMap;
 use traits::currency::MultiCurrency;
 
@@ -115,6 +116,21 @@ fn should_add_market_maker_infos_multiple_users() {
                 volume: balance!(333)
             }
         );
+    });
+}
+
+#[test]
+fn trying_to_add_market_maker_entry_no_side_effect() {
+    let mut ext = ExtBuilder::default().build();
+    ext.execute_with(|| {
+        let root_a = frame_support::storage_root();
+        VestedRewards::update_market_maker_records(&alice(), balance!(1), 1).unwrap();
+        let root_b = frame_support::storage_root();
+        assert_ne!(root_a, root_b);
+        // adding record should not add default value explicitly for non-eligible volume
+        VestedRewards::update_market_maker_records(&alice(), balance!(0.99), 1).unwrap();
+        let root_c = frame_support::storage_root();
+        assert_eq!(root_b, root_c);
     });
 }
 
@@ -244,7 +260,7 @@ fn claiming_single_user() {
             }
         );
         assert_eq!(Assets::free_balance(&PSWAP, &alice()).unwrap(), balance!(0));
-        VestedRewards::claim_rewards_inner(&alice()).expect("Failed to claim");
+        VestedRewards::claim_rewards(Origin::signed(alice())).expect("Failed to claim");
         assert_eq!(
             VestedRewards::rewards(&alice()),
             RewardInfo {
@@ -290,7 +306,7 @@ fn claiming_single_user_multiple_rewards() {
             }
         );
         assert_eq!(Assets::free_balance(&PSWAP, &alice()).unwrap(), balance!(0));
-        VestedRewards::claim_rewards_inner(&alice()).expect("Failed to claim");
+        VestedRewards::claim_rewards(Origin::signed(alice())).expect("Failed to claim");
         assert_eq!(
             VestedRewards::rewards(&alice()),
             RewardInfo {
@@ -377,9 +393,9 @@ fn claiming_multiple_users() {
         assert_eq!(Assets::free_balance(&PSWAP, &alice()).unwrap(), balance!(0));
         assert_eq!(Assets::free_balance(&PSWAP, &bob()).unwrap(), balance!(0));
         assert_eq!(Assets::free_balance(&PSWAP, &eve()).unwrap(), balance!(0));
-        VestedRewards::claim_rewards_inner(&alice()).expect("Failed to claim");
-        VestedRewards::claim_rewards_inner(&bob()).expect("Failed to claim");
-        VestedRewards::claim_rewards_inner(&eve()).expect("Failed to claim");
+        VestedRewards::claim_rewards(Origin::signed(alice())).expect("Failed to claim");
+        VestedRewards::claim_rewards(Origin::signed(bob())).expect("Failed to claim");
+        VestedRewards::claim_rewards(Origin::signed(eve())).expect("Failed to claim");
         assert_eq!(
             VestedRewards::rewards(&alice()),
             RewardInfo {
@@ -472,7 +488,7 @@ fn sequential_claims_until_reserves_are_depleted() {
         );
         // user claims existing reward
         assert_eq!(Assets::free_balance(&PSWAP, &alice()).unwrap(), balance!(0));
-        VestedRewards::claim_rewards_inner(&alice()).expect("Failed to claim");
+        VestedRewards::claim_rewards(Origin::signed(alice())).expect("Failed to claim");
         assert_eq!(
             VestedRewards::rewards(&alice()),
             RewardInfo {
@@ -521,7 +537,7 @@ fn sequential_claims_until_reserves_are_depleted() {
             }
         );
         // trying to claim remaining amount, amount is limited because reserves are depleted
-        VestedRewards::claim_rewards_inner(&alice()).expect("Failed to claim");
+        VestedRewards::claim_rewards(Origin::signed(alice())).expect("Failed to claim");
         assert_eq!(
             VestedRewards::rewards(&alice()),
             RewardInfo {
@@ -538,7 +554,7 @@ fn sequential_claims_until_reserves_are_depleted() {
             balance!(60)
         );
         assert_noop!(
-            VestedRewards::claim_rewards_inner(&alice()),
+            VestedRewards::claim_rewards(Origin::signed(alice())),
             Error::<Runtime>::RewardsSupplyShortage
         );
         assert_eq!(
@@ -588,7 +604,7 @@ fn some_rewards_reserves_are_depleted() {
                 .collect(),
             }
         );
-        VestedRewards::claim_rewards_inner(&alice()).unwrap();
+        VestedRewards::claim_rewards(Origin::signed(alice())).unwrap();
         assert_eq!(
             VestedRewards::rewards(&alice()),
             RewardInfo {
@@ -604,12 +620,210 @@ fn some_rewards_reserves_are_depleted() {
             }
         );
         assert_noop!(
-            VestedRewards::claim_rewards_inner(&alice()),
+            VestedRewards::claim_rewards(Origin::signed(alice())),
             Error::<Runtime>::RewardsSupplyShortage
         );
     });
 }
 
-// claiming with limit: none rewards, less than one reward, exactly one reward, less than two rewards, exactly two rewards, limit is greater than available
-// claiming with not enough reserves: in all accs, in single acc, in multiple accs
-// trying to claim error cases
+#[test]
+fn all_rewards_reserves_are_depleted() {
+    let mut ext = ExtBuilder::default().build();
+    ext.execute_with(|| {
+        // no funds are added to reserves
+        VestedRewards::add_tbc_reward(&alice(), balance!(10)).expect("Failed to add reward.");
+        VestedRewards::add_market_maker_reward(&alice(), balance!(20))
+            .expect("Failed to add reward.");
+        // full amount is vested
+        VestedRewards::on_pswap_burned(PswapRemintInfo {
+            vesting: balance!(40),
+            ..Default::default()
+        });
+        assert_noop!(
+            VestedRewards::claim_rewards(Origin::signed(alice())),
+            Error::<Runtime>::RewardsSupplyShortage
+        );
+        assert_eq!(
+            VestedRewards::rewards(&alice()),
+            RewardInfo {
+                limit: balance!(30),
+                total_available: balance!(30),
+                rewards: [
+                    (RewardReason::BuyOnBondingCurve, balance!(10)),
+                    (RewardReason::MarketMakerVolume, balance!(20))
+                ]
+                .iter()
+                .cloned()
+                .collect(),
+            }
+        );
+    });
+}
+
+#[test]
+fn claiming_without_rewards() {
+    let mut ext = ExtBuilder::default().build();
+    ext.execute_with(|| {
+        // deposit pswap for one user
+        Currencies::deposit(
+            PSWAP,
+            &GetBondingCurveRewardsAccountId::get(),
+            balance!(100),
+        )
+        .unwrap();
+        VestedRewards::add_tbc_reward(&alice(), balance!(10)).expect("Failed to add reward.");
+        VestedRewards::on_pswap_burned(PswapRemintInfo {
+            vesting: balance!(30),
+            ..Default::default()
+        });
+        assert_eq!(
+            VestedRewards::rewards(&bob()),
+            RewardInfo {
+                limit: balance!(0),
+                total_available: balance!(0),
+                rewards: Default::default(),
+            }
+        );
+        assert_noop!(
+            VestedRewards::claim_rewards(Origin::signed(bob())),
+            Error::<Runtime>::NothingToClaim
+        );
+        VestedRewards::add_tbc_reward(&bob(), balance!(10)).expect("Failed to add reward.");
+        assert_noop!(
+            VestedRewards::claim_rewards(Origin::signed(bob())),
+            Error::<Runtime>::ClaimLimitExceeded
+        );
+        VestedRewards::on_pswap_burned(PswapRemintInfo {
+            vesting: balance!(30),
+            ..Default::default()
+        });
+        assert_eq!(Assets::free_balance(&PSWAP, &bob()).unwrap(), balance!(0));
+        VestedRewards::claim_rewards(Origin::signed(bob())).expect("Failed to claim reward.");
+        assert_eq!(Assets::free_balance(&PSWAP, &bob()).unwrap(), balance!(10));
+    });
+}
+
+#[test]
+fn distributing_market_maker_rewards_until_reserves_run_out() {
+    let mut ext = ExtBuilder::default().build();
+    ext.execute_with(|| {
+        Currencies::deposit(
+            PSWAP,
+            &GetMarketMakerRewardsAccountId::get(),
+            balance!(400000000),
+        )
+        .unwrap();
+        VestedRewards::update_market_maker_records(&alice(), balance!(10), 500).unwrap();
+        VestedRewards::update_market_maker_records(&bob(), balance!(20), 1000).unwrap();
+        VestedRewards::update_market_maker_records(&eve(), balance!(30), 2000).unwrap();
+
+        for block_n in 1..MARKET_MAKER_REWARDS_DISTRIBUTION_FREQUENCY {
+            VestedRewards::on_initialize(block_n.into());
+        }
+        assert_eq!(
+            VestedRewards::rewards(&alice()),
+            RewardInfo {
+                limit: balance!(0),
+                total_available: balance!(0),
+                rewards: Default::default(),
+            }
+        );
+        assert_eq!(
+            VestedRewards::rewards(&bob()),
+            RewardInfo {
+                limit: balance!(0),
+                total_available: balance!(0),
+                rewards: Default::default(),
+            }
+        );
+        assert_eq!(
+            VestedRewards::rewards(&eve()),
+            RewardInfo {
+                limit: balance!(0),
+                total_available: balance!(0),
+                rewards: Default::default(),
+            }
+        );
+        assert_eq!(
+            VestedRewards::market_makers_registry(&alice()),
+            MarketMakerInfo {
+                count: 500,
+                volume: balance!(5000),
+            }
+        );
+        assert_eq!(
+            VestedRewards::market_makers_registry(&bob()),
+            MarketMakerInfo {
+                count: 1000,
+                volume: balance!(20000),
+            }
+        );
+        assert_eq!(
+            VestedRewards::market_makers_registry(&eve()),
+            MarketMakerInfo {
+                count: 2000,
+                volume: balance!(60000),
+            }
+        );
+        // invoking distribution routine
+        VestedRewards::on_initialize(MARKET_MAKER_REWARDS_DISTRIBUTION_FREQUENCY.into());
+        let reward_alice = balance!(1176470.588235294117647058);
+        let reward_bob = balance!(4705882.352941176470588235);
+        let reward_eve = balance!(14117647.058823529411764705);
+        assert_eq!(
+            VestedRewards::rewards(&alice()),
+            RewardInfo {
+                limit: balance!(0),
+                total_available: reward_alice,
+                rewards: [(RewardReason::MarketMakerVolume, reward_alice)]
+                    .iter()
+                    .cloned()
+                    .collect(),
+            }
+        );
+        assert_eq!(
+            VestedRewards::rewards(&bob()),
+            RewardInfo {
+                limit: balance!(0),
+                total_available: reward_bob,
+                rewards: [(RewardReason::MarketMakerVolume, reward_bob)]
+                    .iter()
+                    .cloned()
+                    .collect(),
+            }
+        );
+        assert_eq!(
+            VestedRewards::rewards(&eve()),
+            RewardInfo {
+                limit: balance!(0),
+                total_available: reward_eve,
+                rewards: [(RewardReason::MarketMakerVolume, reward_eve)]
+                    .iter()
+                    .cloned()
+                    .collect(),
+            }
+        );
+        // values are reset after distribution
+        assert_eq!(
+            VestedRewards::market_makers_registry(&alice()),
+            MarketMakerInfo {
+                count: 0,
+                volume: balance!(0),
+            }
+        );
+        assert_eq!(
+            VestedRewards::market_makers_registry(&bob()),
+            MarketMakerInfo {
+                count: 0,
+                volume: balance!(0),
+            }
+        );
+        assert_eq!(
+            VestedRewards::market_makers_registry(&eve()),
+            MarketMakerInfo {
+                count: 0,
+                volume: balance!(0),
+            }
+        );
+    });
+}

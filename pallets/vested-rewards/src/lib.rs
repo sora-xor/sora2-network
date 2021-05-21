@@ -34,8 +34,6 @@
 #[macro_use]
 extern crate alloc;
 
-use std::convert::TryInto;
-
 use codec::{Decode, Encode};
 use common::prelude::{Balance, FixedWrapper};
 use common::{balance, OnPswapBurned, PswapRemintInfo, RewardReason, VestedRewardsTrait, PSWAP};
@@ -45,6 +43,8 @@ use frame_support::weights::Weight;
 use frame_support::{fail, transactional};
 use sp_runtime::traits::Zero;
 use sp_std::collections::btree_map::BTreeMap;
+use sp_std::convert::TryInto;
+use sp_std::vec::Vec;
 
 mod migration;
 pub mod weights;
@@ -180,8 +180,8 @@ impl<T: Config> Pallet<T> {
         // collect list of accounts with volume info
         let mut eligible_accounts = Vec::new();
         let mut total_eligible_volume = balance!(0);
-        for (account, info) in MarketMakersRegistry::<T>::iter() {
-            if info.count > MARKET_MAKER_ELIGIBILITY_TX_COUNT {
+        for (account, info) in MarketMakersRegistry::<T>::drain() {
+            if info.count >= MARKET_MAKER_ELIGIBILITY_TX_COUNT {
                 eligible_accounts.push((account, info.volume));
                 total_eligible_volume = total_eligible_volume.saturating_add(info.volume);
             }
@@ -189,11 +189,11 @@ impl<T: Config> Pallet<T> {
         let eligible_accounts_count = eligible_accounts.len();
         if total_eligible_volume > 0 {
             for (account, volume) in eligible_accounts {
-                let reward = volume
-                    .checked_mul(SINGLE_MARKET_MAKER_DISTRIBUTION_AMOUNT)
-                    .unwrap_or(0)
-                    .checked_div(total_eligible_volume)
-                    .unwrap_or(0);
+                let reward = (FixedWrapper::from(volume)
+                    * FixedWrapper::from(SINGLE_MARKET_MAKER_DISTRIBUTION_AMOUNT)
+                    / FixedWrapper::from(total_eligible_volume))
+                .try_into_balance()
+                .unwrap_or(0);
                 if reward > 0 {
                     let res =
                         Self::add_pending_reward(&account, RewardReason::MarketMakerVolume, reward);

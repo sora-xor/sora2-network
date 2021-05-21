@@ -47,7 +47,7 @@ use sp_core::crypto::AccountId32;
 use sp_core::H256;
 use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentityLookup, Zero};
-use sp_runtime::{DispatchError, Perbill};
+use sp_runtime::{DispatchError, DispatchResult, Perbill};
 use std::collections::HashMap;
 
 pub type AccountId = AccountId32;
@@ -189,17 +189,27 @@ impl Config for Runtime {
 pub struct MockVestedRewards;
 
 impl VestedRewardsTrait<AccountId> for MockVestedRewards {
-    fn update_market_maker_records(_: &AccountId, _: Balance, _: u32) -> Result<(), DispatchError> {
-        //do nothing
+    fn update_market_maker_records(_: &AccountId, _: Balance, _: u32) -> DispatchResult {
+        // do nothing
         Ok(())
     }
-    fn add_tbc_reward(account: &AccountId, amount: Balance) -> Result<(), DispatchError> {
+    fn add_tbc_reward(account: &AccountId, amount: Balance) -> DispatchResult {
         Rewards::<Runtime>::mutate(account, |(_, old_amount)| {
             *old_amount = old_amount.saturating_add(amount)
         });
         TotalRewards::<Runtime>::mutate(|old_amount| {
             *old_amount = old_amount.saturating_add(amount)
         });
+        Ok(())
+    }
+
+    fn add_farming_reward(_: &AccountId, _: Balance) -> DispatchResult {
+        // do nothing
+        Ok(())
+    }
+
+    fn add_market_maker_reward(_: &AccountId, _: Balance) -> DispatchResult {
+        // do nothing
         Ok(())
     }
 }
