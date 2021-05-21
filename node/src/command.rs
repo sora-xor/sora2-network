@@ -54,27 +54,38 @@ impl SubstrateCli for Cli {
     fn load_spec(&self, id: &str) -> Result<Box<dyn sc_service::ChainSpec>, String> {
         #[cfg(feature = "private-net")]
         let chain_spec = match id {
-            "" | "local" => Ok(chain_spec::local_testnet_config()),
+            "" | "local" => Some(chain_spec::local_testnet_config()),
             // dev doesn't use json chain spec to make development easier
             // "dev" => chain_spec::dev_net(),
             // "dev-coded" => Ok(chain_spec::dev_net_coded()),
-            "dev" => Ok(chain_spec::dev_net_coded()),
-            "test" => chain_spec::test_net(),
-            "test-coded" => Ok(chain_spec::staging_net_coded(true)),
-            "staging" => chain_spec::staging_net(),
-            "staging-coded" => Ok(chain_spec::staging_net_coded(false)),
-            path => chain_spec::ChainSpec::from_json_file(std::path::PathBuf::from(path)),
+            "dev" => Some(chain_spec::dev_net_coded()),
+            "test" => Some(chain_spec::test_net()?),
+            "test-coded" => Some(chain_spec::staging_net_coded(true)),
+            "staging" => Some(chain_spec::staging_net()?),
+            "staging-coded" => Some(chain_spec::staging_net_coded(false)),
+            _ => None,
         };
 
         #[cfg(not(feature = "private-net"))]
-        let chain_spec = match id {
-            // main isn't ready yet
-            // "main" => chain_spec::main_net(),
-            "" | "main" => Ok(chain_spec::main_net_coded()),
-            path => chain_spec::ChainSpec::from_json_file(std::path::PathBuf::from(path)),
+        let mut chain_spec = None;
+
+        #[cfg(not(feature = "private-net"))]
+        if id == "main" {
+            chain_spec = Some(chain_spec::main_net()?);
+        }
+
+        #[cfg(feature = "main-net-coded")]
+        if id == "main-coded" {
+            chain_spec = Some(chain_spec::main_net_coded());
+        }
+
+        let chain_spec = if let Some(chain_spec) = chain_spec {
+            chain_spec
+        } else {
+            chain_spec::ChainSpec::from_json_file(std::path::PathBuf::from(id))?
         };
 
-        Ok(Box::new(chain_spec?))
+        Ok(Box::new(chain_spec))
     }
 
     fn native_runtime_version(_: &Box<dyn ChainSpec>) -> &'static RuntimeVersion {

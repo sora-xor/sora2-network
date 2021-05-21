@@ -31,7 +31,9 @@
 use crate::{self as vested_rewards, Config};
 use common::mock::ExistentialDeposits;
 use common::prelude::{Balance, DEXInfo};
-use common::{hash, AssetId32, AssetName, AssetSymbol, BalancePrecision, DOT, KSM, PSWAP, XOR};
+use common::{
+    fixed, hash, AssetId32, AssetName, AssetSymbol, BalancePrecision, Fixed, DOT, KSM, PSWAP, XOR,
+};
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::GenesisBuild;
 use frame_support::weights::Weight;
@@ -101,6 +103,7 @@ parameter_types! {
     pub GetParliamentAccountId: AccountId = AccountId32::from([152; 32]);
     pub GetMarketMakerRewardsAccountId: AccountId = AccountId32::from([153; 32]);
     pub GetBondingCurveRewardsAccountId: AccountId = AccountId32::from([154; 32]);
+    pub GetXykFee: Fixed = fixed!(0.003);
 }
 
 impl frame_system::Config for Runtime {
@@ -216,6 +219,7 @@ impl pool_xyk::Config for Runtime {
     type PolySwapAction =
         pool_xyk::PolySwapAction<AssetId, TechAssetId, Balance, AccountId, TechAccountId>;
     type EnsureDEXManager = dex_manager::Module<Runtime>;
+    type GetFee = GetXykFee;
     type WeightInfo = ();
 }
 

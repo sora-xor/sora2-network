@@ -37,20 +37,20 @@ use framenode_runtime::GenesisConfig;
 
 use common::prelude::{Balance, DEXInfo, FixedWrapper};
 use common::{
-    balance, fixed, hash, DEXId, Fixed, TechPurpose, DAI, DEFAULT_BALANCE_PRECISION, ETH, PSWAP,
-    USDT, VAL, XOR,
+    balance, fixed, hash, vec_push, BalancePrecision, DEXId, Fixed, TechPurpose, DAI,
+    DEFAULT_BALANCE_PRECISION, ETH, PSWAP, USDT, VAL, XOR,
 };
 use frame_support::sp_runtime::Percent;
-use framenode_runtime::eth_bridge::{AssetConfig, NetworkConfig};
+use framenode_runtime::eth_bridge::{AssetConfig, BridgeAssetData, NetworkConfig};
 use framenode_runtime::multicollateral_bonding_curve_pool::{
     DistributionAccount, DistributionAccountData, DistributionAccounts,
 };
 use framenode_runtime::opaque::SessionKeys;
 use framenode_runtime::{
-    eth_bridge, AccountId, AssetId, AssetName, AssetSymbol, AssetsConfig, BabeConfig,
-    BalancesConfig, BridgeMultisigConfig, CouncilConfig, DEXAPIConfig, DEXManagerConfig,
-    DemocracyConfig, EthBridgeConfig, GetBaseAssetId, GetParliamentAccountId, GetPswapAssetId,
-    GetValAssetId, GetXorAssetId, GrandpaConfig, ImOnlineId, IrohaMigrationConfig,
+    assets, eth_bridge, frame_system, AccountId, AssetId, AssetName, AssetSymbol, AssetsConfig,
+    BabeConfig, BalancesConfig, BridgeMultisigConfig, CouncilConfig, DEXAPIConfig,
+    DEXManagerConfig, DemocracyConfig, EthBridgeConfig, GetBaseAssetId, GetParliamentAccountId,
+    GetPswapAssetId, GetValAssetId, GetXorAssetId, GrandpaConfig, ImOnlineId, IrohaMigrationConfig,
     LiquiditySourceType, MulticollateralBondingCurvePoolConfig, PermissionsConfig,
     PswapDistributionConfig, RewardsConfig, Runtime, SessionConfig, StakerStatus, StakingConfig,
     SystemConfig, TechAccountId, TechnicalConfig, TokensConfig, TradingPairConfig, WASM_BINARY,
@@ -62,36 +62,25 @@ use sc_network::config::MultiaddrWithPeerId;
 use sc_service::{ChainType, Properties};
 use sp_consensus_aura::sr25519::AuthorityId as AuraId;
 use sp_consensus_babe::AuthorityId as BabeId;
-use sp_core::{Public, H160};
+use sp_core::{Public, H160, H256};
 use sp_runtime::sp_std::iter::once;
 use sp_runtime::traits::Zero;
 use sp_runtime::Perbill;
 use std::str::FromStr;
 
+use codec::Encode;
+use framenode_runtime::assets::{AssetRecord, AssetRecordArg};
 #[cfg(feature = "private-net")]
 use framenode_runtime::{FaucetConfig, SudoConfig};
 use framenode_runtime::{Signature, TechnicalCommitteeConfig};
 use sp_core::{sr25519, Pair};
 use sp_runtime::traits::{IdentifyAccount, Verify};
+use std::borrow::Cow;
 
 /// Specialized `ChainSpec`. This is a specialization of the general Substrate ChainSpec type.
 pub type ChainSpec = sc_service::GenericChainSpec<GenesisConfig>;
 type Technical = technical::Module<Runtime>;
 type AccountPublic = <Signature as Verify>::Signer;
-
-// The macro is used in rewards_*.in.
-// It's required instead of vec! because vec! places all data on the stack and it causes overflow.
-macro_rules! vec_push {
-    ($($x:expr),+ $(,)?) => (
-        {
-            let mut vec = Vec::new();
-            $(
-                vec.push($x);
-            )+
-            vec
-        }
-    );
-}
 
 macro_rules! our_include {
     ($x:expr) => {{
@@ -196,12 +185,10 @@ pub fn test_net() -> Result<ChainSpec, String> {
     ChainSpec::from_json_bytes(&our_include_bytes!("./bytes/chain_spec_test.json")[..])
 }
 
-// Main net is not ready yet.
-// It still uses staging nodes.
-// #[cfg(all(not(feature = "private-net"), not(feature = "coded-nets")))]
-// pub fn main_net() -> Result<ChainSpec, String> {
-//     ChainSpec::from_json_bytes(&our_include_bytes!("./bytes/chain_spec_main.json")[..])
-// }
+#[cfg(not(feature = "private-net"))]
+pub fn main_net() -> Result<ChainSpec, String> {
+    ChainSpec::from_json_bytes(&our_include_bytes!("./bytes/chain_spec_main.json")[..])
+}
 
 #[cfg(feature = "private-net")]
 pub fn dev_net_coded() -> ChainSpec {
@@ -597,7 +584,7 @@ fn testnet_genesis(
     let initial_eth_bridge_xor_amount = balance!(350000);
     let initial_eth_bridge_val_amount = balance!(33900000);
     let initial_pswap_tbc_rewards = balance!(2500000000);
-    let initial_pswap_market_maker_rewards = balance!(400000000);
+    let initial_pswap_market_maker_rewards = balance!(364988000);
 
     let parliament_investment_fund =
         hex!("048cfcacbdebe828dffa1267d830d45135cd40238286f838f5a95432a1bbf851").into();
@@ -1162,7 +1149,7 @@ fn testnet_genesis(
 }
 
 /// # Parameters
-#[cfg(not(feature = "private-net"))]
+#[cfg(feature = "main-net-coded")]
 pub fn main_net_coded() -> ChainSpec {
     let mut properties = Properties::new();
     properties.insert("tokenSymbol".into(), "XOR".into());
@@ -1251,7 +1238,7 @@ pub fn main_net_coded() -> ChainSpec {
     )
 }
 
-#[cfg(not(feature = "private-net"))]
+#[cfg(feature = "main-net-coded")]
 fn mainnet_genesis(
     initial_authorities: Vec<(AccountId, AccountId, AuraId, BabeId, GrandpaId, ImOnlineId)>,
     additional_validators: Vec<AccountId>,
@@ -1269,7 +1256,7 @@ fn mainnet_genesis(
     // Initial token bonding curve PSWAP rewards according to 10 bln PSWAP total supply.
     let initial_pswap_tbc_rewards = balance!(2500000000);
     // Initial market maker PSWAP rewards.
-    let initial_pswap_market_maker_rewards = balance!(400000000);
+    let initial_pswap_market_maker_rewards = balance!(364988000);
 
     let parliament_investment_fund =
         hex!("048cfcacbdebe828dffa1267d830d45135cd40238286f838f5a95432a1bbf851").into();
@@ -1422,6 +1409,84 @@ fn mainnet_genesis(
     };
     let initial_collateral_assets = vec![DAI.into(), VAL.into(), PSWAP.into(), ETH.into()];
 
+    let mut bridge_assets = vec![
+        AssetConfig::Sidechain {
+            id: XOR.into(),
+            sidechain_id: eth_bridge_params.xor_contract_address,
+            owned: true,
+            precision: DEFAULT_BALANCE_PRECISION,
+        },
+        AssetConfig::Sidechain {
+            id: VAL.into(),
+            sidechain_id: eth_bridge_params.val_contract_address,
+            owned: true,
+            precision: DEFAULT_BALANCE_PRECISION,
+        },
+        AssetConfig::Sidechain {
+            id: ETH.into(),
+            sidechain_id: hex!("0000000000000000000000000000000000000000").into(),
+            owned: false,
+            precision: 18,
+        },
+    ];
+    let mut endowed_assets = vec![
+        (
+            GetXorAssetId::get(),
+            assets_and_permissions_account_id.clone(),
+            AssetSymbol(b"XOR".to_vec()),
+            AssetName(b"SORA".to_vec()),
+            18,
+            Balance::zero(),
+            true,
+        ),
+        (
+            GetValAssetId::get(),
+            assets_and_permissions_account_id.clone(),
+            AssetSymbol(b"VAL".to_vec()),
+            AssetName(b"SORA Validator Token".to_vec()),
+            18,
+            Balance::zero(),
+            true,
+        ),
+        (
+            GetPswapAssetId::get(),
+            assets_and_permissions_account_id.clone(),
+            AssetSymbol(b"PSWAP".to_vec()),
+            AssetName(b"Polkaswap".to_vec()),
+            18,
+            Balance::zero(),
+            true,
+        ),
+        (
+            ETH.into(),
+            eth_bridge_account_id.clone(),
+            AssetSymbol(b"ETH".to_vec()),
+            AssetName(b"Ether".to_vec()),
+            18,
+            Balance::zero(),
+            true,
+        ),
+    ];
+    let bridge_assets_data: Vec<BridgeAssetData<Runtime>> =
+        include!("bytes/eth_bridge_assets_main.in");
+    bridge_assets.extend(bridge_assets_data.iter().map(|x| {
+        AssetConfig::sidechain(
+            x.asset_id,
+            x.sidechain_asset_id.into(),
+            x.sidechain_precision,
+        )
+    }));
+    endowed_assets.extend(bridge_assets_data.iter().map(|x| {
+        (
+            x.asset_id,
+            eth_bridge_account_id.clone(),
+            x.symbol.clone(),
+            x.name.clone(),
+            DEFAULT_BALANCE_PRECISION,
+            Balance::zero(),
+            true,
+        )
+    }));
     GenesisConfig {
         frame_system: Some(SystemConfig {
             code: WASM_BINARY.unwrap().to_vec(),
@@ -1470,53 +1535,7 @@ fn mainnet_genesis(
             ..Default::default()
         }),
         assets: Some(AssetsConfig {
-            endowed_assets: vec![
-                (
-                    GetXorAssetId::get(),
-                    assets_and_permissions_account_id.clone(),
-                    AssetSymbol(b"XOR".to_vec()),
-                    AssetName(b"SORA".to_vec()),
-                    18,
-                    Balance::zero(),
-                    true,
-                ),
-                (
-                    GetValAssetId::get(),
-                    assets_and_permissions_account_id.clone(),
-                    AssetSymbol(b"VAL".to_vec()),
-                    AssetName(b"SORA Validator Token".to_vec()),
-                    18,
-                    Balance::zero(),
-                    true,
-                ),
-                (
-                    GetPswapAssetId::get(),
-                    assets_and_permissions_account_id.clone(),
-                    AssetSymbol(b"PSWAP".to_vec()),
-                    AssetName(b"Polkaswap".to_vec()),
-                    18,
-                    Balance::zero(),
-                    true,
-                ),
-                (
-                    DAI.into(),
-                    eth_bridge_account_id.clone(),
-                    AssetSymbol(b"DAI".to_vec()),
-                    AssetName(b"Dai Stablecoin".to_vec()),
-                    18,
-                    Balance::zero(),
-                    true,
-                ),
-                (
-                    ETH.into(),
-                    eth_bridge_account_id.clone(),
-                    AssetSymbol(b"ETH".to_vec()),
-                    AssetName(b"Ether".to_vec()),
-                    18,
-                    Balance::zero(),
-                    true,
-                ),
-            ],
+            endowed_assets: endowed_assets,
         }),
         permissions: Some(PermissionsConfig {
             initial_permission_owners: vec![
@@ -1587,7 +1606,7 @@ fn mainnet_genesis(
         }),
         pallet_balances: Some(BalancesConfig {
             balances: vec![
-                (eth_bridge_account_id.clone(), initial_eth_bridge_xor_amount),
+                (eth_bridge_account_id.clone(), 0),
                 (assets_and_permissions_account_id.clone(), 0),
                 (xor_fee_account_id.clone(), 0),
                 (dex_root_account_id.clone(), 0),
@@ -1642,11 +1661,6 @@ fn mainnet_genesis(
                         + calculate_reserves(&rewards_config.pswap_waifu_owners),
                 ),
                 (
-                    eth_bridge_account_id.clone(),
-                    VAL,
-                    initial_eth_bridge_val_amount,
-                ),
-                (
                     mbc_pool_rewards_account_id.clone(),
                     PSWAP,
                     initial_pswap_tbc_rewards,
@@ -1690,36 +1704,11 @@ fn mainnet_genesis(
             networks: vec![NetworkConfig {
                 initial_peers: initial_bridge_peers.iter().cloned().collect(),
                 bridge_account_id: eth_bridge_account_id.clone(),
-                assets: vec![
-                    AssetConfig::Sidechain {
-                        id: XOR.into(),
-                        sidechain_id: eth_bridge_params.xor_contract_address,
-                        owned: true,
-                        precision: DEFAULT_BALANCE_PRECISION,
-                    },
-                    AssetConfig::Sidechain {
-                        id: VAL.into(),
-                        sidechain_id: eth_bridge_params.val_contract_address,
-                        owned: true,
-                        precision: DEFAULT_BALANCE_PRECISION,
-                    },
-                    AssetConfig::Sidechain {
-                        id: DAI.into(),
-                        sidechain_id: hex!("6b175474e89094c44da98b954eedeac495271d0f").into(),
-                        owned: false,
-                        precision: 18,
-                    },
-                    AssetConfig::Sidechain {
-                        id: ETH.into(),
-                        sidechain_id: hex!("0000000000000000000000000000000000000000").into(),
-                        owned: false,
-                        precision: 18,
-                    },
-                ],
+                assets: bridge_assets,
                 bridge_contract_address: eth_bridge_params.bridge_contract_address,
                 reserves: vec![
-                    (XOR.into(), balance!(350000)),
-                    (VAL.into(), balance!(33900000)),
+                    (XOR.into(), initial_eth_bridge_xor_amount),
+                    (VAL.into(), initial_eth_bridge_val_amount),
                 ],
             }],
             xor_master_contract_address: eth_bridge_params.xor_master_contract_address,
@@ -1745,7 +1734,7 @@ fn mainnet_genesis(
             burn_info: (fixed!(0.1), fixed!(0.000357), fixed!(0.65)),
         }),
         iroha_migration: Some(IrohaMigrationConfig {
-            iroha_accounts: our_include!("bytes/iroha_migration_accounts.in"),
+            iroha_accounts: our_include!("bytes/iroha_migration_accounts_main.in"),
             account_id: iroha_migration_account_id,
         }),
         rewards: Some(rewards_config),

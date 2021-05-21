@@ -1621,4 +1621,33 @@ mod tests {
             ]);
         })
     }
+
+    #[test]
+    fn rewards_for_small_values() {
+        let mut ext = ExtBuilder::new(vec![
+            (
+                alice(),
+                USDT,
+                balance!(0),
+                AssetSymbol(b"USDT".to_vec()),
+                AssetName(b"Tether USD".to_vec()),
+                18,
+            ),
+            (alice(), XOR, balance!(6000000000), AssetSymbol(b"XOR".to_vec()), AssetName(b"SORA".to_vec()), 18),
+            (alice(), VAL, 0, AssetSymbol(b"VAL".to_vec()), AssetName(b"SORA Validator Token".to_vec()), 18),
+        ])
+        .build();
+        ext.execute_with(|| {
+            MockDEXApi::init_without_reserves().unwrap();
+            let _ = bonding_curve_pool_init(Vec::new()).unwrap();
+            let alice = &alice();
+            TradingPair::register(Origin::signed(alice.clone()),DEXId::Polkaswap.into(), XOR, USDT).expect("Failed to register trading pair.");
+            TradingPair::register(Origin::signed(alice.clone()),DEXId::Polkaswap.into(), XOR, VAL).expect("Failed to register trading pair.");
+            MBCPool::initialize_pool_unchecked(USDT, false).expect("Failed to initialize pool.");
+            let reward = MBCPool::calculate_buy_reward(alice, &USDT, balance!(0.000000002499999999), balance!(0.000000000000001));
+            assert_eq!(reward.unwrap(), balance!(0.000000002499999999));
+            let reward = MBCPool::calculate_buy_reward(alice, &USDT, balance!(0.000000002499999999), balance!(0.000000000000000001));
+            assert_eq!(reward.unwrap(), balance!(0.000000002499999999));
+        })
+    }
 }

@@ -693,7 +693,8 @@ impl<T: Config> Pallet<T> {
         Ok(path_exists)
     }
 
-    /// Given two arbitrary tokens return all sources that can be used in exchange if path exists.
+    /// Given two arbitrary tokens return sources that can be used to cover full path. If all sources can cover only part of path,
+    /// but overall path is possible - list will be empty.
     pub fn list_enabled_sources_for_path(
         dex_id: T::DEXId,
         input_asset_id: T::AssetId,
@@ -711,11 +712,8 @@ impl<T: Config> Pallet<T> {
                     &pair.base_asset_id,
                     &pair.target_asset_id,
                 )?;
-                if sources.is_empty() {
-                    fail!(Error::<T>::UnavailableExchangePath);
-                } else {
-                    Ok(sources.into_iter().collect())
-                }
+                ensure!(!sources.is_empty(), Error::<T>::UnavailableExchangePath);
+                Ok(sources.into_iter().collect())
             }
             ExchangePath::Twofold {
                 from_asset_id,
@@ -732,11 +730,11 @@ impl<T: Config> Pallet<T> {
                     &intermediate_asset_id,
                     &to_asset_id,
                 )?;
-                if !first_swap.is_empty() && !second_swap.is_empty() {
-                    Ok(first_swap.union(&second_swap).cloned().collect())
-                } else {
-                    fail!(Error::<T>::UnavailableExchangePath);
-                }
+                ensure!(
+                    !first_swap.is_empty() && !second_swap.is_empty(),
+                    Error::<T>::UnavailableExchangePath
+                );
+                Ok(first_swap.intersection(&second_swap).cloned().collect())
             }
         }
     }

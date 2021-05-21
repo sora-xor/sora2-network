@@ -79,7 +79,7 @@ pallet-timestamp = { default-features = false, version = '3' }
 pallet-scheduler = { default-features = false, version = '3' }
 #pallet-session = { default-features = false, version = '3' }
 pallet-session = { default-features = false, features = ["historical"], version = '3' }
-pallet-staking = { git = "https://github.com/soramitsu/sora2-frame-pallets", default-features = false, branch = "v3.0.0"}
+pallet-staking = { git = "https://github.com/soramitsu/sora2-frame-pallets", default-features = false, branch = "v3.1.0"}
 pallet-transaction-payment = { version = '3', default-features = false }
 pallet-transaction-payment-rpc-runtime-api = { version = '3', default-features = false }
 pallet-utility = { default-features = false, version = '3' }

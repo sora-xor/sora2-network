@@ -39,7 +39,7 @@ use pool_xyk::*;
 
 use codec::Decode;
 use common::prelude::{Balance, SwapAmount};
-use common::{AssetName, AssetSymbol, DEXId, DOT, XOR};
+use common::{balance, AssetName, AssetSymbol, DEXId, DOT, XOR};
 use frame_benchmarking::benchmarks;
 use frame_system::RawOrigin;
 use hex_literal::hex;
@@ -168,31 +168,31 @@ fn setup_benchmark<T: Config>() -> Result<(), &'static str> {
         owner_origin.clone(),
         XOR.into(),
         owner.clone(),
-        10_000_u128.into(),
+        balance!(10000),
     )?;
     Assets::<T>::mint(
         owner_origin.clone(),
         DOT.into(),
         owner.clone(),
-        20_000_u128.into(),
+        balance!(20000),
     )?;
     Assets::<T>::mint(
         owner_origin.clone(),
         XOR.into(),
         repr.clone(),
-        1_000_000_u128.into(),
+        balance!(1000000),
     )?;
     Assets::<T>::mint(
         owner_origin.clone(),
         DOT.into(),
         repr.clone(),
-        1_500_000_u128.into(),
+        balance!(1500000),
     )?;
     Assets::<T>::mint(
         owner_origin.clone(),
         mark_asset.into(),
         owner.clone(),
-        1_500_000_000_000_u128.into(),
+        balance!(1500000000000),
     )?;
 
     Ok(())
@@ -203,8 +203,8 @@ benchmarks! {
         let n in 1 .. 1000 => setup_benchmark::<T>()?;
         let caller = alice::<T>();
         let amount = SwapAmount::WithDesiredInput {
-            desired_amount_in: 1_000_u128.into(),
-            min_amount_out: 0_u128.into(),
+            desired_amount_in: balance!(1000),
+            min_amount_out: balance!(0),
         };
         let initial_base_balance = Assets::<T>::free_balance(&XOR.into(), &caller).unwrap();
         let initial_target_balance = Assets::<T>::free_balance(&DOT.into(), &caller).unwrap();
@@ -219,11 +219,11 @@ benchmarks! {
     verify {
         assert_eq!(
             Into::<u128>::into(Assets::<T>::free_balance(&XOR.into(), &caller).unwrap()),
-            Into::<u128>::into(initial_base_balance) - 1_000_u128
+            Into::<u128>::into(initial_base_balance) - balance!(1000)
         );
         assert_eq!(
             Into::<u128>::into(Assets::<T>::free_balance(&DOT.into(), &caller).unwrap()),
-            Into::<u128>::into(initial_target_balance) + 1_494_u128
+            Into::<u128>::into(initial_target_balance) + balance!(1494.010471559854824739)
         );
     }
 
@@ -237,19 +237,19 @@ benchmarks! {
         DEX.into(),
         XOR.into(),
         DOT.into(),
-        2_000_u128.into(),
-        3_000_u128.into(),
+        balance!(2000),
+        balance!(3000),
         0_u128.into(),
         0_u128.into()
     )
     verify {
         assert_eq!(
             Into::<u128>::into(Assets::<T>::free_balance(&XOR.into(), &caller.clone()).unwrap()),
-            Into::<u128>::into(initial_xor_balance) - 2_000_u128
+            Into::<u128>::into(initial_xor_balance) - balance!(2000)
         );
         assert_eq!(
             Into::<u128>::into(Assets::<T>::free_balance(&DOT.into(), &caller.clone()).unwrap()),
-            Into::<u128>::into(initial_dot_balance)
+            Into::<u128>::into(initial_dot_balance) - balance!(3000)
         );
     }
 

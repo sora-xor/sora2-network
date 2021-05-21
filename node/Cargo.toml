@@ -99,6 +99,8 @@ pallet-sudo = "3"
 [features]
 include-real-files = []
 
+main-net-coded = []
+
 private-net = [
     "faucet",
     "framenode-runtime/private-net",

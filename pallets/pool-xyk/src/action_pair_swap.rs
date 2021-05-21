@@ -31,14 +31,14 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use frame_support::dispatch::DispatchResult;
+use frame_support::traits::Get;
 use frame_support::weights::Weight;
 use frame_support::{dispatch, ensure};
 
 use common::balance;
 use common::prelude::{Balance, FixedWrapper};
-use frame_support::debug;
 
-use crate::{to_balance, to_fixed_wrapper};
+use crate::to_fixed_wrapper;
 
 use crate::bounds::*;
 
@@ -141,18 +141,14 @@ impl<T: Config> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, 
                     ensure!(sa > 0, Error::<T>::ZeroValueInAmountParameter);
                     ensure!(ta > 0, Error::<T>::ZeroValueInAmountParameter);
                     let y_out_pair = Module::<T>::calc_output_for_exact_input(
-                        &self.source.asset,
-                        &self.destination.asset,
-                        &self.pool_account,
+                        T::GetFee::get(),
                         self.get_fee_from_destination.unwrap(),
                         &balance_st,
                         &balance_tt,
                         &sa,
                     )?;
                     let x_in_pair = Module::<T>::calc_input_for_exact_output(
-                        &self.source.asset,
-                        &self.destination.asset,
-                        &self.pool_account,
+                        T::GetFee::get(),
                         self.get_fee_from_destination.unwrap(),
                         &balance_st,
                         &balance_tt,
@@ -169,9 +165,7 @@ impl<T: Config> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, 
                     match ta_bnd {
                         Bounds::Min(ta_min) => {
                             let (calculated, fee) = Module::<T>::calc_output_for_exact_input(
-                                &self.source.asset,
-                                &self.destination.asset,
-                                &self.pool_account,
+                                T::GetFee::get(),
                                 self.get_fee_from_destination.unwrap(),
                                 &balance_st,
                                 &balance_tt,
@@ -196,9 +190,7 @@ impl<T: Config> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, 
                     match sa_bnd {
                         Bounds::Max(sa_max) => {
                             let (calculated, fee) = Module::<T>::calc_input_for_exact_output(
-                                &self.source.asset,
-                                &self.destination.asset,
-                                &self.pool_account,
+                                T::GetFee::get(),
                                 self.get_fee_from_destination.unwrap(),
                                 &balance_st,
                                 &balance_tt,
@@ -301,27 +293,14 @@ impl<T: Config> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, 
         if abstract_checking {
             return Ok(());
         }
-        // This piece of code is called after validation, and every `Option` is `Some`, and it is safe to do
-        // unwrap. `Bounds` is also safe to unwrap.
-        // Also this computation of only things that is for security of pool, and not for applying values, so
-        // this check can be simpler than actual transfering of values.
+        // check if k has not turned to 0
         let pool_is_valid_after_op_test = {
             let fxw_x =
                 to_fixed_wrapper!(balance_st) + to_fixed_wrapper!(self.source.amount.unwrap());
             let fxw_y =
                 to_fixed_wrapper!(balance_tt) - to_fixed_wrapper!(self.destination.amount.unwrap());
-            let fxw_before = to_fixed_wrapper!(balance_st) / to_fixed_wrapper!(balance_tt);
-            let fxw_after = fxw_x / fxw_y;
-            let mut fxw_diff = fxw_after - fxw_before;
-            fxw_diff = fxw_diff.clone() * fxw_diff.clone();
-            let diff: u128 = to_balance!(fxw_diff);
-            let value = diff < balance!(100);
-            if !value {
-                debug::warn!(
-                    "Potential swap operation is blocked because pool became invalid after it"
-                );
-            }
-            value
+            fxw_x.try_into_balance().unwrap_or(balance!(0)) != balance!(0)
+                && fxw_y.try_into_balance().unwrap_or(balance!(0)) != balance!(0)
         };
         ensure!(
             pool_is_valid_after_op_test,
@@ -376,7 +355,7 @@ impl<T: Config> common::SwapAction<AccountIdOf<T>, TechAccountIdOf<T>, T>
                     &self.destination.asset,
                     &self.pool_account,
                     self.receiver_account.as_ref().unwrap(),
-                    self.destination.amount.unwrap() - self.fee.unwrap(),
+                    self.destination.amount.unwrap(),
                 )?;
             } else {
                 technical::Module::<T>::transfer_in(
