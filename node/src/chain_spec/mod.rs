@@ -373,18 +373,18 @@ pub fn staging_net_coded(test: bool) -> ChainSpec {
                         hex!("8c9a6f997970057925bbc022bee892c7da318f29bbdc9d4645b6c159534d3a67"),
                         hex!("b2e80730dd52182b324b6dfe1f0731f0f449ee2b7e257fb575f56c72a9f5af6d"),
                     ),
-                    authority_keys_from_public_keys(
-                        hex!("00e8f3ad6566b446834f5361d0ed98aca3ab0c59848372f87546897345f9456f"),
-                        hex!("1e7ef2261dee2d6fc8ac829e943d547bddacf4371a22555e63d4dbaf1c2e827a"),
-                        hex!("1e7ef2261dee2d6fc8ac829e943d547bddacf4371a22555e63d4dbaf1c2e827a"),
-                        hex!("04bd6c3c7a8f116a7a4d5578f5c1cc6e61e72d75bd7eac3333e5a300e5c17d9b"),
-                    ),
-                    authority_keys_from_public_keys(
-                        hex!("621067638b1d90bfd52450c0569b5318b283bc4eccfaaf0175adada721a86e17"),
-                        hex!("f2ea7d239d82dbc64013f88ffc7837c28fcaeaf2787bc07d0b9bd89d9d672f21"),
-                        hex!("f2ea7d239d82dbc64013f88ffc7837c28fcaeaf2787bc07d0b9bd89d9d672f21"),
-                        hex!("c047e7799daa62017ad18264f704225a140417fe6b726e7cbb97a4c397b78b91"),
-                    ),
+                    // authority_keys_from_public_keys(
+                    //     hex!("00e8f3ad6566b446834f5361d0ed98aca3ab0c59848372f87546897345f9456f"),
+                    //     hex!("1e7ef2261dee2d6fc8ac829e943d547bddacf4371a22555e63d4dbaf1c2e827a"),
+                    //     hex!("1e7ef2261dee2d6fc8ac829e943d547bddacf4371a22555e63d4dbaf1c2e827a"),
+                    //     hex!("04bd6c3c7a8f116a7a4d5578f5c1cc6e61e72d75bd7eac3333e5a300e5c17d9b"),
+                    // ),
+                    // authority_keys_from_public_keys(
+                    //     hex!("621067638b1d90bfd52450c0569b5318b283bc4eccfaaf0175adada721a86e17"),
+                    //     hex!("f2ea7d239d82dbc64013f88ffc7837c28fcaeaf2787bc07d0b9bd89d9d672f21"),
+                    //     hex!("f2ea7d239d82dbc64013f88ffc7837c28fcaeaf2787bc07d0b9bd89d9d672f21"),
+                    //     hex!("c047e7799daa62017ad18264f704225a140417fe6b726e7cbb97a4c397b78b91"),
+                    // ),
                     authority_keys_from_public_keys(
                         hex!("664601bab694be726d919e310c3744fd5432ed125e20b46f7ebdcfe01848c72d"),
                         hex!("98a28d465f3bf349f19c27394a4f4b08fe18e5e75088733c86adb728c1797179"),
@@ -904,10 +904,7 @@ fn testnet_genesis(
                     )
                 })
                 .collect(),
-            invulnerables: initial_authorities
-                .iter()
-                .map(|(stash_account, _, _, _, _, _)| stash_account.clone())
-                .collect(),
+            invulnerables: Vec::new(),
             slash_reward_fraction: Perbill::from_percent(10),
             ..Default::default()
         }),
