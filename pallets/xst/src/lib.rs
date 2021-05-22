@@ -51,7 +51,7 @@ use common::prelude::{
 };
 use common::{
     balance, fixed, fixed_wrapper, DEXId, DexIdOf, GetMarketInfo, LiquiditySource,
-    LiquiditySourceFilter, LiquiditySourceType, ManagementMode, PSWAP, USDT, VAL, //TODO: rename USDT to DAI. It is NOT USDT
+    LiquiditySourceFilter, LiquiditySourceType, ManagementMode, PSWAP, USDT, VAL, XSTUSD //TODO: rename USDT to DAI. It is NOT USDT
 };
 use frame_support::traits::Get;
 use frame_support::weights::Weight;
@@ -168,7 +168,7 @@ pub mod pallet {
             Ok(().into())
         }
 
-        /// Change reference asset which is used to determine collateral assets value. Inteded to be e.g. stablecoin DAI.
+        /// Change reference asset which is used to determine collateral assets value. Intended to be e.g., stablecoin DAI.
         #[pallet::weight(<T as Config>::WeightInfo::set_reference_asset())]
         pub fn set_reference_asset(
             origin: OriginFor<T>,
@@ -209,7 +209,7 @@ pub mod pallet {
         SlippageLimitExceeded,
         /// Indicated collateral asset is not enabled for pool.
         UnsupportedCollateralAssetId,
-        /// Could not calculate fee including sell penalty.
+        /// Could not calculate fee.
         FeeCalculationFailed,
         /// Liquidity source can't exchange assets with the given IDs on the given DEXId.
         CantExchange,
@@ -222,32 +222,10 @@ pub mod pallet {
     #[pallet::getter(fn reserves_account_id)]
     pub type ReservesAcc<T: Config> = StorageValue<_, T::TechAccountId, ValueQuery>;
 
-    #[pallet::storage]
-    #[pallet::getter(fn free_reserves_account_id)]
-    pub type FreeReservesAccountId<T: Config> = StorageValue<_, T::AccountId, ValueQuery>;
-
-    #[pallet::storage]
-    #[pallet::getter(fn pending_free_reserves)]
-    pub type PendingFreeReserves<T: Config> =
-        StorageValue<_, Vec<(T::AssetId, Balance)>, ValueQuery>;
-
     #[pallet::type_value]
     pub(super) fn DefaultForInitialPrice() -> Fixed {
         fixed!(634)
     }
-
-    /// Buy price starting constant. This is the price users pay for new XOR.
-    #[pallet::storage]
-    #[pallet::getter(fn initial_price)]
-    pub(super) type InitialPrice<T: Config> =
-        StorageValue<_, Fixed, ValueQuery, DefaultForInitialPrice>;
-
-    /// Coefficient which determines the fraction of input collateral token to be exchanged to XOR and
-    /// be distributed to predefined accounts. Relevant for the Buy function (when a user buys new XOR).
-    #[pallet::storage]
-    #[pallet::getter(fn always_distribute_coefficient)]
-    pub(super) type AlwaysDistributeCoefficient<T: Config> =
-        StorageValue<_, Fixed, ValueQuery, DefaultForAlwaysDistributeCoefficient>;
 
     #[pallet::type_value]
     pub(super) fn DefaultForBaseFee() -> Fixed {
@@ -290,7 +268,7 @@ pub mod pallet {
             Self {
                 reference_asset_id: USDT.into(), //TODO:rename to DAI
                 incentives_account_id: Default::default(),
-                initial_collateral_assets: [USDT.into(), VAL.into(), PSWAP.into()].into(),
+                initial_synthetic_assets: [XSTUSD.into()].into(),
                 free_reserves_account_id: Default::default(),
             }
         }
@@ -300,7 +278,7 @@ pub mod pallet {
     impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
         fn build(&self) {
             ReferenceAssetId::<T>::put(&self.reference_asset_id);
-            self.initial_collateral_assets
+            self.initial_synthetic_assets
                 .iter()
                 .cloned()
                 .for_each(|asset_id| {
@@ -381,16 +359,6 @@ impl<T: Config> BuyMainAsset<T> {
 
 #[allow(non_snake_case)]
 impl<T: Config> Module<T> {
-    fn add_free_reserves_to_pending_list(
-        holder: &T::AccountId,
-        collateral_asset_id: T::AssetId,
-        amount: Balance,
-    ) -> DispatchResult {
-        let free_reserves_acc = FreeReservesAccountId::<T>::get();
-        Assets::<T>::transfer_from(&collateral_asset_id, holder, &free_reserves_acc, amount)?;
-        PendingFreeReserves::<T>::mutate(|vec| vec.push((collateral_asset_id, amount)));
-        Ok(())
-    }
 
     #[inline]
     fn self_excluding_filter() -> LiquiditySourceFilter<T::DEXId, LiquiditySourceType> {
@@ -412,17 +380,15 @@ impl<T: Config> Module<T> {
             T::EnsureTradingPairExists::ensure_trading_pair_exists(
                 &DEXId::Polkaswap.into(),
                 &T::GetBaseAssetId::get(),
-                &collateral_asset_id,
+                &synthetic_asset_id,
             )?;
             trading_pair::Module::<T>::enable_source_for_trading_pair(
                 &DEXId::Polkaswap.into(),
                 &T::GetBaseAssetId::get(),
-                &collateral_asset_id,
+                &synthetic_asset_id,
                 LiquiditySourceType::XSTPool,
             )?;
-            if Self::collateral_is_incentivised(&synthetic_asset_id) {
-                IncentivisedCurrenciesNum::<T>::mutate(|num| *num += 1)
-            }
+ 
             EnabledSynthetics::<T>::mutate(|set| set.insert(synthetic_asset_id));
             Self::deposit_event(Event::PoolInitialized(
                 DEXId::Polkaswap.into(),
@@ -437,35 +403,11 @@ impl<T: Config> Module<T> {
         }
     }
 
-    /// Buy function with regards to asset total supply and its change delta. It represents the amount of
-    /// input collateral required from User in order to receive requested XOR amount. I.e. the price User buys at.
-    ///
-    /// XOR is also referred as main asset.
-    /// Value of `delta` is assumed to be either positive or negative.
-    /// For every `price_change_step` tokens the price goes up by `price_change_rate`.
-    ///
-    /// `buy_price_usd = (xor_total_supply + xor_supply_delta) / (price_change_step * price_change_rate) + initial_price_usd`
-    ///
-    pub fn buy_function(main_asset_id: &T::AssetId, delta: Fixed) -> Result<Fixed, DispatchError> {
-        let total_supply: FixedWrapper = Assets::<T>::total_issuance(main_asset_id)?.into();
-        let initial_price: FixedWrapper = Self::initial_price().into();
-        let price_change_step: FixedWrapper = Self::price_change_step().into();
-        let price_change_rate: FixedWrapper = Self::price_change_rate().into();
-
-        let price =
-            (total_supply + delta) / (price_change_step * price_change_rate) + initial_price;
-        price
-            .get()
-            .map_err(|_| Error::<T>::PriceCalculationFailed.into())
-    }
-
     /// Calculates and returns the current buy price, assuming that input is the collateral asset and output is the main asset.
     ///
     /// To calculate price for a specific amount of assets (with desired main asset output),
     /// one needs to calculate the area of a right trapezoid.
     ///
-    /// `AB` : buy_function(xor_total_supply)
-    /// `CD` : buy_function(xor_total_supply + xor_supply_delta)
     ///
     /// ```nocompile
     ///          ..  C
@@ -482,7 +424,6 @@ impl<T: Config> Module<T> {
     ///
     /// or
     ///
-    /// buy_price_usd = ((buy_function(xor_total_supply) + buy_function(xor_total_supply + xor_supply_delta)) / 2) * xor_supply_delta
     /// ```
     /// 2) Amount of XOR tokens received by depositing `S` collateral tokens in USD:
     ///
@@ -490,7 +431,6 @@ impl<T: Config> Module<T> {
     /// actual square `S` is known and represents collateral amount.
     /// We have a quadratic equation:
     /// ```nocompile
-    /// buy_function(x) = price_change_coefficient * x + initial_price
     /// Assume `M` = 1 / price_change_coefficient = 1 / 1337
     ///
     /// M * AD² + 2 * AB * AD - 2 * S = 0
@@ -499,9 +439,6 @@ impl<T: Config> Module<T> {
     ///
     /// or
     ///
-    /// xor_supply_delta = (√((buy_function(xor_total_supply) * 2 / price_change_coeff)²
-    ///                    + 8 * buy_price_usd / price_change_coeff) - 2 * buy_function(xor_total_supply)
-    ///                    / price_change_coeff) / 2
     /// ```
     pub fn buy_price(
         main_asset_id: &T::AssetId,
@@ -509,7 +446,6 @@ impl<T: Config> Module<T> {
         quantity: QuoteAmount<Balance>,
     ) -> Result<Fixed, DispatchError> {
 
-        let current_state: FixedWrapper = Self::buy_function(main_asset_id, Fixed::ZERO)?.into();
         let main_asset_price_per_reference_unit: FixedWrapper =
             Self::reference_price(main_asset_id)?.into();
 
@@ -529,13 +465,6 @@ impl<T: Config> Module<T> {
             QuoteAmount::WithDesiredOutput {
                 desired_amount_out: main_quantity,
             } => {
-                let new_state: FixedWrapper = Self::buy_function(
-                    main_asset_id,
-                    FixedWrapper::from(main_quantity)
-                        .get()
-                        .map_err(|_| Error::<T>::PriceCalculationFailed)?,
-                )?
-                .into();
                 //TODO: here we assume only DAI-pegged XST(USD) synthetics. Need to have a price oracle to handle other synthetics in the future!
                 let synthetic_quantity = main_quantity * main_asset_price_per_reference_unit;
                 synthetic_quantity
@@ -568,10 +497,8 @@ impl<T: Config> Module<T> {
         let collateral_supply: FixedWrapper =
             Assets::<T>::free_balance(synthetic_asset_id, &reserves_account_id)?.into();
         // Get reference prices for base and collateral to understand token value.
-        let main_price_per_reference_unit: FixedWrapper =
-            Self::sell_function(main_asset_id, Fixed::ZERO)?.into();
-        let collateral_price_per_reference_unit: FixedWrapper =
-            Self::reference_price(synthetic_asset_id)?.into();
+        let main_price_per_reference_unit: FixedWrapper = Self::reference_price(main_asset_id)?.into();
+        let collateral_price_per_reference_unit: FixedWrapper = Self::reference_price(synthetic_asset_id)?.into();
         // Assume main token reserve is equal by reference value to collateral token reserve.
         let main_supply = collateral_supply.clone() * collateral_price_per_reference_unit
             / main_price_per_reference_unit;
@@ -589,7 +516,7 @@ impl<T: Config> Module<T> {
                 let output_synthetic_unwrapped = output_synthetic
                     .get()
                     .map_err(|_| Error::<T>::PriceCalculationFailed)?;
-                Ok(output_collateral_unwrapped)
+                Ok(output_synthetic_unwrapped)
             }
             // Sell some amount of XOR for desired amount of XST(USD)
             QuoteAmount::WithDesiredOutput {
@@ -599,33 +526,12 @@ impl<T: Config> Module<T> {
                     .into_bits()
                     .try_into()
                     .map_err(|_| Error::<T>::PriceCalculationFailed)?;
-                ensure!(
-                    quantity_collateral < collateral_supply_unwrapped,
-                    Error::<T>::NotEnoughReserves
-                );
                 let output_main = quantity_collateral / main_price_per_reference_unit;
                 output_main
                     .get()
                     .map_err(|_| Error::<T>::PriceCalculationFailed.into())
             }
         }
-    }
-
-    /// Sell function with regards to asset total supply and its change delta. It represents the amount of
-    /// output collateral tokens received by User by indicating exact sold XOR amount. I.e. the price User sells at.
-    ///
-    /// Value of `delta` is assumed to be either positive or negative.
-    /// Sell function is `sell_price_coefficient`% of buy function (see `buy_function`).
-    ///
-    /// `sell_price = sell_price_coefficient * buy_price`
-    ///
-    pub fn sell_function(main_asset_id: &T::AssetId, delta: Fixed) -> Result<Fixed, DispatchError> {
-        let buy_price = Self::buy_function(main_asset_id, delta)?;
-        let sell_price_coefficient = FixedWrapper::from(Self::sell_price_coefficient());
-        let sell_price = sell_price_coefficient * buy_price;
-        sell_price
-            .get()
-            .map_err(|_| Error::<T>::PriceCalculationFailed.into())
     }
 
     /// Decompose SwapAmount into particular buy quotation query.
@@ -688,31 +594,6 @@ impl<T: Config> Module<T> {
         })
     }
 
-    /// Calculate percentage of fee penalty that is applied to trades when XOR is sold while
-    /// reserves are low for target collateral asset.
-    fn sell_penalty(collateral_asset_id: &T::AssetId) -> Result<Fixed, DispatchError> {
-        let reserves_account_id =
-            Technical::<T>::tech_account_id_to_account_id(&Self::reserves_account_id())?;
-        // USD price for XOR supply on network
-        let ideal_reserves_price: FixedWrapper =
-            Self::ideal_reserves_reference_price(Fixed::ZERO)?.into();
-        // USD price for amount of indicated collateral asset stored in reserves
-        let collateral_reserves_price =
-            Self::actual_reserves_reference_price(&reserves_account_id, collateral_asset_id)?;
-        ensure!(
-            !collateral_reserves_price.is_zero(),
-            Error::<T>::NotEnoughReserves
-        );
-        // ratio of stored reserves to ideal reserves
-        let collateralized_fraction = (FixedWrapper::from(collateral_reserves_price)
-            / ideal_reserves_price)
-            .get()
-            .map_err(|_| Error::<T>::FeeCalculationFailed)?;
-        Ok(Self::map_collateralized_fraction_to_penalty(
-            collateralized_fraction,
-        ))
-    }
-
     /// Decompose SwapAmount into particular sell quotation query.
     ///
     /// Returns ordered pair: (input_amount, output_amount, fee_amount).
@@ -726,8 +607,7 @@ impl<T: Config> Module<T> {
                 desired_amount_in,
                 min_amount_out,
             } => {
-                let fee_percentage = FixedWrapper::from(BaseFee::<T>::get())
-                    + Self::sell_penalty(collateral_asset_id)?;
+                let fee_percentage = FixedWrapper::from(BaseFee::<T>::get());
                 let fee_amount = (fee_percentage * FixedWrapper::from(desired_amount_in))
                     .try_into_balance()
                     .map_err(|_| Error::<T>::PriceCalculationFailed)?;
@@ -759,8 +639,7 @@ impl<T: Config> Module<T> {
                 )?)
                 .try_into_balance()
                 .map_err(|_| Error::<T>::PriceCalculationFailed)?;
-                let fee_percentage = FixedWrapper::from(BaseFee::<T>::get())
-                    + Self::sell_penalty(collateral_asset_id)?;
+                let fee_percentage = FixedWrapper::from(BaseFee::<T>::get());
                 let input_amount_with_fee =
                     FixedWrapper::from(input_amount) / (fixed_wrapper!(1) - fee_percentage);
                 let input_amount_with_fee = input_amount_with_fee
@@ -780,14 +659,14 @@ impl<T: Config> Module<T> {
     }
 
     /// This function is used by `exchange` function to burn `input_amount` derived from `amount` of `main_asset_id`
-    /// and transfer calculated amount of `collateral_asset_id` to the receiver from reserves.
+    /// and mint calculated amount of `synthetic_asset_id` to the receiver from reserves.
     ///
     /// If there's not enough reserves in the pool, `NotEnoughReserves` error will be returned.
     ///
     fn sell_main_asset(
         _dex_id: &T::DEXId,
         main_asset_id: &T::AssetId,
-        collateral_asset_id: &T::AssetId,
+        synthetic_asset_id: &T::AssetId,
         amount: SwapAmount<Balance>,
         from_account_id: &T::AccountId,
         to_account_id: &T::AccountId,
@@ -797,10 +676,10 @@ impl<T: Config> Module<T> {
             let reserves_account_id =
                 Technical::<T>::tech_account_id_to_account_id(&reserves_tech_account_id)?;
             let (input_amount, output_amount, fee_amount) =
-                Self::decide_sell_amounts(main_asset_id, collateral_asset_id, amount)?;
+                Self::decide_sell_amounts(main_asset_id, synthetic_asset_id, amount)?;
 
-            technical::Module::<T>::transfer_out(
-                collateral_asset_id,
+            technical::Module::<T>::mint_output(
+                synthetic_asset_id,
                 &reserves_tech_account_id,
                 &to_account_id,
                 output_amount,
@@ -815,12 +694,12 @@ impl<T: Config> Module<T> {
         })
     }
 
-    /// Assign account id that is used to store deposited collateral tokens.
+    /// Assign account id that is used to burn and mint.
     pub fn set_reserves_account_id(account: T::TechAccountId) -> Result<(), DispatchError> {
         common::with_transaction(|| {
             ReservesAcc::<T>::set(account.clone());
             let account_id = Technical::<T>::tech_account_id_to_account_id(&account)?;
-            let permissions = [BURN, MINT, TRANSFER];
+            let permissions = [BURN, MINT];
             for permission in &permissions {
                 permissions::Module::<T>::assign_permission(
                     account_id.clone(),
@@ -920,7 +799,6 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
                 sender,
                 receiver,
             );
-            Module::<T>::update_collateral_reserves(output_asset_id, reserves_account_id)?;
             outcome
         } else {
             let outcome = BuyMainAsset::<T>::new(
@@ -931,7 +809,6 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
                 receiver.clone(),
             )?
             .swap();
-            Module::<T>::update_collateral_reserves(input_asset_id, reserves_account_id)?;
             outcome
         }
     }
@@ -940,11 +817,10 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
 impl<T: Config> GetMarketInfo<T::AssetId> for Module<T> {
     fn buy_price(
         base_asset: &T::AssetId,
-        collateral_asset: &T::AssetId,
+        synthetic_asset: &T::AssetId,
     ) -> Result<Fixed, DispatchError> {
-        let base_price_wrt_ref: FixedWrapper = Self::buy_function(base_asset, fixed!(0))?.into();
-        let collateral_price_per_reference_unit: FixedWrapper =
-            Self::reference_price(collateral_asset)?.into();
+        let base_price_wrt_ref: FixedWrapper = Self::reference_price(base_asset)?.into();
+        let collateral_price_per_reference_unit: FixedWrapper = Self::reference_price(synthetic_asset)?.into();
         let output = (base_price_wrt_ref / collateral_price_per_reference_unit)
             .get()
             .map_err(|_| Error::<T>::PriceCalculationFailed)?;
@@ -953,12 +829,11 @@ impl<T: Config> GetMarketInfo<T::AssetId> for Module<T> {
 
     fn sell_price(
         base_asset: &T::AssetId,
-        collateral_asset: &T::AssetId,
+        synthetic_asset: &T::AssetId,
     ) -> Result<Fixed, DispatchError> {
-        let base_price_wrt_ref: FixedWrapper = Self::sell_function(base_asset, fixed!(0))?.into();
-        let collateral_price_per_reference_unit: FixedWrapper =
-            Self::reference_price(collateral_asset)?.into();
-        let output = (base_price_wrt_ref / collateral_price_per_reference_unit)
+        let base_price_wrt_ref: FixedWrapper = FixedWrapper = Self::reference_price(base_asset)?.into();
+        let synthetic_price_per_reference_unit: FixedWrapper = Self::reference_price(synthetic_asset)?.into();
+        let output = (base_price_wrt_ref / synthetic_price_per_reference_unit)
             .get()
             .map_err(|_| Error::<T>::PriceCalculationFailed)?;
         Ok(output)
