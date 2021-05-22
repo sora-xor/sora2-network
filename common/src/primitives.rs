@@ -449,6 +449,7 @@ pub enum LiquiditySourceType {
     XYKPool,
     BondingCurvePool,
     MulticollateralBondingCurvePool,
+    XSTPool,
     MockPool,
     MockPool2,
     MockPool3,
