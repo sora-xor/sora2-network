@@ -50,15 +50,15 @@ use common::prelude::{
     SwapAmount, SwapOutcome,
 };
 use common::{
-    balance, fixed, fixed_wrapper, DEXId, DexIdOf, GetMarketInfo, LiquiditySource,
-    LiquiditySourceFilter, LiquiditySourceType, ManagementMode, PSWAP, USDT, VAL, XSTUSD //TODO: rename USDT to DAI. It is NOT USDT
+    balance, fixed, fixed_wrapper, DEXId, DexIdOf, GetXSTMarketInfo, LiquiditySource,
+    LiquiditySourceFilter, LiquiditySourceType, ManagementMode, PSWAP, DAI, VAL, XSTUSD
 };
 use frame_support::traits::Get;
 use frame_support::weights::Weight;
 use frame_support::{ensure, fail};
 use frame_system::ensure_signed;
 use liquidity_proxy::LiquidityProxyTrait;
-use permissions::{Scope, BURN, MINT, TRANSFER};
+use permissions::{Scope, BURN, MINT};
 use pswap_distribution::{OnPswapBurned, PswapRemintInfo};
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
@@ -77,8 +77,6 @@ type Assets<T> = assets::Module<T>;
 type Technical<T> = technical::Module<T>;
 
 pub const TECH_ACCOUNT_PREFIX: &[u8] = b"xst-pool";
-
-pub const RETRY_DISTRIBUTION_FREQUENCY: u32 = 1000;
 
 pub use pallet::*;
 
@@ -150,6 +148,13 @@ pub mod pallet {
     #[pallet::pallet]
     #[pallet::generate_store(pub(super) trait Store)]
     pub struct Pallet<T>(PhantomData<T>);
+
+    #[pallet::hooks]
+    impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
+        fn on_initialize(block_number: T::BlockNumber) -> Weight {
+            <T as Config>::WeightInfo::on_initialize(0)
+        }
+    }
 
     #[pallet::call]
     impl<T: Config> Pallet<T> {
@@ -223,11 +228,6 @@ pub mod pallet {
     pub type ReservesAcc<T: Config> = StorageValue<_, T::TechAccountId, ValueQuery>;
 
     #[pallet::type_value]
-    pub(super) fn DefaultForInitialPrice() -> Fixed {
-        fixed!(634)
-    }
-
-    #[pallet::type_value]
     pub(super) fn DefaultForBaseFee() -> Fixed {
         fixed!(0.003)
     }
@@ -266,7 +266,7 @@ pub mod pallet {
     impl<T: Config> Default for GenesisConfig<T> {
         fn default() -> Self {
             Self {
-                reference_asset_id: USDT.into(), //TODO:rename to DAI
+                reference_asset_id: DAI.into(),
                 incentives_account_id: Default::default(),
                 initial_synthetic_assets: [XSTUSD.into()].into(),
                 free_reserves_account_id: Default::default(),
@@ -658,6 +658,7 @@ impl<T: Config> Module<T> {
         })
     }
 
+
     /// This function is used by `exchange` function to burn `input_amount` derived from `amount` of `main_asset_id`
     /// and mint calculated amount of `synthetic_asset_id` to the receiver from reserves.
     ///
@@ -732,6 +733,7 @@ impl<T: Config> Module<T> {
         };
         Ok(price)
     }
+}
 
 impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, DispatchError>
     for Module<T>
@@ -814,7 +816,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
     }
 }
 
-impl<T: Config> GetMarketInfo<T::AssetId> for Module<T> {
+impl<T: Config> GetXSTMarketInfo<T::AssetId> for Module<T> {
     fn buy_price(
         base_asset: &T::AssetId,
         synthetic_asset: &T::AssetId,
@@ -831,7 +833,7 @@ impl<T: Config> GetMarketInfo<T::AssetId> for Module<T> {
         base_asset: &T::AssetId,
         synthetic_asset: &T::AssetId,
     ) -> Result<Fixed, DispatchError> {
-        let base_price_wrt_ref: FixedWrapper = FixedWrapper = Self::reference_price(base_asset)?.into();
+        let base_price_wrt_ref: FixedWrapper = Self::reference_price(base_asset)?.into();
         let synthetic_price_per_reference_unit: FixedWrapper = Self::reference_price(synthetic_asset)?.into();
         let output = (base_price_wrt_ref / synthetic_price_per_reference_unit)
             .get()
