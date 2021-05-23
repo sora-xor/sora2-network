@@ -28,7 +28,7 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use crate::{self as mcbcp, Config};
+use crate::{self as xstpool, Config};
 use common::mock::ExistentialDeposits;
 use common::prelude::{Balance, FixedWrapper, SwapAmount, SwapOutcome};
 use common::{
@@ -72,21 +72,6 @@ pub fn assets_owner() -> AccountId {
     AccountId32::from([3u8; 32])
 }
 
-pub fn incentives_account() -> AccountId {
-    AccountId32::from([4u8; 32])
-}
-
-pub fn free_reserves_account() -> AccountId {
-    AccountId32::from([5u8; 32])
-}
-
-pub fn get_pool_reserves_account_id() -> AccountId {
-    let reserves_tech_account_id = crate::ReservesAcc::<Runtime>::get();
-    let reserves_account_id =
-        Technical::tech_account_id_to_account_id(&reserves_tech_account_id).unwrap();
-    reserves_account_id
-}
-
 pub const DEX_A_ID: DEXId = DEXId::Polkaswap;
 pub const DAI: AssetId = common::AssetId32::from_bytes(hex!(
     "0200060000000000000000000000000000000000000000000000000000000111"
@@ -123,7 +108,6 @@ construct_runtime! {
         DexManager: dex_manager::{Module, Call, Storage},
         TradingPair: trading_pair::{Module, Call, Storage, Event<T>},
         MockLiquiditySource: mock_liquidity_source::<Instance1>::{Module, Call, Config<T>, Storage},
-        Mcbcp: mcbcp::{Module, Call, Config<T>, Storage, Event<T>},
         Tokens: tokens::{Module, Call, Config<T>, Storage, Event<T>},
         Currencies: currencies::{Module, Call, Storage, Event<T>},
         Assets: assets::{Module, Call, Config<T>, Storage, Event<T>},
@@ -131,6 +115,7 @@ construct_runtime! {
         Technical: technical::{Module, Call, Storage, Event<T>},
         Balances: pallet_balances::{Module, Call, Storage, Event<T>},
         PoolXyk: pool_xyk::{Module, Call, Storage, Event<T>},
+        XSTPool: xstpool::{Module, Call, Storage, Event<T>},
         PswapDistribution: pswap_distribution::{Module, Call, Storage, Event<T>},
     }
 }
@@ -522,11 +507,6 @@ impl Default for ExtBuilder {
                     Scope::Unlimited,
                     vec![permissions::MINT, permissions::BURN],
                 ),
-                (
-                    free_reserves_account(),
-                    Scope::Unlimited,
-                    vec![permissions::MINT, permissions::BURN],
-                ),
             ],
             reference_asset_id: USDT,
         }
@@ -563,8 +543,6 @@ impl ExtBuilder {
                 .chain(vec![
                     (bob(), 0),
                     (assets_owner(), 0),
-                    (incentives_account(), 0),
-                    (free_reserves_account(), 0),
                 ])
                 .collect(),
         }
@@ -572,12 +550,9 @@ impl ExtBuilder {
         .unwrap();
 
         crate::GenesisConfig::<Runtime> {
-            distribution_accounts: Default::default(),
             reserves_account_id: Default::default(),
             reference_asset_id: self.reference_asset_id,
-            incentives_account_id: incentives_account(),
-            initial_collateral_assets: Default::default(),
-            free_reserves_account_id: free_reserves_account(),
+            initial_synthetic_assets: Default::default(),
         }
         .assimilate_storage(&mut t)
         .unwrap();

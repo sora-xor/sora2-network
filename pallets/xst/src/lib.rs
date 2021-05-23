@@ -51,15 +51,13 @@ use common::prelude::{
 };
 use common::{
     balance, fixed, fixed_wrapper, DEXId, DexIdOf, GetXSTMarketInfo, LiquiditySource,
-    LiquiditySourceFilter, LiquiditySourceType, ManagementMode, PSWAP, DAI, VAL, XSTUSD
+    LiquiditySourceFilter, LiquiditySourceType, ManagementMode, RewardReason, DAI, XSTUSD
 };
 use frame_support::traits::Get;
 use frame_support::weights::Weight;
 use frame_support::{ensure, fail};
-use frame_system::ensure_signed;
 use liquidity_proxy::LiquidityProxyTrait;
 use permissions::{Scope, BURN, MINT};
-use pswap_distribution::{OnPswapBurned, PswapRemintInfo};
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 use sp_arithmetic::traits::Zero;
@@ -151,7 +149,7 @@ pub mod pallet {
 
     #[pallet::hooks]
     impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
-        fn on_initialize(block_number: T::BlockNumber) -> Weight {
+        fn on_initialize(_block_number: T::BlockNumber) -> Weight {
             <T as Config>::WeightInfo::on_initialize(0)
         }
     }
@@ -162,14 +160,14 @@ pub mod pallet {
         #[pallet::weight(<T as Config>::WeightInfo::initialize_pool())]
         pub fn initialize_pool(
             origin: OriginFor<T>,
-            collateral_asset_id: T::AssetId,
+            synthetic_asset_id: T::AssetId,
         ) -> DispatchResultWithPostInfo {
             let _who = <T as Config>::EnsureDEXManager::ensure_can_manage(
                 &DEXId::Polkaswap.into(),
                 origin,
                 ManagementMode::Private,
             )?;
-            Self::initialize_pool_unchecked(collateral_asset_id, true)?;
+            Self::initialize_pool_unchecked(synthetic_asset_id, true)?;
             Ok(().into())
         }
 
@@ -267,9 +265,8 @@ pub mod pallet {
         fn default() -> Self {
             Self {
                 reference_asset_id: DAI.into(),
-                incentives_account_id: Default::default(),
                 initial_synthetic_assets: [XSTUSD.into()].into(),
-                free_reserves_account_id: Default::default(),
+                reserves_account_id: Default::default(),
             }
         }
     }
@@ -286,74 +283,6 @@ pub mod pallet {
                         .expect("Failed to initialize XST synthetics.")
                 });
         }
-    }
-}
-
-/// This function is used by `exchange` function to burn calculated `input_amount` of
-/// `in_asset_id` and mint `output_amount` of `out_asset_id`.
-///
-struct BuyMainAsset<T: Config> {
-    collateral_asset_id: T::AssetId,
-    main_asset_id: T::AssetId,
-    amount: SwapAmount<Balance>,
-    from_account_id: T::AccountId,
-    to_account_id: T::AccountId,
-    synthetics_tech_account_id: T::TechAccountId,
-    synthetics_account_id: T::AccountId,
-}
-
-impl<T: Config> BuyMainAsset<T> {
-    pub fn new(
-        synthetic_asset_id: T::AssetId,
-        main_asset_id: T::AssetId,
-        amount: SwapAmount<Balance>,
-        from_account_id: T::AccountId,
-        to_account_id: T::AccountId,
-    ) -> Result<Self, DispatchError> {
-        let synthetics_tech_account_id = ReservesAcc::<T>::get();
-        let synthetics_account_id =
-            Technical::<T>::tech_account_id_to_account_id(&synthetics_tech_account_id)?;
-        Ok(BuyMainAsset {
-            synthetic_asset_id,
-            main_asset_id,
-            amount,
-            from_account_id,
-            to_account_id,
-            synthetics_tech_account_id,
-            synthetics_account_id,
-        })
-    }
-
-    fn burn_input(&self, input_asset: T::AssetId, input_amount: Balance) -> Result<(), DispatchError> {
-        Assets::<T>::burn_from(
-            input_asset,
-            &self.synthetics_account_id,
-            &self.from_account_id,
-            input_amount,
-        )?;
-        Ok(())
-    }
-
-    fn mint_output(&self, output_asset: T::AssetId, output_amount: Balance) -> Result<(), DispatchError> {
-        Assets::<T>::mint_to(
-            output_asset,
-            &self.synthetics_account_id,
-            &self.to_account_id,
-            output_amount,
-        )?;
-        Ok(())
-    }
-
-    fn swap(&self) -> Result<SwapOutcome<Balance>, DispatchError> {
-        common::with_transaction(|| {
-            self.burn_input(input_amount.clone())?;
-            self.mint_output(output_amount.clone())?;
-
-            Ok(match self.amount {
-                SwapAmount::WithDesiredInput { .. } => SwapOutcome::new(output_amount, fee),
-                SwapAmount::WithDesiredOutput { .. } => SwapOutcome::new(input_amount, fee),
-            })
-        })
     }
 }
 
@@ -442,7 +371,7 @@ impl<T: Config> Module<T> {
     /// ```
     pub fn buy_price(
         main_asset_id: &T::AssetId,
-        synthetic_asset_id: &T::AssetId,
+        _synthetic_asset_id: &T::AssetId, //NOTE: we will use this once we have more XST assets
         quantity: QuoteAmount<Balance>,
     ) -> Result<Fixed, DispatchError> {
 
@@ -491,21 +420,10 @@ impl<T: Config> Module<T> {
         synthetic_asset_id: &T::AssetId,
         quantity: QuoteAmount<Balance>,
     ) -> Result<Fixed, DispatchError> {
-        let reserves_tech_account_id = ReservesAcc::<T>::get();
-        let reserves_account_id =
-            Technical::<T>::tech_account_id_to_account_id(&reserves_tech_account_id)?;
-        let collateral_supply: FixedWrapper =
-            Assets::<T>::free_balance(synthetic_asset_id, &reserves_account_id)?.into();
-        // Get reference prices for base and collateral to understand token value.
+
+        // Get reference prices for base and synthetic to understand token value.
         let main_price_per_reference_unit: FixedWrapper = Self::reference_price(main_asset_id)?.into();
-        let collateral_price_per_reference_unit: FixedWrapper = Self::reference_price(synthetic_asset_id)?.into();
-        // Assume main token reserve is equal by reference value to collateral token reserve.
-        let main_supply = collateral_supply.clone() * collateral_price_per_reference_unit
-            / main_price_per_reference_unit;
-        let collateral_supply_unwrapped = collateral_supply
-            .clone()
-            .get()
-            .map_err(|_| Error::<T>::PriceCalculationFailed)?;
+        let _synthetic_price_per_reference_unit: FixedWrapper = Self::reference_price(synthetic_asset_id)?.into();
 
         match quantity {
             // Sell desired amount of XOR for some XST(USD)
@@ -522,10 +440,6 @@ impl<T: Config> Module<T> {
             QuoteAmount::WithDesiredOutput {
                 desired_amount_out: quantity_collateral,
             } => {
-                let collateral_supply_unwrapped = collateral_supply_unwrapped
-                    .into_bits()
-                    .try_into()
-                    .map_err(|_| Error::<T>::PriceCalculationFailed)?;
                 let output_main = quantity_collateral / main_price_per_reference_unit;
                 output_main
                     .get()
@@ -539,7 +453,7 @@ impl<T: Config> Module<T> {
     /// Returns ordered pair: (input_amount, output_amount, fee_amount).
     fn decide_buy_amounts(
         main_asset_id: &T::AssetId,
-        collateral_asset_id: &T::AssetId,
+        synthetic_asset_id: &T::AssetId,
         amount: SwapAmount<Balance>,
     ) -> Result<(Balance, Balance, Balance), DispatchError> {
         Ok(match amount {
@@ -549,7 +463,7 @@ impl<T: Config> Module<T> {
             } => {
                 let mut output_amount: Balance = FixedWrapper::from(Self::buy_price(
                     main_asset_id,
-                    collateral_asset_id,
+                    synthetic_asset_id,
                     QuoteAmount::with_desired_input(desired_amount_in),
                 )?)
                 .try_into_balance()
@@ -574,7 +488,7 @@ impl<T: Config> Module<T> {
                 .map_err(|_| Error::<T>::PriceCalculationFailed)?;
                 let input_amount = Self::buy_price(
                     main_asset_id,
-                    collateral_asset_id,
+                    synthetic_asset_id,
                     QuoteAmount::with_desired_output(desired_amount_out_with_fee.clone()),
                 )?;
                 let input_amount = input_amount
@@ -664,11 +578,11 @@ impl<T: Config> Module<T> {
     ///
     /// If there's not enough reserves in the pool, `NotEnoughReserves` error will be returned.
     ///
-    fn sell_main_asset(
+    fn swap_mint_burn_assets(
         _dex_id: &T::DEXId,
-        main_asset_id: &T::AssetId,
-        synthetic_asset_id: &T::AssetId,
-        amount: SwapAmount<Balance>,
+        input_asset_id: &T::AssetId,
+        output_asset_id: &T::AssetId,
+        input_amount: SwapAmount<Balance>,
         from_account_id: &T::AccountId,
         to_account_id: &T::AccountId,
     ) -> Result<SwapOutcome<Balance>, DispatchError> {
@@ -677,20 +591,22 @@ impl<T: Config> Module<T> {
             let reserves_account_id =
                 Technical::<T>::tech_account_id_to_account_id(&reserves_tech_account_id)?;
             let (input_amount, output_amount, fee_amount) =
-                Self::decide_sell_amounts(main_asset_id, synthetic_asset_id, amount)?;
+                Self::decide_sell_amounts(input_asset_id, output_asset_id, input_amount)?;
 
-            technical::Module::<T>::mint_output(
-                synthetic_asset_id,
-                &reserves_tech_account_id,
-                &to_account_id,
-                output_amount,
-            )?;
             Assets::<T>::burn_from(
-                main_asset_id,
+                input_asset_id,
                 &reserves_account_id,
                 from_account_id,
                 input_amount,
             )?;
+
+            Assets::<T>::mint_to(
+                output_asset_id,
+                &reserves_account_id,
+                &to_account_id,
+                output_amount,
+            )?;
+
             Ok(SwapOutcome::new(output_amount, fee_amount))
         })
     }
@@ -791,28 +707,26 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         if sender == reserves_account_id && receiver == reserves_account_id {
             fail!(Error::<T>::CannotExchangeWithSelf);
         }
-        let base_asset_id = &T::GetBaseAssetId::get();
-        if input_asset_id == base_asset_id {
-            let outcome = Self::sell_main_asset(
-                dex_id,
-                input_asset_id,
-                output_asset_id,
-                desired_amount,
-                sender,
-                receiver,
-            );
-            outcome
-        } else {
-            let outcome = BuyMainAsset::<T>::new(
-                *input_asset_id,
-                *output_asset_id,
-                desired_amount,
-                sender.clone(),
-                receiver.clone(),
-            )?
-            .swap();
-            outcome
-        }
+
+        let outcome = Self::swap_mint_burn_assets(
+            dex_id,
+            input_asset_id,
+            output_asset_id,
+            desired_amount,
+            sender,
+            receiver,
+        );
+        outcome
+    }
+
+    fn check_rewards(
+        _dex_id: &T::DEXId,
+        _input_asset_id: &T::AssetId,
+        _output_asset_id: &T::AssetId,
+        _input_amount: Balance,
+        _output_amount: Balance,
+    ) -> Result<Vec<(Balance, T::AssetId, RewardReason)>, DispatchError> {
+        Ok(Vec::new()) // no rewards for XST
     }
 }
 
