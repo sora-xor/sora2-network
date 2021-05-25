@@ -31,21 +31,19 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use frame_support::dispatch::{DispatchError, DispatchResult};
+use frame_support::storage::PrefixIterator;
 use frame_support::traits::Get;
 use frame_support::weights::Weight;
 use frame_support::{ensure, Parameter};
 use frame_system::ensure_signed;
-use sp_std::collections::btree_set::BTreeSet;
 use sp_std::vec::Vec;
 
-use common::prelude::{Balance, EnsureDEXManager, Fixed, SwapAmount, SwapOutcome};
+use common::prelude::{Balance, EnsureDEXManager, SwapAmount, SwapOutcome};
 use common::{
-    balance, hash, AssetName, AssetSymbol, EnsureTradingPairExists, FromGenericPair,
-    GetPoolReserves, LiquiditySource, LiquiditySourceType, ManagementMode, RewardReason,
-    ToFeeAccount,
+    balance, EnsureTradingPairExists, FromGenericPair, GetPoolReserves, LiquiditySource,
+    LiquiditySourceType, ManagementMode, PoolXykPallet, RewardReason, ToFeeAccount,
 };
 use orml_traits::currency::MultiCurrency;
-use permissions::{Scope, BURN, MINT};
 
 mod aliases;
 use aliases::{
@@ -87,6 +85,20 @@ pub trait WeightInfo {
     fn initialize_pool() -> Weight;
 }
 
+impl<T: Config> PoolXykPallet for Pallet<T> {
+    type AccountId = AccountIdOf<T>;
+
+    type PoolProvidersOutput = PrefixIterator<(AccountIdOf<T>, Balance)>;
+
+    fn pool_providers(pool_account: &Self::AccountId) -> Self::PoolProvidersOutput {
+        PoolProviders::<T>::iter_prefix(pool_account)
+    }
+
+    fn total_issuance(pool_account: &Self::AccountId) -> Result<Balance, DispatchError> {
+        TotalIssuances::<T>::get(pool_account).ok_or(Error::<T>::PoolIsInvalid.into())
+    }
+}
+
 impl<T: Config> Module<T> {
     fn initialize_pool_properties(
         dex_id: &T::DEXId,
@@ -94,7 +106,6 @@ impl<T: Config> Module<T> {
         asset_b: &T::AssetId,
         reserves_account_id: &T::AccountId,
         fees_account_id: &T::AccountId,
-        marker_asset_id: &T::AssetId,
     ) -> DispatchResult {
         let base_asset_id: T::AssetId = T::GetBaseAssetId::get();
         let (sorted_asset_a, sorted_asset_b) = if &base_asset_id == asset_a {
@@ -116,11 +127,7 @@ impl<T: Config> Module<T> {
         Properties::<T>::insert(
             sorted_asset_a,
             sorted_asset_b,
-            (
-                reserves_account_id.clone(),
-                fees_account_id.clone(),
-                marker_asset_id.clone(),
-            ),
+            (reserves_account_id.clone(), fees_account_id.clone()),
         );
         Ok(())
     }
@@ -156,21 +163,18 @@ impl<T: Config> Module<T> {
             common::TradingPair<TechAssetIdOf<T>>,
             TechAccountIdOf<T>,
             TechAccountIdOf<T>,
-            TechAssetIdOf<T>,
         ),
         DispatchError,
     > {
         let (trading_pair, tech_acc_id) =
             Module::<T>::tech_account_from_dex_and_asset_pair(dex_id, asset_a, asset_b)?;
         let fee_acc_id = tech_acc_id.to_fee_account().unwrap();
-        let mark_asset = Module::<T>::get_marking_asset(&tech_acc_id)?;
         // Function initialize_pools is usually called once, just quick check if tech
         // account is not registered is enough to do the job.
         // If function is called second time, than this is not usual case and additional checks
         // can be done, check every condition for `PoolIsAlreadyInitialized`.
         if technical::Module::<T>::ensure_tech_account_registered(&tech_acc_id).is_ok() {
             if technical::Module::<T>::ensure_tech_account_registered(&fee_acc_id).is_ok()
-                && assets::Module::<T>::ensure_asset_exists(&mark_asset.into()).is_ok()
                 && trading_pair::Module::<T>::ensure_trading_pair_exists(
                     &dex_id,
                     &trading_pair.base_asset_id.into(),
@@ -185,7 +189,7 @@ impl<T: Config> Module<T> {
         }
         technical::Module::<T>::register_tech_account_id(tech_acc_id.clone())?;
         technical::Module::<T>::register_tech_account_id(fee_acc_id.clone())?;
-        Ok((trading_pair, tech_acc_id, fee_acc_id, mark_asset))
+        Ok((trading_pair, tech_acc_id, fee_acc_id))
     }
 
     fn deposit_liquidity_unchecked(
@@ -207,7 +211,6 @@ impl<T: Config> Module<T> {
             input_a_desired >= input_a_min && input_b_desired >= input_b_min,
             Error::<T>::InvalidMinimumBoundValueOfBalance
         );
-        let mark_asset = Module::<T>::get_marking_asset(&tech_acc_id)?;
         let action = PolySwapActionStructOf::<T>::DepositLiquidity(DepositLiquidityActionOf::<T> {
             client_account: None,
             receiver_account: None,
@@ -222,10 +225,7 @@ impl<T: Config> Module<T> {
                     amount: Bounds::<Balance>::RangeFromDesiredToMin(input_b_desired, input_b_min),
                 },
             ),
-            destination: Resource {
-                asset: mark_asset,
-                amount: Bounds::Decide,
-            },
+            pool_tokens: 0,
             min_liquidity: None,
         });
         let action = T::PolySwapAction::from(action);
@@ -248,17 +248,13 @@ impl<T: Config> Module<T> {
             output_asset_a,
             output_asset_b,
         )?;
-        let mark_asset = Module::<T>::get_marking_asset(&tech_acc_id)?;
         let action =
             PolySwapActionStructOf::<T>::WithdrawLiquidity(WithdrawLiquidityActionOf::<T> {
                 client_account: None,
                 receiver_account_a: None,
                 receiver_account_b: None,
                 pool_account: tech_acc_id,
-                source: Resource {
-                    asset: mark_asset,
-                    amount: Bounds::Desired(marker_asset_desired),
-                },
+                pool_tokens: marker_asset_desired,
                 destination: ResourcePair(
                     Resource {
                         asset: output_asset_a,
@@ -430,16 +426,13 @@ pub use pallet::*;
 #[frame_support::pallet]
 pub mod pallet {
     use super::*;
+    use common::{AccountIdOf, Fixed, PswapDistributionPallet};
     use frame_support::pallet_prelude::*;
     use frame_system::pallet_prelude::*;
 
     #[pallet::config]
     pub trait Config:
-        frame_system::Config
-        + technical::Config
-        + dex_manager::Config
-        + trading_pair::Config
-        + pswap_distribution::Config
+        frame_system::Config + technical::Config + dex_manager::Config + trading_pair::Config
     {
         /// Because this pallet emits events, it depends on the runtime's definition of an event.
         type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
@@ -457,7 +450,10 @@ pub mod pallet {
             + From<PolySwapActionStructOf<Self>>;
         type EnsureDEXManager: EnsureDEXManager<Self::DEXId, Self::AccountId, DispatchError>;
         type GetFee: Get<Fixed>;
-
+        type PswapDistributionPallet: PswapDistributionPallet<
+            AccountId = AccountIdOf<Self>,
+            DEXId = DEXIdOf<Self>,
+        >;
         /// Weight information for extrinsics in this pallet.
         type WeightInfo: WeightInfo;
     }
@@ -554,56 +550,28 @@ pub mod pallet {
                     origin.clone(),
                     ManagementMode::Public,
                 )?;
-                let (_, tech_account_id, fees_account_id, mark_asset) =
-                    Module::<T>::initialize_pool_unchecked(
-                        source.clone(),
-                        dex_id,
-                        asset_a,
-                        asset_b,
-                    )?;
-                let mark_asset_repr: T::AssetId = mark_asset.into();
-                assets::Module::<T>::register_asset_id(
+                let (_, tech_account_id, fees_account_id) = Module::<T>::initialize_pool_unchecked(
                     source.clone(),
-                    mark_asset_repr,
-                    AssetSymbol(b"XYKPOOL".to_vec()),
-                    AssetName(b"XYK LP Tokens".to_vec()),
-                    18,
-                    0,
-                    true,
+                    dex_id,
+                    asset_a,
+                    asset_b,
                 )?;
                 let ta_repr =
                     technical::Module::<T>::tech_account_id_to_account_id(&tech_account_id)?;
                 let fees_ta_repr =
                     technical::Module::<T>::tech_account_id_to_account_id(&fees_account_id)?;
-                // Minting permission is needed for technical account to mint markered tokens of
-                // liquidity into account who deposit liquidity.
-                permissions::Module::<T>::grant_permission_with_scope(
-                    source.clone(),
-                    ta_repr.clone(),
-                    MINT,
-                    Scope::Limited(hash(&Into::<AssetIdOf<T>>::into(mark_asset.clone()))),
-                )?;
-                permissions::Module::<T>::grant_permission_with_scope(
-                    source,
-                    ta_repr.clone(),
-                    BURN,
-                    Scope::Limited(hash(&Into::<AssetIdOf<T>>::into(mark_asset.clone()))),
-                )?;
                 Module::<T>::initialize_pool_properties(
                     &dex_id,
                     &asset_a,
                     &asset_b,
                     &ta_repr,
                     &fees_ta_repr,
-                    &mark_asset_repr,
                 )?;
-                pswap_distribution::Module::<T>::subscribe(
-                    fees_ta_repr,
-                    dex_id,
-                    mark_asset_repr,
-                    None,
-                )?;
-                MarkerTokensIndex::<T>::mutate(|mti| mti.insert(mark_asset_repr));
+                let (_, pool_account) =
+                    Module::<T>::tech_account_from_dex_and_asset_pair(dex_id, asset_a, asset_b)?;
+                let pool_account =
+                    technical::Module::<T>::tech_account_id_to_account_id(&pool_account)?;
+                T::PswapDistributionPallet::subscribe(fees_ta_repr, dex_id, pool_account)?;
                 Self::deposit_event(Event::PoolIsInitialized(ta_repr));
                 Ok(().into())
             })
@@ -746,12 +714,18 @@ pub mod pallet {
         ValueQuery,
     >;
 
-    /// Collection of all registered marker tokens.
+    /// Liquidity providers of particular pool.
+    /// Pool account => Liquidity provider account => Pool token balance
     #[pallet::storage]
-    #[pallet::getter(fn marker_tokens_index)]
-    pub type MarkerTokensIndex<T: Config> = StorageValue<_, BTreeSet<T::AssetId>, ValueQuery>;
+    pub type PoolProviders<T: Config> =
+        StorageDoubleMap<_, Identity, AccountIdOf<T>, Identity, AccountIdOf<T>, Balance>;
 
-    /// Properties of particular pool. [Reserves Account Id, Fees Account Id, Marker Asset Id]
+    /// Total issuance of particular pool.
+    /// Pool account => Total issuance
+    #[pallet::storage]
+    pub type TotalIssuances<T: Config> = StorageMap<_, Identity, AccountIdOf<T>, Balance>;
+
+    /// Properties of particular pool. [Reserves Account Id, Fees Account Id]
     #[pallet::storage]
     #[pallet::getter(fn properties)]
     pub type Properties<T: Config> = StorageDoubleMap<
@@ -760,6 +734,6 @@ pub mod pallet {
         T::AssetId,
         Blake2_128Concat,
         T::AssetId,
-        (T::AccountId, T::AccountId, T::AssetId),
+        (T::AccountId, T::AccountId),
     >;
 }

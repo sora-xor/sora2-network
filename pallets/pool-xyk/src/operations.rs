@@ -31,6 +31,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use codec::{Decode, Encode};
+use common::Balance;
 use sp_runtime::RuntimeDebug;
 
 use crate::bounds::*;
@@ -50,7 +51,7 @@ pub struct ResourcePair<AssetId, Balance>(
 );
 
 #[derive(Clone, RuntimeDebug, Eq, PartialEq, Encode, Decode)]
-pub struct PairSwapAction<AssetId, Balance, AccountId, TechAccountId> {
+pub struct PairSwapAction<AssetId, AccountId, TechAccountId> {
     pub client_account: Option<AccountId>,
     pub receiver_account: Option<AccountId>,
     pub pool_account: TechAccountId,
@@ -62,32 +63,28 @@ pub struct PairSwapAction<AssetId, Balance, AccountId, TechAccountId> {
 }
 
 #[derive(Clone, RuntimeDebug, Eq, PartialEq, Encode, Decode)]
-pub struct DepositLiquidityAction<AssetId, TechAssetId, Balance, AccountId, TechAccountId> {
+pub struct DepositLiquidityAction<AssetId, AccountId, TechAccountId> {
     pub client_account: Option<AccountId>,
     pub receiver_account: Option<AccountId>,
     pub pool_account: TechAccountId,
     pub source: ResourcePair<AssetId, Balance>,
-    pub destination: Resource<TechAssetId, Balance>,
+    pub pool_tokens: Balance,
     pub min_liquidity: Option<Balance>,
 }
 
 #[derive(Clone, RuntimeDebug, Eq, PartialEq, Encode, Decode)]
-pub struct WithdrawLiquidityAction<AssetId, TechAssetId, Balance, AccountId, TechAccountId> {
+pub struct WithdrawLiquidityAction<AssetId, AccountId, TechAccountId> {
     pub client_account: Option<AccountId>,
     pub receiver_account_a: Option<AccountId>,
     pub receiver_account_b: Option<AccountId>,
     pub pool_account: TechAccountId,
-    pub source: Resource<TechAssetId, Balance>,
+    pub pool_tokens: Balance,
     pub destination: ResourcePair<AssetId, Balance>,
 }
 
 #[derive(Clone, RuntimeDebug, Eq, PartialEq, Encode, Decode)]
-pub enum PolySwapAction<AssetId, TechAssetId, Balance, AccountId, TechAccountId> {
-    PairSwap(PairSwapAction<AssetId, Balance, AccountId, TechAccountId>),
-    DepositLiquidity(
-        DepositLiquidityAction<AssetId, TechAssetId, Balance, AccountId, TechAccountId>,
-    ),
-    WithdrawLiquidity(
-        WithdrawLiquidityAction<AssetId, TechAssetId, Balance, AccountId, TechAccountId>,
-    ),
+pub enum PolySwapAction<AssetId, AccountId, TechAccountId> {
+    PairSwap(PairSwapAction<AssetId, AccountId, TechAccountId>),
+    DepositLiquidity(DepositLiquidityAction<AssetId, AccountId, TechAccountId>),
+    WithdrawLiquidity(WithdrawLiquidityAction<AssetId, AccountId, TechAccountId>),
 }

@@ -459,3 +459,23 @@ impl<AssetId> GetPoolReserves<AssetId> for () {
         Default::default()
     }
 }
+
+pub trait PoolXykPallet {
+    type AccountId;
+    type PoolProvidersOutput: IntoIterator<Item = (Self::AccountId, Balance)>;
+
+    fn pool_providers(pool_account: &Self::AccountId) -> Self::PoolProvidersOutput;
+
+    fn total_issuance(pool_account: &Self::AccountId) -> Result<Balance, DispatchError>;
+}
+
+pub trait PswapDistributionPallet {
+    type AccountId;
+    type DEXId;
+
+    fn subscribe(
+        fee_account: Self::AccountId,
+        dex_id: Self::DEXId,
+        pool_account: Self::AccountId,
+    ) -> DispatchResult;
+}
