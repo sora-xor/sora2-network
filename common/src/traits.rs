@@ -407,8 +407,8 @@ pub trait FromGenericPair {
     fn from_generic_pair(tag: Vec<u8>, data: Vec<u8>) -> Self;
 }
 
-/// Trait for bounding liquidity proxy associated type representing primary market.
-pub trait GetMarketInfo<AssetId> {
+/// Trait for bounding liquidity proxy associated type representing primary market in TBC.
+pub trait GetTBCMarketInfo<AssetId> {
     /// The price in terms of the `collateral_asset` at which one can buy
     /// a unit of the `base_asset` on the primary market (e.g. from the bonding curve pool).
     fn buy_price(base_asset: &AssetId, collateral_asset: &AssetId) -> Result<Fixed, DispatchError>;
@@ -423,7 +423,7 @@ pub trait GetMarketInfo<AssetId> {
     fn enabled_collaterals() -> BTreeSet<AssetId>;
 }
 
-impl<AssetId: Ord> GetMarketInfo<AssetId> for () {
+impl<AssetId: Ord> GetTBCMarketInfo<AssetId> for () {
     fn buy_price(
         _base_asset: &AssetId,
         _collateral_asset: &AssetId,
@@ -443,6 +443,39 @@ impl<AssetId: Ord> GetMarketInfo<AssetId> for () {
     }
 
     fn enabled_collaterals() -> BTreeSet<AssetId> {
+        Default::default()
+    }
+}
+
+/// Trait for bounding liquidity proxy associated type representing primary market in XST.
+pub trait GetXSTMarketInfo<AssetId> {
+    /// The price in terms of the `synthetic_asset` at which one can buy
+    /// a unit of the `base_asset` on the XST primary market.
+    fn buy_price(base_asset: &AssetId, synthetic_asset: &AssetId) -> Result<Fixed, DispatchError>;
+    /// The price in terms of the `synthetic_asset` at which one can sell
+    /// a unit of the `base_asset` on the XST primary market.
+    fn sell_price(base_asset: &AssetId, synthetic_asset: &AssetId)
+        -> Result<Fixed, DispatchError>;
+    /// Returns set of enabled synthetic assets for XST.
+    fn enabled_synthetics() -> BTreeSet<AssetId>;
+}
+
+impl<AssetId: Ord> GetXSTMarketInfo<AssetId> for () {
+    fn buy_price(
+        _base_asset: &AssetId,
+        _synthetic_asset: &AssetId,
+    ) -> Result<Fixed, DispatchError> {
+        Ok(Default::default())
+    }
+
+    fn sell_price(
+        _base_asset: &AssetId,
+        _synthetic_asset: &AssetId,
+    ) -> Result<Fixed, DispatchError> {
+        Ok(Default::default())
+    }
+
+    fn enabled_synthetics() -> BTreeSet<AssetId> {
         Default::default()
     }
 }

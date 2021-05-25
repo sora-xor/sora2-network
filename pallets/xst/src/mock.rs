@@ -33,7 +33,7 @@ use common::mock::ExistentialDeposits;
 use common::prelude::{Balance, FixedWrapper, SwapAmount, SwapOutcome};
 use common::{
     self, balance, fixed, fixed_wrapper, hash, Amount, AssetId32, AssetName, AssetSymbol, DEXInfo,
-    Fixed, LiquiditySourceFilter, LiquiditySourceType, TechPurpose, PSWAP, USDT, VAL, XOR,
+    Fixed, LiquiditySourceFilter, LiquiditySourceType, TechPurpose, PSWAP, USDT, VAL, XOR, XSTUSD
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::GenesisBuild;
@@ -402,6 +402,11 @@ pub fn get_mock_prices() -> HashMap<(AssetId, AssetId), Balance> {
         ((VAL, PSWAP), balance!(5)),
         ((USDT, PSWAP), balance!(0.1)),
         ((DAI, PSWAP), balance!(0.098)),
+        // XSTUSD
+        ((XOR, XSTUSD), balance!(102.0)),
+        ((VAL, XSTUSD), balance!(51.0)),
+        ((USDT, XSTUSD), balance!(1.02)),
+        ((DAI, XSTUSD), balance!(1.02)),
     ];
     let reverse = direct.clone().into_iter().map(|((a, b), price)| {
         (
@@ -485,6 +490,14 @@ impl Default for ExtBuilder {
                     balance!(0),
                     AssetSymbol(b"PSWAP".to_vec()),
                     AssetName(b"Polkaswap Token".to_vec()),
+                    18,
+                ),
+                (
+                    alice(),
+                    XSTUSD,
+                    balance!(0),
+                    AssetSymbol(b"XSTUSD".to_vec()),
+                    AssetName(b"XST USD".to_vec()),
                     18,
                 ),
             ],

@@ -51,7 +51,7 @@ use common::prelude::{
 };
 use common::{
     balance, fixed, fixed_wrapper, DEXId, DexIdOf, GetXSTMarketInfo, LiquiditySource,
-    LiquiditySourceFilter, LiquiditySourceType, ManagementMode, RewardReason, DAI, XSTUSD
+    LiquiditySourceFilter, LiquiditySourceType, ManagementMode, RewardReason, XOR, DAI, XSTUSD
 };
 use frame_support::traits::Get;
 use frame_support::weights::Weight;
@@ -227,10 +227,10 @@ pub mod pallet {
 
     #[pallet::type_value]
     pub(super) fn DefaultForBaseFee() -> Fixed {
-        fixed!(0.003)
+        fixed!(0.007)
     }
 
-    /// Base fee in XOR which is deducted on all trades, currently it's burned: 0.3%.
+    /// Base fee in XOR which is deducted on all trades, currently it's burned: 0.7%.
     #[pallet::storage]
     #[pallet::getter(fn base_fee)]
     pub(super) type BaseFee<T: Config> = StorageValue<_, Fixed, ValueQuery, DefaultForBaseFee>;
@@ -332,46 +332,11 @@ impl<T: Config> Module<T> {
         }
     }
 
-    /// Calculates and returns the current buy price, assuming that input is the collateral asset and output is the main asset.
-    ///
-    /// To calculate price for a specific amount of assets (with desired main asset output),
-    /// one needs to calculate the area of a right trapezoid.
-    ///
-    ///
-    /// ```nocompile
-    ///          ..  C
-    ///        ..  │
-    ///   B  ..    │
-    ///     │   S  │
-    ///     │      │
-    ///   A └──────┘ D
-    /// ```
-    ///
-    /// 1) Amount of collateral tokens needed in USD to get `xor_supply_delta`(AD) XOR tokens
-    /// ```nocompile
-    /// S = ((AB + CD) / 2) * AD
-    ///
-    /// or
-    ///
-    /// ```
-    /// 2) Amount of XOR tokens received by depositing `S` collateral tokens in USD:
-    ///
-    /// Solving right trapezoid area formula with respect to `xor_supply_delta` (AD),
-    /// actual square `S` is known and represents collateral amount.
-    /// We have a quadratic equation:
-    /// ```nocompile
-    /// Assume `M` = 1 / price_change_coefficient = 1 / 1337
-    ///
-    /// M * AD² + 2 * AB * AD - 2 * S = 0
-    /// equation with two solutions, taking only positive one:
-    /// AD = (√((AB * 2 / M)² + 8 * S / M) - 2 * AB / M) / 2
-    ///
-    /// or
-    ///
-    /// ```
+    /// Buys the main asset.
+    /// Calculates and returns the current buy price, assuming that input is the synthetic asset and output is the main asset.
     pub fn buy_price(
         main_asset_id: &T::AssetId,
-        _synthetic_asset_id: &T::AssetId, //NOTE: we will use this once we have more XST assets
+        _synthetic_asset_id: &T::AssetId, //TODO: we will use this once we have more XST assets
         quantity: QuoteAmount<Balance>,
     ) -> Result<Fixed, DispatchError> {
 
@@ -438,9 +403,9 @@ impl<T: Config> Module<T> {
             }
             // Sell some amount of XOR for desired amount of XST(USD)
             QuoteAmount::WithDesiredOutput {
-                desired_amount_out: quantity_collateral,
+                desired_amount_out: quantity_synthetic,
             } => {
-                let output_main = quantity_collateral / main_price_per_reference_unit;
+                let output_main = quantity_synthetic / main_price_per_reference_unit;
                 output_main
                     .get()
                     .map_err(|_| Error::<T>::PriceCalculationFailed.into())

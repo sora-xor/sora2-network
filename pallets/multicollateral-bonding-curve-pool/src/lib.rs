@@ -50,7 +50,7 @@ use common::prelude::{
     SwapAmount, SwapOutcome,
 };
 use common::{
-    balance, fixed, fixed_wrapper, DEXId, DexIdOf, GetMarketInfo, LiquiditySource,
+    balance, fixed, fixed_wrapper, DEXId, DexIdOf, GetTBCMarketInfo, LiquiditySource,
     LiquiditySourceFilter, LiquiditySourceType, ManagementMode, RewardReason, PSWAP, USDT, VAL,
 };
 use frame_support::traits::Get;
@@ -1543,7 +1543,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
     }
 }
 
-impl<T: Config> GetMarketInfo<T::AssetId> for Module<T> {
+impl<T: Config> GetTBCMarketInfo<T::AssetId> for Module<T> {
     fn buy_price(
         base_asset: &T::AssetId,
         collateral_asset: &T::AssetId,

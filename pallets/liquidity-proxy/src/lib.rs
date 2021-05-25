@@ -39,8 +39,8 @@ use core::convert::{TryFrom, TryInto};
 use common::prelude::fixnum::ops::{Bounded, CheckedMul, CheckedSub, One, Zero as _};
 use common::prelude::{Balance, FixedWrapper, SwapAmount, SwapOutcome, SwapVariant};
 use common::{
-    fixed, fixed_wrapper, linspace, FilterMode, Fixed, FixedInner, GetMarketInfo, GetPoolReserves,
-    IntervalEndpoints, LiquidityRegistry, LiquiditySource, LiquiditySourceFilter,
+    fixed, fixed_wrapper, linspace, FilterMode, Fixed, FixedInner, GetTBCMarketInfo, GetXSTMarketInfo,
+    GetPoolReserves, IntervalEndpoints, LiquidityRegistry, LiquiditySource, LiquiditySourceFilter,
     LiquiditySourceId, LiquiditySourceType, RewardReason, TradingPair,
 };
 use frame_support::traits::Get;
@@ -185,7 +185,7 @@ impl<T: Config> Pallet<T> {
         selected_source_types: &Vec<LiquiditySourceType>,
         filter_mode: &FilterMode,
     ) -> bool {
-        let tbc_reserve_assets = T::PrimaryMarket::enabled_collaterals();
+        let tbc_reserve_assets = T::PrimaryMarketTBC::enabled_collaterals();
         // check if user has selected only xyk either explicitly or by excluding other types
         let is_xyk_only = selected_source_types.contains(&LiquiditySourceType::XYKPool)
             && !selected_source_types
@@ -744,7 +744,7 @@ impl<T: Config> Pallet<T> {
         input_asset_id: T::AssetId,
         output_asset_id: T::AssetId,
     ) -> Result<Vec<LiquiditySourceType>, DispatchError> {
-        let tbc_reserve_assets = T::PrimaryMarket::enabled_collaterals();
+        let tbc_reserve_assets = T::PrimaryMarketTBC::enabled_collaterals();
         let mut initial_result =
             Self::list_enabled_sources_for_path(dex_id, input_asset_id, output_asset_id)?;
         if tbc_reserve_assets.contains(&input_asset_id)
@@ -1172,8 +1172,8 @@ impl<T: Config> Pallet<T> {
     }
 
     /// Determines the share of a swap that should be exchanged in the primary market
-    /// (i.e. the multi-collateral bonding curve pool) based on the current reserves of
-    /// the base asset and the collateral asset in the secondary market (e.g. an XYK pool)
+    /// (i.e., the multi-collateral bonding curve pool) based on the current reserves of
+    /// the base asset and the collateral asset in the secondary market (e.g., an XYK pool)
     /// provided the base asset is being bought.
     ///
     /// - `base_asset_id` - ID of the base asset,
@@ -1198,7 +1198,7 @@ impl<T: Config> Pallet<T> {
         };
 
         let primary_buy_price: FixedWrapper =
-            T::PrimaryMarket::buy_price(base_asset_id, collateral_asset_id)
+            T::PrimaryMarketTBC::buy_price(base_asset_id, collateral_asset_id)
                 .map_err(|_| Error::<T>::CalculationError)?
                 .into();
         let sqrt_buy_price = primary_buy_price.clone().sqrt_accurate();
@@ -1276,7 +1276,7 @@ impl<T: Config> Pallet<T> {
         };
 
         let primary_sell_price: FixedWrapper =
-            T::PrimaryMarket::sell_price(base_asset_id, collateral_asset_id)
+            T::PrimaryMarketTBC::sell_price(base_asset_id, collateral_asset_id)
                 .map_err(|_| Error::<T>::CalculationError)?
                 .into();
         let sqrt_sell_price = primary_sell_price.clone().sqrt_accurate();
@@ -1553,7 +1553,8 @@ pub mod pallet {
         >;
         type GetNumSamples: Get<usize>;
         type GetTechnicalAccountId: Get<Self::AccountId>;
-        type PrimaryMarket: GetMarketInfo<Self::AssetId>;
+        type PrimaryMarketTBC: GetTBCMarketInfo<Self::AssetId>;
+        type PrimaryMarketXST: GetXSTMarketInfo<Self::AssetId>;
         type SecondaryMarket: GetPoolReserves<Self::AssetId>;
         /// Weight information for the extrinsics in this Pallet.
         type WeightInfo: WeightInfo;

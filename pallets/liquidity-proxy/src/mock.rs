@@ -32,7 +32,7 @@ use crate::{self as liquidity_proxy, Config};
 use common::mock::ExistentialDeposits;
 use common::{
     self, balance, fixed, fixed_from_basis_points, fixed_wrapper, hash, Amount, AssetId32,
-    AssetName, AssetSymbol, DEXInfo, Fixed, FromGenericPair, GetMarketInfo, LiquiditySource,
+    AssetName, AssetSymbol, DEXInfo, Fixed, FromGenericPair, GetTBCMarketInfo, LiquiditySource,
     LiquiditySourceType, RewardReason, DAI, DOT, ETH, KSM, PSWAP, USDT, VAL, XOR,
 };
 use currencies::BasicCurrencyAdapter;
@@ -591,7 +591,7 @@ impl LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> for Mock
     }
 }
 
-impl GetMarketInfo<AssetId> for MockMCBCPool {
+impl GetTBCMarketInfo<AssetId> for MockMCBCPool {
     fn buy_price(
         _base_asset: &AssetId,
         collateral_asset: &AssetId,

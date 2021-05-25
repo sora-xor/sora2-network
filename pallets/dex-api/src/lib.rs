@@ -82,6 +82,7 @@ impl<T: Config>
             XYKPool => can_exchange!(XYKPool),
             BondingCurvePool => can_exchange!(BondingCurvePool),
             MulticollateralBondingCurvePool => can_exchange!(MulticollateralBondingCurvePool),
+            XSTPool => can_exchange!(XSTPool),
             MockPool => can_exchange!(MockLiquiditySource),
             MockPool2 => can_exchange!(MockLiquiditySource2),
             MockPool3 => can_exchange!(MockLiquiditySource3),
@@ -110,6 +111,7 @@ impl<T: Config>
             LiquiditySourceType::XYKPool => quote!(XYKPool),
             BondingCurvePool => quote!(BondingCurvePool),
             MulticollateralBondingCurvePool => quote!(MulticollateralBondingCurvePool),
+            XSTPool => quote!(XSTPool),
             MockPool => quote!(MockLiquiditySource),
             MockPool2 => quote!(MockLiquiditySource2),
             MockPool3 => quote!(MockLiquiditySource3),
@@ -142,6 +144,7 @@ impl<T: Config>
             XYKPool => exchange!(XYKPool),
             BondingCurvePool => exchange!(BondingCurvePool),
             MulticollateralBondingCurvePool => exchange!(MulticollateralBondingCurvePool),
+            XSTPool => exchange!(XSTPool),
             MockPool => exchange!(MockLiquiditySource),
             MockPool2 => exchange!(MockLiquiditySource2),
             MockPool3 => exchange!(MockLiquiditySource3),
@@ -172,6 +175,7 @@ impl<T: Config>
             XYKPool => check_rewards!(XYKPool),
             BondingCurvePool => check_rewards!(BondingCurvePool),
             MulticollateralBondingCurvePool => check_rewards!(MulticollateralBondingCurvePool),
+            XSTPool => check_rewards!(XSTPool),
             MockPool => check_rewards!(MockLiquiditySource),
             MockPool2 => check_rewards!(MockLiquiditySource2),
             MockPool3 => check_rewards!(MockLiquiditySource3),
@@ -277,6 +281,13 @@ pub mod pallet {
             DispatchError,
         >;
         type MulticollateralBondingCurvePool: LiquiditySource<
+            Self::DEXId,
+            Self::AccountId,
+            Self::AssetId,
+            Balance,
+            DispatchError,
+        >;
+        type XSTPool: LiquiditySource<
             Self::DEXId,
             Self::AccountId,
             Self::AssetId,
