@@ -5750,24 +5750,32 @@ name = "price-tools"
 version = "0.1.0"
 dependencies = [
  "assets",
+ "bonding-curve-pool",
  "common",
+ "dex-api",
+ "dex-manager",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
  "hex-literal",
  "liquidity-proxy",
+ "mock-liquidity-source",
  "orml-currencies",
  "orml-tokens",
  "orml-traits",
  "pallet-balances",
  "parity-scale-codec",
  "permissions",
+ "pool-xyk",
+ "pswap-distribution",
  "serde",
+ "sp-arithmetic",
  "sp-core",
  "sp-io",
  "sp-runtime",
  "sp-std",
- "tiny-keccak",
+ "technical",
+ "trading-pair",
 ]
 
 [[package]]

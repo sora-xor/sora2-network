@@ -131,6 +131,10 @@ pub mod pallet {
         StorageMap<_, Identity, T::AssetId, VecDeque<Balance>, ValueQuery>;
 
     #[pallet::storage]
+    #[pallet::getter(fn spot_price_failures)]
+    pub type SpotPriceFailures<T: Config> = StorageMap<_, Identity, T::AssetId, u32, ValueQuery>;
+
+    #[pallet::storage]
     #[pallet::getter(fn average_price)]
     pub type AveragePrice<T: Config> = StorageMap<_, Identity, T::AssetId, Balance, ValueQuery>;
 
@@ -146,16 +150,27 @@ impl<T: Config> Pallet<T> {
         output_asset: &T::AssetId,
     ) -> Result<Balance, DispatchError> {
         let enabled_targets = EnabledTargets::<T>::get();
+        let avg_count: usize = AVG_BLOCK_SPAN
+            .try_into()
+            .map_err(|_| Error::<T>::FailedToQuoteAveragePrice)?;
         if input_asset == &XOR.into() {
             ensure!(
                 enabled_targets.contains(output_asset),
                 Error::<T>::UnsupportedQuotePath
+            );
+            ensure!(
+                SpotPrices::<T>::get(output_asset).len() == avg_count,
+                Error::<T>::InsufficientSpotPriceData
             );
             Ok(AveragePrice::<T>::get(output_asset))
         } else if output_asset == &XOR.into() {
             ensure!(
                 enabled_targets.contains(input_asset),
                 Error::<T>::UnsupportedQuotePath
+            );
+            ensure!(
+                SpotPrices::<T>::get(input_asset).len() == avg_count,
+                Error::<T>::InsufficientSpotPriceData
             );
             Ok((fixed_wrapper!(1) / AveragePrice::<T>::get(input_asset))
                 .try_into_balance()
@@ -171,11 +186,17 @@ impl<T: Config> Pallet<T> {
 
     /// Add new price to queue and recalculate average.
     pub fn incoming_spot_price(asset_id: &T::AssetId, price: Balance) -> DispatchResult {
+        // reset failure streak for spot prices if needed
+        SpotPriceFailures::<T>::mutate(asset_id, |val| {
+            if *val > 0 {
+                *val = 0
+            }
+        });
         SpotPrices::<T>::mutate(asset_id, |vec| {
-            vec.push_back(price);
             let avg_count: usize = AVG_BLOCK_SPAN
                 .try_into()
                 .map_err(|_| Error::<T>::UpdateAverageWithSpotPriceFailed)?;
+            // spot price history is consistent, normal behavior
             if vec.len() == avg_count {
                 let old_value = vec.pop_front().unwrap();
                 vec.push_back(price);
@@ -184,9 +205,31 @@ impl<T: Config> Pallet<T> {
                     Self::replace_in_average(curr_avg, old_value, price, AVG_BLOCK_SPAN)?;
                 new_avg = Self::adjust_to_difference(curr_avg, new_avg)?;
                 AveragePrice::<T>::insert(asset_id, new_avg);
+            // spot price history has been recovered/initiated, create initial average value
+            } else if vec.len() == avg_count - 1 {
+                vec.push_back(price);
+                let sum = vec.iter().fold(FixedWrapper::from(0), |a, b| a + *b);
+                let avg = (sum / balance!(vec.len()))
+                    .try_into_balance()
+                    .map_err(|_| Error::<T>::UpdateAverageWithSpotPriceFailed)?;
+                AveragePrice::<T>::insert(asset_id, avg);
+            } else {
+                vec.push_back(price);
             }
+            
             Ok(())
         })
+    }
+
+    /// Register spot price quote failure, continuous failure has to block average price quotation.
+    pub fn incoming_spot_price_failure(asset_id: &T::AssetId) {
+        SpotPriceFailures::<T>::mutate(asset_id, |val| {
+            if *val < AVG_BLOCK_SPAN {
+                *val += 1
+            } else if *val == AVG_BLOCK_SPAN {
+                SpotPrices::<T>::mutate(asset_id, |vec| vec.clear())
+            }
+        });
     }
 
     /// Bound `new_avg` value by percentage difference with respect to `old_avg` value. Result will be capped
@@ -202,9 +245,9 @@ impl<T: Config> Pallet<T> {
             .map_err(|_| Error::<T>::UpdateAverageWithSpotPriceFailed)?;
 
         if diff > MAX_BLOCK_AVG_DIFFERENCE {
-            adjusted_avg = old_avg * (FixedWrapper::from(1) + MAX_BLOCK_AVG_DIFFERENCE);
+            adjusted_avg = old_avg * (fixed_wrapper!(1) + MAX_BLOCK_AVG_DIFFERENCE);
         } else if diff < MAX_BLOCK_AVG_DIFFERENCE.cneg().unwrap() {
-            adjusted_avg = old_avg * (FixedWrapper::from(1) - MAX_BLOCK_AVG_DIFFERENCE);
+            adjusted_avg = old_avg * (fixed_wrapper!(1) - MAX_BLOCK_AVG_DIFFERENCE);
         }
         let adjusted_avg = adjusted_avg
             .try_into_balance()
@@ -251,7 +294,11 @@ impl<T: Config> Pallet<T> {
         let mut count = 0;
         for asset_id in EnabledTargets::<T>::get().iter() {
             let price = Self::spot_price(asset_id);
-            let _ = Self::incoming_spot_price(asset_id, price.unwrap()); // TODO: handle error and continuous failure
+            if let Ok(val) = price {
+                let _ = Self::incoming_spot_price(asset_id, val);
+            } else {
+                Self::incoming_spot_price_failure(asset_id);
+            }
             count += 1;
         }
         count
