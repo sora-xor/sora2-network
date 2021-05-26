@@ -1,12 +1,12 @@
 [profile.dev]
-debug = true
+debug = false
 
 [profile.release]
 lto = true
 opt-level = 's'
 
 [profile.test]
-debug = true
+debug = false
 
 [unstable]
 weak-dep-features = true

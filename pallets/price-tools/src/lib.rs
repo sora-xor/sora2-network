@@ -113,8 +113,6 @@ pub mod pallet {
         AveragePriceCalculationFailed,
         /// Failed to add new spot price to average.
         UpdateAverageWithSpotPriceFailed,
-        /// Spot price has been continously returning error (for full averaging span).
-        ContinuousSpotPriceQuoteFailure,
         /// Either spot price records has been reset or not initialized yet. Wait till spot price
         /// quote is recovered and span is recalculated.
         InsufficientSpotPriceData,
@@ -216,7 +214,7 @@ impl<T: Config> Pallet<T> {
             } else {
                 vec.push_back(price);
             }
-            
+
             Ok(())
         })
     }
@@ -225,9 +223,10 @@ impl<T: Config> Pallet<T> {
     pub fn incoming_spot_price_failure(asset_id: &T::AssetId) {
         SpotPriceFailures::<T>::mutate(asset_id, |val| {
             if *val < AVG_BLOCK_SPAN {
-                *val += 1
-            } else if *val == AVG_BLOCK_SPAN {
-                SpotPrices::<T>::mutate(asset_id, |vec| vec.clear())
+                *val += 1;
+                if *val == AVG_BLOCK_SPAN {
+                    SpotPrices::<T>::mutate(asset_id, |vec| vec.clear())
+                }
             }
         });
     }
@@ -290,7 +289,7 @@ impl<T: Config> Pallet<T> {
     }
 
     /// Returns number of pairs recalculated.
-    fn average_prices_calculation_routine() -> u32 {
+    pub fn average_prices_calculation_routine() -> u32 {
         let mut count = 0;
         for asset_id in EnabledTargets::<T>::get().iter() {
             let price = Self::spot_price(asset_id);

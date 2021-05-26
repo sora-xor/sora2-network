@@ -68,4 +68,3 @@ runtime-benchmarks = [
     "frame-support/runtime-benchmarks",
     "hex-literal",
 ]
-private-net=[]
