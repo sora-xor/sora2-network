@@ -4,7 +4,7 @@ authors = ['Polka Biome Ltd. <jihoon@tutanota.de>']
 license = "BSD-4-Clause"
 homepage = 'https://sora.org'
 repository = 'https://github.com/sora-xor/sora2-network'
-version = '0.1.0'
+version = '0.2.0'
 name = 'pswap-distribution'
 edition = '2018'
 

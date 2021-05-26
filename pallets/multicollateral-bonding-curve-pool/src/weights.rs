@@ -58,11 +58,6 @@ impl<T: frame_system::Config> crate::WeightInfo for WeightInfo<T> {
             .saturating_add(T::DbWeight::get().reads(5 as Weight))
             .saturating_add(T::DbWeight::get().writes(1 as Weight))
     }
-    fn claim_incentives() -> Weight {
-        (740_250_000 as Weight)
-            .saturating_add(T::DbWeight::get().reads(10 as Weight))
-            .saturating_add(T::DbWeight::get().writes(5 as Weight))
-    }
 }
 
 impl crate::WeightInfo for () {
@@ -76,9 +71,6 @@ impl crate::WeightInfo for () {
         EXTRINSIC_FIXED_WEIGHT
     }
     fn set_optional_reward_multiplier() -> Weight {
-        EXTRINSIC_FIXED_WEIGHT
-    }
-    fn claim_incentives() -> Weight {
         EXTRINSIC_FIXED_WEIGHT
     }
 }
