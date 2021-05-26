@@ -73,10 +73,10 @@ mod demo_price;
 use demo_price::*;
 
 pub mod domain;
-#[cfg(test)]
-mod mock;
-#[cfg(test)]
-mod tests;
+// #[cfg(test)]
+// mod mock;
+// #[cfg(test)]
+// mod tests;
 
 // For smooth price testing change this value to 1.
 // After testing change this values from 1 to 1000.
@@ -529,14 +529,6 @@ impl<T: Config> Pallet<T> {
             Pallet::<T>::update_xor_pswap_smooth_price(now);
         }
         0u32.into()
-    }
-
-    // This function is used only in tests, that's why the compiler considers it to be unused
-    #[cfg(test)]
-    fn discover_claim(origin: T::Origin, farm_id: FarmId) -> Result<Balance, DispatchError> {
-        let who = ensure_signed(origin)?;
-        let discover = Pallet::<T>::prepare_and_optional_claim(who, farm_id, None, false)?;
-        Ok(discover.available_claim)
     }
 }
 

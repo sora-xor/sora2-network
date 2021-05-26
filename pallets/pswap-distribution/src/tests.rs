@@ -41,13 +41,13 @@ type PswapDistrModule = Module<Runtime>;
 fn subscribe_with_default_frequency_should_pass() {
     let mut ext = ExtBuilder::uninitialized().build();
     ext.execute_with(|| {
-        PswapDistrModule::subscribe(fees_account_a(), DEX_A_ID, PoolTokenAId::get(), None)
+        PswapDistrModule::subscribe(fees_account_a(), DEX_A_ID, pool_account_a(), None)
             .expect("Failed to subscribe account.");
         assert_eq!(
             PswapDistrModule::subscribed_accounts(fees_account_a()),
             Some((
                 DEX_A_ID,
-                PoolTokenAId::get(),
+                pool_account_a(),
                 GetDefaultSubscriptionFrequency::get(),
                 0
             ))
@@ -60,7 +60,7 @@ fn subscribe_with_zero_frequency_should_fail() {
     let mut ext = ExtBuilder::uninitialized().build();
     ext.execute_with(|| {
         assert_noop!(
-            PswapDistrModule::subscribe(fees_account_a(), DEX_A_ID, PoolTokenAId::get(), Some(0)),
+            PswapDistrModule::subscribe(fees_account_a(), DEX_A_ID, pool_account_a(), Some(0)),
             Error::<Runtime>::InvalidFrequency
         );
     })
@@ -71,7 +71,7 @@ fn subscribe_with_existing_account_should_fail() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
         assert_noop!(
-            PswapDistrModule::subscribe(fees_account_a(), DEX_A_ID, PoolTokenAId::get(), None),
+            PswapDistrModule::subscribe(fees_account_a(), DEX_A_ID, pool_account_a(), None),
             Error::<Runtime>::SubscriptionActive
         );
     })
@@ -90,11 +90,18 @@ fn unsubscribe_with_inexistent_account_should_fail() {
 fn distribute_existing_pswap_should_pass() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
+        pool_xyk::Module::<Runtime>::mint(&pool_account_a(), &liquidity_provider_a(), balance!(3))
+            .unwrap();
+        pool_xyk::Module::<Runtime>::mint(&pool_account_a(), &liquidity_provider_b(), balance!(2))
+            .unwrap();
+        pool_xyk::Module::<Runtime>::mint(&pool_account_a(), &liquidity_provider_c(), balance!(1))
+            .unwrap();
+
         let tech_account_id = GetPswapDistributionAccountId::get();
         PswapDistrModule::distribute_incentive(
             &fees_account_a(),
             &DEX_A_ID,
-            &PoolTokenAId::get(),
+            &pool_account_a(),
             &tech_account_id,
         )
         .expect("Error is not expected during distribution");
@@ -118,11 +125,17 @@ fn distribute_existing_pswap_should_pass() {
 fn distribute_with_zero_balance_should_pass() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
+        pool_xyk::Module::<Runtime>::mint(&pool_account_b(), &liquidity_provider_a(), balance!(10))
+            .unwrap();
+        pool_xyk::Module::<Runtime>::mint(&pool_account_b(), &liquidity_provider_b(), balance!(10))
+            .unwrap();
+        pool_xyk::Module::<Runtime>::mint(&pool_account_b(), &liquidity_provider_c(), balance!(10))
+            .unwrap();
         let tech_account_id = GetPswapDistributionAccountId::get();
         PswapDistrModule::distribute_incentive(
             &fees_account_b(),
             &DEX_A_ID,
-            &PoolTokenBId::get(),
+            &pool_account_b(),
             &tech_account_id,
         )
         .expect("Error is not expected during distribution");
@@ -153,6 +166,18 @@ fn distribute_with_zero_balance_should_pass() {
 fn incentive_distribution_routine_should_pass() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
+        pool_xyk::Module::<Runtime>::mint(&pool_account_a(), &liquidity_provider_a(), balance!(3))
+            .unwrap();
+        pool_xyk::Module::<Runtime>::mint(&pool_account_a(), &liquidity_provider_b(), balance!(2))
+            .unwrap();
+        pool_xyk::Module::<Runtime>::mint(&pool_account_a(), &liquidity_provider_c(), balance!(1))
+            .unwrap();
+        pool_xyk::Module::<Runtime>::mint(&pool_account_b(), &liquidity_provider_a(), balance!(10))
+            .unwrap();
+        pool_xyk::Module::<Runtime>::mint(&pool_account_b(), &liquidity_provider_b(), balance!(10))
+            .unwrap();
+        pool_xyk::Module::<Runtime>::mint(&pool_account_b(), &liquidity_provider_c(), balance!(10))
+            .unwrap();
         let parliament =
             Tokens::free_balance(GetIncentiveAssetId::get(), &GetParliamentAccountId::get());
         assert_eq!(parliament, balance!(0));
@@ -258,20 +283,21 @@ fn increasing_burn_rate_should_pass() {
 
 #[test]
 fn claim_until_zero_should_pass() {
-    let mut ext = ExtBuilder::with_accounts(vec![
-        (liquidity_provider_a(), PoolTokenAId::get(), balance!(3)),
-        (liquidity_provider_b(), PoolTokenAId::get(), balance!(2)),
-        (liquidity_provider_c(), PoolTokenAId::get(), balance!(1)),
-    ])
-    .build();
+    let mut ext = ExtBuilder::with_accounts(vec![]).build();
     ext.execute_with(|| {
+        pool_xyk::Module::<Runtime>::mint(&pool_account_a(), &liquidity_provider_a(), balance!(3))
+            .unwrap();
+        pool_xyk::Module::<Runtime>::mint(&pool_account_a(), &liquidity_provider_b(), balance!(2))
+            .unwrap();
+        pool_xyk::Module::<Runtime>::mint(&pool_account_a(), &liquidity_provider_c(), balance!(1))
+            .unwrap();
         let tech_account_id = GetPswapDistributionAccountId::get();
 
         // start with empty fees account, claiming should fail
         PswapDistrModule::distribute_incentive(
             &fees_account_a(),
             &DEX_A_ID,
-            &PoolTokenAId::get(),
+            &pool_account_a(),
             &tech_account_id,
         )
         .expect("Error is not expected during distribution");
@@ -299,7 +325,7 @@ fn claim_until_zero_should_pass() {
         PswapDistrModule::distribute_incentive(
             &fees_account_a(),
             &DEX_A_ID,
-            &PoolTokenAId::get(),
+            &pool_account_a(),
             &tech_account_id,
         )
         .expect("Error is not expected during distribution");
@@ -322,7 +348,7 @@ fn claim_until_zero_should_pass() {
         PswapDistrModule::distribute_incentive(
             &fees_account_a(),
             &DEX_A_ID,
-            &PoolTokenAId::get(),
+            &pool_account_a(),
             &tech_account_id,
         )
         .expect("Error is not expected during distribution");
@@ -358,7 +384,7 @@ fn claim_until_zero_should_pass() {
         PswapDistrModule::distribute_incentive(
             &fees_account_a(),
             &DEX_A_ID,
-            &PoolTokenAId::get(),
+            &pool_account_a(),
             &tech_account_id,
         )
         .expect("Error is not expected during distribution");
@@ -384,7 +410,7 @@ fn claim_until_zero_should_pass() {
         PswapDistrModule::distribute_incentive(
             &fees_account_a(),
             &DEX_A_ID,
-            &PoolTokenAId::get(),
+            &pool_account_a(),
             &tech_account_id,
         )
         .expect("Error is not expected during distribution");
@@ -413,13 +439,25 @@ fn claim_until_zero_should_pass() {
 fn external_transfer_to_tech_account_after_distribution() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
+        pool_xyk::Module::<Runtime>::mint(&pool_account_a(), &liquidity_provider_a(), balance!(3))
+            .unwrap();
+        pool_xyk::Module::<Runtime>::mint(&pool_account_a(), &liquidity_provider_b(), balance!(2))
+            .unwrap();
+        pool_xyk::Module::<Runtime>::mint(&pool_account_a(), &liquidity_provider_c(), balance!(1))
+            .unwrap();
+        pool_xyk::Module::<Runtime>::mint(&pool_account_b(), &liquidity_provider_a(), balance!(10))
+            .unwrap();
+        pool_xyk::Module::<Runtime>::mint(&pool_account_b(), &liquidity_provider_b(), balance!(10))
+            .unwrap();
+        pool_xyk::Module::<Runtime>::mint(&pool_account_b(), &liquidity_provider_c(), balance!(10))
+            .unwrap();
         let tech_account_id = GetPswapDistributionAccountId::get();
 
         // initial distribution happens normally
         PswapDistrModule::distribute_incentive(
             &fees_account_a(),
             &DEX_A_ID,
-            &PoolTokenAId::get(),
+            &pool_account_a(),
             &tech_account_id,
         )
         .expect("Error is not expected during distribution");
@@ -462,14 +500,16 @@ fn external_transfer_to_tech_account_after_distribution() {
 
 #[test]
 fn jump_start_with_unowned_incentive_should_pass() {
-    let mut ext = ExtBuilder::with_accounts(vec![
-        (fees_account_a(), common::PSWAP.into(), balance!(6)),
-        (liquidity_provider_a(), PoolTokenAId::get(), balance!(3)),
-        (liquidity_provider_b(), PoolTokenAId::get(), balance!(2)),
-        (liquidity_provider_c(), PoolTokenAId::get(), balance!(1)),
-    ])
-    .build();
+    let mut ext =
+        ExtBuilder::with_accounts(vec![(fees_account_a(), common::PSWAP.into(), balance!(6))])
+            .build();
     ext.execute_with(|| {
+        pool_xyk::Module::<Runtime>::mint(&pool_account_a(), &liquidity_provider_a(), balance!(3))
+            .unwrap();
+        pool_xyk::Module::<Runtime>::mint(&pool_account_a(), &liquidity_provider_b(), balance!(2))
+            .unwrap();
+        pool_xyk::Module::<Runtime>::mint(&pool_account_a(), &liquidity_provider_c(), balance!(1))
+            .unwrap();
         let tech_account_id = GetPswapDistributionAccountId::get();
 
         // initially no liquidity providers have received incentives yet, thus shares are not calculated for them yet,
@@ -500,7 +540,7 @@ fn jump_start_with_unowned_incentive_should_pass() {
         PswapDistrModule::distribute_incentive(
             &fees_account_a(),
             &DEX_A_ID,
-            &PoolTokenAId::get(),
+            &pool_account_a(),
             &tech_account_id,
         )
         .expect("Error is not expected during distribution");
@@ -533,6 +573,12 @@ fn increasing_volumes_should_pass() {
     ])
     .build();
     ext.execute_with(|| {
+        pool_xyk::Module::<Runtime>::mint(&pool_account_a(), &liquidity_provider_a(), balance!(3))
+            .unwrap();
+        pool_xyk::Module::<Runtime>::mint(&pool_account_a(), &liquidity_provider_b(), balance!(2))
+            .unwrap();
+        pool_xyk::Module::<Runtime>::mint(&pool_account_a(), &liquidity_provider_c(), balance!(1))
+            .unwrap();
         let tech_account_id = GetPswapDistributionAccountId::get();
 
         let mut decimals_factor = 1;
@@ -548,7 +594,7 @@ fn increasing_volumes_should_pass() {
             PswapDistrModule::distribute_incentive(
                 &fees_account_a(),
                 &DEX_A_ID,
-                &PoolTokenAId::get(),
+                &pool_account_a(),
                 &tech_account_id,
             )
             .expect("Error is not expected during distribution");
@@ -581,12 +627,15 @@ fn multiple_pools_should_pass() {
     let mut ext = ExtBuilder::with_accounts(vec![
         (fees_account_a(), common::PSWAP.into(), balance!(20)),
         (fees_account_b(), common::PSWAP.into(), balance!(2)),
-        (liquidity_provider_a(), PoolTokenAId::get(), balance!(1)),
-        (liquidity_provider_b(), PoolTokenBId::get(), balance!(5)),
-        (liquidity_provider_c(), PoolTokenBId::get(), balance!(5)),
     ])
     .build();
     ext.execute_with(|| {
+        pool_xyk::Module::<Runtime>::mint(&pool_account_a(), &liquidity_provider_a(), balance!(1))
+            .unwrap();
+        pool_xyk::Module::<Runtime>::mint(&pool_account_b(), &liquidity_provider_b(), balance!(5))
+            .unwrap();
+        pool_xyk::Module::<Runtime>::mint(&pool_account_b(), &liquidity_provider_c(), balance!(5))
+            .unwrap();
         let tech_account_id = GetPswapDistributionAccountId::get();
 
         for i in 0u64..5 {
@@ -620,14 +669,19 @@ fn mixed_multiple_pools_should_pass() {
     let mut ext = ExtBuilder::with_accounts(vec![
         (fees_account_a(), common::PSWAP.into(), balance!(20)),
         (fees_account_b(), common::PSWAP.into(), balance!(4)),
-        (liquidity_provider_a(), PoolTokenAId::get(), balance!(1)),
-        (liquidity_provider_a(), PoolTokenBId::get(), balance!(5)),
-        (liquidity_provider_b(), PoolTokenBId::get(), balance!(5)),
-        (liquidity_provider_c(), PoolTokenAId::get(), balance!(1)),
-        (liquidity_provider_c(), PoolTokenBId::get(), balance!(10)),
     ])
     .build();
     ext.execute_with(|| {
+        pool_xyk::Module::<Runtime>::mint(&pool_account_a(), &liquidity_provider_a(), balance!(1))
+            .unwrap();
+        pool_xyk::Module::<Runtime>::mint(&pool_account_a(), &liquidity_provider_c(), balance!(1))
+            .unwrap();
+        pool_xyk::Module::<Runtime>::mint(&pool_account_b(), &liquidity_provider_a(), balance!(5))
+            .unwrap();
+        pool_xyk::Module::<Runtime>::mint(&pool_account_b(), &liquidity_provider_b(), balance!(5))
+            .unwrap();
+        pool_xyk::Module::<Runtime>::mint(&pool_account_b(), &liquidity_provider_c(), balance!(10))
+            .unwrap();
         let tech_account_id = GetPswapDistributionAccountId::get();
 
         for i in 0u64..5 {

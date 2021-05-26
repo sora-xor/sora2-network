@@ -493,3 +493,23 @@ pub trait VestedRewardsPallet<AccountId> {
     /// Report that account has received pswap reward for performing large volume trade over month.
     fn add_market_maker_reward(account_id: &AccountId, pswap_amount: Balance) -> DispatchResult;
 }
+
+pub trait PoolXykPallet {
+    type AccountId;
+    type PoolProvidersOutput: IntoIterator<Item = (Self::AccountId, Balance)>;
+
+    fn pool_providers(pool_account: &Self::AccountId) -> Self::PoolProvidersOutput;
+
+    fn total_issuance(pool_account: &Self::AccountId) -> Result<Balance, DispatchError>;
+}
+
+pub trait PswapDistributionPallet {
+    type AccountId;
+    type DEXId;
+
+    fn subscribe(
+        fee_account: Self::AccountId,
+        dex_id: Self::DEXId,
+        pool_account: Self::AccountId,
+    ) -> DispatchResult;
+}

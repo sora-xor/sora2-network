@@ -27,7 +27,6 @@ assets = { path = "../assets", default-features = false }
 common = { path = "../../common", default-features = false }
 dex-manager = { path = "../dex-manager", default-features = false }
 permissions = { path = "../permissions", default-features = false }
-pswap-distribution = { path = "../pswap-distribution", default-features = false }
 technical = { path = "../technical", default-features = false }
 trading-pair = { path = "../trading-pair", default-features = false }
 
