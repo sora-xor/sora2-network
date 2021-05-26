@@ -628,8 +628,7 @@ impl technical::Config for Runtime {
     type TechAccountId = TechAccountId;
     type Trigger = ();
     type Condition = ();
-    type SwapAction =
-        pool_xyk::PolySwapAction<AssetId, TechAssetId, Balance, AccountId, TechAccountId>;
+    type SwapAction = pool_xyk::PolySwapAction<AssetId, AccountId, TechAccountId>;
     type WeightInfo = ();
 }
 
@@ -639,15 +638,15 @@ parameter_types! {
 
 impl pool_xyk::Config for Runtime {
     type Event = Event;
-    type PairSwapAction = pool_xyk::PairSwapAction<AssetId, Balance, AccountId, TechAccountId>;
+    type PairSwapAction = pool_xyk::PairSwapAction<AssetId, AccountId, TechAccountId>;
     type DepositLiquidityAction =
-        pool_xyk::DepositLiquidityAction<AssetId, TechAssetId, Balance, AccountId, TechAccountId>;
+        pool_xyk::DepositLiquidityAction<AssetId, AccountId, TechAccountId>;
     type WithdrawLiquidityAction =
-        pool_xyk::WithdrawLiquidityAction<AssetId, TechAssetId, Balance, AccountId, TechAccountId>;
-    type PolySwapAction =
-        pool_xyk::PolySwapAction<AssetId, TechAssetId, Balance, AccountId, TechAccountId>;
+        pool_xyk::WithdrawLiquidityAction<AssetId, AccountId, TechAccountId>;
+    type PolySwapAction = pool_xyk::PolySwapAction<AssetId, AccountId, TechAccountId>;
     type EnsureDEXManager = dex_manager::Module<Runtime>;
     type GetFee = GetFee;
+    type PswapDistributionPallet = PswapDistribution;
     type WeightInfo = pool_xyk::weights::WeightInfo<Runtime>;
 }
 
@@ -1062,6 +1061,7 @@ impl pswap_distribution::Config for Runtime {
     type OnPswapBurnedAggregator = RuntimeOnPswapBurnedAggregator;
     type WeightInfo = pswap_distribution::weights::WeightInfo<Runtime>;
     type GetParliamentAccountId = GetParliamentAccountId;
+    type PoolXykPallet = PoolXYK;
 }
 
 parameter_types! {
@@ -1836,10 +1836,12 @@ impl_runtime_apis! {
             use dex_api_benchmarking::Module as DEXAPIBench;
             use liquidity_proxy_benchmarking::Module as LiquidityProxyBench;
             use pool_xyk_benchmarking::Module as XYKPoolBench;
+            use pswap_distribution_benchmarking::Module as PswapDistributionBench;
 
             impl dex_api_benchmarking::Config for Runtime {}
             impl liquidity_proxy_benchmarking::Config for Runtime {}
             impl pool_xyk_benchmarking::Config for Runtime {}
+            impl pswap_distribution_benchmarking::Config for Runtime {}
 
 
             let whitelist: Vec<TrackedStorageKey> = vec![
@@ -1867,7 +1869,7 @@ impl_runtime_apis! {
             add_benchmark!(params, batches, iroha_migration, IrohaMigration);
             add_benchmark!(params, batches, liquidity_proxy, LiquidityProxyBench::<Runtime>);
             add_benchmark!(params, batches, multicollateral_bonding_curve_pool, MulticollateralBondingCurvePool);
-            add_benchmark!(params, batches, pswap_distribution, PswapDistribution);
+            add_benchmark!(params, batches, pswap_distribution, PswapDistributionBench::<Runtime>);
             add_benchmark!(params, batches, rewards, Rewards);
             add_benchmark!(params, batches, trading_pair, TradingPair);
             add_benchmark!(params, batches, pool_xyk, XYKPoolBench::<Runtime>);

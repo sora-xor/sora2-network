@@ -112,8 +112,7 @@ impl crate::Module<Runtime> {
                 technical::Module::<Runtime>::tech_account_id_to_account_id(&tech_acc_id).unwrap();
             let fee_repr: AccountId =
                 technical::Module::<Runtime>::tech_account_id_to_account_id(&fee_acc).unwrap();
-            let mark_asset =
-                pool_xyk::Module::<Runtime>::get_marking_asset_repr(&tech_acc_id).unwrap();
+
 
             assert_ok!(assets::Module::<Runtime>::mint_to(
                 &gt,

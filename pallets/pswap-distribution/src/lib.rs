@@ -34,7 +34,8 @@ use codec::{Decode, Encode};
 use common::fixnum::ops::{CheckedAdd, CheckedSub};
 use common::prelude::{Balance, FixedWrapper, SwapAmount};
 use common::{
-    fixed, fixed_wrapper, EnsureDEXManager, Fixed, LiquiditySourceFilter, LiquiditySourceType,
+    fixed, fixed_wrapper, AccountIdOf, EnsureDEXManager, Fixed, LiquiditySourceFilter,
+    LiquiditySourceType, PoolXykPallet, PswapDistributionPallet,
 };
 use frame_support::dispatch::{DispatchError, DispatchResult, DispatchResultWithPostInfo, Weight};
 use frame_support::traits::Get;
@@ -42,7 +43,6 @@ use frame_support::{ensure, fail, RuntimeDebug};
 use frame_system::ensure_signed;
 use liquidity_proxy::LiquidityProxyTrait;
 use sp_arithmetic::traits::{Saturating, Zero};
-use tokens::Accounts;
 
 pub mod weights;
 
@@ -52,12 +52,9 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
-mod benchmarking;
-
 pub const TECH_ACCOUNT_PREFIX: &[u8] = b"pswap-distribution";
 pub const TECH_ACCOUNT_MAIN: &[u8] = b"main";
 
-type CurrencyIdOf<T> = <T as tokens::Config>::CurrencyId;
 type DexIdOf<T> = <T as common::Config>::DEXId;
 type AssetIdOf<T> = <T as assets::Config>::AssetId;
 type Assets<T> = assets::Module<T>;
@@ -85,12 +82,6 @@ pub struct PswapRemintInfo {
     pub vesting: Balance,
 }
 
-macro_rules! into_currency {
-    ($t:ty, $asset_id:expr) => {
-        <<$t>::AssetId as Into<CurrencyIdOf<$t>>>::into($asset_id)
-    };
-}
-
 impl<T: Config> Pallet<T> {
     /// Check if given fees account is subscribed to incentive distribution.
     ///
@@ -110,7 +101,7 @@ impl<T: Config> Pallet<T> {
     pub fn subscribe(
         fees_account_id: T::AccountId,
         dex_id: T::DEXId,
-        marker_token_id: T::AssetId,
+        pool_account: AccountIdOf<T>,
         frequency: Option<T::BlockNumber>,
     ) -> DispatchResult {
         ensure!(
@@ -119,13 +110,12 @@ impl<T: Config> Pallet<T> {
         );
         let frequency = frequency.unwrap_or(T::GetDefaultSubscriptionFrequency::get());
         ensure!(!frequency.is_zero(), Error::<T>::InvalidFrequency);
-        Assets::<T>::ensure_asset_exists(&marker_token_id)?;
         let current_block = System::<T>::block_number();
         frame_system::Pallet::<T>::inc_consumers(&fees_account_id)
             .map_err(|_| Error::<T>::IncRefError)?;
         SubscribedAccounts::<T>::insert(
             fees_account_id.clone(),
-            (dex_id, marker_token_id, frequency, current_block),
+            (dex_id, pool_account, frequency, current_block),
         );
         Ok(())
     }
@@ -246,12 +236,12 @@ impl<T: Config> Pallet<T> {
     fn distribute_incentive(
         fees_account_id: &T::AccountId,
         dex_id: &T::DEXId,
-        marker_asset_id: &T::AssetId,
+        pool_account: &AccountIdOf<T>,
         tech_account_id: &T::AccountId,
     ) -> DispatchResult {
         // Get state of incentive availability and corresponding definitions.
         let incentive_asset_id = T::GetIncentiveAssetId::get();
-        let marker_total = Assets::<T>::total_issuance(&marker_asset_id)?;
+        let marker_total = T::PoolXykPallet::total_issuance(pool_account)?;
         let incentive_total = Assets::<T>::free_balance(&incentive_asset_id, &fees_account_id)?;
         if incentive_total == 0 {
             Self::deposit_event(Event::<T>::NothingToDistribute(
@@ -277,50 +267,45 @@ impl<T: Config> Pallet<T> {
             &incentive_asset_id,
             &tech_account_id,
         )?);
-
         // Distribute incentive to shareholders.
         let mut shareholders_num = 0u128;
-        for (account_id, currency_id, data) in Accounts::<T>::iter() {
-            if currency_id == into_currency!(T, marker_asset_id.clone()) && !data.free.is_zero() {
-                let pool_tokens: T::CompatBalance = data.free.into();
-                let share = FixedWrapper::from(pool_tokens.into())
-                    / (FixedWrapper::from(marker_total)
-                        / FixedWrapper::from(distribution.liquidity_providers));
+        for (account_id, pool_tokens) in T::PoolXykPallet::pool_providers(pool_account) {
+            let share = FixedWrapper::from(pool_tokens)
+                / (FixedWrapper::from(marker_total)
+                    / FixedWrapper::from(distribution.liquidity_providers));
 
-                let total_claimable_shares = ClaimableShares::<T>::get();
-                let claimable_share = if total_claimable_shares == fixed!(0) {
-                    share
-                        .clone()
+            let total_claimable_shares = ClaimableShares::<T>::get();
+            let claimable_share = if total_claimable_shares == fixed!(0) {
+                share
+                    .clone()
+                    .get()
+                    .map_err(|_| Error::<T>::CalculationError)?
+            } else {
+                let claimable_share = share.clone()
+                    / (claimable_incentives.clone() / FixedWrapper::from(total_claimable_shares));
+                claimable_share
+                    .get()
+                    .map_err(|_| Error::<T>::CalculationError)?
+            };
+            let claimable_share_delta =
+                if total_claimable_shares == fixed!(0) && claimable_incentives != fixed!(0) {
+                    // this case is triggered when there is unowned incentives, first
+                    // claim should posess it, but share needs to be corrected to avoid
+                    // precision loss by following claims
+                    (claimable_incentives.clone() + share)
                         .get()
                         .map_err(|_| Error::<T>::CalculationError)?
                 } else {
-                    let claimable_share = share.clone()
-                        / (claimable_incentives.clone()
-                            / FixedWrapper::from(total_claimable_shares));
                     claimable_share
-                        .get()
-                        .map_err(|_| Error::<T>::CalculationError)?
                 };
-                let claimable_share_delta =
-                    if total_claimable_shares == fixed!(0) && claimable_incentives != fixed!(0) {
-                        // this case is triggered when there is unowned incentives, first
-                        // claim should posess it, but share needs to be corrected to avoid
-                        // precision loss by following claims
-                        (claimable_incentives.clone() + share)
-                            .get()
-                            .map_err(|_| Error::<T>::CalculationError)?
-                    } else {
-                        claimable_share
-                    };
-                ShareholderAccounts::<T>::mutate(&account_id, |current| {
-                    *current = current.cadd(claimable_share_delta).unwrap()
-                });
-                ClaimableShares::<T>::mutate(|current| {
-                    *current = current.cadd(claimable_share_delta).unwrap()
-                });
-                claimable_incentives = claimable_incentives + claimable_share;
-                shareholders_num += 1;
-            }
+            ShareholderAccounts::<T>::mutate(&account_id, |current| {
+                *current = current.cadd(claimable_share_delta).unwrap()
+            });
+            ClaimableShares::<T>::mutate(|current| {
+                *current = current.cadd(claimable_share_delta).unwrap()
+            });
+            claimable_incentives = claimable_incentives + claimable_share;
+            shareholders_num += 1;
         }
 
         assets::Module::<T>::mint_to(
@@ -382,7 +367,7 @@ impl<T: Config> Pallet<T> {
 
         let mut distributing_count = 0;
 
-        for (fees_account, (dex_id, pool_token, frequency, block_offset)) in
+        for (fees_account, (dex_id, pool_account, frequency, block_offset)) in
             SubscribedAccounts::<T>::iter()
         {
             if (block_num.saturating_sub(block_offset) % frequency).is_zero() {
@@ -390,7 +375,7 @@ impl<T: Config> Pallet<T> {
                 let _distribute_result = Self::distribute_incentive(
                     &fees_account,
                     &dex_id,
-                    &pool_token,
+                    &pool_account,
                     &tech_account_id,
                 );
                 distributing_count += 1;
@@ -416,12 +401,26 @@ impl<T: Config> Pallet<T> {
     }
 }
 
+impl<T: Config> PswapDistributionPallet for Pallet<T> {
+    type AccountId = AccountIdOf<T>;
+
+    type DEXId = DexIdOf<T>;
+
+    fn subscribe(
+        fee_account: Self::AccountId,
+        dex_id: Self::DEXId,
+        pool_account: Self::AccountId,
+    ) -> DispatchResult {
+        Self::subscribe(fee_account, dex_id, pool_account, None)
+    }
+}
+
 pub use pallet::*;
 
 #[frame_support::pallet]
 pub mod pallet {
     use super::*;
-    use common::AccountIdOf;
+    use common::{AccountIdOf, PoolXykPallet};
     use frame_support::pallet_prelude::*;
     use frame_system::pallet_prelude::*;
 
@@ -444,6 +443,7 @@ pub mod pallet {
         type OnPswapBurnedAggregator: OnPswapBurned;
         type WeightInfo: WeightInfo;
         type GetParliamentAccountId: Get<Self::AccountId>;
+        type PoolXykPallet: PoolXykPallet<AccountId = Self::AccountId>;
     }
 
     #[pallet::pallet]
@@ -541,7 +541,7 @@ pub mod pallet {
         _,
         Blake2_128Concat,
         T::AccountId,
-        (T::DEXId, T::AssetId, T::BlockNumber, T::BlockNumber),
+        (T::DEXId, AccountIdOf<T>, T::BlockNumber, T::BlockNumber),
     >;
 
     /// Amount of incentive tokens to be burned on each distribution.
@@ -581,7 +581,7 @@ pub mod pallet {
         /// (Fees Account, (DEX Id, Marker Token Id, Distribution Frequency, Block Offset))
         pub subscribed_accounts: Vec<(
             T::AccountId,
-            (DexIdOf<T>, AssetIdOf<T>, T::BlockNumber, T::BlockNumber),
+            (DexIdOf<T>, AccountIdOf<T>, T::BlockNumber, T::BlockNumber),
         )>,
         /// (Initial Burn Rate, Burn Rate Increase Delta, Burn Rate Max)
         pub burn_info: (Fixed, Fixed, Fixed),
@@ -601,11 +601,11 @@ pub mod pallet {
     impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
         fn build(&self) {
             self.subscribed_accounts.iter().for_each(
-                |(fees_account, (dex_id, pool_asset, freq, block_offset))| {
+                |(fees_account, (dex_id, pool_account, freq, block_offset))| {
                     frame_system::Pallet::<T>::inc_consumers(&fees_account).unwrap();
                     SubscribedAccounts::<T>::insert(
                         fees_account,
-                        (dex_id, pool_asset, freq, block_offset),
+                        (dex_id, pool_account, freq, block_offset),
                     );
                 },
             );

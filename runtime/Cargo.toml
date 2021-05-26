@@ -48,6 +48,7 @@ bridge-multisig = { git = "https://github.com/soramitsu/sora2-frame-pallets.git"
 farming-runtime-api = { path = "../pallets/farming/runtime-api", default-features = false}
 iroha-migration-runtime-api = { path = "../pallets/iroha-migration/runtime-api", default-features = false }
 pswap-distribution = { path = "../pallets/pswap-distribution", default-features = false }
+pswap-distribution-benchmarking = { path = "../pallets/pswap-distribution/benchmarking", default-features = false, optional = true }
 pswap-distribution-runtime-api = { path = "../pallets/pswap-distribution/runtime-api", default-features = false }
 liquidity-proxy-benchmarking = { path = "../pallets/liquidity-proxy/benchmarking", default-features = false, optional = true }
 pool-xyk-benchmarking = { path = "../pallets/pool-xyk/benchmarking", default-features = false, optional = true }
@@ -198,6 +199,7 @@ runtime-benchmarks = [
     "liquidity-proxy-benchmarking",
     "pallet-collective/runtime-benchmarks",
     "pool-xyk-benchmarking",
+    "pswap-distribution-benchmarking/runtime-benchmarks",
     "rewards/runtime-benchmarks",
     "technical/runtime-benchmarks",
     "trading-pair/runtime-benchmarks",

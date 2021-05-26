@@ -28,10 +28,12 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use crate::{self as pswap_distribution, Config};
 use common::mock::ExistentialDeposits;
 use common::prelude::Balance;
-use common::{balance, fixed, AssetName, AssetSymbol, BalancePrecision, Fixed, FromGenericPair};
+use common::{
+    balance, fixed, fixed_from_basis_points, AssetName, AssetSymbol, BalancePrecision, Fixed,
+    FromGenericPair,
+};
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::GenesisBuild;
 use frame_support::weights::Weight;
@@ -43,6 +45,9 @@ use sp_core::H256;
 use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentityLookup, Zero};
 use sp_runtime::{AccountId32, Perbill};
+use sp_std::vec;
+
+use crate::Config;
 
 pub type AccountId = AccountId32;
 pub type BlockNumber = u64;
@@ -101,8 +106,8 @@ parameter_types! {
     pub const GetDefaultProtocolFee: u16 = 0;
     pub GetPswapDistributionTechAccountId: TechAccountId = {
         let tech_account_id = TechAccountId::from_generic_pair(
-            crate::TECH_ACCOUNT_PREFIX.to_vec(),
-            crate::TECH_ACCOUNT_MAIN.to_vec(),
+            pswap_distribution::TECH_ACCOUNT_PREFIX.to_vec(),
+            pswap_distribution::TECH_ACCOUNT_MAIN.to_vec(),
         );
         tech_account_id
     };
@@ -119,8 +124,8 @@ parameter_types! {
     pub const TransferFee: u128 = 0;
     pub const CreationFee: u128 = 0;
     pub const TransactionByteFee: u128 = 1;
+    pub GetFee: Fixed = fixed_from_basis_points(30u16);
     pub GetParliamentAccountId: AccountId = AccountId32::from([7u8; 32]);
-    pub GetXykFee: Fixed = fixed!(0.003);
 }
 
 construct_runtime! {
@@ -142,6 +147,8 @@ construct_runtime! {
         PoolXyk: pool_xyk::{Module, Call, Storage, Event<T>},
     }
 }
+
+impl Config for Runtime {}
 
 impl frame_system::Config for Runtime {
     type BaseCallFilter = ();
@@ -168,7 +175,7 @@ impl frame_system::Config for Runtime {
     type SS58Prefix = ();
 }
 
-impl Config for Runtime {
+impl pswap_distribution::Config for Runtime {
     type Event = Event;
     type GetIncentiveAssetId = GetIncentiveAssetId;
     type LiquidityProxy = ();
@@ -259,7 +266,6 @@ impl pool_xyk::Config for Runtime {
         pool_xyk::WithdrawLiquidityAction<AssetId, AccountId, TechAccountId>;
     type PolySwapAction = pool_xyk::PolySwapAction<AssetId, AccountId, TechAccountId>;
     type EnsureDEXManager = dex_manager::Module<Runtime>;
-    type GetFee = GetXykFee;
     type PswapDistributionPallet = PswapDistribution;
     type WeightInfo = ();
 }
