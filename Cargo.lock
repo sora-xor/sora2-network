@@ -2433,6 +2433,7 @@ dependencies = [
  "permissions",
  "pool-xyk",
  "pool-xyk-benchmarking",
+ "price-tools",
  "pswap-distribution",
  "pswap-distribution-benchmarking",
  "pswap-distribution-runtime-api",

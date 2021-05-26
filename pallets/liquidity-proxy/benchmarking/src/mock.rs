@@ -35,7 +35,7 @@ use common::mock::ExistentialDeposits;
 use common::prelude::Balance;
 use common::{
     fixed, fixed_from_basis_points, hash, Amount, AssetId32, BalancePrecision, DEXInfo, Fixed,
-    FromGenericPair, LiquiditySourceType, TechPurpose,
+    FromGenericPair, LiquiditySourceFilter, LiquiditySourceType, PriceToolsPallet, TechPurpose,
 };
 use currencies::BasicCurrencyAdapter;
 
@@ -48,7 +48,7 @@ use permissions::{Scope, BURN, MANAGE_DEX, MINT, TRANSFER};
 use sp_core::H256;
 use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentityLookup};
-use sp_runtime::AccountId32;
+use sp_runtime::{AccountId32, DispatchError, DispatchResult};
 
 pub type DEXId = u32;
 pub type AssetId = AssetId32<common::PredefinedAssetId>;
@@ -389,11 +389,37 @@ parameter_types! {
     };
 }
 
+pub struct MockPriceTools;
+
+impl PriceToolsPallet<AssetId> for MockPriceTools {
+    fn get_average_price(
+        input_asset_id: &AssetId,
+        output_asset_id: &AssetId,
+    ) -> Result<Balance, DispatchError> {
+        let res = <LiquidityProxy as LiquidityProxyTrait<DEXId, AccountId, AssetId>>::quote(
+            input_asset_id,
+            output_asset_id,
+            SwapAmount::with_desired_input(balance!(1), balance!(0)),
+            LiquiditySourceFilter::with_allowed(
+                0u32,
+                [LiquiditySourceType::XYKPool].iter().cloned().collect(),
+            ),
+        );
+        Ok(res?.amount)
+    }
+
+    fn register_asset(_: &AssetId) -> DispatchResult {
+        // do nothing
+        Ok(())
+    }
+}
+
 impl multicollateral_bonding_curve_pool::Config for Runtime {
     type Event = Event;
     type LiquidityProxy = liquidity_proxy::Module<Runtime>;
     type EnsureDEXManager = dex_manager::Module<Runtime>;
     type EnsureTradingPairExists = trading_pair::Module<Runtime>;
+    type PriceToolsPallet = MockPriceTools;
     type WeightInfo = ();
 }
 

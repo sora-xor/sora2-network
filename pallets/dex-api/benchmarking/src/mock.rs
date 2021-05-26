@@ -32,7 +32,9 @@
 
 use crate::{Config, *};
 use common::mock::ExistentialDeposits;
-use common::{fixed, fixed_from_basis_points, hash, Amount, AssetId32, DEXInfo, Fixed};
+use common::{
+    fixed, fixed_from_basis_points, hash, Amount, AssetId32, DEXInfo, Fixed, PriceToolsPallet,
+};
 use currencies::BasicCurrencyAdapter;
 
 use frame_support::traits::GenesisBuild;
@@ -44,7 +46,7 @@ use permissions::{Scope, BURN, MANAGE_DEX, MINT, TRANSFER};
 use sp_core::H256;
 use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentityLookup};
-use sp_runtime::AccountId32;
+use sp_runtime::{AccountId32, DispatchError, DispatchResult};
 
 pub type DEXId = u32;
 pub type AssetId = AssetId32<common::PredefinedAssetId>;
@@ -232,11 +234,26 @@ impl pswap_distribution::Config for Runtime {
     type PoolXykPallet = PoolXyk;
 }
 
+pub struct MockPriceTools;
+
+impl PriceToolsPallet<AssetId> for MockPriceTools {
+    fn get_average_price(_: &AssetId, _: &AssetId) -> Result<Balance, DispatchError> {
+        // real info is not needed
+        Ok(balance!(0))
+    }
+
+    fn register_asset(_: &AssetId) -> DispatchResult {
+        // do nothing
+        Ok(())
+    }
+}
+
 impl multicollateral_bonding_curve_pool::Config for Runtime {
     type Event = Event;
     type LiquidityProxy = ();
     type EnsureDEXManager = dex_manager::Module<Runtime>;
     type EnsureTradingPairExists = trading_pair::Module<Runtime>;
+    type PriceToolsPallet = MockPriceTools;
     type WeightInfo = ();
 }
 

@@ -30,6 +30,8 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
+pub mod weights;
+
 #[allow(unused_imports)]
 #[macro_use]
 extern crate alloc;
@@ -40,7 +42,9 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
-use common::prelude::{Balance, Fixed, FixedWrapper, LiquiditySourceType, SwapAmount};
+use common::prelude::{
+    Balance, Fixed, FixedWrapper, LiquiditySourceType, PriceToolsPallet, SwapAmount,
+};
 use common::weights::constants::EXTRINSIC_FIXED_WEIGHT;
 use common::{balance, fixed_const, fixed_wrapper, DEXId, LiquiditySourceFilter, XOR};
 use frame_support::dispatch::{DispatchError, DispatchResult};
@@ -120,6 +124,8 @@ pub mod pallet {
         UnsupportedQuotePath,
         /// Failed to perform quote to get average price.
         FailedToQuoteAveragePrice,
+        /// AssetId has been already registered.
+        AssetAlreadyRegistered,
     }
 
     /// For pair XOR-AssetB, stores prices of XOR in terms of AssetB.
@@ -301,5 +307,25 @@ impl<T: Config> Pallet<T> {
             count += 1;
         }
         count
+    }
+}
+
+impl<T: Config> PriceToolsPallet<T::AssetId> for Module<T> {
+    fn get_average_price(
+        input_asset_id: &T::AssetId,
+        output_asset_id: &T::AssetId,
+    ) -> Result<Balance, DispatchError> {
+        Module::<T>::get_average_price(input_asset_id, output_asset_id)
+    }
+
+    fn register_asset(asset_id: &T::AssetId) -> DispatchResult {
+        EnabledTargets::<T>::mutate(|set| {
+            if set.contains(asset_id) {
+                Err(Error::<T>::AssetAlreadyRegistered.into())
+            } else {
+                set.insert(asset_id.clone());
+                Ok(())
+            }
+        })
     }
 }
