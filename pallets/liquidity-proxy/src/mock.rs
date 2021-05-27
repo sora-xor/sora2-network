@@ -101,6 +101,7 @@ parameter_types! {
     pub GetFee10: Fixed = fixed_from_basis_points(10u16);
     pub GetFee20: Fixed = fixed_from_basis_points(20u16);
     pub GetFee30: Fixed = fixed_from_basis_points(30u16);
+    pub GetTeamReservesAccountId: AccountId = AccountId32::from([11; 32]);
 }
 
 construct_runtime! {
@@ -189,6 +190,7 @@ impl assets::Config for Runtime {
     type AssetId = AssetId;
     type GetBaseAssetId = GetBaseAssetId;
     type Currency = currencies::Module<Runtime>;
+    type GetTeamReservesAccountId = GetTeamReservesAccountId;
     type WeightInfo = ();
 }
 
