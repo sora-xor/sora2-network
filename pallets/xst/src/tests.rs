@@ -107,81 +107,83 @@ mod tests {
 
     #[test]
     fn calculate_price_for_boundary_values() {
-        // let mut ext = ExtBuilder::default().build();
-        // ext.execute_with(|| {
-        //     MockDEXApi::init().unwrap();
-        //     let alice = alice();
-        //     TradingPair::register(Origin::signed(alice.clone()) ,DEXId::Polkaswap.into(), XOR, VAL).expect("Failed to register trading pair.");
-        //     XSTPool::initialize_pool_unchecked(XSTUSD, false).expect("Failed to initialize pool.");
-        //     // add some reserves
-        //     XSTPool::exchange(&alice, &alice, &DEXId::Polkaswap, &XSTUSD, &XOR, SwapAmount::with_desired_input(balance!(1), 0)).expect("Failed to buy XOR.");
+        let mut ext = ExtBuilder::default().build();
+        ext.execute_with(|| {
+            MockDEXApi::init().unwrap();
+            let _ = xst_pool_init().unwrap();
 
-        //     assert_noop!(
-        //         XSTPool::sell_price(
-        //             &XOR,
-        //             &VAL,
-        //             QuoteAmount::with_desired_input(Balance::max_value()),
-        //         ),
-        //         Error::<Runtime>::PriceCalculationFailed,
-        //     );
-        //     assert_noop!(
-        //         XSTPool::sell_price(
-        //             &XOR,
-        //             &VAL,
-        //             QuoteAmount::with_desired_output(Balance::max_value()),
-        //         ),
-        //         Error::<Runtime>::PriceCalculationFailed,
-        //     );
-        //     assert_eq!(
-        //         XSTPool::sell_price(
-        //             &XOR,
-        //             &VAL,
-        //             QuoteAmount::with_desired_input(Balance::zero()),
-        //         ),
-        //         Ok(fixed!(0)),
-        //     );
-        //     assert_eq!(
-        //         XSTPool::sell_price(
-        //             &XOR,
-        //             &VAL,
-        //             QuoteAmount::with_desired_output(Balance::zero()),
-        //         ),
-        //         Ok(fixed!(0)),
-        //     );
+            let alice = alice();
+            TradingPair::register(Origin::signed(alice.clone()), DEXId::Polkaswap.into(), XOR, XSTUSD).expect("Failed to register trading pair.");
+            XSTPool::initialize_pool_unchecked(XSTUSD, false).expect("Failed to initialize pool.");
+            // add some reserves
+            XSTPool::exchange(&alice, &alice, &DEXId::Polkaswap, &XSTUSD, &XOR, SwapAmount::with_desired_input(balance!(1), 0)).expect("Failed to buy XOR.");
 
-        //     assert_noop!(
-        //         XSTPool::buy_price(
-        //             &XOR,
-        //             &VAL,
-        //             QuoteAmount::with_desired_input(Balance::max_value()),
-        //         ),
-        //         Error::<Runtime>::PriceCalculationFailed,
-        //     );
-        //     assert_noop!(
-        //         XSTPool::buy_price(
-        //             &XOR,
-        //             &VAL,
-        //             QuoteAmount::with_desired_output(Balance::max_value()),
-        //         ),
-        //         Error::<Runtime>::PriceCalculationFailed,
-        //     );
-        //     assert_eq!(
-        //         XSTPool::buy_price(
-        //             &XOR,
-        //             &VAL,
-        //             QuoteAmount::with_desired_input(Balance::zero()),
-        //         ),
-        //         Ok(fixed!(0)),
-        //     );
-        //     assert_eq!(
-        //         XSTPool::buy_price(
-        //             &XOR,
-        //             &VAL,
-        //             QuoteAmount::with_desired_output(Balance::zero()),
-        //         ),
-        //         Ok(fixed!(0)),
-        //     );
-        // });
+            assert_noop!(
+                XSTPool::sell_price(
+                    &XOR,
+                    &XSTUSD,
+                    QuoteAmount::with_desired_input(Balance::max_value()),
+                ),
+                Error::<Runtime>::PriceCalculationFailed,
+            );
+            assert_noop!(
+                XSTPool::sell_price(
+                    &XOR,
+                    &XSTUSD,
+                    QuoteAmount::with_desired_output(Balance::max_value()),
+                ),
+                Error::<Runtime>::PriceCalculationFailed,
+            );
+            assert_eq!(
+                XSTPool::sell_price(
+                    &XOR,
+                    &XSTUSD,
+                    QuoteAmount::with_desired_input(Balance::zero()),
+                ),
+                Ok(fixed!(0)),
+            );
+            assert_eq!(
+                XSTPool::sell_price(
+                    &XOR,
+                    &XSTUSD,
+                    QuoteAmount::with_desired_output(Balance::zero()),
+                ),
+                Ok(fixed!(0)),
+            );
+
+            assert_noop!(
+                XSTPool::buy_price(
+                    &XOR,
+                    &XSTUSD,
+                    QuoteAmount::with_desired_input(Balance::max_value()),
+                ),
+                Error::<Runtime>::PriceCalculationFailed,
+            );
+            assert_noop!(
+                XSTPool::buy_price(
+                    &XOR,
+                    &XSTUSD,
+                    QuoteAmount::with_desired_output(Balance::max_value()),
+                ),
+                Error::<Runtime>::PriceCalculationFailed,
+            );
+            assert_eq!(
+                XSTPool::buy_price(
+                    &XOR,
+                    &XSTUSD,
+                    QuoteAmount::with_desired_input(Balance::zero()),
+                ),
+                Ok(fixed!(0)),
+            );
+            assert_eq!(
+                XSTPool::buy_price(
+                    &XOR,
+                    &XSTUSD,
+                    QuoteAmount::with_desired_output(Balance::zero()),
+                ),
+                Ok(fixed!(0)),
+            );
+        });
     }
 
     #[test]
