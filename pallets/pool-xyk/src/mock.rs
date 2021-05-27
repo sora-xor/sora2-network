@@ -73,6 +73,7 @@ parameter_types! {
     pub const GetBurnUpdateFrequency: BlockNumber = 14400;
     pub GetParliamentAccountId: AccountId = AccountId32::from([8; 32]);
     pub GetFee: Fixed = fixed!(0.003);
+    pub GetTeamReservesAccountId: AccountId = AccountId32::from([11; 32]);
 }
 
 parameter_type_with_key! {
@@ -180,6 +181,7 @@ impl assets::Config for Runtime {
     type AssetId = AssetId;
     type GetBaseAssetId = GetBaseAssetId;
     type Currency = currencies::Module<Runtime>;
+    type GetTeamReservesAccountId = GetTeamReservesAccountId;
     type WeightInfo = ();
 }
 

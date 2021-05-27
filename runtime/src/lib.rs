@@ -579,6 +579,7 @@ parameter_types! {
     pub const GetPswapAssetId: AssetId = common::AssetId32::from_bytes(hex!("0200050000000000000000000000000000000000000000000000000000000000"));
 
     pub const GetBaseAssetId: AssetId = GetXorAssetId::get();
+    pub const GetTeamReservesAccountId: AccountId = AccountId::new(hex!("feb92c0acb61f75309730290db5cbe8ac9b46db7ad6f3bbb26a550a73586ea71"));
 }
 
 impl currencies::Config for Runtime {
@@ -602,6 +603,7 @@ impl assets::Config for Runtime {
     type AssetId = AssetId;
     type GetBaseAssetId = GetBaseAssetId;
     type Currency = currencies::Module<Runtime>;
+    type GetTeamReservesAccountId = GetTeamReservesAccountId;
     type WeightInfo = assets::weights::WeightInfo<Runtime>;
 }
 
