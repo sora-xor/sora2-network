@@ -455,6 +455,18 @@ impl<T: Config> Pallet<T> {
         asset_id
     }
 
+    /// Generates an `AssetId` from an `Encode` value.
+    pub fn gen_asset_id_from_any(value: &impl Encode) -> T::AssetId {
+        let mut keccak = Keccak::v256();
+        keccak.update(b"Sora Asset Id Any");
+        keccak.update(&value.encode());
+        let mut output = [0u8; 32];
+        keccak.finalize(&mut output);
+        // More safe to escape.
+        output[0] = 0u8;
+        T::AssetId::from(H256(output))
+    }
+
     /// Generates an `AssetId` for the given `AccountId`.
     pub fn gen_asset_id(account_id: &T::AccountId) -> T::AssetId {
         let mut keccak = Keccak::v256();

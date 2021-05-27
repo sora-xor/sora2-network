@@ -41,7 +41,7 @@ use common::prelude::{Balance, FixedWrapper, SwapAmount, SwapOutcome, SwapVarian
 use common::{
     fixed, fixed_wrapper, linspace, FilterMode, Fixed, FixedInner, GetMarketInfo, GetPoolReserves,
     IntervalEndpoints, LiquidityRegistry, LiquiditySource, LiquiditySourceFilter,
-    LiquiditySourceId, LiquiditySourceType, RewardReason, TradingPair,
+    LiquiditySourceId, LiquiditySourceType, RewardReason, TradingPair, VestedRewardsPallet,
 };
 use frame_support::traits::Get;
 use frame_support::weights::Weight;
@@ -54,8 +54,6 @@ use sp_std::prelude::*;
 type LiquiditySourceIdOf<T> = LiquiditySourceId<<T as common::Config>::DEXId, LiquiditySourceType>;
 
 type Rewards<AssetId> = Vec<(Balance, AssetId, RewardReason)>;
-
-type VestedRewards<T> = vested_rewards::Pallet<T>;
 
 pub mod weights;
 
@@ -178,6 +176,30 @@ pub trait WeightInfo {
 }
 
 impl<T: Config> Pallet<T> {
+    /// Temporary workaround to prevent tbc oracle exploit with xyk-only filter.
+    pub fn is_forbidden_filter(
+        input_asset_id: &T::AssetId,
+        output_asset_id: &T::AssetId,
+        selected_source_types: &Vec<LiquiditySourceType>,
+        filter_mode: &FilterMode,
+    ) -> bool {
+        let tbc_reserve_assets = T::PrimaryMarket::enabled_collaterals();
+        // check if user has selected only xyk either explicitly or by excluding other types
+        let is_xyk_only = selected_source_types.contains(&LiquiditySourceType::XYKPool)
+            && !selected_source_types
+                .contains(&LiquiditySourceType::MulticollateralBondingCurvePool)
+            && filter_mode == &FilterMode::AllowSelected
+            || selected_source_types
+                .contains(&LiquiditySourceType::MulticollateralBondingCurvePool)
+                && !selected_source_types.contains(&LiquiditySourceType::XYKPool)
+                && filter_mode == &FilterMode::ForbidSelected;
+        // check if either of tbc reserve assets is present
+        let reserve_asset_present = tbc_reserve_assets.contains(input_asset_id)
+            || tbc_reserve_assets.contains(output_asset_id);
+
+        is_xyk_only && reserve_asset_present
+    }
+
     /// Sample a single liquidity source with a range of swap amounts to get respective prices for the exchange.
     fn sample_liquidity_source(
         liquidity_source_id: &LiquiditySourceIdOf<T>,
@@ -280,7 +302,7 @@ impl<T: Config> Pallet<T> {
                     )?;
                     let xor_volume =
                         Self::get_xor_amount(from_asset_id, to_asset_id, amount, outcome.clone());
-                    VestedRewards::<T>::update_market_maker_records(&sender, xor_volume, 1)?;
+                    T::VestedRewardsPallet::update_market_maker_records(&sender, xor_volume, 1)?;
                     Ok(outcome)
                 }
                 ExchangePath::Twofold {
@@ -313,7 +335,7 @@ impl<T: Config> Pallet<T> {
                             second_swap.amount >= min_amount_out,
                             Error::<T>::SlippageNotTolerated
                         );
-                        VestedRewards::<T>::update_market_maker_records(
+                        T::VestedRewardsPallet::update_market_maker_records(
                             &sender,
                             first_swap.amount,
                             2,
@@ -363,7 +385,7 @@ impl<T: Config> Pallet<T> {
                             SwapAmount::with_desired_input(first_swap.amount, Balance::zero()),
                             filter,
                         )?;
-                        VestedRewards::<T>::update_market_maker_records(
+                        T::VestedRewardsPallet::update_market_maker_records(
                             &sender,
                             first_swap.amount,
                             2,
@@ -669,7 +691,8 @@ impl<T: Config> Pallet<T> {
         Ok(path_exists)
     }
 
-    /// Given two arbitrary tokens return all sources that can be used in exchange if path exists.
+    /// Given two arbitrary tokens return sources that can be used to cover full path. If all sources can cover only part of path,
+    /// but overall path is possible - list will be empty.
     pub fn list_enabled_sources_for_path(
         dex_id: T::DEXId,
         input_asset_id: T::AssetId,
@@ -687,11 +710,8 @@ impl<T: Config> Pallet<T> {
                     &pair.base_asset_id,
                     &pair.target_asset_id,
                 )?;
-                if sources.is_empty() {
-                    fail!(Error::<T>::UnavailableExchangePath);
-                } else {
-                    Ok(sources.into_iter().collect())
-                }
+                ensure!(!sources.is_empty(), Error::<T>::UnavailableExchangePath);
+                Ok(sources.into_iter().collect())
             }
             ExchangePath::Twofold {
                 from_asset_id,
@@ -708,13 +728,29 @@ impl<T: Config> Pallet<T> {
                     &intermediate_asset_id,
                     &to_asset_id,
                 )?;
-                if !first_swap.is_empty() && !second_swap.is_empty() {
-                    Ok(first_swap.union(&second_swap).cloned().collect())
-                } else {
-                    fail!(Error::<T>::UnavailableExchangePath);
-                }
+                ensure!(
+                    !first_swap.is_empty() && !second_swap.is_empty(),
+                    Error::<T>::UnavailableExchangePath
+                );
+                Ok(first_swap.intersection(&second_swap).cloned().collect())
             }
         }
+    }
+
+    pub fn list_enabled_sources_for_path_with_xyk_forbidden(
+        dex_id: T::DEXId,
+        input_asset_id: T::AssetId,
+        output_asset_id: T::AssetId,
+    ) -> Result<Vec<LiquiditySourceType>, DispatchError> {
+        let tbc_reserve_assets = T::PrimaryMarket::enabled_collaterals();
+        let mut initial_result =
+            Self::list_enabled_sources_for_path(dex_id, input_asset_id, output_asset_id)?;
+        if tbc_reserve_assets.contains(&input_asset_id)
+            || tbc_reserve_assets.contains(&output_asset_id)
+        {
+            initial_result.retain(|&lst| lst != LiquiditySourceType::XYKPool);
+        }
+        Ok(initial_result)
     }
 
     // Not full sort, just ensure that if there is XOR then it's first.
@@ -1392,7 +1428,7 @@ impl<T: Config> LiquidityProxyTrait<T::DEXId, T::AccountId, T::AssetId> for Pall
                     )?;
                     let xor_volume =
                         Self::get_xor_amount(from_asset_id, to_asset_id, amount, outcome.clone());
-                    VestedRewards::<T>::update_market_maker_records(&sender, xor_volume, 1)?;
+                    T::VestedRewardsPallet::update_market_maker_records(&sender, xor_volume, 1)?;
                     Ok(outcome)
                 }
                 ExchangePath::Twofold {
@@ -1425,7 +1461,7 @@ impl<T: Config> LiquidityProxyTrait<T::DEXId, T::AccountId, T::AssetId> for Pall
                             second_swap.amount >= min_amount_out,
                             Error::<T>::SlippageNotTolerated
                         );
-                        VestedRewards::<T>::update_market_maker_records(
+                        T::VestedRewardsPallet::update_market_maker_records(
                             &sender,
                             first_swap.amount,
                             2,
@@ -1472,7 +1508,7 @@ impl<T: Config> LiquidityProxyTrait<T::DEXId, T::AccountId, T::AssetId> for Pall
                             SwapAmount::with_desired_input(first_swap.amount, Balance::zero()),
                             filter,
                         )?;
-                        VestedRewards::<T>::update_market_maker_records(
+                        T::VestedRewardsPallet::update_market_maker_records(
                             &sender,
                             first_swap.amount,
                             2,
@@ -1498,11 +1534,7 @@ pub mod pallet {
 
     #[pallet::config]
     pub trait Config:
-        frame_system::Config
-        + common::Config
-        + assets::Config
-        + trading_pair::Config
-        + vested_rewards::Config
+        frame_system::Config + common::Config + assets::Config + trading_pair::Config
     {
         type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
         type LiquidityRegistry: LiquidityRegistry<
@@ -1517,6 +1549,7 @@ pub mod pallet {
         type GetTechnicalAccountId: Get<Self::AccountId>;
         type PrimaryMarket: GetMarketInfo<Self::AssetId>;
         type SecondaryMarket: GetPoolReserves<Self::AssetId>;
+        type VestedRewardsPallet: VestedRewardsPallet<Self::AccountId>;
         /// Weight information for the extrinsics in this Pallet.
         type WeightInfo: WeightInfo;
     }
@@ -1550,6 +1583,15 @@ pub mod pallet {
             filter_mode: FilterMode,
         ) -> DispatchResultWithPostInfo {
             let who = ensure_signed(origin)?;
+
+            if Self::is_forbidden_filter(
+                &input_asset_id,
+                &output_asset_id,
+                &selected_source_types,
+                &filter_mode,
+            ) {
+                fail!(Error::<T>::ForbiddenFilter);
+            }
 
             let outcome = Self::exchange(
                 &who,
@@ -1615,5 +1657,7 @@ pub mod pallet {
         CalculationError,
         /// Slippage either exceeds minimum tolerated output or maximum tolerated input.
         SlippageNotTolerated,
+        /// Selected filtering request is not allowed.
+        ForbiddenFilter,
     }
 }

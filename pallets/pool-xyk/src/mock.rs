@@ -29,8 +29,8 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use crate::{self as pool_xyk, Config};
-use common::prelude::Balance;
-use common::{balance, hash, DEXInfo};
+use common::prelude::{Balance, Fixed};
+use common::{balance, fixed, hash, DEXInfo};
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::GenesisBuild;
 use frame_support::weights::Weight;
@@ -72,6 +72,7 @@ parameter_types! {
     pub const GetDefaultSubscriptionFrequency: BlockNumber = 10;
     pub const GetBurnUpdateFrequency: BlockNumber = 14400;
     pub GetParliamentAccountId: AccountId = AccountId32::from([8; 32]);
+    pub GetFee: Fixed = fixed!(0.003);
 }
 
 parameter_type_with_key! {
@@ -188,8 +189,7 @@ impl technical::Config for Runtime {
     type TechAccountId = TechAccountId;
     type Trigger = ();
     type Condition = ();
-    type SwapAction =
-        crate::PolySwapAction<AssetId, TechAssetId, Balance, AccountId, TechAccountId>;
+    type SwapAction = crate::PolySwapAction<AssetId, AccountId, TechAccountId>;
     type WeightInfo = ();
 }
 
@@ -205,18 +205,19 @@ impl pswap_distribution::Config for Runtime {
     type OnPswapBurnedAggregator = ();
     type WeightInfo = ();
     type GetParliamentAccountId = GetParliamentAccountId;
+    type PoolXykPallet = PoolXyk;
 }
 
 impl Config for Runtime {
     type Event = Event;
-    type PairSwapAction = crate::PairSwapAction<AssetId, Balance, AccountId, TechAccountId>;
-    type DepositLiquidityAction =
-        crate::DepositLiquidityAction<AssetId, TechAssetId, Balance, AccountId, TechAccountId>;
+    type PairSwapAction = crate::PairSwapAction<AssetId, AccountId, TechAccountId>;
+    type DepositLiquidityAction = crate::DepositLiquidityAction<AssetId, AccountId, TechAccountId>;
     type WithdrawLiquidityAction =
-        crate::WithdrawLiquidityAction<AssetId, TechAssetId, Balance, AccountId, TechAccountId>;
-    type PolySwapAction =
-        crate::PolySwapAction<AssetId, TechAssetId, Balance, AccountId, TechAccountId>;
+        crate::WithdrawLiquidityAction<AssetId, AccountId, TechAccountId>;
+    type PolySwapAction = crate::PolySwapAction<AssetId, AccountId, TechAccountId>;
     type EnsureDEXManager = dex_manager::Module<Runtime>;
+    type GetFee = GetFee;
+    type PswapDistributionPallet = PswapDistribution;
     type WeightInfo = ();
 }
 

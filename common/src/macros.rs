@@ -96,6 +96,21 @@ macro_rules! location_stamp {
     };
 }
 
+// The macro is used in rewards_*.in.
+// It's required instead of vec! because vec! places all data on the stack and it causes overflow.
+#[macro_export]
+macro_rules! vec_push {
+    ($($x:expr),+ $(,)?) => (
+        {
+            let mut vec = Vec::new();
+            $(
+                vec.push($x);
+            )+
+            vec
+        }
+    );
+}
+
 #[cfg(test)]
 mod tests {
     #[test]

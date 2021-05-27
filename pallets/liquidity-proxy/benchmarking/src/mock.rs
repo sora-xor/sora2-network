@@ -34,7 +34,7 @@ use crate::{Config, *};
 use common::mock::ExistentialDeposits;
 use common::prelude::Balance;
 use common::{
-    fixed_from_basis_points, hash, Amount, AssetId32, BalancePrecision, DEXInfo, Fixed,
+    fixed, fixed_from_basis_points, hash, Amount, AssetId32, BalancePrecision, DEXInfo, Fixed,
     FromGenericPair, LiquiditySourceType, TechPurpose,
 };
 use currencies::BasicCurrencyAdapter;
@@ -90,6 +90,9 @@ parameter_types! {
     pub const GetBurnUpdateFrequency: BlockNumber = 10;
     pub GetIncentiveAssetId: AssetId = common::PSWAP.into();
     pub GetParliamentAccountId: AccountId = AccountId32::from([8; 32]);
+    pub GetMarketMakerRewardsAccountId: AccountId = AccountId32::from([9; 32]);
+    pub GetBondingCurveRewardsAccountId: AccountId = AccountId32::from([10; 32]);
+    pub GetXykFee: Fixed = fixed!(0.003);
 }
 
 construct_runtime! {
@@ -149,6 +152,7 @@ impl liquidity_proxy::Config for Runtime {
     type WeightInfo = ();
     type PrimaryMarket = ();
     type SecondaryMarket = ();
+    type VestedRewardsPallet = vested_rewards::Module<Runtime>;
 }
 
 impl tokens::Config for Runtime {
@@ -227,8 +231,7 @@ impl technical::Config for Runtime {
     type TechAccountId = TechAccountId;
     type Trigger = ();
     type Condition = ();
-    type SwapAction =
-        pool_xyk::PolySwapAction<AssetId, TechAssetId, Balance, AccountId, TechAccountId>;
+    type SwapAction = pool_xyk::PolySwapAction<AssetId, AccountId, TechAccountId>;
     type WeightInfo = ();
 }
 
@@ -256,19 +259,22 @@ impl trading_pair::Config for Runtime {
 
 impl pool_xyk::Config for Runtime {
     type Event = Event;
-    type PairSwapAction = pool_xyk::PairSwapAction<AssetId, Balance, AccountId, TechAccountId>;
+    type PairSwapAction = pool_xyk::PairSwapAction<AssetId, AccountId, TechAccountId>;
     type DepositLiquidityAction =
-        pool_xyk::DepositLiquidityAction<AssetId, TechAssetId, Balance, AccountId, TechAccountId>;
+        pool_xyk::DepositLiquidityAction<AssetId, AccountId, TechAccountId>;
     type WithdrawLiquidityAction =
-        pool_xyk::WithdrawLiquidityAction<AssetId, TechAssetId, Balance, AccountId, TechAccountId>;
-    type PolySwapAction =
-        pool_xyk::PolySwapAction<AssetId, TechAssetId, Balance, AccountId, TechAccountId>;
+        pool_xyk::WithdrawLiquidityAction<AssetId, AccountId, TechAccountId>;
+    type PolySwapAction = pool_xyk::PolySwapAction<AssetId, AccountId, TechAccountId>;
     type EnsureDEXManager = dex_manager::Module<Runtime>;
+    type GetFee = GetXykFee;
+    type PswapDistributionPallet = PswapDistribution;
     type WeightInfo = ();
 }
 
 impl vested_rewards::Config for Runtime {
     type Event = Event;
+    type GetMarketMakerRewardsAccountId = GetMarketMakerRewardsAccountId;
+    type GetBondingCurveRewardsAccountId = GetBondingCurveRewardsAccountId;
     type WeightInfo = ();
 }
 
@@ -393,6 +399,7 @@ impl multicollateral_bonding_curve_pool::Config for Runtime {
     type LiquidityProxy = liquidity_proxy::Module<Runtime>;
     type EnsureDEXManager = dex_manager::Module<Runtime>;
     type EnsureTradingPairExists = trading_pair::Module<Runtime>;
+    type VestedRewardsPallet = VestedRewards;
     type WeightInfo = ();
 }
 
@@ -408,6 +415,7 @@ impl pswap_distribution::Config for Runtime {
     type OnPswapBurnedAggregator = ();
     type WeightInfo = ();
     type GetParliamentAccountId = GetParliamentAccountId;
+    type PoolXykPallet = PoolXyk;
 }
 
 impl Config for Runtime {}

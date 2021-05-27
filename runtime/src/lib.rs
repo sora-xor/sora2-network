@@ -56,7 +56,6 @@ use pallet_grandpa::{
     fg_primitives, AuthorityId as GrandpaId, AuthorityList as GrandpaAuthorityList,
 };
 use pallet_session::historical as pallet_session_historical;
-use pswap_distribution::OnPswapBurned;
 #[cfg(feature = "std")]
 use serde::{Serialize, Serializer};
 use sp_api::impl_runtime_apis;
@@ -91,7 +90,7 @@ pub use common::weights::{BlockLength, BlockWeights, TransactionByteFee};
 pub use common::{
     balance, fixed, fixed_from_basis_points, AssetName, AssetSymbol, BalancePrecision, BasisPoints,
     FilterMode, Fixed, FromGenericPair, LiquiditySource, LiquiditySourceFilter, LiquiditySourceId,
-    LiquiditySourceType,
+    LiquiditySourceType, OnPswapBurned,
 };
 pub use frame_support::traits::schedule::Named as ScheduleNamed;
 pub use frame_support::traits::{
@@ -115,7 +114,9 @@ use eth_bridge::{
 };
 use impls::{CollectiveWeightInfo, DemocracyWeightInfo, OnUnbalancedDemocracySlash};
 
-pub use {bonding_curve_pool, eth_bridge, multicollateral_bonding_curve_pool};
+pub use {
+    assets, bonding_curve_pool, eth_bridge, frame_system, multicollateral_bonding_curve_pool,
+};
 
 /// An index to a block.
 pub type BlockNumber = u32;
@@ -160,6 +161,12 @@ type MoreThanHalfCouncil = EnsureOneOf<
     pallet_collective::EnsureProportionMoreThan<_1, _2, AccountId, CouncilCollective>,
 >;
 
+type SlashCancelOrigin = EnsureOneOf<
+    AccountId,
+    EnsureRoot<AccountId>,
+    pallet_collective::EnsureProportionAtLeast<_1, _2, AccountId, CouncilCollective>,
+>;
+
 /// Opaque types. These are used by the CLI to instantiate machinery that don't need to know
 /// the specifics of the runtime. They can then be made to be agnostic over specific formats
 /// of data like extrinsics, allowing for them to continue syncing the network through upgrades
@@ -190,10 +197,10 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
     spec_name: create_runtime_str!("sora-substrate"),
     impl_name: create_runtime_str!("sora-substrate"),
     authoring_version: 1,
-    spec_version: 29,
+    spec_version: 2,
     impl_version: 1,
     apis: RUNTIME_API_VERSIONS,
-    transaction_version: 1,
+    transaction_version: 2,
 };
 
 /// The version infromation used to identify this runtime when compiled natively.
@@ -206,7 +213,6 @@ pub fn native_version() -> NativeVersion {
 }
 
 /// Sora network needs to have minimal requirement for staking equal to 5000 XOR.
-pub const MIN_STAKE: Balance = balance!(5000);
 pub const FARMING_PSWAP_PER_DAY: Balance = balance!(2500000);
 // Every 2 hours
 pub const FARMING_REFRESH_FREQUENCY: BlockNumber = 1200;
@@ -219,14 +225,14 @@ parameter_types! {
     pub const BlockHashCount: BlockNumber = 250;
     pub const Version: RuntimeVersion = VERSION;
     pub const DisabledValidatorsThreshold: Perbill = Perbill::from_percent(17);
-    pub const EpochDuration: u64 = EPOCH_DURATION_IN_SLOTS;
+    pub const EpochDuration: u64 = EPOCH_DURATION_IN_BLOCKS as u64;
     pub const ExpectedBlockTime: Moment = MILLISECS_PER_BLOCK;
-    pub const UncleGenerations: BlockNumber = 5;
-    pub const SessionsPerEra: sp_staking::SessionIndex = 3; // 3 hours
-    pub const BondingDuration: pallet_staking::EraIndex = 4; // 12 hours
+    pub const UncleGenerations: BlockNumber = 0;
+    pub const SessionsPerEra: sp_staking::SessionIndex = 6; // 6 hours
+    pub const BondingDuration: pallet_staking::EraIndex = 28; // 28 eras for unbonding (7 days).
     pub const ReportLongevity: u64 =
         BondingDuration::get() as u64 * SessionsPerEra::get() as u64 * EpochDuration::get();
-    pub const SlashDeferDuration: pallet_staking::EraIndex = 2; // 6 hours
+    pub const SlashDeferDuration: pallet_staking::EraIndex = 27; // 27 eras in which slashes can be cancelled (slightly less than 7 days).
     pub const MaxNominatorRewardedPerValidator: u32 = 256;
     pub const ElectionLookahead: BlockNumber = EPOCH_DURATION_IN_BLOCKS / 4;
     pub const MaxIterations: u32 = 10;
@@ -249,9 +255,9 @@ parameter_types! {
     .max_extrinsic
     .expect("Normal extrinsics have weight limit configured by default; qed")
     .saturating_sub(BlockExecutionWeight::get());
-    pub const DemocracyEnactmentPeriod: BlockNumber = 30 * DAYS;
-    pub const DemocracyLaunchPeriod: BlockNumber = 28 * DAYS;
-    pub const DemocracyVotingPeriod: BlockNumber = 14 * DAYS;
+    pub const DemocracyEnactmentPeriod: BlockNumber = 1 * DAYS;
+    pub const DemocracyLaunchPeriod: BlockNumber = 2 * DAYS;
+    pub const DemocracyVotingPeriod: BlockNumber = 1 * DAYS;
     pub const DemocracyMinimumDeposit: Balance = balance!(1);
     pub const DemocracyFastTrackVotingPeriod: BlockNumber = 2 * DAYS;
     pub const DemocracyInstantAllowed: bool = false;
@@ -481,7 +487,7 @@ impl pallet_session::Config for Runtime {
     type Event = Event;
     type ValidatorId = AccountId;
     type ValidatorIdOf = pallet_staking::StashOf<Self>;
-    type DisabledValidatorsThreshold = ();
+    type DisabledValidatorsThreshold = DisabledValidatorsThreshold;
     type NextSessionRotation = Babe;
     type WeightInfo = ();
 }
@@ -510,7 +516,7 @@ impl pallet_staking::Config for Runtime {
     type SessionsPerEra = SessionsPerEra;
     type BondingDuration = BondingDuration;
     type SlashDeferDuration = SlashDeferDuration;
-    type SlashCancelOrigin = frame_system::EnsureRoot<Self::AccountId>;
+    type SlashCancelOrigin = SlashCancelOrigin;
     type SessionInterface = Self;
     type NextNewSession = Session;
     type ElectionLookahead = ElectionLookahead;
@@ -538,6 +544,7 @@ parameter_types! {
     pub const ExistentialDeposit: u128 = 0;
     pub const TransferFee: u128 = 0;
     pub const CreationFee: u128 = 0;
+    pub const MaxLocks: u32 = 50;
 }
 
 impl pallet_balances::Config for Runtime {
@@ -549,7 +556,7 @@ impl pallet_balances::Config for Runtime {
     type ExistentialDeposit = ExistentialDeposit;
     type AccountStore = System;
     type WeightInfo = ();
-    type MaxLocks = ();
+    type MaxLocks = MaxLocks;
 }
 
 pub type Amount = i128;
@@ -628,21 +635,25 @@ impl technical::Config for Runtime {
     type TechAccountId = TechAccountId;
     type Trigger = ();
     type Condition = ();
-    type SwapAction =
-        pool_xyk::PolySwapAction<AssetId, TechAssetId, Balance, AccountId, TechAccountId>;
+    type SwapAction = pool_xyk::PolySwapAction<AssetId, AccountId, TechAccountId>;
     type WeightInfo = ();
+}
+
+parameter_types! {
+    pub GetFee: Fixed = fixed!(0.003);
 }
 
 impl pool_xyk::Config for Runtime {
     type Event = Event;
-    type PairSwapAction = pool_xyk::PairSwapAction<AssetId, Balance, AccountId, TechAccountId>;
+    type PairSwapAction = pool_xyk::PairSwapAction<AssetId, AccountId, TechAccountId>;
     type DepositLiquidityAction =
-        pool_xyk::DepositLiquidityAction<AssetId, TechAssetId, Balance, AccountId, TechAccountId>;
+        pool_xyk::DepositLiquidityAction<AssetId, AccountId, TechAccountId>;
     type WithdrawLiquidityAction =
-        pool_xyk::WithdrawLiquidityAction<AssetId, TechAssetId, Balance, AccountId, TechAccountId>;
-    type PolySwapAction =
-        pool_xyk::PolySwapAction<AssetId, TechAssetId, Balance, AccountId, TechAccountId>;
+        pool_xyk::WithdrawLiquidityAction<AssetId, AccountId, TechAccountId>;
+    type PolySwapAction = pool_xyk::PolySwapAction<AssetId, AccountId, TechAccountId>;
     type EnsureDEXManager = dex_manager::Module<Runtime>;
+    type GetFee = GetFee;
+    type PswapDistributionPallet = PswapDistribution;
     type WeightInfo = pool_xyk::weights::WeightInfo<Runtime>;
 }
 
@@ -662,6 +673,12 @@ parameter_types! {
         account_id
     };
     pub const GetNumSamples: usize = 5;
+    pub const BasicDeposit: Balance = balance!(0.01);
+    pub const FieldDeposit: Balance = balance!(0.01);
+    pub const SubAccountDeposit: Balance = balance!(0.01);
+    pub const MaxSubAccounts: u32 = 100;
+    pub const MaxAdditionalFields: u32 = 100;
+    pub const MaxRegistrars: u32 = 20;
 }
 
 impl liquidity_proxy::Config for Runtime {
@@ -672,10 +689,7 @@ impl liquidity_proxy::Config for Runtime {
     type PrimaryMarket = multicollateral_bonding_curve_pool::Module<Runtime>;
     type SecondaryMarket = pool_xyk::Module<Runtime>;
     type WeightInfo = liquidity_proxy::weights::WeightInfo<Runtime>;
-}
-
-parameter_types! {
-    pub GetFee: Fixed = fixed_from_basis_points(30u16);
+    type VestedRewardsPallet = vested_rewards::Module<Runtime>;
 }
 
 impl mock_liquidity_source::Config<mock_liquidity_source::Instance1> for Runtime {
@@ -731,6 +745,21 @@ impl pallet_multisig::Config for Runtime {
 impl iroha_migration::Config for Runtime {
     type Event = Event;
     type WeightInfo = iroha_migration::weights::WeightInfo<Runtime>;
+}
+
+impl pallet_identity::Config for Runtime {
+    type Event = Event;
+    type Currency = Balances;
+    type BasicDeposit = BasicDeposit;
+    type FieldDeposit = FieldDeposit;
+    type SubAccountDeposit = SubAccountDeposit;
+    type MaxSubAccounts = MaxSubAccounts;
+    type MaxAdditionalFields = MaxAdditionalFields;
+    type MaxRegistrars = MaxRegistrars;
+    type Slashed = ();
+    type ForceOrigin = MoreThanHalfCouncil;
+    type RegistrarOrigin = MoreThanHalfCouncil;
+    type WeightInfo = ();
 }
 
 impl<T: SigningTypes> frame_system::offchain::SignMessage<T> for Runtime {
@@ -819,7 +848,8 @@ impl xor_fee::ApplyCustomFees<Call> for ExtrinsicsFlatFees {
         match call {
             Call::Assets(assets::Call::register(..))
             | Call::EthBridge(eth_bridge::Call::transfer_to_sidechain(..))
-            | Call::PoolXYK(pool_xyk::Call::withdraw_liquidity(..)) => Some(balance!(0.007)),
+            | Call::PoolXYK(pool_xyk::Call::withdraw_liquidity(..))
+            | Call::Rewards(rewards::Call::claim(..)) => Some(balance!(0.007)),
             Call::EthBridge(eth_bridge::Call::register_incoming_request(..))
             | Call::EthBridge(eth_bridge::Call::finalize_incoming_request(..))
             | Call::EthBridge(eth_bridge::Call::approve_request(..)) => None,
@@ -946,6 +976,17 @@ impl bridge_multisig::Config for Runtime {
 
 parameter_types! {
     pub const EthNetworkId: u32 = 0;
+    pub const RemoveTemporaryPeerAccountId: AccountId = AccountId::new(hex!("614e20b93522be9874e48f1e18b9bf2dfd4cdc4dafc1887ca353d544c92526cc"));
+}
+
+#[cfg(not(feature = "private-net"))]
+parameter_types! {
+    pub const RemovePendingOutgoingRequestsAfter: BlockNumber = 1 * DAYS;
+}
+
+#[cfg(feature = "private-net")]
+parameter_types! {
+    pub const RemovePendingOutgoingRequestsAfter: BlockNumber = 30 * MINUTES;
 }
 
 pub type NetworkId = u32;
@@ -957,6 +998,8 @@ impl eth_bridge::Config for Runtime {
     type NetworkId = NetworkId;
     type GetEthNetworkId = EthNetworkId;
     type WeightInfo = eth_bridge::weights::WeightInfo<Runtime>;
+    type RemovePendingOutgoingRequestsAfter = RemovePendingOutgoingRequestsAfter;
+    type RemoveTemporaryPeerAccountId = RemoveTemporaryPeerAccountId;
 }
 
 #[cfg(feature = "private-net")]
@@ -1020,8 +1063,8 @@ parameter_types! {
 pub struct RuntimeOnPswapBurnedAggregator;
 
 impl OnPswapBurned for RuntimeOnPswapBurnedAggregator {
-    fn on_pswap_burned(distribution: pswap_distribution::PswapRemintInfo) {
-        MulticollateralBondingCurvePool::on_pswap_burned(distribution);
+    fn on_pswap_burned(distribution: common::PswapRemintInfo) {
+        VestedRewards::on_pswap_burned(distribution);
     }
 }
 
@@ -1047,6 +1090,7 @@ impl pswap_distribution::Config for Runtime {
     type OnPswapBurnedAggregator = RuntimeOnPswapBurnedAggregator;
     type WeightInfo = pswap_distribution::weights::WeightInfo<Runtime>;
     type GetParliamentAccountId = GetParliamentAccountId;
+    type PoolXykPallet = PoolXYK;
 }
 
 parameter_types! {
@@ -1113,6 +1157,7 @@ impl multicollateral_bonding_curve_pool::Config for Runtime {
     type LiquidityProxy = LiquidityProxy;
     type EnsureDEXManager = DEXManager;
     type EnsureTradingPairExists = TradingPair;
+    type VestedRewardsPallet = VestedRewards;
     type WeightInfo = multicollateral_bonding_curve_pool::weights::WeightInfo<Runtime>;
 }
 
@@ -1135,6 +1180,8 @@ impl pallet_offences::Config for Runtime {
 
 impl vested_rewards::Config for Runtime {
     type Event = Event;
+    type GetBondingCurveRewardsAccountId = GetMbcPoolRewardsAccountId;
+    type GetMarketMakerRewardsAccountId = GetMarketMakerRewardsAccountId;
     type WeightInfo = vested_rewards::weights::WeightInfo<Runtime>;
 }
 
@@ -1204,6 +1251,7 @@ construct_runtime! {
         TechnicalMembership: pallet_membership::<Instance1>::{Module, Call, Storage, Event<T>, Config<T>},
         ElectionsPhragmen: pallet_elections_phragmen::{Module, Call, Storage, Event<T>, Config<T>},
         VestedRewards: vested_rewards::{Module, Call, Storage, Event<T>},
+        Identity: pallet_identity::{Module, Call, Storage, Event<T>},
         Farming: farming::{Module, Storage},
         // Available only for test net
         Faucet: faucet::{Module, Call, Config<T>, Event<T>},
@@ -1263,6 +1311,7 @@ construct_runtime! {
         TechnicalMembership: pallet_membership::<Instance1>::{Module, Call, Storage, Event<T>, Config<T>},
         ElectionsPhragmen: pallet_elections_phragmen::{Module, Call, Storage, Event<T>, Config<T>},
         VestedRewards: vested_rewards::{Module, Call, Storage, Event<T>},
+        Identity: pallet_identity::{Module, Call, Storage, Event<T>},
         Farming: farming::{Module, Storage},
     }
 }
@@ -1639,6 +1688,10 @@ impl_runtime_apis! {
             selected_source_types: Vec<LiquiditySourceType>,
             filter_mode: FilterMode,
         ) -> Option<liquidity_proxy_runtime_api::SwapOutcomeInfo<Balance, AssetId>> {
+            if LiquidityProxy::is_forbidden_filter(&input_asset_id, &output_asset_id, &selected_source_types, &filter_mode) {
+                return None;
+            }
+
             // TODO: remove with proper QuoteAmount refactor
             let limit = if swap_variant == SwapVariant::WithDesiredInput {
                 Balance::zero()
@@ -1679,7 +1732,7 @@ impl_runtime_apis! {
             input_asset_id: AssetId,
             output_asset_id: AssetId,
         ) -> Vec<LiquiditySourceType> {
-            LiquidityProxy::list_enabled_sources_for_path(
+            LiquidityProxy::list_enabled_sources_for_path_with_xyk_forbidden(
                 dex_id, input_asset_id, output_asset_id
             ).unwrap_or(Vec::new())
         }
@@ -1693,7 +1746,7 @@ impl_runtime_apis! {
         fn claimable_amount(
             account_id: AccountId,
         ) -> pswap_distribution_runtime_api::BalanceInfo<Balance> {
-            let (claimable, _, _) = PswapDistribution::claimable_amount(&account_id).unwrap_or((0, 0, fixed!(0)));
+            let claimable = PswapDistribution::claimable_amount(&account_id).unwrap_or(0);
             pswap_distribution_runtime_api::BalanceInfo::<Balance> {
                 balance: claimable
             }
@@ -1803,10 +1856,12 @@ impl_runtime_apis! {
             use dex_api_benchmarking::Module as DEXAPIBench;
             use liquidity_proxy_benchmarking::Module as LiquidityProxyBench;
             use pool_xyk_benchmarking::Module as XYKPoolBench;
+            use pswap_distribution_benchmarking::Module as PswapDistributionBench;
 
             impl dex_api_benchmarking::Config for Runtime {}
             impl liquidity_proxy_benchmarking::Config for Runtime {}
             impl pool_xyk_benchmarking::Config for Runtime {}
+            impl pswap_distribution_benchmarking::Config for Runtime {}
 
 
             let whitelist: Vec<TrackedStorageKey> = vec![
@@ -1835,7 +1890,7 @@ impl_runtime_apis! {
             add_benchmark!(params, batches, iroha_migration, IrohaMigration);
             add_benchmark!(params, batches, liquidity_proxy, LiquidityProxyBench::<Runtime>);
             add_benchmark!(params, batches, multicollateral_bonding_curve_pool, MulticollateralBondingCurvePool);
-            add_benchmark!(params, batches, pswap_distribution, PswapDistribution);
+            add_benchmark!(params, batches, pswap_distribution, PswapDistributionBench::<Runtime>);
             add_benchmark!(params, batches, rewards, Rewards);
             add_benchmark!(params, batches, trading_pair, TradingPair);
             add_benchmark!(params, batches, pool_xyk, XYKPoolBench::<Runtime>);

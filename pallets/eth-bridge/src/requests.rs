@@ -1121,6 +1121,7 @@ impl<T: Config> OutgoingAddPeer<T> {
     }
 }
 
+// TODO: add reference for a corresponding `OutgoingAddPeer` and check its existence.
 /// Old contracts-compatible `add peer` request. Will be removed in the future.
 #[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
@@ -1269,6 +1270,7 @@ impl<T: Config> OutgoingRemovePeer<T> {
     }
 }
 
+// TODO: add reference for a corresponding `OutgoingRemovePeer` and check its existence.
 /// Old contracts-compatible `add peer` request. Will be removed in the future.
 #[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
@@ -1517,6 +1519,11 @@ impl<T: Config> OutgoingMigrate<T> {
     }
 
     pub fn validate(&self) -> Result<(), DispatchError> {
+        ensure!(
+            crate::BridgeStatuses::<T>::get(self.network_id).ok_or(Error::<T>::UnknownNetwork)?
+                == BridgeStatus::Migrating,
+            Error::<T>::ContractIsNotInMigrationStage
+        );
         Ok(())
     }
 
@@ -1529,6 +1536,7 @@ impl<T: Config> OutgoingMigrate<T> {
     }
 
     pub fn finalize(&self) -> Result<(), DispatchError> {
+        self.validate()?;
         Ok(())
     }
 }
@@ -1642,6 +1650,12 @@ macro_rules! impl_from_for_incoming_requests {
         impl<T: Config> From<$req> for crate::IncomingRequest<T> {
             fn from(v: $req) -> Self {
                 Self::$var(v)
+            }
+        }
+
+        impl<T: Config> From<$req> for OffchainRequest<T> {
+            fn from(v: $req) -> Self {
+                Self::incoming(v.into())
             }
         }
     )+};

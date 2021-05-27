@@ -29,7 +29,7 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use crate::prelude::{ManagementMode, SwapAmount, SwapOutcome};
-use crate::{Fixed, LiquiditySourceFilter, LiquiditySourceId, RewardReason};
+use crate::{Fixed, LiquiditySourceFilter, LiquiditySourceId, PswapRemintInfo, RewardReason};
 use frame_support::dispatch::DispatchResult;
 use frame_support::pallet_prelude::MaybeSerializeDeserialize;
 use frame_support::sp_runtime::traits::BadOrigin;
@@ -41,6 +41,7 @@ use frame_system::RawOrigin;
 //use sp_std::convert::TryInto;
 use crate::primitives::Balance;
 use codec::{Decode, Encode};
+use sp_std::collections::btree_set::BTreeSet;
 use sp_std::vec::Vec;
 
 /// Check on origin that it is a DEX owner.
@@ -418,9 +419,11 @@ pub trait GetMarketInfo<AssetId> {
     /// The amount of the `asset_id` token reserves stored with the primary market liquidity provider
     /// (a multi-collateral bonding curve pool) that backs a part of the base currency in circulation.
     fn collateral_reserves(asset_id: &AssetId) -> Result<Balance, DispatchError>;
+    /// Returns set of enabled collateral/reserve assets on bonding curve.
+    fn enabled_collaterals() -> BTreeSet<AssetId>;
 }
 
-impl<AssetId> GetMarketInfo<AssetId> for () {
+impl<AssetId: Ord> GetMarketInfo<AssetId> for () {
     fn buy_price(
         _base_asset: &AssetId,
         _collateral_asset: &AssetId,
@@ -438,6 +441,10 @@ impl<AssetId> GetMarketInfo<AssetId> for () {
     fn collateral_reserves(_asset_id: &AssetId) -> Result<Balance, DispatchError> {
         Ok(Default::default())
     }
+
+    fn enabled_collaterals() -> BTreeSet<AssetId> {
+        Default::default()
+    }
 }
 
 /// Trait for bounding liquidity proxy associated type representing secondary market.
@@ -451,4 +458,58 @@ impl<AssetId> GetPoolReserves<AssetId> for () {
     fn reserves(_base_asset: &AssetId, _other_asset: &AssetId) -> (Balance, Balance) {
         Default::default()
     }
+}
+
+/// General trait for passing pswap amount burned information to required pallets.
+pub trait OnPswapBurned {
+    /// Report amount and fractions of burned pswap at the moment of invokation.
+    fn on_pswap_burned(distribution: PswapRemintInfo);
+}
+
+impl OnPswapBurned for () {
+    fn on_pswap_burned(_distribution: PswapRemintInfo) {
+        // do nothing
+    }
+}
+
+/// Trait to abstract interface of VestedRewards pallet, in order for pallets with rewards sources avoid having dependency issues.
+pub trait VestedRewardsPallet<AccountId> {
+    /// Report that swaps with xor were performed.
+    /// - `account_id`: account performing transaction.
+    /// - `xor_volume`: amount of xor passed in transaction.
+    /// - `count`: number of equal swaps, if there are multiple - means that each has amount equal to `xor_volume`.
+    fn update_market_maker_records(
+        account_id: &AccountId,
+        xor_volume: Balance,
+        count: u32,
+    ) -> DispatchResult;
+
+    /// Report that account has received pswap reward for buying from tbc.
+    fn add_tbc_reward(account_id: &AccountId, pswap_amount: Balance) -> DispatchResult;
+
+    /// Report that account has received farmed pswap reward for providing liquidity on secondary market.
+    fn add_farming_reward(account_id: &AccountId, pswap_amount: Balance) -> DispatchResult;
+
+    /// Report that account has received pswap reward for performing large volume trade over month.
+    fn add_market_maker_reward(account_id: &AccountId, pswap_amount: Balance) -> DispatchResult;
+}
+
+pub trait PoolXykPallet {
+    type AccountId;
+    type PoolProvidersOutput: IntoIterator<Item = (Self::AccountId, Balance)>;
+
+    fn pool_providers(pool_account: &Self::AccountId) -> Self::PoolProvidersOutput;
+
+    fn total_issuance(pool_account: &Self::AccountId) -> Result<Balance, DispatchError>;
+}
+
+pub trait PswapDistributionPallet {
+    type AccountId;
+    type DEXId;
+
+    fn subscribe(
+        fee_account: Self::AccountId,
+        dex_id: Self::DEXId,
+        pool_account: Self::AccountId,
+    ) -> DispatchResult;
 }

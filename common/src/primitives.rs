@@ -737,19 +737,30 @@ impl From<InvokeRPCError> for i64 {
 }
 
 /// Reason for particular reward during swap.
-#[derive(Encode, Decode, Eq, PartialEq, Clone, PartialOrd, Ord, Debug)]
+#[derive(Encode, Decode, Eq, PartialEq, Clone, Copy, PartialOrd, Ord, Debug)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum RewardReason {
     /// Reason is unknown.
     Unspecified,
     /// Buying XOR with collateral tokens (except PSWAP and VAL) is rewarded.
     BuyOnBondingCurve,
+    /// Providing liquidyty on secondary market is rewarded.
+    LiquidityProvisionFarming,
+    /// High volume trading is rewarded.
+    MarketMakerVolume,
 }
 
 impl Default for RewardReason {
     fn default() -> Self {
         Self::Unspecified
     }
+}
+
+#[derive(Encode, Decode, Clone, RuntimeDebug, Default)]
+pub struct PswapRemintInfo {
+    pub liquidity_providers: Balance,
+    pub parliament: Balance,
+    pub vesting: Balance,
 }
 
 #[cfg(test)]

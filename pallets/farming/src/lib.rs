@@ -71,77 +71,78 @@ impl<T: Config> Pallet<T> {
     fn refresh_farmers(now: T::BlockNumber) -> Weight {
         let mut function_weight: Weight = 0;
 
-        let token_ids: Vec<_> = SubscribedAccounts::<T>::iter_values()
-            .map(|(_, token_id, ..)| token_id)
-            .collect();
-        function_weight =
-            function_weight.saturating_add(T::DbWeight::get().reads(token_ids.len() as u64));
+        // let token_ids: Vec<_> = SubscribedAccounts::<T>::iter_values()
+        //     .map(|(_, token_id, ..)| token_id)
+        //     .collect();
+        // function_weight =
+        //     function_weight.saturating_add(T::DbWeight::get().reads(token_ids.len() as u64));
 
-        let mut farmers = BTreeMap::new();
-        for (account_id, currency_id, data) in Accounts::<T>::iter() {
-            function_weight = function_weight.saturating_add(T::DbWeight::get().reads(1));
+        // let mut farmers = BTreeMap::new();
+        // for (account_id, currency_id, data) in Accounts::<T>::iter() {
+        //     function_weight = function_weight.saturating_add(T::DbWeight::get().reads(1));
 
-            if !token_ids.contains(&currency_id) || data.free.is_zero() {
-                continue;
-            }
+        //     if !token_ids.contains(&currency_id) || data.free.is_zero() {
+        //         continue;
+        //     }
 
-            let farmer_weight = Self::get_farmer_weight(&currency_id, data.free);
-            if farmer_weight == 0 {
-                continue;
-            }
+        //     let farmer_weight = Self::get_farmer_weight(&currency_id, data.free);
+        //     if farmer_weight == 0 {
+        //         continue;
+        //     }
 
-            match farmers.entry(account_id.clone()) {
-                Entry::Vacant(entry) => {
-                    let block_number = if let Some(previous_farmer) = Farmers::<T>::get(&account_id)
-                    {
-                        previous_farmer.1
-                    } else {
-                        now
-                    };
-                entry.insert((farmer_weight, block_number));
+        //     match farmers.entry(account_id.clone()) {
+        //         Entry::Vacant(entry) => {
+        //             let block_number = if let Some(previous_farmer) = Farmers::<T>::get(&account_id)
+        //             {
+        //                 previous_farmer.1
+        //             } else {
+        //                 now
+        //             };
+        //         entry.insert((farmer_weight, block_number));
 
-                    function_weight = function_weight.saturating_add(T::DbWeight::get().reads(1));
-                }
-                Entry::Occupied(mut entry) => {
-                    entry.get_mut().0 += farmer_weight;
-                }
-            }
-        }
-        Farmers::<T>::remove_all();
-        for (account_id, data) in farmers {
-            Farmers::<T>::insert(account_id, data);
-            function_weight = function_weight.saturating_add(T::DbWeight::get().writes(1))
-        }
+        //             function_weight = function_weight.saturating_add(T::DbWeight::get().reads(1));
+        //         }
+        //         Entry::Occupied(mut entry) => {
+        //             entry.get_mut().0 += farmer_weight;
+        //         }
+        //     }
+        // }
+        // Farmers::<T>::remove_all();
+        // for (account_id, data) in farmers {
+        //     Farmers::<T>::insert(account_id, data);
+        //     function_weight = function_weight.saturating_add(T::DbWeight::get().writes(1))
+        // }
 
         function_weight
     }
 
     fn get_farmer_weight(token_id: &T::AssetId, token_count: Balance) -> Balance {
-        let pool_account =
-            if let Ok(pool_account) = pool_xyk::Module::<T>::get_pool_account(token_id) {
-                pool_account
-            } else {
-                return 0;
-            };
-        let xor = pool_xyk::Module::<T>::get_xor_part_from_pool_account(&pool_account, token_count)
-            .unwrap_or(0);
-        if xor < balance!(1) {
-            return 0;
-        }
+        0
+        // let pool_account =
+        //     if let Ok(pool_account) = pool_xyk::Module::<T>::get_pool_account(token_id) {
+        //         pool_account
+        //     } else {
+        //         return 0;
+        //     };
+        // let xor = pool_xyk::Module::<T>::get_xor_part_from_pool_account(&pool_account, token_count)
+        //     .unwrap_or(0);
+        // if xor < balance!(1) {
+        //     return 0;
+        // }
 
-        let pool_doubles_reward = pool_xyk::Module::<T>::get_pool_trading_pair(&pool_account)
-            .map(|trading_pair| {
-                T::RewardDoublingAssets::get()
-                    .iter()
-                    .any(|asset_id| trading_pair.consists_of(asset_id))
-            })
-            .unwrap_or(false);
+        // let pool_doubles_reward = pool_xyk::Module::<T>::get_pool_trading_pair(&pool_account)
+        //     .map(|trading_pair| {
+        //         T::RewardDoublingAssets::get()
+        //             .iter()
+        //             .any(|asset_id| trading_pair.consists_of(asset_id))
+        //     })
+        //     .unwrap_or(false);
 
-        if pool_doubles_reward {
-            xor * 2
-        } else {
-            xor
-        }
+        // if pool_doubles_reward {
+        //     xor * 2
+        // } else {
+        //     xor
+        // }
     }
 
     fn vest(now: T::BlockNumber) -> Weight {

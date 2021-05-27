@@ -28,12 +28,14 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use crate::mock::*;
-use crate::{Farmers, VestedRewards};
-use common::prelude::Balance;
-use common::{balance, AssetName, AssetSymbol, DOT, XOR};
 use frame_support::assert_ok;
 use frame_support::traits::{OnFinalize, OnInitialize};
+
+use common::prelude::Balance;
+use common::{balance, AssetName, AssetSymbol, DOT, XOR};
+
+use crate::mock::*;
+use crate::{Farmers, VestedRewards};
 
 fn run_to_block(n: u64) {
     while System::block_number() < n {

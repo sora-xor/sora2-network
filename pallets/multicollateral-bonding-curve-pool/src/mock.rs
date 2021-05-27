@@ -28,12 +28,13 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use crate::{self as mcbcp, Config};
+use crate::{self as multicollateral_bonding_curve_pool, Config, Rewards, TotalRewards};
 use common::mock::ExistentialDeposits;
 use common::prelude::{Balance, FixedWrapper, SwapAmount, SwapOutcome};
 use common::{
-    self, balance, fixed_wrapper, hash, Amount, AssetId32, AssetName, AssetSymbol, DEXInfo,
-    LiquiditySourceFilter, LiquiditySourceType, TechPurpose, PSWAP, USDT, VAL, XOR,
+    self, balance, fixed, fixed_wrapper, hash, Amount, AssetId32, AssetName, AssetSymbol, DEXInfo,
+    Fixed, LiquiditySourceFilter, LiquiditySourceType, TechPurpose, VestedRewardsPallet, PSWAP,
+    USDT, VAL, XOR,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::GenesisBuild;
@@ -46,7 +47,7 @@ use sp_core::crypto::AccountId32;
 use sp_core::H256;
 use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentityLookup, Zero};
-use sp_runtime::{DispatchError, Perbill};
+use sp_runtime::{DispatchError, DispatchResult, Perbill};
 use std::collections::HashMap;
 
 pub type AccountId = AccountId32;
@@ -110,6 +111,9 @@ parameter_types! {
     pub const GetDefaultSubscriptionFrequency: BlockNumber = 10;
     pub const GetBurnUpdateFrequency: BlockNumber = 14400;
     pub GetParliamentAccountId: AccountId = AccountId32::from([152; 32]);
+    pub GetMarketMakerRewardsAccountId: AccountId = AccountId32::from([153; 32]);
+    pub GetBondingCurveRewardsAccountId: AccountId = AccountId32::from([154; 32]);
+    pub GetXykFee: Fixed = fixed!(0.003);
 }
 
 construct_runtime! {
@@ -122,7 +126,8 @@ construct_runtime! {
         DexManager: dex_manager::{Module, Call, Storage},
         TradingPair: trading_pair::{Module, Call, Storage, Event<T>},
         MockLiquiditySource: mock_liquidity_source::<Instance1>::{Module, Call, Config<T>, Storage},
-        Mcbcp: mcbcp::{Module, Call, Config<T>, Storage, Event<T>},
+        // VestedRewards: vested_rewards::{Module, Call, Storage, Event<T>},
+        Mcbcp: multicollateral_bonding_curve_pool::{Module, Call, Storage, Event<T>},
         Tokens: tokens::{Module, Call, Config<T>, Storage, Event<T>},
         Currencies: currencies::{Module, Call, Storage, Event<T>},
         Assets: assets::{Module, Call, Config<T>, Storage, Event<T>},
@@ -178,7 +183,36 @@ impl Config for Runtime {
     type LiquidityProxy = MockDEXApi;
     type EnsureTradingPairExists = trading_pair::Module<Runtime>;
     type EnsureDEXManager = dex_manager::Module<Runtime>;
+    type VestedRewardsPallet = MockVestedRewards;
     type WeightInfo = ();
+}
+
+pub struct MockVestedRewards;
+
+impl VestedRewardsPallet<AccountId> for MockVestedRewards {
+    fn update_market_maker_records(_: &AccountId, _: Balance, _: u32) -> DispatchResult {
+        // do nothing
+        Ok(())
+    }
+    fn add_tbc_reward(account: &AccountId, amount: Balance) -> DispatchResult {
+        Rewards::<Runtime>::mutate(account, |(_, old_amount)| {
+            *old_amount = old_amount.saturating_add(amount)
+        });
+        TotalRewards::<Runtime>::mutate(|old_amount| {
+            *old_amount = old_amount.saturating_add(amount)
+        });
+        Ok(())
+    }
+
+    fn add_farming_reward(_: &AccountId, _: Balance) -> DispatchResult {
+        // do nothing
+        Ok(())
+    }
+
+    fn add_market_maker_reward(_: &AccountId, _: Balance) -> DispatchResult {
+        // do nothing
+        Ok(())
+    }
 }
 
 impl tokens::Config for Runtime {
@@ -225,8 +259,7 @@ impl technical::Config for Runtime {
     type TechAccountId = TechAccountId;
     type Trigger = ();
     type Condition = ();
-    type SwapAction =
-        pool_xyk::PolySwapAction<AssetId, TechAssetId, Balance, AccountId, TechAccountId>;
+    type SwapAction = pool_xyk::PolySwapAction<AssetId, AccountId, TechAccountId>;
     type WeightInfo = ();
 }
 
@@ -252,18 +285,20 @@ impl pswap_distribution::Config for Runtime {
     type OnPswapBurnedAggregator = ();
     type WeightInfo = ();
     type GetParliamentAccountId = GetParliamentAccountId;
+    type PoolXykPallet = PoolXyk;
 }
 
 impl pool_xyk::Config for Runtime {
     type Event = Event;
-    type PairSwapAction = pool_xyk::PairSwapAction<AssetId, Balance, AccountId, TechAccountId>;
+    type PairSwapAction = pool_xyk::PairSwapAction<AssetId, AccountId, TechAccountId>;
     type DepositLiquidityAction =
-        pool_xyk::DepositLiquidityAction<AssetId, TechAssetId, Balance, AccountId, TechAccountId>;
+        pool_xyk::DepositLiquidityAction<AssetId, AccountId, TechAccountId>;
     type WithdrawLiquidityAction =
-        pool_xyk::WithdrawLiquidityAction<AssetId, TechAssetId, Balance, AccountId, TechAccountId>;
-    type PolySwapAction =
-        pool_xyk::PolySwapAction<AssetId, TechAssetId, Balance, AccountId, TechAccountId>;
+        pool_xyk::WithdrawLiquidityAction<AssetId, AccountId, TechAccountId>;
+    type PolySwapAction = pool_xyk::PolySwapAction<AssetId, AccountId, TechAccountId>;
     type EnsureDEXManager = dex_manager::Module<Runtime>;
+    type GetFee = GetXykFee;
+    type PswapDistributionPallet = PswapDistribution;
     type WeightInfo = ();
 }
 
