@@ -52,12 +52,11 @@ pub fn migrate<T: Config>() -> Weight {
 
 pub fn mint_team_rewards<T: Config>() -> Option<Weight> {
     let mut weight: Weight = 0;
-    debug::RuntimeLogger::init();
 
     let total_reserved = balance!(3000000000);
     let account_id: T::AccountId = T::GetTeamReservesAccountId::get();
     T::Currency::deposit(PSWAP.into(), &account_id, total_reserved).ok()?;
-    weight = weight.saturating_add(T::DbWeight::get().reads_writes(0, 1));
+    weight = weight.saturating_add(T::DbWeight::get().writes(1));
 
     Some(weight)
 }
