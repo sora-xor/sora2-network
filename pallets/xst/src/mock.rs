@@ -309,7 +309,7 @@ impl MockDEXApi {
             } => {
                 let amount_out = FixedWrapper::from(desired_amount_in)
                     * get_mock_prices()[&(*input_asset_id, *output_asset_id)];
-                let fee = amount_out.clone() * balance!(0.003);
+                let fee = amount_out.clone() * balance!(0.007); // XST uses 0.7% fees
                 let fee = fee.into_balance();
                 let amount_out: Balance = amount_out.into_balance();
                 let amount_out = amount_out - fee;
@@ -397,16 +397,17 @@ pub fn get_mock_prices() -> HashMap<(AssetId, AssetId), Balance> {
         ((XOR, DAI), balance!(102.0)),
         ((VAL, DAI), balance!(51.0)),
         ((USDT, DAI), balance!(1.02)),
+        ((XSTUSD, DAI), balance!(1.03)),
         // PSWAP
         ((XOR, PSWAP), balance!(10)),
         ((VAL, PSWAP), balance!(5)),
         ((USDT, PSWAP), balance!(0.1)),
         ((DAI, PSWAP), balance!(0.098)),
         // XSTUSD
-        ((XOR, XSTUSD), balance!(102.0)),
-        ((VAL, XSTUSD), balance!(51.0)),
-        ((USDT, XSTUSD), balance!(1.02)),
-        ((DAI, XSTUSD), balance!(1.02)),
+        ((XOR, XSTUSD), balance!(103.0)),
+        ((VAL, XSTUSD), balance!(52.0)),
+        ((USDT, XSTUSD), balance!(1.03)),
+        ((DAI, XSTUSD), balance!(1.03)),
     ];
     let reverse = direct.clone().into_iter().map(|((a, b), price)| {
         (
@@ -495,7 +496,7 @@ impl Default for ExtBuilder {
                 (
                     alice(),
                     XSTUSD,
-                    balance!(0),
+                    balance!(100000),
                     AssetSymbol(b"XSTUSD".to_vec()),
                     AssetName(b"XST USD".to_vec()),
                     18,
@@ -521,7 +522,7 @@ impl Default for ExtBuilder {
                     vec![permissions::MINT, permissions::BURN],
                 ),
             ],
-            reference_asset_id: USDT,
+            reference_asset_id: DAI,
         }
     }
 }

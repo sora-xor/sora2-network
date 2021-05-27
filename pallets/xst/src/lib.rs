@@ -595,7 +595,7 @@ impl<T: Config> Module<T> {
     }
 
     /// This function is used to determine particular asset price in terms of a reference asset, which is set for
-    /// bonding curve (there could be only single token chosen as reference for all comparisons). Basically, the
+    /// XST quotes (there can be only single token chosen as reference for all comparisons). Basically, the
     /// reference token is expected to be a USD-bound stablecoin, e.g. DAI.
     ///
     /// Example use: understand actual value of two tokens in terms of USD.
