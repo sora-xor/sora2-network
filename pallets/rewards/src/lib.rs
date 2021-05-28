@@ -47,6 +47,7 @@ use common::{eth, AccountIdOf, Balance};
 
 pub use self::pallet::*;
 
+mod migration;
 pub mod weights;
 
 #[cfg(feature = "runtime-benchmarks")]
@@ -121,7 +122,11 @@ pub mod pallet {
     pub struct Pallet<T>(PhantomData<T>);
 
     #[pallet::hooks]
-    impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {}
+    impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
+        fn on_runtime_upgrade() -> Weight {
+            migration::migrate::<T>()
+        }
+    }
 
     #[pallet::call]
     impl<T: Config> Pallet<T> {

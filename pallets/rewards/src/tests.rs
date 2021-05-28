@@ -32,6 +32,7 @@ use common::{assert_noop_msg, balance, PSWAP, VAL};
 use frame_support::{assert_noop, assert_ok};
 use hex_literal::hex;
 
+use crate::migration::*;
 use crate::mock::*;
 
 type Pallet = crate::Pallet<Runtime>;
@@ -111,5 +112,85 @@ fn claim_over_limit() {
     ExtBuilder::with_rewards(true).build().execute_with(|| {
         let signature = hex!("20994c1a98b6818832555f5ab840ef6c7d468f46e192bed4921724629475975f440582a9f1416ffd7720538d30af601cbe18ffded8e0eea38c18d24714b57e381b").into();
         assert_noop_msg!(Pallet::claim(origin(), signature), "BalanceTooLow");
+    });
+}
+
+#[test]
+fn val_emission_works() {
+    ExtBuilder::with_rewards(true).build().execute_with(|| {
+        let rewards_tech_acc = crate::ReservesAcc::<Runtime>::get();
+        let rewards_account_id =
+            technical::Module::<Runtime>::tech_account_id_to_account_id(&rewards_tech_acc).unwrap();
+        let val_minted = balance!(30000); // Sum of allocated VAL rewards in genesis
+        assert_eq!(
+            technical::Module::<Runtime>::total_balance(&VAL, &rewards_tech_acc).unwrap(),
+            balance!(30000)
+        );
+
+        let w = mint_remaining_val::<Runtime>(val_minted);
+        assert_eq!(w, 1200);
+
+        assert_eq!(
+            Assets::free_balance(&VAL, &rewards_account_id).unwrap(),
+            balance!(33100000)
+        );
+    });
+}
+
+#[test]
+fn storage_migration_v2_works() {
+    use crate::EthereumAddress;
+    ExtBuilder::with_rewards(true).build().execute_with(|| {
+        // Claim some VAL first
+        let signature = hex!("eb7009c977888910a96d499f802e4524a939702aa6fc8ed473829bffce9289d850b97a720aa05d4a7e70e15733eeebc4fe862dcb60e018c0bf560b2de013078f1c").into();
+        assert_ok!(Pallet::claim(origin(), signature));
+        assert_eq!(
+            Assets::free_balance(&VAL, &account()).unwrap(),
+            balance!(111)
+        );
+        let diff = vec![
+            (
+                hex!("886021f300dc809269cfc758a2364a2baf63af0c").into(),
+                balance!(2.9933),
+            ),
+            (
+                hex!("a65612f6a7998cbe1b27098f57b3a65612f6a799").into(),
+                balance!(55.55),
+            ),
+        ];
+
+        let w = update_val_airdrop_data::<Runtime>(diff);
+        assert_eq!(w, 2600);
+
+        assert_eq!(
+            // VAL claimed, no adjustment made
+            crate::ValOwners::<Runtime>::get(EthereumAddress::from(hex!("21Bc9f4a3d9Dc86f142F802668dB7D908cF0A636"))),
+            balance!(0)
+        );
+        assert_eq!(
+            // No adjustment made, original value must remain
+            crate::ValOwners::<Runtime>::get(EthereumAddress::from(hex!("d170a274320333243b9f860e8891c6792de1ec19"))),
+            balance!(2888.9933)
+        );
+        assert_eq!(
+            // Added 2.9933 to the original 0.0067
+            crate::ValOwners::<Runtime>::get(EthereumAddress::from(hex!("886021f300dc809269cfc758a2364a2baf63af0c"))),
+            balance!(3)
+        );
+        assert_eq!(
+            // Newly added address
+            crate::ValOwners::<Runtime>::get(EthereumAddress::from(hex!("a65612f6a7998cbe1b27098f57b3a65612f6a799"))),
+            balance!(55.55)
+        );
+        assert_eq!(
+            // A Uniswap liquidiy pool account, should have been removed
+            crate::ValOwners::<Runtime>::get(EthereumAddress::from(hex!("01962144d41415cca072900fe87bbe2992a99f10"))),
+            balance!(0)
+        );
+        assert_eq!(
+            // A Mooniswap liquidiy pool account, should have been removed
+            crate::ValOwners::<Runtime>::get(EthereumAddress::from(hex!("215470102a05b02a3a2898f317b5382f380afc0e"))),
+            balance!(0)
+        );
     });
 }
