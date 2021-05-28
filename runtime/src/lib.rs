@@ -58,7 +58,6 @@ use pallet_grandpa::{
     fg_primitives, AuthorityId as GrandpaId, AuthorityList as GrandpaAuthorityList,
 };
 use pallet_session::historical as pallet_session_historical;
-use pswap_distribution::OnPswapBurned;
 #[cfg(feature = "std")]
 use serde::{Serialize, Serializer};
 use sp_api::impl_runtime_apis;
@@ -93,7 +92,7 @@ pub use common::weights::{BlockLength, BlockWeights, TransactionByteFee};
 pub use common::{
     balance, fixed, fixed_from_basis_points, AssetName, AssetSymbol, BalancePrecision, BasisPoints,
     FilterMode, Fixed, FromGenericPair, LiquiditySource, LiquiditySourceFilter, LiquiditySourceId,
-    LiquiditySourceType,
+    LiquiditySourceType, OnPswapBurned,
 };
 pub use frame_support::traits::schedule::Named as ScheduleNamed;
 pub use frame_support::traits::{
@@ -682,6 +681,7 @@ impl liquidity_proxy::Config for Runtime {
     type PrimaryMarket = multicollateral_bonding_curve_pool::Module<Runtime>;
     type SecondaryMarket = pool_xyk::Module<Runtime>;
     type WeightInfo = liquidity_proxy::weights::WeightInfo<Runtime>;
+    type VestedRewardsPallet = vested_rewards::Module<Runtime>;
 }
 
 impl mock_liquidity_source::Config<mock_liquidity_source::Instance1> for Runtime {
@@ -1044,8 +1044,8 @@ parameter_types! {
 pub struct RuntimeOnPswapBurnedAggregator;
 
 impl OnPswapBurned for RuntimeOnPswapBurnedAggregator {
-    fn on_pswap_burned(distribution: pswap_distribution::PswapRemintInfo) {
-        MulticollateralBondingCurvePool::on_pswap_burned(distribution);
+    fn on_pswap_burned(distribution: common::PswapRemintInfo) {
+        VestedRewards::on_pswap_burned(distribution);
     }
 }
 
@@ -1129,6 +1129,7 @@ impl multicollateral_bonding_curve_pool::Config for Runtime {
     type EnsureDEXManager = DEXManager;
     type EnsureTradingPairExists = TradingPair;
     type PriceToolsPallet = PriceTools;
+    type VestedRewardsPallet = VestedRewards;
     type WeightInfo = multicollateral_bonding_curve_pool::weights::WeightInfo<Runtime>;
 }
 
@@ -1151,6 +1152,8 @@ impl pallet_offences::Config for Runtime {
 
 impl vested_rewards::Config for Runtime {
     type Event = Event;
+    type GetBondingCurveRewardsAccountId = GetMbcPoolRewardsAccountId;
+    type GetMarketMakerRewardsAccountId = GetMarketMakerRewardsAccountId;
     type WeightInfo = vested_rewards::weights::WeightInfo<Runtime>;
 }
 
@@ -1735,7 +1738,7 @@ impl_runtime_apis! {
         fn claimable_amount(
             account_id: AccountId,
         ) -> pswap_distribution_runtime_api::BalanceInfo<Balance> {
-            let (claimable, _, _) = PswapDistribution::claimable_amount(&account_id).unwrap_or((0, 0, fixed!(0)));
+            let claimable = PswapDistribution::claimable_amount(&account_id).unwrap_or(0);
             pswap_distribution_runtime_api::BalanceInfo::<Balance> {
                 balance: claimable
             }

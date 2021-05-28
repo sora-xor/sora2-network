@@ -1395,6 +1395,7 @@ dependencies = [
  "sp-std",
  "technical",
  "trading-pair",
+ "vested-rewards",
 ]
 
 [[package]]
@@ -4066,12 +4067,15 @@ dependencies = [
  "frame-support",
  "frame-system",
  "mock-liquidity-source",
+ "multicollateral-bonding-curve-pool",
  "orml-currencies",
  "orml-tokens",
  "orml-traits",
  "pallet-balances",
  "parity-scale-codec",
  "permissions",
+ "pool-xyk",
+ "pswap-distribution",
  "serde",
  "sp-arithmetic",
  "sp-core",
@@ -4449,7 +4453,7 @@ dependencies = [
 
 [[package]]
 name = "multicollateral-bonding-curve-pool"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "assets",
  "bonding-curve-pool",
@@ -4478,6 +4482,7 @@ dependencies = [
  "sp-std",
  "technical",
  "trading-pair",
+ "vested-rewards",
 ]
 
 [[package]]
@@ -5956,7 +5961,7 @@ dependencies = [
 
 [[package]]
 name = "pswap-distribution"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "assets",
  "bonding-curve-pool",
@@ -9593,7 +9598,7 @@ checksum = "5fecdca9a5291cc2b8dcf7dc02453fee791a280f3743cb0905f8822ae463b3fe"
 
 [[package]]
 name = "vested-rewards"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "assets",
  "common",
@@ -9601,17 +9606,22 @@ dependencies = [
  "frame-support",
  "frame-system",
  "hex-literal",
+ "liquidity-proxy",
+ "multicollateral-bonding-curve-pool",
  "orml-currencies",
  "orml-tokens",
  "orml-traits",
  "pallet-balances",
  "parity-scale-codec",
  "permissions",
+ "pool-xyk",
+ "pswap-distribution",
  "serde",
  "sp-core",
  "sp-io",
  "sp-runtime",
  "sp-std",
+ "technical",
  "trading-pair",
 ]
 

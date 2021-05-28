@@ -67,7 +67,7 @@ fn initial_setup_without_history() {
         PriceTools::incoming_spot_price(&ETH, balance!(AVG_BLOCK_SPAN + 1)).unwrap();
         assert_eq!(
             PriceTools::get_average_price(&XOR.into(), &ETH.into()).unwrap(),
-            avg_calc + avg_calc / 100
+            avg_calc + avg_calc / 200 // 0.5% = 1/200
         );
     });
 }

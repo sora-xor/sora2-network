@@ -46,7 +46,9 @@ use common::prelude::{
     Balance, Fixed, FixedWrapper, LiquiditySourceType, PriceToolsPallet, SwapAmount,
 };
 use common::weights::constants::EXTRINSIC_FIXED_WEIGHT;
-use common::{balance, fixed_const, fixed_wrapper, DEXId, LiquiditySourceFilter, XOR};
+use common::{
+    balance, fixed_const, fixed_wrapper, DEXId, LiquiditySourceFilter, DAI, ETH, PSWAP, VAL, XOR,
+};
 use frame_support::dispatch::{DispatchError, DispatchResult};
 use frame_support::ensure;
 use frame_support::weights::Weight;
@@ -61,7 +63,7 @@ pub use pallet::*;
 /// Count of blocks to participate in avg value calculation.
 const AVG_BLOCK_SPAN: u32 = 30;
 /// Max percentage difference for average value between blocks.
-const MAX_BLOCK_AVG_DIFFERENCE: Fixed = fixed_const!(0.01); // 1%
+const MAX_BLOCK_AVG_DIFFERENCE: Fixed = fixed_const!(0.005); // 0.5%
 
 pub trait WeightInfo {
     fn on_initialize(elems: u32) -> Weight;
@@ -96,6 +98,22 @@ pub mod pallet {
         fn on_initialize(_block_num: T::BlockNumber) -> Weight {
             let elems = Module::<T>::average_prices_calculation_routine();
             <T as Config>::WeightInfo::on_initialize(elems)
+        }
+
+        fn on_runtime_upgrade() -> Weight {
+            match Pallet::<T>::storage_version() {
+                // if pallet didn't exist, i.e. added with runtime upgrade, then initial tbc assets should be created
+                None => {
+                    EnabledTargets::<T>::mutate(|set| {
+                        *set = [VAL.into(), PSWAP.into(), DAI.into(), ETH.into()]
+                            .iter()
+                            .cloned()
+                            .collect()
+                    });
+                }
+                _ => (),
+            };
+            T::DbWeight::get().writes(1)
         }
     }
 

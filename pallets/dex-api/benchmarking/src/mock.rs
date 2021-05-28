@@ -77,6 +77,8 @@ parameter_types! {
     pub const GetBurnUpdateFrequency: BlockNumber = 14400;
     pub GetIncentiveAssetId: AssetId = common::PSWAP.into();
     pub GetParliamentAccountId: AccountId = AccountId32::from([8; 32]);
+    pub GetMarketMakerRewardsAccountId: AccountId = AccountId32::from([9; 32]);
+    pub GetBondingCurveRewardsAccountId: AccountId = AccountId32::from([10; 32]);
     pub GetXykFee: Fixed = fixed!(0.003);
 }
 
@@ -99,6 +101,7 @@ construct_runtime! {
         PoolXyk: pool_xyk::{Module, Call, Storage, Event<T>},
         PswapDistribution: pswap_distribution::{Module, Call, Config<T>, Storage, Event<T>},
         MBCPool: multicollateral_bonding_curve_pool::{Module, Call, Config<T>, Storage, Event<T>},
+        VestedRewards: vested_rewards::{Module, Call, Storage, Event<T>},
     }
 }
 
@@ -254,6 +257,14 @@ impl multicollateral_bonding_curve_pool::Config for Runtime {
     type EnsureDEXManager = dex_manager::Module<Runtime>;
     type EnsureTradingPairExists = trading_pair::Module<Runtime>;
     type PriceToolsPallet = MockPriceTools;
+    type VestedRewardsPallet = VestedRewards;
+    type WeightInfo = ();
+}
+
+impl vested_rewards::Config for Runtime {
+    type Event = Event;
+    type GetMarketMakerRewardsAccountId = GetMarketMakerRewardsAccountId;
+    type GetBondingCurveRewardsAccountId = GetBondingCurveRewardsAccountId;
     type WeightInfo = ();
 }
 
