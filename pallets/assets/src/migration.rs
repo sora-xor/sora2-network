@@ -38,7 +38,7 @@ pub fn migrate<T: Config>() -> Weight {
 
     match Pallet::<T>::storage_version() {
         // Initial version is 0.1.0
-        // Version 0.2.0 mints 3 billion PSWAP reserved for team
+        // Version 1.1.0 mints 3 billion PSWAP reserved for team
         Some(version) if version == PalletVersion::new(0, 1, 0) => {
             let migrated_weight = mint_team_rewards::<T>().unwrap_or(100_000);
             weight = weight.saturating_add(migrated_weight)
