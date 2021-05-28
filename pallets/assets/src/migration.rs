@@ -30,7 +30,6 @@
 
 use crate::{Config, Pallet, Weight};
 use common::{balance, PSWAP};
-use frame_support::debug;
 use frame_support::traits::{Get, GetPalletVersion, PalletVersion};
 use traits::MultiCurrency;
 
