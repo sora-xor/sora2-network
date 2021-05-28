@@ -1128,6 +1128,7 @@ impl multicollateral_bonding_curve_pool::Config for Runtime {
     type LiquidityProxy = LiquidityProxy;
     type EnsureDEXManager = DEXManager;
     type EnsureTradingPairExists = TradingPair;
+    type PriceToolsPallet = PriceTools;
     type VestedRewardsPallet = VestedRewards;
     type WeightInfo = multicollateral_bonding_curve_pool::weights::WeightInfo<Runtime>;
 }
@@ -1154,6 +1155,12 @@ impl vested_rewards::Config for Runtime {
     type GetBondingCurveRewardsAccountId = GetMbcPoolRewardsAccountId;
     type GetMarketMakerRewardsAccountId = GetMarketMakerRewardsAccountId;
     type WeightInfo = vested_rewards::weights::WeightInfo<Runtime>;
+}
+
+impl price_tools::Config for Runtime {
+    type Event = Event;
+    type LiquidityProxy = LiquidityProxy;
+    type WeightInfo = price_tools::weights::WeightInfo<Runtime>;
 }
 
 /// Payload data to be signed when making signed transaction from off-chain workers,
@@ -1225,6 +1232,7 @@ construct_runtime! {
         Identity: pallet_identity::{Module, Call, Storage, Event<T>},
         // Available only for test net
         Faucet: faucet::{Module, Call, Config<T>, Event<T>},
+        PriceTools: price_tools::{Module, Storage, Event<T>},
     }
 }
 
@@ -1282,6 +1290,7 @@ construct_runtime! {
         ElectionsPhragmen: pallet_elections_phragmen::{Module, Call, Storage, Event<T>, Config<T>},
         VestedRewards: vested_rewards::{Module, Call, Storage, Event<T>},
         Identity: pallet_identity::{Module, Call, Storage, Event<T>},
+        PriceTools: price_tools::{Module, Storage, Event<T>},
     }
 }
 

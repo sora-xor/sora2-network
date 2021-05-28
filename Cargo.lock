@@ -2434,6 +2434,7 @@ dependencies = [
  "permissions",
  "pool-xyk",
  "pool-xyk-benchmarking",
+ "price-tools",
  "pswap-distribution",
  "pswap-distribution-benchmarking",
  "pswap-distribution-runtime-api",
@@ -5771,6 +5772,39 @@ checksum = "15f553275e5721409451eb85e15fd9a860a6e5ab4496eb215987502b5f5391f2"
 dependencies = [
  "predicates-core",
  "treeline",
+]
+
+[[package]]
+name = "price-tools"
+version = "1.0.0"
+dependencies = [
+ "assets",
+ "bonding-curve-pool",
+ "common",
+ "dex-api",
+ "dex-manager",
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "hex-literal",
+ "liquidity-proxy",
+ "mock-liquidity-source",
+ "orml-currencies",
+ "orml-tokens",
+ "orml-traits",
+ "pallet-balances",
+ "parity-scale-codec",
+ "permissions",
+ "pool-xyk",
+ "pswap-distribution",
+ "serde",
+ "sp-arithmetic",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+ "technical",
+ "trading-pair",
 ]
 
 [[package]]
