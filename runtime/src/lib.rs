@@ -1438,7 +1438,7 @@ impl_runtime_apis! {
         LiquiditySourceType,
         SwapVariant,
     > for Runtime {
-        #[allow(unused)]
+        #[cfg_attr(not(feature = "private-net"), allow(unused))]
         fn quote(
             dex_id: DEXId,
             liquidity_source_type: LiquiditySourceType,
