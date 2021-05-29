@@ -443,6 +443,7 @@ impl<T: Config> Module<T> {
                 );
                 (desired_amount_in, output_amount, fee_amount)
             }
+
             SwapAmount::WithDesiredOutput {
                 desired_amount_out,
                 max_amount_in,
@@ -595,8 +596,8 @@ impl<T: Config> Module<T> {
     }
 
     /// This function is used to determine particular asset price in terms of a reference asset, which is set for
-    /// XST quotes (there can be only single token chosen as reference for all comparisons). Basically, the
-    /// reference token is expected to be a USD-bound stablecoin, e.g. DAI.
+    /// XST quotes (there can be only single token chosen as reference for all comparisons). 
+    /// The reference token is expected to be a USD-bound stablecoin, e.g. DAI.
     ///
     /// Example use: understand actual value of two tokens in terms of USD.
     fn reference_price(asset_id: &T::AssetId) -> Result<Balance, DispatchError> {

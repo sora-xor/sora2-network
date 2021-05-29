@@ -187,118 +187,40 @@ mod tests {
     }
 
     #[test]
-    fn should_exchange_with_empty_reserves() {
-        // let mut ext = ExtBuilder::new(vec![
-        //     (
-        //         alice(),
-        //         XSTUSD,
-        //         balance!(10000),
-        //         AssetSymbol(b"XSTUSD".to_vec()),
-        //         AssetName(b"XST USD".to_vec()),
-        //         18,
-        //     ),
-        //     (alice(), XOR, 0, AssetSymbol(b"XOR".to_vec()), AssetName(b"SORA".to_vec()), 18),
-        //     (alice(), XSTUSD, balance!(205), AssetSymbol(b"XSTUSD".to_vec()), AssetName(b"XST USD".to_vec()), 18),
-        // ])
-        // .build();
-        // ext.execute_with(|| {
-        //     MockDEXApi::init().unwrap();
-        //     let alice = &alice();
-        //     TradingPair::register(Origin::signed(alice.clone()), DEXId::Polkaswap.into(), XOR, XSTUSD).expect("Failed to register trading pair.");
-        //     XSTPool::initialize_pool_unchecked(XSTUSD, false).expect("Failed to initialize pool.");
-        //     assert_eq!(
-        //         XSTPool::exchange(
-        //             alice,
-        //             alice,
-        //             &DEXId::Polkaswap.into(),
-        //             &XSTUSD,
-        //             &XOR,
-        //             SwapAmount::with_desired_output(balance!(1), Balance::max_value()),
-        //         )
-        //         .unwrap(),
-        //         SwapOutcome::new(balance!(5.529018162388484076), balance!(0.003009027081243731))
-        //     );
-        //     assert_eq!(
-        //         XSTPool::exchange(
-        //             alice,
-        //             alice,
-        //             &DEXId::Polkaswap.into(),
-        //             &XOR,
-        //             &XSTUSD,
-        //             SwapAmount::with_desired_input(balance!(1), Balance::zero()),
-        //         )
-        //         .unwrap(),
-        //         SwapOutcome::new(
-        //             balance!(2.100439516374830873),
-        //             balance!(0.093)
-        //         )
-        //     );
-        // });
-    }
-
-    #[test]
-    fn should_not_sell_without_reserves() {
-        // let mut ext = ExtBuilder::new(vec![
-        //     (alice(), USDT, 0, AssetSymbol(b"USDT".to_vec()), AssetName(b"Tether USD".to_vec()), 18),
-        //     (alice(), XOR, balance!(1), AssetSymbol(b"XOR".to_vec()), AssetName(b"SORA".to_vec()), 18),
-        //     (alice(), VAL, 0, AssetSymbol(b"VAL".to_vec()), AssetName(b"SORA Validator Token".to_vec()), 18),
-        // ])
-        // .build();
-        // ext.execute_with(|| {
-        //     MockDEXApi::init().unwrap();
-        //     TradingPair::register(Origin::signed(alice()), DEXId::Polkaswap.into(), XOR, XSTUSD).expect("Failed to register trading pair.");
-        //     XSTPool::initialize_pool_unchecked(VAL, false).expect("Failed to initialize pool.");
-        //     let alice = &alice();
-
-        //     assert_err!(
-        //         XSTPool::exchange(
-        //             alice,
-        //             alice,
-        //             &DEXId::Polkaswap.into(),
-        //             &XOR,
-        //             &XSTUSD,
-        //             SwapAmount::with_desired_input(balance!(1), Balance::zero()),
-        //         ),
-        //         Error::<Runtime>::PriceCalculationFailed
-        //     );
-        // });
-    }
-
-    #[test]
     fn should_set_new_reference_token() {
-        // let mut ext = ExtBuilder::new(vec![
-        //     (alice(), DAI, balance!(0), AssetSymbol(b"DAI".to_vec()), AssetName(b"DAI".to_vec()), 18),
-        //     (alice(), USDT, balance!(0), AssetSymbol(b"USDT".to_vec()), AssetName(b"Tether USD".to_vec()), 18),
-        //     (alice(), XOR, balance!(1), AssetSymbol(b"XOR".to_vec()), AssetName(b"SORA".to_vec()), 18),
-        //     (alice(), VAL, balance!(0), AssetSymbol(b"VAL".to_vec()), AssetName(b"SORA Validator Token".to_vec()), 18),
-        //     (alice(), XSTUSD, balance!(0), AssetSymbol(b"XSTUSD".to_vec()), AssetName(b"XST USD".to_vec()), 18),
-        // ])
-        // .build();
-        // ext.execute_with(|| {
-        //     MockDEXApi::init().unwrap();
-        //     TradingPair::register(Origin::signed(alice()), DEXId::Polkaswap.into(), XOR, XSTUSD).expect("Failed to register trading pair.");
-        //     XSTPool::initialize_pool_unchecked(XSTUSD, false).expect("Failed to initialize pool.");
+        let mut ext = ExtBuilder::new(vec![
+            (alice(), DAI, balance!(0), AssetSymbol(b"DAI".to_vec()), AssetName(b"DAI".to_vec()), 18),
+            (alice(), USDT, balance!(0), AssetSymbol(b"USDT".to_vec()), AssetName(b"Tether USD".to_vec()), 18),
+            (alice(), XOR, balance!(1), AssetSymbol(b"XOR".to_vec()), AssetName(b"SORA".to_vec()), 18),
+            (alice(), VAL, balance!(0), AssetSymbol(b"VAL".to_vec()), AssetName(b"SORA Validator Token".to_vec()), 18),
+            (alice(), XSTUSD, balance!(0), AssetSymbol(b"XSTUSD".to_vec()), AssetName(b"XST USD".to_vec()), 18),
+        ])
+        .build();
+        ext.execute_with(|| {
+            MockDEXApi::init().unwrap();
+            TradingPair::register(Origin::signed(alice()), DEXId::Polkaswap.into(), XOR, XSTUSD).expect("Failed to register trading pair.");
+            XSTPool::initialize_pool_unchecked(XSTUSD, false).expect("Failed to initialize pool.");
 
-        //     let price_a = XSTPool::quote(
-        //             &DEXId::Polkaswap.into(),
-        //             &VAL,
-        //             &XSTUSD,
-        //             SwapAmount::with_desired_output(balance!(1), Balance::max_value()),
-        //         )
-        //         .unwrap();
+            let price_a = XSTPool::quote(
+                    &DEXId::Polkaswap.into(),
+                    &XOR,
+                    &XSTUSD,
+                    SwapAmount::with_desired_output(balance!(1), Balance::max_value()),
+                )
+                .unwrap();
 
-        //         XSTPool::set_reference_asset(Origin::signed(alice()), DAI).expect("Failed to set new reference asset.");
+            XSTPool::set_reference_asset(Origin::signed(alice()), DAI).expect("Failed to set new reference asset.");
 
-        //     let price_b = XSTPool::quote(
-        //             &DEXId::Polkaswap.into(),
-        //             &XSTUSD,
-        //             &XOR,
-        //             SwapAmount::with_desired_output(balance!(1), Balance::max_value()),
-        //         )
-        //         .unwrap();
+            let price_b = XSTPool::quote(
+                    &DEXId::Polkaswap.into(),
+                    &XSTUSD,
+                    &XOR,
+                    SwapAmount::with_desired_output(balance!(1), Balance::max_value()),
+                )
+                .unwrap();
 
-        //     assert_ne!(price_a, price_b);
-        // });
+            assert_ne!(price_a, price_b);
+        });
     }
 
     #[test]
@@ -415,63 +337,65 @@ mod tests {
 
     #[test]
     fn fees_for_equivalent_trades_should_match() {
-        // let mut ext = ExtBuilder::new(vec![
-        //     (alice(), DAI, balance!(0), AssetSymbol(b"DAI".to_vec()), AssetName(b"DAI".to_vec()), 18),
-        //     (alice(), USDT, balance!(0), AssetSymbol(b"USDT".to_vec()), AssetName(b"Tether USD".to_vec()), 18),
-        //     (alice(), XOR, balance!(0), AssetSymbol(b"XOR".to_vec()), AssetName(b"SORA".to_vec()), 18),
-        //     (alice(), VAL, balance!(2000), AssetSymbol(b"VAL".to_vec()), AssetName(b"SORA Validator Token".to_vec()), 18),
-        // ])
-        // .build();
-        // ext.execute_with(|| {
-        //     MockDEXApi::init().unwrap();
-        //     TradingPair::register(Origin::signed(alice()),DEXId::Polkaswap.into(), XOR, VAL).expect("Failed to register trading pair.");
-        //     XSTPool::initialize_pool_unchecked(VAL, false).expect("Failed to initialize pool.");
+        let mut ext = ExtBuilder::new(vec![
+            (alice(), DAI, balance!(0), AssetSymbol(b"DAI".to_vec()), AssetName(b"DAI".to_vec()), 18),
+            (alice(), USDT, balance!(0), AssetSymbol(b"USDT".to_vec()), AssetName(b"Tether USD".to_vec()), 18),
+            (alice(), XOR, balance!(0), AssetSymbol(b"XOR".to_vec()), AssetName(b"SORA".to_vec()), 18),
+            (alice(), VAL, balance!(2000), AssetSymbol(b"VAL".to_vec()), AssetName(b"SORA Validator Token".to_vec()), 18),
+            (alice(), XSTUSD, balance!(2000), AssetSymbol(b"XSTUSD".to_vec()), AssetName(b"XST USD".to_vec()), 18),
+        ])
+        .build();
+        ext.execute_with(|| {
+            MockDEXApi::init().unwrap();
+            let _ = xst_pool_init().unwrap();
+            TradingPair::register(Origin::signed(alice()),DEXId::Polkaswap.into(), XOR, XSTUSD).expect("Failed to register trading pair.");
+            XSTPool::initialize_pool_unchecked(XSTUSD, false).expect("Failed to initialize pool.");
 
-        //     XSTPool::exchange(
-        //         &alice(),
-        //         &alice(),
-        //         &DEXId::Polkaswap.into(),
-        //         &VAL,
-        //         &XOR,
-        //         SwapAmount::with_desired_input(balance!(1000), Balance::zero()),
-        //     )
-        //     .unwrap();
+            XSTPool::exchange(
+                &alice(),
+                &alice(),
+                &DEXId::Polkaswap.into(),
+                &XSTUSD,
+                &XOR,
+                SwapAmount::with_desired_input(balance!(1000), Balance::zero()),
+            )
+            .unwrap();
 
-        //     // Buy
-        //     let price_a = XSTPool::quote(
-        //         &DEXId::Polkaswap.into(),
-        //         &VAL,
-        //         &XOR,
-        //         SwapAmount::with_desired_input(balance!(100), Balance::zero()),
-        //     )
-        //     .unwrap();
-        //     let price_b = XSTPool::quote(
-        //         &DEXId::Polkaswap.into(),
-        //         &VAL,
-        //         &XOR,
-        //         SwapAmount::with_desired_output(price_a.amount.clone(), Balance::max_value()),
-        //     )
-        //     .unwrap();
-        //     assert_eq!(price_a.fee, price_b.fee);
-        //     assert_eq!(price_a.fee, balance!(0.054394410184082534));
+            // Buy
+            let price_a = XSTPool::quote(
+                &DEXId::Polkaswap.into(),
+                &XSTUSD,
+                &XOR,
+                SwapAmount::with_desired_input(balance!(100), Balance::zero()),
+            )
+            .unwrap();
+            let price_b = XSTPool::quote(
+                &DEXId::Polkaswap.into(),
+                &XSTUSD,
+                &XOR,
+                SwapAmount::with_desired_output(price_a.amount.clone(), Balance::max_value()),
+            )
+            .unwrap();
+            assert_eq!(price_a.fee, price_b.fee);
+            assert_eq!(price_a.fee, balance!(0.006911122958750468));
 
-        //     // Sell
-        //     let price_c = XSTPool::quote(
-        //         &DEXId::Polkaswap.into(),
-        //         &XOR,
-        //         &VAL,
-        //         SwapAmount::with_desired_output(balance!(100), Balance::max_value()),
-        //     )
-        //     .unwrap();
-        //     let price_d = XSTPool::quote(
-        //         &DEXId::Polkaswap.into(),
-        //         &XOR,
-        //         &VAL,
-        //         SwapAmount::with_desired_input(price_c.amount.clone(), Balance::zero()),
-        //     )
-        //     .unwrap();
-        //     assert_eq!(price_c.fee, price_d.fee);
-        //     assert_eq!(price_c.fee, balance!(2.655958896716961113));
-        // });
+            // Sell
+            let price_c = XSTPool::quote(
+                &DEXId::Polkaswap.into(),
+                &XOR,
+                &XSTUSD,
+                SwapAmount::with_desired_output(balance!(100), Balance::max_value()),
+            )
+            .unwrap();
+            let price_d = XSTPool::quote(
+                &DEXId::Polkaswap.into(),
+                &XOR,
+                &XSTUSD,
+                SwapAmount::with_desired_input(price_c.amount.clone(), Balance::zero()),
+            )
+            .unwrap();
+            assert_eq!(price_c.fee, price_d.fee);
+            assert_eq!(price_c.fee, balance!(0.006959841851712456));
+        });
     }
 }

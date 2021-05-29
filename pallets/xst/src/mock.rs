@@ -397,7 +397,6 @@ pub fn get_mock_prices() -> HashMap<(AssetId, AssetId), Balance> {
         ((XOR, DAI), balance!(102.0)),
         ((VAL, DAI), balance!(51.0)),
         ((USDT, DAI), balance!(1.02)),
-        ((XSTUSD, DAI), balance!(1.03)),
         // PSWAP
         ((XOR, PSWAP), balance!(10)),
         ((VAL, PSWAP), balance!(5)),
