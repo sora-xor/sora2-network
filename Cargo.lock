@@ -9603,6 +9603,7 @@ dependencies = [
  "assets",
  "common",
  "dex-manager",
+ "frame-benchmarking",
  "frame-support",
  "frame-system",
  "hex-literal",
