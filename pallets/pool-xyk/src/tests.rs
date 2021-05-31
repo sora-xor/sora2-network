@@ -35,7 +35,7 @@ use common::{
 use frame_support::{assert_noop, assert_ok};
 
 use crate::mock::*;
-use crate::PoolProviders;
+use crate::{PoolProviders, TotalIssuances};
 
 use sp_std::rc::Rc;
 
@@ -1038,7 +1038,7 @@ fn withdraw_all_liquidity() {
                 0
             ));
 
-            assert_eq!(PoolProviders::<Runtime>::get(repr, &ALICE()).unwrap(), 0,);
+            assert_eq!(PoolProviders::<Runtime>::get(repr, &ALICE()), None);
 
             assert_eq!(
                 assets::Module::<Runtime>::free_balance(&gt, &ALICE()).unwrap(),
@@ -1401,4 +1401,45 @@ fn swapping_should_not_affect_k_4() {
             (FixedWrapper::from(reserve_base) * FixedWrapper::from(reserve_target)).into_balance();
         assert!(distance(k_after_swap, k_before_swap) < balance!(0.000000000000000015));
     })]);
+}
+
+#[test]
+fn burn() {
+    ExtBuilder::default().build().execute_with(|| {
+        PoolProviders::<Runtime>::insert(ALICE(), BOB(), 10);
+        TotalIssuances::<Runtime>::insert(ALICE(), 10);
+        assert_ok!(crate::Module::<Runtime>::burn(&ALICE(), &BOB(), 10));
+        assert_eq!(PoolProviders::<Runtime>::get(ALICE(), BOB()), None);
+        assert_eq!(TotalIssuances::<Runtime>::get(ALICE()), Some(0));
+    });
+
+    ExtBuilder::default().build().execute_with(|| {
+        TotalIssuances::<Runtime>::insert(ALICE(), 10);
+        assert_noop!(
+            crate::Module::<Runtime>::burn(&ALICE(), &BOB(), 10),
+            crate::Error::<Runtime>::AccountBalanceIsInvalid
+        );
+        assert_eq!(PoolProviders::<Runtime>::get(ALICE(), BOB()), None);
+        assert_eq!(TotalIssuances::<Runtime>::get(ALICE()), Some(10));
+    });
+
+    ExtBuilder::default().build().execute_with(|| {
+        PoolProviders::<Runtime>::insert(ALICE(), BOB(), 5);
+        TotalIssuances::<Runtime>::insert(ALICE(), 10);
+        assert_noop!(
+            crate::Module::<Runtime>::burn(&ALICE(), &BOB(), 10),
+            crate::Error::<Runtime>::AccountBalanceIsInvalid
+        );
+        assert_eq!(PoolProviders::<Runtime>::get(ALICE(), BOB()), Some(5));
+        assert_eq!(TotalIssuances::<Runtime>::get(ALICE()), Some(10));
+    });
+}
+
+#[test]
+fn mint() {
+    ExtBuilder::default().build().execute_with(|| {
+        assert_ok!(crate::Module::<Runtime>::mint(&ALICE(), &BOB(), 10));
+        assert_eq!(PoolProviders::<Runtime>::get(ALICE(), BOB()), Some(10));
+        assert_eq!(TotalIssuances::<Runtime>::get(ALICE()), Some(10));
+    });
 }

@@ -64,6 +64,7 @@ pipeline {
                                     cargo test
                                     cargo check --features private-net
                                     cargo test --features private-net
+                                    cargo check --features runtime-benchmarks
                                 '''
                             }
                         }
