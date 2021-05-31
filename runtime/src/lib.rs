@@ -645,6 +645,7 @@ parameter_types! {
 }
 
 impl pool_xyk::Config for Runtime {
+    const MIN_XOR: Balance = balance!(0.0007);
     type Event = Event;
     type PairSwapAction = pool_xyk::PairSwapAction<AssetId, AccountId, TechAccountId>;
     type DepositLiquidityAction =
