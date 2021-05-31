@@ -299,6 +299,7 @@ impl pswap_distribution::Config for Runtime {
 }
 
 impl pool_xyk::Config for Runtime {
+    const MIN_XOR: Balance = balance!(0.007);
     type Event = Event;
     type PairSwapAction = pool_xyk::PairSwapAction<AssetId, AccountId, TechAccountId>;
     type DepositLiquidityAction =
@@ -318,6 +319,7 @@ impl multicollateral_bonding_curve_pool::Config for Runtime {
     type EnsureTradingPairExists = trading_pair::Module<Runtime>;
     type EnsureDEXManager = dex_manager::Module<Runtime>;
     type VestedRewardsPallet = VestedRewards;
+    type PriceToolsPallet = ();
     type WeightInfo = ();
 }
 

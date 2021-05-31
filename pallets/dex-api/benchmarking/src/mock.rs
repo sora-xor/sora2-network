@@ -32,7 +32,9 @@
 
 use crate::{Config, *};
 use common::mock::ExistentialDeposits;
-use common::{fixed, fixed_from_basis_points, hash, Amount, AssetId32, DEXInfo, Fixed};
+use common::{
+    fixed, fixed_from_basis_points, hash, Amount, AssetId32, DEXInfo, Fixed, PriceToolsPallet,
+};
 use currencies::BasicCurrencyAdapter;
 
 use frame_support::traits::GenesisBuild;
@@ -44,7 +46,7 @@ use permissions::{Scope, BURN, MANAGE_DEX, MINT, TRANSFER};
 use sp_core::H256;
 use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentityLookup};
-use sp_runtime::AccountId32;
+use sp_runtime::{AccountId32, DispatchError, DispatchResult};
 
 pub type DEXId = u32;
 pub type AssetId = AssetId32<common::PredefinedAssetId>;
@@ -97,7 +99,7 @@ construct_runtime! {
         Permissions: permissions::{Module, Call, Config<T>, Storage, Event<T>},
         DexApi: dex_api::{Module, Call, Config, Storage, Event<T>},
         TradingPair: trading_pair::{Module, Call, Config<T>, Storage, Event<T>},
-        PoolXyk: pool_xyk::{Module, Call, Storage, Event<T>},
+        PoolXYK: pool_xyk::{Module, Call, Storage, Event<T>},
         PswapDistribution: pswap_distribution::{Module, Call, Config<T>, Storage, Event<T>},
         MBCPool: multicollateral_bonding_curve_pool::{Module, Call, Config<T>, Storage, Event<T>},
         VestedRewards: vested_rewards::{Module, Call, Storage, Event<T>},
@@ -209,6 +211,7 @@ impl trading_pair::Config for Runtime {
 }
 
 impl pool_xyk::Config for Runtime {
+    const MIN_XOR: Balance = balance!(0.0007);
     type Event = Event;
     type PairSwapAction = pool_xyk::PairSwapAction<AssetId, AccountId, TechAccountId>;
     type DepositLiquidityAction =
@@ -234,7 +237,21 @@ impl pswap_distribution::Config for Runtime {
     type OnPswapBurnedAggregator = ();
     type WeightInfo = ();
     type GetParliamentAccountId = GetParliamentAccountId;
-    type PoolXykPallet = PoolXyk;
+    type PoolXykPallet = PoolXYK;
+}
+
+pub struct MockPriceTools;
+
+impl PriceToolsPallet<AssetId> for MockPriceTools {
+    fn get_average_price(_: &AssetId, _: &AssetId) -> Result<Balance, DispatchError> {
+        // real info is not needed
+        Ok(balance!(0))
+    }
+
+    fn register_asset(_: &AssetId) -> DispatchResult {
+        // do nothing
+        Ok(())
+    }
 }
 
 impl multicollateral_bonding_curve_pool::Config for Runtime {
@@ -242,6 +259,7 @@ impl multicollateral_bonding_curve_pool::Config for Runtime {
     type LiquidityProxy = ();
     type EnsureDEXManager = dex_manager::Module<Runtime>;
     type EnsureTradingPairExists = trading_pair::Module<Runtime>;
+    type PriceToolsPallet = MockPriceTools;
     type VestedRewardsPallet = VestedRewards;
     type WeightInfo = ();
 }
