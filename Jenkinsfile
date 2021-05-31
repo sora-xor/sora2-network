@@ -1,11 +1,14 @@
-@Library('jenkins-library' ) _
+@Library('jenkins-library')
 
 String agentLabel = 'docker-build-agent'
-String registry = "docker.soramitsu.co.jp"
+String registry = 'docker.soramitsu.co.jp'
 String dockerBuildToolsUserId = 'bot-build-tools-ro'
 String dockerRegistryRWUserId = 'bot-sora2-rw'
-String baseImageName = "docker.soramitsu.co.jp/sora2/substrate-env:latest"
-String appImageName = "docker.soramitsu.co.jp/sora2/substrate"
+String baseImageName = 'docker.soramitsu.co.jp/sora2/substrate-env:latest'
+String srtoolImageName = 'paritytech/srtool:nightly-2021-03-15'
+String rustcVersion = 'nightly-2021-03-11'
+String srtoolReportFile = 'framenode_runtime_srtool_output.json'
+String appImageName = 'docker.soramitsu.co.jp/sora2/substrate'
 String secretScannerExclusion = '.*Cargo.toml'
 Boolean disableSecretScanner = false
 String featureList = 'private-net include-real-files reduced-pswap-reward-periods'
@@ -26,8 +29,8 @@ pipeline {
         stage('Secret scanner'){
             steps {
                 script {
-                    gitNotify("main-CI", "PENDING", "This commit is being built")
-                    docker.withRegistry( "https://" + registry, dockerBuildToolsUserId) {
+                    gitNotify('main-CI', 'PENDING', 'This commit is being built')
+                    docker.withRegistry( 'https://' + registry, dockerBuildToolsUserId) {
                         secretScanner(disableSecretScanner, secretScannerExclusion)
                     }
                 }
@@ -35,13 +38,15 @@ pipeline {
         }
         stage('Build & Tests') {
             environment {
-                RUSTFLAGS = "-Dwarnings"
+                PACKAGE = 'framenode-runtime'
+                RUSTFLAGS = '-Dwarnings'
+                RUNTIME_DIR = "runtime"
+                RUSTC_VERSION = "${rustcVersion}"
             }
             steps{
                 script {
-                    docker.withRegistry( "https://" + registry, dockerRegistryRWUserId) {
+                    docker.withRegistry( 'https://' + registry, dockerRegistryRWUserId) {
                         docker.image(baseImageName).inside() {
-                            sh "cd ${env.WORKSPACE}"
                             if (getPushVersion(pushTags)){
                                 if (env.TAG_NAME) {
                                     featureList = (env.TAG_NAME =~ 'stage.*') ? featureList : 'include-real-files'
@@ -49,8 +54,9 @@ pipeline {
                                 sh """
                                     cargo build --release --features \"${featureList}\"
                                     cargo test --release
-                                    cp target/release/framenode ${env.WORKSPACE}/housekeeping/framenode
+                                    cp target/release/framenode housekeeping/framenode
                                 """
+                                archiveArtifacts artifacts: 'target/release/wbuild/framenode-runtime/framenode_runtime.compact.wasm'
                             } else {
                                 sh '''
                                     cargo fmt -- --check > /dev/null
@@ -58,8 +64,15 @@ pipeline {
                                     cargo test
                                     cargo check --features private-net
                                     cargo test --features private-net
+                                    cargo check --features runtime-benchmarks
                                 '''
                             }
+                        }
+                    }
+                    docker.image(srtoolImageName).inside("-v ${env.WORKSPACE}:/build") { c ->
+                        if (getPushVersion(pushTags)){
+                            sh "build --json | tee ${srtoolReportFile}"
+                            archiveArtifacts artifacts: srtoolReportFile
                         }
                     }
                 }
@@ -91,13 +104,13 @@ pipeline {
     }
     post {
         success {
-            script { gitNotify("main-CI", "SUCCESS", "Success")}
+            script { gitNotify('main-CI', 'SUCCESS', 'Success')}
         }
         failure {
-            script { gitNotify("main-CI", "FAILURE", "Failure")}
+            script { gitNotify('main-CI', 'FAILURE', 'Failure')}
         }
         aborted {
-            script { gitNotify("main-CI", "FAILURE", "Aborted")}
+            script { gitNotify('main-CI', 'FAILURE', 'Aborted')}
         }
         cleanup { cleanWs() }
     }
