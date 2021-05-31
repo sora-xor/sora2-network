@@ -45,7 +45,7 @@ use sp_std::prelude::*;
 
 use common::{AssetName, AssetSymbol, DEXId, XOR};
 
-use crate::{Pallet as PriceTools};
+use crate::Pallet as PriceTools;
 use assets::Pallet as Assets;
 use pool_xyk::Pallet as XYKPool;
 use trading_pair::Pallet as TradingPair;
