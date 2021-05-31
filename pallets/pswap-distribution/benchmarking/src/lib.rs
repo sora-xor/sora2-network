@@ -99,7 +99,7 @@ fn prepare_for_distribution<T: Config + pool_xyk::Config>(distribution_freq: u32
         .unwrap();
         for j in 1u128..1000 {
             let liquidity_provider = create_account::<T>(b"liquidity_provider".to_vec(), j);
-            Module::<T>::mint(&pool_account, &liquidity_provider, balance!(100)).unwrap();
+            pool_xyk::Module::<T>::mint(&pool_account, &liquidity_provider, balance!(100)).unwrap();
         }
     }
 }

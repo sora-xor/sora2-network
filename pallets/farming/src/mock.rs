@@ -121,7 +121,7 @@ construct_runtime! {
         Currencies: currencies::{Module, Call, Storage, Event<T>},
         Assets: assets::{Module, Call, Config<T>, Storage, Event<T>},
         Technical: technical::{Module, Call, Config<T>, Storage, Event<T>},
-        PoolXyk: pool_xyk::{Module, Call, Storage, Event<T>},
+        PoolXYK: pool_xyk::{Module, Call, Storage, Event<T>},
         PswapDistribution: pswap_distribution::{Module, Call, Config<T>, Storage, Event<T>},
         Farming: farming::{Module, Call, Config<T>, Storage, Event<T>},
     }
@@ -245,7 +245,7 @@ impl pswap_distribution::Config for Runtime {
     type OnPswapBurnedAggregator = ();
     type WeightInfo = ();
     type GetParliamentAccountId = GetParliamentAccountId;
-    type PoolXykPallet = PoolXyk;
+    type PoolXykPallet = PoolXYK;
 }
 
 impl Config for Runtime {
