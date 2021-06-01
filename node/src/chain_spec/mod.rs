@@ -373,18 +373,18 @@ pub fn staging_net_coded(test: bool) -> ChainSpec {
                         hex!("8c9a6f997970057925bbc022bee892c7da318f29bbdc9d4645b6c159534d3a67"),
                         hex!("b2e80730dd52182b324b6dfe1f0731f0f449ee2b7e257fb575f56c72a9f5af6d"),
                     ),
-                    // authority_keys_from_public_keys(
-                    //     hex!("00e8f3ad6566b446834f5361d0ed98aca3ab0c59848372f87546897345f9456f"),
-                    //     hex!("1e7ef2261dee2d6fc8ac829e943d547bddacf4371a22555e63d4dbaf1c2e827a"),
-                    //     hex!("1e7ef2261dee2d6fc8ac829e943d547bddacf4371a22555e63d4dbaf1c2e827a"),
-                    //     hex!("04bd6c3c7a8f116a7a4d5578f5c1cc6e61e72d75bd7eac3333e5a300e5c17d9b"),
-                    // ),
-                    // authority_keys_from_public_keys(
-                    //     hex!("621067638b1d90bfd52450c0569b5318b283bc4eccfaaf0175adada721a86e17"),
-                    //     hex!("f2ea7d239d82dbc64013f88ffc7837c28fcaeaf2787bc07d0b9bd89d9d672f21"),
-                    //     hex!("f2ea7d239d82dbc64013f88ffc7837c28fcaeaf2787bc07d0b9bd89d9d672f21"),
-                    //     hex!("c047e7799daa62017ad18264f704225a140417fe6b726e7cbb97a4c397b78b91"),
-                    // ),
+                    authority_keys_from_public_keys(
+                        hex!("00e8f3ad6566b446834f5361d0ed98aca3ab0c59848372f87546897345f9456f"),
+                        hex!("1e7ef2261dee2d6fc8ac829e943d547bddacf4371a22555e63d4dbaf1c2e827a"),
+                        hex!("1e7ef2261dee2d6fc8ac829e943d547bddacf4371a22555e63d4dbaf1c2e827a"),
+                        hex!("04bd6c3c7a8f116a7a4d5578f5c1cc6e61e72d75bd7eac3333e5a300e5c17d9b"),
+                    ),
+                    authority_keys_from_public_keys(
+                        hex!("621067638b1d90bfd52450c0569b5318b283bc4eccfaaf0175adada721a86e17"),
+                        hex!("f2ea7d239d82dbc64013f88ffc7837c28fcaeaf2787bc07d0b9bd89d9d672f21"),
+                        hex!("f2ea7d239d82dbc64013f88ffc7837c28fcaeaf2787bc07d0b9bd89d9d672f21"),
+                        hex!("c047e7799daa62017ad18264f704225a140417fe6b726e7cbb97a4c397b78b91"),
+                    ),
                     authority_keys_from_public_keys(
                         hex!("664601bab694be726d919e310c3744fd5432ed125e20b46f7ebdcfe01848c72d"),
                         hex!("98a28d465f3bf349f19c27394a4f4b08fe18e5e75088733c86adb728c1797179"),
@@ -400,26 +400,8 @@ pub fn staging_net_coded(test: bool) -> ChainSpec {
                     hex!("211bb96e9f746183c05a1d583bccf513f9d8f679d6f36ecbd06609615a55b1cc").into(),
                 ],
                 eth_bridge_params,
-                vec![
-                    hex!("3449d09bd0d8db3e925b1a7260dbfbf340e48ae6e6b845ad8799a8e9d90f3419").into(),
-                    hex!("aea4a9cde3671cfcef190f4bab6c09cb8aaaf86b601a3480a1911258e6333b31").into(),
-                    hex!("7abbc1462576cdf687e2b701e2aaca008cfed0445a02fcde19067814d1507273").into(),
-                    hex!("fc6239c9a5647036fc27fcb1ddcba1963930f9bbec3085d37949f2c69c0f8542").into(),
-                    hex!("ce87ff3c35a5811baaa435750e5c7f093fb5a75a6caf4bc2dd52dd0c31cf2915").into(),
-                    hex!("22946844899b7329e242e7366b68b2388297b6c20bd55bc16018138fb918e136").into(),
-                    hex!("d982a770961ccb5dc410dc43cec18cec7f75e35bd24cf258b836d7ed1912b42e").into(),
-                    hex!("22b8381f123c514b5cc8f10db489fc2f13bc6e0c2482f71fa06c506483136a38").into(),
-                    hex!("70e17c41c468aa2ddee29945683d07ae695fbe4c31e8fb1ade53f6634b03265f").into(),
-                    hex!("f0d8f9f778885c08bd92ef6b3ab8842c0d7fc8c16c315ff5ec5f59415b8a6c47").into(),
-                    hex!("2e533300bf71154cf45c80c1e8927fb0c686cc94a74b69693f3cee8e55ffd238").into(),
-                    hex!("14f2c52c094820f11e468dc9822b9bbd56be5b65fe15508279680ad8fab9184d").into(),
-                    hex!("aa1d35e511ba5f58926340f769b04c456c3d02ce70e3835716ccae6a89fe081c").into(),
-                ],
-                vec![
-                    hex!("c4ce370e3ef70681909725fb7385000effe1d88fdf8499df94b53b31e82d9a6e").into(),
-                    hex!("e44c7c00f98ae6acf86dc366d082307388c750ceb70696ca305a7bfd761aee26").into(),
-                    hex!("603fb3e17b49ab8f90e839020f2473278c4f01626ef63976df35ccfbaaae0c1b").into(),
-                ],
+                vec![],
+                vec![],
             )
         },
         boot_nodes,
@@ -922,7 +904,10 @@ fn testnet_genesis(
                     )
                 })
                 .collect(),
-            invulnerables: Vec::new(),
+            invulnerables: initial_authorities
+                .iter()
+                .map(|(stash_account, _, _, _, _, _)| stash_account.clone())
+                .collect(),
             slash_reward_fraction: Perbill::from_percent(10),
             ..Default::default()
         }),

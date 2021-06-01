@@ -90,7 +90,7 @@ construct_runtime! {
         Permissions: permissions::{Module, Call, Config<T>, Storage, Event<T>},
         DexApi: dex_api::{Module, Call, Config, Storage, Event<T>},
         Technical: technical::{Module, Call, Config<T>, Storage, Event<T>},
-        PoolXYK: pool_xyk::{Module, Call, Storage, Event<T>},
+        PoolXyk: pool_xyk::{Module, Call, Storage, Event<T>},
         PswapDistribution: pswap_distribution::{Module, Call, Config<T>, Storage, Event<T>},
     }
 }
@@ -199,7 +199,6 @@ impl technical::Config for Runtime {
 }
 
 impl pool_xyk::Config for Runtime {
-    const MIN_XOR: Balance = balance!(0.0007);
     type Event = Event;
     type PairSwapAction = pool_xyk::PairSwapAction<AssetId, AccountId, TechAccountId>;
     type DepositLiquidityAction =
@@ -225,7 +224,7 @@ impl pswap_distribution::Config for Runtime {
     type OnPswapBurnedAggregator = ();
     type WeightInfo = ();
     type GetParliamentAccountId = GetParliamentAccountId;
-    type PoolXykPallet = PoolXYK;
+    type PoolXykPallet = PoolXyk;
 }
 
 impl Config for Runtime {}

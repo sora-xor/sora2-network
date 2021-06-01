@@ -30,7 +30,10 @@
 
 use common::mock::ExistentialDeposits;
 use common::prelude::Balance;
-use common::{balance, fixed, AssetName, AssetSymbol, BalancePrecision, Fixed, FromGenericPair};
+use common::{
+    balance, fixed, fixed_from_basis_points, AssetName, AssetSymbol, BalancePrecision, Fixed,
+    FromGenericPair,
+};
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::GenesisBuild;
 use frame_support::weights::Weight;
@@ -66,6 +69,18 @@ pub fn fees_account_a() -> AccountId {
 
 pub fn fees_account_b() -> AccountId {
     AccountId32::from([3u8; 32])
+}
+
+pub fn liquidity_provider_a() -> AccountId {
+    AccountId32::from([4u8; 32])
+}
+
+pub fn liquidity_provider_b() -> AccountId {
+    AccountId32::from([5u8; 32])
+}
+
+pub fn liquidity_provider_c() -> AccountId {
+    AccountId32::from([6u8; 32])
 }
 
 pub fn pool_account_a() -> AccountId {
@@ -109,7 +124,7 @@ parameter_types! {
     pub const TransferFee: u128 = 0;
     pub const CreationFee: u128 = 0;
     pub const TransactionByteFee: u128 = 1;
-    pub GetXykFee: Fixed = fixed!(0.003);
+    pub GetFee: Fixed = fixed_from_basis_points(30u16);
     pub GetParliamentAccountId: AccountId = AccountId32::from([7u8; 32]);
 }
 
@@ -129,7 +144,7 @@ construct_runtime! {
         Technical: technical::{Module, Call, Storage, Event<T>},
         DexManager: dex_manager::{Module, Call, Storage},
         TradingPair: trading_pair::{Module, Call, Config<T>, Storage, Event<T>},
-        PoolXYK: pool_xyk::{Module, Call, Storage, Event<T>},
+        PoolXyk: pool_xyk::{Module, Call, Storage, Event<T>},
     }
 }
 
@@ -172,7 +187,7 @@ impl pswap_distribution::Config for Runtime {
     type OnPswapBurnedAggregator = ();
     type WeightInfo = ();
     type GetParliamentAccountId = GetParliamentAccountId;
-    type PoolXykPallet = PoolXYK;
+    type PoolXykPallet = PoolXyk;
 }
 
 impl tokens::Config for Runtime {
@@ -243,7 +258,6 @@ impl trading_pair::Config for Runtime {
 }
 
 impl pool_xyk::Config for Runtime {
-    const MIN_XOR: Balance = balance!(0.0007);
     type Event = Event;
     type PairSwapAction = pool_xyk::PairSwapAction<AssetId, AccountId, TechAccountId>;
     type DepositLiquidityAction =
@@ -252,7 +266,6 @@ impl pool_xyk::Config for Runtime {
         pool_xyk::WithdrawLiquidityAction<AssetId, AccountId, TechAccountId>;
     type PolySwapAction = pool_xyk::PolySwapAction<AssetId, AccountId, TechAccountId>;
     type EnsureDEXManager = dex_manager::Module<Runtime>;
-    type GetFee = GetXykFee;
     type PswapDistributionPallet = PswapDistribution;
     type WeightInfo = ();
 }
@@ -272,6 +285,27 @@ pub struct ExtBuilder {
     initial_permissions: Vec<(AccountId, Scope, Vec<u32>)>,
     subscribed_accounts: Vec<(AccountId, (DEXId, AccountId, BlockNumber, BlockNumber))>,
     burn_info: (Fixed, Fixed, Fixed),
+}
+
+impl ExtBuilder {
+    pub fn uninitialized() -> Self {
+        Self {
+            endowed_accounts: Vec::new(),
+            endowed_assets: vec![(
+                PoolTokenAId::get(),
+                alice(),
+                AssetSymbol(b"POOL".to_vec()),
+                AssetName(b"Pool Token".to_vec()),
+                18,
+                Balance::from(0u32),
+                true,
+            )],
+            initial_permission_owners: Vec::new(),
+            initial_permissions: Vec::new(),
+            subscribed_accounts: Vec::new(),
+            burn_info: (fixed!(0), fixed!(0.10), fixed!(0.30)),
+        }
+    }
 }
 
 impl ExtBuilder {

@@ -92,12 +92,12 @@ construct_runtime! {
         DexManager: dex_manager::{Module, Call, Config<T>, Storage},
         TradingPair: trading_pair::{Module, Call, Config<T>, Storage, Event<T>},
         Balances: pallet_balances::{Module, Call, Storage, Event<T>},
-        Tokens: orml_tokens::{Module, Call, Config<T>, Storage, Event<T>},
+        Tokens: tokens::{Module, Call, Config<T>, Storage, Event<T>},
         Currencies: currencies::{Module, Call, Storage, Event<T>},
         Assets: assets::{Module, Call, Config<T>, Storage, Event<T>},
         Technical: technical::{Module, Call, Config<T>, Storage, Event<T>},
         PswapDistribution: pswap_distribution::{Module, Call, Config<T>, Storage, Event<T>},
-        PoolXYK: pool_xyk::{Module, Call, Storage, Event<T>},
+        PoolXyk: pool_xyk::{Module, Call, Storage, Event<T>},
     }
 }
 
@@ -153,7 +153,7 @@ impl pallet_balances::Config for Runtime {
     type MaxLocks = ();
 }
 
-impl orml_tokens::Config for Runtime {
+impl tokens::Config for Runtime {
     type Event = Event;
     type Balance = Balance;
     type Amount = Amount;
@@ -165,7 +165,7 @@ impl orml_tokens::Config for Runtime {
 
 impl currencies::Config for Runtime {
     type Event = Event;
-    type MultiCurrency = orml_tokens::Module<Runtime>;
+    type MultiCurrency = tokens::Module<Runtime>;
     type NativeCurrency =
         BasicCurrencyAdapter<Runtime, pallet_balances::Module<Runtime>, Amount, BlockNumber>;
     type GetNativeCurrencyId = <Runtime as assets::Config>::GetBaseAssetId;
@@ -205,11 +205,10 @@ impl pswap_distribution::Config for Runtime {
     type OnPswapBurnedAggregator = ();
     type WeightInfo = ();
     type GetParliamentAccountId = GetParliamentAccountId;
-    type PoolXykPallet = PoolXYK;
+    type PoolXykPallet = PoolXyk;
 }
 
 impl Config for Runtime {
-    const MIN_XOR: Balance = balance!(0.007);
     type Event = Event;
     type PairSwapAction = crate::PairSwapAction<AssetId, AccountId, TechAccountId>;
     type DepositLiquidityAction = crate::DepositLiquidityAction<AssetId, AccountId, TechAccountId>;
@@ -277,7 +276,7 @@ impl ExtBuilder {
         .assimilate_storage(&mut t)
         .unwrap();
 
-        orml_tokens::GenesisConfig::<Runtime> {
+        tokens::GenesisConfig::<Runtime> {
             endowed_accounts: self.endowed_accounts,
         }
         .assimilate_storage(&mut t)

@@ -201,25 +201,26 @@ impl<T: Config> Module<T> {
         user_account: &AccountIdOf<T>,
         pool_tokens: Balance,
     ) -> Result<(), DispatchError> {
-        let result: Result<_, Error<T>> =
-            PoolProviders::<T>::mutate_exists(pool_account, user_account, |balance| {
-                let old_balance = balance.ok_or(Error::<T>::AccountBalanceIsInvalid)?;
-                let new_balance = old_balance
+        PoolProviders::<T>::mutate(pool_account, user_account, |balance| {
+            if let Some(balance) = balance {
+                *balance = balance
                     .checked_sub(pool_tokens)
                     .ok_or(Error::<T>::AccountBalanceIsInvalid)?;
-                *balance = (new_balance != 0).then(|| new_balance);
                 Ok(())
-            });
-        result?;
-        let result: Result<_, Error<T>> = TotalIssuances::<T>::mutate(pool_account, |issuance| {
-            let old_issuance = issuance.ok_or(Error::<T>::PoolIsInvalid)?;
-            let new_issuance = old_issuance
-                .checked_sub(pool_tokens)
-                .ok_or(Error::<T>::PoolIsInvalid)?;
-            *issuance = Some(new_issuance);
-            Ok(())
-        });
-        result?;
+            } else {
+                Err(Error::<T>::AccountBalanceIsInvalid)
+            }
+        })?;
+        TotalIssuances::<T>::mutate(pool_account, |issuance| {
+            if let Some(issuance) = issuance {
+                *issuance = issuance
+                    .checked_sub(pool_tokens)
+                    .ok_or(Error::<T>::PoolIsInvalid)?;
+                Ok(())
+            } else {
+                Err(Error::<T>::PoolIsInvalid)
+            }
+        })?;
         Ok(())
     }
 
@@ -228,25 +229,22 @@ impl<T: Config> Module<T> {
         user_account: &AccountIdOf<T>,
         pool_tokens: Balance,
     ) -> Result<(), DispatchError> {
-        let result: Result<_, Error<T>> =
-            PoolProviders::<T>::mutate(pool_account, user_account, |balance| {
-                if balance.is_none() {
-                    frame_system::Module::<T>::inc_consumers(user_account)
-                        .map_err(|_| Error::<T>::IncRefError)?;
-                }
-                *balance = Some(balance.unwrap_or(0) + pool_tokens);
-                Ok(())
-            });
-        result?;
-        let result: Result<_, Error<T>> = TotalIssuances::<T>::mutate(&pool_account, |issuance| {
+        PoolProviders::<T>::mutate(pool_account, user_account, |balance| {
+            *balance = Some(balance.unwrap_or(0) + pool_tokens);
+        });
+        TotalIssuances::<T>::mutate(&pool_account, |issuance| {
             let new_issuance = issuance
                 .unwrap_or(0)
                 .checked_add(pool_tokens)
-                .ok_or(Error::<T>::PoolTokenSupplyOverflow)?;
-            *issuance = Some(new_issuance);
-            Ok(())
-        });
-        result?;
+                .ok_or(Error::<T>::PoolTokenSupplyOverflow);
+            match new_issuance {
+                Ok(new_issuance) => {
+                    *issuance = Some(new_issuance);
+                    Ok(())
+                }
+                Err(e) => Err(e),
+            }
+        })?;
         Ok(())
     }
 }

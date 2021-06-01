@@ -39,6 +39,7 @@ use frame_benchmarking::benchmarks;
 use frame_support::traits::OnInitialize;
 use frame_system::{EventRecord, RawOrigin};
 use hex_literal::hex;
+use orml_traits::MultiCurrencyExtended;
 use sp_std::prelude::*;
 
 use common::{fixed, AssetName, AssetSymbol, DAI, USDT, XOR};
@@ -47,6 +48,8 @@ use crate::Pallet as MBCPool;
 use assets::Pallet as Assets;
 use permissions::Pallet as Permissions;
 use pool_xyk::Pallet as XYKPool;
+use sp_std::convert::TryFrom;
+use tokens::Pallet as Tokens;
 use trading_pair::Pallet as TradingPair;
 
 pub const DEX: DEXId = DEXId::Polkaswap;
@@ -213,6 +216,23 @@ benchmarks! {
         assert_last_event::<T>(Event::OptionalRewardMultiplierUpdated(USDT.into(), Some(fixed!(123))).into())
     }
 
+    claim_incentives {
+        let caller = alice::<T>();
+        Rewards::<T>::insert(caller.clone(), (balance!(100), balance!(200)));
+        TotalRewards::<T>::put(balance!(200));
+        let pswap_asset_id: T::AssetId = PSWAP.into();
+        let pswap_currency = <T::AssetId as Into<<T as tokens::Config>::CurrencyId>>::into(pswap_asset_id);
+        let pswap_amount = <T as tokens::Config>::Amount::try_from(balance!(500)).map_err(|_|()).unwrap();
+        Tokens::<T>::update_balance(pswap_currency, &IncentivesAccountId::<T>::get(), pswap_amount).unwrap();
+    }: _(
+        RawOrigin::Signed(caller.clone())
+    )
+    verify {
+        let (limit, owned) = Rewards::<T>::get(caller.clone());
+        assert_eq!(limit, balance!(0));
+        assert_eq!(owned, balance!(100));
+    }
+
     on_initialize {
         let _ = setup_benchmark::<T>();
         let n in 0 .. 10 => add_pending::<T>(n);
@@ -235,6 +255,7 @@ mod tests {
             assert_ok!(test_benchmark_initialize_pool::<Runtime>());
             assert_ok!(test_benchmark_set_reference_asset::<Runtime>());
             assert_ok!(test_benchmark_set_optional_reward_multiplier::<Runtime>());
+            assert_ok!(test_benchmark_claim_incentives::<Runtime>());
         });
     }
 }
