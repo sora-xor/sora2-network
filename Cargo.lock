@@ -6337,8 +6337,10 @@ dependencies = [
 name = "referral-system"
 version = "0.1.0"
 dependencies = [
+ "common",
  "frame-support",
  "frame-system",
+ "pallet-balances",
  "parity-scale-codec",
  "serde",
  "sp-core",
