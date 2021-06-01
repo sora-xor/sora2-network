@@ -38,7 +38,6 @@ use frame_support::{ensure, Parameter};
 use frame_system::ensure_signed;
 use sp_std::vec::Vec;
 
-// TBD: Remove this comment
 use common::prelude::{Balance, EnsureDEXManager, SwapAmount, SwapOutcome};
 use common::{
     balance, EnsureTradingPairExists, FromGenericPair, GetPoolReserves, LiquiditySource,
