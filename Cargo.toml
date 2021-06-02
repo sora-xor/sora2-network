@@ -30,6 +30,7 @@ members = [
     "pallets/pswap-distribution",
     "pallets/multicollateral-bonding-curve-pool",
     "pallets/vested-rewards",
+    "pallets/price-tools",
     "node/",
 ]
 resolver = "2"

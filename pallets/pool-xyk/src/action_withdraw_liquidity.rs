@@ -46,7 +46,7 @@ impl<T: Config> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, 
     for WithdrawLiquidityAction<AssetIdOf<T>, AccountIdOf<T>, TechAccountIdOf<T>>
 {
     fn is_abstract_checking(&self) -> bool {
-        (self.destination.0).amount == Bounds::Dummy || (self.destination.1).amount == Bounds::Dummy
+        self.destination.0.amount == Bounds::Dummy || self.destination.1.amount == Bounds::Dummy
     }
 
     fn prepare_and_validate(&mut self, source_opt: Option<&AccountIdOf<T>>) -> DispatchResult {
@@ -97,10 +97,10 @@ impl<T: Config> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, 
 
         // Balance of pool account for asset pair basic asset.
         let balance_bp =
-            <assets::Module<T>>::free_balance(&(self.destination.0).asset, &pool_account_repr_sys)?;
+            <assets::Module<T>>::free_balance(&self.destination.0.asset, &pool_account_repr_sys)?;
         // Balance of pool account for asset pair target asset.
         let balance_tp =
-            <assets::Module<T>>::free_balance(&(self.destination.1).asset, &pool_account_repr_sys)?;
+            <assets::Module<T>>::free_balance(&self.destination.1.asset, &pool_account_repr_sys)?;
 
         if balance_bp == 0 && balance_tp == 0 {
             Err(Error::<T>::PoolIsEmpty)?;
@@ -137,7 +137,7 @@ impl<T: Config> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, 
                     bounds.meets_the_boundaries(&calc),
                     Error::<T>::CalculatedValueIsNotMeetsRequiredBoundaries
                 );
-                (self.destination.0).amount = calc;
+                self.destination.0.amount = calc;
             }
         }
 
@@ -153,13 +153,13 @@ impl<T: Config> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, 
                     bounds.meets_the_boundaries(&calc),
                     Error::<T>::CalculatedValueIsNotMeetsRequiredBoundaries
                 );
-                (self.destination.1).amount = calc;
+                self.destination.1.amount = calc;
             }
         }
 
         // Get required values, now it is always Some, it is safe to unwrap().
-        let _base_amount = (self.destination.1).amount.unwrap();
-        let _target_amount = (self.destination.0).amount.unwrap();
+        let _base_amount = self.destination.1.amount.unwrap();
+        let _target_amount = self.destination.0.amount.unwrap();
 
         if balance_ks < self.pool_tokens {
             Err(Error::<T>::SourceBalanceOfLiquidityTokensIsNotLargeEnough)?;
@@ -199,13 +199,13 @@ impl<T: Config> common::SwapAction<AccountIdOf<T>, TechAccountIdOf<T>, T>
         let pool_account_repr_sys =
             technical::Module::<T>::tech_account_id_to_account_id(&self.pool_account)?;
         technical::Module::<T>::transfer_out(
-            &(self.destination.0).asset,
+            &self.destination.0.asset,
             &self.pool_account,
             self.receiver_account_a.as_ref().unwrap(),
             self.destination.0.amount.unwrap(),
         )?;
         technical::Module::<T>::transfer_out(
-            &(self.destination.1).asset,
+            &self.destination.1.asset,
             &self.pool_account,
             self.receiver_account_b.as_ref().unwrap(),
             self.destination.1.amount.unwrap(),
@@ -216,8 +216,8 @@ impl<T: Config> common::SwapAction<AccountIdOf<T>, TechAccountIdOf<T>, T>
         let balance_b =
             <assets::Module<T>>::free_balance(&self.destination.1.asset, &pool_account_repr_sys)?;
         Module::<T>::update_reserves(
-            &(self.destination.0).asset,
-            &(self.destination.1).asset,
+            &self.destination.0.asset,
+            &self.destination.1.asset,
             (&balance_a, &balance_b),
         );
         Ok(())

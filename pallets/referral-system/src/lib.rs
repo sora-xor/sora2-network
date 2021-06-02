@@ -30,6 +30,12 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
+#[cfg(test)]
+mod mock;
+
+#[cfg(test)]
+mod tests;
+
 use frame_support::ensure;
 use frame_support::sp_runtime::DispatchError;
 
@@ -40,6 +46,8 @@ impl<T: Config> Module<T> {
     ) -> Result<(), DispatchError> {
         Referrers::<T>::mutate(&referral, |r| {
             ensure!(r.is_none(), Error::<T>::AlreadyHasReferrer);
+            frame_system::Pallet::<T>::inc_providers(referral);
+            frame_system::Pallet::<T>::inc_providers(&referrer);
             frame_system::Pallet::<T>::inc_consumers(referral)
                 .map_err(|_| Error::<T>::IncRefError)?;
             frame_system::Pallet::<T>::inc_consumers(&referrer)

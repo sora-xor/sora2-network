@@ -147,7 +147,7 @@ construct_runtime! {
         Technical: technical::{Module, Call, Storage, Event<T>},
         DexManager: dex_manager::{Module, Call, Storage},
         TradingPair: trading_pair::{Module, Call, Config<T>, Storage, Event<T>},
-        PoolXyk: pool_xyk::{Module, Call, Storage, Event<T>},
+        PoolXYK: pool_xyk::{Module, Call, Storage, Event<T>},
     }
 }
 
@@ -188,7 +188,7 @@ impl Config for Runtime {
     type OnPswapBurnedAggregator = ();
     type WeightInfo = ();
     type GetParliamentAccountId = GetParliamentAccountId;
-    type PoolXykPallet = PoolXyk;
+    type PoolXykPallet = PoolXYK;
 }
 
 impl tokens::Config for Runtime {
@@ -259,6 +259,7 @@ impl trading_pair::Config for Runtime {
 }
 
 impl pool_xyk::Config for Runtime {
+    const MIN_XOR: Balance = balance!(0.0007);
     type Event = Event;
     type PairSwapAction = pool_xyk::PairSwapAction<AssetId, AccountId, TechAccountId>;
     type DepositLiquidityAction =
@@ -389,6 +390,9 @@ impl ExtBuilder {
                 (alice(), 0),
                 (fees_account_a(), 0),
                 (fees_account_b(), 0),
+                (liquidity_provider_a(), 0),
+                (liquidity_provider_b(), 0),
+                (liquidity_provider_c(), 0),
                 (GetPswapDistributionAccountId::get(), 0),
                 (GetParliamentAccountId::get(), 0),
             ])

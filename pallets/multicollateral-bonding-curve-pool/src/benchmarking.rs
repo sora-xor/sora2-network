@@ -235,7 +235,6 @@ mod tests {
             assert_ok!(test_benchmark_initialize_pool::<Runtime>());
             assert_ok!(test_benchmark_set_reference_asset::<Runtime>());
             assert_ok!(test_benchmark_set_optional_reward_multiplier::<Runtime>());
-            assert_ok!(test_benchmark_claim_incentives::<Runtime>());
         });
     }
 }

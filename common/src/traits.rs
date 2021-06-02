@@ -514,6 +514,27 @@ pub trait OnPoolCreated {
     ) -> DispatchResult;
 }
 
+pub trait PriceToolsPallet<AssetId> {
+    /// Get amount of `output_asset_id` corresponding to a unit (1) of `input_asset_id`.
+    fn get_average_price(
+        input_asset_id: &AssetId,
+        output_asset_id: &AssetId,
+    ) -> Result<Balance, DispatchError>;
+
+    /// Add asset to be tracked for average price.
+    fn register_asset(asset_id: &AssetId) -> DispatchResult;
+}
+
+impl<AssetId> PriceToolsPallet<AssetId> for () {
+    fn get_average_price(_: &AssetId, _: &AssetId) -> Result<Balance, DispatchError> {
+        unimplemented!()
+    }
+
+    fn register_asset(_: &AssetId) -> DispatchResult {
+        unimplemented!()
+    }
+}
+
 impl<AccountId, DEXId, A, B> OnPoolCreated for (A, B)
 where
     AccountId: Clone,

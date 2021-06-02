@@ -34,7 +34,7 @@ use frame_support::{dispatch, ensure};
 
 use common::prelude::{Balance, FixedWrapper};
 
-use crate::{to_balance, to_fixed_wrapper, TotalIssuances};
+use crate::{to_balance, to_fixed_wrapper, PoolProviders, TotalIssuances};
 
 use crate::aliases::{AccountIdOf, AssetIdOf, TechAccountIdOf};
 use crate::{Config, Error, Module, MIN_LIQUIDITY};
@@ -46,7 +46,7 @@ impl<T: Config> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, 
     for DepositLiquidityAction<AssetIdOf<T>, AccountIdOf<T>, TechAccountIdOf<T>>
 {
     fn is_abstract_checking(&self) -> bool {
-        (self.source.0).amount == Bounds::Dummy || (self.source.1).amount == Bounds::Dummy
+        self.source.0.amount == Bounds::Dummy || self.source.1.amount == Bounds::Dummy
     }
 
     fn prepare_and_validate(&mut self, source_opt: Option<&AccountIdOf<T>>) -> DispatchResult {
@@ -130,10 +130,14 @@ impl<T: Config> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, 
         if !abstract_checking && empty_pool {
             // Convertation from `Bounds` to `Option` is used here, and it is posible that value
             // None value returned from conversion.
-            init_x = Option::<Balance>::from((self.source.0).amount)
+            init_x = Option::<Balance>::from(self.source.0.amount)
                 .ok_or(Error::<T>::InitialLiqudityDepositRatioMustBeDefined)?;
-            init_y = Option::<Balance>::from((self.source.1).amount)
+            init_y = Option::<Balance>::from(self.source.1.amount)
                 .ok_or(Error::<T>::InitialLiqudityDepositRatioMustBeDefined)?;
+
+            if init_x < T::MIN_XOR {
+                return Err(Error::<T>::UnableToDepositXorLessThanMinimum.into());
+            }
         }
 
         // FixedWrapper version of variables.
@@ -185,6 +189,14 @@ impl<T: Config> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, 
                                 total_iss, balance_bp, balance_tp, xdes, ydes, xmin, ymin,
                             )?;
 
+                        let acc_already_in_pool = PoolProviders::<T>::contains_key(
+                            &pool_account_repr_sys,
+                            self.receiver_account.as_ref().unwrap(),
+                        );
+                        if !acc_already_in_pool && calc_xdes < T::MIN_XOR {
+                            return Err(Error::<T>::UnableToDepositXorLessThanMinimum.into());
+                        }
+
                         self.source.0.amount = Bounds::Calculated(calc_xdes);
                         self.source.1.amount = Bounds::Calculated(calc_ydes);
                         self.pool_tokens = calc_marker;
@@ -218,8 +230,8 @@ impl<T: Config> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, 
         if !abstract_checking {
             // Get required values, now it is always Some, it is safe to unwrap().
             let min_liquidity = self.min_liquidity.unwrap();
-            let base_amount = (self.source.0).amount.unwrap();
-            let target_amount = (self.source.1).amount.unwrap();
+            let base_amount = self.source.0.amount.unwrap();
+            let target_amount = self.source.1.amount.unwrap();
             // Checking by minimum liquidity.
             if min_liquidity > pool_k.unwrap() && self.pool_tokens < min_liquidity - pool_k.unwrap()
             {
@@ -263,16 +275,16 @@ impl<T: Config> common::SwapAction<AccountIdOf<T>, TechAccountIdOf<T>, T>
         let pool_account_repr_sys =
             technical::Module::<T>::tech_account_id_to_account_id(&self.pool_account)?;
         technical::Module::<T>::transfer_in(
-            &(self.source.0).asset,
+            &self.source.0.asset,
             &source,
             &self.pool_account,
-            (self.source.0).amount.unwrap(),
+            self.source.0.amount.unwrap(),
         )?;
         technical::Module::<T>::transfer_in(
-            &(self.source.1).asset,
+            &self.source.1.asset,
             &source,
             &self.pool_account,
-            (self.source.1).amount.unwrap(),
+            self.source.1.amount.unwrap(),
         )?;
         Module::<T>::mint(
             &pool_account_repr_sys,

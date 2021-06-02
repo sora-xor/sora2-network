@@ -32,7 +32,8 @@ use crate::{self as vested_rewards, Config};
 use common::mock::ExistentialDeposits;
 use common::prelude::{Balance, DEXInfo};
 use common::{
-    fixed, hash, AssetId32, AssetName, AssetSymbol, BalancePrecision, Fixed, DOT, KSM, PSWAP, XOR,
+    balance, fixed, hash, AssetId32, AssetName, AssetSymbol, BalancePrecision, Fixed, DOT, KSM,
+    PSWAP, XOR,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::GenesisBuild;
@@ -210,6 +211,7 @@ impl pswap_distribution::Config for Runtime {
 }
 
 impl pool_xyk::Config for Runtime {
+    const MIN_XOR: Balance = balance!(0.007);
     type Event = Event;
     type PairSwapAction = pool_xyk::PairSwapAction<AssetId, AccountId, TechAccountId>;
     type DepositLiquidityAction =
@@ -229,6 +231,7 @@ impl multicollateral_bonding_curve_pool::Config for Runtime {
     type EnsureTradingPairExists = trading_pair::Module<Runtime>;
     type EnsureDEXManager = dex_manager::Module<Runtime>;
     type VestedRewardsPallet = VestedRewards;
+    type PriceToolsPallet = ();
     type WeightInfo = ();
 }
 

@@ -52,6 +52,7 @@ use aliases::{
     PolySwapActionStructOf, TechAccountIdOf, TechAssetIdOf, WithdrawLiquidityActionOf,
 };
 
+pub mod migrations;
 pub mod weights;
 
 #[cfg(test)]
@@ -442,12 +443,16 @@ pub mod pallet {
     use super::*;
     use common::{AccountIdOf, Fixed, OnPoolCreated};
     use frame_support::pallet_prelude::*;
+    use frame_support::traits::PalletVersion;
     use frame_system::pallet_prelude::*;
 
     #[pallet::config]
     pub trait Config:
         frame_system::Config + technical::Config + dex_manager::Config + trading_pair::Config
     {
+        /// The minimum amount of XOR to deposit as liquidity
+        const MIN_XOR: Balance;
+
         /// Because this pallet emits events, it depends on the runtime's definition of an event.
         type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 
@@ -474,7 +479,14 @@ pub mod pallet {
     pub struct Pallet<T>(PhantomData<T>);
 
     #[pallet::hooks]
-    impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {}
+    impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
+        fn on_runtime_upgrade() -> Weight {
+            match Self::storage_version() {
+                Some(PalletVersion { major: 0, .. }) | None => migrations::v1_1::migrate::<T>(),
+                _ => 0,
+            }
+        }
+    }
 
     #[pallet::call]
     impl<T: Config> Pallet<T> {
@@ -705,6 +717,11 @@ pub mod pallet {
         UnableToGetXORPartFromMarkerAsset,
         /// Pool token supply has reached limit of data type.
         PoolTokenSupplyOverflow,
+        /// Couldn't increase reference counter for the account that adds liquidity.
+        /// It is expected to never happen because if the account has funds to add liquidity, it has a provider from balances.
+        IncRefError,
+        /// Unable to provide liquidity because its XOR part is lesser than the minimum value (0.007)
+        UnableToDepositXorLessThanMinimum,
     }
 
     /// Updated after last liquidity change operation.

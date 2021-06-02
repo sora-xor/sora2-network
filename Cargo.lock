@@ -948,6 +948,7 @@ dependencies = [
  "orml-currencies",
  "orml-traits",
  "parity-scale-codec",
+ "paste",
  "rustc-hex",
  "serde",
  "serde_json",
@@ -2404,6 +2405,7 @@ dependencies = [
  "permissions",
  "pool-xyk",
  "pool-xyk-benchmarking",
+ "price-tools",
  "pswap-distribution",
  "pswap-distribution-benchmarking",
  "pswap-distribution-runtime-api",
@@ -5658,7 +5660,7 @@ dependencies = [
 
 [[package]]
 name = "pool-xyk"
-version = "0.1.0"
+version = "1.1.0"
 dependencies = [
  "assets",
  "common",
@@ -5741,6 +5743,39 @@ checksum = "15f553275e5721409451eb85e15fd9a860a6e5ab4496eb215987502b5f5391f2"
 dependencies = [
  "predicates-core",
  "treeline",
+]
+
+[[package]]
+name = "price-tools"
+version = "1.0.0"
+dependencies = [
+ "assets",
+ "bonding-curve-pool",
+ "common",
+ "dex-api",
+ "dex-manager",
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "hex-literal",
+ "liquidity-proxy",
+ "mock-liquidity-source",
+ "orml-currencies",
+ "orml-tokens",
+ "orml-traits",
+ "pallet-balances",
+ "parity-scale-codec",
+ "permissions",
+ "pool-xyk",
+ "pswap-distribution",
+ "serde",
+ "sp-arithmetic",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+ "technical",
+ "trading-pair",
 ]
 
 [[package]]
@@ -6273,8 +6308,10 @@ dependencies = [
 name = "referral-system"
 version = "0.1.0"
 dependencies = [
+ "common",
  "frame-support",
  "frame-system",
+ "pallet-balances",
  "parity-scale-codec",
  "serde",
  "sp-core",
