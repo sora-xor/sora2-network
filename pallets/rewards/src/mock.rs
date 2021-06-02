@@ -30,7 +30,7 @@
 
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::GenesisBuild;
-use frame_support::weights::Weight;
+use frame_support::weights::{RuntimeDbWeight, Weight};
 use frame_support::{construct_runtime, parameter_types};
 use hex_literal::hex;
 use sp_core::crypto::AccountId32;
@@ -82,6 +82,10 @@ parameter_types! {
     pub const GetBaseAssetId: AssetId = XOR;
     pub const ExistentialDeposit: u128 = 0;
     pub GetTeamReservesAccountId: AccountId = AccountId::from([11; 32]);
+    pub const DbWeight: RuntimeDbWeight = RuntimeDbWeight {
+        read: 100,
+        write: 1000,
+    };
 }
 
 construct_runtime! {
@@ -121,7 +125,7 @@ impl frame_system::Config for Runtime {
     type Header = Header;
     type Event = Event;
     type BlockHashCount = BlockHashCount;
-    type DbWeight = ();
+    type DbWeight = DbWeight;
     type Version = ();
     type AccountData = pallet_balances::AccountData<Balance>;
     type OnNewAccount = ();
@@ -248,7 +252,7 @@ impl ExtBuilder {
 
         TokensConfig {
             endowed_accounts: vec![
-                (account_id.clone(), VAL.into(), balance!(150)),
+                (account_id.clone(), VAL.into(), balance!(30000)),
                 (account_id.clone(), PSWAP.into(), balance!(1000)),
             ],
         }
@@ -263,10 +267,30 @@ impl ExtBuilder {
 
         let (val_owners, pswap_farm_owners, pswap_waifu_owners) = if self.with_rewards {
             (
-                vec![(
-                    hex!("21Bc9f4a3d9Dc86f142F802668dB7D908cF0A636").into(),
-                    balance!(111),
-                )],
+                vec![
+                    (
+                        hex!("21Bc9f4a3d9Dc86f142F802668dB7D908cF0A636").into(),
+                        balance!(111),
+                    ),
+                    (
+                        hex!("d170a274320333243b9f860e8891c6792de1ec19").into(),
+                        balance!(2888.9933),
+                    ),
+                    (
+                        hex!("886021f300dc809269cfc758a2364a2baf63af0c").into(),
+                        balance!(0.0067),
+                    ),
+                    (
+                        // Uniswap liquidiy pool account
+                        hex!("01962144d41415cca072900fe87bbe2992a99f10").into(),
+                        balance!(20000),
+                    ),
+                    (
+                        // Mooniswap liquidiy pool account
+                        hex!("215470102a05b02a3a2898f317b5382f380afc0e").into(),
+                        balance!(7000),
+                    ),
+                ],
                 vec![(
                     hex!("21Bc9f4a3d9Dc86f142F802668dB7D908cF0A636").into(),
                     balance!(222),
