@@ -36,122 +36,183 @@ mod benchmarking;
 mod mock;
 #[cfg(test)]
 mod tests;
+mod weights;
 
-use common::prelude::FixedWrapper;
-use common::{balance, Balance};
+use codec::{Decode, Encode};
+use common::RewardReason;
+use frame_support::dispatch::DispatchResult;
 use frame_support::traits::Get;
 use frame_support::weights::Weight;
-use pswap_distribution::SubscribedAccounts;
+use pool_xyk::PoolProviders;
 use sp_arithmetic::traits::UniqueSaturatedInto;
-use sp_runtime::traits::Zero;
+use sp_runtime::traits::Saturating;
 use sp_std::collections::btree_map::{BTreeMap, Entry};
 use sp_std::vec::Vec;
 
-pub const TECH_ACCOUNT_PREFIX: &[u8] = b"farming";
-pub const TECH_ACCOUNT_MAIN: &[u8] = b"main";
+use common::prelude::FixedWrapper;
+use common::{balance, AccountIdOf, Balance, DexIdOf, OnPoolCreated};
+
+pub type WeightInfoOf<T> = <T as Config>::WeightInfo;
+
 pub trait WeightInfo {
-    fn create() -> Weight;
-    fn lock_to_farm() -> Weight;
-    fn unlock_from_farm() -> Weight;
+    fn refresh_pool(a: u32) -> Weight;
+    fn prepare_accounts_for_vesting(a: u32, b: u32) -> Weight;
+    fn vest_account_rewards(a: u32) -> Weight;
+    fn save_data(a: u32, b: u32) -> Weight;
 }
 
-impl WeightInfo for () {
-    fn create() -> Weight {
-        100_000_000
-    }
-    fn lock_to_farm() -> Weight {
-        100_000_000
-    }
-    fn unlock_from_farm() -> Weight {
-        100_000_000
+impl<T: Config> OnPoolCreated for Pallet<T> {
+    type AccountId = AccountIdOf<T>;
+    type DEXId = DexIdOf<T>;
+
+    fn on_pool_created(
+        _fee_account: Self::AccountId,
+        _dex_id: Self::DEXId,
+        pool_account: Self::AccountId,
+    ) -> DispatchResult {
+        let block_number = frame_system::Module::<T>::block_number() % T::REFRESH_FREQUENCY;
+        Pools::<T>::mutate(block_number, |pools| pools.push(pool_account));
+        Ok(())
     }
 }
 
 impl<T: Config> Pallet<T> {
-    fn refresh_farmers(now: T::BlockNumber) -> Weight {
-        let mut function_weight: Weight = 0;
+    fn refresh_pools(now: T::BlockNumber) -> Weight {
+        let mut total_weight = 0;
+        let pools = Pools::<T>::get(now % T::REFRESH_FREQUENCY);
+        for pool in pools {
+            let read_count = Self::refresh_pool(pool, now);
+            total_weight = total_weight.saturating_add(WeightInfoOf::<T>::refresh_pool(read_count));
+        }
+        total_weight
+    }
 
-        // let token_ids: Vec<_> = SubscribedAccounts::<T>::iter_values()
-        //     .map(|(_, token_id, ..)| token_id)
-        //     .collect();
-        // function_weight =
-        //     function_weight.saturating_add(T::DbWeight::get().reads(token_ids.len() as u64));
+    fn refresh_pool(pool: T::AccountId, now: T::BlockNumber) -> u32 {
+        let mut read_count = 0;
+        let mut old_farmers = PoolFarmers::<T>::get(&pool);
+        let mut new_farmers = Vec::new();
+        for (account, pool_tokens) in PoolProviders::<T>::iter_prefix(&pool) {
+            read_count += 1;
 
-        // let mut farmers = BTreeMap::new();
-        // for (account_id, currency_id, data) in Accounts::<T>::iter() {
-        //     function_weight = function_weight.saturating_add(T::DbWeight::get().reads(1));
+            let block = if let Some(index) = old_farmers.iter().position(|f| f.account == account) {
+                let farmer = old_farmers.remove(index);
+                farmer.block
+            } else {
+                now
+            };
 
-        //     if !token_ids.contains(&currency_id) || data.free.is_zero() {
-        //         continue;
-        //     }
+            new_farmers.push(PoolFarmer {
+                account,
+                block,
+                pool_tokens,
+            });
+        }
 
-        //     let farmer_weight = Self::get_farmer_weight(&currency_id, data.free);
-        //     if farmer_weight == 0 {
-        //         continue;
-        //     }
+        PoolFarmers::<T>::insert(&pool, new_farmers);
 
-        //     match farmers.entry(account_id.clone()) {
-        //         Entry::Vacant(entry) => {
-        //             let block_number = if let Some(previous_farmer) = Farmers::<T>::get(&account_id)
-        //             {
-        //                 previous_farmer.1
-        //             } else {
-        //                 now
-        //             };
-        //         entry.insert((farmer_weight, block_number));
+        read_count
+    }
 
-        //             function_weight = function_weight.saturating_add(T::DbWeight::get().reads(1));
-        //         }
-        //         Entry::Occupied(mut entry) => {
-        //             entry.get_mut().0 += farmer_weight;
-        //         }
-        //     }
-        // }
-        // Farmers::<T>::remove_all();
-        // for (account_id, data) in farmers {
-        //     Farmers::<T>::insert(account_id, data);
-        //     function_weight = function_weight.saturating_add(T::DbWeight::get().writes(1))
-        // }
+    fn get_account_weight(pool: &T::AccountId, pool_tokens: Balance) -> Balance {
+        let trading_pair =
+            if let Ok(trading_pair) = pool_xyk::Module::<T>::get_pool_trading_pair(&pool) {
+                trading_pair
+            } else {
+                return 0;
+            };
 
+        let xor =
+            pool_xyk::Module::<T>::get_xor_part_from_pool_account(pool, &trading_pair, pool_tokens)
+                .unwrap_or(0);
+        if xor < balance!(1) {
+            return 0;
+        }
+
+        let pool_doubles_reward = T::RewardDoublingAssets::get()
+            .iter()
+            .any(|asset_id| trading_pair.consists_of(asset_id));
+
+        if pool_doubles_reward {
+            xor * 2
+        } else {
+            xor
+        }
+    }
+
+    #[allow(unused)]
+    fn vest(now: T::BlockNumber) -> Weight {
+        let mut accounts = BTreeMap::new();
+        let function_weight: Weight = Self::prepare_accounts_for_vesting(now, &mut accounts);
+        let function_weight = function_weight.saturating_add(
+            WeightInfoOf::<T>::vest_account_rewards(accounts.len() as u32),
+        );
+        Self::vest_account_rewards(accounts);
         function_weight
     }
 
-    fn get_farmer_weight(token_id: &T::AssetId, token_count: Balance) -> Balance {
-        0
-        // let pool_account =
-        //     if let Ok(pool_account) = pool_xyk::Module::<T>::get_pool_account(token_id) {
-        //         pool_account
-        //     } else {
-        //         return 0;
-        //     };
-        // let xor = pool_xyk::Module::<T>::get_xor_part_from_pool_account(&pool_account, token_count)
-        //     .unwrap_or(0);
-        // if xor < balance!(1) {
-        //     return 0;
-        // }
+    #[allow(unused)]
+    fn prepare_accounts_for_vesting(
+        now: T::BlockNumber,
+        accounts: &mut BTreeMap<T::AccountId, FixedWrapper>,
+    ) -> Weight {
+        let mut pool_count = 0;
+        let mut farmer_count = 0;
+        for (pool, farmers) in PoolFarmers::<T>::iter() {
+            pool_count += 1;
+            farmer_count += farmers.len() as u32;
 
-        // let pool_doubles_reward = pool_xyk::Module::<T>::get_pool_trading_pair(&pool_account)
-        //     .map(|trading_pair| {
-        //         T::RewardDoublingAssets::get()
-        //             .iter()
-        //             .any(|asset_id| trading_pair.consists_of(asset_id))
-        //     })
-        //     .unwrap_or(false);
+            Self::prepare_pool_accounts_for_vesting(pool, farmers, now, accounts);
+        }
 
-        // if pool_doubles_reward {
-        //     xor * 2
-        // } else {
-        //     xor
-        // }
+        WeightInfoOf::<T>::prepare_accounts_for_vesting(pool_count, farmer_count)
     }
 
-    fn vest(now: T::BlockNumber) -> Weight {
-        let mut function_weight: Weight = 0;
+    #[allow(unused)]
+    fn prepare_pool_accounts_for_vesting(
+        pool: T::AccountId,
+        farmers: Vec<PoolFarmer<T>>,
+        now: T::BlockNumber,
+        accounts: &mut BTreeMap<T::AccountId, FixedWrapper>,
+    ) {
+        if farmers.is_empty() {
+            return;
+        }
 
+        let now_u128: u128 = now.unique_saturated_into();
+        for farmer in farmers {
+            let weight = Self::get_account_weight(&pool, farmer.pool_tokens);
+            if weight == 0 {
+                continue;
+            }
+
+            // Ti
+            let farmer_farming_time: u32 = (now - farmer.block).unique_saturated_into();
+            let farmer_farming_time = FixedWrapper::from(balance!(farmer_farming_time));
+
+            // Vi(t)
+            let coeff = (FixedWrapper::from(balance!(1))
+                + farmer_farming_time / FixedWrapper::from(balance!(now_u128)))
+            .pow(T::VESTING_COEFF);
+
+            let weight = coeff * weight;
+            match accounts.entry(farmer.account) {
+                Entry::Vacant(entry) => {
+                    entry.insert(weight);
+                }
+                Entry::Occupied(mut entry) => {
+                    *entry.get_mut() = entry.get().clone() + weight;
+                }
+            }
+        }
+    }
+
+    #[allow(unused)]
+    fn vest_account_rewards(accounts: BTreeMap<T::AccountId, FixedWrapper>) {
         let mut total_weight = FixedWrapper::from(0);
-        let mut weights = Vec::new();
-        let farming_life_time: u32 = now.unique_saturated_into();
-        let farming_life_time = FixedWrapper::from(balance!(farming_life_time));
+        for weight in accounts.values() {
+            total_weight = total_weight + weight.clone();
+        }
+
         let reward = {
             let reward_per_day = FixedWrapper::from(T::PSWAP_PER_DAY);
             let freq: u128 = T::VESTING_FREQUENCY.unique_saturated_into();
@@ -160,38 +221,43 @@ impl<T: Config> Pallet<T> {
                 FixedWrapper::from(balance!(freq)) / FixedWrapper::from(balance!(blocks));
             reward_per_day * reward_vesting_part
         };
-        for (account_id, (weight, block_number)) in Farmers::<T>::iter() {
-            function_weight = function_weight.saturating_add(T::DbWeight::get().reads(1));
 
-            // Ti
-            let farmer_farming_time: u32 = (now - block_number).unique_saturated_into();
-            let farmer_farming_time = FixedWrapper::from(balance!(farmer_farming_time));
-
-            // Vi(t)
-            let coeff = (FixedWrapper::from(balance!(1))
-                + farmer_farming_time / farming_life_time.clone())
-            .pow(T::VESTING_COEFF);
-
-            let weight = coeff * weight;
-            weights.push((account_id, weight.clone()));
-
-            total_weight = total_weight + weight;
-        }
-
-        for (account_id, weight) in weights {
+        for (account, weight) in accounts {
             let account_reward = reward.clone() * weight / total_weight.clone();
             let account_reward = account_reward.try_into_balance().unwrap_or(0);
-            let mut rewards = VestedRewards::<T>::get(&account_id);
-            rewards += account_reward;
-            VestedRewards::<T>::insert(&account_id, rewards);
+            let _ = vested_rewards::Module::<T>::add_pending_reward(
+                &account,
+                RewardReason::LiquidityProvisionFarming,
+                account_reward,
+            );
+        }
+    }
+
+    fn save_data(now: T::BlockNumber) -> Weight {
+        let mut values = Vec::new();
+        let mut pool_count = 0;
+        let mut farmer_count = 0;
+        for (pool, farmers) in PoolFarmers::<T>::iter() {
+            pool_count += 1;
+            farmer_count += farmers.len() as u32;
+
+            let mut pool_values = Vec::new();
+            for farmer in farmers {
+                let weight = Self::get_account_weight(&pool, farmer.pool_tokens);
+                if weight != 0 {
+                    pool_values.push((farmer.account, farmer.block, weight));
+                }
+            }
+            values.push((pool, pool_values));
         }
 
-        function_weight
+        SavedValues::<T>::insert(now, values);
+
+        WeightInfoOf::<T>::save_data(pool_count, farmer_count)
     }
 }
 
 pub use pallet::*;
-use tokens::Accounts;
 
 #[frame_support::pallet]
 pub mod pallet {
@@ -209,11 +275,12 @@ pub mod pallet {
         + technical::Config
         + tokens::Config<Balance = Balance, CurrencyId = <Self as assets::Config>::AssetId>
         + pool_xyk::Config
-        + pswap_distribution::Config
+        + vested_rewards::Config
     {
         const PSWAP_PER_DAY: Balance;
         const REFRESH_FREQUENCY: BlockNumberFor<Self>;
         const VESTING_COEFF: u32;
+        /// How often the vesting happens. VESTING_FREQUENCY % REFRESH_FREQUENCY must be 0
         const VESTING_FREQUENCY: BlockNumberFor<Self>;
         const BLOCKS_PER_DAY: BlockNumberFor<Self>;
         type RewardDoublingAssets: Get<Vec<AssetIdOf<Self>>>;
@@ -229,16 +296,22 @@ pub mod pallet {
     impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
         fn on_initialize(now: T::BlockNumber) -> Weight {
             if now.is_zero() {
-                0
-            } else if (now % T::VESTING_FREQUENCY).is_zero() {
-                let w1 = Self::refresh_farmers(now);
-                let w2 = Self::vest(now);
-                w1.saturating_add(w2)
-            } else if (now % T::REFRESH_FREQUENCY).is_zero() {
-                Self::refresh_farmers(now)
-            } else {
-                0
+                return 0;
             }
+
+            let mut total_weight = Self::refresh_pools(now);
+
+            if (now % T::VESTING_FREQUENCY).is_zero() {
+                // TBD: Remove for the next runtime upgrade
+                let weight = Self::save_data(now);
+                total_weight = total_weight.saturating_add(weight);
+
+                // TBD: Uncomment for the next runtime upgrade
+                // let weight = Self::vest(now);
+                // total_weight = total_weight.saturating_add(weight);
+            }
+
+            total_weight
         }
     }
 
@@ -247,30 +320,38 @@ pub mod pallet {
 
     #[pallet::error]
     pub enum Error<T> {
-        NotEnoughPermissions,
-        FarmNotFound,
-        FarmerNotFound,
-        ShareNotFound,
-        TechAccountIsMissing,
-        FarmAlreadyClosed,
-        FarmLocked,
-        CalculationFailed,
-        CalculationOrOperationWithFarmingStateIsFailed,
-        SomeValuesIsNotSet,
-        AmountIsOutOfAvailableValue,
-        UnableToConvertAssetIdToTechAssetId,
-        UnableToGetPoolInformationFromTechAsset,
-        ThisTypeOfLiquiditySourceIsNotImplementedOrSupported,
-        NothingToClaim,
-        CaseIsNotSupported,
         /// Increment account reference error.
         IncRefError,
     }
 
+    /// Pools whose farmers are refreshed at the specific block. Block => Pools
     #[pallet::storage]
-    pub type Farmers<T: Config> =
-        StorageMap<_, Identity, T::AccountId, (Balance, T::BlockNumber), OptionQuery>;
+    pub type Pools<T: Config> =
+        StorageMap<_, Identity, T::BlockNumber, Vec<T::AccountId>, ValueQuery>;
+
+    /// Farmers of the pool. Pool => Farmers
+    #[pallet::storage]
+    pub type PoolFarmers<T: Config> =
+        StorageMap<_, Identity, T::AccountId, Vec<PoolFarmer<T>>, ValueQuery>;
 
     #[pallet::storage]
-    pub type VestedRewards<T: Config> = StorageMap<_, Identity, T::AccountId, Balance, ValueQuery>;
+    pub type SavedValues<T: Config> = StorageMap<
+        _,
+        Identity,
+        T::BlockNumber,
+        Vec<(T::AccountId, Vec<(T::AccountId, T::BlockNumber, Balance)>)>,
+        ValueQuery,
+    >;
+}
+
+#[derive(Debug, Encode, Decode)]
+#[cfg_attr(test, derive(PartialEq))]
+/// The specific farmer in the specific pool
+pub struct PoolFarmer<T: Config> {
+    /// The account of the farmer
+    account: T::AccountId,
+    /// The block that the farmer started farming at
+    block: T::BlockNumber,
+    /// The number of pool tokens the farmer has in the pool
+    pool_tokens: Balance,
 }

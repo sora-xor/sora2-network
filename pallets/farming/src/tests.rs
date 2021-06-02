@@ -31,11 +31,11 @@
 use frame_support::assert_ok;
 use frame_support::traits::{OnFinalize, OnInitialize};
 
-use common::prelude::Balance;
-use common::{balance, AssetName, AssetSymbol, DOT, XOR};
+use common::{balance, DOT, PSWAP, XOR};
+use pool_xyk::Properties;
 
 use crate::mock::*;
-use crate::{Farmers, VestedRewards};
+use crate::{PoolFarmer, PoolFarmers, SavedValues};
 
 fn run_to_block(n: u64) {
     while System::block_number() < n {
@@ -46,60 +46,29 @@ fn run_to_block(n: u64) {
     }
 }
 
+fn init_pool(other_asset: AssetId) {
+    assert_ok!(trading_pair::Module::<Runtime>::register(
+        Origin::signed(BOB()),
+        DEX_A_ID,
+        XOR,
+        other_asset
+    ));
+
+    assert_ok!(pool_xyk::Module::<Runtime>::initialize_pool(
+        Origin::signed(BOB()),
+        DEX_A_ID,
+        XOR,
+        other_asset,
+    ));
+}
+
 // Checks that accounts that have more than 1 XOR are automatically added to farming each REFRESH_FREQUENCY blocks. Also, checks that accounts that no longer has 1 XOR are removed from farming.
-// Checks that farming
 #[test]
 fn test() {
     let dex_id = DEX_A_ID;
-    let gt: crate::mock::AssetId = XOR;
     ExtBuilder::default().build().execute_with(|| {
-        assert_ok!(assets::Module::<Runtime>::register_asset_id(
-            ALICE(),
-            XOR,
-            AssetSymbol(b"XOR".to_vec()),
-            AssetName(b"SORA".to_vec()),
-            18,
-            Balance::from(0u32),
-            true,
-        ));
-
-        assert_ok!(assets::Module::<Runtime>::register_asset_id(
-            ALICE(),
-            DOT,
-            AssetSymbol(b"DOT".to_vec()),
-            AssetName(b"Polkadot".to_vec()),
-            18,
-            Balance::from(0u32),
-            true,
-        ));
-
-        assert_ok!(assets::Module::<Runtime>::mint_to(
-            &gt,
-            &ALICE(),
-            &ALICE(),
-            balance!(2900000)
-        ));
-
-        assert_ok!(assets::Module::<Runtime>::mint_to(
-            &gt,
-            &ALICE(),
-            &BOB(),
-            balance!(2900000)
-        ));
-
-        assert_ok!(trading_pair::Module::<Runtime>::register(
-            Origin::signed(BOB()),
-            dex_id.clone(),
-            XOR,
-            DOT
-        ));
-
-        assert_ok!(pool_xyk::Module::<Runtime>::initialize_pool(
-            Origin::signed(BOB()),
-            dex_id.clone(),
-            XOR,
-            DOT,
-        ));
+        init_pool(DOT);
+        init_pool(PSWAP);
 
         assert_ok!(pool_xyk::Module::<Runtime>::deposit_liquidity(
             Origin::signed(ALICE()),
@@ -117,6 +86,28 @@ fn test() {
             dex_id,
             XOR,
             DOT,
+            balance!(1.1),
+            balance!(4.4),
+            balance!(1.1),
+            balance!(4.4),
+        ));
+
+        assert_ok!(pool_xyk::Module::<Runtime>::deposit_liquidity(
+            Origin::signed(ALICE()),
+            dex_id,
+            XOR,
+            PSWAP,
+            balance!(1.1),
+            balance!(4.4),
+            balance!(1.1),
+            balance!(4.4),
+        ));
+
+        assert_ok!(pool_xyk::Module::<Runtime>::deposit_liquidity(
+            Origin::signed(CHARLIE()),
+            dex_id,
+            XOR,
+            PSWAP,
             balance!(1.1),
             balance!(4.4),
             balance!(1.1),
@@ -125,66 +116,145 @@ fn test() {
 
         run_to_block(REFRESH_FREQUENCY);
 
+        let dot_pool = Properties::<Runtime>::get(XOR, DOT).unwrap().0;
+        let farmers = PoolFarmers::<Runtime>::get(&dot_pool);
         assert_eq!(
-            Farmers::<Runtime>::get(&ALICE()),
-            Some((1099999999999999498, 200))
+            farmers,
+            vec![
+                PoolFarmer {
+                    account: ALICE(),
+                    block: 200,
+                    pool_tokens: balance!(2.199999999999998996),
+                },
+                PoolFarmer {
+                    account: BOB(),
+                    block: 200,
+                    pool_tokens: balance!(2.199999999999999995),
+                }
+            ]
         );
+
+        let pswap_pool = Properties::<Runtime>::get(XOR, PSWAP).unwrap().0;
+        let farmers = PoolFarmers::<Runtime>::get(&pswap_pool);
         assert_eq!(
-            Farmers::<Runtime>::get(&BOB()),
-            Some((1099999999999999998, 200))
+            farmers,
+            vec![
+                PoolFarmer {
+                    account: ALICE(),
+                    block: 200,
+                    pool_tokens: balance!(2.199999999999998996),
+                },
+                PoolFarmer {
+                    account: CHARLIE(),
+                    block: 200,
+                    pool_tokens: balance!(2.199999999999999995),
+                }
+            ]
         );
 
         run_to_block(VESTING_FREQUENCY);
 
+        // TBD: Remove for the next release
+        let values = SavedValues::<Runtime>::get(VESTING_FREQUENCY);
         assert_eq!(
-            VestedRewards::<Runtime>::get(&ALICE()),
-            34626038781163425878113
+            values,
+            vec![
+                (
+                    dot_pool,
+                    vec![
+                        (ALICE(), 200, balance!(1.099999999999999498)),
+                        (BOB(), 200, balance!(1.099999999999999998)),
+                    ]
+                ),
+                (
+                    pswap_pool,
+                    vec![
+                        (ALICE(), 200, balance!(2.199999999999998996)),
+                        (CHARLIE(), 200, balance!(2.199999999999999996)),
+                    ]
+                )
+            ]
         );
-        assert_eq!(
-            VestedRewards::<Runtime>::get(&BOB()),
-            34626038781163441621885
-        );
 
-        assert_ok!(pool_xyk::Module::<Runtime>::deposit_liquidity(
-            Origin::signed(ALICE()),
-            dex_id,
-            XOR,
-            DOT,
-            balance!(0.5),
-            balance!(2),
-            balance!(0.3),
-            balance!(0.5),
-        ));
+        // TBD: Uncomment for the next release
+        // let info = Rewards::<Runtime>::get(&ALICE());
+        // assert_eq!(
+        //     *info
+        //         .rewards
+        //         .get(&RewardReason::LiquidityProvisionFarming)
+        //         .unwrap(),
+        //     balance!(34626.038781163425878113)
+        // );
 
-        assert_ok!(pool_xyk::Module::<Runtime>::withdraw_liquidity(
-            Origin::signed(BOB()),
-            dex_id,
-            XOR,
-            DOT,
-            balance!(1.5),
-            balance!(0.5),
-            balance!(2),
-        ));
+        // let info = Rewards::<Runtime>::get(&BOB());
+        // assert_eq!(
+        //     *info
+        //         .rewards
+        //         .get(&RewardReason::LiquidityProvisionFarming)
+        //         .unwrap(),
+        //     balance!(34626.038781163441621885)
+        // );
 
-        run_to_block(VESTING_FREQUENCY + REFRESH_FREQUENCY);
+        // assert_ok!(pool_xyk::Module::<Runtime>::deposit_liquidity(
+        //     Origin::signed(ALICE()),
+        //     dex_id,
+        //     XOR,
+        //     DOT,
+        //     balance!(0.5),
+        //     balance!(2),
+        //     balance!(0.3),
+        //     balance!(0.5),
+        // ));
 
-        assert_eq!(
-            Farmers::<Runtime>::get(&ALICE()),
-            Some((1599999999999999498, 200))
-        );
-        assert_eq!(Farmers::<Runtime>::get(&BOB()), None);
+        // assert_ok!(pool_xyk::Module::<Runtime>::withdraw_liquidity(
+        //     Origin::signed(BOB()),
+        //     dex_id,
+        //     XOR,
+        //     DOT,
+        //     balance!(1.5),
+        //     balance!(0.5),
+        //     balance!(2),
+        // ));
 
-        run_to_block(VESTING_FREQUENCY + VESTING_FREQUENCY);
+        // run_to_block(VESTING_FREQUENCY + REFRESH_FREQUENCY);
 
-        // ALICE received all PSWAP
-        assert_eq!(
-            VestedRewards::<Runtime>::get(&ALICE()),
-            103878116343490293378112
-        );
-        // BOB's rewards didn't change
-        assert_eq!(
-            VestedRewards::<Runtime>::get(&BOB()),
-            34626038781163441621885
-        );
+        // let farmers = PoolFarmers::<Runtime>::get(&pool_account);
+        // assert_eq!(
+        //     farmers,
+        //     vec![
+        //         PoolFarmer {
+        //             account: ALICE(),
+        //             block: 200,
+        //             pool_tokens: balance!(3.199999999999998993),
+        //         },
+        //         PoolFarmer {
+        //             account: BOB(),
+        //             block: 200,
+        //             pool_tokens: balance!(0.699999999999999995),
+        //         }
+        //     ]
+        // );
+
+        // run_to_block(VESTING_FREQUENCY + VESTING_FREQUENCY);
+
+        // let info = Rewards::<Runtime>::get(&ALICE());
+        // // ALICE received all PSWAP
+        // assert_eq!(
+        //     *info
+        //         .rewards
+        //         .get(&RewardReason::LiquidityProvisionFarming)
+        //         .unwrap(),
+        //     balance!(103878.116343490293378112)
+        // );
+
+        // let info = Rewards::<Runtime>::get(&BOB());
+        // // BOB's rewards didn't change
+        // assert_eq!(
+        //     *info
+        //         .rewards
+        //         .get(&RewardReason::LiquidityProvisionFarming)
+        //         .unwrap(),
+        //     balance!(34626.038781163441621885)
+        // );
     });
 }

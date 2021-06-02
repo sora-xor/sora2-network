@@ -28,7 +28,6 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use assets::{AssetRecord, AssetRecordArg};
 use core::convert::TryInto;
 use frame_support::dispatch::{DispatchError, DispatchResult};
 use frame_support::ensure;

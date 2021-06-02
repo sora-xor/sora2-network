@@ -31,8 +31,9 @@
 use frame_support::dispatch::DispatchError;
 use frame_support::ensure;
 
-use common::fixed_wrapper;
+use assets::AssetIdOf;
 use common::prelude::{Balance, Fixed, FixedWrapper};
+use common::{fixed_wrapper, TradingPair};
 
 use crate::{to_balance, to_fixed_wrapper};
 
@@ -197,17 +198,9 @@ impl<T: Config> Module<T> {
 
     pub fn get_xor_part_from_pool_account(
         pool_acc: &T::AccountId,
+        trading_pair: &TradingPair<AssetIdOf<T>>,
         liq_amount: Balance,
     ) -> Result<Balance, DispatchError> {
-        let tech_acc = technical::Module::<T>::lookup_tech_account_id(pool_acc)?;
-        let trading_pair = match tech_acc.into() {
-            common::TechAccountId::Pure(_, common::TechPurpose::LiquidityKeeper(trading_pair)) => {
-                trading_pair
-            }
-            _ => {
-                return Err(Error::<T>::UnableToGetXORPartFromMarkerAsset.into());
-            }
-        };
         let b_in_pool =
             assets::Module::<T>::free_balance(&trading_pair.base_asset_id.into(), pool_acc)?;
         let t_in_pool =

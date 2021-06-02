@@ -31,7 +31,7 @@
 use crate::{self as farming, Config};
 use common::mock::ExistentialDeposits;
 use common::prelude::Balance;
-use common::{balance, hash, DEXInfo, DOT, PSWAP, VAL, XOR};
+use common::{balance, fixed, hash, AssetName, AssetSymbol, DEXInfo, Fixed, DOT, PSWAP, VAL, XOR};
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::GenesisBuild;
 use frame_support::weights::Weight;
@@ -95,7 +95,7 @@ pub fn FERDIE() -> AccountId {
     AccountId32::from([6; 32])
 }
 
-pub const DEX_A_ID: DEXId = 220;
+pub const DEX_A_ID: DEXId = 0;
 
 parameter_types! {
     pub const BlockHashCount: u64 = 250;
@@ -130,6 +130,9 @@ construct_runtime! {
         Technical: technical::{Module, Call, Config<T>, Storage, Event<T>},
         PoolXyk: pool_xyk::{Module, Call, Storage, Event<T>},
         PswapDistribution: pswap_distribution::{Module, Call, Config<T>, Storage, Event<T>},
+        MBCPool: multicollateral_bonding_curve_pool::{Module, Call, Storage, Event<T>},
+        VestedRewards: vested_rewards::{Module, Storage, Event<T>},
+
         Farming: farming::{Module, Call, Storage},
     }
 }
@@ -236,7 +239,7 @@ impl pool_xyk::Config for Runtime {
     type PolySwapAction = pool_xyk::PolySwapAction<AssetId, AccountId, TechAccountId>;
     type EnsureDEXManager = dex_manager::Module<Runtime>;
     type GetFee = GetXykFee;
-    type PswapDistributionPallet = PswapDistribution;
+    type OnPoolCreated = (PswapDistribution, Farming);
     type WeightInfo = ();
 }
 
@@ -253,6 +256,22 @@ impl pswap_distribution::Config for Runtime {
     type WeightInfo = ();
     type GetParliamentAccountId = GetParliamentAccountId;
     type PoolXykPallet = PoolXyk;
+}
+
+impl multicollateral_bonding_curve_pool::Config for Runtime {
+    type Event = Event;
+    type LiquidityProxy = ();
+    type EnsureTradingPairExists = trading_pair::Module<Runtime>;
+    type EnsureDEXManager = dex_manager::Module<Runtime>;
+    type VestedRewardsPallet = VestedRewards;
+    type WeightInfo = ();
+}
+
+impl vested_rewards::Config for Runtime {
+    type Event = Event;
+    type GetMarketMakerRewardsAccountId = ();
+    type GetBondingCurveRewardsAccountId = ();
+    type WeightInfo = ();
 }
 
 impl Config for Runtime {
@@ -290,18 +309,18 @@ impl Default for ExtBuilder {
                 },
             )],
             endowed_accounts: vec![
-                (ALICE(), XOR, balance!(99000)),
                 (ALICE(), DOT, balance!(2000000)),
-                (BOB(), XOR, balance!(2000000)),
+                (ALICE(), PSWAP, balance!(2000000)),
                 (BOB(), DOT, balance!(2000000)),
-                (CHARLIE(), XOR, balance!(2000000)),
+                (BOB(), PSWAP, balance!(2000000)),
                 (CHARLIE(), DOT, balance!(2000000)),
-                (DAVE(), XOR, balance!(2000000)),
+                (CHARLIE(), PSWAP, balance!(2000000)),
                 (DAVE(), DOT, balance!(2000000)),
-                (EVE(), XOR, balance!(2000000)),
+                (DAVE(), PSWAP, balance!(2000000)),
                 (EVE(), DOT, balance!(2000000)),
-                (FERDIE(), XOR, balance!(2000000)),
+                (EVE(), PSWAP, balance!(2000000)),
                 (FERDIE(), DOT, balance!(2000000)),
+                (FERDIE(), PSWAP, balance!(2000000)),
             ],
             initial_permission_owners: vec![
                 (MANAGE_DEX, Scope::Limited(hash(&DEX_A_ID)), vec![BOB()]),
@@ -330,8 +349,15 @@ impl ExtBuilder {
             .build_storage::<Runtime>()
             .unwrap();
 
-        dex_manager::GenesisConfig::<Runtime> {
-            dex_list: self.initial_dex_list,
+        pallet_balances::GenesisConfig::<Runtime> {
+            balances: vec![
+                (ALICE(), balance!(99000)),
+                (BOB(), balance!(99000)),
+                (CHARLIE(), balance!(99000)),
+                (DAVE(), balance!(99000)),
+                (EVE(), balance!(99000)),
+                (FERDIE(), balance!(99000)),
+            ],
         }
         .assimilate_storage(&mut t)
         .unwrap();
@@ -345,6 +371,46 @@ impl ExtBuilder {
         permissions::GenesisConfig::<Runtime> {
             initial_permission_owners: self.initial_permission_owners,
             initial_permissions: self.initial_permissions,
+        }
+        .assimilate_storage(&mut t)
+        .unwrap();
+
+        assets::GenesisConfig::<Runtime> {
+            endowed_assets: vec![
+                (
+                    XOR.into(),
+                    ALICE(),
+                    AssetSymbol(b"XOR".to_vec()),
+                    AssetName(b"SORA".to_vec()),
+                    18,
+                    0,
+                    true,
+                ),
+                (
+                    DOT.into(),
+                    ALICE(),
+                    AssetSymbol(b"DOT".to_vec()),
+                    AssetName(b"DOT".to_vec()),
+                    18,
+                    0,
+                    true,
+                ),
+                (
+                    PSWAP.into(),
+                    ALICE(),
+                    AssetSymbol(b"PSWAP".to_vec()),
+                    AssetName(b"PSWAP".to_vec()),
+                    18,
+                    0,
+                    true,
+                ),
+            ],
+        }
+        .assimilate_storage(&mut t)
+        .unwrap();
+
+        dex_manager::GenesisConfig::<Runtime> {
+            dex_list: self.initial_dex_list,
         }
         .assimilate_storage(&mut t)
         .unwrap();

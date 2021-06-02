@@ -744,7 +744,7 @@ pub enum RewardReason {
     Unspecified,
     /// Buying XOR with collateral tokens (except PSWAP and VAL) is rewarded.
     BuyOnBondingCurve,
-    /// Providing liquidyty on secondary market is rewarded.
+    /// Providing liquidity on secondary market is rewarded.
     LiquidityProvisionFarming,
     /// High volume trading is rewarded.
     MarketMakerVolume,

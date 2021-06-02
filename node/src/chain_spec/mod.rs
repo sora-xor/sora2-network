@@ -1345,9 +1345,6 @@ fn mainnet_genesis(
         technical::Module::<Runtime>::tech_account_id_to_account_id(&dex_root_tech_account_id)
             .unwrap();
 
-    let farming_tech_account_id = framenode_runtime::GetFarmingTechAccountId::get();
-    let farming_account_id = framenode_runtime::GetFarmingAccountId::get();
-
     let mut tech_accounts = vec![
         (xor_fee_account_id.clone(), xor_fee_tech_account_id),
         (
@@ -1391,7 +1388,6 @@ fn mainnet_genesis(
             market_maker_rewards_account_id.clone(),
             market_maker_rewards_tech_account_id.clone(),
         ),
-        (farming_account_id.clone(), farming_tech_account_id.clone()),
     ];
     let accounts = bonding_curve_distribution_accounts();
     for account in &accounts.accounts() {
@@ -1678,11 +1674,6 @@ fn mainnet_genesis(
                     market_maker_rewards_account_id.clone(),
                     PSWAP,
                     initial_pswap_market_maker_rewards,
-                ),
-                (
-                    farming_account_id.clone(),
-                    PSWAP,
-                    initial_pswap_farming_rewards,
                 ),
             ],
         }),

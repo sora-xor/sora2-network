@@ -440,7 +440,7 @@ pub use pallet::*;
 #[frame_support::pallet]
 pub mod pallet {
     use super::*;
-    use common::{AccountIdOf, Fixed, PswapDistributionPallet};
+    use common::{AccountIdOf, Fixed, OnPoolCreated};
     use frame_support::pallet_prelude::*;
     use frame_system::pallet_prelude::*;
 
@@ -464,10 +464,7 @@ pub mod pallet {
             + From<PolySwapActionStructOf<Self>>;
         type EnsureDEXManager: EnsureDEXManager<Self::DEXId, Self::AccountId, DispatchError>;
         type GetFee: Get<Fixed>;
-        type PswapDistributionPallet: PswapDistributionPallet<
-            AccountId = AccountIdOf<Self>,
-            DEXId = DEXIdOf<Self>,
-        >;
+        type OnPoolCreated: OnPoolCreated<AccountId = AccountIdOf<Self>, DEXId = DEXIdOf<Self>>;
         /// Weight information for extrinsics in this pallet.
         type WeightInfo: WeightInfo;
     }
@@ -585,7 +582,7 @@ pub mod pallet {
                     Module::<T>::tech_account_from_dex_and_asset_pair(dex_id, asset_a, asset_b)?;
                 let pool_account =
                     technical::Module::<T>::tech_account_id_to_account_id(&pool_account)?;
-                T::PswapDistributionPallet::subscribe(fees_ta_repr, dex_id, pool_account)?;
+                T::OnPoolCreated::on_pool_created(fees_ta_repr, dex_id, pool_account)?;
                 Self::deposit_event(Event::PoolIsInitialized(ta_repr));
                 Ok(().into())
             })

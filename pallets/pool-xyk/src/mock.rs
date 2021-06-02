@@ -217,7 +217,7 @@ impl Config for Runtime {
     type PolySwapAction = crate::PolySwapAction<AssetId, AccountId, TechAccountId>;
     type EnsureDEXManager = dex_manager::Module<Runtime>;
     type GetFee = GetFee;
-    type PswapDistributionPallet = PswapDistribution;
+    type OnPoolCreated = PswapDistribution;
     type WeightInfo = ();
 }
 

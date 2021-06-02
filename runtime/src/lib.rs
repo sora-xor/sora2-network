@@ -653,7 +653,7 @@ impl pool_xyk::Config for Runtime {
     type PolySwapAction = pool_xyk::PolySwapAction<AssetId, AccountId, TechAccountId>;
     type EnsureDEXManager = dex_manager::Module<Runtime>;
     type GetFee = GetFee;
-    type PswapDistributionPallet = PswapDistribution;
+    type OnPoolCreated = (PswapDistribution, Farming);
     type WeightInfo = pool_xyk::weights::WeightInfo<Runtime>;
 }
 
@@ -1035,17 +1035,6 @@ parameter_types! {
         technical::Module::<Runtime>::tech_account_id_to_account_id(&tech_account_id)
             .expect("Failed to get ordinary account id for technical account id.")
     };
-    pub GetFarmingTechAccountId: TechAccountId = {
-        TechAccountId::from_generic_pair(
-            farming::TECH_ACCOUNT_PREFIX.to_vec(),
-            farming::TECH_ACCOUNT_MAIN.to_vec(),
-        )
-    };
-    pub GetFarmingAccountId: AccountId = {
-        let tech_account_id = GetFarmingTechAccountId::get();
-        technical::Module::<Runtime>::tech_account_id_to_account_id(&tech_account_id)
-            .expect("Failed to get ordinary account id for technical account id")
-    };
 }
 
 #[cfg(feature = "reduced-pswap-reward-periods")]
@@ -1252,7 +1241,7 @@ construct_runtime! {
         ElectionsPhragmen: pallet_elections_phragmen::{Module, Call, Storage, Event<T>, Config<T>},
         VestedRewards: vested_rewards::{Module, Call, Storage, Event<T>},
         Identity: pallet_identity::{Module, Call, Storage, Event<T>},
-        Farming: farming::{Module, Storage},
+        Farming: farming::{Module, Call, Storage},
         // Available only for test net
         Faucet: faucet::{Module, Call, Config<T>, Event<T>},
     }

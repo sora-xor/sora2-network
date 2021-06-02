@@ -267,7 +267,7 @@ impl pool_xyk::Config for Runtime {
     type PolySwapAction = pool_xyk::PolySwapAction<AssetId, AccountId, TechAccountId>;
     type EnsureDEXManager = dex_manager::Module<Runtime>;
     type GetFee = GetXykFee;
-    type PswapDistributionPallet = PswapDistribution;
+    type OnPoolCreated = PswapDistribution;
     type WeightInfo = ();
 }
 

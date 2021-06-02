@@ -266,7 +266,7 @@ impl pool_xyk::Config for Runtime {
         pool_xyk::WithdrawLiquidityAction<AssetId, AccountId, TechAccountId>;
     type PolySwapAction = pool_xyk::PolySwapAction<AssetId, AccountId, TechAccountId>;
     type EnsureDEXManager = dex_manager::Module<Runtime>;
-    type PswapDistributionPallet = PswapDistribution;
+    type OnPoolCreated = PswapDistribution;
     type WeightInfo = ();
 }
 
