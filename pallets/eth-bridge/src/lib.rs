@@ -3166,7 +3166,7 @@ impl<T: Config> Pallet<T> {
         s_handled_requests.set(&handled);
     }
 
-    /// Handles registered networks.
+    /// Handles registered networks. new tag
     fn offchain()
     where
         T: CreateSignedTransaction<<T as Config>::Call>,
