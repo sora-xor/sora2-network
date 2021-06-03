@@ -222,14 +222,11 @@ pub fn native_version() -> NativeVersion {
     }
 }
 
-/// Sora network needs to have minimal requirement for staking equal to 5000 XOR.
 pub const FARMING_PSWAP_PER_DAY: Balance = balance!(2500000);
-// Every 2 hours
-pub const FARMING_REFRESH_FREQUENCY: BlockNumber = 1200;
+pub const FARMING_REFRESH_FREQUENCY: BlockNumber = 2 * HOURS;
 // Defined in the article
 pub const FARMING_VESTING_COEFF: u32 = 3;
-// Every 8 hours
-pub const FARMING_VESTING_FREQUENCY: BlockNumber = 4800;
+pub const FARMING_VESTING_FREQUENCY: BlockNumber = 8 * HOURS;
 
 parameter_types! {
     pub const BlockHashCount: BlockNumber = 250;

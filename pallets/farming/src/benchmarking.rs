@@ -76,16 +76,15 @@ fn prepare_pools<T: Config>(count: u32) -> (Vec<T::AccountId>, Vec<T::AssetId>) 
     let mut assets = Vec::new();
     for _i in 0..count {
         frame_system::Module::<T>::inc_account_nonce(&asset_owner::<T>());
-        let other_asset = assets::Module::<T>::gen_asset_id(&asset_owner::<T>());
-        assert_ok!(assets::Module::<T>::register_asset_id(
-            asset_owner::<T>(),
-            other_asset.clone(),
+        let other_asset = assets::Module::<T>::register_from(
+            &asset_owner::<T>(),
             AssetSymbol(b"SYMBOL".to_vec()),
             AssetName(b"NAME".to_vec()),
             18,
             Balance::from(0u32),
             true,
-        ));
+        )
+        .unwrap();
 
         assert_ok!(trading_pair::Module::<T>::register(
             signed_origin::<T>(asset_owner::<T>()),
@@ -189,16 +188,19 @@ benchmarks! {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::mock::{ExtBuilder, Runtime};
     use frame_support::assert_ok;
+
+    use crate::mock::{ExtBuilder, Runtime};
+
+    use super::*;
 
     #[test]
     fn test_benchmarks() {
         ExtBuilder::default().build().execute_with(|| {
-            assert_ok!(test_benchmark_on_initialize_refresh::<Runtime>());
-            assert_ok!(test_benchmark_on_initialize_vesting::<Runtime>());
-            panic!();
+            assert_ok!(test_benchmark_refresh_pool::<Runtime>());
+            assert_ok!(test_benchmark_prepare_accounts_for_vesting::<Runtime>());
+            assert_ok!(test_benchmark_vest_account_rewards::<Runtime>());
+            assert_ok!(test_benchmark_save_data::<Runtime>());
         });
     }
 }

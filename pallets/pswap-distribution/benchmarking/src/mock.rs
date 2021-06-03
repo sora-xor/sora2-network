@@ -111,6 +111,7 @@ parameter_types! {
     pub const TransactionByteFee: u128 = 1;
     pub GetXykFee: Fixed = fixed!(0.003);
     pub GetParliamentAccountId: AccountId = AccountId32::from([7u8; 32]);
+    pub GetTeamReservesAccountId: AccountId = AccountId32::from([11; 32]);
 }
 
 construct_runtime! {
@@ -206,6 +207,7 @@ impl assets::Config for Runtime {
     type AssetId = AssetId;
     type GetBaseAssetId = GetBaseAssetId;
     type Currency = currencies::Module<Runtime>;
+    type GetTeamReservesAccountId = GetTeamReservesAccountId;
     type WeightInfo = ();
 }
 
