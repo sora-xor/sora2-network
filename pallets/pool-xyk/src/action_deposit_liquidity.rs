@@ -28,8 +28,6 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#![cfg_attr(not(feature = "std"), no_std)]
-
 use frame_support::dispatch::DispatchResult;
 use frame_support::weights::Weight;
 use frame_support::{dispatch, ensure};
@@ -136,14 +134,10 @@ impl<T: Config> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, 
                 .ok_or(Error::<T>::InitialLiqudityDepositRatioMustBeDefined)?;
             init_y = Option::<Balance>::from(self.source.1.amount)
                 .ok_or(Error::<T>::InitialLiqudityDepositRatioMustBeDefined)?;
-        }
 
-        let acc_already_in_pool = PoolProviders::<T>::contains_key(
-            &pool_account_repr_sys,
-            self.receiver_account.as_ref().unwrap(),
-        );
-        if !acc_already_in_pool && init_x < T::MIN_XOR {
-            return Err(Error::<T>::UnableToDepositXorLessThanMinimum.into());
+            if init_x < T::MIN_XOR {
+                return Err(Error::<T>::UnableToDepositXorLessThanMinimum.into());
+            }
         }
 
         // FixedWrapper version of variables.
@@ -194,6 +188,14 @@ impl<T: Config> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, 
                             Module::<T>::calc_deposit_liquidity_1(
                                 total_iss, balance_bp, balance_tp, xdes, ydes, xmin, ymin,
                             )?;
+
+                        let acc_already_in_pool = PoolProviders::<T>::contains_key(
+                            &pool_account_repr_sys,
+                            self.receiver_account.as_ref().unwrap(),
+                        );
+                        if !acc_already_in_pool && calc_xdes < T::MIN_XOR {
+                            return Err(Error::<T>::UnableToDepositXorLessThanMinimum.into());
+                        }
 
                         self.source.0.amount = Bounds::Calculated(calc_xdes);
                         self.source.1.amount = Bounds::Calculated(calc_ydes);

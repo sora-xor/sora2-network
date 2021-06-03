@@ -49,8 +49,6 @@ include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
 use core::time::Duration;
 use currencies::BasicCurrencyAdapter;
 use extensions::ChargeTransactionPayment;
-pub use farming::domain::{FarmInfo, FarmerInfo};
-pub use farming::FarmId;
 use frame_system::offchain::{Account, SigningTypes};
 use frame_system::{EnsureOneOf, EnsureRoot};
 use hex_literal::hex;
@@ -224,6 +222,12 @@ pub fn native_version() -> NativeVersion {
     }
 }
 
+pub const FARMING_PSWAP_PER_DAY: Balance = balance!(2500000);
+pub const FARMING_REFRESH_FREQUENCY: BlockNumber = 2 * HOURS;
+// Defined in the article
+pub const FARMING_VESTING_COEFF: u32 = 3;
+pub const FARMING_VESTING_FREQUENCY: BlockNumber = 8 * HOURS;
+
 parameter_types! {
     pub const BlockHashCount: BlockNumber = 250;
     pub const Version: RuntimeVersion = VERSION;
@@ -288,6 +292,7 @@ parameter_types! {
     pub const ElectionsDesiredMembers: u32 = 13;
     pub const ElectionsDesiredRunnersUp: u32 = 20;
     pub const ElectionsModuleId: LockIdentifier = *b"phrelect";
+    pub FarmingRewardDoublingAssets: Vec<AssetId> = vec![GetPswapAssetId::get(), GetValAssetId::get()];
 }
 
 impl frame_system::Config for Runtime {
@@ -657,7 +662,7 @@ impl pool_xyk::Config for Runtime {
     type PolySwapAction = pool_xyk::PolySwapAction<AssetId, AccountId, TechAccountId>;
     type EnsureDEXManager = dex_manager::Module<Runtime>;
     type GetFee = GetFee;
-    type PswapDistributionPallet = PswapDistribution;
+    type OnPoolCreated = (PswapDistribution, Farming);
     type WeightInfo = pool_xyk::weights::WeightInfo<Runtime>;
 }
 
@@ -1061,6 +1066,16 @@ impl OnPswapBurned for RuntimeOnPswapBurnedAggregator {
     }
 }
 
+impl farming::Config for Runtime {
+    const PSWAP_PER_DAY: Balance = FARMING_PSWAP_PER_DAY;
+    const REFRESH_FREQUENCY: BlockNumber = FARMING_REFRESH_FREQUENCY;
+    const VESTING_COEFF: u32 = FARMING_VESTING_COEFF;
+    const VESTING_FREQUENCY: BlockNumber = FARMING_VESTING_FREQUENCY;
+    const BLOCKS_PER_DAY: BlockNumber = 1 * DAYS;
+    type RewardDoublingAssets = FarmingRewardDoublingAssets;
+    type WeightInfo = ();
+}
+
 impl pswap_distribution::Config for Runtime {
     type Event = Event;
     type GetIncentiveAssetId = GetPswapAssetId;
@@ -1242,6 +1257,7 @@ construct_runtime! {
         ElectionsPhragmen: pallet_elections_phragmen::{Module, Call, Storage, Event<T>, Config<T>},
         VestedRewards: vested_rewards::{Module, Call, Storage, Event<T>},
         Identity: pallet_identity::{Module, Call, Storage, Event<T>},
+        Farming: farming::{Module, Call, Storage},
         // Available only for test net
         Faucet: faucet::{Module, Call, Config<T>, Event<T>},
         PriceTools: price_tools::{Module, Storage, Event<T>},
@@ -1303,6 +1319,7 @@ construct_runtime! {
         VestedRewards: vested_rewards::{Module, Call, Storage, Event<T>},
         Identity: pallet_identity::{Module, Call, Storage, Event<T>},
         PriceTools: price_tools::{Module, Storage, Event<T>},
+        Farming: farming::{Module, Storage},
     }
 }
 
@@ -1586,20 +1603,6 @@ impl_runtime_apis! {
             Some(assets_runtime_api::AssetInfo::<AssetId, AssetSymbol, AssetName, BalancePrecision> {
                 asset_id, symbol, name, precision, is_mintable,
             })
-        }
-    }
-
-    impl farming_runtime_api::FarmingRuntimeApi<Block, AccountId, FarmId, FarmInfo<AccountId, AssetId, BlockNumber>, FarmerInfo<AccountId, TechAccountId, BlockNumber>> for Runtime {
-        fn get_farm_info(_who: AccountId, _name: FarmId) -> Option<FarmInfo<AccountId, AssetId, BlockNumber>> {
-            // TODO: re-enable when needed
-            // Farming::get_farm_info(who, name).ok()?
-            None
-        }
-
-        fn get_farmer_info(_who: AccountId, _name: FarmId) -> Option<FarmerInfo<AccountId, TechAccountId, BlockNumber>> {
-            // TODO: re-enable when needed
-            // Farming::get_farmer_info(who, name).ok()?
-            None
         }
     }
 
@@ -1890,6 +1893,7 @@ impl_runtime_apis! {
             add_benchmark!(params, batches, dex_api, DEXAPIBench::<Runtime>);
             #[cfg(feature = "private-net")]
             add_benchmark!(params, batches, faucet, Faucet);
+            add_benchmark!(params, batches, farming, Farming);
             add_benchmark!(params, batches, iroha_migration, IrohaMigration);
             add_benchmark!(params, batches, liquidity_proxy, LiquidityProxyBench::<Runtime>);
             add_benchmark!(params, batches, multicollateral_bonding_curve_pool, MulticollateralBondingCurvePool);

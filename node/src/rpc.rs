@@ -33,9 +33,8 @@
 use common::TradingPair;
 use framenode_runtime::opaque::Block;
 use framenode_runtime::{
-    eth_bridge, AccountId, AssetId, AssetName, AssetSymbol, Balance, BalancePrecision, BlockNumber,
-    DEXId, FarmId, FarmInfo, FarmerInfo, FilterMode, Index, LiquiditySourceType, Runtime,
-    SwapVariant, TechAccountId,
+    eth_bridge, AccountId, AssetId, AssetName, AssetSymbol, Balance, BalancePrecision, DEXId,
+    FilterMode, Index, LiquiditySourceType, Runtime, SwapVariant,
 };
 pub use sc_rpc::{DenyUnsafe, SubscriptionTaskExecutor};
 use sp_api::ProvideRuntimeApi;
@@ -98,13 +97,6 @@ where
         SwapVariant,
         LiquiditySourceType,
         FilterMode,
-    >,
-    C::Api: farming_rpc::FarmingRuntimeApi<
-        Block,
-        AccountId,
-        FarmId,
-        FarmInfo<AccountId, AssetId, BlockNumber>,
-        FarmerInfo<AccountId, TechAccountId, BlockNumber>,
     >,
     C::Api: eth_bridge_rpc::EthBridgeRuntimeApi<
         Block,
