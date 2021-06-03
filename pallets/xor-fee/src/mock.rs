@@ -99,6 +99,7 @@ parameter_types! {
         AccountId::decode(&mut &repr[..]).expect("Failed to decode account Id")
     };
     pub GetParliamentAccountId: AccountId = SORA_PARLIAMENT_ACCOUNT;
+    pub GetTeamReservesAccountId: AccountId = 3000u64;
 }
 
 sp_runtime::impl_opaque_keys! {
@@ -252,6 +253,7 @@ impl assets::Config for Runtime {
     type AssetId = AssetId;
     type GetBaseAssetId = XorId;
     type Currency = currencies::Module<Runtime>;
+    type GetTeamReservesAccountId = GetTeamReservesAccountId;
     type WeightInfo = ();
 }
 
