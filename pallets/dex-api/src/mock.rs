@@ -86,6 +86,7 @@ parameter_types! {
     pub const GetBurnUpdateFrequency: BlockNumber = 14400;
     pub GetIncentiveAssetId: AssetId = common::PSWAP.into();
     pub GetParliamentAccountId: AccountId = AccountId32::from([8; 32]);
+    pub GetTeamReservesAccountId: AccountId = AccountId32::from([11; 32]);
     pub GetXykFee: Fixed = fixed!(0.003);
 }
 
@@ -185,6 +186,7 @@ impl assets::Config for Runtime {
     type AssetId = AssetId;
     type GetBaseAssetId = GetBaseAssetId;
     type Currency = currencies::Module<Runtime>;
+    type GetTeamReservesAccountId = GetTeamReservesAccountId;
     type WeightInfo = ();
 }
 

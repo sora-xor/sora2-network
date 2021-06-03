@@ -81,6 +81,7 @@ parameter_types! {
     pub const AvailableBlockRatio: Perbill = Perbill::from_percent(75);
     pub const GetBaseAssetId: AssetId = XOR;
     pub const ExistentialDeposit: u128 = 0;
+    pub GetTeamReservesAccountId: AccountId = AccountId::from([11; 32]);
     pub const DbWeight: RuntimeDbWeight = RuntimeDbWeight {
         read: 100,
         write: 1000,
@@ -152,6 +153,7 @@ impl assets::Config for Runtime {
     type AssetId = AssetId;
     type GetBaseAssetId = GetBaseAssetId;
     type Currency = currencies::Module<Runtime>;
+    type GetTeamReservesAccountId = GetTeamReservesAccountId;
     type WeightInfo = ();
 }
 

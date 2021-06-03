@@ -231,6 +231,7 @@ parameter_types! {
     pub const ExistentialDeposit: u128 = 0;
     pub const RemovePendingOutgoingRequestsAfter: BlockNumber = 100;
     pub const RemoveTemporaryPeerAccountId: AccountId = AccountId32::new(hex!("0000000000000000000000000000000000000000000000000000000000000001"));
+    pub GetTeamReservesAccountId: AccountId = AccountId32::from([11; 32]);
 }
 
 impl frame_system::Config for Runtime {
@@ -342,6 +343,7 @@ impl assets::Config for Runtime {
     type AssetId = common::AssetId32<PredefinedAssetId>;
     type GetBaseAssetId = GetBaseAssetId;
     type Currency = currencies::Module<Runtime>;
+    type GetTeamReservesAccountId = GetTeamReservesAccountId;
     type WeightInfo = ();
 }
 

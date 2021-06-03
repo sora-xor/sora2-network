@@ -67,6 +67,7 @@ parameter_types! {
     pub const DepositBase: u64 = 1;
     pub const DepositFactor: u64 = 1;
     pub const MaxSignatories: u16 = 4;
+    pub GetTeamReservesAccountId: AccountId = 3000u64;
 }
 
 construct_runtime!(
@@ -131,6 +132,7 @@ impl assets::Config for Runtime {
     type AssetId = common::AssetId32<PredefinedAssetId>;
     type GetBaseAssetId = GetBaseAssetId;
     type Currency = currencies::Module<Runtime>;
+    type GetTeamReservesAccountId = GetTeamReservesAccountId;
     type WeightInfo = ();
 }
 
