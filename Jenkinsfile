@@ -43,7 +43,8 @@ pipeline {
                         docker.image(baseImageName).inside() {
                             sh "cd ${env.WORKSPACE}"
                             if (getPushVersion(pushTags)){
-                                if (env.TAG_NAME) {
+                                if (env.TAG_NAME =~ 'dev-.*') {
+                                } else if (env.TAG_NAME) {
                                     featureList = (env.TAG_NAME =~ 'stage.*') ? featureList : 'include-real-files'
                                 }
                                 sh """
