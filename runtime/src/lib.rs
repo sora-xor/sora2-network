@@ -118,7 +118,7 @@ use eth_bridge::{
 use impls::{CollectiveWeightInfo, DemocracyWeightInfo, OnUnbalancedDemocracySlash};
 
 pub use {
-    assets, bonding_curve_pool, eth_bridge, frame_system, multicollateral_bonding_curve_pool,
+    assets, bonding_curve_pool, eth_bridge, frame_system, multicollateral_bonding_curve_pool, xst
 };
 
 /// An index to a block.
@@ -680,7 +680,8 @@ impl liquidity_proxy::Config for Runtime {
     type LiquidityRegistry = dex_api::Module<Runtime>;
     type GetNumSamples = GetNumSamples;
     type GetTechnicalAccountId = GetLiquidityProxyAccountId;
-    type PrimaryMarket = multicollateral_bonding_curve_pool::Module<Runtime>;
+    type PrimaryMarketTBC = multicollateral_bonding_curve_pool::Module<Runtime>;
+    type PrimaryMarketXST = xst::Module<Runtime>;
     type SecondaryMarket = pool_xyk::Module<Runtime>;
     type WeightInfo = liquidity_proxy::weights::WeightInfo<Runtime>;
 }
@@ -722,6 +723,7 @@ impl dex_api::Config for Runtime {
     type BondingCurvePool = bonding_curve_pool::Module<Runtime>;
     type MulticollateralBondingCurvePool = multicollateral_bonding_curve_pool::Module<Runtime>;
     type XYKPool = pool_xyk::Module<Runtime>;
+    type XSTPool = xst::Module<Runtime>;
     type WeightInfo = dex_api::weights::WeightInfo<Runtime>;
 }
 

@@ -271,21 +271,8 @@ impl MockDEXApi {
         Ok(())
     }
 
-    pub fn add_reserves(funds: Vec<(AssetId, Balance)>) -> Result<(), DispatchError> {
-        let (_, account_id) = Self::get_mock_source_account()?;
-        for (asset_id, balance) in funds {
-            Currencies::deposit(asset_id, &account_id, balance)?;
-        }
-        Ok(())
-    }
-
     pub fn init() -> Result<(), DispatchError> {
         Self::init_without_reserves()?;
-        Self::add_reserves(vec![
-            (XOR, balance!(100000)),
-            (VAL, balance!(100000)),
-            (USDT, balance!(1000000)),
-        ])?;
         Ok(())
     }
 
@@ -320,7 +307,7 @@ impl MockDEXApi {
             } => {
                 let amount_in = FixedWrapper::from(desired_amount_out)
                     / get_mock_prices()[&(*input_asset_id, *output_asset_id)];
-                let with_fee = amount_in.clone() / balance!(0.997);
+                let with_fee = amount_in.clone() / balance!(0.993); // XST uses 0.7% fees
                 let fee = with_fee.clone() - amount_in;
                 let fee = fee.into_balance();
                 let with_fee = with_fee.into_balance();

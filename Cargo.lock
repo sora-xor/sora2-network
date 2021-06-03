@@ -2445,6 +2445,7 @@ dependencies = [
  "trading-pair-runtime-api",
  "vested-rewards",
  "xor-fee",
+ "xst",
 ]
 
 [[package]]

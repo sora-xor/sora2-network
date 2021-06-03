@@ -53,6 +53,7 @@ liquidity-proxy-benchmarking = { path = "../pallets/liquidity-proxy/benchmarking
 pool-xyk-benchmarking = { path = "../pallets/pool-xyk/benchmarking", default-features = false, optional = true }
 dex-api-benchmarking = { path = "../pallets/dex-api/benchmarking", default-features = false, optional = true }
 vested-rewards = { path = "../pallets/vested-rewards", default-features = false}
+xst = { path = "../pallets/xst", default-features = false }
 
 # Substrate dependencies
 frame-benchmarking = { default-features = false, optional = true, version = '3' }

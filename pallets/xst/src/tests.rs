@@ -225,114 +225,125 @@ mod tests {
 
     #[test]
     fn similar_returns_should_be_identical() {
-        // let mut ext = ExtBuilder::new(vec![
-        //     (alice(), DAI, balance!(0), AssetSymbol(b"DAI".to_vec()), AssetName(b"DAI".to_vec()), 18),
-        //     (alice(), USDT, balance!(0), AssetSymbol(b"USDT".to_vec()), AssetName(b"Tether USD".to_vec()), 18),
-        //     (alice(), XOR, balance!(0), AssetSymbol(b"XOR".to_vec()), AssetName(b"SORA".to_vec()), 18),
-        //     (alice(), VAL, balance!(4000), AssetSymbol(b"VAL".to_vec()), AssetName(b"SORA Validator Token".to_vec()), 18),
-        // ])
-        // .build();
-        // ext.execute_with(|| {
-        //     MockDEXApi::init().unwrap();
-        //     TradingPair::register(Origin::signed(alice()),DEXId::Polkaswap.into(), XOR, VAL).expect("Failed to register trading pair.");
-        //     XSTPool::initialize_pool_unchecked(VAL, false).expect("Failed to initialize pool.");
+        let mut ext = ExtBuilder::new(vec![
+            (alice(), DAI, balance!(0), AssetSymbol(b"DAI".to_vec()), AssetName(b"DAI".to_vec()), 18),
+            (alice(), USDT, balance!(0), AssetSymbol(b"USDT".to_vec()), AssetName(b"Tether USD".to_vec()), 18),
+            (alice(), XOR, balance!(0), AssetSymbol(b"XOR".to_vec()), AssetName(b"SORA".to_vec()), 18),
+            (alice(), VAL, balance!(4000), AssetSymbol(b"VAL".to_vec()), AssetName(b"SORA Validator Token".to_vec()), 18),
+            (alice(), XSTUSD, balance!(22600), AssetSymbol(b"XSTUSD".to_vec()), AssetName(b"XST USD".to_vec()), 18),
+        ])
+        .build();
+        ext.execute_with(|| {
+            MockDEXApi::init().unwrap();
+            let _ = xst_pool_init().unwrap();
+            TradingPair::register(Origin::signed(alice()), DEXId::Polkaswap.into(), XOR, XSTUSD).expect("Failed to register trading pair.");
+            XSTPool::initialize_pool_unchecked(XSTUSD, false).expect("Failed to initialize pool.");
 
-        //     // Buy with desired input
-        //     let amount_a: Balance = balance!(2000);
-        //     let quote_outcome_a = XSTPool::quote(
-        //         &DEXId::Polkaswap.into(),
-        //         &VAL,
-        //         &XOR,
-        //         SwapAmount::with_desired_input(amount_a.clone(), Balance::zero()),
-        //     )
-        //     .unwrap();
-        //     let exchange_outcome_a = XSTPool::exchange(
-        //         &alice(),
-        //         &alice(),
-        //         &DEXId::Polkaswap.into(),
-        //         &VAL,
-        //         &XOR,
-        //         SwapAmount::with_desired_input(amount_a.clone(), Balance::zero()),
-        //     )
-        //     .unwrap();
-        //     let val_balance_a = Assets::free_balance(&VAL, &alice()).unwrap();
-        //     let xor_balance_a = Assets::free_balance(&XOR, &alice()).unwrap();
-        //     assert_eq!(quote_outcome_a.amount, exchange_outcome_a.amount);
-        //     assert_eq!(exchange_outcome_a.amount, xor_balance_a);
-        //     assert_eq!(val_balance_a, amount_a.clone());
+            // Buy with desired input
+            let amount_a: Balance = balance!(2000);
+            let quote_outcome_a = XSTPool::quote(
+                &DEXId::Polkaswap.into(),
+                &XSTUSD,
+                &XOR,
+                SwapAmount::with_desired_input(amount_a.clone(), Balance::zero()),
+            )
+            .unwrap();
 
-        //     // Buy with desired output
-        //     let amount_b: Balance = balance!(200);
-        //     let quote_outcome_b = XSTPool::quote(
-        //         &DEXId::Polkaswap.into(),
-        //         &VAL,
-        //         &XOR,
-        //         SwapAmount::with_desired_output(amount_b.clone(), Balance::max_value()),
-        //     )
-        //     .unwrap();
-        //     let exchange_outcome_b = XSTPool::exchange(
-        //         &alice(),
-        //         &alice(),
-        //         &DEXId::Polkaswap.into(),
-        //         &VAL,
-        //         &XOR,
-        //         SwapAmount::with_desired_output(amount_b.clone(), Balance::max_value()),
-        //     )
-        //     .unwrap();
-        //     let val_balance_b = Assets::free_balance(&VAL, &alice()).unwrap();
-        //     let xor_balance_b = Assets::free_balance(&XOR, &alice()).unwrap();
-        //     assert_eq!(quote_outcome_b.amount, exchange_outcome_b.amount);
-        //     assert_eq!(xor_balance_a + amount_b.clone(), xor_balance_b);
-        //     assert_eq!(val_balance_b, amount_a.clone() - quote_outcome_b.amount);
+            let exchange_outcome_a = XSTPool::exchange(
+                &alice(),
+                &alice(),
+                &DEXId::Polkaswap.into(),
+                &XSTUSD,
+                &XOR,
+                SwapAmount::with_desired_input(amount_a.clone(), Balance::zero()),
+            )
+            .unwrap();
 
-        //     // Sell with desired input
-        //     let amount_c: Balance = balance!(300);
-        //     let quote_outcome_c = XSTPool::quote(
-        //         &DEXId::Polkaswap.into(),
-        //         &XOR,
-        //         &VAL,
-        //         SwapAmount::with_desired_input(amount_c.clone(), Balance::zero()),
-        //     )
-        //     .unwrap();
-        //     let exchange_outcome_c = XSTPool::exchange(
-        //         &alice(),
-        //         &alice(),
-        //         &DEXId::Polkaswap.into(),
-        //         &XOR,
-        //         &VAL,
-        //         SwapAmount::with_desired_input(amount_c.clone(), Balance::zero()),
-        //     )
-        //     .unwrap();
-        //     let val_balance_c = Assets::free_balance(&VAL, &alice()).unwrap();
-        //     let xor_balance_c = Assets::free_balance(&XOR, &alice()).unwrap();
-        //     assert_eq!(quote_outcome_c.amount, exchange_outcome_c.amount);
-        //     assert_eq!(val_balance_b + exchange_outcome_c.amount, val_balance_c);
-        //     assert_eq!(xor_balance_b - amount_c.clone(), xor_balance_c.clone());
+            let xstusd_balance_a = Assets::free_balance(&XSTUSD, &alice()).unwrap();
+            let xor_balance_a = Assets::free_balance(&XOR, &alice()).unwrap();
 
-        //     // Sell with desired output
-        //     let amount_d: Balance = balance!(100);
-        //     let quote_outcome_d = XSTPool::quote(
-        //         &DEXId::Polkaswap.into(),
-        //         &VAL,
-        //         &XOR,
-        //         SwapAmount::with_desired_output(amount_d.clone(), Balance::max_value()),
-        //     )
-        //     .unwrap();
-        //     let exchange_outcome_d = XSTPool::exchange(
-        //         &alice(),
-        //         &alice(),
-        //         &DEXId::Polkaswap.into(),
-        //         &VAL,
-        //         &XOR,
-        //         SwapAmount::with_desired_output(amount_d.clone(), Balance::max_value()),
-        //     )
-        //     .unwrap();
-        //     let val_balance_d = Assets::free_balance(&VAL, &alice()).unwrap();
-        //     let xor_balance_d = Assets::free_balance(&XOR, &alice()).unwrap();
-        //     assert_eq!(quote_outcome_d.amount, exchange_outcome_d.amount);
-        //     assert_eq!(val_balance_c - quote_outcome_d.amount, val_balance_d);
-        //     assert_eq!(xor_balance_c + amount_d.clone(), xor_balance_d);
-        // });
+            assert_eq!(quote_outcome_a.amount, exchange_outcome_a.amount);
+            assert_eq!(exchange_outcome_a.amount, xor_balance_a);
+            assert_eq!(xstusd_balance_a, balance!(20600));
+
+            // Buy with desired output
+            let amount_b: Balance = balance!(200);
+            let quote_outcome_b = XSTPool::quote(
+                &DEXId::Polkaswap.into(),
+                &XSTUSD,
+                &XOR,
+                SwapAmount::with_desired_output(amount_b.clone(), Balance::max_value()),
+            )
+            .unwrap();
+
+            let exchange_outcome_b = XSTPool::exchange(
+                &alice(),
+                &alice(),
+                &DEXId::Polkaswap.into(),
+                &XSTUSD,
+                &XOR,
+                SwapAmount::with_desired_output(amount_b.clone(), Balance::max_value()),
+            )
+            .unwrap();
+
+            let xstusd_balance_b = Assets::free_balance(&XSTUSD, &alice()).unwrap();
+            let xor_balance_b = Assets::free_balance(&XOR, &alice()).unwrap();
+
+            assert_eq!(quote_outcome_b.amount, exchange_outcome_b.amount);
+            assert_eq!(xor_balance_a + amount_b.clone(), xor_balance_b);
+            assert_eq!(xstusd_balance_b, balance!(200.00000000000000007));
+
+            // Sell with desired input
+            let amount_c: Balance = balance!(205);
+            let quote_outcome_c = XSTPool::quote(
+                &DEXId::Polkaswap.into(),
+                &XOR,
+                &XSTUSD,
+                SwapAmount::with_desired_input(amount_c.clone(), Balance::zero()),
+            )
+            .unwrap();
+
+            let exchange_outcome_c = XSTPool::exchange(
+                &alice(),
+                &alice(),
+                &DEXId::Polkaswap.into(),
+                &XOR,
+                &XSTUSD,
+                SwapAmount::with_desired_input(amount_c.clone(), Balance::zero()),
+            )
+            .unwrap();
+
+            let xstusd_balance_c = Assets::free_balance(&XSTUSD, &alice()).unwrap();
+            let xor_balance_c = Assets::free_balance(&XOR, &alice()).unwrap();
+
+            assert_eq!(quote_outcome_c.amount, exchange_outcome_c.amount);
+            assert_eq!(xstusd_balance_b + exchange_outcome_c.amount, xstusd_balance_c);
+            assert_eq!(xor_balance_b - amount_c.clone(), xor_balance_c.clone());
+
+            // Sell with desired output
+            let amount_d: Balance = balance!(100);
+            let quote_outcome_d = XSTPool::quote(
+                &DEXId::Polkaswap.into(),
+                &XSTUSD,
+                &XOR,
+                SwapAmount::with_desired_output(amount_d.clone(), Balance::max_value()),
+            )
+            .unwrap();
+            let exchange_outcome_d = XSTPool::exchange(
+                &alice(),
+                &alice(),
+                &DEXId::Polkaswap.into(),
+                &XSTUSD,
+                &XOR,
+                SwapAmount::with_desired_output(amount_d.clone(), Balance::max_value()),
+            )
+            .unwrap();
+            let xstusd_balance_d = Assets::free_balance(&XSTUSD, &alice()).unwrap();
+            let xor_balance_d = Assets::free_balance(&XOR, &alice()).unwrap();
+            assert_eq!(quote_outcome_d.amount, exchange_outcome_d.amount);
+            assert_eq!(xstusd_balance_c - quote_outcome_d.amount, xstusd_balance_d);
+            assert_eq!(xor_balance_c + amount_d.clone(), xor_balance_d);
+        });
     }
 
     #[test]

@@ -487,8 +487,8 @@ impl<T: Config> Module<T> {
                 desired_amount_in,
                 min_amount_out,
             } => {
-                let fee_percentage = FixedWrapper::from(BaseFee::<T>::get());
-                let fee_amount = (fee_percentage * FixedWrapper::from(desired_amount_in))
+                let fee_ratio = FixedWrapper::from(BaseFee::<T>::get());
+                let fee_amount = (fee_ratio * FixedWrapper::from(desired_amount_in))
                     .try_into_balance()
                     .map_err(|_| Error::<T>::PriceCalculationFailed)?;
                 let output_amount = Self::sell_price(
@@ -519,9 +519,9 @@ impl<T: Config> Module<T> {
                 )?)
                 .try_into_balance()
                 .map_err(|_| Error::<T>::PriceCalculationFailed)?;
-                let fee_percentage = FixedWrapper::from(BaseFee::<T>::get());
+                let fee_ratio = FixedWrapper::from(BaseFee::<T>::get());
                 let input_amount_with_fee =
-                    FixedWrapper::from(input_amount) / (fixed_wrapper!(1) - fee_percentage);
+                    FixedWrapper::from(input_amount) / (fixed_wrapper!(1) - fee_ratio);
                 let input_amount_with_fee = input_amount_with_fee
                     .try_into_balance()
                     .map_err(|_| Error::<T>::PriceCalculationFailed)?;
@@ -548,7 +548,7 @@ impl<T: Config> Module<T> {
         _dex_id: &T::DEXId,
         input_asset_id: &T::AssetId,
         output_asset_id: &T::AssetId,
-        input_amount: SwapAmount<Balance>,
+        swap_amount: SwapAmount<Balance>,
         from_account_id: &T::AccountId,
         to_account_id: &T::AccountId,
     ) -> Result<SwapOutcome<Balance>, DispatchError> {
@@ -556,8 +556,13 @@ impl<T: Config> Module<T> {
             let reserves_tech_account_id = Self::reserves_account_id();
             let reserves_account_id =
                 Technical::<T>::tech_account_id_to_account_id(&reserves_tech_account_id)?;
-            let (input_amount, output_amount, fee_amount) =
-                Self::decide_sell_amounts(input_asset_id, output_asset_id, input_amount)?;
+
+            let base_asset_id = &T::GetBaseAssetId::get();
+            let (input_amount, output_amount, fee_amount) = if input_asset_id == base_asset_id {
+                Self::decide_sell_amounts(&input_asset_id, &output_asset_id, swap_amount)?
+            } else {
+                Self::decide_buy_amounts(&output_asset_id, &input_asset_id, swap_amount)?
+            };
 
             Assets::<T>::burn_from(
                 input_asset_id,
@@ -573,7 +578,10 @@ impl<T: Config> Module<T> {
                 output_amount,
             )?;
 
-            Ok(SwapOutcome::new(output_amount, fee_amount))
+            match swap_amount {
+                SwapAmount::WithDesiredInput { .. } => Ok(SwapOutcome::new(output_amount, fee_amount)),
+                SwapAmount::WithDesiredOutput { .. } => Ok(SwapOutcome::new(input_amount, fee_amount)),
+            }
         })
     }
 

@@ -1091,7 +1091,7 @@ impl<T: Config> Module<T> {
         })
     }
 
-    /// Mapping that defines percentage of fee penalty applied for selling XOR with
+    /// Mapping that defines ratio of fee penalty applied for selling XOR with
     /// low collateralized reserves.
     fn map_collateralized_fraction_to_penalty(fraction: Fixed) -> Fixed {
         if fraction < fixed!(0.05) {
@@ -1107,7 +1107,7 @@ impl<T: Config> Module<T> {
         }
     }
 
-    /// Calculate percentage of fee penalty that is applied to trades when XOR is sold while
+    /// Calculate ratio of fee penalty that is applied to trades when XOR is sold while
     /// reserves are low for target collateral asset.
     fn sell_penalty(collateral_asset_id: &T::AssetId) -> Result<Fixed, DispatchError> {
         let reserves_account_id =
@@ -1145,9 +1145,9 @@ impl<T: Config> Module<T> {
                 desired_amount_in,
                 min_amount_out,
             } => {
-                let fee_percentage = FixedWrapper::from(BaseFee::<T>::get())
+                let fee_ratio = FixedWrapper::from(BaseFee::<T>::get())
                     + Self::sell_penalty(collateral_asset_id)?;
-                let fee_amount = (fee_percentage * FixedWrapper::from(desired_amount_in))
+                let fee_amount = (fee_ratio * FixedWrapper::from(desired_amount_in))
                     .try_into_balance()
                     .map_err(|_| Error::<T>::PriceCalculationFailed)?;
                 let output_amount = Self::sell_price(
@@ -1178,10 +1178,10 @@ impl<T: Config> Module<T> {
                 )?)
                 .try_into_balance()
                 .map_err(|_| Error::<T>::PriceCalculationFailed)?;
-                let fee_percentage = FixedWrapper::from(BaseFee::<T>::get())
+                let fee_ratio = FixedWrapper::from(BaseFee::<T>::get())
                     + Self::sell_penalty(collateral_asset_id)?;
                 let input_amount_with_fee =
-                    FixedWrapper::from(input_amount) / (fixed_wrapper!(1) - fee_percentage);
+                    FixedWrapper::from(input_amount) / (fixed_wrapper!(1) - fee_ratio);
                 let input_amount_with_fee = input_amount_with_fee
                     .try_into_balance()
                     .map_err(|_| Error::<T>::PriceCalculationFailed)?;
