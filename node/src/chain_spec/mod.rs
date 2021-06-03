@@ -287,7 +287,7 @@ pub fn dev_net_coded() -> ChainSpec {
         },
         vec![],
         None,
-        Some("sora-substrate-1"),
+        Some("sora-substrate-dev"),
         Some(properties),
         None,
     )
