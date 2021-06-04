@@ -18,6 +18,7 @@ frame-support = { version = "3", default-features = false }
 frame-system = { version = "3", default-features = false }
 hex-literal = { version = "0.3.1", optional = true }
 orml-traits = { version = "0.4", default-features = false }
+pallet-scheduler = { version = "3", default-features = false }
 pallet-timestamp = { version = "3", default-features = false }
 serde = { version = "1.0.101", optional = true, features = ["derive"] }
 sp-arithmetic = { version = "3", default-features = false }
@@ -34,11 +35,14 @@ technical = { path = "../technical", default-features = false }
 tokens = { version = "0.4", package = "orml-tokens", default-features = false }
 trading-pair = { path = "../trading-pair", default-features = false }
 vested-rewards = { path = "../vested-rewards", default-features = false }
+rustc-hex = { version = "2.1.0", default-features = false }
 
 [dev-dependencies]
-currencies = { version = "0.4", package = "orml-currencies", default-features = false }
-pallet-balances = { version = "3", default-features = false }
-sp-io = { version = "3", default-features = false }
+currencies = { version = "0.4", package = "orml-currencies" }
+hex-literal = { version = "0.3.1" }
+pallet-balances = { version = "3" }
+pallet-scheduler = { version = "3" }
+sp-io = { version = "3" }
 tokens = { version = "0.4", package = "orml-tokens" }
 
 assets = { path = "../assets" }

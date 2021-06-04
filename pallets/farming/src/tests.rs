@@ -29,22 +29,15 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use frame_support::assert_ok;
-use frame_support::traits::{OnFinalize, OnInitialize};
 
 use common::{balance, DOT, PSWAP, XOR};
 use pool_xyk::Properties;
 
-use crate::mock::*;
+use crate::mock::{
+    self, AssetId, ExtBuilder, Origin, Runtime, ALICE, BOB, CHARLIE, DEX_A_ID, REFRESH_FREQUENCY,
+    VESTING_FREQUENCY,
+};
 use crate::{PoolFarmer, PoolFarmers, SavedValues};
-
-fn run_to_block(n: u64) {
-    while System::block_number() < n {
-        System::on_finalize(System::block_number());
-        System::set_block_number(System::block_number() + 1);
-        System::on_initialize(System::block_number());
-        Farming::on_initialize(System::block_number());
-    }
-}
 
 fn init_pool(other_asset: AssetId) {
     assert_ok!(trading_pair::Module::<Runtime>::register(
@@ -114,7 +107,7 @@ fn test() {
             balance!(4.4),
         ));
 
-        run_to_block(REFRESH_FREQUENCY);
+        mock::run_to_block(REFRESH_FREQUENCY);
 
         let dot_pool = Properties::<Runtime>::get(XOR, DOT).unwrap().0;
         let farmers = PoolFarmers::<Runtime>::get(&dot_pool);
@@ -152,7 +145,7 @@ fn test() {
             ]
         );
 
-        run_to_block(VESTING_FREQUENCY);
+        mock::run_to_block(VESTING_FREQUENCY);
 
         // TBD: Remove for the next release
         let values = SavedValues::<Runtime>::get(VESTING_FREQUENCY);

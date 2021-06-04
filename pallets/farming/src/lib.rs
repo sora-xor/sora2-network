@@ -32,10 +32,13 @@
 
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
+mod migrations;
 #[cfg(test)]
 mod mock;
 #[cfg(test)]
 mod tests;
+#[cfg(any(test, feature = "runtime-benchmarks"))]
+mod utils;
 mod weights;
 
 use codec::{Decode, Encode};
@@ -43,6 +46,7 @@ use common::RewardReason;
 use frame_support::dispatch::DispatchResult;
 use frame_support::traits::Get;
 use frame_support::weights::Weight;
+use frame_system::pallet_prelude::BlockNumberFor;
 use pool_xyk::PoolProviders;
 use sp_arithmetic::traits::UniqueSaturatedInto;
 use sp_runtime::traits::Saturating;
@@ -70,13 +74,18 @@ impl<T: Config> OnPoolCreated for Pallet<T> {
         _dex_id: Self::DEXId,
         pool_account: Self::AccountId,
     ) -> DispatchResult {
-        let block_number = frame_system::Module::<T>::block_number() % T::REFRESH_FREQUENCY;
-        Pools::<T>::mutate(block_number, |pools| pools.push(pool_account));
+        Self::add_pool(pool_account, frame_system::Module::<T>::block_number());
         Ok(())
     }
 }
 
 impl<T: Config> Pallet<T> {
+    fn add_pool(pool_account: AccountIdOf<T>, block_number: BlockNumberFor<T>) {
+        Pools::<T>::mutate(block_number % T::REFRESH_FREQUENCY, |pools| {
+            pools.push(pool_account)
+        });
+    }
+
     fn refresh_pools(now: T::BlockNumber) -> Weight {
         let mut total_weight = 0;
         let pools = Pools::<T>::get(now % T::REFRESH_FREQUENCY);
@@ -264,7 +273,10 @@ pub mod pallet {
     use super::*;
     use assets::AssetIdOf;
     use frame_support::pallet_prelude::*;
-    use frame_system::pallet_prelude::*;
+    use frame_support::traits::schedule::Anon;
+    use frame_support::traits::PalletVersion;
+    use frame_system::ensure_root;
+    use frame_system::pallet_prelude::OriginFor;
     use sp_runtime::traits::Zero;
 
     #[pallet::config]
@@ -283,6 +295,9 @@ pub mod pallet {
         /// How often the vesting happens. VESTING_FREQUENCY % REFRESH_FREQUENCY must be 0
         const VESTING_FREQUENCY: BlockNumberFor<Self>;
         const BLOCKS_PER_DAY: BlockNumberFor<Self>;
+        type Call: Parameter + From<Call<Self>>;
+        type SchedulerOriginCaller: From<frame_system::RawOrigin<Self::AccountId>>;
+        type Scheduler: Anon<Self::BlockNumber, <Self as Config>::Call, Self::SchedulerOriginCaller>;
         type RewardDoublingAssets: Get<Vec<AssetIdOf<Self>>>;
         /// Weight information for extrinsics in this pallet.
         type WeightInfo: WeightInfo;
@@ -313,10 +328,24 @@ pub mod pallet {
 
             total_weight
         }
+
+        fn on_runtime_upgrade() -> Weight {
+            match Self::storage_version() {
+                Some(PalletVersion { major: 0, .. }) | None => migrations::v1_1::migrate::<T>(),
+                _ => 0,
+            }
+        }
     }
 
     #[pallet::call]
-    impl<T: Config> Pallet<T> {}
+    impl<T: Config> Pallet<T> {
+        #[pallet::weight(0)]
+        fn migrate_to_1_1(origin: OriginFor<T>) -> DispatchResultWithPostInfo {
+            ensure_root(origin)?;
+            let weight = migrations::v1_1::migrate::<T>();
+            Ok(Some(weight).into())
+        }
+    }
 
     #[pallet::error]
     pub enum Error<T> {
