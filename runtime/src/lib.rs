@@ -1133,6 +1133,14 @@ impl multicollateral_bonding_curve_pool::Config for Runtime {
     type WeightInfo = multicollateral_bonding_curve_pool::weights::WeightInfo<Runtime>;
 }
 
+impl xst::Config for Runtime {
+    type Event = Event;
+    type LiquidityProxy = LiquidityProxy;
+    type EnsureDEXManager = DEXManager;
+    type EnsureTradingPairExists = TradingPair;
+    type WeightInfo = xst::weights::WeightInfo<Runtime>;
+}
+
 impl pallet_im_online::Config for Runtime {
     type AuthorityId = ImOnlineId;
     type Event = Event;
@@ -1204,6 +1212,7 @@ construct_runtime! {
         Assets: assets::{Module, Call, Storage, Config<T>, Event<T>},
         DEXManager: dex_manager::{Module, Storage, Config<T>},
         MulticollateralBondingCurvePool: multicollateral_bonding_curve_pool::{Module, Call, Storage, Config<T>, Event<T>},
+        XSTPool: xst::{Module, Call, Storage, Config<T>, Event<T>},
         Technical: technical::{Module, Call, Config<T>, Event<T>},
         PoolXYK: pool_xyk::{Module, Call, Storage, Event<T>},
         LiquidityProxy: liquidity_proxy::{Module, Call, Event<T>},
@@ -1263,6 +1272,7 @@ construct_runtime! {
         Assets: assets::{Module, Call, Storage, Config<T>, Event<T>},
         DEXManager: dex_manager::{Module, Storage, Config<T>},
         MulticollateralBondingCurvePool: multicollateral_bonding_curve_pool::{Module, Call, Storage, Config<T>, Event<T>},
+        XSTPool: xst::{Module, Call, Storage, Config<T>, Event<T>},
         Technical: technical::{Module, Config<T>, Event<T>},
         PoolXYK: pool_xyk::{Module, Call, Storage, Event<T>},
         LiquidityProxy: liquidity_proxy::{Module, Call, Event<T>},

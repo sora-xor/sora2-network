@@ -182,6 +182,7 @@ std = [
     'pswap-distribution/std',
     'pswap-distribution-runtime-api/std',
     'vested-rewards/std',
+    'xst/std',
 ]
 
 private-net = ["faucet"]
