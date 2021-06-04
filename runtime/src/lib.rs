@@ -226,7 +226,7 @@ pub const FARMING_PSWAP_PER_DAY: Balance = balance!(2500000);
 pub const FARMING_REFRESH_FREQUENCY: BlockNumber = 2 * HOURS;
 // Defined in the article
 pub const FARMING_VESTING_COEFF: u32 = 3;
-pub const FARMING_VESTING_FREQUENCY: BlockNumber = 8 * HOURS;
+pub const FARMING_VESTING_FREQUENCY: BlockNumber = 6 * HOURS;
 
 parameter_types! {
     pub const BlockHashCount: BlockNumber = 250;
