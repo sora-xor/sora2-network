@@ -35,7 +35,7 @@ use common::mock::ExistentialDeposits;
 use common::prelude::Balance;
 use common::{
     fixed, fixed_from_basis_points, hash, Amount, AssetId32, BalancePrecision, DEXInfo, Fixed,
-    FromGenericPair, LiquiditySourceType, TechPurpose,
+    FromGenericPair, LiquiditySourceFilter, LiquiditySourceType, PriceToolsPallet, TechPurpose,
 };
 use currencies::BasicCurrencyAdapter;
 
@@ -48,7 +48,7 @@ use permissions::{Scope, BURN, MANAGE_DEX, MINT, TRANSFER};
 use sp_core::H256;
 use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentityLookup};
-use sp_runtime::AccountId32;
+use sp_runtime::{AccountId32, DispatchError, DispatchResult};
 
 pub type DEXId = u32;
 pub type AssetId = AssetId32<common::PredefinedAssetId>;
@@ -90,6 +90,9 @@ parameter_types! {
     pub const GetBurnUpdateFrequency: BlockNumber = 10;
     pub GetIncentiveAssetId: AssetId = common::PSWAP.into();
     pub GetParliamentAccountId: AccountId = AccountId32::from([8; 32]);
+    pub GetMarketMakerRewardsAccountId: AccountId = AccountId32::from([9; 32]);
+    pub GetBondingCurveRewardsAccountId: AccountId = AccountId32::from([10; 32]);
+    pub GetTeamReservesAccountId: AccountId = AccountId::from([11; 32]);
     pub GetXykFee: Fixed = fixed!(0.003);
 }
 
@@ -110,7 +113,7 @@ construct_runtime! {
         Permissions: permissions::{Module, Call, Config<T>, Storage, Event<T>},
         DexApi: dex_api::{Module, Call, Config, Storage, Event<T>},
         TradingPair: trading_pair::{Module, Call, Config<T>, Storage, Event<T>},
-        PoolXyk: pool_xyk::{Module, Call, Storage, Event<T>},
+        PoolXYK: pool_xyk::{Module, Call, Storage, Event<T>},
         MBCPool: multicollateral_bonding_curve_pool::{Module, Call, Storage, Event<T>},
         PswapDistribution: pswap_distribution::{Module, Call, Config<T>, Storage, Event<T>},
         VestedRewards: vested_rewards::{Module, Call, Storage, Event<T>},
@@ -151,6 +154,7 @@ impl liquidity_proxy::Config for Runtime {
     type PrimaryMarketTBC = ();
     type PrimaryMarketXST = ();
     type SecondaryMarket = ();
+    type VestedRewardsPallet = vested_rewards::Module<Runtime>;
 }
 
 impl tokens::Config for Runtime {
@@ -179,6 +183,7 @@ impl assets::Config for Runtime {
     type AssetId = AssetId;
     type GetBaseAssetId = GetBaseAssetId;
     type Currency = currencies::Module<Runtime>;
+    type GetTeamReservesAccountId = GetTeamReservesAccountId;
     type WeightInfo = ();
 }
 
@@ -229,8 +234,7 @@ impl technical::Config for Runtime {
     type TechAccountId = TechAccountId;
     type Trigger = ();
     type Condition = ();
-    type SwapAction =
-        pool_xyk::PolySwapAction<AssetId, TechAssetId, Balance, AccountId, TechAccountId>;
+    type SwapAction = pool_xyk::PolySwapAction<AssetId, AccountId, TechAccountId>;
     type WeightInfo = ();
 }
 
@@ -258,21 +262,24 @@ impl trading_pair::Config for Runtime {
 }
 
 impl pool_xyk::Config for Runtime {
+    const MIN_XOR: Balance = balance!(0.0007);
     type Event = Event;
-    type PairSwapAction = pool_xyk::PairSwapAction<AssetId, Balance, AccountId, TechAccountId>;
+    type PairSwapAction = pool_xyk::PairSwapAction<AssetId, AccountId, TechAccountId>;
     type DepositLiquidityAction =
-        pool_xyk::DepositLiquidityAction<AssetId, TechAssetId, Balance, AccountId, TechAccountId>;
+        pool_xyk::DepositLiquidityAction<AssetId, AccountId, TechAccountId>;
     type WithdrawLiquidityAction =
-        pool_xyk::WithdrawLiquidityAction<AssetId, TechAssetId, Balance, AccountId, TechAccountId>;
-    type PolySwapAction =
-        pool_xyk::PolySwapAction<AssetId, TechAssetId, Balance, AccountId, TechAccountId>;
+        pool_xyk::WithdrawLiquidityAction<AssetId, AccountId, TechAccountId>;
+    type PolySwapAction = pool_xyk::PolySwapAction<AssetId, AccountId, TechAccountId>;
     type EnsureDEXManager = dex_manager::Module<Runtime>;
     type GetFee = GetXykFee;
+    type OnPoolCreated = PswapDistribution;
     type WeightInfo = ();
 }
 
 impl vested_rewards::Config for Runtime {
     type Event = Event;
+    type GetMarketMakerRewardsAccountId = GetMarketMakerRewardsAccountId;
+    type GetBondingCurveRewardsAccountId = GetBondingCurveRewardsAccountId;
     type WeightInfo = ();
 }
 
@@ -392,11 +399,38 @@ parameter_types! {
     };
 }
 
+pub struct MockPriceTools;
+
+impl PriceToolsPallet<AssetId> for MockPriceTools {
+    fn get_average_price(
+        input_asset_id: &AssetId,
+        output_asset_id: &AssetId,
+    ) -> Result<Balance, DispatchError> {
+        let res = <LiquidityProxy as LiquidityProxyTrait<DEXId, AccountId, AssetId>>::quote(
+            input_asset_id,
+            output_asset_id,
+            SwapAmount::with_desired_input(balance!(1), balance!(0)),
+            LiquiditySourceFilter::with_allowed(
+                0u32,
+                [LiquiditySourceType::XYKPool].iter().cloned().collect(),
+            ),
+        );
+        Ok(res?.amount)
+    }
+
+    fn register_asset(_: &AssetId) -> DispatchResult {
+        // do nothing
+        Ok(())
+    }
+}
+
 impl multicollateral_bonding_curve_pool::Config for Runtime {
     type Event = Event;
     type LiquidityProxy = liquidity_proxy::Module<Runtime>;
     type EnsureDEXManager = dex_manager::Module<Runtime>;
     type EnsureTradingPairExists = trading_pair::Module<Runtime>;
+    type PriceToolsPallet = MockPriceTools;
+    type VestedRewardsPallet = VestedRewards;
     type WeightInfo = ();
 }
 
@@ -412,6 +446,7 @@ impl pswap_distribution::Config for Runtime {
     type OnPswapBurnedAggregator = ();
     type WeightInfo = ();
     type GetParliamentAccountId = GetParliamentAccountId;
+    type PoolXykPallet = PoolXYK;
 }
 
 impl Config for Runtime {}

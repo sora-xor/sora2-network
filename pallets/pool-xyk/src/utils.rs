@@ -28,46 +28,19 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#![cfg_attr(not(feature = "std"), no_std)]
-
 use core::convert::TryInto;
 use frame_support::dispatch::{DispatchError, DispatchResult};
 use frame_support::ensure;
 use frame_support::traits::Get;
 
 use common::prelude::{Balance, SwapAmount};
-use common::{ToFeeAccount, ToTechUnitFromDEXAndTradingPair};
+use common::{AccountIdOf, ToFeeAccount, ToTechUnitFromDEXAndTradingPair};
 
-use crate::aliases::{AssetIdOf, DEXManager, ExtraAccountIdOf, TechAccountIdOf, TechAssetIdOf};
+use crate::aliases::{AssetIdOf, DEXManager, TechAccountIdOf, TechAssetIdOf};
 use crate::bounds::*;
-use crate::{Config, Error, Module};
+use crate::{Config, Error, Module, PoolProviders, TotalIssuances};
 
 impl<T: Config> Module<T> {
-    pub fn get_marking_asset_repr(
-        tech_acc: &TechAccountIdOf<T>,
-    ) -> Result<AssetIdOf<T>, DispatchError> {
-        use assets::AssetRecord::*;
-        use assets::AssetRecordArg::*;
-        use common::AssetIdExtraAssetRecordArg::*;
-        let repr_extra: ExtraAccountIdOf<T> =
-            technical::Module::<T>::tech_account_id_to_account_id(&tech_acc)?.into();
-        let tag = GenericU128(common::hash_to_u128_pair(b"Marking asset").0);
-        let lst_extra = Extra(LstId(common::LiquiditySourceType::XYKPool.into()).into());
-        let acc_extra = Extra(AccountId(repr_extra).into());
-        let asset_id =
-            assets::Module::<T>::register_asset_id_from_tuple(&Arity3(tag, lst_extra, acc_extra));
-        Ok(asset_id)
-    }
-
-    pub fn get_marking_asset(
-        tech_acc: &TechAccountIdOf<T>,
-    ) -> Result<TechAssetIdOf<T>, DispatchError> {
-        let asset_id = Module::<T>::get_marking_asset_repr(tech_acc)?;
-        asset_id
-            .try_into()
-            .map_err(|_| Error::<T>::UnableToConvertAssetToTechAssetId.into())
-    }
-
     /// Using try into to get Result with some error, after this convert Result into Option,
     /// after this AssetDecodingError is used if None.
     pub fn try_decode_asset(asset: AssetIdOf<T>) -> Result<TechAssetIdOf<T>, DispatchError> {
@@ -219,5 +192,59 @@ impl<T: Config> Module<T> {
             destination_amount_b,
             tech_acc_id,
         ))
+    }
+
+    pub fn burn(
+        pool_account: &AccountIdOf<T>,
+        user_account: &AccountIdOf<T>,
+        pool_tokens: Balance,
+    ) -> Result<(), DispatchError> {
+        let result: Result<_, Error<T>> =
+            PoolProviders::<T>::mutate_exists(pool_account, user_account, |balance| {
+                let old_balance = balance.ok_or(Error::<T>::AccountBalanceIsInvalid)?;
+                let new_balance = old_balance
+                    .checked_sub(pool_tokens)
+                    .ok_or(Error::<T>::AccountBalanceIsInvalid)?;
+                *balance = (new_balance != 0).then(|| new_balance);
+                Ok(())
+            });
+        result?;
+        let result: Result<_, Error<T>> = TotalIssuances::<T>::mutate(pool_account, |issuance| {
+            let old_issuance = issuance.ok_or(Error::<T>::PoolIsInvalid)?;
+            let new_issuance = old_issuance
+                .checked_sub(pool_tokens)
+                .ok_or(Error::<T>::PoolIsInvalid)?;
+            *issuance = Some(new_issuance);
+            Ok(())
+        });
+        result?;
+        Ok(())
+    }
+
+    pub fn mint(
+        pool_account: &AccountIdOf<T>,
+        user_account: &AccountIdOf<T>,
+        pool_tokens: Balance,
+    ) -> Result<(), DispatchError> {
+        let result: Result<_, Error<T>> =
+            PoolProviders::<T>::mutate(pool_account, user_account, |balance| {
+                if balance.is_none() {
+                    frame_system::Module::<T>::inc_consumers(user_account)
+                        .map_err(|_| Error::<T>::IncRefError)?;
+                }
+                *balance = Some(balance.unwrap_or(0) + pool_tokens);
+                Ok(())
+            });
+        result?;
+        let result: Result<_, Error<T>> = TotalIssuances::<T>::mutate(&pool_account, |issuance| {
+            let new_issuance = issuance
+                .unwrap_or(0)
+                .checked_add(pool_tokens)
+                .ok_or(Error::<T>::PoolTokenSupplyOverflow)?;
+            *issuance = Some(new_issuance);
+            Ok(())
+        });
+        result?;
+        Ok(())
     }
 }

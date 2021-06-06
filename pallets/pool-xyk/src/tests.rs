@@ -35,6 +35,7 @@ use common::{
 use frame_support::{assert_noop, assert_ok};
 
 use crate::mock::*;
+use crate::{PoolProviders, TotalIssuances};
 
 use sp_std::rc::Rc;
 
@@ -132,6 +133,13 @@ impl<'a> crate::Module<Runtime> {
                 balance!(900000)
             ));
 
+            assert_ok!(assets::Module::<Runtime>::mint_to(
+                &gt,
+                &ALICE(),
+                &CHARLIE(),
+                balance!(900000)
+            ));
+
             assert_eq!(
                 assets::Module::<Runtime>::free_balance(&gt, &ALICE()).unwrap(),
                 balance!(900000)
@@ -156,18 +164,15 @@ impl<'a> crate::Module<Runtime> {
 
             let base_asset: AssetId = GoldenTicket.into();
             let target_asset: AssetId = BlackPepper.into();
-            let tech_asset: AssetId = crate::Module::<Runtime>::get_marking_asset(&tech_acc_id)
-                .expect("Failed to get marking asset")
-                .into();
             assert_eq!(
                 crate::Module::<Runtime>::properties(base_asset, target_asset),
-                Some((repr.clone(), fee_repr.clone(), tech_asset))
+                Some((repr.clone(), fee_repr.clone()))
             );
             assert_eq!(
                 pswap_distribution::Module::<Runtime>::subscribed_accounts(&fee_repr),
                 Some((
                     dex_id.clone(),
-                    tech_asset,
+                    repr.clone(),
                     GetDefaultSubscriptionFrequency::get(),
                     0
                 ))
@@ -190,7 +195,7 @@ impl<'a> crate::Module<Runtime> {
 
     fn preset_deposited_pool(tests: Vec<PresetFunction<'a>>) {
         let mut new_tests: Vec<PresetFunction<'a>> = vec![Rc::new(
-            |dex_id, _, _, _, tech_acc_id: crate::mock::TechAccountId, _, _, _| {
+            |dex_id, _, _, _, _tech_acc_id: crate::mock::TechAccountId, _, pool_account, _| {
                 assert_ok!(crate::Module::<Runtime>::deposit_liquidity(
                     Origin::signed(ALICE()),
                     dex_id,
@@ -202,12 +207,9 @@ impl<'a> crate::Module<Runtime> {
                     balance!(144000),
                 ));
 
-                let tech_asset: AssetId = crate::Module::<Runtime>::get_marking_asset(&tech_acc_id)
-                    .expect("Failed to get marking asset")
-                    .into();
                 assert_eq!(
-                    assets::Module::<Runtime>::free_balance(&tech_asset, &ALICE()).unwrap(),
-                    balance!(227683.9915321233119024),
+                    PoolProviders::<Runtime>::get(pool_account, &ALICE()),
+                    Some(balance!(227683.9915321233119024)),
                 );
                 //TODO: total supply check
             },
@@ -451,6 +453,86 @@ fn quote_case_exact_output_for_input_base_second_fail_with_out_of_bounds() {
             crate::Error::<Runtime>::CalculatedValueIsOutOfDesiredBounds
         );
     })]);
+}
+
+#[test]
+// Deposit to an empty pool
+fn deposit_less_than_minimum_1() {
+    crate::Module::<Runtime>::preset_initial(vec![Rc::new(|dex_id, _, _, _, _, _, _, _| {
+        assert_noop!(
+            crate::Module::<Runtime>::deposit_liquidity(
+                Origin::signed(ALICE()),
+                dex_id,
+                GoldenTicket.into(),
+                BlackPepper.into(),
+                balance!(0.00001),
+                balance!(100),
+                balance!(0.00001),
+                balance!(100),
+            ),
+            crate::Error::<Runtime>::UnableToDepositXorLessThanMinimum
+        );
+    })]);
+}
+
+#[test]
+// Deposit to an already existing pool
+fn deposit_less_than_minimum_2() {
+    crate::Module::<Runtime>::preset_deposited_pool(vec![Rc::new(
+        |dex_id, _, _, _, _, _, _, _| {
+            assert_noop!(
+                crate::Module::<Runtime>::deposit_liquidity(
+                    Origin::signed(CHARLIE()),
+                    dex_id,
+                    GoldenTicket.into(),
+                    BlackPepper.into(),
+                    balance!(0.00025),
+                    balance!(0.0001),
+                    balance!(0.00025),
+                    balance!(0.0001),
+                ),
+                crate::Error::<Runtime>::UnableToDepositXorLessThanMinimum
+            );
+        },
+    )]);
+}
+
+#[test]
+// Deposit to an already existing pool, but you're in the pool already
+fn deposit_less_than_minimum_3() {
+    crate::Module::<Runtime>::preset_deposited_pool(vec![Rc::new(
+        |dex_id, _, _, _, _, _, _, _| {
+            assert_ok!(crate::Module::<Runtime>::deposit_liquidity(
+                Origin::signed(ALICE()),
+                dex_id,
+                GoldenTicket.into(),
+                BlackPepper.into(),
+                balance!(0.00025),
+                balance!(0.0001),
+                balance!(0.00025),
+                balance!(0.0001),
+            ),);
+        },
+    )]);
+}
+
+#[test]
+// Deposit to an existing pool
+fn multiple_providers() {
+    crate::Module::<Runtime>::preset_deposited_pool(vec![Rc::new(
+        |dex_id, _, _, _, _, _, _, _| {
+            assert_ok!(crate::Module::<Runtime>::deposit_liquidity(
+                Origin::signed(CHARLIE()),
+                dex_id,
+                GoldenTicket.into(),
+                BlackPepper.into(),
+                balance!(25),
+                balance!(10),
+                balance!(25),
+                balance!(10),
+            ),);
+        },
+    )]);
 }
 
 #[test]
@@ -1002,9 +1084,9 @@ fn withdraw_all_liquidity() {
          gt,
          bp,
          _,
-         tech_acc_id: crate::mock::TechAccountId,
+         _tech_acc_id: crate::mock::TechAccountId,
          _,
-         _repr: AccountId,
+         repr: AccountId,
          _fee_repr: AccountId| {
             assert_eq!(
                 assets::Module::<Runtime>::free_balance(&gt, &ALICE()).unwrap(),
@@ -1015,11 +1097,8 @@ fn withdraw_all_liquidity() {
                 balance!(1856000.0),
             );
 
-            let tech_asset: AssetId = crate::Module::<Runtime>::get_marking_asset(&tech_acc_id)
-                .expect("Failed to get marking asset")
-                .into();
             assert_eq!(
-                assets::Module::<Runtime>::free_balance(&tech_asset, &ALICE()).unwrap(),
+                PoolProviders::<Runtime>::get(&repr, &ALICE()).unwrap(),
                 balance!(227683.9915321233119024),
             );
 
@@ -1046,13 +1125,7 @@ fn withdraw_all_liquidity() {
                 0
             ));
 
-            let tech_asset: AssetId = crate::Module::<Runtime>::get_marking_asset(&tech_acc_id)
-                .expect("Failed to get marking asset")
-                .into();
-            assert_eq!(
-                assets::Module::<Runtime>::free_balance(&tech_asset, &ALICE()).unwrap(),
-                0,
-            );
+            assert_eq!(PoolProviders::<Runtime>::get(repr, &ALICE()), None);
 
             assert_eq!(
                 assets::Module::<Runtime>::free_balance(&gt, &ALICE()).unwrap(),
@@ -1415,4 +1488,45 @@ fn swapping_should_not_affect_k_4() {
             (FixedWrapper::from(reserve_base) * FixedWrapper::from(reserve_target)).into_balance();
         assert!(distance(k_after_swap, k_before_swap) < balance!(0.000000000000000015));
     })]);
+}
+
+#[test]
+fn burn() {
+    ExtBuilder::default().build().execute_with(|| {
+        PoolProviders::<Runtime>::insert(ALICE(), BOB(), 10);
+        TotalIssuances::<Runtime>::insert(ALICE(), 10);
+        assert_ok!(crate::Module::<Runtime>::burn(&ALICE(), &BOB(), 10));
+        assert_eq!(PoolProviders::<Runtime>::get(ALICE(), BOB()), None);
+        assert_eq!(TotalIssuances::<Runtime>::get(ALICE()), Some(0));
+    });
+
+    ExtBuilder::default().build().execute_with(|| {
+        TotalIssuances::<Runtime>::insert(ALICE(), 10);
+        assert_noop!(
+            crate::Module::<Runtime>::burn(&ALICE(), &BOB(), 10),
+            crate::Error::<Runtime>::AccountBalanceIsInvalid
+        );
+        assert_eq!(PoolProviders::<Runtime>::get(ALICE(), BOB()), None);
+        assert_eq!(TotalIssuances::<Runtime>::get(ALICE()), Some(10));
+    });
+
+    ExtBuilder::default().build().execute_with(|| {
+        PoolProviders::<Runtime>::insert(ALICE(), BOB(), 5);
+        TotalIssuances::<Runtime>::insert(ALICE(), 10);
+        assert_noop!(
+            crate::Module::<Runtime>::burn(&ALICE(), &BOB(), 10),
+            crate::Error::<Runtime>::AccountBalanceIsInvalid
+        );
+        assert_eq!(PoolProviders::<Runtime>::get(ALICE(), BOB()), Some(5));
+        assert_eq!(TotalIssuances::<Runtime>::get(ALICE()), Some(10));
+    });
+}
+
+#[test]
+fn mint() {
+    ExtBuilder::default().build().execute_with(|| {
+        assert_ok!(crate::Module::<Runtime>::mint(&ALICE(), &BOB(), 10));
+        assert_eq!(PoolProviders::<Runtime>::get(ALICE(), BOB()), Some(10));
+        assert_eq!(TotalIssuances::<Runtime>::get(ALICE()), Some(10));
+    });
 }

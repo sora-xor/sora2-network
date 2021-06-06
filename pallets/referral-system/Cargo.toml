@@ -18,6 +18,8 @@ frame-system = { version = "3", default-features = false }
 serde = { version = "1.0.101", optional = true, features = ["derive"] }
 
 [dev-dependencies]
+common = { path = "../../common", features = ["test"] }
+pallet-balances = { version = "3", default-features = false }
 sp-core = { version = "3", default-features = false }
 sp-io = { version = "3", default-features = false }
 sp-runtime = { version = "3", default-features = false }

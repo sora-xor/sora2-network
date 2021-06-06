@@ -31,12 +31,12 @@
 use crate::{self as farming, Config};
 use common::mock::ExistentialDeposits;
 use common::prelude::Balance;
-use common::{balance, fixed, hash, DEXInfo, Fixed, DOT, XOR};
+use common::{balance, fixed, hash, AssetName, AssetSymbol, DEXInfo, Fixed, DOT, PSWAP, VAL, XOR};
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::GenesisBuild;
 use frame_support::weights::Weight;
 use frame_support::{construct_runtime, parameter_types};
-use frame_system;
+use frame_system::pallet_prelude::BlockNumberFor;
 use permissions::*;
 use sp_core::crypto::AccountId32;
 use sp_core::H256;
@@ -58,6 +58,12 @@ pub type AssetId = common::AssetId32<common::PredefinedAssetId>;
 pub type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
+
+pub const PSWAP_PER_DAY: Balance = balance!(2500000);
+pub const REFRESH_FREQUENCY: BlockNumberFor<Runtime> = 200;
+pub const VESTING_COEFF: u32 = 3;
+pub const VESTING_FREQUENCY: BlockNumberFor<Runtime> = 400;
+pub const BLOCKS_PER_DAY: BlockNumberFor<Runtime> = 14_440;
 
 #[allow(non_snake_case)]
 pub fn ALICE() -> AccountId {
@@ -89,7 +95,7 @@ pub fn FERDIE() -> AccountId {
     AccountId32::from([6; 32])
 }
 
-pub const DEX_A_ID: DEXId = 220;
+pub const DEX_A_ID: DEXId = 0;
 
 parameter_types! {
     pub const BlockHashCount: u64 = 250;
@@ -103,7 +109,9 @@ parameter_types! {
     pub const GetBurnUpdateFrequency: BlockNumber = 14400;
     pub GetIncentiveAssetId: AssetId = common::PSWAP.into();
     pub GetParliamentAccountId: AccountId = AccountId32::from([8; 32]);
+    pub RewardDoublingAssets: Vec<AssetId> = vec![VAL.into(), PSWAP.into()];
     pub GetXykFee: Fixed = fixed!(0.003);
+    pub GetTeamReservesAccountId: AccountId = AccountId32::from([11; 32]);
 }
 
 construct_runtime! {
@@ -121,9 +129,12 @@ construct_runtime! {
         Currencies: currencies::{Module, Call, Storage, Event<T>},
         Assets: assets::{Module, Call, Config<T>, Storage, Event<T>},
         Technical: technical::{Module, Call, Config<T>, Storage, Event<T>},
-        PoolXyk: pool_xyk::{Module, Call, Storage, Event<T>},
+        PoolXYK: pool_xyk::{Module, Call, Storage, Event<T>},
         PswapDistribution: pswap_distribution::{Module, Call, Config<T>, Storage, Event<T>},
-        Farming: farming::{Module, Call, Config<T>, Storage, Event<T>},
+        MBCPool: multicollateral_bonding_curve_pool::{Module, Call, Storage, Event<T>},
+        VestedRewards: vested_rewards::{Module, Storage, Event<T>},
+
+        Farming: farming::{Module, Call, Storage},
     }
 }
 
@@ -206,6 +217,7 @@ impl assets::Config for Runtime {
     type AssetId = AssetId;
     type GetBaseAssetId = GetBaseAssetId;
     type Currency = currencies::Module<Runtime>;
+    type GetTeamReservesAccountId = GetTeamReservesAccountId;
     type WeightInfo = ();
 }
 
@@ -215,22 +227,22 @@ impl technical::Config for Runtime {
     type TechAccountId = TechAccountId;
     type Trigger = ();
     type Condition = ();
-    type SwapAction =
-        pool_xyk::PolySwapAction<AssetId, TechAssetId, Balance, AccountId, TechAccountId>;
+    type SwapAction = pool_xyk::PolySwapAction<AssetId, AccountId, TechAccountId>;
     type WeightInfo = ();
 }
 
 impl pool_xyk::Config for Runtime {
+    const MIN_XOR: Balance = balance!(0.007);
     type Event = Event;
-    type PairSwapAction = pool_xyk::PairSwapAction<AssetId, Balance, AccountId, TechAccountId>;
+    type PairSwapAction = pool_xyk::PairSwapAction<AssetId, AccountId, TechAccountId>;
     type DepositLiquidityAction =
-        pool_xyk::DepositLiquidityAction<AssetId, TechAssetId, Balance, AccountId, TechAccountId>;
+        pool_xyk::DepositLiquidityAction<AssetId, AccountId, TechAccountId>;
     type WithdrawLiquidityAction =
-        pool_xyk::WithdrawLiquidityAction<AssetId, TechAssetId, Balance, AccountId, TechAccountId>;
-    type PolySwapAction =
-        pool_xyk::PolySwapAction<AssetId, TechAssetId, Balance, AccountId, TechAccountId>;
+        pool_xyk::WithdrawLiquidityAction<AssetId, AccountId, TechAccountId>;
+    type PolySwapAction = pool_xyk::PolySwapAction<AssetId, AccountId, TechAccountId>;
     type EnsureDEXManager = dex_manager::Module<Runtime>;
     type GetFee = GetXykFee;
+    type OnPoolCreated = (PswapDistribution, Farming);
     type WeightInfo = ();
 }
 
@@ -246,10 +258,33 @@ impl pswap_distribution::Config for Runtime {
     type OnPswapBurnedAggregator = ();
     type WeightInfo = ();
     type GetParliamentAccountId = GetParliamentAccountId;
+    type PoolXykPallet = PoolXYK;
+}
+
+impl multicollateral_bonding_curve_pool::Config for Runtime {
+    type Event = Event;
+    type LiquidityProxy = ();
+    type EnsureTradingPairExists = trading_pair::Module<Runtime>;
+    type EnsureDEXManager = dex_manager::Module<Runtime>;
+    type PriceToolsPallet = ();
+    type VestedRewardsPallet = VestedRewards;
+    type WeightInfo = ();
+}
+
+impl vested_rewards::Config for Runtime {
+    type Event = Event;
+    type GetMarketMakerRewardsAccountId = ();
+    type GetBondingCurveRewardsAccountId = ();
+    type WeightInfo = ();
 }
 
 impl Config for Runtime {
-    type Event = Event;
+    const PSWAP_PER_DAY: Balance = PSWAP_PER_DAY;
+    const REFRESH_FREQUENCY: BlockNumberFor<Self> = REFRESH_FREQUENCY;
+    const VESTING_COEFF: u32 = VESTING_COEFF;
+    const VESTING_FREQUENCY: BlockNumberFor<Self> = VESTING_FREQUENCY;
+    const BLOCKS_PER_DAY: BlockNumberFor<Self> = BLOCKS_PER_DAY;
+    type RewardDoublingAssets = RewardDoublingAssets;
     type WeightInfo = ();
 }
 
@@ -278,18 +313,18 @@ impl Default for ExtBuilder {
                 },
             )],
             endowed_accounts: vec![
-                (ALICE(), XOR, balance!(99000)),
                 (ALICE(), DOT, balance!(2000000)),
-                (BOB(), XOR, balance!(2000000)),
+                (ALICE(), PSWAP, balance!(2000000)),
                 (BOB(), DOT, balance!(2000000)),
-                (CHARLIE(), XOR, balance!(2000000)),
+                (BOB(), PSWAP, balance!(2000000)),
                 (CHARLIE(), DOT, balance!(2000000)),
-                (DAVE(), XOR, balance!(2000000)),
+                (CHARLIE(), PSWAP, balance!(2000000)),
                 (DAVE(), DOT, balance!(2000000)),
-                (EVE(), XOR, balance!(2000000)),
+                (DAVE(), PSWAP, balance!(2000000)),
                 (EVE(), DOT, balance!(2000000)),
-                (FERDIE(), XOR, balance!(2000000)),
+                (EVE(), PSWAP, balance!(2000000)),
                 (FERDIE(), DOT, balance!(2000000)),
+                (FERDIE(), PSWAP, balance!(2000000)),
             ],
             initial_permission_owners: vec![
                 (MANAGE_DEX, Scope::Limited(hash(&DEX_A_ID)), vec![BOB()]),
@@ -318,8 +353,15 @@ impl ExtBuilder {
             .build_storage::<Runtime>()
             .unwrap();
 
-        dex_manager::GenesisConfig::<Runtime> {
-            dex_list: self.initial_dex_list,
+        pallet_balances::GenesisConfig::<Runtime> {
+            balances: vec![
+                (ALICE(), balance!(99000)),
+                (BOB(), balance!(99000)),
+                (CHARLIE(), balance!(99000)),
+                (DAVE(), balance!(99000)),
+                (EVE(), balance!(99000)),
+                (FERDIE(), balance!(99000)),
+            ],
         }
         .assimilate_storage(&mut t)
         .unwrap();
@@ -333,6 +375,46 @@ impl ExtBuilder {
         permissions::GenesisConfig::<Runtime> {
             initial_permission_owners: self.initial_permission_owners,
             initial_permissions: self.initial_permissions,
+        }
+        .assimilate_storage(&mut t)
+        .unwrap();
+
+        assets::GenesisConfig::<Runtime> {
+            endowed_assets: vec![
+                (
+                    XOR.into(),
+                    ALICE(),
+                    AssetSymbol(b"XOR".to_vec()),
+                    AssetName(b"SORA".to_vec()),
+                    18,
+                    0,
+                    true,
+                ),
+                (
+                    DOT.into(),
+                    ALICE(),
+                    AssetSymbol(b"DOT".to_vec()),
+                    AssetName(b"DOT".to_vec()),
+                    18,
+                    0,
+                    true,
+                ),
+                (
+                    PSWAP.into(),
+                    ALICE(),
+                    AssetSymbol(b"PSWAP".to_vec()),
+                    AssetName(b"PSWAP".to_vec()),
+                    18,
+                    0,
+                    true,
+                ),
+            ],
+        }
+        .assimilate_storage(&mut t)
+        .unwrap();
+
+        dex_manager::GenesisConfig::<Runtime> {
+            dex_list: self.initial_dex_list,
         }
         .assimilate_storage(&mut t)
         .unwrap();

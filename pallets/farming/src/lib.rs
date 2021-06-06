@@ -30,513 +30,230 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use common::prelude::FixedWrapper;
-use common::{balance, Balance, FromGenericPair, PSWAP, XOR};
-pub use domain::*;
-use frame_support::codec::{Decode, Encode};
-use frame_support::dispatch::{DispatchError, DispatchResult};
-use frame_support::weights::Weight;
-use frame_support::{ensure, RuntimeDebug};
-use frame_system::ensure_signed;
-use orml_traits::currency::MultiCurrency;
-use sp_std::collections::btree_set::BTreeSet;
-
-pub trait WeightInfo {
-    fn create() -> Weight;
-    fn lock_to_farm() -> Weight;
-    fn unlock_from_farm() -> Weight;
-}
-
-impl WeightInfo for () {
-    fn create() -> Weight {
-        100_000_000
-    }
-    fn lock_to_farm() -> Weight {
-        100_000_000
-    }
-    fn unlock_from_farm() -> Weight {
-        100_000_000
-    }
-}
-
-use sp_std::convert::TryInto;
-
-//use serde::{Deserialize, Serialize};
-
-/*
- * This is for debug output to log, and checking graph in gnuplot and comparing,
- * maybe this will be needed.
-use sp_runtime::print;
- */
-
-mod demo_price;
-use demo_price::*;
-
-pub mod domain;
+#[cfg(feature = "runtime-benchmarks")]
+mod benchmarking;
 #[cfg(test)]
 mod mock;
 #[cfg(test)]
 mod tests;
+mod weights;
 
-// For smooth price testing change this value to 1.
-// After testing change this values from 1 to 1000.
-const UPDATE_PRICES_EVERY_N_BLOCK: u32 = 1000;
+use codec::{Decode, Encode};
+use common::RewardReason;
+use frame_support::dispatch::DispatchResult;
+use frame_support::traits::Get;
+use frame_support::weights::Weight;
+use pool_xyk::PoolProviders;
+use sp_arithmetic::traits::UniqueSaturatedInto;
+use sp_runtime::traits::Saturating;
+use sp_std::collections::btree_map::{BTreeMap, Entry};
+use sp_std::vec::Vec;
 
-/// Period 100 = 1 week, if interval is 1000 block where one block each 6 seconds.
-const SMOOTH_PERIOD: u128 = 100;
+use common::prelude::FixedWrapper;
+use common::{balance, AccountIdOf, Balance, DexIdOf, OnPoolCreated};
 
-type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
-type TechAccountIdOf<T> = <T as technical::Config>::TechAccountId;
-type BlockNumberOf<T> = <T as frame_system::Config>::BlockNumber;
-type FarmerOf<T> = Farmer<AccountIdOf<T>, TechAccountIdOf<T>, BlockNumberOf<T>>;
+pub type WeightInfoOf<T> = <T as Config>::WeightInfo;
 
-//#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-
-#[derive(Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq, PartialOrd, Ord)]
-pub struct DiscoverClaim<AmountType> {
-    pub units_per_blocks: AmountType,
-    pub available_origin: AmountType,
-    pub available_claim: AmountType,
+pub trait WeightInfo {
+    fn refresh_pool(a: u32) -> Weight;
+    fn prepare_accounts_for_vesting(a: u32, b: u32) -> Weight;
+    fn vest_account_rewards(a: u32) -> Weight;
+    fn save_data(a: u32, b: u32) -> Weight;
 }
 
-type Pair<T> = (T, T);
+impl<T: Config> OnPoolCreated for Pallet<T> {
+    type AccountId = AccountIdOf<T>;
+    type DEXId = DexIdOf<T>;
 
-/// Structure used in calculation of smooth price, two weighted exponential average curves used to
-/// approximate one half of normal distribution, for smoother price calculations.
-#[derive(Clone, RuntimeDebug, Eq, PartialEq, Encode, Decode)]
-pub struct SmoothPriceState {
-    smooth_price: Balance,
-    weavg_normal: Pair<Balance>,
-    weavg_short: Pair<Balance>,
+    fn on_pool_created(
+        _fee_account: Self::AccountId,
+        _dex_id: Self::DEXId,
+        pool_account: Self::AccountId,
+    ) -> DispatchResult {
+        let block_number = frame_system::Module::<T>::block_number() % T::REFRESH_FREQUENCY;
+        Pools::<T>::mutate(block_number, |pools| pools.push(pool_account));
+        Ok(())
+    }
 }
 
 impl<T: Config> Pallet<T> {
-    pub fn create_unchecked(
-        who: T::AccountId,
-        origin_asset_id: T::AssetId,
-        claim_asset_id: T::AssetId,
-    ) -> Result<Option<FarmId>, DispatchError> {
-        permissions::Pallet::<T>::check_permission(who.clone(), permissions::CREATE_FARM)?;
-        let farm_id = NextFarmId::<T>::get();
-        let current_block = <frame_system::Pallet<T>>::block_number();
-        let farming_state = FarmingState::<Balance, T::BlockNumber> {
-            units_per_blocks: 0,
-            last_change: current_block,
-            units_locked: 0,
-        };
-        let incentive_model = IncentiveModel::<T::AssetId, Balance, T::BlockNumber> {
-            suitable_for_block: current_block,
-            origin_asset_id,
-            claim_asset_id,
-            amount_of_origin: Some(balance!(99999)),
-            origin_to_claim_ratio: Some(balance!(1)),
-        };
-        let farm = Farm::<T::AccountId, T::AssetId, T::BlockNumber> {
-            id: farm_id,
-            owner_id: who.clone(),
-            creation_block_number: current_block,
-            aggregated_state: farming_state,
-            incentive_model_state: incentive_model,
-        };
-
-        let _amount_of_origin = farm
-            .incentive_model_state
-            .amount_of_origin
-            .ok_or(Error::<T>::SomeValuesIsNotSet)?;
-
-        Farms::<T>::insert(farm_id, farm);
-
-        Self::deposit_event(Event::FarmCreated(farm_id, who));
-        NextFarmId::<T>::set(farm_id + 1);
-        Ok(Some(farm_id))
-    }
-
-    pub fn get_or_create_farmer(
-        account_id: T::AccountId,
-        farm_id: FarmId,
-    ) -> Result<FarmerOf<T>, DispatchError> {
-        let farmer_id = (farm_id, account_id.clone());
-        match Farmers::<T>::get(farm_id, account_id.clone()) {
-            Some(farmer) => Ok(farmer),
-            None => {
-                let tech_id = T::TechAccountId::from_generic_pair(
-                    "FARMING_PALLET".into(),
-                    farmer_id.encode(),
-                );
-                frame_system::Pallet::<T>::inc_consumers(&account_id)
-                    .map_err(|_| Error::<T>::IncRefError)?;
-                technical::Pallet::<T>::register_tech_account_id_if_not_exist(&tech_id)?;
-                let current_block = <frame_system::Pallet<T>>::block_number();
-                let farmer = FarmerOf::<T> {
-                    id: farmer_id,
-                    tech_account_id: tech_id,
-                    state: FarmingState::<Balance, T::BlockNumber> {
-                        units_per_blocks: 0,
-                        last_change: current_block,
-                        units_locked: 0,
-                    },
-                };
-                Farmers::<T>::insert(farm_id, account_id.clone(), farmer.clone());
-                Self::deposit_event(Event::FarmerCreated(farm_id, account_id));
-                Ok(farmer)
-            }
+    fn refresh_pools(now: T::BlockNumber) -> Weight {
+        let mut total_weight = 0;
+        let pools = Pools::<T>::get(now % T::REFRESH_FREQUENCY);
+        for pool in pools {
+            let read_count = Self::refresh_pool(pool, now);
+            total_weight = total_weight.saturating_add(WeightInfoOf::<T>::refresh_pool(read_count));
         }
+        total_weight
     }
 
-    fn get_xor_part_amount_from_marker(
-        _dex_id: T::DEXId,
-        asset_id: T::AssetId,
-        amount: Balance,
-    ) -> Result<Balance, DispatchError> {
-        use assets::AssetRecord::*;
-        use assets::AssetRecordArg::*;
-        use common::AssetIdExtraAssetRecordArg::*;
-        let tuple = assets::Module::<T>::tuple_from_asset_id(&asset_id)
-            .ok_or(Error::<T>::UnableToGetPoolInformationFromTechAsset)?;
-        match tuple {
-            Arity3(GenericU128(tag), Extra(lst_extra), Extra(acc_extra)) => {
-                ensure!(
-                    tag == common::hash_to_u128_pair(b"Marking asset").0,
-                    Error::<T>::UnableToGetPoolInformationFromTechAsset
-                );
-                ensure!(
-                    lst_extra == LstId(common::LiquiditySourceType::XYKPool.into()).into(),
-                    Error::<T>::ThisTypeOfLiquiditySourceIsNotImplementedOrSupported
-                );
-                match acc_extra.into() {
-                    AccountId(extra_acc) => {
-                        let acc: AccountIdOf<T> = extra_acc.into();
-                        pool_xyk::Module::<T>::get_xor_part_from_pool_account(acc, amount)
-                    }
-                    _ => {
-                        return Err(Error::<T>::UnableToGetPoolInformationFromTechAsset.into());
-                    }
-                }
-            }
-            _ => {
-                return Err(Error::<T>::UnableToGetPoolInformationFromTechAsset.into());
-            }
-        }
-    }
+    fn refresh_pool(pool: T::AccountId, now: T::BlockNumber) -> u32 {
+        let mut read_count = 0;
+        let mut old_farmers = PoolFarmers::<T>::get(&pool);
+        let mut new_farmers = Vec::new();
+        for (account, pool_tokens) in PoolProviders::<T>::iter_prefix(&pool) {
+            read_count += 1;
 
-    pub fn lock_to_farm_unchecked(
-        who: T::AccountId,
-        dex_id: T::DEXId,
-        farm_id: FarmId,
-        asset_id: T::AssetId,
-        amount: Balance,
-    ) -> DispatchResult {
-        permissions::Pallet::<T>::check_permission(who.clone(), permissions::LOCK_TO_FARM)?;
-        let xor_part = Pallet::<T>::get_xor_part_amount_from_marker(dex_id, asset_id, amount)?;
-        let mut farm = Farms::<T>::get(&farm_id).ok_or(Error::<T>::FarmNotFound)?;
-        let current_block = <frame_system::Pallet<T>>::block_number();
-        let mut farmer = Self::get_or_create_farmer(who.clone(), farm_id)?;
-        farmer
-            .state
-            .put_to_locked(Some(&mut farm.aggregated_state), current_block, xor_part)
-            .map_err(|()| Error::<T>::CalculationOrOperationWithFarmingStateIsFailed)?;
-        // Technical account for farmer is unique, so this is lock.
-        technical::Pallet::<T>::transfer_in(&asset_id, &who, &farmer.tech_account_id, amount)?;
-        // If previous operation is fail than transfer is not done, and next code is not performed,
-        // and this code is about writeing to storage map.
-        Farms::<T>::insert(farm.id, farm);
-        Farmers::<T>::insert(farmer.id.0.clone(), farmer.id.1.clone(), farmer);
-        MarkerTokensIndex::<T>::mutate((farm_id, who), |mti| mti.insert(asset_id));
-        Ok(())
-    }
+            let block = if let Some(index) = old_farmers.iter().position(|f| f.account == account) {
+                let farmer = old_farmers.remove(index);
+                farmer.block
+            } else {
+                now
+            };
 
-    pub fn unlock_from_farm_unchecked(
-        who: T::AccountId,
-        dex_id: T::DEXId,
-        farm_id: FarmId,
-        opt_asset_id: Option<T::AssetId>,
-        amount_opt: Option<Balance>,
-    ) -> DispatchResult {
-        permissions::Pallet::<T>::check_permission(who.clone(), permissions::UNLOCK_FROM_FARM)?;
-        let mut farm = Farms::<T>::get(&farm_id).ok_or(Error::<T>::FarmNotFound)?;
-        let current_block = <frame_system::Pallet<T>>::block_number();
-        let mut farmer = Self::get_or_create_farmer(who.clone(), farm_id)?;
-        let ta_repr =
-            technical::Pallet::<T>::tech_account_id_to_account_id(&farmer.tech_account_id)?;
-        let amount_opt = match (amount_opt, opt_asset_id) {
-            (_, Some(asset_id)) => {
-                let amount = match amount_opt {
-                    Some(amount) => amount,
-                    None => {
-                        MarkerTokensIndex::<T>::mutate((farm_id.clone(), who.clone()), |mti| {
-                            mti.remove(&asset_id)
-                        });
-                        <assets::Pallet<T>>::free_balance(&asset_id, &ta_repr)?
-                    }
-                };
-                let xor_part =
-                    Pallet::<T>::get_xor_part_amount_from_marker(dex_id, asset_id, amount)?;
-                farmer
-                    .state
-                    .remove_from_locked(Some(&mut farm.aggregated_state), current_block, xor_part)
-                    .map_err(|()| Error::<T>::CalculationOrOperationWithFarmingStateIsFailed)?;
-                Some(amount)
-            }
-            (None, None) => {
-                farmer
-                    .state
-                    .remove_all_from_locked(Some(&mut farm.aggregated_state), current_block)
-                    .map_err(|()| Error::<T>::CalculationOrOperationWithFarmingStateIsFailed)?;
-                let mti = MarkerTokensIndex::<T>::get((farm_id, who.clone()));
-                for asset_id in mti {
-                    let amount = <assets::Pallet<T>>::free_balance(&asset_id, &ta_repr)?;
-                    // Asset is None so unlock all assets, this is like exiting from farm.
-                    technical::Pallet::<T>::transfer_out(
-                        &asset_id,
-                        &farmer.tech_account_id,
-                        &who,
-                        amount,
-                    )?;
-                }
-                let empty: BTreeSet<T::AssetId> = BTreeSet::new();
-                MarkerTokensIndex::<T>::insert((farm_id, who.clone()), empty);
-                None
-            }
-            _ => {
-                return Err(Error::<T>::CaseIsNotSupported.into());
-            }
-        };
-        if let Some(amount) = amount_opt {
-            // Technical account for farmer is unique, so this is unlock.
-            technical::Pallet::<T>::transfer_out(
-                &opt_asset_id.unwrap(),
-                &farmer.tech_account_id,
-                &who,
-                amount,
-            )?;
-        }
-        // If previous operation is fail than transfer is not done, and next code is not performed,
-        // and this code is about writeing to storage map.
-        Farms::<T>::insert(farm.id, farm);
-        Farmers::<T>::insert(farmer.id.0.clone(), farmer.id.1.clone(), farmer);
-        Ok(())
-    }
-
-    pub fn prepare_and_optional_claim(
-        who: T::AccountId,
-        farm_id: FarmId,
-        amount_opt: Option<Balance>,
-        perform_write_to_database: bool,
-    ) -> Result<DiscoverClaim<Balance>, DispatchError> {
-        permissions::Pallet::<T>::check_permission(who.clone(), permissions::CLAIM_FROM_FARM)?;
-        let mut farm = Farms::<T>::get(&farm_id).ok_or(Error::<T>::FarmNotFound)?;
-        let mut farmer = Self::get_or_create_farmer(who.clone(), farm_id)?;
-        let current_block = <frame_system::Pallet<T>>::block_number();
-        farm.aggregated_state
-            .recalculate(current_block)
-            .map_err(|()| Error::<T>::CalculationOrOperationWithFarmingStateIsFailed)?;
-        farmer
-            .state
-            .recalculate(current_block)
-            .map_err(|()| Error::<T>::CalculationOrOperationWithFarmingStateIsFailed)?;
-        let total_upb = FixedWrapper::from(farm.aggregated_state.units_per_blocks);
-        let mut upb = FixedWrapper::from(farmer.state.units_per_blocks);
-        ensure!(upb > FixedWrapper::from(0), Error::<T>::NothingToClaim);
-        let piece = total_upb / upb.clone();
-        let amount_of_origin = FixedWrapper::from(
-            farm.incentive_model_state
-                .amount_of_origin
-                .ok_or(Error::<T>::SomeValuesIsNotSet)?,
-        );
-
-        if farm.incentive_model_state.suitable_for_block < current_block {
-            //TODO: Now it is limited for xor pswap, that about other assets ?
-            farm.incentive_model_state.origin_to_claim_ratio =
-                Pallet::<T>::get_smooth_price_for_xor_pswap();
-        }
-        let origin_to_claim_ratio = FixedWrapper::from(
-            farm.incentive_model_state
-                .origin_to_claim_ratio
-                .ok_or(Error::<T>::SomeValuesIsNotSet)?,
-        );
-
-        let mut piece_of_origin = amount_of_origin.clone() / piece;
-        let mut piece_of_claim = piece_of_origin.clone() * origin_to_claim_ratio.clone();
-
-        match amount_opt {
-            None => (),
-            Some(amount) => {
-                let amount = FixedWrapper::from(amount);
-                ensure!(
-                    amount <= piece_of_claim,
-                    Error::<T>::AmountIsOutOfAvailableValue
-                );
-                let down = piece_of_claim.clone() / amount;
-                upb = upb / down.clone();
-                piece_of_origin = piece_of_origin / down.clone();
-                piece_of_claim = piece_of_claim / down.clone();
-            }
+            new_farmers.push(PoolFarmer {
+                account,
+                block,
+                pool_tokens,
+            });
         }
 
-        let upb = upb.into_balance();
-        let amount_of_origin = amount_of_origin.into_balance();
-        let piece_of_origin = piece_of_origin.into_balance();
-        let piece_of_claim = piece_of_claim.into_balance();
+        PoolFarmers::<T>::insert(&pool, new_farmers);
 
-        if perform_write_to_database {
-            farmer
-                .state
-                .remove_from_upb(Some(&mut farm.aggregated_state), current_block, upb)
-                .map_err(|()| Error::<T>::CalculationOrOperationWithFarmingStateIsFailed)?;
-            farm.incentive_model_state.amount_of_origin = Some(amount_of_origin - piece_of_origin);
-            T::Currency::deposit(
-                farm.incentive_model_state.claim_asset_id,
-                &who,
-                piece_of_claim,
-            )?;
-            Farms::<T>::insert(farm.id, farm.clone());
-            Farmers::<T>::insert(farmer.id.0.clone(), farmer.id.1.clone(), farmer);
-            farm.incentive_model_state.suitable_for_block = current_block;
-            Self::deposit_event(Event::IncentiveClaimed(farm_id, who));
+        read_count
+    }
+
+    fn get_account_weight(pool: &T::AccountId, pool_tokens: Balance) -> Balance {
+        let trading_pair =
+            if let Ok(trading_pair) = pool_xyk::Module::<T>::get_pool_trading_pair(&pool) {
+                trading_pair
+            } else {
+                return 0;
+            };
+
+        let xor =
+            pool_xyk::Module::<T>::get_xor_part_from_pool_account(pool, &trading_pair, pool_tokens)
+                .unwrap_or(0);
+        if xor < balance!(1) {
+            return 0;
         }
 
-        Ok(DiscoverClaim::<Balance> {
-            units_per_blocks: upb,
-            available_origin: piece_of_origin,
-            available_claim: piece_of_claim,
-        })
-    }
+        let pool_doubles_reward = T::RewardDoublingAssets::get()
+            .iter()
+            .any(|asset_id| trading_pair.consists_of(asset_id));
 
-    pub fn get_farm_info(
-        who: T::AccountId,
-        farm_id: FarmId,
-    ) -> Result<Option<FarmInfo<T::AccountId, T::AssetId, T::BlockNumber>>, Error<T>> {
-        permissions::Pallet::<T>::check_permission(who.clone(), permissions::GET_FARM_INFO)
-            .map_err(|_| Error::<T>::NotEnoughPermissions)?;
-        let farm = Farms::<T>::get(farm_id).ok_or_else(|| Error::<T>::FarmNotFound)?;
-        let current_block = <frame_system::Pallet<T>>::block_number();
-        let mut farm_now = farm.clone();
-        farm_now
-            .aggregated_state
-            .recalculate(current_block)
-            .map_err(|()| Error::<T>::CalculationOrOperationWithFarmingStateIsFailed)?;
-        Ok(Some(FarmInfo {
-            farm: farm.clone(),
-            total_upbu_now: farm_now.aggregated_state.units_per_blocks,
-        }))
-    }
-
-    pub fn get_farmer_info(
-        who: T::AccountId,
-        farm_id: FarmId,
-    ) -> Result<Option<FarmerInfo<T::AccountId, TechAccountIdOf<T>, T::BlockNumber>>, Error<T>>
-    {
-        permissions::Pallet::<T>::check_permission(who.clone(), permissions::GET_FARMER_INFO)
-            .map_err(|_| Error::<T>::NotEnoughPermissions)?;
-        let farmer = Farmers::<T>::get(farm_id, who).ok_or_else(|| Error::<T>::FarmNotFound)?;
-        let current_block = <frame_system::Pallet<T>>::block_number();
-        let mut farmer_now = farmer.clone();
-        farmer_now
-            .state
-            .recalculate(current_block)
-            .map_err(|()| Error::<T>::CalculationOrOperationWithFarmingStateIsFailed)?;
-        Ok(Some(FarmerInfo {
-            farmer: farmer.clone(),
-            upbu_now: farmer_now.state.units_per_blocks,
-        }))
-    }
-
-    pub fn get_smooth_price_for_xor_pswap() -> Option<Balance> {
-        let opt_value = PricesStates::<T>::get(XOR, PSWAP).map(|v| v.smooth_price);
-        let current_block = <frame_system::Pallet<T>>::block_number();
-        if opt_value.is_none() {
-            Pallet::<T>::update_xor_pswap_smooth_price(current_block);
-            PricesStates::<T>::get(XOR, PSWAP).map(|v| v.smooth_price)
+        if pool_doubles_reward {
+            xor * 2
         } else {
-            opt_value
+            xor
         }
     }
 
-    fn update_xor_pswap_smooth_price(now: T::BlockNumber) {
-        let result = now / UPDATE_PRICES_EVERY_N_BLOCK.into();
-        let result = <T::BlockNumber as TryInto<u32>>::try_into(result);
-        let index: u32 = match result {
-            Ok(v) => v.try_into().unwrap(),
-            _ => unreachable!(),
-        };
-        let pv_cur = get_demo_price(index);
-        let pv_state = match PricesStates::<T>::get(XOR, PSWAP) {
-            Some(v) => v,
-            None => SmoothPriceState {
-                smooth_price: pv_cur.0.clone(),
-                weavg_normal: (pv_cur.0.clone(), pv_cur.1.clone()),
-                weavg_short: (pv_cur.0.clone(), pv_cur.1.clone()),
-            },
-        };
-
-        // Prepearing constants.
-        let one: FixedWrapper = FixedWrapper::from(balance!(1));
-        let two: FixedWrapper = FixedWrapper::from(balance!(2));
-        let smooth: FixedWrapper = FixedWrapper::from(balance!(SMOOTH_PERIOD));
-        let smooth_short = smooth.clone() / two.clone();
-
-        // Getting quick variables for calculations.
-        let p1 = FixedWrapper::from(pv_state.weavg_normal.0);
-        let v1 = FixedWrapper::from(pv_state.weavg_normal.1);
-        let p2 = FixedWrapper::from(pv_state.weavg_short.0);
-        let v2 = FixedWrapper::from(pv_state.weavg_short.1);
-        let pc = FixedWrapper::from(pv_cur.0);
-        let vc = FixedWrapper::from(pv_cur.1);
-
-        // Calculations for first weavg curve.
-        let voldiv1 = one.clone() + one.clone() / smooth.clone();
-        let ps1 = pc.clone() * vc.clone() / smooth.clone();
-        let vs1 = v1.clone() + vc.clone() / smooth.clone();
-        let p_res1 = (p1 * v1.clone() + ps1) / vs1.clone();
-        let v_res1 = vs1 / voldiv1;
-
-        // Calculations for second weavg curve (shorter period).
-        let voldiv2 = one.clone() + one.clone() / smooth_short.clone();
-        let ps2 = pc * vc.clone() / smooth_short.clone();
-        let vs2 = v2.clone() + vc / smooth_short;
-        let p_res2 = (p2 * v2 + ps2) / vs2.clone();
-        let v_res2 = vs2 / voldiv2;
-
-        // Compute smooth price as first half of normal distribution,
-        // approximated by two weavg curves.
-        let smooth_price = (p_res1.clone() - p_res2.clone() / two.clone()) * two.clone();
-        let smooth_price = smooth_price.into_balance();
-
-        // Updating smooth price state for this asset pair.
-        let pv_state_update = SmoothPriceState {
-            smooth_price: smooth_price,
-            weavg_normal: (p_res1.into_balance(), v_res1.into_balance()),
-            weavg_short: (p_res2.into_balance(), v_res2.into_balance()),
-        };
-        PricesStates::<T>::insert(XOR, PSWAP, pv_state_update);
-        Self::deposit_event(Event::<T>::SmoothPriceUpdated(XOR, PSWAP, smooth_price));
-
-        /*
-         * This is for debug output to log, and checking graph in gnuplot and comparing,
-         * maybe this will be needed.
-        let ww: Balance = 100000u32.into();
-        let msg: u32 = (smooth_price * ww).into();
-        let msg2: u32 = (pc * ww).into();
-        print("====START====");
-        print(msg);
-        print(msg2);
-        print("====END====");
-        */
+    #[allow(unused)]
+    fn vest(now: T::BlockNumber) -> Weight {
+        let mut accounts = BTreeMap::new();
+        let function_weight: Weight = Self::prepare_accounts_for_vesting(now, &mut accounts);
+        let function_weight = function_weight.saturating_add(
+            WeightInfoOf::<T>::vest_account_rewards(accounts.len() as u32),
+        );
+        Self::vest_account_rewards(accounts);
+        function_weight
     }
 
-    pub fn perform_per_block_update(now: T::BlockNumber) -> Weight {
-        if now % UPDATE_PRICES_EVERY_N_BLOCK.into() == 0u32.into() {
-            Pallet::<T>::update_xor_pswap_smooth_price(now);
+    #[allow(unused)]
+    fn prepare_accounts_for_vesting(
+        now: T::BlockNumber,
+        accounts: &mut BTreeMap<T::AccountId, FixedWrapper>,
+    ) -> Weight {
+        let mut pool_count = 0;
+        let mut farmer_count = 0;
+        for (pool, farmers) in PoolFarmers::<T>::iter() {
+            pool_count += 1;
+            farmer_count += farmers.len() as u32;
+
+            Self::prepare_pool_accounts_for_vesting(pool, farmers, now, accounts);
         }
-        0u32.into()
+
+        WeightInfoOf::<T>::prepare_accounts_for_vesting(pool_count, farmer_count)
     }
 
-    // This function is used only in tests, that's why the compiler considers it to be unused
-    #[cfg(test)]
-    fn discover_claim(origin: T::Origin, farm_id: FarmId) -> Result<Balance, DispatchError> {
-        let who = ensure_signed(origin)?;
-        let discover = Pallet::<T>::prepare_and_optional_claim(who, farm_id, None, false)?;
-        Ok(discover.available_claim)
+    #[allow(unused)]
+    fn prepare_pool_accounts_for_vesting(
+        pool: T::AccountId,
+        farmers: Vec<PoolFarmer<T>>,
+        now: T::BlockNumber,
+        accounts: &mut BTreeMap<T::AccountId, FixedWrapper>,
+    ) {
+        if farmers.is_empty() {
+            return;
+        }
+
+        let now_u128: u128 = now.unique_saturated_into();
+        for farmer in farmers {
+            let weight = Self::get_account_weight(&pool, farmer.pool_tokens);
+            if weight == 0 {
+                continue;
+            }
+
+            // Ti
+            let farmer_farming_time: u32 = (now - farmer.block).unique_saturated_into();
+            let farmer_farming_time = FixedWrapper::from(balance!(farmer_farming_time));
+
+            // Vi(t)
+            let coeff = (FixedWrapper::from(balance!(1))
+                + farmer_farming_time / FixedWrapper::from(balance!(now_u128)))
+            .pow(T::VESTING_COEFF);
+
+            let weight = coeff * weight;
+            match accounts.entry(farmer.account) {
+                Entry::Vacant(entry) => {
+                    entry.insert(weight);
+                }
+                Entry::Occupied(mut entry) => {
+                    *entry.get_mut() = entry.get().clone() + weight;
+                }
+            }
+        }
+    }
+
+    #[allow(unused)]
+    fn vest_account_rewards(accounts: BTreeMap<T::AccountId, FixedWrapper>) {
+        let mut total_weight = FixedWrapper::from(0);
+        for weight in accounts.values() {
+            total_weight = total_weight + weight.clone();
+        }
+
+        let reward = {
+            let reward_per_day = FixedWrapper::from(T::PSWAP_PER_DAY);
+            let freq: u128 = T::VESTING_FREQUENCY.unique_saturated_into();
+            let blocks: u128 = T::BLOCKS_PER_DAY.unique_saturated_into();
+            let reward_vesting_part =
+                FixedWrapper::from(balance!(freq)) / FixedWrapper::from(balance!(blocks));
+            reward_per_day * reward_vesting_part
+        };
+
+        for (account, weight) in accounts {
+            let account_reward = reward.clone() * weight / total_weight.clone();
+            let account_reward = account_reward.try_into_balance().unwrap_or(0);
+            let _ = vested_rewards::Module::<T>::add_pending_reward(
+                &account,
+                RewardReason::LiquidityProvisionFarming,
+                account_reward,
+            );
+        }
+    }
+
+    fn save_data(now: T::BlockNumber) -> Weight {
+        let mut values = Vec::new();
+        let mut pool_count = 0;
+        let mut farmer_count = 0;
+        for (pool, farmers) in PoolFarmers::<T>::iter() {
+            pool_count += 1;
+            farmer_count += farmers.len() as u32;
+
+            let mut pool_values = Vec::new();
+            for farmer in farmers {
+                let weight = Self::get_account_weight(&pool, farmer.pool_tokens);
+                if weight != 0 {
+                    pool_values.push((farmer.account, farmer.block, weight));
+                }
+            }
+            values.push((pool, pool_values));
+        }
+
+        SavedValues::<T>::insert(now, values);
+
+        WeightInfoOf::<T>::save_data(pool_count, farmer_count)
     }
 }
 
@@ -545,15 +262,28 @@ pub use pallet::*;
 #[frame_support::pallet]
 pub mod pallet {
     use super::*;
-    use common::AssetId32;
+    use assets::AssetIdOf;
     use frame_support::pallet_prelude::*;
     use frame_system::pallet_prelude::*;
+    use sp_runtime::traits::Zero;
 
     #[pallet::config]
     pub trait Config:
-        frame_system::Config + permissions::Config + technical::Config + pool_xyk::Config
+        frame_system::Config
+        + assets::Config
+        + permissions::Config
+        + technical::Config
+        + tokens::Config<Balance = Balance, CurrencyId = <Self as assets::Config>::AssetId>
+        + pool_xyk::Config
+        + vested_rewards::Config
     {
-        type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+        const PSWAP_PER_DAY: Balance;
+        const REFRESH_FREQUENCY: BlockNumberFor<Self>;
+        const VESTING_COEFF: u32;
+        /// How often the vesting happens. VESTING_FREQUENCY % REFRESH_FREQUENCY must be 0
+        const VESTING_FREQUENCY: BlockNumberFor<Self>;
+        const BLOCKS_PER_DAY: BlockNumberFor<Self>;
+        type RewardDoublingAssets: Get<Vec<AssetIdOf<Self>>>;
         /// Weight information for extrinsics in this pallet.
         type WeightInfo: WeightInfo;
     }
@@ -564,161 +294,64 @@ pub mod pallet {
 
     #[pallet::hooks]
     impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
-        // TODO: re-enable when needed
-        // fn on_initialize(now: T::BlockNumber) -> Weight {
-        //     Pallet::<T>::perform_per_block_update(now)
-        // }
+        fn on_initialize(now: T::BlockNumber) -> Weight {
+            if now.is_zero() {
+                return 0;
+            }
+
+            let mut total_weight = Self::refresh_pools(now);
+
+            if (now % T::VESTING_FREQUENCY).is_zero() {
+                // TBD: Remove for the next runtime upgrade
+                let weight = Self::save_data(now);
+                total_weight = total_weight.saturating_add(weight);
+
+                // TBD: Uncomment for the next runtime upgrade
+                // let weight = Self::vest(now);
+                // total_weight = total_weight.saturating_add(weight);
+            }
+
+            total_weight
+        }
     }
 
     #[pallet::call]
-    impl<T: Config> Pallet<T> {
-        #[pallet::weight(0)]
-        pub fn create(
-            origin: OriginFor<T>,
-            origin_asset_id: T::AssetId,
-            claim_asset_id: T::AssetId,
-        ) -> DispatchResultWithPostInfo {
-            let who = ensure_signed(origin)?;
-            Pallet::<T>::create_unchecked(who, origin_asset_id, claim_asset_id)?;
-            Ok(().into())
-        }
-
-        #[pallet::weight(0)]
-        pub fn lock_to_farm(
-            origin: OriginFor<T>,
-            dex_id: T::DEXId,
-            farm_id: FarmId,
-            asset_id: T::AssetId,
-            amount: Balance,
-        ) -> DispatchResultWithPostInfo {
-            let who = ensure_signed(origin)?;
-            Pallet::<T>::lock_to_farm_unchecked(who, dex_id, farm_id, asset_id, amount)?;
-            Ok(().into())
-        }
-
-        #[pallet::weight(0)]
-        pub fn unlock_from_farm(
-            origin: OriginFor<T>,
-            dex_id: T::DEXId,
-            farm_id: FarmId,
-            opt_asset_id: Option<T::AssetId>,
-            amount_opt: Option<Balance>,
-        ) -> DispatchResultWithPostInfo {
-            let who = ensure_signed(origin)?;
-            common::with_transaction(|| {
-                Pallet::<T>::unlock_from_farm_unchecked(
-                    who,
-                    dex_id,
-                    farm_id,
-                    opt_asset_id,
-                    amount_opt,
-                )?;
-                Ok(().into())
-            })
-        }
-
-        #[pallet::weight(0)]
-        pub fn claim(
-            origin: OriginFor<T>,
-            farm_id: FarmId,
-            amount_opt: Option<Balance>,
-        ) -> DispatchResultWithPostInfo {
-            let who = ensure_signed(origin)?;
-            Pallet::<T>::prepare_and_optional_claim(who, farm_id, amount_opt, true)?;
-            Ok(().into())
-        }
-    }
-
-    #[pallet::event]
-    #[pallet::metadata(AccountIdOf<T> = "AccountId", AssetId32<common::PredefinedAssetId> = "AssetId")]
-    #[pallet::generate_deposit(pub(super) fn deposit_event)]
-    pub enum Event<T: Config> {
-        FarmCreated(FarmId, AccountIdOf<T>),
-        FarmerCreated(FarmId, AccountIdOf<T>),
-        IncentiveClaimed(FarmId, AccountIdOf<T>),
-        FarmerExit(FarmId, AccountIdOf<T>),
-        SmoothPriceUpdated(
-            AssetId32<common::PredefinedAssetId>,
-            AssetId32<common::PredefinedAssetId>,
-            Balance,
-        ),
-    }
+    impl<T: Config> Pallet<T> {}
 
     #[pallet::error]
     pub enum Error<T> {
-        NotEnoughPermissions,
-        FarmNotFound,
-        FarmerNotFound,
-        ShareNotFound,
-        TechAccountIsMissing,
-        FarmAlreadyClosed,
-        FarmLocked,
-        CalculationFailed,
-        CalculationOrOperationWithFarmingStateIsFailed,
-        SomeValuesIsNotSet,
-        AmountIsOutOfAvailableValue,
-        UnableToConvertAssetIdToTechAssetId,
-        UnableToGetPoolInformationFromTechAsset,
-        ThisTypeOfLiquiditySourceIsNotImplementedOrSupported,
-        NothingToClaim,
-        CaseIsNotSupported,
         /// Increment account reference error.
         IncRefError,
     }
 
+    /// Pools whose farmers are refreshed at the specific block. Block => Pools
     #[pallet::storage]
-    #[pallet::getter(fn next_farm_id)]
-    pub type NextFarmId<T: Config> = StorageValue<_, FarmId, ValueQuery>;
+    pub type Pools<T: Config> =
+        StorageMap<_, Identity, T::BlockNumber, Vec<T::AccountId>, ValueQuery>;
+
+    /// Farmers of the pool. Pool => Farmers
+    #[pallet::storage]
+    pub type PoolFarmers<T: Config> =
+        StorageMap<_, Identity, T::AccountId, Vec<PoolFarmer<T>>, ValueQuery>;
 
     #[pallet::storage]
-    pub type Farms<T: Config> =
-        StorageMap<_, Identity, FarmId, Farm<T::AccountId, T::AssetId, T::BlockNumber>>;
-
-    #[pallet::storage]
-    pub type Farmers<T: Config> = StorageDoubleMap<
+    pub type SavedValues<T: Config> = StorageMap<
         _,
         Identity,
-        FarmId,
-        Blake2_128Concat,
-        T::AccountId,
-        Farmer<T::AccountId, TechAccountIdOf<T>, T::BlockNumber>,
+        T::BlockNumber,
+        Vec<(T::AccountId, Vec<(T::AccountId, T::BlockNumber, Balance)>)>,
+        ValueQuery,
     >;
+}
 
-    #[pallet::storage]
-    pub type PricesStates<T: Config> = StorageDoubleMap<
-        _,
-        Blake2_128Concat,
-        AssetId32<common::PredefinedAssetId>,
-        Blake2_128Concat,
-        AssetId32<common::PredefinedAssetId>,
-        SmoothPriceState,
-    >;
-
-    /// Collection of all registered marker tokens for farmer.
-    #[pallet::storage]
-    #[pallet::getter(fn marker_token_index)]
-    pub type MarkerTokensIndex<T: Config> =
-        StorageMap<_, Blake2_128Concat, (FarmId, T::AccountId), BTreeSet<T::AssetId>, ValueQuery>;
-
-    #[pallet::genesis_config]
-    pub struct GenesisConfig<T: Config> {
-        pub initial_farm: (T::AccountId, T::AssetId, T::AssetId),
-    }
-
-    #[cfg(feature = "std")]
-    impl<T: Config> Default for GenesisConfig<T> {
-        fn default() -> Self {
-            Self {
-                initial_farm: Default::default(),
-            }
-        }
-    }
-
-    #[pallet::genesis_build]
-    impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
-        fn build(&self) {
-            let tup = self.initial_farm.clone();
-            Pallet::<T>::create_unchecked(tup.0, tup.1, tup.2).expect("Failed to register farm.");
-        }
-    }
+#[derive(Debug, Encode, Decode)]
+#[cfg_attr(test, derive(PartialEq))]
+/// The specific farmer in the specific pool
+pub struct PoolFarmer<T: Config> {
+    /// The account of the farmer
+    account: T::AccountId,
+    /// The block that the farmer started farming at
+    block: T::BlockNumber,
+    /// The number of pool tokens the farmer has in the pool
+    pool_tokens: Balance,
 }

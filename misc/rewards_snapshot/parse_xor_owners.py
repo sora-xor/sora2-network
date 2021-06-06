@@ -82,14 +82,24 @@ def remove_zeros(data):
 
 
 def write_to_file(data):
+    pools_addr = [
+        '0x01962144d41415cca072900fe87bbe2992a99f10',
+        '0x4fd3f9811224bf5a87bbaf002a345560c2d98d76',
+        '0xb90d8c0c2ace705fad8ad7e447dcf3e858c20448',
+        '0x215470102a05b02a3a2898f317b5382f380afc0e'
+    ]
     with open('../../node/src/chain_spec/bytes/rewards_val_owners.in', 'w') as f:
         print('vec_push![', file=f)
         for addr, balance in data.items():
+            if addr in pools_addr:
+                continue
             addr = addr.replace('0x', '')
-            if balance > 0.0037:  # Given the price of VAL being 2.7$, 1 cent is 0.0037 of VAL. All values below that are discarded
+            # Assuming the price of XOR being $600, 1 cent is worth ~0.000017 XOR. All values below that are discarded
+            if balance > 0.000017:
                 balance *= 10.0 # we give 10 VAL per XOR
                 print('    (hex!("{}").into(), balance!({:.18f})),'.format(addr, balance), file=f)
         print(']', file=f)
+
 
 data = parse_token_holders()
 exclude_transfers_since_snapshot(data)

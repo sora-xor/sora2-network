@@ -5,7 +5,7 @@ license = "BSD-4-Clause"
 homepage = 'https://sora.org'
 repository = 'https://github.com/sora-xor/sora2-network'
 name = 'farming'
-version = '0.1.0'
+version = '1.0.0'
 edition = '2018'
 
 [package.metadata.docs.rs]
@@ -20,6 +20,7 @@ hex-literal = { version = "0.3.1", optional = true }
 orml-traits = { version = "0.4", default-features = false }
 pallet-timestamp = { version = "3", default-features = false }
 serde = { version = "1.0.101", optional = true, features = ["derive"] }
+sp-arithmetic = { version = "3", default-features = false }
 sp-core = { version = "3", default-features = false }
 sp-runtime = { version = "3", default-features = false }
 sp-std = { version = "3", default-features = false }
@@ -30,7 +31,9 @@ dex-manager = { path = "../dex-manager", default-features = false }
 permissions = { path = "../permissions", default-features = false }
 pool-xyk = { path = "../pool-xyk", default-features = false }
 technical = { path = "../technical", default-features = false }
+tokens = { version = "0.4", package = "orml-tokens", default-features = false }
 trading-pair = { path = "../trading-pair", default-features = false }
+vested-rewards = { path = "../vested-rewards", default-features = false }
 
 [dev-dependencies]
 currencies = { version = "0.4", package = "orml-currencies", default-features = false }
@@ -42,6 +45,7 @@ assets = { path = "../assets" }
 common = { path = "../../common", features = ["test"] }
 dex-manager = { path = "../dex-manager" }
 mock-liquidity-source = { path = "../mock-liquidity-source" }
+multicollateral-bonding-curve-pool = { path = "../multicollateral-bonding-curve-pool" }
 permissions = { path = "../permissions" }
 pswap-distribution = { path = "../pswap-distribution" }
 technical = { path = "../technical" }

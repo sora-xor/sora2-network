@@ -31,13 +31,16 @@
 use crate::{self as vested_rewards, Config};
 use common::mock::ExistentialDeposits;
 use common::prelude::{Balance, DEXInfo};
-use common::{hash, AssetId32, AssetName, AssetSymbol, BalancePrecision, DOT, KSM, XOR};
+use common::{
+    balance, fixed, hash, AssetId32, AssetName, AssetSymbol, BalancePrecision, Fixed, DOT, KSM,
+    PSWAP, XOR,
+};
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::GenesisBuild;
 use frame_support::weights::Weight;
 use frame_support::{construct_runtime, parameter_types};
-use frame_system;
 use permissions::{Scope, INIT_DEX, MANAGE_DEX};
+use sp_core::crypto::AccountId32;
 use sp_core::H256;
 use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentityLookup, Zero};
@@ -54,22 +57,38 @@ construct_runtime! {
     {
         System: frame_system::{Module, Call, Config, Storage, Event<T>},
         Tokens: tokens::{Module, Call, Config<T>, Storage, Event<T>},
+        TradingPair: trading_pair::{Module, Call, Storage, Event<T>},
         Currencies: currencies::{Module, Call, Storage, Event<T>},
         Assets: assets::{Module, Call, Config<T>, Storage, Event<T>},
         Balances: pallet_balances::{Module, Call, Storage, Event<T>},
         Permissions: permissions::{Module, Call, Config<T>, Storage, Event<T>},
         DexManager: dex_manager::{Module, Call, Config<T>, Storage},
         VestedRewards: vested_rewards::{Module, Call, Storage, Event<T>},
+        Technical: technical::{Module, Call, Storage, Event<T>},
+        PoolXyk: pool_xyk::{Module, Call, Storage, Event<T>},
+        PswapDistribution: pswap_distribution::{Module, Call, Storage, Event<T>},
+        MBCPool: multicollateral_bonding_curve_pool::{Module, Call, Storage, Event<T>},
     }
 }
 
-pub type AccountId = u128;
+pub type AccountId = AccountId32;
 pub type BlockNumber = u64;
 pub type Amount = i128;
+pub type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
+type TechAssetId = common::TechAssetId<common::PredefinedAssetId>;
 
-pub const ALICE: AccountId = 1;
-pub const BOB: AccountId = 2;
-pub const EVE: AccountId = 3;
+pub fn alice() -> AccountId {
+    AccountId32::from([1u8; 32])
+}
+pub fn bob() -> AccountId {
+    AccountId32::from([2u8; 32])
+}
+pub fn eve() -> AccountId {
+    AccountId32::from([3u8; 32])
+}
+pub fn initial_assets_owner() -> AccountId {
+    AccountId32::from([4u8; 32])
+}
 pub const DEX_ID: DEXId = 0;
 type AssetId = AssetId32<common::PredefinedAssetId>;
 
@@ -78,6 +97,15 @@ parameter_types! {
     pub const MaximumBlockWeight: Weight = 1024;
     pub const MaximumBlockLength: u32 = 2 * 1024;
     pub const AvailableBlockRatio: Perbill = Perbill::from_percent(75);
+    pub GetIncentiveAssetId: AssetId = common::PSWAP.into();
+    pub GetPswapDistributionAccountId: AccountId = AccountId32::from([151; 32]);
+    pub const GetDefaultSubscriptionFrequency: BlockNumber = 10;
+    pub const GetBurnUpdateFrequency: BlockNumber = 14400;
+    pub GetParliamentAccountId: AccountId = AccountId32::from([152; 32]);
+    pub GetMarketMakerRewardsAccountId: AccountId = AccountId32::from([153; 32]);
+    pub GetBondingCurveRewardsAccountId: AccountId = AccountId32::from([154; 32]);
+    pub GetTeamReservesAccountId: AccountId = AccountId32::from([11; 32]);
+    pub GetXykFee: Fixed = fixed!(0.003);
 }
 
 impl frame_system::Config for Runtime {
@@ -107,6 +135,8 @@ impl frame_system::Config for Runtime {
 
 impl Config for Runtime {
     type Event = Event;
+    type GetBondingCurveRewardsAccountId = GetBondingCurveRewardsAccountId;
+    type GetMarketMakerRewardsAccountId = GetMarketMakerRewardsAccountId;
     type WeightInfo = ();
 }
 
@@ -141,12 +171,69 @@ impl common::Config for Runtime {
 
 impl assets::Config for Runtime {
     type Event = Event;
-    type ExtraAccountId = AccountId;
+    type ExtraAccountId = [u8; 32];
     type ExtraAssetRecordArg =
-        common::AssetIdExtraAssetRecordArg<DEXId, common::LiquiditySourceType, AccountId>;
+        common::AssetIdExtraAssetRecordArg<DEXId, common::LiquiditySourceType, [u8; 32]>;
     type AssetId = AssetId;
     type GetBaseAssetId = GetBaseAssetId;
     type Currency = currencies::Module<Runtime>;
+    type GetTeamReservesAccountId = GetTeamReservesAccountId;
+    type WeightInfo = ();
+}
+
+impl trading_pair::Config for Runtime {
+    type Event = Event;
+    type EnsureDEXManager = dex_manager::Module<Runtime>;
+    type WeightInfo = ();
+}
+
+impl technical::Config for Runtime {
+    type Event = Event;
+    type TechAssetId = TechAssetId;
+    type TechAccountId = TechAccountId;
+    type Trigger = ();
+    type Condition = ();
+    type SwapAction = pool_xyk::PolySwapAction<AssetId, AccountId, TechAccountId>;
+    type WeightInfo = ();
+}
+
+impl pswap_distribution::Config for Runtime {
+    type Event = Event;
+    type GetIncentiveAssetId = GetIncentiveAssetId;
+    type LiquidityProxy = ();
+    type CompatBalance = Balance;
+    type GetDefaultSubscriptionFrequency = GetDefaultSubscriptionFrequency;
+    type GetBurnUpdateFrequency = GetBurnUpdateFrequency;
+    type GetTechnicalAccountId = GetPswapDistributionAccountId;
+    type EnsureDEXManager = ();
+    type OnPswapBurnedAggregator = ();
+    type WeightInfo = ();
+    type PoolXykPallet = pool_xyk::Module<Runtime>;
+    type GetParliamentAccountId = GetParliamentAccountId;
+}
+
+impl pool_xyk::Config for Runtime {
+    const MIN_XOR: Balance = balance!(0.007);
+    type Event = Event;
+    type PairSwapAction = pool_xyk::PairSwapAction<AssetId, AccountId, TechAccountId>;
+    type DepositLiquidityAction =
+        pool_xyk::DepositLiquidityAction<AssetId, AccountId, TechAccountId>;
+    type WithdrawLiquidityAction =
+        pool_xyk::WithdrawLiquidityAction<AssetId, AccountId, TechAccountId>;
+    type PolySwapAction = pool_xyk::PolySwapAction<AssetId, AccountId, TechAccountId>;
+    type EnsureDEXManager = dex_manager::Module<Runtime>;
+    type GetFee = GetXykFee;
+    type OnPoolCreated = pswap_distribution::Module<Runtime>;
+    type WeightInfo = ();
+}
+
+impl multicollateral_bonding_curve_pool::Config for Runtime {
+    type Event = Event;
+    type LiquidityProxy = ();
+    type EnsureTradingPairExists = trading_pair::Module<Runtime>;
+    type EnsureDEXManager = dex_manager::Module<Runtime>;
+    type VestedRewardsPallet = VestedRewards;
+    type PriceToolsPallet = ();
     type WeightInfo = ();
 }
 
@@ -195,7 +282,7 @@ impl Default for ExtBuilder {
             endowed_assets: vec![
                 (
                     XOR,
-                    ALICE,
+                    initial_assets_owner(),
                     AssetSymbol(b"XOR".to_vec()),
                     AssetName(b"SORA".to_vec()),
                     18,
@@ -204,7 +291,7 @@ impl Default for ExtBuilder {
                 ),
                 (
                     DOT,
-                    ALICE,
+                    initial_assets_owner(),
                     AssetSymbol(b"DOT".to_vec()),
                     AssetName(b"Polkadot".to_vec()),
                     18,
@@ -213,9 +300,18 @@ impl Default for ExtBuilder {
                 ),
                 (
                     KSM,
-                    ALICE,
+                    initial_assets_owner(),
                     AssetSymbol(b"KSM".to_vec()),
                     AssetName(b"Kusama".to_vec()),
+                    18,
+                    Balance::zero(),
+                    true,
+                ),
+                (
+                    PSWAP,
+                    initial_assets_owner(),
+                    AssetSymbol(b"PSWAP".to_vec()),
+                    AssetName(b"Polkaswap".to_vec()),
                     18,
                     Balance::zero(),
                     true,
@@ -230,12 +326,12 @@ impl Default for ExtBuilder {
                 },
             )],
             initial_permission_owners: vec![
-                (INIT_DEX, Scope::Unlimited, vec![ALICE]),
-                (MANAGE_DEX, Scope::Limited(hash(&DEX_ID)), vec![ALICE]),
+                (INIT_DEX, Scope::Unlimited, vec![alice()]),
+                (MANAGE_DEX, Scope::Limited(hash(&DEX_ID)), vec![alice()]),
             ],
             initial_permissions: vec![
-                (ALICE, Scope::Unlimited, vec![INIT_DEX]),
-                (ALICE, Scope::Limited(hash(&DEX_ID)), vec![MANAGE_DEX]),
+                (alice(), Scope::Unlimited, vec![INIT_DEX]),
+                (alice(), Scope::Limited(hash(&DEX_ID)), vec![MANAGE_DEX]),
             ],
         }
     }
@@ -248,7 +344,12 @@ impl ExtBuilder {
             .unwrap();
 
         pallet_balances::GenesisConfig::<Runtime> {
-            balances: vec![(ALICE, 0)],
+            balances: vec![
+                (alice(), 0),
+                (bob(), 0),
+                (eve(), 0),
+                (initial_assets_owner(), 0),
+            ],
         }
         .assimilate_storage(&mut t)
         .unwrap();

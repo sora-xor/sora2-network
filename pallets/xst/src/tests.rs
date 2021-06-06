@@ -37,7 +37,6 @@ mod tests {
         AssetName, AssetSymbol, DEXId, LiquiditySource, TechPurpose, USDT, VAL, XOR, PSWAP, XSTUSD, LiquiditySourceFilter,
     };
     use hex_literal::hex;
-    use pswap_distribution::OnPswapBurned;
     use frame_support::traits::OnInitialize;
     use liquidity_proxy::LiquidityProxyTrait;
     use frame_support::{assert_err, assert_noop, assert_ok};
