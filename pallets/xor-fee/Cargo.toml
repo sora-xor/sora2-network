@@ -22,7 +22,7 @@ sp-runtime = { version = "3", default-features = false }
 sp-std = { version = "3", default-features = false }
 traits = { version = "0.4", package = "orml-traits", default-features = false }
 
-pallet-staking = { git = "https://github.com/soramitsu/sora2-frame-pallets", default-features = false, branch = "v3.0.0"}
+pallet-staking = { git = "https://github.com/soramitsu/sora2-frame-pallets", default-features = false, branch = "v3.1.0"}
 
 assets = { path = "../assets", default-features = false }
 common = { path = "../../common", default-features = false }

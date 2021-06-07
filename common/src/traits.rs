@@ -29,7 +29,7 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use crate::prelude::{ManagementMode, SwapAmount, SwapOutcome};
-use crate::{Fixed, LiquiditySourceFilter, LiquiditySourceId, RewardReason};
+use crate::{Fixed, LiquiditySourceFilter, LiquiditySourceId, PswapRemintInfo, RewardReason};
 use frame_support::dispatch::DispatchResult;
 use frame_support::pallet_prelude::MaybeSerializeDeserialize;
 use frame_support::sp_runtime::traits::BadOrigin;
@@ -457,5 +457,100 @@ pub trait GetPoolReserves<AssetId> {
 impl<AssetId> GetPoolReserves<AssetId> for () {
     fn reserves(_base_asset: &AssetId, _other_asset: &AssetId) -> (Balance, Balance) {
         Default::default()
+    }
+}
+
+/// General trait for passing pswap amount burned information to required pallets.
+pub trait OnPswapBurned {
+    /// Report amount and fractions of burned pswap at the moment of invokation.
+    fn on_pswap_burned(distribution: PswapRemintInfo);
+}
+
+impl OnPswapBurned for () {
+    fn on_pswap_burned(_distribution: PswapRemintInfo) {
+        // do nothing
+    }
+}
+
+/// Trait to abstract interface of VestedRewards pallet, in order for pallets with rewards sources avoid having dependency issues.
+pub trait VestedRewardsPallet<AccountId> {
+    /// Report that swaps with xor were performed.
+    /// - `account_id`: account performing transaction.
+    /// - `xor_volume`: amount of xor passed in transaction.
+    /// - `count`: number of equal swaps, if there are multiple - means that each has amount equal to `xor_volume`.
+    fn update_market_maker_records(
+        account_id: &AccountId,
+        xor_volume: Balance,
+        count: u32,
+    ) -> DispatchResult;
+
+    /// Report that account has received pswap reward for buying from tbc.
+    fn add_tbc_reward(account_id: &AccountId, pswap_amount: Balance) -> DispatchResult;
+
+    /// Report that account has received farmed pswap reward for providing liquidity on secondary market.
+    fn add_farming_reward(account_id: &AccountId, pswap_amount: Balance) -> DispatchResult;
+
+    /// Report that account has received pswap reward for performing large volume trade over month.
+    fn add_market_maker_reward(account_id: &AccountId, pswap_amount: Balance) -> DispatchResult;
+}
+
+pub trait PoolXykPallet {
+    type AccountId;
+    type PoolProvidersOutput: IntoIterator<Item = (Self::AccountId, Balance)>;
+
+    fn pool_providers(pool_account: &Self::AccountId) -> Self::PoolProvidersOutput;
+
+    fn total_issuance(pool_account: &Self::AccountId) -> Result<Balance, DispatchError>;
+}
+
+pub trait OnPoolCreated {
+    type AccountId;
+    type DEXId;
+
+    fn on_pool_created(
+        fee_account: Self::AccountId,
+        dex_id: Self::DEXId,
+        pool_account: Self::AccountId,
+    ) -> DispatchResult;
+}
+
+pub trait PriceToolsPallet<AssetId> {
+    /// Get amount of `output_asset_id` corresponding to a unit (1) of `input_asset_id`.
+    fn get_average_price(
+        input_asset_id: &AssetId,
+        output_asset_id: &AssetId,
+    ) -> Result<Balance, DispatchError>;
+
+    /// Add asset to be tracked for average price.
+    fn register_asset(asset_id: &AssetId) -> DispatchResult;
+}
+
+impl<AssetId> PriceToolsPallet<AssetId> for () {
+    fn get_average_price(_: &AssetId, _: &AssetId) -> Result<Balance, DispatchError> {
+        unimplemented!()
+    }
+
+    fn register_asset(_: &AssetId) -> DispatchResult {
+        unimplemented!()
+    }
+}
+
+impl<AccountId, DEXId, A, B> OnPoolCreated for (A, B)
+where
+    AccountId: Clone,
+    DEXId: Clone,
+    A: OnPoolCreated<AccountId = AccountId, DEXId = DEXId>,
+    B: OnPoolCreated<AccountId = AccountId, DEXId = DEXId>,
+{
+    type AccountId = AccountId;
+    type DEXId = DEXId;
+
+    fn on_pool_created(
+        fee_account: Self::AccountId,
+        dex_id: Self::DEXId,
+        pool_account: Self::AccountId,
+    ) -> DispatchResult {
+        A::on_pool_created(fee_account.clone(), dex_id.clone(), pool_account.clone())?;
+        B::on_pool_created(fee_account, dex_id, pool_account)
     }
 }

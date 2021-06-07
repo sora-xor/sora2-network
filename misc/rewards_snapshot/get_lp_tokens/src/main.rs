@@ -3,10 +3,8 @@
 use std::str::FromStr;
 use std::{fs, iter};
 
-use fixnum::{
-    ops::{CheckedAdd, RoundMode, RoundingDiv, RoundingMul},
-    typenum::U18,
-};
+use fixnum::ops::{CheckedAdd, RoundMode, RoundingDiv, RoundingMul};
+use fixnum::typenum::U18;
 use reqwest::blocking::Client;
 use serde::Deserialize;
 
@@ -25,6 +23,7 @@ fn to_fp<'a>(s: &'a str) -> FixedPoint {
 #[derive(Debug, Deserialize)]
 struct Pair {
     reserve0: String,
+    reserve1: String,
     totalSupply: String,
 }
 
@@ -72,7 +71,7 @@ fn query<'a, 'b, 'c>(
     data: &mut Vec<(&'a str, &'b str, &'c str, FixedPoint)>,
     invalid_queries: &mut Vec<(&'a str, &'b str, &'c str)>,
 ) -> Option<FixedPoint> {
-    let query = r#"{ "query" : "query { liquidityPositionSnapshots(where: { user: \"$user\", pair: \"$pair\", block_lt: 12225000 }, orderBy: block ) { liquidityTokenBalance, token0PriceUSD, token1PriceUSD, pair { token0Price, token1Price, totalSupply, reserve0, reserve1 } } }" }"#;
+    let query = r#"{ "query" : "query { liquidityPositionSnapshots(where: { user: \"$user\", pair: \"$pair\", block_lt: 12225000 }, orderBy: block, block: {number: 12225000} ) { liquidityTokenBalance, token0PriceUSD, token1PriceUSD, pair { token0Price, token1Price, totalSupply, reserve0, reserve1 } } }" }"#;
     let query = query.replace("$user", &address).replace("$pair", pair);
     let response = if let Ok(response) = Client::new().post(uri).body(query).send() {
         response
@@ -97,12 +96,15 @@ fn query<'a, 'b, 'c>(
     };
     let balance = to_fp(&snapshot.liquidityTokenBalance);
     let total_supply = to_fp(&snapshot.pair.totalSupply);
-    let reserve_0 = to_fp(&snapshot.pair.reserve0);
+    let xor_reserves = match pair {
+        "0xb90d8c0c2ace705fad8ad7e447dcf3e858c20448" => to_fp(&snapshot.pair.reserve1),
+        _ => to_fp(&snapshot.pair.reserve0),
+    };
     // tokens = liquidityTokenBalance / pair.totalSupply * pair.reserve0
     let xor = balance
         .rdiv(total_supply, RoundMode::Floor)
         .unwrap()
-        .rmul(reserve_0, RoundMode::Floor)
+        .rmul(xor_reserves, RoundMode::Floor)
         .unwrap();
     if *xor.as_bits() != 0 {
         data.push((address, uri, pair, xor.clone()));

@@ -102,6 +102,7 @@ impl frame_system::Config for Runtime {
 
 parameter_types! {
     pub const GetBaseAssetId: AssetId = XOR;
+    pub const GetTeamReservesAccountId: AccountId = 3000u128;
 }
 
 impl crate::Config for Runtime {
@@ -112,6 +113,7 @@ impl crate::Config for Runtime {
     type AssetId = AssetId;
     type GetBaseAssetId = GetBaseAssetId;
     type Currency = currencies::Module<Runtime>;
+    type GetTeamReservesAccountId = GetTeamReservesAccountId;
     type WeightInfo = ();
 }
 

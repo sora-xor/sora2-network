@@ -37,6 +37,7 @@ sp-io = { version = "3", default-features = false }
 pallet-balances = { version = "3", default-features = false }
 currencies = { version = "0.4", package = "orml-currencies", default-features = false }
 tokens = { version = "0.4", package = "orml-tokens", default-features = false }
+vested-rewards = { path = "../../vested-rewards" }
 
 [features]
 default = ['std']

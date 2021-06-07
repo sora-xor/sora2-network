@@ -32,7 +32,8 @@
 #[macro_use]
 extern crate alloc;
 
-pub use fixnum;
+pub use {fixnum, paste};
+
 use fixnum::typenum::{Unsigned, U18};
 use fixnum::FixedPoint;
 
@@ -44,6 +45,7 @@ pub mod test_utils;
 pub mod eth;
 mod fixed_wrapper;
 pub mod macros;
+pub mod migrations;
 mod primitives;
 mod swap_amount;
 mod traits;
