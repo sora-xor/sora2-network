@@ -33,10 +33,11 @@ use common::mock::ExistentialDeposits;
 use common::prelude::Balance;
 use common::{balance, fixed, hash, AssetName, AssetSymbol, DEXInfo, Fixed, DOT, PSWAP, VAL, XOR};
 use currencies::BasicCurrencyAdapter;
-use frame_support::traits::GenesisBuild;
+use frame_support::traits::{GenesisBuild, OnFinalize, OnInitialize};
 use frame_support::weights::Weight;
 use frame_support::{construct_runtime, parameter_types};
 use frame_system::pallet_prelude::BlockNumberFor;
+use frame_system::EnsureRoot;
 use permissions::*;
 use sp_core::crypto::AccountId32;
 use sp_core::H256;
@@ -112,6 +113,7 @@ parameter_types! {
     pub RewardDoublingAssets: Vec<AssetId> = vec![VAL.into(), PSWAP.into()];
     pub GetXykFee: Fixed = fixed!(0.003);
     pub GetTeamReservesAccountId: AccountId = AccountId32::from([11; 32]);
+    pub const SchedulerMaxWeight: Weight = 1024;
 }
 
 construct_runtime! {
@@ -133,6 +135,7 @@ construct_runtime! {
         PswapDistribution: pswap_distribution::{Module, Call, Config<T>, Storage, Event<T>},
         MBCPool: multicollateral_bonding_curve_pool::{Module, Call, Storage, Event<T>},
         VestedRewards: vested_rewards::{Module, Storage, Event<T>},
+        Scheduler: pallet_scheduler::{Module, Call, Storage, Event<T>},
 
         Farming: farming::{Module, Call, Storage},
     }
@@ -278,12 +281,26 @@ impl vested_rewards::Config for Runtime {
     type WeightInfo = ();
 }
 
+impl pallet_scheduler::Config for Runtime {
+    type Event = Event;
+    type Origin = Origin;
+    type PalletsOrigin = OriginCaller;
+    type Call = Call;
+    type MaximumWeight = SchedulerMaxWeight;
+    type ScheduleOrigin = EnsureRoot<AccountId>;
+    type MaxScheduledPerBlock = ();
+    type WeightInfo = ();
+}
+
 impl Config for Runtime {
     const PSWAP_PER_DAY: Balance = PSWAP_PER_DAY;
     const REFRESH_FREQUENCY: BlockNumberFor<Self> = REFRESH_FREQUENCY;
     const VESTING_COEFF: u32 = VESTING_COEFF;
     const VESTING_FREQUENCY: BlockNumberFor<Self> = VESTING_FREQUENCY;
     const BLOCKS_PER_DAY: BlockNumberFor<Self> = BLOCKS_PER_DAY;
+    type Call = Call;
+    type SchedulerOriginCaller = OriginCaller;
+    type Scheduler = Scheduler;
     type RewardDoublingAssets = RewardDoublingAssets;
     type WeightInfo = ();
 }
@@ -420,5 +437,15 @@ impl ExtBuilder {
         .unwrap();
 
         t.into()
+    }
+}
+
+pub fn run_to_block(n: u64) {
+    while System::block_number() < n {
+        System::on_finalize(System::block_number());
+        System::set_block_number(System::block_number() + 1);
+        System::on_initialize(System::block_number());
+        Scheduler::on_initialize(System::block_number());
+        Farming::on_initialize(System::block_number());
     }
 }

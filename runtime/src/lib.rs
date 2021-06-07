@@ -226,7 +226,7 @@ pub const FARMING_PSWAP_PER_DAY: Balance = balance!(2500000);
 pub const FARMING_REFRESH_FREQUENCY: BlockNumber = 2 * HOURS;
 // Defined in the article
 pub const FARMING_VESTING_COEFF: u32 = 3;
-pub const FARMING_VESTING_FREQUENCY: BlockNumber = 8 * HOURS;
+pub const FARMING_VESTING_FREQUENCY: BlockNumber = 6 * HOURS;
 
 parameter_types! {
     pub const BlockHashCount: BlockNumber = 250;
@@ -1072,6 +1072,9 @@ impl farming::Config for Runtime {
     const VESTING_COEFF: u32 = FARMING_VESTING_COEFF;
     const VESTING_FREQUENCY: BlockNumber = FARMING_VESTING_FREQUENCY;
     const BLOCKS_PER_DAY: BlockNumber = 1 * DAYS;
+    type Call = Call;
+    type SchedulerOriginCaller = OriginCaller;
+    type Scheduler = Scheduler;
     type RewardDoublingAssets = FarmingRewardDoublingAssets;
     type WeightInfo = ();
 }
@@ -1319,7 +1322,7 @@ construct_runtime! {
         VestedRewards: vested_rewards::{Module, Call, Storage, Event<T>},
         Identity: pallet_identity::{Module, Call, Storage, Event<T>},
         PriceTools: price_tools::{Module, Storage, Event<T>},
-        Farming: farming::{Module, Storage},
+        Farming: farming::{Module, Call, Storage},
     }
 }
 
