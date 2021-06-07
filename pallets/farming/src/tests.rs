@@ -117,12 +117,12 @@ fn test() {
                 PoolFarmer {
                     account: ALICE(),
                     block: 200,
-                    pool_tokens: balance!(2.199999999999998996),
+                    weight: balance!(1.099999999999999498),
                 },
                 PoolFarmer {
                     account: BOB(),
                     block: 200,
-                    pool_tokens: balance!(2.199999999999999995),
+                    weight: balance!(1.099999999999999998),
                 }
             ]
         );
@@ -135,12 +135,12 @@ fn test() {
                 PoolFarmer {
                     account: ALICE(),
                     block: 200,
-                    pool_tokens: balance!(2.199999999999998996),
+                    weight: balance!(2.199999999999998996),
                 },
                 PoolFarmer {
                     account: CHARLIE(),
                     block: 200,
-                    pool_tokens: balance!(2.199999999999999995),
+                    weight: balance!(2.199999999999999996),
                 }
             ]
         );
@@ -155,15 +155,31 @@ fn test() {
                 (
                     dot_pool,
                     vec![
-                        (ALICE(), 200, balance!(1.099999999999999498)),
-                        (BOB(), 200, balance!(1.099999999999999998)),
+                        PoolFarmer {
+                            account: ALICE(),
+                            block: 200,
+                            weight: balance!(1.099999999999999498),
+                        },
+                        PoolFarmer {
+                            account: BOB(),
+                            block: 200,
+                            weight: balance!(1.099999999999999998),
+                        },
                     ]
                 ),
                 (
                     pswap_pool,
                     vec![
-                        (ALICE(), 200, balance!(2.199999999999998996)),
-                        (CHARLIE(), 200, balance!(2.199999999999999996)),
+                        PoolFarmer {
+                            account: ALICE(),
+                            block: 200,
+                            weight: balance!(2.199999999999998996),
+                        },
+                        PoolFarmer {
+                            account: CHARLIE(),
+                            block: 200,
+                            weight: balance!(2.199999999999999996),
+                        },
                     ]
                 )
             ]
