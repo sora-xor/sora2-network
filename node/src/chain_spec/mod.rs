@@ -608,6 +608,8 @@ fn testnet_genesis(
         hex!("048cfcacbdebe828dffa1267d830d45135cd40238286f838f5a95432a1bbf851").into();
     let parliament_investment_fund_balance = balance!(33000000);
 
+    let val_rewards_for_erc20_xor_holders = balance!(33100000);
+
     // Initial accounts
     let xor_fee_tech_account_id = TechAccountId::Generic(
         xor_fee::TECH_ACCOUNT_PREFIX.to_vec(),
@@ -817,14 +819,13 @@ fn testnet_genesis(
         pswap_waifu_owners: include!("bytes/rewards_pswap_waifu_owners.in"),
     };
 
-    let rewards_val_reserves = calculate_reserves(&rewards_config.val_owners);
     let rewards_pswap_reserves = calculate_reserves(&rewards_config.pswap_farm_owners)
         + calculate_reserves(&rewards_config.pswap_waifu_owners);
     let mut tokens_endowed_accounts = vec![
         (
             rewards_account_id.clone(),
             GetValAssetId::get(),
-            rewards_val_reserves,
+            val_rewards_for_erc20_xor_holders,
         ),
         (
             rewards_account_id,
