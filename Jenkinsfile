@@ -48,7 +48,10 @@ pipeline {
                     docker.withRegistry( 'https://' + registry, dockerRegistryRWUserId) {
                         docker.image(baseImageName).inside() {
                             if (getPushVersion(pushTags)){
-                                if (env.TAG_NAME) {
+                                if (env.TAG_NAME =~ "benchmarking.*") {
+                                    featureList = "include-real-files runtime-benchmarks"
+                                }
+                                else if (env.TAG_NAME) {
                                     featureList = (env.TAG_NAME =~ 'stage.*') ? featureList : 'include-real-files'
                                 }
                                 sh """
