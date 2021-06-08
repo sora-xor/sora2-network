@@ -49,7 +49,7 @@ pipeline {
                         docker.image(baseImageName).inside() {
                             if (getPushVersion(pushTags)){
                                 if (env.TAG_NAME =~ "benchmarking.*") {
-                                    featureList = "runtime-benchmarks"
+                                    featureList = "runtime-benchmarks main-net-coded"
                                 }
                                 else if (env.TAG_NAME) {
                                     featureList = (env.TAG_NAME =~ 'stage.*') ? featureList : 'include-real-files'
