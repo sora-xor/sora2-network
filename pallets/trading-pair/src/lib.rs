@@ -52,7 +52,7 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
-type TradingPair<T> = common::prelude::TradingPair<<T as assets::Config>::AssetId>;
+pub type TradingPair<T> = common::prelude::TradingPair<<T as assets::Config>::AssetId>;
 type Assets<T> = assets::Pallet<T>;
 type DEXManager<T> = dex_manager::Pallet<T>;
 
