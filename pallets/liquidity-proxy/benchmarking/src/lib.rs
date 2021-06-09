@@ -75,6 +75,7 @@ fn alice<T: Config>() -> T::AccountId {
 // Prepare Runtime for running benchmarks
 fn setup_benchmark<T: Config>() -> Result<(), &'static str> {
     let owner = alice::<T>();
+    frame_system::Module::<T>::inc_providers(&owner);
     let owner_origin: <T as frame_system::Config>::Origin = RawOrigin::Signed(owner.clone()).into();
     let dex_id: T::DEXId = DEX.into();
 
@@ -148,13 +149,15 @@ fn setup_benchmark<T: Config>() -> Result<(), &'static str> {
 
     TradingPair::<T>::register(owner_origin.clone(), DEX.into(), XOR.into(), DOT.into()).unwrap();
     TradingPair::<T>::register(owner_origin.clone(), DEX.into(), XOR.into(), USDT.into()).unwrap();
-    TradingPair::<T>::register(owner_origin.clone(), DEX.into(), XOR.into(), VAL.into()).unwrap();
-    TradingPair::<T>::register(owner_origin.clone(), DEX.into(), XOR.into(), PSWAP.into()).unwrap();
 
-    XYKPool::<T>::initialize_pool(owner_origin.clone(), DEX.into(), XOR.into(), DOT.into())?;
-    XYKPool::<T>::initialize_pool(owner_origin.clone(), DEX.into(), XOR.into(), VAL.into())?;
-    XYKPool::<T>::initialize_pool(owner_origin.clone(), DEX.into(), XOR.into(), PSWAP.into())?;
-    XYKPool::<T>::initialize_pool(owner_origin.clone(), DEX.into(), XOR.into(), USDT.into())?;
+    XYKPool::<T>::initialize_pool(owner_origin.clone(), DEX.into(), XOR.into(), DOT.into())
+        .unwrap();
+    XYKPool::<T>::initialize_pool(owner_origin.clone(), DEX.into(), XOR.into(), VAL.into())
+        .unwrap();
+    XYKPool::<T>::initialize_pool(owner_origin.clone(), DEX.into(), XOR.into(), PSWAP.into())
+        .unwrap();
+    XYKPool::<T>::initialize_pool(owner_origin.clone(), DEX.into(), XOR.into(), USDT.into())
+        .unwrap();
 
     XYKPool::<T>::deposit_liquidity(
         owner_origin.clone(),
@@ -165,7 +168,8 @@ fn setup_benchmark<T: Config>() -> Result<(), &'static str> {
         balance!(2000),
         balance!(0),
         balance!(0),
-    )?;
+    )
+    .unwrap();
     XYKPool::<T>::deposit_liquidity(
         owner_origin.clone(),
         DEX.into(),
@@ -175,7 +179,8 @@ fn setup_benchmark<T: Config>() -> Result<(), &'static str> {
         balance!(2000),
         balance!(0),
         balance!(0),
-    )?;
+    )
+    .unwrap();
     XYKPool::<T>::deposit_liquidity(
         owner_origin.clone(),
         DEX.into(),
@@ -185,7 +190,8 @@ fn setup_benchmark<T: Config>() -> Result<(), &'static str> {
         balance!(2000),
         balance!(0),
         balance!(0),
-    )?;
+    )
+    .unwrap();
     XYKPool::<T>::deposit_liquidity(
         owner_origin.clone(),
         DEX.into(),
@@ -195,10 +201,10 @@ fn setup_benchmark<T: Config>() -> Result<(), &'static str> {
         balance!(2000),
         balance!(0),
         balance!(0),
-    )?;
+    )
+    .unwrap();
 
-    MBCPool::<T>::initialize_pool(owner_origin.clone(), USDT.into())?;
-    MBCPool::<T>::initialize_pool(owner_origin.clone(), VAL.into())?;
+    MBCPool::<T>::initialize_pool(owner_origin.clone(), USDT.into()).unwrap();
 
     Ok(())
 }
@@ -210,15 +216,17 @@ benchmarks! {
         let from_asset: T::AssetId = VAL.into();
         let to_asset: T::AssetId = XOR.into();
         let initial_from_balance = Assets::<T>::free_balance(&from_asset, &caller).unwrap();
-    }: swap(
-        RawOrigin::Signed(caller.clone()),
-        DEX.into(),
-        from_asset.clone(),
-        to_asset.clone(),
-        SwapAmount::with_desired_input(balance!(100), 0),
-        [LiquiditySourceType::MulticollateralBondingCurvePool].into(),
-        FilterMode::AllowSelected
-    )
+    }: {
+        liquidity_proxy::Module::<T>::swap(
+            RawOrigin::Signed(caller.clone()).into(),
+            DEX.into(),
+            from_asset.clone(),
+            to_asset.clone(),
+            SwapAmount::with_desired_input(balance!(100), 0),
+            [LiquiditySourceType::MulticollateralBondingCurvePool].into(),
+            FilterMode::AllowSelected
+        ).unwrap()
+    }
     verify {
         assert_eq!(
             Into::<u128>::into(Assets::<T>::free_balance(&from_asset, &caller).unwrap()),

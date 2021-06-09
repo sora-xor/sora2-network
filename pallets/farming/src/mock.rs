@@ -63,7 +63,7 @@ type Block = frame_system::mocking::MockBlock<Runtime>;
 pub const PSWAP_PER_DAY: Balance = balance!(2500000);
 pub const REFRESH_FREQUENCY: BlockNumberFor<Runtime> = 200;
 pub const VESTING_COEFF: u32 = 3;
-pub const VESTING_FREQUENCY: BlockNumberFor<Runtime> = 400;
+pub const VESTING_FREQUENCY: BlockNumberFor<Runtime> = 600;
 pub const BLOCKS_PER_DAY: BlockNumberFor<Runtime> = 14_440;
 
 #[allow(non_snake_case)]
