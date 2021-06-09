@@ -78,6 +78,14 @@ pipeline {
                 }
             }
         }
+        stage('Code Coverage') {
+            steps {
+                script {
+                    sh "grcov_start.sh"
+                }
+                archiveArtifacts artifacts: 'target/debug/coverage/index.html'
+            }
+        }
         stage('Push Image') {
             when {
                 expression { getPushVersion(pushTags) }
