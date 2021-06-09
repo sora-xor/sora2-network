@@ -36,54 +36,72 @@ pipeline {
                 }
             }
         }
-        stage('Build & Tests') {
-            environment {
-                PACKAGE = 'framenode-runtime'
-                RUSTFLAGS = '-Dwarnings'
-                RUNTIME_DIR = "runtime"
-                RUSTC_VERSION = "${rustcVersion}"
-            }
-            steps{
-                script {
-                    docker.withRegistry( 'https://' + registry, dockerRegistryRWUserId) {
-                        docker.image(baseImageName).inside() {
-                            if (getPushVersion(pushTags)){
-                                if (env.TAG_NAME) {
-                                    featureList = (env.TAG_NAME =~ 'stage.*') ? featureList : 'include-real-files'
-                                }
-                                sh """
-                                    cargo build --release --features \"${featureList}\"
-                                    cargo test --release
-                                    cp target/release/framenode housekeeping/framenode
-                                """
-                                archiveArtifacts artifacts: 'target/release/wbuild/framenode-runtime/framenode_runtime.compact.wasm'
-                            } else {
-                                sh '''
-                                    cargo fmt -- --check > /dev/null
-                                    cargo check
-                                    cargo test
-                                    cargo check --features private-net
-                                    cargo test --features private-net
-                                    cargo check --features runtime-benchmarks
-                                '''
-                            }
-                        }
-                    }
-                    docker.image(srtoolImageName).inside("-v ${env.WORKSPACE}:/build") { c ->
-                        if (getPushVersion(pushTags)){
-                            sh "build --json | tee ${srtoolReportFile}"
-                            archiveArtifacts artifacts: srtoolReportFile
-                        }
-                    }
-                }
-            }
-        }
+        // stage('Build & Tests') {
+        //     environment {
+        //         PACKAGE = 'framenode-runtime'
+        //         RUSTFLAGS = '-Dwarnings'
+        //         RUNTIME_DIR = "runtime"
+        //         RUSTC_VERSION = "${rustcVersion}"
+        //     }
+        //     steps{
+        //         script {
+        //             docker.withRegistry( 'https://' + registry, dockerRegistryRWUserId) {
+        //                 docker.image(baseImageName).inside() {
+        //                     if (getPushVersion(pushTags)){
+        //                         if (env.TAG_NAME) {
+        //                             featureList = (env.TAG_NAME =~ 'stage.*') ? featureList : 'include-real-files'
+        //                         }
+        //                         sh """
+        //                             cargo build --release --features \"${featureList}\"
+        //                             cargo test --release
+        //                             cp target/release/framenode housekeeping/framenode
+        //                         """
+        //                         archiveArtifacts artifacts: 'target/release/wbuild/framenode-runtime/framenode_runtime.compact.wasm'
+        //                     } else {
+        //                         sh '''
+        //                             cargo fmt -- --check > /dev/null
+        //                             cargo check
+        //                             cargo test
+        //                             cargo check --features private-net
+        //                             cargo test --features private-net
+        //                             cargo check --features runtime-benchmarks
+        //                         '''
+        //                     }
+        //                 }
+        //             }
+        //             docker.image(srtoolImageName).inside("-v ${env.WORKSPACE}:/build") { c ->
+        //                 if (getPushVersion(pushTags)){
+        //                     sh "build --json | tee ${srtoolReportFile}"
+        //                     archiveArtifacts artifacts: srtoolReportFile
+        //                 }
+        //             }
+        //         }
+        //     }
+        // }
         stage('Code Coverage') {
             steps {
                 script {
-                    sh "grcov_start.sh"
+                    docker.withRegistry( 'https://' + registry, dockerRegistryRWUserId) {
+                        docker.image(baseImageName).inside() {
+                            sh '''
+                                cargo install grcov
+                                rustup toolchain install nightly-2021-03-11
+                                rustup component add llvm-tools-preview --toolchain nightly
+
+                                export RUSTFLAGS="-Zinstrument-coverage"
+                                export SKIP_WASM_BUILD=1
+                                export LLVM_PROFILE_FILE="sora2-%p-%m.profraw"
+
+                                cargo test --features private-net
+
+                                grcov . --binary-path target/debug -s . -t html --branch --ignore-not-existing -o target/debug/coverage
+
+                                # target/debug/coverage/index.html
+                            '''
+                            archiveArtifacts artifacts: 'target/debug/coverage/index.html'
+                        }
+                    }
                 }
-                archiveArtifacts artifacts: 'target/debug/coverage/index.html'
             }
         }
         stage('Push Image') {
