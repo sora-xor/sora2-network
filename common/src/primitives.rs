@@ -456,11 +456,11 @@ pub enum LiquiditySourceType {
     XYKPool,
     BondingCurvePool,
     MulticollateralBondingCurvePool,
-    XSTPool,
     MockPool,
     MockPool2,
     MockPool3,
     MockPool4,
+    XSTPool,
 }
 
 #[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug)]
