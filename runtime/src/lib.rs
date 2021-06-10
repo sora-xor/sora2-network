@@ -1252,7 +1252,6 @@ construct_runtime! {
         Assets: assets::{Module, Call, Storage, Config<T>, Event<T>},
         DEXManager: dex_manager::{Module, Storage, Config<T>},
         MulticollateralBondingCurvePool: multicollateral_bonding_curve_pool::{Module, Call, Storage, Config<T>, Event<T>},
-        XSTPool: xst::{Module, Call, Storage, Config<T>, Event<T>},
         Technical: technical::{Module, Call, Config<T>, Event<T>},
         PoolXYK: pool_xyk::{Module, Call, Storage, Event<T>},
         LiquidityProxy: liquidity_proxy::{Module, Call, Event<T>},
@@ -1272,6 +1271,8 @@ construct_runtime! {
         VestedRewards: vested_rewards::{Module, Call, Storage, Event<T>},
         Identity: pallet_identity::{Module, Call, Storage, Event<T>},
         Farming: farming::{Module, Call, Storage},
+        XSTPool: xst::{Module, Call, Storage, Config<T>, Event<T>},
+
         // Available only for test net
         Faucet: faucet::{Module, Call, Config<T>, Event<T>},
         PriceTools: price_tools::{Module, Storage, Event<T>},
@@ -1314,7 +1315,6 @@ construct_runtime! {
         Assets: assets::{Module, Call, Storage, Config<T>, Event<T>},
         DEXManager: dex_manager::{Module, Storage, Config<T>},
         MulticollateralBondingCurvePool: multicollateral_bonding_curve_pool::{Module, Call, Storage, Config<T>, Event<T>},
-        XSTPool: xst::{Module, Call, Storage, Config<T>, Event<T>},
         Technical: technical::{Module, Config<T>, Event<T>},
         PoolXYK: pool_xyk::{Module, Call, Storage, Event<T>},
         LiquidityProxy: liquidity_proxy::{Module, Call, Event<T>},
@@ -1335,6 +1335,7 @@ construct_runtime! {
         Identity: pallet_identity::{Module, Call, Storage, Event<T>},
         PriceTools: price_tools::{Module, Storage, Event<T>},
         Farming: farming::{Module, Call, Storage},
+        XSTPool: xst::{Module, Call, Storage, Config<T>, Event<T>},
     }
 }
 
