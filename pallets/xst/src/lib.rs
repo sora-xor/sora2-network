@@ -46,8 +46,8 @@ use assets::AssetIdOf;
 use codec::{Decode, Encode};
 use common::fixnum::ops::Zero as _;
 use common::prelude::{
-    Balance, EnsureDEXManager, EnsureTradingPairExists, Fixed, FixedWrapper, QuoteAmount,
-    SwapAmount, SwapOutcome,
+    Balance, EnsureDEXManager, EnsureTradingPairExists, Fixed, FixedWrapper, PriceToolsPallet,
+    QuoteAmount, SwapAmount, SwapOutcome,
 };
 use common::{
     balance, fixed, fixed_wrapper, DEXId, DexIdOf, GetXSTMarketInfo, LiquiditySource,
@@ -139,6 +139,7 @@ pub mod pallet {
             Self::AssetId,
             DispatchError,
         >;
+        type PriceToolsPallet: PriceToolsPallet<Self::AssetId>;
         /// Weight information for extrinsics in this pallet.
         type WeightInfo: WeightInfo;
     }
@@ -613,13 +614,10 @@ impl<T: Config> Module<T> {
         let price = if asset_id == &reference_asset_id {
             balance!(1)
         } else {
-            <T as pallet::Config>::LiquidityProxy::quote(
+            <T as pallet::Config>::PriceToolsPallet::get_average_price(
                 asset_id,
                 &reference_asset_id,
-                SwapAmount::with_desired_input(balance!(1), Balance::zero()),
-                Self::self_excluding_filter(),
             )?
-            .amount
         };
         Ok(price)
     }

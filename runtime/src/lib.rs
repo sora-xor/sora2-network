@@ -1170,6 +1170,7 @@ impl xst::Config for Runtime {
     type LiquidityProxy = LiquidityProxy;
     type EnsureDEXManager = DEXManager;
     type EnsureTradingPairExists = TradingPair;
+    type PriceToolsPallet = PriceTools;
     type WeightInfo = xst::weights::WeightInfo<Runtime>;
 }
 
