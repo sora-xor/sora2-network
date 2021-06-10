@@ -636,12 +636,33 @@ impl ExtBuilder {
         )
         .unwrap();
 
+        trading_pair::GenesisConfig::<Runtime> {
+            trading_pairs: vec![
+                (
+                    0,
+                    trading_pair::TradingPair::<Runtime> {
+                        base_asset_id: XOR.into(),
+                        target_asset_id: VAL.into(),
+                    },
+                ),
+                (
+                    0,
+                    trading_pair::TradingPair::<Runtime> {
+                        base_asset_id: XOR.into(),
+                        target_asset_id: PSWAP.into(),
+                    },
+                ),
+            ],
+        }
+        .assimilate_storage(&mut t)
+        .unwrap();
+
         multicollateral_bonding_curve_pool::GenesisConfig::<Runtime> {
             distribution_accounts: accounts,
             reserves_account_id: GetMbcReservesTechAccountId::get(),
             reference_asset_id: USDT.into(),
             incentives_account_id: GetMbcRewardsAccountId::get(),
-            initial_collateral_assets: Default::default(),
+            initial_collateral_assets: vec![VAL.into()],
             free_reserves_account_id: GetMbcFreeReservesAccountId::get(),
         }
         .assimilate_storage(&mut t)

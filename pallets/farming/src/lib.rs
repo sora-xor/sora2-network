@@ -32,10 +32,13 @@
 
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
+mod migrations;
 #[cfg(test)]
 mod mock;
 #[cfg(test)]
 mod tests;
+#[cfg(any(test, feature = "runtime-benchmarks"))]
+mod utils;
 mod weights;
 
 use codec::{Decode, Encode};
@@ -43,6 +46,7 @@ use common::RewardReason;
 use frame_support::dispatch::DispatchResult;
 use frame_support::traits::Get;
 use frame_support::weights::Weight;
+use frame_system::pallet_prelude::BlockNumberFor;
 use pool_xyk::PoolProviders;
 use sp_arithmetic::traits::UniqueSaturatedInto;
 use sp_runtime::traits::Saturating;
@@ -70,13 +74,18 @@ impl<T: Config> OnPoolCreated for Pallet<T> {
         _dex_id: Self::DEXId,
         pool_account: Self::AccountId,
     ) -> DispatchResult {
-        let block_number = frame_system::Module::<T>::block_number() % T::REFRESH_FREQUENCY;
-        Pools::<T>::mutate(block_number, |pools| pools.push(pool_account));
+        Self::add_pool(pool_account, frame_system::Module::<T>::block_number());
         Ok(())
     }
 }
 
 impl<T: Config> Pallet<T> {
+    fn add_pool(pool_account: AccountIdOf<T>, block_number: BlockNumberFor<T>) {
+        Pools::<T>::mutate(block_number % T::REFRESH_FREQUENCY, |pools| {
+            pools.push(pool_account)
+        });
+    }
+
     fn refresh_pools(now: T::BlockNumber) -> Weight {
         let mut total_weight = 0;
         let pools = Pools::<T>::get(now % T::REFRESH_FREQUENCY);
@@ -89,13 +98,17 @@ impl<T: Config> Pallet<T> {
 
     fn refresh_pool(pool: T::AccountId, now: T::BlockNumber) -> u32 {
         let mut read_count = 0;
-        let mut old_farmers = PoolFarmers::<T>::get(&pool);
+        let old_farmers = PoolFarmers::<T>::get(&pool);
         let mut new_farmers = Vec::new();
         for (account, pool_tokens) in PoolProviders::<T>::iter_prefix(&pool) {
             read_count += 1;
 
-            let block = if let Some(index) = old_farmers.iter().position(|f| f.account == account) {
-                let farmer = old_farmers.remove(index);
+            let weight = Self::get_account_weight(&pool, pool_tokens);
+            if weight == 0 {
+                continue;
+            }
+
+            let block = if let Some(farmer) = old_farmers.iter().find(|f| f.account == account) {
                 farmer.block
             } else {
                 now
@@ -104,11 +117,14 @@ impl<T: Config> Pallet<T> {
             new_farmers.push(PoolFarmer {
                 account,
                 block,
-                pool_tokens,
+                weight,
             });
         }
 
-        PoolFarmers::<T>::insert(&pool, new_farmers);
+        // Either add new farmers or remove old farmers
+        if !new_farmers.is_empty() || !old_farmers.is_empty() {
+            PoolFarmers::<T>::insert(&pool, new_farmers);
+        }
 
         read_count
     }
@@ -157,11 +173,11 @@ impl<T: Config> Pallet<T> {
     ) -> Weight {
         let mut pool_count = 0;
         let mut farmer_count = 0;
-        for (pool, farmers) in PoolFarmers::<T>::iter() {
+        for (_pool, farmers) in PoolFarmers::<T>::iter() {
             pool_count += 1;
             farmer_count += farmers.len() as u32;
 
-            Self::prepare_pool_accounts_for_vesting(pool, farmers, now, accounts);
+            Self::prepare_pool_accounts_for_vesting(farmers, now, accounts);
         }
 
         WeightInfoOf::<T>::prepare_accounts_for_vesting(pool_count, farmer_count)
@@ -169,7 +185,6 @@ impl<T: Config> Pallet<T> {
 
     #[allow(unused)]
     fn prepare_pool_accounts_for_vesting(
-        pool: T::AccountId,
         farmers: Vec<PoolFarmer<T>>,
         now: T::BlockNumber,
         accounts: &mut BTreeMap<T::AccountId, FixedWrapper>,
@@ -180,11 +195,6 @@ impl<T: Config> Pallet<T> {
 
         let now_u128: u128 = now.unique_saturated_into();
         for farmer in farmers {
-            let weight = Self::get_account_weight(&pool, farmer.pool_tokens);
-            if weight == 0 {
-                continue;
-            }
-
             // Ti
             let farmer_farming_time: u32 = (now - farmer.block).unique_saturated_into();
             let farmer_farming_time = FixedWrapper::from(balance!(farmer_farming_time));
@@ -194,7 +204,7 @@ impl<T: Config> Pallet<T> {
                 + farmer_farming_time / FixedWrapper::from(balance!(now_u128)))
             .pow(T::VESTING_COEFF);
 
-            let weight = coeff * weight;
+            let weight = coeff * farmer.weight;
             match accounts.entry(farmer.account) {
                 Entry::Vacant(entry) => {
                     entry.insert(weight);
@@ -241,14 +251,7 @@ impl<T: Config> Pallet<T> {
             pool_count += 1;
             farmer_count += farmers.len() as u32;
 
-            let mut pool_values = Vec::new();
-            for farmer in farmers {
-                let weight = Self::get_account_weight(&pool, farmer.pool_tokens);
-                if weight != 0 {
-                    pool_values.push((farmer.account, farmer.block, weight));
-                }
-            }
-            values.push((pool, pool_values));
+            values.push((pool, farmers));
         }
 
         SavedValues::<T>::insert(now, values);
@@ -264,7 +267,10 @@ pub mod pallet {
     use super::*;
     use assets::AssetIdOf;
     use frame_support::pallet_prelude::*;
-    use frame_system::pallet_prelude::*;
+    use frame_support::traits::schedule::Anon;
+    use frame_support::traits::PalletVersion;
+    use frame_system::ensure_root;
+    use frame_system::pallet_prelude::OriginFor;
     use sp_runtime::traits::Zero;
 
     #[pallet::config]
@@ -283,6 +289,9 @@ pub mod pallet {
         /// How often the vesting happens. VESTING_FREQUENCY % REFRESH_FREQUENCY must be 0
         const VESTING_FREQUENCY: BlockNumberFor<Self>;
         const BLOCKS_PER_DAY: BlockNumberFor<Self>;
+        type Call: Parameter + From<Call<Self>>;
+        type SchedulerOriginCaller: From<frame_system::RawOrigin<Self::AccountId>>;
+        type Scheduler: Anon<Self::BlockNumber, <Self as Config>::Call, Self::SchedulerOriginCaller>;
         type RewardDoublingAssets: Get<Vec<AssetIdOf<Self>>>;
         /// Weight information for extrinsics in this pallet.
         type WeightInfo: WeightInfo;
@@ -313,10 +322,24 @@ pub mod pallet {
 
             total_weight
         }
+
+        fn on_runtime_upgrade() -> Weight {
+            match Self::storage_version() {
+                Some(PalletVersion { major: 0, .. }) | None => migrations::v1_1::migrate::<T>(),
+                _ => 0,
+            }
+        }
     }
 
     #[pallet::call]
-    impl<T: Config> Pallet<T> {}
+    impl<T: Config> Pallet<T> {
+        #[pallet::weight(0)]
+        fn migrate_to_1_1(origin: OriginFor<T>) -> DispatchResultWithPostInfo {
+            ensure_root(origin)?;
+            let weight = migrations::v1_1::migrate::<T>();
+            Ok(Some(weight).into())
+        }
+    }
 
     #[pallet::error]
     pub enum Error<T> {
@@ -339,7 +362,7 @@ pub mod pallet {
         _,
         Identity,
         T::BlockNumber,
-        Vec<(T::AccountId, Vec<(T::AccountId, T::BlockNumber, Balance)>)>,
+        Vec<(T::AccountId, Vec<PoolFarmer<T>>)>,
         ValueQuery,
     >;
 }
@@ -352,6 +375,6 @@ pub struct PoolFarmer<T: Config> {
     account: T::AccountId,
     /// The block that the farmer started farming at
     block: T::BlockNumber,
-    /// The number of pool tokens the farmer has in the pool
-    pool_tokens: Balance,
+    /// The weight the farmer has in the pool
+    weight: Balance,
 }

@@ -52,19 +52,22 @@ use common::prelude::{
 use common::{
     balance, fixed, fixed_wrapper, DEXId, DexIdOf, GetTBCMarketInfo, LiquiditySource,
     LiquiditySourceFilter, LiquiditySourceType, ManagementMode, RewardReason, VestedRewardsPallet,
-    PSWAP, USDT, VAL,
+    PSWAP, VAL,
 };
 use frame_support::traits::Get;
 use frame_support::weights::Weight;
 use frame_support::{ensure, fail};
 use liquidity_proxy::LiquidityProxyTrait;
 use permissions::{Scope, BURN, MINT, TRANSFER};
-#[cfg(feature = "std")]
-use serde::{Deserialize, Serialize};
 use sp_arithmetic::traits::Zero;
 use sp_runtime::{DispatchError, DispatchResult};
 use sp_std::collections::btree_set::BTreeSet;
 use sp_std::vec::Vec;
+#[cfg(feature = "std")]
+use {
+    common::USDT,
+    serde::{Deserialize, Serialize},
+};
 
 pub trait WeightInfo {
     fn on_initialize(_elems: u32) -> Weight;

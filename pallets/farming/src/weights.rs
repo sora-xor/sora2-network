@@ -37,28 +37,28 @@ pub struct WeightInfo<T>(PhantomData<T>);
 
 impl<T: frame_system::Config> crate::WeightInfo for WeightInfo<T> {
     fn refresh_pool(a: u32) -> Weight {
-        (1_298_786_000 as Weight)
-            // Standard Error: 4_529_000
-            .saturating_add((152_660_000 as Weight).saturating_mul(a as Weight))
-            .saturating_add(T::DbWeight::get().reads(2 as Weight))
+        (111_935_000 as Weight)
+            // Standard Error: 615_000
+            .saturating_add((71_076_000 as Weight).saturating_mul(a as Weight))
+            .saturating_add(T::DbWeight::get().reads(7 as Weight))
             .saturating_add(T::DbWeight::get().reads((1 as Weight).saturating_mul(a as Weight)))
             .saturating_add(T::DbWeight::get().writes(1 as Weight))
     }
 
     fn prepare_accounts_for_vesting(a: u32, b: u32) -> Weight {
         (0 as Weight)
-            // Standard Error: 218_372_000
-            .saturating_add((7_588_988_000 as Weight).saturating_mul(a as Weight))
-            // Standard Error: 152_744_000
-            .saturating_add((5_509_396_000 as Weight).saturating_mul(b as Weight))
-            .saturating_add(T::DbWeight::get().reads(2 as Weight))
-            .saturating_add(T::DbWeight::get().reads((5 as Weight).saturating_mul(a as Weight)))
+            // Standard Error: 1_793_000
+            .saturating_add((297_158_000 as Weight).saturating_mul(a as Weight))
+            // Standard Error: 1_254_000
+            .saturating_add((184_217_000 as Weight).saturating_mul(b as Weight))
+            .saturating_add(T::DbWeight::get().reads(1 as Weight))
+            .saturating_add(T::DbWeight::get().reads((1 as Weight).saturating_mul(a as Weight)))
     }
 
     fn vest_account_rewards(a: u32) -> Weight {
-        (0 as Weight)
-            // Standard Error: 9_371_000
-            .saturating_add((274_031_000 as Weight).saturating_mul(a as Weight))
+        (7_326_000 as Weight)
+            // Standard Error: 219_000
+            .saturating_add((46_680_000 as Weight).saturating_mul(a as Weight))
             .saturating_add(T::DbWeight::get().reads(1 as Weight))
             .saturating_add(T::DbWeight::get().reads((2 as Weight).saturating_mul(a as Weight)))
             .saturating_add(T::DbWeight::get().writes(1 as Weight))
@@ -67,12 +67,12 @@ impl<T: frame_system::Config> crate::WeightInfo for WeightInfo<T> {
 
     fn save_data(a: u32, b: u32) -> Weight {
         (0 as Weight)
-            // Standard Error: 211_137_000
-            .saturating_add((7_336_948_000 as Weight).saturating_mul(a as Weight))
-            // Standard Error: 147_683_000
-            .saturating_add((4_968_017_000 as Weight).saturating_mul(b as Weight))
-            .saturating_add(T::DbWeight::get().reads(2 as Weight))
-            .saturating_add(T::DbWeight::get().reads((5 as Weight).saturating_mul(a as Weight)))
+            // Standard Error: 835_000
+            .saturating_add((123_169_000 as Weight).saturating_mul(a as Weight))
+            // Standard Error: 584_000
+            .saturating_add((65_941_000 as Weight).saturating_mul(b as Weight))
+            .saturating_add(T::DbWeight::get().reads(1 as Weight))
+            .saturating_add(T::DbWeight::get().reads((1 as Weight).saturating_mul(a as Weight)))
             .saturating_add(T::DbWeight::get().writes(1 as Weight))
     }
 }
