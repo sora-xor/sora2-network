@@ -94,9 +94,10 @@ pipeline {
 
                                 cargo test --features private-net
 
-                                grcov . --binary-path target/debug -s . -t html --branch --ignore-not-existing -o target/debug/coverage
+                                grcov . --binary-path target/debug -s . --xml --html --branch --ignore-not-existing -o target/debug/coverage
                             '''
                             archiveArtifacts artifacts: 'target/debug/coverage/index.html'
+                            cobertura coberturaReportFile: 'target/debug/coverage/index.xml'
                         }
                     }
                 }
