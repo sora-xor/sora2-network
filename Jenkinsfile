@@ -36,48 +36,48 @@ pipeline {
                 }
             }
         }
-        // stage('Build & Tests') {
-        //     environment {
-        //         PACKAGE = 'framenode-runtime'
-        //         RUSTFLAGS = '-Dwarnings'
-        //         RUNTIME_DIR = "runtime"
-        //         RUSTC_VERSION = "${rustcVersion}"
-        //     }
-        //     steps{
-        //         script {
-        //             docker.withRegistry( 'https://' + registry, dockerRegistryRWUserId) {
-        //                 docker.image(baseImageName).inside() {
-        //                     if (getPushVersion(pushTags)){
-        //                         if (env.TAG_NAME) {
-        //                             featureList = (env.TAG_NAME =~ 'stage.*') ? featureList : 'include-real-files'
-        //                         }
-        //                         sh """
-        //                             cargo build --release --features \"${featureList}\"
-        //                             cargo test --release
-        //                             cp target/release/framenode housekeeping/framenode
-        //                         """
-        //                         archiveArtifacts artifacts: 'target/release/wbuild/framenode-runtime/framenode_runtime.compact.wasm'
-        //                     } else {
-        //                         sh '''
-        //                             cargo fmt -- --check > /dev/null
-        //                             cargo check
-        //                             cargo test
-        //                             cargo check --features private-net
-        //                             cargo test --features private-net
-        //                             cargo check --features runtime-benchmarks
-        //                         '''
-        //                     }
-        //                 }
-        //             }
-        //             docker.image(srtoolImageName).inside("-v ${env.WORKSPACE}:/build") { c ->
-        //                 if (getPushVersion(pushTags)){
-        //                     sh "build --json | tee ${srtoolReportFile}"
-        //                     archiveArtifacts artifacts: srtoolReportFile
-        //                 }
-        //             }
-        //         }
-        //     }
-        // }
+        stage('Build & Tests') {
+            environment {
+                PACKAGE = 'framenode-runtime'
+                RUSTFLAGS = '-Dwarnings'
+                RUNTIME_DIR = "runtime"
+                RUSTC_VERSION = "${rustcVersion}"
+            }
+            steps{
+                script {
+                    docker.withRegistry( 'https://' + registry, dockerRegistryRWUserId) {
+                        docker.image(baseImageName).inside() {
+                            if (getPushVersion(pushTags)){
+                                if (env.TAG_NAME) {
+                                    featureList = (env.TAG_NAME =~ 'stage.*') ? featureList : 'include-real-files'
+                                }
+                                sh """
+                                    cargo build --release --features \"${featureList}\"
+                                    cargo test --release
+                                    cp target/release/framenode housekeeping/framenode
+                                """
+                                archiveArtifacts artifacts: 'target/release/wbuild/framenode-runtime/framenode_runtime.compact.wasm'
+                            } else {
+                                sh '''
+                                    cargo fmt -- --check > /dev/null
+                                    cargo check
+                                    cargo test
+                                    cargo check --features private-net
+                                    cargo test --features private-net
+                                    cargo check --features runtime-benchmarks
+                                '''
+                            }
+                        }
+                    }
+                    docker.image(srtoolImageName).inside("-v ${env.WORKSPACE}:/build") { c ->
+                        if (getPushVersion(pushTags)){
+                            sh "build --json | tee ${srtoolReportFile}"
+                            archiveArtifacts artifacts: srtoolReportFile
+                        }
+                    }
+                }
+            }
+        }
         stage('Code Coverage') {
             steps {
                 script {
@@ -94,11 +94,11 @@ pipeline {
 
                                 cargo test --features private-net
 
-                                grcov . --binary-path target/debug -s . -t html -t cobertura --branch --ignore-not-existing -o target/debug/coverage
-                                ls -l target/debug/coverage
+                                grcov . --binary-path target/debug -s . -t cobertura --branch --ignore-not-existing -o target/debug/report
+                                grcov . --binary-path target/debug -s . -t html --branch --ignore-not-existing -o target/debug/coverage
                             '''
                             archiveArtifacts artifacts: 'target/debug/coverage/index.html'
-                            cobertura coberturaReportFile: 'target/debug/coverage/index.xml'
+                            cobertura coberturaReportFile: 'target/debug/report'
                         }
                     }
                 }
