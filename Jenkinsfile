@@ -85,8 +85,8 @@ pipeline {
                         docker.image(baseImageName).inside() {
                             sh '''
                                 cargo install grcov
-                                rustup toolchain install nightly-2021-03-11
-                                rustup component add llvm-tools-preview --toolchain nightly-2021-03-11
+                                rustup toolchain install $rustcVersion
+                                rustup component add llvm-tools-preview --toolchain $rustcVersion
 
                                 export RUSTFLAGS="-Zinstrument-coverage"
                                 export SKIP_WASM_BUILD=1
