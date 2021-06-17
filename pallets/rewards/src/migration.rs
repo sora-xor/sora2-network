@@ -30,7 +30,7 @@
 
 use crate::{Config, EthereumAddress, Pallet, PswapFarmOwners, ReservesAcc, Weight};
 use common::prelude::Balance;
-use common::{PSWAP, VAL, balance, vec_push};
+use common::{balance, vec_push, PSWAP, VAL};
 use frame_support::debug;
 use frame_support::traits::{Get, GetPalletVersion, PalletVersion};
 use hex_literal::hex;
@@ -41,6 +41,7 @@ use sp_std::vec::Vec;
 pub fn migrate<T: Config>() -> Weight {
     let mut weight: Weight = 0;
 
+    debug::RuntimeLogger::init();
     match Pallet::<T>::storage_version() {
         // Initial version is 0.1.0 with the storage initialized in genesis block
         // Version 1.1.0 updates claimable VAL data structure with the corrected data
@@ -60,18 +61,27 @@ pub fn migrate<T: Config>() -> Weight {
         }
         // Version 1.2.0 adds lost tokens compensation for user according to:
         // https://etherscan.io/tx/0x5605564eadc8b912de930fb9e3405b0aa1010cf3decc0eace176b6cf5aeee166
-        Some(version) if version == PalletVersion::new(1,1,0) => {
-            let user_account = H160::from_slice(b"e687c6c6b28745864871566134b5589aa05b953d");
+        Some(version) if version == PalletVersion::new(1, 1, 0) => {
+            let user_account = H160::from_slice(&hex!("e687c6c6b28745864871566134b5589aa05b953d"));
             let compensation_amount = balance!(74339.224845900297630556);
             PswapFarmOwners::<T>::insert(user_account, compensation_amount);
             let reserves_tech_acc = ReservesAcc::<T>::get();
-            let parliament_account = ;//
-            technical::Module::<T>::transfer_in(
+            let res = technical::Module::<T>::mint(
                 &PSWAP.into(),
-                &parliament_account,
                 &reserves_tech_acc,
                 compensation_amount,
             );
+            if res.is_err() {
+                debug::error!(
+                    target: "runtime",
+                    "failed to mint compensation pswap during migration"
+                );
+            } else {
+                debug::info!(
+                    target: "runtime",
+                    "successfully minted compensation pswap during migration"
+                );
+            }
         }
         _ => (),
     }
