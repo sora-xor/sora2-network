@@ -138,6 +138,7 @@ impl Config for Runtime {
     type GetBondingCurveRewardsAccountId = GetBondingCurveRewardsAccountId;
     type GetMarketMakerRewardsAccountId = GetMarketMakerRewardsAccountId;
     type WeightInfo = ();
+    type CompatAccountId = AccountId;
 }
 
 impl tokens::Config for Runtime {
