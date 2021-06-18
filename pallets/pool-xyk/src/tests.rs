@@ -29,7 +29,9 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use common::prelude::{FixedWrapper, SwapAmount, SwapOutcome};
-use common::{AssetName, AssetSymbol, Balance, LiquiditySource, LiquiditySourceType, ToFeeAccount, balance};
+use common::{
+    balance, AssetName, AssetSymbol, Balance, LiquiditySource, LiquiditySourceType, ToFeeAccount,
+};
 use frame_support::{assert_noop, assert_ok};
 
 use crate::mock::*;
@@ -1544,8 +1546,14 @@ fn strict_sort_pair() {
         assert_eq!(pair.base_asset_id, asset_base);
         assert_eq!(pair.target_asset_id, asset_target);
 
-        assert_noop!(PoolXYK::strict_sort_pair(&asset_base, &asset_base), crate::Error::<Runtime>::AssetsMustNotBeSame);
-        assert_noop!(PoolXYK::strict_sort_pair(&asset_target, &asset_target_2), crate::Error::<Runtime>::BaseAssetIsNotMatchedWithAnyAssetArguments);
+        assert_noop!(
+            PoolXYK::strict_sort_pair(&asset_base, &asset_base),
+            crate::Error::<Runtime>::AssetsMustNotBeSame
+        );
+        assert_noop!(
+            PoolXYK::strict_sort_pair(&asset_target, &asset_target_2),
+            crate::Error::<Runtime>::BaseAssetIsNotMatchedWithAnyAssetArguments
+        );
     });
 }
 
@@ -1573,7 +1581,8 @@ fn depositing_and_withdrawing_liquidity_updates_user_pools() {
         ));
 
         assert_eq!(
-            PoolXYK::account_pools(&ALICE()), [target_asset_a].iter().cloned().collect()
+            PoolXYK::account_pools(&ALICE()),
+            [target_asset_a].iter().cloned().collect()
         );
 
         assert_ok!(crate::Module::<Runtime>::deposit_liquidity(
@@ -1588,7 +1597,8 @@ fn depositing_and_withdrawing_liquidity_updates_user_pools() {
         ));
 
         assert_eq!(
-            PoolXYK::account_pools(&ALICE()), [target_asset_a].iter().cloned().collect()
+            PoolXYK::account_pools(&ALICE()),
+            [target_asset_a].iter().cloned().collect()
         );
 
         assert_ok!(assets::Module::<Runtime>::register_asset_id(
@@ -1630,10 +1640,13 @@ fn depositing_and_withdrawing_liquidity_updates_user_pools() {
         ));
 
         assert_eq!(
-            PoolXYK::account_pools(&ALICE()), [target_asset_a, target_asset_b].iter().cloned().collect()
+            PoolXYK::account_pools(&ALICE()),
+            [target_asset_a, target_asset_b].iter().cloned().collect()
         );
 
-        let (_, tech_account_a) = PoolXYK::tech_account_from_dex_and_asset_pair(dex_id, base_asset, target_asset_a).unwrap();
+        let (_, tech_account_a) =
+            PoolXYK::tech_account_from_dex_and_asset_pair(dex_id, base_asset, target_asset_a)
+                .unwrap();
         let pool_account_a = Technical::tech_account_id_to_account_id(&tech_account_a).unwrap();
         let user_balance_a = PoolXYK::pool_providers(&pool_account_a, &ALICE()).unwrap();
 
@@ -1648,7 +1661,8 @@ fn depositing_and_withdrawing_liquidity_updates_user_pools() {
         ));
 
         assert_eq!(
-            PoolXYK::account_pools(&ALICE()), [target_asset_b].iter().cloned().collect()
+            PoolXYK::account_pools(&ALICE()),
+            [target_asset_b].iter().cloned().collect()
         );
     })]);
 }

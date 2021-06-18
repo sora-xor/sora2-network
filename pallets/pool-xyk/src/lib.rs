@@ -484,6 +484,11 @@ pub mod pallet {
         fn on_runtime_upgrade() -> Weight {
             match Self::storage_version() {
                 Some(PalletVersion { major: 0, .. }) | None => migrations::v1_1::migrate::<T>(),
+                Some(PalletVersion {
+                    major: 1,
+                    minor: 1,
+                    patch: 0,
+                }) => migrations::v1_2::migrate::<T>(),
                 _ => 0,
             }
         }
@@ -762,7 +767,7 @@ pub mod pallet {
     #[pallet::storage]
     pub type TotalIssuances<T: Config> = StorageMap<_, Identity, AccountIdOf<T>, Balance>;
 
-    /// Properties of particular pool. [Reserves Account Id, Fees Account Id]
+    /// Properties of particular pool. Base Asset => Target Asset => (Reserves Account Id, Fees Account Id)
     #[pallet::storage]
     #[pallet::getter(fn properties)]
     pub type Properties<T: Config> = StorageDoubleMap<
