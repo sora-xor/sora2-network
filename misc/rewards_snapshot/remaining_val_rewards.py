@@ -28,6 +28,8 @@
 # STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE 
 # USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+from decimal import Decimal
+
 
 def parse_line(line: str):
     if not 'hex!' in line:
@@ -35,10 +37,14 @@ def parse_line(line: str):
     parts = line.split(',')
     address = parts[0].lstrip().split('"')[1]
     try:
-        balance = float(parts[1].split('(')[1].split(')')[0])
+        vested = Decimal(parts[1].split('!(')[1].split(')')[0])
+        total = Decimal(parts[2].lstrip().split('!(')[1].split(')')[0])
+    except IndexError as e:
+        total = Decimal(0)
     except ValueError as e:
         return None
-    return {'address': address, 'balance': balance}
+
+    return {'address': address, 'vested': vested, 'total': total}
 
 
 def load_data(path: str):
@@ -51,38 +57,53 @@ def load_data(path: str):
             continue
         try:
             addr = res['address']
-            balance = res['balance']
-            data[addr] = balance
+            vested = res['vested']
+            total = res['total']
+            data[addr] = (vested, total)
         except KeyError as e:
             continue
     return data
 
 
 def create_diffs(old_data, new_data):
-    positive = {}
-    negative = {}
-    for k, v in new_data.items():
+    res = {}
+    for k, (v, t) in new_data.items():
         try:
-            diff = v - old_data[k]
-            if diff > 0:
-                positive[k] = diff
-            if diff < 0:
-                negative[k] = diff
+            res[k] = t - max(v, old_data[k][0])
         except KeyError as e:
             # Key is not present in old_data
-            positive[k] = v
-    return positive, negative
+            res[k] = t - v
+    return res
 
 
-def write_to_file(output_dir, filename, ext, data, chunk_size = None, use_abs_value = True):
+def write_to_file(output_dir, filename, data, to_json = True, chunk_size = None):
     def write_to_file_inner(path, data, use_abs_value = True):
         with open(path, 'w') as f:
             print('vec_push![', file=f)
-            for addr, balance in data:
-                if balance < 0 and use_abs_value:
-                    balance = -balance
-                print('    (hex!("{}").into(), balance!({:.18f})),'.format(addr, balance), file=f)
+            for k, v in data:
+                print('    (hex!("{}").into(), balance!({:.18f})),'.format(k, v), file=f)
             print(']', file=f)
+
+    def write_to_json(path, data, use_abs_value = True):
+        with open(path, 'w') as f:
+            print('[', file=f)
+            for i in range(len(data)):
+                k, v = data[i]
+                print('  {', file=f)
+                print('    "address": "{}",'.format(k), file=f)
+                print('    "amount": "{}"'.format(int(v * Decimal(10**18))), file=f)
+                if i == len(data) - 1:
+                    print('  }', file=f)
+                else:
+                    print('  },', file=f)
+            print(']', file=f)
+
+    if to_json:
+        writer = write_to_json
+        ext = 'json'
+    else:
+        writer = write_to_file_inner
+        ext = 'in'
 
     if chunk_size is not None:
         num_chunks = len(data) // chunk_size
@@ -92,29 +113,23 @@ def write_to_file(output_dir, filename, ext, data, chunk_size = None, use_abs_va
             data_items = list(data.items())
             for i in range(num_chunks - 1):
                 path = f'{output_dir}/{filename}.{i}.{ext}'
-                write_to_file_inner(path, data_items[i * chunk_size:(i + 1) * chunk_size])
-            write_to_file_inner(
+                writer(path, data_items[i * chunk_size:(i + 1) * chunk_size])
+            writer(
                 f'{output_dir}/{filename}.{num_chunks - 1}.{ext}',
                 data_items[(num_chunks - 1) * chunk_size:]
             )
         else:
-            write_to_file_inner(f'{output_dir}/{filename}.{ext}', list(data.items()))
+            writer(f'{output_dir}/{filename}.{ext}', list(data.items()))
     else:
-        write_to_file_inner(f'{output_dir}/{filename}.{ext}', list(data.items()))
+        writer(f'{output_dir}/{filename}.{ext}', list(data.items()))
 
 
 if __name__ == '__main__':
     old_data = load_data('../../node/src/chain_spec/bytes/rewards_val_owners_old.in')
     new_data = load_data('../../node/src/chain_spec/bytes/rewards_val_owners.in')
-    positive, negative = create_diffs(old_data, new_data)
+    diff = create_diffs(old_data, new_data)
 
     write_to_file(
-        '../../pallets/rewards/src/bytes', 'val_rewards_airdrop_adjustment', 'in',
-        positive, 512
-    )
-
-    # For the meantime writing all amounts paid in excess in a single file
-    # Will split in chunks for the next runtime upgrade when strategic vesting is handled
-    write_to_file(
-        '../../pallets/rewards/src/bytes', 'val_rewards_paid_in_excess', 'in', negative
+        '../../pallets/rewards/src/bytes', 'remaining_val_rewards', diff,
+        True, None
     )

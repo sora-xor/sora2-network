@@ -90,7 +90,7 @@ pub use common::weights::{BlockLength, BlockWeights, TransactionByteFee};
 pub use common::{
     balance, fixed, fixed_from_basis_points, AssetName, AssetSymbol, BalancePrecision, BasisPoints,
     FilterMode, Fixed, FromGenericPair, LiquiditySource, LiquiditySourceFilter, LiquiditySourceId,
-    LiquiditySourceType, OnPswapBurned,
+    LiquiditySourceType, OnPswapBurned, OnValBurned,
 };
 pub use frame_support::traits::schedule::Named as ScheduleNamed;
 pub use frame_support::traits::{
@@ -846,6 +846,11 @@ where
 impl referral_system::Config for Runtime {}
 
 impl rewards::Config for Runtime {
+    const BLOCKS_PER_DAY: BlockNumber = 1 * DAYS;
+    const UPDATE_FREQUENCY: BlockNumber = 10 * MINUTES;
+    const MAX_CHUNK_SIZE: usize = 100;
+    const MAX_VESTING_RATIO: Percent = Percent::from_percent(55);
+    const TIME_TO_SATURATION: BlockNumber = 5 * 365 * DAYS; // 5 years
     type Event = Event;
     type WeightInfo = rewards::weights::WeightInfo<Runtime>;
 }
@@ -906,6 +911,18 @@ impl xor_fee::ExtractProxySwap for Call {
     }
 }
 
+pub struct ValBurnedAggregator<T>(sp_std::marker::PhantomData<T>);
+
+impl<T> OnValBurned for ValBurnedAggregator<T>
+where
+    T: pallet_staking::ValBurnedNotifier<Balance>,
+{
+    fn on_val_burned(amount: Balance) {
+        Rewards::on_val_burned(amount);
+        T::notify_val_burned(amount);
+    }
+}
+
 parameter_types! {
     pub const DEXIdValue: DEXId = 0;
 }
@@ -922,7 +939,7 @@ impl xor_fee::Config for Runtime {
     type ValId = GetValAssetId;
     type DEXIdValue = DEXIdValue;
     type LiquidityProxy = LiquidityProxy;
-    type ValBurnedNotifier = Staking;
+    type OnValBurned = ValBurnedAggregator<Staking>;
     type CustomFees = ExtrinsicsFlatFees;
     type GetTechnicalAccountId = GetXorFeeAccountId;
     type GetParliamentAccountId = GetParliamentAccountId;

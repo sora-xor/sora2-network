@@ -28,16 +28,18 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use codec::Decode;
+use codec::{Decode, Encode};
 use common::eth::EthereumAddress;
-use common::{balance, PSWAP, VAL};
+use common::{balance, Balance, PSWAP, VAL};
 use frame_benchmarking::benchmarks;
 use frame_system::{EventRecord, RawOrigin};
 use hex_literal::hex;
+use sp_io::hashing::blake2_256;
 use sp_std::prelude::*;
 
 use crate::{
-    Config, Event, Module, Pallet, PswapFarmOwners, PswapWaifuOwners, ReservesAcc, ValOwners,
+    Config, Event, MigrationPending, Module, Pallet, PswapFarmOwners, PswapWaifuOwners,
+    ReservesAcc, RewardInfo, ValOwners,
 };
 
 fn alice<T: Config>() -> T::AccountId {
@@ -45,19 +47,38 @@ fn alice<T: Config>() -> T::AccountId {
     T::AccountId::decode(&mut &bytes[..]).unwrap_or_default()
 }
 
+fn eth_address(prefix: Vec<u8>, index: u128) -> EthereumAddress {
+    let hash: [u8; 32] = (prefix, index).using_encoded(blake2_256);
+    EthereumAddress::from_slice(&hash[12..])
+}
+
 // Adds `n` of unaccessible rewards and after adds 1 reward that will be claimed
 fn add_rewards<T: Config>(n: u32) {
     let unaccessible_eth_addr: EthereumAddress =
         hex!("21Bc9f4a3d9Dc86f142F802668dB7D908cF0A635").into();
     for _i in 0..n {
-        ValOwners::<T>::insert(&unaccessible_eth_addr, 1);
+        ValOwners::<T>::insert(&unaccessible_eth_addr, RewardInfo::from(1));
         PswapFarmOwners::<T>::insert(&unaccessible_eth_addr, 1);
         PswapWaifuOwners::<T>::insert(&unaccessible_eth_addr, 1);
     }
     let eth_addr: EthereumAddress = hex!("21Bc9f4a3d9Dc86f142F802668dB7D908cF0A636").into();
-    ValOwners::<T>::insert(&eth_addr, 300);
+    ValOwners::<T>::insert(&eth_addr, RewardInfo::from(300));
     PswapFarmOwners::<T>::insert(&eth_addr, 300);
     PswapWaifuOwners::<T>::insert(&eth_addr, 300);
+}
+
+// Populates `ValOwners` storage map and returns a vector of pairs `Vec<(addr, balance)>`
+// as remaining (unclaimed) VAL rewards
+fn populate_val_owners<T: Config>(n: u32) -> Vec<(EthereumAddress, Balance)> {
+    let mut unclaimed: Vec<(EthereumAddress, Balance)> = vec![];
+    for i in 0..n {
+        let addr = eth_address(b"eth_address".to_vec(), i as u128);
+        ValOwners::<T>::insert(&addr, RewardInfo::from(Balance::from(i)));
+        unclaimed.push((addr, Balance::from(10 * i)));
+    }
+    MigrationPending::<T>::put(true);
+
+    unclaimed
 }
 
 fn assert_last_event<T: Config>(generic_event: <T as Config>::Event) {
@@ -103,6 +124,19 @@ benchmarks! {
     verify {
         assert_last_event::<T>(Event::Claimed(caller).into())
     }
+
+    finalize_storage_migration {
+        let n in 1..14000;
+
+        let data = populate_val_owners::<T>(n);
+
+        let root_origin: <T as frame_system::Config>::Origin = RawOrigin::Root.into();
+    }: {
+        Pallet::<T>::finalize_storage_migration(root_origin, data).expect("Failed to finalize storage migration");
+    }
+    verify {
+        assert_last_event::<T>(Event::MigrationCompleted.into())
+    }
 }
 
 #[cfg(test)]
@@ -112,9 +146,16 @@ mod tests {
     use crate::mock::{ExtBuilder, Runtime};
 
     #[test]
-    fn migrate() {
+    fn claim() {
         ExtBuilder::with_rewards(false).build().execute_with(|| {
             assert_ok!(super::test_benchmark_claim::<Runtime>());
+        });
+    }
+
+    #[test]
+    fn migrate() {
+        ExtBuilder::with_rewards(false).build().execute_with(|| {
+            assert_ok!(super::test_benchmark_finalize_storage_migration::<Runtime>());
         });
     }
 }

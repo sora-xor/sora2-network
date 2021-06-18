@@ -35,7 +35,7 @@ use common::prelude::{
 };
 use common::{
     self, balance, fixed_from_basis_points, Amount, AssetId32, AssetName, AssetSymbol, Fixed,
-    LiquiditySource, LiquiditySourceFilter, LiquiditySourceType, VAL, XOR,
+    LiquiditySource, LiquiditySourceFilter, LiquiditySourceType, OnValBurned, VAL, XOR,
 };
 use core::time::Duration;
 use currencies::BasicCurrencyAdapter;
@@ -345,6 +345,17 @@ impl xor_fee::ApplyCustomFees<Call> for CustomFees {
     }
 }
 
+pub struct ValBurnedAggregator<T>(sp_std::marker::PhantomData<T>);
+
+impl<T> OnValBurned for ValBurnedAggregator<T>
+where
+    T: pallet_staking::ValBurnedNotifier<Balance>,
+{
+    fn on_val_burned(amount: Balance) {
+        T::notify_val_burned(amount);
+    }
+}
+
 impl Config for Runtime {
     type Event = Event;
     type XorCurrency = Balances;
@@ -356,7 +367,7 @@ impl Config for Runtime {
     type ValId = ValId;
     type DEXIdValue = DEXIdValue;
     type LiquidityProxy = MockLiquidityProxy;
-    type ValBurnedNotifier = Staking;
+    type OnValBurned = ValBurnedAggregator<Staking>;
     type CustomFees = CustomFees;
     type GetTechnicalAccountId = GetXorFeeAccountId;
     type GetParliamentAccountId = GetParliamentAccountId;

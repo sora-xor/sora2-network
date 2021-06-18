@@ -111,6 +111,49 @@ macro_rules! vec_push {
     );
 }
 
+#[macro_export]
+macro_rules! our_include {
+    ($x:expr) => {{
+        #[cfg(feature = "include-real-files")]
+        let output = include!($x);
+
+        #[cfg(not(feature = "include-real-files"))]
+        let output = Default::default();
+
+        output
+    }};
+}
+
+#[macro_export]
+macro_rules! our_include_bytes {
+    ($x:expr) => {{
+        #[cfg(feature = "include-real-files")]
+        static OUTPUT: &'static [u8] = include_bytes!($x);
+
+        #[cfg(not(feature = "include-real-files"))]
+        static OUTPUT: &'static [u8] = &[];
+
+        OUTPUT
+    }};
+}
+
+// Assertion that two values are approximately equale (up to some tolerance)
+#[macro_export]
+macro_rules! assert_approx_eq {
+    ($left:expr, $right:expr, $tol:expr) => {{
+        let tolerance = $crate::prelude::FixedWrapper::from($tol);
+        let left = $crate::prelude::FixedWrapper::from($left);
+        let right = $crate::prelude::FixedWrapper::from($right);
+        assert!(
+            left.clone() < right.clone() + tolerance.clone() && right < left + tolerance,
+            "{} != {} with tolerance {}",
+            $left,
+            $right,
+            $tol
+        );
+    }};
+}
+
 #[cfg(test)]
 mod tests {
     #[test]
@@ -127,5 +170,19 @@ mod tests {
         assert_eq!(f, fp("1.2"));
         let f: Fixed = fixed!(10.09);
         assert_eq!(f, fp("10.09"));
+    }
+
+    #[test]
+    fn assert_approx_eq_works() {
+        use crate::Fixed;
+
+        let tol: Fixed = fixed!(0.000000001);
+        assert_approx_eq!(balance!(1.11111111111111), balance!(1.11111111111112), tol);
+        assert_approx_eq!(
+            Fixed::from_bits(111111111111111),
+            Fixed::from_bits(111111111111110),
+            tol
+        );
+        assert_approx_eq!(100, 99, 2);
     }
 }
