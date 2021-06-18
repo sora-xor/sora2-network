@@ -254,6 +254,7 @@ impl<T: Config> Module<T> {
         asset_b: &T::AssetId,
     ) -> Result<TradingPair<T::AssetId>, DispatchError> {
         let base_asset_id = T::GetBaseAssetId::get();
+        ensure!(asset_a != asset_b, Error::<T>::AssetsMustNotBeSame);
         if asset_a == &base_asset_id {
             Ok(TradingPair {
                 base_asset_id: asset_a.clone(),

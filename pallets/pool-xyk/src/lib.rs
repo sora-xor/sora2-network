@@ -753,6 +753,7 @@ pub mod pallet {
     /// Set of pools in which accounts have some share.
     /// Liquidity provider account => Target Asset of pair (assuming base asset is XOR)
     #[pallet::storage]
+    #[pallet::getter(fn account_pools)]
     pub type AccountPools<T: Config> =
         StorageMap<_, Identity, AccountIdOf<T>, BTreeSet<AssetIdOf<T>>, ValueQuery>;
 
