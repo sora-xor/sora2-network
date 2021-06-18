@@ -51,6 +51,7 @@ use aliases::{
     AccountIdOf, AssetIdOf, DEXIdOf, DepositLiquidityActionOf, PairSwapActionOf,
     PolySwapActionStructOf, TechAccountIdOf, TechAssetIdOf, WithdrawLiquidityActionOf,
 };
+use sp_std::collections::btree_set::BTreeSet;
 
 pub mod migrations;
 pub mod weights;
@@ -745,8 +746,15 @@ pub mod pallet {
     /// Liquidity providers of particular pool.
     /// Pool account => Liquidity provider account => Pool token balance
     #[pallet::storage]
+    #[pallet::getter(fn pool_providers)]
     pub type PoolProviders<T: Config> =
         StorageDoubleMap<_, Identity, AccountIdOf<T>, Identity, AccountIdOf<T>, Balance>;
+
+    /// Set of pools in which accounts have some share.
+    /// Liquidity provider account => Target Asset of pair (assuming base asset is XOR)
+    #[pallet::storage]
+    pub type AccountPools<T: Config> =
+        StorageMap<_, Identity, AccountIdOf<T>, BTreeSet<AssetIdOf<T>>, ValueQuery>;
 
     /// Total issuance of particular pool.
     /// Pool account => Total issuance
