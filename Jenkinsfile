@@ -83,21 +83,7 @@ pipeline {
                 script {
                     docker.withRegistry( 'https://' + registry, dockerRegistryRWUserId) {
                         docker.image(baseImageName).inside() {
-                            sh '''
-                                cargo install grcov
-                                rustup toolchain install $rustcVersion
-                                rustup component add llvm-tools-preview --toolchain $rustcVersion
-
-                                export RUSTFLAGS="-Zinstrument-coverage"
-                                export SKIP_WASM_BUILD=1
-                                export LLVM_PROFILE_FILE="sora2-%p-%m.profraw"
-
-                                cargo test --features private-net
-
-                                grcov . --binary-path target/debug -s . -t cobertura --branch --ignore-not-existing -o target/debug/report
-                                grcov . --binary-path target/debug -s . -t html --branch --ignore-not-existing -o target/debug/coverage
-                            '''
-                            archiveArtifacts artifacts: 'target/debug/coverage/index.html'
+                            sh './coverage.sh'
                             cobertura coberturaReportFile: 'target/debug/report'
                         }
                     }
