@@ -277,6 +277,7 @@ pub mod pallet {
     use super::*;
     use frame_support::pallet_prelude::*;
     use frame_system::pallet_prelude::*;
+    use sp_runtime::AccountId32;
 
     #[pallet::config]
     pub trait Config:
@@ -292,6 +293,8 @@ pub mod pallet {
         type GetBondingCurveRewardsAccountId: Get<Self::AccountId>;
         /// Weight information for extrinsics in this pallet.
         type WeightInfo: WeightInfo;
+        /// AccountId type compatible with both assiciated type and actual 32-byte type.
+        type CompatAccountId: Into<Self::AccountId> + From<AccountId32> + From<[u8; 32]>;
     }
 
     #[pallet::pallet]
