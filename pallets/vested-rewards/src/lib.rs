@@ -277,7 +277,6 @@ pub mod pallet {
     use super::*;
     use frame_support::pallet_prelude::*;
     use frame_system::pallet_prelude::*;
-    use sp_runtime::AccountId32;
 
     #[pallet::config]
     pub trait Config:
@@ -293,8 +292,6 @@ pub mod pallet {
         type GetBondingCurveRewardsAccountId: Get<Self::AccountId>;
         /// Weight information for extrinsics in this pallet.
         type WeightInfo: WeightInfo;
-        /// AccountId type compatible with both assiciated type and actual 32-byte type.
-        type CompatAccountId: Into<Self::AccountId> + From<AccountId32> + From<[u8; 32]>;
     }
 
     #[pallet::pallet]
@@ -326,6 +323,18 @@ pub mod pallet {
             let who = ensure_signed(origin)?;
             Self::claim_rewards_inner(&who)?;
             Ok(().into())
+        }
+
+        /// Inject market makers snapshot into storage.
+        #[pallet::weight(0)]
+        #[transactional]
+        pub fn inject_market_makers(
+            origin: OriginFor<T>,
+            snapshot: Vec<(T::AccountId, u32, Balance)>,
+        ) -> DispatchResultWithPostInfo {
+            ensure_root(origin)?;
+            let weight = crate::migration::inject_market_makers_first_month_rewards::<T>(snapshot);
+            Ok(Some(weight).into())
         }
     }
 
