@@ -360,6 +360,7 @@ impl Config for Runtime {
     type CustomFees = CustomFees;
     type GetTechnicalAccountId = GetXorFeeAccountId;
     type GetParliamentAccountId = GetParliamentAccountId;
+    type SessionManager = Staking;
 }
 
 // Allow dead_code because we never call swap, just use its Call variant

@@ -486,7 +486,7 @@ impl pallet_timestamp::Config for Runtime {
 }
 
 impl pallet_session::Config for Runtime {
-    type SessionManager = pallet_session::historical::NoteHistoricalRoot<Self, Staking>;
+    type SessionManager = pallet_session::historical::NoteHistoricalRoot<Self, XorFee>;
     type Keys = opaque::SessionKeys;
     type ShouldEndSession = Babe;
     type SessionHandler = <opaque::SessionKeys as OpaqueKeys>::KeyTypeIdProviders;
@@ -923,6 +923,7 @@ impl xor_fee::Config for Runtime {
     type CustomFees = ExtrinsicsFlatFees;
     type GetTechnicalAccountId = GetXorFeeAccountId;
     type GetParliamentAccountId = GetParliamentAccountId;
+    type SessionManager = Staking;
 }
 
 pub struct ConstantFeeMultiplier;
