@@ -16,9 +16,11 @@ codec = { package = "parity-scale-codec", version = "2", default-features = fals
 frame-support = { version = "3", default-features = false }
 frame-system = { version = "3", default-features = false }
 pallet-transaction-payment = { version = "3", default-features = false }
+pallet-session = { version = "3", default-features = false }
 serde = { version = "1.0.101", features = ["derive"], optional = true }
 sp-arithmetic = { version = "3", default-features = false }
 sp-runtime = { version = "3", default-features = false }
+sp-staking = { version = "3", default-features = false }
 sp-std = { version = "3", default-features = false }
 traits = { version = "0.4", package = "orml-traits", default-features = false }
 
@@ -50,14 +52,16 @@ trading-pair = { path = "../trading-pair" }
 [features]
 default = ['std']
 std = [
-    'serde',
     'codec/std',
-    'traits/std',
     'frame-support/std',
     'frame-system/std',
+    'pallet-session/std',
     'pallet-staking/std',
     'pallet-transaction-payment/std',
+    'serde',
     'sp-arithmetic/std',
     'sp-runtime/std',
+    'sp-staking/std',
     'sp-std/std',
+    'traits/std',
 ]
