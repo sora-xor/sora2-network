@@ -33,10 +33,9 @@ use crate::{
     SINGLE_MARKET_MAKER_DISTRIBUTION_AMOUNT,
 };
 use common::prelude::{Balance, FixedWrapper};
-use common::{balance, fixed_wrapper, vec_push, RewardReason};
+use common::{balance, fixed_wrapper, RewardReason};
 use frame_support::debug;
 use frame_support::traits::{Get, GetPalletVersion, PalletVersion};
-use hex_literal::hex;
 use sp_runtime::traits::Zero;
 use sp_std::vec::Vec;
 
@@ -45,14 +44,9 @@ pub fn migrate<T: Config>() -> Weight {
 
     match Pallet::<T>::storage_version() {
         // Initial version is 0.1.0 which has unutilized rewards storage
-        // Version 1.1.0 converts and moves rewards from multicollateral-bonding-curve-pool, also injects market makers for first month (may 2021)
+        // Version 1.1.0 converts and moves rewards from multicollateral-bonding-curve-pool
         Some(version) if version == PalletVersion::new(0, 1, 0) => {
             let migrated_weight = migrate_rewards_from_tbc::<T>().unwrap_or(100_000);
-            weight = weight.saturating_add(migrated_weight);
-
-            let mm_snapshot: Vec<(T::CompatAccountId, u32, Balance)> =
-                include!("../../../misc/market_makers/market_makers_may_snapshot.in");
-            let migrated_weight = inject_market_makers_first_month_rewards::<T>(mm_snapshot);
             weight = weight.saturating_add(migrated_weight);
         }
         _ => (),
@@ -111,7 +105,7 @@ pub fn migrate_rewards_from_tbc<T: Config>() -> Option<Weight> {
 }
 
 pub fn inject_market_makers_first_month_rewards<T: Config>(
-    snapshot: Vec<(T::CompatAccountId, u32, Balance)>,
+    snapshot: Vec<(T::AccountId, u32, Balance)>,
 ) -> Weight {
     let mut weight: Weight = 0;
 
@@ -130,18 +124,21 @@ pub fn inject_market_makers_first_month_rewards<T: Config>(
         weight = weight.saturating_add(T::DbWeight::get().writes(1));
     }
     if total_eligible_volume > 0 {
-        for (account, volume) in eligible_accounts {
-            let reward = (FixedWrapper::from(volume)
+        for (account, volume) in eligible_accounts.iter() {
+            let reward = (FixedWrapper::from(*volume)
                 * FixedWrapper::from(SINGLE_MARKET_MAKER_DISTRIBUTION_AMOUNT)
                 / FixedWrapper::from(total_eligible_volume))
             .try_into_balance()
             .unwrap_or(0);
             if reward > 0 {
-                let _ = Pallet::<T>::add_pending_reward(
-                    &account,
+                let res = Pallet::<T>::add_pending_reward(
+                    account,
                     RewardReason::MarketMakerVolume,
                     reward,
                 );
+                if res.is_err() {
+                    debug::error!(target: "runtime", "Failed to add mm reward for account: {:?}", account);
+                }
                 weight = weight.saturating_add(T::DbWeight::get().writes(2));
             }
         }

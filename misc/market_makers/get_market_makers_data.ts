@@ -58,18 +58,23 @@ async function getMarketMakerRecords(): Promise<void> {
     const blockHash = await api.rpc.chain.getBlockHash(MARKET_MAKERS_DISTRIBUTION_PERIOD);
     let queryResult = await api.query.vestedRewards.marketMakersRegistry.entriesAt(blockHash);
 
-    let records_str = "";
     let count_receiving_rewards = 0;
+    let records: Array<any> = Array();
 
     for (var i = 0; i < queryResult.length; i++) {
         let account_id = queryResult[i][0].slice(-32);
-        let _ss58 = encodeAddress(account_id, 69);
+        let ss58 = encodeAddress(account_id, 69);
         let count = (queryResult[i][1] as any).count.toString();
         let volume = (queryResult[i][1] as any).volume.toString();
         let count_num = parseInt(count, 10);
         
         if (count_num != 0) {
-            records_str += `    (hex!("${toHexString(account_id)}").into(), ${count}u32, ${volume}u128),\n`
+            let entry = {
+                address: ss58.toString(),
+                count,
+                volume,
+            };
+            records.push(entry);
         }
         if (count_num >= 500) {
             count_receiving_rewards++;
@@ -77,7 +82,7 @@ async function getMarketMakerRecords(): Promise<void> {
     }
 
     console.log(`ACCOUNTS WITH REWARDS ${count_receiving_rewards}`);
-    fs.writeFileSync("market_makers_may_snapshot.in", `vec_push![\n${records_str}]\n`);
+    fs.writeFileSync("market_makers_may_snapshot.json", JSON.stringify(records, null, 1));
 }
 
 getMarketMakerRecords().catch(console.error).finally(() => process.exit());
