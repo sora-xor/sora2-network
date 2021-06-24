@@ -28,8 +28,6 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#![cfg_attr(not(feature = "std"), no_std)]
-
 use frame_support::dispatch::DispatchResult;
 use frame_support::traits::Get;
 use frame_support::weights::Weight;
@@ -47,7 +45,7 @@ use crate::operations::*;
 use crate::{Config, Error, Module};
 
 impl<T: Config> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, T>
-    for PairSwapAction<AssetIdOf<T>, Balance, AccountIdOf<T>, TechAccountIdOf<T>>
+    for PairSwapAction<AssetIdOf<T>, AccountIdOf<T>, TechAccountIdOf<T>>
 {
     fn is_abstract_checking(&self) -> bool {
         self.source.amount == Bounds::Dummy || self.destination.amount == Bounds::Dummy
@@ -320,7 +318,7 @@ impl<T: Config> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, 
 }
 
 impl<T: Config> common::SwapAction<AccountIdOf<T>, TechAccountIdOf<T>, T>
-    for PairSwapAction<AssetIdOf<T>, Balance, AccountIdOf<T>, TechAccountIdOf<T>>
+    for PairSwapAction<AssetIdOf<T>, AccountIdOf<T>, TechAccountIdOf<T>>
 {
     /// This function is called after validation, and every `Option` is `Some`, and it is safe to do
     /// unwrap. `Bounds` is also safe to unwrap.

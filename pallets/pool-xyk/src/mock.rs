@@ -73,6 +73,7 @@ parameter_types! {
     pub const GetBurnUpdateFrequency: BlockNumber = 14400;
     pub GetParliamentAccountId: AccountId = AccountId32::from([8; 32]);
     pub GetFee: Fixed = fixed!(0.003);
+    pub GetTeamReservesAccountId: AccountId = AccountId32::from([11; 32]);
 }
 
 parameter_type_with_key! {
@@ -92,12 +93,12 @@ construct_runtime! {
         DexManager: dex_manager::{Module, Call, Config<T>, Storage},
         TradingPair: trading_pair::{Module, Call, Config<T>, Storage, Event<T>},
         Balances: pallet_balances::{Module, Call, Storage, Event<T>},
-        Tokens: tokens::{Module, Call, Config<T>, Storage, Event<T>},
+        Tokens: orml_tokens::{Module, Call, Config<T>, Storage, Event<T>},
         Currencies: currencies::{Module, Call, Storage, Event<T>},
         Assets: assets::{Module, Call, Config<T>, Storage, Event<T>},
         Technical: technical::{Module, Call, Config<T>, Storage, Event<T>},
         PswapDistribution: pswap_distribution::{Module, Call, Config<T>, Storage, Event<T>},
-        PoolXyk: pool_xyk::{Module, Call, Storage, Event<T>},
+        PoolXYK: pool_xyk::{Module, Call, Storage, Event<T>},
     }
 }
 
@@ -153,7 +154,7 @@ impl pallet_balances::Config for Runtime {
     type MaxLocks = ();
 }
 
-impl tokens::Config for Runtime {
+impl orml_tokens::Config for Runtime {
     type Event = Event;
     type Balance = Balance;
     type Amount = Amount;
@@ -165,7 +166,7 @@ impl tokens::Config for Runtime {
 
 impl currencies::Config for Runtime {
     type Event = Event;
-    type MultiCurrency = tokens::Module<Runtime>;
+    type MultiCurrency = orml_tokens::Module<Runtime>;
     type NativeCurrency =
         BasicCurrencyAdapter<Runtime, pallet_balances::Module<Runtime>, Amount, BlockNumber>;
     type GetNativeCurrencyId = <Runtime as assets::Config>::GetBaseAssetId;
@@ -180,6 +181,7 @@ impl assets::Config for Runtime {
     type AssetId = AssetId;
     type GetBaseAssetId = GetBaseAssetId;
     type Currency = currencies::Module<Runtime>;
+    type GetTeamReservesAccountId = GetTeamReservesAccountId;
     type WeightInfo = ();
 }
 
@@ -189,8 +191,7 @@ impl technical::Config for Runtime {
     type TechAccountId = TechAccountId;
     type Trigger = ();
     type Condition = ();
-    type SwapAction =
-        crate::PolySwapAction<AssetId, TechAssetId, Balance, AccountId, TechAccountId>;
+    type SwapAction = crate::PolySwapAction<AssetId, AccountId, TechAccountId>;
     type WeightInfo = ();
 }
 
@@ -206,19 +207,20 @@ impl pswap_distribution::Config for Runtime {
     type OnPswapBurnedAggregator = ();
     type WeightInfo = ();
     type GetParliamentAccountId = GetParliamentAccountId;
+    type PoolXykPallet = PoolXYK;
 }
 
 impl Config for Runtime {
+    const MIN_XOR: Balance = balance!(0.007);
     type Event = Event;
-    type PairSwapAction = crate::PairSwapAction<AssetId, Balance, AccountId, TechAccountId>;
-    type DepositLiquidityAction =
-        crate::DepositLiquidityAction<AssetId, TechAssetId, Balance, AccountId, TechAccountId>;
+    type PairSwapAction = crate::PairSwapAction<AssetId, AccountId, TechAccountId>;
+    type DepositLiquidityAction = crate::DepositLiquidityAction<AssetId, AccountId, TechAccountId>;
     type WithdrawLiquidityAction =
-        crate::WithdrawLiquidityAction<AssetId, TechAssetId, Balance, AccountId, TechAccountId>;
-    type PolySwapAction =
-        crate::PolySwapAction<AssetId, TechAssetId, Balance, AccountId, TechAccountId>;
+        crate::WithdrawLiquidityAction<AssetId, AccountId, TechAccountId>;
+    type PolySwapAction = crate::PolySwapAction<AssetId, AccountId, TechAccountId>;
     type EnsureDEXManager = dex_manager::Module<Runtime>;
     type GetFee = GetFee;
+    type OnPoolCreated = PswapDistribution;
     type WeightInfo = ();
 }
 
@@ -230,6 +232,11 @@ pub fn ALICE() -> AccountId {
 #[allow(non_snake_case)]
 pub fn BOB() -> AccountId {
     AccountId32::from([2; 32])
+}
+
+#[allow(non_snake_case)]
+pub fn CHARLIE() -> AccountId {
+    AccountId32::from([35; 32])
 }
 
 pub const DEX_A_ID: DEXId = 220;
@@ -255,6 +262,7 @@ impl Default for ExtBuilder {
                 (ALICE(), RedPepper.into(), balance!(99000)),
                 (ALICE(), BlackPepper.into(), balance!(2000000)),
                 (BOB(), RedPepper.into(), balance!(2000000)),
+                (CHARLIE(), BlackPepper.into(), balance!(2000000)),
             ],
             initial_permission_owners: vec![
                 (MANAGE_DEX, Scope::Limited(hash(&DEX_A_ID)), vec![BOB()]),
@@ -277,7 +285,7 @@ impl ExtBuilder {
         .assimilate_storage(&mut t)
         .unwrap();
 
-        tokens::GenesisConfig::<Runtime> {
+        orml_tokens::GenesisConfig::<Runtime> {
             endowed_accounts: self.endowed_accounts,
         }
         .assimilate_storage(&mut t)

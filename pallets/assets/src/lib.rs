@@ -51,6 +51,7 @@ extern crate alloc;
 pub mod weights;
 
 mod benchmarking;
+mod migration;
 
 #[cfg(test)]
 mod mock;
@@ -224,6 +225,9 @@ pub mod pallet {
             > + MultiReservableCurrency<Self::AccountId, CurrencyId = Self::AssetId, Balance = Balance>
             + MultiCurrencyExtended<Self::AccountId, Amount = Amount>;
 
+        /// Account dedicated for PSWAP to be distributed among team in future.
+        type GetTeamReservesAccountId: Get<Self::AccountId>;
+
         /// Weight information for extrinsics in this pallet.
         type WeightInfo: WeightInfo;
     }
@@ -233,7 +237,11 @@ pub mod pallet {
     pub struct Pallet<T>(PhantomData<T>);
 
     #[pallet::hooks]
-    impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {}
+    impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
+        fn on_runtime_upgrade() -> Weight {
+            migration::migrate::<T>()
+        }
+    }
 
     #[pallet::call]
     impl<T: Config> Pallet<T> {
@@ -376,9 +384,9 @@ pub mod pallet {
 
     /// Asset Id -> Owner Account Id
     #[pallet::storage]
-    #[pallet::getter(fn asset_owners)]
+    #[pallet::getter(fn asset_owner)]
     pub(super) type AssetOwners<T: Config> =
-        StorageMap<_, Twox64Concat, T::AssetId, T::AccountId, ValueQuery>;
+        StorageMap<_, Twox64Concat, T::AssetId, T::AccountId, OptionQuery>;
 
     /// Asset Id -> (Symbol, Precision, Is Mintable)
     #[pallet::storage]
@@ -547,15 +555,6 @@ impl<T: Config> Pallet<T> {
             )?;
             Ok(asset_id)
         })
-    }
-
-    pub fn asset_owner(asset_id: &T::AssetId) -> Option<T::AccountId> {
-        let account_id = Self::asset_owners(&asset_id);
-        if account_id == T::AccountId::default() {
-            None
-        } else {
-            Some(account_id)
-        }
     }
 
     #[inline]

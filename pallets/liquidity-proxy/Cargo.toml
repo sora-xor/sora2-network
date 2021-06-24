@@ -24,7 +24,6 @@ sp-std = { version = "3", default-features = false }
 common = { path = "../../common", default-features = false }
 assets = { path = "../assets", default-features = false }
 trading-pair = { path = "../trading-pair", default-features = false }
-vested-rewards = { path = "../vested-rewards", default-features = false }
 
 [dev-dependencies]
 serde = { version = "1.0.101", default-features = false, features = ["derive"] }
@@ -36,6 +35,11 @@ dex-manager = { path = "../dex-manager" }
 mock-liquidity-source = { path = "../mock-liquidity-source" }
 technical = { path = "../technical" }
 permissions = { path = "../permissions" }
+vested-rewards = { path = "../vested-rewards" }
+pool-xyk = { path = "../pool-xyk" }
+pswap-distribution = { path = "../pswap-distribution" }
+multicollateral-bonding-curve-pool = { path = "../multicollateral-bonding-curve-pool" }
+
 
 [features]
 default = ['std']
@@ -51,5 +55,4 @@ std = [
     'tokens/std',
     'traits/std',
     'trading-pair/std',
-    'vested-rewards/std',
 ]

@@ -146,18 +146,8 @@ fn setup_benchmark<T: Config>() -> Result<(), &'static str> {
 
     TradingPair::<T>::register(owner_origin.clone(), DEX.into(), XOR.into(), DOT.into())?;
 
-    let (_, tech_acc_id, _fee_acc_id, mark_asset) =
+    let (_, tech_acc_id, _fee_acc_id) =
         XYKPool::<T>::initialize_pool_unchecked(owner.clone(), DEX.into(), XOR.into(), DOT.into())?;
-
-    let _ = Assets::<T>::register_asset_id(
-        owner.clone(),
-        mark_asset.clone().into(),
-        AssetSymbol(b"PSWAP".to_vec()),
-        AssetName(b"Polkaswap".to_vec()),
-        18,
-        Balance::from(0u32),
-        true,
-    );
 
     let repr: <T>::AccountId = Technical::<T>::tech_account_id_to_account_id(&tech_acc_id).unwrap();
 
@@ -188,12 +178,7 @@ fn setup_benchmark<T: Config>() -> Result<(), &'static str> {
         repr.clone(),
         balance!(1500000),
     )?;
-    Assets::<T>::mint(
-        owner_origin.clone(),
-        mark_asset.into(),
-        owner.clone(),
-        balance!(1500000000000),
-    )?;
+    pool_xyk::Module::<T>::mint(&repr, &owner, balance!(1500000000000))?;
 
     Ok(())
 }
