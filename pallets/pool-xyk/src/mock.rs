@@ -29,8 +29,10 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use crate::{self as pool_xyk, Config};
-use common::prelude::{Balance, Fixed};
-use common::{balance, fixed, hash, DEXInfo};
+use common::prelude::{Balance, Fixed, SwapAmount, SwapOutcome};
+use common::{
+    balance, fixed, hash, DEXInfo, LiquiditySource, LiquiditySourceFilter, LiquiditySourceType,
+};
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::GenesisBuild;
 use frame_support::weights::Weight;
@@ -43,7 +45,7 @@ use sp_core::crypto::AccountId32;
 use sp_core::H256;
 use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentityLookup};
-use sp_runtime::Perbill;
+use sp_runtime::{DispatchError, Perbill};
 
 pub use common::mock::ComicAssetId::*;
 pub use common::mock::*;
@@ -99,6 +101,7 @@ construct_runtime! {
         Technical: technical::{Module, Call, Config<T>, Storage, Event<T>},
         PswapDistribution: pswap_distribution::{Module, Call, Config<T>, Storage, Event<T>},
         PoolXYK: pool_xyk::{Module, Call, Storage, Event<T>},
+        PriceTools: price_tools::{Module, Storage, Event<T>},
     }
 }
 
@@ -221,6 +224,44 @@ impl Config for Runtime {
     type EnsureDEXManager = dex_manager::Module<Runtime>;
     type GetFee = GetFee;
     type OnPoolCreated = PswapDistribution;
+    type OnPoolReservesChanged = PriceTools;
+    type WeightInfo = ();
+}
+
+pub struct MockLiquidityProxy;
+
+impl liquidity_proxy::LiquidityProxyTrait<DEXId, AccountId, AssetId> for MockLiquidityProxy {
+    fn exchange(
+        sender: &AccountId,
+        receiver: &AccountId,
+        input_asset_id: &AssetId,
+        output_asset_id: &AssetId,
+        amount: SwapAmount<Balance>,
+        filter: LiquiditySourceFilter<DEXId, LiquiditySourceType>,
+    ) -> Result<SwapOutcome<Balance>, DispatchError> {
+        PoolXYK::exchange(
+            &sender,
+            &receiver,
+            &filter.dex_id,
+            input_asset_id,
+            output_asset_id,
+            amount,
+        )
+    }
+
+    fn quote(
+        input_asset_id: &AssetId,
+        output_asset_id: &AssetId,
+        amount: SwapAmount<Balance>,
+        filter: LiquiditySourceFilter<DEXId, LiquiditySourceType>,
+    ) -> Result<SwapOutcome<Balance>, DispatchError> {
+        PoolXYK::quote(&filter.dex_id, input_asset_id, output_asset_id, amount)
+    }
+}
+
+impl price_tools::Config for Runtime {
+    type Event = Event;
+    type LiquidityProxy = MockLiquidityProxy;
     type WeightInfo = ();
 }
 
