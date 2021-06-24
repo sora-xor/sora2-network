@@ -220,7 +220,7 @@ dependencies = [
 
 [[package]]
 name = "assets"
-version = "0.1.0"
+version = "1.1.0"
 dependencies = [
  "common",
  "frame-benchmarking",
@@ -1905,7 +1905,7 @@ checksum = "4443176a9f2c162692bd3d352d745ef9413eec5782a80d8fd6f8a1ac692a07f7"
 
 [[package]]
 name = "farming"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "assets",
  "common",
@@ -1915,53 +1915,27 @@ dependencies = [
  "frame-system",
  "hex-literal",
  "mock-liquidity-source",
+ "multicollateral-bonding-curve-pool",
  "orml-currencies",
  "orml-tokens",
  "orml-traits",
  "pallet-balances",
+ "pallet-scheduler",
  "pallet-timestamp",
  "parity-scale-codec",
  "permissions",
  "pool-xyk",
  "pswap-distribution",
+ "rustc-hex",
  "serde",
+ "sp-arithmetic",
  "sp-core",
  "sp-io",
  "sp-runtime",
  "sp-std",
  "technical",
  "trading-pair",
-]
-
-[[package]]
-name = "farming-rpc"
-version = "0.1.0"
-dependencies = [
- "common",
- "farming",
- "farming-runtime-api",
- "jsonrpc-core 15.1.0",
- "jsonrpc-core-client",
- "jsonrpc-derive",
- "parity-scale-codec",
- "serde",
- "sp-api",
- "sp-blockchain",
- "sp-core",
- "sp-rpc",
- "sp-runtime",
- "sp-std",
-]
-
-[[package]]
-name = "farming-runtime-api"
-version = "0.1.0"
-dependencies = [
- "parity-scale-codec",
- "serde",
- "sp-api",
- "sp-runtime",
- "sp-std",
+ "vested-rewards",
 ]
 
 [[package]]
@@ -2304,7 +2278,6 @@ dependencies = [
  "dex-manager-rpc",
  "eth-bridge-rpc",
  "exit-future",
- "farming-rpc",
  "faucet",
  "frame-benchmarking",
  "frame-benchmarking-cli",
@@ -2388,7 +2361,6 @@ dependencies = [
  "eth-bridge",
  "eth-bridge-runtime-api",
  "farming",
- "farming-runtime-api",
  "faucet",
  "frame-benchmarking",
  "frame-executive",
@@ -6416,7 +6388,7 @@ checksum = "e9c17925a9027d298a4603d286befe3f9dc0e8ed02523141914eb628798d6e5b"
 
 [[package]]
 name = "rewards"
-version = "0.1.0"
+version = "1.1.0"
 dependencies = [
  "assets",
  "common",
@@ -6427,6 +6399,7 @@ dependencies = [
  "libsecp256k1",
  "orml-currencies",
  "orml-tokens",
+ "orml-traits",
  "pallet-balances",
  "parity-scale-codec",
  "permissions",

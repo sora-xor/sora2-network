@@ -93,6 +93,7 @@ parameter_types! {
     pub const GetBurnUpdateFrequency: BlockNumber = 14400;
     pub GetParliamentAccountId: AccountId = AccountId32::from([152; 32]);
     pub GetXykFee: Fixed = fixed!(0.003);
+    pub GetTeamReservesAccountId: AccountId = AccountId::from([11; 32]);
 }
 
 construct_runtime! {
@@ -193,6 +194,7 @@ impl assets::Config for Runtime {
     type AssetId = AssetId;
     type GetBaseAssetId = GetBaseAssetId;
     type Currency = currencies::Module<Runtime>;
+    type GetTeamReservesAccountId = GetTeamReservesAccountId;
     type WeightInfo = ();
 }
 
@@ -246,7 +248,7 @@ impl pool_xyk::Config for Runtime {
     type PolySwapAction = pool_xyk::PolySwapAction<AssetId, AccountId, TechAccountId>;
     type EnsureDEXManager = dex_manager::Module<Runtime>;
     type GetFee = GetXykFee;
-    type PswapDistributionPallet = pswap_distribution::Module<Runtime>;
+    type OnPoolCreated = pswap_distribution::Module<Runtime>;
     type WeightInfo = ();
 }
 
