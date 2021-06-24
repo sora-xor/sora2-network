@@ -17,6 +17,7 @@ frame-support = { version = "3", default-features = false }
 frame-system = { version = "3", default-features = false }
 pallet-session = { version = "3", default-features = false }
 pallet-transaction-payment = { version = "3", default-features = false }
+pallet-session = { version = "3", default-features = false }
 serde = { version = "1.0.101", features = ["derive"], optional = true }
 sp-arithmetic = { version = "3", default-features = false }
 sp-runtime = { version = "3", default-features = false }
