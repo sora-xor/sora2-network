@@ -244,14 +244,14 @@ impl<T: Config> VestedRewardsPallet<T::AccountId> for Module<T> {
         xor_volume: Balance,
         count: u32,
     ) -> DispatchResult {
-        MarketMakersRegistry::<T>::mutate(account_id, |info| {
-            if xor_volume >= balance!(1) {
+        if xor_volume >= balance!(1) {
+            MarketMakersRegistry::<T>::mutate(account_id, |info| {
                 info.count = info.count.saturating_add(count);
                 info.volume = info
                     .volume
                     .saturating_add(xor_volume.saturating_mul(count as Balance));
-            }
-        });
+            });
+        }
         Ok(())
     }
 
@@ -325,6 +325,18 @@ pub mod pallet {
             let who = ensure_signed(origin)?;
             Self::claim_rewards_inner(&who)?;
             Ok(().into())
+        }
+
+        /// Inject market makers snapshot into storage.
+        #[pallet::weight(0)]
+        #[transactional]
+        pub fn inject_market_makers(
+            origin: OriginFor<T>,
+            snapshot: Vec<(T::AccountId, u32, Balance)>,
+        ) -> DispatchResultWithPostInfo {
+            ensure_root(origin)?;
+            let weight = crate::migration::inject_market_makers_first_month_rewards::<T>(snapshot);
+            Ok(Some(weight).into())
         }
     }
 

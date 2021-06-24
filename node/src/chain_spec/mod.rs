@@ -1274,7 +1274,7 @@ fn mainnet_genesis(
     // Initial market maker PSWAP rewards.
     let initial_pswap_market_maker_rewards = balance!(364988000);
 
-    let parliament_investment_fund =
+    let parliament_investment_fund: AccountId =
         hex!("048cfcacbdebe828dffa1267d830d45135cd40238286f838f5a95432a1bbf851").into();
     let parliament_investment_fund_balance = balance!(33000000);
 

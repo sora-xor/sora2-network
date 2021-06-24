@@ -36,6 +36,7 @@ use traits::MultiCurrency;
 use xor_fee::LiquidityInfo;
 
 use crate::mock::*;
+use crate::XorToVal;
 
 type BlockWeights = <Runtime as frame_system::Config>::BlockWeights;
 type TransactionByteFee = <Runtime as pallet_transaction_payment::Config>::TransactionByteFee;
@@ -97,37 +98,53 @@ fn notify_val_burned_works() {
             pallet_staking::Module::<Runtime>::era_val_burned(),
             0_u128.into()
         );
-        let call: &<Runtime as frame_system::Config>::Call = &Call::Balances(
-            pallet_balances::Call::transfer(TO_ACCOUNT, balance!(TRANSFER_AMOUNT)),
-        );
 
-        let len = 10;
-        let dispatch_info = info_from_weight(MOCK_WEIGHT);
-        let pre = ChargeTransactionPayment::<Runtime>::from(0_u128.into())
-            .pre_dispatch(&FROM_ACCOUNT, call, &dispatch_info, len)
-            .unwrap();
-        assert!(ChargeTransactionPayment::<Runtime>::post_dispatch(
-            pre,
-            &dispatch_info,
-            &default_post_info(),
-            len,
-            &Ok(())
-        )
-        .is_ok());
-        let base_fee = BlockWeights::get().get(dispatch_info.class).base_extrinsic as u128;
-        let len_fee = len as u128 * TransactionByteFee::get();
-        let weight_fee = MOCK_WEIGHT as u128;
-        let fee = base_fee + len_fee + weight_fee;
-        let xor_into_val_burned_weight = XorIntoValBurnedWeight::get() as u128;
-        let weights_sum = ReferrerWeight::get() as u128
-            + XorBurnedWeight::get() as u128
-            + xor_into_val_burned_weight;
-        let x = FixedWrapper::from(fee * xor_into_val_burned_weight as u128 / weights_sum);
-        let y = initial_reserves();
-        let expected_val_burned = x.clone() * y / (x + y);
+        let mut total_xor_val = 0;
+        for _ in 0..3 {
+            let call: &<Runtime as frame_system::Config>::Call = &Call::Balances(
+                pallet_balances::Call::transfer(TO_ACCOUNT, balance!(TRANSFER_AMOUNT)),
+            );
+
+            let len = 10;
+            let dispatch_info = info_from_weight(MOCK_WEIGHT);
+            let pre = ChargeTransactionPayment::<Runtime>::from(0_u128.into())
+                .pre_dispatch(&FROM_ACCOUNT, call, &dispatch_info, len)
+                .unwrap();
+            assert!(ChargeTransactionPayment::<Runtime>::post_dispatch(
+                pre,
+                &dispatch_info,
+                &default_post_info(),
+                len,
+                &Ok(())
+            )
+            .is_ok());
+            let base_fee = BlockWeights::get().get(dispatch_info.class).base_extrinsic as u128;
+            let len_fee = len as u128 * TransactionByteFee::get();
+            let weight_fee = MOCK_WEIGHT as u128;
+            let fee = base_fee + len_fee + weight_fee;
+            let xor_into_val_burned_weight = XorIntoValBurnedWeight::get() as u128;
+            let weights_sum = ReferrerWeight::get() as u128
+                + XorBurnedWeight::get() as u128
+                + xor_into_val_burned_weight;
+            let x = FixedWrapper::from(fee * xor_into_val_burned_weight as u128 / weights_sum);
+            let y = initial_reserves();
+            let expected_val_burned = x.clone() * y / (x + y);
+            total_xor_val += expected_val_burned.into_balance();
+        }
+
+        // The correct answer is 3E-13 away
+        assert_eq!(XorToVal::<Runtime>::get(), total_xor_val + 3);
         assert_eq!(
             pallet_staking::Module::<Runtime>::era_val_burned(),
-            expected_val_burned.into_balance()
+            0_u128.into()
+        );
+
+        <Module<Runtime> as pallet_session::historical::SessionManager<_, _>>::end_session(0);
+
+        // The correct answer is 2E-13 away
+        assert_eq!(
+            pallet_staking::Module::<Runtime>::era_val_burned(),
+            total_xor_val + 2
         );
     });
 }
@@ -306,6 +323,7 @@ fn actual_weight_is_ignored_works() {
     });
 }
 
+#[ignore]
 #[test]
 fn reminting_for_sora_parliament_works() {
     ExtBuilder::build().execute_with(|| {
@@ -344,6 +362,10 @@ fn reminting_for_sora_parliament_works() {
 
         let sora_parliament_share = SoraParliamentShare::get();
         let expected_balance = FixedWrapper::from(sora_parliament_share * val_burned);
+
+        <Module<Runtime> as pallet_session::historical::SessionManager<_, _>>::end_session(0);
+
+        // Mock uses MockLiquiditySource that doesn't exchange.
         assert!(
             Tokens::free_balance(ValId::get(), &SORA_PARLIAMENT_ACCOUNT)
                 >= (expected_balance.clone() - FixedWrapper::from(1)).into_balance()

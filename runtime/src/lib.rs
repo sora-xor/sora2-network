@@ -292,7 +292,7 @@ parameter_types! {
     pub const ElectionsDesiredMembers: u32 = 13;
     pub const ElectionsDesiredRunnersUp: u32 = 20;
     pub const ElectionsModuleId: LockIdentifier = *b"phrelect";
-    pub FarmingRewardDoublingAssets: Vec<AssetId> = vec![GetPswapAssetId::get(), GetValAssetId::get()];
+    pub FarmingRewardDoublingAssets: Vec<AssetId> = vec![GetPswapAssetId::get(), GetValAssetId::get(), GetDaiAssetId::get(), GetEthAssetId::get()];
 }
 
 impl frame_system::Config for Runtime {
@@ -486,7 +486,7 @@ impl pallet_timestamp::Config for Runtime {
 }
 
 impl pallet_session::Config for Runtime {
-    type SessionManager = pallet_session::historical::NoteHistoricalRoot<Self, Staking>;
+    type SessionManager = pallet_session::historical::NoteHistoricalRoot<Self, XorFee>;
     type Keys = opaque::SessionKeys;
     type ShouldEndSession = Babe;
     type SessionHandler = <opaque::SessionKeys as OpaqueKeys>::KeyTypeIdProviders;
@@ -591,6 +591,8 @@ parameter_types! {
     pub const GetUsdAssetId: AssetId = common::AssetId32::from_bytes(hex!("0200030000000000000000000000000000000000000000000000000000000000"));
     pub const GetValAssetId: AssetId = common::AssetId32::from_bytes(hex!("0200040000000000000000000000000000000000000000000000000000000000"));
     pub const GetPswapAssetId: AssetId = common::AssetId32::from_bytes(hex!("0200050000000000000000000000000000000000000000000000000000000000"));
+    pub const GetDaiAssetId: AssetId = common::AssetId32::from_bytes(hex!("0200060000000000000000000000000000000000000000000000000000000000"));
+    pub const GetEthAssetId: AssetId = common::AssetId32::from_bytes(hex!("0200070000000000000000000000000000000000000000000000000000000000"));
 
     pub const GetBaseAssetId: AssetId = GetXorAssetId::get();
     pub const GetTeamReservesAccountId: AccountId = AccountId::new(hex!("feb92c0acb61f75309730290db5cbe8ac9b46db7ad6f3bbb26a550a73586ea71"));
@@ -923,6 +925,7 @@ impl xor_fee::Config for Runtime {
     type CustomFees = ExtrinsicsFlatFees;
     type GetTechnicalAccountId = GetXorFeeAccountId;
     type GetParliamentAccountId = GetParliamentAccountId;
+    type SessionManager = Staking;
 }
 
 pub struct ConstantFeeMultiplier;
@@ -1876,11 +1879,13 @@ impl_runtime_apis! {
             use liquidity_proxy_benchmarking::Module as LiquidityProxyBench;
             use pool_xyk_benchmarking::Module as XYKPoolBench;
             use pswap_distribution_benchmarking::Module as PswapDistributionBench;
+            use xor_fee_benchmarking::Module as XorFeeBench;
 
             impl dex_api_benchmarking::Config for Runtime {}
             impl liquidity_proxy_benchmarking::Config for Runtime {}
             impl pool_xyk_benchmarking::Config for Runtime {}
             impl pswap_distribution_benchmarking::Config for Runtime {}
+            impl xor_fee_benchmarking::Config for Runtime {}
 
 
             let whitelist: Vec<TrackedStorageKey> = vec![
@@ -1916,6 +1921,7 @@ impl_runtime_apis! {
             add_benchmark!(params, batches, eth_bridge, EthBridge);
             add_benchmark!(params, batches, vested_rewards, VestedRewards);
             add_benchmark!(params, batches, price_tools, PriceTools);
+            add_benchmark!(params, batches, xor_fee, XorFeeBench::<Runtime>);
 
             if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
             Ok(batches)

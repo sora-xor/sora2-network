@@ -113,6 +113,7 @@ construct_runtime! {
         Permissions: permissions::{Module, Call, Config<T>, Storage, Event<T>},
         DexApi: dex_api::{Module, Call, Config, Storage, Event<T>},
         TradingPair: trading_pair::{Module, Call, Config<T>, Storage, Event<T>},
+        PriceTools: price_tools::{Module, Storage, Event<T>},
         PoolXYK: pool_xyk::{Module, Call, Storage, Event<T>},
         MBCPool: multicollateral_bonding_curve_pool::{Module, Call, Storage, Event<T>},
         PswapDistribution: pswap_distribution::{Module, Call, Config<T>, Storage, Event<T>},
@@ -445,6 +446,12 @@ impl pswap_distribution::Config for Runtime {
     type WeightInfo = ();
     type GetParliamentAccountId = GetParliamentAccountId;
     type PoolXykPallet = PoolXYK;
+}
+
+impl price_tools::Config for Runtime {
+    type Event = Event;
+    type LiquidityProxy = LiquidityProxy;
+    type WeightInfo = price_tools::weights::WeightInfo<Runtime>;
 }
 
 impl Config for Runtime {}

@@ -272,7 +272,7 @@ impl tokens::Config for Runtime {
 }
 
 impl pallet_session::Config for Runtime {
-    type SessionManager = pallet_session::historical::NoteHistoricalRoot<Runtime, Staking>;
+    type SessionManager = pallet_session::historical::NoteHistoricalRoot<Runtime, XorFee>;
     type Keys = SessionKeys;
     type ShouldEndSession = pallet_session::PeriodicSessions<Period, Offset>;
     type SessionHandler = (OtherSessionHandler,);
@@ -360,6 +360,7 @@ impl Config for Runtime {
     type CustomFees = CustomFees;
     type GetTechnicalAccountId = GetXorFeeAccountId;
     type GetParliamentAccountId = GetParliamentAccountId;
+    type SessionManager = Staking;
 }
 
 // Allow dead_code because we never call swap, just use its Call variant
