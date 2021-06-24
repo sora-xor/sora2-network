@@ -61,7 +61,7 @@ use sp_std::convert::TryInto;
 pub use pallet::*;
 
 /// Count of blocks to participate in avg value calculation.
-const AVG_BLOCK_SPAN: u32 = 30;
+pub const AVG_BLOCK_SPAN: u32 = 30;
 /// Max percentage difference for average value between blocks.
 const MAX_BLOCK_AVG_DIFFERENCE: Fixed = fixed_const!(0.005); // 0.5%
 

@@ -2435,6 +2435,7 @@ dependencies = [
  "trading-pair-runtime-api",
  "vested-rewards",
  "xor-fee",
+ "xor-fee-benchmarking",
 ]
 
 [[package]]
@@ -4082,6 +4083,7 @@ dependencies = [
  "parity-scale-codec",
  "permissions",
  "pool-xyk",
+ "price-tools",
  "pswap-distribution",
  "serde",
  "sp-core",
@@ -9574,7 +9576,7 @@ checksum = "5fecdca9a5291cc2b8dcf7dc02453fee791a280f3743cb0905f8822ae463b3fe"
 
 [[package]]
 name = "vested-rewards"
-version = "0.2.0"
+version = "1.1.0"
 dependencies = [
  "assets",
  "common",
@@ -10137,9 +10139,28 @@ dependencies = [
  "sp-core",
  "sp-io",
  "sp-runtime",
+ "sp-staking",
  "sp-std",
  "technical",
  "trading-pair",
+]
+
+[[package]]
+name = "xor-fee-benchmarking"
+version = "0.1.0"
+dependencies = [
+ "assets",
+ "common",
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "pallet-staking",
+ "parity-scale-codec",
+ "permissions",
+ "pool-xyk",
+ "sp-core",
+ "sp-std",
+ "xor-fee",
 ]
 
 [[package]]
