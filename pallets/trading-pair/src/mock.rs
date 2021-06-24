@@ -76,6 +76,7 @@ parameter_types! {
     pub const MaximumBlockWeight: Weight = 1024;
     pub const MaximumBlockLength: u32 = 2 * 1024;
     pub const AvailableBlockRatio: Perbill = Perbill::from_percent(75);
+    pub GetTeamReservesAccountId: AccountId = 3000u128;
 }
 
 impl frame_system::Config for Runtime {
@@ -146,6 +147,7 @@ impl assets::Config for Runtime {
     type AssetId = AssetId;
     type GetBaseAssetId = GetBaseAssetId;
     type Currency = currencies::Module<Runtime>;
+    type GetTeamReservesAccountId = GetTeamReservesAccountId;
     type WeightInfo = ();
 }
 

@@ -1,7 +1,3 @@
-#![cfg_attr(not(feature = "std"), no_std)]
-#![allow(clippy::too_many_arguments)]
-#![allow(clippy::unnecessary_mut_passed)]
-
 // This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -32,18 +28,34 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use codec::Codec;
-use sp_std::prelude::*;
+use crate::{Config, Pallet, Weight};
+use common::{balance, PSWAP};
+use frame_support::traits::{Get, GetPalletVersion, PalletVersion};
+use traits::MultiCurrency;
 
-sp_api::decl_runtime_apis! {
-    pub trait FarmingRuntimeApi<AccountId, FarmName, FarmInfo, FarmerInfo> where
-        AccountId: Codec,
-        FarmName: Codec,
-        FarmInfo: Codec,
-        FarmerInfo: Codec,
-    {
-        fn get_farm_info(who: AccountId, name: FarmName) -> Option<FarmInfo>;
+pub fn migrate<T: Config>() -> Weight {
+    let mut weight: Weight = 0;
 
-        fn get_farmer_info(who: AccountId, name: FarmName) -> Option<FarmerInfo>;
+    match Pallet::<T>::storage_version() {
+        // Initial version is 0.1.0
+        // Version 1.1.0 mints 3 billion PSWAP reserved for team
+        Some(version) if version == PalletVersion::new(0, 1, 0) => {
+            let migrated_weight = mint_team_rewards::<T>().unwrap_or(100_000);
+            weight = weight.saturating_add(migrated_weight)
+        }
+        _ => (),
     }
+
+    weight
+}
+
+pub fn mint_team_rewards<T: Config>() -> Option<Weight> {
+    let mut weight: Weight = 0;
+
+    let total_reserved = balance!(3000000000);
+    let account_id: T::AccountId = T::GetTeamReservesAccountId::get();
+    T::Currency::deposit(PSWAP.into(), &account_id, total_reserved).ok()?;
+    weight = weight.saturating_add(T::DbWeight::get().writes(1));
+
+    Some(weight)
 }

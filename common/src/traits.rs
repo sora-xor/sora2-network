@@ -503,11 +503,11 @@ pub trait PoolXykPallet {
     fn total_issuance(pool_account: &Self::AccountId) -> Result<Balance, DispatchError>;
 }
 
-pub trait PswapDistributionPallet {
+pub trait OnPoolCreated {
     type AccountId;
     type DEXId;
 
-    fn subscribe(
+    fn on_pool_created(
         fee_account: Self::AccountId,
         dex_id: Self::DEXId,
         pool_account: Self::AccountId,
@@ -532,5 +532,25 @@ impl<AssetId> PriceToolsPallet<AssetId> for () {
 
     fn register_asset(_: &AssetId) -> DispatchResult {
         unimplemented!()
+    }
+}
+
+impl<AccountId, DEXId, A, B> OnPoolCreated for (A, B)
+where
+    AccountId: Clone,
+    DEXId: Clone,
+    A: OnPoolCreated<AccountId = AccountId, DEXId = DEXId>,
+    B: OnPoolCreated<AccountId = AccountId, DEXId = DEXId>,
+{
+    type AccountId = AccountId;
+    type DEXId = DEXId;
+
+    fn on_pool_created(
+        fee_account: Self::AccountId,
+        dex_id: Self::DEXId,
+        pool_account: Self::AccountId,
+    ) -> DispatchResult {
+        A::on_pool_created(fee_account.clone(), dex_id.clone(), pool_account.clone())?;
+        B::on_pool_created(fee_account, dex_id, pool_account)
     }
 }

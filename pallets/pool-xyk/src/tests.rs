@@ -133,6 +133,13 @@ impl<'a> crate::Module<Runtime> {
                 balance!(900000)
             ));
 
+            assert_ok!(assets::Module::<Runtime>::mint_to(
+                &gt,
+                &ALICE(),
+                &CHARLIE(),
+                balance!(900000)
+            ));
+
             assert_eq!(
                 assets::Module::<Runtime>::free_balance(&gt, &ALICE()).unwrap(),
                 balance!(900000)
@@ -446,6 +453,86 @@ fn quote_case_exact_output_for_input_base_second_fail_with_out_of_bounds() {
             crate::Error::<Runtime>::CalculatedValueIsOutOfDesiredBounds
         );
     })]);
+}
+
+#[test]
+// Deposit to an empty pool
+fn deposit_less_than_minimum_1() {
+    crate::Module::<Runtime>::preset_initial(vec![Rc::new(|dex_id, _, _, _, _, _, _, _| {
+        assert_noop!(
+            crate::Module::<Runtime>::deposit_liquidity(
+                Origin::signed(ALICE()),
+                dex_id,
+                GoldenTicket.into(),
+                BlackPepper.into(),
+                balance!(0.00001),
+                balance!(100),
+                balance!(0.00001),
+                balance!(100),
+            ),
+            crate::Error::<Runtime>::UnableToDepositXorLessThanMinimum
+        );
+    })]);
+}
+
+#[test]
+// Deposit to an already existing pool
+fn deposit_less_than_minimum_2() {
+    crate::Module::<Runtime>::preset_deposited_pool(vec![Rc::new(
+        |dex_id, _, _, _, _, _, _, _| {
+            assert_noop!(
+                crate::Module::<Runtime>::deposit_liquidity(
+                    Origin::signed(CHARLIE()),
+                    dex_id,
+                    GoldenTicket.into(),
+                    BlackPepper.into(),
+                    balance!(0.00025),
+                    balance!(0.0001),
+                    balance!(0.00025),
+                    balance!(0.0001),
+                ),
+                crate::Error::<Runtime>::UnableToDepositXorLessThanMinimum
+            );
+        },
+    )]);
+}
+
+#[test]
+// Deposit to an already existing pool, but you're in the pool already
+fn deposit_less_than_minimum_3() {
+    crate::Module::<Runtime>::preset_deposited_pool(vec![Rc::new(
+        |dex_id, _, _, _, _, _, _, _| {
+            assert_ok!(crate::Module::<Runtime>::deposit_liquidity(
+                Origin::signed(ALICE()),
+                dex_id,
+                GoldenTicket.into(),
+                BlackPepper.into(),
+                balance!(0.00025),
+                balance!(0.0001),
+                balance!(0.00025),
+                balance!(0.0001),
+            ),);
+        },
+    )]);
+}
+
+#[test]
+// Deposit to an existing pool
+fn multiple_providers() {
+    crate::Module::<Runtime>::preset_deposited_pool(vec![Rc::new(
+        |dex_id, _, _, _, _, _, _, _| {
+            assert_ok!(crate::Module::<Runtime>::deposit_liquidity(
+                Origin::signed(CHARLIE()),
+                dex_id,
+                GoldenTicket.into(),
+                BlackPepper.into(),
+                balance!(25),
+                balance!(10),
+                balance!(25),
+                balance!(10),
+            ),);
+        },
+    )]);
 }
 
 #[test]

@@ -92,6 +92,7 @@ parameter_types! {
     pub GetParliamentAccountId: AccountId = AccountId32::from([8; 32]);
     pub GetMarketMakerRewardsAccountId: AccountId = AccountId32::from([9; 32]);
     pub GetBondingCurveRewardsAccountId: AccountId = AccountId32::from([10; 32]);
+    pub GetTeamReservesAccountId: AccountId = AccountId::from([11; 32]);
     pub GetXykFee: Fixed = fixed!(0.003);
 }
 
@@ -181,6 +182,7 @@ impl assets::Config for Runtime {
     type AssetId = AssetId;
     type GetBaseAssetId = GetBaseAssetId;
     type Currency = currencies::Module<Runtime>;
+    type GetTeamReservesAccountId = GetTeamReservesAccountId;
     type WeightInfo = ();
 }
 
@@ -268,7 +270,7 @@ impl pool_xyk::Config for Runtime {
     type PolySwapAction = pool_xyk::PolySwapAction<AssetId, AccountId, TechAccountId>;
     type EnsureDEXManager = dex_manager::Module<Runtime>;
     type GetFee = GetXykFee;
-    type PswapDistributionPallet = PswapDistribution;
+    type OnPoolCreated = PswapDistribution;
     type WeightInfo = ();
 }
 
@@ -632,12 +634,33 @@ impl ExtBuilder {
         )
         .unwrap();
 
+        trading_pair::GenesisConfig::<Runtime> {
+            trading_pairs: vec![
+                (
+                    0,
+                    trading_pair::TradingPair::<Runtime> {
+                        base_asset_id: XOR.into(),
+                        target_asset_id: VAL.into(),
+                    },
+                ),
+                (
+                    0,
+                    trading_pair::TradingPair::<Runtime> {
+                        base_asset_id: XOR.into(),
+                        target_asset_id: PSWAP.into(),
+                    },
+                ),
+            ],
+        }
+        .assimilate_storage(&mut t)
+        .unwrap();
+
         multicollateral_bonding_curve_pool::GenesisConfig::<Runtime> {
             distribution_accounts: accounts,
             reserves_account_id: GetMbcReservesTechAccountId::get(),
             reference_asset_id: USDT.into(),
             incentives_account_id: GetMbcRewardsAccountId::get(),
-            initial_collateral_assets: Default::default(),
+            initial_collateral_assets: vec![VAL.into()],
             free_reserves_account_id: GetMbcFreeReservesAccountId::get(),
         }
         .assimilate_storage(&mut t)

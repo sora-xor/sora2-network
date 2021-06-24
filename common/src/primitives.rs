@@ -33,20 +33,19 @@ use codec::{Decode, Encode};
 use core::fmt::Debug;
 use frame_support::dispatch::DispatchError;
 use frame_support::{ensure, RuntimeDebug};
-use rustc_hex::ToHex;
-#[cfg(feature = "std")]
-use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use sp_core::H256;
-use sp_std::convert::{TryFrom, TryInto};
-use sp_std::fmt::Display;
+use sp_std::convert::TryFrom;
 use sp_std::marker::PhantomData;
-#[cfg(feature = "std")]
-use sp_std::str::FromStr;
 use sp_std::vec::Vec;
-use static_assertions::_core::fmt::Formatter;
 #[cfg(feature = "std")]
-#[allow(unused)]
-use std::fmt;
+use {
+    rustc_hex::ToHex,
+    serde::{Deserialize, Deserializer, Serialize, Serializer},
+    sp_std::convert::TryInto,
+    sp_std::fmt::Display,
+    sp_std::str::FromStr,
+    static_assertions::_core::fmt::Formatter,
+};
 
 pub type Balance = u128;
 
@@ -107,6 +106,12 @@ pub struct TradingPair<AssetId> {
     pub base_asset_id: AssetId,
     /// Target token of exchange.
     pub target_asset_id: AssetId,
+}
+
+impl<AssetId: Eq> TradingPair<AssetId> {
+    pub fn consists_of(&self, asset_id: &AssetId) -> bool {
+        &self.base_asset_id == asset_id || &self.target_asset_id == asset_id
+    }
 }
 
 /// Asset identifier.
@@ -738,7 +743,7 @@ pub enum RewardReason {
     Unspecified,
     /// Buying XOR with collateral tokens (except PSWAP and VAL) is rewarded.
     BuyOnBondingCurve,
-    /// Providing liquidyty on secondary market is rewarded.
+    /// Providing liquidity on secondary market is rewarded.
     LiquidityProvisionFarming,
     /// High volume trading is rewarded.
     MarketMakerVolume,

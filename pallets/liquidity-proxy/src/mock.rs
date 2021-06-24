@@ -108,6 +108,7 @@ parameter_types! {
     pub GetParliamentAccountId: AccountId = AccountId32::from([152; 32]);
     pub GetMarketMakerRewardsAccountId: AccountId = AccountId32::from([9; 32]);
     pub GetBondingCurveRewardsAccountId: AccountId = AccountId32::from([10; 32]);
+    pub GetTeamReservesAccountId: AccountId = AccountId32::from([11; 32]);
     pub GetXykFee: Fixed = fixed!(0.003);
 }
 
@@ -201,6 +202,7 @@ impl assets::Config for Runtime {
     type AssetId = AssetId;
     type GetBaseAssetId = GetBaseAssetId;
     type Currency = currencies::Module<Runtime>;
+    type GetTeamReservesAccountId = GetTeamReservesAccountId;
     type WeightInfo = ();
 }
 
@@ -306,7 +308,7 @@ impl pool_xyk::Config for Runtime {
         pool_xyk::WithdrawLiquidityAction<AssetId, AccountId, TechAccountId>;
     type PolySwapAction = pool_xyk::PolySwapAction<AssetId, AccountId, TechAccountId>;
     type EnsureDEXManager = dex_manager::Module<Runtime>;
-    type PswapDistributionPallet = pswap_distribution::Module<Runtime>;
+    type OnPoolCreated = pswap_distribution::Module<Runtime>;
     type GetFee = GetXykFee;
     type WeightInfo = ();
 }

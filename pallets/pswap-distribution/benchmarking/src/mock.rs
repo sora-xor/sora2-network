@@ -112,6 +112,7 @@ parameter_types! {
     pub GetXykFee: Fixed = fixed!(0.003);
     pub GetParliamentAccountId: AccountId = AccountId32::from([7u8; 32]);
     pub GetXykFee: Fixed = fixed!(0.003);
+    pub GetTeamReservesAccountId: AccountId = AccountId32::from([11; 32]);
 }
 
 construct_runtime! {
@@ -207,6 +208,7 @@ impl assets::Config for Runtime {
     type AssetId = AssetId;
     type GetBaseAssetId = GetBaseAssetId;
     type Currency = currencies::Module<Runtime>;
+    type GetTeamReservesAccountId = GetTeamReservesAccountId;
     type WeightInfo = ();
 }
 
@@ -256,6 +258,7 @@ impl pool_xyk::Config for Runtime {
     type GetFee = GetXykFee;
     type PswapDistributionPallet = PswapDistribution;
     type GetFee = GetFee;
+    type OnPoolCreated = PswapDistribution;
     type WeightInfo = ();
 }
 

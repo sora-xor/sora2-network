@@ -70,7 +70,7 @@ type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
 pub struct RewardInfo {
     limit: Balance,
     total_available: Balance,
-    rewards: BTreeMap<RewardReason, Balance>,
+    pub rewards: BTreeMap<RewardReason, Balance>,
 }
 
 #[derive(Encode, Decode, Eq, PartialEq, Clone, PartialOrd, Ord, Debug, Default)]

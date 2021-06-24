@@ -41,7 +41,8 @@ use sp_std::vec::Vec;
 use common::prelude::{Balance, EnsureDEXManager, SwapAmount, SwapOutcome};
 use common::{
     balance, EnsureTradingPairExists, FromGenericPair, GetPoolReserves, LiquiditySource,
-    LiquiditySourceType, ManagementMode, PoolXykPallet, RewardReason, ToFeeAccount,
+    LiquiditySourceType, ManagementMode, PoolXykPallet, RewardReason, TechAccountId, TechPurpose,
+    ToFeeAccount, TradingPair,
 };
 use orml_traits::currency::MultiCurrency;
 
@@ -272,6 +273,19 @@ impl<T: Config> Module<T> {
         technical::Module::<T>::perform_create_swap(source, &mut action)?;
         Ok(())
     }
+
+    pub fn get_pool_trading_pair(
+        pool_account: &T::AccountId,
+    ) -> Result<TradingPair<T::AssetId>, DispatchError> {
+        let tech_acc = technical::Module::<T>::lookup_tech_account_id(pool_account)?;
+        match tech_acc.into() {
+            TechAccountId::Pure(_, TechPurpose::LiquidityKeeper(trading_pair)) => Ok(TradingPair {
+                base_asset_id: trading_pair.base_asset_id.into(),
+                target_asset_id: trading_pair.target_asset_id.into(),
+            }),
+            _ => Err(Error::<T>::PoolIsInvalid.into()),
+        }
+    }
 }
 
 impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, DispatchError>
@@ -427,7 +441,7 @@ pub use pallet::*;
 #[frame_support::pallet]
 pub mod pallet {
     use super::*;
-    use common::{AccountIdOf, Fixed, PswapDistributionPallet};
+    use common::{AccountIdOf, Fixed, OnPoolCreated};
     use frame_support::pallet_prelude::*;
     use frame_support::traits::PalletVersion;
     use frame_system::pallet_prelude::*;
@@ -455,10 +469,7 @@ pub mod pallet {
             + From<PolySwapActionStructOf<Self>>;
         type EnsureDEXManager: EnsureDEXManager<Self::DEXId, Self::AccountId, DispatchError>;
         type GetFee: Get<Fixed>;
-        type PswapDistributionPallet: PswapDistributionPallet<
-            AccountId = AccountIdOf<Self>,
-            DEXId = DEXIdOf<Self>,
-        >;
+        type OnPoolCreated: OnPoolCreated<AccountId = AccountIdOf<Self>, DEXId = DEXIdOf<Self>>;
         /// Weight information for extrinsics in this pallet.
         type WeightInfo: WeightInfo;
     }
@@ -583,7 +594,7 @@ pub mod pallet {
                     Module::<T>::tech_account_from_dex_and_asset_pair(dex_id, asset_a, asset_b)?;
                 let pool_account =
                     technical::Module::<T>::tech_account_id_to_account_id(&pool_account)?;
-                T::PswapDistributionPallet::subscribe(fees_ta_repr, dex_id, pool_account)?;
+                T::OnPoolCreated::on_pool_created(fees_ta_repr, dex_id, pool_account)?;
                 Self::deposit_event(Event::PoolIsInitialized(ta_repr));
                 Ok(().into())
             })

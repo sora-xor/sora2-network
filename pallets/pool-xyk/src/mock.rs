@@ -73,6 +73,7 @@ parameter_types! {
     pub const GetBurnUpdateFrequency: BlockNumber = 14400;
     pub GetParliamentAccountId: AccountId = AccountId32::from([8; 32]);
     pub GetFee: Fixed = fixed!(0.003);
+    pub GetTeamReservesAccountId: AccountId = AccountId32::from([11; 32]);
 }
 
 parameter_type_with_key! {
@@ -180,6 +181,7 @@ impl assets::Config for Runtime {
     type AssetId = AssetId;
     type GetBaseAssetId = GetBaseAssetId;
     type Currency = currencies::Module<Runtime>;
+    type GetTeamReservesAccountId = GetTeamReservesAccountId;
     type WeightInfo = ();
 }
 
@@ -218,7 +220,7 @@ impl Config for Runtime {
     type PolySwapAction = crate::PolySwapAction<AssetId, AccountId, TechAccountId>;
     type EnsureDEXManager = dex_manager::Module<Runtime>;
     type GetFee = GetFee;
-    type PswapDistributionPallet = PswapDistribution;
+    type OnPoolCreated = PswapDistribution;
     type WeightInfo = ();
 }
 
@@ -230,6 +232,11 @@ pub fn ALICE() -> AccountId {
 #[allow(non_snake_case)]
 pub fn BOB() -> AccountId {
     AccountId32::from([2; 32])
+}
+
+#[allow(non_snake_case)]
+pub fn CHARLIE() -> AccountId {
+    AccountId32::from([35; 32])
 }
 
 pub const DEX_A_ID: DEXId = 220;
@@ -255,6 +262,7 @@ impl Default for ExtBuilder {
                 (ALICE(), RedPepper.into(), balance!(99000)),
                 (ALICE(), BlackPepper.into(), balance!(2000000)),
                 (BOB(), RedPepper.into(), balance!(2000000)),
+                (CHARLIE(), BlackPepper.into(), balance!(2000000)),
             ],
             initial_permission_owners: vec![
                 (MANAGE_DEX, Scope::Limited(hash(&DEX_A_ID)), vec![BOB()]),

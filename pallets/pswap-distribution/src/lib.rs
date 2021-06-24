@@ -34,7 +34,7 @@ use common::fixnum::ops::{CheckedAdd, CheckedSub};
 use common::prelude::{Balance, FixedWrapper, SwapAmount};
 use common::{
     fixed, fixed_wrapper, AccountIdOf, EnsureDEXManager, Fixed, LiquiditySourceFilter,
-    LiquiditySourceType, OnPswapBurned, PoolXykPallet, PswapDistributionPallet, PswapRemintInfo,
+    LiquiditySourceType, OnPoolCreated, OnPswapBurned, PoolXykPallet, PswapRemintInfo,
 };
 use core::convert::TryInto;
 use frame_support::dispatch::{DispatchError, DispatchResult, DispatchResultWithPostInfo, Weight};
@@ -363,12 +363,12 @@ impl<T: Config> Pallet<T> {
     }
 }
 
-impl<T: Config> PswapDistributionPallet for Pallet<T> {
+impl<T: Config> OnPoolCreated for Pallet<T> {
     type AccountId = AccountIdOf<T>;
 
     type DEXId = DexIdOf<T>;
 
-    fn subscribe(
+    fn on_pool_created(
         fee_account: Self::AccountId,
         dex_id: Self::DEXId,
         pool_account: Self::AccountId,
