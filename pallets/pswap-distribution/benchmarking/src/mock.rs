@@ -111,6 +111,7 @@ parameter_types! {
     pub const TransactionByteFee: u128 = 1;
     pub GetXykFee: Fixed = fixed!(0.003);
     pub GetParliamentAccountId: AccountId = AccountId32::from([7u8; 32]);
+    pub GetXykFee: Fixed = fixed!(0.003);
     pub GetTeamReservesAccountId: AccountId = AccountId32::from([11; 32]);
 }
 
@@ -255,6 +256,8 @@ impl pool_xyk::Config for Runtime {
     type PolySwapAction = pool_xyk::PolySwapAction<AssetId, AccountId, TechAccountId>;
     type EnsureDEXManager = dex_manager::Module<Runtime>;
     type GetFee = GetXykFee;
+    type PswapDistributionPallet = PswapDistribution;
+    type GetFee = GetFee;
     type OnPoolCreated = PswapDistribution;
     type WeightInfo = ();
 }

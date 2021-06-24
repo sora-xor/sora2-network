@@ -200,13 +200,17 @@ runtime-benchmarks = [
     "iroha-migration/runtime-benchmarks",
     "liquidity-proxy-benchmarking",
     "multicollateral-bonding-curve-pool/runtime-benchmarks",
+    "multicollateral-bonding-curve-pool/runtime-benchmarks",
     "pallet-collective/runtime-benchmarks",
     "pool-xyk-benchmarking",
+    "price-tools/runtime-benchmarks",
     "pswap-distribution-benchmarking/runtime-benchmarks",
+    "pswap-distribution/runtime-benchmarks",
     "pswap-distribution/runtime-benchmarks",
     "rewards/runtime-benchmarks",
     "technical/runtime-benchmarks",
     "trading-pair/runtime-benchmarks",
+    "vested-rewards/runtime-benchmarks",
     "xor-fee-benchmarking",
 ]
 

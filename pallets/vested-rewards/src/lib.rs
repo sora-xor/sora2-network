@@ -49,6 +49,8 @@ use sp_std::vec::Vec;
 mod migration;
 pub mod weights;
 
+mod benchmarking;
+
 #[cfg(test)]
 mod mock;
 

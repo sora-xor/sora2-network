@@ -1485,6 +1485,7 @@ impl_runtime_apis! {
         LiquiditySourceType,
         SwapVariant,
     > for Runtime {
+        #[cfg_attr(not(feature = "private-net"), allow(unused))]
         fn quote(
             dex_id: DEXId,
             liquidity_source_type: LiquiditySourceType,
@@ -1493,18 +1494,26 @@ impl_runtime_apis! {
             desired_input_amount: BalanceWrapper,
             swap_variant: SwapVariant,
         ) -> Option<dex_runtime_api::SwapOutcomeInfo<Balance>> {
-            // TODO: remove with proper QuoteAmount refactor
-            let limit = if swap_variant == SwapVariant::WithDesiredInput {
-                Balance::zero()
-            } else {
-                Balance::max_value()
-            };
-            DEXAPI::quote(
-                &LiquiditySourceId::new(dex_id, liquidity_source_type),
-                &input_asset_id,
-                &output_asset_id,
-                SwapAmount::with_variant(swap_variant, desired_input_amount.into(), limit),
-            ).ok().map(|sa| dex_runtime_api::SwapOutcomeInfo::<Balance> { amount: sa.amount, fee: sa.fee})
+            #[cfg(feature = "private-net")]
+            {
+                // TODO: remove with proper QuoteAmount refactor
+                let limit = if swap_variant == SwapVariant::WithDesiredInput {
+                    Balance::zero()
+                } else {
+                    Balance::max_value()
+                };
+                DEXAPI::quote(
+                    &LiquiditySourceId::new(dex_id, liquidity_source_type),
+                    &input_asset_id,
+                    &output_asset_id,
+                    SwapAmount::with_variant(swap_variant, desired_input_amount.into(), limit),
+                ).ok().map(|sa| dex_runtime_api::SwapOutcomeInfo::<Balance> { amount: sa.amount, fee: sa.fee})
+            }
+            #[cfg(not(feature = "private-net"))]
+            {
+                // Mainnet should not be able to access liquidity source quote directly, to avoid arbitrage exploits.
+                None
+            }
         }
 
         fn can_exchange(
@@ -1910,6 +1919,8 @@ impl_runtime_apis! {
             add_benchmark!(params, batches, trading_pair, TradingPair);
             add_benchmark!(params, batches, pool_xyk, XYKPoolBench::<Runtime>);
             add_benchmark!(params, batches, eth_bridge, EthBridge);
+            add_benchmark!(params, batches, vested_rewards, VestedRewards);
+            add_benchmark!(params, batches, price_tools, PriceTools);
             add_benchmark!(params, batches, xor_fee, XorFeeBench::<Runtime>);
 
             if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
