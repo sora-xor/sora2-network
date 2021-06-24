@@ -1914,6 +1914,8 @@ impl_runtime_apis! {
             add_benchmark!(params, batches, trading_pair, TradingPair);
             add_benchmark!(params, batches, pool_xyk, XYKPoolBench::<Runtime>);
             add_benchmark!(params, batches, eth_bridge, EthBridge);
+            add_benchmark!(params, batches, vested_rewards, VestedRewards);
+            add_benchmark!(params, batches, price_tools, PriceTools);
 
             if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
             Ok(batches)
