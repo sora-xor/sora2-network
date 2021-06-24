@@ -62,7 +62,10 @@ mod mock;
 
 pub struct Module<T: Config>(liquidity_proxy::Module<T>);
 pub trait Config:
-    liquidity_proxy::Config + pool_xyk::Config + multicollateral_bonding_curve_pool::Config + price_tools::Config
+    liquidity_proxy::Config
+    + pool_xyk::Config
+    + multicollateral_bonding_curve_pool::Config
+    + price_tools::Config
 {
 }
 
