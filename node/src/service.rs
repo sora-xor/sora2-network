@@ -40,7 +40,7 @@ use framenode_runtime::eth_bridge::{
 use framenode_runtime::opaque::Block;
 use framenode_runtime::{self, Runtime, RuntimeApi};
 use sc_client_api::{Backend, ExecutorProvider, RemoteBackend};
-use sc_executor::native_executor_instance;
+use sc_executor::{WasmExecutionMethod, native_executor_instance};
 pub use sc_executor::NativeExecutor;
 use sc_finality_grandpa::SharedVoterState;
 use sc_service::error::Error as ServiceError;
@@ -214,6 +214,14 @@ pub fn new_partial(
 
 /// Builds a new service for a full client.
 pub fn new_full(mut config: Configuration) -> Result<TaskManager, ServiceError> {
+    // Increase the default value by 3
+    config.default_heap_pages = Some(1024 * 2);
+    config.wasm_method = WasmExecutionMethod::Compiled;
+
+    // My
+
+    println!("config: {:#?}", config);
+
     let sc_service::PartialComponents {
         client,
         backend,
