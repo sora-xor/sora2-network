@@ -1259,10 +1259,7 @@ pub mod pallet {
     use frame_system::RawOrigin;
 
     #[cfg(feature = "std")]
-    use {
-        crate::AssetConfig,
-        permissions::BURN
-    };
+    use {crate::AssetConfig, permissions::BURN};
 
     #[pallet::config]
     pub trait Config:
