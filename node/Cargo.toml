@@ -63,10 +63,10 @@ sc-consensus-babe = "0.9"
 sp-consensus-babe = "0.9"
 sc-consensus-aura = "0.9"
 sp-consensus-aura = "0.9"
-sc-cli = "0.9"
+sc-cli = { version = "0.9", features = ["wasmtime"] }
 sc-client-api = "3"
-sc-executor = "0.9"
-sc-service = "0.9"
+sc-executor = { version = "0.9", features = ["wasmtime"] }
+sc-service = { version = "0.9", features = ["wasmtime"] }
 sc-transaction-pool = "3"
 sp-transaction-pool = "3"
 sc-network = "0.9"
@@ -109,7 +109,4 @@ private-net = [
 runtime-benchmarks = [
     "frame-benchmarking-cli",
     "framenode-runtime/runtime-benchmarks",
-    "sc-executor/wasmtime",
-    "sc-cli/wasmtime",
-    "sc-service/wasmtime",
 ]
