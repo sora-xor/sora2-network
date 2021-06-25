@@ -58,6 +58,7 @@ fn bob<T: Config>() -> T::AccountId {
 // Adds `n` assets to the Assets Pallet
 fn add_assets<T: Config>(n: u32) -> Result<(), &'static str> {
     let owner = alice::<T>();
+    frame_system::Module::<T>::inc_providers(&owner);
     let owner_origin: <T as frame_system::Config>::Origin = RawOrigin::Signed(owner.clone()).into();
     for _i in 0..n {
         Assets::<T>::register(
@@ -84,6 +85,7 @@ benchmarks! {
     register {
         let n in 1 .. 1000 => add_assets::<T>(n)?;
         let caller = bob::<T>();
+        frame_system::Module::<T>::inc_providers(&caller);
     }: _(
         RawOrigin::Signed(caller.clone()),
         AssetSymbol(b"NEWT".to_vec()),
@@ -99,6 +101,7 @@ benchmarks! {
     transfer {
         let n in 1 .. 1000 => add_assets::<T>(n)?;
         let caller = alice::<T>();
+        frame_system::Module::<T>::inc_providers(&caller);
         let _ = Assets::<T>::register_asset_id(
             caller.clone(),
             XOR.into(),
@@ -121,6 +124,7 @@ benchmarks! {
     mint {
         let n in 1 .. 1000 => add_assets::<T>(n)?;
         let caller = alice::<T>();
+        frame_system::Module::<T>::inc_providers(&caller);
         Assets::<T>::register_asset_id(
             caller.clone(),
             USDT.into(),
@@ -143,6 +147,7 @@ benchmarks! {
     burn {
         let n in 1 .. 1000 => add_assets::<T>(n)?;
         let caller = alice::<T>();
+        frame_system::Module::<T>::inc_providers(&caller);
         Assets::<T>::register_asset_id(
             caller.clone(),
             USDT.into(),
@@ -170,6 +175,7 @@ benchmarks! {
     set_non_mintable {
         let n in 1 .. 1000 => add_assets::<T>(n)?;
         let caller = alice::<T>();
+        frame_system::Module::<T>::inc_providers(&caller);
         Assets::<T>::register_asset_id(
             caller.clone(),
             USDT.into(),

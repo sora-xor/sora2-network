@@ -41,9 +41,8 @@ use frame_benchmarking::benchmarks;
 use frame_support::traits::{Get, OnInitialize};
 use frame_system::RawOrigin;
 use hex_literal::hex;
+use pool_xyk::PoolProviders;
 use pswap_distribution::{Call, ClaimableShares, Pallet, ShareholderAccounts};
-use sp_core::H256;
-use sp_io::hashing::blake2_256;
 use sp_std::prelude::*;
 use sp_std::vec;
 use traits::MultiCurrencyExtended;
@@ -73,23 +72,22 @@ fn create_account<T: Config>(prefix: Vec<u8>, index: u128) -> T::AccountId {
     Technical::<T>::tech_account_id_to_account_id(&tech_account).unwrap()
 }
 
-fn create_asset<T: Config>(prefix: Vec<u8>, index: u128) -> T::AssetId {
-    let entropy: [u8; 32] = (prefix, index).using_encoded(blake2_256);
-    T::AssetId::from(H256(entropy))
-}
-
 fn prepare_for_distribution<T: Config + pool_xyk::Config>(distribution_freq: u32) {
     let authority = alice::<T>();
-    let _ = Permissions::<T>::assign_permission(
+    frame_system::Module::<T>::inc_providers(&authority);
+    Permissions::<T>::assign_permission(
         authority.clone(),
         &authority,
         permissions::MINT,
         permissions::Scope::Unlimited,
-    );
+    )
+    .unwrap();
     for i in 1u128..10 {
         let pool_fee_account = create_account::<T>(b"pool_fee".to_vec(), i);
+        frame_system::Module::<T>::inc_providers(&pool_fee_account);
         let pool_account = create_account::<T>(b"pool".to_vec(), i);
-        let _ = Assets::<T>::mint_to(&PSWAP.into(), &authority, &pool_fee_account, balance!(1000));
+        frame_system::Module::<T>::inc_providers(&pool_account);
+        Assets::<T>::mint_to(&PSWAP.into(), &authority, &pool_fee_account, balance!(1000)).unwrap();
         Pallet::<T>::subscribe(
             pool_fee_account,
             common::DEXId::Polkaswap.into(),
@@ -99,6 +97,7 @@ fn prepare_for_distribution<T: Config + pool_xyk::Config>(distribution_freq: u32
         .unwrap();
         for j in 1u128..1000 {
             let liquidity_provider = create_account::<T>(b"liquidity_provider".to_vec(), j);
+            frame_system::Module::<T>::inc_providers(&liquidity_provider);
             pool_xyk::Module::<T>::mint(&pool_account, &liquidity_provider, balance!(100)).unwrap();
         }
     }
@@ -106,13 +105,14 @@ fn prepare_for_distribution<T: Config + pool_xyk::Config>(distribution_freq: u32
 
 fn validate_distribution<T: Config>() {
     for i in 1u128..10 {
-        let pool_asset = create_asset::<T>(b"pool".to_vec(), i);
+        let pool_account = create_account::<T>(b"pool".to_vec(), i);
         for j in 1u128..1000 {
             let liquidity_provider = create_account::<T>(b"liquidity_provider".to_vec(), j);
+            frame_system::Module::<T>::inc_providers(&liquidity_provider);
             let _ =
                 Pallet::<T>::claim_incentive(RawOrigin::Signed(liquidity_provider.clone()).into());
             assert_eq!(
-                Assets::<T>::free_balance(&pool_asset, &liquidity_provider).unwrap(),
+                PoolProviders::<T>::get(&pool_account, &liquidity_provider).unwrap(),
                 balance!(100)
             );
             assert!(
@@ -126,6 +126,7 @@ fn validate_distribution<T: Config>() {
 benchmarks! {
     claim_incentive {
         let caller = alice::<T>();
+        frame_system::Module::<T>::inc_providers(&caller);
         ShareholderAccounts::<T>::insert(caller.clone(), Fixed::ONE);
         ClaimableShares::<T>::put(Fixed::ONE);
         let pswap_rewards_account = T::GetTechnicalAccountId::get();

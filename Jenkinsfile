@@ -12,7 +12,7 @@ String appImageName = 'docker.soramitsu.co.jp/sora2/substrate'
 String secretScannerExclusion = '.*Cargo.toml'
 Boolean disableSecretScanner = false
 String featureList = 'private-net include-real-files reduced-pswap-reward-periods'
-def pushTags=['master': 'latest', 'develop': 'dev']
+def pushTags = ['master': 'latest', 'develop': 'dev']
 
 pipeline {
     options {
@@ -26,7 +26,7 @@ pipeline {
     }
 
     stages {
-        stage('Secret scanner'){
+        stage('Secret scanner') {
             steps {
                 script {
                     gitNotify('main-CI', 'PENDING', 'This commit is being built')
@@ -40,15 +40,18 @@ pipeline {
             environment {
                 PACKAGE = 'framenode-runtime'
                 RUSTFLAGS = '-Dwarnings'
-                RUNTIME_DIR = "runtime"
+                RUNTIME_DIR = 'runtime'
                 RUSTC_VERSION = "${rustcVersion}"
             }
-            steps{
+            steps {
                 script {
                     docker.withRegistry( 'https://' + registry, dockerRegistryRWUserId) {
                         docker.image(baseImageName).inside() {
-                            if (getPushVersion(pushTags)){
-                                if (env.TAG_NAME) {
+                            if (getPushVersion(pushTags)) {
+                                if (env.TAG_NAME =~ 'benchmarking.*') {
+                                    featureList = 'runtime-benchmarks main-net-coded'
+                                }
+                                else if (env.TAG_NAME) {
                                     featureList = (env.TAG_NAME =~ 'stage.*') ? featureList : 'include-real-files'
                                 }
                                 sh """
@@ -70,7 +73,7 @@ pipeline {
                         }
                     }
                     docker.image(srtoolImageName).inside("-v ${env.WORKSPACE}:/build") { c ->
-                        if (getPushVersion(pushTags)){
+                        if (getPushVersion(pushTags)) {
                             sh "build --json | tee ${srtoolReportFile}"
                             archiveArtifacts artifacts: srtoolReportFile
                         }
@@ -94,11 +97,11 @@ pipeline {
             when {
                 expression { getPushVersion(pushTags) }
             }
-            steps{
+            steps {
                 script {
                     sh "docker build -f housekeeping/docker/release/Dockerfile -t ${appImageName} ."
                     baseImageTag = "${getPushVersion(pushTags)}"
-                    docker.withRegistry( "https://" + registry, dockerRegistryRWUserId) {
+                    docker.withRegistry( 'https://' + registry, dockerRegistryRWUserId) {
                         sh """
                             docker tag ${appImageName} ${appImageName}:${baseImageTag}
                             docker push ${appImageName}:${baseImageTag}
@@ -116,13 +119,13 @@ pipeline {
     }
     post {
         success {
-            script { gitNotify('main-CI', 'SUCCESS', 'Success')}
+            script { gitNotify('main-CI', 'SUCCESS', 'Success') }
         }
         failure {
-            script { gitNotify('main-CI', 'FAILURE', 'Failure')}
+            script { gitNotify('main-CI', 'FAILURE', 'Failure') }
         }
         aborted {
-            script { gitNotify('main-CI', 'FAILURE', 'Aborted')}
+            script { gitNotify('main-CI', 'FAILURE', 'Aborted') }
         }
         cleanup { cleanWs() }
     }

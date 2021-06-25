@@ -30,12 +30,15 @@
 
 use codec::Decode;
 use common::eth::EthereumAddress;
+use common::{balance, PSWAP, VAL};
 use frame_benchmarking::benchmarks;
 use frame_system::{EventRecord, RawOrigin};
 use hex_literal::hex;
 use sp_std::prelude::*;
 
-use crate::{Config, Event, Module, Pallet, PswapFarmOwners, PswapWaifuOwners, ValOwners};
+use crate::{
+    Config, Event, Module, Pallet, PswapFarmOwners, PswapWaifuOwners, ReservesAcc, ValOwners,
+};
 
 fn alice<T: Config>() -> T::AccountId {
     let bytes = hex!("f08879dab4530529153a1bdb63e27cd3be45f1574a122b7e88579b6e5e60bd43");
@@ -67,12 +70,35 @@ fn assert_last_event<T: Config>(generic_event: <T as Config>::Event) {
 
 benchmarks! {
     claim {
-        let n in 1 .. 1000 => add_rewards::<T>(n);
+        let n in 1..1000;
+
+        let reserves_acc = technical::Module::<T>::tech_account_id_to_account_id(&ReservesAcc::<T>::get()).unwrap();
+
+        let val_asset: T::AssetId = VAL.into();
+        let val_owner = assets::Module::<T>::asset_owner(&val_asset).unwrap();
+        assets::Module::<T>::mint_to(
+            &val_asset,
+            &val_owner,
+            &reserves_acc,
+            balance!(50000),
+        ).unwrap();
+
+        let pswap_asset: T::AssetId = PSWAP.into();
+        let pswap_owner = assets::Module::<T>::asset_owner(&pswap_asset).unwrap();
+        assets::Module::<T>::mint_to(
+            &pswap_asset,
+            &pswap_owner,
+            &reserves_acc,
+            balance!(50000),
+        ).unwrap();
+
+        add_rewards::<T>(n);
+
         let caller = alice::<T>();
         let caller_origin: <T as frame_system::Config>::Origin = RawOrigin::Signed(caller.clone()).into();
         let signature = hex!("eb7009c977888910a96d499f802e4524a939702aa6fc8ed473829bffce9289d850b97a720aa05d4a7e70e15733eeebc4fe862dcb60e018c0bf560b2de013078f1c").into();
     }: {
-        Pallet::<T>::claim(caller_origin, signature)?;
+        Pallet::<T>::claim(caller_origin, signature).unwrap();
     }
     verify {
         assert_last_event::<T>(Event::Claimed(caller).into())
