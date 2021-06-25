@@ -562,6 +562,7 @@ impl<T: Config> Pallet<T> {
         AssetOwners::<T>::contains_key(asset_id)
     }
 
+    #[inline]
     pub fn ensure_asset_exists(asset_id: &T::AssetId) -> DispatchResult {
         if !Self::asset_exists(asset_id) {
             return Err(Error::<T>::AssetIdNotExists.into());
@@ -597,24 +598,33 @@ impl<T: Config> Pallet<T> {
     }
 
     pub fn total_issuance(asset_id: &T::AssetId) -> Result<Balance, DispatchError> {
-        Self::ensure_asset_exists(asset_id)?;
-        Ok(T::Currency::total_issuance(asset_id.clone()))
+        let r = T::Currency::total_issuance(asset_id.clone());
+        if r == Default::default() {
+            Self::ensure_asset_exists(asset_id)?;
+        }
+        Ok(r)
     }
 
     pub fn total_balance(
         asset_id: &T::AssetId,
         who: &T::AccountId,
     ) -> Result<Balance, DispatchError> {
-        Self::ensure_asset_exists(asset_id)?;
-        Ok(T::Currency::total_balance(asset_id.clone(), who))
+        let r = T::Currency::total_balance(asset_id.clone(), who);
+        if r == Default::default() {
+            Self::ensure_asset_exists(asset_id)?;
+        }
+        Ok(r)
     }
 
     pub fn free_balance(
         asset_id: &T::AssetId,
         who: &T::AccountId,
     ) -> Result<Balance, DispatchError> {
-        Self::ensure_asset_exists(asset_id)?;
-        Ok(T::Currency::free_balance(asset_id.clone(), who))
+        let r = T::Currency::free_balance(asset_id.clone(), who);
+        if r == Default::default() {
+            Self::ensure_asset_exists(asset_id)?;
+        }
+        Ok(r)
     }
 
     pub fn ensure_can_withdraw(
@@ -622,8 +632,11 @@ impl<T: Config> Pallet<T> {
         who: &T::AccountId,
         amount: Balance,
     ) -> DispatchResult {
-        Self::ensure_asset_exists(asset_id)?;
-        T::Currency::ensure_can_withdraw(asset_id.clone(), who, amount)
+        let r = T::Currency::ensure_can_withdraw(asset_id.clone(), who, amount);
+        if r.is_err() {
+            Self::ensure_asset_exists(asset_id)?;
+        }
+        r
     }
 
     pub fn transfer_from(
@@ -632,8 +645,11 @@ impl<T: Config> Pallet<T> {
         to: &T::AccountId,
         amount: Balance,
     ) -> DispatchResult {
-        Self::ensure_asset_exists(asset_id)?;
-        T::Currency::transfer(asset_id.clone(), from, to, amount)
+        let r = T::Currency::transfer(asset_id.clone(), from, to, amount);
+        if r.is_err() {
+            Self::ensure_asset_exists(asset_id)?;
+        }
+        r
     }
 
     pub fn force_transfer(
@@ -651,10 +667,9 @@ impl<T: Config> Pallet<T> {
         to: &T::AccountId,
         amount: Balance,
     ) -> DispatchResult {
-        Self::ensure_asset_exists(asset_id)?;
-        Self::check_permission_maybe_with_parameters(issuer, MINT, asset_id)?;
         let (_, _, _, is_mintable) = AssetInfos::<T>::get(asset_id);
         ensure!(is_mintable, Error::<T>::AssetSupplyIsNotMintable);
+        Self::check_permission_maybe_with_parameters(issuer, MINT, asset_id)?;
         T::Currency::deposit(asset_id.clone(), to, amount)
     }
 
@@ -695,8 +710,11 @@ impl<T: Config> Pallet<T> {
         who: &T::AccountId,
         amount: Balance,
     ) -> Result<(), DispatchError> {
-        Self::ensure_asset_exists(&asset_id)?;
-        T::Currency::reserve(asset_id, who, amount)
+        let r = T::Currency::reserve(asset_id, who, amount);
+        if r.is_err() {
+            Self::ensure_asset_exists(&asset_id)?;
+        }
+        r
     }
 
     pub fn unreserve(
@@ -704,8 +722,10 @@ impl<T: Config> Pallet<T> {
         who: &T::AccountId,
         amount: Balance,
     ) -> Result<Balance, DispatchError> {
-        Self::ensure_asset_exists(&asset_id)?;
         let amount = T::Currency::unreserve(asset_id, who, amount);
+        if amount == Default::default() {
+            Self::ensure_asset_exists(&asset_id)?;
+        }
         Ok(amount)
     }
 

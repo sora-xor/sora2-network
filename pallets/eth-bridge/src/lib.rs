@@ -1250,7 +1250,6 @@ impl Default for BridgeStatus {
 pub mod pallet {
     use super::*;
     use crate::migrations::StorageVersion;
-    use crate::AssetConfig;
     use codec::Codec;
     use frame_support::pallet_prelude::*;
     use frame_support::sp_runtime::traits::Saturating;
@@ -1258,7 +1257,12 @@ pub mod pallet {
     use frame_support::weights::PostDispatchInfo;
     use frame_system::pallet_prelude::*;
     use frame_system::RawOrigin;
-    use permissions::BURN;
+
+    #[cfg(feature = "std")]
+    use {
+        crate::AssetConfig,
+        permissions::BURN
+    };
 
     #[pallet::config]
     pub trait Config:
