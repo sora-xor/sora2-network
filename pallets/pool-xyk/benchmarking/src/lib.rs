@@ -67,6 +67,7 @@ fn alice<T: Config>() -> T::AccountId {
 
 fn setup_benchmark_assets_only<T: Config>() -> Result<(), &'static str> {
     let owner = alice::<T>();
+    frame_system::Module::<T>::inc_providers(&owner);
     let owner_origin: <T as frame_system::Config>::Origin = RawOrigin::Signed(owner.clone()).into();
 
     // Grant permissions to self in case they haven't been explicitly given in genesis config
@@ -100,15 +101,17 @@ fn setup_benchmark_assets_only<T: Config>() -> Result<(), &'static str> {
         18,
         Balance::from(0u32),
         true,
-    );
+    )
+    .unwrap();
 
-    TradingPair::<T>::register(owner_origin.clone(), DEX.into(), XOR.into(), DOT.into())?;
+    TradingPair::<T>::register(owner_origin.clone(), DEX.into(), XOR.into(), DOT.into()).unwrap();
 
     Ok(())
 }
 
 fn setup_benchmark<T: Config>() -> Result<(), &'static str> {
     let owner = alice::<T>();
+    frame_system::Module::<T>::inc_providers(&owner);
     let owner_origin: <T as frame_system::Config>::Origin = RawOrigin::Signed(owner.clone()).into();
 
     // Grant permissions to self in case they haven't been explicitly given in genesis config
@@ -142,50 +145,57 @@ fn setup_benchmark<T: Config>() -> Result<(), &'static str> {
         18,
         Balance::from(0u32),
         true,
-    );
+    )
+    .unwrap();
 
-    TradingPair::<T>::register(owner_origin.clone(), DEX.into(), XOR.into(), DOT.into())?;
+    TradingPair::<T>::register(owner_origin.clone(), DEX.into(), XOR.into(), DOT.into()).unwrap();
 
     let (_, tech_acc_id, _fee_acc_id) =
-        XYKPool::<T>::initialize_pool_unchecked(owner.clone(), DEX.into(), XOR.into(), DOT.into())?;
+        XYKPool::<T>::initialize_pool_unchecked(owner.clone(), DEX.into(), XOR.into(), DOT.into())
+            .unwrap();
 
     let repr: <T>::AccountId = Technical::<T>::tech_account_id_to_account_id(&tech_acc_id).unwrap();
 
-    Permissions::<T>::grant_permission(owner.clone(), repr.clone(), MINT)?;
-    Permissions::<T>::grant_permission(owner.clone(), repr.clone(), BURN)?;
+    Permissions::<T>::grant_permission(owner.clone(), repr.clone(), MINT).unwrap();
+    Permissions::<T>::grant_permission(owner.clone(), repr.clone(), BURN).unwrap();
 
     Assets::<T>::mint(
         owner_origin.clone(),
         XOR.into(),
         owner.clone(),
         balance!(10000),
-    )?;
+    )
+    .unwrap();
     Assets::<T>::mint(
         owner_origin.clone(),
         DOT.into(),
         owner.clone(),
         balance!(20000),
-    )?;
+    )
+    .unwrap();
     Assets::<T>::mint(
         owner_origin.clone(),
         XOR.into(),
         repr.clone(),
         balance!(1000000),
-    )?;
+    )
+    .unwrap();
     Assets::<T>::mint(
         owner_origin.clone(),
         DOT.into(),
         repr.clone(),
         balance!(1500000),
-    )?;
-    pool_xyk::Module::<T>::mint(&repr, &owner, balance!(1500000000000))?;
+    )
+    .unwrap();
+    pool_xyk::Module::<T>::mint(&repr, &owner, balance!(1500000000000)).unwrap();
 
     Ok(())
 }
 
 benchmarks! {
     swap_pair {
-        let n in 1 .. 1000 => setup_benchmark::<T>()?;
+        let n in 1 .. 1000;
+        setup_benchmark::<T>().unwrap();
         let caller = alice::<T>();
         let amount = SwapAmount::WithDesiredInput {
             desired_amount_in: balance!(1000),
@@ -193,14 +203,15 @@ benchmarks! {
         };
         let initial_base_balance = Assets::<T>::free_balance(&XOR.into(), &caller).unwrap();
         let initial_target_balance = Assets::<T>::free_balance(&DOT.into(), &caller).unwrap();
-    }: _(
-        RawOrigin::Signed(caller.clone()),
+    }: {
+        pool_xyk::Module::<T>::swap_pair(RawOrigin::Signed(caller.clone()).into(),
         caller.clone(),
         DEX.into(),
         XOR.into(),
         DOT.into(),
         amount.clone()
-    )
+    ).unwrap();
+}
     verify {
         assert_eq!(
             Into::<u128>::into(Assets::<T>::free_balance(&XOR.into(), &caller).unwrap()),

@@ -39,9 +39,10 @@ use core::convert::{TryFrom, TryInto};
 use common::prelude::fixnum::ops::{Bounded, CheckedMul, CheckedSub, One, Zero as _};
 use common::prelude::{Balance, FixedWrapper, SwapAmount, SwapOutcome, SwapVariant};
 use common::{
-    fixed, fixed_wrapper, linspace, FilterMode, Fixed, FixedInner, GetTBCMarketInfo, GetXSTMarketInfo,
-    GetPoolReserves, IntervalEndpoints, LiquidityRegistry, LiquiditySource, LiquiditySourceFilter,
-    LiquiditySourceId, LiquiditySourceType, RewardReason, TradingPair, VestedRewardsPallet,
+    fixed, fixed_wrapper, linspace, FilterMode, Fixed, FixedInner, GetPoolReserves,
+    GetTBCMarketInfo, GetXSTMarketInfo, IntervalEndpoints, LiquidityRegistry, LiquiditySource,
+    LiquiditySourceFilter, LiquiditySourceId, LiquiditySourceType, RewardReason, TradingPair,
+    VestedRewardsPallet,
 };
 use frame_support::traits::Get;
 use frame_support::weights::Weight;

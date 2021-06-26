@@ -53,7 +53,7 @@ pub enum ComicAssetId {
     Headphones,
     GreenPromise,
     BluePromise,
-    Mango
+    Mango,
 }
 
 impl crate::traits::IsRepresentation for ComicAssetId {

@@ -58,7 +58,7 @@ use frame_support::traits::Get;
 use frame_support::weights::Weight;
 use frame_support::{ensure, fail};
 use liquidity_proxy::LiquidityProxyTrait;
-use permissions::{Scope, BURN, MINT, TRANSFER};
+use permissions::{Scope, BURN, MINT};
 use sp_arithmetic::traits::Zero;
 use sp_runtime::{DispatchError, DispatchResult};
 use sp_std::collections::btree_set::BTreeSet;
@@ -1236,7 +1236,7 @@ impl<T: Config> Module<T> {
         common::with_transaction(|| {
             ReservesAcc::<T>::set(account.clone());
             let account_id = Technical::<T>::tech_account_id_to_account_id(&account)?;
-            let permissions = [BURN, MINT, TRANSFER];
+            let permissions = [BURN, MINT];
             for permission in &permissions {
                 permissions::Module::<T>::assign_permission(
                     account_id.clone(),

@@ -51,7 +51,7 @@ use common::prelude::{
 };
 use common::{
     balance, fixed, fixed_wrapper, DEXId, DexIdOf, GetXSTMarketInfo, LiquiditySource,
-    LiquiditySourceFilter, LiquiditySourceType, ManagementMode, RewardReason, XOR, DAI, XSTUSD
+    LiquiditySourceFilter, LiquiditySourceType, ManagementMode, RewardReason, DAI, XOR, XSTUSD,
 };
 use frame_support::traits::Get;
 use frame_support::weights::Weight;
@@ -289,7 +289,6 @@ pub mod pallet {
 
 #[allow(non_snake_case)]
 impl<T: Config> Module<T> {
-
     #[inline]
     fn self_excluding_filter() -> LiquiditySourceFilter<T::DEXId, LiquiditySourceType> {
         LiquiditySourceFilter::with_forbidden(
@@ -318,7 +317,7 @@ impl<T: Config> Module<T> {
                 &synthetic_asset_id,
                 LiquiditySourceType::XSTPool,
             )?;
- 
+
             EnabledSynthetics::<T>::mutate(|set| set.insert(synthetic_asset_id));
             Self::deposit_event(Event::PoolInitialized(
                 DEXId::Polkaswap.into(),
@@ -340,7 +339,6 @@ impl<T: Config> Module<T> {
         _synthetic_asset_id: &T::AssetId, //TODO: we will use this once we have more XST assets
         quantity: QuoteAmount<Balance>,
     ) -> Result<Fixed, DispatchError> {
-
         let main_asset_price_per_reference_unit: FixedWrapper =
             Self::reference_price(main_asset_id)?.into();
 
@@ -386,10 +384,11 @@ impl<T: Config> Module<T> {
         synthetic_asset_id: &T::AssetId,
         quantity: QuoteAmount<Balance>,
     ) -> Result<Fixed, DispatchError> {
-
         // Get reference prices for base and synthetic to understand token value.
-        let main_price_per_reference_unit: FixedWrapper = Self::reference_price(main_asset_id)?.into();
-        let _synthetic_price_per_reference_unit: FixedWrapper = Self::reference_price(synthetic_asset_id)?.into();
+        let main_price_per_reference_unit: FixedWrapper =
+            Self::reference_price(main_asset_id)?.into();
+        let _synthetic_price_per_reference_unit: FixedWrapper =
+            Self::reference_price(synthetic_asset_id)?.into();
 
         match quantity {
             // Sell desired amount of XOR for some XST(USD)
@@ -539,7 +538,6 @@ impl<T: Config> Module<T> {
         })
     }
 
-
     /// This function is used by `exchange` function to burn `input_amount` derived from `amount` of `main_asset_id`
     /// and mint calculated amount of `synthetic_asset_id` to the receiver from reserves.
     ///
@@ -580,8 +578,12 @@ impl<T: Config> Module<T> {
             )?;
 
             match swap_amount {
-                SwapAmount::WithDesiredInput { .. } => Ok(SwapOutcome::new(output_amount, fee_amount)),
-                SwapAmount::WithDesiredOutput { .. } => Ok(SwapOutcome::new(input_amount, fee_amount)),
+                SwapAmount::WithDesiredInput { .. } => {
+                    Ok(SwapOutcome::new(output_amount, fee_amount))
+                }
+                SwapAmount::WithDesiredOutput { .. } => {
+                    Ok(SwapOutcome::new(input_amount, fee_amount))
+                }
             }
         })
     }
@@ -605,7 +607,7 @@ impl<T: Config> Module<T> {
     }
 
     /// This function is used to determine particular asset price in terms of a reference asset, which is set for
-    /// XST quotes (there can be only single token chosen as reference for all comparisons). 
+    /// XST quotes (there can be only single token chosen as reference for all comparisons).
     /// The reference token is expected to be a USD-bound stablecoin, e.g. DAI.
     ///
     /// Example use: understand actual value of two tokens in terms of USD.
@@ -708,7 +710,8 @@ impl<T: Config> GetXSTMarketInfo<T::AssetId> for Module<T> {
         synthetic_asset: &T::AssetId,
     ) -> Result<Fixed, DispatchError> {
         let base_price_wrt_ref: FixedWrapper = Self::reference_price(base_asset)?.into();
-        let collateral_price_per_reference_unit: FixedWrapper = Self::reference_price(synthetic_asset)?.into();
+        let collateral_price_per_reference_unit: FixedWrapper =
+            Self::reference_price(synthetic_asset)?.into();
         let output = (base_price_wrt_ref / collateral_price_per_reference_unit)
             .get()
             .map_err(|_| Error::<T>::PriceCalculationFailed)?;
@@ -720,7 +723,8 @@ impl<T: Config> GetXSTMarketInfo<T::AssetId> for Module<T> {
         synthetic_asset: &T::AssetId,
     ) -> Result<Fixed, DispatchError> {
         let base_price_wrt_ref: FixedWrapper = Self::reference_price(base_asset)?.into();
-        let synthetic_price_per_reference_unit: FixedWrapper = Self::reference_price(synthetic_asset)?.into();
+        let synthetic_price_per_reference_unit: FixedWrapper =
+            Self::reference_price(synthetic_asset)?.into();
         let output = (base_price_wrt_ref / synthetic_price_per_reference_unit)
             .get()
             .map_err(|_| Error::<T>::PriceCalculationFailed)?;

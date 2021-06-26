@@ -1,24 +1,26 @@
 [package]
-authors = ['Polka Biome Ltd. <jihoon@tutanota.de>']
+authors = ["Polka Biome Ltd. <jihoon@tutanota.de>"]
 license = "BSD-4-Clause"
-homepage = 'https://sora.org'
-repository = 'https://github.com/sora-xor/sora2-network'
-description = 'FRAME pallet template for defining custom runtime logic.'
-edition = '2018'
-name = 'xor-fee'
-version = '0.1.0'
+homepage = "https://sora.org"
+repository = "https://github.com/sora-xor/sora2-network"
+description = "FRAME pallet template for defining custom runtime logic."
+edition = "2018"
+name = "xor-fee"
+version = "0.1.0"
 
 [package.metadata.docs.rs]
-targets = ['x86_64-unknown-linux-gnu']
+targets = ["x86_64-unknown-linux-gnu"]
 
 [dependencies]
 codec = { package = "parity-scale-codec", version = "2", default-features = false, features = ["derive"] }
 frame-support = { version = "3", default-features = false }
 frame-system = { version = "3", default-features = false }
+pallet-session = { version = "3", default-features = false }
 pallet-transaction-payment = { version = "3", default-features = false }
 serde = { version = "1.0.101", features = ["derive"], optional = true }
 sp-arithmetic = { version = "3", default-features = false }
 sp-runtime = { version = "3", default-features = false }
+sp-staking = { version = "3", default-features = false }
 sp-std = { version = "3", default-features = false }
 traits = { version = "0.4", package = "orml-traits", default-features = false }
 
@@ -48,16 +50,19 @@ technical = { path = "../technical" }
 trading-pair = { path = "../trading-pair" }
 
 [features]
-default = ['std']
+default = ["std"]
+
 std = [
-    'serde',
-    'codec/std',
-    'traits/std',
-    'frame-support/std',
-    'frame-system/std',
-    'pallet-staking/std',
-    'pallet-transaction-payment/std',
-    'sp-arithmetic/std',
-    'sp-runtime/std',
-    'sp-std/std',
+    "codec/std",
+    "frame-support/std",
+    "frame-system/std",
+    "pallet-session/std",
+    "pallet-staking/std",
+    "pallet-transaction-payment/std",
+    "serde",
+    "sp-arithmetic/std",
+    "sp-runtime/std",
+    "sp-staking/std",
+    "sp-std/std",
+    "traits/std",
 ]

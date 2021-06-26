@@ -454,8 +454,7 @@ pub trait GetXSTMarketInfo<AssetId> {
     fn buy_price(base_asset: &AssetId, synthetic_asset: &AssetId) -> Result<Fixed, DispatchError>;
     /// The price in terms of the `synthetic_asset` at which one can sell
     /// a unit of the `base_asset` on the XST primary market.
-    fn sell_price(base_asset: &AssetId, synthetic_asset: &AssetId)
-        -> Result<Fixed, DispatchError>;
+    fn sell_price(base_asset: &AssetId, synthetic_asset: &AssetId) -> Result<Fixed, DispatchError>;
     /// Returns set of enabled synthetic assets for XST.
     fn enabled_synthetics() -> BTreeSet<AssetId>;
 }

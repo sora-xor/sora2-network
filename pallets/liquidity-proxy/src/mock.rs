@@ -32,8 +32,9 @@ use crate::{self as liquidity_proxy, Config};
 use common::mock::ExistentialDeposits;
 use common::{
     self, balance, fixed, fixed_from_basis_points, fixed_wrapper, hash, Amount, AssetId32,
-    AssetName, AssetSymbol, DEXInfo, Fixed, FromGenericPair, GetTBCMarketInfo, GetXSTMarketInfo, 
-    LiquiditySource, LiquiditySourceType, RewardReason, DAI, DOT, ETH, KSM, PSWAP, USDT, VAL, XOR, XSTUSD
+    AssetName, AssetSymbol, DEXInfo, Fixed, FromGenericPair, GetTBCMarketInfo, GetXSTMarketInfo,
+    LiquiditySource, LiquiditySourceType, RewardReason, DAI, DOT, ETH, KSM, PSWAP, USDT, VAL, XOR,
+    XSTUSD,
 };
 use currencies::BasicCurrencyAdapter;
 
@@ -881,7 +882,7 @@ impl LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> for Mock
             Technical::tech_account_id_to_account_id(&reserves_tech_account_id)?;
 
         let base_asset_price: Balance = get_reference_prices()[base_asset_id].into();
-        
+
         let (input_amount, output_amount, fee_amount) = if input_asset_id == base_asset_id {
             // Selling XOR
 
@@ -955,7 +956,9 @@ impl GetXSTMarketInfo<AssetId> for MockXSTPool {
         synthetic_asset: &AssetId,
     ) -> Result<Fixed, DispatchError> {
         let synthetic_asset_price: FixedWrapper = get_reference_prices()[synthetic_asset].into();
-        let output = synthetic_asset_price.get().map_err(|_| crate::Error::<Runtime>::CalculationError)?;
+        let output = synthetic_asset_price
+            .get()
+            .map_err(|_| crate::Error::<Runtime>::CalculationError)?;
         Ok(output)
     }
 
@@ -964,7 +967,9 @@ impl GetXSTMarketInfo<AssetId> for MockXSTPool {
         synthetic_asset: &AssetId,
     ) -> Result<Fixed, DispatchError> {
         let synthetic_asset_price: FixedWrapper = get_reference_prices()[synthetic_asset].into();
-        let output = synthetic_asset_price.get().map_err(|_| crate::Error::<Runtime>::CalculationError)?;
+        let output = synthetic_asset_price
+            .get()
+            .map_err(|_| crate::Error::<Runtime>::CalculationError)?;
         Ok(output)
     }
 

@@ -33,7 +33,7 @@ use common::mock::ExistentialDeposits;
 use common::prelude::{Balance, FixedWrapper, PriceToolsPallet, SwapAmount, SwapOutcome};
 use common::{
     self, balance, fixed, fixed_wrapper, hash, Amount, AssetId32, AssetName, AssetSymbol, DEXInfo,
-    Fixed, LiquiditySourceFilter, LiquiditySourceType, TechPurpose, PSWAP, USDT, VAL, XOR, XSTUSD
+    Fixed, LiquiditySourceFilter, LiquiditySourceType, TechPurpose, PSWAP, USDT, VAL, XOR, XSTUSD,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::GenesisBuild;
@@ -214,8 +214,7 @@ impl technical::Config for Runtime {
     type TechAccountId = TechAccountId;
     type Trigger = ();
     type Condition = ();
-    type SwapAction =
-        pool_xyk::PolySwapAction<AssetId, AccountId, TechAccountId>;
+    type SwapAction = pool_xyk::PolySwapAction<AssetId, AccountId, TechAccountId>;
     type WeightInfo = ();
 }
 
@@ -565,10 +564,7 @@ impl ExtBuilder {
                         None
                     }
                 })
-                .chain(vec![
-                    (bob(), 0),
-                    (assets_owner(), 0),
-                ])
+                .chain(vec![(bob(), 0), (assets_owner(), 0)])
                 .collect(),
         }
         .assimilate_storage(&mut t)
