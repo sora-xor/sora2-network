@@ -227,37 +227,6 @@ impl Config for Runtime {
     type WeightInfo = ();
 }
 
-pub struct MockLiquidityProxy;
-
-impl liquidity_proxy::LiquidityProxyTrait<DEXId, AccountId, AssetId> for MockLiquidityProxy {
-    fn exchange(
-        sender: &AccountId,
-        receiver: &AccountId,
-        input_asset_id: &AssetId,
-        output_asset_id: &AssetId,
-        amount: SwapAmount<Balance>,
-        filter: LiquiditySourceFilter<DEXId, LiquiditySourceType>,
-    ) -> Result<SwapOutcome<Balance>, DispatchError> {
-        PoolXYK::exchange(
-            &sender,
-            &receiver,
-            &filter.dex_id,
-            input_asset_id,
-            output_asset_id,
-            amount,
-        )
-    }
-
-    fn quote(
-        input_asset_id: &AssetId,
-        output_asset_id: &AssetId,
-        amount: SwapAmount<Balance>,
-        filter: LiquiditySourceFilter<DEXId, LiquiditySourceType>,
-    ) -> Result<SwapOutcome<Balance>, DispatchError> {
-        PoolXYK::quote(&filter.dex_id, input_asset_id, output_asset_id, amount)
-    }
-}
-
 #[allow(non_snake_case)]
 pub fn ALICE() -> AccountId {
     AccountId32::from([1; 32])

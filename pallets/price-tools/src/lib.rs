@@ -271,11 +271,9 @@ impl<T: Config> Pallet<T> {
         PriceInfos::<T>::mutate(asset_id, |opt| {
             if let Some(val) = opt.as_mut() {
                 if val.price_failures < AVG_BLOCK_SPAN {
-                    if val.price_failures == AVG_BLOCK_SPAN - 1 {
+                    val.price_failures += 1;
+                    if val.price_failures == AVG_BLOCK_SPAN {
                         val.spot_prices.clear();
-                        val.price_failures += 1;
-                    } else if val.price_failures < AVG_BLOCK_SPAN - 1 {
-                        val.price_failures += 1;
                     }
                 }
             }
