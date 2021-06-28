@@ -46,7 +46,7 @@ use sp_runtime::traits::{
     DispatchInfoOf, Dispatchable, Extrinsic as ExtrinsicT, PostDispatchInfoOf, SaturatedConversion,
     SignedExtension, UniqueSaturatedInto, Zero,
 };
-use sp_runtime::Percent;
+use sp_runtime::{DispatchError, Percent};
 use sp_staking::SessionIndex;
 
 pub const TECH_ACCOUNT_PREFIX: &[u8] = b"xor-fee";
@@ -287,7 +287,9 @@ impl<T: Config> pallet_session::historical::SessionManager<T::AccountId, T::Full
     fn end_session(end_index: SessionIndex) {
         let xor_to_val = XorToVal::<T>::take();
         if xor_to_val != 0 {
-            Self::remint(xor_to_val);
+            if let Err(e) = Self::remint(xor_to_val) {
+                frame_support::debug::error!("xor fee remint failed: {:?}", e);
+            }
         }
 
         <<T as Config>::SessionManager as pallet_session::historical::SessionManager<_, _>>::end_session(end_index)
@@ -418,68 +420,49 @@ impl<T: Config> Pallet<T> {
         res
     }
 
-    fn remint(xor_to_val: Balance) {
+    pub fn remint(xor_to_val: Balance) -> Result<(), DispatchError> {
         let tech_account_id = <T as Config>::GetTechnicalAccountId::get();
+        let xor = T::XorId::get();
+        let val = T::ValId::get();
+        let parliament = T::GetParliamentAccountId::get();
 
         // Re-minting the `xor_to_val` tokens amount to `tech_account_id` of this pallet.
         // The tokens being re-minted had initially been withdrawn as a part of the fee.
-        if Assets::<T>::mint_to(
-            &T::XorId::get(),
+        Assets::<T>::mint_to(&xor, &tech_account_id, &tech_account_id, xor_to_val)?;
+        // Attempting to swap XOR with VAL on secondary market
+        // If successful, VAL will be burned, otherwise burn newly minted XOR from the tech account
+        match T::LiquidityProxy::exchange(
             &tech_account_id,
-            &tech_account_id,
-            xor_to_val,
-        )
-        .is_ok()
-        {
-            // Attempting to swap XOR with VAL on secondary market
-            // If successful, VAL will be burned, otherwise burn newly minted XOR from the tech account
-            match T::LiquidityProxy::exchange(
-                &tech_account_id,
-                &tech_account_id,
-                &T::XorId::get(),
-                &T::ValId::get(),
-                SwapAmount::WithDesiredInput {
-                    desired_amount_in: xor_to_val,
-                    min_amount_out: 0,
-                },
-                LiquiditySourceFilter::with_forbidden(
-                    T::DEXIdValue::get(),
-                    [LiquiditySourceType::MulticollateralBondingCurvePool].into(),
-                ),
-            ) {
-                Ok(swap_outcome) => {
-                    let val_to_burn = Balance::from(swap_outcome.amount);
-                    if Assets::<T>::burn_from(
-                        &T::ValId::get(),
-                        &tech_account_id,
-                        &tech_account_id,
-                        val_to_burn.clone(),
-                    )
-                    .is_ok()
-                    {
-                        T::ValBurnedNotifier::notify_val_burned(val_to_burn.clone());
+            &parliament,
+            &xor,
+            &val,
+            SwapAmount::WithDesiredInput {
+                desired_amount_in: xor_to_val,
+                min_amount_out: 0,
+            },
+            LiquiditySourceFilter::with_forbidden(
+                T::DEXIdValue::get(),
+                [LiquiditySourceType::MulticollateralBondingCurvePool].into(),
+            ),
+        ) {
+            Ok(swap_outcome) => {
+                let val_to_burn = Balance::from(swap_outcome.amount);
+                T::ValBurnedNotifier::notify_val_burned(val_to_burn.clone());
 
-                        // Re-minting part of the burned VAL into the SORA parliament account
-                        let parliament_share = T::SoraParliamentShare::get();
-                        let amount_parliament = parliament_share * val_to_burn;
-                        let _ = Assets::<T>::mint_to(
-                            &T::ValId::get(),
-                            &tech_account_id,
-                            &T::GetParliamentAccountId::get(),
-                            amount_parliament,
-                        );
-                    };
-                }
-                Err(_) => {
-                    let _ = Assets::<T>::burn_from(
-                        &T::XorId::get(),
-                        &tech_account_id,
-                        &tech_account_id,
-                        xor_to_val,
-                    );
-                }
+                let val_to_burn = val_to_burn.clone() - T::SoraParliamentShare::get() * val_to_burn;
+                Assets::<T>::burn_from(&val, &parliament, &parliament, val_to_burn)?;
+            }
+            Err(e) => {
+                frame_support::debug::error!(
+                    "failed to exchange xor to val, burning {} XOR, e: {:?}",
+                    xor_to_val,
+                    e
+                );
+                Assets::<T>::burn_from(&xor, &tech_account_id, &tech_account_id, xor_to_val)?;
             }
         }
+
+        Ok(())
     }
 }
 

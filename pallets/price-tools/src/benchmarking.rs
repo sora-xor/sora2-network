@@ -28,20 +28,27 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-//! Trading Pair module benchmarking.
+//! Multicollateral bonding curve pool module benchmarking.
 
 #![cfg(feature = "runtime-benchmarks")]
 
 use super::*;
 
-use codec::Decode;
-use common::{AssetName, AssetSymbol, Balance, DEXId, DOT, XOR};
-use frame_benchmarking::{benchmarks, Zero};
-use frame_system::{EventRecord, RawOrigin};
+use codec::{Decode, Encode};
+use frame_benchmarking::benchmarks;
+use frame_system::RawOrigin;
 use hex_literal::hex;
+use orml_traits::MultiCurrency;
+use sp_core::H256;
+use sp_io::hashing::blake2_256;
 use sp_std::prelude::*;
 
+use common::{AssetName, AssetSymbol, DEXId, XOR};
+
+use crate::Pallet as PriceTools;
 use assets::Pallet as Assets;
+use pool_xyk::Pallet as XYKPool;
+use trading_pair::Pallet as TradingPair;
 
 pub const DEX: DEXId = DEXId::Polkaswap;
 
@@ -51,44 +58,61 @@ fn alice<T: Config>() -> T::AccountId {
     T::AccountId::decode(&mut &bytes[..]).unwrap_or_default()
 }
 
-fn assert_last_event<T: Config>(generic_event: <T as Config>::Event) {
-    let events = frame_system::Module::<T>::events();
-    let system_event: <T as frame_system::Config>::Event = generic_event.into();
-    // compare to the last event record
-    let EventRecord { event, .. } = &events[events.len() - 1];
-    assert_eq!(event, &system_event);
+fn create_asset<T: Config>(prefix: Vec<u8>, index: u128) -> T::AssetId {
+    let entropy: [u8; 32] = (prefix, index).using_encoded(blake2_256);
+    T::AssetId::from(H256(entropy))
+}
+
+fn prepare_secondary_market<T: Config>(n: u128) {
+    let caller = alice::<T>();
+    let caller_origin: <T as frame_system::Config>::Origin =
+        RawOrigin::Signed(caller.clone()).into();
+    T::Currency::deposit(XOR.into(), &caller, balance!(1)).unwrap();
+
+    for i in 0..n {
+        let asset = create_asset::<T>(b"asset".to_vec(), i);
+        T::Currency::deposit(XOR.into(), &caller, balance!(100)).unwrap();
+        Assets::<T>::register_asset_id(
+            caller.clone(),
+            asset.clone(),
+            AssetSymbol(b"TST".to_vec()),
+            AssetName(b"TST".to_vec()),
+            18,
+            balance!(200),
+            true,
+        )
+        .unwrap();
+        TradingPair::<T>::register(caller_origin.clone(), DEX.into(), XOR.into(), asset).unwrap();
+        XYKPool::<T>::initialize_pool(caller_origin.clone(), DEX.into(), XOR.into(), asset)
+            .unwrap();
+        XYKPool::<T>::deposit_liquidity(
+            caller_origin.clone(),
+            DEX.into(),
+            XOR.into(),
+            asset,
+            balance!(100),
+            balance!(200),
+            balance!(0),
+            balance!(0),
+        )
+        .unwrap();
+
+        PriceTools::<T>::register_asset(&asset).unwrap();
+    }
+    for _ in 1..=crate::AVG_BLOCK_SPAN {
+        PriceTools::<T>::average_prices_calculation_routine();
+    }
 }
 
 benchmarks! {
-    register {
+    on_initialize {
         let caller = alice::<T>();
-        frame_system::Module::<T>::inc_providers(&caller);
-        let _ = Assets::<T>::register_asset_id(
-            caller.clone(),
-            DOT.into(),
-            AssetSymbol(b"DOT".to_vec()),
-            AssetName(b"Polkadot Token".to_vec()),
-            18,
-            Balance::zero(),
-            true,
-        );
-        let trading_pair = TradingPair::<T> {
-            base_asset_id: XOR.into(),
-            target_asset_id: DOT.into(),
-        };
-    }: _(
-        RawOrigin::Signed(caller.clone()),
-        DEX.into(),
-        XOR.into(),
-        DOT.into()
-    )
+        prepare_secondary_market::<T>(10);
+    }: {
+        PriceTools::<T>::average_prices_calculation_routine();
+    }
     verify {
-        assert_last_event::<T>(
-            Event::TradingPairStored(
-                DEX.into(),
-                trading_pair.clone()
-            ).into()
-        )
+        // different behaviour in test and runtime, execution success of routine is sufficient for check
     }
 }
 
@@ -101,7 +125,7 @@ mod tests {
     #[test]
     fn test_benchmarks() {
         ExtBuilder::default().build().execute_with(|| {
-            assert_ok!(test_benchmark_register::<Runtime>());
+            assert_ok!(test_benchmark_on_initialize::<Runtime>());
         });
     }
 }
