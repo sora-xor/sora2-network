@@ -2,7 +2,7 @@ FROM debian:buster-slim
 # Install dependencies
 RUN apt-get update && \
     apt-get install --no-install-recommends -y \
-        nano curl && \
+        ca-certificates nano curl && \
 	apt-get autoremove -y && \
 	apt-get clean && \
 	find /var/lib/apt/lists/ -type f -not -name lock -delete
