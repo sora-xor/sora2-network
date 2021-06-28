@@ -22,6 +22,8 @@ serde = { version = "1.0.101", default-features = false, optional = true, featur
 sp-arithmetic = { version = "3", default-features = false }
 sp-runtime = { version = "3", default-features = false }
 sp-std = { version = "3", default-features = false }
+sp-core = { version = "3", default-features = false }
+sp-io = { version = "3", default-features = false }
 tokens = { version = "0.4", package = "orml-tokens", default-features = false }
 assets = { path = "../assets", default-features = false }
 bonding-curve-pool = { path = "../bonding-curve-pool", default-features = false }
@@ -59,8 +61,11 @@ std = [
     'sp-arithmetic/std',
     'sp-runtime/std',
     'sp-std/std',
+    'sp-core/std',
+    'sp-io/std',
     'tokens/std',
     'pool-xyk/std',
+    'technical/std',
 ]
 runtime-benchmarks = [
     "frame-benchmarking",

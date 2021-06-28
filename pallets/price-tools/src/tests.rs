@@ -33,7 +33,7 @@ use std::convert::TryInto;
 use crate::mock::*;
 use crate::{Error, AVG_BLOCK_SPAN};
 use common::prelude::Balance;
-use common::{balance, PriceToolsPallet, DOT, ETH, PSWAP, VAL, XOR};
+use common::{balance, OnPoolReservesChanged, PriceToolsPallet, DOT, ETH, PSWAP, VAL, XOR};
 use frame_support::assert_noop;
 
 fn to_avg<'a, I>(it: I, size: u32) -> Balance
@@ -265,6 +265,7 @@ fn price_quote_continuous_failure() {
             PriceTools::get_average_price(&XOR.into(), &ETH.into()).unwrap(),
             balance!(10)
         );
+        PriceTools::reserves_changed(&ETH);
         // failure period
         for _ in 1..AVG_BLOCK_SPAN {
             PriceTools::average_prices_calculation_routine();

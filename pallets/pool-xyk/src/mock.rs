@@ -101,7 +101,6 @@ construct_runtime! {
         Technical: technical::{Module, Call, Config<T>, Storage, Event<T>},
         PswapDistribution: pswap_distribution::{Module, Call, Config<T>, Storage, Event<T>},
         PoolXYK: pool_xyk::{Module, Call, Storage, Event<T>},
-        PriceTools: price_tools::{Module, Storage, Event<T>},
     }
 }
 
@@ -224,7 +223,7 @@ impl Config for Runtime {
     type EnsureDEXManager = dex_manager::Module<Runtime>;
     type GetFee = GetFee;
     type OnPoolCreated = PswapDistribution;
-    type OnPoolReservesChanged = PriceTools;
+    type OnPoolReservesChanged = ();
     type WeightInfo = ();
 }
 
@@ -257,12 +256,6 @@ impl liquidity_proxy::LiquidityProxyTrait<DEXId, AccountId, AssetId> for MockLiq
     ) -> Result<SwapOutcome<Balance>, DispatchError> {
         PoolXYK::quote(&filter.dex_id, input_asset_id, output_asset_id, amount)
     }
-}
-
-impl price_tools::Config for Runtime {
-    type Event = Event;
-    type LiquidityProxy = MockLiquidityProxy;
-    type WeightInfo = ();
 }
 
 #[allow(non_snake_case)]

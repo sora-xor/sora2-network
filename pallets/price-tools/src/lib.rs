@@ -32,6 +32,9 @@
 
 pub mod weights;
 
+#[cfg(feature = "runtime-benchmarks")]
+mod benchmarking;
+
 #[allow(unused_imports)]
 #[macro_use]
 extern crate alloc;
@@ -67,11 +70,11 @@ const AVG_BLOCK_SPAN: u32 = 30;
 const MAX_BLOCK_AVG_DIFFERENCE: Fixed = fixed_const!(0.005); // 0.5%
 
 pub trait WeightInfo {
-    fn on_initialize(elems: u32) -> Weight;
+    fn on_initialize(elems_active: u32, elems_updated: u32) -> Weight;
 }
 
 impl crate::WeightInfo for () {
-    fn on_initialize(_elems: u32) -> Weight {
+    fn on_initialize(_elems_active: u32, _elems_updated: u32) -> Weight {
         EXTRINSIC_FIXED_WEIGHT
     }
 }
@@ -103,7 +106,14 @@ pub mod pallet {
     use liquidity_proxy::LiquidityProxyTrait;
 
     #[pallet::config]
-    pub trait Config: frame_system::Config + assets::Config + common::Config {
+    pub trait Config:
+        frame_system::Config
+        + assets::Config
+        + common::Config
+        + technical::Config
+        + pool_xyk::Config
+        + trading_pair::Config
+    {
         type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
         type LiquidityProxy: LiquidityProxyTrait<Self::DEXId, Self::AccountId, Self::AssetId>;
         type WeightInfo: WeightInfo;
@@ -116,8 +126,8 @@ pub mod pallet {
     #[pallet::hooks]
     impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
         fn on_initialize(_block_num: T::BlockNumber) -> Weight {
-            let elems = Module::<T>::average_prices_calculation_routine();
-            <T as Config>::WeightInfo::on_initialize(elems)
+            let (n, m) = Module::<T>::average_prices_calculation_routine();
+            <T as Config>::WeightInfo::on_initialize(n, m)
         }
 
         fn on_runtime_upgrade() -> Weight {
@@ -221,6 +231,7 @@ impl<T: Config> Pallet<T> {
                 let val = opt.as_mut().unwrap();
                 // reset failure streak
                 val.price_failures = 0;
+                val.needs_update = false;
                 // spot price history is consistent, normal behavior
                 if val.spot_prices.len() == avg_count {
                     let old_value = val.spot_prices.pop_front().unwrap();
@@ -260,9 +271,11 @@ impl<T: Config> Pallet<T> {
         PriceInfos::<T>::mutate(asset_id, |opt| {
             if let Some(val) = opt.as_mut() {
                 if val.price_failures < AVG_BLOCK_SPAN {
-                    val.price_failures += 1;
-                    if val.price_failures == AVG_BLOCK_SPAN {
+                    if val.price_failures == AVG_BLOCK_SPAN - 1 {
                         val.spot_prices.clear();
+                        val.price_failures += 1;
+                    } else if val.price_failures < AVG_BLOCK_SPAN - 1 {
+                        val.price_failures += 1;
                     }
                 }
             }
@@ -326,11 +339,13 @@ impl<T: Config> Pallet<T> {
             .map_err(|_| Error::<T>::AveragePriceCalculationFailed)?)
     }
 
-    /// Returns number of pairs recalculated.
-    pub fn average_prices_calculation_routine() -> u32 {
-        let mut count = 0;
+    /// Returns (number of active pairs, number of pairs with needed update)
+    pub fn average_prices_calculation_routine() -> (u32, u32) {
+        let mut count_active = 0;
+        let mut count_updated = 0;
         for (asset_id, price_info) in PriceInfos::<T>::iter() {
             let price = if price_info.needs_update {
+                count_updated += 1;
                 Self::spot_price(&asset_id)
             } else {
                 // if price hasn't changed duplicate latest known to update average
@@ -345,9 +360,9 @@ impl<T: Config> Pallet<T> {
             } else {
                 Self::incoming_spot_price_failure(&asset_id);
             }
-            count += 1;
+            count_active += 1;
         }
-        count
+        (count_active, count_updated)
     }
 }
 
