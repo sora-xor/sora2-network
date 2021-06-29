@@ -6390,7 +6390,7 @@ checksum = "e9c17925a9027d298a4603d286befe3f9dc0e8ed02523141914eb628798d6e5b"
 
 [[package]]
 name = "rewards"
-version = "1.1.0"
+version = "1.2.0"
 dependencies = [
  "assets",
  "common",

@@ -29,11 +29,14 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use common::{assert_noop_msg, balance, PSWAP, VAL};
+use frame_support::traits::PalletVersion;
 use frame_support::{assert_noop, assert_ok};
 use hex_literal::hex;
+use sp_core::H160;
 
 use crate::migration::*;
 use crate::mock::*;
+use crate::{PswapFarmOwners, ReservesAcc};
 
 type Pallet = crate::Pallet<Runtime>;
 type Error = crate::Error<Runtime>;
@@ -138,7 +141,7 @@ fn val_emission_works() {
 }
 
 #[test]
-fn storage_migration_v2_works() {
+fn storage_migration_to_v1_1_0_works() {
     use crate::EthereumAddress;
     ExtBuilder::with_rewards(true).build().execute_with(|| {
         // Claim some VAL first
@@ -191,6 +194,38 @@ fn storage_migration_v2_works() {
             // A Mooniswap liquidiy pool account, should have been removed
             crate::ValOwners::<Runtime>::get(EthereumAddress::from(hex!("215470102a05b02a3a2898f317b5382f380afc0e"))),
             balance!(0)
+        );
+    });
+}
+
+#[test]
+fn storage_migration_to_v1_2_0_works() {
+    ExtBuilder::with_rewards(true).build().execute_with(|| {
+        PalletVersion {
+            major: 1,
+            minor: 1,
+            patch: 0,
+        }
+        .put_into_storage::<<Runtime as frame_system::Config>::PalletInfo, Pallet>();
+        let expected_pswap = balance!(74339.224845900297630556);
+        let expected_eth_address =
+            H160::from_slice(&hex!("e687c6c6b28745864871566134b5589aa05b953d"));
+
+        let reserves_account_id = technical::Pallet::<Runtime>::tech_account_id_to_account_id(
+            &ReservesAcc::<Runtime>::get(),
+        )
+        .unwrap();
+        let balance_a =
+            assets::Pallet::<Runtime>::free_balance(&PSWAP.into(), &reserves_account_id).unwrap();
+
+        crate::migration::migrate::<Runtime>();
+        let balance_b =
+            assets::Pallet::<Runtime>::free_balance(&PSWAP.into(), &reserves_account_id).unwrap();
+
+        assert_eq!(balance_b - balance_a, expected_pswap);
+        assert_eq!(
+            PswapFarmOwners::<Runtime>::get(expected_eth_address),
+            expected_pswap
         );
     });
 }
