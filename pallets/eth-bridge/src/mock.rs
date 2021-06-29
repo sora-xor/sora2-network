@@ -70,15 +70,16 @@ use frame_support::sp_runtime::transaction_validity::{
 use frame_support::sp_runtime::{
     self, ApplyExtrinsicResultWithInfo, MultiSignature, MultiSigner, Perbill,
 };
-use frame_support::traits::GenesisBuild;
+use frame_support::traits::{GenesisBuild, Get};
 use frame_support::weights::{Pays, Weight};
 use frame_support::{construct_runtime, parameter_types};
 use frame_system::offchain::{Account, SigningTypes};
+use frame_system::EnsureRoot;
 use hex_literal::hex;
 use parking_lot::RwLock;
 use rustc_hex::ToHex;
 use sp_core::offchain::OffchainStorage;
-use sp_core::H256;
+use sp_core::{H160, H256};
 use sp_keystore::testing::KeyStore;
 use sp_keystore::{KeystoreExt, SyncCryptoStore};
 use sp_std::collections::btree_map::BTreeMap;
@@ -230,8 +231,21 @@ parameter_types! {
     pub const AvailableBlockRatio: Perbill = Perbill::from_percent(75);
     pub const ExistentialDeposit: u128 = 0;
     pub const RemovePendingOutgoingRequestsAfter: BlockNumber = 100;
-    pub const RemoveTemporaryPeerAccountId: AccountId = AccountId32::new(hex!("0000000000000000000000000000000000000000000000000000000000000001"));
+    pub const TrackPendingIncomingRequestsAfter: (BlockNumber, u64) = (0, 0);
     pub GetTeamReservesAccountId: AccountId = AccountId32::from([11; 32]);
+    pub const SchedulerMaxWeight: Weight = 1024;
+}
+
+pub struct RemoveTemporaryPeerAccountId;
+impl Get<Vec<(AccountId, H160)>> for RemoveTemporaryPeerAccountId {
+    fn get() -> Vec<(AccountId, H160)> {
+        vec![(
+            AccountId32::new(hex!(
+                "0000000000000000000000000000000000000000000000000000000000000001"
+            )),
+            H160(hex!("0000000000000000000000000000000000000001")),
+        )]
+    }
 }
 
 impl frame_system::Config for Runtime {
@@ -371,6 +385,17 @@ impl pallet_sudo::Config for Runtime {
     type Event = Event;
 }
 
+impl pallet_scheduler::Config for Runtime {
+    type Event = Event;
+    type Origin = Origin;
+    type PalletsOrigin = OriginCaller;
+    type Call = Call;
+    type MaximumWeight = SchedulerMaxWeight;
+    type ScheduleOrigin = EnsureRoot<AccountId>;
+    type MaxScheduledPerBlock = ();
+    type WeightInfo = ();
+}
+
 impl crate::Config for Runtime {
     type Event = Event;
     type PeerId = crate::crypto::TestAuthId;
@@ -380,7 +405,10 @@ impl crate::Config for Runtime {
     type WeightInfo = ();
     type Mock = State;
     type RemovePendingOutgoingRequestsAfter = RemovePendingOutgoingRequestsAfter;
-    type RemoveTemporaryPeerAccountId = RemoveTemporaryPeerAccountId;
+    type TrackPendingIncomingRequestsAfter = TrackPendingIncomingRequestsAfter;
+    type RemovePeerAccountIds = RemoveTemporaryPeerAccountId;
+    type SchedulerOriginCaller = OriginCaller;
+    type Scheduler = Scheduler;
 }
 
 impl sp_runtime::traits::ExtrinsicMetadata for TestExtrinsic {
@@ -403,6 +431,7 @@ construct_runtime!(
         Permissions: permissions::{Module, Call, Storage, Config<T>, Event<T>},
         Sudo: pallet_sudo::{Module, Call, Storage, Config<T>, Event<T>},
         EthBridge: eth_bridge::{Module, Call, Storage, Config<T>, Event<T>},
+        Scheduler: pallet_scheduler::{Module, Call, Storage, Event<T>},
     }
 );
 
