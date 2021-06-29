@@ -28,18 +28,20 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use crate::{Config, EthereumAddress, Pallet, Weight};
+use crate::{Config, EthereumAddress, Pallet, PswapFarmOwners, ReservesAcc, Weight};
 use common::prelude::Balance;
-use common::{balance, vec_push, VAL};
+use common::{balance, vec_push, PSWAP, VAL};
 use frame_support::debug;
 use frame_support::traits::{Get, GetPalletVersion, PalletVersion};
 use hex_literal::hex;
 use orml_traits::currency::MultiCurrency;
+use sp_core::H160;
 use sp_std::vec::Vec;
 
 pub fn migrate<T: Config>() -> Weight {
     let mut weight: Weight = 0;
 
+    debug::RuntimeLogger::init();
     match Pallet::<T>::storage_version() {
         // Initial version is 0.1.0 with the storage initialized in genesis block
         // Version 1.1.0 updates claimable VAL data structure with the corrected data
@@ -56,6 +58,30 @@ pub fn migrate<T: Config>() -> Weight {
             weight = weight.saturating_add(update_val_airdrop_data::<T>(data_0));
             let data_1 = include!("bytes/val_rewards_airdrop_adjustment.1.in");
             weight = weight.saturating_add(update_val_airdrop_data::<T>(data_1));
+        }
+        // Version 1.2.0 adds lost tokens compensation for user according to:
+        // https://etherscan.io/tx/0x5605564eadc8b912de930fb9e3405b0aa1010cf3decc0eace176b6cf5aeee166
+        Some(version) if version == PalletVersion::new(1, 1, 0) => {
+            let user_account = H160::from_slice(&hex!("e687c6c6b28745864871566134b5589aa05b953d"));
+            let compensation_amount = balance!(74339.224845900297630556);
+            PswapFarmOwners::<T>::insert(user_account, compensation_amount);
+            let reserves_tech_acc = ReservesAcc::<T>::get();
+            let res = technical::Module::<T>::mint(
+                &PSWAP.into(),
+                &reserves_tech_acc,
+                compensation_amount,
+            );
+            if res.is_err() {
+                debug::error!(
+                    target: "runtime",
+                    "failed to mint compensation pswap during migration"
+                );
+            } else {
+                debug::info!(
+                    target: "runtime",
+                    "successfully minted compensation pswap during migration"
+                );
+            }
         }
         _ => (),
     }
