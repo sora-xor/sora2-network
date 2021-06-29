@@ -80,12 +80,12 @@ impl<T: Config>
         }
         match liquidity_source_id.liquidity_source_index {
             XYKPool => can_exchange!(XYKPool),
-            BondingCurvePool => can_exchange!(BondingCurvePool),
             MulticollateralBondingCurvePool => can_exchange!(MulticollateralBondingCurvePool),
             MockPool => can_exchange!(MockLiquiditySource),
             MockPool2 => can_exchange!(MockLiquiditySource2),
             MockPool3 => can_exchange!(MockLiquiditySource3),
             MockPool4 => can_exchange!(MockLiquiditySource4),
+            BondingCurvePool => unreachable!(),
         }
     }
 
@@ -108,12 +108,12 @@ impl<T: Config>
         }
         match liquidity_source_id.liquidity_source_index {
             LiquiditySourceType::XYKPool => quote!(XYKPool),
-            BondingCurvePool => quote!(BondingCurvePool),
             MulticollateralBondingCurvePool => quote!(MulticollateralBondingCurvePool),
             MockPool => quote!(MockLiquiditySource),
             MockPool2 => quote!(MockLiquiditySource2),
             MockPool3 => quote!(MockLiquiditySource3),
             MockPool4 => quote!(MockLiquiditySource4),
+            BondingCurvePool => unreachable!(),
         }
     }
 
@@ -140,12 +140,12 @@ impl<T: Config>
         }
         match liquidity_source_id.liquidity_source_index {
             XYKPool => exchange!(XYKPool),
-            BondingCurvePool => exchange!(BondingCurvePool),
             MulticollateralBondingCurvePool => exchange!(MulticollateralBondingCurvePool),
             MockPool => exchange!(MockLiquiditySource),
             MockPool2 => exchange!(MockLiquiditySource2),
             MockPool3 => exchange!(MockLiquiditySource3),
             MockPool4 => exchange!(MockLiquiditySource4),
+            BondingCurvePool => unreachable!(),
         }
     }
 
@@ -170,12 +170,12 @@ impl<T: Config>
         }
         match liquidity_source_id.liquidity_source_index {
             XYKPool => check_rewards!(XYKPool),
-            BondingCurvePool => check_rewards!(BondingCurvePool),
             MulticollateralBondingCurvePool => check_rewards!(MulticollateralBondingCurvePool),
             MockPool => check_rewards!(MockLiquiditySource),
             MockPool2 => check_rewards!(MockLiquiditySource2),
             MockPool3 => check_rewards!(MockLiquiditySource3),
             MockPool4 => check_rewards!(MockLiquiditySource4),
+            BondingCurvePool => unreachable!(),
         }
     }
 }
@@ -263,13 +263,6 @@ pub mod pallet {
             DispatchError,
         >;
         type MockLiquiditySource4: LiquiditySource<
-            Self::DEXId,
-            Self::AccountId,
-            Self::AssetId,
-            Balance,
-            DispatchError,
-        >;
-        type BondingCurvePool: LiquiditySource<
             Self::DEXId,
             Self::AccountId,
             Self::AssetId,

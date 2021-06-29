@@ -150,7 +150,6 @@ impl Config for Runtime {
         mock_liquidity_source::Module<Runtime, mock_liquidity_source::Instance3>;
     type MockLiquiditySource4 =
         mock_liquidity_source::Module<Runtime, mock_liquidity_source::Instance4>;
-    type BondingCurvePool = ();
     type MulticollateralBondingCurvePool = ();
     type XYKPool = pool_xyk::Module<Runtime>;
     type WeightInfo = ();

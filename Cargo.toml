@@ -25,7 +25,6 @@ members = [
     "pallets/rewards",
     "pallets/xor-fee",
     "pallets/referral-system",
-    "pallets/bonding-curve-pool",
     "pallets/eth-bridge",
     "pallets/pswap-distribution",
     "pallets/multicollateral-bonding-curve-pool",

@@ -687,34 +687,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "bonding-curve-pool"
-version = "0.1.0"
-dependencies = [
- "assets",
- "common",
- "dex-api",
- "dex-manager",
- "frame-support",
- "frame-system",
- "hex-literal",
- "mock-liquidity-source",
- "orml-currencies",
- "orml-tokens",
- "orml-traits",
- "pallet-balances",
- "parity-scale-codec",
- "permissions",
- "serde",
- "sp-arithmetic",
- "sp-core",
- "sp-io",
- "sp-runtime",
- "sp-std",
- "technical",
- "trading-pair",
-]
-
-[[package]]
 name = "bs58"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2351,7 +2323,6 @@ version = "0.1.0"
 dependencies = [
  "assets",
  "assets-runtime-api",
- "bonding-curve-pool",
  "common",
  "dex-api",
  "dex-api-benchmarking",
@@ -4066,7 +4037,6 @@ name = "liquidity-proxy-benchmarking"
 version = "0.1.0"
 dependencies = [
  "assets",
- "bonding-curve-pool",
  "common",
  "dex-api",
  "dex-manager",
@@ -4431,7 +4401,6 @@ name = "multicollateral-bonding-curve-pool"
 version = "0.2.0"
 dependencies = [
  "assets",
- "bonding-curve-pool",
  "common",
  "dex-api",
  "dex-manager",
@@ -5754,7 +5723,6 @@ name = "price-tools"
 version = "1.0.0"
 dependencies = [
  "assets",
- "bonding-curve-pool",
  "common",
  "dex-api",
  "dex-manager",
@@ -5939,7 +5907,6 @@ name = "pswap-distribution"
 version = "0.2.0"
 dependencies = [
  "assets",
- "bonding-curve-pool",
  "common",
  "dex-manager",
  "frame-benchmarking",
