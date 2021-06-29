@@ -44,7 +44,7 @@ use frame_support::{construct_runtime, parameter_types};
 use multicollateral_bonding_curve_pool::{
     DistributionAccount, DistributionAccountData, DistributionAccounts,
 };
-use permissions::{Scope, BURN, MANAGE_DEX, MINT, TRANSFER};
+use permissions::{Scope, BURN, MANAGE_DEX, MINT};
 use sp_core::H256;
 use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentityLookup};
@@ -113,6 +113,7 @@ construct_runtime! {
         Permissions: permissions::{Module, Call, Config<T>, Storage, Event<T>},
         DexApi: dex_api::{Module, Call, Config, Storage, Event<T>},
         TradingPair: trading_pair::{Module, Call, Config<T>, Storage, Event<T>},
+        PriceTools: price_tools::{Module, Storage, Event<T>},
         PoolXYK: pool_xyk::{Module, Call, Storage, Event<T>},
         MBCPool: multicollateral_bonding_curve_pool::{Module, Call, Storage, Event<T>},
         PswapDistribution: pswap_distribution::{Module, Call, Config<T>, Storage, Event<T>},
@@ -447,6 +448,12 @@ impl pswap_distribution::Config for Runtime {
     type PoolXykPallet = PoolXYK;
 }
 
+impl price_tools::Config for Runtime {
+    type Event = Event;
+    type LiquidityProxy = LiquidityProxy;
+    type WeightInfo = price_tools::weights::WeightInfo<Runtime>;
+}
+
 impl Config for Runtime {}
 
 pub struct ExtBuilder {
@@ -477,7 +484,6 @@ impl Default for ExtBuilder {
                 },
             )],
             initial_permission_owners: vec![
-                (TRANSFER, Scope::Unlimited, vec![alice()]),
                 (MINT, Scope::Unlimited, vec![alice()]),
                 (BURN, Scope::Unlimited, vec![alice()]),
                 (MANAGE_DEX, Scope::Unlimited, vec![alice()]),

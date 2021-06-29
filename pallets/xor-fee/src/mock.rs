@@ -44,7 +44,7 @@ use frame_support::weights::{DispatchInfo, IdentityFee, Pays, PostDispatchInfo, 
 use frame_support::{construct_runtime, parameter_types};
 use frame_system;
 use pallet_session::historical;
-use permissions::{Scope, BURN, MINT, TRANSFER};
+use permissions::{Scope, BURN, MINT};
 use sp_core::H256;
 use sp_runtime::testing::{Header, TestXt, UintAuthorityId};
 use sp_runtime::traits::{BlakeTwo256, IdentityLookup};
@@ -272,7 +272,7 @@ impl tokens::Config for Runtime {
 }
 
 impl pallet_session::Config for Runtime {
-    type SessionManager = pallet_session::historical::NoteHistoricalRoot<Runtime, Staking>;
+    type SessionManager = pallet_session::historical::NoteHistoricalRoot<Runtime, XorFee>;
     type Keys = SessionKeys;
     type ShouldEndSession = pallet_session::PeriodicSessions<Period, Offset>;
     type SessionHandler = (OtherSessionHandler,);
@@ -360,6 +360,7 @@ impl Config for Runtime {
     type CustomFees = CustomFees;
     type GetTechnicalAccountId = GetXorFeeAccountId;
     type GetParliamentAccountId = GetParliamentAccountId;
+    type SessionManager = Staking;
 }
 
 // Allow dead_code because we never call swap, just use its Call variant
@@ -546,7 +547,6 @@ impl ExtBuilder {
             initial_permission_owners: vec![
                 (MINT, Scope::Unlimited, vec![xor_fee_account_id]),
                 (BURN, Scope::Unlimited, vec![xor_fee_account_id]),
-                (TRANSFER, Scope::Unlimited, vec![xor_fee_account_id]),
             ],
             initial_permissions: vec![(xor_fee_account_id, Scope::Unlimited, vec![MINT, BURN])],
         }
