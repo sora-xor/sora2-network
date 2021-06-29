@@ -114,9 +114,7 @@ use eth_bridge::{
 };
 use impls::{CollectiveWeightInfo, DemocracyWeightInfo, OnUnbalancedDemocracySlash};
 
-pub use {
-    assets, eth_bridge, frame_system, multicollateral_bonding_curve_pool,
-};
+pub use {assets, eth_bridge, frame_system, multicollateral_bonding_curve_pool};
 
 /// An index to a block.
 pub type BlockNumber = u32;
