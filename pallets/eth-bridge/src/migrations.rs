@@ -89,7 +89,7 @@ pub(crate) fn migrate_to_0_2_0<T: Config>() -> Weight {
             None,
             1,
             RawOrigin::Root.into(),
-            Call::migrate_to_0_3_0().into(),
+            Call::migrate_to_0_2_0().into(),
         )
         .is_err()
         {

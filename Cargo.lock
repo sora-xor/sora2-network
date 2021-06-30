@@ -10231,3 +10231,8 @@ dependencies = [
  "itertools",
  "libc",
 ]
+
+[[patch.unused]]
+name = "pallet-multisig"
+version = "3.1.0"
+source = "git+https://github.com/soramitsu/sora2-frame-pallets.git?branch=pub-timepoint?rev=0db8693#0db869344773883e93737ae6389e6ed0004d9d7f"

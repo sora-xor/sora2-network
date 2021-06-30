@@ -83,6 +83,7 @@ use crate::types::{
     SubstrateHeaderLimited, Transaction, TransactionReceipt,
 };
 use alloc::string::String;
+use bridge_multisig::MultiChainHeight;
 use codec::{Decode, Encode, FullCodec};
 use common::prelude::Balance;
 use common::{eth, AssetName, AssetSymbol, BalancePrecision, DEFAULT_BALANCE_PRECISION};
@@ -94,7 +95,7 @@ use frame_support::sp_runtime::app_crypto::{ecdsa, sp_core, Public};
 use frame_support::sp_runtime::offchain::storage::StorageValueRef;
 use frame_support::sp_runtime::offchain::storage_lock::{BlockNumberProvider, StorageLock, Time};
 use frame_support::sp_runtime::traits::{
-    AtLeast32Bit, IdentifyAccount, MaybeSerializeDeserialize, Member, One,
+    AtLeast32Bit, IdentifyAccount, MaybeSerializeDeserialize, Member, One, Saturating, Zero,
 };
 use frame_support::sp_runtime::{
     offchain as rt_offchain, DispatchErrorWithPostInfo, KeyTypeId, MultiSigner,
@@ -175,8 +176,11 @@ const SUB_NODE_URL: &str = "http://127.0.0.1:9954";
 const HTTP_REQUEST_TIMEOUT_SECS: u64 = 10;
 /// Substrate maximum amount of blocks for which an extrinsic is expecting to be finalized.
 const SUBSTRATE_MAX_BLOCK_NUM_EXPECTING_UNTIL_FINALIZATION: u32 = 50;
-const MAX_FAILED_SEND_SIGNED_TX_RETRIES: u8 = 50;
-const MAX_SUCCESSFUL_SEND_SIGNED_TX_RETRIES: u8 = 5;
+#[cfg(not(test))]
+const MAX_FAILED_SEND_SIGNED_TX_RETRIES: u16 = 2000;
+#[cfg(test)]
+const MAX_FAILED_SEND_SIGNED_TX_RETRIES: u16 = 10;
+const MAX_SUCCESSFUL_SENT_SIGNED_TX_PER_ONCE: u8 = 5;
 
 pub const TECH_ACCOUNT_PREFIX: &[u8] = b"bridge";
 pub const TECH_ACCOUNT_MAIN: &[u8] = b"main";
@@ -204,6 +208,8 @@ pub const DEPOSIT_TOPIC: H256 = H256(hex!(
     "85c0fa492ded927d3acca961da52b0dda1debb06d8c27fe189315f06bb6e26c8"
 ));
 pub const OFFCHAIN_TRANSACTION_WEIGHT_LIMIT: u64 = 10_000_000_000_000_000u64;
+const MAX_PENDING_TX_BLOCKS_PERIOD: u32 = 100;
+const RE_HANDLE_TXS_PERIOD: u32 = 200;
 
 type AssetIdOf<T> = <T as assets::Config>::AssetId;
 type Timepoint<T> = bridge_multisig::Timepoint<<T as frame_system::Config>::BlockNumber>;
@@ -1886,10 +1892,10 @@ pub mod pallet {
         }
 
         #[pallet::weight(0)]
-        pub fn migrate_to_0_3_0(origin: OriginFor<T>) -> DispatchResultWithPostInfo {
+        pub fn migrate_to_0_2_0(origin: OriginFor<T>) -> DispatchResultWithPostInfo {
             ensure_root(origin)?;
             let weight = match Pallet::<T>::storage_version() {
-                Some(version) if version == PalletVersion::new(0, 2, 0) => {
+                Some(version) if version == PalletVersion::new(0, 1, 0) => {
                     let bridge_multisig = crate::BridgeAccount::<T>::get(T::GetEthNetworkId::get())
                         .unwrap_or_default();
                     let mut migrating_requests = MigratingRequests::<T>::get();
@@ -1907,7 +1913,7 @@ pub mod pallet {
                             None,
                             1,
                             RawOrigin::Root.into(),
-                            Call::migrate_to_0_3_0().into(),
+                            Call::migrate_to_0_2_0().into(),
                         );
                     }
                     MigratingRequests::<T>::set(migrating_requests);
@@ -2875,25 +2881,28 @@ impl<T: Config> Pallet<T> {
                         })
                         .unwrap_or(true);
                     if not_sent_or_too_long_finalization {
-                        let should_resend = resent_num < MAX_SUCCESSFUL_SEND_SIGNED_TX_RETRIES;
-                        if should_resend && tx.resend(&signer) {
-                            resent_num += 1;
-                            // Update key = extrinsic hash.
-                        } else {
-                            let key = format!(
-                                "eth-bridge-ocw::pending-transactions-retries-{}",
-                                tx.extrinsic_hash
-                            );
-                            let mut s_retries = StorageValueRef::persistent(key.as_bytes());
-                            let mut retries: u8 = s_retries.get().flatten().unwrap_or_default();
-                            retries = retries.saturating_add(1);
-                            // If wasn't finalized or re-send limit exceeded - remove.
-                            if !should_resend || retries > MAX_FAILED_SEND_SIGNED_TX_RETRIES {
-                                failed_txs_tmp.push(tx);
-                                s_retries.clear();
-                                return None;
+                        let should_resend = resent_num < MAX_SUCCESSFUL_SENT_SIGNED_TX_PER_ONCE;
+                        if should_resend {
+                            if tx.resend(&signer) {
+                                resent_num += 1;
+                                // Update key = extrinsic hash.
                             } else {
-                                s_retries.set(&retries);
+                                let key = format!(
+                                    "eth-bridge-ocw::pending-transactions-retries-v2-{:?}",
+                                    tx.extrinsic_hash
+                                );
+                                let mut s_retries = StorageValueRef::persistent(key.as_bytes());
+                                let mut retries: u16 =
+                                    s_retries.get().flatten().unwrap_or_default();
+                                retries = retries.saturating_add(1);
+                                // If re-send limit exceeded - remove.
+                                if retries > MAX_FAILED_SEND_SIGNED_TX_RETRIES {
+                                    failed_txs_tmp.push(tx);
+                                    s_retries.clear();
+                                    return None;
+                                } else {
+                                    s_retries.set(&retries);
+                                }
                             }
                         }
                         hash = tx.extrinsic_hash;
@@ -3207,6 +3216,50 @@ impl<T: Config> Pallet<T> {
         Ok(())
     }
 
+    fn handle_failed_transactions_queue() {
+        let network_id = T::GetEthNetworkId::get();
+        let s_failed_pending_txs =
+            StorageValueRef::persistent(STORAGE_FAILED_PENDING_TRANSACTIONS_KEY);
+        let mut failed_txs = s_failed_pending_txs
+            .get::<BTreeMap<H256, SignedTransactionData<T>>>()
+            .flatten()
+            .unwrap_or_default();
+        let mut to_remove = Vec::new();
+        for (key, tx) in &failed_txs {
+            let tx_call = bridge_multisig::Call::<T>::decode(&mut &tx.call.encode()[1..]);
+            if let Ok(tx_call) = tx_call {
+                let maybe_call = match &tx_call {
+                    bridge_multisig::Call::as_multi_threshold_1(_, call, _) => {
+                        Call::<T>::decode(&mut &call.encode()[1..])
+                    }
+                    bridge_multisig::Call::as_multi(_, _, ext_bytes, _, _) => {
+                        Call::<T>::decode(&mut &ext_bytes[1..])
+                    }
+                    _ => continue,
+                };
+                match maybe_call {
+                    Ok(Call::<T>::import_incoming_request(load_incoming_request, _)) => {
+                        let tx_hash = load_incoming_request.hash();
+
+                        if RequestStatuses::<T>::get(network_id, tx_hash).is_some() {
+                            to_remove.push(*key);
+                            // Skip already submitted requests.
+                            continue;
+                        }
+                        let _ = Self::send_transaction::<bridge_multisig::Call<T>>(tx_call);
+                    }
+                    _ => (),
+                };
+            }
+        }
+        if !to_remove.is_empty() {
+            for key in to_remove {
+                failed_txs.remove(&key);
+            }
+            s_failed_pending_txs.set(&failed_txs);
+        }
+    }
+
     fn handle_substrate() -> Result<T::BlockNumber, Error<T>>
     where
         T: CreateSignedTransaction<<T as Config>::Call>,
@@ -3221,6 +3274,11 @@ impl<T: Config> Pallet<T> {
                 return Err(e);
             }
         };
+
+        if substrate_finalized_block.number.as_u64() % (RE_HANDLE_TXS_PERIOD as u64) == 0 {
+            Self::handle_failed_transactions_queue();
+        }
+
         let substrate_finalized_height =
             <T::BlockNumber as From<u32>>::from(substrate_finalized_block.number.as_u32());
         let s_sub_to_handle_from_height =
@@ -3298,6 +3356,42 @@ impl<T: Config> Pallet<T> {
         Ok(current_eth_height)
     }
 
+    fn handle_pending_multisig_calls(network_id: T::NetworkId, current_eth_height: u64) {
+        for ms in bridge_multisig::Multisigs::<T>::iter_values() {
+            let from_block = match ms.when.height {
+                MultiChainHeight::Sidechain(sh)
+                    if current_eth_height.saturating_sub(sh)
+                        >= MAX_PENDING_TX_BLOCKS_PERIOD as u64 =>
+                {
+                    let string = format!(
+                        "eth-bridge-ocw::eth-to-re-handle-from-height-{:?}-{}-{}",
+                        network_id, sh, ms.when.index
+                    );
+                    let s_eth_to_handle_from_height =
+                        StorageValueRef::persistent(string.as_bytes());
+                    let handled = s_eth_to_handle_from_height
+                        .get::<bool>()
+                        .flatten()
+                        .unwrap_or(false);
+                    if handled {
+                        continue;
+                    }
+                    s_eth_to_handle_from_height.set(&true);
+                    sh
+                }
+                _ => {
+                    continue;
+                }
+            };
+            debug::debug!("Re-handling ethereum height {}", from_block);
+            // +1 block should be ok, because MAX_PENDING_TX_BLOCKS_PERIOD > CONFIRMATION_INTERVAL.
+            let err_opt = Self::handle_logs(from_block, from_block + 1, &mut 0, network_id).err();
+            if let Some(err) = err_opt {
+                debug::warn!("Failed to re-handle logs: {:?}.", err);
+            }
+        }
+    }
+
     /// Retrieves latest needed information about networks and handles corresponding
     /// requests queues.
     ///
@@ -3316,6 +3410,10 @@ impl<T: Config> Pallet<T> {
             }
         };
 
+        if substrate_finalized_height % RE_HANDLE_TXS_PERIOD.into() == T::BlockNumber::zero() {
+            Self::handle_pending_multisig_calls(network_id, current_eth_height);
+        }
+
         for request_hash in RequestsQueue::<T>::get(network_id) {
             let request = match Requests::<T>::get(network_id, request_hash) {
                 Some(v) => v,
@@ -3323,7 +3421,10 @@ impl<T: Config> Pallet<T> {
             };
             let request_submission_height: T::BlockNumber =
                 Self::request_submission_height(network_id, &request_hash);
-            if substrate_finalized_height < request_submission_height {
+            let number = T::BlockNumber::from(MAX_PENDING_TX_BLOCKS_PERIOD);
+            let diff = substrate_finalized_height.saturating_sub(request_submission_height);
+            let should_reapprove = diff >= number && diff % number == T::BlockNumber::zero();
+            if !should_reapprove && substrate_finalized_height < request_submission_height {
                 continue;
             }
             let handled_key = format!("eth-bridge-ocw::handled-request-{:?}", request_hash);
@@ -3331,7 +3432,7 @@ impl<T: Config> Pallet<T> {
             let height_opt = s_handled_request.get::<T::BlockNumber>().flatten();
 
             let need_to_handle = match height_opt {
-                Some(height) => request_submission_height > height,
+                Some(height) => should_reapprove || request_submission_height > height,
                 None => true,
             };
             let confirmed = match &request {

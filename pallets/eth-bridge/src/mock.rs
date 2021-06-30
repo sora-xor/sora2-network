@@ -579,7 +579,9 @@ impl State {
             let call = e.call;
             // In reality you would do `e.apply`, but this is a test. we assume we don't care
             // about validation etc.
-            let _ = call.dispatch(Some(who).into()).unwrap();
+            if let Err(e) = call.dispatch(Some(who).into()) {
+                eprintln!("{:?}", e);
+            }
         }
     }
 
@@ -590,6 +592,13 @@ impl State {
             .get(key)
             .and_then(|x| Decode::decode(&mut &x[..]).ok())
             .unwrap_or_default()
+    }
+
+    pub fn storage_remove(&self, key: &[u8]) {
+        self.offchain_state
+            .write()
+            .persistent_storage
+            .remove(b"", key);
     }
 
     pub fn pending_txs(&self) -> BTreeMap<H256, SignedTransactionData<Runtime>> {
