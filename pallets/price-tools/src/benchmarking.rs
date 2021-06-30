@@ -43,7 +43,8 @@ use sp_core::H256;
 use sp_io::hashing::blake2_256;
 use sp_std::prelude::*;
 
-use common::{AssetName, AssetSymbol, DEXId, XOR};
+use common::prelude::SwapAmount;
+use common::{AssetName, AssetSymbol, DEXId, LiquiditySource, XOR};
 
 use crate::Pallet as PriceTools;
 use assets::Pallet as Assets;
@@ -100,7 +101,24 @@ fn prepare_secondary_market<T: Config>(n: u32) {
         PriceTools::<T>::register_asset(&asset).unwrap();
     }
     for _ in 1..=crate::AVG_BLOCK_SPAN {
+        for i in 0..n {
+            let asset = create_asset::<T>(b"asset".to_vec(), i.into());
+            T::Currency::deposit(XOR.into(), &caller, balance!(1)).unwrap();
+            XYKPool::<T>::exchange(
+                &caller.clone(),
+                &caller.clone(),
+                &DEX.into(),
+                &XOR.into(),
+                &asset,
+                SwapAmount::WithDesiredInput {
+                    desired_amount_in: balance!(1),
+                    min_amount_out: balance!(0),
+                },
+            )
+            .unwrap();
+        }
         PriceTools::<T>::average_prices_calculation_routine();
+        // after last recalculation there is no exchange, such that price state is considered unmodified
     }
 }
 
@@ -115,12 +133,21 @@ benchmarks! {
     on_initialize {
         let n in 0 .. 10 => prepare_secondary_market::<T>(n);
         let m in 0 .. 10 => force_reserves_changed::<T>(m);
-        let caller = alice::<T>();
+        let asset = create_asset::<T>(b"asset".to_vec(), 0);
+        let mut infos_before = Vec::new();
+        for i in 0..n {
+            let asset = create_asset::<T>(b"asset".to_vec(), i.into());
+            assert!(crate::PriceInfos::<T>::get(&asset).is_some());
+            infos_before.push(crate::PriceInfos::<T>::get(&asset).unwrap().average_price);
+        }
     }: {
         PriceTools::<T>::average_prices_calculation_routine();
     }
     verify {
-        // different behaviour in test and runtime, execution success of routine is sufficient for check
+        for i in 0..n {
+            let asset = create_asset::<T>(b"asset".to_vec(), i.into());
+            assert!(infos_before.get(i as usize).unwrap() != &crate::PriceInfos::<T>::get(&asset).unwrap().average_price);
+        }
     }
 }
 
