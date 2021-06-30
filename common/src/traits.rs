@@ -554,3 +554,14 @@ where
         B::on_pool_created(fee_account, dex_id, pool_account)
     }
 }
+
+pub trait OnPoolReservesChanged<AssetId> {
+    // Reserves of given pool has either changed proportion or volume.
+    fn reserves_changed(target_asset_id: &AssetId);
+}
+
+impl<AssetId> OnPoolReservesChanged<AssetId> for () {
+    fn reserves_changed(_: &AssetId) {
+        // do nothing
+    }
+}

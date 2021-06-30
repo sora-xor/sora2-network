@@ -41,8 +41,8 @@ use sp_std::vec::Vec;
 use common::prelude::{Balance, EnsureDEXManager, SwapAmount, SwapOutcome};
 use common::{
     balance, EnsureTradingPairExists, FromGenericPair, GetPoolReserves, LiquiditySource,
-    LiquiditySourceType, ManagementMode, PoolXykPallet, RewardReason, TechAccountId, TechPurpose,
-    ToFeeAccount, TradingPair,
+    LiquiditySourceType, ManagementMode, OnPoolReservesChanged, PoolXykPallet, RewardReason,
+    TechAccountId, TechPurpose, ToFeeAccount, TradingPair,
 };
 use orml_traits::currency::MultiCurrency;
 
@@ -142,8 +142,10 @@ impl<T: Config> Module<T> {
         let base_asset_id: T::AssetId = T::GetBaseAssetId::get();
         if base_asset_id == asset_a.clone() {
             Reserves::<T>::insert(asset_a, asset_b, (balance_pair.0, balance_pair.1));
+            T::OnPoolReservesChanged::reserves_changed(asset_b);
         } else if base_asset_id == asset_b.clone() {
             Reserves::<T>::insert(asset_b, asset_a, (balance_pair.1, balance_pair.0));
+            T::OnPoolReservesChanged::reserves_changed(asset_a);
         } else {
             let hash_key = common::comm_merkle_op(asset_a, asset_b);
             let (pair_u, pair_v) = common::sort_with_hash_key(
@@ -152,6 +154,8 @@ impl<T: Config> Module<T> {
                 (asset_b, balance_pair.1),
             );
             Reserves::<T>::insert(pair_u.0, pair_v.0, (pair_u.1, pair_v.1));
+            T::OnPoolReservesChanged::reserves_changed(asset_a);
+            T::OnPoolReservesChanged::reserves_changed(asset_b);
         }
     }
 
@@ -470,6 +474,7 @@ pub mod pallet {
         type EnsureDEXManager: EnsureDEXManager<Self::DEXId, Self::AccountId, DispatchError>;
         type GetFee: Get<Fixed>;
         type OnPoolCreated: OnPoolCreated<AccountId = AccountIdOf<Self>, DEXId = DEXIdOf<Self>>;
+        type OnPoolReservesChanged: OnPoolReservesChanged<Self::AssetId>;
         /// Weight information for extrinsics in this pallet.
         type WeightInfo: WeightInfo;
     }
