@@ -39,7 +39,7 @@ use pool_xyk::*;
 
 use codec::Decode;
 use common::prelude::{Balance, SwapAmount};
-use common::{balance, AssetName, AssetSymbol, DEXId, DOT, XOR};
+use common::{balance, AssetName, AssetSymbol, DEXId, LiquiditySource, DOT, XOR};
 use frame_benchmarking::benchmarks;
 use frame_system::RawOrigin;
 use hex_literal::hex;
@@ -185,7 +185,7 @@ fn setup_benchmark<T: Config>() -> Result<(), &'static str> {
 
 benchmarks! {
     swap_pair {
-        let n in 1 .. 1000 => setup_benchmark::<T>()?;
+        setup_benchmark::<T>()?;
         let caller = alice::<T>();
         let amount = SwapAmount::WithDesiredInput {
             desired_amount_in: balance!(1000),
@@ -212,8 +212,26 @@ benchmarks! {
         );
     }
 
+    quote {
+        setup_benchmark::<T>()?;
+        let amount = SwapAmount::WithDesiredInput {
+            desired_amount_in: balance!(1000),
+            min_amount_out: balance!(0),
+        };
+    }: {
+        Pallet::<T>::quote(
+            &DEX.into(),
+            &XOR.into(),
+            &DOT.into(),
+            amount.clone()
+        ).unwrap()
+    }
+    verify {
+        // can't check, nothing is changed
+    }
+
     deposit_liquidity {
-        let n in 1 .. 1000 => setup_benchmark::<T>()?;
+        setup_benchmark::<T>()?;
         let caller = alice::<T>();
         let initial_xor_balance = Assets::<T>::free_balance(&XOR.into(), &caller).unwrap();
         let initial_dot_balance = Assets::<T>::free_balance(&DOT.into(), &caller).unwrap();
@@ -239,7 +257,7 @@ benchmarks! {
     }
 
     withdraw_liquidity {
-        let n in 1 .. 1000 => setup_benchmark::<T>()?;
+        setup_benchmark::<T>()?;
         let caller = alice::<T>();
         let initial_xor_balance = Assets::<T>::free_balance(&XOR.into(), &caller).unwrap();
         let initial_dot_balance = Assets::<T>::free_balance(&DOT.into(), &caller).unwrap();
@@ -265,7 +283,7 @@ benchmarks! {
     }
 
     initialize_pool {
-        let n in 1 .. 1000 => setup_benchmark_assets_only::<T>()?;
+        setup_benchmark_assets_only::<T>()?;
         let caller = alice::<T>();
     }: _(
         RawOrigin::Signed(caller.clone()),
