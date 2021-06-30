@@ -31,13 +31,12 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use common::prelude::SwapAmount;
-use common::{Balance, FilterMode, LiquiditySourceFilter, LiquiditySourceType};
+use common::{Balance, FilterMode, LiquiditySourceFilter, LiquiditySourceType, OnValBurned};
 use frame_support::pallet_prelude::InvalidTransaction;
 use frame_support::traits::{Currency, ExistenceRequirement, Get, Imbalance, Vec, WithdrawReasons};
 use frame_support::unsigned::TransactionValidityError;
 use frame_support::weights::{DispatchInfo, GetDispatchInfo, Pays};
 use liquidity_proxy::LiquidityProxyTrait;
-use pallet_staking::ValBurnedNotifier;
 use pallet_transaction_payment::{
     FeeDetails, InclusionFee, OnChargeTransaction, RuntimeDispatchInfo,
 };
@@ -447,7 +446,7 @@ impl<T: Config> Pallet<T> {
         ) {
             Ok(swap_outcome) => {
                 let val_to_burn = Balance::from(swap_outcome.amount);
-                T::ValBurnedNotifier::notify_val_burned(val_to_burn.clone());
+                T::OnValBurned::on_val_burned(val_to_burn.clone());
 
                 let val_to_burn = val_to_burn.clone() - T::SoraParliamentShare::get() * val_to_burn;
                 Assets::<T>::burn_from(&val, &parliament, &parliament, val_to_burn)?;
@@ -494,7 +493,7 @@ pub mod pallet {
         type SoraParliamentShare: Get<Percent>;
         type DEXIdValue: Get<Self::DEXId>;
         type LiquidityProxy: LiquidityProxyTrait<Self::DEXId, Self::AccountId, Self::AssetId>;
-        type ValBurnedNotifier: ValBurnedNotifier<Balance>;
+        type OnValBurned: OnValBurned;
         type CustomFees: ApplyCustomFees<CallOf<Self>>;
         type GetTechnicalAccountId: Get<Self::AccountId>;
         type GetParliamentAccountId: Get<Self::AccountId>;
