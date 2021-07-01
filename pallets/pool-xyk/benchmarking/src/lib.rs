@@ -65,6 +65,7 @@ fn alice<T: Config>() -> T::AccountId {
 
 fn setup_benchmark_assets_only<T: Config>() -> Result<(), &'static str> {
     let owner = alice::<T>();
+    frame_system::Module::<T>::inc_providers(&owner);
     let owner_origin: <T as frame_system::Config>::Origin = RawOrigin::Signed(owner.clone()).into();
 
     // Grant permissions to self in case they haven't been explicitly given in genesis config
@@ -98,9 +99,10 @@ fn setup_benchmark_assets_only<T: Config>() -> Result<(), &'static str> {
         18,
         Balance::from(0u32),
         true,
-    );
+    )
+    .unwrap();
 
-    TradingPair::<T>::register(owner_origin.clone(), DEX.into(), XOR.into(), DOT.into())?;
+    TradingPair::<T>::register(owner_origin.clone(), DEX.into(), XOR.into(), DOT.into()).unwrap();
 
     Assets::<T>::mint_to(&XOR.into(), &owner.clone(), &owner.clone(), balance!(50000))?;
     Assets::<T>::mint_to(&DOT.into(), &owner.clone(), &owner.clone(), balance!(50000))?;
@@ -110,6 +112,7 @@ fn setup_benchmark_assets_only<T: Config>() -> Result<(), &'static str> {
 
 fn setup_benchmark<T: Config>() -> Result<(), &'static str> {
     let owner = alice::<T>();
+    frame_system::Module::<T>::inc_providers(&owner);
     let owner_origin: <T as frame_system::Config>::Origin = RawOrigin::Signed(owner.clone()).into();
 
     setup_benchmark_assets_only::<T>()?;
@@ -140,14 +143,15 @@ benchmarks! {
         };
         let initial_base_balance = Assets::<T>::free_balance(&XOR.into(), &caller).unwrap();
         let initial_target_balance = Assets::<T>::free_balance(&DOT.into(), &caller).unwrap();
-    }: _(
-        RawOrigin::Signed(caller.clone()),
+    }: {
+        pool_xyk::Module::<T>::swap_pair(RawOrigin::Signed(caller.clone()).into(),
         caller.clone(),
         DEX.into(),
         XOR.into(),
         DOT.into(),
         amount.clone()
-    )
+    ).unwrap();
+}
     verify {
         assert_eq!(
             Into::<u128>::into(Assets::<T>::free_balance(&XOR.into(), &caller).unwrap()),
@@ -218,7 +222,7 @@ benchmarks! {
     }
 
     withdraw_liquidity {
-        setup_benchmark::<T>()?;
+        setup_benchmark::<T>().unwrap();
         let caller = alice::<T>();
         let initial_xor_balance = Assets::<T>::free_balance(&XOR.into(), &caller).unwrap();
         let initial_dot_balance = Assets::<T>::free_balance(&DOT.into(), &caller).unwrap();

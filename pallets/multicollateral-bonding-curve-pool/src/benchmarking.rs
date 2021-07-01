@@ -67,39 +67,24 @@ fn assert_last_event<T: Config>(generic_event: <T as Config>::Event) {
 
 fn setup_benchmark<T: Config>() -> Result<(), &'static str> {
     let owner = alice::<T>();
+    frame_system::Module::<T>::inc_providers(&owner);
     let owner_origin: <T as frame_system::Config>::Origin = RawOrigin::Signed(owner.clone()).into();
 
     // Grant permissions to self in case they haven't been explicitly given in genesis config
-    let _ = Permissions::<T>::assign_permission(
+    Permissions::<T>::assign_permission(
         owner.clone(),
         &owner,
         permissions::MINT,
         permissions::Scope::Unlimited,
-    );
-    let _ = Permissions::<T>::assign_permission(
+    )
+    .unwrap();
+    Permissions::<T>::assign_permission(
         owner.clone(),
         &owner,
         permissions::BURN,
         permissions::Scope::Unlimited,
-    );
-    let _ = Assets::<T>::register_asset_id(
-        owner.clone(),
-        DAI.into(),
-        AssetSymbol(b"TESTDAI".to_vec()),
-        AssetName(b"DAI".to_vec()),
-        18,
-        Balance::zero(),
-        true,
-    );
-    let _ = Assets::<T>::register_asset_id(
-        owner.clone(),
-        VAL.into(),
-        AssetSymbol(b"TESTVAL".to_vec()),
-        AssetName(b"DOT".to_vec()),
-        18,
-        Balance::zero(),
-        true,
-    );
+    )
+    .unwrap();
     Assets::<T>::mint_to(&XOR.into(), &owner.clone(), &owner.clone(), balance!(5000)).unwrap();
     Assets::<T>::mint_to(
         &DAI.into(),
@@ -116,11 +101,10 @@ fn setup_benchmark<T: Config>() -> Result<(), &'static str> {
     )
     .unwrap();
 
-    let _ = TradingPair::<T>::register(owner_origin.clone(), DEX.into(), XOR.into(), DAI.into());
-    let _ = TradingPair::<T>::register(owner_origin.clone(), DEX.into(), XOR.into(), VAL.into());
-
-    XYKPool::<T>::initialize_pool(owner_origin.clone(), DEX.into(), XOR.into(), DAI.into())?;
-    XYKPool::<T>::initialize_pool(owner_origin.clone(), DEX.into(), XOR.into(), VAL.into())?;
+    XYKPool::<T>::initialize_pool(owner_origin.clone(), DEX.into(), XOR.into(), DAI.into())
+        .unwrap();
+    XYKPool::<T>::initialize_pool(owner_origin.clone(), DEX.into(), XOR.into(), VAL.into())
+        .unwrap();
 
     XYKPool::<T>::deposit_liquidity(
         owner_origin.clone(),
@@ -131,7 +115,8 @@ fn setup_benchmark<T: Config>() -> Result<(), &'static str> {
         balance!(2000),
         balance!(0),
         balance!(0),
-    )?;
+    )
+    .unwrap();
     XYKPool::<T>::deposit_liquidity(
         owner_origin.clone(),
         DEX.into(),
@@ -141,7 +126,8 @@ fn setup_benchmark<T: Config>() -> Result<(), &'static str> {
         balance!(2000),
         balance!(0),
         balance!(0),
-    )?;
+    )
+    .unwrap();
 
     Ok(())
 }
@@ -157,6 +143,7 @@ fn add_pending<T: Config>(n: u32) {
 benchmarks! {
     initialize_pool {
         let caller = alice::<T>();
+        frame_system::Module::<T>::inc_providers(&caller);
         let dex_id: T::DEXId = common::DEXId::Polkaswap.into();
         Permissions::<T>::assign_permission(
             caller.clone(),
@@ -164,18 +151,21 @@ benchmarks! {
             permissions::MANAGE_DEX,
             permissions::Scope::Limited(common::hash(&dex_id)),
         ).unwrap();
-        let _ = Assets::<T>::register_asset_id(caller.clone(), USDT.into(), AssetSymbol(b"TESTUSD".to_vec()), AssetName(b"USD".to_vec()), 18, Balance::zero(), true);
+        Assets::<T>::register_asset_id(caller.clone(), USDT.into(), AssetSymbol(b"TESTUSD".to_vec()), AssetName(b"USD".to_vec()), 18, Balance::zero(), true).unwrap();
         TradingPair::<T>::register(RawOrigin::Signed(caller.clone()).into(), common::DEXId::Polkaswap.into(), XOR.into(), USDT.into()).unwrap();
-    }: _(
-        RawOrigin::Signed(caller.clone()),
-        USDT.into()
-    )
+    }: {
+        Module::<T>::initialize_pool(
+            RawOrigin::Signed(caller.clone()).into(),
+            USDT.into()
+        ).unwrap();
+    }
     verify {
         assert_last_event::<T>(Event::PoolInitialized(common::DEXId::Polkaswap.into(), USDT.into()).into())
     }
 
     set_reference_asset {
         let caller = alice::<T>();
+        frame_system::Module::<T>::inc_providers(&caller);
         let dex_id: T::DEXId = common::DEXId::Polkaswap.into();
         Permissions::<T>::assign_permission(
             caller.clone(),
@@ -183,17 +173,20 @@ benchmarks! {
             permissions::MANAGE_DEX,
             permissions::Scope::Limited(common::hash(&dex_id)),
         ).unwrap();
-        let _ = Assets::<T>::register_asset_id(caller.clone(), USDT.into(), AssetSymbol(b"TESTUSD".to_vec()), AssetName(b"USD".to_vec()), 18, Balance::zero(), true);
-    }: _(
-        RawOrigin::Signed(caller.clone()),
-        USDT.into()
-    )
+        Assets::<T>::register_asset_id(caller.clone(), USDT.into(), AssetSymbol(b"TESTUSD".to_vec()), AssetName(b"USD".to_vec()), 18, Balance::zero(), true).unwrap();
+    }: {
+        Module::<T>::set_reference_asset(
+            RawOrigin::Signed(caller.clone()).into(),
+            USDT.into()
+        ).unwrap();
+    }
     verify {
         assert_last_event::<T>(Event::ReferenceAssetChanged(USDT.into()).into())
     }
 
     set_optional_reward_multiplier {
         let caller = alice::<T>();
+        frame_system::Module::<T>::inc_providers(&caller);
         let dex_id: T::DEXId = common::DEXId::Polkaswap.into();
         Permissions::<T>::assign_permission(
             caller.clone(),
@@ -201,21 +194,24 @@ benchmarks! {
             permissions::MANAGE_DEX,
             permissions::Scope::Limited(common::hash(&dex_id)),
         ).unwrap();
-        let _ = Assets::<T>::register_asset_id(caller.clone(), USDT.into(), AssetSymbol(b"TESTUSD".to_vec()), AssetName(b"USD".to_vec()), 18, Balance::zero(), true);
+        Assets::<T>::register_asset_id(caller.clone(), USDT.into(), AssetSymbol(b"TESTUSD".to_vec()), AssetName(b"USD".to_vec()), 18, Balance::zero(), true).unwrap();
         TradingPair::<T>::register(RawOrigin::Signed(caller.clone()).into(), common::DEXId::Polkaswap.into(), XOR.into(), USDT.into()).unwrap();
         MBCPool::<T>::initialize_pool(RawOrigin::Signed(caller.clone()).into(), USDT.into()).unwrap();
-    }: _(
-        RawOrigin::Signed(caller.clone()),
-        USDT.into(),
-        Some(fixed!(123))
-    )
+    }: {
+        Module::<T>::set_optional_reward_multiplier(
+            RawOrigin::Signed(caller.clone()).into(),
+            USDT.into(),
+            Some(fixed!(123))
+        ).unwrap();
+    }
     verify {
         assert_last_event::<T>(Event::OptionalRewardMultiplierUpdated(USDT.into(), Some(fixed!(123))).into())
     }
 
     on_initialize {
-        let _ = setup_benchmark::<T>();
-        let n in 0 .. 10 => add_pending::<T>(n);
+        let n in 0 .. 10;
+        setup_benchmark::<T>().unwrap();
+        add_pending::<T>(n);
     }: {
         Pallet::<T>::on_initialize(crate::RETRY_DISTRIBUTION_FREQUENCY.into());
     }

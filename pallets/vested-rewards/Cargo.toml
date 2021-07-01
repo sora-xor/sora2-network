@@ -5,7 +5,7 @@ license = "BSD-4-Clause"
 homepage = 'https://sora.org'
 repository = 'https://github.com/sora-xor/sora2-network'
 name = 'vested-rewards'
-version = '0.2.0'
+version = '1.1.0'
 
 [package.metadata.docs.rs]
 targets = ['x86_64-unknown-linux-gnu']
@@ -15,6 +15,7 @@ codec = { package = "parity-scale-codec", version = "2", default-features = fals
 currencies = { version = "0.4", package = "orml-currencies", default-features = false }
 frame-support = { version = "3", default-features = false }
 frame-system = { version = "3", default-features = false }
+frame-benchmarking = { version = "3", default-features = false, optional = true }
 hex-literal = { version = "0.3.1", optional = true }
 serde = { version = "1.0.101", optional = true, features = ["derive"], default-features = false }
 sp-core = { version = "3", default-features = false }
@@ -27,6 +28,7 @@ common = { path = "../../common", default-features = false }
 dex-manager = { path = "../dex-manager", default-features = false }
 sp-runtime = { version = "3", default-features = false }
 multicollateral-bonding-curve-pool = { path = "../multicollateral-bonding-curve-pool", default-features = false }
+technical = { path = "../technical", optional =  true, default-features = false }
 
 [dev-dependencies]
 pallet-balances = { version = "3"}
@@ -55,4 +57,11 @@ std = [
     'traits/std',
     'sp-runtime/std',
     'multicollateral-bonding-curve-pool/std',
+]
+runtime-benchmarks = [
+    "frame-benchmarking",
+    "frame-system/runtime-benchmarks",
+    "frame-support/runtime-benchmarks",
+    "hex-literal",
+    "technical",
 ]

@@ -135,7 +135,7 @@ fn trying_to_add_market_maker_entry_no_side_effect() {
 }
 
 #[test]
-fn migration_v0_1_0_to_v0_2_0() {
+fn migration_v0_1_0_to_v1_1_0_bonding_curve() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
         use crate::{Rewards as VRewards, TotalRewards as VTotalRewards};
@@ -234,6 +234,100 @@ fn migration_v0_1_0_to_v0_2_0() {
         assert_eq!(
             VTotalRewards::<Runtime>::get(),
             balance!(680) + balance!(68) + balance!(6.8)
+        );
+    });
+}
+
+#[test]
+fn migration_v0_1_0_to_v1_1_0_market_makers() {
+    let mut ext = ExtBuilder::default().build();
+    ext.execute_with(|| {
+        use crate::{MarketMakersRegistry, Rewards};
+
+        MarketMakersRegistry::<Runtime>::insert(
+            alice(),
+            MarketMakerInfo {
+                count: 1000,
+                volume: balance!(10000),
+            },
+        );
+        MarketMakersRegistry::<Runtime>::insert(
+            bob(),
+            MarketMakerInfo {
+                count: 2000,
+                volume: balance!(20000),
+            },
+        );
+        MarketMakersRegistry::<Runtime>::insert(
+            eve(),
+            MarketMakerInfo {
+                count: 3000,
+                volume: balance!(30000),
+            },
+        );
+
+        let snapshot = vec![
+            (alice(), 1000, balance!(10000)),
+            (bob(), 1500, balance!(15000)),
+        ];
+
+        crate::migration::inject_market_makers_first_month_rewards::<Runtime>(snapshot);
+
+        // completely depleted
+        assert_eq!(
+            MarketMakersRegistry::<Runtime>::get(alice()),
+            MarketMakerInfo {
+                count: 0,
+                volume: balance!(0)
+            }
+        );
+        // partially depleted
+        assert_eq!(
+            MarketMakersRegistry::<Runtime>::get(bob()),
+            MarketMakerInfo {
+                count: 500,
+                volume: balance!(5000)
+            }
+        );
+        // untouched
+        assert_eq!(
+            MarketMakersRegistry::<Runtime>::get(eve()),
+            MarketMakerInfo {
+                count: 3000,
+                volume: balance!(30000)
+            }
+        );
+
+        // migrated accounts share 20M PSWAP according to their owned amounts
+        assert_eq!(
+            Rewards::<Runtime>::get(alice()),
+            RewardInfo {
+                limit: 0,
+                total_available: balance!(8000000),
+                rewards: [(RewardReason::MarketMakerVolume, balance!(8000000))]
+                    .iter()
+                    .cloned()
+                    .collect()
+            }
+        );
+        assert_eq!(
+            Rewards::<Runtime>::get(bob()),
+            RewardInfo {
+                limit: 0,
+                total_available: balance!(12000000),
+                rewards: [(RewardReason::MarketMakerVolume, balance!(12000000))]
+                    .iter()
+                    .cloned()
+                    .collect()
+            }
+        );
+        assert_eq!(
+            Rewards::<Runtime>::get(eve()),
+            RewardInfo {
+                limit: 0,
+                total_available: balance!(0),
+                rewards: Default::default()
+            }
         );
     });
 }

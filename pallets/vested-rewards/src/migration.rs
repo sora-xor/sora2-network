@@ -28,22 +28,26 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use crate::{Config, Pallet, RewardInfo, Weight};
-use common::prelude::Balance;
-use common::{fixed_wrapper, RewardReason};
+use crate::{
+    Config, MarketMakersRegistry, Pallet, RewardInfo, Weight, MARKET_MAKER_ELIGIBILITY_TX_COUNT,
+    SINGLE_MARKET_MAKER_DISTRIBUTION_AMOUNT,
+};
+use common::prelude::{Balance, FixedWrapper};
+use common::{balance, fixed_wrapper, RewardReason};
 use frame_support::debug;
 use frame_support::traits::{Get, GetPalletVersion, PalletVersion};
 use sp_runtime::traits::Zero;
+use sp_std::vec::Vec;
 
 pub fn migrate<T: Config>() -> Weight {
     let mut weight: Weight = 0;
 
     match Pallet::<T>::storage_version() {
         // Initial version is 0.1.0 which has unutilized rewards storage
-        // Version 0.2.0 converts and moves rewards from multicollateral-bonding-curve-pool
+        // Version 1.1.0 converts and moves rewards from multicollateral-bonding-curve-pool
         Some(version) if version == PalletVersion::new(0, 1, 0) => {
             let migrated_weight = migrate_rewards_from_tbc::<T>().unwrap_or(100_000);
-            weight = weight.saturating_add(migrated_weight)
+            weight = weight.saturating_add(migrated_weight);
         }
         _ => (),
     }
@@ -98,4 +102,47 @@ pub fn migrate_rewards_from_tbc<T: Config>() -> Option<Weight> {
     }
 
     Some(weight)
+}
+
+pub fn inject_market_makers_first_month_rewards<T: Config>(
+    snapshot: Vec<(T::AccountId, u32, Balance)>,
+) -> Weight {
+    let mut weight: Weight = 0;
+
+    let mut eligible_accounts = Vec::new();
+    let mut total_eligible_volume = balance!(0);
+    for (account_id, count, volume) in snapshot {
+        let account_id: T::AccountId = account_id.into();
+        if count >= MARKET_MAKER_ELIGIBILITY_TX_COUNT {
+            eligible_accounts.push((account_id.clone(), volume));
+            total_eligible_volume = total_eligible_volume.saturating_add(volume);
+        }
+        MarketMakersRegistry::<T>::mutate(&account_id, |val| {
+            val.count = val.count.saturating_sub(count);
+            val.volume = val.volume.saturating_sub(volume);
+        });
+        weight = weight.saturating_add(T::DbWeight::get().writes(1));
+    }
+    if total_eligible_volume > 0 {
+        for (account, volume) in eligible_accounts.iter() {
+            let reward = (FixedWrapper::from(*volume)
+                * FixedWrapper::from(SINGLE_MARKET_MAKER_DISTRIBUTION_AMOUNT)
+                / FixedWrapper::from(total_eligible_volume))
+            .try_into_balance()
+            .unwrap_or(0);
+            if reward > 0 {
+                let res = Pallet::<T>::add_pending_reward(
+                    account,
+                    RewardReason::MarketMakerVolume,
+                    reward,
+                );
+                if res.is_err() {
+                    debug::error!(target: "runtime", "Failed to add mm reward for account: {:?}", account);
+                }
+                weight = weight.saturating_add(T::DbWeight::get().writes(2));
+            }
+        }
+    }
+
+    weight
 }

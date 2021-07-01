@@ -61,7 +61,7 @@ use serde::{Serialize, Serializer};
 use sp_api::impl_runtime_apis;
 use sp_core::crypto::KeyTypeId;
 use sp_core::u32_trait::{_1, _2, _3};
-use sp_core::{Encode, OpaqueMetadata};
+use sp_core::{Encode, OpaqueMetadata, H160};
 use sp_runtime::traits::{
     BlakeTwo256, Block as BlockT, Convert, IdentifyAccount, IdentityLookup, NumberFor, OpaqueKeys,
     SaturatedConversion, Verify, Zero,
@@ -90,7 +90,7 @@ pub use common::weights::{BlockLength, BlockWeights, TransactionByteFee};
 pub use common::{
     balance, fixed, fixed_from_basis_points, AssetName, AssetSymbol, BalancePrecision, BasisPoints,
     FilterMode, Fixed, FromGenericPair, LiquiditySource, LiquiditySourceFilter, LiquiditySourceId,
-    LiquiditySourceType, OnPswapBurned,
+    LiquiditySourceType, OnPswapBurned, OnValBurned,
 };
 pub use frame_support::traits::schedule::Named as ScheduleNamed;
 pub use frame_support::traits::{
@@ -114,6 +114,7 @@ use eth_bridge::{
 };
 use impls::{CollectiveWeightInfo, DemocracyWeightInfo, OnUnbalancedDemocracySlash};
 
+use frame_support::traits::Get;
 pub use {
     assets, bonding_curve_pool, eth_bridge, frame_system, multicollateral_bonding_curve_pool,
 };
@@ -292,7 +293,7 @@ parameter_types! {
     pub const ElectionsDesiredMembers: u32 = 13;
     pub const ElectionsDesiredRunnersUp: u32 = 20;
     pub const ElectionsModuleId: LockIdentifier = *b"phrelect";
-    pub FarmingRewardDoublingAssets: Vec<AssetId> = vec![GetPswapAssetId::get(), GetValAssetId::get()];
+    pub FarmingRewardDoublingAssets: Vec<AssetId> = vec![GetPswapAssetId::get(), GetValAssetId::get(), GetDaiAssetId::get(), GetEthAssetId::get()];
 }
 
 impl frame_system::Config for Runtime {
@@ -486,7 +487,7 @@ impl pallet_timestamp::Config for Runtime {
 }
 
 impl pallet_session::Config for Runtime {
-    type SessionManager = pallet_session::historical::NoteHistoricalRoot<Self, Staking>;
+    type SessionManager = pallet_session::historical::NoteHistoricalRoot<Self, XorFee>;
     type Keys = opaque::SessionKeys;
     type ShouldEndSession = Babe;
     type SessionHandler = <opaque::SessionKeys as OpaqueKeys>::KeyTypeIdProviders;
@@ -591,6 +592,8 @@ parameter_types! {
     pub const GetUsdAssetId: AssetId = common::AssetId32::from_bytes(hex!("0200030000000000000000000000000000000000000000000000000000000000"));
     pub const GetValAssetId: AssetId = common::AssetId32::from_bytes(hex!("0200040000000000000000000000000000000000000000000000000000000000"));
     pub const GetPswapAssetId: AssetId = common::AssetId32::from_bytes(hex!("0200050000000000000000000000000000000000000000000000000000000000"));
+    pub const GetDaiAssetId: AssetId = common::AssetId32::from_bytes(hex!("0200060000000000000000000000000000000000000000000000000000000000"));
+    pub const GetEthAssetId: AssetId = common::AssetId32::from_bytes(hex!("0200070000000000000000000000000000000000000000000000000000000000"));
 
     pub const GetBaseAssetId: AssetId = GetXorAssetId::get();
     pub const GetTeamReservesAccountId: AccountId = AccountId::new(hex!("feb92c0acb61f75309730290db5cbe8ac9b46db7ad6f3bbb26a550a73586ea71"));
@@ -843,6 +846,11 @@ where
 impl referral_system::Config for Runtime {}
 
 impl rewards::Config for Runtime {
+    const BLOCKS_PER_DAY: BlockNumber = 1 * DAYS;
+    const UPDATE_FREQUENCY: BlockNumber = 10 * MINUTES;
+    const MAX_CHUNK_SIZE: usize = 100;
+    const MAX_VESTING_RATIO: Percent = Percent::from_percent(55);
+    const TIME_TO_SATURATION: BlockNumber = 5 * 365 * DAYS; // 5 years
     type Event = Event;
     type WeightInfo = rewards::weights::WeightInfo<Runtime>;
 }
@@ -903,6 +911,18 @@ impl xor_fee::ExtractProxySwap for Call {
     }
 }
 
+pub struct ValBurnedAggregator<T>(sp_std::marker::PhantomData<T>);
+
+impl<T> OnValBurned for ValBurnedAggregator<T>
+where
+    T: pallet_staking::ValBurnedNotifier<Balance>,
+{
+    fn on_val_burned(amount: Balance) {
+        Rewards::on_val_burned(amount);
+        T::notify_val_burned(amount);
+    }
+}
+
 parameter_types! {
     pub const DEXIdValue: DEXId = 0;
 }
@@ -919,10 +939,11 @@ impl xor_fee::Config for Runtime {
     type ValId = GetValAssetId;
     type DEXIdValue = DEXIdValue;
     type LiquidityProxy = LiquidityProxy;
-    type ValBurnedNotifier = Staking;
+    type OnValBurned = ValBurnedAggregator<Staking>;
     type CustomFees = ExtrinsicsFlatFees;
     type GetTechnicalAccountId = GetXorFeeAccountId;
     type GetParliamentAccountId = GetParliamentAccountId;
+    type SessionManager = Staking;
 }
 
 pub struct ConstantFeeMultiplier;
@@ -985,17 +1006,98 @@ impl bridge_multisig::Config for Runtime {
 
 parameter_types! {
     pub const EthNetworkId: u32 = 0;
-    pub const RemoveTemporaryPeerAccountId: AccountId = AccountId::new(hex!("614e20b93522be9874e48f1e18b9bf2dfd4cdc4dafc1887ca353d544c92526cc"));
+}
+
+pub struct RemoveTemporaryPeerAccountIds;
+
+#[cfg(feature = "private-net")]
+impl Get<Vec<(AccountId, H160)>> for RemoveTemporaryPeerAccountIds {
+    fn get() -> Vec<(AccountId, H160)> {
+        vec![
+            // Dev
+            (
+                AccountId::new(hex!(
+                    "aa79aa80b94b1cfba69c4a7d60eeb7b469e6411d1f686cc61de8adc8b1b76a69"
+                )),
+                H160(hex!("f858c8366f3a2553516a47f3e0503a85ef93bbba")),
+            ),
+            (
+                AccountId::new(hex!(
+                    "60dc5adadc262770cbe904e3f65a26a89d46b70447640cd7968b49ddf5a459bc"
+                )),
+                H160(hex!("ccd7fe44d58640dc79c55b98f8c3474646e5ea2b")),
+            ),
+            (
+                AccountId::new(hex!(
+                    "70d61e980602e09ac8b5fb50658ebd345774e73b8248d3b61862ba1a9a035082"
+                )),
+                H160(hex!("13d26a91f791e884fe6faa7391c4ef401638baa4")),
+            ),
+            (
+                AccountId::new(hex!(
+                    "05918034f4a7f7c5d99cd0382aa6574ec2aba148aa3d769e50e0ac7663e36d58"
+                )),
+                H160(hex!("aa19829ae887212206be8e97ea47d8fed2120d4e")),
+            ),
+            // Test
+            (
+                AccountId::new(hex!(
+                    "07f5670d08b8f3bd493ff829482a489d94494fd50dd506957e44e9fdc2e98684"
+                )),
+                H160(hex!("457d710255184dbf63c019ab50f65743c6cb072f")),
+            ),
+            (
+                AccountId::new(hex!(
+                    "211bb96e9f746183c05a1d583bccf513f9d8f679d6f36ecbd06609615a55b1cc"
+                )),
+                H160(hex!("6d04423c97e8ce36d04c9b614926ce0d029d04df")),
+            ),
+            (
+                AccountId::new(hex!(
+                    "ef3139b81d14977d5bf6b4a3994872337dfc1d2af2069a058bc26123a3ed1a5c"
+                )),
+                H160(hex!("e34022904b1ab539729cc7b5bfa5c8a74b165e80")),
+            ),
+            (
+                AccountId::new(hex!(
+                    "71124b336fbf3777d743d4390acce6be1cf5e0781e40c51d4cf2e5b5fd8e41e1"
+                )),
+                H160(hex!("ee74a5b5346915012d103cf1ccee288f25bcbc81")),
+            ),
+            // Stage
+            (
+                AccountId::new(hex!(
+                    "07f5670d08b8f3bd493ff829482a489d94494fd50dd506957e44e9fdc2e98684"
+                )),
+                H160(hex!("457d710255184dbf63c019ab50f65743c6cb072f")),
+            ),
+            (
+                AccountId::new(hex!(
+                    "211bb96e9f746183c05a1d583bccf513f9d8f679d6f36ecbd06609615a55b1cc"
+                )),
+                H160(hex!("6d04423c97e8ce36d04c9b614926ce0d029d04df")),
+            ),
+        ]
+    }
+}
+
+#[cfg(not(feature = "private-net"))]
+impl Get<Vec<(AccountId, H160)>> for RemoveTemporaryPeerAccountIds {
+    fn get() -> Vec<(AccountId, H160)> {
+        vec![] // the peer is already removed on main-net.
+    }
 }
 
 #[cfg(not(feature = "private-net"))]
 parameter_types! {
     pub const RemovePendingOutgoingRequestsAfter: BlockNumber = 1 * DAYS;
+    pub const TrackPendingIncomingRequestsAfter: (BlockNumber, u64) = (1 * DAYS, 12697214);
 }
 
 #[cfg(feature = "private-net")]
 parameter_types! {
     pub const RemovePendingOutgoingRequestsAfter: BlockNumber = 30 * MINUTES;
+    pub const TrackPendingIncomingRequestsAfter: (BlockNumber, u64) = (30 * MINUTES, 0);
 }
 
 pub type NetworkId = u32;
@@ -1008,7 +1110,10 @@ impl eth_bridge::Config for Runtime {
     type GetEthNetworkId = EthNetworkId;
     type WeightInfo = eth_bridge::weights::WeightInfo<Runtime>;
     type RemovePendingOutgoingRequestsAfter = RemovePendingOutgoingRequestsAfter;
-    type RemoveTemporaryPeerAccountId = RemoveTemporaryPeerAccountId;
+    type TrackPendingIncomingRequestsAfter = TrackPendingIncomingRequestsAfter;
+    type RemovePeerAccountIds = RemoveTemporaryPeerAccountIds;
+    type SchedulerOriginCaller = OriginCaller;
+    type Scheduler = Scheduler;
 }
 
 #[cfg(feature = "private-net")]
@@ -1482,6 +1587,7 @@ impl_runtime_apis! {
         LiquiditySourceType,
         SwapVariant,
     > for Runtime {
+        #[cfg_attr(not(feature = "private-net"), allow(unused))]
         fn quote(
             dex_id: DEXId,
             liquidity_source_type: LiquiditySourceType,
@@ -1490,18 +1596,26 @@ impl_runtime_apis! {
             desired_input_amount: BalanceWrapper,
             swap_variant: SwapVariant,
         ) -> Option<dex_runtime_api::SwapOutcomeInfo<Balance>> {
-            // TODO: remove with proper QuoteAmount refactor
-            let limit = if swap_variant == SwapVariant::WithDesiredInput {
-                Balance::zero()
-            } else {
-                Balance::max_value()
-            };
-            DEXAPI::quote(
-                &LiquiditySourceId::new(dex_id, liquidity_source_type),
-                &input_asset_id,
-                &output_asset_id,
-                SwapAmount::with_variant(swap_variant, desired_input_amount.into(), limit),
-            ).ok().map(|sa| dex_runtime_api::SwapOutcomeInfo::<Balance> { amount: sa.amount, fee: sa.fee})
+            #[cfg(feature = "private-net")]
+            {
+                // TODO: remove with proper QuoteAmount refactor
+                let limit = if swap_variant == SwapVariant::WithDesiredInput {
+                    Balance::zero()
+                } else {
+                    Balance::max_value()
+                };
+                DEXAPI::quote(
+                    &LiquiditySourceId::new(dex_id, liquidity_source_type),
+                    &input_asset_id,
+                    &output_asset_id,
+                    SwapAmount::with_variant(swap_variant, desired_input_amount.into(), limit),
+                ).ok().map(|sa| dex_runtime_api::SwapOutcomeInfo::<Balance> { amount: sa.amount, fee: sa.fee})
+            }
+            #[cfg(not(feature = "private-net"))]
+            {
+                // Mainnet should not be able to access liquidity source quote directly, to avoid arbitrage exploits.
+                None
+            }
         }
 
         fn can_exchange(
@@ -1867,11 +1981,13 @@ impl_runtime_apis! {
             use liquidity_proxy_benchmarking::Module as LiquidityProxyBench;
             use pool_xyk_benchmarking::Module as XYKPoolBench;
             use pswap_distribution_benchmarking::Module as PswapDistributionBench;
+            use xor_fee_benchmarking::Module as XorFeeBench;
 
             impl dex_api_benchmarking::Config for Runtime {}
             impl liquidity_proxy_benchmarking::Config for Runtime {}
             impl pool_xyk_benchmarking::Config for Runtime {}
             impl pswap_distribution_benchmarking::Config for Runtime {}
+            impl xor_fee_benchmarking::Config for Runtime {}
 
 
             let whitelist: Vec<TrackedStorageKey> = vec![
@@ -1905,6 +2021,9 @@ impl_runtime_apis! {
             add_benchmark!(params, batches, trading_pair, TradingPair);
             add_benchmark!(params, batches, pool_xyk, XYKPoolBench::<Runtime>);
             add_benchmark!(params, batches, eth_bridge, EthBridge);
+            add_benchmark!(params, batches, vested_rewards, VestedRewards);
+            add_benchmark!(params, batches, price_tools, PriceTools);
+            add_benchmark!(params, batches, xor_fee, XorFeeBench::<Runtime>);
 
             if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
             Ok(batches)

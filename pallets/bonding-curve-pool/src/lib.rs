@@ -42,7 +42,7 @@ use common::{balance, fixed, DEXId, LiquiditySource, USDT, VAL};
 use core::convert::TryInto;
 use frame_support::traits::Get;
 use frame_support::{ensure, fail};
-use permissions::{Scope, BURN, MINT, TRANSFER};
+use permissions::{Scope, BURN, MINT};
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 use sp_arithmetic::traits::Zero;
@@ -639,7 +639,7 @@ impl<T: Config> Module<T> {
         common::with_transaction(|| {
             ReservesAcc::<T>::set(account.clone());
             let account_id = Technical::<T>::tech_account_id_to_account_id(&account)?;
-            let permissions = [BURN, MINT, TRANSFER];
+            let permissions = [BURN, MINT];
             for permission in &permissions {
                 permissions::Module::<T>::assign_permission(
                     account_id.clone(),
