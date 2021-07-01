@@ -43,13 +43,11 @@ use common::{balance, AssetName, AssetSymbol, DEXId, LiquiditySource, DOT, XOR};
 use frame_benchmarking::benchmarks;
 use frame_system::RawOrigin;
 use hex_literal::hex;
-use permissions::{BURN, MINT};
 use sp_std::prelude::*;
 
 use assets::Module as Assets;
 use permissions::Module as Permissions;
 use pool_xyk::Module as XYKPool;
-use technical::Module as Technical;
 use trading_pair::Module as TradingPair;
 
 #[cfg(test)]
@@ -104,6 +102,9 @@ fn setup_benchmark_assets_only<T: Config>() -> Result<(), &'static str> {
 
     TradingPair::<T>::register(owner_origin.clone(), DEX.into(), XOR.into(), DOT.into())?;
 
+    Assets::<T>::mint_to(&XOR.into(), &owner.clone(), &owner.clone(), balance!(50000))?;
+    Assets::<T>::mint_to(&DOT.into(), &owner.clone(), &owner.clone(), balance!(50000))?;
+
     Ok(())
 }
 
@@ -111,74 +112,20 @@ fn setup_benchmark<T: Config>() -> Result<(), &'static str> {
     let owner = alice::<T>();
     let owner_origin: <T as frame_system::Config>::Origin = RawOrigin::Signed(owner.clone()).into();
 
-    // Grant permissions to self in case they haven't been explicitly given in genesis config
-    let _ = Permissions::<T>::assign_permission(
-        owner.clone(),
-        &owner,
-        permissions::MINT,
-        permissions::Scope::Unlimited,
-    );
-    let _ = Permissions::<T>::assign_permission(
-        owner.clone(),
-        &owner,
-        permissions::BURN,
-        permissions::Scope::Unlimited,
-    );
+    setup_benchmark_assets_only::<T>()?;
 
-    let _ = Assets::<T>::register_asset_id(
-        owner.clone(),
+    XYKPool::<T>::initialize_pool(owner_origin.clone(), DEX.into(), XOR.into(), DOT.into())?;
+
+    XYKPool::<T>::deposit_liquidity(
+        owner_origin.clone(),
+        DEX.into(),
         XOR.into(),
-        AssetSymbol(b"XOR".to_vec()),
-        AssetName(b"SORA".to_vec()),
-        18,
-        Balance::from(0u32),
-        true,
-    );
-    let _ = Assets::<T>::register_asset_id(
-        owner.clone(),
         DOT.into(),
-        AssetSymbol(b"DOT".to_vec()),
-        AssetName(b"Polkadot".to_vec()),
-        18,
-        Balance::from(0u32),
-        true,
-    );
-
-    TradingPair::<T>::register(owner_origin.clone(), DEX.into(), XOR.into(), DOT.into())?;
-
-    let (_, tech_acc_id, _fee_acc_id) =
-        XYKPool::<T>::initialize_pool_unchecked(owner.clone(), DEX.into(), XOR.into(), DOT.into())?;
-
-    let repr: <T>::AccountId = Technical::<T>::tech_account_id_to_account_id(&tech_acc_id).unwrap();
-
-    Permissions::<T>::grant_permission(owner.clone(), repr.clone(), MINT)?;
-    Permissions::<T>::grant_permission(owner.clone(), repr.clone(), BURN)?;
-
-    Assets::<T>::mint(
-        owner_origin.clone(),
-        XOR.into(),
-        owner.clone(),
-        balance!(10000),
+        balance!(2000),
+        balance!(3000),
+        balance!(0),
+        balance!(0),
     )?;
-    Assets::<T>::mint(
-        owner_origin.clone(),
-        DOT.into(),
-        owner.clone(),
-        balance!(20000),
-    )?;
-    Assets::<T>::mint(
-        owner_origin.clone(),
-        XOR.into(),
-        repr.clone(),
-        balance!(1000000),
-    )?;
-    Assets::<T>::mint(
-        owner_origin.clone(),
-        DOT.into(),
-        repr.clone(),
-        balance!(1500000),
-    )?;
-    pool_xyk::Module::<T>::mint(&repr, &owner, balance!(1500000000000))?;
 
     Ok(())
 }
@@ -208,8 +155,21 @@ benchmarks! {
         );
         assert_eq!(
             Into::<u128>::into(Assets::<T>::free_balance(&DOT.into(), &caller).unwrap()),
-            Into::<u128>::into(initial_target_balance) + balance!(1494.010471559854824739)
+            Into::<u128>::into(initial_target_balance) + balance!(997.997997997997997997)
         );
+    }
+
+    can_exchange {
+        setup_benchmark::<T>()?;
+    }: {
+        assert!(Pallet::<T>::can_exchange(
+            &DEX.into(),
+            &XOR.into(),
+            &DOT.into(),
+        ))
+    }
+    verify {
+        // can't check, nothing is changed
     }
 
     quote {
@@ -242,10 +202,11 @@ benchmarks! {
         DOT.into(),
         balance!(2000),
         balance!(3000),
-        0_u128.into(),
-        0_u128.into()
+        balance!(0),
+        balance!(0)
     )
     verify {
+        // adding in proportions same as existing, thus call withdraws full deposit
         assert_eq!(
             Into::<u128>::into(Assets::<T>::free_balance(&XOR.into(), &caller.clone()).unwrap()),
             Into::<u128>::into(initial_xor_balance) - balance!(2000)
@@ -266,32 +227,35 @@ benchmarks! {
         DEX.into(),
         XOR.into(),
         DOT.into(),
-        38730_u128.into(),
-        0_u128.into(),
-        0_u128.into()
+        balance!(1000),
+        balance!(0),
+        balance!(0)
     )
-    //FIXME: Problem with mint and total supply of pool tokens.
     verify {
         assert_eq!(
             Into::<u128>::into(Assets::<T>::free_balance(&XOR.into(), &caller.clone()).unwrap()),
-            Into::<u128>::into(initial_xor_balance) + 0_u128
+            Into::<u128>::into(initial_xor_balance) + balance!(816.496580927726032746)
         );
         assert_eq!(
             Into::<u128>::into(Assets::<T>::free_balance(&DOT.into(), &caller.clone()).unwrap()),
-            Into::<u128>::into(initial_dot_balance) + 0_u128
+            Into::<u128>::into(initial_dot_balance) + balance!(1224.744871391589049119)
         );
     }
 
     initialize_pool {
         setup_benchmark_assets_only::<T>()?;
         let caller = alice::<T>();
+        let asset_xor: T::AssetId = XOR.into();
+        let asset_dot: T::AssetId = DOT.into();
     }: _(
         RawOrigin::Signed(caller.clone()),
         DEX.into(),
-        XOR.into(),
-        DOT.into()
+        asset_xor.clone(),
+        asset_dot.clone()
     )
-    verify {}
+    verify {
+        assert!(XYKPool::<T>::properties(asset_xor, asset_dot).is_some())
+    }
 }
 
 #[cfg(test)]
