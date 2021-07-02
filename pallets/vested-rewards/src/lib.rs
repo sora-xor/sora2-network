@@ -333,7 +333,7 @@ pub mod pallet {
             snapshot: Vec<(T::AccountId, u32, Balance)>,
         ) -> DispatchResultWithPostInfo {
             ensure_root(origin)?;
-            let weight = crate::migration::inject_market_makers_first_month_rewards::<T>(snapshot);
+            let weight = crate::migration::inject_market_makers_first_month_rewards::<T>(snapshot)?;
             Ok(Some(weight).into())
         }
     }
@@ -350,6 +350,10 @@ pub mod pallet {
         RewardsSupplyShortage,
         /// Increment account reference error.
         IncRefError,
+        /// Attempt to subtract more via snapshot than assigned to user.
+        CantSubtractSnapshot,
+        /// Failed to perform reward calculation.
+        CantCalculateReward,
     }
 
     #[pallet::event]
