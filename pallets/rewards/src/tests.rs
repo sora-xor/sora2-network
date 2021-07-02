@@ -28,16 +28,37 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use common::{assert_noop_msg, balance, PSWAP, VAL};
+use common::{
+    assert_approx_eq, assert_noop_msg, balance, generate_storage_instance, Balance, PSWAP, VAL,
+};
+use frame_support::pallet_prelude::*;
+use frame_support::traits::PalletVersion;
 use frame_support::{assert_noop, assert_ok};
+use frame_system::RawOrigin;
 use hex_literal::hex;
+use sp_io::TestExternalities;
 
-use crate::migration::*;
 use crate::mock::*;
+use crate::{EthereumAddress, PswapFarmOwners, ReservesAcc, RewardInfo};
 
 type Pallet = crate::Pallet<Runtime>;
 type Error = crate::Error<Runtime>;
 type Assets = assets::Pallet<Runtime>;
+
+type ValOwners = crate::ValOwners<Runtime>;
+type EthAddresses = crate::EthAddresses<Runtime>;
+type TotalValRewards = crate::TotalValRewards<Runtime>;
+type ValBurnedSinceLastVesting = crate::ValBurnedSinceLastVesting<Runtime>;
+type CurrentClaimableVal = crate::CurrentClaimableVal<Runtime>;
+type TotalClaimableVal = crate::TotalClaimableVal<Runtime>;
+type MigrationPending = crate::MigrationPending<Runtime>;
+
+type PalletInfoOf<T> = <T as frame_system::Config>::PalletInfo;
+
+generate_storage_instance!(Rewards, ValOwners);
+
+type DeprecatedValOwners =
+    StorageMap<ValOwnersOldInstance, Identity, EthereumAddress, Balance, ValueQuery>;
 
 fn account() -> AccountId {
     hex!("f08879dab4530529153a1bdb63e27cd3be45f1574a122b7e88579b6e5e60bd43").into()
@@ -91,11 +112,11 @@ fn claim_succeeds() {
 }
 
 #[test]
-fn claim_fails_already_claimed() {
+fn claim_fails_nothing_to_claim() {
     ExtBuilder::with_rewards(true).build().execute_with(|| {
         let signature: Vec<u8> = hex!("eb7009c977888910a96d499f802e4524a939702aa6fc8ed473829bffce9289d850b97a720aa05d4a7e70e15733eeebc4fe862dcb60e018c0bf560b2de013078f1c").into();
         assert_ok!(Pallet::claim(origin(), signature.clone()));
-        assert_noop!(Pallet::claim(origin(), signature), Error::AlreadyClaimed);
+        assert_noop!(Pallet::claim(origin(), signature), Error::NothingToClaim);
     });
 }
 
@@ -103,7 +124,7 @@ fn claim_fails_already_claimed() {
 fn claim_fails_no_rewards() {
     ExtBuilder::with_rewards(true).build().execute_with(|| {
         let signature = hex!("6619441577e5173239a52ee52cc7d2eaf57b294defeb0a564e11c4e3c197a95574d81bd4bc747976c1e163be5adecf6bc6ceff69ef3ee2948ff90fdcaa02d5411c").into();
-        assert_noop!(Pallet::claim(origin(), signature), Error::NoRewards);
+        assert_noop!(Pallet::claim(origin(), signature), Error::AddressNotEligible);
     });
 }
 
@@ -116,81 +137,241 @@ fn claim_over_limit() {
 }
 
 #[test]
-fn val_emission_works() {
+fn storage_migration_to_v1_2_0_works() {
     ExtBuilder::with_rewards(true).build().execute_with(|| {
-        let rewards_tech_acc = crate::ReservesAcc::<Runtime>::get();
-        let rewards_account_id =
-            technical::Module::<Runtime>::tech_account_id_to_account_id(&rewards_tech_acc).unwrap();
-        let val_minted = balance!(30000); // Sum of allocated VAL rewards in genesis
-        assert_eq!(
-            technical::Module::<Runtime>::total_balance(&VAL, &rewards_tech_acc).unwrap(),
-            balance!(30000)
-        );
+        PalletVersion {
+            major: 1,
+            minor: 1,
+            patch: 0,
+        }
+        .put_into_storage::<PalletInfoOf<Runtime>, Pallet>();
+        let expected_pswap = balance!(74339.224845900297630556);
+        let expected_eth_address =
+            EthereumAddress::from_slice(&hex!("e687c6c6b28745864871566134b5589aa05b953d"));
 
-        let w = mint_remaining_val::<Runtime>(val_minted);
-        assert_eq!(w, 1200);
+        let reserves_account_id = technical::Pallet::<Runtime>::tech_account_id_to_account_id(
+            &ReservesAcc::<Runtime>::get(),
+        )
+        .unwrap();
+        let balance_a =
+            assets::Pallet::<Runtime>::free_balance(&PSWAP.into(), &reserves_account_id).unwrap();
 
+        Pallet::on_runtime_upgrade();
+        let balance_b =
+            assets::Pallet::<Runtime>::free_balance(&PSWAP.into(), &reserves_account_id).unwrap();
+
+        assert_eq!(balance_b - balance_a, expected_pswap);
         assert_eq!(
-            Assets::free_balance(&VAL, &rewards_account_id).unwrap(),
-            balance!(33100000)
+            PswapFarmOwners::<Runtime>::get(expected_eth_address),
+            expected_pswap
         );
     });
 }
 
 #[test]
-fn storage_migration_v2_works() {
-    use crate::EthereumAddress;
-    ExtBuilder::with_rewards(true).build().execute_with(|| {
-        // Claim some VAL first
-        let signature = hex!("eb7009c977888910a96d499f802e4524a939702aa6fc8ed473829bffce9289d850b97a720aa05d4a7e70e15733eeebc4fe862dcb60e018c0bf560b2de013078f1c").into();
-        assert_ok!(Pallet::claim(origin(), signature));
-        assert_eq!(
-            Assets::free_balance(&VAL, &account()).unwrap(),
-            balance!(111)
-        );
-        let diff = vec![
+fn storage_migration_to_v1_2_0_works_2() {
+    TestExternalities::new_empty().execute_with(|| {
+        let old_val_owners: Vec<(EthereumAddress, Balance)> = vec![
+            (
+                hex!("21Bc9f4a3d9Dc86f142F802668dB7D908cF0A636").into(),
+                balance!(100),
+            ),
+            (
+                hex!("d170a274320333243b9f860e8891c6792de1ec19").into(),
+                balance!(200),
+            ),
             (
                 hex!("886021f300dc809269cfc758a2364a2baf63af0c").into(),
-                balance!(2.9933),
+                balance!(300),
             ),
             (
-                hex!("a65612f6a7998cbe1b27098f57b3a65612f6a799").into(),
-                balance!(55.55),
+                hex!("8b98125055f70613bcee1a391e3096393bddb1ca").into(),
+                balance!(400),
+            ),
+            (
+                hex!("d0d6f3cafe2b0b2d1c04d5bcf44461dd6e4f0344").into(),
+                balance!(500),
             ),
         ];
+        for (k, v) in old_val_owners {
+            DeprecatedValOwners::insert(k, v);
+        }
+        PalletVersion {
+            major: 1,
+            minor: 1,
+            patch: 0,
+        }
+        .put_into_storage::<PalletInfoOf<Runtime>, Pallet>();
 
-        let w = update_val_airdrop_data::<Runtime>(diff);
-        assert_eq!(w, 2600);
+        assert_eq!(MigrationPending::get(), false);
+
+        // Import data for storage migration
+        let w = Pallet::on_runtime_upgrade();
+        assert_eq!(w, 1002200);
+
+        let mut val_owners = ValOwners::iter().collect::<Vec<_>>();
+        val_owners.sort_by(|a, b| a.0.cmp(&b.0));
 
         assert_eq!(
-            // VAL claimed, no adjustment made
-            crate::ValOwners::<Runtime>::get(EthereumAddress::from(hex!("21Bc9f4a3d9Dc86f142F802668dB7D908cF0A636"))),
-            balance!(0)
+            val_owners,
+            vec![
+                (
+                    hex!("21Bc9f4a3d9Dc86f142F802668dB7D908cF0A636").into(),
+                    (balance!(100), balance!(100)).into()
+                ),
+                (
+                    hex!("886021f300dc809269cfc758a2364a2baf63af0c").into(),
+                    (balance!(300), balance!(300)).into()
+                ),
+                (
+                    hex!("8b98125055f70613bcee1a391e3096393bddb1ca").into(),
+                    (balance!(400), balance!(400)).into()
+                ),
+                (
+                    hex!("d0d6f3cafe2b0b2d1c04d5bcf44461dd6e4f0344").into(),
+                    (balance!(500), balance!(500)).into()
+                ),
+                (
+                    hex!("d170a274320333243b9f860e8891c6792de1ec19").into(),
+                    (balance!(200), balance!(200)).into()
+                ),
+            ]
+        );
+
+        let mut chunks = EthAddresses::iter().collect::<Vec<_>>();
+        chunks.sort_by(|a, b| a.0.cmp(&b.0));
+        assert_eq!(chunks.len(), 5);
+        assert_eq!(chunks[0].1.len(), 1);
+        assert_eq!(chunks[4].1.len(), 1);
+
+        assert_eq!(TotalValRewards::get(), balance!(1500));
+        assert_eq!(TotalClaimableVal::get(), balance!(1500));
+        assert_eq!(CurrentClaimableVal::get(), 0);
+        assert_eq!(ValBurnedSinceLastVesting::get(), 0);
+        assert_eq!(MigrationPending::get(), true);
+
+        // Applying extrinsic to set unclaimed VAL rewards
+        let unclaimed_val = unclaimed_val_data();
+        assert_ok!(Pallet::finalize_storage_migration(
+            RawOrigin::Root.into(),
+            unclaimed_val
+        ));
+        assert_eq!(MigrationPending::get(), false);
+        assert_eq!(TotalValRewards::get(), balance!(9000));
+
+        val_owners = ValOwners::iter().collect::<Vec<_>>();
+        val_owners.sort_by(|a, b| a.0.cmp(&b.0));
+
+        assert_eq!(
+            val_owners,
+            vec![
+                (
+                    hex!("21Bc9f4a3d9Dc86f142F802668dB7D908cF0A636").into(),
+                    (balance!(100), balance!(600)).into()
+                ),
+                (
+                    hex!("886021f300dc809269cfc758a2364a2baf63af0c").into(),
+                    (balance!(300), balance!(1800)).into()
+                ),
+                (
+                    hex!("8b98125055f70613bcee1a391e3096393bddb1ca").into(),
+                    (balance!(400), balance!(2400)).into()
+                ),
+                (
+                    hex!("d0d6f3cafe2b0b2d1c04d5bcf44461dd6e4f0344").into(),
+                    (balance!(500), balance!(3000)).into()
+                ),
+                (
+                    hex!("d170a274320333243b9f860e8891c6792de1ec19").into(),
+                    (balance!(200), balance!(1200)).into()
+                ),
+            ]
+        );
+
+        // All subsequent attempts to call this extrinsic result into an error
+        assert_noop!(
+            Pallet::finalize_storage_migration(RawOrigin::Root.into(), unclaimed_val_data()),
+            Error::IllegalCall
+        );
+    });
+}
+
+#[test]
+fn val_strategic_bonus_vesting_works() {
+    ExtBuilder::with_rewards(true).build().execute_with(|| {
+        let account_1: AccountId = account();
+        let account_2: AccountId = hex!("7c0f877cd5720eee40d1183556f1fbd34931a6ee08c5299b4de2b2b43176831a").into();
+
+        assert_eq!(TotalValRewards::get(), balance!(21000.1));
+        assert_eq!(TotalClaimableVal::get(), balance!(3000));
+        assert_eq!(EthAddresses::get(0), vec![EthereumAddress::from(hex!("21Bc9f4a3d9Dc86f142F802668dB7D908cF0A636"))]);
+        assert_eq!(EthAddresses::get(1), vec![EthereumAddress::from(hex!("d170a274320333243b9f860e8891c6792de1ec19"))]);
+        assert_eq!(EthAddresses::get(2), vec![EthereumAddress::from(hex!("886021f300dc809269cfc758a2364a2baf63af0c"))]);
+
+        let blocks_per_day = <Runtime as crate::Config>::BLOCKS_PER_DAY;
+
+        run_to_block(blocks_per_day - 1);
+        assert_eq!(ValBurnedSinceLastVesting::get(), balance!(190));
+
+        run_to_block(blocks_per_day);
+        assert_eq!(CurrentClaimableVal::get(), balance!(20.9));
+        assert_eq!(ValBurnedSinceLastVesting::get(), balance!(10));
+
+        run_to_block(2 * blocks_per_day - 1);
+        // By now vesting of total 20.9 VAL on a pro rata basis should have been taken place
+        // There can be some loss of precision though due to pro rata distribution
+        assert_approx_eq!(TotalClaimableVal::get(), balance!(3020.9), balance!(0.000000001));
+        assert_eq!(
+            ValOwners::get(EthereumAddress::from(hex!("21Bc9f4a3d9Dc86f142F802668dB7D908cF0A636"))),
+            RewardInfo::new(balance!(111.995233356031637), balance!(1000))
         );
         assert_eq!(
-            // No adjustment made, original value must remain
-            crate::ValOwners::<Runtime>::get(EthereumAddress::from(hex!("d170a274320333243b9f860e8891c6792de1ec19"))),
-            balance!(2888.9933)
+            ValOwners::get(EthereumAddress::from(hex!("d170a274320333243b9f860e8891c6792de1ec19"))),
+            RewardInfo::new(balance!(2908.89466712063274), balance!(20000))
         );
         assert_eq!(
-            // Added 2.9933 to the original 0.0067
-            crate::ValOwners::<Runtime>::get(EthereumAddress::from(hex!("886021f300dc809269cfc758a2364a2baf63af0c"))),
-            balance!(3)
+            ValOwners::get(EthereumAddress::from(hex!("886021f300dc809269cfc758a2364a2baf63af0c"))),
+            RewardInfo::new(balance!(0.010099523335603163), balance!(0.1))
+        );
+
+        // Claiming some rewards
+        assert_ok!(Pallet::claim(
+            Origin::signed(account_1.clone()),
+            hex!("eb7009c977888910a96d499f802e4524a939702aa6fc8ed473829bffce9289d850b97a720aa05d4a7e70e15733eeebc4fe862dcb60e018c0bf560b2de013078f1c").into()
+        ));
+        assert_eq!(
+            Assets::free_balance(&VAL, &account_1).unwrap(),
+            balance!(111.995233356031637)
+        );
+        assert_ok!(Pallet::claim(
+            Origin::signed(account_2.clone()),
+            hex!("22bea4c62999dc1be10cb603956b5731dfd296c9e0b0040e5fe8056db1e8df5648c519b704acdcdcf0d04ab01f81f2ed899edef437a4be8f36980d7f1119d7ce00").into()));
+        assert_eq!(
+            Assets::free_balance(&VAL, &account_2).unwrap(),
+            balance!(2908.89466712063274)
+        );
+        assert_eq!(TotalValRewards::get(), balance!(17979.210099523335623));
+        assert_eq!(TotalClaimableVal::get(), balance!(0.010099523335603163));
+
+        run_to_block(2 * blocks_per_day);
+        // More VAL is claimable, total amount of rewards remains
+        assert_eq!(CurrentClaimableVal::get(), balance!(44.0));
+        assert_eq!(TotalValRewards::get(), balance!(17979.210099523335623));
+
+        run_to_block(167 * blocks_per_day);
+        // In this block all the rewards should have been vested
+        assert_eq!(
+            ValOwners::get(EthereumAddress::from(hex!("21Bc9f4a3d9Dc86f142F802668dB7D908cF0A636"))),
+            RewardInfo::new(balance!(888.004766643968363), balance!(888.004766643968363))
         );
         assert_eq!(
-            // Newly added address
-            crate::ValOwners::<Runtime>::get(EthereumAddress::from(hex!("a65612f6a7998cbe1b27098f57b3a65612f6a799"))),
-            balance!(55.55)
+            ValOwners::get(EthereumAddress::from(hex!("d170a274320333243b9f860e8891c6792de1ec19"))),
+            RewardInfo::new(balance!(17091.10533287936726), balance!(17091.10533287936726))
         );
         assert_eq!(
-            // A Uniswap liquidiy pool account, should have been removed
-            crate::ValOwners::<Runtime>::get(EthereumAddress::from(hex!("01962144d41415cca072900fe87bbe2992a99f10"))),
-            balance!(0)
+            ValOwners::get(EthereumAddress::from(hex!("886021f300dc809269cfc758a2364a2baf63af0c"))),
+            RewardInfo::new(balance!(0.1), balance!(0.1))
         );
-        assert_eq!(
-            // A Mooniswap liquidiy pool account, should have been removed
-            crate::ValOwners::<Runtime>::get(EthereumAddress::from(hex!("215470102a05b02a3a2898f317b5382f380afc0e"))),
-            balance!(0)
-        );
+        assert_eq!(TotalValRewards::get(), TotalClaimableVal::get());
     });
 }

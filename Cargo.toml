@@ -37,3 +37,6 @@ resolver = "2"
 
 [profile.release]
 panic = 'unwind'
+
+[patch."https://github.com/soramitsu/sora2-frame-pallets.git"]
+bridge-multisig = { git = "https://github.com/soramitsu/sora2-frame-pallets.git?branch=pub-timepoint", rev = "0db8693", package = "pallet-multisig", default-features = false }

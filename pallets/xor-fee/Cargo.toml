@@ -23,9 +23,6 @@ sp-runtime = { version = "3", default-features = false }
 sp-staking = { version = "3", default-features = false }
 sp-std = { version = "3", default-features = false }
 traits = { version = "0.4", package = "orml-traits", default-features = false }
-
-pallet-staking = { git = "https://github.com/soramitsu/sora2-frame-pallets", default-features = false, branch = "v3.1.0"}
-
 assets = { path = "../assets", default-features = false }
 common = { path = "../../common", default-features = false }
 liquidity-proxy = { path = "../liquidity-proxy", default-features = false }
@@ -40,6 +37,7 @@ sp-core = { version = "3", default-features = false }
 sp-io = { version = "3", default-features = false }
 sp-runtime = { version = "3", default-features = false }
 tokens = { version = "0.4", package = "orml-tokens" }
+pallet-staking = { git = "https://github.com/soramitsu/sora2-frame-pallets", branch = "v3.1.0" }
 
 common = { path = "../../common", features = ["test"] }
 dex-manager = { path = "../dex-manager" }

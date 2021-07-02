@@ -76,7 +76,7 @@ pub mod pallet {
     use sp_core::H160;
 
     use common::AccountIdOf;
-    use rewards::{PswapFarmOwners, PswapWaifuOwners, ValOwners};
+    use rewards::{PswapFarmOwners, PswapWaifuOwners, RewardInfo, ValOwners};
 
     use super::*;
 
@@ -137,11 +137,11 @@ pub mod pallet {
             ValOwners::<T>::remove_all();
             ValOwners::<T>::insert(
                 H160::from(hex!("21Bc9f4a3d9Dc86f142F802668dB7D908cF0A636")),
-                balance!(111),
+                RewardInfo::from(balance!(111)),
             );
             ValOwners::<T>::insert(
                 H160::from(hex!("D67fea281B2C5dC3271509c1b628E0867a9815D7")),
-                balance!(444),
+                RewardInfo::from(balance!(444)),
             );
 
             PswapFarmOwners::<T>::remove_all();
