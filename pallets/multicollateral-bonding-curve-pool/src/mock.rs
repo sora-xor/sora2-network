@@ -34,7 +34,7 @@ use common::prelude::{Balance, FixedWrapper, PriceToolsPallet, SwapAmount, SwapO
 use common::{
     self, balance, fixed, fixed_wrapper, hash, Amount, AssetId32, AssetName, AssetSymbol, DEXInfo,
     Fixed, LiquiditySourceFilter, LiquiditySourceType, TechPurpose, VestedRewardsPallet, PSWAP,
-    USDT, VAL, XOR,
+    USDT, VAL, XOR, XSTUSD,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::GenesisBuild;
@@ -449,11 +449,16 @@ pub fn get_mock_prices() -> HashMap<(AssetId, AssetId), Balance> {
         ((XOR, DAI), balance!(102.0)),
         ((VAL, DAI), balance!(51.0)),
         ((USDT, DAI), balance!(1.02)),
+        ((XSTUSD, DAI), balance!(1)),
         // PSWAP
         ((XOR, PSWAP), balance!(10)),
         ((VAL, PSWAP), balance!(5)),
         ((USDT, PSWAP), balance!(0.1)),
         ((DAI, PSWAP), balance!(0.098)),
+        ((XSTUSD, PSWAP), balance!(1)),
+
+        // XSTUSD
+        ((XOR, XSTUSD), balance!(102.0)),
     ];
     let reverse = direct.clone().into_iter().map(|((a, b), price)| {
         (
@@ -557,6 +562,22 @@ impl Default for ExtBuilder {
                     balance!(0),
                     AssetSymbol(b"PSWAP".to_vec()),
                     AssetName(b"Polkaswap Token".to_vec()),
+                    18,
+                ),
+                (
+                    alice(),
+                    XSTUSD,
+                    balance!(100),
+                    AssetSymbol(b"XSTUSD".to_vec()),
+                    AssetName(b"XST USD".to_vec()),
+                    18,
+                ),
+                (
+                    alice(),
+                    DAI,
+                    balance!(100),
+                    AssetSymbol(b"DAI".to_vec()),
+                    AssetName(b"DAI".to_vec()),
                     18,
                 ),
             ],

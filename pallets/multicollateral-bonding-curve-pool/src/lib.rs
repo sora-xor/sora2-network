@@ -52,7 +52,7 @@ use common::prelude::{
 use common::{
     balance, fixed, fixed_wrapper, DEXId, DexIdOf, GetTBCMarketInfo, LiquiditySource,
     LiquiditySourceFilter, LiquiditySourceType, ManagementMode, RewardReason, VestedRewardsPallet,
-    PSWAP, VAL,
+    PSWAP, VAL, XSTUSD,
 };
 use frame_support::traits::Get;
 use frame_support::weights::Weight;
@@ -828,13 +828,17 @@ impl<T: Config> Module<T> {
     /// `buy_price_usd = (xor_total_supply + xor_supply_delta) / (price_change_step * price_change_rate) + initial_price_usd`
     ///
     pub fn buy_function(main_asset_id: &T::AssetId, delta: Fixed) -> Result<Fixed, DispatchError> {
+        let xstusd_issuance_amt: FixedWrapper = Assets::<T>::total_issuance(&XSTUSD.into())?.into();
+        let xordai_price: FixedWrapper = Self::reference_price(main_asset_id)?.into();
+        let xstLiability: FixedWrapper = xstusd_issuance_amt / xordai_price;
+
         let total_supply: FixedWrapper = Assets::<T>::total_issuance(main_asset_id)?.into();
         let initial_price: FixedWrapper = Self::initial_price().into();
         let price_change_step: FixedWrapper = Self::price_change_step().into();
         let price_change_rate: FixedWrapper = Self::price_change_rate().into();
 
         let price =
-            (total_supply + delta) / (price_change_step * price_change_rate) + initial_price;
+            (total_supply + xstLiability + delta) / (price_change_step * price_change_rate) + initial_price;
         price
             .get()
             .map_err(|_| Error::<T>::PriceCalculationFailed.into())

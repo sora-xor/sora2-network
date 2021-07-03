@@ -387,8 +387,6 @@ impl<T: Config> Module<T> {
         // Get reference prices for base and synthetic to understand token value.
         let main_price_per_reference_unit: FixedWrapper =
             Self::reference_price(main_asset_id)?.into();
-        let _synthetic_price_per_reference_unit: FixedWrapper =
-            Self::reference_price(synthetic_asset_id)?.into();
 
         match quantity {
             // Sell desired amount of XOR for some XST(USD)
