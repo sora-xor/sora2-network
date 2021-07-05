@@ -428,34 +428,6 @@ fn quote_case_exact_output_for_input_base_second() {
 }
 
 #[test]
-fn quote_case_exact_output_for_input_base_second_fail_with_out_of_bounds() {
-    crate::Module::<Runtime>::preset_initial(vec![Rc::new(|dex_id, gt, bp, _, _, _, _, _| {
-        assert_ok!(crate::Module::<Runtime>::deposit_liquidity(
-            Origin::signed(ALICE()),
-            dex_id,
-            GoldenTicket.into(),
-            BlackPepper.into(),
-            balance!(100000),
-            balance!(200000),
-            0,
-            0,
-        ));
-        assert_noop!(
-            crate::Module::<Runtime>::quote(
-                &dex_id,
-                &bp,
-                &gt,
-                SwapAmount::WithDesiredOutput {
-                    desired_amount_out: balance!(50000),
-                    max_amount_in: balance!(90000),
-                }
-            ),
-            crate::Error::<Runtime>::CalculatedValueIsOutOfDesiredBounds
-        );
-    })]);
-}
-
-#[test]
 // Deposit to an empty pool
 fn deposit_less_than_minimum_1() {
     crate::Module::<Runtime>::preset_initial(vec![Rc::new(|dex_id, _, _, _, _, _, _, _| {

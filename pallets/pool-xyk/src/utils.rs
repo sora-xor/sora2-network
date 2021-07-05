@@ -58,30 +58,8 @@ impl<T: Config> Module<T> {
         } else if &base_asset_id == asset_b {
             Ok(true)
         } else {
-            Ok(false)
+            Err(Error::<T>::UnsupportedQuotePath.into())
         }
-    }
-
-    pub fn guard_fee_from_destination(
-        _asset_a: &AssetIdOf<T>,
-        _asset_b: &AssetIdOf<T>,
-    ) -> DispatchResult {
-        Ok(())
-    }
-
-    pub fn guard_fee_from_source(
-        _asset_a: &AssetIdOf<T>,
-        _asset_b: &AssetIdOf<T>,
-    ) -> DispatchResult {
-        Ok(())
-    }
-
-    pub fn get_min_liquidity_for(
-        _asset_id: AssetIdOf<T>,
-        _tech_acc: &TechAccountIdOf<T>,
-    ) -> Balance {
-        //TODO: get this value from DEXInfo.
-        1000
     }
 
     pub fn get_fee_account(
