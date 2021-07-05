@@ -44,7 +44,7 @@ pipeline {
                             sh "cd ${env.WORKSPACE}"
                             if (getPushVersion(pushTags)){
                                 if (env.TAG_NAME) {
-                                    featureList = (env.TAG_NAME =~ 'stage.*') ? featureList : 'include-real-files'
+                                    featureList = (env.TAG_NAME =~ 'test.*') || (env.TAG_NAME =~ 'stage.*') ? featureList : 'include-real-files'
                                 }
                                 sh """
                                     cargo build --release --features \"${featureList}\"
