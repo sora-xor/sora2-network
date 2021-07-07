@@ -34,17 +34,15 @@ use frame_support::dispatch::{DispatchError, DispatchResult};
 use frame_support::storage::PrefixIterator;
 use frame_support::traits::Get;
 use frame_support::weights::Weight;
-use frame_support::{ensure, Parameter};
+use frame_support::{ensure, fail, Parameter};
 use frame_system::ensure_signed;
 use sp_std::vec::Vec;
 
 use common::prelude::{Balance, EnsureDEXManager, SwapAmount, SwapOutcome};
 use common::{
-    balance, EnsureTradingPairExists, FromGenericPair, GetPoolReserves, LiquiditySource,
-    LiquiditySourceType, ManagementMode, PoolXykPallet, RewardReason, TechAccountId, TechPurpose,
-    ToFeeAccount, TradingPair,
+    EnsureTradingPairExists, GetPoolReserves, LiquiditySource, LiquiditySourceType, ManagementMode,
+    PoolXykPallet, RewardReason, TechAccountId, TechPurpose, ToFeeAccount, TradingPair,
 };
-use orml_traits::currency::MultiCurrency;
 
 mod aliases;
 use aliases::{
@@ -293,41 +291,20 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
     for Module<T>
 {
     fn can_exchange(
-        dex_id: &T::DEXId,
+        _dex_id: &T::DEXId,
         input_asset_id: &T::AssetId,
         output_asset_id: &T::AssetId,
     ) -> bool {
-        // Function clause is used here, because in this case it is other scope and it not
-        // conflicted with bool type.
-        let res = || {
-            let tech_acc_id = T::TechAccountId::from_generic_pair(
-                "PoolXYK".into(),
-                "CanExchangeOperation".into(),
-            );
-            //TODO: Account registration is not needed to do operation, is this ok?
-            //Technical::register_tech_account_id(tech_acc_id)?;
-            let repr = technical::Module::<T>::tech_account_id_to_account_id(&tech_acc_id)?;
-            //FIXME: Use special max variable that is good for this operation.
-            T::Currency::deposit(input_asset_id.clone(), &repr, balance!(999999999))?;
-            let swap_amount = common::prelude::SwapAmount::WithDesiredInput {
-                //FIXME: Use special max variable that is good for this operation.
-                desired_amount_in: balance!(0.000000001),
-                min_amount_out: 0,
-            };
-            Module::<T>::exchange(
-                &repr,
-                &repr,
-                dex_id,
-                input_asset_id,
-                output_asset_id,
-                swap_amount,
-            )?;
-            Ok(())
+        let base_asset_id = T::GetBaseAssetId::get();
+        let target_asset_id = if input_asset_id == &base_asset_id {
+            output_asset_id
+        } else if output_asset_id == &base_asset_id {
+            input_asset_id
+        } else {
+            return false;
         };
-        frame_support::storage::with_transaction(|| {
-            let v: DispatchResult = res();
-            sp_runtime::TransactionOutcome::Rollback(v.is_ok())
-        })
+
+        Properties::<T>::contains_key(&base_asset_id, &target_asset_id)
     }
 
     fn quote(
@@ -336,27 +313,56 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         output_asset_id: &T::AssetId,
         swap_amount: SwapAmount<Balance>,
     ) -> Result<SwapOutcome<Balance>, DispatchError> {
-        let res = || {
-            let tech_acc_id =
-                T::TechAccountId::from_generic_pair("PoolXYK".into(), "QuoteOperation".into());
-            //TODO: Account registration is not needed to do operation, is this ok?
-            //Technical::register_tech_account_id(tech_acc_id)?;
-            let repr = technical::Module::<T>::tech_account_id_to_account_id(&tech_acc_id)?;
-            //FIXME: Use special max variable that is good for this operation.
-            T::Currency::deposit(input_asset_id.clone(), &repr, balance!(999999999))?;
-            Module::<T>::exchange(
-                &repr,
-                &repr,
-                dex_id,
-                input_asset_id,
-                output_asset_id,
-                swap_amount,
-            )
-        };
-        frame_support::storage::with_transaction(|| {
-            let v: Result<SwapOutcome<Balance>, DispatchError> = res();
-            sp_runtime::TransactionOutcome::Rollback(v)
-        })
+        // Get pool account.
+        let (_, tech_acc_id) = Module::<T>::tech_account_from_dex_and_asset_pair(
+            *dex_id,
+            *input_asset_id,
+            *output_asset_id,
+        )?;
+        let pool_acc_id = technical::Module::<T>::tech_account_id_to_account_id(&tech_acc_id)?;
+
+        // Get actual pool reserves.
+        let reserve_input = <assets::Module<T>>::free_balance(&input_asset_id, &pool_acc_id)?;
+        let reserve_output = <assets::Module<T>>::free_balance(&output_asset_id, &pool_acc_id)?;
+
+        // Check reserves validity.
+        if reserve_input == 0 && reserve_output == 0 {
+            fail!(Error::<T>::PoolIsEmpty);
+        } else if reserve_input <= 0 || reserve_output <= 0 {
+            fail!(Error::<T>::PoolIsInvalid);
+        }
+
+        // Decide which side should be used for fee.
+        let get_fee_from_destination =
+            Module::<T>::decide_is_fee_from_destination(input_asset_id, output_asset_id)?;
+
+        // Calculate quote.
+        match swap_amount {
+            SwapAmount::WithDesiredInput {
+                desired_amount_in, ..
+            } => {
+                let (calculated, fee) = Module::<T>::calc_output_for_exact_input(
+                    T::GetFee::get(),
+                    get_fee_from_destination,
+                    &reserve_input,
+                    &reserve_output,
+                    &desired_amount_in,
+                )?;
+                Ok(SwapOutcome::new(calculated, fee))
+            }
+            SwapAmount::WithDesiredOutput {
+                desired_amount_out, ..
+            } => {
+                let (calculated, fee) = Module::<T>::calc_input_for_exact_output(
+                    T::GetFee::get(),
+                    get_fee_from_destination,
+                    &reserve_input,
+                    &reserve_output,
+                    &desired_amount_out,
+                )?;
+                Ok(SwapOutcome::new(calculated, fee))
+            }
+        }
     }
 
     fn exchange(
@@ -728,6 +734,8 @@ pub mod pallet {
         IncRefError,
         /// Unable to provide liquidity because its XOR part is lesser than the minimum value (0.007)
         UnableToDepositXorLessThanMinimum,
+        /// Attempt to quote via unsupported path, i.e. both output and input tokens are not XOR.
+        UnsupportedQuotePath,
     }
 
     /// Updated after last liquidity change operation.

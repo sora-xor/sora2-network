@@ -32,6 +32,8 @@
 
 pub mod weights;
 
+mod benchmarking;
+
 #[allow(unused_imports)]
 #[macro_use]
 extern crate alloc;
@@ -61,7 +63,7 @@ use sp_std::convert::TryInto;
 pub use pallet::*;
 
 /// Count of blocks to participate in avg value calculation.
-const AVG_BLOCK_SPAN: u32 = 30;
+pub const AVG_BLOCK_SPAN: u32 = 30;
 /// Max percentage difference for average value between blocks.
 const MAX_BLOCK_AVG_DIFFERENCE: Fixed = fixed_const!(0.005); // 0.5%
 
@@ -83,7 +85,14 @@ pub mod pallet {
     use liquidity_proxy::LiquidityProxyTrait;
 
     #[pallet::config]
-    pub trait Config: frame_system::Config + assets::Config + common::Config {
+    pub trait Config:
+        frame_system::Config
+        + assets::Config
+        + common::Config
+        + technical::Config
+        + pool_xyk::Config
+        + trading_pair::Config
+    {
         type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
         type LiquidityProxy: LiquidityProxyTrait<Self::DEXId, Self::AccountId, Self::AssetId>;
         type WeightInfo: WeightInfo;

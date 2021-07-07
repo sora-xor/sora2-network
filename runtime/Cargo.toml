@@ -44,7 +44,7 @@ assets-runtime-api = { path = "../pallets/assets/runtime-api", default-features 
 liquidity-proxy-runtime-api = { path = "../pallets/liquidity-proxy/runtime-api", default-features = false}
 eth-bridge = { path = "../pallets/eth-bridge", default-features = false }
 eth-bridge-runtime-api = { path = "../pallets/eth-bridge/runtime-api", default-features = false }
-bridge-multisig = { git = "https://github.com/soramitsu/sora2-frame-pallets.git", branch = "v3.1.0", package = "pallet-multisig", default-features = false }
+bridge-multisig = { git = "https://github.com/soramitsu/sora2-frame-pallets.git", branch = "v3.2.1", package = "pallet-multisig", default-features = false }
 iroha-migration-runtime-api = { path = "../pallets/iroha-migration/runtime-api", default-features = false }
 pswap-distribution = { path = "../pallets/pswap-distribution", default-features = false }
 pswap-distribution-benchmarking = { path = "../pallets/pswap-distribution/benchmarking", default-features = false, optional = true }
@@ -54,6 +54,7 @@ pool-xyk-benchmarking = { path = "../pallets/pool-xyk/benchmarking", default-fea
 dex-api-benchmarking = { path = "../pallets/dex-api/benchmarking", default-features = false, optional = true }
 vested-rewards = { path = "../pallets/vested-rewards", default-features = false }
 price-tools = { path = "../pallets/price-tools", default-features = false }
+xor-fee-benchmarking = { path = "../pallets/xor-fee/benchmarking", default-features = false, optional = true }
 
 # Substrate dependencies
 frame-benchmarking = { default-features = false, optional = true, version = '3' }
@@ -188,24 +189,29 @@ private-net = ["faucet"]
 
 runtime-benchmarks = [
     "assets/runtime-benchmarks",
-    "eth-bridge/runtime-benchmarks",
     "dex-api-benchmarking",
-    "faucet?/runtime-benchmarks",
+    "eth-bridge/runtime-benchmarks",
     "farming/runtime-benchmarks",
+    "faucet?/runtime-benchmarks",
     "frame-benchmarking",
     "frame-support/runtime-benchmarks",
     "frame-system-benchmarking",
     "frame-system/runtime-benchmarks",
     "iroha-migration/runtime-benchmarks",
     "liquidity-proxy-benchmarking",
+    "multicollateral-bonding-curve-pool/runtime-benchmarks",
+    "multicollateral-bonding-curve-pool/runtime-benchmarks",
     "pallet-collective/runtime-benchmarks",
     "pool-xyk-benchmarking",
+    "price-tools/runtime-benchmarks",
     "pswap-distribution-benchmarking/runtime-benchmarks",
+    "pswap-distribution/runtime-benchmarks",
+    "pswap-distribution/runtime-benchmarks",
     "rewards/runtime-benchmarks",
     "technical/runtime-benchmarks",
     "trading-pair/runtime-benchmarks",
-    "multicollateral-bonding-curve-pool/runtime-benchmarks",
-    "pswap-distribution/runtime-benchmarks",
+    "vested-rewards/runtime-benchmarks",
+    "xor-fee-benchmarking",
 ]
 
 reduced-pswap-reward-periods = []

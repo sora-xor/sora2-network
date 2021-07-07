@@ -38,7 +38,7 @@ use frame_support::dispatch::DispatchError;
 use frame_support::ensure;
 use frame_support::traits::Get;
 use frame_system::ensure_signed;
-use permissions::{Scope, BURN, MINT, TRANSFER};
+use permissions::{Scope, BURN, MINT};
 use sp_std::vec::Vec;
 
 #[cfg(test)]
@@ -226,7 +226,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
         frame_system::Pallet::<T>::inc_consumers(&account_id)
             .map_err(|_| Error::<T, I>::IncRefError)?;
         ReservesAcc::<T, I>::set(account.clone());
-        let permissions = [BURN, MINT, TRANSFER];
+        let permissions = [BURN, MINT];
         for permission in &permissions {
             permissions::Pallet::<T>::assign_permission(
                 account_id.clone(),

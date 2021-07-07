@@ -31,13 +31,12 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use common::prelude::SwapAmount;
-use common::{Balance, FilterMode, LiquiditySourceFilter, LiquiditySourceType};
+use common::{Balance, FilterMode, LiquiditySourceFilter, LiquiditySourceType, OnValBurned};
 use frame_support::pallet_prelude::InvalidTransaction;
 use frame_support::traits::{Currency, ExistenceRequirement, Get, Imbalance, Vec, WithdrawReasons};
 use frame_support::unsigned::TransactionValidityError;
 use frame_support::weights::{DispatchInfo, GetDispatchInfo, Pays};
 use liquidity_proxy::LiquidityProxyTrait;
-use pallet_staking::ValBurnedNotifier;
 use pallet_transaction_payment::{
     FeeDetails, InclusionFee, OnChargeTransaction, RuntimeDispatchInfo,
 };
@@ -46,7 +45,8 @@ use sp_runtime::traits::{
     DispatchInfoOf, Dispatchable, Extrinsic as ExtrinsicT, PostDispatchInfoOf, SaturatedConversion,
     SignedExtension, UniqueSaturatedInto, Zero,
 };
-use sp_runtime::Percent;
+use sp_runtime::{DispatchError, Percent};
+use sp_staking::SessionIndex;
 
 pub const TECH_ACCOUNT_PREFIX: &[u8] = b"xor-fee";
 pub const TECH_ACCOUNT_MAIN: &[u8] = b"main";
@@ -251,71 +251,51 @@ where
             // Burn XOR for now
             let (_xor_burned, xor_to_val) =
                 adjusted_paid.ration(xor_burned_weight, xor_into_val_burned_weight);
-
-            let xor_to_val = xor_to_val.peek().unique_saturated_into();
-            let tech_account_id = <T as Config>::GetTechnicalAccountId::get();
-
-            // Re-minting the `xor_to_val` tokens amount to `tech_account_id` of this pallet.
-            // The tokens being re-minted had initially been withdrawn as a part of the fee.
-            if Assets::<T>::mint_to(
-                &T::XorId::get(),
-                &tech_account_id,
-                &tech_account_id,
-                xor_to_val,
-            )
-            .is_ok()
-            {
-                // Attempting to swap XOR with VAL on secondary market
-                // If successful, VAL will be burned, otherwise burn newly minted XOR from the tech account
-                match T::LiquidityProxy::exchange(
-                    &tech_account_id,
-                    &tech_account_id,
-                    &T::XorId::get(),
-                    &T::ValId::get(),
-                    SwapAmount::WithDesiredInput {
-                        desired_amount_in: xor_to_val,
-                        min_amount_out: 0,
-                    },
-                    LiquiditySourceFilter::with_forbidden(
-                        T::DEXIdValue::get(),
-                        [LiquiditySourceType::MulticollateralBondingCurvePool].into(),
-                    ),
-                ) {
-                    Ok(swap_outcome) => {
-                        let val_to_burn = Balance::from(swap_outcome.amount);
-                        if Assets::<T>::burn_from(
-                            &T::ValId::get(),
-                            &tech_account_id,
-                            &tech_account_id,
-                            val_to_burn.clone(),
-                        )
-                        .is_ok()
-                        {
-                            T::ValBurnedNotifier::notify_val_burned(val_to_burn.clone());
-
-                            // Re-minting part of the burned VAL into the SORA parliament account
-                            let parliament_share = T::SoraParliamentShare::get();
-                            let amount_parliament = parliament_share * val_to_burn;
-                            let _ = Assets::<T>::mint_to(
-                                &T::ValId::get(),
-                                &tech_account_id,
-                                &T::GetParliamentAccountId::get(),
-                                amount_parliament,
-                            );
-                        };
-                    }
-                    Err(_) => {
-                        let _ = Assets::<T>::burn_from(
-                            &T::XorId::get(),
-                            &tech_account_id,
-                            &tech_account_id,
-                            xor_to_val,
-                        );
-                    }
-                }
-            }
+            let xor_to_val: Balance = xor_to_val.peek().unique_saturated_into();
+            XorToVal::<T>::mutate(|balance| {
+                *balance += xor_to_val;
+            });
         }
         Ok(())
+    }
+}
+
+impl<T: Config> pallet_session::SessionManager<T::AccountId> for Pallet<T> {
+    fn new_session(new_index: SessionIndex) -> Option<Vec<T::AccountId>> {
+        <<T as Config>::SessionManager as pallet_session::SessionManager<_>>::new_session(new_index)
+    }
+
+    fn end_session(end_index: SessionIndex) {
+        <<T as Config>::SessionManager as pallet_session::SessionManager<_>>::end_session(end_index)
+    }
+
+    fn start_session(start_index: SessionIndex) {
+        <<T as Config>::SessionManager as pallet_session::SessionManager<_>>::start_session(
+            start_index,
+        )
+    }
+}
+
+impl<T: Config> pallet_session::historical::SessionManager<T::AccountId, T::FullIdentification>
+    for Pallet<T>
+{
+    fn new_session(new_index: SessionIndex) -> Option<Vec<(T::AccountId, T::FullIdentification)>> {
+        <<T as Config>::SessionManager as pallet_session::historical::SessionManager<_, _>>::new_session(new_index)
+    }
+
+    fn end_session(end_index: SessionIndex) {
+        let xor_to_val = XorToVal::<T>::take();
+        if xor_to_val != 0 {
+            if let Err(e) = Self::remint(xor_to_val) {
+                frame_support::debug::error!("xor fee remint failed: {:?}", e);
+            }
+        }
+
+        <<T as Config>::SessionManager as pallet_session::historical::SessionManager<_, _>>::end_session(end_index)
+    }
+
+    fn start_session(start_index: SessionIndex) {
+        <<T as Config>::SessionManager as pallet_session::historical::SessionManager<_, _>>::start_session(start_index)
     }
 }
 
@@ -438,6 +418,51 @@ impl<T: Config> Pallet<T> {
 
         res
     }
+
+    pub fn remint(xor_to_val: Balance) -> Result<(), DispatchError> {
+        let tech_account_id = <T as Config>::GetTechnicalAccountId::get();
+        let xor = T::XorId::get();
+        let val = T::ValId::get();
+        let parliament = T::GetParliamentAccountId::get();
+
+        // Re-minting the `xor_to_val` tokens amount to `tech_account_id` of this pallet.
+        // The tokens being re-minted had initially been withdrawn as a part of the fee.
+        Assets::<T>::mint_to(&xor, &tech_account_id, &tech_account_id, xor_to_val)?;
+        // Attempting to swap XOR with VAL on secondary market
+        // If successful, VAL will be burned, otherwise burn newly minted XOR from the tech account
+        match T::LiquidityProxy::exchange(
+            &tech_account_id,
+            &parliament,
+            &xor,
+            &val,
+            SwapAmount::WithDesiredInput {
+                desired_amount_in: xor_to_val,
+                min_amount_out: 0,
+            },
+            LiquiditySourceFilter::with_forbidden(
+                T::DEXIdValue::get(),
+                [LiquiditySourceType::MulticollateralBondingCurvePool].into(),
+            ),
+        ) {
+            Ok(swap_outcome) => {
+                let val_to_burn = Balance::from(swap_outcome.amount);
+                T::OnValBurned::on_val_burned(val_to_burn.clone());
+
+                let val_to_burn = val_to_burn.clone() - T::SoraParliamentShare::get() * val_to_burn;
+                Assets::<T>::burn_from(&val, &parliament, &parliament, val_to_burn)?;
+            }
+            Err(e) => {
+                frame_support::debug::error!(
+                    "failed to exchange xor to val, burning {} XOR, e: {:?}",
+                    xor_to_val,
+                    e
+                );
+                Assets::<T>::burn_from(&xor, &tech_account_id, &tech_account_id, xor_to_val)?;
+            }
+        }
+
+        Ok(())
+    }
 }
 
 pub use pallet::*;
@@ -455,6 +480,7 @@ pub mod pallet {
         + assets::Config
         + common::Config
         + pallet_transaction_payment::Config
+        + pallet_session::historical::Config
     {
         type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
         /// XOR - The native currency of this blockchain.
@@ -467,10 +493,14 @@ pub mod pallet {
         type SoraParliamentShare: Get<Percent>;
         type DEXIdValue: Get<Self::DEXId>;
         type LiquidityProxy: LiquidityProxyTrait<Self::DEXId, Self::AccountId, Self::AssetId>;
-        type ValBurnedNotifier: ValBurnedNotifier<Balance>;
+        type OnValBurned: OnValBurned;
         type CustomFees: ApplyCustomFees<CallOf<Self>>;
         type GetTechnicalAccountId: Get<Self::AccountId>;
         type GetParliamentAccountId: Get<Self::AccountId>;
+        type SessionManager: pallet_session::historical::SessionManager<
+            Self::AccountId,
+            <Self as pallet_session::historical::Config>::FullIdentification,
+        >;
     }
 
     #[pallet::pallet]
@@ -490,4 +520,9 @@ pub mod pallet {
         /// Fee has been withdrawn from user. [Account Id to withdraw from, Fee Amount]
         FeeWithdrawn(AccountIdOf<T>, BalanceOf<T>),
     }
+
+    /// The amount of XOR to be reminted and exchanged for VAL at the end of the session
+    #[pallet::storage]
+    #[pallet::getter(fn asset_infos)]
+    pub type XorToVal<T: Config> = StorageValue<_, Balance, ValueQuery>;
 }

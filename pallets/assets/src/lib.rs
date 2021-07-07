@@ -68,7 +68,7 @@ use frame_support::traits::Get;
 use frame_support::weights::Weight;
 use frame_support::{ensure, Parameter};
 use frame_system::ensure_signed;
-use permissions::{Scope, BURN, MINT, TRANSFER};
+use permissions::{Scope, BURN, MINT};
 use sp_core::hash::H512;
 use sp_core::H256;
 use sp_runtime::traits::Zero;
@@ -499,24 +499,24 @@ impl<T: Config> Pallet<T> {
         is_mintable: bool,
     ) -> DispatchResult {
         ensure!(
-            Self::asset_owner(&asset_id).is_none(),
-            Error::<T>::AssetIdAlreadyExists
+            precision <= MAX_ALLOWED_PRECISION,
+            Error::<T>::InvalidPrecision
         );
-        frame_system::Pallet::<T>::inc_consumers(&account_id)
-            .map_err(|_| Error::<T>::IncRefError)?;
-        AssetOwners::<T>::insert(asset_id, account_id.clone());
         ensure!(
             crate::is_symbol_valid(&symbol),
             Error::<T>::InvalidAssetSymbol
         );
         ensure!(crate::is_name_valid(&name), Error::<T>::InvalidAssetName);
-        AssetInfos::<T>::insert(asset_id, (symbol, name, precision, is_mintable));
         ensure!(
-            precision <= MAX_ALLOWED_PRECISION,
-            Error::<T>::InvalidPrecision
+            !Self::asset_exists(&asset_id),
+            Error::<T>::AssetIdAlreadyExists
         );
+        frame_system::Pallet::<T>::inc_consumers(&account_id)
+            .map_err(|_| Error::<T>::IncRefError)?;
+        AssetOwners::<T>::insert(asset_id, account_id.clone());
+        AssetInfos::<T>::insert(asset_id, (symbol, name, precision, is_mintable));
         let scope = Scope::Limited(hash(&asset_id));
-        let permission_ids = [TRANSFER, MINT, BURN];
+        let permission_ids = [MINT, BURN];
         for permission_id in &permission_ids {
             Permissions::<T>::assign_permission(
                 account_id.clone(),
@@ -559,7 +559,7 @@ impl<T: Config> Pallet<T> {
 
     #[inline]
     pub fn asset_exists(asset_id: &T::AssetId) -> bool {
-        Self::asset_owner(asset_id).is_some()
+        AssetOwners::<T>::contains_key(asset_id)
     }
 
     pub fn ensure_asset_exists(asset_id: &T::AssetId) -> DispatchResult {
@@ -623,7 +623,6 @@ impl<T: Config> Pallet<T> {
         amount: Balance,
     ) -> DispatchResult {
         Self::ensure_asset_exists(asset_id)?;
-        Self::check_permission_maybe_with_parameters(who, TRANSFER, asset_id)?;
         T::Currency::ensure_can_withdraw(asset_id.clone(), who, amount)
     }
 
@@ -634,7 +633,6 @@ impl<T: Config> Pallet<T> {
         amount: Balance,
     ) -> DispatchResult {
         Self::ensure_asset_exists(asset_id)?;
-        Self::check_permission_maybe_with_parameters(from, TRANSFER, asset_id)?;
         T::Currency::transfer(asset_id.clone(), from, to, amount)
     }
 

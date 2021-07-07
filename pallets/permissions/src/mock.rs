@@ -28,12 +28,12 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use crate::{self as permissions, Config, Scope, INIT_DEX, MINT, TRANSFER};
+use crate::{self as permissions, Config, Scope, BURN, INIT_DEX, MINT, SLASH};
 use frame_support::traits::GenesisBuild;
 use frame_support::weights::Weight;
 use frame_support::{construct_runtime, parameter_types};
 use frame_system;
-use sp_core::{H256, H512};
+use sp_core::H256;
 use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentityLookup};
 use sp_runtime::Perbill;
@@ -115,14 +115,12 @@ impl Default for ExtBuilder {
     fn default() -> Self {
         Self {
             initial_permission_owners: vec![
-                (TRANSFER, Scope::Unlimited, vec![ALICE]),
-                (INIT_DEX, Scope::Unlimited, vec![ALICE]),
+                (BURN, Scope::Unlimited, vec![ALICE]),
+                (SLASH, Scope::Unlimited, vec![ALICE]),
                 (MINT, Scope::Unlimited, vec![JOHN]),
             ],
             initial_permissions: vec![
-                (ALICE, Scope::Unlimited, vec![TRANSFER]), // Alice is forbidden to transfer
-                (BOB, Scope::Unlimited, vec![INIT_DEX]),
-                (BOB, Scope::Limited(H512::repeat_byte(1)), vec![TRANSFER]), // Bob is forbidden to transfer
+                (BOB, Scope::Unlimited, vec![INIT_DEX, BURN]),
                 (JOHN, Scope::Unlimited, vec![MINT]),
             ],
         }

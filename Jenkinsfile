@@ -81,6 +81,18 @@ pipeline {
                 }
             }
         }
+        stage('Code Coverage') {
+            steps {
+                script {
+                    docker.withRegistry( 'https://' + registry, dockerRegistryRWUserId) {
+                        docker.image(baseImageName).inside() {
+                            sh './coverage.sh'
+                            cobertura coberturaReportFile: 'target/debug/report'
+                        }
+                    }
+                }
+            }
+        }
         stage('Push Image') {
             when {
                 expression { getPushVersion(pushTags) }
