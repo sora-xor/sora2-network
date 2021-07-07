@@ -1749,7 +1749,7 @@ dependencies = [
  "orml-tokens",
  "orml-traits",
  "pallet-balances",
- "pallet-multisig 3.2.0",
+ "pallet-multisig 3.1.0",
  "pallet-scheduler",
  "pallet-sudo",
  "pallet-timestamp",
@@ -2294,7 +2294,7 @@ dependencies = [
  "liquidity-proxy-rpc",
  "log",
  "nix",
- "pallet-multisig 3.2.0",
+ "pallet-multisig 3.1.0",
  "pallet-sudo",
  "pallet-transaction-payment-rpc",
  "parity-scale-codec",
@@ -2394,7 +2394,7 @@ dependencies = [
  "pallet-im-online",
  "pallet-membership",
  "pallet-multisig 3.0.0",
- "pallet-multisig 3.2.0",
+ "pallet-multisig 3.1.0",
  "pallet-offences",
  "pallet-randomness-collective-flip",
  "pallet-scheduler",
@@ -5019,8 +5019,8 @@ dependencies = [
 
 [[package]]
 name = "pallet-multisig"
-version = "3.2.0"
-source = "git+https://github.com/soramitsu/sora2-frame-pallets.git?branch=v3.2.0#98a422641408c05fe2f555a2face0d5ba22474cb"
+version = "3.1.0"
+source = "git+https://github.com/soramitsu/sora2-frame-pallets.git?branch=v3.2.1#f772224f1a4ac63bc4305acf4148335cb1e6af5a"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -9395,7 +9395,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "04f8ab788026715fa63b31960869617cba39117e520eb415b0139543e325ab59"
 dependencies = [
  "cfg-if 0.1.10",
- "rand 0.3.23",
+ "rand 0.7.3",
  "static_assertions",
 ]
 
@@ -10231,8 +10231,3 @@ dependencies = [
  "itertools",
  "libc",
 ]
-
-[[patch.unused]]
-name = "pallet-multisig"
-version = "3.1.0"
-source = "git+https://github.com/soramitsu/sora2-frame-pallets.git?branch=pub-timepoint?rev=0db8693#0db869344773883e93737ae6389e6ed0004d9d7f"

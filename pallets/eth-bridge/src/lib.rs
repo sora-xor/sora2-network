@@ -101,7 +101,7 @@ use frame_support::sp_runtime::{
     offchain as rt_offchain, DispatchErrorWithPostInfo, KeyTypeId, MultiSigner,
 };
 use frame_support::traits::{Get, GetCallName};
-use frame_support::weights::{Pays, PostDispatchInfo, Weight};
+use frame_support::weights::{PostDispatchInfo, Weight};
 use frame_support::{
     debug, ensure, fail, sp_io, transactional, IterableStorageDoubleMap, Parameter, RuntimeDebug,
 };
@@ -132,25 +132,25 @@ pub trait WeightInfo {
     fn add_asset() -> Weight;
     fn add_sidechain_token() -> Weight;
     fn transfer_to_sidechain() -> Weight;
-    fn request_from_sidechain(kind: &IncomingRequestKind) -> (Weight, Pays);
+    fn request_from_sidechain() -> Weight;
     fn add_peer() -> Weight;
     fn remove_peer() -> Weight;
     fn force_add_peer() -> Weight;
     fn prepare_for_migration() -> Weight;
     fn migrate() -> Weight;
-    fn register_incoming_request() -> (Weight, Pays);
-    fn finalize_incoming_request() -> (Weight, Pays);
-    fn approve_request() -> (Weight, Pays);
-    fn approve_request_finalize() -> (Weight, Pays);
-    fn abort_request() -> (Weight, Pays);
-    fn import_incoming_request(is_ok: bool) -> (Weight, Pays) {
-        let weight = Self::register_incoming_request().0
+    fn register_incoming_request() -> Weight;
+    fn finalize_incoming_request() -> Weight;
+    fn approve_request() -> Weight;
+    fn approve_request_finalize() -> Weight;
+    fn abort_request() -> Weight;
+    fn import_incoming_request(is_ok: bool) -> Weight {
+        let weight = Self::register_incoming_request()
             + if is_ok {
-                Self::finalize_incoming_request().0
+                Self::finalize_incoming_request()
             } else {
-                Self::abort_request().0
+                Self::abort_request()
             };
-        (weight, Pays::No)
+        weight
     }
 }
 
@@ -1256,11 +1256,11 @@ impl Default for BridgeStatus {
 pub mod pallet {
     use super::*;
     use codec::Codec;
+    use common::weights::{err_pays_no, pays_no, pays_no_with_maybe_weight};
     use frame_support::pallet_prelude::*;
     use frame_support::sp_runtime::traits::Zero;
     use frame_support::traits::schedule::{Anon, DispatchTime};
     use frame_support::traits::{GetCallMetadata, PalletVersion};
-    use frame_support::weights::PostDispatchInfo;
     use frame_system::pallet_prelude::*;
     use frame_system::RawOrigin;
 
@@ -1493,7 +1493,7 @@ pub mod pallet {
         /// - `kind` - incoming request type.
         /// - `network_id` - network identifier.
         #[transactional]
-        #[pallet::weight(<T as Config>::WeightInfo::request_from_sidechain(kind))]
+        #[pallet::weight(<T as Config>::WeightInfo::request_from_sidechain())]
         pub fn request_from_sidechain(
             origin: OriginFor<T>,
             eth_tx_hash: H256,
@@ -1514,15 +1514,7 @@ pub mod pallet {
                             network_id,
                         )),
                     ))?;
-                    let pays_fee = if kind == IncomingTransactionRequestKind::TransferXOR {
-                        Pays::No
-                    } else {
-                        Pays::Yes
-                    };
-                    Ok(PostDispatchInfo {
-                        actual_weight: None,
-                        pays_fee,
-                    })
+                    Ok(().into())
                 }
                 IncomingRequestKind::Meta(kind) => {
                     if kind == IncomingMetaRequestKind::CancelOutgoingRequest {
@@ -1558,13 +1550,14 @@ pub mod pallet {
         ) -> DispatchResultWithPostInfo {
             debug::debug!("called finalize_incoming_request");
             let _ = Self::ensure_bridge_account(origin, network_id)?;
-            let request =
-                Requests::<T>::get(network_id, &hash).ok_or(Error::<T>::UnknownRequest)?;
+            let request = Requests::<T>::get(network_id, &hash)
+                .ok_or_else(|| err_pays_no(Error::<T>::UnknownRequest))?;
             let (request, hash) = request
                 .as_incoming()
-                .ok_or(Error::<T>::ExpectedIncomingRequest)?;
-            Self::finalize_incoming_request_inner(request, hash, network_id)?;
-            Ok(().into())
+                .ok_or_else(|| err_pays_no(Error::<T>::ExpectedIncomingRequest))?;
+            pays_no(Self::finalize_incoming_request_inner(
+                request, hash, network_id,
+            ))
         }
 
         /// Add a new peer to the bridge peers set.
@@ -1738,11 +1731,10 @@ pub mod pallet {
             debug::debug!("called register_incoming_request");
             let net_id = incoming_request.network_id();
             let _ = Self::ensure_bridge_account(origin, net_id)?;
-            Self::register_incoming_request_inner(
+            pays_no(Self::register_incoming_request_inner(
                 &OffchainRequest::incoming(incoming_request),
                 net_id,
-            )?;
-            Ok(().into())
+            ))
         }
 
         /// Import the given incoming request.
@@ -1760,26 +1752,11 @@ pub mod pallet {
             debug::debug!("called import_incoming_request");
             let net_id = load_incoming_request.network_id();
             let _ = Self::ensure_bridge_account(origin, net_id)?;
-            let sidechain_tx_hash = load_incoming_request.hash();
-            let load_incoming = OffchainRequest::LoadIncoming(load_incoming_request);
-            Self::add_request(&load_incoming)?;
-            match incoming_request_result {
-                Ok(incoming_request) => {
-                    assert_eq!(net_id, incoming_request.network_id());
-                    let incoming = OffchainRequest::incoming(incoming_request.clone());
-                    let incoming_request_hash = incoming.hash();
-                    Self::add_request(&incoming)?;
-                    Self::finalize_incoming_request_inner(
-                        &incoming_request,
-                        incoming_request_hash,
-                        net_id,
-                    )?;
-                }
-                Err(e) => {
-                    Self::inner_abort_request(&load_incoming, sidechain_tx_hash, e, net_id)?;
-                }
-            }
-            Ok(().into())
+            pays_no(Self::inner_import_incoming_request(
+                net_id,
+                load_incoming_request,
+                incoming_request_result,
+            ))
         }
 
         /// Approve the given outgoing request. The function is used by bridge peers.
@@ -1798,47 +1775,13 @@ pub mod pallet {
             let author = ensure_signed(origin)?;
             let net_id = network_id;
             Self::ensure_peer(&author, net_id)?;
-            let request = Requests::<T>::get(net_id, hash)
-                .and_then(|x| x.into_outgoing().map(|x| x.0))
-                .ok_or(Error::<T>::UnknownRequest)?;
-            let request_encoded = request.to_eth_abi(hash)?;
-            if !Self::verify_message(
-                request_encoded.as_raw(),
-                &signature_params,
-                &ocw_public,
-                &author,
-            ) {
-                // TODO: punish the peer.
-                return Err(Error::<T>::InvalidSignature.into());
-            }
-            debug::info!("Verified request approve {:?}", request_encoded);
-            let mut approvals = RequestApprovals::<T>::get(net_id, &hash);
-            let pending_peers_len = if PendingPeer::<T>::get(net_id).is_some() {
-                1
-            } else {
-                0
-            };
-            let need_sigs = majority(Self::peers(net_id).len()) + pending_peers_len;
-            let current_status =
-                RequestStatuses::<T>::get(net_id, &hash).ok_or(Error::<T>::UnknownRequest)?;
-            approvals.insert(signature_params);
-            RequestApprovals::<T>::insert(net_id, &hash, &approvals);
-            if current_status == RequestStatus::Pending && approvals.len() == need_sigs {
-                if let Err(err) = request.finalize() {
-                    debug::error!("Outgoing request finalization failed: {:?}", err);
-                    RequestStatuses::<T>::insert(net_id, hash, RequestStatus::Failed(err));
-                    Self::deposit_event(Event::RequestFinalizationFailed(hash));
-                    cancel!(request, hash, net_id, err);
-                } else {
-                    debug::debug!("Outgoing request approvals collected {:?}", hash);
-                    RequestStatuses::<T>::insert(net_id, hash, RequestStatus::ApprovalsReady);
-                    Self::deposit_event(Event::ApprovalsCollected(hash));
-                }
-                Self::remove_request_from_queue(net_id, &hash);
-                let weight_info = <T as Config>::WeightInfo::approve_request_finalize();
-                return Ok((Some(weight_info.0), weight_info.1).into());
-            }
-            Ok(().into())
+            pays_no_with_maybe_weight(Self::inner_approve_request(
+                ocw_public,
+                hash,
+                signature_params,
+                author,
+                net_id,
+            ))
         }
 
         /// Cancels a registered request.
@@ -1860,10 +1803,9 @@ pub mod pallet {
                 error
             );
             let _ = Self::ensure_bridge_account(origin, network_id)?;
-            let request = Requests::<T>::get(network_id, hash).ok_or(Error::<T>::UnknownRequest)?;
-            Self::inner_abort_request(&request, hash, error, network_id)?;
-            Self::deposit_event(Event::RequestAborted(hash));
-            Ok(().into())
+            let request = Requests::<T>::get(network_id, hash)
+                .ok_or_else(|| err_pays_no(Error::<T>::UnknownRequest))?;
+            pays_no(Self::inner_abort_request(&request, hash, error, network_id))
         }
 
         /// Add the given peer to the peers set without additional checks.
@@ -2778,6 +2720,83 @@ impl<T: Config> Pallet<T> {
         Err(Error::<T>::UnknownEvent.into())
     }
 
+    fn inner_import_incoming_request(
+        net_id: T::NetworkId,
+        load_incoming_request: LoadIncomingRequest<T>,
+        incoming_request_result: Result<IncomingRequest<T>, DispatchError>,
+    ) -> Result<(), DispatchError> {
+        let sidechain_tx_hash = load_incoming_request.hash();
+        let load_incoming = OffchainRequest::LoadIncoming(load_incoming_request);
+        Self::add_request(&load_incoming)?;
+        match incoming_request_result {
+            Ok(incoming_request) => {
+                assert_eq!(net_id, incoming_request.network_id());
+                let incoming = OffchainRequest::incoming(incoming_request.clone());
+                let incoming_request_hash = incoming.hash();
+                Self::add_request(&incoming)?;
+                Self::finalize_incoming_request_inner(
+                    &incoming_request,
+                    incoming_request_hash,
+                    net_id,
+                )?;
+            }
+            Err(e) => {
+                Self::inner_abort_request(&load_incoming, sidechain_tx_hash, e, net_id)?;
+            }
+        }
+        Ok(().into())
+    }
+
+    fn inner_approve_request(
+        ocw_public: ecdsa::Public,
+        hash: H256,
+        signature_params: SignatureParams,
+        author: T::AccountId,
+        net_id: T::NetworkId,
+    ) -> Result<Option<Weight>, DispatchError> {
+        let request = Requests::<T>::get(net_id, hash)
+            .and_then(|x| x.into_outgoing().map(|x| x.0))
+            .ok_or(Error::<T>::UnknownRequest)?;
+        let request_encoded = request.to_eth_abi(hash)?;
+        if !Self::verify_message(
+            request_encoded.as_raw(),
+            &signature_params,
+            &ocw_public,
+            &author,
+        ) {
+            // TODO: punish the peer.
+            return Err(Error::<T>::InvalidSignature.into());
+        }
+        debug::info!("Verified request approve {:?}", request_encoded);
+        let mut approvals = RequestApprovals::<T>::get(net_id, &hash);
+        let pending_peers_len = if PendingPeer::<T>::get(net_id).is_some() {
+            1
+        } else {
+            0
+        };
+        let need_sigs = majority(Self::peers(net_id).len()) + pending_peers_len;
+        let current_status =
+            RequestStatuses::<T>::get(net_id, &hash).ok_or(Error::<T>::UnknownRequest)?;
+        approvals.insert(signature_params);
+        RequestApprovals::<T>::insert(net_id, &hash, &approvals);
+        if current_status == RequestStatus::Pending && approvals.len() == need_sigs {
+            if let Err(err) = request.finalize() {
+                debug::error!("Outgoing request finalization failed: {:?}", err);
+                RequestStatuses::<T>::insert(net_id, hash, RequestStatus::Failed(err));
+                Self::deposit_event(Event::RequestFinalizationFailed(hash));
+                cancel!(request, hash, net_id, err);
+            } else {
+                debug::debug!("Outgoing request approvals collected {:?}", hash);
+                RequestStatuses::<T>::insert(net_id, hash, RequestStatus::ApprovalsReady);
+                Self::deposit_event(Event::ApprovalsCollected(hash));
+            }
+            Self::remove_request_from_queue(net_id, &hash);
+            let weight_info = <T as Config>::WeightInfo::approve_request_finalize();
+            return Ok(Some(weight_info));
+        }
+        Ok(None)
+    }
+
     /// Verifies the message signed by a peer. Also, compares the given `AccountId` with the given
     /// public key.
     fn verify_message(
@@ -3099,13 +3118,16 @@ impl<T: Config> Pallet<T> {
                         debug::debug!("Loading approved tx {}", tx_hash);
                         let tx = Self::load_tx_receipt(tx_hash, network_id)?;
                         let mut incoming_request = Self::parse_incoming_request(tx, request)?;
+                        // TODO: this flow was used to transfer XOR for free with the `request_from_sidechain`
+                        // extrinsic. This could be used to spam network with transactions. Now it's unneeded,
+                        // since all incoming transactions are loaded automatically. The extrinsic and related
+                        // code should be considered for deletion.
                         if kind == IncomingTransactionRequestKind::TransferXOR {
                             if let IncomingRequest::Transfer(transfer) = &mut incoming_request {
                                 ensure!(
                                     transfer.asset_id == common::XOR.into(),
                                     Error::<T>::ExpectedXORTransfer
                                 );
-                                transfer.enable_taking_fee();
                             } else {
                                 fail!(Error::<T>::ExpectedXORTransfer)
                             }
@@ -4150,6 +4172,7 @@ impl<T: Config> Pallet<T> {
         );
         cancel!(request, hash, network_id, error);
         Self::remove_request_from_queue(network_id, &hash);
+        Self::deposit_event(Event::RequestAborted(hash));
         Ok(())
     }
 
