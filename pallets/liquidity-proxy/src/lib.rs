@@ -600,22 +600,24 @@ impl<T: Config> Pallet<T> {
 
         // Check if we have exactly two sources: the primary market and the secondary market
         // Do the "smart" swap split (with fallback)
+        // NOTE: we assume here that XST tokens are not added to TBC reserves. If they are in the future, this
+        // logic should be redone!
         if sources.len() == 2 {
             let mut primary_market: Option<LiquiditySourceIdOf<T>> = None;
             let mut secondary_market: Option<LiquiditySourceIdOf<T>> = None;
 
             for src in &sources {
-                if src.liquidity_source_index
-                    == LiquiditySourceType::MulticollateralBondingCurvePool
-                {
+                if src.liquidity_source_index == LiquiditySourceType::MulticollateralBondingCurvePool 
+                 || src.liquidity_source_index == LiquiditySourceType::XSTPool {
                     primary_market = Some(src.clone());
-                } else {
+                } else if src.liquidity_source_index == LiquiditySourceType::XYKPool 
+                 || src.liquidity_source_index == LiquiditySourceType::MockPool {
                     secondary_market = Some(src.clone());
                 }
             }
-            if let (Some(mcbc), Some(xyk)) = (primary_market, secondary_market) {
+            if let (Some(primary_mkt), Some(xyk)) = (primary_market, secondary_market) {
                 let outcome = Self::smart_split_with_fallback(
-                    &mcbc,
+                    &primary_mkt,
                     &xyk,
                     input_asset_id,
                     output_asset_id,
@@ -836,12 +838,11 @@ impl<T: Config> Pallet<T> {
         DispatchError,
     > {
         // The "smart" split algo is based on the following reasoning.
-        // First, we try to calculate spot price of the `input_asset_id` in both
-        // primary and secondary market. If the price in the secondary market is
-        // better than that in primary market, we allocate as much of the `amount` to
-        // be swapped in secondary market as we can until the prices level up.
-        // The rest will be swapped in the primary market as it is (in most situations)
-        // more attractive for the caller.
+        // First, we try to calculate the spot price of the `input_asset_id` in both
+        // the primary and secondary markets. If the price in the secondary market is
+        // better than that in the primary market, we allocate as much of the `amount` to
+        // be swapped in the secondary market as we can until the prices level up.
+        // The rest will be swapped in the primary market.
         //
         // In case the default partitioning between sources returns an error, it can
         // only be due to the MCBC pool not being available or initialized.
@@ -873,16 +874,16 @@ impl<T: Config> Pallet<T> {
 
         let (reserves_base, reserves_other) = T::SecondaryMarket::reserves(base_asset, other_asset);
 
-        let default_mcbc_weight = if output_asset_id == base_asset {
+        let amount_prime = if output_asset_id == base_asset {
             // XOR is being bought
-            Self::decide_mcbc_share_buying_base_asset(
+            Self::decide_primary_market_share_buying_base_asset(
                 base_asset,
                 other_asset,
                 amount.clone(),
                 (reserves_base, reserves_other),
             )
             .unwrap_or(
-                // Error can only be due to MCBC pool, hence zeroing it out
+                // Error can only be due to MCBC or XST pool, hence zeroing it out
                 Fixed::ZERO,
             )
         } else {
@@ -907,25 +908,26 @@ impl<T: Config> Pallet<T> {
         let mut distr: Vec<(LiquiditySourceIdOf<T>, Fixed)> = Vec::new();
         let mut maybe_error: Option<DispatchError> = None;
 
-        if default_mcbc_weight > Fixed::ZERO {
+        if amount_prime > Fixed::ZERO {
             // Attempting to quote according to the default sources weights
-            let amount_prim = if default_mcbc_weight < Fixed::ONE {
-                <SwapAmount<Balance>>::unique_saturated_from(
-                    <SwapAmount<Fixed>>::unique_saturated_from(amount) * default_mcbc_weight,
-                )
-            } else {
-                amount.clone()
-            };
+            //TODO:delete
+            // let amount_prime = if amount_prime < amount {
+            //     <SwapAmount<Balance>>::unique_saturated_from(
+            //         <SwapAmount<Fixed>>::unique_saturated_from(amount) * default_mcbc_weight,
+            //     )
+            // } else {
+            //     amount.clone()
+            // };
             let intermediary_result = T::LiquidityRegistry::quote(
                 primary_source_id,
                 input_asset_id,
                 output_asset_id,
-                amount_prim.clone(),
+                amount_prime.clone(),
             )
-            .and_then(|outcome_prim| {
-                if default_mcbc_weight < Fixed::ONE {
+            .and_then(|outcome_prime| {
+                if amount_prime < amount {
                     // TODO: implement Saturating trait for SwapAmount
-                    let limit = match amount_prim {
+                    let limit = match amount_prime {
                         SwapAmount::WithDesiredInput {
                             min_amount_out: l, ..
                         } => l,
@@ -938,14 +940,14 @@ impl<T: Config> Pallet<T> {
                             desired_amount_in,
                             min_amount_out,
                         } => SwapAmount::with_desired_input(
-                            desired_amount_in.saturating_sub(amount_prim.amount()),
+                            desired_amount_in.saturating_sub(amount_prime.amount()),
                             min_amount_out.saturating_sub(limit),
                         ),
                         SwapAmount::WithDesiredOutput {
                             desired_amount_out,
                             max_amount_in,
                         } => SwapAmount::with_desired_output(
-                            desired_amount_out.saturating_sub(amount_prim.amount()),
+                            desired_amount_out.saturating_sub(amount_prime.amount()),
                             max_amount_in.saturating_sub(limit),
                         ),
                     };
@@ -1180,7 +1182,7 @@ impl<T: Config> Pallet<T> {
     /// - `amount` - the swap amount with "direction" (fixed input vs fixed output),
     /// - `secondary_market_reserves` - a pair (base_reserve, collateral_reserve) in the secondary market
     ///
-    fn decide_mcbc_share_buying_base_asset(
+    fn decide_primary_market_share_buying_base_asset(
         base_asset_id: &T::AssetId,
         collateral_asset_id: &T::AssetId,
         amount: SwapAmount<Balance>,
