@@ -64,8 +64,6 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
-pub mod algo;
-
 pub const TECH_ACCOUNT_PREFIX: &[u8] = b"liquidity-proxy";
 pub const TECH_ACCOUNT_MAIN: &[u8] = b"main";
 
@@ -629,8 +627,7 @@ impl<T: Config> Pallet<T> {
             }
         }
 
-        // Otherwise, fall back to the general source-agnostic procedure based on sampling
-        Self::generic_split(sources, input_asset_id, output_asset_id, amount, skip_info)
+        fail!(Error::<T>::UnavailableExchangePath);
     }
 
     pub fn construct_trivial_path(
@@ -874,7 +871,7 @@ impl<T: Config> Pallet<T> {
 
         let (reserves_base, reserves_other) = T::SecondaryMarket::reserves(base_asset, other_asset);
 
-        let amount_prime = if output_asset_id == base_asset {
+        let default_mcbc_weight = if output_asset_id == base_asset {
             // XOR is being bought
             Self::decide_primary_market_share_buying_base_asset(
                 base_asset,
@@ -908,26 +905,26 @@ impl<T: Config> Pallet<T> {
         let mut distr: Vec<(LiquiditySourceIdOf<T>, Fixed)> = Vec::new();
         let mut maybe_error: Option<DispatchError> = None;
 
-        if amount_prime > Fixed::ZERO {
+        if default_mcbc_weight > Fixed::ZERO {
             // Attempting to quote according to the default sources weights
             //TODO:delete
-            // let amount_prime = if amount_prime < amount {
-            //     <SwapAmount<Balance>>::unique_saturated_from(
-            //         <SwapAmount<Fixed>>::unique_saturated_from(amount) * default_mcbc_weight,
-            //     )
-            // } else {
-            //     amount.clone()
-            // };
+            let amount_prim = if default_mcbc_weight < Fixed::ONE {
+                <SwapAmount<Balance>>::unique_saturated_from(
+                    <SwapAmount<Fixed>>::unique_saturated_from(amount) * default_mcbc_weight,
+                )
+            } else {
+                amount.clone()
+            };
             let intermediary_result = T::LiquidityRegistry::quote(
                 primary_source_id,
                 input_asset_id,
                 output_asset_id,
-                amount_prime.clone(),
+                amount_prim.clone(),
             )
-            .and_then(|outcome_prime| {
-                if amount_prime < amount {
+            .and_then(|outcome_prim| {
+                if amount_prim < amount {
                     // TODO: implement Saturating trait for SwapAmount
-                    let limit = match amount_prime {
+                    let limit = match amount_prim {
                         SwapAmount::WithDesiredInput {
                             min_amount_out: l, ..
                         } => l,
@@ -940,14 +937,14 @@ impl<T: Config> Pallet<T> {
                             desired_amount_in,
                             min_amount_out,
                         } => SwapAmount::with_desired_input(
-                            desired_amount_in.saturating_sub(amount_prime.amount()),
+                            desired_amount_in.saturating_sub(amount_prim.amount()),
                             min_amount_out.saturating_sub(limit),
                         ),
                         SwapAmount::WithDesiredOutput {
                             desired_amount_out,
                             max_amount_in,
                         } => SwapAmount::with_desired_output(
-                            desired_amount_out.saturating_sub(amount_prime.amount()),
+                            desired_amount_out.saturating_sub(amount_prim.amount()),
                             max_amount_in.saturating_sub(limit),
                         ),
                     };
@@ -1049,127 +1046,6 @@ impl<T: Config> Pallet<T> {
         }
 
         Ok((AggregatedSwapOutcome::new(distr, best, total_fee), rewards))
-    }
-
-    /// Implements a generic source-agnostic split algorithm to partition a trade between
-    /// an arbitrary number of liquidity sources of arbitrary types.
-    ///
-    /// - `sources` - a vector of liquidity sources IDs,
-    /// - `input_asset_id` - ID of the asset to sell,
-    /// - `output_asset_id` - ID of the asset to buy,
-    /// - `amount` - the amount with "direction" (sell or buy) together with the maximum price impact (slippage).
-    /// - `skip_info` - flag that indicates that additional info should not be shown, that is needed when actual exchange is performed.
-    ///
-    fn generic_split(
-        sources: Vec<LiquiditySourceIdOf<T>>,
-        input_asset_id: &T::AssetId,
-        output_asset_id: &T::AssetId,
-        amount: SwapAmount<Balance>,
-        skip_info: bool,
-    ) -> Result<
-        (
-            AggregatedSwapOutcome<LiquiditySourceIdOf<T>, Balance>,
-            Rewards<T::AssetId>,
-        ),
-        DispatchError,
-    > {
-        let amount = <SwapAmount<Fixed>>::unique_saturated_from(amount);
-        let num_samples = T::GetNumSamples::get();
-        let (sample_data, sample_fees): (Vec<Vec<Fixed>>, Vec<Vec<Fixed>>) = sources
-            .iter()
-            .map(|src| {
-                Self::sample_liquidity_source(
-                    src,
-                    input_asset_id,
-                    output_asset_id,
-                    amount,
-                    num_samples,
-                )
-            })
-            .map(|row| row.iter().map(|x| (x.amount, x.fee)).unzip())
-            .unzip();
-
-        let (distr, best) = match amount {
-            SwapAmount::WithDesiredInput { .. } => {
-                algo::find_distribution(sample_data.clone(), false)
-            }
-            _ => algo::find_distribution(sample_data.clone(), true),
-        };
-
-        ensure!(
-            best > Fixed::ZERO && best < Fixed::MAX,
-            Error::<T>::AggregationError
-        );
-
-        let num_samples =
-            FixedInner::try_from(num_samples).map_err(|_| Error::CalculationError::<T>)?;
-        let total_fee: FixedWrapper = (0..distr.len()).fold(fixed!(0), |acc, i| {
-            let idx = match distr[i].cmul(num_samples) {
-                Err(_) => return acc,
-                Ok(index) => index.rounding_to_i64(),
-            };
-            acc + *sample_fees[i]
-                .get((idx - 1) as usize)
-                .unwrap_or(&Fixed::ZERO)
-        });
-        let total_fee = total_fee.get().map_err(|_| Error::CalculationError::<T>)?;
-
-        let mut rewards = Vec::new();
-        if !skip_info {
-            for i in 0..distr.len() {
-                let idx = match distr[i].cmul(num_samples) {
-                    Err(_) => continue,
-                    Ok(index) => index.rounding_to_i64(),
-                };
-                let amount_a = match sample_data[i]
-                    .get((idx - 1) as usize)
-                    .unwrap_or(&Fixed::ZERO)
-                    .into_bits()
-                    .try_into()
-                {
-                    Err(_) => continue,
-                    Ok(amt) => amt,
-                };
-                let amount_b = match (distr[i] * amount).amount().into_bits().try_into() {
-                    Err(_) => continue,
-                    Ok(amt) => amt,
-                };
-                let (input_amount, output_amount) = match amount {
-                    SwapAmount::WithDesiredInput { .. } => (amount_b, amount_a),
-                    SwapAmount::WithDesiredOutput { .. } => (amount_a, amount_b),
-                };
-                let source = match sources.get(i) {
-                    None => continue,
-                    Some(source) => source,
-                };
-                let mut current_rewards = T::LiquidityRegistry::check_rewards(
-                    source,
-                    input_asset_id,
-                    output_asset_id,
-                    input_amount,
-                    output_amount,
-                )
-                .unwrap_or(Vec::new());
-                rewards.append(&mut current_rewards);
-            }
-        }
-
-        Ok((
-            AggregatedSwapOutcome::new(
-                sources
-                    .into_iter()
-                    .zip(distr.into_iter())
-                    .collect::<Vec<_>>(),
-                best.into_bits()
-                    .try_into()
-                    .map_err(|_| Error::CalculationError::<T>)?,
-                total_fee
-                    .into_bits()
-                    .try_into()
-                    .map_err(|_| Error::CalculationError::<T>)?,
-            ),
-            rewards,
-        ))
     }
 
     /// Determines the share of a swap that should be exchanged in the primary market
