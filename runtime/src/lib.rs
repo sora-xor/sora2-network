@@ -1822,7 +1822,7 @@ impl_runtime_apis! {
                 return None;
             }
 
-            LiquidityProxy::quote(
+            LiquidityProxy::inner_quote(
                 &input_asset_id,
                 &output_asset_id,
                 QuoteAmount::with_variant(swap_variant, amount.into()),

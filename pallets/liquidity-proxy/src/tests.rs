@@ -294,7 +294,7 @@ fn test_quote_exact_output_base_should_pass() {
 fn test_poly_quote_exact_input_1_should_pass() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
-        let (quotes, _rewards) = LiquidityProxy::quote(
+        let (quotes, _rewards) = LiquidityProxy::inner_quote(
             &KSM,
             &DOT,
             QuoteAmount::with_desired_input(balance!(100)),
@@ -335,7 +335,7 @@ fn test_poly_quote_exact_input_1_should_pass() {
 fn test_poly_quote_exact_output_1_should_pass() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
-        let (quotes, _rewards) = LiquidityProxy::quote(
+        let (quotes, _rewards) = LiquidityProxy::inner_quote(
             &KSM,
             &DOT,
             QuoteAmount::with_desired_output(balance!(934.572151021276260545)),
@@ -376,7 +376,7 @@ fn test_poly_quote_exact_output_1_should_pass() {
 fn test_poly_quote_exact_input_2_should_pass() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
-        let (quotes, _rewards) = LiquidityProxy::quote(
+        let (quotes, _rewards) = LiquidityProxy::inner_quote(
             &DOT,
             &KSM,
             QuoteAmount::with_desired_input(balance!(500)),
@@ -417,7 +417,7 @@ fn test_poly_quote_exact_input_2_should_pass() {
 fn test_poly_quote_exact_output_2_should_pass() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
-        let (quotes, _rewards) = LiquidityProxy::quote(
+        let (quotes, _rewards) = LiquidityProxy::inner_quote(
             &DOT,
             &KSM,
             QuoteAmount::with_desired_output(balance!(555.083861089846196673)),
@@ -763,7 +763,7 @@ fn test_fee_when_exchange_on_one_source_of_many_should_pass() {
             ]
             .into(),
         );
-        let (quotes, _rewards) = LiquidityProxy::quote(
+        let (quotes, _rewards) = LiquidityProxy::inner_quote(
             &GetBaseAssetId::get(),
             &DOT,
             QuoteAmount::with_desired_output(amount),
@@ -1401,7 +1401,7 @@ fn test_quote_should_return_rewards_for_multiple_sources() {
         MockLiquiditySource3::add_reward((balance!(301), DOT.into(), RewardReason::Unspecified));
 
         let amount: Balance = balance!(500);
-        let (_, rewards) = LiquidityProxy::quote(
+        let (_, rewards) = LiquidityProxy::inner_quote(
             &GetBaseAssetId::get(),
             &DOT,
             QuoteAmount::with_desired_input(amount),
