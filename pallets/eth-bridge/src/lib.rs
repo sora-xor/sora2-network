@@ -610,7 +610,7 @@ impl<T: Config> IncomingRequest<T> {
         }
     }
 
-    fn network_id(&self) -> T::NetworkId {
+    pub fn network_id(&self) -> T::NetworkId {
         match self {
             IncomingRequest::Transfer(request) => request.network_id,
             IncomingRequest::AddToken(request) => request.network_id,
@@ -762,7 +762,7 @@ impl<T: Config> LoadIncomingRequest<T> {
         }
     }
 
-    fn network_id(&self) -> T::NetworkId {
+    pub fn network_id(&self) -> T::NetworkId {
         match self {
             Self::Transaction(request) => request.network_id,
             Self::Meta(request, _) => request.network_id,
@@ -2220,7 +2220,7 @@ pub mod pallet {
     /// Multi-signature bridge peers' account. `None` if there is no account and network with the given ID.
     #[pallet::storage]
     #[pallet::getter(fn bridge_account)]
-    pub(super) type BridgeAccount<T: Config> =
+    pub type BridgeAccount<T: Config> =
         StorageMap<_, Twox64Concat, BridgeNetworkId<T>, T::AccountId>;
 
     /// Thischain authority account.
@@ -4137,7 +4137,7 @@ impl<T: Config> Pallet<T> {
     }
 
     /// Checks if the account is a bridge peer.
-    fn is_peer(who: &T::AccountId, network_id: T::NetworkId) -> bool {
+    pub fn is_peer(who: &T::AccountId, network_id: T::NetworkId) -> bool {
         Self::peers(network_id).into_iter().any(|i| i == *who)
     }
 
