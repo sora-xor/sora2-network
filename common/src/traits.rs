@@ -586,3 +586,15 @@ where
         B::on_pool_created(fee_account, dex_id, pool_account)
     }
 }
+
+/// General trait for passing on the amount of burned VAL.
+pub trait OnValBurned {
+    /// Report amount and fractions of burned pswap at the moment of invokation.
+    fn on_val_burned(amount: Balance);
+}
+
+impl OnValBurned for () {
+    fn on_val_burned(_: Balance) {
+        // do nothing
+    }
+}

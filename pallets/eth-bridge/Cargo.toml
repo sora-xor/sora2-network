@@ -1,6 +1,6 @@
 [package]
 name = "eth-bridge"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2018"
 authors = ['Polka Biome Ltd. <jihoon@tutanota.de>']
 license = "BSD-4-Clause"
@@ -22,8 +22,10 @@ serde_json = { version = "1.0", default-features = false, features = ["alloc"] }
 sp-core = { version = "3", default-features = false }
 sp-std = { version = "3", default-features = false }
 tiny-keccak = { version = "2", default-features = false }
+pallet-scheduler = { version = "3", default-features = false }
+pallet-timestamp = { version = "3", default-features = false }
 
-bridge-multisig = { git = "https://github.com/soramitsu/sora2-frame-pallets.git", branch = "v3.1.0", package = "pallet-multisig", default-features = false }
+bridge-multisig = { git = "https://github.com/soramitsu/sora2-frame-pallets.git", branch = "v3.2.1", package = "pallet-multisig", default-features = false }
 ethabi = { git = "https://github.com/vmarkushin/ethabi.git", branch = "no-std", package = "ethabi", default-features = false, features = ["alloc"] }
 ethabi-contract = { git = "https://github.com/vmarkushin/ethabi.git", branch = "no-std", package = "ethabi-contract", default-features = false }
 ethabi-derive = { git = "https://github.com/vmarkushin/ethabi.git", branch = "no-std", package = "ethabi-derive", default-features = false }
@@ -69,6 +71,8 @@ std = [
     'serde/std',
     'sp-core/std',
     'sp-std/std',
+    'pallet-scheduler/std',
+    'pallet-timestamp/std',
 ]
 runtime-benchmarks = [
     "frame-benchmarking",

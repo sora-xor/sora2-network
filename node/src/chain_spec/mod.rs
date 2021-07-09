@@ -37,8 +37,8 @@ use framenode_runtime::GenesisConfig;
 
 use common::prelude::{Balance, DEXInfo, FixedWrapper};
 use common::{
-    balance, fixed, hash, vec_push, BalancePrecision, DEXId, Fixed, TechPurpose, DAI,
-    DEFAULT_BALANCE_PRECISION, ETH, PSWAP, USDT, VAL, XOR,
+    balance, fixed, hash, our_include, our_include_bytes, vec_push, BalancePrecision, DEXId, Fixed,
+    TechPurpose, DAI, DEFAULT_BALANCE_PRECISION, ETH, PSWAP, USDT, VAL, XOR,
 };
 use frame_support::sp_runtime::Percent;
 use framenode_runtime::eth_bridge::{AssetConfig, BridgeAssetData, NetworkConfig};
@@ -81,30 +81,6 @@ use std::borrow::Cow;
 pub type ChainSpec = sc_service::GenericChainSpec<GenesisConfig>;
 type Technical = technical::Module<Runtime>;
 type AccountPublic = <Signature as Verify>::Signer;
-
-macro_rules! our_include {
-    ($x:expr) => {{
-        #[cfg(feature = "include-real-files")]
-        let output = include!($x);
-
-        #[cfg(not(feature = "include-real-files"))]
-        let output = Default::default();
-
-        output
-    }};
-}
-
-macro_rules! our_include_bytes {
-    ($x:expr) => {{
-        #[cfg(feature = "include-real-files")]
-        static OUTPUT: &'static [u8] = include_bytes!($x);
-
-        #[cfg(not(feature = "include-real-files"))]
-        static OUTPUT: &'static [u8] = &[];
-
-        OUTPUT
-    }};
-}
 
 /// Helper function to generate a crypto pair from seed
 fn get_from_seed<TPublic: Public>(seed: &str) -> <TPublic::Pair as Pair>::Public {
@@ -784,15 +760,15 @@ fn testnet_genesis(
         val_owners: vec![
             (
                 hex!("d170A274320333243b9F860e8891C6792DE1eC19").into(),
-                balance!(995),
+                balance!(995).into(),
             ),
             (
                 hex!("21Bc9f4a3d9Dc86f142F802668dB7D908cF0A636").into(),
-                balance!(111),
+                balance!(111).into(),
             ),
             (
                 hex!("D67fea281B2C5dC3271509c1b628E0867a9815D7").into(),
-                balance!(444),
+                balance!(444).into(),
             ),
         ],
         pswap_farm_owners: vec![

@@ -1727,7 +1727,7 @@ dependencies = [
 
 [[package]]
 name = "eth-bridge"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "assets",
  "async-std",
@@ -1750,7 +1750,9 @@ dependencies = [
  "orml-traits",
  "pallet-balances",
  "pallet-multisig 3.1.0",
+ "pallet-scheduler",
  "pallet-sudo",
+ "pallet-timestamp",
  "parity-scale-codec",
  "parity-util-mem",
  "parking_lot 0.11.1",
@@ -5019,7 +5021,7 @@ dependencies = [
 [[package]]
 name = "pallet-multisig"
 version = "3.1.0"
-source = "git+https://github.com/soramitsu/sora2-frame-pallets?branch=v3.1.0#d4fce2636bcf079d11979cab21c843f7dd2743bc"
+source = "git+https://github.com/soramitsu/sora2-frame-pallets.git?branch=v3.2.1#f772224f1a4ac63bc4305acf4148335cb1e6af5a"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -6391,7 +6393,7 @@ checksum = "e9c17925a9027d298a4603d286befe3f9dc0e8ed02523141914eb628798d6e5b"
 
 [[package]]
 name = "rewards"
-version = "1.1.0"
+version = "1.2.0"
 dependencies = [
  "assets",
  "common",
