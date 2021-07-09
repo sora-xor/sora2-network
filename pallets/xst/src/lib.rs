@@ -51,7 +51,7 @@ use common::prelude::{
 };
 use common::{
     balance, fixed, fixed_wrapper, DEXId, DexIdOf, GetXSTMarketInfo, LiquiditySource,
-    LiquiditySourceFilter, LiquiditySourceType, ManagementMode, RewardReason, DAI, XOR, XSTUSD,
+    LiquiditySourceFilter, LiquiditySourceType, ManagementMode, RewardReason, DAI, XSTUSD,
 };
 use frame_support::traits::Get;
 use frame_support::weights::Weight;
@@ -60,7 +60,6 @@ use liquidity_proxy::LiquidityProxyTrait;
 use permissions::{Scope, BURN, MINT};
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
-use sp_arithmetic::traits::Zero;
 use sp_runtime::{DispatchError, DispatchResult};
 use sp_std::collections::btree_set::BTreeSet;
 use sp_std::vec::Vec;
@@ -290,6 +289,7 @@ pub mod pallet {
 #[allow(non_snake_case)]
 impl<T: Config> Module<T> {
     #[inline]
+    #[allow(unused)]
     fn self_excluding_filter() -> LiquiditySourceFilter<T::DEXId, LiquiditySourceType> {
         LiquiditySourceFilter::with_forbidden(
             DEXId::Polkaswap.into(),
@@ -381,7 +381,7 @@ impl<T: Config> Module<T> {
     ///    in curve-like dependency.
     pub fn sell_price(
         main_asset_id: &T::AssetId,
-        synthetic_asset_id: &T::AssetId,
+        _synthetic_asset_id: &T::AssetId,
         quantity: QuoteAmount<Balance>,
     ) -> Result<Fixed, DispatchError> {
         // Get reference prices for base and synthetic to understand token value.
@@ -417,13 +417,10 @@ impl<T: Config> Module<T> {
     fn decide_buy_amounts(
         main_asset_id: &T::AssetId,
         synthetic_asset_id: &T::AssetId,
-        amount: SwapAmount<Balance>,
+        amount: QuoteAmount<Balance>,
     ) -> Result<(Balance, Balance, Balance), DispatchError> {
         Ok(match amount {
-            SwapAmount::WithDesiredInput {
-                desired_amount_in,
-                min_amount_out,
-            } => {
+            QuoteAmount::WithDesiredInput { desired_amount_in } => {
                 let mut output_amount: Balance = FixedWrapper::from(Self::buy_price(
                     main_asset_id,
                     synthetic_asset_id,
@@ -435,17 +432,10 @@ impl<T: Config> Module<T> {
                     .try_into_balance()
                     .map_err(|_| Error::<T>::PriceCalculationFailed)?;
                 output_amount = output_amount.saturating_sub(fee_amount);
-                ensure!(
-                    output_amount >= min_amount_out,
-                    Error::<T>::SlippageLimitExceeded
-                );
                 (desired_amount_in, output_amount, fee_amount)
             }
 
-            SwapAmount::WithDesiredOutput {
-                desired_amount_out,
-                max_amount_in,
-            } => {
+            QuoteAmount::WithDesiredOutput { desired_amount_out } => {
                 let desired_amount_out_with_fee = (FixedWrapper::from(desired_amount_out)
                     / (fixed_wrapper!(1) - BaseFee::<T>::get()))
                 .try_into_balance()
@@ -459,10 +449,6 @@ impl<T: Config> Module<T> {
                     .into_bits()
                     .try_into()
                     .map_err(|_| Error::<T>::PriceCalculationFailed)?;
-                ensure!(
-                    input_amount <= max_amount_in,
-                    Error::<T>::SlippageLimitExceeded
-                );
                 (
                     input_amount,
                     desired_amount_out,
@@ -478,13 +464,10 @@ impl<T: Config> Module<T> {
     fn decide_sell_amounts(
         main_asset_id: &T::AssetId,
         collateral_asset_id: &T::AssetId,
-        amount: SwapAmount<Balance>,
+        amount: QuoteAmount<Balance>,
     ) -> Result<(Balance, Balance, Balance), DispatchError> {
         Ok(match amount {
-            SwapAmount::WithDesiredInput {
-                desired_amount_in,
-                min_amount_out,
-            } => {
+            QuoteAmount::WithDesiredInput { desired_amount_in } => {
                 let fee_ratio = FixedWrapper::from(BaseFee::<T>::get());
                 let fee_amount = (fee_ratio * FixedWrapper::from(desired_amount_in))
                     .try_into_balance()
@@ -500,16 +483,9 @@ impl<T: Config> Module<T> {
                     .into_bits()
                     .try_into()
                     .map_err(|_| Error::<T>::PriceCalculationFailed)?;
-                ensure!(
-                    output_amount >= min_amount_out,
-                    Error::<T>::SlippageLimitExceeded
-                );
                 (desired_amount_in, output_amount, fee_amount)
             }
-            SwapAmount::WithDesiredOutput {
-                desired_amount_out,
-                max_amount_in,
-            } => {
+            QuoteAmount::WithDesiredOutput { desired_amount_out } => {
                 let input_amount: Balance = FixedWrapper::from(Self::sell_price(
                     main_asset_id,
                     collateral_asset_id,
@@ -523,10 +499,6 @@ impl<T: Config> Module<T> {
                 let input_amount_with_fee = input_amount_with_fee
                     .try_into_balance()
                     .map_err(|_| Error::<T>::PriceCalculationFailed)?;
-                ensure!(
-                    input_amount <= max_amount_in,
-                    Error::<T>::SlippageLimitExceeded
-                );
                 (
                     input_amount_with_fee,
                     desired_amount_out,
@@ -556,9 +528,26 @@ impl<T: Config> Module<T> {
 
             let base_asset_id = &T::GetBaseAssetId::get();
             let (input_amount, output_amount, fee_amount) = if input_asset_id == base_asset_id {
-                Self::decide_sell_amounts(&input_asset_id, &output_asset_id, swap_amount)?
+                Self::decide_sell_amounts(&input_asset_id, &output_asset_id, swap_amount.into())?
             } else {
-                Self::decide_buy_amounts(&output_asset_id, &input_asset_id, swap_amount)?
+                Self::decide_buy_amounts(&output_asset_id, &input_asset_id, swap_amount.into())?
+            };
+
+            let result = match swap_amount {
+                SwapAmount::WithDesiredInput { min_amount_out, .. } => {
+                    ensure!(
+                        output_amount >= min_amount_out,
+                        Error::<T>::SlippageLimitExceeded
+                    );
+                    SwapOutcome::new(output_amount, fee_amount)
+                }
+                SwapAmount::WithDesiredOutput { max_amount_in, .. } => {
+                    ensure!(
+                        input_amount <= max_amount_in,
+                        Error::<T>::SlippageLimitExceeded
+                    );
+                    SwapOutcome::new(input_amount, fee_amount)
+                }
             };
 
             Assets::<T>::burn_from(
@@ -575,14 +564,7 @@ impl<T: Config> Module<T> {
                 output_amount,
             )?;
 
-            match swap_amount {
-                SwapAmount::WithDesiredInput { .. } => {
-                    Ok(SwapOutcome::new(output_amount, fee_amount))
-                }
-                SwapAmount::WithDesiredOutput { .. } => {
-                    Ok(SwapOutcome::new(input_amount, fee_amount))
-                }
-            }
+            Ok(result)
         })
     }
 
@@ -645,7 +627,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         dex_id: &T::DEXId,
         input_asset_id: &T::AssetId,
         output_asset_id: &T::AssetId,
-        swap_amount: SwapAmount<Balance>,
+        swap_amount: QuoteAmount<Balance>,
     ) -> Result<SwapOutcome<Balance>, DispatchError> {
         if !Self::can_exchange(dex_id, input_asset_id, output_asset_id) {
             fail!(Error::<T>::CantExchange);
@@ -657,8 +639,8 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
             Self::decide_buy_amounts(&output_asset_id, &input_asset_id, swap_amount)?
         };
         match swap_amount {
-            SwapAmount::WithDesiredInput { .. } => Ok(SwapOutcome::new(output_amount, fee_amount)),
-            SwapAmount::WithDesiredOutput { .. } => Ok(SwapOutcome::new(input_amount, fee_amount)),
+            QuoteAmount::WithDesiredInput { .. } => Ok(SwapOutcome::new(output_amount, fee_amount)),
+            QuoteAmount::WithDesiredOutput { .. } => Ok(SwapOutcome::new(input_amount, fee_amount)),
         }
     }
 

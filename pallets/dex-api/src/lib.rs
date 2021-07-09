@@ -30,7 +30,7 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use common::prelude::{Balance, SwapAmount, SwapOutcome, SwapVariant};
+use common::prelude::{Balance, QuoteAmount, SwapAmount, SwapOutcome, SwapVariant};
 use common::{
     LiquidityRegistry, LiquiditySource, LiquiditySourceFilter, LiquiditySourceId,
     LiquiditySourceType, RewardReason,
@@ -94,7 +94,7 @@ impl<T: Config>
         liquidity_source_id: &LiquiditySourceId<T::DEXId, LiquiditySourceType>,
         input_asset_id: &T::AssetId,
         output_asset_id: &T::AssetId,
-        swap_amount: SwapAmount<Balance>,
+        quote_amount: QuoteAmount<Balance>,
     ) -> Result<SwapOutcome<Balance>, DispatchError> {
         use LiquiditySourceType::*;
         macro_rules! quote {
@@ -103,7 +103,7 @@ impl<T: Config>
                     &liquidity_source_id.dex_id,
                     input_asset_id,
                     output_asset_id,
-                    swap_amount,
+                    quote_amount,
                 )
             };
         }

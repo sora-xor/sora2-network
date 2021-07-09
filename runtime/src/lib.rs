@@ -40,6 +40,7 @@ pub mod constants;
 mod extensions;
 mod impls;
 
+use common::prelude::QuoteAmount;
 use constants::time::*;
 
 // Make the WASM binary available.
@@ -64,7 +65,7 @@ use sp_core::u32_trait::{_1, _2, _3};
 use sp_core::{Encode, OpaqueMetadata, H160};
 use sp_runtime::traits::{
     BlakeTwo256, Block as BlockT, Convert, IdentifyAccount, IdentityLookup, NumberFor, OpaqueKeys,
-    SaturatedConversion, Verify, Zero,
+    SaturatedConversion, Verify,
 };
 use sp_runtime::transaction_validity::{
     TransactionPriority, TransactionSource, TransactionValidity,
@@ -1827,16 +1828,10 @@ impl_runtime_apis! {
                 return None;
             }
 
-            // TODO: remove with proper QuoteAmount refactor
-            let limit = if swap_variant == SwapVariant::WithDesiredInput {
-                Balance::zero()
-            } else {
-                Balance::max_value()
-            };
             LiquidityProxy::quote(
                 &input_asset_id,
                 &output_asset_id,
-                SwapAmount::with_variant(swap_variant, amount.into(), limit),
+                QuoteAmount::with_variant(swap_variant, amount.into()),
                 LiquiditySourceFilter::with_mode(dex_id, filter_mode, selected_source_types),
                 false,
             ).ok().map(|(asa, rewards)| liquidity_proxy_runtime_api::SwapOutcomeInfo::<Balance, AssetId> {

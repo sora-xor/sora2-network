@@ -38,7 +38,7 @@ use frame_support::{ensure, fail, Parameter};
 use frame_system::ensure_signed;
 use sp_std::vec::Vec;
 
-use common::prelude::{Balance, EnsureDEXManager, SwapAmount, SwapOutcome};
+use common::prelude::{Balance, EnsureDEXManager, QuoteAmount, SwapAmount, SwapOutcome};
 use common::{
     EnsureTradingPairExists, GetPoolReserves, LiquiditySource, LiquiditySourceType, ManagementMode,
     PoolXykPallet, RewardReason, TechAccountId, TechPurpose, ToFeeAccount, TradingPair,
@@ -310,7 +310,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         dex_id: &T::DEXId,
         input_asset_id: &T::AssetId,
         output_asset_id: &T::AssetId,
-        swap_amount: SwapAmount<Balance>,
+        swap_amount: QuoteAmount<Balance>,
     ) -> Result<SwapOutcome<Balance>, DispatchError> {
         // Get pool account.
         let (_, tech_acc_id) = Module::<T>::tech_account_from_dex_and_asset_pair(
@@ -337,9 +337,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
 
         // Calculate quote.
         match swap_amount {
-            SwapAmount::WithDesiredInput {
-                desired_amount_in, ..
-            } => {
+            QuoteAmount::WithDesiredInput { desired_amount_in } => {
                 let (calculated, fee) = Module::<T>::calc_output_for_exact_input(
                     T::GetFee::get(),
                     get_fee_from_destination,
@@ -349,9 +347,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
                 )?;
                 Ok(SwapOutcome::new(calculated, fee))
             }
-            SwapAmount::WithDesiredOutput {
-                desired_amount_out, ..
-            } => {
+            QuoteAmount::WithDesiredOutput { desired_amount_out } => {
                 let (calculated, fee) = Module::<T>::calc_input_for_exact_output(
                     T::GetFee::get(),
                     get_fee_from_destination,

@@ -38,9 +38,9 @@ use fixnum::ops::RoundingMul;
 use frame_support::RuntimeDebug;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
-use sp_runtime::traits::{UniqueSaturatedFrom, UniqueSaturatedInto};
+use sp_runtime::traits::{CheckedAdd, CheckedSub, UniqueSaturatedFrom, UniqueSaturatedInto};
 use sp_std::mem;
-use fixnum::ops::CheckedAdd;
+use sp_std::ops::{Add, Sub};
 
 use crate::primitives::Balance;
 use crate::Fixed;
@@ -59,6 +59,17 @@ impl<T> QuoteAmount<T> {
 
     pub fn with_desired_output(desired_amount_out: T) -> Self {
         Self::WithDesiredOutput { desired_amount_out }
+    }
+
+    pub fn with_variant(variant: SwapVariant, amount: T) -> Self {
+        match variant {
+            SwapVariant::WithDesiredInput => Self::WithDesiredInput {
+                desired_amount_in: amount,
+            },
+            SwapVariant::WithDesiredOutput => Self::WithDesiredOutput {
+                desired_amount_out: amount,
+            },
+        }
     }
 
     pub fn amount(self) -> T {
@@ -81,19 +92,112 @@ impl<T> QuoteAmount<T> {
             Self::WithDesiredOutput { .. } => (outcome.amount, self.amount()),
         }
     }
+
+    // Create new value with same direction as `self`.
+    pub fn copy_direction(&self, amount: T) -> Self {
+        match self {
+            Self::WithDesiredInput { .. } => Self::with_desired_input(amount),
+            Self::WithDesiredOutput { .. } => Self::with_desired_output(amount),
+        }
+    }
 }
 
-impl<T: CheckedAdd<Output = T>> CheckedAdd<QuoteAmount<T>> for QuoteAmount<T> {
+impl<T: Add<Output = T>> Add for QuoteAmount<T> {
     type Output = Self;
-    type Error = &'static str;
 
-    fn cadd(self, rhs: QuoteAmount<T>) -> Result<Self::Output, Self::Error> {
+    fn add(self, rhs: Self) -> Self::Output {
         match (self, rhs) {
-            (Self::WithDesiredInput{desired_amount_in: in_a}, Self::WithDesiredInput{desired_amount_in: in_b}) =>
-                Ok(Self::with_desired_input(in_a.cadd(in_b).map_err(|_| "failed to add components")?)),
-            (Self::WithDesiredOutput{desired_amount_out: out_a}, Self::WithDesiredOutput{desired_amount_out: out_b}) =>
-                Ok(Self::with_desired_output(out_a.cadd(out_b).map_err(|_| "failed to add components")?)),
-            (_, _) => Err("cannot add non-uniform variants")
+            (
+                Self::WithDesiredInput {
+                    desired_amount_in: in_a,
+                },
+                Self::WithDesiredInput {
+                    desired_amount_in: in_b,
+                },
+            ) => Self::with_desired_input(in_a + in_b),
+            (
+                Self::WithDesiredOutput {
+                    desired_amount_out: out_a,
+                },
+                Self::WithDesiredOutput {
+                    desired_amount_out: out_b,
+                },
+            ) => Self::with_desired_output(out_a + out_b),
+            (_, _) => panic!("cannot add non-uniform variants"),
+        }
+    }
+}
+
+impl<T: Sub<Output = T>> Sub for QuoteAmount<T> {
+    type Output = Self;
+
+    fn sub(self, rhs: Self) -> Self::Output {
+        match (self, rhs) {
+            (
+                Self::WithDesiredInput {
+                    desired_amount_in: in_a,
+                },
+                Self::WithDesiredInput {
+                    desired_amount_in: in_b,
+                },
+            ) => Self::with_desired_input(in_a - in_b),
+            (
+                Self::WithDesiredOutput {
+                    desired_amount_out: out_a,
+                },
+                Self::WithDesiredOutput {
+                    desired_amount_out: out_b,
+                },
+            ) => Self::with_desired_output(out_a - out_b),
+            (_, _) => panic!("cannot subtract non-uniform variants"),
+        }
+    }
+}
+
+impl<T: CheckedAdd> CheckedAdd for QuoteAmount<T> {
+    fn checked_add(&self, rhs: &QuoteAmount<T>) -> Option<Self::Output> {
+        match (self, rhs) {
+            (
+                Self::WithDesiredInput {
+                    desired_amount_in: in_a,
+                },
+                Self::WithDesiredInput {
+                    desired_amount_in: in_b,
+                },
+            ) => Some(Self::with_desired_input(in_a.checked_add(&in_b)?)),
+            (
+                Self::WithDesiredOutput {
+                    desired_amount_out: out_a,
+                },
+                Self::WithDesiredOutput {
+                    desired_amount_out: out_b,
+                },
+            ) => Some(Self::with_desired_output(out_a.checked_add(&out_b)?)),
+            (_, _) => None,
+        }
+    }
+}
+
+impl<T: CheckedSub<Output = T>> CheckedSub for QuoteAmount<T> {
+    fn checked_sub(&self, rhs: &QuoteAmount<T>) -> Option<Self::Output> {
+        match (self, rhs) {
+            (
+                Self::WithDesiredInput {
+                    desired_amount_in: in_a,
+                },
+                Self::WithDesiredInput {
+                    desired_amount_in: in_b,
+                },
+            ) => Some(Self::with_desired_input(in_a.checked_sub(in_b)?)),
+            (
+                Self::WithDesiredOutput {
+                    desired_amount_out: out_a,
+                },
+                Self::WithDesiredOutput {
+                    desired_amount_out: out_b,
+                },
+            ) => Some(Self::with_desired_output(out_a.checked_sub(out_b)?)),
+            (_, _) => None,
         }
     }
 }
@@ -101,9 +205,61 @@ impl<T: CheckedAdd<Output = T>> CheckedAdd<QuoteAmount<T>> for QuoteAmount<T> {
 impl<T> From<SwapAmount<T>> for QuoteAmount<T> {
     fn from(swap_amount: SwapAmount<T>) -> Self {
         match swap_amount {
-            SwapAmount::WithDesiredInput {desired_amount_in, ..} => Self::with_desired_input(desired_amount_in),
-            SwapAmount::WithDesiredOutput {desired_amount_out, ..} => Self::with_desired_output(desired_amount_out)
+            SwapAmount::WithDesiredInput {
+                desired_amount_in, ..
+            } => Self::with_desired_input(desired_amount_in),
+            SwapAmount::WithDesiredOutput {
+                desired_amount_out, ..
+            } => Self::with_desired_output(desired_amount_out),
         }
+    }
+}
+
+#[derive(Clone, Copy)]
+#[cfg_attr(feature = "std", derive(Debug))]
+pub struct TryFromQuoteAmountError;
+
+impl TryFrom<QuoteAmount<Fixed>> for QuoteAmount<Balance> {
+    type Error = TryFromQuoteAmountError;
+
+    fn try_from(v: QuoteAmount<Fixed>) -> Result<Self, Self::Error> {
+        Ok(match v {
+            QuoteAmount::WithDesiredInput { desired_amount_in } => Self::WithDesiredInput {
+                desired_amount_in: desired_amount_in
+                    .into_bits()
+                    .try_into()
+                    .map_err(|_| TryFromQuoteAmountError)?,
+            },
+            QuoteAmount::WithDesiredOutput { desired_amount_out } => Self::WithDesiredOutput {
+                desired_amount_out: desired_amount_out
+                    .into_bits()
+                    .try_into()
+                    .map_err(|_| TryFromQuoteAmountError)?,
+            },
+        })
+    }
+}
+
+impl TryFrom<QuoteAmount<Balance>> for QuoteAmount<Fixed> {
+    type Error = TryFromQuoteAmountError;
+
+    fn try_from(v: QuoteAmount<Balance>) -> Result<Self, Self::Error> {
+        Ok(match v {
+            QuoteAmount::WithDesiredInput { desired_amount_in } => Self::WithDesiredInput {
+                desired_amount_in: Fixed::from_bits(
+                    desired_amount_in
+                        .try_into()
+                        .map_err(|_| TryFromQuoteAmountError)?,
+                ),
+            },
+            QuoteAmount::WithDesiredOutput { desired_amount_out } => Self::WithDesiredOutput {
+                desired_amount_out: Fixed::from_bits(
+                    desired_amount_out
+                        .try_into()
+                        .map_err(|_| TryFromQuoteAmountError)?,
+                ),
+            },
+        })
     }
 }
 
@@ -171,11 +327,32 @@ impl<T> SwapAmount<T> {
         }
     }
 
+    pub fn limit(self) -> T {
+        match self {
+            SwapAmount::WithDesiredInput {
+                min_amount_out: amount,
+                ..
+            }
+            | SwapAmount::WithDesiredOutput {
+                max_amount_in: amount,
+                ..
+            } => amount,
+        }
+    }
+
     // Position desired amount with outcome such that input and output values are aligned.
     pub fn sort_amount_outcome(self, outcome: SwapOutcome<T>) -> (T, T) {
         match self {
             Self::WithDesiredInput { .. } => (self.amount(), outcome.amount),
             Self::WithDesiredOutput { .. } => (outcome.amount, self.amount()),
+        }
+    }
+
+    // Create new value with same direction as `self`.
+    pub fn copy_direction(&self, amount: T, limit: T) -> Self {
+        match self {
+            Self::WithDesiredInput { .. } => Self::with_desired_input(amount, limit),
+            Self::WithDesiredOutput { .. } => Self::with_desired_output(amount, limit),
         }
     }
 }

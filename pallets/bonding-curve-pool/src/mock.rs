@@ -228,7 +228,7 @@ impl<DEXId> LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> f
         _target_id: &DEXId,
         _input_asset_id: &AssetId,
         _output_asset_id: &AssetId,
-        _swap_amount: SwapAmount<Balance>,
+        _swap_amount: QuoteAmount<Balance>,
     ) -> Result<SwapOutcome<Balance>, DispatchError> {
         unimplemented!()
     }
