@@ -28,7 +28,7 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use crate::prelude::{ManagementMode, SwapAmount, SwapOutcome};
+use crate::prelude::{ManagementMode, QuoteAmount, SwapAmount, SwapOutcome};
 use crate::{Fixed, LiquiditySourceFilter, LiquiditySourceId, PswapRemintInfo, RewardReason};
 use frame_support::dispatch::DispatchResult;
 use frame_support::pallet_prelude::MaybeSerializeDeserialize;
@@ -105,7 +105,7 @@ pub trait LiquiditySource<TargetId, AccountId, AssetId, Amount, Error> {
         target_id: &TargetId,
         input_asset_id: &AssetId,
         output_asset_id: &AssetId,
-        swap_amount: SwapAmount<Amount>,
+        swap_amount: QuoteAmount<Amount>,
     ) -> Result<SwapOutcome<Amount>, DispatchError>;
 
     /// Perform exchange based on desired amount.
@@ -143,7 +143,7 @@ impl<DEXId, AccountId, AssetId> LiquiditySource<DEXId, AccountId, AssetId, Fixed
         _target_id: &DEXId,
         _input_asset_id: &AssetId,
         _output_asset_id: &AssetId,
-        _swap_amount: SwapAmount<Fixed>,
+        _swap_amount: QuoteAmount<Fixed>,
     ) -> Result<SwapOutcome<Fixed>, DispatchError> {
         Err(DispatchError::CannotLookup)
     }
@@ -185,7 +185,7 @@ impl<DEXId, AccountId, AssetId> LiquiditySource<DEXId, AccountId, AssetId, Balan
         _target_id: &DEXId,
         _input_asset_id: &AssetId,
         _output_asset_id: &AssetId,
-        _swap_amount: SwapAmount<Balance>,
+        _swap_amount: QuoteAmount<Balance>,
     ) -> Result<SwapOutcome<Balance>, DispatchError> {
         Err(DispatchError::CannotLookup)
     }

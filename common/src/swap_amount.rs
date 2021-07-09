@@ -40,6 +40,7 @@ use frame_support::RuntimeDebug;
 use serde::{Deserialize, Serialize};
 use sp_runtime::traits::{UniqueSaturatedFrom, UniqueSaturatedInto};
 use sp_std::mem;
+use fixnum::ops::CheckedAdd;
 
 use crate::primitives::Balance;
 use crate::Fixed;
@@ -70,6 +71,38 @@ impl<T> QuoteAmount<T> {
                 desired_amount_out: amount,
                 ..
             } => amount,
+        }
+    }
+
+    // Position desired amount with outcome such that input and output values are aligned.
+    pub fn sort_amount_outcome(self, outcome: SwapOutcome<T>) -> (T, T) {
+        match self {
+            Self::WithDesiredInput { .. } => (self.amount(), outcome.amount),
+            Self::WithDesiredOutput { .. } => (outcome.amount, self.amount()),
+        }
+    }
+}
+
+impl<T: CheckedAdd<Output = T>> CheckedAdd<QuoteAmount<T>> for QuoteAmount<T> {
+    type Output = Self;
+    type Error = &'static str;
+
+    fn cadd(self, rhs: QuoteAmount<T>) -> Result<Self::Output, Self::Error> {
+        match (self, rhs) {
+            (Self::WithDesiredInput{desired_amount_in: in_a}, Self::WithDesiredInput{desired_amount_in: in_b}) =>
+                Ok(Self::with_desired_input(in_a.cadd(in_b).map_err(|_| "failed to add components")?)),
+            (Self::WithDesiredOutput{desired_amount_out: out_a}, Self::WithDesiredOutput{desired_amount_out: out_b}) =>
+                Ok(Self::with_desired_output(out_a.cadd(out_b).map_err(|_| "failed to add components")?)),
+            (_, _) => Err("cannot add non-uniform variants")
+        }
+    }
+}
+
+impl<T> From<SwapAmount<T>> for QuoteAmount<T> {
+    fn from(swap_amount: SwapAmount<T>) -> Self {
+        match swap_amount {
+            SwapAmount::WithDesiredInput {desired_amount_in, ..} => Self::with_desired_input(desired_amount_in),
+            SwapAmount::WithDesiredOutput {desired_amount_out, ..} => Self::with_desired_output(desired_amount_out)
         }
     }
 }
@@ -135,6 +168,14 @@ impl<T> SwapAmount<T> {
                 desired_amount_out: amount,
                 ..
             } => amount,
+        }
+    }
+
+    // Position desired amount with outcome such that input and output values are aligned.
+    pub fn sort_amount_outcome(self, outcome: SwapOutcome<T>) -> (T, T) {
+        match self {
+            Self::WithDesiredInput { .. } => (self.amount(), outcome.amount),
+            Self::WithDesiredOutput { .. } => (outcome.amount, self.amount()),
         }
     }
 }
