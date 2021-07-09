@@ -30,7 +30,7 @@
 
 use crate::{self as price_tools, Config};
 use common::mock::ExistentialDeposits;
-use common::prelude::{Balance, SwapAmount, SwapOutcome};
+use common::prelude::{Balance, QuoteAmount, SwapAmount, SwapOutcome};
 use common::{
     self, balance, fixed, hash, Amount, AssetId32, AssetName, AssetSymbol, DEXInfo, Fixed,
     LiquiditySourceFilter, LiquiditySourceType, PSWAP, USDT, VAL, XOR,
@@ -269,7 +269,7 @@ impl liquidity_proxy::LiquidityProxyTrait<DEXId, AccountId, AssetId> for MockDEX
     fn quote(
         _input_asset_id: &AssetId,
         _output_asset_id: &AssetId,
-        _amount: SwapAmount<Balance>,
+        _amount: QuoteAmount<Balance>,
         _filter: LiquiditySourceFilter<DEXId, LiquiditySourceType>,
     ) -> Result<SwapOutcome<Balance>, DispatchError> {
         Err(DispatchError::CannotLookup)

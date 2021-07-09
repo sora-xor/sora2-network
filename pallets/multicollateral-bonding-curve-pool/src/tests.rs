@@ -378,7 +378,7 @@ mod tests {
                 - FixedWrapper::from(MBCPool::buy_function(&XOR, Fixed::ZERO).unwrap())
                     / balance!(2);
             let pool_reference_amount = pool_reference_amount.into_balance();
-            let pool_val_amount = MockDEXApi::quote(&USDT, &VAL, SwapAmount::with_desired_input(pool_reference_amount, Balance::zero()), LiquiditySourceFilter::empty(DEXId::Polkaswap)).unwrap();
+            let pool_val_amount = MockDEXApi::quote(&USDT, &VAL, QuoteAmount::with_desired_input(pool_reference_amount), LiquiditySourceFilter::empty(DEXId::Polkaswap)).unwrap();
             let distribution_accounts =
                 bonding_curve_pool_init(vec![(VAL, pool_val_amount.amount)]).unwrap();
             let alice = &alice();
@@ -438,7 +438,7 @@ mod tests {
             let pool_reference_amount =
                 FixedWrapper::from(total_issuance) * MBCPool::sell_function(&XOR, Fixed::ZERO).unwrap();
             let pool_reference_amount = pool_reference_amount.into_balance();
-            let pool_val_amount = MockDEXApi::quote(&USDT, &VAL, SwapAmount::with_desired_input(pool_reference_amount, Balance::zero()), LiquiditySourceFilter::empty(DEXId::Polkaswap)).unwrap();
+            let pool_val_amount = MockDEXApi::quote(&USDT, &VAL, QuoteAmount::with_desired_input(pool_reference_amount), LiquiditySourceFilter::empty(DEXId::Polkaswap)).unwrap();
 
             let distribution_accounts =
                 bonding_curve_pool_init(vec![(VAL, pool_val_amount.amount)]).unwrap();
@@ -594,7 +594,7 @@ mod tests {
                     &DEXId::Polkaswap.into(),
                     &VAL,
                     &XOR,
-                    SwapAmount::with_desired_output(balance!(1), Balance::max_value()),
+                    QuoteAmount::with_desired_output(balance!(1)),
                 )
                 .unwrap();
 
@@ -604,7 +604,7 @@ mod tests {
                     &DEXId::Polkaswap.into(),
                     &VAL,
                     &XOR,
-                    SwapAmount::with_desired_output(balance!(1), Balance::max_value()),
+                    QuoteAmount::with_desired_output(balance!(1)),
                 )
                 .unwrap();
 
@@ -634,7 +634,7 @@ mod tests {
                 &DEXId::Polkaswap.into(),
                 &VAL,
                 &XOR,
-                SwapAmount::with_desired_input(amount_a.clone(), Balance::zero()),
+                QuoteAmount::with_desired_input(amount_a.clone()),
             )
             .unwrap();
             let exchange_outcome_a = MBCPool::exchange(
@@ -658,7 +658,7 @@ mod tests {
                 &DEXId::Polkaswap.into(),
                 &VAL,
                 &XOR,
-                SwapAmount::with_desired_output(amount_b.clone(), Balance::max_value()),
+                QuoteAmount::with_desired_output(amount_b.clone()),
             )
             .unwrap();
             let exchange_outcome_b = MBCPool::exchange(
@@ -682,7 +682,7 @@ mod tests {
                 &DEXId::Polkaswap.into(),
                 &XOR,
                 &VAL,
-                SwapAmount::with_desired_input(amount_c.clone(), Balance::zero()),
+                QuoteAmount::with_desired_input(amount_c.clone()),
             )
             .unwrap();
             let exchange_outcome_c = MBCPool::exchange(
@@ -706,7 +706,7 @@ mod tests {
                 &DEXId::Polkaswap.into(),
                 &VAL,
                 &XOR,
-                SwapAmount::with_desired_output(amount_d.clone(), Balance::max_value()),
+                QuoteAmount::with_desired_output(amount_d.clone()),
             )
             .unwrap();
             let exchange_outcome_d = MBCPool::exchange(
@@ -850,7 +850,7 @@ mod tests {
 
             let val_actual_reserves = MBCPool::actual_reserves_reference_price(&crate::mock::get_pool_reserves_account_id(), &VAL).unwrap();
             let dai_actual_reserves = MBCPool::actual_reserves_reference_price(&crate::mock::get_pool_reserves_account_id(), &DAI).unwrap();
-            let val_supposed_price = MockDEXApi::quote(&VAL, &DAI, SwapAmount::with_desired_input(val_amount, Balance::zero()), LiquiditySourceFilter::empty(DEXId::Polkaswap.into())).unwrap().amount;
+            let val_supposed_price = MockDEXApi::quote(&VAL, &DAI, QuoteAmount::with_desired_input(val_amount), LiquiditySourceFilter::empty(DEXId::Polkaswap.into())).unwrap().amount;
             let dai_supposed_price = dai_amount;
 
             // compare values, also deduce 20% which are distributed and not stored in reserves
@@ -890,14 +890,14 @@ mod tests {
                 &DEXId::Polkaswap.into(),
                 &VAL,
                 &XOR,
-                SwapAmount::with_desired_input(balance!(100), Balance::zero()),
+                QuoteAmount::with_desired_input(balance!(100)),
             )
             .unwrap();
             let price_b = MBCPool::quote(
                 &DEXId::Polkaswap.into(),
                 &VAL,
                 &XOR,
-                SwapAmount::with_desired_output(price_a.amount.clone(), Balance::max_value()),
+                QuoteAmount::with_desired_output(price_a.amount.clone()),
             )
             .unwrap();
             assert_eq!(price_a.fee, price_b.fee);
@@ -908,14 +908,14 @@ mod tests {
                 &DEXId::Polkaswap.into(),
                 &XOR,
                 &VAL,
-                SwapAmount::with_desired_output(balance!(100), Balance::max_value()),
+                QuoteAmount::with_desired_output(balance!(100)),
             )
             .unwrap();
             let price_d = MBCPool::quote(
                 &DEXId::Polkaswap.into(),
                 &XOR,
                 &VAL,
-                SwapAmount::with_desired_input(price_c.amount.clone(), Balance::zero()),
+                QuoteAmount::with_desired_input(price_c.amount.clone()),
             )
             .unwrap();
             assert_eq!(price_c.fee, price_d.fee);
@@ -979,7 +979,7 @@ mod tests {
                 &DEXId::Polkaswap.into(),
                 &XOR,
                 &DAI,
-                SwapAmount::with_desired_input(balance!(100), Balance::zero()),
+                QuoteAmount::with_desired_input(balance!(100)),
             )
             .unwrap();
             assert_eq!(sell_price.fee, balance!(9.3));
@@ -1001,7 +1001,7 @@ mod tests {
                 &DEXId::Polkaswap.into(),
                 &XOR,
                 &DAI,
-                SwapAmount::with_desired_input(balance!(100), Balance::zero()),
+                QuoteAmount::with_desired_input(balance!(100)),
             )
             .unwrap();
             assert_eq!(sell_price.fee, balance!(6.3));
@@ -1023,7 +1023,7 @@ mod tests {
                 &DEXId::Polkaswap.into(),
                 &XOR,
                 &DAI,
-                SwapAmount::with_desired_input(balance!(100), Balance::zero()),
+                QuoteAmount::with_desired_input(balance!(100)),
             )
             .unwrap();
             assert_eq!(sell_price.fee, balance!(3.3));
@@ -1045,7 +1045,7 @@ mod tests {
                 &DEXId::Polkaswap.into(),
                 &XOR,
                 &DAI,
-                SwapAmount::with_desired_input(balance!(100), Balance::zero()),
+                QuoteAmount::with_desired_input(balance!(100)),
             )
             .unwrap();
             assert_eq!(sell_price.fee, balance!(1.3));
@@ -1067,7 +1067,7 @@ mod tests {
                 &DEXId::Polkaswap.into(),
                 &XOR,
                 &DAI,
-                SwapAmount::with_desired_input(balance!(100), Balance::zero()),
+                QuoteAmount::with_desired_input(balance!(100)),
             )
             .unwrap();
             assert_eq!(sell_price.fee, balance!(0.3));
@@ -1101,7 +1101,7 @@ mod tests {
             assert_eq!((xor_ideal_reserves / xor_total_supply).into_balance(), balance!(330.890052356020942408));
             // pswap price is $10 on mock secondary market
             assert_eq!(
-                MockDEXApi::quote(&PSWAP, &DAI, SwapAmount::with_desired_input(balance!(1), balance!(0)), MBCPool::self_excluding_filter()).unwrap().amount,
+                MockDEXApi::quote(&PSWAP, &DAI, QuoteAmount::with_desired_input(balance!(1)), MBCPool::self_excluding_filter()).unwrap().amount,
                 balance!(10.173469387755102041)
             );
 

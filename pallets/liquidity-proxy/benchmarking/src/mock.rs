@@ -32,7 +32,7 @@
 
 use crate::{Config, *};
 use common::mock::ExistentialDeposits;
-use common::prelude::Balance;
+use common::prelude::{Balance, QuoteAmount};
 use common::{
     fixed, fixed_from_basis_points, hash, Amount, AssetId32, BalancePrecision, DEXInfo, Fixed,
     FromGenericPair, LiquiditySourceFilter, LiquiditySourceType, PriceToolsPallet, TechPurpose,
@@ -410,7 +410,7 @@ impl PriceToolsPallet<AssetId> for MockPriceTools {
         let res = <LiquidityProxy as LiquidityProxyTrait<DEXId, AccountId, AssetId>>::quote(
             input_asset_id,
             output_asset_id,
-            SwapAmount::with_desired_input(balance!(1), balance!(0)),
+            QuoteAmount::with_desired_input(balance!(1)),
             LiquiditySourceFilter::with_allowed(
                 0u32,
                 [LiquiditySourceType::XYKPool].iter().cloned().collect(),

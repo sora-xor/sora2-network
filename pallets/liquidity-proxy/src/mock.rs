@@ -44,7 +44,7 @@ use frame_support::{construct_runtime, ensure, fail, parameter_types};
 use frame_system;
 use traits::MultiCurrency;
 
-use common::prelude::{Balance, FixedWrapper, SwapAmount, SwapOutcome};
+use common::prelude::{Balance, FixedWrapper, QuoteAmount, SwapAmount, SwapOutcome};
 use permissions::{Scope, INIT_DEX, MANAGE_DEX};
 use sp_core::H256;
 use sp_runtime::testing::Header;
@@ -551,7 +551,7 @@ impl LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> for Mock
             let extra_fee = FixedWrapper::from(undercollaterization_charge(collateralization));
 
             match swap_amount {
-                SwapAmount::WithDesiredInput {
+                QuoteAmount::WithDesiredInput {
                     desired_amount_in, ..
                 } => {
                     let input_wrapped: FixedWrapper = desired_amount_in.into();
@@ -563,7 +563,7 @@ impl LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> for Mock
 
                     (desired_amount_in, output_amount, 0)
                 }
-                SwapAmount::WithDesiredOutput {
+                QuoteAmount::WithDesiredOutput {
                     desired_amount_out, ..
                 } => {
                     let output_wrapped: FixedWrapper = desired_amount_out.into();
@@ -586,7 +586,7 @@ impl LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> for Mock
             let m: FixedWrapper = fixed_wrapper!(1) / fixed_wrapper!(1337);
 
             match swap_amount {
-                SwapAmount::WithDesiredInput {
+                QuoteAmount::WithDesiredInput {
                     desired_amount_in: collateral_quantity,
                     ..
                 } => {
@@ -598,7 +598,7 @@ impl LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> for Mock
                     let output_amount: Balance = base_output.try_into_balance().unwrap();
                     (collateral_quantity, output_amount, 0)
                 }
-                SwapAmount::WithDesiredOutput {
+                QuoteAmount::WithDesiredOutput {
                     desired_amount_out: base_quantity,
                     ..
                 } => {
@@ -614,8 +614,8 @@ impl LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> for Mock
             }
         };
         match swap_amount {
-            SwapAmount::WithDesiredInput { .. } => Ok(SwapOutcome::new(output_amount, fee_amount)),
-            SwapAmount::WithDesiredOutput { .. } => Ok(SwapOutcome::new(input_amount, fee_amount)),
+            QuoteAmount::WithDesiredInput { .. } => Ok(SwapOutcome::new(output_amount, fee_amount)),
+            QuoteAmount::WithDesiredOutput { .. } => Ok(SwapOutcome::new(input_amount, fee_amount)),
         }
     }
 
@@ -843,11 +843,12 @@ impl ExtBuilder {
 
 pub struct MockXSTPool;
 
+#[allow(unused)]
 impl MockXSTPool {
     pub fn init() -> Result<(), DispatchError> {
         let reserves_tech_account_id =
             TechAccountId::Generic(b"xst_pool".to_vec(), b"main".to_vec());
-        let reserves_account_id =
+        let _reserves_account_id =
             Technical::tech_account_id_to_account_id(&reserves_tech_account_id)?;
         Technical::register_tech_account_id(reserves_tech_account_id.clone())?;
         MockLiquiditySource::set_reserves_account_id(reserves_tech_account_id)?;
@@ -870,7 +871,7 @@ impl LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> for Mock
         dex_id: &DEXId,
         input_asset_id: &AssetId,
         output_asset_id: &AssetId,
-        swap_amount: SwapAmount<Balance>,
+        quote_amount: QuoteAmount<Balance>,
     ) -> Result<SwapOutcome<Balance>, DispatchError> {
         if !Self::can_exchange(dex_id, input_asset_id, output_asset_id) {
             panic!("Can't exchange");
@@ -878,7 +879,7 @@ impl LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> for Mock
         let base_asset_id = &GetBaseAssetId::get();
         let reserves_tech_account_id =
             TechAccountId::Generic(b"xst_pool".to_vec(), b"main".to_vec());
-        let reserves_account_id =
+        let _reserves_account_id =
             Technical::tech_account_id_to_account_id(&reserves_tech_account_id)?;
 
         let base_asset_price: Balance = get_reference_prices()[base_asset_id].into();
@@ -886,14 +887,14 @@ impl LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> for Mock
         let (input_amount, output_amount, fee_amount) = if input_asset_id == base_asset_id {
             // Selling XOR
 
-            match swap_amount {
-                SwapAmount::WithDesiredInput {
+            match quote_amount {
+                QuoteAmount::WithDesiredInput {
                     desired_amount_in, ..
                 } => {
                     let output_amount: Balance = desired_amount_in * base_asset_price;
                     (desired_amount_in, output_amount, 0)
                 }
-                SwapAmount::WithDesiredOutput {
+                QuoteAmount::WithDesiredOutput {
                     desired_amount_out, ..
                 } => {
                     let input_amount = desired_amount_out / base_asset_price;
@@ -902,8 +903,8 @@ impl LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> for Mock
             }
         } else {
             // Buying XOR
-            match swap_amount {
-                SwapAmount::WithDesiredInput {
+            match quote_amount {
+                QuoteAmount::WithDesiredInput {
                     desired_amount_in: synthetics_quantity,
                     ..
                 } => {
@@ -911,7 +912,7 @@ impl LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> for Mock
                     let output_amount = synthetics_quantity / base_asset_price;
                     (synthetics_quantity, output_amount, 0)
                 }
-                SwapAmount::WithDesiredOutput {
+                QuoteAmount::WithDesiredOutput {
                     desired_amount_out: base_quantity,
                     ..
                 } => {
@@ -922,9 +923,9 @@ impl LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> for Mock
                 }
             }
         };
-        match swap_amount {
-            SwapAmount::WithDesiredInput { .. } => Ok(SwapOutcome::new(output_amount, fee_amount)),
-            SwapAmount::WithDesiredOutput { .. } => Ok(SwapOutcome::new(input_amount, fee_amount)),
+        match quote_amount {
+            QuoteAmount::WithDesiredInput { .. } => Ok(SwapOutcome::new(output_amount, fee_amount)),
+            QuoteAmount::WithDesiredOutput { .. } => Ok(SwapOutcome::new(input_amount, fee_amount)),
         }
     }
 

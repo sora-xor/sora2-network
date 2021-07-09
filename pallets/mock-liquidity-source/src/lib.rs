@@ -386,8 +386,6 @@ impl<T: Config<I>, I: 'static>
         _input_amount: Balance,
         _output_amount: Balance,
     ) -> Result<Vec<(Balance, T::AssetId, RewardReason)>, DispatchError> {
-        #[cfg(feature = "std")]
-        println!("REWARDS {:?}", Rewards::<T, I>::get());
         Ok(Rewards::<T, I>::get())
     }
 }

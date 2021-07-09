@@ -28,7 +28,7 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use common::prelude::{FixedWrapper, SwapAmount, SwapOutcome};
+use common::prelude::{FixedWrapper, QuoteAmount, SwapAmount, SwapOutcome};
 use common::{
     balance, AssetName, AssetSymbol, Balance, LiquiditySource, LiquiditySourceType, ToFeeAccount,
 };
@@ -326,9 +326,8 @@ fn quote_case_exact_input_for_output_base_first() {
                 &dex_id,
                 &gt,
                 &bp,
-                SwapAmount::WithDesiredInput {
-                    desired_amount_in: balance!(100000),
-                    min_amount_out: balance!(50000),
+                QuoteAmount::WithDesiredInput {
+                    desired_amount_in: balance!(100000)
                 }
             )
             .unwrap()),
@@ -355,9 +354,8 @@ fn quote_case_exact_input_for_output_base_second() {
                 &dex_id,
                 &bp,
                 &gt,
-                SwapAmount::WithDesiredInput {
-                    desired_amount_in: balance!(100000),
-                    min_amount_out: 0,
+                QuoteAmount::WithDesiredInput {
+                    desired_amount_in: balance!(100000)
                 }
             )
             .unwrap()),
@@ -387,9 +385,8 @@ fn quote_case_exact_output_for_input_base_first() {
                 &dex_id,
                 &gt,
                 &bp,
-                SwapAmount::WithDesiredOutput {
-                    desired_amount_out: balance!(100000),
-                    max_amount_in: balance!(150000),
+                QuoteAmount::WithDesiredOutput {
+                    desired_amount_out: balance!(100000)
                 }
             )
             .unwrap()),
@@ -416,9 +413,8 @@ fn quote_case_exact_output_for_input_base_second() {
                 &dex_id,
                 &bp,
                 &gt,
-                SwapAmount::WithDesiredOutput {
-                    desired_amount_out: balance!(50000),
-                    max_amount_in: balance!(999000),
+                QuoteAmount::WithDesiredOutput {
+                    desired_amount_out: balance!(50000)
                 }
             )
             .unwrap()),
@@ -841,9 +837,8 @@ fn swap_pair_outcome_should_match_actual_desired_amount_in_with_input_base() {
                 &dex_id,
                 &GoldenTicket.into(),
                 &BlackPepper.into(),
-                SwapAmount::WithDesiredInput {
+                QuoteAmount::WithDesiredInput {
                     desired_amount_in: balance!(100000),
-                    min_amount_out: 0,
                 },
             )
             .expect("Failed to quote.");
@@ -901,9 +896,8 @@ fn swap_pair_outcome_should_match_actual_desired_amount_in_with_output_base() {
                 &dex_id,
                 &BlackPepper.into(),
                 &GoldenTicket.into(),
-                SwapAmount::WithDesiredInput {
+                QuoteAmount::WithDesiredInput {
                     desired_amount_in: balance!(100000),
-                    min_amount_out: 0,
                 },
             )
             .expect("Failed to quote.");
@@ -962,9 +956,8 @@ fn swap_pair_outcome_should_match_actual_desired_amount_out_with_input_base() {
                 &dex_id,
                 &GoldenTicket.into(),
                 &BlackPepper.into(),
-                SwapAmount::WithDesiredOutput {
+                QuoteAmount::WithDesiredOutput {
                     desired_amount_out: desired_out,
-                    max_amount_in: Balance::MAX,
                 },
             )
             .expect("Failed to quote.");
@@ -1017,9 +1010,8 @@ fn swap_pair_outcome_should_match_actual_desired_amount_out_with_output_base() {
                 &dex_id,
                 &BlackPepper.into(),
                 &GoldenTicket.into(),
-                SwapAmount::WithDesiredOutput {
+                QuoteAmount::WithDesiredOutput {
                     desired_amount_out: desired_out,
-                    max_amount_in: Balance::MAX,
                 },
             )
             .expect("Failed to quote.");

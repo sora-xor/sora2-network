@@ -31,7 +31,7 @@
 use codec::{Decode, Encode};
 use common::mock::ExistentialDeposits;
 use common::prelude::{
-    Balance, BlockLength, BlockWeights, SwapAmount, SwapOutcome, TransactionByteFee,
+    Balance, BlockLength, BlockWeights, QuoteAmount, SwapAmount, SwapOutcome, TransactionByteFee,
 };
 use common::{
     self, balance, fixed_from_basis_points, Amount, AssetId32, AssetName, AssetSymbol, Fixed,
@@ -448,7 +448,7 @@ impl liquidity_proxy::LiquidityProxyTrait<DEXId, AccountId, AssetId> for MockLiq
     fn quote(
         input_asset_id: &AssetId,
         output_asset_id: &AssetId,
-        amount: SwapAmount<Balance>,
+        amount: QuoteAmount<Balance>,
         filter: LiquiditySourceFilter<DEXId, LiquiditySourceType>,
     ) -> Result<SwapOutcome<Balance>, DispatchError> {
         MockLiquiditySource::quote(&filter.dex_id, input_asset_id, output_asset_id, amount)

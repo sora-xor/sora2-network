@@ -32,18 +32,13 @@
 mod tests {
     use crate::{mock::*, Module, Error};
     use common::{
-        self, balance, fixed, fixed_wrapper, Fixed, fixnum::ops::One as _, fixnum::ops::Zero as _,
-        prelude::{Balance, SwapAmount, SwapOutcome, QuoteAmount, FixedWrapper,},
-        AssetName, AssetSymbol, DEXId, LiquiditySource, TechPurpose, USDT, VAL, XOR, PSWAP, XSTUSD, LiquiditySourceFilter,
+        self, balance, fixed,
+        prelude::{Balance, SwapAmount, QuoteAmount,},
+        AssetName, AssetSymbol, DEXId, LiquiditySource, TechPurpose, USDT, VAL, XOR, XSTUSD,
     };
-    use hex_literal::hex;
-    use frame_support::traits::OnInitialize;
-    use liquidity_proxy::LiquidityProxyTrait;
-    use frame_support::{assert_err, assert_noop, assert_ok};
-    use frame_support::storage::{with_transaction, TransactionOutcome};
+    use frame_support::{assert_noop, assert_ok};
     use sp_arithmetic::traits::{Zero};
     use sp_runtime::DispatchError;
-    use orml_traits::MultiCurrency;
 
     type XSTPool = Module<Runtime>;
 
@@ -204,7 +199,7 @@ mod tests {
                     &DEXId::Polkaswap.into(),
                     &XOR,
                     &XSTUSD,
-                    SwapAmount::with_desired_output(balance!(1), Balance::max_value()),
+                    QuoteAmount::with_desired_output(balance!(1)),
                 )
                 .unwrap();
 
@@ -214,7 +209,7 @@ mod tests {
                     &DEXId::Polkaswap.into(),
                     &XSTUSD,
                     &XOR,
-                    SwapAmount::with_desired_output(balance!(1), Balance::max_value()),
+                    QuoteAmount::with_desired_output(balance!(1)),
                 )
                 .unwrap();
 
@@ -244,7 +239,7 @@ mod tests {
                 &DEXId::Polkaswap.into(),
                 &XSTUSD,
                 &XOR,
-                SwapAmount::with_desired_input(amount_a.clone(), Balance::zero()),
+                QuoteAmount::with_desired_input(amount_a.clone()),
             )
             .unwrap();
 
@@ -271,7 +266,7 @@ mod tests {
                 &DEXId::Polkaswap.into(),
                 &XSTUSD,
                 &XOR,
-                SwapAmount::with_desired_output(amount_b.clone(), Balance::max_value()),
+                QuoteAmount::with_desired_output(amount_b.clone()),
             )
             .unwrap();
 
@@ -298,7 +293,7 @@ mod tests {
                 &DEXId::Polkaswap.into(),
                 &XOR,
                 &XSTUSD,
-                SwapAmount::with_desired_input(amount_c.clone(), Balance::zero()),
+                QuoteAmount::with_desired_input(amount_c.clone()),
             )
             .unwrap();
 
@@ -325,7 +320,7 @@ mod tests {
                 &DEXId::Polkaswap.into(),
                 &XSTUSD,
                 &XOR,
-                SwapAmount::with_desired_output(amount_d.clone(), Balance::max_value()),
+                QuoteAmount::with_desired_output(amount_d.clone()),
             )
             .unwrap();
             let exchange_outcome_d = XSTPool::exchange(
@@ -376,14 +371,14 @@ mod tests {
                 &DEXId::Polkaswap.into(),
                 &XSTUSD,
                 &XOR,
-                SwapAmount::with_desired_input(balance!(100), Balance::zero()),
+                QuoteAmount::with_desired_input(balance!(100)),
             )
             .unwrap();
             let price_b = XSTPool::quote(
                 &DEXId::Polkaswap.into(),
                 &XSTUSD,
                 &XOR,
-                SwapAmount::with_desired_output(price_a.amount.clone(), Balance::max_value()),
+                QuoteAmount::with_desired_output(price_a.amount.clone()),
             )
             .unwrap();
             assert_eq!(price_a.fee, price_b.fee);
@@ -394,14 +389,14 @@ mod tests {
                 &DEXId::Polkaswap.into(),
                 &XOR,
                 &XSTUSD,
-                SwapAmount::with_desired_output(balance!(100), Balance::max_value()),
+                QuoteAmount::with_desired_output(balance!(100)),
             )
             .unwrap();
             let price_d = XSTPool::quote(
                 &DEXId::Polkaswap.into(),
                 &XOR,
                 &XSTUSD,
-                SwapAmount::with_desired_input(price_c.amount.clone(), Balance::zero()),
+                QuoteAmount::with_desired_input(price_c.amount.clone()),
             )
             .unwrap();
             assert_eq!(price_c.fee, price_d.fee);

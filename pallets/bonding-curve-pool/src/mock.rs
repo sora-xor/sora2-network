@@ -30,7 +30,7 @@
 
 use crate::{self as bonding_curve_pool, Config};
 use common::mock::ExistentialDeposits;
-use common::prelude::{Balance, FixedWrapper, SwapAmount, SwapOutcome};
+use common::prelude::{Balance, FixedWrapper, QuoteAmount, SwapAmount, SwapOutcome};
 use common::{
     self, balance, Amount, AssetId32, AssetName, AssetSymbol, LiquiditySource, RewardReason,
     TechPurpose, USDT, VAL, XOR,

@@ -30,7 +30,9 @@
 
 use crate::{self as multicollateral_bonding_curve_pool, Config, Rewards, TotalRewards};
 use common::mock::ExistentialDeposits;
-use common::prelude::{Balance, FixedWrapper, PriceToolsPallet, SwapAmount, SwapOutcome};
+use common::prelude::{
+    Balance, FixedWrapper, PriceToolsPallet, QuoteAmount, SwapAmount, SwapOutcome,
+};
 use common::{
     self, balance, fixed, fixed_wrapper, hash, Amount, AssetId32, AssetName, AssetSymbol, DEXInfo,
     Fixed, LiquiditySourceFilter, LiquiditySourceType, TechPurpose, VestedRewardsPallet, PSWAP,
@@ -353,10 +355,10 @@ impl MockDEXApi {
         _target_id: &DEXId,
         input_asset_id: &AssetId,
         output_asset_id: &AssetId,
-        swap_amount: SwapAmount<Balance>,
+        swap_amount: QuoteAmount<Balance>,
     ) -> Result<SwapOutcome<Balance>, DispatchError> {
         match swap_amount {
-            SwapAmount::WithDesiredInput {
+            QuoteAmount::WithDesiredInput {
                 desired_amount_in, ..
             } => {
                 let amount_out = FixedWrapper::from(desired_amount_in)
@@ -367,7 +369,7 @@ impl MockDEXApi {
                 let amount_out = amount_out - fee;
                 Ok(SwapOutcome::new(amount_out, fee))
             }
-            SwapAmount::WithDesiredOutput {
+            QuoteAmount::WithDesiredOutput {
                 desired_amount_out, ..
             } => {
                 let amount_in = FixedWrapper::from(desired_amount_out)
@@ -393,8 +395,12 @@ impl MockDEXApi {
             SwapAmount::WithDesiredInput {
                 desired_amount_in, ..
             } => {
-                let outcome =
-                    Self::inner_quote(target_id, input_asset_id, output_asset_id, swap_amount)?;
+                let outcome = Self::inner_quote(
+                    target_id,
+                    input_asset_id,
+                    output_asset_id,
+                    swap_amount.into(),
+                )?;
                 let reserves_account_id =
                     &Technical::tech_account_id_to_account_id(&ReservesAccount::get())?;
                 assert_ne!(desired_amount_in, 0);
@@ -418,8 +424,12 @@ impl MockDEXApi {
             SwapAmount::WithDesiredOutput {
                 desired_amount_out, ..
             } => {
-                let outcome =
-                    Self::inner_quote(target_id, input_asset_id, output_asset_id, swap_amount)?;
+                let outcome = Self::inner_quote(
+                    target_id,
+                    input_asset_id,
+                    output_asset_id,
+                    swap_amount.into(),
+                )?;
                 let reserves_account_id =
                     &Technical::tech_account_id_to_account_id(&ReservesAccount::get())?;
                 assert_ne!(outcome.amount, 0);
@@ -492,7 +502,7 @@ impl liquidity_proxy::LiquidityProxyTrait<DEXId, AccountId, AssetId> for MockDEX
     fn quote(
         input_asset_id: &AssetId,
         output_asset_id: &AssetId,
-        amount: SwapAmount<Balance>,
+        amount: QuoteAmount<Balance>,
         filter: LiquiditySourceFilter<DEXId, LiquiditySourceType>,
     ) -> Result<SwapOutcome<Balance>, DispatchError> {
         Self::inner_quote(&filter.dex_id, input_asset_id, output_asset_id, amount)
@@ -508,7 +518,7 @@ impl PriceToolsPallet<AssetId> for MockDEXApi {
             &DEXId::Polkaswap.into(),
             input_asset_id,
             output_asset_id,
-            SwapAmount::with_desired_input(balance!(1), balance!(0)),
+            QuoteAmount::with_desired_input(balance!(1)),
         )?
         .amount)
     }
