@@ -911,6 +911,41 @@ impl xor_fee::ExtractProxySwap for Call {
     }
 }
 
+impl xor_fee::IsCalledByBridgePeer<AccountId> for Call {
+    fn is_called_by_bridge_peer(&self, who: &AccountId) -> bool {
+        match self {
+            Call::BridgeMultisig(call) => match call {
+                bridge_multisig::Call::as_multi(multisig_id, ..)
+                | bridge_multisig::Call::as_multi_threshold_1(multisig_id, ..) => {
+                    bridge_multisig::Accounts::<Runtime>::get(multisig_id)
+                        .map(|acc| acc.is_signatory(&who))
+                }
+                _ => None,
+            },
+            Call::EthBridge(call) => match call {
+                eth_bridge::Call::approve_request(_, _, _, network_id) => {
+                    Some(eth_bridge::Pallet::<Runtime>::is_peer(who, *network_id))
+                }
+                eth_bridge::Call::register_incoming_request(request) => {
+                    let net_id = request.network_id();
+                    eth_bridge::BridgeAccount::<Runtime>::get(net_id).map(|acc| acc == *who)
+                }
+                eth_bridge::Call::import_incoming_request(load_request, _) => {
+                    let net_id = load_request.network_id();
+                    eth_bridge::BridgeAccount::<Runtime>::get(net_id).map(|acc| acc == *who)
+                }
+                eth_bridge::Call::finalize_incoming_request(_, network_id)
+                | eth_bridge::Call::abort_request(_, _, network_id) => {
+                    eth_bridge::BridgeAccount::<Runtime>::get(network_id).map(|acc| acc == *who)
+                }
+                _ => None,
+            },
+            _ => None,
+        }
+        .unwrap_or(false)
+    }
+}
+
 pub struct ValBurnedAggregator<T>(sp_std::marker::PhantomData<T>);
 
 impl<T> OnValBurned for ValBurnedAggregator<T>
