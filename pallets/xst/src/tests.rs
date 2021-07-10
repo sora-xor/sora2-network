@@ -403,4 +403,18 @@ mod tests {
             assert_eq!(price_c.fee, balance!(0.006959841851712456));
         });
     }
+
+    #[test]
+    fn migration_none_to_v1_0_0() {
+        let mut ext = ExtBuilder::minimal().build();
+        ext.execute_with(|| {
+            // technical account existance fix
+            System::inc_providers(&crate::migration::get_assets_owner_account::<Runtime>());
+
+            Assets::ensure_asset_exists(&XSTUSD.into()).unwrap_err();
+            // version is initially None for tests
+            crate::migration::migrate::<Runtime>();
+            Assets::ensure_asset_exists(&XSTUSD.into()).unwrap();
+        });
+    }
 }

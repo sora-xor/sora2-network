@@ -39,6 +39,7 @@ mod mock;
 mod tests;
 
 mod benchmarking;
+mod migration;
 
 use core::convert::TryInto;
 
@@ -151,6 +152,10 @@ pub mod pallet {
     impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
         fn on_initialize(_block_number: T::BlockNumber) -> Weight {
             <T as Config>::WeightInfo::on_initialize(0)
+        }
+
+        fn on_runtime_upgrade() -> Weight {
+            migration::migrate::<T>()
         }
     }
 
