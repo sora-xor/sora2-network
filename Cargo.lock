@@ -1716,7 +1716,7 @@ dependencies = [
 
 [[package]]
 name = "eth-bridge"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "assets",
  "async-std",
@@ -1738,8 +1738,10 @@ dependencies = [
  "orml-tokens",
  "orml-traits",
  "pallet-balances",
- "pallet-multisig 3.1.0",
+ "pallet-multisig 3.2.0",
+ "pallet-scheduler",
  "pallet-sudo",
+ "pallet-timestamp",
  "parity-scale-codec",
  "parity-util-mem",
  "parking_lot 0.11.1",
@@ -2288,7 +2290,7 @@ dependencies = [
  "liquidity-proxy-rpc",
  "log",
  "nix",
- "pallet-multisig 3.1.0",
+ "pallet-multisig 3.2.0",
  "pallet-sudo",
  "pallet-transaction-payment-rpc",
  "parity-scale-codec",
@@ -2388,7 +2390,7 @@ dependencies = [
  "pallet-im-online",
  "pallet-membership",
  "pallet-multisig 3.0.0",
- "pallet-multisig 3.1.0",
+ "pallet-multisig 3.2.0",
  "pallet-offences",
  "pallet-randomness-collective-flip",
  "pallet-scheduler",
@@ -2431,6 +2433,7 @@ dependencies = [
  "trading-pair-runtime-api",
  "vested-rewards",
  "xor-fee",
+ "xor-fee-benchmarking",
 ]
 
 [[package]]
@@ -3178,9 +3181,9 @@ dependencies = [
 
 [[package]]
 name = "instant"
-version = "0.1.9"
+version = "0.1.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "61124eeebbd69b8190558df225adf7e4caafce0d743919e5d6b19652314ec5ec"
+checksum = "bee0328b1209d157ef001c94dd85b4f8f64139adb0eac2659f4b08382b2f474d"
 dependencies = [
  "cfg-if 1.0.0",
 ]
@@ -4078,6 +4081,7 @@ dependencies = [
  "parity-scale-codec",
  "permissions",
  "pool-xyk",
+ "price-tools",
  "pswap-distribution",
  "serde",
  "sp-core",
@@ -4977,8 +4981,8 @@ dependencies = [
 
 [[package]]
 name = "pallet-multisig"
-version = "3.1.0"
-source = "git+https://github.com/soramitsu/sora2-frame-pallets.git?branch=v3.1.0#d4fce2636bcf079d11979cab21c843f7dd2743bc"
+version = "3.2.0"
+source = "git+https://github.com/soramitsu/sora2-frame-pallets.git?branch=v3.2.2#d6eccb50de73fb89e4581e253745ff96f56581e3"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -5056,7 +5060,7 @@ dependencies = [
 [[package]]
 name = "pallet-staking"
 version = "3.1.0"
-source = "git+https://github.com/soramitsu/sora2-frame-pallets.git?branch=v3.1.0#d4fce2636bcf079d11979cab21c843f7dd2743bc"
+source = "git+https://github.com/soramitsu/sora2-frame-pallets?branch=v3.1.0#d4fce2636bcf079d11979cab21c843f7dd2743bc"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -6351,7 +6355,7 @@ checksum = "e9c17925a9027d298a4603d286befe3f9dc0e8ed02523141914eb628798d6e5b"
 
 [[package]]
 name = "rewards"
-version = "1.1.0"
+version = "1.2.0"
 dependencies = [
  "assets",
  "common",
@@ -8686,9 +8690,9 @@ dependencies = [
 
 [[package]]
 name = "synstructure"
-version = "0.12.4"
+version = "0.12.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b834f2d66f734cb897113e34aaff2f1ab4719ca946f9a7358dba8f8064148701"
+checksum = "474aaa926faa1603c40b7885a9eaea29b444d1cb2850cb7c0e37bb1a4182f4fa"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -9521,6 +9525,7 @@ dependencies = [
  "assets",
  "common",
  "dex-manager",
+ "frame-benchmarking 3.1.0",
  "frame-support",
  "frame-system",
  "hex-literal",
@@ -10059,6 +10064,7 @@ dependencies = [
  "assets",
  "common",
  "dex-manager",
+ "eth-bridge",
  "frame-support",
  "frame-system",
  "liquidity-proxy",
@@ -10067,6 +10073,8 @@ dependencies = [
  "orml-tokens",
  "orml-traits",
  "pallet-balances",
+ "pallet-multisig 3.2.0",
+ "pallet-scheduler",
  "pallet-session",
  "pallet-staking",
  "pallet-timestamp",
@@ -10083,6 +10091,24 @@ dependencies = [
  "sp-std",
  "technical",
  "trading-pair",
+]
+
+[[package]]
+name = "xor-fee-benchmarking"
+version = "0.1.0"
+dependencies = [
+ "assets",
+ "common",
+ "frame-benchmarking 3.1.0",
+ "frame-support",
+ "frame-system",
+ "pallet-staking",
+ "parity-scale-codec",
+ "permissions",
+ "pool-xyk",
+ "sp-core",
+ "sp-std",
+ "xor-fee",
 ]
 
 [[package]]

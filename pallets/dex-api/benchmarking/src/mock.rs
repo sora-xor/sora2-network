@@ -42,7 +42,7 @@ use frame_support::{construct_runtime, parameter_types};
 use frame_system;
 
 use common::prelude::Balance;
-use permissions::{Scope, BURN, MANAGE_DEX, MINT, TRANSFER};
+use permissions::{Scope, BURN, MANAGE_DEX, MINT};
 use sp_core::H256;
 use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentityLookup};
@@ -290,7 +290,6 @@ impl Default for ExtBuilder {
                 },
             )],
             initial_permission_owners: vec![
-                (TRANSFER, Scope::Unlimited, vec![alice()]),
                 (MINT, Scope::Unlimited, vec![alice()]),
                 (BURN, Scope::Unlimited, vec![alice()]),
                 (MANAGE_DEX, Scope::Unlimited, vec![alice()]),

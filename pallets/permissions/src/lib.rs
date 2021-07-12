@@ -83,7 +83,6 @@ pub enum Mode {
     Forbid,
 }
 
-pub const TRANSFER: PermissionId = 1;
 pub const MINT: PermissionId = 2;
 pub const BURN: PermissionId = 3;
 pub const SLASH: PermissionId = 4;
@@ -395,7 +394,6 @@ pub mod pallet {
                 });
 
             [
-                (TRANSFER, Mode::Forbid),
                 (MINT, Mode::Permit),
                 (BURN, Mode::Permit),
                 (SLASH, Mode::Permit),

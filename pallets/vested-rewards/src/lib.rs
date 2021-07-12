@@ -49,6 +49,8 @@ use sp_std::vec::Vec;
 mod migration;
 pub mod weights;
 
+mod benchmarking;
+
 #[cfg(test)]
 mod mock;
 
@@ -242,14 +244,14 @@ impl<T: Config> VestedRewardsPallet<T::AccountId> for Module<T> {
         xor_volume: Balance,
         count: u32,
     ) -> DispatchResult {
-        MarketMakersRegistry::<T>::mutate(account_id, |info| {
-            if xor_volume >= balance!(1) {
+        if xor_volume >= balance!(1) {
+            MarketMakersRegistry::<T>::mutate(account_id, |info| {
                 info.count = info.count.saturating_add(count);
                 info.volume = info
                     .volume
                     .saturating_add(xor_volume.saturating_mul(count as Balance));
-            }
-        });
+            });
+        }
         Ok(())
     }
 

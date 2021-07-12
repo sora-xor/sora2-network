@@ -29,7 +29,6 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use crate::contract::{functions, FUNCTIONS, RECEIVE_BY_ETHEREUM_ASSET_ADDRESS_ID};
-use crate::migrations::StorageVersion;
 use crate::mock::*;
 use crate::requests::{
     encode_outgoing_request_eth_call, ChangePeersContract, IncomingAddToken, IncomingChangePeers,
@@ -43,22 +42,25 @@ use crate::{
     majority, types, Address, AssetConfig, AssetKind, BridgeStatus, Config, ContractEvent,
     DepositEvent, IncomingMetaRequestKind, IncomingRequest, IncomingRequestKind,
     IncomingTransactionRequestKind, LoadIncomingRequest, LoadIncomingTransactionRequest,
-    OffchainRequest, OutgoingRequest, OutgoingTransfer, RequestStatus, SignatureParams,
-    CONFIRMATION_INTERVAL, MAX_FAILED_SEND_SIGNED_TX_RETRIES,
+    OffchainRequest, OutgoingRequest, OutgoingTransfer, RequestStatus, SignatureParams, Timepoint,
+    CONFIRMATION_INTERVAL, MAX_FAILED_SEND_SIGNED_TX_RETRIES, MAX_PENDING_TX_BLOCKS_PERIOD,
+    RE_HANDLE_TXS_PERIOD, STORAGE_PENDING_TRANSACTIONS_KEY,
     SUBSTRATE_MAX_BLOCK_NUM_EXPECTING_UNTIL_FINALIZATION,
 };
+use bridge_multisig::MultiChainHeight;
 use codec::{Decode, Encode};
 use common::prelude::Balance;
 use common::{
     balance, eth, AssetId32, AssetName, AssetSymbol, PredefinedAssetId, DEFAULT_BALANCE_PRECISION,
     DOT, KSM, USDT, VAL, XOR,
 };
-use frame_support::dispatch::DispatchError;
+use frame_support::dispatch::{DispatchError, DispatchErrorWithPostInfo};
 use frame_support::sp_runtime::app_crypto::sp_core::crypto::AccountId32;
 use frame_support::sp_runtime::app_crypto::sp_core::{self, ecdsa, sr25519, Pair, Public};
 use frame_support::sp_runtime::traits::IdentifyAccount;
 use frame_support::storage::TransactionOutcome;
-use frame_support::traits::{Currency, OnRuntimeUpgrade};
+use frame_support::traits::{Currency, Get, Hooks};
+use frame_support::weights::{Pays, PostDispatchInfo};
 use frame_support::{assert_err, assert_noop, assert_ok, ensure};
 use frame_system::RawOrigin;
 use hex_literal::hex;
@@ -308,7 +310,10 @@ fn assert_incoming_request_registration_failed(
             Origin::signed(bridge_acc_id.clone()),
             incoming_request.clone(),
         ),
-        error
+        DispatchErrorWithPostInfo {
+            post_info: Pays::No.into(),
+            error: error.into()
+        }
     );
     Ok(())
 }
@@ -758,7 +763,10 @@ fn should_cancel_incoming_transfer() {
                 req_hash,
                 net_id,
             ),
-            Error::FailedToUnreserve
+            DispatchErrorWithPostInfo {
+                post_info: Pays::No.into(),
+                error: Error::FailedToUnreserve.into()
+            }
         );
         assert!(matches!(
             crate::RequestStatuses::<Runtime>::get(net_id, req_hash).unwrap(),
@@ -945,7 +953,10 @@ fn should_fail_registering_incoming_request_if_preparation_failed() {
                 Origin::signed(bridge_acc_id.clone()),
                 incoming_transfer.clone(),
             ),
-            tokens::Error::<Runtime>::BalanceTooLow
+            DispatchErrorWithPostInfo {
+                post_info: Pays::No.into(),
+                error: tokens::Error::<Runtime>::BalanceTooLow.into()
+            }
         );
         let req_hash = crate::LoadToIncomingRequestHash::<Runtime>::get(net_id, tx_hash);
         assert!(!crate::RequestsQueue::<Runtime>::get(net_id).contains(&tx_hash));
@@ -3654,7 +3665,10 @@ fn should_not_register_and_finalize_incoming_request_twice() {
                 Origin::signed(bridge_acc_id.clone()),
                 incoming_transfer.clone(),
             ),
-            Error::RequestIsAlreadyRegistered
+            DispatchErrorWithPostInfo {
+                post_info: Pays::No.into(),
+                error: Error::RequestIsAlreadyRegistered.into()
+            }
         );
         let req_hash = crate::LoadToIncomingRequestHash::<Runtime>::get(net_id, tx_hash);
         assert_ok!(EthBridge::finalize_incoming_request(
@@ -3666,20 +3680,33 @@ fn should_not_register_and_finalize_incoming_request_twice() {
 }
 
 #[test]
-fn should_migrate_to_v2() {
-    let (mut ext, state) = ExtBuilder::default().build();
+fn should_migrate_to_v3() {
+    let mut builder = ExtBuilder::new();
+    builder.add_network(
+        vec![AssetConfig::Sidechain {
+            id: XOR.into(),
+            sidechain_id: sp_core::H160::from_str("40fd72257597aa14c7231a7b1aaa29fce868f677")
+                .unwrap(),
+            owned: true,
+            precision: DEFAULT_BALANCE_PRECISION,
+        }],
+        Some(vec![(XOR.into(), common::balance!(350000))]),
+        Some(2),
+    );
+    let (mut ext, mut state) = builder.build();
     ext.execute_with(|| {
         let net_id = ETH_NETWORK_ID;
         let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
-        crate::PalletStorageVersion::<Runtime>::put(StorageVersion::V1);
         let bridge_acc_id = state.networks[&net_id].config.bridge_account_id.clone();
         // Add a peer to multisig only (as on mainnet).
-        let temp_peer_id = <Runtime as Config>::RemoveTemporaryPeerAccountId::get();
-        bridge_multisig::Pallet::<Runtime>::add_signatory(
-            RawOrigin::Signed(bridge_acc_id.clone()).into(),
-            temp_peer_id.clone(),
-        )
-        .unwrap();
+        let temp_peer_ids = <Runtime as Config>::RemovePeerAccountIds::get();
+        for (temp_peer_id, _) in &temp_peer_ids {
+            bridge_multisig::Pallet::<Runtime>::add_signatory(
+                RawOrigin::Signed(bridge_acc_id.clone()).into(),
+                temp_peer_id.clone(),
+            )
+            .unwrap();
+        }
         Assets::mint_to(&XOR.into(), &alice, &alice, 100).unwrap();
         assert_ok!(EthBridge::transfer_to_sidechain(
             Origin::signed(alice.clone()),
@@ -3700,17 +3727,64 @@ fn should_migrate_to_v2() {
         ));
         let request_hash = last_outgoing_request(net_id).unwrap().1;
         assert_eq!(crate::RequestsQueue::<Runtime>::get(net_id).len(), 2);
-        EthBridge::on_runtime_upgrade();
-        assert_eq!(
-            crate::PalletStorageVersion::<Runtime>::get(),
-            StorageVersion::V2RemovePendingTransfers
+
+        let mut log = Log::default();
+        log.topics = vec![types::H256(hex!(
+            "85c0fa492ded927d3acca961da52b0dda1debb06d8c27fe189315f06bb6e26c8"
+        ))];
+        let tx_hash = H256([1; 32]);
+        log.data = ethabi::encode(&[
+            ethabi::Token::FixedBytes(alice.encode()),
+            ethabi::Token::Uint(types::U256::from(100)),
+            ethabi::Token::Address(types::Address::from(
+                crate::RegisteredSidechainToken::<Runtime>::get(net_id, XOR)
+                    .unwrap()
+                    .0,
+            )),
+            ethabi::Token::FixedBytes(XOR.code.to_vec()),
+        ])
+        .into();
+        log.removed = Some(false);
+        log.transaction_hash = Some(types::H256(tx_hash.0));
+        let block_num = 0u64;
+        log.block_number = Some(block_num.into());
+        log.transaction_index = Some(0u64.into());
+        state.run_next_offchain_with_params(
+            block_num,
+            frame_system::Pallet::<Runtime>::block_number() + 1,
+            true,
         );
+        state.push_response([log]);
+        // "Wait" `CONFIRMATION_INTERVAL` blocks on sidechain.
+        state.run_next_offchain_with_params(
+            block_num + CONFIRMATION_INTERVAL,
+            frame_system::Pallet::<Runtime>::block_number() + 1,
+            true,
+        );
+        crate::migrations::migrate_to_0_2_0::<Runtime>();
+        let migrating_requests = crate::MigratingRequests::<Runtime>::get();
+        assert!(!migrating_requests.is_empty());
+        assert_ok!(bridge_multisig::Pallet::<Runtime>::approve_as_multi(
+            Origin::signed(state.networks[&net_id].ocw_keypairs[1].clone().1),
+            bridge_acc_id.clone(),
+            Some(Timepoint::<Runtime> {
+                height: MultiChainHeight::Sidechain(block_num),
+                index: 0,
+            }),
+            migrating_requests[0].0,
+            crate::OFFCHAIN_TRANSACTION_WEIGHT_LIMIT,
+        ));
         // Should remove only the old one request.
         assert_eq!(crate::RequestsQueue::<Runtime>::get(net_id).len(), 1);
         assert_eq!(last_outgoing_request(net_id).unwrap().1, request_hash);
-        assert!(!bridge_multisig::Accounts::<Runtime>::get(&bridge_acc_id)
-            .unwrap()
-            .is_signatory(&temp_peer_id));
+        state.run_next_offchain_and_dispatch_txs();
+        EthBridge::on_initialize(frame_system::Pallet::<Runtime>::block_number());
+        // Should remove some of the peers.
+        assert!(!temp_peer_ids.iter().all(|(temp_peer_id, _)| {
+            !bridge_multisig::Accounts::<Runtime>::get(&bridge_acc_id)
+                .unwrap()
+                .is_signatory(temp_peer_id)
+        }));
     });
 }
 
@@ -3773,5 +3847,208 @@ fn ocw_should_abort_missing_transaction() {
             crate::RequestStatuses::<Runtime>::get(net_id, tx_hash).unwrap(),
             RequestStatus::Failed(dispatch_error.stripped()),
         );
+    });
+}
+
+#[test]
+fn should_reapprove_on_long_pending() {
+    let (mut ext, mut state) = ExtBuilder::default().build();
+    ext.execute_with(|| {
+        let net_id = ETH_NETWORK_ID;
+        let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
+        Assets::mint_to(&XOR.into(), &alice, &alice, 100).unwrap();
+        assert_ok!(EthBridge::transfer_to_sidechain(
+            Origin::signed(alice.clone()),
+            XOR.into(),
+            Address::from_str("19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A").unwrap(),
+            10,
+            net_id,
+        ));
+        state.run_next_offchain_with_params(
+            CONFIRMATION_INTERVAL,
+            frame_system::Pallet::<Runtime>::block_number() + 1,
+            false,
+        );
+        assert_eq!(crate::RequestsQueue::<Runtime>::get(net_id).len(), 1);
+        let mut guard = state.pool_state.write();
+        assert!(!guard.transactions.is_empty());
+        guard.transactions.clear();
+        state.storage_remove(STORAGE_PENDING_TRANSACTIONS_KEY);
+        frame_system::Pallet::<Runtime>::set_block_number(MAX_PENDING_TX_BLOCKS_PERIOD as u64);
+        drop(guard);
+        state.run_next_offchain_with_params(
+            CONFIRMATION_INTERVAL,
+            frame_system::Pallet::<Runtime>::block_number() + 1,
+            false,
+        );
+        let guard = state.pool_state.read();
+        assert!(!guard.transactions.is_empty());
+        assert_eq!(crate::RequestsQueue::<Runtime>::get(net_id).len(), 1);
+    });
+}
+
+#[test]
+fn should_resend_incoming_requests_from_failed_offchain_queue() {
+    let mut builder = ExtBuilder::new();
+    builder.add_network(
+        vec![AssetConfig::Sidechain {
+            id: XOR.into(),
+            sidechain_id: sp_core::H160::from_str("40fd72257597aa14c7231a7b1aaa29fce868f677")
+                .unwrap(),
+            owned: true,
+            precision: DEFAULT_BALANCE_PRECISION,
+        }],
+        Some(vec![(XOR.into(), common::balance!(350000))]),
+        Some(1),
+    );
+    let (mut ext, mut state) = builder.build();
+    ext.execute_with(|| {
+        let net_id = ETH_NETWORK_ID;
+        let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
+        Assets::mint_to(&XOR.into(), &alice, &alice, 100).unwrap();
+
+        let mut log = Log::default();
+        log.topics = vec![types::H256(hex!(
+            "85c0fa492ded927d3acca961da52b0dda1debb06d8c27fe189315f06bb6e26c8"
+        ))];
+        let data = ethabi::encode(&[
+            ethabi::Token::FixedBytes(alice.encode()),
+            ethabi::Token::Uint(types::U256::from(100)),
+            ethabi::Token::Address(types::Address::from(
+                crate::RegisteredSidechainToken::<Runtime>::get(net_id, XOR)
+                    .unwrap()
+                    .0,
+            )),
+            ethabi::Token::FixedBytes(XOR.code.to_vec()),
+        ]);
+        let tx_hash = H256([1; 32]);
+        log.data = data.into();
+        log.removed = Some(false);
+        log.transaction_hash = Some(types::H256(tx_hash.0));
+        log.block_number = Some(0u64.into());
+        log.transaction_index = Some(0u64.into());
+        state.run_next_offchain_with_params(
+            0,
+            frame_system::Pallet::<Runtime>::block_number() + 1,
+            true,
+        );
+        state.push_response([log]);
+
+        state.set_should_fail_send_signed_transactions(true);
+
+        // "Wait" `CONFIRMATION_INTERVAL` blocks on sidechain, but fail the approval submission.
+        state.run_next_offchain_with_params(
+            CONFIRMATION_INTERVAL,
+            frame_system::Pallet::<Runtime>::block_number() + 1,
+            true,
+        );
+
+        state.push_response::<[Log; 0]>([]);
+        state.run_next_offchain_and_dispatch_txs();
+        assert_eq!(state.pending_txs().len(), 1);
+        assert_eq!(state.pool_state.read().transactions.len(), 0);
+        // Make the extrinsic move to the secondary (failed txs) queue.
+        for _ in 0..MAX_FAILED_SEND_SIGNED_TX_RETRIES - 1 {
+            state.run_next_offchain_and_dispatch_txs();
+            assert_eq!(state.pending_txs().len(), 1);
+            assert_eq!(state.failed_pending_txs().len(), 0);
+            assert_eq!(state.pool_state.read().transactions.len(), 0);
+        }
+        state.run_next_offchain_and_dispatch_txs();
+        assert_eq!(state.pending_txs().len(), 0);
+        assert_eq!(state.failed_pending_txs().len(), 1);
+        assert_eq!(state.pool_state.read().transactions.len(), 0);
+
+        // Wait for the re-handle stage.
+        frame_system::Pallet::<Runtime>::set_block_number(RE_HANDLE_TXS_PERIOD as u64 - 1);
+        state.run_next_offchain_and_dispatch_txs();
+
+        assert_eq!(state.pending_txs().len(), 1);
+        assert_eq!(state.failed_pending_txs().len(), 1);
+        assert_eq!(state.pool_state.read().transactions.len(), 0);
+
+        state.set_should_fail_send_signed_transactions(false);
+
+        state.run_next_offchain_and_dispatch_txs();
+        // Re-handle again and check that the transactions was removed from the secondary qeueue.
+        frame_system::Pallet::<Runtime>::set_block_number(RE_HANDLE_TXS_PERIOD as u64 * 2 - 1);
+        state.run_next_offchain_and_dispatch_txs();
+
+        assert_eq!(state.pending_txs().len(), 1);
+        assert_eq!(state.failed_pending_txs().len(), 0);
+        assert_eq!(state.pool_state.read().transactions.len(), 0);
+    });
+}
+
+#[test]
+fn should_return_correct_fee() {
+    let mut builder = ExtBuilder::new();
+    builder.add_network(
+        vec![AssetConfig::Sidechain {
+            id: XOR.into(),
+            sidechain_id: sp_core::H160::from_str("40fd72257597aa14c7231a7b1aaa29fce868f677")
+                .unwrap(),
+            owned: true,
+            precision: DEFAULT_BALANCE_PRECISION,
+        }],
+        Some(vec![(XOR.into(), common::balance!(350000))]),
+        Some(1),
+    );
+    let (mut ext, state) = builder.build();
+    ext.execute_with(|| {
+        let net_id = ETH_NETWORK_ID;
+        let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
+        Assets::mint_to(&XOR.into(), &alice, &alice, 100).unwrap();
+
+        let keypairs = &state.networks[&net_id].ocw_keypairs;
+        let (_signer, account_id, seed) = keypairs.first().unwrap();
+        let secret = SecretKey::parse_slice(seed).unwrap();
+        let public = PublicKey::from_secret_key(&secret);
+
+        assert_ok!(EthBridge::transfer_to_sidechain(
+            Origin::signed(alice.clone()),
+            XOR.into(),
+            Address::from_str("19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A").unwrap(),
+            100_u32.into(),
+            net_id,
+        ));
+        let (out_request, req_hash) = last_outgoing_request(net_id).unwrap();
+
+        let msg = eth::prepare_message(out_request.to_eth_abi(req_hash).unwrap().as_raw());
+        let sig_pair = secp256k1::sign(&msg, &secret);
+        let signature = sig_pair.into();
+        let signature_params = get_signature_params(&signature);
+
+        let dispatch_info: PostDispatchInfo = EthBridge::approve_request(
+            Origin::signed(account_id.clone()),
+            ecdsa::Public::from_slice(&public.serialize_compressed()),
+            req_hash,
+            signature_params.clone(),
+            net_id,
+        )
+        .unwrap();
+        assert_eq!(dispatch_info.pays_fee, Pays::No);
+
+        let non_peer_account = AccountId32::from([1u8; 32]);
+        let dispatch_info: PostDispatchInfo = EthBridge::approve_request(
+            Origin::signed(non_peer_account.clone()),
+            ecdsa::Public::from_slice(&public.serialize_compressed()),
+            req_hash,
+            signature_params,
+            net_id,
+        )
+        .unwrap_err()
+        .post_info;
+        assert_eq!(dispatch_info.pays_fee, Pays::Yes);
+
+        let dispatch_info: PostDispatchInfo = EthBridge::finalize_incoming_request(
+            Origin::signed(non_peer_account),
+            req_hash,
+            net_id,
+        )
+        .unwrap_err()
+        .post_info;
+        println!("{:?}", dispatch_info);
+        assert_eq!(dispatch_info.pays_fee, Pays::Yes);
     });
 }
