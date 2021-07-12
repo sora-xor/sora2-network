@@ -109,9 +109,8 @@ pub use pallet_transaction_payment::{Multiplier, MultiplierUpdate};
 #[cfg(any(feature = "std", test))]
 pub use sp_runtime::BuildStorage;
 
-use eth_bridge::{
-    AssetKind, OffchainRequest, OutgoingRequestEncoded, RequestStatus, SignatureParams,
-};
+use eth_bridge::offchain::SignatureParams;
+use eth_bridge::requests::{AssetKind, OffchainRequest, OutgoingRequestEncoded, RequestStatus};
 use impls::{CollectiveWeightInfo, DemocracyWeightInfo, OnUnbalancedDemocracySlash};
 
 use frame_support::traits::Get;
@@ -1137,7 +1136,7 @@ pub type NetworkId = u32;
 impl eth_bridge::Config for Runtime {
     type Event = Event;
     type Call = Call;
-    type PeerId = eth_bridge::crypto::TestAuthId;
+    type PeerId = eth_bridge::offchain::crypto::TestAuthId;
     type NetworkId = NetworkId;
     type GetEthNetworkId = EthNetworkId;
     type WeightInfo = eth_bridge::weights::WeightInfo<Runtime>;

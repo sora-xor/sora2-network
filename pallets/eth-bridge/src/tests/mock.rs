@@ -45,6 +45,7 @@ use common::mock::ExistentialDeposits;
 use common::prelude::Balance;
 use common::{
     Amount, AssetId32, AssetName, AssetSymbol, PredefinedAssetId, DEFAULT_BALANCE_PRECISION, VAL,
+    XOR,
 };
 use core::cell::RefCell;
 use currencies::BasicCurrencyAdapter;
@@ -92,7 +93,6 @@ use std::collections::HashMap;
 use {crate as eth_bridge, frame_system};
 
 pub const PSWAP: PredefinedAssetId = PredefinedAssetId::PSWAP;
-pub const XOR: PredefinedAssetId = PredefinedAssetId::XOR;
 
 /// An index to a block.
 pub type BlockNumber = u64;
@@ -106,7 +106,7 @@ type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>
 type Block = frame_system::mocking::MockBlock<Runtime>;
 
 parameter_types! {
-    pub const GetBaseAssetId: AssetId32<PredefinedAssetId> = AssetId32::from_asset_id(XOR);
+    pub const GetBaseAssetId: AssetId32<PredefinedAssetId> = XOR;
     pub const DepositBase: u64 = 1;
     pub const DepositFactor: u64 = 1;
     pub const MaxSignatories: u16 = 4;
@@ -148,11 +148,11 @@ impl<Call: Codec + Sync + Send, Extra> traits::Extrinsic for MyTestXt<Call, Extr
 }
 
 impl SignedExtension for MyExtra {
+    const IDENTIFIER: &'static str = "testextension";
     type AccountId = AccountId;
     type Call = Call;
     type AdditionalSigned = ();
     type Pre = ();
-    const IDENTIFIER: &'static str = "testextension";
 
     fn additional_signed(&self) -> Result<Self::AdditionalSigned, TransactionValidityError> {
         Ok(())
@@ -265,11 +265,11 @@ impl frame_system::Config for Runtime {
     type BlockHashCount = BlockHashCount;
     type DbWeight = ();
     type Version = ();
+    type PalletInfo = PalletInfo;
     type AccountData = pallet_balances::AccountData<Balance>;
     type OnNewAccount = ();
     type OnKilledAccount = ();
     type SystemWeightInfo = ();
-    type PalletInfo = PalletInfo;
     type SS58Prefix = ();
 }
 
@@ -315,16 +315,16 @@ impl<C> frame_system::offchain::SendTransactionTypes<C> for Runtime
 where
     Call: From<C>,
 {
-    type OverarchingCall = Call;
     type Extrinsic = TestExtrinsic;
+    type OverarchingCall = Call;
 }
 
 impl pallet_balances::Config for Runtime {
     /// The type for recording an account's balance.
     type Balance = Balance;
+    type DustRemoval = ();
     /// The ubiquitous event type.
     type Event = Event;
-    type DustRemoval = ();
     type ExistentialDeposit = ExistentialDeposit;
     type AccountStore = System;
     type WeightInfo = ();
@@ -371,8 +371,8 @@ impl permissions::Config for Runtime {
 }
 
 impl bridge_multisig::Config for Runtime {
-    type Call = Call;
     type Event = Event;
+    type Call = Call;
     type Currency = Balances;
     type DepositBase = DepositBase;
     type DepositFactor = DepositFactor;
@@ -381,8 +381,8 @@ impl bridge_multisig::Config for Runtime {
 }
 
 impl pallet_sudo::Config for Runtime {
-    type Call = Call;
     type Event = Event;
+    type Call = Call;
 }
 
 impl pallet_scheduler::Config for Runtime {
@@ -398,7 +398,7 @@ impl pallet_scheduler::Config for Runtime {
 
 impl crate::Config for Runtime {
     type Event = Event;
-    type PeerId = crate::crypto::TestAuthId;
+    type PeerId = crate::offchain::crypto::TestAuthId;
     type Call = Call;
     type NetworkId = u32;
     type GetEthNetworkId = EthNetworkId;

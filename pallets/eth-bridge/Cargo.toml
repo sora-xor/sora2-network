@@ -73,6 +73,7 @@ std = [
     'sp-std/std',
     'pallet-scheduler/std',
     'pallet-timestamp/std',
+    'common/std'
 ]
 runtime-benchmarks = [
     "frame-benchmarking",

@@ -105,9 +105,9 @@ pub fn new_partial(
             .first()
             .map(|x| x.1.clone())
     {
-        let pk = eth_bridge::crypto::Public::from_slice(&first_pk_raw[..]);
+        let pk = eth_bridge::offchain::crypto::Public::from_slice(&first_pk_raw[..]);
         if let Some(keystore) = keystore_container.local_keystore() {
-            if let Ok(Some(kep)) = keystore.key_pair::<eth_bridge::crypto::Pair>(&pk) {
+            if let Ok(Some(kep)) = keystore.key_pair::<eth_bridge::offchain::crypto::Pair>(&pk) {
                 let seed = kep.to_raw_vec();
                 bridge_peer_secret_key = Some(seed);
             }
