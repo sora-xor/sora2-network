@@ -723,7 +723,7 @@ impl<T: Config> Pallet<T> {
         amount: Balance,
     ) -> Result<Balance, DispatchError> {
         let amount = T::Currency::unreserve(asset_id, who, amount);
-        if amount == Default::default() {
+        if amount != Default::default() {
             Self::ensure_asset_exists(&asset_id)?;
         }
         Ok(amount)
