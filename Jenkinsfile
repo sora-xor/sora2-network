@@ -52,7 +52,7 @@ pipeline {
                                     featureList = 'runtime-benchmarks main-net-coded'
                                 }
                                 else if (env.TAG_NAME) {
-                                    featureList = (env.TAG_NAME =~ 'stage.*') ? featureList : 'include-real-files'
+                                    featureList = (env.TAG_NAME =~ 'stage.*|test.*') ? featureList : 'include-real-files'
                                 }
                                 sh """
                                     cargo build --release --features \"${featureList}\"
