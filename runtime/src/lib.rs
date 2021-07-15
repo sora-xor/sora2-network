@@ -235,7 +235,7 @@ parameter_types! {
     pub const EpochDuration: u64 = EPOCH_DURATION_IN_BLOCKS as u64;
     pub const ExpectedBlockTime: Moment = MILLISECS_PER_BLOCK;
     pub const UncleGenerations: BlockNumber = 0;
-    pub const SessionsPerEra: sp_staking::SessionIndex = 6; // 6 hours
+    pub const SessionsPerEra: sp_staking::SessionIndex = 2; // 6 hours
     pub const BondingDuration: pallet_staking::EraIndex = 28; // 28 eras for unbonding (7 days).
     pub const ReportLongevity: u64 =
         BondingDuration::get() as u64 * SessionsPerEra::get() as u64 * EpochDuration::get();
