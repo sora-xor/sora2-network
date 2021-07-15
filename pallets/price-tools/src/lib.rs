@@ -85,6 +85,7 @@ pub struct PriceInfo {
     spot_prices: VecDeque<Balance>,
     average_price: Balance,
     needs_update: bool,
+    last_spot_price: Balance,
 }
 
 impl Default for PriceInfo {
@@ -94,6 +95,7 @@ impl Default for PriceInfo {
             spot_prices: Default::default(),
             average_price: Default::default(),
             needs_update: true,
+            last_spot_price: Default::default(),
         }
     }
 }
@@ -235,7 +237,7 @@ impl<T: Config> Pallet<T> {
                 // spot price history is consistent, normal behavior
                 if val.spot_prices.len() == avg_count {
                     let old_value = val.spot_prices.pop_front().unwrap();
-                    val.spot_prices.push_back(price);
+
                     let mut new_avg = Self::replace_in_average(
                         val.average_price,
                         old_value,
@@ -243,6 +245,13 @@ impl<T: Config> Pallet<T> {
                         AVG_BLOCK_SPAN,
                     )?;
                     new_avg = Self::adjust_to_difference(val.average_price, new_avg)?;
+                    let adjusted_incoming_price = Self::adjusted_spot_price(
+                        val.average_price,
+                        new_avg,
+                        old_value,
+                        AVG_BLOCK_SPAN,
+                    )?;
+                    val.spot_prices.push_back(adjusted_incoming_price);
                     val.average_price = new_avg;
                 // spot price history has been recovered/initiated, create initial average value
                 } else if val.spot_prices.len() == avg_count - 1 {
@@ -258,6 +267,7 @@ impl<T: Config> Pallet<T> {
                 } else {
                     val.spot_prices.push_back(price);
                 }
+                val.last_spot_price = price;
 
                 Ok(())
             })
@@ -337,6 +347,23 @@ impl<T: Config> Pallet<T> {
             .map_err(|_| Error::<T>::AveragePriceCalculationFailed)?)
     }
 
+    /// Calculate fitting incoming spot price to satisfy given average price change.
+    fn adjusted_spot_price(
+        old_average: Balance,
+        new_average: Balance,
+        old_value: Balance,
+        count: u32,
+    ) -> Result<Balance, DispatchError> {
+        let old_average = FixedWrapper::from(old_average);
+        let new_average = FixedWrapper::from(new_average);
+        let old_value = FixedWrapper::from(old_value);
+        let count: FixedWrapper = balance!(count).into();
+        let adjusted_new_value = new_average * count.clone() + old_value - old_average * count;
+        Ok(adjusted_new_value
+            .try_into_balance()
+            .map_err(|_| Error::<T>::AveragePriceCalculationFailed)?)
+    }
+
     /// Returns (number of active pairs, number of pairs with needed update)
     pub fn average_prices_calculation_routine() -> (u32, u32) {
         let mut count_active = 0;
@@ -347,11 +374,7 @@ impl<T: Config> Pallet<T> {
                 Self::spot_price(&asset_id)
             } else {
                 // if price hasn't changed duplicate latest known to update average
-                price_info
-                    .spot_prices
-                    .back()
-                    .map(|val| *val)
-                    .ok_or(Error::<T>::CantDuplicateLastPrice.into())
+                Ok(price_info.last_spot_price)
             };
             if let Ok(val) = price {
                 let _ = Self::incoming_spot_price(&asset_id, val);
