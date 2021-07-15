@@ -39,6 +39,8 @@ use codec::Decode;
 use common::eth::public_key_to_eth_address;
 use common::{balance, XOR};
 use frame_benchmarking::benchmarks;
+use frame_support::sp_runtime::traits::IdentifyAccount;
+use frame_support::sp_runtime::MultiSigner;
 use frame_system::{EventRecord, RawOrigin};
 use hex_literal::hex;
 

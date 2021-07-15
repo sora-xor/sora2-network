@@ -61,7 +61,7 @@ use serde::{Serialize, Serializer};
 use sp_api::impl_runtime_apis;
 use sp_core::crypto::KeyTypeId;
 use sp_core::u32_trait::{_1, _2, _3};
-use sp_core::{Encode, OpaqueMetadata};
+use sp_core::{Encode, OpaqueMetadata, H160};
 use sp_runtime::traits::{
     BlakeTwo256, Block as BlockT, Convert, IdentifyAccount, IdentityLookup, NumberFor, OpaqueKeys,
     SaturatedConversion, Verify, Zero,
@@ -90,7 +90,7 @@ pub use common::weights::{BlockLength, BlockWeights, TransactionByteFee};
 pub use common::{
     balance, fixed, fixed_from_basis_points, AssetName, AssetSymbol, BalancePrecision, BasisPoints,
     FilterMode, Fixed, FromGenericPair, LiquiditySource, LiquiditySourceFilter, LiquiditySourceId,
-    LiquiditySourceType, OnPswapBurned,
+    LiquiditySourceType, OnPswapBurned, OnValBurned,
 };
 pub use frame_support::traits::schedule::Named as ScheduleNamed;
 pub use frame_support::traits::{
@@ -109,11 +109,11 @@ pub use pallet_transaction_payment::{Multiplier, MultiplierUpdate};
 #[cfg(any(feature = "std", test))]
 pub use sp_runtime::BuildStorage;
 
-use eth_bridge::{
-    AssetKind, OffchainRequest, OutgoingRequestEncoded, RequestStatus, SignatureParams,
-};
+use eth_bridge::offchain::SignatureParams;
+use eth_bridge::requests::{AssetKind, OffchainRequest, OutgoingRequestEncoded, RequestStatus};
 use impls::{CollectiveWeightInfo, DemocracyWeightInfo, OnUnbalancedDemocracySlash};
 
+use frame_support::traits::Get;
 pub use {
     assets, bonding_curve_pool, eth_bridge, frame_system, multicollateral_bonding_curve_pool,
 };
@@ -845,6 +845,11 @@ where
 impl referral_system::Config for Runtime {}
 
 impl rewards::Config for Runtime {
+    const BLOCKS_PER_DAY: BlockNumber = 1 * DAYS;
+    const UPDATE_FREQUENCY: BlockNumber = 10 * MINUTES;
+    const MAX_CHUNK_SIZE: usize = 100;
+    const MAX_VESTING_RATIO: Percent = Percent::from_percent(55);
+    const TIME_TO_SATURATION: BlockNumber = 5 * 365 * DAYS; // 5 years
     type Event = Event;
     type WeightInfo = rewards::weights::WeightInfo<Runtime>;
 }
@@ -861,9 +866,6 @@ impl xor_fee::ApplyCustomFees<Call> for ExtrinsicsFlatFees {
             | Call::EthBridge(eth_bridge::Call::transfer_to_sidechain(..))
             | Call::PoolXYK(pool_xyk::Call::withdraw_liquidity(..))
             | Call::Rewards(rewards::Call::claim(..)) => Some(balance!(0.007)),
-            Call::EthBridge(eth_bridge::Call::register_incoming_request(..))
-            | Call::EthBridge(eth_bridge::Call::finalize_incoming_request(..))
-            | Call::EthBridge(eth_bridge::Call::approve_request(..)) => None,
             Call::Assets(..)
             | Call::EthBridge(..)
             | Call::LiquidityProxy(..)
@@ -905,6 +907,53 @@ impl xor_fee::ExtractProxySwap for Call {
     }
 }
 
+impl xor_fee::IsCalledByBridgePeer<AccountId> for Call {
+    fn is_called_by_bridge_peer(&self, who: &AccountId) -> bool {
+        match self {
+            Call::BridgeMultisig(call) => match call {
+                bridge_multisig::Call::as_multi(multisig_id, ..)
+                | bridge_multisig::Call::as_multi_threshold_1(multisig_id, ..) => {
+                    bridge_multisig::Accounts::<Runtime>::get(multisig_id)
+                        .map(|acc| acc.is_signatory(&who))
+                }
+                _ => None,
+            },
+            Call::EthBridge(call) => match call {
+                eth_bridge::Call::approve_request(_, _, _, network_id) => {
+                    Some(eth_bridge::Pallet::<Runtime>::is_peer(who, *network_id))
+                }
+                eth_bridge::Call::register_incoming_request(request) => {
+                    let net_id = request.network_id();
+                    eth_bridge::BridgeAccount::<Runtime>::get(net_id).map(|acc| acc == *who)
+                }
+                eth_bridge::Call::import_incoming_request(load_request, _) => {
+                    let net_id = load_request.network_id();
+                    eth_bridge::BridgeAccount::<Runtime>::get(net_id).map(|acc| acc == *who)
+                }
+                eth_bridge::Call::finalize_incoming_request(_, network_id)
+                | eth_bridge::Call::abort_request(_, _, network_id) => {
+                    eth_bridge::BridgeAccount::<Runtime>::get(network_id).map(|acc| acc == *who)
+                }
+                _ => None,
+            },
+            _ => None,
+        }
+        .unwrap_or(false)
+    }
+}
+
+pub struct ValBurnedAggregator<T>(sp_std::marker::PhantomData<T>);
+
+impl<T> OnValBurned for ValBurnedAggregator<T>
+where
+    T: pallet_staking::ValBurnedNotifier<Balance>,
+{
+    fn on_val_burned(amount: Balance) {
+        Rewards::on_val_burned(amount);
+        T::notify_val_burned(amount);
+    }
+}
+
 parameter_types! {
     pub const DEXIdValue: DEXId = 0;
 }
@@ -921,7 +970,7 @@ impl xor_fee::Config for Runtime {
     type ValId = GetValAssetId;
     type DEXIdValue = DEXIdValue;
     type LiquidityProxy = LiquidityProxy;
-    type ValBurnedNotifier = Staking;
+    type OnValBurned = ValBurnedAggregator<Staking>;
     type CustomFees = ExtrinsicsFlatFees;
     type GetTechnicalAccountId = GetXorFeeAccountId;
     type GetParliamentAccountId = GetParliamentAccountId;
@@ -988,17 +1037,98 @@ impl bridge_multisig::Config for Runtime {
 
 parameter_types! {
     pub const EthNetworkId: u32 = 0;
-    pub const RemoveTemporaryPeerAccountId: AccountId = AccountId::new(hex!("614e20b93522be9874e48f1e18b9bf2dfd4cdc4dafc1887ca353d544c92526cc"));
+}
+
+pub struct RemoveTemporaryPeerAccountIds;
+
+#[cfg(feature = "private-net")]
+impl Get<Vec<(AccountId, H160)>> for RemoveTemporaryPeerAccountIds {
+    fn get() -> Vec<(AccountId, H160)> {
+        vec![
+            // Dev
+            (
+                AccountId::new(hex!(
+                    "aa79aa80b94b1cfba69c4a7d60eeb7b469e6411d1f686cc61de8adc8b1b76a69"
+                )),
+                H160(hex!("f858c8366f3a2553516a47f3e0503a85ef93bbba")),
+            ),
+            (
+                AccountId::new(hex!(
+                    "60dc5adadc262770cbe904e3f65a26a89d46b70447640cd7968b49ddf5a459bc"
+                )),
+                H160(hex!("ccd7fe44d58640dc79c55b98f8c3474646e5ea2b")),
+            ),
+            (
+                AccountId::new(hex!(
+                    "70d61e980602e09ac8b5fb50658ebd345774e73b8248d3b61862ba1a9a035082"
+                )),
+                H160(hex!("13d26a91f791e884fe6faa7391c4ef401638baa4")),
+            ),
+            (
+                AccountId::new(hex!(
+                    "05918034f4a7f7c5d99cd0382aa6574ec2aba148aa3d769e50e0ac7663e36d58"
+                )),
+                H160(hex!("aa19829ae887212206be8e97ea47d8fed2120d4e")),
+            ),
+            // Test
+            (
+                AccountId::new(hex!(
+                    "07f5670d08b8f3bd493ff829482a489d94494fd50dd506957e44e9fdc2e98684"
+                )),
+                H160(hex!("457d710255184dbf63c019ab50f65743c6cb072f")),
+            ),
+            (
+                AccountId::new(hex!(
+                    "211bb96e9f746183c05a1d583bccf513f9d8f679d6f36ecbd06609615a55b1cc"
+                )),
+                H160(hex!("6d04423c97e8ce36d04c9b614926ce0d029d04df")),
+            ),
+            (
+                AccountId::new(hex!(
+                    "ef3139b81d14977d5bf6b4a3994872337dfc1d2af2069a058bc26123a3ed1a5c"
+                )),
+                H160(hex!("e34022904b1ab539729cc7b5bfa5c8a74b165e80")),
+            ),
+            (
+                AccountId::new(hex!(
+                    "71124b336fbf3777d743d4390acce6be1cf5e0781e40c51d4cf2e5b5fd8e41e1"
+                )),
+                H160(hex!("ee74a5b5346915012d103cf1ccee288f25bcbc81")),
+            ),
+            // Stage
+            (
+                AccountId::new(hex!(
+                    "07f5670d08b8f3bd493ff829482a489d94494fd50dd506957e44e9fdc2e98684"
+                )),
+                H160(hex!("457d710255184dbf63c019ab50f65743c6cb072f")),
+            ),
+            (
+                AccountId::new(hex!(
+                    "211bb96e9f746183c05a1d583bccf513f9d8f679d6f36ecbd06609615a55b1cc"
+                )),
+                H160(hex!("6d04423c97e8ce36d04c9b614926ce0d029d04df")),
+            ),
+        ]
+    }
+}
+
+#[cfg(not(feature = "private-net"))]
+impl Get<Vec<(AccountId, H160)>> for RemoveTemporaryPeerAccountIds {
+    fn get() -> Vec<(AccountId, H160)> {
+        vec![] // the peer is already removed on main-net.
+    }
 }
 
 #[cfg(not(feature = "private-net"))]
 parameter_types! {
     pub const RemovePendingOutgoingRequestsAfter: BlockNumber = 1 * DAYS;
+    pub const TrackPendingIncomingRequestsAfter: (BlockNumber, u64) = (1 * DAYS, 12697214);
 }
 
 #[cfg(feature = "private-net")]
 parameter_types! {
     pub const RemovePendingOutgoingRequestsAfter: BlockNumber = 30 * MINUTES;
+    pub const TrackPendingIncomingRequestsAfter: (BlockNumber, u64) = (30 * MINUTES, 0);
 }
 
 pub type NetworkId = u32;
@@ -1006,12 +1136,15 @@ pub type NetworkId = u32;
 impl eth_bridge::Config for Runtime {
     type Event = Event;
     type Call = Call;
-    type PeerId = eth_bridge::crypto::TestAuthId;
+    type PeerId = eth_bridge::offchain::crypto::TestAuthId;
     type NetworkId = NetworkId;
     type GetEthNetworkId = EthNetworkId;
     type WeightInfo = eth_bridge::weights::WeightInfo<Runtime>;
     type RemovePendingOutgoingRequestsAfter = RemovePendingOutgoingRequestsAfter;
-    type RemoveTemporaryPeerAccountId = RemoveTemporaryPeerAccountId;
+    type TrackPendingIncomingRequestsAfter = TrackPendingIncomingRequestsAfter;
+    type RemovePeerAccountIds = RemoveTemporaryPeerAccountIds;
+    type SchedulerOriginCaller = OriginCaller;
+    type Scheduler = Scheduler;
 }
 
 #[cfg(feature = "private-net")]
@@ -1425,8 +1558,9 @@ impl_runtime_apis! {
         fn validate_transaction(
             source: TransactionSource,
             tx: <Block as BlockT>::Extrinsic,
+            block_hash: <Block as BlockT>::Hash,
         ) -> TransactionValidity {
-            Executive::validate_transaction(source, tx)
+            Executive::validate_transaction(source, tx, block_hash)
         }
     }
 

@@ -23,13 +23,11 @@ sp-runtime = { version = "3", default-features = false }
 sp-staking = { version = "3", default-features = false }
 sp-std = { version = "3", default-features = false }
 traits = { version = "0.4", package = "orml-traits", default-features = false }
-
-pallet-staking = { git = "https://github.com/soramitsu/sora2-frame-pallets", default-features = false, branch = "v3.1.0"}
-
 assets = { path = "../assets", default-features = false }
 common = { path = "../../common", default-features = false }
 liquidity-proxy = { path = "../liquidity-proxy", default-features = false }
 referral-system = { path = "../referral-system", default-features = false }
+eth-bridge = { path = "../eth-bridge", default-features = false }
 
 [dev-dependencies]
 currencies = { version = "0.4", package = "orml-currencies" }
@@ -40,6 +38,9 @@ sp-core = { version = "3", default-features = false }
 sp-io = { version = "3", default-features = false }
 sp-runtime = { version = "3", default-features = false }
 tokens = { version = "0.4", package = "orml-tokens" }
+pallet-staking = { git = "https://github.com/soramitsu/sora2-frame-pallets", branch = "v3.1.0" }
+bridge-multisig = { git = "https://github.com/soramitsu/sora2-frame-pallets.git", branch = "v3.2.2", package = "pallet-multisig" }
+pallet-scheduler = { version = "3" }
 
 common = { path = "../../common", features = ["test"] }
 dex-manager = { path = "../dex-manager" }
@@ -57,7 +58,6 @@ std = [
     "frame-support/std",
     "frame-system/std",
     "pallet-session/std",
-    "pallet-staking/std",
     "pallet-transaction-payment/std",
     "serde",
     "sp-arithmetic/std",
@@ -65,4 +65,5 @@ std = [
     "sp-staking/std",
     "sp-std/std",
     "traits/std",
+    "eth-bridge/std",
 ]

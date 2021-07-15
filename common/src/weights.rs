@@ -33,7 +33,8 @@ use frame_support::weights::constants::{
     BlockExecutionWeight, ExtrinsicBaseWeight, WEIGHT_PER_SECOND,
 };
 use frame_support::weights::{
-    DispatchClass, Weight, WeightToFeeCoefficient, WeightToFeeCoefficients, WeightToFeePolynomial,
+    DispatchClass, Pays, Weight, WeightToFeeCoefficient, WeightToFeeCoefficients,
+    WeightToFeePolynomial,
 };
 use frame_system::limits;
 use smallvec::smallvec;
@@ -41,6 +42,9 @@ use sp_arithmetic::Perbill;
 use sp_std::marker::PhantomData;
 
 use crate::primitives::Balance;
+use frame_support::dispatch::{DispatchErrorWithPostInfo, DispatchResultWithPostInfo};
+use sp_runtime::DispatchError;
+
 pub mod constants {
     use frame_support::weights::Weight;
 
@@ -93,6 +97,31 @@ impl WeightToFeePolynomial for WeightToFixedFee {
             negative: false,
             degree: 1,
         })
+    }
+}
+
+#[inline(always)]
+pub fn pays_no_with_maybe_weight<E: Into<DispatchError>>(
+    result: Result<Option<Weight>, E>,
+) -> DispatchResultWithPostInfo {
+    result
+        .map_err(|e| DispatchErrorWithPostInfo {
+            post_info: Pays::No.into(),
+            error: e.into(),
+        })
+        .map(|weight| (weight, Pays::No).into())
+}
+
+#[inline(always)]
+pub fn pays_no<T, E: Into<DispatchError>>(result: Result<T, E>) -> DispatchResultWithPostInfo {
+    pays_no_with_maybe_weight(result.map(|_| None))
+}
+
+#[inline(always)]
+pub fn err_pays_no(err: impl Into<DispatchError>) -> DispatchErrorWithPostInfo {
+    DispatchErrorWithPostInfo {
+        post_info: Pays::No.into(),
+        error: err.into(),
     }
 }
 
