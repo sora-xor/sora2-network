@@ -104,11 +104,19 @@ impl FixedWrapper {
         }
     }
 
-    /// For development it panics if cannot convert the inner value into Balance.
-    /// For production it returns Balance saturated from 0
     pub fn into_balance(self) -> Balance {
-        // TODO: Make it saturate
-        self.inner.unwrap().into_bits().try_into().unwrap()
+        #[cfg(feature = "test")]
+        {
+            self.inner.unwrap().into_bits().try_into().unwrap()
+        }
+
+        #[cfg(not(feature = "test"))]
+        {
+            use sp_runtime::traits::UniqueSaturatedInto;
+            self.inner
+                .map(|v| v.into_bits().unique_saturated_into())
+                .unwrap_or(0)
+        }
     }
 }
 

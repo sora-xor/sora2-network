@@ -93,7 +93,6 @@ frame-support = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "
 frame-system = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "d74fde5" }
 frame-system-benchmarking = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "d74fde5" }
 frame-system-rpc-runtime-api = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "d74fde5" }
-max-encoded-len = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "d74fde5" }
 pallet-aura = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "d74fde5" }
 pallet-authorship = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "d74fde5" }
 pallet-babe = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "d74fde5" }

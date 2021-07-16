@@ -65,7 +65,7 @@ use sp_consensus_babe::AuthorityId as BabeId;
 use sp_core::{Public, H160, H256};
 use sp_runtime::sp_std::iter::once;
 use sp_runtime::traits::Zero;
-use sp_runtime::Perbill;
+use sp_runtime::{BuildStorage, Perbill};
 use std::str::FromStr;
 
 use codec::Encode;
@@ -163,7 +163,15 @@ pub fn test_net() -> Result<ChainSpec, String> {
 
 #[cfg(not(feature = "private-net"))]
 pub fn main_net() -> Result<ChainSpec, String> {
-    ChainSpec::from_json_bytes(&our_include_bytes!("./bytes/chain_spec_main.json")[..])
+    #[cfg(feature = "test")]
+    {
+        ChainSpec::from_json_bytes(&include_bytes!("./bytes/chain_spec_main.json")[..])
+    }
+
+    #[cfg(not(feature = "test"))]
+    {
+        ChainSpec::from_json_bytes(&our_include_bytes!("./bytes/chain_spec_main.json")[..])
+    }
 }
 
 #[cfg(feature = "private-net")]
@@ -1737,6 +1745,12 @@ fn mainnet_genesis(
         pallet_membership_Instance1: Default::default(),
         pallet_im_online: Default::default(),
     }
+}
+
+#[cfg(feature = "test")]
+pub fn ext() -> sp_io::TestExternalities {
+    let storage = main_net().unwrap().build_storage().unwrap();
+    sp_io::TestExternalities::new(storage)
 }
 
 #[cfg(test)]

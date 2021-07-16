@@ -271,28 +271,29 @@ benchmarks! {
         );
     }
 
-    // TODO: resolve slippage exceeded issue
-    // swap_exact_output_primary_only {
-    //     setup_benchmark::<T>()?;
-    //     let caller = alice::<T>();
-    //     let from_asset: T::AssetId = VAL.into();
-    //     let to_asset: T::AssetId = XOR.into();
-    //     let initial_to_balance = Assets::<T>::free_balance(&to_asset, &caller).unwrap();
-    // }: swap(
-    //     RawOrigin::Signed(caller.clone()),
-    //     DEX.into(),
-    //     from_asset.clone(),
-    //     to_asset.clone(),
-    //     SwapAmount::with_desired_output(balance!(100), balance!(10000000)),
-    //     [LiquiditySourceType::MulticollateralBondingCurvePool].into(),
-    //     FilterMode::AllowSelected
-    // )
-    // verify {
-    //     assert_eq!(
-    //         Into::<u128>::into(Assets::<T>::free_balance(&to_asset, &caller).unwrap()),
-    //         Into::<u128>::into(initial_to_balance) + balance!(1)
-    //     );
-    // }
+    swap_exact_output_primary_only {
+        setup_benchmark::<T>()?;
+        let caller = alice::<T>();
+        let from_asset: T::AssetId = VAL.into();
+        let to_asset: T::AssetId = XOR.into();
+        let initial_to_balance = Assets::<T>::free_balance(&to_asset, &caller).unwrap();
+    }: {
+        liquidity_proxy::Module::<T>::swap(
+            RawOrigin::Signed(caller.clone()).into(),
+            DEX.into(),
+            from_asset.clone(),
+            to_asset.clone(),
+            SwapAmount::with_desired_output(balance!(100), balance!(10000000)),
+            [LiquiditySourceType::MulticollateralBondingCurvePool].into(),
+            FilterMode::AllowSelected
+        ).unwrap();
+    }
+    verify {
+        assert_eq!(
+            Into::<u128>::into(Assets::<T>::free_balance(&to_asset, &caller).unwrap()),
+            Into::<u128>::into(initial_to_balance) + balance!(1)
+        );
+    }
 
     swap_exact_input_secondary_only {
         setup_benchmark::<T>()?;

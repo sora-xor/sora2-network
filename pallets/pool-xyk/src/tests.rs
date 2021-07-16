@@ -304,7 +304,6 @@ fn can_exchange_all_directions() {
         ));
         assert!(crate::Module::<Runtime>::can_exchange(&dex_id, &gt, &bp));
         assert!(crate::Module::<Runtime>::can_exchange(&dex_id, &bp, &gt));
-        // TODO: add tests for indirect exchange, i.e. both input and output are not base asset
     })]);
 }
 

@@ -128,13 +128,16 @@ where
 
 #[cfg(test)]
 mod tests {
+    use frame_support::weights::{DispatchInfo, Pays};
+    use sp_core::H256;
+
+    use common::XOR;
+
     use crate::extensions::ChargeTransactionPayment;
     use crate::{Call, Runtime};
-    use common::XOR;
-    use frame_support::weights::{DispatchInfo, Pays};
 
     #[test]
-    fn check_calls_from_bridge_peers() {
+    fn check_calls_from_bridge_peers_pays_yes() {
         let call: &<Runtime as frame_system::Config>::Call =
             &Call::EthBridge(eth_bridge::Call::transfer_to_sidechain(
                 XOR.into(),
@@ -149,7 +152,20 @@ mod tests {
         let pre_info =
             ChargeTransactionPayment::<Runtime>::pre_dispatch_info(&who, call, &dispatch_info);
         assert_eq!(pre_info.pays_fee, Pays::Yes);
+    }
 
-        // TODO: add tests for Pays::No.
+    #[test]
+    fn check_calls_from_bridge_peers_pays_no() {
+        framenode_chain_spec::ext().execute_with(|| {
+            let call: &<Runtime as frame_system::Config>::Call =
+                &Call::EthBridge(eth_bridge::Call::finalize_incoming_request(H256::zero(), 0));
+
+            let dispatch_info = DispatchInfo::default();
+            let who = eth_bridge::BridgeAccount::<Runtime>::get(0).unwrap();
+
+            let pre_info =
+                ChargeTransactionPayment::<Runtime>::pre_dispatch_info(&who, call, &dispatch_info);
+            assert_eq!(pre_info.pays_fee, Pays::No);
+        });
     }
 }

@@ -18,42 +18,44 @@ codec = { package = "parity-scale-codec", version = "2", default-features = fals
 hex-literal = "0.3.1"
 log = { version = "0.4.14" }
 serde = { features = ['derive'], optional = true, version = '1.0.101' }
-common = { path = "../common", default-features = false }
-faucet = { path = "../pallets/faucet", default-features = false, optional = true }
+
+bridge-multisig = { git = "https://github.com/soramitsu/sora2-frame-pallets.git", branch = "v3.2.2", package = "pallet-multisig", default-features = false }
+
 assets = { path = "../pallets/assets", default-features = false }
+assets-runtime-api = { path = "../pallets/assets/runtime-api", default-features = false}
 bonding-curve-pool = { path = "../pallets/bonding-curve-pool", default-features = false }
-multicollateral-bonding-curve-pool = { path = "../pallets/multicollateral-bonding-curve-pool", default-features = false }
+common = { path = "../common", default-features = false }
 dex-api = { path = "../pallets/dex-api", default-features = false }
+dex-api-benchmarking = { path = "../pallets/dex-api/benchmarking", default-features = false, optional = true }
 dex-manager = { path = "../pallets/dex-manager", default-features = false }
+dex-manager-runtime-api = { path = "../pallets/dex-manager/runtime-api", default-features = false}
+dex-runtime-api = { path = "../pallets/dex-api/runtime-api", default-features = false}
+eth-bridge = { path = "../pallets/eth-bridge", default-features = false }
+eth-bridge-runtime-api = { path = "../pallets/eth-bridge/runtime-api", default-features = false }
 farming = { path = "../pallets/farming", default-features = false}
+faucet = { path = "../pallets/faucet", default-features = false, optional = true }
 iroha-migration = { path = "../pallets/iroha-migration", default-features = false }
+iroha-migration-runtime-api = { path = "../pallets/iroha-migration/runtime-api", default-features = false }
 liquidity-proxy = { path = "../pallets/liquidity-proxy", default-features = false}
+liquidity-proxy-benchmarking = { path = "../pallets/liquidity-proxy/benchmarking", default-features = false, optional = true }
+liquidity-proxy-runtime-api = { path = "../pallets/liquidity-proxy/runtime-api", default-features = false}
 mock-liquidity-source = { path = "../pallets/mock-liquidity-source", default-features = false}
+multicollateral-bonding-curve-pool = { path = "../pallets/multicollateral-bonding-curve-pool", default-features = false }
 permissions = { path = "../pallets/permissions", default-features = false}
 pool-xyk = { path = "../pallets/pool-xyk", default-features = false}
+pool-xyk-benchmarking = { path = "../pallets/pool-xyk/benchmarking", default-features = false, optional = true }
+price-tools = { path = "../pallets/price-tools", default-features = false }
+pswap-distribution = { path = "../pallets/pswap-distribution", default-features = false }
+pswap-distribution-benchmarking = { path = "../pallets/pswap-distribution/benchmarking", default-features = false, optional = true }
+pswap-distribution-runtime-api = { path = "../pallets/pswap-distribution/runtime-api", default-features = false }
 referral-system = { path = "../pallets/referral-system", default-features = false}
 rewards = { path = "../pallets/rewards", default-features = false }
 rewards-runtime-api = { path = "../pallets/rewards/runtime-api", default-features = false }
 technical = { path = "../pallets/technical", default-features = false}
 trading-pair = { path = "../pallets/trading-pair", default-features = false}
-xor-fee = { path = "../pallets/xor-fee", default-features = false}
-dex-runtime-api = { path = "../pallets/dex-api/runtime-api", default-features = false}
-dex-manager-runtime-api = { path = "../pallets/dex-manager/runtime-api", default-features = false}
 trading-pair-runtime-api = { path = "../pallets/trading-pair/runtime-api", default-features = false}
-assets-runtime-api = { path = "../pallets/assets/runtime-api", default-features = false}
-liquidity-proxy-runtime-api = { path = "../pallets/liquidity-proxy/runtime-api", default-features = false}
-eth-bridge = { path = "../pallets/eth-bridge", default-features = false }
-eth-bridge-runtime-api = { path = "../pallets/eth-bridge/runtime-api", default-features = false }
-bridge-multisig = { git = "https://github.com/soramitsu/sora2-frame-pallets.git", branch = "v3.2.2", package = "pallet-multisig", default-features = false }
-iroha-migration-runtime-api = { path = "../pallets/iroha-migration/runtime-api", default-features = false }
-pswap-distribution = { path = "../pallets/pswap-distribution", default-features = false }
-pswap-distribution-benchmarking = { path = "../pallets/pswap-distribution/benchmarking", default-features = false, optional = true }
-pswap-distribution-runtime-api = { path = "../pallets/pswap-distribution/runtime-api", default-features = false }
-liquidity-proxy-benchmarking = { path = "../pallets/liquidity-proxy/benchmarking", default-features = false, optional = true }
-pool-xyk-benchmarking = { path = "../pallets/pool-xyk/benchmarking", default-features = false, optional = true }
-dex-api-benchmarking = { path = "../pallets/dex-api/benchmarking", default-features = false, optional = true }
 vested-rewards = { path = "../pallets/vested-rewards", default-features = false }
-price-tools = { path = "../pallets/price-tools", default-features = false }
+xor-fee = { path = "../pallets/xor-fee", default-features = false}
 xor-fee-benchmarking = { path = "../pallets/xor-fee/benchmarking", default-features = false, optional = true }
 
 # Substrate dependencies
@@ -106,6 +108,9 @@ currencies = { version = "0.4", package = "orml-currencies", default-features = 
 static_assertions = "1.1.0"
 tokens = { version = "0.4", package = "orml-tokens", default-features = false }
 traits = { version = "0.4", package = "orml-traits", default-features = false }
+
+[dev-dependencies]
+framenode-chain-spec = { path = "../node/chain_spec", features = ["test"] }
 
 [features]
 default = ['std']

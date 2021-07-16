@@ -16,7 +16,7 @@
 // limitations under the License.
 
 use crate::cli::{Cli, Subcommand};
-use crate::{chain_spec, service};
+use crate::service;
 use sc_cli::{ChainSpec, Role, RuntimeVersion, SubstrateCli};
 use sc_service::PartialComponents;
 
@@ -71,7 +71,7 @@ impl SubstrateCli for Cli {
 
         #[cfg(not(feature = "private-net"))]
         if id == "main" {
-            chain_spec = Some(chain_spec::main_net()?);
+            chain_spec = Some(framenode_chain_spec::main_net()?);
         }
 
         #[cfg(feature = "main-net-coded")]
@@ -82,7 +82,7 @@ impl SubstrateCli for Cli {
         let chain_spec = if let Some(chain_spec) = chain_spec {
             chain_spec
         } else {
-            chain_spec::ChainSpec::from_json_file(std::path::PathBuf::from(id))?
+            framenode_chain_spec::ChainSpec::from_json_file(std::path::PathBuf::from(id))?
         };
 
         Ok(Box::new(chain_spec))
