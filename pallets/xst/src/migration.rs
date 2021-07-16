@@ -64,8 +64,8 @@ pub fn register_new_token<T: Config>() -> Option<Weight> {
     let result = assets::Pallet::<T>::register_asset_id(
         get_assets_owner_account::<T>(),
         XSTUSD.into(),
-        AssetSymbol(b"VAL".to_vec()),
-        AssetName(b"SORA Validator Token".to_vec()),
+        AssetSymbol(b"XSTUSD".to_vec()),
+        AssetName(b"XST USD".to_vec()),
         18,
         Balance::zero(),
         true,

@@ -955,7 +955,16 @@ impl<T: Config> Pallet<T> {
         match amount {
             QuoteAmount::WithDesiredInput { desired_amount_in } => {
                 let wrapped_amount: FixedWrapper = desired_amount_in.into();
+                // checking that secondary price is better than primary initially
                 let amount_primary = if secondary_price < primary_buy_price {
+                    // find intercept between secondary and primary market curves:
+                    // 1) (x - x1) * (y + y1) = k // xyk equation
+                    // 2) (y + y1) / (x - x1) = p // desired price `p` equation
+                    // composing 1 and 2: (y + y1) * (y + y1) = k * p
+                    // √(k * p) - y = y1
+                    // where
+                    // * x is base reserve, x1 is base amount, y is target reserve, y1 is target amount
+                    // * p is desired price i.e. target/base
                     let amount_secondary = (k * primary_buy_price).sqrt_accurate() - y; // always > 0
                     if amount_secondary >= wrapped_amount {
                         balance!(0)
@@ -973,7 +982,16 @@ impl<T: Config> Pallet<T> {
             }
             QuoteAmount::WithDesiredOutput { desired_amount_out } => {
                 let wrapped_amount: FixedWrapper = desired_amount_out.into();
+                // checking that secondary price is better than primary initially
                 let amount_primary = if secondary_price < primary_buy_price {
+                    // find intercept between secondary and primary market curves:
+                    // 1) (x - x1) * (y + y1) = k // xyk equation
+                    // 2) (y + y1) / (x - x1) = p // desired price `p` equation
+                    // composing 1 and 2: (x - x1) * (x - x1) * p = k
+                    // x - √(k / p) = x1
+                    // where
+                    // * x is base reserve, x1 is base amount, y is target reserve, y1 is target amount
+                    // * p is desired price i.e. target/base
                     let amount_secondary = x - (k / primary_buy_price).sqrt_accurate(); // always > 0
                     if amount_secondary >= wrapped_amount {
                         balance!(0)
@@ -1026,7 +1044,16 @@ impl<T: Config> Pallet<T> {
         match amount {
             QuoteAmount::WithDesiredInput { desired_amount_in } => {
                 let wrapped_amount: FixedWrapper = desired_amount_in.into();
+                // checking that secondary price is better than primary initially
                 let amount_primary = if secondary_price > primary_sell_price {
+                    // find intercept between secondary and primary market curves:
+                    // 1) (x + x1) * (y - y1) = k // xyk equation
+                    // 2) (y - y1) / (x + x1) = p // desired price `p` equation
+                    // composing 1 and 2: (x + x1) * (x + x1) * p = k
+                    // √(k / p) - x = x1
+                    // where
+                    // * x is base reserve, x1 is base amount, y is target reserve, y1 is target amount
+                    // * p is desired price i.e. target/base
                     let amount_secondary = (k / primary_sell_price).sqrt_accurate() - x; // always > 0
                     if amount_secondary >= wrapped_amount {
                         balance!(0)
@@ -1044,7 +1071,16 @@ impl<T: Config> Pallet<T> {
             }
             QuoteAmount::WithDesiredOutput { desired_amount_out } => {
                 let wrapped_amount: FixedWrapper = desired_amount_out.into();
+                // checking that secondary price is better than primary initially
                 let amount_primary = if secondary_price > primary_sell_price {
+                    // find intercept between secondary and primary market curves:
+                    // 1) (x + x1) * (y - y1) = k // xyk equation
+                    // 2) (y - y1) / (x + x1) = p // desired price `p` equation
+                    // composing 1 and 2: (y - y1) * (y - y1) = k * p
+                    // y - √(k * p) = y1
+                    // where
+                    // * x is base reserve, x1 is base amount, y is target reserve, y1 is target amount
+                    // * p is desired price i.e. target/base
                     let amount_secondary = y - (k * primary_sell_price).sqrt_accurate();
                     if amount_secondary >= wrapped_amount {
                         balance!(0)
