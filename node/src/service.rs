@@ -105,9 +105,9 @@ pub fn new_partial(
             .first()
             .map(|x| x.1.clone())
     {
-        let pk = eth_bridge::crypto::Public::from_slice(&first_pk_raw[..]);
+        let pk = eth_bridge::offchain::crypto::Public::from_slice(&first_pk_raw[..]);
         if let Some(keystore) = keystore_container.local_keystore() {
-            if let Ok(kep) = keystore.key_pair::<eth_bridge::crypto::Pair>(&pk) {
+            if let Ok(Some(kep)) = keystore.key_pair::<eth_bridge::offchain::crypto::Pair>(&pk) {
                 let seed = kep.to_raw_vec();
                 bridge_peer_secret_key = Some(seed);
             }
@@ -195,7 +195,7 @@ pub fn new_partial(
         client.clone(),
         select_chain.clone(),
         inherent_data_providers.clone(),
-        &task_manager.spawn_handle(),
+        &task_manager.spawn_essential_handle(),
         config.prometheus_registry(),
         sp_consensus::CanAuthorWithNativeVersion::new(client.executor().clone()),
     )?;
@@ -351,7 +351,7 @@ pub fn new_full(mut config: Configuration) -> Result<TaskManager, ServiceError> 
         name: Some(name),
         observer_enabled: false,
         keystore,
-        is_authority: role.is_network_authority(),
+        is_authority: role.is_authority(),
     };
 
     if enable_grandpa {
@@ -422,7 +422,7 @@ pub fn new_light(mut config: Configuration) -> Result<TaskManager, ServiceError>
         client.clone(),
         select_chain.clone(),
         InherentDataProviders::new(),
-        &task_manager.spawn_handle(),
+        &task_manager.spawn_essential_handle(),
         config.prometheus_registry(),
         sp_consensus::NeverCanAuthor,
     )?;
