@@ -493,7 +493,7 @@ impl<T: Config> Pallet<T> {
             let rewards = if skip_info {
                 Vec::new()
             } else {
-                let (input_amount, output_amount) = amount.sort_amount_outcome(outcome.clone());
+                let (input_amount, output_amount) = amount.place_input_and_output(outcome.clone());
                 T::LiquidityRegistry::check_rewards(
                     src,
                     input_asset_id,
@@ -844,7 +844,7 @@ impl<T: Config> Pallet<T> {
                                 ),
                             ] {
                                 let (input_amount, output_amount) =
-                                    info.1.sort_amount_outcome(info.2);
+                                    info.1.place_input_and_output(info.2);
                                 rewards.append(
                                     &mut T::LiquidityRegistry::check_rewards(
                                         info.0,
@@ -891,7 +891,8 @@ impl<T: Config> Pallet<T> {
                 total_fee = outcome.fee;
                 distr = vec![(secondary_source_id.clone(), amount.clone())];
                 if !skip_info {
-                    let (input_amount, output_amount) = amount.sort_amount_outcome(outcome.clone());
+                    let (input_amount, output_amount) =
+                        amount.place_input_and_output(outcome.clone());
                     rewards = T::LiquidityRegistry::check_rewards(
                         secondary_source_id,
                         input_asset_id,

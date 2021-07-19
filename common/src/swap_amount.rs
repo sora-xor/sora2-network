@@ -72,6 +72,7 @@ impl<T> QuoteAmount<T> {
         }
     }
 
+    /// Return inner amount value of either desired_amount_in or desired_amount_out to put away enum variant.
     pub fn amount(self) -> T {
         match self {
             QuoteAmount::WithDesiredInput {
@@ -85,15 +86,15 @@ impl<T> QuoteAmount<T> {
         }
     }
 
-    // Position desired amount with outcome such that input and output values are aligned.
-    pub fn sort_amount_outcome(self, outcome: SwapOutcome<T>) -> (T, T) {
+    /// Position desired amount with outcome such that input and output values are aligned.
+    pub fn place_input_and_output(self, outcome: SwapOutcome<T>) -> (T, T) {
         match self {
             Self::WithDesiredInput { .. } => (self.amount(), outcome.amount),
             Self::WithDesiredOutput { .. } => (outcome.amount, self.amount()),
         }
     }
 
-    // Create new value with same direction as `self`.
+    /// Create new value with same direction as `self`.
     pub fn copy_direction(&self, amount: T) -> Self {
         match self {
             Self::WithDesiredInput { .. } => Self::with_desired_input(amount),
@@ -102,6 +103,8 @@ impl<T> QuoteAmount<T> {
     }
 }
 
+/// Provide addition for QuoteAmount type. Only values of same enum variant can be added,
+/// otherwise panic. Arithmetic failures, e.g. overflow, underflow will panic.
 impl<T: Add<Output = T>> Add for QuoteAmount<T> {
     type Output = Self;
 
@@ -128,6 +131,8 @@ impl<T: Add<Output = T>> Add for QuoteAmount<T> {
     }
 }
 
+/// Provide subtraction for QuoteAmount type. Only values of same enum variant can be subtracted,
+/// otherwise panic. Arithmetic failures, e.g. overflow, underflow will panic.
 impl<T: Sub<Output = T>> Sub for QuoteAmount<T> {
     type Output = Self;
 
@@ -154,6 +159,8 @@ impl<T: Sub<Output = T>> Sub for QuoteAmount<T> {
     }
 }
 
+/// Provide checked addition for QuoteAmount type. Only values of same enum variant can be added,
+/// otherwise return `None`. Arithmetic failures, e.g. overflow, underflow will return `None`.
 impl<T: CheckedAdd> CheckedAdd for QuoteAmount<T> {
     fn checked_add(&self, rhs: &QuoteAmount<T>) -> Option<Self::Output> {
         match (self, rhs) {
@@ -178,6 +185,8 @@ impl<T: CheckedAdd> CheckedAdd for QuoteAmount<T> {
     }
 }
 
+/// Provide checked subtraction for QuoteAmount type. Only values of same enum variant can be subtracted,
+/// otherwise return `None`. Arithmetic failures, e.g. overflow, underflow will return `None`.
 impl<T: CheckedSub<Output = T>> CheckedSub for QuoteAmount<T> {
     fn checked_sub(&self, rhs: &QuoteAmount<T>) -> Option<Self::Output> {
         match (self, rhs) {
@@ -314,6 +323,7 @@ impl<T> SwapAmount<T> {
         }
     }
 
+    /// Return inner amount value of either desired_amount_in or desired_amount_out to put away enum variant.
     pub fn amount(self) -> T {
         match self {
             SwapAmount::WithDesiredInput {
@@ -327,6 +337,7 @@ impl<T> SwapAmount<T> {
         }
     }
 
+    /// Return inner limit value of either min_amount_out or max_amount_in to put away enum variant.
     pub fn limit(self) -> T {
         match self {
             SwapAmount::WithDesiredInput {
@@ -341,7 +352,7 @@ impl<T> SwapAmount<T> {
     }
 
     // Position desired amount with outcome such that input and output values are aligned.
-    pub fn sort_amount_outcome(self, outcome: SwapOutcome<T>) -> (T, T) {
+    pub fn place_input_and_output(self, outcome: SwapOutcome<T>) -> (T, T) {
         match self {
             Self::WithDesiredInput { .. } => (self.amount(), outcome.amount),
             Self::WithDesiredOutput { .. } => (outcome.amount, self.amount()),
