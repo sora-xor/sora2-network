@@ -22,6 +22,7 @@ serde = { version = "1.0.101", optional = true, features = ["derive"] }
 sp-core = { version = "3", default-features = false }
 sp-io = { version = "3", default-features = false }
 sp-std = { version = "3", default-features = false }
+sp-runtime = { version = "3", default-features = false }
 orml-traits = { version = "0.4", package = "orml-traits", default-features = false }
 
 assets = { path = "../assets", default-features = false }
