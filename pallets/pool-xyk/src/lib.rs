@@ -496,27 +496,6 @@ pub mod pallet {
 
     #[pallet::call]
     impl<T: Config> Pallet<T> {
-        #[pallet::weight(<T as Config>::WeightInfo::swap_pair())]
-        pub fn swap_pair(
-            origin: OriginFor<T>,
-            receiver: AccountIdOf<T>,
-            dex_id: DEXIdOf<T>,
-            input_asset_id: AssetIdOf<T>,
-            output_asset_id: AssetIdOf<T>,
-            swap_amount: SwapAmount<Balance>,
-        ) -> DispatchResultWithPostInfo {
-            let source = ensure_signed(origin)?;
-            Module::<T>::exchange(
-                &source,
-                &receiver,
-                &dex_id,
-                &input_asset_id,
-                &output_asset_id,
-                swap_amount,
-            )?;
-            Ok(().into())
-        }
-
         #[pallet::weight(<T as Config>::WeightInfo::deposit_liquidity())]
         pub fn deposit_liquidity(
             origin: OriginFor<T>,

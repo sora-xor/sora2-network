@@ -240,12 +240,12 @@ impl<'a> crate::Module<Runtime> {
         // List of cases for different slippage behavior.
         let cases: Vec<PresetFunction<'a>> = vec![
             Rc::new(move |dex_id, _, _, _, _, _, _, _| {
-                assert_ok!(crate::Module::<Runtime>::swap_pair(
-                    Origin::signed(ALICE()),
-                    ALICE(),
-                    dex_id,
-                    GoldenTicket.into(),
-                    BlackPepper.into(),
+                assert_ok!(crate::Module::<Runtime>::exchange(
+                    &ALICE(),
+                    &ALICE(),
+                    &dex_id,
+                    &GoldenTicket.into(),
+                    &BlackPepper.into(),
                     SwapAmount::WithDesiredOutput {
                         desired_amount_out: desired_amount,
                         max_amount_in: balance!(99999999),
@@ -253,12 +253,12 @@ impl<'a> crate::Module<Runtime> {
                 ));
             }),
             Rc::new(move |dex_id, _, _, _, _, _, _, _| {
-                assert_ok!(crate::Module::<Runtime>::swap_pair(
-                    Origin::signed(ALICE()),
-                    ALICE(),
-                    dex_id,
-                    BlackPepper.into(),
-                    GoldenTicket.into(),
+                assert_ok!(crate::Module::<Runtime>::exchange(
+                    &ALICE(),
+                    &ALICE(),
+                    &dex_id,
+                    &BlackPepper.into(),
+                    &GoldenTicket.into(),
                     SwapAmount::WithDesiredInput {
                         desired_amount_in: desired_amount,
                         min_amount_out: balance!(0),
@@ -579,15 +579,15 @@ fn pool_is_already_initialized_and_other_after_depositliq() {
 }
 
 #[test]
-fn swap_pair_desired_output_and_withdraw_cascade() {
+fn exchange_desired_output_and_withdraw_cascade() {
     crate::Module::<Runtime>::preset_deposited_pool(vec![Rc::new(
         |dex_id, gt, bp, _, _, _, repr: AccountId, fee_repr: AccountId| {
-            assert_ok!(crate::Module::<Runtime>::swap_pair(
-                Origin::signed(ALICE()),
-                ALICE(),
-                dex_id,
-                GoldenTicket.into(),
-                BlackPepper.into(),
+            assert_ok!(crate::Module::<Runtime>::exchange(
+                &ALICE(),
+                &ALICE(),
+                &dex_id,
+                &GoldenTicket.into(),
+                &BlackPepper.into(),
                 SwapAmount::WithDesiredOutput {
                     desired_amount_out: balance!(33000),
                     max_amount_in: balance!(99999999),
@@ -680,12 +680,12 @@ fn swap_pair_desired_output_and_withdraw_cascade() {
                 322047222749329068285
             );
 
-            assert_ok!(crate::Module::<Runtime>::swap_pair(
-                Origin::signed(ALICE()),
-                ALICE(),
-                dex_id,
-                GoldenTicket.into(),
-                BlackPepper.into(),
+            assert_ok!(crate::Module::<Runtime>::exchange(
+                &ALICE(),
+                &ALICE(),
+                &dex_id,
+                &GoldenTicket.into(),
+                &BlackPepper.into(),
                 SwapAmount::WithDesiredOutput {
                     desired_amount_out: balance!(33000),
                     max_amount_in: balance!(99999999),
@@ -717,15 +717,15 @@ fn swap_pair_desired_output_and_withdraw_cascade() {
 }
 
 #[test]
-fn swap_pair_desired_input() {
+fn exchange_desired_input() {
     crate::Module::<Runtime>::preset_deposited_pool(vec![Rc::new(
         |dex_id, gt, bp, _, _, _, repr: AccountId, fee_repr: AccountId| {
-            assert_ok!(crate::Module::<Runtime>::swap_pair(
-                Origin::signed(ALICE()),
-                ALICE(),
-                dex_id,
-                GoldenTicket.into(),
-                BlackPepper.into(),
+            assert_ok!(crate::Module::<Runtime>::exchange(
+                &ALICE(),
+                &ALICE(),
+                &dex_id,
+                &GoldenTicket.into(),
+                &BlackPepper.into(),
                 SwapAmount::WithDesiredInput {
                     desired_amount_in: balance!(33000),
                     min_amount_out: 0,
@@ -756,15 +756,15 @@ fn swap_pair_desired_input() {
 }
 
 #[test]
-fn swap_pair_invalid_dex_id() {
+fn exchange_invalid_dex_id() {
     crate::Module::<Runtime>::preset_deposited_pool(vec![Rc::new(|_, _, _, _, _, _, _, _| {
         assert_noop!(
-            crate::Module::<Runtime>::swap_pair(
-                Origin::signed(ALICE()),
-                ALICE(),
-                380,
-                GoldenTicket.into(),
-                BlackPepper.into(),
+            crate::Module::<Runtime>::exchange(
+                &ALICE(),
+                &ALICE(),
+                &380,
+                &GoldenTicket.into(),
+                &BlackPepper.into(),
                 SwapAmount::WithDesiredOutput {
                     desired_amount_out: balance!(33000),
                     max_amount_in: balance!(99999999),
@@ -776,16 +776,16 @@ fn swap_pair_invalid_dex_id() {
 }
 
 #[test]
-fn swap_pair_different_asset_pair() {
+fn exchange_different_asset_pair() {
     crate::Module::<Runtime>::preset_deposited_pool(vec![Rc::new(
         |dex_id, _, _, _, _, _, _, _| {
             assert_noop!(
-                crate::Module::<Runtime>::swap_pair(
-                    Origin::signed(ALICE()),
-                    ALICE(),
-                    dex_id,
-                    GoldenTicket.into(),
-                    RedPepper.into(),
+                crate::Module::<Runtime>::exchange(
+                    &ALICE(),
+                    &ALICE(),
+                    &dex_id,
+                    &GoldenTicket.into(),
+                    &RedPepper.into(),
                     SwapAmount::WithDesiredOutput {
                         desired_amount_out: balance!(33000),
                         max_amount_in: balance!(99999999),
@@ -798,16 +798,16 @@ fn swap_pair_different_asset_pair() {
 }
 
 #[test]
-fn swap_pair_swap_fail_with_invalid_balance() {
+fn exchange_swap_fail_with_invalid_balance() {
     crate::Module::<Runtime>::preset_deposited_pool(vec![Rc::new(
         |dex_id, _, _, _, _, _, _, _| {
             assert_noop!(
-                crate::Module::<Runtime>::swap_pair(
-                    Origin::signed(BOB()),
-                    BOB(),
-                    dex_id,
-                    GoldenTicket.into(),
-                    BlackPepper.into(),
+                crate::Module::<Runtime>::exchange(
+                    &BOB(),
+                    &BOB(),
+                    &dex_id,
+                    &GoldenTicket.into(),
+                    &BlackPepper.into(),
                     SwapAmount::WithDesiredOutput {
                         desired_amount_out: balance!(33000),
                         max_amount_in: balance!(999999999),
@@ -820,7 +820,7 @@ fn swap_pair_swap_fail_with_invalid_balance() {
 }
 
 #[test]
-fn swap_pair_outcome_should_match_actual_desired_amount_in_with_input_base() {
+fn exchange_outcome_should_match_actual_desired_amount_in_with_input_base() {
     crate::Module::<Runtime>::preset_deposited_pool(vec![Rc::new(
         |dex_id, gt, bp, _, _, _, _repr: AccountId, _fee_repr: AccountId| {
             use sp_core::crypto::AccountId32;
@@ -880,7 +880,7 @@ fn swap_pair_outcome_should_match_actual_desired_amount_in_with_input_base() {
 }
 
 #[test]
-fn swap_pair_outcome_should_match_actual_desired_amount_in_with_output_base() {
+fn exchange_outcome_should_match_actual_desired_amount_in_with_output_base() {
     crate::Module::<Runtime>::preset_deposited_pool(vec![Rc::new(
         |dex_id, gt, bp, _, _, _, _repr: AccountId, _fee_repr: AccountId| {
             use sp_core::crypto::AccountId32;
@@ -940,7 +940,7 @@ fn swap_pair_outcome_should_match_actual_desired_amount_in_with_output_base() {
 }
 
 #[test]
-fn swap_pair_outcome_should_match_actual_desired_amount_out_with_input_base() {
+fn exchange_outcome_should_match_actual_desired_amount_out_with_input_base() {
     crate::Module::<Runtime>::preset_deposited_pool(vec![Rc::new(
         |dex_id, gt, bp, _, _, _, _repr: AccountId, _fee_repr: AccountId| {
             use sp_core::crypto::AccountId32;
@@ -995,7 +995,7 @@ fn swap_pair_outcome_should_match_actual_desired_amount_out_with_input_base() {
 }
 
 #[test]
-fn swap_pair_outcome_should_match_actual_desired_amount_out_with_output_base() {
+fn exchange_outcome_should_match_actual_desired_amount_out_with_output_base() {
     crate::Module::<Runtime>::preset_deposited_pool(vec![Rc::new(
         |dex_id, gt, bp, _, _, _, _repr: AccountId, _fee_repr: AccountId| {
             use sp_core::crypto::AccountId32;
