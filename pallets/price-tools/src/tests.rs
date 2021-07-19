@@ -327,3 +327,91 @@ fn failure_for_unsupported_assets() {
         );
     });
 }
+
+#[test]
+fn average_price_large_change_before_no_update_streak_positive() {
+    let mut ext = ExtBuilder::default().build();
+    ext.execute_with(|| {
+        for asset_id in [ETH, DAI, VAL, PSWAP].iter().cloned() {
+            PriceTools::register_asset(&asset_id).unwrap();
+        }
+        for _ in 1..=AVG_BLOCK_SPAN {
+            PriceTools::incoming_spot_price(&ETH, balance!(1000)).unwrap();
+        }
+        assert_eq!(
+            PriceTools::price_infos(&ETH).unwrap().last_spot_price,
+            balance!(1000)
+        );
+        assert_eq!(
+            PriceTools::get_average_price(&XOR.into(), &ETH.into()).unwrap(),
+            to_avg(
+                PriceTools::price_infos(&ETH).unwrap().spot_prices.iter(),
+                AVG_BLOCK_SPAN
+            )
+        );
+        // change over 15% occurs, price smoothing kicks in
+        for _ in 1..=AVG_BLOCK_SPAN {
+            PriceTools::incoming_spot_price(&ETH, balance!(1300)).unwrap();
+        }
+        assert_eq!(
+            PriceTools::get_average_price(&XOR.into(), &ETH.into()).unwrap(),
+            balance!(1161.400082895345788565) // not 15% exactly because of compunding effect
+        );
+        assert_eq!(
+            PriceTools::price_infos(&ETH).unwrap().last_spot_price,
+            balance!(1300)
+        );
+        // same price, continues to repeat, average price is still updated
+        for _ in 1..=AVG_BLOCK_SPAN {
+            PriceTools::incoming_spot_price(&ETH, balance!(1300)).unwrap();
+        }
+        assert_eq!(
+            PriceTools::get_average_price(&XOR.into(), &ETH.into()).unwrap(),
+            balance!(1300) // reaches target price eventually
+        );
+    });
+}
+
+#[test]
+fn average_price_large_change_before_no_update_streak_negative() {
+    let mut ext = ExtBuilder::default().build();
+    ext.execute_with(|| {
+        for asset_id in [ETH, DAI, VAL, PSWAP].iter().cloned() {
+            PriceTools::register_asset(&asset_id).unwrap();
+        }
+        for _ in 1..=AVG_BLOCK_SPAN {
+            PriceTools::incoming_spot_price(&ETH, balance!(1000)).unwrap();
+        }
+        assert_eq!(
+            PriceTools::price_infos(&ETH).unwrap().last_spot_price,
+            balance!(1000)
+        );
+        assert_eq!(
+            PriceTools::get_average_price(&XOR.into(), &ETH.into()).unwrap(),
+            to_avg(
+                PriceTools::price_infos(&ETH).unwrap().spot_prices.iter(),
+                AVG_BLOCK_SPAN
+            )
+        );
+        // change over 15% occurs, price smoothing kicks in
+        for _ in 1..=AVG_BLOCK_SPAN {
+            PriceTools::incoming_spot_price(&ETH, balance!(700)).unwrap();
+        }
+        assert_eq!(
+            PriceTools::get_average_price(&XOR.into(), &ETH.into()).unwrap(),
+            balance!(860.384191914696145927) // not 15% exactly because of compunding effect
+        );
+        assert_eq!(
+            PriceTools::price_infos(&ETH).unwrap().last_spot_price,
+            balance!(700)
+        );
+        // same price, continues to repeat, average price is still updated
+        for _ in 1..=AVG_BLOCK_SPAN * 2 {
+            PriceTools::incoming_spot_price(&ETH, balance!(700)).unwrap();
+        }
+        assert_eq!(
+            PriceTools::get_average_price(&XOR.into(), &ETH.into()).unwrap(),
+            balance!(700) // reaches target price eventually
+        );
+    });
+}
