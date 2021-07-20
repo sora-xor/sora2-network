@@ -51,7 +51,7 @@ use common::prelude::{
     QuoteAmount, SwapAmount, SwapOutcome,
 };
 use common::{
-    balance, fixed, fixed_wrapper, DEXId, DexIdOf, GetXSTMarketInfo, LiquiditySource,
+    balance, fixed, fixed_wrapper, DEXId, DexIdOf, GetMarketInfo, LiquiditySource,
     LiquiditySourceFilter, LiquiditySourceType, ManagementMode, RewardReason, DAI, XSTUSD,
 };
 use frame_support::traits::Get;
@@ -225,6 +225,8 @@ pub mod pallet {
         IncRefError,
     }
 
+    // TODO: should be "created" in migration to avoid incref error
+    // TODO: better by replaced with Get<>
     /// Technical account used to store collateral tokens.
     #[pallet::storage]
     #[pallet::getter(fn reserves_account_id)]
@@ -689,7 +691,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
     }
 }
 
-impl<T: Config> GetXSTMarketInfo<T::AssetId> for Module<T> {
+impl<T: Config> GetMarketInfo<T::AssetId> for Module<T> {
     fn buy_price(
         base_asset: &T::AssetId,
         synthetic_asset: &T::AssetId,
@@ -716,7 +718,8 @@ impl<T: Config> GetXSTMarketInfo<T::AssetId> for Module<T> {
         Ok(output)
     }
 
-    fn enabled_synthetics() -> BTreeSet<T::AssetId> {
+    /// `target_assets` refer to synthetic assets
+    fn enabled_target_assets() -> BTreeSet<T::AssetId> {
         EnabledSynthetics::<T>::get()
     }
 }

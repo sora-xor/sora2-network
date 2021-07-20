@@ -38,9 +38,9 @@ use codec::{Decode, Encode};
 use common::prelude::fixnum::ops::{Bounded, Zero as _};
 use common::prelude::{Balance, FixedWrapper, QuoteAmount, SwapAmount, SwapOutcome, SwapVariant};
 use common::{
-    balance, fixed_wrapper, FilterMode, Fixed, GetPoolReserves, GetTBCMarketInfo, GetXSTMarketInfo,
-    LiquidityRegistry, LiquiditySource, LiquiditySourceFilter, LiquiditySourceId,
-    LiquiditySourceType, RewardReason, TradingPair, VestedRewardsPallet,
+    balance, fixed_wrapper, FilterMode, Fixed, GetMarketInfo, GetPoolReserves, LiquidityRegistry,
+    LiquiditySource, LiquiditySourceFilter, LiquiditySourceId, LiquiditySourceType, RewardReason,
+    TradingPair, VestedRewardsPallet,
 };
 use frame_support::traits::Get;
 use frame_support::weights::Weight;
@@ -180,14 +180,17 @@ impl<T: Config> Pallet<T> {
         selected_source_types: &Vec<LiquiditySourceType>,
         filter_mode: &FilterMode,
     ) -> bool {
-        let tbc_reserve_assets = T::PrimaryMarketTBC::enabled_collaterals();
+        let tbc_reserve_assets = T::PrimaryMarketTBC::enabled_target_assets();
         // check if user has selected only xyk either explicitly or by excluding other types
+        // FIXME: such detection approach is unreliable, come up with better way
         let is_xyk_only = selected_source_types.contains(&LiquiditySourceType::XYKPool)
             && !selected_source_types
                 .contains(&LiquiditySourceType::MulticollateralBondingCurvePool)
+            && !selected_source_types.contains(&LiquiditySourceType::XSTPool)
             && filter_mode == &FilterMode::AllowSelected
             || selected_source_types
                 .contains(&LiquiditySourceType::MulticollateralBondingCurvePool)
+                && selected_source_types.contains(&LiquiditySourceType::XSTPool)
                 && !selected_source_types.contains(&LiquiditySourceType::XYKPool)
                 && filter_mode == &FilterMode::ForbidSelected;
         // check if either of tbc reserve assets is present
@@ -662,7 +665,7 @@ impl<T: Config> Pallet<T> {
         input_asset_id: T::AssetId,
         output_asset_id: T::AssetId,
     ) -> Result<Vec<LiquiditySourceType>, DispatchError> {
-        let tbc_reserve_assets = T::PrimaryMarketTBC::enabled_collaterals();
+        let tbc_reserve_assets = T::PrimaryMarketTBC::enabled_target_assets();
         let mut initial_result =
             Self::list_enabled_sources_for_path(dex_id, input_asset_id, output_asset_id)?;
         if tbc_reserve_assets.contains(&input_asset_id)
@@ -948,6 +951,7 @@ impl<T: Config> Pallet<T> {
             Fixed::MAX.into()
         };
 
+        // TODO: switch to select XST pallet
         let primary_buy_price: FixedWrapper =
             T::PrimaryMarketTBC::buy_price(base_asset_id, collateral_asset_id)
                 .map_err(|_| Error::<T>::CalculationError)?
@@ -1164,8 +1168,8 @@ pub mod pallet {
         >;
         type GetNumSamples: Get<usize>;
         type GetTechnicalAccountId: Get<Self::AccountId>;
-        type PrimaryMarketTBC: GetTBCMarketInfo<Self::AssetId>;
-        type PrimaryMarketXST: GetXSTMarketInfo<Self::AssetId>;
+        type PrimaryMarketTBC: GetMarketInfo<Self::AssetId>;
+        type PrimaryMarketXST: GetMarketInfo<Self::AssetId>;
         type SecondaryMarket: GetPoolReserves<Self::AssetId>;
         type VestedRewardsPallet: VestedRewardsPallet<Self::AccountId>;
         /// Weight information for the extrinsics in this Pallet.

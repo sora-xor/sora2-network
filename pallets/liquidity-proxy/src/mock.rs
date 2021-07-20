@@ -32,9 +32,8 @@ use crate::{self as liquidity_proxy, Config};
 use common::mock::ExistentialDeposits;
 use common::{
     self, balance, fixed, fixed_from_basis_points, fixed_wrapper, hash, Amount, AssetId32,
-    AssetName, AssetSymbol, DEXInfo, Fixed, FromGenericPair, GetTBCMarketInfo, GetXSTMarketInfo,
-    LiquiditySource, LiquiditySourceType, RewardReason, DAI, DOT, ETH, KSM, PSWAP, USDT, VAL, XOR,
-    XSTUSD,
+    AssetName, AssetSymbol, DEXInfo, Fixed, FromGenericPair, GetMarketInfo, LiquiditySource,
+    LiquiditySourceType, RewardReason, DAI, DOT, ETH, KSM, PSWAP, USDT, VAL, XOR, XSTUSD,
 };
 use currencies::BasicCurrencyAdapter;
 
@@ -550,7 +549,7 @@ impl LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> for Mock
 
             let extra_fee = FixedWrapper::from(undercollaterization_charge(collateralization));
 
-            match swap_amount {
+            match amount {
                 QuoteAmount::WithDesiredInput {
                     desired_amount_in, ..
                 } => {
@@ -585,7 +584,7 @@ impl LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> for Mock
             let buy_spot_price: FixedWrapper = Self::_spot_price(input_asset_id).into();
             let m: FixedWrapper = fixed_wrapper!(1) / fixed_wrapper!(1337);
 
-            match swap_amount {
+            match amount {
                 QuoteAmount::WithDesiredInput {
                     desired_amount_in: collateral_quantity,
                     ..
@@ -613,7 +612,7 @@ impl LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> for Mock
                 }
             }
         };
-        match swap_amount {
+        match amount {
             QuoteAmount::WithDesiredInput { .. } => Ok(SwapOutcome::new(output_amount, fee_amount)),
             QuoteAmount::WithDesiredOutput { .. } => Ok(SwapOutcome::new(input_amount, fee_amount)),
         }
@@ -650,7 +649,7 @@ impl LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> for Mock
     }
 }
 
-impl GetTBCMarketInfo<AssetId> for MockMCBCPool {
+impl GetMarketInfo<AssetId> for MockMCBCPool {
     fn buy_price(
         _base_asset: &AssetId,
         collateral_asset: &AssetId,
@@ -671,15 +670,7 @@ impl GetTBCMarketInfo<AssetId> for MockMCBCPool {
         Ok(output)
     }
 
-    fn collateral_reserves(asset_id: &AssetId) -> Result<Balance, DispatchError> {
-        let reserves_tech_account_id =
-            TechAccountId::Generic(b"mcbc_pool".to_vec(), b"main".to_vec());
-        let reserves_account_id =
-            Technical::tech_account_id_to_account_id(&reserves_tech_account_id).unwrap();
-        Ok(Currencies::free_balance(*asset_id, &reserves_account_id))
-    }
-
-    fn enabled_collaterals() -> BTreeSet<AssetId> {
+    fn enabled_target_assets() -> BTreeSet<AssetId> {
         [VAL, PSWAP, DAI, ETH].iter().cloned().collect()
     }
 }
@@ -951,7 +942,7 @@ impl LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> for Mock
     }
 }
 
-impl GetXSTMarketInfo<AssetId> for MockXSTPool {
+impl GetMarketInfo<AssetId> for MockXSTPool {
     fn buy_price(
         _base_asset_id: &AssetId,
         synthetic_asset: &AssetId,
@@ -974,7 +965,8 @@ impl GetXSTMarketInfo<AssetId> for MockXSTPool {
         Ok(output)
     }
 
-    fn enabled_synthetics() -> BTreeSet<AssetId> {
+    /// `target_assets` refer to synthetic assets
+    fn enabled_target_assets() -> BTreeSet<AssetId> {
         [XSTUSD].iter().cloned().collect()
     }
 }

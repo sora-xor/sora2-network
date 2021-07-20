@@ -10121,7 +10121,7 @@ dependencies = [
  "common",
  "dex-api",
  "dex-manager",
- "frame-benchmarking",
+ "frame-benchmarking 3.1.0",
  "frame-support",
  "frame-system",
  "hex-literal",

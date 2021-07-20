@@ -357,7 +357,7 @@ impl MockDEXApi {
         output_asset_id: &AssetId,
         amount: QuoteAmount<Balance>,
     ) -> Result<SwapOutcome<Balance>, DispatchError> {
-        match swap_amount {
+        match amount {
             QuoteAmount::WithDesiredInput {
                 desired_amount_in, ..
             } => {

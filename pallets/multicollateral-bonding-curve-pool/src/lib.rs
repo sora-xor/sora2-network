@@ -50,7 +50,7 @@ use common::prelude::{
     QuoteAmount, SwapAmount, SwapOutcome,
 };
 use common::{
-    balance, fixed, fixed_wrapper, DEXId, DexIdOf, GetTBCMarketInfo, LiquiditySource,
+    balance, fixed, fixed_wrapper, DEXId, DexIdOf, GetMarketInfo, LiquiditySource,
     LiquiditySourceFilter, LiquiditySourceType, ManagementMode, RewardReason, VestedRewardsPallet,
     PSWAP, VAL, XSTUSD,
 };
@@ -1488,7 +1488,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
     }
 }
 
-impl<T: Config> GetTBCMarketInfo<T::AssetId> for Module<T> {
+impl<T: Config> GetMarketInfo<T::AssetId> for Module<T> {
     fn buy_price(
         base_asset: &T::AssetId,
         collateral_asset: &T::AssetId,
@@ -1515,15 +1515,7 @@ impl<T: Config> GetTBCMarketInfo<T::AssetId> for Module<T> {
         Ok(output)
     }
 
-    fn collateral_reserves(asset_id: &T::AssetId) -> Result<Balance, DispatchError> {
-        let reserves_tech_account_id = ReservesAcc::<T>::get();
-        let reserves_account_id =
-            Technical::<T>::tech_account_id_to_account_id(&reserves_tech_account_id)?;
-        let collateral_supply = Assets::<T>::free_balance(asset_id, &reserves_account_id)?;
-        Ok(collateral_supply)
-    }
-
-    fn enabled_collaterals() -> BTreeSet<T::AssetId> {
+    fn enabled_target_assets() -> BTreeSet<T::AssetId> {
         EnabledTargets::<T>::get()
     }
 }

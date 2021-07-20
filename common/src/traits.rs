@@ -408,22 +408,18 @@ pub trait FromGenericPair {
 }
 
 /// Trait for bounding liquidity proxy associated type representing primary market in TBC.
-pub trait GetTBCMarketInfo<AssetId> {
-    /// The price in terms of the `collateral_asset` at which one can buy
-    /// a unit of the `base_asset` on the primary market (e.g. from the bonding curve pool).
-    fn buy_price(base_asset: &AssetId, collateral_asset: &AssetId) -> Result<Fixed, DispatchError>;
-    /// The price in terms of the `collateral_asset` at which one can sell
-    /// a unit of the `base_asset` on the primary market (e.g. to the bonding curve pool).
-    fn sell_price(base_asset: &AssetId, collateral_asset: &AssetId)
-        -> Result<Fixed, DispatchError>;
-    /// The amount of the `asset_id` token reserves stored with the primary market liquidity provider
-    /// (a multi-collateral bonding curve pool) that backs a part of the base currency in circulation.
-    fn collateral_reserves(asset_id: &AssetId) -> Result<Balance, DispatchError>;
-    /// Returns set of enabled collateral/reserve assets on bonding curve.
-    fn enabled_collaterals() -> BTreeSet<AssetId>;
+pub trait GetMarketInfo<AssetId> {
+    /// The price in terms of the `target_asset` at which one can buy
+    /// a unit of the `base_asset` on the primary market (e.g. from the bonding curve pool or xst).
+    fn buy_price(base_asset: &AssetId, target_asset: &AssetId) -> Result<Fixed, DispatchError>;
+    /// The price in terms of the `target_asset` at which one can sell
+    /// a unit of the `base_asset` on the primary market (e.g. to the bonding curve pool or xst).
+    fn sell_price(base_asset: &AssetId, target_asset: &AssetId) -> Result<Fixed, DispatchError>;
+    /// Returns set of enabled collateral/synthetic/reserve assets on bonding curve.
+    fn enabled_target_assets() -> BTreeSet<AssetId>;
 }
 
-impl<AssetId: Ord> GetTBCMarketInfo<AssetId> for () {
+impl<AssetId: Ord> GetMarketInfo<AssetId> for () {
     fn buy_price(
         _base_asset: &AssetId,
         _collateral_asset: &AssetId,
@@ -438,43 +434,7 @@ impl<AssetId: Ord> GetTBCMarketInfo<AssetId> for () {
         Ok(Default::default())
     }
 
-    fn collateral_reserves(_asset_id: &AssetId) -> Result<Balance, DispatchError> {
-        Ok(Default::default())
-    }
-
-    fn enabled_collaterals() -> BTreeSet<AssetId> {
-        Default::default()
-    }
-}
-
-/// Trait for bounding liquidity proxy associated type representing primary market in XST.
-pub trait GetXSTMarketInfo<AssetId> {
-    /// The price in terms of the `synthetic_asset` at which one can buy
-    /// a unit of the `base_asset` on the XST primary market.
-    fn buy_price(base_asset: &AssetId, synthetic_asset: &AssetId) -> Result<Fixed, DispatchError>;
-    /// The price in terms of the `synthetic_asset` at which one can sell
-    /// a unit of the `base_asset` on the XST primary market.
-    fn sell_price(base_asset: &AssetId, synthetic_asset: &AssetId) -> Result<Fixed, DispatchError>;
-    /// Returns set of enabled synthetic assets for XST.
-    fn enabled_synthetics() -> BTreeSet<AssetId>;
-}
-
-impl<AssetId: Ord> GetXSTMarketInfo<AssetId> for () {
-    fn buy_price(
-        _base_asset: &AssetId,
-        _synthetic_asset: &AssetId,
-    ) -> Result<Fixed, DispatchError> {
-        Ok(Default::default())
-    }
-
-    fn sell_price(
-        _base_asset: &AssetId,
-        _synthetic_asset: &AssetId,
-    ) -> Result<Fixed, DispatchError> {
-        Ok(Default::default())
-    }
-
-    fn enabled_synthetics() -> BTreeSet<AssetId> {
+    fn enabled_target_assets() -> BTreeSet<AssetId> {
         Default::default()
     }
 }
