@@ -682,14 +682,14 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         dex_id: &T::DEXId,
         input_asset_id: &T::AssetId,
         output_asset_id: &T::AssetId,
-        swap_amount: QuoteAmount<Balance>,
+        amount: QuoteAmount<Balance>,
     ) -> Result<SwapOutcome<Balance>, DispatchError> {
         if !Self::can_exchange(dex_id, input_asset_id, output_asset_id) {
             fail!(Error::<T>::CantExchange);
         }
         let base_asset_id = &T::GetBaseAssetId::get();
         let outcome = if input_asset_id == base_asset_id {
-            match swap_amount {
+            match amount {
                 QuoteAmount::WithDesiredInput {
                     desired_amount_in: base_amount_in,
                     ..
@@ -715,7 +715,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
                 }
             }
         } else {
-            match swap_amount {
+            match amount {
                 QuoteAmount::WithDesiredInput {
                     desired_amount_in: target_amount_in,
                     ..

@@ -105,7 +105,7 @@ pub trait LiquiditySource<TargetId, AccountId, AssetId, Amount, Error> {
         target_id: &TargetId,
         input_asset_id: &AssetId,
         output_asset_id: &AssetId,
-        swap_amount: QuoteAmount<Amount>,
+        amount: QuoteAmount<Amount>,
     ) -> Result<SwapOutcome<Amount>, DispatchError>;
 
     /// Perform exchange based on desired amount.
@@ -143,7 +143,7 @@ impl<DEXId, AccountId, AssetId> LiquiditySource<DEXId, AccountId, AssetId, Fixed
         _target_id: &DEXId,
         _input_asset_id: &AssetId,
         _output_asset_id: &AssetId,
-        _swap_amount: QuoteAmount<Fixed>,
+        _amount: QuoteAmount<Fixed>,
     ) -> Result<SwapOutcome<Fixed>, DispatchError> {
         Err(DispatchError::CannotLookup)
     }
@@ -185,7 +185,7 @@ impl<DEXId, AccountId, AssetId> LiquiditySource<DEXId, AccountId, AssetId, Balan
         _target_id: &DEXId,
         _input_asset_id: &AssetId,
         _output_asset_id: &AssetId,
-        _swap_amount: QuoteAmount<Balance>,
+        _amount: QuoteAmount<Balance>,
     ) -> Result<SwapOutcome<Balance>, DispatchError> {
         Err(DispatchError::CannotLookup)
     }

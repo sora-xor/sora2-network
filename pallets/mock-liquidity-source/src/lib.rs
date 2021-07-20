@@ -266,15 +266,15 @@ impl<T: Config<I>, I: 'static>
         dex_id: &T::DEXId,
         input_asset_id: &T::AssetId,
         output_asset_id: &T::AssetId,
-        quote_amount: QuoteAmount<Balance>,
+        amount: QuoteAmount<Balance>,
     ) -> Result<SwapOutcome<Balance>, DispatchError> {
-        let quote_amount = quote_amount
+        let amount = amount
             .try_into()
             .map_err(|_| Error::<T, I>::CalculationError)?;
         let base_asset_id = &T::GetBaseAssetId::get();
         if input_asset_id == base_asset_id {
             let (base_reserve, target_reserve) = <Reserves<T, I>>::get(dex_id, output_asset_id);
-            Ok(match quote_amount {
+            Ok(match amount {
                 QuoteAmount::WithDesiredInput {
                     desired_amount_in: base_amount_in,
                     ..
@@ -290,7 +290,7 @@ impl<T: Config<I>, I: 'static>
             })
         } else if output_asset_id == base_asset_id {
             let (base_reserve, target_reserve) = <Reserves<T, I>>::get(dex_id, input_asset_id);
-            Ok(match quote_amount {
+            Ok(match amount {
                 QuoteAmount::WithDesiredInput {
                     desired_amount_in: target_amount_in,
                     ..
@@ -307,7 +307,7 @@ impl<T: Config<I>, I: 'static>
         } else {
             let (base_reserve_a, target_reserve_a) = <Reserves<T, I>>::get(dex_id, input_asset_id);
             let (base_reserve_b, target_reserve_b) = <Reserves<T, I>>::get(dex_id, output_asset_id);
-            match quote_amount {
+            match amount {
                 QuoteAmount::WithDesiredInput {
                     desired_amount_in, ..
                 } => {

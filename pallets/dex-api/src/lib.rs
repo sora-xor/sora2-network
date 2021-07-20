@@ -94,7 +94,7 @@ impl<T: Config>
         liquidity_source_id: &LiquiditySourceId<T::DEXId, LiquiditySourceType>,
         input_asset_id: &T::AssetId,
         output_asset_id: &T::AssetId,
-        quote_amount: QuoteAmount<Balance>,
+        amount: QuoteAmount<Balance>,
     ) -> Result<SwapOutcome<Balance>, DispatchError> {
         use LiquiditySourceType::*;
         macro_rules! quote {
@@ -103,7 +103,7 @@ impl<T: Config>
                     &liquidity_source_id.dex_id,
                     input_asset_id,
                     output_asset_id,
-                    quote_amount,
+                    amount,
                 )
             };
         }

@@ -519,7 +519,7 @@ impl LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> for Mock
         dex_id: &DEXId,
         input_asset_id: &AssetId,
         output_asset_id: &AssetId,
-        swap_amount: QuoteAmount<Balance>,
+        amount: QuoteAmount<Balance>,
     ) -> Result<SwapOutcome<Balance>, DispatchError> {
         if !Self::can_exchange(dex_id, input_asset_id, output_asset_id) {
             panic!("Can't exchange");
@@ -871,7 +871,7 @@ impl LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> for Mock
         dex_id: &DEXId,
         input_asset_id: &AssetId,
         output_asset_id: &AssetId,
-        quote_amount: QuoteAmount<Balance>,
+        amount: QuoteAmount<Balance>,
     ) -> Result<SwapOutcome<Balance>, DispatchError> {
         if !Self::can_exchange(dex_id, input_asset_id, output_asset_id) {
             panic!("Can't exchange");
@@ -887,7 +887,7 @@ impl LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> for Mock
         let (input_amount, output_amount, fee_amount) = if input_asset_id == base_asset_id {
             // Selling XOR
 
-            match quote_amount {
+            match amount {
                 QuoteAmount::WithDesiredInput {
                     desired_amount_in, ..
                 } => {
@@ -903,7 +903,7 @@ impl LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> for Mock
             }
         } else {
             // Buying XOR
-            match quote_amount {
+            match amount {
                 QuoteAmount::WithDesiredInput {
                     desired_amount_in: synthetics_quantity,
                     ..
@@ -923,7 +923,7 @@ impl LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> for Mock
                 }
             }
         };
-        match quote_amount {
+        match amount {
             QuoteAmount::WithDesiredInput { .. } => Ok(SwapOutcome::new(output_amount, fee_amount)),
             QuoteAmount::WithDesiredOutput { .. } => Ok(SwapOutcome::new(input_amount, fee_amount)),
         }
