@@ -100,10 +100,30 @@ impl Default for PriceInfo {
     }
 }
 
+#[derive(Encode, Decode, Eq, PartialEq, Clone, PartialOrd, Ord, Debug)]
+pub struct OldPriceInfo {
+    price_failures: u32,
+    spot_prices: VecDeque<Balance>,
+    average_price: Balance,
+    needs_update: bool,
+}
+
+impl Default for OldPriceInfo {
+    fn default() -> Self {
+        Self {
+            price_failures: 0,
+            spot_prices: Default::default(),
+            average_price: Default::default(),
+            needs_update: true,
+        }
+    }
+}
+
 #[frame_support::pallet]
 pub mod pallet {
     use super::*;
     use frame_support::pallet_prelude::*;
+    use frame_support::traits::PalletVersion;
     use frame_system::pallet_prelude::*;
     use liquidity_proxy::LiquidityProxyTrait;
 
@@ -139,6 +159,9 @@ pub mod pallet {
                     for asset_id in [VAL, PSWAP, DAI, ETH].iter().cloned() {
                         let _ = Module::<T>::register_asset(&asset_id.into());
                     }
+                }
+                Some(version) if version == PalletVersion::new(1, 0, 0) => {
+                    PriceInfos::<T>::translate(|_key, _val: OldPriceInfo| Some(Default::default()))
                 }
                 _ => (),
             };
