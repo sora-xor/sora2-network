@@ -49,6 +49,7 @@ use aliases::{
     AccountIdOf, AssetIdOf, DEXIdOf, DepositLiquidityActionOf, PairSwapActionOf,
     PolySwapActionStructOf, TechAccountIdOf, TechAssetIdOf, WithdrawLiquidityActionOf,
 };
+use sp_std::collections::btree_set::BTreeSet;
 
 pub mod migrations;
 pub mod weights;
@@ -489,6 +490,11 @@ pub mod pallet {
         fn on_runtime_upgrade() -> Weight {
             match Self::storage_version() {
                 Some(PalletVersion { major: 0, .. }) | None => migrations::v1_1::migrate::<T>(),
+                Some(PalletVersion {
+                    major: 1,
+                    minor: 1,
+                    patch: 0,
+                }) => migrations::v1_2::migrate::<T>(),
                 _ => 0,
             }
         }
@@ -732,15 +738,23 @@ pub mod pallet {
     /// Liquidity providers of particular pool.
     /// Pool account => Liquidity provider account => Pool token balance
     #[pallet::storage]
+    #[pallet::getter(fn pool_providers)]
     pub type PoolProviders<T: Config> =
         StorageDoubleMap<_, Identity, AccountIdOf<T>, Identity, AccountIdOf<T>, Balance>;
+
+    /// Set of pools in which accounts have some share.
+    /// Liquidity provider account => Target Asset of pair (assuming base asset is XOR)
+    #[pallet::storage]
+    #[pallet::getter(fn account_pools)]
+    pub type AccountPools<T: Config> =
+        StorageMap<_, Identity, AccountIdOf<T>, BTreeSet<AssetIdOf<T>>, ValueQuery>;
 
     /// Total issuance of particular pool.
     /// Pool account => Total issuance
     #[pallet::storage]
     pub type TotalIssuances<T: Config> = StorageMap<_, Identity, AccountIdOf<T>, Balance>;
 
-    /// Properties of particular pool. [Reserves Account Id, Fees Account Id]
+    /// Properties of particular pool. Base Asset => Target Asset => (Reserves Account Id, Fees Account Id)
     #[pallet::storage]
     #[pallet::getter(fn properties)]
     pub type Properties<T: Config> = StorageDoubleMap<
