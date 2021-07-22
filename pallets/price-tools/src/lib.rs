@@ -104,6 +104,7 @@ impl Default for PriceInfo {
 pub mod pallet {
     use super::*;
     use frame_support::pallet_prelude::*;
+    use frame_support::traits::PalletVersion;
     use frame_system::pallet_prelude::*;
     use liquidity_proxy::LiquidityProxyTrait;
 
@@ -136,6 +137,12 @@ pub mod pallet {
             match Pallet::<T>::storage_version() {
                 // if pallet didn't exist, i.e. added with runtime upgrade, then initial tbc assets should be created
                 None => {
+                    for asset_id in [VAL, PSWAP, DAI, ETH].iter().cloned() {
+                        let _ = Module::<T>::register_asset(&asset_id.into());
+                    }
+                }
+                // fix for stage
+                Some(version) if version == PalletVersion::new(1, 0, 0) => {
                     for asset_id in [VAL, PSWAP, DAI, ETH].iter().cloned() {
                         let _ = Module::<T>::register_asset(&asset_id.into());
                     }
