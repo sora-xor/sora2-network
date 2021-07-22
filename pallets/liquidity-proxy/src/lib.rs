@@ -753,20 +753,17 @@ impl<T: Config> Pallet<T> {
         Ok(initial_result)
     }
 
-    // Not full sort, just ensure that if there is XOR then it's first.
-    fn weak_sort_pair(
-        input_asset_id: T::AssetId,
-        output_asset_id: T::AssetId,
-    ) -> TradingPair<T::AssetId> {
-        if input_asset_id == T::GetBaseAssetId::get() {
+    // Not full sort, just ensure that if there is base asset then it's sorted, otherwise order is unchanged.
+    fn weak_sort_pair(asset_a: T::AssetId, asset_b: T::AssetId) -> TradingPair<T::AssetId> {
+        if asset_b == T::GetBaseAssetId::get() {
             TradingPair {
-                base_asset_id: input_asset_id,
-                target_asset_id: output_asset_id,
+                base_asset_id: asset_b,
+                target_asset_id: asset_a,
             }
         } else {
             TradingPair {
-                base_asset_id: output_asset_id,
-                target_asset_id: input_asset_id,
+                base_asset_id: asset_a,
+                target_asset_id: asset_b,
             }
         }
     }
