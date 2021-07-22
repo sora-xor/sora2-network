@@ -1494,3 +1494,139 @@ fn mint() {
         assert_eq!(TotalIssuances::<Runtime>::get(ALICE()), Some(10));
     });
 }
+
+#[test]
+fn strict_sort_pair() {
+    ExtBuilder::default().build().execute_with(|| {
+        let asset_base = GetBaseAssetId::get();
+        let asset_target = GreenPromise.into();
+        let asset_target_2 = BluePromise.into();
+
+        let pair = PoolXYK::strict_sort_pair(&asset_base, &asset_target).unwrap();
+        assert_eq!(pair.base_asset_id, asset_base);
+        assert_eq!(pair.target_asset_id, asset_target);
+
+        let pair = PoolXYK::strict_sort_pair(&asset_target, &asset_base).unwrap();
+        assert_eq!(pair.base_asset_id, asset_base);
+        assert_eq!(pair.target_asset_id, asset_target);
+
+        assert_noop!(
+            PoolXYK::strict_sort_pair(&asset_base, &asset_base),
+            crate::Error::<Runtime>::AssetsMustNotBeSame
+        );
+        assert_noop!(
+            PoolXYK::strict_sort_pair(&asset_target, &asset_target_2),
+            crate::Error::<Runtime>::BaseAssetIsNotMatchedWithAnyAssetArguments
+        );
+    });
+}
+
+#[test]
+fn depositing_and_withdrawing_liquidity_updates_user_pools() {
+    crate::Module::<Runtime>::preset_initial(vec![Rc::new(|dex_id, _, _, _, _, _, _, _| {
+        let base_asset: AssetId = GoldenTicket.into();
+        let target_asset_a: AssetId = BlackPepper.into();
+        let target_asset_b: AssetId = BluePromise.into();
+        let initial_reserve_base = balance!(10);
+        let initial_reserve_target_a = balance!(20);
+        let initial_reserve_target_b = balance!(20);
+
+        assert_eq!(PoolXYK::account_pools(&ALICE()), Default::default());
+
+        assert_ok!(crate::Module::<Runtime>::deposit_liquidity(
+            Origin::signed(ALICE()),
+            dex_id,
+            base_asset,
+            target_asset_a,
+            initial_reserve_base,
+            initial_reserve_target_a,
+            initial_reserve_base,
+            initial_reserve_target_a,
+        ));
+
+        assert_eq!(
+            PoolXYK::account_pools(&ALICE()),
+            [target_asset_a].iter().cloned().collect()
+        );
+
+        assert_ok!(crate::Module::<Runtime>::deposit_liquidity(
+            Origin::signed(ALICE()),
+            dex_id,
+            base_asset,
+            target_asset_a,
+            initial_reserve_base,
+            initial_reserve_target_a,
+            initial_reserve_base,
+            initial_reserve_target_a,
+        ));
+
+        assert_eq!(
+            PoolXYK::account_pools(&ALICE()),
+            [target_asset_a].iter().cloned().collect()
+        );
+
+        assert_ok!(assets::Module::<Runtime>::register_asset_id(
+            ALICE(),
+            target_asset_b,
+            AssetSymbol(b"BP".to_vec()),
+            AssetName(b"Black Pepper".to_vec()),
+            18,
+            Balance::from(0u32),
+            true,
+        ));
+        assert_ok!(trading_pair::Module::<Runtime>::register(
+            Origin::signed(ALICE()),
+            dex_id.clone(),
+            base_asset,
+            target_asset_b
+        ));
+        assert_ok!(crate::Module::<Runtime>::initialize_pool(
+            Origin::signed(ALICE()),
+            dex_id.clone(),
+            base_asset,
+            target_asset_b
+        ));
+        assert_ok!(assets::Module::<Runtime>::mint_to(
+            &target_asset_b,
+            &ALICE(),
+            &ALICE(),
+            balance!(1000)
+        ));
+        assert_ok!(crate::Module::<Runtime>::deposit_liquidity(
+            Origin::signed(ALICE()),
+            dex_id,
+            base_asset,
+            target_asset_b,
+            initial_reserve_base,
+            initial_reserve_target_b,
+            initial_reserve_base,
+            initial_reserve_target_b,
+        ));
+
+        assert_eq!(
+            PoolXYK::account_pools(&ALICE()),
+            [target_asset_a, target_asset_b].iter().cloned().collect()
+        );
+
+        let (_, tech_account_a) =
+            PoolXYK::tech_account_from_dex_and_asset_pair(dex_id, base_asset, target_asset_a)
+                .unwrap();
+        let pool_account_a = Technical::tech_account_id_to_account_id(&tech_account_a).unwrap();
+        let user_balance_a = PoolXYK::pool_providers(&pool_account_a, &ALICE()).unwrap();
+
+        assert_ok!(crate::Module::<Runtime>::withdraw_liquidity(
+            Origin::signed(ALICE()),
+            dex_id,
+            base_asset,
+            target_asset_a,
+            user_balance_a,
+            balance!(0),
+            balance!(0)
+        ));
+
+        assert_eq!(
+            PoolXYK::account_pools(&ALICE()),
+            [target_asset_b].iter().cloned().collect()
+        );
+    })]);
+}
