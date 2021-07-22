@@ -30,7 +30,7 @@
 
 use crate::{self as bonding_curve_pool, Config};
 use common::mock::ExistentialDeposits;
-use common::prelude::{Balance, FixedWrapper, SwapAmount, SwapOutcome};
+use common::prelude::{Balance, FixedWrapper, QuoteAmount, SwapAmount, SwapOutcome};
 use common::{
     self, balance, Amount, AssetId32, AssetName, AssetSymbol, LiquiditySource, RewardReason,
     TechPurpose, USDT, VAL, XOR,
@@ -228,7 +228,7 @@ impl<DEXId> LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> f
         _target_id: &DEXId,
         _input_asset_id: &AssetId,
         _output_asset_id: &AssetId,
-        _swap_amount: SwapAmount<Balance>,
+        _amount: QuoteAmount<Balance>,
     ) -> Result<SwapOutcome<Balance>, DispatchError> {
         unimplemented!()
     }

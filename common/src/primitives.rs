@@ -127,6 +127,7 @@ pub enum PredefinedAssetId {
     PSWAP = 5,
     DAI = 6,
     ETH = 7,
+    XSTUSD = 8,
 }
 
 pub const XOR: AssetId32<PredefinedAssetId> = AssetId32::from_asset_id(PredefinedAssetId::XOR);
@@ -137,6 +138,8 @@ pub const VAL: AssetId32<PredefinedAssetId> = AssetId32::from_asset_id(Predefine
 pub const PSWAP: AssetId32<PredefinedAssetId> = AssetId32::from_asset_id(PredefinedAssetId::PSWAP);
 pub const DAI: AssetId32<PredefinedAssetId> = AssetId32::from_asset_id(PredefinedAssetId::DAI);
 pub const ETH: AssetId32<PredefinedAssetId> = AssetId32::from_asset_id(PredefinedAssetId::ETH);
+pub const XSTUSD: AssetId32<PredefinedAssetId> =
+    AssetId32::from_asset_id(PredefinedAssetId::XSTUSD);
 
 impl IsRepresentation for PredefinedAssetId {
     fn is_representation(&self) -> bool {
@@ -458,6 +461,7 @@ pub enum LiquiditySourceType {
     MockPool2,
     MockPool3,
     MockPool4,
+    XSTPool,
 }
 
 #[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug)]

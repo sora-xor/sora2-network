@@ -2434,6 +2434,7 @@ dependencies = [
  "vested-rewards",
  "xor-fee",
  "xor-fee-benchmarking",
+ "xst",
 ]
 
 [[package]]
@@ -10109,6 +10110,39 @@ dependencies = [
  "sp-core",
  "sp-std",
  "xor-fee",
+]
+
+[[package]]
+name = "xst"
+version = "1.0.0"
+dependencies = [
+ "assets",
+ "bonding-curve-pool",
+ "common",
+ "dex-api",
+ "dex-manager",
+ "frame-benchmarking 3.1.0",
+ "frame-support",
+ "frame-system",
+ "hex-literal",
+ "liquidity-proxy",
+ "mock-liquidity-source",
+ "orml-currencies",
+ "orml-tokens",
+ "orml-traits",
+ "pallet-balances",
+ "parity-scale-codec",
+ "permissions",
+ "pool-xyk",
+ "pswap-distribution",
+ "serde",
+ "sp-arithmetic",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+ "technical",
+ "trading-pair",
 ]
 
 [[package]]

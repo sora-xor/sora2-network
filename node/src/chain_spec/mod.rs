@@ -53,7 +53,8 @@ use framenode_runtime::{
     GetPswapAssetId, GetValAssetId, GetXorAssetId, GrandpaConfig, ImOnlineId, IrohaMigrationConfig,
     LiquiditySourceType, MulticollateralBondingCurvePoolConfig, PermissionsConfig,
     PswapDistributionConfig, RewardsConfig, Runtime, SessionConfig, StakerStatus, StakingConfig,
-    SystemConfig, TechAccountId, TechnicalConfig, TokensConfig, TradingPairConfig, WASM_BINARY,
+    SystemConfig, TechAccountId, TechnicalConfig, TokensConfig, TradingPairConfig, XSTPoolConfig,
+    WASM_BINARY,
 };
 use hex_literal::hex;
 use permissions::Scope;
@@ -567,6 +568,8 @@ fn testnet_genesis(
     council_accounts: Vec<AccountId>,
     technical_committee_accounts: Vec<AccountId>,
 ) -> GenesisConfig {
+    use common::XSTUSD;
+
     // Initial balances
     let initial_staking = balance!(100);
     let initial_eth_bridge_xor_amount = balance!(350000);
@@ -953,6 +956,15 @@ fn testnet_genesis(
                     Balance::zero(),
                     true,
                 ),
+                (
+                    XSTUSD.into(),
+                    assets_and_permissions_account_id.clone(),
+                    AssetSymbol(b"XSTUSD".to_vec()),
+                    AssetName(b"XST USD".to_vec()),
+                    18,
+                    Balance::zero(),
+                    true,
+                ),
             ],
         }),
         permissions: Some(PermissionsConfig {
@@ -1131,6 +1143,11 @@ fn testnet_genesis(
         pallet_elections_phragmen: Default::default(),
         pallet_membership_Instance1: Default::default(),
         pallet_im_online: Default::default(),
+        xst: Some(XSTPoolConfig {
+            reserves_account_id: Default::default(), // TODO: move to defaults
+            reference_asset_id: DAI,
+            initial_synthetic_assets: vec![XSTUSD],
+        }),
     }
 }
 

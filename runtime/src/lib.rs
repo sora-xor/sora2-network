@@ -40,6 +40,7 @@ pub mod constants;
 mod extensions;
 mod impls;
 
+use common::prelude::QuoteAmount;
 use constants::time::*;
 
 // Make the WASM binary available.
@@ -64,7 +65,7 @@ use sp_core::u32_trait::{_1, _2, _3};
 use sp_core::{Encode, OpaqueMetadata, H160};
 use sp_runtime::traits::{
     BlakeTwo256, Block as BlockT, Convert, IdentifyAccount, IdentityLookup, NumberFor, OpaqueKeys,
-    SaturatedConversion, Verify, Zero,
+    SaturatedConversion, Verify,
 };
 use sp_runtime::transaction_validity::{
     TransactionPriority, TransactionSource, TransactionValidity,
@@ -115,7 +116,7 @@ use impls::{CollectiveWeightInfo, DemocracyWeightInfo, OnUnbalancedDemocracySlas
 
 use frame_support::traits::Get;
 pub use {
-    assets, bonding_curve_pool, eth_bridge, frame_system, multicollateral_bonding_curve_pool,
+    assets, bonding_curve_pool, eth_bridge, frame_system, multicollateral_bonding_curve_pool, xst,
 };
 
 /// An index to a block.
@@ -697,7 +698,8 @@ impl liquidity_proxy::Config for Runtime {
     type LiquidityRegistry = dex_api::Module<Runtime>;
     type GetNumSamples = GetNumSamples;
     type GetTechnicalAccountId = GetLiquidityProxyAccountId;
-    type PrimaryMarket = multicollateral_bonding_curve_pool::Module<Runtime>;
+    type PrimaryMarketTBC = multicollateral_bonding_curve_pool::Module<Runtime>;
+    type PrimaryMarketXST = xst::Module<Runtime>;
     type SecondaryMarket = pool_xyk::Module<Runtime>;
     type WeightInfo = liquidity_proxy::weights::WeightInfo<Runtime>;
     type VestedRewardsPallet = vested_rewards::Module<Runtime>;
@@ -740,6 +742,7 @@ impl dex_api::Config for Runtime {
     type BondingCurvePool = bonding_curve_pool::Module<Runtime>;
     type MulticollateralBondingCurvePool = multicollateral_bonding_curve_pool::Module<Runtime>;
     type XYKPool = pool_xyk::Module<Runtime>;
+    type XSTPool = xst::Module<Runtime>;
     type WeightInfo = dex_api::weights::WeightInfo<Runtime>;
 }
 
@@ -1299,6 +1302,15 @@ impl multicollateral_bonding_curve_pool::Config for Runtime {
     type WeightInfo = multicollateral_bonding_curve_pool::weights::WeightInfo<Runtime>;
 }
 
+impl xst::Config for Runtime {
+    type Event = Event;
+    type LiquidityProxy = LiquidityProxy;
+    type EnsureDEXManager = DEXManager;
+    type EnsureTradingPairExists = TradingPair;
+    type PriceToolsPallet = PriceTools;
+    type WeightInfo = xst::weights::WeightInfo<Runtime>;
+}
+
 impl pallet_im_online::Config for Runtime {
     type AuthorityId = ImOnlineId;
     type Event = Event;
@@ -1397,6 +1409,8 @@ construct_runtime! {
         VestedRewards: vested_rewards::{Module, Call, Storage, Event<T>},
         Identity: pallet_identity::{Module, Call, Storage, Event<T>},
         Farming: farming::{Module, Call, Storage},
+        XSTPool: xst::{Module, Call, Storage, Config<T>, Event<T>},
+
         // Available only for test net
         Faucet: faucet::{Module, Call, Config<T>, Event<T>},
         PriceTools: price_tools::{Module, Storage, Event<T>},
@@ -1459,6 +1473,7 @@ construct_runtime! {
         Identity: pallet_identity::{Module, Call, Storage, Event<T>},
         PriceTools: price_tools::{Module, Storage, Event<T>},
         Farming: farming::{Module, Call, Storage},
+        XSTPool: xst::{Module, Call, Storage, Config<T>, Event<T>},
     }
 }
 
@@ -1630,17 +1645,11 @@ impl_runtime_apis! {
         ) -> Option<dex_runtime_api::SwapOutcomeInfo<Balance>> {
             #[cfg(feature = "private-net")]
             {
-                // TODO: remove with proper QuoteAmount refactor
-                let limit = if swap_variant == SwapVariant::WithDesiredInput {
-                    Balance::zero()
-                } else {
-                    Balance::max_value()
-                };
                 DEXAPI::quote(
                     &LiquiditySourceId::new(dex_id, liquidity_source_type),
                     &input_asset_id,
                     &output_asset_id,
-                    SwapAmount::with_variant(swap_variant, desired_input_amount.into(), limit),
+                    QuoteAmount::with_variant(swap_variant, desired_input_amount.into()),
                 ).ok().map(|sa| dex_runtime_api::SwapOutcomeInfo::<Balance> { amount: sa.amount, fee: sa.fee})
             }
             #[cfg(not(feature = "private-net"))]
@@ -1848,16 +1857,10 @@ impl_runtime_apis! {
                 return None;
             }
 
-            // TODO: remove with proper QuoteAmount refactor
-            let limit = if swap_variant == SwapVariant::WithDesiredInput {
-                Balance::zero()
-            } else {
-                Balance::max_value()
-            };
-            LiquidityProxy::quote(
+            LiquidityProxy::inner_quote(
                 &input_asset_id,
                 &output_asset_id,
-                SwapAmount::with_variant(swap_variant, amount.into(), limit),
+                QuoteAmount::with_variant(swap_variant, amount.into()),
                 LiquiditySourceFilter::with_mode(dex_id, filter_mode, selected_source_types),
                 false,
             ).ok().map(|(asa, rewards)| liquidity_proxy_runtime_api::SwapOutcomeInfo::<Balance, AssetId> {
