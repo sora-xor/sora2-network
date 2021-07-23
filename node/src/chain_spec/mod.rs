@@ -853,6 +853,7 @@ fn testnet_genesis(
         account_id: iroha_migration_account_id.clone(),
     };
     let initial_collateral_assets = vec![DAI.into(), VAL.into(), PSWAP.into(), ETH.into()];
+    let initial_synthetic_assets = vec![XSTUSD.into()];
     GenesisConfig {
         frame_system: Some(SystemConfig {
             code: WASM_BINARY.unwrap().to_vec(),
@@ -1051,6 +1052,7 @@ fn testnet_genesis(
         trading_pair: Some(TradingPairConfig {
             trading_pairs: initial_collateral_assets
                 .iter()
+                .chain(initial_synthetic_assets.iter())
                 .cloned()
                 .map(|target_asset_id| {
                     (
