@@ -282,6 +282,16 @@ impl<DEXId> LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> f
     ) -> Result<Vec<(Balance, AssetId, RewardReason)>, DispatchError> {
         Ok(Vec::new())
     }
+
+    fn quote_without_impact(
+        dex_id: &DEXId,
+        input_asset_id: &AssetId,
+        output_asset_id: &AssetId,
+        amount: QuoteAmount<Balance>,
+    ) -> Result<SwapOutcome<Balance>, DispatchError> {
+        // TODO: placeholder, implement properly if needed
+        Self::quote(dex_id, input_asset_id, output_asset_id, amount)
+    }
 }
 
 pub struct ExtBuilder {

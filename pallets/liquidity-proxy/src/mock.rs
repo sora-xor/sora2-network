@@ -647,6 +647,16 @@ impl LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> for Mock
             fail!(crate::Error::<Runtime>::UnavailableExchangePath);
         }
     }
+
+    fn quote_without_impact(
+        _dex_id: &DEXId,
+        _input_asset_id: &AssetId,
+        _output_asset_id: &AssetId,
+        _amount: QuoteAmount<Balance>,
+    ) -> Result<SwapOutcome<Balance>, DispatchError> {
+        // TODO: implement if needed
+        unimplemented!()
+    }
 }
 
 impl GetMarketInfo<AssetId> for MockMCBCPool {
@@ -939,6 +949,16 @@ impl LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> for Mock
         _output_amount: Balance,
     ) -> Result<Vec<(Balance, AssetId, RewardReason)>, DispatchError> {
         Ok(Vec::new()) // no rewards for XST
+    }
+
+    fn quote_without_impact(
+        _dex_id: &DEXId,
+        _input_asset_id: &AssetId,
+        _output_asset_id: &AssetId,
+        _amount: QuoteAmount<Balance>,
+    ) -> Result<SwapOutcome<Balance>, DispatchError> {
+        // TODO: implement if needed
+        unimplemented!()
     }
 }
 

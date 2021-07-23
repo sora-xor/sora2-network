@@ -798,6 +798,16 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         // This implementation has no rewards.
         Ok(Vec::new())
     }
+
+    fn quote_without_impact(
+        dex_id: &T::DEXId,
+        input_asset_id: &T::AssetId,
+        output_asset_id: &T::AssetId,
+        amount: QuoteAmount<Balance>,
+    ) -> Result<SwapOutcome<Balance>, DispatchError> {
+        // TODO: placeholder, implement properly if needed
+        Self::quote(dex_id, input_asset_id, output_asset_id, amount)
+    }
 }
 pub use pallet::*;
 
