@@ -45,7 +45,7 @@ mod mock;
 mod tests;
 
 use common::prelude::{
-    Balance, Fixed, FixedWrapper, LiquiditySourceType, PriceToolsPallet, SwapAmount,
+    Balance, Fixed, FixedWrapper, LiquiditySourceType, PriceToolsPallet, QuoteAmount,
 };
 use common::weights::constants::EXTRINSIC_FIXED_WEIGHT;
 use common::{
@@ -55,7 +55,6 @@ use frame_support::dispatch::{DispatchError, DispatchResult};
 use frame_support::ensure;
 use frame_support::weights::Weight;
 use liquidity_proxy::LiquidityProxyTrait;
-use sp_runtime::traits::Zero;
 use sp_std::collections::btree_set::BTreeSet;
 use sp_std::collections::vec_deque::VecDeque;
 use sp_std::convert::TryInto;
@@ -299,7 +298,7 @@ impl<T: Config> Pallet<T> {
         <T as pallet::Config>::LiquidityProxy::quote(
             &XOR.into(),
             &asset_id,
-            SwapAmount::with_desired_input(balance!(1), Balance::zero()),
+            QuoteAmount::with_desired_input(balance!(1)),
             Self::secondary_market_filter(),
         )
         .map(|so| so.amount)

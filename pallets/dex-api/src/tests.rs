@@ -30,7 +30,7 @@
 
 use crate::mock::*;
 use crate::Module;
-use common::prelude::SwapAmount;
+use common::prelude::QuoteAmount;
 use common::{
     balance, LiquidityRegistry, LiquiditySource, LiquiditySourceFilter, LiquiditySourceId,
     LiquiditySourceType, DOT, XOR,
@@ -119,7 +119,7 @@ fn test_different_reserves_should_pass() {
             &LiquiditySourceId::new(DEX_A_ID, LiquiditySourceType::MockPool),
             &XOR,
             &DOT,
-            SwapAmount::with_desired_input(balance!(100), 0),
+            QuoteAmount::with_desired_input(balance!(100)),
         );
         assert_eq!(
             res1.unwrap().amount,
@@ -129,7 +129,7 @@ fn test_different_reserves_should_pass() {
             &LiquiditySourceId::new(DEX_A_ID, LiquiditySourceType::MockPool2),
             &XOR,
             &DOT,
-            SwapAmount::with_desired_input(balance!(100), 0),
+            QuoteAmount::with_desired_input(balance!(100)),
         );
         assert_eq!(
             res2.unwrap().amount,
