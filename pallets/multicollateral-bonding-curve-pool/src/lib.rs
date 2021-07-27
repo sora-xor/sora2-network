@@ -1503,7 +1503,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
             let base_price_wrt_collateral: FixedWrapper = <Module<T> as GetMarketInfo<
                 T::AssetId,
             >>::sell_price(
-                output_asset_id, output_asset_id
+                input_asset_id, output_asset_id
             )?
             .into();
             let fee_ratio =
@@ -1539,7 +1539,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
             let base_price_wrt_collateral: FixedWrapper = <Pallet<T> as GetMarketInfo<
                 T::AssetId,
             >>::buy_price(
-                input_asset_id, output_asset_id
+                output_asset_id, input_asset_id
             )?
             .into();
             match amount {
