@@ -52,7 +52,7 @@ use common::prelude::{
 };
 use common::{
     balance, fixed, fixed_wrapper, DEXId, DexIdOf, GetMarketInfo, LiquiditySource,
-    LiquiditySourceFilter, LiquiditySourceType, ManagementMode, RewardReason, DAI, XSTUSD,
+    LiquiditySourceFilter, LiquiditySourceType, ManagementMode, RewardReason, XOR, DAI, XSTUSD,
 };
 use frame_support::traits::Get;
 use frame_support::weights::Weight;
@@ -339,7 +339,7 @@ impl<T: Config> Module<T> {
         }
     }
 
-    /// Buys the main asset.
+    /// Buys the main asset (e.g., XOR).
     /// Calculates and returns the current buy price, assuming that input is the synthetic asset and output is the main asset.
     pub fn buy_price(
         main_asset_id: &T::AssetId,
@@ -383,7 +383,7 @@ impl<T: Config> Module<T> {
     ///   2.1 Values are compared via getting prices for both main and collateral tokens with regard to another token
     ///       called reference token which is set for particular pair. This should be e.g. stablecoin DAI.
     ///   2.2 Reference price for base token is taken as 80% of current bonding curve buy price.
-    ///   2.3 Reference price for collateral token is taken as current market price, i.e. price for 1 token on liquidity proxy.
+    ///   2.3 Reference price for collateral token is taken as current market price, i.e., price for 1 token on liquidity proxy.
     /// 3. Given known reserves for main and collateral, output collateral amount is calculated by applying x*y=k model resulting
     ///    in curve-like dependency.
     pub fn sell_price(
@@ -392,7 +392,7 @@ impl<T: Config> Module<T> {
         quantity: QuoteAmount<Balance>,
     ) -> Result<Fixed, DispatchError> {
         // Get reference prices for base and synthetic to understand token value.
-        let main_price_per_reference_unit: FixedWrapper =
+        let main_asset_price_per_reference_unit: FixedWrapper =
             Self::reference_price(main_asset_id)?.into();
 
         match quantity {
@@ -400,7 +400,7 @@ impl<T: Config> Module<T> {
             QuoteAmount::WithDesiredInput {
                 desired_amount_in: quantity_main,
             } => {
-                let output_synthetic = quantity_main * main_price_per_reference_unit;
+                let output_synthetic = quantity_main * main_asset_price_per_reference_unit;
                 let output_synthetic_unwrapped = output_synthetic
                     .get()
                     .map_err(|_| Error::<T>::PriceCalculationFailed)?;
@@ -410,7 +410,7 @@ impl<T: Config> Module<T> {
             QuoteAmount::WithDesiredOutput {
                 desired_amount_out: quantity_synthetic,
             } => {
-                let output_main = quantity_synthetic / main_price_per_reference_unit;
+                let output_main = quantity_synthetic / main_asset_price_per_reference_unit;
                 output_main
                     .get()
                     .map_err(|_| Error::<T>::PriceCalculationFailed.into())
@@ -606,7 +606,10 @@ impl<T: Config> Module<T> {
             <T as pallet::Config>::PriceToolsPallet::get_average_price(
                 asset_id,
                 &reference_asset_id,
-            )?
+            ).map(|avg| {
+                // We don't let the price of XOR w.r.t. DAI go under $100, to prevent manipulation attacks
+                if asset_id == &XOR.into() && &reference_asset_id == &DAI.into() { avg.max(balance!(100)) } else { avg }
+            })?
         };
         Ok(price)
     }
