@@ -236,7 +236,6 @@ impl technical::Config for Runtime {
     type Trigger = ();
     type Condition = ();
     type SwapAction = pool_xyk::PolySwapAction<AssetId, AccountId, TechAccountId>;
-    type WeightInfo = ();
 }
 
 impl permissions::Config for Runtime {

@@ -34,17 +34,13 @@ use codec::{Decode, Encode};
 use common::prelude::Balance;
 use common::{FromGenericPair, SwapAction, SwapRulesValidation};
 use frame_support::dispatch::{DispatchError, DispatchResult};
-use frame_support::weights::Weight;
 use frame_support::{ensure, Parameter};
-use frame_system::ensure_signed;
 use sp_runtime::traits::{MaybeSerializeDeserialize, Member};
 use sp_runtime::RuntimeDebug;
 
 use common::TECH_ACCOUNT_MAGIC_PREFIX;
 use sp_core::H256;
 use sp_std::convert::TryFrom;
-
-mod weights;
 
 #[cfg(test)]
 mod mock;
@@ -67,10 +63,6 @@ pub struct PendingSwap<T: Config> {
     pub action: T::SwapAction,
     /// Condition is time or block number, or something logical.
     pub condition: T::Condition,
-}
-
-pub trait WeightInfo {
-    fn create_swap() -> Weight;
 }
 
 pub fn tech_account_id_encoded_to_account_id_32(tech_account_id: &[u8]) -> H256 {
@@ -304,9 +296,6 @@ pub mod pallet {
         /// Swap action.
         type SwapAction: common::SwapRulesValidation<Self::AccountId, Self::TechAccountId, Self>
             + Parameter;
-
-        /// Weight information for extrinsics in this pallet.
-        type WeightInfo: WeightInfo;
     }
 
     #[pallet::pallet]
@@ -317,18 +306,7 @@ pub mod pallet {
     impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {}
 
     #[pallet::call]
-    impl<T: Config> Pallet<T> {
-        #[pallet::weight(<T as Config>::WeightInfo::create_swap())]
-        pub(crate) fn create_swap(
-            origin: OriginFor<T>,
-            action: T::SwapAction,
-        ) -> DispatchResultWithPostInfo {
-            let source = ensure_signed(origin)?;
-            let mut action_mut = action;
-            Module::<T>::perform_create_swap(source, &mut action_mut)?;
-            Ok(().into())
-        }
-    }
+    impl<T: Config> Pallet<T> {}
 
     #[pallet::event]
     #[pallet::metadata(AccountIdOf<T> = "AccountId", TechAssetIdOf<T> = "TechAssetId", TechAccountIdOf<T> = "TechAccountId")]

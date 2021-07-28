@@ -67,7 +67,7 @@ fn generic_pair_swap_simple() {
     let repr: AccountId = Technical::tech_account_id_to_account_id(&t01).unwrap();
     let a01 = RedPepper();
     let a02 = BlackPepper();
-    let s01 = GenericPair(GenericPairSwapActionExample {
+    let mut s01 = GenericPair(GenericPairSwapActionExample {
         give_minted: false,
         give_asset: a01,
         give_amount: 330_000u32.into(),
@@ -124,7 +124,7 @@ fn generic_pair_swap_simple() {
             assets::Module::<Runtime>::free_balance(&a02, &repr).unwrap(),
             9000000u32.into()
         );
-        assert_ok!(Technical::create_swap(Origin::signed(get_alice()), s01));
+        Technical::perform_create_swap(get_alice(), &mut s01).unwrap();
         assert_eq!(
             assets::Module::<Runtime>::free_balance(&a01, &get_alice()).unwrap(),
             8769000u32.into()
