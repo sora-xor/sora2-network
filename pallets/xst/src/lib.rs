@@ -600,7 +600,8 @@ impl<T: Config> Module<T> {
     /// Example use: understand actual value of two tokens in terms of USD.
     fn reference_price(asset_id: &T::AssetId) -> Result<Balance, DispatchError> {
         let reference_asset_id = ReferenceAssetId::<T>::get();
-        let price = if asset_id == &reference_asset_id {
+        // XSTUSD is a special case because it is equal to the reference asset, DAI
+        let price = if asset_id == &reference_asset_id || asset_id == &XSTUSD.into() {
             balance!(1)
         } else {
             <T as pallet::Config>::PriceToolsPallet::get_average_price(
