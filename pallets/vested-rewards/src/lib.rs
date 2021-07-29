@@ -185,17 +185,20 @@ impl<T: Config> Pallet<T> {
 
     pub fn distribute_limits(vested_amount: Balance) {
         let total_rewards = TotalRewards::<T>::get();
+
         // if there's no accounts to vest, then amount is not utilized nor stored
         if !total_rewards.is_zero() {
             Rewards::<T>::translate(|_key: T::AccountId, mut info: RewardInfo| {
-                let limit_to_add = FixedWrapper::from(info.total_available)
+                let share_of_the_vested_amount = FixedWrapper::from(info.total_available)
                     * FixedWrapper::from(vested_amount)
                     / FixedWrapper::from(total_rewards);
-                info.limit = (limit_to_add + FixedWrapper::from(info.limit))
+
+                let new_limit = (share_of_the_vested_amount + FixedWrapper::from(info.limit))
                     .try_into_balance()
                     .unwrap_or(info.limit);
+
                 // don't vest more than available
-                info.limit = info.limit.min(info.total_available);
+                info.limit = new_limit.min(info.total_available);
                 Some(info)
             })
         };
