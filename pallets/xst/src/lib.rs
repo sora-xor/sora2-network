@@ -698,80 +698,9 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         output_asset_id: &T::AssetId,
         amount: QuoteAmount<Balance>,
     ) -> Result<SwapOutcome<Balance>, DispatchError> {
-        if !Self::can_exchange(dex_id, input_asset_id, output_asset_id) {
-            fail!(Error::<T>::CantExchange);
-        }
-        let base_asset_id = &T::GetBaseAssetId::get();
-        let outcome = if input_asset_id == base_asset_id {
-            let base_price_wrt_collateral: FixedWrapper = <Module<T> as GetMarketInfo<
-                T::AssetId,
-            >>::sell_price(
-                output_asset_id, output_asset_id
-            )?
-            .into();
-            let fee_ratio = BaseFee::<T>::get();
-            match amount {
-                QuoteAmount::WithDesiredInput { desired_amount_in } => {
-                    let fee_amount = (fee_ratio * FixedWrapper::from(desired_amount_in))
-                        .try_into_balance()
-                        .map_err(|_| Error::<T>::FailedToCalculatePriceWithoutImpact)?;
-                    let collateral_out =
-                        (FixedWrapper::from(desired_amount_in.saturating_sub(fee_amount.clone()))
-                            * base_price_wrt_collateral)
-                            .try_into_balance()
-                            .map_err(|_| Error::<T>::FailedToCalculatePriceWithoutImpact)?;
-                    SwapOutcome::new(collateral_out, fee_amount)
-                }
-                QuoteAmount::WithDesiredOutput { desired_amount_out } => {
-                    let base_in =
-                        FixedWrapper::from(desired_amount_out) / base_price_wrt_collateral;
-                    let input_amount_with_fee = base_in.clone() / (fixed_wrapper!(1) - fee_ratio);
-                    let fee_amount = (input_amount_with_fee.clone() - base_in)
-                        .try_into_balance()
-                        .map_err(|_| Error::<T>::FailedToCalculatePriceWithoutImpact)?;
-                    SwapOutcome::new(
-                        input_amount_with_fee
-                            .try_into_balance()
-                            .map_err(|_| Error::<T>::FailedToCalculatePriceWithoutImpact)?,
-                        fee_amount,
-                    )
-                }
-            }
-        } else {
-            let base_price_wrt_collateral: FixedWrapper = <Pallet<T> as GetMarketInfo<
-                T::AssetId,
-            >>::buy_price(
-                input_asset_id, output_asset_id
-            )?
-            .into();
-            match amount {
-                QuoteAmount::WithDesiredInput { desired_amount_in } => {
-                    let base_out =
-                        FixedWrapper::from(desired_amount_in) / base_price_wrt_collateral;
-                    let fee_amount = (FixedWrapper::from(BaseFee::<T>::get()) * base_out.clone())
-                        .try_into_balance()
-                        .map_err(|_| Error::<T>::FailedToCalculatePriceWithoutImpact)?;
-                    let mut base_out_unwrapped = base_out
-                        .try_into_balance()
-                        .map_err(|_| Error::<T>::FailedToCalculatePriceWithoutImpact)?;
-                    base_out_unwrapped = base_out_unwrapped.saturating_sub(fee_amount);
-                    SwapOutcome::new(base_out_unwrapped, fee_amount)
-                }
-                QuoteAmount::WithDesiredOutput { desired_amount_out } => {
-                    let desired_amount_out_with_fee = (FixedWrapper::from(desired_amount_out)
-                        / (fixed_wrapper!(1) - BaseFee::<T>::get()))
-                    .try_into_balance()
-                    .map_err(|_| Error::<T>::FailedToCalculatePriceWithoutImpact)?;
-                    let collateral_in = (FixedWrapper::from(desired_amount_out_with_fee)
-                        * base_price_wrt_collateral)
-                        .try_into_balance()
-                        .map_err(|_| Error::<T>::FailedToCalculatePriceWithoutImpact)?;
-                    let fee_amount = desired_amount_out_with_fee.saturating_sub(desired_amount_out);
-                    SwapOutcome::new(collateral_in, fee_amount)
-                }
-            }
-        };
-        Ok(outcome)
+        // no impact, because price is linear
+        // TODO: consider optimizing additional call by introducing NoImpact enum variant
+        Self::quote(dex_id, input_asset_id, output_asset_id, amount)
     }
 }
 
@@ -781,9 +710,9 @@ impl<T: Config> GetMarketInfo<T::AssetId> for Module<T> {
         synthetic_asset: &T::AssetId,
     ) -> Result<Fixed, DispatchError> {
         let base_price_wrt_ref: FixedWrapper = Self::reference_price(base_asset)?.into();
-        let collateral_price_per_reference_unit: FixedWrapper =
+        let synthetic_price_per_reference_unit: FixedWrapper =
             Self::reference_price(synthetic_asset)?.into();
-        let output = (base_price_wrt_ref / collateral_price_per_reference_unit)
+        let output = (base_price_wrt_ref / synthetic_price_per_reference_unit)
             .get()
             .map_err(|_| Error::<T>::PriceCalculationFailed)?;
         Ok(output)

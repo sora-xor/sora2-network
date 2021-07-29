@@ -649,13 +649,13 @@ impl LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> for Mock
     }
 
     fn quote_without_impact(
-        _dex_id: &DEXId,
-        _input_asset_id: &AssetId,
-        _output_asset_id: &AssetId,
-        _amount: QuoteAmount<Balance>,
+        dex_id: &DEXId,
+        input_asset_id: &AssetId,
+        output_asset_id: &AssetId,
+        amount: QuoteAmount<Balance>,
     ) -> Result<SwapOutcome<Balance>, DispatchError> {
         // TODO: implement if needed
-        unimplemented!()
+        Self::quote(dex_id, input_asset_id, output_asset_id, amount)
     }
 }
 
@@ -952,13 +952,13 @@ impl LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> for Mock
     }
 
     fn quote_without_impact(
-        _dex_id: &DEXId,
-        _input_asset_id: &AssetId,
-        _output_asset_id: &AssetId,
-        _amount: QuoteAmount<Balance>,
+        dex_id: &DEXId,
+        input_asset_id: &AssetId,
+        output_asset_id: &AssetId,
+        amount: QuoteAmount<Balance>,
     ) -> Result<SwapOutcome<Balance>, DispatchError> {
         // TODO: implement if needed
-        unimplemented!()
+        Self::quote(dex_id, input_asset_id, output_asset_id, amount)
     }
 }
 
