@@ -183,6 +183,7 @@ members = [
     "pallets/pswap-distribution",
     "pallets/multicollateral-bonding-curve-pool",
     "pallets/vested-rewards",
+    "pallets/xst",
     "pallets/price-tools",
     "node/",
 ]

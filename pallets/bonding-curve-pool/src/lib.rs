@@ -37,7 +37,9 @@ mod mock;
 mod tests;
 
 use codec::{Decode, Encode};
-use common::prelude::{Balance, Fixed, FixedWrapper, RewardReason, SwapAmount, SwapOutcome};
+use common::prelude::{
+    Balance, Fixed, FixedWrapper, QuoteAmount, RewardReason, SwapAmount, SwapOutcome,
+};
 use common::{balance, fixed, DEXId, LiquiditySource, USDT, VAL};
 use core::convert::TryInto;
 use frame_support::traits::Get;
@@ -680,15 +682,15 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         dex_id: &T::DEXId,
         input_asset_id: &T::AssetId,
         output_asset_id: &T::AssetId,
-        swap_amount: SwapAmount<Balance>,
+        amount: QuoteAmount<Balance>,
     ) -> Result<SwapOutcome<Balance>, DispatchError> {
         if !Self::can_exchange(dex_id, input_asset_id, output_asset_id) {
             fail!(Error::<T>::CantExchange);
         }
         let base_asset_id = &T::GetBaseAssetId::get();
         let outcome = if input_asset_id == base_asset_id {
-            match swap_amount {
-                SwapAmount::WithDesiredInput {
+            match amount {
+                QuoteAmount::WithDesiredInput {
                     desired_amount_in: base_amount_in,
                     ..
                 } => {
@@ -698,7 +700,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
                     let fee = fee.get().map_err(|_| Error::<T>::CalculatePriceFailed)?;
                     SwapOutcome::new(amount, fee)
                 }
-                SwapAmount::WithDesiredOutput {
+                QuoteAmount::WithDesiredOutput {
                     desired_amount_out: target_amount_out,
                     ..
                 } => {
@@ -713,8 +715,8 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
                 }
             }
         } else {
-            match swap_amount {
-                SwapAmount::WithDesiredInput {
+            match amount {
+                QuoteAmount::WithDesiredInput {
                     desired_amount_in: target_amount_in,
                     ..
                 } => {
@@ -727,7 +729,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
                     let fee = fee.get().map_err(|_| Error::<T>::CalculatePriceFailed)?;
                     SwapOutcome::new(amount, fee)
                 }
-                SwapAmount::WithDesiredOutput {
+                QuoteAmount::WithDesiredOutput {
                     desired_amount_out: base_amount_out,
                     ..
                 } => {

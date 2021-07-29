@@ -32,7 +32,7 @@
 
 use crate::{Config, *};
 use common::mock::ExistentialDeposits;
-use common::prelude::Balance;
+use common::prelude::{Balance, QuoteAmount};
 use common::{
     fixed, fixed_from_basis_points, hash, Amount, AssetId32, BalancePrecision, DEXInfo, Fixed,
     FromGenericPair, LiquiditySourceFilter, LiquiditySourceType, PriceToolsPallet, TechPurpose,
@@ -152,7 +152,8 @@ impl liquidity_proxy::Config for Runtime {
     type GetNumSamples = GetNumSamples;
     type GetTechnicalAccountId = GetLiquidityProxyAccountId;
     type WeightInfo = ();
-    type PrimaryMarket = ();
+    type PrimaryMarketTBC = ();
+    type PrimaryMarketXST = ();
     type SecondaryMarket = ();
     type VestedRewardsPallet = vested_rewards::Module<Runtime>;
 }
@@ -249,6 +250,7 @@ impl dex_api::Config for Runtime {
     type MockLiquiditySource3 = ();
     type MockLiquiditySource4 = ();
     type XYKPool = pool_xyk::Module<Runtime>;
+    type XSTPool = ();
     type BondingCurvePool = ();
     type MulticollateralBondingCurvePool = multicollateral_bonding_curve_pool::Module<Runtime>;
     type WeightInfo = ();
@@ -408,7 +410,7 @@ impl PriceToolsPallet<AssetId> for MockPriceTools {
         let res = <LiquidityProxy as LiquidityProxyTrait<DEXId, AccountId, AssetId>>::quote(
             input_asset_id,
             output_asset_id,
-            SwapAmount::with_desired_input(balance!(1), balance!(0)),
+            QuoteAmount::with_desired_input(balance!(1)),
             LiquiditySourceFilter::with_allowed(
                 0u32,
                 [LiquiditySourceType::XYKPool].iter().cloned().collect(),
