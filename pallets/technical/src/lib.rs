@@ -82,10 +82,7 @@ pub fn tech_account_id_encoded_to_account_id_32(tech_account_id: &[u8]) -> H256 
 
 impl<T: Config> Pallet<T> {
     /// Perform creation of swap, version without validation
-    pub fn perform_create_swap_unchecked(
-        source: AccountIdOf<T>,
-        action: &T::SwapAction,
-    ) -> DispatchResult {
+    pub fn create_swap_unchecked(source: AccountIdOf<T>, action: &T::SwapAction) -> DispatchResult {
         common::with_transaction(|| {
             action.reserve(&source)?;
             if action.is_able_to_claim() {
@@ -110,16 +107,13 @@ impl<T: Config> Pallet<T> {
     }
 
     /// Perform creation of swap, may be used by extrinsic operation or other pallets.
-    pub fn perform_create_swap(
-        source: AccountIdOf<T>,
-        action: &mut T::SwapAction,
-    ) -> DispatchResult {
+    pub fn create_swap(source: AccountIdOf<T>, action: &mut T::SwapAction) -> DispatchResult {
         ensure!(
             !action.is_abstract_checking(),
             Error::<T>::OperationWithAbstractCheckingIsImposible
         );
         action.prepare_and_validate(Some(&source))?;
-        Module::<T>::perform_create_swap_unchecked(source, action)
+        Module::<T>::create_swap_unchecked(source, action)
     }
 
     /// Creates an `T::AccountId` based on `T::TechAccountId`.

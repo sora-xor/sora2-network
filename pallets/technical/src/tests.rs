@@ -124,7 +124,7 @@ fn generic_pair_swap_simple() {
             assets::Module::<Runtime>::free_balance(&a02, &repr).unwrap(),
             9000000u32.into()
         );
-        Technical::perform_create_swap(get_alice(), &mut s01).unwrap();
+        Technical::create_swap(get_alice(), &mut s01).unwrap();
         assert_eq!(
             assets::Module::<Runtime>::free_balance(&a01, &get_alice()).unwrap(),
             8769000u32.into()
