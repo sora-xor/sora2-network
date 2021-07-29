@@ -172,7 +172,6 @@ impl Config for Runtime {
     type Trigger = ();
     type Condition = ();
     type SwapAction = PolySwapActionExample;
-    type WeightInfo = ();
 }
 
 parameter_type_with_key! {

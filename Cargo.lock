@@ -3236,6 +3236,7 @@ dependencies = [
  "assets",
  "common",
  "ed25519-dalek-iroha",
+ "eth-bridge",
  "frame-benchmarking 3.1.0",
  "frame-support",
  "frame-system",
