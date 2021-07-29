@@ -395,14 +395,14 @@ pub mod pallet {
     #[pallet::genesis_config]
     pub struct GenesisConfig<T: Config> {
         /// Registered technical account identifiers. Map from repr `AccountId` into pure `TechAccountId`.
-        pub account_ids_to_tech_account_ids: Vec<(AccountIdOf<T>, TechAccountIdOf<T>)>,
+        pub register_tech_accounts: Vec<(AccountIdOf<T>, TechAccountIdOf<T>)>,
     }
 
     #[cfg(feature = "std")]
     impl<T: Config> Default for GenesisConfig<T> {
         fn default() -> Self {
             Self {
-                account_ids_to_tech_account_ids: Default::default(),
+                register_tech_accounts: Default::default(),
             }
         }
     }
@@ -410,12 +410,10 @@ pub mod pallet {
     #[pallet::genesis_build]
     impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
         fn build(&self) {
-            self.account_ids_to_tech_account_ids
-                .iter()
-                .for_each(|(k, v)| {
-                    frame_system::Pallet::<T>::inc_providers(k);
-                    TechAccounts::<T>::insert(k, v);
-                });
+            self.register_tech_accounts.iter().for_each(|(k, v)| {
+                frame_system::Pallet::<T>::inc_providers(k);
+                TechAccounts::<T>::insert(k, v);
+            });
         }
     }
 }

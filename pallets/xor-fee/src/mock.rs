@@ -680,10 +680,7 @@ impl ExtBuilder {
             AccountId::decode(&mut &repr[..]).expect("Failed to decode account Id");
 
         technical::GenesisConfig::<Runtime> {
-            account_ids_to_tech_account_ids: vec![(
-                xor_fee_account_id.clone(),
-                tech_account_id.clone(),
-            )],
+            register_tech_accounts: vec![(xor_fee_account_id.clone(), tech_account_id.clone())],
         }
         .assimilate_storage(&mut t)
         .unwrap();

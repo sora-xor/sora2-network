@@ -32,7 +32,7 @@ use crate as iroha_migration; // for construct_runtime
 use crate::{Config, TECH_ACCOUNT_MAIN, TECH_ACCOUNT_PREFIX};
 use common::mock::ExistentialDeposits;
 use common::prelude::Balance;
-use common::{Amount, AssetId32, AssetName, AssetSymbol, PredefinedAssetId, VAL};
+use common::{balance, Amount, AssetId32, AssetName, AssetSymbol, PredefinedAssetId, VAL};
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::GenesisBuild;
 use frame_support::weights::Weight;
@@ -230,14 +230,27 @@ pub fn test_ext(add_iroha_accounts: bool) -> sp_io::TestExternalities {
     .assimilate_storage(&mut t)
     .unwrap();
 
+    let eth_bridge_tech_account_id = TechAccountId::Generic(
+        eth_bridge::TECH_ACCOUNT_PREFIX.to_vec(),
+        eth_bridge::TECH_ACCOUNT_MAIN.to_vec(),
+    );
+    let eth_bridge_account_id =
+        Technical::tech_account_id_to_account_id(&eth_bridge_tech_account_id).unwrap();
+
     tokens::GenesisConfig::<Runtime> {
-        endowed_accounts: vec![(ALICE, VAL, 0u128.into())],
+        endowed_accounts: vec![
+            (ALICE, VAL, 0u128.into()),
+            (eth_bridge_account_id, VAL, balance!(1000)),
+        ],
     }
     .assimilate_storage(&mut t)
     .unwrap();
 
     technical::GenesisConfig::<Runtime> {
-        account_ids_to_tech_account_ids: vec![(MINTING_ACCOUNT, tech_account_id.clone())],
+        register_tech_accounts: vec![
+            (MINTING_ACCOUNT, tech_account_id.clone()),
+            (eth_bridge_account_id, eth_bridge_tech_account_id),
+        ],
     }
     .assimilate_storage(&mut t)
     .unwrap();

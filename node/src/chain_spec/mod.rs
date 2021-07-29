@@ -863,7 +863,7 @@ fn testnet_genesis(
             key: root_key.clone(),
         }),
         technical: Some(TechnicalConfig {
-            account_ids_to_tech_account_ids: tech_accounts,
+            register_tech_accounts: tech_accounts,
         }),
         pallet_babe: Some(BabeConfig {
             authorities: vec![],
@@ -1498,7 +1498,7 @@ fn mainnet_genesis(
             changes_trie_config: Default::default(),
         }),
         technical: Some(TechnicalConfig {
-            account_ids_to_tech_account_ids: tech_accounts,
+            register_tech_accounts: tech_accounts,
         }),
         pallet_babe: Some(BabeConfig {
             authorities: vec![],
