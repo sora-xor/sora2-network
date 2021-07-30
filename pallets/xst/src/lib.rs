@@ -75,6 +75,7 @@ type Assets<T> = assets::Module<T>;
 type Technical<T> = technical::Module<T>;
 
 pub const TECH_ACCOUNT_PREFIX: &[u8] = b"xst-pool";
+pub const TECH_ACCOUNT_PERMISSIONED: &[u8] = b"permissioned";
 
 pub use pallet::*;
 
@@ -229,8 +230,8 @@ pub mod pallet {
     // TODO: better by replaced with Get<>
     /// Technical account used to store collateral tokens.
     #[pallet::storage]
-    #[pallet::getter(fn reserves_account_id)]
-    pub type ReservesAcc<T: Config> = StorageValue<_, T::TechAccountId, ValueQuery>;
+    #[pallet::getter(fn permissioned_tech_account)]
+    pub type PermissionedTechAccount<T: Config> = StorageValue<_, T::TechAccountId, ValueQuery>;
 
     #[pallet::type_value]
     pub(super) fn DefaultForBaseFee() -> Fixed {
@@ -259,8 +260,8 @@ pub mod pallet {
 
     #[pallet::genesis_config]
     pub struct GenesisConfig<T: Config> {
-        /// Technical account used to store collateral tokens.
-        pub reserves_account_id: T::TechAccountId,
+        /// Technical account used to perform permissioned actions e.g. mint/burn.
+        pub tech_account_id: T::TechAccountId,
         /// Asset that is used to compare collateral assets by value, e.g., DAI.
         pub reference_asset_id: T::AssetId,
         /// List of tokens enabled as collaterals initially.
@@ -271,9 +272,9 @@ pub mod pallet {
     impl<T: Config> Default for GenesisConfig<T> {
         fn default() -> Self {
             Self {
+                tech_account_id: Default::default(),
                 reference_asset_id: DAI.into(),
                 initial_synthetic_assets: [XSTUSD.into()].into(),
-                reserves_account_id: Default::default(),
             }
         }
     }
@@ -529,9 +530,9 @@ impl<T: Config> Module<T> {
         to_account_id: &T::AccountId,
     ) -> Result<SwapOutcome<Balance>, DispatchError> {
         common::with_transaction(|| {
-            let reserves_tech_account_id = Self::reserves_account_id();
-            let reserves_account_id =
-                Technical::<T>::tech_account_id_to_account_id(&reserves_tech_account_id)?;
+            let permissioned_tech_account_id = Self::permissioned_tech_account();
+            let permissioned_account_id =
+                Technical::<T>::tech_account_id_to_account_id(&permissioned_tech_account_id)?;
 
             let base_asset_id = &T::GetBaseAssetId::get();
             let (input_amount, output_amount, fee_amount) = if input_asset_id == base_asset_id {
@@ -559,14 +560,14 @@ impl<T: Config> Module<T> {
 
             Assets::<T>::burn_from(
                 input_asset_id,
-                &reserves_account_id,
-                from_account_id,
+                &permissioned_account_id,
+                &from_account_id,
                 input_amount,
             )?;
 
             Assets::<T>::mint_to(
                 output_asset_id,
-                &reserves_account_id,
+                &permissioned_account_id,
                 &to_account_id,
                 output_amount,
             )?;
@@ -576,9 +577,9 @@ impl<T: Config> Module<T> {
     }
 
     /// Assign account id that is used to burn and mint.
-    pub fn set_reserves_account_id(account: T::TechAccountId) -> Result<(), DispatchError> {
+    pub fn set_tech_account_id(account: T::TechAccountId) -> Result<(), DispatchError> {
         common::with_transaction(|| {
-            ReservesAcc::<T>::set(account.clone());
+            PermissionedTechAccount::<T>::set(account.clone());
             let account_id = Technical::<T>::tech_account_id_to_account_id(&account)?;
             let permissions = [BURN, MINT];
             for permission in &permissions {
@@ -661,12 +662,6 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
     ) -> Result<SwapOutcome<Balance>, DispatchError> {
         if !Self::can_exchange(dex_id, input_asset_id, output_asset_id) {
             fail!(Error::<T>::CantExchange);
-        }
-        let reserves_account_id =
-            &Technical::<T>::tech_account_id_to_account_id(&Self::reserves_account_id())?;
-        // This is needed to prevent recursion calls.
-        if sender == reserves_account_id && receiver == reserves_account_id {
-            fail!(Error::<T>::CannotExchangeWithSelf);
         }
 
         let outcome = Self::swap_mint_burn_assets(

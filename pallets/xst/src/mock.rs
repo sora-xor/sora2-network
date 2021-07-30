@@ -592,7 +592,7 @@ impl ExtBuilder {
         .unwrap();
 
         crate::GenesisConfig::<Runtime> {
-            reserves_account_id: Default::default(),
+            tech_account_id: Default::default(),
             reference_asset_id: self.reference_asset_id,
             initial_synthetic_assets: Default::default(),
         }

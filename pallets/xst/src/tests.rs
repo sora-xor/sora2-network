@@ -34,7 +34,7 @@ mod tests {
     use common::{
         self, balance, fixed,
         prelude::{Balance, SwapAmount, QuoteAmount,},
-        AssetName, AssetSymbol, DEXId, LiquiditySource, TechPurpose, USDT, VAL, XOR, XSTUSD,
+        AssetName, AssetSymbol, DEXId, LiquiditySource, USDT, VAL, XOR, XSTUSD, FromGenericPair,
     };
     use frame_support::{assert_noop, assert_ok};
     use sp_arithmetic::traits::{Zero};
@@ -44,9 +44,8 @@ mod tests {
 
     /// Sets up the tech account so that mint permission is enabled
     fn xst_pool_init() -> Result<TechAccountId, DispatchError> {
-        let xst_tech_account_id = TechAccountId::Pure(
-            DEXId::Polkaswap,
-            TechPurpose::Identifier(b"xst_tech_account_id".to_vec()),
+        let xst_tech_account_id = TechAccountId::from_generic_pair(
+            crate::TECH_ACCOUNT_PREFIX.to_vec(), crate::TECH_ACCOUNT_PERMISSIONED.to_vec()
         );
         Technical::register_tech_account_id(xst_tech_account_id.clone())?;
         XSTPool::set_reserves_account_id(xst_tech_account_id.clone())?;

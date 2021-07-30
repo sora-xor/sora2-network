@@ -624,6 +624,11 @@ fn testnet_genesis(
     let mbc_pool_free_reserves_account_id =
         framenode_runtime::GetMbcPoolFreeReservesAccountId::get();
 
+    let xst_pool_permissioned_tech_account_id =
+        framenode_runtime::GetXSTPoolPermissionedTechAccountId::get();
+    let xst_pool_permissioned_account_id =
+        framenode_runtime::GetXSTPoolPermissionedAccountId::get();
+
     let market_maker_rewards_tech_account_id =
         framenode_runtime::GetMarketMakerRewardsTechAccountId::get();
     let market_maker_rewards_account_id = framenode_runtime::GetMarketMakerRewardsAccountId::get();
@@ -693,6 +698,10 @@ fn testnet_genesis(
             mbc_pool_free_reserves_tech_account_id.clone(),
         ),
         (
+            xst_pool_permissioned_account_id.clone(),
+            xst_pool_permissioned_tech_account_id.clone(),
+        ),
+        (
             iroha_migration_account_id.clone(),
             iroha_migration_tech_account_id.clone(),
         ),
@@ -728,6 +737,7 @@ fn testnet_genesis(
         (mbc_reserves_account_id.clone(), 0),
         (mbc_pool_rewards_account_id.clone(), 0),
         (mbc_pool_free_reserves_account_id.clone(), 0),
+        (xst_pool_permissioned_account_id, 0),
         (market_maker_rewards_account_id.clone(), 0),
     ]
     .into_iter()
@@ -1144,7 +1154,7 @@ fn testnet_genesis(
         pallet_membership_Instance1: Default::default(),
         pallet_im_online: Default::default(),
         xst: Some(XSTPoolConfig {
-            reserves_account_id: Default::default(), // TODO: move to defaults
+            tech_account_id: xst_pool_permissioned_tech_account_id, // TODO: move to defaults
             reference_asset_id: DAI,
             initial_synthetic_assets: vec![XSTUSD],
         }),
