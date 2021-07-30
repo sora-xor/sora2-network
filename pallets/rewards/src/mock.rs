@@ -147,7 +147,6 @@ impl technical::Config for Runtime {
     type Trigger = ();
     type Condition = ();
     type SwapAction = ();
-    type WeightInfo = ();
 }
 
 impl assets::Config for Runtime {
@@ -265,7 +264,7 @@ impl ExtBuilder {
         .unwrap();
 
         TechnicalConfig {
-            account_ids_to_tech_account_ids: vec![(account_id, tech_account_id.clone())],
+            register_tech_accounts: vec![(account_id, tech_account_id.clone())],
         }
         .assimilate_storage(&mut t)
         .unwrap();
