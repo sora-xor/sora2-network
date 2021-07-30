@@ -131,6 +131,7 @@ pub mod pallet {
         + technical::Config
         + trading_pair::Config
         + pool_xyk::Config
+        + dex_api::Config
     {
         type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
         type LiquidityProxy: LiquidityProxyTrait<Self::DEXId, Self::AccountId, Self::AssetId>;

@@ -30,13 +30,10 @@
 
 #[rustfmt::skip]
 mod tests {
-    use crate::{mock::*, Module, Error};
-    use common::{
-        self, balance, fixed,
-        prelude::{Balance, SwapAmount, QuoteAmount,},
-        AssetName, AssetSymbol, DEXId, LiquiditySource, USDT, VAL, XOR, XSTUSD, FromGenericPair,
-    };
+    use crate::{Error, Module, migration::get_permissioned_tech_account_id, mock::*};
+    use common::{self, AssetName, AssetSymbol, DEXId, FromGenericPair, LiquiditySource, LiquiditySourceType, USDT, VAL, XOR, XSTUSD, balance, fixed, prelude::{Balance, SwapAmount, QuoteAmount,}};
     use frame_support::{assert_noop, assert_ok};
+    use permissions::{BURN, MINT};
     use sp_arithmetic::traits::{Zero};
     use sp_runtime::DispatchError;
 
@@ -48,7 +45,7 @@ mod tests {
             crate::TECH_ACCOUNT_PREFIX.to_vec(), crate::TECH_ACCOUNT_PERMISSIONED.to_vec()
         );
         Technical::register_tech_account_id(xst_tech_account_id.clone())?;
-        XSTPool::set_reserves_account_id(xst_tech_account_id.clone())?;
+        XSTPool::set_tech_account_id(xst_tech_account_id.clone())?;
 
         Ok(xst_tech_account_id)
     }
@@ -409,11 +406,19 @@ mod tests {
         ext.execute_with(|| {
             // technical account existance fix
             System::inc_providers(&crate::migration::get_assets_owner_account::<Runtime>());
+            let (_, account_id) = get_permissioned_tech_account_id::<Runtime>();
 
+            System::inc_consumers(&account_id).unwrap_err();
             Assets::ensure_asset_exists(&XSTUSD.into()).unwrap_err();
+            
             // version is initially None for tests
             crate::migration::migrate::<Runtime>();
-            Assets::ensure_asset_exists(&XSTUSD.into()).unwrap();
+            assert_ok!(Assets::ensure_asset_exists(&XSTUSD.into()));
+            assert_ok!(System::inc_consumers(&account_id));
+            assert_ok!(Permissions::check_permission(account_id.clone(), MINT));
+            assert_ok!(Permissions::check_permission(account_id, BURN));
+
+            assert!(DEXApi::get_supported_types().contains(&LiquiditySourceType::XSTPool));
         });
     }
 }

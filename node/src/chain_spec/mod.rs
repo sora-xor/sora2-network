@@ -1077,6 +1077,7 @@ fn testnet_genesis(
             source_types: [
                 LiquiditySourceType::XYKPool,
                 LiquiditySourceType::MulticollateralBondingCurvePool,
+                LiquiditySourceType::XSTPool,
             ]
             .into(),
         }),
