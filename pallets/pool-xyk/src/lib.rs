@@ -38,7 +38,7 @@ use frame_support::{ensure, fail, Parameter};
 use frame_system::ensure_signed;
 use sp_std::vec::Vec;
 
-use common::prelude::{Balance, EnsureDEXManager, SwapAmount, SwapOutcome};
+use common::prelude::{Balance, EnsureDEXManager, QuoteAmount, SwapAmount, SwapOutcome};
 use common::{
     EnsureTradingPairExists, GetPoolReserves, LiquiditySource, LiquiditySourceType, ManagementMode,
     PoolXykPallet, RewardReason, TechAccountId, TechPurpose, ToFeeAccount, TradingPair,
@@ -49,6 +49,7 @@ use aliases::{
     AccountIdOf, AssetIdOf, DEXIdOf, DepositLiquidityActionOf, PairSwapActionOf,
     PolySwapActionStructOf, TechAccountIdOf, TechAssetIdOf, WithdrawLiquidityActionOf,
 };
+use sp_std::collections::btree_set::BTreeSet;
 
 pub mod migrations;
 pub mod weights;
@@ -230,7 +231,7 @@ impl<T: Config> Module<T> {
         });
         let action = T::PolySwapAction::from(action);
         let mut action = action.into();
-        technical::Module::<T>::perform_create_swap(source, &mut action)?;
+        technical::Module::<T>::create_swap(source, &mut action)?;
         Ok(())
     }
 
@@ -268,7 +269,7 @@ impl<T: Config> Module<T> {
             });
         let action = T::PolySwapAction::from(action);
         let mut action = action.into();
-        technical::Module::<T>::perform_create_swap(source, &mut action)?;
+        technical::Module::<T>::create_swap(source, &mut action)?;
         Ok(())
     }
 
@@ -310,7 +311,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         dex_id: &T::DEXId,
         input_asset_id: &T::AssetId,
         output_asset_id: &T::AssetId,
-        swap_amount: SwapAmount<Balance>,
+        amount: QuoteAmount<Balance>,
     ) -> Result<SwapOutcome<Balance>, DispatchError> {
         // Get pool account.
         let (_, tech_acc_id) = Module::<T>::tech_account_from_dex_and_asset_pair(
@@ -336,10 +337,8 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
             Module::<T>::decide_is_fee_from_destination(input_asset_id, output_asset_id)?;
 
         // Calculate quote.
-        match swap_amount {
-            SwapAmount::WithDesiredInput {
-                desired_amount_in, ..
-            } => {
+        match amount {
+            QuoteAmount::WithDesiredInput { desired_amount_in } => {
                 let (calculated, fee) = Module::<T>::calc_output_for_exact_input(
                     T::GetFee::get(),
                     get_fee_from_destination,
@@ -349,9 +348,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
                 )?;
                 Ok(SwapOutcome::new(calculated, fee))
             }
-            SwapAmount::WithDesiredOutput {
-                desired_amount_out, ..
-            } => {
+            QuoteAmount::WithDesiredOutput { desired_amount_out } => {
                 let (calculated, fee) = Module::<T>::calc_input_for_exact_output(
                     T::GetFee::get(),
                     get_fee_from_destination,
@@ -401,7 +398,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         )?;
 
         // It is guarantee that unwrap is always ok.
-        // Clone is used here because action is used for perform_create_swap_unchecked.
+        // Clone is used here because action is used for create_swap_unchecked.
         let retval = match action.clone() {
             PolySwapAction::PairSwap(a) => {
                 let (fee, amount) = match swap_amount {
@@ -419,7 +416,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
 
         let action = T::PolySwapAction::from(action);
         let mut action = action.into();
-        technical::Module::<T>::perform_create_swap_unchecked(sender.clone(), &mut action)?;
+        technical::Module::<T>::create_swap_unchecked(sender.clone(), &mut action)?;
 
         retval
     }
@@ -489,6 +486,11 @@ pub mod pallet {
         fn on_runtime_upgrade() -> Weight {
             match Self::storage_version() {
                 Some(PalletVersion { major: 0, .. }) | None => migrations::v1_1::migrate::<T>(),
+                Some(PalletVersion {
+                    major: 1,
+                    minor: 1,
+                    patch: 0,
+                }) => migrations::v1_2::migrate::<T>(),
                 _ => 0,
             }
         }
@@ -496,27 +498,6 @@ pub mod pallet {
 
     #[pallet::call]
     impl<T: Config> Pallet<T> {
-        #[pallet::weight(<T as Config>::WeightInfo::swap_pair())]
-        pub fn swap_pair(
-            origin: OriginFor<T>,
-            receiver: AccountIdOf<T>,
-            dex_id: DEXIdOf<T>,
-            input_asset_id: AssetIdOf<T>,
-            output_asset_id: AssetIdOf<T>,
-            swap_amount: SwapAmount<Balance>,
-        ) -> DispatchResultWithPostInfo {
-            let source = ensure_signed(origin)?;
-            Module::<T>::exchange(
-                &source,
-                &receiver,
-                &dex_id,
-                &input_asset_id,
-                &output_asset_id,
-                swap_amount,
-            )?;
-            Ok(().into())
-        }
-
         #[pallet::weight(<T as Config>::WeightInfo::deposit_liquidity())]
         pub fn deposit_liquidity(
             origin: OriginFor<T>,
@@ -753,15 +734,23 @@ pub mod pallet {
     /// Liquidity providers of particular pool.
     /// Pool account => Liquidity provider account => Pool token balance
     #[pallet::storage]
+    #[pallet::getter(fn pool_providers)]
     pub type PoolProviders<T: Config> =
         StorageDoubleMap<_, Identity, AccountIdOf<T>, Identity, AccountIdOf<T>, Balance>;
+
+    /// Set of pools in which accounts have some share.
+    /// Liquidity provider account => Target Asset of pair (assuming base asset is XOR)
+    #[pallet::storage]
+    #[pallet::getter(fn account_pools)]
+    pub type AccountPools<T: Config> =
+        StorageMap<_, Identity, AccountIdOf<T>, BTreeSet<AssetIdOf<T>>, ValueQuery>;
 
     /// Total issuance of particular pool.
     /// Pool account => Total issuance
     #[pallet::storage]
     pub type TotalIssuances<T: Config> = StorageMap<_, Identity, AccountIdOf<T>, Balance>;
 
-    /// Properties of particular pool. [Reserves Account Id, Fees Account Id]
+    /// Properties of particular pool. Base Asset => Target Asset => (Reserves Account Id, Fees Account Id)
     #[pallet::storage]
     #[pallet::getter(fn properties)]
     pub type Properties<T: Config> = StorageDoubleMap<

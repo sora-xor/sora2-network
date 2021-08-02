@@ -311,27 +311,27 @@ fn val_strategic_bonus_vesting_works() {
         let blocks_per_day = <Runtime as crate::Config>::BLOCKS_PER_DAY;
 
         run_to_block(blocks_per_day - 1);
-        assert_eq!(ValBurnedSinceLastVesting::get(), balance!(190));
+        assert_eq!(ValBurnedSinceLastVesting::get(), balance!(188.1));
 
         run_to_block(blocks_per_day);
-        assert_eq!(CurrentClaimableVal::get(), balance!(20.9));
-        assert_eq!(ValBurnedSinceLastVesting::get(), balance!(10));
+        assert_eq!(CurrentClaimableVal::get(), balance!(20.691));
+        assert_eq!(ValBurnedSinceLastVesting::get(), balance!(9.9));
 
         run_to_block(2 * blocks_per_day - 1);
         // By now vesting of total 20.9 VAL on a pro rata basis should have been taken place
         // There can be some loss of precision though due to pro rata distribution
-        assert_approx_eq!(TotalClaimableVal::get(), balance!(3020.9), balance!(0.000000001));
+        assert_approx_eq!(TotalClaimableVal::get(), balance!(3020.6909999999999), balance!(0.000000001));
         assert_eq!(
             ValOwners::get(EthereumAddress::from(hex!("21Bc9f4a3d9Dc86f142F802668dB7D908cF0A636"))),
-            RewardInfo::new(balance!(111.995233356031637), balance!(1000))
+            RewardInfo::new(balance!(111.985281022471321000), balance!(1000))
         );
         assert_eq!(
             ValOwners::get(EthereumAddress::from(hex!("d170a274320333243b9f860e8891c6792de1ec19"))),
-            RewardInfo::new(balance!(2908.89466712063274), balance!(20000))
+            RewardInfo::new(balance!(2908.695620449426420000), balance!(20000))
         );
         assert_eq!(
             ValOwners::get(EthereumAddress::from(hex!("886021f300dc809269cfc758a2364a2baf63af0c"))),
-            RewardInfo::new(balance!(0.010099523335603163), balance!(0.1))
+            RewardInfo::new(balance!(0.010098528102247132), balance!(0.1))
         );
 
         // Claiming some rewards
@@ -341,37 +341,36 @@ fn val_strategic_bonus_vesting_works() {
         ));
         assert_eq!(
             Assets::free_balance(&VAL, &account_1).unwrap(),
-            balance!(111.995233356031637)
+            balance!(111.985281022471321000)
         );
         assert_ok!(Pallet::claim(
             Origin::signed(account_2.clone()),
             hex!("22bea4c62999dc1be10cb603956b5731dfd296c9e0b0040e5fe8056db1e8df5648c519b704acdcdcf0d04ab01f81f2ed899edef437a4be8f36980d7f1119d7ce00").into()));
         assert_eq!(
             Assets::free_balance(&VAL, &account_2).unwrap(),
-            balance!(2908.89466712063274)
+            balance!(2908.695620449426420000)
         );
-        assert_eq!(TotalValRewards::get(), balance!(17979.210099523335623));
-        assert_eq!(TotalClaimableVal::get(), balance!(0.010099523335603163));
+        assert_eq!(TotalValRewards::get(), balance!(17979.419098528102259000));
+        assert_eq!(TotalClaimableVal::get(), balance!(0.010098528102247132));
 
         run_to_block(2 * blocks_per_day);
         // More VAL is claimable, total amount of rewards remains
-        assert_eq!(CurrentClaimableVal::get(), balance!(44.0));
-        assert_eq!(TotalValRewards::get(), balance!(17979.210099523335623));
+        assert_eq!(CurrentClaimableVal::get(), balance!(43.56));
+        assert_eq!(TotalValRewards::get(), balance!(17979.419098528102259000));
 
         run_to_block(167 * blocks_per_day);
         // In this block all the rewards should have been vested
         assert_eq!(
             ValOwners::get(EthereumAddress::from(hex!("21Bc9f4a3d9Dc86f142F802668dB7D908cF0A636"))),
-            RewardInfo::new(balance!(888.004766643968363), balance!(888.004766643968363))
+            RewardInfo::new(balance!(886.399690114186276904), balance!(888.014718977528679000))
         );
         assert_eq!(
             ValOwners::get(EthereumAddress::from(hex!("d170a274320333243b9f860e8891c6792de1ec19"))),
-            RewardInfo::new(balance!(17091.10533287936726), balance!(17091.10533287936726))
+            RewardInfo::new(balance!(16956.699736344280235178), balance!(17091.304379550573580000))
         );
         assert_eq!(
             ValOwners::get(EthereumAddress::from(hex!("886021f300dc809269cfc758a2364a2baf63af0c"))),
             RewardInfo::new(balance!(0.1), balance!(0.1))
         );
-        assert_eq!(TotalValRewards::get(), TotalClaimableVal::get());
     });
 }

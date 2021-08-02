@@ -54,15 +54,15 @@ impl SubstrateCli for Cli {
     fn load_spec(&self, id: &str) -> Result<Box<dyn sc_service::ChainSpec>, String> {
         #[cfg(feature = "private-net")]
         let chain_spec = match id {
-            "" | "local" => Some(chain_spec::local_testnet_config()),
+            "" | "local" => Some(framenode_chain_spec::local_testnet_config()),
             // dev doesn't use json chain spec to make development easier
-            // "dev" => chain_spec::dev_net(),
-            // "dev-coded" => Ok(chain_spec::dev_net_coded()),
-            "dev" => Some(chain_spec::dev_net_coded()),
-            "test" => Some(chain_spec::test_net()?),
-            "test-coded" => Some(chain_spec::staging_net_coded(true)),
-            "staging" => Some(chain_spec::staging_net()?),
-            "staging-coded" => Some(chain_spec::staging_net_coded(false)),
+            // "dev" => framenode_chain_spec::dev_net(),
+            // "dev-coded" => Ok(framenode_chain_spec::dev_net_coded()),
+            "dev" => Some(framenode_chain_spec::dev_net_coded()),
+            "test" => Some(framenode_chain_spec::test_net()?),
+            "test-coded" => Some(framenode_chain_spec::staging_net_coded(true)),
+            "staging" => Some(framenode_chain_spec::staging_net()?),
+            "staging-coded" => Some(framenode_chain_spec::staging_net_coded(false)),
             _ => None,
         };
 
@@ -76,7 +76,7 @@ impl SubstrateCli for Cli {
 
         #[cfg(feature = "main-net-coded")]
         if id == "main-coded" {
-            chain_spec = Some(chain_spec::main_net_coded());
+            chain_spec = Some(framenode_chain_spec::main_net_coded());
         }
 
         let chain_spec = if let Some(chain_spec) = chain_spec {

@@ -31,10 +31,11 @@
 use frame_support::dispatch::DispatchResult;
 use frame_support::weights::Weight;
 use frame_support::{dispatch, ensure};
+use sp_runtime::traits::Zero;
 
 use common::prelude::{Balance, FixedWrapper};
 
-use crate::{to_balance, to_fixed_wrapper, PoolProviders, TotalIssuances};
+use crate::{to_balance, to_fixed_wrapper, AccountPools, PoolProviders, TotalIssuances};
 
 use crate::aliases::{AccountIdOf, AssetIdOf, TechAccountIdOf};
 use crate::{Config, Error, Module, MIN_LIQUIDITY};
@@ -286,11 +287,17 @@ impl<T: Config> common::SwapAction<AccountIdOf<T>, TechAccountIdOf<T>, T>
             &self.pool_account,
             self.source.1.amount.unwrap(),
         )?;
-        Module::<T>::mint(
-            &pool_account_repr_sys,
-            self.receiver_account.as_ref().unwrap(),
-            self.pool_tokens,
-        )?;
+        let receiver_account = self.receiver_account.as_ref().unwrap();
+        // Pool tokens balance is zero while minted amount will be non-zero.
+        if Module::<T>::pool_providers(&pool_account_repr_sys, receiver_account)
+            .unwrap_or(0)
+            .is_zero()
+            && !self.pool_tokens.is_zero()
+        {
+            let pair = Module::<T>::strict_sort_pair(&self.source.0.asset, &self.source.1.asset)?;
+            AccountPools::<T>::mutate(receiver_account, |set| set.insert(pair.target_asset_id));
+        }
+        Module::<T>::mint(&pool_account_repr_sys, receiver_account, self.pool_tokens)?;
         let balance_a =
             <assets::Module<T>>::free_balance(&self.source.0.asset, &pool_account_repr_sys)?;
         let balance_b =

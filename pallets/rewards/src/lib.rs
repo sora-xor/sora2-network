@@ -178,7 +178,9 @@ impl<T: Config> Pallet<T> {
 
 impl<T: Config> OnValBurned for Pallet<T> {
     fn on_val_burned(amount: Balance) {
-        ValBurnedSinceLastVesting::<T>::mutate(|v| *v = v.saturating_add(amount));
+        ValBurnedSinceLastVesting::<T>::mutate(|v| {
+            *v = v.saturating_add(amount.saturating_sub(amount / 100))
+        });
     }
 }
 

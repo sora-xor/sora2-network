@@ -53,6 +53,7 @@ pub enum ComicAssetId {
     Headphones,
     GreenPromise,
     BluePromise,
+    Mango,
 }
 
 impl crate::traits::IsRepresentation for ComicAssetId {
@@ -80,6 +81,7 @@ impl From<PredefinedAssetId> for ComicAssetId {
             PredefinedAssetId::PSWAP => RedPepper,
             PredefinedAssetId::DAI => BlackPepper,
             PredefinedAssetId::ETH => AcmeSpyKit,
+            PredefinedAssetId::XSTUSD => Mango,
         }
     }
 }

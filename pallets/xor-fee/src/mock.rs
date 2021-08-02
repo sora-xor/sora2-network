@@ -31,7 +31,7 @@
 use codec::{Decode, Encode};
 use common::mock::ExistentialDeposits;
 use common::prelude::{
-    Balance, BlockLength, BlockWeights, SwapAmount, SwapOutcome, TransactionByteFee,
+    Balance, BlockLength, BlockWeights, QuoteAmount, SwapAmount, SwapOutcome, TransactionByteFee,
 };
 use common::{
     self, balance, fixed_from_basis_points, Amount, AssetId32, AssetName, AssetSymbol, Fixed,
@@ -369,7 +369,6 @@ impl technical::Config for Runtime {
     type Trigger = ();
     type Condition = ();
     type SwapAction = ();
-    type WeightInfo = ();
 }
 
 impl currencies::Config for Runtime {
@@ -583,7 +582,7 @@ impl liquidity_proxy::LiquidityProxyTrait<DEXId, AccountId, AssetId> for MockLiq
     fn quote(
         input_asset_id: &AssetId,
         output_asset_id: &AssetId,
-        amount: SwapAmount<Balance>,
+        amount: QuoteAmount<Balance>,
         filter: LiquiditySourceFilter<DEXId, LiquiditySourceType>,
     ) -> Result<SwapOutcome<Balance>, DispatchError> {
         MockLiquiditySource::quote(&filter.dex_id, input_asset_id, output_asset_id, amount)
@@ -681,10 +680,7 @@ impl ExtBuilder {
             AccountId::decode(&mut &repr[..]).expect("Failed to decode account Id");
 
         technical::GenesisConfig::<Runtime> {
-            account_ids_to_tech_account_ids: vec![(
-                xor_fee_account_id.clone(),
-                tech_account_id.clone(),
-            )],
+            register_tech_accounts: vec![(xor_fee_account_id.clone(), tech_account_id.clone())],
         }
         .assimilate_storage(&mut t)
         .unwrap();

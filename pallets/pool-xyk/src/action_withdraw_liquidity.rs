@@ -31,10 +31,11 @@
 use frame_support::dispatch::DispatchResult;
 use frame_support::ensure;
 use frame_support::weights::Weight;
+use sp_runtime::traits::Zero;
 
 use common::prelude::{Balance, FixedWrapper};
 
-use crate::{to_balance, PoolProviders, TotalIssuances};
+use crate::{to_balance, AccountPools, PoolProviders, TotalIssuances};
 
 use crate::aliases::{AccountIdOf, AssetIdOf, TechAccountIdOf};
 use crate::{Config, Error, Module, MIN_LIQUIDITY};
@@ -211,6 +212,18 @@ impl<T: Config> common::SwapAction<AccountIdOf<T>, TechAccountIdOf<T>, T>
             self.destination.1.amount.unwrap(),
         )?;
         Module::<T>::burn(&pool_account_repr_sys, source, self.pool_tokens)?;
+        // Pool tokens balance became zero while burned amount was actually non-zero.
+        if Module::<T>::pool_providers(&pool_account_repr_sys, source)
+            .unwrap_or(0)
+            .is_zero()
+            && !self.pool_tokens.is_zero()
+        {
+            let pair = Module::<T>::strict_sort_pair(
+                &self.destination.0.asset,
+                &self.destination.1.asset,
+            )?;
+            AccountPools::<T>::mutate(source, |set| set.remove(&pair.target_asset_id));
+        }
         let balance_a =
             <assets::Module<T>>::free_balance(&self.destination.0.asset, &pool_account_repr_sys)?;
         let balance_b =

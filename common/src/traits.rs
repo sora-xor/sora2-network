@@ -28,7 +28,7 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use crate::prelude::{ManagementMode, SwapAmount, SwapOutcome};
+use crate::prelude::{ManagementMode, QuoteAmount, SwapAmount, SwapOutcome};
 use crate::{Fixed, LiquiditySourceFilter, LiquiditySourceId, PswapRemintInfo, RewardReason};
 use frame_support::dispatch::DispatchResult;
 use frame_support::pallet_prelude::MaybeSerializeDeserialize;
@@ -105,7 +105,7 @@ pub trait LiquiditySource<TargetId, AccountId, AssetId, Amount, Error> {
         target_id: &TargetId,
         input_asset_id: &AssetId,
         output_asset_id: &AssetId,
-        swap_amount: SwapAmount<Amount>,
+        amount: QuoteAmount<Amount>,
     ) -> Result<SwapOutcome<Amount>, DispatchError>;
 
     /// Perform exchange based on desired amount.
@@ -143,7 +143,7 @@ impl<DEXId, AccountId, AssetId> LiquiditySource<DEXId, AccountId, AssetId, Fixed
         _target_id: &DEXId,
         _input_asset_id: &AssetId,
         _output_asset_id: &AssetId,
-        _swap_amount: SwapAmount<Fixed>,
+        _amount: QuoteAmount<Fixed>,
     ) -> Result<SwapOutcome<Fixed>, DispatchError> {
         Err(DispatchError::CannotLookup)
     }
@@ -185,7 +185,7 @@ impl<DEXId, AccountId, AssetId> LiquiditySource<DEXId, AccountId, AssetId, Balan
         _target_id: &DEXId,
         _input_asset_id: &AssetId,
         _output_asset_id: &AssetId,
-        _swap_amount: SwapAmount<Balance>,
+        _amount: QuoteAmount<Balance>,
     ) -> Result<SwapOutcome<Balance>, DispatchError> {
         Err(DispatchError::CannotLookup)
     }
@@ -407,20 +407,16 @@ pub trait FromGenericPair {
     fn from_generic_pair(tag: Vec<u8>, data: Vec<u8>) -> Self;
 }
 
-/// Trait for bounding liquidity proxy associated type representing primary market.
+/// Trait for bounding liquidity proxy associated type representing primary market in TBC.
 pub trait GetMarketInfo<AssetId> {
-    /// The price in terms of the `collateral_asset` at which one can buy
-    /// a unit of the `base_asset` on the primary market (e.g. from the bonding curve pool).
-    fn buy_price(base_asset: &AssetId, collateral_asset: &AssetId) -> Result<Fixed, DispatchError>;
-    /// The price in terms of the `collateral_asset` at which one can sell
-    /// a unit of the `base_asset` on the primary market (e.g. to the bonding curve pool).
-    fn sell_price(base_asset: &AssetId, collateral_asset: &AssetId)
-        -> Result<Fixed, DispatchError>;
-    /// The amount of the `asset_id` token reserves stored with the primary market liquidity provider
-    /// (a multi-collateral bonding curve pool) that backs a part of the base currency in circulation.
-    fn collateral_reserves(asset_id: &AssetId) -> Result<Balance, DispatchError>;
-    /// Returns set of enabled collateral/reserve assets on bonding curve.
-    fn enabled_collaterals() -> BTreeSet<AssetId>;
+    /// The price in terms of the `target_asset` at which one can buy
+    /// a unit of the `base_asset` on the primary market (e.g. from the bonding curve pool or xst).
+    fn buy_price(base_asset: &AssetId, target_asset: &AssetId) -> Result<Fixed, DispatchError>;
+    /// The price in terms of the `target_asset` at which one can sell
+    /// a unit of the `base_asset` on the primary market (e.g. to the bonding curve pool or xst).
+    fn sell_price(base_asset: &AssetId, target_asset: &AssetId) -> Result<Fixed, DispatchError>;
+    /// Returns set of enabled collateral/synthetic/reserve assets on bonding curve.
+    fn enabled_target_assets() -> BTreeSet<AssetId>;
 }
 
 impl<AssetId: Ord> GetMarketInfo<AssetId> for () {
@@ -438,11 +434,7 @@ impl<AssetId: Ord> GetMarketInfo<AssetId> for () {
         Ok(Default::default())
     }
 
-    fn collateral_reserves(_asset_id: &AssetId) -> Result<Balance, DispatchError> {
-        Ok(Default::default())
-    }
-
-    fn enabled_collaterals() -> BTreeSet<AssetId> {
+    fn enabled_target_assets() -> BTreeSet<AssetId> {
         Default::default()
     }
 }

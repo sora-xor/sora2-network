@@ -144,11 +144,11 @@ benchmarks! {
         let initial_base_balance = Assets::<T>::free_balance(&XOR.into(), &caller).unwrap();
         let initial_target_balance = Assets::<T>::free_balance(&DOT.into(), &caller).unwrap();
     }: {
-        pool_xyk::Module::<T>::swap_pair(RawOrigin::Signed(caller.clone()).into(),
-        caller.clone(),
-        DEX.into(),
-        XOR.into(),
-        DOT.into(),
+        pool_xyk::Module::<T>::exchange(&caller,
+        &caller,
+        &DEX.into(),
+        &XOR.into(),
+        &DOT.into(),
         amount.clone()
     ).unwrap();
 }
@@ -187,7 +187,7 @@ benchmarks! {
             &DEX.into(),
             &XOR.into(),
             &DOT.into(),
-            amount.clone()
+            amount.into()
         ).unwrap()
     }
     verify {

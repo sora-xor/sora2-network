@@ -30,11 +30,11 @@
 
 use core::convert::TryInto;
 use frame_support::dispatch::{DispatchError, DispatchResult};
-use frame_support::ensure;
 use frame_support::traits::Get;
+use frame_support::{ensure, fail};
 
 use common::prelude::{Balance, SwapAmount};
-use common::{AccountIdOf, ToFeeAccount, ToTechUnitFromDEXAndTradingPair};
+use common::{AccountIdOf, ToFeeAccount, ToTechUnitFromDEXAndTradingPair, TradingPair};
 
 use crate::aliases::{AssetIdOf, DEXManager, TechAccountIdOf, TechAssetIdOf};
 use crate::bounds::*;
@@ -224,5 +224,27 @@ impl<T: Config> Module<T> {
         });
         result?;
         Ok(())
+    }
+
+    /// Sort assets into base and target assets of trading pair, if none of assets is base then return error.
+    pub fn strict_sort_pair(
+        asset_a: &T::AssetId,
+        asset_b: &T::AssetId,
+    ) -> Result<TradingPair<T::AssetId>, DispatchError> {
+        let base_asset_id = T::GetBaseAssetId::get();
+        ensure!(asset_a != asset_b, Error::<T>::AssetsMustNotBeSame);
+        if asset_a == &base_asset_id {
+            Ok(TradingPair {
+                base_asset_id: asset_a.clone(),
+                target_asset_id: asset_b.clone(),
+            })
+        } else if asset_b == &base_asset_id {
+            Ok(TradingPair {
+                base_asset_id: asset_b.clone(),
+                target_asset_id: asset_a.clone(),
+            })
+        } else {
+            fail!(Error::<T>::BaseAssetIsNotMatchedWithAnyAssetArguments)
+        }
     }
 }

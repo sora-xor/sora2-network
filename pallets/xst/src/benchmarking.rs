@@ -28,23 +28,67 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-//! THIS FILE WAS AUTO-GENERATED USING THE SUBSTRATE BENCHMARK CLI VERSION 2.0.0-rc5
+//! XST pool module benchmarking.
 
-use common::weights::constants::EXTRINSIC_FIXED_WEIGHT;
-use common::weights::PresetWeightInfo;
-use frame_support::weights::constants::RocksDbWeight as DbWeight;
-use frame_support::weights::Weight;
+#![cfg(feature = "runtime-benchmarks")]
 
-impl crate::WeightInfo for () {
-    fn create_swap() -> Weight {
-        (100_000_000 as Weight)
-            .saturating_add(DbWeight::get().reads(3 as Weight))
-            .saturating_add(DbWeight::get().writes(1 as Weight))
+use super::*;
+
+use codec::Decode;
+use frame_benchmarking::benchmarks;
+use frame_system::{EventRecord, RawOrigin};
+use hex_literal::hex;
+use sp_std::prelude::*;
+
+use common::DAI;
+
+use permissions::Pallet as Permissions;
+
+// Support Functions
+fn alice<T: Config>() -> T::AccountId {
+    let bytes = hex!("d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d");
+    T::AccountId::decode(&mut &bytes[..]).unwrap_or_default()
+}
+
+fn assert_last_event<T: Config>(generic_event: <T as Config>::Event) {
+    let events = frame_system::Module::<T>::events();
+    let system_event: <T as frame_system::Config>::Event = generic_event.into();
+    // compare to the last event record
+    let EventRecord { event, .. } = &events[events.len() - 1];
+    assert_eq!(event, &system_event);
+}
+
+// TODO: properly implement benchmarks
+benchmarks! {
+    initialize_pool {
+        let caller = alice::<T>();
+        let dex_id: T::DEXId = common::DEXId::Polkaswap.into();
+        Permissions::<T>::assign_permission(
+            caller.clone(),
+            &caller,
+            permissions::MANAGE_DEX,
+            permissions::Scope::Limited(common::hash(&dex_id)),
+        ).unwrap();
+    }: _(
+        RawOrigin::Signed(caller.clone()),
+        DAI.into()
+    )
+    verify {
+        assert_last_event::<T>(Event::PoolInitialized(common::DEXId::Polkaswap.into(), DAI.into()).into())
     }
 }
 
-impl<T> crate::WeightInfo for PresetWeightInfo<T> {
-    fn create_swap() -> Weight {
-        EXTRINSIC_FIXED_WEIGHT
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::mock::{ExtBuilder, Runtime};
+    use frame_support::assert_ok;
+
+    #[test]
+    #[ignore]
+    fn test_benchmarks() {
+        ExtBuilder::default().build().execute_with(|| {
+            assert_ok!(test_benchmark_initialize_pool::<Runtime>());
+        });
     }
 }

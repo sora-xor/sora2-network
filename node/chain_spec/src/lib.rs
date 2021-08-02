@@ -53,7 +53,8 @@ use framenode_runtime::{
     GetPswapAssetId, GetValAssetId, GetXorAssetId, GrandpaConfig, ImOnlineId, IrohaMigrationConfig,
     LiquiditySourceType, MulticollateralBondingCurvePoolConfig, PermissionsConfig,
     PswapDistributionConfig, RewardsConfig, Runtime, SessionConfig, StakerStatus, StakingConfig,
-    SystemConfig, TechAccountId, TechnicalConfig, TokensConfig, TradingPairConfig, WASM_BINARY,
+    SystemConfig, TechAccountId, TechnicalConfig, TokensConfig, TradingPairConfig, XSTPoolConfig,
+    WASM_BINARY,
 };
 use hex_literal::hex;
 use permissions::Scope;
@@ -575,6 +576,8 @@ fn testnet_genesis(
     council_accounts: Vec<AccountId>,
     technical_committee_accounts: Vec<AccountId>,
 ) -> GenesisConfig {
+    use common::XSTUSD;
+
     // Initial balances
     let initial_staking = balance!(100);
     let initial_eth_bridge_xor_amount = balance!(350000);
@@ -858,6 +861,7 @@ fn testnet_genesis(
         account_id: iroha_migration_account_id.clone(),
     };
     let initial_collateral_assets = vec![DAI.into(), VAL.into(), PSWAP.into(), ETH.into()];
+    let initial_synthetic_assets = vec![XSTUSD.into()];
     GenesisConfig {
         frame_system: Some(SystemConfig {
             code: WASM_BINARY.unwrap().to_vec(),
@@ -867,7 +871,7 @@ fn testnet_genesis(
             key: root_key.clone(),
         }),
         technical: Some(TechnicalConfig {
-            account_ids_to_tech_account_ids: tech_accounts,
+            register_tech_accounts: tech_accounts,
         }),
         pallet_babe: Some(BabeConfig {
             authorities: vec![],
@@ -961,6 +965,15 @@ fn testnet_genesis(
                     Balance::zero(),
                     true,
                 ),
+                (
+                    XSTUSD.into(),
+                    assets_and_permissions_account_id.clone(),
+                    AssetSymbol(b"XSTUSD".to_vec()),
+                    AssetName(b"XST USD".to_vec()),
+                    18,
+                    Balance::zero(),
+                    true,
+                ),
             ],
         }),
         permissions: Some(PermissionsConfig {
@@ -1047,6 +1060,7 @@ fn testnet_genesis(
         trading_pair: Some(TradingPairConfig {
             trading_pairs: initial_collateral_assets
                 .iter()
+                .chain(initial_synthetic_assets.iter())
                 .cloned()
                 .map(|target_asset_id| {
                     (
@@ -1139,6 +1153,11 @@ fn testnet_genesis(
         pallet_elections_phragmen: Default::default(),
         pallet_membership_Instance1: Default::default(),
         pallet_im_online: Default::default(),
+        xst: Some(XSTPoolConfig {
+            reserves_account_id: Default::default(), // TODO: move to defaults
+            reference_asset_id: DAI,
+            initial_synthetic_assets: vec![XSTUSD],
+        }),
     }
 }
 
@@ -1487,7 +1506,7 @@ fn mainnet_genesis(
             changes_trie_config: Default::default(),
         }),
         technical: Some(TechnicalConfig {
-            account_ids_to_tech_account_ids: tech_accounts,
+            register_tech_accounts: tech_accounts,
         }),
         pallet_babe: Some(BabeConfig {
             authorities: vec![],

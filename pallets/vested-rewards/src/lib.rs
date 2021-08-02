@@ -66,16 +66,25 @@ pub const MARKET_MAKER_REWARDS_DISTRIBUTION_FREQUENCY: u32 = 432000;
 type Assets<T> = assets::Pallet<T>;
 type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
 
+/// Denotes PSWAP rewards amounts of particular types available for user.
 #[derive(Encode, Decode, Eq, PartialEq, Clone, PartialOrd, Ord, Debug, Default)]
 pub struct RewardInfo {
+    /// Reward amount vested, denotes portion of `total_avialable` which can be claimed.
+    /// Reset to 0 after claim until more is vested over time.
     limit: Balance,
+    /// Sum of reward amounts in `rewards`.
     total_available: Balance,
+    /// Mapping between reward type represented by `RewardReason` and owned amount by user.
     pub rewards: BTreeMap<RewardReason, Balance>,
 }
 
+/// Denotes information about users who make transactions counted for market makers strategic rewards
+/// programme. To participate in rewards distribution account needs to get 500+ tx's over 1 XOR in volume each.
 #[derive(Encode, Decode, Eq, PartialEq, Clone, PartialOrd, Ord, Debug, Default)]
 pub struct MarketMakerInfo {
+    /// Number of eligible transactions - namely those with individual volume over 1 XOR.
     count: u32,
+    /// Cumulative volume of eligible transactions.
     volume: Balance,
 }
 
@@ -176,17 +185,20 @@ impl<T: Config> Pallet<T> {
 
     pub fn distribute_limits(vested_amount: Balance) {
         let total_rewards = TotalRewards::<T>::get();
+
         // if there's no accounts to vest, then amount is not utilized nor stored
         if !total_rewards.is_zero() {
             Rewards::<T>::translate(|_key: T::AccountId, mut info: RewardInfo| {
-                let limit_to_add = FixedWrapper::from(info.total_available)
+                let share_of_the_vested_amount = FixedWrapper::from(info.total_available)
                     * FixedWrapper::from(vested_amount)
                     / FixedWrapper::from(total_rewards);
-                info.limit = (limit_to_add + FixedWrapper::from(info.limit))
+
+                let new_limit = (share_of_the_vested_amount + FixedWrapper::from(info.limit))
                     .try_into_balance()
                     .unwrap_or(info.limit);
+
                 // don't vest more than available
-                info.limit = info.limit.min(info.total_available);
+                info.limit = new_limit.min(info.total_available);
                 Some(info)
             })
         };
