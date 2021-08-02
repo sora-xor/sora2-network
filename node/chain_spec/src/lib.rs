@@ -162,7 +162,7 @@ pub fn test_net() -> Result<ChainSpec, String> {
     ChainSpec::from_json_bytes(&our_include_bytes!("./bytes/chain_spec_test.json")[..])
 }
 
-#[cfg(not(feature = "private-net"))]
+#[cfg(any(not(feature = "private-net"), feature = "test"))]
 pub fn main_net() -> Result<ChainSpec, String> {
     #[cfg(feature = "test")]
     {
