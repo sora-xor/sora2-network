@@ -250,7 +250,6 @@ impl dex_api::Config for Runtime {
     type MockLiquiditySource4 = ();
     type XYKPool = pool_xyk::Module<Runtime>;
     type XSTPool = ();
-    type BondingCurvePool = ();
     type MulticollateralBondingCurvePool = multicollateral_bonding_curve_pool::Module<Runtime>;
     type WeightInfo = ();
 }

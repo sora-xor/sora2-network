@@ -38,7 +38,6 @@ trading-pair = { path = "../trading-pair", default-features = false }
 hex-literal = { version = '0.3.1' }
 sp-runtime = { version = "3" }
 
-bonding-curve-pool = { path = "../bonding-curve-pool" }
 common = { path = "../../common", features = ["test"] }
 dex-manager = { path = "../dex-manager" }
 mock-liquidity-source = { path = "../mock-liquidity-source" }
