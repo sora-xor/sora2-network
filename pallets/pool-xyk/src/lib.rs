@@ -231,7 +231,7 @@ impl<T: Config> Module<T> {
         });
         let action = T::PolySwapAction::from(action);
         let mut action = action.into();
-        technical::Module::<T>::perform_create_swap(source, &mut action)?;
+        technical::Module::<T>::create_swap(source, &mut action)?;
         Ok(())
     }
 
@@ -269,7 +269,7 @@ impl<T: Config> Module<T> {
             });
         let action = T::PolySwapAction::from(action);
         let mut action = action.into();
-        technical::Module::<T>::perform_create_swap(source, &mut action)?;
+        technical::Module::<T>::create_swap(source, &mut action)?;
         Ok(())
     }
 
@@ -398,7 +398,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         )?;
 
         // It is guarantee that unwrap is always ok.
-        // Clone is used here because action is used for perform_create_swap_unchecked.
+        // Clone is used here because action is used for create_swap_unchecked.
         let retval = match action.clone() {
             PolySwapAction::PairSwap(a) => {
                 let (fee, amount) = match swap_amount {
@@ -416,7 +416,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
 
         let action = T::PolySwapAction::from(action);
         let mut action = action.into();
-        technical::Module::<T>::perform_create_swap_unchecked(sender.clone(), &mut action)?;
+        technical::Module::<T>::create_swap_unchecked(sender.clone(), &mut action)?;
 
         retval
     }

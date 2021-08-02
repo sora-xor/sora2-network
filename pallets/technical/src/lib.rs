@@ -34,17 +34,13 @@ use codec::{Decode, Encode};
 use common::prelude::Balance;
 use common::{FromGenericPair, SwapAction, SwapRulesValidation};
 use frame_support::dispatch::{DispatchError, DispatchResult};
-use frame_support::weights::Weight;
 use frame_support::{ensure, Parameter};
-use frame_system::ensure_signed;
 use sp_runtime::traits::{MaybeSerializeDeserialize, Member};
 use sp_runtime::RuntimeDebug;
 
 use common::TECH_ACCOUNT_MAGIC_PREFIX;
 use sp_core::H256;
 use sp_std::convert::TryFrom;
-
-mod weights;
 
 #[cfg(test)]
 mod mock;
@@ -69,10 +65,6 @@ pub struct PendingSwap<T: Config> {
     pub condition: T::Condition,
 }
 
-pub trait WeightInfo {
-    fn create_swap() -> Weight;
-}
-
 pub fn tech_account_id_encoded_to_account_id_32(tech_account_id: &[u8]) -> H256 {
     use ::core::hash::Hasher;
     let mut h0 = twox_hash::XxHash::with_seed(0);
@@ -90,10 +82,7 @@ pub fn tech_account_id_encoded_to_account_id_32(tech_account_id: &[u8]) -> H256 
 
 impl<T: Config> Pallet<T> {
     /// Perform creation of swap, version without validation
-    pub fn perform_create_swap_unchecked(
-        source: AccountIdOf<T>,
-        action: &T::SwapAction,
-    ) -> DispatchResult {
+    pub fn create_swap_unchecked(source: AccountIdOf<T>, action: &T::SwapAction) -> DispatchResult {
         common::with_transaction(|| {
             action.reserve(&source)?;
             if action.is_able_to_claim() {
@@ -118,16 +107,13 @@ impl<T: Config> Pallet<T> {
     }
 
     /// Perform creation of swap, may be used by extrinsic operation or other pallets.
-    pub fn perform_create_swap(
-        source: AccountIdOf<T>,
-        action: &mut T::SwapAction,
-    ) -> DispatchResult {
+    pub fn create_swap(source: AccountIdOf<T>, action: &mut T::SwapAction) -> DispatchResult {
         ensure!(
             !action.is_abstract_checking(),
             Error::<T>::OperationWithAbstractCheckingIsImposible
         );
         action.prepare_and_validate(Some(&source))?;
-        Module::<T>::perform_create_swap_unchecked(source, action)
+        Module::<T>::create_swap_unchecked(source, action)
     }
 
     /// Creates an `T::AccountId` based on `T::TechAccountId`.
@@ -304,9 +290,6 @@ pub mod pallet {
         /// Swap action.
         type SwapAction: common::SwapRulesValidation<Self::AccountId, Self::TechAccountId, Self>
             + Parameter;
-
-        /// Weight information for extrinsics in this pallet.
-        type WeightInfo: WeightInfo;
     }
 
     #[pallet::pallet]
@@ -317,18 +300,7 @@ pub mod pallet {
     impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {}
 
     #[pallet::call]
-    impl<T: Config> Pallet<T> {
-        #[pallet::weight(<T as Config>::WeightInfo::create_swap())]
-        pub(crate) fn create_swap(
-            origin: OriginFor<T>,
-            action: T::SwapAction,
-        ) -> DispatchResultWithPostInfo {
-            let source = ensure_signed(origin)?;
-            let mut action_mut = action;
-            Module::<T>::perform_create_swap(source, &mut action_mut)?;
-            Ok(().into())
-        }
-    }
+    impl<T: Config> Pallet<T> {}
 
     #[pallet::event]
     #[pallet::metadata(AccountIdOf<T> = "AccountId", TechAssetIdOf<T> = "TechAssetId", TechAccountIdOf<T> = "TechAccountId")]
@@ -423,14 +395,14 @@ pub mod pallet {
     #[pallet::genesis_config]
     pub struct GenesisConfig<T: Config> {
         /// Registered technical account identifiers. Map from repr `AccountId` into pure `TechAccountId`.
-        pub account_ids_to_tech_account_ids: Vec<(AccountIdOf<T>, TechAccountIdOf<T>)>,
+        pub register_tech_accounts: Vec<(AccountIdOf<T>, TechAccountIdOf<T>)>,
     }
 
     #[cfg(feature = "std")]
     impl<T: Config> Default for GenesisConfig<T> {
         fn default() -> Self {
             Self {
-                account_ids_to_tech_account_ids: Default::default(),
+                register_tech_accounts: Default::default(),
             }
         }
     }
@@ -438,12 +410,10 @@ pub mod pallet {
     #[pallet::genesis_build]
     impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
         fn build(&self) {
-            self.account_ids_to_tech_account_ids
-                .iter()
-                .for_each(|(k, v)| {
-                    frame_system::Pallet::<T>::inc_providers(k);
-                    TechAccounts::<T>::insert(k, v);
-                });
+            self.register_tech_accounts.iter().for_each(|(k, v)| {
+                frame_system::Pallet::<T>::inc_providers(k);
+                TechAccounts::<T>::insert(k, v);
+            });
         }
     }
 }

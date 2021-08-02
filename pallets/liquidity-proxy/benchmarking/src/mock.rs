@@ -236,7 +236,6 @@ impl technical::Config for Runtime {
     type Trigger = ();
     type Condition = ();
     type SwapAction = pool_xyk::PolySwapAction<AssetId, AccountId, TechAccountId>;
-    type WeightInfo = ();
 }
 
 impl permissions::Config for Runtime {
@@ -629,7 +628,7 @@ impl ExtBuilder {
         .unwrap();
 
         technical::GenesisConfig::<Runtime> {
-            account_ids_to_tech_account_ids: tech_accounts,
+            register_tech_accounts: tech_accounts,
         }
         .assimilate_storage(&mut t)
         .unwrap();

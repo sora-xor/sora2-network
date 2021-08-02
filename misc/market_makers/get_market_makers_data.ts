@@ -33,56 +33,97 @@ import { WsProvider } from '@polkadot/rpc-provider';
 import { encodeAddress } from '@polkadot/util-crypto'
 import { options } from '@sora-substrate/api';
 import fs from 'fs'
+import BigNumber from 'bignumber.js'
 
 // RUN VIA:
 // yarn install
 // ts-node get_market_makers_data.ts
 
-// archive node, local is preferred if running intensive queries
-const ENDPOINT = 'ws://localhost:9944/';
-const MARKET_MAKERS_DISTRIBUTION_PERIOD = 432000;
+// const ENDPOINT = 'wss://mof3.sora.org';
+// const FILE_PREFIX = '';
 
-function toHexString(byteArray: any) {
-    var s = '';
-    byteArray.forEach(function(byte: any) {
-        s += ('0' + (byte & 0xFF).toString(16)).slice(-2);
-    });
-    return s;
-}
+const ENDPOINT = 'wss://ws.stage.sora2.soramitsu.co.jp/';
+const FILE_PREFIX = 'stage_'
+
+const MARKET_MAKERS_DISTRIBUTION_PERIOD = 432000;
 
 async function getMarketMakerRecords(): Promise<void> {
     const provider = new WsProvider(ENDPOINT);
     const api = new ApiPromise(options({ provider }));
     await api.isReady;
 
-    const blockHash = await api.rpc.chain.getBlockHash(MARKET_MAKERS_DISTRIBUTION_PERIOD);
-    let queryResult = await api.query.vestedRewards.marketMakersRegistry.entriesAt(blockHash);
+    const blockHash1 = await api.rpc.chain.getBlockHash(MARKET_MAKERS_DISTRIBUTION_PERIOD);
+    let queryResult1 = await api.query.vestedRewards.marketMakersRegistry.entriesAt(blockHash1);
 
-    let count_receiving_rewards = 0;
-    let records: Array<any> = Array();
+    let count_receiving_rewards_may = 0;
+    let records_may: Map<string, {count: BigNumber, volume: BigNumber}> = new Map();
 
-    for (var i = 0; i < queryResult.length; i++) {
-        let account_id = queryResult[i][0].slice(-32);
+    for (var i = 0; i < queryResult1.length; i++) {
+        let account_id = queryResult1[i][0].slice(-32);
         let ss58 = encodeAddress(account_id, 69);
-        let count = (queryResult[i][1] as any).count.toString();
-        let volume = (queryResult[i][1] as any).volume.toString();
-        let count_num = parseInt(count, 10);
-        
-        if (count_num != 0) {
+        let count = new BigNumber((queryResult1[i][1] as any).count.toString());
+        let volume = new BigNumber((queryResult1[i][1] as any).volume.toString());
+        if (!count.isZero()) {
             let entry = {
-                address: ss58.toString(),
                 count,
-                volume,
+                volume
             };
-            records.push(entry);
-        }
-        if (count_num >= 500) {
-            count_receiving_rewards++;
+            records_may.set(ss58.toString(), entry);
+            if (entry.count.toNumber() >= 500) {
+                count_receiving_rewards_may++;
+            }
         }
     }
 
-    console.log(`ACCOUNTS WITH REWARDS ${count_receiving_rewards}`);
-    fs.writeFileSync("market_makers_may_snapshot.json", JSON.stringify(records, null, 1));
+    const blockHash2 = await api.rpc.chain.getBlockHash(MARKET_MAKERS_DISTRIBUTION_PERIOD * 2);
+    let queryResult2 = await api.query.vestedRewards.marketMakersRegistry.entriesAt(blockHash2);
+
+    let count_receiving_rewards_june = 0;
+    let records_june: Map<string, {count: BigNumber, volume: BigNumber}> = new Map();
+
+    for (var i = 0; i < queryResult2.length; i++) {
+        let account_id = queryResult2[i][0].slice(-32);
+        let ss58 = encodeAddress(account_id, 69);
+        let count = new BigNumber((queryResult2[i][1] as any).count.toString());
+        let volume = new BigNumber((queryResult2[i][1] as any).volume.toString());
+        if (!count.isZero()) {
+            if (records_may.has(ss58.toString())) {
+                const may_entry = records_may.get(ss58.toString());
+                const june_count = count.minus(may_entry.count);
+                const june_volume = volume.minus(may_entry.volume);
+                let entry = {
+                    count: june_count,
+                    volume: june_volume,
+                };
+                if (!entry.count.isZero()) {
+                    records_june.set(ss58.toString(), entry);
+                    if (entry.count.toNumber() >= 500) {
+                        count_receiving_rewards_june++;
+                    }
+                }
+            } else {
+                let entry = {
+                    count: count,
+                    volume: volume
+                };
+                records_june.set(ss58.toString(), entry);
+                if (entry.count.toNumber() >= 500) {
+                    count_receiving_rewards_june++;
+                }
+            }
+        }
+    }
+
+    function toArray(map: Map<string, {count: BigNumber, volume: BigNumber}>) {
+        return Array.from(map, ([key, value]) => ({ address: key, count: value.count.toString(), volume: value.volume.toFormat(0, null, {decimalSeparator: ''}) }));
+    }
+
+    console.log(`ACCOUNTS WITH REWARDS IN MAY ${count_receiving_rewards_may}`);
+    console.log(`ACCOUNTS WITH REWARDS IN JUNE ${count_receiving_rewards_june}`);
+    const array_records_may = toArray(records_may);
+    const array_records_june = toArray(records_june);
+    fs.writeFileSync(FILE_PREFIX + "market_makers_may_snapshot.json", JSON.stringify(array_records_may, null, 1));
+    fs.writeFileSync(FILE_PREFIX + "market_makers_june_snapshot.json", JSON.stringify(array_records_june, null, 1));
 }
 
 getMarketMakerRecords().catch(console.error).finally(() => process.exit());

@@ -31,7 +31,7 @@
 use crate::mock::*;
 use crate::{ClaimableShares, Error, Module, ShareholderAccounts};
 use common::prelude::Fixed;
-use common::{balance, fixed, PSWAP};
+use common::{assert_approx_eq, balance, fixed, PSWAP};
 use frame_support::assert_noop;
 use traits::MultiCurrency;
 
@@ -766,27 +766,32 @@ fn calculating_distribution_should_pass() {
         // regular amount
         let distribution = PswapDistrModule::calculate_pswap_distribution(balance!(100)).unwrap();
         assert_eq!(distribution.liquidity_providers, balance!(70));
-        assert_eq!(distribution.vesting, balance!(20));
+        assert_eq!(distribution.vesting, balance!(19.8));
         assert_eq!(distribution.parliament, balance!(10));
 
         // large value, balance is limited to i128 max because of Fixed type calculation
-        let balance_max = 170141183460469231731687303715884105727u128;
+        // We use `i128::MAX - 100` otherwise assert_approx_eq! internaly overflow when adding tolerance to the left and right members
+        let balance_max = 170141183460469231731687303715884105727u128 - 100;
         let distribution = PswapDistrModule::calculate_pswap_distribution(balance_max).unwrap();
         assert_eq!(
             distribution.liquidity_providers,
-            119098828422328462212181112601118874008u128
+            119098828422328462212181112601118873938u128
         );
         assert_eq!(
             distribution.vesting,
-            34028236692093846346337460743176821147u128
+            33687954325172907882874086135745052916u128
         );
         assert_eq!(
             distribution.parliament,
-            17014118346046923173168730371588410572u128
+            17014118346046923173168730371588410562u128
         );
-        assert_eq!(
-            distribution.liquidity_providers + distribution.parliament + distribution.vesting,
-            balance_max
+        assert_approx_eq!(
+            distribution
+                .liquidity_providers
+                .saturating_add(distribution.parliament)
+                .saturating_add((distribution.vesting / 99).saturating_mul(100)),
+            balance_max,
+            50u128
         );
     })
 }
