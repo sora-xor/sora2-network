@@ -182,6 +182,37 @@ impl<T: Config>
             BondingCurvePool => unreachable!(),
         }
     }
+
+    fn quote_without_impact(
+        liquidity_source_id: &LiquiditySourceId<T::DEXId, LiquiditySourceType>,
+        input_asset_id: &T::AssetId,
+        output_asset_id: &T::AssetId,
+        amount: QuoteAmount<Balance>,
+    ) -> Result<SwapOutcome<Balance>, DispatchError> {
+        use LiquiditySourceType::*;
+        macro_rules! quote_without_impact {
+            ($source_type:ident) => {
+                T::$source_type::quote_without_impact(
+                    &liquidity_source_id.dex_id,
+                    input_asset_id,
+                    output_asset_id,
+                    amount,
+                )
+            };
+        }
+        match liquidity_source_id.liquidity_source_index {
+            XYKPool => quote_without_impact!(XYKPool),
+            MulticollateralBondingCurvePool => {
+                quote_without_impact!(MulticollateralBondingCurvePool)
+            }
+            XSTPool => quote_without_impact!(XSTPool),
+            MockPool => quote_without_impact!(MockLiquiditySource),
+            MockPool2 => quote_without_impact!(MockLiquiditySource2),
+            MockPool3 => quote_without_impact!(MockLiquiditySource3),
+            MockPool4 => quote_without_impact!(MockLiquiditySource4),
+            BondingCurvePool => unreachable!(),
+        }
+    }
 }
 
 impl<T: Config> Pallet<T> {
