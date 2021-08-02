@@ -3,7 +3,6 @@
     "rust-analyzer.server.extraEnv": {
         "SKIP_WASM_BUILD": "true"
     },
-    "rust-analyzer.cargo.features": ["private-net"],
     "rust-analyzer.diagnostics.disabled": [
         "macro-error"
     ],

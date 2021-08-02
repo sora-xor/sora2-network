@@ -153,7 +153,7 @@ where
             <T::LiquidityProxy as LiquidityProxyTrait<T::DEXId, T::AccountId, T::AssetId>>::quote(
                 &input_asset_id,
                 &output_asset_id,
-                amount,
+                amount.into(),
                 filter.clone(),
             )
             .map_err(|_| InvalidTransaction::Payment)?;

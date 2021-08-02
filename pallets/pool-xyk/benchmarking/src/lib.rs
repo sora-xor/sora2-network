@@ -187,7 +187,7 @@ benchmarks! {
             &DEX.into(),
             &XOR.into(),
             &DOT.into(),
-            amount.clone()
+            amount.into()
         ).unwrap()
     }
     verify {
