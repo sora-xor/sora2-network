@@ -1629,3 +1629,195 @@ fn depositing_and_withdrawing_liquidity_updates_user_pools() {
         );
     })]);
 }
+
+#[test]
+fn price_without_impact_small_amount() {
+    crate::Module::<Runtime>::preset_deposited_pool(vec![Rc::new(
+        |dex_id, _, _, _, _, _, _repr: AccountId, _fee_repr: AccountId| {
+            let amount = balance!(1);
+            // Buy base asset with desired input
+            let quote_outcome_a = PoolXYK::quote(
+                &dex_id,
+                &BlackPepper.into(),
+                &GoldenTicket.into(),
+                QuoteAmount::with_desired_input(amount),
+            )
+            .expect("Failed to quote.");
+            let quote_without_impact_a = PoolXYK::quote_without_impact(
+                &dex_id,
+                &BlackPepper.into(),
+                &GoldenTicket.into(),
+                QuoteAmount::with_desired_input(amount),
+            )
+            .expect("Failed to quote without impact.");
+            assert_eq!(quote_outcome_a.amount, balance!(2.492482691092422969));
+            assert_eq!(
+                quote_without_impact_a.amount,
+                balance!(2.492500000000000000)
+            );
+            assert!(quote_outcome_a.amount < quote_without_impact_a.amount);
+
+            // Buy base asset with desired output
+            let quote_outcome_b = PoolXYK::quote(
+                &dex_id,
+                &BlackPepper.into(),
+                &GoldenTicket.into(),
+                QuoteAmount::with_desired_output(amount),
+            )
+            .expect("Failed to quote.");
+            let quote_without_impact_b = PoolXYK::quote_without_impact(
+                &dex_id,
+                &BlackPepper.into(),
+                &GoldenTicket.into(),
+                QuoteAmount::with_desired_output(amount),
+            )
+            .expect("Failed to quote without impact.");
+            assert_eq!(quote_outcome_b.amount, balance!(0.401204728643510095));
+            assert_eq!(
+                quote_without_impact_b.amount,
+                balance!(0.401203610832497492)
+            );
+            assert!(quote_outcome_b.amount > quote_without_impact_b.amount);
+
+            // Sell base asset with desired input
+            let quote_outcome_c = PoolXYK::quote(
+                &dex_id,
+                &GoldenTicket.into(),
+                &BlackPepper.into(),
+                QuoteAmount::with_desired_input(amount),
+            )
+            .expect("Failed to quote.");
+            let quote_without_impact_c = PoolXYK::quote_without_impact(
+                &dex_id,
+                &GoldenTicket.into(),
+                &BlackPepper.into(),
+                QuoteAmount::with_desired_input(amount),
+            )
+            .expect("Failed to quote without impact.");
+            assert_eq!(quote_outcome_c.amount, balance!(0.398798895548614272));
+            assert_eq!(
+                quote_without_impact_c.amount,
+                balance!(0.398800000000000000)
+            );
+            assert!(quote_outcome_c.amount < quote_without_impact_c.amount);
+
+            // Sell base asset with desired input
+            let quote_outcome_d = PoolXYK::quote(
+                &dex_id,
+                &GoldenTicket.into(),
+                &BlackPepper.into(),
+                QuoteAmount::with_desired_output(amount),
+            )
+            .expect("Failed to quote.");
+            let quote_without_impact_d = PoolXYK::quote_without_impact(
+                &dex_id,
+                &GoldenTicket.into(),
+                &BlackPepper.into(),
+                QuoteAmount::with_desired_output(amount),
+            )
+            .expect("Failed to quote without impact.");
+            assert_eq!(quote_outcome_d.amount, balance!(2.507539981175200824));
+            assert_eq!(
+                quote_without_impact_d.amount,
+                balance!(2.507522567703109327)
+            );
+            assert!(quote_outcome_d.amount > quote_without_impact_d.amount);
+        },
+    )]);
+}
+
+#[test]
+fn price_without_impact_large_amount() {
+    crate::Module::<Runtime>::preset_deposited_pool(vec![Rc::new(
+        |dex_id, _, _, _, _, _, _repr: AccountId, _fee_repr: AccountId| {
+            let amount = balance!(100000);
+            // Buy base asset with desired input
+            let quote_outcome_a = PoolXYK::quote(
+                &dex_id,
+                &BlackPepper.into(),
+                &GoldenTicket.into(),
+                QuoteAmount::with_desired_input(amount),
+            )
+            .expect("Failed to quote.");
+            let quote_without_impact_a = PoolXYK::quote_without_impact(
+                &dex_id,
+                &BlackPepper.into(),
+                &GoldenTicket.into(),
+                QuoteAmount::with_desired_input(amount),
+            )
+            .expect("Failed to quote without impact.");
+            assert_eq!(quote_outcome_a.amount, balance!(147098.360655737704918032));
+            assert_eq!(
+                quote_without_impact_a.amount,
+                balance!(249250.000000000000000000)
+            );
+            assert!(quote_outcome_a.amount < quote_without_impact_a.amount);
+
+            // Buy base asset with desired output
+            let quote_outcome_b = PoolXYK::quote(
+                &dex_id,
+                &BlackPepper.into(),
+                &GoldenTicket.into(),
+                QuoteAmount::with_desired_output(amount),
+            )
+            .expect("Failed to quote.");
+            let quote_without_impact_b = PoolXYK::quote_without_impact(
+                &dex_id,
+                &BlackPepper.into(),
+                &GoldenTicket.into(),
+                QuoteAmount::with_desired_output(amount),
+            )
+            .expect("Failed to quote without impact.");
+            assert_eq!(quote_outcome_b.amount, balance!(55615.634172717441680828));
+            assert_eq!(
+                quote_without_impact_b.amount,
+                balance!(40120.361083249749247743)
+            );
+            assert!(quote_outcome_b.amount > quote_without_impact_b.amount);
+
+            // Sell base asset with desired input
+            let quote_outcome_c = PoolXYK::quote(
+                &dex_id,
+                &GoldenTicket.into(),
+                &BlackPepper.into(),
+                QuoteAmount::with_desired_input(amount),
+            )
+            .expect("Failed to quote.");
+            let quote_without_impact_c = PoolXYK::quote_without_impact(
+                &dex_id,
+                &GoldenTicket.into(),
+                &BlackPepper.into(),
+                QuoteAmount::with_desired_input(amount),
+            )
+            .expect("Failed to quote without impact.");
+            assert_eq!(quote_outcome_c.amount, balance!(31230.802697411355231672));
+            assert_eq!(
+                quote_without_impact_c.amount,
+                balance!(39880.000000000000000000)
+            );
+            assert!(quote_outcome_c.amount < quote_without_impact_c.amount);
+
+            // Sell base asset with desired input
+            let quote_outcome_d = PoolXYK::quote(
+                &dex_id,
+                &GoldenTicket.into(),
+                &BlackPepper.into(),
+                QuoteAmount::with_desired_output(amount),
+            )
+            .expect("Failed to quote.");
+            let quote_without_impact_d = PoolXYK::quote_without_impact(
+                &dex_id,
+                &GoldenTicket.into(),
+                &BlackPepper.into(),
+                QuoteAmount::with_desired_output(amount),
+            )
+            .expect("Failed to quote without impact.");
+            assert_eq!(quote_outcome_d.amount, balance!(820643.749430108507340228));
+            assert_eq!(
+                quote_without_impact_d.amount,
+                balance!(250752.256770310932798395)
+            );
+            assert!(quote_outcome_d.amount > quote_without_impact_d.amount);
+        },
+    )]);
+}

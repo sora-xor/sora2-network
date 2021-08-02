@@ -99,8 +99,7 @@ pub trait LiquiditySource<TargetId, AccountId, AssetId, Amount, Error> {
         output_asset_id: &AssetId,
     ) -> bool;
 
-    /// Get spot price of tokens based on desired amount, None returned if liquidity source
-    /// does not have available exchange methods for indicated path.
+    /// Get spot price of tokens based on desired amount.
     fn quote(
         target_id: &TargetId,
         input_asset_id: &AssetId,
@@ -126,6 +125,15 @@ pub trait LiquiditySource<TargetId, AccountId, AssetId, Amount, Error> {
         input_amount: Amount,
         output_amount: Amount,
     ) -> Result<Vec<(Amount, AssetId, RewardReason)>, DispatchError>;
+
+    /// Get spot price of tokens based on desired amount, ignoring non-linearity
+    /// of underlying liquidity source.
+    fn quote_without_impact(
+        target_id: &TargetId,
+        input_asset_id: &AssetId,
+        output_asset_id: &AssetId,
+        amount: QuoteAmount<Amount>,
+    ) -> Result<SwapOutcome<Amount>, DispatchError>;
 }
 
 impl<DEXId, AccountId, AssetId> LiquiditySource<DEXId, AccountId, AssetId, Fixed, DispatchError>
@@ -168,6 +176,15 @@ impl<DEXId, AccountId, AssetId> LiquiditySource<DEXId, AccountId, AssetId, Fixed
     ) -> Result<Vec<(Fixed, AssetId, RewardReason)>, DispatchError> {
         Err(DispatchError::CannotLookup)
     }
+
+    fn quote_without_impact(
+        _target_id: &DEXId,
+        _input_asset_id: &AssetId,
+        _output_asset_id: &AssetId,
+        _amount: QuoteAmount<Fixed>,
+    ) -> Result<SwapOutcome<Fixed>, DispatchError> {
+        Err(DispatchError::CannotLookup)
+    }
 }
 
 impl<DEXId, AccountId, AssetId> LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError>
@@ -208,6 +225,15 @@ impl<DEXId, AccountId, AssetId> LiquiditySource<DEXId, AccountId, AssetId, Balan
         _input_amount: Balance,
         _output_amount: Balance,
     ) -> Result<Vec<(Balance, AssetId, RewardReason)>, DispatchError> {
+        Err(DispatchError::CannotLookup)
+    }
+
+    fn quote_without_impact(
+        _target_id: &DEXId,
+        _input_asset_id: &AssetId,
+        _output_asset_id: &AssetId,
+        _amount: QuoteAmount<Balance>,
+    ) -> Result<SwapOutcome<Balance>, DispatchError> {
         Err(DispatchError::CannotLookup)
     }
 }
