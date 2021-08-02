@@ -467,14 +467,13 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         let input_price_wrt_output = FixedWrapper::from(reserve_output) / reserve_input;
         let fee_fraction = T::GetFee::get();
         Ok(match amount {
-            QuoteAmount::WithDesiredInput {
-                desired_amount_in: base_amount_in,
-            } => {
+            QuoteAmount::WithDesiredInput { desired_amount_in } => {
                 let (output, fee_amount) = if get_fee_from_destination {
                     // output token is xor, user indicates desired input amount
                     // y_1 = x_in * y / x
                     // y_out = y_1 * (1 - fee)
-                    let out_with_fee = FixedWrapper::from(base_amount_in) * input_price_wrt_output;
+                    let out_with_fee =
+                        FixedWrapper::from(desired_amount_in) * input_price_wrt_output;
                     let output = FixedWrapper::from(out_with_fee.clone())
                         * (fixed_wrapper!(1) - fee_fraction);
                     let fee_amount = out_with_fee - output.clone();
@@ -483,10 +482,10 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
                     // input token is xor, user indicates desired input amount
                     // x_1 = x_in * (1 - fee)
                     // y_out = x_1 * y / x
-                    let input_without_fee = FixedWrapper::from(base_amount_in.clone())
+                    let input_without_fee = FixedWrapper::from(desired_amount_in.clone())
                         * (fixed_wrapper!(1) - fee_fraction);
                     let output = input_without_fee.clone() * input_price_wrt_output;
-                    let fee_amount = FixedWrapper::from(base_amount_in) - input_without_fee;
+                    let fee_amount = FixedWrapper::from(desired_amount_in) - input_without_fee;
                     (output, fee_amount)
                 };
                 SwapOutcome::new(
@@ -498,24 +497,22 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
                         .map_err(|_| Error::<T>::FailedToCalculatePriceWithoutImpact)?,
                 )
             }
-            QuoteAmount::WithDesiredOutput {
-                desired_amount_out: target_amount_out,
-            } => {
+            QuoteAmount::WithDesiredOutput { desired_amount_out } => {
                 let (input, fee_amount) = if get_fee_from_destination {
                     // output token is xor, user indicates desired output amount:
                     // y_1 = y_out / (1 - fee)
                     // x_in = y_1 / y / x
-                    let output_with_fee = FixedWrapper::from(target_amount_out.clone())
+                    let output_with_fee = FixedWrapper::from(desired_amount_out.clone())
                         / (fixed_wrapper!(1) - fee_fraction);
                     let fee_amount =
-                        output_with_fee.clone() - FixedWrapper::from(target_amount_out);
+                        output_with_fee.clone() - FixedWrapper::from(desired_amount_out);
                     let input = output_with_fee / input_price_wrt_output;
                     (input, fee_amount)
                 } else {
                     // input token is xor, user indicates desired output amount:
                     // x_in = (y_out / y / x) / (1 - fee)
                     let input_without_fee =
-                        FixedWrapper::from(target_amount_out) / input_price_wrt_output;
+                        FixedWrapper::from(desired_amount_out) / input_price_wrt_output;
                     let input = input_without_fee.clone() / (fixed_wrapper!(1) - fee_fraction);
                     let fee_amount = input.clone() - input_without_fee;
                     (input, fee_amount)
