@@ -6,6 +6,158 @@ jsonrpc-server-utils = { git = "https://github.com/soramitsu/jsonrpc.git", branc
 # The latest versions of thread_local (1.1.2) had a memory leak. This version doesn't have it.
 thread_local = { git = "https://github.com/KalitaAlexey/thread_local-rs.git", branch = "patch-1.0.1" }
 
+frame-benchmarking = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "d74fde5" }
+frame-benchmarking-cli = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "d74fde5" }
+frame-executive = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "d74fde5" }
+frame-support = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "d74fde5" }
+frame-system = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "d74fde5" }
+frame-system-benchmarking = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "d74fde5" }
+frame-system-rpc-runtime-api = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "d74fde5" }
+pallet-aura = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "d74fde5" }
+pallet-authorship = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "d74fde5" }
+pallet-babe = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "d74fde5" }
+pallet-balances = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "d74fde5" }
+pallet-collective = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "d74fde5" }
+pallet-democracy = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "d74fde5" }
+pallet-elections-phragmen = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "d74fde5" }
+pallet-grandpa = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "d74fde5" }
+pallet-identity = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "d74fde5" }
+pallet-im-online = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "d74fde5" }
+pallet-membership = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "d74fde5" }
+pallet-multisig = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "d74fde5" }
+pallet-offences = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "d74fde5" }
+pallet-randomness-collective-flip = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "d74fde5" }
+pallet-scheduler = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "d74fde5" }
+pallet-session = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "d74fde5" }
+pallet-sudo = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "d74fde5" }
+pallet-timestamp = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "d74fde5" }
+pallet-transaction-payment = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "d74fde5" }
+pallet-transaction-payment-rpc = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "d74fde5" }
+pallet-transaction-payment-rpc-runtime-api = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "d74fde5" }
+pallet-utility = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "d74fde5" }
+sc-basic-authorship = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "d74fde5" }
+sc-chain-spec = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "d74fde5" }
+sc-cli = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "d74fde5" }
+sc-client-api = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "d74fde5" }
+sc-consensus = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "d74fde5" }
+sc-consensus-aura = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "d74fde5" }
+sc-consensus-babe = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "d74fde5" }
+sc-consensus-slots = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "d74fde5" }
+sc-executor = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "d74fde5" }
+sc-finality-grandpa = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "d74fde5" }
+sc-informant = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "d74fde5" }
+sc-network = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "d74fde5" }
+sc-rpc = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "d74fde5" }
+sc-rpc-api = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "d74fde5" }
+sc-service = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "d74fde5" }
+sc-transaction-pool = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "d74fde5" }
+sp-api = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "d74fde5" }
+sp-arithmetic = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "d74fde5" }
+sp-block-builder = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "d74fde5" }
+sp-blockchain = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "d74fde5" }
+sp-consensus = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "d74fde5" }
+sp-consensus-aura = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "d74fde5" }
+sp-consensus-babe = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "d74fde5" }
+sp-core = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "d74fde5" }
+sp-finality-grandpa = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "d74fde5" }
+sp-inherents = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "d74fde5" }
+sp-io = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "d74fde5" }
+sp-keystore = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "d74fde5" }
+sp-offchain = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "d74fde5" }
+sp-runtime = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "d74fde5" }
+sp-runtime-interface = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "d74fde5" }
+sp-session = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "d74fde5" }
+sp-staking = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "d74fde5" }
+sp-std = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "d74fde5" }
+sp-storage = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "d74fde5" }
+sp-timestamp = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "d74fde5" }
+sp-transaction-pool = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "d74fde5" }
+sp-trie = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "d74fde5" }
+sp-version = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "d74fde5" }
+substrate-frame-rpc-system =  { git = "https://github.com/KalitaAlexey/substrate.git", rev = "d74fde5" }
+#parity-util-mem = { git = "https://github.com/paritytech/parity-common.git" }
+
+#orml-currencies = { git = "https://github.com/KalitaAlexey/open-runtime-module-library.git", branch = "use-master" }
+#orml-traits = { git = "https://github.com/KalitaAlexey/open-runtime-module-library.git", branch = "use-master" }
+#orml-tokens = { git = "https://github.com/KalitaAlexey/open-runtime-module-library.git", branch = "use-master" }
+
+#[patch."https://github.com/soramitsu/sora2-frame-pallets.git"]
+#pallet-staking = { git = "https://github.com/soramitsu/sora2-frame-pallets.git", rev = "345f82cccefb0282419d3f37867a126a00ec7d0b" }
+#pallet-multisig = { git = "https://github.com/soramitsu/sora2-frame-pallets.git", rev = "345f82cccefb0282419d3f37867a126a00ec7d0b" }
+
+[patch."https://github.com/paritytech/substrate"]
+frame-benchmarking = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "d74fde5" }
+frame-benchmarking-cli = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "d74fde5" }
+frame-executive = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "d74fde5" }
+frame-support = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "d74fde5" }
+frame-system = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "d74fde5" }
+frame-system-benchmarking = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "d74fde5" }
+frame-system-rpc-runtime-api = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "d74fde5" }
+pallet-aura = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "d74fde5" }
+pallet-authorship = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "d74fde5" }
+pallet-babe = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "d74fde5" }
+pallet-balances = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "d74fde5" }
+pallet-collective = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "d74fde5" }
+pallet-democracy = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "d74fde5" }
+pallet-elections-phragmen = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "d74fde5" }
+pallet-grandpa = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "d74fde5" }
+pallet-identity = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "d74fde5" }
+pallet-im-online = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "d74fde5" }
+pallet-membership = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "d74fde5" }
+pallet-multisig = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "d74fde5" }
+pallet-offences = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "d74fde5" }
+pallet-randomness-collective-flip = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "d74fde5" }
+pallet-scheduler = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "d74fde5" }
+pallet-session = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "d74fde5" }
+pallet-sudo = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "d74fde5" }
+pallet-timestamp = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "d74fde5" }
+pallet-transaction-payment = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "d74fde5" }
+pallet-transaction-payment-rpc = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "d74fde5" }
+pallet-transaction-payment-rpc-runtime-api = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "d74fde5" }
+pallet-utility = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "d74fde5" }
+sc-basic-authorship = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "d74fde5" }
+sc-chain-spec = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "d74fde5" }
+sc-cli = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "d74fde5" }
+sc-client-api = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "d74fde5" }
+sc-consensus = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "d74fde5" }
+sc-consensus-aura = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "d74fde5" }
+sc-consensus-babe = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "d74fde5" }
+sc-consensus-slots = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "d74fde5" }
+sc-executor = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "d74fde5" }
+sc-finality-grandpa = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "d74fde5" }
+sc-informant = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "d74fde5" }
+sc-network = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "d74fde5" }
+sc-rpc = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "d74fde5" }
+sc-rpc-api = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "d74fde5" }
+sc-service = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "d74fde5" }
+sc-transaction-pool = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "d74fde5" }
+sp-api = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "d74fde5" }
+sp-application-crypto = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "d74fde5" }
+sp-arithmetic = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "d74fde5" }
+sp-block-builder = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "d74fde5" }
+sp-blockchain = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "d74fde5" }
+sp-consensus = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "d74fde5" }
+sp-consensus-aura = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "d74fde5" }
+sp-consensus-babe = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "d74fde5" }
+sp-core = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "d74fde5" }
+sp-finality-grandpa = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "d74fde5" }
+sp-inherents = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "d74fde5" }
+sp-io = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "d74fde5" }
+sp-keystore = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "d74fde5" }
+sp-offchain = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "d74fde5" }
+sp-npos-elections = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "d74fde5" }
+sp-runtime = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "d74fde5" }
+sp-runtime-interface = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "d74fde5" }
+sp-session = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "d74fde5" }
+sp-staking = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "d74fde5" }
+sp-std = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "d74fde5" }
+sp-storage = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "d74fde5" }
+sp-timestamp = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "d74fde5" }
+sp-transaction-pool = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "d74fde5" }
+sp-trie = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "d74fde5" }
+sp-version = { git = "https://github.com/KalitaAlexey/substrate.git", rev = "d74fde5" }
+substrate-frame-rpc-system =  { git = "https://github.com/KalitaAlexey/substrate.git", rev = "d74fde5" }
+
 [workspace]
 members = [
     "runtime",
@@ -29,9 +181,12 @@ members = [
     "pallets/pswap-distribution",
     "pallets/multicollateral-bonding-curve-pool",
     "pallets/vested-rewards",
+    "pallets/xst",
     "pallets/price-tools",
     "node/",
+    "utils/parse",
 ]
+
 resolver = "2"
 
 [profile.release]

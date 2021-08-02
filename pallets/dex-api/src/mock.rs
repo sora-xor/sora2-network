@@ -152,6 +152,7 @@ impl Config for Runtime {
         mock_liquidity_source::Module<Runtime, mock_liquidity_source::Instance4>;
     type MulticollateralBondingCurvePool = ();
     type XYKPool = pool_xyk::Module<Runtime>;
+    type XSTPool = ();
     type WeightInfo = ();
 }
 
@@ -235,7 +236,6 @@ impl technical::Config for Runtime {
     type Trigger = ();
     type Condition = ();
     type SwapAction = pool_xyk::PolySwapAction<AssetId, AccountId, TechAccountId>;
-    type WeightInfo = ();
 }
 
 impl dex_manager::Config for Runtime {}

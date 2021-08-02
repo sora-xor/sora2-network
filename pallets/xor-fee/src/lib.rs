@@ -31,13 +31,12 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use common::prelude::SwapAmount;
-use common::{Balance, FilterMode, LiquiditySourceFilter, LiquiditySourceType};
+use common::{Balance, FilterMode, LiquiditySourceFilter, LiquiditySourceType, OnValBurned};
 use frame_support::pallet_prelude::InvalidTransaction;
 use frame_support::traits::{Currency, ExistenceRequirement, Get, Imbalance, Vec, WithdrawReasons};
 use frame_support::unsigned::TransactionValidityError;
 use frame_support::weights::{DispatchInfo, GetDispatchInfo, Pays};
 use liquidity_proxy::LiquidityProxyTrait;
-use pallet_staking::ValBurnedNotifier;
 use pallet_transaction_payment::{
     FeeDetails, InclusionFee, OnChargeTransaction, RuntimeDispatchInfo,
 };
@@ -91,8 +90,10 @@ impl<T: Config> From<Option<NegativeImbalanceOf<T>>> for LiquidityInfo<T> {
 
 impl<T: Config> OnChargeTransaction<T> for Pallet<T>
 where
-    CallOf<T>: ExtractProxySwap<DexId = T::DEXId, AssetId = T::AssetId, Amount = SwapAmount<u128>>,
+    CallOf<T>: ExtractProxySwap<DexId = T::DEXId, AssetId = T::AssetId, Amount = SwapAmount<u128>>
+        + IsCalledByBridgePeer<T::AccountId>,
     BalanceOf<T>: Into<u128>,
+    DispatchInfoOf<CallOf<T>>: Into<DispatchInfo> + Clone,
 {
     type Balance = BalanceOf<T>;
     type LiquidityInfo = LiquidityInfo<T>;
@@ -152,7 +153,7 @@ where
             <T::LiquidityProxy as LiquidityProxyTrait<T::DEXId, T::AccountId, T::AssetId>>::quote(
                 &input_asset_id,
                 &output_asset_id,
-                amount,
+                amount.into(),
                 filter.clone(),
             )
             .map_err(|_| InvalidTransaction::Payment)?;
@@ -333,6 +334,10 @@ pub trait ExtractProxySwap {
     fn extract(&self) -> Option<SwapInfo<Self::DexId, Self::AssetId, Self::Amount>>;
 }
 
+pub trait IsCalledByBridgePeer<AccountId> {
+    fn is_called_by_bridge_peer(&self, who: &AccountId) -> bool;
+}
+
 /// A trait whose purpose is to extract the `Call` variant of an extrinsic
 pub trait GetCall<Call> {
     fn get_call(&self) -> Call;
@@ -401,7 +406,7 @@ impl<T: Config> Pallet<T> {
         _len: u32,
     ) -> Option<FeeDetails<BalanceOf<T>>>
     where
-        T::Call: Dispatchable<Info = DispatchInfo>,
+        <T as frame_system::Config>::Call: Dispatchable<Info = DispatchInfo>,
     {
         let call = <Extrinsic as GetCall<CallOf<T>>>::get_call(unchecked_extrinsic);
         let maybe_custom_fee = T::CustomFees::compute_fee(&call);
@@ -447,7 +452,7 @@ impl<T: Config> Pallet<T> {
         ) {
             Ok(swap_outcome) => {
                 let val_to_burn = Balance::from(swap_outcome.amount);
-                T::ValBurnedNotifier::notify_val_burned(val_to_burn.clone());
+                T::OnValBurned::on_val_burned(val_to_burn.clone());
 
                 let val_to_burn = val_to_burn.clone() - T::SoraParliamentShare::get() * val_to_burn;
                 Assets::<T>::burn_from(&val, &parliament, &parliament, val_to_burn)?;
@@ -479,6 +484,7 @@ pub mod pallet {
         frame_system::Config
         + referral_system::Config
         + assets::Config
+        + eth_bridge::Config
         + common::Config
         + pallet_transaction_payment::Config
         + pallet_session::historical::Config
@@ -494,7 +500,7 @@ pub mod pallet {
         type SoraParliamentShare: Get<Percent>;
         type DEXIdValue: Get<Self::DEXId>;
         type LiquidityProxy: LiquidityProxyTrait<Self::DEXId, Self::AccountId, Self::AssetId>;
-        type ValBurnedNotifier: ValBurnedNotifier<Balance>;
+        type OnValBurned: OnValBurned;
         type CustomFees: ApplyCustomFees<CallOf<Self>>;
         type GetTechnicalAccountId: Get<Self::AccountId>;
         type GetParliamentAccountId: Get<Self::AccountId>;

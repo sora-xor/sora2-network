@@ -33,7 +33,7 @@ use common::mock::ExistentialDeposits;
 use common::{
     self, balance, fixed, fixed_from_basis_points, fixed_wrapper, hash, Amount, AssetId32,
     AssetName, AssetSymbol, DEXInfo, Fixed, FromGenericPair, GetMarketInfo, LiquiditySource,
-    LiquiditySourceType, RewardReason, DAI, DOT, ETH, KSM, PSWAP, USDT, VAL, XOR,
+    LiquiditySourceType, RewardReason, DAI, DOT, ETH, KSM, PSWAP, USDT, VAL, XOR, XSTUSD,
 };
 use currencies::BasicCurrencyAdapter;
 
@@ -43,7 +43,7 @@ use frame_support::{construct_runtime, ensure, fail, parameter_types};
 use frame_system;
 use traits::MultiCurrency;
 
-use common::prelude::{Balance, FixedWrapper, SwapAmount, SwapOutcome};
+use common::prelude::{Balance, FixedWrapper, QuoteAmount, SwapAmount, SwapOutcome};
 use permissions::{Scope, INIT_DEX, MANAGE_DEX};
 use sp_core::H256;
 use sp_runtime::testing::Header;
@@ -171,7 +171,8 @@ impl Config for Runtime {
     type GetNumSamples = GetNumSamples;
     type GetTechnicalAccountId = GetLiquidityProxyAccountId;
     type WeightInfo = ();
-    type PrimaryMarket = MockMCBCPool;
+    type PrimaryMarketTBC = MockMCBCPool;
+    type PrimaryMarketXST = MockXSTPool;
     type SecondaryMarket = mock_liquidity_source::Module<Runtime, mock_liquidity_source::Instance1>;
     type VestedRewardsPallet = vested_rewards::Module<Runtime>;
 }
@@ -254,7 +255,6 @@ impl technical::Config for Runtime {
     type Trigger = ();
     type Condition = ();
     type SwapAction = pool_xyk::PolySwapAction<AssetId, AccountId, TechAccountId>;
-    type WeightInfo = ();
 }
 
 impl permissions::Config for Runtime {
@@ -273,6 +273,7 @@ impl dex_api::Config for Runtime {
         mock_liquidity_source::Module<Runtime, mock_liquidity_source::Instance4>;
     type XYKPool = ();
     type MulticollateralBondingCurvePool = MockMCBCPool;
+    type XSTPool = MockXSTPool;
     type WeightInfo = ();
 }
 
@@ -515,7 +516,7 @@ impl LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> for Mock
         dex_id: &DEXId,
         input_asset_id: &AssetId,
         output_asset_id: &AssetId,
-        swap_amount: SwapAmount<Balance>,
+        amount: QuoteAmount<Balance>,
     ) -> Result<SwapOutcome<Balance>, DispatchError> {
         if !Self::can_exchange(dex_id, input_asset_id, output_asset_id) {
             panic!("Can't exchange");
@@ -546,8 +547,8 @@ impl LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> for Mock
 
             let extra_fee = FixedWrapper::from(undercollaterization_charge(collateralization));
 
-            match swap_amount {
-                SwapAmount::WithDesiredInput {
+            match amount {
+                QuoteAmount::WithDesiredInput {
                     desired_amount_in, ..
                 } => {
                     let input_wrapped: FixedWrapper = desired_amount_in.into();
@@ -559,7 +560,7 @@ impl LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> for Mock
 
                     (desired_amount_in, output_amount, 0)
                 }
-                SwapAmount::WithDesiredOutput {
+                QuoteAmount::WithDesiredOutput {
                     desired_amount_out, ..
                 } => {
                     let output_wrapped: FixedWrapper = desired_amount_out.into();
@@ -581,8 +582,8 @@ impl LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> for Mock
             let buy_spot_price: FixedWrapper = Self::_spot_price(input_asset_id).into();
             let m: FixedWrapper = fixed_wrapper!(1) / fixed_wrapper!(1337);
 
-            match swap_amount {
-                SwapAmount::WithDesiredInput {
+            match amount {
+                QuoteAmount::WithDesiredInput {
                     desired_amount_in: collateral_quantity,
                     ..
                 } => {
@@ -594,7 +595,7 @@ impl LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> for Mock
                     let output_amount: Balance = base_output.try_into_balance().unwrap();
                     (collateral_quantity, output_amount, 0)
                 }
-                SwapAmount::WithDesiredOutput {
+                QuoteAmount::WithDesiredOutput {
                     desired_amount_out: base_quantity,
                     ..
                 } => {
@@ -609,9 +610,9 @@ impl LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> for Mock
                 }
             }
         };
-        match swap_amount {
-            SwapAmount::WithDesiredInput { .. } => Ok(SwapOutcome::new(output_amount, fee_amount)),
-            SwapAmount::WithDesiredOutput { .. } => Ok(SwapOutcome::new(input_amount, fee_amount)),
+        match amount {
+            QuoteAmount::WithDesiredInput { .. } => Ok(SwapOutcome::new(output_amount, fee_amount)),
+            QuoteAmount::WithDesiredOutput { .. } => Ok(SwapOutcome::new(input_amount, fee_amount)),
         }
     }
 
@@ -667,15 +668,7 @@ impl GetMarketInfo<AssetId> for MockMCBCPool {
         Ok(output)
     }
 
-    fn collateral_reserves(asset_id: &AssetId) -> Result<Balance, DispatchError> {
-        let reserves_tech_account_id =
-            TechAccountId::Generic(b"mcbc_pool".to_vec(), b"main".to_vec());
-        let reserves_account_id =
-            Technical::tech_account_id_to_account_id(&reserves_tech_account_id).unwrap();
-        Ok(Currencies::free_balance(*asset_id, &reserves_account_id))
-    }
-
-    fn enabled_collaterals() -> BTreeSet<AssetId> {
+    fn enabled_target_assets() -> BTreeSet<AssetId> {
         [VAL, PSWAP, DAI, ETH].iter().cloned().collect()
     }
 }
@@ -687,6 +680,7 @@ pub fn get_reference_prices() -> HashMap<AssetId, Balance> {
         (USDT, balance!(1.01)),
         (KSM, balance!(450.0)),
         (DOT, balance!(50.0)),
+        (XSTUSD, balance!(1.02)),
     ];
     prices.into_iter().collect()
 }
@@ -833,5 +827,144 @@ impl ExtBuilder {
         .unwrap();
 
         t.into()
+    }
+}
+
+pub struct MockXSTPool;
+
+#[allow(unused)]
+impl MockXSTPool {
+    pub fn init() -> Result<(), DispatchError> {
+        let reserves_tech_account_id =
+            TechAccountId::Generic(b"xst_pool".to_vec(), b"main".to_vec());
+        let _reserves_account_id =
+            Technical::tech_account_id_to_account_id(&reserves_tech_account_id)?;
+        Technical::register_tech_account_id(reserves_tech_account_id.clone())?;
+        MockLiquiditySource::set_reserves_account_id(reserves_tech_account_id)?;
+        Ok(())
+    }
+}
+
+impl LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> for MockXSTPool {
+    fn can_exchange(_dex_id: &DEXId, input_asset_id: &AssetId, output_asset_id: &AssetId) -> bool {
+        if output_asset_id == &XOR.into() && input_asset_id == &XSTUSD.into() {
+            return true;
+        } else if input_asset_id == &XOR.into() && output_asset_id == &XSTUSD.into() {
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    fn quote(
+        dex_id: &DEXId,
+        input_asset_id: &AssetId,
+        output_asset_id: &AssetId,
+        amount: QuoteAmount<Balance>,
+    ) -> Result<SwapOutcome<Balance>, DispatchError> {
+        if !Self::can_exchange(dex_id, input_asset_id, output_asset_id) {
+            panic!("Can't exchange");
+        }
+        let base_asset_id = &GetBaseAssetId::get();
+        let reserves_tech_account_id =
+            TechAccountId::Generic(b"xst_pool".to_vec(), b"main".to_vec());
+        let _reserves_account_id =
+            Technical::tech_account_id_to_account_id(&reserves_tech_account_id)?;
+
+        let base_asset_price: Balance = get_reference_prices()[base_asset_id].into();
+
+        let (input_amount, output_amount, fee_amount) = if input_asset_id == base_asset_id {
+            // Selling XOR
+
+            match amount {
+                QuoteAmount::WithDesiredInput {
+                    desired_amount_in, ..
+                } => {
+                    let output_amount: Balance = desired_amount_in * base_asset_price;
+                    (desired_amount_in, output_amount, 0)
+                }
+                QuoteAmount::WithDesiredOutput {
+                    desired_amount_out, ..
+                } => {
+                    let input_amount = desired_amount_out / base_asset_price;
+                    (input_amount, desired_amount_out, 0)
+                }
+            }
+        } else {
+            // Buying XOR
+            match amount {
+                QuoteAmount::WithDesiredInput {
+                    desired_amount_in: synthetics_quantity,
+                    ..
+                } => {
+                    //TODO: here we assume only DAI-pegged XST(USD) synthetics. Need to have a price oracle to handle other synthetics in the future!
+                    let output_amount = synthetics_quantity / base_asset_price;
+                    (synthetics_quantity, output_amount, 0)
+                }
+                QuoteAmount::WithDesiredOutput {
+                    desired_amount_out: base_quantity,
+                    ..
+                } => {
+                    //TODO: here we assume only DAI-pegged XST(USD) synthetics. Need to have a price oracle to handle other synthetics in the future!
+                    let input_amount = base_quantity * base_asset_price;
+
+                    (input_amount, base_quantity, 0)
+                }
+            }
+        };
+        match amount {
+            QuoteAmount::WithDesiredInput { .. } => Ok(SwapOutcome::new(output_amount, fee_amount)),
+            QuoteAmount::WithDesiredOutput { .. } => Ok(SwapOutcome::new(input_amount, fee_amount)),
+        }
+    }
+
+    fn exchange(
+        _sender: &AccountId,
+        _receiver: &AccountId,
+        _dex_id: &DEXId,
+        _input_asset_id: &AssetId,
+        _output_asset_id: &AssetId,
+        _desired_amount: SwapAmount<Balance>,
+    ) -> Result<SwapOutcome<Balance>, DispatchError> {
+        unimplemented!()
+    }
+
+    fn check_rewards(
+        _dex_id: &DEXId,
+        _input_asset_id: &AssetId,
+        _output_asset_id: &AssetId,
+        _input_amount: Balance,
+        _output_amount: Balance,
+    ) -> Result<Vec<(Balance, AssetId, RewardReason)>, DispatchError> {
+        Ok(Vec::new()) // no rewards for XST
+    }
+}
+
+impl GetMarketInfo<AssetId> for MockXSTPool {
+    fn buy_price(
+        _base_asset_id: &AssetId,
+        synthetic_asset: &AssetId,
+    ) -> Result<Fixed, DispatchError> {
+        let synthetic_asset_price: FixedWrapper = get_reference_prices()[synthetic_asset].into();
+        let output = synthetic_asset_price
+            .get()
+            .map_err(|_| crate::Error::<Runtime>::CalculationError)?;
+        Ok(output)
+    }
+
+    fn sell_price(
+        _base_asset: &AssetId,
+        synthetic_asset: &AssetId,
+    ) -> Result<Fixed, DispatchError> {
+        let synthetic_asset_price: FixedWrapper = get_reference_prices()[synthetic_asset].into();
+        let output = synthetic_asset_price
+            .get()
+            .map_err(|_| crate::Error::<Runtime>::CalculationError)?;
+        Ok(output)
+    }
+
+    /// `target_assets` refer to synthetic assets
+    fn enabled_target_assets() -> BTreeSet<AssetId> {
+        [XSTUSD].iter().cloned().collect()
     }
 }

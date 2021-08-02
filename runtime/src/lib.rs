@@ -40,6 +40,7 @@ pub mod constants;
 mod extensions;
 mod impls;
 
+use common::prelude::QuoteAmount;
 use constants::time::*;
 
 // Make the WASM binary available.
@@ -61,10 +62,10 @@ use serde::{Serialize, Serializer};
 use sp_api::impl_runtime_apis;
 use sp_core::crypto::KeyTypeId;
 use sp_core::u32_trait::{_1, _2, _3};
-use sp_core::{Encode, OpaqueMetadata};
+use sp_core::{Encode, OpaqueMetadata, H160};
 use sp_runtime::traits::{
     BlakeTwo256, Block as BlockT, Convert, IdentifyAccount, IdentityLookup, NumberFor, OpaqueKeys,
-    SaturatedConversion, Verify, Zero,
+    SaturatedConversion, Verify,
 };
 use sp_runtime::transaction_validity::{
     TransactionPriority, TransactionSource, TransactionValidity,
@@ -90,7 +91,7 @@ pub use common::weights::{BlockLength, BlockWeights, TransactionByteFee};
 pub use common::{
     balance, fixed, fixed_from_basis_points, AssetName, AssetSymbol, BalancePrecision, BasisPoints,
     FilterMode, Fixed, FromGenericPair, LiquiditySource, LiquiditySourceFilter, LiquiditySourceId,
-    LiquiditySourceType, OnPswapBurned,
+    LiquiditySourceType, OnPswapBurned, OnValBurned,
 };
 pub use frame_support::traits::schedule::Named as ScheduleNamed;
 pub use frame_support::traits::{
@@ -109,12 +110,14 @@ pub use pallet_transaction_payment::{Multiplier, MultiplierUpdate};
 #[cfg(any(feature = "std", test))]
 pub use sp_runtime::BuildStorage;
 
-use eth_bridge::{
-    AssetKind, OffchainRequest, OutgoingRequestEncoded, RequestStatus, SignatureParams,
-};
+use eth_bridge::offchain::SignatureParams;
+use eth_bridge::requests::{AssetKind, OffchainRequest, OutgoingRequestEncoded, RequestStatus};
 use impls::{CollectiveWeightInfo, DemocracyWeightInfo, OnUnbalancedDemocracySlash};
 
-pub use {assets, eth_bridge, frame_system, multicollateral_bonding_curve_pool};
+use frame_support::traits::Get;
+pub use {
+    assets, eth_bridge, frame_system, multicollateral_bonding_curve_pool, xst,
+};
 
 /// An index to a block.
 pub type BlockNumber = u32;
@@ -205,10 +208,10 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
     spec_name: create_runtime_str!("sora-substrate"),
     impl_name: create_runtime_str!("sora-substrate"),
     authoring_version: 1,
-    spec_version: 5,
+    spec_version: 8,
     impl_version: 1,
     apis: RUNTIME_API_VERSIONS,
-    transaction_version: 5,
+    transaction_version: 8,
 };
 
 /// The version infromation used to identify this runtime when compiled natively.
@@ -640,7 +643,6 @@ impl technical::Config for Runtime {
     type Trigger = ();
     type Condition = ();
     type SwapAction = pool_xyk::PolySwapAction<AssetId, AccountId, TechAccountId>;
-    type WeightInfo = ();
 }
 
 parameter_types! {
@@ -691,7 +693,8 @@ impl liquidity_proxy::Config for Runtime {
     type LiquidityRegistry = dex_api::Module<Runtime>;
     type GetNumSamples = GetNumSamples;
     type GetTechnicalAccountId = GetLiquidityProxyAccountId;
-    type PrimaryMarket = multicollateral_bonding_curve_pool::Module<Runtime>;
+    type PrimaryMarketTBC = multicollateral_bonding_curve_pool::Module<Runtime>;
+    type PrimaryMarketXST = xst::Module<Runtime>;
     type SecondaryMarket = pool_xyk::Module<Runtime>;
     type WeightInfo = liquidity_proxy::weights::WeightInfo<Runtime>;
     type VestedRewardsPallet = vested_rewards::Module<Runtime>;
@@ -733,6 +736,7 @@ impl dex_api::Config for Runtime {
         mock_liquidity_source::Module<Runtime, mock_liquidity_source::Instance4>;
     type MulticollateralBondingCurvePool = multicollateral_bonding_curve_pool::Module<Runtime>;
     type XYKPool = pool_xyk::Module<Runtime>;
+    type XSTPool = xst::Module<Runtime>;
     type WeightInfo = dex_api::weights::WeightInfo<Runtime>;
 }
 
@@ -839,6 +843,11 @@ where
 impl referral_system::Config for Runtime {}
 
 impl rewards::Config for Runtime {
+    const BLOCKS_PER_DAY: BlockNumber = 1 * DAYS;
+    const UPDATE_FREQUENCY: BlockNumber = 10 * MINUTES;
+    const MAX_CHUNK_SIZE: usize = 100;
+    const MAX_VESTING_RATIO: Percent = Percent::from_percent(55);
+    const TIME_TO_SATURATION: BlockNumber = 5 * 365 * DAYS; // 5 years
     type Event = Event;
     type WeightInfo = rewards::weights::WeightInfo<Runtime>;
 }
@@ -855,9 +864,6 @@ impl xor_fee::ApplyCustomFees<Call> for ExtrinsicsFlatFees {
             | Call::EthBridge(eth_bridge::Call::transfer_to_sidechain(..))
             | Call::PoolXYK(pool_xyk::Call::withdraw_liquidity(..))
             | Call::Rewards(rewards::Call::claim(..)) => Some(balance!(0.007)),
-            Call::EthBridge(eth_bridge::Call::register_incoming_request(..))
-            | Call::EthBridge(eth_bridge::Call::finalize_incoming_request(..))
-            | Call::EthBridge(eth_bridge::Call::approve_request(..)) => None,
             Call::Assets(..)
             | Call::EthBridge(..)
             | Call::LiquidityProxy(..)
@@ -899,6 +905,53 @@ impl xor_fee::ExtractProxySwap for Call {
     }
 }
 
+impl xor_fee::IsCalledByBridgePeer<AccountId> for Call {
+    fn is_called_by_bridge_peer(&self, who: &AccountId) -> bool {
+        match self {
+            Call::BridgeMultisig(call) => match call {
+                bridge_multisig::Call::as_multi(multisig_id, ..)
+                | bridge_multisig::Call::as_multi_threshold_1(multisig_id, ..) => {
+                    bridge_multisig::Accounts::<Runtime>::get(multisig_id)
+                        .map(|acc| acc.is_signatory(&who))
+                }
+                _ => None,
+            },
+            Call::EthBridge(call) => match call {
+                eth_bridge::Call::approve_request(_, _, _, network_id) => {
+                    Some(eth_bridge::Pallet::<Runtime>::is_peer(who, *network_id))
+                }
+                eth_bridge::Call::register_incoming_request(request) => {
+                    let net_id = request.network_id();
+                    eth_bridge::BridgeAccount::<Runtime>::get(net_id).map(|acc| acc == *who)
+                }
+                eth_bridge::Call::import_incoming_request(load_request, _) => {
+                    let net_id = load_request.network_id();
+                    eth_bridge::BridgeAccount::<Runtime>::get(net_id).map(|acc| acc == *who)
+                }
+                eth_bridge::Call::finalize_incoming_request(_, network_id)
+                | eth_bridge::Call::abort_request(_, _, network_id) => {
+                    eth_bridge::BridgeAccount::<Runtime>::get(network_id).map(|acc| acc == *who)
+                }
+                _ => None,
+            },
+            _ => None,
+        }
+        .unwrap_or(false)
+    }
+}
+
+pub struct ValBurnedAggregator<T>(sp_std::marker::PhantomData<T>);
+
+impl<T> OnValBurned for ValBurnedAggregator<T>
+where
+    T: pallet_staking::ValBurnedNotifier<Balance>,
+{
+    fn on_val_burned(amount: Balance) {
+        Rewards::on_val_burned(amount);
+        T::notify_val_burned(amount);
+    }
+}
+
 parameter_types! {
     pub const DEXIdValue: DEXId = 0;
 }
@@ -915,7 +968,7 @@ impl xor_fee::Config for Runtime {
     type ValId = GetValAssetId;
     type DEXIdValue = DEXIdValue;
     type LiquidityProxy = LiquidityProxy;
-    type ValBurnedNotifier = Staking;
+    type OnValBurned = ValBurnedAggregator<Staking>;
     type CustomFees = ExtrinsicsFlatFees;
     type GetTechnicalAccountId = GetXorFeeAccountId;
     type GetParliamentAccountId = GetParliamentAccountId;
@@ -982,17 +1035,98 @@ impl bridge_multisig::Config for Runtime {
 
 parameter_types! {
     pub const EthNetworkId: u32 = 0;
-    pub const RemoveTemporaryPeerAccountId: AccountId = AccountId::new(hex!("614e20b93522be9874e48f1e18b9bf2dfd4cdc4dafc1887ca353d544c92526cc"));
+}
+
+pub struct RemoveTemporaryPeerAccountIds;
+
+#[cfg(feature = "private-net")]
+impl Get<Vec<(AccountId, H160)>> for RemoveTemporaryPeerAccountIds {
+    fn get() -> Vec<(AccountId, H160)> {
+        vec![
+            // Dev
+            (
+                AccountId::new(hex!(
+                    "aa79aa80b94b1cfba69c4a7d60eeb7b469e6411d1f686cc61de8adc8b1b76a69"
+                )),
+                H160(hex!("f858c8366f3a2553516a47f3e0503a85ef93bbba")),
+            ),
+            (
+                AccountId::new(hex!(
+                    "60dc5adadc262770cbe904e3f65a26a89d46b70447640cd7968b49ddf5a459bc"
+                )),
+                H160(hex!("ccd7fe44d58640dc79c55b98f8c3474646e5ea2b")),
+            ),
+            (
+                AccountId::new(hex!(
+                    "70d61e980602e09ac8b5fb50658ebd345774e73b8248d3b61862ba1a9a035082"
+                )),
+                H160(hex!("13d26a91f791e884fe6faa7391c4ef401638baa4")),
+            ),
+            (
+                AccountId::new(hex!(
+                    "05918034f4a7f7c5d99cd0382aa6574ec2aba148aa3d769e50e0ac7663e36d58"
+                )),
+                H160(hex!("aa19829ae887212206be8e97ea47d8fed2120d4e")),
+            ),
+            // Test
+            (
+                AccountId::new(hex!(
+                    "07f5670d08b8f3bd493ff829482a489d94494fd50dd506957e44e9fdc2e98684"
+                )),
+                H160(hex!("457d710255184dbf63c019ab50f65743c6cb072f")),
+            ),
+            (
+                AccountId::new(hex!(
+                    "211bb96e9f746183c05a1d583bccf513f9d8f679d6f36ecbd06609615a55b1cc"
+                )),
+                H160(hex!("6d04423c97e8ce36d04c9b614926ce0d029d04df")),
+            ),
+            (
+                AccountId::new(hex!(
+                    "ef3139b81d14977d5bf6b4a3994872337dfc1d2af2069a058bc26123a3ed1a5c"
+                )),
+                H160(hex!("e34022904b1ab539729cc7b5bfa5c8a74b165e80")),
+            ),
+            (
+                AccountId::new(hex!(
+                    "71124b336fbf3777d743d4390acce6be1cf5e0781e40c51d4cf2e5b5fd8e41e1"
+                )),
+                H160(hex!("ee74a5b5346915012d103cf1ccee288f25bcbc81")),
+            ),
+            // Stage
+            (
+                AccountId::new(hex!(
+                    "07f5670d08b8f3bd493ff829482a489d94494fd50dd506957e44e9fdc2e98684"
+                )),
+                H160(hex!("457d710255184dbf63c019ab50f65743c6cb072f")),
+            ),
+            (
+                AccountId::new(hex!(
+                    "211bb96e9f746183c05a1d583bccf513f9d8f679d6f36ecbd06609615a55b1cc"
+                )),
+                H160(hex!("6d04423c97e8ce36d04c9b614926ce0d029d04df")),
+            ),
+        ]
+    }
+}
+
+#[cfg(not(feature = "private-net"))]
+impl Get<Vec<(AccountId, H160)>> for RemoveTemporaryPeerAccountIds {
+    fn get() -> Vec<(AccountId, H160)> {
+        vec![] // the peer is already removed on main-net.
+    }
 }
 
 #[cfg(not(feature = "private-net"))]
 parameter_types! {
     pub const RemovePendingOutgoingRequestsAfter: BlockNumber = 1 * DAYS;
+    pub const TrackPendingIncomingRequestsAfter: (BlockNumber, u64) = (1 * DAYS, 12697214);
 }
 
 #[cfg(feature = "private-net")]
 parameter_types! {
     pub const RemovePendingOutgoingRequestsAfter: BlockNumber = 30 * MINUTES;
+    pub const TrackPendingIncomingRequestsAfter: (BlockNumber, u64) = (30 * MINUTES, 0);
 }
 
 pub type NetworkId = u32;
@@ -1000,12 +1134,15 @@ pub type NetworkId = u32;
 impl eth_bridge::Config for Runtime {
     type Event = Event;
     type Call = Call;
-    type PeerId = eth_bridge::crypto::TestAuthId;
+    type PeerId = eth_bridge::offchain::crypto::TestAuthId;
     type NetworkId = NetworkId;
     type GetEthNetworkId = EthNetworkId;
     type WeightInfo = eth_bridge::weights::WeightInfo<Runtime>;
     type RemovePendingOutgoingRequestsAfter = RemovePendingOutgoingRequestsAfter;
-    type RemoveTemporaryPeerAccountId = RemoveTemporaryPeerAccountId;
+    type TrackPendingIncomingRequestsAfter = TrackPendingIncomingRequestsAfter;
+    type RemovePeerAccountIds = RemoveTemporaryPeerAccountIds;
+    type SchedulerOriginCaller = OriginCaller;
+    type Scheduler = Scheduler;
 }
 
 #[cfg(feature = "private-net")]
@@ -1160,6 +1297,15 @@ impl multicollateral_bonding_curve_pool::Config for Runtime {
     type WeightInfo = multicollateral_bonding_curve_pool::weights::WeightInfo<Runtime>;
 }
 
+impl xst::Config for Runtime {
+    type Event = Event;
+    type LiquidityProxy = LiquidityProxy;
+    type EnsureDEXManager = DEXManager;
+    type EnsureTradingPairExists = TradingPair;
+    type PriceToolsPallet = PriceTools;
+    type WeightInfo = xst::weights::WeightInfo<Runtime>;
+}
+
 impl pallet_im_online::Config for Runtime {
     type AuthorityId = ImOnlineId;
     type Event = Event;
@@ -1258,9 +1404,11 @@ construct_runtime! {
         VestedRewards: vested_rewards::{Module, Call, Storage, Event<T>} = 40,
         Identity: pallet_identity::{Module, Call, Storage, Event<T>} = 41,
         Farming: farming::{Module, Call, Storage} = 42,
-        // Available only for test net
-        Faucet: faucet::{Module, Call, Config<T>, Event<T>} = 43,
+        XSTPool: xst::{Module, Call, Storage, Config<T>, Event<T>} = 43,
         PriceTools: price_tools::{Module, Storage, Event<T>} = 44,
+
+        // Available only for test net
+        Faucet: faucet::{Module, Call, Config<T>, Event<T>} = 80,
     }
 }
 
@@ -1319,6 +1467,7 @@ construct_runtime! {
         VestedRewards: vested_rewards::{Module, Call, Storage, Event<T>} = 40,
         Identity: pallet_identity::{Module, Call, Storage, Event<T>} = 41,
         Farming: farming::{Module, Call, Storage} = 42,
+        XSTPool: xst::{Module, Call, Storage, Config<T>, Event<T>} = 43,
         PriceTools: price_tools::{Module, Storage, Event<T>} = 44,
     }
 }
@@ -1420,8 +1569,9 @@ impl_runtime_apis! {
         fn validate_transaction(
             source: TransactionSource,
             tx: <Block as BlockT>::Extrinsic,
+            block_hash: <Block as BlockT>::Hash,
         ) -> TransactionValidity {
-            Executive::validate_transaction(source, tx)
+            Executive::validate_transaction(source, tx, block_hash)
         }
     }
 
@@ -1491,17 +1641,11 @@ impl_runtime_apis! {
         ) -> Option<dex_runtime_api::SwapOutcomeInfo<Balance>> {
             #[cfg(feature = "private-net")]
             {
-                // TODO: remove with proper QuoteAmount refactor
-                let limit = if swap_variant == SwapVariant::WithDesiredInput {
-                    Balance::zero()
-                } else {
-                    Balance::max_value()
-                };
                 DEXAPI::quote(
                     &LiquiditySourceId::new(dex_id, liquidity_source_type),
                     &input_asset_id,
                     &output_asset_id,
-                    SwapAmount::with_variant(swap_variant, desired_input_amount.into(), limit),
+                    QuoteAmount::with_variant(swap_variant, desired_input_amount.into()),
                 ).ok().map(|sa| dex_runtime_api::SwapOutcomeInfo::<Balance> { amount: sa.amount, fee: sa.fee})
             }
             #[cfg(not(feature = "private-net"))]
@@ -1709,16 +1853,10 @@ impl_runtime_apis! {
                 return None;
             }
 
-            // TODO: remove with proper QuoteAmount refactor
-            let limit = if swap_variant == SwapVariant::WithDesiredInput {
-                Balance::zero()
-            } else {
-                Balance::max_value()
-            };
-            LiquidityProxy::quote(
+            LiquidityProxy::inner_quote(
                 &input_asset_id,
                 &output_asset_id,
-                SwapAmount::with_variant(swap_variant, amount.into(), limit),
+                QuoteAmount::with_variant(swap_variant, amount.into()),
                 LiquiditySourceFilter::with_mode(dex_id, filter_mode, selected_source_types),
                 false,
             ).ok().map(|(asa, rewards)| liquidity_proxy_runtime_api::SwapOutcomeInfo::<Balance, AssetId> {

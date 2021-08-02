@@ -185,7 +185,6 @@ impl technical::Config for Runtime {
     type Trigger = ();
     type Condition = ();
     type SwapAction = pool_xyk::PolySwapAction<AssetId, AccountId, TechAccountId>;
-    type WeightInfo = ();
 }
 
 impl permissions::Config for Runtime {
@@ -199,6 +198,7 @@ impl dex_api::Config for Runtime {
     type MockLiquiditySource3 = ();
     type MockLiquiditySource4 = ();
     type XYKPool = pool_xyk::Module<Runtime>;
+    type XSTPool = ();
     type MulticollateralBondingCurvePool = ();
     type WeightInfo = ();
 }

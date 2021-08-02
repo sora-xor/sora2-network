@@ -37,8 +37,8 @@ use framenode_runtime::GenesisConfig;
 
 use common::prelude::{Balance, DEXInfo, FixedWrapper};
 use common::{
-    balance, fixed, hash, vec_push, BalancePrecision, DEXId, Fixed, TechPurpose, DAI,
-    DEFAULT_BALANCE_PRECISION, ETH, PSWAP, USDT, VAL, XOR,
+    balance, fixed, hash, our_include, our_include_bytes, vec_push, BalancePrecision, DEXId, Fixed,
+    TechPurpose, DAI, DEFAULT_BALANCE_PRECISION, ETH, PSWAP, USDT, VAL, XOR,
 };
 use frame_support::sp_runtime::Percent;
 use framenode_runtime::eth_bridge::{AssetConfig, BridgeAssetData, NetworkConfig};
@@ -53,7 +53,8 @@ use framenode_runtime::{
     GetPswapAssetId, GetValAssetId, GetXorAssetId, GrandpaConfig, ImOnlineId, IrohaMigrationConfig,
     LiquiditySourceType, MulticollateralBondingCurvePoolConfig, PermissionsConfig,
     PswapDistributionConfig, RewardsConfig, Runtime, SessionConfig, StakerStatus, StakingConfig,
-    SystemConfig, TechAccountId, TechnicalConfig, TokensConfig, TradingPairConfig, WASM_BINARY,
+    SystemConfig, TechAccountId, TechnicalConfig, TokensConfig, TradingPairConfig, XSTPoolConfig,
+    WASM_BINARY,
 };
 use hex_literal::hex;
 use permissions::Scope;
@@ -81,30 +82,6 @@ use std::borrow::Cow;
 pub type ChainSpec = sc_service::GenericChainSpec<GenesisConfig>;
 type Technical = technical::Module<Runtime>;
 type AccountPublic = <Signature as Verify>::Signer;
-
-macro_rules! our_include {
-    ($x:expr) => {{
-        #[cfg(feature = "include-real-files")]
-        let output = include!($x);
-
-        #[cfg(not(feature = "include-real-files"))]
-        let output = Default::default();
-
-        output
-    }};
-}
-
-macro_rules! our_include_bytes {
-    ($x:expr) => {{
-        #[cfg(feature = "include-real-files")]
-        static OUTPUT: &'static [u8] = include_bytes!($x);
-
-        #[cfg(not(feature = "include-real-files"))]
-        static OUTPUT: &'static [u8] = &[];
-
-        OUTPUT
-    }};
-}
 
 /// Helper function to generate a crypto pair from seed
 fn get_from_seed<TPublic: Public>(seed: &str) -> <TPublic::Pair as Pair>::Public {
@@ -255,10 +232,6 @@ pub fn dev_net_coded() -> ChainSpec {
                 vec![
                     hex!("da96bc5065020df6d5ccc9659ae3007ddc04a6fd7f52cabe76e87b6219026b65").into(),
                     hex!("f57efdde92d350999cb41d1f2b21255d9ba7ae70cf03538ddee42a38f48a5436").into(),
-                    hex!("aa79aa80b94b1cfba69c4a7d60eeb7b469e6411d1f686cc61de8adc8b1b76a69").into(),
-                    hex!("60dc5adadc262770cbe904e3f65a26a89d46b70447640cd7968b49ddf5a459bc").into(),
-                    hex!("70d61e980602e09ac8b5fb50658ebd345774e73b8248d3b61862ba1a9a035082").into(),
-                    hex!("05918034f4a7f7c5d99cd0382aa6574ec2aba148aa3d769e50e0ac7663e36d58").into(),
                 ],
                 EthBridgeParams {
                     xor_master_contract_address: hex!("12c6a709925783f49fcca0b398d13b0d597e6e1c")
@@ -396,8 +369,6 @@ pub fn staging_net_coded(test: bool) -> ChainSpec {
                 vec![
                     hex!("9cbca76054814f05364abf691f9166b1be176d9b399d94dc2d88b6c4bc2b0589").into(),
                     hex!("3b2e166bca8913d9b88d7a8acdfc54c3fe92c15e347deda6a13c191c6e0cc19c").into(),
-                    hex!("07f5670d08b8f3bd493ff829482a489d94494fd50dd506957e44e9fdc2e98684").into(),
-                    hex!("211bb96e9f746183c05a1d583bccf513f9d8f679d6f36ecbd06609615a55b1cc").into(),
                 ],
                 eth_bridge_params,
                 vec![
@@ -597,6 +568,8 @@ fn testnet_genesis(
     council_accounts: Vec<AccountId>,
     technical_committee_accounts: Vec<AccountId>,
 ) -> GenesisConfig {
+    use common::XSTUSD;
+
     // Initial balances
     let initial_staking = balance!(100);
     let initial_eth_bridge_xor_amount = balance!(350000);
@@ -784,15 +757,15 @@ fn testnet_genesis(
         val_owners: vec![
             (
                 hex!("d170A274320333243b9F860e8891C6792DE1eC19").into(),
-                balance!(995),
+                balance!(995).into(),
             ),
             (
                 hex!("21Bc9f4a3d9Dc86f142F802668dB7D908cF0A636").into(),
-                balance!(111),
+                balance!(111).into(),
             ),
             (
                 hex!("D67fea281B2C5dC3271509c1b628E0867a9815D7").into(),
-                balance!(444),
+                balance!(444).into(),
             ),
         ],
         pswap_farm_owners: vec![
@@ -880,6 +853,7 @@ fn testnet_genesis(
         account_id: iroha_migration_account_id.clone(),
     };
     let initial_collateral_assets = vec![DAI.into(), VAL.into(), PSWAP.into(), ETH.into()];
+    let initial_synthetic_assets = vec![XSTUSD.into()];
     GenesisConfig {
         frame_system: Some(SystemConfig {
             code: WASM_BINARY.unwrap().to_vec(),
@@ -889,7 +863,7 @@ fn testnet_genesis(
             key: root_key.clone(),
         }),
         technical: Some(TechnicalConfig {
-            account_ids_to_tech_account_ids: tech_accounts,
+            register_tech_accounts: tech_accounts,
         }),
         pallet_babe: Some(BabeConfig {
             authorities: vec![],
@@ -983,6 +957,15 @@ fn testnet_genesis(
                     Balance::zero(),
                     true,
                 ),
+                (
+                    XSTUSD.into(),
+                    assets_and_permissions_account_id.clone(),
+                    AssetSymbol(b"XSTUSD".to_vec()),
+                    AssetName(b"XST USD".to_vec()),
+                    18,
+                    Balance::zero(),
+                    true,
+                ),
             ],
         }),
         permissions: Some(PermissionsConfig {
@@ -1069,6 +1052,7 @@ fn testnet_genesis(
         trading_pair: Some(TradingPairConfig {
             trading_pairs: initial_collateral_assets
                 .iter()
+                .chain(initial_synthetic_assets.iter())
                 .cloned()
                 .map(|target_asset_id| {
                     (
@@ -1161,6 +1145,11 @@ fn testnet_genesis(
         pallet_elections_phragmen: Default::default(),
         pallet_membership_Instance1: Default::default(),
         pallet_im_online: Default::default(),
+        xst: Some(XSTPoolConfig {
+            reserves_account_id: Default::default(), // TODO: move to defaults
+            reference_asset_id: DAI,
+            initial_synthetic_assets: vec![XSTUSD],
+        }),
     }
 }
 
@@ -1509,7 +1498,7 @@ fn mainnet_genesis(
             changes_trie_config: Default::default(),
         }),
         technical: Some(TechnicalConfig {
-            account_ids_to_tech_account_ids: tech_accounts,
+            register_tech_accounts: tech_accounts,
         }),
         pallet_babe: Some(BabeConfig {
             authorities: vec![],
