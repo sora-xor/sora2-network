@@ -5399,6 +5399,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "parse"
+version = "0.1.0"
+dependencies = [
+ "framenode-runtime",
+ "hex",
+ "parity-scale-codec",
+ "rustc-hex",
+]
+
+[[package]]
 name = "paste"
 version = "1.0.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"

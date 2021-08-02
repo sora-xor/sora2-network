@@ -186,7 +186,9 @@ members = [
     "pallets/xst",
     "pallets/price-tools",
     "node/",
+    "utils/parse",
 ]
+
 resolver = "2"
 
 [profile.release]
