@@ -115,9 +115,7 @@ use eth_bridge::requests::{AssetKind, OffchainRequest, OutgoingRequestEncoded, R
 use impls::{CollectiveWeightInfo, DemocracyWeightInfo, OnUnbalancedDemocracySlash};
 
 use frame_support::traits::Get;
-pub use {
-    assets, eth_bridge, frame_system, multicollateral_bonding_curve_pool, xst,
-};
+pub use {assets, eth_bridge, frame_system, multicollateral_bonding_curve_pool, xst};
 
 /// An index to a block.
 pub type BlockNumber = u32;
