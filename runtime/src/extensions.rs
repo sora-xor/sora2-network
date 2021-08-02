@@ -156,7 +156,7 @@ mod tests {
     use sp_core::H256;
     use sp_runtime::traits::SignedExtension;
 
-    use common::{VAL, XOR, balance};
+    use common::{balance, VAL, XOR};
 
     use crate::extensions::ChargeTransactionPayment;
     use crate::{Call, Runtime};
