@@ -202,7 +202,6 @@ impl<T: Config>
         }
         match liquidity_source_id.liquidity_source_index {
             XYKPool => quote_without_impact!(XYKPool),
-            BondingCurvePool => quote_without_impact!(BondingCurvePool),
             MulticollateralBondingCurvePool => {
                 quote_without_impact!(MulticollateralBondingCurvePool)
             }
@@ -211,6 +210,7 @@ impl<T: Config>
             MockPool2 => quote_without_impact!(MockLiquiditySource2),
             MockPool3 => quote_without_impact!(MockLiquiditySource3),
             MockPool4 => quote_without_impact!(MockLiquiditySource4),
+            BondingCurvePool => unreachable!(),
         }
     }
 }
