@@ -52,9 +52,9 @@ use framenode_runtime::{
     DEXManagerConfig, DemocracyConfig, EthBridgeConfig, GetBaseAssetId, GetParliamentAccountId,
     GetPswapAssetId, GetValAssetId, GetXorAssetId, GrandpaConfig, ImOnlineId, IrohaMigrationConfig,
     LiquiditySourceType, MulticollateralBondingCurvePoolConfig, PermissionsConfig,
-    PswapDistributionConfig, RewardsConfig, Runtime, SessionConfig, StakerStatus, StakingConfig,
-    SystemConfig, TechAccountId, TechnicalConfig, TokensConfig, TradingPairConfig, XSTPoolConfig,
-    WASM_BINARY,
+    PswapDistributionConfig, RewardsConfig, Runtime, SS58Prefix, SessionConfig, StakerStatus,
+    StakingConfig, SystemConfig, TechAccountId, TechnicalConfig, TokensConfig, TradingPairConfig,
+    XSTPoolConfig, WASM_BINARY,
 };
 use hex_literal::hex;
 use permissions::Scope;
@@ -178,6 +178,7 @@ pub fn main_net() -> Result<ChainSpec, String> {
 #[cfg(feature = "private-net")]
 pub fn dev_net_coded() -> ChainSpec {
     let mut properties = Properties::new();
+    properties.insert("ss58Format".into(), SS58Prefix::get().into());
     properties.insert("tokenSymbol".into(), "XOR".into());
     properties.insert("tokenDecimals".into(), 18.into());
     ChainSpec::from_genesis(
@@ -279,6 +280,7 @@ pub fn dev_net_coded() -> ChainSpec {
 #[cfg(feature = "private-net")]
 pub fn staging_net_coded(test: bool) -> ChainSpec {
     let mut properties = Properties::new();
+    properties.insert("ss58Format".into(), SS58Prefix::get().into());
     properties.insert("tokenSymbol".into(), "XOR".into());
     properties.insert("tokenDecimals".into(), 18.into());
     let (name, id, boot_nodes) = if test {
@@ -489,6 +491,7 @@ fn bonding_curve_distribution_accounts(
 #[cfg(feature = "private-net")]
 pub fn local_testnet_config() -> ChainSpec {
     let mut properties = Properties::new();
+    properties.insert("ss58Format".into(), SS58Prefix::get().into());
     properties.insert("tokenSymbol".into(), "XOR".into());
     properties.insert("tokenDecimals".into(), 18.into());
     ChainSpec::from_genesis(
@@ -1165,6 +1168,7 @@ fn testnet_genesis(
 #[cfg(feature = "main-net-coded")]
 pub fn main_net_coded() -> ChainSpec {
     let mut properties = Properties::new();
+    properties.insert("ss58Format".into(), SS58Prefix::get().into());
     properties.insert("tokenSymbol".into(), "XOR".into());
     properties.insert("tokenDecimals".into(), 18.into());
     let name = "SORA";
