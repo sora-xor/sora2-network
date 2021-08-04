@@ -28,10 +28,11 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use crate::{ClaimableShares, Config, Pallet, ShareholderAccounts, Weight};
-use common::balance;
+use crate::{ClaimableShares, Config, Pallet, ShareholderAccounts, SubscribedAccounts, Weight};
 use common::fixnum::ops::{CheckedAdd, Zero};
 use common::prelude::{Fixed, FixedWrapper};
+use common::{balance, PoolXykPallet};
+use frame_support::debug;
 use frame_support::dispatch::DispatchError;
 use frame_support::traits::{Get, GetPalletVersion, PalletVersion};
 use sp_std::convert::TryInto;
@@ -42,9 +43,14 @@ pub fn migrate<T: Config>() -> Weight {
     match Pallet::<T>::storage_version() {
         // Initial version is 0.1.0 which uses shares from total amount to determine owned pswap by users
         // Version 0.2.0 performs share calculated on distribution, so only absolute pswap amounts are stored
+        // Version 1.1.1 fixes subscribed accounts table, which wasn't migrated from pool tokens to new flow with pool accounts
         Some(version) if version == PalletVersion::new(0, 1, 0) => {
             let migrated_weight =
                 migrate_from_shares_to_absolute_rewards::<T>().unwrap_or(100_000_000);
+            weight = weight.saturating_add(migrated_weight)
+        }
+        Some(version) if version == PalletVersion::new(0, 2, 0) => {
+            let migrated_weight = migrate_subscribed_accounts::<T>().unwrap_or(100_000);
             weight = weight.saturating_add(migrated_weight)
         }
         _ => (),
@@ -93,6 +99,29 @@ pub fn migrate_from_shares_to_absolute_rewards<T: Config>() -> Result<Weight, Di
                 &T::GetParliamentAccountId::get(),
                 distribution_remainder,
             )?;
+        }
+
+        Ok(weight)
+    })
+}
+
+pub fn migrate_subscribed_accounts<T: Config>() -> Result<Weight, DispatchError> {
+    common::with_transaction(|| {
+        let mut weight: Weight = 0;
+
+        for (_base_asset, _target_asset, (pool_account, fees_account)) in
+            T::PoolXykPallet::all_properties()
+        {
+            SubscribedAccounts::<T>::mutate(&fees_account, |opt_value| {
+                if let Some((_, ref mut old_pool_account, _, _)) = opt_value {
+                    if *old_pool_account != pool_account {
+                        *old_pool_account = pool_account;
+                    }
+                } else {
+                    debug::error!("Unable to find fees account: {:?}", fees_account);
+                }
+            });
+            weight = weight.saturating_add(T::DbWeight::get().writes(1));
         }
 
         Ok(weight)
