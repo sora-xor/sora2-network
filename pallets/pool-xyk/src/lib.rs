@@ -89,8 +89,11 @@ pub trait WeightInfo {
 
 impl<T: Config> PoolXykPallet for Pallet<T> {
     type AccountId = AccountIdOf<T>;
+    type AssetId = AssetIdOf<T>;
 
     type PoolProvidersOutput = PrefixIterator<(AccountIdOf<T>, Balance)>;
+    type PoolPropertiesOutput =
+        PrefixIterator<(AssetIdOf<T>, AssetIdOf<T>, (AccountIdOf<T>, AccountIdOf<T>))>;
 
     fn pool_providers(pool_account: &Self::AccountId) -> Self::PoolProvidersOutput {
         PoolProviders::<T>::iter_prefix(pool_account)
@@ -98,6 +101,10 @@ impl<T: Config> PoolXykPallet for Pallet<T> {
 
     fn total_issuance(pool_account: &Self::AccountId) -> Result<Balance, DispatchError> {
         TotalIssuances::<T>::get(pool_account).ok_or(Error::<T>::PoolIsInvalid.into())
+    }
+
+    fn all_properties() -> Self::PoolPropertiesOutput {
+        Properties::<T>::iter()
     }
 }
 
