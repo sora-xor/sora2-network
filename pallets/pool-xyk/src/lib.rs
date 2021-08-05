@@ -87,6 +87,8 @@ pub trait WeightInfo {
     fn deposit_liquidity() -> Weight;
     fn withdraw_liquidity() -> Weight;
     fn initialize_pool() -> Weight;
+    fn can_exchange() -> Weight;
+    fn quote() -> Weight;
 }
 
 impl<T: Config> PoolXykPallet for Pallet<T> {

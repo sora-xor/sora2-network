@@ -47,7 +47,6 @@ mod tests;
 use common::prelude::{
     Balance, Fixed, FixedWrapper, LiquiditySourceType, PriceToolsPallet, QuoteAmount,
 };
-use common::weights::constants::EXTRINSIC_FIXED_WEIGHT;
 use common::{
     balance, fixed_const, fixed_wrapper, DEXId, LiquiditySourceFilter, DAI, ETH, PSWAP, VAL, XOR,
 };
@@ -68,12 +67,6 @@ const MAX_BLOCK_AVG_DIFFERENCE: Fixed = fixed_const!(0.005); // 0.5%
 
 pub trait WeightInfo {
     fn on_initialize(elems: u32) -> Weight;
-}
-
-impl crate::WeightInfo for () {
-    fn on_initialize(_elems: u32) -> Weight {
-        EXTRINSIC_FIXED_WEIGHT
-    }
 }
 
 #[frame_support::pallet]

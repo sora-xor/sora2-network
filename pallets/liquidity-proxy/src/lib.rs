@@ -169,7 +169,7 @@ impl<DEXId: PartialEq + Copy, AccountId, AssetId> LiquidityProxyTrait<DEXId, Acc
 }
 
 pub trait WeightInfo {
-    fn swap(amount: SwapVariant) -> Weight;
+    fn swap(variant: SwapVariant) -> Weight;
 }
 
 impl<T: Config> Pallet<T> {

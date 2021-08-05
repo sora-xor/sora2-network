@@ -66,18 +66,18 @@ pub struct WeightInfo<T>(PhantomData<T>);
 
 impl<T: frame_system::Config> crate::WeightInfo for WeightInfo<T> {
     fn claim() -> Weight {
-        (21_316_821_000 as Weight)
-            .saturating_add(T::DbWeight::get().reads(16 as Weight))
-            .saturating_add(T::DbWeight::get().writes(8 as Weight))
+        (804_752_000 as Weight)
+            .saturating_add(T::DbWeight::get().reads(14 as Weight))
+            .saturating_add(T::DbWeight::get().writes(10 as Weight))
     }
-
     fn finalize_storage_migration(n: u32) -> Weight {
         let weight = (0 as Weight)
-            .saturating_add((27_675_000 as Weight).saturating_mul(n as Weight))
+            // Standard Error: 50_000
+            .saturating_add((16_106_000 as Weight).saturating_mul(n as Weight))
             .saturating_add(T::DbWeight::get().reads(5 as Weight))
-            .saturating_add(T::DbWeight::get().reads(n as Weight))
+            .saturating_add(T::DbWeight::get().reads((1 as Weight).saturating_mul(n as Weight)))
             .saturating_add(T::DbWeight::get().writes(5 as Weight))
-            .saturating_add(T::DbWeight::get().writes(n as Weight));
+            .saturating_add(T::DbWeight::get().writes((1 as Weight).saturating_mul(n as Weight)));
 
         let max_weight: Weight = T::BlockWeights::get()
             .get(DispatchClass::Normal)
