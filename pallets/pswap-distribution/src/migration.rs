@@ -50,7 +50,7 @@ pub fn migrate<T: Config>() -> Weight {
             weight = weight.saturating_add(migrated_weight)
         }
         Some(version) if version == PalletVersion::new(0, 2, 0) => {
-            let migrated_weight = migrate_subscribed_accounts::<T>().unwrap_or(100_000);
+            let migrated_weight = migrate_subscribed_accounts::<T>();
             weight = weight.saturating_add(migrated_weight)
         }
         _ => (),
@@ -105,23 +105,21 @@ pub fn migrate_from_shares_to_absolute_rewards<T: Config>() -> Result<Weight, Di
     })
 }
 
-pub fn migrate_subscribed_accounts<T: Config>() -> Result<Weight, DispatchError> {
-    common::with_transaction(|| {
-        let mut weight: Weight = 0;
+pub fn migrate_subscribed_accounts<T: Config>() -> Weight {
+    let mut weight: Weight = 0;
 
-        for (_base_asset, _target_asset, (pool_account, fees_account)) in
-            T::PoolXykPallet::all_properties()
-        {
-            SubscribedAccounts::<T>::mutate(&fees_account, |opt_value| {
-                if let Some((_, ref mut old_pool_account, _, _)) = opt_value {
-                    *old_pool_account = pool_account;
-                } else {
-                    debug::error!("Unable to find fees account: {:?}", fees_account);
-                }
-            });
-            weight = weight.saturating_add(T::DbWeight::get().writes(1));
-        }
+    for (_base_asset, _target_asset, (pool_account, fees_account)) in
+        T::PoolXykPallet::all_properties()
+    {
+        SubscribedAccounts::<T>::mutate(&fees_account, |opt_value| {
+            if let Some((_, ref mut old_pool_account, _, _)) = opt_value {
+                *old_pool_account = pool_account;
+            } else {
+                debug::error!("Unable to find fees account: {:?}", fees_account);
+            }
+        });
+        weight = weight.saturating_add(T::DbWeight::get().writes(1));
+    }
 
-        Ok(weight)
-    })
+    weight
 }
