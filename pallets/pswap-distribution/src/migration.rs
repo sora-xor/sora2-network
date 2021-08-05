@@ -114,9 +114,7 @@ pub fn migrate_subscribed_accounts<T: Config>() -> Result<Weight, DispatchError>
         {
             SubscribedAccounts::<T>::mutate(&fees_account, |opt_value| {
                 if let Some((_, ref mut old_pool_account, _, _)) = opt_value {
-                    if *old_pool_account != pool_account {
-                        *old_pool_account = pool_account;
-                    }
+                    *old_pool_account = pool_account;
                 } else {
                     debug::error!("Unable to find fees account: {:?}", fees_account);
                 }
