@@ -144,7 +144,6 @@ pub fn new_partial(
             serde_json::from_reader(&file).expect("Invalid ethereum bridge node config.");
         let mut network_ids = BTreeSet::new();
         for (net_id, params) in peer_config.networks {
-            // TODO: optimize storage key construction.
             let string = format!("{}-{:?}", STORAGE_ETH_NODE_PARAMS, net_id);
             storage.set(STORAGE_PREFIX, string.as_bytes(), &params.encode());
             network_ids.insert(net_id);

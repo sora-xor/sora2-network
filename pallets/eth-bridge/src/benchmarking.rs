@@ -274,7 +274,7 @@ benchmarks! {
 #[cfg(test)]
 mod bench_tests {
     use super::*;
-    use crate::mock::{ExtBuilder, Runtime};
+    use crate::tests::mock::{ExtBuilder, Runtime};
     use frame_support::assert_ok;
 
     #[test]

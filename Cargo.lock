@@ -2260,13 +2260,11 @@ dependencies = [
  "dex-manager-rpc",
  "eth-bridge-rpc",
  "exit-future",
- "faucet",
  "frame-benchmarking 3.1.0",
  "frame-benchmarking-cli",
- "frame-support",
+ "framenode-chain-spec",
  "framenode-runtime",
  "futures 0.3.16",
- "hex-literal",
  "iroha-migration",
  "iroha-migration-rpc",
  "jsonrpc-core 15.1.0",
@@ -2279,7 +2277,6 @@ dependencies = [
  "pallet-transaction-payment-rpc",
  "parity-scale-codec",
  "parking_lot 0.11.1",
- "permissions",
  "pswap-distribution-rpc",
  "rewards",
  "rewards-rpc",
@@ -2328,6 +2325,32 @@ dependencies = [
 ]
 
 [[package]]
+name = "framenode-chain-spec"
+version = "0.1.0"
+dependencies = [
+ "common",
+ "faucet",
+ "frame-support",
+ "framenode-runtime",
+ "hex-literal",
+ "iroha-migration",
+ "pallet-multisig 3.2.0",
+ "parity-scale-codec",
+ "permissions",
+ "rewards",
+ "sc-finality-grandpa",
+ "sc-network",
+ "sc-service",
+ "sp-consensus-aura",
+ "sp-consensus-babe",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "technical",
+ "xor-fee",
+]
+
+[[package]]
 name = "framenode-runtime"
 version = "0.1.0"
 dependencies = [
@@ -2349,6 +2372,7 @@ dependencies = [
  "frame-system",
  "frame-system-benchmarking",
  "frame-system-rpc-runtime-api",
+ "framenode-chain-spec",
  "hex-literal",
  "iroha-migration",
  "iroha-migration-runtime-api",
