@@ -38,10 +38,13 @@ use frame_support::{ensure, fail, Parameter};
 use frame_system::ensure_signed;
 use sp_std::vec::Vec;
 
-use common::prelude::{Balance, EnsureDEXManager, QuoteAmount, SwapAmount, SwapOutcome};
+use common::prelude::{
+    Balance, EnsureDEXManager, FixedWrapper, QuoteAmount, SwapAmount, SwapOutcome,
+};
 use common::{
-    EnsureTradingPairExists, GetPoolReserves, LiquiditySource, LiquiditySourceType, ManagementMode,
-    PoolXykPallet, RewardReason, TechAccountId, TechPurpose, ToFeeAccount, TradingPair,
+    fixed_wrapper, EnsureTradingPairExists, GetPoolReserves, LiquiditySource, LiquiditySourceType,
+    ManagementMode, PoolXykPallet, RewardReason, TechAccountId, TechPurpose, ToFeeAccount,
+    TradingPair,
 };
 
 mod aliases;
@@ -84,6 +87,8 @@ pub trait WeightInfo {
     fn deposit_liquidity() -> Weight;
     fn withdraw_liquidity() -> Weight;
     fn initialize_pool() -> Weight;
+    fn can_exchange() -> Weight;
+    fn quote() -> Weight;
 }
 
 impl<T: Config> PoolXykPallet for Pallet<T> {
@@ -431,6 +436,100 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         // XYK Pool has no rewards currently
         Ok(Vec::new())
     }
+
+    fn quote_without_impact(
+        dex_id: &T::DEXId,
+        input_asset_id: &T::AssetId,
+        output_asset_id: &T::AssetId,
+        amount: QuoteAmount<Balance>,
+    ) -> Result<SwapOutcome<Balance>, DispatchError> {
+        // Get pool account.
+        let (_, tech_acc_id) = Module::<T>::tech_account_from_dex_and_asset_pair(
+            *dex_id,
+            *input_asset_id,
+            *output_asset_id,
+        )?;
+        let pool_acc_id = technical::Module::<T>::tech_account_id_to_account_id(&tech_acc_id)?;
+
+        // Get actual pool reserves.
+        let reserve_input = <assets::Module<T>>::free_balance(&input_asset_id, &pool_acc_id)?;
+        let reserve_output = <assets::Module<T>>::free_balance(&output_asset_id, &pool_acc_id)?;
+
+        // Check reserves validity.
+        if reserve_input == 0 && reserve_output == 0 {
+            fail!(Error::<T>::PoolIsEmpty);
+        } else if reserve_input <= 0 || reserve_output <= 0 {
+            fail!(Error::<T>::PoolIsInvalid);
+        }
+
+        // Decide which side should be used for fee.
+        let get_fee_from_destination =
+            Module::<T>::decide_is_fee_from_destination(input_asset_id, output_asset_id)?;
+
+        let input_price_wrt_output = FixedWrapper::from(reserve_output) / reserve_input;
+        let fee_fraction = T::GetFee::get();
+        Ok(match amount {
+            QuoteAmount::WithDesiredInput { desired_amount_in } => {
+                let (output, fee_amount) = if get_fee_from_destination {
+                    // output token is xor, user indicates desired input amount
+                    // y_1 = x_in * y / x
+                    // y_out = y_1 * (1 - fee)
+                    let out_with_fee =
+                        FixedWrapper::from(desired_amount_in) * input_price_wrt_output;
+                    let output = FixedWrapper::from(out_with_fee.clone())
+                        * (fixed_wrapper!(1) - fee_fraction);
+                    let fee_amount = out_with_fee - output.clone();
+                    (output, fee_amount)
+                } else {
+                    // input token is xor, user indicates desired input amount
+                    // x_1 = x_in * (1 - fee)
+                    // y_out = x_1 * y / x
+                    let input_without_fee = FixedWrapper::from(desired_amount_in.clone())
+                        * (fixed_wrapper!(1) - fee_fraction);
+                    let output = input_without_fee.clone() * input_price_wrt_output;
+                    let fee_amount = FixedWrapper::from(desired_amount_in) - input_without_fee;
+                    (output, fee_amount)
+                };
+                SwapOutcome::new(
+                    output
+                        .try_into_balance()
+                        .map_err(|_| Error::<T>::FailedToCalculatePriceWithoutImpact)?,
+                    fee_amount
+                        .try_into_balance()
+                        .map_err(|_| Error::<T>::FailedToCalculatePriceWithoutImpact)?,
+                )
+            }
+            QuoteAmount::WithDesiredOutput { desired_amount_out } => {
+                let (input, fee_amount) = if get_fee_from_destination {
+                    // output token is xor, user indicates desired output amount:
+                    // y_1 = y_out / (1 - fee)
+                    // x_in = y_1 / y / x
+                    let output_with_fee = FixedWrapper::from(desired_amount_out.clone())
+                        / (fixed_wrapper!(1) - fee_fraction);
+                    let fee_amount =
+                        output_with_fee.clone() - FixedWrapper::from(desired_amount_out);
+                    let input = output_with_fee / input_price_wrt_output;
+                    (input, fee_amount)
+                } else {
+                    // input token is xor, user indicates desired output amount:
+                    // x_in = (y_out / y / x) / (1 - fee)
+                    let input_without_fee =
+                        FixedWrapper::from(desired_amount_out) / input_price_wrt_output;
+                    let input = input_without_fee.clone() / (fixed_wrapper!(1) - fee_fraction);
+                    let fee_amount = input.clone() - input_without_fee;
+                    (input, fee_amount)
+                };
+                SwapOutcome::new(
+                    input
+                        .try_into_balance()
+                        .map_err(|_| Error::<T>::FailedToCalculatePriceWithoutImpact)?,
+                    fee_amount
+                        .try_into_balance()
+                        .map_err(|_| Error::<T>::FailedToCalculatePriceWithoutImpact)?,
+                )
+            }
+        })
+    }
 }
 
 impl<T: Config> GetPoolReserves<T::AssetId> for Module<T> {
@@ -600,6 +699,8 @@ pub mod pallet {
     pub enum Error<T> {
         /// It is impossible to calculate fee for some pair swap operation, or other operation.
         UnableToCalculateFee,
+        /// Failure while calculating price ignoring non-linearity of liquidity source.
+        FailedToCalculatePriceWithoutImpact,
         /// Is is impossible to get balance.
         UnableToGetBalance,
         /// Impossible to decide asset pair amounts.

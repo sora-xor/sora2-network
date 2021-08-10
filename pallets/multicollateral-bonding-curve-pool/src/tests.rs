@@ -1670,4 +1670,272 @@ mod tests {
             assert_eq!(reward.unwrap(), balance!(0.000000002499999999));
         })
     }
+
+    #[test]
+    fn price_without_impact_small_amount() {
+        let mut ext = ExtBuilder::new(vec![
+            (alice(), DAI, balance!(0), AssetSymbol(b"DAI".to_vec()), AssetName(b"DAI".to_vec()), 18),
+            (alice(), USDT, balance!(0), AssetSymbol(b"USDT".to_vec()), AssetName(b"Tether USD".to_vec()), 18),
+            (alice(), XOR, balance!(0), AssetSymbol(b"XOR".to_vec()), AssetName(b"SORA".to_vec()), 18),
+            (alice(), VAL, balance!(4000), AssetSymbol(b"VAL".to_vec()), AssetName(b"SORA Validator Token".to_vec()), 18),
+            (alice(), XSTUSD, 0, AssetSymbol(b"XSTUSD".to_vec()), AssetName(b"XST USD".to_vec()), 18),
+        ])
+        .build();
+        ext.execute_with(|| {
+            MockDEXApi::init().unwrap();
+            let _ = bonding_curve_pool_init(vec![]).unwrap();
+            TradingPair::register(Origin::signed(alice()),DEXId::Polkaswap.into(), XOR, VAL).expect("Failed to register trading pair.");
+            MBCPool::initialize_pool_unchecked(VAL, false).expect("Failed to initialize pool.");
+
+            // Buy with desired input
+            let amount_a: Balance = balance!(2000);
+            let quote_outcome_a = MBCPool::quote(
+                &DEXId::Polkaswap.into(),
+                &VAL,
+                &XOR,
+                QuoteAmount::with_desired_input(amount_a.clone()),
+            )
+            .unwrap();
+            let quote_without_impact_a = MBCPool::quote_without_impact(
+                &DEXId::Polkaswap.into(),
+                &VAL,
+                &XOR,
+                QuoteAmount::with_desired_input(amount_a.clone()),
+            )
+            .unwrap();
+            MBCPool::exchange(
+                &alice(),
+                &alice(),
+                &DEXId::Polkaswap.into(),
+                &VAL,
+                &XOR,
+                SwapAmount::with_desired_input(amount_a.clone(), Balance::zero()),
+            )
+            .unwrap();
+            assert_eq!(quote_outcome_a.amount, balance!(361.549938632002697101));
+            assert_eq!(quote_without_impact_a.amount, balance!(361.728370440936309235));
+            assert!(quote_outcome_a.amount < quote_without_impact_a.amount);
+
+            // Buy with desired output
+            let amount_b: Balance = balance!(200);
+            let quote_outcome_b = MBCPool::quote(
+                &DEXId::Polkaswap.into(),
+                &VAL,
+                &XOR,
+                QuoteAmount::with_desired_output(amount_b.clone()),
+            )
+            .unwrap();
+            let quote_without_impact_b = MBCPool::quote_without_impact(
+                &DEXId::Polkaswap.into(),
+                &VAL,
+                &XOR,
+                QuoteAmount::with_desired_output(amount_b.clone()),
+            )
+            .unwrap();
+            MBCPool::exchange(
+                &alice(),
+                &alice(),
+                &DEXId::Polkaswap.into(),
+                &VAL,
+                &XOR,
+                SwapAmount::with_desired_output(amount_b.clone(), Balance::max_value()),
+            )
+            .unwrap();
+            assert_eq!(quote_outcome_b.amount, balance!(1107.192203724646374582));
+            assert_eq!(quote_without_impact_b.amount, balance!(1106.890317630040503506));
+            assert!(quote_outcome_b.amount > quote_without_impact_b.amount);
+
+            // Sell with desired input
+            let amount_c: Balance = balance!(1);
+            let quote_outcome_c = MBCPool::quote(
+                &DEXId::Polkaswap.into(),
+                &XOR,
+                &VAL,
+                QuoteAmount::with_desired_input(amount_c.clone()),
+            )
+            .unwrap();
+            let quote_without_impact_c = MBCPool::quote_without_impact(
+                &DEXId::Polkaswap.into(),
+                &XOR,
+                &VAL,
+                QuoteAmount::with_desired_input(amount_c.clone()),
+            )
+            .unwrap();
+            MBCPool::exchange(
+                &alice(),
+                &alice(),
+                &DEXId::Polkaswap.into(),
+                &XOR,
+                &VAL,
+                SwapAmount::with_desired_input(amount_c.clone(), Balance::zero()),
+            )
+            .unwrap();
+            assert_eq!(quote_outcome_c.amount, balance!(3.999482655569353236));
+            assert_eq!(quote_without_impact_c.amount, balance!(4.005928040448516546));
+            assert!(quote_outcome_c.amount < quote_without_impact_c.amount);
+
+            // Sell with desired output
+            let amount_d: Balance = balance!(1);
+            let quote_outcome_d = MBCPool::quote(
+                &DEXId::Polkaswap.into(),
+                &XOR,
+                &VAL,
+                QuoteAmount::with_desired_output(amount_d.clone()),
+            )
+            .unwrap();
+            let quote_without_impact_d = MBCPool::quote_without_impact(
+                &DEXId::Polkaswap.into(),
+                &XOR,
+                &VAL,
+                QuoteAmount::with_desired_output(amount_d.clone()),
+            )
+            .unwrap();
+            MBCPool::exchange(
+                &alice(),
+                &alice(),
+                &DEXId::Polkaswap.into(),
+                &XOR,
+                &VAL,
+                SwapAmount::with_desired_output(amount_d.clone(), Balance::max_value()),
+            )
+            .unwrap();
+            assert_eq!(quote_outcome_d.amount, balance!(0.249731351108007183));
+            assert_eq!(quote_without_impact_d.amount, balance!(0.249630724163152921));
+            assert!(quote_outcome_d.amount > quote_without_impact_d.amount);
+        });
+    }
+
+    #[test]
+    fn price_without_impact_large_amount() {
+        let mut ext = ExtBuilder::new(vec![
+            (alice(), DAI, balance!(0), AssetSymbol(b"DAI".to_vec()), AssetName(b"DAI".to_vec()), 18),
+            (alice(), USDT, balance!(0), AssetSymbol(b"USDT".to_vec()), AssetName(b"Tether USD".to_vec()), 18),
+            (alice(), XOR, balance!(0), AssetSymbol(b"XOR".to_vec()), AssetName(b"SORA".to_vec()), 18),
+            (alice(), VAL, balance!(200000), AssetSymbol(b"VAL".to_vec()), AssetName(b"SORA Validator Token".to_vec()), 18),
+            (alice(), XSTUSD, 0, AssetSymbol(b"XSTUSD".to_vec()), AssetName(b"XST USD".to_vec()), 18),
+        ])
+        .build();
+        ext.execute_with(|| {
+            MockDEXApi::init().unwrap();
+            let _ = bonding_curve_pool_init(vec![]).unwrap();
+            TradingPair::register(Origin::signed(alice()),DEXId::Polkaswap.into(), XOR, VAL).expect("Failed to register trading pair.");
+            MBCPool::initialize_pool_unchecked(VAL, false).expect("Failed to initialize pool.");
+
+            // Buy with desired input
+            let amount_a: Balance = balance!(70000);
+            let quote_outcome_a = MBCPool::quote(
+                &DEXId::Polkaswap.into(),
+                &VAL,
+                &XOR,
+                QuoteAmount::with_desired_input(amount_a.clone()),
+            )
+            .unwrap();
+            let quote_without_impact_a = MBCPool::quote_without_impact(
+                &DEXId::Polkaswap.into(),
+                &VAL,
+                &XOR,
+                QuoteAmount::with_desired_input(amount_a.clone()),
+            )
+            .unwrap();
+            MBCPool::exchange(
+                &alice(),
+                &alice(),
+                &DEXId::Polkaswap.into(),
+                &VAL,
+                &XOR,
+                SwapAmount::with_desired_input(amount_a.clone(), Balance::zero()),
+            )
+            .unwrap();
+            assert_eq!(quote_outcome_a.amount, balance!(12448.948798121038075579));
+            assert_eq!(quote_without_impact_a.amount, balance!(12660.492965432770823211));
+            assert!(quote_outcome_a.amount < quote_without_impact_a.amount);
+
+            // Buy with desired output
+            let amount_b: Balance = balance!(14000);
+            let quote_outcome_b = MBCPool::quote(
+                &DEXId::Polkaswap.into(),
+                &VAL,
+                &XOR,
+                QuoteAmount::with_desired_output(amount_b.clone()),
+            )
+            .unwrap();
+            let quote_without_impact_b = MBCPool::quote_without_impact(
+                &DEXId::Polkaswap.into(),
+                &VAL,
+                &XOR,
+                QuoteAmount::with_desired_output(amount_b.clone()),
+            )
+            .unwrap();
+            MBCPool::exchange(
+                &alice(),
+                &alice(),
+                &DEXId::Polkaswap.into(),
+                &VAL,
+                &XOR,
+                SwapAmount::with_desired_output(amount_b.clone(), Balance::max_value()),
+            )
+            .unwrap();
+            assert_eq!(quote_outcome_b.amount, balance!(81508.213505580992099145));
+            assert_eq!(quote_without_impact_b.amount, balance!(80028.971642012224670009));
+            assert!(quote_outcome_b.amount > quote_without_impact_b.amount);
+
+            // Sell with desired input
+            let amount_c: Balance = balance!(7000);
+            let quote_outcome_c = MBCPool::quote(
+                &DEXId::Polkaswap.into(),
+                &XOR,
+                &VAL,
+                QuoteAmount::with_desired_input(amount_c.clone()),
+            )
+            .unwrap();
+            let quote_without_impact_c = MBCPool::quote_without_impact(
+                &DEXId::Polkaswap.into(),
+                &XOR,
+                &VAL,
+                QuoteAmount::with_desired_input(amount_c.clone()),
+            )
+            .unwrap();
+            MBCPool::exchange(
+                &alice(),
+                &alice(),
+                &DEXId::Polkaswap.into(),
+                &XOR,
+                &VAL,
+                SwapAmount::with_desired_input(amount_c.clone(), Balance::zero()),
+            )
+            .unwrap();
+            assert_eq!(quote_outcome_c.amount, balance!(25316.104888559067751287));
+            assert_eq!(quote_without_impact_c.amount, balance!(31999.826368133346115316));
+            assert!(quote_outcome_c.amount < quote_without_impact_c.amount);
+
+            // Sell with desired output
+            let amount_d: Balance = balance!(7000);
+            let quote_outcome_d = MBCPool::quote(
+                &DEXId::Polkaswap.into(),
+                &XOR,
+                &VAL,
+                QuoteAmount::with_desired_output(amount_d.clone()),
+            )
+            .unwrap();
+            let quote_without_impact_d = MBCPool::quote_without_impact(
+                &DEXId::Polkaswap.into(),
+                &XOR,
+                &VAL,
+                QuoteAmount::with_desired_output(amount_d.clone()),
+            )
+            .unwrap();
+            MBCPool::exchange(
+                &alice(),
+                &alice(),
+                &DEXId::Polkaswap.into(),
+                &XOR,
+                &VAL,
+                SwapAmount::with_desired_output(amount_d.clone(), Balance::max_value()),
+            )
+            .unwrap();
+            assert_eq!(quote_outcome_d.amount, balance!(1681.732720328623106894));
+            assert_eq!(quote_without_impact_d.amount, balance!(1558.966302104893601417));
+            assert!(quote_outcome_d.amount > quote_without_impact_d.amount);
+        });
+    }
 }

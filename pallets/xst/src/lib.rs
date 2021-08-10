@@ -209,6 +209,8 @@ pub mod pallet {
     pub enum Error<T> {
         /// An error occurred while calculating the price.
         PriceCalculationFailed,
+        /// Failure while calculating price ignoring non-linearity of liquidity source.
+        FailedToCalculatePriceWithoutImpact,
         /// The pool can't perform exchange on itself.
         CannotExchangeWithSelf,
         /// Attempt to initialize pool for pair that already exists.
@@ -685,6 +687,17 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
     ) -> Result<Vec<(Balance, T::AssetId, RewardReason)>, DispatchError> {
         Ok(Vec::new()) // no rewards for XST
     }
+
+    fn quote_without_impact(
+        dex_id: &T::DEXId,
+        input_asset_id: &T::AssetId,
+        output_asset_id: &T::AssetId,
+        amount: QuoteAmount<Balance>,
+    ) -> Result<SwapOutcome<Balance>, DispatchError> {
+        // no impact, because price is linear
+        // TODO: consider optimizing additional call by introducing NoImpact enum variant
+        Self::quote(dex_id, input_asset_id, output_asset_id, amount)
+    }
 }
 
 impl<T: Config> GetMarketInfo<T::AssetId> for Module<T> {
@@ -693,9 +706,9 @@ impl<T: Config> GetMarketInfo<T::AssetId> for Module<T> {
         synthetic_asset: &T::AssetId,
     ) -> Result<Fixed, DispatchError> {
         let base_price_wrt_ref: FixedWrapper = Self::reference_price(base_asset)?.into();
-        let collateral_price_per_reference_unit: FixedWrapper =
+        let synthetic_price_per_reference_unit: FixedWrapper =
             Self::reference_price(synthetic_asset)?.into();
-        let output = (base_price_wrt_ref / collateral_price_per_reference_unit)
+        let output = (base_price_wrt_ref / synthetic_price_per_reference_unit)
             .get()
             .map_err(|_| Error::<T>::PriceCalculationFailed)?;
         Ok(output)

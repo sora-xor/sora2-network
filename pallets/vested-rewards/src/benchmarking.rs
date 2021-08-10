@@ -41,7 +41,7 @@ use hex_literal::hex;
 use sp_std::prelude::*;
 use traits::MultiCurrency;
 
-use common::{FromGenericPair, PSWAP, XOR};
+use common::{assert_approx_eq, FromGenericPair, PSWAP, XOR};
 
 use crate::Pallet as VestedRewards;
 use technical::Pallet as Technical;
@@ -128,9 +128,10 @@ benchmarks! {
                 balance!(0)
             );
         } else {
-            assert_eq!(
+            assert_approx_eq!(
                 TotalRewards::<T>::get(),
-                crate::SINGLE_MARKET_MAKER_DISTRIBUTION_AMOUNT
+                crate::SINGLE_MARKET_MAKER_DISTRIBUTION_AMOUNT,
+                1000000
             );
         }
     }

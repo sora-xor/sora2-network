@@ -42,11 +42,11 @@ impl<T: frame_system::Config> crate::WeightInfo for WeightInfo<T> {
     }
     fn on_initialize(is_distributing: bool) -> Weight {
         if is_distributing {
-            (6_597_543_731_000 as Weight)
-                .saturating_add(T::DbWeight::get().reads(10057 as Weight))
-                .saturating_add(T::DbWeight::get().writes(1021 as Weight))
+            (216_886_398_000 as Weight)
+                .saturating_add(T::DbWeight::get().reads(10052 as Weight))
+                .saturating_add(T::DbWeight::get().writes(1023 as Weight))
         } else {
-            (644_801_000 as Weight).saturating_add(T::DbWeight::get().reads(10 as Weight))
+            (201_666_000 as Weight).saturating_add(T::DbWeight::get().reads(10 as Weight))
         }
     }
 }
