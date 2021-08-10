@@ -40,7 +40,7 @@ use common::prelude::{Balance, FixedWrapper, QuoteAmount, SwapAmount, SwapOutcom
 use common::{
     balance, fixed_wrapper, FilterMode, Fixed, GetMarketInfo, GetPoolReserves, LiquidityRegistry,
     LiquiditySource, LiquiditySourceFilter, LiquiditySourceId, LiquiditySourceType, RewardReason,
-    TradingPair, VestedRewardsPallet,
+    TradingPair, VestedRewardsPallet, XSTUSD,
 };
 use frame_support::traits::Get;
 use frame_support::weights::Weight;
@@ -1056,11 +1056,18 @@ impl<T: Config> Pallet<T> {
             Fixed::MAX.into()
         };
 
-        // TODO: switch to select XST pallet
-        let primary_buy_price: FixedWrapper =
-            T::PrimaryMarketTBC::buy_price(base_asset_id, collateral_asset_id)
-                .map_err(|_| Error::<T>::CalculationError)?
-                .into();
+        macro_rules! match_buy_price {
+            ($source_type:ident) => {
+                T::$source_type::buy_price(base_asset_id, collateral_asset_id)
+                    .map_err(|_| Error::<T>::CalculationError)?
+                    .into();
+            };
+        }
+        let primary_buy_price: FixedWrapper = if collateral_asset_id == &XSTUSD.into() {
+            match_buy_price!(PrimaryMarketXST)
+        } else {
+            match_buy_price!(PrimaryMarketTBC)
+        };
 
         match amount {
             QuoteAmount::WithDesiredInput { desired_amount_in } => {
@@ -1146,10 +1153,18 @@ impl<T: Config> Pallet<T> {
             Fixed::ZERO.into()
         };
 
-        let primary_sell_price: FixedWrapper =
-            T::PrimaryMarketTBC::sell_price(base_asset_id, collateral_asset_id)
-                .map_err(|_| Error::<T>::CalculationError)?
-                .into();
+        macro_rules! match_sell_price {
+            ($source_type:ident) => {
+                T::$source_type::sell_price(base_asset_id, collateral_asset_id)
+                    .map_err(|_| Error::<T>::CalculationError)?
+                    .into();
+            };
+        }
+        let primary_sell_price: FixedWrapper = if collateral_asset_id == &XSTUSD.into() {
+            match_sell_price!(PrimaryMarketXST)
+        } else {
+            match_sell_price!(PrimaryMarketTBC)
+        };
 
         match amount {
             QuoteAmount::WithDesiredInput { desired_amount_in } => {

@@ -119,6 +119,7 @@ construct_runtime! {
         PoolXYK: pool_xyk::{Module, Call, Storage, Event<T>},
         XSTPool: xstpool::{Module, Call, Storage, Event<T>},
         PswapDistribution: pswap_distribution::{Module, Call, Storage, Event<T>},
+        DEXApi: dex_api::{Module, Storage, Event<T>},
     }
 }
 
@@ -202,6 +203,18 @@ impl assets::Config for Runtime {
     type GetBaseAssetId = GetBaseAssetId;
     type Currency = currencies::Module<Runtime>;
     type GetTeamReservesAccountId = GetTeamReservesAccountId;
+    type WeightInfo = ();
+}
+
+impl dex_api::Config for Runtime {
+    type Event = Event;
+    type MockLiquiditySource = ();
+    type MockLiquiditySource2 = ();
+    type MockLiquiditySource3 = ();
+    type MockLiquiditySource4 = ();
+    type XYKPool = MockLiquiditySource;
+    type XSTPool = XSTPool;
+    type MulticollateralBondingCurvePool = ();
     type WeightInfo = ();
 }
 
@@ -591,7 +604,7 @@ impl ExtBuilder {
         .unwrap();
 
         crate::GenesisConfig::<Runtime> {
-            reserves_account_id: Default::default(),
+            tech_account_id: Default::default(),
             reference_asset_id: self.reference_asset_id,
             initial_synthetic_assets: Default::default(),
         }
