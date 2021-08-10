@@ -28,22 +28,25 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use common::weights::constants::EXTRINSIC_FIXED_WEIGHT;
 use frame_support::traits::Get;
 use frame_support::weights::Weight;
 use sp_std::marker::PhantomData;
 
 pub struct WeightInfo<T>(PhantomData<T>);
 impl<T: frame_system::Config> crate::WeightInfo for WeightInfo<T> {
-    fn on_initialize(_elems: u32) -> Weight {
-        (834_713_000 as Weight)
-            .saturating_add(T::DbWeight::get().reads(82 as Weight))
-            .saturating_add(T::DbWeight::get().writes(34 as Weight))
-    }
-}
-
-impl crate::WeightInfo for () {
-    fn on_initialize(_elems: u32) -> Weight {
-        EXTRINSIC_FIXED_WEIGHT
+    fn on_initialize(elems_active: u32, elems_updated: u32) -> Weight {
+        (0 as Weight)
+            .saturating_add((1_748_463_000 as Weight).saturating_mul(elems_active as Weight))
+            .saturating_add((1_671_466_000 as Weight).saturating_mul(elems_updated as Weight))
+            .saturating_add(
+                T::DbWeight::get().reads((11 as Weight).saturating_mul(elems_active as Weight)),
+            )
+            .saturating_add(
+                T::DbWeight::get().reads((10 as Weight).saturating_mul(elems_updated as Weight)),
+            )
+            .saturating_add(T::DbWeight::get().writes(4 as Weight))
+            .saturating_add(
+                T::DbWeight::get().writes((1 as Weight).saturating_mul(elems_active as Weight)),
+            )
     }
 }

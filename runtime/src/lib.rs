@@ -659,6 +659,7 @@ impl pool_xyk::Config for Runtime {
     type EnsureDEXManager = dex_manager::Module<Runtime>;
     type GetFee = GetFee;
     type OnPoolCreated = (PswapDistribution, Farming);
+    type OnPoolReservesChanged = PriceTools;
     type WeightInfo = pool_xyk::weights::WeightInfo<Runtime>;
 }
 
@@ -695,7 +696,7 @@ impl liquidity_proxy::Config for Runtime {
     type PrimaryMarketXST = xst::Module<Runtime>;
     type SecondaryMarket = pool_xyk::Module<Runtime>;
     type WeightInfo = liquidity_proxy::weights::WeightInfo<Runtime>;
-    type VestedRewardsPallet = vested_rewards::Module<Runtime>;
+    type VestedRewardsPallet = VestedRewards;
 }
 
 impl mock_liquidity_source::Config<mock_liquidity_source::Instance1> for Runtime {

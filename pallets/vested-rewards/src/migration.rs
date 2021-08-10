@@ -29,14 +29,15 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use crate::{
-    Config, MarketMakersRegistry, Pallet, RewardInfo, Weight, MARKET_MAKER_ELIGIBILITY_TX_COUNT,
-    SINGLE_MARKET_MAKER_DISTRIBUTION_AMOUNT,
+    Config, Error, MarketMakersRegistry, Pallet, RewardInfo, Weight,
+    MARKET_MAKER_ELIGIBILITY_TX_COUNT, SINGLE_MARKET_MAKER_DISTRIBUTION_AMOUNT,
 };
 use common::prelude::{Balance, FixedWrapper};
 use common::{balance, fixed_wrapper, RewardReason};
 use frame_support::debug;
 use frame_support::traits::{Get, GetPalletVersion, PalletVersion};
 use sp_runtime::traits::Zero;
+use sp_runtime::DispatchError;
 use sp_std::vec::Vec;
 
 pub fn migrate<T: Config>() -> Weight {
@@ -106,7 +107,7 @@ pub fn migrate_rewards_from_tbc<T: Config>() -> Option<Weight> {
 
 pub fn inject_market_makers_first_month_rewards<T: Config>(
     snapshot: Vec<(T::AccountId, u32, Balance)>,
-) -> Weight {
+) -> Result<Weight, DispatchError> {
     let mut weight: Weight = 0;
 
     let mut eligible_accounts = Vec::new();
@@ -117,9 +118,18 @@ pub fn inject_market_makers_first_month_rewards<T: Config>(
             eligible_accounts.push((account_id.clone(), volume));
             total_eligible_volume = total_eligible_volume.saturating_add(volume);
         }
+        let current_state = MarketMakersRegistry::<T>::get(&account_id);
+        let new_count = current_state
+            .count
+            .checked_sub(count)
+            .ok_or(Error::<T>::CantSubtractSnapshot)?;
+        let new_volume = current_state
+            .volume
+            .checked_sub(volume)
+            .ok_or(Error::<T>::CantSubtractSnapshot)?;
         MarketMakersRegistry::<T>::mutate(&account_id, |val| {
-            val.count = val.count.saturating_sub(count);
-            val.volume = val.volume.saturating_sub(volume);
+            val.count = new_count;
+            val.volume = new_volume;
         });
         weight = weight.saturating_add(T::DbWeight::get().writes(1));
     }
@@ -129,7 +139,7 @@ pub fn inject_market_makers_first_month_rewards<T: Config>(
                 * FixedWrapper::from(SINGLE_MARKET_MAKER_DISTRIBUTION_AMOUNT)
                 / FixedWrapper::from(total_eligible_volume))
             .try_into_balance()
-            .unwrap_or(0);
+            .map_err(|_| Error::<T>::CantCalculateReward)?;
             if reward > 0 {
                 let res = Pallet::<T>::add_pending_reward(
                     account,
@@ -144,5 +154,5 @@ pub fn inject_market_makers_first_month_rewards<T: Config>(
         }
     }
 
-    weight
+    Ok(weight)
 }

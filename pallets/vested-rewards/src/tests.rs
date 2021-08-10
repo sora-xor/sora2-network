@@ -271,7 +271,7 @@ fn migration_v0_1_0_to_v1_1_0_market_makers() {
             (bob(), 1500, balance!(15000)),
         ];
 
-        crate::migration::inject_market_makers_first_month_rewards::<Runtime>(snapshot);
+        crate::migration::inject_market_makers_first_month_rewards::<Runtime>(snapshot).unwrap();
 
         // completely depleted
         assert_eq!(
@@ -328,6 +328,46 @@ fn migration_v0_1_0_to_v1_1_0_market_makers() {
                 total_available: balance!(0),
                 rewards: Default::default()
             }
+        );
+    });
+}
+
+#[test]
+fn migration_v0_1_0_to_v1_1_0_market_makers_fails_on_underflow() {
+    let mut ext = ExtBuilder::default().build();
+    ext.execute_with(|| {
+        use crate::MarketMakersRegistry;
+
+        let snapshot = vec![(alice(), 1000, balance!(10000))];
+        assert_noop!(
+            crate::migration::inject_market_makers_first_month_rewards::<Runtime>(snapshot),
+            Error::<Runtime>::CantSubtractSnapshot
+        );
+
+        MarketMakersRegistry::<Runtime>::insert(
+            alice(),
+            MarketMakerInfo {
+                count: 10,
+                volume: balance!(10000),
+            },
+        );
+        let snapshot = vec![(alice(), 1000, balance!(10000))];
+        assert_noop!(
+            crate::migration::inject_market_makers_first_month_rewards::<Runtime>(snapshot),
+            Error::<Runtime>::CantSubtractSnapshot
+        );
+
+        MarketMakersRegistry::<Runtime>::insert(
+            alice(),
+            MarketMakerInfo {
+                count: 1000,
+                volume: balance!(100),
+            },
+        );
+        let snapshot = vec![(alice(), 1000, balance!(10000))];
+        assert_noop!(
+            crate::migration::inject_market_makers_first_month_rewards::<Runtime>(snapshot),
+            Error::<Runtime>::CantSubtractSnapshot
         );
     });
 }
