@@ -81,7 +81,7 @@ impl From<PredefinedAssetId> for ComicAssetId {
             PredefinedAssetId::PSWAP => RedPepper,
             PredefinedAssetId::DAI => BlackPepper,
             PredefinedAssetId::ETH => AcmeSpyKit,
-            PredefinedAssetId::XSTUSD => Mango,
+            PredefinedAssetId::XSTDAI => Mango,
         }
     }
 }

@@ -33,7 +33,7 @@ use common::mock::ExistentialDeposits;
 use common::{
     self, balance, fixed, fixed_from_basis_points, fixed_wrapper, hash, Amount, AssetId32,
     AssetName, AssetSymbol, DEXInfo, Fixed, FromGenericPair, GetMarketInfo, LiquiditySource,
-    LiquiditySourceType, RewardReason, DAI, DOT, ETH, KSM, PSWAP, USDT, VAL, XOR, XSTUSD,
+    LiquiditySourceType, RewardReason, DAI, DOT, ETH, KSM, PSWAP, USDT, VAL, XOR, XSTDAI,
 };
 use currencies::BasicCurrencyAdapter;
 
@@ -690,7 +690,7 @@ pub fn get_reference_prices() -> HashMap<AssetId, Balance> {
         (USDT, balance!(1.01)),
         (KSM, balance!(450.0)),
         (DOT, balance!(50.0)),
-        (XSTUSD, balance!(1.02)),
+        (XSTDAI, balance!(1.02)),
     ];
     prices.into_iter().collect()
 }
@@ -857,9 +857,9 @@ impl MockXSTPool {
 
 impl LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> for MockXSTPool {
     fn can_exchange(_dex_id: &DEXId, input_asset_id: &AssetId, output_asset_id: &AssetId) -> bool {
-        if output_asset_id == &XOR.into() && input_asset_id == &XSTUSD.into() {
+        if output_asset_id == &XOR.into() && input_asset_id == &XSTDAI.into() {
             return true;
-        } else if input_asset_id == &XOR.into() && output_asset_id == &XSTUSD.into() {
+        } else if input_asset_id == &XOR.into() && output_asset_id == &XSTDAI.into() {
             return true;
         } else {
             return false;
@@ -985,6 +985,6 @@ impl GetMarketInfo<AssetId> for MockXSTPool {
 
     /// `target_assets` refer to synthetic assets
     fn enabled_target_assets() -> BTreeSet<AssetId> {
-        [XSTUSD].iter().cloned().collect()
+        [XSTDAI].iter().cloned().collect()
     }
 }
