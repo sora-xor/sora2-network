@@ -6,7 +6,7 @@ repository = 'https://github.com/sora-xor/sora2-network'
 description = 'Pallet for claiming rewards'
 edition = '2018'
 name = 'rewards'
-version = '1.1.0'
+version = '1.2.0'
 
 [package.metadata.docs.rs]
 targets = ['x86_64-unknown-linux-gnu']
@@ -22,6 +22,7 @@ serde = { version = "1.0.101", optional = true, features = ["derive"] }
 sp-core = { version = "3", default-features = false }
 sp-io = { version = "3", default-features = false }
 sp-std = { version = "3", default-features = false }
+sp-runtime = { version = "3", default-features = false }
 orml-traits = { version = "0.4", package = "orml-traits", default-features = false }
 
 assets = { path = "../assets", default-features = false }

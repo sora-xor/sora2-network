@@ -35,8 +35,6 @@
 #[macro_use]
 extern crate alloc;
 
-use dex_api::*;
-
 use codec::Decode;
 use common::prelude::{Balance, SwapVariant};
 use common::{
@@ -73,9 +71,15 @@ fn alice<T: Config>() -> T::AccountId {
     T::AccountId::decode(&mut &bytes[..]).expect("Failed to decode account ID")
 }
 
+fn bob<T: Config>() -> T::AccountId {
+    let bytes = hex!("f43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d");
+    T::AccountId::decode(&mut &bytes[..]).expect("Failed to decode account ID")
+}
+
 // Prepare Runtime for running benchmarks
 fn setup_benchmark<T: Config>() -> Result<(), &'static str> {
     let owner = alice::<T>();
+    frame_system::Module::<T>::inc_providers(&owner);
     let owner_origin: <T as frame_system::Config>::Origin = RawOrigin::Signed(owner.clone()).into();
     let dex_id: T::DEXId = DEX.into();
 
@@ -175,15 +179,21 @@ fn setup_benchmark<T: Config>() -> Result<(), &'static str> {
     )
     .unwrap();
 
-    TradingPair::<T>::register(owner_origin.clone(), DEX.into(), XOR.into(), DOT.into()).unwrap();
-    TradingPair::<T>::register(owner_origin.clone(), DEX.into(), XOR.into(), USDT.into()).unwrap();
-    TradingPair::<T>::register(owner_origin.clone(), DEX.into(), XOR.into(), VAL.into()).unwrap();
-    TradingPair::<T>::register(owner_origin.clone(), DEX.into(), XOR.into(), PSWAP.into()).unwrap();
+    Assets::<T>::mint_to(&XOR.into(), &owner, &bob::<T>(), balance!(50000)).unwrap();
 
-    XYKPool::<T>::initialize_pool(owner_origin.clone(), DEX.into(), XOR.into(), DOT.into())?;
-    XYKPool::<T>::initialize_pool(owner_origin.clone(), DEX.into(), XOR.into(), VAL.into())?;
-    XYKPool::<T>::initialize_pool(owner_origin.clone(), DEX.into(), XOR.into(), PSWAP.into())?;
-    XYKPool::<T>::initialize_pool(owner_origin.clone(), DEX.into(), XOR.into(), USDT.into())?;
+    let _ = TradingPair::<T>::register(owner_origin.clone(), DEX.into(), XOR.into(), DOT.into());
+    let _ = TradingPair::<T>::register(owner_origin.clone(), DEX.into(), XOR.into(), USDT.into());
+    let _ = TradingPair::<T>::register(owner_origin.clone(), DEX.into(), XOR.into(), VAL.into());
+    let _ = TradingPair::<T>::register(owner_origin.clone(), DEX.into(), XOR.into(), PSWAP.into());
+
+    XYKPool::<T>::initialize_pool(owner_origin.clone(), DEX.into(), XOR.into(), DOT.into())
+        .unwrap();
+    XYKPool::<T>::initialize_pool(owner_origin.clone(), DEX.into(), XOR.into(), VAL.into())
+        .unwrap();
+    XYKPool::<T>::initialize_pool(owner_origin.clone(), DEX.into(), XOR.into(), PSWAP.into())
+        .unwrap();
+    XYKPool::<T>::initialize_pool(owner_origin.clone(), DEX.into(), XOR.into(), USDT.into())
+        .unwrap();
 
     XYKPool::<T>::deposit_liquidity(
         owner_origin.clone(),
@@ -194,7 +204,8 @@ fn setup_benchmark<T: Config>() -> Result<(), &'static str> {
         balance!(2000),
         balance!(0),
         balance!(0),
-    )?;
+    )
+    .unwrap();
     XYKPool::<T>::deposit_liquidity(
         owner_origin.clone(),
         DEX.into(),
@@ -204,7 +215,8 @@ fn setup_benchmark<T: Config>() -> Result<(), &'static str> {
         balance!(2000),
         balance!(0),
         balance!(0),
-    )?;
+    )
+    .unwrap();
     XYKPool::<T>::deposit_liquidity(
         owner_origin.clone(),
         DEX.into(),
@@ -214,7 +226,8 @@ fn setup_benchmark<T: Config>() -> Result<(), &'static str> {
         balance!(2000),
         balance!(0),
         balance!(0),
-    )?;
+    )
+    .unwrap();
     XYKPool::<T>::deposit_liquidity(
         owner_origin.clone(),
         DEX.into(),
@@ -224,10 +237,10 @@ fn setup_benchmark<T: Config>() -> Result<(), &'static str> {
         balance!(2000),
         balance!(0),
         balance!(0),
-    )?;
+    )
+    .unwrap();
 
-    MBCPool::<T>::initialize_pool(owner_origin.clone(), USDT.into())?;
-    MBCPool::<T>::initialize_pool(owner_origin.clone(), VAL.into())?;
+    MBCPool::<T>::initialize_pool(owner_origin.clone(), USDT.into()).unwrap();
 
     Ok(())
 }
@@ -243,35 +256,26 @@ fn assert_last_event<T: Config>(generic_event: <T as dex_api::Config>::Event) {
 
 benchmarks! {
     swap {
-        let n in 1 .. 1000 => setup_benchmark::<T>()?;
+        let n in 1 .. 1000 => setup_benchmark::<T>().unwrap();
 
-        let caller = alice::<T>();
+        let caller = bob::<T>();
         let base_asset: T::AssetId = <T as assets::Config>::GetBaseAssetId::get();
         let target_asset: T::AssetId = DOT.into();
-    }: _(
-        RawOrigin::Signed(caller.clone()),
-        DEX.into(),
-        LiquiditySourceType::XYKPool,
-        base_asset.clone(),
-        target_asset.clone(),
-        balance!(1000),
-        0,
-        SwapVariant::WithDesiredInput,
-        None
-    )
+    }: {
+        dex_api::Module::<T>::swap(
+            RawOrigin::Signed(caller.clone()).into(),
+            DEX.into(),
+            LiquiditySourceType::XYKPool,
+            base_asset.clone(),
+            target_asset.clone(),
+            balance!(2),
+            0,
+            SwapVariant::WithDesiredInput,
+            None
+        ).unwrap()
+    }
     verify {
-        // TODO: implement proper verification method
-        // assert_last_event::<T>(Event::DirectExchange(
-        //     caller.clone(),
-        //     caller.clone(),
-        //     DEX.into(),
-        //     LiquiditySourceType::XYKPool,
-        //     base_asset.clone(),
-        //     target_asset.clone(),
-        //     fixed!(1000),
-        //     fixed!(667),
-        //     fixed!(3)
-        // ).into())
+        assert_eq!(assets::Module::<T>::total_balance(&target_asset, &caller), Ok(3980063752876763733));
     }
 }
 

@@ -29,7 +29,7 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use currencies::BasicCurrencyAdapter;
-use frame_support::traits::GenesisBuild;
+use frame_support::traits::{GenesisBuild, OnFinalize, OnInitialize};
 use frame_support::weights::{RuntimeDbWeight, Weight};
 use frame_support::{construct_runtime, parameter_types};
 use hex_literal::hex;
@@ -37,10 +37,10 @@ use sp_core::crypto::AccountId32;
 use sp_core::H256;
 use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentifyAccount, IdentityLookup, Verify};
-use sp_runtime::{MultiSignature, Perbill};
+use sp_runtime::{MultiSignature, Perbill, Percent};
 
 use common::mock::ExistentialDeposits;
-use common::prelude::Balance;
+use common::prelude::{Balance, OnValBurned};
 use common::{
     self, balance, Amount, AssetId32, AssetName, AssetSymbol, TechPurpose, PSWAP, VAL, XOR,
 };
@@ -106,6 +106,11 @@ construct_runtime! {
 }
 
 impl Config for Runtime {
+    const BLOCKS_PER_DAY: BlockNumber = 20;
+    const UPDATE_FREQUENCY: BlockNumber = 5;
+    const MAX_CHUNK_SIZE: usize = 1;
+    const MAX_VESTING_RATIO: Percent = Percent::from_percent(55);
+    const TIME_TO_SATURATION: BlockNumber = 100;
     type Event = Event;
     type WeightInfo = ();
 }
@@ -142,7 +147,6 @@ impl technical::Config for Runtime {
     type Trigger = ();
     type Condition = ();
     type SwapAction = ();
-    type WeightInfo = ();
 }
 
 impl assets::Config for Runtime {
@@ -260,7 +264,7 @@ impl ExtBuilder {
         .unwrap();
 
         TechnicalConfig {
-            account_ids_to_tech_account_ids: vec![(account_id, tech_account_id.clone())],
+            register_tech_accounts: vec![(account_id, tech_account_id.clone())],
         }
         .assimilate_storage(&mut t)
         .unwrap();
@@ -270,25 +274,15 @@ impl ExtBuilder {
                 vec![
                     (
                         hex!("21Bc9f4a3d9Dc86f142F802668dB7D908cF0A636").into(),
-                        balance!(111),
+                        (balance!(111), balance!(1000)).into(),
                     ),
                     (
                         hex!("d170a274320333243b9f860e8891c6792de1ec19").into(),
-                        balance!(2888.9933),
+                        (balance!(2888.99), balance!(20000)).into(),
                     ),
                     (
                         hex!("886021f300dc809269cfc758a2364a2baf63af0c").into(),
-                        balance!(0.0067),
-                    ),
-                    (
-                        // Uniswap liquidiy pool account
-                        hex!("01962144d41415cca072900fe87bbe2992a99f10").into(),
-                        balance!(20000),
-                    ),
-                    (
-                        // Mooniswap liquidiy pool account
-                        hex!("215470102a05b02a3a2898f317b5382f380afc0e").into(),
-                        balance!(7000),
+                        (balance!(0.01), balance!(0.1)).into(),
                     ),
                 ],
                 vec![(
@@ -324,4 +318,47 @@ impl ExtBuilder {
 
         t.into()
     }
+}
+
+pub fn run_to_block(n: u64) {
+    while System::block_number() < n {
+        System::on_finalize(System::block_number());
+        System::set_block_number(System::block_number() + 1);
+        System::on_initialize(System::block_number());
+        Rewards::on_initialize(System::block_number());
+        Rewards::on_val_burned(balance!(10));
+    }
+}
+
+pub fn unclaimed_val_data() -> Vec<(crate::EthereumAddress, Balance)> {
+    vec![
+        (
+            hex!("21Bc9f4a3d9Dc86f142F802668dB7D908cF0A636").into(),
+            balance!(500),
+        ),
+        (
+            hex!("d170a274320333243b9f860e8891c6792de1ec19").into(),
+            balance!(1000),
+        ),
+        (
+            hex!("886021f300dc809269cfc758a2364a2baf63af0c").into(),
+            balance!(1500),
+        ),
+        (
+            hex!("8b98125055f70613bcee1a391e3096393bddb1ca").into(),
+            balance!(2000),
+        ),
+        (
+            hex!("d0d6f3cafe2b0b2d1c04d5bcf44461dd6e4f0344").into(),
+            balance!(2500),
+        ),
+        (
+            hex!("90781049bad67cb0b870bfd41da6b467d4345683").into(),
+            balance!(3000),
+        ),
+        (
+            hex!("8522d57aa68fad76c110ca6ff310dcd57071cdf6").into(),
+            balance!(3500),
+        ),
+    ]
 }

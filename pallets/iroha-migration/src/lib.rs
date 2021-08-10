@@ -53,7 +53,7 @@ mod tests;
 pub mod weights;
 
 use common::prelude::Balance;
-use common::VAL;
+use common::{FromGenericPair, VAL};
 use ed25519_dalek_iroha::{Digest, PublicKey, Signature, SIGNATURE_LENGTH};
 use frame_support::codec::{Decode, Encode};
 use frame_support::dispatch::{DispatchError, Weight};
@@ -274,7 +274,17 @@ impl<T: Config> Pallet<T> {
     ) -> Result<(), DispatchError> {
         if let Some(balance) = Balances::<T>::take(iroha_address) {
             if !balance.is_zero() {
-                assets::Pallet::<T>::mint_to(&VAL.into(), &Account::<T>::get(), account, balance)?;
+                let eth_bridge_tech_account_id = <T>::TechAccountId::from_generic_pair(
+                    eth_bridge::TECH_ACCOUNT_PREFIX.to_vec(),
+                    eth_bridge::TECH_ACCOUNT_MAIN.to_vec(),
+                );
+
+                technical::Module::<T>::transfer_out(
+                    &VAL.into(),
+                    &eth_bridge_tech_account_id,
+                    account,
+                    balance,
+                )?;
             }
         }
         Ok(())

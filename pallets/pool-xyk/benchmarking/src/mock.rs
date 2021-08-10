@@ -40,7 +40,7 @@ use frame_support::{construct_runtime, parameter_types};
 use frame_system;
 
 use common::prelude::Balance;
-use permissions::{Scope, BURN, MANAGE_DEX, MINT, TRANSFER};
+use permissions::{Scope, BURN, MANAGE_DEX, MINT};
 use sp_core::H256;
 use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentityLookup};
@@ -184,9 +184,9 @@ impl dex_api::Config for Runtime {
     type MockLiquiditySource2 = ();
     type MockLiquiditySource3 = ();
     type MockLiquiditySource4 = ();
-    type BondingCurvePool = ();
     type MulticollateralBondingCurvePool = ();
     type XYKPool = pool_xyk::Module<Runtime>;
+    type XSTPool = ();
     type WeightInfo = ();
 }
 
@@ -197,7 +197,6 @@ impl technical::Config for Runtime {
     type Trigger = ();
     type Condition = ();
     type SwapAction = pool_xyk::PolySwapAction<AssetId, AccountId, TechAccountId>;
-    type WeightInfo = ();
 }
 
 impl pool_xyk::Config for Runtime {
@@ -252,7 +251,6 @@ impl Default for ExtBuilder {
                 },
             )],
             initial_permission_owners: vec![
-                (TRANSFER, Scope::Unlimited, vec![alice()]),
                 (MINT, Scope::Unlimited, vec![alice()]),
                 (BURN, Scope::Unlimited, vec![alice()]),
                 (MANAGE_DEX, Scope::Unlimited, vec![alice()]),

@@ -43,7 +43,7 @@ use sp_core::crypto::AccountId32;
 use sp_core::H256;
 use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentityLookup};
-use sp_runtime::Perbill;
+use sp_runtime::{Perbill, Percent};
 
 type DEXId = common::DEXId;
 type AccountId = AccountId32;
@@ -134,6 +134,11 @@ impl frame_system::Config for Runtime {
 }
 
 impl rewards::Config for Runtime {
+    const BLOCKS_PER_DAY: BlockNumber = 20;
+    const UPDATE_FREQUENCY: BlockNumber = 5;
+    const MAX_CHUNK_SIZE: usize = 1;
+    const MAX_VESTING_RATIO: Percent = Percent::from_percent(55);
+    const TIME_TO_SATURATION: BlockNumber = 100;
     type Event = Event;
     type WeightInfo = ();
 }
@@ -145,7 +150,6 @@ impl technical::Config for Runtime {
     type Trigger = ();
     type Condition = ();
     type SwapAction = ();
-    type WeightInfo = ();
 }
 
 impl assets::Config for Runtime {
@@ -257,7 +261,7 @@ impl ExtBuilder {
         .unwrap();
 
         TechnicalConfig {
-            account_ids_to_tech_account_ids: vec![(account_id, tech_account_id.clone())],
+            register_tech_accounts: vec![(account_id, tech_account_id.clone())],
         }
         .assimilate_storage(&mut t)
         .unwrap();

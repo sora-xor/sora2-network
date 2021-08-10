@@ -38,7 +38,7 @@ use frame_support::{construct_runtime, parameter_types};
 use frame_system;
 use hex_literal::hex;
 use orml_traits::parameter_type_with_key;
-use permissions::{Scope, MANAGE_DEX, TRANSFER};
+use permissions::{Scope, MANAGE_DEX};
 use sp_core::crypto::AccountId32;
 use sp_core::H256;
 use sp_runtime::testing::Header;
@@ -192,7 +192,6 @@ impl technical::Config for Runtime {
     type Trigger = ();
     type Condition = ();
     type SwapAction = crate::PolySwapAction<AssetId, AccountId, TechAccountId>;
-    type WeightInfo = ();
 }
 
 impl pswap_distribution::Config for Runtime {
@@ -265,10 +264,11 @@ impl Default for ExtBuilder {
                 (BOB(), RedPepper.into(), balance!(2000000)),
                 (CHARLIE(), BlackPepper.into(), balance!(2000000)),
             ],
-            initial_permission_owners: vec![
-                (MANAGE_DEX, Scope::Limited(hash(&DEX_A_ID)), vec![BOB()]),
-                (TRANSFER, Scope::Unlimited, vec![ALICE()]),
-            ],
+            initial_permission_owners: vec![(
+                MANAGE_DEX,
+                Scope::Limited(hash(&DEX_A_ID)),
+                vec![BOB()],
+            )],
             initial_permissions: vec![(BOB(), Scope::Limited(hash(&DEX_A_ID)), vec![MANAGE_DEX])],
         }
     }

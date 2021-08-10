@@ -1,9 +1,0 @@
-version: "3.2"
-
-services:
-  dev:
-    container_name: sora_polkaswap_nix_local_testnet
-    image: sora/polkaswap/nix:latest
-    # Please run ```docker build -t sora/polkaswap/nix .```
-    working_dir: /workdir
-    command: ./run_script.sh -d -w -r
