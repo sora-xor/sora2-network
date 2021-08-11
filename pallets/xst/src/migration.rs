@@ -28,10 +28,11 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use crate::{Config, Pallet, Weight};
-use common::{AssetName, AssetSymbol, Balance, FromGenericPair, XSTUSD};
+use crate::{Config, Pallet, PermissionedTechAccount, Weight};
+use common::{AssetName, AssetSymbol, Balance, FromGenericPair, LiquiditySourceType, XSTUSD};
 use frame_support::debug;
 use frame_support::traits::{Get, GetPalletVersion};
+use permissions::{Scope, BURN, MINT};
 use sp_runtime::traits::Zero;
 
 pub fn migrate<T: Config>() -> Weight {
@@ -41,7 +42,10 @@ pub fn migrate<T: Config>() -> Weight {
         // Register token when pallet is first created, i.e. None version
         None => {
             let migrated_weight = register_new_token::<T>().unwrap_or(100_000);
-            weight = weight.saturating_add(migrated_weight)
+            weight = weight.saturating_add(migrated_weight);
+            let migrated_weight = register_xst_tech_account::<T>().unwrap_or(100_000);
+            weight = weight.saturating_add(migrated_weight);
+            weight = weight.saturating_add(register_in_dex_api::<T>());
         }
         _ => (),
     }
@@ -74,14 +78,71 @@ pub fn register_new_token<T: Config>() -> Option<Weight> {
     if result.is_err() {
         debug::error!(
             target: "runtime",
-            "failed to register XST USD asset"
+            "failed to register SORA Synthetic USD asset"
         );
     } else {
         debug::info!(
             target: "runtime",
-            "registered XST USD asset successfully"
+            "registered SORA Synthetic USD asset successfully"
         );
     }
 
     Some(T::DbWeight::get().writes(1))
+}
+
+pub fn get_permissioned_tech_account_id<T: Config>() -> (T::TechAccountId, T::AccountId) {
+    let tech_account_id = T::TechAccountId::from_generic_pair(
+        crate::TECH_ACCOUNT_PREFIX.to_vec(),
+        crate::TECH_ACCOUNT_PERMISSIONED.to_vec(),
+    );
+    // 1 read, unwrap is guaranteed to work
+    let account_id = technical::Module::<T>::tech_account_id_to_account_id(&tech_account_id)
+        .expect("Couldn't generate tech account for XST pallet during migration.");
+    (tech_account_id, account_id)
+}
+
+pub fn register_xst_tech_account<T: Config>() -> Option<Weight> {
+    debug::RuntimeLogger::init();
+    let (xst_permissioned_tech_account_id, xst_permissioned_account_id) =
+        get_permissioned_tech_account_id::<T>();
+
+    // 1 read, 2 writes
+    let register_result =
+        technical::Module::<T>::register_tech_account_id(xst_permissioned_tech_account_id.clone());
+
+    PermissionedTechAccount::<T>::set(xst_permissioned_tech_account_id);
+
+    if register_result.is_ok() {
+        let permissions = [BURN, MINT];
+        debug::info!(
+            target: "runtime",
+            "registered XST pallet tech account successfully"
+        );
+        for permission in &permissions {
+            // 2 times: 1 read, 3 writes
+            let assign_permission_result = permissions::Module::<T>::assign_permission(
+                xst_permissioned_account_id.clone(),
+                &xst_permissioned_account_id,
+                *permission,
+                Scope::Unlimited,
+            );
+            if assign_permission_result.is_err() {
+                debug::error!(
+                    target: "runtime",
+                    "failed to assign permissions for XST pallet tech account"
+                );
+            }
+        }
+    } else {
+        debug::error!(
+            target: "runtime",
+            "failed to register XST pallet tech account"
+        );
+    }
+    Some(T::DbWeight::get().reads_writes(4, 8))
+}
+
+pub fn register_in_dex_api<T: Config>() -> Weight {
+    dex_api::EnabledSourceTypes::<T>::mutate(|types| types.push(LiquiditySourceType::XSTPool));
+    T::DbWeight::get().writes(1)
 }
