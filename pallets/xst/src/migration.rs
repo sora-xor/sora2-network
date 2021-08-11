@@ -69,7 +69,7 @@ pub fn register_new_token<T: Config>() -> Option<Weight> {
         get_assets_owner_account::<T>(),
         XSTUSD.into(),
         AssetSymbol(b"XSTUSD".to_vec()),
-        AssetName(b"XST USD".to_vec()),
+        AssetName(b"SORA Synthetic USD".to_vec()),
         18,
         Balance::zero(),
         true,
@@ -78,12 +78,12 @@ pub fn register_new_token<T: Config>() -> Option<Weight> {
     if result.is_err() {
         debug::error!(
             target: "runtime",
-            "failed to register XST USD asset"
+            "failed to register SORA Synthetic USD asset"
         );
     } else {
         debug::info!(
             target: "runtime",
-            "registered XST USD asset successfully"
+            "registered SORA Synthetic USD asset successfully"
         );
     }
 
