@@ -40,7 +40,7 @@ use common::prelude::{Balance, FixedWrapper, QuoteAmount, SwapAmount, SwapOutcom
 use common::{
     balance, fixed_wrapper, FilterMode, Fixed, GetMarketInfo, GetPoolReserves, LiquidityRegistry,
     LiquiditySource, LiquiditySourceFilter, LiquiditySourceId, LiquiditySourceType, RewardReason,
-    TradingPair, VestedRewardsPallet,
+    TradingPair, VestedRewardsPallet, XSTUSD,
 };
 use frame_support::traits::Get;
 use frame_support::weights::Weight;
@@ -169,7 +169,7 @@ impl<DEXId: PartialEq + Copy, AccountId, AssetId> LiquidityProxyTrait<DEXId, Acc
 }
 
 pub trait WeightInfo {
-    fn swap(amount: SwapVariant) -> Weight;
+    fn swap(variant: SwapVariant) -> Weight;
 }
 
 impl<T: Config> Pallet<T> {
@@ -389,7 +389,7 @@ impl<T: Config> Pallet<T> {
         amount: QuoteAmount<Balance>,
         filter: LiquiditySourceFilter<T::DEXId, LiquiditySourceType>,
         skip_info: bool,
-    ) -> Result<(SwapOutcome<Balance>, Rewards<T::AssetId>), DispatchError> {
+    ) -> Result<(SwapOutcome<Balance>, Rewards<T::AssetId>, Option<Balance>), DispatchError> {
         ensure!(
             input_asset_id != output_asset_id,
             Error::<T>::UnavailableExchangePath
@@ -398,8 +398,24 @@ impl<T: Config> Pallet<T> {
             ExchangePath::Direct {
                 from_asset_id,
                 to_asset_id,
-            } => Self::quote_single(&from_asset_id, &to_asset_id, amount, filter, skip_info)
-                .map(|(aso, rewards)| (SwapOutcome::new(aso.amount, aso.fee).into(), rewards)),
+            } => {
+                let (aso, rewards) =
+                    Self::quote_single(&from_asset_id, &to_asset_id, amount, filter, skip_info)?;
+                let quote_without_impact = if skip_info {
+                    None
+                } else {
+                    Some(Self::calculate_amount_without_impact(
+                        input_asset_id,
+                        output_asset_id,
+                        &aso.distribution,
+                    )?)
+                };
+                Ok((
+                    SwapOutcome::new(aso.amount, aso.fee).into(),
+                    rewards,
+                    quote_without_impact,
+                ))
+            }
             ExchangePath::Twofold {
                 from_asset_id,
                 intermediate_asset_id,
@@ -420,6 +436,38 @@ impl<T: Config> Pallet<T> {
                         filter,
                         skip_info,
                     )?;
+                    let quote_without_impact = if skip_info {
+                        None
+                    } else {
+                        let first_quote_without_impact = Self::calculate_amount_without_impact(
+                            &from_asset_id,
+                            &intermediate_asset_id,
+                            &first_quote.distribution,
+                        )?;
+                        let ratio_to_actual = FixedWrapper::from(first_quote_without_impact)
+                            / FixedWrapper::from(first_quote.amount);
+                        let distribution: Result<Vec<_>, _> = second_quote
+                            .distribution
+                            .iter()
+                            .cloned()
+                            .map(|(ls, am)| {
+                                let am_adjusted = (FixedWrapper::from(am.amount())
+                                    * ratio_to_actual.clone())
+                                .try_into_balance();
+                                if am_adjusted.is_ok() {
+                                    Ok((ls, am.copy_direction(am_adjusted.unwrap())))
+                                } else {
+                                    Err(Error::<T>::FailedToCalculatePriceWithoutImpact)
+                                }
+                            })
+                            .collect();
+                        let second_quote_without_impact = Self::calculate_amount_without_impact(
+                            &intermediate_asset_id,
+                            &to_asset_id,
+                            &distribution?,
+                        )?;
+                        Some(second_quote_without_impact)
+                    };
                     let cumulative_fee = first_quote
                         .fee
                         .checked_add(second_quote.fee)
@@ -429,6 +477,7 @@ impl<T: Config> Pallet<T> {
                     Ok((
                         SwapOutcome::new(second_quote.amount, cumulative_fee),
                         rewards,
+                        quote_without_impact,
                     ))
                 }
                 QuoteAmount::WithDesiredOutput { desired_amount_out } => {
@@ -446,6 +495,38 @@ impl<T: Config> Pallet<T> {
                         filter,
                         skip_info,
                     )?;
+                    let quote_without_impact = if skip_info {
+                        None
+                    } else {
+                        let second_quote_without_impact = Self::calculate_amount_without_impact(
+                            &intermediate_asset_id,
+                            &to_asset_id,
+                            &second_quote.distribution,
+                        )?;
+                        let ratio_to_actual = FixedWrapper::from(second_quote_without_impact)
+                            / FixedWrapper::from(second_quote.amount);
+                        let distribution: Result<Vec<_>, _> = first_quote
+                            .distribution
+                            .iter()
+                            .cloned()
+                            .map(|(ls, am)| {
+                                let am_adjusted = (FixedWrapper::from(am.amount())
+                                    * ratio_to_actual.clone())
+                                .try_into_balance();
+                                if am_adjusted.is_ok() {
+                                    Ok((ls, am.copy_direction(am_adjusted.unwrap())))
+                                } else {
+                                    Err(Error::<T>::FailedToCalculatePriceWithoutImpact)
+                                }
+                            })
+                            .collect();
+                        let first_quote_without_impact = Self::calculate_amount_without_impact(
+                            &from_asset_id,
+                            &intermediate_asset_id,
+                            &distribution?,
+                        )?;
+                        Some(first_quote_without_impact)
+                    };
                     let cumulative_fee = first_quote
                         .fee
                         .checked_add(second_quote.fee)
@@ -455,6 +536,7 @@ impl<T: Config> Pallet<T> {
                     Ok((
                         SwapOutcome::new(first_quote.amount, cumulative_fee),
                         rewards,
+                        quote_without_impact,
                     ))
                 }
             },
@@ -551,6 +633,32 @@ impl<T: Config> Pallet<T> {
         }
 
         fail!(Error::<T>::UnavailableExchangePath);
+    }
+
+    fn calculate_amount_without_impact(
+        input_asset_id: &T::AssetId,
+        output_asset_id: &T::AssetId,
+        distribution: &Vec<(
+            LiquiditySourceId<T::DEXId, LiquiditySourceType>,
+            QuoteAmount<Balance>,
+        )>,
+    ) -> Result<Balance, DispatchError> {
+        let mut outcome_without_impact: Balance = 0;
+        for (src, part_amount) in distribution
+            .iter()
+            .filter(|(_src, part_amount)| part_amount.amount() > balance!(0))
+        {
+            let part_outcome = T::LiquidityRegistry::quote_without_impact(
+                src,
+                input_asset_id,
+                output_asset_id,
+                part_amount.clone(),
+            )?;
+            outcome_without_impact = outcome_without_impact
+                .checked_add(part_outcome.amount)
+                .ok_or(Error::<T>::FailedToCalculatePriceWithoutImpact)?;
+        }
+        Ok(outcome_without_impact)
     }
 
     pub fn construct_trivial_path(
@@ -948,11 +1056,18 @@ impl<T: Config> Pallet<T> {
             Fixed::MAX.into()
         };
 
-        // TODO: switch to select XST pallet
-        let primary_buy_price: FixedWrapper =
-            T::PrimaryMarketTBC::buy_price(base_asset_id, collateral_asset_id)
-                .map_err(|_| Error::<T>::CalculationError)?
-                .into();
+        macro_rules! match_buy_price {
+            ($source_type:ident) => {
+                T::$source_type::buy_price(base_asset_id, collateral_asset_id)
+                    .map_err(|_| Error::<T>::CalculationError)?
+                    .into();
+            };
+        }
+        let primary_buy_price: FixedWrapper = if collateral_asset_id == &XSTUSD.into() {
+            match_buy_price!(PrimaryMarketXST)
+        } else {
+            match_buy_price!(PrimaryMarketTBC)
+        };
 
         match amount {
             QuoteAmount::WithDesiredInput { desired_amount_in } => {
@@ -1038,10 +1153,18 @@ impl<T: Config> Pallet<T> {
             Fixed::ZERO.into()
         };
 
-        let primary_sell_price: FixedWrapper =
-            T::PrimaryMarketTBC::sell_price(base_asset_id, collateral_asset_id)
-                .map_err(|_| Error::<T>::CalculationError)?
-                .into();
+        macro_rules! match_sell_price {
+            ($source_type:ident) => {
+                T::$source_type::sell_price(base_asset_id, collateral_asset_id)
+                    .map_err(|_| Error::<T>::CalculationError)?
+                    .into();
+            };
+        }
+        let primary_sell_price: FixedWrapper = if collateral_asset_id == &XSTUSD.into() {
+            match_sell_price!(PrimaryMarketXST)
+        } else {
+            match_sell_price!(PrimaryMarketTBC)
+        };
 
         match amount {
             QuoteAmount::WithDesiredInput { desired_amount_in } => {
@@ -1114,7 +1237,7 @@ impl<T: Config> LiquidityProxyTrait<T::DEXId, T::AccountId, T::AssetId> for Pall
         filter: LiquiditySourceFilter<T::DEXId, LiquiditySourceType>,
     ) -> Result<SwapOutcome<Balance>, DispatchError> {
         Pallet::<T>::inner_quote(input_asset_id, output_asset_id, amount, filter, true)
-            .map(|(outcome, _rewards)| outcome)
+            .map(|(outcome, _rewards, _amount_without_impact)| outcome)
     }
 
     /// Applies trivial routing (via Base Asset), resulting in a poly-swap which may contain several individual swaps.
@@ -1278,5 +1401,7 @@ pub mod pallet {
         SlippageNotTolerated,
         /// Selected filtering request is not allowed.
         ForbiddenFilter,
+        /// Failure while calculating price ignoring non-linearity of liquidity source.
+        FailedToCalculatePriceWithoutImpact,
     }
 }

@@ -255,7 +255,6 @@ impl technical::Config for Runtime {
     type Trigger = ();
     type Condition = ();
     type SwapAction = pool_xyk::PolySwapAction<AssetId, AccountId, TechAccountId>;
-    type WeightInfo = ();
 }
 
 impl permissions::Config for Runtime {
@@ -272,7 +271,6 @@ impl dex_api::Config for Runtime {
         mock_liquidity_source::Module<Runtime, mock_liquidity_source::Instance3>;
     type MockLiquiditySource4 =
         mock_liquidity_source::Module<Runtime, mock_liquidity_source::Instance4>;
-    type BondingCurvePool = ();
     type XYKPool = ();
     type MulticollateralBondingCurvePool = MockMCBCPool;
     type XSTPool = MockXSTPool;
@@ -311,6 +309,7 @@ impl pool_xyk::Config for Runtime {
     type PolySwapAction = pool_xyk::PolySwapAction<AssetId, AccountId, TechAccountId>;
     type EnsureDEXManager = dex_manager::Module<Runtime>;
     type OnPoolCreated = pswap_distribution::Module<Runtime>;
+    type OnPoolReservesChanged = ();
     type GetFee = GetXykFee;
     type WeightInfo = ();
 }
@@ -647,6 +646,16 @@ impl LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> for Mock
             fail!(crate::Error::<Runtime>::UnavailableExchangePath);
         }
     }
+
+    fn quote_without_impact(
+        dex_id: &DEXId,
+        input_asset_id: &AssetId,
+        output_asset_id: &AssetId,
+        amount: QuoteAmount<Balance>,
+    ) -> Result<SwapOutcome<Balance>, DispatchError> {
+        // TODO: implement if needed
+        Self::quote(dex_id, input_asset_id, output_asset_id, amount)
+    }
 }
 
 impl GetMarketInfo<AssetId> for MockMCBCPool {
@@ -939,6 +948,16 @@ impl LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> for Mock
         _output_amount: Balance,
     ) -> Result<Vec<(Balance, AssetId, RewardReason)>, DispatchError> {
         Ok(Vec::new()) // no rewards for XST
+    }
+
+    fn quote_without_impact(
+        dex_id: &DEXId,
+        input_asset_id: &AssetId,
+        output_asset_id: &AssetId,
+        amount: QuoteAmount<Balance>,
+    ) -> Result<SwapOutcome<Balance>, DispatchError> {
+        // TODO: implement if needed
+        Self::quote(dex_id, input_asset_id, output_asset_id, amount)
     }
 }
 

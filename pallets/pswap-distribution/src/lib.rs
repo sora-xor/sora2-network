@@ -202,7 +202,7 @@ impl<T: Config> Pallet<T> {
     ///
     /// - `fees_account_id`: Id of Account which accumulates fees from swaps.
     /// - `dex_id`: Id of DEX to which given account belongs.
-    /// - `marker_token_id`: Namely Pool Token, Asset Id by which shares of LP's are determined.
+    /// - `pool_account`: Pool account which stores reserves, used to identify pool and determine user liquidity share.
     /// - `tech_account_id`: Id of Account which holds permissions needed for mint/burn of arbitrary tokens, stores claimable incentives.
     fn distribute_incentive(
         fees_account_id: &T::AccountId,
@@ -210,89 +210,92 @@ impl<T: Config> Pallet<T> {
         pool_account: &AccountIdOf<T>,
         tech_account_id: &T::AccountId,
     ) -> DispatchResult {
-        // Get state of incentive availability and corresponding definitions.
-        let incentive_asset_id = T::GetIncentiveAssetId::get();
-        let pool_tokens_total = T::PoolXykPallet::total_issuance(&pool_account)?;
-        let incentive_total = Assets::<T>::free_balance(&incentive_asset_id, &fees_account_id)?;
-        if incentive_total == 0 || pool_tokens_total == 0 {
-            Self::deposit_event(Event::<T>::NothingToDistribute(
+        common::with_transaction(|| {
+            // Get state of incentive availability and corresponding definitions.
+            let incentive_asset_id = T::GetIncentiveAssetId::get();
+            let pool_tokens_total = T::PoolXykPallet::total_issuance(&pool_account)?;
+            let incentive_total = Assets::<T>::free_balance(&incentive_asset_id, &fees_account_id)?;
+            if incentive_total == 0 || pool_tokens_total == 0 {
+                Self::deposit_event(Event::<T>::NothingToDistribute(
+                    dex_id.clone(),
+                    fees_account_id.clone(),
+                ));
+                return Ok(());
+            }
+
+            // Calculate actual amounts regarding their destinations to be reminted. Only liquidity providers portion is reminted here, others
+            // are to be reminted in responsible pallets.
+            let mut distribution = Self::calculate_pswap_distribution(incentive_total)?;
+            // Burn all incentives.
+            assets::Module::<T>::burn_from(
+                &incentive_asset_id,
+                tech_account_id,
+                fees_account_id,
+                incentive_total,
+            )?;
+            T::OnPswapBurnedAggregator::on_pswap_burned(distribution.clone());
+
+            let mut shareholders_distributed_amount = fixed_wrapper!(0);
+
+            // Distribute incentive to shareholders.
+            let mut shareholders_num = 0u128;
+            for (account_id, pool_tokens) in T::PoolXykPallet::pool_providers(pool_account) {
+                {
+                    let share = FixedWrapper::from(pool_tokens)
+                        * FixedWrapper::from(distribution.liquidity_providers)
+                        / FixedWrapper::from(pool_tokens_total);
+                    let share = share.get().map_err(|_| Error::<T>::CalculationError)?;
+
+                    ShareholderAccounts::<T>::mutate(&account_id, |current| {
+                        *current = current.saturating_add(share)
+                    });
+                    ClaimableShares::<T>::mutate(|current| {
+                        *current = current.saturating_add(share)
+                    });
+                    shareholders_distributed_amount = shareholders_distributed_amount + share;
+
+                    shareholders_num += 1;
+                }
+            }
+
+            let undistributed_lp_amount = distribution.liquidity_providers.saturating_sub(
+                shareholders_distributed_amount
+                    .try_into_balance()
+                    .map_err(|_| Error::<T>::CalculationError)?,
+            );
+            if undistributed_lp_amount > 0 {
+                // utilize precision error from distribution calculation, so it won't accumulate on tech account
+                distribution.liquidity_providers = distribution
+                    .liquidity_providers
+                    .saturating_sub(undistributed_lp_amount);
+                distribution.parliament = distribution
+                    .parliament
+                    .saturating_add(undistributed_lp_amount);
+            }
+
+            assets::Module::<T>::mint_to(
+                &incentive_asset_id,
+                tech_account_id,
+                tech_account_id,
+                distribution.liquidity_providers,
+            )?;
+
+            assets::Module::<T>::mint_to(
+                &incentive_asset_id,
+                tech_account_id,
+                &T::GetParliamentAccountId::get(),
+                distribution.parliament,
+            )?;
+
+            Self::deposit_event(Event::<T>::IncentiveDistributed(
                 dex_id.clone(),
                 fees_account_id.clone(),
+                incentive_asset_id,
+                distribution.liquidity_providers,
+                shareholders_num,
             ));
-            return Ok(());
-        }
-
-        // Calculate actual amounts regarding their destinations to be reminted. Only liquidity providers portion is reminted here, others
-        // are to be reminted in responsible pallets.
-        let mut distribution = Self::calculate_pswap_distribution(incentive_total)?;
-        // Burn all incentives.
-        assets::Module::<T>::burn_from(
-            &incentive_asset_id,
-            tech_account_id,
-            fees_account_id,
-            incentive_total,
-        )?;
-        T::OnPswapBurnedAggregator::on_pswap_burned(distribution.clone());
-
-        let mut shareholders_distributed_amount = fixed_wrapper!(0);
-
-        // Distribute incentive to shareholders.
-        let mut shareholders_num = 0u128;
-        for (account_id, pool_tokens) in T::PoolXykPallet::pool_providers(pool_account) {
-            {
-                let share = FixedWrapper::from(pool_tokens)
-                    * FixedWrapper::from(distribution.liquidity_providers)
-                    / FixedWrapper::from(pool_tokens_total);
-                let share = share.get().map_err(|_| Error::<T>::CalculationError)?;
-
-                ShareholderAccounts::<T>::mutate(&account_id, |current| {
-                    *current = current.saturating_add(share)
-                });
-                ClaimableShares::<T>::mutate(|current| *current = current.saturating_add(share));
-                shareholders_distributed_amount = shareholders_distributed_amount + share;
-
-                shareholders_num += 1;
-            }
-        }
-
-        let undistributed_lp_amount = distribution.liquidity_providers.saturating_sub(
-            shareholders_distributed_amount
-                .try_into_balance()
-                .map_err(|_| Error::<T>::CalculationError)?,
-        );
-        if undistributed_lp_amount > 0 {
-            // utilize precision error from distribution calculation, so it won't accumulate on tech account
-            distribution.liquidity_providers = distribution
-                .liquidity_providers
-                .saturating_sub(undistributed_lp_amount);
-            distribution.parliament = distribution
-                .parliament
-                .saturating_add(undistributed_lp_amount);
-        }
-
-        assets::Module::<T>::mint_to(
-            &incentive_asset_id,
-            tech_account_id,
-            tech_account_id,
-            distribution.liquidity_providers,
-        )?;
-
-        assets::Module::<T>::mint_to(
-            &incentive_asset_id,
-            tech_account_id,
-            &T::GetParliamentAccountId::get(),
-            distribution.parliament,
-        )?;
-
-        // TODO: define condition on which IncentiveDistributionFailed event if applicable
-        Self::deposit_event(Event::<T>::IncentiveDistributed(
-            dex_id.clone(),
-            fees_account_id.clone(),
-            incentive_asset_id,
-            distribution.liquidity_providers,
-            shareholders_num,
-        ));
-        Ok(())
+            Ok(())
+        })
     }
 
     fn calculate_pswap_distribution(
@@ -303,7 +306,7 @@ impl<T: Config> Pallet<T> {
         let amount_parliament = (amount_burned.clone() * ParliamentPswapFraction::<T>::get())
             .try_into_balance()
             .map_err(|_| Error::<T>::CalculationError)?;
-        let amount_left = (amount_burned.clone() - amount_parliament)
+        let mut amount_left = (amount_burned.clone() - amount_parliament)
             .try_into_balance()
             .map_err(|_| Error::<T>::CalculationError)?;
 
@@ -315,7 +318,8 @@ impl<T: Config> Pallet<T> {
         let amount_lp = amount_lp.min(amount_left);
 
         // Calculate amount for vesting from remaining amount.
-        let amount_vesting = amount_left.saturating_sub(amount_lp); // guaranteed to be >= 0
+        amount_left = amount_left.saturating_sub(amount_lp); // guaranteed to be >= 0
+        let amount_vesting = amount_left.saturating_sub(amount_left / 100); // 1% of vested PSWAP is burned without being reminted
 
         Ok(PswapRemintInfo {
             liquidity_providers: amount_lp,
@@ -334,12 +338,18 @@ impl<T: Config> Pallet<T> {
         {
             if (block_num.saturating_sub(block_offset) % frequency).is_zero() {
                 let _exchange_result = Self::exchange_fees_to_incentive(&fees_account, &dex_id);
-                let _distribute_result = Self::distribute_incentive(
+                let distribute_result = Self::distribute_incentive(
                     &fees_account,
                     &dex_id,
                     &pool_account,
                     &tech_account_id,
                 );
+                if distribute_result.is_err() {
+                    Self::deposit_event(Event::<T>::IncentiveDistributionFailed(
+                        dex_id,
+                        fees_account,
+                    ));
+                }
                 distributing_count += 1;
             }
         }
@@ -465,8 +475,8 @@ pub mod pallet {
         /// [DEX Id, Fees Account Id, Incentive Asset Id, Incentive Total Distributed Amount, Number of shareholders]
         IncentiveDistributed(DexIdOf<T>, AccountIdOf<T>, AssetIdOf<T>, Balance, u128),
         /// Problem occurred that resulted in incentive distribution not done.
-        /// [DEX Id, Fees Account Id, Incentive Asset Id, Available Incentive Amount]
-        IncentiveDistributionFailed(DexIdOf<T>, AccountIdOf<T>, AssetIdOf<T>, Balance),
+        /// [DEX Id, Fees Account Id]
+        IncentiveDistributionFailed(DexIdOf<T>, AccountIdOf<T>),
         /// Burn rate updated.
         /// [Current Burn Rate]
         BurnRateChanged(Fixed),
@@ -544,7 +554,7 @@ pub mod pallet {
 
     #[pallet::genesis_config]
     pub struct GenesisConfig<T: Config> {
-        /// (Fees Account, (DEX Id, Marker Token Id, Distribution Frequency, Block Offset))
+        /// (Fees Account, (DEX Id, Pool Account Id, Distribution Frequency, Block Offset))
         pub subscribed_accounts: Vec<(
             T::AccountId,
             (DexIdOf<T>, AccountIdOf<T>, T::BlockNumber, T::BlockNumber),

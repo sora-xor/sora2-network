@@ -71,6 +71,11 @@ fn alice<T: Config>() -> T::AccountId {
     T::AccountId::decode(&mut &bytes[..]).expect("Failed to decode account ID")
 }
 
+fn bob<T: Config>() -> T::AccountId {
+    let bytes = hex!("f43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d");
+    T::AccountId::decode(&mut &bytes[..]).expect("Failed to decode account ID")
+}
+
 // Prepare Runtime for running benchmarks
 fn setup_benchmark<T: Config>() -> Result<(), &'static str> {
     let owner = alice::<T>();
@@ -174,6 +179,8 @@ fn setup_benchmark<T: Config>() -> Result<(), &'static str> {
     )
     .unwrap();
 
+    Assets::<T>::mint_to(&XOR.into(), &owner, &bob::<T>(), balance!(50000)).unwrap();
+
     let _ = TradingPair::<T>::register(owner_origin.clone(), DEX.into(), XOR.into(), DOT.into());
     let _ = TradingPair::<T>::register(owner_origin.clone(), DEX.into(), XOR.into(), USDT.into());
     let _ = TradingPair::<T>::register(owner_origin.clone(), DEX.into(), XOR.into(), VAL.into());
@@ -251,7 +258,7 @@ benchmarks! {
     swap {
         let n in 1 .. 1000 => setup_benchmark::<T>().unwrap();
 
-        let caller = alice::<T>();
+        let caller = bob::<T>();
         let base_asset: T::AssetId = <T as assets::Config>::GetBaseAssetId::get();
         let target_asset: T::AssetId = DOT.into();
     }: {
@@ -261,25 +268,14 @@ benchmarks! {
             LiquiditySourceType::XYKPool,
             base_asset.clone(),
             target_asset.clone(),
-            balance!(1000),
+            balance!(2),
             0,
             SwapVariant::WithDesiredInput,
             None
         ).unwrap()
     }
     verify {
-        // TODO: implement proper verification method
-        // assert_last_event::<T>(Event::DirectExchange(
-        //     caller.clone(),
-        //     caller.clone(),
-        //     DEX.into(),
-        //     LiquiditySourceType::XYKPool,
-        //     base_asset.clone(),
-        //     target_asset.clone(),
-        //     fixed!(1000),
-        //     fixed!(667),
-        //     fixed!(3)
-        // ).into())
+        assert_eq!(assets::Module::<T>::total_balance(&target_asset, &caller), Ok(3980063752876763733));
     }
 }
 

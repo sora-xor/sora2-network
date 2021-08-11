@@ -30,13 +30,10 @@
 
 #[rustfmt::skip]
 mod tests {
-    use crate::{mock::*, Module, Error};
-    use common::{
-        self, balance, fixed,
-        prelude::{Balance, SwapAmount, QuoteAmount,},
-        AssetName, AssetSymbol, DEXId, LiquiditySource, TechPurpose, USDT, VAL, XOR, XSTUSD,
-    };
+    use crate::{Error, Module, migration::get_permissioned_tech_account_id, mock::*};
+    use common::{self, AssetName, AssetSymbol, DEXId, FromGenericPair, LiquiditySource, LiquiditySourceType, USDT, VAL, XOR, XSTUSD, balance, fixed, prelude::{Balance, SwapAmount, QuoteAmount,}};
     use frame_support::{assert_noop, assert_ok};
+    use permissions::{BURN, MINT};
     use sp_arithmetic::traits::{Zero};
     use sp_runtime::DispatchError;
 
@@ -44,12 +41,11 @@ mod tests {
 
     /// Sets up the tech account so that mint permission is enabled
     fn xst_pool_init() -> Result<TechAccountId, DispatchError> {
-        let xst_tech_account_id = TechAccountId::Pure(
-            DEXId::Polkaswap,
-            TechPurpose::Identifier(b"xst_tech_account_id".to_vec()),
+        let xst_tech_account_id = TechAccountId::from_generic_pair(
+            crate::TECH_ACCOUNT_PREFIX.to_vec(), crate::TECH_ACCOUNT_PERMISSIONED.to_vec()
         );
         Technical::register_tech_account_id(xst_tech_account_id.clone())?;
-        XSTPool::set_reserves_account_id(xst_tech_account_id.clone())?;
+        XSTPool::set_tech_account_id(xst_tech_account_id.clone())?;
 
         Ok(xst_tech_account_id)
     }
@@ -410,11 +406,109 @@ mod tests {
         ext.execute_with(|| {
             // technical account existance fix
             System::inc_providers(&crate::migration::get_assets_owner_account::<Runtime>());
+            let (_, account_id) = get_permissioned_tech_account_id::<Runtime>();
 
+            System::inc_consumers(&account_id).unwrap_err();
             Assets::ensure_asset_exists(&XSTUSD.into()).unwrap_err();
+            
             // version is initially None for tests
             crate::migration::migrate::<Runtime>();
-            Assets::ensure_asset_exists(&XSTUSD.into()).unwrap();
+            assert_ok!(Assets::ensure_asset_exists(&XSTUSD.into()));
+            assert_ok!(System::inc_consumers(&account_id));
+            assert_ok!(Permissions::check_permission(account_id.clone(), MINT));
+            assert_ok!(Permissions::check_permission(account_id, BURN));
+
+            assert!(DEXApi::get_supported_types().contains(&LiquiditySourceType::XSTPool));
+        });
+    }
+
+    #[test]
+    fn price_without_impact() {
+        let mut ext = ExtBuilder::new(vec![
+            (alice(), DAI, balance!(0), AssetSymbol(b"DAI".to_vec()), AssetName(b"DAI".to_vec()), 18),
+            (alice(), USDT, balance!(0), AssetSymbol(b"USDT".to_vec()), AssetName(b"Tether USD".to_vec()), 18),
+            (alice(), XOR, balance!(0), AssetSymbol(b"XOR".to_vec()), AssetName(b"SORA".to_vec()), 18),
+            (alice(), VAL, balance!(0), AssetSymbol(b"VAL".to_vec()), AssetName(b"SORA Validator Token".to_vec()), 18),
+            (alice(), XSTUSD, 0, AssetSymbol(b"XSTUSD".to_vec()), AssetName(b"XST USD".to_vec()), 18),
+        ])
+        .build();
+        ext.execute_with(|| {
+            MockDEXApi::init().unwrap();
+            let _ = xst_pool_init().unwrap();
+            TradingPair::register(Origin::signed(alice()),DEXId::Polkaswap.into(), XOR, XSTUSD).expect("Failed to register trading pair.");
+            XSTPool::initialize_pool_unchecked(XSTUSD, false).expect("Failed to initialize pool.");
+
+            // Buy with desired input
+            let amount_a: Balance = balance!(200);
+            let quote_outcome_a = XSTPool::quote(
+                &DEXId::Polkaswap.into(),
+                &XSTUSD,
+                &XOR,
+                QuoteAmount::with_desired_input(amount_a.clone()),
+            )
+            .unwrap();
+            let quote_without_impact_a = XSTPool::quote_without_impact(
+                &DEXId::Polkaswap.into(),
+                &XSTUSD,
+                &XOR,
+                QuoteAmount::with_desired_input(amount_a.clone()),
+            )
+            .unwrap();
+            assert_eq!(quote_outcome_a.amount, quote_without_impact_a.amount);
+
+            // Buy with desired output
+            let amount_b: Balance = balance!(200);
+            let quote_outcome_b = XSTPool::quote(
+                &DEXId::Polkaswap.into(),
+                &XSTUSD,
+                &XOR,
+                QuoteAmount::with_desired_output(amount_b.clone()),
+            )
+            .unwrap();
+            let quote_without_impact_b = XSTPool::quote_without_impact(
+                &DEXId::Polkaswap.into(),
+                &XSTUSD,
+                &XOR,
+                QuoteAmount::with_desired_output(amount_b.clone()),
+            )
+            .unwrap();
+            assert_eq!(quote_outcome_b.amount, quote_without_impact_b.amount);
+
+            // Sell with desired input
+            let amount_c: Balance = balance!(1);
+            let quote_outcome_c = XSTPool::quote(
+                &DEXId::Polkaswap.into(),
+                &XOR,
+                &XSTUSD,
+                QuoteAmount::with_desired_input(amount_c.clone()),
+            )
+            .unwrap();
+            let quote_without_impact_c = XSTPool::quote_without_impact(
+                &DEXId::Polkaswap.into(),
+                &XOR,
+                &XSTUSD,
+                QuoteAmount::with_desired_input(amount_c.clone()),
+            )
+            .unwrap();
+            assert_eq!(quote_outcome_c.amount, quote_without_impact_c.amount);
+
+            // Sell with desired output
+            let amount_d: Balance = balance!(1);
+            let quote_outcome_d = XSTPool::quote(
+                &DEXId::Polkaswap.into(),
+                &XOR,
+                &XSTUSD,
+                QuoteAmount::with_desired_output(amount_d.clone()),
+            )
+            .unwrap();
+            let quote_without_impact_d = XSTPool::quote_without_impact(
+                &DEXId::Polkaswap.into(),
+                &XOR,
+                &XSTUSD,
+                QuoteAmount::with_desired_output(amount_d.clone()),
+            )
+            .unwrap();
+            assert_eq!(quote_outcome_d.amount, quote_without_impact_d.amount);
         });
     }
 }

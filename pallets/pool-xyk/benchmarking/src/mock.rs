@@ -184,7 +184,6 @@ impl dex_api::Config for Runtime {
     type MockLiquiditySource2 = ();
     type MockLiquiditySource3 = ();
     type MockLiquiditySource4 = ();
-    type BondingCurvePool = ();
     type MulticollateralBondingCurvePool = ();
     type XYKPool = pool_xyk::Module<Runtime>;
     type XSTPool = ();
@@ -198,7 +197,6 @@ impl technical::Config for Runtime {
     type Trigger = ();
     type Condition = ();
     type SwapAction = pool_xyk::PolySwapAction<AssetId, AccountId, TechAccountId>;
-    type WeightInfo = ();
 }
 
 impl pool_xyk::Config for Runtime {
@@ -213,6 +211,7 @@ impl pool_xyk::Config for Runtime {
     type EnsureDEXManager = dex_manager::Module<Runtime>;
     type GetFee = GetXykFee;
     type OnPoolCreated = PswapDistribution;
+    type OnPoolReservesChanged = ();
     type WeightInfo = ();
 }
 

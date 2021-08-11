@@ -40,8 +40,6 @@
 //!
 //! - `register` - registers new asset by a given ID.
 
-// TODO: add info about weight
-
 #![cfg_attr(not(feature = "std"), no_std)]
 
 #[allow(unused_imports)]

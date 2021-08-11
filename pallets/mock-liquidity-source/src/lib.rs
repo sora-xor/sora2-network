@@ -388,6 +388,58 @@ impl<T: Config<I>, I: 'static>
     ) -> Result<Vec<(Balance, T::AssetId, RewardReason)>, DispatchError> {
         Ok(Rewards::<T, I>::get())
     }
+
+    fn quote_without_impact(
+        dex_id: &T::DEXId,
+        input_asset_id: &T::AssetId,
+        output_asset_id: &T::AssetId,
+        amount: QuoteAmount<Balance>,
+    ) -> Result<SwapOutcome<Balance>, DispatchError> {
+        let base_asset_id = &T::GetBaseAssetId::get();
+        if input_asset_id == base_asset_id {
+            let (base_reserve, target_reserve) = <Reserves<T, I>>::get(dex_id, output_asset_id);
+            let base_price_wrt_target = FixedWrapper::from(target_reserve) / base_reserve;
+            Ok(match amount {
+                QuoteAmount::WithDesiredInput {
+                    desired_amount_in: base_amount_in,
+                } => SwapOutcome::new(
+                    (FixedWrapper::from(base_amount_in) * base_price_wrt_target)
+                        .try_into_balance()
+                        .map_err(|_| Error::<T, I>::CalculationError)?,
+                    0,
+                ),
+                QuoteAmount::WithDesiredOutput {
+                    desired_amount_out: target_amount_out,
+                } => SwapOutcome::new(
+                    (FixedWrapper::from(target_amount_out) / base_price_wrt_target)
+                        .try_into_balance()
+                        .map_err(|_| Error::<T, I>::CalculationError)?,
+                    0,
+                ),
+            })
+        } else {
+            let (base_reserve, target_reserve) = <Reserves<T, I>>::get(dex_id, input_asset_id);
+            let target_price_wrt_base = FixedWrapper::from(base_reserve) / target_reserve;
+            Ok(match amount {
+                QuoteAmount::WithDesiredInput {
+                    desired_amount_in: target_amount_in,
+                } => SwapOutcome::new(
+                    (FixedWrapper::from(target_amount_in) * target_price_wrt_base)
+                        .try_into_balance()
+                        .map_err(|_| Error::<T, I>::CalculationError)?,
+                    0,
+                ),
+                QuoteAmount::WithDesiredOutput {
+                    desired_amount_out: base_amount_out,
+                } => SwapOutcome::new(
+                    (FixedWrapper::from(base_amount_out) / target_price_wrt_base)
+                        .try_into_balance()
+                        .map_err(|_| Error::<T, I>::CalculationError)?,
+                    0,
+                ),
+            })
+        }
+    }
 }
 
 impl<T: Config<I>, I: 'static> GetPoolReserves<T::AssetId> for Pallet<T, I> {

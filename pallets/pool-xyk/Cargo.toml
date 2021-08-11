@@ -35,13 +35,14 @@ trading-pair = { path = "../trading-pair", default-features = false }
 hex-literal = "0.3.1"
 pallet-balances = { version = "3", default-features = false }
 sp-io = { version = "3", default-features = false }
-
 common = { path = "../../common", features = ["test"] }
 dex-manager = { path = "../dex-manager" }
 permissions = { path = "../permissions" }
 pswap-distribution = { path = "../pswap-distribution" }
 technical = { path = "../technical" }
 trading-pair = { path = "../trading-pair" }
+price-tools = { path = "../price-tools" }
+liquidity-proxy = { path = "../liquidity-proxy" }
 
 [features]
 default = ['std']

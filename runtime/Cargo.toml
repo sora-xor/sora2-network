@@ -1,14 +1,14 @@
 [package]
-edition = '2018'
-authors = ['Polka Biome Ltd. <jihoon@tutanota.de>']
+edition = "2018"
+authors = ["Polka Biome Ltd. <jihoon@tutanota.de>"]
 license = "BSD-4-Clause"
-homepage = 'https://sora.org'
-repository = 'https://github.com/sora-xor/sora2-network'
-name = 'framenode-runtime'
-version = '0.1.0'
+homepage = "https://sora.org"
+repository = "https://github.com/sora-xor/sora2-network"
+name = "framenode-runtime"
+version = "0.1.0"
 
 [package.metadata.docs.rs]
-targets = ['x86_64-unknown-linux-gnu']
+targets = ["x86_64-unknown-linux-gnu"]
 
 [build-dependencies]
 substrate-wasm-builder = "3.0.0"
@@ -18,89 +18,90 @@ codec = { package = "parity-scale-codec", version = "2", default-features = fals
 hex-literal = "0.3.1"
 log = { version = "0.4.14" }
 serde = { features = ['derive'], optional = true, version = '1.0.101' }
-common = { path = "../common", default-features = false }
-faucet = { path = "../pallets/faucet", default-features = false, optional = true }
+
+bridge-multisig = { git = "https://github.com/soramitsu/sora2-frame-pallets.git", branch = "v3.2.2", package = "pallet-multisig", default-features = false }
+
 assets = { path = "../pallets/assets", default-features = false }
-bonding-curve-pool = { path = "../pallets/bonding-curve-pool", default-features = false }
-multicollateral-bonding-curve-pool = { path = "../pallets/multicollateral-bonding-curve-pool", default-features = false }
+assets-runtime-api = { path = "../pallets/assets/runtime-api", default-features = false}
+common = { path = "../common", default-features = false }
 dex-api = { path = "../pallets/dex-api", default-features = false }
+dex-api-benchmarking = { path = "../pallets/dex-api/benchmarking", default-features = false, optional = true }
 dex-manager = { path = "../pallets/dex-manager", default-features = false }
+dex-manager-runtime-api = { path = "../pallets/dex-manager/runtime-api", default-features = false}
+dex-runtime-api = { path = "../pallets/dex-api/runtime-api", default-features = false}
+eth-bridge = { path = "../pallets/eth-bridge", default-features = false }
+eth-bridge-runtime-api = { path = "../pallets/eth-bridge/runtime-api", default-features = false }
 farming = { path = "../pallets/farming", default-features = false}
+faucet = { path = "../pallets/faucet", default-features = false, optional = true }
 iroha-migration = { path = "../pallets/iroha-migration", default-features = false }
+iroha-migration-runtime-api = { path = "../pallets/iroha-migration/runtime-api", default-features = false }
 liquidity-proxy = { path = "../pallets/liquidity-proxy", default-features = false}
+liquidity-proxy-benchmarking = { path = "../pallets/liquidity-proxy/benchmarking", default-features = false, optional = true }
+liquidity-proxy-runtime-api = { path = "../pallets/liquidity-proxy/runtime-api", default-features = false}
 mock-liquidity-source = { path = "../pallets/mock-liquidity-source", default-features = false}
+multicollateral-bonding-curve-pool = { path = "../pallets/multicollateral-bonding-curve-pool", default-features = false }
 permissions = { path = "../pallets/permissions", default-features = false}
 pool-xyk = { path = "../pallets/pool-xyk", default-features = false}
+pool-xyk-benchmarking = { path = "../pallets/pool-xyk/benchmarking", default-features = false, optional = true }
+price-tools = { path = "../pallets/price-tools", default-features = false }
+pswap-distribution = { path = "../pallets/pswap-distribution", default-features = false }
+pswap-distribution-benchmarking = { path = "../pallets/pswap-distribution/benchmarking", default-features = false, optional = true }
+pswap-distribution-runtime-api = { path = "../pallets/pswap-distribution/runtime-api", default-features = false }
 referral-system = { path = "../pallets/referral-system", default-features = false}
 rewards = { path = "../pallets/rewards", default-features = false }
 rewards-runtime-api = { path = "../pallets/rewards/runtime-api", default-features = false }
 technical = { path = "../pallets/technical", default-features = false}
 trading-pair = { path = "../pallets/trading-pair", default-features = false}
-xor-fee = { path = "../pallets/xor-fee", default-features = false}
-dex-runtime-api = { path = "../pallets/dex-api/runtime-api", default-features = false}
-dex-manager-runtime-api = { path = "../pallets/dex-manager/runtime-api", default-features = false}
 trading-pair-runtime-api = { path = "../pallets/trading-pair/runtime-api", default-features = false}
-assets-runtime-api = { path = "../pallets/assets/runtime-api", default-features = false}
-liquidity-proxy-runtime-api = { path = "../pallets/liquidity-proxy/runtime-api", default-features = false}
-eth-bridge = { path = "../pallets/eth-bridge", default-features = false }
-eth-bridge-runtime-api = { path = "../pallets/eth-bridge/runtime-api", default-features = false }
-bridge-multisig = { git = "https://github.com/soramitsu/sora2-frame-pallets.git", branch = "v3.2.2", package = "pallet-multisig", default-features = false }
-iroha-migration-runtime-api = { path = "../pallets/iroha-migration/runtime-api", default-features = false }
-pswap-distribution = { path = "../pallets/pswap-distribution", default-features = false }
-pswap-distribution-benchmarking = { path = "../pallets/pswap-distribution/benchmarking", default-features = false, optional = true }
-pswap-distribution-runtime-api = { path = "../pallets/pswap-distribution/runtime-api", default-features = false }
-liquidity-proxy-benchmarking = { path = "../pallets/liquidity-proxy/benchmarking", default-features = false, optional = true }
-pool-xyk-benchmarking = { path = "../pallets/pool-xyk/benchmarking", default-features = false, optional = true }
-dex-api-benchmarking = { path = "../pallets/dex-api/benchmarking", default-features = false, optional = true }
 vested-rewards = { path = "../pallets/vested-rewards", default-features = false }
-price-tools = { path = "../pallets/price-tools", default-features = false }
-xst = { path = "../pallets/xst", default-features = false }
+xor-fee = { path = "../pallets/xor-fee", default-features = false}
 xor-fee-benchmarking = { path = "../pallets/xor-fee/benchmarking", default-features = false, optional = true }
+xst = { path = "../pallets/xst", default-features = false }
 
 # Substrate dependencies
-frame-benchmarking = { default-features = false, optional = true, version = '3' }
-frame-executive = { default-features = false, version = '3' }
-frame-support = { default-features = false, version = '3' }
-frame-system = { default-features = false, version = '3' }
-frame-system-benchmarking = { default-features = false, optional = true, version = '3' }
-frame-system-rpc-runtime-api = { default-features = false, version = '3' }
-pallet-aura = { default-features = false, version = '3' }
-pallet-balances = { default-features = false, version = '3' }
-pallet-collective = { default-features = false, version = '3' }
-pallet-democracy = { default-features = false, version = '3' }
-pallet-elections-phragmen = { default-features = false, version = '3' }
-pallet-grandpa = { default-features = false, version = '3' }
-pallet-babe = { default-features = false, version = '3' }
-pallet-im-online = { default-features = false, version = '3' }
-pallet-identity = { default-features = false, version = '3' }
-pallet-membership = { default-features = false, version = '3' }
+frame-benchmarking = { default-features = false, optional = true, version = "3" }
+frame-executive = { default-features = false, version = "3" }
+frame-support = { default-features = false, version = "3" }
+frame-system = { default-features = false, version = "3" }
+frame-system-benchmarking = { default-features = false, optional = true, version = "3" }
+frame-system-rpc-runtime-api = { default-features = false, version = "3" }
+pallet-aura = { default-features = false, version = "3" }
+pallet-balances = { default-features = false, version = "3" }
+pallet-collective = { default-features = false, version = "3" }
+pallet-democracy = { default-features = false, version = "3" }
+pallet-elections-phragmen = { default-features = false, version = "3" }
+pallet-grandpa = { default-features = false, version = "3" }
+pallet-babe = { default-features = false, version = "3" }
+pallet-im-online = { default-features = false, version = "3" }
+pallet-identity = { default-features = false, version = "3" }
+pallet-membership = { default-features = false, version = "3" }
 pallet-multisig = { version = "3", default-features = false }
-pallet-offences = { default-features = false, version = '3' }
-pallet-randomness-collective-flip = { default-features = false, version = '3' }
-pallet-sudo = { default-features = false, version = '3' }
-pallet-timestamp = { default-features = false, version = '3' }
-pallet-scheduler = { default-features = false, version = '3' }
-#pallet-session = { default-features = false, version = '3' }
-pallet-session = { default-features = false, features = ["historical"], version = '3' }
+pallet-offences = { default-features = false, version = "3" }
+pallet-randomness-collective-flip = { default-features = false, version = "3" }
+pallet-sudo = { default-features = false, version = "3" }
+pallet-timestamp = { default-features = false, version = "3" }
+pallet-scheduler = { default-features = false, version = "3" }
+#pallet-session = { default-features = false, version = "3" }
+pallet-session = { default-features = false, features = ["historical"], version = "3" }
 pallet-staking = { git = "https://github.com/soramitsu/sora2-frame-pallets", default-features = false, branch = "v3.1.0"}
-pallet-transaction-payment = { version = '3', default-features = false }
-pallet-transaction-payment-rpc-runtime-api = { version = '3', default-features = false }
-pallet-utility = { default-features = false, version = '3' }
+pallet-transaction-payment = { version = "3", default-features = false }
+pallet-transaction-payment-rpc-runtime-api = { version = "3", default-features = false }
+pallet-utility = { default-features = false, version = "3" }
 
-sp-api = { default-features = false, version = '3' }
-sp-block-builder = { default-features = false, version = '3' }
-sp-consensus-aura = { default-features = false, version = '0.9' }
-sp-consensus-babe = { default-features = false, version = '0.9' }
-sp-core = { default-features = false, version = '3' }
-sp-inherents = { default-features = false, version = '3' }
-sp-offchain = { default-features = false, version = '3' }
-sp-runtime = { default-features = false, version = '3' }
-sp-session = { default-features = false, version = '3' }
-sp-std = { default-features = false, version = '3' }
-sp-transaction-pool = { default-features = false, version = '3' }
-sp-version = { default-features = false, version = '3' }
-sp-staking = { default-features = false, version = '3' }
-pallet-authorship = { default-features = false, version = '3' }
+sp-api = { default-features = false, version = "3" }
+sp-block-builder = { default-features = false, version = "3" }
+sp-consensus-aura = { default-features = false, version = "0.9" }
+sp-consensus-babe = { default-features = false, version = "0.9" }
+sp-core = { default-features = false, version = "3" }
+sp-inherents = { default-features = false, version = "3" }
+sp-offchain = { default-features = false, version = "3" }
+sp-runtime = { default-features = false, version = "3" }
+sp-session = { default-features = false, version = "3" }
+sp-std = { default-features = false, version = "3" }
+sp-transaction-pool = { default-features = false, version = "3" }
+sp-version = { default-features = false, version = "3" }
+sp-staking = { default-features = false, version = "3" }
+pallet-authorship = { default-features = false, version = "3" }
 
 # Other
 currencies = { version = "0.4", package = "orml-currencies", default-features = false }
@@ -108,83 +109,85 @@ static_assertions = "1.1.0"
 tokens = { version = "0.4", package = "orml-tokens", default-features = false }
 traits = { version = "0.4", package = "orml-traits", default-features = false }
 
+[dev-dependencies]
+framenode-chain-spec = { path = "../node/chain_spec", features = ["test"] }
+
 [features]
-default = ['std']
+default = ["std"]
 
 std = [
-    'codec/std',
-    'serde',
-    'frame-executive/std',
-    'frame-support/std',
-    'frame-system/std',
-    'frame-system-rpc-runtime-api/std',
-    'pallet-aura/std',
-    'pallet-babe/std',
-    'pallet-balances/std',
-    'pallet-collective/std',
-    'pallet-democracy/std',
-    'pallet-elections-phragmen/std',
-    'pallet-grandpa/std',
-    'pallet-identity/std',
-    'pallet-im-online/std',
-    'pallet-membership/std',
-    'pallet-offences/std',
-    'pallet-randomness-collective-flip/std',
-    'pallet-scheduler/std',
-    'pallet-sudo/std',
-    'pallet-timestamp/std',
-    'pallet-transaction-payment/std',
-    'pallet-transaction-payment-rpc-runtime-api/std',
-    'pallet-session/std',
-    'pallet-staking/std',
-    'pallet-utility/std',
-    'sp-api/std',
-    'sp-block-builder/std',
-    'sp-consensus-aura/std',
-    'sp-consensus-babe/std',
-    'sp-core/std',
-    'sp-inherents/std',
-    'sp-offchain/std',
-    'sp-runtime/std',
-    'sp-session/std',
-    'sp-std/std',
-    'sp-transaction-pool/std',
-    'sp-version/std',
-    'sp-staking/std',
-    'pallet-authorship/std',
-    'common/std',
-    'assets/std',
-    'bonding-curve-pool/std',
-    'multicollateral-bonding-curve-pool/std',
-    'dex-api/std',
-    'dex-manager/std',
-    'eth-bridge/std',
-    'eth-bridge-runtime-api/std',
-    'farming/std',
-    'faucet?/std',
-    'iroha-migration/std',
-    'iroha-migration-runtime-api/std',
-    'liquidity-proxy/std',
-    'mock-liquidity-source/std',
-    'bridge-multisig/std',
-    'permissions/std',
-    'pool-xyk/std',
-    'referral-system/std',
-    'rewards/std',
-    'rewards-runtime-api/std',
-    'technical/std',
-    'trading-pair/std',
-    'xor-fee/std',
-    'dex-runtime-api/std',
-    'dex-manager-runtime-api/std',
-    'trading-pair-runtime-api/std',
-    'assets-runtime-api/std',
-    'liquidity-proxy-runtime-api/std',
-    'pswap-distribution/std',
-    'pswap-distribution-runtime-api/std',
-    'vested-rewards/std',
-    'xst/std',
-    'price-tools/std',
+    "assets-runtime-api/std",
+    "assets/std",
+    "bridge-multisig/std",
+    "codec/std",
+    "common/std",
+    "dex-api/std",
+    "dex-manager-runtime-api/std",
+    "dex-manager/std",
+    "dex-runtime-api/std",
+    "eth-bridge-runtime-api/std",
+    "eth-bridge/std",
+    "farming/std",
+    "faucet?/std",
+    "frame-executive/std",
+    "frame-support/std",
+    "frame-system-rpc-runtime-api/std",
+    "frame-system/std",
+    "iroha-migration-runtime-api/std",
+    "iroha-migration/std",
+    "liquidity-proxy-runtime-api/std",
+    "liquidity-proxy/std",
+    "mock-liquidity-source/std",
+    "multicollateral-bonding-curve-pool/std",
+    "pallet-aura/std",
+    "pallet-authorship/std",
+    "pallet-babe/std",
+    "pallet-balances/std",
+    "pallet-collective/std",
+    "pallet-democracy/std",
+    "pallet-elections-phragmen/std",
+    "pallet-grandpa/std",
+    "pallet-identity/std",
+    "pallet-im-online/std",
+    "pallet-membership/std",
+    "pallet-offences/std",
+    "pallet-randomness-collective-flip/std",
+    "pallet-scheduler/std",
+    "pallet-session/std",
+    "pallet-staking/std",
+    "pallet-sudo/std",
+    "pallet-timestamp/std",
+    "pallet-transaction-payment-rpc-runtime-api/std",
+    "pallet-transaction-payment/std",
+    "pallet-utility/std",
+    "permissions/std",
+    "pool-xyk/std",
+    "price-tools/std",
+    "pswap-distribution-runtime-api/std",
+    "pswap-distribution/std",
+    "referral-system/std",
+    "rewards-runtime-api/std",
+    "rewards/std",
+    "serde",
+    "sp-api/std",
+    "sp-block-builder/std",
+    "sp-consensus-aura/std",
+    "sp-consensus-babe/std",
+    "sp-core/std",
+    "sp-inherents/std",
+    "sp-offchain/std",
+    "sp-runtime/std",
+    "sp-session/std",
+    "sp-staking/std",
+    "sp-std/std",
+    "sp-transaction-pool/std",
+    "sp-version/std",
+    "technical/std",
+    "trading-pair-runtime-api/std",
+    "trading-pair/std",
+    "vested-rewards/std",
+    "xor-fee/std",
+    "xst/std",
 ]
 
 private-net = ["faucet"]
@@ -212,6 +215,9 @@ runtime-benchmarks = [
     "rewards/runtime-benchmarks",
     "technical/runtime-benchmarks",
     "trading-pair/runtime-benchmarks",
+    "multicollateral-bonding-curve-pool/runtime-benchmarks",
+    "pswap-distribution/runtime-benchmarks",
+    "price-tools/runtime-benchmarks",
     "vested-rewards/runtime-benchmarks",
     "xor-fee-benchmarking",
 ]

@@ -231,7 +231,6 @@ impl technical::Config for Runtime {
     type Trigger = ();
     type Condition = ();
     type SwapAction = pool_xyk::PolySwapAction<AssetId, AccountId, TechAccountId>;
-    type WeightInfo = ();
 }
 
 impl pool_xyk::Config for Runtime {
@@ -246,6 +245,7 @@ impl pool_xyk::Config for Runtime {
     type EnsureDEXManager = dex_manager::Module<Runtime>;
     type GetFee = GetXykFee;
     type OnPoolCreated = (PswapDistribution, Farming);
+    type OnPoolReservesChanged = ();
     type WeightInfo = ();
 }
 

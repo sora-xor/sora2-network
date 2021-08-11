@@ -26,7 +26,6 @@ sp-core = { version = "3", default-features = false }
 sp-io = { version = "3", default-features = false }
 tokens = { version = "0.4", package = "orml-tokens", default-features = false }
 assets = { path = "../assets", default-features = false }
-bonding-curve-pool = { path = "../bonding-curve-pool", default-features = false }
 common = { path = "../../common", default-features = false }
 dex-api = { path = "../dex-api", default-features = false }
 liquidity-proxy = { path = "../liquidity-proxy", default-features = false }
@@ -39,7 +38,6 @@ technical = { path = "../technical", default-features = false }
 [dev-dependencies]
 hex-literal = "0.3.1"
 pallet-balances = { version = "3", default-features = false }
-bonding-curve-pool = { path = "../bonding-curve-pool" }
 common = { path = "../../common", features = ["test"] }
 dex-manager = { path = "../dex-manager" }
 mock-liquidity-source = { path = "../mock-liquidity-source" }

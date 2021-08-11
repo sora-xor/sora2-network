@@ -38,10 +38,13 @@ use frame_support::{ensure, fail, Parameter};
 use frame_system::ensure_signed;
 use sp_std::vec::Vec;
 
-use common::prelude::{Balance, EnsureDEXManager, QuoteAmount, SwapAmount, SwapOutcome};
+use common::prelude::{
+    Balance, EnsureDEXManager, FixedWrapper, QuoteAmount, SwapAmount, SwapOutcome,
+};
 use common::{
-    EnsureTradingPairExists, GetPoolReserves, LiquiditySource, LiquiditySourceType, ManagementMode,
-    PoolXykPallet, RewardReason, TechAccountId, TechPurpose, ToFeeAccount, TradingPair,
+    fixed_wrapper, EnsureTradingPairExists, GetPoolReserves, LiquiditySource, LiquiditySourceType,
+    ManagementMode, OnPoolReservesChanged, PoolXykPallet, RewardReason, TechAccountId, TechPurpose,
+    ToFeeAccount, TradingPair,
 };
 
 mod aliases;
@@ -84,12 +87,17 @@ pub trait WeightInfo {
     fn deposit_liquidity() -> Weight;
     fn withdraw_liquidity() -> Weight;
     fn initialize_pool() -> Weight;
+    fn can_exchange() -> Weight;
+    fn quote() -> Weight;
 }
 
 impl<T: Config> PoolXykPallet for Pallet<T> {
     type AccountId = AccountIdOf<T>;
+    type AssetId = AssetIdOf<T>;
 
     type PoolProvidersOutput = PrefixIterator<(AccountIdOf<T>, Balance)>;
+    type PoolPropertiesOutput =
+        PrefixIterator<(AssetIdOf<T>, AssetIdOf<T>, (AccountIdOf<T>, AccountIdOf<T>))>;
 
     fn pool_providers(pool_account: &Self::AccountId) -> Self::PoolProvidersOutput {
         PoolProviders::<T>::iter_prefix(pool_account)
@@ -97,6 +105,10 @@ impl<T: Config> PoolXykPallet for Pallet<T> {
 
     fn total_issuance(pool_account: &Self::AccountId) -> Result<Balance, DispatchError> {
         TotalIssuances::<T>::get(pool_account).ok_or(Error::<T>::PoolIsInvalid.into())
+    }
+
+    fn all_properties() -> Self::PoolPropertiesOutput {
+        Properties::<T>::iter()
     }
 }
 
@@ -141,8 +153,10 @@ impl<T: Config> Module<T> {
         let base_asset_id: T::AssetId = T::GetBaseAssetId::get();
         if base_asset_id == asset_a.clone() {
             Reserves::<T>::insert(asset_a, asset_b, (balance_pair.0, balance_pair.1));
+            T::OnPoolReservesChanged::reserves_changed(asset_b);
         } else if base_asset_id == asset_b.clone() {
             Reserves::<T>::insert(asset_b, asset_a, (balance_pair.1, balance_pair.0));
+            T::OnPoolReservesChanged::reserves_changed(asset_a);
         } else {
             let hash_key = common::comm_merkle_op(asset_a, asset_b);
             let (pair_u, pair_v) = common::sort_with_hash_key(
@@ -151,6 +165,8 @@ impl<T: Config> Module<T> {
                 (asset_b, balance_pair.1),
             );
             Reserves::<T>::insert(pair_u.0, pair_v.0, (pair_u.1, pair_v.1));
+            T::OnPoolReservesChanged::reserves_changed(asset_a);
+            T::OnPoolReservesChanged::reserves_changed(asset_b);
         }
     }
 
@@ -231,7 +247,7 @@ impl<T: Config> Module<T> {
         });
         let action = T::PolySwapAction::from(action);
         let mut action = action.into();
-        technical::Module::<T>::perform_create_swap(source, &mut action)?;
+        technical::Module::<T>::create_swap(source, &mut action)?;
         Ok(())
     }
 
@@ -269,7 +285,7 @@ impl<T: Config> Module<T> {
             });
         let action = T::PolySwapAction::from(action);
         let mut action = action.into();
-        technical::Module::<T>::perform_create_swap(source, &mut action)?;
+        technical::Module::<T>::create_swap(source, &mut action)?;
         Ok(())
     }
 
@@ -398,7 +414,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         )?;
 
         // It is guarantee that unwrap is always ok.
-        // Clone is used here because action is used for perform_create_swap_unchecked.
+        // Clone is used here because action is used for create_swap_unchecked.
         let retval = match action.clone() {
             PolySwapAction::PairSwap(a) => {
                 let (fee, amount) = match swap_amount {
@@ -416,7 +432,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
 
         let action = T::PolySwapAction::from(action);
         let mut action = action.into();
-        technical::Module::<T>::perform_create_swap_unchecked(sender.clone(), &mut action)?;
+        technical::Module::<T>::create_swap_unchecked(sender.clone(), &mut action)?;
 
         retval
     }
@@ -430,6 +446,100 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
     ) -> Result<Vec<(Balance, T::AssetId, RewardReason)>, DispatchError> {
         // XYK Pool has no rewards currently
         Ok(Vec::new())
+    }
+
+    fn quote_without_impact(
+        dex_id: &T::DEXId,
+        input_asset_id: &T::AssetId,
+        output_asset_id: &T::AssetId,
+        amount: QuoteAmount<Balance>,
+    ) -> Result<SwapOutcome<Balance>, DispatchError> {
+        // Get pool account.
+        let (_, tech_acc_id) = Module::<T>::tech_account_from_dex_and_asset_pair(
+            *dex_id,
+            *input_asset_id,
+            *output_asset_id,
+        )?;
+        let pool_acc_id = technical::Module::<T>::tech_account_id_to_account_id(&tech_acc_id)?;
+
+        // Get actual pool reserves.
+        let reserve_input = <assets::Module<T>>::free_balance(&input_asset_id, &pool_acc_id)?;
+        let reserve_output = <assets::Module<T>>::free_balance(&output_asset_id, &pool_acc_id)?;
+
+        // Check reserves validity.
+        if reserve_input == 0 && reserve_output == 0 {
+            fail!(Error::<T>::PoolIsEmpty);
+        } else if reserve_input <= 0 || reserve_output <= 0 {
+            fail!(Error::<T>::PoolIsInvalid);
+        }
+
+        // Decide which side should be used for fee.
+        let get_fee_from_destination =
+            Module::<T>::decide_is_fee_from_destination(input_asset_id, output_asset_id)?;
+
+        let input_price_wrt_output = FixedWrapper::from(reserve_output) / reserve_input;
+        let fee_fraction = T::GetFee::get();
+        Ok(match amount {
+            QuoteAmount::WithDesiredInput { desired_amount_in } => {
+                let (output, fee_amount) = if get_fee_from_destination {
+                    // output token is xor, user indicates desired input amount
+                    // y_1 = x_in * y / x
+                    // y_out = y_1 * (1 - fee)
+                    let out_with_fee =
+                        FixedWrapper::from(desired_amount_in) * input_price_wrt_output;
+                    let output = FixedWrapper::from(out_with_fee.clone())
+                        * (fixed_wrapper!(1) - fee_fraction);
+                    let fee_amount = out_with_fee - output.clone();
+                    (output, fee_amount)
+                } else {
+                    // input token is xor, user indicates desired input amount
+                    // x_1 = x_in * (1 - fee)
+                    // y_out = x_1 * y / x
+                    let input_without_fee = FixedWrapper::from(desired_amount_in.clone())
+                        * (fixed_wrapper!(1) - fee_fraction);
+                    let output = input_without_fee.clone() * input_price_wrt_output;
+                    let fee_amount = FixedWrapper::from(desired_amount_in) - input_without_fee;
+                    (output, fee_amount)
+                };
+                SwapOutcome::new(
+                    output
+                        .try_into_balance()
+                        .map_err(|_| Error::<T>::FailedToCalculatePriceWithoutImpact)?,
+                    fee_amount
+                        .try_into_balance()
+                        .map_err(|_| Error::<T>::FailedToCalculatePriceWithoutImpact)?,
+                )
+            }
+            QuoteAmount::WithDesiredOutput { desired_amount_out } => {
+                let (input, fee_amount) = if get_fee_from_destination {
+                    // output token is xor, user indicates desired output amount:
+                    // y_1 = y_out / (1 - fee)
+                    // x_in = y_1 / y / x
+                    let output_with_fee = FixedWrapper::from(desired_amount_out.clone())
+                        / (fixed_wrapper!(1) - fee_fraction);
+                    let fee_amount =
+                        output_with_fee.clone() - FixedWrapper::from(desired_amount_out);
+                    let input = output_with_fee / input_price_wrt_output;
+                    (input, fee_amount)
+                } else {
+                    // input token is xor, user indicates desired output amount:
+                    // x_in = (y_out / y / x) / (1 - fee)
+                    let input_without_fee =
+                        FixedWrapper::from(desired_amount_out) / input_price_wrt_output;
+                    let input = input_without_fee.clone() / (fixed_wrapper!(1) - fee_fraction);
+                    let fee_amount = input.clone() - input_without_fee;
+                    (input, fee_amount)
+                };
+                SwapOutcome::new(
+                    input
+                        .try_into_balance()
+                        .map_err(|_| Error::<T>::FailedToCalculatePriceWithoutImpact)?,
+                    fee_amount
+                        .try_into_balance()
+                        .map_err(|_| Error::<T>::FailedToCalculatePriceWithoutImpact)?,
+                )
+            }
+        })
     }
 }
 
@@ -473,6 +583,7 @@ pub mod pallet {
         type EnsureDEXManager: EnsureDEXManager<Self::DEXId, Self::AccountId, DispatchError>;
         type GetFee: Get<Fixed>;
         type OnPoolCreated: OnPoolCreated<AccountId = AccountIdOf<Self>, DEXId = DEXIdOf<Self>>;
+        type OnPoolReservesChanged: OnPoolReservesChanged<Self::AssetId>;
         /// Weight information for extrinsics in this pallet.
         type WeightInfo: WeightInfo;
     }
@@ -600,6 +711,8 @@ pub mod pallet {
     pub enum Error<T> {
         /// It is impossible to calculate fee for some pair swap operation, or other operation.
         UnableToCalculateFee,
+        /// Failure while calculating price ignoring non-linearity of liquidity source.
+        FailedToCalculatePriceWithoutImpact,
         /// Is is impossible to get balance.
         UnableToGetBalance,
         /// Impossible to decide asset pair amounts.

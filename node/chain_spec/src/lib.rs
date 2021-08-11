@@ -66,7 +66,7 @@ use sp_consensus_babe::AuthorityId as BabeId;
 use sp_core::{Public, H160, H256};
 use sp_runtime::sp_std::iter::once;
 use sp_runtime::traits::Zero;
-use sp_runtime::Perbill;
+use sp_runtime::{BuildStorage, Perbill};
 use std::str::FromStr;
 
 use codec::Encode;
@@ -162,9 +162,17 @@ pub fn test_net() -> Result<ChainSpec, String> {
     ChainSpec::from_json_bytes(&our_include_bytes!("./bytes/chain_spec_test.json")[..])
 }
 
-#[cfg(not(feature = "private-net"))]
+#[cfg(any(not(feature = "private-net"), feature = "test"))]
 pub fn main_net() -> Result<ChainSpec, String> {
-    ChainSpec::from_json_bytes(&our_include_bytes!("./bytes/chain_spec_main.json")[..])
+    #[cfg(feature = "test")]
+    {
+        ChainSpec::from_json_bytes(&include_bytes!("./bytes/chain_spec_main.json")[..])
+    }
+
+    #[cfg(not(feature = "test"))]
+    {
+        ChainSpec::from_json_bytes(&our_include_bytes!("./bytes/chain_spec_main.json")[..])
+    }
 }
 
 #[cfg(feature = "private-net")]
@@ -624,6 +632,11 @@ fn testnet_genesis(
     let mbc_pool_free_reserves_account_id =
         framenode_runtime::GetMbcPoolFreeReservesAccountId::get();
 
+    let xst_pool_permissioned_tech_account_id =
+        framenode_runtime::GetXSTPoolPermissionedTechAccountId::get();
+    let xst_pool_permissioned_account_id =
+        framenode_runtime::GetXSTPoolPermissionedAccountId::get();
+
     let market_maker_rewards_tech_account_id =
         framenode_runtime::GetMarketMakerRewardsTechAccountId::get();
     let market_maker_rewards_account_id = framenode_runtime::GetMarketMakerRewardsAccountId::get();
@@ -693,6 +706,10 @@ fn testnet_genesis(
             mbc_pool_free_reserves_tech_account_id.clone(),
         ),
         (
+            xst_pool_permissioned_account_id.clone(),
+            xst_pool_permissioned_tech_account_id.clone(),
+        ),
+        (
             iroha_migration_account_id.clone(),
             iroha_migration_tech_account_id.clone(),
         ),
@@ -728,6 +745,7 @@ fn testnet_genesis(
         (mbc_reserves_account_id.clone(), 0),
         (mbc_pool_rewards_account_id.clone(), 0),
         (mbc_pool_free_reserves_account_id.clone(), 0),
+        (xst_pool_permissioned_account_id, 0),
         (market_maker_rewards_account_id.clone(), 0),
     ]
     .into_iter()
@@ -863,7 +881,7 @@ fn testnet_genesis(
             key: root_key.clone(),
         }),
         technical: Some(TechnicalConfig {
-            account_ids_to_tech_account_ids: tech_accounts,
+            register_tech_accounts: tech_accounts,
         }),
         pallet_babe: Some(BabeConfig {
             authorities: vec![],
@@ -1069,6 +1087,7 @@ fn testnet_genesis(
             source_types: [
                 LiquiditySourceType::XYKPool,
                 LiquiditySourceType::MulticollateralBondingCurvePool,
+                LiquiditySourceType::XSTPool,
             ]
             .into(),
         }),
@@ -1146,7 +1165,7 @@ fn testnet_genesis(
         pallet_membership_Instance1: Default::default(),
         pallet_im_online: Default::default(),
         xst: Some(XSTPoolConfig {
-            reserves_account_id: Default::default(), // TODO: move to defaults
+            tech_account_id: xst_pool_permissioned_tech_account_id, // TODO: move to defaults
             reference_asset_id: DAI,
             initial_synthetic_assets: vec![XSTUSD],
         }),
@@ -1498,7 +1517,7 @@ fn mainnet_genesis(
             changes_trie_config: Default::default(),
         }),
         technical: Some(TechnicalConfig {
-            account_ids_to_tech_account_ids: tech_accounts,
+            register_tech_accounts: tech_accounts,
         }),
         pallet_babe: Some(BabeConfig {
             authorities: vec![],
@@ -1756,6 +1775,12 @@ fn mainnet_genesis(
         pallet_membership_Instance1: Default::default(),
         pallet_im_online: Default::default(),
     }
+}
+
+#[cfg(feature = "test")]
+pub fn ext() -> sp_io::TestExternalities {
+    let storage = main_net().unwrap().build_storage().unwrap();
+    sp_io::TestExternalities::new(storage)
 }
 
 #[cfg(test)]
