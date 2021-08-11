@@ -844,9 +844,9 @@ impl<T: Config> Module<T> {
     /// `buy_price_usd = (xor_total_supply + xor_supply_delta) / (price_change_step * price_change_rate) + initial_price_usd`
     ///
     pub fn buy_function(main_asset_id: &T::AssetId, delta: Fixed) -> Result<Fixed, DispatchError> {
-        let xstdai_issuance_amt: FixedWrapper = Assets::<T>::total_issuance(&XSTUSD.into())?.into();
+        let xstusd_issuance_amt: FixedWrapper = Assets::<T>::total_issuance(&XSTUSD.into())?.into();
         let xor_dai_price: FixedWrapper = Self::reference_price(main_asset_id)?.into();
-        let xst_xor_liability: FixedWrapper = xstdai_issuance_amt / xor_dai_price;
+        let xst_xor_liability: FixedWrapper = xstusd_issuance_amt / xor_dai_price;
 
         let total_supply: FixedWrapper = Assets::<T>::total_issuance(main_asset_id)?.into();
         let initial_price: FixedWrapper = Self::initial_price().into();

@@ -249,12 +249,12 @@ mod tests {
             )
             .unwrap();
 
-            let xstdai_balance_a = Assets::free_balance(&XSTUSD, &alice()).unwrap();
+            let xstusd_balance_a = Assets::free_balance(&XSTUSD, &alice()).unwrap();
             let xor_balance_a = Assets::free_balance(&XOR, &alice()).unwrap();
 
             assert_eq!(quote_outcome_a.amount, exchange_outcome_a.amount);
             assert_eq!(exchange_outcome_a.amount, xor_balance_a);
-            assert_eq!(xstdai_balance_a, balance!(20600));
+            assert_eq!(xstusd_balance_a, balance!(20600));
 
             // Buy with desired output
             let amount_b: Balance = balance!(200);
@@ -276,12 +276,12 @@ mod tests {
             )
             .unwrap();
 
-            let xstdai_balance_b = Assets::free_balance(&XSTUSD, &alice()).unwrap();
+            let xstusd_balance_b = Assets::free_balance(&XSTUSD, &alice()).unwrap();
             let xor_balance_b = Assets::free_balance(&XOR, &alice()).unwrap();
 
             assert_eq!(quote_outcome_b.amount, exchange_outcome_b.amount);
             assert_eq!(xor_balance_a + amount_b.clone(), xor_balance_b);
-            assert_eq!(xstdai_balance_b, balance!(200.00000000000000007));
+            assert_eq!(xstusd_balance_b, balance!(200.00000000000000007));
 
             // Sell with desired input
             let amount_c: Balance = balance!(205);
@@ -303,11 +303,11 @@ mod tests {
             )
             .unwrap();
 
-            let xstdai_balance_c = Assets::free_balance(&XSTUSD, &alice()).unwrap();
+            let xstusd_balance_c = Assets::free_balance(&XSTUSD, &alice()).unwrap();
             let xor_balance_c = Assets::free_balance(&XOR, &alice()).unwrap();
 
             assert_eq!(quote_outcome_c.amount, exchange_outcome_c.amount);
-            assert_eq!(xstdai_balance_b + exchange_outcome_c.amount, xstdai_balance_c);
+            assert_eq!(xstusd_balance_b + exchange_outcome_c.amount, xstusd_balance_c);
             assert_eq!(xor_balance_b - amount_c.clone(), xor_balance_c.clone());
 
             // Sell with desired output
@@ -328,10 +328,10 @@ mod tests {
                 SwapAmount::with_desired_output(amount_d.clone(), Balance::max_value()),
             )
             .unwrap();
-            let xstdai_balance_d = Assets::free_balance(&XSTUSD, &alice()).unwrap();
+            let xstusd_balance_d = Assets::free_balance(&XSTUSD, &alice()).unwrap();
             let xor_balance_d = Assets::free_balance(&XOR, &alice()).unwrap();
             assert_eq!(quote_outcome_d.amount, exchange_outcome_d.amount);
-            assert_eq!(xstdai_balance_c - quote_outcome_d.amount, xstdai_balance_d);
+            assert_eq!(xstusd_balance_c - quote_outcome_d.amount, xstusd_balance_d);
             assert_eq!(xor_balance_c + amount_d.clone(), xor_balance_d);
         });
     }
