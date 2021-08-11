@@ -576,7 +576,7 @@ fn testnet_genesis(
     council_accounts: Vec<AccountId>,
     technical_committee_accounts: Vec<AccountId>,
 ) -> GenesisConfig {
-    use common::XSTDAI;
+    use common::XSTUSD;
 
     // Initial balances
     let initial_staking = balance!(100);
@@ -861,7 +861,7 @@ fn testnet_genesis(
         account_id: iroha_migration_account_id.clone(),
     };
     let initial_collateral_assets = vec![DAI.into(), VAL.into(), PSWAP.into(), ETH.into()];
-    let initial_synthetic_assets = vec![XSTDAI.into()];
+    let initial_synthetic_assets = vec![XSTUSD.into()];
     GenesisConfig {
         frame_system: Some(SystemConfig {
             code: WASM_BINARY.unwrap().to_vec(),
@@ -966,10 +966,10 @@ fn testnet_genesis(
                     true,
                 ),
                 (
-                    XSTDAI.into(),
+                    XSTUSD.into(),
                     assets_and_permissions_account_id.clone(),
-                    AssetSymbol(b"XSTDAI".to_vec()),
-                    AssetName(b"XST DAI".to_vec()),
+                    AssetSymbol(b"XSTUSD".to_vec()),
+                    AssetName(b"SORA Synthetic USD".to_vec()),
                     18,
                     Balance::zero(),
                     true,
@@ -1156,7 +1156,7 @@ fn testnet_genesis(
         xst: Some(XSTPoolConfig {
             reserves_account_id: Default::default(), // TODO: move to defaults
             reference_asset_id: DAI,
-            initial_synthetic_assets: vec![XSTDAI],
+            initial_synthetic_assets: vec![XSTUSD],
         }),
     }
 }
