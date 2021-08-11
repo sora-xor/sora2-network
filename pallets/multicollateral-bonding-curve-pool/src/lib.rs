@@ -52,7 +52,7 @@ use common::prelude::{
 use common::{
     balance, fixed, fixed_wrapper, DEXId, DexIdOf, GetMarketInfo, LiquiditySource,
     LiquiditySourceFilter, LiquiditySourceType, ManagementMode, RewardReason, VestedRewardsPallet,
-    PSWAP, VAL, XSTDAI,
+    PSWAP, VAL, XSTUSD,
 };
 use frame_support::traits::Get;
 use frame_support::weights::Weight;
@@ -844,7 +844,7 @@ impl<T: Config> Module<T> {
     /// `buy_price_usd = (xor_total_supply + xor_supply_delta) / (price_change_step * price_change_rate) + initial_price_usd`
     ///
     pub fn buy_function(main_asset_id: &T::AssetId, delta: Fixed) -> Result<Fixed, DispatchError> {
-        let xstdai_issuance_amt: FixedWrapper = Assets::<T>::total_issuance(&XSTDAI.into())?.into();
+        let xstdai_issuance_amt: FixedWrapper = Assets::<T>::total_issuance(&XSTUSD.into())?.into();
         let xor_dai_price: FixedWrapper = Self::reference_price(main_asset_id)?.into();
         let xst_xor_liability: FixedWrapper = xstdai_issuance_amt / xor_dai_price;
 

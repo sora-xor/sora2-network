@@ -29,7 +29,7 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use crate::{Config, Pallet, Weight};
-use common::{AssetName, AssetSymbol, Balance, FromGenericPair, XSTDAI};
+use common::{AssetName, AssetSymbol, Balance, FromGenericPair, XSTUSD};
 use frame_support::debug;
 use frame_support::traits::{Get, GetPalletVersion};
 use sp_runtime::traits::Zero;
@@ -63,9 +63,9 @@ pub fn register_new_token<T: Config>() -> Option<Weight> {
 
     let result = assets::Pallet::<T>::register_asset_id(
         get_assets_owner_account::<T>(),
-        XSTDAI.into(),
-        AssetSymbol(b"XSTDAI".to_vec()),
-        AssetName(b"XST DAI".to_vec()),
+        XSTUSD.into(),
+        AssetSymbol(b"XSTUSD".to_vec()),
+        AssetName(b"XOR Synthetic USD".to_vec()),
         18,
         Balance::zero(),
         true,
@@ -74,12 +74,12 @@ pub fn register_new_token<T: Config>() -> Option<Weight> {
     if result.is_err() {
         debug::error!(
             target: "runtime",
-            "failed to register XST DAI asset"
+            "failed to register XOR Synthetic USD asset"
         );
     } else {
         debug::info!(
             target: "runtime",
-            "registered XST DAI asset successfully"
+            "registered XOR Synthetic USD asset successfully"
         );
     }
 

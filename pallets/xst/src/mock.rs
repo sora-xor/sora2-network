@@ -35,7 +35,7 @@ use common::prelude::{
 };
 use common::{
     self, balance, fixed, fixed_wrapper, hash, Amount, AssetId32, AssetName, AssetSymbol, DEXInfo,
-    Fixed, LiquiditySourceFilter, LiquiditySourceType, TechPurpose, PSWAP, USDT, VAL, XOR, XSTDAI,
+    Fixed, LiquiditySourceFilter, LiquiditySourceType, TechPurpose, PSWAP, USDT, VAL, XOR, XSTUSD,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::GenesisBuild;
@@ -401,11 +401,11 @@ pub fn get_mock_prices() -> HashMap<(AssetId, AssetId), Balance> {
         ((VAL, PSWAP), balance!(5)),
         ((USDT, PSWAP), balance!(0.1)),
         ((DAI, PSWAP), balance!(0.098)),
-        // XSTDAI
-        ((XOR, XSTDAI), balance!(103.0)),
-        ((VAL, XSTDAI), balance!(52.0)),
-        ((USDT, XSTDAI), balance!(1.03)),
-        ((DAI, XSTDAI), balance!(1.03)),
+        // XSTUSD
+        ((XOR, XSTUSD), balance!(103.0)),
+        ((VAL, XSTUSD), balance!(52.0)),
+        ((USDT, XSTUSD), balance!(1.03)),
+        ((DAI, XSTUSD), balance!(1.03)),
     ];
     let reverse = direct.clone().into_iter().map(|((a, b), price)| {
         (
@@ -505,10 +505,10 @@ impl Default for ExtBuilder {
                 ),
                 (
                     alice(),
-                    XSTDAI,
+                    XSTUSD,
                     balance!(100000),
-                    AssetSymbol(b"XSTDAI".to_vec()),
-                    AssetName(b"XST DAI".to_vec()),
+                    AssetSymbol(b"XSTUSD".to_vec()),
+                    AssetName(b"XOR Synthetic USD".to_vec()),
                     18,
                 ),
             ],

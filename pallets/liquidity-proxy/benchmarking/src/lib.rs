@@ -41,7 +41,7 @@ use codec::Decode;
 use common::prelude::{Balance, SwapAmount};
 use common::{
     balance, AssetName, AssetSymbol, DEXId, FilterMode, LiquiditySourceType, DAI, DOT, PSWAP, USDT,
-    VAL, XOR, XSTDAI,
+    VAL, XOR, XSTUSD,
 };
 use frame_benchmarking::{benchmarks, Zero};
 use frame_support::traits::Get;
@@ -131,9 +131,9 @@ fn setup_benchmark<T: Config>() -> Result<(), &'static str> {
     );
     let _ = Assets::<T>::register_asset_id(
         owner.clone(),
-        XSTDAI.into(),
-        AssetSymbol(b"XSTDAI".to_vec()),
-        AssetName(b"XST DAI".to_vec()),
+        XSTUSD.into(),
+        AssetSymbol(b"XSTUSD".to_vec()),
+        AssetName(b"XOR Synthetic USD".to_vec()),
         18,
         Balance::zero(),
         true,

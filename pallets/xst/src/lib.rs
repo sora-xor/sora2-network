@@ -52,7 +52,7 @@ use common::prelude::{
 };
 use common::{
     balance, fixed, fixed_wrapper, DEXId, DexIdOf, GetMarketInfo, LiquiditySource,
-    LiquiditySourceFilter, LiquiditySourceType, ManagementMode, RewardReason, DAI, XSTDAI,
+    LiquiditySourceFilter, LiquiditySourceType, ManagementMode, RewardReason, DAI, XSTUSD,
 };
 use frame_support::traits::Get;
 use frame_support::weights::Weight;
@@ -274,7 +274,7 @@ pub mod pallet {
         fn default() -> Self {
             Self {
                 reference_asset_id: DAI.into(),
-                initial_synthetic_assets: [XSTDAI.into()].into(),
+                initial_synthetic_assets: [XSTUSD.into()].into(),
                 reserves_account_id: Default::default(),
             }
         }
