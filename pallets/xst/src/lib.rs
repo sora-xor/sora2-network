@@ -52,7 +52,7 @@ use common::prelude::{
 };
 use common::{
     balance, fixed, fixed_wrapper, DEXId, DexIdOf, GetMarketInfo, LiquiditySource,
-    LiquiditySourceFilter, LiquiditySourceType, ManagementMode, RewardReason, XOR, DAI, XSTUSD,
+    LiquiditySourceFilter, LiquiditySourceType, ManagementMode, RewardReason, DAI, XOR, XSTUSD,
 };
 use frame_support::traits::Get;
 use frame_support::weights::Weight;
@@ -611,9 +611,14 @@ impl<T: Config> Module<T> {
             <T as pallet::Config>::PriceToolsPallet::get_average_price(
                 asset_id,
                 &reference_asset_id,
-            ).map(|avg| {
+            )
+            .map(|avg| {
                 // We don't let the price of XOR w.r.t. DAI go under $100, to prevent manipulation attacks
-                if asset_id == &XOR.into() && &reference_asset_id == &DAI.into() { avg.max(balance!(100)) } else { avg }
+                if asset_id == &XOR.into() && &reference_asset_id == &DAI.into() {
+                    avg.max(balance!(100))
+                } else {
+                    avg
+                }
             })?
         };
         Ok(price)
