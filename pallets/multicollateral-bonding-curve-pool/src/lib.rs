@@ -52,13 +52,13 @@ use common::prelude::{
 use common::{
     balance, fixed, fixed_wrapper, DEXId, DexIdOf, GetMarketInfo, LiquiditySource,
     LiquiditySourceFilter, LiquiditySourceType, ManagementMode, RewardReason, VestedRewardsPallet,
-    PSWAP, VAL,
+    PSWAP, VAL, XSTUSD,
 };
 use frame_support::traits::Get;
 use frame_support::weights::Weight;
 use frame_support::{ensure, fail};
 use liquidity_proxy::LiquidityProxyTrait;
-use permissions::{Scope, BURN, MINT, TRANSFER};
+use permissions::{Scope, BURN, MINT};
 use sp_arithmetic::traits::Zero;
 use sp_runtime::{DispatchError, DispatchResult};
 use sp_std::collections::btree_set::BTreeSet;
@@ -311,6 +311,8 @@ pub mod pallet {
     pub enum Error<T> {
         /// An error occurred while calculating the price.
         PriceCalculationFailed,
+        /// Failure while calculating price ignoring non-linearity of liquidity source.
+        FailedToCalculatePriceWithoutImpact,
         /// The pool can't perform exchange on itself.
         CannotExchangeWithSelf,
         /// It's not enough reserves in the pool to perform the operation.
@@ -654,8 +656,25 @@ impl<T: Config> BuyMainAsset<T> {
             let (input_amount, output_amount, fee_amount) = Module::<T>::decide_buy_amounts(
                 &self.main_asset_id,
                 &self.collateral_asset_id,
-                self.amount,
+                self.amount.into(),
             )?;
+            let result = match self.amount {
+                SwapAmount::WithDesiredInput { min_amount_out, .. } => {
+                    ensure!(
+                        output_amount >= min_amount_out,
+                        Error::<T>::SlippageLimitExceeded
+                    );
+                    SwapOutcome::new(output_amount, fee_amount)
+                }
+                SwapAmount::WithDesiredOutput { max_amount_in, .. } => {
+                    ensure!(
+                        input_amount <= max_amount_in,
+                        Error::<T>::SlippageLimitExceeded
+                    );
+                    SwapOutcome::new(input_amount, fee_amount)
+                }
+            };
+
             // Reward needs to be updated before actual changes to reserves, because reward
             // calculations depend upon current state - actual reserves and xor supply, i.e. rewards depend
             // on values before transferring tokens from user.
@@ -663,10 +682,7 @@ impl<T: Config> BuyMainAsset<T> {
             self.deposit_input(input_amount)?;
             self.distribute_reserves(input_amount)?;
             self.mint_output(output_amount.clone())?;
-            Ok(match self.amount {
-                SwapAmount::WithDesiredInput { .. } => SwapOutcome::new(output_amount, fee_amount),
-                SwapAmount::WithDesiredOutput { .. } => SwapOutcome::new(input_amount, fee_amount),
-            })
+            Ok(result)
         })
     }
 }
@@ -828,13 +844,18 @@ impl<T: Config> Module<T> {
     /// `buy_price_usd = (xor_total_supply + xor_supply_delta) / (price_change_step * price_change_rate) + initial_price_usd`
     ///
     pub fn buy_function(main_asset_id: &T::AssetId, delta: Fixed) -> Result<Fixed, DispatchError> {
+        let xstusd_issuance_amt: FixedWrapper = Assets::<T>::total_issuance(&XSTUSD.into())?.into();
+        let xor_dai_price: FixedWrapper = Self::reference_price(main_asset_id)?.into();
+        let xst_xor_liability: FixedWrapper = xstusd_issuance_amt / xor_dai_price;
+
         let total_supply: FixedWrapper = Assets::<T>::total_issuance(main_asset_id)?.into();
         let initial_price: FixedWrapper = Self::initial_price().into();
         let price_change_step: FixedWrapper = Self::price_change_step().into();
         let price_change_rate: FixedWrapper = Self::price_change_rate().into();
 
-        let price =
-            (total_supply + delta) / (price_change_step * price_change_rate) + initial_price;
+        let price = (total_supply + xst_xor_liability + delta)
+            / (price_change_step * price_change_rate)
+            + initial_price;
         price
             .get()
             .map_err(|_| Error::<T>::PriceCalculationFailed.into())
@@ -1029,13 +1050,10 @@ impl<T: Config> Module<T> {
     fn decide_buy_amounts(
         main_asset_id: &T::AssetId,
         collateral_asset_id: &T::AssetId,
-        amount: SwapAmount<Balance>,
+        amount: QuoteAmount<Balance>,
     ) -> Result<(Balance, Balance, Balance), DispatchError> {
         Ok(match amount {
-            SwapAmount::WithDesiredInput {
-                desired_amount_in,
-                min_amount_out,
-            } => {
+            QuoteAmount::WithDesiredInput { desired_amount_in } => {
                 let mut output_amount: Balance = FixedWrapper::from(Self::buy_price(
                     main_asset_id,
                     collateral_asset_id,
@@ -1047,16 +1065,9 @@ impl<T: Config> Module<T> {
                     .try_into_balance()
                     .map_err(|_| Error::<T>::PriceCalculationFailed)?;
                 output_amount = output_amount.saturating_sub(fee_amount);
-                ensure!(
-                    output_amount >= min_amount_out,
-                    Error::<T>::SlippageLimitExceeded
-                );
                 (desired_amount_in, output_amount, fee_amount)
             }
-            SwapAmount::WithDesiredOutput {
-                desired_amount_out,
-                max_amount_in,
-            } => {
+            QuoteAmount::WithDesiredOutput { desired_amount_out } => {
                 let desired_amount_out_with_fee = (FixedWrapper::from(desired_amount_out)
                     / (fixed_wrapper!(1) - BaseFee::<T>::get()))
                 .try_into_balance()
@@ -1070,10 +1081,6 @@ impl<T: Config> Module<T> {
                     .into_bits()
                     .try_into()
                     .map_err(|_| Error::<T>::PriceCalculationFailed)?;
-                ensure!(
-                    input_amount <= max_amount_in,
-                    Error::<T>::SlippageLimitExceeded
-                );
                 (
                     input_amount,
                     desired_amount_out,
@@ -1083,7 +1090,7 @@ impl<T: Config> Module<T> {
         })
     }
 
-    /// Mapping that defines percentage of fee penalty applied for selling XOR with
+    /// Mapping that defines ratio of fee penalty applied for selling XOR with
     /// low collateralized reserves.
     fn map_collateralized_fraction_to_penalty(fraction: Fixed) -> Fixed {
         if fraction < fixed!(0.05) {
@@ -1099,7 +1106,7 @@ impl<T: Config> Module<T> {
         }
     }
 
-    /// Calculate percentage of fee penalty that is applied to trades when XOR is sold while
+    /// Calculate ratio of fee penalty that is applied to trades when XOR is sold while
     /// reserves are low for target collateral asset.
     fn sell_penalty(collateral_asset_id: &T::AssetId) -> Result<Fixed, DispatchError> {
         let reserves_account_id =
@@ -1130,16 +1137,13 @@ impl<T: Config> Module<T> {
     fn decide_sell_amounts(
         main_asset_id: &T::AssetId,
         collateral_asset_id: &T::AssetId,
-        amount: SwapAmount<Balance>,
+        amount: QuoteAmount<Balance>,
     ) -> Result<(Balance, Balance, Balance), DispatchError> {
         Ok(match amount {
-            SwapAmount::WithDesiredInput {
-                desired_amount_in,
-                min_amount_out,
-            } => {
-                let fee_percentage = FixedWrapper::from(BaseFee::<T>::get())
+            QuoteAmount::WithDesiredInput { desired_amount_in } => {
+                let fee_ratio = FixedWrapper::from(BaseFee::<T>::get())
                     + Self::sell_penalty(collateral_asset_id)?;
-                let fee_amount = (fee_percentage * FixedWrapper::from(desired_amount_in))
+                let fee_amount = (fee_ratio * FixedWrapper::from(desired_amount_in))
                     .try_into_balance()
                     .map_err(|_| Error::<T>::PriceCalculationFailed)?;
                 let output_amount = Self::sell_price(
@@ -1153,16 +1157,9 @@ impl<T: Config> Module<T> {
                     .into_bits()
                     .try_into()
                     .map_err(|_| Error::<T>::PriceCalculationFailed)?;
-                ensure!(
-                    output_amount >= min_amount_out,
-                    Error::<T>::SlippageLimitExceeded
-                );
                 (desired_amount_in, output_amount, fee_amount)
             }
-            SwapAmount::WithDesiredOutput {
-                desired_amount_out,
-                max_amount_in,
-            } => {
+            QuoteAmount::WithDesiredOutput { desired_amount_out } => {
                 let input_amount: Balance = FixedWrapper::from(Self::sell_price(
                     main_asset_id,
                     collateral_asset_id,
@@ -1170,17 +1167,13 @@ impl<T: Config> Module<T> {
                 )?)
                 .try_into_balance()
                 .map_err(|_| Error::<T>::PriceCalculationFailed)?;
-                let fee_percentage = FixedWrapper::from(BaseFee::<T>::get())
+                let fee_ratio = FixedWrapper::from(BaseFee::<T>::get())
                     + Self::sell_penalty(collateral_asset_id)?;
                 let input_amount_with_fee =
-                    FixedWrapper::from(input_amount) / (fixed_wrapper!(1) - fee_percentage);
+                    FixedWrapper::from(input_amount) / (fixed_wrapper!(1) - fee_ratio);
                 let input_amount_with_fee = input_amount_with_fee
                     .try_into_balance()
                     .map_err(|_| Error::<T>::PriceCalculationFailed)?;
-                ensure!(
-                    input_amount <= max_amount_in,
-                    Error::<T>::SlippageLimitExceeded
-                );
                 (
                     input_amount_with_fee,
                     desired_amount_out,
@@ -1208,13 +1201,29 @@ impl<T: Config> Module<T> {
             let reserves_account_id =
                 Technical::<T>::tech_account_id_to_account_id(&reserves_tech_account_id)?;
             let (input_amount, output_amount, fee_amount) =
-                Self::decide_sell_amounts(main_asset_id, collateral_asset_id, amount)?;
+                Self::decide_sell_amounts(main_asset_id, collateral_asset_id, amount.into())?;
             let reserves_amount =
                 Assets::<T>::total_balance(collateral_asset_id, &reserves_account_id)?;
             ensure!(
                 reserves_amount >= output_amount,
                 Error::<T>::NotEnoughReserves
             );
+            let result = match amount {
+                SwapAmount::WithDesiredInput { min_amount_out, .. } => {
+                    ensure!(
+                        output_amount >= min_amount_out,
+                        Error::<T>::SlippageLimitExceeded
+                    );
+                    SwapOutcome::new(output_amount, fee_amount)
+                }
+                SwapAmount::WithDesiredOutput { max_amount_in, .. } => {
+                    ensure!(
+                        input_amount <= max_amount_in,
+                        Error::<T>::SlippageLimitExceeded
+                    );
+                    SwapOutcome::new(input_amount, fee_amount)
+                }
+            };
             technical::Module::<T>::transfer_out(
                 collateral_asset_id,
                 &reserves_tech_account_id,
@@ -1227,7 +1236,7 @@ impl<T: Config> Module<T> {
                 from_account_id,
                 input_amount,
             )?;
-            Ok(SwapOutcome::new(output_amount, fee_amount))
+            Ok(result)
         })
     }
 
@@ -1236,7 +1245,7 @@ impl<T: Config> Module<T> {
         common::with_transaction(|| {
             ReservesAcc::<T>::set(account.clone());
             let account_id = Technical::<T>::tech_account_id_to_account_id(&account)?;
-            let permissions = [BURN, MINT, TRANSFER];
+            let permissions = [BURN, MINT];
             for permission in &permissions {
                 permissions::Module::<T>::assign_permission(
                     account_id.clone(),
@@ -1383,20 +1392,20 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         dex_id: &T::DEXId,
         input_asset_id: &T::AssetId,
         output_asset_id: &T::AssetId,
-        swap_amount: SwapAmount<Balance>,
+        amount: QuoteAmount<Balance>,
     ) -> Result<SwapOutcome<Balance>, DispatchError> {
         if !Self::can_exchange(dex_id, input_asset_id, output_asset_id) {
             fail!(Error::<T>::CantExchange);
         }
         let base_asset_id = &T::GetBaseAssetId::get();
         let (input_amount, output_amount, fee_amount) = if input_asset_id == base_asset_id {
-            Self::decide_sell_amounts(&input_asset_id, &output_asset_id, swap_amount)?
+            Self::decide_sell_amounts(&input_asset_id, &output_asset_id, amount)?
         } else {
-            Self::decide_buy_amounts(&output_asset_id, &input_asset_id, swap_amount)?
+            Self::decide_buy_amounts(&output_asset_id, &input_asset_id, amount)?
         };
-        match swap_amount {
-            SwapAmount::WithDesiredInput { .. } => Ok(SwapOutcome::new(output_amount, fee_amount)),
-            SwapAmount::WithDesiredOutput { .. } => Ok(SwapOutcome::new(input_amount, fee_amount)),
+        match amount {
+            QuoteAmount::WithDesiredInput { .. } => Ok(SwapOutcome::new(output_amount, fee_amount)),
+            QuoteAmount::WithDesiredOutput { .. } => Ok(SwapOutcome::new(input_amount, fee_amount)),
         }
     }
 
@@ -1479,6 +1488,89 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
             Ok(Vec::new()) // no rewards on sell
         }
     }
+
+    fn quote_without_impact(
+        dex_id: &T::DEXId,
+        input_asset_id: &T::AssetId,
+        output_asset_id: &T::AssetId,
+        amount: QuoteAmount<Balance>,
+    ) -> Result<SwapOutcome<Balance>, DispatchError> {
+        if !Self::can_exchange(dex_id, input_asset_id, output_asset_id) {
+            fail!(Error::<T>::CantExchange);
+        }
+        let base_asset_id = &T::GetBaseAssetId::get();
+        let outcome = if input_asset_id == base_asset_id {
+            let base_price_wrt_collateral: FixedWrapper = <Module<T> as GetMarketInfo<
+                T::AssetId,
+            >>::sell_price(
+                input_asset_id, output_asset_id
+            )?
+            .into();
+            let fee_ratio =
+                FixedWrapper::from(BaseFee::<T>::get()) + Self::sell_penalty(output_asset_id)?;
+            match amount {
+                QuoteAmount::WithDesiredInput { desired_amount_in } => {
+                    let fee_amount = (fee_ratio * FixedWrapper::from(desired_amount_in))
+                        .try_into_balance()
+                        .map_err(|_| Error::<T>::FailedToCalculatePriceWithoutImpact)?;
+                    let collateral_out =
+                        (FixedWrapper::from(desired_amount_in.saturating_sub(fee_amount.clone()))
+                            * base_price_wrt_collateral)
+                            .try_into_balance()
+                            .map_err(|_| Error::<T>::FailedToCalculatePriceWithoutImpact)?;
+                    SwapOutcome::new(collateral_out, fee_amount)
+                }
+                QuoteAmount::WithDesiredOutput { desired_amount_out } => {
+                    let base_in =
+                        FixedWrapper::from(desired_amount_out) / base_price_wrt_collateral;
+                    let input_amount_with_fee = base_in.clone() / (fixed_wrapper!(1) - fee_ratio);
+                    let fee_amount = (input_amount_with_fee.clone() - base_in)
+                        .try_into_balance()
+                        .map_err(|_| Error::<T>::FailedToCalculatePriceWithoutImpact)?;
+                    SwapOutcome::new(
+                        input_amount_with_fee
+                            .try_into_balance()
+                            .map_err(|_| Error::<T>::FailedToCalculatePriceWithoutImpact)?,
+                        fee_amount,
+                    )
+                }
+            }
+        } else {
+            let base_price_wrt_collateral: FixedWrapper = <Pallet<T> as GetMarketInfo<
+                T::AssetId,
+            >>::buy_price(
+                output_asset_id, input_asset_id
+            )?
+            .into();
+            match amount {
+                QuoteAmount::WithDesiredInput { desired_amount_in } => {
+                    let base_out =
+                        FixedWrapper::from(desired_amount_in) / base_price_wrt_collateral;
+                    let fee_amount = (FixedWrapper::from(BaseFee::<T>::get()) * base_out.clone())
+                        .try_into_balance()
+                        .map_err(|_| Error::<T>::FailedToCalculatePriceWithoutImpact)?;
+                    let mut base_out_unwrapped = base_out
+                        .try_into_balance()
+                        .map_err(|_| Error::<T>::FailedToCalculatePriceWithoutImpact)?;
+                    base_out_unwrapped = base_out_unwrapped.saturating_sub(fee_amount);
+                    SwapOutcome::new(base_out_unwrapped, fee_amount)
+                }
+                QuoteAmount::WithDesiredOutput { desired_amount_out } => {
+                    let desired_amount_out_with_fee = (FixedWrapper::from(desired_amount_out)
+                        / (fixed_wrapper!(1) - BaseFee::<T>::get()))
+                    .try_into_balance()
+                    .map_err(|_| Error::<T>::FailedToCalculatePriceWithoutImpact)?;
+                    let collateral_in = (FixedWrapper::from(desired_amount_out_with_fee)
+                        * base_price_wrt_collateral)
+                        .try_into_balance()
+                        .map_err(|_| Error::<T>::FailedToCalculatePriceWithoutImpact)?;
+                    let fee_amount = desired_amount_out_with_fee.saturating_sub(desired_amount_out);
+                    SwapOutcome::new(collateral_in, fee_amount)
+                }
+            }
+        };
+        Ok(outcome)
+    }
 }
 
 impl<T: Config> GetMarketInfo<T::AssetId> for Module<T> {
@@ -1508,15 +1600,7 @@ impl<T: Config> GetMarketInfo<T::AssetId> for Module<T> {
         Ok(output)
     }
 
-    fn collateral_reserves(asset_id: &T::AssetId) -> Result<Balance, DispatchError> {
-        let reserves_tech_account_id = ReservesAcc::<T>::get();
-        let reserves_account_id =
-            Technical::<T>::tech_account_id_to_account_id(&reserves_tech_account_id)?;
-        let collateral_supply = Assets::<T>::free_balance(asset_id, &reserves_account_id)?;
-        Ok(collateral_supply)
-    }
-
-    fn enabled_collaterals() -> BTreeSet<T::AssetId> {
+    fn enabled_target_assets() -> BTreeSet<T::AssetId> {
         EnabledTargets::<T>::get()
     }
 }

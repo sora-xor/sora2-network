@@ -62,6 +62,7 @@ fn assert_last_event<T: Config>(generic_event: <T as Config>::Event) {
 benchmarks! {
     register {
         let caller = alice::<T>();
+        frame_system::Module::<T>::inc_providers(&caller);
         let _ = Assets::<T>::register_asset_id(
             caller.clone(),
             DOT.into(),

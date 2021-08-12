@@ -37,25 +37,25 @@ pub struct WeightInfo<T>(PhantomData<T>);
 
 impl<T: frame_system::Config> crate::WeightInfo for WeightInfo<T> {
     fn register() -> Weight {
-        (783_115_000 as Weight)
-            .saturating_add(T::DbWeight::get().reads(9 as Weight))
-            .saturating_add(T::DbWeight::get().writes(7 as Weight))
+        (168_211_000 as Weight)
+            .saturating_add(T::DbWeight::get().reads(8 as Weight))
+            .saturating_add(T::DbWeight::get().writes(6 as Weight))
     }
     fn transfer() -> Weight {
-        (360_872_000 as Weight).saturating_add(T::DbWeight::get().reads(4 as Weight))
+        (54_103_000 as Weight).saturating_add(T::DbWeight::get().reads(1 as Weight))
     }
     fn mint() -> Weight {
-        (604_771_000 as Weight)
+        (126_893_000 as Weight)
             .saturating_add(T::DbWeight::get().reads(7 as Weight))
             .saturating_add(T::DbWeight::get().writes(3 as Weight))
     }
     fn burn() -> Weight {
-        (465_776_000 as Weight)
+        (93_162_000 as Weight)
             .saturating_add(T::DbWeight::get().reads(3 as Weight))
             .saturating_add(T::DbWeight::get().writes(2 as Weight))
     }
     fn set_non_mintable() -> Weight {
-        (177_752_000 as Weight)
+        (63_659_000 as Weight)
             .saturating_add(T::DbWeight::get().reads(2 as Weight))
             .saturating_add(T::DbWeight::get().writes(1 as Weight))
     }

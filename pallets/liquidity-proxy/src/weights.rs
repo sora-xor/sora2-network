@@ -37,20 +37,23 @@ use common::prelude::SwapVariant;
 
 pub struct WeightInfo<T>(PhantomData<T>);
 impl<T: frame_system::Config> crate::WeightInfo for WeightInfo<T> {
-    fn swap(amount: SwapVariant) -> Weight {
-        match amount {
-            SwapVariant::WithDesiredInput => (26_026_726_000 as Weight)
-                .saturating_add(T::DbWeight::get().reads(45 as Weight))
+    fn swap(variant: SwapVariant) -> Weight {
+        // Todo: Use all 6 weight formulas defined in benchmarks
+        match variant {
+            // swap_exact_input_multiple
+            SwapVariant::WithDesiredInput => (773_992_000 as Weight)
+                .saturating_add(T::DbWeight::get().reads(32 as Weight))
                 .saturating_add(T::DbWeight::get().writes(11 as Weight)),
-            _ => (45_803_872_000 as Weight)
-                .saturating_add(T::DbWeight::get().reads(45 as Weight))
+            //swap_exact_output_multiple
+            SwapVariant::WithDesiredOutput => (914_277_000 as Weight)
+                .saturating_add(T::DbWeight::get().reads(32 as Weight))
                 .saturating_add(T::DbWeight::get().writes(11 as Weight)),
         }
     }
 }
 
 impl crate::WeightInfo for () {
-    fn swap(_amount: SwapVariant) -> Weight {
+    fn swap(_variant: SwapVariant) -> Weight {
         EXTRINSIC_FIXED_WEIGHT
     }
 }

@@ -32,7 +32,7 @@
 
 use crate::{Config, *};
 use common::mock::ExistentialDeposits;
-use common::prelude::Balance;
+use common::prelude::{Balance, QuoteAmount};
 use common::{
     fixed, fixed_from_basis_points, hash, Amount, AssetId32, BalancePrecision, DEXInfo, Fixed,
     FromGenericPair, LiquiditySourceFilter, LiquiditySourceType, PriceToolsPallet, TechPurpose,
@@ -44,7 +44,7 @@ use frame_support::{construct_runtime, parameter_types};
 use multicollateral_bonding_curve_pool::{
     DistributionAccount, DistributionAccountData, DistributionAccounts,
 };
-use permissions::{Scope, BURN, MANAGE_DEX, MINT, TRANSFER};
+use permissions::{Scope, BURN, MANAGE_DEX, MINT};
 use sp_core::H256;
 use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentityLookup};
@@ -113,6 +113,7 @@ construct_runtime! {
         Permissions: permissions::{Module, Call, Config<T>, Storage, Event<T>},
         DexApi: dex_api::{Module, Call, Config, Storage, Event<T>},
         TradingPair: trading_pair::{Module, Call, Config<T>, Storage, Event<T>},
+        PriceTools: price_tools::{Module, Storage, Event<T>},
         PoolXYK: pool_xyk::{Module, Call, Storage, Event<T>},
         MBCPool: multicollateral_bonding_curve_pool::{Module, Call, Storage, Event<T>},
         PswapDistribution: pswap_distribution::{Module, Call, Config<T>, Storage, Event<T>},
@@ -151,7 +152,8 @@ impl liquidity_proxy::Config for Runtime {
     type GetNumSamples = GetNumSamples;
     type GetTechnicalAccountId = GetLiquidityProxyAccountId;
     type WeightInfo = ();
-    type PrimaryMarket = ();
+    type PrimaryMarketTBC = ();
+    type PrimaryMarketXST = ();
     type SecondaryMarket = ();
     type VestedRewardsPallet = vested_rewards::Module<Runtime>;
 }
@@ -234,7 +236,6 @@ impl technical::Config for Runtime {
     type Trigger = ();
     type Condition = ();
     type SwapAction = pool_xyk::PolySwapAction<AssetId, AccountId, TechAccountId>;
-    type WeightInfo = ();
 }
 
 impl permissions::Config for Runtime {
@@ -248,7 +249,7 @@ impl dex_api::Config for Runtime {
     type MockLiquiditySource3 = ();
     type MockLiquiditySource4 = ();
     type XYKPool = pool_xyk::Module<Runtime>;
-    type BondingCurvePool = ();
+    type XSTPool = ();
     type MulticollateralBondingCurvePool = multicollateral_bonding_curve_pool::Module<Runtime>;
     type WeightInfo = ();
 }
@@ -408,7 +409,7 @@ impl PriceToolsPallet<AssetId> for MockPriceTools {
         let res = <LiquidityProxy as LiquidityProxyTrait<DEXId, AccountId, AssetId>>::quote(
             input_asset_id,
             output_asset_id,
-            SwapAmount::with_desired_input(balance!(1), balance!(0)),
+            QuoteAmount::with_desired_input(balance!(1)),
             LiquiditySourceFilter::with_allowed(
                 0u32,
                 [LiquiditySourceType::XYKPool].iter().cloned().collect(),
@@ -448,6 +449,12 @@ impl pswap_distribution::Config for Runtime {
     type PoolXykPallet = PoolXYK;
 }
 
+impl price_tools::Config for Runtime {
+    type Event = Event;
+    type LiquidityProxy = LiquidityProxy;
+    type WeightInfo = price_tools::weights::WeightInfo<Runtime>;
+}
+
 impl Config for Runtime {}
 
 pub struct ExtBuilder {
@@ -478,7 +485,6 @@ impl Default for ExtBuilder {
                 },
             )],
             initial_permission_owners: vec![
-                (TRANSFER, Scope::Unlimited, vec![alice()]),
                 (MINT, Scope::Unlimited, vec![alice()]),
                 (BURN, Scope::Unlimited, vec![alice()]),
                 (MANAGE_DEX, Scope::Unlimited, vec![alice()]),
@@ -622,7 +628,7 @@ impl ExtBuilder {
         .unwrap();
 
         technical::GenesisConfig::<Runtime> {
-            account_ids_to_tech_account_ids: tech_accounts,
+            register_tech_accounts: tech_accounts,
         }
         .assimilate_storage(&mut t)
         .unwrap();

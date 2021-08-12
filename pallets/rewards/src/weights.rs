@@ -57,7 +57,8 @@
 use core::marker::PhantomData;
 
 use frame_support::traits::Get;
-use frame_support::weights::Weight;
+use frame_support::weights::constants::BlockExecutionWeight;
+use frame_support::weights::{DispatchClass, Weight};
 
 use common::prelude::constants::EXTRINSIC_FIXED_WEIGHT;
 
@@ -65,14 +66,35 @@ pub struct WeightInfo<T>(PhantomData<T>);
 
 impl<T: frame_system::Config> crate::WeightInfo for WeightInfo<T> {
     fn claim() -> Weight {
-        (21_316_821_000 as Weight)
-            .saturating_add(T::DbWeight::get().reads(16 as Weight))
-            .saturating_add(T::DbWeight::get().writes(8 as Weight))
+        (804_752_000 as Weight)
+            .saturating_add(T::DbWeight::get().reads(14 as Weight))
+            .saturating_add(T::DbWeight::get().writes(10 as Weight))
+    }
+    fn finalize_storage_migration(n: u32) -> Weight {
+        let weight = (0 as Weight)
+            // Standard Error: 50_000
+            .saturating_add((16_106_000 as Weight).saturating_mul(n as Weight))
+            .saturating_add(T::DbWeight::get().reads(5 as Weight))
+            .saturating_add(T::DbWeight::get().reads((1 as Weight).saturating_mul(n as Weight)))
+            .saturating_add(T::DbWeight::get().writes(5 as Weight))
+            .saturating_add(T::DbWeight::get().writes((1 as Weight).saturating_mul(n as Weight)));
+
+        let max_weight: Weight = T::BlockWeights::get()
+            .get(DispatchClass::Normal)
+            .max_extrinsic
+            .expect("Pallet must have max extrinsic weight");
+        let max_dispatch_weight: Weight = max_weight.saturating_sub(BlockExecutionWeight::get());
+
+        max_dispatch_weight.min(weight)
     }
 }
 
 impl crate::WeightInfo for () {
     fn claim() -> Weight {
+        EXTRINSIC_FIXED_WEIGHT
+    }
+
+    fn finalize_storage_migration(_n: u32) -> Weight {
         EXTRINSIC_FIXED_WEIGHT
     }
 }

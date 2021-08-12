@@ -231,7 +231,6 @@ impl technical::Config for Runtime {
     type Trigger = ();
     type Condition = ();
     type SwapAction = pool_xyk::PolySwapAction<AssetId, AccountId, TechAccountId>;
-    type WeightInfo = ();
 }
 
 impl pool_xyk::Config for Runtime {
@@ -346,7 +345,6 @@ impl Default for ExtBuilder {
             ],
             initial_permission_owners: vec![
                 (MANAGE_DEX, Scope::Limited(hash(&DEX_A_ID)), vec![BOB()]),
-                (TRANSFER, Scope::Unlimited, vec![ALICE()]),
                 (CREATE_FARM, Scope::Unlimited, vec![ALICE()]),
                 (LOCK_TO_FARM, Scope::Unlimited, vec![ALICE()]),
                 (UNLOCK_FROM_FARM, Scope::Unlimited, vec![ALICE()]),

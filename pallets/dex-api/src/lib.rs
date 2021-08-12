@@ -30,7 +30,7 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use common::prelude::{Balance, SwapAmount, SwapOutcome, SwapVariant};
+use common::prelude::{Balance, QuoteAmount, SwapAmount, SwapOutcome, SwapVariant};
 use common::{
     LiquidityRegistry, LiquiditySource, LiquiditySourceFilter, LiquiditySourceId,
     LiquiditySourceType, RewardReason,
@@ -80,12 +80,13 @@ impl<T: Config>
         }
         match liquidity_source_id.liquidity_source_index {
             XYKPool => can_exchange!(XYKPool),
-            BondingCurvePool => can_exchange!(BondingCurvePool),
             MulticollateralBondingCurvePool => can_exchange!(MulticollateralBondingCurvePool),
+            XSTPool => can_exchange!(XSTPool),
             MockPool => can_exchange!(MockLiquiditySource),
             MockPool2 => can_exchange!(MockLiquiditySource2),
             MockPool3 => can_exchange!(MockLiquiditySource3),
             MockPool4 => can_exchange!(MockLiquiditySource4),
+            BondingCurvePool => unreachable!(),
         }
     }
 
@@ -93,7 +94,7 @@ impl<T: Config>
         liquidity_source_id: &LiquiditySourceId<T::DEXId, LiquiditySourceType>,
         input_asset_id: &T::AssetId,
         output_asset_id: &T::AssetId,
-        swap_amount: SwapAmount<Balance>,
+        amount: QuoteAmount<Balance>,
     ) -> Result<SwapOutcome<Balance>, DispatchError> {
         use LiquiditySourceType::*;
         macro_rules! quote {
@@ -102,18 +103,19 @@ impl<T: Config>
                     &liquidity_source_id.dex_id,
                     input_asset_id,
                     output_asset_id,
-                    swap_amount,
+                    amount,
                 )
             };
         }
         match liquidity_source_id.liquidity_source_index {
             LiquiditySourceType::XYKPool => quote!(XYKPool),
-            BondingCurvePool => quote!(BondingCurvePool),
             MulticollateralBondingCurvePool => quote!(MulticollateralBondingCurvePool),
+            XSTPool => quote!(XSTPool),
             MockPool => quote!(MockLiquiditySource),
             MockPool2 => quote!(MockLiquiditySource2),
             MockPool3 => quote!(MockLiquiditySource3),
             MockPool4 => quote!(MockLiquiditySource4),
+            BondingCurvePool => unreachable!(),
         }
     }
 
@@ -140,12 +142,13 @@ impl<T: Config>
         }
         match liquidity_source_id.liquidity_source_index {
             XYKPool => exchange!(XYKPool),
-            BondingCurvePool => exchange!(BondingCurvePool),
             MulticollateralBondingCurvePool => exchange!(MulticollateralBondingCurvePool),
+            XSTPool => exchange!(XSTPool),
             MockPool => exchange!(MockLiquiditySource),
             MockPool2 => exchange!(MockLiquiditySource2),
             MockPool3 => exchange!(MockLiquiditySource3),
             MockPool4 => exchange!(MockLiquiditySource4),
+            BondingCurvePool => unreachable!(),
         }
     }
 
@@ -170,12 +173,44 @@ impl<T: Config>
         }
         match liquidity_source_id.liquidity_source_index {
             XYKPool => check_rewards!(XYKPool),
-            BondingCurvePool => check_rewards!(BondingCurvePool),
             MulticollateralBondingCurvePool => check_rewards!(MulticollateralBondingCurvePool),
+            XSTPool => check_rewards!(XSTPool),
             MockPool => check_rewards!(MockLiquiditySource),
             MockPool2 => check_rewards!(MockLiquiditySource2),
             MockPool3 => check_rewards!(MockLiquiditySource3),
             MockPool4 => check_rewards!(MockLiquiditySource4),
+            BondingCurvePool => unreachable!(),
+        }
+    }
+
+    fn quote_without_impact(
+        liquidity_source_id: &LiquiditySourceId<T::DEXId, LiquiditySourceType>,
+        input_asset_id: &T::AssetId,
+        output_asset_id: &T::AssetId,
+        amount: QuoteAmount<Balance>,
+    ) -> Result<SwapOutcome<Balance>, DispatchError> {
+        use LiquiditySourceType::*;
+        macro_rules! quote_without_impact {
+            ($source_type:ident) => {
+                T::$source_type::quote_without_impact(
+                    &liquidity_source_id.dex_id,
+                    input_asset_id,
+                    output_asset_id,
+                    amount,
+                )
+            };
+        }
+        match liquidity_source_id.liquidity_source_index {
+            XYKPool => quote_without_impact!(XYKPool),
+            MulticollateralBondingCurvePool => {
+                quote_without_impact!(MulticollateralBondingCurvePool)
+            }
+            XSTPool => quote_without_impact!(XSTPool),
+            MockPool => quote_without_impact!(MockLiquiditySource),
+            MockPool2 => quote_without_impact!(MockLiquiditySource2),
+            MockPool3 => quote_without_impact!(MockLiquiditySource3),
+            MockPool4 => quote_without_impact!(MockLiquiditySource4),
+            BondingCurvePool => unreachable!(),
         }
     }
 }
@@ -269,14 +304,14 @@ pub mod pallet {
             Balance,
             DispatchError,
         >;
-        type BondingCurvePool: LiquiditySource<
+        type MulticollateralBondingCurvePool: LiquiditySource<
             Self::DEXId,
             Self::AccountId,
             Self::AssetId,
             Balance,
             DispatchError,
         >;
-        type MulticollateralBondingCurvePool: LiquiditySource<
+        type XSTPool: LiquiditySource<
             Self::DEXId,
             Self::AccountId,
             Self::AssetId,
