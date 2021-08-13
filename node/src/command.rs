@@ -74,7 +74,7 @@ impl SubstrateCli for Cli {
             chain_spec = Some(framenode_chain_spec::main_net()?);
         }
 
-        #[cfg(feature = "main-net-coded")]
+        #[cfg(any(feature = "main-net-coded", feature = "runtime-benchmarks"))]
         if id == "main-coded" {
             chain_spec = Some(framenode_chain_spec::main_net_coded());
         }

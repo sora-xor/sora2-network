@@ -110,10 +110,14 @@ tokens = { version = "0.4", package = "orml-tokens", default-features = false }
 traits = { version = "0.4", package = "orml-traits", default-features = false }
 
 [dev-dependencies]
+env_logger = "0.9.0"
+
+common = { path = "../common", features = ["test"] }
 framenode-chain-spec = { path = "../node/chain_spec", features = ["test"] }
 
 [features]
 default = ["std"]
+test = []
 
 std = [
     "assets-runtime-api/std",
@@ -212,6 +216,7 @@ runtime-benchmarks = [
     "pswap-distribution-benchmarking/runtime-benchmarks",
     "pswap-distribution/runtime-benchmarks",
     "pswap-distribution/runtime-benchmarks",
+    "referral-system/runtime-benchmarks",
     "rewards/runtime-benchmarks",
     "technical/runtime-benchmarks",
     "trading-pair/runtime-benchmarks",

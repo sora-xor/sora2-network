@@ -58,6 +58,7 @@ use framenode_runtime::{
 };
 use hex_literal::hex;
 use permissions::Scope;
+use rewards::RewardInfo;
 use sc_finality_grandpa::AuthorityId as GrandpaId;
 use sc_network::config::MultiaddrWithPeerId;
 use sc_service::{ChainType, Properties};
@@ -148,11 +149,11 @@ fn calculate_reserves(accounts: &Vec<(H160, Balance)>) -> Balance {
     accounts.iter().fold(0, |sum, (_, balance)| sum + balance)
 }
 
-// dev uses code
-// #[cfg(all(feature = "dev-net", not(feature = "coded-nets")))]
-// pub fn dev_net() -> Result<ChainSpec, String> {
-//     ChainSpec::from_json_bytes(&our_include_bytes!("./bytes/chain_spec_dev.json")[..])
-// }
+fn calculate_reserves2(accounts: &Vec<(H160, RewardInfo)>) -> Balance {
+    accounts
+        .iter()
+        .fold(0, |sum, (_, balance)| sum + balance.total)
+}
 
 pub fn staging_net() -> Result<ChainSpec, String> {
     ChainSpec::from_json_bytes(&our_include_bytes!("./bytes/chain_spec_staging.json")[..])
@@ -1162,7 +1163,11 @@ fn testnet_genesis(
 }
 
 /// # Parameters
-#[cfg(feature = "main-net-coded")]
+#[cfg(any(
+    feature = "main-net-coded",
+    feature = "test",
+    feature = "runtime-benchmarks"
+))]
 pub fn main_net_coded() -> ChainSpec {
     let mut properties = Properties::new();
     properties.insert("tokenSymbol".into(), "XOR".into());
@@ -1251,7 +1256,11 @@ pub fn main_net_coded() -> ChainSpec {
     )
 }
 
-#[cfg(feature = "main-net-coded")]
+#[cfg(any(
+    feature = "main-net-coded",
+    feature = "test",
+    feature = "runtime-benchmarks"
+))]
 fn mainnet_genesis(
     initial_authorities: Vec<(AccountId, AccountId, AuraId, BabeId, GrandpaId, ImOnlineId)>,
     additional_validators: Vec<AccountId>,
@@ -1260,6 +1269,8 @@ fn mainnet_genesis(
     council_accounts: Vec<AccountId>,
     technical_committee_accounts: Vec<AccountId>,
 ) -> GenesisConfig {
+    use common::XSTUSD;
+
     // Minimum stake for an active validator
     let initial_staking = balance!(0.2);
     // XOR amount which already exists on Ethereum
@@ -1421,7 +1432,7 @@ fn mainnet_genesis(
         pswap_waifu_owners: our_include!("bytes/rewards_pswap_waifu_owners.in"),
     };
     let initial_collateral_assets = vec![DAI.into(), VAL.into(), PSWAP.into(), ETH.into()];
-
+    let initial_synthetic_assets = vec![XSTUSD.into()];
     let mut bridge_assets = vec![
         AssetConfig::Sidechain {
             id: XOR.into(),
@@ -1475,6 +1486,15 @@ fn mainnet_genesis(
             eth_bridge_account_id.clone(),
             AssetSymbol(b"ETH".to_vec()),
             AssetName(b"Ether".to_vec()),
+            18,
+            Balance::zero(),
+            true,
+        ),
+        (
+            XSTUSD.into(),
+            assets_and_permissions_account_id.clone(),
+            AssetSymbol(b"XSTUSD".to_vec()),
+            AssetName(b"XST USD".to_vec()),
             18,
             Balance::zero(),
             true,
@@ -1665,7 +1685,7 @@ fn mainnet_genesis(
                 (
                     rewards_account_id.clone(),
                     GetValAssetId::get(),
-                    calculate_reserves(&rewards_config.val_owners),
+                    calculate_reserves2(&rewards_config.val_owners),
                 ),
                 (
                     rewards_account_id,
@@ -1693,6 +1713,7 @@ fn mainnet_genesis(
         trading_pair: Some(TradingPairConfig {
             trading_pairs: initial_collateral_assets
                 .iter()
+                .chain(initial_synthetic_assets.iter())
                 .cloned()
                 .map(|target_asset_id| {
                     (
@@ -1763,12 +1784,17 @@ fn mainnet_genesis(
         pallet_elections_phragmen: Default::default(),
         pallet_membership_Instance1: Default::default(),
         pallet_im_online: Default::default(),
+        xst: Some(XSTPoolConfig {
+            reserves_account_id: Default::default(), // TODO: move to defaults
+            reference_asset_id: DAI,
+            initial_synthetic_assets: vec![XSTUSD],
+        }),
     }
 }
 
 #[cfg(feature = "test")]
 pub fn ext() -> sp_io::TestExternalities {
-    let storage = main_net().unwrap().build_storage().unwrap();
+    let storage = main_net_coded().build_storage().unwrap();
     sp_io::TestExternalities::new(storage)
 }
 

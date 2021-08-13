@@ -1,34 +1,45 @@
 [package]
-authors = ['Polka Biome Ltd. <jihoon@tutanota.de>']
+authors = ["Polka Biome Ltd. <jihoon@tutanota.de>"]
 license = "BSD-4-Clause"
-homepage = 'https://sora.org'
-repository = 'https://github.com/sora-xor/sora2-network'
-description = 'FRAME pallet template for defining custom runtime logic.'
-edition = '2018'
-name = 'referral-system'
-version = '0.1.0'
+homepage = "https://sora.org"
+repository = "https://github.com/sora-xor/sora2-network"
+description = "FRAME pallet template for defining custom runtime logic."
+edition = "2018"
+name = "referral-system"
+version = "0.1.0"
 
 [package.metadata.docs.rs]
-targets = ['x86_64-unknown-linux-gnu']
+targets = ["x86_64-unknown-linux-gnu"]
 
 [dependencies]
 codec = { package = "parity-scale-codec", version = "2", default-features = false, features = ["derive"] }
+frame-benchmarking = { version = "3", default-features = false, optional = true }
 frame-support = { version = "3", default-features = false }
 frame-system = { version = "3", default-features = false }
+hex-literal = { version = "0.3.1", default-features = false, optional = true }
 serde = { version = "1.0.101", optional = true, features = ["derive"] }
+sp-std = { version = "3", default-features = false }
+traits = { version = "0.4", package = "orml-traits", default-features = false, optional = true }
 
-[dev-dependencies]
-common = { path = "../../common", features = ["test"] }
-pallet-balances = { version = "3", default-features = false }
-sp-core = { version = "3", default-features = false }
-sp-io = { version = "3", default-features = false }
-sp-runtime = { version = "3", default-features = false }
+assets = { path = "../assets", default-features = false }
+common = { path = "../../common", default-features = false }
 
 [features]
-default = ['std']
+default = ["std"]
+
+runtime-benchmarks = [
+    "frame-benchmarking",
+    "frame-system/runtime-benchmarks",
+    "frame-support/runtime-benchmarks",
+    "hex-literal",
+    "traits",
+]
+
 std = [
-    'codec/std',
-    'frame-support/std',
-    'frame-system/std',
-    'serde',
+    "codec/std",
+    "frame-benchmarking/std",
+    "frame-support/std",
+    "frame-system/std",
+    "serde",
+    "sp-std/std",
 ]

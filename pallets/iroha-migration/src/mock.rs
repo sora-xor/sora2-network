@@ -56,6 +56,7 @@ pub const ALICE: AccountId = 1;
 pub const BOB: AccountId = 2;
 pub const CHARLIE: AccountId = 3;
 pub const MINTING_ACCOUNT: AccountId = 4;
+pub const REFERRAL_SYSTEM_RESERVES_ACC: AccountId = 22;
 
 parameter_types! {
     pub const BlockHashCount: u64 = 250;
@@ -68,6 +69,7 @@ parameter_types! {
     pub const DepositFactor: u64 = 1;
     pub const MaxSignatories: u16 = 4;
     pub GetTeamReservesAccountId: AccountId = 3000u64;
+    pub const ReferralSystemReservesAcc: AccountId = REFERRAL_SYSTEM_RESERVES_ACC;
 }
 
 construct_runtime!(
@@ -174,7 +176,9 @@ impl tokens::Config for Runtime {
     type OnDust = ();
 }
 
-impl referral_system::Config for Runtime {}
+impl referral_system::Config for Runtime {
+    type ReservesAcc = ReferralSystemReservesAcc;
+}
 
 impl pallet_multisig::Config for Runtime {
     type Call = Call;

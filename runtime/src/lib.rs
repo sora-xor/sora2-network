@@ -40,6 +40,13 @@ pub mod constants;
 mod extensions;
 mod impls;
 
+#[cfg(test)]
+pub mod mock;
+
+#[cfg(test)]
+pub mod tests;
+
+use common::prelude::constants::{BIG_FEE, SMALL_FEE};
 use common::prelude::QuoteAmount;
 use constants::time::*;
 
@@ -50,6 +57,7 @@ include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
 use core::time::Duration;
 use currencies::BasicCurrencyAdapter;
 use extensions::ChargeTransactionPayment;
+use frame_support::traits::Currency;
 use frame_system::offchain::{Account, SigningTypes};
 use frame_system::{EnsureOneOf, EnsureRoot};
 use hex_literal::hex;
@@ -112,9 +120,11 @@ pub use sp_runtime::BuildStorage;
 
 use eth_bridge::offchain::SignatureParams;
 use eth_bridge::requests::{AssetKind, OffchainRequest, OutgoingRequestEncoded, RequestStatus};
-use impls::{CollectiveWeightInfo, DemocracyWeightInfo, OnUnbalancedDemocracySlash};
+use impls::{
+    CollectiveWeightInfo, DemocracyWeightInfo, NegativeImbalanceOf, OnUnbalancedDemocracySlash,
+};
 
-use frame_support::traits::Get;
+use frame_support::traits::{ExistenceRequirement, Get, WithdrawReasons};
 pub use {assets, eth_bridge, frame_system, multicollateral_bonding_curve_pool, xst};
 
 /// An index to a block.
@@ -684,6 +694,16 @@ parameter_types! {
     pub const MaxSubAccounts: u32 = 100;
     pub const MaxAdditionalFields: u32 = 100;
     pub const MaxRegistrars: u32 = 20;
+    pub ReferralSystemReservesAcc: AccountId = {
+        let tech_account_id = TechAccountId::from_generic_pair(
+            b"referral_system".to_vec(),
+            b"main".to_vec(),
+        );
+        let account_id =
+            technical::Module::<Runtime>::tech_account_id_to_account_id(&tech_account_id)
+                .expect("Failed to get ordinary account id for technical account id.");
+        account_id
+    };
 }
 
 impl liquidity_proxy::Config for Runtime {
@@ -838,7 +858,10 @@ where
     type Extrinsic = UncheckedExtrinsic;
 }
 
-impl referral_system::Config for Runtime {}
+impl referral_system::Config for Runtime {
+    type ReservesAcc = ReferralSystemReservesAcc;
+    type WeightInfo = referral_system::weights::WeightInfo<Runtime>;
+}
 
 impl rewards::Config for Runtime {
     const BLOCKS_PER_DAY: BlockNumber = 1 * DAYS;
@@ -861,7 +884,7 @@ impl xor_fee::ApplyCustomFees<Call> for ExtrinsicsFlatFees {
             Call::Assets(assets::Call::register(..))
             | Call::EthBridge(eth_bridge::Call::transfer_to_sidechain(..))
             | Call::PoolXYK(pool_xyk::Call::withdraw_liquidity(..))
-            | Call::Rewards(rewards::Call::claim(..)) => Some(balance!(0.007)),
+            | Call::Rewards(rewards::Call::claim(..)) => Some(BIG_FEE),
             Call::Assets(..)
             | Call::EthBridge(..)
             | Call::LiquidityProxy(..)
@@ -869,7 +892,8 @@ impl xor_fee::ApplyCustomFees<Call> for ExtrinsicsFlatFees {
             | Call::PoolXYK(..)
             | Call::Rewards(..)
             | Call::Staking(pallet_staking::Call::payout_stakers(..))
-            | Call::TradingPair(..) => Some(balance!(0.0007)),
+            | Call::TradingPair(..)
+            | Call::ReferralSystem(..) => Some(SMALL_FEE),
             _ => None,
         }
     }
@@ -950,6 +974,39 @@ where
     }
 }
 
+pub struct WithdrawFee;
+
+impl xor_fee::WithdrawFee<Runtime> for WithdrawFee {
+    fn withdraw_fee(
+        who: &AccountId,
+        call: &Call,
+        fee: Balance,
+    ) -> Result<(AccountId, Option<NegativeImbalanceOf<Runtime>>), DispatchError> {
+        if let Call::ReferralSystem(referral_system::Call::set_referrer(referrer)) = call {
+            ReferralSystem::withdraw_fee(referrer, fee)?;
+            Ok((
+                referrer.clone(),
+                Some(Balances::withdraw(
+                    &ReferralSystemReservesAcc::get(),
+                    fee,
+                    WithdrawReasons::TRANSACTION_PAYMENT,
+                    ExistenceRequirement::KeepAlive,
+                )?),
+            ))
+        } else {
+            Ok((
+                who.clone(),
+                Some(Balances::withdraw(
+                    who,
+                    fee,
+                    WithdrawReasons::TRANSACTION_PAYMENT,
+                    ExistenceRequirement::KeepAlive,
+                )?),
+            ))
+        }
+    }
+}
+
 parameter_types! {
     pub const DEXIdValue: DEXId = 0;
 }
@@ -971,6 +1028,7 @@ impl xor_fee::Config for Runtime {
     type GetTechnicalAccountId = GetXorFeeAccountId;
     type GetParliamentAccountId = GetParliamentAccountId;
     type SessionManager = Staking;
+    type WithdrawFee = WithdrawFee;
 }
 
 pub struct ConstantFeeMultiplier;
@@ -2053,6 +2111,7 @@ impl_runtime_apis! {
             add_benchmark!(params, batches, vested_rewards, VestedRewards);
             add_benchmark!(params, batches, price_tools, PriceTools);
             add_benchmark!(params, batches, xor_fee, XorFeeBench::<Runtime>);
+            add_benchmark!(params, batches, referral_system, ReferralSystem);
 
             if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
             Ok(batches)
