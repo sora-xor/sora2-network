@@ -5466,8 +5466,9 @@ checksum = "d4fd5641d01c8f18a23da7b6fe29298ff4b55afcccdf78973b24cf3175fee32e"
 
 [[package]]
 name = "permissions"
-version = "0.1.0"
+version = "1.1.0"
 dependencies = [
+ "common",
  "frame-support",
  "frame-system",
  "pallet-balances",
