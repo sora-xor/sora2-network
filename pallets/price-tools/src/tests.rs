@@ -33,7 +33,7 @@ use std::convert::TryInto;
 use crate::mock::*;
 use crate::{Error, AVG_BLOCK_SPAN};
 use common::prelude::Balance;
-use common::{balance, DOT, ETH, PSWAP, VAL, XOR};
+use common::{balance, OnPoolReservesChanged, PriceToolsPallet, DOT, ETH, PSWAP, VAL, XOR};
 use frame_support::assert_noop;
 
 fn to_avg<'a, I>(it: I, size: u32) -> Balance
@@ -49,9 +49,9 @@ where
 fn initial_setup_without_history() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
-        crate::EnabledTargets::<Runtime>::mutate(|set| {
-            *set = [ETH, DAI, VAL, PSWAP].iter().cloned().collect()
-        });
+        for asset_id in [ETH, DAI, VAL, PSWAP].iter().cloned() {
+            PriceTools::register_asset(&asset_id).unwrap();
+        }
         let avg_calc = balance!(1 + AVG_BLOCK_SPAN) / 2;
         for i in 1..=AVG_BLOCK_SPAN {
             assert_noop!(
@@ -76,9 +76,9 @@ fn initial_setup_without_history() {
 fn average_price_same_values() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
-        crate::EnabledTargets::<Runtime>::mutate(|set| {
-            *set = [ETH, DAI, VAL, PSWAP].iter().cloned().collect()
-        });
+        for asset_id in [ETH, DAI, VAL, PSWAP].iter().cloned() {
+            PriceTools::register_asset(&asset_id).unwrap();
+        }
         for _ in 1..=AVG_BLOCK_SPAN {
             assert_noop!(
                 PriceTools::get_average_price(&XOR.into(), &ETH.into()),
@@ -102,28 +102,37 @@ fn average_price_same_values() {
 fn average_price_smoothed_change_without_cap() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
-        crate::EnabledTargets::<Runtime>::mutate(|set| {
-            *set = [ETH, DAI, VAL, PSWAP].iter().cloned().collect()
-        });
+        for asset_id in [ETH, DAI, VAL, PSWAP].iter().cloned() {
+            PriceTools::register_asset(&asset_id).unwrap();
+        }
         for _ in 1..=AVG_BLOCK_SPAN {
             PriceTools::incoming_spot_price(&ETH, balance!(1000)).unwrap();
         }
         assert_eq!(
             PriceTools::get_average_price(&XOR.into(), &ETH.into()).unwrap(),
-            to_avg(PriceTools::spot_prices(&ETH).iter(), AVG_BLOCK_SPAN)
+            to_avg(
+                PriceTools::price_infos(&ETH).unwrap().spot_prices.iter(),
+                AVG_BLOCK_SPAN
+            )
         );
         for &new_price in [999u32, 1000, 1003, 1006, 1009, 1015, 1018, 1021, 1024, 1030].iter() {
             PriceTools::incoming_spot_price(&ETH, balance!(new_price)).unwrap();
             assert_eq!(
                 PriceTools::get_average_price(&XOR.into(), &ETH.into()).unwrap(),
-                to_avg(PriceTools::spot_prices(&ETH).iter(), AVG_BLOCK_SPAN)
+                to_avg(
+                    PriceTools::price_infos(&ETH).unwrap().spot_prices.iter(),
+                    AVG_BLOCK_SPAN
+                )
             );
         }
         for &new_price in [1033u32, 1024, 1030, 1039, 1003, 1039, 1000, 1030].iter() {
             PriceTools::incoming_spot_price(&ETH, balance!(new_price)).unwrap();
             assert_eq!(
                 PriceTools::get_average_price(&XOR.into(), &ETH.into()).unwrap(),
-                to_avg(PriceTools::spot_prices(&ETH).iter(), AVG_BLOCK_SPAN)
+                to_avg(
+                    PriceTools::price_infos(&ETH).unwrap().spot_prices.iter(),
+                    AVG_BLOCK_SPAN
+                )
             );
         }
     });
@@ -133,9 +142,9 @@ fn average_price_smoothed_change_without_cap() {
 fn different_average_for_different_assets() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
-        crate::EnabledTargets::<Runtime>::mutate(|set| {
-            *set = [ETH, DAI, VAL, PSWAP].iter().cloned().collect()
-        });
+        for asset_id in [ETH, DAI, VAL, PSWAP].iter().cloned() {
+            PriceTools::register_asset(&asset_id).unwrap();
+        }
         for _ in 1..=AVG_BLOCK_SPAN {
             PriceTools::incoming_spot_price(&ETH, balance!(0.5)).unwrap();
         }
@@ -151,28 +160,40 @@ fn different_average_for_different_assets() {
         for &new_price in [balance!(0.5), balance!(0.5001), balance!(0.5002)].iter() {
             assert_eq!(
                 PriceTools::get_average_price(&XOR.into(), &ETH.into()).unwrap(),
-                to_avg(PriceTools::spot_prices(&ETH).iter(), AVG_BLOCK_SPAN)
+                to_avg(
+                    PriceTools::price_infos(&ETH).unwrap().spot_prices.iter(),
+                    AVG_BLOCK_SPAN
+                )
             );
             PriceTools::incoming_spot_price(&ETH, new_price).unwrap();
         }
         for &new_price in [balance!(700), balance!(700.5), balance!(700.3)].iter() {
             assert_eq!(
                 PriceTools::get_average_price(&XOR.into(), &DAI.into()).unwrap(),
-                to_avg(PriceTools::spot_prices(&DAI).iter(), AVG_BLOCK_SPAN)
+                to_avg(
+                    PriceTools::price_infos(&DAI).unwrap().spot_prices.iter(),
+                    AVG_BLOCK_SPAN
+                )
             );
             PriceTools::incoming_spot_price(&DAI, new_price).unwrap();
         }
         for &new_price in [balance!(2), balance!(2.001), balance!(2.005)].iter() {
             assert_eq!(
                 PriceTools::get_average_price(&XOR.into(), &VAL.into()).unwrap(),
-                to_avg(PriceTools::spot_prices(&VAL).iter(), AVG_BLOCK_SPAN)
+                to_avg(
+                    PriceTools::price_infos(&VAL).unwrap().spot_prices.iter(),
+                    AVG_BLOCK_SPAN
+                )
             );
             PriceTools::incoming_spot_price(&VAL, new_price).unwrap();
         }
         for &new_price in [balance!(1200), balance!(1201.1), balance!(1202.2)].iter() {
             assert_eq!(
                 PriceTools::get_average_price(&XOR.into(), &PSWAP.into()).unwrap(),
-                to_avg(PriceTools::spot_prices(&PSWAP).iter(), AVG_BLOCK_SPAN)
+                to_avg(
+                    PriceTools::price_infos(&PSWAP).unwrap().spot_prices.iter(),
+                    AVG_BLOCK_SPAN
+                )
             );
             PriceTools::incoming_spot_price(&PSWAP, new_price).unwrap();
         }
@@ -183,9 +204,9 @@ fn different_average_for_different_assets() {
 fn all_exchange_paths_work() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
-        crate::EnabledTargets::<Runtime>::mutate(|set| {
-            *set = [ETH, DAI, VAL, PSWAP].iter().cloned().collect()
-        });
+        for asset_id in [ETH, DAI, VAL, PSWAP].iter().cloned() {
+            PriceTools::register_asset(&asset_id).unwrap();
+        }
         for _ in 1..=AVG_BLOCK_SPAN {
             PriceTools::incoming_spot_price(&ETH, balance!(0.5)).unwrap();
         }
@@ -229,9 +250,9 @@ fn all_exchange_paths_work() {
 fn price_quote_continuous_failure() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
-        crate::EnabledTargets::<Runtime>::mutate(|set| {
-            *set = [ETH, DAI, VAL, PSWAP].iter().cloned().collect()
-        });
+        for asset_id in [ETH, DAI, VAL, PSWAP].iter().cloned() {
+            PriceTools::register_asset(&asset_id).unwrap();
+        }
         // initialization period
         for _ in 1..=AVG_BLOCK_SPAN {
             assert_noop!(
@@ -244,6 +265,7 @@ fn price_quote_continuous_failure() {
             PriceTools::get_average_price(&XOR.into(), &ETH.into()).unwrap(),
             balance!(10)
         );
+        PriceTools::reserves_changed(&ETH);
         // failure period
         for _ in 1..AVG_BLOCK_SPAN {
             PriceTools::average_prices_calculation_routine();
@@ -273,9 +295,9 @@ fn price_quote_continuous_failure() {
 fn failure_for_unsupported_assets() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
-        crate::EnabledTargets::<Runtime>::mutate(|set| {
-            *set = [ETH, DAI, VAL, PSWAP].iter().cloned().collect()
-        });
+        for asset_id in [ETH, DAI, VAL, PSWAP].iter().cloned() {
+            PriceTools::register_asset(&asset_id).unwrap();
+        }
         for _ in 1..=AVG_BLOCK_SPAN {
             assert_noop!(
                 PriceTools::get_average_price(&XOR.into(), &ETH.into()),
@@ -302,6 +324,94 @@ fn failure_for_unsupported_assets() {
         assert_noop!(
             PriceTools::get_average_price(&ETH.into(), &DOT.into()),
             Error::<Runtime>::UnsupportedQuotePath
+        );
+    });
+}
+
+#[test]
+fn average_price_large_change_before_no_update_streak_positive() {
+    let mut ext = ExtBuilder::default().build();
+    ext.execute_with(|| {
+        for asset_id in [ETH, DAI, VAL, PSWAP].iter().cloned() {
+            PriceTools::register_asset(&asset_id).unwrap();
+        }
+        for _ in 1..=AVG_BLOCK_SPAN {
+            PriceTools::incoming_spot_price(&ETH, balance!(1000)).unwrap();
+        }
+        assert_eq!(
+            PriceTools::price_infos(&ETH).unwrap().last_spot_price,
+            balance!(1000)
+        );
+        assert_eq!(
+            PriceTools::get_average_price(&XOR.into(), &ETH.into()).unwrap(),
+            to_avg(
+                PriceTools::price_infos(&ETH).unwrap().spot_prices.iter(),
+                AVG_BLOCK_SPAN
+            )
+        );
+        // change over 15% occurs, price smoothing kicks in
+        for _ in 1..=AVG_BLOCK_SPAN {
+            PriceTools::incoming_spot_price(&ETH, balance!(1300)).unwrap();
+        }
+        assert_eq!(
+            PriceTools::get_average_price(&XOR.into(), &ETH.into()).unwrap(),
+            balance!(1161.400082895345788565) // not 15% exactly because of compunding effect
+        );
+        assert_eq!(
+            PriceTools::price_infos(&ETH).unwrap().last_spot_price,
+            balance!(1300)
+        );
+        // same price, continues to repeat, average price is still updated
+        for _ in 1..=AVG_BLOCK_SPAN {
+            PriceTools::incoming_spot_price(&ETH, balance!(1300)).unwrap();
+        }
+        assert_eq!(
+            PriceTools::get_average_price(&XOR.into(), &ETH.into()).unwrap(),
+            balance!(1300) // reaches target price eventually
+        );
+    });
+}
+
+#[test]
+fn average_price_large_change_before_no_update_streak_negative() {
+    let mut ext = ExtBuilder::default().build();
+    ext.execute_with(|| {
+        for asset_id in [ETH, DAI, VAL, PSWAP].iter().cloned() {
+            PriceTools::register_asset(&asset_id).unwrap();
+        }
+        for _ in 1..=AVG_BLOCK_SPAN {
+            PriceTools::incoming_spot_price(&ETH, balance!(1000)).unwrap();
+        }
+        assert_eq!(
+            PriceTools::price_infos(&ETH).unwrap().last_spot_price,
+            balance!(1000)
+        );
+        assert_eq!(
+            PriceTools::get_average_price(&XOR.into(), &ETH.into()).unwrap(),
+            to_avg(
+                PriceTools::price_infos(&ETH).unwrap().spot_prices.iter(),
+                AVG_BLOCK_SPAN
+            )
+        );
+        // change over 15% occurs, price smoothing kicks in
+        for _ in 1..=AVG_BLOCK_SPAN {
+            PriceTools::incoming_spot_price(&ETH, balance!(700)).unwrap();
+        }
+        assert_eq!(
+            PriceTools::get_average_price(&XOR.into(), &ETH.into()).unwrap(),
+            balance!(860.384191914696145927) // not 15% exactly because of compunding effect
+        );
+        assert_eq!(
+            PriceTools::price_infos(&ETH).unwrap().last_spot_price,
+            balance!(700)
+        );
+        // same price, continues to repeat, average price is still updated
+        for _ in 1..=AVG_BLOCK_SPAN * 2 {
+            PriceTools::incoming_spot_price(&ETH, balance!(700)).unwrap();
+        }
+        assert_eq!(
+            PriceTools::get_average_price(&XOR.into(), &ETH.into()).unwrap(),
+            balance!(700) // reaches target price eventually
         );
     });
 }

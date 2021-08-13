@@ -5647,6 +5647,7 @@ dependencies = [
  "frame-support",
  "frame-system",
  "hex-literal",
+ "liquidity-proxy",
  "num-traits",
  "orml-currencies",
  "orml-tokens",
@@ -5654,6 +5655,7 @@ dependencies = [
  "pallet-balances",
  "parity-scale-codec",
  "permissions",
+ "price-tools",
  "pswap-distribution",
  "serde",
  "sp-core",
@@ -5920,7 +5922,7 @@ dependencies = [
 
 [[package]]
 name = "pswap-distribution"
-version = "0.2.0"
+version = "1.1.1"
 dependencies = [
  "assets",
  "common",

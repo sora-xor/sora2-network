@@ -37,8 +37,8 @@ pub struct WeightInfo<T>(PhantomData<T>);
 
 impl<T: frame_system::Config> crate::WeightInfo for WeightInfo<T> {
     fn swap() -> Weight {
-        (2_920_955_000 as Weight)
-            .saturating_add(T::DbWeight::get().reads(15 as Weight))
+        (298_129_000 as Weight)
+            .saturating_add(T::DbWeight::get().reads(10 as Weight))
             .saturating_add(T::DbWeight::get().writes(6 as Weight))
     }
 }

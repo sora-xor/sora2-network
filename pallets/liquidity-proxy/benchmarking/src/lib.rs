@@ -133,7 +133,7 @@ fn setup_benchmark<T: Config>() -> Result<(), &'static str> {
         owner.clone(),
         XSTUSD.into(),
         AssetSymbol(b"XSTUSD".to_vec()),
-        AssetName(b"XST USD".to_vec()),
+        AssetName(b"SORA Synthetic USD".to_vec()),
         18,
         Balance::zero(),
         true,
