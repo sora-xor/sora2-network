@@ -5480,8 +5480,9 @@ checksum = "d4fd5641d01c8f18a23da7b6fe29298ff4b55afcccdf78973b24cf3175fee32e"
 
 [[package]]
 name = "permissions"
-version = "0.1.0"
+version = "1.1.0"
 dependencies = [
+ "common",
  "frame-support",
  "frame-system",
  "pallet-balances",
@@ -5660,6 +5661,7 @@ dependencies = [
  "frame-support",
  "frame-system",
  "hex-literal",
+ "liquidity-proxy",
  "num-traits",
  "orml-currencies",
  "orml-tokens",
@@ -5667,6 +5669,7 @@ dependencies = [
  "pallet-balances",
  "parity-scale-codec",
  "permissions",
+ "price-tools",
  "pswap-distribution",
  "serde",
  "sp-core",
@@ -5933,7 +5936,7 @@ dependencies = [
 
 [[package]]
 name = "pswap-distribution"
-version = "0.2.0"
+version = "1.1.1"
 dependencies = [
  "assets",
  "common",

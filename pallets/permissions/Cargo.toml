@@ -1,15 +1,15 @@
 [package]
-authors = ['Polka Biome Ltd. <jihoon@tutanota.de>']
+authors = ["Polka Biome Ltd. <jihoon@tutanota.de>"]
 license = "BSD-4-Clause"
-homepage = 'https://sora.org'
-repository = 'https://github.com/sora-xor/sora2-network'
-description = 'Polkaswap pallet for defining permissions model.'
-edition = '2018'
-name = 'permissions'
-version = '0.1.0'
+homepage = "https://sora.org"
+repository = "https://github.com/sora-xor/sora2-network"
+description = "Polkaswap pallet for defining permissions model."
+edition = "2018"
+name = "permissions"
+version = "1.1.0"
 
 [package.metadata.docs.rs]
-targets = ['x86_64-unknown-linux-gnu']
+targets = ["x86_64-unknown-linux-gnu"]
 
 [dependencies]
 codec = { package = "parity-scale-codec", version = "2", default-features = false, features = ["derive"] }
@@ -19,18 +19,21 @@ serde = { version = "1.0.101", optional = true, features = ["derive"] }
 sp-core = { version = "3", default-features = false }
 sp-std = { version = "3", default-features = false }
 
+common = { path = "../../common", default-features = false }
+
 [dev-dependencies]
 sp-io = { version = "3", default-features = false }
 sp-runtime = { version = "3", default-features = false }
 pallet-balances = { version = "3" }
 
 [features]
-default = ['std']
+default = ["std"]
 std = [
-    'codec/std',
-    'frame-support/std',
-    'frame-system/std',
-    'serde',
-    'sp-core/std',
-    'sp-std/std',
+    "codec/std",
+    "common/std",
+    "frame-support/std",
+    "frame-system/std",
+    "serde",
+    "sp-core/std",
+    "sp-std/std",
 ]

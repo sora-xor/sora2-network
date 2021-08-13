@@ -248,6 +248,7 @@ impl pool_xyk::Config for Runtime {
     type EnsureDEXManager = dex_manager::Module<Runtime>;
     type GetFee = GetXykFee;
     type OnPoolCreated = pswap_distribution::Module<Runtime>;
+    type OnPoolReservesChanged = PriceTools;
     type WeightInfo = ();
 }
 
