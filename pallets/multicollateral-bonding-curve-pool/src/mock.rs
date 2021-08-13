@@ -304,6 +304,7 @@ impl pool_xyk::Config for Runtime {
     type EnsureDEXManager = dex_manager::Module<Runtime>;
     type GetFee = GetXykFee;
     type OnPoolCreated = PswapDistribution;
+    type OnPoolReservesChanged = ();
     type WeightInfo = ();
 }
 
@@ -577,7 +578,7 @@ impl Default for ExtBuilder {
                     XSTUSD,
                     balance!(100),
                     AssetSymbol(b"XSTUSD".to_vec()),
-                    AssetName(b"XST USD".to_vec()),
+                    AssetName(b"SORA Synthetic USD".to_vec()),
                     18,
                 ),
                 (

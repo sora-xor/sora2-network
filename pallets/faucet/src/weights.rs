@@ -65,12 +65,12 @@ pub struct WeightInfo<T>(PhantomData<T>);
 
 impl<T: frame_system::Config> crate::WeightInfo for WeightInfo<T> {
     fn transfer() -> Weight {
-        (882_477_000 as Weight)
-            .saturating_add(T::DbWeight::get().reads(9 as Weight))
+        (130_296_000 as Weight)
+            .saturating_add(T::DbWeight::get().reads(6 as Weight))
             .saturating_add(T::DbWeight::get().writes(3 as Weight))
     }
     fn reset_rewards() -> Weight {
-        (87_685_000 as Weight).saturating_add(T::DbWeight::get().writes(8 as Weight))
+        (32_479_000 as Weight).saturating_add(T::DbWeight::get().writes(9 as Weight))
     }
 }
 

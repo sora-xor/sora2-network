@@ -119,6 +119,7 @@ construct_runtime! {
         PoolXYK: pool_xyk::{Module, Call, Storage, Event<T>},
         XSTPool: xstpool::{Module, Call, Storage, Event<T>},
         PswapDistribution: pswap_distribution::{Module, Call, Storage, Event<T>},
+        DEXApi: dex_api::{Module, Storage, Event<T>},
     }
 }
 
@@ -205,6 +206,18 @@ impl assets::Config for Runtime {
     type WeightInfo = ();
 }
 
+impl dex_api::Config for Runtime {
+    type Event = Event;
+    type MockLiquiditySource = ();
+    type MockLiquiditySource2 = ();
+    type MockLiquiditySource3 = ();
+    type MockLiquiditySource4 = ();
+    type XYKPool = MockLiquiditySource;
+    type XSTPool = XSTPool;
+    type MulticollateralBondingCurvePool = ();
+    type WeightInfo = ();
+}
+
 impl permissions::Config for Runtime {
     type Event = Event;
 }
@@ -255,6 +268,7 @@ impl pool_xyk::Config for Runtime {
     type EnsureDEXManager = dex_manager::Module<Runtime>;
     type GetFee = GetXykFee;
     type OnPoolCreated = PswapDistribution;
+    type OnPoolReservesChanged = ();
     type WeightInfo = ();
 }
 
@@ -508,7 +522,7 @@ impl Default for ExtBuilder {
                     XSTUSD,
                     balance!(100000),
                     AssetSymbol(b"XSTUSD".to_vec()),
-                    AssetName(b"XST USD".to_vec()),
+                    AssetName(b"SORA Synthetic USD".to_vec()),
                     18,
                 ),
             ],
@@ -591,7 +605,7 @@ impl ExtBuilder {
         .unwrap();
 
         crate::GenesisConfig::<Runtime> {
-            reserves_account_id: Default::default(),
+            tech_account_id: Default::default(),
             reference_asset_id: self.reference_asset_id,
             initial_synthetic_assets: Default::default(),
         }
