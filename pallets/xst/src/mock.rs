@@ -522,7 +522,7 @@ impl Default for ExtBuilder {
                     XSTUSD,
                     balance!(100000),
                     AssetSymbol(b"XSTUSD".to_vec()),
-                    AssetName(b"XST USD".to_vec()),
+                    AssetName(b"SORA Synthetic USD".to_vec()),
                     18,
                 ),
             ],
