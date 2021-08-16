@@ -178,6 +178,7 @@ impl tokens::Config for Runtime {
 
 impl referral_system::Config for Runtime {
     type ReservesAcc = ReferralSystemReservesAcc;
+    type WeightInfo = ();
 }
 
 impl pallet_multisig::Config for Runtime {
