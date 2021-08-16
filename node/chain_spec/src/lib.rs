@@ -1176,11 +1176,13 @@ fn testnet_genesis(
     }
 }
 
-/// # Parameters
-#[cfg(any(
-    feature = "main-net-coded",
-    feature = "test",
-    feature = "runtime-benchmarks"
+#[cfg(all(
+    any(
+        feature = "main-net-coded",
+        feature = "test",
+        feature = "runtime-benchmarks"
+    ),
+    not(feature = "private-net")
 ))]
 pub fn main_net_coded() -> ChainSpec {
     let mut properties = Properties::new();
@@ -1271,10 +1273,13 @@ pub fn main_net_coded() -> ChainSpec {
     )
 }
 
-#[cfg(any(
-    feature = "main-net-coded",
-    feature = "test",
-    feature = "runtime-benchmarks"
+#[cfg(all(
+    any(
+        feature = "main-net-coded",
+        feature = "test",
+        feature = "runtime-benchmarks"
+    ),
+    not(feature = "private-net")
 ))]
 fn mainnet_genesis(
     initial_authorities: Vec<(AccountId, AccountId, AuraId, BabeId, GrandpaId, ImOnlineId)>,
@@ -1810,9 +1815,15 @@ fn mainnet_genesis(
     }
 }
 
-#[cfg(feature = "test")]
+#[cfg(all(feature = "test", not(feature = "private-net")))]
 pub fn ext() -> sp_io::TestExternalities {
     let storage = main_net_coded().build_storage().unwrap();
+    sp_io::TestExternalities::new(storage)
+}
+
+#[cfg(all(feature = "test", feature = "private-net"))]
+pub fn ext() -> sp_io::TestExternalities {
+    let storage = dev_net_coded().build_storage().unwrap();
     sp_io::TestExternalities::new(storage)
 }
 
