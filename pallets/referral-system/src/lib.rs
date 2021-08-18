@@ -64,16 +64,14 @@ impl<T: Config> Module<T> {
     }
 
     pub fn withdraw_fee(referrer: &T::AccountId, fee: Balance) -> Result<(), DispatchError> {
-        let result: Result<(), DispatchError> = ReferrerBalances::<T>::mutate(referrer, |b| {
+        ReferrerBalances::<T>::mutate(referrer, |b| {
             let balance = b
                 .unwrap_or(0)
                 .checked_sub(fee)
                 .ok_or(DispatchError::from(Error::<T>::ReferrerInsufficientBalance))?;
             *b = Some(balance);
             Ok(())
-        });
-        result?;
-        Ok(())
+        })
     }
 }
 

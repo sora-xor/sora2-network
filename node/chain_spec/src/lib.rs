@@ -145,14 +145,8 @@ struct EthBridgeParams {
     bridge_contract_address: H160,
 }
 
-fn calculate_reserves(accounts: &Vec<(H160, Balance)>) -> Balance {
-    accounts.iter().fold(0, |sum, (_, balance)| sum + balance)
-}
-
-fn calculate_reserves2(accounts: &Vec<(H160, RewardInfo)>) -> Balance {
-    accounts
-        .iter()
-        .fold(0, |sum, (_, balance)| sum + balance.total)
+fn calculate_reserves(accounts: impl Iterator<Item = Balance>) -> Balance {
+    accounts.fold(0, |sum, balance| sum + balance)
 }
 
 pub fn staging_net() -> Result<ChainSpec, String> {
@@ -814,8 +808,9 @@ fn testnet_genesis(
         pswap_waifu_owners: include!("bytes/rewards_pswap_waifu_owners.in"),
     };
 
-    let rewards_pswap_reserves = calculate_reserves(&rewards_config.pswap_farm_owners)
-        + calculate_reserves(&rewards_config.pswap_waifu_owners);
+    let rewards_pswap_reserves =
+        calculate_reserves(rewards_config.pswap_farm_owners.iter().map(|(_, b)| *b))
+            + calculate_reserves(rewards_config.pswap_waifu_owners.iter().map(|(_, b)| *b));
     let mut tokens_endowed_accounts = vec![
         (
             rewards_account_id.clone(),
@@ -1708,13 +1703,15 @@ fn mainnet_genesis(
                 (
                     rewards_account_id.clone(),
                     GetValAssetId::get(),
-                    calculate_reserves2(&rewards_config.val_owners),
+                    calculate_reserves(rewards_config.val_owners.iter().map(|(_, b)| b.total)),
                 ),
                 (
                     rewards_account_id,
                     GetPswapAssetId::get(),
-                    calculate_reserves(&rewards_config.pswap_farm_owners)
-                        + calculate_reserves(&rewards_config.pswap_waifu_owners),
+                    calculate_reserves(rewards_config.pswap_farm_owners.iter().map(|(_, b)| *b))
+                        + calculate_reserves(
+                            rewards_config.pswap_waifu_owners.iter().map(|(_, b)| *b),
+                        ),
                 ),
                 (
                     mbc_pool_rewards_account_id.clone(),
@@ -1831,11 +1828,12 @@ pub fn ext() -> sp_io::TestExternalities {
 mod tests {
     use hex_literal::hex;
 
-    use common::balance;
+    use common::eth::EthereumAddress;
+    use common::{balance, Balance};
 
     #[test]
     fn calculate_reserves() {
-        let accounts = vec![
+        let accounts: Vec<(EthereumAddress, Balance)> = vec![
             (
                 hex!("3520adc7b99e55c77efd0e0d379d07d08a7488cc").into(),
                 balance!(100),
@@ -1849,6 +1847,9 @@ mod tests {
                 balance!(0.05678),
             ),
         ];
-        assert_eq!(super::calculate_reserves(&accounts), balance!(123.45678));
+        assert_eq!(
+            super::calculate_reserves(accounts.iter().map(|(_, b)| *b)),
+            balance!(123.45678)
+        );
     }
 }
