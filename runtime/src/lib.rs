@@ -983,19 +983,22 @@ impl xor_fee::WithdrawFee<Runtime> for WithdrawFee {
         call: &Call,
         fee: Balance,
     ) -> Result<(AccountId, Option<NegativeImbalanceOf<Runtime>>), DispatchError> {
-        if let Call::ReferralSystem(referral_system::Call::set_referrer(referrer)) = call {
-            ReferralSystem::withdraw_fee(referrer, fee)?;
-            Ok((
-                referrer.clone(),
-                Some(Balances::withdraw(
-                    &ReferralSystemReservesAcc::get(),
-                    fee,
-                    WithdrawReasons::TRANSACTION_PAYMENT,
-                    ExistenceRequirement::KeepAlive,
-                )?),
-            ))
-        } else {
-            Ok((
+        match call {
+            Call::ReferralSystem(referral_system::Call::set_referrer(referrer))
+                if ReferralSystem::can_set_referrer(who) =>
+            {
+                ReferralSystem::withdraw_fee(referrer, fee)?;
+                Ok((
+                    referrer.clone(),
+                    Some(Balances::withdraw(
+                        &ReferralSystemReservesAcc::get(),
+                        fee,
+                        WithdrawReasons::TRANSACTION_PAYMENT,
+                        ExistenceRequirement::KeepAlive,
+                    )?),
+                ))
+            }
+            _ => Ok((
                 who.clone(),
                 Some(Balances::withdraw(
                     who,
@@ -1003,7 +1006,7 @@ impl xor_fee::WithdrawFee<Runtime> for WithdrawFee {
                     WithdrawReasons::TRANSACTION_PAYMENT,
                     ExistenceRequirement::KeepAlive,
                 )?),
-            ))
+            )),
         }
     }
 }

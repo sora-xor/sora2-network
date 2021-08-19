@@ -63,6 +63,10 @@ impl<T: Config> Module<T> {
         })
     }
 
+    pub fn can_set_referrer(referral: &T::AccountId) -> bool {
+        !Referrers::<T>::contains_key(referral)
+    }
+
     pub fn withdraw_fee(referrer: &T::AccountId, fee: Balance) -> Result<(), DispatchError> {
         ReferrerBalances::<T>::mutate(referrer, |b| {
             let balance = b

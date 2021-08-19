@@ -30,8 +30,8 @@
 
 use crate::mock::{ensure_pool_initialized, fill_spot_price};
 use crate::{
-    AccountId, AssetId, Balance, Balances, Call, Currencies, GetXorFeeAccountId, Origin, PoolXYK,
-    ReferralSystem, ReferrerWeight, Runtime, SoraParliamentShare, Staking, Tokens, Weight,
+    AccountId, AssetId, Assets, Balance, Balances, Call, Currencies, GetXorFeeAccountId, Origin,
+    PoolXYK, ReferralSystem, ReferrerWeight, Runtime, SoraParliamentShare, Staking, Tokens, Weight,
     XorBurnedWeight, XorFee, XorIntoValBurnedWeight,
 };
 use common::mock::{alice, bob, charlie};
@@ -40,13 +40,15 @@ use common::prelude::{AssetName, AssetSymbol, FixedWrapper, SwapAmount, WeightTo
 use common::{balance, fixed_wrapper, FilterMode, VAL, XOR};
 use frame_support::assert_ok;
 use frame_support::dispatch::{DispatchInfo, PostDispatchInfo};
-use frame_support::pallet_prelude::Pays;
+use frame_support::pallet_prelude::{InvalidTransaction, Pays};
 use frame_support::traits::OnFinalize;
+use frame_support::unsigned::TransactionValidityError;
 use frame_support::weights::WeightToFeePolynomial;
 use framenode_chain_spec::ext;
 use log::LevelFilter;
 use pallet_balances::NegativeImbalance;
 use pallet_transaction_payment::{ChargeTransactionPayment, OnChargeTransaction};
+use referral_system::ReferrerBalances;
 use sp_runtime::traits::SignedExtension;
 use sp_runtime::AccountId32;
 use traits::MultiCurrency;
@@ -576,5 +578,55 @@ fn withdraw_fee_set_referrer() {
                 Some(NegativeImbalance::new(SMALL_FEE))
             )))
         );
+    });
+}
+
+#[test]
+fn withdraw_fee_set_referrer_already() {
+    ext().execute_with(|| {
+        ReferralSystem::set_referrer_to(&alice(), bob()).unwrap();
+
+        increase_balance(bob(), XOR.into(), balance!(1000));
+
+        ReferralSystem::reserve(Origin::signed(bob()), SMALL_FEE).unwrap();
+
+        let dispatch_info = info_from_weight(100_000_000);
+        let call = Call::ReferralSystem(referral_system::Call::set_referrer(bob()));
+        let result = XorFee::withdraw_fee(&alice(), &call, &dispatch_info, 1337, 0);
+        assert_eq!(
+            result,
+            Err(TransactionValidityError::Invalid(
+                InvalidTransaction::Payment
+            ))
+        );
+        assert_eq!(ReferrerBalances::<Runtime>::get(&bob()), Some(SMALL_FEE));
+    });
+}
+
+#[test]
+fn withdraw_fee_set_referrer_already2() {
+    ext().execute_with(|| {
+        ReferralSystem::set_referrer_to(&alice(), bob()).unwrap();
+
+        increase_balance(alice(), XOR.into(), balance!(1));
+        increase_balance(bob(), XOR.into(), balance!(1000));
+
+        ReferralSystem::reserve(Origin::signed(bob()), SMALL_FEE).unwrap();
+
+        let dispatch_info = info_from_weight(100_000_000);
+        let call = Call::ReferralSystem(referral_system::Call::set_referrer(bob()));
+        let result = XorFee::withdraw_fee(&alice(), &call, &dispatch_info, 1337, 0);
+        assert_eq!(
+            result,
+            Ok(LiquidityInfo::Paid((
+                alice(),
+                Some(NegativeImbalance::new(SMALL_FEE))
+            )))
+        );
+        assert_eq!(
+            Assets::free_balance(&XOR.into(), &alice()),
+            Ok(balance!(1) - SMALL_FEE)
+        );
+        assert_eq!(ReferrerBalances::<Runtime>::get(&bob()), Some(SMALL_FEE));
     });
 }
