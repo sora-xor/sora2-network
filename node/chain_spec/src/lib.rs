@@ -33,12 +33,10 @@
 
 #![allow(unused_imports, unused_macros, dead_code)]
 
-use framenode_runtime::GenesisConfig;
-
 use common::prelude::{Balance, DEXInfo, FixedWrapper};
 use common::{
     balance, fixed, hash, our_include, our_include_bytes, vec_push, BalancePrecision, DEXId, Fixed,
-    TechPurpose, DAI, DEFAULT_BALANCE_PRECISION, ETH, PSWAP, USDT, VAL, XOR,
+    TechPurpose, DAI, DEFAULT_BALANCE_PRECISION, ETH, PSWAP, USDT, VAL, XOR, XSTUSD,
 };
 use frame_support::sp_runtime::Percent;
 use framenode_runtime::eth_bridge::{AssetConfig, BridgeAssetData, NetworkConfig};
@@ -74,7 +72,7 @@ use codec::Encode;
 use framenode_runtime::assets::{AssetRecord, AssetRecordArg};
 #[cfg(feature = "private-net")]
 use framenode_runtime::{FaucetConfig, SudoConfig};
-use framenode_runtime::{Signature, TechnicalCommitteeConfig};
+use framenode_runtime::{GenesisConfig, Signature, TechnicalCommitteeConfig};
 use sp_core::{sr25519, Pair};
 use sp_runtime::traits::{IdentifyAccount, Verify};
 use std::borrow::Cow;
@@ -574,8 +572,6 @@ fn testnet_genesis(
     council_accounts: Vec<AccountId>,
     technical_committee_accounts: Vec<AccountId>,
 ) -> GenesisConfig {
-    use common::XSTUSD;
-
     // Initial balances
     let initial_staking = balance!(100);
     let initial_eth_bridge_xor_amount = balance!(350000);
@@ -1284,8 +1280,6 @@ fn mainnet_genesis(
     council_accounts: Vec<AccountId>,
     technical_committee_accounts: Vec<AccountId>,
 ) -> GenesisConfig {
-    use common::XSTUSD;
-
     // Minimum stake for an active validator
     let initial_staking = balance!(0.2);
     // XOR amount which already exists on Ethereum
@@ -1512,7 +1506,7 @@ fn mainnet_genesis(
             XSTUSD.into(),
             assets_and_permissions_account_id.clone(),
             AssetSymbol(b"XSTUSD".to_vec()),
-            AssetName(b"XST USD".to_vec()),
+            AssetName(b"SORA Synthetic USD".to_vec()),
             18,
             Balance::zero(),
             true,
