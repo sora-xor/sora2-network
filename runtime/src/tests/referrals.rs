@@ -34,24 +34,24 @@ use common::XOR;
 use frame_support::{assert_err, assert_ok};
 use framenode_chain_spec::ext;
 
-use crate::{Currencies, Origin, ReferralSystem, Runtime};
+use crate::{Currencies, Origin, Referrals, Runtime};
 
-type E = referral_system::Error<Runtime>;
+type E = referrals::Error<Runtime>;
 
 #[test]
 fn set_referrer_to() {
     ext().execute_with(|| {
-        assert_ok!(ReferralSystem::set_referrer_to(&alice(), alice()));
+        assert_ok!(Referrals::set_referrer_to(&alice(), alice()));
     });
 }
 
 #[test]
 fn set_referrer_to_has_referrer() {
     ext().execute_with(|| {
-        assert_ok!(ReferralSystem::set_referrer_to(&alice(), bob()));
+        assert_ok!(Referrals::set_referrer_to(&alice(), bob()));
 
         assert_err!(
-            ReferralSystem::set_referrer_to(&alice(), charlie()),
+            Referrals::set_referrer_to(&alice(), charlie()),
             E::AlreadyHasReferrer
         );
     });
@@ -61,7 +61,7 @@ fn set_referrer_to_has_referrer() {
 fn reserve_insufficient_balance() {
     ext().execute_with(|| {
         assert_err!(
-            ReferralSystem::reserve(Origin::signed(alice()), 1),
+            Referrals::reserve(Origin::signed(alice()), 1),
             pallet_balances::Error::<Runtime>::InsufficientBalance
         );
     })
@@ -77,10 +77,7 @@ fn reserve() {
             SMALL_FEE as i128 * 3
         ));
 
-        assert_ok!(ReferralSystem::reserve(
-            Origin::signed(alice()),
-            3 * SMALL_FEE
-        ));
+        assert_ok!(Referrals::reserve(Origin::signed(alice()), 3 * SMALL_FEE));
     })
 }
 
@@ -88,8 +85,8 @@ fn reserve() {
 fn withdraw_fee_insufficient_balance() {
     ext().execute_with(|| {
         assert_err!(
-            ReferralSystem::withdraw_fee(&alice(), SMALL_FEE),
-            referral_system::Error::<Runtime>::ReferrerInsufficientBalance
+            Referrals::withdraw_fee(&alice(), SMALL_FEE),
+            referrals::Error::<Runtime>::ReferrerInsufficientBalance
         );
     })
 }
@@ -104,8 +101,8 @@ fn withdraw() {
             SMALL_FEE as i128
         ));
 
-        assert_ok!(ReferralSystem::reserve(Origin::signed(alice()), SMALL_FEE));
+        assert_ok!(Referrals::reserve(Origin::signed(alice()), SMALL_FEE));
 
-        assert_ok!(ReferralSystem::withdraw_fee(&alice(), SMALL_FEE));
+        assert_ok!(Referrals::withdraw_fee(&alice(), SMALL_FEE));
     })
 }

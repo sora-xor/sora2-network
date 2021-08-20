@@ -31,7 +31,7 @@
 use crate::mock::{ensure_pool_initialized, fill_spot_price};
 use crate::{
     AccountId, AssetId, Assets, Balance, Balances, Call, Currencies, GetXorFeeAccountId, Origin,
-    PoolXYK, ReferralSystem, ReferrerWeight, Runtime, SoraParliamentShare, Staking, Tokens, Weight,
+    PoolXYK, Referrals, ReferrerWeight, Runtime, SoraParliamentShare, Staking, Tokens, Weight,
     XorBurnedWeight, XorFee, XorIntoValBurnedWeight,
 };
 use common::mock::{alice, bob, charlie};
@@ -48,7 +48,7 @@ use framenode_chain_spec::ext;
 use log::LevelFilter;
 use pallet_balances::NegativeImbalance;
 use pallet_transaction_payment::{ChargeTransactionPayment, OnChargeTransaction};
-use referral_system::ReferrerBalances;
+use referrals::ReferrerBalances;
 use sp_runtime::traits::SignedExtension;
 use sp_runtime::AccountId32;
 use traits::MultiCurrency;
@@ -566,10 +566,10 @@ fn withdraw_fee_set_referrer() {
     ext().execute_with(|| {
         increase_balance(bob(), XOR.into(), balance!(1000));
 
-        ReferralSystem::reserve(Origin::signed(bob()), SMALL_FEE).unwrap();
+        Referrals::reserve(Origin::signed(bob()), SMALL_FEE).unwrap();
 
         let dispatch_info = info_from_weight(100_000_000);
-        let call = Call::ReferralSystem(referral_system::Call::set_referrer(bob()));
+        let call = Call::Referrals(referrals::Call::set_referrer(bob()));
         let result = XorFee::withdraw_fee(&alice(), &call, &dispatch_info, 1337, 0);
         assert_eq!(
             result,
@@ -584,14 +584,14 @@ fn withdraw_fee_set_referrer() {
 #[test]
 fn withdraw_fee_set_referrer_already() {
     ext().execute_with(|| {
-        ReferralSystem::set_referrer_to(&alice(), bob()).unwrap();
+        Referrals::set_referrer_to(&alice(), bob()).unwrap();
 
         increase_balance(bob(), XOR.into(), balance!(1000));
 
-        ReferralSystem::reserve(Origin::signed(bob()), SMALL_FEE).unwrap();
+        Referrals::reserve(Origin::signed(bob()), SMALL_FEE).unwrap();
 
         let dispatch_info = info_from_weight(100_000_000);
-        let call = Call::ReferralSystem(referral_system::Call::set_referrer(bob()));
+        let call = Call::Referrals(referrals::Call::set_referrer(bob()));
         let result = XorFee::withdraw_fee(&alice(), &call, &dispatch_info, 1337, 0);
         assert_eq!(
             result,
@@ -606,15 +606,15 @@ fn withdraw_fee_set_referrer_already() {
 #[test]
 fn withdraw_fee_set_referrer_already2() {
     ext().execute_with(|| {
-        ReferralSystem::set_referrer_to(&alice(), bob()).unwrap();
+        Referrals::set_referrer_to(&alice(), bob()).unwrap();
 
         increase_balance(alice(), XOR.into(), balance!(1));
         increase_balance(bob(), XOR.into(), balance!(1000));
 
-        ReferralSystem::reserve(Origin::signed(bob()), SMALL_FEE).unwrap();
+        Referrals::reserve(Origin::signed(bob()), SMALL_FEE).unwrap();
 
         let dispatch_info = info_from_weight(100_000_000);
-        let call = Call::ReferralSystem(referral_system::Call::set_referrer(bob()));
+        let call = Call::Referrals(referrals::Call::set_referrer(bob()));
         let result = XorFee::withdraw_fee(&alice(), &call, &dispatch_info, 1337, 0);
         assert_eq!(
             result,

@@ -1,2 +1,2 @@
-mod referral_system;
+mod referrals;
 mod xor_fee;

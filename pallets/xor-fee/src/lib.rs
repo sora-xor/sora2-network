@@ -259,7 +259,7 @@ where
                 T::ReferrerWeight::get(),
                 xor_burned_weight + xor_into_val_burned_weight,
             );
-            if let Some(referrer) = referral_system::Pallet::<T>::referrer_account(who) {
+            if let Some(referrer) = referrals::Pallet::<T>::referrer_account(who) {
                 let _ = T::XorCurrency::resolve_into_existing(&referrer, referrer_xor);
             }
 
@@ -504,7 +504,7 @@ pub mod pallet {
     #[pallet::config]
     pub trait Config:
         frame_system::Config
-        + referral_system::Config
+        + referrals::Config
         + assets::Config
         + eth_bridge::Config
         + common::Config

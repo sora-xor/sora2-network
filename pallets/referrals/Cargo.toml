@@ -3,10 +3,10 @@ authors = ["Polka Biome Ltd. <jihoon@tutanota.de>"]
 license = "BSD-4-Clause"
 homepage = "https://sora.org"
 repository = "https://github.com/sora-xor/sora2-network"
-description = "FRAME pallet template for defining custom runtime logic."
+description = "Referrals"
 edition = "2018"
-name = "referral-system"
-version = "0.1.0"
+name = "referrals"
+version = "1.0.0"
 
 [package.metadata.docs.rs]
 targets = ["x86_64-unknown-linux-gnu"]

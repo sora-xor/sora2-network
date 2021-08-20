@@ -695,9 +695,9 @@ parameter_types! {
     pub const MaxSubAccounts: u32 = 100;
     pub const MaxAdditionalFields: u32 = 100;
     pub const MaxRegistrars: u32 = 20;
-    pub ReferralSystemReservesAcc: AccountId = {
+    pub ReferralsReservesAcc: AccountId = {
         let tech_account_id = TechAccountId::from_generic_pair(
-            b"referral_system".to_vec(),
+            b"referrals".to_vec(),
             b"main".to_vec(),
         );
         let account_id =
@@ -859,9 +859,9 @@ where
     type Extrinsic = UncheckedExtrinsic;
 }
 
-impl referral_system::Config for Runtime {
-    type ReservesAcc = ReferralSystemReservesAcc;
-    type WeightInfo = referral_system::weights::WeightInfo<Runtime>;
+impl referrals::Config for Runtime {
+    type ReservesAcc = ReferralsReservesAcc;
+    type WeightInfo = referrals::weights::WeightInfo<Runtime>;
 }
 
 impl rewards::Config for Runtime {
@@ -894,7 +894,7 @@ impl xor_fee::ApplyCustomFees<Call> for ExtrinsicsFlatFees {
             | Call::Rewards(..)
             | Call::Staking(pallet_staking::Call::payout_stakers(..))
             | Call::TradingPair(..)
-            | Call::ReferralSystem(..) => Some(SMALL_FEE),
+            | Call::Referrals(..) => Some(SMALL_FEE),
             _ => None,
         }
     }
@@ -984,14 +984,14 @@ impl xor_fee::WithdrawFee<Runtime> for WithdrawFee {
         fee: Balance,
     ) -> Result<(AccountId, Option<NegativeImbalanceOf<Runtime>>), DispatchError> {
         match call {
-            Call::ReferralSystem(referral_system::Call::set_referrer(referrer))
-                if ReferralSystem::can_set_referrer(who) =>
+            Call::Referrals(referrals::Call::set_referrer(referrer))
+                if Referrals::can_set_referrer(who) =>
             {
-                ReferralSystem::withdraw_fee(referrer, fee)?;
+                Referrals::withdraw_fee(referrer, fee)?;
                 Ok((
                     referrer.clone(),
                     Some(Balances::withdraw(
-                        &ReferralSystemReservesAcc::get(),
+                        &ReferralsReservesAcc::get(),
                         fee,
                         WithdrawReasons::TRANSACTION_PAYMENT,
                         ExistenceRequirement::KeepAlive,
@@ -1437,7 +1437,7 @@ construct_runtime! {
         RandomnessCollectiveFlip: pallet_randomness_collective_flip::{Module, Call, Storage} = 4,
         TransactionPayment: pallet_transaction_payment::{Module, Storage} = 5,
         Permissions: permissions::{Module, Call, Storage, Config<T>, Event<T>} = 6,
-        ReferralSystem: referral_system::{Module, Call, Storage} = 7,
+        Referrals: referrals::{Module, Call, Storage} = 7,
         Rewards: rewards::{Module, Call, Config<T>, Storage, Event<T>} = 8,
         XorFee: xor_fee::{Module, Call, Storage, Event<T>} = 9,
         BridgeMultisig: bridge_multisig::{Module, Call, Storage, Config<T>, Event<T>} = 10,
@@ -1500,7 +1500,7 @@ construct_runtime! {
         RandomnessCollectiveFlip: pallet_randomness_collective_flip::{Module, Call, Storage} = 4,
         TransactionPayment: pallet_transaction_payment::{Module, Storage} = 5,
         Permissions: permissions::{Module, Call, Storage, Config<T>, Event<T>} = 6,
-        ReferralSystem: referral_system::{Module, Call, Storage} = 7,
+        Referrals: referrals::{Module, Call, Storage} = 7,
         Rewards: rewards::{Module, Call, Config<T>, Storage, Event<T>} = 8,
         XorFee: xor_fee::{Module, Call, Storage, Event<T>} = 9,
         BridgeMultisig: bridge_multisig::{Module, Call, Storage, Config<T>, Event<T>} = 10,
@@ -2129,7 +2129,7 @@ impl_runtime_apis! {
             add_benchmark!(params, batches, vested_rewards, VestedRewards);
             add_benchmark!(params, batches, price_tools, PriceTools);
             add_benchmark!(params, batches, xor_fee, XorFeeBench::<Runtime>);
-            add_benchmark!(params, batches, referral_system, ReferralSystem);
+            add_benchmark!(params, batches, referrals, Referrals);
 
             if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
             Ok(batches)

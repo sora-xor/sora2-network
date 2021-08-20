@@ -2430,7 +2430,7 @@ dependencies = [
  "pswap-distribution",
  "pswap-distribution-benchmarking",
  "pswap-distribution-runtime-api",
- "referral-system",
+ "referrals",
  "rewards",
  "rewards-runtime-api",
  "serde",
@@ -3270,7 +3270,7 @@ dependencies = [
  "parity-scale-codec",
  "parity-util-mem",
  "permissions",
- "referral-system",
+ "referrals",
  "serde",
  "sha3",
  "sp-core",
@@ -6315,8 +6315,8 @@ dependencies = [
 ]
 
 [[package]]
-name = "referral-system"
-version = "0.1.0"
+name = "referrals"
+version = "1.0.0"
 dependencies = [
  "assets",
  "common",
@@ -10123,7 +10123,7 @@ dependencies = [
  "pallet-transaction-payment",
  "parity-scale-codec",
  "permissions",
- "referral-system",
+ "referrals",
  "serde",
  "sp-arithmetic",
  "sp-core",
