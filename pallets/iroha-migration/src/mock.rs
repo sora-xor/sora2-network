@@ -56,6 +56,7 @@ pub const ALICE: AccountId = 1;
 pub const BOB: AccountId = 2;
 pub const CHARLIE: AccountId = 3;
 pub const MINTING_ACCOUNT: AccountId = 4;
+pub const REFERRALS_RESERVES_ACC: AccountId = 22;
 
 parameter_types! {
     pub const BlockHashCount: u64 = 250;
@@ -68,6 +69,7 @@ parameter_types! {
     pub const DepositFactor: u64 = 1;
     pub const MaxSignatories: u16 = 4;
     pub GetTeamReservesAccountId: AccountId = 3000u64;
+    pub const ReferralsReservesAcc: AccountId = REFERRALS_RESERVES_ACC;
 }
 
 construct_runtime!(
@@ -84,7 +86,7 @@ construct_runtime!(
         Assets: assets::{Module, Call, Storage, Config<T>, Event<T>},
         Technical: technical::{Module, Call, Config<T>, Event<T>},
         Permissions: permissions::{Module, Call, Storage, Config<T>, Event<T>},
-        ReferralSystem: referral_system::{Module, Call, Storage, Config<T>},
+        Referrals: referrals::{Module, Call, Storage, Config<T>},
         IrohaMigration: iroha_migration::{Module, Call, Storage, Config<T>, Event<T>}
     }
 );
@@ -174,7 +176,10 @@ impl tokens::Config for Runtime {
     type OnDust = ();
 }
 
-impl referral_system::Config for Runtime {}
+impl referrals::Config for Runtime {
+    type ReservesAcc = ReferralsReservesAcc;
+    type WeightInfo = ();
+}
 
 impl pallet_multisig::Config for Runtime {
     type Call = Call;
