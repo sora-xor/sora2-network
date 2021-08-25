@@ -48,7 +48,7 @@ use framenode_runtime::multicollateral_bonding_curve_pool::{
 use framenode_runtime::opaque::SessionKeys;
 use framenode_runtime::{
     assets, eth_bridge, frame_system, AccountId, AssetId, AssetName, AssetSymbol, AssetsConfig,
-    BabeConfig, BalancesConfig, BridgeMultisigConfig, CouncilConfig, DEXAPIConfig,
+    BabeConfig, BalancesConfig, BeefyId, BridgeMultisigConfig, CouncilConfig, DEXAPIConfig,
     DEXManagerConfig, DemocracyConfig, EthBridgeConfig, GetBaseAssetId, GetParliamentAccountId,
     GetPswapAssetId, GetValAssetId, GetXorAssetId, GrandpaConfig, ImOnlineId, IrohaMigrationConfig,
     LiquiditySourceType, MulticollateralBondingCurvePoolConfig, PermissionsConfig,
@@ -128,11 +128,17 @@ pub fn authority_keys_from_public_keys(
     )
 }
 
-fn session_keys(grandpa: GrandpaId, babe: BabeId, im_online: ImOnlineId) -> SessionKeys {
+fn session_keys(
+    grandpa: GrandpaId,
+    babe: BabeId,
+    im_online: ImOnlineId,
+    beefy: BeefyId,
+) -> SessionKeys {
     SessionKeys {
         babe,
         grandpa,
         im_online,
+        beefy,
     }
 }
 
@@ -1068,7 +1074,7 @@ fn testnet_genesis(
         }),
         faucet: Some(faucet_config),
         tokens: Some(TokensConfig {
-            endowed_accounts: tokens_endowed_accounts,
+            balances: tokens_endowed_accounts,
         }),
         trading_pair: Some(TradingPairConfig {
             trading_pairs: initial_collateral_assets
@@ -1676,7 +1682,7 @@ fn mainnet_genesis(
             )],
         }),
         tokens: Some(TokensConfig {
-            endowed_accounts: vec![
+            balances: vec![
                 (
                     rewards_account_id.clone(),
                     GetValAssetId::get(),

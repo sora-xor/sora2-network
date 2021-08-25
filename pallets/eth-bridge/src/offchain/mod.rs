@@ -186,7 +186,7 @@ impl<T: Config> Pallet<T> {
     ) -> bool {
         let message = eth::prepare_message(msg);
         let sig_bytes = signature.to_bytes();
-        let res = secp256k1::Signature::parse_slice(&sig_bytes[..64]).and_then(|sig| {
+        let res = secp256k1::Signature::parse_standard_slice(&sig_bytes[..64]).and_then(|sig| {
             secp256k1::PublicKey::parse_slice(ecdsa_public_key.as_slice(), None).map(|pk| (sig, pk))
         });
         if let Ok((signature, public_key)) = res {
@@ -465,6 +465,7 @@ impl<T: Config> Pallet<T> {
 
         let network_ids = s_networks_ids
             .get::<BTreeSet<T::NetworkId>>()
+            .ok()
             .flatten()
             .unwrap_or_default();
         for network_id in network_ids {

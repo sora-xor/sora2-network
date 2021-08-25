@@ -135,27 +135,27 @@ construct_runtime! {
         NodeBlock = Block,
         UncheckedExtrinsic = UncheckedExtrinsic,
     {
-        System: frame_system::{Module, Call, Config, Storage, Event<T>},
-        MockLiquiditySource: mock_liquidity_source::<Instance1>::{Module, Call, Config<T>, Storage},
-        DexManager: dex_manager::{Module, Call, Config<T>, Storage},
-        TradingPair: trading_pair::{Module, Call, Config<T>, Storage, Event<T>},
-        ReferralSystem: referral_system::{Module, Call, Config<T>, Storage},
-        Balances: pallet_balances::{Module, Call, Storage, Event<T>},
-        TransactionPayment: pallet_transaction_payment::{Module, Storage},
-        Technical: technical::{Module, Call, Config<T>, Storage, Event<T>},
-        Currencies: currencies::{Module, Call, Storage, Event<T>},
-        Assets: assets::{Module, Call, Config<T>, Storage, Event<T>},
-        Permissions: permissions::{Module, Call, Config<T>, Storage, Event<T>},
-        Tokens: tokens::{Module, Call, Config<T>, Storage, Event<T>},
-        Session: pallet_session::{Module, Call, Config<T>, Storage, Event},
-        Historical: historical::{Module},
-        Timestamp: pallet_timestamp::{Module, Call, Storage, Inherent},
-        Staking: pallet_staking::{Module, Call, Config<T>, Storage, Event<T>},
-        XorFee: xor_fee::{Module, Call, Event<T>},
-        LiquidityProxy: mock_liquidity_proxy::{Module, Call, Event<T>},
-        EthBridge: eth_bridge::{Module, Call, Storage, Config<T>, Event<T>},
-        BridgeMultisig: bridge_multisig::{Module, Call, Storage, Config<T>, Event<T>},
-        Scheduler: pallet_scheduler::{Module, Call, Storage, Event<T>},
+        System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
+        MockLiquiditySource: mock_liquidity_source::<Instance1>::{Pallet, Call, Config<T>, Storage},
+        DexManager: dex_manager::{Pallet, Call, Config<T>, Storage},
+        TradingPair: trading_pair::{Pallet, Call, Config<T>, Storage, Event<T>},
+        ReferralSystem: referral_system::{Pallet, Call, Config<T>, Storage},
+        Balances: pallet_balances::{Pallet, Call, Storage, Event<T>},
+        TransactionPayment: pallet_transaction_payment::{Pallet, Storage},
+        Technical: technical::{Pallet, Call, Config<T>, Storage, Event<T>},
+        Currencies: currencies::{Pallet, Call, Storage, Event<T>},
+        Assets: assets::{Pallet, Call, Config<T>, Storage, Event<T>},
+        Permissions: permissions::{Pallet, Call, Config<T>, Storage, Event<T>},
+        Tokens: tokens::{Pallet, Call, Config<T>, Storage, Event<T>},
+        Session: pallet_session::{Pallet, Call, Config<T>, Storage, Event},
+        Historical: historical::{Pallet},
+        Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent},
+        Staking: pallet_staking::{Pallet, Call, Config<T>, Storage, Event<T>},
+        XorFee: xor_fee::{Pallet, Call, Event<T>},
+        LiquidityProxy: mock_liquidity_proxy::{Pallet, Call, Event<T>},
+        EthBridge: eth_bridge::{Pallet, Call, Storage, Config<T>, Event<T>},
+        BridgeMultisig: bridge_multisig::{Pallet, Call, Storage, Config<T>, Event<T>},
+        Scheduler: pallet_scheduler::{Pallet, Call, Storage, Event<T>},
     }
 }
 
@@ -322,6 +322,7 @@ impl frame_system::Config for Runtime {
     type SystemWeightInfo = ();
     type PalletInfo = PalletInfo;
     type SS58Prefix = ();
+    type OnSetCode = ();
 }
 
 impl mock_liquidity_source::Config<mock_liquidity_source::Instance1> for Runtime {
@@ -348,6 +349,8 @@ impl pallet_balances::Config for Runtime {
     type AccountStore = System;
     type WeightInfo = ();
     type MaxLocks = ();
+    type MaxReserves = ();
+    type ReserveIdentifier = ();
 }
 
 impl pallet_transaction_payment::Config for Runtime {
@@ -403,6 +406,8 @@ impl tokens::Config for Runtime {
     type WeightInfo = ();
     type ExistentialDeposits = ExistentialDeposits;
     type OnDust = ();
+    type MaxLocks = ();
+    type DustRemovalWhitelist = ();
 }
 
 impl pallet_session::Config for Runtime {
@@ -721,7 +726,7 @@ impl ExtBuilder {
         .unwrap();
 
         tokens::GenesisConfig::<Runtime> {
-            endowed_accounts: vec![(xor_fee_account_id.clone(), VAL, balance!(1000))],
+            balances: vec![(xor_fee_account_id.clone(), VAL, balance!(1000))],
         }
         .assimilate_storage(&mut t)
         .unwrap();

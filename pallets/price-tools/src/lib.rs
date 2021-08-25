@@ -132,15 +132,15 @@ pub mod pallet {
         }
 
         fn on_runtime_upgrade() -> Weight {
-            match Pallet::<T>::storage_version() {
-                // if pallet didn't exist, i.e. added with runtime upgrade, then initial tbc assets should be created
-                None => {
-                    for asset_id in [VAL, PSWAP, DAI, ETH].iter().cloned() {
-                        let _ = Module::<T>::register_asset(&asset_id.into());
-                    }
-                }
-                _ => (),
-            };
+            // match Pallet::<T>::storage_version() {
+            //     // if pallet didn't exist, i.e. added with runtime upgrade, then initial tbc assets should be created
+            //     None => {
+            //         for asset_id in [VAL, PSWAP, DAI, ETH].iter().cloned() {
+            //             let _ = Module::<T>::register_asset(&asset_id.into());
+            //         }
+            //     }
+            //     _ => (),
+            // };
             T::DbWeight::get().writes(1)
         }
     }

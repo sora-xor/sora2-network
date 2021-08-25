@@ -94,14 +94,14 @@ construct_runtime! {
         NodeBlock = Block,
         UncheckedExtrinsic = UncheckedExtrinsic,
     {
-        Assets: assets::{Module, Call, Config<T>, Storage, Event<T>},
-        Balances: pallet_balances::{Module, Call, Config<T>, Storage, Event<T>},
-        Currencies: currencies::{Module, Call, Storage, Event<T>},
-        Permissions: permissions::{Module, Call, Config<T>, Storage, Event<T>},
-        Rewards: rewards::{Module, Call, Config<T>, Storage, Event<T>},
-        System: frame_system::{Module, Call, Config, Storage, Event<T>},
-        Technical: technical::{Module, Call, Config<T>, Storage, Event<T>},
-        Tokens: tokens::{Module, Call, Config<T>, Storage, Event<T>},
+        Assets: assets::{Pallet, Call, Config<T>, Storage, Event<T>},
+        Balances: pallet_balances::{Pallet, Call, Config<T>, Storage, Event<T>},
+        Currencies: currencies::{Pallet, Call, Storage, Event<T>},
+        Permissions: permissions::{Pallet, Call, Config<T>, Storage, Event<T>},
+        Rewards: rewards::{Pallet, Call, Config<T>, Storage, Event<T>},
+        System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
+        Technical: technical::{Pallet, Call, Config<T>, Storage, Event<T>},
+        Tokens: tokens::{Pallet, Call, Config<T>, Storage, Event<T>},
     }
 }
 
@@ -138,6 +138,7 @@ impl frame_system::Config for Runtime {
     type SystemWeightInfo = ();
     type PalletInfo = PalletInfo;
     type SS58Prefix = ();
+    type OnSetCode = ();
 }
 
 impl technical::Config for Runtime {
@@ -189,6 +190,8 @@ impl pallet_balances::Config for Runtime {
     type AccountStore = System;
     type WeightInfo = ();
     type MaxLocks = ();
+    type MaxReserves = ();
+    type ReserveIdentifier = ();
 }
 
 impl tokens::Config for Runtime {
@@ -199,6 +202,8 @@ impl tokens::Config for Runtime {
     type WeightInfo = ();
     type ExistentialDeposits = ExistentialDeposits;
     type OnDust = ();
+    type MaxLocks = ();
+    type DustRemovalWhitelist = ();
 }
 
 pub struct ExtBuilder {
@@ -255,7 +260,7 @@ impl ExtBuilder {
         .unwrap();
 
         TokensConfig {
-            endowed_accounts: vec![
+            balances: vec![
                 (account_id.clone(), VAL.into(), balance!(30000)),
                 (account_id.clone(), PSWAP.into(), balance!(1000)),
             ],

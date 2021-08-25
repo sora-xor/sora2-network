@@ -268,7 +268,6 @@ pub mod pallet {
     use assets::AssetIdOf;
     use frame_support::pallet_prelude::*;
     use frame_support::traits::schedule::Anon;
-    use frame_support::traits::PalletVersion;
     use frame_system::ensure_root;
     use frame_system::pallet_prelude::OriginFor;
     use sp_runtime::traits::Zero;
@@ -324,17 +323,18 @@ pub mod pallet {
         }
 
         fn on_runtime_upgrade() -> Weight {
-            match Self::storage_version() {
-                Some(PalletVersion { major: 0, .. }) | None => migrations::v1_1::migrate::<T>(),
-                _ => 0,
-            }
+            // match Self::storage_version() {
+            //     Some(PalletVersion { major: 0, .. }) | None => migrations::v1_1::migrate::<T>(),
+            //     _ => 0,
+            // }
+            0
         }
     }
 
     #[pallet::call]
     impl<T: Config> Pallet<T> {
         #[pallet::weight(0)]
-        fn migrate_to_1_1(origin: OriginFor<T>) -> DispatchResultWithPostInfo {
+        pub fn migrate_to_1_1(origin: OriginFor<T>) -> DispatchResultWithPostInfo {
             ensure_root(origin)?;
             let weight = migrations::v1_1::migrate::<T>();
             Ok(Some(weight).into())

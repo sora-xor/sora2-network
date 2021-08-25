@@ -37,14 +37,22 @@ use framenode_runtime::{
     FilterMode, Index, LiquiditySourceType, Runtime, SwapVariant,
 };
 pub use sc_rpc::{DenyUnsafe, SubscriptionTaskExecutor};
+use sc_service::TransactionPool;
 use sp_api::ProvideRuntimeApi;
 use sp_block_builder::BlockBuilder;
 use sp_blockchain::{Error as BlockChainError, HeaderBackend, HeaderMetadata};
-use sp_transaction_pool::TransactionPool;
 use std::sync::Arc;
 
 /// JsonRpcHandler
 pub type JsonRpcHandler = jsonrpc_core::IoHandler<sc_rpc::Metadata>;
+
+/// Dependencies for BEEFY
+pub struct BeefyDeps {
+    /// Receives notifications about signed commitment events from BEEFY.
+    pub beefy_commitment_stream: beefy_gadget::notification::BeefySignedCommitmentStream<Block>,
+    /// Executor to drive the subscription manager in the BEEFY RPC handler.
+    pub subscription_executor: sc_rpc::SubscriptionTaskExecutor,
+}
 
 /// Full client dependencies.
 pub struct FullDeps<C, P> {
@@ -54,10 +62,14 @@ pub struct FullDeps<C, P> {
     pub pool: Arc<P>,
     /// Whether to deny unsafe calls
     pub deny_unsafe: DenyUnsafe,
+    /// BEEFY specific dependencies.
+    pub beefy: BeefyDeps,
 }
 
 /// Instantiate full RPC extensions.
-pub fn create_full<C, P>(deps: FullDeps<C, P>) -> JsonRpcHandler
+pub fn create_full<C, P>(
+    deps: FullDeps<C, P>,
+) -> Result<JsonRpcHandler, Box<dyn std::error::Error + Send + Sync>>
 where
     C: ProvideRuntimeApi<Block>,
     C: HeaderBackend<Block> + HeaderMetadata<Block, Error = BlockChainError>,
@@ -116,6 +128,8 @@ where
     C::Api: pswap_distribution_rpc::PswapDistributionRuntimeAPI<Block, AccountId, Balance>,
     C::Api: rewards_rpc::RewardsRuntimeAPI<Block, sp_core::H160, Balance>,
     C::Api: BlockBuilder<Block>,
+    C::Api: pallet_mmr_rpc::MmrRuntimeApi<Block, <Block as sp_runtime::traits::Block>::Hash>,
+    C::Api: beefy_primitives::BeefyApi<Block>,
     P: TransactionPool + Send + Sync + 'static,
 {
     use assets_rpc::{AssetsAPI, AssetsClient};
@@ -125,6 +139,7 @@ where
     // use farming_rpc::*;
     use iroha_migration_rpc::{IrohaMigrationAPI, IrohaMigrationClient};
     use liquidity_proxy_rpc::{LiquidityProxyAPI, LiquidityProxyClient};
+    use pallet_mmr_rpc::{Mmr, MmrApi};
     use pallet_transaction_payment_rpc::{TransactionPayment, TransactionPaymentApi};
     use pswap_distribution_rpc::{PswapDistributionAPI, PswapDistributionClient};
     use rewards_rpc::{RewardsAPI, RewardsClient};
@@ -136,6 +151,7 @@ where
         client,
         pool,
         deny_unsafe,
+        beefy,
     } = deps;
     io.extend_with(SystemApi::to_delegate(FullSystem::new(
         client.clone(),
@@ -163,5 +179,12 @@ where
         PswapDistributionClient::new(client.clone()),
     ));
     io.extend_with(RewardsAPI::to_delegate(RewardsClient::new(client.clone())));
-    io
+    io.extend_with(MmrApi::to_delegate(Mmr::new(client.clone())));
+    io.extend_with(beefy_gadget_rpc::BeefyApi::to_delegate(
+        beefy_gadget_rpc::BeefyRpcHandler::new(
+            beefy.beefy_commitment_stream,
+            beefy.subscription_executor,
+        ),
+    ));
+    Ok(io)
 }

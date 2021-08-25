@@ -259,7 +259,7 @@ pub use pallet::*;
 pub mod pallet {
     use super::*;
     use frame_support::pallet_prelude::*;
-    use frame_support::traits::PalletVersion;
+    // use frame_support::traits::PalletVersion;
     use frame_system::pallet_prelude::*;
 
     #[pallet::config]
@@ -275,10 +275,12 @@ pub mod pallet {
     #[pallet::hooks]
     impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
         fn on_runtime_upgrade() -> Weight {
-            match Self::storage_version() {
-                Some(PalletVersion { major: 0, .. }) | None => migrations::v1_1::migrate::<T>(),
-                _ => 0,
-            }
+            // let x : u32 = Self::storage_version();
+            panic!()
+            // match Self::storage_version() {
+            //     Some(PalletVersion { major: 0, .. }) | None => migrations::v1_1::migrate::<T>(),
+            //     _ => 0,
+            // }
         }
     }
 

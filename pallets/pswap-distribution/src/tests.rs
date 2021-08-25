@@ -34,7 +34,6 @@ use codec::Encode;
 use common::prelude::Fixed;
 use common::{assert_approx_eq, balance, fixed, DEXId, FromGenericPair, DAI, PSWAP, VAL, XOR};
 use frame_support::assert_noop;
-use frame_support::traits::PalletVersion;
 use traits::MultiCurrency;
 
 type PswapDistrModule = Module<Runtime>;
@@ -854,7 +853,7 @@ fn migration_v0_1_0_to_v0_2_0() {
         assert_eq!(Currencies::free_balance(PSWAP, &eve()), balance!(15));
     });
 }
-
+/*
 #[test]
 fn migration_v0_2_0_to_v1_1_1() {
     let mut ext = ExtBuilder::default().build();
@@ -939,3 +938,4 @@ fn migration_v0_2_0_to_v1_1_1() {
         );
     })
 }
+*/

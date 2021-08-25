@@ -39,10 +39,10 @@ use crate::{
 use alloc::boxed::Box;
 use codec::{Decode, Encode};
 use frame_support::dispatch::{DispatchError, GetCallMetadata};
+use frame_support::log::{debug, error, info, trace, warn};
 use frame_support::sp_io::hashing::blake2_256;
 use frame_support::sp_runtime::offchain::storage::StorageValueRef;
-use frame_support::sp_runtime::offchain::storage_lock::BlockNumberProvider;
-use frame_support::sp_runtime::traits::Saturating;
+use frame_support::sp_runtime::traits::{BlockNumberProvider, Saturating};
 use frame_support::traits::GetCallName;
 use frame_support::{debug, ensure, fail};
 #[cfg(test)]
@@ -119,7 +119,7 @@ impl<T: Config> SignedTransactionData<T> {
     where
         T: CreateSignedTransaction<Call<T>>,
     {
-        debug::debug!(
+        debug!(
             "Re-sending signed transaction: {:?}",
             self.call.get_call_metadata()
         );
@@ -146,7 +146,7 @@ impl<T: Config> Pallet<T> {
     pub(in crate) fn get_signer() -> Result<Signer<T, T::PeerId>, Error<T>> {
         let signer = Signer::<T, T::PeerId>::any_account();
         if !signer.can_sign() {
-            debug::error!("[Ethereum bridge] No local account available");
+            error!("[Ethereum bridge] No local account available");
             fail!(<Error<T>>::NoLocalAccountForSigning);
         }
         Ok(signer)
@@ -162,23 +162,22 @@ impl<T: Config> Pallet<T> {
         LocalCall: Clone + GetCallName + Encode + Into<<T as Config>::Call>,
     {
         let signer = Self::get_signer()?;
-        debug::debug!("Sending signed transaction: {}", call.get_call_name());
+        debug!("Sending signed transaction: {}", call.get_call_name());
         let result = Self::send_signed_transaction(&signer, &call);
 
         match result {
             Some((account, res)) => {
                 Self::add_pending_extrinsic(call, &account, res.is_ok());
                 if let Err(e) = res {
-                    debug::error!(
+                    error!(
                         "[{:?}] Failed to send signed transaction: {:?}",
-                        account.id,
-                        e
+                        account.id, e
                     );
                     fail!(<Error<T>>::FailedToSendSignedTransaction);
                 }
             }
             _ => {
-                debug::error!("Failed to send signed transaction");
+                error!("Failed to send signed transaction");
                 fail!(<Error<T>>::NoLocalAccountForSigning);
             }
         };
@@ -219,7 +218,7 @@ impl<T: Config> Pallet<T> {
         timepoint: Timepoint<T>,
         network_id: T::NetworkId,
     ) -> Result<(), Error<T>> {
-        debug::debug!("send_incoming_request_result: {:?}", hash);
+        debug!("send_incoming_request_result: {:?}", hash);
         let transfer_call = crate::Call::<T>::finalize_incoming_request(hash, network_id);
         Self::send_multisig_transaction(transfer_call, timepoint, network_id)
     }
@@ -230,7 +229,7 @@ impl<T: Config> Pallet<T> {
         network_id: T::NetworkId,
     ) -> Result<(), Error<T>> {
         let timepoint = load_incoming_request.timepoint();
-        debug::debug!(
+        debug!(
             "send_import_incoming_request: {:?}",
             incoming_request_result
         );
@@ -248,7 +247,7 @@ impl<T: Config> Pallet<T> {
         timepoint: Timepoint<T>,
         network_id: T::NetworkId,
     ) -> Result<(), Error<T>> {
-        debug::debug!("send_abort_request: {:?}", request_hash);
+        debug!("send_abort_request: {:?}", request_hash);
         ensure!(
             crate::RequestStatuses::<T>::get(network_id, request_hash)
                 == Some(RequestStatus::Pending),
@@ -270,6 +269,7 @@ impl<T: Config> Pallet<T> {
         let s_signed_txs = StorageValueRef::persistent(STORAGE_PENDING_TRANSACTIONS_KEY);
         let mut transactions = s_signed_txs
             .get::<BTreeMap<H256, SignedTransactionData<T>>>()
+            .ok()
             .flatten()
             .unwrap_or_default();
         let submitted_at = if !added_to_pool {

@@ -64,9 +64,9 @@ construct_runtime! {
         NodeBlock = Block,
         UncheckedExtrinsic = UncheckedExtrinsic,
     {
-        System: frame_system::{Module, Call, Config, Storage, Event<T>},
-        Balances: pallet_balances::{Module, Call, Storage, Event<T>},
-        ReferralSystem: referral_system::{Module, Call, Storage},
+        System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
+        Balances: pallet_balances::{Pallet, Call, Storage, Event<T>},
+        ReferralSystem: referral_system::{Pallet, Call, Storage},
     }
 }
 
@@ -87,22 +87,25 @@ impl frame_system::Config for Runtime {
     type BlockHashCount = BlockHashCount;
     type DbWeight = ();
     type Version = ();
+    type PalletInfo = PalletInfo;
     type AccountData = pallet_balances::AccountData<Balance>;
     type OnNewAccount = ();
     type OnKilledAccount = ();
     type SystemWeightInfo = ();
-    type PalletInfo = PalletInfo;
     type SS58Prefix = ();
+    type OnSetCode = ();
 }
 
 impl pallet_balances::Config for Runtime {
     type Balance = Balance;
-    type Event = Event;
     type DustRemoval = ();
+    type Event = Event;
     type ExistentialDeposit = ExistentialDeposit;
     type AccountStore = System;
     type WeightInfo = ();
     type MaxLocks = ();
+    type MaxReserves = ();
+    type ReserveIdentifier = ();
 }
 
 impl Config for Runtime {}

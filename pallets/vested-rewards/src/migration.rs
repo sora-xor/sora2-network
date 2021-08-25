@@ -35,7 +35,9 @@ use crate::{
 use common::prelude::{Balance, FixedWrapper};
 use common::{balance, fixed_wrapper, RewardReason};
 use frame_support::debug;
-use frame_support::traits::{Get, GetPalletVersion, PalletVersion};
+use frame_support::log::{error, info, warn};
+use frame_support::traits::Get;
+use sp_runtime::runtime_logger::RuntimeLogger;
 use sp_runtime::traits::Zero;
 use sp_runtime::DispatchError;
 use sp_std::vec::Vec;
@@ -43,15 +45,15 @@ use sp_std::vec::Vec;
 pub fn migrate<T: Config>() -> Weight {
     let mut weight: Weight = 0;
 
-    match Pallet::<T>::storage_version() {
-        // Initial version is 0.1.0 which has unutilized rewards storage
-        // Version 1.1.0 converts and moves rewards from multicollateral-bonding-curve-pool
-        Some(version) if version == PalletVersion::new(0, 1, 0) => {
-            let migrated_weight = migrate_rewards_from_tbc::<T>().unwrap_or(100_000);
-            weight = weight.saturating_add(migrated_weight);
-        }
-        _ => (),
-    }
+    // match Pallet::<T>::storage_version() {
+    //     // Initial version is 0.1.0 which has unutilized rewards storage
+    //     // Version 1.1.0 converts and moves rewards from multicollateral-bonding-curve-pool
+    //     Some(version) if version == PalletVersion::new(0, 1, 0) => {
+    //         let migrated_weight = migrate_rewards_from_tbc::<T>().unwrap_or(100_000);
+    //         weight = weight.saturating_add(migrated_weight);
+    //     }
+    //     _ => (),
+    // }
 
     weight
 }
@@ -59,7 +61,7 @@ pub fn migrate<T: Config>() -> Weight {
 pub fn migrate_rewards_from_tbc<T: Config>() -> Option<Weight> {
     let mut weight: Weight = 0;
     let mut calculated_total_rewards = Balance::zero();
-    debug::RuntimeLogger::init();
+    RuntimeLogger::init();
     // common factor for rewards difference, derived emperically
     let rewards_multiplier = fixed_wrapper!(6.8);
     for (account, (vested_amount, tbc_rewards_amount)) in
@@ -89,13 +91,13 @@ pub fn migrate_rewards_from_tbc<T: Config>() -> Option<Weight> {
     weight = weight.saturating_add(T::DbWeight::get().reads_writes(1, 2));
 
     if tbc_total_rewards != calculated_total_rewards {
-        debug::warn!(
+        warn!(
             target: "runtime",
             "stored tbc rewards total doesn't match calculated total: {} != {}",
             tbc_total_rewards, calculated_total_rewards
         );
     } else {
-        debug::info!(
+        info!(
             target: "runtime",
             "stored tbc rewards total match calculated total: {}",
             calculated_total_rewards
@@ -147,7 +149,7 @@ pub fn inject_market_makers_first_month_rewards<T: Config>(
                     reward,
                 );
                 if res.is_err() {
-                    debug::error!(target: "runtime", "Failed to add mm reward for account: {:?}", account);
+                    error!(target: "runtime", "Failed to add mm reward for account: {:?}", account);
                 }
                 weight = weight.saturating_add(T::DbWeight::get().writes(2));
             }

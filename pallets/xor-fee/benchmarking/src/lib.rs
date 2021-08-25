@@ -120,7 +120,7 @@ fn init<T: Config>() {
     )
     .unwrap();
 }
-
+/*
 benchmarks! {
     remint {
         init::<T>();
@@ -134,3 +134,4 @@ benchmarks! {
         assert_eq!(assets::Module::<T>::free_balance(&VAL.into(), &T::GetParliamentAccountId::get()), Ok(balance!(0.019938012180185635)));
     }
 }
+*/

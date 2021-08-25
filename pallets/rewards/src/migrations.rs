@@ -31,15 +31,16 @@
 pub mod v1_2 {
     use crate::{Config, EthereumAddress, PswapFarmOwners, ReservesAcc, RewardInfo, Weight};
     use common::{balance, Balance, PSWAP};
-    use frame_support::debug;
+    use frame_support::log::{error, info};
     use frame_support::traits::Get;
     use hex_literal::hex;
+    use sp_runtime::runtime_logger::RuntimeLogger;
     use sp_std::collections::btree_map::BTreeMap;
     use sp_std::vec::Vec;
 
     // Migrate to version 1.2.0
     pub fn migrate<T: Config>() -> Weight {
-        debug::RuntimeLogger::init();
+        RuntimeLogger::init();
 
         (0 as Weight)
             .saturating_add(add_lost_pswap::<T>())
@@ -57,15 +58,9 @@ pub mod v1_2 {
         let res =
             technical::Module::<T>::mint(&PSWAP.into(), &reserves_tech_acc, compensation_amount);
         if res.is_err() {
-            debug::error!(
-                target: "runtime",
-                "failed to mint compensation pswap during migration"
-            );
+            error!("failed to mint compensation pswap during migration");
         } else {
-            debug::info!(
-                target: "runtime",
-                "successfully minted compensation pswap during migration"
-            );
+            info!("successfully minted compensation pswap during migration");
         }
 
         // Approximate weight
@@ -108,10 +103,7 @@ pub mod v1_2 {
         crate::ValBurnedSinceLastVesting::<T>::put(balance!(0));
         crate::MigrationPending::<T>::put(true);
 
-        debug::info!(
-            target: "runtime",
-            "Storage for VAL rewards data successflly migrated"
-        );
+        info!("Storage for VAL rewards data successflly migrated");
 
         // The exact weight of the StorageMap::translate_values() is unknown
         // Since runtime upgrade is executed regardless the weight we can use approximate value

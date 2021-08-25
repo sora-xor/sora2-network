@@ -30,21 +30,21 @@
 
 use crate::{Config, Pallet, Weight};
 use common::{balance, PSWAP};
-use frame_support::traits::{Get, GetPalletVersion, PalletVersion};
+use frame_support::traits::Get;
 use traits::MultiCurrency;
 
 pub fn migrate<T: Config>() -> Weight {
     let mut weight: Weight = 0;
 
-    match Pallet::<T>::storage_version() {
-        // Initial version is 0.1.0
-        // Version 1.1.0 mints 3 billion PSWAP reserved for team
-        Some(version) if version == PalletVersion::new(0, 1, 0) => {
-            let migrated_weight = mint_team_rewards::<T>().unwrap_or(100_000);
-            weight = weight.saturating_add(migrated_weight)
-        }
-        _ => (),
-    }
+    // match Pallet::<T>::storage_version() {
+    //     // Initial version is 0.1.0
+    //     // Version 1.1.0 mints 3 billion PSWAP reserved for team
+    //     Some(version) if version == PalletVersion::new(0, 1, 0) => {
+    //         let migrated_weight = mint_team_rewards::<T>().unwrap_or(100_000);
+    //         weight = weight.saturating_add(migrated_weight)
+    //     }
+    //     _ => (),
+    // }
 
     weight
 }

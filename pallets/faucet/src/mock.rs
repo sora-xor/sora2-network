@@ -91,15 +91,15 @@ construct_runtime! {
         NodeBlock = Block,
         UncheckedExtrinsic = UncheckedExtrinsic,
     {
-        Faucet: faucet::{Module, Call, Config<T>, Storage, Event<T>},
-        System: frame_system::{Module, Call, Config, Storage, Event<T>},
-        Technical: technical::{Module, Call, Config<T>, Storage, Event<T>},
-        Assets: assets::{Module, Call, Config<T>, Storage, Event<T>},
-        Permissions: permissions::{Module, Call, Config<T>, Storage, Event<T>},
-        Currencies: currencies::{Module, Call, Storage, Event<T>},
-        Balances: pallet_balances::{Module, Call, Config<T>, Storage, Event<T>},
-        Tokens: tokens::{Module, Call, Config<T>, Storage, Event<T>},
-        Rewards: rewards::{Module, Event<T>},
+        Faucet: faucet::{Pallet, Call, Config<T>, Storage, Event<T>},
+        System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
+        Technical: technical::{Pallet, Call, Config<T>, Storage, Event<T>},
+        Assets: assets::{Pallet, Call, Config<T>, Storage, Event<T>},
+        Permissions: permissions::{Pallet, Call, Config<T>, Storage, Event<T>},
+        Currencies: currencies::{Pallet, Call, Storage, Event<T>},
+        Balances: pallet_balances::{Pallet, Call, Config<T>, Storage, Event<T>},
+        Tokens: tokens::{Pallet, Call, Config<T>, Storage, Event<T>},
+        Rewards: rewards::{Pallet, Event<T>},
     }
 }
 
@@ -131,6 +131,7 @@ impl frame_system::Config for Runtime {
     type SystemWeightInfo = ();
     type PalletInfo = PalletInfo;
     type SS58Prefix = ();
+    type OnSetCode = ();
 }
 
 impl rewards::Config for Runtime {
@@ -192,6 +193,8 @@ impl pallet_balances::Config for Runtime {
     type AccountStore = System;
     type WeightInfo = ();
     type MaxLocks = ();
+    type MaxReserves = ();
+    type ReserveIdentifier = ();
 }
 
 impl tokens::Config for Runtime {
@@ -202,6 +205,8 @@ impl tokens::Config for Runtime {
     type WeightInfo = ();
     type ExistentialDeposits = ExistentialDeposits;
     type OnDust = ();
+    type MaxLocks = ();
+    type DustRemovalWhitelist = ();
 }
 
 pub struct ExtBuilder {}
@@ -255,7 +260,7 @@ impl ExtBuilder {
         .unwrap();
 
         TokensConfig {
-            endowed_accounts: vec![(account_id.clone(), VAL.into(), balance!(9000))],
+            balances: vec![(account_id.clone(), VAL.into(), balance!(9000))],
         }
         .assimilate_storage(&mut t)
         .unwrap();

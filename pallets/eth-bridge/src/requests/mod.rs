@@ -39,6 +39,7 @@ use common::prelude::Balance;
 use core::line;
 use ethabi::Token;
 use frame_support::dispatch::{DispatchError, DispatchResult};
+use frame_support::log::warn;
 use frame_support::sp_runtime::app_crypto::sp_core;
 use frame_support::{debug, ensure, sp_io, RuntimeDebug};
 pub use incoming::*;
@@ -537,7 +538,7 @@ impl<T: Config> LoadIncomingRequest<T> {
     pub fn set_hash(&mut self, new_hash: H256) {
         match self {
             Self::Transaction(_request) => {
-                debug::warn!("Attempt to set hash for a 'load transaction' request.");
+                warn!("Attempt to set hash for a 'load transaction' request.");
             } // should not be the case
             Self::Meta(_, hash) => *hash = new_hash,
         }

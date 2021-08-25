@@ -187,7 +187,6 @@ impl<T: Config> OnValBurned for Pallet<T> {
 #[frame_support::pallet]
 pub mod pallet {
     use frame_support::pallet_prelude::*;
-    use frame_support::traits::PalletVersion;
     use frame_support::transactional;
     use frame_system::pallet_prelude::*;
     use secp256k1::util::SIGNATURE_SIZE;
@@ -279,12 +278,13 @@ pub mod pallet {
         }
 
         fn on_runtime_upgrade() -> Weight {
-            match Self::storage_version() {
-                Some(PalletVersion {
-                    major: 1, minor: 1, ..
-                }) => migrations::v1_2::migrate::<T>(),
-                _ => T::DbWeight::get().reads(1),
-            }
+            // match Self::storage_version() {
+            //     Some(PalletVersion {
+            //         major: 1, minor: 1, ..
+            //     }) => migrations::v1_2::migrate::<T>(),
+            //     _ => T::DbWeight::get().reads(1),
+            // }
+            Default::default()
         }
     }
 
@@ -305,7 +305,7 @@ pub mod pallet {
             };
             let recovery_id = RecoveryId::parse(recovery_id)
                 .map_err(|_| Error::<T>::SignatureVerificationFailed)?;
-            let signature = Signature::parse_slice(&signature[..SIGNATURE_SIZE])
+            let signature = Signature::parse_standard_slice(&signature[..SIGNATURE_SIZE])
                 .map_err(|_| Error::<T>::SignatureInvalid)?;
             let message = eth::prepare_message(&account_id.encode());
             let public_key = secp256k1::recover(&message, &signature, &recovery_id)

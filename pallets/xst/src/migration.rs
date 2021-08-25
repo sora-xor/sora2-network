@@ -31,24 +31,26 @@
 use crate::{Config, Pallet, PermissionedTechAccount, Weight};
 use common::{AssetName, AssetSymbol, Balance, FromGenericPair, LiquiditySourceType, XSTUSD};
 use frame_support::debug;
-use frame_support::traits::{Get, GetPalletVersion};
+use frame_support::log::{error, info};
+use frame_support::traits::Get;
 use permissions::{Scope, BURN, MINT};
+use sp_runtime::runtime_logger::RuntimeLogger;
 use sp_runtime::traits::Zero;
 
 pub fn migrate<T: Config>() -> Weight {
     let mut weight: Weight = 0;
 
-    match Pallet::<T>::storage_version() {
-        // Register token when pallet is first created, i.e. None version
-        None => {
-            let migrated_weight = register_new_token::<T>().unwrap_or(100_000);
-            weight = weight.saturating_add(migrated_weight);
-            let migrated_weight = register_xst_tech_account::<T>().unwrap_or(100_000);
-            weight = weight.saturating_add(migrated_weight);
-            weight = weight.saturating_add(register_in_dex_api::<T>());
-        }
-        _ => (),
-    }
+    // match Pallet::<T>::storage_version() {
+    //     // Register token when pallet is first created, i.e. None version
+    //     None => {
+    //         let migrated_weight = register_new_token::<T>().unwrap_or(100_000);
+    //         weight = weight.saturating_add(migrated_weight);
+    //         let migrated_weight = register_xst_tech_account::<T>().unwrap_or(100_000);
+    //         weight = weight.saturating_add(migrated_weight);
+    //         weight = weight.saturating_add(register_in_dex_api::<T>());
+    //     }
+    //     _ => (),
+    // }
 
     weight
 }
@@ -63,7 +65,7 @@ pub fn get_assets_owner_account<T: Config>() -> T::AccountId {
 }
 
 pub fn register_new_token<T: Config>() -> Option<Weight> {
-    debug::RuntimeLogger::init();
+    RuntimeLogger::init();
 
     let result = assets::Pallet::<T>::register_asset_id(
         get_assets_owner_account::<T>(),
@@ -76,12 +78,12 @@ pub fn register_new_token<T: Config>() -> Option<Weight> {
     );
 
     if result.is_err() {
-        debug::error!(
+        error!(
             target: "runtime",
             "failed to register SORA Synthetic USD asset"
         );
     } else {
-        debug::info!(
+        info!(
             target: "runtime",
             "registered SORA Synthetic USD asset successfully"
         );
@@ -102,7 +104,7 @@ pub fn get_permissioned_tech_account_id<T: Config>() -> (T::TechAccountId, T::Ac
 }
 
 pub fn register_xst_tech_account<T: Config>() -> Option<Weight> {
-    debug::RuntimeLogger::init();
+    RuntimeLogger::init();
     let (xst_permissioned_tech_account_id, xst_permissioned_account_id) =
         get_permissioned_tech_account_id::<T>();
 
@@ -114,7 +116,7 @@ pub fn register_xst_tech_account<T: Config>() -> Option<Weight> {
 
     if register_result.is_ok() {
         let permissions = [BURN, MINT];
-        debug::info!(
+        info!(
             target: "runtime",
             "registered XST pallet tech account successfully"
         );
@@ -127,14 +129,14 @@ pub fn register_xst_tech_account<T: Config>() -> Option<Weight> {
                 Scope::Unlimited,
             );
             if assign_permission_result.is_err() {
-                debug::error!(
+                error!(
                     target: "runtime",
                     "failed to assign permissions for XST pallet tech account"
                 );
             }
         }
     } else {
-        debug::error!(
+        error!(
             target: "runtime",
             "failed to register XST pallet tech account"
         );

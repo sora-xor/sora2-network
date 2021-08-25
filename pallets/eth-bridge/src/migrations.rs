@@ -1,8 +1,8 @@
 use crate::{Address, Call, Config, Error, RequestStatus};
 use bridge_multisig::MultiChainHeight;
 use frame_support::debug;
-use frame_support::sp_runtime::offchain::storage_lock::BlockNumberProvider;
-use frame_support::sp_runtime::traits::{One, Saturating};
+use frame_support::log::{debug, error, info, trace, warn};
+use frame_support::sp_runtime::traits::{BlockNumberProvider, One, Saturating};
 use frame_support::traits::schedule::{Anon, DispatchTime};
 use frame_support::traits::Get;
 use frame_support::weights::Weight;
@@ -36,7 +36,7 @@ pub fn migrate_broken_pending_outgoing_transfers<T: Config>(to_height: T::BlockN
         !should_remove
     });
     crate::RequestsQueue::<T>::insert(net_id, queue);
-    frame_support::debug::info!(
+    info!(
         "eth-bridge: {} requests migrated to V2RemovePendingTransfers.",
         count,
     );
@@ -53,7 +53,7 @@ pub fn remove_peers<T: Config>(peer_ids: &[(T::AccountId, Address)]) {
             RawOrigin::Signed(bridge_multisig).into(),
             account_id.clone(),
         );
-        frame_support::debug::info!("eth-bridge: remove_signatory result {:?}", result);
+        info!("eth-bridge: remove_signatory result {:?}", result);
         crate::PeerAddress::<T>::remove(eth_network_id, account_id);
         crate::PeerAccountId::<T>::remove(eth_network_id, &address);
         peers.remove(account_id);
@@ -93,7 +93,7 @@ pub(crate) fn migrate_to_0_2_0<T: Config>() -> Weight {
         )
         .is_err()
         {
-            debug::warn!("eth bridge migration to v0.2.0 failed to schedule");
+            warn!("eth bridge migration to v0.2.0 failed to schedule");
         }
     }
 

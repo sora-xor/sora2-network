@@ -32,29 +32,29 @@ use crate::{ClaimableShares, Config, Pallet, ShareholderAccounts, SubscribedAcco
 use common::fixnum::ops::{CheckedAdd, Zero};
 use common::prelude::{Fixed, FixedWrapper};
 use common::{balance, PoolXykPallet};
-use frame_support::debug;
 use frame_support::dispatch::DispatchError;
-use frame_support::traits::{Get, GetPalletVersion, PalletVersion};
+use frame_support::log::{debug, error};
+use frame_support::traits::Get;
 use sp_std::convert::TryInto;
 
 pub fn migrate<T: Config>() -> Weight {
     let mut weight: Weight = 0;
 
-    match Pallet::<T>::storage_version() {
-        // Initial version is 0.1.0 which uses shares from total amount to determine owned pswap by users
-        // Version 0.2.0 performs share calculated on distribution, so only absolute pswap amounts are stored
-        // Version 1.1.1 fixes subscribed accounts table, which wasn't migrated from pool tokens to new flow with pool accounts
-        Some(version) if version == PalletVersion::new(0, 1, 0) => {
-            let migrated_weight =
-                migrate_from_shares_to_absolute_rewards::<T>().unwrap_or(100_000_000);
-            weight = weight.saturating_add(migrated_weight)
-        }
-        Some(version) if version == PalletVersion::new(0, 2, 0) => {
-            let migrated_weight = migrate_subscribed_accounts::<T>();
-            weight = weight.saturating_add(migrated_weight)
-        }
-        _ => (),
-    }
+    // match Pallet::<T>::storage_version() {
+    //     // Initial version is 0.1.0 which uses shares from total amount to determine owned pswap by users
+    //     // Version 0.2.0 performs share calculated on distribution, so only absolute pswap amounts are stored
+    //     // Version 1.1.1 fixes subscribed accounts table, which wasn't migrated from pool tokens to new flow with pool accounts
+    //     Some(version) if version == PalletVersion::new(0, 1, 0) => {
+    //         let migrated_weight =
+    //             migrate_from_shares_to_absolute_rewards::<T>().unwrap_or(100_000_000);
+    //         weight = weight.saturating_add(migrated_weight)
+    //     }
+    //     Some(version) if version == PalletVersion::new(0, 2, 0) => {
+    //         let migrated_weight = migrate_subscribed_accounts::<T>();
+    //         weight = weight.saturating_add(migrated_weight)
+    //     }
+    //     _ => (),
+    // }
 
     weight
 }
@@ -115,7 +115,7 @@ pub fn migrate_subscribed_accounts<T: Config>() -> Weight {
             if let Some((_, ref mut old_pool_account, _, _)) = opt_value {
                 *old_pool_account = pool_account;
             } else {
-                debug::error!("Unable to find fees account: {:?}", fees_account);
+                error!("Unable to find fees account: {:?}", fees_account);
             }
         });
         weight = weight.saturating_add(T::DbWeight::get().writes(1));

@@ -32,8 +32,9 @@
 
 use common::prelude::SwapAmount;
 use common::{Balance, FilterMode, LiquiditySourceFilter, LiquiditySourceType, OnValBurned};
+use frame_support::log::error;
 use frame_support::pallet_prelude::InvalidTransaction;
-use frame_support::traits::{Currency, ExistenceRequirement, Get, Imbalance, Vec, WithdrawReasons};
+use frame_support::traits::{Currency, ExistenceRequirement, Get, Imbalance, WithdrawReasons};
 use frame_support::unsigned::TransactionValidityError;
 use frame_support::weights::{DispatchInfo, GetDispatchInfo, Pays};
 use liquidity_proxy::LiquidityProxyTrait;
@@ -47,6 +48,7 @@ use sp_runtime::traits::{
 };
 use sp_runtime::{DispatchError, Percent};
 use sp_staking::SessionIndex;
+use sp_std::vec::Vec;
 
 pub const TECH_ACCOUNT_PREFIX: &[u8] = b"xor-fee";
 pub const TECH_ACCOUNT_MAIN: &[u8] = b"main";
@@ -234,6 +236,7 @@ where
             // Offset the imbalance caused by paying the fees against the refunded amount.
             let adjusted_paid = paid
                 .offset(refund_imbalance)
+                .same()
                 .map_err(|_| TransactionValidityError::Invalid(InvalidTransaction::Payment))?;
 
             Self::deposit_event(Event::FeeWithdrawn(who.clone(), adjusted_paid.peek()));
@@ -289,7 +292,7 @@ impl<T: Config> pallet_session::historical::SessionManager<T::AccountId, T::Full
         let xor_to_val = XorToVal::<T>::take();
         if xor_to_val != 0 {
             if let Err(e) = Self::remint(xor_to_val) {
-                frame_support::debug::error!("xor fee remint failed: {:?}", e);
+                error!("xor fee remint failed: {:?}", e);
             }
         }
 
@@ -458,10 +461,9 @@ impl<T: Config> Pallet<T> {
                 Assets::<T>::burn_from(&val, &parliament, &parliament, val_to_burn)?;
             }
             Err(e) => {
-                frame_support::debug::error!(
+                error!(
                     "failed to exchange xor to val, burning {} XOR, e: {:?}",
-                    xor_to_val,
-                    e
+                    xor_to_val, e
                 );
                 Assets::<T>::burn_from(&xor, &tech_account_id, &tech_account_id, xor_to_val)?;
             }

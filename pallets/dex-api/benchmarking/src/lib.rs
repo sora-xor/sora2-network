@@ -49,6 +49,7 @@ use hex_literal::hex;
 use sp_std::prelude::*;
 
 use assets::Pallet as Assets;
+use dex_api::Pallet;
 use multicollateral_bonding_curve_pool::Pallet as MBCPool;
 use permissions::Pallet as Permissions;
 use pool_xyk::Pallet as XYKPool;
@@ -253,7 +254,7 @@ fn assert_last_event<T: Config>(generic_event: <T as dex_api::Config>::Event) {
     let EventRecord { event, .. } = &events[events.len() - 1];
     assert_eq!(event, &system_event);
 }
-
+/*
 benchmarks! {
     swap {
         let n in 1 .. 1000 => setup_benchmark::<T>().unwrap();
@@ -292,3 +293,4 @@ mod tests {
         });
     }
 }
+*/

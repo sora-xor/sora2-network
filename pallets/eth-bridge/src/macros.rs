@@ -2,11 +2,9 @@
 macro_rules! cancel {
     ($request:ident, $hash: expr, $net_id:expr, $err:expr) => {
         if let Err(e) = $request.cancel() {
-            debug::error!(
+            error!(
                 "Request cancellation failed: {:?}, {:?}, {:?}",
-                $err,
-                e,
-                $request
+                $err, e, $request
             );
             crate::RequestStatuses::<T>::insert($net_id, $hash, RequestStatus::Broken($err, e));
             Self::deposit_event(Event::CancellationFailed($hash));

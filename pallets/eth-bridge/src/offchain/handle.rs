@@ -46,6 +46,7 @@ use crate::{
 use alloc::vec::Vec;
 use bridge_multisig::MultiChainHeight;
 use codec::{Decode, Encode};
+use frame_support::log::{debug, error, info, trace, warn};
 use frame_support::sp_io::hashing::blake2_256;
 use frame_support::sp_runtime::app_crypto::ecdsa;
 use frame_support::sp_runtime::offchain::storage::StorageValueRef;
@@ -63,7 +64,7 @@ impl<T: Config> Pallet<T> {
     fn handle_outgoing_request(request: OutgoingRequest<T>, hash: H256) -> Result<(), Error<T>> {
         let signer = Signer::<T, T::PeerId>::any_account();
         if !signer.can_sign() {
-            debug::error!("No local account available");
+            error!("No local account available");
             return Err(<Error<T>>::NoLocalAccountForSigning);
         }
         let encoded_request = request.to_eth_abi(hash)?;
@@ -71,6 +72,7 @@ impl<T: Config> Pallet<T> {
         let sk = secp256k1::SecretKey::parse_slice(
             &secret_s
                 .get::<Vec<u8>>()
+                .ok()
                 .flatten()
                 .expect("Off-chain worker secret key is not specified."),
         )
@@ -89,19 +91,18 @@ impl<T: Config> Pallet<T> {
             Some((account, res)) => {
                 Self::add_pending_extrinsic(call, &account, res.is_ok());
                 match res {
-                    Ok(_) => debug::trace!("Signed transaction sent"),
+                    Ok(_) => trace!("Signed transaction sent"),
                     Err(e) => {
-                        debug::error!(
+                        error!(
                             "[{:?}] Failed in handle_outgoing_transfer: {:?}",
-                            account.id,
-                            e
+                            account.id, e
                         );
                         return Err(<Error<T>>::FailedToSendSignedTransaction);
                     }
                 }
             }
             _ => {
-                debug::error!("Failed in handle_outgoing_transfer");
+                error!("Failed in handle_outgoing_transfer");
                 return Err(<Error<T>>::NoLocalAccountForSigning);
             }
         };
@@ -141,9 +142,10 @@ impl<T: Config> Pallet<T> {
         let s_pending_txs = StorageValueRef::persistent(STORAGE_PENDING_TRANSACTIONS_KEY);
         if let Some(mut txs) = s_pending_txs
             .get::<BTreeMap<H256, SignedTransactionData<T>>>()
+            .ok()
             .flatten()
         {
-            debug::debug!("Pending txs count: {}", txs.len());
+            debug!("Pending txs count: {}", txs.len());
             for ext in block.extrinsics {
                 let vec = ext.encode();
                 let hash = H256(blake2_256(&vec));
@@ -178,7 +180,7 @@ impl<T: Config> Pallet<T> {
                                 );
                                 let mut s_retries = StorageValueRef::persistent(key.as_bytes());
                                 let mut retries: u16 =
-                                    s_retries.get().flatten().unwrap_or_default();
+                                    s_retries.get().ok().flatten().unwrap_or_default();
                                 retries = retries.saturating_add(1);
                                 // If re-send limit exceeded - remove.
                                 if retries > MAX_FAILED_SEND_SIGNED_TX_RETRIES {
@@ -200,6 +202,7 @@ impl<T: Config> Pallet<T> {
                     StorageValueRef::persistent(STORAGE_FAILED_PENDING_TRANSACTIONS_KEY);
                 let mut failed_txs = s_failed_pending_txs
                     .get::<BTreeMap<H256, SignedTransactionData<T>>>()
+                    .ok()
                     .flatten()
                     .unwrap_or_default();
                 for tx in failed_txs_tmp {
@@ -242,7 +245,7 @@ impl<T: Config> Pallet<T> {
     /// There are 4 flows. 3 for incoming request: handle 'mark as done', handle 'cancel outgoing
     /// request' and for the rest, and only one for all outgoing requests.
     fn handle_offchain_request(request: OffchainRequest<T>) -> Result<(), Error<T>> {
-        debug::debug!("Handling request: {:?}", request.hash());
+        debug!("Handling request: {:?}", request.hash());
         match request {
             OffchainRequest::LoadIncoming(request) => {
                 let network_id = request.network_id();
@@ -251,7 +254,7 @@ impl<T: Config> Pallet<T> {
                     LoadIncomingRequest::Transaction(request) => {
                         let tx_hash = request.hash;
                         let kind = request.kind;
-                        debug::debug!("Loading approved tx {}", tx_hash);
+                        debug!("Loading approved tx {}", tx_hash);
                         let tx = Self::load_tx_receipt(tx_hash, network_id)?;
                         let mut incoming_request = Self::parse_incoming_request(tx, request)?;
                         // TODO: this flow was used to transfer XOR for free with the `request_from_sidechain`
@@ -319,7 +322,7 @@ impl<T: Config> Pallet<T> {
             let event = match Self::parse_deposit_event(&log) {
                 Ok(v) => v,
                 Err(e) => {
-                    debug::info!("Skipped {:?}, error: {:?}", log, e);
+                    info!("Skipped {:?}, error: {:?}", log, e);
                     continue;
                 }
             };
@@ -344,7 +347,7 @@ impl<T: Config> Pallet<T> {
                 at_height,
                 transaction_index as u32, // TODO: can it exceed u32?
             );
-            debug::info!("Got log [{}], {:?}", at_height, log);
+            info!("Got log [{}], {:?}", at_height, log);
             let load_incoming_transaction_request = LoadIncomingTransactionRequest::new(
                 event.destination.clone(),
                 tx_hash,
@@ -380,6 +383,7 @@ impl<T: Config> Pallet<T> {
             StorageValueRef::persistent(STORAGE_FAILED_PENDING_TRANSACTIONS_KEY);
         let mut failed_txs = s_failed_pending_txs
             .get::<BTreeMap<H256, SignedTransactionData<T>>>()
+            .ok()
             .flatten()
             .unwrap_or_default();
         let mut to_remove = Vec::new();
@@ -425,7 +429,7 @@ impl<T: Config> Pallet<T> {
         let substrate_finalized_block = match Self::load_substrate_finalized_header() {
             Ok(v) => v,
             Err(e) => {
-                debug::info!(
+                info!(
                 "Failed to load substrate finalized block ({:?}). Skipping off-chain procedure.",
                 e
             );
@@ -442,10 +446,11 @@ impl<T: Config> Pallet<T> {
         let s_sub_to_handle_from_height =
             StorageValueRef::persistent(b"eth-bridge-ocw::sub-to-handle-from-height");
         let from_block_opt = s_sub_to_handle_from_height.get::<T::BlockNumber>();
-        if from_block_opt.is_none() {
+        if from_block_opt.is_err() {
             s_sub_to_handle_from_height.set(&substrate_finalized_height);
         }
         let from_block = from_block_opt
+            .ok()
             .flatten()
             .unwrap_or(substrate_finalized_height);
         if from_block <= substrate_finalized_height {
@@ -454,7 +459,7 @@ impl<T: Config> Pallet<T> {
             {
                 Ok(_) => {}
                 Err(e) => {
-                    debug::info!(
+                    info!(
                         "Failed to handle substrate block ({:?}). Skipping off-chain procedure.",
                         e
                     );
@@ -476,7 +481,7 @@ impl<T: Config> Pallet<T> {
         let current_eth_height = match Self::load_current_height(network_id) {
             Ok(v) => v,
             Err(e) => {
-                debug::info!(
+                info!(
                     "Failed to load current ethereum height. Skipping off-chain procedure. {:?}",
                     e
                 );
@@ -488,10 +493,10 @@ impl<T: Config> Pallet<T> {
         let string = format!("eth-bridge-ocw::eth-to-handle-from-height-{:?}", network_id);
         let s_eth_to_handle_from_height = StorageValueRef::persistent(string.as_bytes());
         let from_block_opt = s_eth_to_handle_from_height.get::<u64>();
-        if from_block_opt.is_none() {
+        if from_block_opt.is_err() {
             s_eth_to_handle_from_height.set(&current_eth_height);
         }
-        let from_block = from_block_opt.flatten().unwrap_or(current_eth_height);
+        let from_block = from_block_opt.ok().flatten().unwrap_or(current_eth_height);
         // The upper bound of range of blocks to download logs for. Limit the value to
         // `MAX_GET_LOGS_ITEMS` if the OCW is lagging behind Ethereum to avoid downloading too many
         // logs.
@@ -507,7 +512,7 @@ impl<T: Config> Pallet<T> {
                     s_eth_to_handle_from_height.set(&new_height);
                 }
                 if let Some(err) = err_opt {
-                    debug::warn!("Failed to load handle logs: {:?}.", err);
+                    warn!("Failed to load handle logs: {:?}.", err);
                 }
             }
         }
@@ -529,6 +534,7 @@ impl<T: Config> Pallet<T> {
                         StorageValueRef::persistent(string.as_bytes());
                     let handled = s_eth_to_handle_from_height
                         .get::<bool>()
+                        .ok()
                         .flatten()
                         .unwrap_or(false);
                     if handled {
@@ -541,11 +547,11 @@ impl<T: Config> Pallet<T> {
                     continue;
                 }
             };
-            debug::debug!("Re-handling ethereum height {}", from_block);
+            debug!("Re-handling ethereum height {}", from_block);
             // +1 block should be ok, because MAX_PENDING_TX_BLOCKS_PERIOD > CONFIRMATION_INTERVAL.
             let err_opt = Self::handle_logs(from_block, from_block + 1, &mut 0, network_id).err();
             if let Some(err) = err_opt {
-                debug::warn!("Failed to re-handle logs: {:?}.", err);
+                warn!("Failed to re-handle logs: {:?}.", err);
             }
         }
     }
@@ -589,7 +595,7 @@ impl<T: Config> Pallet<T> {
             }
             let handled_key = format!("eth-bridge-ocw::handled-request-{:?}", request_hash);
             let s_handled_request = StorageValueRef::persistent(handled_key.as_bytes());
-            let height_opt = s_handled_request.get::<T::BlockNumber>().flatten();
+            let height_opt = s_handled_request.get::<T::BlockNumber>().ok().flatten();
 
             let need_to_handle = match height_opt {
                 Some(height) => should_reapprove || request_submission_height > height,
@@ -606,7 +612,7 @@ impl<T: Config> Pallet<T> {
                 let error = Self::handle_offchain_request(request).err();
                 let mut is_handled = true;
                 if let Some(e) = error {
-                    debug::error!(
+                    error!(
                         "An error occurred while processing off-chain request: {:?}",
                         e
                     );
@@ -616,7 +622,7 @@ impl<T: Config> Pallet<T> {
                         if let Err(abort_err) =
                             Self::send_abort_request(request_hash, e, timepoint, network_id)
                         {
-                            debug::error!(
+                            error!(
                                 "An error occurred while trying to send abort request: {:?}",
                                 abort_err
                             );

@@ -254,7 +254,7 @@ fn setup_benchmark<T: Config>() -> Result<(), &'static str> {
 
     Ok(())
 }
-
+/*
 benchmarks! {
     swap_exact_input_primary_only {
         setup_benchmark::<T>()?;
@@ -411,3 +411,4 @@ mod tests {
         });
     }
 }
+*/

@@ -82,7 +82,7 @@ pub fn approve_request(
         );
         if current_status == RequestStatus::Pending && i + 1 == sigs_needed {
             match last_event().ok_or(None)? {
-                Event::eth_bridge(bridge_event) => match bridge_event {
+                Event::EthBridge(bridge_event) => match bridge_event {
                     crate::Event::ApprovalsCollected(h) => {
                         assert_eq!(h, request_hash);
                     }
@@ -91,7 +91,7 @@ pub fn approve_request(
                             crate::RequestsQueue::<Runtime>::get(net_id).last(),
                             Some(&request_hash)
                         );
-                        return Err(Some(Event::eth_bridge(e)));
+                        return Err(Some(Event::EthBridge(e)));
                     }
                 },
                 e => panic!("Unexpected event: {:?}", e),

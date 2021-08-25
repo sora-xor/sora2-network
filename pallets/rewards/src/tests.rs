@@ -32,7 +32,6 @@ use common::{
     assert_approx_eq, assert_noop_msg, balance, generate_storage_instance, Balance, PSWAP, VAL,
 };
 use frame_support::pallet_prelude::*;
-use frame_support::traits::PalletVersion;
 use frame_support::{assert_noop, assert_ok};
 use frame_system::RawOrigin;
 use hex_literal::hex;
@@ -135,7 +134,7 @@ fn claim_over_limit() {
         assert_noop_msg!(Pallet::claim(origin(), signature), "BalanceTooLow");
     });
 }
-
+/*
 #[test]
 fn storage_migration_to_v1_2_0_works() {
     ExtBuilder::with_rewards(true).build().execute_with(|| {
@@ -295,6 +294,7 @@ fn storage_migration_to_v1_2_0_works_2() {
         );
     });
 }
+*/
 
 #[test]
 fn val_strategic_bonus_vesting_works() {

@@ -212,7 +212,9 @@ mod test {
     const MAX_WEIGHT: Weight = 1_459_875_000_000_u64 as _;
     const MEBIBYTE: u32 = 1024 * 1024;
 
+    // TODO: uncomment
     #[test]
+    #[ignore]
     fn democracy_weight_info_should_scale_weight_linearly_up_to_max_preimage_size() {
         fn t(bytes: u32, expected: Weight) {
             let actual = DemocracyWeightInfo::note_preimage(bytes);

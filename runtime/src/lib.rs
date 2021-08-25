@@ -47,6 +47,8 @@ use constants::time::*;
 #[cfg(feature = "std")]
 include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
 
+pub use beefy_primitives::crypto::AuthorityId as BeefyId;
+use beefy_primitives::mmr::MmrLeafVersion;
 use core::time::Duration;
 use currencies::BasicCurrencyAdapter;
 use extensions::ChargeTransactionPayment;
@@ -56,6 +58,7 @@ use hex_literal::hex;
 use pallet_grandpa::{
     fg_primitives, AuthorityId as GrandpaId, AuthorityList as GrandpaAuthorityList,
 };
+use pallet_mmr_primitives as mmr;
 use pallet_session::historical as pallet_session_historical;
 #[cfg(feature = "std")]
 use serde::{Serialize, Serializer};
@@ -114,7 +117,9 @@ use eth_bridge::offchain::SignatureParams;
 use eth_bridge::requests::{AssetKind, OffchainRequest, OutgoingRequestEncoded, RequestStatus};
 use impls::{CollectiveWeightInfo, DemocracyWeightInfo, OnUnbalancedDemocracySlash};
 
-use frame_support::traits::Get;
+use frame_support::traits::{Everything, Get};
+use pallet_balances::Config;
+use sp_runtime::traits::Keccak256;
 pub use {assets, eth_bridge, frame_system, multicollateral_bonding_curve_pool, xst};
 
 /// An index to a block.
@@ -197,6 +202,7 @@ pub mod opaque {
             pub babe: Babe,
             pub grandpa: Grandpa,
             pub im_online: ImOnline,
+            pub beefy: Beefy,
         }
     }
 }
@@ -295,7 +301,7 @@ parameter_types! {
 }
 
 impl frame_system::Config for Runtime {
-    type BaseCallFilter = ();
+    type BaseCallFilter = Everything;
     type BlockWeights = BlockWeights;
     /// Maximum size of all encoded transactions (in bytes) that are allowed in one block.
     type BlockLength = BlockLength;
@@ -332,13 +338,14 @@ impl frame_system::Config for Runtime {
     type OnKilledAccount = ();
     type SystemWeightInfo = ();
     type SS58Prefix = SS58Prefix;
+    type OnSetCode = ();
 }
 
 impl pallet_babe::Config for Runtime {
     type EpochDuration = EpochDuration;
     type ExpectedBlockTime = ExpectedBlockTime;
     type EpochChangeTrigger = pallet_babe::ExternalTrigger;
-    type KeyOwnerProofSystem = Historical;
+    type DisabledValidators = ();
     type KeyOwnerProof = <Self::KeyOwnerProofSystem as KeyOwnerProofSystem<(
         KeyTypeId,
         pallet_babe::AuthorityId,
@@ -347,6 +354,7 @@ impl pallet_babe::Config for Runtime {
         KeyTypeId,
         pallet_babe::AuthorityId,
     )>>::IdentificationTuple;
+    type KeyOwnerProofSystem = Historical;
     type HandleEquivocation =
         pallet_babe::EquivocationHandler<Self::KeyOwnerIdentification, Offences, ReportLongevity>;
     type WeightInfo = ();
@@ -423,7 +431,7 @@ impl pallet_democracy::Config for Runtime {
 
 impl pallet_elections_phragmen::Config for Runtime {
     type Event = Event;
-    type ModuleId = ElectionsModuleId;
+    type PalletId = ElectionsModuleId;
     type Currency = Balances;
     type ChangeMembers = Council;
     type InitializeMembers = Council;
@@ -448,6 +456,8 @@ impl pallet_membership::Config<pallet_membership::Instance1> for Runtime {
     type PrimeOrigin = MoreThanHalfCouncil;
     type MembershipInitialized = TechnicalCommittee;
     type MembershipChanged = TechnicalCommittee;
+    type MaxMembers = ();
+    type WeightInfo = ();
 }
 
 impl pallet_grandpa::Config for Runtime {
@@ -555,13 +565,15 @@ parameter_types! {
 impl pallet_balances::Config for Runtime {
     /// The type for recording an account's balance.
     type Balance = Balance;
+    type DustRemoval = ();
     /// The ubiquitous event type.
     type Event = Event;
-    type DustRemoval = ();
     type ExistentialDeposit = ExistentialDeposit;
     type AccountStore = System;
     type WeightInfo = ();
     type MaxLocks = MaxLocks;
+    type MaxReserves = ();
+    type ReserveIdentifier = ();
 }
 
 pub type Amount = i128;
@@ -580,6 +592,8 @@ impl tokens::Config for Runtime {
     type WeightInfo = ();
     type ExistentialDeposits = ExistentialDeposits;
     type OnDust = ();
+    type MaxLocks = ();
+    type DustRemovalWhitelist = ();
 }
 
 parameter_types! {
@@ -814,7 +828,7 @@ where
         #[cfg_attr(not(feature = "std"), allow(unused_variables))]
         let raw_payload = SignedPayload::new(call, extra)
             .map_err(|e| {
-                debug::native::warn!("SignedPayload error: {:?}", e);
+                frame_support::log::warn!("SignedPayload error: {:?}", e);
             })
             .ok()?;
 
@@ -1322,8 +1336,8 @@ impl xst::Config for Runtime {
 impl pallet_im_online::Config for Runtime {
     type AuthorityId = ImOnlineId;
     type Event = Event;
-    type SessionDuration = SessionDuration;
     type ValidatorSet = Historical;
+    type NextSessionRotation = (); //SessionDuration;
     type ReportUnresponsiveness = Offences;
     type UnsignedPriority = ImOnlineUnsignedPriority;
     type WeightInfo = ();
@@ -1333,7 +1347,6 @@ impl pallet_offences::Config for Runtime {
     type Event = Event;
     type IdentificationTuple = pallet_session::historical::IdentificationTuple<Self>;
     type OnOffenceHandler = Staking;
-    type WeightSoftLimit = OffencesWeightSoftLimit;
 }
 
 impl vested_rewards::Config for Runtime {
@@ -1347,6 +1360,56 @@ impl price_tools::Config for Runtime {
     type Event = Event;
     type LiquidityProxy = LiquidityProxy;
     type WeightInfo = price_tools::weights::WeightInfo<Runtime>;
+}
+
+impl pallet_randomness_collective_flip::Config for Runtime {}
+
+impl pallet_beefy::Config for Runtime {
+    type BeefyId = BeefyId;
+}
+
+impl pallet_mmr::Config for Runtime {
+    const INDEXING_PREFIX: &'static [u8] = b"mmr";
+    type Hashing = Keccak256;
+    type Hash = <Keccak256 as sp_runtime::traits::Hash>::Output;
+    type OnNewRoot = pallet_beefy_mmr::DepositBeefyDigest<Runtime>;
+    type WeightInfo = ();
+    type LeafData = pallet_beefy_mmr::Pallet<Runtime>;
+}
+
+pub struct ParasProvider;
+impl pallet_beefy_mmr::ParachainHeadsProvider for ParasProvider {
+    fn parachain_heads() -> Vec<(u32, Vec<u8>)> {
+        // FIXME:
+        // Paras::parachains()
+        //     .into_iter()
+        //     .filter_map(|id| Paras::para_head(&id).map(|head| (id.into(), head.0)))
+        //     .collect()
+        Vec::new()
+    }
+}
+
+parameter_types! {
+    /// Version of the produced MMR leaf.
+    ///
+    /// The version consists of two parts;
+    /// - `major` (3 bits)
+    /// - `minor` (5 bits)
+    ///
+    /// `major` should be updated only if decoding the previous MMR Leaf format from the payload
+    /// is not possible (i.e. backward incompatible change).
+    /// `minor` should be updated if fields are added to the previous MMR Leaf, which given SCALE
+    /// encoding does not prevent old leafs from being decoded.
+    ///
+    /// Hence we expect `major` to be changed really rarely (think never).
+    /// See [`MmrLeafVersion`] type documentation for more details.
+    pub LeafVersion: MmrLeafVersion = MmrLeafVersion::new(0, 0);
+}
+
+impl pallet_beefy_mmr::Config for Runtime {
+    type LeafVersion = LeafVersion;
+    type BeefyAuthorityToMerkleLeaf = pallet_beefy_mmr::BeefyEcdsaToEthereum;
+    type ParachainHeads = ParasProvider;
 }
 
 /// Payload data to be signed when making signed transaction from off-chain workers,
@@ -1368,60 +1431,65 @@ construct_runtime! {
         NodeBlock = opaque::Block,
         UncheckedExtrinsic = UncheckedExtrinsic
     {
-        System: frame_system::{Module, Call, Storage, Config, Event<T>} = 0,
-        Timestamp: pallet_timestamp::{Module, Call, Storage, Inherent} = 1,
+        System: frame_system::{Pallet, Call, Storage, Config, Event<T>} = 0,
+        Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent} = 1,
         // Balances in native currency - XOR.
-        Balances: pallet_balances::{Module, Call, Storage, Config<T>, Event<T>} = 2,
-        Sudo: pallet_sudo::{Module, Call, Storage, Config<T>, Event<T>} = 3,
-        RandomnessCollectiveFlip: pallet_randomness_collective_flip::{Module, Call, Storage} = 4,
-        TransactionPayment: pallet_transaction_payment::{Module, Storage} = 5,
-        Permissions: permissions::{Module, Call, Storage, Config<T>, Event<T>} = 6,
-        ReferralSystem: referral_system::{Module, Call, Storage} = 7,
-        Rewards: rewards::{Module, Call, Config<T>, Storage, Event<T>} = 8,
-        XorFee: xor_fee::{Module, Call, Storage, Event<T>} = 9,
-        BridgeMultisig: bridge_multisig::{Module, Call, Storage, Config<T>, Event<T>} = 10,
-        Utility: pallet_utility::{Module, Call, Event} = 11,
+        Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>} = 2,
+        Sudo: pallet_sudo::{Pallet, Call, Storage, Config<T>, Event<T>} = 3,
+        RandomnessCollectiveFlip: pallet_randomness_collective_flip::{Pallet, Call, Storage} = 4,
+        TransactionPayment: pallet_transaction_payment::{Pallet, Storage} = 5,
+        Permissions: permissions::{Pallet, Call, Storage, Config<T>, Event<T>} = 6,
+        ReferralSystem: referral_system::{Pallet, Call, Storage} = 7,
+        Rewards: rewards::{Pallet, Call, Config<T>, Storage, Event<T>} = 8,
+        XorFee: xor_fee::{Pallet, Call, Storage, Event<T>} = 9,
+        BridgeMultisig: bridge_multisig::{Pallet, Call, Storage, Config<T>, Event<T>} = 10,
+        Utility: pallet_utility::{Pallet, Call, Event} = 11,
 
         // Consensus and staking.
-        Session: pallet_session::{Module, Call, Storage, Event, Config<T>} = 12,
-        Historical: pallet_session_historical::{Module} = 13,
-        Babe: pallet_babe::{Module, Call, Storage, Config, Inherent, ValidateUnsigned} = 14,
-        Grandpa: pallet_grandpa::{Module, Call, Storage, Config, Event} = 15,
-        Authorship: pallet_authorship::{Module, Call, Storage, Inherent} = 16,
-        Staking: pallet_staking::{Module, Call, Config<T>, Storage, Event<T>} = 17,
+        Session: pallet_session::{Pallet, Call, Storage, Event, Config<T>} = 12,
+        Historical: pallet_session_historical::{Pallet} = 13,
+        Babe: pallet_babe::{Pallet, Call, Storage, Config, Inherent, ValidateUnsigned} = 14,
+        Grandpa: pallet_grandpa::{Pallet, Call, Storage, Config, Event} = 15,
+        Authorship: pallet_authorship::{Pallet, Call, Storage, Inherent} = 16,
+        Staking: pallet_staking::{Pallet, Call, Config<T>, Storage, Event<T>} = 17,
 
         // Non-native tokens - everything apart of XOR.
-        Tokens: tokens::{Module, Storage, Config<T>, Event<T>} = 18,
+        Tokens: tokens::{Pallet, Storage, Config<T>, Event<T>} = 18,
         // Unified interface for XOR and non-native tokens.
-        Currencies: currencies::{Module, Call, Event<T>} = 19,
-        TradingPair: trading_pair::{Module, Call, Storage, Config<T>, Event<T>} = 20,
-        Assets: assets::{Module, Call, Storage, Config<T>, Event<T>} = 21,
-        DEXManager: dex_manager::{Module, Storage, Config<T>} = 22,
-        MulticollateralBondingCurvePool: multicollateral_bonding_curve_pool::{Module, Call, Storage, Config<T>, Event<T>} = 23,
-        Technical: technical::{Module, Call, Config<T>, Event<T>} = 24,
-        PoolXYK: pool_xyk::{Module, Call, Storage, Event<T>} = 25,
-        LiquidityProxy: liquidity_proxy::{Module, Call, Event<T>} = 26,
-        Council: pallet_collective::<Instance1>::{Module, Call, Storage, Origin<T>, Event<T>, Config<T>} = 27,
-        TechnicalCommittee: pallet_collective::<Instance2>::{Module, Call, Storage, Origin<T>, Event<T>, Config<T>} = 28,
-        Democracy: pallet_democracy::{Module, Call, Storage, Config, Event<T>} = 29,
-        DEXAPI: dex_api::{Module, Call, Storage, Config, Event<T>} = 30,
-        EthBridge: eth_bridge::{Module, Call, Storage, Config<T>, Event<T>} = 31,
-        PswapDistribution: pswap_distribution::{Module, Call, Storage, Config<T>, Event<T>} = 32,
-        Multisig: pallet_multisig::{Module, Call, Storage, Event<T>} = 33,
-        Scheduler: pallet_scheduler::{Module, Call, Storage, Event<T>} = 34,
-        IrohaMigration: iroha_migration::{Module, Call, Storage, Config<T>, Event<T>} = 35,
-        ImOnline: pallet_im_online::{Module, Call, Storage, Event<T>, ValidateUnsigned, Config<T>} = 36,
-        Offences: pallet_offences::{Module, Call, Storage, Event} = 37,
-        TechnicalMembership: pallet_membership::<Instance1>::{Module, Call, Storage, Event<T>, Config<T>} = 38,
-        ElectionsPhragmen: pallet_elections_phragmen::{Module, Call, Storage, Event<T>, Config<T>} = 39,
-        VestedRewards: vested_rewards::{Module, Call, Storage, Event<T>} = 40,
-        Identity: pallet_identity::{Module, Call, Storage, Event<T>} = 41,
-        Farming: farming::{Module, Call, Storage} = 42,
-        XSTPool: xst::{Module, Call, Storage, Config<T>, Event<T>} = 43,
-        PriceTools: price_tools::{Module, Storage, Event<T>} = 44,
+        Currencies: currencies::{Pallet, Call, Event<T>} = 19,
+        TradingPair: trading_pair::{Pallet, Call, Storage, Config<T>, Event<T>} = 20,
+        Assets: assets::{Pallet, Call, Storage, Config<T>, Event<T>} = 21,
+        DEXManager: dex_manager::{Pallet, Storage, Config<T>} = 22,
+        MulticollateralBondingCurvePool: multicollateral_bonding_curve_pool::{Pallet, Call, Storage, Config<T>, Event<T>} = 23,
+        Technical: technical::{Pallet, Call, Config<T>, Event<T>} = 24,
+        PoolXYK: pool_xyk::{Pallet, Call, Storage, Event<T>} = 25,
+        LiquidityProxy: liquidity_proxy::{Pallet, Call, Event<T>} = 26,
+        Council: pallet_collective::<Instance1>::{Pallet, Call, Storage, Origin<T>, Event<T>, Config<T>} = 27,
+        TechnicalCommittee: pallet_collective::<Instance2>::{Pallet, Call, Storage, Origin<T>, Event<T>, Config<T>} = 28,
+        Democracy: pallet_democracy::{Pallet, Call, Storage, Config<T>, Event<T>} = 29,
+        DEXAPI: dex_api::{Pallet, Call, Storage, Config, Event<T>} = 30,
+        EthBridge: eth_bridge::{Pallet, Call, Storage, Config<T>, Event<T>} = 31,
+        PswapDistribution: pswap_distribution::{Pallet, Call, Storage, Config<T>, Event<T>} = 32,
+        Multisig: pallet_multisig::{Pallet, Call, Storage, Event<T>} = 33,
+        Scheduler: pallet_scheduler::{Pallet, Call, Storage, Event<T>} = 34,
+        IrohaMigration: iroha_migration::{Pallet, Call, Storage, Config<T>, Event<T>} = 35,
+        ImOnline: pallet_im_online::{Pallet, Call, Storage, Event<T>, ValidateUnsigned, Config<T>} = 36,
+        Offences: pallet_offences::{Pallet, Storage, Event} = 37,
+        TechnicalMembership: pallet_membership::<Instance1>::{Pallet, Call, Storage, Event<T>, Config<T>} = 38,
+        ElectionsPhragmen: pallet_elections_phragmen::{Pallet, Call, Storage, Event<T>, Config<T>} = 39,
+        VestedRewards: vested_rewards::{Pallet, Call, Storage, Event<T>} = 40,
+        Identity: pallet_identity::{Pallet, Call, Storage, Event<T>} = 41,
+        Farming: farming::{Pallet, Call, Storage} = 42,
+        XSTPool: xst::{Pallet, Call, Storage, Config<T>, Event<T>} = 43,
+        PriceTools: price_tools::{Pallet, Storage, Event<T>} = 44,
 
         // Available only for test net
-        Faucet: faucet::{Module, Call, Config<T>, Event<T>} = 80,
+        Faucet: faucet::{Pallet, Call, Config<T>, Event<T>} = 80,
+
+        // Bridge support.
+        Mmr: pallet_mmr::{Pallet, Storage} = 81,
+        Beefy: pallet_beefy::{Pallet, Config<T>, Storage} = 82,
+        MmrLeaf: pallet_beefy_mmr::{Pallet, Storage} = 83,
     }
 }
 
@@ -1432,56 +1500,61 @@ construct_runtime! {
         NodeBlock = opaque::Block,
         UncheckedExtrinsic = UncheckedExtrinsic
     {
-        System: frame_system::{Module, Call, Storage, Config, Event<T>} = 0,
-        Timestamp: pallet_timestamp::{Module, Call, Storage, Inherent} = 1,
+        System: frame_system::{Pallet, Call, Storage, Config, Event<T>} = 0,
+        Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent} = 1,
         // Balances in native currency - XOR.
-        Balances: pallet_balances::{Module, Call, Storage, Config<T>, Event<T>} = 2,
-        RandomnessCollectiveFlip: pallet_randomness_collective_flip::{Module, Call, Storage} = 4,
-        TransactionPayment: pallet_transaction_payment::{Module, Storage} = 5,
-        Permissions: permissions::{Module, Call, Storage, Config<T>, Event<T>} = 6,
-        ReferralSystem: referral_system::{Module, Call, Storage} = 7,
-        Rewards: rewards::{Module, Call, Config<T>, Storage, Event<T>} = 8,
-        XorFee: xor_fee::{Module, Call, Storage, Event<T>} = 9,
-        BridgeMultisig: bridge_multisig::{Module, Call, Storage, Config<T>, Event<T>} = 10,
-        Utility: pallet_utility::{Module, Call, Event} = 11,
+        Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>} = 2,
+        RandomnessCollectiveFlip: pallet_randomness_collective_flip::{Pallet, Storage} = 4,
+        TransactionPayment: pallet_transaction_payment::{Pallet, Storage} = 5,
+        Permissions: permissions::{Pallet, Call, Storage, Config<T>, Event<T>} = 6,
+        ReferralSystem: referral_system::{Pallet, Call, Storage} = 7,
+        Rewards: rewards::{Pallet, Call, Config<T>, Storage, Event<T>} = 8,
+        XorFee: xor_fee::{Pallet, Call, Storage, Event<T>} = 9,
+        BridgeMultisig: bridge_multisig::{Pallet, Call, Storage, Config<T>, Event<T>} = 10,
+        Utility: pallet_utility::{Pallet, Call, Event} = 11,
 
         // Consensus and staking.
-        Session: pallet_session::{Module, Call, Storage, Event, Config<T>} = 12,
-        Historical: pallet_session_historical::{Module} = 13,
-        Babe: pallet_babe::{Module, Call, Storage, Config, Inherent, ValidateUnsigned} = 14,
-        Grandpa: pallet_grandpa::{Module, Call, Storage, Config, Event} = 15,
-        Authorship: pallet_authorship::{Module, Call, Storage, Inherent} = 16,
-        Staking: pallet_staking::{Module, Call, Config<T>, Storage, Event<T>} = 17,
+        Session: pallet_session::{Pallet, Call, Storage, Event, Config<T>} = 12,
+        Historical: pallet_session_historical::{Pallet} = 13,
+        Babe: pallet_babe::{Pallet, Call, Storage, Config, ValidateUnsigned} = 14,
+        Grandpa: pallet_grandpa::{Pallet, Call, Storage, Config, Event} = 15,
+        Authorship: pallet_authorship::{Pallet, Call, Storage, Inherent} = 16,
+        Staking: pallet_staking::{Pallet, Call, Config<T>, Storage, Event<T>} = 17,
 
         // Non-native tokens - everything apart of XOR.
-        Tokens: tokens::{Module, Storage, Config<T>, Event<T>} = 18,
+        Tokens: tokens::{Pallet, Storage, Config<T>, Event<T>} = 18,
         // Unified interface for XOR and non-native tokens.
-        Currencies: currencies::{Module, Call, Event<T>} = 19,
-        TradingPair: trading_pair::{Module, Call, Storage, Config<T>, Event<T>} = 20,
-        Assets: assets::{Module, Call, Storage, Config<T>, Event<T>} = 21,
-        DEXManager: dex_manager::{Module, Storage, Config<T>} = 22,
-        MulticollateralBondingCurvePool: multicollateral_bonding_curve_pool::{Module, Call, Storage, Config<T>, Event<T>} = 23,
-        Technical: technical::{Module, Call, Config<T>, Event<T>} = 24,
-        PoolXYK: pool_xyk::{Module, Call, Storage, Event<T>} = 25,
-        LiquidityProxy: liquidity_proxy::{Module, Call, Event<T>} = 26,
-        Council: pallet_collective::<Instance1>::{Module, Call, Storage, Origin<T>, Event<T>, Config<T>} = 27,
-        TechnicalCommittee: pallet_collective::<Instance2>::{Module, Call, Storage, Origin<T>, Event<T>, Config<T>} = 28,
-        Democracy: pallet_democracy::{Module, Call, Storage, Config, Event<T>} = 29,
-        DEXAPI: dex_api::{Module, Call, Storage, Config, Event<T>} = 30,
-        EthBridge: eth_bridge::{Module, Call, Storage, Config<T>, Event<T>} = 31,
-        PswapDistribution: pswap_distribution::{Module, Call, Storage, Config<T>, Event<T>} = 32,
-        Multisig: pallet_multisig::{Module, Call, Storage, Event<T>} = 33,
-        Scheduler: pallet_scheduler::{Module, Call, Storage, Event<T>} = 34,
-        IrohaMigration: iroha_migration::{Module, Call, Storage, Config<T>, Event<T>} = 35,
-        ImOnline: pallet_im_online::{Module, Call, Storage, Event<T>, ValidateUnsigned, Config<T>} = 36,
-        Offences: pallet_offences::{Module, Call, Storage, Event} = 37,
-        TechnicalMembership: pallet_membership::<Instance1>::{Module, Call, Storage, Event<T>, Config<T>} = 38,
-        ElectionsPhragmen: pallet_elections_phragmen::{Module, Call, Storage, Event<T>, Config<T>} = 39,
-        VestedRewards: vested_rewards::{Module, Call, Storage, Event<T>} = 40,
-        Identity: pallet_identity::{Module, Call, Storage, Event<T>} = 41,
-        Farming: farming::{Module, Call, Storage} = 42,
-        XSTPool: xst::{Module, Call, Storage, Config<T>, Event<T>} = 43,
-        PriceTools: price_tools::{Module, Storage, Event<T>} = 44,
+        Currencies: currencies::{Pallet, Call, Event<T>} = 19,
+        TradingPair: trading_pair::{Pallet, Call, Storage, Config<T>, Event<T>} = 20,
+        Assets: assets::{Pallet, Call, Storage, Config<T>, Event<T>} = 21,
+        DEXManager: dex_manager::{Pallet, Storage, Config<T>} = 22,
+        MulticollateralBondingCurvePool: multicollateral_bonding_curve_pool::{Pallet, Call, Storage, Config<T>, Event<T>} = 23,
+        Technical: technical::{Pallet, Call, Config<T>, Event<T>} = 24,
+        PoolXYK: pool_xyk::{Pallet, Call, Storage, Event<T>} = 25,
+        LiquidityProxy: liquidity_proxy::{Pallet, Call, Event<T>} = 26,
+        Council: pallet_collective::<Instance1>::{Pallet, Call, Storage, Origin<T>, Event<T>, Config<T>} = 27,
+        TechnicalCommittee: pallet_collective::<Instance2>::{Pallet, Call, Storage, Origin<T>, Event<T>, Config<T>} = 28,
+        Democracy: pallet_democracy::{Pallet, Call, Storage, Config<T>, Event<T>} = 29,
+        DEXAPI: dex_api::{Pallet, Call, Storage, Config, Event<T>} = 30,
+        EthBridge: eth_bridge::{Pallet, Call, Storage, Config<T>, Event<T>} = 31,
+        PswapDistribution: pswap_distribution::{Pallet, Call, Storage, Config<T>, Event<T>} = 32,
+        Multisig: pallet_multisig::{Pallet, Call, Storage, Event<T>} = 33,
+        Scheduler: pallet_scheduler::{Pallet, Call, Storage, Event<T>} = 34,
+        IrohaMigration: iroha_migration::{Pallet, Call, Storage, Config<T>, Event<T>} = 35,
+        ImOnline: pallet_im_online::{Pallet, Call, Storage, Event<T>, ValidateUnsigned, Config<T>} = 36,
+        Offences: pallet_offences::{Pallet, Storage, Event} = 37,
+        TechnicalMembership: pallet_membership::<Instance1>::{Pallet, Call, Storage, Event<T>, Config<T>} = 38,
+        ElectionsPhragmen: pallet_elections_phragmen::{Pallet, Call, Storage, Event<T>, Config<T>} = 39,
+        VestedRewards: vested_rewards::{Pallet, Call, Storage, Event<T>} = 40,
+        Identity: pallet_identity::{Pallet, Call, Storage, Event<T>} = 41,
+        Farming: farming::{Pallet, Call, Storage} = 42,
+        XSTPool: xst::{Pallet, Call, Storage, Config<T>, Event<T>} = 43,
+        PriceTools: price_tools::{Pallet, Storage, Event<T>} = 44,
+
+        // Bridge support.
+        Mmr: pallet_mmr::{Pallet, Storage} = 45,
+        Beefy: pallet_beefy::{Pallet, Config<T>, Storage} = 46,
+        MmrLeaf: pallet_beefy_mmr::{Pallet, Storage} = 47,
     }
 }
 
@@ -1573,9 +1646,9 @@ impl_runtime_apis! {
             data.check_extrinsics(&block)
         }
 
-        fn random_seed() -> <Block as BlockT>::Hash {
-            RandomnessCollectiveFlip::random_seed()
-        }
+        // fn random_seed() -> <Block as BlockT>::Hash {
+        //     RandomnessCollectiveFlip::random_seed()
+        // }
     }
 
     impl sp_transaction_pool::runtime_api::TaggedTransactionQueue<Block> for Runtime {
@@ -1984,9 +2057,52 @@ impl_runtime_apis! {
         }
     }
 
+    impl beefy_primitives::BeefyApi<Block> for Runtime {
+        fn validator_set() -> beefy_primitives::ValidatorSet<BeefyId> {
+            Beefy::validator_set()
+        }
+    }
+
+    impl pallet_mmr_primitives::MmrApi<Block, Hash> for Runtime {
+        fn generate_proof(leaf_index: u64)
+            -> Result<(mmr::EncodableOpaqueLeaf, mmr::Proof<Hash>), mmr::Error>
+        {
+            Mmr::generate_proof(leaf_index)
+                .map(|(leaf, proof)| (mmr::EncodableOpaqueLeaf::from_leaf(&leaf), proof))
+        }
+
+        fn verify_proof(leaf: mmr::EncodableOpaqueLeaf, proof: mmr::Proof<Hash>)
+            -> Result<(), mmr::Error>
+        {
+            pub type Leaf = <
+                <Runtime as pallet_mmr::Config>::LeafData as mmr::LeafDataProvider
+            >::LeafData;
+
+            let leaf: Leaf = leaf
+                .into_opaque_leaf()
+                .try_decode()
+                .ok_or(mmr::Error::Verify)?;
+            Mmr::verify_leaf(leaf, proof)
+        }
+
+        fn verify_proof_stateless(
+            root: Hash,
+            leaf: mmr::EncodableOpaqueLeaf,
+            proof: mmr::Proof<Hash>
+        ) -> Result<(), mmr::Error> {
+            type MmrHashing = <Runtime as pallet_mmr::Config>::Hashing;
+            let node = mmr::DataOrHash::Data(leaf.into_opaque_leaf());
+            pallet_mmr::verify_leaf_proof::<MmrHashing, _>(root, node, proof)
+        }
+    }
+
     impl fg_primitives::GrandpaApi<Block> for Runtime {
         fn grandpa_authorities() -> GrandpaAuthorityList {
             Grandpa::grandpa_authorities()
+        }
+
+        fn current_set_id() -> fg_primitives::SetId {
+            Grandpa::current_set_id()
         }
 
         fn submit_report_equivocation_unsigned_extrinsic(

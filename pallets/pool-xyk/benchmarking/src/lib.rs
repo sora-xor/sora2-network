@@ -132,7 +132,7 @@ fn setup_benchmark<T: Config>() -> Result<(), &'static str> {
 
     Ok(())
 }
-
+/*
 benchmarks! {
     swap_pair {
         setup_benchmark::<T>()?;
@@ -278,3 +278,4 @@ mod tests {
         });
     }
 }
+*/

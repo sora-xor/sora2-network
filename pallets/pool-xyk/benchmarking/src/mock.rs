@@ -81,18 +81,18 @@ construct_runtime! {
         NodeBlock = Block,
         UncheckedExtrinsic = UncheckedExtrinsic,
     {
-        System: frame_system::{Module, Call, Config, Storage, Event<T>},
-        Tokens: tokens::{Module, Call, Config<T>, Storage, Event<T>},
-        Currencies: currencies::{Module, Call, Storage, Event<T>},
-        Assets: assets::{Module, Call, Config<T>, Storage, Event<T>},
-        Balances: pallet_balances::{Module, Call, Storage, Event<T>},
-        DexManager: dex_manager::{Module, Call, Config<T>, Storage},
-        TradingPair: trading_pair::{Module, Call, Config<T>, Storage, Event<T>},
-        Permissions: permissions::{Module, Call, Config<T>, Storage, Event<T>},
-        DexApi: dex_api::{Module, Call, Config, Storage, Event<T>},
-        Technical: technical::{Module, Call, Config<T>, Storage, Event<T>},
-        PoolXYK: pool_xyk::{Module, Call, Storage, Event<T>},
-        PswapDistribution: pswap_distribution::{Module, Call, Config<T>, Storage, Event<T>},
+        System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
+        Tokens: tokens::{Pallet, Call, Config<T>, Storage, Event<T>},
+        Currencies: currencies::{Pallet, Call, Storage, Event<T>},
+        Assets: assets::{Pallet, Call, Config<T>, Storage, Event<T>},
+        Balances: pallet_balances::{Pallet, Call, Storage, Event<T>},
+        DexManager: dex_manager::{Pallet, Call, Config<T>, Storage},
+        TradingPair: trading_pair::{Pallet, Call, Config<T>, Storage, Event<T>},
+        Permissions: permissions::{Pallet, Call, Config<T>, Storage, Event<T>},
+        DexApi: dex_api::{Pallet, Call, Config, Storage, Event<T>},
+        Technical: technical::{Pallet, Call, Config<T>, Storage, Event<T>},
+        PoolXYK: pool_xyk::{Pallet, Call, Storage, Event<T>},
+        PswapDistribution: pswap_distribution::{Pallet, Call, Config<T>, Storage, Event<T>},
     }
 }
 
@@ -119,6 +119,7 @@ impl frame_system::Config for Runtime {
     type SystemWeightInfo = ();
     type PalletInfo = PalletInfo;
     type SS58Prefix = ();
+    type OnSetCode = ();
 }
 
 impl tokens::Config for Runtime {
@@ -129,6 +130,8 @@ impl tokens::Config for Runtime {
     type WeightInfo = ();
     type ExistentialDeposits = ExistentialDeposits;
     type OnDust = ();
+    type MaxLocks = ();
+    type DustRemovalWhitelist = ();
 }
 
 impl currencies::Config for Runtime {
@@ -164,6 +167,8 @@ impl pallet_balances::Config for Runtime {
     type AccountStore = System;
     type WeightInfo = ();
     type MaxLocks = ();
+    type MaxReserves = ();
+    type ReserveIdentifier = ();
 }
 
 impl dex_manager::Config for Runtime {}

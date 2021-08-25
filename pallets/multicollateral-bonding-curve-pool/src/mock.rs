@@ -125,20 +125,20 @@ construct_runtime! {
         NodeBlock = Block,
         UncheckedExtrinsic = UncheckedExtrinsic,
     {
-        System: frame_system::{Module, Call, Config, Storage, Event<T>},
-        DexManager: dex_manager::{Module, Call, Storage},
-        TradingPair: trading_pair::{Module, Call, Storage, Event<T>},
-        MockLiquiditySource: mock_liquidity_source::<Instance1>::{Module, Call, Config<T>, Storage},
-        // VestedRewards: vested_rewards::{Module, Call, Storage, Event<T>},
-        Mcbcp: multicollateral_bonding_curve_pool::{Module, Call, Storage, Event<T>},
-        Tokens: tokens::{Module, Call, Config<T>, Storage, Event<T>},
-        Currencies: currencies::{Module, Call, Storage, Event<T>},
-        Assets: assets::{Module, Call, Config<T>, Storage, Event<T>},
-        Permissions: permissions::{Module, Call, Config<T>, Storage, Event<T>},
-        Technical: technical::{Module, Call, Storage, Event<T>},
-        Balances: pallet_balances::{Module, Call, Storage, Event<T>},
-        PoolXYK: pool_xyk::{Module, Call, Storage, Event<T>},
-        PswapDistribution: pswap_distribution::{Module, Call, Storage, Event<T>},
+        System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
+        DexManager: dex_manager::{Pallet, Call, Storage},
+        TradingPair: trading_pair::{Pallet, Call, Storage, Event<T>},
+        MockLiquiditySource: mock_liquidity_source::<Instance1>::{Pallet, Call, Config<T>, Storage},
+        // VestedRewards: vested_rewards::{Pallet, Call, Storage, Event<T>},
+        Mcbcp: multicollateral_bonding_curve_pool::{Pallet, Call, Storage, Event<T>},
+        Tokens: tokens::{Pallet, Call, Config<T>, Storage, Event<T>},
+        Currencies: currencies::{Pallet, Call, Storage, Event<T>},
+        Assets: assets::{Pallet, Call, Config<T>, Storage, Event<T>},
+        Permissions: permissions::{Pallet, Call, Config<T>, Storage, Event<T>},
+        Technical: technical::{Pallet, Call, Storage, Event<T>},
+        Balances: pallet_balances::{Pallet, Call, Storage, Event<T>},
+        PoolXYK: pool_xyk::{Pallet, Call, Storage, Event<T>},
+        PswapDistribution: pswap_distribution::{Pallet, Call, Storage, Event<T>},
     }
 }
 
@@ -165,6 +165,7 @@ impl frame_system::Config for Runtime {
     type SystemWeightInfo = ();
     type PalletInfo = PalletInfo;
     type SS58Prefix = ();
+    type OnSetCode = ();
 }
 
 impl dex_manager::Config for Runtime {}
@@ -227,6 +228,8 @@ impl tokens::Config for Runtime {
     type WeightInfo = ();
     type ExistentialDeposits = ExistentialDeposits;
     type OnDust = ();
+    type MaxLocks = ();
+    type DustRemovalWhitelist = ();
 }
 
 impl currencies::Config for Runtime {
@@ -275,6 +278,8 @@ impl pallet_balances::Config for Runtime {
     type AccountStore = System;
     type WeightInfo = ();
     type MaxLocks = ();
+    type MaxReserves = ();
+    type ReserveIdentifier = ();
 }
 
 impl pswap_distribution::Config for Runtime {
@@ -704,7 +709,7 @@ impl ExtBuilder {
         .unwrap();
 
         tokens::GenesisConfig::<Runtime> {
-            endowed_accounts: self
+            balances: self
                 .endowed_accounts
                 .into_iter()
                 .map(|(account_id, asset_id, balance, ..)| (account_id, asset_id, balance))

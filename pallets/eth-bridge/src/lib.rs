@@ -78,10 +78,13 @@ use common::prelude::Balance;
 use common::{AssetName, AssetSymbol, BalancePrecision, DEFAULT_BALANCE_PRECISION};
 use core::{line, stringify};
 use frame_support::dispatch::{DispatchError, DispatchResult};
+use frame_support::log::{debug, error, info, trace, warn};
 use frame_support::sp_runtime::app_crypto::{ecdsa, sp_core};
 use frame_support::sp_runtime::offchain::storage::StorageValueRef;
-use frame_support::sp_runtime::offchain::storage_lock::{BlockNumberProvider, StorageLock, Time};
-use frame_support::sp_runtime::traits::{AtLeast32Bit, MaybeSerializeDeserialize, Member, One};
+use frame_support::sp_runtime::offchain::storage_lock::{StorageLock, Time};
+use frame_support::sp_runtime::traits::{
+    AtLeast32Bit, BlockNumberProvider, MaybeSerializeDeserialize, Member, One,
+};
 use frame_support::sp_runtime::KeyTypeId;
 use frame_support::traits::Get;
 use frame_support::weights::Weight;
@@ -327,10 +330,12 @@ pub mod pallet {
     use crate::util::get_bridge_account;
     use codec::Codec;
     use common::weights::{err_pays_no, pays_no, pays_no_with_maybe_weight};
+    use frame_support::log::{debug, error, info, trace, warn};
     use frame_support::pallet_prelude::*;
+    use frame_support::sp_runtime::runtime_logger::RuntimeLogger;
     use frame_support::sp_runtime::traits::Zero;
     use frame_support::traits::schedule::{Anon, DispatchTime};
-    use frame_support::traits::{GetCallMetadata, PalletVersion};
+    use frame_support::traits::GetCallMetadata;
     use frame_system::pallet_prelude::*;
     use frame_system::RawOrigin;
 
@@ -390,24 +395,27 @@ pub mod pallet {
         T: CreateSignedTransaction<<T as Config>::Call>,
     {
         fn on_runtime_upgrade() -> Weight {
-            match Pallet::<T>::storage_version() {
-                Some(version) if version == PalletVersion::new(0, 1, 0) => {
-                    migrations::migrate_to_0_2_0::<T>()
-                }
-                _ => Weight::zero(),
-            }
+            // match Pallet::<T>::storage_version() {
+            //     Some(version) if version == PalletVersion::new(0, 1, 0) => {
+            //         migrations::migrate_to_0_2_0::<T>()
+            //     }
+            //     _ => Weight::zero(),
+            // }
+            Weight::zero()
         }
 
         /// Main off-chain worker procedure.
         ///
         /// Note: only one worker is expected to be used.
         fn offchain_worker(block_number: T::BlockNumber) {
-            debug::debug!("Entering off-chain workers {:?}", block_number);
+            debug!("Entering off-chain workers {:?}", block_number);
             if StorageValueRef::persistent(STORAGE_PEER_SECRET_KEY)
                 .get::<Vec<u8>>()
+                .ok()
+                .flatten()
                 .is_none()
             {
-                debug::debug!("Peer secret key not found. Skipping off-chain procedure.");
+                debug!("Peer secret key not found. Skipping off-chain procedure.");
                 return;
             }
 
@@ -458,7 +466,7 @@ pub mod pallet {
             asset_id: AssetIdOf<T>,
             network_id: BridgeNetworkId<T>,
         ) -> DispatchResultWithPostInfo {
-            debug::debug!("called add_asset");
+            debug!("called add_asset");
             let from = ensure_signed(origin)?;
             let nonce = frame_system::Module::<T>::account_nonce(&from);
             let timepoint = bridge_multisig::Module::<T>::thischain_timepoint();
@@ -493,7 +501,7 @@ pub mod pallet {
             decimals: u8,
             network_id: BridgeNetworkId<T>,
         ) -> DispatchResultWithPostInfo {
-            debug::debug!("called add_sidechain_token");
+            debug!("called add_sidechain_token");
             ensure_root(origin)?;
             let from = Self::authority_account();
             let nonce = frame_system::Module::<T>::account_nonce(&from);
@@ -537,7 +545,7 @@ pub mod pallet {
             amount: Balance,
             network_id: BridgeNetworkId<T>,
         ) -> DispatchResultWithPostInfo {
-            debug::debug!("called transfer_to_sidechain");
+            debug!("called transfer_to_sidechain");
             let from = ensure_signed(origin)?;
             let nonce = frame_system::Module::<T>::account_nonce(&from);
             let timepoint = bridge_multisig::Module::<T>::thischain_timepoint();
@@ -570,7 +578,7 @@ pub mod pallet {
             kind: IncomingRequestKind,
             network_id: BridgeNetworkId<T>,
         ) -> DispatchResultWithPostInfo {
-            debug::debug!("called request_from_sidechain");
+            debug!("called request_from_sidechain");
             let from = ensure_signed(origin)?;
             let timepoint = bridge_multisig::Module::<T>::thischain_timepoint();
             match kind {
@@ -618,7 +626,7 @@ pub mod pallet {
             hash: H256,
             network_id: BridgeNetworkId<T>,
         ) -> DispatchResultWithPostInfo {
-            debug::debug!("called finalize_incoming_request");
+            debug!("called finalize_incoming_request");
             let _ = Self::ensure_bridge_account(origin, network_id)?;
             let request = Requests::<T>::get(network_id, &hash)
                 .ok_or_else(|| err_pays_no(Error::<T>::UnknownRequest))?;
@@ -644,7 +652,7 @@ pub mod pallet {
             address: EthereumAddress,
             network_id: BridgeNetworkId<T>,
         ) -> DispatchResultWithPostInfo {
-            debug::debug!("called change_peers_out");
+            debug!("called change_peers_out");
             ensure_root(origin)?;
             let from = Self::authority_account();
             let nonce = frame_system::Module::<T>::account_nonce(&from);
@@ -689,7 +697,7 @@ pub mod pallet {
             account_id: T::AccountId,
             network_id: BridgeNetworkId<T>,
         ) -> DispatchResultWithPostInfo {
-            debug::debug!("called change_peers_out");
+            debug!("called change_peers_out");
             ensure_root(origin)?;
             let from = Self::authority_account();
             let peer_address = Self::peer_address(network_id, &account_id);
@@ -735,7 +743,7 @@ pub mod pallet {
             origin: OriginFor<T>,
             network_id: BridgeNetworkId<T>,
         ) -> DispatchResultWithPostInfo {
-            debug::debug!("called prepare_for_migration");
+            debug!("called prepare_for_migration");
             ensure_root(origin)?;
             let from = Self::authority_account();
             let nonce = frame_system::Module::<T>::account_nonce(&from);
@@ -768,7 +776,7 @@ pub mod pallet {
             erc20_native_tokens: Vec<EthereumAddress>,
             network_id: BridgeNetworkId<T>,
         ) -> DispatchResultWithPostInfo {
-            debug::debug!("called prepare_for_migration");
+            debug!("called prepare_for_migration");
             ensure_root(origin)?;
             let from = Self::authority_account();
             let nonce = frame_system::Module::<T>::account_nonce(&from);
@@ -798,7 +806,7 @@ pub mod pallet {
             origin: OriginFor<T>,
             incoming_request: IncomingRequest<T>,
         ) -> DispatchResultWithPostInfo {
-            debug::debug!("called register_incoming_request");
+            debug!("called register_incoming_request");
             let net_id = incoming_request.network_id();
             let _ = Self::ensure_bridge_account(origin, net_id)?;
             pays_no(Self::register_incoming_request_inner(
@@ -819,7 +827,7 @@ pub mod pallet {
             load_incoming_request: LoadIncomingRequest<T>,
             incoming_request_result: Result<IncomingRequest<T>, DispatchError>,
         ) -> DispatchResultWithPostInfo {
-            debug::debug!("called import_incoming_request");
+            debug!("called import_incoming_request");
             let net_id = load_incoming_request.network_id();
             let _ = Self::ensure_bridge_account(origin, net_id)?;
             pays_no(Self::inner_import_incoming_request(
@@ -841,7 +849,7 @@ pub mod pallet {
             signature_params: SignatureParams,
             network_id: BridgeNetworkId<T>,
         ) -> DispatchResultWithPostInfo {
-            debug::debug!("called approve_request");
+            debug!("called approve_request");
             let author = ensure_signed(origin)?;
             let net_id = network_id;
             Self::ensure_peer(&author, net_id)?;
@@ -867,10 +875,9 @@ pub mod pallet {
             error: DispatchError,
             network_id: BridgeNetworkId<T>,
         ) -> DispatchResultWithPostInfo {
-            debug::debug!(
+            debug!(
                 "called abort_request. Hash: {:?}, reason: {:?}",
-                hash,
-                error
+                hash, error
             );
             let _ = Self::ensure_bridge_account(origin, network_id)?;
             let request = Requests::<T>::get(network_id, hash)
@@ -906,34 +913,35 @@ pub mod pallet {
         #[pallet::weight(0)]
         pub fn migrate_to_0_2_0(origin: OriginFor<T>) -> DispatchResultWithPostInfo {
             ensure_root(origin)?;
-            let weight = match Pallet::<T>::storage_version() {
-                Some(version) if version == PalletVersion::new(0, 1, 0) => {
-                    let bridge_multisig = crate::BridgeAccount::<T>::get(T::GetEthNetworkId::get())
-                        .unwrap_or_default();
-                    let mut migrating_requests = MigratingRequests::<T>::get();
-                    migrating_requests.retain(|hash| {
-                        bridge_multisig::Multisigs::<T>::contains_key(&bridge_multisig, &hash.0)
-                    });
-                    // Wait for all the previous requests to finish and then finish the migration
-                    if migrating_requests.is_empty() {
-                        migrations::remove_peers::<T>(&T::RemovePeerAccountIds::get());
-                    } else {
-                        // ...or postpone the migration.
-                        let block_number = frame_system::Pallet::<T>::current_block_number();
-                        let _ = T::Scheduler::schedule(
-                            DispatchTime::At(block_number + 100u32.into()),
-                            None,
-                            1,
-                            RawOrigin::Root.into(),
-                            Call::migrate_to_0_2_0().into(),
-                        );
-                    }
-                    MigratingRequests::<T>::set(migrating_requests);
-                    <T as frame_system::Config>::DbWeight::get().reads_writes(2, 1)
-                }
-                _ => Weight::zero(),
-            };
-            Ok(Some(weight).into())
+            // let weight = match Pallet::<T>::storage_version() {
+            //     Some(version) if version == PalletVersion::new(0, 1, 0) => {
+            //         let bridge_multisig = crate::BridgeAccount::<T>::get(T::GetEthNetworkId::get())
+            //             .unwrap_or_default();
+            //         let mut migrating_requests = MigratingRequests::<T>::get();
+            //         migrating_requests.retain(|hash| {
+            //             bridge_multisig::Multisigs::<T>::contains_key(&bridge_multisig, &hash.0)
+            //         });
+            //         // Wait for all the previous requests to finish and then finish the migration
+            //         if migrating_requests.is_empty() {
+            //             migrations::remove_peers::<T>(&T::RemovePeerAccountIds::get());
+            //         } else {
+            //             // ...or postpone the migration.
+            //             let block_number = frame_system::Pallet::<T>::current_block_number();
+            //             let _ = T::Scheduler::schedule(
+            //                 DispatchTime::At(block_number + 100u32.into()),
+            //                 None,
+            //                 1,
+            //                 RawOrigin::Root.into(),
+            //                 Call::migrate_to_0_2_0().into(),
+            //             );
+            //         }
+            //         MigratingRequests::<T>::set(migrating_requests);
+            //         <T as frame_system::Config>::DbWeight::get().reads_writes(2, 1)
+            //     }
+            //     _ => Weight::zero(),
+            // };
+            // Ok(Some(weight).into())
+            Ok(Some(0).into())
         }
     }
 
@@ -1484,7 +1492,7 @@ impl<T: Config> Pallet<T> {
                 incoming_request_hash,
                 RequestStatus::Failed(e),
             );
-            debug::warn!("{:?}", e);
+            warn!("{:?}", e);
             return Err(e.into());
         }
         Requests::<T>::insert(network_id, &incoming_request_hash, incoming_request);
@@ -1511,14 +1519,14 @@ impl<T: Config> Pallet<T> {
         );
         let error_opt = request.finalize().err();
         if let Some(e) = error_opt {
-            debug::error!("Incoming request failed {:?} {:?}", hash, e);
+            error!("Incoming request failed {:?} {:?}", hash, e);
             Self::deposit_event(Event::IncomingRequestFinalizationFailed(hash));
             RequestStatuses::<T>::insert(network_id, hash, RequestStatus::Failed(e));
             cancel!(request, hash, network_id, e);
             Self::remove_request_from_queue(network_id, &hash);
             return Err(e);
         } else {
-            debug::warn!("Incoming request finalized {:?}", hash);
+            warn!("Incoming request finalized {:?}", hash);
             RequestStatuses::<T>::insert(network_id, hash, RequestStatus::Done);
             Self::deposit_event(Event::IncomingRequestFinalized(hash));
         }
@@ -1646,7 +1654,7 @@ impl<T: Config> Pallet<T> {
             // TODO: punish the peer.
             return Err(Error::<T>::InvalidSignature.into());
         }
-        debug::info!("Verified request approve {:?}", request_encoded);
+        info!("Verified request approve {:?}", request_encoded);
         let mut approvals = RequestApprovals::<T>::get(net_id, &hash);
         let pending_peers_len = if PendingPeer::<T>::get(net_id).is_some() {
             1
@@ -1660,12 +1668,12 @@ impl<T: Config> Pallet<T> {
         RequestApprovals::<T>::insert(net_id, &hash, &approvals);
         if current_status == RequestStatus::Pending && approvals.len() == need_sigs {
             if let Err(err) = request.finalize() {
-                debug::error!("Outgoing request finalization failed: {:?}", err);
+                error!("Outgoing request finalization failed: {:?}", err);
                 RequestStatuses::<T>::insert(net_id, hash, RequestStatus::Failed(err));
                 Self::deposit_event(Event::RequestFinalizationFailed(hash));
                 cancel!(request, hash, net_id, err);
             } else {
-                debug::debug!("Outgoing request approvals collected {:?}", hash);
+                debug!("Outgoing request approvals collected {:?}", hash);
                 RequestStatuses::<T>::insert(net_id, hash, RequestStatus::ApprovalsReady);
                 Self::deposit_event(Event::ApprovalsCollected(hash));
             }

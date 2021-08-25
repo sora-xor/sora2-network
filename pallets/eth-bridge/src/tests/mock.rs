@@ -49,11 +49,11 @@ use common::{
 };
 use core::cell::RefCell;
 use currencies::BasicCurrencyAdapter;
-use frame_support::dispatch::{DispatchInfo, GetDispatchInfo};
+use frame_support::dispatch::{DispatchInfo, GetDispatchInfo, UnfilteredDispatchable};
 use frame_support::sp_io::TestExternalities;
 use frame_support::sp_runtime::app_crypto::sp_core;
 use frame_support::sp_runtime::app_crypto::sp_core::crypto::AccountId32;
-use frame_support::sp_runtime::app_crypto::sp_core::offchain::{OffchainExt, TransactionPoolExt};
+use frame_support::sp_runtime::app_crypto::sp_core::offchain::{OffchainDbExt, TransactionPoolExt};
 use frame_support::sp_runtime::app_crypto::sp_core::{ecdsa, sr25519, Pair, Public};
 use frame_support::sp_runtime::offchain::http;
 use frame_support::sp_runtime::offchain::testing::{
@@ -71,7 +71,7 @@ use frame_support::sp_runtime::transaction_validity::{
 use frame_support::sp_runtime::{
     self, ApplyExtrinsicResultWithInfo, MultiSignature, MultiSigner, Perbill,
 };
-use frame_support::traits::{GenesisBuild, Get};
+use frame_support::traits::{Everything, GenesisBuild, Get};
 use frame_support::weights::{Pays, Weight};
 use frame_support::{construct_runtime, parameter_types};
 use frame_system::offchain::{Account, SigningTypes};
@@ -79,7 +79,7 @@ use frame_system::EnsureRoot;
 use hex_literal::hex;
 use parking_lot::RwLock;
 use rustc_hex::ToHex;
-use sp_core::offchain::OffchainStorage;
+use sp_core::offchain::{OffchainStorage, OffchainWorkerExt};
 use sp_core::{H160, H256};
 use sp_keystore::testing::KeyStore;
 use sp_keystore::{KeystoreExt, SyncCryptoStore};
@@ -249,7 +249,7 @@ impl Get<Vec<(AccountId, H160)>> for RemoveTemporaryPeerAccountId {
 }
 
 impl frame_system::Config for Runtime {
-    type BaseCallFilter = ();
+    type BaseCallFilter = Everything;
     type BlockWeights = ();
     type BlockLength = ();
     type Origin = Origin;
@@ -271,6 +271,7 @@ impl frame_system::Config for Runtime {
     type OnKilledAccount = ();
     type SystemWeightInfo = ();
     type SS58Prefix = ();
+    type OnSetCode = ();
 }
 
 impl<T: SigningTypes> frame_system::offchain::SignMessage<T> for Runtime {
@@ -329,6 +330,8 @@ impl pallet_balances::Config for Runtime {
     type AccountStore = System;
     type WeightInfo = ();
     type MaxLocks = ();
+    type MaxReserves = ();
+    type ReserveIdentifier = ();
 }
 
 impl tokens::Config for Runtime {
@@ -339,6 +342,8 @@ impl tokens::Config for Runtime {
     type WeightInfo = ();
     type ExistentialDeposits = ExistentialDeposits;
     type OnDust = ();
+    type MaxLocks = ();
+    type DustRemovalWhitelist = ();
 }
 
 impl currencies::Config for Runtime {
@@ -422,16 +427,16 @@ construct_runtime!(
         NodeBlock = Block,
         UncheckedExtrinsic = UncheckedExtrinsic
     {
-        System: frame_system::{Module, Call, Config, Storage, Event<T>},
-        Balances: pallet_balances::{Module, Call, Storage, Config<T>, Event<T>},
-        Multisig: bridge_multisig::{Module, Call, Storage, Config<T>, Event<T>},
-        Tokens: tokens::{Module, Call, Storage, Config<T>, Event<T>},
-        Currencies: currencies::{Module, Call, Storage,  Event<T>},
-        Assets: assets::{Module, Call, Storage, Config<T>, Event<T>},
-        Permissions: permissions::{Module, Call, Storage, Config<T>, Event<T>},
-        Sudo: pallet_sudo::{Module, Call, Storage, Config<T>, Event<T>},
-        EthBridge: eth_bridge::{Module, Call, Storage, Config<T>, Event<T>},
-        Scheduler: pallet_scheduler::{Module, Call, Storage, Event<T>},
+        System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
+        Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
+        Multisig: bridge_multisig::{Pallet, Call, Storage, Config<T>, Event<T>},
+        Tokens: tokens::{Pallet, Call, Storage, Config<T>, Event<T>},
+        Currencies: currencies::{Pallet, Call, Storage,  Event<T>},
+        Assets: assets::{Pallet, Call, Storage, Config<T>, Event<T>},
+        Permissions: permissions::{Pallet, Call, Storage, Config<T>, Event<T>},
+        Sudo: pallet_sudo::{Pallet, Call, Storage, Config<T>, Event<T>},
+        EthBridge: eth_bridge::{Pallet, Call, Storage, Config<T>, Event<T>},
+        Scheduler: pallet_scheduler::{Pallet, Call, Storage, Event<T>},
     }
 );
 
@@ -579,8 +584,11 @@ impl State {
             let call = e.call;
             // In reality you would do `e.apply`, but this is a test. we assume we don't care
             // about validation etc.
-            if let Err(e) = call.dispatch(Some(who).into()) {
-                eprintln!("{:?}", e);
+            let origin = Some(who).into();
+            // set_caller_from
+            println!("{:?} {:?}", origin, call);
+            if let Err(e) = call.dispatch_bypass_filter(origin) {
+                eprintln!("call dispatch error {:?}", e);
             }
         }
     }
@@ -860,7 +868,7 @@ impl ExtBuilder {
         .unwrap();
 
         TokensConfig {
-            endowed_accounts: endowed_accounts.clone(),
+            balances: endowed_accounts.clone(),
         }
         .assimilate_storage(&mut storage)
         .unwrap();
@@ -886,7 +894,8 @@ impl ExtBuilder {
         .assimilate_storage(&mut storage)
         .unwrap();
         let mut t = TestExternalities::from(storage);
-        t.register_extension(OffchainExt::new(offchain));
+        t.register_extension(OffchainDbExt::new(offchain.clone()));
+        t.register_extension(OffchainWorkerExt::new(offchain));
         t.register_extension(TransactionPoolExt::new(pool));
         t.register_extension(KeystoreExt(Arc::new(key_store)));
         t.execute_with(|| System::set_block_number(1));

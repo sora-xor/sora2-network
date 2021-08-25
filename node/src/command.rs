@@ -102,73 +102,73 @@ pub fn run() -> sc_cli::Result<()> {
         Some(Subcommand::BuildSpec(cmd)) => {
             let runner = cli.create_runner(cmd)?;
             set_default_ss58_version();
-            runner.sync_run(|config| cmd.run(config.chain_spec, config.network))
+            runner.sync_run(|mut config| cmd.run(config.chain_spec, config.network))
         }
         Some(Subcommand::CheckBlock(cmd)) => {
             let runner = cli.create_runner(cmd)?;
             set_default_ss58_version();
-            runner.async_run(|config| {
+            runner.async_run(|mut config| {
                 let PartialComponents {
                     client,
                     task_manager,
                     import_queue,
                     ..
-                } = service::new_partial(&config)?;
+                } = service::new_partial(&mut config, None)?;
                 Ok((cmd.run(client, import_queue), task_manager))
             })
         }
         Some(Subcommand::ExportBlocks(cmd)) => {
             let runner = cli.create_runner(cmd)?;
             set_default_ss58_version();
-            runner.async_run(|config| {
+            runner.async_run(|mut config| {
                 let PartialComponents {
                     client,
                     task_manager,
                     ..
-                } = service::new_partial(&config)?;
+                } = service::new_partial(&mut config, None)?;
                 Ok((cmd.run(client, config.database), task_manager))
             })
         }
         Some(Subcommand::ExportState(cmd)) => {
             let runner = cli.create_runner(cmd)?;
             set_default_ss58_version();
-            runner.async_run(|config| {
+            runner.async_run(|mut config| {
                 let PartialComponents {
                     client,
                     task_manager,
                     ..
-                } = service::new_partial(&config)?;
+                } = service::new_partial(&mut config, None)?;
                 Ok((cmd.run(client, config.chain_spec), task_manager))
             })
         }
         Some(Subcommand::ImportBlocks(cmd)) => {
             let runner = cli.create_runner(cmd)?;
             set_default_ss58_version();
-            runner.async_run(|config| {
+            runner.async_run(|mut config| {
                 let PartialComponents {
                     client,
                     task_manager,
                     import_queue,
                     ..
-                } = service::new_partial(&config)?;
+                } = service::new_partial(&mut config, None)?;
                 Ok((cmd.run(client, import_queue), task_manager))
             })
         }
         Some(Subcommand::PurgeChain(cmd)) => {
             let runner = cli.create_runner(cmd)?;
             set_default_ss58_version();
-            runner.sync_run(|config| cmd.run(config.database))
+            runner.sync_run(|mut config| cmd.run(config.database))
         }
         Some(Subcommand::Revert(cmd)) => {
             let runner = cli.create_runner(cmd)?;
             set_default_ss58_version();
-            runner.async_run(|config| {
+            runner.async_run(|mut config| {
                 let PartialComponents {
                     client,
                     task_manager,
                     backend,
                     ..
-                } = service::new_partial(&config)?;
+                } = service::new_partial(&mut config, None)?;
                 Ok((cmd.run(client, backend), task_manager))
             })
         }
@@ -184,7 +184,8 @@ pub fn run() -> sc_cli::Result<()> {
             runner.run_node_until_exit(|config| async move {
                 match config.role {
                     Role::Light => service::new_light(config),
-                    _ => service::new_full(config),
+                    // TODO: fix args
+                    _ => service::new_full(config, None, false, None, None),
                 }
                 .map_err(sc_cli::Error::Service)
             })
