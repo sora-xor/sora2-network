@@ -620,6 +620,18 @@ impl common::Config for Runtime {
     type LstId = common::LiquiditySourceType;
 }
 
+pub struct GetTotalBalance;
+
+impl assets::GetTotalBalance<Runtime> for GetTotalBalance {
+    fn total_balance(asset_id: &AssetId, who: &AccountId) -> Result<Balance, DispatchError> {
+        if asset_id == &GetXorAssetId::get() {
+            Ok(Referrals::referrer_balance(who).unwrap_or(0))
+        } else {
+            Ok(0)
+        }
+    }
+}
+
 impl assets::Config for Runtime {
     type Event = Event;
     type ExtraAccountId = [u8; 32];
@@ -629,6 +641,7 @@ impl assets::Config for Runtime {
     type GetBaseAssetId = GetBaseAssetId;
     type Currency = currencies::Module<Runtime>;
     type GetTeamReservesAccountId = GetTeamReservesAccountId;
+    type GetTotalBalance = GetTotalBalance;
     type WeightInfo = assets::weights::WeightInfo<Runtime>;
 }
 

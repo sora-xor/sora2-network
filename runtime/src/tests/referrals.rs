@@ -34,7 +34,7 @@ use common::XOR;
 use frame_support::{assert_err, assert_ok};
 use framenode_chain_spec::ext;
 
-use crate::{Currencies, Origin, Referrals, Runtime};
+use crate::{Assets, Currencies, Origin, Referrals, Runtime};
 
 type E = referrals::Error<Runtime>;
 
@@ -68,7 +68,7 @@ fn reserve_insufficient_balance() {
 }
 
 #[test]
-fn reserve() {
+fn reserve_unreserve() {
     ext().execute_with(|| {
         assert_ok!(Currencies::update_balance(
             Origin::root(),
@@ -78,6 +78,15 @@ fn reserve() {
         ));
 
         assert_ok!(Referrals::reserve(Origin::signed(alice()), 3 * SMALL_FEE));
+
+        for _ in 0..3 {
+            assert_ok!(Referrals::unreserve(Origin::signed(alice()), SMALL_FEE));
+        }
+
+        assert_eq!(
+            Assets::free_balance(&XOR.into(), &alice()),
+            Ok(SMALL_FEE * 3)
+        );
     })
 }
 

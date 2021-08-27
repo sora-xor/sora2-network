@@ -167,6 +167,19 @@ pub enum AssetRecord<T: Config> {
     ),
 }
 
+pub trait GetTotalBalance<T: Config> {
+    fn total_balance(asset_id: &T::AssetId, who: &T::AccountId) -> Result<Balance, DispatchError>;
+}
+
+impl<T: Config> GetTotalBalance<T> for () {
+    fn total_balance(
+        _asset_id: &T::AssetId,
+        _who: &T::AccountId,
+    ) -> Result<Balance, DispatchError> {
+        Ok(0)
+    }
+}
+
 pub use pallet::*;
 
 #[frame_support::pallet]
@@ -225,6 +238,9 @@ pub mod pallet {
 
         /// Account dedicated for PSWAP to be distributed among team in future.
         type GetTeamReservesAccountId: Get<Self::AccountId>;
+
+        /// Get the balance from other components
+        type GetTotalBalance: GetTotalBalance<Self>;
 
         /// Weight information for extrinsics in this pallet.
         type WeightInfo: WeightInfo;
@@ -611,7 +627,7 @@ impl<T: Config> Pallet<T> {
         if r == Default::default() {
             Self::ensure_asset_exists(asset_id)?;
         }
-        Ok(r)
+        Ok(r + T::GetTotalBalance::total_balance(asset_id, who)?)
     }
 
     pub fn free_balance(
