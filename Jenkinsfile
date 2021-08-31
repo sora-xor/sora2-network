@@ -53,13 +53,14 @@ pipeline {
                                     featureList = (env.TAG_NAME =~ 'stage.*|test.*') ? featureList : 'include-real-files'
                                 }
                                 sh """#!/bin/bash
-                                    time cargo build --release --features ${featureList}
-                                    time cargo test  --release
+                                    time cargo build --release --features \"${featureList}\" --target-dir /app/target/
+                                    time cargo test  --release --target-dir /app/target/
                                     sccache -s
-                                    time mv ./target/release/framenode housekeeping/framenode
+                                    time mv ./target/release/framenode .
+                                    time mv /app/target/release/wbuild/framenode-runtime/framenode_runtime.compact.wasm .
                                 """
                                 archiveArtifacts artifacts:
-                                    'target/release/wbuild/framenode-runtime/framenode_runtime.compact.wasm'
+                                    'framenode_runtime.compact.wasm'
                             }
                         } else {
                             docker.image(envImageName + ':dev').inside() {
@@ -91,7 +92,7 @@ pipeline {
             steps {
                 script {
                     docker.withRegistry('https://' + registry, dockerRegistryRWUserId) {
-                        docker.image(envReleaseImageName).inside() {
+                        docker.image(envImageName + ':latest').inside() {
                             sh './housekeeping/coverage.sh'
                             cobertura coberturaReportFile: 'target/release/report'
                         }
