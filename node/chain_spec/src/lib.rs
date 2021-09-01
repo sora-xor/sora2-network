@@ -101,7 +101,15 @@ where
 /// Generate an Babe authority key.
 pub fn authority_keys_from_seed(
     seed: &str,
-) -> (AccountId, AccountId, AuraId, BabeId, GrandpaId, ImOnlineId) {
+) -> (
+    AccountId,
+    AccountId,
+    AuraId,
+    BabeId,
+    GrandpaId,
+    ImOnlineId,
+    BeefyId,
+) {
     (
         get_account_id_from_seed::<sr25519::Public>(&format!("{}//stash", seed)),
         get_account_id_from_seed::<sr25519::Public>(seed),
@@ -109,6 +117,7 @@ pub fn authority_keys_from_seed(
         get_from_seed::<BabeId>(seed),
         get_from_seed::<GrandpaId>(seed),
         get_from_seed::<ImOnlineId>(seed),
+        get_from_seed::<BeefyId>(seed),
     )
 }
 
@@ -117,7 +126,16 @@ pub fn authority_keys_from_public_keys(
     controller_address: [u8; 32],
     sr25519_key: [u8; 32],
     ed25519_key: [u8; 32],
-) -> (AccountId, AccountId, AuraId, BabeId, GrandpaId, ImOnlineId) {
+    ecdsa_key: [u8; 33],
+) -> (
+    AccountId,
+    AccountId,
+    AuraId,
+    BabeId,
+    GrandpaId,
+    ImOnlineId,
+    BeefyId,
+) {
     (
         stash_address.into(),
         controller_address.into(),
@@ -125,6 +143,7 @@ pub fn authority_keys_from_public_keys(
         BabeId::from_slice(&sr25519_key),
         GrandpaId::from_slice(&ed25519_key),
         ImOnlineId::from_slice(&sr25519_key),
+        BeefyId::from_slice(&ecdsa_key),
     )
 }
 
@@ -201,11 +220,13 @@ pub fn dev_net_coded() -> ChainSpec {
                         hex!("9c3c8836f6def559a11751c18541b9a2c81bcf9bd6ac28d978b1adfacc354456"),
                         hex!("9c3c8836f6def559a11751c18541b9a2c81bcf9bd6ac28d978b1adfacc354456"),
                         hex!("0ced48eb19e0e2809a769c35a64264c3dd39f3aa0ff132aa7caaa6730ad31f57"),
+                        hex!("0ced48eb19e0e2809a769c35a64264c3dd39f3aa0ff132aa7caaa6730ad31f57"),
                     ),
                     authority_keys_from_public_keys(
                         hex!("5e7df6d78fb252ecfe5e2c516a145671b9c64ee7b733a3c128af27d76e2fe74c"),
                         hex!("02bbb81a8132f9eb78ac1f2a9606055e58540f220fa1075bb3ba3d30add09e3f"),
                         hex!("02bbb81a8132f9eb78ac1f2a9606055e58540f220fa1075bb3ba3d30add09e3f"),
+                        hex!("c75a2ed4012a61cf05ec6eecc4b83faedcf6a781111cc61f8e9a23ad2810bb5e"),
                         hex!("c75a2ed4012a61cf05ec6eecc4b83faedcf6a781111cc61f8e9a23ad2810bb5e"),
                     ),
                     authority_keys_from_public_keys(
@@ -213,11 +234,13 @@ pub fn dev_net_coded() -> ChainSpec {
                         hex!("0ea8eafc441aa319aeaa23a74ed588f0ccd17eb3b41d12a1d8283b5f79c7b15d"),
                         hex!("0ea8eafc441aa319aeaa23a74ed588f0ccd17eb3b41d12a1d8283b5f79c7b15d"),
                         hex!("4be870c72a1ac412a5c239d701b5dd62a9e030899943faad55b48eb2c7c9dc2a"),
+                        hex!("4be870c72a1ac412a5c239d701b5dd62a9e030899943faad55b48eb2c7c9dc2a"),
                     ),
                     authority_keys_from_public_keys(
                         hex!("4eb0f6225cef84a0285a54916625846e50d86526bdece448894af0ac87792956"),
                         hex!("18b2c456464825673c63aa7866ee479b52d1a7a4bab7999408bd3568d5a02b64"),
                         hex!("18b2c456464825673c63aa7866ee479b52d1a7a4bab7999408bd3568d5a02b64"),
+                        hex!("8061f3a75ef96a0d840d84cec5d42bcad43f882efdcf93b30a60c7bac6c894c1"),
                         hex!("8061f3a75ef96a0d840d84cec5d42bcad43f882efdcf93b30a60c7bac6c894c1"),
                     ),
                     authority_keys_from_public_keys(
@@ -225,11 +248,13 @@ pub fn dev_net_coded() -> ChainSpec {
                         hex!("3a41a438f76d6a68b17fbd34e8a8195e5e2f74419db3bf7d914627803409ce35"),
                         hex!("3a41a438f76d6a68b17fbd34e8a8195e5e2f74419db3bf7d914627803409ce35"),
                         hex!("86320cd87cbe2881cdf3515d3a72d833099d61b4c38266437366e3b143f8835b"),
+                        hex!("86320cd87cbe2881cdf3515d3a72d833099d61b4c38266437366e3b143f8835b"),
                     ),
                     authority_keys_from_public_keys(
                         hex!("20a0225a3cafe2d5e9813025e3f1a2d9a3e50f44528ecc3bed01c13466e33316"),
                         hex!("c25eb643fd3a981a223046f32d1977644a17bb856a228d755868c1bb89d95b3d"),
                         hex!("c25eb643fd3a981a223046f32d1977644a17bb856a228d755868c1bb89d95b3d"),
+                        hex!("15c652e559703197d10997d04df0081918314b77b8475d74002adaca0f3b634d"),
                         hex!("15c652e559703197d10997d04df0081918314b77b8475d74002adaca0f3b634d"),
                     ),
                 ],
@@ -349,17 +374,20 @@ pub fn staging_net_coded(test: bool) -> ChainSpec {
                         hex!("5683cf2ddb87bfed4f4f10ceefd44a61c0eda4fe7c63bd046cb5b3673c41c66b"),
                         hex!("5683cf2ddb87bfed4f4f10ceefd44a61c0eda4fe7c63bd046cb5b3673c41c66b"),
                         hex!("51d7f9c7f9da7a72a78f50470e56e39b7923339988506060d94f6c2e9c516be8"),
+                        hex!("51d7f9c7f9da7a72a78f50470e56e39b7923339988506060d94f6c2e9c516be8"),
                     ),
                     authority_keys_from_public_keys(
                         hex!("2a57402736d2b5ada9ee900e506a84436556470de7abd382031e1d90b182bd48"),
                         hex!("9a014ecc9f8d87b0315a21d2e3be84409c2fbbd9b5236910660aaa6d5e1ac05e"),
                         hex!("9a014ecc9f8d87b0315a21d2e3be84409c2fbbd9b5236910660aaa6d5e1ac05e"),
                         hex!("f0c30bbb51dd66d2111e534cd47ac553a3a342d60c4d4f44b5566c9ad26e3346"),
+                        hex!("f0c30bbb51dd66d2111e534cd47ac553a3a342d60c4d4f44b5566c9ad26e3346"),
                     ),
                     authority_keys_from_public_keys(
                         hex!("e493667f399170b28f3b2db4b9f28dbbabbc5da5fc21114e076768fc3c539002"),
                         hex!("8c9a6f997970057925bbc022bee892c7da318f29bbdc9d4645b6c159534d3a67"),
                         hex!("8c9a6f997970057925bbc022bee892c7da318f29bbdc9d4645b6c159534d3a67"),
+                        hex!("b2e80730dd52182b324b6dfe1f0731f0f449ee2b7e257fb575f56c72a9f5af6d"),
                         hex!("b2e80730dd52182b324b6dfe1f0731f0f449ee2b7e257fb575f56c72a9f5af6d"),
                     ),
                     // authority_keys_from_public_keys(
@@ -378,6 +406,7 @@ pub fn staging_net_coded(test: bool) -> ChainSpec {
                         hex!("664601bab694be726d919e310c3744fd5432ed125e20b46f7ebdcfe01848c72d"),
                         hex!("98a28d465f3bf349f19c27394a4f4b08fe18e5e75088733c86adb728c1797179"),
                         hex!("98a28d465f3bf349f19c27394a4f4b08fe18e5e75088733c86adb728c1797179"),
+                        hex!("d4d791cf11cecc39805499e534ab8c07366f444f0efd6d73731f2e3555cbc2d9"),
                         hex!("d4d791cf11cecc39805499e534ab8c07366f444f0efd6d73731f2e3555cbc2d9"),
                     ),
                 ],
@@ -578,7 +607,15 @@ pub fn local_testnet_config() -> ChainSpec {
 fn testnet_genesis(
     dev: bool,
     root_key: AccountId,
-    initial_authorities: Vec<(AccountId, AccountId, AuraId, BabeId, GrandpaId, ImOnlineId)>,
+    initial_authorities: Vec<(
+        AccountId,
+        AccountId,
+        AuraId,
+        BabeId,
+        GrandpaId,
+        ImOnlineId,
+        BeefyId,
+    )>,
     endowed_accounts: Vec<AccountId>,
     initial_bridge_peers: Vec<AccountId>,
     eth_bridge_params: EthBridgeParams,
@@ -882,40 +919,48 @@ fn testnet_genesis(
     let initial_collateral_assets = vec![DAI.into(), VAL.into(), PSWAP.into(), ETH.into()];
     let initial_synthetic_assets = vec![XSTUSD.into()];
     GenesisConfig {
-        frame_system: Some(SystemConfig {
+        system: SystemConfig {
             code: WASM_BINARY.unwrap().to_vec(),
             changes_trie_config: Default::default(),
-        }),
-        pallet_sudo: Some(SudoConfig {
+        },
+        sudo: SudoConfig {
             key: root_key.clone(),
-        }),
-        technical: Some(TechnicalConfig {
+        },
+        technical: TechnicalConfig {
             register_tech_accounts: tech_accounts,
-        }),
-        pallet_babe: Some(BabeConfig {
+        },
+        babe: BabeConfig {
             authorities: vec![],
-        }),
-        pallet_grandpa: Some(GrandpaConfig {
+            epoch_config: Default::default(),
+        },
+        grandpa: GrandpaConfig {
             authorities: vec![],
-        }),
-        pallet_session: Some(SessionConfig {
+        },
+        session: SessionConfig {
             keys: initial_authorities
                 .iter()
-                .map(|(account, _, _, babe_id, grandpa_id, im_online_id)| {
-                    (
-                        account.clone(),
-                        account.clone(),
-                        session_keys(grandpa_id.clone(), babe_id.clone(), im_online_id.clone()),
-                    )
-                })
+                .map(
+                    |(account, _, _, babe_id, grandpa_id, im_online_id, beefy_id)| {
+                        (
+                            account.clone(),
+                            account.clone(),
+                            session_keys(
+                                grandpa_id.clone(),
+                                babe_id.clone(),
+                                im_online_id.clone(),
+                                beefy_id.clone(),
+                            ),
+                        )
+                    },
+                )
                 .collect::<Vec<_>>(),
-        }),
-        pallet_staking: Some(StakingConfig {
+        },
+        staking: StakingConfig {
             validator_count: 69,
             minimum_validator_count: 1,
             stakers: initial_authorities
                 .iter()
-                .map(|(stash_account, account, _, _, _, _)| {
+                .map(|(stash_account, account, _, _, _, _, _)| {
                     (
                         stash_account.clone(),
                         account.clone(),
@@ -927,8 +972,8 @@ fn testnet_genesis(
             invulnerables: Vec::new(),
             slash_reward_fraction: Perbill::from_percent(10),
             ..Default::default()
-        }),
-        assets: Some(AssetsConfig {
+        },
+        assets: AssetsConfig {
             endowed_assets: vec![
                 (
                     GetXorAssetId::get(),
@@ -994,8 +1039,8 @@ fn testnet_genesis(
                     true,
                 ),
             ],
-        }),
-        permissions: Some(PermissionsConfig {
+        },
+        permissions: PermissionsConfig {
             initial_permission_owners: vec![
                 (
                     permissions::MANAGE_DEX,
@@ -1061,9 +1106,9 @@ fn testnet_genesis(
                     vec![permissions::MINT, permissions::BURN],
                 ),
             ],
-        }),
-        pallet_balances: Some(BalancesConfig { balances }),
-        dex_manager: Some(DEXManagerConfig {
+        },
+        balances: BalancesConfig { balances },
+        dex_manager: DEXManagerConfig {
             dex_list: vec![(
                 0,
                 DEXInfo {
@@ -1071,12 +1116,12 @@ fn testnet_genesis(
                     is_public: true,
                 },
             )],
-        }),
-        faucet: Some(faucet_config),
-        tokens: Some(TokensConfig {
+        },
+        faucet: faucet_config,
+        tokens: TokensConfig {
             balances: tokens_endowed_accounts,
-        }),
-        trading_pair: Some(TradingPairConfig {
+        },
+        trading_pair: TradingPairConfig {
             trading_pairs: initial_collateral_assets
                 .iter()
                 .chain(initial_synthetic_assets.iter())
@@ -1091,16 +1136,16 @@ fn testnet_genesis(
                     )
                 })
                 .collect(),
-        }),
-        dex_api: Some(DEXAPIConfig {
+        },
+        dexapi: DEXAPIConfig {
             source_types: [
                 LiquiditySourceType::XYKPool,
                 LiquiditySourceType::MulticollateralBondingCurvePool,
                 LiquiditySourceType::XSTPool,
             ]
             .into(),
-        }),
-        eth_bridge: Some(EthBridgeConfig {
+        },
+        eth_bridge: EthBridgeConfig {
             authority_account: eth_bridge_authority_account_id.clone(),
             networks: vec![NetworkConfig {
                 initial_peers: initial_bridge_peers.iter().cloned().collect(),
@@ -1139,45 +1184,46 @@ fn testnet_genesis(
             }],
             xor_master_contract_address: eth_bridge_params.xor_master_contract_address,
             val_master_contract_address: eth_bridge_params.val_master_contract_address,
-        }),
-        bridge_multisig: Some(BridgeMultisigConfig {
+        },
+        bridge_multisig: BridgeMultisigConfig {
             accounts: once((
                 eth_bridge_account_id.clone(),
                 bridge_multisig::MultisigAccount::new(initial_bridge_peers),
             ))
             .collect(),
-        }),
-        multicollateral_bonding_curve_pool: Some(MulticollateralBondingCurvePoolConfig {
+        },
+        multicollateral_bonding_curve_pool: MulticollateralBondingCurvePoolConfig {
             distribution_accounts: accounts,
             reserves_account_id: mbc_reserves_tech_account_id,
             reference_asset_id: DAI.into(),
             incentives_account_id: mbc_pool_rewards_account_id,
             initial_collateral_assets,
             free_reserves_account_id: mbc_pool_free_reserves_account_id,
-        }),
-        pswap_distribution: Some(PswapDistributionConfig {
+        },
+        pswap_distribution: PswapDistributionConfig {
             subscribed_accounts: Vec::new(),
             burn_info: (fixed!(0.1), fixed!(0.000357), fixed!(0.65)),
-        }),
-        iroha_migration: Some(iroha_migration_config),
-        rewards: Some(rewards_config),
-        pallet_collective_Instance1: Some(CouncilConfig {
+        },
+        iroha_migration: iroha_migration_config,
+        rewards: rewards_config,
+        council: CouncilConfig {
             members: council_accounts,
             phantom: Default::default(),
-        }),
-        pallet_collective_Instance2: Some(TechnicalCommitteeConfig {
+        },
+        technical_committee: TechnicalCommitteeConfig {
             members: technical_committee_accounts,
             phantom: Default::default(),
-        }),
-        pallet_democracy: Some(DemocracyConfig::default()),
-        pallet_elections_phragmen: Default::default(),
-        pallet_membership_Instance1: Default::default(),
-        pallet_im_online: Default::default(),
-        xst: Some(XSTPoolConfig {
+        },
+        democracy: DemocracyConfig::default(),
+        elections_phragmen: Default::default(),
+        technical_membership: Default::default(),
+        im_online: Default::default(),
+        xst_pool: XSTPoolConfig {
             tech_account_id: xst_pool_permissioned_tech_account_id, // TODO: move to defaults
             reference_asset_id: DAI,
             initial_synthetic_assets: vec![XSTUSD],
-        }),
+        },
+        beefy: Default::default(),
     }
 }
 
@@ -1787,6 +1833,7 @@ fn mainnet_genesis(
     }
 }
 
+// TODO: rebuild main-net chain-spec
 #[cfg(feature = "test")]
 pub fn ext() -> sp_io::TestExternalities {
     let storage = main_net().unwrap().build_storage().unwrap();

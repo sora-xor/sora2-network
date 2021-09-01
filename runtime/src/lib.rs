@@ -1436,7 +1436,7 @@ construct_runtime! {
         // Balances in native currency - XOR.
         Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>} = 2,
         Sudo: pallet_sudo::{Pallet, Call, Storage, Config<T>, Event<T>} = 3,
-        RandomnessCollectiveFlip: pallet_randomness_collective_flip::{Pallet, Call, Storage} = 4,
+        RandomnessCollectiveFlip: pallet_randomness_collective_flip::{Pallet, Storage} = 4,
         TransactionPayment: pallet_transaction_payment::{Pallet, Storage} = 5,
         Permissions: permissions::{Pallet, Call, Storage, Config<T>, Event<T>} = 6,
         ReferralSystem: referral_system::{Pallet, Call, Storage} = 7,
@@ -1448,7 +1448,7 @@ construct_runtime! {
         // Consensus and staking.
         Session: pallet_session::{Pallet, Call, Storage, Event, Config<T>} = 12,
         Historical: pallet_session_historical::{Pallet} = 13,
-        Babe: pallet_babe::{Pallet, Call, Storage, Config, Inherent, ValidateUnsigned} = 14,
+        Babe: pallet_babe::{Pallet, Call, Storage, Config, ValidateUnsigned} = 14,
         Grandpa: pallet_grandpa::{Pallet, Call, Storage, Config, Event} = 15,
         Authorship: pallet_authorship::{Pallet, Call, Storage, Inherent} = 16,
         Staking: pallet_staking::{Pallet, Call, Config<T>, Storage, Event<T>} = 17,

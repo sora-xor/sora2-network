@@ -8,6 +8,6 @@ opt-level = 's'
 [profile.test]
 debug = true
 
-[unstable]
-weak-dep-features = true
+#[unstable]
+#weak-dep-features = true
 

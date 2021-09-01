@@ -445,14 +445,14 @@ impl<T: Config> Pallet<T> {
             <T::BlockNumber as From<u32>>::from(substrate_finalized_block.number.as_u32());
         let s_sub_to_handle_from_height =
             StorageValueRef::persistent(b"eth-bridge-ocw::sub-to-handle-from-height");
-        let from_block_opt = s_sub_to_handle_from_height.get::<T::BlockNumber>();
-        if from_block_opt.is_err() {
+        let from_block_opt = s_sub_to_handle_from_height
+            .get::<T::BlockNumber>()
+            .ok()
+            .flatten();
+        if from_block_opt.is_none() {
             s_sub_to_handle_from_height.set(&substrate_finalized_height);
         }
-        let from_block = from_block_opt
-            .ok()
-            .flatten()
-            .unwrap_or(substrate_finalized_height);
+        let from_block = from_block_opt.unwrap_or(substrate_finalized_height);
         if from_block <= substrate_finalized_height {
             match Self::load_substrate_block(from_block)
                 .and_then(|block| Self::handle_substrate_block(block, substrate_finalized_height))
@@ -492,11 +492,11 @@ impl<T: Config> Pallet<T> {
 
         let string = format!("eth-bridge-ocw::eth-to-handle-from-height-{:?}", network_id);
         let s_eth_to_handle_from_height = StorageValueRef::persistent(string.as_bytes());
-        let from_block_opt = s_eth_to_handle_from_height.get::<u64>();
-        if from_block_opt.is_err() {
+        let from_block_opt = s_eth_to_handle_from_height.get::<u64>().ok().flatten();
+        if from_block_opt.is_none() {
             s_eth_to_handle_from_height.set(&current_eth_height);
         }
-        let from_block = from_block_opt.ok().flatten().unwrap_or(current_eth_height);
+        let from_block = from_block_opt.unwrap_or(current_eth_height);
         // The upper bound of range of blocks to download logs for. Limit the value to
         // `MAX_GET_LOGS_ITEMS` if the OCW is lagging behind Ethereum to avoid downloading too many
         // logs.
