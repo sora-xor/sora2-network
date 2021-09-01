@@ -47,7 +47,7 @@ use pallet_session::historical;
 use permissions::{Scope, BURN, MINT, TRANSFER};
 use sp_core::H256;
 use sp_runtime::testing::{Header, TestXt, UintAuthorityId};
-use sp_runtime::traits::{BlakeTwo256, IdentityLookup};
+use sp_runtime::traits::{BlakeTwo256, IdentityLookup, Verify};
 use sp_runtime::{DispatchError, Perbill, Percent};
 
 pub use crate::{self as xor_fee, Config, Module};
@@ -61,6 +61,19 @@ type TechAssetId = common::TechAssetId<common::PredefinedAssetId>;
 type DEXId = common::DEXId;
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
+use frame_support::sp_runtime::testing::TestSignature;
+use frame_system::offchain::{Account, AppCrypto, SigningTypes};
+use frame_system::EnsureRoot;
+use sp_core::H160;
+
+pub type Signature = TestSignature;
+
+pub struct TestAppCrypto;
+impl AppCrypto<UintAuthorityId, TestSignature> for TestAppCrypto {
+    type RuntimeAppPublic = UintAuthorityId;
+    type GenericPublic = UintAuthorityId;
+    type GenericSignature = TestSignature;
+}
 
 parameter_types! {
     pub const BlockHashCount: u64 = 250;
@@ -100,6 +113,14 @@ parameter_types! {
     };
     pub GetParliamentAccountId: AccountId = SORA_PARLIAMENT_ACCOUNT;
     pub GetTeamReservesAccountId: AccountId = 3000u64;
+    pub const EthNetworkId: <Runtime as eth_bridge::Config>::NetworkId = 0;
+    pub const RemovePendingOutgoingRequestsAfter: BlockNumber = 100;
+    pub const TrackPendingIncomingRequestsAfter: (BlockNumber, u64) = (0, 0);
+    pub RemoveTemporaryPeerAccountId: AccountId = Default::default();
+    pub const SchedulerMaxWeight: Weight = 1024;
+    pub const DepositBase: u64 = 1;
+    pub const DepositFactor: u64 = 1;
+    pub const MaxSignatories: u16 = 4;
 }
 
 sp_runtime::impl_opaque_keys! {
@@ -132,6 +153,8 @@ construct_runtime! {
         Staking: pallet_staking::{Module, Call, Config<T>, Storage, Event<T>},
         XorFee: xor_fee::{Module, Call, Event<T>},
         LiquidityProxy: mock_liquidity_proxy::{Module, Call, Event<T>},
+        EthBridge: eth_bridge::{Module, Call, Storage, Config<T>, Event<T>},
+        BridgeMultisig: bridge_multisig::{Module, Call, Storage, Config<T>, Event<T>},
     }
 }
 
@@ -162,6 +185,103 @@ impl xor_fee::ExtractProxySwap for Call {
             None
         }
     }
+}
+
+impl xor_fee::IsCalledByBridgePeer<AccountId> for Call {
+    fn is_called_by_bridge_peer(&self, who: &AccountId) -> bool {
+        match self {
+            Call::BridgeMultisig(call) => match call {
+                bridge_multisig::Call::as_multi(multisig_id, ..) => {
+                    bridge_multisig::Accounts::<Runtime>::get(multisig_id)
+                        .map(|acc| acc.is_signatory(&who))
+                }
+                bridge_multisig::Call::as_multi_threshold_1(multisig_id, ..) => {
+                    bridge_multisig::Accounts::<Runtime>::get(multisig_id)
+                        .map(|acc| acc.is_signatory(&who))
+                }
+                _ => None,
+            },
+            Call::EthBridge(call) => match call {
+                eth_bridge::Call::approve_request(_, _, _, network_id) => {
+                    Some(eth_bridge::Pallet::<Runtime>::is_peer(who, *network_id))
+                }
+                eth_bridge::Call::register_incoming_request(request) => {
+                    let net_id = request.network_id();
+                    eth_bridge::BridgeAccount::<Runtime>::get(net_id).map(|acc| acc == *who)
+                }
+                eth_bridge::Call::import_incoming_request(load_request, _) => {
+                    let net_id = load_request.network_id();
+                    eth_bridge::BridgeAccount::<Runtime>::get(net_id).map(|acc| acc == *who)
+                }
+                eth_bridge::Call::finalize_incoming_request(_, network_id)
+                | eth_bridge::Call::abort_request(_, _, network_id) => {
+                    eth_bridge::BridgeAccount::<Runtime>::get(network_id).map(|acc| acc == *who)
+                }
+                _ => None,
+            },
+            _ => None,
+        }
+        .unwrap_or(false)
+    }
+}
+
+impl<T: SigningTypes> frame_system::offchain::SignMessage<T> for Runtime {
+    type SignatureData = ();
+
+    fn sign_message(&self, _message: &[u8]) -> Self::SignatureData {
+        unimplemented!()
+    }
+
+    fn sign<TPayload, F>(&self, _f: F) -> Self::SignatureData
+    where
+        F: Fn(&Account<T>) -> TPayload,
+        TPayload: frame_system::offchain::SignedPayload<T>,
+    {
+        unimplemented!()
+    }
+}
+
+impl<LocalCall> frame_system::offchain::CreateSignedTransaction<LocalCall> for Runtime
+where
+    Call: From<LocalCall>,
+{
+    fn create_transaction<C: frame_system::offchain::AppCrypto<Self::Public, Self::Signature>>(
+        call: Call,
+        _public: <Signature as Verify>::Signer,
+        account: <Runtime as frame_system::Config>::AccountId,
+        _index: <Runtime as frame_system::Config>::Index,
+    ) -> Option<(
+        Call,
+        <Extrinsic as sp_runtime::traits::Extrinsic>::SignaturePayload,
+    )> {
+        Some((call, (account, ())))
+    }
+}
+
+impl frame_system::offchain::SigningTypes for Runtime {
+    type Public = <Signature as Verify>::Signer;
+    type Signature = Signature;
+}
+
+impl eth_bridge::Config for Runtime {
+    type Event = Event;
+    type PeerId = TestAppCrypto;
+    type Call = Call;
+    type NetworkId = u32;
+    type GetEthNetworkId = EthNetworkId;
+    type WeightInfo = ();
+    type RemovePendingOutgoingRequestsAfter = RemovePendingOutgoingRequestsAfter;
+    type RemoveTemporaryPeerAccountId = RemoveTemporaryPeerAccountId;
+}
+
+impl bridge_multisig::Config for Runtime {
+    type Call = Call;
+    type Event = Event;
+    type Currency = Balances;
+    type DepositBase = DepositBase;
+    type DepositFactor = DepositFactor;
+    type MaxSignatories = MaxSignatories;
+    type WeightInfo = ();
 }
 
 impl frame_system::Config for Runtime {

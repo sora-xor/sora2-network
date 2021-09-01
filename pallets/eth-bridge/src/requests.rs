@@ -31,8 +31,8 @@
 use crate::contract::{MethodId, FUNCTIONS, METHOD_ID_SIZE};
 use crate::{
     get_bridge_account, types, Address, AssetIdOf, AssetKind, BridgeNetworkId, BridgeStatus,
-    BridgeTimepoint, Config, Decoder, Error, IncomingTransactionRequestKind, OffchainRequest,
-    OutgoingRequest, Pallet, RequestStatus, SignatureParams, Timepoint, WeightInfo,
+    BridgeTimepoint, Config, Decoder, Error, OffchainRequest, OutgoingRequest, Pallet,
+    RequestStatus, SignatureParams, Timepoint, WeightInfo,
 };
 use alloc::collections::BTreeSet;
 use alloc::string::String;
@@ -267,10 +267,7 @@ pub struct IncomingTransfer<T: Config> {
 
 impl<T: Config> IncomingTransfer<T> {
     pub fn fee_amount() -> Balance {
-        let weight = <T as Config>::WeightInfo::request_from_sidechain(
-            &IncomingTransactionRequestKind::Transfer.into(),
-        )
-        .0;
+        let weight = <T as Config>::WeightInfo::request_from_sidechain();
         WeightToFixedFee::calc(&weight)
     }
 

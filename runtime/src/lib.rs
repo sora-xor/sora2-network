@@ -207,10 +207,10 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
     spec_name: create_runtime_str!("sora-substrate"),
     impl_name: create_runtime_str!("sora-substrate"),
     authoring_version: 1,
-    spec_version: 8,
+    spec_version: 9,
     impl_version: 1,
     apis: RUNTIME_API_VERSIONS,
-    transaction_version: 8,
+    transaction_version: 9,
 };
 
 /// The version infromation used to identify this runtime when compiled natively.
@@ -862,9 +862,6 @@ impl xor_fee::ApplyCustomFees<Call> for ExtrinsicsFlatFees {
             | Call::EthBridge(eth_bridge::Call::transfer_to_sidechain(..))
             | Call::PoolXYK(pool_xyk::Call::withdraw_liquidity(..))
             | Call::Rewards(rewards::Call::claim(..)) => Some(balance!(0.007)),
-            Call::EthBridge(eth_bridge::Call::register_incoming_request(..))
-            | Call::EthBridge(eth_bridge::Call::finalize_incoming_request(..))
-            | Call::EthBridge(eth_bridge::Call::approve_request(..)) => None,
             Call::Assets(..)
             | Call::EthBridge(..)
             | Call::LiquidityProxy(..)
@@ -903,6 +900,41 @@ impl xor_fee::ExtractProxySwap for Call {
         } else {
             None
         }
+    }
+}
+
+impl xor_fee::IsCalledByBridgePeer<AccountId> for Call {
+    fn is_called_by_bridge_peer(&self, who: &AccountId) -> bool {
+        match self {
+            Call::BridgeMultisig(call) => match call {
+                bridge_multisig::Call::as_multi(multisig_id, ..)
+                | bridge_multisig::Call::as_multi_threshold_1(multisig_id, ..) => {
+                    bridge_multisig::Accounts::<Runtime>::get(multisig_id)
+                        .map(|acc| acc.is_signatory(&who))
+                }
+                _ => None,
+            },
+            Call::EthBridge(call) => match call {
+                eth_bridge::Call::approve_request(_, _, _, network_id) => {
+                    Some(eth_bridge::Pallet::<Runtime>::is_peer(who, *network_id))
+                }
+                eth_bridge::Call::register_incoming_request(request) => {
+                    let net_id = request.network_id();
+                    eth_bridge::BridgeAccount::<Runtime>::get(net_id).map(|acc| acc == *who)
+                }
+                eth_bridge::Call::import_incoming_request(load_request, _) => {
+                    let net_id = load_request.network_id();
+                    eth_bridge::BridgeAccount::<Runtime>::get(net_id).map(|acc| acc == *who)
+                }
+                eth_bridge::Call::finalize_incoming_request(_, network_id)
+                | eth_bridge::Call::abort_request(_, _, network_id) => {
+                    eth_bridge::BridgeAccount::<Runtime>::get(network_id).map(|acc| acc == *who)
+                }
+                _ => None,
+            },
+            _ => None,
+        }
+        .unwrap_or(false)
     }
 }
 
