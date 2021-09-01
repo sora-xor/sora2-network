@@ -40,7 +40,7 @@ use frame_system::{EventRecord, RawOrigin};
 use hex_literal::hex;
 use sp_std::prelude::*;
 
-use common::{USDT, XOR};
+use common::{DEFAULT_BALANCE_PRECISION, USDT, XOR};
 
 use crate::Pallet as Assets;
 
@@ -107,7 +107,7 @@ benchmarks! {
             XOR.into(),
             AssetSymbol(b"XOR".to_vec()),
             AssetName(b"XOR".to_vec()),
-            18,
+            DEFAULT_BALANCE_PRECISION,
             Balance::zero(),
             true,
         );
@@ -130,7 +130,7 @@ benchmarks! {
             USDT.into(),
             AssetSymbol(b"USDT".to_vec()),
             AssetName(b"USDT".to_vec()),
-            18,
+            DEFAULT_BALANCE_PRECISION,
             Balance::zero(),
             true,
         ).unwrap();
@@ -153,7 +153,7 @@ benchmarks! {
             USDT.into(),
             AssetSymbol(b"USDT".to_vec()),
             AssetName(b"USDT".to_vec()),
-            18,
+            DEFAULT_BALANCE_PRECISION,
             Balance::zero(),
             true,
         ).unwrap();
@@ -181,7 +181,7 @@ benchmarks! {
             USDT.into(),
             AssetSymbol(b"USDT".to_vec()),
             AssetName(b"USDT".to_vec()),
-            18,
+            DEFAULT_BALANCE_PRECISION,
             Balance::zero(),
             true,
         ).unwrap();

@@ -38,7 +38,7 @@ use frame_system::RawOrigin;
 use hex_literal::hex;
 use sp_std::prelude::*;
 
-use common::{AssetName, AssetSymbol, XOR};
+use common::{AssetName, AssetSymbol, DEFAULT_BALANCE_PRECISION, XOR};
 
 use crate::utils;
 
@@ -65,7 +65,7 @@ fn prepare_pools<T: Config>(count: u32) -> (Vec<T::AccountId>, Vec<T::AssetId>) 
             &asset_owner::<T>(),
             AssetSymbol(b"SYMBOL".to_vec()),
             AssetName(b"NAME".to_vec()),
-            18,
+            DEFAULT_BALANCE_PRECISION,
             Balance::from(0u32),
             true,
         )
