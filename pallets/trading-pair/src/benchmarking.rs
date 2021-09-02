@@ -71,6 +71,8 @@ benchmarks! {
             DEFAULT_BALANCE_PRECISION,
             Balance::zero(),
             true,
+            None,
+            None
         );
         let trading_pair = TradingPair::<T> {
             base_asset_id: XOR.into(),
