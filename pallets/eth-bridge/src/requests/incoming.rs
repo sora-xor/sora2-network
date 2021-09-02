@@ -280,7 +280,7 @@ impl<T: Config> IncomingTransfer<T> {
     pub fn prepare(&self) -> Result<(), DispatchError> {
         if self.asset_kind.is_owned() {
             let bridge_account = get_bridge_account::<T>(self.network_id);
-            Assets::<T>::reserve(self.asset_id, &bridge_account, self.amount)?;
+            Assets::<T>::reserve(&self.asset_id, &bridge_account, self.amount)?;
         }
         Ok(())
     }
@@ -289,7 +289,7 @@ impl<T: Config> IncomingTransfer<T> {
     pub fn unreserve(&self) -> DispatchResult {
         if self.asset_kind.is_owned() {
             let bridge_acc = &get_bridge_account::<T>(self.network_id);
-            let remainder = Assets::<T>::unreserve(self.asset_id, bridge_acc, self.amount)?;
+            let remainder = Assets::<T>::unreserve(&self.asset_id, bridge_acc, self.amount)?;
             ensure!(remainder == 0, Error::<T>::FailedToUnreserve);
         }
         Ok(())

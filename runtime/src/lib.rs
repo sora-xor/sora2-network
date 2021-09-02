@@ -98,8 +98,8 @@ pub use common::prelude::{
 pub use common::weights::{BlockLength, BlockWeights, TransactionByteFee};
 pub use common::{
     balance, fixed, fixed_from_basis_points, AssetName, AssetSymbol, BalancePrecision, BasisPoints,
-    FilterMode, Fixed, FromGenericPair, LiquiditySource, LiquiditySourceFilter, LiquiditySourceId,
-    LiquiditySourceType, OnPswapBurned, OnValBurned,
+    ContentSource, FilterMode, Fixed, FromGenericPair, LiquiditySource, LiquiditySourceFilter,
+    LiquiditySourceId, LiquiditySourceType, OnPswapBurned, OnValBurned,
 };
 pub use frame_support::traits::schedule::Named as ScheduleNamed;
 pub use frame_support::traits::{
@@ -1844,6 +1844,10 @@ impl_runtime_apis! {
             Some(assets_runtime_api::AssetInfo::<AssetId, AssetSymbol, AssetName, BalancePrecision> {
                 asset_id, symbol, name, precision, is_mintable,
             })
+        }
+
+        fn get_asset_content_src(asset_id: AssetId) -> Option<ContentSource> {
+            Assets::get_asset_content_src(&asset_id)
         }
     }
 

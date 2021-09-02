@@ -153,14 +153,14 @@ impl<T: Config> OutgoingTransfer<T> {
         let bridge_account = get_bridge_account::<T>(self.network_id);
         common::with_transaction(|| {
             Assets::<T>::transfer_from(&self.asset_id, &self.from, &bridge_account, self.amount)?;
-            Assets::<T>::reserve(self.asset_id, &bridge_account, self.amount)
+            Assets::<T>::reserve(&self.asset_id, &bridge_account, self.amount)
         })
     }
 
     pub fn cancel(&self) -> Result<(), DispatchError> {
         let bridge_account = get_bridge_account::<T>(self.network_id);
         common::with_transaction(|| {
-            let remainder = Assets::<T>::unreserve(self.asset_id, &bridge_account, self.amount)?;
+            let remainder = Assets::<T>::unreserve(&self.asset_id, &bridge_account, self.amount)?;
             ensure!(remainder == 0, Error::<T>::FailedToUnreserve);
             Assets::<T>::transfer_from(&self.asset_id, &bridge_account, &self.from, self.amount)
         })
@@ -171,7 +171,7 @@ impl<T: Config> OutgoingTransfer<T> {
         self.validate()?;
         let bridge_acc = get_bridge_account::<T>(self.network_id);
         common::with_transaction(|| {
-            let remainder = Assets::<T>::unreserve(self.asset_id, &bridge_acc, self.amount)?;
+            let remainder = Assets::<T>::unreserve(&self.asset_id, &bridge_acc, self.amount)?;
             ensure!(remainder == 0, Error::<T>::FailedToUnreserve);
             let asset_kind: AssetKind =
                 crate::Module::<T>::registered_asset(self.network_id, &self.asset_id)
@@ -439,16 +439,10 @@ impl<T: Config> OutgoingAddToken<T> {
             Error::<T>::SidechainAssetIsAlreadyRegistered
         );
         let symbol = AssetSymbol(self.symbol.as_bytes().to_vec());
-        ensure!(
-            assets::is_symbol_valid(&symbol),
-            assets::Error::<T>::InvalidAssetSymbol
-        );
+        ensure!(symbol.is_valid(), assets::Error::<T>::InvalidAssetSymbol);
 
         let name = AssetName(self.name.as_bytes().to_vec());
-        ensure!(
-            assets::is_name_valid(&name),
-            assets::Error::<T>::InvalidAssetName
-        );
+        ensure!(name.is_valid(), assets::Error::<T>::InvalidAssetName);
 
         Ok((symbol, name))
     }

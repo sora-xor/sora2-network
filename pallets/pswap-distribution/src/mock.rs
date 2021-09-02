@@ -31,7 +31,10 @@
 use crate::{self as pswap_distribution, Config};
 use common::mock::ExistentialDeposits;
 use common::prelude::Balance;
-use common::{balance, fixed, AssetName, AssetSymbol, BalancePrecision, Fixed, FromGenericPair};
+use common::{
+    balance, fixed, AssetName, AssetSymbol, BalancePrecision, ContentSource, Description, Fixed,
+    FromGenericPair, DEFAULT_BALANCE_PRECISION,
+};
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::GenesisBuild;
 use frame_support::weights::Weight;
@@ -286,6 +289,8 @@ pub struct ExtBuilder {
         BalancePrecision,
         Balance,
         bool,
+        Option<ContentSource>,
+        Option<Description>,
     )>,
     initial_permission_owners: Vec<(u32, Scope, Vec<AccountId>)>,
     initial_permissions: Vec<(AccountId, Scope, Vec<u32>)>,
@@ -302,9 +307,11 @@ impl ExtBuilder {
                 alice(),
                 AssetSymbol(b"POOL".to_vec()),
                 AssetName(b"Pool Token".to_vec()),
-                18,
+                DEFAULT_BALANCE_PRECISION,
                 Balance::from(0u32),
                 true,
+                None,
+                None,
             )],
             initial_permission_owners: Vec::new(),
             initial_permissions: Vec::new(),
@@ -325,9 +332,11 @@ impl ExtBuilder {
                     alice(),
                     AssetSymbol(b"XOR".to_vec()),
                     AssetName(b"SORA".to_vec()),
-                    18,
+                    DEFAULT_BALANCE_PRECISION,
                     Balance::zero(),
                     true,
+                    None,
+                    None,
                 ),
                 (
                     common::PSWAP.into(),
@@ -337,24 +346,30 @@ impl ExtBuilder {
                     10,
                     Balance::zero(),
                     true,
+                    None,
+                    None,
                 ),
                 (
                     PoolTokenAId::get(),
                     alice(),
                     AssetSymbol(b"POOLA".to_vec()),
                     AssetName(b"Pool A".to_vec()),
-                    18,
+                    DEFAULT_BALANCE_PRECISION,
                     Balance::zero(),
                     true,
+                    None,
+                    None,
                 ),
                 (
                     PoolTokenBId::get(),
                     alice(),
                     AssetSymbol(b"POOLB".to_vec()),
                     AssetName(b"Pool B".to_vec()),
-                    18,
+                    DEFAULT_BALANCE_PRECISION,
                     Balance::zero(),
                     true,
+                    None,
+                    None,
                 ),
             ],
             initial_permission_owners: vec![],
