@@ -91,8 +91,10 @@ impl<T: Config> From<Option<NegativeImbalanceOf<T>>> for LiquidityInfo<T> {
 
 impl<T: Config> OnChargeTransaction<T> for Pallet<T>
 where
-    CallOf<T>: ExtractProxySwap<DexId = T::DEXId, AssetId = T::AssetId, Amount = SwapAmount<u128>>,
+    CallOf<T>: ExtractProxySwap<DexId = T::DEXId, AssetId = T::AssetId, Amount = SwapAmount<u128>>
+        + IsCalledByBridgePeer<T::AccountId>,
     BalanceOf<T>: Into<u128>,
+    DispatchInfoOf<CallOf<T>>: Into<DispatchInfo> + Clone,
 {
     type Balance = BalanceOf<T>;
     type LiquidityInfo = LiquidityInfo<T>;
@@ -346,6 +348,10 @@ pub trait ExtractProxySwap {
     fn extract(&self) -> Option<SwapInfo<Self::DexId, Self::AssetId, Self::Amount>>;
 }
 
+pub trait IsCalledByBridgePeer<AccountId> {
+    fn is_called_by_bridge_peer(&self, who: &AccountId) -> bool;
+}
+
 /// A trait whose purpose is to extract the `Call` variant of an extrinsic
 pub trait GetCall<Call> {
     fn get_call(&self) -> Call;
@@ -414,7 +420,7 @@ impl<T: Config> Pallet<T> {
         _len: u32,
     ) -> Option<FeeDetails<BalanceOf<T>>>
     where
-        T::Call: Dispatchable<Info = DispatchInfo>,
+        <T as frame_system::Config>::Call: Dispatchable<Info = DispatchInfo>,
     {
         let call = <Extrinsic as GetCall<CallOf<T>>>::get_call(unchecked_extrinsic);
         let maybe_custom_fee = T::CustomFees::compute_fee(&call);
@@ -511,6 +517,7 @@ pub mod pallet {
         frame_system::Config
         + referral_system::Config
         + assets::Config
+        + eth_bridge::Config
         + common::Config
         + pallet_transaction_payment::Config
         + pallet_session::historical::Config

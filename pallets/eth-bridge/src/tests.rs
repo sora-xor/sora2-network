@@ -53,12 +53,13 @@ use common::{
     balance, eth, AssetId32, AssetName, AssetSymbol, PredefinedAssetId, DEFAULT_BALANCE_PRECISION,
     DOT, KSM, USDT, VAL, XOR,
 };
-use frame_support::dispatch::DispatchError;
+use frame_support::dispatch::{DispatchError, DispatchErrorWithPostInfo};
 use frame_support::sp_runtime::app_crypto::sp_core::crypto::AccountId32;
 use frame_support::sp_runtime::app_crypto::sp_core::{self, ecdsa, sr25519, Pair, Public};
 use frame_support::sp_runtime::traits::IdentifyAccount;
 use frame_support::storage::TransactionOutcome;
 use frame_support::traits::{Currency, OnRuntimeUpgrade};
+use frame_support::weights::Pays;
 use frame_support::{assert_err, assert_noop, assert_ok, ensure};
 use frame_system::RawOrigin;
 use hex_literal::hex;
@@ -308,7 +309,10 @@ fn assert_incoming_request_registration_failed(
             Origin::signed(bridge_acc_id.clone()),
             incoming_request.clone(),
         ),
-        error
+        DispatchErrorWithPostInfo {
+            post_info: Pays::No.into(),
+            error: error.into()
+        }
     );
     Ok(())
 }
@@ -758,7 +762,10 @@ fn should_cancel_incoming_transfer() {
                 req_hash,
                 net_id,
             ),
-            Error::FailedToUnreserve
+            DispatchErrorWithPostInfo {
+                post_info: Pays::No.into(),
+                error: Error::FailedToUnreserve.into()
+            }
         );
         assert!(matches!(
             crate::RequestStatuses::<Runtime>::get(net_id, req_hash).unwrap(),
@@ -945,7 +952,10 @@ fn should_fail_registering_incoming_request_if_preparation_failed() {
                 Origin::signed(bridge_acc_id.clone()),
                 incoming_transfer.clone(),
             ),
-            tokens::Error::<Runtime>::BalanceTooLow
+            DispatchErrorWithPostInfo {
+                post_info: Pays::No.into(),
+                error: tokens::Error::<Runtime>::BalanceTooLow.into()
+            }
         );
         let req_hash = crate::LoadToIncomingRequestHash::<Runtime>::get(net_id, tx_hash);
         assert!(!crate::RequestsQueue::<Runtime>::get(net_id).contains(&tx_hash));
@@ -3654,7 +3664,10 @@ fn should_not_register_and_finalize_incoming_request_twice() {
                 Origin::signed(bridge_acc_id.clone()),
                 incoming_transfer.clone(),
             ),
-            Error::RequestIsAlreadyRegistered
+            DispatchErrorWithPostInfo {
+                post_info: Pays::No.into(),
+                error: Error::RequestIsAlreadyRegistered.into()
+            }
         );
         let req_hash = crate::LoadToIncomingRequestHash::<Runtime>::get(net_id, tx_hash);
         assert_ok!(EthBridge::finalize_incoming_request(
