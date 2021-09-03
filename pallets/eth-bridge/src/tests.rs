@@ -59,7 +59,7 @@ use frame_support::sp_runtime::app_crypto::sp_core::{self, ecdsa, sr25519, Pair,
 use frame_support::sp_runtime::traits::IdentifyAccount;
 use frame_support::storage::TransactionOutcome;
 use frame_support::traits::{Currency, OnRuntimeUpgrade};
-use frame_support::weights::{Pays, PostDispatchInfo};
+use frame_support::weights::Pays;
 use frame_support::{assert_err, assert_noop, assert_ok, ensure};
 use frame_system::RawOrigin;
 use hex_literal::hex;
