@@ -63,8 +63,6 @@ type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>
 type Block = frame_system::mocking::MockBlock<Runtime>;
 use frame_support::sp_runtime::testing::TestSignature;
 use frame_system::offchain::{Account, AppCrypto, SigningTypes};
-use frame_system::EnsureRoot;
-use sp_core::H160;
 
 pub type Signature = TestSignature;
 

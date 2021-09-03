@@ -428,7 +428,7 @@ fn fee_payment_postponed() {
             0,
         );
 
-        assert!(matches!(quoted_fee, Ok(LiquidityInfo::Postponed(1337))));
+        assert!(matches!(quoted_fee, Err(_)));
     });
 }
 
