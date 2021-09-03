@@ -1,3 +1,5 @@
+build.incremental = false
+
 [profile.dev]
 debug = true
 

@@ -50,7 +50,7 @@ parking_lot = "0.11.0"
 sp-core = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.9", default-features = false, features = ["full_crypto"] }
 sp-keystore = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.9", default-features = false }
 tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-tokens" }
-tokio = { version = "0.2.13", default-features = false, features = ["macros"] }
+tokio = { version = "1.10.1", default-features = false, features = ["macros"] }
 
 assets = { path = "../assets" }
 common = { path = "../../common", features = ["test"] }

@@ -150,7 +150,7 @@ impl tokens::Config for Runtime {
     type ExistentialDeposits = ExistentialDeposits;
     type OnDust = ();
     type MaxLocks = ();
-    type DustRemovalWhitelist = ();
+    type DustRemovalWhitelist = Everything;
 }
 
 parameter_types! {
