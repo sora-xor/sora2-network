@@ -925,6 +925,7 @@ fn testnet_genesis(
                     Balance::zero(),
                     true,
                     None,
+                    None,
                 ),
                 // (
                 //     UsdId::get(),
@@ -944,6 +945,7 @@ fn testnet_genesis(
                     Balance::zero(),
                     true,
                     None,
+                    None,
                 ),
                 (
                     GetPswapAssetId::get(),
@@ -953,6 +955,7 @@ fn testnet_genesis(
                     DEFAULT_BALANCE_PRECISION,
                     Balance::zero(),
                     true,
+                    None,
                     None,
                 ),
                 (
@@ -964,6 +967,7 @@ fn testnet_genesis(
                     Balance::zero(),
                     true,
                     None,
+                    None,
                 ),
                 (
                     ETH.into(),
@@ -974,6 +978,7 @@ fn testnet_genesis(
                     Balance::zero(),
                     true,
                     None,
+                    None,
                 ),
                 (
                     XSTUSD.into(),
@@ -983,6 +988,7 @@ fn testnet_genesis(
                     DEFAULT_BALANCE_PRECISION,
                     Balance::zero(),
                     true,
+                    None,
                     None,
                 ),
             ],

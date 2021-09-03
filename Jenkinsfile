@@ -56,7 +56,7 @@ pipeline {
                                     time cargo build --release --features \"${featureList}\" --target-dir /app/target/
                                     time cargo test  --release --target-dir /app/target/
                                     sccache -s
-                                    time mv ./target/release/framenode .
+                                    time mv /app/target/release/framenode .
                                     time mv /app/target/release/wbuild/framenode-runtime/framenode_runtime.compact.wasm .
                                 """
                                 archiveArtifacts artifacts:
@@ -94,7 +94,7 @@ pipeline {
                     docker.withRegistry('https://' + registry, dockerRegistryRWUserId) {
                         docker.image(envImageName + ':latest').inside() {
                             sh './housekeeping/coverage.sh'
-                            cobertura coberturaReportFile: 'target/release/report'
+                            cobertura coberturaReportFile: 'cobertura_report'
                         }
                     }
                 }
