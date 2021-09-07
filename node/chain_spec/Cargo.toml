@@ -1,0 +1,40 @@
+[package]
+name = "framenode-chain-spec"
+version = "0.1.0"
+authors = ["Parity Technologies <admin@parity.io>"]
+edition = "2018"
+
+[dependencies]
+codec = { package = "parity-scale-codec", version = "2", features = ["derive", "chain-error"] }
+frame-support = "3"
+hex-literal = "0.3.1"
+sc-finality-grandpa = "0.9"
+sc-network = "0.9"
+sc-service = "0.9"
+sp-consensus-aura = "0.9"
+sp-consensus-babe = "0.9"
+sp-core = "3"
+sp-io = "3"
+sp-runtime = "3"
+
+bridge-multisig = { git = "https://github.com/soramitsu/sora2-frame-pallets.git", branch = "v3.2.2", package = "pallet-multisig" }
+
+common = { path = "../../common" }
+faucet = { path = "../../pallets/faucet", optional = true }
+framenode-runtime = { path = "../../runtime" }
+iroha-migration = { path = "../../pallets/iroha-migration" }
+permissions = { path = "../../pallets/permissions" }
+rewards = { path = "../../pallets/rewards" }
+technical = {path = "../../pallets/technical" }
+xor-fee = { path = "../../pallets/xor-fee" }
+
+[features]
+include-real-files = []
+main-net-coded = []
+test = []
+runtime-benchmarks = []
+
+private-net = [
+    "faucet",
+    "framenode-runtime/private-net",
+]

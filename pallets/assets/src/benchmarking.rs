@@ -40,7 +40,7 @@ use frame_system::{EventRecord, RawOrigin};
 use hex_literal::hex;
 use sp_std::prelude::*;
 
-use common::{USDT, XOR};
+use common::{DEFAULT_BALANCE_PRECISION, USDT, XOR};
 
 use crate::Pallet as Assets;
 
@@ -58,6 +58,7 @@ fn bob<T: Config>() -> T::AccountId {
 // Adds `n` assets to the Assets Pallet
 fn add_assets<T: Config>(n: u32) -> Result<(), &'static str> {
     let owner = alice::<T>();
+    frame_system::Module::<T>::inc_providers(&owner);
     let owner_origin: <T as frame_system::Config>::Origin = RawOrigin::Signed(owner.clone()).into();
     for _i in 0..n {
         Assets::<T>::register(
@@ -66,6 +67,9 @@ fn add_assets<T: Config>(n: u32) -> Result<(), &'static str> {
             AssetName(b"TOKEN".to_vec()),
             Balance::zero(),
             true,
+            false,
+            None,
+            None,
         )?;
     }
 
@@ -84,12 +88,16 @@ benchmarks! {
     register {
         let n in 1 .. 1000 => add_assets::<T>(n)?;
         let caller = bob::<T>();
+        frame_system::Module::<T>::inc_providers(&caller);
     }: _(
         RawOrigin::Signed(caller.clone()),
         AssetSymbol(b"NEWT".to_vec()),
         AssetName(b"NEWT".to_vec()),
         Balance::zero(),
-        true
+        true,
+        false,
+        None,
+        None
     )
     verify {
         let (asset_id, _) = AssetOwners::<T>::iter().find(|(k, v)| v == &caller).unwrap();
@@ -99,14 +107,17 @@ benchmarks! {
     transfer {
         let n in 1 .. 1000 => add_assets::<T>(n)?;
         let caller = alice::<T>();
+        frame_system::Module::<T>::inc_providers(&caller);
         let _ = Assets::<T>::register_asset_id(
             caller.clone(),
             XOR.into(),
             AssetSymbol(b"XOR".to_vec()),
             AssetName(b"XOR".to_vec()),
-            18,
+            DEFAULT_BALANCE_PRECISION,
             Balance::zero(),
             true,
+            None,
+            None,
         );
     }: _(
         RawOrigin::Signed(caller.clone()),
@@ -121,14 +132,17 @@ benchmarks! {
     mint {
         let n in 1 .. 1000 => add_assets::<T>(n)?;
         let caller = alice::<T>();
+        frame_system::Module::<T>::inc_providers(&caller);
         Assets::<T>::register_asset_id(
             caller.clone(),
             USDT.into(),
             AssetSymbol(b"USDT".to_vec()),
             AssetName(b"USDT".to_vec()),
-            18,
+            DEFAULT_BALANCE_PRECISION,
             Balance::zero(),
             true,
+            None,
+            None,
         ).unwrap();
     }: _(
         RawOrigin::Signed(caller.clone()),
@@ -143,14 +157,17 @@ benchmarks! {
     burn {
         let n in 1 .. 1000 => add_assets::<T>(n)?;
         let caller = alice::<T>();
+        frame_system::Module::<T>::inc_providers(&caller);
         Assets::<T>::register_asset_id(
             caller.clone(),
             USDT.into(),
             AssetSymbol(b"USDT".to_vec()),
             AssetName(b"USDT".to_vec()),
-            18,
+            DEFAULT_BALANCE_PRECISION,
             Balance::zero(),
             true,
+            None,
+            None,
         ).unwrap();
         Assets::<T>::mint(
             RawOrigin::Signed(caller.clone()).into(),
@@ -170,14 +187,17 @@ benchmarks! {
     set_non_mintable {
         let n in 1 .. 1000 => add_assets::<T>(n)?;
         let caller = alice::<T>();
+        frame_system::Module::<T>::inc_providers(&caller);
         Assets::<T>::register_asset_id(
             caller.clone(),
             USDT.into(),
             AssetSymbol(b"USDT".to_vec()),
             AssetName(b"USDT".to_vec()),
-            18,
+            DEFAULT_BALANCE_PRECISION,
             Balance::zero(),
             true,
+            None,
+            None,
         ).unwrap();
     }: _(
         RawOrigin::Signed(caller.clone()),

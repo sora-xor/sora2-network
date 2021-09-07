@@ -26,8 +26,9 @@ ed25519-dalek-iroha = { git = "https://github.com/soramitsu/sora2-ed25519-dalek-
 
 assets = { path = "../assets", default-features = false }
 common = { path = "../../common", default-features = false }
-referral-system = { path = "../referral-system", default-features = false }
+referrals = { path = "../referrals", default-features = false }
 technical = { path = "../technical", default-features = false }
+eth-bridge = {path = "../eth-bridge", default-features = false }
 
 [dev-dependencies]
 currencies = { version = "0.4", package = "orml-currencies" }
@@ -41,8 +42,9 @@ tokens = { version = "0.4", package = "orml-tokens" }
 assets = { path = "../assets" }
 common = { path = "../../common", features = ["test"] }
 permissions = { path = "../permissions" }
-referral-system = { path = "../referral-system" }
+referrals = { path = "../referrals" }
 technical = { path = "../technical" }
+eth-bridge = {path = "../eth-bridge" }
 
 [features]
 default = ["std"]

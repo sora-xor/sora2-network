@@ -36,15 +36,6 @@ use frame_support::weights::Weight;
 pub struct WeightInfo<T>(PhantomData<T>);
 
 impl<T: frame_system::Config> crate::WeightInfo for WeightInfo<T> {
-    fn register_bridge() -> Weight {
-        Default::default()
-    }
-    fn add_asset() -> Weight {
-        Default::default()
-    }
-    fn add_sidechain_token() -> Weight {
-        Default::default()
-    }
     fn transfer_to_sidechain() -> Weight {
         (1_244_777_000 as Weight)
             .saturating_add(T::DbWeight::get().reads(14 as Weight))
@@ -54,21 +45,6 @@ impl<T: frame_system::Config> crate::WeightInfo for WeightInfo<T> {
         (310_784_000 as Weight)
             .saturating_add(T::DbWeight::get().reads(6 as Weight))
             .saturating_add(T::DbWeight::get().writes(5 as Weight))
-    }
-    fn add_peer() -> Weight {
-        Default::default()
-    }
-    fn remove_peer() -> Weight {
-        Default::default()
-    }
-    fn force_add_peer() -> Weight {
-        Default::default()
-    }
-    fn prepare_for_migration() -> Weight {
-        Default::default()
-    }
-    fn migrate() -> Weight {
-        Default::default()
     }
     fn register_incoming_request() -> Weight {
         (720_660_000 as Weight)
@@ -94,6 +70,30 @@ impl<T: frame_system::Config> crate::WeightInfo for WeightInfo<T> {
         (776_940_000 as Weight)
             .saturating_add(T::DbWeight::get().reads(8 as Weight))
             .saturating_add(T::DbWeight::get().writes(3 as Weight))
+    }
+    fn register_bridge() -> Weight {
+        Default::default()
+    }
+    fn add_asset() -> Weight {
+        Default::default()
+    }
+    fn add_sidechain_token() -> Weight {
+        Default::default()
+    }
+    fn add_peer() -> Weight {
+        Default::default()
+    }
+    fn remove_peer() -> Weight {
+        Default::default()
+    }
+    fn force_add_peer() -> Weight {
+        Default::default()
+    }
+    fn prepare_for_migration() -> Weight {
+        Default::default()
+    }
+    fn migrate() -> Weight {
+        Default::default()
     }
 }
 

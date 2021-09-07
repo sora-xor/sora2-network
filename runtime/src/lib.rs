@@ -40,6 +40,14 @@ pub mod constants;
 mod extensions;
 mod impls;
 
+#[cfg(test)]
+pub mod mock;
+
+#[cfg(test)]
+pub mod tests;
+
+use common::prelude::constants::{BIG_FEE, SMALL_FEE};
+use common::prelude::QuoteAmount;
 use constants::time::*;
 
 // Make the WASM binary available.
@@ -49,6 +57,7 @@ include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
 use core::time::Duration;
 use currencies::BasicCurrencyAdapter;
 use extensions::ChargeTransactionPayment;
+use frame_support::traits::Currency;
 use frame_system::offchain::{Account, SigningTypes};
 use frame_system::{EnsureOneOf, EnsureRoot};
 use hex_literal::hex;
@@ -61,10 +70,10 @@ use serde::{Serialize, Serializer};
 use sp_api::impl_runtime_apis;
 use sp_core::crypto::KeyTypeId;
 use sp_core::u32_trait::{_1, _2, _3};
-use sp_core::{Encode, OpaqueMetadata};
+use sp_core::{Encode, OpaqueMetadata, H160};
 use sp_runtime::traits::{
     BlakeTwo256, Block as BlockT, Convert, IdentifyAccount, IdentityLookup, NumberFor, OpaqueKeys,
-    SaturatedConversion, Verify, Zero,
+    SaturatedConversion, Verify,
 };
 use sp_runtime::transaction_validity::{
     TransactionPriority, TransactionSource, TransactionValidity,
@@ -89,8 +98,8 @@ pub use common::prelude::{
 pub use common::weights::{BlockLength, BlockWeights, TransactionByteFee};
 pub use common::{
     balance, fixed, fixed_from_basis_points, AssetName, AssetSymbol, BalancePrecision, BasisPoints,
-    FilterMode, Fixed, FromGenericPair, LiquiditySource, LiquiditySourceFilter, LiquiditySourceId,
-    LiquiditySourceType, OnPswapBurned,
+    ContentSource, FilterMode, Fixed, FromGenericPair, LiquiditySource, LiquiditySourceFilter,
+    LiquiditySourceId, LiquiditySourceType, OnPswapBurned, OnValBurned,
 };
 pub use frame_support::traits::schedule::Named as ScheduleNamed;
 pub use frame_support::traits::{
@@ -109,14 +118,14 @@ pub use pallet_transaction_payment::{Multiplier, MultiplierUpdate};
 #[cfg(any(feature = "std", test))]
 pub use sp_runtime::BuildStorage;
 
-use eth_bridge::{
-    AssetKind, OffchainRequest, OutgoingRequestEncoded, RequestStatus, SignatureParams,
+use eth_bridge::offchain::SignatureParams;
+use eth_bridge::requests::{AssetKind, OffchainRequest, OutgoingRequestEncoded, RequestStatus};
+use impls::{
+    CollectiveWeightInfo, DemocracyWeightInfo, NegativeImbalanceOf, OnUnbalancedDemocracySlash,
 };
-use impls::{CollectiveWeightInfo, DemocracyWeightInfo, OnUnbalancedDemocracySlash};
 
-pub use {
-    assets, bonding_curve_pool, eth_bridge, frame_system, multicollateral_bonding_curve_pool,
-};
+use frame_support::traits::{ExistenceRequirement, Get, WithdrawReasons};
+pub use {assets, eth_bridge, frame_system, multicollateral_bonding_curve_pool, xst};
 
 /// An index to a block.
 pub type BlockNumber = u32;
@@ -631,10 +640,6 @@ impl trading_pair::Config for Runtime {
 
 impl dex_manager::Config for Runtime {}
 
-impl bonding_curve_pool::Config for Runtime {
-    type DEXApi = ();
-}
-
 pub type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
 pub type TechAssetId = common::TechAssetId<common::PredefinedAssetId>;
 pub type AssetId = common::AssetId32<common::PredefinedAssetId>;
@@ -646,7 +651,6 @@ impl technical::Config for Runtime {
     type Trigger = ();
     type Condition = ();
     type SwapAction = pool_xyk::PolySwapAction<AssetId, AccountId, TechAccountId>;
-    type WeightInfo = ();
 }
 
 parameter_types! {
@@ -691,6 +695,16 @@ parameter_types! {
     pub const MaxSubAccounts: u32 = 100;
     pub const MaxAdditionalFields: u32 = 100;
     pub const MaxRegistrars: u32 = 20;
+    pub ReferralsReservesAcc: AccountId = {
+        let tech_account_id = TechAccountId::from_generic_pair(
+            b"referrals".to_vec(),
+            b"main".to_vec(),
+        );
+        let account_id =
+            technical::Module::<Runtime>::tech_account_id_to_account_id(&tech_account_id)
+                .expect("Failed to get ordinary account id for technical account id.");
+        account_id
+    };
 }
 
 impl liquidity_proxy::Config for Runtime {
@@ -698,7 +712,8 @@ impl liquidity_proxy::Config for Runtime {
     type LiquidityRegistry = dex_api::Module<Runtime>;
     type GetNumSamples = GetNumSamples;
     type GetTechnicalAccountId = GetLiquidityProxyAccountId;
-    type PrimaryMarket = multicollateral_bonding_curve_pool::Module<Runtime>;
+    type PrimaryMarketTBC = multicollateral_bonding_curve_pool::Module<Runtime>;
+    type PrimaryMarketXST = xst::Module<Runtime>;
     type SecondaryMarket = pool_xyk::Module<Runtime>;
     type WeightInfo = liquidity_proxy::weights::WeightInfo<Runtime>;
     type VestedRewardsPallet = VestedRewards;
@@ -738,9 +753,9 @@ impl dex_api::Config for Runtime {
         mock_liquidity_source::Module<Runtime, mock_liquidity_source::Instance3>;
     type MockLiquiditySource4 =
         mock_liquidity_source::Module<Runtime, mock_liquidity_source::Instance4>;
-    type BondingCurvePool = bonding_curve_pool::Module<Runtime>;
     type MulticollateralBondingCurvePool = multicollateral_bonding_curve_pool::Module<Runtime>;
     type XYKPool = pool_xyk::Module<Runtime>;
+    type XSTPool = xst::Module<Runtime>;
     type WeightInfo = dex_api::weights::WeightInfo<Runtime>;
 }
 
@@ -808,6 +823,7 @@ where
             .saturated_into::<u64>()
             .saturating_sub(1);
         let extra: SignedExtra = (
+            frame_system::CheckSpecVersion::<Runtime>::new(),
             frame_system::CheckTxVersion::<Runtime>::new(),
             frame_system::CheckGenesis::<Runtime>::new(),
             frame_system::CheckEra::<Runtime>::from(generic::Era::mortal(period, current_block)),
@@ -843,9 +859,17 @@ where
     type Extrinsic = UncheckedExtrinsic;
 }
 
-impl referral_system::Config for Runtime {}
+impl referrals::Config for Runtime {
+    type ReservesAcc = ReferralsReservesAcc;
+    type WeightInfo = referrals::weights::WeightInfo<Runtime>;
+}
 
 impl rewards::Config for Runtime {
+    const BLOCKS_PER_DAY: BlockNumber = 1 * DAYS;
+    const UPDATE_FREQUENCY: BlockNumber = 10 * MINUTES;
+    const MAX_CHUNK_SIZE: usize = 100;
+    const MAX_VESTING_RATIO: Percent = Percent::from_percent(55);
+    const TIME_TO_SATURATION: BlockNumber = 5 * 365 * DAYS; // 5 years
     type Event = Event;
     type WeightInfo = rewards::weights::WeightInfo<Runtime>;
 }
@@ -861,7 +885,7 @@ impl xor_fee::ApplyCustomFees<Call> for ExtrinsicsFlatFees {
             Call::Assets(assets::Call::register(..))
             | Call::EthBridge(eth_bridge::Call::transfer_to_sidechain(..))
             | Call::PoolXYK(pool_xyk::Call::withdraw_liquidity(..))
-            | Call::Rewards(rewards::Call::claim(..)) => Some(balance!(0.007)),
+            | Call::Rewards(rewards::Call::claim(..)) => Some(BIG_FEE),
             Call::Assets(..)
             | Call::EthBridge(..)
             | Call::LiquidityProxy(..)
@@ -869,7 +893,8 @@ impl xor_fee::ApplyCustomFees<Call> for ExtrinsicsFlatFees {
             | Call::PoolXYK(..)
             | Call::Rewards(..)
             | Call::Staking(pallet_staking::Call::payout_stakers(..))
-            | Call::TradingPair(..) => Some(balance!(0.0007)),
+            | Call::TradingPair(..)
+            | Call::Referrals(..) => Some(SMALL_FEE),
             _ => None,
         }
     }
@@ -938,6 +963,54 @@ impl xor_fee::IsCalledByBridgePeer<AccountId> for Call {
     }
 }
 
+pub struct ValBurnedAggregator<T>(sp_std::marker::PhantomData<T>);
+
+impl<T> OnValBurned for ValBurnedAggregator<T>
+where
+    T: pallet_staking::ValBurnedNotifier<Balance>,
+{
+    fn on_val_burned(amount: Balance) {
+        Rewards::on_val_burned(amount);
+        T::notify_val_burned(amount);
+    }
+}
+
+pub struct WithdrawFee;
+
+impl xor_fee::WithdrawFee<Runtime> for WithdrawFee {
+    fn withdraw_fee(
+        who: &AccountId,
+        call: &Call,
+        fee: Balance,
+    ) -> Result<(AccountId, Option<NegativeImbalanceOf<Runtime>>), DispatchError> {
+        match call {
+            Call::Referrals(referrals::Call::set_referrer(referrer))
+                if Referrals::can_set_referrer(who) =>
+            {
+                Referrals::withdraw_fee(referrer, fee)?;
+                Ok((
+                    referrer.clone(),
+                    Some(Balances::withdraw(
+                        &ReferralsReservesAcc::get(),
+                        fee,
+                        WithdrawReasons::TRANSACTION_PAYMENT,
+                        ExistenceRequirement::KeepAlive,
+                    )?),
+                ))
+            }
+            _ => Ok((
+                who.clone(),
+                Some(Balances::withdraw(
+                    who,
+                    fee,
+                    WithdrawReasons::TRANSACTION_PAYMENT,
+                    ExistenceRequirement::KeepAlive,
+                )?),
+            )),
+        }
+    }
+}
+
 parameter_types! {
     pub const DEXIdValue: DEXId = 0;
 }
@@ -954,11 +1027,12 @@ impl xor_fee::Config for Runtime {
     type ValId = GetValAssetId;
     type DEXIdValue = DEXIdValue;
     type LiquidityProxy = LiquidityProxy;
-    type ValBurnedNotifier = Staking;
+    type OnValBurned = ValBurnedAggregator<Staking>;
     type CustomFees = ExtrinsicsFlatFees;
     type GetTechnicalAccountId = GetXorFeeAccountId;
     type GetParliamentAccountId = GetParliamentAccountId;
     type SessionManager = Staking;
+    type WithdrawFee = WithdrawFee;
 }
 
 pub struct ConstantFeeMultiplier;
@@ -1021,17 +1095,98 @@ impl bridge_multisig::Config for Runtime {
 
 parameter_types! {
     pub const EthNetworkId: u32 = 0;
-    pub const RemoveTemporaryPeerAccountId: AccountId = AccountId::new(hex!("614e20b93522be9874e48f1e18b9bf2dfd4cdc4dafc1887ca353d544c92526cc"));
+}
+
+pub struct RemoveTemporaryPeerAccountIds;
+
+#[cfg(feature = "private-net")]
+impl Get<Vec<(AccountId, H160)>> for RemoveTemporaryPeerAccountIds {
+    fn get() -> Vec<(AccountId, H160)> {
+        vec![
+            // Dev
+            (
+                AccountId::new(hex!(
+                    "aa79aa80b94b1cfba69c4a7d60eeb7b469e6411d1f686cc61de8adc8b1b76a69"
+                )),
+                H160(hex!("f858c8366f3a2553516a47f3e0503a85ef93bbba")),
+            ),
+            (
+                AccountId::new(hex!(
+                    "60dc5adadc262770cbe904e3f65a26a89d46b70447640cd7968b49ddf5a459bc"
+                )),
+                H160(hex!("ccd7fe44d58640dc79c55b98f8c3474646e5ea2b")),
+            ),
+            (
+                AccountId::new(hex!(
+                    "70d61e980602e09ac8b5fb50658ebd345774e73b8248d3b61862ba1a9a035082"
+                )),
+                H160(hex!("13d26a91f791e884fe6faa7391c4ef401638baa4")),
+            ),
+            (
+                AccountId::new(hex!(
+                    "05918034f4a7f7c5d99cd0382aa6574ec2aba148aa3d769e50e0ac7663e36d58"
+                )),
+                H160(hex!("aa19829ae887212206be8e97ea47d8fed2120d4e")),
+            ),
+            // Test
+            (
+                AccountId::new(hex!(
+                    "07f5670d08b8f3bd493ff829482a489d94494fd50dd506957e44e9fdc2e98684"
+                )),
+                H160(hex!("457d710255184dbf63c019ab50f65743c6cb072f")),
+            ),
+            (
+                AccountId::new(hex!(
+                    "211bb96e9f746183c05a1d583bccf513f9d8f679d6f36ecbd06609615a55b1cc"
+                )),
+                H160(hex!("6d04423c97e8ce36d04c9b614926ce0d029d04df")),
+            ),
+            (
+                AccountId::new(hex!(
+                    "ef3139b81d14977d5bf6b4a3994872337dfc1d2af2069a058bc26123a3ed1a5c"
+                )),
+                H160(hex!("e34022904b1ab539729cc7b5bfa5c8a74b165e80")),
+            ),
+            (
+                AccountId::new(hex!(
+                    "71124b336fbf3777d743d4390acce6be1cf5e0781e40c51d4cf2e5b5fd8e41e1"
+                )),
+                H160(hex!("ee74a5b5346915012d103cf1ccee288f25bcbc81")),
+            ),
+            // Stage
+            (
+                AccountId::new(hex!(
+                    "07f5670d08b8f3bd493ff829482a489d94494fd50dd506957e44e9fdc2e98684"
+                )),
+                H160(hex!("457d710255184dbf63c019ab50f65743c6cb072f")),
+            ),
+            (
+                AccountId::new(hex!(
+                    "211bb96e9f746183c05a1d583bccf513f9d8f679d6f36ecbd06609615a55b1cc"
+                )),
+                H160(hex!("6d04423c97e8ce36d04c9b614926ce0d029d04df")),
+            ),
+        ]
+    }
+}
+
+#[cfg(not(feature = "private-net"))]
+impl Get<Vec<(AccountId, H160)>> for RemoveTemporaryPeerAccountIds {
+    fn get() -> Vec<(AccountId, H160)> {
+        vec![] // the peer is already removed on main-net.
+    }
 }
 
 #[cfg(not(feature = "private-net"))]
 parameter_types! {
     pub const RemovePendingOutgoingRequestsAfter: BlockNumber = 1 * DAYS;
+    pub const TrackPendingIncomingRequestsAfter: (BlockNumber, u64) = (1 * DAYS, 12697214);
 }
 
 #[cfg(feature = "private-net")]
 parameter_types! {
     pub const RemovePendingOutgoingRequestsAfter: BlockNumber = 30 * MINUTES;
+    pub const TrackPendingIncomingRequestsAfter: (BlockNumber, u64) = (30 * MINUTES, 0);
 }
 
 pub type NetworkId = u32;
@@ -1039,12 +1194,15 @@ pub type NetworkId = u32;
 impl eth_bridge::Config for Runtime {
     type Event = Event;
     type Call = Call;
-    type PeerId = eth_bridge::crypto::TestAuthId;
+    type PeerId = eth_bridge::offchain::crypto::TestAuthId;
     type NetworkId = NetworkId;
     type GetEthNetworkId = EthNetworkId;
     type WeightInfo = eth_bridge::weights::WeightInfo<Runtime>;
     type RemovePendingOutgoingRequestsAfter = RemovePendingOutgoingRequestsAfter;
-    type RemoveTemporaryPeerAccountId = RemoveTemporaryPeerAccountId;
+    type TrackPendingIncomingRequestsAfter = TrackPendingIncomingRequestsAfter;
+    type RemovePeerAccountIds = RemoveTemporaryPeerAccountIds;
+    type SchedulerOriginCaller = OriginCaller;
+    type Scheduler = Scheduler;
 }
 
 #[cfg(feature = "private-net")]
@@ -1079,6 +1237,20 @@ parameter_types! {
         let tech_account_id = GetXorFeeTechAccountId::get();
         technical::Module::<Runtime>::tech_account_id_to_account_id(&tech_account_id)
             .expect("Failed to get ordinary account id for technical account id.")
+    };
+    pub GetXSTPoolPermissionedTechAccountId: TechAccountId = {
+        let tech_account_id = TechAccountId::from_generic_pair(
+            xst::TECH_ACCOUNT_PREFIX.to_vec(),
+            xst::TECH_ACCOUNT_PERMISSIONED.to_vec(),
+        );
+        tech_account_id
+    };
+    pub GetXSTPoolPermissionedAccountId: AccountId = {
+        let tech_account_id = GetXSTPoolPermissionedTechAccountId::get();
+        let account_id =
+            technical::Module::<Runtime>::tech_account_id_to_account_id(&tech_account_id)
+                .expect("Failed to get ordinary account id for technical account id.");
+        account_id
     };
 }
 
@@ -1199,6 +1371,15 @@ impl multicollateral_bonding_curve_pool::Config for Runtime {
     type WeightInfo = multicollateral_bonding_curve_pool::weights::WeightInfo<Runtime>;
 }
 
+impl xst::Config for Runtime {
+    type Event = Event;
+    type LiquidityProxy = LiquidityProxy;
+    type EnsureDEXManager = DEXManager;
+    type EnsureTradingPairExists = TradingPair;
+    type PriceToolsPallet = PriceTools;
+    type WeightInfo = xst::weights::WeightInfo<Runtime>;
+}
+
 impl pallet_im_online::Config for Runtime {
     type AuthorityId = ImOnlineId;
     type Event = Event;
@@ -1248,58 +1429,60 @@ construct_runtime! {
         NodeBlock = opaque::Block,
         UncheckedExtrinsic = UncheckedExtrinsic
     {
-        System: frame_system::{Module, Call, Storage, Config, Event<T>},
-        Timestamp: pallet_timestamp::{Module, Call, Storage, Inherent},
+        System: frame_system::{Module, Call, Storage, Config, Event<T>} = 0,
+        Timestamp: pallet_timestamp::{Module, Call, Storage, Inherent} = 1,
         // Balances in native currency - XOR.
-        Balances: pallet_balances::{Module, Call, Storage, Config<T>, Event<T>},
-        Sudo: pallet_sudo::{Module, Call, Storage, Config<T>, Event<T>},
-        RandomnessCollectiveFlip: pallet_randomness_collective_flip::{Module, Call, Storage},
-        TransactionPayment: pallet_transaction_payment::{Module, Storage},
-        Permissions: permissions::{Module, Call, Storage, Config<T>, Event<T>},
-        ReferralSystem: referral_system::{Module, Call, Storage},
-        Rewards: rewards::{Module, Call, Config<T>, Storage, Event<T>},
-        XorFee: xor_fee::{Module, Call, Storage, Event<T>},
-        BridgeMultisig: bridge_multisig::{Module, Call, Storage, Config<T>, Event<T>},
-        Utility: pallet_utility::{Module, Call, Event},
+        Balances: pallet_balances::{Module, Call, Storage, Config<T>, Event<T>} = 2,
+        Sudo: pallet_sudo::{Module, Call, Storage, Config<T>, Event<T>} = 3,
+        RandomnessCollectiveFlip: pallet_randomness_collective_flip::{Module, Call, Storage} = 4,
+        TransactionPayment: pallet_transaction_payment::{Module, Storage} = 5,
+        Permissions: permissions::{Module, Call, Storage, Config<T>, Event<T>} = 6,
+        Referrals: referrals::{Module, Call, Storage} = 7,
+        Rewards: rewards::{Module, Call, Config<T>, Storage, Event<T>} = 8,
+        XorFee: xor_fee::{Module, Call, Storage, Event<T>} = 9,
+        BridgeMultisig: bridge_multisig::{Module, Call, Storage, Config<T>, Event<T>} = 10,
+        Utility: pallet_utility::{Module, Call, Event} = 11,
 
         // Consensus and staking.
-        Session: pallet_session::{Module, Call, Storage, Event, Config<T>},
-        Historical: pallet_session_historical::{Module},
-        Babe: pallet_babe::{Module, Call, Storage, Config, Inherent, ValidateUnsigned},
-        Grandpa: pallet_grandpa::{Module, Call, Storage, Config, Event},
-        Authorship: pallet_authorship::{Module, Call, Storage, Inherent},
-        Staking: pallet_staking::{Module, Call, Config<T>, Storage, Event<T>},
+        Session: pallet_session::{Module, Call, Storage, Event, Config<T>} = 12,
+        Historical: pallet_session_historical::{Module} = 13,
+        Babe: pallet_babe::{Module, Call, Storage, Config, Inherent, ValidateUnsigned} = 14,
+        Grandpa: pallet_grandpa::{Module, Call, Storage, Config, Event} = 15,
+        Authorship: pallet_authorship::{Module, Call, Storage, Inherent} = 16,
+        Staking: pallet_staking::{Module, Call, Config<T>, Storage, Event<T>} = 17,
 
         // Non-native tokens - everything apart of XOR.
-        Tokens: tokens::{Module, Storage, Config<T>, Event<T>},
+        Tokens: tokens::{Module, Storage, Config<T>, Event<T>} = 18,
         // Unified interface for XOR and non-native tokens.
-        Currencies: currencies::{Module, Call, Event<T>},
-        TradingPair: trading_pair::{Module, Call, Storage, Config<T>, Event<T>},
-        Assets: assets::{Module, Call, Storage, Config<T>, Event<T>},
-        DEXManager: dex_manager::{Module, Storage, Config<T>},
-        MulticollateralBondingCurvePool: multicollateral_bonding_curve_pool::{Module, Call, Storage, Config<T>, Event<T>},
-        Technical: technical::{Module, Call, Config<T>, Event<T>},
-        PoolXYK: pool_xyk::{Module, Call, Storage, Event<T>},
-        LiquidityProxy: liquidity_proxy::{Module, Call, Event<T>},
-        Council: pallet_collective::<Instance1>::{Module, Call, Storage, Origin<T>, Event<T>, Config<T>},
-        TechnicalCommittee: pallet_collective::<Instance2>::{Module, Call, Storage, Origin<T>, Event<T>, Config<T>},
-        Democracy: pallet_democracy::{Module, Call, Storage, Config, Event<T>},
-        DEXAPI: dex_api::{Module, Call, Storage, Config, Event<T>},
-        EthBridge: eth_bridge::{Module, Call, Storage, Config<T>, Event<T>},
-        PswapDistribution: pswap_distribution::{Module, Call, Storage, Config<T>, Event<T>},
-        Multisig: pallet_multisig::{Module, Call, Storage, Event<T>},
-        Scheduler: pallet_scheduler::{Module, Call, Storage, Event<T>},
-        IrohaMigration: iroha_migration::{Module, Call, Storage, Config<T>, Event<T>},
-        ImOnline: pallet_im_online::{Module, Call, Storage, Event<T>, ValidateUnsigned, Config<T>},
-        Offences: pallet_offences::{Module, Call, Storage, Event},
-        TechnicalMembership: pallet_membership::<Instance1>::{Module, Call, Storage, Event<T>, Config<T>},
-        ElectionsPhragmen: pallet_elections_phragmen::{Module, Call, Storage, Event<T>, Config<T>},
-        VestedRewards: vested_rewards::{Module, Call, Storage, Event<T>},
-        Identity: pallet_identity::{Module, Call, Storage, Event<T>},
-        Farming: farming::{Module, Call, Storage},
+        Currencies: currencies::{Module, Call, Event<T>} = 19,
+        TradingPair: trading_pair::{Module, Call, Storage, Config<T>, Event<T>} = 20,
+        Assets: assets::{Module, Call, Storage, Config<T>, Event<T>} = 21,
+        DEXManager: dex_manager::{Module, Storage, Config<T>} = 22,
+        MulticollateralBondingCurvePool: multicollateral_bonding_curve_pool::{Module, Call, Storage, Config<T>, Event<T>} = 23,
+        Technical: technical::{Module, Call, Config<T>, Event<T>} = 24,
+        PoolXYK: pool_xyk::{Module, Call, Storage, Event<T>} = 25,
+        LiquidityProxy: liquidity_proxy::{Module, Call, Event<T>} = 26,
+        Council: pallet_collective::<Instance1>::{Module, Call, Storage, Origin<T>, Event<T>, Config<T>} = 27,
+        TechnicalCommittee: pallet_collective::<Instance2>::{Module, Call, Storage, Origin<T>, Event<T>, Config<T>} = 28,
+        Democracy: pallet_democracy::{Module, Call, Storage, Config, Event<T>} = 29,
+        DEXAPI: dex_api::{Module, Call, Storage, Config, Event<T>} = 30,
+        EthBridge: eth_bridge::{Module, Call, Storage, Config<T>, Event<T>} = 31,
+        PswapDistribution: pswap_distribution::{Module, Call, Storage, Config<T>, Event<T>} = 32,
+        Multisig: pallet_multisig::{Module, Call, Storage, Event<T>} = 33,
+        Scheduler: pallet_scheduler::{Module, Call, Storage, Event<T>} = 34,
+        IrohaMigration: iroha_migration::{Module, Call, Storage, Config<T>, Event<T>} = 35,
+        ImOnline: pallet_im_online::{Module, Call, Storage, Event<T>, ValidateUnsigned, Config<T>} = 36,
+        Offences: pallet_offences::{Module, Call, Storage, Event} = 37,
+        TechnicalMembership: pallet_membership::<Instance1>::{Module, Call, Storage, Event<T>, Config<T>} = 38,
+        ElectionsPhragmen: pallet_elections_phragmen::{Module, Call, Storage, Event<T>, Config<T>} = 39,
+        VestedRewards: vested_rewards::{Module, Call, Storage, Event<T>} = 40,
+        Identity: pallet_identity::{Module, Call, Storage, Event<T>} = 41,
+        Farming: farming::{Module, Call, Storage} = 42,
+        XSTPool: xst::{Module, Call, Storage, Config<T>, Event<T>} = 43,
+        PriceTools: price_tools::{Module, Storage, Event<T>} = 44,
+
         // Available only for test net
-        Faucet: faucet::{Module, Call, Config<T>, Event<T>},
-        PriceTools: price_tools::{Module, Storage, Event<T>},
+        Faucet: faucet::{Module, Call, Config<T>, Event<T>} = 80,
     }
 }
 
@@ -1310,55 +1493,56 @@ construct_runtime! {
         NodeBlock = opaque::Block,
         UncheckedExtrinsic = UncheckedExtrinsic
     {
-        System: frame_system::{Module, Call, Storage, Config, Event<T>},
-        Timestamp: pallet_timestamp::{Module, Call, Storage, Inherent},
+        System: frame_system::{Module, Call, Storage, Config, Event<T>} = 0,
+        Timestamp: pallet_timestamp::{Module, Call, Storage, Inherent} = 1,
         // Balances in native currency - XOR.
-        Balances: pallet_balances::{Module, Call, Storage, Config<T>, Event<T>},
-        RandomnessCollectiveFlip: pallet_randomness_collective_flip::{Module, Call, Storage},
-        TransactionPayment: pallet_transaction_payment::{Module, Storage},
-        Permissions: permissions::{Module, Call, Storage, Config<T>, Event<T>},
-        ReferralSystem: referral_system::{Module, Call, Storage},
-        Rewards: rewards::{Module, Call, Config<T>, Storage, Event<T>},
-        XorFee: xor_fee::{Module, Call, Storage, Event<T>},
-        BridgeMultisig: bridge_multisig::{Module, Call, Storage, Config<T>, Event<T>},
-        Utility: pallet_utility::{Module, Call, Event},
+        Balances: pallet_balances::{Module, Call, Storage, Config<T>, Event<T>} = 2,
+        RandomnessCollectiveFlip: pallet_randomness_collective_flip::{Module, Call, Storage} = 4,
+        TransactionPayment: pallet_transaction_payment::{Module, Storage} = 5,
+        Permissions: permissions::{Module, Call, Storage, Config<T>, Event<T>} = 6,
+        Referrals: referrals::{Module, Call, Storage} = 7,
+        Rewards: rewards::{Module, Call, Config<T>, Storage, Event<T>} = 8,
+        XorFee: xor_fee::{Module, Call, Storage, Event<T>} = 9,
+        BridgeMultisig: bridge_multisig::{Module, Call, Storage, Config<T>, Event<T>} = 10,
+        Utility: pallet_utility::{Module, Call, Event} = 11,
 
         // Consensus and staking.
-        Session: pallet_session::{Module, Call, Storage, Event, Config<T>},
-        Historical: pallet_session_historical::{Module},
-        Babe: pallet_babe::{Module, Call, Storage, Config, Inherent, ValidateUnsigned},
-        Grandpa: pallet_grandpa::{Module, Call, Storage, Config, Event},
-        Authorship: pallet_authorship::{Module, Call, Storage, Inherent},
-        Staking: pallet_staking::{Module, Call, Config<T>, Storage, Event<T>},
+        Session: pallet_session::{Module, Call, Storage, Event, Config<T>} = 12,
+        Historical: pallet_session_historical::{Module} = 13,
+        Babe: pallet_babe::{Module, Call, Storage, Config, Inherent, ValidateUnsigned} = 14,
+        Grandpa: pallet_grandpa::{Module, Call, Storage, Config, Event} = 15,
+        Authorship: pallet_authorship::{Module, Call, Storage, Inherent} = 16,
+        Staking: pallet_staking::{Module, Call, Config<T>, Storage, Event<T>} = 17,
 
         // Non-native tokens - everything apart of XOR.
-        Tokens: tokens::{Module, Storage, Config<T>, Event<T>},
+        Tokens: tokens::{Module, Storage, Config<T>, Event<T>} = 18,
         // Unified interface for XOR and non-native tokens.
-        Currencies: currencies::{Module, Call, Event<T>},
-        TradingPair: trading_pair::{Module, Call, Storage, Config<T>, Event<T>},
-        Assets: assets::{Module, Call, Storage, Config<T>, Event<T>},
-        DEXManager: dex_manager::{Module, Storage, Config<T>},
-        MulticollateralBondingCurvePool: multicollateral_bonding_curve_pool::{Module, Call, Storage, Config<T>, Event<T>},
-        Technical: technical::{Module, Config<T>, Event<T>},
-        PoolXYK: pool_xyk::{Module, Call, Storage, Event<T>},
-        LiquidityProxy: liquidity_proxy::{Module, Call, Event<T>},
-        Council: pallet_collective::<Instance1>::{Module, Call, Storage, Origin<T>, Event<T>, Config<T>},
-        TechnicalCommittee: pallet_collective::<Instance2>::{Module, Call, Storage, Origin<T>, Event<T>, Config<T>},
-        Democracy: pallet_democracy::{Module, Call, Storage, Config, Event<T>},
-        DEXAPI: dex_api::{Module, Storage, Config, Event<T>},
-        EthBridge: eth_bridge::{Module, Call, Storage, Config<T>, Event<T>},
-        PswapDistribution: pswap_distribution::{Module, Call, Storage, Config<T>, Event<T>},
-        Multisig: pallet_multisig::{Module, Call, Storage, Event<T>},
-        Scheduler: pallet_scheduler::{Module, Call, Storage, Event<T>},
-        IrohaMigration: iroha_migration::{Module, Call, Storage, Config<T>, Event<T>},
-        ImOnline: pallet_im_online::{Module, Call, Storage, Event<T>, ValidateUnsigned, Config<T>},
-        Offences: pallet_offences::{Module, Call, Storage, Event},
-        TechnicalMembership: pallet_membership::<Instance1>::{Module, Call, Storage, Event<T>, Config<T>},
-        ElectionsPhragmen: pallet_elections_phragmen::{Module, Call, Storage, Event<T>, Config<T>},
-        VestedRewards: vested_rewards::{Module, Call, Storage, Event<T>},
-        Identity: pallet_identity::{Module, Call, Storage, Event<T>},
-        PriceTools: price_tools::{Module, Storage, Event<T>},
-        Farming: farming::{Module, Call, Storage},
+        Currencies: currencies::{Module, Call, Event<T>} = 19,
+        TradingPair: trading_pair::{Module, Call, Storage, Config<T>, Event<T>} = 20,
+        Assets: assets::{Module, Call, Storage, Config<T>, Event<T>} = 21,
+        DEXManager: dex_manager::{Module, Storage, Config<T>} = 22,
+        MulticollateralBondingCurvePool: multicollateral_bonding_curve_pool::{Module, Call, Storage, Config<T>, Event<T>} = 23,
+        Technical: technical::{Module, Call, Config<T>, Event<T>} = 24,
+        PoolXYK: pool_xyk::{Module, Call, Storage, Event<T>} = 25,
+        LiquidityProxy: liquidity_proxy::{Module, Call, Event<T>} = 26,
+        Council: pallet_collective::<Instance1>::{Module, Call, Storage, Origin<T>, Event<T>, Config<T>} = 27,
+        TechnicalCommittee: pallet_collective::<Instance2>::{Module, Call, Storage, Origin<T>, Event<T>, Config<T>} = 28,
+        Democracy: pallet_democracy::{Module, Call, Storage, Config, Event<T>} = 29,
+        DEXAPI: dex_api::{Module, Call, Storage, Config, Event<T>} = 30,
+        EthBridge: eth_bridge::{Module, Call, Storage, Config<T>, Event<T>} = 31,
+        PswapDistribution: pswap_distribution::{Module, Call, Storage, Config<T>, Event<T>} = 32,
+        Multisig: pallet_multisig::{Module, Call, Storage, Event<T>} = 33,
+        Scheduler: pallet_scheduler::{Module, Call, Storage, Event<T>} = 34,
+        IrohaMigration: iroha_migration::{Module, Call, Storage, Config<T>, Event<T>} = 35,
+        ImOnline: pallet_im_online::{Module, Call, Storage, Event<T>, ValidateUnsigned, Config<T>} = 36,
+        Offences: pallet_offences::{Module, Call, Storage, Event} = 37,
+        TechnicalMembership: pallet_membership::<Instance1>::{Module, Call, Storage, Event<T>, Config<T>} = 38,
+        ElectionsPhragmen: pallet_elections_phragmen::{Module, Call, Storage, Event<T>, Config<T>} = 39,
+        VestedRewards: vested_rewards::{Module, Call, Storage, Event<T>} = 40,
+        Identity: pallet_identity::{Module, Call, Storage, Event<T>} = 41,
+        Farming: farming::{Module, Call, Storage} = 42,
+        XSTPool: xst::{Module, Call, Storage, Config<T>, Event<T>} = 43,
+        PriceTools: price_tools::{Module, Storage, Event<T>} = 44,
     }
 }
 
@@ -1389,6 +1573,7 @@ pub type SignedBlock = generic::SignedBlock<Block>;
 pub type BlockId = generic::BlockId<Block>;
 /// The SignedExtension to the basic transaction logic.
 pub type SignedExtra = (
+    frame_system::CheckSpecVersion<Runtime>,
     frame_system::CheckTxVersion<Runtime>,
     frame_system::CheckGenesis<Runtime>,
     frame_system::CheckEra<Runtime>,
@@ -1458,8 +1643,9 @@ impl_runtime_apis! {
         fn validate_transaction(
             source: TransactionSource,
             tx: <Block as BlockT>::Extrinsic,
+            block_hash: <Block as BlockT>::Hash,
         ) -> TransactionValidity {
-            Executive::validate_transaction(source, tx)
+            Executive::validate_transaction(source, tx, block_hash)
         }
     }
 
@@ -1518,6 +1704,7 @@ impl_runtime_apis! {
         LiquiditySourceType,
         SwapVariant,
     > for Runtime {
+        #[cfg_attr(not(feature = "private-net"), allow(unused))]
         fn quote(
             dex_id: DEXId,
             liquidity_source_type: LiquiditySourceType,
@@ -1526,18 +1713,20 @@ impl_runtime_apis! {
             desired_input_amount: BalanceWrapper,
             swap_variant: SwapVariant,
         ) -> Option<dex_runtime_api::SwapOutcomeInfo<Balance>> {
-            // TODO: remove with proper QuoteAmount refactor
-            let limit = if swap_variant == SwapVariant::WithDesiredInput {
-                Balance::zero()
-            } else {
-                Balance::max_value()
-            };
-            DEXAPI::quote(
-                &LiquiditySourceId::new(dex_id, liquidity_source_type),
-                &input_asset_id,
-                &output_asset_id,
-                SwapAmount::with_variant(swap_variant, desired_input_amount.into(), limit),
-            ).ok().map(|sa| dex_runtime_api::SwapOutcomeInfo::<Balance> { amount: sa.amount, fee: sa.fee})
+            #[cfg(feature = "private-net")]
+            {
+                DEXAPI::quote(
+                    &LiquiditySourceId::new(dex_id, liquidity_source_type),
+                    &input_asset_id,
+                    &output_asset_id,
+                    QuoteAmount::with_variant(swap_variant, desired_input_amount.into()),
+                ).ok().map(|sa| dex_runtime_api::SwapOutcomeInfo::<Balance> { amount: sa.amount, fee: sa.fee})
+            }
+            #[cfg(not(feature = "private-net"))]
+            {
+                // Mainnet should not be able to access liquidity source quote directly, to avoid arbitrage exploits.
+                None
+            }
         }
 
         fn can_exchange(
@@ -1643,6 +1832,10 @@ impl_runtime_apis! {
                 asset_id, symbol, name, precision, is_mintable,
             })
         }
+
+        fn get_asset_content_src(asset_id: AssetId) -> Option<ContentSource> {
+            Assets::get_asset_content_src(&asset_id)
+        }
     }
 
     impl
@@ -1738,19 +1931,13 @@ impl_runtime_apis! {
                 return None;
             }
 
-            // TODO: remove with proper QuoteAmount refactor
-            let limit = if swap_variant == SwapVariant::WithDesiredInput {
-                Balance::zero()
-            } else {
-                Balance::max_value()
-            };
-            LiquidityProxy::quote(
+            LiquidityProxy::inner_quote(
                 &input_asset_id,
                 &output_asset_id,
-                SwapAmount::with_variant(swap_variant, amount.into(), limit),
+                QuoteAmount::with_variant(swap_variant, amount.into()),
                 LiquiditySourceFilter::with_mode(dex_id, filter_mode, selected_source_types),
                 false,
-            ).ok().map(|(asa, rewards)| liquidity_proxy_runtime_api::SwapOutcomeInfo::<Balance, AssetId> {
+            ).ok().map(|(asa, rewards, amount_without_impact)| liquidity_proxy_runtime_api::SwapOutcomeInfo::<Balance, AssetId> {
                 amount: asa.amount,
                 fee: asa.fee,
                 rewards: rewards.into_iter()
@@ -1760,7 +1947,7 @@ impl_runtime_apis! {
                                     reason
                                 })
                                 .collect(),
-                ..Default::default()})
+                amount_without_impact: amount_without_impact.unwrap_or(0)})
         }
 
         fn is_path_available(
@@ -1903,11 +2090,13 @@ impl_runtime_apis! {
             use liquidity_proxy_benchmarking::Module as LiquidityProxyBench;
             use pool_xyk_benchmarking::Module as XYKPoolBench;
             use pswap_distribution_benchmarking::Module as PswapDistributionBench;
+            use xor_fee_benchmarking::Module as XorFeeBench;
 
             impl dex_api_benchmarking::Config for Runtime {}
             impl liquidity_proxy_benchmarking::Config for Runtime {}
             impl pool_xyk_benchmarking::Config for Runtime {}
             impl pswap_distribution_benchmarking::Config for Runtime {}
+            impl xor_fee_benchmarking::Config for Runtime {}
 
 
             let whitelist: Vec<TrackedStorageKey> = vec![
@@ -1941,7 +2130,10 @@ impl_runtime_apis! {
             add_benchmark!(params, batches, trading_pair, TradingPair);
             add_benchmark!(params, batches, pool_xyk, XYKPoolBench::<Runtime>);
             add_benchmark!(params, batches, eth_bridge, EthBridge);
+            add_benchmark!(params, batches, vested_rewards, VestedRewards);
             add_benchmark!(params, batches, price_tools, PriceTools);
+            add_benchmark!(params, batches, xor_fee, XorFeeBench::<Runtime>);
+            add_benchmark!(params, batches, referrals, Referrals);
 
             if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
             Ok(batches)

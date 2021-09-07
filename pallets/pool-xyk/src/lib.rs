@@ -34,23 +34,25 @@ use frame_support::dispatch::{DispatchError, DispatchResult};
 use frame_support::storage::PrefixIterator;
 use frame_support::traits::Get;
 use frame_support::weights::Weight;
-use frame_support::{ensure, Parameter};
+use frame_support::{ensure, fail, Parameter};
 use frame_system::ensure_signed;
 use sp_std::vec::Vec;
 
-use common::prelude::{Balance, EnsureDEXManager, SwapAmount, SwapOutcome};
-use common::{
-    balance, EnsureTradingPairExists, FromGenericPair, GetPoolReserves, LiquiditySource,
-    LiquiditySourceType, ManagementMode, OnPoolReservesChanged, PoolXykPallet, RewardReason,
-    TechAccountId, TechPurpose, ToFeeAccount, TradingPair,
+use common::prelude::{
+    Balance, EnsureDEXManager, FixedWrapper, QuoteAmount, SwapAmount, SwapOutcome,
 };
-use orml_traits::currency::MultiCurrency;
+use common::{
+    fixed_wrapper, EnsureTradingPairExists, GetPoolReserves, LiquiditySource, LiquiditySourceType,
+    ManagementMode, OnPoolReservesChanged, PoolXykPallet, RewardReason, TechAccountId, TechPurpose,
+    ToFeeAccount, TradingPair,
+};
 
 mod aliases;
 use aliases::{
     AccountIdOf, AssetIdOf, DEXIdOf, DepositLiquidityActionOf, PairSwapActionOf,
     PolySwapActionStructOf, TechAccountIdOf, TechAssetIdOf, WithdrawLiquidityActionOf,
 };
+use sp_std::collections::btree_set::BTreeSet;
 
 pub mod migrations;
 pub mod weights;
@@ -85,6 +87,8 @@ pub trait WeightInfo {
     fn deposit_liquidity() -> Weight;
     fn withdraw_liquidity() -> Weight;
     fn initialize_pool() -> Weight;
+    fn can_exchange() -> Weight;
+    fn quote() -> Weight;
 }
 
 impl<T: Config> PoolXykPallet for Pallet<T> {
@@ -243,7 +247,7 @@ impl<T: Config> Module<T> {
         });
         let action = T::PolySwapAction::from(action);
         let mut action = action.into();
-        technical::Module::<T>::perform_create_swap(source, &mut action)?;
+        technical::Module::<T>::create_swap(source, &mut action)?;
         Ok(())
     }
 
@@ -281,7 +285,7 @@ impl<T: Config> Module<T> {
             });
         let action = T::PolySwapAction::from(action);
         let mut action = action.into();
-        technical::Module::<T>::perform_create_swap(source, &mut action)?;
+        technical::Module::<T>::create_swap(source, &mut action)?;
         Ok(())
     }
 
@@ -303,70 +307,74 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
     for Module<T>
 {
     fn can_exchange(
-        dex_id: &T::DEXId,
+        _dex_id: &T::DEXId,
         input_asset_id: &T::AssetId,
         output_asset_id: &T::AssetId,
     ) -> bool {
-        // Function clause is used here, because in this case it is other scope and it not
-        // conflicted with bool type.
-        let res = || {
-            let tech_acc_id = T::TechAccountId::from_generic_pair(
-                "PoolXYK".into(),
-                "CanExchangeOperation".into(),
-            );
-            //TODO: Account registration is not needed to do operation, is this ok?
-            //Technical::register_tech_account_id(tech_acc_id)?;
-            let repr = technical::Module::<T>::tech_account_id_to_account_id(&tech_acc_id)?;
-            //FIXME: Use special max variable that is good for this operation.
-            T::Currency::deposit(input_asset_id.clone(), &repr, balance!(999999999))?;
-            let swap_amount = common::prelude::SwapAmount::WithDesiredInput {
-                //FIXME: Use special max variable that is good for this operation.
-                desired_amount_in: balance!(0.000000001),
-                min_amount_out: 0,
-            };
-            Module::<T>::exchange(
-                &repr,
-                &repr,
-                dex_id,
-                input_asset_id,
-                output_asset_id,
-                swap_amount,
-            )?;
-            Ok(())
+        let base_asset_id = T::GetBaseAssetId::get();
+        let target_asset_id = if input_asset_id == &base_asset_id {
+            output_asset_id
+        } else if output_asset_id == &base_asset_id {
+            input_asset_id
+        } else {
+            return false;
         };
-        frame_support::storage::with_transaction(|| {
-            let v: DispatchResult = res();
-            sp_runtime::TransactionOutcome::Rollback(v.is_ok())
-        })
+
+        Properties::<T>::contains_key(&base_asset_id, &target_asset_id)
     }
 
     fn quote(
         dex_id: &T::DEXId,
         input_asset_id: &T::AssetId,
         output_asset_id: &T::AssetId,
-        swap_amount: SwapAmount<Balance>,
+        amount: QuoteAmount<Balance>,
     ) -> Result<SwapOutcome<Balance>, DispatchError> {
-        let res = || {
-            let tech_acc_id =
-                T::TechAccountId::from_generic_pair("PoolXYK".into(), "QuoteOperation".into());
-            //TODO: Account registration is not needed to do operation, is this ok?
-            //Technical::register_tech_account_id(tech_acc_id)?;
-            let repr = technical::Module::<T>::tech_account_id_to_account_id(&tech_acc_id)?;
-            //FIXME: Use special max variable that is good for this operation.
-            T::Currency::deposit(input_asset_id.clone(), &repr, balance!(999999999))?;
-            Module::<T>::exchange(
-                &repr,
-                &repr,
-                dex_id,
-                input_asset_id,
-                output_asset_id,
-                swap_amount,
-            )
-        };
-        frame_support::storage::with_transaction(|| {
-            let v: Result<SwapOutcome<Balance>, DispatchError> = res();
-            sp_runtime::TransactionOutcome::Rollback(v)
-        })
+        // Get pool account.
+        let (_, tech_acc_id) = Module::<T>::tech_account_from_dex_and_asset_pair(
+            *dex_id,
+            *input_asset_id,
+            *output_asset_id,
+        )?;
+        let pool_acc_id = technical::Module::<T>::tech_account_id_to_account_id(&tech_acc_id)?;
+
+        // Get actual pool reserves.
+        let reserve_input = <assets::Module<T>>::free_balance(&input_asset_id, &pool_acc_id)?;
+        let reserve_output = <assets::Module<T>>::free_balance(&output_asset_id, &pool_acc_id)?;
+
+        // Check reserves validity.
+        if reserve_input == 0 && reserve_output == 0 {
+            fail!(Error::<T>::PoolIsEmpty);
+        } else if reserve_input <= 0 || reserve_output <= 0 {
+            fail!(Error::<T>::PoolIsInvalid);
+        }
+
+        // Decide which side should be used for fee.
+        let get_fee_from_destination =
+            Module::<T>::decide_is_fee_from_destination(input_asset_id, output_asset_id)?;
+
+        // Calculate quote.
+        match amount {
+            QuoteAmount::WithDesiredInput { desired_amount_in } => {
+                let (calculated, fee) = Module::<T>::calc_output_for_exact_input(
+                    T::GetFee::get(),
+                    get_fee_from_destination,
+                    &reserve_input,
+                    &reserve_output,
+                    &desired_amount_in,
+                )?;
+                Ok(SwapOutcome::new(calculated, fee))
+            }
+            QuoteAmount::WithDesiredOutput { desired_amount_out } => {
+                let (calculated, fee) = Module::<T>::calc_input_for_exact_output(
+                    T::GetFee::get(),
+                    get_fee_from_destination,
+                    &reserve_input,
+                    &reserve_output,
+                    &desired_amount_out,
+                )?;
+                Ok(SwapOutcome::new(calculated, fee))
+            }
+        }
     }
 
     fn exchange(
@@ -406,7 +414,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         )?;
 
         // It is guarantee that unwrap is always ok.
-        // Clone is used here because action is used for perform_create_swap_unchecked.
+        // Clone is used here because action is used for create_swap_unchecked.
         let retval = match action.clone() {
             PolySwapAction::PairSwap(a) => {
                 let (fee, amount) = match swap_amount {
@@ -424,7 +432,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
 
         let action = T::PolySwapAction::from(action);
         let mut action = action.into();
-        technical::Module::<T>::perform_create_swap_unchecked(sender.clone(), &mut action)?;
+        technical::Module::<T>::create_swap_unchecked(sender.clone(), &mut action)?;
 
         retval
     }
@@ -438,6 +446,100 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
     ) -> Result<Vec<(Balance, T::AssetId, RewardReason)>, DispatchError> {
         // XYK Pool has no rewards currently
         Ok(Vec::new())
+    }
+
+    fn quote_without_impact(
+        dex_id: &T::DEXId,
+        input_asset_id: &T::AssetId,
+        output_asset_id: &T::AssetId,
+        amount: QuoteAmount<Balance>,
+    ) -> Result<SwapOutcome<Balance>, DispatchError> {
+        // Get pool account.
+        let (_, tech_acc_id) = Module::<T>::tech_account_from_dex_and_asset_pair(
+            *dex_id,
+            *input_asset_id,
+            *output_asset_id,
+        )?;
+        let pool_acc_id = technical::Module::<T>::tech_account_id_to_account_id(&tech_acc_id)?;
+
+        // Get actual pool reserves.
+        let reserve_input = <assets::Module<T>>::free_balance(&input_asset_id, &pool_acc_id)?;
+        let reserve_output = <assets::Module<T>>::free_balance(&output_asset_id, &pool_acc_id)?;
+
+        // Check reserves validity.
+        if reserve_input == 0 && reserve_output == 0 {
+            fail!(Error::<T>::PoolIsEmpty);
+        } else if reserve_input <= 0 || reserve_output <= 0 {
+            fail!(Error::<T>::PoolIsInvalid);
+        }
+
+        // Decide which side should be used for fee.
+        let get_fee_from_destination =
+            Module::<T>::decide_is_fee_from_destination(input_asset_id, output_asset_id)?;
+
+        let input_price_wrt_output = FixedWrapper::from(reserve_output) / reserve_input;
+        let fee_fraction = T::GetFee::get();
+        Ok(match amount {
+            QuoteAmount::WithDesiredInput { desired_amount_in } => {
+                let (output, fee_amount) = if get_fee_from_destination {
+                    // output token is xor, user indicates desired input amount
+                    // y_1 = x_in * y / x
+                    // y_out = y_1 * (1 - fee)
+                    let out_with_fee =
+                        FixedWrapper::from(desired_amount_in) * input_price_wrt_output;
+                    let output = FixedWrapper::from(out_with_fee.clone())
+                        * (fixed_wrapper!(1) - fee_fraction);
+                    let fee_amount = out_with_fee - output.clone();
+                    (output, fee_amount)
+                } else {
+                    // input token is xor, user indicates desired input amount
+                    // x_1 = x_in * (1 - fee)
+                    // y_out = x_1 * y / x
+                    let input_without_fee = FixedWrapper::from(desired_amount_in.clone())
+                        * (fixed_wrapper!(1) - fee_fraction);
+                    let output = input_without_fee.clone() * input_price_wrt_output;
+                    let fee_amount = FixedWrapper::from(desired_amount_in) - input_without_fee;
+                    (output, fee_amount)
+                };
+                SwapOutcome::new(
+                    output
+                        .try_into_balance()
+                        .map_err(|_| Error::<T>::FailedToCalculatePriceWithoutImpact)?,
+                    fee_amount
+                        .try_into_balance()
+                        .map_err(|_| Error::<T>::FailedToCalculatePriceWithoutImpact)?,
+                )
+            }
+            QuoteAmount::WithDesiredOutput { desired_amount_out } => {
+                let (input, fee_amount) = if get_fee_from_destination {
+                    // output token is xor, user indicates desired output amount:
+                    // y_1 = y_out / (1 - fee)
+                    // x_in = y_1 / y / x
+                    let output_with_fee = FixedWrapper::from(desired_amount_out.clone())
+                        / (fixed_wrapper!(1) - fee_fraction);
+                    let fee_amount =
+                        output_with_fee.clone() - FixedWrapper::from(desired_amount_out);
+                    let input = output_with_fee / input_price_wrt_output;
+                    (input, fee_amount)
+                } else {
+                    // input token is xor, user indicates desired output amount:
+                    // x_in = (y_out / y / x) / (1 - fee)
+                    let input_without_fee =
+                        FixedWrapper::from(desired_amount_out) / input_price_wrt_output;
+                    let input = input_without_fee.clone() / (fixed_wrapper!(1) - fee_fraction);
+                    let fee_amount = input.clone() - input_without_fee;
+                    (input, fee_amount)
+                };
+                SwapOutcome::new(
+                    input
+                        .try_into_balance()
+                        .map_err(|_| Error::<T>::FailedToCalculatePriceWithoutImpact)?,
+                    fee_amount
+                        .try_into_balance()
+                        .map_err(|_| Error::<T>::FailedToCalculatePriceWithoutImpact)?,
+                )
+            }
+        })
     }
 }
 
@@ -495,6 +597,11 @@ pub mod pallet {
         fn on_runtime_upgrade() -> Weight {
             match Self::storage_version() {
                 Some(PalletVersion { major: 0, .. }) | None => migrations::v1_1::migrate::<T>(),
+                Some(PalletVersion {
+                    major: 1,
+                    minor: 1,
+                    patch: 0,
+                }) => migrations::v1_2::migrate::<T>(),
                 _ => 0,
             }
         }
@@ -502,27 +609,6 @@ pub mod pallet {
 
     #[pallet::call]
     impl<T: Config> Pallet<T> {
-        #[pallet::weight(<T as Config>::WeightInfo::swap_pair())]
-        pub fn swap_pair(
-            origin: OriginFor<T>,
-            receiver: AccountIdOf<T>,
-            dex_id: DEXIdOf<T>,
-            input_asset_id: AssetIdOf<T>,
-            output_asset_id: AssetIdOf<T>,
-            swap_amount: SwapAmount<Balance>,
-        ) -> DispatchResultWithPostInfo {
-            let source = ensure_signed(origin)?;
-            Module::<T>::exchange(
-                &source,
-                &receiver,
-                &dex_id,
-                &input_asset_id,
-                &output_asset_id,
-                swap_amount,
-            )?;
-            Ok(().into())
-        }
-
         #[pallet::weight(<T as Config>::WeightInfo::deposit_liquidity())]
         pub fn deposit_liquidity(
             origin: OriginFor<T>,
@@ -625,6 +711,8 @@ pub mod pallet {
     pub enum Error<T> {
         /// It is impossible to calculate fee for some pair swap operation, or other operation.
         UnableToCalculateFee,
+        /// Failure while calculating price ignoring non-linearity of liquidity source.
+        FailedToCalculatePriceWithoutImpact,
         /// Is is impossible to get balance.
         UnableToGetBalance,
         /// Impossible to decide asset pair amounts.
@@ -734,6 +822,8 @@ pub mod pallet {
         IncRefError,
         /// Unable to provide liquidity because its XOR part is lesser than the minimum value (0.007)
         UnableToDepositXorLessThanMinimum,
+        /// Attempt to quote via unsupported path, i.e. both output and input tokens are not XOR.
+        UnsupportedQuotePath,
     }
 
     /// Updated after last liquidity change operation.
@@ -757,15 +847,23 @@ pub mod pallet {
     /// Liquidity providers of particular pool.
     /// Pool account => Liquidity provider account => Pool token balance
     #[pallet::storage]
+    #[pallet::getter(fn pool_providers)]
     pub type PoolProviders<T: Config> =
         StorageDoubleMap<_, Identity, AccountIdOf<T>, Identity, AccountIdOf<T>, Balance>;
+
+    /// Set of pools in which accounts have some share.
+    /// Liquidity provider account => Target Asset of pair (assuming base asset is XOR)
+    #[pallet::storage]
+    #[pallet::getter(fn account_pools)]
+    pub type AccountPools<T: Config> =
+        StorageMap<_, Identity, AccountIdOf<T>, BTreeSet<AssetIdOf<T>>, ValueQuery>;
 
     /// Total issuance of particular pool.
     /// Pool account => Total issuance
     #[pallet::storage]
     pub type TotalIssuances<T: Config> = StorageMap<_, Identity, AccountIdOf<T>, Balance>;
 
-    /// Properties of particular pool. [Reserves Account Id, Fees Account Id]
+    /// Properties of particular pool. Base Asset => Target Asset => (Reserves Account Id, Fees Account Id)
     #[pallet::storage]
     #[pallet::getter(fn properties)]
     pub type Properties<T: Config> = StorageDoubleMap<

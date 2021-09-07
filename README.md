@@ -1,20 +1,20 @@
 <img alt="SORA logo" src="https://static.tildacdn.com/tild3664-3939-4236-b762-306663333564/sora_small.svg"/>
 
-# Overview.
+# Overview
 
 This is FRAME-based Substrate node of SORA2.
 This repo contains code of node, pallets, runtime.
 
 [CONTRIBUTING.md](CONTRIBUTING.md)
 
-# System requirements.
+# System requirements
 
-## Minimum (for example for small docker container).
+## Minimum (for example for small docker container)
 * CPU 800MHz 1 core.
 * RAM 800Mb.
 * Disk 2Gb.
 
-## Normal.
+## Normal
 * CPU 1500MHz 2 cores.
 * RAM 4Gb.
 * Disk 6Gb.
@@ -24,134 +24,91 @@ This repo contains code of node, pallets, runtime.
 * A NVMe solid state drive. Starting around 80GB - 160GB will be okay for the first six months of SORA, but will need to be re-evaluated every six months, as the blockchain grows.
 * 32 Gb.
 
-# Build test run.
+# Quick start
 
-## Using nix package manager.
+### Dependencies
 
-### Install nix package manager.
+Follow installation steps for your platform:
 
-```sh
-curl -L https://nixos.org/nix/install | sh
-```
-Make sure to follow the instructions output by the script.
-The installation script requires that you have sudo access to root.
+https://substrate.dev/docs/en/knowledgebase/getting-started/
 
-### Build node binary using nix.
+### Run tests
 
 ```sh
-nix-shell --run "cargo build --release"
-```
+# all
+cargo test
 
-### Test node using nix.
-
-```sh
-nix-shell --run "cargo test --release"
+# specific pallet
+cargo test -p assets
 ```
 
-### Run node using nix.
+### Run local network
 
 ```sh
-nix-shell --run "cargo run --release -- --dev --tmp"
-```
+# build binary
+cargo build --release --features private-net
 
-### Running using script, after building.
-
-```sh
+# run multiple nodes with local chainspec
 ./run_script.sh -d -w -r
 ```
+access running network via polkadot.js/apps (select Development -> Local Node, e.g. [link](https://polkadot.js.org/apps/?rpc=ws%3A%2F%2F127.0.0.1%3A9944#/explorer))
 
-### Single Node Development Chain
-
-Purge any existing dev chain state:
-
-```sh
-./target/release/framenode purge-chain --dev
-```
-
-Start a dev chain:
+### Run benchmarks to generate weights
+> For release must be run on hardware matching validator requirements specification.
 
 ```sh
-./target/release/framenode --dev
+# example: run benchmarks for all extrinsics of trading-pair pallet
+cargo run --release --features private-net,runtime-benchmarks benchmark --chain=local  --execution=wasm --wasm-execution=compiled --pallet trading_pair --extrinsic "*" --steps 50 --repeat 20 --output ./
+```
+produces `trading_pair.rs` file in `./` (project root)
+
+### Parse extrinsic data
+```
+cargo run --bin parse <extrinsic data>
+
+cargo run --bin parse 84aa9d65d15905b5bd071d6a1b6178be15db6bdddc7a91c9b8f52b3049edbeebbd00de47feadb282078c891172cb2035054ba9442c95aa6be1c85124db04b5f751dd41308e3599dcde3523117b08e8defdc776143782a4c436298263945e75bffb0f7500ed12001a0000000000020004000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000000025000000000000000000000000000000270100000000000000000000000000000000
 ```
 
-Or, start a dev chain with detailed logging:
+# Configuration parameters
 
-```sh
-RUST_LOG=debug RUST_BACKTRACE=1 ./target/release/framenode -lruntime=debug --dev
-```
+## Command line
 
-### Multi-Node Local Testnet
+After building with `cargo` binary will be located at `<project_root>/target/debug/framenode` or `<project_root>/target/release/framenode` for --release build.
 
-If you want to see the multi-node consensus algorithm in action, refer to
-[our Start a Private Network tutorial](https://substrate.dev/docs/en/tutorials/start-a-private-network/).
+### Logging
 
-## Using docker.
+To enable detailed logging node can be run with
+`RUST_LOG=debug RUST_BACKTRACE=1` env variables and `-lruntime=debug` flag.
 
-### Build image with node binary, cargo test included.
+### Exporting chainspec json
 
-```docker build -t sora/polkaswap/nix .```
+Refer to `generate_chain_specs.sh` script.
 
-### Run this image.
-
-```docker-compose up```
-
-## Using manual rust setup.
-
-### Rust Setup
-
-First, complete the [guide for Rust setup](https://substrate.dev/docs/en/knowledgebase/getting-started/).
-For the SORA2 network nightly build should be used. Execute the following command:
-```
-rustup uninstall nigthly
-rustup default nightly-2021-03-11
-rustup target add wasm32-unknown-unknown --toolchain nightly-2021-03-11
-```
-
-### Build
-
-The cargo run command will perform an initial build. Use the following command to build the node without launching it:
-
-```sh
-cargo build --release
-```
-
-### Run
-
-Use Rust's native cargo command to build and launch the template node:
-
-```sh
-cargo run --release -- --dev --tmp
-```
-
-# Configuration parameters.
-
-## Command line.
-
-### Selecting a chain.
+### Selecting a chain
 
 Use the ```--chain <chainspec>``` option to select the chain. Can be local, dev, staging, test, or a custom chain spec.
 
-### Archive node.
+### Archive node
 
 An archive node does not prune any block or state data. Use the ```--pruning archive``` flag. Certain types of nodes like validators must run in archive mode. Likewise, all events are cleared from state in each block, so if you want to store events then you will need an archive node.
 
 Note: By default, Validator nodes are in archive mode. If you've already synced the chain not in archive mode, you must first remove the database with polkadot purge-chain and then ensure that you run Polkadot with the ```--pruning=archive``` option.
 
-### Validator node in non-archive mode.
+### Validator node in non-archive mode
 
 Adding the following flags: ```--unsafe-pruning --pruning <NUM OF BLOCKS>```, a reasonable value being 1000. Note that an archive node and non-archive node's databases are not compatible with each other, and to switch you will need to purge the chain data.
 
-### Exporting blocks.
+### Exporting blocks
 
 To export blocks to a file, use export-blocks. Export in JSON (default) or binary (```--binary true```).
 
 ```polkadot export-blocks --from 0 <output_file>```
 
-### RPC ports.
+### RPC ports
 
 Use the ```--rpc-external``` flag to expose RPC ports and ```--ws-external``` to expose websockets. Not all RPC calls are safe to allow and you should use an RPC proxy to filter unsafe calls. Select ports with the ```--rpc-port``` and ```--ws-port``` options. To limit the hosts who can access, use the ```--rpc-cors``` option.
 
-### Offchain worker.
+### Offchain worker
 
 Use ```--offchain-worker``` flag to set should execute offchain workers on every block or not
 By default it's only enabled for nodes that are authoring new blocks.
@@ -161,7 +118,7 @@ By default it's only enabled for nodes that are authoring new blocks.
 
 Flag ```-d```, ```--base-path <PATH>```
 
-### Run a temporary node.
+### Run a temporary node
 
 Flag ```--tmp```
 
@@ -173,16 +130,16 @@ Note: the directory is random per process execution. This directory is used as b
 
 Flag ```--bootnodes <ADDR>...```
 
-## Default ports.
+## Default ports
 
 * 9933 for HTTP
 * 9944 for WS
 * 9615 for prometheus
 * 30333 p2p traffic
 
-## Other documentation.
+## Other documentation
 
-### Embedded Docs.
+### Embedded Docs
 
 Once the project has been built, the following command can be used to explore all parameters and
 subcommands:
@@ -191,7 +148,7 @@ subcommands:
 ./target/release/framenode -h
 ```
 
-### Reading external documentation about ports and flags.
+### Reading external documentation about ports and flags
 
 * [Alice and Bob Start Blockchain](https://substrate.dev/docs/en/tutorials/start-a-private-network/alicebob)
 * [Node Management](https://wiki.polkadot.network/docs/en/build-node-management)

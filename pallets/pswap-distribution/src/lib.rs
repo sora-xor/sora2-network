@@ -306,7 +306,7 @@ impl<T: Config> Pallet<T> {
         let amount_parliament = (amount_burned.clone() * ParliamentPswapFraction::<T>::get())
             .try_into_balance()
             .map_err(|_| Error::<T>::CalculationError)?;
-        let amount_left = (amount_burned.clone() - amount_parliament)
+        let mut amount_left = (amount_burned.clone() - amount_parliament)
             .try_into_balance()
             .map_err(|_| Error::<T>::CalculationError)?;
 
@@ -318,7 +318,8 @@ impl<T: Config> Pallet<T> {
         let amount_lp = amount_lp.min(amount_left);
 
         // Calculate amount for vesting from remaining amount.
-        let amount_vesting = amount_left.saturating_sub(amount_lp); // guaranteed to be >= 0
+        amount_left = amount_left.saturating_sub(amount_lp); // guaranteed to be >= 0
+        let amount_vesting = amount_left.saturating_sub(amount_left / 100); // 1% of vested PSWAP is burned without being reminted
 
         Ok(PswapRemintInfo {
             liquidity_providers: amount_lp,

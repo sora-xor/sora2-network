@@ -32,7 +32,10 @@ use crate as iroha_migration; // for construct_runtime
 use crate::{Config, TECH_ACCOUNT_MAIN, TECH_ACCOUNT_PREFIX};
 use common::mock::ExistentialDeposits;
 use common::prelude::Balance;
-use common::{Amount, AssetId32, AssetName, AssetSymbol, PredefinedAssetId, VAL};
+use common::{
+    balance, Amount, AssetId32, AssetName, AssetSymbol, PredefinedAssetId,
+    DEFAULT_BALANCE_PRECISION, VAL,
+};
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::GenesisBuild;
 use frame_support::weights::Weight;
@@ -56,6 +59,7 @@ pub const ALICE: AccountId = 1;
 pub const BOB: AccountId = 2;
 pub const CHARLIE: AccountId = 3;
 pub const MINTING_ACCOUNT: AccountId = 4;
+pub const REFERRALS_RESERVES_ACC: AccountId = 22;
 
 parameter_types! {
     pub const BlockHashCount: u64 = 250;
@@ -68,6 +72,7 @@ parameter_types! {
     pub const DepositFactor: u64 = 1;
     pub const MaxSignatories: u16 = 4;
     pub GetTeamReservesAccountId: AccountId = 3000u64;
+    pub const ReferralsReservesAcc: AccountId = REFERRALS_RESERVES_ACC;
 }
 
 construct_runtime!(
@@ -84,7 +89,7 @@ construct_runtime!(
         Assets: assets::{Module, Call, Storage, Config<T>, Event<T>},
         Technical: technical::{Module, Call, Config<T>, Event<T>},
         Permissions: permissions::{Module, Call, Storage, Config<T>, Event<T>},
-        ReferralSystem: referral_system::{Module, Call, Storage, Config<T>},
+        Referrals: referrals::{Module, Call, Storage, Config<T>},
         IrohaMigration: iroha_migration::{Module, Call, Storage, Config<T>, Event<T>}
     }
 );
@@ -121,7 +126,6 @@ impl technical::Config for Runtime {
     type Trigger = ();
     type Condition = ();
     type SwapAction = ();
-    type WeightInfo = ();
 }
 
 impl assets::Config for Runtime {
@@ -175,7 +179,10 @@ impl tokens::Config for Runtime {
     type OnDust = ();
 }
 
-impl referral_system::Config for Runtime {}
+impl referrals::Config for Runtime {
+    type ReservesAcc = ReferralsReservesAcc;
+    type WeightInfo = ();
+}
 
 impl pallet_multisig::Config for Runtime {
     type Call = Call;
@@ -223,22 +230,37 @@ pub fn test_ext(add_iroha_accounts: bool) -> sp_io::TestExternalities {
             ALICE,
             AssetSymbol(b"VAL".to_vec()),
             AssetName(b"SORA Validator Token".to_vec()),
-            18,
+            DEFAULT_BALANCE_PRECISION,
             Balance::from(0u32),
             true,
+            None,
+            None,
         )],
     }
     .assimilate_storage(&mut t)
     .unwrap();
 
+    let eth_bridge_tech_account_id = TechAccountId::Generic(
+        eth_bridge::TECH_ACCOUNT_PREFIX.to_vec(),
+        eth_bridge::TECH_ACCOUNT_MAIN.to_vec(),
+    );
+    let eth_bridge_account_id =
+        Technical::tech_account_id_to_account_id(&eth_bridge_tech_account_id).unwrap();
+
     tokens::GenesisConfig::<Runtime> {
-        endowed_accounts: vec![(ALICE, VAL, 0u128.into())],
+        endowed_accounts: vec![
+            (ALICE, VAL, 0u128.into()),
+            (eth_bridge_account_id, VAL, balance!(1000)),
+        ],
     }
     .assimilate_storage(&mut t)
     .unwrap();
 
     technical::GenesisConfig::<Runtime> {
-        account_ids_to_tech_account_ids: vec![(MINTING_ACCOUNT, tech_account_id.clone())],
+        register_tech_accounts: vec![
+            (MINTING_ACCOUNT, tech_account_id.clone()),
+            (eth_bridge_account_id, eth_bridge_tech_account_id),
+        ],
     }
     .assimilate_storage(&mut t)
     .unwrap();

@@ -42,7 +42,7 @@ use sp_std::prelude::*;
 
 use common::eth::EthereumAddress;
 use common::{AssetName, AssetSymbol, Balance, XOR};
-use rewards::{PswapFarmOwners, PswapWaifuOwners, ValOwners};
+use rewards::{PswapFarmOwners, PswapWaifuOwners, RewardInfo, ValOwners};
 
 use assets::Pallet as Assets;
 
@@ -62,6 +62,9 @@ fn add_assets<T: Config>(n: u32) -> Result<(), &'static str> {
             AssetName(b"TOKEN".to_vec()),
             Balance::zero(),
             true,
+            false,
+            None,
+            None,
         )?;
     }
 
@@ -73,7 +76,7 @@ fn add_rewards<T: Config>(n: u32) {
     let unaccessible_eth_addr: EthereumAddress =
         hex!("21Bc9f4a3d9Dc86f142F802668dB7D908cF0A635").into();
     for _i in 0..n {
-        ValOwners::<T>::insert(&unaccessible_eth_addr, 1);
+        ValOwners::<T>::insert(&unaccessible_eth_addr, RewardInfo::from(1));
         PswapFarmOwners::<T>::insert(&unaccessible_eth_addr, 1);
         PswapWaifuOwners::<T>::insert(&unaccessible_eth_addr, 1);
     }

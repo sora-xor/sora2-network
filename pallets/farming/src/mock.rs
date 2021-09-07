@@ -31,7 +31,10 @@
 use crate::{self as farming, Config};
 use common::mock::ExistentialDeposits;
 use common::prelude::Balance;
-use common::{balance, fixed, hash, AssetName, AssetSymbol, DEXInfo, Fixed, DOT, PSWAP, VAL, XOR};
+use common::{
+    balance, fixed, hash, AssetName, AssetSymbol, DEXInfo, Fixed, DEFAULT_BALANCE_PRECISION, DOT,
+    PSWAP, VAL, XOR,
+};
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{GenesisBuild, OnFinalize, OnInitialize};
 use frame_support::weights::Weight;
@@ -231,7 +234,6 @@ impl technical::Config for Runtime {
     type Trigger = ();
     type Condition = ();
     type SwapAction = pool_xyk::PolySwapAction<AssetId, AccountId, TechAccountId>;
-    type WeightInfo = ();
 }
 
 impl pool_xyk::Config for Runtime {
@@ -346,7 +348,6 @@ impl Default for ExtBuilder {
             ],
             initial_permission_owners: vec![
                 (MANAGE_DEX, Scope::Limited(hash(&DEX_A_ID)), vec![BOB()]),
-                (TRANSFER, Scope::Unlimited, vec![ALICE()]),
                 (CREATE_FARM, Scope::Unlimited, vec![ALICE()]),
                 (LOCK_TO_FARM, Scope::Unlimited, vec![ALICE()]),
                 (UNLOCK_FROM_FARM, Scope::Unlimited, vec![ALICE()]),
@@ -404,27 +405,33 @@ impl ExtBuilder {
                     ALICE(),
                     AssetSymbol(b"XOR".to_vec()),
                     AssetName(b"SORA".to_vec()),
-                    18,
+                    DEFAULT_BALANCE_PRECISION,
                     0,
                     true,
+                    None,
+                    None,
                 ),
                 (
                     DOT.into(),
                     ALICE(),
                     AssetSymbol(b"DOT".to_vec()),
                     AssetName(b"DOT".to_vec()),
-                    18,
+                    DEFAULT_BALANCE_PRECISION,
                     0,
                     true,
+                    None,
+                    None,
                 ),
                 (
                     PSWAP.into(),
                     ALICE(),
                     AssetSymbol(b"PSWAP".to_vec()),
                     AssetName(b"PSWAP".to_vec()),
-                    18,
+                    DEFAULT_BALANCE_PRECISION,
                     0,
                     true,
+                    None,
+                    None,
                 ),
             ],
         }

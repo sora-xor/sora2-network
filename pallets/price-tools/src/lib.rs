@@ -46,10 +46,10 @@ mod mock;
 mod tests;
 
 use codec::{Decode, Encode};
+use common::prelude::constants::EXTRINSIC_FIXED_WEIGHT;
 use common::prelude::{
-    Balance, Fixed, FixedWrapper, LiquiditySourceType, PriceToolsPallet, SwapAmount,
+    Balance, Fixed, FixedWrapper, LiquiditySourceType, PriceToolsPallet, QuoteAmount,
 };
-use common::weights::constants::EXTRINSIC_FIXED_WEIGHT;
 use common::{
     balance, fixed_const, fixed_wrapper, DEXId, LiquiditySourceFilter, OnPoolReservesChanged, DAI,
     ETH, PSWAP, VAL, XOR,
@@ -58,14 +58,13 @@ use frame_support::dispatch::{DispatchError, DispatchResult};
 use frame_support::weights::Weight;
 use frame_support::{ensure, fail};
 use liquidity_proxy::LiquidityProxyTrait;
-use sp_runtime::traits::Zero;
 use sp_std::collections::vec_deque::VecDeque;
 use sp_std::convert::TryInto;
 
 pub use pallet::*;
 
 /// Count of blocks to participate in avg value calculation.
-const AVG_BLOCK_SPAN: u32 = 30;
+pub const AVG_BLOCK_SPAN: u32 = 30;
 /// Max percentage difference for average value between blocks.
 const MAX_BLOCK_AVG_DIFFERENCE: Fixed = fixed_const!(0.005); // 0.5%
 
@@ -325,7 +324,7 @@ impl<T: Config> Pallet<T> {
         <T as pallet::Config>::LiquidityProxy::quote(
             &XOR.into(),
             &asset_id,
-            SwapAmount::with_desired_input(balance!(1), Balance::zero()),
+            QuoteAmount::with_desired_input(balance!(1)),
             Self::secondary_market_filter(),
         )
         .map(|so| so.amount)

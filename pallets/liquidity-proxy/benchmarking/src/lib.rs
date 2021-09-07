@@ -40,8 +40,8 @@ use liquidity_proxy::*;
 use codec::Decode;
 use common::prelude::{Balance, SwapAmount};
 use common::{
-    balance, AssetName, AssetSymbol, DEXId, FilterMode, LiquiditySourceType, DOT, PSWAP, USDT, VAL,
-    XOR,
+    balance, AssetName, AssetSymbol, DEXId, FilterMode, LiquiditySourceType, DAI,
+    DEFAULT_BALANCE_PRECISION, DOT, PSWAP, USDT, VAL, XOR, XSTUSD,
 };
 use frame_benchmarking::{benchmarks, Zero};
 use frame_support::traits::Get;
@@ -62,7 +62,10 @@ mod mock;
 
 pub struct Module<T: Config>(liquidity_proxy::Module<T>);
 pub trait Config:
-    liquidity_proxy::Config + pool_xyk::Config + multicollateral_bonding_curve_pool::Config
+    liquidity_proxy::Config
+    + pool_xyk::Config
+    + multicollateral_bonding_curve_pool::Config
+    + price_tools::Config
 {
 }
 
@@ -104,18 +107,44 @@ fn setup_benchmark<T: Config>() -> Result<(), &'static str> {
         USDT.into(),
         AssetSymbol(b"TESTUSD".to_vec()),
         AssetName(b"USD".to_vec()),
-        18,
+        DEFAULT_BALANCE_PRECISION,
         Balance::zero(),
         true,
+        None,
+        None,
     );
     let _ = Assets::<T>::register_asset_id(
         owner.clone(),
         DOT.into(),
         AssetSymbol(b"TESTDOT".to_vec()),
         AssetName(b"DOT".to_vec()),
-        18,
+        DEFAULT_BALANCE_PRECISION,
         Balance::zero(),
         true,
+        None,
+        None,
+    );
+    let _ = Assets::<T>::register_asset_id(
+        owner.clone(),
+        DAI.into(),
+        AssetSymbol(b"DAI".to_vec()),
+        AssetName(b"DAI".to_vec()),
+        DEFAULT_BALANCE_PRECISION,
+        Balance::zero(),
+        true,
+        None,
+        None,
+    );
+    let _ = Assets::<T>::register_asset_id(
+        owner.clone(),
+        XSTUSD.into(),
+        AssetSymbol(b"XSTUSD".to_vec()),
+        AssetName(b"SORA Synthetic USD".to_vec()),
+        DEFAULT_BALANCE_PRECISION,
+        Balance::zero(),
+        true,
+        None,
+        None,
     );
     Assets::<T>::mint_to(&XOR.into(), &owner.clone(), &owner.clone(), balance!(50000)).unwrap();
     Assets::<T>::mint_to(
@@ -140,6 +169,13 @@ fn setup_benchmark<T: Config>() -> Result<(), &'static str> {
     )
     .unwrap();
     Assets::<T>::mint_to(
+        &DAI.into(),
+        &owner.clone(),
+        &owner.clone(),
+        balance!(50000000),
+    )
+    .unwrap();
+    Assets::<T>::mint_to(
         &PSWAP.into(),
         &owner.clone(),
         &owner.clone(),
@@ -147,12 +183,15 @@ fn setup_benchmark<T: Config>() -> Result<(), &'static str> {
     )
     .unwrap();
 
-    TradingPair::<T>::register(owner_origin.clone(), DEX.into(), XOR.into(), DOT.into()).unwrap();
-    TradingPair::<T>::register(owner_origin.clone(), DEX.into(), XOR.into(), USDT.into()).unwrap();
+    let _ = TradingPair::<T>::register(owner_origin.clone(), DEX.into(), XOR.into(), DOT.into());
+    let _ = TradingPair::<T>::register(owner_origin.clone(), DEX.into(), XOR.into(), USDT.into());
+    let _ = TradingPair::<T>::register(owner_origin.clone(), DEX.into(), XOR.into(), DAI.into());
 
     XYKPool::<T>::initialize_pool(owner_origin.clone(), DEX.into(), XOR.into(), DOT.into())
         .unwrap();
     XYKPool::<T>::initialize_pool(owner_origin.clone(), DEX.into(), XOR.into(), VAL.into())
+        .unwrap();
+    XYKPool::<T>::initialize_pool(owner_origin.clone(), DEX.into(), XOR.into(), DAI.into())
         .unwrap();
     XYKPool::<T>::initialize_pool(owner_origin.clone(), DEX.into(), XOR.into(), PSWAP.into())
         .unwrap();
@@ -185,6 +224,17 @@ fn setup_benchmark<T: Config>() -> Result<(), &'static str> {
         owner_origin.clone(),
         DEX.into(),
         XOR.into(),
+        DAI.into(),
+        balance!(1000),
+        balance!(2000),
+        balance!(0),
+        balance!(0),
+    )
+    .unwrap();
+    XYKPool::<T>::deposit_liquidity(
+        owner_origin.clone(),
+        DEX.into(),
+        XOR.into(),
         PSWAP.into(),
         balance!(1000),
         balance!(2000),
@@ -205,6 +255,10 @@ fn setup_benchmark<T: Config>() -> Result<(), &'static str> {
     .unwrap();
 
     MBCPool::<T>::initialize_pool(owner_origin.clone(), USDT.into()).unwrap();
+
+    for _ in 0..price_tools::AVG_BLOCK_SPAN {
+        price_tools::Module::<T>::average_prices_calculation_routine();
+    }
 
     Ok(())
 }
@@ -234,28 +288,29 @@ benchmarks! {
         );
     }
 
-    // TODO: resolve slippage exceeded issue
-    // swap_exact_output_primary_only {
-    //     setup_benchmark::<T>()?;
-    //     let caller = alice::<T>();
-    //     let from_asset: T::AssetId = VAL.into();
-    //     let to_asset: T::AssetId = XOR.into();
-    //     let initial_to_balance = Assets::<T>::free_balance(&to_asset, &caller).unwrap();
-    // }: swap(
-    //     RawOrigin::Signed(caller.clone()),
-    //     DEX.into(),
-    //     from_asset.clone(),
-    //     to_asset.clone(),
-    //     SwapAmount::with_desired_output(balance!(100), balance!(10000000)),
-    //     [LiquiditySourceType::MulticollateralBondingCurvePool].into(),
-    //     FilterMode::AllowSelected
-    // )
-    // verify {
-    //     assert_eq!(
-    //         Into::<u128>::into(Assets::<T>::free_balance(&to_asset, &caller).unwrap()),
-    //         Into::<u128>::into(initial_to_balance) + balance!(1)
-    //     );
-    // }
+    swap_exact_output_primary_only {
+        setup_benchmark::<T>()?;
+        let caller = alice::<T>();
+        let from_asset: T::AssetId = VAL.into();
+        let to_asset: T::AssetId = XOR.into();
+        let initial_to_balance = Assets::<T>::free_balance(&to_asset, &caller).unwrap();
+    }: {
+        liquidity_proxy::Module::<T>::swap(
+            RawOrigin::Signed(caller.clone()).into(),
+            DEX.into(),
+            from_asset.clone(),
+            to_asset.clone(),
+            SwapAmount::with_desired_output(balance!(100), balance!(10000000)),
+            [LiquiditySourceType::MulticollateralBondingCurvePool].into(),
+            FilterMode::AllowSelected
+        ).unwrap();
+    }
+    verify {
+        assert_eq!(
+            Into::<u128>::into(Assets::<T>::free_balance(&to_asset, &caller).unwrap()),
+            Into::<u128>::into(initial_to_balance) + balance!(1)
+        );
+    }
 
     swap_exact_input_secondary_only {
         setup_benchmark::<T>()?;

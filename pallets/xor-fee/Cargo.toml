@@ -1,35 +1,32 @@
 [package]
-authors = ['Polka Biome Ltd. <jihoon@tutanota.de>']
+authors = ["Polka Biome Ltd. <jihoon@tutanota.de>"]
 license = "BSD-4-Clause"
-homepage = 'https://sora.org'
-repository = 'https://github.com/sora-xor/sora2-network'
-description = 'FRAME pallet template for defining custom runtime logic.'
-edition = '2018'
-name = 'xor-fee'
-version = '0.1.0'
+homepage = "https://sora.org"
+repository = "https://github.com/sora-xor/sora2-network"
+description = "FRAME pallet template for defining custom runtime logic."
+edition = "2018"
+name = "xor-fee"
+version = "0.1.0"
 
 [package.metadata.docs.rs]
-targets = ['x86_64-unknown-linux-gnu']
+targets = ["x86_64-unknown-linux-gnu"]
 
 [dependencies]
 codec = { package = "parity-scale-codec", version = "2", default-features = false, features = ["derive"] }
 frame-support = { version = "3", default-features = false }
 frame-system = { version = "3", default-features = false }
-pallet-transaction-payment = { version = "3", default-features = false }
 pallet-session = { version = "3", default-features = false }
+pallet-transaction-payment = { version = "3", default-features = false }
 serde = { version = "1.0.101", features = ["derive"], optional = true }
 sp-arithmetic = { version = "3", default-features = false }
 sp-runtime = { version = "3", default-features = false }
 sp-staking = { version = "3", default-features = false }
 sp-std = { version = "3", default-features = false }
 traits = { version = "0.4", package = "orml-traits", default-features = false }
-
-pallet-staking = { git = "https://github.com/soramitsu/sora2-frame-pallets", default-features = false, branch = "v3.1.0"}
-
 assets = { path = "../assets", default-features = false }
 common = { path = "../../common", default-features = false }
 liquidity-proxy = { path = "../liquidity-proxy", default-features = false }
-referral-system = { path = "../referral-system", default-features = false }
+referrals = { path = "../referrals", default-features = false }
 eth-bridge = { path = "../eth-bridge", default-features = false }
 
 [dev-dependencies]
@@ -41,30 +38,33 @@ sp-core = { version = "3", default-features = false }
 sp-io = { version = "3", default-features = false }
 sp-runtime = { version = "3", default-features = false }
 tokens = { version = "0.4", package = "orml-tokens" }
-bridge-multisig = { git = "https://github.com/soramitsu/sora2-frame-pallets.git", branch = "v3.1.1-hotfix", package = "pallet-multisig" }
+pallet-staking = { git = "https://github.com/soramitsu/sora2-frame-pallets", branch = "v3.1.0" }
+bridge-multisig = { git = "https://github.com/soramitsu/sora2-frame-pallets.git", branch = "v3.2.2", package = "pallet-multisig" }
+pallet-scheduler = { version = "3" }
 
 common = { path = "../../common", features = ["test"] }
 dex-manager = { path = "../dex-manager" }
 mock-liquidity-source = { path = "../mock-liquidity-source" }
 permissions = { path = "../permissions" }
-referral-system = { path = "../referral-system" }
+referrals = { path = "../referrals" }
 technical = { path = "../technical" }
 trading-pair = { path = "../trading-pair" }
 
 [features]
-default = ['std']
+default = ["std"]
+
 std = [
-    'codec/std',
-    'frame-support/std',
-    'frame-system/std',
-    'pallet-session/std',
-    'pallet-staking/std',
-    'pallet-transaction-payment/std',
-    'serde',
-    'sp-arithmetic/std',
-    'sp-runtime/std',
-    'sp-staking/std',
-    'sp-std/std',
-    'traits/std',
+    "codec/std",
+    "frame-support/std",
+    "frame-system/std",
+    "pallet-session/std",
+    "pallet-staking/std",
+    "pallet-transaction-payment/std",
+    "serde",
+    "sp-arithmetic/std",
+    "sp-runtime/std",
+    "sp-staking/std",
+    "sp-std/std",
+    "traits/std",
     "eth-bridge/std",
 ]

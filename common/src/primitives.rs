@@ -127,6 +127,7 @@ pub enum PredefinedAssetId {
     PSWAP = 5,
     DAI = 6,
     ETH = 7,
+    XSTUSD = 8,
 }
 
 pub const XOR: AssetId32<PredefinedAssetId> = AssetId32::from_asset_id(PredefinedAssetId::XOR);
@@ -137,6 +138,8 @@ pub const VAL: AssetId32<PredefinedAssetId> = AssetId32::from_asset_id(Predefine
 pub const PSWAP: AssetId32<PredefinedAssetId> = AssetId32::from_asset_id(PredefinedAssetId::PSWAP);
 pub const DAI: AssetId32<PredefinedAssetId> = AssetId32::from_asset_id(PredefinedAssetId::DAI);
 pub const ETH: AssetId32<PredefinedAssetId> = AssetId32::from_asset_id(PredefinedAssetId::ETH);
+pub const XSTUSD: AssetId32<PredefinedAssetId> =
+    AssetId32::from_asset_id(PredefinedAssetId::XSTUSD);
 
 impl IsRepresentation for PredefinedAssetId {
     fn is_representation(&self) -> bool {
@@ -370,6 +373,21 @@ impl Default for AssetSymbol {
     }
 }
 
+const ASSET_SYMBOL_MAX_LENGTH: usize = 7;
+
+impl AssetSymbol {
+    /// According to UTF-8 encoding, graphemes that start with byte 0b0XXXXXXX belong
+    /// to ASCII range and are of single byte, therefore passing check in range 'A' to 'Z'
+    /// and '0' to '9' guarantees that all graphemes are of length 1, therefore length check is valid.
+    pub fn is_valid(&self) -> bool {
+        self.0.len() <= ASSET_SYMBOL_MAX_LENGTH
+            && self
+                .0
+                .iter()
+                .all(|byte| (b'A'..=b'Z').contains(&byte) || (b'0'..=b'9').contains(&byte))
+    }
+}
+
 #[derive(Encode, Decode, Eq, PartialEq, Clone, Ord, PartialOrd, RuntimeDebug)]
 #[cfg_attr(feature = "std", derive(Hash))]
 pub struct AssetName(pub Vec<u8>);
@@ -419,6 +437,133 @@ impl Default for AssetName {
     }
 }
 
+const ASSET_NAME_MAX_LENGTH: usize = 33;
+
+impl AssetName {
+    /// According to UTF-8 encoding, graphemes that start with byte 0b0XXXXXXX belong
+    /// to ASCII range and are of single byte, therefore passing check in range 'A' to 'z'
+    /// guarantees that all graphemes are of length 1, therefore length check is valid.
+    pub fn is_valid(&self) -> bool {
+        self.0.len() <= ASSET_NAME_MAX_LENGTH
+            && self.0.iter().all(|byte| {
+                (b'A'..=b'Z').contains(&byte)
+                    || (b'a'..=b'z').contains(&byte)
+                    || (b'0'..=b'9').contains(&byte)
+                    || byte == &b' '
+            })
+    }
+}
+
+#[derive(Encode, Decode, Eq, PartialEq, Clone, Ord, PartialOrd, RuntimeDebug)]
+#[cfg_attr(feature = "std", derive(Hash))]
+pub struct ContentSource(pub Vec<u8>);
+
+#[cfg(feature = "std")]
+impl Serialize for ContentSource {
+    fn serialize<S>(&self, serializer: S) -> Result<<S as Serializer>::Ok, <S as Serializer>::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_str(&format!("{}", self))
+    }
+}
+
+#[cfg(feature = "std")]
+impl<'de> Deserialize<'de> for ContentSource {
+    fn deserialize<D>(deserializer: D) -> Result<Self, <D as Deserializer<'de>>::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let s = String::deserialize(deserializer)?;
+        Self::from_str(&s).map_err(|str_err| serde::de::Error::custom(str_err))
+    }
+}
+
+#[cfg(feature = "std")]
+impl FromStr for ContentSource {
+    type Err = &'static str;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let chars: Vec<u8> = s.chars().map(|un| un as u8).collect();
+        Ok(ContentSource(chars))
+    }
+}
+
+#[cfg(feature = "std")]
+impl Display for ContentSource {
+    fn fmt(&self, f: &mut Formatter<'_>) -> sp_std::fmt::Result {
+        let s: String = self.0.iter().map(|un| *un as char).collect();
+        write!(f, "{}", s)
+    }
+}
+
+impl Default for ContentSource {
+    fn default() -> Self {
+        Self(Vec::new())
+    }
+}
+
+impl ContentSource {
+    pub fn is_valid(&self) -> bool {
+        self.0.is_ascii()
+    }
+}
+
+#[derive(Encode, Decode, Eq, PartialEq, Clone, Ord, PartialOrd, RuntimeDebug)]
+#[cfg_attr(feature = "std", derive(Hash))]
+pub struct Description(pub Vec<u8>);
+
+#[cfg(feature = "std")]
+impl Serialize for Description {
+    fn serialize<S>(&self, serializer: S) -> Result<<S as Serializer>::Ok, <S as Serializer>::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_str(&format!("{}", self))
+    }
+}
+
+#[cfg(feature = "std")]
+impl<'de> Deserialize<'de> for Description {
+    fn deserialize<D>(deserializer: D) -> Result<Self, <D as Deserializer<'de>>::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let s = String::deserialize(deserializer)?;
+        Self::from_str(&s).map_err(|str_err| serde::de::Error::custom(str_err))
+    }
+}
+
+#[cfg(feature = "std")]
+impl FromStr for Description {
+    type Err = &'static str;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let chars: Vec<u8> = s.chars().map(|un| un as u8).collect();
+        Ok(Description(chars))
+    }
+}
+
+#[cfg(feature = "std")]
+impl Display for Description {
+    fn fmt(&self, f: &mut Formatter<'_>) -> sp_std::fmt::Result {
+        let s: String = self.0.iter().map(|un| *un as char).collect();
+        write!(f, "{}", s)
+    }
+}
+
+impl Default for Description {
+    fn default() -> Self {
+        Self(Vec::new())
+    }
+}
+
+impl Description {
+    pub fn is_valid(&self) -> bool {
+        self.0.len() <= 200
+    }
+}
+
 #[derive(Encode, Decode, Eq, PartialEq, PartialOrd, Ord, Debug, Copy, Clone, Hash)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum TechAssetId<AssetId> {
@@ -458,6 +603,7 @@ pub enum LiquiditySourceType {
     MockPool2,
     MockPool3,
     MockPool4,
+    XSTPool,
 }
 
 #[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug)]

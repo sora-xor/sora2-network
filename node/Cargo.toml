@@ -13,23 +13,24 @@ path = "src/main.rs"
 derive_more = "0.99.13"
 exit-future = "0.2.0"
 futures = { version = "0.3.1", features = ["compat"] }
-hex-literal = "0.3.1"
 log = "0.4.8"
 parking_lot = "0.11"
 trie-root = "0.16.0"
-codec = { package = "parity-scale-codec", version = "2", features = ["derive", "chain-error"]}
+codec = { package = "parity-scale-codec", version = "2", features = ["derive", "chain-error"] }
 structopt = "0.3.3"
 ansi_term = "0.12.1"
 serde = { version = "1.0.101", features = ["derive"] }
 serde_json = "1.0.61"
-common = { path = "../common" }
 jsonrpc-core = "15.0.0"
+bridge-multisig = { git = "https://github.com/soramitsu/sora2-frame-pallets.git", branch = "v3.2.2", package = "pallet-multisig" }
+libsecp256k1 = { version = "0.3.5", features = ["hmac"] }
+
+framenode-chain-spec = { path = "chain_spec" }
+common = { path = "../common" }
 dex-api-rpc = { path = "../pallets/dex-api/rpc" }
 dex-manager-rpc = { path = "../pallets/dex-manager/rpc" }
 technical = {path = "../pallets/technical" }
-permissions = {path = "../pallets/permissions" }
 xor-fee = { path = "../pallets/xor-fee" }
-faucet = { path = "../pallets/faucet", optional = true }
 rewards = { path = "../pallets/rewards" }
 rewards-rpc = { path = "../pallets/rewards/rpc" }
 iroha-migration = { path = "../pallets/iroha-migration" }
@@ -37,10 +38,8 @@ iroha-migration-rpc = { path = "../pallets/iroha-migration/rpc" }
 trading-pair-rpc = { path = "../pallets/trading-pair/rpc" }
 assets-rpc = { path = "../pallets/assets/rpc" }
 liquidity-proxy-rpc = { path = "../pallets/liquidity-proxy/rpc" }
-bridge-multisig = { git = "https://github.com/soramitsu/sora2-frame-pallets.git", branch = "v3.1.1-hotfix", package = "pallet-multisig" }
 eth-bridge-rpc = { path = "../pallets/eth-bridge/rpc" }
 pswap-distribution-rpc = { path = "../pallets/pswap-distribution/rpc" }
-libsecp256k1 = { version = "0.3.5", features = ["hmac"] }
 
 # Parachain dependencies
 framenode-runtime = { path = "../runtime" }
@@ -74,11 +73,10 @@ sc-rpc = "3"
 sc-rpc-api = "0.9"
 sp-timestamp = "3"
 sp-trie = "3"
-sc-finality-grandpa = { package = "sc-finality-grandpa", version = "0.9" }
+sc-finality-grandpa = "0.9"
 sp-finality-grandpa = "3"
 sc-informant = "0.9"
 sc-chain-spec = "3"
-frame-support = "3"
 pallet-transaction-payment-rpc = "3"
 frame-benchmarking = "3"
 frame-benchmarking-cli = { version = "3", optional = true }
@@ -101,11 +99,12 @@ include-real-files = []
 main-net-coded = []
 
 private-net = [
-    "faucet",
+    "framenode-chain-spec/private-net",
     "framenode-runtime/private-net",
 ]
 
 runtime-benchmarks = [
+    "framenode-chain-spec/runtime-benchmarks",
     "frame-benchmarking-cli",
     "framenode-runtime/runtime-benchmarks",
 ]

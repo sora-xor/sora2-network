@@ -28,6 +28,9 @@
 # STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE 
 # USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+from decimal import Decimal
+
+
 def parse_token_holders():
     with open('xor_tokenholders.csv') as f:
         lines = f.readlines()
@@ -35,7 +38,7 @@ def parse_token_holders():
     for line in lines[1:]:
         parts = line.split(',')
         addr = parts[0].strip('"').replace('000000000000000000000000', '')
-        balance = float(parts[1].strip('"'))
+        balance = Decimal(parts[1].strip('"'))
         data[addr] = balance
     return data
 
@@ -52,7 +55,7 @@ def exclude_transfers_since_snapshot(data):
             continue
         source = parts[4].strip('"').replace('000000000000000000000000', '')
         target = parts[5].strip('"').replace('000000000000000000000000', '')
-        qty = float(parts[6].strip('"\n'))
+        qty = Decimal(parts[6].strip('"\n'))
         if source not in data:
             data[source] = 0
         data[source] += qty
@@ -68,7 +71,7 @@ def include_lp(data):
                 break
             parts = line.split(',')
             addr = parts[0].split(' ')[1]
-            balance = float(parts[1].split(' ')[2])
+            balance = Decimal(parts[1].split(' ')[2])
             if addr not in data:
                 data[addr] = 0
             data[addr] += balance
@@ -89,6 +92,10 @@ def write_to_file(data):
         '0x215470102a05b02a3a2898f317b5382f380afc0e'
     ]
     with open('../../node/src/chain_spec/bytes/rewards_val_owners.in', 'w') as f:
+        # Total supply of VAL allocated to former ERC20 XOR holders: 33,100,000
+        # Total supply of ERC20 XOR tokens: 350,000
+        vesting_coeff = Decimal(33100000)/Decimal(350000)
+        print('Vesting coefficient: {:.18f}'.format(vesting_coeff))
         print('vec_push![', file=f)
         for addr, balance in data.items():
             if addr in pools_addr:
@@ -96,8 +103,9 @@ def write_to_file(data):
             addr = addr.replace('0x', '')
             # Assuming the price of XOR being $600, 1 cent is worth ~0.000017 XOR. All values below that are discarded
             if balance > 0.000017:
-                balance *= 10.0 # we give 10 VAL per XOR
-                print('    (hex!("{}").into(), balance!({:.18f})),'.format(addr, balance), file=f)
+                claimable = Decimal(10.0) * balance # we airdrop 10 VAL per XOR at launch
+                total = vesting_coeff * balance # total rewards to be vested
+                print('    (hex!("{}").into(), (balance!({:.18f}), balance!({:.18f})).into()),'.format(addr, claimable, total), file=f)
         print(']', file=f)
 
 

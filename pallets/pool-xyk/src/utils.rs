@@ -30,11 +30,11 @@
 
 use core::convert::TryInto;
 use frame_support::dispatch::{DispatchError, DispatchResult};
-use frame_support::ensure;
 use frame_support::traits::Get;
+use frame_support::{ensure, fail};
 
 use common::prelude::{Balance, SwapAmount};
-use common::{AccountIdOf, ToFeeAccount, ToTechUnitFromDEXAndTradingPair};
+use common::{AccountIdOf, ToFeeAccount, ToTechUnitFromDEXAndTradingPair, TradingPair};
 
 use crate::aliases::{AssetIdOf, DEXManager, TechAccountIdOf, TechAssetIdOf};
 use crate::bounds::*;
@@ -58,30 +58,8 @@ impl<T: Config> Module<T> {
         } else if &base_asset_id == asset_b {
             Ok(true)
         } else {
-            Ok(false)
+            Err(Error::<T>::UnsupportedQuotePath.into())
         }
-    }
-
-    pub fn guard_fee_from_destination(
-        _asset_a: &AssetIdOf<T>,
-        _asset_b: &AssetIdOf<T>,
-    ) -> DispatchResult {
-        Ok(())
-    }
-
-    pub fn guard_fee_from_source(
-        _asset_a: &AssetIdOf<T>,
-        _asset_b: &AssetIdOf<T>,
-    ) -> DispatchResult {
-        Ok(())
-    }
-
-    pub fn get_min_liquidity_for(
-        _asset_id: AssetIdOf<T>,
-        _tech_acc: &TechAccountIdOf<T>,
-    ) -> Balance {
-        //TODO: get this value from DEXInfo.
-        1000
     }
 
     pub fn get_fee_account(
@@ -246,5 +224,27 @@ impl<T: Config> Module<T> {
         });
         result?;
         Ok(())
+    }
+
+    /// Sort assets into base and target assets of trading pair, if none of assets is base then return error.
+    pub fn strict_sort_pair(
+        asset_a: &T::AssetId,
+        asset_b: &T::AssetId,
+    ) -> Result<TradingPair<T::AssetId>, DispatchError> {
+        let base_asset_id = T::GetBaseAssetId::get();
+        ensure!(asset_a != asset_b, Error::<T>::AssetsMustNotBeSame);
+        if asset_a == &base_asset_id {
+            Ok(TradingPair {
+                base_asset_id: asset_a.clone(),
+                target_asset_id: asset_b.clone(),
+            })
+        } else if asset_b == &base_asset_id {
+            Ok(TradingPair {
+                base_asset_id: asset_b.clone(),
+                target_asset_id: asset_a.clone(),
+            })
+        } else {
+            fail!(Error::<T>::BaseAssetIsNotMatchedWithAnyAssetArguments)
+        }
     }
 }

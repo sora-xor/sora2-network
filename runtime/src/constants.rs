@@ -71,7 +71,5 @@ pub mod time {
 pub mod currency {
     use common::Balance;
 
-    // TODO: confirm whether extrinsics should or should not be charged the length fee
-    // Previously per byte fee used to be 1_000_000_000_000 or 10^-6 XOR/byte
     pub const TRANSACTION_BYTE_FEE: Balance = 0;
 }

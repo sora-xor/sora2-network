@@ -16,7 +16,7 @@
 // limitations under the License.
 
 use crate::cli::{Cli, Subcommand};
-use crate::{chain_spec, service};
+use crate::service;
 use sc_cli::{ChainSpec, Role, RuntimeVersion, SubstrateCli};
 use sc_service::PartialComponents;
 
@@ -54,15 +54,15 @@ impl SubstrateCli for Cli {
     fn load_spec(&self, id: &str) -> Result<Box<dyn sc_service::ChainSpec>, String> {
         #[cfg(feature = "private-net")]
         let chain_spec = match id {
-            "" | "local" => Some(chain_spec::local_testnet_config()),
+            "" | "local" => Some(framenode_chain_spec::local_testnet_config()),
             // dev doesn't use json chain spec to make development easier
-            // "dev" => chain_spec::dev_net(),
-            // "dev-coded" => Ok(chain_spec::dev_net_coded()),
-            "dev" => Some(chain_spec::dev_net_coded()),
-            "test" => Some(chain_spec::test_net()?),
-            "test-coded" => Some(chain_spec::staging_net_coded(true)),
-            "staging" => Some(chain_spec::staging_net()?),
-            "staging-coded" => Some(chain_spec::staging_net_coded(false)),
+            // "dev" => framenode_chain_spec::dev_net(),
+            // "dev-coded" => Ok(framenode_chain_spec::dev_net_coded()),
+            "dev" => Some(framenode_chain_spec::dev_net_coded()),
+            "test" => Some(framenode_chain_spec::test_net()?),
+            "test-coded" => Some(framenode_chain_spec::staging_net_coded(true)),
+            "staging" => Some(framenode_chain_spec::staging_net()?),
+            "staging-coded" => Some(framenode_chain_spec::staging_net_coded(false)),
             _ => None,
         };
 
@@ -71,18 +71,18 @@ impl SubstrateCli for Cli {
 
         #[cfg(not(feature = "private-net"))]
         if id == "main" {
-            chain_spec = Some(chain_spec::main_net()?);
+            chain_spec = Some(framenode_chain_spec::main_net()?);
         }
 
-        #[cfg(feature = "main-net-coded")]
+        #[cfg(any(feature = "main-net-coded", feature = "runtime-benchmarks"))]
         if id == "main-coded" {
-            chain_spec = Some(chain_spec::main_net_coded());
+            chain_spec = Some(framenode_chain_spec::main_net_coded());
         }
 
         let chain_spec = if let Some(chain_spec) = chain_spec {
             chain_spec
         } else {
-            chain_spec::ChainSpec::from_json_file(std::path::PathBuf::from(id))?
+            framenode_chain_spec::ChainSpec::from_json_file(std::path::PathBuf::from(id))?
         };
 
         Ok(Box::new(chain_spec))
