@@ -35,6 +35,7 @@
 use codec::{Codec, Decode, Encode};
 #[cfg(feature = "std")]
 use common::utils::string_serialization;
+use common::ContentSource;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 use sp_runtime::traits::{MaybeDisplay, MaybeFromStr};
@@ -134,6 +135,8 @@ sp_api::decl_runtime_apis! {
         fn list_asset_infos() -> Vec<AssetInfo<AssetId, AssetSymbol, AssetName, Precision>>;
 
         fn get_asset_info(asset_id: AssetId) -> Option<AssetInfo<AssetId, AssetSymbol, AssetName, Precision>>;
+
+        fn get_asset_content_src(asset_id: AssetId) -> Option<ContentSource>;
     }
 }
 
@@ -144,6 +147,7 @@ mod tests {
         AssetId32 as ConcrAssetId, AssetName as ConcrAssetName, AssetSymbol as ConcrAssetSymbol,
         BalancePrecision as ConcrBalancePrecision, PredefinedAssetId as ConcrAssetIdUnderlying,
     };
+    use common::DEFAULT_BALANCE_PRECISION;
 
     #[test]
     fn should_serialize_and_deserialize_asset_info_properly_with_string() {
@@ -163,7 +167,7 @@ mod tests {
             },
             symbol: ConcrAssetSymbol(b"XOR".to_vec()),
             name: ConcrAssetName(b"SORA".to_vec()),
-            precision: 18,
+            precision: DEFAULT_BALANCE_PRECISION,
             is_mintable: true,
         };
 

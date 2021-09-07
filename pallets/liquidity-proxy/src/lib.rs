@@ -1060,7 +1060,7 @@ impl<T: Config> Pallet<T> {
             ($source_type:ident) => {
                 T::$source_type::buy_price(base_asset_id, collateral_asset_id)
                     .map_err(|_| Error::<T>::CalculationError)?
-                    .into();
+                    .into()
             };
         }
         let primary_buy_price: FixedWrapper = if collateral_asset_id == &XSTUSD.into() {
@@ -1157,7 +1157,7 @@ impl<T: Config> Pallet<T> {
             ($source_type:ident) => {
                 T::$source_type::sell_price(base_asset_id, collateral_asset_id)
                     .map_err(|_| Error::<T>::CalculationError)?
-                    .into();
+                    .into()
             };
         }
         let primary_sell_price: FixedWrapper = if collateral_asset_id == &XSTUSD.into() {

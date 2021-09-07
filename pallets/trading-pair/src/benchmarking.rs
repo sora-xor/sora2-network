@@ -35,7 +35,7 @@
 use super::*;
 
 use codec::Decode;
-use common::{AssetName, AssetSymbol, Balance, DEXId, DOT, XOR};
+use common::{AssetName, AssetSymbol, Balance, DEXId, DEFAULT_BALANCE_PRECISION, DOT, XOR};
 use frame_benchmarking::{benchmarks, Zero};
 use frame_system::{EventRecord, RawOrigin};
 use hex_literal::hex;
@@ -68,9 +68,11 @@ benchmarks! {
             DOT.into(),
             AssetSymbol(b"DOT".to_vec()),
             AssetName(b"Polkadot Token".to_vec()),
-            18,
+            DEFAULT_BALANCE_PRECISION,
             Balance::zero(),
             true,
+            None,
+            None
         );
         let trading_pair = TradingPair::<T> {
             base_asset_id: XOR.into(),

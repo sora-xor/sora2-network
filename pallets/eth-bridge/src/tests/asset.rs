@@ -35,7 +35,7 @@ fn should_mint_and_burn_sidechain_asset() {
         let token_address = Address::from(hex!("7d7ff6f42e928de241282b9606c8e98ea48526e2"));
         EthBridge::register_sidechain_asset(
             token_address,
-            18,
+            DEFAULT_BALANCE_PRECISION,
             AssetSymbol(b"TEST".to_vec()),
             AssetName(b"TEST Asset".to_vec()),
             net_id,
@@ -160,7 +160,7 @@ fn should_register_and_find_asset_ids() {
         // gets registered asset ID, associated with the token
         EthBridge::register_sidechain_asset(
             token_address,
-            18,
+            DEFAULT_BALANCE_PRECISION,
             AssetSymbol(b"TEST".to_vec()),
             AssetName(b"TEST Asset".to_vec()),
             net_id,
@@ -199,9 +199,11 @@ fn should_add_asset() {
             &alice,
             AssetSymbol(b"TEST".to_vec()),
             AssetName(b"TEST Asset".to_vec()),
-            18,
+            DEFAULT_BALANCE_PRECISION,
             Balance::from(0u32),
             true,
+            None,
+            None,
         )
         .unwrap();
         assert_ok!(EthBridge::add_asset(
@@ -385,7 +387,7 @@ fn should_handle_sidechain_and_thischain_asset_on_different_networks() {
             token_address,
             "TEST".into(),
             "Runtime Token".into(),
-            18,
+            DEFAULT_BALANCE_PRECISION,
             net_id_0,
         ));
         approve_last_request(&state, net_id_0).expect("request wasn't approved");
@@ -572,6 +574,80 @@ fn should_convert_amount_for_a_token_with_non_default_precision() {
             Assets::total_balance(&asset_id, &alice).unwrap(),
             balance!(0)
         );
+    });
+}
+
+#[test]
+fn should_convert_amount_for_nft_token() {
+    let (mut ext, state) = ExtBuilder::default().build();
+
+    ext.execute_with(|| {
+        let net_id = ETH_NETWORK_ID;
+        let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
+        let token_address = Address::from(hex!("e88f8313e61a97cec1871ee37fbbe2a8bf3ed1e4"));
+        let ticker = AssetSymbol::from_str("NFT").unwrap();
+        let name = AssetName::from_str("NonFungTok").unwrap();
+        let decimals = 0;
+        let amount = 1;
+        let asset_id =
+            Assets::register_from(&alice, ticker, name, decimals, amount, false, None, None)
+                .unwrap();
+        assert_ok!(EthBridge::add_asset(
+            Origin::signed(alice.clone()),
+            asset_id,
+            net_id,
+        ));
+        assert!(EthBridge::registered_asset(net_id, asset_id).is_none());
+        approve_last_request(&state, net_id).expect("request wasn't approved");
+        assert_eq!(
+            EthBridge::registered_asset(net_id, asset_id).unwrap(),
+            AssetKind::Thischain
+        );
+        // Outgoing transfer part.
+        assert_ok!(EthBridge::transfer_to_sidechain(
+            Origin::signed(alice.clone()),
+            asset_id.clone(),
+            Address::from_str("19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A").unwrap(),
+            1,
+            net_id,
+        ));
+        let outgoing_transfer =
+            match approve_last_request(&state, net_id).expect("request wasn't approved") {
+                (OutgoingRequest::Transfer(transfer), _) => transfer,
+                _ => unreachable!(),
+            };
+        assert_eq!(outgoing_transfer.amount, amount);
+        assert_eq!(outgoing_transfer.sidechain_amount().unwrap().0, amount);
+        assert_eq!(Assets::total_balance(&asset_id, &alice).unwrap(), 0);
+
+        // Incoming transfer part.
+        assert_eq!(Assets::total_balance(&asset_id, &alice).unwrap(), 0);
+        let tx_hash = request_incoming(
+            alice.clone(),
+            H256::from_slice(&[1; 32]),
+            IncomingTransactionRequestKind::Transfer.into(),
+            net_id,
+        )
+        .unwrap();
+        let incoming_trasfer = IncomingRequest::try_from_contract_event(
+            ContractEvent::Deposit(DepositEvent::new(
+                alice.clone(),
+                amount,
+                token_address,
+                asset_id.into(),
+            )),
+            LoadIncomingTransactionRequest::new(
+                alice.clone(),
+                tx_hash,
+                Default::default(),
+                IncomingTransactionRequestKind::Transfer,
+                net_id,
+            ),
+            1,
+        )
+        .unwrap();
+        assert_incoming_request_done(&state, incoming_trasfer).unwrap();
+        assert_eq!(Assets::total_balance(&asset_id, &alice).unwrap(), amount);
     });
 }
 

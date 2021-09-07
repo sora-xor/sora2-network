@@ -252,6 +252,9 @@ fn custom_fees_work() {
             AssetName(b"ALICE".to_vec()),
             balance!(0),
             true,
+            false,
+            None,
+            None,
         ));
 
         let pre = ChargeTransactionPayment::<Runtime>::from(0u128.into())
@@ -349,6 +352,9 @@ fn refund_if_pays_no_works() {
             AssetName(b"ALICE".to_vec()),
             balance!(0),
             true,
+            false,
+            None,
+            None,
         ));
 
         let pre = ChargeTransactionPayment::<Runtime>::from(0u128.into())
@@ -422,6 +428,9 @@ fn reminting_for_sora_parliament_works() {
             AssetName(b"ALICE".to_vec()),
             balance!(0),
             true,
+            false,
+            None,
+            None,
         ));
 
         let len = 10;
