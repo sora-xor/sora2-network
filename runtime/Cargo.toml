@@ -194,7 +194,10 @@ std = [
     "xst/std",
 ]
 
-private-net = ["faucet"]
+private-net = [
+    "faucet",
+    "farming/private-net"
+]
 
 runtime-benchmarks = [
     "assets/runtime-benchmarks",
