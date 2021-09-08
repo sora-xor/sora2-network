@@ -150,6 +150,21 @@ where
             return Err(InvalidTransaction::Payment.into());
         }
 
+        // Check how much user has input asset
+        let user_input_balance = assets::Pallet::<T>::free_balance(&input_asset_id, who)
+            .map_err(|_| TransactionValidityError::from(InvalidTransaction::Payment))?;
+
+        // How much does the user want to spend of their input asset
+        let swap_input_amount = match amount {
+            SwapAmount::WithDesiredInput { desired_amount_in, .. } => desired_amount_in,
+            SwapAmount::WithDesiredOutput { max_amount_in, .. } => max_amount_in,
+        };
+
+        // The amount of input asset needed for this swap is more than the user has, so error
+        if swap_input_amount > user_input_balance {
+            return Err(InvalidTransaction::Payment.into());
+        }
+
         let filter = LiquiditySourceFilter::with_mode(dex_id, filter_mode, selected_source_types);
 
         // Quote to see if there will be enough funds for the fee
