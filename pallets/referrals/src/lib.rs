@@ -142,7 +142,7 @@ pub mod pallet {
             common::with_transaction(|| {
                 ReferrerBalances::<T>::mutate(&referrer, |b| {
                     if let Some(balance) = b.unwrap_or(0).checked_sub(balance) {
-                        *b = Some(balance);
+                        *b = (balance != 0).then(|| balance);
                         Ok(())
                     } else {
                         Err(Error::<T>::ReferrerInsufficientBalance)
