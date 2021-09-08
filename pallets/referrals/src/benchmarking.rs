@@ -28,28 +28,44 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use frame_support::{assert_err, assert_ok};
+use crate::{Config, Module, ReferrerBalances, Referrers};
+use codec::Decode;
+use common::weights::constants::SMALL_FEE;
+use common::{balance, XOR};
+use frame_benchmarking::benchmarks;
+use frame_system::RawOrigin;
+use hex_literal::hex;
+use sp_std::prelude::*;
+use traits::currency::MultiCurrency;
 
-use crate::mock::{alice, bob, charlie, ExtBuilder, Runtime};
-use crate::{Error, Module};
-
-type E = Error<Runtime>;
-type M = Module<Runtime>;
-
-#[test]
-fn set_referrer_to() {
-    ExtBuilder::default().build().execute_with(|| {
-        assert_ok!(M::set_referrer_to(&alice(), alice()));
-    });
+fn alice<T: Config>() -> T::AccountId {
+    let bytes = hex!("d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d");
+    T::AccountId::decode(&mut &bytes[..]).unwrap_or_default()
 }
 
-#[test]
-fn set_referrer_to_has_referrer() {
-    ExtBuilder::default().build().execute_with(|| {
-        assert_ok!(M::set_referrer_to(&alice(), bob()));
-        assert_err!(
-            M::set_referrer_to(&alice(), charlie()),
-            E::AlreadyHasReferrer
-        );
-    });
+fn bob<T: Config>() -> T::AccountId {
+    let bytes = hex!("d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27f");
+    T::AccountId::decode(&mut &bytes[..]).unwrap_or_default()
+}
+
+benchmarks! {
+    reserve {
+        let caller = alice::<T>();
+        T::Currency::deposit(XOR.into(), &caller, balance!(50000)).unwrap();
+    }: {
+        Module::<T>::reserve(RawOrigin::Signed(alice::<T>()).into(), SMALL_FEE).unwrap();
+    }
+    verify {
+        assert_eq!(ReferrerBalances::<T>::get(&alice::<T>()), Some(SMALL_FEE));
+    }
+
+    set_referrer {
+        let alice = alice::<T>();
+        let bob = bob::<T>();
+    }: {
+        Module::<T>::set_referrer(RawOrigin::Signed(alice.clone()).into(), bob.clone()).unwrap();
+    }
+    verify {
+        assert_eq!(Referrers::<T>::get(&alice), Some(bob));
+    }
 }

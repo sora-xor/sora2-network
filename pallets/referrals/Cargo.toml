@@ -1,0 +1,45 @@
+[package]
+authors = ["Polka Biome Ltd. <jihoon@tutanota.de>"]
+license = "BSD-4-Clause"
+homepage = "https://sora.org"
+repository = "https://github.com/sora-xor/sora2-network"
+description = "Referrals"
+edition = "2018"
+name = "referrals"
+version = "1.0.0"
+
+[package.metadata.docs.rs]
+targets = ["x86_64-unknown-linux-gnu"]
+
+[dependencies]
+codec = { package = "parity-scale-codec", version = "2", default-features = false, features = ["derive"] }
+frame-benchmarking = { version = "3", default-features = false, optional = true }
+frame-support = { version = "3", default-features = false }
+frame-system = { version = "3", default-features = false }
+hex-literal = { version = "0.3.1", default-features = false, optional = true }
+serde = { version = "1.0.101", optional = true, features = ["derive"] }
+sp-std = { version = "3", default-features = false }
+traits = { version = "0.4", package = "orml-traits", default-features = false, optional = true }
+
+assets = { path = "../assets", default-features = false }
+common = { path = "../../common", default-features = false }
+
+[features]
+default = ["std"]
+
+runtime-benchmarks = [
+    "frame-benchmarking",
+    "frame-system/runtime-benchmarks",
+    "frame-support/runtime-benchmarks",
+    "hex-literal",
+    "traits",
+]
+
+std = [
+    "codec/std",
+    "frame-benchmarking/std",
+    "frame-support/std",
+    "frame-system/std",
+    "serde",
+    "sp-std/std",
+]

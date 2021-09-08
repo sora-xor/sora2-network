@@ -104,6 +104,7 @@ private-net = [
 ]
 
 runtime-benchmarks = [
+    "framenode-chain-spec/runtime-benchmarks",
     "frame-benchmarking-cli",
     "framenode-runtime/runtime-benchmarks",
 ]

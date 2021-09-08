@@ -42,8 +42,8 @@ use pallet_transaction_payment::{
 };
 use sp_runtime::generic::{CheckedExtrinsic, UncheckedExtrinsic};
 use sp_runtime::traits::{
-    DispatchInfoOf, Dispatchable, Extrinsic as ExtrinsicT, PostDispatchInfoOf, SaturatedConversion,
-    SignedExtension, UniqueSaturatedInto, Zero,
+    DispatchInfoOf, Dispatchable, Extrinsic as ExtrinsicT, PostDispatchInfoOf, SignedExtension,
+    UniqueSaturatedInto, Zero,
 };
 use sp_runtime::{DispatchError, Percent};
 use sp_staking::SessionIndex;
@@ -51,40 +51,56 @@ use sp_staking::SessionIndex;
 pub const TECH_ACCOUNT_PREFIX: &[u8] = b"xor-fee";
 pub const TECH_ACCOUNT_MAIN: &[u8] = b"main";
 
-type NegativeImbalanceOf<T> = <<T as Config>::XorCurrency as Currency<
+type NegativeImbalance<T> = <<T as Config>::XorCurrency as Currency<
     <T as frame_system::Config>::AccountId,
 >>::NegativeImbalance;
 
 type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
 
-type BalanceOf<T> =
-    <<T as Config>::XorCurrency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
-
 type CallOf<T> = <T as frame_system::Config>::Call;
 type Assets<T> = assets::Pallet<T>;
 
-#[cfg(test)]
-mod mock;
-
-#[cfg(test)]
-mod tests;
-
 pub enum LiquidityInfo<T: Config> {
     /// Fees operate as normal
-    Paid(Option<NegativeImbalanceOf<T>>),
+    Paid((T::AccountId, Option<NegativeImbalance<T>>)),
     /// The fee payment has been postponed to after the transaction
-    Postponed(BalanceOf<T>),
+    Postponed(Balance),
+}
+
+impl<T: Config> sp_std::fmt::Debug for LiquidityInfo<T> {
+    fn fmt(&self, f: &mut sp_std::fmt::Formatter<'_>) -> sp_std::fmt::Result {
+        match self {
+            LiquidityInfo::Paid((a, b)) => {
+                write!(f, "Paid({:?}, {:?})", a, b.as_ref().map(|b| b.peek()))
+            }
+            LiquidityInfo::Postponed(b) => {
+                write!(f, "Postponed({:?})", b)
+            }
+        }
+    }
+}
+
+impl<T: Config> PartialEq for LiquidityInfo<T> {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (LiquidityInfo::Paid((a1, b1)), LiquidityInfo::Paid((a2, b2))) => {
+                (a1 == a2) && b1.as_ref().map(|b| b.peek()) == b2.as_ref().map(|b| b.peek())
+            }
+            (LiquidityInfo::Postponed(a1), LiquidityInfo::Postponed(a2)) => a1 == a2,
+            _ => false,
+        }
+    }
 }
 
 impl<T: Config> Default for LiquidityInfo<T> {
     fn default() -> Self {
-        LiquidityInfo::Paid(None)
+        LiquidityInfo::Paid((T::AccountId::default(), None))
     }
 }
 
-impl<T: Config> From<Option<NegativeImbalanceOf<T>>> for LiquidityInfo<T> {
-    fn from(paid: Option<NegativeImbalanceOf<T>>) -> Self {
-        LiquidityInfo::Paid(paid)
+impl<T: Config> From<(T::AccountId, Option<NegativeImbalance<T>>)> for LiquidityInfo<T> {
+    fn from((account_id, paid): (T::AccountId, Option<NegativeImbalance<T>>)) -> Self {
+        LiquidityInfo::Paid((account_id, paid))
     }
 }
 
@@ -92,10 +108,9 @@ impl<T: Config> OnChargeTransaction<T> for Pallet<T>
 where
     CallOf<T>: ExtractProxySwap<DexId = T::DEXId, AssetId = T::AssetId, Amount = SwapAmount<u128>>
         + IsCalledByBridgePeer<T::AccountId>,
-    BalanceOf<T>: Into<u128>,
     DispatchInfoOf<CallOf<T>>: Into<DispatchInfo> + Clone,
 {
-    type Balance = BalanceOf<T>;
+    type Balance = Balance;
     type LiquidityInfo = LiquidityInfo<T>;
 
     fn withdraw_fee(
@@ -103,31 +118,20 @@ where
         call: &CallOf<T>,
         _dispatch_info: &DispatchInfoOf<CallOf<T>>,
         fee: Self::Balance,
-        tip: Self::Balance,
+        _tip: Self::Balance,
     ) -> Result<Self::LiquidityInfo, TransactionValidityError> {
         if fee.is_zero() {
-            return Ok(None.into());
+            return Ok((who.clone(), None).into());
         }
 
         let maybe_custom_fee = T::CustomFees::compute_fee(call);
-        let final_fee: BalanceOf<T> = match maybe_custom_fee {
-            Some(value) => BalanceOf::<T>::saturated_from(value),
+        let final_fee: Balance = match maybe_custom_fee {
+            Some(value) => value,
             _ => fee,
         };
 
-        let withdraw_reason = if tip.is_zero() {
-            WithdrawReasons::TRANSACTION_PAYMENT
-        } else {
-            WithdrawReasons::TRANSACTION_PAYMENT | WithdrawReasons::TIP
-        };
-
-        if let Ok(imbalance) = T::XorCurrency::withdraw(
-            who,
-            final_fee,
-            withdraw_reason,
-            ExistenceRequirement::KeepAlive,
-        ) {
-            return Ok(Some(imbalance).into());
+        if let Ok(result) = T::WithdrawFee::withdraw_fee(who, call, final_fee) {
+            return Ok(result.into());
         }
 
         // In case we are producing XOR, we perform exchange before fees are withdraw to allow 0-XOR accounts to trade
@@ -143,6 +147,21 @@ where
             .ok_or(TransactionValidityError::from(InvalidTransaction::Payment))?;
 
         if output_asset_id != T::XorId::get() {
+            return Err(InvalidTransaction::Payment.into());
+        }
+
+        // Check how much user has input asset
+        let user_input_balance = assets::Pallet::<T>::free_balance(&input_asset_id, who)
+            .map_err(|_| TransactionValidityError::from(InvalidTransaction::Payment))?;
+
+        // How much does the user want to spend of their input asset
+        let swap_input_amount = match amount {
+            SwapAmount::WithDesiredInput { desired_amount_in, .. } => desired_amount_in,
+            SwapAmount::WithDesiredOutput { max_amount_in, .. } => max_amount_in,
+        };
+
+        // The amount of input asset needed for this swap is more than the user has, so error
+        if swap_input_amount > user_input_balance {
             return Err(InvalidTransaction::Payment.into());
         }
 
@@ -172,8 +191,7 @@ where
 
         // Check the swap result + existing balance is enough for fee
         if limits_ok
-            && T::XorCurrency::free_balance(who).into() + output_amount
-                - T::XorCurrency::minimum_balance().into()
+            && T::XorCurrency::free_balance(who) + output_amount - T::XorCurrency::minimum_balance()
                 >= final_fee.into()
         {
             // The fee is applied afterwards, in correct_and_deposit_fee
@@ -191,7 +209,7 @@ where
         tip: Self::Balance,
         already_withdrawn: Self::LiquidityInfo,
     ) -> Result<(), TransactionValidityError> {
-        let withdrawn = match already_withdrawn {
+        let (fee_source, withdrawn) = match already_withdrawn {
             LiquidityInfo::Paid(opt) => opt,
             LiquidityInfo::Postponed(fee) => {
                 let withdraw_reason = if tip.is_zero() {
@@ -200,8 +218,16 @@ where
                     WithdrawReasons::TRANSACTION_PAYMENT | WithdrawReasons::TIP
                 };
 
-                T::XorCurrency::withdraw(who, fee, withdraw_reason, ExistenceRequirement::KeepAlive)
-                    .ok()
+                (
+                    who.clone(),
+                    T::XorCurrency::withdraw(
+                        who,
+                        fee,
+                        withdraw_reason,
+                        ExistenceRequirement::KeepAlive,
+                    )
+                    .ok(),
+                )
             }
         };
 
@@ -226,17 +252,20 @@ where
             // Refund to the the account that paid the fees. If this fails, the
             // account might have dropped below the existential balance. In
             // that case we don't refund anything.
-            let refund_imbalance = T::XorCurrency::deposit_into_existing(&who, refund_amount)
-                .unwrap_or_else(|_| {
-                    <T::XorCurrency as Currency<T::AccountId>>::PositiveImbalance::zero()
-                });
+            let refund_imbalance =
+                T::XorCurrency::deposit_into_existing(&fee_source, refund_amount).unwrap_or_else(
+                    |_| <T::XorCurrency as Currency<T::AccountId>>::PositiveImbalance::zero(),
+                );
 
             // Offset the imbalance caused by paying the fees against the refunded amount.
             let adjusted_paid = paid
                 .offset(refund_imbalance)
                 .map_err(|_| TransactionValidityError::Invalid(InvalidTransaction::Payment))?;
 
-            Self::deposit_event(Event::FeeWithdrawn(who.clone(), adjusted_paid.peek()));
+            Self::deposit_event(Event::FeeWithdrawn(
+                fee_source.clone(),
+                adjusted_paid.peek(),
+            ));
 
             // Applying VAL buy-back-and-burn logic
             let xor_burned_weight = T::XorBurnedWeight::get();
@@ -245,7 +274,7 @@ where
                 T::ReferrerWeight::get(),
                 xor_burned_weight + xor_into_val_burned_weight,
             );
-            if let Some(referrer) = referral_system::Pallet::<T>::referrer_account(who) {
+            if let Some(referrer) = referrals::Pallet::<T>::referrer_account(who) {
                 let _ = T::XorCurrency::resolve_into_existing(&referrer, referrer_xor);
             }
 
@@ -343,6 +372,14 @@ pub trait GetCall<Call> {
     fn get_call(&self) -> Call;
 }
 
+pub trait WithdrawFee<T: Config> {
+    fn withdraw_fee(
+        who: &T::AccountId,
+        call: &CallOf<T>,
+        fee: Balance,
+    ) -> Result<(T::AccountId, Option<NegativeImbalance<T>>), DispatchError>;
+}
+
 /// Implementation for unchecked extrinsic.
 impl<Address, Call, Signature, Extra> GetCall<Call>
     for UncheckedExtrinsic<Address, Call, Signature, Extra>
@@ -370,7 +407,7 @@ impl<T: Config> Pallet<T> {
     pub fn query_info<Extrinsic: Clone + ExtrinsicT + GetDispatchInfo + GetCall<CallOf<T>>>(
         unchecked_extrinsic: &Extrinsic,
         _len: u32,
-    ) -> Option<RuntimeDispatchInfo<BalanceOf<T>>>
+    ) -> Option<RuntimeDispatchInfo<Balance>>
     where
         <T as frame_system::Config>::Call: Dispatchable<Info = DispatchInfo>,
     {
@@ -392,7 +429,7 @@ impl<T: Config> Pallet<T> {
             Some(value) => Some(RuntimeDispatchInfo {
                 weight,
                 class,
-                partial_fee: BalanceOf::<T>::saturated_from(value),
+                partial_fee: value,
             }),
             _ => None,
         };
@@ -404,7 +441,7 @@ impl<T: Config> Pallet<T> {
     pub fn query_fee_details<Extrinsic: ExtrinsicT + GetDispatchInfo + GetCall<CallOf<T>>>(
         unchecked_extrinsic: &Extrinsic,
         _len: u32,
-    ) -> Option<FeeDetails<BalanceOf<T>>>
+    ) -> Option<FeeDetails<Balance>>
     where
         <T as frame_system::Config>::Call: Dispatchable<Info = DispatchInfo>,
     {
@@ -415,7 +452,7 @@ impl<T: Config> Pallet<T> {
                 inclusion_fee: Some(InclusionFee {
                     base_fee: 0_u32.into(),
                     len_fee: 0_u32.into(),
-                    adjusted_weight_fee: BalanceOf::<T>::saturated_from(fee),
+                    adjusted_weight_fee: fee,
                 }),
                 tip: 0_u32.into(),
             }),
@@ -482,7 +519,7 @@ pub mod pallet {
     #[pallet::config]
     pub trait Config:
         frame_system::Config
-        + referral_system::Config
+        + referrals::Config
         + assets::Config
         + eth_bridge::Config
         + common::Config
@@ -491,7 +528,7 @@ pub mod pallet {
     {
         type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
         /// XOR - The native currency of this blockchain.
-        type XorCurrency: Currency<Self::AccountId> + Send + Sync;
+        type XorCurrency: Currency<Self::AccountId, Balance = Balance> + Send + Sync;
         type XorId: Get<Self::AssetId>;
         type ValId: Get<Self::AssetId>;
         type ReferrerWeight: Get<u32>;
@@ -508,6 +545,7 @@ pub mod pallet {
             Self::AccountId,
             <Self as pallet_session::historical::Config>::FullIdentification,
         >;
+        type WithdrawFee: WithdrawFee<Self>;
     }
 
     #[pallet::pallet]
@@ -521,11 +559,11 @@ pub mod pallet {
     impl<T: Config> Pallet<T> {}
 
     #[pallet::event]
-    #[pallet::metadata(AccountIdOf<T> = "AccountId", BalanceOf<T> = "Balance")]
+    #[pallet::metadata(AccountIdOf<T> = "AccountId", Balance = "Balance")]
     #[pallet::generate_deposit(pub(super) fn deposit_event)]
     pub enum Event<T: Config> {
         /// Fee has been withdrawn from user. [Account Id to withdraw from, Fee Amount]
-        FeeWithdrawn(AccountIdOf<T>, BalanceOf<T>),
+        FeeWithdrawn(AccountIdOf<T>, Balance),
     }
 
     /// The amount of XOR to be reminted and exchanged for VAL at the end of the session
