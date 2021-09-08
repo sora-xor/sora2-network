@@ -4,8 +4,9 @@ build.incremental = false
 debug = true
 
 [profile.release]
-lto = true
+#lto = true
 opt-level = 's'
+debug = true
 
 [profile.test]
 debug = true
