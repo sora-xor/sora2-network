@@ -254,11 +254,9 @@ fn should_cancel_outgoing_prepared_requests() {
             DOT,
             AssetSymbol::from_str("DOT").unwrap(),
             AssetName::from_str("Polkadot").unwrap(),
-            DEFAULT_BALANCE_PRECISION,
+            18,
             0,
             true,
-            None,
-            None,
         )
         .unwrap();
         Assets::mint_to(&XOR.into(), &alice, &alice, 100u32.into()).unwrap();
@@ -299,7 +297,7 @@ fn should_cancel_outgoing_prepared_requests() {
                     token_address: Address::from([100u8; 20]),
                     name: "TEST".into(),
                     symbol: "TST".into(),
-                    decimals: DEFAULT_BALANCE_PRECISION,
+                    decimals: 18,
                     nonce: 0,
                     network_id: net_id,
                     timepoint: Default::default(),
@@ -484,7 +482,7 @@ fn should_cancel_incoming_prepared_requests() {
             id: USDT.into(),
             sidechain_id: H160(hex!("dAC17F958D2ee523a2206206994597C13D831ec7")),
             owned: false,
-            precision: DEFAULT_BALANCE_PRECISION,
+            precision: 18,
         },
     );
     let (mut ext, state) = builder.build();
@@ -552,7 +550,7 @@ fn should_cancel_incoming_prepared_requests() {
                 IncomingAddToken {
                     token_address: Address::from([100; 20]),
                     asset_id: KSM.into(),
-                    precision: DEFAULT_BALANCE_PRECISION,
+                    precision: 18,
                     symbol: Default::default(),
                     name: Default::default(),
                     author: alice.clone(),

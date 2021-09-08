@@ -1,18 +1,18 @@
 @Library('jenkins-library')
 
-String agentLabel             = 'docker-build-agent'
-String registry               = 'docker.soramitsu.co.jp'
+String agentLabel = 'docker-build-agent'
+String registry = 'docker.soramitsu.co.jp'
 String dockerBuildToolsUserId = 'bot-build-tools-ro'
 String dockerRegistryRWUserId = 'bot-sora2-rw'
-String envImageName           = 'docker.soramitsu.co.jp/sora2/env'
-String srtoolImageName        = 'paritytech/srtool:nightly-2021-03-15'
-String rustcVersion           = 'nightly-2021-03-11'
-String srtoolReportFile       = 'framenode_runtime_srtool_output.json'
-String appImageName           = 'docker.soramitsu.co.jp/sora2/substrate'
+String baseImageName = 'docker.soramitsu.co.jp/sora2/substrate-env:latest'
+String srtoolImageName = 'paritytech/srtool:nightly-2021-03-15'
+String rustcVersion = 'nightly-2021-03-11'
+String srtoolReportFile = 'framenode_runtime_srtool_output.json'
+String appImageName = 'docker.soramitsu.co.jp/sora2/substrate'
 String secretScannerExclusion = '.*Cargo.toml'
-Boolean disableSecretScanner  = false
-String featureList            = 'private-net include-real-files reduced-pswap-reward-periods'
-Map pushTags                  = ['master': 'latest', 'develop': 'dev']
+Boolean disableSecretScanner = false
+String featureList = 'private-net include-real-files reduced-pswap-reward-periods'
+def pushTags = ['master': 'latest', 'develop': 'dev']
 
 pipeline {
     options {
@@ -20,15 +20,17 @@ pipeline {
         timestamps()
         disableConcurrentBuilds()
     }
+
     agent {
         label agentLabel
     }
+
     stages {
         stage('Secret scanner') {
             steps {
                 script {
                     gitNotify('main-CI', 'PENDING', 'This commit is being built')
-                    docker.withRegistry('https://' + registry, dockerBuildToolsUserId) {
+                    docker.withRegistry( 'https://' + registry, dockerBuildToolsUserId) {
                         secretScanner(disableSecretScanner, secretScannerExclusion)
                     }
                 }
@@ -36,42 +38,36 @@ pipeline {
         }
         stage('Build & Tests') {
             environment {
-                PACKAGE       = 'framenode-runtime'
-                RUSTFLAGS     = '-Dwarnings'
-                RUNTIME_DIR   = 'runtime'
+                PACKAGE = 'framenode-runtime'
+                RUSTFLAGS = '-Dwarnings'
+                RUNTIME_DIR = 'runtime'
                 RUSTC_VERSION = "${rustcVersion}"
             }
             steps {
                 script {
-                    docker.withRegistry('https://' + registry, dockerRegistryRWUserId) {
-                        if (getPushVersion(pushTags)) {
-                            docker.image(envImageName + ':latest').inside() {
+                    docker.withRegistry( 'https://' + registry, dockerRegistryRWUserId) {
+                        docker.image(baseImageName).inside() {
+                            if (getPushVersion(pushTags)) {
                                 if (env.TAG_NAME =~ 'benchmarking.*') {
                                     featureList = 'runtime-benchmarks main-net-coded'
                                 }
                                 else if (env.TAG_NAME) {
                                     featureList = (env.TAG_NAME =~ 'stage.*|test.*') ? featureList : 'include-real-files'
                                 }
-                                sh """#!/bin/bash
-                                    time cargo build --release --features \"${featureList}\" --target-dir /app/target/
-                                    time cargo test  --release --target-dir /app/target/
-                                    sccache -s
-                                    time mv /app/target/release/framenode .
-                                    time mv /app/target/release/wbuild/framenode-runtime/framenode_runtime.compact.wasm .
+                                sh """
+                                    cargo build --release --features \"${featureList}\"
+                                    cargo test --release
+                                    cp target/release/framenode housekeeping/framenode
                                 """
-                                archiveArtifacts artifacts:
-                                    'framenode_runtime.compact.wasm'
-                            }
-                        } else {
-                            docker.image(envImageName + ':dev').inside() {
-                                sh '''#!/bin/bash
-                                    time cargo fmt -- --check > /dev/null
-                                    time cargo check --target-dir /app/target/
-                                    time cargo test  --target-dir /app/target/
-                                    time cargo check --features private-net        --target-dir /app/target/
-                                    time cargo test  --features private-net        --target-dir /app/target/
-                                    time cargo check --features runtime-benchmarks --target-dir /app/target/
-                                    sccache -s
+                                archiveArtifacts artifacts: 'target/release/wbuild/framenode-runtime/framenode_runtime.compact.wasm'
+                            } else {
+                                sh '''
+                                    cargo fmt -- --check > /dev/null
+                                    cargo check
+                                    cargo test
+                                    cargo check --features private-net
+                                    cargo test --features private-net
+                                    cargo check --features runtime-benchmarks
                                 '''
                             }
                         }
@@ -86,15 +82,12 @@ pipeline {
             }
         }
         stage('Code Coverage') {
-            when {
-                expression { getPushVersion(pushTags) }
-            }
             steps {
                 script {
-                    docker.withRegistry('https://' + registry, dockerRegistryRWUserId) {
-                        docker.image(envImageName + ':latest').inside() {
-                            sh './housekeeping/coverage.sh'
-                            cobertura coberturaReportFile: 'cobertura_report'
+                    docker.withRegistry( 'https://' + registry, dockerRegistryRWUserId) {
+                        docker.image(baseImageName).inside() {
+                            sh './coverage.sh'
+                            cobertura coberturaReportFile: 'target/debug/report'
                         }
                     }
                 }
@@ -108,7 +101,7 @@ pipeline {
                 script {
                     sh "docker build -f housekeeping/docker/release/Dockerfile -t ${appImageName} ."
                     baseImageTag = "${getPushVersion(pushTags)}"
-                    docker.withRegistry('https://' + registry, dockerRegistryRWUserId) {
+                    docker.withRegistry( 'https://' + registry, dockerRegistryRWUserId) {
                         sh """
                             docker tag ${appImageName} ${appImageName}:${baseImageTag}
                             docker push ${appImageName}:${baseImageTag}
@@ -125,10 +118,14 @@ pipeline {
         }
     }
     post {
-        always {
-            script{
-                gitNotify('main-CI', currentBuild.result, currentBuild.result)
-            }
+        success {
+            script { gitNotify('main-CI', 'SUCCESS', 'Success') }
+        }
+        failure {
+            script { gitNotify('main-CI', 'FAILURE', 'Failure') }
+        }
+        aborted {
+            script { gitNotify('main-CI', 'FAILURE', 'Aborted') }
         }
         cleanup { cleanWs() }
     }

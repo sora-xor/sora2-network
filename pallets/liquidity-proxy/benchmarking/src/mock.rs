@@ -34,9 +34,8 @@ use crate::{Config, *};
 use common::mock::ExistentialDeposits;
 use common::prelude::{Balance, QuoteAmount};
 use common::{
-    fixed, fixed_from_basis_points, hash, Amount, AssetId32, BalancePrecision, ContentSource,
-    DEXInfo, Description, Fixed, FromGenericPair, LiquiditySourceFilter, LiquiditySourceType,
-    PriceToolsPallet, TechPurpose, DEFAULT_BALANCE_PRECISION,
+    fixed, fixed_from_basis_points, hash, Amount, AssetId32, BalancePrecision, DEXInfo, Fixed,
+    FromGenericPair, LiquiditySourceFilter, LiquiditySourceType, PriceToolsPallet, TechPurpose,
 };
 use currencies::BasicCurrencyAdapter;
 
@@ -472,8 +471,6 @@ pub struct ExtBuilder {
         BalancePrecision,
         Balance,
         bool,
-        Option<ContentSource>,
-        Option<Description>,
     )>,
 }
 
@@ -525,11 +522,9 @@ impl Default for ExtBuilder {
                     alice(),
                     AssetSymbol(b"XOR".to_vec()),
                     AssetName(b"SORA".to_vec()),
-                    DEFAULT_BALANCE_PRECISION,
+                    18,
                     balance!(350000),
                     true,
-                    None,
-                    None,
                 ),
                 (
                     common::DOT.into(),
@@ -539,41 +534,33 @@ impl Default for ExtBuilder {
                     10,
                     balance!(0),
                     true,
-                    None,
-                    None,
                 ),
                 (
                     common::VAL.into(),
                     alice(),
                     AssetSymbol(b"VAL".to_vec()),
                     AssetName(b"VAL".to_vec()),
-                    DEFAULT_BALANCE_PRECISION,
+                    18,
                     balance!(0),
                     true,
-                    None,
-                    None,
                 ),
                 (
                     common::USDT.into(),
                     alice(),
                     AssetSymbol(b"USDT".to_vec()),
                     AssetName(b"USDT".to_vec()),
-                    DEFAULT_BALANCE_PRECISION,
+                    18,
                     balance!(0),
                     true,
-                    None,
-                    None,
                 ),
                 (
                     common::PSWAP.into(),
                     alice(),
                     AssetSymbol(b"PSWAP".to_vec()),
                     AssetName(b"PSWAP".to_vec()),
-                    DEFAULT_BALANCE_PRECISION,
+                    18,
                     balance!(0),
                     true,
-                    None,
-                    None,
                 ),
             ],
         }

@@ -31,7 +31,6 @@
 use common::prelude::{FixedWrapper, QuoteAmount, SwapAmount, SwapOutcome};
 use common::{
     balance, AssetName, AssetSymbol, Balance, LiquiditySource, LiquiditySourceType, ToFeeAccount,
-    DEFAULT_BALANCE_PRECISION,
 };
 use frame_support::{assert_noop, assert_ok};
 
@@ -74,11 +73,9 @@ impl<'a> crate::Module<Runtime> {
                 GoldenTicket.into(),
                 AssetSymbol(b"GT".to_vec()),
                 AssetName(b"Golden Ticket".to_vec()),
-                DEFAULT_BALANCE_PRECISION,
+                18,
                 Balance::from(0u32),
                 true,
-                None,
-                None,
             ));
 
             assert_ok!(assets::Module::<Runtime>::register_asset_id(
@@ -86,11 +83,9 @@ impl<'a> crate::Module<Runtime> {
                 BlackPepper.into(),
                 AssetSymbol(b"BP".to_vec()),
                 AssetName(b"Black Pepper".to_vec()),
-                DEFAULT_BALANCE_PRECISION,
+                18,
                 Balance::from(0u32),
                 true,
-                None,
-                None,
             ));
 
             assert_ok!(trading_pair::Module::<Runtime>::register(
@@ -1574,11 +1569,9 @@ fn depositing_and_withdrawing_liquidity_updates_user_pools() {
             target_asset_b,
             AssetSymbol(b"BP".to_vec()),
             AssetName(b"Black Pepper".to_vec()),
-            DEFAULT_BALANCE_PRECISION,
+            18,
             Balance::from(0u32),
             true,
-            None,
-            None,
         ));
         assert_ok!(trading_pair::Module::<Runtime>::register(
             Origin::signed(ALICE()),

@@ -1560,8 +1560,6 @@ impl<T: Config> Pallet<T> {
             DEFAULT_BALANCE_PRECISION,
             Balance::from(0u32),
             true,
-            None,
-            None,
         )?;
         RegisteredAsset::<T>::insert(network_id, &asset_id, AssetKind::Sidechain);
         RegisteredSidechainAsset::<T>::insert(network_id, &token_address, asset_id);

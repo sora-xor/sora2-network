@@ -55,9 +55,7 @@ pub fn migrate<T: Config>() -> Weight {
 
 #[cfg(test)]
 mod tests {
-    use common::{
-        balance, generate_storage_instance, AssetName, AssetSymbol, DEFAULT_BALANCE_PRECISION,
-    };
+    use common::{balance, generate_storage_instance, AssetName, AssetSymbol};
     use frame_support::pallet_prelude::StorageDoubleMap;
     use frame_support::Blake2_128Concat;
     use hex_literal::hex;
@@ -118,11 +116,9 @@ mod tests {
                 asset3.clone(),
                 AssetSymbol(b"A".to_vec()),
                 AssetName(b"B".to_vec()),
-                DEFAULT_BALANCE_PRECISION,
+                18,
                 0,
                 true,
-                None,
-                None,
             )
             .unwrap();
 
@@ -134,11 +130,9 @@ mod tests {
                 asset6.clone(),
                 AssetSymbol(b"C".to_vec()),
                 AssetName(b"D".to_vec()),
-                DEFAULT_BALANCE_PRECISION,
+                18,
                 0,
                 true,
-                None,
-                None,
             )
             .unwrap();
 

@@ -29,10 +29,7 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use crate::{Config, Pallet, PermissionedTechAccount, Weight};
-use common::{
-    AssetName, AssetSymbol, Balance, FromGenericPair, LiquiditySourceType,
-    DEFAULT_BALANCE_PRECISION, XSTUSD,
-};
+use common::{AssetName, AssetSymbol, Balance, FromGenericPair, LiquiditySourceType, XSTUSD};
 use frame_support::debug;
 use frame_support::traits::{Get, GetPalletVersion};
 use permissions::{Scope, BURN, MINT};
@@ -73,11 +70,9 @@ pub fn register_new_token<T: Config>() -> Option<Weight> {
         XSTUSD.into(),
         AssetSymbol(b"XSTUSD".to_vec()),
         AssetName(b"SORA Synthetic USD".to_vec()),
-        DEFAULT_BALANCE_PRECISION,
+        18,
         Balance::zero(),
         true,
-        None,
-        None,
     );
 
     if result.is_err() {

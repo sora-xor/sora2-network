@@ -31,10 +31,7 @@
 use crate::{self as farming, Config};
 use common::mock::ExistentialDeposits;
 use common::prelude::Balance;
-use common::{
-    balance, fixed, hash, AssetName, AssetSymbol, DEXInfo, Fixed, DEFAULT_BALANCE_PRECISION, DOT,
-    PSWAP, VAL, XOR,
-};
+use common::{balance, fixed, hash, AssetName, AssetSymbol, DEXInfo, Fixed, DOT, PSWAP, VAL, XOR};
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{GenesisBuild, OnFinalize, OnInitialize};
 use frame_support::weights::Weight;
@@ -405,33 +402,27 @@ impl ExtBuilder {
                     ALICE(),
                     AssetSymbol(b"XOR".to_vec()),
                     AssetName(b"SORA".to_vec()),
-                    DEFAULT_BALANCE_PRECISION,
+                    18,
                     0,
                     true,
-                    None,
-                    None,
                 ),
                 (
                     DOT.into(),
                     ALICE(),
                     AssetSymbol(b"DOT".to_vec()),
                     AssetName(b"DOT".to_vec()),
-                    DEFAULT_BALANCE_PRECISION,
+                    18,
                     0,
                     true,
-                    None,
-                    None,
                 ),
                 (
                     PSWAP.into(),
                     ALICE(),
                     AssetSymbol(b"PSWAP".to_vec()),
                     AssetName(b"PSWAP".to_vec()),
-                    DEFAULT_BALANCE_PRECISION,
+                    18,
                     0,
                     true,
-                    None,
-                    None,
                 ),
             ],
         }

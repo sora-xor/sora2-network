@@ -262,6 +262,7 @@ fn permission_create_passes() {
             BOB,
             CUSTOM_PERMISSION,
             Scope::Unlimited,
+            Mode::Permit
         ));
         // Verify Alice is the owner of CustomPermission
         assert_ok!(Permissions::grant_permission(
@@ -278,7 +279,7 @@ fn permission_create_passes() {
 #[test]
 fn permission_create_fails_with_permission_already_exists_error() {
     ExtBuilder::default().build().execute_with(|| {
-        match Permissions::create_permission(ALICE, BOB, INIT_DEX, Scope::Unlimited) {
+        match Permissions::create_permission(ALICE, BOB, INIT_DEX, Scope::Unlimited, Mode::Permit) {
             Err(Error::<Runtime>::PermissionAlreadyExists) => {}
             result => panic!("{:?}", result),
         }

@@ -30,10 +30,7 @@
 
 use common::mock::ExistentialDeposits;
 use common::prelude::Balance;
-use common::{
-    balance, fixed, AssetName, AssetSymbol, BalancePrecision, Fixed, FromGenericPair,
-    DEFAULT_BALANCE_PRECISION,
-};
+use common::{balance, fixed, AssetName, AssetSymbol, BalancePrecision, Fixed, FromGenericPair};
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::GenesisBuild;
 use frame_support::weights::Weight;
@@ -258,7 +255,6 @@ impl pool_xyk::Config for Runtime {
     type EnsureDEXManager = dex_manager::Module<Runtime>;
     type GetFee = GetXykFee;
     type OnPoolCreated = PswapDistribution;
-    type OnPoolReservesChanged = ();
     type WeightInfo = ();
 }
 
@@ -290,7 +286,7 @@ impl ExtBuilder {
                     alice(),
                     AssetSymbol(b"XOR".to_vec()),
                     AssetName(b"SORA".to_vec()),
-                    DEFAULT_BALANCE_PRECISION,
+                    18,
                     Balance::zero(),
                     true,
                 ),
@@ -308,7 +304,7 @@ impl ExtBuilder {
                     alice(),
                     AssetSymbol(b"POOLA".to_vec()),
                     AssetName(b"Pool A".to_vec()),
-                    DEFAULT_BALANCE_PRECISION,
+                    18,
                     Balance::zero(),
                     true,
                 ),
@@ -317,7 +313,7 @@ impl ExtBuilder {
                     alice(),
                     AssetSymbol(b"POOLB".to_vec()),
                     AssetName(b"Pool B".to_vec()),
-                    DEFAULT_BALANCE_PRECISION,
+                    18,
                     Balance::zero(),
                     true,
                 ),

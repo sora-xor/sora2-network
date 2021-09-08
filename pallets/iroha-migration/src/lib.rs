@@ -299,7 +299,7 @@ impl<T: Config> Pallet<T> {
             // Free up memory
             Referrers::<T>::remove(iroha_address);
             if let Some(referrer) = MigratedAccounts::<T>::get(&referrer) {
-                referrals::Pallet::<T>::set_referrer_to(&account, referrer)
+                referral_system::Pallet::<T>::set_referrer_to(&account, referrer)
                     .map_err(|_| Error::<T>::ReferralMigrationFailed)?;
             } else {
                 PendingReferrals::<T>::mutate(&referrer, |referrals| {
@@ -310,7 +310,7 @@ impl<T: Config> Pallet<T> {
         // Migrate pending referrals to their referrer
         let referrals = PendingReferrals::<T>::take(iroha_address);
         for referral in &referrals {
-            referrals::Pallet::<T>::set_referrer_to(referral, account.clone())
+            referral_system::Pallet::<T>::set_referrer_to(referral, account.clone())
                 .map_err(|_| Error::<T>::ReferralMigrationFailed)?;
         }
         Ok(())
@@ -328,7 +328,7 @@ pub mod pallet {
 
     #[pallet::config]
     pub trait Config:
-        frame_system::Config + pallet_multisig::Config + referrals::Config + technical::Config
+        frame_system::Config + pallet_multisig::Config + referral_system::Config + technical::Config
     {
         type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
         type WeightInfo: WeightInfo;

@@ -33,8 +33,7 @@ use common::mock::ExistentialDeposits;
 use common::{
     self, balance, fixed, fixed_from_basis_points, fixed_wrapper, hash, Amount, AssetId32,
     AssetName, AssetSymbol, DEXInfo, Fixed, FromGenericPair, GetMarketInfo, LiquiditySource,
-    LiquiditySourceType, RewardReason, DAI, DEFAULT_BALANCE_PRECISION, DOT, ETH, KSM, PSWAP, USDT,
-    VAL, XOR, XSTUSD,
+    LiquiditySourceType, RewardReason, DAI, DOT, ETH, KSM, PSWAP, USDT, VAL, XOR, XSTUSD,
 };
 use currencies::BasicCurrencyAdapter;
 
@@ -430,7 +429,7 @@ impl Default for ExtBuilder {
                     balance!(0),
                     AssetSymbol(b"XOR".to_vec()),
                     AssetName(b"SORA".to_vec()),
-                    DEFAULT_BALANCE_PRECISION,
+                    18,
                 ),
                 (
                     alice(),
@@ -438,7 +437,7 @@ impl Default for ExtBuilder {
                     balance!(0),
                     AssetSymbol(b"VAL".to_vec()),
                     AssetName(b"SORA Validator Token".to_vec()),
-                    DEFAULT_BALANCE_PRECISION,
+                    18,
                 ),
                 (
                     alice(),
@@ -446,7 +445,7 @@ impl Default for ExtBuilder {
                     balance!(0),
                     AssetSymbol(b"PSWAP".to_vec()),
                     AssetName(b"Polkaswap Token".to_vec()),
-                    DEFAULT_BALANCE_PRECISION,
+                    18,
                 ),
                 (
                     alice(),
@@ -454,7 +453,7 @@ impl Default for ExtBuilder {
                     balance!(0),
                     AssetSymbol(b"USDT".to_vec()),
                     AssetName(b"Tether".to_vec()),
-                    DEFAULT_BALANCE_PRECISION,
+                    18,
                 ),
             ],
         }
@@ -831,8 +830,6 @@ impl ExtBuilder {
                         precision,
                         balance!(0),
                         true,
-                        None,
-                        None,
                     )
                 })
                 .collect(),
