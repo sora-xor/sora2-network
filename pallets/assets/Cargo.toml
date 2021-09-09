@@ -1,14 +1,14 @@
 [package]
-edition = '2018'
-authors = ['Polka Biome Ltd. <jihoon@tutanota.de>']
+edition = "2018"
+authors = ["Polka Biome Ltd. <jihoon@tutanota.de>"]
 license = "BSD-4-Clause"
-homepage = 'https://sora.org'
-repository = 'https://github.com/sora-xor/sora2-network'
-name = 'assets'
-version = '1.1.0'
+homepage = "https://sora.org"
+repository = "https://github.com/sora-xor/sora2-network"
+name = "assets"
+version = "1.1.0"
 
 [package.metadata.docs.rs]
-targets = ['x86_64-unknown-linux-gnu']
+targets = ["x86_64-unknown-linux-gnu"]
 
 [dependencies]
 codec = { package = "parity-scale-codec", version = "2", default-features = false, features = ["derive"] }
@@ -35,19 +35,20 @@ common = { path = "../../common", features = ["test"] }
 permissions = { path = "../permissions" }
 
 [features]
-default = ['std']
+default = ["std"]
 
 std = [
-    'codec/std',
-    'currencies/std',
-    'frame-support/std',
-    'frame-system/std',
-    'serde',
-    'sp-core/std',
-    'sp-runtime/std',
-    'sp-std/std',
-    'tokens/std',
-    'traits/std',
+    "codec/std",
+    "common/std",
+    "currencies/std",
+    "frame-support/std",
+    "frame-system/std",
+    "serde",
+    "sp-core/std",
+    "sp-runtime/std",
+    "sp-std/std",
+    "tokens/std",
+    "traits/std",
 ]
 
 runtime-benchmarks = [

@@ -31,12 +31,17 @@ use sp_std::marker::PhantomData;
 pub struct WeightInfo<T>(PhantomData<T>);
 impl<T: frame_system::Config> crate::WeightInfo for WeightInfo<T> {
     fn reserve() -> Weight {
-        (2_099_200_000 as Weight)
-            .saturating_add(T::DbWeight::get().reads(4 as Weight))
+        (65_300_000 as Weight)
+            .saturating_add(T::DbWeight::get().reads(3 as Weight))
+            .saturating_add(T::DbWeight::get().writes(3 as Weight))
+    }
+    fn unreserve() -> Weight {
+        (50_300_000 as Weight)
+            .saturating_add(T::DbWeight::get().reads(3 as Weight))
             .saturating_add(T::DbWeight::get().writes(3 as Weight))
     }
     fn set_referrer() -> Weight {
-        (1_250_900_000 as Weight)
+        (42_300_000 as Weight)
             .saturating_add(T::DbWeight::get().reads(3 as Weight))
             .saturating_add(T::DbWeight::get().writes(3 as Weight))
     }
@@ -44,6 +49,10 @@ impl<T: frame_system::Config> crate::WeightInfo for WeightInfo<T> {
 
 impl crate::WeightInfo for () {
     fn reserve() -> Weight {
+        0
+    }
+
+    fn unreserve() -> Weight {
         0
     }
 

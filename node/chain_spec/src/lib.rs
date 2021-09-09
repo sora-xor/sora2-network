@@ -299,6 +299,11 @@ pub fn staging_net_coded(test: bool) -> ChainSpec {
             ]
         )
     };
+    let protocol = if test {
+        "sora-substrate-test"
+    } else {
+        "sora-substrate-staging"
+    };
     ChainSpec::from_genesis(
         name,
         id,
@@ -398,7 +403,7 @@ pub fn staging_net_coded(test: bool) -> ChainSpec {
         },
         boot_nodes,
         None,
-        Some("sora-substrate-1"),
+        Some(protocol),
         Some(properties),
         None,
     )
