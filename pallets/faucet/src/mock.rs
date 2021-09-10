@@ -32,8 +32,7 @@ use crate::{self as faucet, Config};
 use common::mock::ExistentialDeposits;
 use common::prelude::Balance;
 use common::{
-    self, balance, Amount, AssetId32, AssetName, AssetSymbol, TechPurpose,
-    DEFAULT_BALANCE_PRECISION, USDT, VAL, XOR,
+    self, balance, Amount, AssetId32, AssetName, AssetSymbol, TechPurpose, USDT, VAL, XOR,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::GenesisBuild;
@@ -237,22 +236,18 @@ impl ExtBuilder {
                     alice(),
                     AssetSymbol(b"XOR".to_vec()),
                     AssetName(b"SORA".to_vec()),
-                    DEFAULT_BALANCE_PRECISION,
+                    18,
                     Balance::from(0u32),
                     true,
-                    None,
-                    None,
                 ),
                 (
                     VAL.into(),
                     alice(),
                     AssetSymbol(b"VAL".to_vec()),
                     AssetName(b"SORA Validator Token".to_vec()),
-                    DEFAULT_BALANCE_PRECISION,
+                    18,
                     Balance::from(0u32),
                     true,
-                    None,
-                    None,
                 ),
             ],
         }

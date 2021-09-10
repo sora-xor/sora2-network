@@ -811,11 +811,9 @@ impl ExtBuilder {
                     self.root_account_id.clone(),
                     AssetSymbol(b"".to_vec()),
                     AssetName(b"".to_vec()),
-                    DEFAULT_BALANCE_PRECISION,
+                    18,
                     Balance::from(0u32),
                     true,
-                    None,
-                    None,
                 )
             })
             .collect();

@@ -12,6 +12,6 @@ RUN mkdir /chain && \
     chown 10000:10000 /chain
 USER substrate
 
-COPY ./framenode /usr/local/bin/framenode
+COPY ./housekeeping/framenode /usr/local/bin/framenode
 
 ENTRYPOINT ["framenode"]

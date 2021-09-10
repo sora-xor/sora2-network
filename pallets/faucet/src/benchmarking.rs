@@ -62,9 +62,6 @@ fn add_assets<T: Config>(n: u32) -> Result<(), &'static str> {
             AssetName(b"TOKEN".to_vec()),
             Balance::zero(),
             true,
-            false,
-            None,
-            None,
         )?;
     }
 

@@ -40,7 +40,7 @@ use frame_system::{EventRecord, RawOrigin};
 use hex_literal::hex;
 use sp_std::prelude::*;
 
-use common::{DEFAULT_BALANCE_PRECISION, USDT, XOR};
+use common::{USDT, XOR};
 
 use crate::Pallet as Assets;
 
@@ -67,9 +67,6 @@ fn add_assets<T: Config>(n: u32) -> Result<(), &'static str> {
             AssetName(b"TOKEN".to_vec()),
             Balance::zero(),
             true,
-            false,
-            None,
-            None,
         )?;
     }
 
@@ -94,10 +91,7 @@ benchmarks! {
         AssetSymbol(b"NEWT".to_vec()),
         AssetName(b"NEWT".to_vec()),
         Balance::zero(),
-        true,
-        false,
-        None,
-        None
+        true
     )
     verify {
         let (asset_id, _) = AssetOwners::<T>::iter().find(|(k, v)| v == &caller).unwrap();
@@ -113,11 +107,9 @@ benchmarks! {
             XOR.into(),
             AssetSymbol(b"XOR".to_vec()),
             AssetName(b"XOR".to_vec()),
-            DEFAULT_BALANCE_PRECISION,
+            18,
             Balance::zero(),
             true,
-            None,
-            None,
         );
     }: _(
         RawOrigin::Signed(caller.clone()),
@@ -138,11 +130,9 @@ benchmarks! {
             USDT.into(),
             AssetSymbol(b"USDT".to_vec()),
             AssetName(b"USDT".to_vec()),
-            DEFAULT_BALANCE_PRECISION,
+            18,
             Balance::zero(),
             true,
-            None,
-            None,
         ).unwrap();
     }: _(
         RawOrigin::Signed(caller.clone()),
@@ -163,11 +153,9 @@ benchmarks! {
             USDT.into(),
             AssetSymbol(b"USDT".to_vec()),
             AssetName(b"USDT".to_vec()),
-            DEFAULT_BALANCE_PRECISION,
+            18,
             Balance::zero(),
             true,
-            None,
-            None,
         ).unwrap();
         Assets::<T>::mint(
             RawOrigin::Signed(caller.clone()).into(),
@@ -193,11 +181,9 @@ benchmarks! {
             USDT.into(),
             AssetSymbol(b"USDT".to_vec()),
             AssetName(b"USDT".to_vec()),
-            DEFAULT_BALANCE_PRECISION,
+            18,
             Balance::zero(),
             true,
-            None,
-            None,
         ).unwrap();
     }: _(
         RawOrigin::Signed(caller.clone()),

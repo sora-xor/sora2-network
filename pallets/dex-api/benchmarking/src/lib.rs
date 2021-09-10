@@ -38,8 +38,7 @@ extern crate alloc;
 use codec::Decode;
 use common::prelude::{Balance, SwapVariant};
 use common::{
-    balance, AssetName, AssetSymbol, DEXId, LiquiditySourceType, DEFAULT_BALANCE_PRECISION, DOT,
-    PSWAP, USDT, VAL, XOR,
+    balance, AssetName, AssetSymbol, DEXId, LiquiditySourceType, DOT, PSWAP, USDT, VAL, XOR,
 };
 use frame_benchmarking::benchmarks;
 use frame_support::traits::Get;
@@ -110,55 +109,45 @@ fn setup_benchmark<T: Config>() -> Result<(), &'static str> {
         XOR.into(),
         AssetSymbol(b"XOR".to_vec()),
         AssetName(b"XOR".to_vec()),
-        DEFAULT_BALANCE_PRECISION,
+        18,
         Balance::zero(),
         true,
-        None,
-        None,
     );
     let _ = Assets::<T>::register_asset_id(
         owner.clone(),
         VAL.into(),
         AssetSymbol(b"VAL".to_vec()),
         AssetName(b"VAL".to_vec()),
-        DEFAULT_BALANCE_PRECISION,
+        18,
         Balance::zero(),
         true,
-        None,
-        None,
     );
     let _ = Assets::<T>::register_asset_id(
         owner.clone(),
         PSWAP.into(),
         AssetSymbol(b"PSWAP".to_vec()),
         AssetName(b"PSWAP".to_vec()),
-        DEFAULT_BALANCE_PRECISION,
+        18,
         Balance::zero(),
         true,
-        None,
-        None,
     );
     let _ = Assets::<T>::register_asset_id(
         owner.clone(),
         USDT.into(),
         AssetSymbol(b"USDT".to_vec()),
         AssetName(b"USDT".to_vec()),
-        DEFAULT_BALANCE_PRECISION,
+        18,
         Balance::zero(),
         true,
-        None,
-        None,
     );
     let _ = Assets::<T>::register_asset_id(
         owner.clone(),
         DOT.into(),
         AssetSymbol(b"DOT".to_vec()),
         AssetName(b"DOT".to_vec()),
-        DEFAULT_BALANCE_PRECISION,
+        18,
         Balance::zero(),
         true,
-        None,
-        None,
     );
     Assets::<T>::mint_to(&XOR.into(), &owner.clone(), &owner.clone(), balance!(50000)).unwrap();
     Assets::<T>::mint_to(

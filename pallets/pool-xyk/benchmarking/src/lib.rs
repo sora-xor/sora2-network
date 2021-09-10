@@ -39,9 +39,7 @@ use pool_xyk::*;
 
 use codec::Decode;
 use common::prelude::{Balance, SwapAmount};
-use common::{
-    balance, AssetName, AssetSymbol, DEXId, LiquiditySource, DEFAULT_BALANCE_PRECISION, DOT, XOR,
-};
+use common::{balance, AssetName, AssetSymbol, DEXId, LiquiditySource, DOT, XOR};
 use frame_benchmarking::benchmarks;
 use frame_system::RawOrigin;
 use hex_literal::hex;
@@ -89,22 +87,18 @@ fn setup_benchmark_assets_only<T: Config>() -> Result<(), &'static str> {
         XOR.into(),
         AssetSymbol(b"XOR".to_vec()),
         AssetName(b"SORA".to_vec()),
-        DEFAULT_BALANCE_PRECISION,
+        18,
         Balance::from(0u32),
         true,
-        None,
-        None,
     );
     let _ = Assets::<T>::register_asset_id(
         owner.clone(),
         DOT.into(),
         AssetSymbol(b"DOT".to_vec()),
         AssetName(b"Polkadot".to_vec()),
-        DEFAULT_BALANCE_PRECISION,
+        18,
         Balance::from(0u32),
         true,
-        None,
-        None,
     )
     .unwrap();
 

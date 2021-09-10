@@ -117,7 +117,6 @@ impl Default for ExtBuilder {
             initial_permission_owners: vec![
                 (BURN, Scope::Unlimited, vec![ALICE]),
                 (SLASH, Scope::Unlimited, vec![ALICE]),
-                (INIT_DEX, Scope::Unlimited, vec![BOB]),
                 (MINT, Scope::Unlimited, vec![JOHN]),
             ],
             initial_permissions: vec![

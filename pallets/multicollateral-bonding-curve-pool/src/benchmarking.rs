@@ -41,7 +41,7 @@ use frame_system::{EventRecord, RawOrigin};
 use hex_literal::hex;
 use sp_std::prelude::*;
 
-use common::{fixed, AssetName, AssetSymbol, DAI, DEFAULT_BALANCE_PRECISION, USDT, XOR};
+use common::{fixed, AssetName, AssetSymbol, DAI, USDT, XOR};
 
 use crate::Pallet as MBCPool;
 use assets::Pallet as Assets;
@@ -151,23 +151,8 @@ benchmarks! {
             permissions::MANAGE_DEX,
             permissions::Scope::Limited(common::hash(&dex_id)),
         ).unwrap();
-        Assets::<T>::register_asset_id(
-            caller.clone(),
-            USDT.into(),
-            AssetSymbol(b"TESTUSD".to_vec()),
-            AssetName(b"USD".to_vec()),
-            DEFAULT_BALANCE_PRECISION,
-            Balance::zero(),
-            true,
-            None,
-            None
-        ).unwrap();
-        TradingPair::<T>::register(
-            RawOrigin::Signed(caller.clone()).into(),
-            common::DEXId::Polkaswap.into(),
-            XOR.into(),
-            USDT.into()
-        ).unwrap();
+        Assets::<T>::register_asset_id(caller.clone(), USDT.into(), AssetSymbol(b"TESTUSD".to_vec()), AssetName(b"USD".to_vec()), 18, Balance::zero(), true).unwrap();
+        TradingPair::<T>::register(RawOrigin::Signed(caller.clone()).into(), common::DEXId::Polkaswap.into(), XOR.into(), USDT.into()).unwrap();
     }: {
         Module::<T>::initialize_pool(
             RawOrigin::Signed(caller.clone()).into(),
@@ -188,17 +173,7 @@ benchmarks! {
             permissions::MANAGE_DEX,
             permissions::Scope::Limited(common::hash(&dex_id)),
         ).unwrap();
-        Assets::<T>::register_asset_id(
-            caller.clone(),
-            USDT.into(),
-            AssetSymbol(b"TESTUSD".to_vec()),
-            AssetName(b"USD".to_vec()),
-            DEFAULT_BALANCE_PRECISION,
-            Balance::zero(),
-            true,
-            None,
-            None
-        ).unwrap();
+        Assets::<T>::register_asset_id(caller.clone(), USDT.into(), AssetSymbol(b"TESTUSD".to_vec()), AssetName(b"USD".to_vec()), 18, Balance::zero(), true).unwrap();
     }: {
         Module::<T>::set_reference_asset(
             RawOrigin::Signed(caller.clone()).into(),
@@ -219,17 +194,7 @@ benchmarks! {
             permissions::MANAGE_DEX,
             permissions::Scope::Limited(common::hash(&dex_id)),
         ).unwrap();
-        Assets::<T>::register_asset_id(
-            caller.clone(),
-            USDT.into(),
-            AssetSymbol(b"TESTUSD".to_vec()),
-            AssetName(b"USD".to_vec()),
-            DEFAULT_BALANCE_PRECISION,
-            Balance::zero(),
-            true,
-            None,
-            None
-        ).unwrap();
+        Assets::<T>::register_asset_id(caller.clone(), USDT.into(), AssetSymbol(b"TESTUSD".to_vec()), AssetName(b"USD".to_vec()), 18, Balance::zero(), true).unwrap();
         TradingPair::<T>::register(RawOrigin::Signed(caller.clone()).into(), common::DEXId::Polkaswap.into(), XOR.into(), USDT.into()).unwrap();
         MBCPool::<T>::initialize_pool(RawOrigin::Signed(caller.clone()).into(), USDT.into()).unwrap();
     }: {

@@ -30,7 +30,7 @@
 
 use crate::mock::*;
 use common::prelude::Balance;
-use common::{AssetName, AssetSymbol, DEFAULT_BALANCE_PRECISION};
+use common::{AssetName, AssetSymbol};
 use frame_support::assert_ok;
 use orml_traits::MultiCurrency;
 use PolySwapActionExample::*;
@@ -83,22 +83,18 @@ fn generic_pair_swap_simple() {
             RedPepper(),
             AssetSymbol(b"RP".to_vec()),
             AssetName(b"Red Pepper".to_vec()),
-            DEFAULT_BALANCE_PRECISION,
+            18,
             Balance::from(0u32),
             true,
-            None,
-            None,
         ));
         assert_ok!(assets::Module::<Runtime>::register_asset_id(
             repr.clone(),
             BlackPepper(),
             AssetSymbol(b"BP".to_vec()),
             AssetName(b"Black Pepper".to_vec()),
-            DEFAULT_BALANCE_PRECISION,
+            18,
             Balance::from(0u32),
             true,
-            None,
-            None,
         ));
         assert_ok!(assets::Module::<Runtime>::mint_to(
             &RedPepper(),

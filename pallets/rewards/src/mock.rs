@@ -42,8 +42,7 @@ use sp_runtime::{MultiSignature, Perbill, Percent};
 use common::mock::ExistentialDeposits;
 use common::prelude::{Balance, OnValBurned};
 use common::{
-    self, balance, Amount, AssetId32, AssetName, AssetSymbol, TechPurpose,
-    DEFAULT_BALANCE_PRECISION, PSWAP, VAL, XOR,
+    self, balance, Amount, AssetId32, AssetName, AssetSymbol, TechPurpose, PSWAP, VAL, XOR,
 };
 use permissions::{Scope, BURN, MINT};
 
@@ -237,22 +236,18 @@ impl ExtBuilder {
                     alice(),
                     AssetSymbol(b"XOR".to_vec()),
                     AssetName(b"SORA".to_vec()),
-                    DEFAULT_BALANCE_PRECISION,
+                    18,
                     Balance::from(0u32),
                     true,
-                    None,
-                    None,
                 ),
                 (
                     VAL.into(),
                     alice(),
                     AssetSymbol(b"VAL".to_vec()),
                     AssetName(b"SORA Validator Token".to_vec()),
-                    DEFAULT_BALANCE_PRECISION,
+                    18,
                     Balance::from(0u32),
                     true,
-                    None,
-                    None,
                 ),
             ],
         }
