@@ -401,36 +401,8 @@ fn fee_payment_regular_swap() {
     });
 }
 
-/// Fee should be postponed until after the transaction
-#[test]
-fn fee_payment_postponed() {
-    ExtBuilder::build().execute_with(|| {
-        let dex_id = common::DEXId::Polkaswap;
-        let dispatch_info = info_from_weight(100_000_000);
-
-        let call = Call::LiquidityProxy(mock_liquidity_proxy::Call::swap(
-            dex_id,
-            VAL,
-            XOR,
-            SwapAmount::WithDesiredInput {
-                desired_amount_in: balance!(100),
-                min_amount_out: balance!(50),
-            },
-            vec![],
-            FilterMode::Disabled,
-        ));
-
-        let quoted_fee = xor_fee::Pallet::<Runtime>::withdraw_fee(
-            &EMPTY_ACCOUNT,
-            &call,
-            &dispatch_info,
-            1337,
-            0,
-        );
-
-        assert!(matches!(quoted_fee, Ok(LiquidityInfo::Postponed(1337))));
-    });
-}
+// This test is disabled on master because develop has moved to new way of testing
+// fn fee_payment_postponed() {
 
 /// Payment should not be postponed if we are not producing XOR
 #[test]
