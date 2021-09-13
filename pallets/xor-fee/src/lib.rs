@@ -152,7 +152,9 @@ where
 
         // How much does the user want to spend of their input asset
         let swap_input_amount = match amount {
-            SwapAmount::WithDesiredInput { desired_amount_in, .. } => desired_amount_in,
+            SwapAmount::WithDesiredInput {
+                desired_amount_in, ..
+            } => desired_amount_in,
             SwapAmount::WithDesiredOutput { max_amount_in, .. } => max_amount_in,
         };
 

@@ -404,7 +404,6 @@ fn fee_payment_regular_swap() {
 // This test is disabled on master because develop has moved to new way of testing
 // fn fee_payment_postponed() {
 
-
 /// Payment should not be postponed if we are not producing XOR
 #[test]
 fn fee_payment_should_not_postpone() {
