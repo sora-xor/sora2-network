@@ -7,7 +7,6 @@ use sp_core::crypto::{AccountId32, Ss58AddressFormat, Ss58Codec};
 
 fn parse_pools() -> HashMap<String, Vec<(String, u32)>> {
     let reader = BufReader::new(File::open("../pools.txt").unwrap());
-    let reader = BufReader::new(File::open("../pools.txt").unwrap());
 
     let mut pools = HashMap::new();
     let mut current_pool: Option<(String, Vec<(String, u32)>)> = None;
