@@ -229,7 +229,6 @@ pub mod pallet {
         IncRefError,
     }
 
-    // TODO: should be "created" in migration to avoid incref error
     // TODO: better by replaced with Get<>
     /// Technical account used to store collateral tokens.
     #[pallet::storage]
@@ -285,6 +284,7 @@ pub mod pallet {
     #[pallet::genesis_build]
     impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
         fn build(&self) {
+            PermissionedTechAccount::<T>::put(&self.tech_account_id);
             ReferenceAssetId::<T>::put(&self.reference_asset_id);
             self.initial_synthetic_assets
                 .iter()

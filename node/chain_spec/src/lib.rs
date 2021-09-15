@@ -745,7 +745,7 @@ fn testnet_genesis(
         (mbc_reserves_account_id.clone(), 0),
         (mbc_pool_rewards_account_id.clone(), 0),
         (mbc_pool_free_reserves_account_id.clone(), 0),
-        (xst_pool_permissioned_account_id, 0),
+        (xst_pool_permissioned_account_id.clone(), 0),
         (market_maker_rewards_account_id.clone(), 0),
     ]
     .into_iter()
@@ -1048,6 +1048,11 @@ fn testnet_genesis(
                 ),
                 (
                     mbc_pool_free_reserves_account_id.clone(),
+                    Scope::Unlimited,
+                    vec![permissions::MINT, permissions::BURN],
+                ),
+                (
+                    xst_pool_permissioned_account_id.clone(),
                     Scope::Unlimited,
                     vec![permissions::MINT, permissions::BURN],
                 ),
