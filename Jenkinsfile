@@ -49,8 +49,15 @@ pipeline {
                                 if (env.TAG_NAME =~ 'benchmarking.*') {
                                     featureList = 'runtime-benchmarks main-net-coded'
                                 }
+                                else if (env.TAG_NAME =~ 'stage.*') {
+                                    featureList = 'private-net include-real-files'
+                                }
+                                else if (env.TAG_NAME =~ 'test.*') {
+                                    featureList = 'private-net include-real-files reduced-pswap-reward-periods'
+                                }
                                 else if (env.TAG_NAME) {
-                                    featureList = (env.TAG_NAME =~ 'stage.*|test.*') ? featureList : 'include-real-files'
+                                    # MAIN NET
+                                    featureList = 'include-real-files'
                                 }
                                 sh """#!/bin/bash
                                     time cargo build --release --features \"${featureList}\" --target-dir /app/target/
