@@ -79,7 +79,9 @@ fn reserve_unreserve() {
 
         assert_ok!(Referrals::reserve(Origin::signed(alice()), 3 * SMALL_FEE));
 
-        assert!(referrals::ReferrerBalances::<Runtime>::contains_key(&alice()));
+        assert!(referrals::ReferrerBalances::<Runtime>::contains_key(
+            &alice()
+        ));
 
         for _ in 0..3 {
             assert_ok!(Referrals::unreserve(Origin::signed(alice()), SMALL_FEE));
@@ -90,7 +92,9 @@ fn reserve_unreserve() {
             Ok(SMALL_FEE * 3)
         );
 
-        assert!(!referrals::ReferrerBalances::<Runtime>::contains_key(&alice()));
+        assert!(!referrals::ReferrerBalances::<Runtime>::contains_key(
+            &alice()
+        ));
     })
 }
 
