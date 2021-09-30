@@ -56,7 +56,6 @@ pipeline {
                                     featureList = 'private-net include-real-files reduced-pswap-reward-periods'
                                 }
                                 else if (env.TAG_NAME) {
-                                    # MAIN NET
                                     featureList = 'include-real-files'
                                 }
                                 sh """#!/bin/bash
@@ -64,7 +63,7 @@ pipeline {
                                     time cargo test  --release --target-dir /app/target/
                                     sccache -s
                                     time mv /app/target/release/framenode .
-                                    time mv /app/target/release/wbuild/framenode-runtime/framenode_runtime.compact.wasm .
+                                    time wasm-opt -Os -o . /app/target/release/wbuild/framenode-runtime/framenode_runtime.compact.wasm
                                 """
                                 archiveArtifacts artifacts:
                                     'framenode_runtime.compact.wasm'
