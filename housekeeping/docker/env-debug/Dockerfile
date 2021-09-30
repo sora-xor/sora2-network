@@ -10,7 +10,7 @@ RUN apt-get update && \
         ca-certificates apt-transport-https gnupg \
         libssl-dev pkg-config \
         curl \
-        git \
+        git binaryen \
         software-properties-common \
         llvm clang && \
     rm -rf /var/lib/apt/lists/*
