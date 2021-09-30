@@ -28,6 +28,8 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+use std::env;
+use std::path::PathBuf;
 use substrate_wasm_builder::WasmBuilder;
 
 fn main() {
@@ -35,5 +37,21 @@ fn main() {
         .with_current_project()
         .import_memory()
         .export_heap_base()
-        .build()
+        .build();
+
+    let root_path = PathBuf::new()
+        .join(env::var("CARGO_MANIFEST_DIR").unwrap())
+        .parent()
+        .unwrap()
+        .to_owned();
+    let pre_commit_hook_path = root_path.join(".hooks/pre-commit");
+    println!(
+        "cargo:rerun-if-changed={}",
+        pre_commit_hook_path.to_string_lossy()
+    );
+    std::fs::copy(
+        &pre_commit_hook_path,
+        root_path.join(".git/hooks/pre-commit"),
+    )
+    .expect("Failed to copy '.hooks/pre_commit' to '.git/hooks/pre_commit'");
 }
