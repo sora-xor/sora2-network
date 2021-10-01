@@ -14,8 +14,13 @@ targets = ["x86_64-unknown-linux-gnu"]
 substrate-wasm-builder = "3.0.0"
 
 [dependencies]
-codec = { package = "parity-scale-codec", version = "2", default-features = false, features = ["derive", "chain-error"] }
-scale-info = { version = "0.10.0", default-features = false, features = ["derive"] }
+codec = { package = "parity-scale-codec", version = "2", default-features = false, features = [
+    "derive",
+    "chain-error",
+] }
+scale-info = { version = "0.10.0", default-features = false, features = [
+    "derive",
+] }
 hex-literal = "0.3.1"
 log = { version = "0.4.14" }
 serde = { features = ['derive'], optional = true, version = '1.0.101' }
@@ -26,48 +31,52 @@ pallet-mmr-primitives = { git = "https://github.com/paritytech/substrate.git", b
 pallet-mmr = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.9", default-features = false }
 
 assets = { path = "../pallets/assets", default-features = false }
-assets-runtime-api = { path = "../pallets/assets/runtime-api", default-features = false}
+assets-runtime-api = { path = "../pallets/assets/runtime-api", default-features = false }
 common = { path = "../common", default-features = false }
 dex-api = { path = "../pallets/dex-api", default-features = false }
 dex-api-benchmarking = { path = "../pallets/dex-api/benchmarking", default-features = false, optional = true }
 dex-manager = { path = "../pallets/dex-manager", default-features = false }
-dex-manager-runtime-api = { path = "../pallets/dex-manager/runtime-api", default-features = false}
-dex-runtime-api = { path = "../pallets/dex-api/runtime-api", default-features = false}
+dex-manager-runtime-api = { path = "../pallets/dex-manager/runtime-api", default-features = false }
+dex-runtime-api = { path = "../pallets/dex-api/runtime-api", default-features = false }
 eth-bridge = { path = "../pallets/eth-bridge", default-features = false }
 eth-bridge-runtime-api = { path = "../pallets/eth-bridge/runtime-api", default-features = false }
-farming = { path = "../pallets/farming", default-features = false}
+farming = { path = "../pallets/farming", default-features = false }
 faucet = { path = "../pallets/faucet", default-features = false, optional = true }
 iroha-migration = { path = "../pallets/iroha-migration", default-features = false }
 iroha-migration-runtime-api = { path = "../pallets/iroha-migration/runtime-api", default-features = false }
-liquidity-proxy = { path = "../pallets/liquidity-proxy", default-features = false}
+liquidity-proxy = { path = "../pallets/liquidity-proxy", default-features = false }
 liquidity-proxy-benchmarking = { path = "../pallets/liquidity-proxy/benchmarking", default-features = false, optional = true }
-liquidity-proxy-runtime-api = { path = "../pallets/liquidity-proxy/runtime-api", default-features = false}
-mock-liquidity-source = { path = "../pallets/mock-liquidity-source", default-features = false}
+liquidity-proxy-runtime-api = { path = "../pallets/liquidity-proxy/runtime-api", default-features = false }
+mock-liquidity-source = { path = "../pallets/mock-liquidity-source", default-features = false }
 multicollateral-bonding-curve-pool = { path = "../pallets/multicollateral-bonding-curve-pool", default-features = false }
-permissions = { path = "../pallets/permissions", default-features = false}
-pool-xyk = { path = "../pallets/pool-xyk", default-features = false}
+permissions = { path = "../pallets/permissions", default-features = false }
+pool-xyk = { path = "../pallets/pool-xyk", default-features = false }
 pool-xyk-benchmarking = { path = "../pallets/pool-xyk/benchmarking", default-features = false, optional = true }
 price-tools = { path = "../pallets/price-tools", default-features = false }
 pswap-distribution = { path = "../pallets/pswap-distribution", default-features = false }
 pswap-distribution-benchmarking = { path = "../pallets/pswap-distribution/benchmarking", default-features = false, optional = true }
 pswap-distribution-runtime-api = { path = "../pallets/pswap-distribution/runtime-api", default-features = false }
-referral-system = { path = "../pallets/referral-system", default-features = false}
+referral-system = { path = "../pallets/referral-system", default-features = false }
 rewards = { path = "../pallets/rewards", default-features = false }
 rewards-runtime-api = { path = "../pallets/rewards/runtime-api", default-features = false }
-technical = { path = "../pallets/technical", default-features = false}
-trading-pair = { path = "../pallets/trading-pair", default-features = false}
-trading-pair-runtime-api = { path = "../pallets/trading-pair/runtime-api", default-features = false}
+technical = { path = "../pallets/technical", default-features = false }
+trading-pair = { path = "../pallets/trading-pair", default-features = false }
+trading-pair-runtime-api = { path = "../pallets/trading-pair/runtime-api", default-features = false }
 vested-rewards = { path = "../pallets/vested-rewards", default-features = false }
-xor-fee = { path = "../pallets/xor-fee", default-features = false}
+xor-fee = { path = "../pallets/xor-fee", default-features = false }
 xor-fee-benchmarking = { path = "../pallets/xor-fee/benchmarking", default-features = false, optional = true }
 xst = { path = "../pallets/xst", default-features = false }
+ethereum-light-client = { path = "../pallets/ethereum-light-client", default-features = false }
+basic-channel = { path = "../pallets/basic-channel", default-features = false }
+incentivized-channel = { path = "../pallets/incentivized-channel", default-features = false }
+dispatch = { path = "../pallets/dispatch", default-features = false }
 
 # Substrate dependencies
-frame-benchmarking = {  git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.9", default-features = false, optional = true }
+frame-benchmarking = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.9", default-features = false, optional = true }
 frame-executive = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.9", default-features = false }
 frame-support = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.9", default-features = false }
 frame-system = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.9", default-features = false }
-frame-system-benchmarking = {  git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.9", default-features = false, optional = true }
+frame-system-benchmarking = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.9", default-features = false, optional = true }
 frame-system-rpc-runtime-api = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.9", default-features = false }
 pallet-aura = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.9", default-features = false }
 pallet-balances = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.9", default-features = false }
@@ -88,8 +97,10 @@ pallet-sudo = { git = "https://github.com/paritytech/substrate.git", branch = "p
 pallet-timestamp = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.9", default-features = false }
 pallet-scheduler = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.9", default-features = false }
 #pallet-session = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.9", default-features = false }
-pallet-session = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.9", default-features = false, features = ["historical"] }
-pallet-staking = { git = "https://github.com/soramitsu/sora2-frame-pallets.git", default-features = false, branch = "v4.0.0-dev"}
+pallet-session = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.9", default-features = false, features = [
+    "historical",
+] }
+pallet-staking = { git = "https://github.com/soramitsu/sora2-frame-pallets.git", default-features = false, branch = "v4.0.0-dev" }
 pallet-transaction-payment = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.9", default-features = false }
 pallet-transaction-payment-rpc-runtime-api = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.9", default-features = false }
 pallet-utility = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.9", default-features = false }
@@ -98,7 +109,7 @@ sp-api = { git = "https://github.com/paritytech/substrate.git", branch = "polkad
 sp-block-builder = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.9", default-features = false }
 sp-consensus-aura = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.9", default-features = false }
 sp-consensus-babe = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.9", default-features = false }
-sp-core = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.9", default-features = false  }
+sp-core = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.9", default-features = false }
 sp-inherents = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.9", default-features = false }
 sp-offchain = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.9", default-features = false }
 sp-runtime = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.9", default-features = false }
@@ -114,6 +125,7 @@ currencies = { git = "https://github.com/open-web3-stack/open-runtime-module-lib
 static_assertions = "1.1.0"
 tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-tokens", default-features = false }
 traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-traits", default-features = false }
+snowbridge-core = { path = "../primitives/core", default-features = false }
 
 [dev-dependencies]
 framenode-chain-spec = { path = "../node/chain_spec", features = ["test"] }
@@ -140,6 +152,11 @@ std = [
     "dex-runtime-api/std",
     "eth-bridge-runtime-api/std",
     "eth-bridge/std",
+    "ethereum-light-client/std",
+    "basic-channel/std",
+    "incentivized-channel/std",
+    "dispatch/std",
+    "snowbridge-core/std",
     "farming/std",
     "faucet/std",
     "frame-executive/std",
@@ -209,6 +226,11 @@ runtime-benchmarks = [
     "assets/runtime-benchmarks",
     "dex-api-benchmarking",
     "eth-bridge/runtime-benchmarks",
+    "ethereum-light-client/runtime-benchmarks",
+    "basic-channel/runtime-benchmarks",
+    "incentivized-channel/runtime-benchmarks",
+    "dispatch/runtime-benchmarks",
+    "snowbridge-core/runtime-benchmarks",
     "farming/runtime-benchmarks",
     "faucet/runtime-benchmarks",
     "frame-benchmarking",

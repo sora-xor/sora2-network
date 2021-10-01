@@ -1,0 +1,18 @@
+{
+  "source": {
+    "data-dir": "/tmp",
+    "ethereum": {
+      "endpoint": "ws://localhost:8545"
+    },
+    "descendants-until-final": 3,
+    "contracts": {
+      "BasicOutboundChannel": "0x0DC321bd6759AE83b5a6859347A395015f6aF62B",
+      "IncentivizedOutboundChannel": "0xb22F6a08de4DcB528a0a42ada2C3593EBe42154A"
+    }
+  },
+  "sink": {
+    "parachain": {
+      "endpoint": "ws://localhost:9944"
+    }
+  }
+}

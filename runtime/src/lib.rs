@@ -41,7 +41,9 @@ mod extensions;
 mod impls;
 
 use common::prelude::QuoteAmount;
+use common::{AssetId32, PredefinedAssetId, ETH};
 use constants::time::*;
+use snowbridge_core::ChannelId;
 
 // Make the WASM binary available.
 #[cfg(feature = "std")]
@@ -49,6 +51,7 @@ include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
 
 pub use beefy_primitives::crypto::AuthorityId as BeefyId;
 use beefy_primitives::mmr::MmrLeafVersion;
+use core::marker::PhantomData;
 use core::time::Duration;
 use currencies::BasicCurrencyAdapter;
 use extensions::ChargeTransactionPayment;
@@ -65,7 +68,7 @@ use serde::{Serialize, Serializer};
 use sp_api::impl_runtime_apis;
 use sp_core::crypto::KeyTypeId;
 use sp_core::u32_trait::{_1, _2, _3};
-use sp_core::{Encode, OpaqueMetadata, H160};
+use sp_core::{Encode, OpaqueMetadata, H160, U256};
 use sp_runtime::traits::{
     BlakeTwo256, Block as BlockT, Convert, IdentifyAccount, IdentityLookup, NumberFor, OpaqueKeys,
     SaturatedConversion, Verify,
@@ -75,7 +78,7 @@ use sp_runtime::transaction_validity::{
 };
 use sp_runtime::{
     create_runtime_str, generic, impl_opaque_keys, ApplyExtrinsicResult, DispatchError,
-    MultiSignature, Perbill, Percent, Perquintill,
+    DispatchResult, MultiSignature, Perbill, Percent, Perquintill,
 };
 use sp_std::prelude::*;
 use sp_std::vec::Vec;
@@ -96,6 +99,7 @@ pub use common::{
     FilterMode, Fixed, FromGenericPair, LiquiditySource, LiquiditySourceFilter, LiquiditySourceId,
     LiquiditySourceType, OnPswapBurned, OnValBurned,
 };
+pub use ethereum_light_client::{EthereumConfig, EthereumDifficultyConfig, EthereumHeader};
 pub use frame_support::traits::schedule::Named as ScheduleNamed;
 pub use frame_support::traits::{
     KeyOwnerProofSystem, LockIdentifier, OnUnbalanced, Randomness, U128CurrencyToVote,
@@ -117,7 +121,7 @@ use eth_bridge::offchain::SignatureParams;
 use eth_bridge::requests::{AssetKind, OffchainRequest, OutgoingRequestEncoded, RequestStatus};
 use impls::{CollectiveWeightInfo, DemocracyWeightInfo, OnUnbalancedDemocracySlash};
 
-use frame_support::traits::{Everything, Get};
+use frame_support::traits::{Everything, Filter, Get};
 use pallet_balances::Config;
 use sp_runtime::traits::Keccak256;
 pub use {assets, eth_bridge, frame_system, multicollateral_bonding_curve_pool, xst};
@@ -1424,6 +1428,119 @@ parameter_types! {
     pub const SoraParliamentShare: Percent = Percent::from_percent(10);
 }
 
+// Ethereum bridge pallets
+
+pub struct CallFilter;
+impl Filter<Call> for CallFilter {
+    fn filter(_: &Call) -> bool {
+        true
+    }
+}
+
+impl dispatch::Config for Runtime {
+    type Origin = Origin;
+    type Event = Event;
+    type MessageId = snowbridge_core::MessageId;
+    type Call = Call;
+    type CallFilter = CallFilter;
+}
+
+use basic_channel::{inbound as basic_channel_inbound, outbound as basic_channel_outbound};
+use incentivized_channel::{
+    inbound as incentivized_channel_inbound, outbound as incentivized_channel_outbound,
+};
+const INDEXING_PREFIX: &'static [u8] = b"commitment";
+
+pub struct OutboundRouter<T>(PhantomData<T>);
+
+impl<T> snowbridge_core::OutboundRouter<T::AccountId> for OutboundRouter<T>
+where
+    T: basic_channel::outbound::Config + incentivized_channel::outbound::Config,
+{
+    fn submit(
+        channel_id: ChannelId,
+        who: &T::AccountId,
+        target: H160,
+        payload: &[u8],
+    ) -> DispatchResult {
+        match channel_id {
+            ChannelId::Basic => basic_channel::outbound::Module::<T>::submit(who, target, payload),
+            ChannelId::Incentivized => {
+                incentivized_channel::outbound::Module::<T>::submit(who, target, payload)
+            }
+        }
+    }
+}
+
+parameter_types! {
+    pub const MaxMessagePayloadSize: usize = 256;
+    pub const MaxMessagesPerCommit: usize = 20;
+    pub const Decimals: u32 = 12;
+}
+
+impl basic_channel_inbound::Config for Runtime {
+    type Event = Event;
+    type Verifier = ethereum_light_client::Module<Runtime>;
+    type MessageDispatch = dispatch::Module<Runtime>;
+    type WeightInfo = ();
+}
+
+impl basic_channel_outbound::Config for Runtime {
+    const INDEXING_PREFIX: &'static [u8] = INDEXING_PREFIX;
+    type Event = Event;
+    type Hashing = Keccak256;
+    type MaxMessagePayloadSize = MaxMessagePayloadSize;
+    type MaxMessagesPerCommit = MaxMessagesPerCommit;
+    type WeightInfo = ();
+}
+
+pub struct FeeConverter;
+impl Convert<U256, Balance> for FeeConverter {
+    fn convert(amount: U256) -> Balance {
+        snowbridge_core::primitives::unwrap(amount, Decimals::get())
+            .expect("Should not panic unless runtime is misconfigured")
+    }
+}
+
+parameter_types! {
+    pub const Ether: AssetId32<PredefinedAssetId> = ETH;
+}
+
+impl incentivized_channel_inbound::Config for Runtime {
+    type Event = Event;
+    type Verifier = ethereum_light_client::Module<Runtime>;
+    type MessageDispatch = dispatch::Module<Runtime>;
+    type FeeConverter = FeeConverter;
+    type UpdateOrigin = MoreThanHalfCouncil;
+    type WeightInfo = ();
+    type FeeAssetId = Ether;
+}
+
+impl incentivized_channel_outbound::Config for Runtime {
+    const INDEXING_PREFIX: &'static [u8] = INDEXING_PREFIX;
+    type Event = Event;
+    type Hashing = Keccak256;
+    type MaxMessagePayloadSize = MaxMessagePayloadSize;
+    type MaxMessagesPerCommit = MaxMessagesPerCommit;
+    type FeeCurrency = Ether;
+    type SetFeeOrigin = MoreThanHalfCouncil;
+    type WeightInfo = ();
+}
+
+parameter_types! {
+    pub const DescendantsUntilFinalized: u8 = 3;
+    pub const DifficultyConfig: EthereumDifficultyConfig = EthereumDifficultyConfig::mainnet();
+    pub const VerifyPoW: bool = true;
+}
+
+impl ethereum_light_client::Config for Runtime {
+    type Event = Event;
+    type DescendantsUntilFinalized = DescendantsUntilFinalized;
+    type DifficultyConfig = DifficultyConfig;
+    type VerifyPoW = VerifyPoW;
+    type WeightInfo = ethereum_light_client::weights::WeightInfo<Runtime>;
+}
+
 #[cfg(feature = "private-net")]
 construct_runtime! {
     pub enum Runtime where
@@ -1490,6 +1607,14 @@ construct_runtime! {
         Mmr: pallet_mmr::{Pallet, Storage} = 81,
         Beefy: pallet_beefy::{Pallet, Config<T>, Storage} = 82,
         MmrLeaf: pallet_beefy_mmr::{Pallet, Storage} = 83,
+
+        // Snowbridge
+        EthereumLightClient: ethereum_light_client::{Pallet, Call, Storage, Event<T>, Config} = 90,
+        BasicInboundChannel: basic_channel_inbound::{Pallet, Call, Storage, Event<T>} = 91,
+        BasicOutboundChannel: basic_channel_outbound::{Pallet, Storage, Event<T>} = 92,
+        IncentivizedInboundChannel: incentivized_channel_inbound::{Pallet, Call, Config<T>, Storage, Event<T>} = 93,
+        IncentivizedOutboundChannel: incentivized_channel_outbound::{Pallet, Config<T>, Storage, Event<T>} = 94,
+        Dispatch: dispatch::{Pallet, Call, Storage, Event<T>, Origin} = 95,
     }
 }
 
@@ -1555,6 +1680,14 @@ construct_runtime! {
         Mmr: pallet_mmr::{Pallet, Storage} = 45,
         Beefy: pallet_beefy::{Pallet, Config<T>, Storage} = 46,
         MmrLeaf: pallet_beefy_mmr::{Pallet, Storage} = 47,
+
+        // Snowbridge
+        EthereumLightClient: ethereum_light_client::{Pallet, Call, Storage, Event<T>, Config} = 90,
+        BasicInboundChannel: basic_channel_inbound::{Pallet, Call, Storage, Event<T>} = 91,
+        BasicOutboundChannel: basic_channel_outbound::{Pallet, Storage, Event<T>} = 92,
+        IncentivizedInboundChannel: incentivized_channel_inbound::{Pallet, Call, Config<T>, Storage, Event<T>} = 93,
+        IncentivizedOutboundChannel: incentivized_channel_outbound::{Pallet, Config<T>, Storage, Event<T>} = 94,
+        Dispatch: dispatch::{Pallet, Call, Storage, Event<T>, Origin} = 95,
     }
 }
 
@@ -2184,6 +2317,7 @@ impl_runtime_apis! {
             add_benchmark!(params, batches, vested_rewards, VestedRewards);
             add_benchmark!(params, batches, price_tools, PriceTools);
             add_benchmark!(params, batches, xor_fee, XorFeeBench::<Runtime>);
+            add_benchmark!(params, batches, ethereum_light_client, EthereumLightClient);
 
             if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
             Ok(batches)

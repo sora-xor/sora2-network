@@ -191,7 +191,7 @@ dependencies = [
  "sp-io",
  "sp-runtime",
  "sp-std",
- "tiny-keccak",
+ "tiny-keccak 2.0.2",
 ]
 
 [[package]]
@@ -487,6 +487,29 @@ name = "base64"
 version = "0.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "904dfeac50f3cdaba28fc6f57fdcddb75f49ed61346676a78c4ffe55877802fd"
+
+[[package]]
+name = "basic-channel"
+version = "0.1.1"
+dependencies = [
+ "assets",
+ "ethabi-decode",
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "hex-literal",
+ "pallet-balances",
+ "parity-scale-codec",
+ "rlp 0.5.1",
+ "serde",
+ "snowbridge-core",
+ "snowbridge-ethereum",
+ "sp-core",
+ "sp-io",
+ "sp-keyring 4.0.0-dev (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.9)",
+ "sp-runtime",
+ "sp-std",
+]
 
 [[package]]
 name = "beefy-gadget"
@@ -988,6 +1011,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "30ed07550be01594c6026cff2a1d7fe9c8f683caa798e12b68694ac9e88286a3"
 dependencies = [
  "cache-padded",
+]
+
+[[package]]
+name = "console_error_panic_hook"
+version = "0.1.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b8d976903543e0c48546a91908f21588a680a8c8f984df9a5d69feccb2b2a211"
+dependencies = [
+ "cfg-if 0.1.10",
+ "wasm-bindgen",
 ]
 
 [[package]]
@@ -1543,6 +1576,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "dispatch"
+version = "0.1.1"
+dependencies = [
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "hex-literal",
+ "parity-scale-codec",
+ "serde",
+ "snowbridge-core",
+ "sp-core",
+ "sp-io",
+ "sp-keyring 4.0.0-dev (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.9)",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
 name = "dns-parser"
 version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1621,7 +1672,7 @@ source = "git+https://github.com/soramitsu/sora2-ed25519-dalek-iroha.git?branch=
 dependencies = [
  "curve25519-dalek 3.1.0",
  "ed25519",
- "sha3",
+ "sha3 0.9.1",
  "zeroize",
 ]
 
@@ -1638,6 +1689,26 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7c5f0096a91d210159eceb2ff5e1c4da18388a170e1e3ce948aac9c8fdbbf595"
 dependencies = [
  "heck",
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
+name = "enum-iterator"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c79a6321a1197d7730510c7e3f6cb80432dfefecb32426de8cea0aa19b4bb8d7"
+dependencies = [
+ "enum-iterator-derive",
+]
+
+[[package]]
+name = "enum-iterator-derive"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1e94aa31f7c0dc764f57896dc615ddd76fc13b0d5dca7eb6cc5e018a5a09ec06"
+dependencies = [
  "proc-macro2",
  "quote",
  "syn",
@@ -1748,7 +1819,7 @@ dependencies = [
  "ethabi",
  "ethabi-contract",
  "ethabi-derive",
- "ethereum-types",
+ "ethereum-types 0.11.0 (git+https://github.com/vmarkushin/parity-common.git?branch=no-std)",
  "frame-benchmarking",
  "frame-executive",
  "frame-support",
@@ -1769,14 +1840,14 @@ dependencies = [
  "parity-util-mem",
  "parking_lot 0.11.1",
  "permissions",
- "rlp",
+ "rlp 0.4.6",
  "rustc-hex",
  "serde",
  "serde_json",
  "sp-core",
  "sp-keystore",
  "sp-std",
- "tiny-keccak",
+ "tiny-keccak 2.0.2",
  "tokio",
 ]
 
@@ -1817,11 +1888,11 @@ version = "13.0.0"
 source = "git+https://github.com/vmarkushin/ethabi.git?branch=no-std#c6c060c4b02e0ac552db5610da2760bcfa478108"
 dependencies = [
  "anyhow",
- "ethereum-types",
+ "ethereum-types 0.11.0 (git+https://github.com/vmarkushin/parity-common.git?branch=no-std)",
  "hex",
  "serde",
  "serde_json",
- "sha3",
+ "sha3 0.9.1",
  "uint 0.9.0",
 ]
 
@@ -1829,6 +1900,15 @@ dependencies = [
 name = "ethabi-contract"
 version = "11.0.0"
 source = "git+https://github.com/vmarkushin/ethabi.git?branch=no-std#c6c060c4b02e0ac552db5610da2760bcfa478108"
+
+[[package]]
+name = "ethabi-decode"
+version = "1.3.2"
+source = "git+https://github.com/Snowfork/ethabi-decode.git?branch=master#becd27ee393fc1c38ba778c674943690f4ba3d5b"
+dependencies = [
+ "ethereum-types 0.12.0",
+ "tiny-keccak 1.5.0",
+]
 
 [[package]]
 name = "ethabi-derive"
@@ -1844,6 +1924,31 @@ dependencies = [
 ]
 
 [[package]]
+name = "ethash"
+version = "0.5.0"
+source = "git+https://github.com/snowfork/ethash.git?branch=master#d777b18df8ebc29f9d8a5d78566bdd7fbee4a7cc"
+dependencies = [
+ "byteorder",
+ "ethereum-types 0.12.0",
+ "rlp 0.5.1",
+ "sha3 0.8.2",
+]
+
+[[package]]
+name = "ethbloom"
+version = "0.11.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "779864b9c7f7ead1f092972c3257496c6a84b46dba2ce131dd8a282cb2cc5972"
+dependencies = [
+ "crunchy",
+ "fixed-hash 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "impl-codec 0.5.1",
+ "impl-rlp",
+ "impl-serde 0.3.1",
+ "tiny-keccak 2.0.2",
+]
+
+[[package]]
 name = "ethbloom"
 version = "0.11.0"
 source = "git+https://github.com/vmarkushin/parity-common.git?branch=no-std#fdb5d222d8d87b645219009eef167822e905c8a5"
@@ -1852,7 +1957,43 @@ dependencies = [
  "fixed-hash 0.7.0 (git+https://github.com/vmarkushin/parity-common.git?branch=no-std)",
  "impl-codec 0.5.0",
  "impl-serde 0.3.2",
- "tiny-keccak",
+ "tiny-keccak 2.0.2",
+]
+
+[[package]]
+name = "ethereum-light-client"
+version = "0.1.1"
+dependencies = [
+ "ethash",
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "hex-literal",
+ "parity-scale-codec",
+ "rlp 0.5.1",
+ "rustc-hex",
+ "serde",
+ "serde_json",
+ "snowbridge-core",
+ "snowbridge-ethereum",
+ "snowbridge-testutils",
+ "sp-core",
+ "sp-io",
+ "sp-keyring 4.0.0-dev (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.9)",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
+name = "ethereum-types"
+version = "0.11.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f64b5df66a228d85e4b17e5d6c6aa43b0310898ffe8a85988c4c032357aaabfd"
+dependencies = [
+ "ethbloom 0.11.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "fixed-hash 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "primitive-types 0.9.1",
+ "uint 0.9.1",
 ]
 
 [[package]]
@@ -1860,12 +2001,27 @@ name = "ethereum-types"
 version = "0.11.0"
 source = "git+https://github.com/vmarkushin/parity-common.git?branch=no-std#fdb5d222d8d87b645219009eef167822e905c8a5"
 dependencies = [
- "ethbloom",
+ "ethbloom 0.11.0 (git+https://github.com/vmarkushin/parity-common.git?branch=no-std)",
  "fixed-hash 0.7.0 (git+https://github.com/vmarkushin/parity-common.git?branch=no-std)",
  "impl-codec 0.5.0",
  "impl-serde 0.3.2",
  "primitive-types 0.9.0",
  "uint 0.9.0",
+]
+
+[[package]]
+name = "ethereum-types"
+version = "0.12.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0dd6bde671199089e601e8d47e153368b893ef885f11f365a3261ec58153c211"
+dependencies = [
+ "ethbloom 0.11.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "fixed-hash 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "impl-codec 0.5.1",
+ "impl-rlp",
+ "impl-serde 0.3.1",
+ "primitive-types 0.10.1",
+ "uint 0.9.1",
 ]
 
 [[package]]
@@ -2350,6 +2506,8 @@ dependencies = [
  "sc-finality-grandpa",
  "sc-network",
  "sc-service",
+ "serde",
+ "serde_json",
  "sp-consensus-aura",
  "sp-consensus-babe",
  "sp-core",
@@ -2365,6 +2523,7 @@ version = "0.1.0"
 dependencies = [
  "assets",
  "assets-runtime-api",
+ "basic-channel",
  "beefy-primitives",
  "common",
  "dex-api",
@@ -2372,8 +2531,10 @@ dependencies = [
  "dex-manager",
  "dex-manager-runtime-api",
  "dex-runtime-api",
+ "dispatch",
  "eth-bridge",
  "eth-bridge-runtime-api",
+ "ethereum-light-client",
  "farming",
  "faucet",
  "frame-benchmarking",
@@ -2384,6 +2545,7 @@ dependencies = [
  "frame-system-rpc-runtime-api",
  "framenode-chain-spec",
  "hex-literal",
+ "incentivized-channel",
  "iroha-migration",
  "iroha-migration-runtime-api",
  "liquidity-proxy",
@@ -2435,6 +2597,7 @@ dependencies = [
  "rewards-runtime-api",
  "scale-info",
  "serde",
+ "snowbridge-core",
  "sp-api",
  "sp-block-builder",
  "sp-consensus-aura",
@@ -2692,8 +2855,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7fcd999463524c52659517fe2cea98493cfe485d10565e7b0fb07dbba7ad2753"
 dependencies = [
  "cfg-if 1.0.0",
+ "js-sys",
  "libc",
  "wasi 0.10.0+wasi-snapshot-preview1",
+ "wasm-bindgen",
 ]
 
 [[package]]
@@ -3048,6 +3213,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "impl-rlp"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f28220f89297a075ddc7245cd538076ee98b01f2a9c23a53a4f1105d5a322808"
+dependencies = [
+ "rlp 0.5.1",
+]
+
+[[package]]
 name = "impl-serde"
 version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3073,6 +3247,32 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn",
+]
+
+[[package]]
+name = "incentivized-channel"
+version = "0.1.1"
+dependencies = [
+ "assets",
+ "common",
+ "ethabi-decode",
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "hex-literal",
+ "orml-traits",
+ "pallet-balances",
+ "parity-scale-codec",
+ "permissions",
+ "rlp 0.5.1",
+ "serde",
+ "snowbridge-core",
+ "snowbridge-ethereum",
+ "sp-core",
+ "sp-io",
+ "sp-keyring 4.0.0-dev (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.9)",
+ "sp-runtime",
+ "sp-std",
 ]
 
 [[package]]
@@ -3169,7 +3369,7 @@ dependencies = [
  "permissions",
  "referral-system",
  "serde",
- "sha3",
+ "sha3 0.9.1",
  "sp-core",
  "sp-io",
  "sp-runtime",
@@ -3781,7 +3981,7 @@ dependencies = [
  "pin-project 1.0.8",
  "rand 0.7.3",
  "salsa20",
- "sha3",
+ "sha3 0.9.1",
 ]
 
 [[package]]
@@ -4518,7 +4718,7 @@ dependencies = [
  "generic-array 0.14.4",
  "multihash-derive",
  "sha2 0.9.5",
- "sha3",
+ "sha3 0.9.1",
  "unsigned-varint 0.5.1",
 ]
 
@@ -5330,6 +5530,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "parity-bytes"
+version = "0.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "16b56e3a2420138bdb970f84dfb9c774aea80fa0e7371549eedec0d80c209c67"
+
+[[package]]
 name = "parity-db"
 version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5872,12 +6078,23 @@ dependencies = [
 
 [[package]]
 name = "primitive-types"
+version = "0.9.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "06345ee39fbccfb06ab45f3a1a5798d9dafa04cb8921a76d227040003a234b0e"
+dependencies = [
+ "fixed-hash 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "uint 0.9.1",
+]
+
+[[package]]
+name = "primitive-types"
 version = "0.10.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "05e4722c697a58a99d5d06a08c30821d7c082a4632198de1eaa5a6c22ef42373"
 dependencies = [
  "fixed-hash 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "impl-codec 0.5.1",
+ "impl-rlp",
  "impl-serde 0.3.1",
  "uint 0.9.1",
 ]
@@ -6611,6 +6828,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "rlp"
+version = "0.5.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "999508abb0ae792aabed2460c45b89106d97fe4adac593bdaef433c2605847b5"
+dependencies = [
+ "bytes 1.0.1",
+ "rustc-hex",
+]
+
+[[package]]
 name = "rocksdb"
 version = "0.17.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6848,7 +7075,7 @@ dependencies = [
  "serde_json",
  "sp-blockchain",
  "sp-core",
- "sp-keyring",
+ "sp-keyring 4.0.0-dev (git+https://github.com/paritytech//substrate.git?rev=b7a1a2cd)",
  "sp-keystore",
  "sp-panic-handler",
  "sp-runtime",
@@ -7771,6 +7998,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "serde-big-array"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "883eee5198ea51720eab8be52a36cf6c0164ac90eea0ed95b649d5e35382404e"
+dependencies = [
+ "serde",
+ "serde_derive",
+]
+
+[[package]]
 name = "serde_derive"
 version = "1.0.129"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -7840,6 +8077,19 @@ dependencies = [
  "cpufeatures 0.1.5",
  "digest 0.9.0",
  "opaque-debug 0.3.0",
+]
+
+[[package]]
+name = "sha3"
+version = "0.8.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "dd26bc0e7a2e3a7c959bc494caf58b72ee0c71d67704e9520f736ca7e4853ecf"
+dependencies = [
+ "block-buffer 0.7.3",
+ "byte-tools",
+ "digest 0.8.1",
+ "keccak",
+ "opaque-debug 0.2.3",
 ]
 
 [[package]]
@@ -7949,6 +8199,60 @@ dependencies = [
  "sha2 0.9.5",
  "subtle 2.4.1",
  "x25519-dalek",
+]
+
+[[package]]
+name = "snowbridge-core"
+version = "0.1.1"
+dependencies = [
+ "enum-iterator",
+ "frame-support",
+ "frame-system",
+ "parity-scale-codec",
+ "rustc-hex",
+ "serde",
+ "serde_derive",
+ "snowbridge-ethereum",
+ "sp-core",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
+name = "snowbridge-ethereum"
+version = "0.1.0"
+dependencies = [
+ "ethabi-decode",
+ "ethash",
+ "ethbloom 0.11.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "ethereum-types 0.12.0",
+ "getrandom 0.2.3",
+ "hex-literal",
+ "libsecp256k1 0.3.5",
+ "parity-bytes",
+ "parity-scale-codec",
+ "rand 0.7.3",
+ "rlp 0.5.1",
+ "rustc-hex",
+ "serde",
+ "serde-big-array",
+ "serde_json",
+ "snowbridge-testutils",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+ "wasm-bindgen-test",
+]
+
+[[package]]
+name = "snowbridge-testutils"
+version = "0.1.0"
+dependencies = [
+ "ethereum-types 0.11.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rustc-hex",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]
@@ -8203,7 +8507,7 @@ dependencies = [
  "substrate-bip39",
  "thiserror",
  "tiny-bip39",
- "tiny-keccak",
+ "tiny-keccak 2.0.2",
  "twox-hash",
  "wasmi",
  "zeroize",
@@ -8293,6 +8597,17 @@ dependencies = [
  "sp-wasm-interface",
  "tracing",
  "tracing-core",
+]
+
+[[package]]
+name = "sp-keyring"
+version = "4.0.0-dev"
+source = "git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.9#91061a7d925b5bc597804293da283477512ba4ff"
+dependencies = [
+ "lazy_static",
+ "sp-core",
+ "sp-runtime",
+ "strum",
 ]
 
 [[package]]
@@ -8980,6 +9295,15 @@ dependencies = [
 
 [[package]]
 name = "tiny-keccak"
+version = "1.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1d8a021c69bb74a44ccedb824a046447e2c84a01df9e5c20779750acb38e11b2"
+dependencies = [
+ "crunchy",
+]
+
+[[package]]
+name = "tiny-keccak"
 version = "2.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2c9d3793400a45f954c52e73d068316d76b6f4e36977e3fcebb13a2721e80237"
@@ -9636,6 +9960,30 @@ name = "wasm-bindgen-shared"
 version = "0.2.74"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d7cff876b8f18eed75a66cf49b65e7f967cb354a7aa16003fb55dbfd25b44b4f"
+
+[[package]]
+name = "wasm-bindgen-test"
+version = "0.3.24"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8cab416a9b970464c2882ed92d55b0c33046b08e0bdc9d59b3b718acd4e1bae8"
+dependencies = [
+ "console_error_panic_hook",
+ "js-sys",
+ "scoped-tls",
+ "wasm-bindgen",
+ "wasm-bindgen-futures",
+ "wasm-bindgen-test-macro",
+]
+
+[[package]]
+name = "wasm-bindgen-test-macro"
+version = "0.3.24"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "dd4543fc6cf3541ef0d98bf720104cc6bd856d7eba449fd2aa365ef4fed0e782"
+dependencies = [
+ "proc-macro2",
+ "quote",
+]
 
 [[package]]
 name = "wasm-gc-api"

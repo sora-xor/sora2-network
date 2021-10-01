@@ -345,6 +345,12 @@ members = [
     "pallets/vested-rewards",
     "pallets/xst",
     "pallets/price-tools",
+    "pallets/ethereum-light-client",
+    "pallets/basic-channel",
+    "pallets/incentivized-channel",
+    "primitives/core",
+    "primitives/ethereum",
+    "primitives/testutils",
     "node/",
     "utils/parse",
 ]
