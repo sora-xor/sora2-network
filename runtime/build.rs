@@ -29,7 +29,9 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use std::env;
+use std::fs::{self, create_dir_all};
 use std::path::PathBuf;
+
 use substrate_wasm_builder::WasmBuilder;
 
 fn main() {
@@ -49,9 +51,8 @@ fn main() {
         "cargo:rerun-if-changed={}",
         pre_commit_hook_path.to_string_lossy()
     );
-    std::fs::copy(
-        &pre_commit_hook_path,
-        root_path.join(".git/hooks/pre-commit"),
-    )
-    .expect("Failed to copy '.hooks/pre_commit' to '.git/hooks/pre_commit'");
+    let enabled_hooks_dir = root_path.join(".git/hooks");
+    create_dir_all(&enabled_hooks_dir).expect("Failed to create '.git/hooks' dir");
+    fs::copy(&pre_commit_hook_path, enabled_hooks_dir.join("pre-commit"))
+        .expect("Failed to copy '.hooks/pre_commit' to '.git/hooks/pre_commit'");
 }
