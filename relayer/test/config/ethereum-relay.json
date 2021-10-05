@@ -6,8 +6,8 @@
     },
     "descendants-until-final": 3,
     "contracts": {
-      "BasicOutboundChannel": "0x0DC321bd6759AE83b5a6859347A395015f6aF62B",
-      "IncentivizedOutboundChannel": "0xb22F6a08de4DcB528a0a42ada2C3593EBe42154A"
+      "BasicOutboundChannel": "0x86072CbFF48dA3C1F01824a6761A03F105BCC697",
+      "IncentivizedOutboundChannel": "0xFF6049B87215476aBf744eaA3a476cBAd46fB1cA"
     }
   },
   "sink": {

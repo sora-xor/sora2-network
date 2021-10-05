@@ -53,6 +53,7 @@ pub use pallet::*;
 #[frame_support::pallet]
 pub mod pallet {
     use super::*;
+    use frame_support::log::debug;
     use frame_support::pallet_prelude::*;
     use frame_system::pallet_prelude::*;
 
@@ -98,7 +99,8 @@ pub mod pallet {
         // The commitment hash is included in an [`AuxiliaryDigestItem`] in the block header,
         // with the corresponding commitment is persisted offchain.
         fn on_initialize(now: T::BlockNumber) -> Weight {
-            if (now % Self::interval()).is_zero() {
+            let interval = Self::interval();
+            if !interval.is_zero() && (now % interval).is_zero() {
                 Self::commit()
             } else {
                 T::WeightInfo::on_initialize_non_interval()
@@ -129,6 +131,7 @@ pub mod pallet {
     impl<T: Config> Pallet<T> {
         /// Submit message on the outbound channel
         pub fn submit(_who: &T::AccountId, target: H160, payload: &[u8]) -> DispatchResult {
+            debug!("Send message from {:?} to {:?}", _who, target);
             ensure!(
                 MessageQueue::<T>::decode_len().unwrap_or(0) < T::MaxMessagesPerCommit::get(),
                 Error::<T>::QueueSizeLimitReached,
@@ -156,6 +159,7 @@ pub mod pallet {
         }
 
         fn commit() -> Weight {
+            debug!("Commit messages");
             let messages: Vec<Message> = MessageQueue::<T>::take();
             if messages.is_empty() {
                 return T::WeightInfo::on_initialize_no_messages();

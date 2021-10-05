@@ -44,6 +44,7 @@ pub use pallet::*;
 #[frame_support::pallet]
 pub mod pallet {
     use super::*;
+    use frame_support::log::{debug, warn};
     use frame_support::pallet_prelude::*;
     use frame_system::pallet_prelude::*;
 
@@ -120,6 +121,7 @@ pub mod pallet {
         #[pallet::weight(<T as Config>::WeightInfo::submit())]
         pub fn submit(origin: OriginFor<T>, message: Message) -> DispatchResultWithPostInfo {
             let relayer = ensure_signed(origin)?;
+            debug!("Recieved message from {:?}", relayer);
             // submit message to verifier for verification
             let log = T::Verifier::verify(&message)?;
 
@@ -186,7 +188,7 @@ pub mod pallet {
                 relayer,
                 reward_amount,
             ) {
-                runtime_print!("Unable to transfer reward to relayer: {:?}", err);
+                warn!("Unable to transfer reward to relayer: {:?}", err);
             }
 
             if let Some(treasure_amount) = amount.checked_sub(amount) {
@@ -196,7 +198,7 @@ pub mod pallet {
                     &TreasuryAccount::<T>::get(),
                     treasure_amount,
                 ) {
-                    runtime_print!("Unable to transfer reward to relayer: {:?}", err);
+                    warn!("Unable to transfer reward to relayer: {:?}", err);
                 }
             }
         }

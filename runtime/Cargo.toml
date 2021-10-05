@@ -70,6 +70,7 @@ ethereum-light-client = { path = "../pallets/ethereum-light-client", default-fea
 basic-channel = { path = "../pallets/basic-channel", default-features = false }
 incentivized-channel = { path = "../pallets/incentivized-channel", default-features = false }
 dispatch = { path = "../pallets/dispatch", default-features = false }
+eth-app = { path = "../pallets/eth-app", default-features = false }
 
 # Substrate dependencies
 frame-benchmarking = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.9", default-features = false, optional = true }
@@ -156,6 +157,7 @@ std = [
     "basic-channel/std",
     "incentivized-channel/std",
     "dispatch/std",
+    "eth-app/std",
     "snowbridge-core/std",
     "farming/std",
     "faucet/std",
@@ -230,6 +232,7 @@ runtime-benchmarks = [
     "basic-channel/runtime-benchmarks",
     "incentivized-channel/runtime-benchmarks",
     "dispatch/runtime-benchmarks",
+    "eth-app/runtime-benchmarks",
     "snowbridge-core/runtime-benchmarks",
     "farming/runtime-benchmarks",
     "faucet/runtime-benchmarks",

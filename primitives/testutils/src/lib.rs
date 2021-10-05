@@ -26,9 +26,7 @@ impl<'de> Deserialize<'de> for Hex {
         if s.len() % 2 == 1 {
             s.insert_str(0, "0");
         }
-        let v: Vec<u8> = hex::FromHexIter::new(&s)
-            .map(|x| x.unwrap())
-            .collect();
+        let v: Vec<u8> = hex::FromHexIter::new(&s).map(|x| x.unwrap()).collect();
         Ok(Hex(v))
     }
 }
@@ -42,7 +40,7 @@ impl From<&Hex> for H256 {
         }
         data.into()
     }
-} 
+}
 
 impl From<&Hex> for H128 {
     fn from(item: &Hex) -> Self {
@@ -53,7 +51,7 @@ impl From<&Hex> for H128 {
         }
         data.into()
     }
-} 
+}
 
 #[derive(Deserialize)]
 struct BlockWithProofsRaw {
@@ -79,11 +77,7 @@ impl From<BlockWithProofsRaw> for BlockWithProofs {
             header_rlp: item.header_rlp,
             merkle_root: (&item.merkle_root).into(),
             elements: item.elements.iter().map(|e| e.into()).collect(),
-            merkle_proofs: item
-                .merkle_proofs
-                .iter()
-                .map(|e| e.into())
-                .collect(),
+            merkle_proofs: item.merkle_proofs.iter().map(|e| e.into()).collect(),
         }
     }
 }
@@ -119,12 +113,14 @@ impl BlockWithProofs {
             .zip(h512s.iter().skip(1))
             .enumerate()
             .filter(|(i, _)| i % 2 == 0)
-            .map(|(i, (a, b))| mapper(
-                [*a, *b],
-                self.merkle_proofs
-                    [i / 2 * self.proof_length as usize..(i / 2 + 1) * self.proof_length as usize]
-                    .to_vec(),
-            ))
+            .map(|(i, (a, b))| {
+                mapper(
+                    [*a, *b],
+                    self.merkle_proofs[i / 2 * self.proof_length as usize
+                        ..(i / 2 + 1) * self.proof_length as usize]
+                        .to_vec(),
+                )
+            })
             .collect()
     }
 }

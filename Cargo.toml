@@ -348,6 +348,7 @@ members = [
     "pallets/ethereum-light-client",
     "pallets/basic-channel",
     "pallets/incentivized-channel",
+    "pallets/eth-app",
     "primitives/core",
     "primitives/ethereum",
     "primitives/testutils",

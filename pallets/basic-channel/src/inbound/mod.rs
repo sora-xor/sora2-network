@@ -34,6 +34,7 @@ pub use pallet::*;
 #[frame_support::pallet]
 pub mod pallet {
     use super::*;
+    use frame_support::log::{debug, warn};
     use frame_support::pallet_prelude::*;
     use frame_system::pallet_prelude::*;
 
@@ -85,13 +86,16 @@ pub mod pallet {
     impl<T: Config> Pallet<T> {
         #[pallet::weight(T::WeightInfo::submit())]
         pub fn submit(origin: OriginFor<T>, message: Message) -> DispatchResultWithPostInfo {
-            ensure_signed(origin)?;
+            let relayer = ensure_signed(origin)?;
+            debug!("Recieved message from {:?}", relayer);
             // submit message to verifier for verification
             let log = T::Verifier::verify(&message)?;
 
             // Decode log into an Envelope
-            let envelope: Envelope =
-                Envelope::try_from(log).map_err(|_| Error::<T>::InvalidEnvelope)?;
+            let envelope: Envelope = Envelope::try_from(log).map_err(|_| {
+                warn!("Invalid envelope");
+                Error::<T>::InvalidEnvelope
+            })?;
 
             // Verify that the message was submitted to us from a known
             // outbound channel on the ethereum side

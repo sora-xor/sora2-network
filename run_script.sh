@@ -26,7 +26,7 @@ EOF
 `
 eval "$getopt_code"
 
-export RUST_LOG="beefy=trace"
+export RUST_LOG="ethereum_light_client=debug,basic_channel=debug,incentivized_channel=debug,dispatch=debug"
 
 localid=`mktemp`
 tmpdir=`dirname $localid`
@@ -81,7 +81,7 @@ do
 		sh -c "$binary $offchain_flags -d db$num --$name --port $newport --ws-port $wsport --rpc-port $rpcport --chain $chain $execution --bootnodes /ip4/127.0.0.1/tcp/$port/p2p/`cat $localid` 2>&1" | local_id > $tmpdir/port_${newport}_name_$name.txt &
 	fi
 	echo SCRIPT: "Port:" $newport "P2P port:" $port "Name:" $name "WS:" $wsport "RPC:" $rpcport $tmpdir/port_${newport}_name_$name.txt
-  sleep 30
+  sleep 10
 	port="$newport"
 	wsport=`expr $wsport + 1`
 	num=$(($num + 1))

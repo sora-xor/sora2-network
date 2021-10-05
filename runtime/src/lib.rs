@@ -43,6 +43,7 @@ mod impls;
 use common::prelude::QuoteAmount;
 use common::{AssetId32, PredefinedAssetId, ETH};
 use constants::time::*;
+use dispatch::EnsureEthereumAccount;
 use snowbridge_core::ChannelId;
 
 // Make the WASM binary available.
@@ -121,7 +122,7 @@ use eth_bridge::offchain::SignatureParams;
 use eth_bridge::requests::{AssetKind, OffchainRequest, OutgoingRequestEncoded, RequestStatus};
 use impls::{CollectiveWeightInfo, DemocracyWeightInfo, OnUnbalancedDemocracySlash};
 
-use frame_support::traits::{Everything, Filter, Get};
+use frame_support::traits::{Contains, Everything, Get};
 use pallet_balances::Config;
 use sp_runtime::traits::Keccak256;
 pub use {assets, eth_bridge, frame_system, multicollateral_bonding_curve_pool, xst};
@@ -1431,8 +1432,8 @@ parameter_types! {
 // Ethereum bridge pallets
 
 pub struct CallFilter;
-impl Filter<Call> for CallFilter {
-    fn filter(_: &Call) -> bool {
+impl Contains<Call> for CallFilter {
+    fn contains(_: &Call) -> bool {
         true
     }
 }
@@ -1541,6 +1542,14 @@ impl ethereum_light_client::Config for Runtime {
     type WeightInfo = ethereum_light_client::weights::WeightInfo<Runtime>;
 }
 
+impl eth_app::Config for Runtime {
+    type Event = Event;
+    type OutboundRouter = OutboundRouter<Runtime>;
+    type CallOrigin = EnsureEthereumAccount;
+    type WeightInfo = eth_app::weights::WeightInfo<Runtime>;
+    type FeeCurrency = Ether;
+}
+
 #[cfg(feature = "private-net")]
 construct_runtime! {
     pub enum Runtime where
@@ -1615,6 +1624,7 @@ construct_runtime! {
         IncentivizedInboundChannel: incentivized_channel_inbound::{Pallet, Call, Config<T>, Storage, Event<T>} = 93,
         IncentivizedOutboundChannel: incentivized_channel_outbound::{Pallet, Config<T>, Storage, Event<T>} = 94,
         Dispatch: dispatch::{Pallet, Call, Storage, Event<T>, Origin} = 95,
+        EthApp: eth_app::{Pallet, Call, Storage, Event<T>, Config<T>} = 96,
     }
 }
 
@@ -1687,7 +1697,8 @@ construct_runtime! {
         BasicOutboundChannel: basic_channel_outbound::{Pallet, Storage, Event<T>} = 92,
         IncentivizedInboundChannel: incentivized_channel_inbound::{Pallet, Call, Config<T>, Storage, Event<T>} = 93,
         IncentivizedOutboundChannel: incentivized_channel_outbound::{Pallet, Config<T>, Storage, Event<T>} = 94,
-        Dispatch: dispatch::{Pallet, Call, Storage, Event<T>, Origin} = 95,
+        Dispatch: dispatch::{Pallet, Storage, Event<T>, Origin} = 95,
+        EthApp: eth_app::{Pallet, Call, Storage, Event<T>, Config<T>} = 96,
     }
 }
 

@@ -1,8 +1,8 @@
 //! Helper types to work with Ethereum's Merkle Patricia Trie nodes
 
+use ethereum_types::H256;
 use sp_std::convert::TryFrom;
 use sp_std::prelude::*;
-use ethereum_types::H256;
 
 pub trait Node {
     fn contains_hash(&self, hash: H256) -> bool;
@@ -22,7 +22,7 @@ impl TryFrom<&[u8]> for Box<dyn Node> {
                 let node: FullNode = rlp.as_val()?;
                 Ok(Box::new(node))
             }
-            _ => Err(rlp::DecoderError::Custom("Invalid number of list elements"))
+            _ => Err(rlp::DecoderError::Custom("Invalid number of list elements")),
         }
     }
 }
@@ -31,12 +31,13 @@ impl TryFrom<&[u8]> for Box<dyn Node> {
 /// This struct only handles the proof representation, i.e. a child is either empty
 /// or a 32-byte hash of its subtree.
 pub struct FullNode {
-    pub children: Vec<Option<H256>>
+    pub children: Vec<Option<H256>>,
 }
 
 impl rlp::Decodable for FullNode {
     fn decode(rlp: &rlp::Rlp) -> Result<Self, rlp::DecoderError> {
-        let children: Vec<Option<H256>> = rlp.iter()
+        let children: Vec<Option<H256>> = rlp
+            .iter()
             .map(|item| {
                 let v: Vec<u8> = item.as_val()?;
                 match v.len() {
@@ -46,7 +47,9 @@ impl rlp::Decodable for FullNode {
                         bytes.copy_from_slice(&v);
                         Ok(Some(bytes.into()))
                     }
-                    _ => Err(rlp::DecoderError::Custom("Expected 32-byte hash or empty child"))
+                    _ => Err(rlp::DecoderError::Custom(
+                        "Expected 32-byte hash or empty child",
+                    )),
                 }
             })
             .collect::<Result<_, rlp::DecoderError>>()?;
@@ -66,8 +69,8 @@ impl Node for FullNode {
 /// Proof verification should return `value`. `key` is an implementation
 /// detail of the trie.
 pub struct ShortNode {
-	pub key: Vec<u8>,
-	pub value: Vec<u8>,
+    pub key: Vec<u8>,
+    pub value: Vec<u8>,
 }
 
 impl rlp::Decodable for ShortNode {
@@ -76,15 +79,15 @@ impl rlp::Decodable for ShortNode {
 
         let key: Vec<u8> = match iter.next() {
             Some(data) => data.as_val()?,
-            None => return Err(rlp::DecoderError::Custom("Expected key bytes"))
+            None => return Err(rlp::DecoderError::Custom("Expected key bytes")),
         };
 
         let value: Vec<u8> = match iter.next() {
             Some(data) => data.as_val()?,
-            None => return Err(rlp::DecoderError::Custom("Expected value bytes"))
+            None => return Err(rlp::DecoderError::Custom("Expected value bytes")),
         };
 
-        Ok(Self {key, value})
+        Ok(Self { key, value })
     }
 }
 
@@ -127,8 +130,14 @@ mod tests {
         assert!(node.value.len() > 0);
 
         // key + item hash
-        let node: ShortNode = rlp::decode(&hex!("e4820001a04fff54398cad4d05ea6abfd8b0f3b4fe14c04d7ff5f5211c5b927d9cf72ac1d8")).unwrap();
+        let node: ShortNode = rlp::decode(&hex!(
+            "e4820001a04fff54398cad4d05ea6abfd8b0f3b4fe14c04d7ff5f5211c5b927d9cf72ac1d8"
+        ))
+        .unwrap();
         assert_eq!(node.key, vec![0, 1]);
-        assert_eq!(node.value, hex!("4fff54398cad4d05ea6abfd8b0f3b4fe14c04d7ff5f5211c5b927d9cf72ac1d8").to_vec());
+        assert_eq!(
+            node.value,
+            hex!("4fff54398cad4d05ea6abfd8b0f3b4fe14c04d7ff5f5211c5b927d9cf72ac1d8").to_vec()
+        );
     }
 }

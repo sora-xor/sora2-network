@@ -1809,6 +1809,31 @@ dependencies = [
 ]
 
 [[package]]
+name = "eth-app"
+version = "0.1.1"
+dependencies = [
+ "assets",
+ "dispatch",
+ "ethabi-decode",
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "hex-literal",
+ "orml-traits",
+ "parity-scale-codec",
+ "rlp 0.5.1",
+ "rustc-hex",
+ "serde",
+ "snowbridge-core",
+ "snowbridge-ethereum",
+ "sp-core",
+ "sp-io",
+ "sp-keyring 4.0.0-dev (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.9)",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
 name = "eth-bridge"
 version = "0.2.0"
 dependencies = [
@@ -2532,6 +2557,7 @@ dependencies = [
  "dex-manager-runtime-api",
  "dex-runtime-api",
  "dispatch",
+ "eth-app",
  "eth-bridge",
  "eth-bridge-runtime-api",
  "ethereum-light-client",

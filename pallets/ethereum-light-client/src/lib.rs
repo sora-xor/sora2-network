@@ -106,6 +106,7 @@ pub use pallet::*;
 #[frame_support::pallet]
 pub mod pallet {
     use super::*;
+    use frame_support::log::{debug, warn};
     use frame_support::pallet_prelude::*;
     use frame_system::pallet_prelude::*;
     use sp_runtime::traits::One;
@@ -243,36 +244,27 @@ pub mod pallet {
         ) -> DispatchResultWithPostInfo {
             let sender = ensure_signed(origin)?;
 
-            runtime_print!(
-                "ethereum-light-client - Received header {}. Starting validation",
-                header.number,
-            );
+            debug!("Received header {}. Starting validation", header.number,);
 
             if let Err(err) = Self::validate_header_to_import(&header, &proof) {
-                runtime_print!(
-					"ethereum-light-client - Validation for header {} returned error. Skipping import",
-					header.number,
-				);
-                return Err(err.into());
-            }
-
-            runtime_print!(
-                "ethereum-light-client - Validation succeeded. Starting import of header {}",
-                header.number,
-            );
-
-            if let Err(err) = Self::import_validated_header(&sender, &header) {
-                runtime_print!(
-                    "ethereum-light-client - Import of header {} failed",
+                warn!(
+                    "Validation for header {} returned error. Skipping import",
                     header.number,
                 );
                 return Err(err.into());
             }
 
-            runtime_print!(
-                "ethereum-light-client - Import of header {} succeeded!",
+            debug!(
+                "Validation succeeded. Starting import of header {}",
                 header.number,
             );
+
+            if let Err(err) = Self::import_validated_header(&sender, &header) {
+                warn!("Import of header {} failed", header.number,);
+                return Err(err.into());
+            }
+
+            debug!("Import of header {} succeeded!", header.number,);
 
             Ok(().into())
         }
@@ -330,15 +322,12 @@ pub mod pallet {
                 Error::<T>::InvalidHeader,
             );
 
-            runtime_print!(
-                "ethereum-light-client - Header {} passed basic verification",
-                header.number
-            );
+            debug!("Header {} passed basic verification", header.number);
 
             let difficulty_config = T::DifficultyConfig::get();
             let header_difficulty = calc_difficulty(&difficulty_config, header.timestamp, &parent)
                 .map_err(|err| {
-                    runtime_print!("ethereum-light-client - Calc difficulty {}", err);
+                    warn!("Calc difficulty {}", err);
                     Error::<T>::InvalidHeader
                 })?;
             if let Some(header_difficulty) = header_difficulty {
@@ -350,10 +339,7 @@ pub mod pallet {
                 return Ok(());
             }
 
-            runtime_print!(
-                "ethereum-light-client - Header {} passed difficulty verification",
-                header.number
-            );
+            debug!("Header {} passed difficulty verification", header.number);
 
             let header_mix_hash = header.mix_hash().ok_or(Error::<T>::InvalidHeader)?;
             let header_nonce = header.nonce().ok_or(Error::<T>::InvalidHeader)?;
@@ -366,10 +352,7 @@ pub mod pallet {
                 )
                 .map_err(|_| Error::<T>::InvalidHeader)?;
 
-            runtime_print!(
-                "ethereum-light-client - Header {} passed PoW verification",
-                header.number
-            );
+            debug!("Header {} passed PoW verification", header.number);
             ensure!(
                 mix_hash == header_mix_hash
                     && U256::from(result.0) < ethash::cross_boundary(header.difficulty),
@@ -546,23 +529,28 @@ pub mod pallet {
         // in the block given by proof.block_hash. Inclusion is only
         // recognized if the block has been finalized.
         fn verify_receipt_inclusion(proof: &Proof) -> Result<Receipt, DispatchError> {
-            let stored_header =
-                Headers::<T>::get(proof.block_hash).ok_or(Error::<T>::MissingHeader)?;
+            let stored_header = Headers::<T>::get(proof.block_hash).ok_or_else(|| {
+                warn!("Proof header does not exists");
+                Error::<T>::MissingHeader
+            })?;
 
-            ensure!(stored_header.finalized, Error::<T>::HeaderNotFinalized);
+            if !stored_header.finalized {
+                warn!("Stored header not finalized");
+                ensure!(stored_header.finalized, Error::<T>::HeaderNotFinalized);
+            }
 
             let result = stored_header
                 .header
                 .check_receipt_proof(&proof.data.1)
-                .ok_or(Error::<T>::InvalidProof)?;
+                .ok_or_else(|| {
+                    warn!("Invalid proof");
+                    Error::<T>::InvalidProof
+                })?;
 
             match result {
                 Ok(receipt) => Ok(receipt),
                 Err(err) => {
-                    runtime_print!(
-                        "ethereum-light-client - Failed to decode transaction receipt: {}",
-                        err
-                    );
+                    warn!("Failed to decode transaction receipt: {}", err);
                     Err(Error::<T>::InvalidProof.into())
                 }
             }
@@ -583,21 +571,24 @@ pub mod pallet {
         /// Verify a message by verifying the existence of the corresponding
         /// Ethereum log in a block. Returns the log if successful.
         fn verify(message: &Message) -> Result<Log, DispatchError> {
+            debug!("Verify receipt inclusion");
             let receipt = Self::verify_receipt_inclusion(&message.proof)?;
 
-            runtime_print!(
-            "ethereum-light-client - Verified receipt inclusion for transaction at index {} in block {}",
-            message.proof.tx_index, message.proof.block_hash,
-        );
+            debug!(
+                "Verified receipt inclusion for transaction at index {} in block {}",
+                message.proof.tx_index, message.proof.block_hash,
+            );
 
-            let log: Log = rlp::decode(&message.data).map_err(|_| Error::<T>::DecodeFailed)?;
+            let log: Log = rlp::decode(&message.data).map_err(|_| {
+                warn!("Decode message data failed");
+                Error::<T>::DecodeFailed
+            })?;
 
             if !receipt.contains_log(&log) {
-                runtime_print!(
-                "ethereum-light-client - Event log not found in receipt for transaction at index {} in block {}",
-                message.proof.tx_index,
-                message.proof.block_hash,
-            );
+                warn!(
+                    "Event log not found in receipt for transaction at index {} in block {}",
+                    message.proof.tx_index, message.proof.block_hash,
+                );
                 return Err(Error::<T>::InvalidProof.into());
             }
 

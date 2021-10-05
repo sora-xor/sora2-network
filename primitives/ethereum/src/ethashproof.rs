@@ -1,5 +1,5 @@
-use codec::{Encode, Decode};
-use ethereum_types::{H64, H128, H256, H512};
+use codec::{Decode, Encode};
+use ethereum_types::{H128, H256, H512, H64};
 use sp_io::hashing::{keccak_256, keccak_512, sha2_256};
 use sp_runtime::RuntimeDebug;
 use sp_std::cell::RefCell;
@@ -97,7 +97,8 @@ impl EthashCache {
 
     pub fn get(&mut self, epoch: u64, timestamp: u64) -> &Vec<u8> {
         if self.caches_by_epoch.contains_key(&epoch) {
-            let (ref mut t, _e) = self.recently_accessed_epochs
+            let (ref mut t, _e) = self
+                .recently_accessed_epochs
                 .iter_mut()
                 .find(|&&mut pair| pair.1 == epoch)
                 .unwrap();
@@ -112,7 +113,8 @@ impl EthashCache {
                 self.recently_accessed_epochs.push((timestamp, epoch));
             }
             let cache_gen_fn = self.cache_gen_fn;
-            self.caches_by_epoch.insert(epoch, cache_gen_fn(epoch as usize));
+            self.caches_by_epoch
+                .insert(epoch, cache_gen_fn(epoch as usize));
         }
 
         self.recently_accessed_epochs.sort();
@@ -145,9 +147,7 @@ pub struct EthashProver {
 
 impl EthashProver {
     pub fn new() -> Self {
-        Self {
-            dags_cache: None,
-        }
+        Self { dags_cache: None }
     }
 
     pub fn with_hashimoto_light(max_cache_entries: usize) -> Self {
@@ -157,7 +157,8 @@ impl EthashProver {
     }
 
     fn dag_merkle_root(&self, epoch: u64) -> Option<H128> {
-        DAGS_MERKLE_ROOTS.get((epoch - DAGS_START_EPOCH) as usize)
+        DAGS_MERKLE_ROOTS
+            .get((epoch - DAGS_START_EPOCH) as usize)
             .map(|x| H128::from(x))
     }
 
@@ -242,13 +243,15 @@ impl EthashProver {
 mod tests {
 
     use super::*;
-    use snowbridge_testutils::BlockWithProofs;
     use hex_literal::hex;
     use rand::Rng;
+    use snowbridge_testutils::BlockWithProofs;
     use std::path::PathBuf;
 
     fn fixture_path(name: &str) -> PathBuf {
-        [env!("CARGO_MANIFEST_DIR"), "tests", "fixtures", name].iter().collect()
+        [env!("CARGO_MANIFEST_DIR"), "tests", "fixtures", name]
+            .iter()
+            .collect()
     }
 
     #[test]
@@ -280,13 +283,16 @@ mod tests {
     #[test]
     fn hashimoto_light_is_correct_block_11090290() {
         // https://etherscan.io/block/11090290
-        let header_partial_hash: H256 = hex!("932c22685fd0fb6a1b5f6b70d2ebf4bfd9f3b4f15eb706450a9b050ec0f151c9").into();
+        let header_partial_hash: H256 =
+            hex!("932c22685fd0fb6a1b5f6b70d2ebf4bfd9f3b4f15eb706450a9b050ec0f151c9").into();
         let header_number: u64 = 11090290;
         let header_nonce: H64 = hex!("6935bbe7b63c4f8e").into();
-        let header_mix_hash: H256 = hex!("be3adfb0087be62b28b716e2cdf3c79329df5caa04c9eee035d35b5d52102815").into();
+        let header_mix_hash: H256 =
+            hex!("be3adfb0087be62b28b716e2cdf3c79329df5caa04c9eee035d35b5d52102815").into();
 
         let mut prover = EthashProver::with_hashimoto_light(1);
-        let (mix_hash, _) = prover.hashimoto_light(header_partial_hash, header_nonce, header_number);
+        let (mix_hash, _) =
+            prover.hashimoto_light(header_partial_hash, header_nonce, header_number);
         assert_eq!(mix_hash, header_mix_hash);
     }
 
@@ -294,17 +300,22 @@ mod tests {
     fn hashimoto_merkle_is_correct_block_3() {
         // https://etherscan.io/block/3
         let block_with_proofs = BlockWithProofs::from_file(&fixture_path("3.json"));
-        let header_partial_hash: H256 = hex!("481f55e00fd23652cb45ffba86a08b8d497f3b18cc2c0f14cbeb178b4c386e10").into();
+        let header_partial_hash: H256 =
+            hex!("481f55e00fd23652cb45ffba86a08b8d497f3b18cc2c0f14cbeb178b4c386e10").into();
         let header_number: u64 = 3;
         let header_nonce: H64 = hex!("2e9344e0cbde83ce").into();
-        let header_mix_hash: H256 = hex!("65e12eec23fe6555e6bcdb47aa25269ae106e5f16b54e1e92dcee25e1c8ad037").into();
+        let header_mix_hash: H256 =
+            hex!("65e12eec23fe6555e6bcdb47aa25269ae106e5f16b54e1e92dcee25e1c8ad037").into();
 
-        let (mix_hash, _) = EthashProver::new().hashimoto_merkle(
-            header_partial_hash,
-            header_nonce,
-            header_number,
-            &(block_with_proofs.to_double_node_with_merkle_proof_vec(DoubleNodeWithMerkleProof::from_values)),
-        ).unwrap();
+        let (mix_hash, _) = EthashProver::new()
+            .hashimoto_merkle(
+                header_partial_hash,
+                header_nonce,
+                header_number,
+                &(block_with_proofs
+                    .to_double_node_with_merkle_proof_vec(DoubleNodeWithMerkleProof::from_values)),
+            )
+            .unwrap();
         assert_eq!(header_mix_hash, mix_hash);
     }
 
@@ -312,17 +323,22 @@ mod tests {
     fn hashimoto_merkle_is_correct_block_11090290() {
         // https://etherscan.io/block/11090290
         let block_with_proofs = BlockWithProofs::from_file(&fixture_path("11090290.json"));
-        let header_partial_hash: H256 = hex!("932c22685fd0fb6a1b5f6b70d2ebf4bfd9f3b4f15eb706450a9b050ec0f151c9").into();
+        let header_partial_hash: H256 =
+            hex!("932c22685fd0fb6a1b5f6b70d2ebf4bfd9f3b4f15eb706450a9b050ec0f151c9").into();
         let header_number: u64 = 11090290;
         let header_nonce: H64 = hex!("6935bbe7b63c4f8e").into();
-        let header_mix_hash: H256 = hex!("be3adfb0087be62b28b716e2cdf3c79329df5caa04c9eee035d35b5d52102815").into();
+        let header_mix_hash: H256 =
+            hex!("be3adfb0087be62b28b716e2cdf3c79329df5caa04c9eee035d35b5d52102815").into();
 
-        let (mix_hash, _) = EthashProver::new().hashimoto_merkle(
-            header_partial_hash,
-            header_nonce,
-            header_number,
-            &(block_with_proofs.to_double_node_with_merkle_proof_vec(DoubleNodeWithMerkleProof::from_values)),
-        ).unwrap();
+        let (mix_hash, _) = EthashProver::new()
+            .hashimoto_merkle(
+                header_partial_hash,
+                header_nonce,
+                header_number,
+                &(block_with_proofs
+                    .to_double_node_with_merkle_proof_vec(DoubleNodeWithMerkleProof::from_values)),
+            )
+            .unwrap();
         assert_eq!(header_mix_hash, mix_hash);
     }
 
@@ -330,24 +346,30 @@ mod tests {
     fn hashimoto_merkle_is_correct_block_11550000() {
         // https://etherscan.io/block/11550000
         let block_with_proofs = BlockWithProofs::from_file(&fixture_path("11550000.json"));
-        let header_partial_hash: H256 = hex!("7bc3c6073de95a429663dcc4c25f9559cfe1947142d111d91d1e09120c68847e").into();
+        let header_partial_hash: H256 =
+            hex!("7bc3c6073de95a429663dcc4c25f9559cfe1947142d111d91d1e09120c68847e").into();
         let header_number: u64 = 11550000;
         let header_nonce: H64 = hex!("8ae5c070892cb70c").into();
-        let header_mix_hash: H256 = hex!("0363fe29940988ca043713840ac911b32f2acb4d010e55963f2d201d79f9ab57").into();
+        let header_mix_hash: H256 =
+            hex!("0363fe29940988ca043713840ac911b32f2acb4d010e55963f2d201d79f9ab57").into();
 
-        let (mix_hash, _) = EthashProver::new().hashimoto_merkle(
-            header_partial_hash,
-            header_nonce,
-            header_number,
-            &(block_with_proofs.to_double_node_with_merkle_proof_vec(DoubleNodeWithMerkleProof::from_values)),
-        ).unwrap();
+        let (mix_hash, _) = EthashProver::new()
+            .hashimoto_merkle(
+                header_partial_hash,
+                header_nonce,
+                header_number,
+                &(block_with_proofs
+                    .to_double_node_with_merkle_proof_vec(DoubleNodeWithMerkleProof::from_values)),
+            )
+            .unwrap();
         assert_eq!(header_mix_hash, mix_hash);
     }
 
     #[test]
     fn hashimoto_merkle_returns_err_for_invalid_data() {
         let block_with_proofs = BlockWithProofs::from_file(&fixture_path("3.json"));
-        let header_partial_hash: H256 = hex!("481f55e00fd23652cb45ffba86a08b8d497f3b18cc2c0f14cbeb178b4c386e10").into();
+        let header_partial_hash: H256 =
+            hex!("481f55e00fd23652cb45ffba86a08b8d497f3b18cc2c0f14cbeb178b4c386e10").into();
         let header_number: u64 = 3;
         let header_nonce: H64 = hex!("2e9344e0cbde83ce").into();
         let mut proofs = block_with_proofs
@@ -359,7 +381,12 @@ mod tests {
             Err(Error::EpochOutOfRange),
         );
         assert_eq!(
-            prover.hashimoto_merkle(header_partial_hash, header_nonce, header_number, Default::default()),
+            prover.hashimoto_merkle(
+                header_partial_hash,
+                header_nonce,
+                header_number,
+                Default::default()
+            ),
             Err(Error::UnexpectedNumberOfNodes),
         );
         proofs[0].proof[0] = H128::zero();
@@ -375,7 +402,8 @@ mod tests {
 
     #[wasm_bindgen_test]
     fn hashimoto_breakdown_11550000_wasm() {
-        let header_hash: H256 = hex!("7bc3c6073de95a429663dcc4c25f9559cfe1947142d111d91d1e09120c68847e").into();
+        let header_hash: H256 =
+            hex!("7bc3c6073de95a429663dcc4c25f9559cfe1947142d111d91d1e09120c68847e").into();
         let nonce: H64 = hex!("8ae5c070892cb70c").into();
         let epoch = 11550000 / EPOCH_LENGTH;
         let full_size = ethash::get_full_size(epoch as usize);
@@ -398,18 +426,21 @@ mod tests {
     }
 
     const DAG_INDICES_11550000: [usize; 128] = [
-        17124670, 17124671, 8406228, 8406229, 62843670, 62843671, 51608408, 51608409, 13778580, 13778581, 32065328,
-        32065329, 34759690, 34759691, 3535582, 3535583, 9322842, 9322843, 35441302, 35441303, 25549918, 25549919,
-        238042, 238043, 7248900, 7248901, 16632494, 16632495, 37184834, 37184835, 3934136, 3934137, 31120362,
-        31120363, 36454734, 36454735, 14059218, 14059219, 9502912, 9502913, 24810294, 24810295, 47833150, 47833151,
-        63459724, 63459725, 21830544, 21830545, 35083782, 35083783, 36750118, 36750119, 60695996, 60695997, 15304996,
-        15304997, 29389880, 29389881, 43062130, 43062131, 37586164, 37586165, 4303694, 4303695, 32719922, 32719923,
-        30133816, 30133817, 19691770, 19691771, 12694514, 12694515, 36915336, 36915337, 15774426, 15774427, 61837002,
-        61837003, 3186138, 3186139, 16297838, 16297839, 31232738, 31232739, 51663568, 51663569, 21282034, 21282035,
-        11616704, 11616705, 18376636, 18376637, 291772, 291773, 54304530, 54304531, 1054106, 1054107, 35986490, 35986491,
-        12614944, 12614945, 41286800, 41286801, 20624658, 20624659, 62433918, 62433919, 39708662, 39708663, 33747208,
-        33747209, 9110260, 9110261, 11777868, 11777869, 31474018, 31474019, 38573944, 38573945, 7006, 7007, 34120876,
-        34120877, 46961334, 46961335, 44816784, 44816785,
+        17124670, 17124671, 8406228, 8406229, 62843670, 62843671, 51608408, 51608409, 13778580,
+        13778581, 32065328, 32065329, 34759690, 34759691, 3535582, 3535583, 9322842, 9322843,
+        35441302, 35441303, 25549918, 25549919, 238042, 238043, 7248900, 7248901, 16632494,
+        16632495, 37184834, 37184835, 3934136, 3934137, 31120362, 31120363, 36454734, 36454735,
+        14059218, 14059219, 9502912, 9502913, 24810294, 24810295, 47833150, 47833151, 63459724,
+        63459725, 21830544, 21830545, 35083782, 35083783, 36750118, 36750119, 60695996, 60695997,
+        15304996, 15304997, 29389880, 29389881, 43062130, 43062131, 37586164, 37586165, 4303694,
+        4303695, 32719922, 32719923, 30133816, 30133817, 19691770, 19691771, 12694514, 12694515,
+        36915336, 36915337, 15774426, 15774427, 61837002, 61837003, 3186138, 3186139, 16297838,
+        16297839, 31232738, 31232739, 51663568, 51663569, 21282034, 21282035, 11616704, 11616705,
+        18376636, 18376637, 291772, 291773, 54304530, 54304531, 1054106, 1054107, 35986490,
+        35986491, 12614944, 12614945, 41286800, 41286801, 20624658, 20624659, 62433918, 62433919,
+        39708662, 39708663, 33747208, 33747209, 9110260, 9110261, 11777868, 11777869, 31474018,
+        31474019, 38573944, 38573945, 7006, 7007, 34120876, 34120877, 46961334, 46961335, 44816784,
+        44816785,
     ];
 
     const DAG_NODES_11550000: [[u8; 64]; 128] = [

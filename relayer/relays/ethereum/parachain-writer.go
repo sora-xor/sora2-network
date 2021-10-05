@@ -235,7 +235,11 @@ func (wr *ParachainWriter) queryImportedHeaderExists(hash types.H256) (bool, err
 		return false, err
 	}
 	if len(storageHash) == 0 {
-		return false, fmt.Errorf("Storage query did not find header for hash %s", hash.Hex())
+		log.WithFields(logrus.Fields{
+			"hash":     hash.Hex(),
+			"recieved": storageHash,
+		}).Error("Cannot find header")
+		//return false, fmt.Errorf("Storage query did not find header for hash %s", hash.Hex())
 	}
 
 	return true, nil
