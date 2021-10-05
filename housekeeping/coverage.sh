@@ -6,4 +6,4 @@ export LLVM_PROFILE_FILE="sora2-%p-%m.profraw"
 
 cargo test --features private-net --target-dir /app/target
 
-grcov . --binary-path /app/target/release -s . -t cobertura --branch --ignore-not-existing -o ./cobertura_report
+grcov . --binary-path /app/target/debug -s . -t cobertura --branch --ignore-not-existing -o ./cobertura_report
