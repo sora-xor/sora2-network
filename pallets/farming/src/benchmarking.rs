@@ -161,16 +161,6 @@ benchmarks! {
     }: {
         Module::<T>::vest_account_rewards(accounts);
     }
-
-    save_data {
-        let a in 1..29;
-        let b in 1..43;
-        let (pools, assets) = prepare_pools::<T>(a);
-        prepare_good_accounts::<T>(b, &assets);
-        Module::<T>::refresh_pools(T::VESTING_FREQUENCY);
-    }: {
-        Module::<T>::save_data(T::VESTING_FREQUENCY);
-    }
 }
 
 #[cfg(test)]
@@ -187,7 +177,6 @@ mod tests {
             assert_ok!(test_benchmark_refresh_pool::<Runtime>());
             assert_ok!(test_benchmark_prepare_accounts_for_vesting::<Runtime>());
             assert_ok!(test_benchmark_vest_account_rewards::<Runtime>());
-            assert_ok!(test_benchmark_save_data::<Runtime>());
         });
     }
 }

@@ -49,15 +49,21 @@ pipeline {
                                 if (env.TAG_NAME =~ 'benchmarking.*') {
                                     featureList = 'runtime-benchmarks main-net-coded'
                                 }
+                                else if (env.TAG_NAME =~ 'stage.*') {
+                                    featureList = 'private-net include-real-files'
+                                }
+                                else if (env.TAG_NAME =~ 'test.*') {
+                                    featureList = 'private-net include-real-files reduced-pswap-reward-periods'
+                                }
                                 else if (env.TAG_NAME) {
-                                    featureList = (env.TAG_NAME =~ 'stage.*|test.*') ? featureList : 'include-real-files'
+                                    featureList = 'include-real-files'
                                 }
                                 sh """#!/bin/bash
                                     time cargo build --release --features \"${featureList}\" --target-dir /app/target/
                                     time cargo test  --release --target-dir /app/target/
                                     sccache -s
                                     time mv /app/target/release/framenode .
-                                    time mv /app/target/release/wbuild/framenode-runtime/framenode_runtime.compact.wasm .
+                                    time wasm-opt -Os -o ./framenode_runtime.compact.wasm /app/target/release/wbuild/framenode-runtime/framenode_runtime.compact.wasm
                                 """
                                 archiveArtifacts artifacts:
                                     'framenode_runtime.compact.wasm'
