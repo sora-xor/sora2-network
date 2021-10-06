@@ -34,6 +34,7 @@ pub mod v1_2 {
     use frame_support::debug;
     use frame_support::traits::Get;
     use hex_literal::hex;
+    use orml_traits::MultiCurrency;
     use sp_std::collections::btree_map::BTreeMap;
     use sp_std::vec::Vec;
 
@@ -54,18 +55,27 @@ pub mod v1_2 {
         let compensation_amount = balance!(74339.224845900297630556);
         PswapFarmOwners::<T>::insert(user_account, compensation_amount);
         let reserves_tech_acc = ReservesAcc::<T>::get();
-        let res =
-            technical::Module::<T>::mint(&PSWAP.into(), &reserves_tech_acc, compensation_amount);
-        if res.is_err() {
+        let reserves_acc =
+            technical::Module::<T>::tech_account_id_to_account_id(&reserves_tech_acc);
+        if reserves_acc.is_err() {
             debug::error!(
                 target: "runtime",
-                "failed to mint compensation pswap during migration"
+                "failed to mint compensation pswap: can't construct technical account representation"
             );
         } else {
-            debug::info!(
-                target: "runtime",
-                "successfully minted compensation pswap during migration"
-            );
+            let res =
+                T::Currency::deposit(PSWAP.into(), &reserves_acc.unwrap(), compensation_amount);
+            if res.is_err() {
+                debug::error!(
+                    target: "runtime",
+                    "failed to mint compensation pswap during migration"
+                );
+            } else {
+                debug::info!(
+                    target: "runtime",
+                    "successfully minted compensation pswap during migration"
+                );
+            }
         }
 
         // Approximate weight
