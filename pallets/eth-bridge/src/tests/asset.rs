@@ -206,11 +206,7 @@ fn should_add_asset() {
             None,
         )
         .unwrap();
-        assert_ok!(EthBridge::add_asset(
-            Origin::signed(alice.clone()),
-            asset_id,
-            net_id,
-        ));
+        assert_ok!(EthBridge::add_asset(Origin::root(), asset_id, net_id,));
         assert!(EthBridge::registered_asset(net_id, asset_id).is_none());
         approve_last_request(&state, net_id).expect("request wasn't approved");
         assert_eq!(
@@ -309,11 +305,7 @@ fn should_reserve_owned_asset_on_different_networks() {
             net_id_0,
         ));
         approve_last_request(&state, net_id_0).expect("request wasn't approved");
-        assert_ok!(EthBridge::add_asset(
-            Origin::signed(alice.clone()),
-            asset_id,
-            net_id_1,
-        ));
+        assert_ok!(EthBridge::add_asset(Origin::root(), asset_id, net_id_1,));
         approve_last_request(&state, net_id_1).expect("request wasn't approved");
         assert_ok!(EthBridge::transfer_to_sidechain(
             Origin::signed(alice.clone()),
@@ -399,11 +391,7 @@ fn should_handle_sidechain_and_thischain_asset_on_different_networks() {
         );
 
         // Register the newly generated asset in the second network
-        assert_ok!(EthBridge::add_asset(
-            Origin::signed(alice.clone()),
-            asset_id,
-            net_id_1,
-        ));
+        assert_ok!(EthBridge::add_asset(Origin::root(), asset_id, net_id_1,));
         approve_last_request(&state, net_id_1).expect("request wasn't approved");
         assert_eq!(
             EthBridge::registered_asset(net_id_1, asset_id).unwrap(),
