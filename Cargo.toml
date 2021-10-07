@@ -185,6 +185,7 @@ members = [
     "pallets/price-tools",
     "node/",
     "utils/parse",
+    "utils/wasm-builder",
 ]
 
 resolver = "2"
