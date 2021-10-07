@@ -39,7 +39,7 @@ sp-io = { version = "3", default-features = false }
 sp-runtime = { version = "3", default-features = false }
 tokens = { version = "0.4", package = "orml-tokens" }
 pallet-staking = { git = "https://github.com/soramitsu/sora2-frame-pallets", branch = "v3.1.0" }
-bridge-multisig = { git = "https://github.com/soramitsu/sora2-frame-pallets.git", branch = "v3.2.2", package = "pallet-multisig" }
+bridge-multisig = { git = "https://github.com/soramitsu/sora2-frame-pallets.git", branch = "v3.2.3", package = "pallet-multisig" }
 pallet-scheduler = { version = "3" }
 
 common = { path = "../../common", features = ["test"] }

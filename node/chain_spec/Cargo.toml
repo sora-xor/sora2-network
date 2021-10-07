@@ -17,7 +17,7 @@ sp-core = "3"
 sp-io = "3"
 sp-runtime = "3"
 
-bridge-multisig = { git = "https://github.com/soramitsu/sora2-frame-pallets.git", branch = "v3.2.2", package = "pallet-multisig" }
+bridge-multisig = { git = "https://github.com/soramitsu/sora2-frame-pallets.git", branch = "v3.2.3", package = "pallet-multisig" }
 
 common = { path = "../../common" }
 faucet = { path = "../../pallets/faucet", optional = true }
