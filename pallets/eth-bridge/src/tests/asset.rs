@@ -580,11 +580,7 @@ fn should_convert_amount_for_nft_token() {
         let asset_id =
             Assets::register_from(&alice, ticker, name, decimals, amount, false, None, None)
                 .unwrap();
-        assert_ok!(EthBridge::add_asset(
-            Origin::signed(alice.clone()),
-            asset_id,
-            net_id,
-        ));
+        assert_ok!(EthBridge::add_asset(Origin::root(), asset_id, net_id));
         assert!(EthBridge::registered_asset(net_id, asset_id).is_none());
         approve_last_request(&state, net_id).expect("request wasn't approved");
         assert_eq!(
