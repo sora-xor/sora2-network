@@ -100,12 +100,14 @@ pub mod pallet {
             // Verify that the message was submitted to us from a known
             // outbound channel on the ethereum side
             if envelope.channel != SourceChannel::<T>::get() {
+                warn!("Invalid source channel");
                 return Err(Error::<T>::InvalidSourceChannel.into());
             }
 
             // Verify message nonce
             Nonce::<T>::try_mutate(|nonce| -> DispatchResult {
                 if envelope.nonce != *nonce + 1 {
+                    warn!("Invalid nonce");
                     Err(Error::<T>::InvalidNonce.into())
                 } else {
                     *nonce += 1;
@@ -114,6 +116,7 @@ pub mod pallet {
             })?;
 
             let message_id = MessageId::new(ChannelId::Basic, envelope.nonce);
+            debug!("Dispatch message");
             T::MessageDispatch::dispatch(envelope.source, message_id, &envelope.payload);
 
             Ok(().into())

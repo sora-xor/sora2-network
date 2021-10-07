@@ -204,4 +204,25 @@ pub mod pallet {
             (T::INDEXING_PREFIX, ChannelId::Basic, hash).encode()
         }
     }
+
+    #[pallet::genesis_config]
+    pub struct GenesisConfig<T: Config> {
+        pub interval: T::BlockNumber,
+    }
+
+    #[cfg(feature = "std")]
+    impl<T: Config> Default for GenesisConfig<T> {
+        fn default() -> Self {
+            Self {
+                interval: Default::default(),
+            }
+        }
+    }
+
+    #[pallet::genesis_build]
+    impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
+        fn build(&self) {
+            Interval::<T>::set(self.interval);
+        }
+    }
 }

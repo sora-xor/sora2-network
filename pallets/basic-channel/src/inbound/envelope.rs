@@ -1,4 +1,5 @@
 use ethabi::{Event, Param, ParamKind, Token};
+use frame_support::log::{debug, warn};
 use snowbridge_ethereum::log::Log;
 use snowbridge_ethereum::H160;
 use sp_core::RuntimeDebug;
@@ -7,7 +8,7 @@ use sp_std::prelude::*;
 
 // Used to decode a raw Ethereum log into an [`Envelope`].
 static EVENT_ABI: &Event = &Event {
-    signature: "Message(address,uint64,uint256,bytes)",
+    signature: "Message(address,uint64,bytes)",
     inputs: &[
         Param {
             kind: ParamKind::Address,
@@ -45,22 +46,27 @@ impl TryFrom<Log> for Envelope {
     type Error = EnvelopeDecodeError;
 
     fn try_from(log: Log) -> Result<Self, Self::Error> {
-        let tokens = EVENT_ABI
-            .decode(log.topics, log.data)
-            .map_err(|_| EnvelopeDecodeError)?;
+        debug!("Decode log: {:?}", log);
+        let tokens = EVENT_ABI.decode(log.topics, log.data).map_err(|err| {
+            warn!("Failed to decode event: {:?}", err);
+            EnvelopeDecodeError
+        })?;
 
         let mut iter = tokens.into_iter();
 
+        debug!("Ping");
         let source = match iter.next().ok_or(EnvelopeDecodeError)? {
             Token::Address(source) => source,
             _ => return Err(EnvelopeDecodeError),
         };
 
+        debug!("Ping");
         let nonce = match iter.next().ok_or(EnvelopeDecodeError)? {
             Token::Uint(value) => value.low_u64(),
             _ => return Err(EnvelopeDecodeError),
         };
 
+        debug!("Ping");
         let payload = match iter.next().ok_or(EnvelopeDecodeError)? {
             Token::Bytes(payload) => payload,
             _ => return Err(EnvelopeDecodeError),

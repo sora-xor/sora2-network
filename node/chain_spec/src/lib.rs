@@ -49,13 +49,13 @@ use framenode_runtime::opaque::SessionKeys;
 use framenode_runtime::{
     assets, eth_bridge, frame_system, AccountId, AssetId, AssetName, AssetSymbol, AssetsConfig,
     BabeConfig, BalancesConfig, BeefyId, BridgeMultisigConfig, CouncilConfig, DEXAPIConfig,
-    DEXManagerConfig, DemocracyConfig, EthBridgeConfig, EthereumConfig, EthereumDifficultyConfig,
-    EthereumHeader, EthereumLightClientConfig, GetBaseAssetId, GetParliamentAccountId,
-    GetPswapAssetId, GetValAssetId, GetXorAssetId, GrandpaConfig, ImOnlineId, IrohaMigrationConfig,
-    LiquiditySourceType, MulticollateralBondingCurvePoolConfig, PermissionsConfig,
-    PswapDistributionConfig, RewardsConfig, Runtime, SS58Prefix, SessionConfig, StakerStatus,
-    StakingConfig, SystemConfig, TechAccountId, TechnicalConfig, TokensConfig, TradingPairConfig,
-    XSTPoolConfig, WASM_BINARY,
+    DEXManagerConfig, DemocracyConfig, EthAppConfig, EthBridgeConfig, EthereumConfig,
+    EthereumDifficultyConfig, EthereumHeader, EthereumLightClientConfig, GetBaseAssetId,
+    GetParliamentAccountId, GetPswapAssetId, GetValAssetId, GetXorAssetId, GrandpaConfig,
+    ImOnlineId, IrohaMigrationConfig, LiquiditySourceType, MulticollateralBondingCurvePoolConfig,
+    PermissionsConfig, PswapDistributionConfig, RewardsConfig, Runtime, SS58Prefix, SessionConfig,
+    StakerStatus, StakingConfig, SystemConfig, TechAccountId, TechnicalConfig, TokensConfig,
+    TradingPairConfig, XSTPoolConfig, WASM_BINARY,
 };
 use hex_literal::hex;
 use permissions::Scope;
@@ -87,6 +87,24 @@ type AccountPublic = <Signature as Verify>::Signer;
 fn get_ethereum_header() -> EthereumHeader {
     let header_str = include_bytes!("./bytes/ethereum_header.json");
     serde_json::from_slice(header_str).unwrap()
+}
+
+fn get_eth_app_address() -> H160 {
+    "0x55E87ac6e15cfefD0E2B80c70B4A8Ab112d10f4c"
+        .parse()
+        .unwrap()
+}
+
+fn get_basic_channel_address() -> H160 {
+    "0x2708Ca421cB69305831018353168727601De3e39"
+        .parse()
+        .unwrap()
+}
+
+fn get_incentivized_channel_address() -> H160 {
+    "0xC9543E78F2dDFA4a72A2E5130EC9A156D94F16aa"
+        .parse()
+        .unwrap()
 }
 
 /// Helper function to generate a crypto pair from seed
@@ -634,7 +652,10 @@ fn testnet_genesis(
     treasury_account: AccountId,
 ) -> GenesisConfig {
     use common::XSTUSD;
-    use framenode_runtime::{IncentivizedInboundChannelConfig, IncentivizedOutboundChannelConfig};
+    use framenode_runtime::{
+        BasicInboundChannelConfig, BasicOutboundChannelConfig, IncentivizedInboundChannelConfig,
+        IncentivizedOutboundChannelConfig,
+    };
     use sp_core::U256;
 
     // Initial balances
@@ -932,12 +953,16 @@ fn testnet_genesis(
     let initial_collateral_assets = vec![DAI.into(), VAL.into(), PSWAP.into(), ETH.into()];
     let initial_synthetic_assets = vec![XSTUSD.into()];
     GenesisConfig {
+        eth_app: EthAppConfig {
+            address: get_eth_app_address(),
+            dest_account: treasury_account.clone(),
+        },
         ethereum_light_client: EthereumLightClientConfig {
             initial_header: get_ethereum_header(),
             initial_difficulty: U256::zero(),
         },
         incentivized_inbound_channel: IncentivizedInboundChannelConfig {
-            source_channel: Default::default(),
+            source_channel: get_incentivized_channel_address(),
             reward_fraction: Perbill::from_percent(80),
             source_account: treasury_account.clone(),
             treasury_account: treasury_account.clone(),
@@ -945,6 +970,10 @@ fn testnet_genesis(
         incentivized_outbound_channel: IncentivizedOutboundChannelConfig {
             dest_account: treasury_account,
         },
+        basic_inbound_channel: BasicInboundChannelConfig {
+            source_channel: get_basic_channel_address(),
+        },
+        basic_outbound_channel: BasicOutboundChannelConfig { interval: 10 },
         system: SystemConfig {
             code: WASM_BINARY.unwrap().to_vec(),
             changes_trie_config: Default::default(),
@@ -1596,6 +1625,10 @@ fn mainnet_genesis(
         )
     }));
     GenesisConfig {
+        eth_app: EthAppConfig {
+            address: get_eth_app_address(),
+            dest_account: treasury_account.clone(),
+        },
         ethereum_light_client: EthereumLightClientConfig {
             initial_header: get_ethereum_header(),
             initial_difficulty: U256::zero(),

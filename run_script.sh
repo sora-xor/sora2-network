@@ -26,7 +26,7 @@ EOF
 `
 eval "$getopt_code"
 
-export RUST_LOG="ethereum_light_client=debug,basic_channel=debug,incentivized_channel=debug,dispatch=debug"
+export RUST_LOG="ethereum_light_client=debug,basic_channel=debug,incentivized_channel=debug,dispatch=debug,eth_app=debug"
 
 localid=`mktemp`
 tmpdir=`dirname $localid`

@@ -5,8 +5,6 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/sirupsen/logrus"
-
 	"golang.org/x/sync/errgroup"
 
 	"github.com/snowfork/snowbridge/relayer/chain"
@@ -101,14 +99,14 @@ func (wr *ParachainWriter) writeLoop(ctx context.Context) error {
 			header := payload.Header.HeaderData.(ethereum.Header)
 			err := wr.WritePayload(ctx, &payload)
 			if err != nil {
-				log.WithError(err).WithFields(logrus.Fields{
+				log.WithError(err).WithFields(log.Fields{
 					"blockNumber":  header.Fields.Number,
 					"messageCount": len(payload.Messages),
 				}).Error("Failure submitting header and messages to Substrate")
 				return err
 			}
 
-			log.WithFields(logrus.Fields{
+			log.WithFields(log.Fields{
 				"blockNumber":  header.Fields.Number,
 				"messageCount": len(payload.Messages),
 			}).Info("Submitted transaction to Substrate")
@@ -156,7 +154,7 @@ func (wr *ParachainWriter) write(
 	if err != nil {
 		return err
 	}
-	log.WithFields(logrus.Fields{
+	log.WithFields(log.Fields{
 		"nonce": wr.nonce,
 	}).Info("Submitting transaction")
 	err = wr.pool.WaitForSubmitAndWatch(ctx, &extI, onFinalized)
@@ -171,22 +169,7 @@ func (wr *ParachainWriter) write(
 }
 
 func (wr *ParachainWriter) WritePayload(ctx context.Context, payload *ParachainPayload) error {
-	var calls []types.Call
-	call, err := wr.makeHeaderImportCall(payload.Header)
-	if err != nil {
-		return err
-	}
-	calls = append(calls, call)
-
-	for _, msg := range payload.Messages {
-		call, err := wr.makeMessageSubmitCall(msg)
-		if err != nil {
-			return err
-		}
-		calls = append(calls, call)
-	}
-
-	call, err = types.NewCall(wr.conn.Metadata(), "Utility.batch_all", calls)
+	header_call, err := wr.makeHeaderImportCall(payload.Header)
 	if err != nil {
 		return err
 	}
@@ -200,17 +183,41 @@ func (wr *ParachainWriter) WritePayload(ctx context.Context, payload *ParachainP
 			return err
 		}
 		if !imported {
-			return fmt.Errorf("Header import failed for header %s", hash.Hex())
+			return fmt.Errorf("header import failed for header %s", hash.Hex())
 		}
 		return nil
 	}
+	err = wr.write(ctx, header_call, onFinalized)
+	if err != nil {
+		return err
+	}
+	if len(payload.Messages) == 0 {
+		return nil
+	}
+	var calls []types.Call
+	//calls = append(calls, call)
 
-	return wr.write(ctx, call, onFinalized)
+	for _, msg := range payload.Messages {
+		call, err := wr.makeMessageSubmitCall(msg)
+		if err != nil {
+			return err
+		}
+		calls = append(calls, call)
+	}
+
+	call, err := types.NewCall(wr.conn.Metadata(), "Utility.batch_all", calls)
+	if err != nil {
+		return err
+	}
+
+	return wr.write(ctx, call, func(_ types.Hash) error {
+		return nil
+	})
 }
 
 func (wr *ParachainWriter) makeMessageSubmitCall(msg *chain.EthereumOutboundMessage) (types.Call, error) {
 	if msg == (*chain.EthereumOutboundMessage)(nil) {
-		return types.Call{}, fmt.Errorf("Message is nil")
+		return types.Call{}, fmt.Errorf("message is nil")
 	}
 
 	return types.NewCall(wr.conn.Metadata(), msg.Call, msg.Args...)
@@ -218,7 +225,7 @@ func (wr *ParachainWriter) makeMessageSubmitCall(msg *chain.EthereumOutboundMess
 
 func (wr *ParachainWriter) makeHeaderImportCall(header *chain.Header) (types.Call, error) {
 	if header == (*chain.Header)(nil) {
-		return types.Call{}, fmt.Errorf("Header is nil")
+		return types.Call{}, fmt.Errorf("header is nil")
 	}
 
 	return types.NewCall(wr.conn.Metadata(), "EthereumLightClient.import_header", header.HeaderData, header.ProofData)
@@ -235,7 +242,7 @@ func (wr *ParachainWriter) queryImportedHeaderExists(hash types.H256) (bool, err
 		return false, err
 	}
 	if len(storageHash) == 0 {
-		log.WithFields(logrus.Fields{
+		log.WithFields(log.Fields{
 			"hash":     hash.Hex(),
 			"recieved": storageHash,
 		}).Error("Cannot find header")

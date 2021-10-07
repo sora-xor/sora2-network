@@ -248,7 +248,7 @@ pub mod pallet {
 
             if let Err(err) = Self::validate_header_to_import(&header, &proof) {
                 warn!(
-                    "Validation for header {} returned error. Skipping import",
+                    "Validation for header {} returned error. Skipping import.",
                     header.number,
                 );
                 return Err(err.into());
@@ -533,6 +533,11 @@ pub mod pallet {
                 warn!("Proof header does not exists");
                 Error::<T>::MissingHeader
             })?;
+
+            for header in Headers::<T>::iter() {
+                debug!("{:?}", header);
+            }
+            debug!("{:?}", stored_header);
 
             if !stored_header.finalized {
                 warn!("Stored header not finalized");

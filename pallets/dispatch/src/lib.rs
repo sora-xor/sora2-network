@@ -85,10 +85,11 @@ pub mod pallet {
 
     impl<T: Config> MessageDispatch<T, MessageIdOf<T>> for Pallet<T> {
         fn dispatch(source: H160, id: MessageIdOf<T>, payload: &[u8]) {
+            debug!("Decode call: {:?}", payload);
             let call = match <T as Config>::Call::decode(&mut &payload[..]) {
                 Ok(call) => call,
-                Err(_) => {
-                    warn!("Failed to decode call");
+                Err(err) => {
+                    warn!("Failed to decode call: {:?}", err);
                     Self::deposit_event(Event::MessageDecodeFailed(id));
                     return;
                 }
@@ -96,12 +97,14 @@ pub mod pallet {
             debug!("Decoded call: {:?}", call);
 
             if !T::CallFilter::contains(&call) {
+                debug!("Reject message");
                 Self::deposit_event(Event::MessageRejected(id));
                 return;
             }
 
             let origin = Origin(source).into();
             let result = call.dispatch(origin);
+            debug!("Message dispatched");
 
             Self::deposit_event(Event::MessageDispatched(
                 id,

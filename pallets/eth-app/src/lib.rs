@@ -5,7 +5,7 @@
 //! ## Overview
 //!
 //! ETH balances are stored in the tightly-coupled [`asset`] runtime module. When an account holder burns
-//! some of their balance, a `Transfer` event is emitted. An external relayer will listen for this event
+//! some of their balance, a `Transfer` event is emitteframe_supportal{log::debug, pallet_prelude::*}_prelude::*} for this event
 //! and relay it to the other chain.
 //!
 //! ## Interface
@@ -60,6 +60,7 @@ pub use pallet::*;
 #[frame_support::pallet]
 pub mod pallet {
     use super::*;
+    use frame_support::log::{debug, warn};
     use frame_support::pallet_prelude::*;
     use frame_system::pallet_prelude::{OriginFor, *};
     use traits::MultiCurrency;
@@ -150,18 +151,27 @@ pub mod pallet {
             recipient: <T::Lookup as StaticLookup>::Source,
             amount: BalanceOf<T>,
         ) -> DispatchResult {
+            debug!("Mint {:?}, {:?}, {:?}", sender, recipient, amount);
             let who = T::CallOrigin::ensure_origin(origin)?;
             if who != Address::<T>::get() {
+                warn!("Bad origin");
                 return Err(DispatchError::BadOrigin.into());
             }
 
+            debug!("Lookup");
             let recipient = T::Lookup::lookup(recipient)?;
+            debug!("transfer");
             T::Currency::transfer(
                 T::FeeCurrency::get(),
                 &DestAccount::<T>::get(),
                 &recipient,
                 amount,
-            )?;
+            )
+            .map_err(|err| {
+                warn!("Transfer error: {:?}", err);
+                err
+            })?;
+            debug!("Minted");
             Self::deposit_event(Event::Minted(sender, recipient.clone(), amount.into()));
 
             Ok(())

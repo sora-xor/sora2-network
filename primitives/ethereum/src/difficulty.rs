@@ -54,6 +54,15 @@ impl DifficultyConfig {
         }
     }
 
+    pub const fn testnet() -> Self {
+        DifficultyConfig {
+            byzantium_fork_block: 10,
+            constantinople_fork_block: 20,
+            muir_glacier_fork_block: 8000000,
+            london_fork_block: 9000000,
+        }
+    }
+
     pub fn bomb_delay(&self, block_number: u64) -> Option<BombDelay> {
         if block_number >= self.london_fork_block {
             return Some(BombDelay::London);

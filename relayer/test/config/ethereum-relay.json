@@ -2,12 +2,12 @@
   "source": {
     "data-dir": "/tmp",
     "ethereum": {
-      "endpoint": "ws://localhost:8545"
+      "endpoint": "ws://localhost:8546"
     },
-    "descendants-until-final": 3,
+    "descendants-until-final": 4,
     "contracts": {
-      "BasicOutboundChannel": "0x86072CbFF48dA3C1F01824a6761A03F105BCC697",
-      "IncentivizedOutboundChannel": "0xFF6049B87215476aBf744eaA3a476cBAd46fB1cA"
+      "BasicOutboundChannel": "0x2708Ca421cB69305831018353168727601De3e39",
+      "IncentivizedOutboundChannel": "0xC9543E78F2dDFA4a72A2E5130EC9A156D94F16aa"
     }
   },
   "sink": {
