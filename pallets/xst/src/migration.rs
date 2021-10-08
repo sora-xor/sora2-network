@@ -28,8 +28,8 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use crate::{Config, Pallet, PermissionedTechAccount, Weight};
-use common::{AssetName, AssetSymbol, Balance, FromGenericPair, LiquiditySourceType, XSTUSD};
+use crate::{Config, EnabledSynthetics, Pallet, PermissionedTechAccount, ReferenceAssetId, Weight};
+use common::{AssetName, AssetSymbol, Balance, FromGenericPair, LiquiditySourceType, DAI, XSTUSD};
 use frame_support::debug;
 use frame_support::traits::{Get, GetPalletVersion};
 use permissions::{Scope, BURN, MINT};
@@ -46,6 +46,10 @@ pub fn migrate<T: Config>() -> Weight {
             let migrated_weight = register_xst_tech_account::<T>().unwrap_or(100_000);
             weight = weight.saturating_add(migrated_weight);
             weight = weight.saturating_add(register_in_dex_api::<T>());
+            let reference_asset: T::AssetId = DAI.into();
+            let initial_synthetic: T::AssetId = XSTUSD.into();
+            ReferenceAssetId::<T>::put(reference_asset);
+            EnabledSynthetics::<T>::mutate(|set| set.insert(initial_synthetic));
         }
         _ => (),
     }
