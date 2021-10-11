@@ -199,7 +199,7 @@ mod tests {
                 )
                 .unwrap();
 
-            XSTPool::set_reference_asset(Origin::signed(alice()), DAI).expect("Failed to set new reference asset.");
+            XSTPool::set_reference_asset(Origin::root(), DAI).expect("Failed to set new reference asset.");
 
             let price_b = XSTPool::quote(
                     &DEXId::Polkaswap.into(),

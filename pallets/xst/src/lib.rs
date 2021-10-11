@@ -69,6 +69,7 @@ pub trait WeightInfo {
     fn on_initialize(_elems: u32) -> Weight;
     fn initialize_pool() -> Weight;
     fn set_reference_asset() -> Weight;
+    fn enable_synthetic_asset() -> Weight;
 }
 
 type Assets<T> = assets::Module<T>;
@@ -184,13 +185,19 @@ pub mod pallet {
             origin: OriginFor<T>,
             reference_asset_id: T::AssetId,
         ) -> DispatchResultWithPostInfo {
-            let _who = <T as Config>::EnsureDEXManager::ensure_can_manage(
-                &DEXId::Polkaswap.into(),
-                origin,
-                ManagementMode::Private,
-            )?;
+            ensure_root(origin)?;
             ReferenceAssetId::<T>::put(reference_asset_id.clone());
             Self::deposit_event(Event::ReferenceAssetChanged(reference_asset_id));
+            Ok(().into())
+        }
+
+        #[pallet::weight(<T as Config>::WeightInfo::enable_synthetic_asset())]
+        pub fn enable_synthetic_asset(
+            origin: OriginFor<T>,
+            synthetic_asset: T::AssetId,
+        ) -> DispatchResultWithPostInfo {
+            ensure_root(origin)?;
+            EnabledSynthetics::<T>::mutate(|set| set.insert(synthetic_asset));
             Ok(().into())
         }
     }
