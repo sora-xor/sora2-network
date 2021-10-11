@@ -62,10 +62,11 @@ pipeline {
                                 }
                                 sh """
                                     cargo build --release --features \"${featureList}\"
-                                    cargo test --release
                                     cp target/release/framenode housekeeping/framenode
+                                    cp target/release/wbuild/framenode-runtime/framenode_runtime.compact.wasm housekeeping/framenode_runtime.compact.wasm
+                                    cargo test --release
                                 """
-                                archiveArtifacts artifacts: 'target/release/wbuild/framenode-runtime/framenode_runtime.compact.wasm'
+                                archiveArtifacts artifacts: 'housekeeping/framenode_runtime.compact.wasm'
                             } else {
                                 sh '''
                                     cargo fmt -- --check > /dev/null
