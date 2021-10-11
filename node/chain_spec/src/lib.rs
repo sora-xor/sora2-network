@@ -320,7 +320,7 @@ pub fn dev_net_coded() -> ChainSpec {
                     hex!("e813415062749d4bbea338d8a69b9cc5be02af0fdf8c96ba2d50733aaf32cb50").into(),
                     hex!("e08d567d824152adcf53b8dca949756be895b6b8bebb5f9fa55959e9473e0c7f").into(),
                 ],
-                get_account_id_from_seed::<sr25519::Public>("Treasury"),
+                get_account_id_from_seed::<sr25519::Public>("Bob"),
             )
         },
         vec![],
@@ -461,7 +461,7 @@ pub fn staging_net_coded(test: bool) -> ChainSpec {
                     hex!("e44c7c00f98ae6acf86dc366d082307388c750ceb70696ca305a7bfd761aee26").into(),
                     hex!("603fb3e17b49ab8f90e839020f2473278c4f01626ef63976df35ccfbaaae0c1b").into(),
                 ],
-                get_account_id_from_seed::<sr25519::Public>("Treasury"),
+                get_account_id_from_seed::<sr25519::Public>("Bob"),
             )
         },
         boot_nodes,
@@ -567,10 +567,10 @@ pub fn local_testnet_config() -> ChainSpec {
                     authority_keys_from_seed("Alice"),
                     authority_keys_from_seed("Bob"),
                     authority_keys_from_seed("Charlie"),
-                    authority_keys_from_seed("Dave"),
-                    authority_keys_from_seed("Treasury"),
                     /*
+                    authority_keys_from_seed("Dave"),
                     authority_keys_from_seed("Eve"),
+                    authority_keys_from_seed("Treasury"),
                     authority_keys_from_seed("Ferdie"),
                     */
                 ],
@@ -619,7 +619,7 @@ pub fn local_testnet_config() -> ChainSpec {
                     hex!("903a885138c4a187f13383fdb08b8e6b308c7021fdab12dc20e3aef9870e1146").into(),
                     hex!("d0d773018d19aab81052c4d038783ecfee77fb4b5fdc266b5a25568c0102640b").into(),
                 ],
-                get_account_id_from_seed::<sr25519::Public>("Treasury"),
+                get_account_id_from_seed::<sr25519::Public>("Bob"),
             )
         },
         vec![],
