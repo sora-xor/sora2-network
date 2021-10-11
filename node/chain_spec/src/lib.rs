@@ -1059,6 +1059,9 @@ fn testnet_genesis(
             ],
         }),
         pallet_balances: Some(BalancesConfig { balances }),
+        ceres_staking: Some(CeresStakingConfig {
+            rewards_remaining: balance!(600),
+        }),
         dex_manager: Some(DEXManagerConfig {
             dex_list: vec![(
                 0,

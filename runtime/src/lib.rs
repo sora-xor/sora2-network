@@ -1349,6 +1349,19 @@ impl price_tools::Config for Runtime {
     type WeightInfo = price_tools::weights::WeightInfo<Runtime>;
 }
 
+parameter_types! {
+    pub const CeresPerBlock: Balance = balance!(0.00046296296);
+	pub const CeresAssetId: AssetId = common::AssetId32::from_bytes(hex!("008bcfd2387d3fc453333557eecb0efe59fcba128769b2feefdd306e98e66440"));
+	pub const MaximumCeresInStakingPool: Balance = balance!(7200);
+}
+
+impl ceres_staking::Config for Runtime {
+    type Event = Event;
+    type CeresPerBlock = CeresPerBlock;
+    type CeresAssetId = CeresAssetId;
+    type MaximumCeresInStakingPool = MaximumCeresInStakingPool;
+}
+
 /// Payload data to be signed when making signed transaction from off-chain workers,
 ///   inside `create_transaction` function.
 pub type SignedPayload = generic::SignedPayload<Call, SignedExtra>;
@@ -1419,6 +1432,7 @@ construct_runtime! {
         Farming: farming::{Module, Call, Storage} = 42,
         XSTPool: xst::{Module, Call, Storage, Config<T>, Event<T>} = 43,
         PriceTools: price_tools::{Module, Storage, Event<T>} = 44,
+        CeresStaking: ceres_staking::{Module, Call, Storage, Config, Event} = 45,
 
         // Available only for test net
         Faucet: faucet::{Module, Call, Config<T>, Event<T>} = 80,

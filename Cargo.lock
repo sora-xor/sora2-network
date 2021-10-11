@@ -797,6 +797,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "ceres-staking"
+version = "1.0.0"
+dependencies = [
+ "assets",
+ "common",
+ "frame-benchmarking 3.1.0",
+ "frame-support",
+ "frame-system",
+ "parity-scale-codec",
+ "serde",
+ "sp-core",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
 name = "cexpr"
 version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2356,6 +2372,7 @@ version = "1.2.2"
 dependencies = [
  "assets",
  "assets-runtime-api",
+ "ceres-staking",
  "common",
  "dex-api",
  "dex-api-benchmarking",
