@@ -1,7 +1,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use codec::{Decode, Encode};
-use common::prelude::{Balance};
+use common::prelude::Balance;
 
 #[derive(Encode, Decode, Default, PartialEq, Eq)]
 #[cfg_attr(feature = "std", derive(Debug))]
@@ -17,12 +17,12 @@ pub use pallet::*;
 #[frame_support::pallet]
 pub mod pallet {
     use super::*;
-    use frame_support::pallet_prelude::*;
-    use frame_system::pallet_prelude::*;
-    use frame_system::ensure_signed;
     use common::prelude::{Balance, FixedWrapper};
-    use sp_runtime::ModuleId;
+    use frame_support::pallet_prelude::*;
+    use frame_system::ensure_signed;
+    use frame_system::pallet_prelude::*;
     use sp_runtime::traits::AccountIdConversion;
+    use sp_runtime::ModuleId;
 
     const PALLET_ID: ModuleId = ModuleId(*b"cerstake");
 
@@ -45,12 +45,12 @@ pub mod pallet {
     }
 
     #[pallet::pallet]
-    #[pallet::generate_store(pub(super) trait Store)]
+    #[pallet::generate_store(pub (super) trait Store)]
     pub struct Pallet<T>(PhantomData<T>);
 
     #[pallet::event]
-    #[pallet::metadata(AccountIdOf<T> = "AccountId")]
-    #[pallet::generate_deposit(pub(super) fn deposit_event)]
+    #[pallet::metadata(AccountIdOf < T > = "AccountId")]
+    #[pallet::generate_deposit(pub (super) fn deposit_event)]
     pub enum Event<T: Config> {
         /// Ceres deposited. [who, amount]
         Deposited(AccountIdOf<T>, Balance),
@@ -61,13 +61,14 @@ pub mod pallet {
     #[pallet::error]
     pub enum Error<T> {
         /// Staking pool is full
-        StakingPoolIsFull
+        StakingPoolIsFull,
     }
 
     /// AccountId -> StakingInfo
     #[pallet::storage]
     #[pallet::getter(fn stakers)]
-    pub(super) type Stakers<T: Config> = StorageMap<_, Identity, AccountIdOf<T>, StakingInfo, ValueQuery>;
+    pub(super) type Stakers<T: Config> =
+        StorageMap<_, Identity, AccountIdOf<T>, StakingInfo, ValueQuery>;
 
     #[pallet::storage]
     #[pallet::getter(fn total_deposited)]
@@ -110,19 +111,32 @@ pub mod pallet {
             let mut staking_info = <Stakers<T>>::get(&source);
 
             // Maximum CERES to be in staking pool equals MaximumCeresInStakingPool
-            let total_deposited = (FixedWrapper::from(TotalDeposited::<T>::get()) + FixedWrapper::from(amount))
-                .try_into_balance().unwrap_or(TotalDeposited::<T>::get());
-            ensure!(total_deposited <= T::MaximumCeresInStakingPool::get(), Error::<T>::StakingPoolIsFull);
+            let total_deposited = (FixedWrapper::from(TotalDeposited::<T>::get())
+                + FixedWrapper::from(amount))
+            .try_into_balance()
+            .unwrap_or(TotalDeposited::<T>::get());
+            ensure!(
+                total_deposited <= T::MaximumCeresInStakingPool::get(),
+                Error::<T>::StakingPoolIsFull
+            );
 
             // Transfer CERES to staking
-            Assets::<T>::transfer_from(&T::CeresAssetId::get().into(), &source, &Self::account_id(), amount)?;
+            Assets::<T>::transfer_from(
+                &T::CeresAssetId::get().into(),
+                &source,
+                &Self::account_id(),
+                amount,
+            )?;
 
             // Update total deposited CERES amount
             TotalDeposited::<T>::put(total_deposited);
 
             // Set staking info
-            let deposited_amount = FixedWrapper::from(staking_info.deposited) + FixedWrapper::from(amount);
-            staking_info.deposited = deposited_amount.try_into_balance().unwrap_or(staking_info.deposited);
+            let deposited_amount =
+                FixedWrapper::from(staking_info.deposited) + FixedWrapper::from(amount);
+            staking_info.deposited = deposited_amount
+                .try_into_balance()
+                .unwrap_or(staking_info.deposited);
 
             // Put updated staking info into storage
             <Stakers<T>>::insert(&source, staking_info);
@@ -147,11 +161,18 @@ pub mod pallet {
             let withdrawing_amount = deposited + rewards;
 
             // Transfer CERES to staking
-            Assets::<T>::transfer_from(&T::CeresAssetId::get().into(), &Self::account_id(), &source, withdrawing_amount)?;
+            Assets::<T>::transfer_from(
+                &T::CeresAssetId::get().into(),
+                &Self::account_id(),
+                &source,
+                withdrawing_amount,
+            )?;
 
             // Update total deposited CERES amount
-            let total_deposited = (FixedWrapper::from(TotalDeposited::<T>::get()) - FixedWrapper::from(deposited))
-                .try_into_balance().unwrap_or(TotalDeposited::<T>::get());
+            let total_deposited = (FixedWrapper::from(TotalDeposited::<T>::get())
+                - FixedWrapper::from(deposited))
+            .try_into_balance()
+            .unwrap_or(TotalDeposited::<T>::get());
             TotalDeposited::<T>::put(total_deposited);
 
             // Update storage
@@ -172,19 +193,26 @@ pub mod pallet {
 
             if RewardsRemaining::<T>::get() >= T::CeresPerBlock::get() {
                 for staker in <Stakers<T>>::iter() {
-                    let share_in_pool = FixedWrapper::from(staker.1.deposited) / FixedWrapper::from(TotalDeposited::<T>::get());
+                    let share_in_pool = FixedWrapper::from(staker.1.deposited)
+                        / FixedWrapper::from(TotalDeposited::<T>::get());
                     let reward = share_in_pool * FixedWrapper::from(T::CeresPerBlock::get());
 
                     let mut staking_info = <Stakers<T>>::get(&staker.0);
                     staking_info.rewards = (FixedWrapper::from(staking_info.rewards) + reward)
-                        .try_into_balance().unwrap_or(staking_info.rewards);
+                        .try_into_balance()
+                        .unwrap_or(staking_info.rewards);
 
                     <Stakers<T>>::insert(&staker.0, staking_info);
                     counter += 1;
                 }
 
-                let rewards_remaining = FixedWrapper::from(RewardsRemaining::<T>::get()) - FixedWrapper::from(T::CeresPerBlock::get());
-                RewardsRemaining::<T>::put(rewards_remaining.try_into_balance().unwrap_or(RewardsRemaining::<T>::get()));
+                let rewards_remaining = FixedWrapper::from(RewardsRemaining::<T>::get())
+                    - FixedWrapper::from(T::CeresPerBlock::get());
+                RewardsRemaining::<T>::put(
+                    rewards_remaining
+                        .try_into_balance()
+                        .unwrap_or(RewardsRemaining::<T>::get()),
+                );
             }
 
             counter

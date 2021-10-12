@@ -1351,8 +1351,9 @@ impl price_tools::Config for Runtime {
 
 parameter_types! {
     pub const CeresPerBlock: Balance = balance!(0.00046296296);
-	pub const CeresAssetId: AssetId = common::AssetId32::from_bytes(hex!("008bcfd2387d3fc453333557eecb0efe59fcba128769b2feefdd306e98e66440"));
-	pub const MaximumCeresInStakingPool: Balance = balance!(7200);
+    pub const CeresAssetId: AssetId = common::AssetId32::from_bytes
+        (hex!("008bcfd2387d3fc453333557eecb0efe59fcba128769b2feefdd306e98e66440"));
+    pub const MaximumCeresInStakingPool: Balance = balance!(7200);
 }
 
 impl ceres_staking::Config for Runtime {
@@ -1432,7 +1433,7 @@ construct_runtime! {
         Farming: farming::{Module, Call, Storage} = 42,
         XSTPool: xst::{Module, Call, Storage, Config<T>, Event<T>} = 43,
         PriceTools: price_tools::{Module, Storage, Event<T>} = 44,
-        CeresStaking: ceres_staking::{Module, Call, Storage, Config, Event} = 45,
+        CeresStaking: ceres_staking::{Module, Call, Storage, Config, Event<T>} = 45,
 
         // Available only for test net
         Faucet: faucet::{Module, Call, Config<T>, Event<T>} = 80,
@@ -1496,6 +1497,7 @@ construct_runtime! {
         Farming: farming::{Module, Call, Storage} = 42,
         XSTPool: xst::{Module, Call, Storage, Config<T>, Event<T>} = 43,
         PriceTools: price_tools::{Module, Storage, Event<T>} = 44,
+        CeresStaking: ceres_staking::{Module, Call, Storage, Config, Event<T>} = 45,
     }
 }
 

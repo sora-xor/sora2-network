@@ -48,13 +48,13 @@ use framenode_runtime::multicollateral_bonding_curve_pool::{
 use framenode_runtime::opaque::SessionKeys;
 use framenode_runtime::{
     assets, eth_bridge, frame_system, AccountId, AssetId, AssetName, AssetSymbol, AssetsConfig,
-    BabeConfig, BalancesConfig, BridgeMultisigConfig, CouncilConfig, DEXAPIConfig,
-    DEXManagerConfig, DemocracyConfig, EthBridgeConfig, GetBaseAssetId, GetParliamentAccountId,
-    GetPswapAssetId, GetValAssetId, GetXorAssetId, GrandpaConfig, ImOnlineId, IrohaMigrationConfig,
-    LiquiditySourceType, MulticollateralBondingCurvePoolConfig, PermissionsConfig,
-    PswapDistributionConfig, RewardsConfig, Runtime, SessionConfig, StakerStatus, StakingConfig,
-    SystemConfig, TechAccountId, TechnicalConfig, TokensConfig, TradingPairConfig, XSTPoolConfig,
-    WASM_BINARY,
+    BabeConfig, BalancesConfig, BridgeMultisigConfig, CeresStakingConfig, CouncilConfig,
+    DEXAPIConfig, DEXManagerConfig, DemocracyConfig, EthBridgeConfig, GetBaseAssetId,
+    GetParliamentAccountId, GetPswapAssetId, GetValAssetId, GetXorAssetId, GrandpaConfig,
+    ImOnlineId, IrohaMigrationConfig, LiquiditySourceType, MulticollateralBondingCurvePoolConfig,
+    PermissionsConfig, PswapDistributionConfig, RewardsConfig, Runtime, SS58Prefix, SessionConfig,
+    StakerStatus, StakingConfig, SystemConfig, TechAccountId, TechnicalConfig, TokensConfig,
+    TradingPairConfig, XSTPoolConfig, WASM_BINARY
 };
 use hex_literal::hex;
 use permissions::Scope;
