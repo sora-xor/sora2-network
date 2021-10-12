@@ -67,7 +67,6 @@ pub mod pallet {
     use frame_support::log::debug;
     use frame_support::pallet_prelude::*;
     use frame_system::pallet_prelude::*;
-    use sp_runtime::traits::One;
 
     #[pallet::config]
     pub trait Config: frame_system::Config + assets::Config {
@@ -251,6 +250,8 @@ pub mod pallet {
     #[pallet::genesis_config]
     pub struct GenesisConfig<T: Config> {
         pub dest_account: T::AccountId,
+        pub fee: BalanceOf<T>,
+        pub interval: T::BlockNumber,
     }
 
     #[cfg(feature = "std")]
@@ -258,6 +259,8 @@ pub mod pallet {
         fn default() -> Self {
             Self {
                 dest_account: Default::default(),
+                fee: Default::default(),
+                interval: Default::default(),
             }
         }
     }
@@ -266,6 +269,8 @@ pub mod pallet {
     impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
         fn build(&self) {
             DestAccount::<T>::set(self.dest_account.clone());
+            Fee::<T>::set(self.fee.clone());
+            Interval::<T>::set(self.interval.clone());
         }
     }
 }

@@ -25,7 +25,7 @@ use sp_core::{H160, U256};
 use sp_runtime::traits::StaticLookup;
 use sp_std::prelude::*;
 
-use snowbridge_core::{ChannelId, OutboundRouter, SingleAsset};
+use snowbridge_core::{ChannelId, OutboundRouter};
 
 mod payload;
 use payload::OutboundPayload;
@@ -118,23 +118,36 @@ pub mod pallet {
         #[transactional]
         pub fn burn(
             origin: OriginFor<T>,
-            channel_id: ChannelId,
+            channel_id: u8,
             recipient: H160,
             amount: BalanceOf<T>,
         ) -> DispatchResult {
             let who = ensure_signed(origin)?;
+            debug!(
+                "Burn {:?}, {:?}, {:?}, {:?}",
+                who, channel_id, recipient, amount
+            );
 
             T::Currency::transfer(
                 T::FeeCurrency::get(),
                 &who,
                 &DestAccount::<T>::get(),
                 amount,
-            )?;
+            )
+            .map_err(|err| {
+                warn!("Transfer error: {:?}", err);
+                err
+            })?;
 
             let message = OutboundPayload {
                 sender: who.clone(),
                 recipient: recipient.clone(),
                 amount: amount.into(),
+            };
+
+            let channel_id = match channel_id {
+                1 => ChannelId::Incentivized,
+                _ => ChannelId::Basic,
             };
 
             T::OutboundRouter::submit(channel_id, &who, Address::<T>::get(), &message.encode())?;

@@ -21,9 +21,9 @@
 
 use codec::{Decode, Encode};
 use frame_support::dispatch::{DispatchError, DispatchResult};
+use frame_support::ensure;
 use frame_support::traits::Get;
 use frame_support::weights::Weight;
-use frame_support::{ensure, runtime_print};
 use frame_system::ensure_signed;
 use sp_runtime::RuntimeDebug;
 
@@ -177,7 +177,7 @@ pub mod pallet {
         fn build(&self) {
             let initial_header = &self.initial_header;
 
-            Module::<T>::initialize_storage(
+            Pallet::<T>::initialize_storage(
                 vec![initial_header.clone()],
                 self.initial_difficulty,
                 0, // descendants_until_final = 0 forces the initial header to be finalized

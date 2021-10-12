@@ -1,5 +1,4 @@
 use frame_support::dispatch::DispatchResult;
-use frame_support::runtime_print;
 use frame_support::traits::{EnsureOrigin, Get};
 use frame_support::weights::Weight;
 use frame_system::ensure_signed;

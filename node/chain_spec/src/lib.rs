@@ -969,6 +969,8 @@ fn testnet_genesis(
         },
         incentivized_outbound_channel: IncentivizedOutboundChannelConfig {
             dest_account: treasury_account,
+            fee: 10000,
+            interval: 10,
         },
         basic_inbound_channel: BasicInboundChannelConfig {
             source_channel: get_basic_channel_address(),
