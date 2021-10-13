@@ -1,12 +1,13 @@
 //! BasicOutboundChannel pallet benchmarking
 use super::*;
 
-use frame_benchmarking::{benchmarks, impl_benchmark_test_suite};
+use frame_benchmarking::{account, benchmarks, impl_benchmark_test_suite};
 use frame_support::traits::OnInitialize;
-use sp_core::U256;
 
 #[allow(unused_imports)]
-use crate::outbound::Module as BasicOutboundChannel;
+use crate::outbound::Pallet as BasicOutboundChannel;
+
+const SEED: u32 = 0;
 
 benchmarks! {
     // Benchmark `on_initialize` under worst case conditions, i.e. messages
@@ -17,10 +18,9 @@ benchmarks! {
 
         for _ in 0 .. m {
             let payload: Vec<u8> = (0..).take(p as usize).collect();
-            MessageQueue::append(Message {
+            <MessageQueue<T>>::append(Message {
                 target: H160::zero(),
                 nonce: 0u64,
-                fee: U256::zero(),
                 payload,
             });
         }
@@ -29,17 +29,16 @@ benchmarks! {
 
     }: { BasicOutboundChannel::<T>::on_initialize(block_number) }
     verify {
-        assert_eq!(MessageQueue::get().len(), 0);
+        assert_eq!(<MessageQueue<T>>::get().len(), 0);
     }
 
     // Benchmark 'on_initialize` for the best case, i.e. nothing is done
     // because it's not a commitment interval.
     on_initialize_non_interval {
-        MessageQueue::append(Message {
+        <MessageQueue<T>>::append(Message {
             target: H160::zero(),
             nonce: 0u64,
-            fee: U256::zero(),
-            payload: vec![1u8; T::MaxMessagePayloadSize::get()],
+            payload: vec![1u8; T::MaxMessagePayloadSize::get() as usize],
         });
 
         Interval::<T>::put::<T::BlockNumber>(10u32.into());
@@ -47,32 +46,27 @@ benchmarks! {
 
     }: { BasicOutboundChannel::<T>::on_initialize(block_number) }
     verify {
-        assert_eq!(MessageQueue::get().len(), 1);
+        assert_eq!(<MessageQueue<T>>::get().len(), 1);
     }
 
     // Benchmark 'on_initialize` for the case where it is a commitment interval
     // but there are no messages in the queue.
     on_initialize_no_messages {
-        MessageQueue::kill();
+        <MessageQueue<T>>::kill();
 
         let block_number = Interval::<T>::get();
 
     }: { BasicOutboundChannel::<T>::on_initialize(block_number) }
 
-    // Benchmark `set_fee` under worst case conditions:
-    // * The origin is authorized, i.e. equals SetFeeOrigin
-    set_fee {
-        let authorized_origin = match T::SetFeeOrigin::successful_origin().into() {
+    set_principal {
+        let authorized_origin = match T::SetPrincipalOrigin::successful_origin().into() {
             Ok(raw) => raw,
             Err(_) => return Err("Failed to get raw origin from origin"),
         };
-
-        let new_fee : U256 = 32000000.into();
-        assert!(Fee::get() != new_fee);
-
-    }: _(authorized_origin, new_fee)
+        let alice = T::Lookup::unlookup(account("alice", 0, SEED));
+    }: _(authorized_origin, alice)
     verify {
-        assert_eq!(Fee::get(), new_fee);
+        assert_eq!(<Principal<T>>::get(), account("alice", 0, SEED));
     }
 }
 

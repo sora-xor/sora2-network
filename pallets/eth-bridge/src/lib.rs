@@ -409,12 +409,8 @@ pub mod pallet {
         /// Note: only one worker is expected to be used.
         fn offchain_worker(block_number: T::BlockNumber) {
             debug!("Entering off-chain workers {:?}", block_number);
-            if StorageValueRef::persistent(STORAGE_PEER_SECRET_KEY)
-                .get::<Vec<u8>>()
-                .ok()
-                .flatten()
-                .is_none()
-            {
+            let value_ref = StorageValueRef::persistent(STORAGE_PEER_SECRET_KEY);
+            if value_ref.get::<Vec<u8>>().ok().flatten().is_none() {
                 debug!("Peer secret key not found. Skipping off-chain procedure.");
                 return;
             }

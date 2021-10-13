@@ -39,7 +39,7 @@ use common::{
 };
 use core::time::Duration;
 use currencies::BasicCurrencyAdapter;
-use frame_support::traits::{GenesisBuild, Get, OneSessionHandler, U128CurrencyToVote};
+use frame_support::traits::{Everything, GenesisBuild, Get, OneSessionHandler, U128CurrencyToVote};
 use frame_support::weights::{DispatchInfo, IdentityFee, Pays, PostDispatchInfo, Weight};
 use frame_support::{construct_runtime, parameter_types};
 use frame_system;
@@ -300,7 +300,7 @@ impl pallet_scheduler::Config for Runtime {
 }
 
 impl frame_system::Config for Runtime {
-    type BaseCallFilter = ();
+    type BaseCallFilter = Everything;
     type BlockWeights = BlockWeights;
     type BlockLength = BlockLength;
     type Origin = Origin;

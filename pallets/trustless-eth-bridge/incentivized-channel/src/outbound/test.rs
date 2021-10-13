@@ -1,16 +1,21 @@
 use super::*;
+use currencies::BasicCurrencyAdapter;
 
-use frame_support::dispatch::DispatchError;
-use frame_support::{assert_noop, assert_ok, parameter_types};
+use common::mock::ExistentialDeposits;
+use common::{balance, AssetName, AssetSymbol};
+use common::{Amount, AssetId32, Balance, DEXId, XOR};
+use frame_support::traits::{Everything, GenesisBuild};
+use frame_support::{assert_noop, assert_ok, dispatch::DispatchError, parameter_types};
 use sp_core::{H160, H256};
 use sp_keyring::AccountKeyring as Keyring;
-use sp_runtime::testing::Header;
-use sp_runtime::traits::{BlakeTwo256, IdentifyAccount, IdentityLookup, Keccak256, Verify};
-use sp_runtime::MultiSignature;
+use sp_runtime::{
+    testing::Header,
+    traits::{BlakeTwo256, IdentifyAccount, IdentityLookup, Keccak256, Verify},
+    MultiSignature,
+};
 use sp_std::convert::From;
 
-use assets::SingleAssetAdaptor;
-use snowbridge_core::{AssetId, SingleAsset};
+use snowbridge_core::SingleAsset;
 
 use crate::outbound as incentivized_outbound_channel;
 
@@ -24,8 +29,12 @@ frame_support::construct_runtime!(
         UncheckedExtrinsic = UncheckedExtrinsic,
     {
         System: frame_system::{Pallet, Call, Storage, Event<T>},
-        Assets: snowbridge_assets::{Pallet, Call, Storage, Event<T>},
-        IncentivizedOutboundChannel: incentivized_outbound_channel::{Pallet, Call, Storage, Event},
+        Assets: assets::{Pallet, Call, Storage, Event<T>},
+        Tokens: tokens::{Pallet, Call, Config<T>, Storage, Event<T>},
+        Currencies: currencies::{Pallet, Call, Storage, Event<T>},
+        Balances: pallet_balances::{Pallet, Call, Storage, Event<T>},
+        Permissions: permissions::{Pallet, Call, Config<T>, Storage, Event<T>},
+        IncentivizedOutboundChannel: incentivized_outbound_channel::{Pallet, Call, Config<T>, Storage, Event<T>},
     }
 );
 
@@ -36,8 +45,8 @@ parameter_types! {
     pub const BlockHashCount: u64 = 250;
 }
 
-impl system::Config for Test {
-    type BaseCallFilter = ();
+impl frame_system::Config for Test {
+    type BaseCallFilter = Everything;
     type BlockWeights = ();
     type BlockLength = ();
     type Origin = Origin;
@@ -54,7 +63,7 @@ impl system::Config for Test {
     type DbWeight = ();
     type Version = ();
     type PalletInfo = PalletInfo;
-    type AccountData = ();
+    type AccountData = pallet_balances::AccountData<Balance>;
     type OnNewAccount = ();
     type OnKilledAccount = ();
     type SystemWeightInfo = ();
@@ -62,18 +71,73 @@ impl system::Config for Test {
     type OnSetCode = ();
 }
 
-impl snowbridge_assets::Config for Test {
+impl common::Config for Test {
+    type DEXId = common::DEXId;
+    type LstId = common::LiquiditySourceType;
+}
+
+impl permissions::Config for Test {
     type Event = Event;
+}
+
+parameter_types! {
+    pub const ExistentialDeposit: u128 = 0;
+}
+
+impl pallet_balances::Config for Test {
+    type Balance = Balance;
+    type Event = Event;
+    type DustRemoval = ();
+    type ExistentialDeposit = ExistentialDeposit;
+    type AccountStore = System;
+    type WeightInfo = ();
+    type MaxLocks = ();
+    type MaxReserves = ();
+    type ReserveIdentifier = ();
+}
+
+impl tokens::Config for Test {
+    type Event = Event;
+    type Balance = Balance;
+    type Amount = Amount;
+    type CurrencyId = <Test as assets::Config>::AssetId;
+    type WeightInfo = ();
+    type ExistentialDeposits = ExistentialDeposits;
+    type OnDust = ();
+    type MaxLocks = ();
+    type DustRemovalWhitelist = Everything;
+}
+
+impl currencies::Config for Test {
+    type Event = Event;
+    type MultiCurrency = Tokens;
+    type NativeCurrency = BasicCurrencyAdapter<Test, Balances, Amount, u64>;
+    type GetNativeCurrencyId = <Test as assets::Config>::GetBaseAssetId;
+    type WeightInfo = ();
+}
+parameter_types! {
+    pub const GetBaseAssetId: AssetId = XOR;
+    pub GetTeamReservesAccountId: AccountId = Default::default();
+}
+
+type AssetId = AssetId32<common::PredefinedAssetId>;
+
+impl assets::Config for Test {
+    type Event = Event;
+    type ExtraAccountId = [u8; 32];
+    type ExtraAssetRecordArg =
+        common::AssetIdExtraAssetRecordArg<DEXId, common::LiquiditySourceType, [u8; 32]>;
+    type AssetId = AssetId;
+    type GetBaseAssetId = GetBaseAssetId;
+    type Currency = currencies::Module<Test>;
+    type GetTeamReservesAccountId = GetTeamReservesAccountId;
     type WeightInfo = ();
 }
 
 parameter_types! {
-    pub const MaxMessagePayloadSize: usize = 128;
-    pub const MaxMessagesPerCommit: usize = 5;
-    pub const Ether: AssetId = AssetId::ETH;
+    pub const MaxMessagePayloadSize: u64 = 128;
+    pub const MaxMessagesPerCommit: u64 = 5;
 }
-
-type FeeCurrency = SingleAssetAdaptor<Test, Ether>;
 
 impl incentivized_outbound_channel::Config for Test {
     const INDEXING_PREFIX: &'static [u8] = b"commitment";
@@ -81,7 +145,7 @@ impl incentivized_outbound_channel::Config for Test {
     type Hashing = Keccak256;
     type MaxMessagePayloadSize = MaxMessagePayloadSize;
     type MaxMessagesPerCommit = MaxMessagesPerCommit;
-    type FeeCurrency = SingleAssetAdaptor<Test, Ether>;
+    type FeeCurrency = ();
     type SetFeeOrigin = frame_system::EnsureRoot<Self::AccountId>;
     type WeightInfo = ();
 }
@@ -93,10 +157,32 @@ pub fn new_tester() -> sp_io::TestExternalities {
 
     let config: incentivized_outbound_channel::GenesisConfig<Test> =
         incentivized_outbound_channel::GenesisConfig {
-            fee: 100.into(),
+            dest_account: Default::default(),
             interval: 1u64,
+            fee: 100u32.into(),
         };
     config.assimilate_storage(&mut storage).unwrap();
+
+    let bob: AccountId = Keyring::Bob.into();
+    pallet_balances::GenesisConfig::<Test> {
+        balances: vec![(bob.clone(), 1u32.into())],
+    }
+    .assimilate_storage(&mut storage)
+    .unwrap();
+
+    assets::GenesisConfig::<Test> {
+        endowed_assets: vec![(
+            XOR.into(),
+            bob,
+            AssetSymbol(b"XOR".to_vec()),
+            AssetName(b"SORA".to_vec()),
+            18,
+            0,
+            true,
+        )],
+    }
+    .assimilate_storage(&mut storage)
+    .unwrap();
 
     let mut ext: sp_io::TestExternalities = storage.into();
 
@@ -111,21 +197,21 @@ fn test_submit() {
         let who: AccountId = Keyring::Bob.into();
 
         // Deposit enough money to cover fees
-        FeeCurrency::deposit(&who, 300.into()).unwrap();
+        Assets::mint_to(&XOR, &who, &who, 300u32.into()).unwrap();
 
         assert_ok!(IncentivizedOutboundChannel::submit(
             &who,
             target,
             &vec![0, 1, 2]
         ));
-        assert_eq!(Nonce::get(), 1);
+        assert_eq!(<Nonce<Test>>::get(), 1);
 
         assert_ok!(IncentivizedOutboundChannel::submit(
             &who,
             target,
             &vec![0, 1, 2]
         ));
-        assert_eq!(Nonce::get(), 2);
+        assert_eq!(<Nonce<Test>>::get(), 2);
     });
 }
 
@@ -136,15 +222,18 @@ fn test_submit_fees_burned() {
         let who: AccountId = Keyring::Bob.into();
 
         // Deposit enough money to cover fees
-        FeeCurrency::deposit(&who, 300.into()).unwrap();
+        Assets::mint_to(&XOR, &who, &who, 300u32.into()).unwrap();
+        let old_balance = Assets::total_balance(&XOR, &who).unwrap();
 
         assert_ok!(IncentivizedOutboundChannel::submit(
             &who,
             target,
             &vec![0, 1, 2]
         ));
-
-        assert_eq!(FeeCurrency::balance(&who), 200.into());
+        assert_eq!(
+            Assets::total_balance(&XOR, &who).unwrap(),
+            old_balance + 200
+        );
     })
 }
 
@@ -154,11 +243,11 @@ fn test_submit_not_enough_funds() {
         let target = H160::zero();
         let who: AccountId = Keyring::Bob.into();
 
-        FeeCurrency::deposit(&who, 50.into()).unwrap();
+        Assets::mint_to(&XOR, &who, &who, 50u32.into()).unwrap();
 
         assert_noop!(
             IncentivizedOutboundChannel::submit(&who, target, &vec![0, 1, 2]),
-            Error::<Test>::NoFunds
+            assets::Error::<Test>::InsufficientBalance
         );
     })
 }
@@ -170,7 +259,7 @@ fn test_submit_exceeds_queue_limit() {
         let who: AccountId = Keyring::Bob.into();
 
         // Deposit enough money to cover fees
-        FeeCurrency::deposit(&who, 1000.into()).unwrap();
+        Assets::mint_to(&XOR, &who, &who, 1000u32.into()).unwrap();
 
         let max_messages = MaxMessagesPerCommit::get();
         (0..max_messages).for_each(|_| {
@@ -189,7 +278,7 @@ fn test_set_fee_not_authorized() {
     new_tester().execute_with(|| {
         let bob: AccountId = Keyring::Bob.into();
         assert_noop!(
-            IncentivizedOutboundChannel::set_fee(Origin::signed(bob), 1000.into()),
+            IncentivizedOutboundChannel::set_fee(Origin::signed(bob), 1000u32.into()),
             DispatchError::BadOrigin
         );
     });
@@ -202,7 +291,7 @@ fn test_submit_exceeds_payload_limit() {
         let who: AccountId = Keyring::Bob.into();
 
         let max_payload_bytes = MaxMessagePayloadSize::get();
-        let payload: Vec<u8> = (0..).take(max_payload_bytes + 1).collect();
+        let payload: Vec<u8> = (0..).take(max_payload_bytes as usize + 1).collect();
 
         assert_noop!(
             IncentivizedOutboundChannel::submit(&who, target, payload.as_slice()),
@@ -217,7 +306,7 @@ fn test_submit_fails_on_nonce_overflow() {
         let target = H160::zero();
         let who: AccountId = Keyring::Bob.into();
 
-        Nonce::set(u64::MAX);
+        <Nonce<Test>>::set(u64::MAX);
         assert_noop!(
             IncentivizedOutboundChannel::submit(&who, target, &vec![0, 1, 2]),
             Error::<Test>::Overflow,

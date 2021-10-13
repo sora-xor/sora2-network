@@ -100,7 +100,7 @@ pub use common::{
     FilterMode, Fixed, FromGenericPair, LiquiditySource, LiquiditySourceFilter, LiquiditySourceId,
     LiquiditySourceType, OnPswapBurned, OnValBurned,
 };
-pub use ethereum_light_client::{EthereumConfig, EthereumDifficultyConfig, EthereumHeader};
+pub use ethereum_light_client::{EthereumDifficultyConfig, EthereumHeader};
 pub use frame_support::traits::schedule::Named as ScheduleNamed;
 pub use frame_support::traits::{
     KeyOwnerProofSystem, LockIdentifier, OnUnbalanced, Randomness, U128CurrencyToVote,
@@ -1474,8 +1474,8 @@ where
 }
 
 parameter_types! {
-    pub const MaxMessagePayloadSize: usize = 256;
-    pub const MaxMessagesPerCommit: usize = 20;
+    pub const MaxMessagePayloadSize: u64 = 256;
+    pub const MaxMessagesPerCommit: u64 = 20;
     pub const Decimals: u32 = 12;
 }
 
@@ -1492,13 +1492,14 @@ impl basic_channel_outbound::Config for Runtime {
     type Hashing = Keccak256;
     type MaxMessagePayloadSize = MaxMessagePayloadSize;
     type MaxMessagesPerCommit = MaxMessagesPerCommit;
+    type SetPrincipalOrigin = EnsureRoot<AccountId>;
     type WeightInfo = ();
 }
 
 pub struct FeeConverter;
 impl Convert<U256, Balance> for FeeConverter {
     fn convert(amount: U256) -> Balance {
-        snowbridge_core::primitives::unwrap(amount, Decimals::get())
+        common::eth::unwrap_balance(amount, Decimals::get())
             .expect("Should not panic unless runtime is misconfigured")
     }
 }
@@ -1530,7 +1531,7 @@ impl incentivized_channel_outbound::Config for Runtime {
 
 parameter_types! {
     pub const DescendantsUntilFinalized: u8 = 3;
-    pub const DifficultyConfig: EthereumDifficultyConfig = EthereumDifficultyConfig::testnet();
+    pub const DifficultyConfig: EthereumDifficultyConfig = EthereumDifficultyConfig::mainnet();
     pub const VerifyPoW: bool = true;
 }
 
@@ -1539,14 +1540,14 @@ impl ethereum_light_client::Config for Runtime {
     type DescendantsUntilFinalized = DescendantsUntilFinalized;
     type DifficultyConfig = DifficultyConfig;
     type VerifyPoW = VerifyPoW;
-    type WeightInfo = ethereum_light_client::weights::WeightInfo<Runtime>;
+    type WeightInfo = ();
 }
 
 impl eth_app::Config for Runtime {
     type Event = Event;
     type OutboundRouter = OutboundRouter<Runtime>;
     type CallOrigin = EnsureEthereumAccount;
-    type WeightInfo = eth_app::weights::WeightInfo<Runtime>;
+    type WeightInfo = ();
     type FeeCurrency = Ether;
 }
 

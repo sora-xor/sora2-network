@@ -3,8 +3,6 @@
 use codec::{Decode, Encode};
 use enum_iterator::IntoEnumIterator;
 use frame_support::RuntimeDebug;
-#[cfg(feature = "std")]
-use serde::{Deserialize, Serialize};
 use sp_core::H256;
 use sp_runtime::DigestItem;
 use sp_std::vec::Vec;
@@ -24,8 +22,6 @@ impl MessageId {
 pub type MessageNonce = u64;
 
 #[derive(Encode, Decode, Copy, Clone, PartialEq, Eq, IntoEnumIterator, RuntimeDebug)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-#[repr(u8)]
 pub enum ChannelId {
     Basic,
     Incentivized,

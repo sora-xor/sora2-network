@@ -174,7 +174,7 @@ pub mod pallet {
         	* - Adjust the negative imbalance by offsetting the amount paid to the relayer
         	* - Resolve the negative imbalance by depositing it into the treasury account
         	*/
-        fn handle_fee(amount: BalanceOf<T>, relayer: &T::AccountId) {
+        pub fn handle_fee(amount: BalanceOf<T>, relayer: &T::AccountId) {
             if amount.is_zero() {
                 return;
             }
@@ -188,9 +188,10 @@ pub mod pallet {
                 reward_amount,
             ) {
                 warn!("Unable to transfer reward to relayer: {:?}", err);
+                return;
             }
 
-            if let Some(treasure_amount) = amount.checked_sub(amount) {
+            if let Some(treasure_amount) = amount.checked_sub(reward_amount) {
                 if let Err(err) = T::Currency::transfer(
                     T::FeeAssetId::get(),
                     &SourceAccount::<T>::get(),

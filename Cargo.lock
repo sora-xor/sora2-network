@@ -1813,14 +1813,19 @@ name = "eth-app"
 version = "0.1.1"
 dependencies = [
  "assets",
+ "common",
  "dispatch",
  "ethabi-decode",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
  "hex-literal",
+ "orml-currencies",
+ "orml-tokens",
  "orml-traits",
+ "pallet-balances",
  "parity-scale-codec",
+ "permissions",
  "rlp 0.5.1",
  "rustc-hex",
  "serde",
@@ -1844,7 +1849,7 @@ dependencies = [
  "ethabi",
  "ethabi-contract",
  "ethabi-derive",
- "ethereum-types 0.11.0 (git+https://github.com/vmarkushin/parity-common.git?branch=no-std)",
+ "ethereum-types 0.11.0",
  "frame-benchmarking",
  "frame-executive",
  "frame-support",
@@ -1913,7 +1918,7 @@ version = "13.0.0"
 source = "git+https://github.com/vmarkushin/ethabi.git?branch=no-std#c6c060c4b02e0ac552db5610da2760bcfa478108"
 dependencies = [
  "anyhow",
- "ethereum-types 0.11.0 (git+https://github.com/vmarkushin/parity-common.git?branch=no-std)",
+ "ethereum-types 0.11.0",
  "hex",
  "serde",
  "serde_json",
@@ -2007,18 +2012,6 @@ dependencies = [
  "sp-keyring 4.0.0-dev (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.9)",
  "sp-runtime",
  "sp-std",
-]
-
-[[package]]
-name = "ethereum-types"
-version = "0.11.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f64b5df66a228d85e4b17e5d6c6aa43b0310898ffe8a85988c4c032357aaabfd"
-dependencies = [
- "ethbloom 0.11.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "fixed-hash 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "primitive-types 0.9.1",
- "uint 0.9.1",
 ]
 
 [[package]]
@@ -3286,6 +3279,8 @@ dependencies = [
  "frame-support",
  "frame-system",
  "hex-literal",
+ "orml-currencies",
+ "orml-tokens",
  "orml-traits",
  "pallet-balances",
  "parity-scale-codec",
@@ -6104,16 +6099,6 @@ dependencies = [
 
 [[package]]
 name = "primitive-types"
-version = "0.9.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "06345ee39fbccfb06ab45f3a1a5798d9dafa04cb8921a76d227040003a234b0e"
-dependencies = [
- "fixed-hash 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "uint 0.9.1",
-]
-
-[[package]]
-name = "primitive-types"
 version = "0.10.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "05e4722c697a58a99d5d06a08c30821d7c082a4632198de1eaa5a6c22ef42373"
@@ -8275,7 +8260,7 @@ dependencies = [
 name = "snowbridge-testutils"
 version = "0.1.0"
 dependencies = [
- "ethereum-types 0.11.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "ethereum-types 0.12.0",
  "rustc-hex",
  "serde",
  "serde_json",

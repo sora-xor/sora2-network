@@ -30,7 +30,7 @@ use snowbridge_core::{ChannelId, OutboundRouter};
 mod payload;
 use payload::OutboundPayload;
 
-mod benchmarking;
+// mod benchmarking;
 
 #[cfg(test)]
 mod mock;
@@ -118,36 +118,23 @@ pub mod pallet {
         #[transactional]
         pub fn burn(
             origin: OriginFor<T>,
-            channel_id: u8,
+            channel_id: ChannelId,
             recipient: H160,
             amount: BalanceOf<T>,
         ) -> DispatchResult {
             let who = ensure_signed(origin)?;
-            debug!(
-                "Burn {:?}, {:?}, {:?}, {:?}",
-                who, channel_id, recipient, amount
-            );
 
             T::Currency::transfer(
                 T::FeeCurrency::get(),
                 &who,
                 &DestAccount::<T>::get(),
                 amount,
-            )
-            .map_err(|err| {
-                warn!("Transfer error: {:?}", err);
-                err
-            })?;
+            )?;
 
             let message = OutboundPayload {
                 sender: who.clone(),
                 recipient: recipient.clone(),
                 amount: amount.into(),
-            };
-
-            let channel_id = match channel_id {
-                1 => ChannelId::Incentivized,
-                _ => ChannelId::Basic,
             };
 
             T::OutboundRouter::submit(channel_id, &who, Address::<T>::get(), &message.encode())?;
@@ -164,27 +151,13 @@ pub mod pallet {
             recipient: <T::Lookup as StaticLookup>::Source,
             amount: BalanceOf<T>,
         ) -> DispatchResult {
-            debug!("Mint {:?}, {:?}, {:?}", sender, recipient, amount);
             let who = T::CallOrigin::ensure_origin(origin)?;
             if who != Address::<T>::get() {
-                warn!("Bad origin");
                 return Err(DispatchError::BadOrigin.into());
             }
 
-            debug!("Lookup");
             let recipient = T::Lookup::lookup(recipient)?;
-            debug!("transfer");
-            T::Currency::transfer(
-                T::FeeCurrency::get(),
-                &DestAccount::<T>::get(),
-                &recipient,
-                amount,
-            )
-            .map_err(|err| {
-                warn!("Transfer error: {:?}", err);
-                err
-            })?;
-            debug!("Minted");
+            T::Currency::deposit(T::FeeCurrency::get(), &recipient, amount)?;
             Self::deposit_event(Event::Minted(sender, recipient.clone(), amount.into()));
 
             Ok(())

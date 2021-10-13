@@ -1,15 +1,15 @@
 use super::*;
 
-use frame_support::dispatch::DispatchError;
-use frame_support::{assert_noop, assert_ok, parameter_types};
+use frame_support::traits::{Everything, GenesisBuild};
+use frame_support::{assert_noop, assert_ok, dispatch::DispatchError, parameter_types};
 use sp_core::{H160, H256};
 use sp_keyring::AccountKeyring as Keyring;
-use sp_runtime::testing::Header;
-use sp_runtime::traits::{BlakeTwo256, IdentifyAccount, IdentityLookup, Keccak256, Verify};
-use sp_runtime::MultiSignature;
+use sp_runtime::{
+    testing::Header,
+    traits::{BlakeTwo256, IdentifyAccount, IdentityLookup, Keccak256, Verify},
+    MultiSignature,
+};
 use sp_std::convert::From;
-
-use snowbridge_core::{AssetId, SingleAsset};
 
 use crate::outbound as basic_outbound_channel;
 
@@ -23,7 +23,7 @@ frame_support::construct_runtime!(
         UncheckedExtrinsic = UncheckedExtrinsic,
     {
         System: frame_system::{Pallet, Call, Storage, Event<T>},
-        BasicOutboundChannel: basic_outbound_channel::{Pallet, Call, Storage, Event},
+        BasicOutboundChannel: basic_outbound_channel::{Pallet, Call, Config<T>, Storage, Event<T>},
     }
 );
 
@@ -35,7 +35,7 @@ parameter_types! {
 }
 
 impl frame_system::Config for Test {
-    type BaseCallFilter = ();
+    type BaseCallFilter = Everything;
     type BlockWeights = ();
     type BlockLength = ();
     type Origin = Origin;
@@ -61,9 +61,8 @@ impl frame_system::Config for Test {
 }
 
 parameter_types! {
-    pub const MaxMessagePayloadSize: usize = 128;
-    pub const MaxMessagesPerCommit: usize = 5;
-    pub const Ether: AssetId = AssetId::ETH;
+    pub const MaxMessagePayloadSize: u64 = 128;
+    pub const MaxMessagesPerCommit: u64 = 5;
 }
 
 impl basic_outbound_channel::Config for Test {
@@ -72,6 +71,7 @@ impl basic_outbound_channel::Config for Test {
     type Hashing = Keccak256;
     type MaxMessagePayloadSize = MaxMessagePayloadSize;
     type MaxMessagesPerCommit = MaxMessagesPerCommit;
+    type SetPrincipalOrigin = frame_system::EnsureRoot<Self::AccountId>;
     type WeightInfo = ();
 }
 
@@ -80,7 +80,11 @@ pub fn new_tester() -> sp_io::TestExternalities {
         .build_storage::<Test>()
         .unwrap();
 
-    let config: BasicOutboundChannelConfig<T> = BasicOutboundChannelConfig { interval: 1u64 };
+    let config: basic_outbound_channel::GenesisConfig<Test> =
+        basic_outbound_channel::GenesisConfig {
+            principal: Keyring::Bob.into(),
+            interval: 1u64,
+        };
     config.assimilate_storage(&mut storage).unwrap();
 
     let mut ext: sp_io::TestExternalities = storage.into();
@@ -96,21 +100,11 @@ fn test_submit() {
         let who: AccountId = Keyring::Bob.into();
 
         assert_ok!(BasicOutboundChannel::submit(&who, target, &vec![0, 1, 2]));
-        assert_eq!(Nonce::get(), 1);
+        assert_eq!(<Nonce<Test>>::get(), 1);
 
         assert_ok!(BasicOutboundChannel::submit(&who, target, &vec![0, 1, 2]));
-        assert_eq!(Nonce::get(), 2);
+        assert_eq!(<Nonce<Test>>::get(), 2);
     });
-}
-
-#[test]
-fn test_submit_fees_burned() {
-    new_tester().execute_with(|| {
-        let target = H160::zero();
-        let who: AccountId = Keyring::Bob.into();
-
-        assert_ok!(BasicOutboundChannel::submit(&who, target, &vec![0, 1, 2]));
-    })
 }
 
 #[test]
@@ -131,24 +125,13 @@ fn test_submit_exceeds_queue_limit() {
 }
 
 #[test]
-fn test_set_fee_not_authorized() {
-    new_tester().execute_with(|| {
-        let bob: AccountId = Keyring::Bob.into();
-        assert_noop!(
-            BasicOutboundChannel::set_fee(Origin::signed(bob), 1000.into()),
-            DispatchError::BadOrigin
-        );
-    });
-}
-
-#[test]
 fn test_submit_exceeds_payload_limit() {
     new_tester().execute_with(|| {
         let target = H160::zero();
         let who: AccountId = Keyring::Bob.into();
 
         let max_payload_bytes = MaxMessagePayloadSize::get();
-        let payload: Vec<u8> = (0..).take(max_payload_bytes + 1).collect();
+        let payload: Vec<u8> = (0..).take(max_payload_bytes as usize + 1).collect();
 
         assert_noop!(
             BasicOutboundChannel::submit(&who, target, payload.as_slice()),
@@ -163,10 +146,48 @@ fn test_submit_fails_on_nonce_overflow() {
         let target = H160::zero();
         let who: AccountId = Keyring::Bob.into();
 
-        Nonce::set(u64::MAX);
+        <Nonce<Test>>::set(u64::MAX);
         assert_noop!(
             BasicOutboundChannel::submit(&who, target, &vec![0, 1, 2]),
             Error::<Test>::Overflow,
         );
+    });
+}
+
+#[test]
+fn test_submit_fails_not_authorized() {
+    new_tester().execute_with(|| {
+        let target = H160::zero();
+        let who: AccountId = Keyring::Charlie.into();
+
+        assert_noop!(
+            BasicOutboundChannel::submit(&who, target, &vec![0, 1, 2]),
+            Error::<Test>::NotAuthorized,
+        );
+    });
+}
+
+#[test]
+fn test_set_principal_unauthorized() {
+    new_tester().execute_with(|| {
+        let dave: AccountId = Keyring::Dave.into();
+
+        assert_noop!(
+            BasicOutboundChannel::set_principal(Origin::signed(dave), Keyring::Alice.into()),
+            DispatchError::BadOrigin
+        );
+    });
+}
+
+#[test]
+fn test_set_principal() {
+    new_tester().execute_with(|| {
+        let alice: AccountId = Keyring::Alice.into();
+
+        assert_ok!(BasicOutboundChannel::set_principal(
+            Origin::root(),
+            alice.clone()
+        ));
+        assert_eq!(<Principal<Test>>::get(), alice);
     });
 }

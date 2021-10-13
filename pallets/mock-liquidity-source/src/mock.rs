@@ -34,6 +34,7 @@ use common::prelude::Balance;
 use common::{self, fixed_from_basis_points, Amount, AssetId32, Fixed, XOR};
 use currencies::BasicCurrencyAdapter;
 use frame_support::sp_runtime::AccountId32;
+use frame_support::traits::Everything;
 use frame_support::weights::Weight;
 use frame_support::{construct_runtime, parameter_types};
 use sp_core::H256;
@@ -92,7 +93,7 @@ construct_runtime! {
 }
 
 impl frame_system::Config for Runtime {
-    type BaseCallFilter = ();
+    type BaseCallFilter = Everything;
     type BlockWeights = ();
     type BlockLength = ();
     type Origin = Origin;

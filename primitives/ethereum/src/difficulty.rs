@@ -3,6 +3,8 @@ use ethereum_types::U256;
 use sp_runtime::RuntimeDebug;
 use sp_std::convert::TryFrom;
 
+use codec::{Decode, Encode};
+
 const DIFFICULTY_BOUND_DIVISOR: u32 = 11; // right-shifts equivalent to division by 2048
 const EXP_DIFFICULTY_PERIOD: u64 = 100000;
 const MINIMUM_DIFFICULTY: u32 = 131072;
@@ -21,7 +23,7 @@ pub enum BombDelay {
 
 /// Describes when hard forks occurred that affect difficulty calculations. These
 /// values are network-specific.
-#[derive(PartialEq, RuntimeDebug)]
+#[derive(Copy, Clone, Encode, Decode, PartialEq, RuntimeDebug)]
 pub struct DifficultyConfig {
     // Block number on which Byzantium (EIP-649) rules activated
     pub byzantium_fork_block: u64,
@@ -54,15 +56,6 @@ impl DifficultyConfig {
         }
     }
 
-    pub const fn testnet() -> Self {
-        DifficultyConfig {
-            byzantium_fork_block: 10,
-            constantinople_fork_block: 20,
-            muir_glacier_fork_block: 8000000,
-            london_fork_block: 9000000,
-        }
-    }
-
     pub fn bomb_delay(&self, block_number: u64) -> Option<BombDelay> {
         if block_number >= self.london_fork_block {
             return Some(BombDelay::London);
@@ -83,12 +76,10 @@ pub fn calc_difficulty(
     config: &DifficultyConfig,
     time: u64,
     parent: &Header,
-) -> Result<Option<U256>, &'static str> {
-    let bomb_delay = if let Some(delay) = config.bomb_delay(parent.number + 1) {
-        delay
-    } else {
-        return Ok(None);
-    };
+) -> Result<U256, &'static str> {
+    let bomb_delay = config
+        .bomb_delay(parent.number + 1)
+        .ok_or("Cannot calculate difficulty for block number prior to Byzantium")?;
 
     let block_time_div_9: i64 = time
         .checked_sub(parent.timestamp)
@@ -116,12 +107,10 @@ pub fn calc_difficulty(
 
     // If period_count < 2, exp is fractional and we can skip adding it
     if period_count >= 2 {
-        return Ok(Some(
-            difficulty_without_exp + U256::from(2).pow((period_count - 2).into()),
-        ));
+        return Ok(difficulty_without_exp + U256::from(2).pow((period_count - 2).into()));
     }
 
-    Ok(Some(difficulty_without_exp))
+    Ok(difficulty_without_exp)
 }
 
 #[cfg(test)]
@@ -131,10 +120,7 @@ mod tests {
     use ethereum_types::H256;
     use serde::{Deserialize, Deserializer};
     use sp_std::convert::TryInto;
-    use std::collections::BTreeMap;
-    use std::fmt::Display;
-    use std::fs::File;
-    use std::path::PathBuf;
+    use std::{collections::BTreeMap, fmt::Display, fs::File, path::PathBuf};
 
     pub fn deserialize_uint_from_string<'de, T, D>(deserializer: D) -> Result<T, D::Error>
     where
@@ -225,7 +211,7 @@ mod tests {
                 } else {
                     assert_eq!(
                         difficulty,
-                        Ok(Some(test_case.current_difficulty)),
+                        Ok(test_case.current_difficulty),
                         "Test case {} failed: {:?}",
                         test_case_name,
                         test_case,
