@@ -137,7 +137,7 @@ construct_runtime! {
 impl Config for Runtime {}
 
 impl frame_system::Config for Runtime {
-    type BaseCallFilter = ();
+    type BaseCallFilter = Everything;
     type BlockWeights = ();
     type BlockLength = ();
     type Origin = Origin;

@@ -33,7 +33,7 @@ use common::mock::ExistentialDeposits;
 use common::prelude::Balance;
 use common::{balance, fixed, hash, AssetName, AssetSymbol, DEXInfo, Fixed, DOT, PSWAP, VAL, XOR};
 use currencies::BasicCurrencyAdapter;
-use frame_support::traits::{GenesisBuild, OnFinalize, OnInitialize};
+use frame_support::traits::{Everything, GenesisBuild, OnFinalize, OnInitialize};
 use frame_support::weights::Weight;
 use frame_support::{construct_runtime, parameter_types};
 use frame_system::pallet_prelude::BlockNumberFor;
@@ -142,7 +142,7 @@ construct_runtime! {
 }
 
 impl frame_system::Config for Runtime {
-    type BaseCallFilter = ();
+    type BaseCallFilter = Everything;
     type BlockWeights = ();
     type BlockLength = ();
     type Origin = Origin;

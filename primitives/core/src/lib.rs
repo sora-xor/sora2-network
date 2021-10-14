@@ -14,7 +14,6 @@ use sp_std::prelude::*;
 
 pub mod assets;
 pub mod nft;
-pub mod primitives;
 pub mod types;
 
 pub use types::{ChannelId, Message, MessageId, MessageNonce, Proof};

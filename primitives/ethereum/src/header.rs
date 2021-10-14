@@ -34,53 +34,38 @@ const EMPTY_OMMERS_HASH: [u8; 32] =
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct Header {
     /// Parent block hash.
-    #[cfg_attr(feature = "std", serde(default))]
     pub parent_hash: H256,
     /// Block timestamp.
-    #[cfg_attr(feature = "std", serde(default))]
     pub timestamp: u64,
     /// Block number.
-    #[cfg_attr(feature = "std", serde(default))]
     pub number: u64,
     /// Block author.
-    #[cfg_attr(feature = "std", serde(default))]
     pub author: Address,
 
     /// Transactions root.
-    #[cfg_attr(feature = "std", serde(default))]
     pub transactions_root: H256,
     /// Block ommers hash.
-    #[cfg_attr(feature = "std", serde(default))]
     pub ommers_hash: H256,
     /// Block extra data.
-    #[cfg_attr(feature = "std", serde(default))]
     pub extra_data: Bytes,
 
     /// State root.
-    #[cfg_attr(feature = "std", serde(default))]
     pub state_root: H256,
     /// Block receipts root.
-    #[cfg_attr(feature = "std", serde(default))]
     pub receipts_root: H256,
     /// Block bloom.
-    #[cfg_attr(feature = "std", serde(default))]
     pub logs_bloom: Bloom,
     /// Gas used for contracts execution.
-    #[cfg_attr(feature = "std", serde(default))]
     pub gas_used: U256,
     /// Block gas limit.
-    #[cfg_attr(feature = "std", serde(default))]
     pub gas_limit: U256,
 
     /// Block difficulty.
-    #[cfg_attr(feature = "std", serde(default))]
     pub difficulty: U256,
     /// Vector of post-RLP-encoded fields.
-    #[cfg_attr(feature = "std", serde(default))]
     pub seal: Vec<Bytes>,
 
     // Base fee per gas (EIP-1559), only in headers from the London hardfork onwards.
-    #[cfg_attr(feature = "std", serde(default))]
     pub base_fee: Option<U256>,
 }
 

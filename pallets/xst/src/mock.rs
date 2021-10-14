@@ -38,7 +38,7 @@ use common::{
     Fixed, LiquiditySourceFilter, LiquiditySourceType, TechPurpose, PSWAP, USDT, VAL, XOR, XSTUSD,
 };
 use currencies::BasicCurrencyAdapter;
-use frame_support::traits::GenesisBuild;
+use frame_support::traits::{Everything, GenesisBuild};
 use frame_support::weights::Weight;
 use frame_support::{construct_runtime, parameter_types};
 use hex_literal::hex;
@@ -124,7 +124,7 @@ construct_runtime! {
 }
 
 impl frame_system::Config for Runtime {
-    type BaseCallFilter = ();
+    type BaseCallFilter = Everything;
     type BlockWeights = ();
     type BlockLength = ();
     type Origin = Origin;

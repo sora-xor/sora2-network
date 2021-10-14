@@ -6,9 +6,11 @@ use frame_system as system;
 use snowbridge_core::{Message, Proof};
 use snowbridge_testutils::BlockWithProofs;
 use sp_core::H256;
-use sp_runtime::testing::Header;
-use sp_runtime::traits::{BlakeTwo256, IdentifyAccount, IdentityLookup, Verify};
-use sp_runtime::MultiSignature;
+use sp_runtime::{
+    testing::Header,
+    traits::{BlakeTwo256, IdentifyAccount, IdentityLookup, Verify},
+    MultiSignature,
+};
 use std::fs::File;
 use std::path::PathBuf;
 
@@ -24,8 +26,8 @@ parameter_types! {
 }
 
 pub mod mock_verifier {
-
     use super::*;
+    use frame_support::traits::Everything;
 
     type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
     type Block = frame_system::mocking::MockBlock<Test>;
@@ -36,13 +38,13 @@ pub mod mock_verifier {
             NodeBlock = Block,
             UncheckedExtrinsic = UncheckedExtrinsic,
         {
-            System: frame_system::{Module, Call, Storage, Event<T>},
-            Verifier: verifier::{Module, Call, Storage, Event<T>},
+            System: frame_system::{Pallet, Call, Storage, Event<T>},
+            Verifier: verifier::{Pallet, Call, Config, Storage, Event<T>},
         }
     );
 
-    impl system::Config for Test {
-        type BaseCallFilter = ();
+    impl frame_system::Config for Test {
+        type BaseCallFilter = Everything;
         type BlockWeights = ();
         type BlockLength = ();
         type Origin = Origin;
@@ -64,6 +66,7 @@ pub mod mock_verifier {
         type OnKilledAccount = ();
         type SystemWeightInfo = ();
         type SS58Prefix = ();
+        type OnSetCode = ();
     }
 
     parameter_types! {
@@ -82,8 +85,8 @@ pub mod mock_verifier {
 }
 
 pub mod mock_verifier_with_pow {
-
     use super::*;
+    use frame_support::traits::Everything;
 
     type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
     type Block = frame_system::mocking::MockBlock<Test>;
@@ -94,13 +97,13 @@ pub mod mock_verifier_with_pow {
             NodeBlock = Block,
             UncheckedExtrinsic = UncheckedExtrinsic,
         {
-            System: frame_system::{Module, Call, Storage, Event<T>},
-            Verifier: verifier::{Module, Call, Storage, Event<T>},
+            System: frame_system::{Pallet, Call, Storage, Event<T>},
+            Verifier: verifier::{Pallet, Call, Config, Storage, Event<T>},
         }
     );
 
     impl system::Config for Test {
-        type BaseCallFilter = ();
+        type BaseCallFilter = Everything;
         type BlockWeights = ();
         type BlockLength = ();
         type Origin = Origin;
@@ -122,6 +125,7 @@ pub mod mock_verifier_with_pow {
         type OnKilledAccount = ();
         type SystemWeightInfo = ();
         type SS58Prefix = ();
+        type OnSetCode = ();
     }
 
     parameter_types! {

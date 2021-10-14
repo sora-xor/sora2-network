@@ -49,13 +49,13 @@ use framenode_runtime::opaque::SessionKeys;
 use framenode_runtime::{
     assets, eth_bridge, frame_system, AccountId, AssetId, AssetName, AssetSymbol, AssetsConfig,
     BabeConfig, BalancesConfig, BeefyId, BridgeMultisigConfig, CouncilConfig, DEXAPIConfig,
-    DEXManagerConfig, DemocracyConfig, EthAppConfig, EthBridgeConfig, EthereumConfig,
-    EthereumDifficultyConfig, EthereumHeader, EthereumLightClientConfig, GetBaseAssetId,
-    GetParliamentAccountId, GetPswapAssetId, GetValAssetId, GetXorAssetId, GrandpaConfig,
-    ImOnlineId, IrohaMigrationConfig, LiquiditySourceType, MulticollateralBondingCurvePoolConfig,
-    PermissionsConfig, PswapDistributionConfig, RewardsConfig, Runtime, SS58Prefix, SessionConfig,
-    StakerStatus, StakingConfig, SystemConfig, TechAccountId, TechnicalConfig, TokensConfig,
-    TradingPairConfig, XSTPoolConfig, WASM_BINARY,
+    DEXManagerConfig, DemocracyConfig, EthAppConfig, EthBridgeConfig, EthereumDifficultyConfig,
+    EthereumHeader, EthereumLightClientConfig, GetBaseAssetId, GetParliamentAccountId,
+    GetPswapAssetId, GetValAssetId, GetXorAssetId, GrandpaConfig, ImOnlineId, IrohaMigrationConfig,
+    LiquiditySourceType, MulticollateralBondingCurvePoolConfig, PermissionsConfig,
+    PswapDistributionConfig, RewardsConfig, Runtime, SS58Prefix, SessionConfig, StakerStatus,
+    StakingConfig, SystemConfig, TechAccountId, TechnicalConfig, TokensConfig, TradingPairConfig,
+    XSTPoolConfig, WASM_BINARY,
 };
 use hex_literal::hex;
 use permissions::Scope;

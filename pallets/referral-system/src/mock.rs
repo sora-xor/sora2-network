@@ -29,6 +29,7 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use common::Balance;
+use frame_support::traits::Everything;
 use frame_support::{construct_runtime, parameter_types};
 use sp_core::H256;
 use sp_runtime::testing::Header;
@@ -71,7 +72,7 @@ construct_runtime! {
 }
 
 impl frame_system::Config for Runtime {
-    type BaseCallFilter = ();
+    type BaseCallFilter = Everything;
     type BlockWeights = ();
     type BlockLength = ();
     type Origin = Origin;

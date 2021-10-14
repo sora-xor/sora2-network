@@ -1,22 +1,27 @@
-use codec::{Decode, Encode};
-use ethabi::{self, Token};
-use frame_support::dispatch::DispatchResult;
-use frame_support::ensure;
-use frame_support::traits::Get;
-use frame_support::weights::Weight;
-use sp_core::{RuntimeDebug, H160, H256};
-use sp_io::offchain_index;
-use sp_runtime::traits::{Hash, Zero};
-use sp_std::prelude::*;
-
-use snowbridge_core::types::AuxiliaryDigestItem;
-use snowbridge_core::{ChannelId, MessageNonce};
+pub mod weights;
 
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
 
 #[cfg(test)]
 mod test;
+
+use codec::{Decode, Encode};
+use ethabi::{self, Token};
+use frame_support::{
+    dispatch::DispatchResult,
+    ensure,
+    traits::{EnsureOrigin, Get},
+};
+use sp_core::{RuntimeDebug, H160, H256};
+use sp_io::offchain_index;
+use sp_runtime::traits::{Hash, StaticLookup, Zero};
+
+use sp_std::prelude::*;
+
+use snowbridge_core::{types::AuxiliaryDigestItem, ChannelId, MessageNonce};
+
+pub use weights::WeightInfo;
 
 /// Wire-format for committed messages
 #[derive(Encode, Decode, Clone, PartialEq, RuntimeDebug)]
@@ -29,33 +34,19 @@ pub struct Message {
     payload: Vec<u8>,
 }
 
-/// Weight functions needed for this pallet.
-pub trait WeightInfo {
-    fn on_initialize(num_messages: u32, avg_payload_bytes: u32) -> Weight;
-    fn on_initialize_non_interval() -> Weight;
-    fn on_initialize_no_messages() -> Weight;
-}
-
-impl WeightInfo for () {
-    fn on_initialize(_: u32, _: u32) -> Weight {
-        0
-    }
-    fn on_initialize_non_interval() -> Weight {
-        0
-    }
-    fn on_initialize_no_messages() -> Weight {
-        0
-    }
-}
-
 pub use pallet::*;
 
 #[frame_support::pallet]
 pub mod pallet {
+
     use super::*;
-    use frame_support::log::debug;
+
     use frame_support::pallet_prelude::*;
     use frame_system::pallet_prelude::*;
+
+    #[pallet::pallet]
+    #[pallet::generate_store(pub(super) trait Store)]
+    pub struct Pallet<T>(_);
 
     #[pallet::config]
     pub trait Config: frame_system::Config {
@@ -66,52 +57,23 @@ pub mod pallet {
 
         type Hashing: Hash<Output = H256>;
 
-        // Max bytes in a message payload
-        type MaxMessagePayloadSize: Get<usize>;
+        /// Max bytes in a message payload
+        #[pallet::constant]
+        type MaxMessagePayloadSize: Get<u64>;
 
-        /// Max number of messages that can be queued and committed in one go for a given channel.
-        type MaxMessagesPerCommit: Get<usize>;
+        /// Max number of messages per commitment
+        #[pallet::constant]
+        type MaxMessagesPerCommit: Get<u64>;
+
+        type SetPrincipalOrigin: EnsureOrigin<Self::Origin>;
 
         /// Weight information for extrinsics in this pallet
         type WeightInfo: WeightInfo;
     }
 
-    /// Interval between committing messages.
-    #[pallet::storage]
-    #[pallet::getter(fn interval)]
-    type Interval<T: Config> = StorageValue<_, T::BlockNumber, ValueQuery>;
-
-    /// Messages waiting to be committed.
-    #[pallet::storage]
-    type MessageQueue<T: Config> = StorageValue<_, Vec<Message>, ValueQuery>;
-
-    #[pallet::storage]
-    type Nonce<T: Config> = StorageValue<_, u64, ValueQuery>;
-
-    #[pallet::pallet]
-    #[pallet::generate_store(trait Store)]
-    pub struct Pallet<T>(PhantomData<T>);
-
-    #[pallet::hooks]
-    impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
-        // Generate a message commitment every [`Interval`] blocks.
-        //
-        // The commitment hash is included in an [`AuxiliaryDigestItem`] in the block header,
-        // with the corresponding commitment is persisted offchain.
-        fn on_initialize(now: T::BlockNumber) -> Weight {
-            let interval = Self::interval();
-            if !interval.is_zero() && (now % interval).is_zero() {
-                Self::commit()
-            } else {
-                T::WeightInfo::on_initialize_non_interval()
-            }
-        }
-    }
-
     #[pallet::event]
-    #[pallet::metadata(AccountIdOf<T> = "AccountId")]
     #[pallet::generate_deposit(pub(super) fn deposit_event)]
-    pub enum Event<T: Config> {
+    pub enum Event<T> {
         MessageAccepted(MessageNonce),
     }
 
@@ -123,44 +85,113 @@ pub mod pallet {
         QueueSizeLimitReached,
         /// Cannot increment nonce
         Overflow,
+        /// Not authorized to send message
+        NotAuthorized,
+    }
+
+    /// Interval between commitments
+    #[pallet::storage]
+    #[pallet::getter(fn interval)]
+    pub(super) type Interval<T: Config> = StorageValue<_, T::BlockNumber, ValueQuery>;
+
+    /// Messages waiting to be committed.
+    #[pallet::storage]
+    pub(super) type MessageQueue<T: Config> = StorageValue<_, Vec<Message>, ValueQuery>;
+
+    /// Fee for accepting a message
+    #[pallet::storage]
+    #[pallet::getter(fn principal)]
+    pub(super) type Principal<T: Config> = StorageValue<_, T::AccountId, ValueQuery>;
+
+    #[pallet::storage]
+    pub type Nonce<T: Config> = StorageValue<_, u64, ValueQuery>;
+
+    #[pallet::genesis_config]
+    pub struct GenesisConfig<T: Config> {
+        pub interval: T::BlockNumber,
+        pub principal: T::AccountId,
+    }
+
+    #[cfg(feature = "std")]
+    impl<T: Config> Default for GenesisConfig<T> {
+        fn default() -> Self {
+            Self {
+                interval: Default::default(),
+                principal: Default::default(),
+            }
+        }
+    }
+
+    #[pallet::genesis_build]
+    impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
+        fn build(&self) {
+            <Interval<T>>::put(self.interval);
+            <Principal<T>>::put(self.principal.clone());
+        }
+    }
+
+    #[pallet::hooks]
+    impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
+        // Generate a message commitment every [`Interval`] blocks.
+        //
+        // The commitment hash is included in an [`AuxiliaryDigestItem`] in the block header,
+        // with the corresponding commitment is persisted offchain.
+        fn on_initialize(now: T::BlockNumber) -> Weight {
+            if (now % Self::interval()).is_zero() {
+                Self::commit()
+            } else {
+                T::WeightInfo::on_initialize_non_interval()
+            }
+        }
     }
 
     #[pallet::call]
-    impl<T: Config> Pallet<T> {}
+    impl<T: Config> Pallet<T> {
+        #[pallet::weight(T::WeightInfo::set_principal())]
+        pub fn set_principal(
+            origin: OriginFor<T>,
+            principal: <T::Lookup as StaticLookup>::Source,
+        ) -> DispatchResult {
+            T::SetPrincipalOrigin::ensure_origin(origin)?;
+            let principal = T::Lookup::lookup(principal)?;
+            <Principal<T>>::put(principal);
+            Ok(())
+        }
+    }
 
     impl<T: Config> Pallet<T> {
         /// Submit message on the outbound channel
-        pub fn submit(_who: &T::AccountId, target: H160, payload: &[u8]) -> DispatchResult {
-            debug!("Send message from {:?} to {:?}", _who, target);
+        pub fn submit(who: &T::AccountId, target: H160, payload: &[u8]) -> DispatchResult {
+            ensure!(*who == Self::principal(), Error::<T>::NotAuthorized,);
             ensure!(
-                MessageQueue::<T>::decode_len().unwrap_or(0) < T::MaxMessagesPerCommit::get(),
+                <MessageQueue<T>>::decode_len().unwrap_or(0)
+                    < T::MaxMessagesPerCommit::get() as usize,
                 Error::<T>::QueueSizeLimitReached,
             );
             ensure!(
-                payload.len() <= T::MaxMessagePayloadSize::get(),
+                payload.len() <= T::MaxMessagePayloadSize::get() as usize,
                 Error::<T>::PayloadTooLarge,
             );
 
-            Nonce::<T>::try_mutate(|nonce| -> DispatchResult {
+            <Nonce<T>>::try_mutate(|nonce| -> DispatchResult {
                 if let Some(v) = nonce.checked_add(1) {
                     *nonce = v;
                 } else {
                     return Err(Error::<T>::Overflow.into());
                 }
 
-                MessageQueue::<T>::append(Message {
+                <MessageQueue<T>>::append(Message {
                     target,
                     nonce: *nonce,
                     payload: payload.to_vec(),
                 });
-                <Pallet<T>>::deposit_event(Event::MessageAccepted(*nonce));
+                Self::deposit_event(Event::MessageAccepted(*nonce));
                 Ok(())
             })
         }
 
         fn commit() -> Weight {
-            debug!("Commit messages");
-            let messages: Vec<Message> = MessageQueue::<T>::take();
+            let messages: Vec<Message> = <MessageQueue<T>>::take();
             if messages.is_empty() {
                 return T::WeightInfo::on_initialize_no_messages();
             }
@@ -202,27 +233,6 @@ pub mod pallet {
 
         fn make_offchain_key(hash: H256) -> Vec<u8> {
             (T::INDEXING_PREFIX, ChannelId::Basic, hash).encode()
-        }
-    }
-
-    #[pallet::genesis_config]
-    pub struct GenesisConfig<T: Config> {
-        pub interval: T::BlockNumber,
-    }
-
-    #[cfg(feature = "std")]
-    impl<T: Config> Default for GenesisConfig<T> {
-        fn default() -> Self {
-            Self {
-                interval: Default::default(),
-            }
-        }
-    }
-
-    #[pallet::genesis_build]
-    impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
-        fn build(&self) {
-            Interval::<T>::set(self.interval);
         }
     }
 }

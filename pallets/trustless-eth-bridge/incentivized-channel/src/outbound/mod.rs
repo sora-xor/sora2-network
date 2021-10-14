@@ -78,10 +78,10 @@ pub mod pallet {
         type Hashing: Hash<Output = H256>;
 
         // Max bytes in a message payload
-        type MaxMessagePayloadSize: Get<usize>;
+        type MaxMessagePayloadSize: Get<u64>;
 
         /// Max number of messages that can be queued and committed in one go for a given channel.
-        type MaxMessagesPerCommit: Get<usize>;
+        type MaxMessagesPerCommit: Get<u64>;
 
         type FeeCurrency: Get<Self::AssetId>;
 
@@ -102,7 +102,7 @@ pub mod pallet {
     type MessageQueue<T: Config> = StorageValue<_, Vec<Message>, ValueQuery>;
 
     #[pallet::storage]
-    type Nonce<T: Config> = StorageValue<_, u64, ValueQuery>;
+    pub type Nonce<T: Config> = StorageValue<_, u64, ValueQuery>;
 
     #[pallet::storage]
     #[pallet::getter(fn fee)]
@@ -165,11 +165,12 @@ pub mod pallet {
         pub fn submit(who: &T::AccountId, target: H160, payload: &[u8]) -> DispatchResult {
             debug!("Send message from {:?} to {:?}", who, target);
             ensure!(
-                MessageQueue::<T>::decode_len().unwrap_or(0) < T::MaxMessagesPerCommit::get(),
+                MessageQueue::<T>::decode_len().unwrap_or(0)
+                    < T::MaxMessagesPerCommit::get() as usize,
                 Error::<T>::QueueSizeLimitReached,
             );
             ensure!(
-                payload.len() <= T::MaxMessagePayloadSize::get(),
+                payload.len() <= T::MaxMessagePayloadSize::get() as usize,
                 Error::<T>::PayloadTooLarge,
             );
 

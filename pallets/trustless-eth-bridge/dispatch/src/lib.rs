@@ -1,21 +1,34 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use frame_support::dispatch::{DispatchResult, Dispatchable, Parameter};
-use frame_support::log::{debug, warn};
-use frame_support::traits::{Contains, EnsureOrigin};
-use frame_support::weights::GetDispatchInfo;
-use snowbridge_core::MessageDispatch;
-use sp_core::H160;
+use frame_support::{
+    dispatch::{DispatchResult, Dispatchable, Parameter},
+    traits::{Contains, EnsureOrigin},
+    weights::GetDispatchInfo,
+};
 
 use sp_core::RuntimeDebug;
 
+use sp_core::H160;
+use sp_std::prelude::*;
+
+use snowbridge_core::MessageDispatch;
+
 use codec::{Decode, Encode};
+
+#[derive(Copy, Clone, PartialEq, Eq, Encode, Decode, RuntimeDebug)]
+pub struct RawOrigin(pub H160);
+
+impl From<H160> for RawOrigin {
+    fn from(hash: H160) -> RawOrigin {
+        RawOrigin(hash)
+    }
+}
 
 pub struct EnsureEthereumAccount;
 
 impl<OuterOrigin> EnsureOrigin<OuterOrigin> for EnsureEthereumAccount
 where
-    OuterOrigin: Into<Result<Origin, OuterOrigin>> + From<Origin>,
+    OuterOrigin: Into<Result<RawOrigin, OuterOrigin>> + From<RawOrigin>,
 {
     type Success = H160;
 
@@ -25,7 +38,7 @@ where
 
     #[cfg(feature = "runtime-benchmarks")]
     fn successful_origin() -> OuterOrigin {
-        OuterOrigin::from(Origin(H160::repeat_byte(2)))
+        OuterOrigin::from(RawOrigin(H160::repeat_byte(2)))
     }
 }
 
@@ -33,18 +46,22 @@ pub use pallet::*;
 
 #[frame_support::pallet]
 pub mod pallet {
+
     use super::*;
     use frame_support::pallet_prelude::*;
     use frame_system::pallet_prelude::*;
 
-    pub type MessageIdOf<T> = <T as Config>::MessageId;
+    #[pallet::pallet]
+    #[pallet::generate_store(pub(super) trait Store)]
+    pub struct Pallet<T>(_);
+
     #[pallet::config]
     pub trait Config: frame_system::Config {
         /// The overarching event type.
         type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 
         /// The overarching origin type.
-        type Origin: From<Origin>;
+        type Origin: From<RawOrigin>;
 
         /// Id of the message. Whenever message is passed to the dispatch module, it emits
         /// event with this id + dispatch result.
@@ -63,48 +80,46 @@ pub mod pallet {
         type CallFilter: Contains<<Self as Config>::Call>;
     }
 
-    #[pallet::pallet]
-    #[pallet::generate_store(pub(super) trait Store)]
-    pub struct Pallet<T>(PhantomData<T>);
-
     #[pallet::hooks]
     impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {}
 
+    #[pallet::call]
+    impl<T: Config> Pallet<T> {}
+
     #[pallet::event]
-    #[pallet::metadata(MessageIdOf<T> = "MessageId")]
     #[pallet::generate_deposit(pub(super) fn deposit_event)]
-    /// Events for the Bridge module.
+    #[pallet::metadata(T::MessageId = "MessageId")]
     pub enum Event<T: Config> {
         /// Message has been dispatched with given result.
-        MessageDispatched(MessageIdOf<T>, DispatchResult),
+        MessageDispatched(T::MessageId, DispatchResult),
         /// Message has been rejected
-        MessageRejected(MessageIdOf<T>),
+        MessageRejected(T::MessageId),
         /// We have failed to decode a Call from the message.
-        MessageDecodeFailed(MessageIdOf<T>),
+        MessageDecodeFailed(T::MessageId),
     }
+
+    #[pallet::origin]
+    pub type Origin = RawOrigin;
+
+    pub type MessageIdOf<T> = <T as Config>::MessageId;
 
     impl<T: Config> MessageDispatch<T, MessageIdOf<T>> for Pallet<T> {
         fn dispatch(source: H160, id: MessageIdOf<T>, payload: &[u8]) {
-            debug!("Decode call: {:?}", payload);
             let call = match <T as Config>::Call::decode(&mut &payload[..]) {
                 Ok(call) => call,
-                Err(err) => {
-                    warn!("Failed to decode call: {:?}", err);
+                Err(_) => {
                     Self::deposit_event(Event::MessageDecodeFailed(id));
                     return;
                 }
             };
-            debug!("Decoded call: {:?}", call);
 
             if !T::CallFilter::contains(&call) {
-                debug!("Reject message");
                 Self::deposit_event(Event::MessageRejected(id));
                 return;
             }
 
-            let origin = Origin(source).into();
+            let origin = RawOrigin(source).into();
             let result = call.dispatch(origin);
-            debug!("Message dispatched");
 
             Self::deposit_event(Event::MessageDispatched(
                 id,
@@ -113,19 +128,11 @@ pub mod pallet {
         }
 
         #[cfg(feature = "runtime-benchmarks")]
-        fn successful_dispatch_event(id: MessageIdOf<T>) -> Option<<T as system::Config>::Event> {
+        fn successful_dispatch_event(
+            id: MessageIdOf<T>,
+        ) -> Option<<T as frame_system::Config>::Event> {
             let event: <T as Config>::Event = RawEvent::MessageDispatched(id, Ok(())).into();
             Some(event.into())
-        }
-    }
-
-    #[pallet::origin]
-    #[derive(Copy, Clone, PartialEq, Eq, Encode, Decode, RuntimeDebug)]
-    pub struct Origin(pub H160);
-
-    impl From<H160> for Origin {
-        fn from(hash: H160) -> Origin {
-            Origin(hash)
         }
     }
 }
@@ -133,13 +140,14 @@ pub mod pallet {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use frame_support::dispatch::DispatchError;
-    use frame_support::parameter_types;
     use frame_support::traits::Everything;
+    use frame_support::{dispatch::DispatchError, parameter_types};
     use frame_system::{EventRecord, Phase};
-    use sp_core::{H160, H256};
-    use sp_runtime::testing::Header;
-    use sp_runtime::traits::{BlakeTwo256, IdentityLookup};
+    use sp_core::H256;
+    use sp_runtime::{
+        testing::Header,
+        traits::{BlakeTwo256, IdentityLookup},
+    };
 
     use crate as dispatch;
 
@@ -180,17 +188,17 @@ mod tests {
         type AccountData = ();
         type OnNewAccount = ();
         type OnKilledAccount = ();
+        type BaseCallFilter = Everything;
         type SystemWeightInfo = ();
         type BlockWeights = ();
         type BlockLength = ();
         type DbWeight = ();
         type SS58Prefix = ();
         type OnSetCode = ();
-        type BaseCallFilter = Everything;
     }
 
     pub struct CallFilter;
-    impl Contains<Call> for CallFilter {
+    impl frame_support::traits::Contains<Call> for CallFilter {
         fn contains(call: &Call) -> bool {
             match call {
                 Call::System(frame_system::pallet::Call::<Test>::remark(_)) => true,

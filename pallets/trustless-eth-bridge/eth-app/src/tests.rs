@@ -1,7 +1,7 @@
-use crate::mock::{new_tester, AccountId, Asset, EthApp, Event, Origin, System};
-use crate::RawEvent;
-use frame_support::dispatch::DispatchError;
-use frame_support::{assert_noop, assert_ok};
+use crate::mock::{new_tester, AccountId, Assets, EthApp, Event, Origin, System, Test};
+use common::balance;
+use common::XOR;
+use frame_support::{assert_noop, assert_ok, dispatch::DispatchError};
 use sp_core::H160;
 use sp_keyring::AccountKeyring as Keyring;
 
@@ -17,17 +17,25 @@ fn mints_after_handling_ethereum_event() {
         let peer_contract = H160::repeat_byte(1);
         let sender = H160::repeat_byte(7);
         let recipient: AccountId = Keyring::Bob.into();
-        let amount = 10;
+        let amount = balance!(10);
+        let old_balance = Assets::total_balance(&XOR, &recipient).unwrap();
         assert_ok!(EthApp::mint(
-            snowbridge_dispatch::Origin(peer_contract).into(),
+            dispatch::RawOrigin(peer_contract).into(),
             sender,
             recipient.clone(),
             amount.into()
         ));
-        assert_eq!(Asset::balance(&recipient), amount.into());
+        assert_eq!(
+            Assets::total_balance(&XOR, &recipient).unwrap(),
+            old_balance + amount
+        );
 
         assert_eq!(
-            Event::EthApp(RawEvent::Minted(sender, recipient, amount.into())),
+            Event::EthApp(crate::Event::<Test>::Minted(
+                sender,
+                recipient,
+                amount.into()
+            )),
             last_event()
         );
     });
@@ -38,17 +46,17 @@ fn burn_should_emit_bridge_event() {
     new_tester().execute_with(|| {
         let recipient = H160::repeat_byte(2);
         let bob: AccountId = Keyring::Bob.into();
-        Asset::deposit(&bob, 500.into()).unwrap();
+        assert_ok!(Assets::mint_to(&XOR, &bob, &bob, 500u32.into()));
 
         assert_ok!(EthApp::burn(
             Origin::signed(bob.clone()),
             ChannelId::Incentivized,
             recipient.clone(),
-            20.into()
+            20u32.into()
         ));
 
         assert_eq!(
-            Event::EthApp(RawEvent::Burned(bob, recipient, 20.into())),
+            Event::EthApp(crate::Event::<Test>::Burned(bob, recipient, 20.into())),
             last_event()
         );
     });
@@ -60,14 +68,14 @@ fn should_not_burn_on_commitment_failure() {
         let sender: AccountId = Keyring::Bob.into();
         let recipient = H160::repeat_byte(9);
 
-        Asset::deposit(&sender, 500.into()).unwrap();
+        assert_ok!(Assets::mint_to(&XOR, &sender, &sender, 500u32.into()));
 
         assert_noop!(
             EthApp::burn(
                 Origin::signed(sender.clone()),
                 ChannelId::Basic,
                 recipient.clone(),
-                20.into()
+                20u32.into()
             ),
             DispatchError::Other("some error!")
         );
