@@ -15,6 +15,7 @@ async function watchEvents() {
         log(arg);
     });
     while (true) {
+        setTimeout(() => { }, 1000);
         await ethers.provider.poll();
     }
 }

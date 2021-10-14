@@ -29,7 +29,16 @@ const config: HardhatUserConfig = {
     hardhat: {
       throwOnTransactionFailures: true,
     },
-    localhost: {
+    ganache: {
+      url: "http://127.0.0.1:8545",
+      chainId: 1337,
+      accounts: {
+        mnemonic: "myth like bonus scare over problem client lizard pioneer submit female collect"
+      },
+      gas: 6000000,
+      gasPrice: 5000000000,
+    },
+    geth: {
       url: "http://127.0.0.1:8545",
       chainId: 4224,
       accounts: ["a78a2acb5b21d4489bff3f7d113ce826c5a2e2ce27740b2ce62e9a923ac6e910"],
@@ -63,5 +72,6 @@ const config: HardhatUserConfig = {
 };
 
 task("contracts", "List of contracts").setAction(contracts.main);
+task("contract-address", "Print contract address").addParam("name").setAction(contracts.printAddress);
 
 export default config;

@@ -1,0 +1,26 @@
+{
+    "source": {
+        "ethereum": {
+            "endpoint": "ws://localhost:8546"
+        },
+        "parachain": {
+            "endpoint": "ws://localhost:9944"
+        },
+        "contracts": {
+            "BeefyLightClient": "0xDB5f626CAa65A777d88BFc1ACF546A1FBa2d617b",
+            "BasicInboundChannel": "0xd5cF9F172320fb2B171ce2C9c9Ea9b5051b0C6F8",
+            "IncentivizedInboundChannel": "0x56a2100f161ae3df13137f65a213A9872c78c7D6"
+        },
+        "beefy-activation-block": 0
+    },
+    "sink": {
+        "ethereum": {
+            "endpoint": "ws://localhost:8546",
+            "gas-limit": 5000000
+        },
+        "contracts": {
+            "BasicInboundChannel": "0xd5cF9F172320fb2B171ce2C9c9Ea9b5051b0C6F8",
+            "IncentivizedInboundChannel": "0x56a2100f161ae3df13137f65a213A9872c78c7D6"
+        }
+    }
+}
