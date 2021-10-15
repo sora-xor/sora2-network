@@ -8,8 +8,10 @@ import (
 	"fmt"
 
 	gsrpc "github.com/vovac12/go-substrate-rpc-client/v3"
+	"github.com/vovac12/go-substrate-rpc-client/v3/rpc/offchain"
 	"github.com/vovac12/go-substrate-rpc-client/v3/types"
 
+	"github.com/sirupsen/logrus"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -69,22 +71,9 @@ func (co *Connection) Close() {
 }
 
 func (co *Connection) GetMMRLeafForBlock(
-	blockNumber uint64,
+	leafIndex uint64,
 	blockHash types.Hash,
-	beefyStartingBlock uint64,
 ) (types.GenerateMMRProofResponse, error) {
-	log.WithFields(log.Fields{
-		"blockNumber": blockNumber,
-		"blockHash":   blockHash.Hex(),
-	}).Info("Getting MMR Leaf for block...")
-
-	// We expect 1 mmr leaf for each block. MMR leaf indexes start from 0, but block numbers start from 1,
-	// so the mmr leaf index should be 1 less than the block number.
-	// However, some chains only started using beefy late in their existence, so there are no leafs for
-	// blocks produced before beefy was activated. We subtract the block in which beefy was started on the
-	// chain to account for this.
-	leafIndex := blockNumber - beefyStartingBlock - 1
-
 	proofResponse, err := co.API().RPC.MMR.GenerateProof(leafIndex, blockHash)
 	if err != nil {
 		log.WithError(err).Error("Failed to generate mmr proof")
@@ -232,4 +221,64 @@ func (co *Connection) FetchMMRLeafCount(relayBlockhash types.Hash) (uint64, erro
 	}).Info("MMR Leaf Count")
 
 	return mmrLeafCount, nil
+}
+
+func (co *Connection) GetDataForDigestItem(digestItem *AuxiliaryDigestItem) (types.StorageDataRaw, error) {
+	storageKey, err := MakeStorageKey(digestItem.AsCommitment.ChannelID, digestItem.AsCommitment.Hash)
+	if err != nil {
+		return nil, err
+	}
+
+	data, err := co.API().RPC.Offchain.LocalStorageGet(offchain.Persistent, storageKey)
+	if err != nil {
+		log.WithError(err).Error("Failed to read commitment from offchain storage")
+		return nil, err
+	}
+
+	if data != nil {
+		log.WithFields(logrus.Fields{
+			"commitmentSizeBytes": len(*data),
+		}).Debug("Retrieved commitment from offchain storage")
+	} else {
+		log.WithError(err).Error("Commitment not found in offchain storage")
+		return nil, err
+	}
+
+	return *data, nil
+}
+
+func (co *Connection) GetBasicOutboundMessages(digestItem AuxiliaryDigestItem) (
+	[]BasicOutboundChannelMessage, types.StorageDataRaw, error) {
+	data, err := co.GetDataForDigestItem(&digestItem)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	var messages []BasicOutboundChannelMessage
+
+	err = types.DecodeFromBytes(data, &messages)
+	if err != nil {
+		log.WithError(err).Error("Failed to decode commitment messages")
+		return nil, nil, err
+	}
+
+	return messages, data, nil
+}
+
+func (co *Connection) GetIncentivizedOutboundMessages(digestItem AuxiliaryDigestItem) (
+	[]IncentivizedOutboundChannelMessage, types.StorageDataRaw, error) {
+	data, err := co.GetDataForDigestItem(&digestItem)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	var messages []IncentivizedOutboundChannelMessage
+
+	err = types.DecodeFromBytes(data, &messages)
+	if err != nil {
+		log.WithError(err).Error("Failed to decode commitment messages")
+		return nil, nil, err
+	}
+
+	return messages, data, nil
 }

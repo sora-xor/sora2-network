@@ -1,0 +1,32 @@
+package relaychain
+
+import (
+	"bytes"
+
+	"github.com/vovac12/go-substrate-rpc-client/v3/scale"
+	"github.com/vovac12/go-substrate-rpc-client/v3/types"
+)
+
+var IndexingPrefix = []byte("commitment")
+
+func MakeStorageKey(channelID ChannelID, hash types.H256) ([]byte, error) {
+	var buffer = bytes.Buffer{}
+	encoder := scale.NewEncoder(&buffer)
+
+	err := encoder.Encode(IndexingPrefix)
+	if err != nil {
+		return nil, err
+	}
+
+	err = encoder.Encode(channelID)
+	if err != nil {
+		return nil, err
+	}
+
+	err = encoder.Encode(hash)
+	if err != nil {
+		return nil, err
+	}
+
+	return buffer.Bytes(), nil
+}

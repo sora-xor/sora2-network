@@ -1,5 +1,6 @@
 use ethabi::{Event, Param, ParamKind, Token};
-use snowbridge_ethereum::{log::Log, H160};
+use snowbridge_ethereum::log::Log;
+use snowbridge_ethereum::H160;
 
 use sp_core::RuntimeDebug;
 use sp_std::convert::TryFrom;

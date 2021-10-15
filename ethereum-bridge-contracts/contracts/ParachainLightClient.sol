@@ -88,7 +88,6 @@ library ParachainLightClient {
         bytes calldata _ownParachainHeadSuffixBytes
     ) public pure returns (bytes32) {
         bytes memory scaleEncodedParachainHead = bytes.concat(
-            PARACHAIN_ID_SCALE,
             _ownParachainHeadPrefixBytes,
             commitment,
             _ownParachainHeadSuffixBytes

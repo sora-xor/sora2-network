@@ -8,14 +8,13 @@ type Config struct {
 }
 
 type SourceConfig struct {
-	Polkadot  config.PolkadotConfig  `mapstructure:"polkadot"`
-	Parachain config.ParachainConfig `mapstructure:"parachain"`
-	Ethereum  config.EthereumConfig  `mapstructure:"ethereum"`
-	Contracts SourceContractsConfig   `mapstructure:"contracts"`
+	Substrate config.PolkadotConfig `mapstructure:"substrate"`
+	Ethereum  config.EthereumConfig `mapstructure:"ethereum"`
+	Contracts SourceContractsConfig `mapstructure:"contracts"`
 }
 
 type SourceContractsConfig struct {
-	BeefyLightClient string `mapstructure:"BeefyLightClient"`
+	BeefyLightClient           string `mapstructure:"BeefyLightClient"`
 	BasicInboundChannel        string `mapstructure:"BasicInboundChannel"`
 	IncentivizedInboundChannel string `mapstructure:"IncentivizedInboundChannel"`
 }

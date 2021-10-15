@@ -8,18 +8,17 @@ mod test;
 
 use codec::{Decode, Encode};
 use ethabi::{self, Token};
-use frame_support::{
-    dispatch::DispatchResult,
-    ensure,
-    traits::{EnsureOrigin, Get},
-};
+use frame_support::dispatch::DispatchResult;
+use frame_support::ensure;
+use frame_support::traits::{EnsureOrigin, Get};
 use sp_core::{RuntimeDebug, H160, H256};
 use sp_io::offchain_index;
 use sp_runtime::traits::{Hash, StaticLookup, Zero};
 
 use sp_std::prelude::*;
 
-use snowbridge_core::{types::AuxiliaryDigestItem, ChannelId, MessageNonce};
+use snowbridge_core::types::AuxiliaryDigestItem;
+use snowbridge_core::{ChannelId, MessageNonce};
 
 pub use weights::WeightInfo;
 

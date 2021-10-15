@@ -31,24 +31,21 @@ mod mock;
 mod tests;
 
 use codec::{Decode, Encode};
-use frame_support::{
-    dispatch::{DispatchError, DispatchResult},
-    log,
-    traits::Get,
-};
+use frame_support::dispatch::{DispatchError, DispatchResult};
+use frame_support::log;
+use frame_support::traits::Get;
 use frame_system::ensure_signed;
 use sp_runtime::RuntimeDebug;
 use sp_std::prelude::*;
 
 use snowbridge_core::{Message, Proof, Verifier};
-use snowbridge_ethereum::{
-    difficulty::calc_difficulty,
-    ethashproof::{DoubleNodeWithMerkleProof as EthashProofData, EthashProver},
-    HeaderId as EthereumHeaderId, Log, Receipt, H256, U256,
+use snowbridge_ethereum::difficulty::calc_difficulty;
+pub use snowbridge_ethereum::difficulty::DifficultyConfig as EthereumDifficultyConfig;
+use snowbridge_ethereum::ethashproof::{
+    DoubleNodeWithMerkleProof as EthashProofData, EthashProver,
 };
-pub use snowbridge_ethereum::{
-    difficulty::DifficultyConfig as EthereumDifficultyConfig, Header as EthereumHeader,
-};
+pub use snowbridge_ethereum::Header as EthereumHeader;
+use snowbridge_ethereum::{HeaderId as EthereumHeaderId, Log, Receipt, H256, U256};
 
 pub use weights::WeightInfo;
 

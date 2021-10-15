@@ -6,7 +6,6 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	"github.com/snowfork/snowbridge/relayer/chain/ethereum"
-	"github.com/snowfork/snowbridge/relayer/chain/parachain"
 	"github.com/snowfork/snowbridge/relayer/chain/relaychain"
 	"github.com/snowfork/snowbridge/relayer/crypto/secp256k1"
 
@@ -15,7 +14,6 @@ import (
 
 type Relay struct {
 	config                *Config
-	parachainConn         *parachain.Connection
 	relaychainConn        *relaychain.Connection
 	ethereumConn          *ethereum.Connection
 	ethereumChannelWriter *EthereumChannelWriter
@@ -25,8 +23,7 @@ type Relay struct {
 func NewRelay(config *Config, keypair *secp256k1.Keypair) (*Relay, error) {
 	log.Info("Creating worker")
 
-	parachainConn := parachain.NewConnection(config.Source.Parachain.Endpoint, nil)
-	relaychainConn := relaychain.NewConnection(config.Source.Polkadot.Endpoint)
+	relaychainConn := relaychain.NewConnection(config.Source.Substrate.Endpoint)
 
 	// TODO: This is used by both the source & sink. They should use separate connections
 	ethereumConn := ethereum.NewConnection(config.Sink.Ethereum.Endpoint, keypair)
@@ -47,13 +44,11 @@ func NewRelay(config *Config, keypair *secp256k1.Keypair) (*Relay, error) {
 		&config.Source,
 		ethereumConn,
 		relaychainConn,
-		parachainConn,
 		messagePackages,
 	)
 
 	return &Relay{
 		config:                config,
-		parachainConn:         parachainConn,
 		relaychainConn:        relaychainConn,
 		ethereumConn:          ethereumConn,
 		ethereumChannelWriter: ethereumChannelWriter,
@@ -62,12 +57,7 @@ func NewRelay(config *Config, keypair *secp256k1.Keypair) (*Relay, error) {
 }
 
 func (relay *Relay) Start(ctx context.Context, eg *errgroup.Group) error {
-	err := relay.parachainConn.Connect(ctx)
-	if err != nil {
-		return err
-	}
-
-	err = relay.ethereumConn.Connect(ctx)
+	err := relay.ethereumConn.Connect(ctx)
 	if err != nil {
 		return err
 	}
@@ -91,4 +81,3 @@ func (relay *Relay) Start(ctx context.Context, eg *errgroup.Group) error {
 
 	return nil
 }
-

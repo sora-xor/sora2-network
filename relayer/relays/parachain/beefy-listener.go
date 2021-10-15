@@ -10,7 +10,6 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	"github.com/snowfork/snowbridge/relayer/chain/ethereum"
-	"github.com/snowfork/snowbridge/relayer/chain/parachain"
 	"github.com/snowfork/snowbridge/relayer/chain/relaychain"
 	"github.com/snowfork/snowbridge/relayer/contracts/beefylightclient"
 	"github.com/vovac12/go-substrate-rpc-client/v3/types"
@@ -19,28 +18,24 @@ import (
 )
 
 type BeefyListener struct {
-	config              *SourceConfig
-	ethereumConn        *ethereum.Connection
-	beefyLightClient    *beefylightclient.Contract
-	relaychainConn      *relaychain.Connection
-	parachainConnection *parachain.Connection
-	paraID              uint32
-	messages            chan<- MessagePackage
+	config           *SourceConfig
+	ethereumConn     *ethereum.Connection
+	beefyLightClient *beefylightclient.Contract
+	relaychainConn   *relaychain.Connection
+	messages         chan<- MessagePackage
 }
 
 func NewBeefyListener(
 	config *SourceConfig,
 	ethereumConn *ethereum.Connection,
 	relaychainConn *relaychain.Connection,
-	parachainConnection *parachain.Connection,
 	messages chan<- MessagePackage,
 ) *BeefyListener {
 	return &BeefyListener{
-		config:              config,
-		ethereumConn:        ethereumConn,
-		relaychainConn:      relaychainConn,
-		parachainConnection: parachainConnection,
-		messages:            messages,
+		config:         config,
+		ethereumConn:   ethereumConn,
+		relaychainConn: relaychainConn,
+		messages:       messages,
 	}
 }
 
@@ -54,26 +49,6 @@ func (li *BeefyListener) Start(ctx context.Context, eg *errgroup.Group) error {
 	}
 	li.beefyLightClient = beefyLightClientContract
 
-	// Fetch ParaId
-	storageKeyForParaID, err := types.CreateStorageKey(li.parachainConnection.Metadata(), "ParachainInfo", "ParachainId", nil, nil)
-	if err != nil {
-		return err
-	}
-
-	var paraID uint32
-	ok, err := li.parachainConnection.API().RPC.State.GetStorageLatest(storageKeyForParaID, &paraID)
-	if err != nil {
-		log.WithError(err).Error("Failed to get para id for snowbridge")
-		return err
-	}
-	if !ok {
-		log.Error("Expected parachain but chain does not provide a parachain ID")
-		return fmt.Errorf("invalid parachain")
-	}
-
-	log.WithField("paraId", paraID).Info("Fetched parachain id")
-	li.paraID = paraID
-
 	eg.Go(func() error {
 		beefyBlockNumber, beefyBlockHash, err := li.fetchLatestBeefyBlock(ctx)
 		if err != nil {
@@ -86,36 +61,14 @@ func (li *BeefyListener) Start(ctx context.Context, eg *errgroup.Group) error {
 			"blockNumber": beefyBlockNumber,
 		}).Info("Fetched latest verified polkadot block")
 
-		paraHead, err := li.relaychainConn.FetchFinalizedParaHead(beefyBlockHash, paraID)
-		if err != nil {
-			log.WithError(err).Error("Parachain not registered")
-			return err
-		}
-
-		log.WithFields(log.Fields{
-			"header.ParentHash":     paraHead.ParentHash.Hex(),
-			"header.Number":         paraHead.Number,
-			"header.StateRoot":      paraHead.StateRoot.Hex(),
-			"header.ExtrinsicsRoot": paraHead.ExtrinsicsRoot.Hex(),
-			"header.Digest":         paraHead.Digest,
-			"parachainId":           paraID,
-		}).Info("Fetched finalized header for parachain")
-
-		paraBlockNumber := uint64(paraHead.Number)
-
-		paraBlockHash, err := li.parachainConnection.API().RPC.Chain.GetBlockHash(paraBlockNumber)
-		if err != nil {
-			log.WithError(err).Error("Failed to get latest finalized para block hash")
-			return err
-		}
-
 		messagePackages, err := li.buildMissedMessagePackages(ctx,
-			beefyBlockNumber, beefyBlockHash, paraBlockNumber, paraBlockHash)
+			beefyBlockNumber, beefyBlockHash)
 		if err != nil {
 			log.WithError(err).Error("Failed to build missed message package")
 			return err
 		}
 
+		log.WithField("packages", len(messagePackages)).Info("Emit message packages")
 		err = li.emitMessagePackages(ctx, messagePackages)
 		if err != nil {
 			return err
@@ -129,6 +82,7 @@ func (li *BeefyListener) Start(ctx context.Context, eg *errgroup.Group) error {
 }
 
 func (li *BeefyListener) subBeefyJustifications(ctx context.Context) error {
+	log.Info("Sub justifications")
 	headers := make(chan *gethTypes.Header, 5)
 
 	sub, err := li.ethereumConn.GetClient().SubscribeNewHead(ctx, headers)
@@ -161,9 +115,9 @@ func (li *BeefyListener) subBeefyJustifications(ctx context.Context) error {
 			}
 			beefyLightClientEvents = append(beefyLightClientEvents, contractEvents...)
 
-			if len(beefyLightClientEvents) > 0 {
-				log.Info(fmt.Sprintf("Found %d BeefyLightClient ContractNewMMRRoot events on block %d", len(beefyLightClientEvents), blockNumber))
-			}
+			// if len(beefyLightClientEvents) > 0 {
+			log.Info(fmt.Sprintf("Found %d BeefyLightClient ContractNewMMRRoot events on block %d", len(beefyLightClientEvents), blockNumber))
+			// }
 
 			err = li.processBeefyLightClientEvents(ctx, beefyLightClientEvents)
 			if err != nil {
@@ -193,21 +147,7 @@ func (li *BeefyListener) processBeefyLightClientEvents(ctx context.Context, even
 		}
 		log.WithField("beefyBlockHash", beefyBlockHash.Hex()).Info("Got relay chain blockhash")
 
-		paraHead, err := li.relaychainConn.FetchFinalizedParaHead(beefyBlockHash, li.paraID)
-		if err != nil {
-			log.WithError(err).Error("Failed to get finalized para head from relay chain")
-			return err
-		}
-
-		paraBlockNumber := uint64(paraHead.Number)
-
-		paraBlockHash, err := li.parachainConnection.API().RPC.Chain.GetBlockHash(paraBlockNumber)
-		if err != nil {
-			log.WithError(err).Error("Failed to get latest finalized para block hash")
-			return err
-		}
-
-		messagePackages, err := li.buildMissedMessagePackages(ctx, beefyBlockNumber, beefyBlockHash, paraBlockNumber, paraBlockHash)
+		messagePackages, err := li.buildMissedMessagePackages(ctx, beefyBlockNumber, beefyBlockHash)
 		if err != nil {
 			log.WithError(err).Error("Failed to build missed message packages")
 			return err

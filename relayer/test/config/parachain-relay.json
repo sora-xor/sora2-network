@@ -3,7 +3,7 @@
         "ethereum": {
             "endpoint": "ws://localhost:8546"
         },
-        "parachain": {
+        "substrate": {
             "endpoint": "ws://localhost:9944"
         },
         "contracts": {

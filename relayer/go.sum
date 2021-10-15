@@ -587,6 +587,8 @@ github.com/vedhavyas/go-subkey v1.0.2 h1:EW6U+1us4k38AtrBfFOEZTpW9FcF/cIUOxw/pHb
 github.com/vedhavyas/go-subkey v1.0.2/go.mod h1:T9SEs84XZxRULMZLWtIl48s9rBNE7h6GnkqTgJR8+MU=
 github.com/vovac12/go-substrate-rpc-client/v3 v3.0.9-0.20210927100619-336e1d64b529 h1:VJq/EkaHWQ4YYcZ17cey2T1aVY/jRepP6nFk0ZWRf0g=
 github.com/vovac12/go-substrate-rpc-client/v3 v3.0.9-0.20210927100619-336e1d64b529/go.mod h1:JZKuUDZEH+1VsAk4ZyuIyh8XJXOvj/VO8DP0FaYOe1Y=
+github.com/vovac12/go-substrate-rpc-client/v3 v3.0.9-0.20211015053738-d8046a64e8c2 h1:2CQD7e2cyR0HY8zr53DKaI9VnT/g2V5UkqkMvPa8qPM=
+github.com/vovac12/go-substrate-rpc-client/v3 v3.0.9-0.20211015053738-d8046a64e8c2/go.mod h1:JZKuUDZEH+1VsAk4ZyuIyh8XJXOvj/VO8DP0FaYOe1Y=
 github.com/wealdtech/go-merkletree v1.0.0/go.mod h1:cdil512d/8ZC7Kx3bfrDvGMQXB25NTKbsm0rFrmDax4=
 github.com/willf/bitset v1.1.3/go.mod h1:RjeCKbqT1RxIR/KWY6phxZiaY1IyutSBfGjNPySAYV4=
 github.com/wsddn/go-ecdh v0.0.0-20161211032359-48726bab9208/go.mod h1:IotVbo4F+mw0EzQ08zFqg7pK3FebNXpaMsRy2RT+Ees=

@@ -1,7 +1,7 @@
 use crate::mock::{new_tester, AccountId, Assets, EthApp, Event, Origin, System, Test};
-use common::balance;
-use common::XOR;
-use frame_support::{assert_noop, assert_ok, dispatch::DispatchError};
+use common::{balance, XOR};
+use frame_support::dispatch::DispatchError;
+use frame_support::{assert_noop, assert_ok};
 use sp_core::H160;
 use sp_keyring::AccountKeyring as Keyring;
 

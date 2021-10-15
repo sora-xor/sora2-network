@@ -975,7 +975,10 @@ fn testnet_genesis(
         basic_inbound_channel: BasicInboundChannelConfig {
             source_channel: get_basic_channel_address(),
         },
-        basic_outbound_channel: BasicOutboundChannelConfig { interval: 10 },
+        basic_outbound_channel: BasicOutboundChannelConfig {
+            interval: 10,
+            principal: Default::default(),
+        },
         system: SystemConfig {
             code: WASM_BINARY.unwrap().to_vec(),
             changes_trie_config: Default::default(),

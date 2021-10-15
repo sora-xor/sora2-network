@@ -1,10 +1,8 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use frame_support::{
-    dispatch::{DispatchResult, Dispatchable, Parameter},
-    traits::{Contains, EnsureOrigin},
-    weights::GetDispatchInfo,
-};
+use frame_support::dispatch::{DispatchResult, Dispatchable, Parameter};
+use frame_support::traits::{Contains, EnsureOrigin};
+use frame_support::weights::GetDispatchInfo;
 
 use sp_core::RuntimeDebug;
 
@@ -140,14 +138,13 @@ pub mod pallet {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use frame_support::dispatch::DispatchError;
+    use frame_support::parameter_types;
     use frame_support::traits::Everything;
-    use frame_support::{dispatch::DispatchError, parameter_types};
     use frame_system::{EventRecord, Phase};
     use sp_core::H256;
-    use sp_runtime::{
-        testing::Header,
-        traits::{BlakeTwo256, IdentityLookup},
-    };
+    use sp_runtime::testing::Header;
+    use sp_runtime::traits::{BlakeTwo256, IdentityLookup};
 
     use crate as dispatch;
 

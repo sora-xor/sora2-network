@@ -30,6 +30,7 @@ type CompleteSignatureCommitmentMessage struct {
 	MMRLeafIndex                   uint64
 	MMRLeafCount                   uint64
 	MMRProofItems                  [][32]byte
+	SignedCommitment               SignedCommitment
 }
 
 type BeefyJustification struct {
@@ -165,6 +166,7 @@ func (b *BeefyJustification) BuildCompleteSignatureCommitmentMessage(info BeefyR
 		MMRLeafIndex:                   uint64(latestMMRProof.Proof.LeafIndex),
 		MMRLeafCount:                   uint64(latestMMRProof.Proof.LeafCount),
 		MMRProofItems:                  mmrProofItems,
+		SignedCommitment:               b.SignedCommitment,
 	}
 	return msg, nil
 }

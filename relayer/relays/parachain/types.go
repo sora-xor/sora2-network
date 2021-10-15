@@ -1,7 +1,7 @@
 package parachain
 
 import (
-	"github.com/snowfork/snowbridge/relayer/chain/parachain"
+	"github.com/snowfork/snowbridge/relayer/chain/relaychain"
 	"github.com/vovac12/go-substrate-rpc-client/v3/types"
 )
 
@@ -11,31 +11,28 @@ type ParaBlockWithDigest struct {
 }
 
 type ParaBlockWithProofs struct {
-	Block            ParaBlockWithDigest
-	MMRProofResponse types.GenerateMMRProofResponse
-	MMRRootHash      types.Hash
-	Header           types.Header
-	MerkleProofData  MerkleProofData
+	Block             ParaBlockWithDigest
+	MMRProofResponse  types.GenerateMMRProofResponse
+	MMRRootHash       types.Hash
+	Header            types.Header
+	mmrProofLeafIndex uint64
 }
 
 type DigestItemWithData struct {
-	DigestItem parachain.AuxiliaryDigestItem
+	DigestItem relaychain.AuxiliaryDigestItem
 	Data       types.StorageDataRaw
 }
 
 type MessagePackage struct {
-	channelID         parachain.ChannelID
-	commitmentHash    types.H256
-	commitmentData    types.StorageDataRaw
-	paraHead          types.Header
-	merkleProofData   MerkleProofData
-	mmrProof          types.GenerateMMRProofResponse
-	mmrRootHash       types.Hash
-	mmrProofLeafCount uint64
-	paraId            uint32
+	channelID      relaychain.ChannelID
+	commitmentHash types.H256
+	commitmentData types.StorageDataRaw
+	paraHead       types.Header
+	mmrProof       types.GenerateMMRProofResponse
+	mmrRootHash    types.Hash
 }
 
-func CreateMessagePackages(paraBlocks []ParaBlockWithProofs, mmrLeafCount uint64, paraID uint32) ([]MessagePackage, error) {
+func CreateMessagePackages(paraBlocks []ParaBlockWithProofs, mmrLeafCount uint64) ([]MessagePackage, error) {
 	var messagePackages []MessagePackage
 
 	for _, block := range paraBlocks {
@@ -47,11 +44,8 @@ func CreateMessagePackages(paraBlocks []ParaBlockWithProofs, mmrLeafCount uint64
 				commitmentHash,
 				commitmentData,
 				block.Header,
-				block.MerkleProofData,
 				block.MMRProofResponse,
 				block.MMRRootHash,
-				mmrLeafCount,
-				paraID,
 			}
 			messagePackages = append(messagePackages, messagePackage)
 		}

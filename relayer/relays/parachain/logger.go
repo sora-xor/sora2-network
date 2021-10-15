@@ -69,9 +69,10 @@ func (wr *EthereumChannelWriter) logBasicTx(
 	messages []basic.BasicInboundChannelMessage,
 	paraVerifyInput basic.ParachainLightClientParachainVerifyInput,
 	beefyMMRLeafPartial basic.ParachainLightClientBeefyMMRLeafPartial,
-	beefyMMRLeafIndex int64, beefyLeafCount int64, beefyMMRProof [][32]byte,
-	paraHead types.Header, merkleProofData MerkleProofData, mmrLeaf types.MMRLeaf,
-	commitmentHash types.H256, paraID uint32, mmrRootHash types.Hash,
+	beefyMMRLeafIndex int64, beefyMMRProof [][32]byte,
+	paraHead types.Header,
+	mmrLeaf types.MMRLeaf,
+	commitmentHash types.H256, mmrRootHash types.Hash,
 ) error {
 
 	var basicMessagesLog []BasicInboundChannelMessageLog
@@ -110,7 +111,6 @@ func (wr *EthereumChannelWriter) logBasicTx(
 			NextAuthoritySetRoot: "0x" + hex.EncodeToString(beefyMMRLeafPartial.NextAuthoritySetRoot[:]),
 		},
 		BeefyMMRLeafIndex: beefyMMRLeafIndex,
-		BeefyLeafCount:    beefyLeafCount,
 		BeefyMMRProof:     beefyMMRProofString,
 	}
 	b, err := json.Marshal(input)
@@ -121,7 +121,6 @@ func (wr *EthereumChannelWriter) logBasicTx(
 	mmrLeafEncoded, _ := types.EncodeToBytes(mmrLeaf)
 	mmrLeafOpaqueEncoded, _ := types.EncodeToHexString(mmrLeafEncoded)
 	mmrLeafOpaqueEncodedBytes, _ := types.EncodeToBytes(mmrLeafEncoded)
-	scaleParaId, _ := types.EncodeToHexString(paraID)
 	scaleParaHead, _ := types.EncodeToHexString(paraHead)
 	scaleParaHeadParentHash, _ := types.EncodeToHexString(paraHead.ParentHash)
 	scaleparaHeadNumber, _ := types.EncodeToHexString(paraHead.Number)
@@ -140,8 +139,6 @@ func (wr *EthereumChannelWriter) logBasicTx(
 		"paraHeadProofRootMerkleLeaf": "0x" + hex.EncodeToString(mmrLeaf.ParachainHeads[:]),
 		"mmrLeafOpaqueEncoded":        mmrLeafOpaqueEncoded,
 		"mmrRootHash":                 "0x" + hex.EncodeToString(mmrRootHash[:]),
-		"merkleProofData":             merkleProofData,
-		"scaleParaId":                 scaleParaId,
 		"scaleParaHead":               scaleParaHead,
 		"scaleParaHeadParentHash":     scaleParaHeadParentHash,
 		"scaleparaHeadNumber":         scaleparaHeadNumber,
@@ -166,9 +163,9 @@ func (wr *EthereumChannelWriter) logIncentivizedTx(
 	messages []incentivized.IncentivizedInboundChannelMessage,
 	paraVerifyInput incentivized.ParachainLightClientParachainVerifyInput,
 	beefyMMRLeafPartial incentivized.ParachainLightClientBeefyMMRLeafPartial,
-	beefyMMRLeafIndex int64, beefyLeafCount int64, beefyMMRProof [][32]byte,
-	paraHead types.Header, merkleProofData MerkleProofData, mmrLeaf types.MMRLeaf,
-	commitmentHash types.H256, paraID uint32, mmrRootHash types.Hash,
+	beefyMMRLeafIndex int64, beefyMMRProof [][32]byte,
+	paraHead types.Header, mmrLeaf types.MMRLeaf,
+	commitmentHash types.H256, mmrRootHash types.Hash,
 ) error {
 	var incentivizedMessagesLog []IncentivizedInboundChannelMessageLog
 	for _, item := range messages {
@@ -207,7 +204,6 @@ func (wr *EthereumChannelWriter) logIncentivizedTx(
 			NextAuthoritySetRoot: "0x" + hex.EncodeToString(beefyMMRLeafPartial.NextAuthoritySetRoot[:]),
 		},
 		BeefyMMRLeafIndex: beefyMMRLeafIndex,
-		BeefyLeafCount:    beefyLeafCount,
 		BeefyMMRProof:     beefyMMRProofString,
 	}
 	b, err := json.Marshal(input)
@@ -218,7 +214,6 @@ func (wr *EthereumChannelWriter) logIncentivizedTx(
 	mmrLeafEncoded, _ := types.EncodeToBytes(mmrLeaf)
 	mmrLeafOpaqueEncoded, _ := types.EncodeToHexString(mmrLeafEncoded)
 	mmrLeafOpaqueEncodedBytes, _ := types.EncodeToBytes(mmrLeafEncoded)
-	scaleParaId, _ := types.EncodeToHexString(paraID)
 	scaleParaHead, _ := types.EncodeToHexString(paraHead)
 	scaleParaHeadParentHash, _ := types.EncodeToHexString(paraHead.ParentHash)
 	scaleparaHeadNumber, _ := types.EncodeToHexString(paraHead.Number)
@@ -237,8 +232,6 @@ func (wr *EthereumChannelWriter) logIncentivizedTx(
 		"paraHeadProofRootMerkleLeaf": "0x" + hex.EncodeToString(mmrLeaf.ParachainHeads[:]),
 		"mmrLeafOpaqueEncoded":        mmrLeafOpaqueEncoded,
 		"mmrRootHash":                 "0x" + hex.EncodeToString(mmrRootHash[:]),
-		"merkleProofData":             merkleProofData,
-		"scaleParaId":                 scaleParaId,
 		"scaleParaHead":               scaleParaHead,
 		"scaleParaHeadParentHash":     scaleParaHeadParentHash,
 		"scaleparaHeadNumber":         scaleparaHeadNumber,
