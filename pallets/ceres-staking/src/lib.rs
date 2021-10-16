@@ -1,5 +1,11 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
+#[cfg(test)]
+mod mock;
+
+#[cfg(test)]
+mod tests;
+
 use codec::{Decode, Encode};
 use common::prelude::Balance;
 
@@ -107,9 +113,6 @@ pub mod pallet {
             // This function will return an error if the extrinsic is not signed.
             let source = ensure_signed(origin)?;
 
-            // Get staking info of extrinsic caller
-            let mut staking_info = <Stakers<T>>::get(&source);
-
             // Maximum CERES to be in staking pool equals MaximumCeresInStakingPool
             let total_deposited = (FixedWrapper::from(TotalDeposited::<T>::get())
                 + FixedWrapper::from(amount))
@@ -130,6 +133,9 @@ pub mod pallet {
 
             // Update total deposited CERES amount
             TotalDeposited::<T>::put(total_deposited);
+
+            // Get staking info of extrinsic caller
+            let mut staking_info = <Stakers<T>>::get(&source);
 
             // Set staking info
             let deposited_amount =
@@ -160,7 +166,7 @@ pub mod pallet {
             let rewards = staking_info.rewards;
             let withdrawing_amount = deposited + rewards;
 
-            // Transfer CERES to staking
+            // Withdraw CERES
             Assets::<T>::transfer_from(
                 &T::CeresAssetId::get().into(),
                 &Self::account_id(),

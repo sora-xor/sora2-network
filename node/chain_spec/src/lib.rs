@@ -1670,6 +1670,9 @@ fn mainnet_genesis(
             )
             .collect(),
         }),
+        ceres_staking: Some(CeresStakingConfig {
+            rewards_remaining: balance!(600),
+        }),
         dex_manager: Some(DEXManagerConfig {
             dex_list: vec![(
                 0,
