@@ -41,7 +41,7 @@ pub mod pallet {
         type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 
         /// Number of Ceres distributed per block
-        type CeresPerBlock: Get<Balance>;
+        type CeresPerBlock: Get<f64>;
 
         /// Ceres asset id
         type CeresAssetId: Get<AssetId>;
@@ -80,9 +80,12 @@ pub mod pallet {
     #[pallet::getter(fn total_deposited)]
     pub(super) type TotalDeposited<T: Config> = StorageValue<_, Balance, ValueQuery>;
 
+    #[pallet::type_value]
+    pub fn RewardsRemainingDefault() -> Balance { 600 }
+
     #[pallet::storage]
     #[pallet::getter(fn rewards_remaining)]
-    pub(super) type RewardsRemaining<T: Config> = StorageValue<_, Balance, ValueQuery>;
+    pub(super) type RewardsRemaining<T: Config> = StorageValue<_, Balance, ValueQuery, RewardsRemainingDefault>;
 
     #[pallet::genesis_config]
     pub struct GenesisConfig {
@@ -194,10 +197,12 @@ pub mod pallet {
 
     #[pallet::hooks]
     impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
-        fn on_initialize(_n: T::BlockNumber) -> Weight {
+        fn on_initialize(n: T::BlockNumber) -> Weight {
             let mut counter: u64 = 0;
+            let rewards_remaining_fixed = FixedWrapper::from(RewardsRemaining::<T>::get());
+            let ceres_per_block_fixed = FixedWrapper::from(T::CeresPerBlock::get());
 
-            if RewardsRemaining::<T>::get() >= T::CeresPerBlock::get() {
+            if rewards_remaining_fixed >= ceres_per_block_fixed {
                 for staker in <Stakers<T>>::iter() {
                     let share_in_pool = FixedWrapper::from(staker.1.deposited)
                         / FixedWrapper::from(TotalDeposited::<T>::get());

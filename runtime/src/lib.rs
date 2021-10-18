@@ -1350,10 +1350,10 @@ impl price_tools::Config for Runtime {
 }
 
 parameter_types! {
-    pub const CeresPerBlock: Balance = balance!(0.00046296296);
+    pub const CeresPerBlock: f64 = 0.00046296296;
     pub const CeresAssetId: AssetId = common::AssetId32::from_bytes
         (hex!("008bcfd2387d3fc453333557eecb0efe59fcba128769b2feefdd306e98e66440"));
-    pub const MaximumCeresInStakingPool: Balance = balance!(7200);
+    pub const MaximumCeresInStakingPool: Balance = 7200;
 }
 
 impl ceres_staking::Config for Runtime {

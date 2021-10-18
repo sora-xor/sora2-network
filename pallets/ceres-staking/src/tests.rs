@@ -1,8 +1,9 @@
 mod tests {
     use crate::mock::*;
-    use crate::{Error, pallet};
+    use crate::{Error, pallet, mock};
     use frame_support::{assert_err, assert_ok};
     use common::Balance;
+    use common::prelude::FixedWrapper;
     use sp_runtime::ModuleId;
     use sp_runtime::traits::AccountIdConversion;
 
@@ -146,6 +147,24 @@ mod tests {
             assert_eq!(
                 Assets::free_balance(&CERES_ASSET_ID, &staking_pool).expect("Failed to query free balance."),
                 Balance::from(39u32),
+            );
+        });
+    }
+
+    #[test]
+    fn my_runtime_test() {
+        let mut ext = ExtBuilder::default().build();
+        ext.execute_with(|| {
+            // Deposit 500 from Alice's account
+            assert_ok!(CeresStaking::deposit(Origin::signed(ALICE), 500));
+            run_to_block(1001);
+            // Check Stakers map
+            let rewards_remaining = pallet::RewardsRemaining::<Runtime>::get();
+            assert_eq!(
+                rewards_remaining,
+                FixedWrapper::from(FixedWrapper::from(500.46296296))
+                    .try_into_balance()
+                    .unwrap_or(0),
             );
         });
     }

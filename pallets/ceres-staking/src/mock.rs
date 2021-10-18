@@ -12,6 +12,7 @@ use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentityLookup};
 use sp_runtime::Perbill;
 use hex_literal::hex;
+use frame_support::traits::Hooks;
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
@@ -75,7 +76,7 @@ impl frame_system::Config for Runtime {
 }
 
 parameter_types! {
-    pub const CeresPerBlock: Balance = balance!(0.00046296296);
+    pub const CeresPerBlock: f64 = 0.00046296296;
     pub const CeresAssetId: AssetId = CERES_ASSET_ID;
     pub const MaximumCeresInStakingPool: Balance = 7200;
 }
@@ -195,5 +196,14 @@ impl ExtBuilder {
             .unwrap();*/
 
         t.into()
+    }
+}
+
+pub fn run_to_block(n: u64) {
+    while System::block_number() < n {
+        System::on_finalize(System::block_number());
+        System::set_block_number(System::block_number() + 1);
+        System::on_initialize(System::block_number());
+        CeresStaking::on_initialize(System::block_number());
     }
 }
