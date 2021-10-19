@@ -1,4 +1,4 @@
-FROM debian:buster-slim
+FROM debian:bullseye-slim
 
 # Set environment variables
 ENV RUSTUP_HOME="/opt/rust"
@@ -29,7 +29,8 @@ RUN add-apt-repository \
 # Install rust
 RUN curl https://sh.rustup.rs -sSf | sh -s -- -y --no-modify-path --default-toolchain ${RUST_VERSION} && \
     rustup target add wasm32-unknown-unknown
-
+RUN curl https://github.com/chevdor/subwasm/releases/download/v0.14.1/subwasm_linux_amd64_v0.14.1.deb -sSf -O subw.deb && \
+    dpkg -i subw.deb && rm subw.deb
 RUN cargo install sccache
 ENV RUSTC_WRAPPER=sccache
 ENV CARGO_INCREMENTAL=0
