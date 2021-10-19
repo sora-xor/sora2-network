@@ -543,7 +543,7 @@ impl<T: Config> Pallet<T> {
         }
     }
 
-    /// Computes the optimal distribution across available liquidity sources to exectute the requested trade
+    /// Computes the optimal distribution across available liquidity sources to execute the requested trade
     /// given the input and output assets, the trade amount and a liquidity sources filter.
     ///
     /// - `input_asset_id` - ID of the asset to sell,
@@ -1079,10 +1079,13 @@ impl<T: Config> Pallet<T> {
                     // 2) (y + y1) / (x - x1) = p // desired price `p` equation
                     // composing 1 and 2: (y + y1) * (y + y1) = k * p
                     // √(k * p) - y = y1
+                    // √(k) * √(p) - y = y1 // to prevent overflow
                     // where
                     // * x is base reserve, x1 is base amount, y is target reserve, y1 is target amount
                     // * p is desired price i.e. target/base
-                    let amount_secondary = (k * primary_buy_price).sqrt_accurate() - y; // always > 0
+                    let k_sqrt = k.sqrt_accurate();
+                    let primary_buy_price_sqrt = primary_buy_price.sqrt_accurate();
+                    let amount_secondary = k_sqrt * primary_buy_price_sqrt - y; // always > 0
                     if amount_secondary >= wrapped_amount {
                         balance!(0)
                     } else if amount_secondary <= fixed_wrapper!(0) {

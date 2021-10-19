@@ -1166,12 +1166,12 @@ fn test_quote_fast_split_exact_input_target_should_pass() {
         assert_eq!(
             rewards,
             vec![(
-                balance!(14.388332979612791964),
+                balance!(14.388332979612791988),
                 XOR.into(),
                 RewardReason::BuyOnBondingCurve
             )]
         );
-        assert_eq!(quotes.amount, balance!(91.129562076735353497));
+        assert_eq!(quotes.amount, balance!(91.129562076735353496));
         assert_eq!(quotes.fee, balance!(0));
         assert_eq!(
             &dist,
@@ -1181,11 +1181,11 @@ fn test_quote_fast_split_exact_input_target_should_pass() {
                         DEX_D_ID,
                         LiquiditySourceType::MulticollateralBondingCurvePool
                     ),
-                    QuoteAmount::with_desired_input(balance!(3376.008652032533001115)),
+                    QuoteAmount::with_desired_input(balance!(3376.008652032533006925)),
                 ),
                 (
                     LiquiditySourceId::new(DEX_D_ID, LiquiditySourceType::MockPool),
-                    QuoteAmount::with_desired_input(balance!(16623.991347967466998885)),
+                    QuoteAmount::with_desired_input(balance!(16623.991347967466993075)),
                 ),
             ]
         );
@@ -1203,7 +1203,7 @@ fn test_quote_fast_split_exact_input_target_should_pass() {
         dist = quotes.distribution;
         dist.sort_by(|a, b| a.0.cmp(&b.0));
 
-        assert_eq!(quotes.amount, balance!(182.802146328804827690));
+        assert_eq!(quotes.amount, balance!(182.802146328804827615));
         assert_eq!(quotes.fee, balance!(0));
         assert_eq!(
             &dist,
@@ -1213,11 +1213,11 @@ fn test_quote_fast_split_exact_input_target_should_pass() {
                         DEX_D_ID,
                         LiquiditySourceType::MulticollateralBondingCurvePool
                     ),
-                    QuoteAmount::with_desired_input(balance!(178.824711667708028257)),
+                    QuoteAmount::with_desired_input(balance!(178.824711667708029000)),
                 ),
                 (
                     LiquiditySourceId::new(DEX_D_ID, LiquiditySourceType::MockPool),
-                    QuoteAmount::with_desired_input(balance!(21.175288332291971743)),
+                    QuoteAmount::with_desired_input(balance!(21.175288332291971000)),
                 ),
             ]
         );
@@ -1245,11 +1245,11 @@ fn test_quote_fast_split_exact_input_target_should_pass() {
                         DEX_D_ID,
                         LiquiditySourceType::MulticollateralBondingCurvePool
                     ),
-                    QuoteAmount::with_desired_input(balance!(309.422405009372252355)),
+                    QuoteAmount::with_desired_input(balance!(309.422405009372255000)),
                 ),
                 (
                     LiquiditySourceId::new(DEX_D_ID, LiquiditySourceType::MockPool),
-                    QuoteAmount::with_desired_input(balance!(190.577594990627747645)),
+                    QuoteAmount::with_desired_input(balance!(190.577594990627745000)),
                 ),
             ]
         );
