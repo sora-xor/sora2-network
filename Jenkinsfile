@@ -6,7 +6,7 @@ String dockerBuildToolsUserId = 'bot-build-tools-ro'
 String dockerRegistryRWUserId = 'bot-sora2-rw'
 String baseImageName = 'docker.soramitsu.co.jp/sora2/substrate-env:latest'
 String srtoolImageName = 'paritytech/srtool:nightly-2021-03-15'
-String rustcVersion = 'nightly-2021-03-11'
+String rustcVersion = '1.54'
 String srtoolReportFile = 'framenode_runtime_srtool_output.json'
 String appImageName = 'docker.soramitsu.co.jp/sora2/substrate'
 String secretScannerExclusion = '.*Cargo.toml'
@@ -52,7 +52,7 @@ pipeline {
                                     featureList = 'runtime-benchmarks main-net-coded'
                                 }
                                 else if (env.TAG_NAME) {
-                                    featureList = (env.TAG_NAME =~ 'stage.*|test.*') ? featureList : 'include-real-files'
+                                    featureList = (env.TAG_NAME =~ 'stage.*') ? featureList : 'include-real-files'
                                 }
                                 sh """
                                     cargo build --release --features \"${featureList}\"
@@ -76,18 +76,6 @@ pipeline {
                         if (getPushVersion(pushTags)) {
                             sh "build --json | tee ${srtoolReportFile}"
                             archiveArtifacts artifacts: srtoolReportFile
-                        }
-                    }
-                }
-            }
-        }
-        stage('Code Coverage') {
-            steps {
-                script {
-                    docker.withRegistry( 'https://' + registry, dockerRegistryRWUserId) {
-                        docker.image(baseImageName).inside() {
-                            sh './coverage.sh'
-                            cobertura coberturaReportFile: 'target/debug/report'
                         }
                     }
                 }
