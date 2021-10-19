@@ -1,7 +1,8 @@
 use crate::{self as ceres_staking};
 use common::mock::ExistentialDeposits;
 use common::prelude::Balance;
-use common::{AssetId32, balance};
+use common::balance;
+use common::AssetId32;
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::GenesisBuild;
 use frame_support::weights::Weight;
@@ -29,7 +30,7 @@ construct_runtime! {
         Currencies: currencies::{Module, Call, Storage, Event<T>},
         Balances: pallet_balances::{Module, Call, Storage, Event<T>},
         Permissions: permissions::{Module, Call, Config<T>, Storage, Event<T>},
-        CeresStaking: ceres_staking::{Module, Call, Storage, Config, Event<T>},
+        CeresStaking: ceres_staking::{Module, Call, Storage, Event<T>},
     }
 }
 
@@ -76,9 +77,9 @@ impl frame_system::Config for Runtime {
 }
 
 parameter_types! {
-    pub const CeresPerBlock: f64 = 0.00046296296;
+    pub const CeresPerBlock: Balance = balance!(0.00046296296);
     pub const CeresAssetId: AssetId = CERES_ASSET_ID;
-    pub const MaximumCeresInStakingPool: Balance = 7200;
+    pub const MaximumCeresInStakingPool: Balance = balance!(7200);
 }
 
 impl crate::Config for Runtime {
@@ -157,7 +158,7 @@ pub struct ExtBuilder {
 impl Default for ExtBuilder {
     fn default() -> Self {
         Self {
-            endowed_accounts: vec![(ALICE, CERES_ASSET_ID, 7300), (BOB, CERES_ASSET_ID, 100)],
+            endowed_accounts: vec![(ALICE, CERES_ASSET_ID, balance!(7300)), (BOB, CERES_ASSET_ID, balance!(100))],
         }
     }
 }
@@ -188,12 +189,6 @@ impl ExtBuilder {
         }
         .assimilate_storage(&mut t)
         .unwrap();
-
-        /*CeresStakingConfig {
-            rewards_remaining: balance!(600),
-        }
-            .assimilate_storage(&mut t)
-            .unwrap();*/
 
         t.into()
     }

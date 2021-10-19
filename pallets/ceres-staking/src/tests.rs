@@ -1,8 +1,8 @@
 mod tests {
     use crate::mock::*;
-    use crate::{Error, pallet, mock};
+    use crate::{Error, pallet};
     use frame_support::{assert_err, assert_ok};
-    use common::Balance;
+    use common::balance;
     use common::prelude::FixedWrapper;
     use sp_runtime::ModuleId;
     use sp_runtime::traits::AccountIdConversion;
@@ -12,7 +12,7 @@ mod tests {
         let mut ext = ExtBuilder::default().build();
         ext.execute_with(|| {
             assert_err!(
-                CeresStaking::deposit(Origin::signed(ALICE), 7201),
+                CeresStaking::deposit(Origin::signed(ALICE), balance!(7201)),
                 Error::<Runtime>::StakingPoolIsFull
             );
         });
@@ -23,7 +23,7 @@ mod tests {
         let mut ext = ExtBuilder::default().build();
         ext.execute_with(|| {
             // Deposit 500 from Alice's account
-            assert_ok!(CeresStaking::deposit(Origin::signed(ALICE), 500));
+            assert_ok!(CeresStaking::deposit(Origin::signed(ALICE), balance!(500)));
 
             // Get staking pool account id
             let staking_pool = ModuleId(*b"cerstake").into_account();
@@ -31,77 +31,77 @@ mod tests {
             // Check Alice's balance
             assert_eq!(
                 Assets::free_balance(&CERES_ASSET_ID, &ALICE).expect("Failed to query free balance."),
-                Balance::from(6800u32),
+                balance!(6800)
             );
             // Check staking pool's balance
             assert_eq!(
                 Assets::free_balance(&CERES_ASSET_ID, &staking_pool).expect("Failed to query free balance."),
-                Balance::from(500u32),
+                balance!(500)
             );
             // Check total deposited
             assert_eq!(
                 pallet::TotalDeposited::<Runtime>::get(),
-                Balance::from(500u32),
+                balance!(500)
             );
             // Check Stakers map
             let staking_info = pallet::Stakers::<Runtime>::get(&ALICE);
             assert_eq!(
                 staking_info.deposited,
-                Balance::from(500u32),
+                balance!(500)
             );
 
             // Deposit 250 more from Alice's account
-            assert_ok!(CeresStaking::deposit(Origin::signed(ALICE), 250));
+            assert_ok!(CeresStaking::deposit(Origin::signed(ALICE), balance!(250)));
             // Check Alice's balance
             assert_eq!(
                 Assets::free_balance(&CERES_ASSET_ID, &ALICE).expect("Failed to query free balance."),
-                Balance::from(6550u32),
+                balance!(6550)
             );
             // Check staking pool's balance
             assert_eq!(
                 Assets::free_balance(&CERES_ASSET_ID, &staking_pool).expect("Failed to query free balance."),
-                Balance::from(750u32),
+                balance!(750)
             );
             // Check total deposited
             assert_eq!(
                 pallet::TotalDeposited::<Runtime>::get(),
-                Balance::from(750u32),
+                balance!(750)
             );
             // Check Stakers map
             let staking_info = pallet::Stakers::<Runtime>::get(&ALICE);
             assert_eq!(
                 staking_info.deposited,
-                Balance::from(750u32),
+                balance!(750)
             );
 
             // Deposit 50 from BOB's account
-            assert_ok!(CeresStaking::deposit(Origin::signed(BOB), 50));
+            assert_ok!(CeresStaking::deposit(Origin::signed(BOB), balance!(50)));
             // Check Bob's balance
             assert_eq!(
                 Assets::free_balance(&CERES_ASSET_ID, &BOB).expect("Failed to query free balance."),
-                Balance::from(50u32),
+                balance!(50)
             );
             // Check staking pool's balance
             assert_eq!(
                 Assets::free_balance(&CERES_ASSET_ID, &staking_pool).expect("Failed to query free balance."),
-                Balance::from(800u32),
+                balance!(800)
             );
             // Check total deposited
             assert_eq!(
                 pallet::TotalDeposited::<Runtime>::get(),
-                Balance::from(800u32),
+                balance!(800)
             );
             // Check Stakers map for Alice
             let staking_info_alice = pallet::Stakers::<Runtime>::get(&ALICE);
             assert_eq!(
                 staking_info_alice.deposited,
-                Balance::from(750u32),
+                balance!(750)
             );
             // Check Stakers map for Bob
             let staking_info_bob = pallet::Stakers::<Runtime>::get(&BOB);
             assert_eq!(
                 staking_info_bob.deposited,
-                Balance::from(50u32),
+                balance!(50)
             );
         });
     }
@@ -111,13 +111,13 @@ mod tests {
         let mut ext = ExtBuilder::default().build();
         ext.execute_with(|| {
             // Deposit 1200 from Alice's account
-            assert_ok!(CeresStaking::deposit(Origin::signed(ALICE), 1200));
+            assert_ok!(CeresStaking::deposit(Origin::signed(ALICE), balance!(1200)));
             // Deposit 50 from Bob's account
-            assert_ok!(CeresStaking::deposit(Origin::signed(BOB), 50));
+            assert_ok!(CeresStaking::deposit(Origin::signed(BOB), balance!(50)));
 
             // Add rewards to Alice
             let mut staking_info = pallet::Stakers::<Runtime>::get(&ALICE);
-            staking_info.rewards = staking_info.rewards + 11;
+            staking_info.rewards = staking_info.rewards + balance!(11);
             pallet::Stakers::<Runtime>::insert(&ALICE, staking_info);
 
             // Withdraw Alice's stake
@@ -125,47 +125,55 @@ mod tests {
             // Check Alice's balance
             assert_eq!(
                 Assets::free_balance(&CERES_ASSET_ID, &ALICE).expect("Failed to query free balance."),
-                Balance::from(7311u32),
+                balance!(7311)
             );
             // Check total deposited
             assert_eq!(
                 pallet::TotalDeposited::<Runtime>::get(),
-                Balance::from(50u32),
+                balance!(50)
             );
             // Check Stakers map
             let staking_info_alice = pallet::Stakers::<Runtime>::get(&ALICE);
             assert_eq!(
                 staking_info_alice.deposited,
-                Balance::from(0u32),
+                balance!(0)
             );
             assert_eq!(
                 staking_info_alice.rewards,
-                Balance::from(0u32),
+                balance!(0)
             );
             // Check staking pool's balance
             let staking_pool = ModuleId(*b"cerstake").into_account();
             assert_eq!(
                 Assets::free_balance(&CERES_ASSET_ID, &staking_pool).expect("Failed to query free balance."),
-                Balance::from(39u32),
+                balance!(39)
             );
         });
     }
 
     #[test]
-    fn my_runtime_test() {
+    fn should_calculate_rewards_and_withdraw_from_staking_pool() {
         let mut ext = ExtBuilder::default().build();
         ext.execute_with(|| {
             // Deposit 500 from Alice's account
-            assert_ok!(CeresStaking::deposit(Origin::signed(ALICE), 500));
-            run_to_block(1001);
-            // Check Stakers map
-            let rewards_remaining = pallet::RewardsRemaining::<Runtime>::get();
-            assert_eq!(
-                rewards_remaining,
-                FixedWrapper::from(FixedWrapper::from(500.46296296))
-                    .try_into_balance()
-                    .unwrap_or(0),
-            );
+            assert_ok!(CeresStaking::deposit(Origin::signed(ALICE), balance!(500)));
+            assert_ok!(CeresStaking::deposit(Origin::signed(BOB), balance!(50)));
+            run_to_block(1000);
+            let diff = FixedWrapper::from(0.0001);
+            // Check remaining rewards
+            let remaining_rewards = pallet::RewardsRemaining::<Runtime>::get();
+            assert_eq!((FixedWrapper::from(599.53703704) - FixedWrapper::from(remaining_rewards)) < diff, true);
+            // Check Alice's staking rewards
+            let staking_info_alice = pallet::Stakers::<Runtime>::get(&ALICE);
+            assert_eq!((FixedWrapper::from(staking_info_alice.rewards) - FixedWrapper::from(0.4208754181)) < diff, true);
+            // Check Bob's staking rewards
+            let staking_info_bob = pallet::Stakers::<Runtime>::get(&BOB);
+            assert_eq!((FixedWrapper::from(staking_info_bob.rewards) - FixedWrapper::from(0.04208754181)) < diff, true);
+            // Withdraw Alice's stake
+            assert_ok!(CeresStaking::withdraw(Origin::signed(ALICE)));
+            // Check Alice's balance after withdrawal
+            let alice_balance = Assets::free_balance(&CERES_ASSET_ID, &ALICE).expect("Failed to query free balance.");
+            assert_eq!((FixedWrapper::from(7300.4208754181) - FixedWrapper::from(alice_balance)) < diff, true);
         });
     }
 }

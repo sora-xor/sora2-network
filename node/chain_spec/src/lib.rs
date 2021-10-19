@@ -48,7 +48,7 @@ use framenode_runtime::multicollateral_bonding_curve_pool::{
 use framenode_runtime::opaque::SessionKeys;
 use framenode_runtime::{
     assets, eth_bridge, frame_system, AccountId, AssetId, AssetName, AssetSymbol, AssetsConfig,
-    BabeConfig, BalancesConfig, BridgeMultisigConfig, CeresStakingConfig, CouncilConfig,
+    BabeConfig, BalancesConfig, BridgeMultisigConfig, CouncilConfig,
     DEXAPIConfig, DEXManagerConfig, DemocracyConfig, EthBridgeConfig, GetBaseAssetId,
     GetParliamentAccountId, GetPswapAssetId, GetValAssetId, GetXorAssetId, GrandpaConfig,
     ImOnlineId, IrohaMigrationConfig, LiquiditySourceType, MulticollateralBondingCurvePoolConfig,
@@ -1059,9 +1059,6 @@ fn testnet_genesis(
             ],
         }),
         pallet_balances: Some(BalancesConfig { balances }),
-        ceres_staking: Some(CeresStakingConfig {
-            rewards_remaining: balance!(600),
-        }),
         dex_manager: Some(DEXManagerConfig {
             dex_list: vec![(
                 0,
@@ -1669,9 +1666,6 @@ fn mainnet_genesis(
                     .map(|account_id| (account_id, initial_staking)),
             )
             .collect(),
-        }),
-        ceres_staking: Some(CeresStakingConfig {
-            rewards_remaining: balance!(600),
         }),
         dex_manager: Some(DEXManagerConfig {
             dex_list: vec![(
