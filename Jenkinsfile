@@ -45,7 +45,7 @@ pipeline {
                 script {
                     docker.withRegistry('https://' + registry, dockerRegistryRWUserId) {
                         if (getPushVersion(pushTags)) {
-                            docker.image(envImageName + ':latest').inside() {
+                            docker.image(envImageName + ':sub4').inside() {
                                 if (env.TAG_NAME =~ 'benchmarking.*') {
                                     featureList = 'runtime-benchmarks main-net-coded'
                                 }
