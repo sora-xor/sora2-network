@@ -2640,3 +2640,27 @@ fn test_quote_with_no_price_impact_with_desired_output() {
         assert!(amount_without_impact.unwrap() < quotes.amount);
     });
 }
+
+#[test]
+fn test_quote_does_not_overflow_with_desired_input() {
+    let collateral_asset_id = VAL;
+    let mut ext = ExtBuilder::with_total_supply_and_reserves(
+        balance!(200000000000),
+        vec![(0, collateral_asset_id, (fixed!(3000000), fixed!(1100000)))],
+    )
+    .build();
+    ext.execute_with(|| {
+        MockMCBCPool::init(vec![(collateral_asset_id, balance!(1100000))]).unwrap();
+
+        let base_asset = GetBaseAssetId::get();
+
+        LiquidityProxy::quote_single(
+            &collateral_asset_id,
+            &base_asset,
+            QuoteAmount::with_desired_input(balance!(1)),
+            LiquiditySourceFilter::empty(0),
+            false,
+        )
+        .expect("Failed to get a quote");
+    });
+}
