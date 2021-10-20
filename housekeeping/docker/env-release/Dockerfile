@@ -43,6 +43,6 @@ ADD . /app
 WORKDIR /app
 ENV RUSTC_WRAPPER=sccache
 ENV CARGO_INCREMENTAL=0
-RUN RUSTFLAGS="$RUSTFLAGS -A warnings" cargo build --release --features "include-real-files" && \
+RUN RUSTFLAGS="$RUSTFLAGS -A warnings" cargo build --color=never --release --features "include-real-files" && \
     cargo test --release
 WORKDIR /
