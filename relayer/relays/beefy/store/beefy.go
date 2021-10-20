@@ -149,6 +149,7 @@ func (b *BeefyJustification) BuildCompleteSignatureCommitmentMessage(info BeefyR
 		NextAuthoritySetId:   uint64(latestMMRProof.Leaf.BeefyNextAuthoritySet.ID),
 		NextAuthoritySetLen:  uint32(latestMMRProof.Leaf.BeefyNextAuthoritySet.Len),
 		NextAuthoritySetRoot: latestMMRProof.Leaf.BeefyNextAuthoritySet.Root,
+		DigestHash:           latestMMRProof.Leaf.DigestHash,
 	}
 	mmrProofItems := [][32]byte{}
 	for _, mmrProofItem := range latestMMRProof.Proof.Items {

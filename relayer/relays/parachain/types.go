@@ -8,13 +8,13 @@ import (
 type ParaBlockWithDigest struct {
 	BlockNumber         uint64
 	DigestItemsWithData []DigestItemWithData
+	Digest              types.Digest
 }
 
 type ParaBlockWithProofs struct {
 	Block             ParaBlockWithDigest
 	MMRProofResponse  types.GenerateMMRProofResponse
 	MMRRootHash       types.Hash
-	Header            types.Header
 	mmrProofLeafIndex uint64
 }
 
@@ -27,9 +27,9 @@ type MessagePackage struct {
 	channelID      relaychain.ChannelID
 	commitmentHash types.H256
 	commitmentData types.StorageDataRaw
-	paraHead       types.Header
 	mmrProof       types.GenerateMMRProofResponse
 	mmrRootHash    types.Hash
+	digest         types.Digest
 }
 
 func CreateMessagePackages(paraBlocks []ParaBlockWithProofs, mmrLeafCount uint64) ([]MessagePackage, error) {
@@ -43,9 +43,9 @@ func CreateMessagePackages(paraBlocks []ParaBlockWithProofs, mmrLeafCount uint64
 				item.DigestItem.AsCommitment.ChannelID,
 				commitmentHash,
 				commitmentData,
-				block.Header,
 				block.MMRProofResponse,
 				block.MMRRootHash,
+				block.Block.Digest,
 			}
 			messagePackages = append(messagePackages, messagePackage)
 		}

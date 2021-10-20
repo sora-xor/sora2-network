@@ -113,6 +113,7 @@ contract BeefyLightClient {
         uint64 nextAuthoritySetId;
         uint32 nextAuthoritySetLen;
         bytes32 nextAuthoritySetRoot;
+        bytes32 digestHash;
     }
 
     /* State */
@@ -585,7 +586,7 @@ contract BeefyLightClient {
     // - 32 bytes for the parachain heads merkle root
     // That number is then compact encoded unsigned integer - see SCALE spec
     bytes2 public constant MMR_LEAF_LENGTH_SCALE_ENCODED =
-        bytes2(uint16(0xc501));
+        bytes2(uint16(0x4502));
 
     function encodeMMRLeaf(BeefyMMRLeaf calldata leaf)
         public
@@ -599,7 +600,8 @@ contract BeefyLightClient {
             ScaleCodec.encode64(leaf.nextAuthoritySetId),
             ScaleCodec.encode32(leaf.nextAuthoritySetLen),
             leaf.nextAuthoritySetRoot,
-            leaf.parachainHeadsRoot
+            leaf.parachainHeadsRoot,
+            leaf.digestHash
         );
 
         return bytes.concat(MMR_LEAF_LENGTH_SCALE_ENCODED, scaleEncodedMMRLeaf);

@@ -1379,7 +1379,11 @@ impl pallet_mmr::Config for Runtime {
     type Hash = <Keccak256 as sp_runtime::traits::Hash>::Output;
     type OnNewRoot = pallet_beefy_mmr::DepositBeefyDigest<Runtime>;
     type WeightInfo = ();
-    type LeafData = pallet_beefy_mmr::Pallet<Runtime>;
+    type LeafData = leaf_provider_with_digest::Pallet<Runtime>;
+}
+
+impl leaf_provider_with_digest::Config for Runtime {
+    type Event = Event;
 }
 
 pub struct ParasProvider;
@@ -1531,7 +1535,7 @@ impl incentivized_channel_outbound::Config for Runtime {
 
 parameter_types! {
     pub const DescendantsUntilFinalized: u8 = 3;
-    pub const DifficultyConfig: EthereumDifficultyConfig = EthereumDifficultyConfig::mainnet();
+    pub const DifficultyConfig: EthereumDifficultyConfig = EthereumDifficultyConfig::testnet();
     pub const VerifyPoW: bool = true;
 }
 
@@ -1626,6 +1630,7 @@ construct_runtime! {
         IncentivizedOutboundChannel: incentivized_channel_outbound::{Pallet, Config<T>, Storage, Event<T>} = 94,
         Dispatch: dispatch::{Pallet, Storage, Event<T>, Origin} = 95,
         EthApp: eth_app::{Pallet, Call, Storage, Event<T>, Config<T>} = 96,
+        LeafProviderWithDigest: leaf_provider_with_digest::{Pallet, Storage, Event<T>} = 97,
     }
 }
 
@@ -1700,6 +1705,7 @@ construct_runtime! {
         IncentivizedOutboundChannel: incentivized_channel_outbound::{Pallet, Config<T>, Storage, Event<T>} = 94,
         Dispatch: dispatch::{Pallet, Storage, Event<T>, Origin} = 95,
         EthApp: eth_app::{Pallet, Call, Storage, Event<T>, Config<T>} = 96,
+        LeafProviderWithDigest: leaf_provider_with_digest::{Pallet, Storage, Event<T>} = 97,
     }
 }
 
@@ -2205,6 +2211,12 @@ impl_runtime_apis! {
     impl beefy_primitives::BeefyApi<Block> for Runtime {
         fn validator_set() -> beefy_primitives::ValidatorSet<BeefyId> {
             Beefy::validator_set()
+        }
+    }
+
+    impl leaf_provider_runtime_api::LeafProviderApi<Block, Hash> for Runtime {
+        fn latest_digest() -> sp_runtime::generic::Digest<Hash> {
+            LeafProviderWithDigest::latest_digest()
         }
     }
 

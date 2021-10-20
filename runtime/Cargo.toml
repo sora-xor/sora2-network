@@ -30,6 +30,14 @@ beefy-primitives = { git = "https://github.com/paritytech/grandpa-bridge-gadget.
 pallet-mmr-primitives = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.9", default-features = false }
 pallet-mmr = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.9", default-features = false }
 
+ethereum-light-client = { path = "../pallets/trustless-eth-bridge/ethereum-light-client", default-features = false }
+basic-channel = { path = "../pallets/trustless-eth-bridge/basic-channel", default-features = false }
+incentivized-channel = { path = "../pallets/trustless-eth-bridge/incentivized-channel", default-features = false }
+dispatch = { path = "../pallets/trustless-eth-bridge/dispatch", default-features = false }
+eth-app = { path = "../pallets/trustless-eth-bridge/eth-app", default-features = false }
+leaf-provider-with-digest = { path = "../pallets/trustless-eth-bridge/leaf-provider-with-digest", default-features = false }
+leaf-provider-runtime-api = { path = "../pallets/trustless-eth-bridge/leaf-provider-with-digest/runtime-api", default-features = false }
+
 assets = { path = "../pallets/assets", default-features = false }
 assets-runtime-api = { path = "../pallets/assets/runtime-api", default-features = false }
 common = { path = "../common", default-features = false }
@@ -66,11 +74,6 @@ vested-rewards = { path = "../pallets/vested-rewards", default-features = false 
 xor-fee = { path = "../pallets/xor-fee", default-features = false }
 xor-fee-benchmarking = { path = "../pallets/xor-fee/benchmarking", default-features = false, optional = true }
 xst = { path = "../pallets/xst", default-features = false }
-ethereum-light-client = { path = "../pallets/trustless-eth-bridge/ethereum-light-client", default-features = false }
-basic-channel = { path = "../pallets/trustless-eth-bridge/basic-channel", default-features = false }
-incentivized-channel = { path = "../pallets/trustless-eth-bridge/incentivized-channel", default-features = false }
-dispatch = { path = "../pallets/trustless-eth-bridge/dispatch", default-features = false }
-eth-app = { path = "../pallets/trustless-eth-bridge/eth-app", default-features = false }
 
 # Substrate dependencies
 frame-benchmarking = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.9", default-features = false, optional = true }
@@ -158,6 +161,8 @@ std = [
     "incentivized-channel/std",
     "dispatch/std",
     "eth-app/std",
+    "leaf-provider-with-digest/std",
+    "leaf-provider-runtime-api/std",
     "snowbridge-core/std",
     "farming/std",
     "faucet/std",

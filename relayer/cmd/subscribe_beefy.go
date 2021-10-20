@@ -166,6 +166,7 @@ func GetMMRLeafForBlock(blockNumber uint64, blockHash types.Hash, relaychainConn
 		"Leaf.BeefyNextAuthoritySet.ID":   proofResponse.Leaf.BeefyNextAuthoritySet.ID,
 		"Leaf.BeefyNextAuthoritySet.Len":  proofResponse.Leaf.BeefyNextAuthoritySet.Len,
 		"Leaf.BeefyNextAuthoritySet.Root": proofResponse.Leaf.BeefyNextAuthoritySet.Root.Hex(),
+		"Leaf.Digest":                     proofResponse.Leaf.DigestHash.Hex(),
 		"Proof.LeafIndex":                 proofResponse.Proof.LeafIndex,
 		"Proof.LeafCount":                 proofResponse.Proof.LeafCount,
 	}).Info("Generated MMR Proof")

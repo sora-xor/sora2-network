@@ -2,6 +2,7 @@ package parachain
 
 import (
 	"context"
+	"encoding/hex"
 	"fmt"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
@@ -9,6 +10,7 @@ import (
 	"github.com/snowfork/snowbridge/relayer/chain/relaychain"
 	"github.com/snowfork/snowbridge/relayer/contracts/basic"
 	"github.com/snowfork/snowbridge/relayer/contracts/incentivized"
+	"github.com/snowfork/snowbridge/relayer/crypto/keccak"
 	"github.com/vovac12/go-substrate-rpc-client/v3/types"
 
 	log "github.com/sirupsen/logrus"
@@ -135,7 +137,7 @@ func (li *BeefyListener) buildMissedMessagePackages(
 		return nil, err
 	}
 
-	log.Info("Created message packages")
+	log.WithField("messages", messagePackages).Info("Created message packages")
 
 	return messagePackages, nil
 }
@@ -160,22 +162,9 @@ func (li *BeefyListener) parablocksWithProofs(
 			"blockHash":   latestRelaychainBlockHash.Hex(),
 		}).Info("Getting MMR Leaf for block...")
 
-		// We expect 1 mmr leaf for each block. MMR leaf indexes start from 0, but block numbers start from 1,
-		// so the mmr leaf index should be 1 less than the block number.
-		// However, some chains only started using beefy late in their existence, so there are no leafs for
-		// blocks produced before beefy was activated. We subtract the block in which beefy was started on the
-		// chain to account for this.
-		leafIndex := latestRelayChainBlockNumber - li.config.Substrate.BeefyStartingBlock
-
-		mmrProof, err := li.relaychainConn.GetMMRLeafForBlock(leafIndex, latestRelaychainBlockHash)
+		mmrProof, err := li.relaychainConn.GetMMRLeafForBlock(block.BlockNumber+1, latestRelaychainBlockHash, li.config.Substrate.BeefyStartingBlock)
 		if err != nil {
 			log.WithError(err).Error("Failed to get mmr leaf")
-			return nil, err
-		}
-
-		header, err := li.relaychainConn.API().RPC.Chain.GetHeader(types.Hash(mmrProof.BlockHash))
-		if err != nil || header == nil {
-			log.WithError(err).Error("Failed to get header")
 			return nil, err
 		}
 
@@ -198,8 +187,7 @@ func (li *BeefyListener) parablocksWithProofs(
 			Block:             block,
 			MMRProofResponse:  mmrProof,
 			MMRRootHash:       mmrRootHash,
-			Header:            *header,
-			mmrProofLeafIndex: leafIndex,
+			mmrProofLeafIndex: latestRelayChainBlockNumber - 1,
 		}
 		blocksWithProof = append(blocksWithProof, blockWithProof)
 	}
@@ -236,13 +224,29 @@ func (li *BeefyListener) searchForLostCommitments(
 			return nil, err
 		}
 
-		header, err := li.relaychainConn.API().RPC.Chain.GetHeader(blockHash)
+		storageKey, err := types.CreateStorageKey(li.relaychainConn.Metadata(), "LeafProviderWithDigest", "LatestDigest")
 		if err != nil {
-			log.WithError(err).Error("Failed to fetch header")
+			log.WithError(err).Error("Failed to create storage key")
+		}
+		latestDigest := types.Digest{}
+
+		ok, err := li.relaychainConn.API().RPC.State.GetStorage(storageKey, &latestDigest, blockHash)
+		if err != nil {
+			log.WithError(err).Error("Failed to get digest")
 			return nil, err
 		}
+		if !ok {
+			continue
+		}
+		ownParachainHeadBytes, err := types.EncodeToBytes(latestDigest)
+		if err != nil {
+			return nil, err
+		}
+		computedDigestHash := keccak.New().Hash(ownParachainHeadBytes)
+		computedDigestHashString := hex.EncodeToString(computedDigestHash)
+		log.WithFields(log.Fields{"digest": latestDigest, "hash": computedDigestHashString}).Info("Get digest")
 
-		digestItems, err := relaychain.ExtractAuxiliaryDigestItems(header.Digest)
+		digestItems, err := relaychain.ExtractAuxiliaryDigestItems(latestDigest)
 		if err != nil {
 			return nil, err
 		}
@@ -283,6 +287,7 @@ func (li *BeefyListener) searchForLostCommitments(
 			block := ParaBlockWithDigest{
 				BlockNumber:         currentBlockNumber,
 				DigestItemsWithData: digestItemsWithData,
+				Digest:              latestDigest,
 			}
 			blocks = append(blocks, block)
 		}

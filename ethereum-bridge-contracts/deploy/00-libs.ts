@@ -3,7 +3,7 @@ import { HardhatRuntimeEnvironment } from 'hardhat/types';
 module.exports = async ({ deployments, getUnnamedAccounts }: HardhatRuntimeEnvironment) => {
   let [deployer] = await getUnnamedAccounts();
 
-  let codec = await deployments.deploy('ScaleCodec', {
+  await deployments.deploy('ScaleCodec', {
     from: deployer,
     log: true,
     autoMine: true,
@@ -20,14 +20,4 @@ module.exports = async ({ deployments, getUnnamedAccounts }: HardhatRuntimeEnvir
     log: true,
     autoMine: true,
   });
-
-  await deployments.deploy('ParachainLightClient', {
-    from: deployer,
-    libraries: {
-      ScaleCodec: codec.address
-    },
-    log: true,
-    autoMine: true,
-  });
-
 };

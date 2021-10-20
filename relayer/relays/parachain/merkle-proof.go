@@ -3,12 +3,8 @@ package parachain
 import (
 	"encoding/hex"
 	"encoding/json"
-	"sort"
 
-	log "github.com/sirupsen/logrus"
 	"github.com/snowfork/snowbridge/relayer/chain/relaychain"
-	"github.com/snowfork/snowbridge/relayer/crypto/merkle"
-	"github.com/vovac12/go-substrate-rpc-client/v3/types"
 )
 
 // ByLeafIndex implements sort.Interface based on the LeafIndex field.
@@ -67,40 +63,4 @@ func (d Proof) MarshalJSON() ([]byte, error) {
 func (d MerkleProofData) String() string {
 	b, _ := json.Marshal(d)
 	return string(b)
-}
-
-func CreateParachainMerkleProof() (MerkleProofData, error) {
-	// convert header mapping into slice
-	headsAsSlice := make([]relaychain.ParaHead, 0, 0)
-
-	// sort slice by para ID
-	sort.Sort(ByParaID(headsAsSlice))
-
-	// loop headers, convert to pre leaves and find header being proven
-	preLeaves := make([][]byte, 0, len(headsAsSlice))
-	var headerToProve []byte
-	var headerIndex int64
-	head := relaychain.ParaHead{}
-	preLeaf, err := types.EncodeToBytes(head)
-	if err != nil {
-		return MerkleProofData{}, err
-	}
-	headerToProve = preLeaf
-	headerIndex = int64(0)
-
-	leaf, root, proof, err := merkle.GenerateMerkleProof(preLeaves, headerIndex)
-	if err != nil {
-		log.WithError(err).Error("Failed to create parachain header proof")
-		return MerkleProofData{}, err
-	}
-
-	return MerkleProofData{
-		PreLeaves:       preLeaves,
-		NumberOfLeaves:  len(preLeaves),
-		ProvenPreLeaf:   headerToProve,
-		ProvenLeaf:      leaf,
-		ProvenLeafIndex: headerIndex,
-		Root:            root,
-		Proof:           proof,
-	}, nil
 }

@@ -17,6 +17,7 @@ import (
 	"github.com/snowfork/snowbridge/relayer/chain/relaychain"
 	"github.com/snowfork/snowbridge/relayer/contracts/basic"
 	"github.com/snowfork/snowbridge/relayer/contracts/incentivized"
+	"github.com/snowfork/snowbridge/relayer/crypto/keccak"
 
 	gsrpcTypes "github.com/vovac12/go-substrate-rpc-client/v3/types"
 
@@ -138,19 +139,7 @@ func (wr *EthereumChannelWriter) WriteBasicChannel(
 		)
 	}
 
-	proofItems := msgPackage.mmrProof.Proof.Items
-	proof := make([][32]byte, 0, len(proofItems))
-	for _, item := range proofItems {
-		proof = append(proof, item)
-	}
-
-	paraHeadProof := basic.ParachainLightClientParachainHeadProof{
-		Pos:   big.NewInt(int64(msgPackage.mmrProof.Proof.LeafIndex)),
-		Width: big.NewInt(int64(msgPackage.mmrProof.Proof.LeafCount)),
-		Proof: proof,
-	}
-
-	ownParachainHeadBytes, err := gsrpcTypes.EncodeToBytes(&msgPackage.paraHead)
+	ownParachainHeadBytes, err := gsrpcTypes.EncodeToBytes(&msgPackage.digest)
 	if err != nil {
 		return err
 	}
@@ -169,21 +158,6 @@ func (wr *EthereumChannelWriter) WriteBasicChannel(
 		return err
 	}
 
-	paraVerifyInput := basic.ParachainLightClientParachainVerifyInput{
-		OwnParachainHeadPrefixBytes: prefix,
-		OwnParachainHeadSuffixBytes: suffix,
-		ParachainHeadProof:          paraHeadProof,
-	}
-
-	beefyMMRLeafPartial := basic.ParachainLightClientBeefyMMRLeafPartial{
-		Version:              uint8(msgPackage.mmrProof.Leaf.Version),
-		ParentNumber:         uint32(msgPackage.mmrProof.Leaf.ParentNumberAndHash.ParentNumber),
-		ParentHash:           msgPackage.mmrProof.Leaf.ParentNumberAndHash.Hash,
-		NextAuthoritySetId:   uint64(msgPackage.mmrProof.Leaf.BeefyNextAuthoritySet.ID),
-		NextAuthoritySetLen:  uint32(msgPackage.mmrProof.Leaf.BeefyNextAuthoritySet.Len),
-		NextAuthoritySetRoot: msgPackage.mmrProof.Leaf.BeefyNextAuthoritySet.Root,
-	}
-
 	beefyMMRLeafIndex := msgPackage.mmrProof.Proof.LeafIndex
 	beefyMMRLeafCount := msgPackage.mmrProof.Proof.LeafCount
 	var beefyMMRProof [][32]byte
@@ -191,9 +165,24 @@ func (wr *EthereumChannelWriter) WriteBasicChannel(
 		beefyMMRProof = append(beefyMMRProof, [32]byte(item))
 	}
 
-	err = wr.logBasicTx(messages, paraVerifyInput,
-		beefyMMRLeafPartial, int64(beefyMMRLeafIndex), beefyMMRProof,
-		msgPackage.paraHead, msgPackage.mmrProof.Leaf,
+	beefyMMRLeafBytes, err := gsrpcTypes.EncodeToBytes(msgPackage.mmrProof.Leaf)
+	if err != nil {
+		return err
+	}
+	beefyMMRLeafString := hex.EncodeToString(beefyMMRLeafBytes)
+	digestHashString := hex.EncodeToString(msgPackage.mmrProof.Leaf.DigestHash[:])
+	beefyMMRLeafStringPartial := strings.TrimSuffix(beefyMMRLeafString, digestHashString)
+	if beefyMMRLeafString == beefyMMRLeafStringPartial {
+		return errors.New("invalid leaf")
+	}
+	beefyMMRLeafBytesPartial, err := hex.DecodeString(beefyMMRLeafStringPartial)
+	if err != nil {
+		return err
+	}
+	log.WithField("partialLeaf", beefyMMRLeafBytesPartial)
+
+	err = wr.logBasicTx(messages, int64(beefyMMRLeafIndex), beefyMMRProof,
+		msgPackage.mmrProof.Leaf,
 		msgPackage.commitmentHash, msgPackage.mmrRootHash,
 	)
 	if err != nil {
@@ -201,8 +190,14 @@ func (wr *EthereumChannelWriter) WriteBasicChannel(
 		return err
 	}
 
-	tx, err := wr.basicInboundChannel.Submit(options, messages, paraVerifyInput,
-		beefyMMRLeafPartial,
+	leafBytes := basic.BasicInboundChannelLeafBytes{
+		DigestPrefix: prefix,
+		DigestSuffix: suffix,
+		LeafPrefix:   beefyMMRLeafBytesPartial,
+	}
+
+	tx, err := wr.basicInboundChannel.Submit(options, messages,
+		leafBytes,
 		big.NewInt(int64(beefyMMRLeafIndex)), big.NewInt(int64(beefyMMRLeafCount)), beefyMMRProof)
 	if err != nil {
 		log.WithError(err).Error("Failed to submit transaction")
@@ -233,23 +228,12 @@ func (wr *EthereumChannelWriter) WriteIncentivizedChannel(
 			},
 		)
 	}
-
-	proofItems := msgPackage.mmrProof.Proof.Items
-	proof := make([][32]byte, 0, len(proofItems))
-	for _, item := range proofItems {
-		proof = append(proof, item)
-	}
-
-	paraHeadProof := incentivized.ParachainLightClientParachainHeadProof{
-		Pos:   big.NewInt(int64(msgPackage.mmrProof.Proof.LeafIndex)),
-		Width: big.NewInt(int64(msgPackage.mmrProof.Proof.LeafCount)),
-		Proof: proof,
-	}
-
-	ownParachainHeadBytes, err := gsrpcTypes.EncodeToBytes(&msgPackage.paraHead)
+	ownParachainHeadBytes, err := gsrpcTypes.EncodeToBytes(&msgPackage.digest)
 	if err != nil {
 		return err
 	}
+	computedDigestHash := keccak.New().Hash(ownParachainHeadBytes)
+	computedDigestHashString := hex.EncodeToString(computedDigestHash)
 	ownParachainHeadBytesString := hex.EncodeToString(ownParachainHeadBytes)
 	commitmentHashString := hex.EncodeToString(msgPackage.commitmentHash[:])
 	prefixSuffix := strings.Split(ownParachainHeadBytesString, commitmentHashString)
@@ -265,20 +249,6 @@ func (wr *EthereumChannelWriter) WriteIncentivizedChannel(
 		return err
 	}
 
-	paraVerifyInput := incentivized.ParachainLightClientParachainVerifyInput{
-		OwnParachainHeadPrefixBytes: prefix,
-		OwnParachainHeadSuffixBytes: suffix,
-		ParachainHeadProof:          paraHeadProof,
-	}
-
-	beefyMMRLeafPartial := incentivized.ParachainLightClientBeefyMMRLeafPartial{
-		Version:              uint8(msgPackage.mmrProof.Leaf.Version),
-		ParentNumber:         uint32(msgPackage.mmrProof.Leaf.ParentNumberAndHash.ParentNumber),
-		ParentHash:           msgPackage.mmrProof.Leaf.ParentNumberAndHash.Hash,
-		NextAuthoritySetId:   uint64(msgPackage.mmrProof.Leaf.BeefyNextAuthoritySet.ID),
-		NextAuthoritySetLen:  uint32(msgPackage.mmrProof.Leaf.BeefyNextAuthoritySet.Len),
-		NextAuthoritySetRoot: msgPackage.mmrProof.Leaf.BeefyNextAuthoritySet.Root,
-	}
 	beefyMMRLeafIndex := msgPackage.mmrProof.Proof.LeafIndex
 	beefyMMRLeafCount := msgPackage.mmrProof.Proof.LeafCount
 	var beefyMMRProof [][32]byte
@@ -286,19 +256,53 @@ func (wr *EthereumChannelWriter) WriteIncentivizedChannel(
 		beefyMMRProof = append(beefyMMRProof, [32]byte(item))
 	}
 
-	err = wr.logIncentivizedTx(messages, paraVerifyInput,
-		beefyMMRLeafPartial, int64(beefyMMRLeafIndex), beefyMMRProof,
-		msgPackage.paraHead, msgPackage.mmrProof.Leaf,
+	beefyMMRLeafBytes, err := gsrpcTypes.EncodeToBytes(msgPackage.mmrProof.Leaf)
+	if err != nil {
+		return err
+	}
+	beefyMMRLeafString := hex.EncodeToString(beefyMMRLeafBytes)
+	digestHashString := hex.EncodeToString(msgPackage.mmrProof.Leaf.DigestHash[:])
+	beefyMMRLeafStringPartial := strings.TrimSuffix(beefyMMRLeafString, digestHashString)
+	if beefyMMRLeafString == beefyMMRLeafStringPartial {
+		return errors.New("invalid leaf")
+	}
+	log.WithField("leafString", beefyMMRLeafString).WithField("digest", digestHashString).WithField("computed", computedDigestHashString).Info("Leaf encoded")
+	beefyMMRLeafBytesPartial, err := hex.DecodeString(beefyMMRLeafStringPartial)
+	if err != nil {
+		return err
+	}
+	log.WithField("partialLeaf", beefyMMRLeafBytesPartial)
+
+	leafBytes := incentivized.IncentivizedInboundChannelLeafBytes{
+		DigestPrefix: prefix,
+		DigestSuffix: suffix,
+		LeafPrefix:   beefyMMRLeafBytesPartial,
+	}
+
+	err = wr.logIncentivizedTx(messages, int64(beefyMMRLeafIndex), beefyMMRProof,
+		msgPackage.mmrProof.Leaf,
 		msgPackage.commitmentHash, msgPackage.mmrRootHash,
 	)
 	if err != nil {
 		log.WithError(err).Error("Failed to log transaction input")
 		return err
 	}
+	rawCaller := incentivized.IncentivizedInboundChannelCallerRaw{Contract: &wr.incentivizedInboundChannel.IncentivizedInboundChannelCaller}
+	callResult := make([]interface{}, 0)
+	err = rawCaller.Call(&bind.CallOpts{Context: options.Context, From: options.From, Pending: false}, &callResult, "submit", messages,
+		leafBytes,
+		big.NewInt(int64(beefyMMRLeafIndex)),
+		big.NewInt(int64(beefyMMRLeafCount)),
+		beefyMMRProof,
+	)
+	log.WithFields(log.Fields{"error": err, "result": callResult}).Info("Test transaction")
 
 	tx, err := wr.incentivizedInboundChannel.Submit(options, messages,
-		paraVerifyInput, beefyMMRLeafPartial,
-		big.NewInt(int64(beefyMMRLeafIndex)), big.NewInt(int64(beefyMMRLeafCount)), beefyMMRProof)
+		leafBytes,
+		big.NewInt(int64(beefyMMRLeafIndex)),
+		big.NewInt(int64(beefyMMRLeafCount)),
+		beefyMMRProof,
+	)
 	if err != nil {
 		log.WithError(err).Error("Failed to submit transaction")
 		return err

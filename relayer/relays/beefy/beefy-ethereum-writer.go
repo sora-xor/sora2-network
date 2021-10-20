@@ -11,10 +11,10 @@ import (
 
 	"golang.org/x/sync/errgroup"
 
+	geth "github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/sirupsen/logrus"
 
 	"github.com/snowfork/snowbridge/relayer/chain/ethereum"
 	"github.com/snowfork/snowbridge/relayer/contracts/beefylightclient"
@@ -172,7 +172,24 @@ func (wr *BeefyEthereumWriter) WriteNewSignatureCommitment(ctx context.Context, 
 
 	options := wr.makeTxOpts(ctx)
 
-	tx, err := contract.NewSignatureCommitment(options, msg.CommitmentHash,
+	// Pack the input, call and unpack the results
+	abi, err := beefylightclient.ContractMetaData.GetAbi()
+	input, err := abi.Pack(
+		"newSignatureCommitment",
+		msg.CommitmentHash,
+		msg.ValidatorClaimsBitfield, msg.ValidatorSignatureCommitment,
+		msg.ValidatorPosition, msg.ValidatorPublicKey, msg.ValidatorPublicKeyMerkleProof)
+	if err != nil {
+		return err
+	}
+	address := common.HexToAddress(wr.config.Contracts.BeefyLightClient)
+	callMsg := geth.CallMsg{From: options.From, To: &address, Data: input}
+	estimatedGas, err := wr.ethereumConn.GetClient().EstimateGas(ctx, callMsg)
+	estimatedCost := (estimatedGas * 4000 * 50) / 1000000000
+	log.WithField("estimatedGas", estimatedGas).WithField("estimatedCost", estimatedCost).WithError(err).Info("Estimated gas newCommitment")
+
+	tx, err := contract.NewSignatureCommitment(options,
+		msg.CommitmentHash,
 		msg.ValidatorClaimsBitfield, msg.ValidatorSignatureCommitment,
 		msg.ValidatorPosition, msg.ValidatorPublicKey, msg.ValidatorPublicKeyMerkleProof)
 	if err != nil {
@@ -185,13 +202,14 @@ func (wr *BeefyEthereumWriter) WriteNewSignatureCommitment(ctx context.Context, 
 		pkProofHex = append(pkProofHex, "0x"+hex.EncodeToString(proofItem[:]))
 	}
 
-	log.WithFields(logrus.Fields{
+	log.WithFields(log.Fields{
 		"txHash":                            tx.Hash().Hex(),
 		"msg.CommitmentHash":                "0x" + hex.EncodeToString(msg.CommitmentHash[:]),
 		"msg.ValidatorSignatureCommitment":  "0x" + hex.EncodeToString(msg.ValidatorSignatureCommitment),
 		"msg.ValidatorPublicKey":            msg.ValidatorPublicKey.Hex(),
 		"msg.ValidatorPublicKeyMerkleProof": pkProofHex,
 		"BlockNumber":                       beefyJustification.SignedCommitment.Commitment.BlockNumber,
+		"gas":                               tx.Gas(),
 	}).Info("New Signature Commitment transaction submitted")
 
 	log.Info("1: Creating item in Database with status 'InitialVerificationTxSent'")
@@ -265,6 +283,25 @@ func (wr *BeefyEthereumWriter) WriteCompleteSignatureCommitment(ctx context.Cont
 		log.WithError(err).Error("Failed to log complete tx input")
 		return err
 	}
+	// Pack the input, call and unpack the results
+	abi, err := beefylightclient.ContractMetaData.GetAbi()
+	input, err := abi.Pack(
+		"completeSignatureCommitment",
+		msg.ID,
+		msg.Commitment,
+		validatorProof,
+		msg.LatestMMRLeaf,
+		msg.MMRLeafIndex,
+		msg.MMRLeafCount,
+		msg.MMRProofItems)
+	if err != nil {
+		return err
+	}
+	address := common.HexToAddress(wr.config.Contracts.BeefyLightClient)
+	callMsg := geth.CallMsg{From: options.From, To: &address, Data: input}
+	estimatedGas, err := wr.ethereumConn.GetClient().EstimateGas(ctx, callMsg)
+	estimatedCost := (estimatedGas * 4000 * 50) / 1000000000
+	log.WithField("estimatedGas", estimatedGas).WithField("estimatedCost", estimatedCost).WithError(err).Info("Estimated gas CompleteCommitment")
 
 	tx, err := contract.CompleteSignatureCommitment(options,
 		msg.ID,
@@ -280,8 +317,9 @@ func (wr *BeefyEthereumWriter) WriteCompleteSignatureCommitment(ctx context.Cont
 		return err
 	}
 
-	log.WithFields(logrus.Fields{
+	log.WithFields(log.Fields{
 		"txHash": tx.Hash().Hex(),
+		"gas":    tx.Gas(),
 	}).Info("Complete Signature Commitment transaction submitted")
 
 	// Update item's status in database

@@ -45,6 +45,13 @@ const config: HardhatUserConfig = {
       gas: 6000000,
       gasPrice: 5000000000,
     },
+    oe: {
+      url: "http://127.0.0.1:8545",
+      chainId: 17,
+      accounts: ["4d5db4107d237df6a3d58ee5f70ae63d73d7658d4026f2eefd2f204c81682cb7"],
+      gas: 6000000,
+      gasPrice: 5000000000,
+    },
     ropsten: {
       chainId: 3,
       url: `https://ropsten.infura.io/v3/${infuraKey}`,

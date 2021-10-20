@@ -158,6 +158,7 @@ sp-transaction-pool = { git = "https://github.com/paritytech//substrate.git", re
 sp-trie = { git = "https://github.com/paritytech//substrate.git", rev = "b7a1a2cd" }
 sp-version = { git = "https://github.com/paritytech//substrate.git", rev = "b7a1a2cd" }
 sp-rpc = { git = "https://github.com/paritytech//substrate.git", rev = "b7a1a2cd" }
+sp-utils = { git = "https://github.com/paritytech//substrate.git", rev = "b7a1a2cd" }
 sc-telemetry = { git = "https://github.com/paritytech//substrate.git", rev = "b7a1a2cd" }
 substrate-frame-rpc-system = { git = "https://github.com/paritytech//substrate.git", rev = "b7a1a2cd" }
 pallet-mmr-primitives = { git = "https://github.com/paritytech//substrate.git", rev = "b7a1a2cd" }
@@ -166,11 +167,12 @@ pallet-mmr = { git = "https://github.com/paritytech//substrate.git", rev = "b7a1
 substrate-prometheus-endpoint = { git = "https://github.com/paritytech//substrate.git", rev = "b7a1a2cd" }
 
 [patch."https://github.com/paritytech/grandpa-bridge-gadget.git"]
-beefy-primitives = { git = "https://github.com/paritytech//grandpa-bridge-gadget.git", branch = "master" }
-pallet-beefy = { git = "https://github.com/paritytech//grandpa-bridge-gadget.git", branch = "master" }
-pallet-beefy-mmr = { git = "https://github.com/paritytech//grandpa-bridge-gadget.git", branch = "master" }
-beefy-gadget = { git = "https://github.com/paritytech//grandpa-bridge-gadget.git", branch = "master" }
-beefy-gadget-rpc = { git = "https://github.com/paritytech//grandpa-bridge-gadget.git", branch = "master" }
+beefy-primitives = { git = "https://github.com/paritytech//grandpa-bridge-gadget.git", rev = "8809d9e0" }
+pallet-beefy = { git = "https://github.com/paritytech//grandpa-bridge-gadget.git", rev = "8809d9e0" }
+pallet-beefy-mmr = { git = "https://github.com/paritytech//grandpa-bridge-gadget.git", rev = "8809d9e0" }
+beefy-gadget = { git = "https://github.com/paritytech//grandpa-bridge-gadget.git", rev = "8809d9e0" }
+beefy-gadget-rpc = { git = "https://github.com/paritytech//grandpa-bridge-gadget.git", rev = "8809d9e0" }
+beefy-merkle-tree = { git = "https://github.com/paritytech//grandpa-bridge-gadget.git", rev = "8809d9e0" }
 
 # https://github.com/soramitsu/sora2-frame-pallets.git
 #git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.8#74101dc21cfffb4c2d014fcc28edc166d5ca1b16
@@ -350,6 +352,7 @@ members = [
     "pallets/trustless-eth-bridge/incentivized-channel",
     "pallets/trustless-eth-bridge/dispatch",
     "pallets/trustless-eth-bridge/eth-app",
+    "pallets/trustless-eth-bridge/leaf-provider-with-digest",
     "primitives/core",
     "primitives/ethereum",
     "primitives/testutils",
