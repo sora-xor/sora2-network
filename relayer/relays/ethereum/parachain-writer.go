@@ -26,15 +26,18 @@ type ParachainWriter struct {
 	nonce       uint32
 	pool        *parachain.ExtrinsicPool
 	genesisHash types.Hash
+	chainId     uint64
 }
 
 func NewParachainWriter(
 	conn *parachain.Connection,
 	payloads <-chan ParachainPayload,
+	chiainId uint64,
 ) *ParachainWriter {
 	return &ParachainWriter{
 		conn:     conn,
 		payloads: payloads,
+		chainId:  chiainId,
 	}
 }
 

@@ -8,9 +8,8 @@
 
 use frame_support::dispatch::{DispatchError, DispatchResult};
 use frame_system::Config;
-use snowbridge_ethereum::{Header, Log, U256};
+use snowbridge_ethereum::Log;
 use sp_core::H160;
-use sp_std::prelude::*;
 
 pub mod assets;
 pub mod nft;
@@ -27,11 +26,6 @@ pub use nft::{ERC721TokenData, TokenInfo};
 /// This trait should be implemented by runtime modules that wish to provide message verification functionality.
 pub trait Verifier {
     fn verify(message: &Message) -> Result<Log, DispatchError>;
-    fn initialize_storage(
-        headers: Vec<Header>,
-        initial_difficulty: U256,
-        descendants_until_final: u8,
-    ) -> Result<(), &'static str>;
 }
 
 /// Outbound submission for applications
@@ -51,7 +45,7 @@ pub trait MessageCommitment {
 
 /// Dispatch a message
 pub trait MessageDispatch<T: Config, MessageId> {
-    fn dispatch(source: H160, id: MessageId, payload: &[u8]);
+    fn dispatch(network_id: u32, source: H160, id: MessageId, payload: &[u8]);
     #[cfg(feature = "runtime-benchmarks")]
     fn successful_dispatch_event(id: MessageId) -> Option<<T as Config>::Event>;
 }

@@ -23,8 +23,8 @@ import (
 )
 
 func configureLogger() {
-	log.SetFormatter(&log.JSONFormatter{
-		TimestampFormat: time.RFC3339Nano,
+	log.SetFormatter(&log.TextFormatter{
+		TimestampFormat: time.StampMicro,
 		FieldMap: log.FieldMap{
 			log.FieldKeyTime: "@timestamp",
 			log.FieldKeyMsg:  "message",

@@ -25,6 +25,9 @@ pub mod pallet {
 
     use frame_support::pallet_prelude::*;
     use frame_system::pallet_prelude::*;
+    use sp_runtime::traits::{AtLeast32BitUnsigned, MaybeDisplay, MaybeSerializeDeserialize};
+
+    use core::fmt::Debug;
 
     #[pallet::pallet]
     #[pallet::generate_store(pub(super) trait Store)]
@@ -42,6 +45,16 @@ pub mod pallet {
 
         /// Weight information for extrinsics in this pallet
         type WeightInfo: WeightInfo;
+
+        /// Network id
+        type NetworkId: Parameter
+            + Member
+            + MaybeSerializeDeserialize
+            + Debug
+            + Default
+            + MaybeDisplay
+            + AtLeast32BitUnsigned
+            + Copy;
     }
 
     #[pallet::hooks]
@@ -63,29 +76,36 @@ pub mod pallet {
     /// Source channel on the ethereum side
     #[pallet::storage]
     #[pallet::getter(fn source_channel)]
-    pub type SourceChannel<T: Config> = StorageValue<_, H160, ValueQuery>;
+    pub type ChannelOwners<T: Config> =
+        StorageDoubleMap<_, Identity, T::NetworkId, Identity, H160, T::AccountId, OptionQuery>;
 
     #[pallet::storage]
-    pub type Nonce<T: Config> = StorageValue<_, u64, ValueQuery>;
+    pub type ChannelNonces<T: Config> =
+        StorageDoubleMap<_, Identity, T::NetworkId, Identity, H160, u64, OptionQuery>;
 
     #[pallet::genesis_config]
-    pub struct GenesisConfig {
-        pub source_channel: H160,
+    pub struct GenesisConfig<T: Config> {
+        pub networks: Vec<(T::NetworkId, Vec<(H160, T::AccountId)>)>,
     }
 
     #[cfg(feature = "std")]
-    impl Default for GenesisConfig {
+    impl<T: Config> Default for GenesisConfig<T> {
         fn default() -> Self {
             Self {
-                source_channel: Default::default(),
+                networks: Default::default(),
             }
         }
     }
 
     #[pallet::genesis_build]
-    impl<T: Config> GenesisBuild<T> for GenesisConfig {
+    impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
         fn build(&self) {
-            <SourceChannel<T>>::put(self.source_channel);
+            for (network_id, channels) in &self.networks {
+                for (channel, owner) in channels {
+                    <ChannelOwners<T>>::insert(network_id, channel, owner);
+                    <ChannelNonces<T>>::insert(network_id, channel, 0);
+                }
+            }
         }
     }
 
@@ -100,25 +120,48 @@ pub mod pallet {
             // Decode log into an Envelope
             let envelope = Envelope::try_from(log).map_err(|_| Error::<T>::InvalidEnvelope)?;
 
-            // Verify that the message was submitted to us from a known
-            // outbound channel on the ethereum side
-            if envelope.channel != <SourceChannel<T>>::get() {
-                return Err(Error::<T>::InvalidSourceChannel.into());
-            }
+            let network_id: T::NetworkId = message.network_id.into();
 
             // Verify message nonce
-            <Nonce<T>>::try_mutate(|nonce| -> DispatchResult {
-                if envelope.nonce != *nonce + 1 {
-                    Err(Error::<T>::InvalidNonce.into())
-                } else {
-                    *nonce += 1;
-                    Ok(())
-                }
-            })?;
+            <ChannelNonces<T>>::try_mutate(
+                network_id,
+                envelope.channel,
+                |nonce| -> DispatchResult {
+                    match nonce {
+                        Some(nonce) => {
+                            if envelope.nonce != *nonce + 1 {
+                                Err(Error::<T>::InvalidNonce.into())
+                            } else {
+                                *nonce += 1;
+                                Ok(())
+                            }
+                        }
+                        // Verify that the message was submitted to us from a known
+                        // outbound channel on the ethereum side
+                        _ => Err(Error::<T>::InvalidSourceChannel.into()),
+                    }
+                },
+            )?;
 
             let message_id = MessageId::new(ChannelId::Basic, envelope.nonce);
-            T::MessageDispatch::dispatch(envelope.source, message_id, &envelope.payload);
+            T::MessageDispatch::dispatch(
+                message.network_id,
+                envelope.source,
+                message_id,
+                &envelope.payload,
+            );
 
+            Ok(())
+        }
+        #[pallet::weight(T::WeightInfo::submit())]
+        pub fn register_channel(
+            origin: OriginFor<T>,
+            network_id: T::NetworkId,
+            channel: H160,
+        ) -> DispatchResult {
+            let owner = ensure_signed(origin)?;
+            <ChannelOwners<T>>::insert(network_id, channel, owner);
+            <ChannelNonces<T>>::insert(network_id, channel, 0);
             Ok(())
         }
     }

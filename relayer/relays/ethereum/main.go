@@ -42,6 +42,8 @@ func (r *Relay) Start(ctx context.Context, eg *errgroup.Group) error {
 		return err
 	}
 
+	chainId := r.ethconn.ChainID().Uint64()
+
 	err = r.paraconn.Connect(ctx)
 	if err != nil {
 		return err
@@ -68,6 +70,7 @@ func (r *Relay) Start(ctx context.Context, eg *errgroup.Group) error {
 	writer := NewParachainWriter(
 		r.paraconn,
 		payloads,
+		chainId,
 	)
 
 	err = writer.Start(ctx, eg)

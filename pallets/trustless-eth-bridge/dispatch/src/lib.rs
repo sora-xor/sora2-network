@@ -14,11 +14,11 @@ use snowbridge_core::MessageDispatch;
 use codec::{Decode, Encode};
 
 #[derive(Copy, Clone, PartialEq, Eq, Encode, Decode, RuntimeDebug)]
-pub struct RawOrigin(pub H160);
+pub struct RawOrigin(pub u32, pub H160);
 
-impl From<H160> for RawOrigin {
-    fn from(hash: H160) -> RawOrigin {
-        RawOrigin(hash)
+impl From<(u32, H160)> for RawOrigin {
+    fn from(origin: (u32, H160)) -> RawOrigin {
+        RawOrigin(origin.0, origin.1)
     }
 }
 
@@ -28,15 +28,15 @@ impl<OuterOrigin> EnsureOrigin<OuterOrigin> for EnsureEthereumAccount
 where
     OuterOrigin: Into<Result<RawOrigin, OuterOrigin>> + From<RawOrigin>,
 {
-    type Success = H160;
+    type Success = (u32, H160);
 
     fn try_origin(o: OuterOrigin) -> Result<Self::Success, OuterOrigin> {
-        o.into().and_then(|o| Ok(o.0))
+        o.into().and_then(|o| Ok((o.0, o.1)))
     }
 
     #[cfg(feature = "runtime-benchmarks")]
     fn successful_origin() -> OuterOrigin {
-        OuterOrigin::from(RawOrigin(H160::repeat_byte(2)))
+        OuterOrigin::from(RawOrigin(2, H160::repeat_byte(2)))
     }
 }
 
@@ -102,7 +102,7 @@ pub mod pallet {
     pub type MessageIdOf<T> = <T as Config>::MessageId;
 
     impl<T: Config> MessageDispatch<T, MessageIdOf<T>> for Pallet<T> {
-        fn dispatch(source: H160, id: MessageIdOf<T>, payload: &[u8]) {
+        fn dispatch(network_id: u32, source: H160, id: MessageIdOf<T>, payload: &[u8]) {
             let call = match <T as Config>::Call::decode(&mut &payload[..]) {
                 Ok(call) => call,
                 Err(_) => {
@@ -116,7 +116,7 @@ pub mod pallet {
                 return;
             }
 
-            let origin = RawOrigin(source).into();
+            let origin = RawOrigin(network_id, source).into();
             let result = call.dispatch(origin);
 
             Self::deposit_event(Event::MessageDispatched(
@@ -228,7 +228,7 @@ mod tests {
             let message = Call::System(<frame_system::Call<Test>>::remark(vec![])).encode();
 
             System::set_block_number(1);
-            Dispatch::dispatch(source, id, &message);
+            Dispatch::dispatch(2, source, id, &message);
 
             assert_eq!(
                 System::events(),
@@ -253,7 +253,7 @@ mod tests {
             let message: Vec<u8> = vec![1, 2, 3];
 
             System::set_block_number(1);
-            Dispatch::dispatch(source, id, &message);
+            Dispatch::dispatch(2, source, id, &message);
 
             assert_eq!(
                 System::events(),
@@ -275,7 +275,7 @@ mod tests {
             let message = Call::System(<frame_system::Call<Test>>::set_code(vec![])).encode();
 
             System::set_block_number(1);
-            Dispatch::dispatch(source, id, &message);
+            Dispatch::dispatch(2, source, id, &message);
 
             assert_eq!(
                 System::events(),

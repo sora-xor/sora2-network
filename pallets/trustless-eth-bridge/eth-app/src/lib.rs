@@ -44,6 +44,7 @@ pub mod weights;
 pub trait WeightInfo {
     fn burn() -> Weight;
     fn mint() -> Weight;
+    fn register_new_asset() -> Weight;
 }
 
 impl WeightInfo for () {
@@ -53,6 +54,10 @@ impl WeightInfo for () {
     fn mint() -> Weight {
         0
     }
+
+    fn register_new_asset() -> Weight {
+        0
+    }
 }
 
 pub use pallet::*;
@@ -60,9 +65,12 @@ pub use pallet::*;
 #[frame_support::pallet]
 pub mod pallet {
     use super::*;
+    use assets::AssetIdOf;
+    use core::fmt::Debug;
     use frame_support::log::{debug, warn};
     use frame_support::pallet_prelude::*;
     use frame_system::pallet_prelude::{OriginFor, *};
+    use sp_runtime::traits::{AtLeast32BitUnsigned, MaybeDisplay, MaybeSerializeDeserialize};
     use traits::MultiCurrency;
 
     type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
@@ -74,20 +82,31 @@ pub mod pallet {
 
         type OutboundRouter: OutboundRouter<Self::AccountId>;
 
-        type CallOrigin: EnsureOrigin<Self::Origin, Success = H160>;
+        type CallOrigin: EnsureOrigin<Self::Origin, Success = (u32, H160)>;
 
         type FeeCurrency: Get<Self::AssetId>;
 
         type WeightInfo: WeightInfo;
+
+        type NetworkId: Parameter
+            + Member
+            + MaybeSerializeDeserialize
+            + Debug
+            + Default
+            + MaybeDisplay
+            + AtLeast32BitUnsigned
+            + Copy;
     }
 
     #[pallet::storage]
     #[pallet::getter(fn address)]
-    pub(super) type Address<T: Config> = StorageValue<_, H160, ValueQuery>;
+    pub(super) type Address<T: Config> =
+        StorageDoubleMap<_, Identity, T::NetworkId, Identity, H160, AssetIdOf<T>, OptionQuery>;
 
     /// Destination account for bridge funds
     #[pallet::storage]
-    pub type DestAccount<T: Config> = StorageValue<_, T::AccountId, ValueQuery>;
+    pub type DestAccount<T: Config> =
+        StorageDoubleMap<_, Identity, T::NetworkId, Identity, H160, T::AccountId, OptionQuery>;
 
     #[pallet::pallet]
     #[pallet::generate_store(pub(super) trait Store)]
@@ -109,6 +128,7 @@ pub mod pallet {
     pub enum Error<T> {
         /// The submitted payload could not be decoded.
         InvalidPayload,
+        BridgeNotFound,
     }
 
     #[pallet::call]
@@ -119,17 +139,16 @@ pub mod pallet {
         pub fn burn(
             origin: OriginFor<T>,
             channel_id: ChannelId,
+            network_id: T::NetworkId,
+            bridge: H160,
             recipient: H160,
             amount: BalanceOf<T>,
         ) -> DispatchResult {
             let who = ensure_signed(origin)?;
+            let dest =
+                DestAccount::<T>::get(network_id, bridge).ok_or(Error::<T>::BridgeNotFound)?;
 
-            T::Currency::transfer(
-                T::FeeCurrency::get(),
-                &who,
-                &DestAccount::<T>::get(),
-                amount,
-            )?;
+            T::Currency::transfer(T::FeeCurrency::get(), &who, &dest, amount)?;
 
             let message = OutboundPayload {
                 sender: who.clone(),
@@ -137,7 +156,7 @@ pub mod pallet {
                 amount: amount.into(),
             };
 
-            T::OutboundRouter::submit(channel_id, &who, Address::<T>::get(), &message.encode())?;
+            T::OutboundRouter::submit(channel_id, &who, bridge, &message.encode())?;
             Self::deposit_event(Event::Burned(who.clone(), recipient, amount.into()));
 
             Ok(())
@@ -147,12 +166,13 @@ pub mod pallet {
         #[transactional]
         pub fn mint(
             origin: OriginFor<T>,
+            network_id: T::NetworkId,
             sender: H160,
             recipient: <T::Lookup as StaticLookup>::Source,
             amount: BalanceOf<T>,
         ) -> DispatchResult {
             let who = T::CallOrigin::ensure_origin(origin)?;
-            if who != Address::<T>::get() {
+            if who != Address::<T>::get(network_id, who) {
                 return Err(DispatchError::BadOrigin.into());
             }
 
@@ -161,6 +181,15 @@ pub mod pallet {
             Self::deposit_event(Event::Minted(sender, recipient.clone(), amount.into()));
 
             Ok(())
+        }
+
+        #[pallet::weight(<T as Config>::WeightInfo::mint())]
+        pub fn register_new_asset(
+            origin: OriginFor<T>,
+            asset_id: AssetIdOf<T>,
+            contract: H160,
+        ) -> DispatchResult {
+            Ok(().into())
         }
     }
 

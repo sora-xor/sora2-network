@@ -30,6 +30,8 @@ pub enum ChannelId {
 /// A message relayed from Ethereum.
 #[derive(PartialEq, Clone, Encode, Decode, RuntimeDebug)]
 pub struct Message {
+    /// Network id of sender
+    pub network_id: u32,
     /// The raw message data.
     pub data: Vec<u8>,
     /// Input to the message verifier

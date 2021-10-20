@@ -186,6 +186,8 @@ type SlashCancelOrigin = EnsureOneOf<
     pallet_collective::EnsureProportionAtLeast<_1, _2, AccountId, CouncilCollective>,
 >;
 
+type EthereumNetworkId = u32;
+
 /// Opaque types. These are used by the CLI to instantiate machinery that don't need to know
 /// the specifics of the runtime. They can then be made to be agnostic over specific formats
 /// of data like extrinsics, allowing for them to continue syncing the network through upgrades
@@ -1545,6 +1547,7 @@ impl ethereum_light_client::Config for Runtime {
     type DifficultyConfig = DifficultyConfig;
     type VerifyPoW = VerifyPoW;
     type WeightInfo = ();
+    type NetworkId = EthereumNetworkId;
 }
 
 impl eth_app::Config for Runtime {
@@ -1623,7 +1626,7 @@ construct_runtime! {
         MmrLeaf: pallet_beefy_mmr::{Pallet, Storage} = 83,
 
         // Snowbridge
-        EthereumLightClient: ethereum_light_client::{Pallet, Call, Storage, Event<T>, Config} = 90,
+        EthereumLightClient: ethereum_light_client::{Pallet, Call, Storage, Event<T>, Config<T>} = 90,
         BasicInboundChannel: basic_channel_inbound::{Pallet, Call, Storage, Event<T>, Config} = 91,
         BasicOutboundChannel: basic_channel_outbound::{Pallet, Storage, Event<T>, Config<T>} = 92,
         IncentivizedInboundChannel: incentivized_channel_inbound::{Pallet, Call, Config<T>, Storage, Event<T>} = 93,
@@ -1698,7 +1701,7 @@ construct_runtime! {
         MmrLeaf: pallet_beefy_mmr::{Pallet, Storage} = 47,
 
         // Snowbridge
-        EthereumLightClient: ethereum_light_client::{Pallet, Call, Storage, Event<T>, Config} = 90,
+        EthereumLightClient: ethereum_light_client::{Pallet, Call, Storage, Event<T>, Config<T>} = 90,
         BasicInboundChannel: basic_channel_inbound::{Pallet, Call, Storage, Event<T>} = 91,
         BasicOutboundChannel: basic_channel_outbound::{Pallet, Storage, Event<T>} = 92,
         IncentivizedInboundChannel: incentivized_channel_inbound::{Pallet, Call, Config<T>, Storage, Event<T>} = 93,

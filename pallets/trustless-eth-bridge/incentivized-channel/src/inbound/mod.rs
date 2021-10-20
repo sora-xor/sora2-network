@@ -46,6 +46,9 @@ pub mod pallet {
     use frame_support::log::{debug, warn};
     use frame_support::pallet_prelude::*;
     use frame_system::pallet_prelude::*;
+    use sp_runtime::traits::{AtLeast32BitUnsigned, MaybeDisplay, MaybeSerializeDeserialize};
+
+    use core::fmt::Debug;
 
     #[pallet::config]
     pub trait Config: frame_system::Config + assets::Config {
@@ -67,11 +70,32 @@ pub mod pallet {
 
         /// Weight information for extrinsics in this pallet
         type WeightInfo: WeightInfo;
+
+        /// Network id
+        type NetworkId: Parameter
+            + Member
+            + MaybeSerializeDeserialize
+            + Debug
+            + Default
+            + MaybeDisplay
+            + AtLeast32BitUnsigned
+            + Copy;
     }
 
     #[pallet::storage]
     #[pallet::getter(fn source_channel)]
-    pub(super) type SourceChannel<T: Config> = StorageValue<_, H160, ValueQuery>;
+    pub type ChannelOwners<T: Config> =
+        StorageDoubleMap<_, Identity, T::NetworkId, Identity, H160, T::AccountId, OptionQuery>;
+
+    #[pallet::storage]
+    pub type ChannelNonces<T: Config> =
+        StorageDoubleMap<_, Identity, T::NetworkId, Identity, H160, u64, OptionQuery>;
+
+    /// Source of funds to pay relayers
+    #[pallet::storage]
+    #[pallet::getter(fn source_account)]
+    pub type SourceAccounts<T: Config> =
+        StorageDoubleMap<_, Identity, T::NetworkId, Identity, H160, T::AccountId, OptionQuery>;
 
     #[pallet::storage]
     pub(super) type Nonce<T: Config> = StorageValue<_, u64, ValueQuery>;
@@ -79,11 +103,6 @@ pub mod pallet {
     #[pallet::storage]
     #[pallet::getter(fn reward_fraction)]
     pub(super) type RewardFraction<T: Config> = StorageValue<_, Perbill, ValueQuery>;
-
-    /// Source of funds to pay relayers
-    #[pallet::storage]
-    #[pallet::getter(fn source_account)]
-    pub(super) type SourceAccount<T: Config> = StorageValue<_, T::AccountId, ValueQuery>;
 
     /// Treasury Account
     #[pallet::storage]
@@ -128,23 +147,34 @@ pub mod pallet {
             let envelope: Envelope<T> =
                 Envelope::try_from(log).map_err(|_| Error::<T>::InvalidEnvelope)?;
 
-            // Verify that the message was submitted to us from a known
-            // outbound channel on the ethereum side
-            if envelope.channel != SourceChannel::<T>::get() {
-                return Err(Error::<T>::InvalidSourceChannel.into());
-            }
+            let network_id: T::NetworkId = message.network_id.into();
+            let source_account = match <SourceAccounts<T>>::get(network_id, envelope.channel) {
+                Some(x) => x,
+                _ => return Err(Error::<T>::InvalidSourceChannel.into()),
+            };
 
             // Verify message nonce
-            Nonce::<T>::try_mutate(|nonce| -> DispatchResult {
-                if envelope.nonce != *nonce + 1 {
-                    Err(Error::<T>::InvalidNonce.into())
-                } else {
-                    *nonce += 1;
-                    Ok(())
-                }
-            })?;
+            <ChannelNonces<T>>::try_mutate(
+                network_id,
+                envelope.channel,
+                |nonce| -> DispatchResult {
+                    match nonce {
+                        Some(nonce) => {
+                            if envelope.nonce != *nonce + 1 {
+                                Err(Error::<T>::InvalidNonce.into())
+                            } else {
+                                *nonce += 1;
+                                Ok(())
+                            }
+                        }
+                        // Verify that the message was submitted to us from a known
+                        // outbound channel on the ethereum side
+                        _ => Err(Error::<T>::InvalidSourceChannel.into()),
+                    }
+                },
+            )?;
 
-            Self::handle_fee(envelope.fee, &relayer);
+            Self::handle_fee(envelope.fee, &relayer, &source_account);
 
             let message_id = MessageId::new(ChannelId::Incentivized, envelope.nonce);
             T::MessageDispatch::dispatch(envelope.source, message_id, &envelope.payload);
@@ -174,19 +204,20 @@ pub mod pallet {
         	* - Adjust the negative imbalance by offsetting the amount paid to the relayer
         	* - Resolve the negative imbalance by depositing it into the treasury account
         	*/
-        pub fn handle_fee(amount: BalanceOf<T>, relayer: &T::AccountId) {
+        pub fn handle_fee(
+            amount: BalanceOf<T>,
+            relayer: &T::AccountId,
+            source_account: &T::AccountId,
+        ) {
             if amount.is_zero() {
                 return;
             }
             let reward_fraction: Perbill = RewardFraction::<T>::get();
             let reward_amount = reward_fraction.mul_ceil(amount);
 
-            if let Err(err) = T::Currency::transfer(
-                T::FeeAssetId::get(),
-                &SourceAccount::<T>::get(),
-                relayer,
-                reward_amount,
-            ) {
+            if let Err(err) =
+                T::Currency::transfer(T::FeeAssetId::get(), source_account, relayer, reward_amount)
+            {
                 warn!("Unable to transfer reward to relayer: {:?}", err);
                 return;
             }
@@ -194,7 +225,7 @@ pub mod pallet {
             if let Some(treasure_amount) = amount.checked_sub(reward_amount) {
                 if let Err(err) = T::Currency::transfer(
                     T::FeeAssetId::get(),
-                    &SourceAccount::<T>::get(),
+                    source_account,
                     &TreasuryAccount::<T>::get(),
                     treasure_amount,
                 ) {
@@ -206,6 +237,7 @@ pub mod pallet {
 
     #[pallet::genesis_config]
     pub struct GenesisConfig<T: Config> {
+        pub networks: Vec<(T::NetworkId, Vec<(H160, T::AccountId, T::AccountId)>)>,
         pub source_channel: H160,
         pub reward_fraction: Perbill,
         pub source_account: T::AccountId,
@@ -216,6 +248,7 @@ pub mod pallet {
     impl<T: Config> Default for GenesisConfig<T> {
         fn default() -> Self {
             Self {
+                networks: Default::default(),
                 source_channel: Default::default(),
                 reward_fraction: Default::default(),
                 source_account: Default::default(),
@@ -227,9 +260,14 @@ pub mod pallet {
     #[pallet::genesis_build]
     impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
         fn build(&self) {
-            SourceChannel::<T>::set(self.source_channel);
+            for (network_id, channels) in &self.networks {
+                for (channel, owner, source) in channels {
+                    <ChannelOwners<T>>::insert(network_id, channel, owner);
+                    <ChannelNonces<T>>::insert(network_id, channel, 0);
+                    <SourceAccounts<T>>::insert(network_id, channel, source);
+                }
+            }
             RewardFraction::<T>::set(self.reward_fraction);
-            SourceAccount::<T>::set(self.source_account.clone());
             TreasuryAccount::<T>::set(self.treasury_account.clone());
         }
     }
