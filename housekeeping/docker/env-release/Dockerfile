@@ -30,7 +30,7 @@ RUN add-apt-repository \
 ENV RUST_VERSION=nightly-2021-07-26
 RUN curl https://sh.rustup.rs -sSf | sh -s -- -y --no-modify-path --default-toolchain ${RUST_VERSION} && \
     rustup default ${RUST_VERSION} && \
-    rustup target add wasm32-unknown-unknown
+    rustup target add wasm32-unknown-unknown --default-toolchain ${RUST_VERSION}
 RUN curl https://github.com/chevdor/subwasm/releases/download/v0.14.1/subwasm_linux_amd64_v0.14.1.deb -sSL -o subw.deb && \
     dpkg -i subw.deb && rm subw.deb
 
@@ -43,6 +43,6 @@ ADD . /app
 WORKDIR /app
 ENV RUSTC_WRAPPER=sccache
 ENV CARGO_INCREMENTAL=0
-RUN RUSTFLAGS="$RUSTFLAGS -A warnings" cargo build --color=never --release --features "include-real-files" && \
+RUN rustc --version && RUSTFLAGS="$RUSTFLAGS -A warnings" cargo build --color=never --release --features "include-real-files" -- --color=never && \
     cargo test --release
 WORKDIR /
