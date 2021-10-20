@@ -82,6 +82,7 @@ pub mod pallet {
             + Copy;
     }
 
+    /// Source channel on the ethereum side
     #[pallet::storage]
     #[pallet::getter(fn source_channel)]
     pub type ChannelOwners<T: Config> =
@@ -96,9 +97,6 @@ pub mod pallet {
     #[pallet::getter(fn source_account)]
     pub type SourceAccounts<T: Config> =
         StorageDoubleMap<_, Identity, T::NetworkId, Identity, H160, T::AccountId, OptionQuery>;
-
-    #[pallet::storage]
-    pub(super) type Nonce<T: Config> = StorageValue<_, u64, ValueQuery>;
 
     #[pallet::storage]
     #[pallet::getter(fn reward_fraction)]
@@ -176,8 +174,13 @@ pub mod pallet {
 
             Self::handle_fee(envelope.fee, &relayer, &source_account);
 
-            let message_id = MessageId::new(ChannelId::Incentivized, envelope.nonce);
-            T::MessageDispatch::dispatch(envelope.source, message_id, &envelope.payload);
+            let message_id = MessageId::new(ChannelId::Basic, envelope.nonce);
+            T::MessageDispatch::dispatch(
+                message.network_id,
+                envelope.source,
+                message_id,
+                &envelope.payload,
+            );
 
             Ok(().into())
         }

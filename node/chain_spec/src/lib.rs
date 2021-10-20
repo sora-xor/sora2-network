@@ -90,19 +90,19 @@ fn get_ethereum_header() -> EthereumHeader {
 }
 
 fn get_eth_app_address() -> H160 {
-    "0x55E87ac6e15cfefD0E2B80c70B4A8Ab112d10f4c"
+    "0xC9543E78F2dDFA4a72A2E5130EC9A156D94F16aa"
         .parse()
         .unwrap()
 }
 
 fn get_basic_channel_address() -> H160 {
-    "0x2708Ca421cB69305831018353168727601De3e39"
+    "0x56a2100f161ae3df13137f65a213A9872c78c7D6"
         .parse()
         .unwrap()
 }
 
 fn get_incentivized_channel_address() -> H160 {
-    "0xC9543E78F2dDFA4a72A2E5130EC9A156D94F16aa"
+    "0x2708Ca421cB69305831018353168727601De3e39"
         .parse()
         .unwrap()
 }
@@ -567,12 +567,11 @@ pub fn local_testnet_config() -> ChainSpec {
                     authority_keys_from_seed("Alice"),
                     authority_keys_from_seed("Bob"),
                     authority_keys_from_seed("Charlie"),
-                    /*
                     authority_keys_from_seed("Dave"),
                     authority_keys_from_seed("Eve"),
-                    authority_keys_from_seed("Treasury"),
                     authority_keys_from_seed("Ferdie"),
-                    */
+                    authority_keys_from_seed("Treasury"),
+                    authority_keys_from_seed("EthBridge"),
                 ],
                 vec![
                     hex!("7edf2a2d157cc835131581bc068b7172a00af1a10008049f05a2308737912633").into(),
@@ -619,7 +618,7 @@ pub fn local_testnet_config() -> ChainSpec {
                     hex!("903a885138c4a187f13383fdb08b8e6b308c7021fdab12dc20e3aef9870e1146").into(),
                     hex!("d0d773018d19aab81052c4d038783ecfee77fb4b5fdc266b5a25568c0102640b").into(),
                 ],
-                get_account_id_from_seed::<sr25519::Public>("Bob"),
+                get_account_id_from_seed::<sr25519::Public>("Treasury"),
             )
         },
         vec![],
@@ -953,31 +952,26 @@ fn testnet_genesis(
     let initial_collateral_assets = vec![DAI.into(), VAL.into(), PSWAP.into(), ETH.into()];
     let initial_synthetic_assets = vec![XSTUSD.into()];
     GenesisConfig {
-        eth_app: EthAppConfig {
-            address: get_eth_app_address(),
-            dest_account: treasury_account.clone(),
-        },
+        eth_app: EthAppConfig { networks: vec![] },
         ethereum_light_client: EthereumLightClientConfig {
-            initial_header: get_ethereum_header(),
-            initial_difficulty: U256::zero(),
+            initial_networks: vec![],
         },
         incentivized_inbound_channel: IncentivizedInboundChannelConfig {
+            networks: vec![],
             source_channel: get_incentivized_channel_address(),
             reward_fraction: Perbill::from_percent(80),
             source_account: treasury_account.clone(),
             treasury_account: treasury_account.clone(),
         },
         incentivized_outbound_channel: IncentivizedOutboundChannelConfig {
-            dest_account: treasury_account,
+            networks: vec![],
             fee: 10000,
             interval: 10,
         },
-        basic_inbound_channel: BasicInboundChannelConfig {
-            source_channel: get_basic_channel_address(),
-        },
+        basic_inbound_channel: BasicInboundChannelConfig { networks: vec![] },
         basic_outbound_channel: BasicOutboundChannelConfig {
+            networks: vec![],
             interval: 10,
-            principal: Default::default(),
         },
         system: SystemConfig {
             code: WASM_BINARY.unwrap().to_vec(),

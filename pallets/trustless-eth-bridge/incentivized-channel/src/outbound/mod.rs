@@ -22,6 +22,8 @@ mod test;
 /// Wire-format for committed messages
 #[derive(Encode, Decode, Clone, PartialEq, RuntimeDebug)]
 pub struct Message {
+    network_id: u32,
+    channel: H160,
     /// Target application on the Ethereum side.
     target: H160,
     /// A nonce for replay protection and ordering.
@@ -67,6 +69,9 @@ pub mod pallet {
     use frame_support::log::debug;
     use frame_support::pallet_prelude::*;
     use frame_system::pallet_prelude::*;
+    use sp_runtime::traits::{AtLeast32BitUnsigned, MaybeDisplay, MaybeSerializeDeserialize};
+
+    use core::fmt::Debug;
 
     #[pallet::config]
     pub trait Config: frame_system::Config + assets::Config {
@@ -90,6 +95,16 @@ pub mod pallet {
 
         /// Weight information for extrinsics in this pallet
         type WeightInfo: WeightInfo;
+
+        /// Network id
+        type NetworkId: Parameter
+            + Member
+            + MaybeSerializeDeserialize
+            + Debug
+            + Default
+            + MaybeDisplay
+            + AtLeast32BitUnsigned
+            + Copy;
     }
 
     /// Interval between committing messages.
@@ -101,16 +116,24 @@ pub mod pallet {
     #[pallet::storage]
     type MessageQueue<T: Config> = StorageValue<_, Vec<Message>, ValueQuery>;
 
+    /// Source channel on the ethereum side
     #[pallet::storage]
-    pub type Nonce<T: Config> = StorageValue<_, u64, ValueQuery>;
+    pub type ChannelOwners<T: Config> =
+        StorageDoubleMap<_, Identity, T::NetworkId, Identity, H160, T::AccountId, OptionQuery>;
+
+    #[pallet::storage]
+    pub type ChannelNonces<T: Config> =
+        StorageDoubleMap<_, Identity, T::NetworkId, Identity, H160, u64, OptionQuery>;
+
+    /// Source of funds to pay relayers
+    #[pallet::storage]
+    #[pallet::getter(fn source_account)]
+    pub type DestAccounts<T: Config> =
+        StorageDoubleMap<_, Identity, T::NetworkId, Identity, H160, T::AccountId, OptionQuery>;
 
     #[pallet::storage]
     #[pallet::getter(fn fee)]
     pub type Fee<T: Config> = StorageValue<_, BalanceOf<T>, ValueQuery>;
-
-    /// Destination account for fees
-    #[pallet::storage]
-    pub type DestAccount<T: Config> = StorageValue<_, T::AccountId, ValueQuery>;
 
     #[pallet::pallet]
     #[pallet::generate_store(trait Store)]
@@ -149,6 +172,8 @@ pub mod pallet {
         NoFunds,
         /// Cannot increment nonce
         Overflow,
+        /// Target channel not exists
+        InvalidChannel,
     }
 
     #[pallet::call]
@@ -162,7 +187,13 @@ pub mod pallet {
     }
     impl<T: Config> Pallet<T> {
         /// Submit message on the outbound channel
-        pub fn submit(who: &T::AccountId, target: H160, payload: &[u8]) -> DispatchResult {
+        pub fn submit(
+            who: &T::AccountId,
+            network_id: u32,
+            channel: H160,
+            target: H160,
+            payload: &[u8],
+        ) -> DispatchResult {
             debug!("Send message from {:?} to {:?}", who, target);
             ensure!(
                 MessageQueue::<T>::decode_len().unwrap_or(0)
@@ -174,7 +205,9 @@ pub mod pallet {
                 Error::<T>::PayloadTooLarge,
             );
 
-            Nonce::<T>::try_mutate(|nonce| -> DispatchResult {
+            let net_id = T::NetworkId::from(network_id);
+            <ChannelNonces<T>>::try_mutate(net_id, channel, |nonce| -> DispatchResult {
+                let nonce = &mut nonce.ok_or(Error::<T>::InvalidChannel)?;
                 if let Some(v) = nonce.checked_add(1) {
                     *nonce = v;
                 } else {
@@ -183,15 +216,22 @@ pub mod pallet {
 
                 // Attempt to charge a fee for message submission
                 let fee = Self::fee();
-                T::Currency::transfer(T::FeeCurrency::get(), who, &DestAccount::<T>::get(), fee)?;
+                let dest_account =
+                    <DestAccounts<T>>::get(net_id, channel).ok_or(Error::<T>::InvalidChannel)?;
+                T::Currency::transfer(T::FeeCurrency::get(), who, &dest_account, fee)?;
 
-                MessageQueue::<T>::append(Message {
-                    target,
-                    nonce: *nonce,
-                    fee: fee.into(),
-                    payload: payload.to_vec(),
-                });
-                <Pallet<T>>::deposit_event(Event::MessageAccepted(*nonce));
+                <MessageQueue<T>>::try_mutate(|queue| -> DispatchResult {
+                    queue.push(Message {
+                        network_id: network_id,
+                        channel,
+                        target,
+                        nonce: *nonce,
+                        fee: fee.into(),
+                        payload: payload.to_vec(),
+                    });
+                    Ok(())
+                })?;
+                Self::deposit_event(Event::MessageAccepted(*nonce));
                 Ok(())
             })
         }
@@ -203,19 +243,31 @@ pub mod pallet {
                 return <T as Config>::WeightInfo::on_initialize_no_messages();
             }
 
-            let commitment_hash = Self::make_commitment_hash(&messages);
             let average_payload_size = Self::average_payload_size(&messages);
+            let messages_count = messages.len();
+            let mut message_map = sp_std::collections::btree_map::BTreeMap::new();
+            for message in messages {
+                let key = (message.network_id.clone(), message.channel.clone());
+                message_map.entry(key).or_insert(vec![]).push(message);
+            }
 
-            let digest_item =
-                AuxiliaryDigestItem::Commitment(ChannelId::Incentivized, commitment_hash.clone())
-                    .into();
-            <frame_system::Pallet<T>>::deposit_log(digest_item);
+            for ((network_id, channel), messages) in message_map {
+                let commitment_hash = Self::make_commitment_hash(&messages);
+                let digest_item = AuxiliaryDigestItem::Commitment(
+                    ChannelId::Basic,
+                    network_id,
+                    channel,
+                    commitment_hash.clone(),
+                )
+                .into();
+                <frame_system::Pallet<T>>::deposit_log(digest_item);
 
-            let key = Self::make_offchain_key(commitment_hash);
-            offchain_index::set(&*key, &messages.encode());
+                let key = Self::make_offchain_key(commitment_hash);
+                offchain_index::set(&*key, &messages.encode());
+            }
 
             <T as Config>::WeightInfo::on_initialize(
-                messages.len() as u32,
+                messages_count as u32,
                 average_payload_size as u32,
             )
         }
@@ -250,18 +302,18 @@ pub mod pallet {
 
     #[pallet::genesis_config]
     pub struct GenesisConfig<T: Config> {
-        pub dest_account: T::AccountId,
         pub fee: BalanceOf<T>,
         pub interval: T::BlockNumber,
+        pub networks: Vec<(T::NetworkId, Vec<(H160, T::AccountId, T::AccountId)>)>,
     }
 
     #[cfg(feature = "std")]
     impl<T: Config> Default for GenesisConfig<T> {
         fn default() -> Self {
             Self {
-                dest_account: Default::default(),
                 fee: Default::default(),
                 interval: Default::default(),
+                networks: Default::default(),
             }
         }
     }
@@ -269,9 +321,15 @@ pub mod pallet {
     #[pallet::genesis_build]
     impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
         fn build(&self) {
-            DestAccount::<T>::set(self.dest_account.clone());
             Fee::<T>::set(self.fee.clone());
             Interval::<T>::set(self.interval.clone());
+            for (network_id, channels) in &self.networks {
+                for (channel, owner, dest_account) in channels {
+                    <DestAccounts<T>>::insert(network_id, channel, dest_account.clone());
+                    <ChannelOwners<T>>::insert(network_id, channel, owner);
+                    <ChannelNonces<T>>::insert(network_id, channel, 0);
+                }
+            }
         }
     }
 }

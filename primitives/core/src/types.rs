@@ -56,7 +56,7 @@ pub struct Proof {
 #[derive(Encode, Decode, Copy, Clone, PartialEq, RuntimeDebug)]
 pub enum AuxiliaryDigestItem {
     /// A batch of messages has been committed.
-    Commitment(ChannelId, H256),
+    Commitment(ChannelId, u32, sp_core::H160, H256),
 }
 
 impl<T> Into<DigestItem<T>> for AuxiliaryDigestItem {

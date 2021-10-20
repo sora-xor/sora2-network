@@ -16,7 +16,7 @@
 //!
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use frame_support::dispatch::{DispatchError, DispatchResult};
+use frame_support::dispatch::DispatchResult;
 use frame_support::traits::EnsureOrigin;
 use frame_support::transactional;
 use frame_support::weights::Weight;
@@ -67,7 +67,6 @@ pub mod pallet {
     use super::*;
     use assets::AssetIdOf;
     use core::fmt::Debug;
-    use frame_support::log::{debug, warn};
     use frame_support::pallet_prelude::*;
     use frame_system::pallet_prelude::{OriginFor, *};
     use sp_runtime::traits::{AtLeast32BitUnsigned, MaybeDisplay, MaybeSerializeDeserialize};
@@ -139,16 +138,18 @@ pub mod pallet {
         pub fn burn(
             origin: OriginFor<T>,
             channel_id: ChannelId,
-            network_id: T::NetworkId,
+            network_id: u32,
+            channel: H160,
             bridge: H160,
             recipient: H160,
             amount: BalanceOf<T>,
         ) -> DispatchResult {
             let who = ensure_signed(origin)?;
-            let dest =
-                DestAccount::<T>::get(network_id, bridge).ok_or(Error::<T>::BridgeNotFound)?;
+            let net_id = T::NetworkId::from(network_id);
+            let dest = DestAccount::<T>::get(net_id, bridge).ok_or(Error::<T>::BridgeNotFound)?;
+            let asset_id = <Address<T>>::get(net_id, bridge).ok_or(Error::<T>::BridgeNotFound)?;
 
-            T::Currency::transfer(T::FeeCurrency::get(), &who, &dest, amount)?;
+            T::Currency::transfer(asset_id, &who, &dest, amount)?;
 
             let message = OutboundPayload {
                 sender: who.clone(),
@@ -156,7 +157,14 @@ pub mod pallet {
                 amount: amount.into(),
             };
 
-            T::OutboundRouter::submit(channel_id, &who, bridge, &message.encode())?;
+            T::OutboundRouter::submit(
+                network_id,
+                channel,
+                channel_id,
+                &who,
+                bridge,
+                &message.encode(),
+            )?;
             Self::deposit_event(Event::Burned(who.clone(), recipient, amount.into()));
 
             Ok(())
@@ -166,18 +174,16 @@ pub mod pallet {
         #[transactional]
         pub fn mint(
             origin: OriginFor<T>,
-            network_id: T::NetworkId,
             sender: H160,
             recipient: <T::Lookup as StaticLookup>::Source,
             amount: BalanceOf<T>,
         ) -> DispatchResult {
-            let who = T::CallOrigin::ensure_origin(origin)?;
-            if who != Address::<T>::get(network_id, who) {
-                return Err(DispatchError::BadOrigin.into());
-            }
+            let (network_id, who) = T::CallOrigin::ensure_origin(origin)?;
+            let net_id = T::NetworkId::from(network_id);
+            let asset = Address::<T>::get(net_id, who).ok_or(Error::<T>::BridgeNotFound)?;
 
             let recipient = T::Lookup::lookup(recipient)?;
-            T::Currency::deposit(T::FeeCurrency::get(), &recipient, amount)?;
+            T::Currency::deposit(asset, &recipient, amount)?;
             Self::deposit_event(Event::Minted(sender, recipient.clone(), amount.into()));
 
             Ok(())
@@ -186,25 +192,28 @@ pub mod pallet {
         #[pallet::weight(<T as Config>::WeightInfo::mint())]
         pub fn register_new_asset(
             origin: OriginFor<T>,
+            dest_account: T::AccountId,
+            network_id: T::NetworkId,
             asset_id: AssetIdOf<T>,
-            contract: H160,
+            channel: H160,
         ) -> DispatchResult {
+            ensure_signed(origin)?;
+            <DestAccount<T>>::insert(network_id, channel, dest_account);
+            <Address<T>>::insert(network_id, channel, asset_id);
             Ok(().into())
         }
     }
 
     #[pallet::genesis_config]
     pub struct GenesisConfig<T: Config> {
-        pub address: H160,
-        pub dest_account: T::AccountId,
+        pub networks: Vec<(T::NetworkId, Vec<(H160, T::AccountId, T::AssetId)>)>,
     }
 
     #[cfg(feature = "std")]
     impl<T: Config> Default for GenesisConfig<T> {
         fn default() -> Self {
             Self {
-                address: Default::default(),
-                dest_account: Default::default(),
+                networks: Default::default(),
             }
         }
     }
@@ -212,8 +221,12 @@ pub mod pallet {
     #[pallet::genesis_build]
     impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
         fn build(&self) {
-            Address::<T>::set(self.address);
-            DestAccount::<T>::set(self.dest_account.clone());
+            for (network_id, channels) in &self.networks {
+                for (channel, dest_account, asset_id) in channels {
+                    <DestAccount<T>>::insert(network_id, channel, dest_account.clone());
+                    <Address<T>>::insert(network_id, channel, asset_id);
+                }
+            }
         }
     }
 }

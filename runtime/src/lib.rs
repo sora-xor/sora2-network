@@ -1465,16 +1465,20 @@ where
     T: basic_channel::outbound::Config + incentivized_channel::outbound::Config,
 {
     fn submit(
+        network_id: u32,
+        channel: H160,
         channel_id: ChannelId,
         who: &T::AccountId,
         target: H160,
         payload: &[u8],
     ) -> DispatchResult {
         match channel_id {
-            ChannelId::Basic => basic_channel::outbound::Module::<T>::submit(who, target, payload),
-            ChannelId::Incentivized => {
-                incentivized_channel::outbound::Module::<T>::submit(who, target, payload)
-            }
+            ChannelId::Basic => basic_channel::outbound::Module::<T>::submit(
+                who, network_id, channel, target, payload,
+            ),
+            ChannelId::Incentivized => incentivized_channel::outbound::Module::<T>::submit(
+                who, network_id, channel, target, payload,
+            ),
         }
     }
 }
@@ -1490,6 +1494,7 @@ impl basic_channel_inbound::Config for Runtime {
     type Verifier = ethereum_light_client::Module<Runtime>;
     type MessageDispatch = dispatch::Module<Runtime>;
     type WeightInfo = ();
+    type NetworkId = EthereumNetworkId;
 }
 
 impl basic_channel_outbound::Config for Runtime {
@@ -1500,6 +1505,7 @@ impl basic_channel_outbound::Config for Runtime {
     type MaxMessagesPerCommit = MaxMessagesPerCommit;
     type SetPrincipalOrigin = EnsureRoot<AccountId>;
     type WeightInfo = ();
+    type NetworkId = EthereumNetworkId;
 }
 
 pub struct FeeConverter;
@@ -1522,6 +1528,7 @@ impl incentivized_channel_inbound::Config for Runtime {
     type UpdateOrigin = MoreThanHalfCouncil;
     type WeightInfo = ();
     type FeeAssetId = Ether;
+    type NetworkId = EthereumNetworkId;
 }
 
 impl incentivized_channel_outbound::Config for Runtime {
@@ -1533,6 +1540,7 @@ impl incentivized_channel_outbound::Config for Runtime {
     type FeeCurrency = Ether;
     type SetFeeOrigin = MoreThanHalfCouncil;
     type WeightInfo = ();
+    type NetworkId = EthereumNetworkId;
 }
 
 parameter_types! {
@@ -1556,6 +1564,7 @@ impl eth_app::Config for Runtime {
     type CallOrigin = EnsureEthereumAccount;
     type WeightInfo = ();
     type FeeCurrency = Ether;
+    type NetworkId = EthereumNetworkId;
 }
 
 #[cfg(feature = "private-net")]
@@ -1627,7 +1636,7 @@ construct_runtime! {
 
         // Snowbridge
         EthereumLightClient: ethereum_light_client::{Pallet, Call, Storage, Event<T>, Config<T>} = 90,
-        BasicInboundChannel: basic_channel_inbound::{Pallet, Call, Storage, Event<T>, Config} = 91,
+        BasicInboundChannel: basic_channel_inbound::{Pallet, Call, Storage, Event<T>, Config<T>} = 91,
         BasicOutboundChannel: basic_channel_outbound::{Pallet, Storage, Event<T>, Config<T>} = 92,
         IncentivizedInboundChannel: incentivized_channel_inbound::{Pallet, Call, Config<T>, Storage, Event<T>} = 93,
         IncentivizedOutboundChannel: incentivized_channel_outbound::{Pallet, Config<T>, Storage, Event<T>} = 94,
@@ -1702,8 +1711,8 @@ construct_runtime! {
 
         // Snowbridge
         EthereumLightClient: ethereum_light_client::{Pallet, Call, Storage, Event<T>, Config<T>} = 90,
-        BasicInboundChannel: basic_channel_inbound::{Pallet, Call, Storage, Event<T>} = 91,
-        BasicOutboundChannel: basic_channel_outbound::{Pallet, Storage, Event<T>} = 92,
+        BasicInboundChannel: basic_channel_inbound::{Pallet, Call, Storage, Event<T>, Config<T>} = 91,
+        BasicOutboundChannel: basic_channel_outbound::{Pallet, Storage, Event<T>, Config<T>} = 92,
         IncentivizedInboundChannel: incentivized_channel_inbound::{Pallet, Call, Config<T>, Storage, Event<T>} = 93,
         IncentivizedOutboundChannel: incentivized_channel_outbound::{Pallet, Config<T>, Storage, Event<T>} = 94,
         Dispatch: dispatch::{Pallet, Storage, Event<T>, Origin} = 95,

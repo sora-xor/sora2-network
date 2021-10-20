@@ -31,6 +31,8 @@ pub trait Verifier {
 /// Outbound submission for applications
 pub trait OutboundRouter<AccountId> {
     fn submit(
+        network_id: u32,
+        channel: H160,
         channel_id: ChannelId,
         who: &AccountId,
         target: H160,

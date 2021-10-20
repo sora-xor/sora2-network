@@ -92,8 +92,6 @@ pub mod pallet {
     use frame_system::pallet_prelude::*;
     use sp_runtime::traits::{AtLeast32BitUnsigned, MaybeDisplay, MaybeSerializeDeserialize};
 
-    type BridgeNetworkId<T> = <T as Config>::NetworkId;
-
     #[pallet::pallet]
     #[pallet::generate_store(pub(super) trait Store)]
     pub struct Pallet<T>(_);

@@ -25,6 +25,8 @@ pub use weights::WeightInfo;
 /// Wire-format for committed messages
 #[derive(Encode, Decode, Clone, PartialEq, RuntimeDebug)]
 pub struct Message {
+    network_id: u32,
+    channel: H160,
     /// Target application on the Ethereum side.
     target: H160,
     /// A nonce for replay protection and ordering.
@@ -42,6 +44,9 @@ pub mod pallet {
 
     use frame_support::pallet_prelude::*;
     use frame_system::pallet_prelude::*;
+    use sp_runtime::traits::{AtLeast32BitUnsigned, MaybeDisplay, MaybeSerializeDeserialize};
+
+    use core::fmt::Debug;
 
     #[pallet::pallet]
     #[pallet::generate_store(pub(super) trait Store)]
@@ -68,6 +73,16 @@ pub mod pallet {
 
         /// Weight information for extrinsics in this pallet
         type WeightInfo: WeightInfo;
+
+        /// Network id
+        type NetworkId: Parameter
+            + Member
+            + MaybeSerializeDeserialize
+            + Debug
+            + Default
+            + MaybeDisplay
+            + AtLeast32BitUnsigned
+            + Copy;
     }
 
     #[pallet::event]
@@ -86,6 +101,8 @@ pub mod pallet {
         Overflow,
         /// Not authorized to send message
         NotAuthorized,
+        /// Target channel not exists
+        InvalidChannel,
     }
 
     /// Interval between commitments
@@ -97,18 +114,19 @@ pub mod pallet {
     #[pallet::storage]
     pub(super) type MessageQueue<T: Config> = StorageValue<_, Vec<Message>, ValueQuery>;
 
-    /// Fee for accepting a message
+    /// Source channel on the ethereum side
     #[pallet::storage]
-    #[pallet::getter(fn principal)]
-    pub(super) type Principal<T: Config> = StorageValue<_, T::AccountId, ValueQuery>;
+    pub type ChannelOwners<T: Config> =
+        StorageDoubleMap<_, Identity, T::NetworkId, Identity, H160, T::AccountId, OptionQuery>;
 
     #[pallet::storage]
-    pub type Nonce<T: Config> = StorageValue<_, u64, ValueQuery>;
+    pub type ChannelNonces<T: Config> =
+        StorageDoubleMap<_, Identity, T::NetworkId, Identity, H160, u64, OptionQuery>;
 
     #[pallet::genesis_config]
     pub struct GenesisConfig<T: Config> {
+        pub networks: Vec<(T::NetworkId, Vec<(H160, T::AccountId)>)>,
         pub interval: T::BlockNumber,
-        pub principal: T::AccountId,
     }
 
     #[cfg(feature = "std")]
@@ -116,7 +134,7 @@ pub mod pallet {
         fn default() -> Self {
             Self {
                 interval: Default::default(),
-                principal: Default::default(),
+                networks: Default::default(),
             }
         }
     }
@@ -124,8 +142,13 @@ pub mod pallet {
     #[pallet::genesis_build]
     impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
         fn build(&self) {
-            <Interval<T>>::put(self.interval);
-            <Principal<T>>::put(self.principal.clone());
+            Interval::<T>::set(self.interval.clone());
+            for (network_id, channels) in &self.networks {
+                for (channel, owner) in channels {
+                    <ChannelOwners<T>>::insert(network_id, channel, owner);
+                    <ChannelNonces<T>>::insert(network_id, channel, 0);
+                }
+            }
         }
     }
 
@@ -149,19 +172,37 @@ pub mod pallet {
         #[pallet::weight(T::WeightInfo::set_principal())]
         pub fn set_principal(
             origin: OriginFor<T>,
+            network_id: T::NetworkId,
+            channel: H160,
             principal: <T::Lookup as StaticLookup>::Source,
         ) -> DispatchResult {
             T::SetPrincipalOrigin::ensure_origin(origin)?;
             let principal = T::Lookup::lookup(principal)?;
-            <Principal<T>>::put(principal);
+            <ChannelOwners<T>>::try_mutate(network_id, channel, |owner| {
+                if let Some(owner) = owner {
+                    *owner = principal;
+                    Ok(())
+                } else {
+                    Err(Error::<T>::InvalidChannel)
+                }
+            })?;
             Ok(())
         }
     }
 
     impl<T: Config> Pallet<T> {
         /// Submit message on the outbound channel
-        pub fn submit(who: &T::AccountId, target: H160, payload: &[u8]) -> DispatchResult {
-            ensure!(*who == Self::principal(), Error::<T>::NotAuthorized,);
+        pub fn submit(
+            who: &T::AccountId,
+            network_id: u32,
+            channel: H160,
+            target: H160,
+            payload: &[u8],
+        ) -> DispatchResult {
+            let net_id = T::NetworkId::from(network_id);
+            let owner =
+                <ChannelOwners<T>>::get(net_id, channel).ok_or(Error::<T>::InvalidChannel)?;
+            ensure!(*who == owner, Error::<T>::NotAuthorized,);
             ensure!(
                 <MessageQueue<T>>::decode_len().unwrap_or(0)
                     < T::MaxMessagesPerCommit::get() as usize,
@@ -172,18 +213,24 @@ pub mod pallet {
                 Error::<T>::PayloadTooLarge,
             );
 
-            <Nonce<T>>::try_mutate(|nonce| -> DispatchResult {
+            <ChannelNonces<T>>::try_mutate(net_id, channel, |nonce| -> DispatchResult {
+                let nonce = &mut nonce.ok_or(Error::<T>::InvalidChannel)?;
                 if let Some(v) = nonce.checked_add(1) {
                     *nonce = v;
                 } else {
                     return Err(Error::<T>::Overflow.into());
                 }
 
-                <MessageQueue<T>>::append(Message {
-                    target,
-                    nonce: *nonce,
-                    payload: payload.to_vec(),
-                });
+                <MessageQueue<T>>::try_mutate(|queue| -> DispatchResult {
+                    queue.push(Message {
+                        network_id: network_id,
+                        channel,
+                        target,
+                        nonce: *nonce,
+                        payload: payload.to_vec(),
+                    });
+                    Ok(())
+                })?;
                 Self::deposit_event(Event::MessageAccepted(*nonce));
                 Ok(())
             })
@@ -195,17 +242,30 @@ pub mod pallet {
                 return T::WeightInfo::on_initialize_no_messages();
             }
 
-            let commitment_hash = Self::make_commitment_hash(&messages);
             let average_payload_size = Self::average_payload_size(&messages);
+            let messages_count = messages.len();
+            let mut message_map = sp_std::collections::btree_map::BTreeMap::new();
+            for message in messages {
+                let key = (message.network_id.clone(), message.channel.clone());
+                message_map.entry(key).or_insert(vec![]).push(message);
+            }
 
-            let digest_item =
-                AuxiliaryDigestItem::Commitment(ChannelId::Basic, commitment_hash.clone()).into();
-            <frame_system::Pallet<T>>::deposit_log(digest_item);
+            for ((network_id, channel), messages) in message_map {
+                let commitment_hash = Self::make_commitment_hash(&messages);
+                let digest_item = AuxiliaryDigestItem::Commitment(
+                    ChannelId::Basic,
+                    network_id,
+                    channel,
+                    commitment_hash.clone(),
+                )
+                .into();
+                <frame_system::Pallet<T>>::deposit_log(digest_item);
 
-            let key = Self::make_offchain_key(commitment_hash);
-            offchain_index::set(&*key, &messages.encode());
+                let key = Self::make_offchain_key(commitment_hash);
+                offchain_index::set(&*key, &messages.encode());
+            }
 
-            T::WeightInfo::on_initialize(messages.len() as u32, average_payload_size as u32)
+            T::WeightInfo::on_initialize(messages_count as u32, average_payload_size as u32)
         }
 
         fn make_commitment_hash(messages: &[Message]) -> H256 {
