@@ -224,7 +224,7 @@ func (li *BeefyListener) searchForLostCommitments(
 			return nil, err
 		}
 
-		storageKey, err := types.CreateStorageKey(li.relaychainConn.Metadata(), "LeafProviderWithDigest", "LatestDigest")
+		storageKey, err := types.CreateStorageKey(li.relaychainConn.Metadata(), "LeafProvider", "LatestDigest")
 		if err != nil {
 			log.WithError(err).Error("Failed to create storage key")
 		}

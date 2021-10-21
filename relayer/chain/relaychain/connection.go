@@ -11,7 +11,6 @@ import (
 	"github.com/vovac12/go-substrate-rpc-client/v3/rpc/offchain"
 	"github.com/vovac12/go-substrate-rpc-client/v3/types"
 
-	"github.com/sirupsen/logrus"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -71,9 +70,22 @@ func (co *Connection) Close() {
 }
 
 func (co *Connection) GetMMRLeafForBlock(
-	leafIndex uint64,
+	blockNumber uint64,
 	blockHash types.Hash,
+	beefyStartingBlock uint64,
 ) (types.GenerateMMRProofResponse, error) {
+	log.WithFields(log.Fields{
+		"blockNumber": blockNumber,
+		"blockHash":   blockHash.Hex(),
+	}).Info("Getting MMR Leaf for block...")
+
+	// We expect 1 mmr leaf for each block. MMR leaf indexes start from 0, but block numbers start from 1,
+	// so the mmr leaf index should be 1 less than the block number.
+	// However, some chains only started using beefy late in their existence, so there are no leafs for
+	// blocks produced before beefy was activated. We subtract the block in which beefy was started on the
+	// chain to account for this.
+	leafIndex := blockNumber - beefyStartingBlock - 1
+
 	proofResponse, err := co.API().RPC.MMR.GenerateProof(leafIndex, blockHash)
 	if err != nil {
 		log.WithError(err).Error("Failed to generate mmr proof")
@@ -236,7 +248,7 @@ func (co *Connection) GetDataForDigestItem(digestItem *AuxiliaryDigestItem) (typ
 	}
 
 	if data != nil {
-		log.WithFields(logrus.Fields{
+		log.WithFields(log.Fields{
 			"commitmentSizeBytes": len(*data),
 		}).Debug("Retrieved commitment from offchain storage")
 	} else {

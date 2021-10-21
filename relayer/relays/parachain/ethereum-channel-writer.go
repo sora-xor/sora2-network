@@ -13,6 +13,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 
+	geth "github.com/ethereum/go-ethereum"
 	"github.com/snowfork/snowbridge/relayer/chain/ethereum"
 	"github.com/snowfork/snowbridge/relayer/chain/relaychain"
 	"github.com/snowfork/snowbridge/relayer/contracts/basic"
@@ -195,6 +196,33 @@ func (wr *EthereumChannelWriter) WriteBasicChannel(
 		DigestSuffix: suffix,
 		LeafPrefix:   beefyMMRLeafBytesPartial,
 	}
+	// Pack the input, call and unpack the results
+	abi, err := basic.BasicInboundChannelMetaData.GetAbi()
+	input, err := abi.Pack(
+		"submit", messages,
+		leafBytes,
+		big.NewInt(int64(beefyMMRLeafIndex)),
+		big.NewInt(int64(beefyMMRLeafCount)),
+		beefyMMRProof,
+	)
+	if err != nil {
+		return err
+	}
+	address := common.HexToAddress(wr.config.Contracts.BasicInboundChannel)
+	callMsg := geth.CallMsg{From: options.From, To: &address, Data: input}
+	estimatedGas, err := wr.conn.GetClient().EstimateGas(options.Context, callMsg)
+	estimatedCost := (estimatedGas * 4000 * 50) / 1000000000
+	log.WithField("estimatedGas", estimatedGas).WithField("estimatedCost", estimatedCost).WithError(err).Info("Estimated gas basic")
+	rawCaller := basic.BasicInboundChannelCallerRaw{Contract: &wr.basicInboundChannel.BasicInboundChannelCaller}
+	callResult := make([]interface{}, 0)
+	err = rawCaller.Call(&bind.CallOpts{Context: options.Context, From: options.From, Pending: false}, &callResult,
+		"submit", messages,
+		leafBytes,
+		big.NewInt(int64(beefyMMRLeafIndex)),
+		big.NewInt(int64(beefyMMRLeafCount)),
+		beefyMMRProof,
+	)
+	log.WithFields(log.Fields{"error": err, "result": callResult}).Info("Test transaction")
 
 	tx, err := wr.basicInboundChannel.Submit(options, messages,
 		leafBytes,
@@ -287,9 +315,27 @@ func (wr *EthereumChannelWriter) WriteIncentivizedChannel(
 		log.WithError(err).Error("Failed to log transaction input")
 		return err
 	}
+	// Pack the input, call and unpack the results
+	abi, err := incentivized.IncentivizedInboundChannelMetaData.GetAbi()
+	input, err := abi.Pack(
+		"submit", messages,
+		leafBytes,
+		big.NewInt(int64(beefyMMRLeafIndex)),
+		big.NewInt(int64(beefyMMRLeafCount)),
+		beefyMMRProof,
+	)
+	if err != nil {
+		return err
+	}
+	address := common.HexToAddress(wr.config.Contracts.IncentivizedInboundChannel)
+	callMsg := geth.CallMsg{From: options.From, To: &address, Data: input}
+	estimatedGas, err := wr.conn.GetClient().EstimateGas(options.Context, callMsg)
+	estimatedCost := (estimatedGas * 4000 * 50) / 1000000000
+	log.WithField("estimatedGas", estimatedGas).WithField("estimatedCost", estimatedCost).WithError(err).Info("Estimated gas incentivized")
 	rawCaller := incentivized.IncentivizedInboundChannelCallerRaw{Contract: &wr.incentivizedInboundChannel.IncentivizedInboundChannelCaller}
 	callResult := make([]interface{}, 0)
-	err = rawCaller.Call(&bind.CallOpts{Context: options.Context, From: options.From, Pending: false}, &callResult, "submit", messages,
+	err = rawCaller.Call(&bind.CallOpts{Context: options.Context, From: options.From, Pending: false}, &callResult,
+		"submit", messages,
 		leafBytes,
 		big.NewInt(int64(beefyMMRLeafIndex)),
 		big.NewInt(int64(beefyMMRLeafCount)),

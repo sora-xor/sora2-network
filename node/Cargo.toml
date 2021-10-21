@@ -97,7 +97,7 @@ pallet-mmr-primitives = { git = "https://github.com/paritytech/substrate.git", b
 prometheus-endpoint = { package = "substrate-prometheus-endpoint", git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.9" }
 beefy-gadget-rpc = { git = "https://github.com/paritytech/grandpa-bridge-gadget", branch = "polkadot-v0.9.9" }
 pallet-mmr-rpc = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.9" }
-leaf-provider-rpc = { path = "../pallets/trustless-eth-bridge/leaf-provider-with-digest/rpc", default-features = false }
+leaf-provider-rpc = { path = "../pallets/trustless-eth-bridge/leaf-provider/rpc", default-features = false }
 
 [build-dependencies]
 substrate-build-script-utils = "3"

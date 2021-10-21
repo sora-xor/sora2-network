@@ -352,7 +352,7 @@ members = [
     "pallets/trustless-eth-bridge/incentivized-channel",
     "pallets/trustless-eth-bridge/dispatch",
     "pallets/trustless-eth-bridge/eth-app",
-    "pallets/trustless-eth-bridge/leaf-provider-with-digest",
+    "pallets/trustless-eth-bridge/leaf-provider",
     "primitives/core",
     "primitives/ethereum",
     "primitives/testutils",

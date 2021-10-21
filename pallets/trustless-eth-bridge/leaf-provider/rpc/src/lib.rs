@@ -40,7 +40,7 @@ use sp_runtime::traits::Block as BlockT;
 
 use std::sync::Arc;
 
-pub use leaf_provider_runtime_api::LeafProviderApi as LeafProviderRuntimeApi;
+pub use leaf_provider_runtime_api::LeafProviderAPI as LeafProviderRuntimeAPI;
 
 #[rpc]
 pub trait LeafProviderAPI<BlockHash>
@@ -74,7 +74,7 @@ where
     Block: BlockT,
     C: Send + Sync + 'static,
     C: ProvideRuntimeApi<Block> + HeaderBackend<Block>,
-    C::Api: LeafProviderRuntimeApi<Block, <Block as BlockT>::Hash>,
+    C::Api: LeafProviderRuntimeAPI<Block, <Block as BlockT>::Hash>,
 {
     fn latest_digest(
         &self,

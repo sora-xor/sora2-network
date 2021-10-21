@@ -1,5 +1,5 @@
 [package]
-name = "leaf-provider-with-digest"
+name = "leaf-provider"
 description = "Leaf provider"
 version = "0.1.1"
 edition = "2018"

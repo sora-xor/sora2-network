@@ -35,8 +35,8 @@ basic-channel = { path = "../pallets/trustless-eth-bridge/basic-channel", defaul
 incentivized-channel = { path = "../pallets/trustless-eth-bridge/incentivized-channel", default-features = false }
 dispatch = { path = "../pallets/trustless-eth-bridge/dispatch", default-features = false }
 eth-app = { path = "../pallets/trustless-eth-bridge/eth-app", default-features = false }
-leaf-provider-with-digest = { path = "../pallets/trustless-eth-bridge/leaf-provider-with-digest", default-features = false }
-leaf-provider-runtime-api = { path = "../pallets/trustless-eth-bridge/leaf-provider-with-digest/runtime-api", default-features = false }
+leaf-provider = { path = "../pallets/trustless-eth-bridge/leaf-provider", default-features = false }
+leaf-provider-runtime-api = { path = "../pallets/trustless-eth-bridge/leaf-provider/runtime-api", default-features = false }
 
 assets = { path = "../pallets/assets", default-features = false }
 assets-runtime-api = { path = "../pallets/assets/runtime-api", default-features = false }
@@ -161,7 +161,7 @@ std = [
     "incentivized-channel/std",
     "dispatch/std",
     "eth-app/std",
-    "leaf-provider-with-digest/std",
+    "leaf-provider/std",
     "leaf-provider-runtime-api/std",
     "snowbridge-core/std",
     "farming/std",

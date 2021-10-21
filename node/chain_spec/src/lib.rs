@@ -96,13 +96,13 @@ fn get_eth_app_address() -> H160 {
 }
 
 fn get_basic_channel_address() -> H160 {
-    "0x2708Ca421cB69305831018353168727601De3e39"
+    "0x56a2100f161ae3df13137f65a213A9872c78c7D6"
         .parse()
         .unwrap()
 }
 
 fn get_incentivized_channel_address() -> H160 {
-    "0xC9543E78F2dDFA4a72A2E5130EC9A156D94F16aa"
+    "0x2708Ca421cB69305831018353168727601De3e39"
         .parse()
         .unwrap()
 }
@@ -567,9 +567,9 @@ pub fn local_testnet_config() -> ChainSpec {
                     authority_keys_from_seed("Alice"),
                     authority_keys_from_seed("Bob"),
                     authority_keys_from_seed("Charlie"),
-                    /*
                     authority_keys_from_seed("Dave"),
                     authority_keys_from_seed("Eve"),
+                    /*
                     authority_keys_from_seed("Treasury"),
                     authority_keys_from_seed("Ferdie"),
                     */
