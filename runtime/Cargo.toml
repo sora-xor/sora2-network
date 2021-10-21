@@ -197,6 +197,7 @@ private-net = ["faucet"]
 runtime-benchmarks = [
     "assets/runtime-benchmarks",
     "dex-api-benchmarking",
+    "ceres-staking/runtime-benchmarks",
     "eth-bridge/runtime-benchmarks",
     "farming/runtime-benchmarks",
     "faucet?/runtime-benchmarks",
