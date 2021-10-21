@@ -5,13 +5,18 @@
 use super::*;
 
 use codec::Decode;
-use frame_benchmarking::benchmarks;
+use common::{balance, AssetId32, AssetName, AssetSymbol, DEFAULT_BALANCE_PRECISION};
+use frame_benchmarking::{benchmarks, Zero};
 use frame_system::{EventRecord, RawOrigin};
 use hex_literal::hex;
 use sp_std::prelude::*;
-use common::balance;
 
 use crate::Pallet as CeresStaking;
+
+pub type AssetId = AssetId32<common::PredefinedAssetId>;
+pub const CERES_ASSET_ID: AssetId = common::AssetId32::from_bytes(hex!(
+    "008bcfd2387d3fc453333557eecb0efe59fcba128769b2feefdd306e98e66440"
+));
 
 // Support Functions
 fn alice<T: Config>() -> T::AccountId {
@@ -28,35 +33,74 @@ fn assert_last_event<T: Config>(generic_event: <T as Config>::Event) {
 }
 
 benchmarks! {
-	deposit {
-		let caller = alice::<T>();
-		let amount = balance!(100);
-	}: _(RawOrigin::Signed(caller.clone()), amount)
-	verify {
-		assert_last_event::<T>(Event::Deposited(caller.clone(), amount).into());
-	}
+    deposit {
+        let caller = alice::<T>();
+        let amount = balance!(100);
+        frame_system::Pallet::<T>::inc_providers(&caller);
+        let _ = assets::Pallet::<T>::register_asset_id(
+            caller.clone(),
+            CERES_ASSET_ID.into(),
+            AssetSymbol(b"CERES".to_vec()),
+            AssetName(b"Ceres".to_vec()),
+            DEFAULT_BALANCE_PRECISION,
+            Balance::zero(),
+            true,
+            None,
+            None,
+        );
+        let _ = assets::Pallet::<T>::mint(
+            RawOrigin::Signed(caller.clone()).into(),
+            CERES_ASSET_ID.into(),
+            caller.clone(),
+            balance!(101),
+        );
+    }: _(RawOrigin::Signed(caller.clone()), amount)
+    verify {
+        assert_last_event::<T>(Event::Deposited(caller.clone(), amount).into());
+    }
 
-	withdraw {
-		let caller = alice::<T>();
-		let amount = balance!(100);
-		CeresStaking::<T>::deposit(RawOrigin::Signed(caller.clone()).into(), amount);
-	}: _(RawOrigin::Signed(caller.clone()))
-	verify {
-		assert_last_event::<T>(Event::Withdrawn(caller, amount, balance!(0)).into());
-	}
+    withdraw {
+        let caller = alice::<T>();
+        let amount = balance!(100);
+        frame_system::Pallet::<T>::inc_providers(&caller);
+        let _ = assets::Pallet::<T>::register_asset_id(
+            caller.clone(),
+            CERES_ASSET_ID.into(),
+            AssetSymbol(b"CERES".to_vec()),
+            AssetName(b"Ceres".to_vec()),
+            DEFAULT_BALANCE_PRECISION,
+            Balance::zero(),
+            true,
+            None,
+            None,
+        );
+        let _ = assets::Pallet::<T>::mint(
+            RawOrigin::Signed(caller.clone()).into(),
+            CERES_ASSET_ID.into(),
+            caller.clone(),
+            balance!(101),
+        );
+        let _ = CeresStaking::<T>::deposit(
+            RawOrigin::Signed(caller.clone()).into(),
+            amount
+        );
+    }: _(RawOrigin::Signed(caller.clone()))
+    verify {
+        assert_last_event::<T>(Event::Withdrawn(caller, amount, balance!(0)).into());
+    }
 }
 
 #[cfg(test)]
 mod tests {
-	use super::*;
-	use crate::mock::{ExtBuilder, Runtime};
-	use frame_support::assert_ok;
+    use super::*;
+    use crate::mock::{ExtBuilder, Runtime};
+    use frame_support::assert_ok;
 
-	#[test]
-	fn test_benchmarks() {
-		ExtBuilder::default().build().execute_with(|| {
-			assert_ok!(test_benchmark_deposit::<Runtime>());
-			assert_ok!(test_benchmark_withdraw::<Runtime>());
-		});
-	}
+    #[test]
+    fn test_benchmarks() {
+        ExtBuilder::default().build().execute_with(|| {
+            assert_ok!(test_benchmark_deposit::<Runtime>());
+            assert_ok!(test_benchmark_withdraw::<Runtime>());
+        });
+    }
 }

@@ -1361,6 +1361,7 @@ impl ceres_staking::Config for Runtime {
     type CeresPerBlock = CeresPerBlock;
     type CeresAssetId = CeresAssetId;
     type MaximumCeresInStakingPool = MaximumCeresInStakingPool;
+    type WeightInfo = ceres_staking::weights::WeightInfo<Runtime>;
 }
 
 /// Payload data to be signed when making signed transaction from off-chain workers,

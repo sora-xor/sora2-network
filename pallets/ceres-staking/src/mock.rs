@@ -1,19 +1,17 @@
 use crate::{self as ceres_staking};
 use common::mock::ExistentialDeposits;
 use common::prelude::Balance;
-use common::balance;
-use common::AssetId32;
+use common::{balance, AssetId32};
 use currencies::BasicCurrencyAdapter;
-use frame_support::traits::GenesisBuild;
+use frame_support::traits::{GenesisBuild, Hooks};
 use frame_support::weights::Weight;
 use frame_support::{construct_runtime, parameter_types};
 use frame_system;
+use hex_literal::hex;
 use sp_core::H256;
 use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentityLookup};
 use sp_runtime::Perbill;
-use hex_literal::hex;
-use frame_support::traits::Hooks;
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
@@ -41,8 +39,9 @@ pub type AssetId = AssetId32<common::PredefinedAssetId>;
 
 pub const ALICE: AccountId = 1;
 pub const BOB: AccountId = 2;
-pub const CERES_ASSET_ID: AssetId = common::AssetId32::from_bytes
-    (hex!("008bcfd2387d3fc453333557eecb0efe59fcba128769b2feefdd306e98e66440"));
+pub const CERES_ASSET_ID: AssetId = common::AssetId32::from_bytes(hex!(
+    "008bcfd2387d3fc453333557eecb0efe59fcba128769b2feefdd306e98e66440"
+));
 
 parameter_types! {
     pub const BlockHashCount: u64 = 250;
@@ -87,6 +86,7 @@ impl crate::Config for Runtime {
     type CeresPerBlock = CeresPerBlock;
     type CeresAssetId = CeresAssetId;
     type MaximumCeresInStakingPool = MaximumCeresInStakingPool;
+    type WeightInfo = ();
 }
 
 parameter_types! {
@@ -98,7 +98,7 @@ impl assets::Config for Runtime {
     type Event = Event;
     type ExtraAccountId = AccountId;
     type ExtraAssetRecordArg =
-    common::AssetIdExtraAssetRecordArg<common::DEXId, common::LiquiditySourceType, AccountId>;
+        common::AssetIdExtraAssetRecordArg<common::DEXId, common::LiquiditySourceType, AccountId>;
     type AssetId = AssetId;
     type GetBaseAssetId = GetBaseAssetId;
     type Currency = currencies::Module<Runtime>;
@@ -158,7 +158,10 @@ pub struct ExtBuilder {
 impl Default for ExtBuilder {
     fn default() -> Self {
         Self {
-            endowed_accounts: vec![(ALICE, CERES_ASSET_ID, balance!(7300)), (BOB, CERES_ASSET_ID, balance!(100))],
+            endowed_accounts: vec![
+                (ALICE, CERES_ASSET_ID, balance!(7300)),
+                (BOB, CERES_ASSET_ID, balance!(100)),
+            ],
         }
     }
 }

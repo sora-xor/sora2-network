@@ -1,5 +1,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
+pub mod weights;
+
 mod benchmarking;
 
 #[cfg(test)]
@@ -10,7 +12,12 @@ mod tests;
 
 use codec::{Decode, Encode};
 use common::prelude::Balance;
-use common::balance;
+use frame_support::weights::Weight;
+
+pub trait WeightInfo {
+    fn deposit() -> Weight;
+    fn withdraw() -> Weight;
+}
 
 #[derive(Encode, Decode, Default, PartialEq, Eq)]
 #[cfg_attr(feature = "std", derive(Debug))]
@@ -26,12 +33,13 @@ pub use pallet::*;
 #[frame_support::pallet]
 pub mod pallet {
     use super::*;
+    use common::balance;
     use common::prelude::{Balance, FixedWrapper};
     use frame_support::pallet_prelude::*;
     use frame_system::ensure_signed;
     use frame_system::pallet_prelude::*;
     use sp_runtime::traits::AccountIdConversion;
-    use sp_runtime::{ModuleId};
+    use sp_runtime::ModuleId;
 
     const PALLET_ID: ModuleId = ModuleId(*b"cerstake");
 
@@ -51,6 +59,9 @@ pub mod pallet {
 
         /// Maximum Ceres in staking pool
         type MaximumCeresInStakingPool: Get<Balance>;
+
+        /// Weight information for extrinsics in this pallet.
+        type WeightInfo: WeightInfo;
     }
 
     #[pallet::pallet]
@@ -84,15 +95,18 @@ pub mod pallet {
     pub(super) type TotalDeposited<T: Config> = StorageValue<_, Balance, ValueQuery>;
 
     #[pallet::type_value]
-    pub fn RewardsRemainingDefault() -> Balance { balance!(600) }
+    pub fn RewardsRemainingDefault() -> Balance {
+        balance!(600)
+    }
 
     #[pallet::storage]
     #[pallet::getter(fn rewards_remaining)]
-    pub(super) type RewardsRemaining<T: Config> = StorageValue<_, Balance, ValueQuery, RewardsRemainingDefault>;
+    pub(super) type RewardsRemaining<T: Config> =
+        StorageValue<_, Balance, ValueQuery, RewardsRemainingDefault>;
 
     #[pallet::call]
     impl<T: Config> Pallet<T> {
-        #[pallet::weight(10000)]
+        #[pallet::weight(<T as Config>::WeightInfo::deposit())]
         pub fn deposit(origin: OriginFor<T>, amount: Balance) -> DispatchResultWithPostInfo {
             // Check that the extrinsic was signed and get the signer.
             // This function will return an error if the extrinsic is not signed.
@@ -132,7 +146,7 @@ pub mod pallet {
             Ok(().into())
         }
 
-        #[pallet::weight(10000)]
+        #[pallet::weight(<T as Config>::WeightInfo::deposit())]
         pub fn withdraw(origin: OriginFor<T>) -> DispatchResultWithPostInfo {
             // Check that the extrinsic was signed and get the signer.
             // This function will return an error if the extrinsic is not signed.
@@ -147,7 +161,7 @@ pub mod pallet {
                 &T::CeresAssetId::get().into(),
                 &Self::account_id(),
                 &source,
-                withdrawing_amount
+                withdrawing_amount,
             )?;
 
             // Update total deposited CERES amount
@@ -158,7 +172,11 @@ pub mod pallet {
             <Stakers<T>>::remove(&source);
 
             // Emit an event
-            Self::deposit_event(Event::<T>::Withdrawn(source, staking_info.deposited, staking_info.rewards));
+            Self::deposit_event(Event::<T>::Withdrawn(
+                source,
+                staking_info.deposited,
+                staking_info.rewards,
+            ));
 
             // Return a successful DispatchResult
             Ok(().into())
