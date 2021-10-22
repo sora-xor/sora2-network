@@ -40,8 +40,6 @@ RUN cargo install grcov && \
 # Build project
 ADD . /app
 WORKDIR /app
-ENV RUSTC_WRAPPER=sccache
-ENV CARGO_INCREMENTAL=0
 RUN rustc --version && RUSTFLAGS="$RUSTFLAGS -A warnings" cargo build --color never --release --features "include-real-files" && \
     cargo test --release
 WORKDIR /
