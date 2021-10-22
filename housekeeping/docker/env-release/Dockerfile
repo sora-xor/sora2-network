@@ -34,8 +34,7 @@ RUN curl https://sh.rustup.rs -sSf | sh -s -- -y --no-modify-path --default-tool
 RUN curl https://github.com/chevdor/subwasm/releases/download/v0.14.1/subwasm_linux_amd64_v0.14.1.deb -sSL -o subw.deb && \
     dpkg -i subw.deb && rm subw.deb
 
-RUN cargo install sccache && \
-    cargo install grcov && \
+RUN cargo install grcov && \
     rustup component add llvm-tools-preview
 
 # Build project
