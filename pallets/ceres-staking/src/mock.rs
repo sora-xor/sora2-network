@@ -7,6 +7,7 @@ use frame_support::traits::{GenesisBuild, Hooks};
 use frame_support::weights::Weight;
 use frame_support::{construct_runtime, parameter_types};
 use frame_system;
+use frame_system::pallet_prelude::BlockNumberFor;
 use hex_literal::hex;
 use sp_core::H256;
 use sp_runtime::testing::Header;
@@ -15,6 +16,7 @@ use sp_runtime::Perbill;
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
+pub const BLOCKS_PER_DAY: BlockNumberFor<Runtime> = 14_440;
 
 construct_runtime! {
     pub enum Runtime where
@@ -76,14 +78,15 @@ impl frame_system::Config for Runtime {
 }
 
 parameter_types! {
-    pub const CeresPerBlock: Balance = balance!(0.00046296296);
+    pub const CeresPerDay: Balance = balance!(6.66666666667);
     pub const CeresAssetId: AssetId = CERES_ASSET_ID;
     pub const MaximumCeresInStakingPool: Balance = balance!(7200);
 }
 
 impl crate::Config for Runtime {
+    const BLOCKS_PER_ONE_DAY: BlockNumberFor<Self> = BLOCKS_PER_DAY;
     type Event = Event;
-    type CeresPerBlock = CeresPerBlock;
+    type CeresPerDay = CeresPerDay;
     type CeresAssetId = CeresAssetId;
     type MaximumCeresInStakingPool = MaximumCeresInStakingPool;
     type WeightInfo = ();

@@ -135,25 +135,25 @@ mod tests {
             // Deposit 500 from Alice's account
             assert_ok!(CeresStaking::deposit(Origin::signed(ALICE), balance!(500)));
             assert_ok!(CeresStaking::deposit(Origin::signed(BOB), balance!(50)));
-            run_to_block(1000);
+            run_to_block(14_440);
             let diff = FixedWrapper::from(0.0001);
             // Check remaining rewards
             let remaining_rewards = pallet::RewardsRemaining::<Runtime>::get();
             assert_eq!(
-                (FixedWrapper::from(599.53703704) - FixedWrapper::from(remaining_rewards)) < diff,
+                (FixedWrapper::from(593.333333333) - FixedWrapper::from(remaining_rewards)) < diff,
                 true
             );
             // Check Alice's staking rewards
             let staking_info_alice = pallet::Stakers::<Runtime>::get(&ALICE);
             assert_eq!(
-                (FixedWrapper::from(staking_info_alice.rewards) - FixedWrapper::from(0.4208754181))
+                (FixedWrapper::from(staking_info_alice.rewards) - FixedWrapper::from(6.0606060606))
                     < diff,
                 true
             );
             // Check Bob's staking rewards
             let staking_info_bob = pallet::Stakers::<Runtime>::get(&BOB);
             assert_eq!(
-                (FixedWrapper::from(staking_info_bob.rewards) - FixedWrapper::from(0.04208754181))
+                (FixedWrapper::from(staking_info_bob.rewards) - FixedWrapper::from(0.606060606))
                     < diff,
                 true
             );
@@ -163,7 +163,7 @@ mod tests {
             let alice_balance = Assets::free_balance(&CERES_ASSET_ID, &ALICE)
                 .expect("Failed to query free balance.");
             assert_eq!(
-                (FixedWrapper::from(7300.4208754181) - FixedWrapper::from(alice_balance)) < diff,
+                (FixedWrapper::from(7306.0606060606) - FixedWrapper::from(alice_balance)) < diff,
                 true
             );
         });

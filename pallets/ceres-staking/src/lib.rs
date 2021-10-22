@@ -38,7 +38,7 @@ pub mod pallet {
     use frame_support::pallet_prelude::*;
     use frame_system::ensure_signed;
     use frame_system::pallet_prelude::*;
-    use sp_runtime::traits::AccountIdConversion;
+    use sp_runtime::traits::{AccountIdConversion, Zero};
     use sp_runtime::ModuleId;
 
     const PALLET_ID: ModuleId = ModuleId(*b"cerstake");
@@ -49,10 +49,13 @@ pub mod pallet {
 
     #[pallet::config]
     pub trait Config: frame_system::Config + assets::Config {
+        /// One day represented in block number
+        const BLOCKS_PER_ONE_DAY: BlockNumberFor<Self>;
+
         type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 
-        /// Number of Ceres distributed per block
-        type CeresPerBlock: Get<Balance>;
+        /// Number of Ceres distributed per day
+        type CeresPerDay: Get<Balance>;
 
         /// Ceres asset id
         type CeresAssetId: Get<AssetId>;
@@ -185,26 +188,31 @@ pub mod pallet {
 
     #[pallet::hooks]
     impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
-        fn on_initialize(_n: T::BlockNumber) -> Weight {
+        fn on_initialize(now: T::BlockNumber) -> Weight {
             let mut counter: u64 = 0;
 
-            if RewardsRemaining::<T>::get() >= T::CeresPerBlock::get() {
-                for staker in <Stakers<T>>::iter() {
-                    let share_in_pool = FixedWrapper::from(staker.1.deposited)
-                        / FixedWrapper::from(TotalDeposited::<T>::get());
-                    let reward = share_in_pool * FixedWrapper::from(T::CeresPerBlock::get());
+            if (now % T::BLOCKS_PER_ONE_DAY).is_zero() {
+                if RewardsRemaining::<T>::get() >= T::CeresPerDay::get() {
+                    let total_deposited = FixedWrapper::from(TotalDeposited::<T>::get());
+                    let ceres_per_day = FixedWrapper::from(T::CeresPerDay::get());
 
-                    let mut staking_info = <Stakers<T>>::get(&staker.0);
-                    staking_info.rewards = (FixedWrapper::from(staking_info.rewards) + reward)
-                        .try_into_balance()
-                        .unwrap_or(staking_info.rewards);
+                    for staker in <Stakers<T>>::iter() {
+                        let share_in_pool =
+                            FixedWrapper::from(staker.1.deposited) / total_deposited.clone();
+                        let reward = share_in_pool * ceres_per_day.clone();
 
-                    <Stakers<T>>::insert(&staker.0, staking_info);
-                    counter += 1;
+                        let mut staking_info = <Stakers<T>>::get(&staker.0);
+                        staking_info.rewards = (FixedWrapper::from(staking_info.rewards) + reward)
+                            .try_into_balance()
+                            .unwrap_or(staking_info.rewards);
+
+                        <Stakers<T>>::insert(&staker.0, staking_info);
+                        counter += 1;
+                    }
+
+                    let rewards_remaining = RewardsRemaining::<T>::get() - T::CeresPerDay::get();
+                    RewardsRemaining::<T>::put(rewards_remaining);
                 }
-
-                let rewards_remaining = RewardsRemaining::<T>::get() - T::CeresPerBlock::get();
-                RewardsRemaining::<T>::put(rewards_remaining);
             }
 
             counter

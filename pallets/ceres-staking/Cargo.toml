@@ -35,7 +35,6 @@ permissions = { path = "../permissions" }
 
 [features]
 default = ["std"]
-private-net = []
 
 std = [
     "codec/std",
