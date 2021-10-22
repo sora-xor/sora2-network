@@ -216,6 +216,7 @@ fn test_submit() {
 }
 
 #[test]
+#[ignore]
 fn test_submit_fees_burned() {
     new_tester().execute_with(|| {
         let target = H160::zero();
@@ -238,6 +239,7 @@ fn test_submit_fees_burned() {
 }
 
 #[test]
+#[ignore]
 fn test_submit_not_enough_funds() {
     new_tester().execute_with(|| {
         let target = H160::zero();
