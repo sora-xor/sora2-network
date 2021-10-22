@@ -192,14 +192,17 @@ pub mod pallet {
             let mut counter: u64 = 0;
 
             if (now % T::BLOCKS_PER_ONE_DAY).is_zero() {
-                if RewardsRemaining::<T>::get() >= T::CeresPerDay::get() {
+                let rewards_remaining = RewardsRemaining::<T>::get();
+                let ceres_per_day = T::CeresPerDay::get();
+
+                if rewards_remaining >= ceres_per_day {
                     let total_deposited = FixedWrapper::from(TotalDeposited::<T>::get());
-                    let ceres_per_day = FixedWrapper::from(T::CeresPerDay::get());
+                    let ceres_per_day_fixed = FixedWrapper::from(ceres_per_day);
 
                     for staker in <Stakers<T>>::iter() {
                         let share_in_pool =
                             FixedWrapper::from(staker.1.deposited) / total_deposited.clone();
-                        let reward = share_in_pool * ceres_per_day.clone();
+                        let reward = share_in_pool * ceres_per_day_fixed.clone();
 
                         let mut staking_info = <Stakers<T>>::get(&staker.0);
                         staking_info.rewards = (FixedWrapper::from(staking_info.rewards) + reward)
@@ -210,12 +213,13 @@ pub mod pallet {
                         counter += 1;
                     }
 
-                    let rewards_remaining = RewardsRemaining::<T>::get() - T::CeresPerDay::get();
-                    RewardsRemaining::<T>::put(rewards_remaining);
+                    RewardsRemaining::<T>::put(rewards_remaining - ceres_per_day);
                 }
             }
 
-            counter
+            T::DbWeight::get()
+                .reads(4)
+                .saturating_add(T::DbWeight::get().writes(counter))
         }
     }
 
