@@ -1,4 +1,4 @@
-FROM debian:buster-slim
+FROM debian:bullseye-slim
 
 # Set environment variables
 ENV RUSTUP_HOME="/opt/rust"
@@ -31,6 +31,8 @@ ENV RUST_VERSION=nightly-2021-03-11
 RUN curl https://sh.rustup.rs -sSf | sh -s -- -y --no-modify-path --default-toolchain ${RUST_VERSION} && \
     rustup default ${RUST_VERSION} && \
     rustup target add wasm32-unknown-unknown
+RUN curl https://github.com/chevdor/subwasm/releases/download/v0.14.1/subwasm_linux_amd64_v0.14.1.deb -sSL -o subw.deb && \
+    dpkg -i subw.deb && rm subw.deb
 
 RUN cargo install sccache && \
     cargo install grcov && \

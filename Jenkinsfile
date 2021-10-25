@@ -5,9 +5,8 @@ String registry               = 'docker.soramitsu.co.jp'
 String dockerBuildToolsUserId = 'bot-build-tools-ro'
 String dockerRegistryRWUserId = 'bot-sora2-rw'
 String envImageName           = 'docker.soramitsu.co.jp/sora2/env'
-String srtoolImageName        = 'paritytech/srtool:nightly-2021-03-15'
 String rustcVersion           = 'nightly-2021-03-11'
-String srtoolReportFile       = 'framenode_runtime_srtool_output.json'
+String wasmReportFile         = 'subwasm_report.json'
 String appImageName           = 'docker.soramitsu.co.jp/sora2/substrate'
 String secretScannerExclusion = '.*Cargo.toml'
 Boolean disableSecretScanner  = false
@@ -64,9 +63,10 @@ pipeline {
                                     sccache -s
                                     time mv /app/target/release/framenode .
                                     time wasm-opt -Os -o ./framenode_runtime.compact.wasm /app/target/release/wbuild/framenode-runtime/framenode_runtime.compact.wasm
+                                    subwasm --json info framenode_runtime.compact.wasm > ${wasmReportFile}
                                 """
                                 archiveArtifacts artifacts:
-                                    'framenode_runtime.compact.wasm'
+                                    "framenode_runtime.compact.wasm, ${wasmReportFile}"
                             }
                         } else {
                             docker.image(envImageName + ':dev').inside() {
@@ -80,12 +80,6 @@ pipeline {
                                     sccache -s
                                 '''
                             }
-                        }
-                    }
-                    docker.image(srtoolImageName).inside("-v ${env.WORKSPACE}:/build") { c ->
-                        if (getPushVersion(pushTags)) {
-                            sh "build --json | tee ${srtoolReportFile}"
-                            archiveArtifacts artifacts: srtoolReportFile
                         }
                     }
                 }
