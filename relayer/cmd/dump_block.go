@@ -167,6 +167,7 @@ func printEthBlockForSub(header *gethTypes.Header, format Format) error {
 		hex!("%x").to_vec(),
 		hex!("%x").to_vec(),
 	],
+	..Default::default()
 }
 `,
 			headerForSub.Fields.ParentHash,

@@ -186,8 +186,6 @@ type SlashCancelOrigin = EnsureOneOf<
     pallet_collective::EnsureProportionAtLeast<_1, _2, AccountId, CouncilCollective>,
 >;
 
-type EthereumNetworkId = u32;
-
 /// Opaque types. These are used by the CLI to instantiate machinery that don't need to know
 /// the specifics of the runtime. They can then be made to be agnostic over specific formats
 /// of data like extrinsics, allowing for them to continue syncing the network through upgrades
@@ -1465,7 +1463,7 @@ where
     T: basic_channel::outbound::Config + incentivized_channel::outbound::Config,
 {
     fn submit(
-        network_id: u32,
+        network_id: snowbridge_ethereum::EthNetworkId,
         channel: H160,
         channel_id: ChannelId,
         who: &T::AccountId,
@@ -1494,7 +1492,6 @@ impl basic_channel_inbound::Config for Runtime {
     type Verifier = ethereum_light_client::Module<Runtime>;
     type MessageDispatch = dispatch::Module<Runtime>;
     type WeightInfo = ();
-    type NetworkId = EthereumNetworkId;
 }
 
 impl basic_channel_outbound::Config for Runtime {
@@ -1505,7 +1502,6 @@ impl basic_channel_outbound::Config for Runtime {
     type MaxMessagesPerCommit = MaxMessagesPerCommit;
     type SetPrincipalOrigin = EnsureRoot<AccountId>;
     type WeightInfo = ();
-    type NetworkId = EthereumNetworkId;
 }
 
 pub struct FeeConverter;
@@ -1528,7 +1524,6 @@ impl incentivized_channel_inbound::Config for Runtime {
     type UpdateOrigin = MoreThanHalfCouncil;
     type WeightInfo = ();
     type FeeAssetId = Ether;
-    type NetworkId = EthereumNetworkId;
 }
 
 impl incentivized_channel_outbound::Config for Runtime {
@@ -1540,7 +1535,6 @@ impl incentivized_channel_outbound::Config for Runtime {
     type FeeCurrency = Ether;
     type SetFeeOrigin = MoreThanHalfCouncil;
     type WeightInfo = ();
-    type NetworkId = EthereumNetworkId;
 }
 
 parameter_types! {
@@ -1555,7 +1549,6 @@ impl ethereum_light_client::Config for Runtime {
     type DifficultyConfig = DifficultyConfig;
     type VerifyPoW = VerifyPoW;
     type WeightInfo = ();
-    type NetworkId = EthereumNetworkId;
 }
 
 impl eth_app::Config for Runtime {
@@ -1564,7 +1557,6 @@ impl eth_app::Config for Runtime {
     type CallOrigin = EnsureEthereumAccount;
     type WeightInfo = ();
     type FeeCurrency = Ether;
-    type NetworkId = EthereumNetworkId;
 }
 
 #[cfg(feature = "private-net")]
@@ -1635,7 +1627,7 @@ construct_runtime! {
         MmrLeaf: pallet_beefy_mmr::{Pallet, Storage} = 83,
 
         // Snowbridge
-        EthereumLightClient: ethereum_light_client::{Pallet, Call, Storage, Event<T>, Config<T>} = 90,
+        EthereumLightClient: ethereum_light_client::{Pallet, Call, Storage, Event<T>, Config} = 90,
         BasicInboundChannel: basic_channel_inbound::{Pallet, Call, Storage, Event<T>, Config<T>} = 91,
         BasicOutboundChannel: basic_channel_outbound::{Pallet, Storage, Event<T>, Config<T>} = 92,
         IncentivizedInboundChannel: incentivized_channel_inbound::{Pallet, Call, Config<T>, Storage, Event<T>} = 93,

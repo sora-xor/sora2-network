@@ -4,6 +4,7 @@ use frame_support::dispatch::DispatchResult;
 use frame_support::ensure;
 use frame_support::traits::{EnsureOrigin, Get};
 use frame_support::weights::Weight;
+use snowbridge_ethereum::EthNetworkId;
 use sp_core::{RuntimeDebug, H160, H256, U256};
 use sp_io::offchain_index;
 use sp_runtime::traits::{Hash, Zero};
@@ -12,6 +13,9 @@ use traits::MultiCurrency;
 
 use snowbridge_core::types::AuxiliaryDigestItem;
 use snowbridge_core::{ChannelId, MessageNonce};
+
+pub mod weights;
+pub use weights::WeightInfo;
 
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
@@ -22,7 +26,7 @@ mod test;
 /// Wire-format for committed messages
 #[derive(Encode, Decode, Clone, PartialEq, RuntimeDebug)]
 pub struct Message {
-    network_id: u32,
+    network_id: EthNetworkId,
     channel: H160,
     /// Target application on the Ethereum side.
     target: H160,
@@ -32,29 +36,6 @@ pub struct Message {
     fee: U256,
     /// Payload for target application.
     payload: Vec<u8>,
-}
-
-/// Weight functions needed for this pallet.
-pub trait WeightInfo {
-    fn on_initialize(num_messages: u32, avg_payload_bytes: u32) -> Weight;
-    fn on_initialize_non_interval() -> Weight;
-    fn on_initialize_no_messages() -> Weight;
-    fn set_fee() -> Weight;
-}
-
-impl WeightInfo for () {
-    fn on_initialize(_: u32, _: u32) -> Weight {
-        0
-    }
-    fn on_initialize_non_interval() -> Weight {
-        0
-    }
-    fn on_initialize_no_messages() -> Weight {
-        0
-    }
-    fn set_fee() -> Weight {
-        0
-    }
 }
 
 type BalanceOf<T> = <<T as assets::Config>::Currency as MultiCurrency<
@@ -69,9 +50,6 @@ pub mod pallet {
     use frame_support::log::debug;
     use frame_support::pallet_prelude::*;
     use frame_system::pallet_prelude::*;
-    use sp_runtime::traits::{AtLeast32BitUnsigned, MaybeDisplay, MaybeSerializeDeserialize};
-
-    use core::fmt::Debug;
 
     #[pallet::config]
     pub trait Config: frame_system::Config + assets::Config {
@@ -95,16 +73,6 @@ pub mod pallet {
 
         /// Weight information for extrinsics in this pallet
         type WeightInfo: WeightInfo;
-
-        /// Network id
-        type NetworkId: Parameter
-            + Member
-            + MaybeSerializeDeserialize
-            + Debug
-            + Default
-            + MaybeDisplay
-            + AtLeast32BitUnsigned
-            + Copy;
     }
 
     /// Interval between committing messages.
@@ -119,17 +87,17 @@ pub mod pallet {
     /// Source channel on the ethereum side
     #[pallet::storage]
     pub type ChannelOwners<T: Config> =
-        StorageDoubleMap<_, Identity, T::NetworkId, Identity, H160, T::AccountId, OptionQuery>;
+        StorageDoubleMap<_, Identity, EthNetworkId, Identity, H160, T::AccountId, OptionQuery>;
 
     #[pallet::storage]
     pub type ChannelNonces<T: Config> =
-        StorageDoubleMap<_, Identity, T::NetworkId, Identity, H160, u64, OptionQuery>;
+        StorageDoubleMap<_, Identity, EthNetworkId, Identity, H160, u64, ValueQuery>;
 
     /// Source of funds to pay relayers
     #[pallet::storage]
     #[pallet::getter(fn source_account)]
     pub type DestAccounts<T: Config> =
-        StorageDoubleMap<_, Identity, T::NetworkId, Identity, H160, T::AccountId, OptionQuery>;
+        StorageDoubleMap<_, Identity, EthNetworkId, Identity, H160, T::AccountId, ValueQuery>;
 
     #[pallet::storage]
     #[pallet::getter(fn fee)]
@@ -174,6 +142,8 @@ pub mod pallet {
         Overflow,
         /// Target channel not exists
         InvalidChannel,
+        /// This channel already exists
+        ChannelExists,
     }
 
     #[pallet::call]
@@ -184,12 +154,31 @@ pub mod pallet {
             Fee::<T>::set(amount);
             Ok(().into())
         }
+
+        #[pallet::weight(<T as Config>::WeightInfo::register_channel())]
+        pub fn register_channel(
+            origin: OriginFor<T>,
+            network_id: EthNetworkId,
+            channel: H160,
+            fee_source: T::AccountId,
+        ) -> DispatchResult {
+            let owner = ensure_signed(origin)?;
+            ensure!(
+                <ChannelOwners<T>>::contains_key(network_id, channel) == false,
+                Error::<T>::ChannelExists
+            );
+
+            <ChannelOwners<T>>::insert(network_id, channel, owner);
+            <DestAccounts<T>>::insert(network_id, channel, fee_source);
+
+            Ok(())
+        }
     }
     impl<T: Config> Pallet<T> {
         /// Submit message on the outbound channel
         pub fn submit(
             who: &T::AccountId,
-            network_id: u32,
+            network_id: EthNetworkId,
             channel: H160,
             target: H160,
             payload: &[u8],
@@ -205,9 +194,7 @@ pub mod pallet {
                 Error::<T>::PayloadTooLarge,
             );
 
-            let net_id = T::NetworkId::from(network_id);
-            <ChannelNonces<T>>::try_mutate(net_id, channel, |nonce| -> DispatchResult {
-                let nonce = &mut nonce.ok_or(Error::<T>::InvalidChannel)?;
+            <ChannelNonces<T>>::try_mutate(network_id, channel, |nonce| -> DispatchResult {
                 if let Some(v) = nonce.checked_add(1) {
                     *nonce = v;
                 } else {
@@ -216,8 +203,7 @@ pub mod pallet {
 
                 // Attempt to charge a fee for message submission
                 let fee = Self::fee();
-                let dest_account =
-                    <DestAccounts<T>>::get(net_id, channel).ok_or(Error::<T>::InvalidChannel)?;
+                let dest_account = <DestAccounts<T>>::get(network_id, channel);
                 T::Currency::transfer(T::FeeCurrency::get(), who, &dest_account, fee)?;
 
                 <MessageQueue<T>>::try_mutate(|queue| -> DispatchResult {
@@ -304,7 +290,7 @@ pub mod pallet {
     pub struct GenesisConfig<T: Config> {
         pub fee: BalanceOf<T>,
         pub interval: T::BlockNumber,
-        pub networks: Vec<(T::NetworkId, Vec<(H160, T::AccountId, T::AccountId)>)>,
+        pub networks: Vec<(EthNetworkId, Vec<(H160, T::AccountId, T::AccountId)>)>,
     }
 
     #[cfg(feature = "std")]
@@ -327,7 +313,6 @@ pub mod pallet {
                 for (channel, owner, dest_account) in channels {
                     <DestAccounts<T>>::insert(network_id, channel, dest_account.clone());
                     <ChannelOwners<T>>::insert(network_id, channel, owner);
-                    <ChannelNonces<T>>::insert(network_id, channel, 0);
                 }
             }
         }

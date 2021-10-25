@@ -45,6 +45,13 @@ const config: HardhatUserConfig = {
       gas: 6000000,
       gasPrice: 5000000000,
     },
+    geth2: {
+      url: "http://127.0.0.1:8555",
+      chainId: 4225,
+      accounts: ["a78a2acb5b21d4489bff3f7d113ce826c5a2e2ce27740b2ce62e9a923ac6e910"],
+      gas: 6000000,
+      gasPrice: 5000000000,
+    },
     oe: {
       url: "http://127.0.0.1:8545",
       chainId: 17,

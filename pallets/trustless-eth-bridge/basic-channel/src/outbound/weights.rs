@@ -5,6 +5,7 @@ pub trait WeightInfo {
     fn on_initialize_non_interval() -> Weight;
     fn on_initialize_no_messages() -> Weight;
     fn set_principal() -> Weight;
+    fn register_channel() -> Weight;
 }
 
 impl WeightInfo for () {
@@ -18,6 +19,9 @@ impl WeightInfo for () {
         0
     }
     fn set_principal() -> Weight {
+        0
+    }
+    fn register_channel() -> Weight {
         0
     }
 }

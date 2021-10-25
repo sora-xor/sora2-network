@@ -11,6 +11,7 @@ use ethabi::{self, Token};
 use frame_support::dispatch::DispatchResult;
 use frame_support::ensure;
 use frame_support::traits::{EnsureOrigin, Get};
+use snowbridge_ethereum::EthNetworkId;
 use sp_core::{RuntimeDebug, H160, H256};
 use sp_io::offchain_index;
 use sp_runtime::traits::{Hash, StaticLookup, Zero};
@@ -25,7 +26,7 @@ pub use weights::WeightInfo;
 /// Wire-format for committed messages
 #[derive(Encode, Decode, Clone, PartialEq, RuntimeDebug)]
 pub struct Message {
-    network_id: u32,
+    network_id: EthNetworkId,
     channel: H160,
     /// Target application on the Ethereum side.
     target: H160,
@@ -43,10 +44,8 @@ pub mod pallet {
     use super::*;
 
     use frame_support::pallet_prelude::*;
+    use frame_system::ensure_signed;
     use frame_system::pallet_prelude::*;
-    use sp_runtime::traits::{AtLeast32BitUnsigned, MaybeDisplay, MaybeSerializeDeserialize};
-
-    use core::fmt::Debug;
 
     #[pallet::pallet]
     #[pallet::generate_store(pub(super) trait Store)]
@@ -73,16 +72,6 @@ pub mod pallet {
 
         /// Weight information for extrinsics in this pallet
         type WeightInfo: WeightInfo;
-
-        /// Network id
-        type NetworkId: Parameter
-            + Member
-            + MaybeSerializeDeserialize
-            + Debug
-            + Default
-            + MaybeDisplay
-            + AtLeast32BitUnsigned
-            + Copy;
     }
 
     #[pallet::event]
@@ -103,6 +92,8 @@ pub mod pallet {
         NotAuthorized,
         /// Target channel not exists
         InvalidChannel,
+        /// This channel already exists
+        ChannelExists,
     }
 
     /// Interval between commitments
@@ -117,15 +108,15 @@ pub mod pallet {
     /// Source channel on the ethereum side
     #[pallet::storage]
     pub type ChannelOwners<T: Config> =
-        StorageDoubleMap<_, Identity, T::NetworkId, Identity, H160, T::AccountId, OptionQuery>;
+        StorageDoubleMap<_, Identity, EthNetworkId, Identity, H160, T::AccountId, OptionQuery>;
 
     #[pallet::storage]
     pub type ChannelNonces<T: Config> =
-        StorageDoubleMap<_, Identity, T::NetworkId, Identity, H160, u64, OptionQuery>;
+        StorageDoubleMap<_, Identity, EthNetworkId, Identity, H160, u64, ValueQuery>;
 
     #[pallet::genesis_config]
     pub struct GenesisConfig<T: Config> {
-        pub networks: Vec<(T::NetworkId, Vec<(H160, T::AccountId)>)>,
+        pub networks: Vec<(EthNetworkId, Vec<(H160, T::AccountId)>)>,
         pub interval: T::BlockNumber,
     }
 
@@ -146,7 +137,6 @@ pub mod pallet {
             for (network_id, channels) in &self.networks {
                 for (channel, owner) in channels {
                     <ChannelOwners<T>>::insert(network_id, channel, owner);
-                    <ChannelNonces<T>>::insert(network_id, channel, 0);
                 }
             }
         }
@@ -172,7 +162,7 @@ pub mod pallet {
         #[pallet::weight(T::WeightInfo::set_principal())]
         pub fn set_principal(
             origin: OriginFor<T>,
-            network_id: T::NetworkId,
+            network_id: EthNetworkId,
             channel: H160,
             principal: <T::Lookup as StaticLookup>::Source,
         ) -> DispatchResult {
@@ -188,20 +178,36 @@ pub mod pallet {
             })?;
             Ok(())
         }
+
+        #[pallet::weight(T::WeightInfo::register_channel())]
+        pub fn register_channel(
+            origin: OriginFor<T>,
+            network_id: EthNetworkId,
+            channel: H160,
+        ) -> DispatchResult {
+            let owner = ensure_signed(origin)?;
+            ensure!(
+                <ChannelOwners<T>>::contains_key(network_id, channel) == false,
+                Error::<T>::ChannelExists
+            );
+
+            <ChannelOwners<T>>::insert(network_id, channel, owner);
+
+            Ok(())
+        }
     }
 
     impl<T: Config> Pallet<T> {
         /// Submit message on the outbound channel
         pub fn submit(
             who: &T::AccountId,
-            network_id: u32,
+            network_id: EthNetworkId,
             channel: H160,
             target: H160,
             payload: &[u8],
         ) -> DispatchResult {
-            let net_id = T::NetworkId::from(network_id);
             let owner =
-                <ChannelOwners<T>>::get(net_id, channel).ok_or(Error::<T>::InvalidChannel)?;
+                <ChannelOwners<T>>::get(network_id, channel).ok_or(Error::<T>::InvalidChannel)?;
             ensure!(*who == owner, Error::<T>::NotAuthorized,);
             ensure!(
                 <MessageQueue<T>>::decode_len().unwrap_or(0)
@@ -213,8 +219,7 @@ pub mod pallet {
                 Error::<T>::PayloadTooLarge,
             );
 
-            <ChannelNonces<T>>::try_mutate(net_id, channel, |nonce| -> DispatchResult {
-                let nonce = &mut nonce.ok_or(Error::<T>::InvalidChannel)?;
+            <ChannelNonces<T>>::try_mutate(network_id, channel, |nonce| -> DispatchResult {
                 if let Some(v) = nonce.checked_add(1) {
                     *nonce = v;
                 } else {
@@ -223,7 +228,7 @@ pub mod pallet {
 
                 <MessageQueue<T>>::try_mutate(|queue| -> DispatchResult {
                     queue.push(Message {
-                        network_id: network_id,
+                        network_id,
                         channel,
                         target,
                         nonce: *nonce,

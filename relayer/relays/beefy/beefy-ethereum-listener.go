@@ -11,7 +11,6 @@ import (
 	"github.com/jinzhu/gorm"
 
 	gethTypes "github.com/ethereum/go-ethereum/core/types"
-	"github.com/sirupsen/logrus"
 	"golang.org/x/sync/errgroup"
 
 	"github.com/snowfork/snowbridge/relayer/chain"
@@ -189,16 +188,17 @@ func (li *BeefyEthereumListener) processInitialVerificationSuccessfulEvents(
 	}).Debug("Queried for InitialVerificationSuccessful events")
 
 	for _, event := range events {
-		log.WithFields(logrus.Fields{
+		log.WithFields(log.Fields{
 			"blockHash":   event.Raw.BlockHash.Hex(),
 			"blockNumber": event.Raw.BlockNumber,
 			"txHash":      event.Raw.TxHash.Hex(),
 			"Prover":      event.Prover.Hex(),
+			"ContractId":  event.Id,
 		}).Info("Processing InitialVerificationSuccessful event")
 
 		// Only process events emitted by transactions sent from our node
 		if event.Prover != li.ethereumConn.GetKP().CommonAddress() {
-			log.WithFields(logrus.Fields{
+			log.WithFields(log.Fields{
 				"Prover": event.Prover.Hex(),
 			}).Info("Skipping InitialVerificationSuccessful event as it has an unknown prover address")
 			continue
@@ -279,7 +279,7 @@ func (li *BeefyEthereumListener) processFinalVerificationSuccessfulEvents(
 	}).Trace("Queried for FinalVerificationSuccessful events")
 
 	for _, event := range events {
-		log.WithFields(logrus.Fields{
+		log.WithFields(log.Fields{
 			"blockHash":   event.Raw.BlockHash.Hex(),
 			"blockNumber": event.Raw.BlockNumber,
 			"txHash":      event.Raw.TxHash.Hex(),
@@ -288,7 +288,7 @@ func (li *BeefyEthereumListener) processFinalVerificationSuccessfulEvents(
 		}).Info("Processing FinalVerificationSuccessful event")
 
 		if event.Prover != li.ethereumConn.GetKP().CommonAddress() {
-			log.WithFields(logrus.Fields{
+			log.WithFields(log.Fields{
 				"ID":     event.Id.Int64(),
 				"Prover": event.Prover.Hex(),
 			}).Info("Skipping FinalVerificationSuccessful event as it has an unknown prover address")

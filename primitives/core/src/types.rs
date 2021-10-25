@@ -3,6 +3,7 @@
 use codec::{Decode, Encode};
 use enum_iterator::IntoEnumIterator;
 use frame_support::RuntimeDebug;
+use snowbridge_ethereum::EthNetworkId;
 use sp_core::H256;
 use sp_runtime::DigestItem;
 use sp_std::vec::Vec;
@@ -30,8 +31,6 @@ pub enum ChannelId {
 /// A message relayed from Ethereum.
 #[derive(PartialEq, Clone, Encode, Decode, RuntimeDebug)]
 pub struct Message {
-    /// Network id of sender
-    pub network_id: u32,
     /// The raw message data.
     pub data: Vec<u8>,
     /// Input to the message verifier
@@ -56,7 +55,7 @@ pub struct Proof {
 #[derive(Encode, Decode, Copy, Clone, PartialEq, RuntimeDebug)]
 pub enum AuxiliaryDigestItem {
     /// A batch of messages has been committed.
-    Commitment(ChannelId, u32, sp_core::H160, H256),
+    Commitment(ChannelId, EthNetworkId, sp_core::H160, H256),
 }
 
 impl<T> Into<DigestItem<T>> for AuxiliaryDigestItem {

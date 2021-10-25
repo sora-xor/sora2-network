@@ -5,7 +5,7 @@
 //! ## Overview
 //!
 //! ETH balances are stored in the tightly-coupled [`asset`] runtime module. When an account holder burns
-//! some of their balance, a `Transfer` event is emitteframe_supportal{log::debug, pallet_prelude::*}_prelude::*} for this event
+//! some of their balance, a `Transfer` event is emit for this event
 //! and relay it to the other chain.
 //!
 //! ## Interface
@@ -21,6 +21,7 @@ use frame_support::traits::EnsureOrigin;
 use frame_support::transactional;
 use frame_support::weights::Weight;
 use frame_system::ensure_signed;
+use snowbridge_ethereum::EthNetworkId;
 use sp_core::{H160, U256};
 use sp_runtime::traits::StaticLookup;
 use sp_std::prelude::*;
@@ -66,10 +67,8 @@ pub use pallet::*;
 pub mod pallet {
     use super::*;
     use assets::AssetIdOf;
-    use core::fmt::Debug;
     use frame_support::pallet_prelude::*;
     use frame_system::pallet_prelude::{OriginFor, *};
-    use sp_runtime::traits::{AtLeast32BitUnsigned, MaybeDisplay, MaybeSerializeDeserialize};
     use traits::MultiCurrency;
 
     type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
@@ -81,31 +80,22 @@ pub mod pallet {
 
         type OutboundRouter: OutboundRouter<Self::AccountId>;
 
-        type CallOrigin: EnsureOrigin<Self::Origin, Success = (u32, H160)>;
+        type CallOrigin: EnsureOrigin<Self::Origin, Success = (EthNetworkId, H160)>;
 
         type FeeCurrency: Get<Self::AssetId>;
 
         type WeightInfo: WeightInfo;
-
-        type NetworkId: Parameter
-            + Member
-            + MaybeSerializeDeserialize
-            + Debug
-            + Default
-            + MaybeDisplay
-            + AtLeast32BitUnsigned
-            + Copy;
     }
 
     #[pallet::storage]
     #[pallet::getter(fn address)]
     pub(super) type Address<T: Config> =
-        StorageDoubleMap<_, Identity, T::NetworkId, Identity, H160, AssetIdOf<T>, OptionQuery>;
+        StorageDoubleMap<_, Identity, EthNetworkId, Identity, H160, AssetIdOf<T>, OptionQuery>;
 
     /// Destination account for bridge funds
     #[pallet::storage]
     pub type DestAccount<T: Config> =
-        StorageDoubleMap<_, Identity, T::NetworkId, Identity, H160, T::AccountId, OptionQuery>;
+        StorageDoubleMap<_, Identity, EthNetworkId, Identity, H160, T::AccountId, OptionQuery>;
 
     #[pallet::pallet]
     #[pallet::generate_store(pub(super) trait Store)]
@@ -138,16 +128,17 @@ pub mod pallet {
         pub fn burn(
             origin: OriginFor<T>,
             channel_id: ChannelId,
-            network_id: u32,
+            network_id: EthNetworkId,
             channel: H160,
             bridge: H160,
             recipient: H160,
             amount: BalanceOf<T>,
         ) -> DispatchResult {
             let who = ensure_signed(origin)?;
-            let net_id = T::NetworkId::from(network_id);
-            let dest = DestAccount::<T>::get(net_id, bridge).ok_or(Error::<T>::BridgeNotFound)?;
-            let asset_id = <Address<T>>::get(net_id, bridge).ok_or(Error::<T>::BridgeNotFound)?;
+            let dest =
+                DestAccount::<T>::get(network_id, bridge).ok_or(Error::<T>::BridgeNotFound)?;
+            let asset_id =
+                <Address<T>>::get(network_id, bridge).ok_or(Error::<T>::BridgeNotFound)?;
 
             T::Currency::transfer(asset_id, &who, &dest, amount)?;
 
@@ -179,8 +170,7 @@ pub mod pallet {
             amount: BalanceOf<T>,
         ) -> DispatchResult {
             let (network_id, who) = T::CallOrigin::ensure_origin(origin)?;
-            let net_id = T::NetworkId::from(network_id);
-            let asset = Address::<T>::get(net_id, who).ok_or(Error::<T>::BridgeNotFound)?;
+            let asset = Address::<T>::get(network_id, who).ok_or(Error::<T>::BridgeNotFound)?;
 
             let recipient = T::Lookup::lookup(recipient)?;
             T::Currency::deposit(asset, &recipient, amount)?;
@@ -193,7 +183,7 @@ pub mod pallet {
         pub fn register_new_asset(
             origin: OriginFor<T>,
             dest_account: T::AccountId,
-            network_id: T::NetworkId,
+            network_id: EthNetworkId,
             asset_id: AssetIdOf<T>,
             channel: H160,
         ) -> DispatchResult {
@@ -206,7 +196,7 @@ pub mod pallet {
 
     #[pallet::genesis_config]
     pub struct GenesisConfig<T: Config> {
-        pub networks: Vec<(T::NetworkId, Vec<(H160, T::AccountId, T::AssetId)>)>,
+        pub networks: Vec<(EthNetworkId, Vec<(H160, T::AccountId, T::AssetId)>)>,
     }
 
     #[cfg(feature = "std")]

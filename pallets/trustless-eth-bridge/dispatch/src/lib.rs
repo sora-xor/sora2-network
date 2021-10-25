@@ -12,12 +12,13 @@ use sp_std::prelude::*;
 use snowbridge_core::MessageDispatch;
 
 use codec::{Decode, Encode};
+use snowbridge_ethereum::EthNetworkId;
 
 #[derive(Copy, Clone, PartialEq, Eq, Encode, Decode, RuntimeDebug)]
-pub struct RawOrigin(pub u32, pub H160);
+pub struct RawOrigin(pub EthNetworkId, pub H160);
 
-impl From<(u32, H160)> for RawOrigin {
-    fn from(origin: (u32, H160)) -> RawOrigin {
+impl From<(EthNetworkId, H160)> for RawOrigin {
+    fn from(origin: (EthNetworkId, H160)) -> RawOrigin {
         RawOrigin(origin.0, origin.1)
     }
 }
@@ -28,7 +29,7 @@ impl<OuterOrigin> EnsureOrigin<OuterOrigin> for EnsureEthereumAccount
 where
     OuterOrigin: Into<Result<RawOrigin, OuterOrigin>> + From<RawOrigin>,
 {
-    type Success = (u32, H160);
+    type Success = (EthNetworkId, H160);
 
     fn try_origin(o: OuterOrigin) -> Result<Self::Success, OuterOrigin> {
         o.into().and_then(|o| Ok((o.0, o.1)))
@@ -102,7 +103,7 @@ pub mod pallet {
     pub type MessageIdOf<T> = <T as Config>::MessageId;
 
     impl<T: Config> MessageDispatch<T, MessageIdOf<T>> for Pallet<T> {
-        fn dispatch(network_id: u32, source: H160, id: MessageIdOf<T>, payload: &[u8]) {
+        fn dispatch(network_id: EthNetworkId, source: H160, id: MessageIdOf<T>, payload: &[u8]) {
             let call = match <T as Config>::Call::decode(&mut &payload[..]) {
                 Ok(call) => call,
                 Err(_) => {

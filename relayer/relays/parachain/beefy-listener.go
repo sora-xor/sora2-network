@@ -23,6 +23,7 @@ type BeefyListener struct {
 	beefyLightClient *beefylightclient.Contract
 	relaychainConn   *relaychain.Connection
 	messages         chan<- MessagePackage
+	chainId          uint64
 }
 
 func NewBeefyListener(
@@ -40,6 +41,7 @@ func NewBeefyListener(
 }
 
 func (li *BeefyListener) Start(ctx context.Context, eg *errgroup.Group) error {
+	li.chainId = li.ethereumConn.ChainID().Uint64()
 
 	// Set up light client bridge contract
 	address := common.HexToAddress(li.config.Contracts.BeefyLightClient)

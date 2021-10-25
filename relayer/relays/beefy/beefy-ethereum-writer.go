@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"math/big"
 	"strconv"
+	"sync/atomic"
 	"time"
 
 	"golang.org/x/sync/errgroup"
@@ -30,6 +31,7 @@ type BeefyEthereumWriter struct {
 	beefyLightClient *beefylightclient.Contract
 	databaseMessages chan<- store.DatabaseCmd
 	beefyMessages    <-chan store.BeefyRelayInfo
+	contractId       int64
 }
 
 func NewBeefyEthereumWriter(
@@ -45,6 +47,7 @@ func NewBeefyEthereumWriter(
 		beefyDB:          beefyDB,
 		databaseMessages: databaseMessages,
 		beefyMessages:    beefyMessages,
+		contractId:       0,
 	}
 }
 
@@ -158,6 +161,7 @@ func (wr *BeefyEthereumWriter) WriteNewSignatureCommitment(ctx context.Context, 
 	initialBitfield, err := contract.CreateInitialBitfield(
 		&bind.CallOpts{Pending: true}, signedValidators, numberOfValidators,
 	)
+	log.WithFields(log.Fields{"signedValidators": signedValidators, "numberOfValidators": numberOfValidators}).Warn("CreateInitialBitfield")
 	if err != nil {
 		log.WithError(err).Error("Failed to create initial validator bitfield")
 		return err
@@ -178,7 +182,8 @@ func (wr *BeefyEthereumWriter) WriteNewSignatureCommitment(ctx context.Context, 
 		"newSignatureCommitment",
 		msg.CommitmentHash,
 		msg.ValidatorClaimsBitfield, msg.ValidatorSignatureCommitment,
-		msg.ValidatorPosition, msg.ValidatorPublicKey, msg.ValidatorPublicKeyMerkleProof)
+		msg.ValidatorPosition, msg.ValidatorPublicKey, msg.ValidatorPublicKeyMerkleProof,
+	)
 	if err != nil {
 		return err
 	}
@@ -187,6 +192,16 @@ func (wr *BeefyEthereumWriter) WriteNewSignatureCommitment(ctx context.Context, 
 	estimatedGas, err := wr.ethereumConn.GetClient().EstimateGas(ctx, callMsg)
 	estimatedCost := (estimatedGas * 4000 * 50) / 1000000000
 	log.WithField("estimatedGas", estimatedGas).WithField("estimatedCost", estimatedCost).WithError(err).Info("Estimated gas newCommitment")
+
+	rawCaller := beefylightclient.ContractCallerRaw{Contract: &wr.beefyLightClient.ContractCaller}
+	callResult := make([]interface{}, 0)
+	err = rawCaller.Call(&bind.CallOpts{Context: options.Context, From: options.From, Pending: false}, &callResult,
+		"newSignatureCommitment",
+		msg.CommitmentHash,
+		msg.ValidatorClaimsBitfield, msg.ValidatorSignatureCommitment,
+		msg.ValidatorPosition, msg.ValidatorPublicKey, msg.ValidatorPublicKeyMerkleProof,
+	)
+	log.WithFields(log.Fields{"error": err, "result": callResult}).Info("Test transaction")
 
 	tx, err := contract.NewSignatureCommitment(options,
 		msg.CommitmentHash,
@@ -243,6 +258,12 @@ func BitfieldToString(bitfield []*big.Int) string {
 
 // WriteCompleteSignatureCommitment sends a CompleteSignatureCommitment tx to the BeefyLightClient contract
 func (wr *BeefyEthereumWriter) WriteCompleteSignatureCommitment(ctx context.Context, info store.BeefyRelayInfo) error {
+	ok := atomic.CompareAndSwapInt64(&wr.contractId, info.ContractID, info.ContractID+1)
+	if !ok {
+		log.WithFields(log.Fields{"expectedContractId": wr.contractId, "passedContractId": info.ContractID, "info": info}).Error("Wrong contract id, ignore")
+		return nil
+	}
+
 	beefyJustification, err := info.ToBeefyJustification()
 	if err != nil {
 		return fmt.Errorf("error converting BeefyRelayInfo to BeefyJustification: %s", err.Error())
@@ -253,6 +274,7 @@ func (wr *BeefyEthereumWriter) WriteCompleteSignatureCommitment(ctx context.Cont
 		return fmt.Errorf("unknown contract")
 	}
 
+	log.WithField("ContractId", info.ContractID).Info("Create random bitfield")
 	randomBitfield, err := contract.CreateRandomBitfield(
 		&bind.CallOpts{Pending: true},
 		big.NewInt(int64(info.ContractID)),
@@ -293,7 +315,8 @@ func (wr *BeefyEthereumWriter) WriteCompleteSignatureCommitment(ctx context.Cont
 		msg.LatestMMRLeaf,
 		msg.MMRLeafIndex,
 		msg.MMRLeafCount,
-		msg.MMRProofItems)
+		msg.MMRProofItems,
+	)
 	if err != nil {
 		return err
 	}
@@ -302,6 +325,20 @@ func (wr *BeefyEthereumWriter) WriteCompleteSignatureCommitment(ctx context.Cont
 	estimatedGas, err := wr.ethereumConn.GetClient().EstimateGas(ctx, callMsg)
 	estimatedCost := (estimatedGas * 4000 * 50) / 1000000000
 	log.WithField("estimatedGas", estimatedGas).WithField("estimatedCost", estimatedCost).WithError(err).Info("Estimated gas CompleteCommitment")
+
+	rawCaller := beefylightclient.ContractCallerRaw{Contract: &wr.beefyLightClient.ContractCaller}
+	callResult := make([]interface{}, 0)
+	err = rawCaller.Call(&bind.CallOpts{Context: options.Context, From: options.From, Pending: false}, &callResult,
+		"completeSignatureCommitment",
+		msg.ID,
+		msg.Commitment,
+		validatorProof,
+		msg.LatestMMRLeaf,
+		msg.MMRLeafIndex,
+		msg.MMRLeafCount,
+		msg.MMRProofItems,
+	)
+	log.WithFields(log.Fields{"error": err, "result": callResult}).Info("Test transaction")
 
 	tx, err := contract.CompleteSignatureCommitment(options,
 		msg.ID,

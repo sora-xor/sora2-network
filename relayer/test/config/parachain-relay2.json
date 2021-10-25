@@ -1,7 +1,7 @@
 {
     "source": {
         "ethereum": {
-            "endpoint": "ws://localhost:8546"
+            "endpoint": "ws://localhost:8556"
         },
         "substrate": {
             "endpoint": "ws://localhost:9944"
@@ -15,7 +15,7 @@
     },
     "sink": {
         "ethereum": {
-            "endpoint": "ws://localhost:8546",
+            "endpoint": "ws://localhost:8556",
             "gas-limit": 5000000
         },
         "contracts": {

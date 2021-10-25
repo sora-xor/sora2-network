@@ -87,10 +87,9 @@ pub mod pallet {
 
     use super::*;
 
-    use core::fmt::Debug;
     use frame_support::pallet_prelude::*;
     use frame_system::pallet_prelude::*;
-    use sp_runtime::traits::{AtLeast32BitUnsigned, MaybeDisplay, MaybeSerializeDeserialize};
+    use snowbridge_ethereum::EthNetworkId;
 
     #[pallet::pallet]
     #[pallet::generate_store(pub(super) trait Store)]
@@ -112,15 +111,6 @@ pub mod pallet {
         type VerifyPoW: Get<bool>;
         /// Weight information for extrinsics in this pallet
         type WeightInfo: WeightInfo;
-        /// Network id
-        type NetworkId: Parameter
-            + Member
-            + MaybeSerializeDeserialize
-            + Debug
-            + Default
-            + MaybeDisplay
-            + AtLeast32BitUnsigned
-            + Copy;
     }
 
     #[pallet::event]
@@ -159,24 +149,24 @@ pub mod pallet {
     /// Best known block.
     #[pallet::storage]
     pub(super) type BestBlock<T: Config> =
-        StorageMap<_, Identity, T::NetworkId, (EthereumHeaderId, U256), OptionQuery>;
+        StorageMap<_, Identity, EthNetworkId, (EthereumHeaderId, U256), OptionQuery>;
 
     /// Range of blocks that we want to prune.
     #[pallet::storage]
     pub(super) type BlocksToPrune<T: Config> =
-        StorageMap<_, Identity, T::NetworkId, PruningRange, OptionQuery>;
+        StorageMap<_, Identity, EthNetworkId, PruningRange, OptionQuery>;
 
     /// Best finalized block.
     #[pallet::storage]
     pub(super) type FinalizedBlock<T: Config> =
-        StorageMap<_, Identity, T::NetworkId, EthereumHeaderId, OptionQuery>;
+        StorageMap<_, Identity, EthNetworkId, EthereumHeaderId, OptionQuery>;
 
     /// Map of imported headers by hash.
     #[pallet::storage]
     pub(super) type Headers<T: Config> = StorageDoubleMap<
         _,
         Identity,
-        T::NetworkId,
+        EthNetworkId,
         Identity,
         H256,
         StoredHeader<T::AccountId>,
@@ -186,15 +176,15 @@ pub mod pallet {
     /// Map of imported header hashes by number.
     #[pallet::storage]
     pub(super) type HeadersByNumber<T: Config> =
-        StorageDoubleMap<_, Identity, T::NetworkId, Twox64Concat, u64, Vec<H256>, OptionQuery>;
+        StorageDoubleMap<_, Identity, EthNetworkId, Twox64Concat, u64, Vec<H256>, OptionQuery>;
 
     #[pallet::genesis_config]
-    pub struct GenesisConfig<T: Config> {
-        pub initial_networks: Vec<(T::NetworkId, EthereumHeader, U256)>,
+    pub struct GenesisConfig {
+        pub initial_networks: Vec<(EthNetworkId, EthereumHeader, U256)>,
     }
 
     #[cfg(feature = "std")]
-    impl<T: Config> Default for GenesisConfig<T> {
+    impl Default for GenesisConfig {
         fn default() -> Self {
             Self {
                 initial_networks: Default::default(),
@@ -203,11 +193,11 @@ pub mod pallet {
     }
 
     #[pallet::genesis_build]
-    impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
+    impl<T: Config> GenesisBuild<T> for GenesisConfig {
         fn build(&self) {
             for (network_id, header, difficulty) in &self.initial_networks {
                 Pallet::<T>::initialize_storage(
-                    &network_id,
+                    *network_id,
                     vec![header.clone()],
                     difficulty.clone(),
                     0, // descendants_until_final = 0 forces the initial header to be finalized
@@ -227,6 +217,27 @@ pub mod pallet {
 
     #[pallet::call]
     impl<T: Config> Pallet<T> {
+        #[pallet::weight(T::WeightInfo::import_header())]
+        pub fn register_network(
+            origin: OriginFor<T>,
+            network_id: EthNetworkId,
+            header: EthereumHeader,
+            initial_difficulty: U256,
+            descendants_until_final: u8,
+        ) -> DispatchResult {
+            ensure!(
+                <BestBlock<T>>::contains_key(network_id) == false,
+                Error::<T>::NetworkNotFound
+            );
+            Pallet::<T>::initialize_storage(
+                network_id,
+                vec![header],
+                initial_difficulty,
+                descendants_until_final,
+            )
+            .map_err(|_| Error::<T>::NetworkNotFound)?;
+            Ok(())
+        }
         /// Import a single Ethereum PoW header.
         ///
         /// Note that this extrinsic has a very high weight. The weight is affected by the
@@ -242,7 +253,7 @@ pub mod pallet {
         #[pallet::weight(T::WeightInfo::import_header())]
         pub fn import_header(
             origin: OriginFor<T>,
-            network_id: T::NetworkId,
+            network_id: EthNetworkId,
             header: EthereumHeader,
             proof: Vec<EthashProofData>,
         ) -> DispatchResult {
@@ -254,7 +265,7 @@ pub mod pallet {
                 header.number,
             );
 
-            if let Err(err) = Self::validate_header_to_import(&network_id, &header, &proof) {
+            if let Err(err) = Self::validate_header_to_import(network_id, &header, &proof) {
                 log::trace!(
                     target: "ethereum-light-client",
                     "Validation for header {} returned error. Skipping import",
@@ -269,7 +280,7 @@ pub mod pallet {
                 header.number,
             );
 
-            if let Err(err) = Self::import_validated_header(&network_id, &sender, &header) {
+            if let Err(err) = Self::import_validated_header(network_id, &sender, &header) {
                 log::trace!(
                     target: "ethereum-light-client",
                     "Import of header {} failed",
@@ -291,7 +302,7 @@ pub mod pallet {
     impl<T: Config> Pallet<T> {
         // Validate an Ethereum header for import
         fn validate_header_to_import(
-            network_id: &T::NetworkId,
+            network_id: EthNetworkId,
             header: &EthereumHeader,
             proof: &[EthashProofData],
         ) -> DispatchResult {
@@ -391,7 +402,7 @@ pub mod pallet {
 
         // Import a new, validated Ethereum header
         fn import_validated_header(
-            network_id: &T::NetworkId,
+            network_id: EthNetworkId,
             sender: &T::AccountId,
             header: &EthereumHeader,
         ) -> DispatchResult {
@@ -484,7 +495,7 @@ pub mod pallet {
         // Return the latest block that can be finalized based on the given
         // highest difficulty chain and previously finalized block.
         fn get_best_finalized_header(
-            network_id: &T::NetworkId,
+            network_id: EthNetworkId,
             best_block_id: &EthereumHeaderId,
             finalized_block_id: &EthereumHeaderId,
         ) -> Result<EthereumHeaderId, DispatchError> {
@@ -523,7 +534,7 @@ pub mod pallet {
         // (adjusted to `prune_end` if newer). Only up to `max_headers_to_prune`
         // will be removed.
         pub(super) fn prune_header_range(
-            network_id: &T::NetworkId,
+            network_id: EthNetworkId,
             pruning_range: &PruningRange,
             max_headers_to_prune: u64,
             prune_end: u64,
@@ -572,7 +583,7 @@ pub mod pallet {
         // in the block given by proof.block_hash. Inclusion is only
         // recognized if the block has been finalized.
         fn verify_receipt_inclusion(
-            network_id: &T::NetworkId,
+            network_id: EthNetworkId,
             proof: &Proof,
         ) -> Result<Receipt, DispatchError> {
             let stored_header =
@@ -603,7 +614,7 @@ pub mod pallet {
         ///
         /// NOTE: This should only be used to initialize empty storage.
         fn initialize_storage(
-            network_id: &T::NetworkId,
+            network_id: EthNetworkId,
             headers: Vec<EthereumHeader>,
             initial_difficulty: U256,
             descendants_until_final: u8,
@@ -695,7 +706,7 @@ pub mod pallet {
 
     /// Return iterator over header ancestors, starting at given hash
     fn ancestry<T: Config>(
-        network_id: T::NetworkId,
+        network_id: EthNetworkId,
         mut hash: H256,
     ) -> impl Iterator<Item = (H256, EthereumHeader)> {
         sp_std::iter::from_fn(move || {
@@ -709,9 +720,8 @@ pub mod pallet {
     impl<T: Config> Verifier for Pallet<T> {
         /// Verify a message by verifying the existence of the corresponding
         /// Ethereum log in a block. Returns the log if successful.
-        fn verify(message: &Message) -> Result<Log, DispatchError> {
-            let receipt =
-                Self::verify_receipt_inclusion(&message.network_id.into(), &message.proof)?;
+        fn verify(network_id: EthNetworkId, message: &Message) -> Result<Log, DispatchError> {
+            let receipt = Self::verify_receipt_inclusion(network_id, &message.proof)?;
 
             log::trace!(
                 target: "ethereum-light-client",

@@ -84,11 +84,6 @@ pub type ChainSpec = sc_service::GenericChainSpec<GenesisConfig>;
 type Technical = technical::Module<Runtime>;
 type AccountPublic = <Signature as Verify>::Signer;
 
-fn get_ethereum_header() -> EthereumHeader {
-    let header_str = include_bytes!("./bytes/ethereum_header.json");
-    serde_json::from_slice(header_str).unwrap()
-}
-
 fn get_eth_app_address() -> H160 {
     "0xC9543E78F2dDFA4a72A2E5130EC9A156D94F16aa"
         .parse()
@@ -567,11 +562,9 @@ pub fn local_testnet_config() -> ChainSpec {
                     authority_keys_from_seed("Alice"),
                     authority_keys_from_seed("Bob"),
                     authority_keys_from_seed("Charlie"),
-                    authority_keys_from_seed("Dave"),
-                    authority_keys_from_seed("Eve"),
-                    authority_keys_from_seed("Ferdie"),
-                    authority_keys_from_seed("Treasury"),
-                    authority_keys_from_seed("EthBridge"),
+                    // authority_keys_from_seed("Dave"),
+                    // authority_keys_from_seed("Eve"),
+                    // authority_keys_from_seed("Ferdie"),
                 ],
                 vec![
                     hex!("7edf2a2d157cc835131581bc068b7172a00af1a10008049f05a2308737912633").into(),
@@ -618,7 +611,7 @@ pub fn local_testnet_config() -> ChainSpec {
                     hex!("903a885138c4a187f13383fdb08b8e6b308c7021fdab12dc20e3aef9870e1146").into(),
                     hex!("d0d773018d19aab81052c4d038783ecfee77fb4b5fdc266b5a25568c0102640b").into(),
                 ],
-                get_account_id_from_seed::<sr25519::Public>("Treasury"),
+                get_account_id_from_seed::<sr25519::Public>("Bob"),
             )
         },
         vec![],
@@ -889,6 +882,23 @@ fn testnet_genesis(
         pswap_waifu_owners: include!("bytes/rewards_pswap_waifu_owners.in"),
     };
 
+    let eth_networks = vec![
+        (
+            4224,
+            include!("./bytes/ethereum_header_4224.in"),
+            get_eth_app_address(),
+            get_basic_channel_address(),
+            get_incentivized_channel_address(),
+        ),
+        (
+            4225,
+            include!("./bytes/ethereum_header_4225.in"),
+            get_eth_app_address(),
+            get_basic_channel_address(),
+            get_incentivized_channel_address(),
+        ),
+    ];
+
     let rewards_pswap_reserves = calculate_reserves(&rewards_config.pswap_farm_owners)
         + calculate_reserves(&rewards_config.pswap_waifu_owners);
     let mut tokens_endowed_accounts = vec![
@@ -954,23 +964,66 @@ fn testnet_genesis(
     GenesisConfig {
         eth_app: EthAppConfig { networks: vec![] },
         ethereum_light_client: EthereumLightClientConfig {
-            initial_networks: vec![],
+            initial_networks: eth_networks
+                .iter()
+                .map(|(id, header, _, _, _)| (id.clone(), header.clone(), Default::default()))
+                .collect(),
         },
         incentivized_inbound_channel: IncentivizedInboundChannelConfig {
-            networks: vec![],
-            source_channel: get_incentivized_channel_address(),
+            networks: eth_networks
+                .iter()
+                .map(|(id, header, _, _, address)| {
+                    (
+                        id.clone(),
+                        vec![(
+                            address.clone(),
+                            treasury_account.clone(),
+                            treasury_account.clone(),
+                        )],
+                    )
+                })
+                .collect(),
             reward_fraction: Perbill::from_percent(80),
-            source_account: treasury_account.clone(),
             treasury_account: treasury_account.clone(),
         },
         incentivized_outbound_channel: IncentivizedOutboundChannelConfig {
-            networks: vec![],
+            networks: eth_networks
+                .iter()
+                .map(|(id, header, _, _, address)| {
+                    (
+                        id.clone(),
+                        vec![(
+                            address.clone(),
+                            treasury_account.clone(),
+                            treasury_account.clone(),
+                        )],
+                    )
+                })
+                .collect(),
             fee: 10000,
             interval: 10,
         },
-        basic_inbound_channel: BasicInboundChannelConfig { networks: vec![] },
+        basic_inbound_channel: BasicInboundChannelConfig {
+            networks: eth_networks
+                .iter()
+                .map(|(id, header, _, _, address)| {
+                    (
+                        id.clone(),
+                        vec![(address.clone(), treasury_account.clone())],
+                    )
+                })
+                .collect(),
+        },
         basic_outbound_channel: BasicOutboundChannelConfig {
-            networks: vec![],
+            networks: eth_networks
+                .iter()
+                .map(|(id, header, _, _, address)| {
+                    (
+                        id.clone(),
+                        vec![(address.clone(), treasury_account.clone())],
+                    )
+                })
+                .collect(),
             interval: 10,
         },
         system: SystemConfig {

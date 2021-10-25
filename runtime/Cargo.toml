@@ -37,6 +37,7 @@ dispatch = { path = "../pallets/trustless-eth-bridge/dispatch", default-features
 eth-app = { path = "../pallets/trustless-eth-bridge/eth-app", default-features = false }
 leaf-provider-with-digest = { path = "../pallets/trustless-eth-bridge/leaf-provider-with-digest", default-features = false }
 leaf-provider-runtime-api = { path = "../pallets/trustless-eth-bridge/leaf-provider-with-digest/runtime-api", default-features = false }
+snowbridge-ethereum = { path = "../primitives/ethereum", default-features = false }
 
 assets = { path = "../pallets/assets", default-features = false }
 assets-runtime-api = { path = "../pallets/assets/runtime-api", default-features = false }
@@ -163,6 +164,7 @@ std = [
     "eth-app/std",
     "leaf-provider-with-digest/std",
     "leaf-provider-runtime-api/std",
+    "snowbridge-ethereum/std",
     "snowbridge-core/std",
     "farming/std",
     "faucet/std",

@@ -14,6 +14,7 @@ type AuxiliaryDigestItem struct {
 
 type Commitment struct {
 	ChannelID ChannelID
+	NetworkId uint64
 	Hash      types.H256
 }
 

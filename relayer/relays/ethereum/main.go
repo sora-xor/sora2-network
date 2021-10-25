@@ -5,6 +5,7 @@ package ethereum
 
 import (
 	"context"
+	"encoding/binary"
 
 	"golang.org/x/sync/errgroup"
 
@@ -82,7 +83,11 @@ func (r *Relay) Start(ctx context.Context, eg *errgroup.Group) error {
 }
 
 func (r *Relay) queryFinalizedBlockNumber() (uint64, error) {
-	storageKey, err := types.CreateStorageKey(r.paraconn.Metadata(), "EthereumLightClient", "FinalizedBlock", nil, nil)
+	chainId := r.ethconn.ChainID().Uint64()
+	chainIdBytes := make([]byte, 8)
+	binary.LittleEndian.PutUint64(chainIdBytes, chainId)
+
+	storageKey, err := types.CreateStorageKey(r.paraconn.Metadata(), "EthereumLightClient", "FinalizedBlock", chainIdBytes, nil)
 	if err != nil {
 		return 0, err
 	}

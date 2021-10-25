@@ -2,6 +2,7 @@ package ethereum
 
 import (
 	"context"
+	"encoding/binary"
 	"errors"
 	"fmt"
 
@@ -222,8 +223,11 @@ func (wr *ParachainWriter) makeMessageSubmitCall(msg *chain.EthereumOutboundMess
 	if msg == (*chain.EthereumOutboundMessage)(nil) {
 		return types.Call{}, fmt.Errorf("message is nil")
 	}
+	args := make([]interface{}, 0)
+	args = append(args, wr.chainId)
+	args = append(args, msg.Args...)
 
-	return types.NewCall(wr.conn.Metadata(), msg.Call, msg.Args...)
+	return types.NewCall(wr.conn.Metadata(), msg.Call, args)
 }
 
 func (wr *ParachainWriter) makeHeaderImportCall(header *chain.Header) (types.Call, error) {
@@ -231,11 +235,13 @@ func (wr *ParachainWriter) makeHeaderImportCall(header *chain.Header) (types.Cal
 		return types.Call{}, fmt.Errorf("header is nil")
 	}
 
-	return types.NewCall(wr.conn.Metadata(), "EthereumLightClient.import_header", header.HeaderData, header.ProofData)
+	return types.NewCall(wr.conn.Metadata(), "EthereumLightClient.import_header", wr.chainId, header.HeaderData, header.ProofData)
 }
 
 func (wr *ParachainWriter) queryImportedHeaderExists(hash types.H256) (bool, error) {
-	key, err := types.CreateStorageKey(wr.conn.Metadata(), "EthereumLightClient", "Headers", hash[:], nil)
+	chainIdBytes := make([]byte, 8)
+	binary.LittleEndian.PutUint64(chainIdBytes, wr.chainId)
+	key, err := types.CreateStorageKey(wr.conn.Metadata(), "EthereumLightClient", "Headers", chainIdBytes, hash[:])
 	if err != nil {
 		return false, err
 	}
