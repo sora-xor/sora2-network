@@ -11,7 +11,6 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
-	"github.com/sirupsen/logrus"
 	log "github.com/sirupsen/logrus"
 	gsrpcTypes "github.com/vovac12/go-substrate-rpc-client/v3/types"
 
@@ -120,7 +119,7 @@ func (wr *BeefyEthereumWriter) LogBeefyFixtureDataAll(
 		return err
 	}
 
-	log.WithFields(logrus.Fields{
+	log.WithFields(log.Fields{
 		"json":           string(b),
 		"hexEncodedLeaf": hexEncodedLeaf,
 		"hashedLeaf":     hashedLeaf,
@@ -163,7 +162,7 @@ func (wr *BeefyEthereumWriter) GetFailingMessage(client ethclient.Client, hash c
 		Data:     tx.Data(),
 	}
 
-	log.WithFields(logrus.Fields{
+	log.WithFields(log.Fields{
 		"From":     from,
 		"To":       tx.To(),
 		"Gas":      tx.Gas(),

@@ -8,7 +8,6 @@ import (
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/ethclient"
-	"github.com/sirupsen/logrus"
 
 	"github.com/snowfork/snowbridge/relayer/crypto/secp256k1"
 
@@ -40,7 +39,7 @@ func (co *Connection) Connect(ctx context.Context) error {
 		return err
 	}
 
-	log.WithFields(logrus.Fields{
+	log.WithFields(log.Fields{
 		"endpoint": co.endpoint,
 		"chainID":  chainID,
 	}).Info("Connected to chain")

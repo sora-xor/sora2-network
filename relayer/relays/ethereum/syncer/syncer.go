@@ -11,7 +11,6 @@ import (
 
 	gethCommon "github.com/ethereum/go-ethereum/common"
 	gethTypes "github.com/ethereum/go-ethereum/core/types"
-	"github.com/sirupsen/logrus"
 	"golang.org/x/sync/errgroup"
 
 	log "github.com/sirupsen/logrus"
@@ -147,7 +146,7 @@ func (s *Syncer) fetchFinalizedHeaders(ctx context.Context, initBlockHeight uint
 			return err
 		}
 
-		log.WithFields(logrus.Fields{
+		log.WithFields(log.Fields{
 			"blockHash":   header.Hash().Hex(),
 			"blockNumber": syncedUpUntil + 1,
 		}).Debug("Retrieved finalized header")
@@ -184,7 +183,7 @@ func (s *Syncer) pollNewHeaders(ctx context.Context, lbi *latestBlockInfo) error
 			lbi.Lock()
 			lbi.height = header.Number.Uint64()
 
-			log.WithFields(logrus.Fields{
+			log.WithFields(log.Fields{
 				"blockHash":   header.Hash().Hex(),
 				"blockNumber": lbi.height,
 			}).Debug("Witnessed new header")
@@ -192,7 +191,7 @@ func (s *Syncer) pollNewHeaders(ctx context.Context, lbi *latestBlockInfo) error
 			if lbi.fetchFinalizedDone {
 				err = s.forwardAncestry(ctx, header.Hash(), saturatingSub(lbi.height, s.descendantsUntilFinal))
 				if err != nil {
-					log.WithFields(logrus.Fields{
+					log.WithFields(log.Fields{
 						"blockHash":   header.Hash().Hex(),
 						"blockNumber": lbi.height,
 					}).WithError(err).Error("Failed to forward header and its ancestors")

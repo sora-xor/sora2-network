@@ -9,7 +9,6 @@ import (
 
 	etypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/rlp"
-	"github.com/sirupsen/logrus"
 	log "github.com/sirupsen/logrus"
 	"github.com/snowfork/ethashproof"
 	"github.com/snowfork/ethashproof/ethash"
@@ -101,7 +100,7 @@ func MakeHeaderFromEthHeader(
 		return nil, err
 	}
 
-	log.WithFields(logrus.Fields{
+	log.WithFields(log.Fields{
 		"blockHash":   gethheader.Hash().Hex(),
 		"blockNumber": gethheader.Number,
 	}).Debug("Generated header from Ethereum header")

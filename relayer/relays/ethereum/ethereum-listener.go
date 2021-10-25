@@ -14,7 +14,6 @@ import (
 	etypes "github.com/ethereum/go-ethereum/core/types"
 
 	gethTypes "github.com/ethereum/go-ethereum/core/types"
-	"github.com/sirupsen/logrus"
 	"golang.org/x/sync/errgroup"
 
 	"github.com/snowfork/snowbridge/relayer/chain"
@@ -253,7 +252,7 @@ func (li *EthereumListener) makeOutgoingMessages(
 	for i, event := range events {
 		receiptTrie, err := hcs.GetReceiptTrie(ctx, event.BlockHash)
 		if err != nil {
-			log.WithFields(logrus.Fields{
+			log.WithFields(log.Fields{
 				"blockHash":   event.BlockHash.Hex(),
 				"blockNumber": event.BlockNumber,
 				"txHash":      event.TxHash.Hex(),
@@ -263,7 +262,7 @@ func (li *EthereumListener) makeOutgoingMessages(
 
 		msg, err := ethereum.MakeMessageFromEvent(li.mapping, event, receiptTrie)
 		if err != nil {
-			log.WithFields(logrus.Fields{
+			log.WithFields(log.Fields{
 				"address":     event.Address.Hex(),
 				"blockHash":   event.BlockHash.Hex(),
 				"blockNumber": event.BlockNumber,
@@ -284,7 +283,7 @@ func (li *EthereumListener) makeOutgoingHeader(
 ) (*chain.Header, error) {
 	cache, err := headerCache.MakeEthashproofCache(gethheader.Number.Uint64())
 	if err != nil {
-		log.WithFields(logrus.Fields{
+		log.WithFields(log.Fields{
 			"blockHash":   gethheader.Hash().Hex(),
 			"blockNumber": gethheader.Number,
 		}).WithError(err).Error("Failed to get ethashproof cache for header")
@@ -293,7 +292,7 @@ func (li *EthereumListener) makeOutgoingHeader(
 
 	header, err := ethereum.MakeHeaderFromEthHeader(gethheader, cache, li.ethashDataDir)
 	if err != nil {
-		log.WithFields(logrus.Fields{
+		log.WithFields(log.Fields{
 			"blockHash":   gethheader.Hash().Hex(),
 			"blockNumber": gethheader.Number,
 		}).WithError(err).Error("Failed to generate header from ethereum header")

@@ -3,7 +3,6 @@ package cmd
 import (
 	"context"
 
-	"github.com/sirupsen/logrus"
 	log "github.com/sirupsen/logrus"
 	"github.com/snowfork/snowbridge/relayer/chain/relaychain"
 	"github.com/snowfork/snowbridge/relayer/relays/beefy/store"
@@ -90,7 +89,7 @@ func subBeefyJustifications(ctx context.Context, paraID uint32) error {
 				return err
 			}
 
-			log.WithFields(logrus.Fields{
+			log.WithFields(log.Fields{
 				"allParaheads": heads,
 				"ourParahead":  ourParahead,
 			}).Info("Got all para heads")
@@ -149,7 +148,7 @@ func fetchParaHeads(co *relaychain.Connection, blockHash types.Hash) (map[uint32
 }
 
 func GetMMRLeafForBlock(blockNumber uint64, blockHash types.Hash, relaychainConn *relaychain.Connection) {
-	log.WithFields(logrus.Fields{
+	log.WithFields(log.Fields{
 		"blockNumber": blockNumber,
 		"blockHash":   blockHash.Hex(),
 	}).Info("Getting MMR Leaf for block...")
@@ -158,7 +157,7 @@ func GetMMRLeafForBlock(blockNumber uint64, blockHash types.Hash, relaychainConn
 		log.WithError(err).Error("Failed to generate mmr proof")
 	}
 
-	log.WithFields(logrus.Fields{
+	log.WithFields(log.Fields{
 		"BlockHash":                       proofResponse.BlockHash.Hex(),
 		"Leaf.ParentNumber":               proofResponse.Leaf.ParentNumberAndHash.ParentNumber,
 		"Leaf.Hash":                       proofResponse.Leaf.ParentNumberAndHash.Hash.Hex(),
