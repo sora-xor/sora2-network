@@ -24,6 +24,7 @@ bridge-multisig = { git = "https://github.com/soramitsu/sora2-frame-pallets.git"
 assets = { path = "../pallets/assets", default-features = false }
 assets-runtime-api = { path = "../pallets/assets/runtime-api", default-features = false}
 common = { path = "../common", default-features = false }
+ceres-liquidity-locker = { path = "../pallets/ceres-liquidity-locker", default-features = false }
 dex-api = { path = "../pallets/dex-api", default-features = false }
 dex-api-benchmarking = { path = "../pallets/dex-api/benchmarking", default-features = false, optional = true }
 dex-manager = { path = "../pallets/dex-manager", default-features = false }
@@ -125,6 +126,7 @@ std = [
     "bridge-multisig/std",
     "codec/std",
     "common/std",
+    "ceres-liquidity-locker/std",
     "dex-api/std",
     "dex-manager-runtime-api/std",
     "dex-manager/std",
