@@ -5,9 +5,7 @@ String registry               = 'docker.soramitsu.co.jp'
 String dockerBuildToolsUserId = 'bot-build-tools-ro'
 String dockerRegistryRWUserId = 'bot-sora2-rw'
 String envImageName           = 'docker.soramitsu.co.jp/sora2/env'
-String srtoolImageName        = 'paritytech/srtool:nightly-2021-03-15'
 String rustcVersion           = '1.54'
-String srtoolReportFile       = 'framenode_runtime_srtool_output.json'
 String appImageName           = 'docker.soramitsu.co.jp/sora2/substrate'
 String secretScannerExclusion = '.*Cargo.toml'
 Boolean disableSecretScanner  = false
@@ -79,12 +77,6 @@ pipeline {
                                     sccache -s
                                 '''
                             }
-                        }
-                    }
-                    docker.image(srtoolImageName).inside("-v ${env.WORKSPACE}:/build") { c ->
-                        if (getPushVersion(pushTags)) {
-                            sh "build --json | tee ${srtoolReportFile}"
-                            archiveArtifacts artifacts: srtoolReportFile
                         }
                     }
                 }
