@@ -12,7 +12,7 @@ String appImageName           = 'docker.soramitsu.co.jp/sora2/substrate'
 String secretScannerExclusion = '.*Cargo.toml'
 Boolean disableSecretScanner  = false
 String featureList            = 'private-net include-real-files reduced-pswap-reward-periods'
-Map pushTags                  = ['substrate-4.0.0': 'sub4']
+Map pushTags                  = ['master': 'latest', 'develop': 'dev','substrate-4.0.0': 'sub4']
 
 pipeline {
     options {
@@ -37,7 +37,6 @@ pipeline {
         stage('Build & Tests') {
             environment {
                 PACKAGE       = 'framenode-runtime'
-                RUSTFLAGS     = '-Dwarnings'
                 RUNTIME_DIR   = 'runtime'
                 RUSTC_VERSION = "${rustcVersion}"
             }
