@@ -11,6 +11,7 @@ import (
 	"github.com/snowfork/snowbridge/relayer/contracts/basic"
 	"github.com/snowfork/snowbridge/relayer/contracts/incentivized"
 	"github.com/snowfork/snowbridge/relayer/crypto/keccak"
+	"github.com/snowfork/snowbridge/relayer/crypto/merkle"
 	"github.com/vovac12/go-substrate-rpc-client/v3/types"
 
 	log "github.com/sirupsen/logrus"
@@ -168,6 +169,15 @@ func (li *BeefyListener) parablocksWithProofs(
 			return nil, err
 		}
 
+		simplifiedProof, err := merkle.ConvertToSimplifiedMMRProof(
+			mmrProof.BlockHash, uint64(mmrProof.Proof.LeafIndex), mmrProof.Leaf,
+			uint64(mmrProof.Proof.LeafCount), mmrProof.Proof.Items,
+		)
+		if err != nil {
+			log.WithError(err).Error("Failed to simplify proof")
+			return nil, err
+		}
+
 		mmrRootHashKey, err := types.CreateStorageKey(li.relaychainConn.Metadata(), "Mmr", "RootHash", nil, nil)
 		if err != nil {
 			log.Error(err)
@@ -185,7 +195,7 @@ func (li *BeefyListener) parablocksWithProofs(
 
 		blockWithProof := ParaBlockWithProofs{
 			Block:             block,
-			MMRProofResponse:  mmrProof,
+			MMRProof:          simplifiedProof,
 			MMRRootHash:       mmrRootHash,
 			mmrProofLeafIndex: latestRelayChainBlockNumber - 1,
 		}

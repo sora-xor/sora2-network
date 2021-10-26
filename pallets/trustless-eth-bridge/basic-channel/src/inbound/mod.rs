@@ -95,7 +95,10 @@ pub mod pallet {
         pub fn submit(origin: OriginFor<T>, message: Message) -> DispatchResult {
             ensure_signed(origin)?;
             // submit message to verifier for verification
-            let log = T::Verifier::verify(&message)?;
+            let log = T::Verifier::verify(&message).map_err(|err| {
+                frame_support::log::warn!("Failed to verify message: {:?}", err);
+                err
+            })?;
 
             // Decode log into an Envelope
             let envelope = Envelope::try_from(log).map_err(|_| Error::<T>::InvalidEnvelope)?;

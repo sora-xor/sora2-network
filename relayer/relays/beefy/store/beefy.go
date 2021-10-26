@@ -27,9 +27,7 @@ type CompleteSignatureCommitmentMessage struct {
 	ValidatorPublicKeys            []common.Address
 	ValidatorPublicKeyMerkleProofs [][][32]byte
 	LatestMMRLeaf                  beefylightclient.BeefyLightClientBeefyMMRLeaf
-	MMRLeafIndex                   uint64
-	MMRLeafCount                   uint64
-	MMRProofItems                  [][32]byte
+	SimplifiedMMRProof             beefylightclient.SimplifiedMMRProof
 	SignedCommitment               SignedCommitment
 }
 
@@ -135,7 +133,7 @@ func (b *BeefyJustification) BuildCompleteSignatureCommitmentMessage(info BeefyR
 		ValidatorSetId: uint32(b.SignedCommitment.Commitment.ValidatorSetID),
 	}
 
-	var latestMMRProof types.GenerateMMRProofResponse
+	var latestMMRProof merkle.SimplifiedMMRProof
 	err := types.DecodeFromBytes(info.SerializedLatestMMRProof, &latestMMRProof)
 	if err != nil {
 		return CompleteSignatureCommitmentMessage{}, err
@@ -152,7 +150,7 @@ func (b *BeefyJustification) BuildCompleteSignatureCommitmentMessage(info BeefyR
 		DigestHash:           latestMMRProof.Leaf.DigestHash,
 	}
 	mmrProofItems := [][32]byte{}
-	for _, mmrProofItem := range latestMMRProof.Proof.Items {
+	for _, mmrProofItem := range latestMMRProof.MerkleProofItems {
 		mmrProofItems = append(mmrProofItems, mmrProofItem)
 	}
 
@@ -164,10 +162,11 @@ func (b *BeefyJustification) BuildCompleteSignatureCommitmentMessage(info BeefyR
 		ValidatorPublicKeys:            validatorPublicKeys,
 		ValidatorPublicKeyMerkleProofs: validatorPublicKeyMerkleProofs,
 		LatestMMRLeaf:                  latestMMRLeaf,
-		MMRLeafIndex:                   uint64(latestMMRProof.Proof.LeafIndex),
-		MMRLeafCount:                   uint64(latestMMRProof.Proof.LeafCount),
-		MMRProofItems:                  mmrProofItems,
-		SignedCommitment:               b.SignedCommitment,
+		SimplifiedMMRProof: beefylightclient.SimplifiedMMRProof{
+			MerkleProofItems:         mmrProofItems,
+			MerkleProofOrderBitField: latestMMRProof.MerkleProofOrder,
+		},
+		SignedCommitment: b.SignedCommitment,
 	}
 	return msg, nil
 }

@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"math/big"
 	"strconv"
-	"sync/atomic"
 	"time"
 
 	"golang.org/x/sync/errgroup"
@@ -31,7 +30,6 @@ type BeefyEthereumWriter struct {
 	beefyLightClient *beefylightclient.Contract
 	databaseMessages chan<- store.DatabaseCmd
 	beefyMessages    <-chan store.BeefyRelayInfo
-	contractId       int64
 }
 
 func NewBeefyEthereumWriter(
@@ -47,7 +45,6 @@ func NewBeefyEthereumWriter(
 		beefyDB:          beefyDB,
 		databaseMessages: databaseMessages,
 		beefyMessages:    beefyMessages,
-		contractId:       0,
 	}
 }
 
@@ -177,6 +174,9 @@ func (wr *BeefyEthereumWriter) WriteNewSignatureCommitment(ctx context.Context, 
 
 	// Pack the input, call and unpack the results
 	abi, err := beefylightclient.ContractMetaData.GetAbi()
+	if err != nil {
+		return err
+	}
 	input, err := abi.Pack(
 		"newSignatureCommitment",
 		msg.CommitmentHash,
@@ -262,12 +262,6 @@ func (wr *BeefyEthereumWriter) WriteCompleteSignatureCommitment(ctx context.Cont
 		return fmt.Errorf("error converting BeefyRelayInfo to BeefyJustification: %s", err.Error())
 	}
 
-	ok := atomic.CompareAndSwapInt64(&wr.contractId, info.ContractID, info.ContractID+1)
-	if !ok {
-		log.WithFields(log.Fields{"expectedContractId": wr.contractId, "passedContractId": info.ContractID}).Error("Wrong contract id")
-		return nil
-	}
-
 	contract := wr.beefyLightClient
 	if contract == nil {
 		return fmt.Errorf("unknown contract")
@@ -286,6 +280,7 @@ func (wr *BeefyEthereumWriter) WriteCompleteSignatureCommitment(ctx context.Cont
 
 	msg, err := beefyJustification.BuildCompleteSignatureCommitmentMessage(info, bitfield)
 	if err != nil {
+		log.WithError(err).Error("Failed to build complete signature commitment message")
 		return err
 	}
 
@@ -305,15 +300,17 @@ func (wr *BeefyEthereumWriter) WriteCompleteSignatureCommitment(ctx context.Cont
 	}
 	// Pack the input, call and unpack the results
 	abi, err := beefylightclient.ContractMetaData.GetAbi()
+	if err != nil {
+		return err
+	}
 	input, err := abi.Pack(
 		"completeSignatureCommitment",
 		msg.ID,
 		msg.Commitment,
 		validatorProof,
 		msg.LatestMMRLeaf,
-		msg.MMRLeafIndex,
-		msg.MMRLeafCount,
-		msg.MMRProofItems)
+		msg.SimplifiedMMRProof,
+	)
 	if err != nil {
 		return err
 	}
@@ -330,9 +327,8 @@ func (wr *BeefyEthereumWriter) WriteCompleteSignatureCommitment(ctx context.Cont
 		msg.Commitment,
 		validatorProof,
 		msg.LatestMMRLeaf,
-		msg.MMRLeafIndex,
-		msg.MMRLeafCount,
-		msg.MMRProofItems)
+		msg.SimplifiedMMRProof,
+	)
 	log.WithFields(log.Fields{"error": err, "result": callResult}).Info("Test transaction")
 	if err != nil {
 		return err
@@ -343,9 +339,8 @@ func (wr *BeefyEthereumWriter) WriteCompleteSignatureCommitment(ctx context.Cont
 		msg.Commitment,
 		validatorProof,
 		msg.LatestMMRLeaf,
-		msg.MMRLeafIndex,
-		msg.MMRLeafCount,
-		msg.MMRProofItems)
+		msg.SimplifiedMMRProof,
+	)
 
 	if err != nil {
 		log.WithError(err).Error("Failed to submit transaction")

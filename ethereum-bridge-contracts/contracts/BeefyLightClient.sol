@@ -6,7 +6,7 @@ import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "./utils/Bits.sol";
 import "./utils/Bitfield.sol";
 import "./ValidatorRegistry.sol";
-import "./MMRVerification.sol";
+import "./SimplifiedMMRVerification.sol";
 import "./ScaleCodec.sol";
 
 /**
@@ -119,7 +119,7 @@ contract BeefyLightClient {
     /* State */
 
     ValidatorRegistry public validatorRegistry;
-    MMRVerification public mmrVerification;
+    SimplifiedMMRVerification public mmrVerification;
     uint256 public currentId;
     bytes32 public latestMMRRoot;
     uint64 public latestBeefyBlock;
@@ -147,7 +147,7 @@ contract BeefyLightClient {
      */
     constructor(
         ValidatorRegistry _validatorRegistry,
-        MMRVerification _mmrVerification,
+        SimplifiedMMRVerification _mmrVerification,
         uint64 _startingBeefyBlock
     ) {
         validatorRegistry = _validatorRegistry;
@@ -161,23 +161,17 @@ contract BeefyLightClient {
     /**
      * @notice Executed by the incoming channel in order to verify commitment
      * @param beefyMMRLeaf contains the merkle leaf to be verified
-     * @param beefyMMRLeafIndex contains the merkle leaf index
-     * @param beefyMMRLeafCount contains the merkle leaf count
-     * @param beefyMMRLeafProof contains the merkle proof to verify against
+     * @param proof contains simplified MMR proof
      */
     function verifyBeefyMerkleLeaf(
         bytes32 beefyMMRLeaf,
-        uint256 beefyMMRLeafIndex,
-        uint256 beefyMMRLeafCount,
-        bytes32[] calldata beefyMMRLeafProof
-    ) external returns (bool) {
+        SimplifiedMMRProof memory proof
+    ) external view returns (bool) {
         return
             mmrVerification.verifyInclusionProof(
                 latestMMRRoot,
                 beefyMMRLeaf,
-                beefyMMRLeafIndex,
-                beefyMMRLeafCount,
-                beefyMMRLeafProof
+                proof
             );
     }
 
@@ -289,18 +283,10 @@ contract BeefyLightClient {
         Commitment calldata commitment,
         ValidatorProof calldata validatorProof,
         BeefyMMRLeaf calldata latestMMRLeaf,
-        uint64 leafIndex,
-        uint64 leafCount,
-        bytes32[] calldata mmrProofItems
+        SimplifiedMMRProof calldata proof
     ) public {
         verifyCommitment(id, commitment, validatorProof);
-        verifyNewestMMRLeaf(
-            latestMMRLeaf,
-            mmrProofItems,
-            commitment.payload,
-            leafIndex,
-            leafCount
-        );
+        verifyNewestMMRLeaf(latestMMRLeaf, commitment.payload, proof);
 
         processPayload(commitment.payload, commitment.blockNumber);
 
@@ -344,21 +330,13 @@ contract BeefyLightClient {
 
     function verifyNewestMMRLeaf(
         BeefyMMRLeaf calldata leaf,
-        bytes32[] calldata proof,
         bytes32 root,
-        uint64 leafIndex,
-        uint64 leafCount
-    ) public {
+        SimplifiedMMRProof calldata proof
+    ) public view {
         bytes memory encodedLeaf = encodeMMRLeaf(leaf);
         bytes32 hashedLeaf = hashMMRLeaf(encodedLeaf);
 
-        mmrVerification.verifyInclusionProof(
-            root,
-            hashedLeaf,
-            leafIndex,
-            leafCount,
-            proof
-        );
+        mmrVerification.verifyInclusionProof(root, hashedLeaf, proof);
     }
 
     /**

@@ -90,7 +90,7 @@ fn get_ethereum_header() -> EthereumHeader {
 }
 
 fn get_eth_app_address() -> H160 {
-    "0x55E87ac6e15cfefD0E2B80c70B4A8Ab112d10f4c"
+    "0xC9543E78F2dDFA4a72A2E5130EC9A156D94F16aa"
         .parse()
         .unwrap()
 }

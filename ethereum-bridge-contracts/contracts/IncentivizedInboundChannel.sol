@@ -5,6 +5,7 @@ pragma experimental ABIEncoderV2;
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "./RewardSource.sol";
 import "./BeefyLightClient.sol";
+import "./SimplifiedMMRVerification.sol";
 
 contract IncentivizedInboundChannel is AccessControl {
     uint64 public nonce;
@@ -51,17 +52,9 @@ contract IncentivizedInboundChannel is AccessControl {
     function submit(
         Message[] calldata _messages,
         LeafBytes calldata _leafBytes,
-        uint256 _beefyMMRLeafIndex,
-        uint256 _beefyMMRLeafCount,
-        bytes32[] calldata _beefyMMRLeafProof
+        SimplifiedMMRProof calldata proof
     ) public {
-        verifyMerkleLeaf(
-            _messages,
-            _leafBytes,
-            _beefyMMRLeafIndex,
-            _beefyMMRLeafCount,
-            _beefyMMRLeafProof
-        );
+        verifyMerkleLeaf(_messages, _leafBytes, proof);
 
         // Require there is enough gas to play all messages
         require(
@@ -81,10 +74,8 @@ contract IncentivizedInboundChannel is AccessControl {
     function verifyMerkleLeaf(
         Message[] calldata _messages,
         LeafBytes calldata _leafBytes,
-        uint256 _beefyMMRLeafIndex,
-        uint256 _beefyMMRLeafCount,
-        bytes32[] calldata _beefyMMRLeafProof
-    ) internal {
+        SimplifiedMMRProof calldata proof
+    ) internal view {
         bytes32 commitment = keccak256(abi.encode(_messages));
         bytes32 digestHash = keccak256(
             bytes.concat(
@@ -100,12 +91,7 @@ contract IncentivizedInboundChannel is AccessControl {
         delete digestHash;
 
         require(
-            beefyLightClient.verifyBeefyMerkleLeaf(
-                leafHash,
-                _beefyMMRLeafIndex,
-                _beefyMMRLeafCount,
-                _beefyMMRLeafProof
-            ),
+            beefyLightClient.verifyBeefyMerkleLeaf(leafHash, proof),
             "Invalid proof"
         );
     }

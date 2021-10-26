@@ -67,7 +67,7 @@ func (wr *BeefyEthereumWriter) LogBeefyFixtureDataAll(
 	hashedLeaf := "0x" + hex.EncodeToString(hasher.Hash(bytesEncodedLeaf))
 
 	var mmrProofItems []string
-	for _, item := range msg.MMRProofItems {
+	for _, item := range msg.SimplifiedMMRProof.MerkleProofItems {
 		hex := "0x" + hex.EncodeToString(item[:])
 		mmrProofItems = append(mmrProofItems, hex)
 	}
@@ -110,8 +110,6 @@ func (wr *BeefyEthereumWriter) LogBeefyFixtureDataAll(
 			NextAuthoritySetLen:  msg.LatestMMRLeaf.NextAuthoritySetLen,
 			NextAuthoritySetRoot: "0x" + hex.EncodeToString(msg.LatestMMRLeaf.NextAuthoritySetRoot[:]),
 		},
-		MMRLeafIndex:  msg.MMRLeafIndex,
-		MMRLeafCount:  msg.MMRLeafCount,
 		MMRProofItems: mmrProofItems,
 	}
 	b, err := json.Marshal(input)
