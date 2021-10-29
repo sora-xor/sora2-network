@@ -562,9 +562,12 @@ pub fn local_testnet_config() -> ChainSpec {
                     authority_keys_from_seed("Alice"),
                     authority_keys_from_seed("Bob"),
                     authority_keys_from_seed("Charlie"),
-                    // authority_keys_from_seed("Dave"),
-                    // authority_keys_from_seed("Eve"),
-                    // authority_keys_from_seed("Ferdie"),
+                    authority_keys_from_seed("Dave"),
+                    authority_keys_from_seed("Eve"),
+                    /*
+                    authority_keys_from_seed("Treasury"),
+                    authority_keys_from_seed("Ferdie"),
+                    */
                 ],
                 vec![
                     hex!("7edf2a2d157cc835131581bc068b7172a00af1a10008049f05a2308737912633").into(),

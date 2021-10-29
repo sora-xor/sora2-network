@@ -4,13 +4,13 @@ import (
 	"context"
 	"fmt"
 	"io/ioutil"
-	"log"
+	stdlog "log"
 	"os"
 	"os/signal"
 	"strings"
 	"syscall"
 
-	"github.com/sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 	"github.com/snowfork/snowbridge/relayer/crypto/secp256k1"
 	"github.com/snowfork/snowbridge/relayer/relays/parachain"
 	"github.com/spf13/cobra"
@@ -19,17 +19,17 @@ import (
 )
 
 var (
-	configFile string
-	privateKey string
+	configFile     string
+	privateKey     string
 	privateKeyFile string
 )
 
 func Command() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:     "parachain",
-		Short:   "Start the parachain relay",
-		Args:    cobra.ExactArgs(0),
-		RunE:    run,
+		Use:   "parachain",
+		Short: "Start the parachain relay",
+		Args:  cobra.ExactArgs(0),
+		RunE:  run,
 	}
 
 	cmd.Flags().StringVar(&configFile, "config", "", "Path to configuration file")
@@ -42,8 +42,8 @@ func Command() *cobra.Command {
 }
 
 func run(_ *cobra.Command, _ []string) error {
-	log.SetOutput(logrus.WithFields(logrus.Fields{"logger": "stdlib"}).WriterLevel(logrus.InfoLevel))
-	logrus.SetLevel(logrus.DebugLevel)
+	stdlog.SetOutput(log.WithFields(log.Fields{"logger": "stdlib"}).WriterLevel(log.InfoLevel))
+	log.SetLevel(log.DebugLevel)
 
 	viper.SetConfigFile(configFile)
 	if err := viper.ReadInConfig(); err != nil {
@@ -78,7 +78,7 @@ func run(_ *cobra.Command, _ []string) error {
 		case <-ctx.Done():
 			return ctx.Err()
 		case sig := <-notify:
-			logrus.WithField("signal", sig.String()).Info("Received signal")
+			log.WithField("signal", sig.String()).Info("Received signal")
 			cancel()
 		}
 
@@ -87,14 +87,14 @@ func run(_ *cobra.Command, _ []string) error {
 
 	err = relay.Start(ctx, eg)
 	if err != nil {
-		logrus.WithError(err).Fatal("Unhandled error")
+		log.WithError(err).Fatal("Unhandled error")
 		cancel()
 		return err
 	}
 
 	err = eg.Wait()
 	if err != nil {
-		logrus.WithError(err).Fatal("Unhandled error")
+		log.WithError(err).Fatal("Unhandled error")
 		return err
 	}
 

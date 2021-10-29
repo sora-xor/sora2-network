@@ -19,10 +19,15 @@ async function configureBeefy() {
 
   const authorities = await relaychainAPI.query.mmrLeaf.beefyNextAuthorities()
   */
+  // const authorities = {
+  //   id: 1,
+  //   len: 3,
+  //   root: '0x42b63941ec636f52303b3c33f53349830d8a466e9456d25d22b28f4bb0ad0365'
+  // };
   const authorities = {
     id: 1,
-    len: 3,
-    root: '0x42b63941ec636f52303b3c33f53349830d8a466e9456d25d22b28f4bb0ad0365'
+    len: 5,
+    root: '0x304803fa5a91d9852caafe04b4b867a4ed27a07a5bee3d1507b4b187a68777a2'
   };
   console.log(authorities);
   const root = authorities['root'].toString();

@@ -2,6 +2,7 @@ package parachain
 
 import (
 	"github.com/snowfork/snowbridge/relayer/chain/relaychain"
+	"github.com/snowfork/snowbridge/relayer/crypto/merkle"
 	"github.com/vovac12/go-substrate-rpc-client/v3/types"
 )
 
@@ -13,7 +14,7 @@ type ParaBlockWithDigest struct {
 
 type ParaBlockWithProofs struct {
 	Block             ParaBlockWithDigest
-	MMRProofResponse  types.GenerateMMRProofResponse
+	MMRProof          merkle.SimplifiedMMRProof
 	MMRRootHash       types.Hash
 	mmrProofLeafIndex uint64
 }
@@ -27,7 +28,7 @@ type MessagePackage struct {
 	channelID      relaychain.ChannelID
 	commitmentHash types.H256
 	commitmentData types.StorageDataRaw
-	mmrProof       types.GenerateMMRProofResponse
+	mmrProof       merkle.SimplifiedMMRProof
 	mmrRootHash    types.Hash
 	digest         types.Digest
 }
@@ -43,7 +44,7 @@ func CreateMessagePackages(paraBlocks []ParaBlockWithProofs, mmrLeafCount uint64
 				item.DigestItem.AsCommitment.ChannelID,
 				commitmentHash,
 				commitmentData,
-				block.MMRProofResponse,
+				block.MMRProof,
 				block.MMRRootHash,
 				block.Block.Digest,
 			}

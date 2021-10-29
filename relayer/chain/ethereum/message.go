@@ -11,7 +11,6 @@ import (
 	etypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/rlp"
 	etrie "github.com/ethereum/go-ethereum/trie"
-	"github.com/sirupsen/logrus"
 	"github.com/snowfork/snowbridge/relayer/chain"
 	"github.com/snowfork/snowbridge/relayer/chain/parachain"
 	"github.com/vovac12/go-substrate-rpc-client/v3/types"
@@ -48,7 +47,7 @@ func MakeMessageFromEvent(mapping map[common.Address]string, event *etypes.Log, 
 	}
 
 	value := hex.EncodeToString(m.Data)
-	log.WithFields(logrus.Fields{
+	log.WithFields(log.Fields{
 		"payload":    value,
 		"blockHash":  m.Proof.BlockHash.Hex(),
 		"eventIndex": m.Proof.TxIndex,

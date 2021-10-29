@@ -11,7 +11,6 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
-	"github.com/sirupsen/logrus"
 	log "github.com/sirupsen/logrus"
 	gsrpcTypes "github.com/vovac12/go-substrate-rpc-client/v3/types"
 
@@ -68,7 +67,7 @@ func (wr *BeefyEthereumWriter) LogBeefyFixtureDataAll(
 	hashedLeaf := "0x" + hex.EncodeToString(hasher.Hash(bytesEncodedLeaf))
 
 	var mmrProofItems []string
-	for _, item := range msg.MMRProofItems {
+	for _, item := range msg.SimplifiedMMRProof.MerkleProofItems {
 		hex := "0x" + hex.EncodeToString(item[:])
 		mmrProofItems = append(mmrProofItems, hex)
 	}
@@ -111,8 +110,6 @@ func (wr *BeefyEthereumWriter) LogBeefyFixtureDataAll(
 			NextAuthoritySetLen:  msg.LatestMMRLeaf.NextAuthoritySetLen,
 			NextAuthoritySetRoot: "0x" + hex.EncodeToString(msg.LatestMMRLeaf.NextAuthoritySetRoot[:]),
 		},
-		MMRLeafIndex:  msg.MMRLeafIndex,
-		MMRLeafCount:  msg.MMRLeafCount,
 		MMRProofItems: mmrProofItems,
 	}
 	b, err := json.Marshal(input)
@@ -120,7 +117,7 @@ func (wr *BeefyEthereumWriter) LogBeefyFixtureDataAll(
 		return err
 	}
 
-	log.WithFields(logrus.Fields{
+	log.WithFields(log.Fields{
 		"json":           string(b),
 		"hexEncodedLeaf": hexEncodedLeaf,
 		"hashedLeaf":     hashedLeaf,
@@ -163,7 +160,7 @@ func (wr *BeefyEthereumWriter) GetFailingMessage(client ethclient.Client, hash c
 		Data:     tx.Data(),
 	}
 
-	log.WithFields(logrus.Fields{
+	log.WithFields(log.Fields{
 		"From":     from,
 		"To":       tx.To(),
 		"Gas":      tx.Gas(),

@@ -34,7 +34,7 @@ use codec::Decode;
 use sp_std::prelude::*;
 
 sp_api::decl_runtime_apis! {
-    pub trait LeafProviderApi<Hash> where
+    pub trait LeafProviderAPI<Hash> where
     Hash: Decode
     {
         fn latest_digest() -> sp_runtime::generic::Digest<Hash>;

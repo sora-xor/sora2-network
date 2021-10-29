@@ -10,6 +10,7 @@ import (
 	"github.com/snowfork/snowbridge/relayer/contracts/basic"
 	"github.com/snowfork/snowbridge/relayer/contracts/incentivized"
 	"github.com/snowfork/snowbridge/relayer/crypto/keccak"
+	"github.com/snowfork/snowbridge/relayer/crypto/merkle"
 	"github.com/vovac12/go-substrate-rpc-client/v3/types"
 )
 
@@ -67,7 +68,7 @@ type IncentivizedSubmitInput struct {
 
 func (wr *EthereumChannelWriter) logBasicTx(
 	messages []basic.BasicInboundChannelMessage,
-	beefyMMRLeafIndex int64, beefyMMRProof [][32]byte,
+	proof merkle.SimplifiedMMRProof,
 	mmrLeaf types.MMRLeaf,
 	commitmentHash types.H256, mmrRootHash types.Hash,
 ) error {
@@ -81,13 +82,12 @@ func (wr *EthereumChannelWriter) logBasicTx(
 		})
 	}
 	var beefyMMRProofString []string
-	for _, item := range beefyMMRProof {
+	for _, item := range proof.MerkleProofItems {
 		beefyMMRProofString = append(beefyMMRProofString, "0x"+hex.EncodeToString(item[:]))
 	}
 	input := &BasicSubmitInput{
-		Messages:          basicMessagesLog,
-		BeefyMMRLeafIndex: beefyMMRLeafIndex,
-		BeefyMMRProof:     beefyMMRProofString,
+		Messages:      basicMessagesLog,
+		BeefyMMRProof: beefyMMRProofString,
 	}
 	b, err := json.Marshal(input)
 	if err != nil {
@@ -120,7 +120,7 @@ func (wr *EthereumChannelWriter) logBasicTx(
 
 func (wr *EthereumChannelWriter) logIncentivizedTx(
 	messages []incentivized.IncentivizedInboundChannelMessage,
-	beefyMMRLeafIndex int64, beefyMMRProof [][32]byte,
+	proof merkle.SimplifiedMMRProof,
 	mmrLeaf types.MMRLeaf,
 	commitmentHash types.H256, mmrRootHash types.Hash,
 ) error {
@@ -135,13 +135,12 @@ func (wr *EthereumChannelWriter) logIncentivizedTx(
 	}
 
 	var beefyMMRProofString []string
-	for _, item := range beefyMMRProof {
+	for _, item := range proof.MerkleProofItems {
 		beefyMMRProofString = append(beefyMMRProofString, "0x"+hex.EncodeToString(item[:]))
 	}
 	input := &IncentivizedSubmitInput{
-		Messages:          incentivizedMessagesLog,
-		BeefyMMRLeafIndex: beefyMMRLeafIndex,
-		BeefyMMRProof:     beefyMMRProofString,
+		Messages:      incentivizedMessagesLog,
+		BeefyMMRProof: beefyMMRProofString,
 	}
 	b, err := json.Marshal(input)
 	if err != nil {

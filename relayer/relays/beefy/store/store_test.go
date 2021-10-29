@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 	"github.com/snowfork/snowbridge/relayer/relays/beefy/store"
 	"github.com/stretchr/testify/suite"
 	"github.com/vovac12/go-substrate-rpc-client/v3/types"
@@ -51,7 +51,7 @@ func (suite *StoreTestSuite) SetupTest() {
 		case <-ctx.Done():
 			return ctx.Err()
 		case sig := <-notify:
-			logrus.WithField("signal", sig.String()).Info("Received signal")
+			log.WithField("signal", sig.String()).Info("Received signal")
 			cancel()
 		}
 		return nil

@@ -188,7 +188,7 @@ func Test_SyncForwardsMultipleForks(t *testing.T) {
 	// Sets the latest header
 	headerLoader.On("HeaderByNumber", nil).Return(headersChain1[3], nil)
 	headerLoader.On("HeaderByNumber", *big.NewInt(1)).Return(headersChain1[1], nil)
-	for i, _ := range headersChain1 {
+	for i := range headersChain1 {
 		headerLoader.On("HeaderByHash", headersChain1[i].Hash()).Return(headersChain1[i], nil)
 		headerLoader.On("HeaderByHash", headersChain2[i].Hash()).Return(headersChain2[i], nil)
 	}

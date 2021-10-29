@@ -151,11 +151,11 @@ func (wr *BeefyEthereumWriter) WriteNewSignatureCommitment(ctx context.Context, 
 	}
 
 	signedValidators := []*big.Int{}
-	for i := range beefyJustification.SignedCommitment.Signatures {
+	for i, signature := range beefyJustification.SignedCommitment.Signatures {
 		// TODO: skip over empty/missing signatures
-		// if signature.Option.IsSome() {
-		signedValidators = append(signedValidators, big.NewInt(int64(i)))
-		// }
+		if signature.Value != (store.BeefySignature{}) {
+			signedValidators = append(signedValidators, big.NewInt(int64(i)))
+		}
 	}
 	numberOfValidators := big.NewInt(int64(len(beefyJustification.SignedCommitment.Signatures)))
 	initialBitfield, err := contract.CreateInitialBitfield(
@@ -178,6 +178,9 @@ func (wr *BeefyEthereumWriter) WriteNewSignatureCommitment(ctx context.Context, 
 
 	// Pack the input, call and unpack the results
 	abi, err := beefylightclient.ContractMetaData.GetAbi()
+	if err != nil {
+		return err
+	}
 	input, err := abi.Pack(
 		"newSignatureCommitment",
 		msg.CommitmentHash,
@@ -193,15 +196,17 @@ func (wr *BeefyEthereumWriter) WriteNewSignatureCommitment(ctx context.Context, 
 	estimatedCost := (estimatedGas * 4000 * 50) / 1000000000
 	log.WithField("estimatedGas", estimatedGas).WithField("estimatedCost", estimatedCost).WithError(err).Info("Estimated gas newCommitment")
 
-	rawCaller := beefylightclient.ContractCallerRaw{Contract: &wr.beefyLightClient.ContractCaller}
+	rawCaller := beefylightclient.ContractCallerRaw{Contract: &contract.ContractCaller}
 	callResult := make([]interface{}, 0)
 	err = rawCaller.Call(&bind.CallOpts{Context: options.Context, From: options.From, Pending: false}, &callResult,
 		"newSignatureCommitment",
 		msg.CommitmentHash,
 		msg.ValidatorClaimsBitfield, msg.ValidatorSignatureCommitment,
-		msg.ValidatorPosition, msg.ValidatorPublicKey, msg.ValidatorPublicKeyMerkleProof,
-	)
+		msg.ValidatorPosition, msg.ValidatorPublicKey, msg.ValidatorPublicKeyMerkleProof)
 	log.WithFields(log.Fields{"error": err, "result": callResult}).Info("Test transaction")
+	if err != nil {
+		return err
+	}
 
 	tx, err := contract.NewSignatureCommitment(options,
 		msg.CommitmentHash,
@@ -288,6 +293,7 @@ func (wr *BeefyEthereumWriter) WriteCompleteSignatureCommitment(ctx context.Cont
 
 	msg, err := beefyJustification.BuildCompleteSignatureCommitmentMessage(info, bitfield)
 	if err != nil {
+		log.WithError(err).Error("Failed to build complete signature commitment message")
 		return err
 	}
 
@@ -307,15 +313,16 @@ func (wr *BeefyEthereumWriter) WriteCompleteSignatureCommitment(ctx context.Cont
 	}
 	// Pack the input, call and unpack the results
 	abi, err := beefylightclient.ContractMetaData.GetAbi()
+	if err != nil {
+		return err
+	}
 	input, err := abi.Pack(
 		"completeSignatureCommitment",
 		msg.ID,
 		msg.Commitment,
 		validatorProof,
 		msg.LatestMMRLeaf,
-		msg.MMRLeafIndex,
-		msg.MMRLeafCount,
-		msg.MMRProofItems,
+		msg.SimplifiedMMRProof,
 	)
 	if err != nil {
 		return err
@@ -326,7 +333,7 @@ func (wr *BeefyEthereumWriter) WriteCompleteSignatureCommitment(ctx context.Cont
 	estimatedCost := (estimatedGas * 4000 * 50) / 1000000000
 	log.WithField("estimatedGas", estimatedGas).WithField("estimatedCost", estimatedCost).WithError(err).Info("Estimated gas CompleteCommitment")
 
-	rawCaller := beefylightclient.ContractCallerRaw{Contract: &wr.beefyLightClient.ContractCaller}
+	rawCaller := beefylightclient.ContractCallerRaw{Contract: &contract.ContractCaller}
 	callResult := make([]interface{}, 0)
 	err = rawCaller.Call(&bind.CallOpts{Context: options.Context, From: options.From, Pending: false}, &callResult,
 		"completeSignatureCommitment",
@@ -334,20 +341,20 @@ func (wr *BeefyEthereumWriter) WriteCompleteSignatureCommitment(ctx context.Cont
 		msg.Commitment,
 		validatorProof,
 		msg.LatestMMRLeaf,
-		msg.MMRLeafIndex,
-		msg.MMRLeafCount,
-		msg.MMRProofItems,
+		msg.SimplifiedMMRProof,
 	)
 	log.WithFields(log.Fields{"error": err, "result": callResult}).Info("Test transaction")
+	if err != nil {
+		return err
+	}
 
 	tx, err := contract.CompleteSignatureCommitment(options,
 		msg.ID,
 		msg.Commitment,
 		validatorProof,
 		msg.LatestMMRLeaf,
-		msg.MMRLeafIndex,
-		msg.MMRLeafCount,
-		msg.MMRProofItems)
+		msg.SimplifiedMMRProof,
+	)
 
 	if err != nil {
 		log.WithError(err).Error("Failed to submit transaction")

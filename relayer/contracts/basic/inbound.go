@@ -42,9 +42,15 @@ type BasicInboundChannelMessage struct {
 	Payload []byte
 }
 
+// SimplifiedMMRProof is an auto generated low-level Go binding around an user-defined struct.
+type SimplifiedMMRProof struct {
+	MerkleProofItems         [][32]byte
+	MerkleProofOrderBitField uint64
+}
+
 // BasicInboundChannelMetaData contains all meta data concerning the BasicInboundChannel contract.
 var BasicInboundChannelMetaData = &bind.MetaData{
-	ABI: "[{\"inputs\":[{\"internalType\":\"contractBeefyLightClient\",\"name\":\"_beefyLightClient\",\"type\":\"address\"}],\"stateMutability\":\"nonpayable\",\"type\":\"constructor\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"uint64\",\"name\":\"nonce\",\"type\":\"uint64\"},{\"indexed\":false,\"internalType\":\"bool\",\"name\":\"result\",\"type\":\"bool\"}],\"name\":\"MessageDispatched\",\"type\":\"event\"},{\"inputs\":[],\"name\":\"GAS_BUFFER\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"MAX_GAS_PER_MESSAGE\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"beefyLightClient\",\"outputs\":[{\"internalType\":\"contractBeefyLightClient\",\"name\":\"\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"nonce\",\"outputs\":[{\"internalType\":\"uint64\",\"name\":\"\",\"type\":\"uint64\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"components\":[{\"internalType\":\"address\",\"name\":\"target\",\"type\":\"address\"},{\"internalType\":\"uint64\",\"name\":\"nonce\",\"type\":\"uint64\"},{\"internalType\":\"bytes\",\"name\":\"payload\",\"type\":\"bytes\"}],\"internalType\":\"structBasicInboundChannel.Message[]\",\"name\":\"_messages\",\"type\":\"tuple[]\"},{\"components\":[{\"internalType\":\"bytes\",\"name\":\"digestPrefix\",\"type\":\"bytes\"},{\"internalType\":\"bytes\",\"name\":\"digestSuffix\",\"type\":\"bytes\"},{\"internalType\":\"bytes\",\"name\":\"leafPrefix\",\"type\":\"bytes\"}],\"internalType\":\"structBasicInboundChannel.LeafBytes\",\"name\":\"_leafBytes\",\"type\":\"tuple\"},{\"internalType\":\"uint256\",\"name\":\"_beefyMMRLeafIndex\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"_beefyMMRLeafCount\",\"type\":\"uint256\"},{\"internalType\":\"bytes32[]\",\"name\":\"_beefyMMRLeafProof\",\"type\":\"bytes32[]\"}],\"name\":\"submit\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"}]",
+	ABI: "[{\"inputs\":[{\"internalType\":\"contractBeefyLightClient\",\"name\":\"_beefyLightClient\",\"type\":\"address\"}],\"stateMutability\":\"nonpayable\",\"type\":\"constructor\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"uint64\",\"name\":\"nonce\",\"type\":\"uint64\"},{\"indexed\":false,\"internalType\":\"bool\",\"name\":\"result\",\"type\":\"bool\"}],\"name\":\"MessageDispatched\",\"type\":\"event\"},{\"inputs\":[],\"name\":\"GAS_BUFFER\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"MAX_GAS_PER_MESSAGE\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"beefyLightClient\",\"outputs\":[{\"internalType\":\"contractBeefyLightClient\",\"name\":\"\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"nonce\",\"outputs\":[{\"internalType\":\"uint64\",\"name\":\"\",\"type\":\"uint64\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"components\":[{\"internalType\":\"address\",\"name\":\"target\",\"type\":\"address\"},{\"internalType\":\"uint64\",\"name\":\"nonce\",\"type\":\"uint64\"},{\"internalType\":\"bytes\",\"name\":\"payload\",\"type\":\"bytes\"}],\"internalType\":\"structBasicInboundChannel.Message[]\",\"name\":\"_messages\",\"type\":\"tuple[]\"},{\"components\":[{\"internalType\":\"bytes\",\"name\":\"digestPrefix\",\"type\":\"bytes\"},{\"internalType\":\"bytes\",\"name\":\"digestSuffix\",\"type\":\"bytes\"},{\"internalType\":\"bytes\",\"name\":\"leafPrefix\",\"type\":\"bytes\"}],\"internalType\":\"structBasicInboundChannel.LeafBytes\",\"name\":\"_leafBytes\",\"type\":\"tuple\"},{\"components\":[{\"internalType\":\"bytes32[]\",\"name\":\"merkleProofItems\",\"type\":\"bytes32[]\"},{\"internalType\":\"uint64\",\"name\":\"merkleProofOrderBitField\",\"type\":\"uint64\"}],\"internalType\":\"structSimplifiedMMRProof\",\"name\":\"proof\",\"type\":\"tuple\"}],\"name\":\"submit\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"}]",
 }
 
 // BasicInboundChannelABI is the input ABI used to generate the binding from.
@@ -317,25 +323,25 @@ func (_BasicInboundChannel *BasicInboundChannelCallerSession) Nonce() (uint64, e
 	return _BasicInboundChannel.Contract.Nonce(&_BasicInboundChannel.CallOpts)
 }
 
-// Submit is a paid mutator transaction binding the contract method 0x02e3b6a8.
+// Submit is a paid mutator transaction binding the contract method 0xadab8e18.
 //
-// Solidity: function submit((address,uint64,bytes)[] _messages, (bytes,bytes,bytes) _leafBytes, uint256 _beefyMMRLeafIndex, uint256 _beefyMMRLeafCount, bytes32[] _beefyMMRLeafProof) returns()
-func (_BasicInboundChannel *BasicInboundChannelTransactor) Submit(opts *bind.TransactOpts, _messages []BasicInboundChannelMessage, _leafBytes BasicInboundChannelLeafBytes, _beefyMMRLeafIndex *big.Int, _beefyMMRLeafCount *big.Int, _beefyMMRLeafProof [][32]byte) (*types.Transaction, error) {
-	return _BasicInboundChannel.contract.Transact(opts, "submit", _messages, _leafBytes, _beefyMMRLeafIndex, _beefyMMRLeafCount, _beefyMMRLeafProof)
+// Solidity: function submit((address,uint64,bytes)[] _messages, (bytes,bytes,bytes) _leafBytes, (bytes32[],uint64) proof) returns()
+func (_BasicInboundChannel *BasicInboundChannelTransactor) Submit(opts *bind.TransactOpts, _messages []BasicInboundChannelMessage, _leafBytes BasicInboundChannelLeafBytes, proof SimplifiedMMRProof) (*types.Transaction, error) {
+	return _BasicInboundChannel.contract.Transact(opts, "submit", _messages, _leafBytes, proof)
 }
 
-// Submit is a paid mutator transaction binding the contract method 0x02e3b6a8.
+// Submit is a paid mutator transaction binding the contract method 0xadab8e18.
 //
-// Solidity: function submit((address,uint64,bytes)[] _messages, (bytes,bytes,bytes) _leafBytes, uint256 _beefyMMRLeafIndex, uint256 _beefyMMRLeafCount, bytes32[] _beefyMMRLeafProof) returns()
-func (_BasicInboundChannel *BasicInboundChannelSession) Submit(_messages []BasicInboundChannelMessage, _leafBytes BasicInboundChannelLeafBytes, _beefyMMRLeafIndex *big.Int, _beefyMMRLeafCount *big.Int, _beefyMMRLeafProof [][32]byte) (*types.Transaction, error) {
-	return _BasicInboundChannel.Contract.Submit(&_BasicInboundChannel.TransactOpts, _messages, _leafBytes, _beefyMMRLeafIndex, _beefyMMRLeafCount, _beefyMMRLeafProof)
+// Solidity: function submit((address,uint64,bytes)[] _messages, (bytes,bytes,bytes) _leafBytes, (bytes32[],uint64) proof) returns()
+func (_BasicInboundChannel *BasicInboundChannelSession) Submit(_messages []BasicInboundChannelMessage, _leafBytes BasicInboundChannelLeafBytes, proof SimplifiedMMRProof) (*types.Transaction, error) {
+	return _BasicInboundChannel.Contract.Submit(&_BasicInboundChannel.TransactOpts, _messages, _leafBytes, proof)
 }
 
-// Submit is a paid mutator transaction binding the contract method 0x02e3b6a8.
+// Submit is a paid mutator transaction binding the contract method 0xadab8e18.
 //
-// Solidity: function submit((address,uint64,bytes)[] _messages, (bytes,bytes,bytes) _leafBytes, uint256 _beefyMMRLeafIndex, uint256 _beefyMMRLeafCount, bytes32[] _beefyMMRLeafProof) returns()
-func (_BasicInboundChannel *BasicInboundChannelTransactorSession) Submit(_messages []BasicInboundChannelMessage, _leafBytes BasicInboundChannelLeafBytes, _beefyMMRLeafIndex *big.Int, _beefyMMRLeafCount *big.Int, _beefyMMRLeafProof [][32]byte) (*types.Transaction, error) {
-	return _BasicInboundChannel.Contract.Submit(&_BasicInboundChannel.TransactOpts, _messages, _leafBytes, _beefyMMRLeafIndex, _beefyMMRLeafCount, _beefyMMRLeafProof)
+// Solidity: function submit((address,uint64,bytes)[] _messages, (bytes,bytes,bytes) _leafBytes, (bytes32[],uint64) proof) returns()
+func (_BasicInboundChannel *BasicInboundChannelTransactorSession) Submit(_messages []BasicInboundChannelMessage, _leafBytes BasicInboundChannelLeafBytes, proof SimplifiedMMRProof) (*types.Transaction, error) {
+	return _BasicInboundChannel.Contract.Submit(&_BasicInboundChannel.TransactOpts, _messages, _leafBytes, proof)
 }
 
 // BasicInboundChannelMessageDispatchedIterator is returned from FilterMessageDispatched and is used to iterate over the raw logs and unpacked data for MessageDispatched events raised by the BasicInboundChannel contract.

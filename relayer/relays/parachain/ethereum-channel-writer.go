@@ -9,11 +9,11 @@ import (
 
 	"golang.org/x/sync/errgroup"
 
-	geth "github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 
+	geth "github.com/ethereum/go-ethereum"
 	"github.com/snowfork/snowbridge/relayer/chain/ethereum"
 	"github.com/snowfork/snowbridge/relayer/chain/relaychain"
 	"github.com/snowfork/snowbridge/relayer/contracts/basic"
@@ -159,12 +159,14 @@ func (wr *EthereumChannelWriter) WriteBasicChannel(
 		return err
 	}
 
-	beefyMMRLeafIndex := msgPackage.mmrProof.Proof.LeafIndex
-	beefyMMRLeafCount := msgPackage.mmrProof.Proof.LeafCount
 	var beefyMMRProof [][32]byte
-	for _, item := range msgPackage.mmrProof.Proof.Items {
+	for _, item := range msgPackage.mmrProof.MerkleProofItems {
 		beefyMMRProof = append(beefyMMRProof, [32]byte(item))
 	}
+
+	simplifiedProof := basic.SimplifiedMMRProof{
+		MerkleProofItems:         beefyMMRProof,
+		MerkleProofOrderBitField: msgPackage.mmrProof.MerkleProofOrder}
 
 	beefyMMRLeafBytes, err := gsrpcTypes.EncodeToBytes(msgPackage.mmrProof.Leaf)
 	if err != nil {
@@ -182,7 +184,7 @@ func (wr *EthereumChannelWriter) WriteBasicChannel(
 	}
 	log.WithField("partialLeaf", beefyMMRLeafBytesPartial)
 
-	err = wr.logBasicTx(messages, int64(beefyMMRLeafIndex), beefyMMRProof,
+	err = wr.logBasicTx(messages, msgPackage.mmrProof,
 		msgPackage.mmrProof.Leaf,
 		msgPackage.commitmentHash, msgPackage.mmrRootHash,
 	)
@@ -196,15 +198,15 @@ func (wr *EthereumChannelWriter) WriteBasicChannel(
 		DigestSuffix: suffix,
 		LeafPrefix:   beefyMMRLeafBytesPartial,
 	}
-
 	// Pack the input, call and unpack the results
 	abi, err := basic.BasicInboundChannelMetaData.GetAbi()
+	if err != nil {
+		return err
+	}
 	input, err := abi.Pack(
 		"submit", messages,
 		leafBytes,
-		big.NewInt(int64(beefyMMRLeafIndex)),
-		big.NewInt(int64(beefyMMRLeafCount)),
-		beefyMMRProof,
+		simplifiedProof,
 	)
 	if err != nil {
 		return err
@@ -220,16 +222,17 @@ func (wr *EthereumChannelWriter) WriteBasicChannel(
 	err = rawCaller.Call(&bind.CallOpts{Context: options.Context, From: options.From, Pending: false}, &callResult,
 		"submit", messages,
 		leafBytes,
-		big.NewInt(int64(beefyMMRLeafIndex)),
-		big.NewInt(int64(beefyMMRLeafCount)),
-		beefyMMRProof,
+		simplifiedProof,
 	)
 	log.WithFields(log.Fields{"error": err, "result": callResult}).Info("Test transaction")
+	if err != nil {
+		return err
+	}
 
 	tx, err := wr.basicInboundChannel.Submit(options, messages,
 		leafBytes,
-		big.NewInt(int64(beefyMMRLeafIndex)), big.NewInt(int64(beefyMMRLeafCount)), beefyMMRProof)
-
+		simplifiedProof,
+	)
 	if err != nil {
 		log.WithError(err).Error("Failed to submit transaction")
 		return err
@@ -280,12 +283,14 @@ func (wr *EthereumChannelWriter) WriteIncentivizedChannel(
 		return err
 	}
 
-	beefyMMRLeafIndex := msgPackage.mmrProof.Proof.LeafIndex
-	beefyMMRLeafCount := msgPackage.mmrProof.Proof.LeafCount
 	var beefyMMRProof [][32]byte
-	for _, item := range msgPackage.mmrProof.Proof.Items {
+	for _, item := range msgPackage.mmrProof.MerkleProofItems {
 		beefyMMRProof = append(beefyMMRProof, [32]byte(item))
 	}
+
+	simplifiedProof := incentivized.SimplifiedMMRProof{
+		MerkleProofItems:         beefyMMRProof,
+		MerkleProofOrderBitField: msgPackage.mmrProof.MerkleProofOrder}
 
 	beefyMMRLeafBytes, err := gsrpcTypes.EncodeToBytes(msgPackage.mmrProof.Leaf)
 	if err != nil {
@@ -310,7 +315,7 @@ func (wr *EthereumChannelWriter) WriteIncentivizedChannel(
 		LeafPrefix:   beefyMMRLeafBytesPartial,
 	}
 
-	err = wr.logIncentivizedTx(messages, int64(beefyMMRLeafIndex), beefyMMRProof,
+	err = wr.logIncentivizedTx(messages, msgPackage.mmrProof,
 		msgPackage.mmrProof.Leaf,
 		msgPackage.commitmentHash, msgPackage.mmrRootHash,
 	)
@@ -318,15 +323,15 @@ func (wr *EthereumChannelWriter) WriteIncentivizedChannel(
 		log.WithError(err).Error("Failed to log transaction input")
 		return err
 	}
-
 	// Pack the input, call and unpack the results
 	abi, err := incentivized.IncentivizedInboundChannelMetaData.GetAbi()
+	if err != nil {
+		return err
+	}
 	input, err := abi.Pack(
 		"submit", messages,
 		leafBytes,
-		big.NewInt(int64(beefyMMRLeafIndex)),
-		big.NewInt(int64(beefyMMRLeafCount)),
-		beefyMMRProof,
+		simplifiedProof,
 	)
 	if err != nil {
 		return err
@@ -339,19 +344,19 @@ func (wr *EthereumChannelWriter) WriteIncentivizedChannel(
 
 	rawCaller := incentivized.IncentivizedInboundChannelCallerRaw{Contract: &wr.incentivizedInboundChannel.IncentivizedInboundChannelCaller}
 	callResult := make([]interface{}, 0)
-	err = rawCaller.Call(&bind.CallOpts{Context: options.Context, From: options.From, Pending: false}, &callResult, "submit", messages,
+	err = rawCaller.Call(&bind.CallOpts{Context: options.Context, From: options.From, Pending: false}, &callResult,
+		"submit", messages,
 		leafBytes,
-		big.NewInt(int64(beefyMMRLeafIndex)),
-		big.NewInt(int64(beefyMMRLeafCount)),
-		beefyMMRProof,
+		simplifiedProof,
 	)
 	log.WithFields(log.Fields{"error": err, "result": callResult}).Info("Test transaction")
+	if err != nil {
+		return err
+	}
 
 	tx, err := wr.incentivizedInboundChannel.Submit(options, messages,
 		leafBytes,
-		big.NewInt(int64(beefyMMRLeafIndex)),
-		big.NewInt(int64(beefyMMRLeafCount)),
-		beefyMMRProof,
+		simplifiedProof,
 	)
 	if err != nil {
 		log.WithError(err).Error("Failed to submit transaction")

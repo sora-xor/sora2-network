@@ -1379,10 +1379,10 @@ impl pallet_mmr::Config for Runtime {
     type Hash = <Keccak256 as sp_runtime::traits::Hash>::Output;
     type OnNewRoot = pallet_beefy_mmr::DepositBeefyDigest<Runtime>;
     type WeightInfo = ();
-    type LeafData = leaf_provider_with_digest::Pallet<Runtime>;
+    type LeafData = leaf_provider::Pallet<Runtime>;
 }
 
-impl leaf_provider_with_digest::Config for Runtime {
+impl leaf_provider::Config for Runtime {
     type Event = Event;
 }
 
@@ -1634,7 +1634,7 @@ construct_runtime! {
         IncentivizedOutboundChannel: incentivized_channel_outbound::{Pallet, Config<T>, Storage, Event<T>} = 94,
         Dispatch: dispatch::{Pallet, Storage, Event<T>, Origin} = 95,
         EthApp: eth_app::{Pallet, Call, Storage, Event<T>, Config<T>} = 96,
-        LeafProviderWithDigest: leaf_provider_with_digest::{Pallet, Storage, Event<T>} = 97,
+        LeafProvider: leaf_provider::{Pallet, Storage, Event<T>} = 97,
     }
 }
 
@@ -1709,7 +1709,7 @@ construct_runtime! {
         IncentivizedOutboundChannel: incentivized_channel_outbound::{Pallet, Config<T>, Storage, Event<T>} = 94,
         Dispatch: dispatch::{Pallet, Storage, Event<T>, Origin} = 95,
         EthApp: eth_app::{Pallet, Call, Storage, Event<T>, Config<T>} = 96,
-        LeafProviderWithDigest: leaf_provider_with_digest::{Pallet, Storage, Event<T>} = 97,
+        LeafProvider: leaf_provider::{Pallet, Storage, Event<T>} = 97,
     }
 }
 
@@ -2218,9 +2218,9 @@ impl_runtime_apis! {
         }
     }
 
-    impl leaf_provider_runtime_api::LeafProviderApi<Block, Hash> for Runtime {
+    impl leaf_provider_runtime_api::LeafProviderAPI<Block, Hash> for Runtime {
         fn latest_digest() -> sp_runtime::generic::Digest<Hash> {
-            LeafProviderWithDigest::latest_digest()
+            LeafProvider::latest_digest()
         }
     }
 

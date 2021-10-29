@@ -230,7 +230,7 @@ fn test_submit_fees_burned() {
         ));
         assert_eq!(
             Assets::total_balance(&XOR, &who).unwrap(),
-            old_balance + 200
+            old_balance - 100
         );
     })
 }
@@ -245,7 +245,7 @@ fn test_submit_not_enough_funds() {
 
         assert_noop!(
             IncentivizedOutboundChannel::submit(&who, target, &vec![0, 1, 2]),
-            assets::Error::<Test>::InsufficientBalance
+            pallet_balances::Error::<Test>::InsufficientBalance
         );
     })
 }

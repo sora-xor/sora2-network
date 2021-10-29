@@ -12,6 +12,7 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	"github.com/snowfork/snowbridge/relayer/chain/relaychain"
+	"github.com/snowfork/snowbridge/relayer/crypto/merkle"
 	"github.com/snowfork/snowbridge/relayer/relays/beefy/store"
 	"github.com/snowfork/snowbridge/relayer/substrate"
 
@@ -242,7 +243,16 @@ func (li *BeefyRelaychainListener) processBeefyJustifications(ctx context.Contex
 		return err
 	}
 
-	serializedProof, err := types.EncodeToBytes(latestMMRProof)
+	simplifiedProof, err := merkle.ConvertToSimplifiedMMRProof(
+		latestMMRProof.BlockHash, uint64(latestMMRProof.Proof.LeafIndex), latestMMRProof.Leaf,
+		uint64(latestMMRProof.Proof.LeafCount), latestMMRProof.Proof.Items,
+	)
+	if err != nil {
+		log.WithError(err).Error("Failed to simplify proof")
+		return err
+	}
+
+	serializedProof, err := types.EncodeToBytes(simplifiedProof)
 	if err != nil {
 		log.WithError(err).Error("Failed to serialize MMR Proof")
 		return err
@@ -284,7 +294,7 @@ func (li *BeefyRelaychainListener) getBeefyAuthorities(blockNumber uint64) ([]co
 	}
 
 	if !ok {
-		return nil, fmt.Errorf("Beefy authorities not found")
+		return nil, fmt.Errorf("beefy authorities not found")
 	}
 
 	// Convert from beefy authorities to ethereum addresses

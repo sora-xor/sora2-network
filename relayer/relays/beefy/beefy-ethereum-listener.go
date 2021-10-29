@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"sort"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
@@ -31,6 +32,7 @@ type BeefyEthereumListener struct {
 	dbMessages       chan<- store.DatabaseCmd
 	headers          chan<- chain.Header
 	blockWaitPeriod  uint64
+	contractId       int64
 }
 
 func NewBeefyEthereumListener(
@@ -346,6 +348,9 @@ func (li *BeefyEthereumListener) forwardReadyToCompleteItems(ctx context.Context
 	if len(initialVerificationItems) > 0 {
 		log.Info(fmt.Sprintf("Found %d item(s) in database awaiting completion block", len(initialVerificationItems)))
 	}
+	sort.Slice(initialVerificationItems, func(i, j int) bool {
+		return initialVerificationItems[i].ContractID < initialVerificationItems[j].ContractID
+	})
 	for _, item := range initialVerificationItems {
 		if item.CompleteOnBlock+descendantsUntilFinal <= blockNumber {
 			// Fetch intended completion block's hash
@@ -360,6 +365,11 @@ func (li *BeefyEthereumListener) forwardReadyToCompleteItems(ctx context.Context
 			)
 			item.Status = store.ReadyToComplete
 			item.RandomSeed = block.Hash()
+			if li.contractId >= item.ContractID {
+				log.WithFields(log.Fields{"latestContractId": li.contractId, "newContractId": item.ContractID}).Error("Contract id already used")
+				continue
+			}
+			li.contractId = item.ContractID
 
 			select {
 			case <-ctx.Done():

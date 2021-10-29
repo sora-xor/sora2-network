@@ -6,8 +6,6 @@ package parachain
 import (
 	"context"
 
-	"github.com/sirupsen/logrus"
-
 	gsrpc "github.com/vovac12/go-substrate-rpc-client/v3"
 	"github.com/vovac12/go-substrate-rpc-client/v3/rpc/offchain"
 	"github.com/vovac12/go-substrate-rpc-client/v3/signature"
@@ -65,7 +63,7 @@ func (co *Connection) Connect(_ context.Context) error {
 	}
 	co.genesisHash = genesisHash
 
-	log.WithFields(logrus.Fields{
+	log.WithFields(log.Fields{
 		"endpoint":    co.endpoint,
 		"metaVersion": meta.Version,
 	}).Info("Connected to chain")
@@ -117,7 +115,7 @@ func (co *Connection) GetDataForDigestItem(digestItem *AuxiliaryDigestItem) (typ
 	}
 
 	if data != nil {
-		log.WithFields(logrus.Fields{
+		log.WithFields(log.Fields{
 			"commitmentSizeBytes": len(*data),
 		}).Debug("Retrieved commitment from offchain storage")
 	} else {
