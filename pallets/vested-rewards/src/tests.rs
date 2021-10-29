@@ -182,6 +182,7 @@ fn should_update_market_making_pairs_correctly() {
 
         VestedRewards::disallow_mm_pair(origin.clone(), ETH, XOR).unwrap();
 
+        // we don't have this pair anymore, so it should return an error
         assert_eq!(
             VestedRewards::disallow_mm_pair(origin, ETH, XOR),
             Err(Error::<Runtime>::MmPairNotExist.into())

@@ -41,7 +41,7 @@ use hex_literal::hex;
 use sp_std::prelude::*;
 use traits::MultiCurrency;
 
-use common::{assert_approx_eq, FromGenericPair, PSWAP, XOR};
+use common::{assert_approx_eq, FromGenericPair, ETH, PSWAP, XOR};
 
 use crate::Pallet as VestedRewards;
 use technical::Pallet as Technical;
@@ -135,6 +135,25 @@ benchmarks! {
             );
         }
     }
+
+    allow_market_making_pair {
+        let origin = Origin::root();
+    }: {
+        VestedRewards::allow_mm_pair(origin, XOR, ETH).unwrap();
+    }
+    verify {
+        assert!(MarketMakingPairs::<T>::contains_key(&XOR, &ETH));
+    }
+
+    disallow_market_making_pair {
+        let origin = Origin::root();
+        VestedRewards::allow_mm_pair(origin, XOR, ETH).unwrap();
+    }: {
+        VestedRewards::disallow_mm_pair(origin, XOR, ETH).unwrap();
+    }
+    verify {
+        assert!(!MarketMakingPairs::<T>::contains_key(&XOR, &ETH));
+    }
 }
 
 #[cfg(test)]
@@ -149,6 +168,7 @@ mod tests {
             assert_ok!(test_benchmark_claim_rewards::<Runtime>());
             assert_ok!(test_benchmark_distribute_limits::<Runtime>());
             assert_ok!(test_benchmark_distribute_market_maker_rewards::<Runtime>());
+            assert_ok!(test_benchmark_allow_market_making_pair::<Runtime>());
         });
     }
 }
