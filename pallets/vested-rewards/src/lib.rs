@@ -91,6 +91,8 @@ pub struct MarketMakerInfo {
 pub trait WeightInfo {
     fn claim_incentives() -> Weight;
     fn on_initialize(_n: u32) -> Weight;
+    fn allow_mm_pair() -> Weight;
+    fn disallow_mm_pair() -> Weight;
 }
 
 impl<T: Config> Pallet<T> {
@@ -356,7 +358,7 @@ pub mod pallet {
         }
 
         /// Allow a market making pair.
-        #[pallet::weight(100_000_000)]
+        #[pallet::weight(<T as Config>::WeightInfo::allow_mm_pair())]
         #[transactional]
         pub fn allow_mm_pair(
             origin: OriginFor<T>,
@@ -373,7 +375,7 @@ pub mod pallet {
         }
 
         /// Disallow a market making pair.
-        #[pallet::weight(100_000_000)]
+        #[pallet::weight(<T as Config>::WeightInfo::disallow_mm_pair())]
         #[transactional]
         pub fn disallow_mm_pair(
             origin: OriginFor<T>,

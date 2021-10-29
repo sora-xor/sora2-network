@@ -29,9 +29,13 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use crate::mock::*;
-use crate::{Error, MarketMakerInfo, RewardInfo, MARKET_MAKER_REWARDS_DISTRIBUTION_FREQUENCY};
+use crate::{
+    Error, MarketMakerInfo, MarketMakingPairs, RewardInfo,
+    MARKET_MAKER_REWARDS_DISTRIBUTION_FREQUENCY,
+};
 use common::{
-    balance, Balance, OnPswapBurned, PswapRemintInfo, RewardReason, VestedRewardsPallet, PSWAP,
+    balance, Balance, OnPswapBurned, PswapRemintInfo, RewardReason, VestedRewardsPallet, ETH,
+    PSWAP, XOR,
 };
 use frame_support::assert_noop;
 use frame_support::traits::OnInitialize;
@@ -43,10 +47,16 @@ fn deposit_rewards_to_reserves(amount: Balance) {
     Currencies::deposit(PSWAP, &GetMarketMakerRewardsAccountId::get(), amount).unwrap();
 }
 
+fn prepare_mm_pairs() {
+    MarketMakingPairs::<Runtime>::insert(&XOR, &ETH, ());
+}
+
 #[test]
 fn should_add_market_maker_infos_single_user() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
+        prepare_mm_pairs();
+
         assert_eq!(
             VestedRewards::market_makers_registry(&alice()),
             MarketMakerInfo {
@@ -56,7 +66,7 @@ fn should_add_market_maker_infos_single_user() {
         );
 
         // first add
-        VestedRewards::update_market_maker_records(&alice(), balance!(123), 1).unwrap();
+        VestedRewards::update_market_maker_records(&alice(), balance!(123), 1, &XOR, &ETH).unwrap();
         let expected_1 = MarketMakerInfo {
             count: 1,
             volume: balance!(123),
@@ -64,7 +74,7 @@ fn should_add_market_maker_infos_single_user() {
         assert_eq!(VestedRewards::market_makers_registry(&alice()), expected_1);
 
         // second add
-        VestedRewards::update_market_maker_records(&alice(), balance!(123), 1).unwrap();
+        VestedRewards::update_market_maker_records(&alice(), balance!(123), 1, &XOR, &ETH).unwrap();
         let expected_2 = MarketMakerInfo {
             count: 2,
             volume: balance!(246),
@@ -75,11 +85,11 @@ fn should_add_market_maker_infos_single_user() {
         );
 
         // add with less than 1 xor
-        VestedRewards::update_market_maker_records(&alice(), balance!(0.9), 1).unwrap();
+        VestedRewards::update_market_maker_records(&alice(), balance!(0.9), 1, &XOR, &ETH).unwrap();
         assert_eq!(VestedRewards::market_makers_registry(&alice()), expected_2);
 
         // add with multiplier
-        VestedRewards::update_market_maker_records(&alice(), balance!(123), 2).unwrap();
+        VestedRewards::update_market_maker_records(&alice(), balance!(123), 2, &XOR, &ETH).unwrap();
         let expected_3 = MarketMakerInfo {
             count: 4,
             volume: balance!(492),
@@ -92,9 +102,11 @@ fn should_add_market_maker_infos_single_user() {
 fn should_add_market_maker_infos_multiple_users() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
-        VestedRewards::update_market_maker_records(&alice(), balance!(111), 1).unwrap();
-        VestedRewards::update_market_maker_records(&bob(), balance!(111), 2).unwrap();
-        VestedRewards::update_market_maker_records(&eve(), balance!(111), 3).unwrap();
+        prepare_mm_pairs();
+
+        VestedRewards::update_market_maker_records(&alice(), balance!(111), 1, &XOR, &ETH).unwrap();
+        VestedRewards::update_market_maker_records(&bob(), balance!(111), 2, &XOR, &ETH).unwrap();
+        VestedRewards::update_market_maker_records(&eve(), balance!(111), 3, &XOR, &ETH).unwrap();
         assert_eq!(
             VestedRewards::market_makers_registry(&alice()),
             MarketMakerInfo {
@@ -123,12 +135,15 @@ fn should_add_market_maker_infos_multiple_users() {
 fn trying_to_add_market_maker_entry_no_side_effect() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
+        prepare_mm_pairs();
+
         let root_a = frame_support::storage_root();
-        VestedRewards::update_market_maker_records(&alice(), balance!(1), 1).unwrap();
+        VestedRewards::update_market_maker_records(&alice(), balance!(1), 1, &XOR, &ETH).unwrap();
         let root_b = frame_support::storage_root();
         assert_ne!(root_a, root_b);
         // adding record should not add default value explicitly for non-eligible volume
-        VestedRewards::update_market_maker_records(&alice(), balance!(0.99), 1).unwrap();
+        VestedRewards::update_market_maker_records(&alice(), balance!(0.99), 1, &XOR, &ETH)
+            .unwrap();
         let root_c = frame_support::storage_root();
         assert_eq!(root_b, root_c);
     });
@@ -912,15 +927,18 @@ fn accounts_with_no_rewards_are_removed() {
 fn distributing_with_all_eligible_accounts() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
+        prepare_mm_pairs();
+
         Currencies::deposit(
             PSWAP,
             &GetMarketMakerRewardsAccountId::get(),
             balance!(400000000),
         )
         .unwrap();
-        VestedRewards::update_market_maker_records(&alice(), balance!(10), 500).unwrap();
-        VestedRewards::update_market_maker_records(&bob(), balance!(20), 1000).unwrap();
-        VestedRewards::update_market_maker_records(&eve(), balance!(30), 2000).unwrap();
+        VestedRewards::update_market_maker_records(&alice(), balance!(10), 500, &XOR, &ETH)
+            .unwrap();
+        VestedRewards::update_market_maker_records(&bob(), balance!(20), 1000, &XOR, &ETH).unwrap();
+        VestedRewards::update_market_maker_records(&eve(), balance!(30), 2000, &XOR, &ETH).unwrap();
 
         for block_n in 1..MARKET_MAKER_REWARDS_DISTRIBUTION_FREQUENCY {
             VestedRewards::on_initialize(block_n.into());
@@ -1042,6 +1060,8 @@ fn distributing_with_all_eligible_accounts() {
 fn distributing_with_partially_eligible_accounts() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
+        prepare_mm_pairs();
+
         let initial_reserve = balance!(400000000);
         Currencies::deposit(
             PSWAP,
@@ -1049,9 +1069,11 @@ fn distributing_with_partially_eligible_accounts() {
             initial_reserve,
         )
         .unwrap();
-        VestedRewards::update_market_maker_records(&alice(), balance!(10), 499).unwrap();
-        VestedRewards::update_market_maker_records(&bob(), balance!(0.9), 1000).unwrap();
-        VestedRewards::update_market_maker_records(&eve(), balance!(30), 2000).unwrap();
+        VestedRewards::update_market_maker_records(&alice(), balance!(10), 499, &XOR, &ETH)
+            .unwrap();
+        VestedRewards::update_market_maker_records(&bob(), balance!(0.9), 1000, &XOR, &ETH)
+            .unwrap();
+        VestedRewards::update_market_maker_records(&eve(), balance!(30), 2000, &XOR, &ETH).unwrap();
 
         for block_n in 1..MARKET_MAKER_REWARDS_DISTRIBUTION_FREQUENCY {
             VestedRewards::on_initialize(block_n.into());
@@ -1155,6 +1177,8 @@ fn distributing_with_partially_eligible_accounts() {
 fn distributing_with_no_eligible_accounts_is_postponed() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
+        prepare_mm_pairs();
+
         let initial_reserve = balance!(400000000);
         Currencies::deposit(
             PSWAP,
@@ -1162,9 +1186,10 @@ fn distributing_with_no_eligible_accounts_is_postponed() {
             initial_reserve,
         )
         .unwrap();
-        VestedRewards::update_market_maker_records(&alice(), balance!(0.5), 10).unwrap();
-        VestedRewards::update_market_maker_records(&bob(), balance!(0.7), 20).unwrap();
-        VestedRewards::update_market_maker_records(&eve(), balance!(0.9), 30).unwrap();
+        VestedRewards::update_market_maker_records(&alice(), balance!(0.5), 10, &XOR, &ETH)
+            .unwrap();
+        VestedRewards::update_market_maker_records(&bob(), balance!(0.7), 20, &XOR, &ETH).unwrap();
+        VestedRewards::update_market_maker_records(&eve(), balance!(0.9), 30, &XOR, &ETH).unwrap();
         for block_n in 1..MARKET_MAKER_REWARDS_DISTRIBUTION_FREQUENCY * 10 {
             VestedRewards::on_initialize(block_n.into());
         }
