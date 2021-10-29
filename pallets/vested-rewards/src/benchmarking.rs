@@ -169,6 +169,7 @@ mod tests {
             assert_ok!(test_benchmark_distribute_limits::<Runtime>());
             assert_ok!(test_benchmark_distribute_market_maker_rewards::<Runtime>());
             assert_ok!(test_benchmark_allow_market_making_pair::<Runtime>());
+            assert_ok!(test_benchmark_disallow_market_making_pair::<Runtime>());
         });
     }
 }
