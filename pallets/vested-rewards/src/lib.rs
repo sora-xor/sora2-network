@@ -248,15 +248,19 @@ impl<T: Config> OnPswapBurned for Module<T> {
     }
 }
 
-impl<T: Config> VestedRewardsPallet<T::AccountId> for Module<T> {
+impl<T: Config> VestedRewardsPallet<T::AccountId, T::AssetId> for Module<T> {
     /// Check if volume is eligible to be counted for market maker rewards and add it to registry.
     /// `count` is used as a multiplier if multiple times same volume is transferred inside transaction.
     fn update_market_maker_records(
         account_id: &T::AccountId,
         xor_volume: Balance,
         count: u32,
+        from_asset_id: &T::AssetId,
+        to_asset_id: &T::AssetId,
     ) -> DispatchResult {
-        if xor_volume >= balance!(1) {
+        if MarketMakingPairs::<T>::contains_key(from_asset_id, to_asset_id)
+            && xor_volume >= balance!(1)
+        {
             MarketMakersRegistry::<T>::mutate(account_id, |info| {
                 info.count = info.count.saturating_add(count);
                 info.volume = info
@@ -350,6 +354,40 @@ pub mod pallet {
             let weight = crate::migration::inject_market_makers_first_month_rewards::<T>(snapshot)?;
             Ok(Some(weight).into())
         }
+
+        /// Allow a market making pair.
+        #[pallet::weight(100_000_000)]
+        #[transactional]
+        pub fn allow_mm_pair(
+            origin: OriginFor<T>,
+            from_asset_id: T::AssetId,
+            to_asset_id: T::AssetId,
+        ) -> DispatchResultWithPostInfo {
+            ensure_root(origin)?;
+            ensure!(
+                !MarketMakingPairs::<T>::contains_key(&from_asset_id, &to_asset_id),
+                Error::<T>::MmPairAlreadyExists
+            );
+            MarketMakingPairs::<T>::insert(from_asset_id, to_asset_id, ());
+            Ok(().into())
+        }
+
+        /// Disallow a market making pair.
+        #[pallet::weight(100_000_000)]
+        #[transactional]
+        pub fn disallow_mm_pair(
+            origin: OriginFor<T>,
+            from_asset_id: T::AssetId,
+            to_asset_id: T::AssetId,
+        ) -> DispatchResultWithPostInfo {
+            ensure_root(origin)?;
+            ensure!(
+                MarketMakingPairs::<T>::contains_key(&from_asset_id, &to_asset_id),
+                Error::<T>::MmPairNotExist
+            );
+            MarketMakingPairs::<T>::remove(from_asset_id, to_asset_id);
+            Ok(().into())
+        }
     }
 
     #[pallet::error]
@@ -368,6 +406,10 @@ pub mod pallet {
         CantSubtractSnapshot,
         /// Failed to perform reward calculation.
         CantCalculateReward,
+        /// The market making pair already exists.
+        MmPairAlreadyExists,
+        /// The market making pair doesn't exist.
+        MmPairNotExist,
     }
 
     #[pallet::event]
@@ -404,4 +446,17 @@ pub mod pallet {
     #[pallet::getter(fn market_makers_registry)]
     pub type MarketMakersRegistry<T: Config> =
         StorageMap<_, Blake2_128Concat, T::AccountId, MarketMakerInfo, ValueQuery>;
+
+    /// Market making pairs storage.
+    #[pallet::storage]
+    #[pallet::getter(fn market_making_pairs)]
+    pub type MarketMakingPairs<T: Config> = StorageDoubleMap<
+        _,
+        Blake2_128Concat,
+        T::AssetId,
+        Blake2_128Concat,
+        T::AssetId,
+        (),
+        ValueQuery,
+    >;
 }
