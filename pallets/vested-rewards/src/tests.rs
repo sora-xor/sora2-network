@@ -132,6 +132,64 @@ fn should_add_market_maker_infos_multiple_users() {
 }
 
 #[test]
+fn should_update_market_maker_with_allowed_pair_only() {
+    let mut ext = ExtBuilder::default().build();
+    ext.execute_with(|| {
+        prepare_mm_pairs();
+
+        assert_eq!(
+            VestedRewards::market_makers_registry(&alice()),
+            MarketMakerInfo {
+                count: 0,
+                volume: balance!(0)
+            }
+        );
+
+        // ok
+        VestedRewards::update_market_maker_records(&alice(), balance!(123), 1, &XOR, &ETH).unwrap();
+        let expected_1 = MarketMakerInfo {
+            count: 1,
+            volume: balance!(123),
+        };
+        assert_eq!(
+            VestedRewards::market_makers_registry(&alice()),
+            expected_1.clone()
+        );
+
+        // not allowed
+        VestedRewards::update_market_maker_records(&alice(), balance!(123), 1, &ETH, &XOR).unwrap();
+        assert_eq!(VestedRewards::market_makers_registry(&alice()), expected_1);
+    });
+}
+
+#[test]
+fn should_update_market_making_pairs_correctly() {
+    let mut ext = ExtBuilder::default().build();
+    ext.execute_with(|| {
+        prepare_mm_pairs();
+
+        let origin = Origin::root();
+
+        VestedRewards::allow_mm_pair(origin.clone(), ETH, XOR).unwrap();
+
+        assert!(MarketMakingPairs::<Runtime>::contains_key(&ETH, &XOR));
+
+        // we already have this pair, so it should return an error
+        assert_eq!(
+            VestedRewards::allow_mm_pair(origin.clone(), XOR, ETH),
+            Err(Error::<Runtime>::MmPairAlreadyExists.into())
+        );
+
+        VestedRewards::disallow_mm_pair(origin.clone(), ETH, XOR).unwrap();
+
+        assert_eq!(
+            VestedRewards::disallow_mm_pair(origin, ETH, XOR),
+            Err(Error::<Runtime>::MmPairNotExist.into())
+        );
+    });
+}
+
+#[test]
 fn trying_to_add_market_maker_entry_no_side_effect() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
