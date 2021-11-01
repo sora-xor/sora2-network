@@ -59,8 +59,10 @@ mod tests;
 
 pub const TECH_ACCOUNT_PREFIX: &[u8] = b"vested-rewards";
 pub const TECH_ACCOUNT_MARKET_MAKERS: &[u8] = b"market-makers";
+pub const TECH_ACCOUNT_FARMING: &[u8] = b"farming";
 pub const MARKET_MAKER_ELIGIBILITY_TX_COUNT: u32 = 500;
 pub const SINGLE_MARKET_MAKER_DISTRIBUTION_AMOUNT: Balance = balance!(20000000);
+pub const FARMING_REWARDS: Balance = balance!(3500000000);
 pub const MARKET_MAKER_REWARDS_DISTRIBUTION_FREQUENCY: u32 = 432000;
 
 type Assets<T> = assets::Pallet<T>;
@@ -125,7 +127,7 @@ impl<T: Config> Pallet<T> {
             } else {
                 let mut total_actual_claimed: Balance = 0;
                 for (&reward_reason, amount) in info.rewards.iter_mut() {
-                    let claimable = amount.clone().min(info.limit);
+                    let claimable = (*amount).min(info.limit);
                     let actual_claimed =
                         Self::claim_reward_by_reason(account_id, reward_reason, claimable)
                             .unwrap_or(balance!(0));
@@ -170,7 +172,7 @@ impl<T: Config> Pallet<T> {
     ) -> Result<Balance, DispatchError> {
         let source_account = match reason {
             RewardReason::BuyOnBondingCurve => T::GetBondingCurveRewardsAccountId::get(),
-            // RewardReason::LiquidityProvisionFarming => T::GetFarmingRewardsAccountId::get(), // TODO: handle with farming rewards
+            RewardReason::LiquidityProvisionFarming => T::GetFarmingRewardsAccountId::get(),
             RewardReason::MarketMakerVolume => T::GetMarketMakerRewardsAccountId::get(),
             _ => fail!(Error::<T>::UnhandledRewardType),
         };
@@ -302,7 +304,7 @@ pub mod pallet {
         type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
         /// Accounts holding PSWAP dedicated for rewards.
         type GetMarketMakerRewardsAccountId: Get<Self::AccountId>;
-        // type GetFarmingRewardsAccountId: Get<Self::AccountId>; // TODO: implement with farming rewards
+        type GetFarmingRewardsAccountId: Get<Self::AccountId>;
         type GetBondingCurveRewardsAccountId: Get<Self::AccountId>;
         /// Weight information for extrinsics in this pallet.
         type WeightInfo: WeightInfo;
