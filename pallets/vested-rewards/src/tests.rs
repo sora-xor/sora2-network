@@ -38,6 +38,7 @@ use common::{
     PSWAP, XOR,
 };
 use frame_support::assert_noop;
+use frame_support::pallet_prelude::DispatchError;
 use frame_support::traits::OnInitialize;
 use sp_std::collections::btree_map::BTreeMap;
 use traits::currency::MultiCurrency;
@@ -168,6 +169,13 @@ fn should_update_market_making_pairs_correctly() {
     ext.execute_with(|| {
         prepare_mm_pairs();
 
+        let origin = Origin::none();
+
+        assert_noop!(
+            VestedRewards::allow_mm_pair(origin.clone(), ETH, XOR),
+            DispatchError::BadOrigin
+        );
+
         let origin = Origin::root();
 
         VestedRewards::allow_mm_pair(origin.clone(), ETH, XOR).unwrap();
@@ -179,6 +187,15 @@ fn should_update_market_making_pairs_correctly() {
             VestedRewards::allow_mm_pair(origin.clone(), XOR, ETH),
             Error::<Runtime>::MmPairAlreadyExists
         );
+
+        let origin = Origin::none();
+
+        assert_noop!(
+            VestedRewards::disallow_mm_pair(origin.clone(), ETH, XOR),
+            DispatchError::BadOrigin
+        );
+
+        let origin = Origin::root();
 
         VestedRewards::disallow_mm_pair(origin.clone(), ETH, XOR).unwrap();
 
