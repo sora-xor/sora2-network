@@ -30,7 +30,7 @@
 
 use crate::mock::*;
 use crate::{
-    Error, MarketMakerInfo, MarketMakingPairs, RewardInfo,
+    migration, Error, MarketMakerInfo, MarketMakingPairs, RewardInfo, FARMING_REWARDS,
     MARKET_MAKER_REWARDS_DISTRIBUTION_FREQUENCY,
 };
 use common::{
@@ -1325,6 +1325,54 @@ fn distributing_with_no_accounts_is_postponed() {
         assert_eq!(
             Currencies::free_balance(PSWAP, &GetMarketMakerRewardsAccountId::get()),
             initial_reserve
+        );
+    });
+}
+
+#[test]
+fn adding_funds_to_farming_rewards_account() {
+    ExtBuilder::default().build().execute_with(|| {
+        assert_eq!(
+            Currencies::free_balance(PSWAP, &GetFarmingRewardsAccountId::get()),
+            0
+        );
+        migration::add_funds_to_farming_rewards_account::<Runtime>();
+        assert_eq!(
+            Currencies::free_balance(PSWAP, &GetFarmingRewardsAccountId::get()),
+            FARMING_REWARDS
+        );
+        VestedRewards::add_farming_reward(&alice(), balance!(100)).expect("failed to add rewards");
+        VestedRewards::on_pswap_burned(PswapRemintInfo {
+            vesting: balance!(12),
+            ..Default::default()
+        });
+        assert_eq!(
+            VestedRewards::rewards(&alice()),
+            RewardInfo {
+                limit: balance!(12),
+                total_available: balance!(100),
+                rewards: [(RewardReason::LiquidityProvisionFarming, balance!(100))]
+                    .iter()
+                    .cloned()
+                    .collect(),
+            }
+        );
+        assert_eq!(Assets::free_balance(&PSWAP, &alice()).unwrap(), balance!(0));
+        VestedRewards::claim_rewards(Origin::signed(alice())).expect("Failed to claim");
+        assert_eq!(
+            VestedRewards::rewards(&alice()),
+            RewardInfo {
+                limit: balance!(0),
+                total_available: balance!(88),
+                rewards: [(RewardReason::LiquidityProvisionFarming, balance!(88))]
+                    .iter()
+                    .cloned()
+                    .collect(),
+            }
+        );
+        assert_eq!(
+            Assets::free_balance(&PSWAP, &alice()).unwrap(),
+            balance!(12)
         );
     });
 }

@@ -29,16 +29,17 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use crate::{
-    Config, Error, MarketMakersRegistry, Pallet, RewardInfo, Weight,
+    Config, Error, MarketMakersRegistry, Pallet, RewardInfo, Weight, FARMING_REWARDS,
     MARKET_MAKER_ELIGIBILITY_TX_COUNT, SINGLE_MARKET_MAKER_DISTRIBUTION_AMOUNT,
 };
 use common::prelude::{Balance, FixedWrapper};
-use common::{balance, fixed_wrapper, RewardReason};
+use common::{balance, fixed_wrapper, RewardReason, PSWAP};
 use frame_support::debug;
 use frame_support::traits::{Get, GetPalletVersion, PalletVersion};
 use sp_runtime::traits::Zero;
 use sp_runtime::DispatchError;
 use sp_std::vec::Vec;
+use traits::MultiCurrency;
 
 pub fn migrate<T: Config>() -> Weight {
     let mut weight: Weight = 0;
@@ -49,6 +50,13 @@ pub fn migrate<T: Config>() -> Weight {
         Some(version) if version == PalletVersion::new(0, 1, 0) => {
             let migrated_weight = migrate_rewards_from_tbc::<T>().unwrap_or(100_000);
             weight = weight.saturating_add(migrated_weight);
+        }
+        Some(PalletVersion {
+            major: 1,
+            minor: 1,
+            patch: 0,
+        }) => {
+            weight = add_funds_to_farming_rewards_account::<T>();
         }
         _ => (),
     }
@@ -155,4 +163,15 @@ pub fn inject_market_makers_first_month_rewards<T: Config>(
     }
 
     Ok(weight)
+}
+
+pub fn add_funds_to_farming_rewards_account<T: Config>() -> Weight {
+    if let Err(e) = T::Currency::deposit(
+        PSWAP.into(),
+        &T::GetFarmingRewardsAccountId::get(),
+        FARMING_REWARDS,
+    ) {
+        debug::error!(target: "runtime", "Failed to add farming rewards: {:?}", e);
+    }
+    T::DbWeight::get().writes(1)
 }
