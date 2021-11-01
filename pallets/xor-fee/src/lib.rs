@@ -277,7 +277,14 @@ where
                 xor_burned_weight + xor_into_val_burned_weight,
             );
             if let Some(referrer) = referrals::Pallet::<T>::referrer_account(who) {
-                let _ = T::XorCurrency::resolve_into_existing(&referrer, referrer_xor);
+                let referrer_portion = referrer_xor.peek();
+                if T::XorCurrency::resolve_into_existing(&referrer, referrer_xor).is_ok() {
+                    Self::deposit_event(Event::ReferrerRewarded(
+                        who.clone(),
+                        referrer,
+                        referrer_portion,
+                    ));
+                }
             }
 
             // TODO: decide what should be done with XOR if there is no referrer.
@@ -566,6 +573,8 @@ pub mod pallet {
     pub enum Event<T: Config> {
         /// Fee has been withdrawn from user. [Account Id to withdraw from, Fee Amount]
         FeeWithdrawn(AccountIdOf<T>, Balance),
+        /// The portion of fee is sent to the referrer. [Referral, Referrer, Amount]
+        ReferrerRewarded(AccountIdOf<T>, AccountIdOf<T>, Balance),
     }
 
     /// The amount of XOR to be reminted and exchanged for VAL at the end of the session
