@@ -175,17 +175,17 @@ fn should_update_market_making_pairs_correctly() {
         assert!(MarketMakingPairs::<Runtime>::contains_key(&ETH, &XOR));
 
         // we already have this pair, so it should return an error
-        assert_eq!(
+        assert_noop!(
             VestedRewards::allow_mm_pair(origin.clone(), XOR, ETH),
-            Err(Error::<Runtime>::MmPairAlreadyExists.into())
+            Error::<Runtime>::MmPairAlreadyExists
         );
 
         VestedRewards::disallow_mm_pair(origin.clone(), ETH, XOR).unwrap();
 
         // we don't have this pair anymore, so it should return an error
-        assert_eq!(
+        assert_noop!(
             VestedRewards::disallow_mm_pair(origin, ETH, XOR),
-            Err(Error::<Runtime>::MmPairNotExist.into())
+            Error::<Runtime>::MmPairNotExist
         );
     });
 }
