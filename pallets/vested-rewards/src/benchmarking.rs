@@ -36,6 +36,7 @@ use super::*;
 
 use codec::Decode;
 use frame_benchmarking::benchmarks;
+use frame_support::traits::OriginTrait;
 use frame_system::RawOrigin;
 use hex_literal::hex;
 use sp_std::prelude::*;
@@ -68,15 +69,30 @@ fn prepare_pending_accounts<T: Config>(n: u128) {
 }
 
 fn prepare_pending_market_makers<T: Config>(n: u128, m: u128) {
+    MarketMakingPairs::<T>::insert(&T::AssetId::from(XOR), &T::AssetId::from(ETH), ());
     for i in 0..n {
         let user_account = create_account::<T>(b"eligible mm reward".to_vec(), i);
         T::Currency::deposit(XOR.into(), &user_account, balance!(1)).unwrap(); // to prevent inc ref error
-        VestedRewards::<T>::update_market_maker_records(&user_account, balance!(100), 500).unwrap();
+        VestedRewards::<T>::update_market_maker_records(
+            &user_account,
+            balance!(100),
+            500,
+            &XOR.into(),
+            &ETH.into(),
+        )
+        .unwrap();
     }
     for i in 0..m {
         let user_account = create_account::<T>(b"non eligible mm reward".to_vec(), i);
         T::Currency::deposit(XOR.into(), &user_account, balance!(1)).unwrap(); // to prevent inc ref error
-        VestedRewards::<T>::update_market_maker_records(&user_account, balance!(100), 100).unwrap();
+        VestedRewards::<T>::update_market_maker_records(
+            &user_account,
+            balance!(100),
+            100,
+            &XOR.into(),
+            &ETH.into(),
+        )
+        .unwrap();
     }
 }
 
@@ -137,22 +153,24 @@ benchmarks! {
     }
 
     allow_market_making_pair {
-        let origin = Origin::root();
+        let origin = T::Origin::root();
     }: {
-        VestedRewards::allow_mm_pair(origin, XOR, ETH).unwrap();
+        Pallet::<T>::allow_mm_pair(origin, XOR.into(), ETH.into()).unwrap();
     }
     verify {
-        assert!(MarketMakingPairs::<T>::contains_key(&XOR, &ETH));
+        assert!(
+            MarketMakingPairs::<T>::contains_key(&T::AssetId::from(XOR), &T::AssetId::from(ETH)));
     }
 
     disallow_market_making_pair {
-        let origin = Origin::root();
-        VestedRewards::allow_mm_pair(origin, XOR, ETH).unwrap();
+        let origin = T::Origin::root();
+        Pallet::<T>::allow_mm_pair(origin.clone(), XOR.into(), ETH.into()).unwrap();
     }: {
-        VestedRewards::disallow_mm_pair(origin, XOR, ETH).unwrap();
+        Pallet::<T>::disallow_mm_pair(origin, XOR.into(), ETH.into()).unwrap();
     }
     verify {
-        assert!(!MarketMakingPairs::<T>::contains_key(&XOR, &ETH));
+        assert!(
+            !MarketMakingPairs::<T>::contains_key(&T::AssetId::from(XOR), &T::AssetId::from(ETH)));
     }
 }
 
