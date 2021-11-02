@@ -223,19 +223,13 @@ pub mod pallet {
             network_id: EthNetworkId,
             header: EthereumHeader,
             initial_difficulty: U256,
-            descendants_until_final: u8,
         ) -> DispatchResult {
             ensure!(
                 <BestBlock<T>>::contains_key(network_id) == false,
                 Error::<T>::NetworkNotFound
             );
-            Pallet::<T>::initialize_storage(
-                network_id,
-                vec![header],
-                initial_difficulty,
-                descendants_until_final,
-            )
-            .map_err(|_| Error::<T>::NetworkNotFound)?;
+            Pallet::<T>::initialize_storage(network_id, vec![header], initial_difficulty, 0)
+                .map_err(|_| Error::<T>::NetworkNotFound)?;
             Ok(())
         }
         /// Import a single Ethereum PoW header.

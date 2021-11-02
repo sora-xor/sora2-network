@@ -6,6 +6,7 @@ package cmd
 import (
 	"os"
 
+	register_bridge "github.com/snowfork/snowbridge/relayer/cmd/register-bridge"
 	"github.com/snowfork/snowbridge/relayer/cmd/run"
 	"github.com/spf13/cobra"
 )
@@ -24,6 +25,7 @@ func init() {
 	rootCmd.AddCommand(getBlockCmd())
 	rootCmd.AddCommand(fetchMessagesCmd())
 	rootCmd.AddCommand(subBeefyCmd())
+	rootCmd.AddCommand(register_bridge.Command())
 }
 
 func Execute() {

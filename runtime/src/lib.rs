@@ -1629,9 +1629,9 @@ construct_runtime! {
         // Snowbridge
         EthereumLightClient: ethereum_light_client::{Pallet, Call, Storage, Event<T>, Config} = 90,
         BasicInboundChannel: basic_channel_inbound::{Pallet, Call, Storage, Event<T>, Config<T>} = 91,
-        BasicOutboundChannel: basic_channel_outbound::{Pallet, Storage, Event<T>, Config<T>} = 92,
+        BasicOutboundChannel: basic_channel_outbound::{Pallet, Call, Storage, Event<T>, Config<T>} = 92,
         IncentivizedInboundChannel: incentivized_channel_inbound::{Pallet, Call, Config<T>, Storage, Event<T>} = 93,
-        IncentivizedOutboundChannel: incentivized_channel_outbound::{Pallet, Config<T>, Storage, Event<T>} = 94,
+        IncentivizedOutboundChannel: incentivized_channel_outbound::{Pallet, Call, Config<T>, Storage, Event<T>} = 94,
         Dispatch: dispatch::{Pallet, Storage, Event<T>, Origin} = 95,
         EthApp: eth_app::{Pallet, Call, Storage, Event<T>, Config<T>} = 96,
         LeafProvider: leaf_provider::{Pallet, Storage, Event<T>} = 97,
@@ -1702,7 +1702,7 @@ construct_runtime! {
         MmrLeaf: pallet_beefy_mmr::{Pallet, Storage} = 47,
 
         // Snowbridge
-        EthereumLightClient: ethereum_light_client::{Pallet, Call, Storage, Event<T>, Config<T>} = 90,
+        EthereumLightClient: ethereum_light_client::{Pallet, Call, Storage, Event<T>, Config} = 90,
         BasicInboundChannel: basic_channel_inbound::{Pallet, Call, Storage, Event<T>, Config<T>} = 91,
         BasicOutboundChannel: basic_channel_outbound::{Pallet, Storage, Event<T>, Config<T>} = 92,
         IncentivizedInboundChannel: incentivized_channel_inbound::{Pallet, Call, Config<T>, Storage, Event<T>} = 93,

@@ -103,10 +103,13 @@ where
             digest_hash,
             digest
         );
-        (
-            <pallet_beefy_mmr::Pallet<T> as LeafDataProvider>::leaf_data(),
-            digest_hash,
-        )
+        let leaf = <pallet_beefy_mmr::Pallet<T> as LeafDataProvider>::leaf_data();
+        frame_support::log::warn!(
+            "get leaf data: block number: {:?}, next_authority_set: {:?}",
+            frame_system::Pallet::<T>::block_number(),
+            leaf.beefy_next_authority_set
+        );
+        (leaf, digest_hash)
     }
 }
 

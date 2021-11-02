@@ -185,6 +185,10 @@ pub mod pallet {
         ) -> DispatchResult {
             debug!("Send message from {:?} to {:?}", who, target);
             ensure!(
+                <ChannelOwners<T>>::contains_key(network_id, channel),
+                Error::<T>::InvalidChannel
+            );
+            ensure!(
                 MessageQueue::<T>::decode_len().unwrap_or(0)
                     < T::MaxMessagesPerCommit::get() as usize,
                 Error::<T>::QueueSizeLimitReached,
@@ -240,7 +244,7 @@ pub mod pallet {
             for ((network_id, channel), messages) in message_map {
                 let commitment_hash = Self::make_commitment_hash(&messages);
                 let digest_item = AuxiliaryDigestItem::Commitment(
-                    ChannelId::Basic,
+                    ChannelId::Incentivized,
                     network_id,
                     channel,
                     commitment_hash.clone(),

@@ -1,9 +1,10 @@
 use currencies::BasicCurrencyAdapter;
+use snowbridge_ethereum::EthNetworkId;
 use sp_std::marker::PhantomData;
 
 // Mock runtime
 use common::mock::ExistentialDeposits;
-use common::{balance, Amount, AssetId32, AssetName, AssetSymbol, Balance, DEXId, XOR};
+use common::{balance, Amount, AssetId32, AssetName, AssetSymbol, Balance, DEXId, ETH, XOR};
 use frame_support::dispatch::{DispatchError, DispatchResult};
 use frame_support::parameter_types;
 use frame_support::traits::{Everything, GenesisBuild};
@@ -41,6 +42,8 @@ frame_support::construct_runtime!(
 pub type Signature = MultiSignature;
 
 pub type AccountId = <<Signature as Verify>::Signer as IdentifyAccount>::AccountId;
+
+pub const BASE_NETWORK_ID: EthNetworkId = 12123;
 
 parameter_types! {
     pub const BlockHashCount: u64 = 250;
@@ -128,7 +131,7 @@ impl assets::Config for Test {
         common::AssetIdExtraAssetRecordArg<DEXId, common::LiquiditySourceType, [u8; 32]>;
     type AssetId = AssetId;
     type GetBaseAssetId = GetBaseAssetId;
-    type Currency = currencies::Module<Test>;
+    type Currency = currencies::Pallet<Test>;
     type GetTeamReservesAccountId = GetTeamReservesAccountId;
     type WeightInfo = ();
 }
@@ -144,7 +147,14 @@ impl dispatch::Config for Test {
 pub struct MockOutboundRouter<AccountId>(PhantomData<AccountId>);
 
 impl<AccountId> OutboundRouter<AccountId> for MockOutboundRouter<AccountId> {
-    fn submit(channel: ChannelId, _: &AccountId, _: H160, _: &[u8]) -> DispatchResult {
+    fn submit(
+        _: EthNetworkId,
+        _: H160,
+        channel: ChannelId,
+        _: &AccountId,
+        _: H160,
+        _: &[u8],
+    ) -> DispatchResult {
         if channel == ChannelId::Basic {
             return Err(DispatchError::Other("some error!"));
         }
@@ -167,8 +177,10 @@ pub fn new_tester() -> sp_io::TestExternalities {
 
     GenesisBuild::<Test>::assimilate_storage(
         &eth_app::GenesisConfig {
-            address: H160::repeat_byte(1),
-            dest_account: Default::default(),
+            networks: vec![(
+                BASE_NETWORK_ID,
+                vec![(H160::repeat_byte(1), Default::default(), XOR)],
+            )],
         },
         &mut storage,
     )

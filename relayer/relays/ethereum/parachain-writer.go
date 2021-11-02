@@ -227,7 +227,7 @@ func (wr *ParachainWriter) makeMessageSubmitCall(msg *chain.EthereumOutboundMess
 	args = append(args, wr.chainId)
 	args = append(args, msg.Args...)
 
-	return types.NewCall(wr.conn.Metadata(), msg.Call, args)
+	return types.NewCall(wr.conn.Metadata(), msg.Call, args...)
 }
 
 func (wr *ParachainWriter) makeHeaderImportCall(header *chain.Header) (types.Call, error) {

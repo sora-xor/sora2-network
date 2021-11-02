@@ -3,7 +3,6 @@ package beefy
 import (
 	"context"
 	"encoding/hex"
-	"encoding/json"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum"
@@ -88,37 +87,33 @@ func (wr *BeefyEthereumWriter) LogBeefyFixtureDataAll(
 		pubKeyMerkleProofs = append(pubKeyMerkleProofs, pubkeyProofS)
 	}
 
-	input := &CompleteSignatureCommitmentTxInput{
-		Id: msg.ID,
-		Commitment: BeefyLightClientCommitmentLog{
-			Payload:        "0x" + hex.EncodeToString(msg.Commitment.Payload[:]),
-			BlockNumber:    msg.Commitment.BlockNumber,
-			ValidatorSetId: msg.Commitment.ValidatorSetId,
+	input := log.Fields{
+		"Id": msg.ID,
+		"Commitment": log.Fields{
+			"Payload":        "0x" + hex.EncodeToString(msg.Commitment.Payload[:]),
+			"BlockNumber":    msg.Commitment.BlockNumber,
+			"ValidatorSetId": msg.Commitment.ValidatorSetId,
 		},
-		ValidatorProof: BeefyLightClientValidatorProofLog{
-			Signatures:            signatures,
-			Positions:             msg.ValidatorPositions,
-			PublicKeys:            msg.ValidatorPublicKeys,
-			PublicKeyMerkleProofs: pubKeyMerkleProofs,
+		"ValidatorProof": log.Fields{
+			"Signatures":            signatures,
+			"Positions":             msg.ValidatorPositions,
+			"PublicKeys":            msg.ValidatorPublicKeys,
+			"PublicKeyMerkleProofs": pubKeyMerkleProofs,
 		},
-		LatestMMRLeaf: BeefyLightClientBeefyMMRLeafLog{
-			Version:              msg.LatestMMRLeaf.Version,
-			ParentNumber:         msg.LatestMMRLeaf.ParentNumber,
-			ParentHash:           "0x" + hex.EncodeToString(msg.LatestMMRLeaf.ParentHash[:]),
-			ParachainHeadsRoot:   "0x" + hex.EncodeToString(msg.LatestMMRLeaf.ParachainHeadsRoot[:]),
-			NextAuthoritySetId:   msg.LatestMMRLeaf.NextAuthoritySetId,
-			NextAuthoritySetLen:  msg.LatestMMRLeaf.NextAuthoritySetLen,
-			NextAuthoritySetRoot: "0x" + hex.EncodeToString(msg.LatestMMRLeaf.NextAuthoritySetRoot[:]),
+		"LatestMMRLeaf": log.Fields{
+			"Version":              msg.LatestMMRLeaf.Version,
+			"ParentNumber":         msg.LatestMMRLeaf.ParentNumber,
+			"ParentHash":           "0x" + hex.EncodeToString(msg.LatestMMRLeaf.ParentHash[:]),
+			"ParachainHeadsRoot":   "0x" + hex.EncodeToString(msg.LatestMMRLeaf.ParachainHeadsRoot[:]),
+			"NextAuthoritySetId":   msg.LatestMMRLeaf.NextAuthoritySetId,
+			"NextAuthoritySetLen":  msg.LatestMMRLeaf.NextAuthoritySetLen,
+			"NextAuthoritySetRoot": "0x" + hex.EncodeToString(msg.LatestMMRLeaf.NextAuthoritySetRoot[:]),
 		},
-		MMRProofItems: mmrProofItems,
-	}
-	b, err := json.Marshal(input)
-	if err != nil {
-		return err
+		"MMRProofItems": mmrProofItems,
 	}
 
 	log.WithFields(log.Fields{
-		"json":           string(b),
+		"json":           input,
 		"hexEncodedLeaf": hexEncodedLeaf,
 		"hashedLeaf":     hashedLeaf,
 	}).Info("Complete Signature Commitment transaction submitted")

@@ -885,23 +885,6 @@ fn testnet_genesis(
         pswap_waifu_owners: include!("bytes/rewards_pswap_waifu_owners.in"),
     };
 
-    let eth_networks = vec![
-        (
-            4224,
-            include!("./bytes/ethereum_header_4224.in"),
-            get_eth_app_address(),
-            get_basic_channel_address(),
-            get_incentivized_channel_address(),
-        ),
-        (
-            4225,
-            include!("./bytes/ethereum_header_4225.in"),
-            get_eth_app_address(),
-            get_basic_channel_address(),
-            get_incentivized_channel_address(),
-        ),
-    ];
-
     let rewards_pswap_reserves = calculate_reserves(&rewards_config.pswap_farm_owners)
         + calculate_reserves(&rewards_config.pswap_waifu_owners);
     let mut tokens_endowed_accounts = vec![
@@ -967,67 +950,22 @@ fn testnet_genesis(
     GenesisConfig {
         eth_app: EthAppConfig { networks: vec![] },
         ethereum_light_client: EthereumLightClientConfig {
-            initial_networks: eth_networks
-                .iter()
-                .map(|(id, header, _, _, _)| (id.clone(), header.clone(), Default::default()))
-                .collect(),
+            initial_networks: vec![],
         },
         incentivized_inbound_channel: IncentivizedInboundChannelConfig {
-            networks: eth_networks
-                .iter()
-                .map(|(id, header, _, _, address)| {
-                    (
-                        id.clone(),
-                        vec![(
-                            address.clone(),
-                            treasury_account.clone(),
-                            treasury_account.clone(),
-                        )],
-                    )
-                })
-                .collect(),
+            networks: vec![],
             reward_fraction: Perbill::from_percent(80),
             treasury_account: treasury_account.clone(),
         },
         incentivized_outbound_channel: IncentivizedOutboundChannelConfig {
-            networks: eth_networks
-                .iter()
-                .map(|(id, header, _, _, address)| {
-                    (
-                        id.clone(),
-                        vec![(
-                            address.clone(),
-                            treasury_account.clone(),
-                            treasury_account.clone(),
-                        )],
-                    )
-                })
-                .collect(),
+            networks: vec![],
             fee: 10000,
             interval: 10,
         },
-        basic_inbound_channel: BasicInboundChannelConfig {
-            networks: eth_networks
-                .iter()
-                .map(|(id, header, _, _, address)| {
-                    (
-                        id.clone(),
-                        vec![(address.clone(), treasury_account.clone())],
-                    )
-                })
-                .collect(),
-        },
+        basic_inbound_channel: BasicInboundChannelConfig { networks: vec![] },
         basic_outbound_channel: BasicOutboundChannelConfig {
-            networks: eth_networks
-                .iter()
-                .map(|(id, header, _, _, address)| {
-                    (
-                        id.clone(),
-                        vec![(address.clone(), treasury_account.clone())],
-                    )
-                })
-                .collect(),
             interval: 10,
+            networks: vec![],
         },
         system: SystemConfig {
             code: WASM_BINARY.unwrap().to_vec(),

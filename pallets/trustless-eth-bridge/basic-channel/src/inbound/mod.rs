@@ -117,8 +117,8 @@ pub mod pallet {
             let envelope = Envelope::try_from(log).map_err(|_| Error::<T>::InvalidEnvelope)?;
 
             ensure!(
-                <ChannelOwners<T>>::contains_key(network_id, envelope.channel) == false,
-                Error::<T>::ChannelExists
+                <ChannelOwners<T>>::contains_key(network_id, envelope.channel),
+                Error::<T>::InvalidSourceChannel
             );
 
             // Verify message nonce

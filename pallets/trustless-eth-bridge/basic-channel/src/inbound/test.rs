@@ -11,7 +11,7 @@ use sp_runtime::MultiSignature;
 use sp_std::convert::From;
 
 use snowbridge_core::{Message, MessageDispatch, Proof};
-use snowbridge_ethereum::{Header as EthereumHeader, Log, U256};
+use snowbridge_ethereum::Log;
 
 use hex_literal::hex;
 
@@ -20,6 +20,8 @@ use crate::inbound::Error;
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
 type Block = frame_system::mocking::MockBlock<Test>;
+
+const BASE_NETWORK_ID: EthNetworkId = 12123;
 
 frame_support::construct_runtime!(
     pub enum Test where
@@ -68,7 +70,7 @@ impl frame_system::Config for Test {
 pub struct MockVerifier;
 
 impl Verifier for MockVerifier {
-    fn verify(message: &Message) -> Result<Log, DispatchError> {
+    fn verify(_: EthNetworkId, message: &Message) -> Result<Log, DispatchError> {
         let log: Log = rlp::decode(&message.data).unwrap();
         Ok(log)
     }
@@ -78,7 +80,7 @@ impl Verifier for MockVerifier {
 pub struct MockMessageDispatch;
 
 impl MessageDispatch<Test, MessageId> for MockMessageDispatch {
-    fn dispatch(_: H160, _: MessageId, _: &[u8]) {}
+    fn dispatch(_: EthNetworkId, _: H160, _: MessageId, _: &[u8]) {}
 
     #[cfg(feature = "runtime-benchmarks")]
     fn successful_dispatch_event(_: MessageId) -> Option<<Test as frame_system::Config>::Event> {
@@ -94,11 +96,13 @@ impl basic_inbound_channel::Config for Test {
 }
 
 pub fn new_tester(source_channel: H160) -> sp_io::TestExternalities {
-    new_tester_with_config(basic_inbound_channel::GenesisConfig { source_channel })
+    new_tester_with_config(basic_inbound_channel::GenesisConfig {
+        networks: vec![(BASE_NETWORK_ID, vec![(source_channel, Default::default())])],
+    })
 }
 
 pub fn new_tester_with_config(
-    config: basic_inbound_channel::GenesisConfig,
+    config: basic_inbound_channel::GenesisConfig<Test>,
 ) -> sp_io::TestExternalities {
     let mut storage = frame_system::GenesisConfig::default()
         .build_storage::<Test>()
@@ -112,10 +116,10 @@ pub fn new_tester_with_config(
 }
 
 // The originating channel address for the messages below
-const SOURCE_CHANNEL_ADDR: [u8; 20] = hex!["2d02f2234d0B6e35D8d8fD77705f535ACe681327"];
+const SOURCE_CHANNEL_ADDR: [u8; 20] = hex!["2d02f2234d0b6e35d8d8fd77705f535ace681327"];
 
 // Ethereum Log:
-//   address: 0xe4ab635d0bdc5668b3fcb4eaee1dec587998f4af (outbound channel contract)
+//   address: 0x2d02f2234d0b6e35d8d8fd77705f535ace681327 (outbound channel contract)
 //   topics: ...
 //   data:
 //     source: 0x8f5acf5f15d4c3d654a759b96bb674a236c8c0f3  (ETH bank contract)
@@ -172,7 +176,7 @@ fn test_submit_with_invalid_source_channel() {
             },
         };
         assert_noop!(
-            BasicInboundChannel::submit(origin.clone(), message.clone()),
+            BasicInboundChannel::submit(origin.clone(), BASE_NETWORK_ID, message.clone()),
             Error::<Test>::InvalidSourceChannel
         );
     });
@@ -193,8 +197,13 @@ fn test_submit() {
                 data: Default::default(),
             },
         };
-        assert_ok!(BasicInboundChannel::submit(origin.clone(), message_1));
-        let nonce: u64 = <Nonce<Test>>::get();
+        assert_ok!(BasicInboundChannel::submit(
+            origin.clone(),
+            BASE_NETWORK_ID,
+            message_1
+        ));
+        let nonce: u64 =
+            <ChannelNonces<Test>>::get(BASE_NETWORK_ID, H160::from(SOURCE_CHANNEL_ADDR));
         assert_eq!(nonce, 1);
 
         // Submit message 2
@@ -206,8 +215,13 @@ fn test_submit() {
                 data: Default::default(),
             },
         };
-        assert_ok!(BasicInboundChannel::submit(origin.clone(), message_2));
-        let nonce: u64 = <Nonce<Test>>::get();
+        assert_ok!(BasicInboundChannel::submit(
+            origin.clone(),
+            BASE_NETWORK_ID,
+            message_2
+        ));
+        let nonce: u64 =
+            <ChannelNonces<Test>>::get(BASE_NETWORK_ID, H160::from(SOURCE_CHANNEL_ADDR));
         assert_eq!(nonce, 2);
     });
 }
@@ -227,14 +241,80 @@ fn test_submit_with_invalid_nonce() {
                 data: Default::default(),
             },
         };
-        assert_ok!(BasicInboundChannel::submit(origin.clone(), message.clone()));
-        let nonce: u64 = <Nonce<Test>>::get();
+        assert_ok!(BasicInboundChannel::submit(
+            origin.clone(),
+            BASE_NETWORK_ID,
+            message.clone()
+        ));
+        let nonce: u64 =
+            <ChannelNonces<Test>>::get(BASE_NETWORK_ID, H160::from(SOURCE_CHANNEL_ADDR));
         assert_eq!(nonce, 1);
 
         // Submit the same again
         assert_noop!(
-            BasicInboundChannel::submit(origin.clone(), message.clone()),
+            BasicInboundChannel::submit(origin.clone(), BASE_NETWORK_ID, message.clone()),
             Error::<Test>::InvalidNonce
+        );
+    });
+}
+
+#[test]
+fn test_submit_with_invalid_network_id() {
+    new_tester(SOURCE_CHANNEL_ADDR.into()).execute_with(|| {
+        let relayer: AccountId = Keyring::Bob.into();
+        let origin = Origin::signed(relayer);
+
+        // Submit message
+        let message = Message {
+            data: MESSAGE_DATA_0.into(),
+            proof: Proof {
+                block_hash: Default::default(),
+                tx_index: Default::default(),
+                data: Default::default(),
+            },
+        };
+        assert_noop!(
+            BasicInboundChannel::submit(origin.clone(), BASE_NETWORK_ID + 1, message.clone()),
+            Error::<Test>::InvalidSourceChannel
+        );
+    });
+}
+
+#[test]
+fn test_register_channel() {
+    new_tester(SOURCE_CHANNEL_ADDR.into()).execute_with(|| {
+        let owner: AccountId = Keyring::Charlie.into();
+
+        assert_ok!(BasicInboundChannel::register_channel(
+            Origin::signed(owner.clone()),
+            BASE_NETWORK_ID + 1,
+            H160::from(SOURCE_CHANNEL_ADDR),
+        ));
+
+        assert_eq!(
+            ChannelOwners::<Test>::get(BASE_NETWORK_ID + 1, H160::from(SOURCE_CHANNEL_ADDR)),
+            Some(owner.clone())
+        );
+    });
+}
+
+#[test]
+fn test_register_existing_channel() {
+    new_tester(SOURCE_CHANNEL_ADDR.into()).execute_with(|| {
+        let owner: AccountId = Keyring::Charlie.into();
+
+        assert_noop!(
+            BasicInboundChannel::register_channel(
+                Origin::signed(owner.clone()),
+                BASE_NETWORK_ID,
+                H160::from(SOURCE_CHANNEL_ADDR),
+            ),
+            Error::<Test>::ChannelExists
+        );
+
+        assert_eq!(
+            ChannelOwners::<Test>::get(BASE_NETWORK_ID, H160::from(SOURCE_CHANNEL_ADDR)),
+            Some(Default::default())
         );
     });
 }

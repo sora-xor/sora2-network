@@ -3,6 +3,7 @@ use super::*;
 use frame_support::dispatch::DispatchError;
 use frame_support::traits::{Everything, GenesisBuild};
 use frame_support::{assert_noop, assert_ok, parameter_types};
+use hex_literal::hex;
 use sp_core::{H160, H256};
 use sp_keyring::AccountKeyring as Keyring;
 use sp_runtime::testing::Header;
@@ -14,6 +15,9 @@ use crate::outbound as basic_outbound_channel;
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
 type Block = frame_system::mocking::MockBlock<Test>;
+
+const BASE_NETWORK_ID: EthNetworkId = 12123;
+const SOURCE_CHANNEL_ADDR: [u8; 20] = hex!["2d02f2234d0B6e35D8d8fD77705f535ACe681327"];
 
 frame_support::construct_runtime!(
     pub enum Test where
@@ -81,7 +85,10 @@ pub fn new_tester() -> sp_io::TestExternalities {
 
     let config: basic_outbound_channel::GenesisConfig<Test> =
         basic_outbound_channel::GenesisConfig {
-            principal: Keyring::Bob.into(),
+            networks: vec![(
+                BASE_NETWORK_ID,
+                vec![(H160::from(SOURCE_CHANNEL_ADDR), Keyring::Bob.into())],
+            )],
             interval: 1u64,
         };
     config.assimilate_storage(&mut storage).unwrap();
@@ -98,11 +105,29 @@ fn test_submit() {
         let target = H160::zero();
         let who: AccountId = Keyring::Bob.into();
 
-        assert_ok!(BasicOutboundChannel::submit(&who, target, &vec![0, 1, 2]));
-        assert_eq!(<Nonce<Test>>::get(), 1);
+        assert_ok!(BasicOutboundChannel::submit(
+            &who,
+            BASE_NETWORK_ID,
+            H160::from(SOURCE_CHANNEL_ADDR),
+            target,
+            &vec![0, 1, 2]
+        ));
+        assert_eq!(
+            <ChannelNonces<Test>>::get(BASE_NETWORK_ID, H160::from(SOURCE_CHANNEL_ADDR)),
+            1
+        );
 
-        assert_ok!(BasicOutboundChannel::submit(&who, target, &vec![0, 1, 2]));
-        assert_eq!(<Nonce<Test>>::get(), 2);
+        assert_ok!(BasicOutboundChannel::submit(
+            &who,
+            BASE_NETWORK_ID,
+            H160::from(SOURCE_CHANNEL_ADDR),
+            target,
+            &vec![0, 1, 2]
+        ));
+        assert_eq!(
+            <ChannelNonces<Test>>::get(BASE_NETWORK_ID, H160::from(SOURCE_CHANNEL_ADDR)),
+            2
+        );
     });
 }
 
@@ -113,12 +138,26 @@ fn test_submit_exceeds_queue_limit() {
         let who: AccountId = Keyring::Bob.into();
 
         let max_messages = MaxMessagesPerCommit::get();
-        (0..max_messages)
-            .for_each(|_| BasicOutboundChannel::submit(&who, target, &vec![0, 1, 2]).unwrap());
+        (0..max_messages).for_each(|_| {
+            BasicOutboundChannel::submit(
+                &who,
+                BASE_NETWORK_ID,
+                H160::from(SOURCE_CHANNEL_ADDR),
+                target,
+                &vec![0, 1, 2],
+            )
+            .unwrap()
+        });
 
         assert_noop!(
-            BasicOutboundChannel::submit(&who, target, &vec![0, 1, 2]),
-            Error::<Test>::QueueSizeLimitReached,
+            BasicOutboundChannel::submit(
+                &who,
+                BASE_NETWORK_ID,
+                H160::from(SOURCE_CHANNEL_ADDR),
+                target,
+                &vec![0, 1, 2]
+            ),
+            Error::<Test>::QueueSizeLimitReached
         );
     })
 }
@@ -133,7 +172,13 @@ fn test_submit_exceeds_payload_limit() {
         let payload: Vec<u8> = (0..).take(max_payload_bytes as usize + 1).collect();
 
         assert_noop!(
-            BasicOutboundChannel::submit(&who, target, payload.as_slice()),
+            BasicOutboundChannel::submit(
+                &who,
+                BASE_NETWORK_ID,
+                H160::from(SOURCE_CHANNEL_ADDR),
+                target,
+                payload.as_slice()
+            ),
             Error::<Test>::PayloadTooLarge,
         );
     })
@@ -145,9 +190,15 @@ fn test_submit_fails_on_nonce_overflow() {
         let target = H160::zero();
         let who: AccountId = Keyring::Bob.into();
 
-        <Nonce<Test>>::set(u64::MAX);
+        <ChannelNonces<Test>>::insert(BASE_NETWORK_ID, H160::from(SOURCE_CHANNEL_ADDR), u64::MAX);
         assert_noop!(
-            BasicOutboundChannel::submit(&who, target, &vec![0, 1, 2]),
+            BasicOutboundChannel::submit(
+                &who,
+                BASE_NETWORK_ID,
+                H160::from(SOURCE_CHANNEL_ADDR),
+                target,
+                &vec![0, 1, 2]
+            ),
             Error::<Test>::Overflow,
         );
     });
@@ -160,7 +211,13 @@ fn test_submit_fails_not_authorized() {
         let who: AccountId = Keyring::Charlie.into();
 
         assert_noop!(
-            BasicOutboundChannel::submit(&who, target, &vec![0, 1, 2]),
+            BasicOutboundChannel::submit(
+                &who,
+                BASE_NETWORK_ID,
+                H160::from(SOURCE_CHANNEL_ADDR),
+                target,
+                &vec![0, 1, 2]
+            ),
             Error::<Test>::NotAuthorized,
         );
     });
@@ -172,7 +229,12 @@ fn test_set_principal_unauthorized() {
         let dave: AccountId = Keyring::Dave.into();
 
         assert_noop!(
-            BasicOutboundChannel::set_principal(Origin::signed(dave), Keyring::Alice.into()),
+            BasicOutboundChannel::set_principal(
+                Origin::signed(dave),
+                BASE_NETWORK_ID,
+                H160::from(SOURCE_CHANNEL_ADDR),
+                Keyring::Alice.into()
+            ),
             DispatchError::BadOrigin
         );
     });
@@ -185,8 +247,96 @@ fn test_set_principal() {
 
         assert_ok!(BasicOutboundChannel::set_principal(
             Origin::root(),
+            BASE_NETWORK_ID,
+            H160::from(SOURCE_CHANNEL_ADDR),
             alice.clone()
         ));
-        assert_eq!(<Principal<Test>>::get(), alice);
+        assert_eq!(
+            <ChannelOwners<Test>>::get(BASE_NETWORK_ID, H160::from(SOURCE_CHANNEL_ADDR))
+                .expect("Channel not found"),
+            alice
+        );
+    });
+}
+
+#[test]
+fn test_submit_with_wrong_network_id() {
+    new_tester().execute_with(|| {
+        let target = H160::zero();
+        let who: AccountId = Keyring::Bob.into();
+
+        assert_noop!(
+            BasicOutboundChannel::submit(
+                &who,
+                BASE_NETWORK_ID + 1,
+                H160::from(SOURCE_CHANNEL_ADDR),
+                target,
+                &vec![0, 1, 2]
+            ),
+            Error::<Test>::InvalidChannel
+        );
+
+        assert_eq!(
+            <ChannelNonces<Test>>::get(BASE_NETWORK_ID + 1, H160::from(SOURCE_CHANNEL_ADDR)),
+            0
+        );
+    });
+}
+
+#[test]
+fn test_submit_with_wrong_channel_address() {
+    new_tester().execute_with(|| {
+        let target = H160::zero();
+        let who: AccountId = Keyring::Bob.into();
+
+        assert_noop!(
+            BasicOutboundChannel::submit(
+                &who,
+                BASE_NETWORK_ID,
+                H160::repeat_byte(12),
+                target,
+                &vec![0, 1, 2]
+            ),
+            Error::<Test>::InvalidChannel
+        );
+
+        assert_eq!(
+            <ChannelNonces<Test>>::get(BASE_NETWORK_ID, H160::repeat_byte(12)),
+            0
+        );
+    });
+}
+
+#[test]
+fn test_register_channel() {
+    new_tester().execute_with(|| {
+        let who: AccountId = Keyring::Bob.into();
+
+        assert_ok!(BasicOutboundChannel::register_channel(
+            Origin::signed(who.clone()),
+            BASE_NETWORK_ID + 1,
+            H160::from(SOURCE_CHANNEL_ADDR)
+        ));
+
+        assert_eq!(
+            ChannelOwners::<Test>::get(BASE_NETWORK_ID + 1, H160::from(SOURCE_CHANNEL_ADDR)),
+            Some(who.clone())
+        );
+    });
+}
+
+#[test]
+fn test_register_channel_wrong() {
+    new_tester().execute_with(|| {
+        let who: AccountId = Keyring::Bob.into();
+
+        assert_noop!(
+            BasicOutboundChannel::register_channel(
+                Origin::signed(who.clone()),
+                BASE_NETWORK_ID,
+                H160::from(SOURCE_CHANNEL_ADDR)
+            ),
+            Error::<Test>::ChannelExists
+        );
     });
 }

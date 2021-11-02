@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"math/big"
 	"strconv"
-	"sync/atomic"
 	"time"
 
 	"golang.org/x/sync/errgroup"
@@ -31,7 +30,6 @@ type BeefyEthereumWriter struct {
 	beefyLightClient *beefylightclient.Contract
 	databaseMessages chan<- store.DatabaseCmd
 	beefyMessages    <-chan store.BeefyRelayInfo
-	contractId       int64
 }
 
 func NewBeefyEthereumWriter(
@@ -47,7 +45,6 @@ func NewBeefyEthereumWriter(
 		beefyDB:          beefyDB,
 		databaseMessages: databaseMessages,
 		beefyMessages:    beefyMessages,
-		contractId:       0,
 	}
 }
 
@@ -263,12 +260,6 @@ func BitfieldToString(bitfield []*big.Int) string {
 
 // WriteCompleteSignatureCommitment sends a CompleteSignatureCommitment tx to the BeefyLightClient contract
 func (wr *BeefyEthereumWriter) WriteCompleteSignatureCommitment(ctx context.Context, info store.BeefyRelayInfo) error {
-	ok := atomic.CompareAndSwapInt64(&wr.contractId, info.ContractID, info.ContractID+1)
-	if !ok {
-		log.WithFields(log.Fields{"expectedContractId": wr.contractId, "passedContractId": info.ContractID, "info": info}).Error("Wrong contract id, ignore")
-		return nil
-	}
-
 	beefyJustification, err := info.ToBeefyJustification()
 	if err != nil {
 		return fmt.Errorf("error converting BeefyRelayInfo to BeefyJustification: %s", err.Error())

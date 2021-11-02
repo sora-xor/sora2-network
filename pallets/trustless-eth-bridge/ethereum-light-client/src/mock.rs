@@ -267,8 +267,7 @@ pub fn log_payload() -> Vec<u8> {
 
 pub fn new_tester<T: crate::Config>() -> sp_io::TestExternalities {
     new_tester_with_config::<T>(crate::GenesisConfig {
-        initial_header: genesis_ethereum_header(),
-        initial_difficulty: 0.into(),
+        initial_networks: vec![(1, genesis_ethereum_header(), 0.into())],
     })
 }
 
