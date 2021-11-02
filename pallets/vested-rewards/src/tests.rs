@@ -172,37 +172,37 @@ fn should_update_market_making_pairs_correctly() {
         let origin = Origin::none();
 
         assert_noop!(
-            VestedRewards::allow_mm_pair(origin.clone(), ETH, XOR),
+            VestedRewards::set_asset_pair(origin.clone(), ETH, XOR, true),
             DispatchError::BadOrigin
         );
 
         let origin = Origin::root();
 
-        VestedRewards::allow_mm_pair(origin.clone(), ETH, XOR).unwrap();
+        VestedRewards::set_asset_pair(origin.clone(), ETH, XOR, true).unwrap();
 
         assert!(MarketMakingPairs::<Runtime>::contains_key(&ETH, &XOR));
 
         // we already have this pair, so it should return an error
         assert_noop!(
-            VestedRewards::allow_mm_pair(origin.clone(), XOR, ETH),
-            Error::<Runtime>::MmPairAlreadyExists
+            VestedRewards::set_asset_pair(origin.clone(), XOR, ETH, true),
+            Error::<Runtime>::MarketMakingPairAlreadyAllowed
         );
 
         let origin = Origin::none();
 
         assert_noop!(
-            VestedRewards::disallow_mm_pair(origin.clone(), ETH, XOR),
+            VestedRewards::set_asset_pair(origin.clone(), ETH, XOR, false),
             DispatchError::BadOrigin
         );
 
         let origin = Origin::root();
 
-        VestedRewards::disallow_mm_pair(origin.clone(), ETH, XOR).unwrap();
+        VestedRewards::set_asset_pair(origin.clone(), ETH, XOR, false).unwrap();
 
         // we don't have this pair anymore, so it should return an error
         assert_noop!(
-            VestedRewards::disallow_mm_pair(origin, ETH, XOR),
-            Error::<Runtime>::MmPairNotExist
+            VestedRewards::set_asset_pair(origin, ETH, XOR, false),
+            Error::<Runtime>::MarketMakingPairAlreadyDisallowed
         );
     });
 }

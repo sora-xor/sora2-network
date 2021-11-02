@@ -152,25 +152,14 @@ benchmarks! {
         }
     }
 
-    allow_market_making_pair {
+    set_asset_pair {
         let origin = T::Origin::root();
     }: {
-        Pallet::<T>::allow_mm_pair(origin, XOR.into(), ETH.into()).unwrap();
+        Pallet::<T>::set_asset_pair(origin, XOR.into(), ETH.into(), true).unwrap();
     }
     verify {
         assert!(
             MarketMakingPairs::<T>::contains_key(&T::AssetId::from(XOR), &T::AssetId::from(ETH)));
-    }
-
-    disallow_market_making_pair {
-        let origin = T::Origin::root();
-        Pallet::<T>::allow_mm_pair(origin.clone(), XOR.into(), ETH.into()).unwrap();
-    }: {
-        Pallet::<T>::disallow_mm_pair(origin, XOR.into(), ETH.into()).unwrap();
-    }
-    verify {
-        assert!(
-            !MarketMakingPairs::<T>::contains_key(&T::AssetId::from(XOR), &T::AssetId::from(ETH)));
     }
 }
 
@@ -186,8 +175,7 @@ mod tests {
             assert_ok!(test_benchmark_claim_rewards::<Runtime>());
             assert_ok!(test_benchmark_distribute_limits::<Runtime>());
             assert_ok!(test_benchmark_distribute_market_maker_rewards::<Runtime>());
-            assert_ok!(test_benchmark_allow_market_making_pair::<Runtime>());
-            assert_ok!(test_benchmark_disallow_market_making_pair::<Runtime>());
+            assert_ok!(test_benchmark_set_asset_pair::<Runtime>());
         });
     }
 }

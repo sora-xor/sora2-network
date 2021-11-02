@@ -93,8 +93,7 @@ pub struct MarketMakerInfo {
 pub trait WeightInfo {
     fn claim_incentives() -> Weight;
     fn on_initialize(_n: u32) -> Weight;
-    fn allow_mm_pair() -> Weight;
-    fn disallow_mm_pair() -> Weight;
+    fn set_asset_pair() -> Weight;
 }
 
 impl<T: Config> Pallet<T> {
@@ -359,37 +358,34 @@ pub mod pallet {
             Ok(Some(weight).into())
         }
 
-        /// Allow a market making pair.
-        #[pallet::weight(<T as Config>::WeightInfo::allow_mm_pair())]
+        /// Allow/disallow a market making pair.
+        #[pallet::weight(<T as Config>::WeightInfo::set_asset_pair())]
         #[transactional]
-        pub fn allow_mm_pair(
+        pub fn set_asset_pair(
             origin: OriginFor<T>,
             from_asset_id: T::AssetId,
             to_asset_id: T::AssetId,
+            market_making_rewards_allowed: bool,
         ) -> DispatchResultWithPostInfo {
             ensure_root(origin)?;
-            ensure!(
-                !MarketMakingPairs::<T>::contains_key(&from_asset_id, &to_asset_id),
-                Error::<T>::MmPairAlreadyExists
-            );
-            MarketMakingPairs::<T>::insert(from_asset_id, to_asset_id, ());
-            Ok(().into())
-        }
+            let error = if market_making_rewards_allowed {
+                Error::<T>::MarketMakingPairAlreadyAllowed
+            } else {
+                Error::<T>::MarketMakingPairAlreadyDisallowed
+            };
 
-        /// Disallow a market making pair.
-        #[pallet::weight(<T as Config>::WeightInfo::disallow_mm_pair())]
-        #[transactional]
-        pub fn disallow_mm_pair(
-            origin: OriginFor<T>,
-            from_asset_id: T::AssetId,
-            to_asset_id: T::AssetId,
-        ) -> DispatchResultWithPostInfo {
-            ensure_root(origin)?;
             ensure!(
-                MarketMakingPairs::<T>::contains_key(&from_asset_id, &to_asset_id),
-                Error::<T>::MmPairNotExist
+                MarketMakingPairs::<T>::contains_key(&from_asset_id, &to_asset_id)
+                    != market_making_rewards_allowed,
+                error
             );
-            MarketMakingPairs::<T>::remove(from_asset_id, to_asset_id);
+
+            if market_making_rewards_allowed {
+                MarketMakingPairs::<T>::insert(from_asset_id, to_asset_id, ());
+            } else {
+                MarketMakingPairs::<T>::remove(from_asset_id, to_asset_id);
+            }
+
             Ok(().into())
         }
     }
@@ -410,10 +406,10 @@ pub mod pallet {
         CantSubtractSnapshot,
         /// Failed to perform reward calculation.
         CantCalculateReward,
-        /// The market making pair already exists.
-        MmPairAlreadyExists,
-        /// The market making pair doesn't exist.
-        MmPairNotExist,
+        /// The market making pair already allowed.
+        MarketMakingPairAlreadyAllowed,
+        /// The market making pair is disallowed.
+        MarketMakingPairAlreadyDisallowed,
     }
 
     #[pallet::event]

@@ -75,11 +75,7 @@ impl<T: frame_system::Config> crate::WeightInfo for WeightInfo<T> {
         100_000_000 as Weight // TODO: benchmark
     }
 
-    fn allow_mm_pair() -> Weight {
-        EXTRINSIC_FIXED_WEIGHT
-    }
-
-    fn disallow_mm_pair() -> Weight {
+    fn set_asset_pair() -> Weight {
         EXTRINSIC_FIXED_WEIGHT
     }
 }
@@ -93,11 +89,7 @@ impl crate::WeightInfo for () {
         EXTRINSIC_FIXED_WEIGHT
     }
 
-    fn allow_mm_pair() -> Weight {
-        EXTRINSIC_FIXED_WEIGHT
-    }
-
-    fn disallow_mm_pair() -> Weight {
+    fn set_asset_pair() -> Weight {
         EXTRINSIC_FIXED_WEIGHT
     }
 }
