@@ -5681,6 +5681,7 @@ name = "pool-xyk"
 version = "1.2.0"
 dependencies = [
  "assets",
+ "ceres-liquidity-locker",
  "common",
  "dex-manager",
  "frame-support",

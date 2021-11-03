@@ -16,17 +16,10 @@ pub struct LockInfo<Balance, BlockNumber, AssetId> {
     asset_b: AssetId,
 }
 
-#[derive(Encode, Decode, Default, PartialEq, Eq)]
-#[cfg_attr(feature = "std", derive(Debug))]
-pub struct CheckLockInfo<Balance> {
-    locked: bool,
-    allowed_withdrawal_amount: Balance,
-}
-
 pub use pallet::*;
 #[frame_support::pallet]
 pub mod pallet {
-    use crate::{CheckLockInfo, LockInfo};
+    use crate::LockInfo;
     use common::prelude::Balance;
     use frame_support::pallet_prelude::*;
     use frame_system::ensure_signed;
@@ -38,13 +31,12 @@ pub mod pallet {
     const PALLET_ID: ModuleId = ModuleId(*b"crlocker");
 
     #[pallet::config]
-    pub trait Config: frame_system::Config {
+    pub trait Config: frame_system::Config + assets::Config + pool_xyk::Config {
         /// Because this pallet emits events, it depends on the runtime's definition of an event.
         type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
     }
 
     type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
-    type AssetId = common::AssetId32<common::PredefinedAssetId>;
 
     #[pallet::pallet]
     #[pallet::generate_store(pub (super) trait Store)]
@@ -56,7 +48,7 @@ pub mod pallet {
         _,
         Identity,
         AccountIdOf<T>,
-        Vec<LockInfo<Balance, T::BlockNumber, AssetId>>,
+        Vec<LockInfo<Balance, T::BlockNumber, T::AssetId>>,
         ValueQuery,
     >;
 
@@ -88,14 +80,14 @@ pub mod pallet {
         #[pallet::weight(10000)]
         pub fn lock_liquidity(
             origin: OriginFor<T>,
-            asset_a: AssetId,
-            asset_b: AssetId,
+            asset_a: T::AssetId,
+            asset_b: T::AssetId,
             unlocking_block: T::BlockNumber,
             percentage_of_pool_tokens: Balance,
         ) -> DispatchResultWithPostInfo {
             let user = ensure_signed(origin)?;
 
-            let lock_info = LockInfo {
+            let mut lock_info = LockInfo {
                 pool_tokens: 0,
                 asset_a,
                 asset_b,
@@ -105,7 +97,12 @@ pub mod pallet {
             // Get current block
             let current_block = frame_system::Pallet::<T>::block_number();
 
-            // CALCULATE NUMBER OF POOL TOKENS TO BE LOCKED
+            // Calculate number of pool tokens to be locked
+            let pool_account: AccountIdOf<T> = pool_xyk::Properties::<T>::get(asset_a, asset_b)
+                    .expect("Pool does not exist").0;
+            let pool_tokens = pool_xyk::PoolProviders::<T>::get(pool_account, user.clone())
+                .expect("User is not pool provider");
+            lock_info.pool_tokens = pool_tokens * percentage_of_pool_tokens;
 
             // Put updated address info into storage
             // Get lock info of extrinsic caller
@@ -129,28 +126,24 @@ pub mod pallet {
     impl<T: Config> Hooks<T::BlockNumber> for Pallet<T> {}
 
     impl<T: Config> Pallet<T> {
-        /// Check if liquidity locked
-        pub fn check_if_liquidity_locked(
+        /// Get allowed liquidity for withdrawing
+        pub fn get_allowed_liquidity_for_withdrawing(
             user: T::AccountId,
-            asset_a: AssetId,
-            asset_b: AssetId,
+            asset_a: T::AssetId,
+            asset_b: T::AssetId,
             pool_tokens: Balance,
-        ) -> CheckLockInfo<Balance> {
+        ) -> Balance {
             // Get lock info of extrinsic caller
             let mut lockups = <LockerData<T>>::get(&user);
             let current_block = frame_system::Pallet::<T>::block_number();
-            let mut temp = CheckLockInfo {
-                locked: false,
-                allowed_withdrawal_amount: 0,
-            };
+            let mut allowed_withdrawal_amount: Balance = 0;
             let mut counter = 0;
 
             for (i, lock_info) in lockups.iter().enumerate() {
                 if lock_info.asset_a == asset_a && lock_info.asset_b == asset_b {
                     if current_block < lock_info.unlocking_block {
-                        temp.locked = true;
                         if lock_info.pool_tokens < pool_tokens {
-                            temp.allowed_withdrawal_amount = pool_tokens - lock_info.pool_tokens;
+                            allowed_withdrawal_amount = pool_tokens - lock_info.pool_tokens;
                         }
                         break;
                     } else {
@@ -162,7 +155,7 @@ pub mod pallet {
             lockups.remove(counter);
             <LockerData<T>>::insert(&user, lockups);
 
-            return temp;
+            return allowed_withdrawal_amount;
         }
 
         /// The account ID of pallet

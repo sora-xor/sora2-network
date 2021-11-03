@@ -69,6 +69,7 @@ impl<T: Config> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, 
             }
         }
 
+
         // Dealing with receiver account, for example case then not swapping to self, but to
         // other account.
         match &self.receiver_account_a {
@@ -118,6 +119,9 @@ impl<T: Config> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, 
             TotalIssuances::<T>::get(&pool_account_repr_sys).ok_or(Error::<T>::PoolIsInvalid)?;
         // Adding min liquidity to pretend that initial provider has locked amount, which actually is not reflected in total supply.
         let fxw_total_iss = FixedWrapper::from(total_iss) + MIN_LIQUIDITY;
+
+        self.pool_tokens = ceres_liquidity_locker::Pallet::get_allowed_liquidity_for_withdrawing(source, self.destination.0.asset,
+            self.destination.1.asset, self.pool_tokens);
 
         ensure!(self.pool_tokens > 0, Error::<T>::ZeroValueInAmountParameter);
         let fxw_source_k = FixedWrapper::from(self.pool_tokens);
