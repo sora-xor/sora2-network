@@ -51,6 +51,7 @@ func NewBeefyEthereumListener(
 		beefyMessages:   beefyMessages,
 		headers:         headers,
 		blockWaitPeriod: 0,
+		contractId:      -1,
 	}
 }
 
