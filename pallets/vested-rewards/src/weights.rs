@@ -70,8 +70,13 @@ impl<T: frame_system::Config> crate::WeightInfo for WeightInfo<T> {
             .saturating_add(T::DbWeight::get().reads(10 as Weight))
             .saturating_add(T::DbWeight::get().writes(5 as Weight))
     }
+
     fn on_initialize(_n: u32) -> Weight {
         100_000_000 as Weight // TODO: benchmark
+    }
+
+    fn set_asset_pair() -> Weight {
+        EXTRINSIC_FIXED_WEIGHT
     }
 }
 
@@ -81,6 +86,10 @@ impl crate::WeightInfo for () {
     }
 
     fn on_initialize(_n: u32) -> Weight {
+        EXTRINSIC_FIXED_WEIGHT
+    }
+
+    fn set_asset_pair() -> Weight {
         EXTRINSIC_FIXED_WEIGHT
     }
 }
