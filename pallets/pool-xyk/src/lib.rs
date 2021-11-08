@@ -112,7 +112,7 @@ impl<T: Config> PoolXykPallet for Pallet<T> {
     }
 }
 
-impl<T: Config> Module<T> {
+impl<T: Config> Pallet<T> {
     fn initialize_pool_properties(
         dex_id: &T::DEXId,
         asset_a: &T::AssetId,
@@ -209,7 +209,7 @@ impl<T: Config> Module<T> {
         Ok((trading_pair, tech_acc_id, fee_acc_id))
     }
 
-    fn deposit_liquidity_unchecked(
+    pub fn deposit_liquidity_unchecked(
         source: AccountIdOf<T>,
         dex_id: DEXIdOf<T>,
         input_asset_a: AssetIdOf<T>,

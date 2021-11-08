@@ -348,13 +348,18 @@ impl<T: Config> Pallet<T> {
                     .into_iter()
                     .filter(|(_src, part_amount)| part_amount.amount() > balance!(0))
                     .map(|(src, part_amount)| {
+                        let part_amount = part_amount.amount();
+                        let part_limit = (FixedWrapper::from(part_amount) / amount.amount()
+                            * amount.limit())
+                        .try_into_balance()
+                        .map_err(|_| Error::CalculationError::<T>)?;
                         T::LiquidityRegistry::exchange(
                             sender,
                             receiver,
                             &src,
                             input_asset_id,
                             output_asset_id,
-                            amount.copy_direction(part_amount.amount(), amount.limit()),
+                            amount.copy_direction(part_amount, part_limit),
                         )
                     })
                     .collect::<Result<Vec<SwapOutcome<Balance>>, DispatchError>>()?;

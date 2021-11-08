@@ -1788,6 +1788,12 @@ pub fn ext() -> sp_io::TestExternalities {
     sp_io::TestExternalities::new(storage)
 }
 
+#[cfg(all(feature = "test", feature = "private-net"))]
+pub fn staging_coded_ext() -> sp_io::TestExternalities {
+    let storage = staging_net_coded(false).build_storage().unwrap();
+    sp_io::TestExternalities::new(storage)
+}
+
 #[cfg(test)]
 mod tests {
     use hex_literal::hex;

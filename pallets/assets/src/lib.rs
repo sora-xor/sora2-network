@@ -383,7 +383,7 @@ pub mod pallet {
     /// Asset Id -> Owner Account Id
     #[pallet::storage]
     #[pallet::getter(fn asset_owner)]
-    pub(super) type AssetOwners<T: Config> =
+    pub type AssetOwners<T: Config> =
         StorageMap<_, Twox64Concat, T::AssetId, T::AccountId, OptionQuery>;
 
     /// Asset Id -> (Symbol, Precision, Is Mintable)

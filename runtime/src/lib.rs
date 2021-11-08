@@ -2074,3 +2074,84 @@ impl_runtime_apis! {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use common::fixnum::ops::CheckedMul;
+    use common::PredefinedAssetId::XSTUSD;
+    use common::{balance, DAI, XOR};
+    use price_tools::AVG_BLOCK_SPAN;
+
+    use super::*;
+
+    pub fn alice() -> AccountId {
+        AccountId::from([1u8; 32])
+    }
+
+    #[test]
+    fn should_swap_with_split_between_multiple_sources_adjusting_limits() {
+        framenode_chain_spec::staging_coded_ext().execute_with(|| {
+            let allowed = [LiquiditySourceType::XSTPool, LiquiditySourceType::XYKPool].to_vec();
+            let xor_owner = assets::pallet::AssetOwners::<Runtime>::get(&XOR).unwrap();
+            let xor_balance = balance!(100000);
+            let xst_balance = balance!(40000000);
+            assets::Pallet::<Runtime>::mint_to(
+                &XOR,
+                &xor_owner,
+                &alice(),
+                (Fixed::from_bits(xor_balance as i128).cmul(2))
+                    .unwrap()
+                    .into_bits() as _,
+            )
+            .unwrap();
+            assets::Pallet::<Runtime>::mint_to(
+                &XSTUSD.into(),
+                &xor_owner,
+                &alice(),
+                xst_balance * 2,
+            )
+            .unwrap();
+
+            let dex_root_tech_account_id =
+                TechAccountId::Generic(b"SYSTEM_ACCOUNT".to_vec(), b"DEX_ROOT".to_vec());
+            let dex_root_account_id = technical::Module::<Runtime>::tech_account_id_to_account_id(
+                &dex_root_tech_account_id,
+            )
+            .unwrap();
+            pool_xyk::Pallet::<Runtime>::initialize_pool(
+                Origin::signed(dex_root_account_id.clone()),
+                0,
+                XOR,
+                XSTUSD.into(),
+            )
+            .unwrap();
+
+            pool_xyk::Pallet::<Runtime>::deposit_liquidity_unchecked(
+                alice(),
+                0,
+                XOR,
+                XSTUSD.into(),
+                xor_balance,
+                xst_balance,
+                xor_balance,
+                xst_balance,
+            )
+            .unwrap();
+
+            for _ in 1..=AVG_BLOCK_SPAN {
+                PriceTools::incoming_spot_price(&DAI, balance!(410)).unwrap();
+            }
+
+            LiquidityProxy::swap(
+                Origin::signed(alice()),
+                0,
+                XSTUSD.into(),
+                GetBaseAssetId::get(),
+                SwapAmount::with_desired_input(balance!(4935598), balance!(11837)),
+                allowed.clone(),
+                FilterMode::AllowSelected,
+            )
+            .expect("Failed to swap");
+        });
+    }
+}
