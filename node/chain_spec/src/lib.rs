@@ -54,7 +54,7 @@ use framenode_runtime::{
     LiquiditySourceType, MulticollateralBondingCurvePoolConfig, PermissionsConfig,
     PswapDistributionConfig, RewardsConfig, Runtime, SS58Prefix, SessionConfig, StakerStatus,
     StakingConfig, SystemConfig, TechAccountId, TechnicalConfig, TokensConfig, TradingPairConfig,
-    XSTPoolConfig, WASM_BINARY
+    XSTPoolConfig, WASM_BINARY,
 };
 use hex_literal::hex;
 use permissions::Scope;
