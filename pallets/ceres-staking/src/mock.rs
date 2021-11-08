@@ -1,7 +1,7 @@
 use crate::{self as ceres_staking};
 use common::mock::ExistentialDeposits;
 use common::prelude::Balance;
-use common::{balance, AssetId32};
+use common::{balance, AssetId32, AssetSymbol, AssetName, BalancePrecision};
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{GenesisBuild, Hooks};
 use frame_support::weights::Weight;
@@ -11,7 +11,7 @@ use frame_system::pallet_prelude::BlockNumberFor;
 use hex_literal::hex;
 use sp_core::H256;
 use sp_runtime::testing::Header;
-use sp_runtime::traits::{BlakeTwo256, IdentityLookup};
+use sp_runtime::traits::{BlakeTwo256, IdentityLookup, Zero};
 use sp_runtime::Perbill;
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
@@ -154,12 +154,32 @@ impl pallet_balances::Config for Runtime {
 }
 
 pub struct ExtBuilder {
+    endowed_assets: Vec<(
+        AssetId,
+        AccountId,
+        AssetSymbol,
+        AssetName,
+        BalancePrecision,
+        Balance,
+        bool,
+    )>,
     endowed_accounts: Vec<(AccountId, AssetId, Balance)>,
 }
 
 impl Default for ExtBuilder {
     fn default() -> Self {
         Self {
+            endowed_assets: vec![
+                (
+                    CERES_ASSET_ID,
+                    ALICE,
+                    AssetSymbol(b"CERES".to_vec()),
+                    AssetName(b"Ceres".to_vec()),
+                    18,
+                    Balance::zero(),
+                    true,
+                ),
+            ],
             endowed_accounts: vec![
                 (ALICE, CERES_ASSET_ID, balance!(7300)),
                 (BOB, CERES_ASSET_ID, balance!(100)),
@@ -185,6 +205,12 @@ impl ExtBuilder {
         PermissionsConfig {
             initial_permission_owners: vec![],
             initial_permissions: vec![],
+        }
+        .assimilate_storage(&mut t)
+        .unwrap();
+
+        assets::GenesisConfig::<Runtime> {
+            endowed_assets: self.endowed_assets,
         }
         .assimilate_storage(&mut t)
         .unwrap();
