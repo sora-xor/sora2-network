@@ -35,7 +35,7 @@ use crate::{
     Weight, XorBurnedWeight, XorFee, XorIntoValBurnedWeight,
 };
 use common::mock::{alice, bob, charlie};
-use common::prelude::constants::SMALL_FEE;
+use common::prelude::constants::{BIG_FEE, SMALL_FEE};
 use common::prelude::{AssetName, AssetSymbol, FixedWrapper, SwapAmount, WeightToFixedFee};
 use common::{balance, fixed_wrapper, FilterMode, VAL, XOR};
 use frame_support::assert_ok;
@@ -272,38 +272,37 @@ fn custom_fees_work() {
         let weight_fee = WeightToFixedFee::calc(&MOCK_WEIGHT);
 
         // A ten-fold extrinsic; fee is 0.007 XOR
-        let call: &<Runtime as frame_system::Config>::Call = &Call::Assets(assets::Call::register(
-            AssetSymbol(b"ALIC".to_vec()),
-            AssetName(b"ALICE".to_vec()),
-            balance!(0),
-            true,
-            false,
-            None,
-            None,
-        ));
+        let calls: Vec<<Runtime as frame_system::Config>::Call> = vec![
+            Call::Assets(assets::Call::register(
+                AssetSymbol(b"ALIC".to_vec()),
+                AssetName(b"ALICE".to_vec()),
+                balance!(0),
+                true,
+                false,
+                None,
+                None,
+            )),
+            Call::VestedRewards(vested_rewards::Call::claim_rewards()),
+        ];
 
-        let pre = ChargeTransactionPayment::<Runtime>::from(0u128.into())
-            .pre_dispatch(&alice(), call, &dispatch_info, len)
-            .unwrap();
-        let balance_after_fee_withdrawal =
-            FixedWrapper::from(INITIAL_BALANCE) - fixed_wrapper!(0.007);
-        let balance_after_fee_withdrawal = balance_after_fee_withdrawal.into_balance();
-        assert_eq!(
-            Balances::free_balance(alice()),
-            balance_after_fee_withdrawal
-        );
-        assert!(ChargeTransactionPayment::<Runtime>::post_dispatch(
-            pre,
-            &dispatch_info,
-            &default_post_info(),
-            len,
-            &Ok(())
-        )
-        .is_ok());
-        assert_eq!(
-            Balances::free_balance(alice()),
-            balance_after_fee_withdrawal
-        );
+        let mut balance_after_fee_withdrawal = FixedWrapper::from(INITIAL_BALANCE);
+        for call in calls {
+            let pre = ChargeTransactionPayment::<Runtime>::from(0u128.into())
+                .pre_dispatch(&alice(), &call, &dispatch_info, len)
+                .unwrap();
+            balance_after_fee_withdrawal = balance_after_fee_withdrawal - BIG_FEE;
+            let result = balance_after_fee_withdrawal.clone().into_balance();
+            assert_eq!(Balances::free_balance(alice()), result,);
+            assert!(ChargeTransactionPayment::<Runtime>::post_dispatch(
+                pre,
+                &dispatch_info,
+                &default_post_info(),
+                len,
+                &Ok(())
+            )
+            .is_ok());
+            assert_eq!(Balances::free_balance(alice()), result,);
+        }
 
         // A normal extrinsic; fee is 0.0007 XOR
         let call: &<Runtime as frame_system::Config>::Call =
@@ -312,8 +311,7 @@ fn custom_fees_work() {
         let pre = ChargeTransactionPayment::<Runtime>::from(0u128.into())
             .pre_dispatch(&alice(), call, &dispatch_info, len)
             .unwrap();
-        let balance_after_fee_withdrawal =
-            FixedWrapper::from(balance_after_fee_withdrawal) - fixed_wrapper!(0.0007);
+        let balance_after_fee_withdrawal = balance_after_fee_withdrawal - SMALL_FEE;
         let balance_after_fee_withdrawal = balance_after_fee_withdrawal.into_balance();
         assert_eq!(
             Balances::free_balance(alice()),
