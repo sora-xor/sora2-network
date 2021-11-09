@@ -1,7 +1,7 @@
 use crate::{self as ceres_staking};
 use common::mock::ExistentialDeposits;
 use common::prelude::Balance;
-use common::{balance, AssetId32, AssetSymbol, AssetName, BalancePrecision};
+use common::{balance, AssetId32, AssetName, AssetSymbol, BalancePrecision};
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{GenesisBuild, Hooks};
 use frame_support::weights::Weight;
@@ -169,17 +169,15 @@ pub struct ExtBuilder {
 impl Default for ExtBuilder {
     fn default() -> Self {
         Self {
-            endowed_assets: vec![
-                (
-                    CERES_ASSET_ID,
-                    ALICE,
-                    AssetSymbol(b"CERES".to_vec()),
-                    AssetName(b"Ceres".to_vec()),
-                    18,
-                    Balance::zero(),
-                    true,
-                ),
-            ],
+            endowed_assets: vec![(
+                CERES_ASSET_ID,
+                ALICE,
+                AssetSymbol(b"CERES".to_vec()),
+                AssetName(b"Ceres".to_vec()),
+                18,
+                Balance::zero(),
+                true,
+            )],
             endowed_accounts: vec![
                 (ALICE, CERES_ASSET_ID, balance!(7300)),
                 (BOB, CERES_ASSET_ID, balance!(100)),
