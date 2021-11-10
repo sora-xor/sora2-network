@@ -518,6 +518,7 @@ impl LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> for Mock
         input_asset_id: &AssetId,
         output_asset_id: &AssetId,
         amount: QuoteAmount<Balance>,
+        deduce_fee: bool,
     ) -> Result<SwapOutcome<Balance>, DispatchError> {
         if !Self::can_exchange(dex_id, input_asset_id, output_asset_id) {
             panic!("Can't exchange");
@@ -546,7 +547,11 @@ impl LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> for Mock
                 .get()
                 .unwrap();
 
-            let extra_fee = FixedWrapper::from(undercollaterization_charge(collateralization));
+            let extra_fee = if deduce_fee {
+                FixedWrapper::from(undercollaterization_charge(collateralization))
+            } else {
+                0.into()
+            };
 
             match amount {
                 QuoteAmount::WithDesiredInput {
@@ -652,9 +657,10 @@ impl LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> for Mock
         input_asset_id: &AssetId,
         output_asset_id: &AssetId,
         amount: QuoteAmount<Balance>,
+        deduce_fee: bool,
     ) -> Result<SwapOutcome<Balance>, DispatchError> {
         // TODO: implement if needed
-        Self::quote(dex_id, input_asset_id, output_asset_id, amount)
+        Self::quote(dex_id, input_asset_id, output_asset_id, amount, deduce_fee)
     }
 }
 
@@ -872,6 +878,7 @@ impl LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> for Mock
         input_asset_id: &AssetId,
         output_asset_id: &AssetId,
         amount: QuoteAmount<Balance>,
+        _deduce_fee: bool,
     ) -> Result<SwapOutcome<Balance>, DispatchError> {
         if !Self::can_exchange(dex_id, input_asset_id, output_asset_id) {
             panic!("Can't exchange");
@@ -955,9 +962,10 @@ impl LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> for Mock
         input_asset_id: &AssetId,
         output_asset_id: &AssetId,
         amount: QuoteAmount<Balance>,
+        deduce_fee: bool,
     ) -> Result<SwapOutcome<Balance>, DispatchError> {
         // TODO: implement if needed
-        Self::quote(dex_id, input_asset_id, output_asset_id, amount)
+        Self::quote(dex_id, input_asset_id, output_asset_id, amount, deduce_fee)
     }
 }
 

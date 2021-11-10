@@ -328,6 +328,7 @@ impl<T: Config> Pallet<T> {
             &asset_id,
             QuoteAmount::with_desired_input(balance!(1)),
             Self::secondary_market_filter(),
+            false,
         )
         .map(|so| so.amount)
     }

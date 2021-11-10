@@ -328,6 +328,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         input_asset_id: &T::AssetId,
         output_asset_id: &T::AssetId,
         amount: QuoteAmount<Balance>,
+        deduce_fee: bool,
     ) -> Result<SwapOutcome<Balance>, DispatchError> {
         // Get pool account.
         let (_, tech_acc_id) = Module::<T>::tech_account_from_dex_and_asset_pair(
@@ -361,6 +362,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
                     &reserve_input,
                     &reserve_output,
                     &desired_amount_in,
+                    deduce_fee,
                 )?;
                 Ok(SwapOutcome::new(calculated, fee))
             }
@@ -371,6 +373,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
                     &reserve_input,
                     &reserve_output,
                     &desired_amount_out,
+                    deduce_fee,
                 )?;
                 Ok(SwapOutcome::new(calculated, fee))
             }
@@ -453,6 +456,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         input_asset_id: &T::AssetId,
         output_asset_id: &T::AssetId,
         amount: QuoteAmount<Balance>,
+        deduce_fee: bool,
     ) -> Result<SwapOutcome<Balance>, DispatchError> {
         // Get pool account.
         let (_, tech_acc_id) = Module::<T>::tech_account_from_dex_and_asset_pair(
@@ -478,7 +482,11 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
             Module::<T>::decide_is_fee_from_destination(input_asset_id, output_asset_id)?;
 
         let input_price_wrt_output = FixedWrapper::from(reserve_output) / reserve_input;
-        let fee_fraction = T::GetFee::get();
+        let fee_fraction = if deduce_fee {
+            T::GetFee::get()
+        } else {
+            common::Fixed::default()
+        };
         Ok(match amount {
             QuoteAmount::WithDesiredInput { desired_amount_in } => {
                 let (output, fee_amount) = if get_fee_from_destination {

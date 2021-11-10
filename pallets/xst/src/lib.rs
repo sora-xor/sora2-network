@@ -436,6 +436,7 @@ impl<T: Config> Module<T> {
         main_asset_id: &T::AssetId,
         synthetic_asset_id: &T::AssetId,
         amount: QuoteAmount<Balance>,
+        deduce_fee: bool,
     ) -> Result<(Balance, Balance, Balance), DispatchError> {
         Ok(match amount {
             QuoteAmount::WithDesiredInput { desired_amount_in } => {
@@ -446,18 +447,26 @@ impl<T: Config> Module<T> {
                 )?)
                 .try_into_balance()
                 .map_err(|_| Error::<T>::PriceCalculationFailed)?;
-                let fee_amount = (FixedWrapper::from(BaseFee::<T>::get()) * output_amount)
-                    .try_into_balance()
-                    .map_err(|_| Error::<T>::PriceCalculationFailed)?;
-                output_amount = output_amount.saturating_sub(fee_amount);
-                (desired_amount_in, output_amount, fee_amount)
+                if deduce_fee {
+                    let fee_amount = (FixedWrapper::from(BaseFee::<T>::get()) * output_amount)
+                        .try_into_balance()
+                        .map_err(|_| Error::<T>::PriceCalculationFailed)?;
+                    output_amount = output_amount.saturating_sub(fee_amount);
+                    (desired_amount_in, output_amount, fee_amount)
+                } else {
+                    (desired_amount_in, output_amount, 0)
+                }
             }
 
             QuoteAmount::WithDesiredOutput { desired_amount_out } => {
-                let desired_amount_out_with_fee = (FixedWrapper::from(desired_amount_out)
-                    / (fixed_wrapper!(1) - BaseFee::<T>::get()))
-                .try_into_balance()
-                .map_err(|_| Error::<T>::PriceCalculationFailed)?;
+                let desired_amount_out_with_fee = if deduce_fee {
+                    (FixedWrapper::from(desired_amount_out)
+                        / (fixed_wrapper!(1) - BaseFee::<T>::get()))
+                    .try_into_balance()
+                    .map_err(|_| Error::<T>::PriceCalculationFailed)?
+                } else {
+                    desired_amount_out
+                };
                 let input_amount = Self::buy_price(
                     main_asset_id,
                     synthetic_asset_id,
@@ -483,13 +492,18 @@ impl<T: Config> Module<T> {
         main_asset_id: &T::AssetId,
         collateral_asset_id: &T::AssetId,
         amount: QuoteAmount<Balance>,
+        deduce_fee: bool,
     ) -> Result<(Balance, Balance, Balance), DispatchError> {
         Ok(match amount {
             QuoteAmount::WithDesiredInput { desired_amount_in } => {
-                let fee_ratio = FixedWrapper::from(BaseFee::<T>::get());
-                let fee_amount = (fee_ratio * FixedWrapper::from(desired_amount_in))
-                    .try_into_balance()
-                    .map_err(|_| Error::<T>::PriceCalculationFailed)?;
+                let fee_amount = if deduce_fee {
+                    let fee_ratio = FixedWrapper::from(BaseFee::<T>::get());
+                    (fee_ratio * FixedWrapper::from(desired_amount_in))
+                        .try_into_balance()
+                        .map_err(|_| Error::<T>::PriceCalculationFailed)?
+                } else {
+                    0
+                };
                 let output_amount = Self::sell_price(
                     main_asset_id,
                     collateral_asset_id,
@@ -511,17 +525,21 @@ impl<T: Config> Module<T> {
                 )?)
                 .try_into_balance()
                 .map_err(|_| Error::<T>::PriceCalculationFailed)?;
-                let fee_ratio = FixedWrapper::from(BaseFee::<T>::get());
-                let input_amount_with_fee =
-                    FixedWrapper::from(input_amount) / (fixed_wrapper!(1) - fee_ratio);
-                let input_amount_with_fee = input_amount_with_fee
-                    .try_into_balance()
-                    .map_err(|_| Error::<T>::PriceCalculationFailed)?;
-                (
-                    input_amount_with_fee,
-                    desired_amount_out,
-                    input_amount_with_fee.saturating_sub(input_amount),
-                )
+                if deduce_fee {
+                    let fee_ratio = FixedWrapper::from(BaseFee::<T>::get());
+                    let input_amount_with_fee =
+                        FixedWrapper::from(input_amount) / (fixed_wrapper!(1) - fee_ratio);
+                    let input_amount_with_fee = input_amount_with_fee
+                        .try_into_balance()
+                        .map_err(|_| Error::<T>::PriceCalculationFailed)?;
+                    (
+                        input_amount_with_fee,
+                        desired_amount_out,
+                        input_amount_with_fee.saturating_sub(input_amount),
+                    )
+                } else {
+                    (input_amount, desired_amount_out, 0)
+                }
             }
         })
     }
@@ -546,9 +564,19 @@ impl<T: Config> Module<T> {
 
             let base_asset_id = &T::GetBaseAssetId::get();
             let (input_amount, output_amount, fee_amount) = if input_asset_id == base_asset_id {
-                Self::decide_sell_amounts(&input_asset_id, &output_asset_id, swap_amount.into())?
+                Self::decide_sell_amounts(
+                    &input_asset_id,
+                    &output_asset_id,
+                    swap_amount.into(),
+                    true,
+                )?
             } else {
-                Self::decide_buy_amounts(&output_asset_id, &input_asset_id, swap_amount.into())?
+                Self::decide_buy_amounts(
+                    &output_asset_id,
+                    &input_asset_id,
+                    swap_amount.into(),
+                    true,
+                )?
             };
 
             let result = match swap_amount {
@@ -655,15 +683,16 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         input_asset_id: &T::AssetId,
         output_asset_id: &T::AssetId,
         amount: QuoteAmount<Balance>,
+        deduce_fee: bool,
     ) -> Result<SwapOutcome<Balance>, DispatchError> {
         if !Self::can_exchange(dex_id, input_asset_id, output_asset_id) {
             fail!(Error::<T>::CantExchange);
         }
         let base_asset_id = &T::GetBaseAssetId::get();
         let (input_amount, output_amount, fee_amount) = if input_asset_id == base_asset_id {
-            Self::decide_sell_amounts(&input_asset_id, &output_asset_id, amount)?
+            Self::decide_sell_amounts(&input_asset_id, &output_asset_id, amount, deduce_fee)?
         } else {
-            Self::decide_buy_amounts(&output_asset_id, &input_asset_id, amount)?
+            Self::decide_buy_amounts(&output_asset_id, &input_asset_id, amount, deduce_fee)?
         };
         match amount {
             QuoteAmount::WithDesiredInput { .. } => Ok(SwapOutcome::new(output_amount, fee_amount)),
@@ -709,10 +738,11 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         input_asset_id: &T::AssetId,
         output_asset_id: &T::AssetId,
         amount: QuoteAmount<Balance>,
+        deduce_fee: bool,
     ) -> Result<SwapOutcome<Balance>, DispatchError> {
         // no impact, because price is linear
         // TODO: consider optimizing additional call by introducing NoImpact enum variant
-        Self::quote(dex_id, input_asset_id, output_asset_id, amount)
+        Self::quote(dex_id, input_asset_id, output_asset_id, amount, deduce_fee)
     }
 }
 

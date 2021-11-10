@@ -61,6 +61,7 @@ fn test_quote_exact_input_base_should_pass() {
             QuoteAmount::with_desired_input(amount),
             mcbc_excluding_filter(DEX_C_ID),
             false,
+            true,
         )
         .expect("Failed to get a quote");
 
@@ -69,6 +70,7 @@ fn test_quote_exact_input_base_should_pass() {
             &DOT,
             QuoteAmount::with_desired_input(amount),
             mcbc_excluding_filter(DEX_C_ID),
+            true,
         )
         .expect("Failed to get a quote via LiquiditySource trait");
 
@@ -116,6 +118,7 @@ fn test_quote_exact_input_target_should_pass() {
             QuoteAmount::with_desired_input(amount),
             mcbc_excluding_filter(DEX_C_ID),
             false,
+            true,
         )
         .expect("Failed to get a quote");
 
@@ -124,6 +127,7 @@ fn test_quote_exact_input_target_should_pass() {
             &GetBaseAssetId::get(),
             QuoteAmount::with_desired_input(amount),
             mcbc_excluding_filter(DEX_C_ID),
+            true,
         )
         .expect("Failed to get a quote via LiquiditySource trait");
 
@@ -171,6 +175,7 @@ fn test_quote_exact_output_target_should_pass() {
             QuoteAmount::with_desired_output(amount),
             mcbc_excluding_filter(DEX_C_ID),
             false,
+            true,
         )
         .expect("Failed to get a quote");
 
@@ -179,6 +184,7 @@ fn test_quote_exact_output_target_should_pass() {
             &DOT,
             QuoteAmount::with_desired_output(amount),
             mcbc_excluding_filter(DEX_C_ID),
+            true,
         )
         .expect("Failed to get a quote via LiquiditySource trait");
 
@@ -237,6 +243,7 @@ fn test_quote_exact_output_base_should_pass() {
             QuoteAmount::with_desired_output(amount),
             mcbc_excluding_filter(DEX_C_ID),
             false,
+            true,
         )
         .expect("Failed to get a quote");
 
@@ -245,6 +252,7 @@ fn test_quote_exact_output_base_should_pass() {
             &GetBaseAssetId::get(),
             QuoteAmount::with_desired_output(amount),
             mcbc_excluding_filter(DEX_C_ID),
+            true,
         )
         .expect("Failed to get a quote via LiquiditySource trait");
 
@@ -301,6 +309,7 @@ fn test_poly_quote_exact_input_1_should_pass() {
             QuoteAmount::with_desired_input(balance!(100)),
             LiquiditySourceFilter::empty(DEX_A_ID),
             false,
+            true,
         )
         .expect("Failed to get a quote");
 
@@ -309,6 +318,7 @@ fn test_poly_quote_exact_input_1_should_pass() {
             &DOT,
             QuoteAmount::with_desired_input(balance!(100)),
             LiquiditySourceFilter::empty(DEX_A_ID),
+            true,
         )
         .expect("Failed to get a quote via LiquiditySource trait");
 
@@ -342,6 +352,7 @@ fn test_poly_quote_exact_output_1_should_pass() {
             QuoteAmount::with_desired_output(balance!(934.572151021276260545)),
             LiquiditySourceFilter::empty(DEX_A_ID),
             false,
+            true,
         )
         .expect("Failed to get a quote");
 
@@ -350,6 +361,7 @@ fn test_poly_quote_exact_output_1_should_pass() {
             &DOT,
             SwapAmount::with_desired_output(balance!(934.572151021276260545), balance!(101)).into(),
             LiquiditySourceFilter::empty(DEX_A_ID),
+            true,
         )
         .expect("Failed to get a quote via LiquiditySource trait");
 
@@ -383,6 +395,7 @@ fn test_poly_quote_exact_input_2_should_pass() {
             QuoteAmount::with_desired_input(balance!(500)),
             LiquiditySourceFilter::empty(DEX_A_ID),
             false,
+            true,
         )
         .expect("Failed to get a quote");
 
@@ -391,6 +404,7 @@ fn test_poly_quote_exact_input_2_should_pass() {
             &KSM,
             QuoteAmount::with_desired_input(balance!(500)),
             LiquiditySourceFilter::empty(DEX_A_ID),
+            true,
         )
         .expect("Failed to get a quote via LiquiditySource trait");
 
@@ -424,6 +438,7 @@ fn test_poly_quote_exact_output_2_should_pass() {
             QuoteAmount::with_desired_output(balance!(555.083861089846196673)),
             LiquiditySourceFilter::empty(DEX_A_ID),
             false,
+            true,
         )
         .expect("Failed to get a quote");
 
@@ -432,6 +447,7 @@ fn test_poly_quote_exact_output_2_should_pass() {
             &KSM,
             QuoteAmount::with_desired_output(balance!(555.083861089846196673)),
             LiquiditySourceFilter::empty(DEX_A_ID),
+            true,
         )
         .expect("Failed to get a quote via LiquiditySource trait");
 
@@ -625,6 +641,7 @@ fn test_quote_should_fail_with_unavailable_exchange_path() {
             QuoteAmount::with_desired_output(balance!(300)),
             mcbc_excluding_filter(DEX_C_ID),
             false,
+            true,
         );
         assert_noop!(result, <Error<Runtime>>::UnavailableExchangePath);
     });
@@ -650,6 +667,7 @@ fn test_quote_should_fail_with_unavailable_exchange_path_2() {
                 .into(),
             ),
             false,
+            true,
         );
         assert_noop!(result, <Error<Runtime>>::UnavailableExchangePath);
     });
@@ -665,6 +683,7 @@ fn test_quote_should_fail_with_aggregation_error() {
             QuoteAmount::with_desired_output(balance!(5000)),
             mcbc_excluding_filter(DEX_C_ID),
             false,
+            true,
         );
         assert_noop!(result, Error::<Runtime>::UnavailableExchangePath);
     });
@@ -770,6 +789,7 @@ fn test_fee_when_exchange_on_one_source_of_many_should_pass() {
             QuoteAmount::with_desired_output(amount),
             filter,
             false,
+            true,
         )
         .expect("Failed to get a quote");
         assert_eq!(quotes.fee, balance!(0.630925033164008153));
@@ -788,6 +808,7 @@ fn test_quote_single_source_should_pass() {
             QuoteAmount::with_desired_input(amount),
             LiquiditySourceFilter::with_allowed(DEX_C_ID, [LiquiditySourceType::MockPool].into()),
             false,
+            true,
         )
         .expect("Failed to get a quote");
 
@@ -796,6 +817,7 @@ fn test_quote_single_source_should_pass() {
             &DOT,
             QuoteAmount::with_desired_input(amount),
             LiquiditySourceFilter::with_allowed(DEX_C_ID, [LiquiditySourceType::MockPool].into()),
+            true,
         )
         .expect("Failed to get a quote via LiquiditySource trait");
 
@@ -836,6 +858,7 @@ fn test_quote_fast_split_exact_input_base_should_pass() {
             QuoteAmount::with_desired_input(balance!(100)),
             filter.clone(),
             false,
+            true,
         )
         .expect("Failed to get a quote");
 
@@ -861,6 +884,7 @@ fn test_quote_fast_split_exact_input_base_should_pass() {
             QuoteAmount::with_desired_input(balance!(200)),
             filter.clone(),
             false,
+            true,
         )
         .expect("Failed to get a quote");
 
@@ -893,6 +917,7 @@ fn test_quote_fast_split_exact_input_base_should_pass() {
             QuoteAmount::with_desired_input(balance!(200)),
             filter.clone(),
             false,
+            true,
         )
         .expect("Failed to get a quote");
 
@@ -941,6 +966,7 @@ fn test_quote_fast_split_exact_output_target_should_pass() {
             QuoteAmount::with_desired_output(balance!(20000)),
             filter.clone(),
             false,
+            true,
         )
         .expect("Failed to get a quote");
 
@@ -966,6 +992,7 @@ fn test_quote_fast_split_exact_output_target_should_pass() {
             QuoteAmount::with_desired_output(balance!(200)),
             filter.clone(),
             false,
+            true,
         )
         .expect("Failed to get a quote");
 
@@ -998,6 +1025,7 @@ fn test_quote_fast_split_exact_output_target_should_pass() {
             QuoteAmount::with_desired_output(balance!(1000)),
             filter.clone(),
             false,
+            true,
         )
         .expect("Failed to get a quote");
 
@@ -1037,6 +1065,7 @@ fn test_quote_fast_split_exact_output_base_should_pass() {
             QuoteAmount::with_desired_output(balance!(100)),
             filter.clone(),
             false,
+            true,
         )
         .expect("Failed to get a quote");
 
@@ -1077,6 +1106,7 @@ fn test_quote_fast_split_exact_output_base_should_pass() {
             QuoteAmount::with_desired_output(balance!(200)),
             filter.clone(),
             false,
+            true,
         )
         .expect("Failed to get a quote");
 
@@ -1109,6 +1139,7 @@ fn test_quote_fast_split_exact_output_base_should_pass() {
             QuoteAmount::with_desired_output(balance!(100)),
             filter.clone(),
             false,
+            true,
         )
         .expect("Failed to get a quote");
 
@@ -1157,6 +1188,7 @@ fn test_quote_fast_split_exact_input_target_should_pass() {
             QuoteAmount::with_desired_input(balance!(20000)),
             filter.clone(),
             false,
+            true,
         )
         .expect("Failed to get a quote");
 
@@ -1197,6 +1229,7 @@ fn test_quote_fast_split_exact_input_target_should_pass() {
             QuoteAmount::with_desired_input(balance!(200)),
             filter.clone(),
             false,
+            true,
         )
         .expect("Failed to get a quote");
 
@@ -1229,6 +1262,7 @@ fn test_quote_fast_split_exact_input_target_should_pass() {
             QuoteAmount::with_desired_input(balance!(500)),
             filter.clone(),
             false,
+            true,
         )
         .expect("Failed to get a quote");
 
@@ -1283,6 +1317,7 @@ fn test_quote_fast_split_exact_output_target_undercollateralized_should_pass() {
             QuoteAmount::with_desired_output(balance!(20000)),
             filter.clone(),
             false,
+            true,
         )
         .expect("Failed to get a quote");
 
@@ -1307,6 +1342,7 @@ fn test_quote_fast_split_exact_output_target_undercollateralized_should_pass() {
             QuoteAmount::with_desired_output(balance!(200)),
             filter.clone(),
             false,
+            true,
         )
         .expect("Failed to get a quote");
 
@@ -1330,6 +1366,7 @@ fn test_quote_fast_split_exact_output_target_undercollateralized_should_pass() {
             QuoteAmount::with_desired_output(balance!(1000)),
             filter.clone(),
             false,
+            true,
         )
         .expect("Failed to get a quote");
 
@@ -1364,6 +1401,7 @@ fn test_quote_should_return_rewards_for_single_source() {
             QuoteAmount::with_desired_output(balance!(100)),
             filter.clone(),
             false,
+            true,
         )
         .expect("Failed to get a quote");
 
@@ -1373,6 +1411,7 @@ fn test_quote_should_return_rewards_for_single_source() {
             QuoteAmount::with_desired_output(balance!(100)),
             filter.clone(),
             false,
+            true,
         )
         .expect("Failed to get a quote");
 
@@ -1408,6 +1447,7 @@ fn test_quote_should_return_rewards_for_multiple_sources() {
             QuoteAmount::with_desired_input(amount),
             mcbc_excluding_filter(DEX_C_ID),
             false,
+            true,
         )
         .expect("Failed to get a quote");
 
@@ -1644,6 +1684,7 @@ fn test_smart_split_with_extreme_total_supply_works() {
                 QuoteAmount::with_desired_input(amount_base.clone()),
                 filter_both.clone(),
                 false,
+                true,
             )
             .expect("Failed to get a quote");
             let quotes_xyk = LiquidityProxy::quote_single(
@@ -1652,6 +1693,7 @@ fn test_smart_split_with_extreme_total_supply_works() {
                 QuoteAmount::with_desired_input(amount_base.clone()),
                 filter_xyk.clone(),
                 false,
+                true,
             )
             .expect("Failed to get a quote");
             assert!(quotes_smart.0.amount >= quotes_xyk.0.amount);
@@ -1663,6 +1705,7 @@ fn test_smart_split_with_extreme_total_supply_works() {
                 QuoteAmount::with_desired_output(amount_base.clone()),
                 filter_both.clone(),
                 false,
+                true,
             )
             .expect("Failed to get a quote");
             let quotes_xyk = LiquidityProxy::quote_single(
@@ -1671,6 +1714,7 @@ fn test_smart_split_with_extreme_total_supply_works() {
                 QuoteAmount::with_desired_output(amount_base.clone()),
                 filter_xyk.clone(),
                 false,
+                true,
             )
             .expect("Failed to get a quote");
             assert!(quotes_smart.0.amount <= quotes_xyk.0.amount);
@@ -1682,6 +1726,7 @@ fn test_smart_split_with_extreme_total_supply_works() {
                 QuoteAmount::with_desired_input(amount_collateral.clone()),
                 filter_both.clone(),
                 false,
+                true,
             )
             .expect("Failed to get a quote");
             let quotes_xyk = LiquidityProxy::quote_single(
@@ -1690,6 +1735,7 @@ fn test_smart_split_with_extreme_total_supply_works() {
                 QuoteAmount::with_desired_input(amount_collateral.clone()),
                 filter_xyk.clone(),
                 false,
+                true,
             )
             .expect("Failed to get a quote");
             assert!(quotes_smart.0.amount >= quotes_xyk.0.amount);
@@ -1701,6 +1747,7 @@ fn test_smart_split_with_extreme_total_supply_works() {
                 QuoteAmount::with_desired_output(amount_collateral.clone()),
                 filter_both.clone(),
                 false,
+                true,
             )
             .expect("Failed to get a quote");
             let quotes_xyk = LiquidityProxy::quote_single(
@@ -1709,6 +1756,7 @@ fn test_smart_split_with_extreme_total_supply_works() {
                 QuoteAmount::with_desired_output(amount_collateral.clone()),
                 filter_xyk.clone(),
                 false,
+                true,
             )
             .expect("Failed to get a quote");
             assert!(quotes_smart.0.amount <= quotes_xyk.0.amount);
@@ -1776,6 +1824,7 @@ fn test_smart_split_with_low_collateral_reserves_works() {
                 QuoteAmount::with_desired_input(amount_base.clone()),
                 filter_both.clone(),
                 false,
+                true,
             )
             .expect("Failed to get a quote");
             let quotes_xyk = LiquidityProxy::quote_single(
@@ -1784,6 +1833,7 @@ fn test_smart_split_with_low_collateral_reserves_works() {
                 QuoteAmount::with_desired_input(amount_base.clone()),
                 filter_xyk.clone(),
                 false,
+                true,
             )
             .expect("Failed to get a quote");
             assert!(quotes_smart.0.amount >= quotes_xyk.0.amount);
@@ -1795,6 +1845,7 @@ fn test_smart_split_with_low_collateral_reserves_works() {
                 QuoteAmount::with_desired_output(amount_base.clone()),
                 filter_both.clone(),
                 false,
+                true,
             )
             .expect("Failed to get a quote");
             let quotes_xyk = LiquidityProxy::quote_single(
@@ -1803,6 +1854,7 @@ fn test_smart_split_with_low_collateral_reserves_works() {
                 QuoteAmount::with_desired_output(amount_base.clone()),
                 filter_xyk.clone(),
                 false,
+                true,
             )
             .expect("Failed to get a quote");
             assert!(quotes_smart.0.amount <= quotes_xyk.0.amount);
@@ -1814,6 +1866,7 @@ fn test_smart_split_with_low_collateral_reserves_works() {
                 QuoteAmount::with_desired_input(amount_collateral.clone()),
                 filter_both.clone(),
                 false,
+                true,
             )
             .expect("Failed to get a quote");
             let quotes_xyk = LiquidityProxy::quote_single(
@@ -1822,6 +1875,7 @@ fn test_smart_split_with_low_collateral_reserves_works() {
                 QuoteAmount::with_desired_input(amount_collateral.clone()),
                 filter_xyk.clone(),
                 false,
+                true,
             )
             .expect("Failed to get a quote");
             assert!(quotes_smart.0.amount >= quotes_xyk.0.amount);
@@ -1833,6 +1887,7 @@ fn test_smart_split_with_low_collateral_reserves_works() {
                 QuoteAmount::with_desired_output(amount_collateral.clone()),
                 filter_both.clone(),
                 false,
+                true,
             )
             .expect("Failed to get a quote");
             let quotes_xyk = LiquidityProxy::quote_single(
@@ -1841,6 +1896,7 @@ fn test_smart_split_with_low_collateral_reserves_works() {
                 QuoteAmount::with_desired_output(amount_collateral.clone()),
                 filter_xyk.clone(),
                 false,
+                true,
             )
             .expect("Failed to get a quote");
             assert!(quotes_smart.0.amount <= quotes_xyk.0.amount);
@@ -1905,6 +1961,7 @@ fn test_smart_split_with_low_xykpool_reserves_works() {
                 QuoteAmount::with_desired_input(amount_base.clone()),
                 filter_both.clone(),
                 false,
+                true,
             )
             .expect("Failed to get a quote");
             let quotes_mcbc = LiquidityProxy::quote_single(
@@ -1913,6 +1970,7 @@ fn test_smart_split_with_low_xykpool_reserves_works() {
                 QuoteAmount::with_desired_input(amount_base.clone()),
                 filter_mcbc.clone(),
                 false,
+                true,
             )
             .expect("Failed to get a quote");
             assert!(quotes_smart.0.amount >= quotes_mcbc.0.amount);
@@ -1924,6 +1982,7 @@ fn test_smart_split_with_low_xykpool_reserves_works() {
                 QuoteAmount::with_desired_output(amount_base.clone()),
                 filter_both.clone(),
                 false,
+                true,
             )
             .expect("Failed to get a quote");
             let quotes_mcbc = LiquidityProxy::quote_single(
@@ -1932,6 +1991,7 @@ fn test_smart_split_with_low_xykpool_reserves_works() {
                 QuoteAmount::with_desired_output(amount_base.clone()),
                 filter_mcbc.clone(),
                 false,
+                true,
             )
             .expect("Failed to get a quote");
             assert!(quotes_smart.0.amount <= quotes_mcbc.0.amount);
@@ -1943,6 +2003,7 @@ fn test_smart_split_with_low_xykpool_reserves_works() {
                 QuoteAmount::with_desired_input(amount_collateral.clone()),
                 filter_both.clone(),
                 false,
+                true,
             )
             .expect("Failed to get a quote");
             let quotes_mcbc = LiquidityProxy::quote_single(
@@ -1951,6 +2012,7 @@ fn test_smart_split_with_low_xykpool_reserves_works() {
                 QuoteAmount::with_desired_input(amount_collateral.clone()),
                 filter_mcbc.clone(),
                 false,
+                true,
             )
             .expect("Failed to get a quote");
             assert!(quotes_smart.0.amount >= quotes_mcbc.0.amount);
@@ -1962,6 +2024,7 @@ fn test_smart_split_with_low_xykpool_reserves_works() {
                 QuoteAmount::with_desired_output(amount_collateral.clone()),
                 filter_both.clone(),
                 false,
+                true,
             )
             .expect("Failed to get a quote");
             let quotes_mcbc = LiquidityProxy::quote_single(
@@ -1970,6 +2033,7 @@ fn test_smart_split_with_low_xykpool_reserves_works() {
                 QuoteAmount::with_desired_output(amount_collateral.clone()),
                 filter_mcbc.clone(),
                 false,
+                true,
             )
             .expect("Failed to get a quote");
             assert!(quotes_smart.0.amount <= quotes_mcbc.0.amount);
@@ -2073,6 +2137,7 @@ fn test_smart_split_selling_xor_should_fail() {
                 QuoteAmount::with_desired_output(amount_collateral.clone()),
                 filter_both.clone(),
                 false,
+                true,
             );
             assert_noop!(result, crate::Error::<Runtime>::InsufficientLiquidity);
         });
@@ -2149,6 +2214,7 @@ fn test_smart_split_error_handling_works() {
                 amount,
                 LiquiditySourceFilter::empty(0),
                 false,
+                true,
             );
 
             assert_noop!(result, expected_error);
@@ -2413,6 +2479,7 @@ fn test_quote_with_no_price_impact_with_desired_input() {
             QuoteAmount::with_desired_input(amount_val_in),
             filter.clone(),
             false,
+            true,
         )
         .expect("Failed to get a quote");
         let (_, _, amount_without_impact) = LiquidityProxy::inner_quote(
@@ -2421,6 +2488,7 @@ fn test_quote_with_no_price_impact_with_desired_input() {
             QuoteAmount::with_desired_input(amount_val_in),
             filter.clone(),
             false,
+            true,
         )
         .expect("Failed to get a quote");
         let mut dist = quotes.distribution;
@@ -2457,6 +2525,7 @@ fn test_quote_with_no_price_impact_with_desired_input() {
             QuoteAmount::with_desired_input(amount_xor_intermediate),
             filter.clone(),
             false,
+            true,
         )
         .expect("Failed to get a quote");
         let (_, _, amount_without_impact) = LiquidityProxy::inner_quote(
@@ -2465,6 +2534,7 @@ fn test_quote_with_no_price_impact_with_desired_input() {
             QuoteAmount::with_desired_input(amount_xor_intermediate),
             filter.clone(),
             false,
+            true,
         )
         .expect("Failed to get a quote");
         dist = quotes.distribution;
@@ -2501,6 +2571,7 @@ fn test_quote_with_no_price_impact_with_desired_input() {
             QuoteAmount::with_desired_input(amount_val_in),
             filter.clone(),
             false,
+            true,
         )
         .expect("Failed to get a quote");
         assert_approx_eq!(quotes.amount, amount_ksm_out, balance!(1));
@@ -2533,6 +2604,7 @@ fn test_quote_with_no_price_impact_with_desired_output() {
             QuoteAmount::with_desired_output(amount_xor_intermediate),
             filter.clone(),
             false,
+            true,
         )
         .expect("Failed to get a quote");
         let (_, _, amount_without_impact) = LiquidityProxy::inner_quote(
@@ -2541,6 +2613,7 @@ fn test_quote_with_no_price_impact_with_desired_output() {
             QuoteAmount::with_desired_output(amount_xor_intermediate),
             filter.clone(),
             false,
+            true,
         )
         .expect("Failed to get a quote");
         let mut dist = quotes.distribution;
@@ -2581,6 +2654,7 @@ fn test_quote_with_no_price_impact_with_desired_output() {
             QuoteAmount::with_desired_output(amount_ksm_out),
             filter.clone(),
             false,
+            true,
         )
         .expect("Failed to get a quote");
         let (_, _, amount_without_impact) = LiquidityProxy::inner_quote(
@@ -2589,6 +2663,7 @@ fn test_quote_with_no_price_impact_with_desired_output() {
             QuoteAmount::with_desired_output(amount_ksm_out),
             filter.clone(),
             false,
+            true,
         )
         .expect("Failed to get a quote");
         dist = quotes.distribution;
@@ -2629,6 +2704,7 @@ fn test_quote_with_no_price_impact_with_desired_output() {
             QuoteAmount::with_desired_output(amount_ksm_out),
             filter.clone(),
             false,
+            true,
         )
         .expect("Failed to get a quote");
         assert_approx_eq!(quotes.amount, amount_val_in, balance!(100));
@@ -2660,6 +2736,7 @@ fn test_quote_does_not_overflow_with_desired_input() {
             QuoteAmount::with_desired_input(balance!(1)),
             LiquiditySourceFilter::empty(0),
             false,
+            true,
         )
         .expect("Failed to get a quote");
     });

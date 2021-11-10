@@ -1677,6 +1677,7 @@ impl_runtime_apis! {
                     &input_asset_id,
                     &output_asset_id,
                     QuoteAmount::with_variant(swap_variant, desired_input_amount.into()),
+                    true,
                 ).ok().map(|sa| dex_runtime_api::SwapOutcomeInfo::<Balance> { amount: sa.amount, fee: sa.fee})
             }
             #[cfg(not(feature = "private-net"))]
@@ -1890,6 +1891,7 @@ impl_runtime_apis! {
                 QuoteAmount::with_variant(swap_variant, amount.into()),
                 LiquiditySourceFilter::with_mode(dex_id, filter_mode, selected_source_types),
                 false,
+                true,
             ).ok().map(|(asa, rewards, amount_without_impact)| liquidity_proxy_runtime_api::SwapOutcomeInfo::<Balance, AssetId> {
                 amount: asa.amount,
                 fee: asa.fee,
@@ -2099,6 +2101,7 @@ mod tests {
     use common::fixnum::ops::CheckedMul;
     use common::PredefinedAssetId::XSTUSD;
     use common::{balance, DAI, XOR};
+    use liquidity_proxy::LiquidityProxyTrait;
     use price_tools::AVG_BLOCK_SPAN;
 
     use super::*;
@@ -2171,6 +2174,108 @@ mod tests {
                 FilterMode::AllowSelected,
             )
             .expect("Failed to swap");
+        });
+    }
+
+    #[test]
+    fn xst_price_should_be_the_same_as_dai() {
+        framenode_chain_spec::staging_coded_ext().execute_with(|| {
+            let xor_owner = assets::pallet::AssetOwners::<Runtime>::get(&XOR).unwrap();
+            let xor_balance = balance!(100000);
+            let xst_balance = balance!(40000000);
+            let double_balance = (Fixed::from_bits(xor_balance as i128).cmul(2))
+                .unwrap()
+                .into_bits() as Balance;
+            assets::Pallet::<Runtime>::mint_to(&XOR, &xor_owner, &alice(), double_balance).unwrap();
+            assets::Pallet::<Runtime>::mint_to(
+                &XSTUSD.into(),
+                &xor_owner,
+                &alice(),
+                xst_balance * 3,
+            )
+            .unwrap();
+            assets::Pallet::<Runtime>::mint_to(&DAI, &xor_owner, &alice(), xst_balance * 3)
+                .unwrap();
+
+            let dex_root_tech_account_id =
+                TechAccountId::Generic(b"SYSTEM_ACCOUNT".to_vec(), b"DEX_ROOT".to_vec());
+            let dex_root_account_id = technical::Module::<Runtime>::tech_account_id_to_account_id(
+                &dex_root_tech_account_id,
+            )
+            .unwrap();
+            pool_xyk::Pallet::<Runtime>::initialize_pool(
+                Origin::signed(dex_root_account_id.clone()),
+                0,
+                XOR,
+                XSTUSD.into(),
+            )
+            .unwrap();
+
+            pool_xyk::Pallet::<Runtime>::deposit_liquidity_unchecked(
+                alice(),
+                0,
+                XOR,
+                XSTUSD.into(),
+                xor_balance,
+                xst_balance,
+                xor_balance,
+                xst_balance,
+            )
+            .unwrap();
+
+            pool_xyk::Pallet::<Runtime>::initialize_pool(
+                Origin::signed(dex_root_account_id.clone()),
+                0,
+                XOR,
+                DAI,
+            )
+            .unwrap();
+
+            pool_xyk::Pallet::<Runtime>::deposit_liquidity_unchecked(
+                alice(),
+                0,
+                XOR,
+                DAI,
+                xor_balance,
+                xst_balance,
+                xor_balance,
+                xst_balance,
+            )
+            .unwrap();
+
+            let quote = LiquidityProxy::quote(
+                &XOR,
+                &DAI,
+                QuoteAmount::with_desired_input(balance!(1)),
+                LiquiditySourceFilter::empty(0),
+                false,
+            )
+            .unwrap();
+            let price = quote.amount;
+            for _ in 1..=AVG_BLOCK_SPAN {
+                PriceTools::incoming_spot_price(&DAI, price).unwrap();
+            }
+
+            let xst_price = LiquidityProxy::quote(
+                &XOR,
+                &XSTUSD.into(),
+                QuoteAmount::with_desired_input(balance!(1)),
+                LiquiditySourceFilter::with_allowed(0, vec![LiquiditySourceType::XSTPool]),
+                false,
+            )
+            .unwrap()
+            .amount;
+
+            let xyk_price = LiquidityProxy::quote(
+                &XOR,
+                &DAI,
+                QuoteAmount::with_desired_input(balance!(1)),
+                LiquiditySourceFilter::with_allowed(0, vec![LiquiditySourceType::XYKPool]),
+                false,
+            )
+            .unwrap()
+            .amount;
+            assert_eq!(xyk_price, xst_price);
         });
     }
 }

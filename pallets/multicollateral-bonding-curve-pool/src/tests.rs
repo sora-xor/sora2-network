@@ -378,7 +378,7 @@ mod tests {
                 - FixedWrapper::from(MBCPool::buy_function(&XOR, Fixed::ZERO).unwrap())
                     / balance!(2);
             let pool_reference_amount = pool_reference_amount.into_balance();
-            let pool_val_amount = MockDEXApi::quote(&USDT, &VAL, QuoteAmount::with_desired_input(pool_reference_amount), LiquiditySourceFilter::empty(DEXId::Polkaswap)).unwrap();
+            let pool_val_amount = MockDEXApi::quote(&USDT, &VAL, QuoteAmount::with_desired_input(pool_reference_amount), LiquiditySourceFilter::empty(DEXId::Polkaswap), true).unwrap();
             let distribution_accounts =
                 bonding_curve_pool_init(vec![(VAL, pool_val_amount.amount)]).unwrap();
             let alice = &alice();
@@ -438,7 +438,7 @@ mod tests {
             let pool_reference_amount =
                 FixedWrapper::from(total_issuance) * MBCPool::sell_function(&XOR, Fixed::ZERO).unwrap();
             let pool_reference_amount = pool_reference_amount.into_balance();
-            let pool_val_amount = MockDEXApi::quote(&USDT, &VAL, QuoteAmount::with_desired_input(pool_reference_amount), LiquiditySourceFilter::empty(DEXId::Polkaswap)).unwrap();
+            let pool_val_amount = MockDEXApi::quote(&USDT, &VAL, QuoteAmount::with_desired_input(pool_reference_amount), LiquiditySourceFilter::empty(DEXId::Polkaswap), true).unwrap();
 
             let distribution_accounts =
                 bonding_curve_pool_init(vec![(VAL, pool_val_amount.amount)]).unwrap();
@@ -595,7 +595,8 @@ mod tests {
                     &VAL,
                     &XOR,
                     QuoteAmount::with_desired_output(balance!(1)),
-                )
+                    true,
+            )
                 .unwrap();
 
             MBCPool::set_reference_asset(Origin::signed(alice()), DAI).expect("Failed to set new reference asset.");
@@ -605,7 +606,8 @@ mod tests {
                     &VAL,
                     &XOR,
                     QuoteAmount::with_desired_output(balance!(1)),
-                )
+                    true,
+            )
                 .unwrap();
 
             assert_ne!(price_a, price_b);
@@ -635,6 +637,7 @@ mod tests {
                 &VAL,
                 &XOR,
                 QuoteAmount::with_desired_input(amount_a.clone()),
+                true,
             )
             .unwrap();
             let exchange_outcome_a = MBCPool::exchange(
@@ -659,6 +662,7 @@ mod tests {
                 &VAL,
                 &XOR,
                 QuoteAmount::with_desired_output(amount_b.clone()),
+                true,
             )
             .unwrap();
             let exchange_outcome_b = MBCPool::exchange(
@@ -683,6 +687,7 @@ mod tests {
                 &XOR,
                 &VAL,
                 QuoteAmount::with_desired_input(amount_c.clone()),
+                true,
             )
             .unwrap();
             let exchange_outcome_c = MBCPool::exchange(
@@ -707,6 +712,7 @@ mod tests {
                 &VAL,
                 &XOR,
                 QuoteAmount::with_desired_output(amount_d.clone()),
+                true,
             )
             .unwrap();
             let exchange_outcome_d = MBCPool::exchange(
@@ -850,7 +856,7 @@ mod tests {
 
             let val_actual_reserves = MBCPool::actual_reserves_reference_price(&crate::mock::get_pool_reserves_account_id(), &VAL).unwrap();
             let dai_actual_reserves = MBCPool::actual_reserves_reference_price(&crate::mock::get_pool_reserves_account_id(), &DAI).unwrap();
-            let val_supposed_price = MockDEXApi::quote(&VAL, &DAI, QuoteAmount::with_desired_input(val_amount), LiquiditySourceFilter::empty(DEXId::Polkaswap.into())).unwrap().amount;
+            let val_supposed_price = MockDEXApi::quote(&VAL, &DAI, QuoteAmount::with_desired_input(val_amount), LiquiditySourceFilter::empty(DEXId::Polkaswap.into()), true).unwrap().amount;
             let dai_supposed_price = dai_amount;
 
             // compare values, also deduce 20% which are distributed and not stored in reserves
@@ -891,6 +897,7 @@ mod tests {
                 &VAL,
                 &XOR,
                 QuoteAmount::with_desired_input(balance!(100)),
+                true,
             )
             .unwrap();
             let price_b = MBCPool::quote(
@@ -898,6 +905,7 @@ mod tests {
                 &VAL,
                 &XOR,
                 QuoteAmount::with_desired_output(price_a.amount.clone()),
+                true,
             )
             .unwrap();
             assert_eq!(price_a.fee, price_b.fee);
@@ -909,6 +917,7 @@ mod tests {
                 &XOR,
                 &VAL,
                 QuoteAmount::with_desired_output(balance!(100)),
+                true,
             )
             .unwrap();
             let price_d = MBCPool::quote(
@@ -916,6 +925,7 @@ mod tests {
                 &XOR,
                 &VAL,
                 QuoteAmount::with_desired_input(price_c.amount.clone()),
+                true,
             )
             .unwrap();
             assert_eq!(price_c.fee, price_d.fee);
@@ -980,6 +990,7 @@ mod tests {
                 &XOR,
                 &DAI,
                 QuoteAmount::with_desired_input(balance!(100)),
+                true,
             )
             .unwrap();
             assert_eq!(sell_price.fee, balance!(9.3));
@@ -1002,6 +1013,7 @@ mod tests {
                 &XOR,
                 &DAI,
                 QuoteAmount::with_desired_input(balance!(100)),
+                true,
             )
             .unwrap();
             assert_eq!(sell_price.fee, balance!(6.3));
@@ -1024,6 +1036,7 @@ mod tests {
                 &XOR,
                 &DAI,
                 QuoteAmount::with_desired_input(balance!(100)),
+                true,
             )
             .unwrap();
             assert_eq!(sell_price.fee, balance!(3.3));
@@ -1046,6 +1059,7 @@ mod tests {
                 &XOR,
                 &DAI,
                 QuoteAmount::with_desired_input(balance!(100)),
+                true,
             )
             .unwrap();
             assert_eq!(sell_price.fee, balance!(1.3));
@@ -1068,6 +1082,7 @@ mod tests {
                 &XOR,
                 &DAI,
                 QuoteAmount::with_desired_input(balance!(100)),
+                true,
             )
             .unwrap();
             assert_eq!(sell_price.fee, balance!(0.3));
@@ -1101,7 +1116,7 @@ mod tests {
             assert_eq!((xor_ideal_reserves / xor_total_supply).into_balance(), balance!(330.890052356020942408));
             // pswap price is $10 on mock secondary market
             assert_eq!(
-                MockDEXApi::quote(&PSWAP, &DAI, QuoteAmount::with_desired_input(balance!(1)), MBCPool::self_excluding_filter()).unwrap().amount,
+                MockDEXApi::quote(&PSWAP, &DAI, QuoteAmount::with_desired_input(balance!(1)), MBCPool::self_excluding_filter(),true).unwrap().amount,
                 balance!(10.173469387755102041)
             );
 
@@ -1173,7 +1188,7 @@ mod tests {
             TradingPair::register(Origin::signed(alice.clone()),DEXId::Polkaswap.into(), XOR, USDT).expect("Failed to register trading pair.");
             TradingPair::register(Origin::signed(alice.clone()),DEXId::Polkaswap.into(), XOR, VAL).expect("Failed to register trading pair.");
             MBCPool::initialize_pool_unchecked(USDT, false).expect("Failed to initialize pool.");
-            
+
             // check pending list and reserves before trade
             let free_reserves_balance = Assets::free_balance(&USDT, &MBCPool::free_reserves_account_id()).unwrap();
             assert_eq!(MBCPool::pending_free_reserves(), vec![]);
@@ -1238,7 +1253,7 @@ mod tests {
             TradingPair::register(Origin::signed(alice.clone()),DEXId::Polkaswap.into(), XOR, USDT).expect("Failed to register trading pair.");
             TradingPair::register(Origin::signed(alice.clone()),DEXId::Polkaswap.into(), XOR, VAL).expect("Failed to register trading pair.");
             MBCPool::initialize_pool_unchecked(USDT, false).expect("Failed to initialize pool.");
-            
+
             // check pending list and reserves before trade
             let free_reserves_balance = Assets::free_balance(&USDT, &MBCPool::free_reserves_account_id()).unwrap();
             assert_eq!(MBCPool::pending_free_reserves(), vec![]);
@@ -1262,7 +1277,7 @@ mod tests {
             let free_reserves_balance = Assets::free_balance(&USDT, &MBCPool::free_reserves_account_id()).unwrap();
             assert_eq!(MBCPool::pending_free_reserves(), vec![(USDT, free_reserves_balance.clone())]);
             assert_eq!(free_reserves_balance, balance!(40.120436328358829805));
-           
+
             // attempt for distribution, still not enough reserves
             MBCPool::on_initialize(RETRY_DISTRIBUTION_FREQUENCY.into());
             let free_reserves_balance_2 = Assets::free_balance(&USDT, &MBCPool::free_reserves_account_id()).unwrap();
@@ -1326,7 +1341,7 @@ mod tests {
             TradingPair::register(Origin::signed(alice.clone()),DEXId::Polkaswap.into(), XOR, USDT).expect("Failed to register trading pair.");
             TradingPair::register(Origin::signed(alice.clone()),DEXId::Polkaswap.into(), XOR, VAL).expect("Failed to register trading pair.");
             MBCPool::initialize_pool_unchecked(USDT, false).expect("Failed to initialize pool.");
-            
+
             // check pending list and reserves before trade
             let free_reserves_balance = Assets::free_balance(&USDT, &MBCPool::free_reserves_account_id()).unwrap();
             assert_eq!(MBCPool::pending_free_reserves(), vec![]);
@@ -1382,7 +1397,7 @@ mod tests {
             let free_reserves_balance = Assets::free_balance(&USDT, &MBCPool::free_reserves_account_id()).unwrap();
             assert_eq!(MBCPool::pending_free_reserves(), vec![]);
             assert_eq!(free_reserves_balance, balance!(0));
-        })    
+        })
     }
 
     #[test]
@@ -1407,7 +1422,7 @@ mod tests {
             let alice = &alice();
             TradingPair::register(Origin::signed(alice.clone()),DEXId::Polkaswap.into(), XOR, USDT).expect("Failed to register trading pair.");
             TradingPair::register(Origin::signed(alice.clone()),DEXId::Polkaswap.into(), XOR, VAL).expect("Failed to register trading pair.");
-            MBCPool::initialize_pool_unchecked(USDT, false).expect("Failed to initialize pool.");           
+            MBCPool::initialize_pool_unchecked(USDT, false).expect("Failed to initialize pool.");
 
             // perform large buy on tbc
             assert_eq!(
@@ -1478,7 +1493,7 @@ mod tests {
             let alice = &alice();
             TradingPair::register(Origin::signed(alice.clone()),DEXId::Polkaswap.into(), XOR, USDT).expect("Failed to register trading pair.");
             TradingPair::register(Origin::signed(alice.clone()),DEXId::Polkaswap.into(), XOR, VAL).expect("Failed to register trading pair.");
-            MBCPool::initialize_pool_unchecked(USDT, false).expect("Failed to initialize pool.");           
+            MBCPool::initialize_pool_unchecked(USDT, false).expect("Failed to initialize pool.");
 
             // perform large buy on tbc
             assert_eq!(
@@ -1548,7 +1563,7 @@ mod tests {
             TradingPair::register(Origin::signed(alice.clone()),DEXId::Polkaswap.into(), XOR, USDT).expect("Failed to register trading pair.");
             TradingPair::register(Origin::signed(alice.clone()),DEXId::Polkaswap.into(), XOR, VAL).expect("Failed to register trading pair.");
             MBCPool::initialize_pool_unchecked(USDT, false).expect("Failed to initialize pool.");
-            
+
             // perform buy on tbc
             assert_eq!(
                 MBCPool::exchange(
@@ -1570,12 +1585,12 @@ mod tests {
 
             // exchange becomes possible, but not for val, so second part of distribution fails
             MockDEXApi::add_reserves(vec![(XOR, balance!(100000)), (VAL, balance!(0)), (USDT, balance!(1000000))]).unwrap();
-            
+
             // check pending list
             MBCPool::on_initialize(RETRY_DISTRIBUTION_FREQUENCY.into());
             let free_reserves_balance_2 = Assets::free_balance(&USDT, &MBCPool::free_reserves_account_id()).unwrap();
             assert_eq!(MBCPool::pending_free_reserves(), vec![(USDT, free_reserves_balance.clone())]);
-            
+
             // val buy back and burn failed so exchanged xor is reverted
             assert_eq!(free_reserves_balance_2, free_reserves_balance);
             ensure_distribution_accounts_balances(distribution_accounts.clone(), vec![
@@ -1584,7 +1599,7 @@ mod tests {
                 balance!(0),
                 balance!(0),
             ]);
-            
+
             // another buy is performed
             assert_eq!(
                 MBCPool::exchange(
@@ -1613,7 +1628,7 @@ mod tests {
             let free_reserves_balance_4 = Assets::free_balance(&USDT, &MBCPool::free_reserves_account_id()).unwrap();
             assert_eq!(MBCPool::pending_free_reserves(), vec![(USDT, second_pending_balance)]);
             assert_eq!(free_reserves_balance_4, second_pending_balance);
-            
+
             // check distribution accounts
             ensure_distribution_accounts_balances(distribution_accounts.clone(), vec![
                 balance!(0.002000003750968687),
@@ -1630,7 +1645,7 @@ mod tests {
             let free_reserves_balance_5 = Assets::free_balance(&USDT, &MBCPool::free_reserves_account_id()).unwrap();
             assert_eq!(MBCPool::pending_free_reserves(), vec![]);
             assert_eq!(free_reserves_balance_5, balance!(0));
-            
+
             // check distribution accounts
             ensure_distribution_accounts_balances(distribution_accounts, vec![
                 balance!(0.004747958137689057),
@@ -1694,6 +1709,7 @@ mod tests {
                 &VAL,
                 &XOR,
                 QuoteAmount::with_desired_input(amount_a.clone()),
+                true,
             )
             .unwrap();
             let quote_without_impact_a = MBCPool::quote_without_impact(
@@ -1701,6 +1717,7 @@ mod tests {
                 &VAL,
                 &XOR,
                 QuoteAmount::with_desired_input(amount_a.clone()),
+                true,
             )
             .unwrap();
             MBCPool::exchange(
@@ -1723,6 +1740,7 @@ mod tests {
                 &VAL,
                 &XOR,
                 QuoteAmount::with_desired_output(amount_b.clone()),
+                true,
             )
             .unwrap();
             let quote_without_impact_b = MBCPool::quote_without_impact(
@@ -1730,6 +1748,7 @@ mod tests {
                 &VAL,
                 &XOR,
                 QuoteAmount::with_desired_output(amount_b.clone()),
+                true,
             )
             .unwrap();
             MBCPool::exchange(
@@ -1752,6 +1771,7 @@ mod tests {
                 &XOR,
                 &VAL,
                 QuoteAmount::with_desired_input(amount_c.clone()),
+                true,
             )
             .unwrap();
             let quote_without_impact_c = MBCPool::quote_without_impact(
@@ -1759,6 +1779,7 @@ mod tests {
                 &XOR,
                 &VAL,
                 QuoteAmount::with_desired_input(amount_c.clone()),
+                true,
             )
             .unwrap();
             MBCPool::exchange(
@@ -1781,6 +1802,7 @@ mod tests {
                 &XOR,
                 &VAL,
                 QuoteAmount::with_desired_output(amount_d.clone()),
+                true,
             )
             .unwrap();
             let quote_without_impact_d = MBCPool::quote_without_impact(
@@ -1788,6 +1810,7 @@ mod tests {
                 &XOR,
                 &VAL,
                 QuoteAmount::with_desired_output(amount_d.clone()),
+                true,
             )
             .unwrap();
             MBCPool::exchange(
@@ -1828,6 +1851,7 @@ mod tests {
                 &VAL,
                 &XOR,
                 QuoteAmount::with_desired_input(amount_a.clone()),
+                true,
             )
             .unwrap();
             let quote_without_impact_a = MBCPool::quote_without_impact(
@@ -1835,6 +1859,7 @@ mod tests {
                 &VAL,
                 &XOR,
                 QuoteAmount::with_desired_input(amount_a.clone()),
+                true,
             )
             .unwrap();
             MBCPool::exchange(
@@ -1857,6 +1882,7 @@ mod tests {
                 &VAL,
                 &XOR,
                 QuoteAmount::with_desired_output(amount_b.clone()),
+                true,
             )
             .unwrap();
             let quote_without_impact_b = MBCPool::quote_without_impact(
@@ -1864,6 +1890,7 @@ mod tests {
                 &VAL,
                 &XOR,
                 QuoteAmount::with_desired_output(amount_b.clone()),
+                true,
             )
             .unwrap();
             MBCPool::exchange(
@@ -1886,6 +1913,7 @@ mod tests {
                 &XOR,
                 &VAL,
                 QuoteAmount::with_desired_input(amount_c.clone()),
+                true,
             )
             .unwrap();
             let quote_without_impact_c = MBCPool::quote_without_impact(
@@ -1893,6 +1921,7 @@ mod tests {
                 &XOR,
                 &VAL,
                 QuoteAmount::with_desired_input(amount_c.clone()),
+                true,
             )
             .unwrap();
             MBCPool::exchange(
@@ -1915,6 +1944,7 @@ mod tests {
                 &XOR,
                 &VAL,
                 QuoteAmount::with_desired_output(amount_d.clone()),
+                true,
             )
             .unwrap();
             let quote_without_impact_d = MBCPool::quote_without_impact(
@@ -1922,6 +1952,7 @@ mod tests {
                 &XOR,
                 &VAL,
                 QuoteAmount::with_desired_output(amount_d.clone()),
+                true,
             )
             .unwrap();
             MBCPool::exchange(

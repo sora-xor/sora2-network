@@ -172,6 +172,7 @@ where
                 &output_asset_id,
                 amount.into(),
                 filter.clone(),
+                true,
             )
             .map_err(|_| InvalidTransaction::Payment)?;
 

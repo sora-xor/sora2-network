@@ -584,8 +584,15 @@ impl liquidity_proxy::LiquidityProxyTrait<DEXId, AccountId, AssetId> for MockLiq
         output_asset_id: &AssetId,
         amount: QuoteAmount<Balance>,
         filter: LiquiditySourceFilter<DEXId, LiquiditySourceType>,
+        deduce_fee: bool,
     ) -> Result<SwapOutcome<Balance>, DispatchError> {
-        MockLiquiditySource::quote(&filter.dex_id, input_asset_id, output_asset_id, amount)
+        MockLiquiditySource::quote(
+            &filter.dex_id,
+            input_asset_id,
+            output_asset_id,
+            amount,
+            deduce_fee,
+        )
     }
 }
 
