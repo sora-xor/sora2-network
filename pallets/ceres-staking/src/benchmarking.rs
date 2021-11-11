@@ -45,8 +45,6 @@ benchmarks! {
             DEFAULT_BALANCE_PRECISION,
             Balance::zero(),
             true,
-            None,
-            None,
         );
         let _ = assets::Pallet::<T>::mint(
             RawOrigin::Signed(caller.clone()).into(),
@@ -71,8 +69,6 @@ benchmarks! {
             DEFAULT_BALANCE_PRECISION,
             Balance::zero(),
             true,
-            None,
-            None,
         );
         let _ = assets::Pallet::<T>::mint(
             RawOrigin::Signed(caller.clone()).into(),
