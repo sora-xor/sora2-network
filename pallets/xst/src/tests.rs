@@ -343,6 +343,66 @@ mod tests {
     }
 
     #[test]
+    fn test_deducing_fee() {
+        let mut ext = ExtBuilder::new(vec![
+            (alice(), DAI, balance!(0), AssetSymbol(b"DAI".to_vec()), AssetName(b"DAI".to_vec()), 18),
+            (alice(), XOR, balance!(0), AssetSymbol(b"XOR".to_vec()), AssetName(b"SORA".to_vec()), 18),
+            (alice(), XSTUSD, balance!(2000), AssetSymbol(b"XSTUSD".to_vec()), AssetName(b"SORA Synthetic USD".to_vec()), 18),
+        ])
+            .build();
+        ext.execute_with(|| {
+            MockDEXApi::init().unwrap();
+            let _ = xst_pool_init().unwrap();
+            TradingPair::register(Origin::signed(alice()), DEXId::Polkaswap.into(), XOR, XSTUSD).expect("Failed to register trading pair.");
+            XSTPool::initialize_pool_unchecked(XSTUSD, false).expect("Failed to initialize pool.");
+
+            let price_a = XSTPool::quote(
+                &DEXId::Polkaswap.into(),
+                &XSTUSD,
+                &XOR,
+                QuoteAmount::with_desired_input(balance!(100)),
+                true,
+            )
+            .unwrap();
+            assert_eq!(price_a.fee, balance!(0.006911122958750468));
+            assert_eq!(price_a.amount, balance!(0.980392156862745099));
+
+            let price_b = XSTPool::quote(
+                &DEXId::Polkaswap.into(),
+                &XSTUSD,
+                &XOR,
+                QuoteAmount::with_desired_input(balance!(100)),
+                false,
+            )
+            .unwrap();
+            assert_eq!(price_b.fee, balance!(0));
+            assert_eq!(price_b.amount, price_a.fee + price_a.amount);
+
+            let price_a = XSTPool::quote(
+                &DEXId::Polkaswap.into(),
+                &XSTUSD,
+                &XOR,
+                QuoteAmount::with_desired_output(balance!(100)),
+                true,
+            )
+            .unwrap();
+            assert_eq!(price_a.fee, balance!(0.704934541792547834));
+            assert_eq!(price_a.amount, balance!(10199.999999999999999914));
+
+            let price_b = XSTPool::quote(
+                &DEXId::Polkaswap.into(),
+                &XSTUSD,
+                &XOR,
+                QuoteAmount::with_desired_output(balance!(100)),
+                false,
+            )
+            .unwrap();
+            assert_eq!(price_b.fee, balance!(0));
+            assert_eq!(price_b.amount, balance!(10128.6));
+        });
+    }
+
+    #[test]
     fn fees_for_equivalent_trades_should_match() {
         let mut ext = ExtBuilder::new(vec![
             (alice(), DAI, balance!(0), AssetSymbol(b"DAI".to_vec()), AssetName(b"DAI".to_vec()), 18),

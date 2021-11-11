@@ -615,6 +615,73 @@ mod tests {
     }
 
     #[test]
+    fn test_deducing_fee() {
+        let mut ext = ExtBuilder::new(vec![
+            (alice(), DAI, balance!(0), AssetSymbol(b"DAI".to_vec()), AssetName(b"DAI".to_vec()), 18),
+            (alice(), USDT, balance!(0), AssetSymbol(b"USDT".to_vec()), AssetName(b"Tether USD".to_vec()), 18),
+            (alice(), XOR, balance!(0), AssetSymbol(b"XOR".to_vec()), AssetName(b"SORA".to_vec()), 18),
+            (alice(), VAL, balance!(4000), AssetSymbol(b"VAL".to_vec()), AssetName(b"SORA Validator Token".to_vec()), 18),
+            (alice(), XSTUSD, 0, AssetSymbol(b"XSTUSD".to_vec()), AssetName(b"SORA Synthetic USD".to_vec()), 18),
+        ])
+        .build();
+        ext.execute_with(|| {
+            MockDEXApi::init().unwrap();
+            let _ = bonding_curve_pool_init(vec![]).unwrap();
+            TradingPair::register(Origin::signed(alice()), DEXId::Polkaswap.into(), XOR, VAL).expect("Failed to register trading pair.");
+            MBCPool::initialize_pool_unchecked(VAL, false).expect("Failed to initialize pool.");
+
+            let amount: Balance = balance!(2000);
+            let quote_outcome_a = MBCPool::quote(
+                &DEXId::Polkaswap.into(),
+                &VAL,
+                &XOR,
+                QuoteAmount::with_desired_input(amount.clone()),
+                true,
+            )
+            .unwrap();
+
+            assert_eq!(quote_outcome_a.amount, balance!(361.549938632002697101));
+            assert_eq!(quote_outcome_a.fee, balance!(1.087913556565705206));
+
+            let quote_outcome_b = MBCPool::quote(
+                &DEXId::Polkaswap.into(),
+                &VAL,
+                &XOR,
+                QuoteAmount::with_desired_input(amount.clone()),
+                false,
+            )
+            .unwrap();
+
+            assert_eq!(quote_outcome_b.amount, quote_outcome_a.amount + quote_outcome_a.fee);
+            assert_eq!(quote_outcome_b.fee, balance!(0));
+
+            let quote_outcome_a = MBCPool::quote(
+                &DEXId::Polkaswap.into(),
+                &VAL,
+                &XOR,
+                QuoteAmount::with_desired_output(amount.clone()),
+                true,
+            )
+            .unwrap();
+
+            assert_eq!(quote_outcome_a.amount, balance!(11088.209839932824950839));
+            assert_eq!(quote_outcome_a.fee, balance!(6.018054162487462387));
+
+            let quote_outcome_b = MBCPool::quote(
+                &DEXId::Polkaswap.into(),
+                &VAL,
+                &XOR,
+                QuoteAmount::with_desired_output(amount.clone()),
+                false,
+            )
+            .unwrap();
+
+            assert_eq!(quote_outcome_b.amount, balance!(11054.854916282129860020));
+            assert_eq!(quote_outcome_b.fee, balance!(0));
+        })
+    }
+
+    #[test]
     fn similar_returns_should_be_identical() {
         let mut ext = ExtBuilder::new(vec![
             (alice(), DAI, balance!(0), AssetSymbol(b"DAI".to_vec()), AssetName(b"DAI".to_vec()), 18),

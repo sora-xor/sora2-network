@@ -337,6 +337,74 @@ fn quote_case_exact_input_for_output_base_first() {
 }
 
 #[test]
+fn test_deducing_fee() {
+    crate::Module::<Runtime>::preset_initial(vec![Rc::new(|dex_id, gt, bp, _, _, _, _, _| {
+        assert_ok!(crate::Module::<Runtime>::deposit_liquidity(
+            Origin::signed(ALICE()),
+            dex_id,
+            GoldenTicket.into(),
+            BlackPepper.into(),
+            balance!(100000),
+            balance!(200000),
+            0,
+            0,
+        ));
+        let (amount_a, fee_a): (Balance, Balance) =
+            simplify_swap_outcome!(crate::Module::<Runtime>::quote(
+                &dex_id,
+                &gt,
+                &bp,
+                QuoteAmount::WithDesiredInput {
+                    desired_amount_in: balance!(100000)
+                },
+                true
+            )
+            .unwrap());
+        assert_eq!((amount_a, fee_a), (99849774661992989484226, balance!(300)));
+        let (amount_b, fee_b): (Balance, Balance) =
+            simplify_swap_outcome!(crate::Module::<Runtime>::quote(
+                &dex_id,
+                &gt,
+                &bp,
+                QuoteAmount::WithDesiredInput {
+                    desired_amount_in: balance!(100000)
+                },
+                false
+            )
+            .unwrap());
+        assert_eq!((amount_b, fee_b), (amount_b + fee_b, 0));
+
+        let (amount_a, fee_a): (Balance, Balance) =
+            simplify_swap_outcome!(crate::Module::<Runtime>::quote(
+                &dex_id,
+                &gt,
+                &bp,
+                QuoteAmount::WithDesiredOutput {
+                    desired_amount_out: balance!(100000)
+                },
+                true
+            )
+            .unwrap());
+        assert_eq!(
+            (amount_a, fee_a),
+            (100300902708124373119360, balance!(300.902708124373119358))
+        );
+        let (amount_b, fee_b): (Balance, Balance) =
+            simplify_swap_outcome!(crate::Module::<Runtime>::quote(
+                &dex_id,
+                &gt,
+                &bp,
+                QuoteAmount::WithDesiredOutput {
+                    desired_amount_out: balance!(100000)
+                },
+                false
+            )
+            .unwrap());
+        assert_eq!((amount_b, fee_b), (amount_b + fee_b, 0));
+    })]);
+}
+
+#[test]
 fn quote_case_exact_input_for_output_base_second() {
     crate::Module::<Runtime>::preset_initial(vec![Rc::new(|dex_id, gt, bp, _, _, _, _, _| {
         assert_ok!(crate::Module::<Runtime>::deposit_liquidity(
