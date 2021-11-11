@@ -292,7 +292,7 @@ fn custom_fees_work() {
                 .unwrap();
             balance_after_fee_withdrawal = balance_after_fee_withdrawal - BIG_FEE;
             let result = balance_after_fee_withdrawal.clone().into_balance();
-            assert_eq!(Balances::free_balance(alice()), result,);
+            assert_eq!(Balances::free_balance(alice()), result);
             assert!(ChargeTransactionPayment::<Runtime>::post_dispatch(
                 pre,
                 &dispatch_info,
@@ -301,7 +301,7 @@ fn custom_fees_work() {
                 &Ok(())
             )
             .is_ok());
-            assert_eq!(Balances::free_balance(alice()), result,);
+            assert_eq!(Balances::free_balance(alice()), result);
         }
 
         // A normal extrinsic; fee is 0.0007 XOR
