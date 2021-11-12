@@ -1425,6 +1425,7 @@ impl price_tools::Config for Runtime {
 
 impl ceres_liquidity_locker::Config for Runtime {
     type Event = Event;
+    type XYKPool = PoolXYK;
 }
 
 /// Payload data to be signed when making signed transaction from off-chain workers,

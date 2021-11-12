@@ -21,6 +21,7 @@ pub use pallet::*;
 pub mod pallet {
     use crate::LockInfo;
     use common::prelude::Balance;
+    use common::LiquiditySource;
     use frame_support::pallet_prelude::*;
     use frame_system::ensure_signed;
     use frame_system::pallet_prelude::*;
@@ -31,9 +32,16 @@ pub mod pallet {
     const PALLET_ID: ModuleId = ModuleId(*b"crlocker");
 
     #[pallet::config]
-    pub trait Config: frame_system::Config + assets::Config + pool_xyk::Config {
+    pub trait Config: frame_system::Config + assets::Config {
         /// Because this pallet emits events, it depends on the runtime's definition of an event.
         type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+        type XYKPool: LiquiditySource<
+            Self::DEXId,
+            Self::AccountId,
+            Self::AssetId,
+            Balance,
+            DispatchError,
+        >;
     }
 
     type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
@@ -98,9 +106,10 @@ pub mod pallet {
             let current_block = frame_system::Pallet::<T>::block_number();
 
             // Calculate number of pool tokens to be locked
-            let pool_account: AccountIdOf<T> = pool_xyk::Properties::<T>::get(asset_a, asset_b)
-                    .expect("Pool does not exist").0;
-            let pool_tokens = pool_xyk::PoolProviders::<T>::get(pool_account, user.clone())
+            let pool_account: AccountIdOf<T> = T::XYKPool::properties(asset_a, asset_b)
+                .expect("Pool does not exist")
+                .0;
+            let pool_tokens = T::XYKPool::pool_providers(pool_account, user.clone())
                 .expect("User is not pool provider");
             lock_info.pool_tokens = pool_tokens * percentage_of_pool_tokens;
 
@@ -128,7 +137,7 @@ pub mod pallet {
     impl<T: Config> Pallet<T> {
         /// Get allowed liquidity for withdrawing
         pub fn get_allowed_liquidity_for_withdrawing(
-            user: T::AccountId,
+            user: &T::AccountId,
             asset_a: T::AssetId,
             asset_b: T::AssetId,
             pool_tokens: Balance,

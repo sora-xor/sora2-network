@@ -134,6 +134,22 @@ pub trait LiquiditySource<TargetId, AccountId, AssetId, Amount, Error> {
         output_asset_id: &AssetId,
         amount: QuoteAmount<Amount>,
     ) -> Result<SwapOutcome<Amount>, DispatchError>;
+
+    /// Properties of particular pool. Base Asset => Target Asset => (Reserves Account Id, Fees Account Id)
+    fn properties(
+        _base_asset_id: AssetId,
+        _target_asset_id: AssetId,
+    ) -> Option<(AccountId, AccountId)> {
+        None
+    }
+
+    /// Liquidity providers of particular pool. Pool account => Liquidity provider account => Pool token balance
+    fn pool_providers(
+        _pool_account: AccountId,
+        _liquidity_provider_account: AccountId,
+    ) -> Option<Balance> {
+        None
+    }
 }
 
 impl<DEXId, AccountId, AssetId> LiquiditySource<DEXId, AccountId, AssetId, Fixed, DispatchError>

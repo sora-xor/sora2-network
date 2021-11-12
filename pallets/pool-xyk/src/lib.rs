@@ -541,6 +541,20 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
             }
         })
     }
+
+    fn properties(
+        base_asset_id: T::AssetId,
+        target_asset_id: T::AssetId,
+    ) -> Option<(T::AccountId, T::AccountId)> {
+        Properties::<T>::get(base_asset_id, target_asset_id)
+    }
+
+    fn pool_providers(
+        pool_account: T::AccountId,
+        liquidity_provider_account: T::AccountId,
+    ) -> Option<Balance> {
+        PoolProviders::<T>::get(pool_account, liquidity_provider_account)
+    }
 }
 
 impl<T: Config> GetPoolReserves<T::AssetId> for Module<T> {
@@ -561,7 +575,11 @@ pub mod pallet {
 
     #[pallet::config]
     pub trait Config:
-        frame_system::Config + technical::Config + dex_manager::Config + trading_pair::Config
+        frame_system::Config
+        + technical::Config
+        + dex_manager::Config
+        + trading_pair::Config
+        + ceres_liquidity_locker::Config
     {
         /// The minimum amount of XOR to deposit as liquidity
         const MIN_XOR: Balance;
