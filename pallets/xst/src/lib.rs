@@ -244,10 +244,10 @@ pub mod pallet {
 
     #[pallet::type_value]
     pub(super) fn DefaultForBaseFee() -> Fixed {
-        fixed!(0.007)
+        fixed!(0.003)
     }
 
-    /// Base fee in XOR which is deducted on all trades, currently it's burned: 0.7%.
+    /// Base fee in XOR which is deducted on all trades, currently it's burned: 0.3%.
     #[pallet::storage]
     #[pallet::getter(fn base_fee)]
     pub(super) type BaseFee<T: Config> = StorageValue<_, Fixed, ValueQuery, DefaultForBaseFee>;
