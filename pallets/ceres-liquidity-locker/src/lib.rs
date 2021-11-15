@@ -20,7 +20,8 @@ pub use pallet::*;
 #[frame_support::pallet]
 pub mod pallet {
     use crate::LockInfo;
-    use common::prelude::Balance;
+    use common::balance;
+    use common::prelude::{Balance, FixedWrapper};
     use common::LiquiditySource;
     use frame_support::pallet_prelude::*;
     use frame_system::ensure_signed;
@@ -35,6 +36,8 @@ pub mod pallet {
     pub trait Config: frame_system::Config + assets::Config {
         /// Because this pallet emits events, it depends on the runtime's definition of an event.
         type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+
+        /// Reference to pool_xyk pallet
         type XYKPool: LiquiditySource<
             Self::DEXId,
             Self::AccountId,
@@ -42,6 +45,15 @@ pub mod pallet {
             Balance,
             DispatchError,
         >;
+
+        /// Account for paying fees according to Option 1
+        type FeesOptionOneAccount: Get<Self::AccountId>;
+
+        /// Account for paying fees according to Option 2
+        type FeesOptionTwoAccount: Get<Self::AccountId>;
+
+        /// Ceres asset id
+        type CeresAssetId: Get<Self::AssetId>;
     }
 
     type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
@@ -92,6 +104,7 @@ pub mod pallet {
             asset_b: T::AssetId,
             unlocking_block: T::BlockNumber,
             percentage_of_pool_tokens: Balance,
+            option: bool
         ) -> DispatchResultWithPostInfo {
             let user = ensure_signed(origin)?;
 
@@ -112,6 +125,20 @@ pub mod pallet {
             let pool_tokens = T::XYKPool::pool_providers(pool_account, user.clone())
                 .expect("User is not pool provider");
             lock_info.pool_tokens = pool_tokens * percentage_of_pool_tokens;
+
+            // Pay Locker fees
+            if option {
+                // Pay fees according to Option 1
+            } else {
+                // Pay fees according to Option 2
+                // Transfer 20 CERES
+                Assets::<T>::transfer_from(
+                    &T::CeresAssetId::get().into(),
+                    &user,
+                    &Self::account_id(),
+                    balance!(20),
+                )?;
+            }
 
             // Put updated address info into storage
             // Get lock info of extrinsic caller
@@ -165,6 +192,17 @@ pub mod pallet {
             <LockerData<T>>::insert(&user, lockups);
 
             return allowed_withdrawal_amount;
+        }
+
+        /// Pay Locker fees in LP tokens (Option 2)
+        fn pay_fee_in_lp_tokens(
+            user: T::AccountId,
+            pool_tokens: Balance,
+            fee_percentage: FixedWrapper,
+            option: bool
+        ) -> Balance {
+
+            0
         }
 
         /// The account ID of pallet

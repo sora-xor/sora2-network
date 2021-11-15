@@ -150,6 +150,13 @@ pub trait LiquiditySource<TargetId, AccountId, AssetId, Amount, Error> {
     ) -> Option<Balance> {
         None
     }
+
+    /// Update LP tokens of particular accounts
+    fn update_lp_tokens(
+        _base_account_id: AccountId,
+        _target_account_id: AccountId,
+        _lp_tokens: Balance,
+    ) -> bool;
 }
 
 impl<DEXId, AccountId, AssetId> LiquiditySource<DEXId, AccountId, AssetId, Fixed, DispatchError>
