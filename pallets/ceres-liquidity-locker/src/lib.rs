@@ -20,9 +20,8 @@ pub use pallet::*;
 #[frame_support::pallet]
 pub mod pallet {
     use crate::LockInfo;
-    use common::balance;
     use common::prelude::{Balance, FixedWrapper};
-    use common::LiquiditySource;
+    use common::{balance, LiquiditySource};
     use frame_support::pallet_prelude::*;
     use frame_system::ensure_signed;
     use frame_system::pallet_prelude::*;
@@ -56,6 +55,8 @@ pub mod pallet {
         type CeresAssetId: Get<Self::AssetId>;
     }
 
+    type Assets<T> = assets::Pallet<T>;
+    type DEXIdOf<T> = <T as common::Config>::DEXId;
     type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
 
     #[pallet::pallet]
@@ -100,11 +101,12 @@ pub mod pallet {
         #[pallet::weight(10000)]
         pub fn lock_liquidity(
             origin: OriginFor<T>,
+            dex_id: DEXIdOf<T>,
             asset_a: T::AssetId,
             asset_b: T::AssetId,
             unlocking_block: T::BlockNumber,
             percentage_of_pool_tokens: Balance,
-            option: bool
+            option: bool,
         ) -> DispatchResultWithPostInfo {
             let user = ensure_signed(origin)?;
 
@@ -118,25 +120,45 @@ pub mod pallet {
             // Get current block
             let current_block = frame_system::Pallet::<T>::block_number();
 
+            // Get pool account
+            let pool_account =
+                T::XYKPool::pool_account_from_dex_and_asset_pair(dex_id, asset_a, asset_b)
+                    .expect("No pool account");
+
             // Calculate number of pool tokens to be locked
-            let pool_account: AccountIdOf<T> = T::XYKPool::properties(asset_a, asset_b)
-                .expect("Pool does not exist")
-                .0;
-            let pool_tokens = T::XYKPool::pool_providers(pool_account, user.clone())
+            let pool_tokens = T::XYKPool::pool_providers(pool_account.clone(), user.clone())
                 .expect("User is not pool provider");
             lock_info.pool_tokens = pool_tokens * percentage_of_pool_tokens;
 
             // Pay Locker fees
             if option {
-                // Pay fees according to Option 1
+                // Transfer 1% of LP tokens
+                Self::pay_fee_in_lp_tokens(
+                    pool_account,
+                    asset_a,
+                    asset_b,
+                    user.clone(),
+                    pool_tokens,
+                    FixedWrapper::from(0.01),
+                    option,
+                )?;
             } else {
-                // Pay fees according to Option 2
                 // Transfer 20 CERES
                 Assets::<T>::transfer_from(
                     &T::CeresAssetId::get().into(),
                     &user,
                     &Self::account_id(),
                     balance!(20),
+                )?;
+                // Transfer 0.5% of LP tokens
+                Self::pay_fee_in_lp_tokens(
+                    pool_account,
+                    asset_a,
+                    asset_b,
+                    user.clone(),
+                    pool_tokens,
+                    FixedWrapper::from(0.005),
+                    option,
                 )?;
             }
 
@@ -194,15 +216,34 @@ pub mod pallet {
             return allowed_withdrawal_amount;
         }
 
-        /// Pay Locker fees in LP tokens (Option 2)
+        /// Pay Locker fees in LP tokens
         fn pay_fee_in_lp_tokens(
+            pool_account: T::AccountId,
+            asset_a: T::AssetId,
+            asset_b: T::AssetId,
             user: T::AccountId,
-            pool_tokens: Balance,
+            mut pool_tokens: Balance,
             fee_percentage: FixedWrapper,
-            option: bool
-        ) -> Balance {
+            option: bool,
+        ) -> Result<(), DispatchError> {
+            pool_tokens = (FixedWrapper::from(pool_tokens) * fee_percentage)
+                .try_into_balance()
+                .unwrap_or(0);
 
-            0
+            let mut fee_account = T::FeesOptionOneAccount::get();
+            if !option {
+                fee_account = T::FeesOptionTwoAccount::get();
+            }
+
+            let result = T::XYKPool::transfer_lp_tokens(
+                pool_account,
+                asset_a,
+                asset_b,
+                user,
+                fee_account,
+                pool_tokens,
+            );
+            return result;
         }
 
         /// The account ID of pallet

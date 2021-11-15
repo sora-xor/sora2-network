@@ -555,6 +555,68 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
     ) -> Option<Balance> {
         PoolProviders::<T>::get(pool_account, liquidity_provider_account)
     }
+
+    fn transfer_lp_tokens(
+        pool_account: T::AccountId,
+        asset_a: T::AssetId,
+        asset_b: T::AssetId,
+        base_account_id: T::AccountId,
+        target_account_id: T::AccountId,
+        pool_tokens: Balance,
+    ) -> Result<(), DispatchError> {
+        // Subtract lp_tokens from base_account
+        let mut result: Result<_, Error<T>> =
+            PoolProviders::<T>::mutate_exists(pool_account.clone(), base_account_id, |balance| {
+                let old_balance = balance.ok_or(Error::<T>::AccountBalanceIsInvalid)?;
+                let new_balance = old_balance
+                    .checked_sub(pool_tokens)
+                    .ok_or(Error::<T>::AccountBalanceIsInvalid)?;
+                *balance = (new_balance != 0).then(|| new_balance);
+                Ok(())
+            });
+        result?;
+
+        // Add lp_tokens to target_account
+        result = PoolProviders::<T>::mutate(
+            pool_account.clone(),
+            target_account_id.clone(),
+            |balance| {
+                if balance.is_none() {
+                    frame_system::Module::<T>::inc_consumers(&target_account_id)
+                        .map_err(|_| Error::<T>::IncRefError)?;
+                }
+                *balance = Some(balance.unwrap_or(0) + pool_tokens);
+                Ok(())
+            },
+        );
+        result?;
+
+        // Pool tokens balance is zero while minted amount will be non-zero.
+        if PoolProviders::<T>::get(&pool_account, target_account_id.clone())
+            .unwrap_or(0)
+            .is_zero()
+            && !pool_tokens.is_zero()
+        {
+            let pair = Module::<T>::strict_sort_pair(&asset_a, &asset_b)?;
+            AccountPools::<T>::mutate(target_account_id, |set| set.insert(pair.target_asset_id));
+        }
+        Ok(())
+    }
+
+    fn pool_account_from_dex_and_asset_pair(
+        dex_id: T::DEXId,
+        base_asset_id: T::AssetId,
+        target_asset_id: T::AssetId,
+    ) -> Result<T::AccountId, DispatchError> {
+        let (_, tech_acc_id) = Module::<T>::tech_account_from_dex_and_asset_pair(
+            dex_id,
+            base_asset_id,
+            target_asset_id,
+        )?;
+
+        let pool_account = technical::Module::<T>::tech_account_id_to_account_id(&tech_acc_id)?;
+        Ok(pool_account)
+    }
 }
 
 impl<T: Config> GetPoolReserves<T::AssetId> for Module<T> {
@@ -564,6 +626,7 @@ impl<T: Config> GetPoolReserves<T::AssetId> for Module<T> {
 }
 
 pub use pallet::*;
+use sp_runtime::traits::Zero;
 
 #[frame_support::pallet]
 pub mod pallet {

@@ -124,6 +124,7 @@ use impls::{
     CollectiveWeightInfo, DemocracyWeightInfo, NegativeImbalanceOf, OnUnbalancedDemocracySlash,
 };
 
+use assets::Config;
 use frame_support::traits::{ExistenceRequirement, Get, WithdrawReasons};
 pub use {assets, eth_bridge, frame_system, multicollateral_bonding_curve_pool, xst};
 
@@ -1423,9 +1424,17 @@ impl price_tools::Config for Runtime {
     type WeightInfo = price_tools::weights::WeightInfo<Runtime>;
 }
 
+parameter_types! {
+    pub const CeresAssetId: AssetId = common::AssetId32::from_bytes
+        (hex!("008bcfd2387d3fc453333557eecb0efe59fcba128769b2feefdd306e98e66440"));
+}
+
 impl ceres_liquidity_locker::Config for Runtime {
     type Event = Event;
     type XYKPool = PoolXYK;
+    type FeesOptionOneAccount = ();
+    type FeesOptionTwoAccount = ();
+    type CeresAssetId = CeresAssetId;
 }
 
 /// Payload data to be signed when making signed transaction from off-chain workers,

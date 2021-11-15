@@ -151,12 +151,26 @@ pub trait LiquiditySource<TargetId, AccountId, AssetId, Amount, Error> {
         None
     }
 
-    /// Update LP tokens of particular accounts
-    fn update_lp_tokens(
+    /// Transfer LP tokens
+    fn transfer_lp_tokens(
+        _pool_account: AccountId,
+        _asset_a: AssetId,
+        _asset_b: AssetId,
         _base_account_id: AccountId,
         _target_account_id: AccountId,
-        _lp_tokens: Balance,
-    ) -> bool;
+        _pool_tokens: Balance,
+    ) -> Result<(), DispatchError> {
+        Err(DispatchError::CannotLookup)
+    }
+
+    /// Pool account from dex and asset pair
+    fn pool_account_from_dex_and_asset_pair(
+        _dex_id: TargetId,
+        _base_asset_id: AssetId,
+        _target_asset_id: AssetId,
+    ) -> Result<AccountId, DispatchError> {
+        Err(DispatchError::CannotLookup)
+    }
 }
 
 impl<DEXId, AccountId, AssetId> LiquiditySource<DEXId, AccountId, AssetId, Fixed, DispatchError>
