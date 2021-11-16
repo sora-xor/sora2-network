@@ -898,7 +898,8 @@ impl xor_fee::ApplyCustomFees<Call> for ExtrinsicsFlatFees {
             Call::Assets(assets::Call::register(..))
             | Call::EthBridge(eth_bridge::Call::transfer_to_sidechain(..))
             | Call::PoolXYK(pool_xyk::Call::withdraw_liquidity(..))
-            | Call::Rewards(rewards::Call::claim(..)) => Some(BIG_FEE),
+            | Call::Rewards(rewards::Call::claim(..))
+            | Call::VestedRewards(vested_rewards::Call::claim_rewards(..)) => Some(BIG_FEE),
             Call::Assets(..)
             | Call::EthBridge(..)
             | Call::LiquidityProxy(..)
