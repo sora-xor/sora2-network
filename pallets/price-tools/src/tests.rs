@@ -417,7 +417,7 @@ fn average_price_large_change_before_no_update_streak_negative() {
 }
 
 #[test]
-fn price_should_go_up_faster_than_going_down() {
+fn price_should_go_down_faster_than_going_up() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
         for asset_id in [ETH, DAI, VAL, PSWAP].iter().cloned() {
