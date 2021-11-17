@@ -12,19 +12,22 @@ edition = '2018'
 targets = ['x86_64-unknown-linux-gnu']
 
 [dependencies]
-codec = { package = "parity-scale-codec", version = "2", default-features = false, features = ["derive"] }
-frame-benchmarking = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.9", default-features = false, optional = true }
-frame-support = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.9", default-features = false }
-frame-system = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.9", default-features = false }
+codec = { package = "parity-scale-codec", version = "2", default-features = false, features = [
+    "derive",
+] }
+scale-info = { version = "1.0", default-features = false, features = ["derive"] }
+frame-benchmarking = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.12", default-features = false, optional = true }
+frame-support = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.12", default-features = false }
+frame-system = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.12", default-features = false }
 hex-literal = { version = "0.3.1", optional = true }
-orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", default-features = false }
-pallet-scheduler = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.9", default-features = false }
-pallet-timestamp = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.9", default-features = false }
+orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", rev = "55d52768", default-features = false }
+pallet-scheduler = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.12", default-features = false }
+pallet-timestamp = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.12", default-features = false }
 serde = { version = "1.0.101", optional = true, features = ["derive"] }
-sp-arithmetic = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.9", default-features = false }
-sp-core = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.9", default-features = false }
-sp-runtime = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.9", default-features = false }
-sp-std = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.9", default-features = false }
+sp-arithmetic = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.12", default-features = false }
+sp-core = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.12", default-features = false }
+sp-runtime = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.12", default-features = false }
+sp-std = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.12", default-features = false }
 
 assets = { path = "../assets", default-features = false }
 common = { path = "../../common", default-features = false }
@@ -32,18 +35,18 @@ dex-manager = { path = "../dex-manager", default-features = false }
 permissions = { path = "../permissions", default-features = false }
 pool-xyk = { path = "../pool-xyk", default-features = false }
 technical = { path = "../technical", default-features = false }
-tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-tokens", default-features = false }
+tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", rev = "55d52768", package = "orml-tokens", default-features = false }
 trading-pair = { path = "../trading-pair", default-features = false }
 vested-rewards = { path = "../vested-rewards", default-features = false }
 rustc-hex = { version = "2.1.0", default-features = false }
 
 [dev-dependencies]
-currencies = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-currencies" }
+currencies = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", rev = "55d52768", package = "orml-currencies" }
 hex-literal = { version = "0.3.1" }
-pallet-balances = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.9" }
-pallet-scheduler = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.9" }
-sp-io = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.9" }
-tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-tokens" }
+pallet-balances = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.12" }
+pallet-scheduler = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.12" }
+sp-io = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.12" }
+tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", rev = "55d52768", package = "orml-tokens" }
 
 assets = { path = "../assets" }
 common = { path = "../../common", features = ["test"] }
@@ -59,6 +62,7 @@ trading-pair = { path = "../trading-pair" }
 default = ['std']
 std = [
     'codec/std',
+    'scale-info/std',
     'frame-support/std',
     'frame-system/std',
     'pallet-timestamp/std',

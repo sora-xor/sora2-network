@@ -21,7 +21,7 @@ pub fn migrate<T: Config>() -> Weight {
             None,
             1,
             RawOrigin::Root.into(),
-            Call::migrate_to_1_1().into(),
+            Call::migrate_to_1_1 {}.into(),
         )
         .is_err()
         {

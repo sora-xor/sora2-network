@@ -418,7 +418,6 @@ impl pallet_session::Config for Runtime {
     type Event = Event;
     type ValidatorId = AccountId;
     type ValidatorIdOf = pallet_staking::StashOf<Runtime>;
-    type DisabledValidatorsThreshold = DisabledValidatorsThreshold;
     type NextSessionRotation = ();
     type WeightInfo = ();
 }
@@ -552,7 +551,6 @@ pub mod mock_liquidity_proxy {
     }
 
     #[pallet::event]
-    #[pallet::metadata(AccountIdOf<T> = "AccountId", AssetIdOf<T> = "AssetId", DexIdOf<T> = "DEXId")]
     pub enum Event<T: Config> {}
 
     #[pallet::error]

@@ -123,7 +123,6 @@ use eth_bridge::requests::{AssetKind, OffchainRequest, OutgoingRequestEncoded, R
 use impls::{CollectiveWeightInfo, DemocracyWeightInfo, OnUnbalancedDemocracySlash};
 
 use frame_support::traits::{Contains, Everything, Get};
-use pallet_balances::Config;
 use sp_runtime::traits::Keccak256;
 pub use {assets, eth_bridge, frame_system, multicollateral_bonding_curve_pool, xst};
 
@@ -507,7 +506,6 @@ impl pallet_session::Config for Runtime {
     type Event = Event;
     type ValidatorId = AccountId;
     type ValidatorIdOf = pallet_staking::StashOf<Self>;
-    type DisabledValidatorsThreshold = DisabledValidatorsThreshold;
     type NextSessionRotation = Babe;
     type WeightInfo = ();
 }
@@ -636,14 +634,14 @@ impl assets::Config for Runtime {
         common::AssetIdExtraAssetRecordArg<DEXId, common::LiquiditySourceType, [u8; 32]>;
     type AssetId = AssetId;
     type GetBaseAssetId = GetBaseAssetId;
-    type Currency = currencies::Module<Runtime>;
+    type Currency = currencies::Pallet<Runtime>;
     type GetTeamReservesAccountId = GetTeamReservesAccountId;
     type WeightInfo = assets::weights::WeightInfo<Runtime>;
 }
 
 impl trading_pair::Config for Runtime {
     type Event = Event;
-    type EnsureDEXManager = dex_manager::Module<Runtime>;
+    type EnsureDEXManager = dex_manager::Pallet<Runtime>;
     type WeightInfo = ();
 }
 
@@ -675,7 +673,7 @@ impl pool_xyk::Config for Runtime {
     type WithdrawLiquidityAction =
         pool_xyk::WithdrawLiquidityAction<AssetId, AccountId, TechAccountId>;
     type PolySwapAction = pool_xyk::PolySwapAction<AssetId, AccountId, TechAccountId>;
-    type EnsureDEXManager = dex_manager::Module<Runtime>;
+    type EnsureDEXManager = dex_manager::Pallet<Runtime>;
     type GetFee = GetFee;
     type OnPoolCreated = (PswapDistribution, Farming);
     type OnPoolReservesChanged = PriceTools;
@@ -693,7 +691,7 @@ parameter_types! {
     pub GetLiquidityProxyAccountId: AccountId = {
         let tech_account_id = GetLiquidityProxyTechAccountId::get();
         let account_id =
-            technical::Module::<Runtime>::tech_account_id_to_account_id(&tech_account_id)
+            technical::Pallet::<Runtime>::tech_account_id_to_account_id(&tech_account_id)
                 .expect("Failed to get ordinary account id for technical account id.");
         account_id
     };
@@ -708,53 +706,53 @@ parameter_types! {
 
 impl liquidity_proxy::Config for Runtime {
     type Event = Event;
-    type LiquidityRegistry = dex_api::Module<Runtime>;
+    type LiquidityRegistry = dex_api::Pallet<Runtime>;
     type GetNumSamples = GetNumSamples;
     type GetTechnicalAccountId = GetLiquidityProxyAccountId;
-    type PrimaryMarketTBC = multicollateral_bonding_curve_pool::Module<Runtime>;
-    type PrimaryMarketXST = xst::Module<Runtime>;
-    type SecondaryMarket = pool_xyk::Module<Runtime>;
+    type PrimaryMarketTBC = multicollateral_bonding_curve_pool::Pallet<Runtime>;
+    type PrimaryMarketXST = xst::Pallet<Runtime>;
+    type SecondaryMarket = pool_xyk::Pallet<Runtime>;
     type WeightInfo = liquidity_proxy::weights::WeightInfo<Runtime>;
     type VestedRewardsPallet = VestedRewards;
 }
 
 impl mock_liquidity_source::Config<mock_liquidity_source::Instance1> for Runtime {
     type GetFee = GetFee;
-    type EnsureDEXManager = dex_manager::Module<Runtime>;
-    type EnsureTradingPairExists = trading_pair::Module<Runtime>;
+    type EnsureDEXManager = dex_manager::Pallet<Runtime>;
+    type EnsureTradingPairExists = trading_pair::Pallet<Runtime>;
 }
 
 impl mock_liquidity_source::Config<mock_liquidity_source::Instance2> for Runtime {
     type GetFee = GetFee;
-    type EnsureDEXManager = dex_manager::Module<Runtime>;
-    type EnsureTradingPairExists = trading_pair::Module<Runtime>;
+    type EnsureDEXManager = dex_manager::Pallet<Runtime>;
+    type EnsureTradingPairExists = trading_pair::Pallet<Runtime>;
 }
 
 impl mock_liquidity_source::Config<mock_liquidity_source::Instance3> for Runtime {
     type GetFee = GetFee;
-    type EnsureDEXManager = dex_manager::Module<Runtime>;
-    type EnsureTradingPairExists = trading_pair::Module<Runtime>;
+    type EnsureDEXManager = dex_manager::Pallet<Runtime>;
+    type EnsureTradingPairExists = trading_pair::Pallet<Runtime>;
 }
 
 impl mock_liquidity_source::Config<mock_liquidity_source::Instance4> for Runtime {
     type GetFee = GetFee;
-    type EnsureDEXManager = dex_manager::Module<Runtime>;
-    type EnsureTradingPairExists = trading_pair::Module<Runtime>;
+    type EnsureDEXManager = dex_manager::Pallet<Runtime>;
+    type EnsureTradingPairExists = trading_pair::Pallet<Runtime>;
 }
 
 impl dex_api::Config for Runtime {
     type Event = Event;
     type MockLiquiditySource =
-        mock_liquidity_source::Module<Runtime, mock_liquidity_source::Instance1>;
+        mock_liquidity_source::Pallet<Runtime, mock_liquidity_source::Instance1>;
     type MockLiquiditySource2 =
-        mock_liquidity_source::Module<Runtime, mock_liquidity_source::Instance2>;
+        mock_liquidity_source::Pallet<Runtime, mock_liquidity_source::Instance2>;
     type MockLiquiditySource3 =
-        mock_liquidity_source::Module<Runtime, mock_liquidity_source::Instance3>;
+        mock_liquidity_source::Pallet<Runtime, mock_liquidity_source::Instance3>;
     type MockLiquiditySource4 =
-        mock_liquidity_source::Module<Runtime, mock_liquidity_source::Instance4>;
-    type MulticollateralBondingCurvePool = multicollateral_bonding_curve_pool::Module<Runtime>;
-    type XYKPool = pool_xyk::Module<Runtime>;
-    type XSTPool = xst::Module<Runtime>;
+        mock_liquidity_source::Pallet<Runtime, mock_liquidity_source::Instance4>;
+    type MulticollateralBondingCurvePool = multicollateral_bonding_curve_pool::Pallet<Runtime>;
+    type XYKPool = pool_xyk::Pallet<Runtime>;
+    type XSTPool = xst::Pallet<Runtime>;
     type WeightInfo = dex_api::weights::WeightInfo<Runtime>;
 }
 
@@ -878,17 +876,17 @@ pub struct ExtrinsicsFlatFees;
 impl xor_fee::ApplyCustomFees<Call> for ExtrinsicsFlatFees {
     fn compute_fee(call: &Call) -> Option<Balance> {
         match call {
-            Call::Assets(assets::Call::register(..))
-            | Call::EthBridge(eth_bridge::Call::transfer_to_sidechain(..))
-            | Call::PoolXYK(pool_xyk::Call::withdraw_liquidity(..))
-            | Call::Rewards(rewards::Call::claim(..)) => Some(balance!(0.007)),
+            Call::Assets(assets::Call::register { .. })
+            | Call::EthBridge(eth_bridge::Call::transfer_to_sidechain { .. })
+            | Call::PoolXYK(pool_xyk::Call::withdraw_liquidity { .. })
+            | Call::Rewards(rewards::Call::claim { .. }) => Some(balance!(0.007)),
             Call::Assets(..)
             | Call::EthBridge(..)
             | Call::LiquidityProxy(..)
             | Call::MulticollateralBondingCurvePool(..)
             | Call::PoolXYK(..)
             | Call::Rewards(..)
-            | Call::Staking(pallet_staking::Call::payout_stakers(..))
+            | Call::Staking(pallet_staking::Call::payout_stakers { .. })
             | Call::TradingPair(..) => Some(balance!(0.0007)),
             _ => None,
         }
@@ -900,14 +898,14 @@ impl xor_fee::ExtractProxySwap for Call {
     type AssetId = AssetId;
     type Amount = SwapAmount<u128>;
     fn extract(&self) -> Option<xor_fee::SwapInfo<Self::DexId, Self::AssetId, Self::Amount>> {
-        if let Call::LiquidityProxy(liquidity_proxy::Call::swap(
+        if let Call::LiquidityProxy(liquidity_proxy::Call::swap {
             dex_id,
             input_asset_id,
             output_asset_id,
             amount,
             selected_source_types,
             filter_mode,
-        )) = self
+        }) = self
         {
             Some(xor_fee::SwapInfo {
                 dex_id: *dex_id,
@@ -927,27 +925,27 @@ impl xor_fee::IsCalledByBridgePeer<AccountId> for Call {
     fn is_called_by_bridge_peer(&self, who: &AccountId) -> bool {
         match self {
             Call::BridgeMultisig(call) => match call {
-                bridge_multisig::Call::as_multi(multisig_id, ..)
-                | bridge_multisig::Call::as_multi_threshold_1(multisig_id, ..) => {
+                bridge_multisig::Call::as_multi { multisig_id, .. }
+                | bridge_multisig::Call::as_multi_threshold_1 { multisig_id, .. } => {
                     bridge_multisig::Accounts::<Runtime>::get(multisig_id)
                         .map(|acc| acc.is_signatory(&who))
                 }
                 _ => None,
             },
             Call::EthBridge(call) => match call {
-                eth_bridge::Call::approve_request(_, _, _, network_id) => {
+                eth_bridge::Call::approve_request { network_id, .. } => {
                     Some(eth_bridge::Pallet::<Runtime>::is_peer(who, *network_id))
                 }
-                eth_bridge::Call::register_incoming_request(request) => {
+                eth_bridge::Call::register_incoming_request { request } => {
                     let net_id = request.network_id();
                     eth_bridge::BridgeAccount::<Runtime>::get(net_id).map(|acc| acc == *who)
                 }
-                eth_bridge::Call::import_incoming_request(load_request, _) => {
+                eth_bridge::Call::import_incoming_request { load_request, .. } => {
                     let net_id = load_request.network_id();
                     eth_bridge::BridgeAccount::<Runtime>::get(net_id).map(|acc| acc == *who)
                 }
-                eth_bridge::Call::finalize_incoming_request(_, network_id)
-                | eth_bridge::Call::abort_request(_, _, network_id) => {
+                eth_bridge::Call::finalize_incoming_request { network_id, .. }
+                | eth_bridge::Call::abort_request { network_id, .. } => {
                     eth_bridge::BridgeAccount::<Runtime>::get(network_id).map(|acc| acc == *who)
                 }
                 _ => None,
@@ -1180,7 +1178,7 @@ parameter_types! {
     pub GetPswapDistributionAccountId: AccountId = {
         let tech_account_id = GetPswapDistributionTechAccountId::get();
         let account_id =
-            technical::Module::<Runtime>::tech_account_id_to_account_id(&tech_account_id)
+            technical::Pallet::<Runtime>::tech_account_id_to_account_id(&tech_account_id)
                 .expect("Failed to get ordinary account id for technical account id.");
         account_id
     };
@@ -1193,7 +1191,7 @@ parameter_types! {
     };
     pub GetXorFeeAccountId: AccountId = {
         let tech_account_id = GetXorFeeTechAccountId::get();
-        technical::Module::<Runtime>::tech_account_id_to_account_id(&tech_account_id)
+        technical::Pallet::<Runtime>::tech_account_id_to_account_id(&tech_account_id)
             .expect("Failed to get ordinary account id for technical account id.")
     };
     pub GetXSTPoolPermissionedTechAccountId: TechAccountId = {
@@ -1206,7 +1204,7 @@ parameter_types! {
     pub GetXSTPoolPermissionedAccountId: AccountId = {
         let tech_account_id = GetXSTPoolPermissionedTechAccountId::get();
         let account_id =
-            technical::Module::<Runtime>::tech_account_id_to_account_id(&tech_account_id)
+            technical::Pallet::<Runtime>::tech_account_id_to_account_id(&tech_account_id)
                 .expect("Failed to get ordinary account id for technical account id.");
         account_id
     };
@@ -1271,7 +1269,7 @@ parameter_types! {
     pub GetMbcReservesAccountId: AccountId = {
         let tech_account_id = GetMbcReservesTechAccountId::get();
         let account_id =
-            technical::Module::<Runtime>::tech_account_id_to_account_id(&tech_account_id)
+            technical::Pallet::<Runtime>::tech_account_id_to_account_id(&tech_account_id)
                 .expect("Failed to get ordinary account id for technical account id.");
         account_id
     };
@@ -1285,7 +1283,7 @@ parameter_types! {
     pub GetMbcPoolRewardsAccountId: AccountId = {
         let tech_account_id = GetMbcPoolRewardsTechAccountId::get();
         let account_id =
-            technical::Module::<Runtime>::tech_account_id_to_account_id(&tech_account_id)
+            technical::Pallet::<Runtime>::tech_account_id_to_account_id(&tech_account_id)
                 .expect("Failed to get ordinary account id for technical account id.");
         account_id
     };
@@ -1299,7 +1297,7 @@ parameter_types! {
     pub GetMbcPoolFreeReservesAccountId: AccountId = {
         let tech_account_id = GetMbcPoolFreeReservesTechAccountId::get();
         let account_id =
-            technical::Module::<Runtime>::tech_account_id_to_account_id(&tech_account_id)
+            technical::Pallet::<Runtime>::tech_account_id_to_account_id(&tech_account_id)
                 .expect("Failed to get ordinary account id for technical account id.");
         account_id
     };
@@ -1313,7 +1311,7 @@ parameter_types! {
     pub GetMarketMakerRewardsAccountId: AccountId = {
         let tech_account_id = GetMarketMakerRewardsTechAccountId::get();
         let account_id =
-            technical::Module::<Runtime>::tech_account_id_to_account_id(&tech_account_id)
+            technical::Pallet::<Runtime>::tech_account_id_to_account_id(&tech_account_id)
                 .expect("Failed to get ordinary account id for technical account id.");
         account_id
     };
@@ -1465,9 +1463,9 @@ where
         payload: &[u8],
     ) -> DispatchResult {
         match channel_id {
-            ChannelId::Basic => basic_channel::outbound::Module::<T>::submit(who, target, payload),
+            ChannelId::Basic => basic_channel::outbound::Pallet::<T>::submit(who, target, payload),
             ChannelId::Incentivized => {
-                incentivized_channel::outbound::Module::<T>::submit(who, target, payload)
+                incentivized_channel::outbound::Pallet::<T>::submit(who, target, payload)
             }
         }
     }
@@ -1481,8 +1479,8 @@ parameter_types! {
 
 impl basic_channel_inbound::Config for Runtime {
     type Event = Event;
-    type Verifier = ethereum_light_client::Module<Runtime>;
-    type MessageDispatch = dispatch::Module<Runtime>;
+    type Verifier = ethereum_light_client::Pallet<Runtime>;
+    type MessageDispatch = dispatch::Pallet<Runtime>;
     type WeightInfo = ();
 }
 
@@ -1510,8 +1508,8 @@ parameter_types! {
 
 impl incentivized_channel_inbound::Config for Runtime {
     type Event = Event;
-    type Verifier = ethereum_light_client::Module<Runtime>;
-    type MessageDispatch = dispatch::Module<Runtime>;
+    type Verifier = ethereum_light_client::Pallet<Runtime>;
+    type MessageDispatch = dispatch::Pallet<Runtime>;
     type FeeConverter = FeeConverter;
     type UpdateOrigin = MoreThanHalfCouncil;
     type WeightInfo = ();
@@ -1748,7 +1746,7 @@ pub type Executive = frame_executive::Executive<
     Block,
     frame_system::ChainContext<Runtime>,
     Runtime,
-    AllModules,
+    AllPallets,
 >;
 
 impl_runtime_apis! {
@@ -2282,11 +2280,11 @@ impl_runtime_apis! {
         ) -> Result<Vec<frame_benchmarking::BenchmarkBatch>, sp_runtime::RuntimeString> {
             use frame_benchmarking::{Benchmarking, BenchmarkBatch, add_benchmark, TrackedStorageKey};
 
-            use dex_api_benchmarking::Module as DEXAPIBench;
-            use liquidity_proxy_benchmarking::Module as LiquidityProxyBench;
-            use pool_xyk_benchmarking::Module as XYKPoolBench;
-            use pswap_distribution_benchmarking::Module as PswapDistributionBench;
-            use xor_fee_benchmarking::Module as XorFeeBench;
+            use dex_api_benchmarking::Pallet as DEXAPIBench;
+            use liquidity_proxy_benchmarking::Pallet as LiquidityProxyBench;
+            use pool_xyk_benchmarking::Pallet as XYKPoolBench;
+            use pswap_distribution_benchmarking::Pallet as PswapDistributionBench;
+            use xor_fee_benchmarking::Pallet as XorFeeBench;
 
             impl dex_api_benchmarking::Config for Runtime {}
             impl liquidity_proxy_benchmarking::Config for Runtime {}

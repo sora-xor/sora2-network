@@ -86,8 +86,9 @@ where
     446400u32.into()
 }
 
-#[derive(PartialEq, Eq, Clone, RuntimeDebug, Encode, Decode)]
+#[derive(PartialEq, Eq, Clone, RuntimeDebug, Encode, Decode, scale_info::TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+#[scale_info(skip_type_params(T))]
 struct PendingMultisigAccount<T>
 where
     T: frame_system::Config,
@@ -411,7 +412,6 @@ pub mod pallet {
     }
 
     #[pallet::event]
-    #[pallet::metadata(AccountIdOf<T> = "AccountId")]
     #[pallet::generate_deposit(pub(super) fn deposit_event)]
     pub enum Event<T: Config> {
         /// Migrated. [source, target]

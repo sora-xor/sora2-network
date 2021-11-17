@@ -98,7 +98,9 @@ impl<T: Config> ExchangePath<T> {
 }
 
 /// Output of the aggregated LiquidityProxy::quote() price.
-#[derive(Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(
+    Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq, PartialOrd, Ord, scale_info::TypeInfo,
+)]
 pub struct AggregatedSwapOutcome<LiquiditySourceType, AmountType> {
     /// A distribution of amounts each liquidity sources gets to swap in the entire trade
     pub distribution: Vec<(LiquiditySourceType, QuoteAmount<AmountType>)>,
@@ -1367,7 +1369,6 @@ pub mod pallet {
     }
 
     #[pallet::event]
-    #[pallet::metadata(AccountIdOf<T> = "AccountId", AssetIdOf<T> = "AssetId", DexIdOf<T> = "DEXId")]
     #[pallet::generate_deposit(pub(super) fn deposit_event)]
     pub enum Event<T: Config> {
         /// Exchange of tokens has been performed

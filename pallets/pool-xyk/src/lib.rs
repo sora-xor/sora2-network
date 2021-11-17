@@ -700,7 +700,6 @@ pub mod pallet {
     }
 
     #[pallet::event]
-    #[pallet::metadata(AccountIdOf<T> = "AccountId")]
     #[pallet::generate_deposit(pub(super) fn deposit_event)]
     pub enum Event<T: Config> {
         // New pool for particular pair was initialized. [Reserves Account Id]

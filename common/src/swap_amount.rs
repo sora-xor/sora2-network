@@ -45,7 +45,9 @@ use sp_std::ops::{Add, Sub};
 use crate::primitives::Balance;
 use crate::Fixed;
 
-#[derive(Encode, Decode, Copy, Clone, RuntimeDebug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(
+    Encode, Decode, Copy, Clone, RuntimeDebug, PartialEq, Eq, PartialOrd, Ord, scale_info::TypeInfo,
+)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum QuoteAmount<AmountType> {
     WithDesiredInput { desired_amount_in: AmountType },
@@ -274,7 +276,9 @@ impl TryFrom<QuoteAmount<Balance>> for QuoteAmount<Fixed> {
 
 /// Used to identify intention of caller to indicate desired input amount or desired output amount.
 /// Similar to SwapAmount, does not hold value in order to be used in external API.
-#[derive(Encode, Decode, Copy, Clone, RuntimeDebug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(
+    Encode, Decode, Copy, Clone, RuntimeDebug, PartialEq, Eq, PartialOrd, Ord, scale_info::TypeInfo,
+)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum SwapVariant {
     WithDesiredInput,
@@ -283,7 +287,9 @@ pub enum SwapVariant {
 
 /// Used to identify intention of caller either to transfer tokens based on exact input amount or
 /// exact output amount.
-#[derive(Encode, Decode, Copy, Clone, RuntimeDebug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(
+    Encode, Decode, Copy, Clone, RuntimeDebug, PartialEq, Eq, PartialOrd, Ord, scale_info::TypeInfo,
+)]
 pub enum SwapAmount<AmountType> {
     WithDesiredInput {
         desired_amount_in: AmountType,
@@ -581,7 +587,9 @@ where
 }
 
 /// Amount of output tokens from either price request or actual exchange.
-#[derive(Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(
+    Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq, PartialOrd, Ord, scale_info::TypeInfo,
+)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct SwapOutcome<AmountType> {
     /// Actual swap output/input amount including deduced fee.

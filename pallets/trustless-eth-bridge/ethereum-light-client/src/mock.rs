@@ -6,11 +6,9 @@ use frame_system as system;
 use snowbridge_core::{Message, Proof};
 use snowbridge_testutils::BlockWithProofs;
 use sp_core::H256;
-use sp_runtime::{
-    testing::Header,
-    traits::{BlakeTwo256, IdentifyAccount, IdentityLookup, Verify},
-    MultiSignature,
-};
+use sp_runtime::testing::Header;
+use sp_runtime::traits::{BlakeTwo256, IdentifyAccount, IdentityLookup, Verify};
+use sp_runtime::MultiSignature;
 use std::fs::File;
 use std::path::PathBuf;
 

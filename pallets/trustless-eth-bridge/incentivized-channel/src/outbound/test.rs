@@ -2,17 +2,15 @@ use super::*;
 use currencies::BasicCurrencyAdapter;
 
 use common::mock::ExistentialDeposits;
-use common::{balance, AssetName, AssetSymbol};
-use common::{Amount, AssetId32, Balance, DEXId, XOR};
+use common::{balance, Amount, AssetId32, AssetName, AssetSymbol, Balance, DEXId, XOR};
+use frame_support::dispatch::DispatchError;
 use frame_support::traits::{Everything, GenesisBuild};
-use frame_support::{assert_noop, assert_ok, dispatch::DispatchError, parameter_types};
+use frame_support::{assert_noop, assert_ok, parameter_types};
 use sp_core::{H160, H256};
 use sp_keyring::AccountKeyring as Keyring;
-use sp_runtime::{
-    testing::Header,
-    traits::{BlakeTwo256, IdentifyAccount, IdentityLookup, Keccak256, Verify},
-    MultiSignature,
-};
+use sp_runtime::testing::Header;
+use sp_runtime::traits::{BlakeTwo256, IdentifyAccount, IdentityLookup, Keccak256, Verify};
+use sp_runtime::MultiSignature;
 use sp_std::convert::From;
 
 use snowbridge_core::SingleAsset;

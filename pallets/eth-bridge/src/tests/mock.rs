@@ -114,7 +114,7 @@ parameter_types! {
     pub const EthNetworkId: <Runtime as Config>::NetworkId = 0;
 }
 
-#[derive(PartialEq, Eq, Clone, Encode, Decode, Debug)]
+#[derive(PartialEq, Eq, Clone, Encode, Decode, Debug, scale_info::TypeInfo)]
 pub struct MyTestXt<Call, Extra> {
     /// Signature of the extrinsic.
     pub signature: Option<(AccountId, Extra)>,
@@ -220,7 +220,7 @@ impl<Call: Encode, Extra: Encode> GetDispatchInfo for MyTestXt<Call, Extra> {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Encode, Decode)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Encode, Decode, scale_info::TypeInfo)]
 pub struct MyExtra;
 pub type TestExtrinsic = MyTestXt<Call, MyExtra>;
 

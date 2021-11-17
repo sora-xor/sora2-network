@@ -57,7 +57,8 @@ type Call<T> = <T as Config>::Call;
 
 /// Information about an extrinsic sent by an off-chain worker. Used to identify extrinsics in
 /// finalized blocks.
-#[derive(Encode, Decode)]
+#[derive(Encode, Decode, scale_info::TypeInfo)]
+#[scale_info(skip_type_params(T))]
 pub struct SignedTransactionData<T>
 where
     T: Config,
@@ -194,20 +195,20 @@ impl<T: Config> Pallet<T> {
             .unwrap()
             .threshold_num();
         let call = if threshold == 1 {
-            bridge_multisig::Call::as_multi_threshold_1(
-                bridge_account,
-                Box::new(<<T as Config>::Call>::from(call)),
+            bridge_multisig::Call::as_multi_threshold_1 {
+                id: bridge_account,
+                call: Box::new(<<T as Config>::Call>::from(call)),
                 timepoint,
-            )
+            }
         } else {
             let vec = <<T as Config>::Call>::from(call).encode();
-            bridge_multisig::Call::as_multi(
-                bridge_account,
-                Some(timepoint),
-                vec,
-                true,
-                OFFCHAIN_TRANSACTION_WEIGHT_LIMIT,
-            )
+            bridge_multisig::Call::as_multi {
+                id: bridge_account,
+                maybe_timepoint: Some(timepoint),
+                call: vec,
+                store_call: true,
+                max_weight: OFFCHAIN_TRANSACTION_WEIGHT_LIMIT,
+            }
         };
         Self::send_transaction::<bridge_multisig::Call<T>>(call)
     }
@@ -219,7 +220,7 @@ impl<T: Config> Pallet<T> {
         network_id: T::NetworkId,
     ) -> Result<(), Error<T>> {
         debug!("send_incoming_request_result: {:?}", hash);
-        let transfer_call = crate::Call::<T>::finalize_incoming_request(hash, network_id);
+        let transfer_call = crate::Call::<T>::finalize_incoming_request { hash, network_id };
         Self::send_multisig_transaction(transfer_call, timepoint, network_id)
     }
 
@@ -233,10 +234,10 @@ impl<T: Config> Pallet<T> {
             "send_import_incoming_request: {:?}",
             incoming_request_result
         );
-        let import_call = crate::Call::<T>::import_incoming_request(
+        let import_call = crate::Call::<T>::import_incoming_request {
             load_incoming_request,
             incoming_request_result,
-        );
+        };
         Self::send_multisig_transaction(import_call, timepoint, network_id)
     }
 
@@ -253,8 +254,11 @@ impl<T: Config> Pallet<T> {
                 == Some(RequestStatus::Pending),
             Error::<T>::ExpectedPendingRequest
         );
-        let abort_request_call =
-            crate::Call::<T>::abort_request(request_hash, request_error.into(), network_id);
+        let abort_request_call = crate::Call::<T>::abort_request {
+            hash: request_hash,
+            error: request_error.into(),
+            network_id,
+        };
         Self::send_multisig_transaction(abort_request_call, timepoint, network_id)
     }
 
@@ -294,7 +298,7 @@ impl<T: Config> Pallet<T> {
         timepoint: Timepoint<T>,
         network_id: T::NetworkId,
     ) -> Result<(), Error<T>> {
-        let register_call = crate::Call::<T>::register_incoming_request(incoming_request);
+        let register_call = crate::Call::<T>::register_incoming_request { incoming_request };
         Self::send_multisig_transaction(register_call, timepoint, network_id)
     }
 

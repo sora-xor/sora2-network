@@ -59,8 +59,8 @@ pub const MIN_PEERS: usize = 4;
 pub const MAX_PEERS: usize = 100;
 
 /// Incoming request for adding Sidechain token to a bridge.
-#[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug)]
-#[cfg_attr(feature = "std", derive(Serialize))]
+#[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
+#[scale_info(skip_type_params(T))]
 pub struct IncomingAddToken<T: Config> {
     pub token_address: Address,
     pub asset_id: T::AssetId,
@@ -99,8 +99,8 @@ impl<T: Config> IncomingAddToken<T> {
 }
 
 /// Incoming request for adding/removing peer in a bridge.
-#[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+#[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
+#[scale_info(skip_type_params(T))]
 pub struct IncomingChangePeers<T: Config> {
     pub peer_account_id: T::AccountId,
     pub peer_address: Address,
@@ -168,15 +168,16 @@ impl<T: Config> IncomingChangePeers<T> {
     }
 }
 
-#[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug)]
+#[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum ChangePeersContract {
     XOR,
     VAL,
 }
 
-#[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug)]
+#[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+#[scale_info(skip_type_params(T))]
 pub struct IncomingChangePeersCompat<T: Config> {
     pub peer_account_id: T::AccountId,
     pub peer_address: Address,
@@ -245,8 +246,9 @@ impl<T: Config> IncomingChangePeersCompat<T> {
 }
 
 /// Incoming request for transferring token from Sidechain to Thischain.
-#[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug)]
+#[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+#[scale_info(skip_type_params(T))]
 pub struct IncomingTransfer<T: Config> {
     pub from: Address,
     pub to: T::AccountId,
@@ -366,8 +368,8 @@ pub fn encode_outgoing_request_eth_call<T: Config>(
 /// signatures were collected, but something changed in the bridge state (e.g., peers set) and
 /// the signatures became invalid. In this case we want to cancel the request to be able to
 /// re-submit it later.
-#[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug)]
-#[cfg_attr(feature = "std", derive(Serialize))]
+#[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
+#[scale_info(skip_type_params(T))]
 pub struct IncomingCancelOutgoingRequest<T: Config> {
     pub outgoing_request: OutgoingRequest<T>,
     pub outgoing_request_hash: H256,
@@ -447,8 +449,9 @@ impl<T: Config> IncomingCancelOutgoingRequest<T> {
 /// Incoming request that's used to mark outgoing requests as done.
 /// Since off-chain workers query Sidechain networks lazily, we should force them to check
 /// if some outgoing request was finalized on Sidechain.
-#[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug)]
+#[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize))]
+#[scale_info(skip_type_params(T))]
 pub struct IncomingMarkAsDoneRequest<T: Config> {
     pub outgoing_request_hash: H256,
     pub initial_request_hash: H256,
@@ -501,8 +504,9 @@ impl<T: Config> IncomingMarkAsDoneRequest<T> {
 
 /// Incoming request that acts as an acknowledgement to a corresponding
 /// `OutgoingPrepareForMigration` request.
-#[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug)]
+#[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize))]
+#[scale_info(skip_type_params(T))]
 pub struct IncomingPrepareForMigration<T: Config> {
     pub author: T::AccountId,
     pub tx_hash: H256,
@@ -543,8 +547,9 @@ impl<T: Config> IncomingPrepareForMigration<T> {
 
 /// Incoming request that acts as an acknowledgement to a corresponding
 /// `OutgoingMigrate` request.
-#[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug)]
+#[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize))]
+#[scale_info(skip_type_params(T))]
 pub struct IncomingMigrate<T: Config> {
     pub new_contract_address: Address,
     pub author: T::AccountId,

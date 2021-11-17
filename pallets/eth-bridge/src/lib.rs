@@ -196,7 +196,9 @@ type BridgeTimepoint<T> = Timepoint<T>;
 type BridgeNetworkId<T> = <T as Config>::NetworkId;
 
 /// Ethereum node parameters (url, credentials).
-#[derive(Encode, Decode, Eq, PartialEq, Clone, PartialOrd, Ord, RuntimeDebug)]
+#[derive(
+    Encode, Decode, Eq, PartialEq, Clone, PartialOrd, Ord, RuntimeDebug, scale_info::TypeInfo,
+)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct NodeParams {
     url: String,
@@ -212,7 +214,7 @@ pub struct PeerConfig<NetworkId: std::hash::Hash + Eq> {
 
 /// Network-specific parameters.
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-#[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug)]
+#[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
 pub struct NetworkParams<AccountId: Ord> {
     pub bridge_contract_address: Address,
     pub initial_peers: BTreeSet<AccountId>,
@@ -220,7 +222,8 @@ pub struct NetworkParams<AccountId: Ord> {
 
 /// Network configuration.
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-#[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug)]
+#[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
+#[scale_info(skip_type_params(T))]
 pub struct NetworkConfig<T: Config> {
     pub initial_peers: BTreeSet<T::AccountId>,
     pub bridge_account_id: T::AccountId,
@@ -266,7 +269,7 @@ impl<T: Config> BridgeAssetData<T> {
 
 /// Bridge status.
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-#[derive(Clone, Copy, PartialEq, Eq, Encode, Decode, RuntimeDebug)]
+#[derive(Clone, Copy, PartialEq, Eq, Encode, Decode, RuntimeDebug, scale_info::TypeInfo)]
 pub enum BridgeStatus {
     Initialized,
     Migrating,
@@ -280,7 +283,7 @@ impl Default for BridgeStatus {
 
 /// Bridge asset parameters.
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-#[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug)]
+#[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
 pub enum AssetConfig<AssetId> {
     Thischain {
         id: AssetId,
@@ -330,11 +333,10 @@ pub mod pallet {
     use crate::util::get_bridge_account;
     use codec::Codec;
     use common::weights::{err_pays_no, pays_no, pays_no_with_maybe_weight};
-    use frame_support::log::{debug, error, info, trace, warn};
+    use frame_support::log::debug;
     use frame_support::pallet_prelude::*;
-    use frame_support::sp_runtime::runtime_logger::RuntimeLogger;
     use frame_support::sp_runtime::traits::Zero;
-    use frame_support::traits::schedule::{Anon, DispatchTime};
+    use frame_support::traits::schedule::Anon;
     use frame_support::traits::GetCallMetadata;
     use frame_system::pallet_prelude::*;
     use frame_system::RawOrigin;
@@ -942,7 +944,6 @@ pub mod pallet {
     }
 
     #[pallet::event]
-    #[pallet::metadata(AccountIdOf<T> = "AccountId")]
     #[pallet::generate_deposit(pub(super) fn deposit_event)]
     pub enum Event<T: Config> {
         /// New request has been registered. [Request Hash]

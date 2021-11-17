@@ -79,12 +79,12 @@ impl<T: Config> Pallet<T> {
         .expect("Invalid off-chain worker secret key.");
         // Signs `abi.encodePacked(tokenAddress, amount, to, txHash, from)`.
         let (signature, public) = Self::sign_message(encoded_request.as_raw(), &sk);
-        let call = Call::approve_request(
-            ecdsa::Public::from_slice(&public.serialize_compressed()),
+        let call = Call::approve_request {
+            ocw_public: ecdsa::Public::from_slice(&public.serialize_compressed()),
             hash,
-            signature,
-            request.network_id(),
-        );
+            signature_params: signature,
+            network_id: request.network_id(),
+        };
         let result = Self::send_signed_transaction(&signer, &call);
 
         match result {
@@ -391,16 +391,19 @@ impl<T: Config> Pallet<T> {
             let tx_call = bridge_multisig::Call::<T>::decode(&mut &tx.call.encode()[1..]);
             if let Ok(tx_call) = tx_call {
                 let maybe_call = match &tx_call {
-                    bridge_multisig::Call::as_multi_threshold_1(_, call, _) => {
+                    bridge_multisig::Call::as_multi_threshold_1 { call, .. } => {
                         Call::<T>::decode(&mut &call.encode()[1..])
                     }
-                    bridge_multisig::Call::as_multi(_, _, ext_bytes, _, _) => {
-                        Call::<T>::decode(&mut &ext_bytes[1..])
+                    bridge_multisig::Call::as_multi { call, .. } => {
+                        Call::<T>::decode(&mut &call[1..])
                     }
                     _ => continue,
                 };
                 match maybe_call {
-                    Ok(Call::<T>::import_incoming_request(load_incoming_request, _)) => {
+                    Ok(Call::<T>::import_incoming_request {
+                        load_incoming_request,
+                        ..
+                    }) => {
                         let tx_hash = load_incoming_request.hash();
 
                         if RequestStatuses::<T>::get(network_id, tx_hash).is_some() {

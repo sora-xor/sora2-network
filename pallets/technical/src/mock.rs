@@ -218,7 +218,7 @@ impl Default for ExtBuilder {
     }
 }
 
-#[derive(Clone, Eq, PartialEq, Encode, Decode, Debug)]
+#[derive(Clone, Eq, PartialEq, Encode, Decode, Debug, scale_info::TypeInfo)]
 pub struct GenericPairSwapActionExample {
     pub give_minted: bool,
     pub give_asset: AssetId,
@@ -279,7 +279,7 @@ impl common::SwapRulesValidation<AccountId, TechAccountId, Runtime>
     }
 }
 
-#[derive(Clone, Eq, PartialEq, Encode, Decode, Debug)]
+#[derive(Clone, Eq, PartialEq, Encode, Decode, Debug, scale_info::TypeInfo)]
 pub struct MultiSwapActionExample {
     give_amount_a: TechAmount,
     give_amount_b: TechAmount,
@@ -321,7 +321,7 @@ impl common::SwapRulesValidation<AccountId, TechAccountId, Runtime> for MultiSwa
     }
 }
 
-#[derive(Clone, Eq, PartialEq, Encode, Decode, Debug)]
+#[derive(Clone, Eq, PartialEq, Encode, Decode, Debug, scale_info::TypeInfo)]
 pub struct CrowdSwapActionExample {
     crowd_id: u32,
     give_amount: TechAmount,
@@ -361,7 +361,7 @@ impl common::SwapRulesValidation<AccountId, TechAccountId, Runtime> for CrowdSwa
     }
 }
 
-#[derive(Clone, Eq, PartialEq, Encode, Decode, Debug)]
+#[derive(Clone, Eq, PartialEq, Encode, Decode, Debug, scale_info::TypeInfo)]
 pub enum PolySwapActionExample {
     GenericPair(GenericPairSwapActionExample),
     Multi(MultiSwapActionExample),

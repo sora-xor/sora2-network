@@ -15,7 +15,8 @@ type PtpBalanceOf<T> =
 
 /// The copy of pallet_transaction_payment::ChargeTransactionPayment, but the tip is always 0.
 /// We don't want some users to have leverage over other because it could be abused in trading
-#[derive(Encode, Clone, Eq, PartialEq)]
+#[derive(Encode, Clone, Eq, PartialEq, scale_info::TypeInfo)]
+#[scale_info(skip_type_params(T))]
 pub struct ChargeTransactionPayment<T: ptp::Config>(ptp::ChargeTransactionPayment<T>);
 
 impl<T: ptp::Config> ChargeTransactionPayment<T>
@@ -109,13 +110,15 @@ where
 impl crate::Call {
     // Filter batch calls containing at least a swap call
     fn check_for_swap_in_batch(&self) -> Result<(), TransactionValidityError> {
-        if let Self::Utility(UtilityCall::batch(calls))
-        | Self::Utility(UtilityCall::batch_all(calls)) = self
+        if let Self::Utility(UtilityCall::batch { calls })
+        | Self::Utility(UtilityCall::batch_all { calls }) = self
         {
-            if calls
-                .iter()
-                .any(|call| matches!(call, Self::LiquidityProxy(liquidity_proxy::Call::swap(..))))
-            {
+            if calls.iter().any(|call| {
+                matches!(
+                    call,
+                    Self::LiquidityProxy(liquidity_proxy::Call::swap { .. })
+                )
+            }) {
                 return Err(TransactionValidityError::Invalid(InvalidTransaction::Call));
             }
         }

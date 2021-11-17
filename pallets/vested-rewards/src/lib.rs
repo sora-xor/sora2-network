@@ -67,7 +67,9 @@ type Assets<T> = assets::Pallet<T>;
 type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
 
 /// Denotes PSWAP rewards amounts of particular types available for user.
-#[derive(Encode, Decode, Eq, PartialEq, Clone, PartialOrd, Ord, Debug, Default)]
+#[derive(
+    Encode, Decode, Eq, PartialEq, Clone, PartialOrd, Ord, Debug, Default, scale_info::TypeInfo,
+)]
 pub struct RewardInfo {
     /// Reward amount vested, denotes portion of `total_avialable` which can be claimed.
     /// Reset to 0 after claim until more is vested over time.
@@ -80,7 +82,9 @@ pub struct RewardInfo {
 
 /// Denotes information about users who make transactions counted for market makers strategic rewards
 /// programme. To participate in rewards distribution account needs to get 500+ tx's over 1 XOR in volume each.
-#[derive(Encode, Decode, Eq, PartialEq, Clone, PartialOrd, Ord, Debug, Default)]
+#[derive(
+    Encode, Decode, Eq, PartialEq, Clone, PartialOrd, Ord, Debug, Default, scale_info::TypeInfo,
+)]
 pub struct MarketMakerInfo {
     /// Number of eligible transactions - namely those with individual volume over 1 XOR.
     count: u32,
@@ -371,7 +375,6 @@ pub mod pallet {
     }
 
     #[pallet::event]
-    #[pallet::metadata(AccountIdOf<T> = "AccountId")]
     #[pallet::generate_deposit(pub(super) fn deposit_event)]
     pub enum Event<T: Config> {
         /// Rewards vested, limits were raised. [vested amount]

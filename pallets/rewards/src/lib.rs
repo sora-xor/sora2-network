@@ -73,7 +73,7 @@ mod tests;
 type EthereumAddress = H160;
 type WeightInfoOf<T> = <T as Config>::WeightInfo;
 
-#[derive(Encode, Decode, Clone, RuntimeDebug, Default, PartialEq, Eq)]
+#[derive(Encode, Decode, Clone, RuntimeDebug, Default, PartialEq, Eq, scale_info::TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct RewardInfo {
     claimable: Balance,
@@ -368,7 +368,6 @@ pub mod pallet {
     }
 
     #[pallet::event]
-    #[pallet::metadata(AccountIdOf<T> = "AccountId")]
     #[pallet::generate_deposit(pub(super) fn deposit_event)]
     pub enum Event<T: Config> {
         /// The account has claimed their rewards. [account]

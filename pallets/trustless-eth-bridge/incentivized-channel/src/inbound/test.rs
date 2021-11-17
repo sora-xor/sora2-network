@@ -1,25 +1,22 @@
 use super::*;
 use currencies::BasicCurrencyAdapter;
 
-use frame_support::traits::{Everything, GenesisBuild};
-use frame_support::{
-    assert_noop, assert_ok, dispatch::DispatchError, parameter_types, traits::Currency,
-};
+use frame_support::dispatch::DispatchError;
+use frame_support::traits::{Currency, Everything, GenesisBuild};
+use frame_support::{assert_noop, assert_ok, parameter_types};
 use sp_core::{H160, H256};
 use sp_keyring::AccountKeyring as Keyring;
-use sp_runtime::{
-    testing::Header,
-    traits::{BlakeTwo256, Convert, IdentifyAccount, IdentityLookup, Verify},
-    MultiSignature, Perbill,
-};
-use sp_std::{convert::From, marker::PhantomData};
+use sp_runtime::testing::Header;
+use sp_runtime::traits::{BlakeTwo256, Convert, IdentifyAccount, IdentityLookup, Verify};
+use sp_runtime::{MultiSignature, Perbill};
+use sp_std::convert::From;
+use sp_std::marker::PhantomData;
 
 use snowbridge_core::{Message, MessageDispatch, Proof};
 use snowbridge_ethereum::{Header as EthereumHeader, Log, U256};
 
-use common::balance;
 use common::mock::ExistentialDeposits;
-use common::{Amount, AssetId32, AssetName, AssetSymbol, DEXId, XOR};
+use common::{balance, Amount, AssetId32, AssetName, AssetSymbol, DEXId, XOR};
 use hex_literal::hex;
 
 use crate::inbound::Error;

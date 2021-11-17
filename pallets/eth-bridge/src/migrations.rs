@@ -1,7 +1,6 @@
 use crate::{Address, Call, Config, Error, RequestStatus};
 use bridge_multisig::MultiChainHeight;
-use frame_support::debug;
-use frame_support::log::{debug, error, info, trace, warn};
+use frame_support::log::{info, warn};
 use frame_support::sp_runtime::traits::{BlockNumberProvider, One, Saturating};
 use frame_support::traits::schedule::{Anon, DispatchTime};
 use frame_support::traits::Get;
@@ -89,7 +88,7 @@ pub(crate) fn migrate_to_0_2_0<T: Config>() -> Weight {
             None,
             1,
             RawOrigin::Root.into(),
-            Call::migrate_to_0_2_0().into(),
+            Call::migrate_to_0_2_0 {}.into(),
         )
         .is_err()
         {

@@ -31,24 +31,21 @@ mod mock;
 mod tests;
 
 use codec::{Decode, Encode};
-use frame_support::{
-    dispatch::{DispatchError, DispatchResult},
-    log,
-    traits::Get,
-};
+use frame_support::dispatch::{DispatchError, DispatchResult};
+use frame_support::log;
+use frame_support::traits::Get;
 use frame_system::ensure_signed;
 use sp_runtime::RuntimeDebug;
 use sp_std::prelude::*;
 
 use snowbridge_core::{Message, Proof, Verifier};
-use snowbridge_ethereum::{
-    difficulty::calc_difficulty,
-    ethashproof::{DoubleNodeWithMerkleProof as EthashProofData, EthashProver},
-    HeaderId as EthereumHeaderId, Log, Receipt, H256, U256,
+use snowbridge_ethereum::difficulty::calc_difficulty;
+pub use snowbridge_ethereum::difficulty::DifficultyConfig as EthereumDifficultyConfig;
+use snowbridge_ethereum::ethashproof::{
+    DoubleNodeWithMerkleProof as EthashProofData, EthashProver,
 };
-pub use snowbridge_ethereum::{
-    difficulty::DifficultyConfig as EthereumDifficultyConfig, Header as EthereumHeader,
-};
+pub use snowbridge_ethereum::Header as EthereumHeader;
+use snowbridge_ethereum::{HeaderId as EthereumHeaderId, Log, Receipt, H256, U256};
 
 pub use weights::WeightInfo;
 
@@ -58,7 +55,7 @@ const FINALIZED_HEADERS_TO_KEEP: u64 = 50_000;
 const HEADERS_TO_PRUNE_IN_SINGLE_IMPORT: u64 = 8;
 
 /// Ethereum block header as it is stored in the runtime storage.
-#[derive(Clone, Encode, Decode, PartialEq, RuntimeDebug)]
+#[derive(Clone, Encode, Decode, PartialEq, RuntimeDebug, scale_info::TypeInfo)]
 pub struct StoredHeader<Submitter> {
     /// Submitter of this header. This will be None for the initial header
     /// or the account ID of the relay.
@@ -73,7 +70,7 @@ pub struct StoredHeader<Submitter> {
 }
 
 /// Blocks range that we want to prune.
-#[derive(Clone, Encode, Decode, Default, PartialEq, RuntimeDebug)]
+#[derive(Clone, Encode, Decode, Default, PartialEq, RuntimeDebug, scale_info::TypeInfo)]
 struct PruningRange {
     /// Number of the oldest unpruned block(s). This might be the block that we do not
     /// want to prune now (then it is equal to `oldest_block_to_keep`).

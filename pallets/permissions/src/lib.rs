@@ -68,7 +68,7 @@ pub type HolderId<T> = <T as frame_system::Config>::AccountId;
 pub type PermissionId = u32;
 type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
 
-#[derive(PartialEq, Eq, Clone, Copy, RuntimeDebug, Encode, Decode)]
+#[derive(PartialEq, Eq, Clone, Copy, RuntimeDebug, Encode, Decode, scale_info::TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum Scope {
     Limited(H512),
@@ -288,7 +288,6 @@ pub mod pallet {
     impl<T: Config> Pallet<T> {}
 
     #[pallet::event]
-    #[pallet::metadata(AccountIdOf<T> = "AccountId")]
     #[pallet::generate_deposit(pub(super) fn deposit_event)]
     pub enum Event<T: Config> {
         /// Permission was granted to a holder. [permission, who]

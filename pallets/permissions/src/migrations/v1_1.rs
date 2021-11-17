@@ -9,7 +9,7 @@ use common::generate_storage_instance;
 
 use crate::{Config, PermissionId};
 
-#[derive(PartialEq, Eq, Clone, Copy, RuntimeDebug, Encode, Decode)]
+#[derive(PartialEq, Eq, Clone, Copy, RuntimeDebug, Encode, Decode, scale_info::TypeInfo)]
 #[repr(u8)]
 enum Mode {
     // The action associated with the permission is permitted if the account has the permission, otherwise it's forbidden

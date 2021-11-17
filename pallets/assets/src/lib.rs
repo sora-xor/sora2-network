@@ -95,7 +95,8 @@ const ASSET_SYMBOL_MAX_LENGTH: usize = 7;
 const ASSET_NAME_MAX_LENGTH: usize = 33;
 const MAX_ALLOWED_PRECISION: u8 = 18;
 
-#[derive(Clone, Copy, Eq, PartialEq, Encode, Decode)]
+#[derive(Clone, Copy, Eq, PartialEq, Encode, Decode, scale_info::TypeInfo)]
+#[scale_info(skip_type_params(T))]
 pub enum AssetRecordArg<T: Config> {
     GenericI32(i32),
     GenericU64(u64),
@@ -108,7 +109,8 @@ pub enum AssetRecordArg<T: Config> {
     Extra(T::ExtraAssetRecordArg),
 }
 
-#[derive(Clone, Copy, Eq, PartialEq, Encode, Decode)]
+#[derive(Clone, Copy, Eq, PartialEq, Encode, Decode, scale_info::TypeInfo)]
+#[scale_info(skip_type_params(T))]
 pub enum AssetRecord<T: Config> {
     Arity0,
     Arity1(AssetRecordArg<T>),
@@ -185,6 +187,7 @@ pub mod pallet {
             + Copy
             + Encode
             + Decode
+            + scale_info::TypeInfo
             + Eq
             + PartialEq
             + From<Self::AccountId>
@@ -193,6 +196,7 @@ pub mod pallet {
             + Copy
             + Encode
             + Decode
+            + scale_info::TypeInfo
             + Eq
             + PartialEq
             + From<common::AssetIdExtraAssetRecordArg<Self::DEXId, Self::LstId, Self::ExtraAccountId>>
@@ -343,7 +347,6 @@ pub mod pallet {
     }
 
     #[pallet::event]
-    #[pallet::metadata(AccountIdOf<T> = "AccountId", AssetIdOf<T> = "AssetId")]
     #[pallet::generate_deposit(pub(super) fn deposit_event)]
     pub enum Event<T: Config> {
         /// New asset has been registered. [Asset Id, Asset Owner Account]

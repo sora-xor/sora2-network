@@ -78,7 +78,7 @@ impl crate::WeightInfo for () {
     }
 }
 
-#[derive(Encode, Decode, Eq, PartialEq, Clone, PartialOrd, Ord, Debug)]
+#[derive(Encode, Decode, Eq, PartialEq, Clone, PartialOrd, Ord, Debug, scale_info::TypeInfo)]
 pub struct PriceInfo {
     price_failures: u32,
     spot_prices: VecDeque<Balance>,
@@ -151,7 +151,6 @@ pub mod pallet {
     }
 
     #[pallet::event]
-    #[pallet::metadata()]
     // #[pallet::generate_deposit(pub(super) fn deposit_event)]
     pub enum Event<T: Config> {
         // no events

@@ -367,8 +367,9 @@ pub mod pallet {
     >;
 }
 
-#[derive(Debug, Encode, Decode)]
+#[derive(Debug, Encode, Decode, scale_info::TypeInfo)]
 #[cfg_attr(test, derive(PartialEq))]
+#[scale_info(skip_type_params(T))]
 /// The specific farmer in the specific pool
 pub struct PoolFarmer<T: Config> {
     /// The account of the farmer

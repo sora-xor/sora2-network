@@ -212,7 +212,6 @@ pub mod pallet {
     }
 
     #[pallet::event]
-    #[pallet::metadata(DexIdOf<T> = "DEXId", TradingPair<T> = "TradingPair")]
     #[pallet::generate_deposit(pub(super) fn deposit_event)]
     pub enum Event<T: Config> {
         /// Trading pair has been redistered on a DEX. [DEX Id, Trading Pair]

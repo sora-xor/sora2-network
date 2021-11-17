@@ -79,7 +79,7 @@ pub const TECH_ACCOUNT_PERMISSIONED: &[u8] = b"permissioned";
 
 pub use pallet::*;
 
-#[derive(Debug, Encode, Decode, Clone)]
+#[derive(Debug, Encode, Decode, Clone, scale_info::TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum DistributionAccount<AccountId, TechAccountId> {
     Account(AccountId),
@@ -92,7 +92,7 @@ impl<AccountId, TechAccountId: Default> Default for DistributionAccount<AccountI
     }
 }
 
-#[derive(Debug, Encode, Decode, Clone)]
+#[derive(Debug, Encode, Decode, Clone, scale_info::TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct DistributionAccountData<DistributionAccount> {
     pub account: DistributionAccount,
@@ -196,7 +196,6 @@ pub mod pallet {
     }
 
     #[pallet::event]
-    #[pallet::metadata(DexIdOf<T> = "DEXId", AssetIdOf<T> = "AssetId")]
     #[pallet::generate_deposit(pub(super) fn deposit_event)]
     pub enum Event<T: Config> {
         /// Pool is initialized for pair. [DEX Id, Synthetic Asset Id]

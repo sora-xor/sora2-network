@@ -36,7 +36,9 @@ use orml_traits::parameter_type_with_key;
 use serde::{Deserialize, Serialize};
 use sp_std::convert::TryFrom;
 
-#[derive(Encode, Decode, Eq, PartialEq, Copy, Clone, PartialOrd, Ord, Debug)]
+#[derive(
+    Encode, Decode, Eq, PartialEq, Copy, Clone, PartialOrd, Ord, Debug, scale_info::TypeInfo,
+)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize, Hash))]
 #[repr(u8)]
 pub enum ComicAssetId {

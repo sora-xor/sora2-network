@@ -523,7 +523,6 @@ pub mod pallet {
     impl<T: Config> Pallet<T> {}
 
     #[pallet::event]
-    #[pallet::metadata(AccountIdOf<T> = "AccountId", BalanceOf<T> = "Balance")]
     #[pallet::generate_deposit(pub(super) fn deposit_event)]
     pub enum Event<T: Config> {
         /// Fee has been withdrawn from user. [Account Id to withdraw from, Fee Amount]

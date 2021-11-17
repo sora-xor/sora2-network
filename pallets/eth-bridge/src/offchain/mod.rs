@@ -475,7 +475,9 @@ impl<T: Config> Pallet<T> {
 }
 
 /// Separated components of a secp256k1 signature.
-#[derive(Encode, Decode, Eq, PartialEq, Clone, PartialOrd, Ord, RuntimeDebug)]
+#[derive(
+    Encode, Decode, Eq, PartialEq, Clone, PartialOrd, Ord, RuntimeDebug, scale_info::TypeInfo,
+)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[cfg_attr(any(test, feature = "runtime-benchmarks"), derive(Default))]
 #[repr(C)]

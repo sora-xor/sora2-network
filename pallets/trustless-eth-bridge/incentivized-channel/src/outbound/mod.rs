@@ -20,7 +20,7 @@ mod benchmarking;
 mod test;
 
 /// Wire-format for committed messages
-#[derive(Encode, Decode, Clone, PartialEq, RuntimeDebug)]
+#[derive(Encode, Decode, Clone, PartialEq, RuntimeDebug, scale_info::TypeInfo)]
 pub struct Message {
     /// Target application on the Ethereum side.
     target: H160,
@@ -133,7 +133,6 @@ pub mod pallet {
     }
 
     #[pallet::event]
-    #[pallet::metadata(AccountIdOf<T> = "AccountId")]
     #[pallet::generate_deposit(pub(super) fn deposit_event)]
     pub enum Event<T: Config> {
         MessageAccepted(MessageNonce),
