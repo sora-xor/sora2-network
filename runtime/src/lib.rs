@@ -81,6 +81,7 @@ use sp_runtime::{
     create_runtime_str, generic, impl_opaque_keys, ApplyExtrinsicResult, DispatchError,
     DispatchResult, MultiSignature, Perbill, Percent, Perquintill,
 };
+use sp_std::cmp::Ordering;
 use sp_std::prelude::*;
 use sp_std::vec::Vec;
 #[cfg(feature = "std")]
@@ -122,7 +123,7 @@ use eth_bridge::offchain::SignatureParams;
 use eth_bridge::requests::{AssetKind, OffchainRequest, OutgoingRequestEncoded, RequestStatus};
 use impls::{CollectiveWeightInfo, DemocracyWeightInfo, OnUnbalancedDemocracySlash};
 
-use frame_support::traits::{Contains, Everything, Get};
+use frame_support::traits::{Contains, Everything, Get, PrivilegeCmp};
 use sp_runtime::traits::Keccak256;
 pub use {assets, eth_bridge, frame_system, multicollateral_bonding_curve_pool, xst};
 
@@ -302,6 +303,7 @@ parameter_types! {
     pub const ElectionsDesiredRunnersUp: u32 = 20;
     pub const ElectionsModuleId: LockIdentifier = *b"phrelect";
     pub FarmingRewardDoublingAssets: Vec<AssetId> = vec![GetPswapAssetId::get(), GetValAssetId::get(), GetDaiAssetId::get(), GetEthAssetId::get()];
+    pub const MaxAuthorities: u32 = 100_000;
 }
 
 impl frame_system::Config for Runtime {
@@ -362,6 +364,7 @@ impl pallet_babe::Config for Runtime {
     type HandleEquivocation =
         pallet_babe::EquivocationHandler<Self::KeyOwnerIdentification, Offences, ReportLongevity>;
     type WeightInfo = ();
+    type MaxAuthorities = MaxAuthorities;
 }
 
 impl pallet_collective::Config<CouncilCollective> for Runtime {
@@ -431,6 +434,7 @@ impl pallet_democracy::Config for Runtime {
     type MaxVotes = DemocracyMaxVotes;
     type WeightInfo = DemocracyWeightInfo;
     type MaxProposals = DemocracyMaxProposals;
+    type VoteLockingPeriod = DemocracyEnactmentPeriod;
 }
 
 impl pallet_elections_phragmen::Config for Runtime {
@@ -484,6 +488,7 @@ impl pallet_grandpa::Config for Runtime {
         ReportLongevity,
     >;
     type WeightInfo = ();
+    type MaxAuthorities = MaxAuthorities;
 }
 
 parameter_types! {
@@ -547,6 +552,29 @@ impl pallet_staking::Config for Runtime {
     type WeightInfo = ();
 }
 
+/// Used the compare the privilege of an origin inside the scheduler.
+pub struct OriginPrivilegeCmp;
+
+impl PrivilegeCmp<OriginCaller> for OriginPrivilegeCmp {
+    fn cmp_privilege(left: &OriginCaller, right: &OriginCaller) -> Option<Ordering> {
+        if left == right {
+            return Some(Ordering::Equal);
+        }
+
+        match (left, right) {
+            // Root is greater than anything.
+            (OriginCaller::system(frame_system::RawOrigin::Root), _) => Some(Ordering::Greater),
+            // Check which one has more yes votes.
+            (
+                OriginCaller::Council(pallet_collective::RawOrigin::Members(l_yes_votes, l_count)),
+                OriginCaller::Council(pallet_collective::RawOrigin::Members(r_yes_votes, r_count)),
+            ) => Some((l_yes_votes * r_count).cmp(&(r_yes_votes * l_count))),
+            // For every other origin we don't care, as they are not used for `ScheduleOrigin`.
+            _ => None,
+        }
+    }
+}
+
 impl pallet_scheduler::Config for Runtime {
     type Event = Event;
     type Origin = Origin;
@@ -556,6 +584,7 @@ impl pallet_scheduler::Config for Runtime {
     type ScheduleOrigin = frame_system::EnsureRoot<AccountId>;
     type MaxScheduledPerBlock = ();
     type WeightInfo = ();
+    type OriginPrivilegeCmp = OriginPrivilegeCmp;
 }
 
 parameter_types! {
@@ -902,7 +931,7 @@ impl xor_fee::ExtractProxySwap for Call {
             dex_id,
             input_asset_id,
             output_asset_id,
-            amount,
+            swap_amount,
             selected_source_types,
             filter_mode,
         }) = self
@@ -911,7 +940,7 @@ impl xor_fee::ExtractProxySwap for Call {
                 dex_id: *dex_id,
                 input_asset_id: *input_asset_id,
                 output_asset_id: *output_asset_id,
-                amount: *amount,
+                amount: *swap_amount,
                 selected_source_types: selected_source_types.to_vec(),
                 filter_mode: filter_mode.clone(),
             })
@@ -925,23 +954,28 @@ impl xor_fee::IsCalledByBridgePeer<AccountId> for Call {
     fn is_called_by_bridge_peer(&self, who: &AccountId) -> bool {
         match self {
             Call::BridgeMultisig(call) => match call {
-                bridge_multisig::Call::as_multi { multisig_id, .. }
-                | bridge_multisig::Call::as_multi_threshold_1 { multisig_id, .. } => {
-                    bridge_multisig::Accounts::<Runtime>::get(multisig_id)
-                        .map(|acc| acc.is_signatory(&who))
+                bridge_multisig::Call::as_multi {
+                    id: multisig_id, ..
                 }
+                | bridge_multisig::Call::as_multi_threshold_1 {
+                    id: multisig_id, ..
+                } => bridge_multisig::Accounts::<Runtime>::get(multisig_id)
+                    .map(|acc| acc.is_signatory(&who)),
                 _ => None,
             },
             Call::EthBridge(call) => match call {
                 eth_bridge::Call::approve_request { network_id, .. } => {
                     Some(eth_bridge::Pallet::<Runtime>::is_peer(who, *network_id))
                 }
-                eth_bridge::Call::register_incoming_request { request } => {
-                    let net_id = request.network_id();
+                eth_bridge::Call::register_incoming_request { incoming_request } => {
+                    let net_id = incoming_request.network_id();
                     eth_bridge::BridgeAccount::<Runtime>::get(net_id).map(|acc| acc == *who)
                 }
-                eth_bridge::Call::import_incoming_request { load_request, .. } => {
-                    let net_id = load_request.network_id();
+                eth_bridge::Call::import_incoming_request {
+                    load_incoming_request,
+                    ..
+                } => {
+                    let net_id = load_incoming_request.network_id();
                     eth_bridge::BridgeAccount::<Runtime>::get(net_id).map(|acc| acc == *who)
                 }
                 eth_bridge::Call::finalize_incoming_request { network_id, .. }
@@ -1010,11 +1044,16 @@ impl Convert<Multiplier, Multiplier> for ConstantFeeMultiplier {
     }
 }
 
+parameter_types! {
+    pub const OperationalFeeMultiplier: u8 = 5;
+}
+
 impl pallet_transaction_payment::Config for Runtime {
     type OnChargeTransaction = XorFee;
     type TransactionByteFee = TransactionByteFee;
     type WeightToFee = WeightToFixedFee;
     type FeeMultiplierUpdate = ConstantFeeMultiplier;
+    type OperationalFeeMultiplier = OperationalFeeMultiplier;
 }
 
 #[cfg(feature = "private-net")]
@@ -1031,6 +1070,7 @@ impl pallet_utility::Config for Runtime {
     type Event = Event;
     type Call = Call;
     type WeightInfo = ();
+    type PalletsOrigin = OriginCaller;
 }
 
 parameter_types! {
@@ -1336,6 +1376,12 @@ impl xst::Config for Runtime {
     type WeightInfo = xst::weights::WeightInfo<Runtime>;
 }
 
+parameter_types! {
+    pub const MaxKeys: u32 = 10_000;
+    pub const MaxPeerInHeartbeats: u32 = 10_000;
+    pub const MaxPeerDataEncodingSize: u32 = 1_000;
+}
+
 impl pallet_im_online::Config for Runtime {
     type AuthorityId = ImOnlineId;
     type Event = Event;
@@ -1344,6 +1390,9 @@ impl pallet_im_online::Config for Runtime {
     type ReportUnresponsiveness = Offences;
     type UnsignedPriority = ImOnlineUnsignedPriority;
     type WeightInfo = ();
+    type MaxKeys = MaxKeys;
+    type MaxPeerInHeartbeats = MaxPeerInHeartbeats;
+    type MaxPeerDataEncodingSize = MaxPeerDataEncodingSize;
 }
 
 impl pallet_offences::Config for Runtime {
@@ -1766,7 +1815,7 @@ impl_runtime_apis! {
 
     impl sp_api::Metadata<Block> for Runtime {
         fn metadata() -> OpaqueMetadata {
-            Runtime::metadata().into()
+            OpaqueMetadata::new(Runtime::metadata().into())
         }
     }
 
@@ -2154,7 +2203,7 @@ impl_runtime_apis! {
                             slot_duration: Babe::slot_duration(),
                             epoch_length: EpochDuration::get(),
                             c: PRIMARY_PROBABILITY,
-                            genesis_authorities: Babe::authorities(),
+                            genesis_authorities: Babe::authorities().to_vec(),
                             randomness: Babe::randomness(),
                             allowed_slots: sp_consensus_babe::AllowedSlots::PrimaryAndSecondaryPlainSlots,
                     }

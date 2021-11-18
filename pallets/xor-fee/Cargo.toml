@@ -41,8 +41,8 @@ sp-core = { git = "https://github.com/paritytech/substrate.git", branch = "polka
 sp-io = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.9", default-features = false }
 sp-runtime = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.9", default-features = false }
 tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-tokens" }
-pallet-staking = { git = "https://github.com/soramitsu/sora2-frame-pallets.git", branch = "polkadot-v0.9.12" }
-bridge-multisig = { git = "https://github.com/soramitsu/sora2-frame-pallets.git", branch = "polkadot-v0.9.12", package = "pallet-multisig" }
+pallet-staking = { git = "https://github.com/soramitsu/sora2-frame-pallets.git", branch = "polkadot-v0.9.13" }
+bridge-multisig = { git = "https://github.com/soramitsu/sora2-frame-pallets.git", branch = "polkadot-v0.9.13", package = "pallet-multisig" }
 pallet-scheduler = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.9" }
 
 common = { path = "../../common", features = ["test"] }
