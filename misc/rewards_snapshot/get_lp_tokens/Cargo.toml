@@ -7,6 +7,7 @@ edition = "2018"
 [workspace]
 
 [dependencies]
-fixnum = { version = "0.5", features = ["i128"] }
+#fixnum = { version = "0.6.0", features = ["i128"] }
+fixnum = { git = "https://github.com/vovac12/fixnum", default-features=false, branch = "master", features = ["i128"] }
 reqwest = { version = "0.11.2", features = ["blocking", "json"] }
 serde = { version = "1.0.125", features = ["derive"] }
