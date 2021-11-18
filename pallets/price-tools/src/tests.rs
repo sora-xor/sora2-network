@@ -33,7 +33,9 @@ use std::convert::TryInto;
 use crate::mock::*;
 use crate::{Error, AVG_BLOCK_SPAN};
 use common::prelude::Balance;
-use common::{balance, OnPoolReservesChanged, PriceToolsPallet, DOT, ETH, PSWAP, VAL, XOR};
+use common::{
+    balance, fixed_wrapper, OnPoolReservesChanged, PriceToolsPallet, DOT, ETH, PSWAP, VAL, XOR,
+};
 use frame_support::assert_noop;
 
 fn to_avg<'a, I>(it: I, size: u32) -> Balance
@@ -67,7 +69,7 @@ fn initial_setup_without_history() {
         PriceTools::incoming_spot_price(&ETH, balance!(AVG_BLOCK_SPAN + 1)).unwrap();
         assert_eq!(
             PriceTools::get_average_price(&XOR.into(), &ETH.into()).unwrap(),
-            avg_calc + avg_calc / 20 // 5% = 1/20
+            (avg_calc + avg_calc * fixed_wrapper!(0.00197)).into_balance()
         );
     });
 }
@@ -355,14 +357,14 @@ fn average_price_large_change_before_no_update_streak_positive() {
         }
         assert_eq!(
             PriceTools::get_average_price(&XOR.into(), &ETH.into()).unwrap(),
-            balance!(3578.928179411367257719) // not 300% exactly because of compunding effect
+            balance!(1060.819648734858925676) // not 300% exactly because of compunding effect
         );
         assert_eq!(
             PriceTools::price_infos(&ETH).unwrap().last_spot_price,
             balance!(4000)
         );
         // same price, continues to repeat, average price is still updated
-        for _ in 1..=AVG_BLOCK_SPAN {
+        for _ in 1..=AVG_BLOCK_SPAN * 23 {
             PriceTools::incoming_spot_price(&ETH, balance!(4000)).unwrap();
         }
         assert_eq!(
@@ -399,14 +401,14 @@ fn average_price_large_change_before_no_update_streak_negative() {
         }
         assert_eq!(
             PriceTools::get_average_price(&XOR.into(), &ETH.into()).unwrap(),
-            balance!(3655.230262417959206380) // not 15% exactly because of compunding effect
+            balance!(3964.156162406538571338) // not 15% exactly because of compunding effect
         );
         assert_eq!(
             PriceTools::price_infos(&ETH).unwrap().last_spot_price,
             balance!(700)
         );
         // same price, continues to repeat, average price is still updated
-        for _ in 1..=AVG_BLOCK_SPAN * 21 {
+        for _ in 1..=AVG_BLOCK_SPAN * 195 {
             PriceTools::incoming_spot_price(&ETH, balance!(700)).unwrap();
         }
         assert_eq!(
@@ -459,7 +461,7 @@ fn price_should_go_up_faster_than_going_down() {
                 break;
             }
         }
-        assert_eq!(n, 111);
-        assert_eq!(m, 2520);
+        assert_eq!(n, 2355);
+        assert_eq!(m, 16710);
     });
 }
