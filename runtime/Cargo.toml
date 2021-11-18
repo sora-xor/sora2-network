@@ -127,6 +127,7 @@ static_assertions = "1.1.0"
 tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", rev = "55d52768", package = "orml-tokens", default-features = false }
 traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", rev = "55d52768", package = "orml-traits", default-features = false }
 snowbridge-core = { path = "../primitives/core", default-features = false }
+getrandom = { version = "0.2", features = ["js"] }
 
 [dev-dependencies]
 framenode-chain-spec = { path = "../node/chain_spec", features = ["test"] }

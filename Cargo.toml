@@ -146,6 +146,7 @@ sp-finality-grandpa = { git = "https://github.com/paritytech//substrate.git", br
 sp-inherents = { git = "https://github.com/paritytech//substrate.git", branch = "polkadot-v0.9.13" }
 sp-io = { git = "https://github.com/paritytech//substrate.git", branch = "polkadot-v0.9.13" }
 sp-keystore = { git = "https://github.com/paritytech//substrate.git", branch = "polkadot-v0.9.13" }
+sp-keyring = { git = "https://github.com/paritytech//substrate.git", branch = "polkadot-v0.9.13" }
 sp-offchain = { git = "https://github.com/paritytech//substrate.git", branch = "polkadot-v0.9.13" }
 sp-npos-elections = { git = "https://github.com/paritytech//substrate.git", branch = "polkadot-v0.9.13" }
 sp-runtime = { git = "https://github.com/paritytech//substrate.git", branch = "polkadot-v0.9.13" }
@@ -358,7 +359,7 @@ members = [
     "utils/parse",
 ]
 
-resolver = "2"
+#resolver = "2"
 
 [profile.release]
 panic = 'unwind'

@@ -151,7 +151,7 @@ pub type Index = u32;
 pub type Hash = sp_core::H256;
 
 /// Digest item type.
-pub type DigestItem = generic::DigestItem<Hash>;
+pub type DigestItem = generic::DigestItem;
 
 /// Identification of DEX.
 pub type DEXId = u32;

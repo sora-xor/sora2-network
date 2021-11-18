@@ -508,7 +508,7 @@ dependencies = [
  "snowbridge-ethereum",
  "sp-core",
  "sp-io",
- "sp-keyring 4.0.0-dev (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.12)",
+ "sp-keyring",
  "sp-runtime",
  "sp-std",
 ]
@@ -977,6 +977,7 @@ dependencies = [
  "fixnum",
  "frame-support",
  "frame-system",
+ "getrandom 0.2.3",
  "libsecp256k1 0.6.0",
  "num-traits",
  "orml-currencies",
@@ -1373,6 +1374,7 @@ dependencies = [
  "dex-manager",
  "frame-support",
  "frame-system",
+ "getrandom 0.2.3",
  "hex-literal",
  "mock-liquidity-source",
  "orml-currencies",
@@ -1590,7 +1592,7 @@ dependencies = [
  "snowbridge-core",
  "sp-core",
  "sp-io",
- "sp-keyring 4.0.0-dev (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.12)",
+ "sp-keyring",
  "sp-runtime",
  "sp-std",
 ]
@@ -1674,6 +1676,9 @@ source = "git+https://github.com/soramitsu/sora2-ed25519-dalek-iroha.git?branch=
 dependencies = [
  "curve25519-dalek 3.2.0",
  "ed25519",
+ "rand 0.7.3",
+ "serde",
+ "serde_bytes",
  "sha3 0.9.1",
  "zeroize",
 ]
@@ -1812,6 +1817,7 @@ dependencies = [
  "frame-benchmarking",
  "frame-support",
  "frame-system",
+ "getrandom 0.2.3",
  "hex-literal",
  "orml-currencies",
  "orml-tokens 0.4.1-dev (git+https://github.com/open-web3-stack/open-runtime-module-library.git?rev=55d52768)",
@@ -1827,7 +1833,7 @@ dependencies = [
  "snowbridge-ethereum",
  "sp-core",
  "sp-io",
- "sp-keyring 4.0.0-dev (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.12)",
+ "sp-keyring",
  "sp-runtime",
  "sp-std",
 ]
@@ -1848,6 +1854,7 @@ dependencies = [
  "frame-executive",
  "frame-support",
  "frame-system",
+ "getrandom 0.2.3",
  "hex-literal",
  "jsonrpc-core 17.0.0",
  "libsecp256k1 0.6.0",
@@ -2006,7 +2013,7 @@ dependencies = [
  "snowbridge-testutils",
  "sp-core",
  "sp-io",
- "sp-keyring 4.0.0-dev (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.12)",
+ "sp-keyring",
  "sp-runtime",
  "sp-std",
 ]
@@ -2579,6 +2586,7 @@ dependencies = [
  "frame-system-benchmarking",
  "frame-system-rpc-runtime-api",
  "framenode-chain-spec",
+ "getrandom 0.2.3",
  "hex-literal",
  "incentivized-channel",
  "iroha-migration",
@@ -3308,7 +3316,7 @@ dependencies = [
  "snowbridge-ethereum",
  "sp-core",
  "sp-io",
- "sp-keyring 4.0.0-dev (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.12)",
+ "sp-keyring",
  "sp-runtime",
  "sp-std",
 ]
@@ -4743,9 +4751,9 @@ dependencies = [
 
 [[package]]
 name = "more-asserts"
-version = "0.2.1"
+version = "0.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0debeb9fcf88823ea64d64e4a815ab1643f33127d995978e099942ce38f25238"
+checksum = "7843ec2de400bcbc6a6328c958dc38e5359da6e93e72e37bc5246bf1ae776389"
 
 [[package]]
 name = "multiaddr"
@@ -5483,7 +5491,7 @@ dependencies = [
 [[package]]
 name = "pallet-multisig"
 version = "3.2.0"
-source = "git+https://github.com/soramitsu/sora2-frame-pallets.git?branch=polkadot-v0.9.12#aee40632c8b6f2cdfef42674a87bd6d3f965feb0"
+source = "git+https://github.com/soramitsu/sora2-frame-pallets.git?branch=polkadot-v0.9.12#9e899212bd2b72bb052b03ee935fecddc4a74a53"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -5581,10 +5589,11 @@ dependencies = [
 [[package]]
 name = "pallet-staking"
 version = "3.0.0"
-source = "git+https://github.com/soramitsu/sora2-frame-pallets.git?branch=polkadot-v0.9.12#aee40632c8b6f2cdfef42674a87bd6d3f965feb0"
+source = "git+https://github.com/soramitsu/sora2-frame-pallets.git?branch=polkadot-v0.9.12#9e899212bd2b72bb052b03ee935fecddc4a74a53"
 dependencies = [
  "frame-support",
  "frame-system",
+ "getrandom 0.2.3",
  "log",
  "orml-tokens 0.4.1-dev (git+https://github.com/open-web3-stack/open-runtime-module-library.git)",
  "orml-traits 0.4.1-dev (git+https://github.com/open-web3-stack/open-runtime-module-library.git)",
@@ -5914,6 +5923,7 @@ dependencies = [
  "common",
  "frame-support",
  "frame-system",
+ "getrandom 0.2.3",
  "pallet-balances",
  "parity-scale-codec",
  "scale-info",
@@ -7188,7 +7198,7 @@ dependencies = [
  "serde_json",
  "sp-blockchain",
  "sp-core",
- "sp-keyring 4.0.0-dev (git+https://github.com/paritytech//substrate.git?branch=polkadot-v0.9.13)",
+ "sp-keyring",
  "sp-keystore",
  "sp-panic-handler",
  "sp-runtime",
@@ -8092,6 +8102,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "serde_bytes"
+version = "0.11.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "16ae07dd2f88a366f15bd0632ba725227018c69a1c8550a927324f8eb8368bb9"
+dependencies = [
+ "serde",
+]
+
+[[package]]
 name = "serde_derive"
 version = "1.0.130"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -8104,9 +8123,9 @@ dependencies = [
 
 [[package]]
 name = "serde_json"
-version = "1.0.70"
+version = "1.0.71"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e277c495ac6cd1a01a58d0a0c574568b4d1ddf14f59965c6a58b8d96400b54f3"
+checksum = "063bf466a64011ac24040a49009724ee60a57da1b437617ceb32e53ad61bfb19"
 dependencies = [
  "itoa",
  "ryu",
@@ -8713,23 +8732,12 @@ dependencies = [
 [[package]]
 name = "sp-keyring"
 version = "4.0.0-dev"
-source = "git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.12#d76f39995315ec36980908e4b99709bd14927044"
-dependencies = [
- "lazy_static",
- "sp-core",
- "sp-runtime",
- "strum 0.20.0",
-]
-
-[[package]]
-name = "sp-keyring"
-version = "4.0.0-dev"
 source = "git+https://github.com/paritytech//substrate.git?branch=polkadot-v0.9.13#7db0768a85dc36a3f2a44d042b32f3715c00a90d"
 dependencies = [
  "lazy_static",
  "sp-core",
  "sp-runtime",
- "strum 0.22.0",
+ "strum",
 ]
 
 [[package]]
@@ -9135,32 +9143,11 @@ dependencies = [
 
 [[package]]
 name = "strum"
-version = "0.20.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7318c509b5ba57f18533982607f24070a55d353e90d4cae30c467cdb2ad5ac5c"
-dependencies = [
- "strum_macros 0.20.1",
-]
-
-[[package]]
-name = "strum"
 version = "0.22.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f7ac893c7d471c8a21f31cfe213ec4f6d9afeed25537c772e08ef3f005f8729e"
 dependencies = [
- "strum_macros 0.22.0",
-]
-
-[[package]]
-name = "strum_macros"
-version = "0.20.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ee8bc6b87a5112aeeab1f4a9f7ab634fe6cbefc4850006df31267f4cfb9e3149"
-dependencies = [
- "heck",
- "proc-macro2",
- "quote",
- "syn",
+ "strum_macros",
 ]
 
 [[package]]
