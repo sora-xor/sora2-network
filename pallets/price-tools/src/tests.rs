@@ -33,7 +33,9 @@ use std::convert::TryInto;
 use crate::mock::*;
 use crate::{Error, AVG_BLOCK_SPAN};
 use common::prelude::Balance;
-use common::{balance, OnPoolReservesChanged, PriceToolsPallet, DOT, ETH, PSWAP, VAL, XOR};
+use common::{
+    balance, fixed_wrapper, OnPoolReservesChanged, PriceToolsPallet, DOT, ETH, PSWAP, VAL, XOR,
+};
 use frame_support::assert_noop;
 
 fn to_avg<'a, I>(it: I, size: u32) -> Balance
@@ -67,7 +69,7 @@ fn initial_setup_without_history() {
         PriceTools::incoming_spot_price(&ETH, balance!(AVG_BLOCK_SPAN + 1)).unwrap();
         assert_eq!(
             PriceTools::get_average_price(&XOR.into(), &ETH.into()).unwrap(),
-            avg_calc + ((avg_calc as f64 * 0.00197) as u128)
+            (avg_calc + avg_calc * fixed_wrapper!(0.00197)).into_balance()
         );
     });
 }
