@@ -66,9 +66,9 @@ pub use pallet::*;
 /// Count of blocks to participate in avg value calculation.
 pub const AVG_BLOCK_SPAN: u32 = 30;
 /// Max percentage difference for average value between blocks when price goes down.
-const MAX_BLOCK_DEC_AVG_DIFFERENCE: Fixed = fixed_const!(0.003); // 0.3%
+const MAX_BLOCK_DEC_AVG_DIFFERENCE: Fixed = fixed_const!(0.0003); // 0.03%
 /// Max percentage difference for average value between blocks when price goes up.
-const MAX_BLOCK_INC_AVG_DIFFERENCE: Fixed = fixed_const!(0.05); // 5%
+const MAX_BLOCK_INC_AVG_DIFFERENCE: Fixed = fixed_const!(0.00197); // 0.197%
 
 pub trait WeightInfo {
     fn on_initialize(elems_active: u32, elems_updated: u32) -> Weight;
