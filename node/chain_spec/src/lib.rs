@@ -981,7 +981,6 @@ fn testnet_genesis(
         },
         system: SystemConfig {
             code: WASM_BINARY.unwrap().to_vec(),
-            changes_trie_config: Default::default(),
         },
         sudo: SudoConfig {
             key: root_key.clone(),
@@ -1640,7 +1639,6 @@ fn mainnet_genesis(
         },
         frame_system: Some(SystemConfig {
             code: WASM_BINARY.unwrap().to_vec(),
-            changes_trie_config: Default::default(),
         }),
         technical: Some(TechnicalConfig {
             register_tech_accounts: tech_accounts,

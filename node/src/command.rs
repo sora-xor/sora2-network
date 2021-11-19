@@ -21,7 +21,7 @@ use sc_cli::{ChainSpec, Role, RuntimeVersion, SubstrateCli};
 use sc_service::PartialComponents;
 
 fn set_default_ss58_version() {
-    sp_core::crypto::set_default_ss58_version(sp_core::crypto::Ss58AddressFormat::Custom(
+    sp_core::crypto::set_default_ss58_version(sp_core::crypto::Ss58AddressFormat::from(
         framenode_runtime::SS58Prefix::get() as u16,
     ));
 }
@@ -183,7 +183,8 @@ pub fn run() -> sc_cli::Result<()> {
             set_default_ss58_version();
             runner.run_node_until_exit(|config| async move {
                 match config.role {
-                    Role::Light => service::new_light(config),
+                    //Role::Light => service::new_light(config),
+                    Role::Light => Err(sc_service::Error::Other("Light client not enabled".into())),
                     // TODO: fix args
                     _ => service::new_full(config, None, false, None, None),
                 }

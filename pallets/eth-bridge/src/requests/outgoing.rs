@@ -241,6 +241,7 @@ impl OutgoingTransferEncoded {
 /// Outgoing request for adding a Thischain asset.
 // TODO: lock the adding token to prevent double-adding.
 #[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[scale_info(skip_type_params(T))]
 pub struct OutgoingAddAsset<T: Config> {
     pub author: T::AccountId,
@@ -343,6 +344,7 @@ impl OutgoingAddAssetEncoded {
 
 /// Outgoing request for adding a Sidechain token.
 #[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[scale_info(skip_type_params(T))]
 pub struct OutgoingAddToken<T: Config> {
     pub author: T::AccountId,
@@ -510,6 +512,7 @@ impl OutgoingAddTokenEncoded {
 
 /// Outgoing request for adding a peer.
 #[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[scale_info(skip_type_params(T))]
 pub struct OutgoingAddPeer<T: Config> {
     pub author: T::AccountId,
@@ -591,6 +594,7 @@ impl<T: Config> OutgoingAddPeer<T> {
 // TODO: add reference for a corresponding `OutgoingAddPeer` and check its existence.
 /// Old contracts-compatible `add peer` request. Will be removed in the future.
 #[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[scale_info(skip_type_params(T))]
 pub struct OutgoingAddPeerCompat<T: Config> {
     pub author: T::AccountId,
@@ -655,6 +659,7 @@ impl<T: Config> OutgoingAddPeerCompat<T> {
 
 /// Outgoing request for removing a peer.
 #[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[scale_info(skip_type_params(T))]
 pub struct OutgoingRemovePeer<T: Config> {
     pub author: T::AccountId,
@@ -740,6 +745,7 @@ impl<T: Config> OutgoingRemovePeer<T> {
 // TODO: add reference for a corresponding `OutgoingRemovePeer` and check its existence.
 /// Old contracts-compatible `add peer` request. Will be removed in the future.
 #[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[scale_info(skip_type_params(T))]
 pub struct OutgoingRemovePeerCompat<T: Config> {
     pub author: T::AccountId,

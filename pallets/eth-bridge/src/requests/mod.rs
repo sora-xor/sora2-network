@@ -60,6 +60,7 @@ type Assets<T> = assets::Pallet<T>;
 /// just-in-time).
 /// And the following methods: validate, prepare, finalize, cancel.
 #[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[scale_info(skip_type_params(T))]
 pub enum OutgoingRequest<T: Config> {
     /// Outgoing transfer from Substrate to Ethereum request.
@@ -278,6 +279,7 @@ impl IncomingTransactionRequestKind {
 /// Each request, has the following properties: transaction hash, height, network ID, and timepoint.
 /// And the following methods: validate, prepare, finalize, cancel.
 #[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[scale_info(skip_type_params(T))]
 pub enum IncomingRequest<T: Config> {
     Transfer(IncomingTransfer<T>),
@@ -521,6 +523,7 @@ impl<T: Config> IncomingRequest<T> {
 }
 
 #[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[scale_info(skip_type_params(T))]
 pub enum LoadIncomingRequest<T: Config> {
     Transaction(LoadIncomingTransactionRequest<T>),
@@ -603,6 +606,7 @@ impl<T: Config> LoadIncomingRequest<T> {
 /// Information needed for a request to be loaded from sidechain. Basically it's
 /// a hash of the transaction and the type of the request.
 #[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[scale_info(skip_type_params(T))]
 pub struct LoadIncomingTransactionRequest<T: Config> {
     pub(crate) author: T::AccountId,
@@ -633,6 +637,7 @@ impl<T: Config> LoadIncomingTransactionRequest<T> {
 /// Information needed for a request to be loaded from sidechain. Basically it's
 /// a hash of the transaction and the type of the request.
 #[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[scale_info(skip_type_params(T))]
 pub struct LoadIncomingMetaRequest<T: Config> {
     pub(crate) author: T::AccountId,
@@ -662,6 +667,7 @@ impl<T: Config> LoadIncomingMetaRequest<T> {
 
 /// A bridge operation handled by off-chain workers.
 #[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[scale_info(skip_type_params(T))]
 pub enum OffchainRequest<T: Config> {
     /// Thischain->Sidechain request with its hash.
@@ -821,6 +827,7 @@ impl<T: Config> OffchainRequest<T> {
 /// Ethereum-encoded `OutgoingRequest`. Contains a payload for signing by peers. Also, can be used
 /// by client apps for more convenient contract function calls.
 #[derive(Clone, Encode, Decode, RuntimeDebug, PartialEq, Eq, scale_info::TypeInfo)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum OutgoingRequestEncoded {
     /// ETH-encoded incoming transfer from Substrate to Ethereum request.
     Transfer(OutgoingTransferEncoded),
