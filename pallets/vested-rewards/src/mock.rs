@@ -179,14 +179,14 @@ impl assets::Config for Runtime {
         common::AssetIdExtraAssetRecordArg<DEXId, common::LiquiditySourceType, [u8; 32]>;
     type AssetId = AssetId;
     type GetBaseAssetId = GetBaseAssetId;
-    type Currency = currencies::Module<Runtime>;
+    type Currency = currencies::Pallet<Runtime>;
     type GetTeamReservesAccountId = GetTeamReservesAccountId;
     type WeightInfo = ();
 }
 
 impl trading_pair::Config for Runtime {
     type Event = Event;
-    type EnsureDEXManager = dex_manager::Module<Runtime>;
+    type EnsureDEXManager = dex_manager::Pallet<Runtime>;
     type WeightInfo = ();
 }
 
@@ -210,7 +210,7 @@ impl pswap_distribution::Config for Runtime {
     type EnsureDEXManager = ();
     type OnPswapBurnedAggregator = ();
     type WeightInfo = ();
-    type PoolXykPallet = pool_xyk::Module<Runtime>;
+    type PoolXykPallet = pool_xyk::Pallet<Runtime>;
     type GetParliamentAccountId = GetParliamentAccountId;
 }
 
@@ -223,9 +223,9 @@ impl pool_xyk::Config for Runtime {
     type WithdrawLiquidityAction =
         pool_xyk::WithdrawLiquidityAction<AssetId, AccountId, TechAccountId>;
     type PolySwapAction = pool_xyk::PolySwapAction<AssetId, AccountId, TechAccountId>;
-    type EnsureDEXManager = dex_manager::Module<Runtime>;
+    type EnsureDEXManager = dex_manager::Pallet<Runtime>;
     type GetFee = GetXykFee;
-    type OnPoolCreated = pswap_distribution::Module<Runtime>;
+    type OnPoolCreated = pswap_distribution::Pallet<Runtime>;
     type OnPoolReservesChanged = ();
     type WeightInfo = ();
 }
@@ -233,8 +233,8 @@ impl pool_xyk::Config for Runtime {
 impl multicollateral_bonding_curve_pool::Config for Runtime {
     type Event = Event;
     type LiquidityProxy = ();
-    type EnsureTradingPairExists = trading_pair::Module<Runtime>;
-    type EnsureDEXManager = dex_manager::Module<Runtime>;
+    type EnsureTradingPairExists = trading_pair::Pallet<Runtime>;
+    type EnsureDEXManager = dex_manager::Pallet<Runtime>;
     type VestedRewardsPallet = VestedRewards;
     type PriceToolsPallet = ();
     type WeightInfo = ();

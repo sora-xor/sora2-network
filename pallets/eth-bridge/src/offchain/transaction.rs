@@ -39,12 +39,12 @@ use crate::{
 use alloc::boxed::Box;
 use codec::{Decode, Encode};
 use frame_support::dispatch::{DispatchError, GetCallMetadata};
-use frame_support::log::{debug, error, info, trace, warn};
+use frame_support::log::{debug, error};
 use frame_support::sp_io::hashing::blake2_256;
 use frame_support::sp_runtime::offchain::storage::StorageValueRef;
 use frame_support::sp_runtime::traits::{BlockNumberProvider, Saturating};
 use frame_support::traits::GetCallName;
-use frame_support::{debug, ensure, fail};
+use frame_support::{ensure, fail};
 #[cfg(test)]
 use frame_system::offchain::SignMessage;
 use frame_system::offchain::{

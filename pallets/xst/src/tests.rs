@@ -30,14 +30,13 @@
 
 #[rustfmt::skip]
 mod tests {
-    use crate::{Error, Module, migration::get_permissioned_tech_account_id, mock::*};
-    use common::{self, AssetName, AssetSymbol, DEXId, FromGenericPair, LiquiditySource, LiquiditySourceType, USDT, VAL, XOR, XSTUSD, balance, fixed, prelude::{Balance, SwapAmount, QuoteAmount,}};
+    use crate::{Error, Pallet, mock::*};
+    use common::{self, AssetName, AssetSymbol, DEXId, FromGenericPair, LiquiditySource, USDT, VAL, XOR, XSTUSD, balance, fixed, prelude::{Balance, SwapAmount, QuoteAmount,}};
     use frame_support::{assert_noop, assert_ok};
-    use permissions::{BURN, MINT};
     use sp_arithmetic::traits::{Zero};
     use sp_runtime::DispatchError;
 
-    type XSTPool = Module<Runtime>;
+    type XSTPool = Pallet<Runtime>;
 
     /// Sets up the tech account so that mint permission is enabled
     fn xst_pool_init() -> Result<TechAccountId, DispatchError> {

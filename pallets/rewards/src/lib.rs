@@ -122,10 +122,7 @@ impl<T: Config> Pallet<T> {
         } else {
             let elapsed_u32: u32 = elapsed.unique_saturated_into();
             let time_to_saturation: u32 = T::TIME_TO_SATURATION.unique_saturated_into();
-            Perbill::from_rational_approximation(
-                max_percentage * elapsed_u32,
-                100_u32 * time_to_saturation,
-            )
+            Perbill::from_rational(max_percentage * elapsed_u32, 100_u32 * time_to_saturation)
         }
     }
 

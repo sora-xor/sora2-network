@@ -28,9 +28,8 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use crate::{Config, Pallet, PermissionedTechAccount, Weight};
+use crate::{Config, PermissionedTechAccount, Weight};
 use common::{AssetName, AssetSymbol, Balance, FromGenericPair, LiquiditySourceType, XSTUSD};
-use frame_support::debug;
 use frame_support::log::{error, info};
 use frame_support::traits::Get;
 use permissions::{Scope, BURN, MINT};
@@ -38,7 +37,7 @@ use sp_runtime::runtime_logger::RuntimeLogger;
 use sp_runtime::traits::Zero;
 
 pub fn migrate<T: Config>() -> Weight {
-    let mut weight: Weight = 0;
+    let weight: Weight = 0;
 
     // match Pallet::<T>::storage_version() {
     //     // Register token when pallet is first created, i.e. None version
@@ -55,15 +54,17 @@ pub fn migrate<T: Config>() -> Weight {
     weight
 }
 
+#[allow(dead_code)]
 pub fn get_assets_owner_account<T: Config>() -> T::AccountId {
     let assets_and_permissions_tech_account_id = T::TechAccountId::from_generic_pair(
         b"SYSTEM_ACCOUNT".to_vec(),
         b"ASSETS_PERMISSIONS".to_vec(),
     );
-    technical::Module::<T>::tech_account_id_to_account_id(&assets_and_permissions_tech_account_id)
+    technical::Pallet::<T>::tech_account_id_to_account_id(&assets_and_permissions_tech_account_id)
         .unwrap()
 }
 
+#[allow(dead_code)]
 pub fn register_new_token<T: Config>() -> Option<Weight> {
     RuntimeLogger::init();
 
@@ -92,17 +93,19 @@ pub fn register_new_token<T: Config>() -> Option<Weight> {
     Some(T::DbWeight::get().writes(1))
 }
 
+#[allow(dead_code)]
 pub fn get_permissioned_tech_account_id<T: Config>() -> (T::TechAccountId, T::AccountId) {
     let tech_account_id = T::TechAccountId::from_generic_pair(
         crate::TECH_ACCOUNT_PREFIX.to_vec(),
         crate::TECH_ACCOUNT_PERMISSIONED.to_vec(),
     );
     // 1 read, unwrap is guaranteed to work
-    let account_id = technical::Module::<T>::tech_account_id_to_account_id(&tech_account_id)
+    let account_id = technical::Pallet::<T>::tech_account_id_to_account_id(&tech_account_id)
         .expect("Couldn't generate tech account for XST pallet during migration.");
     (tech_account_id, account_id)
 }
 
+#[allow(dead_code)]
 pub fn register_xst_tech_account<T: Config>() -> Option<Weight> {
     RuntimeLogger::init();
     let (xst_permissioned_tech_account_id, xst_permissioned_account_id) =
@@ -110,7 +113,7 @@ pub fn register_xst_tech_account<T: Config>() -> Option<Weight> {
 
     // 1 read, 2 writes
     let register_result =
-        technical::Module::<T>::register_tech_account_id(xst_permissioned_tech_account_id.clone());
+        technical::Pallet::<T>::register_tech_account_id(xst_permissioned_tech_account_id.clone());
 
     PermissionedTechAccount::<T>::set(xst_permissioned_tech_account_id);
 
@@ -122,7 +125,7 @@ pub fn register_xst_tech_account<T: Config>() -> Option<Weight> {
         );
         for permission in &permissions {
             // 2 times: 1 read, 3 writes
-            let assign_permission_result = permissions::Module::<T>::assign_permission(
+            let assign_permission_result = permissions::Pallet::<T>::assign_permission(
                 xst_permissioned_account_id.clone(),
                 &xst_permissioned_account_id,
                 *permission,
@@ -144,6 +147,7 @@ pub fn register_xst_tech_account<T: Config>() -> Option<Weight> {
     Some(T::DbWeight::get().reads_writes(4, 8))
 }
 
+#[allow(dead_code)]
 pub fn register_in_dex_api<T: Config>() -> Weight {
     dex_api::EnabledSourceTypes::<T>::mutate(|types| types.push(LiquiditySourceType::XSTPool));
     T::DbWeight::get().writes(1)

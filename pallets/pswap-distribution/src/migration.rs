@@ -28,17 +28,17 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use crate::{ClaimableShares, Config, Pallet, ShareholderAccounts, SubscribedAccounts, Weight};
+use crate::{ClaimableShares, Config, ShareholderAccounts, SubscribedAccounts, Weight};
 use common::fixnum::ops::{CheckedAdd, Zero};
 use common::prelude::{Fixed, FixedWrapper};
 use common::{balance, PoolXykPallet};
 use frame_support::dispatch::DispatchError;
-use frame_support::log::{debug, error};
+use frame_support::log::error;
 use frame_support::traits::Get;
 use sp_std::convert::TryInto;
 
 pub fn migrate<T: Config>() -> Weight {
-    let mut weight: Weight = 0;
+    let weight: Weight = 0;
 
     // match Pallet::<T>::storage_version() {
     //     // Initial version is 0.1.0 which uses shares from total amount to determine owned pswap by users
@@ -59,6 +59,7 @@ pub fn migrate<T: Config>() -> Weight {
     weight
 }
 
+#[allow(dead_code)]
 pub fn migrate_from_shares_to_absolute_rewards<T: Config>() -> Result<Weight, DispatchError> {
     common::with_transaction(|| {
         let mut weight: Weight = 0;
@@ -66,7 +67,7 @@ pub fn migrate_from_shares_to_absolute_rewards<T: Config>() -> Result<Weight, Di
         let incentives_asset_id = T::GetIncentiveAssetId::get();
         let tech_account_id = T::GetTechnicalAccountId::get();
         let total_claimable =
-            assets::Module::<T>::free_balance(&incentives_asset_id, &tech_account_id)?;
+            assets::Pallet::<T>::free_balance(&incentives_asset_id, &tech_account_id)?;
         let shares_total = FixedWrapper::from(ClaimableShares::<T>::get());
 
         ShareholderAccounts::<T>::translate(|_key: T::AccountId, current_position: Fixed| {
@@ -93,7 +94,7 @@ pub fn migrate_from_shares_to_absolute_rewards<T: Config>() -> Result<Weight, Di
                 .unwrap_or(balance!(0)),
         );
         if distribution_remainder > 0 {
-            assets::Module::<T>::transfer_from(
+            assets::Pallet::<T>::transfer_from(
                 &incentives_asset_id,
                 &tech_account_id,
                 &T::GetParliamentAccountId::get(),
@@ -105,6 +106,7 @@ pub fn migrate_from_shares_to_absolute_rewards<T: Config>() -> Result<Weight, Di
     })
 }
 
+#[allow(dead_code)]
 pub fn migrate_subscribed_accounts<T: Config>() -> Weight {
     let mut weight: Weight = 0;
 

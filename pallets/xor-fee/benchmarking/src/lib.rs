@@ -32,15 +32,10 @@
 
 use codec::Decode;
 use common::DAI;
-use frame_benchmarking::benchmarks;
-use frame_support::sp_runtime::traits::UniqueSaturatedInto;
 use frame_support::traits::Get;
 use frame_system::RawOrigin;
-use sp_std::boxed::Box;
-use sp_std::vec;
-use sp_std::vec::Vec;
 
-use common::{balance, Balance, VAL, XOR};
+use common::{balance, VAL, XOR};
 
 pub struct Pallet<T: Config>(xor_fee::Pallet<T>);
 

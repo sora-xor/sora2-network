@@ -56,7 +56,7 @@ pub mod v1_2 {
         PswapFarmOwners::<T>::insert(user_account, compensation_amount);
         let reserves_tech_acc = ReservesAcc::<T>::get();
         let res =
-            technical::Module::<T>::mint(&PSWAP.into(), &reserves_tech_acc, compensation_amount);
+            technical::Pallet::<T>::mint(&PSWAP.into(), &reserves_tech_acc, compensation_amount);
         if res.is_err() {
             error!("failed to mint compensation pswap during migration");
         } else {

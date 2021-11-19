@@ -29,13 +29,13 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use crate::mock::*;
-use crate::{Error, Module};
+use crate::{Error, Pallet};
 use common::prelude::DEXInfo;
 use common::{hash, EnsureDEXManager, ManagementMode, VAL, XOR};
 use frame_support::{assert_noop, assert_ok};
 use permissions::{Scope, MANAGE_DEX};
 
-type DEXModule = Module<Runtime>;
+type DEXModule = Pallet<Runtime>;
 
 #[test]
 fn test_initialize_dex_should_pass() {
@@ -101,7 +101,7 @@ fn test_share_manage_dex_permission_should_pass() {
         let result =
             DEXModule::ensure_can_manage(&DEX_A_ID, Origin::signed(BOB), ManagementMode::Private);
         assert_ok!(result);
-        permissions::Module::<Runtime>::grant_permission_with_scope(
+        permissions::Pallet::<Runtime>::grant_permission_with_scope(
             BOB,
             ALICE,
             permissions::MANAGE_DEX,

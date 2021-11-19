@@ -362,7 +362,7 @@ impl assets::Config for Runtime {
         common::AssetIdExtraAssetRecordArg<common::DEXId, common::LiquiditySourceType, [u8; 32]>;
     type AssetId = common::AssetId32<PredefinedAssetId>;
     type GetBaseAssetId = GetBaseAssetId;
-    type Currency = currencies::Module<Runtime>;
+    type Currency = currencies::Pallet<Runtime>;
     type GetTeamReservesAccountId = GetTeamReservesAccountId;
     type WeightInfo = ();
 }
@@ -726,7 +726,7 @@ impl ExtBuilder {
         peers_num: Option<usize>,
     ) -> u32 {
         let net_id = self.last_network_id;
-        let multisig_account_id = bridge_multisig::Module::<Runtime>::multi_account_id(
+        let multisig_account_id = bridge_multisig::Pallet::<Runtime>::multi_account_id(
             &self.root_account_id,
             1,
             net_id as u64 + 10,
@@ -753,7 +753,7 @@ impl ExtBuilder {
         let (offchain, offchain_state) = TestOffchainExt::new();
         let (pool, pool_state) = TestTransactionPoolExt::new();
         let authority_account_id =
-            bridge_multisig::Module::<Runtime>::multi_account_id(&self.root_account_id, 1, 0);
+            bridge_multisig::Pallet::<Runtime>::multi_account_id(&self.root_account_id, 1, 0);
 
         let mut bridge_accounts = Vec::new();
         let mut bridge_network_configs = Vec::new();

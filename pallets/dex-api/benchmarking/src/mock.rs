@@ -159,7 +159,7 @@ impl assets::Config for Runtime {
         common::AssetIdExtraAssetRecordArg<DEXId, common::LiquiditySourceType, [u8; 32]>;
     type AssetId = AssetId;
     type GetBaseAssetId = GetBaseAssetId;
-    type Currency = currencies::Module<Runtime>;
+    type Currency = currencies::Pallet<Runtime>;
     type GetTeamReservesAccountId = GetTeamReservesAccountId;
     type WeightInfo = ();
 }
@@ -202,7 +202,7 @@ impl dex_api::Config for Runtime {
     type MockLiquiditySource2 = ();
     type MockLiquiditySource3 = ();
     type MockLiquiditySource4 = ();
-    type XYKPool = pool_xyk::Module<Runtime>;
+    type XYKPool = pool_xyk::Pallet<Runtime>;
     type XSTPool = ();
     type MulticollateralBondingCurvePool = ();
     type WeightInfo = ();
@@ -210,7 +210,7 @@ impl dex_api::Config for Runtime {
 
 impl trading_pair::Config for Runtime {
     type Event = Event;
-    type EnsureDEXManager = dex_manager::Module<Runtime>;
+    type EnsureDEXManager = dex_manager::Pallet<Runtime>;
     type WeightInfo = ();
 }
 
@@ -223,7 +223,7 @@ impl pool_xyk::Config for Runtime {
     type WithdrawLiquidityAction =
         pool_xyk::WithdrawLiquidityAction<AssetId, AccountId, TechAccountId>;
     type PolySwapAction = pool_xyk::PolySwapAction<AssetId, AccountId, TechAccountId>;
-    type EnsureDEXManager = dex_manager::Module<Runtime>;
+    type EnsureDEXManager = dex_manager::Pallet<Runtime>;
     type GetFee = GetXykFee;
     type OnPoolCreated = PswapDistribution;
     type OnPoolReservesChanged = ();
@@ -262,8 +262,8 @@ impl PriceToolsPallet<AssetId> for MockPriceTools {
 impl multicollateral_bonding_curve_pool::Config for Runtime {
     type Event = Event;
     type LiquidityProxy = ();
-    type EnsureDEXManager = dex_manager::Module<Runtime>;
-    type EnsureTradingPairExists = trading_pair::Module<Runtime>;
+    type EnsureDEXManager = dex_manager::Pallet<Runtime>;
+    type EnsureTradingPairExists = trading_pair::Pallet<Runtime>;
     type PriceToolsPallet = MockPriceTools;
     type VestedRewardsPallet = VestedRewards;
     type WeightInfo = ();
@@ -308,6 +308,7 @@ impl Default for ExtBuilder {
 }
 
 impl ExtBuilder {
+    #[allow(dead_code)]
     pub fn build(self) -> sp_io::TestExternalities {
         let mut t = frame_system::GenesisConfig::default()
             .build_storage::<Runtime>()

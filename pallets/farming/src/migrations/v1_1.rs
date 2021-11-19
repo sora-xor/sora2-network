@@ -9,10 +9,10 @@ use sp_std::collections::btree_set::BTreeSet;
 
 use pool_xyk::PoolProviders;
 
-use crate::{Call, Config, Module};
+use crate::{Call, Config, Pallet};
 
 pub fn migrate<T: Config>() -> Weight {
-    let current_block_number = frame_system::Module::<T>::block_number();
+    let current_block_number = frame_system::Pallet::<T>::block_number();
     if !(current_block_number % T::REFRESH_FREQUENCY).is_zero() {
         let when = current_block_number - current_block_number % T::REFRESH_FREQUENCY
             + T::REFRESH_FREQUENCY;
@@ -40,7 +40,7 @@ pub fn migrate<T: Config>() -> Weight {
     let write_count = pools.len() as u64;
     for (i, pool) in pools.into_iter().enumerate() {
         let block_number: BlockNumberFor<T> = (i as u32).into();
-        Module::<T>::add_pool(pool, block_number);
+        Pallet::<T>::add_pool(pool, block_number);
     }
 
     T::DbWeight::get().reads_writes(read_count, write_count)

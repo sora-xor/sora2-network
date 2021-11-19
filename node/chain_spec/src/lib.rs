@@ -81,7 +81,7 @@ use std::borrow::Cow;
 
 /// Specialized `ChainSpec`. This is a specialization of the general Substrate ChainSpec type.
 pub type ChainSpec = sc_service::GenericChainSpec<GenesisConfig>;
-type Technical = technical::Module<Runtime>;
+type Technical = technical::Pallet<Runtime>;
 type AccountPublic = <Signature as Verify>::Signer;
 
 fn get_ethereum_header() -> EthereumHeader {
@@ -677,7 +677,7 @@ fn testnet_genesis(
         xor_fee::TECH_ACCOUNT_MAIN.to_vec(),
     );
     let xor_fee_account_id: AccountId =
-        technical::Module::<Runtime>::tech_account_id_to_account_id(&xor_fee_tech_account_id)
+        technical::Pallet::<Runtime>::tech_account_id_to_account_id(&xor_fee_tech_account_id)
             .expect("Failed to decode account Id");
 
     let eth_bridge_tech_account_id = TechAccountId::Generic(
@@ -685,14 +685,14 @@ fn testnet_genesis(
         eth_bridge::TECH_ACCOUNT_MAIN.to_vec(),
     );
     let eth_bridge_account_id =
-        technical::Module::<Runtime>::tech_account_id_to_account_id(&eth_bridge_tech_account_id)
+        technical::Pallet::<Runtime>::tech_account_id_to_account_id(&eth_bridge_tech_account_id)
             .unwrap();
     let eth_bridge_authority_tech_account_id = TechAccountId::Generic(
         eth_bridge::TECH_ACCOUNT_PREFIX.to_vec(),
         eth_bridge::TECH_ACCOUNT_AUTHORITY.to_vec(),
     );
     let eth_bridge_authority_account_id =
-        technical::Module::<Runtime>::tech_account_id_to_account_id(
+        technical::Pallet::<Runtime>::tech_account_id_to_account_id(
             &eth_bridge_authority_tech_account_id,
         )
         .unwrap();
@@ -728,7 +728,7 @@ fn testnet_genesis(
         iroha_migration::TECH_ACCOUNT_PREFIX.to_vec(),
         iroha_migration::TECH_ACCOUNT_MAIN.to_vec(),
     );
-    let iroha_migration_account_id = technical::Module::<Runtime>::tech_account_id_to_account_id(
+    let iroha_migration_account_id = technical::Pallet::<Runtime>::tech_account_id_to_account_id(
         &iroha_migration_tech_account_id,
     )
     .unwrap();
@@ -738,13 +738,13 @@ fn testnet_genesis(
         rewards::TECH_ACCOUNT_MAIN.to_vec(),
     );
     let rewards_account_id =
-        technical::Module::<Runtime>::tech_account_id_to_account_id(&rewards_tech_account_id)
+        technical::Pallet::<Runtime>::tech_account_id_to_account_id(&rewards_tech_account_id)
             .unwrap();
 
     let assets_and_permissions_tech_account_id =
         TechAccountId::Generic(b"SYSTEM_ACCOUNT".to_vec(), b"ASSETS_PERMISSIONS".to_vec());
     let assets_and_permissions_account_id =
-        technical::Module::<Runtime>::tech_account_id_to_account_id(
+        technical::Pallet::<Runtime>::tech_account_id_to_account_id(
             &assets_and_permissions_tech_account_id,
         )
         .unwrap();
@@ -752,7 +752,7 @@ fn testnet_genesis(
     let dex_root_tech_account_id =
         TechAccountId::Generic(b"SYSTEM_ACCOUNT".to_vec(), b"DEX_ROOT".to_vec());
     let dex_root_account_id =
-        technical::Module::<Runtime>::tech_account_id_to_account_id(&dex_root_tech_account_id)
+        technical::Pallet::<Runtime>::tech_account_id_to_account_id(&dex_root_tech_account_id)
             .unwrap();
 
     let mut tech_accounts = vec![
@@ -931,7 +931,7 @@ fn testnet_genesis(
             faucet::TECH_ACCOUNT_MAIN.to_vec(),
         );
         let faucet_account_id: AccountId =
-            technical::Module::<Runtime>::tech_account_id_to_account_id(&faucet_tech_account_id)
+            technical::Pallet::<Runtime>::tech_account_id_to_account_id(&faucet_tech_account_id)
                 .expect("Failed to decode account id");
         tech_accounts.push((faucet_account_id.clone(), faucet_tech_account_id.clone()));
         balances.push((faucet_account_id.clone(), initial_faucet_balance));
@@ -1409,7 +1409,7 @@ fn mainnet_genesis(
         xor_fee::TECH_ACCOUNT_MAIN.to_vec(),
     );
     let xor_fee_account_id: AccountId =
-        technical::Module::<Runtime>::tech_account_id_to_account_id(&xor_fee_tech_account_id)
+        technical::Pallet::<Runtime>::tech_account_id_to_account_id(&xor_fee_tech_account_id)
             .expect("Failed to decode account Id");
 
     // Bridge peers multisignature account
@@ -1419,7 +1419,7 @@ fn mainnet_genesis(
     );
     // Wrapping of bridge peers multisignature account
     let eth_bridge_account_id =
-        technical::Module::<Runtime>::tech_account_id_to_account_id(&eth_bridge_tech_account_id)
+        technical::Pallet::<Runtime>::tech_account_id_to_account_id(&eth_bridge_tech_account_id)
             .unwrap();
     // Bridge authority account expected to be managed by voting
     let eth_bridge_authority_tech_account_id = TechAccountId::Generic(
@@ -1428,7 +1428,7 @@ fn mainnet_genesis(
     );
     // Wrapper for Bridge authority account expected to be managed by voting
     let eth_bridge_authority_account_id =
-        technical::Module::<Runtime>::tech_account_id_to_account_id(
+        technical::Pallet::<Runtime>::tech_account_id_to_account_id(
             &eth_bridge_authority_tech_account_id,
         )
         .unwrap();
@@ -1459,7 +1459,7 @@ fn mainnet_genesis(
         iroha_migration::TECH_ACCOUNT_PREFIX.to_vec(),
         iroha_migration::TECH_ACCOUNT_MAIN.to_vec(),
     );
-    let iroha_migration_account_id = technical::Module::<Runtime>::tech_account_id_to_account_id(
+    let iroha_migration_account_id = technical::Pallet::<Runtime>::tech_account_id_to_account_id(
         &iroha_migration_tech_account_id,
     )
     .unwrap();
@@ -1469,13 +1469,13 @@ fn mainnet_genesis(
         rewards::TECH_ACCOUNT_MAIN.to_vec(),
     );
     let rewards_account_id =
-        technical::Module::<Runtime>::tech_account_id_to_account_id(&rewards_tech_account_id)
+        technical::Pallet::<Runtime>::tech_account_id_to_account_id(&rewards_tech_account_id)
             .unwrap();
 
     let assets_and_permissions_tech_account_id =
         TechAccountId::Generic(b"SYSTEM_ACCOUNT".to_vec(), b"ASSETS_PERMISSIONS".to_vec());
     let assets_and_permissions_account_id =
-        technical::Module::<Runtime>::tech_account_id_to_account_id(
+        technical::Pallet::<Runtime>::tech_account_id_to_account_id(
             &assets_and_permissions_tech_account_id,
         )
         .unwrap();
@@ -1483,7 +1483,7 @@ fn mainnet_genesis(
     let dex_root_tech_account_id =
         TechAccountId::Generic(b"SYSTEM_ACCOUNT".to_vec(), b"DEX_ROOT".to_vec());
     let dex_root_account_id =
-        technical::Module::<Runtime>::tech_account_id_to_account_id(&dex_root_tech_account_id)
+        technical::Pallet::<Runtime>::tech_account_id_to_account_id(&dex_root_tech_account_id)
             .unwrap();
 
     let mut tech_accounts = vec![

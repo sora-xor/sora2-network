@@ -285,13 +285,13 @@ fn should_take_fee_in_incoming_transfer() {
             should_take_fee: true,
         });
         assert_eq!(
-            assets::Module::<Runtime>::total_balance(&PredefinedAssetId::XOR.into(), &alice)
+            assets::Pallet::<Runtime>::total_balance(&PredefinedAssetId::XOR.into(), &alice)
                 .unwrap(),
             0
         );
         assert_incoming_request_done(&state, incoming_transfer.clone()).unwrap();
         assert_eq!(
-            assets::Module::<Runtime>::total_balance(&PredefinedAssetId::XOR.into(), &alice)
+            assets::Pallet::<Runtime>::total_balance(&PredefinedAssetId::XOR.into(), &alice)
                 .unwrap(),
             balance!(99.9993).into()
         );

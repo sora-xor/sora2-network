@@ -175,7 +175,7 @@ impl<T: Config> Pallet<T> {
             .as_slice()
             .try_into()
             .map_err(|_| Error::<T>::SignatureParsingFailed)?;
-        Ok(Signature::new(signature_bytes))
+        Ok(Signature::from(signature_bytes))
     }
 
     fn verify_signature(
@@ -241,7 +241,7 @@ impl<T: Config> Pallet<T> {
                 pending_account.approving_accounts
             };
             let multi_account =
-                pallet_multisig::Module::<T>::multi_account_id(&signatories, quorum as u16);
+                pallet_multisig::Pallet::<T>::multi_account_id(&signatories, quorum as u16);
             Self::migrate_account(iroha_address, multi_account)?;
         } else {
             let quorum = Quorums::<T>::get(&iroha_address) as usize;
@@ -281,7 +281,7 @@ impl<T: Config> Pallet<T> {
                     eth_bridge::TECH_ACCOUNT_MAIN.to_vec(),
                 );
 
-                technical::Module::<T>::transfer_out(
+                technical::Pallet::<T>::transfer_out(
                     &VAL.into(),
                     &eth_bridge_tech_account_id,
                     account,
@@ -349,7 +349,7 @@ pub mod pallet {
                     if block_number > migrate_at {
                         value.approving_accounts.sort();
                         let quorum = Quorums::<T>::take(&key);
-                        let multi_account = pallet_multisig::Module::<T>::multi_account_id(
+                        let multi_account = pallet_multisig::Pallet::<T>::multi_account_id(
                             &value.approving_accounts,
                             quorum as u16,
                         );

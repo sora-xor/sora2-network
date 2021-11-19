@@ -33,7 +33,6 @@
 //! Service implementation. Specialized wrapper over substrate service.
 
 use codec::Encode;
-use framenode_runtime::constants::time::SLOT_DURATION;
 use framenode_runtime::eth_bridge::{
     self, PeerConfig, STORAGE_ETH_NODE_PARAMS, STORAGE_NETWORK_IDS_KEY, STORAGE_PEER_SECRET_KEY,
     STORAGE_SUB_NODE_URL_KEY,
@@ -44,8 +43,6 @@ use log::debug;
 use prometheus_endpoint::Registry;
 use sc_client_api::{Backend, ExecutorProvider};
 pub use sc_executor::NativeElseWasmExecutor;
-use sc_executor::{Externalities, NativeExecutionDispatch};
-use sc_finality_grandpa::SharedVoterState;
 use sc_service::config::PrometheusConfig;
 use sc_service::error::Error as ServiceError;
 use sc_service::{Configuration, TaskManager};
@@ -340,10 +337,10 @@ pub fn new_partial(
 pub fn new_full(
     mut config: Configuration,
     // is_collator: IsCollator,
-    grandpa_pause: Option<(u32, u32)>,
+    // grandpa_pause: Option<(u32, u32)>,
     disable_beefy: bool,
     telemetry_worker_handle: Option<TelemetryWorkerHandle>,
-    program_path: Option<std::path::PathBuf>,
+    // program_path: Option<std::path::PathBuf>,
 ) -> Result<TaskManager, ServiceError> {
     // Increase the default value by 2 to make wasm being able to use 128MB, each heap page is 64KiB
     config.default_heap_pages = Some(1024 * 2);
@@ -358,7 +355,7 @@ pub fn new_full(
         keystore_container,
         select_chain,
         transaction_pool,
-        other: (rpc_extensions_builder, import_setup, rpc_setup, slot_duration, mut telemetry),
+        other: (rpc_extensions_builder, import_setup, rpc_setup, _slot_duration, mut telemetry),
     } = new_partial(&mut config, telemetry_worker_handle)?;
 
     if let Some(url) = &config.keystore_remote {
@@ -413,7 +410,7 @@ pub fn new_full(
 
     let (block_import, link_half, babe_link, beefy_link) = import_setup;
 
-    let rpc_handlers = sc_service::spawn_tasks(sc_service::SpawnTasksParams {
+    let _rpc_handlers = sc_service::spawn_tasks(sc_service::SpawnTasksParams {
         network: network.clone(),
         client: client.clone(),
         keystore: keystore_container.sync_keystore(),
@@ -455,7 +452,7 @@ pub fn new_full(
             block_proposal_slot_portion: sc_consensus_babe::SlotProportion::new(2f32 / 3f32),
             max_block_proposal_slot_portion: None,
             backoff_authoring_blocks,
-            create_inherent_data_providers: move |parent, ()| {
+            create_inherent_data_providers: move |_parent, ()| {
                 // let client_clone = client_clone.clone();
                 // let overseer_handle = overseer_handle.clone();
                 async move {

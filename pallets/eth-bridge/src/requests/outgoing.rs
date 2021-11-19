@@ -175,13 +175,13 @@ impl<T: Config> OutgoingTransfer<T> {
             let remainder = Assets::<T>::unreserve(self.asset_id, &bridge_acc, self.amount)?;
             ensure!(remainder == 0, Error::<T>::FailedToUnreserve);
             let asset_kind: AssetKind =
-                crate::Module::<T>::registered_asset(self.network_id, &self.asset_id)
+                crate::Pallet::<T>::registered_asset(self.network_id, &self.asset_id)
                     .ok_or(Error::<T>::UnknownAssetId)?;
             if !asset_kind.is_owned() {
                 // The burn shouldn't fail, because we've just unreserved the needed amount of the asset,
                 // the only case it can fail is if the bridge account doesn't have `BURN` permission,
                 // but this permission is always granted when adding sidechain asset to bridge
-                // (see `Module::register_sidechain_asset`).
+                // (see `Pallet::register_sidechain_asset`).
                 Assets::<T>::burn_from(&self.asset_id, &bridge_acc, &bridge_acc, self.amount)?;
             }
             Ok(())

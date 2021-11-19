@@ -35,13 +35,13 @@ fn get_signature_params(signature: &ecdsa::Signature) -> SignatureParams {
 }
 
 pub fn last_event() -> Option<Event> {
-    frame_system::Module::<Runtime>::events()
+    frame_system::Pallet::<Runtime>::events()
         .pop()
         .map(|x| x.event)
 }
 
 pub fn no_event() -> bool {
-    frame_system::Module::<Runtime>::events().pop().is_none()
+    frame_system::Pallet::<Runtime>::events().pop().is_none()
 }
 
 pub fn approve_request(

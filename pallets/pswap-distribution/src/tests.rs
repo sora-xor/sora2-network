@@ -29,17 +29,17 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use crate::mock::*;
-use crate::{ClaimableShares, Error, Module, ShareholderAccounts, SubscribedAccounts};
+use crate::{ClaimableShares, Error, ShareholderAccounts};
 use codec::Encode;
 use common::prelude::Fixed;
-use common::{assert_approx_eq, balance, fixed, DEXId, FromGenericPair, DAI, PSWAP, VAL, XOR};
+use common::{assert_approx_eq, balance, fixed, FromGenericPair, PSWAP};
 use frame_support::assert_noop;
 use traits::MultiCurrency;
 
-type PswapDistrModule = Module<Runtime>;
-type PalletInfoOf<T> = <T as frame_system::Config>::PalletInfo;
+type PswapDistrPallet = Pallet;
 type Pallet = crate::Pallet<Runtime>;
 
+#[allow(dead_code)]
 fn create_account(prefix: Vec<u8>, index: u128) -> AccountId {
     let tech_account: TechAccountId = TechAccountId::from_generic_pair(prefix, index.encode());
     Technical::tech_account_id_to_account_id(&tech_account).unwrap()
@@ -49,10 +49,10 @@ fn create_account(prefix: Vec<u8>, index: u128) -> AccountId {
 fn subscribe_with_default_frequency_should_pass() {
     let mut ext = ExtBuilder::uninitialized().build();
     ext.execute_with(|| {
-        PswapDistrModule::subscribe(fees_account_a(), DEX_A_ID, pool_account_a(), None)
+        PswapDistrPallet::subscribe(fees_account_a(), DEX_A_ID, pool_account_a(), None)
             .expect("Failed to subscribe account.");
         assert_eq!(
-            PswapDistrModule::subscribed_accounts(fees_account_a()),
+            PswapDistrPallet::subscribed_accounts(fees_account_a()),
             Some((
                 DEX_A_ID,
                 pool_account_a(),
@@ -68,7 +68,7 @@ fn subscribe_with_zero_frequency_should_fail() {
     let mut ext = ExtBuilder::uninitialized().build();
     ext.execute_with(|| {
         assert_noop!(
-            PswapDistrModule::subscribe(fees_account_a(), DEX_A_ID, pool_account_a(), Some(0)),
+            PswapDistrPallet::subscribe(fees_account_a(), DEX_A_ID, pool_account_a(), Some(0)),
             Error::<Runtime>::InvalidFrequency
         );
     })
@@ -79,7 +79,7 @@ fn subscribe_with_existing_account_should_fail() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
         assert_noop!(
-            PswapDistrModule::subscribe(fees_account_a(), DEX_A_ID, pool_account_a(), None),
+            PswapDistrPallet::subscribe(fees_account_a(), DEX_A_ID, pool_account_a(), None),
             Error::<Runtime>::SubscriptionActive
         );
     })
@@ -89,7 +89,7 @@ fn subscribe_with_existing_account_should_fail() {
 fn unsubscribe_with_inexistent_account_should_fail() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
-        let result = PswapDistrModule::unsubscribe(alice());
+        let result = PswapDistrPallet::unsubscribe(alice());
         assert_noop!(result, Error::<Runtime>::UnknownSubscription);
     });
 }
@@ -98,15 +98,15 @@ fn unsubscribe_with_inexistent_account_should_fail() {
 fn distribute_existing_pswap_should_pass() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
-        pool_xyk::Module::<Runtime>::mint(&pool_account_a(), &liquidity_provider_a(), balance!(3))
+        pool_xyk::Pallet::<Runtime>::mint(&pool_account_a(), &liquidity_provider_a(), balance!(3))
             .unwrap();
-        pool_xyk::Module::<Runtime>::mint(&pool_account_a(), &liquidity_provider_b(), balance!(2))
+        pool_xyk::Pallet::<Runtime>::mint(&pool_account_a(), &liquidity_provider_b(), balance!(2))
             .unwrap();
-        pool_xyk::Module::<Runtime>::mint(&pool_account_a(), &liquidity_provider_c(), balance!(1))
+        pool_xyk::Pallet::<Runtime>::mint(&pool_account_a(), &liquidity_provider_c(), balance!(1))
             .unwrap();
 
         let tech_account_id = GetPswapDistributionAccountId::get();
-        PswapDistrModule::distribute_incentive(
+        PswapDistrPallet::distribute_incentive(
             &fees_account_a(),
             &DEX_A_ID,
             &pool_account_a(),
@@ -114,11 +114,11 @@ fn distribute_existing_pswap_should_pass() {
         )
         .expect("Error is not expected during distribution");
 
-        PswapDistrModule::claim_incentive(Origin::signed(liquidity_provider_a()))
+        PswapDistrPallet::claim_incentive(Origin::signed(liquidity_provider_a()))
             .expect("Failed to claim.");
-        PswapDistrModule::claim_incentive(Origin::signed(liquidity_provider_b()))
+        PswapDistrPallet::claim_incentive(Origin::signed(liquidity_provider_b()))
             .expect("Failed to claim.");
-        PswapDistrModule::claim_incentive(Origin::signed(liquidity_provider_c()))
+        PswapDistrPallet::claim_incentive(Origin::signed(liquidity_provider_c()))
             .expect("Failed to claim.");
         let balance_a = Tokens::free_balance(GetIncentiveAssetId::get(), &liquidity_provider_a());
         let balance_b = Tokens::free_balance(GetIncentiveAssetId::get(), &liquidity_provider_b());
@@ -133,14 +133,14 @@ fn distribute_existing_pswap_should_pass() {
 fn distribute_with_zero_balance_should_pass() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
-        pool_xyk::Module::<Runtime>::mint(&pool_account_b(), &liquidity_provider_a(), balance!(10))
+        pool_xyk::Pallet::<Runtime>::mint(&pool_account_b(), &liquidity_provider_a(), balance!(10))
             .unwrap();
-        pool_xyk::Module::<Runtime>::mint(&pool_account_b(), &liquidity_provider_b(), balance!(10))
+        pool_xyk::Pallet::<Runtime>::mint(&pool_account_b(), &liquidity_provider_b(), balance!(10))
             .unwrap();
-        pool_xyk::Module::<Runtime>::mint(&pool_account_b(), &liquidity_provider_c(), balance!(10))
+        pool_xyk::Pallet::<Runtime>::mint(&pool_account_b(), &liquidity_provider_c(), balance!(10))
             .unwrap();
         let tech_account_id = GetPswapDistributionAccountId::get();
-        PswapDistrModule::distribute_incentive(
+        PswapDistrPallet::distribute_incentive(
             &fees_account_b(),
             &DEX_A_ID,
             &pool_account_b(),
@@ -149,15 +149,15 @@ fn distribute_with_zero_balance_should_pass() {
         .expect("Error is not expected during distribution");
 
         assert_noop!(
-            PswapDistrModule::claim_incentive(Origin::signed(liquidity_provider_a())),
+            PswapDistrPallet::claim_incentive(Origin::signed(liquidity_provider_a())),
             Error::<Runtime>::ZeroClaimableIncentives
         );
         assert_noop!(
-            PswapDistrModule::claim_incentive(Origin::signed(liquidity_provider_b())),
+            PswapDistrPallet::claim_incentive(Origin::signed(liquidity_provider_b())),
             Error::<Runtime>::ZeroClaimableIncentives
         );
         assert_noop!(
-            PswapDistrModule::claim_incentive(Origin::signed(liquidity_provider_c())),
+            PswapDistrPallet::claim_incentive(Origin::signed(liquidity_provider_c())),
             Error::<Runtime>::ZeroClaimableIncentives
         );
 
@@ -174,24 +174,24 @@ fn distribute_with_zero_balance_should_pass() {
 fn incentive_distribution_routine_should_pass() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
-        pool_xyk::Module::<Runtime>::mint(&pool_account_a(), &liquidity_provider_a(), balance!(3))
+        pool_xyk::Pallet::<Runtime>::mint(&pool_account_a(), &liquidity_provider_a(), balance!(3))
             .unwrap();
-        pool_xyk::Module::<Runtime>::mint(&pool_account_a(), &liquidity_provider_b(), balance!(2))
+        pool_xyk::Pallet::<Runtime>::mint(&pool_account_a(), &liquidity_provider_b(), balance!(2))
             .unwrap();
-        pool_xyk::Module::<Runtime>::mint(&pool_account_a(), &liquidity_provider_c(), balance!(1))
+        pool_xyk::Pallet::<Runtime>::mint(&pool_account_a(), &liquidity_provider_c(), balance!(1))
             .unwrap();
-        pool_xyk::Module::<Runtime>::mint(&pool_account_b(), &liquidity_provider_a(), balance!(10))
+        pool_xyk::Pallet::<Runtime>::mint(&pool_account_b(), &liquidity_provider_a(), balance!(10))
             .unwrap();
-        pool_xyk::Module::<Runtime>::mint(&pool_account_b(), &liquidity_provider_b(), balance!(10))
+        pool_xyk::Pallet::<Runtime>::mint(&pool_account_b(), &liquidity_provider_b(), balance!(10))
             .unwrap();
-        pool_xyk::Module::<Runtime>::mint(&pool_account_b(), &liquidity_provider_c(), balance!(10))
+        pool_xyk::Pallet::<Runtime>::mint(&pool_account_b(), &liquidity_provider_c(), balance!(10))
             .unwrap();
         let parliament =
             Tokens::free_balance(GetIncentiveAssetId::get(), &GetParliamentAccountId::get());
         assert_eq!(parliament, balance!(0));
 
         for i in 0u64..5 {
-            PswapDistrModule::incentive_distribution_routine(i);
+            PswapDistrPallet::incentive_distribution_routine(i);
         }
 
         let balance_a = Tokens::free_balance(GetIncentiveAssetId::get(), &liquidity_provider_a());
@@ -204,7 +204,7 @@ fn incentive_distribution_routine_should_pass() {
         assert_eq!(balance_c, 0);
         assert_eq!(parliament, balance!(0.6));
 
-        PswapDistrModule::claim_incentive(Origin::signed(liquidity_provider_a()))
+        PswapDistrPallet::claim_incentive(Origin::signed(liquidity_provider_a()))
             .expect("Failed to claim.");
         let balance_a = Tokens::free_balance(GetIncentiveAssetId::get(), &liquidity_provider_a());
         let balance_b = Tokens::free_balance(GetIncentiveAssetId::get(), &liquidity_provider_b());
@@ -216,7 +216,7 @@ fn incentive_distribution_routine_should_pass() {
         assert_eq!(balance_c, 0);
         assert_eq!(parliament, balance!(0.6));
 
-        PswapDistrModule::claim_incentive(Origin::signed(liquidity_provider_b()))
+        PswapDistrPallet::claim_incentive(Origin::signed(liquidity_provider_b()))
             .expect("Failed to claim.");
         let balance_a = Tokens::free_balance(GetIncentiveAssetId::get(), &liquidity_provider_a());
         let balance_b = Tokens::free_balance(GetIncentiveAssetId::get(), &liquidity_provider_b());
@@ -228,7 +228,7 @@ fn incentive_distribution_routine_should_pass() {
         assert_eq!(balance_c, 0);
         assert_eq!(parliament, balance!(0.6));
 
-        PswapDistrModule::claim_incentive(Origin::signed(liquidity_provider_c()))
+        PswapDistrPallet::claim_incentive(Origin::signed(liquidity_provider_c()))
             .expect("Failed to claim.");
         let balance_a = Tokens::free_balance(GetIncentiveAssetId::get(), &liquidity_provider_a());
         let balance_b = Tokens::free_balance(GetIncentiveAssetId::get(), &liquidity_provider_b());
@@ -241,7 +241,7 @@ fn incentive_distribution_routine_should_pass() {
         assert_eq!(parliament, balance!(0.6));
 
         for i in 5u64..10 {
-            PswapDistrModule::incentive_distribution_routine(i);
+            PswapDistrPallet::incentive_distribution_routine(i);
         }
 
         let balance_a = Tokens::free_balance(GetIncentiveAssetId::get(), &liquidity_provider_a());
@@ -264,28 +264,28 @@ fn incentive_distribution_routine_should_pass() {
 fn increasing_burn_rate_should_pass() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
-        assert_eq!(PswapDistrModule::burn_rate(), fixed!(0.1));
+        assert_eq!(PswapDistrPallet::burn_rate(), fixed!(0.1));
         for i in 0u64..3 {
-            PswapDistrModule::burn_rate_update_routine(i);
+            PswapDistrPallet::burn_rate_update_routine(i);
         }
-        assert_eq!(PswapDistrModule::burn_rate(), fixed!(0.2));
+        assert_eq!(PswapDistrPallet::burn_rate(), fixed!(0.2));
         for i in 3u64..6 {
-            PswapDistrModule::burn_rate_update_routine(i);
+            PswapDistrPallet::burn_rate_update_routine(i);
         }
-        assert_eq!(PswapDistrModule::burn_rate(), fixed!(0.3));
+        assert_eq!(PswapDistrPallet::burn_rate(), fixed!(0.3));
         for i in 6u64..9 {
-            PswapDistrModule::burn_rate_update_routine(i);
+            PswapDistrPallet::burn_rate_update_routine(i);
         }
-        assert_eq!(PswapDistrModule::burn_rate(), fixed!(0.4));
+        assert_eq!(PswapDistrPallet::burn_rate(), fixed!(0.4));
         // Observe flatline
         for i in 9u64..12 {
-            PswapDistrModule::burn_rate_update_routine(i);
+            PswapDistrPallet::burn_rate_update_routine(i);
         }
-        assert_eq!(PswapDistrModule::burn_rate(), fixed!(0.4));
+        assert_eq!(PswapDistrPallet::burn_rate(), fixed!(0.4));
         for i in 9u64..1000 {
-            PswapDistrModule::burn_rate_update_routine(i);
+            PswapDistrPallet::burn_rate_update_routine(i);
         }
-        assert_eq!(PswapDistrModule::burn_rate(), fixed!(0.4));
+        assert_eq!(PswapDistrPallet::burn_rate(), fixed!(0.4));
     })
 }
 
@@ -293,16 +293,16 @@ fn increasing_burn_rate_should_pass() {
 fn claim_until_zero_should_pass() {
     let mut ext = ExtBuilder::with_accounts(vec![]).build();
     ext.execute_with(|| {
-        pool_xyk::Module::<Runtime>::mint(&pool_account_a(), &liquidity_provider_a(), balance!(3))
+        pool_xyk::Pallet::<Runtime>::mint(&pool_account_a(), &liquidity_provider_a(), balance!(3))
             .unwrap();
-        pool_xyk::Module::<Runtime>::mint(&pool_account_a(), &liquidity_provider_b(), balance!(2))
+        pool_xyk::Pallet::<Runtime>::mint(&pool_account_a(), &liquidity_provider_b(), balance!(2))
             .unwrap();
-        pool_xyk::Module::<Runtime>::mint(&pool_account_a(), &liquidity_provider_c(), balance!(1))
+        pool_xyk::Pallet::<Runtime>::mint(&pool_account_a(), &liquidity_provider_c(), balance!(1))
             .unwrap();
         let tech_account_id = GetPswapDistributionAccountId::get();
 
         // start with empty fees account, claiming should fail
-        PswapDistrModule::distribute_incentive(
+        PswapDistrPallet::distribute_incentive(
             &fees_account_a(),
             &DEX_A_ID,
             &pool_account_a(),
@@ -310,7 +310,7 @@ fn claim_until_zero_should_pass() {
         )
         .expect("Error is not expected during distribution");
         assert_noop!(
-            PswapDistrModule::claim_incentive(Origin::signed(liquidity_provider_a())),
+            PswapDistrPallet::claim_incentive(Origin::signed(liquidity_provider_a())),
             Error::<Runtime>::ZeroClaimableIncentives
         );
         let balance_a = Tokens::free_balance(GetIncentiveAssetId::get(), &liquidity_provider_a());
@@ -330,18 +330,18 @@ fn claim_until_zero_should_pass() {
             balance!(60),
         )
         .expect("Minting tokens is not expected to fail.");
-        PswapDistrModule::distribute_incentive(
+        PswapDistrPallet::distribute_incentive(
             &fees_account_a(),
             &DEX_A_ID,
             &pool_account_a(),
             &tech_account_id,
         )
         .expect("Error is not expected during distribution");
-        PswapDistrModule::claim_incentive(Origin::signed(liquidity_provider_a()))
+        PswapDistrPallet::claim_incentive(Origin::signed(liquidity_provider_a()))
             .expect("Claiming is not expected to fail.");
-        PswapDistrModule::claim_incentive(Origin::signed(liquidity_provider_b()))
+        PswapDistrPallet::claim_incentive(Origin::signed(liquidity_provider_b()))
             .expect("Claiming is not expected to fail.");
-        PswapDistrModule::claim_incentive(Origin::signed(liquidity_provider_c()))
+        PswapDistrPallet::claim_incentive(Origin::signed(liquidity_provider_c()))
             .expect("Claiming is not expected to fail.");
         let balance_a = Tokens::free_balance(GetIncentiveAssetId::get(), &liquidity_provider_a());
         let balance_b = Tokens::free_balance(GetIncentiveAssetId::get(), &liquidity_provider_b());
@@ -353,7 +353,7 @@ fn claim_until_zero_should_pass() {
         assert_eq!(balance_d, 0);
 
         // again period of no incentives, should return error for non claimable
-        PswapDistrModule::distribute_incentive(
+        PswapDistrPallet::distribute_incentive(
             &fees_account_a(),
             &DEX_A_ID,
             &pool_account_a(),
@@ -361,15 +361,15 @@ fn claim_until_zero_should_pass() {
         )
         .expect("Error is not expected during distribution");
         assert_noop!(
-            PswapDistrModule::claim_incentive(Origin::signed(liquidity_provider_a())),
+            PswapDistrPallet::claim_incentive(Origin::signed(liquidity_provider_a())),
             Error::<Runtime>::ZeroClaimableIncentives
         );
         assert_noop!(
-            PswapDistrModule::claim_incentive(Origin::signed(liquidity_provider_b())),
+            PswapDistrPallet::claim_incentive(Origin::signed(liquidity_provider_b())),
             Error::<Runtime>::ZeroClaimableIncentives
         );
         assert_noop!(
-            PswapDistrModule::claim_incentive(Origin::signed(liquidity_provider_c())),
+            PswapDistrPallet::claim_incentive(Origin::signed(liquidity_provider_c())),
             Error::<Runtime>::ZeroClaimableIncentives
         );
         let balance_a = Tokens::free_balance(GetIncentiveAssetId::get(), &liquidity_provider_a());
@@ -389,14 +389,14 @@ fn claim_until_zero_should_pass() {
             balance!(600),
         )
         .expect("Minting tokens is not expected to fail.");
-        PswapDistrModule::distribute_incentive(
+        PswapDistrPallet::distribute_incentive(
             &fees_account_a(),
             &DEX_A_ID,
             &pool_account_a(),
             &tech_account_id,
         )
         .expect("Error is not expected during distribution");
-        PswapDistrModule::claim_incentive(Origin::signed(liquidity_provider_b()))
+        PswapDistrPallet::claim_incentive(Origin::signed(liquidity_provider_b()))
             .expect("Claiming is not expected to fail.");
         let balance_a = Tokens::free_balance(GetIncentiveAssetId::get(), &liquidity_provider_a());
         let balance_b = Tokens::free_balance(GetIncentiveAssetId::get(), &liquidity_provider_b());
@@ -415,18 +415,18 @@ fn claim_until_zero_should_pass() {
             balance!(6000),
         )
         .expect("Minting tokens is not expected to fail.");
-        PswapDistrModule::distribute_incentive(
+        PswapDistrPallet::distribute_incentive(
             &fees_account_a(),
             &DEX_A_ID,
             &pool_account_a(),
             &tech_account_id,
         )
         .expect("Error is not expected during distribution");
-        PswapDistrModule::claim_incentive(Origin::signed(liquidity_provider_a()))
+        PswapDistrPallet::claim_incentive(Origin::signed(liquidity_provider_a()))
             .expect("Claiming is not expected to fail.");
-        PswapDistrModule::claim_incentive(Origin::signed(liquidity_provider_b()))
+        PswapDistrPallet::claim_incentive(Origin::signed(liquidity_provider_b()))
             .expect("Claiming is not expected to fail.");
-        PswapDistrModule::claim_incentive(Origin::signed(liquidity_provider_c()))
+        PswapDistrPallet::claim_incentive(Origin::signed(liquidity_provider_c()))
             .expect("Claiming is not expected to fail.");
         let balance_a = Tokens::free_balance(GetIncentiveAssetId::get(), &liquidity_provider_a());
         let balance_b = Tokens::free_balance(GetIncentiveAssetId::get(), &liquidity_provider_b());
@@ -447,22 +447,22 @@ fn claim_until_zero_should_pass() {
 fn external_transfer_to_tech_account_after_distribution() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
-        pool_xyk::Module::<Runtime>::mint(&pool_account_a(), &liquidity_provider_a(), balance!(3))
+        pool_xyk::Pallet::<Runtime>::mint(&pool_account_a(), &liquidity_provider_a(), balance!(3))
             .unwrap();
-        pool_xyk::Module::<Runtime>::mint(&pool_account_a(), &liquidity_provider_b(), balance!(2))
+        pool_xyk::Pallet::<Runtime>::mint(&pool_account_a(), &liquidity_provider_b(), balance!(2))
             .unwrap();
-        pool_xyk::Module::<Runtime>::mint(&pool_account_a(), &liquidity_provider_c(), balance!(1))
+        pool_xyk::Pallet::<Runtime>::mint(&pool_account_a(), &liquidity_provider_c(), balance!(1))
             .unwrap();
-        pool_xyk::Module::<Runtime>::mint(&pool_account_b(), &liquidity_provider_a(), balance!(10))
+        pool_xyk::Pallet::<Runtime>::mint(&pool_account_b(), &liquidity_provider_a(), balance!(10))
             .unwrap();
-        pool_xyk::Module::<Runtime>::mint(&pool_account_b(), &liquidity_provider_b(), balance!(10))
+        pool_xyk::Pallet::<Runtime>::mint(&pool_account_b(), &liquidity_provider_b(), balance!(10))
             .unwrap();
-        pool_xyk::Module::<Runtime>::mint(&pool_account_b(), &liquidity_provider_c(), balance!(10))
+        pool_xyk::Pallet::<Runtime>::mint(&pool_account_b(), &liquidity_provider_c(), balance!(10))
             .unwrap();
         let tech_account_id = GetPswapDistributionAccountId::get();
 
         // initial distribution happens normally
-        PswapDistrModule::distribute_incentive(
+        PswapDistrPallet::distribute_incentive(
             &fees_account_a(),
             &DEX_A_ID,
             &pool_account_a(),
@@ -482,11 +482,11 @@ fn external_transfer_to_tech_account_after_distribution() {
         )
         .expect("Minting tokens is not expected to fail.");
 
-        PswapDistrModule::claim_incentive(Origin::signed(liquidity_provider_a()))
+        PswapDistrPallet::claim_incentive(Origin::signed(liquidity_provider_a()))
             .expect("Failed to claim.");
-        PswapDistrModule::claim_incentive(Origin::signed(liquidity_provider_b()))
+        PswapDistrPallet::claim_incentive(Origin::signed(liquidity_provider_b()))
             .expect("Failed to claim.");
-        PswapDistrModule::claim_incentive(Origin::signed(liquidity_provider_c()))
+        PswapDistrPallet::claim_incentive(Origin::signed(liquidity_provider_c()))
             .expect("Failed to claim.");
 
         let balance_a = Tokens::free_balance(GetIncentiveAssetId::get(), &liquidity_provider_a());
@@ -512,11 +512,11 @@ fn jump_start_with_unowned_incentive_should_pass() {
         ExtBuilder::with_accounts(vec![(fees_account_a(), common::PSWAP.into(), balance!(6))])
             .build();
     ext.execute_with(|| {
-        pool_xyk::Module::<Runtime>::mint(&pool_account_a(), &liquidity_provider_a(), balance!(3))
+        pool_xyk::Pallet::<Runtime>::mint(&pool_account_a(), &liquidity_provider_a(), balance!(3))
             .unwrap();
-        pool_xyk::Module::<Runtime>::mint(&pool_account_a(), &liquidity_provider_b(), balance!(2))
+        pool_xyk::Pallet::<Runtime>::mint(&pool_account_a(), &liquidity_provider_b(), balance!(2))
             .unwrap();
-        pool_xyk::Module::<Runtime>::mint(&pool_account_a(), &liquidity_provider_c(), balance!(1))
+        pool_xyk::Pallet::<Runtime>::mint(&pool_account_a(), &liquidity_provider_c(), balance!(1))
             .unwrap();
         let tech_account_id = GetPswapDistributionAccountId::get();
 
@@ -532,31 +532,31 @@ fn jump_start_with_unowned_incentive_should_pass() {
 
         // no one can claim it as shares are not calculated for this transfer
         assert_noop!(
-            PswapDistrModule::claim_incentive(Origin::signed(liquidity_provider_a())),
+            PswapDistrPallet::claim_incentive(Origin::signed(liquidity_provider_a())),
             Error::<Runtime>::ZeroClaimableIncentives
         );
         assert_noop!(
-            PswapDistrModule::claim_incentive(Origin::signed(liquidity_provider_b())),
+            PswapDistrPallet::claim_incentive(Origin::signed(liquidity_provider_b())),
             Error::<Runtime>::ZeroClaimableIncentives
         );
         assert_noop!(
-            PswapDistrModule::claim_incentive(Origin::signed(liquidity_provider_c())),
+            PswapDistrPallet::claim_incentive(Origin::signed(liquidity_provider_c())),
             Error::<Runtime>::ZeroClaimableIncentives
         );
 
         // now liquidity providers receive their incentive, and claim it
-        PswapDistrModule::distribute_incentive(
+        PswapDistrPallet::distribute_incentive(
             &fees_account_a(),
             &DEX_A_ID,
             &pool_account_a(),
             &tech_account_id,
         )
         .expect("Error is not expected during distribution");
-        PswapDistrModule::claim_incentive(Origin::signed(liquidity_provider_a()))
+        PswapDistrPallet::claim_incentive(Origin::signed(liquidity_provider_a()))
             .expect("Failed to claim.");
-        PswapDistrModule::claim_incentive(Origin::signed(liquidity_provider_b()))
+        PswapDistrPallet::claim_incentive(Origin::signed(liquidity_provider_b()))
             .expect("Failed to claim.");
-        PswapDistrModule::claim_incentive(Origin::signed(liquidity_provider_c()))
+        PswapDistrPallet::claim_incentive(Origin::signed(liquidity_provider_c()))
             .expect("Failed to claim.");
         let balance_a = Tokens::free_balance(GetIncentiveAssetId::get(), &liquidity_provider_a());
         let balance_b = Tokens::free_balance(GetIncentiveAssetId::get(), &liquidity_provider_b());
@@ -581,11 +581,11 @@ fn increasing_volumes_should_pass() {
     ])
     .build();
     ext.execute_with(|| {
-        pool_xyk::Module::<Runtime>::mint(&pool_account_a(), &liquidity_provider_a(), balance!(3))
+        pool_xyk::Pallet::<Runtime>::mint(&pool_account_a(), &liquidity_provider_a(), balance!(3))
             .unwrap();
-        pool_xyk::Module::<Runtime>::mint(&pool_account_a(), &liquidity_provider_b(), balance!(2))
+        pool_xyk::Pallet::<Runtime>::mint(&pool_account_a(), &liquidity_provider_b(), balance!(2))
             .unwrap();
-        pool_xyk::Module::<Runtime>::mint(&pool_account_a(), &liquidity_provider_c(), balance!(1))
+        pool_xyk::Pallet::<Runtime>::mint(&pool_account_a(), &liquidity_provider_c(), balance!(1))
             .unwrap();
         let tech_account_id = GetPswapDistributionAccountId::get();
 
@@ -599,18 +599,18 @@ fn increasing_volumes_should_pass() {
                 10 * decimals_factor,
             )
             .expect("Minting tokens is not expected to fail.");
-            PswapDistrModule::distribute_incentive(
+            PswapDistrPallet::distribute_incentive(
                 &fees_account_a(),
                 &DEX_A_ID,
                 &pool_account_a(),
                 &tech_account_id,
             )
             .expect("Error is not expected during distribution");
-            PswapDistrModule::claim_incentive(Origin::signed(liquidity_provider_a()))
+            PswapDistrPallet::claim_incentive(Origin::signed(liquidity_provider_a()))
                 .expect("Claiming is not expected to fail.");
-            PswapDistrModule::claim_incentive(Origin::signed(liquidity_provider_b()))
+            PswapDistrPallet::claim_incentive(Origin::signed(liquidity_provider_b()))
                 .expect("Claiming is not expected to fail.");
-            PswapDistrModule::claim_incentive(Origin::signed(liquidity_provider_c()))
+            PswapDistrPallet::claim_incentive(Origin::signed(liquidity_provider_c()))
                 .expect("Claiming is not expected to fail.");
             decimals_factor *= 10;
         }
@@ -638,23 +638,23 @@ fn multiple_pools_should_pass() {
     ])
     .build();
     ext.execute_with(|| {
-        pool_xyk::Module::<Runtime>::mint(&pool_account_a(), &liquidity_provider_a(), balance!(1))
+        pool_xyk::Pallet::<Runtime>::mint(&pool_account_a(), &liquidity_provider_a(), balance!(1))
             .unwrap();
-        pool_xyk::Module::<Runtime>::mint(&pool_account_b(), &liquidity_provider_b(), balance!(5))
+        pool_xyk::Pallet::<Runtime>::mint(&pool_account_b(), &liquidity_provider_b(), balance!(5))
             .unwrap();
-        pool_xyk::Module::<Runtime>::mint(&pool_account_b(), &liquidity_provider_c(), balance!(5))
+        pool_xyk::Pallet::<Runtime>::mint(&pool_account_b(), &liquidity_provider_c(), balance!(5))
             .unwrap();
         let tech_account_id = GetPswapDistributionAccountId::get();
 
         for i in 0u64..5 {
-            PswapDistrModule::incentive_distribution_routine(i);
+            PswapDistrPallet::incentive_distribution_routine(i);
         }
 
-        PswapDistrModule::claim_incentive(Origin::signed(liquidity_provider_a()))
+        PswapDistrPallet::claim_incentive(Origin::signed(liquidity_provider_a()))
             .expect("Claiming is not expected to fail.");
-        PswapDistrModule::claim_incentive(Origin::signed(liquidity_provider_b()))
+        PswapDistrPallet::claim_incentive(Origin::signed(liquidity_provider_b()))
             .expect("Claiming is not expected to fail.");
-        PswapDistrModule::claim_incentive(Origin::signed(liquidity_provider_c()))
+        PswapDistrPallet::claim_incentive(Origin::signed(liquidity_provider_c()))
             .expect("Claiming is not expected to fail.");
 
         let balance_a = Tokens::free_balance(GetIncentiveAssetId::get(), &liquidity_provider_a());
@@ -680,27 +680,27 @@ fn mixed_multiple_pools_should_pass() {
     ])
     .build();
     ext.execute_with(|| {
-        pool_xyk::Module::<Runtime>::mint(&pool_account_a(), &liquidity_provider_a(), balance!(1))
+        pool_xyk::Pallet::<Runtime>::mint(&pool_account_a(), &liquidity_provider_a(), balance!(1))
             .unwrap();
-        pool_xyk::Module::<Runtime>::mint(&pool_account_a(), &liquidity_provider_c(), balance!(1))
+        pool_xyk::Pallet::<Runtime>::mint(&pool_account_a(), &liquidity_provider_c(), balance!(1))
             .unwrap();
-        pool_xyk::Module::<Runtime>::mint(&pool_account_b(), &liquidity_provider_a(), balance!(5))
+        pool_xyk::Pallet::<Runtime>::mint(&pool_account_b(), &liquidity_provider_a(), balance!(5))
             .unwrap();
-        pool_xyk::Module::<Runtime>::mint(&pool_account_b(), &liquidity_provider_b(), balance!(5))
+        pool_xyk::Pallet::<Runtime>::mint(&pool_account_b(), &liquidity_provider_b(), balance!(5))
             .unwrap();
-        pool_xyk::Module::<Runtime>::mint(&pool_account_b(), &liquidity_provider_c(), balance!(10))
+        pool_xyk::Pallet::<Runtime>::mint(&pool_account_b(), &liquidity_provider_c(), balance!(10))
             .unwrap();
         let tech_account_id = GetPswapDistributionAccountId::get();
 
         for i in 0u64..5 {
-            PswapDistrModule::incentive_distribution_routine(i);
+            PswapDistrPallet::incentive_distribution_routine(i);
         }
 
-        PswapDistrModule::claim_incentive(Origin::signed(liquidity_provider_a()))
+        PswapDistrPallet::claim_incentive(Origin::signed(liquidity_provider_a()))
             .expect("Claiming is not expected to fail.");
-        PswapDistrModule::claim_incentive(Origin::signed(liquidity_provider_b()))
+        PswapDistrPallet::claim_incentive(Origin::signed(liquidity_provider_b()))
             .expect("Claiming is not expected to fail.");
-        PswapDistrModule::claim_incentive(Origin::signed(liquidity_provider_c()))
+        PswapDistrPallet::claim_incentive(Origin::signed(liquidity_provider_c()))
             .expect("Claiming is not expected to fail.");
 
         let balance_a = Tokens::free_balance(GetIncentiveAssetId::get(), &liquidity_provider_a());
@@ -723,56 +723,56 @@ fn calculating_distribution_should_pass() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
         // zero amount
-        let distribution = PswapDistrModule::calculate_pswap_distribution(balance!(0)).unwrap();
+        let distribution = PswapDistrPallet::calculate_pswap_distribution(balance!(0)).unwrap();
         assert_eq!(distribution.liquidity_providers, balance!(0));
         assert_eq!(distribution.vesting, balance!(0));
         assert_eq!(distribution.parliament, balance!(0));
 
         // indivisible small amount
-        let distribution = PswapDistrModule::calculate_pswap_distribution(1u128).unwrap();
+        let distribution = PswapDistrPallet::calculate_pswap_distribution(1u128).unwrap();
         assert_eq!(
             distribution.liquidity_providers + distribution.vesting + distribution.parliament,
             1u128
         );
 
         // divisible small amount
-        let distribution = PswapDistrModule::calculate_pswap_distribution(100u128).unwrap();
+        let distribution = PswapDistrPallet::calculate_pswap_distribution(100u128).unwrap();
         assert_eq!(distribution.liquidity_providers, 90u128);
         assert_eq!(distribution.vesting, 0u128);
         assert_eq!(distribution.parliament, 10u128);
 
         // regular amount
-        let distribution = PswapDistrModule::calculate_pswap_distribution(balance!(100)).unwrap();
+        let distribution = PswapDistrPallet::calculate_pswap_distribution(balance!(100)).unwrap();
         assert_eq!(distribution.liquidity_providers, balance!(90));
         assert_eq!(distribution.vesting, balance!(0));
         assert_eq!(distribution.parliament, balance!(10));
 
         for i in 0u64..6 {
-            PswapDistrModule::burn_rate_update_routine(i);
+            PswapDistrPallet::burn_rate_update_routine(i);
         }
         // burn rate should increase to 0.3 after this
 
         // zero amount
-        let distribution = PswapDistrModule::calculate_pswap_distribution(balance!(0)).unwrap();
+        let distribution = PswapDistrPallet::calculate_pswap_distribution(balance!(0)).unwrap();
         assert_eq!(distribution.liquidity_providers, balance!(0));
         assert_eq!(distribution.vesting, balance!(0));
         assert_eq!(distribution.parliament, balance!(0));
 
         // indivisible small amount
-        let distribution = PswapDistrModule::calculate_pswap_distribution(1u128).unwrap();
+        let distribution = PswapDistrPallet::calculate_pswap_distribution(1u128).unwrap();
         assert_eq!(
             distribution.liquidity_providers + distribution.vesting + distribution.parliament,
             1u128
         );
 
         // divisible small amount
-        let distribution = PswapDistrModule::calculate_pswap_distribution(100u128).unwrap();
+        let distribution = PswapDistrPallet::calculate_pswap_distribution(100u128).unwrap();
         assert_eq!(distribution.liquidity_providers, 70u128);
         assert_eq!(distribution.vesting, 20u128);
         assert_eq!(distribution.parliament, 10u128);
 
         // regular amount
-        let distribution = PswapDistrModule::calculate_pswap_distribution(balance!(100)).unwrap();
+        let distribution = PswapDistrPallet::calculate_pswap_distribution(balance!(100)).unwrap();
         assert_eq!(distribution.liquidity_providers, balance!(70));
         assert_eq!(distribution.vesting, balance!(19.8));
         assert_eq!(distribution.parliament, balance!(10));
@@ -780,7 +780,7 @@ fn calculating_distribution_should_pass() {
         // large value, balance is limited to i128 max because of Fixed type calculation
         // We use `i128::MAX - 100` otherwise assert_approx_eq! internaly overflow when adding tolerance to the left and right members
         let balance_max = 170141183460469231731687303715884105727u128 - 100;
-        let distribution = PswapDistrModule::calculate_pswap_distribution(balance_max).unwrap();
+        let distribution = PswapDistrPallet::calculate_pswap_distribution(balance_max).unwrap();
         assert_eq!(
             distribution.liquidity_providers,
             119098828422328462212181112601118873938u128

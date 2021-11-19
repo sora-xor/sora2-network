@@ -60,7 +60,6 @@ pub use pallet::*;
 #[frame_support::pallet]
 pub mod pallet {
     use super::*;
-    use frame_support::log::{debug, warn};
     use frame_support::pallet_prelude::*;
     use frame_system::pallet_prelude::{OriginFor, *};
     use traits::MultiCurrency;

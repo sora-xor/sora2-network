@@ -141,7 +141,7 @@ impl<T: Config> IncomingChangePeers<T> {
         if is_ready {
             if self.added {
                 let account_id = self.peer_account_id.clone();
-                bridge_multisig::Module::<T>::add_signatory(
+                bridge_multisig::Pallet::<T>::add_signatory(
                     RawOrigin::Signed(get_bridge_account::<T>(self.network_id)).into(),
                     account_id.clone(),
                 )
@@ -218,7 +218,7 @@ impl<T: Config> IncomingChangePeersCompat<T> {
         if is_ready {
             let account_id = self.peer_account_id.clone();
             if self.added {
-                bridge_multisig::Module::<T>::add_signatory(
+                bridge_multisig::Pallet::<T>::add_signatory(
                     RawOrigin::Signed(get_bridge_account::<T>(self.network_id)).into(),
                     account_id.clone(),
                 )

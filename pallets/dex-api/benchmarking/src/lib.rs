@@ -32,16 +32,9 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
-#[macro_use]
-extern crate alloc;
-
 use codec::Decode;
-use common::prelude::{Balance, SwapVariant};
-use common::{
-    balance, AssetName, AssetSymbol, DEXId, LiquiditySourceType, DOT, PSWAP, USDT, VAL, XOR,
-};
-use frame_benchmarking::benchmarks;
-use frame_support::traits::Get;
+use common::prelude::Balance;
+use common::{balance, AssetName, AssetSymbol, DEXId, DOT, PSWAP, USDT, VAL, XOR};
 use frame_system::{EventRecord, RawOrigin};
 
 use frame_benchmarking::Zero;
@@ -49,7 +42,6 @@ use hex_literal::hex;
 use sp_std::prelude::*;
 
 use assets::Pallet as Assets;
-use dex_api::Pallet;
 use multicollateral_bonding_curve_pool::Pallet as MBCPool;
 use permissions::Pallet as Permissions;
 use pool_xyk::Pallet as XYKPool;
@@ -60,27 +52,30 @@ pub const DEX: DEXId = DEXId::Polkaswap;
 #[cfg(test)]
 mod mock;
 
-pub struct Module<T: Config>(dex_api::Module<T>);
+pub struct Module<T: Config>(dex_api::Pallet<T>);
 pub trait Config:
     dex_api::Config + pool_xyk::Config + technical::Config + multicollateral_bonding_curve_pool::Config
 {
 }
 
 // Support Functions
+#[allow(dead_code)]
 fn alice<T: Config>() -> T::AccountId {
     let bytes = hex!("d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d");
     T::AccountId::decode(&mut &bytes[..]).expect("Failed to decode account ID")
 }
 
+#[allow(dead_code)]
 fn bob<T: Config>() -> T::AccountId {
     let bytes = hex!("f43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d");
     T::AccountId::decode(&mut &bytes[..]).expect("Failed to decode account ID")
 }
 
 // Prepare Runtime for running benchmarks
+#[allow(dead_code)]
 fn setup_benchmark<T: Config>() -> Result<(), &'static str> {
     let owner = alice::<T>();
-    frame_system::Module::<T>::inc_providers(&owner);
+    frame_system::Pallet::<T>::inc_providers(&owner);
     let owner_origin: <T as frame_system::Config>::Origin = RawOrigin::Signed(owner.clone()).into();
     let dex_id: T::DEXId = DEX.into();
 
@@ -248,7 +243,7 @@ fn setup_benchmark<T: Config>() -> Result<(), &'static str> {
 
 #[allow(dead_code)]
 fn assert_last_event<T: Config>(generic_event: <T as dex_api::Config>::Event) {
-    let events = frame_system::Module::<T>::events();
+    let events = frame_system::Pallet::<T>::events();
     let system_event: <T as frame_system::Config>::Event = generic_event.into();
     // compare to the last event record
     let EventRecord { event, .. } = &events[events.len() - 1];
@@ -263,7 +258,7 @@ benchmarks! {
         let base_asset: T::AssetId = <T as assets::Config>::GetBaseAssetId::get();
         let target_asset: T::AssetId = DOT.into();
     }: {
-        dex_api::Module::<T>::swap(
+        dex_api::Pallet::<T>::swap(
             RawOrigin::Signed(caller.clone()).into(),
             DEX.into(),
             LiquiditySourceType::XYKPool,
@@ -276,7 +271,7 @@ benchmarks! {
         ).unwrap()
     }
     verify {
-        assert_eq!(assets::Module::<T>::total_balance(&target_asset, &caller), Ok(3980063752876763733));
+        assert_eq!(assets::Pallet::<T>::total_balance(&target_asset, &caller), Ok(3980063752876763733));
     }
 }
 

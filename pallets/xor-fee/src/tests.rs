@@ -143,7 +143,7 @@ fn notify_val_burned_works() {
             0_u128.into()
         );
 
-        <Module<Runtime> as pallet_session::historical::SessionManager<_, _>>::end_session(0);
+        <Pallet<Runtime> as pallet_session::historical::SessionManager<_, _>>::end_session(0);
 
         // The correct answer is 2E-13 away
         assert_eq!(
@@ -377,7 +377,7 @@ fn reminting_for_sora_parliament_works() {
         let sora_parliament_share = SoraParliamentShare::get();
         let expected_balance = FixedWrapper::from(sora_parliament_share * val_burned);
 
-        <Module<Runtime> as pallet_session::historical::SessionManager<_, _>>::end_session(0);
+        <Pallet<Runtime> as pallet_session::historical::SessionManager<_, _>>::end_session(0);
 
         // Mock uses MockLiquiditySource that doesn't exchange.
         assert!(

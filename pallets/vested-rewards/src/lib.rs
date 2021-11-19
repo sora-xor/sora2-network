@@ -244,7 +244,7 @@ impl<T: Config> Pallet<T> {
     }
 }
 
-impl<T: Config> OnPswapBurned for Module<T> {
+impl<T: Config> OnPswapBurned for Pallet<T> {
     /// NOTE: currently is not invoked.
     /// Invoked when pswap is burned after being exchanged from collected liquidity provider fees.
     fn on_pswap_burned(distribution: PswapRemintInfo) {
@@ -252,7 +252,7 @@ impl<T: Config> OnPswapBurned for Module<T> {
     }
 }
 
-impl<T: Config> VestedRewardsPallet<T::AccountId> for Module<T> {
+impl<T: Config> VestedRewardsPallet<T::AccountId> for Pallet<T> {
     /// Check if volume is eligible to be counted for market maker rewards and add it to registry.
     /// `count` is used as a multiplier if multiple times same volume is transferred inside transaction.
     fn update_market_maker_records(
@@ -324,7 +324,7 @@ pub mod pallet {
 
         fn on_initialize(block_number: T::BlockNumber) -> Weight {
             if (block_number % MARKET_MAKER_REWARDS_DISTRIBUTION_FREQUENCY.into()).is_zero() {
-                let elems = Module::<T>::market_maker_rewards_distribution_routine();
+                let elems = Pallet::<T>::market_maker_rewards_distribution_routine();
                 <T as Config>::WeightInfo::on_initialize(elems)
             } else {
                 <T as Config>::WeightInfo::on_initialize(0)

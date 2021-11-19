@@ -49,9 +49,9 @@ pub trait WeightInfo {
     fn reset_rewards() -> Weight;
 }
 
-type Assets<T> = assets::Module<T>;
-type System<T> = frame_system::Module<T>;
-type Technical<T> = technical::Module<T>;
+type Assets<T> = assets::Pallet<T>;
+type System<T> = frame_system::Pallet<T>;
+type Technical<T> = technical::Pallet<T>;
 type BlockNumberOf<T> = <T as frame_system::Config>::BlockNumber;
 type WeightInfoOf<T> = <T as Config>::WeightInfo;
 
@@ -121,7 +121,7 @@ pub mod pallet {
                 Technical::<T>::tech_account_id_to_account_id(&reserves_tech_account_id)?;
             let reserves_amount = Assets::<T>::total_balance(&asset_id, &reserves_account_id)?;
             ensure!(amount <= reserves_amount, Error::<T>::NotEnoughReserves);
-            technical::Module::<T>::transfer_out(
+            technical::Pallet::<T>::transfer_out(
                 &asset_id,
                 &reserves_tech_account_id,
                 &target,

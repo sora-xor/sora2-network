@@ -21,8 +21,9 @@ enum Mode {
 generate_storage_instance!(Permissions, Modes);
 type OldModes = StorageMap<ModesOldInstance, Blake2_256, PermissionId, Mode, OptionQuery>;
 
+#[allow(dead_code)]
 pub fn migrate<T: Config>() -> Weight {
-    OldModes::remove_all(None);
+    let _ = OldModes::remove_all(None);
 
     // There were 12 default permissions
     T::DbWeight::get().writes(12)

@@ -38,9 +38,9 @@ use common::{AccountIdOf, ToFeeAccount, ToTechUnitFromDEXAndTradingPair, Trading
 
 use crate::aliases::{AssetIdOf, DEXManager, TechAccountIdOf, TechAssetIdOf};
 use crate::bounds::*;
-use crate::{Config, Error, Module, PoolProviders, TotalIssuances};
+use crate::{Config, Error, Pallet, PoolProviders, TotalIssuances};
 
-impl<T: Config> Module<T> {
+impl<T: Config> Pallet<T> {
     /// Using try into to get Result with some error, after this convert Result into Option,
     /// after this AssetDecodingError is used if None.
     pub fn try_decode_asset(asset: AssetIdOf<T>) -> Result<TechAssetIdOf<T>, DispatchError> {
@@ -87,7 +87,7 @@ impl<T: Config> Module<T> {
         _asset_id: AssetIdOf<T>,
         tech_acc: &TechAccountIdOf<T>,
     ) -> DispatchResult {
-        technical::Module::<T>::ensure_tech_account_registered(tech_acc)?;
+        technical::Pallet::<T>::ensure_tech_account_registered(tech_acc)?;
         //TODO: Maybe checking that asset and dex is exist, it is not really needed if
         //registration of technical account is a garanty that pair and dex exist.
         Ok(())
@@ -101,11 +101,11 @@ impl<T: Config> Module<T> {
         let dexinfo = DEXManager::<T>::get_dex_info(&dex_id)?;
         let base_asset_id = dexinfo.base_asset_id;
         ensure!(asset_a != asset_b, Error::<T>::AssetsMustNotBeSame);
-        let ba = Module::<T>::try_decode_asset(base_asset_id)?;
+        let ba = Pallet::<T>::try_decode_asset(base_asset_id)?;
         let ta = if base_asset_id == asset_a {
-            Module::<T>::try_decode_asset(asset_b)?
+            Pallet::<T>::try_decode_asset(asset_b)?
         } else if base_asset_id == asset_b {
-            Module::<T>::try_decode_asset(asset_a)?
+            Pallet::<T>::try_decode_asset(asset_a)?
         } else {
             Err(Error::<T>::BaseAssetIsNotMatchedWithAnyAssetArguments)?
         };
@@ -158,11 +158,11 @@ impl<T: Config> Module<T> {
         DispatchError,
     > {
         let (_, tech_acc_id) =
-            Module::<T>::tech_account_from_dex_and_asset_pair(dex_id, asset_a, asset_b)?;
+            Pallet::<T>::tech_account_from_dex_and_asset_pair(dex_id, asset_a, asset_b)?;
         let (source_amount_a, destination_amount_a) =
-            Module::<T>::get_bounds_from_swap_amount(swap_amount_a)?;
+            Pallet::<T>::get_bounds_from_swap_amount(swap_amount_a)?;
         let (source_amount_b, destination_amount_b) =
-            Module::<T>::get_bounds_from_swap_amount(swap_amount_b)?;
+            Pallet::<T>::get_bounds_from_swap_amount(swap_amount_b)?;
         Ok((
             source_amount_a,
             destination_amount_a,
@@ -207,7 +207,7 @@ impl<T: Config> Module<T> {
         let result: Result<_, Error<T>> =
             PoolProviders::<T>::mutate(pool_account, user_account, |balance| {
                 if balance.is_none() {
-                    frame_system::Module::<T>::inc_consumers(user_account)
+                    frame_system::Pallet::<T>::inc_consumers(user_account)
                         .map_err(|_| Error::<T>::IncRefError)?;
                 }
                 *balance = Some(balance.unwrap_or(0) + pool_tokens);

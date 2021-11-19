@@ -53,7 +53,7 @@ use sp_runtime::traits::{BlakeTwo256, IdentityLookup, Verify};
 use sp_runtime::{DispatchError, Perbill, Percent};
 use sp_std::cmp::Ordering;
 
-pub use crate::{self as xor_fee, Config, Module};
+pub use crate::{self as xor_fee, Config, Pallet};
 
 // Configure a mock runtime to test the pallet.
 pub type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
@@ -350,15 +350,15 @@ impl frame_system::Config for Runtime {
 
 impl mock_liquidity_source::Config<mock_liquidity_source::Instance1> for Runtime {
     type GetFee = GetFee;
-    type EnsureDEXManager = dex_manager::Module<Runtime>;
-    type EnsureTradingPairExists = trading_pair::Module<Runtime>;
+    type EnsureDEXManager = dex_manager::Pallet<Runtime>;
+    type EnsureTradingPairExists = trading_pair::Pallet<Runtime>;
 }
 
 impl dex_manager::Config for Runtime {}
 
 impl trading_pair::Config for Runtime {
     type Event = Event;
-    type EnsureDEXManager = dex_manager::Module<Runtime>;
+    type EnsureDEXManager = dex_manager::Pallet<Runtime>;
     type WeightInfo = ();
 }
 
@@ -417,7 +417,7 @@ impl assets::Config for Runtime {
         common::AssetIdExtraAssetRecordArg<common::DEXId, common::LiquiditySourceType, AccountId>;
     type AssetId = AssetId;
     type GetBaseAssetId = XorId;
-    type Currency = currencies::Module<Runtime>;
+    type Currency = currencies::Pallet<Runtime>;
     type GetTeamReservesAccountId = GetTeamReservesAccountId;
     type WeightInfo = ();
 }
@@ -585,7 +585,7 @@ pub mod mock_liquidity_proxy {
     pub enum Error<T> {}
 }
 
-type MockLiquidityProxy = mock_liquidity_proxy::Module<Runtime>;
+type MockLiquidityProxy = mock_liquidity_proxy::Pallet<Runtime>;
 
 impl mock_liquidity_proxy::Config for Runtime {
     type Event = Event;

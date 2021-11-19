@@ -34,7 +34,6 @@ use crate::{
 };
 use common::prelude::{Balance, FixedWrapper};
 use common::{balance, fixed_wrapper, RewardReason};
-use frame_support::debug;
 use frame_support::log::{error, info, warn};
 use frame_support::traits::Get;
 use sp_runtime::runtime_logger::RuntimeLogger;
@@ -43,7 +42,7 @@ use sp_runtime::DispatchError;
 use sp_std::vec::Vec;
 
 pub fn migrate<T: Config>() -> Weight {
-    let mut weight: Weight = 0;
+    let weight: Weight = 0;
 
     // match Pallet::<T>::storage_version() {
     //     // Initial version is 0.1.0 which has unutilized rewards storage
@@ -58,6 +57,7 @@ pub fn migrate<T: Config>() -> Weight {
     weight
 }
 
+#[allow(dead_code)]
 pub fn migrate_rewards_from_tbc<T: Config>() -> Option<Weight> {
     let mut weight: Weight = 0;
     let mut calculated_total_rewards = Balance::zero();

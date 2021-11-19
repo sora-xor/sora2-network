@@ -102,7 +102,7 @@ pub fn run() -> sc_cli::Result<()> {
         Some(Subcommand::BuildSpec(cmd)) => {
             let runner = cli.create_runner(cmd)?;
             set_default_ss58_version();
-            runner.sync_run(|mut config| cmd.run(config.chain_spec, config.network))
+            runner.sync_run(|config| cmd.run(config.chain_spec, config.network))
         }
         Some(Subcommand::CheckBlock(cmd)) => {
             let runner = cli.create_runner(cmd)?;
@@ -157,7 +157,7 @@ pub fn run() -> sc_cli::Result<()> {
         Some(Subcommand::PurgeChain(cmd)) => {
             let runner = cli.create_runner(cmd)?;
             set_default_ss58_version();
-            runner.sync_run(|mut config| cmd.run(config.database))
+            runner.sync_run(|config| cmd.run(config.database))
         }
         Some(Subcommand::Revert(cmd)) => {
             let runner = cli.create_runner(cmd)?;
@@ -186,7 +186,7 @@ pub fn run() -> sc_cli::Result<()> {
                     //Role::Light => service::new_light(config),
                     Role::Light => Err(sc_service::Error::Other("Light client not enabled".into())),
                     // TODO: fix args
-                    _ => service::new_full(config, None, false, None, None),
+                    _ => service::new_full(config, false, None),
                 }
                 .map_err(sc_cli::Error::Service)
             })

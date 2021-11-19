@@ -74,7 +74,7 @@ impl<T: Config> OnPoolCreated for Pallet<T> {
         _dex_id: Self::DEXId,
         pool_account: Self::AccountId,
     ) -> DispatchResult {
-        Self::add_pool(pool_account, frame_system::Module::<T>::block_number());
+        Self::add_pool(pool_account, frame_system::Pallet::<T>::block_number());
         Ok(())
     }
 }
@@ -131,14 +131,14 @@ impl<T: Config> Pallet<T> {
 
     fn get_account_weight(pool: &T::AccountId, pool_tokens: Balance) -> Balance {
         let trading_pair =
-            if let Ok(trading_pair) = pool_xyk::Module::<T>::get_pool_trading_pair(&pool) {
+            if let Ok(trading_pair) = pool_xyk::Pallet::<T>::get_pool_trading_pair(&pool) {
                 trading_pair
             } else {
                 return 0;
             };
 
         let xor =
-            pool_xyk::Module::<T>::get_xor_part_from_pool_account(pool, &trading_pair, pool_tokens)
+            pool_xyk::Pallet::<T>::get_xor_part_from_pool_account(pool, &trading_pair, pool_tokens)
                 .unwrap_or(0);
         if xor < balance!(1) {
             return 0;
@@ -235,7 +235,7 @@ impl<T: Config> Pallet<T> {
         for (account, weight) in accounts {
             let account_reward = reward.clone() * weight / total_weight.clone();
             let account_reward = account_reward.try_into_balance().unwrap_or(0);
-            let _ = vested_rewards::Module::<T>::add_pending_reward(
+            let _ = vested_rewards::Pallet::<T>::add_pending_reward(
                 &account,
                 RewardReason::LiquidityProvisionFarming,
                 account_reward,

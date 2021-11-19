@@ -176,7 +176,7 @@ impl dex_manager::Config for Runtime {}
 
 impl trading_pair::Config for Runtime {
     type Event = Event;
-    type EnsureDEXManager = dex_manager::Module<Runtime>;
+    type EnsureDEXManager = dex_manager::Pallet<Runtime>;
     type WeightInfo = ();
 }
 
@@ -211,9 +211,9 @@ impl tokens::Config for Runtime {
 
 impl currencies::Config for Runtime {
     type Event = Event;
-    type MultiCurrency = tokens::Module<Runtime>;
+    type MultiCurrency = tokens::Pallet<Runtime>;
     type NativeCurrency =
-        BasicCurrencyAdapter<Runtime, pallet_balances::Module<Runtime>, Amount, BlockNumber>;
+        BasicCurrencyAdapter<Runtime, pallet_balances::Pallet<Runtime>, Amount, BlockNumber>;
     type GetNativeCurrencyId = <Runtime as assets::Config>::GetBaseAssetId;
     type WeightInfo = ();
 }
@@ -225,7 +225,7 @@ impl assets::Config for Runtime {
         common::AssetIdExtraAssetRecordArg<DEXId, common::LiquiditySourceType, [u8; 32]>;
     type AssetId = AssetId;
     type GetBaseAssetId = GetBaseAssetId;
-    type Currency = currencies::Module<Runtime>;
+    type Currency = currencies::Pallet<Runtime>;
     type GetTeamReservesAccountId = GetTeamReservesAccountId;
     type WeightInfo = ();
 }
@@ -248,7 +248,7 @@ impl pool_xyk::Config for Runtime {
     type WithdrawLiquidityAction =
         pool_xyk::WithdrawLiquidityAction<AssetId, AccountId, TechAccountId>;
     type PolySwapAction = pool_xyk::PolySwapAction<AssetId, AccountId, TechAccountId>;
-    type EnsureDEXManager = dex_manager::Module<Runtime>;
+    type EnsureDEXManager = dex_manager::Pallet<Runtime>;
     type GetFee = GetXykFee;
     type OnPoolCreated = (PswapDistribution, Farming);
     type OnPoolReservesChanged = ();
@@ -273,8 +273,8 @@ impl pswap_distribution::Config for Runtime {
 impl multicollateral_bonding_curve_pool::Config for Runtime {
     type Event = Event;
     type LiquidityProxy = ();
-    type EnsureTradingPairExists = trading_pair::Module<Runtime>;
-    type EnsureDEXManager = dex_manager::Module<Runtime>;
+    type EnsureTradingPairExists = trading_pair::Pallet<Runtime>;
+    type EnsureDEXManager = dex_manager::Pallet<Runtime>;
     type PriceToolsPallet = ();
     type VestedRewardsPallet = VestedRewards;
     type WeightInfo = ();

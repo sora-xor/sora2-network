@@ -39,7 +39,7 @@ mod tests;
 use frame_support::ensure;
 use frame_support::sp_runtime::DispatchError;
 
-impl<T: Config> Module<T> {
+impl<T: Config> Pallet<T> {
     pub fn set_referrer_to(
         referral: &T::AccountId,
         referrer: T::AccountId,

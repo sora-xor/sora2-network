@@ -254,7 +254,7 @@ parameter_types! {
     pub const ElectionLookahead: BlockNumber = EPOCH_DURATION_IN_BLOCKS / 4;
     pub const MaxIterations: u32 = 10;
     // 0.05%. The higher the value, the more strict solution acceptance becomes.
-    pub MinSolutionScoreBump: Perbill = Perbill::from_rational_approximation(5u32, 10_000);
+    pub MinSolutionScoreBump: Perbill = Perbill::from_rational(5u32, 10_000);
     pub const ValRewardCurve: pallet_staking::ValRewardCurve = pallet_staking::ValRewardCurve {
         duration_to_reward_flatline: Duration::from_secs(5 * 365 * 24 * 60 * 60),
         min_val_burned_percentage_reward: Percent::from_percent(35),

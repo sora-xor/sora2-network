@@ -28,13 +28,13 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use crate::{Config, Pallet, Weight};
+use crate::{Config, Weight};
 use common::{balance, PSWAP};
 use frame_support::traits::Get;
 use traits::MultiCurrency;
 
 pub fn migrate<T: Config>() -> Weight {
-    let mut weight: Weight = 0;
+    let weight: Weight = 0;
 
     // match Pallet::<T>::storage_version() {
     //     // Initial version is 0.1.0
@@ -49,6 +49,7 @@ pub fn migrate<T: Config>() -> Weight {
     weight
 }
 
+#[allow(dead_code)]
 pub fn mint_team_rewards<T: Config>() -> Option<Weight> {
     let mut weight: Weight = 0;
 

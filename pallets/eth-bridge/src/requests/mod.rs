@@ -41,7 +41,7 @@ use ethabi::Token;
 use frame_support::dispatch::{DispatchError, DispatchResult};
 use frame_support::log::warn;
 use frame_support::sp_runtime::app_crypto::sp_core;
-use frame_support::{debug, ensure, sp_io, RuntimeDebug};
+use frame_support::{ensure, sp_io, RuntimeDebug};
 pub use incoming::*;
 pub use outgoing::*;
 use serde::{Deserialize, Serialize};

@@ -30,7 +30,7 @@
 
 #[rustfmt::skip]
 mod tests {
-    use crate::{mock::*, DistributionAccountData, Module, DistributionAccounts, DistributionAccount, Error, RETRY_DISTRIBUTION_FREQUENCY};
+    use crate::{mock::*, DistributionAccountData, Pallet, DistributionAccounts, DistributionAccount, Error, RETRY_DISTRIBUTION_FREQUENCY};
     use common::{
         self, balance, fixed, fixed_wrapper, Fixed, fixnum::ops::One as _, fixnum::ops::Zero as _,
         prelude::{Balance, SwapAmount, SwapOutcome, QuoteAmount, FixedWrapper,},
@@ -44,7 +44,7 @@ mod tests {
     use sp_arithmetic::traits::{Zero};
     use sp_runtime::DispatchError;
 
-    type MBCPool = Module<Runtime>;
+    type MBCPool = Pallet<Runtime>;
 
     fn ensure_distribution_accounts_balances(distribution_accounts: DistributionAccounts<DistributionAccountData<DistributionAccount<AccountId, TechAccountId>>>, balances: Vec<Balance>) {
         let distribution_accounts_array = distribution_accounts.xor_distribution_accounts_as_array();

@@ -48,7 +48,7 @@ mod tests;
 
 type DEXInfo<T> = common::prelude::DEXInfo<AssetIdOf<T>>;
 
-impl<T: Config> EnsureDEXManager<T::DEXId, T::AccountId, DispatchError> for Module<T> {
+impl<T: Config> EnsureDEXManager<T::DEXId, T::AccountId, DispatchError> for Pallet<T> {
     fn ensure_can_manage<OuterOrigin>(
         dex_id: &T::DEXId,
         origin: OuterOrigin,
@@ -71,7 +71,7 @@ impl<T: Config> EnsureDEXManager<T::DEXId, T::AccountId, DispatchError> for Modu
     }
 }
 
-impl<T: Config> Module<T> {
+impl<T: Config> Pallet<T> {
     pub fn get_dex_info(dex_id: &T::DEXId) -> Result<DEXInfo<T>, DispatchError> {
         Ok(DEXInfos::<T>::get(&dex_id).ok_or(Error::<T>::DEXDoesNotExist)?)
     }
@@ -89,7 +89,7 @@ impl<T: Config> Module<T> {
     }
 
     fn ensure_direct_manager(dex_id: &T::DEXId, who: &T::AccountId) -> DispatchResult {
-        permissions::Module::<T>::check_permission_with_scope(
+        permissions::Pallet::<T>::check_permission_with_scope(
             who.clone(),
             MANAGE_DEX,
             &Scope::Limited(hash(&dex_id)),

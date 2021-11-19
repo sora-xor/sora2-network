@@ -51,8 +51,7 @@ use common::prelude::{
     Balance, Fixed, FixedWrapper, LiquiditySourceType, PriceToolsPallet, QuoteAmount,
 };
 use common::{
-    balance, fixed_const, fixed_wrapper, DEXId, LiquiditySourceFilter, OnPoolReservesChanged, DAI,
-    ETH, PSWAP, VAL, XOR,
+    balance, fixed_const, fixed_wrapper, DEXId, LiquiditySourceFilter, OnPoolReservesChanged, XOR,
 };
 use frame_support::dispatch::{DispatchError, DispatchResult};
 use frame_support::weights::Weight;
@@ -127,7 +126,7 @@ pub mod pallet {
     #[pallet::hooks]
     impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
         fn on_initialize(_block_num: T::BlockNumber) -> Weight {
-            let (n, m) = Module::<T>::average_prices_calculation_routine();
+            let (n, m) = Pallet::<T>::average_prices_calculation_routine();
             <T as Config>::WeightInfo::on_initialize(n, m)
         }
 
@@ -136,7 +135,7 @@ pub mod pallet {
             //     // if pallet didn't exist, i.e. added with runtime upgrade, then initial tbc assets should be created
             //     None => {
             //         for asset_id in [VAL, PSWAP, DAI, ETH].iter().cloned() {
-            //             let _ = Module::<T>::register_asset(&asset_id.into());
+            //             let _ = Pallet::<T>::register_asset(&asset_id.into());
             //         }
             //     }
             //     _ => (),
@@ -385,12 +384,12 @@ impl<T: Config> Pallet<T> {
     }
 }
 
-impl<T: Config> PriceToolsPallet<T::AssetId> for Module<T> {
+impl<T: Config> PriceToolsPallet<T::AssetId> for Pallet<T> {
     fn get_average_price(
         input_asset_id: &T::AssetId,
         output_asset_id: &T::AssetId,
     ) -> Result<Balance, DispatchError> {
-        Module::<T>::get_average_price(input_asset_id, output_asset_id)
+        Pallet::<T>::get_average_price(input_asset_id, output_asset_id)
     }
 
     fn register_asset(asset_id: &T::AssetId) -> DispatchResult {
@@ -403,7 +402,7 @@ impl<T: Config> PriceToolsPallet<T::AssetId> for Module<T> {
     }
 }
 
-impl<T: Config> OnPoolReservesChanged<T::AssetId> for Module<T> {
+impl<T: Config> OnPoolReservesChanged<T::AssetId> for Pallet<T> {
     fn reserves_changed(target_asset_id: &T::AssetId) {
         if let Some(price_info) = PriceInfos::<T>::get(target_asset_id) {
             if !price_info.needs_update {

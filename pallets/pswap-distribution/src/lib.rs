@@ -59,8 +59,8 @@ pub const TECH_ACCOUNT_MAIN: &[u8] = b"main";
 
 type DexIdOf<T> = <T as common::Config>::DEXId;
 type AssetIdOf<T> = <T as assets::Config>::AssetId;
-type Assets<T> = assets::Module<T>;
-type System<T> = frame_system::Module<T>;
+type Assets<T> = assets::Pallet<T>;
+type System<T> = frame_system::Pallet<T>;
 
 pub trait WeightInfo {
     fn claim_incentive() -> Weight;
@@ -227,7 +227,7 @@ impl<T: Config> Pallet<T> {
             // are to be reminted in responsible pallets.
             let mut distribution = Self::calculate_pswap_distribution(incentive_total)?;
             // Burn all incentives.
-            assets::Module::<T>::burn_from(
+            assets::Pallet::<T>::burn_from(
                 &incentive_asset_id,
                 tech_account_id,
                 fees_account_id,
@@ -273,14 +273,14 @@ impl<T: Config> Pallet<T> {
                     .saturating_add(undistributed_lp_amount);
             }
 
-            assets::Module::<T>::mint_to(
+            assets::Pallet::<T>::mint_to(
                 &incentive_asset_id,
                 tech_account_id,
                 tech_account_id,
                 distribution.liquidity_providers,
             )?;
 
-            assets::Module::<T>::mint_to(
+            assets::Pallet::<T>::mint_to(
                 &incentive_asset_id,
                 tech_account_id,
                 &T::GetParliamentAccountId::get(),

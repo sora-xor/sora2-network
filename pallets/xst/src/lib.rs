@@ -71,8 +71,8 @@ pub trait WeightInfo {
     fn set_reference_asset() -> Weight;
 }
 
-type Assets<T> = assets::Module<T>;
-type Technical<T> = technical::Module<T>;
+type Assets<T> = assets::Pallet<T>;
+type Technical<T> = technical::Pallet<T>;
 
 pub const TECH_ACCOUNT_PREFIX: &[u8] = b"xst-pool";
 pub const TECH_ACCOUNT_PERMISSIONED: &[u8] = b"permissioned";
@@ -297,7 +297,7 @@ pub mod pallet {
 }
 
 #[allow(non_snake_case)]
-impl<T: Config> Module<T> {
+impl<T: Config> Pallet<T> {
     #[inline]
     #[allow(unused)]
     fn self_excluding_filter() -> LiquiditySourceFilter<T::DEXId, LiquiditySourceType> {
@@ -321,7 +321,7 @@ impl<T: Config> Module<T> {
                 &T::GetBaseAssetId::get(),
                 &synthetic_asset_id,
             )?;
-            trading_pair::Module::<T>::enable_source_for_trading_pair(
+            trading_pair::Pallet::<T>::enable_source_for_trading_pair(
                 &DEXId::Polkaswap.into(),
                 &T::GetBaseAssetId::get(),
                 &synthetic_asset_id,
@@ -585,7 +585,7 @@ impl<T: Config> Module<T> {
             let account_id = Technical::<T>::tech_account_id_to_account_id(&account)?;
             let permissions = [BURN, MINT];
             for permission in &permissions {
-                permissions::Module::<T>::assign_permission(
+                permissions::Pallet::<T>::assign_permission(
                     account_id.clone(),
                     &account_id,
                     *permission,
@@ -616,7 +616,7 @@ impl<T: Config> Module<T> {
 }
 
 impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, DispatchError>
-    for Module<T>
+    for Pallet<T>
 {
     fn can_exchange(
         dex_id: &T::DEXId,
@@ -699,7 +699,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
     }
 }
 
-impl<T: Config> GetMarketInfo<T::AssetId> for Module<T> {
+impl<T: Config> GetMarketInfo<T::AssetId> for Pallet<T> {
     fn buy_price(
         base_asset: &T::AssetId,
         synthetic_asset: &T::AssetId,

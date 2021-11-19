@@ -52,7 +52,7 @@ use frame_support::sp_runtime::app_crypto::ecdsa;
 use frame_support::sp_runtime::offchain::storage::StorageValueRef;
 use frame_support::sp_runtime::traits::{One, Saturating, Zero};
 use frame_support::traits::Get;
-use frame_support::{debug, ensure, fail};
+use frame_support::{ensure, fail};
 use frame_system::offchain::{CreateSignedTransaction, Signer};
 use sp_core::crypto::Public;
 use sp_core::H256;

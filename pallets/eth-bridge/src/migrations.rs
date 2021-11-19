@@ -43,6 +43,7 @@ pub fn migrate_broken_pending_outgoing_transfers<T: Config>(to_height: T::BlockN
         .reads_writes((queue_len * 2 + 1) as Weight, (count * 2) as Weight)
 }
 
+#[allow(dead_code)]
 pub fn remove_peers<T: Config>(peer_ids: &[(T::AccountId, Address)]) {
     let eth_network_id = T::GetEthNetworkId::get();
     let mut peers = crate::Peers::<T>::get(eth_network_id);
@@ -60,6 +61,7 @@ pub fn remove_peers<T: Config>(peer_ids: &[(T::AccountId, Address)]) {
     crate::Peers::<T>::insert(eth_network_id, peers);
 }
 
+#[allow(dead_code)]
 pub(crate) fn migrate_to_0_2_0<T: Config>() -> Weight {
     let block_number = frame_system::Pallet::<T>::current_block_number();
     let weight = migrate_broken_pending_outgoing_transfers::<T>(
