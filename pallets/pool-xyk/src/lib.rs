@@ -602,21 +602,6 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         }
         Ok(())
     }
-
-    fn pool_account_from_dex_and_asset_pair(
-        dex_id: T::DEXId,
-        base_asset_id: T::AssetId,
-        target_asset_id: T::AssetId,
-    ) -> Result<T::AccountId, DispatchError> {
-        let (_, tech_acc_id) = Module::<T>::tech_account_from_dex_and_asset_pair(
-            dex_id,
-            base_asset_id,
-            target_asset_id,
-        )?;
-
-        let pool_account = technical::Module::<T>::tech_account_id_to_account_id(&tech_acc_id)?;
-        Ok(pool_account)
-    }
 }
 
 impl<T: Config> GetPoolReserves<T::AssetId> for Module<T> {

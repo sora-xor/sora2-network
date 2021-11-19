@@ -124,7 +124,6 @@ use impls::{
     CollectiveWeightInfo, DemocracyWeightInfo, NegativeImbalanceOf, OnUnbalancedDemocracySlash,
 };
 
-use assets::Config;
 use frame_support::traits::{ExistenceRequirement, Get, WithdrawReasons};
 pub use {assets, eth_bridge, frame_system, multicollateral_bonding_curve_pool, xst};
 
@@ -1432,8 +1431,6 @@ parameter_types! {
 impl ceres_liquidity_locker::Config for Runtime {
     type Event = Event;
     type XYKPool = PoolXYK;
-    type FeesOptionOneAccount = ();
-    type FeesOptionTwoAccount = ();
     type CeresAssetId = CeresAssetId;
 }
 

@@ -162,15 +162,6 @@ pub trait LiquiditySource<TargetId, AccountId, AssetId, Amount, Error> {
     ) -> Result<(), DispatchError> {
         Err(DispatchError::CannotLookup)
     }
-
-    /// Pool account from dex and asset pair
-    fn pool_account_from_dex_and_asset_pair(
-        _dex_id: TargetId,
-        _base_asset_id: AssetId,
-        _target_asset_id: AssetId,
-    ) -> Result<AccountId, DispatchError> {
-        Err(DispatchError::CannotLookup)
-    }
 }
 
 impl<DEXId, AccountId, AssetId> LiquiditySource<DEXId, AccountId, AssetId, Fixed, DispatchError>

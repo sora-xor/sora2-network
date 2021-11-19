@@ -6,13 +6,13 @@ use codec::{Decode, Encode};
 #[derive(Encode, Decode, Default, PartialEq, Eq)]
 #[cfg_attr(feature = "std", derive(Debug))]
 pub struct LockInfo<Balance, BlockNumber, AssetId> {
-    /// Balance of pooled tokens
+    /// Amount of locked pool tokens
     pool_tokens: Balance,
     /// The time (block height) at which the tokens will be unlock
     unlocking_block: BlockNumber,
-    /// Balance of first pair of tokens
+    /// Base asset of locked liquidity
     asset_a: AssetId,
-    /// Balance of second pair of tokens
+    /// Target asset of locked liquidity
     asset_b: AssetId,
 }
 
@@ -25,6 +25,7 @@ pub mod pallet {
     use frame_support::pallet_prelude::*;
     use frame_system::ensure_signed;
     use frame_system::pallet_prelude::*;
+    use hex_literal::hex;
     use sp_runtime::traits::AccountIdConversion;
     use sp_runtime::ModuleId;
     use sp_std::vec::Vec;
@@ -45,23 +46,41 @@ pub mod pallet {
             DispatchError,
         >;
 
-        /// Account for paying fees according to Option 1
-        type FeesOptionOneAccount: Get<Self::AccountId>;
-
-        /// Account for paying fees according to Option 2
-        type FeesOptionTwoAccount: Get<Self::AccountId>;
-
         /// Ceres asset id
         type CeresAssetId: Get<Self::AssetId>;
     }
 
     type Assets<T> = assets::Pallet<T>;
-    type DEXIdOf<T> = <T as common::Config>::DEXId;
     type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
+    type AssetIdOf<T> = <T as assets::Config>::AssetId;
 
     #[pallet::pallet]
     #[pallet::generate_store(pub (super) trait Store)]
     pub struct Pallet<T>(PhantomData<T>);
+
+    #[pallet::type_value]
+    pub(super) fn DefaultForFeesOptionOneAccount<T: Config>() -> AccountIdOf<T> {
+        let bytes = hex!("d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d");
+        AccountIdOf::<T>::decode(&mut &bytes[..]).unwrap_or_default()
+    }
+
+    #[pallet::type_value]
+    pub(super) fn DefaultForFeesOptionTwoAccount<T: Config>() -> AccountIdOf<T> {
+        let bytes = hex!("d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d");
+        AccountIdOf::<T>::decode(&mut &bytes[..]).unwrap_or_default()
+    }
+
+    /// Account for collecting fees from Option 1
+    #[pallet::storage]
+    #[pallet::getter(fn fees_option_one_account)]
+    pub(super) type FeesOptionOneAccount<T: Config> =
+        StorageValue<_, AccountIdOf<T>, ValueQuery, DefaultForFeesOptionOneAccount<T>>;
+
+    /// Account for collecting fees from Option 2
+    #[pallet::storage]
+    #[pallet::getter(fn fees_option_two_account)]
+    pub(super) type FeesOptionTwoAccount<T: Config> =
+        StorageValue<_, AccountIdOf<T>, ValueQuery, DefaultForFeesOptionTwoAccount<T>>;
 
     #[pallet::storage]
     #[pallet::getter(fn locker_data)]
@@ -69,7 +88,7 @@ pub mod pallet {
         _,
         Identity,
         AccountIdOf<T>,
-        Vec<LockInfo<Balance, T::BlockNumber, T::AssetId>>,
+        Vec<LockInfo<Balance, T::BlockNumber, AssetIdOf<T>>>,
         ValueQuery,
     >;
 
@@ -83,16 +102,8 @@ pub mod pallet {
 
     #[pallet::error]
     pub enum Error<T> {
-        ///No funds deposited
-        NoFundsDeposited,
-        ///Funds are deposited
-        FundsAreDeposited,
-        ///Asset missing
-        AssetMissing,
-        ///Liquidity Is Locked
-        LiquidityIsLocked,
-        ///Cant Unlock Liquidity
-        CantUnlockLiquidity,
+        ///Insufficient liquidity to lock
+        InsufficientLiquidityToLock,
     }
 
     #[pallet::call]
@@ -101,9 +112,8 @@ pub mod pallet {
         #[pallet::weight(10000)]
         pub fn lock_liquidity(
             origin: OriginFor<T>,
-            dex_id: DEXIdOf<T>,
-            asset_a: T::AssetId,
-            asset_b: T::AssetId,
+            asset_a: AssetIdOf<T>,
+            asset_b: AssetIdOf<T>,
             unlocking_block: T::BlockNumber,
             percentage_of_pool_tokens: Balance,
             option: bool,
@@ -121,14 +131,32 @@ pub mod pallet {
             let current_block = frame_system::Pallet::<T>::block_number();
 
             // Get pool account
-            let pool_account =
-                T::XYKPool::pool_account_from_dex_and_asset_pair(dex_id, asset_a, asset_b)
-                    .expect("No pool account");
+            let pool_account: AccountIdOf<T> = T::XYKPool::properties(asset_a, asset_b)
+                .expect("Pool does not exist")
+                .0;
 
             // Calculate number of pool tokens to be locked
             let pool_tokens = T::XYKPool::pool_providers(pool_account.clone(), user.clone())
                 .expect("User is not pool provider");
             lock_info.pool_tokens = pool_tokens * percentage_of_pool_tokens;
+
+            // Check if user has enough liquidity to lock
+            let mut lockups = <LockerData<T>>::get(&user);
+            let mut locked_pool_tokens = 0;
+
+            for (_, locks) in lockups.iter().enumerate() {
+                if locks.asset_a == asset_a && locks.asset_b == asset_b {
+                    if current_block < locks.unlocking_block {
+                        locked_pool_tokens = locked_pool_tokens + locks.pool_tokens;
+                    }
+                }
+            }
+
+            let unlocked_pool_tokens = pool_tokens - locked_pool_tokens;
+            ensure!(
+                lock_info.pool_tokens <= unlocked_pool_tokens,
+                Error::<T>::InsufficientLiquidityToLock
+            );
 
             // Pay Locker fees
             if option {
@@ -164,7 +192,6 @@ pub mod pallet {
 
             // Put updated address info into storage
             // Get lock info of extrinsic caller
-            let mut lockups = <LockerData<T>>::get(&user);
             lockups.push(lock_info);
             <LockerData<T>>::insert(&user, lockups);
 
@@ -186,42 +213,56 @@ pub mod pallet {
     impl<T: Config> Pallet<T> {
         /// Get allowed liquidity for withdrawing
         pub fn get_allowed_liquidity_for_withdrawing(
-            user: &T::AccountId,
-            asset_a: T::AssetId,
-            asset_b: T::AssetId,
-            pool_tokens: Balance,
+            user: &AccountIdOf<T>,
+            asset_a: AssetIdOf<T>,
+            asset_b: AssetIdOf<T>,
+            withdrawing_amount: Balance,
         ) -> Balance {
             // Get lock info of extrinsic caller
             let mut lockups = <LockerData<T>>::get(&user);
             let current_block = frame_system::Pallet::<T>::block_number();
-            let mut allowed_withdrawal_amount: Balance = 0;
-            let mut counter = 0;
 
-            for (i, lock_info) in lockups.iter().enumerate() {
-                if lock_info.asset_a == asset_a && lock_info.asset_b == asset_b {
-                    if current_block < lock_info.unlocking_block {
-                        if lock_info.pool_tokens < pool_tokens {
-                            allowed_withdrawal_amount = pool_tokens - lock_info.pool_tokens;
-                        }
-                        break;
+            // Get pool account
+            let pool_account: AccountIdOf<T> = T::XYKPool::properties(asset_a, asset_b)
+                .expect("Pool does not exist")
+                .0;
+
+            // Calculate number of pool tokens to be locked
+            let pool_tokens = T::XYKPool::pool_providers(pool_account.clone(), user.clone())
+                .expect("User is not pool provider");
+
+            let mut locked_pool_tokens = 0;
+            let mut expired_locks = Vec::new();
+
+            for (i, locks) in lockups.iter().enumerate() {
+                if locks.asset_a == asset_a && locks.asset_b == asset_b {
+                    if current_block < locks.unlocking_block {
+                        locked_pool_tokens = locked_pool_tokens + locks.pool_tokens;
                     } else {
-                        counter = i;
+                        expired_locks.push(i);
                     }
                 }
             }
+            let unlocked_pool_tokens = pool_tokens - locked_pool_tokens;
 
-            lockups.remove(counter);
+            for (_, index) in expired_locks.iter().enumerate() {
+                lockups.remove(*index);
+            }
             <LockerData<T>>::insert(&user, lockups);
 
-            return allowed_withdrawal_amount;
+            return if unlocked_pool_tokens >= withdrawing_amount {
+                withdrawing_amount
+            } else {
+                unlocked_pool_tokens
+            };
         }
 
         /// Pay Locker fees in LP tokens
         fn pay_fee_in_lp_tokens(
-            pool_account: T::AccountId,
-            asset_a: T::AssetId,
-            asset_b: T::AssetId,
-            user: T::AccountId,
+            pool_account: AccountIdOf<T>,
+            asset_a: AssetIdOf<T>,
+            asset_b: AssetIdOf<T>,
+            user: AccountIdOf<T>,
             mut pool_tokens: Balance,
             fee_percentage: FixedWrapper,
             option: bool,
@@ -230,9 +271,9 @@ pub mod pallet {
                 .try_into_balance()
                 .unwrap_or(0);
 
-            let mut fee_account = T::FeesOptionOneAccount::get();
+            let mut fee_account = FeesOptionOneAccount::<T>::get();
             if !option {
-                fee_account = T::FeesOptionTwoAccount::get();
+                fee_account = FeesOptionTwoAccount::<T>::get();
             }
 
             let result = T::XYKPool::transfer_lp_tokens(
@@ -247,7 +288,7 @@ pub mod pallet {
         }
 
         /// The account ID of pallet
-        fn account_id() -> T::AccountId {
+        fn account_id() -> AccountIdOf<T> {
             PALLET_ID.into_account()
         }
     }
