@@ -31,7 +31,10 @@
 use crate::{self as farming, Config};
 use common::mock::ExistentialDeposits;
 use common::prelude::Balance;
-use common::{balance, fixed, hash, AssetName, AssetSymbol, DEXInfo, Fixed, DOT, PSWAP, VAL, XOR};
+use common::{
+    balance, fixed, hash, AssetName, AssetSymbol, DEXInfo, Fixed, DEFAULT_BALANCE_PRECISION, DOT,
+    PSWAP, VAL, XOR,
+};
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{Everything, GenesisBuild, OnFinalize, OnInitialize, PrivilegeCmp};
 use frame_support::weights::Weight;
@@ -62,9 +65,9 @@ type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>
 type Block = frame_system::mocking::MockBlock<Runtime>;
 
 pub const PSWAP_PER_DAY: Balance = balance!(2500000);
-pub const REFRESH_FREQUENCY: BlockNumberFor<Runtime> = 200;
+pub const REFRESH_FREQUENCY: BlockNumberFor<Runtime> = 1200;
 pub const VESTING_COEFF: u32 = 3;
-pub const VESTING_FREQUENCY: BlockNumberFor<Runtime> = 600;
+pub const VESTING_FREQUENCY: BlockNumberFor<Runtime> = 3600;
 pub const BLOCKS_PER_DAY: BlockNumberFor<Runtime> = 14_440;
 
 #[allow(non_snake_case)]
@@ -227,6 +230,7 @@ impl assets::Config for Runtime {
     type GetBaseAssetId = GetBaseAssetId;
     type Currency = currencies::Pallet<Runtime>;
     type GetTeamReservesAccountId = GetTeamReservesAccountId;
+    type GetTotalBalance = ();
     type WeightInfo = ();
 }
 
@@ -284,6 +288,7 @@ impl vested_rewards::Config for Runtime {
     type Event = Event;
     type GetMarketMakerRewardsAccountId = ();
     type GetBondingCurveRewardsAccountId = ();
+    type GetFarmingRewardsAccountId = ();
     type WeightInfo = ();
 }
 
@@ -427,27 +432,33 @@ impl ExtBuilder {
                     ALICE(),
                     AssetSymbol(b"XOR".to_vec()),
                     AssetName(b"SORA".to_vec()),
-                    18,
+                    DEFAULT_BALANCE_PRECISION,
                     0,
                     true,
+                    None,
+                    None,
                 ),
                 (
                     DOT.into(),
                     ALICE(),
                     AssetSymbol(b"DOT".to_vec()),
                     AssetName(b"DOT".to_vec()),
-                    18,
+                    DEFAULT_BALANCE_PRECISION,
                     0,
                     true,
+                    None,
+                    None,
                 ),
                 (
                     PSWAP.into(),
                     ALICE(),
                     AssetSymbol(b"PSWAP".to_vec()),
                     AssetName(b"PSWAP".to_vec()),
-                    18,
+                    DEFAULT_BALANCE_PRECISION,
                     0,
                     true,
+                    None,
+                    None,
                 ),
             ],
         }

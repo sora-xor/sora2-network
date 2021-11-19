@@ -14,7 +14,7 @@ pub fn migrate<T: Config>() -> Weight {
 
 #[cfg(test)]
 mod tests {
-    use common::{balance, AssetName, AssetSymbol};
+    use common::{balance, AssetName, AssetSymbol, DEFAULT_BALANCE_PRECISION};
     use hex_literal::hex;
 
     use crate::mock::*;
@@ -40,9 +40,11 @@ mod tests {
                 base_asset.clone(),
                 AssetSymbol(b"BASE".to_vec()),
                 AssetName(b"BASE".to_vec()),
-                18,
+                DEFAULT_BALANCE_PRECISION,
                 0,
                 true,
+                None,
+                None,
             )
             .unwrap();
             for target_asset in [target_asset_a, target_asset_b, target_asset_c].iter() {
@@ -51,9 +53,11 @@ mod tests {
                     target_asset.clone(),
                     AssetSymbol(b"A".to_vec()),
                     AssetName(b"B".to_vec()),
-                    18,
+                    DEFAULT_BALANCE_PRECISION,
                     0,
                     true,
+                    None,
+                    None,
                 )
                 .unwrap();
                 trading_pair::Pallet::<Runtime>::register(

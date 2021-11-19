@@ -6,6 +6,8 @@ String dockerBuildToolsUserId = 'bot-build-tools-ro'
 String dockerRegistryRWUserId = 'bot-sora2-rw'
 String envImageName           = 'docker.soramitsu.co.jp/sora2/env'
 String rustcVersion           = '1.54'
+String wasmReportFile         = 'subwasm_report.json'
+String rustcVersion           = 'nightly-2021-03-11'
 String appImageName           = 'docker.soramitsu.co.jp/sora2/substrate'
 String secretScannerExclusion = '.*Cargo.toml'
 Boolean disableSecretScanner  = false
@@ -35,6 +37,7 @@ pipeline {
         stage('Build & Tests') {
             environment {
                 PACKAGE       = 'framenode-runtime'
+                RUSTFLAGS     = '-Dwarnings'
                 RUNTIME_DIR   = 'runtime'
                 RUSTC_VERSION = "${rustcVersion}"
             }
@@ -61,9 +64,10 @@ pipeline {
                                     sccache -s
                                     time mv /app/target/release/framenode .
                                     time wasm-opt -Os -o ./framenode_runtime.compact.wasm /app/target/release/wbuild/framenode-runtime/framenode_runtime.compact.wasm
+                                    subwasm --json info framenode_runtime.compact.wasm > ${wasmReportFile}
                                 """
                                 archiveArtifacts artifacts:
-                                    'framenode_runtime.compact.wasm'
+                                    "framenode_runtime.compact.wasm, ${wasmReportFile}"
                             }
                         } else {
                             docker.image(envImageName + ':dev').inside() {

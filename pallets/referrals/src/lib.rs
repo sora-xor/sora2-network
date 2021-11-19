@@ -30,14 +30,21 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
-#[cfg(test)]
-mod mock;
+#[cfg(feature = "runtime-benchmarks")]
+mod benchmarking;
 
-#[cfg(test)]
-mod tests;
+pub mod weights;
 
+use common::Balance;
+use frame_support::dispatch::Weight;
 use frame_support::ensure;
 use frame_support::sp_runtime::DispatchError;
+
+pub trait WeightInfo {
+    fn reserve() -> Weight;
+    fn unreserve() -> Weight;
+    fn set_referrer() -> Weight;
+}
 
 impl<T: Config> Pallet<T> {
     pub fn set_referrer_to(
@@ -56,17 +63,38 @@ impl<T: Config> Pallet<T> {
             Ok(())
         })
     }
+
+    pub fn can_set_referrer(referral: &T::AccountId) -> bool {
+        !Referrers::<T>::contains_key(referral)
+    }
+
+    pub fn withdraw_fee(referrer: &T::AccountId, fee: Balance) -> Result<(), DispatchError> {
+        ReferrerBalances::<T>::mutate(referrer, |b| {
+            let balance = b
+                .unwrap_or(0)
+                .checked_sub(fee)
+                .ok_or(DispatchError::from(Error::<T>::ReferrerInsufficientBalance))?;
+            *b = Some(balance);
+            Ok(())
+        })
+    }
 }
 
 pub use pallet::*;
 
 #[frame_support::pallet]
 pub mod pallet {
+    use common::{Balance, XOR};
     use frame_support::pallet_prelude::*;
     use frame_system::pallet_prelude::*;
 
+    use crate::WeightInfo;
+
     #[pallet::config]
-    pub trait Config: frame_system::Config {}
+    pub trait Config: frame_system::Config + assets::Config {
+        type ReservesAcc: Get<Self::AccountId>;
+        type WeightInfo: WeightInfo;
+    }
 
     #[pallet::pallet]
     #[pallet::generate_store(pub(super) trait Store)]
@@ -76,7 +104,73 @@ pub mod pallet {
     impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {}
 
     #[pallet::call]
-    impl<T: Config> Pallet<T> {}
+    impl<T: Config> Pallet<T> {
+        /// Reserves the balance from the account for a special balance that can be used to pay referrals' fees
+        #[pallet::weight(<T as Config>::WeightInfo::reserve())]
+        pub fn reserve(origin: OriginFor<T>, balance: Balance) -> DispatchResultWithPostInfo {
+            let referrer = ensure_signed(origin)?;
+
+            if balance == 0 {
+                return Ok(().into());
+            }
+
+            common::with_transaction(|| {
+                assets::Module::<T>::transfer_from(
+                    &XOR.into(),
+                    &referrer,
+                    &T::ReservesAcc::get(),
+                    balance,
+                )?;
+
+                ReferrerBalances::<T>::mutate(referrer, |b| {
+                    *b = Some(b.unwrap_or(0).saturating_add(balance))
+                });
+
+                Ok(().into())
+            })
+        }
+
+        /// Unreserves the balance and transfers it back to the account
+        #[pallet::weight(<T as Config>::WeightInfo::unreserve())]
+        pub fn unreserve(origin: OriginFor<T>, balance: Balance) -> DispatchResultWithPostInfo {
+            let referrer = ensure_signed(origin)?;
+
+            if balance == 0 {
+                return Ok(().into());
+            }
+
+            common::with_transaction(|| {
+                ReferrerBalances::<T>::mutate(&referrer, |b| {
+                    if let Some(balance) = b.unwrap_or(0).checked_sub(balance) {
+                        *b = (balance != 0).then(|| balance);
+                        Ok(())
+                    } else {
+                        Err(Error::<T>::ReferrerInsufficientBalance)
+                    }
+                })?;
+
+                assets::Module::<T>::transfer_from(
+                    &XOR.into(),
+                    &T::ReservesAcc::get(),
+                    &referrer,
+                    balance,
+                )?;
+
+                Ok(().into())
+            })
+        }
+
+        /// Sets the referrer for the account
+        #[pallet::weight(<T as Config>::WeightInfo::set_referrer())]
+        pub fn set_referrer(
+            origin: OriginFor<T>,
+            referrer: T::AccountId,
+        ) -> DispatchResultWithPostInfo {
+            let referree = ensure_signed(origin)?;
+            Self::set_referrer_to(&referree, referrer)?;
+            Ok(().into())
+        }
+    }
 
     #[pallet::error]
     pub enum Error<T> {
@@ -84,11 +178,17 @@ pub mod pallet {
         AlreadyHasReferrer,
         /// Increment account reference error.
         IncRefError,
+        /// Referrer doesn't have enough of reserved balance
+        ReferrerInsufficientBalance,
     }
 
     #[pallet::storage]
     #[pallet::getter(fn referrer_account)]
     pub type Referrers<T: Config> = StorageMap<_, Blake2_128Concat, T::AccountId, T::AccountId>;
+
+    #[pallet::storage]
+    #[pallet::getter(fn referrer_balance)]
+    pub type ReferrerBalances<T: Config> = StorageMap<_, Blake2_128Concat, T::AccountId, Balance>;
 
     #[pallet::genesis_config]
     pub struct GenesisConfig<T: Config> {

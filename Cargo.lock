@@ -111,9 +111,9 @@ dependencies = [
 
 [[package]]
 name = "anyhow"
-version = "1.0.45"
+version = "1.0.47"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ee10e43ae4a853c0a3591d4e2ada1719e553be18199d9da9d4a83f5927c2f5c7"
+checksum = "38d9ff5d688f1c13395289f67db01d4826b46dd694e7580accdc3e8430f2d98e"
 
 [[package]]
 name = "approx"
@@ -1766,6 +1766,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "env_logger"
+version = "0.9.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0b2cf0344971ee6c64c31be0d530793fba457d322dfec2810c453d0ef228f9c3"
+dependencies = [
+ "atty",
+ "humantime 2.1.0",
+ "log",
+ "regex",
+ "termcolor",
+]
+
+[[package]]
 name = "environmental"
 version = "1.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1859,7 +1872,7 @@ dependencies = [
  "orml-tokens",
  "orml-traits",
  "pallet-balances",
- "pallet-multisig 3.2.0",
+ "pallet-multisig 3.2.3",
  "pallet-scheduler",
  "pallet-sudo",
  "pallet-timestamp",
@@ -2073,15 +2086,17 @@ checksum = "4443176a9f2c162692bd3d352d745ef9413eec5782a80d8fd6f8a1ac692a07f7"
 
 [[package]]
 name = "farming"
-version = "1.0.0"
+version = "1.2.0"
 dependencies = [
  "assets",
  "common",
  "dex-manager",
+ "env_logger 0.9.0",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
  "hex-literal",
+ "log",
  "mock-liquidity-source",
  "multicollateral-bonding-curve-pool",
  "orml-currencies",
@@ -2471,7 +2486,7 @@ dependencies = [
  "nix",
  "pallet-mmr-primitives",
  "pallet-mmr-rpc",
- "pallet-multisig 3.2.0",
+ "pallet-multisig 3.2.3",
  "pallet-sudo",
  "pallet-transaction-payment-rpc",
  "parity-scale-codec",
@@ -2535,7 +2550,7 @@ dependencies = [
  "framenode-runtime",
  "hex-literal",
  "iroha-migration",
- "pallet-multisig 3.2.0",
+ "pallet-multisig 3.2.3",
  "parity-scale-codec",
  "permissions",
  "rewards",
@@ -2568,6 +2583,7 @@ dependencies = [
  "dex-manager-runtime-api",
  "dex-runtime-api",
  "dispatch",
+ "env_logger 0.9.0",
  "eth-app",
  "eth-bridge",
  "eth-bridge-runtime-api",
@@ -2609,7 +2625,7 @@ dependencies = [
  "pallet-membership",
  "pallet-mmr",
  "pallet-mmr-primitives",
- "pallet-multisig 3.2.0",
+ "pallet-multisig 3.2.3",
  "pallet-multisig 4.0.0-dev",
  "pallet-offences",
  "pallet-randomness-collective-flip",
@@ -2629,7 +2645,7 @@ dependencies = [
  "pswap-distribution",
  "pswap-distribution-benchmarking",
  "pswap-distribution-runtime-api",
- "referral-system",
+ "referrals",
  "rewards",
  "rewards-runtime-api",
  "scale-info",
@@ -3417,7 +3433,7 @@ dependencies = [
  "parity-scale-codec",
  "parity-util-mem",
  "permissions",
- "referral-system",
+ "referrals",
  "scale-info",
  "serde",
  "sha3 0.9.1",
@@ -5441,8 +5457,8 @@ dependencies = [
 
 [[package]]
 name = "pallet-multisig"
-version = "3.2.0"
-source = "git+https://github.com/soramitsu/sora2-frame-pallets.git?branch=polkadot-v0.9.13#25c838d3cb90056796ef7057df8d31a4f47fc493"
+version = "3.2.3"
+source = "git+https://github.com/soramitsu/sora2-frame-pallets.git?branch=polkadot-v0.9.13#0e73299d55c508dda49086c64cff09ef9bee20ad"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -5540,7 +5556,7 @@ dependencies = [
 [[package]]
 name = "pallet-staking"
 version = "3.0.0"
-source = "git+https://github.com/soramitsu/sora2-frame-pallets.git?branch=polkadot-v0.9.13#25c838d3cb90056796ef7057df8d31a4f47fc493"
+source = "git+https://github.com/soramitsu/sora2-frame-pallets.git?branch=polkadot-v0.9.13#0e73299d55c508dda49086c64cff09ef9bee20ad"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -6714,19 +6730,20 @@ dependencies = [
 ]
 
 [[package]]
-name = "referral-system"
-version = "0.1.0"
+name = "referrals"
+version = "1.0.0"
 dependencies = [
+ "assets",
  "common",
+ "frame-benchmarking",
  "frame-support",
  "frame-system",
- "pallet-balances",
+ "hex-literal",
+ "orml-traits",
  "parity-scale-codec",
  "scale-info",
  "serde",
- "sp-core",
- "sp-io",
- "sp-runtime",
+ "sp-std",
 ]
 
 [[package]]
@@ -9071,9 +9088,9 @@ checksum = "6e63cff320ae2c57904679ba7cb63280a3dc4613885beafb148ee7bf9aa9042d"
 
 [[package]]
 name = "ss58-registry"
-version = "1.6.0"
+version = "1.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dd3280d191d0d8f29c426b85cf6a3778bea71aef8ccd94034c6effac809b8b9b"
+checksum = "78abb01d308934b82e34e9cf1f45846d31539246501745b129539176f4f3368d"
 dependencies = [
  "Inflector",
  "proc-macro2",
@@ -9953,7 +9970,7 @@ checksum = "5fecdca9a5291cc2b8dcf7dc02453fee791a280f3743cb0905f8822ae463b3fe"
 
 [[package]]
 name = "vested-rewards"
-version = "1.1.0"
+version = "1.2.0"
 dependencies = [
  "assets",
  "common",
@@ -10124,6 +10141,13 @@ checksum = "6006f79628dfeb96a86d4db51fbf1344cd7fd8408f06fc9aa3c84913a4789688"
 dependencies = [
  "proc-macro2",
  "quote",
+]
+
+[[package]]
+name = "wasm-builder"
+version = "0.1.0"
+dependencies = [
+ "substrate-wasm-builder",
 ]
 
 [[package]]
@@ -10512,7 +10536,7 @@ dependencies = [
  "orml-tokens",
  "orml-traits",
  "pallet-balances",
- "pallet-multisig 3.2.0",
+ "pallet-multisig 3.2.3",
  "pallet-scheduler",
  "pallet-session",
  "pallet-staking",
@@ -10520,7 +10544,7 @@ dependencies = [
  "pallet-transaction-payment",
  "parity-scale-codec",
  "permissions",
- "referral-system",
+ "referrals",
  "scale-info",
  "serde",
  "sp-arithmetic",

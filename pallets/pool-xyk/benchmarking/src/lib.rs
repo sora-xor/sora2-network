@@ -34,7 +34,7 @@
 
 use codec::Decode;
 use common::prelude::Balance;
-use common::{balance, AssetName, AssetSymbol, DEXId, DOT, XOR};
+use common::{balance, AssetName, AssetSymbol, DEXId, DEFAULT_BALANCE_PRECISION, DOT, XOR};
 use frame_system::RawOrigin;
 use hex_literal::hex;
 use sp_std::prelude::*;
@@ -83,18 +83,22 @@ fn setup_benchmark_assets_only<T: Config>() -> Result<(), &'static str> {
         XOR.into(),
         AssetSymbol(b"XOR".to_vec()),
         AssetName(b"SORA".to_vec()),
-        18,
+        DEFAULT_BALANCE_PRECISION,
         Balance::from(0u32),
         true,
+        None,
+        None,
     );
     let _ = Assets::<T>::register_asset_id(
         owner.clone(),
         DOT.into(),
         AssetSymbol(b"DOT".to_vec()),
         AssetName(b"Polkadot".to_vec()),
-        18,
+        DEFAULT_BALANCE_PRECISION,
         Balance::from(0u32),
         true,
+        None,
+        None,
     )
     .unwrap();
 

@@ -339,7 +339,7 @@ members = [
     "pallets/pool-xyk",
     "pallets/rewards",
     "pallets/xor-fee",
-    "pallets/referral-system",
+    "pallets/referrals",
     "pallets/eth-bridge",
     "pallets/pswap-distribution",
     "pallets/multicollateral-bonding-curve-pool",
@@ -356,6 +356,7 @@ members = [
     "primitives/testutils",
     "node/",
     "utils/parse",
+    "utils/wasm-builder",
 ]
 
 resolver = "2"

@@ -29,7 +29,7 @@ traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library
 assets = { path = "../assets", default-features = false }
 common = { path = "../../common", default-features = false }
 liquidity-proxy = { path = "../liquidity-proxy", default-features = false }
-referral-system = { path = "../referral-system", default-features = false }
+referrals = { path = "../referrals", default-features = false }
 eth-bridge = { path = "../eth-bridge", default-features = false }
 
 [dev-dependencies]
@@ -49,7 +49,7 @@ common = { path = "../../common", features = ["test"] }
 dex-manager = { path = "../dex-manager" }
 mock-liquidity-source = { path = "../mock-liquidity-source" }
 permissions = { path = "../permissions" }
-referral-system = { path = "../referral-system" }
+referrals = { path = "../referrals" }
 technical = { path = "../technical" }
 trading-pair = { path = "../trading-pair" }
 
@@ -62,6 +62,7 @@ std = [
     "frame-support/std",
     "frame-system/std",
     "pallet-session/std",
+    "pallet-staking/std",
     "pallet-transaction-payment/std",
     "serde",
     "sp-arithmetic/std",

@@ -131,6 +131,7 @@ impl assets::Config for Test {
     type Currency = currencies::Module<Test>;
     type GetTeamReservesAccountId = GetTeamReservesAccountId;
     type WeightInfo = ();
+    type GetTotalBalance = ();
 }
 
 impl dispatch::Config for Test {
@@ -190,6 +191,8 @@ pub fn new_tester() -> sp_io::TestExternalities {
             18,
             0,
             true,
+            None,
+            None,
         )],
     }
     .assimilate_storage(&mut storage)

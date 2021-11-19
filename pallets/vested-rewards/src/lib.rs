@@ -59,8 +59,10 @@ mod tests;
 
 pub const TECH_ACCOUNT_PREFIX: &[u8] = b"vested-rewards";
 pub const TECH_ACCOUNT_MARKET_MAKERS: &[u8] = b"market-makers";
+pub const TECH_ACCOUNT_FARMING: &[u8] = b"farming";
 pub const MARKET_MAKER_ELIGIBILITY_TX_COUNT: u32 = 500;
 pub const SINGLE_MARKET_MAKER_DISTRIBUTION_AMOUNT: Balance = balance!(20000000);
+pub const FARMING_REWARDS: Balance = balance!(3500000000);
 pub const MARKET_MAKER_REWARDS_DISTRIBUTION_FREQUENCY: u32 = 432000;
 
 type Assets<T> = assets::Pallet<T>;
@@ -95,6 +97,7 @@ pub struct MarketMakerInfo {
 pub trait WeightInfo {
     fn claim_incentives() -> Weight;
     fn on_initialize(_n: u32) -> Weight;
+    fn set_asset_pair() -> Weight;
 }
 
 impl<T: Config> Pallet<T> {
@@ -129,7 +132,7 @@ impl<T: Config> Pallet<T> {
             } else {
                 let mut total_actual_claimed: Balance = 0;
                 for (&reward_reason, amount) in info.rewards.iter_mut() {
-                    let claimable = amount.clone().min(info.limit);
+                    let claimable = (*amount).min(info.limit);
                     let actual_claimed =
                         Self::claim_reward_by_reason(account_id, reward_reason, claimable)
                             .unwrap_or(balance!(0));
@@ -174,7 +177,7 @@ impl<T: Config> Pallet<T> {
     ) -> Result<Balance, DispatchError> {
         let source_account = match reason {
             RewardReason::BuyOnBondingCurve => T::GetBondingCurveRewardsAccountId::get(),
-            // RewardReason::LiquidityProvisionFarming => T::GetFarmingRewardsAccountId::get(), // TODO: handle with farming rewards
+            RewardReason::LiquidityProvisionFarming => T::GetFarmingRewardsAccountId::get(),
             RewardReason::MarketMakerVolume => T::GetMarketMakerRewardsAccountId::get(),
             _ => fail!(Error::<T>::UnhandledRewardType),
         };
@@ -252,15 +255,19 @@ impl<T: Config> OnPswapBurned for Pallet<T> {
     }
 }
 
-impl<T: Config> VestedRewardsPallet<T::AccountId> for Pallet<T> {
+impl<T: Config> VestedRewardsPallet<T::AccountId, T::AssetId> for Pallet<T> {
     /// Check if volume is eligible to be counted for market maker rewards and add it to registry.
     /// `count` is used as a multiplier if multiple times same volume is transferred inside transaction.
     fn update_market_maker_records(
         account_id: &T::AccountId,
         xor_volume: Balance,
         count: u32,
+        from_asset_id: &T::AssetId,
+        to_asset_id: &T::AssetId,
     ) -> DispatchResult {
-        if xor_volume >= balance!(1) {
+        if MarketMakingPairs::<T>::contains_key(from_asset_id, to_asset_id)
+            && xor_volume >= balance!(1)
+        {
             MarketMakersRegistry::<T>::mutate(account_id, |info| {
                 info.count = info.count.saturating_add(count);
                 info.volume = info
@@ -306,7 +313,7 @@ pub mod pallet {
         type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
         /// Accounts holding PSWAP dedicated for rewards.
         type GetMarketMakerRewardsAccountId: Get<Self::AccountId>;
-        // type GetFarmingRewardsAccountId: Get<Self::AccountId>; // TODO: implement with farming rewards
+        type GetFarmingRewardsAccountId: Get<Self::AccountId>;
         type GetBondingCurveRewardsAccountId: Get<Self::AccountId>;
         /// Weight information for extrinsics in this pallet.
         type WeightInfo: WeightInfo;
@@ -354,6 +361,37 @@ pub mod pallet {
             let weight = crate::migration::inject_market_makers_first_month_rewards::<T>(snapshot)?;
             Ok(Some(weight).into())
         }
+
+        /// Allow/disallow a market making pair.
+        #[pallet::weight(<T as Config>::WeightInfo::set_asset_pair())]
+        #[transactional]
+        pub fn set_asset_pair(
+            origin: OriginFor<T>,
+            from_asset_id: T::AssetId,
+            to_asset_id: T::AssetId,
+            market_making_rewards_allowed: bool,
+        ) -> DispatchResultWithPostInfo {
+            ensure_root(origin)?;
+            let error = if market_making_rewards_allowed {
+                Error::<T>::MarketMakingPairAlreadyAllowed
+            } else {
+                Error::<T>::MarketMakingPairAlreadyDisallowed
+            };
+
+            ensure!(
+                MarketMakingPairs::<T>::contains_key(&from_asset_id, &to_asset_id)
+                    != market_making_rewards_allowed,
+                error
+            );
+
+            if market_making_rewards_allowed {
+                MarketMakingPairs::<T>::insert(from_asset_id, to_asset_id, ());
+            } else {
+                MarketMakingPairs::<T>::remove(from_asset_id, to_asset_id);
+            }
+
+            Ok(().into())
+        }
     }
 
     #[pallet::error]
@@ -372,6 +410,10 @@ pub mod pallet {
         CantSubtractSnapshot,
         /// Failed to perform reward calculation.
         CantCalculateReward,
+        /// The market making pair already allowed.
+        MarketMakingPairAlreadyAllowed,
+        /// The market making pair is disallowed.
+        MarketMakingPairAlreadyDisallowed,
     }
 
     #[pallet::event]
@@ -407,4 +449,17 @@ pub mod pallet {
     #[pallet::getter(fn market_makers_registry)]
     pub type MarketMakersRegistry<T: Config> =
         StorageMap<_, Blake2_128Concat, T::AccountId, MarketMakerInfo, ValueQuery>;
+
+    /// Market making pairs storage.
+    #[pallet::storage]
+    #[pallet::getter(fn market_making_pairs)]
+    pub type MarketMakingPairs<T: Config> = StorageDoubleMap<
+        _,
+        Blake2_128Concat,
+        T::AssetId,
+        Blake2_128Concat,
+        T::AssetId,
+        (),
+        ValueQuery,
+    >;
 }

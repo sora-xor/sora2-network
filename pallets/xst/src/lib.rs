@@ -52,7 +52,7 @@ use common::prelude::{
 };
 use common::{
     balance, fixed, fixed_wrapper, DEXId, DexIdOf, GetMarketInfo, LiquiditySource,
-    LiquiditySourceFilter, LiquiditySourceType, ManagementMode, RewardReason, DAI, XSTUSD,
+    LiquiditySourceFilter, LiquiditySourceType, ManagementMode, RewardReason, DAI, XOR, XSTUSD,
 };
 use frame_support::traits::Get;
 use frame_support::weights::Weight;
@@ -228,7 +228,6 @@ pub mod pallet {
         IncRefError,
     }
 
-    // TODO: should be "created" in migration to avoid incref error
     // TODO: better by replaced with Get<>
     /// Technical account used to store collateral tokens.
     #[pallet::storage]
@@ -284,6 +283,7 @@ pub mod pallet {
     #[pallet::genesis_build]
     impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
         fn build(&self) {
+            PermissionedTechAccount::<T>::put(&self.tech_account_id);
             ReferenceAssetId::<T>::put(&self.reference_asset_id);
             self.initial_synthetic_assets
                 .iter()
@@ -342,7 +342,7 @@ impl<T: Config> Pallet<T> {
         }
     }
 
-    /// Buys the main asset.
+    /// Buys the main asset (e.g., XOR).
     /// Calculates and returns the current buy price, assuming that input is the synthetic asset and output is the main asset.
     pub fn buy_price(
         main_asset_id: &T::AssetId,
@@ -386,7 +386,7 @@ impl<T: Config> Pallet<T> {
     ///   2.1 Values are compared via getting prices for both main and collateral tokens with regard to another token
     ///       called reference token which is set for particular pair. This should be e.g. stablecoin DAI.
     ///   2.2 Reference price for base token is taken as 80% of current bonding curve buy price.
-    ///   2.3 Reference price for collateral token is taken as current market price, i.e. price for 1 token on liquidity proxy.
+    ///   2.3 Reference price for collateral token is taken as current market price, i.e., price for 1 token on liquidity proxy.
     /// 3. Given known reserves for main and collateral, output collateral amount is calculated by applying x*y=k model resulting
     ///    in curve-like dependency.
     pub fn sell_price(
@@ -395,7 +395,7 @@ impl<T: Config> Pallet<T> {
         quantity: QuoteAmount<Balance>,
     ) -> Result<Fixed, DispatchError> {
         // Get reference prices for base and synthetic to understand token value.
-        let main_price_per_reference_unit: FixedWrapper =
+        let main_asset_price_per_reference_unit: FixedWrapper =
             Self::reference_price(main_asset_id)?.into();
 
         match quantity {
@@ -403,7 +403,7 @@ impl<T: Config> Pallet<T> {
             QuoteAmount::WithDesiredInput {
                 desired_amount_in: quantity_main,
             } => {
-                let output_synthetic = quantity_main * main_price_per_reference_unit;
+                let output_synthetic = quantity_main * main_asset_price_per_reference_unit;
                 let output_synthetic_unwrapped = output_synthetic
                     .get()
                     .map_err(|_| Error::<T>::PriceCalculationFailed)?;
@@ -413,7 +413,7 @@ impl<T: Config> Pallet<T> {
             QuoteAmount::WithDesiredOutput {
                 desired_amount_out: quantity_synthetic,
             } => {
-                let output_main = quantity_synthetic / main_price_per_reference_unit;
+                let output_main = quantity_synthetic / main_asset_price_per_reference_unit;
                 output_main
                     .get()
                     .map_err(|_| Error::<T>::PriceCalculationFailed.into())
@@ -603,13 +603,22 @@ impl<T: Config> Pallet<T> {
     /// Example use: understand actual value of two tokens in terms of USD.
     fn reference_price(asset_id: &T::AssetId) -> Result<Balance, DispatchError> {
         let reference_asset_id = ReferenceAssetId::<T>::get();
-        let price = if asset_id == &reference_asset_id {
+        // XSTUSD is a special case because it is equal to the reference asset, DAI
+        let price = if asset_id == &reference_asset_id || asset_id == &XSTUSD.into() {
             balance!(1)
         } else {
             <T as pallet::Config>::PriceToolsPallet::get_average_price(
                 asset_id,
                 &reference_asset_id,
-            )?
+            )
+            .map(|avg| {
+                // We don't let the price of XOR w.r.t. DAI go under $100, to prevent manipulation attacks
+                if asset_id == &XOR.into() && &reference_asset_id == &DAI.into() {
+                    avg.max(balance!(100))
+                } else {
+                    avg
+                }
+            })?
         };
         Ok(price)
     }

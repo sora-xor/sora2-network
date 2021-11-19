@@ -34,6 +34,7 @@ use frame_support::dispatch::DispatchError;
 use orml_traits::parameter_type_with_key;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
+use sp_runtime::AccountId32;
 use sp_std::convert::TryFrom;
 
 #[derive(
@@ -129,4 +130,16 @@ parameter_type_with_key! {
     pub ExistentialDeposits: |_currency_id: AssetId32<PredefinedAssetId>| -> Balance {
         0
     };
+}
+
+pub fn alice() -> AccountId32 {
+    AccountId32::from([1; 32])
+}
+
+pub fn bob() -> AccountId32 {
+    AccountId32::from([2; 32])
+}
+
+pub fn charlie() -> AccountId32 {
+    AccountId32::from([3; 32])
 }

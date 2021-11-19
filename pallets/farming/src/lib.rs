@@ -62,7 +62,6 @@ pub trait WeightInfo {
     fn refresh_pool(a: u32) -> Weight;
     fn prepare_accounts_for_vesting(a: u32, b: u32) -> Weight;
     fn vest_account_rewards(a: u32) -> Weight;
-    fn save_data(a: u32, b: u32) -> Weight;
 }
 
 impl<T: Config> OnPoolCreated for Pallet<T> {
@@ -111,7 +110,10 @@ impl<T: Config> Pallet<T> {
             let block = if let Some(farmer) = old_farmers.iter().find(|f| f.account == account) {
                 farmer.block
             } else {
-                now
+                // Pools are refreshed at different blocks for performance reasons.
+                // However, reward calculation should not be affected.
+                // 1205 becomes 1200, given REFRESH_FREQUENCY = 1200
+                now - (now % T::REFRESH_FREQUENCY)
             };
 
             new_farmers.push(PoolFarmer {
@@ -155,7 +157,6 @@ impl<T: Config> Pallet<T> {
         }
     }
 
-    #[allow(unused)]
     fn vest(now: T::BlockNumber) -> Weight {
         let mut accounts = BTreeMap::new();
         let function_weight: Weight = Self::prepare_accounts_for_vesting(now, &mut accounts);
@@ -166,7 +167,6 @@ impl<T: Config> Pallet<T> {
         function_weight
     }
 
-    #[allow(unused)]
     fn prepare_accounts_for_vesting(
         now: T::BlockNumber,
         accounts: &mut BTreeMap<T::AccountId, FixedWrapper>,
@@ -183,7 +183,24 @@ impl<T: Config> Pallet<T> {
         WeightInfoOf::<T>::prepare_accounts_for_vesting(pool_count, farmer_count)
     }
 
-    #[allow(unused)]
+    fn get_farmer_weight_amplified_by_time(
+        farmer_weight: u128,
+        farmer_block: T::BlockNumber,
+        now: T::BlockNumber,
+    ) -> FixedWrapper {
+        // Ti
+        let farmer_farming_time: u32 = (now - farmer_block).unique_saturated_into();
+        let farmer_farming_time = FixedWrapper::from(balance!(farmer_farming_time));
+
+        // Vi(t)
+        let now_u128: u128 = now.unique_saturated_into();
+        let coeff = (FixedWrapper::from(balance!(1))
+            + farmer_farming_time.clone() / FixedWrapper::from(balance!(now_u128)))
+        .pow(T::VESTING_COEFF);
+
+        coeff * farmer_weight
+    }
+
     fn prepare_pool_accounts_for_vesting(
         farmers: Vec<PoolFarmer<T>>,
         now: T::BlockNumber,
@@ -193,18 +210,10 @@ impl<T: Config> Pallet<T> {
             return;
         }
 
-        let now_u128: u128 = now.unique_saturated_into();
         for farmer in farmers {
-            // Ti
-            let farmer_farming_time: u32 = (now - farmer.block).unique_saturated_into();
-            let farmer_farming_time = FixedWrapper::from(balance!(farmer_farming_time));
+            let weight =
+                Self::get_farmer_weight_amplified_by_time(farmer.weight, farmer.block, now);
 
-            // Vi(t)
-            let coeff = (FixedWrapper::from(balance!(1))
-                + farmer_farming_time / FixedWrapper::from(balance!(now_u128)))
-            .pow(T::VESTING_COEFF);
-
-            let weight = coeff * farmer.weight;
             match accounts.entry(farmer.account) {
                 Entry::Vacant(entry) => {
                     entry.insert(weight);
@@ -216,12 +225,12 @@ impl<T: Config> Pallet<T> {
         }
     }
 
-    #[allow(unused)]
-    fn vest_account_rewards(accounts: BTreeMap<T::AccountId, FixedWrapper>) {
-        let mut total_weight = FixedWrapper::from(0);
-        for weight in accounts.values() {
-            total_weight = total_weight + weight.clone();
-        }
+    fn prepare_account_rewards(
+        accounts: BTreeMap<T::AccountId, FixedWrapper>,
+    ) -> BTreeMap<T::AccountId, u128> {
+        let total_weight = accounts
+            .values()
+            .fold(FixedWrapper::from(0), |a, b| a + b.clone());
 
         let reward = {
             let reward_per_day = FixedWrapper::from(T::PSWAP_PER_DAY);
@@ -232,31 +241,26 @@ impl<T: Config> Pallet<T> {
             reward_per_day * reward_vesting_part
         };
 
-        for (account, weight) in accounts {
-            let account_reward = reward.clone() * weight / total_weight.clone();
-            let account_reward = account_reward.try_into_balance().unwrap_or(0);
+        accounts
+            .into_iter()
+            .map(|(account, weight)| {
+                let account_reward = reward.clone() * weight / total_weight.clone();
+                let account_reward = account_reward.try_into_balance().unwrap_or(0);
+                (account, account_reward)
+            })
+            .collect()
+    }
+
+    fn vest_account_rewards(accounts: BTreeMap<T::AccountId, FixedWrapper>) {
+        let rewards = Self::prepare_account_rewards(accounts);
+
+        for (account, reward) in rewards {
             let _ = vested_rewards::Pallet::<T>::add_pending_reward(
                 &account,
                 RewardReason::LiquidityProvisionFarming,
-                account_reward,
+                reward,
             );
         }
-    }
-
-    fn save_data(now: T::BlockNumber) -> Weight {
-        let mut values = Vec::new();
-        let mut pool_count = 0;
-        let mut farmer_count = 0;
-        for (pool, farmers) in PoolFarmers::<T>::iter() {
-            pool_count += 1;
-            farmer_count += farmers.len() as u32;
-
-            values.push((pool, farmers));
-        }
-
-        SavedValues::<T>::insert(now, values);
-
-        WeightInfoOf::<T>::save_data(pool_count, farmer_count)
     }
 }
 
@@ -268,13 +272,17 @@ pub mod pallet {
     use assets::AssetIdOf;
     use frame_support::pallet_prelude::*;
     use frame_support::traits::schedule::Anon;
+    use frame_support::traits::CrateVersion;
     use frame_system::ensure_root;
     use frame_system::pallet_prelude::OriginFor;
     use sp_runtime::traits::Zero;
+    use sp_runtime::AccountId32;
 
     #[pallet::config]
     pub trait Config:
         frame_system::Config
+        // pallet::config doesn't let to specify associated type constraints
+        + frame_system::Config<AccountId = AccountId32>
         + assets::Config
         + permissions::Config
         + technical::Config
@@ -310,24 +318,21 @@ pub mod pallet {
             let mut total_weight = Self::refresh_pools(now);
 
             if (now % T::VESTING_FREQUENCY).is_zero() {
-                // TBD: Remove for the next runtime upgrade
-                let weight = Self::save_data(now);
+                let weight = Self::vest(now);
                 total_weight = total_weight.saturating_add(weight);
-
-                // TBD: Uncomment for the next runtime upgrade
-                // let weight = Self::vest(now);
-                // total_weight = total_weight.saturating_add(weight);
             }
 
             total_weight
         }
 
         fn on_runtime_upgrade() -> Weight {
-            // match Self::storage_version() {
-            //     Some(PalletVersion { major: 0, .. }) | None => migrations::v1_1::migrate::<T>(),
-            //     _ => 0,
-            // }
-            0
+            match Self::crate_version() {
+                CrateVersion { major: 0, .. } => migrations::v1_1::migrate::<T>(),
+                CrateVersion {
+                    major: 1, minor: 0, ..
+                } => migrations::v1_2::migrate::<T>(),
+                _ => 0,
+            }
         }
     }
 
@@ -356,15 +361,6 @@ pub mod pallet {
     #[pallet::storage]
     pub type PoolFarmers<T: Config> =
         StorageMap<_, Identity, T::AccountId, Vec<PoolFarmer<T>>, ValueQuery>;
-
-    #[pallet::storage]
-    pub type SavedValues<T: Config> = StorageMap<
-        _,
-        Identity,
-        T::BlockNumber,
-        Vec<(T::AccountId, Vec<PoolFarmer<T>>)>,
-        ValueQuery,
-    >;
 }
 
 #[derive(Debug, Encode, Decode, scale_info::TypeInfo)]

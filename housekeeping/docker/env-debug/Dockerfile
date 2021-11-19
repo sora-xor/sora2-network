@@ -7,20 +7,20 @@ ENV CARGO_BUILD_DEP_INFO_BASEDIR="."
 # Install dependencies
 RUN apt-get update && \
     apt-get install --no-install-recommends -y \
-        ca-certificates apt-transport-https gnupg \
-        libssl-dev pkg-config \
-        curl \
-        git binaryen \
-        software-properties-common \
-        llvm clang && \
+    ca-certificates apt-transport-https gnupg \
+    libssl-dev pkg-config \
+    curl \
+    git binaryen \
+    software-properties-common \
+    llvm clang && \
     rm -rf /var/lib/apt/lists/*
 # Install docker
 RUN curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add -
 RUN add-apt-repository \
-        "deb https://download.docker.com/linux/debian $(lsb_release -cs) stable" && \
+    "deb https://download.docker.com/linux/debian $(lsb_release -cs) stable" && \
     apt-get update && \
     apt-get install --no-install-recommends -y \
-        docker-ce docker-ce-cli containerd.io && \
+    docker-ce docker-ce-cli containerd.io && \
     rm -rf /var/lib/apt/lists/*
 # Install rust
 ENV RUST_VERSION=nightly-2021-03-11

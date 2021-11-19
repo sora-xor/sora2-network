@@ -56,7 +56,7 @@ price-tools = { path = "../pallets/price-tools", default-features = false }
 pswap-distribution = { path = "../pallets/pswap-distribution", default-features = false }
 pswap-distribution-benchmarking = { path = "../pallets/pswap-distribution/benchmarking", default-features = false, optional = true }
 pswap-distribution-runtime-api = { path = "../pallets/pswap-distribution/runtime-api", default-features = false }
-referral-system = { path = "../pallets/referral-system", default-features = false }
+referrals = { path = "../pallets/referrals", default-features = false}
 rewards = { path = "../pallets/rewards", default-features = false }
 rewards-runtime-api = { path = "../pallets/rewards/runtime-api", default-features = false }
 technical = { path = "../pallets/technical", default-features = false }
@@ -129,10 +129,14 @@ traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library
 snowbridge-core = { path = "../primitives/core", default-features = false }
 
 [dev-dependencies]
+env_logger = "0.9.0"
+
+common = { path = "../common", features = ["test"] }
 framenode-chain-spec = { path = "../node/chain_spec", features = ["test"] }
 
 [features]
 default = ["std"]
+test = []
 
 std = [
     "assets-runtime-api/std",
@@ -197,7 +201,7 @@ std = [
     "price-tools/std",
     "pswap-distribution-runtime-api/std",
     "pswap-distribution/std",
-    "referral-system/std",
+    "referrals/std",
     "rewards-runtime-api/std",
     "rewards/std",
     "serde",
@@ -222,7 +226,10 @@ std = [
     "xst/std",
 ]
 
-private-net = ["faucet"]
+private-net = [
+    "faucet",
+    "farming/private-net"
+]
 
 runtime-benchmarks = [
     "assets/runtime-benchmarks",
@@ -250,6 +257,7 @@ runtime-benchmarks = [
     "pswap-distribution-benchmarking/runtime-benchmarks",
     "pswap-distribution/runtime-benchmarks",
     "pswap-distribution/runtime-benchmarks",
+    "referrals/runtime-benchmarks",
     "rewards/runtime-benchmarks",
     "technical/runtime-benchmarks",
     "trading-pair/runtime-benchmarks",

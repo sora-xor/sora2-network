@@ -44,7 +44,7 @@ use sp_io::hashing::blake2_256;
 use sp_std::prelude::*;
 
 use common::prelude::SwapAmount;
-use common::{AssetName, AssetSymbol, DEXId, LiquiditySource, XOR};
+use common::{AssetName, AssetSymbol, DEXId, LiquiditySource, DEFAULT_BALANCE_PRECISION, XOR};
 
 use crate::Pallet as PriceTools;
 use assets::Pallet as Assets;
@@ -78,9 +78,11 @@ fn prepare_secondary_market<T: Config>(n: u32) {
             asset.clone(),
             AssetSymbol(b"TST".to_vec()),
             AssetName(b"TST".to_vec()),
-            18,
+            DEFAULT_BALANCE_PRECISION,
             balance!(200),
             true,
+            None,
+            None,
         )
         .unwrap();
         TradingPair::<T>::register(caller_origin.clone(), DEX.into(), XOR.into(), asset).unwrap();

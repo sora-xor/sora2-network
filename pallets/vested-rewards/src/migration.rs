@@ -29,30 +29,38 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use crate::{
-    Config, Error, MarketMakersRegistry, Pallet, RewardInfo, Weight,
+    Config, Error, MarketMakersRegistry, Pallet, RewardInfo, Weight, FARMING_REWARDS,
     MARKET_MAKER_ELIGIBILITY_TX_COUNT, SINGLE_MARKET_MAKER_DISTRIBUTION_AMOUNT,
 };
 use common::prelude::{Balance, FixedWrapper};
-use common::{balance, fixed_wrapper, RewardReason};
+use common::{balance, fixed_wrapper, RewardReason, PSWAP};
 use frame_support::log::{error, info, warn};
-use frame_support::traits::Get;
+use frame_support::traits::{CrateVersion, Get, PalletInfoAccess};
 use sp_runtime::runtime_logger::RuntimeLogger;
 use sp_runtime::traits::Zero;
 use sp_runtime::DispatchError;
 use sp_std::vec::Vec;
+use traits::MultiCurrency;
 
 pub fn migrate<T: Config>() -> Weight {
-    let weight: Weight = 0;
+    let mut weight: Weight = 0;
 
-    // match Pallet::<T>::storage_version() {
-    //     // Initial version is 0.1.0 which has unutilized rewards storage
-    //     // Version 1.1.0 converts and moves rewards from multicollateral-bonding-curve-pool
-    //     Some(version) if version == PalletVersion::new(0, 1, 0) => {
-    //         let migrated_weight = migrate_rewards_from_tbc::<T>().unwrap_or(100_000);
-    //         weight = weight.saturating_add(migrated_weight);
-    //     }
-    //     _ => (),
-    // }
+    match Pallet::<T>::crate_version() {
+        // Initial version is 0.1.0 which has unutilized rewards storage
+        // Version 1.1.0 converts and moves rewards from multicollateral-bonding-curve-pool
+        version if version == CrateVersion::new(0, 1, 0) => {
+            let migrated_weight = migrate_rewards_from_tbc::<T>().unwrap_or(100_000);
+            weight = weight.saturating_add(migrated_weight);
+        }
+        CrateVersion {
+            major: 1,
+            minor: 1,
+            patch: 0,
+        } => {
+            weight = add_funds_to_farming_rewards_account::<T>();
+        }
+        _ => (),
+    }
 
     weight
 }
@@ -157,4 +165,15 @@ pub fn inject_market_makers_first_month_rewards<T: Config>(
     }
 
     Ok(weight)
+}
+
+pub fn add_funds_to_farming_rewards_account<T: Config>() -> Weight {
+    if let Err(e) = T::Currency::deposit(
+        PSWAP.into(),
+        &T::GetFarmingRewardsAccountId::get(),
+        FARMING_REWARDS,
+    ) {
+        error!(target: "runtime", "Failed to add farming rewards: {:?}", e);
+    }
+    T::DbWeight::get().writes(1)
 }

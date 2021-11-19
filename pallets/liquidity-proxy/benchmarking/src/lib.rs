@@ -34,7 +34,10 @@
 
 use codec::Decode;
 use common::prelude::Balance;
-use common::{balance, AssetName, AssetSymbol, DEXId, DAI, DOT, PSWAP, USDT, VAL, XOR, XSTUSD};
+use common::{
+    balance, AssetName, AssetSymbol, DEXId, DAI, DEFAULT_BALANCE_PRECISION, DOT, PSWAP, USDT, VAL,
+    XOR, XSTUSD,
+};
 use frame_benchmarking::Zero;
 use frame_system::RawOrigin;
 use hex_literal::hex;
@@ -100,36 +103,44 @@ fn setup_benchmark<T: Config>() -> Result<(), &'static str> {
         USDT.into(),
         AssetSymbol(b"TESTUSD".to_vec()),
         AssetName(b"USD".to_vec()),
-        18,
+        DEFAULT_BALANCE_PRECISION,
         Balance::zero(),
         true,
+        None,
+        None,
     );
     let _ = Assets::<T>::register_asset_id(
         owner.clone(),
         DOT.into(),
         AssetSymbol(b"TESTDOT".to_vec()),
         AssetName(b"DOT".to_vec()),
-        18,
+        DEFAULT_BALANCE_PRECISION,
         Balance::zero(),
         true,
+        None,
+        None,
     );
     let _ = Assets::<T>::register_asset_id(
         owner.clone(),
         DAI.into(),
         AssetSymbol(b"DAI".to_vec()),
         AssetName(b"DAI".to_vec()),
-        18,
+        DEFAULT_BALANCE_PRECISION,
         Balance::zero(),
         true,
+        None,
+        None,
     );
     let _ = Assets::<T>::register_asset_id(
         owner.clone(),
         XSTUSD.into(),
         AssetSymbol(b"XSTUSD".to_vec()),
         AssetName(b"SORA Synthetic USD".to_vec()),
-        18,
+        DEFAULT_BALANCE_PRECISION,
         Balance::zero(),
         true,
+        None,
+        None,
     );
     Assets::<T>::mint_to(&XOR.into(), &owner.clone(), &owner.clone(), balance!(50000)).unwrap();
     Assets::<T>::mint_to(

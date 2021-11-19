@@ -115,6 +115,7 @@ impl crate::Config for Runtime {
     type GetBaseAssetId = GetBaseAssetId;
     type Currency = currencies::Pallet<Runtime>;
     type GetTeamReservesAccountId = GetTeamReservesAccountId;
+    type GetTotalBalance = ();
     type WeightInfo = ();
 }
 

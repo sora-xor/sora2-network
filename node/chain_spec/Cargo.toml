@@ -38,5 +38,6 @@ xor-fee = { path = "../../pallets/xor-fee" }
 include-real-files = []
 main-net-coded = []
 test = []
+runtime-benchmarks = []
 
 private-net = ["faucet", "framenode-runtime/private-net"]

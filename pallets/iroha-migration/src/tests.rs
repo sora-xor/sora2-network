@@ -34,7 +34,7 @@ use common::prelude::Balance;
 use common::VAL;
 use frame_support::traits::OnInitialize;
 use frame_support::{assert_noop, assert_ok};
-use referral_system::Referrers;
+use referrals::Referrers;
 
 type Assets = assets::Pallet<Runtime>;
 

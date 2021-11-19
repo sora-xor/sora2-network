@@ -76,8 +76,8 @@ type WeightInfoOf<T> = <T as Config>::WeightInfo;
 #[derive(Encode, Decode, Clone, RuntimeDebug, Default, PartialEq, Eq, scale_info::TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct RewardInfo {
-    claimable: Balance,
-    total: Balance,
+    pub claimable: Balance,
+    pub total: Balance,
 }
 
 impl RewardInfo {

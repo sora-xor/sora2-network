@@ -80,6 +80,7 @@ parameter_types! {
     pub GetMarketMakerRewardsAccountId: AccountId = AccountId32::from([9; 32]);
     pub GetBondingCurveRewardsAccountId: AccountId = AccountId32::from([10; 32]);
     pub GetTeamReservesAccountId: AccountId = AccountId32::from([11; 32]);
+    pub GetFarmingRewardsAccountId: AccountId = AccountId32::from([155; 32]);
     pub GetXykFee: Fixed = fixed!(0.003);
 }
 
@@ -161,6 +162,7 @@ impl assets::Config for Runtime {
     type GetBaseAssetId = GetBaseAssetId;
     type Currency = currencies::Pallet<Runtime>;
     type GetTeamReservesAccountId = GetTeamReservesAccountId;
+    type GetTotalBalance = ();
     type WeightInfo = ();
 }
 
@@ -273,6 +275,7 @@ impl vested_rewards::Config for Runtime {
     type Event = Event;
     type GetMarketMakerRewardsAccountId = GetMarketMakerRewardsAccountId;
     type GetBondingCurveRewardsAccountId = GetBondingCurveRewardsAccountId;
+    type GetFarmingRewardsAccountId = GetFarmingRewardsAccountId;
     type WeightInfo = ();
 }
 
