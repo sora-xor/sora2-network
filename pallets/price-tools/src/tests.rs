@@ -401,14 +401,14 @@ fn average_price_large_change_before_no_update_streak_negative() {
         }
         assert_eq!(
             PriceTools::get_average_price(&XOR.into(), &ETH.into()).unwrap(),
-            balance!(3964.156162406538571338) // not 15% exactly because of compunding effect
+            balance!(3982.039095245451865833) // not 15% exactly because of compunding effect
         );
         assert_eq!(
             PriceTools::price_infos(&ETH).unwrap().last_spot_price,
             balance!(700)
         );
         // same price, continues to repeat, average price is still updated
-        for _ in 1..=AVG_BLOCK_SPAN * 195 {
+        for _ in 1..=AVG_BLOCK_SPAN * 389 {
             PriceTools::incoming_spot_price(&ETH, balance!(700)).unwrap();
         }
         assert_eq!(
@@ -462,6 +462,6 @@ fn price_should_go_up_faster_than_going_down() {
             }
         }
         assert_eq!(n, 2355);
-        assert_eq!(m, 16710);
+        assert_eq!(m, 32100);
     });
 }
