@@ -468,8 +468,8 @@ pub mod pallet {
         ) -> DispatchResultWithPostInfo {
             ensure_root(origin)?;
             let from = Self::authority_account();
-            let nonce = frame_system::Module::<T>::account_nonce(&from);
-            let timepoint = bridge_multisig::Module::<T>::thischain_timepoint();
+            let nonce = frame_system::Pallet::<T>::account_nonce(&from);
+            let timepoint = bridge_multisig::Pallet::<T>::thischain_timepoint();
             Self::add_request(&OffchainRequest::outgoing(OutgoingRequest::AddAsset(
                 OutgoingAddAsset {
                     author: from.clone(),

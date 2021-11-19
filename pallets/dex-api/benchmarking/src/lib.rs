@@ -33,13 +33,10 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use codec::Decode;
-use common::prelude::{Balance, SwapVariant};
+use common::prelude::Balance;
 use common::{
-    balance, AssetName, AssetSymbol, DEXId, LiquiditySourceType, DEFAULT_BALANCE_PRECISION, DOT,
-    PSWAP, USDT, VAL, XOR,
+    balance, AssetName, AssetSymbol, DEXId, DEFAULT_BALANCE_PRECISION, DOT, PSWAP, USDT, VAL, XOR,
 };
-use frame_benchmarking::benchmarks;
-use frame_support::traits::Get;
 use frame_system::{EventRecord, RawOrigin};
 
 use frame_benchmarking::Zero;

@@ -158,7 +158,7 @@ impl assets::Config for Runtime {
         common::AssetIdExtraAssetRecordArg<common::DEXId, common::LiquiditySourceType, [u8; 32]>;
     type AssetId = AssetId;
     type GetBaseAssetId = GetBaseAssetId;
-    type Currency = currencies::Module<Runtime>;
+    type Currency = currencies::Pallet<Runtime>;
     type GetTeamReservesAccountId = GetTeamReservesAccountId;
     type GetTotalBalance = ();
     type WeightInfo = ();
@@ -341,6 +341,7 @@ pub fn run_to_block(n: u64) {
     }
 }
 
+#[allow(dead_code)]
 pub fn unclaimed_val_data() -> Vec<(crate::EthereumAddress, Balance)> {
     vec![
         (

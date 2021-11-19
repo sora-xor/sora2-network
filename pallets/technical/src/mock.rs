@@ -151,9 +151,9 @@ impl tokens::Config for Runtime {
 
 impl currencies::Config for Runtime {
     type Event = Event;
-    type MultiCurrency = tokens::Module<Runtime>;
+    type MultiCurrency = tokens::Pallet<Runtime>;
     type NativeCurrency =
-        BasicCurrencyAdapter<Runtime, pallet_balances::Module<Runtime>, Amount, BlockNumber>;
+        BasicCurrencyAdapter<Runtime, pallet_balances::Pallet<Runtime>, Amount, BlockNumber>;
     type GetNativeCurrencyId = <Runtime as assets::Config>::GetBaseAssetId;
     type WeightInfo = ();
 }
@@ -165,7 +165,7 @@ impl assets::Config for Runtime {
         common::AssetIdExtraAssetRecordArg<DEXId, common::LiquiditySourceType, [u8; 32]>;
     type AssetId = AssetId;
     type GetBaseAssetId = GetBaseAssetId;
-    type Currency = currencies::Module<Runtime>;
+    type Currency = currencies::Pallet<Runtime>;
     type GetTeamReservesAccountId = GetTeamReservesAccountId;
     type GetTotalBalance = ();
     type WeightInfo = ();
@@ -233,13 +233,13 @@ pub struct GenericPairSwapActionExample {
 impl common::SwapAction<AccountId, TechAccountId, Runtime> for GenericPairSwapActionExample {
     fn reserve(&self, source: &AccountId) -> dispatch::DispatchResult {
         //FIXME now in this place exist two operations, and it is not lock.
-        crate::Module::<Runtime>::transfer_in(
+        crate::Pallet::<Runtime>::transfer_in(
             &self.give_asset.into(),
             source,
             &self.take_account,
             self.give_amount,
         )?;
-        crate::Module::<Runtime>::transfer_out(
+        crate::Pallet::<Runtime>::transfer_out(
             &self.take_asset.into(),
             &self.take_account,
             source,

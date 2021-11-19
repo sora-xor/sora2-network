@@ -115,7 +115,7 @@ pub mod pallet {
             }
 
             common::with_transaction(|| {
-                assets::Module::<T>::transfer_from(
+                assets::Pallet::<T>::transfer_from(
                     &XOR.into(),
                     &referrer,
                     &T::ReservesAcc::get(),
@@ -149,7 +149,7 @@ pub mod pallet {
                     }
                 })?;
 
-                assets::Module::<T>::transfer_from(
+                assets::Pallet::<T>::transfer_from(
                     &XOR.into(),
                     &T::ReservesAcc::get(),
                     &referrer,

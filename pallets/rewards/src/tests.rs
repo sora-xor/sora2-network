@@ -33,12 +33,10 @@ use common::{
 };
 use frame_support::pallet_prelude::*;
 use frame_support::{assert_noop, assert_ok};
-use frame_system::RawOrigin;
 use hex_literal::hex;
-use sp_io::TestExternalities;
 
 use crate::mock::*;
-use crate::{EthereumAddress, PswapFarmOwners, ReservesAcc, RewardInfo};
+use crate::{EthereumAddress, RewardInfo};
 
 type Pallet = crate::Pallet<Runtime>;
 type Error = crate::Error<Runtime>;
@@ -50,12 +48,15 @@ type TotalValRewards = crate::TotalValRewards<Runtime>;
 type ValBurnedSinceLastVesting = crate::ValBurnedSinceLastVesting<Runtime>;
 type CurrentClaimableVal = crate::CurrentClaimableVal<Runtime>;
 type TotalClaimableVal = crate::TotalClaimableVal<Runtime>;
+#[allow(dead_code)]
 type MigrationPending = crate::MigrationPending<Runtime>;
 
+#[allow(dead_code)]
 type PalletInfoOf<T> = <T as frame_system::Config>::PalletInfo;
 
 generate_storage_instance!(Rewards, ValOwners);
 
+#[allow(dead_code)]
 type DeprecatedValOwners =
     StorageMap<ValOwnersOldInstance, Identity, EthereumAddress, Balance, ValueQuery>;
 

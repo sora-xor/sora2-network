@@ -122,7 +122,11 @@ fn referrer_gets_bonus_from_tx_fee() {
         Referrals::set_referrer_to(&alice(), charlie()).unwrap();
 
         let call: &<Runtime as frame_system::Config>::Call =
-            &Call::Assets(assets::Call::transfer(VAL.into(), bob(), TRANSFER_AMOUNT));
+            &Call::Assets(assets::Call::transfer {
+                asset_id: VAL.into(),
+                to: bob(),
+                amount: TRANSFER_AMOUNT,
+            });
 
         let len = 10;
         let dispatch_info = info_from_weight(MOCK_WEIGHT);
@@ -149,10 +153,10 @@ fn referrer_gets_bonus_from_tx_fee() {
         let referrer_fee = SMALL_FEE * referrer_weight / weights_sum;
         let expected_referrer_balance = referrer_fee.clone() + initial_balance;
         assert_eq!(
-            frame_system::Module::<Runtime>::events()
+            frame_system::Pallet::<Runtime>::events()
                 .into_iter()
                 .find_map(|EventRecord { event, .. }| match event {
-                    crate::Event::xor_fee(event) => {
+                    crate::Event::XorFee(event) => {
                         if let xor_fee::Event::ReferrerRewarded(_, _, _) = event {
                             Some(event)
                         } else {
@@ -213,7 +217,11 @@ fn notify_val_burned_works() {
         let mut total_xor_val = 0;
         for _ in 0..3 {
             let call: &<Runtime as frame_system::Config>::Call =
-                &Call::Assets(assets::Call::transfer(VAL.into(), bob(), TRANSFER_AMOUNT));
+                &Call::Assets(assets::Call::transfer {
+                    asset_id: VAL.into(),
+                    to: bob(),
+                    amount: TRANSFER_AMOUNT,
+                });
 
             let len = 10;
             let dispatch_info = info_from_weight(MOCK_WEIGHT);
@@ -246,7 +254,7 @@ fn notify_val_burned_works() {
             0_u128.into()
         );
 
-        <xor_fee::Module<Runtime> as pallet_session::historical::SessionManager<_, _>>::end_session(
+        <xor_fee::Pallet<Runtime> as pallet_session::historical::SessionManager<_, _>>::end_session(
             0,
         );
 
@@ -273,16 +281,16 @@ fn custom_fees_work() {
 
         // A ten-fold extrinsic; fee is 0.007 XOR
         let calls: Vec<<Runtime as frame_system::Config>::Call> = vec![
-            Call::Assets(assets::Call::register(
-                AssetSymbol(b"ALIC".to_vec()),
-                AssetName(b"ALICE".to_vec()),
-                balance!(0),
-                true,
-                false,
-                None,
-                None,
-            )),
-            Call::VestedRewards(vested_rewards::Call::claim_rewards()),
+            Call::Assets(assets::Call::register {
+                symbol: AssetSymbol(b"ALIC".to_vec()),
+                name: AssetName(b"ALICE".to_vec()),
+                initial_supply: balance!(0),
+                is_mintable: true,
+                is_nft: false,
+                opt_content_src: None,
+                opt_desc: None,
+            }),
+            Call::VestedRewards(vested_rewards::Call::claim_rewards {}),
         ];
 
         let mut balance_after_fee_withdrawal = FixedWrapper::from(INITIAL_BALANCE);
@@ -305,8 +313,11 @@ fn custom_fees_work() {
         }
 
         // A normal extrinsic; fee is 0.0007 XOR
-        let call: &<Runtime as frame_system::Config>::Call =
-            &Call::Assets(assets::Call::mint(XOR, bob(), balance!(1)));
+        let call: &<Runtime as frame_system::Config>::Call = &Call::Assets(assets::Call::mint {
+            asset_id: XOR,
+            to: bob(),
+            amount: balance!(1),
+        });
 
         let pre = ChargeTransactionPayment::<Runtime>::from(0u128.into())
             .pre_dispatch(&alice(), call, &dispatch_info, len)
@@ -332,7 +343,10 @@ fn custom_fees_work() {
 
         // An extrinsic without manual fee adjustment
         let call: &<Runtime as frame_system::Config>::Call =
-            &Call::Balances(pallet_balances::Call::transfer(bob(), TRANSFER_AMOUNT));
+            &Call::Balances(pallet_balances::Call::transfer {
+                dest: bob(),
+                value: TRANSFER_AMOUNT,
+            });
 
         let pre = ChargeTransactionPayment::<Runtime>::from(0u128.into())
             .pre_dispatch(&alice(), call, &dispatch_info, len)
@@ -370,15 +384,16 @@ fn refund_if_pays_no_works() {
         let len = 10;
         let dispatch_info = info_from_weight(MOCK_WEIGHT);
 
-        let call: &<Runtime as frame_system::Config>::Call = &Call::Assets(assets::Call::register(
-            AssetSymbol(b"ALIC".to_vec()),
-            AssetName(b"ALICE".to_vec()),
-            balance!(0),
-            true,
-            false,
-            None,
-            None,
-        ));
+        let call: &<Runtime as frame_system::Config>::Call =
+            &Call::Assets(assets::Call::register {
+                symbol: AssetSymbol(b"ALIC".to_vec()),
+                name: AssetName(b"ALICE".to_vec()),
+                initial_supply: balance!(0),
+                is_mintable: true,
+                is_nft: false,
+                opt_content_src: None,
+                opt_desc: None,
+            });
 
         let pre = ChargeTransactionPayment::<Runtime>::from(0u128.into())
             .pre_dispatch(&alice(), call, &dispatch_info, len)
@@ -412,7 +427,11 @@ fn actual_weight_is_ignored_works() {
         let dispatch_info = info_from_weight(MOCK_WEIGHT);
 
         let call: &<Runtime as frame_system::Config>::Call =
-            &Call::Assets(assets::Call::transfer(XOR.into(), bob(), TRANSFER_AMOUNT));
+            &Call::Assets(assets::Call::transfer {
+                asset_id: XOR.into(),
+                to: bob(),
+                amount: TRANSFER_AMOUNT,
+            });
 
         let pre = ChargeTransactionPayment::<Runtime>::from(0u128.into())
             .pre_dispatch(&alice(), call, &dispatch_info, len)
@@ -446,15 +465,16 @@ fn reminting_for_sora_parliament_works() {
             Balances::free_balance(sora_parliament_account()),
             0_u128.into()
         );
-        let call: &<Runtime as frame_system::Config>::Call = &Call::Assets(assets::Call::register(
-            AssetSymbol(b"ALIC".to_vec()),
-            AssetName(b"ALICE".to_vec()),
-            balance!(0),
-            true,
-            false,
-            None,
-            None,
-        ));
+        let call: &<Runtime as frame_system::Config>::Call =
+            &Call::Assets(assets::Call::register {
+                symbol: AssetSymbol(b"ALIC".to_vec()),
+                name: AssetName(b"ALICE".to_vec()),
+                initial_supply: balance!(0),
+                is_mintable: true,
+                is_nft: false,
+                opt_content_src: None,
+                opt_desc: None,
+            });
 
         let len = 10;
         let dispatch_info = info_from_weight(MOCK_WEIGHT);
@@ -481,7 +501,7 @@ fn reminting_for_sora_parliament_works() {
         let sora_parliament_share = SoraParliamentShare::get();
         let expected_balance = FixedWrapper::from(sora_parliament_share * val_burned);
 
-        <xor_fee::Module<Runtime> as pallet_session::historical::SessionManager<_, _>>::end_session(
+        <xor_fee::Pallet<Runtime> as pallet_session::historical::SessionManager<_, _>>::end_session(
             0,
         );
 
@@ -503,17 +523,17 @@ fn fee_payment_regular_swap() {
 
         let dispatch_info = info_from_weight(100_000_000);
 
-        let call = Call::LiquidityProxy(liquidity_proxy::Call::swap(
-            0,
-            VAL,
-            XOR,
-            SwapAmount::WithDesiredInput {
+        let call = Call::LiquidityProxy(liquidity_proxy::Call::swap {
+            dex_id: 0,
+            input_asset_id: VAL,
+            output_asset_id: XOR,
+            swap_amount: SwapAmount::WithDesiredInput {
                 desired_amount_in: balance!(100),
                 min_amount_out: balance!(100),
             },
-            vec![],
-            FilterMode::Disabled,
-        ));
+            selected_source_types: vec![],
+            filter_mode: FilterMode::Disabled,
+        });
 
         let regular_fee =
             xor_fee::Pallet::<Runtime>::withdraw_fee(&alice(), &call, &dispatch_info, 1337, 0);
@@ -548,17 +568,17 @@ fn fee_payment_postponed() {
 
         let dispatch_info = info_from_weight(100_000_000);
 
-        let call = Call::LiquidityProxy(liquidity_proxy::Call::swap(
-            0,
-            VAL,
-            XOR,
-            SwapAmount::WithDesiredInput {
+        let call = Call::LiquidityProxy(liquidity_proxy::Call::swap {
+            dex_id: 0,
+            input_asset_id: VAL,
+            output_asset_id: XOR,
+            swap_amount: SwapAmount::WithDesiredInput {
                 desired_amount_in: balance!(100),
                 min_amount_out: balance!(50),
             },
-            vec![],
-            FilterMode::Disabled,
-        ));
+            selected_source_types: vec![],
+            filter_mode: FilterMode::Disabled,
+        });
 
         let quoted_fee =
             xor_fee::Pallet::<Runtime>::withdraw_fee(&alice(), &call, &dispatch_info, 1337, 0)
@@ -574,17 +594,17 @@ fn fee_payment_should_not_postpone() {
     ext().execute_with(|| {
         let dispatch_info = info_from_weight(100_000_000);
 
-        let call = Call::LiquidityProxy(liquidity_proxy::Call::swap(
-            0,
-            XOR,
-            VAL,
-            SwapAmount::WithDesiredInput {
+        let call = Call::LiquidityProxy(liquidity_proxy::Call::swap {
+            dex_id: 0,
+            input_asset_id: XOR,
+            output_asset_id: VAL,
+            swap_amount: SwapAmount::WithDesiredInput {
                 desired_amount_in: balance!(100),
                 min_amount_out: balance!(100),
             },
-            vec![],
-            FilterMode::Disabled,
-        ));
+            selected_source_types: vec![],
+            filter_mode: FilterMode::Disabled,
+        });
 
         let quoted_fee =
             xor_fee::Pallet::<Runtime>::withdraw_fee(&alice(), &call, &dispatch_info, 1337, 0);
@@ -601,7 +621,7 @@ fn withdraw_fee_set_referrer() {
         Referrals::reserve(Origin::signed(bob()), SMALL_FEE).unwrap();
 
         let dispatch_info = info_from_weight(100_000_000);
-        let call = Call::Referrals(referrals::Call::set_referrer(bob()));
+        let call = Call::Referrals(referrals::Call::set_referrer { referrer: bob() });
         let result = XorFee::withdraw_fee(&alice(), &call, &dispatch_info, 1337, 0);
         assert_eq!(
             result,
@@ -623,7 +643,7 @@ fn withdraw_fee_set_referrer_already() {
         Referrals::reserve(Origin::signed(bob()), SMALL_FEE).unwrap();
 
         let dispatch_info = info_from_weight(100_000_000);
-        let call = Call::Referrals(referrals::Call::set_referrer(bob()));
+        let call = Call::Referrals(referrals::Call::set_referrer { referrer: bob() });
         let result = XorFee::withdraw_fee(&alice(), &call, &dispatch_info, 1337, 0);
         assert_eq!(
             result,
@@ -646,7 +666,7 @@ fn withdraw_fee_set_referrer_already2() {
         Referrals::reserve(Origin::signed(bob()), SMALL_FEE).unwrap();
 
         let dispatch_info = info_from_weight(100_000_000);
-        let call = Call::Referrals(referrals::Call::set_referrer(bob()));
+        let call = Call::Referrals(referrals::Call::set_referrer { referrer: bob() });
         let result = XorFee::withdraw_fee(&alice(), &call, &dispatch_info, 1337, 0);
         assert_eq!(
             result,
