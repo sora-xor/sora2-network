@@ -39,7 +39,9 @@ use common::{
 };
 use core::time::Duration;
 use currencies::BasicCurrencyAdapter;
-use frame_support::traits::{Everything, GenesisBuild, Get, OneSessionHandler, U128CurrencyToVote};
+use frame_support::traits::{
+    Everything, GenesisBuild, Get, OneSessionHandler, PrivilegeCmp, U128CurrencyToVote,
+};
 use frame_support::weights::{DispatchInfo, IdentityFee, Pays, PostDispatchInfo, Weight};
 use frame_support::{construct_runtime, parameter_types};
 use frame_system;
@@ -49,6 +51,7 @@ use sp_core::H256;
 use sp_runtime::testing::{Header, TestXt, UintAuthorityId};
 use sp_runtime::traits::{BlakeTwo256, IdentityLookup, Verify};
 use sp_runtime::{DispatchError, Perbill, Percent};
+use sp_std::cmp::Ordering;
 
 pub use crate::{self as xor_fee, Config, Module};
 
@@ -165,20 +168,20 @@ impl xor_fee::ExtractProxySwap for Call {
     type Amount = SwapAmount<u128>;
 
     fn extract(&self) -> Option<xor_fee::SwapInfo<Self::DexId, Self::AssetId, Self::Amount>> {
-        if let Call::LiquidityProxy(mock_liquidity_proxy::Call::swap(
+        if let Call::LiquidityProxy(mock_liquidity_proxy::Call::swap {
             dex_id,
             input_asset_id,
             output_asset_id,
-            amount,
+            swap_amount,
             selected_source_types,
             filter_mode,
-        )) = self
+        }) = self
         {
             Some(xor_fee::SwapInfo {
                 dex_id: *dex_id,
                 input_asset_id: *input_asset_id,
                 output_asset_id: *output_asset_id,
-                amount: *amount,
+                amount: *swap_amount,
                 selected_source_types: selected_source_types.to_vec(),
                 filter_mode: filter_mode.clone(),
             })
@@ -192,30 +195,31 @@ impl xor_fee::IsCalledByBridgePeer<AccountId> for Call {
     fn is_called_by_bridge_peer(&self, who: &AccountId) -> bool {
         match self {
             Call::BridgeMultisig(call) => match call {
-                bridge_multisig::Call::as_multi(multisig_id, ..) => {
-                    bridge_multisig::Accounts::<Runtime>::get(multisig_id)
-                        .map(|acc| acc.is_signatory(&who))
+                bridge_multisig::Call::as_multi { id, .. } => {
+                    bridge_multisig::Accounts::<Runtime>::get(id).map(|acc| acc.is_signatory(&who))
                 }
-                bridge_multisig::Call::as_multi_threshold_1(multisig_id, ..) => {
-                    bridge_multisig::Accounts::<Runtime>::get(multisig_id)
-                        .map(|acc| acc.is_signatory(&who))
+                bridge_multisig::Call::as_multi_threshold_1 { id, .. } => {
+                    bridge_multisig::Accounts::<Runtime>::get(id).map(|acc| acc.is_signatory(&who))
                 }
                 _ => None,
             },
             Call::EthBridge(call) => match call {
-                eth_bridge::Call::approve_request(_, _, _, network_id) => {
+                eth_bridge::Call::approve_request { network_id, .. } => {
                     Some(eth_bridge::Pallet::<Runtime>::is_peer(who, *network_id))
                 }
-                eth_bridge::Call::register_incoming_request(request) => {
-                    let net_id = request.network_id();
+                eth_bridge::Call::register_incoming_request { incoming_request } => {
+                    let net_id = incoming_request.network_id();
                     eth_bridge::BridgeAccount::<Runtime>::get(net_id).map(|acc| acc == *who)
                 }
-                eth_bridge::Call::import_incoming_request(load_request, _) => {
-                    let net_id = load_request.network_id();
+                eth_bridge::Call::import_incoming_request {
+                    load_incoming_request,
+                    ..
+                } => {
+                    let net_id = load_incoming_request.network_id();
                     eth_bridge::BridgeAccount::<Runtime>::get(net_id).map(|acc| acc == *who)
                 }
-                eth_bridge::Call::finalize_incoming_request(_, network_id)
-                | eth_bridge::Call::abort_request(_, _, network_id) => {
+                eth_bridge::Call::finalize_incoming_request { network_id, .. }
+                | eth_bridge::Call::abort_request { network_id, .. } => {
                     eth_bridge::BridgeAccount::<Runtime>::get(network_id).map(|acc| acc == *who)
                 }
                 _ => None,
@@ -288,6 +292,24 @@ impl bridge_multisig::Config for Runtime {
     type WeightInfo = ();
 }
 
+/// Used the compare the privilege of an origin inside the scheduler.
+pub struct OriginPrivilegeCmp;
+
+impl PrivilegeCmp<OriginCaller> for OriginPrivilegeCmp {
+    fn cmp_privilege(left: &OriginCaller, right: &OriginCaller) -> Option<Ordering> {
+        if left == right {
+            return Some(Ordering::Equal);
+        }
+
+        match (left, right) {
+            // Root is greater than anything.
+            (OriginCaller::system(frame_system::RawOrigin::Root), _) => Some(Ordering::Greater),
+            // For every other origin we don't care, as they are not used for `ScheduleOrigin`.
+            _ => None,
+        }
+    }
+}
+
 impl pallet_scheduler::Config for Runtime {
     type Event = Event;
     type Origin = Origin;
@@ -297,6 +319,7 @@ impl pallet_scheduler::Config for Runtime {
     type ScheduleOrigin = EnsureRoot<AccountId>;
     type MaxScheduledPerBlock = ();
     type WeightInfo = ();
+    type OriginPrivilegeCmp = OriginPrivilegeCmp;
 }
 
 impl frame_system::Config for Runtime {
@@ -353,11 +376,16 @@ impl pallet_balances::Config for Runtime {
     type ReserveIdentifier = ();
 }
 
+parameter_types! {
+    pub const OperationalFeeMultiplier: u8 = 5;
+}
+
 impl pallet_transaction_payment::Config for Runtime {
     type OnChargeTransaction = XorFee;
     type TransactionByteFee = TransactionByteFee;
     type WeightToFee = IdentityFee<Balance>;
     type FeeMultiplierUpdate = ();
+    type OperationalFeeMultiplier = OperationalFeeMultiplier;
 }
 
 impl common::Config for Runtime {
@@ -474,9 +502,9 @@ pub struct CustomFees;
 impl xor_fee::ApplyCustomFees<Call> for CustomFees {
     fn compute_fee(call: &Call) -> Option<Balance> {
         match call {
-            Call::Assets(assets::Call::register(..)) => Some(balance!(0.007)),
+            Call::Assets(assets::Call::register { .. }) => Some(balance!(0.007)),
             Call::Assets(..)
-            | Call::Staking(pallet_staking::Call::payout_stakers(..))
+            | Call::Staking(pallet_staking::Call::payout_stakers { .. })
             | Call::TradingPair(..) => Some(balance!(0.0007)),
             _ => None,
         }
@@ -632,7 +660,7 @@ impl OneSessionHandler<AccountId> for OtherSessionHandler {
     {
     }
 
-    fn on_disabled(_validator_index: usize) {}
+    fn on_disabled(_validator_index: u32) {}
 }
 
 impl sp_runtime::BoundToRuntimeAppPublic for OtherSessionHandler {
