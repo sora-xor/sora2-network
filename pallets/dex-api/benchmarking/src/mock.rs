@@ -103,6 +103,7 @@ construct_runtime! {
         PswapDistribution: pswap_distribution::{Module, Call, Config<T>, Storage, Event<T>},
         MBCPool: multicollateral_bonding_curve_pool::{Module, Call, Config<T>, Storage, Event<T>},
         VestedRewards: vested_rewards::{Module, Call, Storage, Event<T>},
+        CeresLiquidityLocker: ceres_liquidity_locker::{Module, Call, Storage, Event<T>},
     }
 }
 
@@ -270,6 +271,12 @@ impl vested_rewards::Config for Runtime {
     type GetMarketMakerRewardsAccountId = GetMarketMakerRewardsAccountId;
     type GetBondingCurveRewardsAccountId = GetBondingCurveRewardsAccountId;
     type WeightInfo = ();
+}
+
+impl ceres_liquidity_locker::Config for Runtime {
+    type Event = Event;
+    type XYKPool = PoolXYK;
+    type CeresAssetId = ();
 }
 
 impl Config for Runtime {}

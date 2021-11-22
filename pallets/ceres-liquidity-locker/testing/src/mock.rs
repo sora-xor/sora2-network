@@ -1,34 +1,3 @@
-// This file is part of the SORA network and Polkaswap app.
-
-// Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
-// SPDX-License-Identifier: BSD-4-Clause
-
-// Redistribution and use in source and binary forms, with or without modification,
-// are permitted provided that the following conditions are met:
-
-// Redistributions of source code must retain the above copyright notice, this list
-// of conditions and the following disclaimer.
-// Redistributions in binary form must reproduce the above copyright notice, this
-// list of conditions and the following disclaimer in the documentation and/or other
-// materials provided with the distribution.
-//
-// All advertising materials mentioning features or use of this software must display
-// the following acknowledgement: This product includes software developed by Polka Biome
-// Ltd., SORA, and Polkaswap.
-//
-// Neither the name of the Polka Biome Ltd. nor the names of its contributors may be used
-// to endorse or promote products derived from this software without specific prior written permission.
-
-// THIS SOFTWARE IS PROVIDED BY Polka Biome Ltd. AS IS AND ANY EXPRESS OR IMPLIED WARRANTIES,
-// INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
-// A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL Polka Biome Ltd. BE LIABLE FOR ANY
-// DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
-// BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
-// OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
-// STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
-// USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
-use crate::{self as pool_xyk, Config};
 use common::prelude::{Balance, Fixed};
 use common::{balance, fixed, hash, DEXInfo};
 use currencies::BasicCurrencyAdapter;
@@ -60,6 +29,9 @@ pub type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
 
+pub const CERES_ASSET_ID: AssetId = common::AssetId32::from_bytes
+    (hex!("008bcfd2387d3fc453333557eecb0efe59fcba128769b2feefdd306e98e66440"));
+
 parameter_types! {
     pub const BlockHashCount: u64 = 250;
     pub const MaximumBlockWeight: Weight = 1024;
@@ -74,6 +46,7 @@ parameter_types! {
     pub GetParliamentAccountId: AccountId = AccountId32::from([8; 32]);
     pub GetFee: Fixed = fixed!(0.003);
     pub GetTeamReservesAccountId: AccountId = AccountId32::from([11; 32]);
+    pub const CeresAssetId: AssetId = CERES_ASSET_ID;
 }
 
 parameter_type_with_key! {
@@ -169,7 +142,7 @@ impl currencies::Config for Runtime {
     type Event = Event;
     type MultiCurrency = orml_tokens::Module<Runtime>;
     type NativeCurrency =
-        BasicCurrencyAdapter<Runtime, pallet_balances::Module<Runtime>, Amount, BlockNumber>;
+    BasicCurrencyAdapter<Runtime, pallet_balances::Module<Runtime>, Amount, BlockNumber>;
     type GetNativeCurrencyId = <Runtime as assets::Config>::GetBaseAssetId;
     type WeightInfo = ();
 }
@@ -178,7 +151,7 @@ impl assets::Config for Runtime {
     type Event = Event;
     type ExtraAccountId = [u8; 32];
     type ExtraAssetRecordArg =
-        common::AssetIdExtraAssetRecordArg<DEXId, common::LiquiditySourceType, [u8; 32]>;
+    common::AssetIdExtraAssetRecordArg<DEXId, common::LiquiditySourceType, [u8; 32]>;
     type AssetId = AssetId;
     type GetBaseAssetId = GetBaseAssetId;
     type Currency = currencies::Module<Runtime>;
@@ -193,7 +166,23 @@ impl technical::Config for Runtime {
     type TechAccountId = TechAccountId;
     type Trigger = ();
     type Condition = ();
-    type SwapAction = crate::PolySwapAction<AssetId, AccountId, TechAccountId>;
+    type SwapAction = pool_xyk::PolySwapAction<AssetId, AccountId, TechAccountId>;
+}
+
+impl pool_xyk::Config for Runtime {
+    const MIN_XOR: Balance = balance!(0.0007);
+    type Event = Event;
+    type PairSwapAction = pool_xyk::PairSwapAction<AssetId, AccountId, TechAccountId>;
+    type DepositLiquidityAction =
+    pool_xyk::DepositLiquidityAction<AssetId, AccountId, TechAccountId>;
+    type WithdrawLiquidityAction =
+    pool_xyk::WithdrawLiquidityAction<AssetId, AccountId, TechAccountId>;
+    type PolySwapAction = pool_xyk::PolySwapAction<AssetId, AccountId, TechAccountId>;
+    type EnsureDEXManager = dex_manager::Module<Runtime>;
+    type GetFee = GetFee;
+    type OnPoolCreated = PswapDistribution;
+    type OnPoolReservesChanged = ();
+    type WeightInfo = ();
 }
 
 impl pswap_distribution::Config for Runtime {
@@ -214,22 +203,7 @@ impl pswap_distribution::Config for Runtime {
 impl ceres_liquidity_locker::Config for Runtime {
     type Event = Event;
     type XYKPool = PoolXYK;
-    type CeresAssetId = ();
-}
-
-impl Config for Runtime {
-    const MIN_XOR: Balance = balance!(0.007);
-    type Event = Event;
-    type PairSwapAction = crate::PairSwapAction<AssetId, AccountId, TechAccountId>;
-    type DepositLiquidityAction = crate::DepositLiquidityAction<AssetId, AccountId, TechAccountId>;
-    type WithdrawLiquidityAction =
-        crate::WithdrawLiquidityAction<AssetId, AccountId, TechAccountId>;
-    type PolySwapAction = crate::PolySwapAction<AssetId, AccountId, TechAccountId>;
-    type EnsureDEXManager = dex_manager::Module<Runtime>;
-    type GetFee = GetFee;
-    type OnPoolCreated = PswapDistribution;
-    type OnPoolReservesChanged = ();
-    type WeightInfo = ();
+    type CeresAssetId = CeresAssetId;
 }
 
 #[allow(non_snake_case)]
@@ -291,21 +265,21 @@ impl ExtBuilder {
         dex_manager::GenesisConfig::<Runtime> {
             dex_list: self.initial_dex_list,
         }
-        .assimilate_storage(&mut t)
-        .unwrap();
+            .assimilate_storage(&mut t)
+            .unwrap();
 
         orml_tokens::GenesisConfig::<Runtime> {
             endowed_accounts: self.endowed_accounts,
         }
-        .assimilate_storage(&mut t)
-        .unwrap();
+            .assimilate_storage(&mut t)
+            .unwrap();
 
         permissions::GenesisConfig::<Runtime> {
             initial_permission_owners: self.initial_permission_owners,
             initial_permissions: self.initial_permissions,
         }
-        .assimilate_storage(&mut t)
-        .unwrap();
+            .assimilate_storage(&mut t)
+            .unwrap();
 
         t.into()
     }

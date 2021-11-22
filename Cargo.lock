@@ -802,20 +802,55 @@ version = "1.0.0"
 dependencies = [
  "assets",
  "common",
+ "dex-manager",
  "frame-benchmarking 3.1.0",
  "frame-support",
  "frame-system",
  "hex-literal",
  "orml-currencies",
  "orml-tokens",
+ "orml-traits",
  "pallet-balances",
  "parity-scale-codec",
  "permissions",
+ "pool-xyk",
+ "pswap-distribution",
  "serde",
  "sp-core",
  "sp-io",
  "sp-runtime",
  "sp-std",
+ "technical",
+ "trading-pair",
+]
+
+[[package]]
+name = "ceres-liquidity-locker-testing"
+version = "1.0.0"
+dependencies = [
+ "assets",
+ "ceres-liquidity-locker",
+ "common",
+ "dex-manager",
+ "frame-benchmarking 3.1.0",
+ "frame-support",
+ "frame-system",
+ "hex-literal",
+ "orml-currencies",
+ "orml-tokens",
+ "orml-traits",
+ "pallet-balances",
+ "parity-scale-codec",
+ "permissions",
+ "pool-xyk",
+ "pswap-distribution",
+ "serde",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+ "technical",
+ "trading-pair",
 ]
 
 [[package]]
@@ -1339,6 +1374,7 @@ name = "dex-api"
 version = "0.1.0"
 dependencies = [
  "assets",
+ "ceres-liquidity-locker",
  "common",
  "dex-manager",
  "frame-support",
@@ -1368,6 +1404,7 @@ name = "dex-api-benchmarking"
 version = "0.1.0"
 dependencies = [
  "assets",
+ "ceres-liquidity-locker",
  "common",
  "dex-api",
  "dex-manager",
@@ -1918,6 +1955,7 @@ name = "farming"
 version = "1.2.0"
 dependencies = [
  "assets",
+ "ceres-liquidity-locker",
  "common",
  "dex-manager",
  "env_logger 0.9.0",
@@ -4081,6 +4119,7 @@ name = "liquidity-proxy"
 version = "0.1.0"
 dependencies = [
  "assets",
+ "ceres-liquidity-locker",
  "common",
  "dex-api",
  "dex-manager",
@@ -4112,6 +4151,7 @@ name = "liquidity-proxy-benchmarking"
 version = "0.1.0"
 dependencies = [
  "assets",
+ "ceres-liquidity-locker",
  "common",
  "dex-api",
  "dex-manager",
@@ -4467,6 +4507,7 @@ name = "multicollateral-bonding-curve-pool"
 version = "0.2.0"
 dependencies = [
  "assets",
+ "ceres-liquidity-locker",
  "common",
  "dex-api",
  "dex-manager",
@@ -5711,6 +5752,7 @@ name = "pool-xyk-benchmarking"
 version = "0.1.0"
 dependencies = [
  "assets",
+ "ceres-liquidity-locker",
  "common",
  "dex-api",
  "dex-manager",
@@ -5771,6 +5813,7 @@ name = "price-tools"
 version = "1.0.0"
 dependencies = [
  "assets",
+ "ceres-liquidity-locker",
  "common",
  "dex-api",
  "dex-manager",
@@ -5965,6 +6008,7 @@ name = "pswap-distribution"
 version = "1.1.1"
 dependencies = [
  "assets",
+ "ceres-liquidity-locker",
  "common",
  "dex-manager",
  "frame-benchmarking 3.1.0",
@@ -9590,6 +9634,7 @@ name = "vested-rewards"
 version = "1.1.0"
 dependencies = [
  "assets",
+ "ceres-liquidity-locker",
  "common",
  "dex-manager",
  "frame-benchmarking 3.1.0",
@@ -10191,6 +10236,7 @@ name = "xst"
 version = "1.0.0"
 dependencies = [
  "assets",
+ "ceres-liquidity-locker",
  "common",
  "dex-api",
  "dex-manager",

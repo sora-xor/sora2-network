@@ -68,6 +68,7 @@ construct_runtime! {
         PoolXyk: pool_xyk::{Module, Call, Storage, Event<T>},
         PswapDistribution: pswap_distribution::{Module, Call, Storage, Event<T>},
         MBCPool: multicollateral_bonding_curve_pool::{Module, Call, Storage, Event<T>},
+        CeresLiquidityLocker: ceres_liquidity_locker::{Module, Call, Storage, Event<T>},
     }
 }
 
@@ -260,6 +261,12 @@ impl permissions::Config for Runtime {
 }
 
 impl dex_manager::Config for Runtime {}
+
+impl ceres_liquidity_locker::Config for Runtime {
+    type Event = Event;
+    type XYKPool = PoolXyk;
+    type CeresAssetId = ();
+}
 
 pub struct ExtBuilder {
     endowed_assets: Vec<(

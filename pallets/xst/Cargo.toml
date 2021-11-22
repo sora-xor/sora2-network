@@ -34,6 +34,7 @@ trading-pair = { path = "../trading-pair", default-features = false }
 pool-xyk = { path = "../pool-xyk", default-features = false }
 
 [dev-dependencies]
+ceres-liquidity-locker = { path = "../ceres-liquidity-locker", default-features = false }
 hex-literal = "0.3.1"
 pallet-balances = { version = "3", default-features = false }
 sp-core = { version = "3", default-features = false }

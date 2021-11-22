@@ -115,6 +115,7 @@ construct_runtime! {
         PoolXyk: pool_xyk::{Module, Call, Storage, Event<T>},
         PswapDistribution: pswap_distribution::{Module, Call, Storage, Event<T>},
         PriceTools: price_tools::{Module, Storage, Event<T>},
+        CeresLiquidityLocker: ceres_liquidity_locker::{Module, Call, Storage, Event<T>},
     }
 }
 
@@ -251,6 +252,12 @@ impl pool_xyk::Config for Runtime {
     type OnPoolCreated = pswap_distribution::Module<Runtime>;
     type OnPoolReservesChanged = PriceTools;
     type WeightInfo = ();
+}
+
+impl ceres_liquidity_locker::Config for Runtime {
+    type Event = Event;
+    type XYKPool = PoolXyk;
+    type CeresAssetId = ();
 }
 
 pub struct MockDEXApi;
