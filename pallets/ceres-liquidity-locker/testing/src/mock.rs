@@ -1,3 +1,4 @@
+use crate::tests::Config;
 use common::prelude::{Balance, Fixed};
 use common::{balance, fixed, hash, DEXInfo};
 use currencies::BasicCurrencyAdapter;
@@ -206,6 +207,8 @@ impl ceres_liquidity_locker::Config for Runtime {
     type CeresAssetId = CeresAssetId;
 }
 
+impl Config for Runtime {}
+
 #[allow(non_snake_case)]
 pub fn ALICE() -> AccountId {
     AccountId32::from([1; 32])
@@ -241,10 +244,8 @@ impl Default for ExtBuilder {
                 },
             )],
             endowed_accounts: vec![
-                (ALICE(), RedPepper.into(), balance!(99000)),
-                (ALICE(), BlackPepper.into(), balance!(2000000)),
-                (BOB(), RedPepper.into(), balance!(2000000)),
-                (CHARLIE(), BlackPepper.into(), balance!(2000000)),
+                (ALICE(), CERES_ASSET_ID.into(), balance!(2000)),
+                (BOB(), CERES_ASSET_ID.into(), balance!(1000)),
             ],
             initial_permission_owners: vec![(
                 MANAGE_DEX,
