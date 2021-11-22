@@ -28,7 +28,7 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use crate::{Config, Module, ReferrerBalances, Referrers};
+use crate::{Config, Pallet, ReferrerBalances, Referrers};
 use codec::Decode;
 use common::weights::constants::SMALL_FEE;
 use common::{balance, XOR};
@@ -53,7 +53,7 @@ benchmarks! {
         let caller = alice::<T>();
         T::Currency::deposit(XOR.into(), &caller, balance!(50000)).unwrap();
     }: {
-        Module::<T>::reserve(RawOrigin::Signed(alice::<T>()).into(), SMALL_FEE).unwrap();
+        Pallet::<T>::reserve(RawOrigin::Signed(alice::<T>()).into(), SMALL_FEE).unwrap();
     }
     verify {
         assert_eq!(ReferrerBalances::<T>::get(&alice::<T>()), Some(SMALL_FEE));
@@ -62,20 +62,20 @@ benchmarks! {
     unreserve {
         let caller = alice::<T>();
         T::Currency::deposit(XOR.into(), &caller, balance!(50000)).unwrap();
-        Module::<T>::reserve(RawOrigin::Signed(alice::<T>()).into(), SMALL_FEE).unwrap();
+        Pallet::<T>::reserve(RawOrigin::Signed(alice::<T>()).into(), SMALL_FEE).unwrap();
     }: {
-        Module::<T>::unreserve(RawOrigin::Signed(alice::<T>()).into(), SMALL_FEE).unwrap();
+        Pallet::<T>::unreserve(RawOrigin::Signed(alice::<T>()).into(), SMALL_FEE).unwrap();
     }
     verify {
         assert_eq!(ReferrerBalances::<T>::get(&alice::<T>()), Some(0));
-        assert_eq!(assets::Module::<T>::free_balance(&XOR.into(), &alice::<T>()), Ok(balance!(50000)));
+        assert_eq!(assets::Pallet::<T>::free_balance(&XOR.into(), &alice::<T>()), Ok(balance!(50000)));
     }
 
     set_referrer {
         let alice = alice::<T>();
         let bob = bob::<T>();
     }: {
-        Module::<T>::set_referrer(RawOrigin::Signed(alice.clone()).into(), bob.clone()).unwrap();
+        Pallet::<T>::set_referrer(RawOrigin::Signed(alice.clone()).into(), bob.clone()).unwrap();
     }
     verify {
         assert_eq!(Referrers::<T>::get(&alice), Some(bob));

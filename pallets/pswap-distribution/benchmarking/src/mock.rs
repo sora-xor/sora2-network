@@ -31,11 +31,11 @@
 use common::mock::ExistentialDeposits;
 use common::prelude::Balance;
 use common::{
-    balance, fixed, AssetName, AssetSymbol, BalancePrecision, Fixed, FromGenericPair,
-    DEFAULT_BALANCE_PRECISION,
+    balance, fixed, AssetName, AssetSymbol, BalancePrecision, ContentSource, Description, Fixed,
+    FromGenericPair, DEFAULT_BALANCE_PRECISION,
 };
 use currencies::BasicCurrencyAdapter;
-use frame_support::traits::GenesisBuild;
+use frame_support::traits::{Everything, GenesisBuild};
 use frame_support::weights::Weight;
 use frame_support::{construct_runtime, parameter_types};
 use frame_system;
@@ -278,6 +278,8 @@ pub struct ExtBuilder {
         BalancePrecision,
         Balance,
         bool,
+        Option<ContentSource>,
+        Option<Description>,
     )>,
     initial_permission_owners: Vec<(u32, Scope, Vec<AccountId>)>,
     initial_permissions: Vec<(AccountId, Scope, Vec<u32>)>,
@@ -299,6 +301,8 @@ impl ExtBuilder {
                     DEFAULT_BALANCE_PRECISION,
                     Balance::zero(),
                     true,
+                    None,
+                    None,
                 ),
                 (
                     common::PSWAP.into(),
@@ -308,6 +312,8 @@ impl ExtBuilder {
                     10,
                     Balance::zero(),
                     true,
+                    None,
+                    None,
                 ),
                 (
                     PoolTokenAId::get(),
@@ -317,6 +323,8 @@ impl ExtBuilder {
                     DEFAULT_BALANCE_PRECISION,
                     Balance::zero(),
                     true,
+                    None,
+                    None,
                 ),
                 (
                     PoolTokenBId::get(),
@@ -326,6 +334,8 @@ impl ExtBuilder {
                     DEFAULT_BALANCE_PRECISION,
                     Balance::zero(),
                     true,
+                    None,
+                    None,
                 ),
             ],
             initial_permission_owners: vec![],

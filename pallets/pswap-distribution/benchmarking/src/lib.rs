@@ -42,9 +42,8 @@ use frame_support::traits::{Get, OnInitialize};
 use frame_system::RawOrigin;
 use hex_literal::hex;
 use pool_xyk::PoolProviders;
-use pswap_distribution::{Call, ClaimableShares, Pallet, ShareholderAccounts};
+use pswap_distribution::{Call, ClaimableShares, ShareholderAccounts};
 use sp_std::prelude::*;
-use sp_std::vec;
 use traits::MultiCurrencyExtended;
 
 use common::fixnum::ops::One;
@@ -52,11 +51,12 @@ use common::{balance, fixed, Fixed, FromGenericPair, PSWAP};
 
 use assets::Pallet as Assets;
 use permissions::Pallet as Permissions;
+use pswap_distribution::Pallet as PSwap;
 use sp_std::convert::TryFrom;
 use technical::Pallet as Technical;
 use tokens::Pallet as Tokens;
 
-pub struct Module<T: Config>(pswap_distribution::Module<T>);
+pub struct Pallet<T: Config>(pswap_distribution::Pallet<T>);
 
 pub trait Config: pswap_distribution::Config + pool_xyk::Config {}
 
@@ -74,7 +74,7 @@ fn create_account<T: Config>(prefix: Vec<u8>, index: u128) -> T::AccountId {
 
 fn prepare_for_distribution<T: Config + pool_xyk::Config>(distribution_freq: u32) {
     let authority = alice::<T>();
-    frame_system::Module::<T>::inc_providers(&authority);
+    frame_system::Pallet::<T>::inc_providers(&authority);
     Permissions::<T>::assign_permission(
         authority.clone(),
         &authority,
@@ -84,11 +84,11 @@ fn prepare_for_distribution<T: Config + pool_xyk::Config>(distribution_freq: u32
     .unwrap();
     for i in 1u128..10 {
         let pool_fee_account = create_account::<T>(b"pool_fee".to_vec(), i);
-        frame_system::Module::<T>::inc_providers(&pool_fee_account);
+        frame_system::Pallet::<T>::inc_providers(&pool_fee_account);
         let pool_account = create_account::<T>(b"pool".to_vec(), i);
-        frame_system::Module::<T>::inc_providers(&pool_account);
+        frame_system::Pallet::<T>::inc_providers(&pool_account);
         Assets::<T>::mint_to(&PSWAP.into(), &authority, &pool_fee_account, balance!(1000)).unwrap();
-        Pallet::<T>::subscribe(
+        PSwap::<T>::subscribe(
             pool_fee_account,
             common::DEXId::Polkaswap.into(),
             pool_account.clone(),
@@ -97,8 +97,8 @@ fn prepare_for_distribution<T: Config + pool_xyk::Config>(distribution_freq: u32
         .unwrap();
         for j in 1u128..1000 {
             let liquidity_provider = create_account::<T>(b"liquidity_provider".to_vec(), j);
-            frame_system::Module::<T>::inc_providers(&liquidity_provider);
-            pool_xyk::Module::<T>::mint(&pool_account, &liquidity_provider, balance!(100)).unwrap();
+            frame_system::Pallet::<T>::inc_providers(&liquidity_provider);
+            pool_xyk::Pallet::<T>::mint(&pool_account, &liquidity_provider, balance!(100)).unwrap();
         }
     }
 }
@@ -108,9 +108,9 @@ fn validate_distribution<T: Config>() {
         let pool_account = create_account::<T>(b"pool".to_vec(), i);
         for j in 1u128..1000 {
             let liquidity_provider = create_account::<T>(b"liquidity_provider".to_vec(), j);
-            frame_system::Module::<T>::inc_providers(&liquidity_provider);
+            frame_system::Pallet::<T>::inc_providers(&liquidity_provider);
             let _ =
-                Pallet::<T>::claim_incentive(RawOrigin::Signed(liquidity_provider.clone()).into());
+                PSwap::<T>::claim_incentive(RawOrigin::Signed(liquidity_provider.clone()).into());
             assert_eq!(
                 PoolProviders::<T>::get(&pool_account, &liquidity_provider).unwrap(),
                 balance!(100)
@@ -126,7 +126,7 @@ fn validate_distribution<T: Config>() {
 benchmarks! {
     claim_incentive {
         let caller = alice::<T>();
-        frame_system::Module::<T>::inc_providers(&caller);
+        frame_system::Pallet::<T>::inc_providers(&caller);
         ShareholderAccounts::<T>::insert(caller.clone(), Fixed::ONE);
         ClaimableShares::<T>::put(Fixed::ONE);
         let pswap_rewards_account = T::GetTechnicalAccountId::get();
@@ -145,7 +145,7 @@ benchmarks! {
         let distribution_freq = 15u32;
         prepare_for_distribution::<T>(distribution_freq);
     }: {
-        Pallet::<T>::on_initialize(distribution_freq.into());
+        PSwap::<T>::on_initialize(distribution_freq.into());
     }
     verify {
         validate_distribution::<T>();
@@ -155,7 +155,7 @@ benchmarks! {
         let distribution_freq = 15u32;
         prepare_for_distribution::<T>(distribution_freq - 1u32);
     }: {
-        Pallet::<T>::on_initialize(distribution_freq.into());
+        PSwap::<T>::on_initialize(distribution_freq.into());
     }
     verify {
         // nothing but checks is performed
@@ -172,9 +172,9 @@ mod tests {
     #[ignore]
     fn test_benchmarks() {
         ExtBuilder::default().build().execute_with(|| {
-            assert_ok!(test_benchmark_claim_incentive::<Runtime>());
-            assert_ok!(test_benchmark_on_initialize_regular::<Runtime>());
-            assert_ok!(test_benchmark_on_initialize_intensive::<Runtime>());
+            assert_ok!(Pallet::<Runtime>::test_benchmark_claim_incentive());
+            assert_ok!(Pallet::<Runtime>::test_benchmark_on_initialize_regular());
+            assert_ok!(Pallet::<Runtime>::test_benchmark_on_initialize_intensive());
         });
     }
 }
