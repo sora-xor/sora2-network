@@ -23,7 +23,7 @@ RUN add-apt-repository \
     docker-ce docker-ce-cli containerd.io && \
     rm -rf /var/lib/apt/lists/*
 # Install rust
-ENV RUST_VERSION=nightly-2021-03-11
+ENV RUST_VERSION=nightly-2021-11-22
 RUN curl https://sh.rustup.rs -sSf | sh -s -- -y --no-modify-path --default-toolchain ${RUST_VERSION} && \
     rustup target add wasm32-unknown-unknown
 
