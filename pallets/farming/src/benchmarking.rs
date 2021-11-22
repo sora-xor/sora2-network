@@ -55,13 +55,13 @@ fn signed_origin<T: Config>(account_id: T::AccountId) -> OriginFor<T> {
 }
 
 fn prepare_pools<T: Config>(count: u32) -> (Vec<T::AccountId>, Vec<T::AssetId>) {
-    frame_system::Module::<T>::inc_providers(&asset_owner::<T>());
+    frame_system::Pallet::<T>::inc_providers(&asset_owner::<T>());
     let xor_asset: T::AssetId = XOR.into();
     let mut pools = Vec::new();
     let mut assets = Vec::new();
     for _i in 0..count {
-        frame_system::Module::<T>::inc_account_nonce(&asset_owner::<T>());
-        let other_asset = assets::Module::<T>::register_from(
+        frame_system::Pallet::<T>::inc_account_nonce(&asset_owner::<T>());
+        let other_asset = assets::Pallet::<T>::register_from(
             &asset_owner::<T>(),
             AssetSymbol(b"SYMBOL".to_vec()),
             AssetName(b"NAME".to_vec()),
@@ -73,14 +73,14 @@ fn prepare_pools<T: Config>(count: u32) -> (Vec<T::AccountId>, Vec<T::AssetId>) 
         )
         .unwrap();
 
-        assert_ok!(trading_pair::Module::<T>::register(
+        assert_ok!(trading_pair::Pallet::<T>::register(
             signed_origin::<T>(asset_owner::<T>()),
             Default::default(),
             xor_asset.clone(),
             other_asset.clone(),
         ));
 
-        assert_ok!(pool_xyk::Module::<T>::initialize_pool(
+        assert_ok!(pool_xyk::Pallet::<T>::initialize_pool(
             signed_origin::<T>(asset_owner::<T>()),
             Default::default(),
             xor_asset.clone(),
@@ -97,25 +97,25 @@ fn prepare_pools<T: Config>(count: u32) -> (Vec<T::AccountId>, Vec<T::AssetId>) 
 
 fn prepare_good_accounts<T: Config>(count: u32, assets: &[T::AssetId]) {
     let xor_asset: T::AssetId = XOR.into();
-    let xor_owner = assets::Module::<T>::asset_owner(&xor_asset).unwrap();
+    let xor_owner = assets::Pallet::<T>::asset_owner(&xor_asset).unwrap();
     for other_asset in assets {
         for j in 0..count {
             let account_id = utils::account::<T>(j);
-            assert_ok!(assets::Module::<T>::mint_to(
+            assert_ok!(assets::Pallet::<T>::mint_to(
                 &XOR.into(),
                 &xor_owner,
                 &account_id,
                 balance!(50000),
             ));
 
-            assert_ok!(assets::Module::<T>::mint_to(
+            assert_ok!(assets::Pallet::<T>::mint_to(
                 &other_asset,
                 &asset_owner::<T>(),
                 &account_id,
                 balance!(50000),
             ));
 
-            assert_ok!(pool_xyk::Module::<T>::deposit_liquidity(
+            assert_ok!(pool_xyk::Pallet::<T>::deposit_liquidity(
                 signed_origin::<T>(account_id),
                 Default::default(),
                 XOR.into(),
@@ -135,7 +135,7 @@ benchmarks! {
         let (mut pools, assets) = prepare_pools::<T>(1);
         prepare_good_accounts::<T>(a, &assets);
     }: {
-        Module::<T>::refresh_pool(pools.remove(0), T::REFRESH_FREQUENCY);
+        Pallet::<T>::refresh_pool(pools.remove(0), T::REFRESH_FREQUENCY);
     }
 
     prepare_accounts_for_vesting {
@@ -143,23 +143,23 @@ benchmarks! {
         let b in 1..43;
         let (pools, assets) = prepare_pools::<T>(a);
         prepare_good_accounts::<T>(b, &assets);
-        Module::<T>::refresh_pools(T::VESTING_FREQUENCY);
+        Pallet::<T>::refresh_pools(T::VESTING_FREQUENCY);
         let mut accounts = BTreeMap::new();
     }: {
-        Module::<T>::prepare_accounts_for_vesting(T::VESTING_FREQUENCY, &mut accounts);
+        Pallet::<T>::prepare_accounts_for_vesting(T::VESTING_FREQUENCY, &mut accounts);
     }
 
     vest_account_rewards {
         let a in 1..100;
         let (mut pools, assets) = prepare_pools::<T>(1);
         prepare_good_accounts::<T>(a, &assets);
-        Module::<T>::refresh_pools(T::VESTING_FREQUENCY);
+        Pallet::<T>::refresh_pools(T::VESTING_FREQUENCY);
         let pool = pools.remove(0);
         let farmers = PoolFarmers::<T>::get(&pool);
         let mut accounts = BTreeMap::new();
-        Module::<T>::prepare_accounts_for_vesting(T::VESTING_FREQUENCY, &mut accounts);
+        Pallet::<T>::prepare_accounts_for_vesting(T::VESTING_FREQUENCY, &mut accounts);
     }: {
-        Module::<T>::vest_account_rewards(accounts);
+        Pallet::<T>::vest_account_rewards(accounts);
     }
 }
 
@@ -174,9 +174,9 @@ mod tests {
     #[test]
     fn test_benchmarks() {
         ExtBuilder::default().build().execute_with(|| {
-            assert_ok!(test_benchmark_refresh_pool::<Runtime>());
-            assert_ok!(test_benchmark_prepare_accounts_for_vesting::<Runtime>());
-            assert_ok!(test_benchmark_vest_account_rewards::<Runtime>());
+            assert_ok!(Pallet::<Runtime>::test_benchmark_refresh_pool());
+            assert_ok!(Pallet::<Runtime>::test_benchmark_prepare_accounts_for_vesting());
+            assert_ok!(Pallet::<Runtime>::test_benchmark_vest_account_rewards());
         });
     }
 }

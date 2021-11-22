@@ -37,7 +37,7 @@
 mod mock;
 
 use codec::{Decode, Encode};
-use frame_benchmarking::benchmarks;
+use frame_benchmarking::{benchmarks, impl_benchmark_test_suite};
 use frame_support::traits::{Get, OnInitialize};
 use frame_system::RawOrigin;
 use hex_literal::hex;
@@ -162,19 +162,8 @@ benchmarks! {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::mock::{ExtBuilder, Runtime};
-    use frame_support::assert_ok;
-
-    #[test]
-    #[ignore]
-    fn test_benchmarks() {
-        ExtBuilder::default().build().execute_with(|| {
-            assert_ok!(Pallet::<Runtime>::test_benchmark_claim_incentive());
-            assert_ok!(Pallet::<Runtime>::test_benchmark_on_initialize_regular());
-            assert_ok!(Pallet::<Runtime>::test_benchmark_on_initialize_intensive());
-        });
-    }
-}
+impl_benchmark_test_suite!(
+    Pallet,
+    crate::mock::ExtBuilder::default().build(),
+    crate::mock::Runtime
+);

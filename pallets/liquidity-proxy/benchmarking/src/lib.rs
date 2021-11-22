@@ -33,14 +33,16 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use codec::Decode;
-use common::prelude::Balance;
+use common::prelude::{Balance, SwapAmount};
 use common::{
-    balance, AssetName, AssetSymbol, DEXId, DAI, DEFAULT_BALANCE_PRECISION, DOT, PSWAP, USDT, VAL,
-    XOR, XSTUSD,
+    balance, AssetName, AssetSymbol, DEXId, FilterMode, LiquiditySourceType, DAI,
+    DEFAULT_BALANCE_PRECISION, DOT, PSWAP, USDT, VAL, XOR, XSTUSD,
 };
-use frame_benchmarking::Zero;
+use frame_benchmarking::{benchmarks, Zero};
+use frame_support::traits::Get;
 use frame_system::RawOrigin;
 use hex_literal::hex;
+use liquidity_proxy::Call;
 use sp_std::prelude::*;
 
 use assets::Pallet as Assets;
@@ -258,7 +260,7 @@ fn setup_benchmark<T: Config>() -> Result<(), &'static str> {
 
     Ok(())
 }
-/*
+
 benchmarks! {
     swap_exact_input_primary_only {
         setup_benchmark::<T>()?;
@@ -406,13 +408,12 @@ mod tests {
     #[test]
     fn test_benchmarks() {
         ExtBuilder::default().build().execute_with(|| {
-            assert_ok!(test_benchmark_swap_exact_input_primary_only::<Runtime>());
+            assert_ok!(Pallet::<Runtime>::test_benchmark_swap_exact_input_primary_only());
             // assert_ok!(test_benchmark_swap_exact_output_primary_only::<Runtime>());
-            assert_ok!(test_benchmark_swap_exact_input_secondary_only::<Runtime>());
-            assert_ok!(test_benchmark_swap_exact_output_secondary_only::<Runtime>());
-            assert_ok!(test_benchmark_swap_exact_input_multiple::<Runtime>());
-            assert_ok!(test_benchmark_swap_exact_output_multiple::<Runtime>());
+            assert_ok!(Pallet::<Runtime>::test_benchmark_swap_exact_input_secondary_only());
+            assert_ok!(Pallet::<Runtime>::test_benchmark_swap_exact_output_secondary_only());
+            assert_ok!(Pallet::<Runtime>::test_benchmark_swap_exact_input_multiple());
+            assert_ok!(Pallet::<Runtime>::test_benchmark_swap_exact_output_multiple());
         });
     }
 }
-*/

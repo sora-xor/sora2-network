@@ -52,7 +52,7 @@ fn alice<T: Config>() -> T::AccountId {
 }
 
 fn assert_last_event<T: Config>(generic_event: <T as Config>::Event) {
-    let events = frame_system::Module::<T>::events();
+    let events = frame_system::Pallet::<T>::events();
     let system_event: <T as frame_system::Config>::Event = generic_event.into();
     // compare to the last event record
     let EventRecord { event, .. } = &events[events.len() - 1];
@@ -62,7 +62,7 @@ fn assert_last_event<T: Config>(generic_event: <T as Config>::Event) {
 benchmarks! {
     register {
         let caller = alice::<T>();
-        frame_system::Module::<T>::inc_providers(&caller);
+        frame_system::Pallet::<T>::inc_providers(&caller);
         let _ = Assets::<T>::register_asset_id(
             caller.clone(),
             DOT.into(),
@@ -103,7 +103,7 @@ mod tests {
     #[test]
     fn test_benchmarks() {
         ExtBuilder::default().build().execute_with(|| {
-            assert_ok!(test_benchmark_register::<Runtime>());
+            assert_ok!(Pallet::<Runtime>::test_benchmark_register());
         });
     }
 }

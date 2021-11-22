@@ -33,10 +33,14 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use codec::Decode;
-use common::prelude::Balance;
-use common::{balance, AssetName, AssetSymbol, DEXId, DEFAULT_BALANCE_PRECISION, DOT, XOR};
+use common::prelude::{Balance, SwapAmount};
+use common::{
+    balance, AssetName, AssetSymbol, DEXId, LiquiditySource, DEFAULT_BALANCE_PRECISION, DOT, XOR,
+};
+use frame_benchmarking::{benchmarks, impl_benchmark_test_suite};
 use frame_system::RawOrigin;
 use hex_literal::hex;
+use pool_xyk::Call;
 use sp_std::prelude::*;
 
 use assets::Pallet as Assets;
@@ -133,7 +137,6 @@ fn setup_benchmark<T: Config>() -> Result<(), &'static str> {
 
     Ok(())
 }
-/*
 benchmarks! {
     swap_pair {
         setup_benchmark::<T>()?;
@@ -167,7 +170,7 @@ benchmarks! {
     can_exchange {
         setup_benchmark::<T>()?;
     }: {
-        assert!(Pallet::<T>::can_exchange(
+        assert!(XYKPool::<T>::can_exchange(
             &DEX.into(),
             &XOR.into(),
             &DOT.into(),
@@ -184,7 +187,7 @@ benchmarks! {
             min_amount_out: balance!(0),
         };
     }: {
-        Pallet::<T>::quote(
+        XYKPool::<T>::quote(
             &DEX.into(),
             &XOR.into(),
             &DOT.into(),
@@ -263,20 +266,8 @@ benchmarks! {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::mock::{ExtBuilder, Runtime};
-    use frame_support::assert_ok;
-
-    #[test]
-    fn test_benchmarks() {
-        ExtBuilder::default().build().execute_with(|| {
-            assert_ok!(test_benchmark_swap_pair::<Runtime>());
-            assert_ok!(test_benchmark_deposit_liquidity::<Runtime>());
-            assert_ok!(test_benchmark_withdraw_liquidity::<Runtime>());
-            assert_ok!(test_benchmark_initialize_pool::<Runtime>());
-        });
-    }
-}
-*/
+impl_benchmark_test_suite!(
+    Pallet,
+    crate::mock::ExtBuilder::default().build(),
+    crate::mock::Runtime
+);

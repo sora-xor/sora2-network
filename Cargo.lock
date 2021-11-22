@@ -517,7 +517,7 @@ dependencies = [
 [[package]]
 name = "beefy-gadget"
 version = "4.0.0-dev"
-source = "git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.13#7db0768a85dc36a3f2a44d042b32f3715c00a90d"
+source = "git+https://github.com/paritytech//substrate.git?branch=polkadot-v0.9.13#7db0768a85dc36a3f2a44d042b32f3715c00a90d"
 dependencies = [
  "beefy-primitives",
  "fnv",
@@ -526,10 +526,10 @@ dependencies = [
  "parity-scale-codec",
  "parking_lot",
  "sc-client-api",
- "sc-keystore 4.0.0-dev (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.13)",
+ "sc-keystore",
  "sc-network",
- "sc-network-gossip 0.10.0-dev (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.13)",
- "sc-utils 4.0.0-dev (git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.13)",
+ "sc-network-gossip",
+ "sc-utils",
  "sp-api",
  "sp-application-crypto",
  "sp-arithmetic",
@@ -545,7 +545,7 @@ dependencies = [
 [[package]]
 name = "beefy-gadget-rpc"
 version = "4.0.0-dev"
-source = "git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.13#7db0768a85dc36a3f2a44d042b32f3715c00a90d"
+source = "git+https://github.com/paritytech//substrate.git?branch=polkadot-v0.9.13#7db0768a85dc36a3f2a44d042b32f3715c00a90d"
 dependencies = [
  "beefy-gadget",
  "beefy-primitives",
@@ -565,12 +565,12 @@ dependencies = [
 [[package]]
 name = "beefy-merkle-tree"
 version = "4.0.0-dev"
-source = "git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.13#7db0768a85dc36a3f2a44d042b32f3715c00a90d"
+source = "git+https://github.com/paritytech//substrate.git?branch=polkadot-v0.9.13#7db0768a85dc36a3f2a44d042b32f3715c00a90d"
 
 [[package]]
 name = "beefy-primitives"
 version = "4.0.0-dev"
-source = "git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.13#7db0768a85dc36a3f2a44d042b32f3715c00a90d"
+source = "git+https://github.com/paritytech//substrate.git?branch=polkadot-v0.9.13#7db0768a85dc36a3f2a44d042b32f3715c00a90d"
 dependencies = [
  "parity-scale-codec",
  "scale-info",
@@ -5241,7 +5241,7 @@ dependencies = [
 [[package]]
 name = "pallet-beefy"
 version = "4.0.0-dev"
-source = "git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.13#7db0768a85dc36a3f2a44d042b32f3715c00a90d"
+source = "git+https://github.com/paritytech//substrate.git?branch=polkadot-v0.9.13#7db0768a85dc36a3f2a44d042b32f3715c00a90d"
 dependencies = [
  "beefy-primitives",
  "frame-support",
@@ -5257,7 +5257,7 @@ dependencies = [
 [[package]]
 name = "pallet-beefy-mmr"
 version = "4.0.0-dev"
-source = "git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.13#7db0768a85dc36a3f2a44d042b32f3715c00a90d"
+source = "git+https://github.com/paritytech//substrate.git?branch=polkadot-v0.9.13#7db0768a85dc36a3f2a44d042b32f3715c00a90d"
 dependencies = [
  "beefy-merkle-tree",
  "beefy-primitives",
@@ -7158,12 +7158,12 @@ dependencies = [
  "regex",
  "rpassword",
  "sc-client-api",
- "sc-keystore 4.0.0-dev (git+https://github.com/paritytech//substrate.git?branch=polkadot-v0.9.13)",
+ "sc-keystore",
  "sc-network",
  "sc-service",
  "sc-telemetry",
  "sc-tracing",
- "sc-utils 4.0.0-dev (git+https://github.com/paritytech//substrate.git?branch=polkadot-v0.9.13)",
+ "sc-utils",
  "serde",
  "serde_json",
  "sp-blockchain",
@@ -7192,7 +7192,7 @@ dependencies = [
  "parking_lot",
  "sc-executor",
  "sc-transaction-pool-api",
- "sc-utils 4.0.0-dev (git+https://github.com/paritytech//substrate.git?branch=polkadot-v0.9.13)",
+ "sc-utils",
  "sp-api",
  "sp-blockchain",
  "sp-consensus",
@@ -7244,7 +7244,7 @@ dependencies = [
  "log",
  "parking_lot",
  "sc-client-api",
- "sc-utils 4.0.0-dev (git+https://github.com/paritytech//substrate.git?branch=polkadot-v0.9.13)",
+ "sc-utils",
  "serde",
  "sp-api",
  "sp-blockchain",
@@ -7307,7 +7307,7 @@ dependencies = [
  "sc-consensus",
  "sc-consensus-epochs",
  "sc-consensus-slots",
- "sc-keystore 4.0.0-dev (git+https://github.com/paritytech//substrate.git?branch=polkadot-v0.9.13)",
+ "sc-keystore",
  "sc-telemetry",
  "schnorrkel",
  "serde",
@@ -7465,11 +7465,11 @@ dependencies = [
  "sc-block-builder",
  "sc-client-api",
  "sc-consensus",
- "sc-keystore 4.0.0-dev (git+https://github.com/paritytech//substrate.git?branch=polkadot-v0.9.13)",
+ "sc-keystore",
  "sc-network",
- "sc-network-gossip 0.10.0-dev (git+https://github.com/paritytech//substrate.git?branch=polkadot-v0.9.13)",
+ "sc-network-gossip",
  "sc-telemetry",
- "sc-utils 4.0.0-dev (git+https://github.com/paritytech//substrate.git?branch=polkadot-v0.9.13)",
+ "sc-utils",
  "serde_json",
  "sp-api",
  "sp-application-crypto",
@@ -7516,21 +7516,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "sc-keystore"
-version = "4.0.0-dev"
-source = "git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.13#7db0768a85dc36a3f2a44d042b32f3715c00a90d"
-dependencies = [
- "async-trait",
- "derive_more",
- "hex",
- "parking_lot",
- "serde_json",
- "sp-application-crypto",
- "sp-core",
- "sp-keystore",
-]
-
-[[package]]
 name = "sc-network"
 version = "0.10.0-dev"
 source = "git+https://github.com/paritytech//substrate.git?branch=polkadot-v0.9.13#7db0768a85dc36a3f2a44d042b32f3715c00a90d"
@@ -7564,7 +7549,7 @@ dependencies = [
  "sc-client-api",
  "sc-consensus",
  "sc-peerset",
- "sc-utils 4.0.0-dev (git+https://github.com/paritytech//substrate.git?branch=polkadot-v0.9.13)",
+ "sc-utils",
  "serde",
  "serde_json",
  "smallvec",
@@ -7598,22 +7583,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "sc-network-gossip"
-version = "0.10.0-dev"
-source = "git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.13#7db0768a85dc36a3f2a44d042b32f3715c00a90d"
-dependencies = [
- "futures 0.3.17",
- "futures-timer 3.0.2",
- "libp2p",
- "log",
- "lru 0.7.0",
- "sc-network",
- "sp-runtime",
- "substrate-prometheus-endpoint",
- "tracing",
-]
-
-[[package]]
 name = "sc-offchain"
 version = "4.0.0-dev"
 source = "git+https://github.com/paritytech//substrate.git?branch=polkadot-v0.9.13#7db0768a85dc36a3f2a44d042b32f3715c00a90d"
@@ -7633,7 +7602,7 @@ dependencies = [
  "rand 0.7.3",
  "sc-client-api",
  "sc-network",
- "sc-utils 4.0.0-dev (git+https://github.com/paritytech//substrate.git?branch=polkadot-v0.9.13)",
+ "sc-utils",
  "sp-api",
  "sp-core",
  "sp-offchain",
@@ -7649,7 +7618,7 @@ dependencies = [
  "futures 0.3.17",
  "libp2p",
  "log",
- "sc-utils 4.0.0-dev (git+https://github.com/paritytech//substrate.git?branch=polkadot-v0.9.13)",
+ "sc-utils",
  "serde_json",
  "wasm-timer",
 ]
@@ -7681,7 +7650,7 @@ dependencies = [
  "sc-rpc-api",
  "sc-tracing",
  "sc-transaction-pool-api",
- "sc-utils 4.0.0-dev (git+https://github.com/paritytech//substrate.git?branch=polkadot-v0.9.13)",
+ "sc-utils",
  "serde_json",
  "sp-api",
  "sp-blockchain",
@@ -7762,7 +7731,7 @@ dependencies = [
  "sc-consensus",
  "sc-executor",
  "sc-informant",
- "sc-keystore 4.0.0-dev (git+https://github.com/paritytech//substrate.git?branch=polkadot-v0.9.13)",
+ "sc-keystore",
  "sc-network",
  "sc-offchain",
  "sc-rpc",
@@ -7771,7 +7740,7 @@ dependencies = [
  "sc-tracing",
  "sc-transaction-pool",
  "sc-transaction-pool-api",
- "sc-utils 4.0.0-dev (git+https://github.com/paritytech//substrate.git?branch=polkadot-v0.9.13)",
+ "sc-utils",
  "serde",
  "serde_json",
  "sp-api",
@@ -7889,7 +7858,7 @@ dependencies = [
  "retain_mut",
  "sc-client-api",
  "sc-transaction-pool-api",
- "sc-utils 4.0.0-dev (git+https://github.com/paritytech//substrate.git?branch=polkadot-v0.9.13)",
+ "sc-utils",
  "serde",
  "sp-api",
  "sp-blockchain",
@@ -7919,17 +7888,6 @@ dependencies = [
 name = "sc-utils"
 version = "4.0.0-dev"
 source = "git+https://github.com/paritytech//substrate.git?branch=polkadot-v0.9.13#7db0768a85dc36a3f2a44d042b32f3715c00a90d"
-dependencies = [
- "futures 0.3.17",
- "futures-timer 3.0.2",
- "lazy_static",
- "prometheus",
-]
-
-[[package]]
-name = "sc-utils"
-version = "4.0.0-dev"
-source = "git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.13#7db0768a85dc36a3f2a44d042b32f3715c00a90d"
 dependencies = [
  "futures 0.3.17",
  "futures-timer 3.0.2",
@@ -10672,28 +10630,3 @@ dependencies = [
  "cc",
  "libc",
 ]
-
-[[patch.unused]]
-name = "beefy-gadget"
-version = "4.0.0-dev"
-source = "git+https://github.com/paritytech//substrate.git?branch=polkadot-v0.9.13#7db0768a85dc36a3f2a44d042b32f3715c00a90d"
-
-[[patch.unused]]
-name = "beefy-gadget-rpc"
-version = "4.0.0-dev"
-source = "git+https://github.com/paritytech//substrate.git?branch=polkadot-v0.9.13#7db0768a85dc36a3f2a44d042b32f3715c00a90d"
-
-[[patch.unused]]
-name = "beefy-primitives"
-version = "4.0.0-dev"
-source = "git+https://github.com/paritytech//substrate.git?branch=polkadot-v0.9.13#7db0768a85dc36a3f2a44d042b32f3715c00a90d"
-
-[[patch.unused]]
-name = "pallet-beefy"
-version = "4.0.0-dev"
-source = "git+https://github.com/paritytech//substrate.git?branch=polkadot-v0.9.13#7db0768a85dc36a3f2a44d042b32f3715c00a90d"
-
-[[patch.unused]]
-name = "pallet-beefy-mmr"
-version = "4.0.0-dev"
-source = "git+https://github.com/paritytech//substrate.git?branch=polkadot-v0.9.13#7db0768a85dc36a3f2a44d042b32f3715c00a90d"

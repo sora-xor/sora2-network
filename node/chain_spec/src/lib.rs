@@ -65,7 +65,7 @@ use sc_network::config::MultiaddrWithPeerId;
 use sc_service::{ChainType, Properties};
 use sp_consensus_aura::sr25519::AuthorityId as AuraId;
 use sp_consensus_babe::AuthorityId as BabeId;
-use sp_core::{Public, H160, H256};
+use sp_core::{Public, H160, H256, U256};
 use sp_runtime::sp_std::iter::once;
 use sp_runtime::traits::Zero;
 use sp_runtime::{BuildStorage, Perbill};
@@ -656,7 +656,6 @@ fn testnet_genesis(
         BasicInboundChannelConfig, BasicOutboundChannelConfig, IncentivizedInboundChannelConfig,
         IncentivizedOutboundChannelConfig,
     };
-    use sp_core::U256;
 
     // Initial balances
     let initial_staking = balance!(100);
@@ -1318,7 +1317,7 @@ pub fn main_net_coded() -> ChainSpec {
     let mut properties = Properties::new();
     properties.insert("ss58Format".into(), SS58Prefix::get().into());
     properties.insert("tokenSymbol".into(), "XOR".into());
-    properties.insert("tokenDecimals".into(), 18.into());
+    properties.insert("tokenDecimals".into(), 18i32.into());
     let name = "SORA";
     let id = "sora-substrate-main-net";
     // SORA main-net node address. We should have 2 nodes.
@@ -1350,12 +1349,14 @@ pub fn main_net_coded() -> ChainSpec {
                         hex!("14d500b666dbacc20535f8d2d4f039a8ace624c58e880d573980553774d7ff1a"), //Prod value
                         hex!("14d500b666dbacc20535f8d2d4f039a8ace624c58e880d573980553774d7ff1a"), //Prod value
                         hex!("71e6acfa06696ae5d962a36b88ddf4b0c7d5751a7107a2db1e6947ee2442f573"), //Prod value
+                        hex!("024f206cdff359d50597b3fd41fd17a1b585c7914037eedbd8e4a0d3f213a8ab33"), // Prod value
                     ),
                     authority_keys_from_public_keys(
                         hex!("94ee828c3455a327dde32f577e27f0b8a4c42b3fb626ee27f0004f7cf02bd332"), //Prod value
                         hex!("38364b218e599f78f2b52f34748908addce908881b2c76296c50b2494261c004"), //Prod value
                         hex!("38364b218e599f78f2b52f34748908addce908881b2c76296c50b2494261c004"), //Prod value
                         hex!("d603aea460c53393cfd2e2eb2820bb138738288502488fd6431fa93f7b59642d"), //Prod value
+                        hex!("02aadf7d2aa0d424cd60d6b384647f48e8d00610a631079fa33c1da0d712a71b1d"), // Prod value
                     ),
                 ],
                 vec![
@@ -1393,6 +1394,7 @@ pub fn main_net_coded() -> ChainSpec {
                     hex!("e44c7c00f98ae6acf86dc366d082307388c750ceb70696ca305a7bfd761aee26").into(),
                     hex!("603fb3e17b49ab8f90e839020f2473278c4f01626ef63976df35ccfbaaae0c1b").into(),
                 ],
+                hex!("603fb3e17b49ab8f90e839020f2473278c4f01626ef63976df35ccfbaaae0c1b").into(), // TODO: Replace this value
             )
         },
         boot_nodes,
@@ -1412,12 +1414,21 @@ pub fn main_net_coded() -> ChainSpec {
     not(feature = "private-net")
 ))]
 fn mainnet_genesis(
-    initial_authorities: Vec<(AccountId, AccountId, AuraId, BabeId, GrandpaId, ImOnlineId)>,
+    initial_authorities: Vec<(
+        AccountId,
+        AccountId,
+        AuraId,
+        BabeId,
+        GrandpaId,
+        ImOnlineId,
+        BeefyId,
+    )>,
     additional_validators: Vec<AccountId>,
     initial_bridge_peers: Vec<AccountId>,
     eth_bridge_params: EthBridgeParams,
     council_accounts: Vec<AccountId>,
     technical_committee_accounts: Vec<AccountId>,
+    treasury_account: AccountId,
 ) -> GenesisConfig {
     // Minimum stake for an active validator
     let initial_staking = balance!(0.2);
@@ -1692,36 +1703,44 @@ fn mainnet_genesis(
             initial_header: get_ethereum_header(),
             initial_difficulty: U256::zero(),
         },
-        frame_system: Some(SystemConfig {
+        system: SystemConfig {
             code: WASM_BINARY.unwrap().to_vec(),
-        }),
-        technical: Some(TechnicalConfig {
+        },
+        technical: TechnicalConfig {
             register_tech_accounts: tech_accounts,
-        }),
-        pallet_babe: Some(BabeConfig {
+        },
+        babe: BabeConfig {
             authorities: vec![],
-        }),
-        pallet_grandpa: Some(GrandpaConfig {
+            epoch_config: Some(framenode_runtime::constants::BABE_GENESIS_EPOCH_CONFIG),
+        },
+        grandpa: GrandpaConfig {
             authorities: vec![],
-        }),
-        pallet_session: Some(SessionConfig {
+        },
+        session: SessionConfig {
             keys: initial_authorities
                 .iter()
-                .map(|(account, _, _, babe_id, grandpa_id, im_online_id)| {
-                    (
-                        account.clone(),
-                        account.clone(),
-                        session_keys(grandpa_id.clone(), babe_id.clone(), im_online_id.clone()),
-                    )
-                })
+                .map(
+                    |(account, _, _, babe_id, grandpa_id, im_online_id, beefy_id)| {
+                        (
+                            account.clone(),
+                            account.clone(),
+                            session_keys(
+                                grandpa_id.clone(),
+                                babe_id.clone(),
+                                im_online_id.clone(),
+                                beefy_id.clone(),
+                            ),
+                        )
+                    },
+                )
                 .collect::<Vec<_>>(),
-        }),
-        pallet_staking: Some(StakingConfig {
+        },
+        staking: StakingConfig {
             validator_count: 69,
             minimum_validator_count: 1,
             stakers: initial_authorities
                 .iter()
-                .map(|(stash_account, account, _, _, _, _)| {
+                .map(|(stash_account, account, _, _, _, _, _)| {
                     (
                         stash_account.clone(),
                         account.clone(),
@@ -1732,15 +1751,15 @@ fn mainnet_genesis(
                 .collect(),
             invulnerables: initial_authorities
                 .iter()
-                .map(|(stash_account, _, _, _, _, _)| stash_account.clone())
+                .map(|(stash_account, _, _, _, _, _, _)| stash_account.clone())
                 .collect(),
             slash_reward_fraction: Perbill::from_percent(10),
             ..Default::default()
-        }),
-        assets: Some(AssetsConfig {
+        },
+        assets: AssetsConfig {
             endowed_assets: endowed_assets,
-        }),
-        permissions: Some(PermissionsConfig {
+        },
+        permissions: PermissionsConfig {
             initial_permission_owners: vec![
                 (
                     permissions::MANAGE_DEX,
@@ -1806,8 +1825,8 @@ fn mainnet_genesis(
                     vec![permissions::MINT, permissions::BURN],
                 ),
             ],
-        }),
-        pallet_balances: Some(BalancesConfig {
+        },
+        balances: BalancesConfig {
             balances: vec![
                 (eth_bridge_account_id.clone(), 0),
                 (assets_and_permissions_account_id.clone(), 0),
@@ -1840,8 +1859,8 @@ fn mainnet_genesis(
                     .map(|account_id| (account_id, initial_staking)),
             )
             .collect(),
-        }),
-        dex_manager: Some(DEXManagerConfig {
+        },
+        dex_manager: DEXManagerConfig {
             dex_list: vec![(
                 0,
                 DEXInfo {
@@ -1849,8 +1868,8 @@ fn mainnet_genesis(
                     is_public: true,
                 },
             )],
-        }),
-        tokens: Some(TokensConfig {
+        },
+        tokens: TokensConfig {
             balances: vec![
                 (
                     rewards_account_id.clone(),
@@ -1881,8 +1900,8 @@ fn mainnet_genesis(
                     initial_pswap_market_maker_rewards,
                 ),
             ],
-        }),
-        trading_pair: Some(TradingPairConfig {
+        },
+        trading_pair: TradingPairConfig {
             trading_pairs: initial_collateral_assets
                 .iter()
                 .chain(initial_synthetic_assets.iter())
@@ -1897,15 +1916,15 @@ fn mainnet_genesis(
                     )
                 })
                 .collect(),
-        }),
-        dex_api: Some(DEXAPIConfig {
+        },
+        dexapi: DEXAPIConfig {
             source_types: [
                 LiquiditySourceType::XYKPool,
                 LiquiditySourceType::MulticollateralBondingCurvePool,
             ]
             .into(),
-        }),
-        eth_bridge: Some(EthBridgeConfig {
+        },
+        eth_bridge: EthBridgeConfig {
             authority_account: eth_bridge_authority_account_id.clone(),
             networks: vec![NetworkConfig {
                 initial_peers: initial_bridge_peers.iter().cloned().collect(),
@@ -1919,48 +1938,53 @@ fn mainnet_genesis(
             }],
             xor_master_contract_address: eth_bridge_params.xor_master_contract_address,
             val_master_contract_address: eth_bridge_params.val_master_contract_address,
-        }),
-        bridge_multisig: Some(BridgeMultisigConfig {
+        },
+        bridge_multisig: BridgeMultisigConfig {
             accounts: once((
                 eth_bridge_account_id.clone(),
                 bridge_multisig::MultisigAccount::new(initial_bridge_peers),
             ))
             .collect(),
-        }),
-        multicollateral_bonding_curve_pool: Some(MulticollateralBondingCurvePoolConfig {
+        },
+        multicollateral_bonding_curve_pool: MulticollateralBondingCurvePoolConfig {
             distribution_accounts: accounts,
             reserves_account_id: mbc_reserves_tech_account_id,
             reference_asset_id: DAI.into(),
             incentives_account_id: mbc_pool_rewards_account_id,
             initial_collateral_assets,
             free_reserves_account_id: mbc_pool_free_reserves_account_id,
-        }),
-        pswap_distribution: Some(PswapDistributionConfig {
+        },
+        pswap_distribution: PswapDistributionConfig {
             subscribed_accounts: Vec::new(),
             burn_info: (fixed!(0.1), fixed!(0.000357), fixed!(0.65)),
-        }),
-        iroha_migration: Some(IrohaMigrationConfig {
+        },
+        iroha_migration: IrohaMigrationConfig {
             iroha_accounts: our_include!("bytes/iroha_migration_accounts_main.in"),
             account_id: iroha_migration_account_id,
-        }),
-        rewards: Some(rewards_config),
-        pallet_collective_Instance1: Some(CouncilConfig {
-            members: council_accounts,
-            phantom: Default::default(),
-        }),
-        pallet_collective_Instance2: Some(TechnicalCommitteeConfig {
-            members: technical_committee_accounts,
-            phantom: Default::default(),
-        }),
-        pallet_democracy: Some(DemocracyConfig::default()),
-        pallet_elections_phragmen: Default::default(),
-        pallet_membership_Instance1: Default::default(),
-        pallet_im_online: Default::default(),
-        xst: Some(XSTPoolConfig {
+        },
+        rewards: rewards_config,
+        democracy: DemocracyConfig::default(),
+        elections_phragmen: Default::default(),
+        im_online: Default::default(),
+        xst_pool: XSTPoolConfig {
             tech_account_id: xst_pool_permissioned_tech_account_id, // TODO: move to defaults
             reference_asset_id: DAI,
             initial_synthetic_assets: vec![XSTUSD],
-        }),
+        },
+        beefy: BeefyConfig {
+            authorities: vec![],
+        },
+        council: CouncilConfig {
+            members: council_accounts,
+            phantom: Default::default(),
+        },
+        incentivized_inbound_channel: Default::default(),
+        incentivized_outbound_channel: Default::default(),
+        technical_committee: TechnicalCommitteeConfig {
+            members: technical_committee_accounts,
+            phantom: Default::default(),
+        },
+        technical_membership: Default::default(),
     }
 }
 

@@ -32,7 +32,7 @@
 
 #![cfg(feature = "runtime-benchmarks")]
 
-use super::{Config, Event, Module, Pallet};
+use super::{Config, Event, Pallet};
 
 use codec::Decode;
 use frame_benchmarking::{benchmarks, Zero};
@@ -83,7 +83,7 @@ fn add_rewards<T: Config>(n: u32) {
 }
 
 fn assert_last_event<T: Config>(generic_event: <T as Config>::Event) {
-    let events = frame_system::Module::<T>::events();
+    let events = frame_system::Pallet::<T>::events();
     let system_event: <T as frame_system::Config>::Event = generic_event.into();
     // compare to the last event record
     let EventRecord { event, .. } = &events[events.len() - 1];
@@ -126,8 +126,8 @@ mod tests {
     #[ignore]
     fn test_benchmarks() {
         ExtBuilder::build().execute_with(|| {
-            assert_ok!(test_benchmark_transfer::<Runtime>());
-            assert_ok!(test_benchmark_reset_rewards::<Runtime>());
+            assert_ok!(Pallet::<Runtime>::test_benchmark_transfer());
+            assert_ok!(Pallet::<Runtime>::test_benchmark_reset_rewards());
         });
     }
 }

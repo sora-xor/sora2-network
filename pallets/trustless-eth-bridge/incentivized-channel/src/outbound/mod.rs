@@ -55,7 +55,7 @@ impl WeightInfo for () {
     }
 }
 
-type BalanceOf<T> = <<T as assets::Config>::Currency as MultiCurrency<
+pub type BalanceOf<T> = <<T as assets::Config>::Currency as MultiCurrency<
     <T as frame_system::Config>::AccountId,
 >>::Balance;
 
@@ -95,11 +95,11 @@ pub mod pallet {
     /// Interval between committing messages.
     #[pallet::storage]
     #[pallet::getter(fn interval)]
-    type Interval<T: Config> = StorageValue<_, T::BlockNumber, ValueQuery>;
+    pub(crate) type Interval<T: Config> = StorageValue<_, T::BlockNumber, ValueQuery>;
 
     /// Messages waiting to be committed.
     #[pallet::storage]
-    type MessageQueue<T: Config> = StorageValue<_, Vec<Message>, ValueQuery>;
+    pub(crate) type MessageQueue<T: Config> = StorageValue<_, Vec<Message>, ValueQuery>;
 
     #[pallet::storage]
     pub type Nonce<T: Config> = StorageValue<_, u64, ValueQuery>;

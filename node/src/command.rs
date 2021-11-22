@@ -176,7 +176,9 @@ pub fn run() -> sc_cli::Result<()> {
         Some(Subcommand::Benchmark(cmd)) => {
             let runner = cli.create_runner(cmd)?;
             set_default_ss58_version();
-            runner.sync_run(|config| cmd.run::<framenode_runtime::Block, service::Executor>(config))
+            runner.sync_run(|config| {
+                cmd.run::<framenode_runtime::Block, service::ExecutorDispatch>(config)
+            })
         }
         None => {
             let runner = cli.create_runner(&cli.run)?;

@@ -31,7 +31,9 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use codec::Decode;
-use common::DAI;
+use common::{Balance, DAI};
+use frame_benchmarking::benchmarks;
+use frame_support::sp_runtime::traits::UniqueSaturatedInto;
 use frame_support::traits::Get;
 use frame_system::RawOrigin;
 
@@ -117,18 +119,17 @@ fn init<T: Config>() {
     )
     .unwrap();
 }
-/*
+
 benchmarks! {
     remint {
         init::<T>();
-        assert_eq!(assets::Module::<T>::free_balance(&VAL.into(), &T::GetParliamentAccountId::get()), Ok(0));
+        assert_eq!(assets::Pallet::<T>::free_balance(&VAL.into(), &T::GetParliamentAccountId::get()), Ok(0));
     }: {
-        xor_fee::Module::<T>::remint(balance!(0.1)).unwrap();
+        xor_fee::Pallet::<T>::remint(balance!(0.1)).unwrap();
     } verify {
-        let val_burned: Balance = pallet_staking::Module::<T>::era_val_burned().unique_saturated_into();
+        let val_burned: Balance = pallet_staking::Pallet::<T>::era_val_burned().unique_saturated_into();
         assert_eq!(val_burned, balance!(0.199380121801856354));
 
-        assert_eq!(assets::Module::<T>::free_balance(&VAL.into(), &T::GetParliamentAccountId::get()), Ok(balance!(0.019938012180185635)));
+        assert_eq!(assets::Pallet::<T>::free_balance(&VAL.into(), &T::GetParliamentAccountId::get()), Ok(balance!(0.019938012180185635)));
     }
 }
-*/

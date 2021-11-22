@@ -58,7 +58,7 @@ fn alice<T: Config>() -> T::AccountId {
 }
 
 fn assert_last_event<T: Config>(generic_event: <T as Config>::Event) {
-    let events = frame_system::Module::<T>::events();
+    let events = frame_system::Pallet::<T>::events();
     let system_event: <T as frame_system::Config>::Event = generic_event.into();
     // compare to the last event record
     let EventRecord { event, .. } = &events[events.len() - 1];
@@ -67,7 +67,7 @@ fn assert_last_event<T: Config>(generic_event: <T as Config>::Event) {
 
 fn setup_benchmark<T: Config>() -> Result<(), &'static str> {
     let owner = alice::<T>();
-    frame_system::Module::<T>::inc_providers(&owner);
+    frame_system::Pallet::<T>::inc_providers(&owner);
     let owner_origin: <T as frame_system::Config>::Origin = RawOrigin::Signed(owner.clone()).into();
 
     // Grant permissions to self in case they haven't been explicitly given in genesis config
@@ -143,7 +143,7 @@ fn add_pending<T: Config>(n: u32) {
 benchmarks! {
     initialize_pool {
         let caller = alice::<T>();
-        frame_system::Module::<T>::inc_providers(&caller);
+        frame_system::Pallet::<T>::inc_providers(&caller);
         let dex_id: T::DEXId = common::DEXId::Polkaswap.into();
         Permissions::<T>::assign_permission(
             caller.clone(),
@@ -169,7 +169,7 @@ benchmarks! {
             USDT.into()
         ).unwrap();
     }: {
-        Module::<T>::initialize_pool(
+        Pallet::<T>::initialize_pool(
             RawOrigin::Signed(caller.clone()).into(),
             USDT.into()
         ).unwrap();
@@ -180,7 +180,7 @@ benchmarks! {
 
     set_reference_asset {
         let caller = alice::<T>();
-        frame_system::Module::<T>::inc_providers(&caller);
+        frame_system::Pallet::<T>::inc_providers(&caller);
         let dex_id: T::DEXId = common::DEXId::Polkaswap.into();
         Permissions::<T>::assign_permission(
             caller.clone(),
@@ -200,7 +200,7 @@ benchmarks! {
             None
         ).unwrap();
     }: {
-        Module::<T>::set_reference_asset(
+        Pallet::<T>::set_reference_asset(
             RawOrigin::Signed(caller.clone()).into(),
             USDT.into()
         ).unwrap();
@@ -211,7 +211,7 @@ benchmarks! {
 
     set_optional_reward_multiplier {
         let caller = alice::<T>();
-        frame_system::Module::<T>::inc_providers(&caller);
+        frame_system::Pallet::<T>::inc_providers(&caller);
         let dex_id: T::DEXId = common::DEXId::Polkaswap.into();
         Permissions::<T>::assign_permission(
             caller.clone(),
@@ -233,7 +233,7 @@ benchmarks! {
         TradingPair::<T>::register(RawOrigin::Signed(caller.clone()).into(), common::DEXId::Polkaswap.into(), XOR.into(), USDT.into()).unwrap();
         MBCPool::<T>::initialize_pool(RawOrigin::Signed(caller.clone()).into(), USDT.into()).unwrap();
     }: {
-        Module::<T>::set_optional_reward_multiplier(
+        Pallet::<T>::set_optional_reward_multiplier(
             RawOrigin::Signed(caller.clone()).into(),
             USDT.into(),
             Some(fixed!(123))
@@ -263,9 +263,9 @@ mod tests {
     #[ignore]
     fn test_benchmarks() {
         ExtBuilder::default().build().execute_with(|| {
-            assert_ok!(test_benchmark_initialize_pool::<Runtime>());
-            assert_ok!(test_benchmark_set_reference_asset::<Runtime>());
-            assert_ok!(test_benchmark_set_optional_reward_multiplier::<Runtime>());
+            assert_ok!(Pallet::<Runtime>::test_benchmark_initialize_pool());
+            assert_ok!(Pallet::<Runtime>::test_benchmark_set_reference_asset());
+            assert_ok!(Pallet::<Runtime>::test_benchmark_set_optional_reward_multiplier());
         });
     }
 }

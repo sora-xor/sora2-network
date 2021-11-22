@@ -172,10 +172,10 @@ mod tests {
     #[test]
     fn test_benchmarks() {
         ExtBuilder::default().build().execute_with(|| {
-            assert_ok!(test_benchmark_claim_rewards::<Runtime>());
-            assert_ok!(test_benchmark_distribute_limits::<Runtime>());
-            assert_ok!(test_benchmark_distribute_market_maker_rewards::<Runtime>());
-            assert_ok!(test_benchmark_set_asset_pair::<Runtime>());
+            assert_ok!(Pallet::<Runtime>::test_benchmark_claim_rewards());
+            assert_ok!(Pallet::<Runtime>::test_benchmark_distribute_limits());
+            assert_ok!(Pallet::<Runtime>::test_benchmark_distribute_market_maker_rewards());
+            assert_ok!(Pallet::<Runtime>::test_benchmark_set_asset_pair());
         });
     }
 }

@@ -148,7 +148,7 @@ benchmarks! {
     verify {
         for i in 0..n {
             let asset = create_asset::<T>(b"asset".to_vec(), i.into());
-            assert!(infos_before.get(i as usize).unwrap() != &crate::PriceInfos::<T>::get(&asset).unwrap().average_price);
+            assert_ne!(infos_before.get(i as usize).unwrap(),  &crate::PriceInfos::<T>::get(&asset).unwrap().average_price);
         }
     }
 }
@@ -162,7 +162,7 @@ mod tests {
     #[test]
     fn test_benchmarks() {
         ExtBuilder::default().build().execute_with(|| {
-            assert_ok!(test_benchmark_on_initialize::<Runtime>());
+            assert_ok!(Pallet::<Runtime>::test_benchmark_on_initialize());
         });
     }
 }

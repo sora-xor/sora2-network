@@ -38,8 +38,8 @@ use sp_io::hashing::blake2_256;
 use sp_std::prelude::*;
 
 use crate::{
-    Config, Event, MigrationPending, Module, Pallet, PswapFarmOwners, PswapWaifuOwners,
-    ReservesAcc, RewardInfo, ValOwners,
+    Config, Event, MigrationPending, Pallet, PswapFarmOwners, PswapWaifuOwners, ReservesAcc,
+    RewardInfo, ValOwners,
 };
 
 fn alice<T: Config>() -> T::AccountId {
@@ -82,7 +82,7 @@ fn populate_val_owners<T: Config>(n: u32) -> Vec<(EthereumAddress, Balance)> {
 }
 
 fn assert_last_event<T: Config>(generic_event: <T as Config>::Event) {
-    let events = frame_system::Module::<T>::events();
+    let events = frame_system::Pallet::<T>::events();
     let system_event: <T as frame_system::Config>::Event = generic_event.into();
     // compare to the last event record
     let EventRecord { event, .. } = &events[events.len() - 1];
@@ -93,11 +93,11 @@ benchmarks! {
     claim {
         let n in 1..1000;
 
-        let reserves_acc = technical::Module::<T>::tech_account_id_to_account_id(&ReservesAcc::<T>::get()).unwrap();
+        let reserves_acc = technical::Pallet::<T>::tech_account_id_to_account_id(&ReservesAcc::<T>::get()).unwrap();
 
         let val_asset: T::AssetId = VAL.into();
-        let val_owner = assets::Module::<T>::asset_owner(&val_asset).unwrap();
-        assets::Module::<T>::mint_to(
+        let val_owner = assets::Pallet::<T>::asset_owner(&val_asset).unwrap();
+        assets::Pallet::<T>::mint_to(
             &val_asset,
             &val_owner,
             &reserves_acc,
@@ -105,8 +105,8 @@ benchmarks! {
         ).unwrap();
 
         let pswap_asset: T::AssetId = PSWAP.into();
-        let pswap_owner = assets::Module::<T>::asset_owner(&pswap_asset).unwrap();
-        assets::Module::<T>::mint_to(
+        let pswap_owner = assets::Pallet::<T>::asset_owner(&pswap_asset).unwrap();
+        assets::Pallet::<T>::mint_to(
             &pswap_asset,
             &pswap_owner,
             &reserves_acc,
@@ -144,18 +144,19 @@ mod tests {
     use frame_support::assert_ok;
 
     use crate::mock::{ExtBuilder, Runtime};
+    use crate::Pallet;
 
     #[test]
     fn claim() {
         ExtBuilder::with_rewards(false).build().execute_with(|| {
-            assert_ok!(super::test_benchmark_claim::<Runtime>());
+            assert_ok!(Pallet::<Runtime>::test_benchmark_claim());
         });
     }
 
     #[test]
     fn migrate() {
         ExtBuilder::with_rewards(false).build().execute_with(|| {
-            assert_ok!(super::test_benchmark_finalize_storage_migration::<Runtime>());
+            assert_ok!(Pallet::<Runtime>::test_benchmark_finalize_storage_migration());
         });
     }
 }

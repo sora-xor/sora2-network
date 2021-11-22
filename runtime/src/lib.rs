@@ -2420,6 +2420,45 @@ impl_runtime_apis! {
 
     #[cfg(feature = "runtime-benchmarks")]
     impl frame_benchmarking::Benchmark<Block> for Runtime {
+        fn benchmark_metadata(extra: bool) -> (
+            Vec<frame_benchmarking::BenchmarkList>,
+            Vec<frame_support::traits::StorageInfo>,
+        ) {
+            use frame_benchmarking::{list_benchmark, Benchmarking, BenchmarkList};
+            use frame_support::traits::StorageInfoTrait;
+
+            use dex_api_benchmarking::Pallet as DEXAPIBench;
+            use liquidity_proxy_benchmarking::Pallet as LiquidityProxyBench;
+            use pool_xyk_benchmarking::Pallet as XYKPoolBench;
+            use pswap_distribution_benchmarking::Pallet as PswapDistributionBench;
+            use xor_fee_benchmarking::Pallet as XorFeeBench;
+
+            let mut list = Vec::<BenchmarkList>::new();
+
+            list_benchmark!(list, extra, assets, Assets);
+            list_benchmark!(list, extra, dex_api, DEXAPIBench::<Runtime>);
+            #[cfg(feature = "private-net")]
+            list_benchmark!(list, extra, faucet, Faucet);
+            list_benchmark!(list, extra, farming, Farming);
+            list_benchmark!(list, extra, iroha_migration, IrohaMigration);
+            list_benchmark!(list, extra, liquidity_proxy, LiquidityProxyBench::<Runtime>);
+            list_benchmark!(list, extra, multicollateral_bonding_curve_pool, MulticollateralBondingCurvePool);
+            list_benchmark!(list, extra, pswap_distribution, PswapDistributionBench::<Runtime>);
+            list_benchmark!(list, extra, rewards, Rewards);
+            list_benchmark!(list, extra, trading_pair, TradingPair);
+            list_benchmark!(list, extra, pool_xyk, XYKPoolBench::<Runtime>);
+            list_benchmark!(list, extra, eth_bridge, EthBridge);
+            list_benchmark!(list, extra, vested_rewards, VestedRewards);
+            list_benchmark!(list, extra, price_tools, PriceTools);
+            list_benchmark!(list, extra, xor_fee, XorFeeBench::<Runtime>);
+            list_benchmark!(list, extra, ethereum_light_client, EthereumLightClient);
+            list_benchmark!(list, extra, referrals, Referrals);
+
+            let storage_info = AllPalletsWithSystem::storage_info();
+
+            return (list, storage_info)
+        }
+
         fn dispatch_benchmark(
             config: frame_benchmarking::BenchmarkConfig
         ) -> Result<Vec<frame_benchmarking::BenchmarkBatch>, sp_runtime::RuntimeString> {

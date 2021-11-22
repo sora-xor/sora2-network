@@ -33,17 +33,19 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use codec::Decode;
-use common::prelude::Balance;
+use common::prelude::{Balance, SwapVariant};
 use common::{
-    balance, AssetName, AssetSymbol, DEXId, DEFAULT_BALANCE_PRECISION, DOT, PSWAP, USDT, VAL, XOR,
+    balance, AssetName, AssetSymbol, DEXId, LiquiditySourceType, DEFAULT_BALANCE_PRECISION, DOT,
+    PSWAP, USDT, VAL, XOR,
 };
 use frame_system::{EventRecord, RawOrigin};
 
-use frame_benchmarking::Zero;
+use frame_benchmarking::{benchmarks, Zero};
 use hex_literal::hex;
 use sp_std::prelude::*;
 
 use assets::Pallet as Assets;
+use frame_support::traits::Get;
 use multicollateral_bonding_curve_pool::Pallet as MBCPool;
 use permissions::Pallet as Permissions;
 use pool_xyk::Pallet as XYKPool;
@@ -54,7 +56,8 @@ pub const DEX: DEXId = DEXId::Polkaswap;
 #[cfg(test)]
 mod mock;
 
-pub struct Module<T: Config>(dex_api::Pallet<T>);
+pub struct Pallet<T: Config>(dex_api::Pallet<T>);
+
 pub trait Config:
     dex_api::Config + pool_xyk::Config + technical::Config + multicollateral_bonding_curve_pool::Config
 {
@@ -261,7 +264,7 @@ fn assert_last_event<T: Config>(generic_event: <T as dex_api::Config>::Event) {
     let EventRecord { event, .. } = &events[events.len() - 1];
     assert_eq!(event, &system_event);
 }
-/*
+
 benchmarks! {
     swap {
         let n in 1 .. 1000 => setup_benchmark::<T>().unwrap();
@@ -296,8 +299,7 @@ mod tests {
     #[test]
     fn test_benchmarks() {
         ExtBuilder::default().build().execute_with(|| {
-            assert_ok!(test_benchmark_swap::<Runtime>());
+            assert_ok!(Pallet::<Runtime>::test_benchmark_swap());
         });
     }
 }
-*/
