@@ -7,7 +7,6 @@ String dockerRegistryRWUserId = 'bot-sora2-rw'
 String envImageName           = 'docker.soramitsu.co.jp/sora2/env'
 String rustcVersion           = '1.54'
 String wasmReportFile         = 'subwasm_report.json'
-String rustcVersion           = 'nightly-2021-03-11'
 String appImageName           = 'docker.soramitsu.co.jp/sora2/substrate'
 String secretScannerExclusion = '.*Cargo.toml'
 Boolean disableSecretScanner  = false
