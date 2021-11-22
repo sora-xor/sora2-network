@@ -2,7 +2,7 @@
 name = "get-lp-tokens"
 version = "0.1.0"
 authors = ["Alexey Kalita <kalita.alexey@outlook.com>"]
-edition = "2018"
+edition = "2021"
 
 [workspace]
 

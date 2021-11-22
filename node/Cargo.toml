@@ -3,7 +3,7 @@ name = "framenode"
 version = "0.1.0"
 authors = ["Parity Technologies <admin@parity.io>"]
 build = "build.rs"
-edition = "2018"
+edition = "2021"
 
 [[bin]]
 name = "framenode"

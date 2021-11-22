@@ -1,7 +1,7 @@
 [package]
 name = "pswap-distribution-rpc"
 version = "0.1.0"
-edition = "2018"
+edition = "2021"
 authors = ['Polka Biome Ltd. <jihoon@tutanota.de>']
 license = "BSD-4-Clause"
 homepage = 'https://sora.org'
