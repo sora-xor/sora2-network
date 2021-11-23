@@ -26,11 +26,7 @@ pub mod pallet {
     use frame_system::ensure_signed;
     use frame_system::pallet_prelude::*;
     use hex_literal::hex;
-    use sp_runtime::traits::AccountIdConversion;
-    use sp_runtime::ModuleId;
     use sp_std::vec::Vec;
-
-    const PALLET_ID: ModuleId = ModuleId(*b"crlocker");
 
     #[pallet::config]
     pub trait Config: frame_system::Config + assets::Config {
@@ -59,13 +55,13 @@ pub mod pallet {
     pub struct Pallet<T>(PhantomData<T>);
 
     #[pallet::type_value]
-    pub(super) fn DefaultForFeesOptionOneAccount<T: Config>() -> AccountIdOf<T> {
+    pub fn DefaultForFeesOptionOneAccount<T: Config>() -> AccountIdOf<T> {
         let bytes = hex!("d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d");
         AccountIdOf::<T>::decode(&mut &bytes[..]).unwrap_or_default()
     }
 
     #[pallet::type_value]
-    pub(super) fn DefaultForFeesOptionTwoAccount<T: Config>() -> AccountIdOf<T> {
+    pub fn DefaultForFeesOptionTwoAccount<T: Config>() -> AccountIdOf<T> {
         let bytes = hex!("d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d");
         AccountIdOf::<T>::decode(&mut &bytes[..]).unwrap_or_default()
     }
@@ -73,13 +69,13 @@ pub mod pallet {
     /// Account for collecting fees from Option 1
     #[pallet::storage]
     #[pallet::getter(fn fees_option_one_account)]
-    pub(super) type FeesOptionOneAccount<T: Config> =
+    pub type FeesOptionOneAccount<T: Config> =
         StorageValue<_, AccountIdOf<T>, ValueQuery, DefaultForFeesOptionOneAccount<T>>;
 
     /// Account for collecting fees from Option 2
     #[pallet::storage]
     #[pallet::getter(fn fees_option_two_account)]
-    pub(super) type FeesOptionTwoAccount<T: Config> =
+    pub type FeesOptionTwoAccount<T: Config> =
         StorageValue<_, AccountIdOf<T>, ValueQuery, DefaultForFeesOptionTwoAccount<T>>;
 
     #[pallet::storage]
@@ -138,7 +134,10 @@ pub mod pallet {
             // Calculate number of pool tokens to be locked
             let pool_tokens = T::XYKPool::pool_providers(pool_account.clone(), user.clone())
                 .expect("User is not pool provider");
-            lock_info.pool_tokens = pool_tokens * percentage_of_pool_tokens;
+            lock_info.pool_tokens = (FixedWrapper::from(pool_tokens)
+                * FixedWrapper::from(percentage_of_pool_tokens))
+            .try_into_balance()
+            .unwrap_or(lock_info.pool_tokens);
 
             // Check if user has enough liquidity to lock
             let mut lockups = <LockerData<T>>::get(&user);
@@ -166,7 +165,7 @@ pub mod pallet {
                     asset_a,
                     asset_b,
                     user.clone(),
-                    pool_tokens,
+                    lock_info.pool_tokens,
                     FixedWrapper::from(0.01),
                     option,
                 )?;
@@ -175,7 +174,7 @@ pub mod pallet {
                 Assets::<T>::transfer_from(
                     &T::CeresAssetId::get().into(),
                     &user,
-                    &Self::account_id(),
+                    &FeesOptionTwoAccount::<T>::get(),
                     balance!(20),
                 )?;
                 // Transfer 0.5% of LP tokens
@@ -184,7 +183,7 @@ pub mod pallet {
                     asset_a,
                     asset_b,
                     user.clone(),
-                    pool_tokens,
+                    lock_info.pool_tokens,
                     FixedWrapper::from(0.005),
                     option,
                 )?;
@@ -285,11 +284,6 @@ pub mod pallet {
                 pool_tokens,
             );
             return result;
-        }
-
-        /// The account ID of pallet
-        fn account_id() -> AccountIdOf<T> {
-            PALLET_ID.into_account()
         }
     }
 }

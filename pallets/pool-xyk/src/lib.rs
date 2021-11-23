@@ -581,10 +581,6 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
             pool_account.clone(),
             target_account_id.clone(),
             |balance| {
-                if balance.is_none() {
-                    frame_system::Module::<T>::inc_consumers(&target_account_id)
-                        .map_err(|_| Error::<T>::IncRefError)?;
-                }
                 *balance = Some(balance.unwrap_or(0) + pool_tokens);
                 Ok(())
             },

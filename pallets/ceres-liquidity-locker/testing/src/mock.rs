@@ -1,4 +1,3 @@
-use crate::tests::Config;
 use common::prelude::{Balance, Fixed};
 use common::{balance, fixed, hash, DEXInfo};
 use currencies::BasicCurrencyAdapter;
@@ -30,8 +29,9 @@ pub type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
 
-pub const CERES_ASSET_ID: AssetId = common::AssetId32::from_bytes
-    (hex!("008bcfd2387d3fc453333557eecb0efe59fcba128769b2feefdd306e98e66440"));
+pub const CERES_ASSET_ID: AssetId = common::AssetId32::from_bytes(hex!(
+    "008bcfd2387d3fc453333557eecb0efe59fcba128769b2feefdd306e98e66440"
+));
 
 parameter_types! {
     pub const BlockHashCount: u64 = 250;
@@ -143,7 +143,7 @@ impl currencies::Config for Runtime {
     type Event = Event;
     type MultiCurrency = orml_tokens::Module<Runtime>;
     type NativeCurrency =
-    BasicCurrencyAdapter<Runtime, pallet_balances::Module<Runtime>, Amount, BlockNumber>;
+        BasicCurrencyAdapter<Runtime, pallet_balances::Module<Runtime>, Amount, BlockNumber>;
     type GetNativeCurrencyId = <Runtime as assets::Config>::GetBaseAssetId;
     type WeightInfo = ();
 }
@@ -152,7 +152,7 @@ impl assets::Config for Runtime {
     type Event = Event;
     type ExtraAccountId = [u8; 32];
     type ExtraAssetRecordArg =
-    common::AssetIdExtraAssetRecordArg<DEXId, common::LiquiditySourceType, [u8; 32]>;
+        common::AssetIdExtraAssetRecordArg<DEXId, common::LiquiditySourceType, [u8; 32]>;
     type AssetId = AssetId;
     type GetBaseAssetId = GetBaseAssetId;
     type Currency = currencies::Module<Runtime>;
@@ -175,9 +175,9 @@ impl pool_xyk::Config for Runtime {
     type Event = Event;
     type PairSwapAction = pool_xyk::PairSwapAction<AssetId, AccountId, TechAccountId>;
     type DepositLiquidityAction =
-    pool_xyk::DepositLiquidityAction<AssetId, AccountId, TechAccountId>;
+        pool_xyk::DepositLiquidityAction<AssetId, AccountId, TechAccountId>;
     type WithdrawLiquidityAction =
-    pool_xyk::WithdrawLiquidityAction<AssetId, AccountId, TechAccountId>;
+        pool_xyk::WithdrawLiquidityAction<AssetId, AccountId, TechAccountId>;
     type PolySwapAction = pool_xyk::PolySwapAction<AssetId, AccountId, TechAccountId>;
     type EnsureDEXManager = dex_manager::Module<Runtime>;
     type GetFee = GetFee;
@@ -206,8 +206,6 @@ impl ceres_liquidity_locker::Config for Runtime {
     type XYKPool = PoolXYK;
     type CeresAssetId = CeresAssetId;
 }
-
-impl Config for Runtime {}
 
 #[allow(non_snake_case)]
 pub fn ALICE() -> AccountId {
@@ -266,21 +264,21 @@ impl ExtBuilder {
         dex_manager::GenesisConfig::<Runtime> {
             dex_list: self.initial_dex_list,
         }
-            .assimilate_storage(&mut t)
-            .unwrap();
+        .assimilate_storage(&mut t)
+        .unwrap();
 
         orml_tokens::GenesisConfig::<Runtime> {
             endowed_accounts: self.endowed_accounts,
         }
-            .assimilate_storage(&mut t)
-            .unwrap();
+        .assimilate_storage(&mut t)
+        .unwrap();
 
         permissions::GenesisConfig::<Runtime> {
             initial_permission_owners: self.initial_permission_owners,
             initial_permissions: self.initial_permissions,
         }
-            .assimilate_storage(&mut t)
-            .unwrap();
+        .assimilate_storage(&mut t)
+        .unwrap();
 
         t.into()
     }
