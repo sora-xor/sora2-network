@@ -66,6 +66,7 @@ pub mod pallet {
     use super::*;
     use frame_support::log::debug;
     use frame_support::pallet_prelude::*;
+    use frame_support::traits::StorageVersion;
     use frame_system::pallet_prelude::*;
 
     #[pallet::config]
@@ -112,8 +113,12 @@ pub mod pallet {
     #[pallet::storage]
     pub type DestAccount<T: Config> = StorageValue<_, T::AccountId, ValueQuery>;
 
+    /// The current storage version.
+    const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
+
     #[pallet::pallet]
     #[pallet::generate_store(trait Store)]
+    #[pallet::storage_version(STORAGE_VERSION)]
     pub struct Pallet<T>(PhantomData<T>);
 
     #[pallet::hooks]

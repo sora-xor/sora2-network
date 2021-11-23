@@ -43,13 +43,11 @@ pub struct Pallet<T: Config>(xor_fee::Pallet<T>);
 
 pub trait Config: xor_fee::Config + pool_xyk::Config + pallet_staking::Config {}
 
-#[allow(dead_code)]
 fn alice<T: Config>() -> T::AccountId {
     let bytes = [1; 32];
     T::AccountId::decode(&mut &bytes[..]).unwrap_or_default()
 }
 
-#[allow(dead_code)]
 fn init<T: Config>() {
     let owner = alice::<T>();
     frame_system::Pallet::<T>::inc_providers(&owner);

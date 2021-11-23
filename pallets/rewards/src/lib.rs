@@ -49,10 +49,12 @@ use sp_runtime::{Perbill, Percent};
 use sp_std::prelude::*;
 
 use assets::AssetIdOf;
+#[cfg(feature = "std")]
+use common::balance;
 use common::prelude::FixedWrapper;
 #[cfg(feature = "include-real-files")]
 use common::vec_push;
-use common::{balance, eth, AccountIdOf, Balance, OnValBurned};
+use common::{eth, AccountIdOf, Balance, OnValBurned};
 
 #[cfg(feature = "include-real-files")]
 use hex_literal::hex;
@@ -184,6 +186,7 @@ impl<T: Config> OnValBurned for Pallet<T> {
 #[frame_support::pallet]
 pub mod pallet {
     use frame_support::pallet_prelude::*;
+    use frame_support::traits::StorageVersion;
     use frame_support::transactional;
     use frame_system::pallet_prelude::*;
     use secp256k1::util::SIGNATURE_SIZE;
@@ -210,8 +213,12 @@ pub mod pallet {
         type WeightInfo: WeightInfo;
     }
 
+    /// The current storage version.
+    const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
+
     #[pallet::pallet]
     #[pallet::generate_store(pub(super) trait Store)]
+    #[pallet::storage_version(STORAGE_VERSION)]
     pub struct Pallet<T>(PhantomData<T>);
 
     #[pallet::hooks]

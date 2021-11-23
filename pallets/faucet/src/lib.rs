@@ -71,6 +71,7 @@ pub use pallet::*;
 #[frame_support::pallet]
 pub mod pallet {
     use frame_support::pallet_prelude::*;
+    use frame_support::traits::StorageVersion;
     use frame_system::pallet_prelude::*;
     use hex_literal::hex;
     use sp_core::H160;
@@ -88,8 +89,12 @@ pub mod pallet {
         type WeightInfo: WeightInfo;
     }
 
+    /// The current storage version.
+    const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
+
     #[pallet::pallet]
     #[pallet::generate_store(pub(super) trait Store)]
+    #[pallet::storage_version(STORAGE_VERSION)]
     pub struct Pallet<T>(PhantomData<T>);
 
     #[pallet::hooks]

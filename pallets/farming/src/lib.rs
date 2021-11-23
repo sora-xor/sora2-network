@@ -272,7 +272,7 @@ pub mod pallet {
     use assets::AssetIdOf;
     use frame_support::pallet_prelude::*;
     use frame_support::traits::schedule::Anon;
-    use frame_support::traits::CrateVersion;
+    use frame_support::traits::StorageVersion;
     use frame_system::ensure_root;
     use frame_system::pallet_prelude::OriginFor;
     use sp_runtime::traits::Zero;
@@ -304,8 +304,12 @@ pub mod pallet {
         type WeightInfo: WeightInfo;
     }
 
+    /// The current storage version.
+    const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
+
     #[pallet::pallet]
     #[pallet::generate_store(pub(super) trait Store)]
+    #[pallet::storage_version(STORAGE_VERSION)]
     pub struct Pallet<T>(PhantomData<T>);
 
     #[pallet::hooks]
@@ -326,13 +330,14 @@ pub mod pallet {
         }
 
         fn on_runtime_upgrade() -> Weight {
-            match Self::crate_version() {
-                CrateVersion { major: 0, .. } => migrations::v1_1::migrate::<T>(),
-                CrateVersion {
-                    major: 1, minor: 0, ..
-                } => migrations::v1_2::migrate::<T>(),
-                _ => 0,
-            }
+            // match Self::crate_version() {
+            //     CrateVersion { major: 0, .. } => migrations::v1_1::migrate::<T>(),
+            //     CrateVersion {
+            //         major: 1, minor: 0, ..
+            //     } => migrations::v1_2::migrate::<T>(),
+            //     _ => 0,
+            // }
+            Default::default()
         }
     }
 

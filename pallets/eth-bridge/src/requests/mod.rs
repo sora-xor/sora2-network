@@ -44,6 +44,7 @@ use frame_support::sp_runtime::app_crypto::sp_core;
 use frame_support::{ensure, sp_io, RuntimeDebug};
 pub use incoming::*;
 pub use outgoing::*;
+#[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 use sp_core::H256;
 use sp_io::hashing::blake2_256;

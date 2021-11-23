@@ -61,6 +61,7 @@ pub use handle::*;
 use hex_literal::hex;
 pub use http::*;
 use rustc_hex::ToHex;
+#[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 use sp_core::{H160, H256};
 use sp_std::collections::btree_set::BTreeSet;

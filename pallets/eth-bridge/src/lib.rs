@@ -96,6 +96,7 @@ use hex_literal::hex;
 pub use pallet::*;
 use permissions::{Scope, BURN, MINT};
 use requests::*;
+#[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 use sp_core::{H160, H256};
 use sp_std::borrow::Cow;
@@ -337,7 +338,7 @@ pub mod pallet {
     use frame_support::pallet_prelude::*;
     use frame_support::sp_runtime::traits::Zero;
     use frame_support::traits::schedule::Anon;
-    use frame_support::traits::GetCallMetadata;
+    use frame_support::traits::{GetCallMetadata, StorageVersion};
     use frame_system::pallet_prelude::*;
     use frame_system::RawOrigin;
 
@@ -387,8 +388,12 @@ pub mod pallet {
         type Scheduler: Anon<Self::BlockNumber, <Self as Config>::Call, Self::SchedulerOriginCaller>;
     }
 
+    /// The current storage version.
+    const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
+
     #[pallet::pallet]
     #[pallet::generate_store(pub(super) trait Store)]
+    #[pallet::storage_version(STORAGE_VERSION)]
     pub struct Pallet<T>(PhantomData<T>);
 
     #[pallet::hooks]

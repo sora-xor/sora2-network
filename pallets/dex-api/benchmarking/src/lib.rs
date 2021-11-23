@@ -38,7 +38,7 @@ use common::{
     balance, AssetName, AssetSymbol, DEXId, LiquiditySourceType, DEFAULT_BALANCE_PRECISION, DOT,
     PSWAP, USDT, VAL, XOR,
 };
-use frame_system::{EventRecord, RawOrigin};
+use frame_system::RawOrigin;
 
 use frame_benchmarking::{benchmarks, Zero};
 use hex_literal::hex;
@@ -64,20 +64,17 @@ pub trait Config:
 }
 
 // Support Functions
-#[allow(dead_code)]
 fn alice<T: Config>() -> T::AccountId {
     let bytes = hex!("d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d");
     T::AccountId::decode(&mut &bytes[..]).expect("Failed to decode account ID")
 }
 
-#[allow(dead_code)]
 fn bob<T: Config>() -> T::AccountId {
     let bytes = hex!("f43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d");
     T::AccountId::decode(&mut &bytes[..]).expect("Failed to decode account ID")
 }
 
 // Prepare Runtime for running benchmarks
-#[allow(dead_code)]
 fn setup_benchmark<T: Config>() -> Result<(), &'static str> {
     let owner = alice::<T>();
     frame_system::Pallet::<T>::inc_providers(&owner);
@@ -254,15 +251,6 @@ fn setup_benchmark<T: Config>() -> Result<(), &'static str> {
     MBCPool::<T>::initialize_pool(owner_origin.clone(), USDT.into()).unwrap();
 
     Ok(())
-}
-
-#[allow(dead_code)]
-fn assert_last_event<T: Config>(generic_event: <T as dex_api::Config>::Event) {
-    let events = frame_system::Pallet::<T>::events();
-    let system_event: <T as frame_system::Config>::Event = generic_event.into();
-    // compare to the last event record
-    let EventRecord { event, .. } = &events[events.len() - 1];
-    assert_eq!(event, &system_event);
 }
 
 benchmarks! {

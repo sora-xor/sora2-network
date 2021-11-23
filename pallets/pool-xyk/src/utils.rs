@@ -140,38 +140,6 @@ impl<T: Config> Pallet<T> {
         }
     }
 
-    #[allow(dead_code)]
-    fn get_bounded_asset_pair_for_liquidity(
-        dex_id: T::DEXId,
-        asset_a: T::AssetId,
-        asset_b: T::AssetId,
-        swap_amount_a: SwapAmount<Balance>,
-        swap_amount_b: SwapAmount<Balance>,
-    ) -> Result<
-        (
-            Bounds<Balance>,
-            Bounds<Balance>,
-            Bounds<Balance>,
-            Bounds<Balance>,
-            TechAccountIdOf<T>,
-        ),
-        DispatchError,
-    > {
-        let (_, tech_acc_id) =
-            Pallet::<T>::tech_account_from_dex_and_asset_pair(dex_id, asset_a, asset_b)?;
-        let (source_amount_a, destination_amount_a) =
-            Pallet::<T>::get_bounds_from_swap_amount(swap_amount_a)?;
-        let (source_amount_b, destination_amount_b) =
-            Pallet::<T>::get_bounds_from_swap_amount(swap_amount_b)?;
-        Ok((
-            source_amount_a,
-            destination_amount_a,
-            source_amount_b,
-            destination_amount_b,
-            tech_acc_id,
-        ))
-    }
-
     pub fn burn(
         pool_account: &AccountIdOf<T>,
         user_account: &AccountIdOf<T>,

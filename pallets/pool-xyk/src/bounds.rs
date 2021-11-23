@@ -75,11 +75,6 @@ impl<Balance: Ord + Eq + Clone> Bounds<Balance> {
             _ => false,
         }
     }
-
-    #[allow(dead_code)]
-    fn meets_the_boundaries_mutally(&self, rhs: &Self) -> bool {
-        self.meets_the_boundaries(rhs) || rhs.meets_the_boundaries(self)
-    }
 }
 
 impl<Balance> From<Bounds<Balance>> for Option<Balance> {

@@ -29,6 +29,7 @@ type OldSavedValues<T> = StorageMap<
     ValueQuery,
 >;
 
+#[allow(dead_code)]
 pub fn migrate<T: Config>() -> Weight {
     let pools = BTreeMap::<AccountId32, Vec<(AccountId32, u32)>>::decode(&mut &POOLS_BYTES[..]);
     let pools = match pools {

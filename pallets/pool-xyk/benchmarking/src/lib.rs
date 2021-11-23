@@ -56,13 +56,11 @@ pub trait Config: pool_xyk::Config {}
 pub const DEX: DEXId = DEXId::Polkaswap;
 
 // Support Functions
-#[allow(dead_code)]
 fn alice<T: Config>() -> T::AccountId {
     let bytes = hex!("d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d");
     T::AccountId::decode(&mut &bytes[..]).expect("Failed to decode account ID")
 }
 
-#[allow(dead_code)]
 fn setup_benchmark_assets_only<T: Config>() -> Result<(), &'static str> {
     let owner = alice::<T>();
     frame_system::Pallet::<T>::inc_providers(&owner);
@@ -114,7 +112,6 @@ fn setup_benchmark_assets_only<T: Config>() -> Result<(), &'static str> {
     Ok(())
 }
 
-#[allow(dead_code)]
 fn setup_benchmark<T: Config>() -> Result<(), &'static str> {
     let owner = alice::<T>();
     frame_system::Pallet::<T>::inc_providers(&owner);

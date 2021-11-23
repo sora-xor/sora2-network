@@ -311,7 +311,6 @@ impl Default for ExtBuilder {
 }
 
 impl ExtBuilder {
-    #[allow(dead_code)]
     pub fn build(self) -> sp_io::TestExternalities {
         let mut t = frame_system::GenesisConfig::default()
             .build_storage::<Runtime>()
