@@ -49,7 +49,6 @@ extern crate alloc;
 pub mod weights;
 
 mod benchmarking;
-mod migration;
 
 #[cfg(test)]
 mod mock;
@@ -262,11 +261,7 @@ pub mod pallet {
     pub struct Pallet<T>(PhantomData<T>);
 
     #[pallet::hooks]
-    impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
-        fn on_runtime_upgrade() -> Weight {
-            migration::migrate::<T>()
-        }
-    }
+    impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {}
 
     #[pallet::call]
     impl<T: Config> Pallet<T> {

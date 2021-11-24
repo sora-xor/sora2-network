@@ -597,20 +597,7 @@ pub mod pallet {
     pub struct Pallet<T>(PhantomData<T>);
 
     #[pallet::hooks]
-    impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
-        fn on_runtime_upgrade() -> Weight {
-            // match Self::storage_version() {
-            //     Some(PalletVersion { major: 0, .. }) | None => migrations::v1_1::migrate::<T>(),
-            //     Some(PalletVersion {
-            //         major: 1,
-            //         minor: 1,
-            //         patch: 0,
-            //     }) => migrations::v1_2::migrate::<T>(),
-            //     _ => 0,
-            // }
-            Default::default()
-        }
-    }
+    impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {}
 
     #[pallet::call]
     impl<T: Config> Pallet<T> {

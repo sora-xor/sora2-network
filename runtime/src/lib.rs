@@ -63,7 +63,7 @@ use core::marker::PhantomData;
 use core::time::Duration;
 use currencies::BasicCurrencyAdapter;
 use extensions::ChargeTransactionPayment;
-use frame_support::traits::Currency;
+use frame_support::traits::{Currency, OnRuntimeUpgrade};
 use frame_system::offchain::{Account, SigningTypes};
 use frame_system::{EnsureOneOf, EnsureRoot};
 use hex_literal::hex;
@@ -1745,7 +1745,7 @@ construct_runtime! {
         ElectionsPhragmen: pallet_elections_phragmen::{Pallet, Call, Storage, Event<T>, Config<T>} = 39,
         VestedRewards: vested_rewards::{Pallet, Call, Storage, Event<T>} = 40,
         Identity: pallet_identity::{Pallet, Call, Storage, Event<T>} = 41,
-        Farming: farming::{Pallet, Call, Storage} = 42,
+        Farming: farming::{Pallet, Storage} = 42,
         XSTPool: xst::{Pallet, Call, Storage, Config<T>, Event<T>} = 43,
         PriceTools: price_tools::{Pallet, Storage, Event<T>} = 44,
 
@@ -1822,7 +1822,7 @@ construct_runtime! {
         ElectionsPhragmen: pallet_elections_phragmen::{Pallet, Call, Storage, Event<T>, Config<T>} = 39,
         VestedRewards: vested_rewards::{Pallet, Call, Storage, Event<T>} = 40,
         Identity: pallet_identity::{Pallet, Call, Storage, Event<T>} = 41,
-        Farming: farming::{Pallet, Call, Storage} = 42,
+        Farming: farming::{Pallet, Storage} = 42,
         XSTPool: xst::{Pallet, Call, Storage, Config<T>, Event<T>} = 43,
         PriceTools: price_tools::{Pallet, Storage, Event<T>} = 44,
 
@@ -1888,7 +1888,19 @@ pub type Executive = frame_executive::Executive<
     frame_system::ChainContext<Runtime>,
     Runtime,
     AllPallets,
+    MigratePalletVersionToStorageVersion,
 >;
+
+/// Migrate from `PalletVersion` to the new `StorageVersion`
+pub struct MigratePalletVersionToStorageVersion;
+
+impl OnRuntimeUpgrade for MigratePalletVersionToStorageVersion {
+    fn on_runtime_upgrade() -> frame_support::weights::Weight {
+        frame_support::migrations::migrate_from_pallet_version_to_storage_version::<
+            AllPalletsWithSystem,
+        >(&RocksDbWeight::get())
+    }
+}
 
 impl_runtime_apis! {
     impl sp_api::Core<Block> for Runtime {

@@ -340,37 +340,3 @@ pub fn run_to_block(n: u64) {
         Rewards::on_val_burned(balance!(10));
     }
 }
-
-#[allow(dead_code)]
-pub fn unclaimed_val_data() -> Vec<(crate::EthereumAddress, Balance)> {
-    vec![
-        (
-            hex!("21Bc9f4a3d9Dc86f142F802668dB7D908cF0A636").into(),
-            balance!(500),
-        ),
-        (
-            hex!("d170a274320333243b9f860e8891c6792de1ec19").into(),
-            balance!(1000),
-        ),
-        (
-            hex!("886021f300dc809269cfc758a2364a2baf63af0c").into(),
-            balance!(1500),
-        ),
-        (
-            hex!("8b98125055f70613bcee1a391e3096393bddb1ca").into(),
-            balance!(2000),
-        ),
-        (
-            hex!("d0d6f3cafe2b0b2d1c04d5bcf44461dd6e4f0344").into(),
-            balance!(2500),
-        ),
-        (
-            hex!("90781049bad67cb0b870bfd41da6b467d4345683").into(),
-            balance!(3000),
-        ),
-        (
-            hex!("8522d57aa68fad76c110ca6ff310dcd57071cdf6").into(),
-            balance!(3500),
-        ),
-    ]
-}

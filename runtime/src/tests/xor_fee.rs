@@ -210,7 +210,7 @@ fn notify_val_burned_works() {
         fill_spot_price();
 
         assert_eq!(
-            pallet_staking::Module::<Runtime>::era_val_burned(),
+            pallet_staking::Pallet::<Runtime>::era_val_burned(),
             0_u128.into()
         );
 
@@ -250,7 +250,7 @@ fn notify_val_burned_works() {
         // The correct answer is 3E-13 away
         assert_eq!(XorToVal::<Runtime>::get(), total_xor_val + 36750000);
         assert_eq!(
-            pallet_staking::Module::<Runtime>::era_val_burned(),
+            pallet_staking::Pallet::<Runtime>::era_val_burned(),
             0_u128.into()
         );
 
@@ -260,7 +260,7 @@ fn notify_val_burned_works() {
 
         // The correct answer is 2E-13 away
         assert_eq!(
-            pallet_staking::Module::<Runtime>::era_val_burned(),
+            pallet_staking::Pallet::<Runtime>::era_val_burned(),
             total_xor_val - 3150072839481
         );
     });

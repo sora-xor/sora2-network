@@ -52,8 +52,6 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
-mod migration;
-
 pub const TECH_ACCOUNT_PREFIX: &[u8] = b"pswap-distribution";
 pub const TECH_ACCOUNT_MAIN: &[u8] = b"main";
 
@@ -436,10 +434,6 @@ pub mod pallet {
             Self::burn_rate_update_routine(block_num);
 
             <T as Config>::WeightInfo::on_initialize(is_distributing)
-        }
-
-        fn on_runtime_upgrade() -> Weight {
-            migration::migrate::<T>()
         }
     }
 

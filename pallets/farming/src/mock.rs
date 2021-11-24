@@ -141,7 +141,7 @@ construct_runtime! {
         VestedRewards: vested_rewards::{Pallet, Storage, Event<T>},
         Scheduler: pallet_scheduler::{Pallet, Call, Storage, Event<T>},
 
-        Farming: farming::{Pallet, Call, Storage},
+        Farming: farming::{Pallet, Storage},
     }
 }
 

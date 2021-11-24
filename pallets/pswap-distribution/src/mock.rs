@@ -61,14 +61,6 @@ pub fn alice() -> AccountId {
     AccountId32::from([10u8; 32])
 }
 
-pub fn bob() -> AccountId {
-    AccountId32::from([11u8; 32])
-}
-
-pub fn eve() -> AccountId {
-    AccountId32::from([12u8; 32])
-}
-
 pub fn fees_account_a() -> AccountId {
     AccountId32::from([20u8; 32])
 }

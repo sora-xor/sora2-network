@@ -29,21 +29,13 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use crate::mock::*;
-use crate::{ClaimableShares, Error, ShareholderAccounts};
-use codec::Encode;
-use common::prelude::Fixed;
-use common::{assert_approx_eq, balance, fixed, FromGenericPair, PSWAP};
+use crate::Error;
+use common::{assert_approx_eq, balance, fixed};
 use frame_support::assert_noop;
 use traits::MultiCurrency;
 
 type PswapDistrPallet = Pallet;
 type Pallet = crate::Pallet<Runtime>;
-
-#[allow(dead_code)]
-fn create_account(prefix: Vec<u8>, index: u128) -> AccountId {
-    let tech_account: TechAccountId = TechAccountId::from_generic_pair(prefix, index.encode());
-    Technical::tech_account_id_to_account_id(&tech_account).unwrap()
-}
 
 #[test]
 fn subscribe_with_default_frequency_should_pass() {
@@ -803,139 +795,3 @@ fn calculating_distribution_should_pass() {
         );
     })
 }
-
-#[test]
-fn migration_v0_1_0_to_v0_2_0() {
-    let mut ext = ExtBuilder::default().build();
-    ext.execute_with(|| {
-        Currencies::deposit(PSWAP, &GetPswapDistributionAccountId::get(), balance!(30))
-            .expect("Failed to deposit");
-        let claimable_shares: Fixed = fixed!(6);
-        let account_a_share: Fixed = fixed!(1);
-        let account_b_share: Fixed = fixed!(2);
-        let account_c_share: Fixed = fixed!(3);
-        ClaimableShares::<Runtime>::put(claimable_shares);
-        ShareholderAccounts::<Runtime>::insert(alice(), account_a_share);
-        ShareholderAccounts::<Runtime>::insert(bob(), account_b_share);
-        ShareholderAccounts::<Runtime>::insert(eve(), account_c_share);
-
-        crate::migration::migrate_from_shares_to_absolute_rewards::<Runtime>()
-            .expect("Failed to migrate");
-
-        let claimable_shares_expected: Fixed = fixed!(30);
-        let account_a_share_expected: Fixed = fixed!(5);
-        let account_b_share_expected: Fixed = fixed!(10);
-        let account_c_share_expected: Fixed = fixed!(15);
-        assert_eq!(ClaimableShares::<Runtime>::get(), claimable_shares_expected);
-        assert_eq!(
-            ShareholderAccounts::<Runtime>::get(alice()),
-            account_a_share_expected
-        );
-        assert_eq!(
-            ShareholderAccounts::<Runtime>::get(bob()),
-            account_b_share_expected
-        );
-        assert_eq!(
-            ShareholderAccounts::<Runtime>::get(eve()),
-            account_c_share_expected
-        );
-
-        PswapDistribution::claim_by_account(&alice()).expect("Failed to claim");
-        PswapDistribution::claim_by_account(&bob()).expect("Failed to claim");
-        PswapDistribution::claim_by_account(&eve()).expect("Failed to claim");
-
-        assert_eq!(
-            Currencies::free_balance(PSWAP, &GetPswapDistributionAccountId::get()),
-            balance!(0)
-        );
-        assert_eq!(Currencies::free_balance(PSWAP, &alice()), balance!(5));
-        assert_eq!(Currencies::free_balance(PSWAP, &bob()), balance!(10));
-        assert_eq!(Currencies::free_balance(PSWAP, &eve()), balance!(15));
-    });
-}
-/*
-#[test]
-fn migration_v0_2_0_to_v1_1_1() {
-    let mut ext = ExtBuilder::default().build();
-    ext.execute_with(|| {
-        PalletVersion {
-            major: 0,
-            minor: 2,
-            patch: 0,
-        }
-        .put_into_storage::<PalletInfoOf<Runtime>, Pallet>();
-
-        // set wrong storage of subscribed accounts
-        let fees_account_1 = create_account(b"fees".to_vec(), 1);
-        let fees_account_2 = create_account(b"fees".to_vec(), 2);
-        let fees_account_3 = create_account(b"fees".to_vec(), 3);
-        let pool_account_1 = create_account(b"pool".to_vec(), 1);
-        let pool_account_2 = create_account(b"pool".to_vec(), 2);
-        let pool_account_3 = create_account(b"pool".to_vec(), 3);
-        let pool_account_1_wrong = create_account(b"pool".to_vec(), 4);
-        let pool_account_2_wrong = create_account(b"pool".to_vec(), 5);
-
-        // part of subscriptions are wrong
-        SubscribedAccounts::<Runtime>::insert(
-            fees_account_1.clone(),
-            (DEXId::Polkaswap, pool_account_1_wrong, 42, 43),
-        );
-        SubscribedAccounts::<Runtime>::insert(
-            fees_account_2.clone(),
-            (DEXId::Polkaswap, pool_account_2_wrong, 44, 45),
-        );
-        SubscribedAccounts::<Runtime>::insert(
-            fees_account_3.clone(),
-            (DEXId::Polkaswap, pool_account_3.clone(), 46, 47),
-        );
-
-        // set correct storage of pool xyk
-        pool_xyk::Properties::<Runtime>::insert(
-            XOR,
-            VAL,
-            (pool_account_1.clone(), fees_account_1.clone()),
-        );
-        pool_xyk::Properties::<Runtime>::insert(
-            XOR,
-            PSWAP,
-            (pool_account_2.clone(), fees_account_2.clone()),
-        );
-        pool_xyk::Properties::<Runtime>::insert(
-            XOR,
-            DAI,
-            (pool_account_3.clone(), fees_account_3.clone()),
-        );
-
-        // migrate
-        crate::migration::migrate::<Runtime>();
-
-        // check storage of pool xyk
-        assert_eq!(
-            pool_xyk::Properties::<Runtime>::get(XOR, VAL).unwrap(),
-            (pool_account_1.clone(), fees_account_1.clone())
-        );
-        assert_eq!(
-            pool_xyk::Properties::<Runtime>::get(XOR, PSWAP).unwrap(),
-            (pool_account_2.clone(), fees_account_2.clone())
-        );
-        assert_eq!(
-            pool_xyk::Properties::<Runtime>::get(XOR, DAI).unwrap(),
-            (pool_account_3.clone(), fees_account_3.clone())
-        );
-
-        // check storage of subscribed accounts
-        assert_eq!(
-            SubscribedAccounts::<Runtime>::get(fees_account_1).unwrap(),
-            (DEXId::Polkaswap, pool_account_1, 42, 43)
-        );
-        assert_eq!(
-            SubscribedAccounts::<Runtime>::get(fees_account_2).unwrap(),
-            (DEXId::Polkaswap, pool_account_2, 44, 45)
-        );
-        assert_eq!(
-            SubscribedAccounts::<Runtime>::get(fees_account_3).unwrap(),
-            (DEXId::Polkaswap, pool_account_3, 46, 47)
-        );
-    })
-}
-*/

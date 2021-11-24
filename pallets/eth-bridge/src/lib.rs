@@ -142,7 +142,6 @@ pub mod weights;
 mod benchmarking;
 mod contract;
 mod macros;
-mod migrations;
 pub mod offchain;
 pub mod requests;
 mod rpc;
@@ -336,7 +335,6 @@ pub mod pallet {
     use common::weights::{err_pays_no, pays_no, pays_no_with_maybe_weight};
     use frame_support::log::debug;
     use frame_support::pallet_prelude::*;
-    use frame_support::sp_runtime::traits::Zero;
     use frame_support::traits::schedule::Anon;
     use frame_support::traits::{GetCallMetadata, StorageVersion};
     use frame_system::pallet_prelude::*;
@@ -401,16 +399,6 @@ pub mod pallet {
     where
         T: CreateSignedTransaction<<T as Config>::Call>,
     {
-        fn on_runtime_upgrade() -> Weight {
-            // match Pallet::<T>::storage_version() {
-            //     Some(version) if version == PalletVersion::new(0, 1, 0) => {
-            //         migrations::migrate_to_0_2_0::<T>()
-            //     }
-            //     _ => Weight::zero(),
-            // }
-            Weight::zero()
-        }
-
         /// Main off-chain worker procedure.
         ///
         /// Note: only one worker is expected to be used.
@@ -913,40 +901,6 @@ pub mod pallet {
                 <Peers<T>>::mutate(network_id, |l| l.insert(who));
             }
             Ok(().into())
-        }
-
-        #[pallet::weight(0)]
-        pub fn migrate_to_0_2_0(origin: OriginFor<T>) -> DispatchResultWithPostInfo {
-            ensure_root(origin)?;
-            // let weight = match Pallet::<T>::storage_version() {
-            //     Some(version) if version == PalletVersion::new(0, 1, 0) => {
-            //         let bridge_multisig = crate::BridgeAccount::<T>::get(T::GetEthNetworkId::get())
-            //             .unwrap_or_default();
-            //         let mut migrating_requests = MigratingRequests::<T>::get();
-            //         migrating_requests.retain(|hash| {
-            //             bridge_multisig::Multisigs::<T>::contains_key(&bridge_multisig, &hash.0)
-            //         });
-            //         // Wait for all the previous requests to finish and then finish the migration
-            //         if migrating_requests.is_empty() {
-            //             migrations::remove_peers::<T>(&T::RemovePeerAccountIds::get());
-            //         } else {
-            //             // ...or postpone the migration.
-            //             let block_number = frame_system::Pallet::<T>::current_block_number();
-            //             let _ = T::Scheduler::schedule(
-            //                 DispatchTime::At(block_number + 100u32.into()),
-            //                 None,
-            //                 1,
-            //                 RawOrigin::Root.into(),
-            //                 Call::migrate_to_0_2_0().into(),
-            //             );
-            //         }
-            //         MigratingRequests::<T>::set(migrating_requests);
-            //         <T as frame_system::Config>::DbWeight::get().reads_writes(2, 1)
-            //     }
-            //     _ => Weight::zero(),
-            // };
-            // Ok(Some(weight).into())
-            Ok(Some(0).into())
         }
     }
 

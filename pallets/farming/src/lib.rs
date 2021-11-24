@@ -32,12 +32,11 @@
 
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
-mod migrations;
 #[cfg(test)]
 mod mock;
 #[cfg(test)]
 mod tests;
-#[cfg(any(test, feature = "runtime-benchmarks"))]
+#[cfg(feature = "runtime-benchmarks")]
 mod utils;
 mod weights;
 
@@ -273,8 +272,6 @@ pub mod pallet {
     use frame_support::pallet_prelude::*;
     use frame_support::traits::schedule::Anon;
     use frame_support::traits::StorageVersion;
-    use frame_system::ensure_root;
-    use frame_system::pallet_prelude::OriginFor;
     use sp_runtime::traits::Zero;
     use sp_runtime::AccountId32;
 
@@ -296,7 +293,7 @@ pub mod pallet {
         /// How often the vesting happens. VESTING_FREQUENCY % REFRESH_FREQUENCY must be 0
         const VESTING_FREQUENCY: BlockNumberFor<Self>;
         const BLOCKS_PER_DAY: BlockNumberFor<Self>;
-        type Call: Parameter + From<Call<Self>>;
+        type Call: Parameter;
         type SchedulerOriginCaller: From<frame_system::RawOrigin<Self::AccountId>>;
         type Scheduler: Anon<Self::BlockNumber, <Self as Config>::Call, Self::SchedulerOriginCaller>;
         type RewardDoublingAssets: Get<Vec<AssetIdOf<Self>>>;
@@ -327,27 +324,6 @@ pub mod pallet {
             }
 
             total_weight
-        }
-
-        fn on_runtime_upgrade() -> Weight {
-            // match Self::crate_version() {
-            //     CrateVersion { major: 0, .. } => migrations::v1_1::migrate::<T>(),
-            //     CrateVersion {
-            //         major: 1, minor: 0, ..
-            //     } => migrations::v1_2::migrate::<T>(),
-            //     _ => 0,
-            // }
-            Default::default()
-        }
-    }
-
-    #[pallet::call]
-    impl<T: Config> Pallet<T> {
-        #[pallet::weight(0)]
-        pub fn migrate_to_1_1(origin: OriginFor<T>) -> DispatchResultWithPostInfo {
-            ensure_root(origin)?;
-            let weight = migrations::v1_1::migrate::<T>();
-            Ok(Some(weight).into())
         }
     }
 

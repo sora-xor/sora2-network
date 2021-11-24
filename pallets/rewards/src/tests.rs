@@ -28,10 +28,7 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use common::{
-    assert_approx_eq, assert_noop_msg, balance, generate_storage_instance, Balance, PSWAP, VAL,
-};
-use frame_support::pallet_prelude::*;
+use common::{assert_approx_eq, assert_noop_msg, balance, generate_storage_instance, PSWAP, VAL};
 use frame_support::{assert_noop, assert_ok};
 use hex_literal::hex;
 
@@ -48,17 +45,8 @@ type TotalValRewards = crate::TotalValRewards<Runtime>;
 type ValBurnedSinceLastVesting = crate::ValBurnedSinceLastVesting<Runtime>;
 type CurrentClaimableVal = crate::CurrentClaimableVal<Runtime>;
 type TotalClaimableVal = crate::TotalClaimableVal<Runtime>;
-#[allow(dead_code)]
-type MigrationPending = crate::MigrationPending<Runtime>;
-
-#[allow(dead_code)]
-type PalletInfoOf<T> = <T as frame_system::Config>::PalletInfo;
 
 generate_storage_instance!(Rewards, ValOwners);
-
-#[allow(dead_code)]
-type DeprecatedValOwners =
-    StorageMap<ValOwnersOldInstance, Identity, EthereumAddress, Balance, ValueQuery>;
 
 fn account() -> AccountId {
     hex!("f08879dab4530529153a1bdb63e27cd3be45f1574a122b7e88579b6e5e60bd43").into()
@@ -135,167 +123,6 @@ fn claim_over_limit() {
         assert_noop_msg!(Pallet::claim(origin(), signature), "BalanceTooLow");
     });
 }
-/*
-#[test]
-fn storage_migration_to_v1_2_0_works() {
-    ExtBuilder::with_rewards(true).build().execute_with(|| {
-        PalletVersion {
-            major: 1,
-            minor: 1,
-            patch: 0,
-        }
-        .put_into_storage::<PalletInfoOf<Runtime>, Pallet>();
-        let expected_pswap = balance!(74339.224845900297630556);
-        let expected_eth_address =
-            EthereumAddress::from_slice(&hex!("e687c6c6b28745864871566134b5589aa05b953d"));
-
-        let reserves_account_id = technical::Pallet::<Runtime>::tech_account_id_to_account_id(
-            &ReservesAcc::<Runtime>::get(),
-        )
-        .unwrap();
-        let balance_a =
-            assets::Pallet::<Runtime>::free_balance(&PSWAP.into(), &reserves_account_id).unwrap();
-
-        Pallet::on_runtime_upgrade();
-        let balance_b =
-            assets::Pallet::<Runtime>::free_balance(&PSWAP.into(), &reserves_account_id).unwrap();
-
-        assert_eq!(balance_b - balance_a, expected_pswap);
-        assert_eq!(
-            PswapFarmOwners::<Runtime>::get(expected_eth_address),
-            expected_pswap
-        );
-    });
-}
-
-#[test]
-fn storage_migration_to_v1_2_0_works_2() {
-    TestExternalities::new_empty().execute_with(|| {
-        let old_val_owners: Vec<(EthereumAddress, Balance)> = vec![
-            (
-                hex!("21Bc9f4a3d9Dc86f142F802668dB7D908cF0A636").into(),
-                balance!(100),
-            ),
-            (
-                hex!("d170a274320333243b9f860e8891c6792de1ec19").into(),
-                balance!(200),
-            ),
-            (
-                hex!("886021f300dc809269cfc758a2364a2baf63af0c").into(),
-                balance!(300),
-            ),
-            (
-                hex!("8b98125055f70613bcee1a391e3096393bddb1ca").into(),
-                balance!(400),
-            ),
-            (
-                hex!("d0d6f3cafe2b0b2d1c04d5bcf44461dd6e4f0344").into(),
-                balance!(500),
-            ),
-        ];
-        for (k, v) in old_val_owners {
-            DeprecatedValOwners::insert(k, v);
-        }
-        PalletVersion {
-            major: 1,
-            minor: 1,
-            patch: 0,
-        }
-        .put_into_storage::<PalletInfoOf<Runtime>, Pallet>();
-
-        assert_eq!(MigrationPending::get(), false);
-
-        // Import data for storage migration
-        let w = Pallet::on_runtime_upgrade();
-        assert_eq!(w, 1002200);
-
-        let mut val_owners = ValOwners::iter().collect::<Vec<_>>();
-        val_owners.sort_by(|a, b| a.0.cmp(&b.0));
-
-        assert_eq!(
-            val_owners,
-            vec![
-                (
-                    hex!("21Bc9f4a3d9Dc86f142F802668dB7D908cF0A636").into(),
-                    (balance!(100), balance!(100)).into()
-                ),
-                (
-                    hex!("886021f300dc809269cfc758a2364a2baf63af0c").into(),
-                    (balance!(300), balance!(300)).into()
-                ),
-                (
-                    hex!("8b98125055f70613bcee1a391e3096393bddb1ca").into(),
-                    (balance!(400), balance!(400)).into()
-                ),
-                (
-                    hex!("d0d6f3cafe2b0b2d1c04d5bcf44461dd6e4f0344").into(),
-                    (balance!(500), balance!(500)).into()
-                ),
-                (
-                    hex!("d170a274320333243b9f860e8891c6792de1ec19").into(),
-                    (balance!(200), balance!(200)).into()
-                ),
-            ]
-        );
-
-        let mut chunks = EthAddresses::iter().collect::<Vec<_>>();
-        chunks.sort_by(|a, b| a.0.cmp(&b.0));
-        assert_eq!(chunks.len(), 5);
-        assert_eq!(chunks[0].1.len(), 1);
-        assert_eq!(chunks[4].1.len(), 1);
-
-        assert_eq!(TotalValRewards::get(), balance!(1500));
-        assert_eq!(TotalClaimableVal::get(), balance!(1500));
-        assert_eq!(CurrentClaimableVal::get(), 0);
-        assert_eq!(ValBurnedSinceLastVesting::get(), 0);
-        assert_eq!(MigrationPending::get(), true);
-
-        // Applying extrinsic to set unclaimed VAL rewards
-        let unclaimed_val = unclaimed_val_data();
-        assert_ok!(Pallet::finalize_storage_migration(
-            RawOrigin::Root.into(),
-            unclaimed_val
-        ));
-        assert_eq!(MigrationPending::get(), false);
-        assert_eq!(TotalValRewards::get(), balance!(9000));
-
-        val_owners = ValOwners::iter().collect::<Vec<_>>();
-        val_owners.sort_by(|a, b| a.0.cmp(&b.0));
-
-        assert_eq!(
-            val_owners,
-            vec![
-                (
-                    hex!("21Bc9f4a3d9Dc86f142F802668dB7D908cF0A636").into(),
-                    (balance!(100), balance!(600)).into()
-                ),
-                (
-                    hex!("886021f300dc809269cfc758a2364a2baf63af0c").into(),
-                    (balance!(300), balance!(1800)).into()
-                ),
-                (
-                    hex!("8b98125055f70613bcee1a391e3096393bddb1ca").into(),
-                    (balance!(400), balance!(2400)).into()
-                ),
-                (
-                    hex!("d0d6f3cafe2b0b2d1c04d5bcf44461dd6e4f0344").into(),
-                    (balance!(500), balance!(3000)).into()
-                ),
-                (
-                    hex!("d170a274320333243b9f860e8891c6792de1ec19").into(),
-                    (balance!(200), balance!(1200)).into()
-                ),
-            ]
-        );
-
-        // All subsequent attempts to call this extrinsic result into an error
-        assert_noop!(
-            Pallet::finalize_storage_migration(RawOrigin::Root.into(), unclaimed_val_data()),
-            Error::IllegalCall
-        );
-    });
-}
-*/
 
 #[test]
 fn val_strategic_bonus_vesting_works() {

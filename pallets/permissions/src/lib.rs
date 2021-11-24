@@ -53,8 +53,6 @@ use serde::{Deserialize, Serialize};
 use sp_core::hash::H512;
 use sp_std::vec::Vec;
 
-mod migrations;
-
 #[cfg(test)]
 mod mock;
 
@@ -277,16 +275,7 @@ pub mod pallet {
     pub struct Pallet<T>(PhantomData<T>);
 
     #[pallet::hooks]
-    impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
-        fn on_runtime_upgrade() -> Weight {
-            // let x : u32 = Self::storage_version();
-            panic!()
-            // match Self::storage_version() {
-            //     Some(PalletVersion { major: 0, .. }) | None => migrations::v1_1::migrate::<T>(),
-            //     _ => 0,
-            // }
-        }
-    }
+    impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {}
 
     #[pallet::call]
     impl<T: Config> Pallet<T> {}

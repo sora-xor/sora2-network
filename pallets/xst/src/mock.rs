@@ -476,19 +476,6 @@ pub struct ExtBuilder {
     reference_asset_id: AssetId,
 }
 
-impl ExtBuilder {
-    #[allow(dead_code)]
-    pub fn minimal() -> Self {
-        Self {
-            endowed_accounts: Default::default(),
-            dex_list: Default::default(),
-            initial_permission_owners: Default::default(),
-            initial_permissions: Default::default(),
-            reference_asset_id: DAI,
-        }
-    }
-}
-
 impl Default for ExtBuilder {
     fn default() -> Self {
         Self {

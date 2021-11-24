@@ -46,7 +46,6 @@ use sp_std::collections::btree_map::BTreeMap;
 use sp_std::convert::TryInto;
 use sp_std::vec::Vec;
 
-mod migration;
 pub mod weights;
 
 mod benchmarking;
@@ -330,10 +329,6 @@ pub mod pallet {
 
     #[pallet::hooks]
     impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
-        fn on_runtime_upgrade() -> Weight {
-            migration::migrate::<T>()
-        }
-
         fn on_initialize(block_number: T::BlockNumber) -> Weight {
             if (block_number % MARKET_MAKER_REWARDS_DISTRIBUTION_FREQUENCY.into()).is_zero() {
                 let elems = Pallet::<T>::market_maker_rewards_distribution_routine();
@@ -353,18 +348,6 @@ pub mod pallet {
             let who = ensure_signed(origin)?;
             Self::claim_rewards_inner(&who)?;
             Ok(().into())
-        }
-
-        /// Inject market makers snapshot into storage.
-        #[pallet::weight(0)]
-        #[transactional]
-        pub fn inject_market_makers(
-            origin: OriginFor<T>,
-            snapshot: Vec<(T::AccountId, u32, Balance)>,
-        ) -> DispatchResultWithPostInfo {
-            ensure_root(origin)?;
-            let weight = crate::migration::inject_market_makers_first_month_rewards::<T>(snapshot)?;
-            Ok(Some(weight).into())
         }
 
         /// Allow/disallow a market making pair.

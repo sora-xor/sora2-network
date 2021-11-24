@@ -61,7 +61,6 @@ use hex_literal::hex;
 
 pub use self::pallet::*;
 
-pub mod migrations;
 pub mod weights;
 
 #[cfg(feature = "runtime-benchmarks")]
@@ -280,16 +279,6 @@ pub mod pallet {
 
             consumed_weight
         }
-
-        fn on_runtime_upgrade() -> Weight {
-            // match Self::storage_version() {
-            //     Some(PalletVersion {
-            //         major: 1, minor: 1, ..
-            //     }) => migrations::v1_2::migrate::<T>(),
-            //     _ => T::DbWeight::get().reads(1),
-            // }
-            Default::default()
-        }
     }
 
     #[pallet::call]
@@ -349,24 +338,6 @@ pub mod pallet {
                 Err(Error::<T>::NothingToClaim.into())
             } else {
                 Err(Error::<T>::AddressNotEligible.into())
-            }
-        }
-
-        /// Finalize the update of unclaimed VAL data in storage
-        #[pallet::weight(WeightInfoOf::<T>::finalize_storage_migration(amounts.len() as u32))]
-        #[transactional]
-        pub fn finalize_storage_migration(
-            origin: OriginFor<T>,
-            amounts: Vec<(EthereumAddress, Balance)>,
-        ) -> DispatchResultWithPostInfo {
-            ensure_root(origin)?;
-            // Ensure this call is allowed
-            if MigrationPending::<T>::get() {
-                migrations::v1_2::update_val_owners::<T>(amounts);
-                Self::deposit_event(Event::<T>::MigrationCompleted);
-                Ok(Pays::No.into())
-            } else {
-                Err(Error::<T>::IllegalCall.into())
             }
         }
     }
