@@ -886,6 +886,8 @@ pub mod pallet {
         UnableToDepositXorLessThanMinimum,
         /// Attempt to quote via unsupported path, i.e. both output and input tokens are not XOR.
         UnsupportedQuotePath,
+        /// Not enough unlocked liquidity to withdraw
+        NotEnoughUnlockedLiquidity,
     }
 
     /// Updated after last liquidity change operation.

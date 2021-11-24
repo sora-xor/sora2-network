@@ -2432,6 +2432,7 @@ dependencies = [
  "assets",
  "assets-runtime-api",
  "ceres-liquidity-locker",
+ "ceres-liquidity-locker-testing",
  "common",
  "dex-api",
  "dex-api-benchmarking",

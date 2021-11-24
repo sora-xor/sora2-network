@@ -119,13 +119,17 @@ impl<T: Config> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, 
         // Adding min liquidity to pretend that initial provider has locked amount, which actually is not reflected in total supply.
         let fxw_total_iss = FixedWrapper::from(total_iss) + MIN_LIQUIDITY;
 
-        self.pool_tokens =
+        let has_enough_unlocked_liquidity =
             ceres_liquidity_locker::Pallet::<T>::get_allowed_liquidity_for_withdrawing(
                 source,
                 self.destination.0.asset,
                 self.destination.1.asset,
                 self.pool_tokens,
             );
+        ensure!(
+            has_enough_unlocked_liquidity == true,
+            Error::<T>::NotEnoughUnlockedLiquidity
+        );
 
         ensure!(self.pool_tokens > 0, Error::<T>::ZeroValueInAmountParameter);
         let fxw_source_k = FixedWrapper::from(self.pool_tokens);

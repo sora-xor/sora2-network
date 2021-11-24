@@ -308,6 +308,23 @@ fn lock_liquidity_ok_with_second_fee_option() {
 }
 
 #[test]
+fn lock_liquidity_invalid_percentage() {
+    preset_initial(vec![Rc::new(|_dex_id, _gt, _bp| {
+        assert_err!(
+            ceres_liquidity_locker::Pallet::<Runtime>::lock_liquidity(
+                Origin::signed(ALICE()),
+                GoldenTicket.into(),
+                CERES_ASSET_ID.into(),
+                frame_system::Pallet::<Runtime>::block_number(),
+                balance!(1.1),
+                true,
+            ),
+            ceres_liquidity_locker::Error::<Runtime>::InvalidPercentage
+        );
+    })]);
+}
+
+#[test]
 #[should_panic(expected = "Pool does not exist")]
 fn lock_liquidity_pool_does_not_exist() {
     preset_initial(vec![Rc::new(|_dex_id, _gt, _bp| {
@@ -316,7 +333,7 @@ fn lock_liquidity_pool_does_not_exist() {
             GoldenTicket.into(),
             BlackPepper.into(),
             frame_system::Pallet::<Runtime>::block_number(),
-            balance!(100),
+            balance!(0.5),
             true,
         );
     })]);
@@ -331,7 +348,7 @@ fn lock_liquidity_user_is_not_pool_provider() {
             GoldenTicket.into(),
             CERES_ASSET_ID.into(),
             frame_system::Pallet::<Runtime>::block_number(),
-            balance!(100),
+            balance!(0.5),
             true,
         );
     })]);

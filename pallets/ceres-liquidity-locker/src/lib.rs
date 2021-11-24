@@ -100,6 +100,8 @@ pub mod pallet {
     pub enum Error<T> {
         ///Insufficient liquidity to lock
         InsufficientLiquidityToLock,
+        ///Percentage greater than 100%
+        InvalidPercentage,
     }
 
     #[pallet::call]
@@ -115,6 +117,11 @@ pub mod pallet {
             option: bool,
         ) -> DispatchResultWithPostInfo {
             let user = ensure_signed(origin)?;
+
+            ensure!(
+                percentage_of_pool_tokens <= balance!(1),
+                Error::<T>::InvalidPercentage
+            );
 
             let mut lock_info = LockInfo {
                 pool_tokens: 0,
@@ -216,7 +223,7 @@ pub mod pallet {
             asset_a: AssetIdOf<T>,
             asset_b: AssetIdOf<T>,
             withdrawing_amount: Balance,
-        ) -> Balance {
+        ) -> bool {
             // Get lock info of extrinsic caller
             let mut lockups = <LockerData<T>>::get(&user);
             let current_block = frame_system::Pallet::<T>::block_number();
@@ -249,10 +256,11 @@ pub mod pallet {
             }
             <LockerData<T>>::insert(&user, lockups);
 
-            return if unlocked_pool_tokens >= withdrawing_amount {
-                withdrawing_amount
+            return if withdrawing_amount > pool_tokens || unlocked_pool_tokens >= withdrawing_amount
+            {
+                true
             } else {
-                unlocked_pool_tokens
+                false
             };
         }
 

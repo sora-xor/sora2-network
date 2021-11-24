@@ -164,7 +164,6 @@ members = [
     "common",
     "pallets/assets",
     "pallets/ceres-liquidity-locker",
-    "pallets/ceres-liquidity-locker/testing",
     "pallets/permissions",
     "pallets/trading-pair",
     "pallets/dex-manager",
