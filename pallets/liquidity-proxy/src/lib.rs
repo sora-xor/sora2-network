@@ -30,9 +30,6 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
-#[macro_use]
-extern crate alloc;
-
 use codec::{Decode, Encode};
 
 use common::prelude::fixnum::ops::{Bounded, Zero as _};
@@ -98,7 +95,9 @@ impl<T: Config> ExchangePath<T> {
 }
 
 /// Output of the aggregated LiquidityProxy::quote() price.
-#[derive(Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(
+    Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq, PartialOrd, Ord, scale_info::TypeInfo,
+)]
 pub struct AggregatedSwapOutcome<LiquiditySourceType, AmountType> {
     /// A distribution of amounts each liquidity sources gets to swap in the entire trade
     pub distribution: Vec<(LiquiditySourceType, QuoteAmount<AmountType>)>,
@@ -232,7 +231,13 @@ impl<T: Config> Pallet<T> {
                     )?;
                     let xor_volume =
                         Self::get_xor_amount(from_asset_id, to_asset_id, amount, outcome.clone());
-                    T::VestedRewardsPallet::update_market_maker_records(&sender, xor_volume, 1)?;
+                    T::VestedRewardsPallet::update_market_maker_records(
+                        &sender,
+                        xor_volume,
+                        1,
+                        &from_asset_id,
+                        &to_asset_id,
+                    )?;
                     Ok(outcome)
                 }
                 ExchangePath::Twofold {
@@ -269,6 +274,8 @@ impl<T: Config> Pallet<T> {
                             &sender,
                             first_swap.amount,
                             2,
+                            &from_asset_id,
+                            &to_asset_id,
                         )?;
                         let cumulative_fee = first_swap
                             .fee
@@ -319,6 +326,8 @@ impl<T: Config> Pallet<T> {
                             &sender,
                             first_swap.amount,
                             2,
+                            &from_asset_id,
+                            &to_asset_id,
                         )?;
                         let cumulative_fee = first_swap
                             .fee
@@ -1060,7 +1069,7 @@ impl<T: Config> Pallet<T> {
             ($source_type:ident) => {
                 T::$source_type::buy_price(base_asset_id, collateral_asset_id)
                     .map_err(|_| Error::<T>::CalculationError)?
-                    .into();
+                    .into()
             };
         }
         let primary_buy_price: FixedWrapper = if collateral_asset_id == &XSTUSD.into() {
@@ -1157,7 +1166,7 @@ impl<T: Config> Pallet<T> {
             ($source_type:ident) => {
                 T::$source_type::sell_price(base_asset_id, collateral_asset_id)
                     .map_err(|_| Error::<T>::CalculationError)?
-                    .into();
+                    .into()
             };
         }
         let primary_sell_price: FixedWrapper = if collateral_asset_id == &XSTUSD.into() {
@@ -1271,6 +1280,7 @@ pub mod pallet {
     use assets::AssetIdOf;
     use common::{AccountIdOf, DexIdOf};
     use frame_support::pallet_prelude::*;
+    use frame_support::traits::StorageVersion;
     use frame_system::pallet_prelude::*;
 
     #[pallet::config]
@@ -1291,13 +1301,17 @@ pub mod pallet {
         type PrimaryMarketTBC: GetMarketInfo<Self::AssetId>;
         type PrimaryMarketXST: GetMarketInfo<Self::AssetId>;
         type SecondaryMarket: GetPoolReserves<Self::AssetId>;
-        type VestedRewardsPallet: VestedRewardsPallet<Self::AccountId>;
+        type VestedRewardsPallet: VestedRewardsPallet<Self::AccountId, Self::AssetId>;
         /// Weight information for the extrinsics in this Pallet.
         type WeightInfo: WeightInfo;
     }
 
+    /// The current storage version.
+    const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
+
     #[pallet::pallet]
     #[pallet::generate_store(pub(super) trait Store)]
+    #[pallet::storage_version(STORAGE_VERSION)]
     pub struct Pallet<T>(PhantomData<T>);
 
     #[pallet::hooks]
@@ -1367,7 +1381,6 @@ pub mod pallet {
     }
 
     #[pallet::event]
-    #[pallet::metadata(AccountIdOf<T> = "AccountId", AssetIdOf<T> = "AssetId", DexIdOf<T> = "DEXId")]
     #[pallet::generate_deposit(pub(super) fn deposit_event)]
     pub enum Event<T: Config> {
         /// Exchange of tokens has been performed

@@ -39,7 +39,6 @@ mod mock;
 mod tests;
 
 mod benchmarking;
-mod migration;
 
 use core::convert::TryInto;
 
@@ -52,7 +51,7 @@ use common::prelude::{
 };
 use common::{
     balance, fixed, fixed_wrapper, DEXId, DexIdOf, GetMarketInfo, LiquiditySource,
-    LiquiditySourceFilter, LiquiditySourceType, ManagementMode, RewardReason, DAI, XSTUSD,
+    LiquiditySourceFilter, LiquiditySourceType, ManagementMode, RewardReason, DAI, XOR, XSTUSD,
 };
 use frame_support::traits::Get;
 use frame_support::weights::Weight;
@@ -71,15 +70,15 @@ pub trait WeightInfo {
     fn set_reference_asset() -> Weight;
 }
 
-type Assets<T> = assets::Module<T>;
-type Technical<T> = technical::Module<T>;
+type Assets<T> = assets::Pallet<T>;
+type Technical<T> = technical::Pallet<T>;
 
 pub const TECH_ACCOUNT_PREFIX: &[u8] = b"xst-pool";
 pub const TECH_ACCOUNT_PERMISSIONED: &[u8] = b"permissioned";
 
 pub use pallet::*;
 
-#[derive(Debug, Encode, Decode, Clone)]
+#[derive(Debug, Encode, Decode, Clone, scale_info::TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum DistributionAccount<AccountId, TechAccountId> {
     Account(AccountId),
@@ -92,7 +91,7 @@ impl<AccountId, TechAccountId: Default> Default for DistributionAccount<AccountI
     }
 }
 
-#[derive(Debug, Encode, Decode, Clone)]
+#[derive(Debug, Encode, Decode, Clone, scale_info::TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct DistributionAccountData<DistributionAccount> {
     pub account: DistributionAccount,
@@ -121,6 +120,7 @@ impl<DistributionAccount> DistributionAccountData<DistributionAccount> {
 pub mod pallet {
     use super::*;
     use frame_support::pallet_prelude::*;
+    use frame_support::traits::StorageVersion;
     use frame_system::pallet_prelude::*;
 
     #[pallet::config]
@@ -146,18 +146,18 @@ pub mod pallet {
         type WeightInfo: WeightInfo;
     }
 
+    /// The current storage version.
+    const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
+
     #[pallet::pallet]
     #[pallet::generate_store(pub(super) trait Store)]
+    #[pallet::storage_version(STORAGE_VERSION)]
     pub struct Pallet<T>(PhantomData<T>);
 
     #[pallet::hooks]
     impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
         fn on_initialize(_block_number: T::BlockNumber) -> Weight {
             <T as Config>::WeightInfo::on_initialize(0)
-        }
-
-        fn on_runtime_upgrade() -> Weight {
-            migration::migrate::<T>()
         }
     }
 
@@ -196,7 +196,6 @@ pub mod pallet {
     }
 
     #[pallet::event]
-    #[pallet::metadata(DexIdOf<T> = "DEXId", AssetIdOf<T> = "AssetId")]
     #[pallet::generate_deposit(pub(super) fn deposit_event)]
     pub enum Event<T: Config> {
         /// Pool is initialized for pair. [DEX Id, Synthetic Asset Id]
@@ -229,7 +228,6 @@ pub mod pallet {
         IncRefError,
     }
 
-    // TODO: should be "created" in migration to avoid incref error
     // TODO: better by replaced with Get<>
     /// Technical account used to store collateral tokens.
     #[pallet::storage]
@@ -285,6 +283,7 @@ pub mod pallet {
     #[pallet::genesis_build]
     impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
         fn build(&self) {
+            PermissionedTechAccount::<T>::put(&self.tech_account_id);
             ReferenceAssetId::<T>::put(&self.reference_asset_id);
             self.initial_synthetic_assets
                 .iter()
@@ -298,7 +297,7 @@ pub mod pallet {
 }
 
 #[allow(non_snake_case)]
-impl<T: Config> Module<T> {
+impl<T: Config> Pallet<T> {
     #[inline]
     #[allow(unused)]
     fn self_excluding_filter() -> LiquiditySourceFilter<T::DEXId, LiquiditySourceType> {
@@ -322,7 +321,7 @@ impl<T: Config> Module<T> {
                 &T::GetBaseAssetId::get(),
                 &synthetic_asset_id,
             )?;
-            trading_pair::Module::<T>::enable_source_for_trading_pair(
+            trading_pair::Pallet::<T>::enable_source_for_trading_pair(
                 &DEXId::Polkaswap.into(),
                 &T::GetBaseAssetId::get(),
                 &synthetic_asset_id,
@@ -343,7 +342,7 @@ impl<T: Config> Module<T> {
         }
     }
 
-    /// Buys the main asset.
+    /// Buys the main asset (e.g., XOR).
     /// Calculates and returns the current buy price, assuming that input is the synthetic asset and output is the main asset.
     pub fn buy_price(
         main_asset_id: &T::AssetId,
@@ -387,7 +386,7 @@ impl<T: Config> Module<T> {
     ///   2.1 Values are compared via getting prices for both main and collateral tokens with regard to another token
     ///       called reference token which is set for particular pair. This should be e.g. stablecoin DAI.
     ///   2.2 Reference price for base token is taken as 80% of current bonding curve buy price.
-    ///   2.3 Reference price for collateral token is taken as current market price, i.e. price for 1 token on liquidity proxy.
+    ///   2.3 Reference price for collateral token is taken as current market price, i.e., price for 1 token on liquidity proxy.
     /// 3. Given known reserves for main and collateral, output collateral amount is calculated by applying x*y=k model resulting
     ///    in curve-like dependency.
     pub fn sell_price(
@@ -396,7 +395,7 @@ impl<T: Config> Module<T> {
         quantity: QuoteAmount<Balance>,
     ) -> Result<Fixed, DispatchError> {
         // Get reference prices for base and synthetic to understand token value.
-        let main_price_per_reference_unit: FixedWrapper =
+        let main_asset_price_per_reference_unit: FixedWrapper =
             Self::reference_price(main_asset_id)?.into();
 
         match quantity {
@@ -404,7 +403,7 @@ impl<T: Config> Module<T> {
             QuoteAmount::WithDesiredInput {
                 desired_amount_in: quantity_main,
             } => {
-                let output_synthetic = quantity_main * main_price_per_reference_unit;
+                let output_synthetic = quantity_main * main_asset_price_per_reference_unit;
                 let output_synthetic_unwrapped = output_synthetic
                     .get()
                     .map_err(|_| Error::<T>::PriceCalculationFailed)?;
@@ -414,7 +413,7 @@ impl<T: Config> Module<T> {
             QuoteAmount::WithDesiredOutput {
                 desired_amount_out: quantity_synthetic,
             } => {
-                let output_main = quantity_synthetic / main_price_per_reference_unit;
+                let output_main = quantity_synthetic / main_asset_price_per_reference_unit;
                 output_main
                     .get()
                     .map_err(|_| Error::<T>::PriceCalculationFailed.into())
@@ -586,7 +585,7 @@ impl<T: Config> Module<T> {
             let account_id = Technical::<T>::tech_account_id_to_account_id(&account)?;
             let permissions = [BURN, MINT];
             for permission in &permissions {
-                permissions::Module::<T>::assign_permission(
+                permissions::Pallet::<T>::assign_permission(
                     account_id.clone(),
                     &account_id,
                     *permission,
@@ -604,20 +603,29 @@ impl<T: Config> Module<T> {
     /// Example use: understand actual value of two tokens in terms of USD.
     fn reference_price(asset_id: &T::AssetId) -> Result<Balance, DispatchError> {
         let reference_asset_id = ReferenceAssetId::<T>::get();
-        let price = if asset_id == &reference_asset_id {
+        // XSTUSD is a special case because it is equal to the reference asset, DAI
+        let price = if asset_id == &reference_asset_id || asset_id == &XSTUSD.into() {
             balance!(1)
         } else {
             <T as pallet::Config>::PriceToolsPallet::get_average_price(
                 asset_id,
                 &reference_asset_id,
-            )?
+            )
+            .map(|avg| {
+                // We don't let the price of XOR w.r.t. DAI go under $100, to prevent manipulation attacks
+                if asset_id == &XOR.into() && &reference_asset_id == &DAI.into() {
+                    avg.max(balance!(100))
+                } else {
+                    avg
+                }
+            })?
         };
         Ok(price)
     }
 }
 
 impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, DispatchError>
-    for Module<T>
+    for Pallet<T>
 {
     fn can_exchange(
         dex_id: &T::DEXId,
@@ -700,7 +708,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
     }
 }
 
-impl<T: Config> GetMarketInfo<T::AssetId> for Module<T> {
+impl<T: Config> GetMarketInfo<T::AssetId> for Pallet<T> {
     fn buy_price(
         base_asset: &T::AssetId,
         synthetic_asset: &T::AssetId,

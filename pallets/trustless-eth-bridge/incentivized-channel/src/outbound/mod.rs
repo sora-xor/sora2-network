@@ -24,7 +24,7 @@ mod benchmarking;
 mod test;
 
 /// Wire-format for committed messages
-#[derive(Encode, Decode, Clone, PartialEq, RuntimeDebug)]
+#[derive(Encode, Decode, Clone, PartialEq, RuntimeDebug, scale_info::TypeInfo)]
 pub struct Message {
     network_id: EthNetworkId,
     channel: H160,
@@ -49,6 +49,7 @@ pub mod pallet {
     use super::*;
     use frame_support::log::debug;
     use frame_support::pallet_prelude::*;
+    use frame_support::traits::StorageVersion;
     use frame_system::pallet_prelude::*;
 
     #[pallet::config]
@@ -78,11 +79,11 @@ pub mod pallet {
     /// Interval between committing messages.
     #[pallet::storage]
     #[pallet::getter(fn interval)]
-    type Interval<T: Config> = StorageValue<_, T::BlockNumber, ValueQuery>;
+    pub(crate) type Interval<T: Config> = StorageValue<_, T::BlockNumber, ValueQuery>;
 
     /// Messages waiting to be committed.
     #[pallet::storage]
-    type MessageQueue<T: Config> = StorageValue<_, Vec<Message>, ValueQuery>;
+    pub(crate) type MessageQueue<T: Config> = StorageValue<_, Vec<Message>, ValueQuery>;
 
     /// Source channel on the ethereum side
     #[pallet::storage]
@@ -103,8 +104,12 @@ pub mod pallet {
     #[pallet::getter(fn fee)]
     pub type Fee<T: Config> = StorageValue<_, BalanceOf<T>, ValueQuery>;
 
+    /// The current storage version.
+    const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
+
     #[pallet::pallet]
     #[pallet::generate_store(trait Store)]
+    #[pallet::storage_version(STORAGE_VERSION)]
     pub struct Pallet<T>(PhantomData<T>);
 
     #[pallet::hooks]
@@ -124,7 +129,6 @@ pub mod pallet {
     }
 
     #[pallet::event]
-    #[pallet::metadata(AccountIdOf<T> = "AccountId")]
     #[pallet::generate_deposit(pub(super) fn deposit_event)]
     pub enum Event<T: Config> {
         MessageAccepted(MessageNonce),

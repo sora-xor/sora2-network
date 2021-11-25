@@ -31,9 +31,12 @@
 use crate::{self as farming, Config};
 use common::mock::ExistentialDeposits;
 use common::prelude::Balance;
-use common::{balance, fixed, hash, AssetName, AssetSymbol, DEXInfo, Fixed, DOT, PSWAP, VAL, XOR};
+use common::{
+    balance, fixed, hash, AssetName, AssetSymbol, DEXInfo, Fixed, DEFAULT_BALANCE_PRECISION, DOT,
+    PSWAP, VAL, XOR,
+};
 use currencies::BasicCurrencyAdapter;
-use frame_support::traits::{Everything, GenesisBuild, OnFinalize, OnInitialize};
+use frame_support::traits::{Everything, GenesisBuild, OnFinalize, OnInitialize, PrivilegeCmp};
 use frame_support::weights::Weight;
 use frame_support::{construct_runtime, parameter_types};
 use frame_system::pallet_prelude::BlockNumberFor;
@@ -44,6 +47,7 @@ use sp_core::H256;
 use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentityLookup};
 use sp_runtime::Perbill;
+use sp_std::cmp::Ordering;
 use sp_std::marker::PhantomData;
 
 pub use common::mock::*;
@@ -61,9 +65,9 @@ type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>
 type Block = frame_system::mocking::MockBlock<Runtime>;
 
 pub const PSWAP_PER_DAY: Balance = balance!(2500000);
-pub const REFRESH_FREQUENCY: BlockNumberFor<Runtime> = 200;
+pub const REFRESH_FREQUENCY: BlockNumberFor<Runtime> = 1200;
 pub const VESTING_COEFF: u32 = 3;
-pub const VESTING_FREQUENCY: BlockNumberFor<Runtime> = 600;
+pub const VESTING_FREQUENCY: BlockNumberFor<Runtime> = 3600;
 pub const BLOCKS_PER_DAY: BlockNumberFor<Runtime> = 14_440;
 
 #[allow(non_snake_case)]
@@ -137,7 +141,7 @@ construct_runtime! {
         VestedRewards: vested_rewards::{Pallet, Storage, Event<T>},
         Scheduler: pallet_scheduler::{Pallet, Call, Storage, Event<T>},
 
-        Farming: farming::{Pallet, Call, Storage},
+        Farming: farming::{Pallet, Storage},
     }
 }
 
@@ -175,7 +179,7 @@ impl dex_manager::Config for Runtime {}
 
 impl trading_pair::Config for Runtime {
     type Event = Event;
-    type EnsureDEXManager = dex_manager::Module<Runtime>;
+    type EnsureDEXManager = dex_manager::Pallet<Runtime>;
     type WeightInfo = ();
 }
 
@@ -210,9 +214,9 @@ impl tokens::Config for Runtime {
 
 impl currencies::Config for Runtime {
     type Event = Event;
-    type MultiCurrency = tokens::Module<Runtime>;
+    type MultiCurrency = tokens::Pallet<Runtime>;
     type NativeCurrency =
-        BasicCurrencyAdapter<Runtime, pallet_balances::Module<Runtime>, Amount, BlockNumber>;
+        BasicCurrencyAdapter<Runtime, pallet_balances::Pallet<Runtime>, Amount, BlockNumber>;
     type GetNativeCurrencyId = <Runtime as assets::Config>::GetBaseAssetId;
     type WeightInfo = ();
 }
@@ -224,8 +228,9 @@ impl assets::Config for Runtime {
         common::AssetIdExtraAssetRecordArg<DEXId, common::LiquiditySourceType, [u8; 32]>;
     type AssetId = AssetId;
     type GetBaseAssetId = GetBaseAssetId;
-    type Currency = currencies::Module<Runtime>;
+    type Currency = currencies::Pallet<Runtime>;
     type GetTeamReservesAccountId = GetTeamReservesAccountId;
+    type GetTotalBalance = ();
     type WeightInfo = ();
 }
 
@@ -247,7 +252,7 @@ impl pool_xyk::Config for Runtime {
     type WithdrawLiquidityAction =
         pool_xyk::WithdrawLiquidityAction<AssetId, AccountId, TechAccountId>;
     type PolySwapAction = pool_xyk::PolySwapAction<AssetId, AccountId, TechAccountId>;
-    type EnsureDEXManager = dex_manager::Module<Runtime>;
+    type EnsureDEXManager = dex_manager::Pallet<Runtime>;
     type GetFee = GetXykFee;
     type OnPoolCreated = (PswapDistribution, Farming);
     type OnPoolReservesChanged = ();
@@ -272,8 +277,8 @@ impl pswap_distribution::Config for Runtime {
 impl multicollateral_bonding_curve_pool::Config for Runtime {
     type Event = Event;
     type LiquidityProxy = ();
-    type EnsureTradingPairExists = trading_pair::Module<Runtime>;
-    type EnsureDEXManager = dex_manager::Module<Runtime>;
+    type EnsureTradingPairExists = trading_pair::Pallet<Runtime>;
+    type EnsureDEXManager = dex_manager::Pallet<Runtime>;
     type PriceToolsPallet = ();
     type VestedRewardsPallet = VestedRewards;
     type WeightInfo = ();
@@ -283,7 +288,26 @@ impl vested_rewards::Config for Runtime {
     type Event = Event;
     type GetMarketMakerRewardsAccountId = ();
     type GetBondingCurveRewardsAccountId = ();
+    type GetFarmingRewardsAccountId = ();
     type WeightInfo = ();
+}
+
+/// Used the compare the privilege of an origin inside the scheduler.
+pub struct OriginPrivilegeCmp;
+
+impl PrivilegeCmp<OriginCaller> for OriginPrivilegeCmp {
+    fn cmp_privilege(left: &OriginCaller, right: &OriginCaller) -> Option<Ordering> {
+        if left == right {
+            return Some(Ordering::Equal);
+        }
+
+        match (left, right) {
+            // Root is greater than anything.
+            (OriginCaller::system(frame_system::RawOrigin::Root), _) => Some(Ordering::Greater),
+            // For every other origin we don't care, as they are not used for `ScheduleOrigin`.
+            _ => None,
+        }
+    }
 }
 
 impl pallet_scheduler::Config for Runtime {
@@ -295,6 +319,7 @@ impl pallet_scheduler::Config for Runtime {
     type ScheduleOrigin = EnsureRoot<AccountId>;
     type MaxScheduledPerBlock = ();
     type WeightInfo = ();
+    type OriginPrivilegeCmp = OriginPrivilegeCmp;
 }
 
 impl Config for Runtime {
@@ -407,27 +432,33 @@ impl ExtBuilder {
                     ALICE(),
                     AssetSymbol(b"XOR".to_vec()),
                     AssetName(b"SORA".to_vec()),
-                    18,
+                    DEFAULT_BALANCE_PRECISION,
                     0,
                     true,
+                    None,
+                    None,
                 ),
                 (
                     DOT.into(),
                     ALICE(),
                     AssetSymbol(b"DOT".to_vec()),
                     AssetName(b"DOT".to_vec()),
-                    18,
+                    DEFAULT_BALANCE_PRECISION,
                     0,
                     true,
+                    None,
+                    None,
                 ),
                 (
                     PSWAP.into(),
                     ALICE(),
                     AssetSymbol(b"PSWAP".to_vec()),
                     AssetName(b"PSWAP".to_vec()),
-                    18,
+                    DEFAULT_BALANCE_PRECISION,
                     0,
                     true,
+                    None,
+                    None,
                 ),
             ],
         }

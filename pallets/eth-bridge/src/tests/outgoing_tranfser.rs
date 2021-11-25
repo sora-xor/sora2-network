@@ -35,7 +35,7 @@ use crate::tests::{
     approve_last_request, last_outgoing_request, last_request, Assets, ETH_NETWORK_ID,
 };
 use crate::{Address, AssetConfig};
-use common::{KSM, USDT, XOR};
+use common::{DEFAULT_BALANCE_PRECISION, KSM, USDT, XOR};
 use frame_support::sp_runtime::app_crypto::sp_core::{self, sr25519};
 use frame_support::{assert_err, assert_ok};
 use hex_literal::hex;
@@ -79,7 +79,7 @@ fn should_reserve_and_burn_sidechain_asset_in_outgoing_transfer() {
             id: USDT.into(),
             sidechain_id: H160(hex!("dAC17F958D2ee523a2206206994597C13D831ec7")),
             owned: false,
-            precision: 18,
+            precision: DEFAULT_BALANCE_PRECISION,
         }],
         None,
         None,

@@ -32,6 +32,7 @@ pub mod pallet {
     use super::*;
     use frame_support::log::{debug, warn};
     use frame_support::pallet_prelude::*;
+    use frame_support::traits::StorageVersion;
     use frame_system::pallet_prelude::*;
     use snowbridge_ethereum::EthNetworkId;
 
@@ -82,15 +83,18 @@ pub mod pallet {
     #[pallet::getter(fn treasury_account)]
     pub(super) type TreasuryAccount<T: Config> = StorageValue<_, T::AccountId, ValueQuery>;
 
+    /// The current storage version.
+    const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
+
     #[pallet::pallet]
     #[pallet::generate_store(pub(super) trait Store)]
+    #[pallet::storage_version(STORAGE_VERSION)]
     pub struct Pallet<T>(PhantomData<T>);
 
     #[pallet::hooks]
     impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {}
 
     #[pallet::event]
-    #[pallet::metadata(AccountIdOf<T> = "AccountId")]
     //#[pallet::generate_deposit(pub(super) fn deposit_event)]
     /// This module has no events
     pub enum Event<T: Config> {}

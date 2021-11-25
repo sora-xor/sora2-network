@@ -32,7 +32,8 @@ use crate::{self as faucet, Config};
 use common::mock::ExistentialDeposits;
 use common::prelude::Balance;
 use common::{
-    self, balance, Amount, AssetId32, AssetName, AssetSymbol, TechPurpose, USDT, VAL, XOR,
+    self, balance, Amount, AssetId32, AssetName, AssetSymbol, TechPurpose,
+    DEFAULT_BALANCE_PRECISION, USDT, VAL, XOR,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{Everything, GenesisBuild};
@@ -160,8 +161,9 @@ impl assets::Config for Runtime {
         common::AssetIdExtraAssetRecordArg<common::DEXId, common::LiquiditySourceType, [u8; 32]>;
     type AssetId = AssetId;
     type GetBaseAssetId = GetBaseAssetId;
-    type Currency = currencies::Module<Runtime>;
+    type Currency = currencies::Pallet<Runtime>;
     type GetTeamReservesAccountId = GetTeamReservesAccountId;
+    type GetTotalBalance = ();
     type WeightInfo = ();
 }
 
@@ -241,18 +243,22 @@ impl ExtBuilder {
                     alice(),
                     AssetSymbol(b"XOR".to_vec()),
                     AssetName(b"SORA".to_vec()),
-                    18,
+                    DEFAULT_BALANCE_PRECISION,
                     Balance::from(0u32),
                     true,
+                    None,
+                    None,
                 ),
                 (
                     VAL.into(),
                     alice(),
                     AssetSymbol(b"VAL".to_vec()),
                     AssetName(b"SORA Validator Token".to_vec()),
-                    18,
+                    DEFAULT_BALANCE_PRECISION,
                     Balance::from(0u32),
                     true,
+                    None,
+                    None,
                 ),
             ],
         }

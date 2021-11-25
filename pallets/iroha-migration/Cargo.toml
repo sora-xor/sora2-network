@@ -1,5 +1,5 @@
 [package]
-edition = "2018"
+edition = "2021"
 authors = ['Polka Biome Ltd. <jihoon@tutanota.de>']
 license = "BSD-4-Clause"
 homepage = 'https://sora.org'
@@ -12,6 +12,9 @@ targets = ["x86_64-unknown-linux-gnu"]
 
 [dependencies]
 codec = { package = "parity-scale-codec", version = "2", default-features = false, features = ["derive"] }
+scale-info = { version = "1.0.0", default-features = false, features = [
+    "derive",
+] }
 frame-benchmarking = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.9", default-features = false, optional = true }
 frame-support = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.9", default-features = false }
 frame-system = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.9", default-features = false }
@@ -26,7 +29,7 @@ ed25519-dalek-iroha = { git = "https://github.com/soramitsu/sora2-ed25519-dalek-
 
 assets = { path = "../assets", default-features = false }
 common = { path = "../../common", default-features = false }
-referral-system = { path = "../referral-system", default-features = false }
+referrals = { path = "../referrals", default-features = false }
 technical = { path = "../technical", default-features = false }
 eth-bridge = {path = "../eth-bridge", default-features = false }
 
@@ -42,7 +45,7 @@ tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library
 assets = { path = "../assets" }
 common = { path = "../../common", features = ["test"] }
 permissions = { path = "../permissions" }
-referral-system = { path = "../referral-system" }
+referrals = { path = "../referrals" }
 technical = { path = "../technical" }
 eth-bridge = {path = "../eth-bridge" }
 
@@ -51,6 +54,7 @@ default = ["std"]
 
 std = [
     "codec/std",
+    "scale-info/std",
     "frame-benchmarking/std",
     "frame-support/std",
     "frame-system/std",

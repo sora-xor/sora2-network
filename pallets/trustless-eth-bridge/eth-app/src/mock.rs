@@ -4,7 +4,7 @@ use sp_std::marker::PhantomData;
 
 // Mock runtime
 use common::mock::ExistentialDeposits;
-use common::{balance, Amount, AssetId32, AssetName, AssetSymbol, Balance, DEXId, ETH, XOR};
+use common::{balance, Amount, AssetId32, AssetName, AssetSymbol, Balance, DEXId, XOR};
 use frame_support::dispatch::{DispatchError, DispatchResult};
 use frame_support::parameter_types;
 use frame_support::traits::{Everything, GenesisBuild};
@@ -134,6 +134,7 @@ impl assets::Config for Test {
     type Currency = currencies::Pallet<Test>;
     type GetTeamReservesAccountId = GetTeamReservesAccountId;
     type WeightInfo = ();
+    type GetTotalBalance = ();
 }
 
 impl dispatch::Config for Test {
@@ -202,6 +203,8 @@ pub fn new_tester() -> sp_io::TestExternalities {
             18,
             0,
             true,
+            None,
+            None,
         )],
     }
     .assimilate_storage(&mut storage)

@@ -34,21 +34,21 @@ use frame_support::{assert_noop, assert_ok};
 use crate::mock::*;
 use crate::*;
 
-type Module = crate::Module<Runtime>;
-type Assets = assets::Module<Runtime>;
-type System = frame_system::Module<Runtime>;
+type Pallet = crate::Pallet<Runtime>;
+type Assets = assets::Pallet<Runtime>;
+type System = frame_system::Pallet<Runtime>;
 
 #[test]
 fn transfer_passes_unsigned() {
     ExtBuilder::build().execute_with(|| {
         // Receive 100 (Limit) in two transfers
-        assert_ok!(Module::transfer(
+        assert_ok!(Pallet::transfer(
             Origin::none(),
             XOR,
             bob(),
             balance!(2999.91)
         ));
-        assert_ok!(Module::transfer(
+        assert_ok!(Pallet::transfer(
             Origin::none(),
             XOR,
             bob(),
@@ -66,13 +66,13 @@ fn transfer_passes_unsigned() {
 fn transfer_passes_native_currency() {
     ExtBuilder::build().execute_with(|| {
         // Receive 6000 (Limit) in two transfers
-        assert_ok!(Module::transfer(
+        assert_ok!(Pallet::transfer(
             Origin::signed(alice()),
             XOR,
             bob(),
             balance!(2999.91)
         ));
-        assert_ok!(Module::transfer(
+        assert_ok!(Pallet::transfer(
             Origin::signed(alice()),
             XOR,
             bob(),
@@ -90,7 +90,7 @@ fn transfer_passes_native_currency() {
 #[test]
 fn transfer_passes_multiple_assets() {
     ExtBuilder::build().execute_with(|| {
-        assert_ok!(Module::transfer(
+        assert_ok!(Pallet::transfer(
             Origin::signed(alice()),
             XOR,
             bob(),
@@ -103,7 +103,7 @@ fn transfer_passes_multiple_assets() {
         assert_eq!(Assets::free_balance(&XOR, &alice()).unwrap(), 0);
         assert_eq!(Assets::free_balance(&XOR, &bob()).unwrap(), balance!(6000));
 
-        assert_ok!(Module::transfer(
+        assert_ok!(Pallet::transfer(
             Origin::signed(alice()),
             VAL,
             bob(),
@@ -124,14 +124,14 @@ fn transfer_passes_multiple_assets() {
 #[test]
 fn transfer_passes_after_limit_is_reset() {
     ExtBuilder::build().execute_with(|| {
-        assert_ok!(Module::transfer(
+        assert_ok!(Pallet::transfer(
             Origin::signed(alice()),
             XOR,
             bob(),
             balance!(6000)
         ));
         System::set_block_number(14401);
-        assert_ok!(Module::transfer(
+        assert_ok!(Pallet::transfer(
             Origin::signed(alice()),
             XOR,
             bob(),
@@ -147,7 +147,7 @@ fn transfer_passes_after_limit_is_reset() {
 fn transfer_fails_with_asset_not_supported() {
     ExtBuilder::build().execute_with(|| {
         assert_noop!(
-            Module::transfer(
+            Pallet::transfer(
                 Origin::signed(alice()),
                 NOT_SUPPORTED_ASSET_ID,
                 bob(),
@@ -161,14 +161,14 @@ fn transfer_fails_with_asset_not_supported() {
 #[test]
 fn transfer_fails_with_amount_above_limit() {
     ExtBuilder::build().execute_with(|| {
-        assert_ok!(Module::transfer(
+        assert_ok!(Pallet::transfer(
             Origin::signed(alice()),
             XOR,
             bob(),
             balance!(6000)
         ));
         assert_noop!(
-            Module::transfer(Origin::signed(alice()), XOR, bob(), balance!(0.2)),
+            Pallet::transfer(Origin::signed(alice()), XOR, bob(), balance!(0.2)),
             crate::Error::<Runtime>::AmountAboveLimit
         );
     });
@@ -177,14 +177,14 @@ fn transfer_fails_with_amount_above_limit() {
 #[test]
 fn transfer_fails_with_not_enough_reserves() {
     ExtBuilder::build().execute_with(|| {
-        assert_ok!(Module::transfer(
+        assert_ok!(Pallet::transfer(
             Origin::signed(alice()),
             XOR,
             bob(),
             balance!(6000)
         ));
         assert_noop!(
-            Module::transfer(Origin::signed(bob()), XOR, alice(), balance!(6000)),
+            Pallet::transfer(Origin::signed(bob()), XOR, alice(), balance!(6000)),
             crate::Error::<Runtime>::NotEnoughReserves
         );
     });

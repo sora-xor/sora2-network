@@ -34,7 +34,7 @@ use common::prelude::Balance;
 use common::VAL;
 use frame_support::traits::OnInitialize;
 use frame_support::{assert_noop, assert_ok};
-use referral_system::Referrers;
+use referrals::Referrers;
 
 type Assets = assets::Pallet<Runtime>;
 
@@ -143,7 +143,7 @@ fn test_migrate_multi_sig() {
         let multi_account = {
             let mut signatories = [ALICE, BOB, CHARLIE];
             signatories.sort();
-            pallet_multisig::Module::<Runtime>::multi_account_id(&signatories, 2)
+            pallet_multisig::Pallet::<Runtime>::multi_account_id(&signatories, 2)
         };
         assert_eq!(Assets::free_balance(&VAL, &multi_account).unwrap(), Balance::from(0u128));
         assert_ok!(Pallet::<Runtime>::migrate(
@@ -181,12 +181,12 @@ fn test_migrate_multi_sig_after_timeout() {
         let multi_account_of_2 = {
             let mut signatories = [ALICE, BOB];
             signatories.sort();
-            pallet_multisig::Module::<Runtime>::multi_account_id(&signatories, 2)
+            pallet_multisig::Pallet::<Runtime>::multi_account_id(&signatories, 2)
         };
         let multi_account_of_3 = {
             let mut signatories = [ALICE, BOB, CHARLIE];
             signatories.sort();
-            pallet_multisig::Module::<Runtime>::multi_account_id(&signatories, 2)
+            pallet_multisig::Pallet::<Runtime>::multi_account_id(&signatories, 2)
         };
         assert_eq!(Assets::free_balance(&VAL, &multi_account_of_2).unwrap(), Balance::from(0u128));
         assert_eq!(Assets::free_balance(&VAL, &multi_account_of_3).unwrap(), Balance::from(0u128));

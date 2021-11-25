@@ -91,7 +91,7 @@ impl FixedWrapper {
     }
 
     pub fn to_fraction(&self) -> Result<f64, ArithmeticError> {
-        self.inner.clone().map(Fixed::to_f64)
+        self.inner.clone().map(f64::from)
     }
 
     pub fn try_into_balance(self) -> Result<Balance, ArithmeticError> {

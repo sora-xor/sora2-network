@@ -1,4 +1,4 @@
-FROM debian:buster-slim
+FROM debian:bullseye-slim
 # Install dependencies
 RUN apt-get update && \
     apt-get install --no-install-recommends -y \
@@ -12,6 +12,6 @@ RUN mkdir /chain && \
     chown 10000:10000 /chain
 USER substrate
 
-COPY ./housekeeping/framenode /usr/local/bin/framenode
+COPY ./framenode /usr/local/bin/framenode
 
 ENTRYPOINT ["framenode"]

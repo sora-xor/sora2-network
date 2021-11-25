@@ -1,76 +1,12 @@
-@Library('jenkins-library' ) _
+@Library('jenkins-library')
 
-String agentLabel = 'docker-build-agent'
-String registry = 'docker.soramitsu.co.jp'
-String dockerBuildToolsUserId = 'bot-build-tools-ro'
-String dockerRegistryRWUserId = 'bot-sora2-rw'
-String baseImageName = 'docker.soramitsu.co.jp/sora2/substrate-env:latest'
-String secretScannerExclusion = '.*Cargo.toml'
-Boolean disableSecretScanner = false
-
-pipeline {
-    options {
-        buildDiscarder(logRotator(numToKeepStr: '20'))
-        timestamps()
-        disableConcurrentBuilds()
-    }
-
-    agent {
-        label agentLabel
-    }
-
-    stages {
-        stage('Secret scanner') {
-            steps {
-                script {
-                    gitNotify('env-CI', 'PENDING', 'This commit is being built')
-                    docker.withRegistry( 'https://' + registry, dockerBuildToolsUserId) {
-                        secretScanner(disableSecretScanner, secretScannerExclusion)
-                    }
-                }
-            }
-        }
-        stage('Build image') {
-            // Build image for PRs to master to check if everything is okay.
-            // Build image for commits on master to prepare to push.
-            // Build image on branches that has changing something related to image
-            when { anyOf {
-                    expression { env.CHANGE_TARGET ==~ /master/ }
-                    expression { env.GIT_BRANCH ==~ /master/ }
-                    expression {
-                        status = sh(script: "set +e; git diff origin/${env.CHANGE_TARGET}..origin/${env.GIT_BRANCH} --name-only | grep housekeeping", returnStatus: true, returnStdout: true)
-                        status == 0
-                    }
-            } }
-            steps {
-                script {
-                    sh "docker build -f housekeeping/docker/develop/Dockerfile -t ${baseImageName} ."
-                }
-            }
-        }
-        stage('Push Image') {
-            when {
-                expression { env.GIT_BRANCH ==~ /master/ }
-            }
-            steps {
-                script {
-                    docker.withRegistry( 'https://' + registry, dockerRegistryRWUserId) {
-                        sh "docker push ${baseImageName}"
-                    }
-                }
-            }
-        }
-    }
-    post {
-        success {
-            script { gitNotify('env-CI', 'SUCCESS', 'Success') }
-        }
-        failure {
-            script { gitNotify('env-CI', 'FAILURE', 'Failure') }
-        }
-        aborted {
-            script { gitNotify('env-CI', 'FAILURE', 'Aborted') }
-        }
-        cleanup { cleanWs() }
-    }
-}
+def pipeline = new org.docker.AppPipeline(steps: this,
+    dockerImageName:              'sora2/env',
+    dockerRegistryCred:           'bot-sora2-rw',
+    dockerFileName:               "housekeeping/docker/env-release/Dockerfile",
+    triggerCommonBuildExpression: (env.BRANCH_NAME in ['substrate-4.0.0']),
+    triggerCommonBuildGrepRegex:  'housekeeping',
+    secretScannerExclusion:       '.*Cargo.toml',
+    nameCI:                       'env-CI',
+    dockerImageTags:              ['substrate-4.0.0':'sub4'])
+pipeline.runPipeline()

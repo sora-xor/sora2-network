@@ -106,6 +106,9 @@ impl<T: frame_system::Config> pallet_collective::WeightInfo for CollectiveWeight
 }
 
 impl pallet_democracy::WeightInfo for DemocracyWeightInfo {
+    fn on_initialize_base_with_launch_period(r: u32) -> Weight {
+        <() as pallet_democracy::WeightInfo>::on_initialize_base_with_launch_period(r)
+    }
     fn propose() -> Weight {
         <() as pallet_democracy::WeightInfo>::propose()
     }

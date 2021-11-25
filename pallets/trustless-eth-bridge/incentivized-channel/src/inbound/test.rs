@@ -143,6 +143,7 @@ impl assets::Config for Test {
     type Currency = currencies::Pallet<Test>;
     type GetTeamReservesAccountId = GetTeamReservesAccountId;
     type WeightInfo = ();
+    type GetTotalBalance = ();
 }
 
 // Mock verifier
@@ -226,6 +227,8 @@ pub fn new_tester_with_config(
             18,
             0,
             true,
+            None,
+            None,
         )],
     }
     .assimilate_storage(&mut storage)

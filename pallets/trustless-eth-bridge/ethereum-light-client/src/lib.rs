@@ -55,7 +55,7 @@ const FINALIZED_HEADERS_TO_KEEP: u64 = 50_000;
 const HEADERS_TO_PRUNE_IN_SINGLE_IMPORT: u64 = 8;
 
 /// Ethereum block header as it is stored in the runtime storage.
-#[derive(Clone, Encode, Decode, PartialEq, RuntimeDebug)]
+#[derive(Clone, Encode, Decode, PartialEq, RuntimeDebug, scale_info::TypeInfo)]
 pub struct StoredHeader<Submitter> {
     /// Submitter of this header. This will be None for the initial header
     /// or the account ID of the relay.
@@ -70,7 +70,7 @@ pub struct StoredHeader<Submitter> {
 }
 
 /// Blocks range that we want to prune.
-#[derive(Clone, Encode, Decode, Default, PartialEq, RuntimeDebug)]
+#[derive(Clone, Encode, Decode, Default, PartialEq, RuntimeDebug, scale_info::TypeInfo)]
 struct PruningRange {
     /// Number of the oldest unpruned block(s). This might be the block that we do not
     /// want to prune now (then it is equal to `oldest_block_to_keep`).
@@ -88,11 +88,16 @@ pub mod pallet {
     use super::*;
 
     use frame_support::pallet_prelude::*;
+    use frame_support::traits::StorageVersion;
     use frame_system::pallet_prelude::*;
     use snowbridge_ethereum::EthNetworkId;
 
+    /// The current storage version.
+    const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
+
     #[pallet::pallet]
     #[pallet::generate_store(pub(super) trait Store)]
+    #[pallet::storage_version(STORAGE_VERSION)]
     pub struct Pallet<T>(_);
 
     #[pallet::config]

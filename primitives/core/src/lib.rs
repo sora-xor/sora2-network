@@ -2,8 +2,6 @@
 //!
 //! Common traits and types
 
-#![allow(dead_code)]
-#![allow(unused_variables)]
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use frame_support::dispatch::{DispatchError, DispatchResult};

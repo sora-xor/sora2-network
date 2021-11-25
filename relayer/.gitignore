@@ -1,4 +1,4 @@
 /bridgerelayer
 /.envrc
 build/
-relayer
+./relayer

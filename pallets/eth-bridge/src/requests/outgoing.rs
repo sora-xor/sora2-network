@@ -58,8 +58,9 @@ use sp_std::convert::TryInto;
 use sp_std::prelude::*;
 
 /// Outgoing request for transferring the given asset from Thischain to Sidechain.
-#[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug)]
+#[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+#[scale_info(skip_type_params(T))]
 pub struct OutgoingTransfer<T: Config> {
     pub from: T::AccountId,
     pub to: Address,
@@ -153,14 +154,14 @@ impl<T: Config> OutgoingTransfer<T> {
         let bridge_account = get_bridge_account::<T>(self.network_id);
         common::with_transaction(|| {
             Assets::<T>::transfer_from(&self.asset_id, &self.from, &bridge_account, self.amount)?;
-            Assets::<T>::reserve(self.asset_id, &bridge_account, self.amount)
+            Assets::<T>::reserve(&self.asset_id, &bridge_account, self.amount)
         })
     }
 
     pub fn cancel(&self) -> Result<(), DispatchError> {
         let bridge_account = get_bridge_account::<T>(self.network_id);
         common::with_transaction(|| {
-            let remainder = Assets::<T>::unreserve(self.asset_id, &bridge_account, self.amount)?;
+            let remainder = Assets::<T>::unreserve(&self.asset_id, &bridge_account, self.amount)?;
             ensure!(remainder == 0, Error::<T>::FailedToUnreserve);
             Assets::<T>::transfer_from(&self.asset_id, &bridge_account, &self.from, self.amount)
         })
@@ -171,16 +172,16 @@ impl<T: Config> OutgoingTransfer<T> {
         self.validate()?;
         let bridge_acc = get_bridge_account::<T>(self.network_id);
         common::with_transaction(|| {
-            let remainder = Assets::<T>::unreserve(self.asset_id, &bridge_acc, self.amount)?;
+            let remainder = Assets::<T>::unreserve(&self.asset_id, &bridge_acc, self.amount)?;
             ensure!(remainder == 0, Error::<T>::FailedToUnreserve);
             let asset_kind: AssetKind =
-                crate::Module::<T>::registered_asset(self.network_id, &self.asset_id)
+                crate::Pallet::<T>::registered_asset(self.network_id, &self.asset_id)
                     .ok_or(Error::<T>::UnknownAssetId)?;
             if !asset_kind.is_owned() {
                 // The burn shouldn't fail, because we've just unreserved the needed amount of the asset,
                 // the only case it can fail is if the bridge account doesn't have `BURN` permission,
                 // but this permission is always granted when adding sidechain asset to bridge
-                // (see `Module::register_sidechain_asset`).
+                // (see `Pallet::register_sidechain_asset`).
                 Assets::<T>::burn_from(&self.asset_id, &bridge_acc, &bridge_acc, self.amount)?;
             }
             Ok(())
@@ -189,7 +190,7 @@ impl<T: Config> OutgoingTransfer<T> {
 }
 
 /// Thischain or Sidechain asset id.
-#[derive(Clone, PartialEq, Eq, Encode, Decode, RuntimeDebug)]
+#[derive(Clone, PartialEq, Eq, Encode, Decode, RuntimeDebug, scale_info::TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum CurrencyIdEncoded {
     AssetId(H256),
@@ -206,7 +207,7 @@ impl CurrencyIdEncoded {
 }
 
 /// Sidechain-compatible version of `OutgoingTransfer`.
-#[derive(Clone, PartialEq, Eq, Encode, Decode, RuntimeDebug)]
+#[derive(Clone, PartialEq, Eq, Encode, Decode, RuntimeDebug, scale_info::TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct OutgoingTransferEncoded {
     pub currency_id: CurrencyIdEncoded,
@@ -239,8 +240,9 @@ impl OutgoingTransferEncoded {
 
 /// Outgoing request for adding a Thischain asset.
 // TODO: lock the adding token to prevent double-adding.
-#[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug)]
+#[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+#[scale_info(skip_type_params(T))]
 pub struct OutgoingAddAsset<T: Config> {
     pub author: T::AccountId,
     pub asset_id: AssetIdOf<T>,
@@ -311,7 +313,7 @@ impl<T: Config> OutgoingAddAsset<T> {
 }
 
 /// Sidechain-compatible version of `OutgoingAddAsset`.
-#[derive(Clone, PartialEq, Eq, Encode, Decode, RuntimeDebug)]
+#[derive(Clone, PartialEq, Eq, Encode, Decode, RuntimeDebug, scale_info::TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct OutgoingAddAssetEncoded {
     pub symbol: String,
@@ -341,8 +343,9 @@ impl OutgoingAddAssetEncoded {
 }
 
 /// Outgoing request for adding a Sidechain token.
-#[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug)]
+#[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+#[scale_info(skip_type_params(T))]
 pub struct OutgoingAddToken<T: Config> {
     pub author: T::AccountId,
     pub token_address: Address,
@@ -408,7 +411,7 @@ impl<T: Config> OutgoingAddToken<T> {
                 .expect("NetworkId can be always converted to u128; qed"),
         )
         .to_big_endian(&mut network_id.0);
-        let raw = ethabi::encode_packed(&[
+        let raw = ethabi::encode(&[
             Token::Address(types::H160(token_address.0)),
             Token::String(symbol.clone()),
             Token::String(name.clone()),
@@ -439,16 +442,10 @@ impl<T: Config> OutgoingAddToken<T> {
             Error::<T>::SidechainAssetIsAlreadyRegistered
         );
         let symbol = AssetSymbol(self.symbol.as_bytes().to_vec());
-        ensure!(
-            assets::is_symbol_valid(&symbol),
-            assets::Error::<T>::InvalidAssetSymbol
-        );
+        ensure!(symbol.is_valid(), assets::Error::<T>::InvalidAssetSymbol);
 
         let name = AssetName(self.name.as_bytes().to_vec());
-        ensure!(
-            assets::is_name_valid(&name),
-            assets::Error::<T>::InvalidAssetName
-        );
+        ensure!(name.is_valid(), assets::Error::<T>::InvalidAssetName);
 
         Ok((symbol, name))
     }
@@ -478,7 +475,7 @@ impl<T: Config> OutgoingAddToken<T> {
 }
 
 /// Sidechain-compatible version of `OutgoingAddToken`.
-#[derive(Clone, PartialEq, Eq, Encode, Decode, RuntimeDebug)]
+#[derive(Clone, PartialEq, Eq, Encode, Decode, RuntimeDebug, scale_info::TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct OutgoingAddTokenEncoded {
     pub token_address: Address,
@@ -508,8 +505,9 @@ impl OutgoingAddTokenEncoded {
 }
 
 /// Outgoing request for adding a peer.
-#[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug)]
+#[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+#[scale_info(skip_type_params(T))]
 pub struct OutgoingAddPeer<T: Config> {
     pub author: T::AccountId,
     pub peer_address: Address,
@@ -530,7 +528,7 @@ impl<T: Config> OutgoingAddPeer<T> {
                 .expect("NetworkId can be always converted to u128; qed"),
         )
         .to_big_endian(&mut network_id.0);
-        let raw = ethabi::encode_packed(&[
+        let raw = ethabi::encode(&[
             Token::Address(types::H160(peer_address.0)),
             Token::FixedBytes(tx_hash.0.to_vec()),
             Token::FixedBytes(network_id.0.to_vec()),
@@ -589,8 +587,9 @@ impl<T: Config> OutgoingAddPeer<T> {
 
 // TODO: add reference for a corresponding `OutgoingAddPeer` and check its existence.
 /// Old contracts-compatible `add peer` request. Will be removed in the future.
-#[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug)]
+#[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+#[scale_info(skip_type_params(T))]
 pub struct OutgoingAddPeerCompat<T: Config> {
     pub author: T::AccountId,
     pub peer_address: Address,
@@ -611,7 +610,7 @@ impl<T: Config> OutgoingAddPeerCompat<T> {
                 .expect("NetworkId can be always converted to u128; qed"),
         )
         .to_big_endian(&mut network_id.0);
-        let raw = ethabi::encode_packed(&[
+        let raw = ethabi::encode(&[
             Token::Address(types::H160(peer_address.0)),
             Token::FixedBytes(tx_hash.0.to_vec()),
         ]);
@@ -653,8 +652,9 @@ impl<T: Config> OutgoingAddPeerCompat<T> {
 }
 
 /// Outgoing request for removing a peer.
-#[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug)]
+#[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+#[scale_info(skip_type_params(T))]
 pub struct OutgoingRemovePeer<T: Config> {
     pub author: T::AccountId,
     pub peer_account_id: T::AccountId,
@@ -738,8 +738,9 @@ impl<T: Config> OutgoingRemovePeer<T> {
 
 // TODO: add reference for a corresponding `OutgoingRemovePeer` and check its existence.
 /// Old contracts-compatible `add peer` request. Will be removed in the future.
-#[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug)]
+#[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+#[scale_info(skip_type_params(T))]
 pub struct OutgoingRemovePeerCompat<T: Config> {
     pub author: T::AccountId,
     pub peer_account_id: T::AccountId,
@@ -802,7 +803,7 @@ impl<T: Config> OutgoingRemovePeerCompat<T> {
 }
 
 /// Sidechain-compatible version of `OutgoingAddPeer`.
-#[derive(Clone, PartialEq, Eq, Encode, Decode, RuntimeDebug)]
+#[derive(Clone, PartialEq, Eq, Encode, Decode, RuntimeDebug, scale_info::TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct OutgoingAddPeerEncoded {
     pub peer_address: Address,
@@ -827,7 +828,7 @@ impl OutgoingAddPeerEncoded {
 }
 
 /// Sidechain-compatible version of `OutgoingRemovePeer`.
-#[derive(Clone, PartialEq, Eq, Encode, Decode, RuntimeDebug)]
+#[derive(Clone, PartialEq, Eq, Encode, Decode, RuntimeDebug, scale_info::TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct OutgoingRemovePeerEncoded {
     pub peer_address: Address,
@@ -860,8 +861,9 @@ impl OutgoingRemovePeerEncoded {
 /// as possible.
 /// 2. Migrate the bridge. At this stage a new Sidechain contract should be deployed and Thischain
 /// should be switched to it, so the old contract can't be used anymore.
-#[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug)]
+#[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+#[scale_info(skip_type_params(T))]
 pub struct OutgoingPrepareForMigration<T: Config> {
     pub author: T::AccountId,
     pub nonce: T::Index,
@@ -914,7 +916,7 @@ impl<T: Config> OutgoingPrepareForMigration<T> {
 }
 
 /// Sidechain-compatible version of `OutgoingPrepareForMigration`.
-#[derive(Clone, PartialEq, Eq, Encode, Decode, RuntimeDebug)]
+#[derive(Clone, PartialEq, Eq, Encode, Decode, RuntimeDebug, scale_info::TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct OutgoingPrepareForMigrationEncoded {
     pub this_contract_address: Address,
@@ -940,8 +942,9 @@ impl OutgoingPrepareForMigrationEncoded {
 
 /// Outgoing request for migrating the bridge. For the full migration process description see
 /// `OutgoingPrepareForMigration` request.
-#[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug)]
+#[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+#[scale_info(skip_type_params(T))]
 pub struct OutgoingMigrate<T: Config> {
     pub author: T::AccountId,
     pub new_contract_address: Address,
@@ -1008,7 +1011,7 @@ impl<T: Config> OutgoingMigrate<T> {
 }
 
 /// Sidechain-compatible version of `OutgoingMigrate`.
-#[derive(Clone, PartialEq, Eq, Encode, Decode, RuntimeDebug)]
+#[derive(Clone, PartialEq, Eq, Encode, Decode, RuntimeDebug, scale_info::TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct OutgoingMigrateEncoded {
     pub this_contract_address: Address,
@@ -1038,7 +1041,7 @@ impl OutgoingMigrateEncoded {
 /// synchronize them, we use this structure, that contains the current readiness state of each
 /// contract. We add or remove peer only when all of them is in `true` state
 /// (see `EthPeersSync::is_ready`).
-#[derive(Clone, Default, PartialEq, Eq, Encode, Decode, RuntimeDebug)]
+#[derive(Clone, Default, PartialEq, Eq, Encode, Decode, RuntimeDebug, scale_info::TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct EthPeersSync {
     is_bridge_ready: bool,

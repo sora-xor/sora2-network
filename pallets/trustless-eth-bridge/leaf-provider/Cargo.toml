@@ -14,6 +14,9 @@ serde = { version = "1.0.101", optional = true }
 codec = { version = "2.0.0", package = "parity-scale-codec", default-features = false, features = [
     "derive",
 ] }
+scale-info = { version = "1.0.0", default-features = false, features = [
+    "derive",
+] }
 
 frame-benchmarking = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.9", default-features = false, optional = true }
 frame-support = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.9", default-features = false }
@@ -25,8 +28,8 @@ sp-runtime = { git = "https://github.com/paritytech/substrate.git", branch = "po
 
 pallet-mmr-primitives = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.9", default-features = false }
 pallet-mmr = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.9", default-features = false }
-pallet-beefy-mmr = { git = "https://github.com/paritytech/grandpa-bridge-gadget.git", branch = "polkadot-v0.9.9", default-features = false }
-beefy-merkle-tree = { git = "https://github.com/paritytech/grandpa-bridge-gadget.git", branch = "polkadot-v0.9.9", default-features = false }
+pallet-beefy-mmr = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.13", default-features = false }
+beefy-merkle-tree = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.13", default-features = false }
 
 snowbridge-core = { path = "../../../primitives/core", default-features = false }
 
@@ -39,6 +42,7 @@ default = ["std"]
 std = [
     "serde",
     "codec/std",
+    "scale-info/std",
     "frame-support/std",
     "frame-system/std",
     "sp-core/std",
