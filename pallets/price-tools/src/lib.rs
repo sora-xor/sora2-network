@@ -51,8 +51,7 @@ use common::prelude::{
     Balance, Fixed, FixedWrapper, LiquiditySourceType, PriceToolsPallet, QuoteAmount,
 };
 use common::{
-    balance, fixed_const, fixed_wrapper, DEXId, LiquiditySourceFilter, OnPoolReservesChanged, DAI,
-    ETH, PSWAP, VAL, XOR,
+    balance, fixed_const, fixed_wrapper, DEXId, LiquiditySourceFilter, OnPoolReservesChanged, XOR,
 };
 use frame_support::dispatch::{DispatchError, DispatchResult};
 use frame_support::weights::Weight;
@@ -78,7 +77,7 @@ impl crate::WeightInfo for () {
     }
 }
 
-#[derive(Encode, Decode, Eq, PartialEq, Clone, PartialOrd, Ord, Debug)]
+#[derive(Encode, Decode, Eq, PartialEq, Clone, PartialOrd, Ord, Debug, scale_info::TypeInfo)]
 pub struct PriceInfo {
     price_failures: u32,
     spot_prices: VecDeque<Balance>,
@@ -103,6 +102,7 @@ impl Default for PriceInfo {
 pub mod pallet {
     use super::*;
     use frame_support::pallet_prelude::*;
+    use frame_support::traits::StorageVersion;
     use frame_system::pallet_prelude::*;
     use liquidity_proxy::LiquidityProxyTrait;
 
@@ -120,28 +120,19 @@ pub mod pallet {
         type WeightInfo: WeightInfo;
     }
 
+    /// The current storage version.
+    const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
+
     #[pallet::pallet]
     #[pallet::generate_store(pub(super) trait Store)]
+    #[pallet::storage_version(STORAGE_VERSION)]
     pub struct Pallet<T>(PhantomData<T>);
 
     #[pallet::hooks]
     impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
         fn on_initialize(_block_num: T::BlockNumber) -> Weight {
-            let (n, m) = Module::<T>::average_prices_calculation_routine();
+            let (n, m) = Pallet::<T>::average_prices_calculation_routine();
             <T as Config>::WeightInfo::on_initialize(n, m)
-        }
-
-        fn on_runtime_upgrade() -> Weight {
-            // match Pallet::<T>::storage_version() {
-            //     // if pallet didn't exist, i.e. added with runtime upgrade, then initial tbc assets should be created
-            //     None => {
-            //         for asset_id in [VAL, PSWAP, DAI, ETH].iter().cloned() {
-            //             let _ = Module::<T>::register_asset(&asset_id.into());
-            //         }
-            //     }
-            //     _ => (),
-            // };
-            T::DbWeight::get().writes(1)
         }
     }
 
@@ -151,7 +142,6 @@ pub mod pallet {
     }
 
     #[pallet::event]
-    #[pallet::metadata()]
     // #[pallet::generate_deposit(pub(super) fn deposit_event)]
     pub enum Event<T: Config> {
         // no events
@@ -386,12 +376,12 @@ impl<T: Config> Pallet<T> {
     }
 }
 
-impl<T: Config> PriceToolsPallet<T::AssetId> for Module<T> {
+impl<T: Config> PriceToolsPallet<T::AssetId> for Pallet<T> {
     fn get_average_price(
         input_asset_id: &T::AssetId,
         output_asset_id: &T::AssetId,
     ) -> Result<Balance, DispatchError> {
-        Module::<T>::get_average_price(input_asset_id, output_asset_id)
+        Pallet::<T>::get_average_price(input_asset_id, output_asset_id)
     }
 
     fn register_asset(asset_id: &T::AssetId) -> DispatchResult {
@@ -404,7 +394,7 @@ impl<T: Config> PriceToolsPallet<T::AssetId> for Module<T> {
     }
 }
 
-impl<T: Config> OnPoolReservesChanged<T::AssetId> for Module<T> {
+impl<T: Config> OnPoolReservesChanged<T::AssetId> for Pallet<T> {
     fn reserves_changed(target_asset_id: &T::AssetId) {
         if let Some(price_info) = PriceInfos::<T>::get(target_asset_id) {
             if !price_info.needs_update {

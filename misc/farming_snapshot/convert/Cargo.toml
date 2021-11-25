@@ -1,0 +1,8 @@
+[package]
+name = "convert"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+parity-scale-codec = "2"
+sp-core = "3.0"

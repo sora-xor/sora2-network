@@ -68,7 +68,7 @@ pub mod pallet {
     #[pallet::storage]
     #[pallet::getter(fn latest_digest)]
     pub(super) type LatestDigest<T: Config> =
-        StorageValue<_, frame_system::DigestOf<T>, ValueQuery>;
+        StorageValue<_, sp_runtime::generic::Digest, ValueQuery>;
 
     /// The module's configuration trait.
     #[pallet::config]

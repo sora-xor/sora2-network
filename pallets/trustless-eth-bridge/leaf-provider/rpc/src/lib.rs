@@ -48,10 +48,7 @@ where
     BlockHash: Codec,
 {
     #[rpc(name = "leafProvider_latestDigest")]
-    fn latest_digest(
-        &self,
-        at: Option<BlockHash>,
-    ) -> Result<sp_runtime::generic::Digest<BlockHash>>;
+    fn latest_digest(&self, at: Option<BlockHash>) -> Result<sp_runtime::generic::Digest>;
 }
 
 pub struct LeafProviderClient<C, B> {
@@ -74,12 +71,9 @@ where
     Block: BlockT,
     C: Send + Sync + 'static,
     C: ProvideRuntimeApi<Block> + HeaderBackend<Block>,
-    C::Api: LeafProviderRuntimeAPI<Block, <Block as BlockT>::Hash>,
+    C::Api: LeafProviderRuntimeAPI<Block>,
 {
-    fn latest_digest(
-        &self,
-        at: Option<<Block as BlockT>::Hash>,
-    ) -> Result<sp_runtime::Digest<<Block as BlockT>::Hash>> {
+    fn latest_digest(&self, at: Option<<Block as BlockT>::Hash>) -> Result<sp_runtime::Digest> {
         let api = self.client.runtime_api();
         let at = BlockId::hash(at.unwrap_or(
             // If the block hash is not supplied assume the best block.

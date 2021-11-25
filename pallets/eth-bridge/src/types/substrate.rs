@@ -38,7 +38,7 @@ use sp_std::vec::Vec;
 
 /// Simple blob to hold an extrinsic without committing to its format and ensure it is serialized
 /// correctly.
-#[derive(PartialEq, Eq, Clone, Default, Encode, Decode)]
+#[derive(PartialEq, Eq, Clone, Default, Encode, Decode, scale_info::TypeInfo)]
 pub struct OpaqueExtrinsic(Vec<u8>);
 
 #[cfg(test)]

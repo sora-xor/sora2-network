@@ -30,13 +30,11 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use codec::Decode;
 use sp_std::prelude::*;
 
 sp_api::decl_runtime_apis! {
-    pub trait LeafProviderAPI<Hash> where
-    Hash: Decode
+    pub trait LeafProviderAPI
     {
-        fn latest_digest() -> sp_runtime::generic::Digest<Hash>;
+        fn latest_digest() -> sp_runtime::generic::Digest;
     }
 }

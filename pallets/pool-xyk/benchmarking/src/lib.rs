@@ -32,27 +32,25 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
-#[macro_use]
-extern crate alloc;
-
-use pool_xyk::*;
-
 use codec::Decode;
 use common::prelude::{Balance, SwapAmount};
-use common::{balance, AssetName, AssetSymbol, DEXId, LiquiditySource, DOT, XOR};
-use frame_benchmarking::benchmarks;
+use common::{
+    balance, AssetName, AssetSymbol, DEXId, LiquiditySource, DEFAULT_BALANCE_PRECISION, DOT, XOR,
+};
+use frame_benchmarking::{benchmarks, impl_benchmark_test_suite};
 use frame_system::RawOrigin;
 use hex_literal::hex;
+use pool_xyk::Call;
 use sp_std::prelude::*;
 
-use assets::Module as Assets;
-use permissions::Module as Permissions;
-use pool_xyk::Module as XYKPool;
-use trading_pair::Module as TradingPair;
+use assets::Pallet as Assets;
+use permissions::Pallet as Permissions;
+use pool_xyk::Pallet as XYKPool;
+use trading_pair::Pallet as TradingPair;
 
 #[cfg(test)]
 mod mock;
-pub struct Module<T: Config>(pool_xyk::Module<T>);
+pub struct Pallet<T: Config>(pool_xyk::Pallet<T>);
 pub trait Config: pool_xyk::Config {}
 
 pub const DEX: DEXId = DEXId::Polkaswap;
@@ -65,7 +63,7 @@ fn alice<T: Config>() -> T::AccountId {
 
 fn setup_benchmark_assets_only<T: Config>() -> Result<(), &'static str> {
     let owner = alice::<T>();
-    frame_system::Module::<T>::inc_providers(&owner);
+    frame_system::Pallet::<T>::inc_providers(&owner);
     let owner_origin: <T as frame_system::Config>::Origin = RawOrigin::Signed(owner.clone()).into();
 
     // Grant permissions to self in case they haven't been explicitly given in genesis config
@@ -87,18 +85,22 @@ fn setup_benchmark_assets_only<T: Config>() -> Result<(), &'static str> {
         XOR.into(),
         AssetSymbol(b"XOR".to_vec()),
         AssetName(b"SORA".to_vec()),
-        18,
+        DEFAULT_BALANCE_PRECISION,
         Balance::from(0u32),
         true,
+        None,
+        None,
     );
     let _ = Assets::<T>::register_asset_id(
         owner.clone(),
         DOT.into(),
         AssetSymbol(b"DOT".to_vec()),
         AssetName(b"Polkadot".to_vec()),
-        18,
+        DEFAULT_BALANCE_PRECISION,
         Balance::from(0u32),
         true,
+        None,
+        None,
     )
     .unwrap();
 
@@ -112,7 +114,7 @@ fn setup_benchmark_assets_only<T: Config>() -> Result<(), &'static str> {
 
 fn setup_benchmark<T: Config>() -> Result<(), &'static str> {
     let owner = alice::<T>();
-    frame_system::Module::<T>::inc_providers(&owner);
+    frame_system::Pallet::<T>::inc_providers(&owner);
     let owner_origin: <T as frame_system::Config>::Origin = RawOrigin::Signed(owner.clone()).into();
 
     setup_benchmark_assets_only::<T>()?;
@@ -132,7 +134,6 @@ fn setup_benchmark<T: Config>() -> Result<(), &'static str> {
 
     Ok(())
 }
-/*
 benchmarks! {
     swap_pair {
         setup_benchmark::<T>()?;
@@ -144,7 +145,7 @@ benchmarks! {
         let initial_base_balance = Assets::<T>::free_balance(&XOR.into(), &caller).unwrap();
         let initial_target_balance = Assets::<T>::free_balance(&DOT.into(), &caller).unwrap();
     }: {
-        pool_xyk::Module::<T>::exchange(&caller,
+        pool_xyk::Pallet::<T>::exchange(&caller,
         &caller,
         &DEX.into(),
         &XOR.into(),
@@ -166,7 +167,7 @@ benchmarks! {
     can_exchange {
         setup_benchmark::<T>()?;
     }: {
-        assert!(Pallet::<T>::can_exchange(
+        assert!(XYKPool::<T>::can_exchange(
             &DEX.into(),
             &XOR.into(),
             &DOT.into(),
@@ -183,7 +184,7 @@ benchmarks! {
             min_amount_out: balance!(0),
         };
     }: {
-        Pallet::<T>::quote(
+        XYKPool::<T>::quote(
             &DEX.into(),
             &XOR.into(),
             &DOT.into(),
@@ -262,20 +263,8 @@ benchmarks! {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::mock::{ExtBuilder, Runtime};
-    use frame_support::assert_ok;
-
-    #[test]
-    fn test_benchmarks() {
-        ExtBuilder::default().build().execute_with(|| {
-            assert_ok!(test_benchmark_swap_pair::<Runtime>());
-            assert_ok!(test_benchmark_deposit_liquidity::<Runtime>());
-            assert_ok!(test_benchmark_withdraw_liquidity::<Runtime>());
-            assert_ok!(test_benchmark_initialize_pool::<Runtime>());
-        });
-    }
-}
-*/
+impl_benchmark_test_suite!(
+    Pallet,
+    crate::mock::ExtBuilder::default().build(),
+    crate::mock::Runtime
+);

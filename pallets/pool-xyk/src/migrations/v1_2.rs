@@ -14,7 +14,7 @@ pub fn migrate<T: Config>() -> Weight {
 
 #[cfg(test)]
 mod tests {
-    use common::{balance, AssetName, AssetSymbol};
+    use common::{balance, AssetName, AssetSymbol, DEFAULT_BALANCE_PRECISION};
     use hex_literal::hex;
 
     use crate::mock::*;
@@ -35,35 +35,39 @@ mod tests {
                 hex!("0200020700000000000000000000000000000000000000000000000000000000").into(),
             );
 
-            assets::Module::<Runtime>::register_asset_id(
+            assets::Pallet::<Runtime>::register_asset_id(
                 ALICE(),
                 base_asset.clone(),
                 AssetSymbol(b"BASE".to_vec()),
                 AssetName(b"BASE".to_vec()),
-                18,
+                DEFAULT_BALANCE_PRECISION,
                 0,
                 true,
+                None,
+                None,
             )
             .unwrap();
             for target_asset in [target_asset_a, target_asset_b, target_asset_c].iter() {
-                assets::Module::<Runtime>::register_asset_id(
+                assets::Pallet::<Runtime>::register_asset_id(
                     ALICE(),
                     target_asset.clone(),
                     AssetSymbol(b"A".to_vec()),
                     AssetName(b"B".to_vec()),
-                    18,
+                    DEFAULT_BALANCE_PRECISION,
                     0,
                     true,
+                    None,
+                    None,
                 )
                 .unwrap();
-                trading_pair::Module::<Runtime>::register(
+                trading_pair::Pallet::<Runtime>::register(
                     Origin::signed(ALICE()),
                     dex_id,
                     base_asset.clone(),
                     target_asset.clone(),
                 )
                 .unwrap();
-                crate::Module::<Runtime>::initialize_pool(
+                crate::Pallet::<Runtime>::initialize_pool(
                     Origin::signed(ALICE()),
                     dex_id,
                     base_asset.clone(),

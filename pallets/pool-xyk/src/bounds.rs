@@ -33,7 +33,7 @@ use sp_runtime::RuntimeDebug;
 
 /// Bounds enum, used for cases than min max limits is used. Also used for cases than values is
 /// Desired by used or Calculated by forumula. Dummy is used to abstract checking.
-#[derive(Clone, Copy, RuntimeDebug, Eq, PartialEq, Encode, Decode)]
+#[derive(Clone, Copy, RuntimeDebug, Eq, PartialEq, Encode, Decode, scale_info::TypeInfo)]
 pub enum Bounds<Balance> {
     /// This is consequence of computations, and not sed by used.
     Calculated(Balance),
@@ -74,11 +74,6 @@ impl<Balance: Ord + Eq + Clone> Bounds<Balance> {
             (_, Some(a), Some(b)) => a == b,
             _ => false,
         }
-    }
-
-    #[allow(dead_code)]
-    fn meets_the_boundaries_mutally(&self, rhs: &Self) -> bool {
-        self.meets_the_boundaries(rhs) || rhs.meets_the_boundaries(self)
     }
 }
 

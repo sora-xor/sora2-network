@@ -49,7 +49,6 @@ extern crate alloc;
 pub mod weights;
 
 mod benchmarking;
-mod migration;
 
 #[cfg(test)]
 mod mock;
@@ -59,7 +58,10 @@ mod tests;
 
 use codec::{Decode, Encode};
 use common::prelude::Balance;
-use common::{hash, Amount, AssetName, AssetSymbol, BalancePrecision, DEFAULT_BALANCE_PRECISION};
+use common::{
+    hash, Amount, AssetName, AssetSymbol, BalancePrecision, ContentSource, Description,
+    DEFAULT_BALANCE_PRECISION,
+};
 use frame_support::dispatch::{DispatchError, DispatchResult};
 use frame_support::sp_runtime::traits::{MaybeSerializeDeserialize, Member};
 use frame_support::traits::Get;
@@ -91,11 +93,10 @@ type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
 type CurrencyIdOf<T> =
     <<T as Config>::Currency as MultiCurrency<<T as frame_system::Config>::AccountId>>::CurrencyId;
 
-const ASSET_SYMBOL_MAX_LENGTH: usize = 7;
-const ASSET_NAME_MAX_LENGTH: usize = 33;
 const MAX_ALLOWED_PRECISION: u8 = 18;
 
-#[derive(Clone, Copy, Eq, PartialEq, Encode, Decode)]
+#[derive(Clone, Copy, Eq, PartialEq, Encode, Decode, scale_info::TypeInfo)]
+#[scale_info(skip_type_params(T))]
 pub enum AssetRecordArg<T: Config> {
     GenericI32(i32),
     GenericU64(u64),
@@ -108,7 +109,8 @@ pub enum AssetRecordArg<T: Config> {
     Extra(T::ExtraAssetRecordArg),
 }
 
-#[derive(Clone, Copy, Eq, PartialEq, Encode, Decode)]
+#[derive(Clone, Copy, Eq, PartialEq, Encode, Decode, scale_info::TypeInfo)]
+#[scale_info(skip_type_params(T))]
 pub enum AssetRecord<T: Config> {
     Arity0,
     Arity1(AssetRecordArg<T>),
@@ -167,12 +169,27 @@ pub enum AssetRecord<T: Config> {
     ),
 }
 
+pub trait GetTotalBalance<T: Config> {
+    fn total_balance(asset_id: &T::AssetId, who: &T::AccountId) -> Result<Balance, DispatchError>;
+}
+
+impl<T: Config> GetTotalBalance<T> for () {
+    fn total_balance(
+        _asset_id: &T::AssetId,
+        _who: &T::AccountId,
+    ) -> Result<Balance, DispatchError> {
+        Ok(0)
+    }
+}
+
 pub use pallet::*;
 
 #[frame_support::pallet]
 pub mod pallet {
     use super::*;
+    use common::Description;
     use frame_support::pallet_prelude::*;
+    use frame_support::traits::StorageVersion;
     use frame_system::pallet_prelude::*;
 
     #[pallet::config]
@@ -185,6 +202,7 @@ pub mod pallet {
             + Copy
             + Encode
             + Decode
+            + scale_info::TypeInfo
             + Eq
             + PartialEq
             + From<Self::AccountId>
@@ -193,6 +211,7 @@ pub mod pallet {
             + Copy
             + Encode
             + Decode
+            + scale_info::TypeInfo
             + Eq
             + PartialEq
             + From<common::AssetIdExtraAssetRecordArg<Self::DEXId, Self::LstId, Self::ExtraAccountId>>
@@ -226,20 +245,23 @@ pub mod pallet {
         /// Account dedicated for PSWAP to be distributed among team in future.
         type GetTeamReservesAccountId: Get<Self::AccountId>;
 
+        /// Get the balance from other components
+        type GetTotalBalance: GetTotalBalance<Self>;
+
         /// Weight information for extrinsics in this pallet.
         type WeightInfo: WeightInfo;
     }
 
+    /// The current storage version.
+    const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
+
     #[pallet::pallet]
     #[pallet::generate_store(pub(super) trait Store)]
+    #[pallet::storage_version(STORAGE_VERSION)]
     pub struct Pallet<T>(PhantomData<T>);
 
     #[pallet::hooks]
-    impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
-        fn on_runtime_upgrade() -> Weight {
-            migration::migrate::<T>()
-        }
-    }
+    impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {}
 
     #[pallet::call]
     impl<T: Config> Pallet<T> {
@@ -255,16 +277,26 @@ pub mod pallet {
             name: AssetName,
             initial_supply: Balance,
             is_mintable: bool,
+            is_nft: bool,
+            opt_content_src: Option<ContentSource>,
+            opt_desc: Option<Description>,
         ) -> DispatchResultWithPostInfo {
             let author = ensure_signed(origin)?;
-            let _asset_id = Self::register_from(
+            let precision = if is_nft { 0 } else { DEFAULT_BALANCE_PRECISION };
+
+            let asset_id = Self::register_from(
                 &author,
                 symbol,
                 name,
-                DEFAULT_BALANCE_PRECISION,
+                precision,
                 initial_supply,
                 is_mintable,
+                opt_content_src,
+                opt_desc,
             )?;
+
+            Self::deposit_event(Event::AssetRegistered(asset_id, author));
+
             Ok(().into())
         }
 
@@ -283,7 +315,9 @@ pub mod pallet {
         ) -> DispatchResultWithPostInfo {
             let from = ensure_signed(origin.clone())?;
             Self::transfer_from(&asset_id, &from, &to, amount)?;
+
             Self::deposit_event(Event::Transfer(from, to, asset_id, amount));
+
             Ok(().into())
         }
 
@@ -303,7 +337,9 @@ pub mod pallet {
         ) -> DispatchResultWithPostInfo {
             let issuer = ensure_signed(origin.clone())?;
             Self::mint_to(&asset_id, &issuer, &to, amount)?;
+
             Self::deposit_event(Event::Mint(issuer, to, asset_id.clone(), amount));
+
             Ok(().into())
         }
 
@@ -321,7 +357,9 @@ pub mod pallet {
         ) -> DispatchResultWithPostInfo {
             let issuer = ensure_signed(origin.clone())?;
             Self::burn_from(&asset_id, &issuer, &issuer, amount)?;
+
             Self::deposit_event(Event::Burn(issuer, asset_id.clone(), amount));
+
             Ok(().into())
         }
 
@@ -337,13 +375,14 @@ pub mod pallet {
         ) -> DispatchResultWithPostInfo {
             let who = ensure_signed(origin.clone())?;
             Self::set_non_mintable_from(&asset_id, &who)?;
+
             Self::deposit_event(Event::AssetSetNonMintable(asset_id.clone()));
+
             Ok(().into())
         }
     }
 
     #[pallet::event]
-    #[pallet::metadata(AccountIdOf<T> = "AccountId", AssetIdOf<T> = "AssetId")]
     #[pallet::generate_deposit(pub(super) fn deposit_event)]
     pub enum Event<T: Config> {
         /// New asset has been registered. [Asset Id, Asset Owner Account]
@@ -378,6 +417,10 @@ pub mod pallet {
         InvalidAssetOwner,
         /// Increment account reference error.
         IncRefError,
+        /// Content source is not valid. It must be ascii only.
+        InvalidContentSource,
+        /// Description is not valid. It must be 200 characters long at max.
+        InvalidDescription,
     }
 
     /// Asset Id -> Owner Account Id
@@ -386,7 +429,7 @@ pub mod pallet {
     pub(super) type AssetOwners<T: Config> =
         StorageMap<_, Twox64Concat, T::AssetId, T::AccountId, OptionQuery>;
 
-    /// Asset Id -> (Symbol, Precision, Is Mintable)
+    /// Asset Id -> (Symbol, Name, Precision, Is Mintable)
     #[pallet::storage]
     #[pallet::getter(fn asset_infos)]
     pub type AssetInfos<T: Config> = StorageMap<
@@ -403,6 +446,18 @@ pub mod pallet {
     pub type AssetRecordAssetId<T: Config> =
         StorageMap<_, Twox64Concat, T::AssetId, AssetRecord<T>>;
 
+    /// Asset Id -> Content Source
+    #[pallet::storage]
+    #[pallet::getter(fn asset_content_source)]
+    pub type AssetContentSource<T: Config> =
+        StorageMap<_, Twox64Concat, T::AssetId, ContentSource, OptionQuery>;
+
+    /// Asset Id -> Description
+    #[pallet::storage]
+    #[pallet::getter(fn asset_description)]
+    pub type AssetDescription<T: Config> =
+        StorageMap<_, Twox64Concat, T::AssetId, Description, OptionQuery>;
+
     #[pallet::genesis_config]
     pub struct GenesisConfig<T: Config> {
         pub endowed_assets: Vec<(
@@ -413,6 +468,8 @@ pub mod pallet {
             BalancePrecision,
             Balance,
             bool,
+            Option<ContentSource>,
+            Option<Description>,
         )>,
     }
 
@@ -429,7 +486,17 @@ pub mod pallet {
     impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
         fn build(&self) {
             self.endowed_assets.iter().cloned().for_each(
-                |(asset_id, account_id, symbol, name, precision, initial_supply, is_mintable)| {
+                |(
+                    asset_id,
+                    account_id,
+                    symbol,
+                    name,
+                    precision,
+                    initial_supply,
+                    is_mintable,
+                    opt_content_src,
+                    opt_desc,
+                )| {
                     Pallet::<T>::register_asset_id(
                         account_id,
                         asset_id,
@@ -438,6 +505,8 @@ pub mod pallet {
                         precision,
                         initial_supply,
                         is_mintable,
+                        opt_content_src,
+                        opt_desc,
                     )
                     .expect("Failed to register asset.");
                 },
@@ -495,24 +564,33 @@ impl<T: Config> Pallet<T> {
         precision: BalancePrecision,
         initial_supply: Balance,
         is_mintable: bool,
+        opt_content_src: Option<ContentSource>,
+        opt_desc: Option<Description>,
     ) -> DispatchResult {
+        // Checks
         ensure!(
             precision <= MAX_ALLOWED_PRECISION,
             Error::<T>::InvalidPrecision
         );
-        ensure!(
-            crate::is_symbol_valid(&symbol),
-            Error::<T>::InvalidAssetSymbol
-        );
-        ensure!(crate::is_name_valid(&name), Error::<T>::InvalidAssetName);
+        ensure!(symbol.is_valid(), Error::<T>::InvalidAssetSymbol);
+        ensure!(name.is_valid(), Error::<T>::InvalidAssetName);
         ensure!(
             !Self::asset_exists(&asset_id),
             Error::<T>::AssetIdAlreadyExists
         );
+        if let Some(content_src) = &opt_content_src {
+            ensure!(content_src.is_valid(), Error::<T>::InvalidContentSource)
+        }
+        if let Some(desc) = &opt_desc {
+            ensure!(desc.is_valid(), Error::<T>::InvalidDescription)
+        }
+
+        // Storage
         frame_system::Pallet::<T>::inc_consumers(&account_id)
             .map_err(|_| Error::<T>::IncRefError)?;
         AssetOwners::<T>::insert(asset_id, account_id.clone());
         AssetInfos::<T>::insert(asset_id, (symbol, name, precision, is_mintable));
+
         let scope = Scope::Limited(hash(&asset_id));
         let permission_ids = [MINT, BURN];
         for permission_id in &permission_ids {
@@ -523,11 +601,20 @@ impl<T: Config> Pallet<T> {
                 scope,
             )?;
         }
+
         if !initial_supply.is_zero() {
             T::Currency::deposit(asset_id.clone(), &account_id, initial_supply)?;
         }
+
+        if let Some(content_src) = opt_content_src {
+            AssetContentSource::<T>::insert(asset_id, content_src);
+        }
+        if let Some(desc) = opt_desc {
+            AssetDescription::<T>::insert(asset_id, desc);
+        }
+
         frame_system::Pallet::<T>::inc_account_nonce(&account_id);
-        Self::deposit_event(Event::AssetRegistered(asset_id, account_id));
+
         Ok(())
     }
 
@@ -539,6 +626,8 @@ impl<T: Config> Pallet<T> {
         precision: BalancePrecision,
         initial_supply: Balance,
         is_mintable: bool,
+        opt_content_src: Option<ContentSource>,
+        opt_desc: Option<Description>,
     ) -> Result<T::AssetId, DispatchError> {
         common::with_transaction(|| {
             let asset_id = Self::gen_asset_id(account_id);
@@ -550,9 +639,18 @@ impl<T: Config> Pallet<T> {
                 precision,
                 initial_supply,
                 is_mintable,
+                opt_content_src,
+                opt_desc,
             )?;
             Ok(asset_id)
         })
+    }
+
+    #[inline]
+    pub fn ensure_asset_is_mintable(asset_id: &T::AssetId) -> DispatchResult {
+        let (_, _, _, is_mintable) = AssetInfos::<T>::get(asset_id);
+        ensure!(is_mintable, Error::<T>::AssetSupplyIsNotMintable);
+        Ok(())
     }
 
     #[inline]
@@ -611,7 +709,7 @@ impl<T: Config> Pallet<T> {
         if r == Default::default() {
             Self::ensure_asset_exists(asset_id)?;
         }
-        Ok(r)
+        Ok(r + T::GetTotalBalance::total_balance(asset_id, who)?)
     }
 
     pub fn free_balance(
@@ -650,39 +748,36 @@ impl<T: Config> Pallet<T> {
         r
     }
 
-    pub fn force_transfer(
-        asset_id: &T::AssetId,
-        from: &T::AccountId,
-        to: &T::AccountId,
-        amount: Balance,
-    ) -> DispatchResult {
-        T::Currency::transfer(asset_id.clone(), from, to, amount)
-    }
-
     pub fn mint_to(
         asset_id: &T::AssetId,
         issuer: &T::AccountId,
         to: &T::AccountId,
         amount: Balance,
     ) -> DispatchResult {
-        let (_, _, _, is_mintable) = AssetInfos::<T>::get(asset_id);
-        ensure!(is_mintable, Error::<T>::AssetSupplyIsNotMintable);
+        // No need to check if asset exist.
+        // `ensure_asset_is_mintable` will get Default::default() aka `is_mintable == false` and retrun an error.
+        Self::ensure_asset_is_mintable(asset_id)?;
         Self::check_permission_maybe_with_parameters(issuer, MINT, asset_id)?;
+
         T::Currency::deposit(asset_id.clone(), to, amount)
     }
 
     pub fn burn_from(
         asset_id: &T::AssetId,
         issuer: &T::AccountId,
-        to: &T::AccountId,
+        from: &T::AccountId,
         amount: Balance,
     ) -> DispatchResult {
-        Self::ensure_asset_exists(asset_id)?;
         // Holder can burn its funds.
-        if issuer != to {
+        if issuer != from {
             Self::check_permission_maybe_with_parameters(issuer, BURN, asset_id)?;
         }
-        T::Currency::withdraw(*asset_id, to, amount)
+
+        let r = T::Currency::withdraw(*asset_id, from, amount);
+        if r.is_err() {
+            Self::ensure_asset_exists(&asset_id)?;
+        }
+        r
     }
 
     pub fn update_balance(
@@ -693,9 +788,9 @@ impl<T: Config> Pallet<T> {
         Self::check_permission_maybe_with_parameters(who, MINT, asset_id)?;
         Self::check_permission_maybe_with_parameters(who, BURN, asset_id)?;
         if by_amount.is_positive() {
-            let (_, _, _, is_mintable) = AssetInfos::<T>::get(asset_id);
-            ensure!(is_mintable, Error::<T>::AssetSupplyIsNotMintable);
+            Self::ensure_asset_is_mintable(asset_id)?;
         }
+
         T::Currency::update_balance(asset_id.clone(), who, by_amount)
     }
 
@@ -703,12 +798,8 @@ impl<T: Config> Pallet<T> {
         T::Currency::can_reserve(asset_id, who, amount)
     }
 
-    pub fn reserve(
-        asset_id: T::AssetId,
-        who: &T::AccountId,
-        amount: Balance,
-    ) -> Result<(), DispatchError> {
-        let r = T::Currency::reserve(asset_id, who, amount);
+    pub fn reserve(asset_id: &T::AssetId, who: &T::AccountId, amount: Balance) -> DispatchResult {
+        let r = T::Currency::reserve(*asset_id, who, amount);
         if r.is_err() {
             Self::ensure_asset_exists(&asset_id)?;
         }
@@ -716,11 +807,11 @@ impl<T: Config> Pallet<T> {
     }
 
     pub fn unreserve(
-        asset_id: T::AssetId,
+        asset_id: &T::AssetId,
         who: &T::AccountId,
         amount: Balance,
     ) -> Result<Balance, DispatchError> {
-        let amount = T::Currency::unreserve(asset_id, who, amount);
+        let amount = T::Currency::unreserve(*asset_id, who, amount);
         if amount != Default::default() {
             Self::ensure_asset_exists(&asset_id)?;
         }
@@ -732,6 +823,7 @@ impl<T: Config> Pallet<T> {
             Self::is_asset_owner(asset_id, who),
             Error::<T>::InvalidAssetOwner
         );
+
         AssetInfos::<T>::mutate(asset_id, |(_, _, _, ref mut is_mintable)| {
             ensure!(*is_mintable, Error::<T>::AssetSupplyIsNotMintable);
             *is_mintable = false;
@@ -757,28 +849,12 @@ impl<T: Config> Pallet<T> {
     ) -> (AssetSymbol, AssetName, BalancePrecision, bool) {
         AssetInfos::<T>::get(asset_id)
     }
-}
 
-/// According to UTF-8 encoding, graphemes that start with byte 0b0XXXXXXX belong
-/// to ASCII range and are of single byte, therefore passing check in range 'A' to 'Z'
-/// and '0' to '9' guarantees that all graphemes are of length 1, therefore length check is valid.
-pub fn is_symbol_valid(symbol: &AssetSymbol) -> bool {
-    symbol.0.len() <= ASSET_SYMBOL_MAX_LENGTH
-        && symbol
-            .0
-            .iter()
-            .all(|byte| (b'A'..=b'Z').contains(&byte) || (b'0'..=b'9').contains(&byte))
-}
+    pub fn get_asset_content_src(asset_id: &T::AssetId) -> Option<ContentSource> {
+        AssetContentSource::<T>::get(asset_id)
+    }
 
-/// According to UTF-8 encoding, graphemes that start with byte 0b0XXXXXXX belong
-/// to ASCII range and are of single byte, therefore passing check in range 'A' to 'z'
-/// guarantees that all graphemes are of length 1, therefore length check is valid.
-pub fn is_name_valid(name: &AssetName) -> bool {
-    name.0.len() <= ASSET_NAME_MAX_LENGTH
-        && name.0.iter().all(|byte| {
-            (b'A'..=b'Z').contains(&byte)
-                || (b'a'..=b'z').contains(&byte)
-                || (b'0'..=b'9').contains(&byte)
-                || byte == &b' '
-        })
+    pub fn get_asset_description(asset_id: &T::AssetId) -> Option<Description> {
+        AssetDescription::<T>::get(asset_id)
+    }
 }

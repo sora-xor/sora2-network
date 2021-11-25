@@ -5,14 +5,17 @@ authors = ["Polka Biome Ltd. <jihoon@tutanota.de>"]
 license = "BSD-4-Clause"
 homepage = 'https://sora.org'
 repository = 'https://github.com/sora-xor/sora2-network'
-edition = "2018"
+edition = "2021"
 
 [dependencies]
 blake2-rfc = { version = "0.2.18", default-features = false }
 codec = { package = "parity-scale-codec", version = "2", default-features = false, features = ["derive"] }
+scale-info = { version = "1.0.0", default-features = false, features = [
+    "derive",
+] }
 currencies = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-currencies", default-features = false }
 derive_more = { version = "0.99.11", default-features = false }
-fixnum = { version = "0.5", default-features = false, features = ["i128", "parity"] }
+fixnum = { git = "https://github.com/vovac12/fixnum", branch = "master", default-features = false, features = ["i128", "parity", "scale-info"] }
 frame-support = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.9", default-features = false }
 frame-system = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.9", default-features = false }
 secp256k1 = { version = "0.6", features = ['hmac'], default-features = false, package = "libsecp256k1" }
@@ -21,7 +24,7 @@ orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-li
 paste = "1.0.0"
 rustc-hex = { version = "2.1.0", default-features = false }
 serde = { version = "1.0", features = ["derive"], optional = true, default-features = false }
-smallvec = "1.5.0"
+smallvec = "1.7.0"
 sp-arithmetic = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.9", default-features = false }
 sp-core = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.9", default-features = false }
 sp-io = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.9", default-features = false }
@@ -36,6 +39,7 @@ serde_json = "1.0.41"
 default = ['std']
 std = [
     'codec/std',
+    "scale-info/std",
     'serde',
     'rustc-hex/std',
     'blake2-rfc/std',

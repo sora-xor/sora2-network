@@ -23,7 +23,7 @@ pub enum BombDelay {
 
 /// Describes when hard forks occurred that affect difficulty calculations. These
 /// values are network-specific.
-#[derive(Copy, Clone, Encode, Decode, PartialEq, RuntimeDebug)]
+#[derive(Copy, Clone, Encode, Decode, PartialEq, RuntimeDebug, scale_info::TypeInfo)]
 pub struct DifficultyConfig {
     // Block number on which Byzantium (EIP-649) rules activated
     pub byzantium_fork_block: u64,

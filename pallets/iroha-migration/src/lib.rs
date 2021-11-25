@@ -86,8 +86,9 @@ where
     446400u32.into()
 }
 
-#[derive(PartialEq, Eq, Clone, RuntimeDebug, Encode, Decode)]
+#[derive(PartialEq, Eq, Clone, RuntimeDebug, Encode, Decode, scale_info::TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+#[scale_info(skip_type_params(T))]
 struct PendingMultisigAccount<T>
 where
     T: frame_system::Config,
@@ -174,7 +175,7 @@ impl<T: Config> Pallet<T> {
             .as_slice()
             .try_into()
             .map_err(|_| Error::<T>::SignatureParsingFailed)?;
-        Ok(Signature::new(signature_bytes))
+        Ok(Signature::from(signature_bytes))
     }
 
     fn verify_signature(
@@ -240,7 +241,7 @@ impl<T: Config> Pallet<T> {
                 pending_account.approving_accounts
             };
             let multi_account =
-                pallet_multisig::Module::<T>::multi_account_id(&signatories, quorum as u16);
+                pallet_multisig::Pallet::<T>::multi_account_id(&signatories, quorum as u16);
             Self::migrate_account(iroha_address, multi_account)?;
         } else {
             let quorum = Quorums::<T>::get(&iroha_address) as usize;
@@ -280,7 +281,7 @@ impl<T: Config> Pallet<T> {
                     eth_bridge::TECH_ACCOUNT_MAIN.to_vec(),
                 );
 
-                technical::Module::<T>::transfer_out(
+                technical::Pallet::<T>::transfer_out(
                     &VAL.into(),
                     &eth_bridge_tech_account_id,
                     account,
@@ -300,7 +301,7 @@ impl<T: Config> Pallet<T> {
             // Free up memory
             Referrers::<T>::remove(iroha_address);
             if let Some(referrer) = MigratedAccounts::<T>::get(&referrer) {
-                referral_system::Pallet::<T>::set_referrer_to(&account, referrer)
+                referrals::Pallet::<T>::set_referrer_to(&account, referrer)
                     .map_err(|_| Error::<T>::ReferralMigrationFailed)?;
             } else {
                 PendingReferrals::<T>::mutate(&referrer, |referrals| {
@@ -311,7 +312,7 @@ impl<T: Config> Pallet<T> {
         // Migrate pending referrals to their referrer
         let referrals = PendingReferrals::<T>::take(iroha_address);
         for referral in &referrals {
-            referral_system::Pallet::<T>::set_referrer_to(referral, account.clone())
+            referrals::Pallet::<T>::set_referrer_to(referral, account.clone())
                 .map_err(|_| Error::<T>::ReferralMigrationFailed)?;
         }
         Ok(())
@@ -325,18 +326,23 @@ pub mod pallet {
     use common::AccountIdOf;
     use frame_support::dispatch::PostDispatchInfo;
     use frame_support::pallet_prelude::*;
+    use frame_support::traits::StorageVersion;
     use frame_system::pallet_prelude::*;
 
     #[pallet::config]
     pub trait Config:
-        frame_system::Config + pallet_multisig::Config + referral_system::Config + technical::Config
+        frame_system::Config + pallet_multisig::Config + referrals::Config + technical::Config
     {
         type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
         type WeightInfo: WeightInfo;
     }
 
+    /// The current storage version.
+    const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
+
     #[pallet::pallet]
     #[pallet::generate_store(pub(super) trait Store)]
+    #[pallet::storage_version(STORAGE_VERSION)]
     pub struct Pallet<T>(PhantomData<T>);
 
     #[pallet::hooks]
@@ -348,7 +354,7 @@ pub mod pallet {
                     if block_number > migrate_at {
                         value.approving_accounts.sort();
                         let quorum = Quorums::<T>::take(&key);
-                        let multi_account = pallet_multisig::Module::<T>::multi_account_id(
+                        let multi_account = pallet_multisig::Pallet::<T>::multi_account_id(
                             &value.approving_accounts,
                             quorum as u16,
                         );
@@ -411,7 +417,6 @@ pub mod pallet {
     }
 
     #[pallet::event]
-    #[pallet::metadata(AccountIdOf<T> = "AccountId")]
     #[pallet::generate_deposit(pub(super) fn deposit_event)]
     pub enum Event<T: Config> {
         /// Migrated. [source, target]

@@ -49,9 +49,9 @@ pub trait WeightInfo {
     fn reset_rewards() -> Weight;
 }
 
-type Assets<T> = assets::Module<T>;
-type System<T> = frame_system::Module<T>;
-type Technical<T> = technical::Module<T>;
+type Assets<T> = assets::Pallet<T>;
+type System<T> = frame_system::Pallet<T>;
+type Technical<T> = technical::Pallet<T>;
 type BlockNumberOf<T> = <T as frame_system::Config>::BlockNumber;
 type WeightInfoOf<T> = <T as Config>::WeightInfo;
 
@@ -71,6 +71,7 @@ pub use pallet::*;
 #[frame_support::pallet]
 pub mod pallet {
     use frame_support::pallet_prelude::*;
+    use frame_support::traits::StorageVersion;
     use frame_system::pallet_prelude::*;
     use hex_literal::hex;
     use sp_core::H160;
@@ -88,8 +89,12 @@ pub mod pallet {
         type WeightInfo: WeightInfo;
     }
 
+    /// The current storage version.
+    const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
+
     #[pallet::pallet]
     #[pallet::generate_store(pub(super) trait Store)]
+    #[pallet::storage_version(STORAGE_VERSION)]
     pub struct Pallet<T>(PhantomData<T>);
 
     #[pallet::hooks]
@@ -121,7 +126,7 @@ pub mod pallet {
                 Technical::<T>::tech_account_id_to_account_id(&reserves_tech_account_id)?;
             let reserves_amount = Assets::<T>::total_balance(&asset_id, &reserves_account_id)?;
             ensure!(amount <= reserves_amount, Error::<T>::NotEnoughReserves);
-            technical::Module::<T>::transfer_out(
+            technical::Pallet::<T>::transfer_out(
                 &asset_id,
                 &reserves_tech_account_id,
                 &target,
@@ -165,7 +170,6 @@ pub mod pallet {
     }
 
     #[pallet::event]
-    #[pallet::metadata(AccountIdOf<T> = "AccountId")]
     #[pallet::generate_deposit(pub(super) fn deposit_event)]
     pub enum Event<T: Config> {
         // The amount is transferred to the account. [account, amount]

@@ -71,7 +71,7 @@ use frame_support::sp_runtime::transaction_validity::{
 use frame_support::sp_runtime::{
     self, ApplyExtrinsicResultWithInfo, MultiSignature, MultiSigner, Perbill,
 };
-use frame_support::traits::{Everything, GenesisBuild, Get};
+use frame_support::traits::{Everything, GenesisBuild, Get, PrivilegeCmp};
 use frame_support::weights::{Pays, Weight};
 use frame_support::{construct_runtime, parameter_types};
 use frame_system::offchain::{Account, SigningTypes};
@@ -83,6 +83,7 @@ use sp_core::offchain::{OffchainStorage, OffchainWorkerExt};
 use sp_core::{H160, H256};
 use sp_keystore::testing::KeyStore;
 use sp_keystore::{KeystoreExt, SyncCryptoStore};
+use sp_std::cmp::Ordering;
 use sp_std::collections::btree_map::BTreeMap;
 use sp_std::collections::btree_set::BTreeSet;
 use sp_std::fmt::Debug;
@@ -114,7 +115,7 @@ parameter_types! {
     pub const EthNetworkId: <Runtime as Config>::NetworkId = 0;
 }
 
-#[derive(PartialEq, Eq, Clone, Encode, Decode, Debug)]
+#[derive(PartialEq, Eq, Clone, Encode, Decode, Debug, scale_info::TypeInfo)]
 pub struct MyTestXt<Call, Extra> {
     /// Signature of the extrinsic.
     pub signature: Option<(AccountId, Extra)>,
@@ -220,7 +221,7 @@ impl<Call: Encode, Extra: Encode> GetDispatchInfo for MyTestXt<Call, Extra> {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Encode, Decode)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Encode, Decode, scale_info::TypeInfo)]
 pub struct MyExtra;
 pub type TestExtrinsic = MyTestXt<Call, MyExtra>;
 
@@ -361,8 +362,9 @@ impl assets::Config for Runtime {
         common::AssetIdExtraAssetRecordArg<common::DEXId, common::LiquiditySourceType, [u8; 32]>;
     type AssetId = common::AssetId32<PredefinedAssetId>;
     type GetBaseAssetId = GetBaseAssetId;
-    type Currency = currencies::Module<Runtime>;
+    type Currency = currencies::Pallet<Runtime>;
     type GetTeamReservesAccountId = GetTeamReservesAccountId;
+    type GetTotalBalance = ();
     type WeightInfo = ();
 }
 
@@ -390,6 +392,24 @@ impl pallet_sudo::Config for Runtime {
     type Call = Call;
 }
 
+/// Used the compare the privilege of an origin inside the scheduler.
+pub struct OriginPrivilegeCmp;
+
+impl PrivilegeCmp<OriginCaller> for OriginPrivilegeCmp {
+    fn cmp_privilege(left: &OriginCaller, right: &OriginCaller) -> Option<Ordering> {
+        if left == right {
+            return Some(Ordering::Equal);
+        }
+
+        match (left, right) {
+            // Root is greater than anything.
+            (OriginCaller::system(frame_system::RawOrigin::Root), _) => Some(Ordering::Greater),
+            // For every other origin we don't care, as they are not used for `ScheduleOrigin`.
+            _ => None,
+        }
+    }
+}
+
 impl pallet_scheduler::Config for Runtime {
     type Event = Event;
     type Origin = Origin;
@@ -399,6 +419,7 @@ impl pallet_scheduler::Config for Runtime {
     type ScheduleOrigin = EnsureRoot<AccountId>;
     type MaxScheduledPerBlock = ();
     type WeightInfo = ();
+    type OriginPrivilegeCmp = OriginPrivilegeCmp;
 }
 
 impl crate::Config for Runtime {
@@ -706,7 +727,7 @@ impl ExtBuilder {
         peers_num: Option<usize>,
     ) -> u32 {
         let net_id = self.last_network_id;
-        let multisig_account_id = bridge_multisig::Module::<Runtime>::multi_account_id(
+        let multisig_account_id = bridge_multisig::Pallet::<Runtime>::multi_account_id(
             &self.root_account_id,
             1,
             net_id as u64 + 10,
@@ -733,7 +754,7 @@ impl ExtBuilder {
         let (offchain, offchain_state) = TestOffchainExt::new();
         let (pool, pool_state) = TestTransactionPoolExt::new();
         let authority_account_id =
-            bridge_multisig::Module::<Runtime>::multi_account_id(&self.root_account_id, 1, 0);
+            bridge_multisig::Pallet::<Runtime>::multi_account_id(&self.root_account_id, 1, 0);
 
         let mut bridge_accounts = Vec::new();
         let mut bridge_network_configs = Vec::new();
@@ -819,9 +840,11 @@ impl ExtBuilder {
                     self.root_account_id.clone(),
                     AssetSymbol(b"".to_vec()),
                     AssetName(b"".to_vec()),
-                    18,
+                    DEFAULT_BALANCE_PRECISION,
                     Balance::from(0u32),
                     true,
+                    None,
+                    None,
                 )
             })
             .collect();

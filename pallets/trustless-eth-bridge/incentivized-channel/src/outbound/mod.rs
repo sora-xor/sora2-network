@@ -20,7 +20,7 @@ mod benchmarking;
 mod test;
 
 /// Wire-format for committed messages
-#[derive(Encode, Decode, Clone, PartialEq, RuntimeDebug)]
+#[derive(Encode, Decode, Clone, PartialEq, RuntimeDebug, scale_info::TypeInfo)]
 pub struct Message {
     /// Target application on the Ethereum side.
     target: H160,
@@ -55,7 +55,7 @@ impl WeightInfo for () {
     }
 }
 
-type BalanceOf<T> = <<T as assets::Config>::Currency as MultiCurrency<
+pub type BalanceOf<T> = <<T as assets::Config>::Currency as MultiCurrency<
     <T as frame_system::Config>::AccountId,
 >>::Balance;
 
@@ -66,6 +66,7 @@ pub mod pallet {
     use super::*;
     use frame_support::log::debug;
     use frame_support::pallet_prelude::*;
+    use frame_support::traits::StorageVersion;
     use frame_system::pallet_prelude::*;
 
     #[pallet::config]
@@ -95,11 +96,11 @@ pub mod pallet {
     /// Interval between committing messages.
     #[pallet::storage]
     #[pallet::getter(fn interval)]
-    type Interval<T: Config> = StorageValue<_, T::BlockNumber, ValueQuery>;
+    pub(crate) type Interval<T: Config> = StorageValue<_, T::BlockNumber, ValueQuery>;
 
     /// Messages waiting to be committed.
     #[pallet::storage]
-    type MessageQueue<T: Config> = StorageValue<_, Vec<Message>, ValueQuery>;
+    pub(crate) type MessageQueue<T: Config> = StorageValue<_, Vec<Message>, ValueQuery>;
 
     #[pallet::storage]
     pub type Nonce<T: Config> = StorageValue<_, u64, ValueQuery>;
@@ -112,8 +113,12 @@ pub mod pallet {
     #[pallet::storage]
     pub type DestAccount<T: Config> = StorageValue<_, T::AccountId, ValueQuery>;
 
+    /// The current storage version.
+    const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
+
     #[pallet::pallet]
     #[pallet::generate_store(trait Store)]
+    #[pallet::storage_version(STORAGE_VERSION)]
     pub struct Pallet<T>(PhantomData<T>);
 
     #[pallet::hooks]
@@ -133,7 +138,6 @@ pub mod pallet {
     }
 
     #[pallet::event]
-    #[pallet::metadata(AccountIdOf<T> = "AccountId")]
     #[pallet::generate_deposit(pub(super) fn deposit_event)]
     pub enum Event<T: Config> {
         MessageAccepted(MessageNonce),

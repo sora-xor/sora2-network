@@ -5,6 +5,7 @@ use sp_runtime::RuntimeDebug;
 use sp_std::cell::RefCell;
 use sp_std::collections::btree_map::BTreeMap;
 use sp_std::prelude::*;
+use sp_std::vec;
 
 pub use crate::ethashdata::{DAGS_MERKLE_ROOTS, DAGS_START_EPOCH};
 
@@ -18,7 +19,7 @@ const HASH_BYTES: usize = 64;
 /// Numver of accesses in hashimoto loop
 const ACCESSES: usize = 64;
 
-#[derive(Default, Clone, Encode, Decode, PartialEq, RuntimeDebug)]
+#[derive(Default, Clone, Encode, Decode, PartialEq, RuntimeDebug, scale_info::TypeInfo)]
 pub struct DoubleNodeWithMerkleProof {
     pub dag_nodes: [H512; 2],
     pub proof: Vec<H128>,

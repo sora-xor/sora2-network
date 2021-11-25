@@ -1,0 +1,51 @@
+#!/bin/bash
+
+echo "Running 'cargo fmt'..."
+cargo fmt -- --check > /dev/null
+
+if [ $? = 1 ]; then
+  echo "Reformat your code before committing"
+  exit 1
+fi
+
+git_status=$(git status --porcelain=v1 -uno)
+runtime_lib_diff_n=$(git diff --cached --diff-filter=M -Gspec_version:\|transaction_version: --raw -U0 runtime/src/lib.rs | wc -l | awk '{print $1}')
+
+if [[ $git_status =~ node/chain_spec/src/lib.rs ]] || [ "$runtime_lib_diff_n" != 0 ]; then
+  if hash zenity 2>/dev/null; then
+    resp=$(zenity --warning \
+          --text 'Rebuild chain-spec?' \
+          --ok-label "Yes" \
+          --extra-button "TEST only" --extra-button "STAGE only" --extra-button "No")
+    case $resp in
+      "Yes" ) answer="y";;
+      "TEST only" ) answer="t";;
+      "STAGE only" ) answer="s";;
+      "No" ) answer="n";;
+      * ) answer="y";;
+    esac
+  elif hash osascript 2>/dev/null; then
+    # osascript's dialogs allow to have maximum 3 buttons
+    resp=$(osascript -e '
+    tell application "System Events"
+    activate
+    set myAnswer to button returned of (display dialog "Rebuild chain-spec?" buttons {"Yes", "TEST only", "No"} default button 1 with icon caution)
+    end tell
+    return myAnswer')
+    case $resp in
+      "Yes" ) answer="y";;
+      "TEST only" ) answer="t";;
+      "No" ) answer="n";;
+      * ) answer="y";;
+    esac
+  else
+    exec < /dev/tty
+    read -e -p "Rebuild chain-spec?
+    y, p - rebuild for test and stage
+    t - rebuild for test
+    s - rebuild for stage
+    n - do not rebuild
+:" answer
+  fi
+  ./generate_chain_specs.sh "$answer" || exit 1
+fi
