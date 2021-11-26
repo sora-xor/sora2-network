@@ -1432,6 +1432,7 @@ impl ceres_liquidity_locker::Config for Runtime {
     type Event = Event;
     type XYKPool = PoolXYK;
     type CeresAssetId = CeresAssetId;
+    type WeightInfo = ceres_liquidity_locker::weights::WeightInfo<Runtime>;
 }
 
 /// Payload data to be signed when making signed transaction from off-chain workers,
@@ -2117,12 +2118,14 @@ impl_runtime_apis! {
             use pool_xyk_benchmarking::Module as XYKPoolBench;
             use pswap_distribution_benchmarking::Module as PswapDistributionBench;
             use xor_fee_benchmarking::Module as XorFeeBench;
+            use ceres_liquidity_locker_benchmarking::Module as CeresLiquidityLockerBench;
 
             impl dex_api_benchmarking::Config for Runtime {}
             impl liquidity_proxy_benchmarking::Config for Runtime {}
             impl pool_xyk_benchmarking::Config for Runtime {}
             impl pswap_distribution_benchmarking::Config for Runtime {}
             impl xor_fee_benchmarking::Config for Runtime {}
+            impl ceres_liquidity_locker_benchmarking::Config for Runtime {}
 
 
             let whitelist: Vec<TrackedStorageKey> = vec![
@@ -2160,6 +2163,7 @@ impl_runtime_apis! {
             add_benchmark!(params, batches, price_tools, PriceTools);
             add_benchmark!(params, batches, xor_fee, XorFeeBench::<Runtime>);
             add_benchmark!(params, batches, referrals, Referrals);
+            add_benchmark!(params, batches, ceres_liquidity_locker, CeresLiquidityLockerBench::<Runtime>);
 
             if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
             Ok(batches)

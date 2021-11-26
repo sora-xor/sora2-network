@@ -321,6 +321,7 @@ impl ceres_liquidity_locker::Config for Runtime {
     type Event = Event;
     type XYKPool = PoolXyk;
     type CeresAssetId = ();
+    type WeightInfo = ();
 }
 
 impl multicollateral_bonding_curve_pool::Config for Runtime {

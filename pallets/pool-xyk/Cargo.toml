@@ -47,6 +47,7 @@ liquidity-proxy = { path = "../liquidity-proxy" }
 
 [features]
 default = ['std']
+
 std = [
     'codec/std',
     'currencies/std',

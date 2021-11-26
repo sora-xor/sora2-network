@@ -314,6 +314,7 @@ impl ceres_liquidity_locker::Config for Runtime {
     type Event = Event;
     type XYKPool = PoolXYK;
     type CeresAssetId = ();
+    type WeightInfo = ();
 }
 
 pub struct MockDEXApi;

@@ -1,7 +1,21 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![feature(destructuring_assignment)]
+#![feature(in_band_lifetimes)]
+
+#[cfg(test)]
+mod mock;
+
+#[cfg(test)]
+mod tests;
+
+pub mod weights;
 
 use codec::{Decode, Encode};
+use frame_support::weights::Weight;
+
+pub trait WeightInfo {
+    fn lock_liquidity() -> Weight;
+}
 
 #[derive(Encode, Decode, Default, PartialEq, Eq)]
 #[cfg_attr(feature = "std", derive(Debug))]
@@ -17,9 +31,10 @@ pub struct LockInfo<Balance, BlockNumber, AssetId> {
 }
 
 pub use pallet::*;
+
 #[frame_support::pallet]
 pub mod pallet {
-    use crate::LockInfo;
+    use crate::{LockInfo, WeightInfo};
     use common::prelude::{Balance, FixedWrapper};
     use common::{balance, LiquiditySource};
     use frame_support::pallet_prelude::*;
@@ -44,6 +59,9 @@ pub mod pallet {
 
         /// Ceres asset id
         type CeresAssetId: Get<Self::AssetId>;
+
+        /// Weight information for extrinsics in this pallet.
+        type WeightInfo: WeightInfo;
     }
 
     type Assets<T> = assets::Pallet<T>;
@@ -107,7 +125,7 @@ pub mod pallet {
     #[pallet::call]
     impl<T: Config> Pallet<T> {
         /// Lock liquidity
-        #[pallet::weight(10000)]
+        #[pallet::weight(<T as Config>::WeightInfo::lock_liquidity())]
         pub fn lock_liquidity(
             origin: OriginFor<T>,
             asset_a: AssetIdOf<T>,

@@ -266,6 +266,7 @@ impl ceres_liquidity_locker::Config for Runtime {
     type Event = Event;
     type XYKPool = PoolXyk;
     type CeresAssetId = ();
+    type WeightInfo = ();
 }
 
 pub struct ExtBuilder {

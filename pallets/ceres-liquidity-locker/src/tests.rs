@@ -62,7 +62,7 @@ fn preset_initial(tests: Vec<PresetFunction<'a>>) {
                 &CERES_ASSET_ID.into(),
                 LiquiditySourceType::XYKPool,
             )
-            .expect("Failed to query trading pair status.")
+                .expect("Failed to query trading pair status.")
         );
 
         let (_tpair, tech_acc_id) =
@@ -71,7 +71,7 @@ fn preset_initial(tests: Vec<PresetFunction<'a>>) {
                 GoldenTicket.into(),
                 CERES_ASSET_ID.into(),
             )
-            .unwrap();
+                .unwrap();
 
         let fee_acc = tech_acc_id.clone().to_fee_account().unwrap();
         let repr: AccountId =
@@ -168,8 +168,8 @@ fn lock_liquidity_ok_with_first_fee_option() {
                 base_asset,
                 target_asset,
             )
-            .expect("Pool does not exist")
-            .0;
+                .expect("Pool does not exist")
+                .0;
 
         // Calculate number of pool tokens of user's account
         let pool_tokens: Balance =
@@ -177,7 +177,7 @@ fn lock_liquidity_ok_with_first_fee_option() {
                 pool_account.clone(),
                 ALICE(),
             )
-            .expect("User is not pool provider");
+                .expect("User is not pool provider");
 
         // Percentage of LP to lock and fee percentage for Option 1
         let lp_percentage = balance!(0.5);
@@ -205,7 +205,7 @@ fn lock_liquidity_ok_with_first_fee_option() {
                 pool_account.clone(),
                 ALICE(),
             )
-            .expect("User is not pool provider");
+                .expect("User is not pool provider");
 
         let lp_to_check = pool_tokens - lp_fee;
         assert_eq!(pool_tokens_after_locking, lp_to_check);
@@ -217,7 +217,7 @@ fn lock_liquidity_ok_with_first_fee_option() {
                 pool_account.clone(),
                 fee_account,
             )
-            .expect("User is not pool provider");
+                .expect("User is not pool provider");
         assert_eq!(fee_account_pool_tokens_after_locking, lp_fee);
     })]);
 }
@@ -246,8 +246,8 @@ fn lock_liquidity_ok_with_second_fee_option() {
                 base_asset,
                 target_asset,
             )
-            .expect("Pool does not exist")
-            .0;
+                .expect("Pool does not exist")
+                .0;
 
         // Calculate number of pool tokens of user's account
         let pool_tokens: Balance =
@@ -255,7 +255,7 @@ fn lock_liquidity_ok_with_second_fee_option() {
                 pool_account.clone(),
                 ALICE(),
             )
-            .expect("User is not pool provider");
+                .expect("User is not pool provider");
 
         // Percentage of LP to lock and fee percentage for Option 1
         let lp_percentage = balance!(0.5);
@@ -291,7 +291,7 @@ fn lock_liquidity_ok_with_second_fee_option() {
                 pool_account.clone(),
                 ALICE(),
             )
-            .expect("User is not pool provider");
+                .expect("User is not pool provider");
 
         let lp_to_check = pool_tokens - lp_fee;
         assert_eq!(pool_tokens_after_locking, lp_to_check);
@@ -302,7 +302,7 @@ fn lock_liquidity_ok_with_second_fee_option() {
                 pool_account.clone(),
                 fee_account,
             )
-            .expect("User is not pool provider");
+                .expect("User is not pool provider");
         assert_eq!(fee_account_pool_tokens_after_locking, lp_fee);
     })]);
 }

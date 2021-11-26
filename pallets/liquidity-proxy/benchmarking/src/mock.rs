@@ -290,6 +290,7 @@ impl ceres_liquidity_locker::Config for Runtime {
     type Event = Event;
     type XYKPool = PoolXYK;
     type CeresAssetId = ();
+    type WeightInfo = ();
 }
 
 fn bonding_curve_distribution_accounts() -> DistributionAccounts<

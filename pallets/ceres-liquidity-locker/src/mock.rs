@@ -205,6 +205,7 @@ impl ceres_liquidity_locker::Config for Runtime {
     type Event = Event;
     type XYKPool = PoolXYK;
     type CeresAssetId = CeresAssetId;
+    type WeightInfo = ();
 }
 
 #[allow(non_snake_case)]
