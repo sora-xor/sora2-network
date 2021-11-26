@@ -297,6 +297,7 @@ impl pallet_scheduler::Config for Runtime {
 }
 
 impl ceres_liquidity_locker::Config for Runtime {
+    const BLOCKS_PER_ONE_DAY: BlockNumberFor<Self> = 14_440;
     type Event = Event;
     type XYKPool = PoolXYK;
     type CeresAssetId = ();

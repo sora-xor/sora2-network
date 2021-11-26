@@ -1,5 +1,5 @@
 use common::prelude::{Balance, Fixed};
-use common::{balance, fixed, hash, DEXInfo};
+use common::{balance, fixed, hash, DEXInfo, XOR};
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::GenesisBuild;
 use frame_support::weights::Weight;
@@ -8,26 +8,27 @@ use frame_system;
 use hex_literal::hex;
 use orml_traits::parameter_type_with_key;
 use permissions::{Scope, MANAGE_DEX};
-use sp_core::crypto::AccountId32;
 use sp_core::H256;
 use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentityLookup};
 use sp_runtime::Perbill;
 
-pub use common::mock::ComicAssetId::*;
 pub use common::mock::*;
 pub use common::TechAssetId as Tas;
 pub use common::TechPurpose::*;
+use frame_system::pallet_prelude::BlockNumberFor;
 
 pub type DEXId = u32;
 pub type BlockNumber = u64;
-pub type AccountId = AccountId32;
+pub type AccountId = u128;
 pub type Amount = i128;
-pub type TechAssetId = common::TechAssetId<common::mock::ComicAssetId>;
-pub type AssetId = common::AssetId32<common::mock::ComicAssetId>;
+pub type AssetId = common::AssetId32<common::PredefinedAssetId>;
+pub type TechAssetId = common::TechAssetId<common::PredefinedAssetId>;
 pub type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
+
+pub const BLOCKS_PER_DAY: BlockNumberFor<Runtime> = 14_440;
 
 pub const CERES_ASSET_ID: AssetId = common::AssetId32::from_bytes(hex!(
     "008bcfd2387d3fc453333557eecb0efe59fcba128769b2feefdd306e98e66440"
@@ -41,12 +42,12 @@ parameter_types! {
     pub GetBaseAssetId: AssetId = common::AssetId32::from_bytes(hex!("0200000000000000000000000000000000000000000000000000000000000000").into());
     pub GetIncentiveAssetId: AssetId = common::AssetId32::from_bytes(hex!("0200050000000000000000000000000000000000000000000000000000000000").into());
     pub const ExistentialDeposit: u128 = 0;
-    pub GetPswapDistributionAccountId: AccountId = AccountId32::from([3; 32]);
+    pub GetPswapDistributionAccountId: AccountId = 3u128;
     pub const GetDefaultSubscriptionFrequency: BlockNumber = 10;
     pub const GetBurnUpdateFrequency: BlockNumber = 14400;
-    pub GetParliamentAccountId: AccountId = AccountId32::from([8; 32]);
+    pub GetParliamentAccountId: AccountId = 8u128;
     pub GetFee: Fixed = fixed!(0.003);
-    pub GetTeamReservesAccountId: AccountId = AccountId32::from([11; 32]);
+    pub GetTeamReservesAccountId: AccountId = 3000u128;
     pub const CeresAssetId: AssetId = CERES_ASSET_ID;
 }
 
@@ -150,9 +151,9 @@ impl currencies::Config for Runtime {
 
 impl assets::Config for Runtime {
     type Event = Event;
-    type ExtraAccountId = [u8; 32];
+    type ExtraAccountId = AccountId;
     type ExtraAssetRecordArg =
-        common::AssetIdExtraAssetRecordArg<DEXId, common::LiquiditySourceType, [u8; 32]>;
+        common::AssetIdExtraAssetRecordArg<DEXId, common::LiquiditySourceType, u128>;
     type AssetId = AssetId;
     type GetBaseAssetId = GetBaseAssetId;
     type Currency = currencies::Module<Runtime>;
@@ -202,6 +203,7 @@ impl pswap_distribution::Config for Runtime {
 }
 
 impl ceres_liquidity_locker::Config for Runtime {
+    const BLOCKS_PER_ONE_DAY: BlockNumberFor<Self> = BLOCKS_PER_DAY;
     type Event = Event;
     type XYKPool = PoolXYK;
     type CeresAssetId = CeresAssetId;
@@ -210,17 +212,17 @@ impl ceres_liquidity_locker::Config for Runtime {
 
 #[allow(non_snake_case)]
 pub fn ALICE() -> AccountId {
-    AccountId32::from([1; 32])
+    1u128
 }
 
 #[allow(non_snake_case)]
 pub fn BOB() -> AccountId {
-    AccountId32::from([2; 32])
+    2u128
 }
 
 #[allow(non_snake_case)]
 pub fn CHARLIE() -> AccountId {
-    AccountId32::from([35; 32])
+    35u128
 }
 
 pub const DEX_A_ID: DEXId = 220;
@@ -238,7 +240,7 @@ impl Default for ExtBuilder {
             initial_dex_list: vec![(
                 DEX_A_ID,
                 DEXInfo {
-                    base_asset_id: GoldenTicket.into(),
+                    base_asset_id: XOR.into(),
                     is_public: true,
                 },
             )],

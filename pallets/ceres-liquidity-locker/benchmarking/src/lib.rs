@@ -3,12 +3,10 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use codec::Decode;
-use common::prelude::{Balance};
-use common::{
-    balance, AssetName, AssetSymbol, DEXId, DEFAULT_BALANCE_PRECISION, XOR,
-};
+use common::prelude::Balance;
+use common::{balance, AssetName, AssetSymbol, DEXId, DEFAULT_BALANCE_PRECISION, XOR};
 use frame_benchmarking::benchmarks;
-use frame_system::{RawOrigin};
+use frame_system::RawOrigin;
 use hex_literal::hex;
 use sp_std::prelude::*;
 
@@ -75,12 +73,23 @@ fn setup_benchmark_assets_only<T: Config>() -> Result<(), &'static str> {
         None,
         None,
     )
-        .unwrap();
+    .unwrap();
 
-    TradingPair::<T>::register(owner_origin.clone(), DEX.into(), XOR.into(), ceres_asset_id.into()).unwrap();
+    TradingPair::<T>::register(
+        owner_origin.clone(),
+        DEX.into(),
+        XOR.into(),
+        ceres_asset_id.into(),
+    )
+    .unwrap();
 
     Assets::<T>::mint_to(&XOR.into(), &owner.clone(), &owner.clone(), balance!(50000))?;
-    Assets::<T>::mint_to(&ceres_asset_id.into(), &owner.clone(), &owner.clone(), balance!(50000))?;
+    Assets::<T>::mint_to(
+        &ceres_asset_id.into(),
+        &owner.clone(),
+        &owner.clone(),
+        balance!(50000),
+    )?;
 
     Ok(())
 }
@@ -95,7 +104,12 @@ fn setup_benchmark<T: Config>() -> Result<(), &'static str> {
 
     setup_benchmark_assets_only::<T>()?;
 
-    XYKPool::<T>::initialize_pool(owner_origin.clone(), DEX.into(), XOR.into(), ceres_asset_id.into())?;
+    XYKPool::<T>::initialize_pool(
+        owner_origin.clone(),
+        DEX.into(),
+        XOR.into(),
+        ceres_asset_id.into(),
+    )?;
 
     XYKPool::<T>::deposit_liquidity(
         owner_origin.clone(),

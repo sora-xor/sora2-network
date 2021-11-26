@@ -1429,6 +1429,7 @@ parameter_types! {
 }
 
 impl ceres_liquidity_locker::Config for Runtime {
+    const BLOCKS_PER_ONE_DAY: BlockNumber = 1 * DAYS;
     type Event = Event;
     type XYKPool = PoolXYK;
     type CeresAssetId = CeresAssetId;

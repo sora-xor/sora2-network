@@ -1,7 +1,7 @@
 use common::prelude::FixedWrapper;
 use common::{
     balance, AssetName, AssetSymbol, Balance, LiquiditySourceType, ToFeeAccount,
-    DEFAULT_BALANCE_PRECISION,
+    DEFAULT_BALANCE_PRECISION, DOT, XOR,
 };
 use frame_support::{assert_err, assert_ok};
 
@@ -13,13 +13,13 @@ type PresetFunction<'a> = Rc<dyn Fn(DEXId, AssetId, AssetId) -> () + 'a>;
 fn preset_initial(tests: Vec<PresetFunction<'a>>) {
     let mut ext = ExtBuilder::default().build();
     let dex_id = DEX_A_ID;
-    let gt: AssetId = GoldenTicket.into();
+    let gt: AssetId = XOR.into();
     let ceres: AssetId = CERES_ASSET_ID.into();
 
     ext.execute_with(|| {
         assert_ok!(assets::Module::<Runtime>::register_asset_id(
             ALICE(),
-            GoldenTicket.into(),
+            XOR.into(),
             AssetSymbol(b"GT".to_vec()),
             AssetName(b"Golden Ticket".to_vec()),
             DEFAULT_BALANCE_PRECISION,
@@ -44,34 +44,34 @@ fn preset_initial(tests: Vec<PresetFunction<'a>>) {
         assert_ok!(trading_pair::Module::<Runtime>::register(
             Origin::signed(BOB()),
             dex_id.clone(),
-            GoldenTicket.into(),
+            XOR.into(),
             CERES_ASSET_ID.into()
         ));
 
         assert_ok!(pool_xyk::Module::<Runtime>::initialize_pool(
             Origin::signed(BOB()),
             dex_id.clone(),
-            GoldenTicket.into(),
+            XOR.into(),
             CERES_ASSET_ID.into(),
         ));
 
         assert!(
             trading_pair::Module::<Runtime>::is_source_enabled_for_trading_pair(
                 &dex_id,
-                &GoldenTicket.into(),
+                &XOR.into(),
                 &CERES_ASSET_ID.into(),
                 LiquiditySourceType::XYKPool,
             )
-                .expect("Failed to query trading pair status.")
+            .expect("Failed to query trading pair status.")
         );
 
         let (_tpair, tech_acc_id) =
             pool_xyk::Module::<Runtime>::tech_account_from_dex_and_asset_pair(
                 dex_id.clone(),
-                GoldenTicket.into(),
+                XOR.into(),
                 CERES_ASSET_ID.into(),
             )
-                .unwrap();
+            .unwrap();
 
         let fee_acc = tech_acc_id.clone().to_fee_account().unwrap();
         let repr: AccountId =
@@ -122,7 +122,7 @@ fn preset_initial(tests: Vec<PresetFunction<'a>>) {
             0
         );
 
-        let base_asset: AssetId = GoldenTicket.into();
+        let base_asset: AssetId = XOR.into();
         let target_asset: AssetId = CERES_ASSET_ID.into();
         assert_eq!(
             pool_xyk::Module::<Runtime>::properties(base_asset, target_asset),
@@ -147,10 +147,10 @@ fn preset_initial(tests: Vec<PresetFunction<'a>>) {
 #[test]
 fn lock_liquidity_ok_with_first_fee_option() {
     preset_initial(vec![Rc::new(|dex_id, _gt, _bp| {
-        let base_asset: AssetId = GoldenTicket.into();
+        let base_asset: AssetId = XOR.into();
         let target_asset: AssetId = CERES_ASSET_ID.into();
 
-        // Deposit liquidity to GoldenTicket/CERES pair
+        // Deposit liquidity to XOR/CERES pair
         assert_ok!(pool_xyk::Pallet::<Runtime>::deposit_liquidity(
             Origin::signed(ALICE()),
             dex_id,
@@ -168,8 +168,8 @@ fn lock_liquidity_ok_with_first_fee_option() {
                 base_asset,
                 target_asset,
             )
-                .expect("Pool does not exist")
-                .0;
+            .expect("Pool does not exist")
+            .0;
 
         // Calculate number of pool tokens of user's account
         let pool_tokens: Balance =
@@ -177,7 +177,7 @@ fn lock_liquidity_ok_with_first_fee_option() {
                 pool_account.clone(),
                 ALICE(),
             )
-                .expect("User is not pool provider");
+            .expect("User is not pool provider");
 
         // Percentage of LP to lock and fee percentage for Option 1
         let lp_percentage = balance!(0.5);
@@ -205,7 +205,7 @@ fn lock_liquidity_ok_with_first_fee_option() {
                 pool_account.clone(),
                 ALICE(),
             )
-                .expect("User is not pool provider");
+            .expect("User is not pool provider");
 
         let lp_to_check = pool_tokens - lp_fee;
         assert_eq!(pool_tokens_after_locking, lp_to_check);
@@ -217,7 +217,7 @@ fn lock_liquidity_ok_with_first_fee_option() {
                 pool_account.clone(),
                 fee_account,
             )
-                .expect("User is not pool provider");
+            .expect("User is not pool provider");
         assert_eq!(fee_account_pool_tokens_after_locking, lp_fee);
     })]);
 }
@@ -225,10 +225,10 @@ fn lock_liquidity_ok_with_first_fee_option() {
 #[test]
 fn lock_liquidity_ok_with_second_fee_option() {
     preset_initial(vec![Rc::new(|dex_id, _gt, _bp| {
-        let base_asset: AssetId = GoldenTicket.into();
+        let base_asset: AssetId = XOR.into();
         let target_asset: AssetId = CERES_ASSET_ID.into();
 
-        // Deposit liquidity to GoldenTicket/CERES pair
+        // Deposit liquidity to XOR/CERES pair
         assert_ok!(pool_xyk::Pallet::<Runtime>::deposit_liquidity(
             Origin::signed(ALICE()),
             dex_id,
@@ -246,8 +246,8 @@ fn lock_liquidity_ok_with_second_fee_option() {
                 base_asset,
                 target_asset,
             )
-                .expect("Pool does not exist")
-                .0;
+            .expect("Pool does not exist")
+            .0;
 
         // Calculate number of pool tokens of user's account
         let pool_tokens: Balance =
@@ -255,7 +255,7 @@ fn lock_liquidity_ok_with_second_fee_option() {
                 pool_account.clone(),
                 ALICE(),
             )
-                .expect("User is not pool provider");
+            .expect("User is not pool provider");
 
         // Percentage of LP to lock and fee percentage for Option 1
         let lp_percentage = balance!(0.5);
@@ -291,7 +291,7 @@ fn lock_liquidity_ok_with_second_fee_option() {
                 pool_account.clone(),
                 ALICE(),
             )
-                .expect("User is not pool provider");
+            .expect("User is not pool provider");
 
         let lp_to_check = pool_tokens - lp_fee;
         assert_eq!(pool_tokens_after_locking, lp_to_check);
@@ -302,7 +302,7 @@ fn lock_liquidity_ok_with_second_fee_option() {
                 pool_account.clone(),
                 fee_account,
             )
-                .expect("User is not pool provider");
+            .expect("User is not pool provider");
         assert_eq!(fee_account_pool_tokens_after_locking, lp_fee);
     })]);
 }
@@ -313,7 +313,7 @@ fn lock_liquidity_invalid_percentage() {
         assert_err!(
             ceres_liquidity_locker::Pallet::<Runtime>::lock_liquidity(
                 Origin::signed(ALICE()),
-                GoldenTicket.into(),
+                XOR.into(),
                 CERES_ASSET_ID.into(),
                 frame_system::Pallet::<Runtime>::block_number(),
                 balance!(1.1),
@@ -330,8 +330,8 @@ fn lock_liquidity_pool_does_not_exist() {
     preset_initial(vec![Rc::new(|_dex_id, _gt, _bp| {
         let _ = ceres_liquidity_locker::Pallet::<Runtime>::lock_liquidity(
             Origin::signed(ALICE()),
-            GoldenTicket.into(),
-            BlackPepper.into(),
+            XOR.into(),
+            DOT.into(),
             frame_system::Pallet::<Runtime>::block_number(),
             balance!(0.5),
             true,
@@ -345,7 +345,7 @@ fn lock_liquidity_user_is_not_pool_provider() {
     preset_initial(vec![Rc::new(|_dex_id, _gt, _bp| {
         let _ = ceres_liquidity_locker::Pallet::<Runtime>::lock_liquidity(
             Origin::signed(ALICE()),
-            GoldenTicket.into(),
+            XOR.into(),
             CERES_ASSET_ID.into(),
             frame_system::Pallet::<Runtime>::block_number(),
             balance!(0.5),
@@ -360,7 +360,7 @@ fn lock_liquidity_insufficient_liquidity_to_lock() {
         assert_ok!(pool_xyk::Pallet::<Runtime>::deposit_liquidity(
             Origin::signed(ALICE()),
             dex_id,
-            GoldenTicket.into(),
+            XOR.into(),
             CERES_ASSET_ID.into(),
             balance!(360000),
             balance!(144000),
@@ -371,7 +371,7 @@ fn lock_liquidity_insufficient_liquidity_to_lock() {
         // Lock 50% of LP tokens
         assert_ok!(ceres_liquidity_locker::Pallet::<Runtime>::lock_liquidity(
             Origin::signed(ALICE()),
-            GoldenTicket.into(),
+            XOR.into(),
             CERES_ASSET_ID.into(),
             frame_system::Pallet::<Runtime>::block_number() + 5,
             balance!(0.5),
@@ -381,7 +381,7 @@ fn lock_liquidity_insufficient_liquidity_to_lock() {
         // Lock 30% of LP tokens
         assert_ok!(ceres_liquidity_locker::Pallet::<Runtime>::lock_liquidity(
             Origin::signed(ALICE()),
-            GoldenTicket.into(),
+            XOR.into(),
             CERES_ASSET_ID.into(),
             frame_system::Pallet::<Runtime>::block_number() + 5,
             balance!(0.3),
@@ -392,7 +392,7 @@ fn lock_liquidity_insufficient_liquidity_to_lock() {
         assert_err!(
             ceres_liquidity_locker::Pallet::<Runtime>::lock_liquidity(
                 Origin::signed(ALICE()),
-                GoldenTicket.into(),
+                XOR.into(),
                 CERES_ASSET_ID.into(),
                 frame_system::Pallet::<Runtime>::block_number() + 5,
                 balance!(0.3),

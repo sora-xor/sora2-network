@@ -38,6 +38,7 @@ pub mod pallet {
     use common::prelude::{Balance, FixedWrapper};
     use common::{balance, LiquiditySource};
     use frame_support::pallet_prelude::*;
+    use frame_support::sp_runtime::traits::Zero;
     use frame_system::ensure_signed;
     use frame_system::pallet_prelude::*;
     use hex_literal::hex;
@@ -45,6 +46,9 @@ pub mod pallet {
 
     #[pallet::config]
     pub trait Config: frame_system::Config + assets::Config {
+        /// One day represented in block number
+        const BLOCKS_PER_ONE_DAY: BlockNumberFor<Self>;
+
         /// Because this pallet emits events, it depends on the runtime's definition of an event.
         type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 
@@ -232,18 +236,49 @@ pub mod pallet {
     }
 
     #[pallet::hooks]
-    impl<T: Config> Hooks<T::BlockNumber> for Pallet<T> {}
+    impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
+        fn on_initialize(now: T::BlockNumber) -> Weight {
+            let mut counter: u64 = 0;
+
+            if (now % T::BLOCKS_PER_ONE_DAY).is_zero() {
+                let mut expired_locks;
+
+                for (_, data) in <LockerData<T>>::iter().enumerate() {
+                    let account_id = data.0;
+                    let mut lockups = data.1;
+                    expired_locks = Vec::new();
+
+                    for (index, lock) in lockups.iter().enumerate() {
+                        if lock.unlocking_block <= now.into() {
+                            expired_locks.push(index);
+                        }
+                    }
+
+                    for (_, index) in expired_locks.iter().enumerate() {
+                        lockups.remove(*index);
+                        counter += 1;
+                    }
+
+                    <LockerData<T>>::insert(account_id, lockups);
+                }
+            }
+
+            T::DbWeight::get()
+                .reads(1)
+                .saturating_add(T::DbWeight::get().writes(counter))
+        }
+    }
 
     impl<T: Config> Pallet<T> {
-        /// Get allowed liquidity for withdrawing
-        pub fn get_allowed_liquidity_for_withdrawing(
+        /// Check if liquidity is locked
+        pub fn check_if_liquidity_is_locked(
             user: &AccountIdOf<T>,
             asset_a: AssetIdOf<T>,
             asset_b: AssetIdOf<T>,
             withdrawing_amount: Balance,
         ) -> bool {
             // Get lock info of extrinsic caller
-            let mut lockups = <LockerData<T>>::get(&user);
+            let lockups = <LockerData<T>>::get(&user);
             let current_block = frame_system::Pallet::<T>::block_number();
 
             // Get pool account
@@ -256,23 +291,15 @@ pub mod pallet {
                 .expect("User is not pool provider");
 
             let mut locked_pool_tokens = 0;
-            let mut expired_locks = Vec::new();
 
-            for (i, locks) in lockups.iter().enumerate() {
+            for (_, locks) in lockups.iter().enumerate() {
                 if locks.asset_a == asset_a && locks.asset_b == asset_b {
                     if current_block < locks.unlocking_block {
                         locked_pool_tokens = locked_pool_tokens + locks.pool_tokens;
-                    } else {
-                        expired_locks.push(i);
                     }
                 }
             }
             let unlocked_pool_tokens = pool_tokens - locked_pool_tokens;
-
-            for (_, index) in expired_locks.iter().enumerate() {
-                lockups.remove(*index);
-            }
-            <LockerData<T>>::insert(&user, lockups);
 
             return if withdrawing_amount > pool_tokens || unlocked_pool_tokens >= withdrawing_amount
             {
