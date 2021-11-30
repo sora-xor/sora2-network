@@ -1,7 +1,9 @@
+use crate::pallet::AccountIdOf;
+use codec::Decode;
 use common::prelude::{Balance, Fixed};
 use common::{balance, fixed, hash, DEXInfo, XOR};
 use currencies::BasicCurrencyAdapter;
-use frame_support::traits::GenesisBuild;
+use frame_support::traits::{GenesisBuild, Hooks};
 use frame_support::weights::Weight;
 use frame_support::{construct_runtime, parameter_types};
 use frame_system;
@@ -216,13 +218,14 @@ pub fn ALICE() -> AccountId {
 }
 
 #[allow(non_snake_case)]
-pub fn BOB() -> AccountId {
-    2u128
+pub fn AUTHORITY<T: frame_system::Config>() -> T::AccountId {
+    let bytes = hex!("34a5b78f5fbcdc92a28767d63b579690a4b2f6a179931b3ecc87f09fc9366d47");
+    AccountIdOf::<T>::decode(&mut &bytes[..]).unwrap_or_default()
 }
 
 #[allow(non_snake_case)]
-pub fn CHARLIE() -> AccountId {
-    35u128
+pub fn BOB() -> AccountId {
+    2u128
 }
 
 pub const DEX_A_ID: DEXId = 220;
@@ -284,5 +287,14 @@ impl ExtBuilder {
         .unwrap();
 
         t.into()
+    }
+}
+
+pub fn run_to_block(n: u64) {
+    while System::block_number() < n {
+        System::on_finalize(System::block_number());
+        System::set_block_number(System::block_number() + 1);
+        System::on_initialize(System::block_number());
+        CeresLiquidityLocker::on_initialize(System::block_number());
     }
 }

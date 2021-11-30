@@ -23,7 +23,7 @@ pub struct LockInfo<Balance, BlockNumber, AssetId> {
     /// Amount of locked pool tokens
     pool_tokens: Balance,
     /// The time (block height) at which the tokens will be unlock
-    unlocking_block: BlockNumber,
+    pub unlocking_block: BlockNumber,
     /// Base asset of locked liquidity
     asset_a: AssetId,
     /// Target asset of locked liquidity
@@ -69,7 +69,7 @@ pub mod pallet {
     }
 
     type Assets<T> = assets::Pallet<T>;
-    type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
+    pub type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
     type AssetIdOf<T> = <T as assets::Config>::AssetId;
 
     #[pallet::pallet]
@@ -78,13 +78,7 @@ pub mod pallet {
 
     #[pallet::type_value]
     pub fn DefaultForFeesOptionOneAccount<T: Config>() -> AccountIdOf<T> {
-        let bytes = hex!("d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d");
-        AccountIdOf::<T>::decode(&mut &bytes[..]).unwrap_or_default()
-    }
-
-    #[pallet::type_value]
-    pub fn DefaultForFeesOptionTwoAccount<T: Config>() -> AccountIdOf<T> {
-        let bytes = hex!("d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d");
+        let bytes = hex!("96ea3c9c0be7bbc7b0656a1983db5eed75210256891a9609012362e36815b132");
         AccountIdOf::<T>::decode(&mut &bytes[..]).unwrap_or_default()
     }
 
@@ -94,15 +88,44 @@ pub mod pallet {
     pub type FeesOptionOneAccount<T: Config> =
         StorageValue<_, AccountIdOf<T>, ValueQuery, DefaultForFeesOptionOneAccount<T>>;
 
+    #[pallet::type_value]
+    pub fn DefaultForFeesOptionTwoAccount<T: Config>() -> AccountIdOf<T> {
+        let bytes = hex!("0a0455d92e1fda8dee17b2c58761c8efca490ef2a1a03322dbfea7379481d517");
+        AccountIdOf::<T>::decode(&mut &bytes[..]).unwrap_or_default()
+    }
+
     /// Account for collecting fees from Option 2
     #[pallet::storage]
     #[pallet::getter(fn fees_option_two_account)]
     pub type FeesOptionTwoAccount<T: Config> =
         StorageValue<_, AccountIdOf<T>, ValueQuery, DefaultForFeesOptionTwoAccount<T>>;
 
+    #[pallet::type_value]
+    pub fn DefaultForOptionTwoCeresAmount<T: Config>() -> Balance {
+        balance!(20)
+    }
+
+    /// Amount of CERES for locker fees option two
+    #[pallet::storage]
+    #[pallet::getter(fn fees_option_two_ceres_amount)]
+    pub type FeesOptionTwoCeresAmount<T: Config> =
+        StorageValue<_, Balance, ValueQuery, DefaultForOptionTwoCeresAmount<T>>;
+
+    #[pallet::type_value]
+    pub fn DefaultForAuthorityAccount<T: Config>() -> AccountIdOf<T> {
+        let bytes = hex!("34a5b78f5fbcdc92a28767d63b579690a4b2f6a179931b3ecc87f09fc9366d47");
+        AccountIdOf::<T>::decode(&mut &bytes[..]).unwrap_or_default()
+    }
+
+    /// Account which has permissions for changing CERES amount fee
+    #[pallet::storage]
+    #[pallet::getter(fn authority_account)]
+    pub type AuthorityAccount<T: Config> =
+        StorageValue<_, AccountIdOf<T>, ValueQuery, DefaultForAuthorityAccount<T>>;
+
     #[pallet::storage]
     #[pallet::getter(fn locker_data)]
-    pub(super) type LockerData<T: Config> = StorageMap<
+    pub type LockerData<T: Config> = StorageMap<
         _,
         Identity,
         AccountIdOf<T>,
@@ -124,6 +147,10 @@ pub mod pallet {
         InsufficientLiquidityToLock,
         ///Percentage greater than 100%
         InvalidPercentage,
+        ///Unauthorized access
+        Unauthorized,
+        ///Block number in past,
+        InvalidUnlockingBlock,
     }
 
     #[pallet::call]
@@ -139,10 +166,16 @@ pub mod pallet {
             option: bool,
         ) -> DispatchResultWithPostInfo {
             let user = ensure_signed(origin)?;
-
             ensure!(
                 percentage_of_pool_tokens <= balance!(1),
                 Error::<T>::InvalidPercentage
+            );
+
+            // Get current block
+            let current_block = frame_system::Pallet::<T>::block_number();
+            ensure!(
+                unlocking_block > current_block,
+                Error::<T>::InvalidUnlockingBlock
             );
 
             let mut lock_info = LockInfo {
@@ -151,9 +184,6 @@ pub mod pallet {
                 asset_b,
                 unlocking_block,
             };
-
-            // Get current block
-            let current_block = frame_system::Pallet::<T>::block_number();
 
             // Get pool account
             let pool_account: AccountIdOf<T> = T::XYKPool::properties(asset_a, asset_b)
@@ -199,12 +229,12 @@ pub mod pallet {
                     option,
                 )?;
             } else {
-                // Transfer 20 CERES
+                // Transfer CERES fee amount
                 Assets::<T>::transfer_from(
                     &T::CeresAssetId::get().into(),
                     &user,
                     &FeesOptionTwoAccount::<T>::get(),
-                    balance!(20),
+                    FeesOptionTwoCeresAmount::<T>::get(),
                 )?;
                 // Transfer 0.5% of LP tokens
                 Self::pay_fee_in_lp_tokens(
@@ -233,6 +263,22 @@ pub mod pallet {
             // Return a successful DispatchResult
             Ok(().into())
         }
+
+        /// Change CERES fee
+        #[pallet::weight(10000)]
+        pub fn change_ceres_fee(
+            origin: OriginFor<T>,
+            ceres_fee: Balance,
+        ) -> DispatchResultWithPostInfo {
+            let user = ensure_signed(origin)?;
+
+            if user != AuthorityAccount::<T>::get() {
+                panic!("Unauthorized");
+            }
+
+            FeesOptionTwoCeresAmount::<T>::put(ceres_fee);
+            Ok(().into())
+        }
     }
 
     #[pallet::hooks]
@@ -248,13 +294,14 @@ pub mod pallet {
                     let mut lockups = data.1;
                     expired_locks = Vec::new();
 
+                    // Save expired lock
                     for (index, lock) in lockups.iter().enumerate() {
                         if lock.unlocking_block <= now.into() {
                             expired_locks.push(index);
                         }
                     }
 
-                    for (_, index) in expired_locks.iter().enumerate() {
+                    for (_, index) in expired_locks.iter().rev().enumerate() {
                         lockups.remove(*index);
                         counter += 1;
                     }

@@ -8,20 +8,20 @@ use frame_support::{assert_err, assert_ok};
 use crate::mock::*;
 use sp_std::rc::Rc;
 
-type PresetFunction<'a> = Rc<dyn Fn(DEXId, AssetId, AssetId) -> () + 'a>;
+type PresetFunction<'a> = Rc<dyn Fn(DEXId) -> () + 'a>;
 
 fn preset_initial(tests: Vec<PresetFunction<'a>>) {
     let mut ext = ExtBuilder::default().build();
     let dex_id = DEX_A_ID;
-    let gt: AssetId = XOR.into();
+    let xor: AssetId = XOR.into();
     let ceres: AssetId = CERES_ASSET_ID.into();
 
     ext.execute_with(|| {
         assert_ok!(assets::Module::<Runtime>::register_asset_id(
             ALICE(),
             XOR.into(),
-            AssetSymbol(b"GT".to_vec()),
-            AssetName(b"Golden Ticket".to_vec()),
+            AssetSymbol(b"XOR".to_vec()),
+            AssetName(b"SORA".to_vec()),
             DEFAULT_BALANCE_PRECISION,
             Balance::from(0u32),
             true,
@@ -80,7 +80,7 @@ fn preset_initial(tests: Vec<PresetFunction<'a>>) {
             technical::Module::<Runtime>::tech_account_id_to_account_id(&fee_acc).unwrap();
 
         assert_ok!(assets::Module::<Runtime>::mint_to(
-            &gt,
+            &xor,
             &ALICE(),
             &ALICE(),
             balance!(900000)
@@ -94,14 +94,21 @@ fn preset_initial(tests: Vec<PresetFunction<'a>>) {
         ));
 
         assert_ok!(assets::Module::<Runtime>::mint_to(
-            &gt,
+            &xor,
             &ALICE(),
-            &CHARLIE(),
+            &BOB(),
+            balance!(900000)
+        ));
+
+        assert_ok!(assets::Module::<Runtime>::mint_to(
+            &ceres,
+            &ALICE(),
+            &BOB(),
             balance!(900000)
         ));
 
         assert_eq!(
-            assets::Module::<Runtime>::free_balance(&gt, &ALICE()).unwrap(),
+            assets::Module::<Runtime>::free_balance(&xor, &ALICE()).unwrap(),
             balance!(900000)
         );
         assert_eq!(
@@ -109,7 +116,7 @@ fn preset_initial(tests: Vec<PresetFunction<'a>>) {
             balance!(902000)
         );
         assert_eq!(
-            assets::Module::<Runtime>::free_balance(&gt, &repr.clone()).unwrap(),
+            assets::Module::<Runtime>::free_balance(&xor, &repr.clone()).unwrap(),
             0
         );
 
@@ -118,35 +125,24 @@ fn preset_initial(tests: Vec<PresetFunction<'a>>) {
             0
         );
         assert_eq!(
-            assets::Module::<Runtime>::free_balance(&gt, &fee_repr.clone()).unwrap(),
+            assets::Module::<Runtime>::free_balance(&xor, &fee_repr.clone()).unwrap(),
             0
         );
 
-        let base_asset: AssetId = XOR.into();
-        let target_asset: AssetId = CERES_ASSET_ID.into();
         assert_eq!(
-            pool_xyk::Module::<Runtime>::properties(base_asset, target_asset),
+            pool_xyk::Module::<Runtime>::properties(xor, ceres),
             Some((repr.clone(), fee_repr.clone()))
-        );
-        assert_eq!(
-            pswap_distribution::Module::<Runtime>::subscribed_accounts(&fee_repr),
-            Some((
-                dex_id.clone(),
-                repr.clone(),
-                GetDefaultSubscriptionFrequency::get(),
-                0
-            ))
         );
 
         for test in &tests {
-            test(dex_id.clone(), gt.clone(), ceres.clone());
+            test(dex_id.clone());
         }
     });
 }
 
 #[test]
 fn lock_liquidity_ok_with_first_fee_option() {
-    preset_initial(vec![Rc::new(|dex_id, _gt, _bp| {
+    preset_initial(vec![Rc::new(|dex_id| {
         let base_asset: AssetId = XOR.into();
         let target_asset: AssetId = CERES_ASSET_ID.into();
 
@@ -224,7 +220,7 @@ fn lock_liquidity_ok_with_first_fee_option() {
 
 #[test]
 fn lock_liquidity_ok_with_second_fee_option() {
-    preset_initial(vec![Rc::new(|dex_id, _gt, _bp| {
+    preset_initial(vec![Rc::new(|dex_id| {
         let base_asset: AssetId = XOR.into();
         let target_asset: AssetId = CERES_ASSET_ID.into();
 
@@ -309,13 +305,13 @@ fn lock_liquidity_ok_with_second_fee_option() {
 
 #[test]
 fn lock_liquidity_invalid_percentage() {
-    preset_initial(vec![Rc::new(|_dex_id, _gt, _bp| {
+    preset_initial(vec![Rc::new(|_dex_id| {
         assert_err!(
             ceres_liquidity_locker::Pallet::<Runtime>::lock_liquidity(
                 Origin::signed(ALICE()),
                 XOR.into(),
                 CERES_ASSET_ID.into(),
-                frame_system::Pallet::<Runtime>::block_number(),
+                frame_system::Pallet::<Runtime>::block_number() + 1,
                 balance!(1.1),
                 true,
             ),
@@ -325,14 +321,31 @@ fn lock_liquidity_invalid_percentage() {
 }
 
 #[test]
+fn lock_liquidity_invalid_unlocking_block() {
+    preset_initial(vec![Rc::new(|_dex_id| {
+        assert_err!(
+            ceres_liquidity_locker::Pallet::<Runtime>::lock_liquidity(
+                Origin::signed(ALICE()),
+                XOR.into(),
+                CERES_ASSET_ID.into(),
+                frame_system::Pallet::<Runtime>::block_number(),
+                balance!(0.8),
+                true,
+            ),
+            ceres_liquidity_locker::Error::<Runtime>::InvalidUnlockingBlock
+        );
+    })]);
+}
+
+#[test]
 #[should_panic(expected = "Pool does not exist")]
 fn lock_liquidity_pool_does_not_exist() {
-    preset_initial(vec![Rc::new(|_dex_id, _gt, _bp| {
+    preset_initial(vec![Rc::new(|_dex_id| {
         let _ = ceres_liquidity_locker::Pallet::<Runtime>::lock_liquidity(
             Origin::signed(ALICE()),
             XOR.into(),
             DOT.into(),
-            frame_system::Pallet::<Runtime>::block_number(),
+            frame_system::Pallet::<Runtime>::block_number() + 1,
             balance!(0.5),
             true,
         );
@@ -342,12 +355,12 @@ fn lock_liquidity_pool_does_not_exist() {
 #[test]
 #[should_panic(expected = "User is not pool provider")]
 fn lock_liquidity_user_is_not_pool_provider() {
-    preset_initial(vec![Rc::new(|_dex_id, _gt, _bp| {
+    preset_initial(vec![Rc::new(|_dex_id| {
         let _ = ceres_liquidity_locker::Pallet::<Runtime>::lock_liquidity(
             Origin::signed(ALICE()),
             XOR.into(),
             CERES_ASSET_ID.into(),
-            frame_system::Pallet::<Runtime>::block_number(),
+            frame_system::Pallet::<Runtime>::block_number() + 1,
             balance!(0.5),
             true,
         );
@@ -356,7 +369,7 @@ fn lock_liquidity_user_is_not_pool_provider() {
 
 #[test]
 fn lock_liquidity_insufficient_liquidity_to_lock() {
-    preset_initial(vec![Rc::new(|dex_id, _gt, _bp| {
+    preset_initial(vec![Rc::new(|dex_id| {
         assert_ok!(pool_xyk::Pallet::<Runtime>::deposit_liquidity(
             Origin::signed(ALICE()),
             dex_id,
@@ -400,5 +413,115 @@ fn lock_liquidity_insufficient_liquidity_to_lock() {
             ),
             ceres_liquidity_locker::Error::<Runtime>::InsufficientLiquidityToLock
         );
+    })]);
+}
+
+#[test]
+#[should_panic(expected = "Unauthorized")]
+fn change_ceres_fee_unauthorized() {
+    preset_initial(vec![Rc::new(|_dex_id| {
+        assert_err!(
+            ceres_liquidity_locker::Pallet::<Runtime>::change_ceres_fee(
+                Origin::signed(ALICE()),
+                balance!(100)
+            ),
+            ceres_liquidity_locker::Error::<Runtime>::Unauthorized
+        );
+    })]);
+}
+
+#[test]
+fn change_ceres_fee_ok() {
+    preset_initial(vec![Rc::new(|_dex_id| {
+        assert_ok!(ceres_liquidity_locker::Pallet::<Runtime>::change_ceres_fee(
+            Origin::signed(AUTHORITY::<Runtime>()),
+            balance!(100)
+        ));
+
+        assert_eq!(
+            ceres_liquidity_locker::FeesOptionTwoCeresAmount::<Runtime>::get(),
+            balance!(100)
+        );
+    })]);
+}
+
+#[test]
+fn should_remove_expired_lockups() {
+    preset_initial(vec![Rc::new(|dex_id| {
+        assert_ok!(pool_xyk::Pallet::<Runtime>::deposit_liquidity(
+            Origin::signed(ALICE()),
+            dex_id,
+            XOR.into(),
+            CERES_ASSET_ID.into(),
+            balance!(360000),
+            balance!(144000),
+            balance!(360000),
+            balance!(144000),
+        ));
+
+        // Lock 50% of LP tokens
+        assert_ok!(ceres_liquidity_locker::Pallet::<Runtime>::lock_liquidity(
+            Origin::signed(ALICE()),
+            XOR.into(),
+            CERES_ASSET_ID.into(),
+            frame_system::Pallet::<Runtime>::block_number() + 5,
+            balance!(0.5),
+            true
+        ));
+
+        // Lock 30% of LP tokens
+        assert_ok!(ceres_liquidity_locker::Pallet::<Runtime>::lock_liquidity(
+            Origin::signed(ALICE()),
+            XOR.into(),
+            CERES_ASSET_ID.into(),
+            frame_system::Pallet::<Runtime>::block_number() + 500,
+            balance!(0.3),
+            true
+        ));
+
+        assert_ok!(pool_xyk::Pallet::<Runtime>::deposit_liquidity(
+            Origin::signed(BOB()),
+            dex_id,
+            XOR.into(),
+            CERES_ASSET_ID.into(),
+            balance!(360000),
+            balance!(144000),
+            balance!(360000),
+            balance!(144000),
+        ));
+
+        // Lock 50% of LP tokens
+        assert_ok!(ceres_liquidity_locker::Pallet::<Runtime>::lock_liquidity(
+            Origin::signed(BOB()),
+            XOR.into(),
+            CERES_ASSET_ID.into(),
+            frame_system::Pallet::<Runtime>::block_number() + 250,
+            balance!(0.5),
+            true
+        ));
+
+        // Lock 30% of LP tokens
+        assert_ok!(ceres_liquidity_locker::Pallet::<Runtime>::lock_liquidity(
+            Origin::signed(BOB()),
+            XOR.into(),
+            CERES_ASSET_ID.into(),
+            frame_system::Pallet::<Runtime>::block_number() + 20000,
+            balance!(0.3),
+            true
+        ));
+
+        let mut lockups_alice = ceres_liquidity_locker::LockerData::<Runtime>::get(ALICE());
+        assert_eq!(lockups_alice.len(), 2);
+        let mut lockups_bob = ceres_liquidity_locker::LockerData::<Runtime>::get(BOB());
+        assert_eq!(lockups_bob.len(), 2);
+
+        run_to_block(14_440);
+
+        lockups_alice = ceres_liquidity_locker::LockerData::<Runtime>::get(ALICE());
+        assert_eq!(lockups_alice.len(), 0);
+        lockups_bob = ceres_liquidity_locker::LockerData::<Runtime>::get(BOB());
+        assert_eq!(lockups_bob.len(), 1);
+
+        assert_eq!(lockups_bob.get(0).unwrap().unlocking_block, 20000);
     })]);
 }
