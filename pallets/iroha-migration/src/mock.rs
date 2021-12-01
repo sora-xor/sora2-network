@@ -32,7 +32,10 @@ use crate as iroha_migration; // for construct_runtime
 use crate::{Config, TECH_ACCOUNT_MAIN, TECH_ACCOUNT_PREFIX};
 use common::mock::ExistentialDeposits;
 use common::prelude::Balance;
-use common::{balance, Amount, AssetId32, AssetName, AssetSymbol, PredefinedAssetId, VAL};
+use common::{
+    balance, Amount, AssetId32, AssetName, AssetSymbol, PredefinedAssetId,
+    DEFAULT_BALANCE_PRECISION, VAL,
+};
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{Everything, GenesisBuild};
 use frame_support::weights::Weight;
@@ -56,6 +59,7 @@ pub const ALICE: AccountId = 1;
 pub const BOB: AccountId = 2;
 pub const CHARLIE: AccountId = 3;
 pub const MINTING_ACCOUNT: AccountId = 4;
+pub const REFERRALS_RESERVES_ACC: AccountId = 22;
 
 parameter_types! {
     pub const BlockHashCount: u64 = 250;
@@ -68,6 +72,7 @@ parameter_types! {
     pub const DepositFactor: u64 = 1;
     pub const MaxSignatories: u16 = 4;
     pub GetTeamReservesAccountId: AccountId = 3000u64;
+    pub const ReferralsReservesAcc: AccountId = REFERRALS_RESERVES_ACC;
 }
 
 construct_runtime!(
@@ -84,7 +89,7 @@ construct_runtime!(
         Assets: assets::{Pallet, Call, Storage, Config<T>, Event<T>},
         Technical: technical::{Pallet, Call, Config<T>, Event<T>},
         Permissions: permissions::{Pallet, Call, Storage, Config<T>, Event<T>},
-        ReferralSystem: referral_system::{Pallet, Call, Storage, Config<T>},
+        Referrals: referrals::{Pallet, Call, Storage, Config<T>},
         IrohaMigration: iroha_migration::{Pallet, Call, Storage, Config<T>, Event<T>}
     }
 );
@@ -131,8 +136,9 @@ impl assets::Config for Runtime {
         common::AssetIdExtraAssetRecordArg<DEXId, common::LiquiditySourceType, u64>;
     type AssetId = common::AssetId32<PredefinedAssetId>;
     type GetBaseAssetId = GetBaseAssetId;
-    type Currency = currencies::Module<Runtime>;
+    type Currency = currencies::Pallet<Runtime>;
     type GetTeamReservesAccountId = GetTeamReservesAccountId;
+    type GetTotalBalance = ();
     type WeightInfo = ();
 }
 
@@ -179,7 +185,10 @@ impl tokens::Config for Runtime {
     type DustRemovalWhitelist = Everything;
 }
 
-impl referral_system::Config for Runtime {}
+impl referrals::Config for Runtime {
+    type ReservesAcc = ReferralsReservesAcc;
+    type WeightInfo = ();
+}
 
 impl pallet_multisig::Config for Runtime {
     type Call = Call;
@@ -227,9 +236,11 @@ pub fn test_ext(add_iroha_accounts: bool) -> sp_io::TestExternalities {
             ALICE,
             AssetSymbol(b"VAL".to_vec()),
             AssetName(b"SORA Validator Token".to_vec()),
-            18,
+            DEFAULT_BALANCE_PRECISION,
             Balance::from(0u32),
             true,
+            None,
+            None,
         )],
     }
     .assimilate_storage(&mut t)

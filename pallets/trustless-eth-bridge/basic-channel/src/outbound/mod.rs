@@ -8,23 +8,22 @@ mod test;
 
 use codec::{Decode, Encode};
 use ethabi::{self, Token};
-use frame_support::{
-    dispatch::DispatchResult,
-    ensure,
-    traits::{EnsureOrigin, Get},
-};
+use frame_support::dispatch::DispatchResult;
+use frame_support::ensure;
+use frame_support::traits::{EnsureOrigin, Get};
 use sp_core::{RuntimeDebug, H160, H256};
 use sp_io::offchain_index;
 use sp_runtime::traits::{Hash, StaticLookup, Zero};
 
 use sp_std::prelude::*;
 
-use snowbridge_core::{types::AuxiliaryDigestItem, ChannelId, MessageNonce};
+use snowbridge_core::types::AuxiliaryDigestItem;
+use snowbridge_core::{ChannelId, MessageNonce};
 
 pub use weights::WeightInfo;
 
 /// Wire-format for committed messages
-#[derive(Encode, Decode, Clone, PartialEq, RuntimeDebug)]
+#[derive(Encode, Decode, Clone, PartialEq, RuntimeDebug, scale_info::TypeInfo)]
 pub struct Message {
     /// Target application on the Ethereum side.
     target: H160,
@@ -42,10 +41,15 @@ pub mod pallet {
     use super::*;
 
     use frame_support::pallet_prelude::*;
+    use frame_support::traits::StorageVersion;
     use frame_system::pallet_prelude::*;
+
+    /// The current storage version.
+    const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
 
     #[pallet::pallet]
     #[pallet::generate_store(pub(super) trait Store)]
+    #[pallet::storage_version(STORAGE_VERSION)]
     pub struct Pallet<T>(_);
 
     #[pallet::config]

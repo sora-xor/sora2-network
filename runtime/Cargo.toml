@@ -1,5 +1,5 @@
 [package]
-edition = "2018"
+edition = "2021"
 authors = ["Polka Biome Ltd. <jihoon@tutanota.de>"]
 license = "BSD-4-Clause"
 homepage = "https://sora.org"
@@ -18,15 +18,15 @@ codec = { package = "parity-scale-codec", version = "2", default-features = fals
     "derive",
     "chain-error",
 ] }
-scale-info = { version = "0.10.0", default-features = false, features = [
+scale-info = { version = "1.0.0", default-features = false, features = [
     "derive",
 ] }
 hex-literal = "0.3.1"
 log = { version = "0.4.14" }
 serde = { features = ['derive'], optional = true, version = '1.0.101' }
 
-bridge-multisig = { git = "https://github.com/soramitsu/sora2-frame-pallets.git", branch = "v4.0.0-dev", package = "pallet-multisig", default-features = false }
-beefy-primitives = { git = "https://github.com/paritytech/grandpa-bridge-gadget.git", branch = "polkadot-v0.9.9", default-features = false }
+bridge-multisig = { git = "https://github.com/soramitsu/sora2-frame-pallets.git", branch = "polkadot-v0.9.13", package = "pallet-multisig", default-features = false }
+beefy-primitives = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.13", default-features = false }
 pallet-mmr-primitives = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.9", default-features = false }
 pallet-mmr = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.9", default-features = false }
 
@@ -56,7 +56,7 @@ price-tools = { path = "../pallets/price-tools", default-features = false }
 pswap-distribution = { path = "../pallets/pswap-distribution", default-features = false }
 pswap-distribution-benchmarking = { path = "../pallets/pswap-distribution/benchmarking", default-features = false, optional = true }
 pswap-distribution-runtime-api = { path = "../pallets/pswap-distribution/runtime-api", default-features = false }
-referral-system = { path = "../pallets/referral-system", default-features = false }
+referrals = { path = "../pallets/referrals", default-features = false}
 rewards = { path = "../pallets/rewards", default-features = false }
 rewards-runtime-api = { path = "../pallets/rewards/runtime-api", default-features = false }
 technical = { path = "../pallets/technical", default-features = false }
@@ -85,8 +85,8 @@ pallet-collective = { git = "https://github.com/paritytech/substrate.git", branc
 pallet-democracy = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.9", default-features = false }
 pallet-elections-phragmen = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.9", default-features = false }
 pallet-grandpa = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.9", default-features = false }
-pallet-beefy = { git = "https://github.com/paritytech/grandpa-bridge-gadget.git", branch = "polkadot-v0.9.9", default-features = false }
-pallet-beefy-mmr = { git = "https://github.com/paritytech/grandpa-bridge-gadget.git", branch = "polkadot-v0.9.9", default-features = false }
+pallet-beefy = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.13", default-features = false }
+pallet-beefy-mmr = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.13", default-features = false }
 pallet-babe = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.9", default-features = false }
 pallet-im-online = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.9", default-features = false }
 pallet-identity = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.9", default-features = false }
@@ -101,7 +101,7 @@ pallet-scheduler = { git = "https://github.com/paritytech/substrate.git", branch
 pallet-session = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.9", default-features = false, features = [
     "historical",
 ] }
-pallet-staking = { git = "https://github.com/soramitsu/sora2-frame-pallets.git", default-features = false, branch = "v4.0.0-dev" }
+pallet-staking = { git = "https://github.com/soramitsu/sora2-frame-pallets.git", default-features = false, branch = "polkadot-v0.9.13" }
 pallet-transaction-payment = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.9", default-features = false }
 pallet-transaction-payment-rpc-runtime-api = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.9", default-features = false }
 pallet-utility = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.9", default-features = false }
@@ -129,10 +129,14 @@ traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library
 snowbridge-core = { path = "../primitives/core", default-features = false }
 
 [dev-dependencies]
+env_logger = "0.9.0"
+
+common = { path = "../common", features = ["test"] }
 framenode-chain-spec = { path = "../node/chain_spec", features = ["test"] }
 
 [features]
 default = ["std"]
+test = []
 
 std = [
     "assets-runtime-api/std",
@@ -197,7 +201,7 @@ std = [
     "price-tools/std",
     "pswap-distribution-runtime-api/std",
     "pswap-distribution/std",
-    "referral-system/std",
+    "referrals/std",
     "rewards-runtime-api/std",
     "rewards/std",
     "serde",
@@ -222,7 +226,10 @@ std = [
     "xst/std",
 ]
 
-private-net = ["faucet"]
+private-net = [
+    "faucet",
+    "farming/private-net"
+]
 
 runtime-benchmarks = [
     "assets/runtime-benchmarks",
@@ -250,6 +257,7 @@ runtime-benchmarks = [
     "pswap-distribution-benchmarking/runtime-benchmarks",
     "pswap-distribution/runtime-benchmarks",
     "pswap-distribution/runtime-benchmarks",
+    "referrals/runtime-benchmarks",
     "rewards/runtime-benchmarks",
     "technical/runtime-benchmarks",
     "trading-pair/runtime-benchmarks",

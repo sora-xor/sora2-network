@@ -30,11 +30,11 @@
 
 #[rustfmt::skip]
 mod tests {
-    use crate::{mock::*, DistributionAccountData, Module, DistributionAccounts, DistributionAccount, Error, RETRY_DISTRIBUTION_FREQUENCY};
+    use crate::{mock::*, DistributionAccountData, Pallet, DistributionAccounts, DistributionAccount, Error, RETRY_DISTRIBUTION_FREQUENCY};
     use common::{
         self, balance, fixed, fixed_wrapper, Fixed, fixnum::ops::One as _, fixnum::ops::Zero as _,
         prelude::{Balance, SwapAmount, SwapOutcome, QuoteAmount, FixedWrapper,},
-        AssetName, AssetSymbol, DEXId, LiquiditySource, TechPurpose, USDT, VAL, XOR, PSWAP, XSTUSD, LiquiditySourceFilter,
+        AssetName, AssetSymbol, DEXId, LiquiditySource, TechPurpose, USDT, VAL, XOR, PSWAP, XSTUSD, LiquiditySourceFilter, DEFAULT_BALANCE_PRECISION,
     };
     use hex_literal::hex;
     use frame_support::traits::OnInitialize;
@@ -44,7 +44,7 @@ mod tests {
     use sp_arithmetic::traits::{Zero};
     use sp_runtime::DispatchError;
 
-    type MBCPool = Module<Runtime>;
+    type MBCPool = Pallet<Runtime>;
 
     fn ensure_distribution_accounts_balances(distribution_accounts: DistributionAccounts<DistributionAccountData<DistributionAccount<AccountId, TechAccountId>>>, balances: Vec<Balance>) {
         let distribution_accounts_array = distribution_accounts.xor_distribution_accounts_as_array();
@@ -315,7 +315,7 @@ mod tests {
                 balance!(10000),
                 AssetSymbol(b"USDT".to_vec()),
                 AssetName(b"Tether USD".to_vec()),
-                18,
+                DEFAULT_BALANCE_PRECISION,
             ),
             (alice(), XOR, 0, AssetSymbol(b"XOR".to_vec()), AssetName(b"SORA".to_vec()), 18),
             (alice(), VAL, balance!(205), AssetSymbol(b"VAL".to_vec()), AssetName(b"SORA Validator Token".to_vec()), 18),
@@ -519,7 +519,7 @@ mod tests {
                 0,
                 AssetSymbol(b"USDT".to_vec()),
                 AssetName(b"Tether USD".to_vec()),
-                18,
+                DEFAULT_BALANCE_PRECISION,
             ),
             (alice(), XOR, 0, AssetSymbol(b"XOR".to_vec()), AssetName(b"SORA".to_vec()), 18),
             (alice(), VAL, balance!(10000), AssetSymbol(b"VAL".to_vec()), AssetName(b"SORA Validator Token".to_vec()), 18),
@@ -1158,7 +1158,7 @@ mod tests {
                 balance!(10000),
                 AssetSymbol(b"USDT".to_vec()),
                 AssetName(b"Tether USD".to_vec()),
-                18,
+                DEFAULT_BALANCE_PRECISION,
             ),
             (alice(), XOR, 0, AssetSymbol(b"XOR".to_vec()), AssetName(b"SORA".to_vec()), 18),
             (alice(), VAL, 0, AssetSymbol(b"VAL".to_vec()), AssetName(b"SORA Validator Token".to_vec()), 18),
@@ -1223,7 +1223,7 @@ mod tests {
                 balance!(10000),
                 AssetSymbol(b"USDT".to_vec()),
                 AssetName(b"Tether USD".to_vec()),
-                18,
+                DEFAULT_BALANCE_PRECISION,
             ),
             (alice(), XOR, 350000, AssetSymbol(b"XOR".to_vec()), AssetName(b"SORA".to_vec()), 18),
             (alice(), VAL, 0, AssetSymbol(b"VAL".to_vec()), AssetName(b"SORA Validator Token".to_vec()), 18),
@@ -1311,7 +1311,7 @@ mod tests {
                 balance!(10000),
                 AssetSymbol(b"USDT".to_vec()),
                 AssetName(b"Tether USD".to_vec()),
-                18,
+                DEFAULT_BALANCE_PRECISION,
             ),
             (alice(), XOR, 350000, AssetSymbol(b"XOR".to_vec()), AssetName(b"SORA".to_vec()), 18),
             (alice(), VAL, 0, AssetSymbol(b"VAL".to_vec()), AssetName(b"SORA Validator Token".to_vec()), 18),
@@ -1394,7 +1394,7 @@ mod tests {
                 balance!(999999999999999),
                 AssetSymbol(b"USDT".to_vec()),
                 AssetName(b"Tether USD".to_vec()),
-                18,
+                DEFAULT_BALANCE_PRECISION,
             ),
             (alice(), XOR, 0, AssetSymbol(b"XOR".to_vec()), AssetName(b"SORA".to_vec()), 18),
             (alice(), VAL, 0, AssetSymbol(b"VAL".to_vec()), AssetName(b"SORA Validator Token".to_vec()), 18),
@@ -1464,7 +1464,7 @@ mod tests {
                 balance!(999999999999999),
                 AssetSymbol(b"USDT".to_vec()),
                 AssetName(b"Tether USD".to_vec()),
-                18,
+                DEFAULT_BALANCE_PRECISION,
             ),
             (alice(), XOR, 350000, AssetSymbol(b"XOR".to_vec()), AssetName(b"SORA".to_vec()), 18),
             (alice(), VAL, 0, AssetSymbol(b"VAL".to_vec()), AssetName(b"SORA Validator Token".to_vec()), 18),
@@ -1533,7 +1533,7 @@ mod tests {
                 balance!(10000),
                 AssetSymbol(b"USDT".to_vec()),
                 AssetName(b"Tether USD".to_vec()),
-                18,
+                DEFAULT_BALANCE_PRECISION,
             ),
             (alice(), XOR, 350000, AssetSymbol(b"XOR".to_vec()), AssetName(b"SORA".to_vec()), 18),
             (alice(), VAL, 0, AssetSymbol(b"VAL".to_vec()), AssetName(b"SORA Validator Token".to_vec()), 18),
@@ -1650,7 +1650,7 @@ mod tests {
                 balance!(0),
                 AssetSymbol(b"USDT".to_vec()),
                 AssetName(b"Tether USD".to_vec()),
-                18,
+                DEFAULT_BALANCE_PRECISION,
             ),
             (alice(), XOR, balance!(6000000000), AssetSymbol(b"XOR".to_vec()), AssetName(b"SORA".to_vec()), 18),
             (alice(), VAL, 0, AssetSymbol(b"VAL".to_vec()), AssetName(b"SORA Validator Token".to_vec()), 18),

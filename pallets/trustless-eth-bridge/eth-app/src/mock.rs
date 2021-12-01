@@ -2,25 +2,18 @@ use currencies::BasicCurrencyAdapter;
 use sp_std::marker::PhantomData;
 
 // Mock runtime
-use common::balance;
 use common::mock::ExistentialDeposits;
-use common::{Amount, Balance, DEXId};
-use common::{AssetId32, AssetSymbol};
-use common::{AssetName, XOR};
+use common::{balance, Amount, AssetId32, AssetName, AssetSymbol, Balance, DEXId, XOR};
+use frame_support::dispatch::{DispatchError, DispatchResult};
+use frame_support::parameter_types;
 use frame_support::traits::{Everything, GenesisBuild};
-use frame_support::{
-    dispatch::{DispatchError, DispatchResult},
-    parameter_types,
-};
 use frame_system as system;
 use snowbridge_core::{ChannelId, OutboundRouter};
 use sp_core::{H160, H256};
 use sp_keyring::sr25519::Keyring;
-use sp_runtime::{
-    testing::Header,
-    traits::{BlakeTwo256, IdentifyAccount, IdentityLookup, Verify},
-    MultiSignature,
-};
+use sp_runtime::testing::Header;
+use sp_runtime::traits::{BlakeTwo256, IdentifyAccount, IdentityLookup, Verify};
+use sp_runtime::MultiSignature;
 
 use crate as eth_app;
 
@@ -135,9 +128,10 @@ impl assets::Config for Test {
         common::AssetIdExtraAssetRecordArg<DEXId, common::LiquiditySourceType, [u8; 32]>;
     type AssetId = AssetId;
     type GetBaseAssetId = GetBaseAssetId;
-    type Currency = currencies::Module<Test>;
+    type Currency = currencies::Pallet<Test>;
     type GetTeamReservesAccountId = GetTeamReservesAccountId;
     type WeightInfo = ();
+    type GetTotalBalance = ();
 }
 
 impl dispatch::Config for Test {
@@ -197,6 +191,8 @@ pub fn new_tester() -> sp_io::TestExternalities {
             18,
             0,
             true,
+            None,
+            None,
         )],
     }
     .assimilate_storage(&mut storage)

@@ -2,20 +2,16 @@ use super::*;
 use currencies::BasicCurrencyAdapter;
 
 use common::mock::ExistentialDeposits;
-use common::{balance, AssetName, AssetSymbol};
-use common::{Amount, AssetId32, Balance, DEXId, XOR};
+use common::{Amount, AssetId32, AssetName, AssetSymbol, Balance, DEXId, XOR};
+use frame_support::dispatch::DispatchError;
 use frame_support::traits::{Everything, GenesisBuild};
-use frame_support::{assert_noop, assert_ok, dispatch::DispatchError, parameter_types};
+use frame_support::{assert_noop, assert_ok, parameter_types};
 use sp_core::{H160, H256};
 use sp_keyring::AccountKeyring as Keyring;
-use sp_runtime::{
-    testing::Header,
-    traits::{BlakeTwo256, IdentifyAccount, IdentityLookup, Keccak256, Verify},
-    MultiSignature,
-};
+use sp_runtime::testing::Header;
+use sp_runtime::traits::{BlakeTwo256, IdentifyAccount, IdentityLookup, Keccak256, Verify};
+use sp_runtime::MultiSignature;
 use sp_std::convert::From;
-
-use snowbridge_core::SingleAsset;
 
 use crate::outbound as incentivized_outbound_channel;
 
@@ -129,9 +125,10 @@ impl assets::Config for Test {
         common::AssetIdExtraAssetRecordArg<DEXId, common::LiquiditySourceType, [u8; 32]>;
     type AssetId = AssetId;
     type GetBaseAssetId = GetBaseAssetId;
-    type Currency = currencies::Module<Test>;
+    type Currency = currencies::Pallet<Test>;
     type GetTeamReservesAccountId = GetTeamReservesAccountId;
     type WeightInfo = ();
+    type GetTotalBalance = ();
 }
 
 parameter_types! {
@@ -179,6 +176,8 @@ pub fn new_tester() -> sp_io::TestExternalities {
             18,
             0,
             true,
+            None,
+            None,
         )],
     }
     .assimilate_storage(&mut storage)

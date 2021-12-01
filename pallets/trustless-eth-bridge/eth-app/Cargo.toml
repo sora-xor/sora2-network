@@ -2,7 +2,7 @@
 name = "eth-app"
 version = "0.1.1"
 authors = ["Snowfork <contact@snowfork.com>"]
-edition = "2018"
+edition = "2021"
 
 [package.metadata.docs.rs]
 targets = ["x86_64-unknown-linux-gnu"]
@@ -10,6 +10,9 @@ targets = ["x86_64-unknown-linux-gnu"]
 [dependencies]
 serde = { version = "1.0.101", optional = true }
 codec = { version = "2.0.0", package = "parity-scale-codec", default-features = false, features = [
+    "derive",
+] }
+scale-info = { version = "1.0.0", default-features = false, features = [
     "derive",
 ] }
 hex = { package = "rustc-hex", version = "2.1.0", default-features = false }
@@ -48,6 +51,7 @@ std = [
     "serde",
     "hex/std",
     "codec/std",
+    "scale-info/std",
     "frame-support/std",
     "frame-system/std",
     "sp-core/std",

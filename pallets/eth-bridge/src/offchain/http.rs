@@ -42,11 +42,11 @@ use crate::{
 };
 use alloc::string::String;
 use alloc::vec::Vec;
-use frame_support::log::{debug, error, info, trace, warn};
+use frame_support::log::{error, trace, warn};
 use frame_support::sp_runtime::offchain as rt_offchain;
 use frame_support::sp_runtime::offchain::storage::StorageValueRef;
 use frame_support::traits::Get;
-use frame_support::{debug, fail, sp_io};
+use frame_support::{fail, sp_io};
 use frame_system::offchain::CreateSignedTransaction;
 use hex_literal::hex;
 use serde::{Deserialize, Serialize};

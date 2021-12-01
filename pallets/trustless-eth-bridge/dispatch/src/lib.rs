@@ -1,10 +1,8 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use frame_support::{
-    dispatch::{DispatchResult, Dispatchable, Parameter},
-    traits::{Contains, EnsureOrigin},
-    weights::GetDispatchInfo,
-};
+use frame_support::dispatch::{DispatchResult, Dispatchable, Parameter};
+use frame_support::traits::{Contains, EnsureOrigin};
+use frame_support::weights::GetDispatchInfo;
 
 use sp_core::RuntimeDebug;
 
@@ -15,7 +13,7 @@ use snowbridge_core::MessageDispatch;
 
 use codec::{Decode, Encode};
 
-#[derive(Copy, Clone, PartialEq, Eq, Encode, Decode, RuntimeDebug)]
+#[derive(Copy, Clone, PartialEq, Eq, Encode, Decode, RuntimeDebug, scale_info::TypeInfo)]
 pub struct RawOrigin(pub H160);
 
 impl From<H160> for RawOrigin {
@@ -49,10 +47,15 @@ pub mod pallet {
 
     use super::*;
     use frame_support::pallet_prelude::*;
+    use frame_support::traits::StorageVersion;
     use frame_system::pallet_prelude::*;
+
+    /// The current storage version.
+    const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
 
     #[pallet::pallet]
     #[pallet::generate_store(pub(super) trait Store)]
+    #[pallet::storage_version(STORAGE_VERSION)]
     pub struct Pallet<T>(_);
 
     #[pallet::config]
@@ -88,7 +91,6 @@ pub mod pallet {
 
     #[pallet::event]
     #[pallet::generate_deposit(pub(super) fn deposit_event)]
-    #[pallet::metadata(T::MessageId = "MessageId")]
     pub enum Event<T: Config> {
         /// Message has been dispatched with given result.
         MessageDispatched(T::MessageId, DispatchResult),
@@ -131,7 +133,7 @@ pub mod pallet {
         fn successful_dispatch_event(
             id: MessageIdOf<T>,
         ) -> Option<<T as frame_system::Config>::Event> {
-            let event: <T as Config>::Event = RawEvent::MessageDispatched(id, Ok(())).into();
+            let event: <T as Config>::Event = Event::<T>::MessageDispatched(id, Ok(())).into();
             Some(event.into())
         }
     }
@@ -140,14 +142,13 @@ pub mod pallet {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use frame_support::dispatch::DispatchError;
+    use frame_support::parameter_types;
     use frame_support::traits::Everything;
-    use frame_support::{dispatch::DispatchError, parameter_types};
     use frame_system::{EventRecord, Phase};
     use sp_core::H256;
-    use sp_runtime::{
-        testing::Header,
-        traits::{BlakeTwo256, IdentityLookup},
-    };
+    use sp_runtime::testing::Header;
+    use sp_runtime::traits::{BlakeTwo256, IdentityLookup};
 
     use crate as dispatch;
 
@@ -201,7 +202,7 @@ mod tests {
     impl frame_support::traits::Contains<Call> for CallFilter {
         fn contains(call: &Call) -> bool {
             match call {
-                Call::System(frame_system::pallet::Call::<Test>::remark(_)) => true,
+                Call::System(frame_system::pallet::Call::<Test>::remark { .. }) => true,
                 _ => false,
             }
         }
@@ -228,7 +229,9 @@ mod tests {
             let id = 37;
             let source = H160::repeat_byte(7);
 
-            let message = Call::System(<frame_system::Call<Test>>::remark(vec![])).encode();
+            let message =
+                Call::System(frame_system::pallet::Call::<Test>::remark { remark: vec![] })
+                    .encode();
 
             System::set_block_number(1);
             Dispatch::dispatch(source, id, &message);
@@ -275,7 +278,9 @@ mod tests {
             let id = 37;
             let source = H160::repeat_byte(7);
 
-            let message = Call::System(<frame_system::Call<Test>>::set_code(vec![])).encode();
+            let message =
+                Call::System(frame_system::pallet::Call::<Test>::set_code { code: vec![] })
+                    .encode();
 
             System::set_block_number(1);
             Dispatch::dispatch(source, id, &message);

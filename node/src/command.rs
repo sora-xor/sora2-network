@@ -21,7 +21,7 @@ use sc_cli::{ChainSpec, Role, RuntimeVersion, SubstrateCli};
 use sc_service::PartialComponents;
 
 fn set_default_ss58_version() {
-    sp_core::crypto::set_default_ss58_version(sp_core::crypto::Ss58AddressFormat::Custom(
+    sp_core::crypto::set_default_ss58_version(sp_core::crypto::Ss58AddressFormat::from(
         framenode_runtime::SS58Prefix::get() as u16,
     ));
 }
@@ -74,7 +74,7 @@ impl SubstrateCli for Cli {
             chain_spec = Some(framenode_chain_spec::main_net()?);
         }
 
-        #[cfg(feature = "main-net-coded")]
+        #[cfg(any(feature = "main-net-coded", feature = "runtime-benchmarks"))]
         if id == "main-coded" {
             chain_spec = Some(framenode_chain_spec::main_net_coded());
         }
@@ -102,7 +102,7 @@ pub fn run() -> sc_cli::Result<()> {
         Some(Subcommand::BuildSpec(cmd)) => {
             let runner = cli.create_runner(cmd)?;
             set_default_ss58_version();
-            runner.sync_run(|mut config| cmd.run(config.chain_spec, config.network))
+            runner.sync_run(|config| cmd.run(config.chain_spec, config.network))
         }
         Some(Subcommand::CheckBlock(cmd)) => {
             let runner = cli.create_runner(cmd)?;
@@ -157,7 +157,7 @@ pub fn run() -> sc_cli::Result<()> {
         Some(Subcommand::PurgeChain(cmd)) => {
             let runner = cli.create_runner(cmd)?;
             set_default_ss58_version();
-            runner.sync_run(|mut config| cmd.run(config.database))
+            runner.sync_run(|config| cmd.run(config.database))
         }
         Some(Subcommand::Revert(cmd)) => {
             let runner = cli.create_runner(cmd)?;
@@ -176,16 +176,19 @@ pub fn run() -> sc_cli::Result<()> {
         Some(Subcommand::Benchmark(cmd)) => {
             let runner = cli.create_runner(cmd)?;
             set_default_ss58_version();
-            runner.sync_run(|config| cmd.run::<framenode_runtime::Block, service::Executor>(config))
+            runner.sync_run(|config| {
+                cmd.run::<framenode_runtime::Block, service::ExecutorDispatch>(config)
+            })
         }
         None => {
             let runner = cli.create_runner(&cli.run)?;
             set_default_ss58_version();
             runner.run_node_until_exit(|config| async move {
                 match config.role {
-                    Role::Light => service::new_light(config),
+                    //Role::Light => service::new_light(config),
+                    Role::Light => Err(sc_service::Error::Other("Light client not enabled".into())),
                     // TODO: fix args
-                    _ => service::new_full(config, None, false, None, None),
+                    _ => service::new_full(config, false, None),
                 }
                 .map_err(sc_cli::Error::Service)
             })

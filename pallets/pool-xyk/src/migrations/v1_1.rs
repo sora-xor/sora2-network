@@ -27,7 +27,7 @@ pub fn migrate<T: Config>() -> Weight {
     );
 
     for (reserves_acc, asset, _) in &acc_asset_currs {
-        let total_issuance = if let Ok(issuance) = assets::Module::<T>::total_issuance(asset) {
+        let total_issuance = if let Ok(issuance) = assets::Pallet::<T>::total_issuance(asset) {
             issuance
         } else {
             continue;
@@ -55,7 +55,9 @@ pub fn migrate<T: Config>() -> Weight {
 
 #[cfg(test)]
 mod tests {
-    use common::{balance, generate_storage_instance, AssetName, AssetSymbol};
+    use common::{
+        balance, generate_storage_instance, AssetName, AssetSymbol, DEFAULT_BALANCE_PRECISION,
+    };
     use frame_support::pallet_prelude::StorageDoubleMap;
     use frame_support::Blake2_128Concat;
     use hex_literal::hex;
@@ -111,33 +113,37 @@ mod tests {
                 (BOB(), BOB(), asset6.clone()),
             );
 
-            assets::Module::<Runtime>::register_asset_id(
+            assets::Pallet::<Runtime>::register_asset_id(
                 ALICE(),
                 asset3.clone(),
                 AssetSymbol(b"A".to_vec()),
                 AssetName(b"B".to_vec()),
-                18,
+                DEFAULT_BALANCE_PRECISION,
                 0,
                 true,
+                None,
+                None,
             )
             .unwrap();
 
-            assets::Module::<Runtime>::mint_to(&asset3, &ALICE(), &ALICE(), balance!(3)).unwrap();
-            assets::Module::<Runtime>::mint_to(&asset3, &ALICE(), &BOB(), balance!(3)).unwrap();
+            assets::Pallet::<Runtime>::mint_to(&asset3, &ALICE(), &ALICE(), balance!(3)).unwrap();
+            assets::Pallet::<Runtime>::mint_to(&asset3, &ALICE(), &BOB(), balance!(3)).unwrap();
 
-            assets::Module::<Runtime>::register_asset_id(
+            assets::Pallet::<Runtime>::register_asset_id(
                 BOB(),
                 asset6.clone(),
                 AssetSymbol(b"C".to_vec()),
                 AssetName(b"D".to_vec()),
-                18,
+                DEFAULT_BALANCE_PRECISION,
                 0,
                 true,
+                None,
+                None,
             )
             .unwrap();
 
-            assets::Module::<Runtime>::mint_to(&asset6, &BOB(), &ALICE(), balance!(4)).unwrap();
-            assets::Module::<Runtime>::mint_to(&asset6, &BOB(), &BOB(), balance!(4)).unwrap();
+            assets::Pallet::<Runtime>::mint_to(&asset6, &BOB(), &ALICE(), balance!(4)).unwrap();
+            assets::Pallet::<Runtime>::mint_to(&asset6, &BOB(), &BOB(), balance!(4)).unwrap();
 
             super::migrate::<Runtime>();
 

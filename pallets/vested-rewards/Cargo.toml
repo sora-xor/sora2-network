@@ -5,13 +5,16 @@ license = "BSD-4-Clause"
 homepage = 'https://sora.org'
 repository = 'https://github.com/sora-xor/sora2-network'
 name = 'vested-rewards'
-version = '1.1.0'
+version = '1.2.0'
 
 [package.metadata.docs.rs]
 targets = ['x86_64-unknown-linux-gnu']
 
 [dependencies]
 codec = { package = "parity-scale-codec", version = "2", default-features = false, features = ["derive"] }
+scale-info = { version = "1.0.0", default-features = false, features = [
+    "derive",
+] }
 currencies = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-currencies", default-features = false }
 frame-support = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.9", default-features = false }
 frame-system = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.9", default-features = false }
@@ -46,6 +49,7 @@ liquidity-proxy = { path = "../liquidity-proxy" }
 default = ['std']
 std = [
     'codec/std',
+    "scale-info/std",
     'currencies/std',
     'frame-support/std',
     'frame-system/std',

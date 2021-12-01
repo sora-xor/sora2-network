@@ -31,18 +31,15 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use codec::Decode;
-use common::DAI;
+use common::{Balance, DAI};
 use frame_benchmarking::benchmarks;
 use frame_support::sp_runtime::traits::UniqueSaturatedInto;
 use frame_support::traits::Get;
 use frame_system::RawOrigin;
-use sp_std::boxed::Box;
-use sp_std::vec;
-use sp_std::vec::Vec;
 
-use common::{balance, Balance, VAL, XOR};
+use common::{balance, VAL, XOR};
 
-pub struct Module<T: Config>(xor_fee::Module<T>);
+pub struct Pallet<T: Config>(xor_fee::Pallet<T>);
 
 pub trait Config: xor_fee::Config + pool_xyk::Config + pallet_staking::Config {}
 
@@ -53,9 +50,9 @@ fn alice<T: Config>() -> T::AccountId {
 
 fn init<T: Config>() {
     let owner = alice::<T>();
-    frame_system::Module::<T>::inc_providers(&owner);
+    frame_system::Pallet::<T>::inc_providers(&owner);
 
-    permissions::Module::<T>::assign_permission(
+    permissions::Pallet::<T>::assign_permission(
         owner.clone(),
         &owner,
         permissions::MINT,
@@ -63,26 +60,26 @@ fn init<T: Config>() {
     )
     .unwrap();
 
-    assets::Module::<T>::mint_to(&XOR.into(), &owner.clone(), &owner.clone(), balance!(50000))
+    assets::Pallet::<T>::mint_to(&XOR.into(), &owner.clone(), &owner.clone(), balance!(50000))
         .unwrap();
 
     let owner_origin: <T as frame_system::Config>::Origin = RawOrigin::Signed(owner.clone()).into();
 
-    assets::Module::<T>::mint_to(
+    assets::Pallet::<T>::mint_to(
         &VAL.into(),
         &owner.clone(),
         &owner.clone(),
         balance!(50000000),
     )
     .unwrap();
-    pool_xyk::Module::<T>::initialize_pool(
+    pool_xyk::Pallet::<T>::initialize_pool(
         owner_origin.clone(),
         T::DEXIdValue::get(),
         XOR.into(),
         VAL.into(),
     )
     .unwrap();
-    pool_xyk::Module::<T>::deposit_liquidity(
+    pool_xyk::Pallet::<T>::deposit_liquidity(
         owner_origin.clone(),
         T::DEXIdValue::get(),
         XOR.into(),
@@ -94,21 +91,21 @@ fn init<T: Config>() {
     )
     .unwrap();
 
-    assets::Module::<T>::mint_to(
+    assets::Pallet::<T>::mint_to(
         &DAI.into(),
         &owner.clone(),
         &owner.clone(),
         balance!(50000000),
     )
     .unwrap();
-    pool_xyk::Module::<T>::initialize_pool(
+    pool_xyk::Pallet::<T>::initialize_pool(
         owner_origin.clone(),
         T::DEXIdValue::get(),
         XOR.into(),
         DAI.into(),
     )
     .unwrap();
-    pool_xyk::Module::<T>::deposit_liquidity(
+    pool_xyk::Pallet::<T>::deposit_liquidity(
         owner_origin.clone(),
         T::DEXIdValue::get(),
         XOR.into(),
@@ -120,18 +117,17 @@ fn init<T: Config>() {
     )
     .unwrap();
 }
-/*
+
 benchmarks! {
     remint {
         init::<T>();
-        assert_eq!(assets::Module::<T>::free_balance(&VAL.into(), &T::GetParliamentAccountId::get()), Ok(0));
+        assert_eq!(assets::Pallet::<T>::free_balance(&VAL.into(), &T::GetParliamentAccountId::get()), Ok(0));
     }: {
-        xor_fee::Module::<T>::remint(balance!(0.1)).unwrap();
+        xor_fee::Pallet::<T>::remint(balance!(0.1)).unwrap();
     } verify {
-        let val_burned: Balance = pallet_staking::Module::<T>::era_val_burned().unique_saturated_into();
+        let val_burned: Balance = pallet_staking::Pallet::<T>::era_val_burned().unique_saturated_into();
         assert_eq!(val_burned, balance!(0.199380121801856354));
 
-        assert_eq!(assets::Module::<T>::free_balance(&VAL.into(), &T::GetParliamentAccountId::get()), Ok(balance!(0.019938012180185635)));
+        assert_eq!(assets::Pallet::<T>::free_balance(&VAL.into(), &T::GetParliamentAccountId::get()), Ok(balance!(0.019938012180185635)));
     }
 }
-*/

@@ -145,8 +145,9 @@ impl assets::Config for Runtime {
         common::AssetIdExtraAssetRecordArg<DEXId, common::LiquiditySourceType, AccountId>;
     type AssetId = AssetId;
     type GetBaseAssetId = GetBaseAssetId;
-    type Currency = currencies::Module<Runtime>;
+    type Currency = currencies::Pallet<Runtime>;
     type GetTeamReservesAccountId = GetTeamReservesAccountId;
+    type GetTotalBalance = ();
     type WeightInfo = ();
 }
 

@@ -35,8 +35,8 @@ use common::prelude::{
 };
 use common::{
     self, balance, fixed, fixed_wrapper, hash, Amount, AssetId32, AssetName, AssetSymbol, DEXInfo,
-    Fixed, LiquiditySourceFilter, LiquiditySourceType, TechPurpose, VestedRewardsPallet, PSWAP,
-    USDT, VAL, XOR, XSTUSD,
+    Fixed, LiquiditySourceFilter, LiquiditySourceType, TechPurpose, VestedRewardsPallet,
+    DEFAULT_BALANCE_PRECISION, PSWAP, USDT, VAL, XOR, XSTUSD,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{Everything, GenesisBuild};
@@ -172,7 +172,7 @@ impl dex_manager::Config for Runtime {}
 
 impl trading_pair::Config for Runtime {
     type Event = Event;
-    type EnsureDEXManager = dex_manager::Module<Runtime>;
+    type EnsureDEXManager = dex_manager::Pallet<Runtime>;
     type WeightInfo = ();
 }
 
@@ -185,8 +185,8 @@ impl mock_liquidity_source::Config<mock_liquidity_source::Instance1> for Runtime
 impl Config for Runtime {
     type Event = Event;
     type LiquidityProxy = MockDEXApi;
-    type EnsureTradingPairExists = trading_pair::Module<Runtime>;
-    type EnsureDEXManager = dex_manager::Module<Runtime>;
+    type EnsureTradingPairExists = trading_pair::Pallet<Runtime>;
+    type EnsureDEXManager = dex_manager::Pallet<Runtime>;
     type PriceToolsPallet = MockDEXApi;
     type VestedRewardsPallet = MockVestedRewards;
     type WeightInfo = ();
@@ -194,8 +194,14 @@ impl Config for Runtime {
 
 pub struct MockVestedRewards;
 
-impl VestedRewardsPallet<AccountId> for MockVestedRewards {
-    fn update_market_maker_records(_: &AccountId, _: Balance, _: u32) -> DispatchResult {
+impl VestedRewardsPallet<AccountId, AssetId> for MockVestedRewards {
+    fn update_market_maker_records(
+        _: &AccountId,
+        _: Balance,
+        _: u32,
+        _: &AssetId,
+        _: &AssetId,
+    ) -> DispatchResult {
         // do nothing
         Ok(())
     }
@@ -252,8 +258,9 @@ impl assets::Config for Runtime {
         common::AssetIdExtraAssetRecordArg<common::DEXId, common::LiquiditySourceType, [u8; 32]>;
     type AssetId = AssetId;
     type GetBaseAssetId = GetBaseAssetId;
-    type Currency = currencies::Module<Runtime>;
+    type Currency = currencies::Pallet<Runtime>;
     type GetTeamReservesAccountId = GetTeamReservesAccountId;
+    type GetTotalBalance = ();
     type WeightInfo = ();
 }
 
@@ -306,7 +313,7 @@ impl pool_xyk::Config for Runtime {
     type WithdrawLiquidityAction =
         pool_xyk::WithdrawLiquidityAction<AssetId, AccountId, TechAccountId>;
     type PolySwapAction = pool_xyk::PolySwapAction<AssetId, AccountId, TechAccountId>;
-    type EnsureDEXManager = dex_manager::Module<Runtime>;
+    type EnsureDEXManager = dex_manager::Pallet<Runtime>;
     type GetFee = GetXykFee;
     type OnPoolCreated = PswapDistribution;
     type OnPoolReservesChanged = ();
@@ -552,7 +559,7 @@ impl Default for ExtBuilder {
                     0,
                     AssetSymbol(b"USDT".to_vec()),
                     AssetName(b"Tether USD".to_vec()),
-                    18,
+                    DEFAULT_BALANCE_PRECISION,
                 ),
                 (
                     alice(),
@@ -560,7 +567,7 @@ impl Default for ExtBuilder {
                     balance!(350000),
                     AssetSymbol(b"XOR".to_vec()),
                     AssetName(b"SORA".to_vec()),
-                    18,
+                    DEFAULT_BALANCE_PRECISION,
                 ),
                 (
                     alice(),
@@ -568,7 +575,7 @@ impl Default for ExtBuilder {
                     balance!(500000),
                     AssetSymbol(b"VAL".to_vec()),
                     AssetName(b"SORA Validator Token".to_vec()),
-                    18,
+                    DEFAULT_BALANCE_PRECISION,
                 ),
                 (
                     alice(),
@@ -576,7 +583,7 @@ impl Default for ExtBuilder {
                     balance!(0),
                     AssetSymbol(b"PSWAP".to_vec()),
                     AssetName(b"Polkaswap Token".to_vec()),
-                    18,
+                    DEFAULT_BALANCE_PRECISION,
                 ),
                 (
                     alice(),
@@ -584,7 +591,7 @@ impl Default for ExtBuilder {
                     balance!(100),
                     AssetSymbol(b"XSTUSD".to_vec()),
                     AssetName(b"SORA Synthetic USD".to_vec()),
-                    18,
+                    DEFAULT_BALANCE_PRECISION,
                 ),
                 (
                     alice(),
@@ -592,7 +599,7 @@ impl Default for ExtBuilder {
                     balance!(100),
                     AssetSymbol(b"DAI".to_vec()),
                     AssetName(b"DAI".to_vec()),
-                    18,
+                    DEFAULT_BALANCE_PRECISION,
                 ),
             ],
             dex_list: vec![(
@@ -701,6 +708,8 @@ impl ExtBuilder {
                         precision,
                         Balance::zero(),
                         true,
+                        None,
+                        None,
                     )
                 })
                 .collect(),

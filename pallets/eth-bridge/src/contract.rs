@@ -32,6 +32,7 @@ use alloc::boxed::Box;
 use ethabi::Function;
 use ethabi_contract::use_contract;
 use frame_support::sp_io::hashing::keccak_256;
+#[cfg(feature = "std")]
 use frame_support::RuntimeDebug;
 use once_cell::race::OnceBox;
 use sp_core::H256;

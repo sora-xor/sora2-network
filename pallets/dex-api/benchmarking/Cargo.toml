@@ -12,6 +12,9 @@ targets = ['x86_64-unknown-linux-gnu']
 
 [dependencies]
 codec = { package = "parity-scale-codec", version = "2", default-features = false, features = ["derive"] }
+scale-info = { version = "1.0.0", default-features = false, features = [
+    "derive",
+] }
 frame-benchmarking = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.9", default-features = false }
 frame-support = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.9", default-features = false }
 frame-system = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.9", default-features = false }
@@ -43,6 +46,7 @@ vested-rewards = { path = "../../vested-rewards" }
 default = ['std']
 std = [
     'codec/std',
+    "scale-info/std",
     'frame-support/std',
     'frame-system/std',
     'frame-benchmarking/std',

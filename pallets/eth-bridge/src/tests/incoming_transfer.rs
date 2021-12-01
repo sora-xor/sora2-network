@@ -169,7 +169,7 @@ fn should_cancel_incoming_transfer() {
             Assets::total_balance(&XOR.into(), &alice).unwrap(),
             100000u32.into()
         );
-        Assets::unreserve(XOR.into(), &bridge_acc_id, 100u32.into()).unwrap();
+        Assets::unreserve(&XOR.into(), &bridge_acc_id, 100u32.into()).unwrap();
         Assets::transfer_from(&XOR.into(), &bridge_acc_id, &bob, 100u32.into()).unwrap();
         let req_hash = crate::LoadToIncomingRequestHash::<Runtime>::get(net_id, tx_hash);
         assert_err!(
@@ -285,13 +285,13 @@ fn should_take_fee_in_incoming_transfer() {
             should_take_fee: true,
         });
         assert_eq!(
-            assets::Module::<Runtime>::total_balance(&PredefinedAssetId::XOR.into(), &alice)
+            assets::Pallet::<Runtime>::total_balance(&PredefinedAssetId::XOR.into(), &alice)
                 .unwrap(),
             0
         );
         assert_incoming_request_done(&state, incoming_transfer.clone()).unwrap();
         assert_eq!(
-            assets::Module::<Runtime>::total_balance(&PredefinedAssetId::XOR.into(), &alice)
+            assets::Pallet::<Runtime>::total_balance(&PredefinedAssetId::XOR.into(), &alice)
                 .unwrap(),
             balance!(99.9993).into()
         );

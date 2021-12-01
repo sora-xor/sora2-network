@@ -23,7 +23,7 @@ pub enum BombDelay {
 
 /// Describes when hard forks occurred that affect difficulty calculations. These
 /// values are network-specific.
-#[derive(Copy, Clone, Encode, Decode, PartialEq, RuntimeDebug)]
+#[derive(Copy, Clone, Encode, Decode, PartialEq, RuntimeDebug, scale_info::TypeInfo)]
 pub struct DifficultyConfig {
     // Block number on which Byzantium (EIP-649) rules activated
     pub byzantium_fork_block: u64,
@@ -120,7 +120,10 @@ mod tests {
     use ethereum_types::H256;
     use serde::{Deserialize, Deserializer};
     use sp_std::convert::TryInto;
-    use std::{collections::BTreeMap, fmt::Display, fs::File, path::PathBuf};
+    use std::collections::BTreeMap;
+    use std::fmt::Display;
+    use std::fs::File;
+    use std::path::PathBuf;
 
     pub fn deserialize_uint_from_string<'de, T, D>(deserializer: D) -> Result<T, D::Error>
     where

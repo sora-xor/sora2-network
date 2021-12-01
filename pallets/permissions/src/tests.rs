@@ -33,7 +33,7 @@ use crate::*;
 use frame_support::assert_ok;
 use sp_core::hash::H512;
 
-type Permissions = Module<Runtime>;
+type Permissions = Pallet<Runtime>;
 
 // The id for the user-created permission
 const CUSTOM_PERMISSION: PermissionId = 10001;

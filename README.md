@@ -153,6 +153,11 @@ subcommands:
 * [Alice and Bob Start Blockchain](https://substrate.dev/docs/en/tutorials/start-a-private-network/alicebob)
 * [Node Management](https://wiki.polkadot.network/docs/en/build-node-management)
 
+## Useful utilities
+
+- `utils/parse` - parses extrinsic blobs
+- `utils/wasm-builder` - a tool for building only WASM blobs (improves build times)
+
 ## Logging
 
 ### The Polkadot client has a number of log targets. The most interesting to users may be:

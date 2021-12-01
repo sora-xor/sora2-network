@@ -6,7 +6,9 @@ use sp_core::{RuntimeDebug, H160, U256};
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 
-#[derive(Encode, Decode, Copy, Clone, PartialEq, Eq, PartialOrd, RuntimeDebug)]
+#[derive(
+    Encode, Decode, Copy, Clone, PartialEq, Eq, PartialOrd, RuntimeDebug, scale_info::TypeInfo,
+)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum AssetId {
     ETH,
