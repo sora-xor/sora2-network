@@ -15,6 +15,7 @@ use frame_support::weights::Weight;
 
 pub trait WeightInfo {
     fn lock_liquidity() -> Weight;
+    fn change_ceres_fee() -> Weight;
 }
 
 #[derive(Encode, Decode, Default, PartialEq, Eq)]
@@ -265,7 +266,7 @@ pub mod pallet {
         }
 
         /// Change CERES fee
-        #[pallet::weight(10000)]
+        #[pallet::weight(<T as Config>::WeightInfo::change_ceres_fee())]
         pub fn change_ceres_fee(
             origin: OriginFor<T>,
             ceres_fee: Balance,
