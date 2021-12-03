@@ -61,6 +61,10 @@ benchmarks! {
 
     unreserve {
         let caller = alice::<T>();
+        // ALICE account on local has funds so we withdraw it first
+        let balance = T::Currency::total_balance(XOR.into(), &caller);
+        T::Currency::withdraw(XOR.into(), &caller, balance).unwrap();
+
         T::Currency::deposit(XOR.into(), &caller, balance!(50000)).unwrap();
         Module::<T>::reserve(RawOrigin::Signed(alice::<T>()).into(), SMALL_FEE).unwrap();
     }: {
