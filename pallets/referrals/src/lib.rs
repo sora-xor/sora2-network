@@ -46,6 +46,20 @@ pub trait WeightInfo {
     fn set_referrer() -> Weight;
 }
 
+impl WeightInfo for () {
+    fn reserve() -> Weight {
+        0
+    }
+
+    fn unreserve() -> Weight {
+        0
+    }
+
+    fn set_referrer() -> Weight {
+        0
+    }
+}
+
 impl<T: Config> Module<T> {
     pub fn set_referrer_to(
         referral: &T::AccountId,
