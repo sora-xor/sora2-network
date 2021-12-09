@@ -46,12 +46,9 @@ use frame_support::dispatch::{DispatchErrorWithPostInfo, DispatchResultWithPostI
 use sp_runtime::DispatchError;
 
 pub mod constants {
-    use crate::{balance, Balance};
     use frame_support::weights::Weight;
 
     pub const EXTRINSIC_FIXED_WEIGHT: Weight = 100_000_000;
-    pub const SMALL_FEE: Balance = balance!(0.0007);
-    pub const BIG_FEE: Balance = balance!(0.007);
 }
 
 pub struct PresetWeightInfo<T>(PhantomData<T>);

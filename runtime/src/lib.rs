@@ -216,10 +216,10 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
     spec_name: create_runtime_str!("sora-substrate"),
     impl_name: create_runtime_str!("sora-substrate"),
     authoring_version: 1,
-    spec_version: 11,
+    spec_version: 19,
     impl_version: 1,
     apis: RUNTIME_API_VERSIONS,
-    transaction_version: 11,
+    transaction_version: 19,
 };
 
 /// The version infromation used to identify this runtime when compiled natively.
@@ -997,6 +997,8 @@ impl xor_fee::WithdrawFee<Runtime> for WithdrawFee {
         call: &Call,
         fee: Balance,
     ) -> Result<(AccountId, Option<NegativeImbalanceOf<Runtime>>), DispatchError> {
+        frame_support::debug::debug!("{:?}", call);
+        println!("dd {:?}", call);
         match call {
             Call::Referrals(referrals::Call::set_referrer(referrer))
                 if Referrals::can_set_referrer(who) =>
@@ -1439,6 +1441,22 @@ impl price_tools::Config for Runtime {
     type WeightInfo = price_tools::weights::WeightInfo<Runtime>;
 }
 
+parameter_types! {
+    pub const CeresPerDay: Balance = balance!(6.66666666667);
+    pub const CeresAssetId: AssetId = common::AssetId32::from_bytes
+        (hex!("008bcfd2387d3fc453333557eecb0efe59fcba128769b2feefdd306e98e66440"));
+    pub const MaximumCeresInStakingPool: Balance = balance!(7200);
+}
+
+impl ceres_staking::Config for Runtime {
+    const BLOCKS_PER_ONE_DAY: BlockNumber = 1 * DAYS;
+    type Event = Event;
+    type CeresPerDay = CeresPerDay;
+    type CeresAssetId = CeresAssetId;
+    type MaximumCeresInStakingPool = MaximumCeresInStakingPool;
+    type WeightInfo = ceres_staking::weights::WeightInfo<Runtime>;
+}
+
 /// Payload data to be signed when making signed transaction from off-chain workers,
 ///   inside `create_transaction` function.
 pub type SignedPayload = generic::SignedPayload<Call, SignedExtra>;
@@ -1509,6 +1527,7 @@ construct_runtime! {
         Farming: farming::{Module, Call, Storage} = 42,
         XSTPool: xst::{Module, Call, Storage, Config<T>, Event<T>} = 43,
         PriceTools: price_tools::{Module, Storage, Event<T>} = 44,
+        CeresStaking: ceres_staking::{Module, Call, Storage, Event<T>} = 45,
 
         // Available only for test net
         Faucet: faucet::{Module, Call, Config<T>, Event<T>} = 80,
@@ -1572,6 +1591,7 @@ construct_runtime! {
         Farming: farming::{Module, Call, Storage} = 42,
         XSTPool: xst::{Module, Call, Storage, Config<T>, Event<T>} = 43,
         PriceTools: price_tools::{Module, Storage, Event<T>} = 44,
+        CeresStaking: ceres_staking::{Module, Call, Storage, Event<T>} = 45,
     }
 }
 
@@ -1749,6 +1769,7 @@ impl_runtime_apis! {
                     &input_asset_id,
                     &output_asset_id,
                     QuoteAmount::with_variant(swap_variant, desired_input_amount.into()),
+                    true,
                 ).ok().map(|sa| dex_runtime_api::SwapOutcomeInfo::<Balance> { amount: sa.amount, fee: sa.fee})
             }
             #[cfg(not(feature = "private-net"))]
@@ -1861,10 +1882,6 @@ impl_runtime_apis! {
                 asset_id, symbol, name, precision, is_mintable,
             })
         }
-
-        fn get_asset_content_src(asset_id: AssetId) -> Option<ContentSource> {
-            Assets::get_asset_content_src(&asset_id)
-        }
     }
 
     impl
@@ -1966,6 +1983,7 @@ impl_runtime_apis! {
                 QuoteAmount::with_variant(swap_variant, amount.into()),
                 LiquiditySourceFilter::with_mode(dex_id, filter_mode, selected_source_types),
                 false,
+                true,
             ).ok().map(|(asa, rewards, amount_without_impact)| liquidity_proxy_runtime_api::SwapOutcomeInfo::<Balance, AssetId> {
                 amount: asa.amount,
                 fee: asa.fee,
@@ -2163,6 +2181,7 @@ impl_runtime_apis! {
             add_benchmark!(params, batches, price_tools, PriceTools);
             add_benchmark!(params, batches, xor_fee, XorFeeBench::<Runtime>);
             add_benchmark!(params, batches, referrals, Referrals);
+            add_benchmark!(params, batches, ceres_staking, CeresStaking);
 
             if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
             Ok(batches)

@@ -120,6 +120,7 @@ fn test_different_reserves_should_pass() {
             &XOR,
             &DOT,
             QuoteAmount::with_desired_input(balance!(100)),
+            true,
         );
         assert_eq!(
             res1.unwrap().amount,
@@ -130,6 +131,7 @@ fn test_different_reserves_should_pass() {
             &XOR,
             &DOT,
             QuoteAmount::with_desired_input(balance!(100)),
+            true,
         );
         assert_eq!(
             res2.unwrap().amount,

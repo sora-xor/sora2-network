@@ -35,9 +35,9 @@ pipeline {
         }
         stage('Build & Tests') {
             environment {
-                PACKAGE       = 'framenode-runtime'
-                RUSTFLAGS     = '-Dwarnings'
-                RUNTIME_DIR   = 'runtime'
+                PACKAGE = 'framenode-runtime'
+                RUSTFLAGS = '-Dwarnings'
+                RUNTIME_DIR = 'runtime'
                 RUSTC_VERSION = "${rustcVersion}"
             }
             steps {
@@ -57,9 +57,9 @@ pipeline {
                                 else if (env.TAG_NAME) {
                                     featureList = 'include-real-files'
                                 }
-                                sh """#!/bin/bash
+                                sh """
                                     time cargo build --release --features \"${featureList}\" --target-dir /app/target/
-                                    time cargo test  --release --target-dir /app/target/
+                                    time cargo test  --release
                                     sccache -s
                                     time mv /app/target/release/framenode .
                                     time wasm-opt -Os -o ./framenode_runtime.compact.wasm /app/target/release/wbuild/framenode-runtime/framenode_runtime.compact.wasm
@@ -70,13 +70,13 @@ pipeline {
                             }
                         } else {
                             docker.image(envImageName + ':dev').inside() {
-                                sh '''#!/bin/bash
+                                sh '''
                                     time cargo fmt -- --check > /dev/null
-                                    time cargo check --target-dir /app/target/
-                                    time cargo test  --target-dir /app/target/
-                                    time cargo check --features private-net        --target-dir /app/target/
-                                    time cargo test  --features private-net        --target-dir /app/target/
-                                    time cargo check --features runtime-benchmarks --target-dir /app/target/
+                                    time cargo check
+                                    time cargo test
+                                    time cargo check --features private-net
+                                    time cargo test  --features private-net
+                                    time cargo check --features runtime-benchmarks
                                     sccache -s
                                 '''
                             }

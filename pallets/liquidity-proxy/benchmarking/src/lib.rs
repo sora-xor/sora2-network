@@ -110,8 +110,6 @@ fn setup_benchmark<T: Config>() -> Result<(), &'static str> {
         DEFAULT_BALANCE_PRECISION,
         Balance::zero(),
         true,
-        None,
-        None,
     );
     let _ = Assets::<T>::register_asset_id(
         owner.clone(),
@@ -121,8 +119,6 @@ fn setup_benchmark<T: Config>() -> Result<(), &'static str> {
         DEFAULT_BALANCE_PRECISION,
         Balance::zero(),
         true,
-        None,
-        None,
     );
     let _ = Assets::<T>::register_asset_id(
         owner.clone(),
@@ -132,8 +128,6 @@ fn setup_benchmark<T: Config>() -> Result<(), &'static str> {
         DEFAULT_BALANCE_PRECISION,
         Balance::zero(),
         true,
-        None,
-        None,
     );
     let _ = Assets::<T>::register_asset_id(
         owner.clone(),
@@ -143,8 +137,6 @@ fn setup_benchmark<T: Config>() -> Result<(), &'static str> {
         DEFAULT_BALANCE_PRECISION,
         Balance::zero(),
         true,
-        None,
-        None,
     );
     Assets::<T>::mint_to(&XOR.into(), &owner.clone(), &owner.clone(), balance!(50000)).unwrap();
     Assets::<T>::mint_to(

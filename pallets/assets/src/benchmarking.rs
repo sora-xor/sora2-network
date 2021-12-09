@@ -67,9 +67,6 @@ fn add_assets<T: Config>(n: u32) -> Result<(), &'static str> {
             AssetName(b"TOKEN".to_vec()),
             Balance::zero(),
             true,
-            false,
-            None,
-            None,
         )?;
     }
 
@@ -94,10 +91,7 @@ benchmarks! {
         AssetSymbol(b"NEWT".to_vec()),
         AssetName(b"NEWT".to_vec()),
         Balance::zero(),
-        true,
-        false,
-        None,
-        None
+        true
     )
     verify {
         let (asset_id, _) = AssetOwners::<T>::iter().find(|(k, v)| v == &caller).unwrap();
@@ -116,8 +110,6 @@ benchmarks! {
             DEFAULT_BALANCE_PRECISION,
             Balance::zero(),
             true,
-            None,
-            None,
         );
     }: _(
         RawOrigin::Signed(caller.clone()),
@@ -141,8 +133,6 @@ benchmarks! {
             DEFAULT_BALANCE_PRECISION,
             Balance::zero(),
             true,
-            None,
-            None,
         ).unwrap();
     }: _(
         RawOrigin::Signed(caller.clone()),
@@ -166,8 +156,6 @@ benchmarks! {
             DEFAULT_BALANCE_PRECISION,
             Balance::zero(),
             true,
-            None,
-            None,
         ).unwrap();
         Assets::<T>::mint(
             RawOrigin::Signed(caller.clone()).into(),
@@ -196,8 +184,6 @@ benchmarks! {
             DEFAULT_BALANCE_PRECISION,
             Balance::zero(),
             true,
-            None,
-            None,
         ).unwrap();
     }: _(
         RawOrigin::Signed(caller.clone()),

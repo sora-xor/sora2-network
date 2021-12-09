@@ -33,8 +33,7 @@ use common::mock::ExistentialDeposits;
 use common::{
     self, balance, fixed, fixed_from_basis_points, fixed_wrapper, hash, Amount, AssetId32,
     AssetName, AssetSymbol, DEXInfo, Fixed, FromGenericPair, GetMarketInfo, LiquiditySource,
-    LiquiditySourceType, RewardReason, DAI, DEFAULT_BALANCE_PRECISION, DOT, ETH, KSM, PSWAP, USDT,
-    VAL, XOR, XSTUSD,
+    LiquiditySourceType, RewardReason, DAI, DOT, ETH, KSM, PSWAP, USDT, VAL, XOR, XSTUSD,
 };
 use currencies::BasicCurrencyAdapter;
 
@@ -433,7 +432,7 @@ impl Default for ExtBuilder {
                     balance!(0),
                     AssetSymbol(b"XOR".to_vec()),
                     AssetName(b"SORA".to_vec()),
-                    DEFAULT_BALANCE_PRECISION,
+                    18,
                 ),
                 (
                     alice(),
@@ -441,7 +440,7 @@ impl Default for ExtBuilder {
                     balance!(0),
                     AssetSymbol(b"VAL".to_vec()),
                     AssetName(b"SORA Validator Token".to_vec()),
-                    DEFAULT_BALANCE_PRECISION,
+                    18,
                 ),
                 (
                     alice(),
@@ -449,7 +448,7 @@ impl Default for ExtBuilder {
                     balance!(0),
                     AssetSymbol(b"PSWAP".to_vec()),
                     AssetName(b"Polkaswap Token".to_vec()),
-                    DEFAULT_BALANCE_PRECISION,
+                    18,
                 ),
                 (
                     alice(),
@@ -457,7 +456,7 @@ impl Default for ExtBuilder {
                     balance!(0),
                     AssetSymbol(b"USDT".to_vec()),
                     AssetName(b"Tether".to_vec()),
-                    DEFAULT_BALANCE_PRECISION,
+                    18,
                 ),
             ],
         }
@@ -522,6 +521,7 @@ impl LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> for Mock
         input_asset_id: &AssetId,
         output_asset_id: &AssetId,
         amount: QuoteAmount<Balance>,
+        deduce_fee: bool,
     ) -> Result<SwapOutcome<Balance>, DispatchError> {
         if !Self::can_exchange(dex_id, input_asset_id, output_asset_id) {
             panic!("Can't exchange");
@@ -550,7 +550,11 @@ impl LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> for Mock
                 .get()
                 .unwrap();
 
-            let extra_fee = FixedWrapper::from(undercollaterization_charge(collateralization));
+            let extra_fee = if deduce_fee {
+                FixedWrapper::from(undercollaterization_charge(collateralization))
+            } else {
+                0.into()
+            };
 
             match amount {
                 QuoteAmount::WithDesiredInput {
@@ -656,9 +660,10 @@ impl LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> for Mock
         input_asset_id: &AssetId,
         output_asset_id: &AssetId,
         amount: QuoteAmount<Balance>,
+        deduce_fee: bool,
     ) -> Result<SwapOutcome<Balance>, DispatchError> {
         // TODO: implement if needed
-        Self::quote(dex_id, input_asset_id, output_asset_id, amount)
+        Self::quote(dex_id, input_asset_id, output_asset_id, amount, deduce_fee)
     }
 }
 
@@ -834,8 +839,6 @@ impl ExtBuilder {
                         precision,
                         balance!(0),
                         true,
-                        None,
-                        None,
                     )
                 })
                 .collect(),
@@ -878,6 +881,7 @@ impl LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> for Mock
         input_asset_id: &AssetId,
         output_asset_id: &AssetId,
         amount: QuoteAmount<Balance>,
+        _deduce_fee: bool,
     ) -> Result<SwapOutcome<Balance>, DispatchError> {
         if !Self::can_exchange(dex_id, input_asset_id, output_asset_id) {
             panic!("Can't exchange");
@@ -961,9 +965,10 @@ impl LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> for Mock
         input_asset_id: &AssetId,
         output_asset_id: &AssetId,
         amount: QuoteAmount<Balance>,
+        deduce_fee: bool,
     ) -> Result<SwapOutcome<Balance>, DispatchError> {
         // TODO: implement if needed
-        Self::quote(dex_id, input_asset_id, output_asset_id, amount)
+        Self::quote(dex_id, input_asset_id, output_asset_id, amount, deduce_fee)
     }
 }
 

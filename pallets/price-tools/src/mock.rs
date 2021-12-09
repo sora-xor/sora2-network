@@ -33,7 +33,7 @@ use common::mock::ExistentialDeposits;
 use common::prelude::{Balance, QuoteAmount, SwapAmount, SwapOutcome};
 use common::{
     self, balance, fixed, hash, Amount, AssetId32, AssetName, AssetSymbol, DEXInfo, Fixed,
-    LiquiditySourceFilter, LiquiditySourceType, DEFAULT_BALANCE_PRECISION, PSWAP, USDT, VAL, XOR,
+    LiquiditySourceFilter, LiquiditySourceType, PSWAP, USDT, VAL, XOR,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::GenesisBuild;
@@ -272,6 +272,7 @@ impl liquidity_proxy::LiquidityProxyTrait<DEXId, AccountId, AssetId> for MockDEX
         _output_asset_id: &AssetId,
         _amount: QuoteAmount<Balance>,
         _filter: LiquiditySourceFilter<DEXId, LiquiditySourceType>,
+        _deduce_fee: bool,
     ) -> Result<SwapOutcome<Balance>, DispatchError> {
         Err(DispatchError::CannotLookup)
     }
@@ -294,7 +295,7 @@ impl Default for ExtBuilder {
                     0,
                     AssetSymbol(b"USDT".to_vec()),
                     AssetName(b"Tether USD".to_vec()),
-                    DEFAULT_BALANCE_PRECISION,
+                    18,
                 ),
                 (
                     alice(),
@@ -302,7 +303,7 @@ impl Default for ExtBuilder {
                     balance!(350000),
                     AssetSymbol(b"XOR".to_vec()),
                     AssetName(b"SORA".to_vec()),
-                    DEFAULT_BALANCE_PRECISION,
+                    18,
                 ),
                 (
                     alice(),
@@ -310,7 +311,7 @@ impl Default for ExtBuilder {
                     balance!(500000),
                     AssetSymbol(b"VAL".to_vec()),
                     AssetName(b"SORA Validator Token".to_vec()),
-                    DEFAULT_BALANCE_PRECISION,
+                    18,
                 ),
                 (
                     alice(),
@@ -318,7 +319,7 @@ impl Default for ExtBuilder {
                     balance!(0),
                     AssetSymbol(b"PSWAP".to_vec()),
                     AssetName(b"Polkaswap Token".to_vec()),
-                    DEFAULT_BALANCE_PRECISION,
+                    18,
                 ),
             ],
             dex_list: vec![(
@@ -396,8 +397,6 @@ impl ExtBuilder {
                         precision,
                         Balance::zero(),
                         true,
-                        None,
-                        None,
                     )
                 })
                 .collect(),

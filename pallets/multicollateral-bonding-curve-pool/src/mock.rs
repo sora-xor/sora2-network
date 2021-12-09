@@ -35,8 +35,8 @@ use common::prelude::{
 };
 use common::{
     self, balance, fixed, fixed_wrapper, hash, Amount, AssetId32, AssetName, AssetSymbol, DEXInfo,
-    Fixed, LiquiditySourceFilter, LiquiditySourceType, TechPurpose, VestedRewardsPallet,
-    DEFAULT_BALANCE_PRECISION, PSWAP, USDT, VAL, XOR, XSTUSD,
+    Fixed, LiquiditySourceFilter, LiquiditySourceType, TechPurpose, VestedRewardsPallet, PSWAP,
+    USDT, VAL, XOR, XSTUSD,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::GenesisBuild;
@@ -363,11 +363,12 @@ impl MockDEXApi {
         input_asset_id: &AssetId,
         output_asset_id: &AssetId,
         amount: QuoteAmount<Balance>,
+        deduce_fee: bool,
     ) -> Result<SwapOutcome<Balance>, DispatchError> {
         match amount {
             QuoteAmount::WithDesiredInput {
                 desired_amount_in, ..
-            } => {
+            } if deduce_fee => {
                 let amount_out = FixedWrapper::from(desired_amount_in)
                     * get_mock_prices()[&(*input_asset_id, *output_asset_id)];
                 let fee = amount_out.clone() * balance!(0.003);
@@ -376,9 +377,16 @@ impl MockDEXApi {
                 let amount_out = amount_out - fee;
                 Ok(SwapOutcome::new(amount_out, fee))
             }
+            QuoteAmount::WithDesiredInput {
+                desired_amount_in, ..
+            } => {
+                let amount_out = FixedWrapper::from(desired_amount_in)
+                    * get_mock_prices()[&(*input_asset_id, *output_asset_id)];
+                Ok(SwapOutcome::new(amount_out.into_balance(), 0))
+            }
             QuoteAmount::WithDesiredOutput {
                 desired_amount_out, ..
-            } => {
+            } if deduce_fee => {
                 let amount_in = FixedWrapper::from(desired_amount_out)
                     / get_mock_prices()[&(*input_asset_id, *output_asset_id)];
                 let with_fee = amount_in.clone() / balance!(0.997);
@@ -386,6 +394,13 @@ impl MockDEXApi {
                 let fee = fee.into_balance();
                 let with_fee = with_fee.into_balance();
                 Ok(SwapOutcome::new(with_fee, fee))
+            }
+            QuoteAmount::WithDesiredOutput {
+                desired_amount_out, ..
+            } => {
+                let amount_in = FixedWrapper::from(desired_amount_out)
+                    / get_mock_prices()[&(*input_asset_id, *output_asset_id)];
+                Ok(SwapOutcome::new(amount_in.into_balance(), 0))
             }
         }
     }
@@ -407,6 +422,7 @@ impl MockDEXApi {
                     input_asset_id,
                     output_asset_id,
                     swap_amount.into(),
+                    true,
                 )?;
                 let reserves_account_id =
                     &Technical::tech_account_id_to_account_id(&ReservesAccount::get())?;
@@ -436,6 +452,7 @@ impl MockDEXApi {
                     input_asset_id,
                     output_asset_id,
                     swap_amount.into(),
+                    true,
                 )?;
                 let reserves_account_id =
                     &Technical::tech_account_id_to_account_id(&ReservesAccount::get())?;
@@ -511,8 +528,15 @@ impl liquidity_proxy::LiquidityProxyTrait<DEXId, AccountId, AssetId> for MockDEX
         output_asset_id: &AssetId,
         amount: QuoteAmount<Balance>,
         filter: LiquiditySourceFilter<DEXId, LiquiditySourceType>,
+        deduce_fee: bool,
     ) -> Result<SwapOutcome<Balance>, DispatchError> {
-        Self::inner_quote(&filter.dex_id, input_asset_id, output_asset_id, amount)
+        Self::inner_quote(
+            &filter.dex_id,
+            input_asset_id,
+            output_asset_id,
+            amount,
+            deduce_fee,
+        )
     }
 }
 
@@ -526,6 +550,7 @@ impl PriceToolsPallet<AssetId> for MockDEXApi {
             input_asset_id,
             output_asset_id,
             QuoteAmount::with_desired_input(balance!(1)),
+            true,
         )?
         .amount)
     }
@@ -554,7 +579,7 @@ impl Default for ExtBuilder {
                     0,
                     AssetSymbol(b"USDT".to_vec()),
                     AssetName(b"Tether USD".to_vec()),
-                    DEFAULT_BALANCE_PRECISION,
+                    18,
                 ),
                 (
                     alice(),
@@ -562,7 +587,7 @@ impl Default for ExtBuilder {
                     balance!(350000),
                     AssetSymbol(b"XOR".to_vec()),
                     AssetName(b"SORA".to_vec()),
-                    DEFAULT_BALANCE_PRECISION,
+                    18,
                 ),
                 (
                     alice(),
@@ -570,7 +595,7 @@ impl Default for ExtBuilder {
                     balance!(500000),
                     AssetSymbol(b"VAL".to_vec()),
                     AssetName(b"SORA Validator Token".to_vec()),
-                    DEFAULT_BALANCE_PRECISION,
+                    18,
                 ),
                 (
                     alice(),
@@ -578,7 +603,7 @@ impl Default for ExtBuilder {
                     balance!(0),
                     AssetSymbol(b"PSWAP".to_vec()),
                     AssetName(b"Polkaswap Token".to_vec()),
-                    DEFAULT_BALANCE_PRECISION,
+                    18,
                 ),
                 (
                     alice(),
@@ -586,7 +611,7 @@ impl Default for ExtBuilder {
                     balance!(100),
                     AssetSymbol(b"XSTUSD".to_vec()),
                     AssetName(b"SORA Synthetic USD".to_vec()),
-                    DEFAULT_BALANCE_PRECISION,
+                    18,
                 ),
                 (
                     alice(),
@@ -594,7 +619,7 @@ impl Default for ExtBuilder {
                     balance!(100),
                     AssetSymbol(b"DAI".to_vec()),
                     AssetName(b"DAI".to_vec()),
-                    DEFAULT_BALANCE_PRECISION,
+                    18,
                 ),
             ],
             dex_list: vec![(
@@ -703,8 +728,6 @@ impl ExtBuilder {
                         precision,
                         Balance::zero(),
                         true,
-                        None,
-                        None,
                     )
                 })
                 .collect(),

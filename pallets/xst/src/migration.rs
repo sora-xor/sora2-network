@@ -28,15 +28,19 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use crate::{Config, Pallet, PermissionedTechAccount, Weight};
-use common::{
-    AssetName, AssetSymbol, Balance, FromGenericPair, LiquiditySourceType,
-    DEFAULT_BALANCE_PRECISION, XSTUSD,
-};
+use codec::Decode;
 use frame_support::debug;
 use frame_support::traits::{Get, GetPalletVersion};
+use hex_literal::hex;
 use permissions::{Scope, BURN, MINT};
 use sp_runtime::traits::Zero;
+
+use common::{
+    balance, AssetName, AssetSymbol, Balance, FromGenericPair, LiquiditySourceType, DAI, XOR,
+    XSTUSD,
+};
+
+use crate::{Config, EnabledSynthetics, Pallet, PermissionedTechAccount, ReferenceAssetId, Weight};
 
 pub fn migrate<T: Config>() -> Weight {
     let mut weight: Weight = 0;
@@ -44,11 +48,18 @@ pub fn migrate<T: Config>() -> Weight {
     match Pallet::<T>::storage_version() {
         // Register token when pallet is first created, i.e. None version
         None => {
+            debug::RuntimeLogger::init();
+
             let migrated_weight = register_new_token::<T>().unwrap_or(100_000);
             weight = weight.saturating_add(migrated_weight);
             let migrated_weight = register_xst_tech_account::<T>().unwrap_or(100_000);
             weight = weight.saturating_add(migrated_weight);
             weight = weight.saturating_add(register_in_dex_api::<T>());
+            let reference_asset: T::AssetId = DAI.into();
+            let initial_synthetic: T::AssetId = XSTUSD.into();
+            ReferenceAssetId::<T>::put(reference_asset);
+            EnabledSynthetics::<T>::mutate(|set| set.insert(initial_synthetic));
+            weight = weight.saturating_add(mint_initial_deposit::<T>());
         }
         _ => (),
     }
@@ -66,18 +77,14 @@ pub fn get_assets_owner_account<T: Config>() -> T::AccountId {
 }
 
 pub fn register_new_token<T: Config>() -> Option<Weight> {
-    debug::RuntimeLogger::init();
-
     let result = assets::Pallet::<T>::register_asset_id(
         get_assets_owner_account::<T>(),
         XSTUSD.into(),
         AssetSymbol(b"XSTUSD".to_vec()),
         AssetName(b"SORA Synthetic USD".to_vec()),
-        DEFAULT_BALANCE_PRECISION,
+        18,
         Balance::zero(),
         true,
-        None,
-        None,
     );
 
     if result.is_err() {
@@ -150,4 +157,29 @@ pub fn register_xst_tech_account<T: Config>() -> Option<Weight> {
 pub fn register_in_dex_api<T: Config>() -> Weight {
     dex_api::EnabledSourceTypes::<T>::mutate(|types| types.push(LiquiditySourceType::XSTPool));
     T::DbWeight::get().writes(1)
+}
+
+/// Mint a bit of XORs and XST to init XYK-pool
+fn mint_initial_deposit<T: Config>() -> Weight {
+    fn mint<T: Config>(asset_id: T::AssetId, account: &T::AccountId, balance: Balance) -> Weight {
+        let minting_result = assets::Pallet::<T>::mint_to(
+            &asset_id,
+            &get_assets_owner_account::<T>(),
+            account,
+            balance,
+        );
+        if minting_result.is_err() {
+            debug::error!(target: "runtime", "failed to mint initial deposit");
+        }
+        <<T as assets::Config>::WeightInfo as assets::WeightInfo>::mint()
+    }
+
+    let account = initial_deposit_account::<T>();
+    let weight = mint::<T>(XOR.into(), &account, balance!(1.1));
+    weight.saturating_add(mint::<T>(XSTUSD.into(), &account, balance!(200)))
+}
+
+fn initial_deposit_account<T: Config>() -> T::AccountId {
+    let bytes = hex!("0aeea338a50ef5c832f668bb8a9d27d46a6d7899f4efe2a6d647b3c5fa25737f");
+    T::AccountId::decode(&mut &bytes[..]).unwrap()
 }

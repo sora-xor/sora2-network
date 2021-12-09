@@ -34,7 +34,6 @@ currencies = { version = "0.4", package = "orml-currencies" }
 pallet-balances = "3"
 sp-runtime = "3"
 tokens = { version = "0.4", package = "orml-tokens" }
-
 assets = { path = "../assets" }
 common = { path = "../../common", features = ["test"] }
 permissions = { path = "../permissions" }
