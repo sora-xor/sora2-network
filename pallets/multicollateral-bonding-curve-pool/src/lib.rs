@@ -212,7 +212,7 @@ pub mod pallet {
             DispatchError,
         >;
         type PriceToolsPallet: PriceToolsPallet<Self::AssetId>;
-        type VestedRewardsPallet: VestedRewardsPallet<Self::AccountId>;
+        type VestedRewardsPallet: VestedRewardsPallet<Self::AccountId, Self::AssetId>;
         /// Weight information for extrinsics in this pallet.
         type WeightInfo: WeightInfo;
     }

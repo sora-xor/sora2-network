@@ -898,7 +898,8 @@ impl xor_fee::ApplyCustomFees<Call> for ExtrinsicsFlatFees {
             Call::Assets(assets::Call::register(..))
             | Call::EthBridge(eth_bridge::Call::transfer_to_sidechain(..))
             | Call::PoolXYK(pool_xyk::Call::withdraw_liquidity(..))
-            | Call::Rewards(rewards::Call::claim(..)) => Some(BIG_FEE),
+            | Call::Rewards(rewards::Call::claim(..))
+            | Call::VestedRewards(vested_rewards::Call::claim_rewards(..)) => Some(BIG_FEE),
             Call::Assets(..)
             | Call::EthBridge(..)
             | Call::LiquidityProxy(..)
@@ -1372,6 +1373,20 @@ parameter_types! {
                 .expect("Failed to get ordinary account id for technical account id.");
         account_id
     };
+    pub GetFarmingRewardsTechAccountId: TechAccountId = {
+        let tech_account_id = TechAccountId::from_generic_pair(
+            vested_rewards::TECH_ACCOUNT_PREFIX.to_vec(),
+            vested_rewards::TECH_ACCOUNT_FARMING.to_vec(),
+        );
+        tech_account_id
+    };
+    pub GetFarmingRewardsAccountId: AccountId = {
+        let tech_account_id = GetFarmingRewardsTechAccountId::get();
+        let account_id =
+            technical::Module::<Runtime>::tech_account_id_to_account_id(&tech_account_id)
+                .expect("Failed to get ordinary account id for technical account id.");
+        account_id
+    };
 }
 
 impl multicollateral_bonding_curve_pool::Config for Runtime {
@@ -1413,6 +1428,7 @@ impl pallet_offences::Config for Runtime {
 impl vested_rewards::Config for Runtime {
     type Event = Event;
     type GetBondingCurveRewardsAccountId = GetMbcPoolRewardsAccountId;
+    type GetFarmingRewardsAccountId = GetFarmingRewardsAccountId;
     type GetMarketMakerRewardsAccountId = GetMarketMakerRewardsAccountId;
     type WeightInfo = vested_rewards::weights::WeightInfo<Runtime>;
 }

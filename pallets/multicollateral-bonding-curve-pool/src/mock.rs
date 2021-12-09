@@ -195,8 +195,14 @@ impl Config for Runtime {
 
 pub struct MockVestedRewards;
 
-impl VestedRewardsPallet<AccountId> for MockVestedRewards {
-    fn update_market_maker_records(_: &AccountId, _: Balance, _: u32) -> DispatchResult {
+impl VestedRewardsPallet<AccountId, AssetId> for MockVestedRewards {
+    fn update_market_maker_records(
+        _: &AccountId,
+        _: Balance,
+        _: u32,
+        _: &AssetId,
+        _: &AssetId,
+    ) -> DispatchResult {
         // do nothing
         Ok(())
     }

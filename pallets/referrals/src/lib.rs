@@ -46,6 +46,20 @@ pub trait WeightInfo {
     fn set_referrer() -> Weight;
 }
 
+impl WeightInfo for () {
+    fn reserve() -> Weight {
+        0
+    }
+
+    fn unreserve() -> Weight {
+        0
+    }
+
+    fn set_referrer() -> Weight {
+        0
+    }
+}
+
 impl<T: Config> Module<T> {
     pub fn set_referrer_to(
         referral: &T::AccountId,
@@ -59,6 +73,7 @@ impl<T: Config> Module<T> {
                 .map_err(|_| Error::<T>::IncRefError)?;
             frame_system::Pallet::<T>::inc_consumers(&referrer)
                 .map_err(|_| Error::<T>::IncRefError)?;
+            Referrals::<T>::append(&referrer, referral);
             *r = Some(referrer);
             Ok(())
         })
@@ -86,7 +101,9 @@ pub use pallet::*;
 pub mod pallet {
     use common::{Balance, XOR};
     use frame_support::pallet_prelude::*;
+    use frame_support::traits::PalletVersion;
     use frame_system::pallet_prelude::*;
+    use sp_std::prelude::*;
 
     use crate::WeightInfo;
 
@@ -101,7 +118,25 @@ pub mod pallet {
     pub struct Pallet<T>(PhantomData<T>);
 
     #[pallet::hooks]
-    impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {}
+    impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
+        fn on_runtime_upgrade() -> Weight {
+            let mut weight = Weight::default();
+            match Pallet::<T>::storage_version() {
+                Some(PalletVersion {
+                    major: 1,
+                    minor: 0,
+                    patch: 0,
+                }) => {
+                    for (referral, referrer) in Referrers::<T>::iter() {
+                        Referrals::<T>::append(referrer, referral);
+                        weight = weight.saturating_add(T::DbWeight::get().reads_writes(3, 3));
+                    }
+                }
+                _ => {}
+            }
+            weight
+        }
+    }
 
     #[pallet::call]
     impl<T: Config> Pallet<T> {
@@ -190,6 +225,11 @@ pub mod pallet {
     #[pallet::getter(fn referrer_balance)]
     pub type ReferrerBalances<T: Config> = StorageMap<_, Blake2_128Concat, T::AccountId, Balance>;
 
+    #[pallet::storage]
+    #[pallet::getter(fn referrals)]
+    pub type Referrals<T: Config> =
+        StorageMap<_, Blake2_128Concat, T::AccountId, Vec<T::AccountId>, ValueQuery>;
+
     #[pallet::genesis_config]
     pub struct GenesisConfig<T: Config> {
         pub referrers: Vec<(T::AccountId, T::AccountId)>,
@@ -211,6 +251,7 @@ pub mod pallet {
                 frame_system::Pallet::<T>::inc_consumers(k).unwrap();
                 frame_system::Pallet::<T>::inc_consumers(v).unwrap();
                 Referrers::<T>::insert(k, v);
+                Referrals::<T>::append(v, k);
             });
         }
     }

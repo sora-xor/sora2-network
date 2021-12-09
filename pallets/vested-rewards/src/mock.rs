@@ -106,6 +106,7 @@ parameter_types! {
     pub GetParliamentAccountId: AccountId = AccountId32::from([152; 32]);
     pub GetMarketMakerRewardsAccountId: AccountId = AccountId32::from([153; 32]);
     pub GetBondingCurveRewardsAccountId: AccountId = AccountId32::from([154; 32]);
+    pub GetFarmingRewardsAccountId: AccountId = AccountId32::from([155; 32]);
     pub GetTeamReservesAccountId: AccountId = AccountId32::from([11; 32]);
     pub GetXykFee: Fixed = fixed!(0.003);
 }
@@ -139,6 +140,7 @@ impl Config for Runtime {
     type Event = Event;
     type GetBondingCurveRewardsAccountId = GetBondingCurveRewardsAccountId;
     type GetMarketMakerRewardsAccountId = GetMarketMakerRewardsAccountId;
+    type GetFarmingRewardsAccountId = GetFarmingRewardsAccountId;
     type WeightInfo = ();
 }
 
