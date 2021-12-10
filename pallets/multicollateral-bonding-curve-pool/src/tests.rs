@@ -636,7 +636,7 @@ mod tests {
                 )
                 .unwrap();
 
-            MBCPool::set_price_bias(Origin::signed(alice()), balance!(123)).expect("Failed to set price bias");
+            MBCPool::set_price_bias(Origin::root(), balance!(123)).expect("Failed to set price bias");
             assert_eq!(MBCPool::initial_price(), FixedWrapper::from(balance!(123)).get().unwrap());
 
 
@@ -676,7 +676,7 @@ mod tests {
                 )
                 .unwrap();
 
-            MBCPool::set_price_change_config(Origin::signed(alice()), balance!(12), balance!(2543)).expect("Failed to set price bias");
+            MBCPool::set_price_change_config(Origin::root(), balance!(12), balance!(2543)).expect("Failed to set price bias");
 
             assert_eq!(MBCPool::price_change_rate(), FixedWrapper::from(balance!(12)).get().unwrap());
             assert_eq!(MBCPool::price_change_step(), FixedWrapper::from(balance!(2543)).get().unwrap());

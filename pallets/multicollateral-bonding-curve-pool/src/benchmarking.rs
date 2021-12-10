@@ -264,7 +264,7 @@ benchmarks! {
         ).unwrap();
     }: {
         Module::<T>::set_price_change_config(
-            RawOrigin::Signed(caller.clone()).into(),
+            RawOrigin::Root.into(),
             balance!(12),
             balance!(2600)
         ).unwrap();
@@ -287,7 +287,7 @@ benchmarks! {
         ).unwrap();
     }: {
         Module::<T>::set_price_bias(
-            RawOrigin::Signed(caller.clone()).into(),
+            RawOrigin::Root.into(),
             balance!(253)
         ).unwrap();
     }
