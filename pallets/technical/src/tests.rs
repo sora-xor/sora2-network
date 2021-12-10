@@ -86,6 +86,8 @@ fn generic_pair_swap_simple() {
             DEFAULT_BALANCE_PRECISION,
             Balance::from(0u32),
             true,
+            None,
+            None,
         ));
         assert_ok!(assets::Module::<Runtime>::register_asset_id(
             repr.clone(),
@@ -95,6 +97,8 @@ fn generic_pair_swap_simple() {
             DEFAULT_BALANCE_PRECISION,
             Balance::from(0u32),
             true,
+            None,
+            None,
         ));
         assert_ok!(assets::Module::<Runtime>::mint_to(
             &RedPepper(),

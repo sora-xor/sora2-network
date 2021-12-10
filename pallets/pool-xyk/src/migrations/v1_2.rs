@@ -43,6 +43,8 @@ mod tests {
                 DEFAULT_BALANCE_PRECISION,
                 0,
                 true,
+                None,
+                None,
             )
             .unwrap();
             for target_asset in [target_asset_a, target_asset_b, target_asset_c].iter() {
@@ -54,6 +56,8 @@ mod tests {
                     DEFAULT_BALANCE_PRECISION,
                     0,
                     true,
+                    None,
+                    None,
                 )
                 .unwrap();
                 trading_pair::Module::<Runtime>::register(

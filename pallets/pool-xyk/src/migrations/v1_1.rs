@@ -121,6 +121,8 @@ mod tests {
                 DEFAULT_BALANCE_PRECISION,
                 0,
                 true,
+                None,
+                None,
             )
             .unwrap();
 
@@ -135,6 +137,8 @@ mod tests {
                 DEFAULT_BALANCE_PRECISION,
                 0,
                 true,
+                None,
+                None,
             )
             .unwrap();
 

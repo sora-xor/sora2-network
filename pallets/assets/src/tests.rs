@@ -60,6 +60,9 @@ mod tests {
                 AssetName(b"ALICE".to_vec()),
                 Balance::zero(),
                 true,
+                false,
+                None,
+                None,
             ));
             assert_ok!(Assets::ensure_asset_exists(&next_asset_id));
             assert_ne!(Assets::gen_asset_id(&ALICE), next_asset_id);
@@ -79,6 +82,8 @@ mod tests {
                 DEFAULT_BALANCE_PRECISION,
                 Balance::zero(),
                 true,
+                None,
+                None,
             ));
             assert_ok!(Assets::ensure_asset_exists(&XOR));
         });
@@ -96,6 +101,8 @@ mod tests {
                 DEFAULT_BALANCE_PRECISION,
                 Balance::zero(),
                 true,
+                None,
+                None,
             ));
             assert_noop!(
                 Assets::register_asset_id(
@@ -106,6 +113,8 @@ mod tests {
                     DEFAULT_BALANCE_PRECISION,
                     Balance::zero(),
                     true,
+                    None,
+                    None,
                 ),
                 Error::<Runtime>::AssetIdAlreadyExists
             );
@@ -125,6 +134,8 @@ mod tests {
                     DEFAULT_BALANCE_PRECISION,
                     Balance::zero(),
                     true,
+                    None,
+                    None,
                 ),
                 Error::<Runtime>::InvalidAssetName
             );
@@ -138,6 +149,8 @@ mod tests {
                     DEFAULT_BALANCE_PRECISION,
                     Balance::zero(),
                     true,
+                    None,
+                    None,
                 ),
                 Error::<Runtime>::InvalidAssetName
             );
@@ -151,6 +164,8 @@ mod tests {
                     DEFAULT_BALANCE_PRECISION,
                     Balance::zero(),
                     true,
+                    None,
+                    None,
                 ),
                 Error::<Runtime>::InvalidAssetName
             );
@@ -170,6 +185,8 @@ mod tests {
                     DEFAULT_BALANCE_PRECISION,
                     Balance::zero(),
                     true,
+                    None,
+                    None,
                 ),
                 Error::<Runtime>::InvalidAssetSymbol
             );
@@ -183,6 +200,8 @@ mod tests {
                     DEFAULT_BALANCE_PRECISION,
                     Balance::zero(),
                     true,
+                    None,
+                    None,
                 ),
                 Error::<Runtime>::InvalidAssetSymbol
             );
@@ -196,6 +215,8 @@ mod tests {
                     DEFAULT_BALANCE_PRECISION,
                     Balance::zero(),
                     true,
+                    None,
+                    None,
                 ),
                 Error::<Runtime>::InvalidAssetSymbol
             );
@@ -214,6 +235,8 @@ mod tests {
                 DEFAULT_BALANCE_PRECISION,
                 Balance::zero(),
                 true,
+                None,
+                None,
             ));
             assert_ok!(Assets::mint_to(&XOR, &ALICE, &ALICE, 100u32.into()));
             assert_ok!(Assets::burn_from(&XOR, &ALICE, &ALICE, 100u32.into()));
@@ -233,6 +256,8 @@ mod tests {
                 DEFAULT_BALANCE_PRECISION,
                 Balance::zero(),
                 true,
+                None,
+                None,
             ));
             assert_noop!(
                 Assets::mint_to(&XOR, &BOB, &BOB, 100u32.into()),
@@ -249,21 +274,19 @@ mod tests {
     fn should_check_symbols_correctly() {
         let mut ext = ExtBuilder::default().build();
         ext.execute_with(|| {
-            assert!(crate::is_symbol_valid(&AssetSymbol(b"XOR".to_vec())));
-            assert!(crate::is_symbol_valid(&AssetSymbol(b"DOT".to_vec())));
-            assert!(crate::is_symbol_valid(&AssetSymbol(b"KSM".to_vec())));
-            assert!(crate::is_symbol_valid(&AssetSymbol(b"USDT".to_vec())));
-            assert!(crate::is_symbol_valid(&AssetSymbol(b"VAL".to_vec())));
-            assert!(crate::is_symbol_valid(&AssetSymbol(b"PSWAP".to_vec())));
-            assert!(crate::is_symbol_valid(&AssetSymbol(b"GT".to_vec())));
-            assert!(crate::is_symbol_valid(&AssetSymbol(b"BP".to_vec())));
-            assert!(crate::is_symbol_valid(&AssetSymbol(b"AB1".to_vec())));
+            assert!(AssetSymbol(b"XOR".to_vec()).is_valid());
+            assert!(AssetSymbol(b"DOT".to_vec()).is_valid());
+            assert!(AssetSymbol(b"KSM".to_vec()).is_valid());
+            assert!(AssetSymbol(b"USDT".to_vec()).is_valid());
+            assert!(AssetSymbol(b"VAL".to_vec()).is_valid());
+            assert!(AssetSymbol(b"PSWAP".to_vec()).is_valid());
+            assert!(AssetSymbol(b"GT".to_vec()).is_valid());
+            assert!(AssetSymbol(b"BP".to_vec()).is_valid());
+            assert!(AssetSymbol(b"AB1".to_vec()).is_valid());
 
-            assert!(!crate::is_symbol_valid(&AssetSymbol(b"ABCDEFGH".to_vec())));
-            assert!(!crate::is_symbol_valid(&AssetSymbol(b"xor".to_vec())));
-            assert!(!crate::is_symbol_valid(&AssetSymbol(
-                b"\xF0\x9F\x98\xBF".to_vec()
-            )));
+            assert!(!AssetSymbol(b"ABCDEFGH".to_vec()).is_valid());
+            assert!(!AssetSymbol(b"xor".to_vec()).is_valid());
+            assert!(!AssetSymbol(b"\xF0\x9F\x98\xBF".to_vec()).is_valid());
         })
     }
 
@@ -271,26 +294,22 @@ mod tests {
     fn should_check_names_correctly() {
         let mut ext = ExtBuilder::default().build();
         ext.execute_with(|| {
-            assert!(crate::is_name_valid(&AssetName(b"XOR".to_vec())));
-            assert!(crate::is_name_valid(&AssetName(b"DOT".to_vec())));
-            assert!(crate::is_name_valid(&AssetName(b"KSM".to_vec())));
-            assert!(crate::is_name_valid(&AssetName(b"USDT".to_vec())));
-            assert!(crate::is_name_valid(&AssetName(b"VAL".to_vec())));
-            assert!(crate::is_name_valid(&AssetName(b"PSWAP".to_vec())));
-            assert!(crate::is_name_valid(&AssetName(b"GT".to_vec())));
-            assert!(crate::is_name_valid(&AssetName(b"BP".to_vec())));
-            assert!(crate::is_name_valid(&AssetName(
-                b"SORA Validator Token".to_vec()
-            )));
-            assert!(crate::is_name_valid(&AssetName(b"AB1".to_vec())));
+            assert!(AssetName(b"XOR".to_vec()).is_valid());
+            assert!(AssetName(b"DOT".to_vec()).is_valid());
+            assert!(AssetName(b"KSM".to_vec()).is_valid());
+            assert!(AssetName(b"USDT".to_vec()).is_valid());
+            assert!(AssetName(b"VAL".to_vec()).is_valid());
+            assert!(AssetName(b"PSWAP".to_vec()).is_valid());
+            assert!(AssetName(b"GT".to_vec()).is_valid());
+            assert!(AssetName(b"BP".to_vec()).is_valid());
+            assert!(AssetName(b"SORA Validator Token".to_vec()).is_valid());
+            assert!(AssetName(b"AB1".to_vec()).is_valid());
 
-            assert!(!crate::is_name_valid(&AssetName(
-                b"This is a name with length over thirty three".to_vec()
-            )));
-            assert!(!crate::is_name_valid(&AssetName(b"AB1_".to_vec())));
-            assert!(!crate::is_name_valid(&AssetName(
-                b"\xF0\x9F\x98\xBF".to_vec()
-            )));
+            assert!(
+                !AssetName(b"This is a name with length over thirty three".to_vec()).is_valid()
+            );
+            assert!(!AssetName(b"AB1_".to_vec()).is_valid());
+            assert!(!AssetName(b"\xF0\x9F\x98\xBF".to_vec()).is_valid());
         })
     }
 
@@ -306,6 +325,8 @@ mod tests {
                 DEFAULT_BALANCE_PRECISION,
                 Balance::from(123u32),
                 true,
+                None,
+                None,
             ));
             assert_eq!(
                 Assets::free_balance(&XOR, &ALICE).expect("Failed to query free balance."),
@@ -319,6 +340,8 @@ mod tests {
                 DEFAULT_BALANCE_PRECISION,
                 Balance::from(321u32),
                 false,
+                None,
+                None,
             ));
             assert_eq!(
                 Assets::free_balance(&VAL, &ALICE).expect("Failed to query free balance."),
@@ -332,6 +355,8 @@ mod tests {
                 DEFAULT_BALANCE_PRECISION,
                 Balance::from(0u32),
                 false,
+                None,
+                None,
             ));
             assert_eq!(
                 Assets::free_balance(&DOT, &ALICE).expect("Failed to query free balance."),
@@ -352,6 +377,8 @@ mod tests {
                 DEFAULT_BALANCE_PRECISION,
                 Balance::from(10u32),
                 false,
+                None,
+                None,
             ));
             assert_noop!(
                 Assets::mint_to(&XOR, &ALICE, &ALICE, Balance::from(10u32)),
@@ -382,6 +409,8 @@ mod tests {
                 DEFAULT_BALANCE_PRECISION,
                 Balance::from(10u32),
                 true,
+                None,
+                None,
             ));
             assert_ok!(Assets::mint_to(&XOR, &ALICE, &ALICE, Balance::from(10u32)),);
             assert_ok!(Assets::mint_to(&XOR, &ALICE, &BOB, Balance::from(10u32)),);
@@ -424,6 +453,8 @@ mod tests {
                 DEFAULT_BALANCE_PRECISION,
                 Balance::from(10u32),
                 true,
+                None,
+                None,
             ));
             assert_ok!(Assets::set_non_mintable_from(&XOR, &ALICE));
             assert_noop!(
@@ -445,6 +476,8 @@ mod tests {
                 DEFAULT_BALANCE_PRECISION,
                 Balance::from(10u32),
                 true,
+                None,
+                None,
             ));
             assert_eq!(
                 Assets::free_balance(&XOR, &ALICE).expect("Failed to query free balance."),
@@ -475,6 +508,8 @@ mod tests {
                 DEFAULT_BALANCE_PRECISION,
                 Balance::from(10u32),
                 true,
+                None,
+                None,
             ));
             assert_noop!(
                 Assets::burn_from(&XOR, &BOB, &ALICE, Balance::from(10u32)),
@@ -495,6 +530,8 @@ mod tests {
                 DEFAULT_BALANCE_PRECISION,
                 Balance::from(10u32),
                 true,
+                None,
+                None,
             ));
             assert_ok!(Assets::mint_to(&XOR, &ALICE, &BOB, Balance::from(10u32)));
             assert_eq!(

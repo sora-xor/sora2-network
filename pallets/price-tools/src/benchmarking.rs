@@ -81,6 +81,8 @@ fn prepare_secondary_market<T: Config>(n: u32) {
             18,
             balance!(200),
             true,
+            None,
+            None,
         )
         .unwrap();
         TradingPair::<T>::register(caller_origin.clone(), DEX.into(), XOR.into(), asset).unwrap();

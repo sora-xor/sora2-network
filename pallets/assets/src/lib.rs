@@ -457,6 +457,8 @@ pub mod pallet {
             BalancePrecision,
             Balance,
             bool,
+            Option<ContentSource>,
+            Option<Description>,
         )>,
     }
 
@@ -473,7 +475,17 @@ pub mod pallet {
     impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
         fn build(&self) {
             self.endowed_assets.iter().cloned().for_each(
-                |(asset_id, account_id, symbol, name, precision, initial_supply, is_mintable)| {
+                |(
+                    asset_id,
+                    account_id,
+                    symbol,
+                    name,
+                    precision,
+                    initial_supply,
+                    is_mintable,
+                    content_source,
+                    description,
+                )| {
                     Pallet::<T>::register_asset_id(
                         account_id,
                         asset_id,
@@ -482,8 +494,8 @@ pub mod pallet {
                         precision,
                         initial_supply,
                         is_mintable,
-                        None,
-                        None,
+                        content_source,
+                        description,
                     )
                     .expect("Failed to register asset.");
                 },

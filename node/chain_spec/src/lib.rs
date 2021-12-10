@@ -33,12 +33,10 @@
 
 #![allow(unused_imports, unused_macros, dead_code)]
 
-use framenode_runtime::GenesisConfig;
-
 use common::prelude::{Balance, DEXInfo, FixedWrapper};
 use common::{
     balance, fixed, hash, our_include, our_include_bytes, vec_push, BalancePrecision, DEXId, Fixed,
-    TechPurpose, DAI, DEFAULT_BALANCE_PRECISION, ETH, PSWAP, USDT, VAL, XOR,
+    TechPurpose, DAI, DEFAULT_BALANCE_PRECISION, ETH, PSWAP, USDT, VAL, XOR, XSTUSD,
 };
 use frame_support::sp_runtime::Percent;
 use framenode_runtime::eth_bridge::{AssetConfig, BridgeAssetData, NetworkConfig};
@@ -49,12 +47,12 @@ use framenode_runtime::opaque::SessionKeys;
 use framenode_runtime::{
     assets, eth_bridge, frame_system, AccountId, AssetId, AssetName, AssetSymbol, AssetsConfig,
     BabeConfig, BalancesConfig, BridgeMultisigConfig, CouncilConfig, DEXAPIConfig,
-    DEXManagerConfig, DemocracyConfig, EthBridgeConfig, GetBaseAssetId, GetParliamentAccountId,
-    GetPswapAssetId, GetValAssetId, GetXorAssetId, GrandpaConfig, ImOnlineId, IrohaMigrationConfig,
-    LiquiditySourceType, MulticollateralBondingCurvePoolConfig, PermissionsConfig,
-    PswapDistributionConfig, RewardsConfig, Runtime, SS58Prefix, SessionConfig, StakerStatus,
-    StakingConfig, SystemConfig, TechAccountId, TechnicalConfig, TokensConfig, TradingPairConfig,
-    XSTPoolConfig, WASM_BINARY,
+    DEXManagerConfig, DemocracyConfig, EthBridgeConfig, GenesisConfig, GetBaseAssetId,
+    GetParliamentAccountId, GetPswapAssetId, GetValAssetId, GetXorAssetId, GrandpaConfig,
+    ImOnlineId, IrohaMigrationConfig, LiquiditySourceType, MulticollateralBondingCurvePoolConfig,
+    PermissionsConfig, PswapDistributionConfig, RewardsConfig, Runtime, SS58Prefix, SessionConfig,
+    Signature, StakerStatus, StakingConfig, SystemConfig, TechAccountId, TechnicalCommitteeConfig,
+    TechnicalConfig, TokensConfig, TradingPairConfig, XSTPoolConfig, WASM_BINARY,
 };
 use hex_literal::hex;
 use permissions::Scope;
@@ -73,7 +71,6 @@ use codec::Encode;
 use framenode_runtime::assets::{AssetRecord, AssetRecordArg};
 #[cfg(feature = "private-net")]
 use framenode_runtime::{FaucetConfig, SudoConfig};
-use framenode_runtime::{Signature, TechnicalCommitteeConfig};
 use sp_core::{sr25519, Pair};
 use sp_runtime::traits::{IdentifyAccount, Verify};
 use std::borrow::Cow;
@@ -144,15 +141,9 @@ struct EthBridgeParams {
     bridge_contract_address: H160,
 }
 
-fn calculate_reserves(accounts: &Vec<(H160, Balance)>) -> Balance {
-    accounts.iter().fold(0, |sum, (_, balance)| sum + balance)
+fn calculate_reserves(accounts: impl Iterator<Item = Balance>) -> Balance {
+    accounts.fold(0, |sum, balance| sum + balance)
 }
-
-// dev uses code
-// #[cfg(all(feature = "dev-net", not(feature = "coded-nets")))]
-// pub fn dev_net() -> Result<ChainSpec, String> {
-//     ChainSpec::from_json_bytes(&our_include_bytes!("./bytes/chain_spec_dev.json")[..])
-// }
 
 pub fn staging_net() -> Result<ChainSpec, String> {
     ChainSpec::from_json_bytes(&our_include_bytes!("./bytes/chain_spec_staging.json")[..])
@@ -178,8 +169,9 @@ pub fn main_net() -> Result<ChainSpec, String> {
 #[cfg(feature = "private-net")]
 pub fn dev_net_coded() -> ChainSpec {
     let mut properties = Properties::new();
+    properties.insert("ss58Format".into(), SS58Prefix::get().into());
     properties.insert("tokenSymbol".into(), "XOR".into());
-    properties.insert("tokenDecimals".into(), 18.into());
+    properties.insert("tokenDecimals".into(), DEFAULT_BALANCE_PRECISION.into());
     ChainSpec::from_genesis(
         "SORA-dev Testnet",
         "sora-substrate-dev",
@@ -279,8 +271,9 @@ pub fn dev_net_coded() -> ChainSpec {
 #[cfg(feature = "private-net")]
 pub fn staging_net_coded(test: bool) -> ChainSpec {
     let mut properties = Properties::new();
+    properties.insert("ss58Format".into(), SS58Prefix::get().into());
     properties.insert("tokenSymbol".into(), "XOR".into());
-    properties.insert("tokenDecimals".into(), 18.into());
+    properties.insert("tokenDecimals".into(), DEFAULT_BALANCE_PRECISION.into());
     let (name, id, boot_nodes) = if test {
         (
             "SORA-test",
@@ -494,8 +487,9 @@ fn bonding_curve_distribution_accounts(
 #[cfg(feature = "private-net")]
 pub fn local_testnet_config() -> ChainSpec {
     let mut properties = Properties::new();
+    properties.insert("ss58Format".into(), SS58Prefix::get().into());
     properties.insert("tokenSymbol".into(), "XOR".into());
-    properties.insert("tokenDecimals".into(), 18.into());
+    properties.insert("tokenDecimals".into(), DEFAULT_BALANCE_PRECISION.into());
     ChainSpec::from_genesis(
         "SORA-local Testnet",
         "sora-substrate-local",
@@ -581,8 +575,6 @@ fn testnet_genesis(
     council_accounts: Vec<AccountId>,
     technical_committee_accounts: Vec<AccountId>,
 ) -> GenesisConfig {
-    use common::XSTUSD;
-
     // Initial balances
     let initial_staking = balance!(100);
     let initial_eth_bridge_xor_amount = balance!(350000);
@@ -815,8 +807,9 @@ fn testnet_genesis(
         pswap_waifu_owners: include!("bytes/rewards_pswap_waifu_owners.in"),
     };
 
-    let rewards_pswap_reserves = calculate_reserves(&rewards_config.pswap_farm_owners)
-        + calculate_reserves(&rewards_config.pswap_waifu_owners);
+    let rewards_pswap_reserves =
+        calculate_reserves(rewards_config.pswap_farm_owners.iter().map(|(_, b)| *b))
+            + calculate_reserves(rewards_config.pswap_waifu_owners.iter().map(|(_, b)| *b));
     let mut tokens_endowed_accounts = vec![
         (
             rewards_account_id.clone(),
@@ -931,63 +924,77 @@ fn testnet_genesis(
                     assets_and_permissions_account_id.clone(),
                     AssetSymbol(b"XOR".to_vec()),
                     AssetName(b"SORA".to_vec()),
-                    18,
+                    DEFAULT_BALANCE_PRECISION,
                     Balance::zero(),
                     true,
+                    None,
+                    None,
                 ),
                 // (
                 //     UsdId::get(),
                 //     assets_and_permissions_account_id.clone(),
                 //     AssetSymbol(b"USDT".to_vec()),
                 //     AssetName(b"Tether USD".to_vec()),
-                //     18,
+                //     DEFAULT_BALANCE_PRECISION,
                 //     Balance::zero(),
                 //     true,
+                //     None,
+                //     None,
                 // ),
                 (
                     GetValAssetId::get(),
                     assets_and_permissions_account_id.clone(),
                     AssetSymbol(b"VAL".to_vec()),
                     AssetName(b"SORA Validator Token".to_vec()),
-                    18,
+                    DEFAULT_BALANCE_PRECISION,
                     Balance::zero(),
                     true,
+                    None,
+                    None,
                 ),
                 (
                     GetPswapAssetId::get(),
                     assets_and_permissions_account_id.clone(),
                     AssetSymbol(b"PSWAP".to_vec()),
                     AssetName(b"Polkaswap".to_vec()),
-                    18,
+                    DEFAULT_BALANCE_PRECISION,
                     Balance::zero(),
                     true,
+                    None,
+                    None,
                 ),
                 (
                     DAI.into(),
                     eth_bridge_account_id.clone(),
                     AssetSymbol(b"DAI".to_vec()),
                     AssetName(b"Dai Stablecoin".to_vec()),
-                    18,
+                    DEFAULT_BALANCE_PRECISION,
                     Balance::zero(),
                     true,
+                    None,
+                    None,
                 ),
                 (
                     ETH.into(),
                     eth_bridge_account_id.clone(),
                     AssetSymbol(b"ETH".to_vec()),
                     AssetName(b"Ether".to_vec()),
-                    18,
+                    DEFAULT_BALANCE_PRECISION,
                     Balance::zero(),
                     true,
+                    None,
+                    None,
                 ),
                 (
                     XSTUSD.into(),
                     assets_and_permissions_account_id.clone(),
                     AssetSymbol(b"XSTUSD".to_vec()),
                     AssetName(b"SORA Synthetic USD".to_vec()),
-                    18,
+                    DEFAULT_BALANCE_PRECISION,
                     Balance::zero(),
                     true,
+                    None,
+                    None,
                 ),
             ],
         }),
@@ -1123,13 +1130,13 @@ fn testnet_genesis(
                         id: DAI.into(),
                         sidechain_id: hex!("5592ec0cfb4dbc12d3ab100b257153436a1f0fea").into(),
                         owned: false,
-                        precision: 18,
+                        precision: DEFAULT_BALANCE_PRECISION,
                     },
                     AssetConfig::Sidechain {
                         id: ETH.into(),
                         sidechain_id: hex!("0000000000000000000000000000000000000000").into(),
                         owned: false,
-                        precision: 18,
+                        precision: DEFAULT_BALANCE_PRECISION,
                     },
                 ],
                 bridge_contract_address: eth_bridge_params.bridge_contract_address,
@@ -1182,12 +1189,19 @@ fn testnet_genesis(
     }
 }
 
-/// # Parameters
-#[cfg(feature = "main-net-coded")]
+#[cfg(all(
+    any(
+        feature = "main-net-coded",
+        feature = "test",
+        feature = "runtime-benchmarks"
+    ),
+    not(feature = "private-net")
+))]
 pub fn main_net_coded() -> ChainSpec {
     let mut properties = Properties::new();
+    properties.insert("ss58Format".into(), SS58Prefix::get().into());
     properties.insert("tokenSymbol".into(), "XOR".into());
-    properties.insert("tokenDecimals".into(), 18.into());
+    properties.insert("tokenDecimals".into(), DEFAULT_BALANCE_PRECISION.into());
     let name = "SORA";
     let id = "sora-substrate-main-net";
     // SORA main-net node address. We should have 2 nodes.
@@ -1272,7 +1286,14 @@ pub fn main_net_coded() -> ChainSpec {
     )
 }
 
-#[cfg(feature = "main-net-coded")]
+#[cfg(all(
+    any(
+        feature = "main-net-coded",
+        feature = "test",
+        feature = "runtime-benchmarks"
+    ),
+    not(feature = "private-net")
+))]
 fn mainnet_genesis(
     initial_authorities: Vec<(AccountId, AccountId, AuraId, BabeId, GrandpaId, ImOnlineId)>,
     additional_validators: Vec<AccountId>,
@@ -1340,6 +1361,9 @@ fn mainnet_genesis(
         framenode_runtime::GetMbcPoolFreeReservesTechAccountId::get();
     let mbc_pool_free_reserves_account_id =
         framenode_runtime::GetMbcPoolFreeReservesAccountId::get();
+
+    let xst_pool_permissioned_tech_account_id =
+        framenode_runtime::GetXSTPoolPermissionedTechAccountId::get();
 
     let market_maker_rewards_tech_account_id =
         framenode_runtime::GetMarketMakerRewardsTechAccountId::get();
@@ -1442,7 +1466,7 @@ fn mainnet_genesis(
         pswap_waifu_owners: our_include!("bytes/rewards_pswap_waifu_owners.in"),
     };
     let initial_collateral_assets = vec![DAI.into(), VAL.into(), PSWAP.into(), ETH.into()];
-
+    let initial_synthetic_assets = vec![XSTUSD.into()];
     let mut bridge_assets = vec![
         AssetConfig::Sidechain {
             id: XOR.into(),
@@ -1460,7 +1484,7 @@ fn mainnet_genesis(
             id: ETH.into(),
             sidechain_id: hex!("0000000000000000000000000000000000000000").into(),
             owned: false,
-            precision: 18,
+            precision: DEFAULT_BALANCE_PRECISION,
         },
     ];
     let mut endowed_assets = vec![
@@ -1469,36 +1493,55 @@ fn mainnet_genesis(
             assets_and_permissions_account_id.clone(),
             AssetSymbol(b"XOR".to_vec()),
             AssetName(b"SORA".to_vec()),
-            18,
+            DEFAULT_BALANCE_PRECISION,
             Balance::zero(),
             true,
+            None,
+            None,
         ),
         (
             GetValAssetId::get(),
             assets_and_permissions_account_id.clone(),
             AssetSymbol(b"VAL".to_vec()),
             AssetName(b"SORA Validator Token".to_vec()),
-            18,
+            DEFAULT_BALANCE_PRECISION,
             Balance::zero(),
             true,
+            None,
+            None,
         ),
         (
             GetPswapAssetId::get(),
             assets_and_permissions_account_id.clone(),
             AssetSymbol(b"PSWAP".to_vec()),
             AssetName(b"Polkaswap".to_vec()),
-            18,
+            DEFAULT_BALANCE_PRECISION,
             Balance::zero(),
             true,
+            None,
+            None,
         ),
         (
             ETH.into(),
             eth_bridge_account_id.clone(),
             AssetSymbol(b"ETH".to_vec()),
             AssetName(b"Ether".to_vec()),
-            18,
+            DEFAULT_BALANCE_PRECISION,
             Balance::zero(),
             true,
+            None,
+            None,
+        ),
+        (
+            XSTUSD.into(),
+            assets_and_permissions_account_id.clone(),
+            AssetSymbol(b"XSTUSD".to_vec()),
+            AssetName(b"SORA Synthetic USD".to_vec()),
+            DEFAULT_BALANCE_PRECISION,
+            Balance::zero(),
+            true,
+            None,
+            None,
         ),
     ];
     let bridge_assets_data: Vec<BridgeAssetData<Runtime>> =
@@ -1519,6 +1562,8 @@ fn mainnet_genesis(
             DEFAULT_BALANCE_PRECISION,
             Balance::zero(),
             true,
+            None,
+            None,
         )
     }));
     GenesisConfig {
@@ -1686,13 +1731,15 @@ fn mainnet_genesis(
                 (
                     rewards_account_id.clone(),
                     GetValAssetId::get(),
-                    calculate_reserves(&rewards_config.val_owners),
+                    calculate_reserves(rewards_config.val_owners.iter().map(|(_, b)| b.total)),
                 ),
                 (
                     rewards_account_id,
                     GetPswapAssetId::get(),
-                    calculate_reserves(&rewards_config.pswap_farm_owners)
-                        + calculate_reserves(&rewards_config.pswap_waifu_owners),
+                    calculate_reserves(rewards_config.pswap_farm_owners.iter().map(|(_, b)| *b))
+                        + calculate_reserves(
+                            rewards_config.pswap_waifu_owners.iter().map(|(_, b)| *b),
+                        ),
                 ),
                 (
                     mbc_pool_rewards_account_id.clone(),
@@ -1714,6 +1761,7 @@ fn mainnet_genesis(
         trading_pair: Some(TradingPairConfig {
             trading_pairs: initial_collateral_assets
                 .iter()
+                .chain(initial_synthetic_assets.iter())
                 .cloned()
                 .map(|target_asset_id| {
                     (
@@ -1784,18 +1832,23 @@ fn mainnet_genesis(
         pallet_elections_phragmen: Default::default(),
         pallet_membership_Instance1: Default::default(),
         pallet_im_online: Default::default(),
+        xst: Some(XSTPoolConfig {
+            tech_account_id: xst_pool_permissioned_tech_account_id, // TODO: move to defaults
+            reference_asset_id: DAI,
+            initial_synthetic_assets: vec![XSTUSD],
+        }),
     }
 }
 
-#[cfg(feature = "test")]
+#[cfg(all(feature = "test", not(feature = "private-net")))]
 pub fn ext() -> sp_io::TestExternalities {
-    let storage = main_net().unwrap().build_storage().unwrap();
+    let storage = main_net_coded().build_storage().unwrap();
     sp_io::TestExternalities::new(storage)
 }
 
 #[cfg(all(feature = "test", feature = "private-net"))]
-pub fn staging_coded_ext() -> sp_io::TestExternalities {
-    let storage = staging_net_coded(false).build_storage().unwrap();
+pub fn ext() -> sp_io::TestExternalities {
+    let storage = dev_net_coded().build_storage().unwrap();
     sp_io::TestExternalities::new(storage)
 }
 
@@ -1803,11 +1856,12 @@ pub fn staging_coded_ext() -> sp_io::TestExternalities {
 mod tests {
     use hex_literal::hex;
 
-    use common::balance;
+    use common::eth::EthereumAddress;
+    use common::{balance, Balance};
 
     #[test]
     fn calculate_reserves() {
-        let accounts = vec![
+        let accounts: Vec<(EthereumAddress, Balance)> = vec![
             (
                 hex!("3520adc7b99e55c77efd0e0d379d07d08a7488cc").into(),
                 balance!(100),
@@ -1821,6 +1875,9 @@ mod tests {
                 balance!(0.05678),
             ),
         ];
-        assert_eq!(super::calculate_reserves(&accounts), balance!(123.45678));
+        assert_eq!(
+            super::calculate_reserves(accounts.iter().map(|(_, b)| *b)),
+            balance!(123.45678)
+        );
     }
 }

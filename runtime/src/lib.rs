@@ -997,8 +997,6 @@ impl xor_fee::WithdrawFee<Runtime> for WithdrawFee {
         call: &Call,
         fee: Balance,
     ) -> Result<(AccountId, Option<NegativeImbalanceOf<Runtime>>), DispatchError> {
-        frame_support::debug::debug!("{:?}", call);
-        println!("dd {:?}", call);
         match call {
             Call::Referrals(referrals::Call::set_referrer(referrer))
                 if Referrals::can_set_referrer(who) =>
@@ -1882,6 +1880,10 @@ impl_runtime_apis! {
                 asset_id, symbol, name, precision, is_mintable,
             })
         }
+
+        fn get_asset_content_src(asset_id: AssetId) -> Option<ContentSource> {
+            Assets::get_asset_content_src(&asset_id)
+        }
     }
 
     impl
@@ -2164,8 +2166,7 @@ impl_runtime_apis! {
             let mut batches = Vec::<BenchmarkBatch>::new();
             let params = (&config, &whitelist);
 
-            add_benchmark!(params, batches, assets, Assets);
-            add_benchmark!(params, batches, dex_api, DEXAPIBench::<Runtime>);
+            add_benchmark!(params, batches, assets, Assets);add_benchmark!(params, batches, dex_api, DEXAPIBench::<Runtime>);
             #[cfg(feature = "private-net")]
             add_benchmark!(params, batches, faucet, Faucet);
             add_benchmark!(params, batches, farming, Farming);
@@ -2180,7 +2181,7 @@ impl_runtime_apis! {
             add_benchmark!(params, batches, vested_rewards, VestedRewards);
             add_benchmark!(params, batches, price_tools, PriceTools);
             add_benchmark!(params, batches, xor_fee, XorFeeBench::<Runtime>);
-            add_benchmark!(params, batches, referrals, Referrals);
+            // add_benchmark!(params, batches, referrals, Referrals);
             add_benchmark!(params, batches, ceres_staking, CeresStaking);
 
             if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }

@@ -257,6 +257,8 @@ fn should_cancel_outgoing_prepared_requests() {
             DEFAULT_BALANCE_PRECISION,
             0,
             true,
+            None,
+            None,
         )
         .unwrap();
         Assets::mint_to(&XOR.into(), &alice, &alice, 100u32.into()).unwrap();

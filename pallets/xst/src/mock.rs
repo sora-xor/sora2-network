@@ -35,7 +35,8 @@ use common::prelude::{
 };
 use common::{
     self, balance, fixed, fixed_wrapper, hash, Amount, AssetId32, AssetName, AssetSymbol, DEXInfo,
-    Fixed, LiquiditySourceFilter, LiquiditySourceType, TechPurpose, PSWAP, USDT, VAL, XOR, XSTUSD,
+    Fixed, LiquiditySourceFilter, LiquiditySourceType, TechPurpose, DEFAULT_BALANCE_PRECISION,
+    PSWAP, USDT, VAL, XOR, XSTUSD,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::GenesisBuild;
@@ -510,7 +511,7 @@ impl Default for ExtBuilder {
                     0,
                     AssetSymbol(b"USDT".to_vec()),
                     AssetName(b"Tether USD".to_vec()),
-                    18,
+                    DEFAULT_BALANCE_PRECISION,
                 ),
                 (
                     alice(),
@@ -518,7 +519,7 @@ impl Default for ExtBuilder {
                     balance!(350000),
                     AssetSymbol(b"XOR".to_vec()),
                     AssetName(b"SORA".to_vec()),
-                    18,
+                    DEFAULT_BALANCE_PRECISION,
                 ),
                 (
                     alice(),
@@ -526,7 +527,7 @@ impl Default for ExtBuilder {
                     balance!(500000),
                     AssetSymbol(b"VAL".to_vec()),
                     AssetName(b"SORA Validator Token".to_vec()),
-                    18,
+                    DEFAULT_BALANCE_PRECISION,
                 ),
                 (
                     alice(),
@@ -534,7 +535,7 @@ impl Default for ExtBuilder {
                     balance!(0),
                     AssetSymbol(b"PSWAP".to_vec()),
                     AssetName(b"Polkaswap Token".to_vec()),
-                    18,
+                    DEFAULT_BALANCE_PRECISION,
                 ),
                 (
                     alice(),
@@ -542,7 +543,7 @@ impl Default for ExtBuilder {
                     balance!(100000),
                     AssetSymbol(b"XSTUSD".to_vec()),
                     AssetName(b"SORA Synthetic USD".to_vec()),
-                    18,
+                    DEFAULT_BALANCE_PRECISION,
                 ),
             ],
             dex_list: vec![(
@@ -659,6 +660,8 @@ impl ExtBuilder {
                         precision,
                         Balance::zero(),
                         true,
+                        None,
+                        None,
                     )
                 })
                 .collect(),
