@@ -194,6 +194,7 @@ pub mod pallet {
     use super::*;
     use common::VestedRewardsPallet;
     use frame_support::pallet_prelude::*;
+    use frame_system::ensure_root;
     use frame_system::pallet_prelude::*;
 
     #[pallet::config]
@@ -302,11 +303,7 @@ pub mod pallet {
             origin: OriginFor<T>,
             price_bias: Balance,
         ) -> DispatchResultWithPostInfo {
-            <T as Config>::EnsureDEXManager::ensure_can_manage(
-                &DEXId::Polkaswap.into(),
-                origin,
-                ManagementMode::Private,
-            )?;
+            ensure_root(origin)?;
 
             InitialPrice::<T>::put(
                 FixedWrapper::from(price_bias)
@@ -325,11 +322,8 @@ pub mod pallet {
             price_change_rate: Balance,
             price_change_step: Balance,
         ) -> DispatchResultWithPostInfo {
-            <T as Config>::EnsureDEXManager::ensure_can_manage(
-                &DEXId::Polkaswap.into(),
-                origin,
-                ManagementMode::Private,
-            )?;
+            ensure_root(origin)?;
+
             PriceChangeRate::<T>::put(
                 FixedWrapper::from(price_change_rate)
                     .get()
