@@ -92,7 +92,7 @@ pipeline {
             steps {
                 script {
                     docker.withRegistry('https://' + registry, dockerRegistryRWUserId) {
-                        docker.image(envImageName + ':latest').inside() {
+                        docker.image(envImageName + ':sub4').inside() {
                             sh './housekeeping/coverage.sh'
                             cobertura coberturaReportFile: 'cobertura_report'
                         }
