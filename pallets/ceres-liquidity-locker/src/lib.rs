@@ -1,6 +1,4 @@
 #![cfg_attr(not(feature = "std"), no_std)]
-#![feature(destructuring_assignment)]
-#![feature(in_band_lifetimes)]
 
 #[cfg(test)]
 mod mock;
@@ -37,7 +35,7 @@ pub use pallet::*;
 pub mod pallet {
     use crate::{LockInfo, WeightInfo};
     use common::prelude::{Balance, FixedWrapper};
-    use common::{balance, LiquiditySource};
+    use common::{balance, PoolXykPallet};
     use frame_support::pallet_prelude::*;
     use frame_support::sp_runtime::traits::Zero;
     use frame_system::ensure_signed;
@@ -54,13 +52,7 @@ pub mod pallet {
         type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 
         /// Reference to pool_xyk pallet
-        type XYKPool: LiquiditySource<
-            Self::DEXId,
-            Self::AccountId,
-            Self::AssetId,
-            Balance,
-            DispatchError,
-        >;
+        type XYKPool: PoolXykPallet<Self::AccountId, Self::AssetId>;
 
         /// Ceres asset id
         type CeresAssetId: Get<Self::AssetId>;
@@ -187,23 +179,28 @@ pub mod pallet {
             };
 
             // Get pool account
-            let pool_account: AccountIdOf<T> = T::XYKPool::properties(asset_a, asset_b)
+            let pool_account: AccountIdOf<T> = T::XYKPool::properties_of_pool(asset_a, asset_b)
                 .expect("Pool does not exist")
                 .0;
 
             // Calculate number of pool tokens to be locked
-            let pool_tokens = T::XYKPool::pool_providers(pool_account.clone(), user.clone())
-                .expect("User is not pool provider");
+            let pool_tokens =
+                T::XYKPool::balance_of_pool_provider(pool_account.clone(), user.clone())
+                    .unwrap_or(0);
+            if pool_tokens == 0 {
+                return Err(Error::<T>::InsufficientLiquidityToLock.into());
+            }
+
             lock_info.pool_tokens = (FixedWrapper::from(pool_tokens)
                 * FixedWrapper::from(percentage_of_pool_tokens))
             .try_into_balance()
             .unwrap_or(lock_info.pool_tokens);
 
             // Check if user has enough liquidity to lock
-            let mut lockups = <LockerData<T>>::get(&user);
+            let lockups = <LockerData<T>>::get(&user);
             let mut locked_pool_tokens = 0;
 
-            for (_, locks) in lockups.iter().enumerate() {
+            for locks in lockups.iter() {
                 if locks.asset_a == asset_a && locks.asset_b == asset_b {
                     if current_block < locks.unlocking_block {
                         locked_pool_tokens = locked_pool_tokens + locks.pool_tokens;
@@ -251,8 +248,7 @@ pub mod pallet {
 
             // Put updated address info into storage
             // Get lock info of extrinsic caller
-            lockups.push(lock_info);
-            <LockerData<T>>::insert(&user, lockups);
+            <LockerData<T>>::append(&user, lock_info);
 
             // Emit an event
             Self::deposit_event(Event::Locked(
@@ -274,7 +270,7 @@ pub mod pallet {
             let user = ensure_signed(origin)?;
 
             if user != AuthorityAccount::<T>::get() {
-                panic!("Unauthorized");
+                return Err(Error::<T>::Unauthorized.into());
             }
 
             FeesOptionTwoCeresAmount::<T>::put(ceres_fee);
@@ -290,9 +286,7 @@ pub mod pallet {
             if (now % T::BLOCKS_PER_ONE_DAY).is_zero() {
                 let mut expired_locks;
 
-                for (_, data) in <LockerData<T>>::iter().enumerate() {
-                    let account_id = data.0;
-                    let mut lockups = data.1;
+                for (account_id, mut lockups) in <LockerData<T>>::iter() {
                     expired_locks = Vec::new();
 
                     // Save expired lock
@@ -302,7 +296,7 @@ pub mod pallet {
                         }
                     }
 
-                    for (_, index) in expired_locks.iter().rev().enumerate() {
+                    for index in expired_locks.iter().rev() {
                         lockups.remove(*index);
                         counter += 1;
                     }
@@ -318,8 +312,8 @@ pub mod pallet {
     }
 
     impl<T: Config> Pallet<T> {
-        /// Check if liquidity is locked
-        pub fn check_if_liquidity_is_locked(
+        /// Check if user has enough unlocked liquidity for withdrawing
+        pub fn check_if_has_enough_unlocked_liquidity(
             user: &AccountIdOf<T>,
             asset_a: AssetIdOf<T>,
             asset_b: AssetIdOf<T>,
@@ -330,31 +324,33 @@ pub mod pallet {
             let current_block = frame_system::Pallet::<T>::block_number();
 
             // Get pool account
-            let pool_account: AccountIdOf<T> = T::XYKPool::properties(asset_a, asset_b)
+            let pool_account: AccountIdOf<T> = T::XYKPool::properties_of_pool(asset_a, asset_b)
                 .expect("Pool does not exist")
                 .0;
 
             // Calculate number of pool tokens to be locked
-            let pool_tokens = T::XYKPool::pool_providers(pool_account.clone(), user.clone())
-                .expect("User is not pool provider");
+            let pool_tokens =
+                T::XYKPool::balance_of_pool_provider(pool_account.clone(), user.clone())
+                    .unwrap_or(0);
+            if pool_tokens == 0 {
+                return false;
+            }
 
             let mut locked_pool_tokens = 0;
-
-            for (_, locks) in lockups.iter().enumerate() {
+            for locks in lockups.iter() {
                 if locks.asset_a == asset_a && locks.asset_b == asset_b {
                     if current_block < locks.unlocking_block {
                         locked_pool_tokens = locked_pool_tokens + locks.pool_tokens;
                     }
                 }
             }
-            let unlocked_pool_tokens = pool_tokens - locked_pool_tokens;
+            let unlocked_pool_tokens = pool_tokens.checked_sub(locked_pool_tokens).unwrap_or(0);
 
-            return if withdrawing_amount > pool_tokens || unlocked_pool_tokens >= withdrawing_amount
-            {
+            if withdrawing_amount > pool_tokens || unlocked_pool_tokens >= withdrawing_amount {
                 true
             } else {
                 false
-            };
+            }
         }
 
         /// Pay Locker fees in LP tokens
@@ -363,18 +359,19 @@ pub mod pallet {
             asset_a: AssetIdOf<T>,
             asset_b: AssetIdOf<T>,
             user: AccountIdOf<T>,
-            mut pool_tokens: Balance,
+            pool_tokens: Balance,
             fee_percentage: FixedWrapper,
             option: bool,
         ) -> Result<(), DispatchError> {
-            pool_tokens = (FixedWrapper::from(pool_tokens) * fee_percentage)
+            let pool_tokens = (FixedWrapper::from(pool_tokens) * fee_percentage)
                 .try_into_balance()
                 .unwrap_or(0);
 
-            let mut fee_account = FeesOptionOneAccount::<T>::get();
-            if !option {
-                fee_account = FeesOptionTwoAccount::<T>::get();
-            }
+            let fee_account = if option {
+                FeesOptionOneAccount::<T>::get()
+            } else {
+                FeesOptionTwoAccount::<T>::get()
+            };
 
             let result = T::XYKPool::transfer_lp_tokens(
                 pool_account,

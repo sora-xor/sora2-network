@@ -120,7 +120,7 @@ impl<T: Config> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, 
         let fxw_total_iss = FixedWrapper::from(total_iss) + MIN_LIQUIDITY;
 
         let has_enough_unlocked_liquidity =
-            ceres_liquidity_locker::Pallet::<T>::check_if_liquidity_is_locked(
+            ceres_liquidity_locker::Pallet::<T>::check_if_has_enough_unlocked_liquidity(
                 source,
                 self.destination.0.asset,
                 self.destination.1.asset,

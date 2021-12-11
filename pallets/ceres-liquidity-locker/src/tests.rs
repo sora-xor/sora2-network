@@ -6,11 +6,11 @@ use common::{
 use frame_support::{assert_err, assert_ok};
 
 use crate::mock::*;
-use sp_std::rc::Rc;
 
-type PresetFunction<'a> = Rc<dyn Fn(DEXId) -> () + 'a>;
-
-fn preset_initial(tests: Vec<PresetFunction<'a>>) {
+fn preset_initial<Fun>(tests: Fun)
+where
+    Fun: Fn(DEXId),
+{
     let mut ext = ExtBuilder::default().build();
     let dex_id = DEX_A_ID;
     let xor: AssetId = XOR.into();
@@ -134,15 +134,13 @@ fn preset_initial(tests: Vec<PresetFunction<'a>>) {
             Some((repr.clone(), fee_repr.clone()))
         );
 
-        for test in &tests {
-            test(dex_id.clone());
-        }
+        tests(dex_id);
     });
 }
 
 #[test]
 fn lock_liquidity_ok_with_first_fee_option() {
-    preset_initial(vec![Rc::new(|dex_id| {
+    preset_initial(|dex_id| {
         let base_asset: AssetId = XOR.into();
         let target_asset: AssetId = CERES_ASSET_ID.into();
 
@@ -215,12 +213,20 @@ fn lock_liquidity_ok_with_first_fee_option() {
             )
             .expect("User is not pool provider");
         assert_eq!(fee_account_pool_tokens_after_locking, lp_fee);
-    })]);
+
+        // Check if added to account_pools
+        let target_asset_expected =
+            <Runtime as ceres_liquidity_locker::Config>::XYKPool::account_pools(fee_account);
+        assert_eq!(
+            target_asset_expected.get(&target_asset),
+            Some(&target_asset)
+        );
+    });
 }
 
 #[test]
 fn lock_liquidity_ok_with_second_fee_option() {
-    preset_initial(vec![Rc::new(|dex_id| {
+    preset_initial(|dex_id| {
         let base_asset: AssetId = XOR.into();
         let target_asset: AssetId = CERES_ASSET_ID.into();
 
@@ -296,16 +302,24 @@ fn lock_liquidity_ok_with_second_fee_option() {
         let fee_account_pool_tokens_after_locking =
             <Runtime as ceres_liquidity_locker::Config>::XYKPool::pool_providers(
                 pool_account.clone(),
-                fee_account,
+                fee_account.clone(),
             )
             .expect("User is not pool provider");
         assert_eq!(fee_account_pool_tokens_after_locking, lp_fee);
-    })]);
+
+        // Check if added to account_pools
+        let target_asset_expected =
+            <Runtime as ceres_liquidity_locker::Config>::XYKPool::account_pools(fee_account);
+        assert_eq!(
+            target_asset_expected.get(&target_asset),
+            Some(&target_asset)
+        );
+    });
 }
 
 #[test]
 fn lock_liquidity_invalid_percentage() {
-    preset_initial(vec![Rc::new(|_dex_id| {
+    preset_initial(|_dex_id| {
         assert_err!(
             ceres_liquidity_locker::Pallet::<Runtime>::lock_liquidity(
                 Origin::signed(ALICE()),
@@ -317,12 +331,12 @@ fn lock_liquidity_invalid_percentage() {
             ),
             ceres_liquidity_locker::Error::<Runtime>::InvalidPercentage
         );
-    })]);
+    });
 }
 
 #[test]
 fn lock_liquidity_invalid_unlocking_block() {
-    preset_initial(vec![Rc::new(|_dex_id| {
+    preset_initial(|_dex_id| {
         assert_err!(
             ceres_liquidity_locker::Pallet::<Runtime>::lock_liquidity(
                 Origin::signed(ALICE()),
@@ -334,13 +348,13 @@ fn lock_liquidity_invalid_unlocking_block() {
             ),
             ceres_liquidity_locker::Error::<Runtime>::InvalidUnlockingBlock
         );
-    })]);
+    });
 }
 
 #[test]
 #[should_panic(expected = "Pool does not exist")]
 fn lock_liquidity_pool_does_not_exist() {
-    preset_initial(vec![Rc::new(|_dex_id| {
+    preset_initial(|_dex_id| {
         let _ = ceres_liquidity_locker::Pallet::<Runtime>::lock_liquidity(
             Origin::signed(ALICE()),
             XOR.into(),
@@ -349,27 +363,29 @@ fn lock_liquidity_pool_does_not_exist() {
             balance!(0.5),
             true,
         );
-    })]);
+    });
 }
 
 #[test]
-#[should_panic(expected = "User is not pool provider")]
 fn lock_liquidity_user_is_not_pool_provider() {
-    preset_initial(vec![Rc::new(|_dex_id| {
-        let _ = ceres_liquidity_locker::Pallet::<Runtime>::lock_liquidity(
-            Origin::signed(ALICE()),
-            XOR.into(),
-            CERES_ASSET_ID.into(),
-            frame_system::Pallet::<Runtime>::block_number() + 1,
-            balance!(0.5),
-            true,
+    preset_initial(|_dex_id| {
+        assert_err!(
+            ceres_liquidity_locker::Pallet::<Runtime>::lock_liquidity(
+                Origin::signed(ALICE()),
+                XOR.into(),
+                CERES_ASSET_ID.into(),
+                frame_system::Pallet::<Runtime>::block_number() + 1,
+                balance!(0.5),
+                true
+            ),
+            ceres_liquidity_locker::Error::<Runtime>::InsufficientLiquidityToLock
         );
-    })]);
+    });
 }
 
 #[test]
 fn lock_liquidity_insufficient_liquidity_to_lock() {
-    preset_initial(vec![Rc::new(|dex_id| {
+    preset_initial(|dex_id| {
         assert_ok!(pool_xyk::Pallet::<Runtime>::deposit_liquidity(
             Origin::signed(ALICE()),
             dex_id,
@@ -413,13 +429,12 @@ fn lock_liquidity_insufficient_liquidity_to_lock() {
             ),
             ceres_liquidity_locker::Error::<Runtime>::InsufficientLiquidityToLock
         );
-    })]);
+    });
 }
 
 #[test]
-#[should_panic(expected = "Unauthorized")]
 fn change_ceres_fee_unauthorized() {
-    preset_initial(vec![Rc::new(|_dex_id| {
+    preset_initial(|_dex_id| {
         assert_err!(
             ceres_liquidity_locker::Pallet::<Runtime>::change_ceres_fee(
                 Origin::signed(ALICE()),
@@ -427,12 +442,12 @@ fn change_ceres_fee_unauthorized() {
             ),
             ceres_liquidity_locker::Error::<Runtime>::Unauthorized
         );
-    })]);
+    });
 }
 
 #[test]
 fn change_ceres_fee_ok() {
-    preset_initial(vec![Rc::new(|_dex_id| {
+    preset_initial(|_dex_id| {
         assert_ok!(ceres_liquidity_locker::Pallet::<Runtime>::change_ceres_fee(
             Origin::signed(AUTHORITY::<Runtime>()),
             balance!(100)
@@ -442,12 +457,12 @@ fn change_ceres_fee_ok() {
             ceres_liquidity_locker::FeesOptionTwoCeresAmount::<Runtime>::get(),
             balance!(100)
         );
-    })]);
+    });
 }
 
 #[test]
 fn should_remove_expired_lockups() {
-    preset_initial(vec![Rc::new(|dex_id| {
+    preset_initial(|dex_id| {
         assert_ok!(pool_xyk::Pallet::<Runtime>::deposit_liquidity(
             Origin::signed(ALICE()),
             dex_id,
@@ -523,5 +538,105 @@ fn should_remove_expired_lockups() {
         assert_eq!(lockups_bob.len(), 1);
 
         assert_eq!(lockups_bob.get(0).unwrap().unlocking_block, 20000);
-    })]);
+    });
+}
+
+#[test]
+#[should_panic(expected = "Pool does not exist")]
+fn check_if_has_enough_unlocked_liquidity_pool_does_not_exist() {
+    preset_initial(|_dex_id| {
+        let _ = ceres_liquidity_locker::Pallet::<Runtime>::check_if_has_enough_unlocked_liquidity(
+            &ALICE(),
+            XOR.into(),
+            DOT.into(),
+            balance!(0.3),
+        );
+    });
+}
+
+#[test]
+fn check_if_has_enough_unlocked_liquidity_user_is_not_pool_provider() {
+    preset_initial(|_dex_id| {
+        assert_eq!(
+            ceres_liquidity_locker::Pallet::<Runtime>::check_if_has_enough_unlocked_liquidity(
+                &ALICE(),
+                XOR.into(),
+                CERES_ASSET_ID.into(),
+                balance!(0.3)
+            ),
+            false
+        );
+    });
+}
+
+#[test]
+fn check_if_has_enough_unlocked_liquidity_true() {
+    preset_initial(|dex_id| {
+        assert_ok!(pool_xyk::Pallet::<Runtime>::deposit_liquidity(
+            Origin::signed(ALICE()),
+            dex_id,
+            XOR.into(),
+            CERES_ASSET_ID.into(),
+            balance!(360),
+            balance!(144),
+            balance!(360),
+            balance!(144),
+        ));
+
+        // Lock 50% of LP tokens
+        assert_ok!(ceres_liquidity_locker::Pallet::<Runtime>::lock_liquidity(
+            Origin::signed(ALICE()),
+            XOR.into(),
+            CERES_ASSET_ID.into(),
+            frame_system::Pallet::<Runtime>::block_number() + 5,
+            balance!(0.5),
+            true
+        ));
+
+        assert_eq!(
+            ceres_liquidity_locker::Pallet::<Runtime>::check_if_has_enough_unlocked_liquidity(
+                &ALICE(),
+                XOR.into(),
+                CERES_ASSET_ID.into(),
+                balance!(1)
+            ),
+            true
+        );
+    });
+}
+
+#[test]
+fn check_if_has_enough_unlocked_liquidity_false() {
+    preset_initial(|dex_id| {
+        assert_ok!(pool_xyk::Pallet::<Runtime>::deposit_liquidity(
+            Origin::signed(ALICE()),
+            dex_id,
+            XOR.into(),
+            CERES_ASSET_ID.into(),
+            balance!(360),
+            balance!(144),
+            balance!(360),
+            balance!(144),
+        ));
+
+        // Lock 50% of LP tokens
+        assert_ok!(ceres_liquidity_locker::Pallet::<Runtime>::lock_liquidity(
+            Origin::signed(ALICE()),
+            XOR.into(),
+            CERES_ASSET_ID.into(),
+            frame_system::Pallet::<Runtime>::block_number() + 5,
+            balance!(1),
+            true
+        ));
+
+        assert_eq!(
+            ceres_liquidity_locker::Pallet::<Runtime>::check_if_has_enough_unlocked_liquidity(
+                &ALICE(),
+                XOR.into(),
+                CERES_ASSET_ID.into(),
+                balance!(10)
+            ),
+            false
+        );
+    });
 }

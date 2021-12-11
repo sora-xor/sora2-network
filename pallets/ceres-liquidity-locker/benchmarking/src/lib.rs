@@ -135,20 +135,25 @@ benchmarks! {
     lock_liquidity {
         setup_benchmark::<T>()?;
         let caller = alice::<T>();
-        let block_number = frame_system::Pallet::<T>::block_number();
+        let block_number = frame_system::Pallet::<T>::block_number() + 5u32.into();
         let lp_percentage = balance!(0.5);
         let ceres_asset_id: T::AssetId = common::AssetId32::from_bytes(hex!(
             "008bcfd2387d3fc453333557eecb0efe59fcba128769b2feefdd306e98e66440"
         )).into();
     }: {
-        let _ = ceres_liquidity_locker::Module::<T>::lock_liquidity(
+        let _ = ceres_liquidity_locker::Pallet::<T>::lock_liquidity(
             RawOrigin::Signed(caller.clone()).into(),
             XOR.into(),
             ceres_asset_id,
             block_number,
             lp_percentage,
-            true
+            false
         );
+    }
+    verify {
+        let lockups_alice = ceres_liquidity_locker::LockerData::<T>::get(caller.clone());
+        assert_eq!(lockups_alice.len(), 1);
+        assert_eq!(lockups_alice.get(0).unwrap().unlocking_block, block_number);
     }
 
     change_ceres_fee {
@@ -159,6 +164,9 @@ benchmarks! {
             RawOrigin::Signed(caller.clone()).into(),
             balance!(69)
         );
+    }
+    verify {
+        assert_eq!(ceres_liquidity_locker::FeesOptionTwoCeresAmount::<T>::get(), balance!(69));
     }
 }
 
