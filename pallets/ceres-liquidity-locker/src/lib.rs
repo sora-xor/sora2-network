@@ -182,11 +182,8 @@ pub mod pallet {
 
             // Get pool account
             let pool_account: AccountIdOf<T> = T::XYKPool::properties_of_pool(asset_a, asset_b)
-                .unwrap_or(Default::default())
+                .ok_or(Error::<T>::PoolDoesNotExist)?
                 .0;
-            if pool_account == Default::default() {
-                return Err(Error::<T>::PoolDoesNotExist.into());
-            }
 
             // Calculate number of pool tokens to be locked
             let pool_tokens =
@@ -327,12 +324,12 @@ pub mod pallet {
             let current_block = frame_system::Pallet::<T>::block_number();
 
             // Get pool account
-            let pool_account: AccountIdOf<T> = T::XYKPool::properties_of_pool(asset_a, asset_b)
-                .unwrap_or(Default::default())
-                .0;
-            if pool_account == Default::default() {
-                return false;
-            }
+            let pool_account: AccountIdOf<T> =
+                if let Some(account) = T::XYKPool::properties_of_pool(asset_a, asset_b) {
+                    account.0
+                } else {
+                    return false;
+                };
 
             // Calculate number of pool tokens to be locked
             let pool_tokens =
