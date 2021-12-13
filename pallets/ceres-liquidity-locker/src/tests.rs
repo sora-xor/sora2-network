@@ -352,16 +352,18 @@ fn lock_liquidity_invalid_unlocking_block() {
 }
 
 #[test]
-#[should_panic(expected = "Pool does not exist")]
 fn lock_liquidity_pool_does_not_exist() {
     preset_initial(|_dex_id| {
-        let _ = ceres_liquidity_locker::Pallet::<Runtime>::lock_liquidity(
-            Origin::signed(ALICE()),
-            XOR.into(),
-            DOT.into(),
-            frame_system::Pallet::<Runtime>::block_number() + 1,
-            balance!(0.5),
-            true,
+        assert_err!(
+            ceres_liquidity_locker::Pallet::<Runtime>::lock_liquidity(
+                Origin::signed(ALICE()),
+                XOR.into(),
+                DOT.into(),
+                frame_system::Pallet::<Runtime>::block_number() + 1,
+                balance!(0.5),
+                true,
+            ),
+            ceres_liquidity_locker::Error::<Runtime>::PoolDoesNotExist
         );
     });
 }
@@ -542,14 +544,16 @@ fn should_remove_expired_lockups() {
 }
 
 #[test]
-#[should_panic(expected = "Pool does not exist")]
 fn check_if_has_enough_unlocked_liquidity_pool_does_not_exist() {
     preset_initial(|_dex_id| {
-        let _ = ceres_liquidity_locker::Pallet::<Runtime>::check_if_has_enough_unlocked_liquidity(
-            &ALICE(),
-            XOR.into(),
-            DOT.into(),
-            balance!(0.3),
+        assert_eq!(
+            ceres_liquidity_locker::Pallet::<Runtime>::check_if_has_enough_unlocked_liquidity(
+                &ALICE(),
+                XOR.into(),
+                DOT.into(),
+                balance!(0.3),
+            ),
+            false
         );
     });
 }

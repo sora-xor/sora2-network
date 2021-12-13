@@ -136,6 +136,8 @@ pub mod pallet {
 
     #[pallet::error]
     pub enum Error<T> {
+        ///Pool does not exist
+        PoolDoesNotExist,
         ///Insufficient liquidity to lock
         InsufficientLiquidityToLock,
         ///Percentage greater than 100%
@@ -180,8 +182,11 @@ pub mod pallet {
 
             // Get pool account
             let pool_account: AccountIdOf<T> = T::XYKPool::properties_of_pool(asset_a, asset_b)
-                .expect("Pool does not exist")
+                .unwrap_or(Default::default())
                 .0;
+            if pool_account == Default::default() {
+                return Err(Error::<T>::PoolDoesNotExist.into());
+            }
 
             // Calculate number of pool tokens to be locked
             let pool_tokens =
@@ -284,10 +289,8 @@ pub mod pallet {
             let mut counter: u64 = 0;
 
             if (now % T::BLOCKS_PER_ONE_DAY).is_zero() {
-                let mut expired_locks;
-
                 for (account_id, mut lockups) in <LockerData<T>>::iter() {
-                    expired_locks = Vec::new();
+                    let mut expired_locks = Vec::new();
 
                     // Save expired lock
                     for (index, lock) in lockups.iter().enumerate() {
@@ -325,8 +328,11 @@ pub mod pallet {
 
             // Get pool account
             let pool_account: AccountIdOf<T> = T::XYKPool::properties_of_pool(asset_a, asset_b)
-                .expect("Pool does not exist")
+                .unwrap_or(Default::default())
                 .0;
+            if pool_account == Default::default() {
+                return false;
+            }
 
             // Calculate number of pool tokens to be locked
             let pool_tokens =
