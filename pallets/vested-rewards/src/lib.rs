@@ -404,7 +404,8 @@ pub mod pallet {
                 .into_iter()
                 .filter(|id| !MarketMakingPairs::<T>::contains_key(&id, &T::AssetId::from(XOR)))
                 .for_each(|id| MarketMakingPairs::<T>::insert(&id, &T::AssetId::from(XOR), ()));
-            migration::migrate::<T>() + <T as Config>::WeightInfo::on_runtime_upgrade()
+            migration::migrate::<T>()
+                .saturating_add(<T as Config>::WeightInfo::on_runtime_upgrade())
         }
 
         fn on_initialize(block_number: T::BlockNumber) -> Weight {
