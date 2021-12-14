@@ -58,12 +58,12 @@ pipeline {
                                     featureList = 'include-real-files'
                                 }
                                 sh """
-                                    time cargo build --release --features \"${featureList}\" --target-dir /app/target/
-                                    time cargo test  --release
-                                    sccache -s
-                                    time mv /app/target/release/framenode .
-                                    time wasm-opt -Os -o ./framenode_runtime.compact.wasm /app/target/release/wbuild/framenode-runtime/framenode_runtime.compact.wasm
+                                    cargo build --release --features \"${featureList}\" --target-dir /app/target/
+                                    mv /app/target/release/framenode .
+                                    wasm-opt -Os -o ./framenode_runtime.compact.wasm /app/target/release/wbuild/framenode-runtime/framenode_runtime.compact.wasm
                                     subwasm --json info framenode_runtime.compact.wasm > ${wasmReportFile}
+                                    cargo test  --release --target-dir /app/target/
+                                    sccache -s
                                 """
                                 archiveArtifacts artifacts:
                                     "framenode_runtime.compact.wasm, ${wasmReportFile}"
@@ -71,12 +71,12 @@ pipeline {
                         } else {
                             docker.image(envImageName + ':dev').inside() {
                                 sh '''
-                                    time cargo fmt -- --check > /dev/null
-                                    time cargo check
-                                    time cargo test
-                                    time cargo check --features private-net
-                                    time cargo test  --features private-net
-                                    time cargo check --features runtime-benchmarks
+                                    cargo fmt -- --check > /dev/null
+                                    cargo check --target-dir /app/target/
+                                    cargo test --target-dir /app/target/
+                                    cargo check --features private-net --target-dir /app/target/
+                                    cargo test  --features private-net --target-dir /app/target/
+                                    cargo check --features runtime-benchmarks --target-dir /app/target/
                                     sccache -s
                                 '''
                             }
