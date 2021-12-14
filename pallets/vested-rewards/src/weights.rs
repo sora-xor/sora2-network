@@ -75,6 +75,10 @@ impl<T: frame_system::Config> crate::WeightInfo for WeightInfo<T> {
         100_000_000 as Weight // TODO: benchmark
     }
 
+    fn on_runtime_upgrade() -> Weight {
+        EXTRINSIC_FIXED_WEIGHT
+    }
+
     fn set_asset_pair() -> Weight {
         EXTRINSIC_FIXED_WEIGHT
     }
@@ -86,6 +90,10 @@ impl crate::WeightInfo for () {
     }
 
     fn on_initialize(_n: u32) -> Weight {
+        EXTRINSIC_FIXED_WEIGHT
+    }
+
+    fn on_runtime_upgrade() -> Weight {
         EXTRINSIC_FIXED_WEIGHT
     }
 
