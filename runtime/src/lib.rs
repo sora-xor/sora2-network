@@ -1440,19 +1440,6 @@ impl price_tools::Config for Runtime {
 }
 
 parameter_types! {
-    pub const CeresAssetId: AssetId = common::AssetId32::from_bytes
-        (hex!("008bcfd2387d3fc453333557eecb0efe59fcba128769b2feefdd306e98e66440"));
-}
-
-impl ceres_liquidity_locker::Config for Runtime {
-    const BLOCKS_PER_ONE_DAY: BlockNumber = 1 * DAYS;
-    type Event = Event;
-    type XYKPool = PoolXYK;
-    type CeresAssetId = CeresAssetId;
-    type WeightInfo = ceres_liquidity_locker::weights::WeightInfo<Runtime>;
-}
-
-parameter_types! {
     pub const CeresPerDay: Balance = balance!(6.66666666667);
     pub const CeresAssetId: AssetId = common::AssetId32::from_bytes
         (hex!("008bcfd2387d3fc453333557eecb0efe59fcba128769b2feefdd306e98e66440"));
@@ -1466,6 +1453,14 @@ impl ceres_staking::Config for Runtime {
     type CeresAssetId = CeresAssetId;
     type MaximumCeresInStakingPool = MaximumCeresInStakingPool;
     type WeightInfo = ceres_staking::weights::WeightInfo<Runtime>;
+}
+
+impl ceres_liquidity_locker::Config for Runtime {
+    const BLOCKS_PER_ONE_DAY: BlockNumber = 1 * DAYS;
+    type Event = Event;
+    type XYKPool = PoolXYK;
+    type CeresAssetId = CeresAssetId;
+    type WeightInfo = ceres_liquidity_locker::weights::WeightInfo<Runtime>;
 }
 
 /// Payload data to be signed when making signed transaction from off-chain workers,
