@@ -145,6 +145,7 @@ fn test_quote_base_to_target_should_pass() {
             &GetBaseAssetId::get(),
             &DOT,
             QuoteAmount::with_desired_input(balance!(100)),
+            true,
         )
         .unwrap();
         assert_eq!(outcome.amount, balance!(136.851187324744592819));
@@ -153,6 +154,7 @@ fn test_quote_base_to_target_should_pass() {
             &GetBaseAssetId::get(),
             &DOT,
             QuoteAmount::with_desired_output(balance!(136.851187324744592819)),
+            true,
         )
         .unwrap();
         assert_eq!(outcome.amount, balance!(99.999999999999999999));
@@ -176,6 +178,7 @@ fn test_quote_target_to_base_should_pass() {
             &DOT,
             &GetBaseAssetId::get(),
             QuoteAmount::with_desired_input(balance!(100)),
+            true,
         )
         .unwrap();
         assert_eq!(outcome.amount, balance!(70.211267605633802817));
@@ -184,6 +187,7 @@ fn test_quote_target_to_base_should_pass() {
             &DOT,
             &GetBaseAssetId::get(),
             QuoteAmount::with_desired_output(balance!(70.211267605633802817)),
+            true,
         )
         .unwrap();
         assert_eq!(outcome.amount, balance!(99.999999999999999999));
@@ -215,6 +219,7 @@ fn test_quote_target_to_target_should_pass() {
             &KSM,
             &DOT,
             QuoteAmount::with_desired_input(balance!(100)),
+            true,
         )
         .unwrap();
         assert_eq!(outcome.amount, balance!(238.487257161165663484));
@@ -223,6 +228,7 @@ fn test_quote_target_to_target_should_pass() {
             &KSM,
             &DOT,
             QuoteAmount::with_desired_output(balance!(238.487257161165663484)),
+            true,
         )
         .unwrap();
         assert_eq!(outcome.amount, balance!(100));
@@ -254,6 +260,7 @@ fn test_quote_different_modules_should_pass() {
             &GetBaseAssetId::get(),
             &DOT,
             QuoteAmount::with_desired_input(balance!(100)),
+            true,
         )
         .unwrap();
         assert_eq!(outcome.amount, balance!(136.851187324744592819));
@@ -262,6 +269,7 @@ fn test_quote_different_modules_should_pass() {
             &GetBaseAssetId::get(),
             &DOT,
             QuoteAmount::with_desired_input(balance!(100)),
+            true,
         )
         .unwrap();
         assert_eq!(outcome.amount, balance!(53.413575727271103809));

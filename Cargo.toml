@@ -168,6 +168,7 @@ members = [
     "pallets/dex-manager",
     "pallets/dex-api",
     "pallets/farming",
+    "pallets/ceres-staking",
     "pallets/faucet",
     "pallets/iroha-migration",
     "pallets/liquidity-proxy",

@@ -24,14 +24,10 @@
 // --output
 // ./
 
-#![allow(unused_parens)]
-#![allow(unused_imports)]
-
 use frame_support::traits::Get;
 use frame_support::weights::Weight;
 use sp_std::marker::PhantomData;
 
-/// Weight functions for referrals.
 pub struct WeightInfo<T>(PhantomData<T>);
 impl<T: frame_system::Config> crate::WeightInfo for WeightInfo<T> {
     fn reserve() -> Weight {

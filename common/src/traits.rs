@@ -105,6 +105,7 @@ pub trait LiquiditySource<TargetId, AccountId, AssetId, Amount, Error> {
         input_asset_id: &AssetId,
         output_asset_id: &AssetId,
         amount: QuoteAmount<Amount>,
+        deduce_fee: bool,
     ) -> Result<SwapOutcome<Amount>, DispatchError>;
 
     /// Perform exchange based on desired amount.
@@ -133,6 +134,7 @@ pub trait LiquiditySource<TargetId, AccountId, AssetId, Amount, Error> {
         input_asset_id: &AssetId,
         output_asset_id: &AssetId,
         amount: QuoteAmount<Amount>,
+        deduce_fee: bool,
     ) -> Result<SwapOutcome<Amount>, DispatchError>;
 }
 
@@ -152,6 +154,7 @@ impl<DEXId, AccountId, AssetId> LiquiditySource<DEXId, AccountId, AssetId, Fixed
         _input_asset_id: &AssetId,
         _output_asset_id: &AssetId,
         _amount: QuoteAmount<Fixed>,
+        _deduce_fee: bool,
     ) -> Result<SwapOutcome<Fixed>, DispatchError> {
         Err(DispatchError::CannotLookup)
     }
@@ -182,6 +185,7 @@ impl<DEXId, AccountId, AssetId> LiquiditySource<DEXId, AccountId, AssetId, Fixed
         _input_asset_id: &AssetId,
         _output_asset_id: &AssetId,
         _amount: QuoteAmount<Fixed>,
+        _deduce_fee: bool,
     ) -> Result<SwapOutcome<Fixed>, DispatchError> {
         Err(DispatchError::CannotLookup)
     }
@@ -203,6 +207,7 @@ impl<DEXId, AccountId, AssetId> LiquiditySource<DEXId, AccountId, AssetId, Balan
         _input_asset_id: &AssetId,
         _output_asset_id: &AssetId,
         _amount: QuoteAmount<Balance>,
+        _deduce_fee: bool,
     ) -> Result<SwapOutcome<Balance>, DispatchError> {
         Err(DispatchError::CannotLookup)
     }
@@ -233,6 +238,7 @@ impl<DEXId, AccountId, AssetId> LiquiditySource<DEXId, AccountId, AssetId, Balan
         _input_asset_id: &AssetId,
         _output_asset_id: &AssetId,
         _amount: QuoteAmount<Balance>,
+        _deduce_fee: bool,
     ) -> Result<SwapOutcome<Balance>, DispatchError> {
         Err(DispatchError::CannotLookup)
     }

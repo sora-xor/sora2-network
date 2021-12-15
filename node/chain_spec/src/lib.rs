@@ -47,16 +47,15 @@ use framenode_runtime::opaque::SessionKeys;
 use framenode_runtime::{
     assets, eth_bridge, frame_system, AccountId, AssetId, AssetName, AssetSymbol, AssetsConfig,
     BabeConfig, BalancesConfig, BridgeMultisigConfig, CouncilConfig, DEXAPIConfig,
-    DEXManagerConfig, DemocracyConfig, EthBridgeConfig, GetBaseAssetId, GetParliamentAccountId,
-    GetPswapAssetId, GetValAssetId, GetXorAssetId, GrandpaConfig, ImOnlineId, IrohaMigrationConfig,
-    LiquiditySourceType, MulticollateralBondingCurvePoolConfig, PermissionsConfig,
-    PswapDistributionConfig, RewardsConfig, Runtime, SS58Prefix, SessionConfig, StakerStatus,
-    StakingConfig, SystemConfig, TechAccountId, TechnicalConfig, TokensConfig, TradingPairConfig,
-    XSTPoolConfig, WASM_BINARY,
+    DEXManagerConfig, DemocracyConfig, EthBridgeConfig, GenesisConfig, GetBaseAssetId,
+    GetParliamentAccountId, GetPswapAssetId, GetValAssetId, GetXorAssetId, GrandpaConfig,
+    ImOnlineId, IrohaMigrationConfig, LiquiditySourceType, MulticollateralBondingCurvePoolConfig,
+    PermissionsConfig, PswapDistributionConfig, RewardsConfig, Runtime, SS58Prefix, SessionConfig,
+    Signature, StakerStatus, StakingConfig, SystemConfig, TechAccountId, TechnicalCommitteeConfig,
+    TechnicalConfig, TokensConfig, TradingPairConfig, XSTPoolConfig, WASM_BINARY,
 };
 use hex_literal::hex;
 use permissions::Scope;
-use rewards::RewardInfo;
 use sc_finality_grandpa::AuthorityId as GrandpaId;
 use sc_network::config::MultiaddrWithPeerId;
 use sc_service::{ChainType, Properties};
@@ -72,7 +71,6 @@ use codec::Encode;
 use framenode_runtime::assets::{AssetRecord, AssetRecordArg};
 #[cfg(feature = "private-net")]
 use framenode_runtime::{FaucetConfig, SudoConfig};
-use framenode_runtime::{GenesisConfig, Signature, TechnicalCommitteeConfig};
 use sp_core::{sr25519, Pair};
 use sp_runtime::traits::{IdentifyAccount, Verify};
 use std::borrow::Cow;
@@ -173,7 +171,7 @@ pub fn dev_net_coded() -> ChainSpec {
     let mut properties = Properties::new();
     properties.insert("ss58Format".into(), SS58Prefix::get().into());
     properties.insert("tokenSymbol".into(), "XOR".into());
-    properties.insert("tokenDecimals".into(), 18.into());
+    properties.insert("tokenDecimals".into(), DEFAULT_BALANCE_PRECISION.into());
     ChainSpec::from_genesis(
         "SORA-dev Testnet",
         "sora-substrate-dev",
@@ -275,7 +273,7 @@ pub fn staging_net_coded(test: bool) -> ChainSpec {
     let mut properties = Properties::new();
     properties.insert("ss58Format".into(), SS58Prefix::get().into());
     properties.insert("tokenSymbol".into(), "XOR".into());
-    properties.insert("tokenDecimals".into(), 18.into());
+    properties.insert("tokenDecimals".into(), DEFAULT_BALANCE_PRECISION.into());
     let (name, id, boot_nodes) = if test {
         (
             "SORA-test",
@@ -491,7 +489,7 @@ pub fn local_testnet_config() -> ChainSpec {
     let mut properties = Properties::new();
     properties.insert("ss58Format".into(), SS58Prefix::get().into());
     properties.insert("tokenSymbol".into(), "XOR".into());
-    properties.insert("tokenDecimals".into(), 18.into());
+    properties.insert("tokenDecimals".into(), DEFAULT_BALANCE_PRECISION.into());
     ChainSpec::from_genesis(
         "SORA-local Testnet",
         "sora-substrate-local",
@@ -940,6 +938,8 @@ fn testnet_genesis(
                 //     DEFAULT_BALANCE_PRECISION,
                 //     Balance::zero(),
                 //     true,
+                //     None,
+                //     None,
                 // ),
                 (
                     GetValAssetId::get(),
@@ -1201,7 +1201,7 @@ pub fn main_net_coded() -> ChainSpec {
     let mut properties = Properties::new();
     properties.insert("ss58Format".into(), SS58Prefix::get().into());
     properties.insert("tokenSymbol".into(), "XOR".into());
-    properties.insert("tokenDecimals".into(), 18.into());
+    properties.insert("tokenDecimals".into(), DEFAULT_BALANCE_PRECISION.into());
     let name = "SORA";
     let id = "sora-substrate-main-net";
     // SORA main-net node address. We should have 2 nodes.

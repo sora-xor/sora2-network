@@ -42,7 +42,6 @@ tokens = { version = "0.4", package = "orml-tokens" }
 assets = { path = "../assets" }
 common = { path = "../../common", features = ["test"] }
 permissions = { path = "../permissions" }
-referrals = { path = "../referrals" }
 technical = { path = "../technical" }
 eth-bridge = {path = "../eth-bridge" }
 

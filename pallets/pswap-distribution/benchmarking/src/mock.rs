@@ -29,7 +29,7 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use common::mock::ExistentialDeposits;
-use common::prelude::{Balance, ContentSource, Description};
+use common::prelude::Balance;
 use common::{
     balance, fixed, AssetName, AssetSymbol, BalancePrecision, Fixed, FromGenericPair,
     DEFAULT_BALANCE_PRECISION,
@@ -273,8 +273,6 @@ pub struct ExtBuilder {
         BalancePrecision,
         Balance,
         bool,
-        Option<ContentSource>,
-        Option<Description>,
     )>,
     initial_permission_owners: Vec<(u32, Scope, Vec<AccountId>)>,
     initial_permissions: Vec<(AccountId, Scope, Vec<u32>)>,
@@ -296,8 +294,6 @@ impl ExtBuilder {
                     DEFAULT_BALANCE_PRECISION,
                     Balance::zero(),
                     true,
-                    None,
-                    None,
                 ),
                 (
                     common::PSWAP.into(),
@@ -307,8 +303,6 @@ impl ExtBuilder {
                     10,
                     Balance::zero(),
                     true,
-                    None,
-                    None,
                 ),
                 (
                     PoolTokenAId::get(),
@@ -318,8 +312,6 @@ impl ExtBuilder {
                     DEFAULT_BALANCE_PRECISION,
                     Balance::zero(),
                     true,
-                    None,
-                    None,
                 ),
                 (
                     PoolTokenBId::get(),
@@ -329,8 +321,6 @@ impl ExtBuilder {
                     DEFAULT_BALANCE_PRECISION,
                     Balance::zero(),
                     true,
-                    None,
-                    None,
                 ),
             ],
             initial_permission_owners: vec![],

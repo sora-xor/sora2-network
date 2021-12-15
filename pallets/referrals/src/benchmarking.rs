@@ -61,17 +61,13 @@ benchmarks! {
 
     unreserve {
         let caller = alice::<T>();
-        // ALICE account on local has funds so we withdraw it first
-        let balance = T::Currency::total_balance(XOR.into(), &caller);
-        T::Currency::withdraw(XOR.into(), &caller, balance).unwrap();
-
         T::Currency::deposit(XOR.into(), &caller, balance!(50000)).unwrap();
         Module::<T>::reserve(RawOrigin::Signed(alice::<T>()).into(), SMALL_FEE).unwrap();
     }: {
         Module::<T>::unreserve(RawOrigin::Signed(alice::<T>()).into(), SMALL_FEE).unwrap();
     }
     verify {
-        assert_eq!(ReferrerBalances::<T>::get(&alice::<T>()), None);
+        assert_eq!(ReferrerBalances::<T>::get(&alice::<T>()), Some(0));
         assert_eq!(assets::Module::<T>::free_balance(&XOR.into(), &alice::<T>()), Ok(balance!(50000)));
     }
 
