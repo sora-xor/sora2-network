@@ -32,8 +32,10 @@ pub mod v1_2 {
     use crate::{Config, EthereumAddress, PswapFarmOwners, ReservesAcc, RewardInfo, Weight};
     use common::{balance, Balance, PSWAP};
     use frame_support::debug;
+    use frame_support::dispatch::DispatchError;
     use frame_support::traits::Get;
     use hex_literal::hex;
+    use orml_traits::MultiCurrency;
     use sp_std::collections::btree_map::BTreeMap;
     use sp_std::vec::Vec;
 
@@ -54,18 +56,43 @@ pub mod v1_2 {
         let compensation_amount = balance!(74339.224845900297630556);
         PswapFarmOwners::<T>::insert(user_account, compensation_amount);
         let reserves_tech_acc = ReservesAcc::<T>::get();
-        let res =
-            technical::Module::<T>::mint(&PSWAP.into(), &reserves_tech_acc, compensation_amount);
-        if res.is_err() {
-            debug::error!(
-                target: "runtime",
-                "failed to mint compensation pswap during migration"
-            );
+        let reserves_acc =
+            technical::Module::<T>::tech_account_id_to_account_id(&reserves_tech_acc);
+        let mut error: Option<(&'static str, DispatchError)> = Default::default();
+        if reserves_acc.is_err() {
+            let header_message: &'static str =
+                "failed to convert from tech account during migration";
+            error = Some((header_message, reserves_acc.unwrap_err()));
         } else {
-            debug::info!(
-                target: "runtime",
-                "successfully minted compensation pswap during migration"
-            );
+            let res =
+                T::Currency::deposit(PSWAP.into(), &reserves_acc.unwrap(), compensation_amount);
+            if res.is_err() {
+                let header_message: &'static str =
+                    "failed to mint compensation pswap during migration";
+                error = Some((header_message, res.unwrap_err()));
+            } else {
+                debug::info!(
+                    target: "runtime",
+                    "successfully minted compensation pswap during migration"
+                );
+            }
+        }
+
+        if let Some((header, err)) = error {
+            match err {
+                DispatchError::Module {
+                    index,
+                    error,
+                    message,
+                } => debug::error!(
+                    target: "runtime",
+                    "{}: Module{{index: {}, error: {}, message: {}}}", header, index, error, message.unwrap_or("")
+                ),
+                _ => debug::error!(
+                    target: "runtime",
+                    "{}: Non-Module Error", header,
+                ),
+            }
         }
 
         // Approximate weight

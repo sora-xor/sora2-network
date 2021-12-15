@@ -428,6 +428,7 @@ impl PriceToolsPallet<AssetId> for MockPriceTools {
                 0u32,
                 [LiquiditySourceType::XYKPool].iter().cloned().collect(),
             ),
+            true,
         );
         Ok(res?.amount)
     }

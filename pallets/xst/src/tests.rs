@@ -196,17 +196,19 @@ mod tests {
                     &XOR,
                     &XSTUSD,
                     QuoteAmount::with_desired_output(balance!(1)),
-                )
+                    true,
+            )
                 .unwrap();
 
-            XSTPool::set_reference_asset(Origin::signed(alice()), DAI).expect("Failed to set new reference asset.");
+            XSTPool::set_reference_asset(Origin::root(), DAI).expect("Failed to set new reference asset.");
 
             let price_b = XSTPool::quote(
                     &DEXId::Polkaswap.into(),
                     &XSTUSD,
                     &XOR,
                     QuoteAmount::with_desired_output(balance!(1)),
-                )
+                    true,
+            )
                 .unwrap();
 
             assert_ne!(price_a, price_b);
@@ -236,6 +238,7 @@ mod tests {
                 &XSTUSD,
                 &XOR,
                 QuoteAmount::with_desired_input(amount_a.clone()),
+                true,
             )
             .unwrap();
 
@@ -263,6 +266,7 @@ mod tests {
                 &XSTUSD,
                 &XOR,
                 QuoteAmount::with_desired_output(amount_b.clone()),
+                true,
             )
             .unwrap();
 
@@ -281,7 +285,7 @@ mod tests {
 
             assert_eq!(quote_outcome_b.amount, exchange_outcome_b.amount);
             assert_eq!(xor_balance_a + amount_b.clone(), xor_balance_b);
-            assert_eq!(xstusd_balance_b, balance!(200.00000000000000007));
+            assert_eq!(xstusd_balance_b, balance!(281.845536609829488538));
 
             // Sell with desired input
             let amount_c: Balance = balance!(205);
@@ -290,6 +294,7 @@ mod tests {
                 &XOR,
                 &XSTUSD,
                 QuoteAmount::with_desired_input(amount_c.clone()),
+                true,
             )
             .unwrap();
 
@@ -317,6 +322,7 @@ mod tests {
                 &XSTUSD,
                 &XOR,
                 QuoteAmount::with_desired_output(amount_d.clone()),
+                true,
             )
             .unwrap();
             let exchange_outcome_d = XSTPool::exchange(
@@ -333,6 +339,66 @@ mod tests {
             assert_eq!(quote_outcome_d.amount, exchange_outcome_d.amount);
             assert_eq!(xstusd_balance_c - quote_outcome_d.amount, xstusd_balance_d);
             assert_eq!(xor_balance_c + amount_d.clone(), xor_balance_d);
+        });
+    }
+
+    #[test]
+    fn test_deducing_fee() {
+        let mut ext = ExtBuilder::new(vec![
+            (alice(), DAI, balance!(0), AssetSymbol(b"DAI".to_vec()), AssetName(b"DAI".to_vec()), 18),
+            (alice(), XOR, balance!(0), AssetSymbol(b"XOR".to_vec()), AssetName(b"SORA".to_vec()), 18),
+            (alice(), XSTUSD, balance!(2000), AssetSymbol(b"XSTUSD".to_vec()), AssetName(b"SORA Synthetic USD".to_vec()), 18),
+        ])
+            .build();
+        ext.execute_with(|| {
+            MockDEXApi::init().unwrap();
+            let _ = xst_pool_init().unwrap();
+            TradingPair::register(Origin::signed(alice()), DEXId::Polkaswap.into(), XOR, XSTUSD).expect("Failed to register trading pair.");
+            XSTPool::initialize_pool_unchecked(XSTUSD, false).expect("Failed to initialize pool.");
+
+            let price_a = XSTPool::quote(
+                &DEXId::Polkaswap.into(),
+                &XSTUSD,
+                &XOR,
+                QuoteAmount::with_desired_input(balance!(100)),
+                true,
+            )
+            .unwrap();
+            assert_eq!(price_a.fee, balance!(0.002961909839464486));
+            assert_eq!(price_a.amount, balance!(0.984341369982031081));
+
+            let price_b = XSTPool::quote(
+                &DEXId::Polkaswap.into(),
+                &XSTUSD,
+                &XOR,
+                QuoteAmount::with_desired_input(balance!(100)),
+                false,
+            )
+            .unwrap();
+            assert_eq!(price_b.fee, balance!(0));
+            assert_eq!(price_b.amount, price_a.fee + price_a.amount);
+
+            let price_a = XSTPool::quote(
+                &DEXId::Polkaswap.into(),
+                &XSTUSD,
+                &XOR,
+                QuoteAmount::with_desired_output(balance!(100)),
+                true,
+            )
+            .unwrap();
+            assert_eq!(price_a.fee, balance!(0.300902708124373119));
+            assert_eq!(price_a.amount, balance!(10159.077231695085255731));
+
+            let price_b = XSTPool::quote(
+                &DEXId::Polkaswap.into(),
+                &XSTUSD,
+                &XOR,
+                QuoteAmount::with_desired_output(balance!(100)),
+                false,
+            )
+            .unwrap();
+            assert_eq!(price_b.fee, balance!(0));
+            assert_eq!(price_b.amount, balance!(10128.6));
         });
     }
 
@@ -368,6 +434,7 @@ mod tests {
                 &XSTUSD,
                 &XOR,
                 QuoteAmount::with_desired_input(balance!(100)),
+                true,
             )
             .unwrap();
             let price_b = XSTPool::quote(
@@ -375,10 +442,11 @@ mod tests {
                 &XSTUSD,
                 &XOR,
                 QuoteAmount::with_desired_output(price_a.amount.clone()),
+                true,
             )
             .unwrap();
             assert_eq!(price_a.fee, price_b.fee);
-            assert_eq!(price_a.fee, balance!(0.006911122958750468));
+            assert_eq!(price_a.fee, balance!(0.002961909839464486));
 
             // Sell
             let price_c = XSTPool::quote(
@@ -386,6 +454,7 @@ mod tests {
                 &XOR,
                 &XSTUSD,
                 QuoteAmount::with_desired_output(balance!(100)),
+                true,
             )
             .unwrap();
             let price_d = XSTPool::quote(
@@ -393,10 +462,11 @@ mod tests {
                 &XOR,
                 &XSTUSD,
                 QuoteAmount::with_desired_input(price_c.amount.clone()),
+                true,
             )
             .unwrap();
             assert_eq!(price_c.fee, price_d.fee);
-            assert_eq!(price_c.fee, balance!(0.006959841851712456));
+            assert_eq!(price_c.fee, balance!(0.002970822306383637));
         });
     }
 
@@ -410,7 +480,7 @@ mod tests {
 
             System::inc_consumers(&account_id).unwrap_err();
             Assets::ensure_asset_exists(&XSTUSD.into()).unwrap_err();
-            
+
             // version is initially None for tests
             crate::migration::migrate::<Runtime>();
             assert_ok!(Assets::ensure_asset_exists(&XSTUSD.into()));
@@ -445,6 +515,7 @@ mod tests {
                 &XSTUSD,
                 &XOR,
                 QuoteAmount::with_desired_input(amount_a.clone()),
+                true,
             )
             .unwrap();
             let quote_without_impact_a = XSTPool::quote_without_impact(
@@ -452,6 +523,7 @@ mod tests {
                 &XSTUSD,
                 &XOR,
                 QuoteAmount::with_desired_input(amount_a.clone()),
+                true,
             )
             .unwrap();
             assert_eq!(quote_outcome_a.amount, quote_without_impact_a.amount);
@@ -463,6 +535,7 @@ mod tests {
                 &XSTUSD,
                 &XOR,
                 QuoteAmount::with_desired_output(amount_b.clone()),
+                true,
             )
             .unwrap();
             let quote_without_impact_b = XSTPool::quote_without_impact(
@@ -470,6 +543,7 @@ mod tests {
                 &XSTUSD,
                 &XOR,
                 QuoteAmount::with_desired_output(amount_b.clone()),
+                true,
             )
             .unwrap();
             assert_eq!(quote_outcome_b.amount, quote_without_impact_b.amount);
@@ -481,6 +555,7 @@ mod tests {
                 &XOR,
                 &XSTUSD,
                 QuoteAmount::with_desired_input(amount_c.clone()),
+                true,
             )
             .unwrap();
             let quote_without_impact_c = XSTPool::quote_without_impact(
@@ -488,6 +563,7 @@ mod tests {
                 &XOR,
                 &XSTUSD,
                 QuoteAmount::with_desired_input(amount_c.clone()),
+                true,
             )
             .unwrap();
             assert_eq!(quote_outcome_c.amount, quote_without_impact_c.amount);
@@ -499,6 +575,7 @@ mod tests {
                 &XOR,
                 &XSTUSD,
                 QuoteAmount::with_desired_output(amount_d.clone()),
+                true,
             )
             .unwrap();
             let quote_without_impact_d = XSTPool::quote_without_impact(
@@ -506,6 +583,7 @@ mod tests {
                 &XOR,
                 &XSTUSD,
                 QuoteAmount::with_desired_output(amount_d.clone()),
+                true,
             )
             .unwrap();
             assert_eq!(quote_outcome_d.amount, quote_without_impact_d.amount);

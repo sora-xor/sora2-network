@@ -186,7 +186,7 @@ pub use pallet::*;
 #[frame_support::pallet]
 pub mod pallet {
     use super::*;
-    use common::Description;
+    use common::{ContentSource, Description};
     use frame_support::pallet_prelude::*;
     use frame_system::pallet_prelude::*;
 
@@ -311,9 +311,7 @@ pub mod pallet {
         ) -> DispatchResultWithPostInfo {
             let from = ensure_signed(origin.clone())?;
             Self::transfer_from(&asset_id, &from, &to, amount)?;
-
             Self::deposit_event(Event::Transfer(from, to, asset_id, amount));
-
             Ok(().into())
         }
 
@@ -333,9 +331,7 @@ pub mod pallet {
         ) -> DispatchResultWithPostInfo {
             let issuer = ensure_signed(origin.clone())?;
             Self::mint_to(&asset_id, &issuer, &to, amount)?;
-
             Self::deposit_event(Event::Mint(issuer, to, asset_id.clone(), amount));
-
             Ok(().into())
         }
 
@@ -353,9 +349,7 @@ pub mod pallet {
         ) -> DispatchResultWithPostInfo {
             let issuer = ensure_signed(origin.clone())?;
             Self::burn_from(&asset_id, &issuer, &issuer, amount)?;
-
             Self::deposit_event(Event::Burn(issuer, asset_id.clone(), amount));
-
             Ok(().into())
         }
 
@@ -371,9 +365,7 @@ pub mod pallet {
         ) -> DispatchResultWithPostInfo {
             let who = ensure_signed(origin.clone())?;
             Self::set_non_mintable_from(&asset_id, &who)?;
-
             Self::deposit_event(Event::AssetSetNonMintable(asset_id.clone()));
-
             Ok(().into())
         }
     }
@@ -423,7 +415,7 @@ pub mod pallet {
     /// Asset Id -> Owner Account Id
     #[pallet::storage]
     #[pallet::getter(fn asset_owner)]
-    pub(super) type AssetOwners<T: Config> =
+    pub type AssetOwners<T: Config> =
         StorageMap<_, Twox64Concat, T::AssetId, T::AccountId, OptionQuery>;
 
     /// Asset Id -> (Symbol, Name, Precision, Is Mintable)
@@ -491,8 +483,8 @@ pub mod pallet {
                     precision,
                     initial_supply,
                     is_mintable,
-                    opt_content_src,
-                    opt_desc,
+                    content_source,
+                    description,
                 )| {
                     Pallet::<T>::register_asset_id(
                         account_id,
@@ -502,8 +494,8 @@ pub mod pallet {
                         precision,
                         initial_supply,
                         is_mintable,
-                        opt_content_src,
-                        opt_desc,
+                        content_source,
+                        description,
                     )
                     .expect("Failed to register asset.");
                 },
@@ -564,7 +556,6 @@ impl<T: Config> Pallet<T> {
         opt_content_src: Option<ContentSource>,
         opt_desc: Option<Description>,
     ) -> DispatchResult {
-        // Checks
         ensure!(
             precision <= MAX_ALLOWED_PRECISION,
             Error::<T>::InvalidPrecision
@@ -611,7 +602,7 @@ impl<T: Config> Pallet<T> {
         }
 
         frame_system::Pallet::<T>::inc_account_nonce(&account_id);
-
+        Self::deposit_event(Event::AssetRegistered(asset_id, account_id));
         Ok(())
     }
 
@@ -787,7 +778,6 @@ impl<T: Config> Pallet<T> {
         if by_amount.is_positive() {
             Self::ensure_asset_is_mintable(asset_id)?;
         }
-
         T::Currency::update_balance(asset_id.clone(), who, by_amount)
     }
 
@@ -820,7 +810,6 @@ impl<T: Config> Pallet<T> {
             Self::is_asset_owner(asset_id, who),
             Error::<T>::InvalidAssetOwner
         );
-
         AssetInfos::<T>::mutate(asset_id, |(_, _, _, ref mut is_mintable)| {
             ensure!(*is_mintable, Error::<T>::AssetSupplyIsNotMintable);
             *is_mintable = false;
