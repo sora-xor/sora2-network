@@ -851,10 +851,14 @@ fn testnet_genesis(
         let faucet_account_id: AccountId =
             technical::Module::<Runtime>::tech_account_id_to_account_id(&faucet_tech_account_id)
                 .expect("Failed to decode account id");
+        let ceres = common::AssetId32::from_bytes(hex!(
+            "008bcfd2387d3fc453333557eecb0efe59fcba128769b2feefdd306e98e66440"
+        ));
         tech_accounts.push((faucet_account_id.clone(), faucet_tech_account_id.clone()));
         balances.push((faucet_account_id.clone(), initial_faucet_balance));
         tokens_endowed_accounts.push((faucet_account_id.clone(), VAL, initial_faucet_balance));
-        tokens_endowed_accounts.push((faucet_account_id, PSWAP, initial_faucet_balance));
+        tokens_endowed_accounts.push((faucet_account_id.clone(), PSWAP, initial_faucet_balance));
+        tokens_endowed_accounts.push((faucet_account_id, ceres, initial_faucet_balance));
         FaucetConfig {
             reserves_account_id: faucet_tech_account_id,
         }
@@ -990,6 +994,20 @@ fn testnet_genesis(
                     assets_and_permissions_account_id.clone(),
                     AssetSymbol(b"XSTUSD".to_vec()),
                     AssetName(b"SORA Synthetic USD".to_vec()),
+                    DEFAULT_BALANCE_PRECISION,
+                    Balance::zero(),
+                    true,
+                    None,
+                    None,
+                ),
+                (
+                    common::AssetId32::from_bytes(hex!(
+                        "008bcfd2387d3fc453333557eecb0efe59fcba128769b2feefdd306e98e66440"
+                    ))
+                    .into(),
+                    assets_and_permissions_account_id.clone(),
+                    AssetSymbol(b"CERES".to_vec()),
+                    AssetName(b"Ceres".to_vec()),
                     DEFAULT_BALANCE_PRECISION,
                     Balance::zero(),
                     true,
@@ -1537,6 +1555,20 @@ fn mainnet_genesis(
             assets_and_permissions_account_id.clone(),
             AssetSymbol(b"XSTUSD".to_vec()),
             AssetName(b"SORA Synthetic USD".to_vec()),
+            DEFAULT_BALANCE_PRECISION,
+            Balance::zero(),
+            true,
+            None,
+            None,
+        ),
+        (
+            common::AssetId32::from_bytes(hex!(
+                "008bcfd2387d3fc453333557eecb0efe59fcba128769b2feefdd306e98e66440"
+            ))
+            .into(),
+            assets_and_permissions_account_id.clone(),
+            AssetSymbol(b"CERES".to_vec()),
+            AssetName(b"Ceres".to_vec()),
             DEFAULT_BALANCE_PRECISION,
             Balance::zero(),
             true,

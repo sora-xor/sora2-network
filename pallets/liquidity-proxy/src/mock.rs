@@ -45,6 +45,7 @@ use frame_system;
 use traits::MultiCurrency;
 
 use common::prelude::{Balance, FixedWrapper, QuoteAmount, SwapAmount, SwapOutcome};
+use frame_system::pallet_prelude::BlockNumberFor;
 use permissions::{Scope, INIT_DEX, MANAGE_DEX};
 use sp_core::H256;
 use sp_runtime::testing::Header;
@@ -139,6 +140,7 @@ construct_runtime! {
         PoolXyk: pool_xyk::{Module, Call, Storage, Event<T>},
         PswapDistribution: pswap_distribution::{Module, Call, Storage, Event<T>},
         MBCPool: multicollateral_bonding_curve_pool::{Module, Call, Storage, Event<T>},
+        CeresLiquidityLocker: ceres_liquidity_locker::{Module, Call, Storage, Event<T>},
     }
 }
 
@@ -314,6 +316,14 @@ impl pool_xyk::Config for Runtime {
     type OnPoolCreated = pswap_distribution::Module<Runtime>;
     type OnPoolReservesChanged = ();
     type GetFee = GetXykFee;
+    type WeightInfo = ();
+}
+
+impl ceres_liquidity_locker::Config for Runtime {
+    const BLOCKS_PER_ONE_DAY: BlockNumberFor<Self> = 14_440;
+    type Event = Event;
+    type XYKPool = PoolXyk;
+    type CeresAssetId = ();
     type WeightInfo = ();
 }
 

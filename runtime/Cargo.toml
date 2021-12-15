@@ -24,6 +24,8 @@ bridge-multisig = { git = "https://github.com/soramitsu/sora2-frame-pallets.git"
 assets = { path = "../pallets/assets", default-features = false }
 assets-runtime-api = { path = "../pallets/assets/runtime-api", default-features = false}
 common = { path = "../common", default-features = false }
+ceres-liquidity-locker = { path = "../pallets/ceres-liquidity-locker", default-features = false }
+ceres-liquidity-locker-benchmarking = { path = "../pallets/ceres-liquidity-locker/benchmarking", default-features = false, optional = true }
 ceres-staking = { path = "../pallets/ceres-staking", default-features = false }
 dex-api = { path = "../pallets/dex-api", default-features = false }
 dex-api-benchmarking = { path = "../pallets/dex-api/benchmarking", default-features = false, optional = true }
@@ -123,6 +125,7 @@ std = [
     "bridge-multisig/std",
     "codec/std",
     "common/std",
+    "ceres-liquidity-locker/std",
     "ceres-staking/std",
     "dex-api/std",
     "dex-manager-runtime-api/std",
@@ -200,6 +203,7 @@ private-net = [
 
 runtime-benchmarks = [
     "assets/runtime-benchmarks",
+    "ceres-liquidity-locker-benchmarking",
     "dex-api-benchmarking",
     "ceres-staking/runtime-benchmarks",
     "eth-bridge/runtime-benchmarks",

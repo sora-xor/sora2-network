@@ -520,23 +520,40 @@ pub trait VestedRewardsPallet<AccountId, AssetId> {
     fn add_market_maker_reward(account_id: &AccountId, pswap_amount: Balance) -> DispatchResult;
 }
 
-pub trait PoolXykPallet {
-    type AccountId;
-    type AssetId;
-    type PoolProvidersOutput: IntoIterator<Item = (Self::AccountId, Balance)>;
-    type PoolPropertiesOutput: IntoIterator<
-        Item = (
-            Self::AssetId,
-            Self::AssetId,
-            (Self::AccountId, Self::AccountId),
-        ),
-    >;
+pub trait PoolXykPallet<AccountId, AssetId> {
+    type PoolProvidersOutput: IntoIterator<Item = (AccountId, Balance)>;
+    type PoolPropertiesOutput: IntoIterator<Item = (AssetId, AssetId, (AccountId, AccountId))>;
 
-    fn pool_providers(pool_account: &Self::AccountId) -> Self::PoolProvidersOutput;
+    fn pool_providers(pool_account: &AccountId) -> Self::PoolProvidersOutput;
 
-    fn total_issuance(pool_account: &Self::AccountId) -> Result<Balance, DispatchError>;
+    fn total_issuance(pool_account: &AccountId) -> Result<Balance, DispatchError>;
 
     fn all_properties() -> Self::PoolPropertiesOutput;
+
+    fn properties_of_pool(
+        _base_asset_id: AssetId,
+        _target_asset_id: AssetId,
+    ) -> Option<(AccountId, AccountId)> {
+        None
+    }
+
+    fn balance_of_pool_provider(
+        _pool_account: AccountId,
+        _liquidity_provider_account: AccountId,
+    ) -> Option<Balance> {
+        None
+    }
+
+    fn transfer_lp_tokens(
+        _pool_account: AccountId,
+        _asset_a: AssetId,
+        _asset_b: AssetId,
+        _base_account_id: AccountId,
+        _target_account_id: AccountId,
+        _pool_tokens: Balance,
+    ) -> Result<(), DispatchError> {
+        Err(DispatchError::CannotLookup)
+    }
 }
 
 pub trait OnPoolCreated {

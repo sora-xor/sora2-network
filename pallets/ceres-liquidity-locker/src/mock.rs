@@ -1,51 +1,20 @@
-// This file is part of the SORA network and Polkaswap app.
-
-// Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
-// SPDX-License-Identifier: BSD-4-Clause
-
-// Redistribution and use in source and binary forms, with or without modification,
-// are permitted provided that the following conditions are met:
-
-// Redistributions of source code must retain the above copyright notice, this list
-// of conditions and the following disclaimer.
-// Redistributions in binary form must reproduce the above copyright notice, this
-// list of conditions and the following disclaimer in the documentation and/or other
-// materials provided with the distribution.
-//
-// All advertising materials mentioning features or use of this software must display
-// the following acknowledgement: This product includes software developed by Polka Biome
-// Ltd., SORA, and Polkaswap.
-//
-// Neither the name of the Polka Biome Ltd. nor the names of its contributors may be used
-// to endorse or promote products derived from this software without specific prior written permission.
-
-// THIS SOFTWARE IS PROVIDED BY Polka Biome Ltd. AS IS AND ANY EXPRESS OR IMPLIED WARRANTIES,
-// INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
-// A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL Polka Biome Ltd. BE LIABLE FOR ANY
-// DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
-// BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
-// OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
-// STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
-// USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
-use crate::{self as pool_xyk, Config};
+use crate::pallet::AccountIdOf;
+use codec::Decode;
 use common::prelude::{Balance, Fixed};
-use common::{balance, fixed, hash, DEXInfo};
+use common::{balance, fixed, hash, DEXInfo, XOR};
 use currencies::BasicCurrencyAdapter;
-use frame_support::traits::GenesisBuild;
+use frame_support::traits::{GenesisBuild, Hooks};
 use frame_support::weights::Weight;
 use frame_support::{construct_runtime, parameter_types};
 use frame_system;
 use hex_literal::hex;
 use orml_traits::parameter_type_with_key;
 use permissions::{Scope, MANAGE_DEX};
-use sp_core::crypto::AccountId32;
 use sp_core::H256;
 use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentityLookup};
 use sp_runtime::Perbill;
 
-pub use common::mock::ComicAssetId::*;
 pub use common::mock::*;
 pub use common::TechAssetId as Tas;
 pub use common::TechPurpose::*;
@@ -53,13 +22,19 @@ use frame_system::pallet_prelude::BlockNumberFor;
 
 pub type DEXId = u32;
 pub type BlockNumber = u64;
-pub type AccountId = AccountId32;
+pub type AccountId = u128;
 pub type Amount = i128;
-pub type TechAssetId = common::TechAssetId<common::mock::ComicAssetId>;
-pub type AssetId = common::AssetId32<common::mock::ComicAssetId>;
+pub type AssetId = common::AssetId32<common::PredefinedAssetId>;
+pub type TechAssetId = common::TechAssetId<common::PredefinedAssetId>;
 pub type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
+
+pub const BLOCKS_PER_DAY: BlockNumberFor<Runtime> = 14_440;
+
+pub const CERES_ASSET_ID: AssetId = common::AssetId32::from_bytes(hex!(
+    "008bcfd2387d3fc453333557eecb0efe59fcba128769b2feefdd306e98e66440"
+));
 
 parameter_types! {
     pub const BlockHashCount: u64 = 250;
@@ -69,12 +44,13 @@ parameter_types! {
     pub GetBaseAssetId: AssetId = common::AssetId32::from_bytes(hex!("0200000000000000000000000000000000000000000000000000000000000000").into());
     pub GetIncentiveAssetId: AssetId = common::AssetId32::from_bytes(hex!("0200050000000000000000000000000000000000000000000000000000000000").into());
     pub const ExistentialDeposit: u128 = 0;
-    pub GetPswapDistributionAccountId: AccountId = AccountId32::from([3; 32]);
+    pub GetPswapDistributionAccountId: AccountId = 3u128;
     pub const GetDefaultSubscriptionFrequency: BlockNumber = 10;
     pub const GetBurnUpdateFrequency: BlockNumber = 14400;
-    pub GetParliamentAccountId: AccountId = AccountId32::from([8; 32]);
+    pub GetParliamentAccountId: AccountId = 8u128;
     pub GetFee: Fixed = fixed!(0.003);
-    pub GetTeamReservesAccountId: AccountId = AccountId32::from([11; 32]);
+    pub GetTeamReservesAccountId: AccountId = 3000u128;
+    pub const CeresAssetId: AssetId = CERES_ASSET_ID;
 }
 
 parameter_type_with_key! {
@@ -177,9 +153,9 @@ impl currencies::Config for Runtime {
 
 impl assets::Config for Runtime {
     type Event = Event;
-    type ExtraAccountId = [u8; 32];
+    type ExtraAccountId = AccountId;
     type ExtraAssetRecordArg =
-        common::AssetIdExtraAssetRecordArg<DEXId, common::LiquiditySourceType, [u8; 32]>;
+        common::AssetIdExtraAssetRecordArg<DEXId, common::LiquiditySourceType, u128>;
     type AssetId = AssetId;
     type GetBaseAssetId = GetBaseAssetId;
     type Currency = currencies::Module<Runtime>;
@@ -194,7 +170,23 @@ impl technical::Config for Runtime {
     type TechAccountId = TechAccountId;
     type Trigger = ();
     type Condition = ();
-    type SwapAction = crate::PolySwapAction<AssetId, AccountId, TechAccountId>;
+    type SwapAction = pool_xyk::PolySwapAction<AssetId, AccountId, TechAccountId>;
+}
+
+impl pool_xyk::Config for Runtime {
+    const MIN_XOR: Balance = balance!(0.0007);
+    type Event = Event;
+    type PairSwapAction = pool_xyk::PairSwapAction<AssetId, AccountId, TechAccountId>;
+    type DepositLiquidityAction =
+        pool_xyk::DepositLiquidityAction<AssetId, AccountId, TechAccountId>;
+    type WithdrawLiquidityAction =
+        pool_xyk::WithdrawLiquidityAction<AssetId, AccountId, TechAccountId>;
+    type PolySwapAction = pool_xyk::PolySwapAction<AssetId, AccountId, TechAccountId>;
+    type EnsureDEXManager = dex_manager::Module<Runtime>;
+    type GetFee = GetFee;
+    type OnPoolCreated = PswapDistribution;
+    type OnPoolReservesChanged = ();
+    type WeightInfo = ();
 }
 
 impl pswap_distribution::Config for Runtime {
@@ -213,41 +205,27 @@ impl pswap_distribution::Config for Runtime {
 }
 
 impl ceres_liquidity_locker::Config for Runtime {
-    const BLOCKS_PER_ONE_DAY: BlockNumberFor<Self> = 14_440;
+    const BLOCKS_PER_ONE_DAY: BlockNumberFor<Self> = BLOCKS_PER_DAY;
     type Event = Event;
     type XYKPool = PoolXYK;
-    type CeresAssetId = ();
-    type WeightInfo = ();
-}
-
-impl Config for Runtime {
-    const MIN_XOR: Balance = balance!(0.007);
-    type Event = Event;
-    type PairSwapAction = crate::PairSwapAction<AssetId, AccountId, TechAccountId>;
-    type DepositLiquidityAction = crate::DepositLiquidityAction<AssetId, AccountId, TechAccountId>;
-    type WithdrawLiquidityAction =
-        crate::WithdrawLiquidityAction<AssetId, AccountId, TechAccountId>;
-    type PolySwapAction = crate::PolySwapAction<AssetId, AccountId, TechAccountId>;
-    type EnsureDEXManager = dex_manager::Module<Runtime>;
-    type GetFee = GetFee;
-    type OnPoolCreated = PswapDistribution;
-    type OnPoolReservesChanged = ();
+    type CeresAssetId = CeresAssetId;
     type WeightInfo = ();
 }
 
 #[allow(non_snake_case)]
 pub fn ALICE() -> AccountId {
-    AccountId32::from([1; 32])
+    1u128
+}
+
+#[allow(non_snake_case)]
+pub fn AUTHORITY<T: frame_system::Config>() -> T::AccountId {
+    let bytes = hex!("34a5b78f5fbcdc92a28767d63b579690a4b2f6a179931b3ecc87f09fc9366d47");
+    AccountIdOf::<T>::decode(&mut &bytes[..]).unwrap_or_default()
 }
 
 #[allow(non_snake_case)]
 pub fn BOB() -> AccountId {
-    AccountId32::from([2; 32])
-}
-
-#[allow(non_snake_case)]
-pub fn CHARLIE() -> AccountId {
-    AccountId32::from([35; 32])
+    2u128
 }
 
 pub const DEX_A_ID: DEXId = 220;
@@ -265,15 +243,13 @@ impl Default for ExtBuilder {
             initial_dex_list: vec![(
                 DEX_A_ID,
                 DEXInfo {
-                    base_asset_id: GoldenTicket.into(),
+                    base_asset_id: XOR.into(),
                     is_public: true,
                 },
             )],
             endowed_accounts: vec![
-                (ALICE(), RedPepper.into(), balance!(99000)),
-                (ALICE(), BlackPepper.into(), balance!(2000000)),
-                (BOB(), RedPepper.into(), balance!(2000000)),
-                (CHARLIE(), BlackPepper.into(), balance!(2000000)),
+                (ALICE(), CERES_ASSET_ID.into(), balance!(2000)),
+                (BOB(), CERES_ASSET_ID.into(), balance!(1000)),
             ],
             initial_permission_owners: vec![(
                 MANAGE_DEX,
@@ -311,5 +287,14 @@ impl ExtBuilder {
         .unwrap();
 
         t.into()
+    }
+}
+
+pub fn run_to_block(n: u64) {
+    while System::block_number() < n {
+        System::on_finalize(System::block_number());
+        System::set_block_number(System::block_number() + 1);
+        System::on_initialize(System::block_number());
+        CeresLiquidityLocker::on_initialize(System::block_number());
     }
 }

@@ -33,6 +33,7 @@ dex-manager = { path = "../../dex-manager", default-features = false }
 dex-api = { path = "../../dex-api", default-features = false}
 
 [dev-dependencies]
+ceres-liquidity-locker = { path = "../../ceres-liquidity-locker", default-features = false }
 currencies = { version = "0.4", package = "orml-currencies", default-features = false }
 pallet-balances = { version = "3", default-features = false }
 serde = { version = "1.0.101", default-features = false, features = ["derive"] }

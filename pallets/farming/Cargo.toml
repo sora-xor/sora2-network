@@ -38,6 +38,7 @@ vested-rewards = { path = "../vested-rewards", default-features = false }
 rustc-hex = { version = "2.1.0", default-features = false }
 
 [dev-dependencies]
+ceres-liquidity-locker = { path = "../ceres-liquidity-locker", default-features = false }
 currencies = { version = "0.4", package = "orml-currencies" }
 env_logger = "0.9.0"
 hex-literal = { version = "0.3.1" }

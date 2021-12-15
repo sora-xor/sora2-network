@@ -1455,6 +1455,14 @@ impl ceres_staking::Config for Runtime {
     type WeightInfo = ceres_staking::weights::WeightInfo<Runtime>;
 }
 
+impl ceres_liquidity_locker::Config for Runtime {
+    const BLOCKS_PER_ONE_DAY: BlockNumber = 1 * DAYS;
+    type Event = Event;
+    type XYKPool = PoolXYK;
+    type CeresAssetId = CeresAssetId;
+    type WeightInfo = ceres_liquidity_locker::weights::WeightInfo<Runtime>;
+}
+
 /// Payload data to be signed when making signed transaction from off-chain workers,
 ///   inside `create_transaction` function.
 pub type SignedPayload = generic::SignedPayload<Call, SignedExtra>;
@@ -1526,6 +1534,7 @@ construct_runtime! {
         XSTPool: xst::{Module, Call, Storage, Config<T>, Event<T>} = 43,
         PriceTools: price_tools::{Module, Storage, Event<T>} = 44,
         CeresStaking: ceres_staking::{Module, Call, Storage, Event<T>} = 45,
+        CeresLiquidityLocker: ceres_liquidity_locker::{Module, Call, Storage, Event<T>} = 46,
 
         // Available only for test net
         Faucet: faucet::{Module, Call, Config<T>, Event<T>} = 80,
@@ -1590,6 +1599,7 @@ construct_runtime! {
         XSTPool: xst::{Module, Call, Storage, Config<T>, Event<T>} = 43,
         PriceTools: price_tools::{Module, Storage, Event<T>} = 44,
         CeresStaking: ceres_staking::{Module, Call, Storage, Event<T>} = 45,
+        CeresLiquidityLocker: ceres_liquidity_locker::{Module, Call, Storage, Event<T>} = 46,
     }
 }
 
@@ -2140,12 +2150,14 @@ impl_runtime_apis! {
             use pool_xyk_benchmarking::Module as XYKPoolBench;
             use pswap_distribution_benchmarking::Module as PswapDistributionBench;
             use xor_fee_benchmarking::Module as XorFeeBench;
+            use ceres_liquidity_locker_benchmarking::Module as CeresLiquidityLockerBench;
 
             impl dex_api_benchmarking::Config for Runtime {}
             impl liquidity_proxy_benchmarking::Config for Runtime {}
             impl pool_xyk_benchmarking::Config for Runtime {}
             impl pswap_distribution_benchmarking::Config for Runtime {}
             impl xor_fee_benchmarking::Config for Runtime {}
+            impl ceres_liquidity_locker_benchmarking::Config for Runtime {}
 
 
             let whitelist: Vec<TrackedStorageKey> = vec![
@@ -2183,6 +2195,7 @@ impl_runtime_apis! {
             add_benchmark!(params, batches, xor_fee, XorFeeBench::<Runtime>);
             // add_benchmark!(params, batches, referrals, Referrals);
             add_benchmark!(params, batches, ceres_staking, CeresStaking);
+            add_benchmark!(params, batches, ceres_liquidity_locker, CeresLiquidityLockerBench::<Runtime>);
 
             if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
             Ok(batches)

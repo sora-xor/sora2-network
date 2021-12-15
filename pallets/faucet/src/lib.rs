@@ -33,6 +33,7 @@
 use common::{balance, Balance, PSWAP, VAL, XOR};
 use frame_support::ensure;
 use frame_support::weights::Weight;
+use hex_literal::hex;
 use sp_arithmetic::traits::Saturating;
 
 mod benchmarking;
@@ -223,7 +224,12 @@ impl<T: Config> Pallet<T> {
         let xor = XOR.into();
         let val = VAL.into();
         let pswap = PSWAP.into();
-        if asset_id == xor || asset_id == val || asset_id == pswap {
+        let ceres = common::AssetId32::from_bytes(hex!(
+            "008bcfd2387d3fc453333557eecb0efe59fcba128769b2feefdd306e98e66440"
+        ))
+        .into();
+
+        if asset_id == xor || asset_id == val || asset_id == pswap || asset_id == ceres {
             Ok(())
         } else {
             Err(Error::AssetNotSupported)

@@ -163,6 +163,7 @@ members = [
     "runtime",
     "common",
     "pallets/assets",
+    "pallets/ceres-liquidity-locker",
     "pallets/permissions",
     "pallets/trading-pair",
     "pallets/dex-manager",

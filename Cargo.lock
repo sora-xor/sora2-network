@@ -797,6 +797,66 @@ dependencies = [
 ]
 
 [[package]]
+name = "ceres-liquidity-locker"
+version = "1.2.0"
+dependencies = [
+ "assets",
+ "ceres-liquidity-locker",
+ "common",
+ "dex-manager",
+ "frame-support",
+ "frame-system",
+ "hex-literal",
+ "liquidity-proxy",
+ "orml-currencies",
+ "orml-tokens",
+ "orml-traits",
+ "pallet-balances",
+ "parity-scale-codec",
+ "permissions",
+ "pool-xyk",
+ "price-tools",
+ "pswap-distribution",
+ "serde",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+ "technical",
+ "trading-pair",
+]
+
+[[package]]
+name = "ceres-liquidity-locker-benchmarking"
+version = "0.1.0"
+dependencies = [
+ "assets",
+ "ceres-liquidity-locker",
+ "common",
+ "dex-api",
+ "dex-manager",
+ "frame-benchmarking 3.1.0",
+ "frame-support",
+ "frame-system",
+ "getrandom 0.2.3",
+ "hex-literal",
+ "orml-currencies",
+ "orml-tokens",
+ "pallet-balances",
+ "parity-scale-codec",
+ "permissions",
+ "pool-xyk",
+ "pswap-distribution",
+ "serde",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+ "technical",
+ "trading-pair",
+]
+
+[[package]]
 name = "ceres-staking"
 version = "1.0.0"
 dependencies = [
@@ -1339,6 +1399,7 @@ name = "dex-api"
 version = "0.1.0"
 dependencies = [
  "assets",
+ "ceres-liquidity-locker",
  "common",
  "dex-manager",
  "frame-support",
@@ -1368,6 +1429,7 @@ name = "dex-api-benchmarking"
 version = "0.1.0"
 dependencies = [
  "assets",
+ "ceres-liquidity-locker",
  "common",
  "dex-api",
  "dex-manager",
@@ -1918,6 +1980,7 @@ name = "farming"
 version = "1.2.0"
 dependencies = [
  "assets",
+ "ceres-liquidity-locker",
  "common",
  "dex-manager",
  "env_logger 0.9.0",
@@ -2022,7 +2085,8 @@ dependencies = [
 [[package]]
 name = "fixed-hash"
 version = "0.7.0"
-source = "git+https://github.com/vmarkushin/parity-common.git?branch=no-std#fdb5d222d8d87b645219009eef167822e905c8a5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cfcf0ed7fe52a17a03854ec54a9f76d6d84508d1c0e66bc1793301c73fc8493c"
 dependencies = [
  "byteorder",
  "rand 0.8.4",
@@ -2033,8 +2097,7 @@ dependencies = [
 [[package]]
 name = "fixed-hash"
 version = "0.7.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cfcf0ed7fe52a17a03854ec54a9f76d6d84508d1c0e66bc1793301c73fc8493c"
+source = "git+https://github.com/vmarkushin/parity-common.git?branch=no-std#fdb5d222d8d87b645219009eef167822e905c8a5"
 dependencies = [
  "byteorder",
  "rand 0.8.4",
@@ -2393,6 +2456,8 @@ version = "1.2.2"
 dependencies = [
  "assets",
  "assets-runtime-api",
+ "ceres-liquidity-locker",
+ "ceres-liquidity-locker-benchmarking",
  "ceres-staking",
  "common",
  "dex-api",
@@ -2736,8 +2801,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7fcd999463524c52659517fe2cea98493cfe485d10565e7b0fb07dbba7ad2753"
 dependencies = [
  "cfg-if 1.0.0",
+ "js-sys",
  "libc",
  "wasi 0.10.0+wasi-snapshot-preview1",
+ "wasm-bindgen",
 ]
 
 [[package]]
@@ -4075,6 +4142,7 @@ name = "liquidity-proxy"
 version = "0.1.0"
 dependencies = [
  "assets",
+ "ceres-liquidity-locker",
  "common",
  "dex-api",
  "dex-manager",
@@ -4106,6 +4174,7 @@ name = "liquidity-proxy-benchmarking"
 version = "0.1.0"
 dependencies = [
  "assets",
+ "ceres-liquidity-locker",
  "common",
  "dex-api",
  "dex-manager",
@@ -4461,6 +4530,7 @@ name = "multicollateral-bonding-curve-pool"
 version = "0.2.0"
 dependencies = [
  "assets",
+ "ceres-liquidity-locker",
  "common",
  "dex-api",
  "dex-manager",
@@ -5675,6 +5745,7 @@ name = "pool-xyk"
 version = "1.2.0"
 dependencies = [
  "assets",
+ "ceres-liquidity-locker",
  "common",
  "dex-manager",
  "frame-support",
@@ -5704,6 +5775,7 @@ name = "pool-xyk-benchmarking"
 version = "0.1.0"
 dependencies = [
  "assets",
+ "ceres-liquidity-locker",
  "common",
  "dex-api",
  "dex-manager",
@@ -5764,6 +5836,7 @@ name = "price-tools"
 version = "1.0.0"
 dependencies = [
  "assets",
+ "ceres-liquidity-locker",
  "common",
  "dex-api",
  "dex-manager",
@@ -5958,6 +6031,7 @@ name = "pswap-distribution"
 version = "1.1.1"
 dependencies = [
  "assets",
+ "ceres-liquidity-locker",
  "common",
  "dex-manager",
  "frame-benchmarking 3.1.0",
@@ -7916,7 +7990,8 @@ dependencies = [
 [[package]]
 name = "sp-application-crypto"
 version = "3.0.0"
-source = "git+https://github.com/KalitaAlexey/substrate.git?rev=d74fde5#d74fde5256aa12b695cdd3981e52b38f937117bf"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c52e2e6d43036b97c4fce1ed87c5262c1ffdc78c655ada4d3024a3f8094bdd2c"
 dependencies = [
  "parity-scale-codec",
  "serde",
@@ -7928,8 +8003,7 @@ dependencies = [
 [[package]]
 name = "sp-application-crypto"
 version = "3.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c52e2e6d43036b97c4fce1ed87c5262c1ffdc78c655ada4d3024a3f8094bdd2c"
+source = "git+https://github.com/KalitaAlexey/substrate.git?rev=d74fde5#d74fde5256aa12b695cdd3981e52b38f937117bf"
 dependencies = [
  "parity-scale-codec",
  "serde",
@@ -8242,19 +8316,6 @@ dependencies = [
 [[package]]
 name = "sp-npos-elections"
 version = "3.0.0"
-source = "git+https://github.com/KalitaAlexey/substrate.git?rev=d74fde5#d74fde5256aa12b695cdd3981e52b38f937117bf"
-dependencies = [
- "parity-scale-codec",
- "serde",
- "sp-arithmetic",
- "sp-core",
- "sp-npos-elections-compact 3.0.0 (git+https://github.com/KalitaAlexey/substrate.git?rev=d74fde5)",
- "sp-std",
-]
-
-[[package]]
-name = "sp-npos-elections"
-version = "3.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "54e6e8b84ee0dc7bb65b55beba55ffbc17803222ab7c746a74f72fc5869c7320"
 dependencies = [
@@ -8267,9 +8328,23 @@ dependencies = [
 ]
 
 [[package]]
-name = "sp-npos-elections-compact"
+name = "sp-npos-elections"
 version = "3.0.0"
 source = "git+https://github.com/KalitaAlexey/substrate.git?rev=d74fde5#d74fde5256aa12b695cdd3981e52b38f937117bf"
+dependencies = [
+ "parity-scale-codec",
+ "serde",
+ "sp-arithmetic",
+ "sp-core",
+ "sp-npos-elections-compact 3.0.0 (git+https://github.com/KalitaAlexey/substrate.git?rev=d74fde5)",
+ "sp-std",
+]
+
+[[package]]
+name = "sp-npos-elections-compact"
+version = "3.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "085fbb1aa72d85a17524047fc1e708bc3bd038b02b46dc7ac601fa39c8af93d3"
 dependencies = [
  "proc-macro-crate 0.1.5",
  "proc-macro2",
@@ -8280,8 +8355,7 @@ dependencies = [
 [[package]]
 name = "sp-npos-elections-compact"
 version = "3.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "085fbb1aa72d85a17524047fc1e708bc3bd038b02b46dc7ac601fa39c8af93d3"
+source = "git+https://github.com/KalitaAlexey/substrate.git?rev=d74fde5#d74fde5256aa12b695cdd3981e52b38f937117bf"
 dependencies = [
  "proc-macro-crate 0.1.5",
  "proc-macro2",
@@ -8310,7 +8384,8 @@ dependencies = [
 [[package]]
 name = "sp-rpc"
 version = "3.0.0"
-source = "git+https://github.com/KalitaAlexey/substrate.git?rev=d74fde5#d74fde5256aa12b695cdd3981e52b38f937117bf"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a2e5b1ed655d11449073b914b048895f45241e02b3919d1d0187f315435fee18"
 dependencies = [
  "serde",
  "sp-core",
@@ -8319,8 +8394,7 @@ dependencies = [
 [[package]]
 name = "sp-rpc"
 version = "3.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a2e5b1ed655d11449073b914b048895f45241e02b3919d1d0187f315435fee18"
+source = "git+https://github.com/KalitaAlexey/substrate.git?rev=d74fde5#d74fde5256aa12b695cdd3981e52b38f937117bf"
 dependencies = [
  "serde",
  "sp-core",
@@ -9587,6 +9661,7 @@ name = "vested-rewards"
 version = "1.2.0"
 dependencies = [
  "assets",
+ "ceres-liquidity-locker",
  "common",
  "dex-manager",
  "frame-benchmarking 3.1.0",
@@ -10188,6 +10263,7 @@ name = "xst"
 version = "1.0.0"
 dependencies = [
  "assets",
+ "ceres-liquidity-locker",
  "common",
  "dex-api",
  "dex-manager",
