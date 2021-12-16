@@ -139,8 +139,8 @@ construct_runtime! {
         MBCPool: multicollateral_bonding_curve_pool::{Module, Call, Storage, Event<T>},
         VestedRewards: vested_rewards::{Module, Storage, Event<T>},
         Scheduler: pallet_scheduler::{Module, Call, Storage, Event<T>},
-
         Farming: farming::{Module, Call, Storage},
+        CeresLiquidityLocker: ceres_liquidity_locker::{Module, Call, Storage, Event<T>},
     }
 }
 
@@ -294,6 +294,14 @@ impl pallet_scheduler::Config for Runtime {
     type MaximumWeight = SchedulerMaxWeight;
     type ScheduleOrigin = EnsureRoot<AccountId>;
     type MaxScheduledPerBlock = ();
+    type WeightInfo = ();
+}
+
+impl ceres_liquidity_locker::Config for Runtime {
+    const BLOCKS_PER_ONE_DAY: BlockNumberFor<Self> = 14_440;
+    type Event = Event;
+    type XYKPool = PoolXYK;
+    type CeresAssetId = ();
     type WeightInfo = ();
 }
 

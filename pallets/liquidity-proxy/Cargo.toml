@@ -26,6 +26,7 @@ assets = { path = "../assets", default-features = false }
 trading-pair = { path = "../trading-pair", default-features = false }
 
 [dev-dependencies]
+ceres-liquidity-locker = { path = "../ceres-liquidity-locker", default-features = false }
 serde = { version = "1.0.101", default-features = false, features = ["derive"] }
 sp-core = { version = "3", default-features = false }
 sp-io = { version = "3", default-features = false }

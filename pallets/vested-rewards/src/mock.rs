@@ -39,6 +39,7 @@ use currencies::BasicCurrencyAdapter;
 use frame_support::traits::GenesisBuild;
 use frame_support::weights::Weight;
 use frame_support::{construct_runtime, parameter_types};
+use frame_system::pallet_prelude::BlockNumberFor;
 use permissions::{Scope, INIT_DEX, MANAGE_DEX};
 use sp_core::crypto::AccountId32;
 use sp_core::H256;
@@ -68,6 +69,7 @@ construct_runtime! {
         PoolXyk: pool_xyk::{Module, Call, Storage, Event<T>},
         PswapDistribution: pswap_distribution::{Module, Call, Storage, Event<T>},
         MBCPool: multicollateral_bonding_curve_pool::{Module, Call, Storage, Event<T>},
+        CeresLiquidityLocker: ceres_liquidity_locker::{Module, Call, Storage, Event<T>},
     }
 }
 
@@ -262,6 +264,14 @@ impl permissions::Config for Runtime {
 }
 
 impl dex_manager::Config for Runtime {}
+
+impl ceres_liquidity_locker::Config for Runtime {
+    const BLOCKS_PER_ONE_DAY: BlockNumberFor<Self> = 14_440;
+    type Event = Event;
+    type XYKPool = PoolXyk;
+    type CeresAssetId = ();
+    type WeightInfo = ();
+}
 
 pub struct ExtBuilder {
     endowed_assets: Vec<(

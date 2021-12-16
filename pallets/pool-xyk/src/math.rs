@@ -131,6 +131,7 @@ impl<T: Config> Module<T> {
         x: &Balance,
         y: &Balance,
         x_in: &Balance,
+        deduce_fee: bool,
     ) -> Result<(Balance, Balance), DispatchError> {
         let fxw_x = FixedWrapper::from(x.clone());
         let fxw_y = FixedWrapper::from(y.clone());
@@ -142,7 +143,11 @@ impl<T: Config> Module<T> {
             let nominator = fxw_x_in.clone() * fxw_y;
             let denominator = fxw_x + fxw_x_in;
             let y_out_with_fee = nominator / denominator;
-            let y_out = y_out_with_fee.clone() * (fixed_wrapper!(1) - fee_fraction);
+            let y_out = if deduce_fee {
+                y_out_with_fee.clone() * (fixed_wrapper!(1) - fee_fraction)
+            } else {
+                y_out_with_fee.clone()
+            };
             Ok((
                 to_balance!(y_out.clone()),
                 to_balance!(y_out_with_fee - y_out),
@@ -151,7 +156,11 @@ impl<T: Config> Module<T> {
             // input token is xor, user indicates desired input amount
             // x_1 = x_in * (1 - fee)
             // y_out = (x_1 * y) / (x + x_1)
-            let x_in_without_fee = fxw_x_in.clone() * (fixed_wrapper!(1) - fee_fraction);
+            let x_in_without_fee = if deduce_fee {
+                fxw_x_in.clone() * (fixed_wrapper!(1) - fee_fraction)
+            } else {
+                fxw_x_in.clone()
+            };
             let nominator = x_in_without_fee.clone() * fxw_y;
             let denominator = fxw_x + x_in_without_fee.clone();
             let y_out = nominator / denominator;
@@ -167,6 +176,7 @@ impl<T: Config> Module<T> {
         x: &Balance,
         y: &Balance,
         y_out: &Balance,
+        deduce_fee: bool,
     ) -> Result<(Balance, Balance), DispatchError> {
         let fxw_x = FixedWrapper::from(x.clone());
         let fxw_y = FixedWrapper::from(y.clone());
@@ -176,7 +186,11 @@ impl<T: Config> Module<T> {
             // y_1 = y_out / (1 - fee)
             // x_in = (x * y_1) / (y - y_1)
             let fxw_y_out = fxw_y_out.clone() + Fixed::from_bits(1); // by 1 correction to overestimate required input
-            let y_out_with_fee = fxw_y_out.clone() / (fixed_wrapper!(1) - fee_fraction);
+            let y_out_with_fee = if deduce_fee {
+                fxw_y_out.clone() / (fixed_wrapper!(1) - fee_fraction)
+            } else {
+                fxw_y_out.clone()
+            };
             let nominator = fxw_x * y_out_with_fee.clone();
             let denominator = fxw_y - y_out_with_fee.clone();
             let x_in = nominator / denominator;
@@ -188,7 +202,11 @@ impl<T: Config> Module<T> {
             let nominator = fxw_x * fxw_y_out.clone();
             let denominator = fxw_y - fxw_y_out;
             let x_in_without_fee = nominator / denominator;
-            let x_in = x_in_without_fee.clone() / (fixed_wrapper!(1) - fee_fraction);
+            let x_in = if deduce_fee {
+                x_in_without_fee.clone() / (fixed_wrapper!(1) - fee_fraction)
+            } else {
+                x_in_without_fee.clone()
+            };
             Ok((
                 to_balance!(x_in.clone()),
                 to_balance!(x_in - x_in_without_fee),

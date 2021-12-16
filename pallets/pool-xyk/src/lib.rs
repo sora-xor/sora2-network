@@ -91,28 +91,81 @@ pub trait WeightInfo {
     fn quote() -> Weight;
 }
 
-impl<T: Config> PoolXykPallet for Pallet<T> {
-    type AccountId = AccountIdOf<T>;
-    type AssetId = AssetIdOf<T>;
-
+impl<T: Config> PoolXykPallet<T::AccountId, T::AssetId> for Pallet<T> {
     type PoolProvidersOutput = PrefixIterator<(AccountIdOf<T>, Balance)>;
     type PoolPropertiesOutput =
         PrefixIterator<(AssetIdOf<T>, AssetIdOf<T>, (AccountIdOf<T>, AccountIdOf<T>))>;
 
-    fn pool_providers(pool_account: &Self::AccountId) -> Self::PoolProvidersOutput {
+    fn pool_providers(pool_account: &T::AccountId) -> Self::PoolProvidersOutput {
         PoolProviders::<T>::iter_prefix(pool_account)
     }
 
-    fn total_issuance(pool_account: &Self::AccountId) -> Result<Balance, DispatchError> {
+    fn total_issuance(pool_account: &T::AccountId) -> Result<Balance, DispatchError> {
         TotalIssuances::<T>::get(pool_account).ok_or(Error::<T>::PoolIsInvalid.into())
     }
 
     fn all_properties() -> Self::PoolPropertiesOutput {
         Properties::<T>::iter()
     }
+
+    fn properties_of_pool(
+        base_asset_id: T::AssetId,
+        target_asset_id: T::AssetId,
+    ) -> Option<(T::AccountId, T::AccountId)> {
+        Properties::<T>::get(base_asset_id, target_asset_id)
+    }
+
+    fn balance_of_pool_provider(
+        pool_account: T::AccountId,
+        liquidity_provider_account: T::AccountId,
+    ) -> Option<Balance> {
+        PoolProviders::<T>::get(pool_account, liquidity_provider_account)
+    }
+
+    fn transfer_lp_tokens(
+        pool_account: T::AccountId,
+        asset_a: T::AssetId,
+        asset_b: T::AssetId,
+        base_account_id: T::AccountId,
+        target_account_id: T::AccountId,
+        pool_tokens: Balance,
+    ) -> Result<(), DispatchError> {
+        // Subtract lp_tokens from base_account
+        let mut result: Result<_, Error<T>> =
+            PoolProviders::<T>::mutate_exists(pool_account.clone(), base_account_id, |balance| {
+                let old_balance = balance.ok_or(Error::<T>::AccountBalanceIsInvalid)?;
+                let new_balance = old_balance
+                    .checked_sub(pool_tokens)
+                    .ok_or(Error::<T>::AccountBalanceIsInvalid)?;
+                *balance = (new_balance != 0).then(|| new_balance);
+                Ok(())
+            });
+        result?;
+
+        // Pool tokens balance is zero while minted amount will be non-zero.
+        if PoolProviders::<T>::get(&pool_account, target_account_id.clone())
+            .unwrap_or(0)
+            .is_zero()
+            && !pool_tokens.is_zero()
+        {
+            let pair = Module::<T>::strict_sort_pair(&asset_a, &asset_b)?;
+            AccountPools::<T>::mutate(target_account_id.clone(), |set| {
+                set.insert(pair.target_asset_id)
+            });
+        }
+
+        // Add lp_tokens to target_account
+        result = PoolProviders::<T>::mutate(pool_account.clone(), target_account_id, |balance| {
+            *balance = Some(balance.unwrap_or(0) + pool_tokens);
+            Ok(())
+        });
+        result?;
+
+        Ok(())
+    }
 }
 
-impl<T: Config> Module<T> {
+impl<T: Config> Pallet<T> {
     fn initialize_pool_properties(
         dex_id: &T::DEXId,
         asset_a: &T::AssetId,
@@ -209,7 +262,7 @@ impl<T: Config> Module<T> {
         Ok((trading_pair, tech_acc_id, fee_acc_id))
     }
 
-    fn deposit_liquidity_unchecked(
+    pub fn deposit_liquidity_unchecked(
         source: AccountIdOf<T>,
         dex_id: DEXIdOf<T>,
         input_asset_a: AssetIdOf<T>,
@@ -328,6 +381,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         input_asset_id: &T::AssetId,
         output_asset_id: &T::AssetId,
         amount: QuoteAmount<Balance>,
+        deduce_fee: bool,
     ) -> Result<SwapOutcome<Balance>, DispatchError> {
         // Get pool account.
         let (_, tech_acc_id) = Module::<T>::tech_account_from_dex_and_asset_pair(
@@ -361,6 +415,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
                     &reserve_input,
                     &reserve_output,
                     &desired_amount_in,
+                    deduce_fee,
                 )?;
                 Ok(SwapOutcome::new(calculated, fee))
             }
@@ -371,6 +426,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
                     &reserve_input,
                     &reserve_output,
                     &desired_amount_out,
+                    deduce_fee,
                 )?;
                 Ok(SwapOutcome::new(calculated, fee))
             }
@@ -453,6 +509,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
         input_asset_id: &T::AssetId,
         output_asset_id: &T::AssetId,
         amount: QuoteAmount<Balance>,
+        deduce_fee: bool,
     ) -> Result<SwapOutcome<Balance>, DispatchError> {
         // Get pool account.
         let (_, tech_acc_id) = Module::<T>::tech_account_from_dex_and_asset_pair(
@@ -478,7 +535,11 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, T::AssetId, Balance, Dis
             Module::<T>::decide_is_fee_from_destination(input_asset_id, output_asset_id)?;
 
         let input_price_wrt_output = FixedWrapper::from(reserve_output) / reserve_input;
-        let fee_fraction = T::GetFee::get();
+        let fee_fraction = if deduce_fee {
+            T::GetFee::get()
+        } else {
+            common::Fixed::default()
+        };
         Ok(match amount {
             QuoteAmount::WithDesiredInput { desired_amount_in } => {
                 let (output, fee_amount) = if get_fee_from_destination {
@@ -550,6 +611,7 @@ impl<T: Config> GetPoolReserves<T::AssetId> for Module<T> {
 }
 
 pub use pallet::*;
+use sp_runtime::traits::Zero;
 
 #[frame_support::pallet]
 pub mod pallet {
@@ -561,7 +623,11 @@ pub mod pallet {
 
     #[pallet::config]
     pub trait Config:
-        frame_system::Config + technical::Config + dex_manager::Config + trading_pair::Config
+        frame_system::Config
+        + technical::Config
+        + dex_manager::Config
+        + trading_pair::Config
+        + ceres_liquidity_locker::Config
     {
         /// The minimum amount of XOR to deposit as liquidity
         const MIN_XOR: Balance;
@@ -824,6 +890,8 @@ pub mod pallet {
         UnableToDepositXorLessThanMinimum,
         /// Attempt to quote via unsupported path, i.e. both output and input tokens are not XOR.
         UnsupportedQuotePath,
+        /// Not enough unlocked liquidity to withdraw
+        NotEnoughUnlockedLiquidity,
     }
 
     /// Updated after last liquidity change operation.
