@@ -1463,6 +1463,12 @@ impl ceres_liquidity_locker::Config for Runtime {
     type WeightInfo = ceres_liquidity_locker::weights::WeightInfo<Runtime>;
 }
 
+impl ceres_token_locker::Config for Runtime {
+    const BLOCKS_PER_ONE_DAY: BlockNumber = 1 * DAYS;
+    type Event = Event;
+    type CeresAssetId = CeresAssetId;
+}
+
 /// Payload data to be signed when making signed transaction from off-chain workers,
 ///   inside `create_transaction` function.
 pub type SignedPayload = generic::SignedPayload<Call, SignedExtra>;
@@ -1535,6 +1541,7 @@ construct_runtime! {
         PriceTools: price_tools::{Module, Storage, Event<T>} = 44,
         CeresStaking: ceres_staking::{Module, Call, Storage, Event<T>} = 45,
         CeresLiquidityLocker: ceres_liquidity_locker::{Module, Call, Storage, Event<T>} = 46,
+        CeresTokenLocker: ceres_token_locker::{Module, Call, Storage, Event<T>} = 47,
 
         // Available only for test net
         Faucet: faucet::{Module, Call, Config<T>, Event<T>} = 80,
@@ -1600,6 +1607,7 @@ construct_runtime! {
         PriceTools: price_tools::{Module, Storage, Event<T>} = 44,
         CeresStaking: ceres_staking::{Module, Call, Storage, Event<T>} = 45,
         CeresLiquidityLocker: ceres_liquidity_locker::{Module, Call, Storage, Event<T>} = 46,
+        CeresTokenLocker: ceres_token_locker::{Module, Call, Storage, Event<T>} = 47,
     }
 }
 
