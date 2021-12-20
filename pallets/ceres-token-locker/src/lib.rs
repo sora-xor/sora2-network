@@ -1,5 +1,11 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
+#[cfg(test)]
+mod mock;
+
+#[cfg(test)]
+mod tests;
+
 use codec::{Decode, Encode};
 
 #[derive(Encode, Decode, Default, PartialEq, Eq)]
@@ -7,8 +13,8 @@ use codec::{Decode, Encode};
 pub struct TokenLockInfo<Balance, BlockNumber, AssetId> {
     /// Amount of locked tokens
     tokens: Balance,
-    /// The time (block height) at which the tokens will be unlock
-    pub unlocking_block: BlockNumber,
+    /// The time (block height) at which the tokens will be unlocked
+    unlocking_block: BlockNumber,
     /// Locked asset id
     asset_id: AssetId,
 }
@@ -32,9 +38,6 @@ pub mod pallet {
 
     #[pallet::config]
     pub trait Config: frame_system::Config + assets::Config {
-        /// One day represented in block number
-        const BLOCKS_PER_ONE_DAY: BlockNumberFor<Self>;
-
         /// Because this pallet emits events, it depends on the runtime's definition of an event.
         type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 

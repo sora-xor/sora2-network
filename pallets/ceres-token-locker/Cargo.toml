@@ -33,12 +33,12 @@ currencies = { version = "0.4", package = "orml-currencies", default-features = 
 dex-manager = { path = "../dex-manager", default-features = false }
 pallet-balances = { version = "3", default-features = false }
 sp-io = { version = "3", default-features = false }
-orml-tokens = { version = "0.4", package = "orml-tokens", default-features = false }
 orml-traits = { version = "0.4", package = "orml-traits", default-features = false }
 permissions = { path = "../permissions" }
 pool-xyk = { path = "../pool-xyk", default-features = false }
 pswap-distribution = { path = "../pswap-distribution" }
 technical = { path = "../technical" }
+tokens = { version = "0.4", package = "orml-tokens", default-features = false }
 trading-pair = { path = "../trading-pair" }
 price-tools = { path = "../price-tools" }
 liquidity-proxy = { path = "../liquidity-proxy" }
