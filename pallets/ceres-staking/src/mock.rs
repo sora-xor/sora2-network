@@ -1,7 +1,9 @@
 use crate::{self as ceres_staking};
 use common::mock::ExistentialDeposits;
 use common::prelude::Balance;
-use common::{balance, AssetId32, AssetName, AssetSymbol, BalancePrecision};
+use common::{
+    balance, AssetId32, AssetName, AssetSymbol, BalancePrecision, ContentSource, Description,
+};
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{GenesisBuild, Hooks};
 use frame_support::weights::Weight;
@@ -106,6 +108,7 @@ impl assets::Config for Runtime {
     type GetBaseAssetId = GetBaseAssetId;
     type Currency = currencies::Module<Runtime>;
     type GetTeamReservesAccountId = GetTeamReservesAccountId;
+    type GetTotalBalance = ();
     type WeightInfo = ();
 }
 
@@ -162,6 +165,8 @@ pub struct ExtBuilder {
         BalancePrecision,
         Balance,
         bool,
+        Option<ContentSource>,
+        Option<Description>,
     )>,
     endowed_accounts: Vec<(AccountId, AssetId, Balance)>,
 }
@@ -177,6 +182,8 @@ impl Default for ExtBuilder {
                 18,
                 Balance::zero(),
                 true,
+                None,
+                None,
             )],
             endowed_accounts: vec![
                 (ALICE, CERES_ASSET_ID, balance!(7300)),

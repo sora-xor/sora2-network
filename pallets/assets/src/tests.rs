@@ -29,10 +29,14 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 mod tests {
+
     use crate::mock::*;
     use crate::Error;
     use common::prelude::{AssetName, AssetSymbol, Balance};
-    use common::{balance, AssetId32, DOT, PSWAP, VAL, XOR};
+    use common::{
+        balance, AssetId32, ContentSource, Description, DEFAULT_BALANCE_PRECISION, DOT, PSWAP, VAL,
+        XOR,
+    };
     use frame_support::{assert_err, assert_noop, assert_ok};
     use hex_literal::hex;
     use sp_runtime::traits::Zero;
@@ -56,6 +60,9 @@ mod tests {
                 AssetName(b"ALICE".to_vec()),
                 Balance::zero(),
                 true,
+                false,
+                None,
+                None,
             ));
             assert_ok!(Assets::ensure_asset_exists(&next_asset_id));
             assert_ne!(Assets::gen_asset_id(&ALICE), next_asset_id);
@@ -72,9 +79,11 @@ mod tests {
                 XOR,
                 AssetSymbol(b"XOR".to_vec()),
                 AssetName(b"SORA".to_vec()),
-                18,
+                DEFAULT_BALANCE_PRECISION,
                 Balance::zero(),
                 true,
+                None,
+                None,
             ));
             assert_ok!(Assets::ensure_asset_exists(&XOR));
         });
@@ -89,9 +98,11 @@ mod tests {
                 XOR,
                 AssetSymbol(b"XOR".to_vec()),
                 AssetName(b"SORA".to_vec()),
-                18,
+                DEFAULT_BALANCE_PRECISION,
                 Balance::zero(),
                 true,
+                None,
+                None,
             ));
             assert_noop!(
                 Assets::register_asset_id(
@@ -99,9 +110,11 @@ mod tests {
                     XOR,
                     AssetSymbol(b"XOR".to_vec()),
                     AssetName(b"SORA".to_vec()),
-                    18,
+                    DEFAULT_BALANCE_PRECISION,
                     Balance::zero(),
                     true,
+                    None,
+                    None,
                 ),
                 Error::<Runtime>::AssetIdAlreadyExists
             );
@@ -118,9 +131,11 @@ mod tests {
                     XOR,
                     AssetSymbol(b"XOR".to_vec()),
                     AssetName(b"This is a name with length over thirty three".to_vec()),
-                    18,
+                    DEFAULT_BALANCE_PRECISION,
                     Balance::zero(),
                     true,
+                    None,
+                    None,
                 ),
                 Error::<Runtime>::InvalidAssetName
             );
@@ -131,9 +146,11 @@ mod tests {
                     VAL,
                     AssetSymbol(b"VAL".to_vec()),
                     AssetName(b"This is a name with $ymbols".to_vec()),
-                    18,
+                    DEFAULT_BALANCE_PRECISION,
                     Balance::zero(),
                     true,
+                    None,
+                    None,
                 ),
                 Error::<Runtime>::InvalidAssetName
             );
@@ -144,9 +161,11 @@ mod tests {
                     DOT,
                     AssetSymbol(b"DOT".to_vec()),
                     AssetName(b"This is a name with _".to_vec()),
-                    18,
+                    DEFAULT_BALANCE_PRECISION,
                     Balance::zero(),
                     true,
+                    None,
+                    None,
                 ),
                 Error::<Runtime>::InvalidAssetName
             );
@@ -163,9 +182,11 @@ mod tests {
                     XOR,
                     AssetSymbol(b"xor".to_vec()),
                     AssetName(b"Super Sora".to_vec()),
-                    18,
+                    DEFAULT_BALANCE_PRECISION,
                     Balance::zero(),
                     true,
+                    None,
+                    None,
                 ),
                 Error::<Runtime>::InvalidAssetSymbol
             );
@@ -176,9 +197,11 @@ mod tests {
                     VAL,
                     AssetSymbol(b"VAL IS SUPER LONG".to_vec()),
                     AssetName(b"Validator".to_vec()),
-                    18,
+                    DEFAULT_BALANCE_PRECISION,
                     Balance::zero(),
                     true,
+                    None,
+                    None,
                 ),
                 Error::<Runtime>::InvalidAssetSymbol
             );
@@ -189,9 +212,11 @@ mod tests {
                     DOT,
                     AssetSymbol(b"D_OT".to_vec()),
                     AssetName(b"Bad Symbol".to_vec()),
-                    18,
+                    DEFAULT_BALANCE_PRECISION,
                     Balance::zero(),
                     true,
+                    None,
+                    None,
                 ),
                 Error::<Runtime>::InvalidAssetSymbol
             );
@@ -207,9 +232,11 @@ mod tests {
                 XOR,
                 AssetSymbol(b"XOR".to_vec()),
                 AssetName(b"SORA".to_vec()),
-                18,
+                DEFAULT_BALANCE_PRECISION,
                 Balance::zero(),
                 true,
+                None,
+                None,
             ));
             assert_ok!(Assets::mint_to(&XOR, &ALICE, &ALICE, 100u32.into()));
             assert_ok!(Assets::burn_from(&XOR, &ALICE, &ALICE, 100u32.into()));
@@ -226,9 +253,11 @@ mod tests {
                 XOR,
                 AssetSymbol(b"XOR".to_vec()),
                 AssetName(b"SORA".to_vec()),
-                18,
+                DEFAULT_BALANCE_PRECISION,
                 Balance::zero(),
                 true,
+                None,
+                None,
             ));
             assert_noop!(
                 Assets::mint_to(&XOR, &BOB, &BOB, 100u32.into()),
@@ -245,21 +274,19 @@ mod tests {
     fn should_check_symbols_correctly() {
         let mut ext = ExtBuilder::default().build();
         ext.execute_with(|| {
-            assert!(crate::is_symbol_valid(&AssetSymbol(b"XOR".to_vec())));
-            assert!(crate::is_symbol_valid(&AssetSymbol(b"DOT".to_vec())));
-            assert!(crate::is_symbol_valid(&AssetSymbol(b"KSM".to_vec())));
-            assert!(crate::is_symbol_valid(&AssetSymbol(b"USDT".to_vec())));
-            assert!(crate::is_symbol_valid(&AssetSymbol(b"VAL".to_vec())));
-            assert!(crate::is_symbol_valid(&AssetSymbol(b"PSWAP".to_vec())));
-            assert!(crate::is_symbol_valid(&AssetSymbol(b"GT".to_vec())));
-            assert!(crate::is_symbol_valid(&AssetSymbol(b"BP".to_vec())));
-            assert!(crate::is_symbol_valid(&AssetSymbol(b"AB1".to_vec())));
+            assert!(AssetSymbol(b"XOR".to_vec()).is_valid());
+            assert!(AssetSymbol(b"DOT".to_vec()).is_valid());
+            assert!(AssetSymbol(b"KSM".to_vec()).is_valid());
+            assert!(AssetSymbol(b"USDT".to_vec()).is_valid());
+            assert!(AssetSymbol(b"VAL".to_vec()).is_valid());
+            assert!(AssetSymbol(b"PSWAP".to_vec()).is_valid());
+            assert!(AssetSymbol(b"GT".to_vec()).is_valid());
+            assert!(AssetSymbol(b"BP".to_vec()).is_valid());
+            assert!(AssetSymbol(b"AB1".to_vec()).is_valid());
 
-            assert!(!crate::is_symbol_valid(&AssetSymbol(b"ABCDEFGH".to_vec())));
-            assert!(!crate::is_symbol_valid(&AssetSymbol(b"xor".to_vec())));
-            assert!(!crate::is_symbol_valid(&AssetSymbol(
-                b"\xF0\x9F\x98\xBF".to_vec()
-            )));
+            assert!(!AssetSymbol(b"ABCDEFGH".to_vec()).is_valid());
+            assert!(!AssetSymbol(b"xor".to_vec()).is_valid());
+            assert!(!AssetSymbol(b"\xF0\x9F\x98\xBF".to_vec()).is_valid());
         })
     }
 
@@ -267,26 +294,22 @@ mod tests {
     fn should_check_names_correctly() {
         let mut ext = ExtBuilder::default().build();
         ext.execute_with(|| {
-            assert!(crate::is_name_valid(&AssetName(b"XOR".to_vec())));
-            assert!(crate::is_name_valid(&AssetName(b"DOT".to_vec())));
-            assert!(crate::is_name_valid(&AssetName(b"KSM".to_vec())));
-            assert!(crate::is_name_valid(&AssetName(b"USDT".to_vec())));
-            assert!(crate::is_name_valid(&AssetName(b"VAL".to_vec())));
-            assert!(crate::is_name_valid(&AssetName(b"PSWAP".to_vec())));
-            assert!(crate::is_name_valid(&AssetName(b"GT".to_vec())));
-            assert!(crate::is_name_valid(&AssetName(b"BP".to_vec())));
-            assert!(crate::is_name_valid(&AssetName(
-                b"SORA Validator Token".to_vec()
-            )));
-            assert!(crate::is_name_valid(&AssetName(b"AB1".to_vec())));
+            assert!(AssetName(b"XOR".to_vec()).is_valid());
+            assert!(AssetName(b"DOT".to_vec()).is_valid());
+            assert!(AssetName(b"KSM".to_vec()).is_valid());
+            assert!(AssetName(b"USDT".to_vec()).is_valid());
+            assert!(AssetName(b"VAL".to_vec()).is_valid());
+            assert!(AssetName(b"PSWAP".to_vec()).is_valid());
+            assert!(AssetName(b"GT".to_vec()).is_valid());
+            assert!(AssetName(b"BP".to_vec()).is_valid());
+            assert!(AssetName(b"SORA Validator Token".to_vec()).is_valid());
+            assert!(AssetName(b"AB1".to_vec()).is_valid());
 
-            assert!(!crate::is_name_valid(&AssetName(
-                b"This is a name with length over thirty three".to_vec()
-            )));
-            assert!(!crate::is_name_valid(&AssetName(b"AB1_".to_vec())));
-            assert!(!crate::is_name_valid(&AssetName(
-                b"\xF0\x9F\x98\xBF".to_vec()
-            )));
+            assert!(
+                !AssetName(b"This is a name with length over thirty three".to_vec()).is_valid()
+            );
+            assert!(!AssetName(b"AB1_".to_vec()).is_valid());
+            assert!(!AssetName(b"\xF0\x9F\x98\xBF".to_vec()).is_valid());
         })
     }
 
@@ -299,9 +322,11 @@ mod tests {
                 XOR,
                 AssetSymbol(b"XOR".to_vec()),
                 AssetName(b"SORA".to_vec()),
-                18,
+                DEFAULT_BALANCE_PRECISION,
                 Balance::from(123u32),
                 true,
+                None,
+                None,
             ));
             assert_eq!(
                 Assets::free_balance(&XOR, &ALICE).expect("Failed to query free balance."),
@@ -312,9 +337,11 @@ mod tests {
                 VAL,
                 AssetSymbol(b"VAL".to_vec()),
                 AssetName(b"SORA Validator Token".to_vec()),
-                18,
+                DEFAULT_BALANCE_PRECISION,
                 Balance::from(321u32),
                 false,
+                None,
+                None,
             ));
             assert_eq!(
                 Assets::free_balance(&VAL, &ALICE).expect("Failed to query free balance."),
@@ -325,9 +352,11 @@ mod tests {
                 DOT,
                 AssetSymbol(b"DOT".to_vec()),
                 AssetName(b"Polkadot".to_vec()),
-                18,
+                DEFAULT_BALANCE_PRECISION,
                 Balance::from(0u32),
                 false,
+                None,
+                None,
             ));
             assert_eq!(
                 Assets::free_balance(&DOT, &ALICE).expect("Failed to query free balance."),
@@ -345,9 +374,11 @@ mod tests {
                 XOR,
                 AssetSymbol(b"XOR".to_vec()),
                 AssetName(b"SORA".to_vec()),
-                18,
+                DEFAULT_BALANCE_PRECISION,
                 Balance::from(10u32),
                 false,
+                None,
+                None,
             ));
             assert_noop!(
                 Assets::mint_to(&XOR, &ALICE, &ALICE, Balance::from(10u32)),
@@ -375,9 +406,11 @@ mod tests {
                 XOR,
                 AssetSymbol(b"XOR".to_vec()),
                 AssetName(b"SORA".to_vec()),
-                18,
+                DEFAULT_BALANCE_PRECISION,
                 Balance::from(10u32),
                 true,
+                None,
+                None,
             ));
             assert_ok!(Assets::mint_to(&XOR, &ALICE, &ALICE, Balance::from(10u32)),);
             assert_ok!(Assets::mint_to(&XOR, &ALICE, &BOB, Balance::from(10u32)),);
@@ -417,9 +450,11 @@ mod tests {
                 XOR,
                 AssetSymbol(b"XOR".to_vec()),
                 AssetName(b"SORA".to_vec()),
-                18,
+                DEFAULT_BALANCE_PRECISION,
                 Balance::from(10u32),
                 true,
+                None,
+                None,
             ));
             assert_ok!(Assets::set_non_mintable_from(&XOR, &ALICE));
             assert_noop!(
@@ -438,9 +473,11 @@ mod tests {
                 XOR,
                 AssetSymbol(b"XOR".to_vec()),
                 AssetName(b"SORA".to_vec()),
-                18,
+                DEFAULT_BALANCE_PRECISION,
                 Balance::from(10u32),
                 true,
+                None,
+                None,
             ));
             assert_eq!(
                 Assets::free_balance(&XOR, &ALICE).expect("Failed to query free balance."),
@@ -468,9 +505,11 @@ mod tests {
                 XOR,
                 AssetSymbol(b"XOR".to_vec()),
                 AssetName(b"SORA".to_vec()),
-                18,
+                DEFAULT_BALANCE_PRECISION,
                 Balance::from(10u32),
                 true,
+                None,
+                None,
             ));
             assert_noop!(
                 Assets::burn_from(&XOR, &BOB, &ALICE, Balance::from(10u32)),
@@ -488,9 +527,11 @@ mod tests {
                 XOR,
                 AssetSymbol(b"XOR".to_vec()),
                 AssetName(b"SORA".to_vec()),
-                18,
+                DEFAULT_BALANCE_PRECISION,
                 Balance::from(10u32),
                 true,
+                None,
+                None,
             ));
             assert_ok!(Assets::mint_to(&XOR, &ALICE, &BOB, Balance::from(10u32)));
             assert_eq!(
@@ -516,5 +557,65 @@ mod tests {
             let balance_after = Currencies::free_balance(PSWAP, &GetTeamReservesAccountId::get());
             assert_eq!(balance_after - balance_before, expected_minted);
         });
+    }
+
+    #[test]
+    fn should_register_nft() {
+        let mut ext = ExtBuilder::default().build();
+        ext.execute_with(|| {
+            let next_asset_id = Assets::gen_asset_id(&ALICE);
+            assert_ok!(Assets::register(
+                Origin::signed(ALICE),
+                AssetSymbol(b"ALIC".to_vec()),
+                AssetName(b"ALICE".to_vec()),
+                5,
+                true,
+                true,
+                None,
+                None,
+            ));
+            let (_, _, precision, _) = Assets::asset_infos(next_asset_id);
+            assert_eq!(precision, 0u8);
+        })
+    }
+
+    #[test]
+    fn should_associate_content_source() {
+        let mut ext = ExtBuilder::default().build();
+        let content_src = ContentSource(b"https://imgur.com/gallery/24O4LUX".to_vec());
+        ext.execute_with(|| {
+            assert_ok!(Assets::register_asset_id(
+                ALICE,
+                XOR,
+                AssetSymbol(b"XOR".to_vec()),
+                AssetName(b"SORA".to_vec()),
+                DEFAULT_BALANCE_PRECISION,
+                Balance::from(10u32),
+                true,
+                Some(content_src.clone()),
+                None,
+            ));
+            assert_eq!(Assets::get_asset_content_src(&XOR), Some(content_src));
+        })
+    }
+
+    #[test]
+    fn should_associate_desciption() {
+        let mut ext = ExtBuilder::default().build();
+        let desc = Description(b"Lorem ipsum".to_vec());
+        ext.execute_with(|| {
+            assert_ok!(Assets::register_asset_id(
+                ALICE,
+                XOR,
+                AssetSymbol(b"XOR".to_vec()),
+                AssetName(b"SORA".to_vec()),
+                DEFAULT_BALANCE_PRECISION,
+                Balance::from(10u32),
+                true,
+                None,
+                Some(desc.clone()),
+            ));
+            assert_eq!(Assets::get_asset_description(&XOR), Some(desc));
+        })
     }
 }

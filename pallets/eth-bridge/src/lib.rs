@@ -188,7 +188,7 @@ const MAX_PENDING_TX_BLOCKS_PERIOD: u32 = 100;
 const RE_HANDLE_TXS_PERIOD: u32 = 200;
 
 type AssetIdOf<T> = <T as assets::Config>::AssetId;
-type Timepoint<T> = bridge_multisig::Timepoint<<T as frame_system::Config>::BlockNumber>;
+type Timepoint<T> = bridge_multisig::BridgeTimepoint<<T as frame_system::Config>::BlockNumber>;
 type BridgeTimepoint<T> = Timepoint<T>;
 type BridgeNetworkId<T> = <T as Config>::NetworkId;
 
@@ -448,6 +448,8 @@ pub mod pallet {
 
         /// Add a Thischain asset to the bridge whitelist.
         ///
+        /// Can only be called by root.
+        ///
         /// Parameters:
         /// - `asset_id` - Thischain asset identifier.
         /// - `network_id` - network identifier to which the asset should be added.
@@ -458,8 +460,8 @@ pub mod pallet {
             asset_id: AssetIdOf<T>,
             network_id: BridgeNetworkId<T>,
         ) -> DispatchResultWithPostInfo {
-            debug::debug!("called add_asset");
-            let from = ensure_signed(origin)?;
+            ensure_root(origin)?;
+            let from = Self::authority_account();
             let nonce = frame_system::Module::<T>::account_nonce(&from);
             let timepoint = bridge_multisig::Module::<T>::thischain_timepoint();
             Self::add_request(&OffchainRequest::outgoing(OutgoingRequest::AddAsset(
@@ -1560,6 +1562,8 @@ impl<T: Config> Pallet<T> {
             DEFAULT_BALANCE_PRECISION,
             Balance::from(0u32),
             true,
+            None,
+            None,
         )?;
         RegisteredAsset::<T>::insert(network_id, &asset_id, AssetKind::Sidechain);
         RegisteredSidechainAsset::<T>::insert(network_id, &token_address, asset_id);

@@ -40,6 +40,13 @@ pub mod constants;
 mod extensions;
 mod impls;
 
+#[cfg(test)]
+pub mod mock;
+
+#[cfg(test)]
+pub mod tests;
+
+use common::prelude::constants::{BIG_FEE, SMALL_FEE};
 use common::prelude::QuoteAmount;
 use constants::time::*;
 
@@ -50,6 +57,7 @@ include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
 use core::time::Duration;
 use currencies::BasicCurrencyAdapter;
 use extensions::ChargeTransactionPayment;
+use frame_support::traits::Currency;
 use frame_system::offchain::{Account, SigningTypes};
 use frame_system::{EnsureOneOf, EnsureRoot};
 use hex_literal::hex;
@@ -90,8 +98,8 @@ pub use common::prelude::{
 pub use common::weights::{BlockLength, BlockWeights, TransactionByteFee};
 pub use common::{
     balance, fixed, fixed_from_basis_points, AssetName, AssetSymbol, BalancePrecision, BasisPoints,
-    FilterMode, Fixed, FromGenericPair, LiquiditySource, LiquiditySourceFilter, LiquiditySourceId,
-    LiquiditySourceType, OnPswapBurned, OnValBurned,
+    ContentSource, FilterMode, Fixed, FromGenericPair, LiquiditySource, LiquiditySourceFilter,
+    LiquiditySourceId, LiquiditySourceType, OnPswapBurned, OnValBurned,
 };
 pub use frame_support::traits::schedule::Named as ScheduleNamed;
 pub use frame_support::traits::{
@@ -112,9 +120,11 @@ pub use sp_runtime::BuildStorage;
 
 use eth_bridge::offchain::SignatureParams;
 use eth_bridge::requests::{AssetKind, OffchainRequest, OutgoingRequestEncoded, RequestStatus};
-use impls::{CollectiveWeightInfo, DemocracyWeightInfo, OnUnbalancedDemocracySlash};
+use impls::{
+    CollectiveWeightInfo, DemocracyWeightInfo, NegativeImbalanceOf, OnUnbalancedDemocracySlash,
+};
 
-use frame_support::traits::Get;
+use frame_support::traits::{ExistenceRequirement, Get, WithdrawReasons};
 pub use {assets, eth_bridge, frame_system, multicollateral_bonding_curve_pool, xst};
 
 /// An index to a block.
@@ -261,14 +271,14 @@ parameter_types! {
     .max_extrinsic
     .expect("Normal extrinsics have weight limit configured by default; qed")
     .saturating_sub(BlockExecutionWeight::get());
-    pub const DemocracyEnactmentPeriod: BlockNumber = 1 * DAYS;
-    pub const DemocracyLaunchPeriod: BlockNumber = 2 * DAYS;
-    pub const DemocracyVotingPeriod: BlockNumber = 1 * DAYS;
+    pub const DemocracyEnactmentPeriod: BlockNumber = 30 * DAYS;
+    pub const DemocracyLaunchPeriod: BlockNumber = 28 * DAYS;
+    pub const DemocracyVotingPeriod: BlockNumber = 14 * DAYS;
     pub const DemocracyMinimumDeposit: Balance = balance!(1);
     pub const DemocracyFastTrackVotingPeriod: BlockNumber = 3 * HOURS;
     pub const DemocracyInstantAllowed: bool = true;
     pub const DemocracyCooloffPeriod: BlockNumber = 28 * DAYS;
-    pub const DemocracyPreimageByteDeposit: Balance = balance!(0.00000001); // 10 ^ -8
+    pub const DemocracyPreimageByteDeposit: Balance = balance!(0.000002); // 2 * 10^-6, 5 MiB -> 10.48576 XOR
     pub const DemocracyMaxVotes: u32 = 100;
     pub const DemocracyMaxProposals: u32 = 100;
     pub const CouncilCollectiveMotionDuration: BlockNumber = 5 * DAYS;
@@ -610,6 +620,18 @@ impl common::Config for Runtime {
     type LstId = common::LiquiditySourceType;
 }
 
+pub struct GetTotalBalance;
+
+impl assets::GetTotalBalance<Runtime> for GetTotalBalance {
+    fn total_balance(asset_id: &AssetId, who: &AccountId) -> Result<Balance, DispatchError> {
+        if asset_id == &GetXorAssetId::get() {
+            Ok(Referrals::referrer_balance(who).unwrap_or(0))
+        } else {
+            Ok(0)
+        }
+    }
+}
+
 impl assets::Config for Runtime {
     type Event = Event;
     type ExtraAccountId = [u8; 32];
@@ -619,6 +641,7 @@ impl assets::Config for Runtime {
     type GetBaseAssetId = GetBaseAssetId;
     type Currency = currencies::Module<Runtime>;
     type GetTeamReservesAccountId = GetTeamReservesAccountId;
+    type GetTotalBalance = GetTotalBalance;
     type WeightInfo = assets::weights::WeightInfo<Runtime>;
 }
 
@@ -685,6 +708,16 @@ parameter_types! {
     pub const MaxSubAccounts: u32 = 100;
     pub const MaxAdditionalFields: u32 = 100;
     pub const MaxRegistrars: u32 = 20;
+    pub ReferralsReservesAcc: AccountId = {
+        let tech_account_id = TechAccountId::from_generic_pair(
+            b"referrals".to_vec(),
+            b"main".to_vec(),
+        );
+        let account_id =
+            technical::Module::<Runtime>::tech_account_id_to_account_id(&tech_account_id)
+                .expect("Failed to get ordinary account id for technical account id.");
+        account_id
+    };
 }
 
 impl liquidity_proxy::Config for Runtime {
@@ -839,7 +872,10 @@ where
     type Extrinsic = UncheckedExtrinsic;
 }
 
-impl referral_system::Config for Runtime {}
+impl referrals::Config for Runtime {
+    type ReservesAcc = ReferralsReservesAcc;
+    type WeightInfo = referrals::weights::WeightInfo<Runtime>;
+}
 
 impl rewards::Config for Runtime {
     const BLOCKS_PER_DAY: BlockNumber = 1 * DAYS;
@@ -862,7 +898,8 @@ impl xor_fee::ApplyCustomFees<Call> for ExtrinsicsFlatFees {
             Call::Assets(assets::Call::register(..))
             | Call::EthBridge(eth_bridge::Call::transfer_to_sidechain(..))
             | Call::PoolXYK(pool_xyk::Call::withdraw_liquidity(..))
-            | Call::Rewards(rewards::Call::claim(..)) => Some(balance!(0.007)),
+            | Call::Rewards(rewards::Call::claim(..))
+            | Call::VestedRewards(vested_rewards::Call::claim_rewards(..)) => Some(BIG_FEE),
             Call::Assets(..)
             | Call::EthBridge(..)
             | Call::LiquidityProxy(..)
@@ -870,7 +907,8 @@ impl xor_fee::ApplyCustomFees<Call> for ExtrinsicsFlatFees {
             | Call::PoolXYK(..)
             | Call::Rewards(..)
             | Call::Staking(pallet_staking::Call::payout_stakers(..))
-            | Call::TradingPair(..) => Some(balance!(0.0007)),
+            | Call::TradingPair(..)
+            | Call::Referrals(..) => Some(SMALL_FEE),
             _ => None,
         }
     }
@@ -951,6 +989,42 @@ where
     }
 }
 
+pub struct WithdrawFee;
+
+impl xor_fee::WithdrawFee<Runtime> for WithdrawFee {
+    fn withdraw_fee(
+        who: &AccountId,
+        call: &Call,
+        fee: Balance,
+    ) -> Result<(AccountId, Option<NegativeImbalanceOf<Runtime>>), DispatchError> {
+        match call {
+            Call::Referrals(referrals::Call::set_referrer(referrer))
+                if Referrals::can_set_referrer(who) =>
+            {
+                Referrals::withdraw_fee(referrer, fee)?;
+                Ok((
+                    referrer.clone(),
+                    Some(Balances::withdraw(
+                        &ReferralsReservesAcc::get(),
+                        fee,
+                        WithdrawReasons::TRANSACTION_PAYMENT,
+                        ExistenceRequirement::KeepAlive,
+                    )?),
+                ))
+            }
+            _ => Ok((
+                who.clone(),
+                Some(Balances::withdraw(
+                    who,
+                    fee,
+                    WithdrawReasons::TRANSACTION_PAYMENT,
+                    ExistenceRequirement::KeepAlive,
+                )?),
+            )),
+        }
+    }
+}
+
 parameter_types! {
     pub const DEXIdValue: DEXId = 0;
 }
@@ -972,6 +1046,7 @@ impl xor_fee::Config for Runtime {
     type GetTechnicalAccountId = GetXorFeeAccountId;
     type GetParliamentAccountId = GetParliamentAccountId;
     type SessionManager = Staking;
+    type WithdrawFee = WithdrawFee;
 }
 
 pub struct ConstantFeeMultiplier;
@@ -1298,6 +1373,20 @@ parameter_types! {
                 .expect("Failed to get ordinary account id for technical account id.");
         account_id
     };
+    pub GetFarmingRewardsTechAccountId: TechAccountId = {
+        let tech_account_id = TechAccountId::from_generic_pair(
+            vested_rewards::TECH_ACCOUNT_PREFIX.to_vec(),
+            vested_rewards::TECH_ACCOUNT_FARMING.to_vec(),
+        );
+        tech_account_id
+    };
+    pub GetFarmingRewardsAccountId: AccountId = {
+        let tech_account_id = GetFarmingRewardsTechAccountId::get();
+        let account_id =
+            technical::Module::<Runtime>::tech_account_id_to_account_id(&tech_account_id)
+                .expect("Failed to get ordinary account id for technical account id.");
+        account_id
+    };
 }
 
 impl multicollateral_bonding_curve_pool::Config for Runtime {
@@ -1339,6 +1428,7 @@ impl pallet_offences::Config for Runtime {
 impl vested_rewards::Config for Runtime {
     type Event = Event;
     type GetBondingCurveRewardsAccountId = GetMbcPoolRewardsAccountId;
+    type GetFarmingRewardsAccountId = GetFarmingRewardsAccountId;
     type GetMarketMakerRewardsAccountId = GetMarketMakerRewardsAccountId;
     type WeightInfo = vested_rewards::weights::WeightInfo<Runtime>;
 }
@@ -1363,6 +1453,14 @@ impl ceres_staking::Config for Runtime {
     type CeresAssetId = CeresAssetId;
     type MaximumCeresInStakingPool = MaximumCeresInStakingPool;
     type WeightInfo = ceres_staking::weights::WeightInfo<Runtime>;
+}
+
+impl ceres_liquidity_locker::Config for Runtime {
+    const BLOCKS_PER_ONE_DAY: BlockNumber = 1 * DAYS;
+    type Event = Event;
+    type XYKPool = PoolXYK;
+    type CeresAssetId = CeresAssetId;
+    type WeightInfo = ceres_liquidity_locker::weights::WeightInfo<Runtime>;
 }
 
 /// Payload data to be signed when making signed transaction from off-chain workers,
@@ -1392,7 +1490,7 @@ construct_runtime! {
         RandomnessCollectiveFlip: pallet_randomness_collective_flip::{Module, Call, Storage} = 4,
         TransactionPayment: pallet_transaction_payment::{Module, Storage} = 5,
         Permissions: permissions::{Module, Call, Storage, Config<T>, Event<T>} = 6,
-        ReferralSystem: referral_system::{Module, Call, Storage} = 7,
+        Referrals: referrals::{Module, Call, Storage} = 7,
         Rewards: rewards::{Module, Call, Config<T>, Storage, Event<T>} = 8,
         XorFee: xor_fee::{Module, Call, Storage, Event<T>} = 9,
         BridgeMultisig: bridge_multisig::{Module, Call, Storage, Config<T>, Event<T>} = 10,
@@ -1436,6 +1534,7 @@ construct_runtime! {
         XSTPool: xst::{Module, Call, Storage, Config<T>, Event<T>} = 43,
         PriceTools: price_tools::{Module, Storage, Event<T>} = 44,
         CeresStaking: ceres_staking::{Module, Call, Storage, Event<T>} = 45,
+        CeresLiquidityLocker: ceres_liquidity_locker::{Module, Call, Storage, Event<T>} = 46,
 
         // Available only for test net
         Faucet: faucet::{Module, Call, Config<T>, Event<T>} = 80,
@@ -1456,7 +1555,7 @@ construct_runtime! {
         RandomnessCollectiveFlip: pallet_randomness_collective_flip::{Module, Call, Storage} = 4,
         TransactionPayment: pallet_transaction_payment::{Module, Storage} = 5,
         Permissions: permissions::{Module, Call, Storage, Config<T>, Event<T>} = 6,
-        ReferralSystem: referral_system::{Module, Call, Storage} = 7,
+        Referrals: referrals::{Module, Call, Storage} = 7,
         Rewards: rewards::{Module, Call, Config<T>, Storage, Event<T>} = 8,
         XorFee: xor_fee::{Module, Call, Storage, Event<T>} = 9,
         BridgeMultisig: bridge_multisig::{Module, Call, Storage, Config<T>, Event<T>} = 10,
@@ -1500,6 +1599,7 @@ construct_runtime! {
         XSTPool: xst::{Module, Call, Storage, Config<T>, Event<T>} = 43,
         PriceTools: price_tools::{Module, Storage, Event<T>} = 44,
         CeresStaking: ceres_staking::{Module, Call, Storage, Event<T>} = 45,
+        CeresLiquidityLocker: ceres_liquidity_locker::{Module, Call, Storage, Event<T>} = 46,
     }
 }
 
@@ -1790,6 +1890,10 @@ impl_runtime_apis! {
                 asset_id, symbol, name, precision, is_mintable,
             })
         }
+
+        fn get_asset_content_src(asset_id: AssetId) -> Option<ContentSource> {
+            Assets::get_asset_content_src(&asset_id)
+        }
     }
 
     impl
@@ -2046,12 +2150,14 @@ impl_runtime_apis! {
             use pool_xyk_benchmarking::Module as XYKPoolBench;
             use pswap_distribution_benchmarking::Module as PswapDistributionBench;
             use xor_fee_benchmarking::Module as XorFeeBench;
+            use ceres_liquidity_locker_benchmarking::Module as CeresLiquidityLockerBench;
 
             impl dex_api_benchmarking::Config for Runtime {}
             impl liquidity_proxy_benchmarking::Config for Runtime {}
             impl pool_xyk_benchmarking::Config for Runtime {}
             impl pswap_distribution_benchmarking::Config for Runtime {}
             impl xor_fee_benchmarking::Config for Runtime {}
+            impl ceres_liquidity_locker_benchmarking::Config for Runtime {}
 
 
             let whitelist: Vec<TrackedStorageKey> = vec![
@@ -2072,8 +2178,7 @@ impl_runtime_apis! {
             let mut batches = Vec::<BenchmarkBatch>::new();
             let params = (&config, &whitelist);
 
-            add_benchmark!(params, batches, assets, Assets);
-            add_benchmark!(params, batches, dex_api, DEXAPIBench::<Runtime>);
+            add_benchmark!(params, batches, assets, Assets);add_benchmark!(params, batches, dex_api, DEXAPIBench::<Runtime>);
             #[cfg(feature = "private-net")]
             add_benchmark!(params, batches, faucet, Faucet);
             add_benchmark!(params, batches, farming, Farming);
@@ -2088,194 +2193,12 @@ impl_runtime_apis! {
             add_benchmark!(params, batches, vested_rewards, VestedRewards);
             add_benchmark!(params, batches, price_tools, PriceTools);
             add_benchmark!(params, batches, xor_fee, XorFeeBench::<Runtime>);
+            // add_benchmark!(params, batches, referrals, Referrals);
             add_benchmark!(params, batches, ceres_staking, CeresStaking);
+            add_benchmark!(params, batches, ceres_liquidity_locker, CeresLiquidityLockerBench::<Runtime>);
 
             if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
             Ok(batches)
         }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use common::fixnum::ops::CheckedMul;
-    use common::PredefinedAssetId::XSTUSD;
-    use common::{balance, DAI, XOR};
-    use liquidity_proxy::LiquidityProxyTrait;
-    use price_tools::AVG_BLOCK_SPAN;
-
-    use super::*;
-
-    pub fn alice() -> AccountId {
-        AccountId::from([1u8; 32])
-    }
-
-    #[test]
-    fn should_swap_with_split_between_multiple_sources_adjusting_limits() {
-        framenode_chain_spec::staging_coded_ext().execute_with(|| {
-            let allowed = [LiquiditySourceType::XSTPool, LiquiditySourceType::XYKPool].to_vec();
-            let xor_owner = assets::pallet::AssetOwners::<Runtime>::get(&XOR).unwrap();
-            let xor_balance = balance!(100000);
-            let xst_balance = balance!(40000000);
-            assets::Pallet::<Runtime>::mint_to(
-                &XOR,
-                &xor_owner,
-                &alice(),
-                (Fixed::from_bits(xor_balance as i128).cmul(2))
-                    .unwrap()
-                    .into_bits() as _,
-            )
-            .unwrap();
-            assets::Pallet::<Runtime>::mint_to(
-                &XSTUSD.into(),
-                &xor_owner,
-                &alice(),
-                xst_balance * 2,
-            )
-            .unwrap();
-
-            let dex_root_tech_account_id =
-                TechAccountId::Generic(b"SYSTEM_ACCOUNT".to_vec(), b"DEX_ROOT".to_vec());
-            let dex_root_account_id = technical::Module::<Runtime>::tech_account_id_to_account_id(
-                &dex_root_tech_account_id,
-            )
-            .unwrap();
-            pool_xyk::Pallet::<Runtime>::initialize_pool(
-                Origin::signed(dex_root_account_id.clone()),
-                0,
-                XOR,
-                XSTUSD.into(),
-            )
-            .unwrap();
-
-            pool_xyk::Pallet::<Runtime>::deposit_liquidity_unchecked(
-                alice(),
-                0,
-                XOR,
-                XSTUSD.into(),
-                xor_balance,
-                xst_balance,
-                xor_balance,
-                xst_balance,
-            )
-            .unwrap();
-
-            for _ in 1..=AVG_BLOCK_SPAN {
-                PriceTools::incoming_spot_price(&DAI, balance!(410)).unwrap();
-            }
-
-            LiquidityProxy::swap(
-                Origin::signed(alice()),
-                0,
-                XSTUSD.into(),
-                GetBaseAssetId::get(),
-                SwapAmount::with_desired_input(balance!(4935598), balance!(11837)),
-                allowed.clone(),
-                FilterMode::AllowSelected,
-            )
-            .expect("Failed to swap");
-        });
-    }
-
-    #[test]
-    fn xst_price_should_be_the_same_as_dai() {
-        framenode_chain_spec::staging_coded_ext().execute_with(|| {
-            let xor_owner = assets::pallet::AssetOwners::<Runtime>::get(&XOR).unwrap();
-            let xor_balance = balance!(100000);
-            let xst_balance = balance!(40000000);
-            let double_balance = (Fixed::from_bits(xor_balance as i128).cmul(2))
-                .unwrap()
-                .into_bits() as Balance;
-            assets::Pallet::<Runtime>::mint_to(&XOR, &xor_owner, &alice(), double_balance).unwrap();
-            assets::Pallet::<Runtime>::mint_to(
-                &XSTUSD.into(),
-                &xor_owner,
-                &alice(),
-                xst_balance * 3,
-            )
-            .unwrap();
-            assets::Pallet::<Runtime>::mint_to(&DAI, &xor_owner, &alice(), xst_balance * 3)
-                .unwrap();
-
-            let dex_root_tech_account_id =
-                TechAccountId::Generic(b"SYSTEM_ACCOUNT".to_vec(), b"DEX_ROOT".to_vec());
-            let dex_root_account_id = technical::Module::<Runtime>::tech_account_id_to_account_id(
-                &dex_root_tech_account_id,
-            )
-            .unwrap();
-            pool_xyk::Pallet::<Runtime>::initialize_pool(
-                Origin::signed(dex_root_account_id.clone()),
-                0,
-                XOR,
-                XSTUSD.into(),
-            )
-            .unwrap();
-
-            pool_xyk::Pallet::<Runtime>::deposit_liquidity_unchecked(
-                alice(),
-                0,
-                XOR,
-                XSTUSD.into(),
-                xor_balance,
-                xst_balance,
-                xor_balance,
-                xst_balance,
-            )
-            .unwrap();
-
-            pool_xyk::Pallet::<Runtime>::initialize_pool(
-                Origin::signed(dex_root_account_id.clone()),
-                0,
-                XOR,
-                DAI,
-            )
-            .unwrap();
-
-            pool_xyk::Pallet::<Runtime>::deposit_liquidity_unchecked(
-                alice(),
-                0,
-                XOR,
-                DAI,
-                xor_balance,
-                xst_balance,
-                xor_balance,
-                xst_balance,
-            )
-            .unwrap();
-
-            let quote = LiquidityProxy::quote(
-                &XOR,
-                &DAI,
-                QuoteAmount::with_desired_input(balance!(1)),
-                LiquiditySourceFilter::empty(0),
-                false,
-            )
-            .unwrap();
-            let price = quote.amount;
-            for _ in 1..=AVG_BLOCK_SPAN {
-                PriceTools::incoming_spot_price(&DAI, price).unwrap();
-            }
-
-            let xst_price = LiquidityProxy::quote(
-                &XOR,
-                &XSTUSD.into(),
-                QuoteAmount::with_desired_input(balance!(1)),
-                LiquiditySourceFilter::with_allowed(0, vec![LiquiditySourceType::XSTPool]),
-                false,
-            )
-            .unwrap()
-            .amount;
-
-            let xyk_price = LiquidityProxy::quote(
-                &XOR,
-                &DAI,
-                QuoteAmount::with_desired_input(balance!(1)),
-                LiquiditySourceFilter::with_allowed(0, vec![LiquiditySourceType::XYKPool]),
-                false,
-            )
-            .unwrap()
-            .amount;
-            assert_eq!(xyk_price, xst_price);
-        });
     }
 }

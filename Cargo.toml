@@ -163,6 +163,7 @@ members = [
     "runtime",
     "common",
     "pallets/assets",
+    "pallets/ceres-liquidity-locker",
     "pallets/permissions",
     "pallets/trading-pair",
     "pallets/dex-manager",
@@ -177,7 +178,7 @@ members = [
     "pallets/pool-xyk",
     "pallets/rewards",
     "pallets/xor-fee",
-    "pallets/referral-system",
+    "pallets/referrals",
     "pallets/eth-bridge",
     "pallets/pswap-distribution",
     "pallets/multicollateral-bonding-curve-pool",
@@ -186,6 +187,7 @@ members = [
     "pallets/price-tools",
     "node/",
     "utils/parse",
+    "utils/wasm-builder",
 ]
 
 resolver = "2"

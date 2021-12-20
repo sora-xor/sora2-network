@@ -234,7 +234,13 @@ impl<T: Config> Pallet<T> {
                     )?;
                     let xor_volume =
                         Self::get_xor_amount(from_asset_id, to_asset_id, amount, outcome.clone());
-                    T::VestedRewardsPallet::update_market_maker_records(&sender, xor_volume, 1)?;
+                    T::VestedRewardsPallet::update_market_maker_records(
+                        &sender,
+                        xor_volume,
+                        1,
+                        &from_asset_id,
+                        &to_asset_id,
+                    )?;
                     Ok(outcome)
                 }
                 ExchangePath::Twofold {
@@ -271,6 +277,8 @@ impl<T: Config> Pallet<T> {
                             &sender,
                             first_swap.amount,
                             2,
+                            &from_asset_id,
+                            &to_asset_id,
                         )?;
                         let cumulative_fee = first_swap
                             .fee
@@ -323,6 +331,8 @@ impl<T: Config> Pallet<T> {
                             &sender,
                             first_swap.amount,
                             2,
+                            &from_asset_id,
+                            &to_asset_id,
                         )?;
                         let cumulative_fee = first_swap
                             .fee
@@ -1346,7 +1356,7 @@ pub mod pallet {
         type PrimaryMarketTBC: GetMarketInfo<Self::AssetId>;
         type PrimaryMarketXST: GetMarketInfo<Self::AssetId>;
         type SecondaryMarket: GetPoolReserves<Self::AssetId>;
-        type VestedRewardsPallet: VestedRewardsPallet<Self::AccountId>;
+        type VestedRewardsPallet: VestedRewardsPallet<Self::AccountId, Self::AssetId>;
         /// Weight information for the extrinsics in this Pallet.
         type WeightInfo: WeightInfo;
     }

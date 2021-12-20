@@ -62,16 +62,6 @@ impl<T: frame_system::Config> crate::WeightInfo for WeightInfo<T> {
             .saturating_add(T::DbWeight::get().writes(1 as Weight))
             .saturating_add(T::DbWeight::get().writes((2 as Weight).saturating_mul(a as Weight)))
     }
-    fn save_data(a: u32, b: u32) -> Weight {
-        (0 as Weight)
-            // Standard Error: 107_000
-            .saturating_add((43_547_000 as Weight).saturating_mul(a as Weight))
-            // Standard Error: 75_000
-            .saturating_add((21_925_000 as Weight).saturating_mul(b as Weight))
-            .saturating_add(T::DbWeight::get().reads(1 as Weight))
-            .saturating_add(T::DbWeight::get().reads((1 as Weight).saturating_mul(a as Weight)))
-            .saturating_add(T::DbWeight::get().writes(1 as Weight))
-    }
 }
 
 impl crate::WeightInfo for () {
@@ -84,10 +74,6 @@ impl crate::WeightInfo for () {
     }
 
     fn vest_account_rewards(_a: u32) -> Weight {
-        EXTRINSIC_FIXED_WEIGHT
-    }
-
-    fn save_data(_a: u32, _b: u32) -> Weight {
         EXTRINSIC_FIXED_WEIGHT
     }
 }

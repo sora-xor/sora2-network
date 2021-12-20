@@ -31,7 +31,10 @@
 use crate::{self as farming, Config};
 use common::mock::ExistentialDeposits;
 use common::prelude::Balance;
-use common::{balance, fixed, hash, AssetName, AssetSymbol, DEXInfo, Fixed, DOT, PSWAP, VAL, XOR};
+use common::{
+    balance, fixed, hash, AssetName, AssetSymbol, DEXInfo, Fixed, DEFAULT_BALANCE_PRECISION, DOT,
+    PSWAP, VAL, XOR,
+};
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{GenesisBuild, OnFinalize, OnInitialize};
 use frame_support::weights::Weight;
@@ -61,9 +64,9 @@ type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>
 type Block = frame_system::mocking::MockBlock<Runtime>;
 
 pub const PSWAP_PER_DAY: Balance = balance!(2500000);
-pub const REFRESH_FREQUENCY: BlockNumberFor<Runtime> = 200;
+pub const REFRESH_FREQUENCY: BlockNumberFor<Runtime> = 1200;
 pub const VESTING_COEFF: u32 = 3;
-pub const VESTING_FREQUENCY: BlockNumberFor<Runtime> = 600;
+pub const VESTING_FREQUENCY: BlockNumberFor<Runtime> = 3600;
 pub const BLOCKS_PER_DAY: BlockNumberFor<Runtime> = 14_440;
 
 #[allow(non_snake_case)]
@@ -136,8 +139,8 @@ construct_runtime! {
         MBCPool: multicollateral_bonding_curve_pool::{Module, Call, Storage, Event<T>},
         VestedRewards: vested_rewards::{Module, Storage, Event<T>},
         Scheduler: pallet_scheduler::{Module, Call, Storage, Event<T>},
-
         Farming: farming::{Module, Call, Storage},
+        CeresLiquidityLocker: ceres_liquidity_locker::{Module, Call, Storage, Event<T>},
     }
 }
 
@@ -221,6 +224,7 @@ impl assets::Config for Runtime {
     type GetBaseAssetId = GetBaseAssetId;
     type Currency = currencies::Module<Runtime>;
     type GetTeamReservesAccountId = GetTeamReservesAccountId;
+    type GetTotalBalance = ();
     type WeightInfo = ();
 }
 
@@ -278,6 +282,7 @@ impl vested_rewards::Config for Runtime {
     type Event = Event;
     type GetMarketMakerRewardsAccountId = ();
     type GetBondingCurveRewardsAccountId = ();
+    type GetFarmingRewardsAccountId = ();
     type WeightInfo = ();
 }
 
@@ -289,6 +294,14 @@ impl pallet_scheduler::Config for Runtime {
     type MaximumWeight = SchedulerMaxWeight;
     type ScheduleOrigin = EnsureRoot<AccountId>;
     type MaxScheduledPerBlock = ();
+    type WeightInfo = ();
+}
+
+impl ceres_liquidity_locker::Config for Runtime {
+    const BLOCKS_PER_ONE_DAY: BlockNumberFor<Self> = 14_440;
+    type Event = Event;
+    type XYKPool = PoolXYK;
+    type CeresAssetId = ();
     type WeightInfo = ();
 }
 
@@ -402,27 +415,33 @@ impl ExtBuilder {
                     ALICE(),
                     AssetSymbol(b"XOR".to_vec()),
                     AssetName(b"SORA".to_vec()),
-                    18,
+                    DEFAULT_BALANCE_PRECISION,
                     0,
                     true,
+                    None,
+                    None,
                 ),
                 (
                     DOT.into(),
                     ALICE(),
                     AssetSymbol(b"DOT".to_vec()),
                     AssetName(b"DOT".to_vec()),
-                    18,
+                    DEFAULT_BALANCE_PRECISION,
                     0,
                     true,
+                    None,
+                    None,
                 ),
                 (
                     PSWAP.into(),
                     ALICE(),
                     AssetSymbol(b"PSWAP".to_vec()),
                     AssetName(b"PSWAP".to_vec()),
-                    18,
+                    DEFAULT_BALANCE_PRECISION,
                     0,
                     true,
+                    None,
+                    None,
                 ),
             ],
         }

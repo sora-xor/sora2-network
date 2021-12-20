@@ -31,12 +31,16 @@
 use crate::{self as pswap_distribution, Config};
 use common::mock::ExistentialDeposits;
 use common::prelude::Balance;
-use common::{balance, fixed, AssetName, AssetSymbol, BalancePrecision, Fixed, FromGenericPair};
+use common::{
+    balance, fixed, AssetName, AssetSymbol, BalancePrecision, ContentSource, Description, Fixed,
+    FromGenericPair, DEFAULT_BALANCE_PRECISION,
+};
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::GenesisBuild;
 use frame_support::weights::Weight;
 use frame_support::{construct_runtime, parameter_types};
 use frame_system;
+use frame_system::pallet_prelude::BlockNumberFor;
 use hex_literal::hex;
 use permissions::Scope;
 use sp_core::H256;
@@ -149,6 +153,7 @@ construct_runtime! {
         DexManager: dex_manager::{Module, Call, Storage},
         TradingPair: trading_pair::{Module, Call, Config<T>, Storage, Event<T>},
         PoolXYK: pool_xyk::{Module, Call, Storage, Event<T>},
+        CeresLiquidityLocker: ceres_liquidity_locker::{Module, Call, Storage, Event<T>},
     }
 }
 
@@ -224,6 +229,7 @@ impl assets::Config for Runtime {
     type GetBaseAssetId = GetBaseAssetId;
     type Currency = currencies::Module<Runtime>;
     type GetTeamReservesAccountId = GetTeamReservesAccountId;
+    type GetTotalBalance = ();
     type WeightInfo = ();
 }
 
@@ -275,6 +281,14 @@ impl pool_xyk::Config for Runtime {
     type WeightInfo = ();
 }
 
+impl ceres_liquidity_locker::Config for Runtime {
+    const BLOCKS_PER_ONE_DAY: BlockNumberFor<Self> = 14_440;
+    type Event = Event;
+    type XYKPool = PoolXYK;
+    type CeresAssetId = ();
+    type WeightInfo = ();
+}
+
 pub struct ExtBuilder {
     endowed_accounts: Vec<(AccountId, AssetId, Balance)>,
     endowed_assets: Vec<(
@@ -285,6 +299,8 @@ pub struct ExtBuilder {
         BalancePrecision,
         Balance,
         bool,
+        Option<ContentSource>,
+        Option<Description>,
     )>,
     initial_permission_owners: Vec<(u32, Scope, Vec<AccountId>)>,
     initial_permissions: Vec<(AccountId, Scope, Vec<u32>)>,
@@ -301,9 +317,11 @@ impl ExtBuilder {
                 alice(),
                 AssetSymbol(b"POOL".to_vec()),
                 AssetName(b"Pool Token".to_vec()),
-                18,
+                DEFAULT_BALANCE_PRECISION,
                 Balance::from(0u32),
                 true,
+                None,
+                None,
             )],
             initial_permission_owners: Vec::new(),
             initial_permissions: Vec::new(),
@@ -324,9 +342,11 @@ impl ExtBuilder {
                     alice(),
                     AssetSymbol(b"XOR".to_vec()),
                     AssetName(b"SORA".to_vec()),
-                    18,
+                    DEFAULT_BALANCE_PRECISION,
                     Balance::zero(),
                     true,
+                    None,
+                    None,
                 ),
                 (
                     common::PSWAP.into(),
@@ -336,24 +356,30 @@ impl ExtBuilder {
                     10,
                     Balance::zero(),
                     true,
+                    None,
+                    None,
                 ),
                 (
                     PoolTokenAId::get(),
                     alice(),
                     AssetSymbol(b"POOLA".to_vec()),
                     AssetName(b"Pool A".to_vec()),
-                    18,
+                    DEFAULT_BALANCE_PRECISION,
                     Balance::zero(),
                     true,
+                    None,
+                    None,
                 ),
                 (
                     PoolTokenBId::get(),
                     alice(),
                     AssetSymbol(b"POOLB".to_vec()),
                     AssetName(b"Pool B".to_vec()),
-                    18,
+                    DEFAULT_BALANCE_PRECISION,
                     Balance::zero(),
                     true,
+                    None,
+                    None,
                 ),
             ],
             initial_permission_owners: vec![],

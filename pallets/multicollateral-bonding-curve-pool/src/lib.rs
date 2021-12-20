@@ -74,6 +74,8 @@ pub trait WeightInfo {
     fn initialize_pool() -> Weight;
     fn set_reference_asset() -> Weight;
     fn set_optional_reward_multiplier() -> Weight;
+    fn set_price_change_config() -> Weight;
+    fn set_price_bias() -> Weight;
 }
 
 type Assets<T> = assets::Module<T>;
@@ -192,6 +194,7 @@ pub mod pallet {
     use super::*;
     use common::VestedRewardsPallet;
     use frame_support::pallet_prelude::*;
+    use frame_system::ensure_root;
     use frame_system::pallet_prelude::*;
 
     #[pallet::config]
@@ -212,7 +215,7 @@ pub mod pallet {
             DispatchError,
         >;
         type PriceToolsPallet: PriceToolsPallet<Self::AssetId>;
-        type VestedRewardsPallet: VestedRewardsPallet<Self::AccountId>;
+        type VestedRewardsPallet: VestedRewardsPallet<Self::AccountId, Self::AssetId>;
         /// Weight information for extrinsics in this pallet.
         type WeightInfo: WeightInfo;
     }
@@ -293,6 +296,50 @@ pub mod pallet {
             ));
             Ok(().into())
         }
+
+        /// Changes `initial_price` used as bias in XOR-DAI(reference asset) price calculation
+        #[pallet::weight(< T as Config >::WeightInfo::set_price_bias())]
+        pub fn set_price_bias(
+            origin: OriginFor<T>,
+            price_bias: Balance,
+        ) -> DispatchResultWithPostInfo {
+            ensure_root(origin)?;
+
+            InitialPrice::<T>::put(
+                FixedWrapper::from(price_bias)
+                    .get()
+                    .map_err(|_| Error::<T>::ArithmeticError)?,
+            );
+
+            Self::deposit_event(Event::PriceBiasChanged(price_bias));
+            Ok(().into())
+        }
+
+        /// Changes price change rate and step
+        #[pallet::weight(< T as Config >::WeightInfo::set_price_change_config())]
+        pub fn set_price_change_config(
+            origin: OriginFor<T>,
+            price_change_rate: Balance,
+            price_change_step: Balance,
+        ) -> DispatchResultWithPostInfo {
+            ensure_root(origin)?;
+
+            PriceChangeRate::<T>::put(
+                FixedWrapper::from(price_change_rate)
+                    .get()
+                    .map_err(|_| Error::<T>::ArithmeticError)?,
+            );
+            PriceChangeStep::<T>::put(
+                FixedWrapper::from(price_change_step)
+                    .get()
+                    .map_err(|_| Error::<T>::ArithmeticError)?,
+            );
+            Self::deposit_event(Event::PriceChangeConfigChanged(
+                price_change_rate,
+                price_change_step,
+            ));
+            Ok(().into())
+        }
     }
 
     #[pallet::event]
@@ -305,6 +352,10 @@ pub mod pallet {
         ReferenceAssetChanged(AssetIdOf<T>),
         /// Multiplier for reward has been updated on particular asset. [Asset Id, New Multiplier]
         OptionalRewardMultiplierUpdated(AssetIdOf<T>, Option<Fixed>),
+        /// Price bias was changed. [New Price Bias]
+        PriceBiasChanged(Balance),
+        /// Price change config was changed. [New Price Change Rate, New Price Change Step]
+        PriceChangeConfigChanged(Balance, Balance),
     }
 
     #[pallet::error]
@@ -335,6 +386,8 @@ pub mod pallet {
         CantExchange,
         /// Increment account reference error.
         IncRefError,
+        /// An error occured during balance type conversion.
+        ArithmeticError,
     }
 
     /// Technical account used to store collateral tokens.

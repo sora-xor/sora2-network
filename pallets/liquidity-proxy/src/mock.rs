@@ -33,7 +33,8 @@ use common::mock::ExistentialDeposits;
 use common::{
     self, balance, fixed, fixed_from_basis_points, fixed_wrapper, hash, Amount, AssetId32,
     AssetName, AssetSymbol, DEXInfo, Fixed, FromGenericPair, GetMarketInfo, LiquiditySource,
-    LiquiditySourceType, RewardReason, DAI, DOT, ETH, KSM, PSWAP, USDT, VAL, XOR, XSTUSD,
+    LiquiditySourceType, RewardReason, DAI, DEFAULT_BALANCE_PRECISION, DOT, ETH, KSM, PSWAP, USDT,
+    VAL, XOR, XSTUSD,
 };
 use currencies::BasicCurrencyAdapter;
 
@@ -44,6 +45,7 @@ use frame_system;
 use traits::MultiCurrency;
 
 use common::prelude::{Balance, FixedWrapper, QuoteAmount, SwapAmount, SwapOutcome};
+use frame_system::pallet_prelude::BlockNumberFor;
 use permissions::{Scope, INIT_DEX, MANAGE_DEX};
 use sp_core::H256;
 use sp_runtime::testing::Header;
@@ -109,6 +111,7 @@ parameter_types! {
     pub GetMarketMakerRewardsAccountId: AccountId = AccountId32::from([9; 32]);
     pub GetBondingCurveRewardsAccountId: AccountId = AccountId32::from([10; 32]);
     pub GetTeamReservesAccountId: AccountId = AccountId32::from([11; 32]);
+    pub GetFarmingRewardsAccountId: AccountId = AccountId32::from([12; 32]);
     pub GetXykFee: Fixed = fixed!(0.003);
 }
 
@@ -137,6 +140,7 @@ construct_runtime! {
         PoolXyk: pool_xyk::{Module, Call, Storage, Event<T>},
         PswapDistribution: pswap_distribution::{Module, Call, Storage, Event<T>},
         MBCPool: multicollateral_bonding_curve_pool::{Module, Call, Storage, Event<T>},
+        CeresLiquidityLocker: ceres_liquidity_locker::{Module, Call, Storage, Event<T>},
     }
 }
 
@@ -204,6 +208,7 @@ impl assets::Config for Runtime {
     type GetBaseAssetId = GetBaseAssetId;
     type Currency = currencies::Module<Runtime>;
     type GetTeamReservesAccountId = GetTeamReservesAccountId;
+    type GetTotalBalance = ();
     type WeightInfo = ();
 }
 
@@ -314,6 +319,14 @@ impl pool_xyk::Config for Runtime {
     type WeightInfo = ();
 }
 
+impl ceres_liquidity_locker::Config for Runtime {
+    const BLOCKS_PER_ONE_DAY: BlockNumberFor<Self> = 14_440;
+    type Event = Event;
+    type XYKPool = PoolXyk;
+    type CeresAssetId = ();
+    type WeightInfo = ();
+}
+
 impl multicollateral_bonding_curve_pool::Config for Runtime {
     type Event = Event;
     type LiquidityProxy = ();
@@ -328,6 +341,7 @@ impl vested_rewards::Config for Runtime {
     type Event = Event;
     type GetMarketMakerRewardsAccountId = GetMarketMakerRewardsAccountId;
     type GetBondingCurveRewardsAccountId = GetBondingCurveRewardsAccountId;
+    type GetFarmingRewardsAccountId = GetFarmingRewardsAccountId;
     type WeightInfo = ();
 }
 
@@ -429,7 +443,7 @@ impl Default for ExtBuilder {
                     balance!(0),
                     AssetSymbol(b"XOR".to_vec()),
                     AssetName(b"SORA".to_vec()),
-                    18,
+                    DEFAULT_BALANCE_PRECISION,
                 ),
                 (
                     alice(),
@@ -437,7 +451,7 @@ impl Default for ExtBuilder {
                     balance!(0),
                     AssetSymbol(b"VAL".to_vec()),
                     AssetName(b"SORA Validator Token".to_vec()),
-                    18,
+                    DEFAULT_BALANCE_PRECISION,
                 ),
                 (
                     alice(),
@@ -445,7 +459,7 @@ impl Default for ExtBuilder {
                     balance!(0),
                     AssetSymbol(b"PSWAP".to_vec()),
                     AssetName(b"Polkaswap Token".to_vec()),
-                    18,
+                    DEFAULT_BALANCE_PRECISION,
                 ),
                 (
                     alice(),
@@ -453,7 +467,7 @@ impl Default for ExtBuilder {
                     balance!(0),
                     AssetSymbol(b"USDT".to_vec()),
                     AssetName(b"Tether".to_vec()),
-                    18,
+                    DEFAULT_BALANCE_PRECISION,
                 ),
             ],
         }
@@ -836,6 +850,8 @@ impl ExtBuilder {
                         precision,
                         balance!(0),
                         true,
+                        None,
+                        None,
                     )
                 })
                 .collect(),

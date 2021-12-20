@@ -19,11 +19,13 @@ hex-literal = "0.3.1"
 log = { version = "0.4.14" }
 serde = { features = ['derive'], optional = true, version = '1.0.101' }
 
-bridge-multisig = { git = "https://github.com/soramitsu/sora2-frame-pallets.git", branch = "v3.2.2", package = "pallet-multisig", default-features = false }
+bridge-multisig = { git = "https://github.com/soramitsu/sora2-frame-pallets.git", branch = "v3.2.3", package = "pallet-multisig", default-features = false }
 
 assets = { path = "../pallets/assets", default-features = false }
 assets-runtime-api = { path = "../pallets/assets/runtime-api", default-features = false}
 common = { path = "../common", default-features = false }
+ceres-liquidity-locker = { path = "../pallets/ceres-liquidity-locker", default-features = false }
+ceres-liquidity-locker-benchmarking = { path = "../pallets/ceres-liquidity-locker/benchmarking", default-features = false, optional = true }
 ceres-staking = { path = "../pallets/ceres-staking", default-features = false }
 dex-api = { path = "../pallets/dex-api", default-features = false }
 dex-api-benchmarking = { path = "../pallets/dex-api/benchmarking", default-features = false, optional = true }
@@ -48,7 +50,7 @@ price-tools = { path = "../pallets/price-tools", default-features = false }
 pswap-distribution = { path = "../pallets/pswap-distribution", default-features = false }
 pswap-distribution-benchmarking = { path = "../pallets/pswap-distribution/benchmarking", default-features = false, optional = true }
 pswap-distribution-runtime-api = { path = "../pallets/pswap-distribution/runtime-api", default-features = false }
-referral-system = { path = "../pallets/referral-system", default-features = false}
+referrals = { path = "../pallets/referrals", default-features = false}
 rewards = { path = "../pallets/rewards", default-features = false }
 rewards-runtime-api = { path = "../pallets/rewards/runtime-api", default-features = false }
 technical = { path = "../pallets/technical", default-features = false}
@@ -111,6 +113,7 @@ tokens = { version = "0.4", package = "orml-tokens", default-features = false }
 traits = { version = "0.4", package = "orml-traits", default-features = false }
 
 [dev-dependencies]
+env_logger = "0.9.0"
 framenode-chain-spec = { path = "../node/chain_spec", features = ["test", "private-net"] }
 
 [features]
@@ -122,6 +125,7 @@ std = [
     "bridge-multisig/std",
     "codec/std",
     "common/std",
+    "ceres-liquidity-locker/std",
     "ceres-staking/std",
     "dex-api/std",
     "dex-manager-runtime-api/std",
@@ -167,7 +171,7 @@ std = [
     "price-tools/std",
     "pswap-distribution-runtime-api/std",
     "pswap-distribution/std",
-    "referral-system/std",
+    "referrals/std",
     "rewards-runtime-api/std",
     "rewards/std",
     "serde",
@@ -192,10 +196,14 @@ std = [
     "xst/std",
 ]
 
-private-net = ["faucet"]
+private-net = [
+    "faucet",
+    "farming/private-net"
+]
 
 runtime-benchmarks = [
     "assets/runtime-benchmarks",
+    "ceres-liquidity-locker-benchmarking",
     "dex-api-benchmarking",
     "ceres-staking/runtime-benchmarks",
     "eth-bridge/runtime-benchmarks",
@@ -215,6 +223,7 @@ runtime-benchmarks = [
     "pswap-distribution-benchmarking/runtime-benchmarks",
     "pswap-distribution/runtime-benchmarks",
     "pswap-distribution/runtime-benchmarks",
+    "referrals/runtime-benchmarks",
     "rewards/runtime-benchmarks",
     "technical/runtime-benchmarks",
     "trading-pair/runtime-benchmarks",

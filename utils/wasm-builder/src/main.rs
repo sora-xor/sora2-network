@@ -28,28 +28,4 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use frame_support::{assert_err, assert_ok};
-
-use crate::mock::{alice, bob, charlie, ExtBuilder, Runtime};
-use crate::{Error, Module};
-
-type E = Error<Runtime>;
-type M = Module<Runtime>;
-
-#[test]
-fn set_referrer_to() {
-    ExtBuilder::default().build().execute_with(|| {
-        assert_ok!(M::set_referrer_to(&alice(), alice()));
-    });
-}
-
-#[test]
-fn set_referrer_to_has_referrer() {
-    ExtBuilder::default().build().execute_with(|| {
-        assert_ok!(M::set_referrer_to(&alice(), bob()));
-        assert_err!(
-            M::set_referrer_to(&alice(), charlie()),
-            E::AlreadyHasReferrer
-        );
-    });
-}
+fn main() {}

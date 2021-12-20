@@ -42,6 +42,7 @@ use frame_support::{construct_runtime, parameter_types};
 use frame_system;
 
 use common::prelude::Balance;
+use frame_system::pallet_prelude::BlockNumberFor;
 use permissions::{Scope, BURN, MANAGE_DEX, MINT};
 use sp_core::H256;
 use sp_runtime::testing::Header;
@@ -80,6 +81,7 @@ parameter_types! {
     pub GetMarketMakerRewardsAccountId: AccountId = AccountId32::from([9; 32]);
     pub GetBondingCurveRewardsAccountId: AccountId = AccountId32::from([10; 32]);
     pub GetTeamReservesAccountId: AccountId = AccountId32::from([11; 32]);
+    pub GetFarmingRewardsAccountId: AccountId = AccountId32::from([155; 32]);
     pub GetXykFee: Fixed = fixed!(0.003);
 }
 
@@ -103,6 +105,7 @@ construct_runtime! {
         PswapDistribution: pswap_distribution::{Module, Call, Config<T>, Storage, Event<T>},
         MBCPool: multicollateral_bonding_curve_pool::{Module, Call, Config<T>, Storage, Event<T>},
         VestedRewards: vested_rewards::{Module, Call, Storage, Event<T>},
+        CeresLiquidityLocker: ceres_liquidity_locker::{Module, Call, Storage, Event<T>},
     }
 }
 
@@ -158,6 +161,7 @@ impl assets::Config for Runtime {
     type GetBaseAssetId = GetBaseAssetId;
     type Currency = currencies::Module<Runtime>;
     type GetTeamReservesAccountId = GetTeamReservesAccountId;
+    type GetTotalBalance = ();
     type WeightInfo = ();
 }
 
@@ -268,6 +272,15 @@ impl vested_rewards::Config for Runtime {
     type Event = Event;
     type GetMarketMakerRewardsAccountId = GetMarketMakerRewardsAccountId;
     type GetBondingCurveRewardsAccountId = GetBondingCurveRewardsAccountId;
+    type GetFarmingRewardsAccountId = GetFarmingRewardsAccountId;
+    type WeightInfo = ();
+}
+
+impl ceres_liquidity_locker::Config for Runtime {
+    const BLOCKS_PER_ONE_DAY: BlockNumberFor<Self> = 14_440;
+    type Event = Event;
+    type XYKPool = PoolXYK;
+    type CeresAssetId = ();
     type WeightInfo = ();
 }
 

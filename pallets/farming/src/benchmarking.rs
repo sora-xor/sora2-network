@@ -38,7 +38,7 @@ use frame_system::RawOrigin;
 use hex_literal::hex;
 use sp_std::prelude::*;
 
-use common::{AssetName, AssetSymbol, XOR};
+use common::{AssetName, AssetSymbol, DEFAULT_BALANCE_PRECISION, XOR};
 
 use crate::utils;
 
@@ -65,9 +65,11 @@ fn prepare_pools<T: Config>(count: u32) -> (Vec<T::AccountId>, Vec<T::AssetId>) 
             &asset_owner::<T>(),
             AssetSymbol(b"SYMBOL".to_vec()),
             AssetName(b"NAME".to_vec()),
-            18,
+            DEFAULT_BALANCE_PRECISION,
             Balance::from(0u32),
             true,
+            None,
+            None,
         )
         .unwrap();
 
@@ -159,16 +161,6 @@ benchmarks! {
     }: {
         Module::<T>::vest_account_rewards(accounts);
     }
-
-    save_data {
-        let a in 1..29;
-        let b in 1..43;
-        let (pools, assets) = prepare_pools::<T>(a);
-        prepare_good_accounts::<T>(b, &assets);
-        Module::<T>::refresh_pools(T::VESTING_FREQUENCY);
-    }: {
-        Module::<T>::save_data(T::VESTING_FREQUENCY);
-    }
 }
 
 #[cfg(test)]
@@ -185,7 +177,6 @@ mod tests {
             assert_ok!(test_benchmark_refresh_pool::<Runtime>());
             assert_ok!(test_benchmark_prepare_accounts_for_vesting::<Runtime>());
             assert_ok!(test_benchmark_vest_account_rewards::<Runtime>());
-            assert_ok!(test_benchmark_save_data::<Runtime>());
         });
     }
 }

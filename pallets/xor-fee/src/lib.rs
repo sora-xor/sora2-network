@@ -63,17 +63,38 @@ type BalanceOf<T> =
 type CallOf<T> = <T as frame_system::Config>::Call;
 type Assets<T> = assets::Pallet<T>;
 
-#[cfg(test)]
-mod mock;
-
-#[cfg(test)]
-mod tests;
-
+// #[cfg_attr(test, derive(PartialEq))]
 pub enum LiquidityInfo<T: Config> {
     /// Fees operate as normal
     Paid(Option<NegativeImbalanceOf<T>>),
     /// The fee payment has been postponed to after the transaction
     Postponed(BalanceOf<T>),
+}
+
+impl<T: Config> sp_std::fmt::Debug for LiquidityInfo<T> {
+    fn fmt(&self, f: &mut sp_std::fmt::Formatter<'_>) -> sp_std::fmt::Result {
+        match self {
+            LiquidityInfo::Paid(imbalance) => {
+                write!(f, "Paid({:?})", imbalance.as_ref().map(|b| b.peek()))
+            }
+            LiquidityInfo::Postponed(b) => {
+                write!(f, "Postponed({:?})", b)
+            }
+        }
+    }
+}
+
+impl<T: Config> PartialEq for LiquidityInfo<T> {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (LiquidityInfo::Paid(a), LiquidityInfo::Paid(b)) => {
+                a.as_ref().map(|imbalance| imbalance.peek())
+                    == b.as_ref().map(|imbalance| imbalance.peek())
+            }
+            (LiquidityInfo::Postponed(a1), LiquidityInfo::Postponed(a2)) => a1 == a2,
+            _ => false,
+        }
+    }
 }
 
 impl<T: Config> Default for LiquidityInfo<T> {
@@ -254,7 +275,10 @@ where
                 .offset(refund_imbalance)
                 .map_err(|_| TransactionValidityError::Invalid(InvalidTransaction::Payment))?;
 
-            Self::deposit_event(Event::FeeWithdrawn(who.clone(), adjusted_paid.peek()));
+            Self::deposit_event(Event::FeeWithdrawn(
+                who.clone(),
+                adjusted_paid.peek().into(),
+            ));
 
             // Applying VAL buy-back-and-burn logic
             let xor_burned_weight = T::XorBurnedWeight::get();
@@ -263,8 +287,15 @@ where
                 T::ReferrerWeight::get(),
                 xor_burned_weight + xor_into_val_burned_weight,
             );
-            if let Some(referrer) = referral_system::Pallet::<T>::referrer_account(who) {
-                let _ = T::XorCurrency::resolve_into_existing(&referrer, referrer_xor);
+            if let Some(referrer) = referrals::Pallet::<T>::referrer_account(who) {
+                let referrer_portion = referrer_xor.peek();
+                if T::XorCurrency::resolve_into_existing(&referrer, referrer_xor).is_ok() {
+                    Self::deposit_event(Event::ReferrerRewarded(
+                        who.clone(),
+                        referrer,
+                        referrer_portion.into(),
+                    ));
+                }
             }
 
             // TODO: decide what should be done with XOR if there is no referrer.
@@ -359,6 +390,14 @@ pub trait IsCalledByBridgePeer<AccountId> {
 /// A trait whose purpose is to extract the `Call` variant of an extrinsic
 pub trait GetCall<Call> {
     fn get_call(&self) -> Call;
+}
+
+pub trait WithdrawFee<T: Config> {
+    fn withdraw_fee(
+        who: &T::AccountId,
+        call: &CallOf<T>,
+        fee: Balance,
+    ) -> Result<(T::AccountId, Option<NegativeImbalanceOf<T>>), DispatchError>;
 }
 
 /// Implementation for unchecked extrinsic.
@@ -500,7 +539,7 @@ pub mod pallet {
     #[pallet::config]
     pub trait Config:
         frame_system::Config
-        + referral_system::Config
+        + referrals::Config
         + assets::Config
         + eth_bridge::Config
         + common::Config
@@ -526,6 +565,7 @@ pub mod pallet {
             Self::AccountId,
             <Self as pallet_session::historical::Config>::FullIdentification,
         >;
+        type WithdrawFee: WithdrawFee<Self>;
     }
 
     #[pallet::pallet]
@@ -543,7 +583,9 @@ pub mod pallet {
     #[pallet::generate_deposit(pub(super) fn deposit_event)]
     pub enum Event<T: Config> {
         /// Fee has been withdrawn from user. [Account Id to withdraw from, Fee Amount]
-        FeeWithdrawn(AccountIdOf<T>, BalanceOf<T>),
+        FeeWithdrawn(AccountIdOf<T>, Balance),
+        /// The portion of fee is sent to the referrer. [Referral, Referrer, Amount]
+        ReferrerRewarded(AccountIdOf<T>, AccountIdOf<T>, Balance),
     }
 
     /// The amount of XOR to be reminted and exchanged for VAL at the end of the session

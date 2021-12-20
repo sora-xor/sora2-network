@@ -1,15 +1,15 @@
 [package]
-description = 'Polkaswap pallet for farming operations.'
-authors = ['Polka Biome Ltd. <jihoon@tutanota.de>']
+description = "Polkaswap pallet for farming operations."
+authors = ["Polka Biome Ltd. <jihoon@tutanota.de>"]
 license = "BSD-4-Clause"
-homepage = 'https://sora.org'
-repository = 'https://github.com/sora-xor/sora2-network'
-name = 'farming'
-version = '1.0.0'
-edition = '2018'
+homepage = "https://sora.org"
+repository = "https://github.com/sora-xor/sora2-network"
+name = "farming"
+version = "1.2.0"
+edition = "2018"
 
 [package.metadata.docs.rs]
-targets = ['x86_64-unknown-linux-gnu']
+targets = ["x86_64-unknown-linux-gnu"]
 
 [dependencies]
 codec = { package = "parity-scale-codec", version = "2", default-features = false, features = ["derive"] }
@@ -38,8 +38,11 @@ vested-rewards = { path = "../vested-rewards", default-features = false }
 rustc-hex = { version = "2.1.0", default-features = false }
 
 [dev-dependencies]
+ceres-liquidity-locker = { path = "../ceres-liquidity-locker", default-features = false }
 currencies = { version = "0.4", package = "orml-currencies" }
+env_logger = "0.9.0"
 hex-literal = { version = "0.3.1" }
+log = "0.4.14"
 pallet-balances = { version = "3" }
 pallet-scheduler = { version = "3" }
 sp-io = { version = "3" }
@@ -56,17 +59,20 @@ technical = { path = "../technical" }
 trading-pair = { path = "../trading-pair" }
 
 [features]
-default = ['std']
+default = ["std"]
+private-net = []
+
 std = [
-    'codec/std',
-    'frame-support/std',
-    'frame-system/std',
-    'pallet-timestamp/std',
-    'serde',
-    'sp-core/std',
-    'sp-runtime/std',
-    'sp-std/std',
+    "codec/std",
+    "frame-support/std",
+    "frame-system/std",
+    "pallet-timestamp/std",
+    "serde",
+    "sp-core/std",
+    "sp-runtime/std",
+    "sp-std/std",
 ]
+
 runtime-benchmarks = [
     "frame-benchmarking",
     "frame-system/runtime-benchmarks",

@@ -26,7 +26,7 @@ traits = { version = "0.4", package = "orml-traits", default-features = false }
 assets = { path = "../assets", default-features = false }
 common = { path = "../../common", default-features = false }
 liquidity-proxy = { path = "../liquidity-proxy", default-features = false }
-referral-system = { path = "../referral-system", default-features = false }
+referrals = { path = "../referrals", default-features = false }
 eth-bridge = { path = "../eth-bridge", default-features = false }
 
 [dev-dependencies]
@@ -39,14 +39,13 @@ sp-io = { version = "3", default-features = false }
 sp-runtime = { version = "3", default-features = false }
 tokens = { version = "0.4", package = "orml-tokens" }
 pallet-staking = { git = "https://github.com/soramitsu/sora2-frame-pallets", branch = "v3.1.0" }
-bridge-multisig = { git = "https://github.com/soramitsu/sora2-frame-pallets.git", branch = "v3.2.2", package = "pallet-multisig" }
+bridge-multisig = { git = "https://github.com/soramitsu/sora2-frame-pallets.git", branch = "v3.2.3", package = "pallet-multisig" }
 pallet-scheduler = { version = "3" }
 
 common = { path = "../../common", features = ["test"] }
 dex-manager = { path = "../dex-manager" }
 mock-liquidity-source = { path = "../mock-liquidity-source" }
 permissions = { path = "../permissions" }
-referral-system = { path = "../referral-system" }
 technical = { path = "../technical" }
 trading-pair = { path = "../trading-pair" }
 

@@ -36,8 +36,8 @@ use permissions::{Scope, BURN, MINT};
 use sp_runtime::traits::Zero;
 
 use common::{
-    balance, AssetName, AssetSymbol, Balance, FromGenericPair, LiquiditySourceType, DAI, XOR,
-    XSTUSD,
+    balance, AssetName, AssetSymbol, Balance, FromGenericPair, LiquiditySourceType, DAI,
+    DEFAULT_BALANCE_PRECISION, XOR, XSTUSD,
 };
 
 use crate::{Config, EnabledSynthetics, Pallet, PermissionedTechAccount, ReferenceAssetId, Weight};
@@ -82,9 +82,11 @@ pub fn register_new_token<T: Config>() -> Option<Weight> {
         XSTUSD.into(),
         AssetSymbol(b"XSTUSD".to_vec()),
         AssetName(b"SORA Synthetic USD".to_vec()),
-        18,
+        DEFAULT_BALANCE_PRECISION,
         Balance::zero(),
         true,
+        None,
+        None,
     );
 
     if result.is_err() {

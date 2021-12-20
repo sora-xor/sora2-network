@@ -32,13 +32,14 @@ use crate::{self as vested_rewards, Config};
 use common::mock::ExistentialDeposits;
 use common::prelude::{Balance, DEXInfo};
 use common::{
-    balance, fixed, hash, AssetId32, AssetName, AssetSymbol, BalancePrecision, Fixed, DOT, KSM,
-    PSWAP, XOR,
+    balance, fixed, hash, AssetId32, AssetName, AssetSymbol, BalancePrecision, ContentSource,
+    Description, Fixed, DEFAULT_BALANCE_PRECISION, DOT, KSM, PSWAP, XOR,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::GenesisBuild;
 use frame_support::weights::Weight;
 use frame_support::{construct_runtime, parameter_types};
+use frame_system::pallet_prelude::BlockNumberFor;
 use permissions::{Scope, INIT_DEX, MANAGE_DEX};
 use sp_core::crypto::AccountId32;
 use sp_core::H256;
@@ -68,6 +69,7 @@ construct_runtime! {
         PoolXyk: pool_xyk::{Module, Call, Storage, Event<T>},
         PswapDistribution: pswap_distribution::{Module, Call, Storage, Event<T>},
         MBCPool: multicollateral_bonding_curve_pool::{Module, Call, Storage, Event<T>},
+        CeresLiquidityLocker: ceres_liquidity_locker::{Module, Call, Storage, Event<T>},
     }
 }
 
@@ -104,6 +106,7 @@ parameter_types! {
     pub GetParliamentAccountId: AccountId = AccountId32::from([152; 32]);
     pub GetMarketMakerRewardsAccountId: AccountId = AccountId32::from([153; 32]);
     pub GetBondingCurveRewardsAccountId: AccountId = AccountId32::from([154; 32]);
+    pub GetFarmingRewardsAccountId: AccountId = AccountId32::from([155; 32]);
     pub GetTeamReservesAccountId: AccountId = AccountId32::from([11; 32]);
     pub GetXykFee: Fixed = fixed!(0.003);
 }
@@ -137,6 +140,7 @@ impl Config for Runtime {
     type Event = Event;
     type GetBondingCurveRewardsAccountId = GetBondingCurveRewardsAccountId;
     type GetMarketMakerRewardsAccountId = GetMarketMakerRewardsAccountId;
+    type GetFarmingRewardsAccountId = GetFarmingRewardsAccountId;
     type WeightInfo = ();
 }
 
@@ -178,6 +182,7 @@ impl assets::Config for Runtime {
     type GetBaseAssetId = GetBaseAssetId;
     type Currency = currencies::Module<Runtime>;
     type GetTeamReservesAccountId = GetTeamReservesAccountId;
+    type GetTotalBalance = ();
     type WeightInfo = ();
 }
 
@@ -260,6 +265,14 @@ impl permissions::Config for Runtime {
 
 impl dex_manager::Config for Runtime {}
 
+impl ceres_liquidity_locker::Config for Runtime {
+    const BLOCKS_PER_ONE_DAY: BlockNumberFor<Self> = 14_440;
+    type Event = Event;
+    type XYKPool = PoolXyk;
+    type CeresAssetId = ();
+    type WeightInfo = ();
+}
+
 pub struct ExtBuilder {
     endowed_assets: Vec<(
         AssetId,
@@ -269,6 +282,8 @@ pub struct ExtBuilder {
         BalancePrecision,
         Balance,
         bool,
+        Option<ContentSource>,
+        Option<Description>,
     )>,
     endowed_accounts: Vec<(AccountId, AssetId, Balance)>,
     dex_list: Vec<(DEXId, DEXInfo<AssetId>)>,
@@ -285,36 +300,44 @@ impl Default for ExtBuilder {
                     initial_assets_owner(),
                     AssetSymbol(b"XOR".to_vec()),
                     AssetName(b"SORA".to_vec()),
-                    18,
+                    DEFAULT_BALANCE_PRECISION,
                     Balance::zero(),
                     true,
+                    None,
+                    None,
                 ),
                 (
                     DOT,
                     initial_assets_owner(),
                     AssetSymbol(b"DOT".to_vec()),
                     AssetName(b"Polkadot".to_vec()),
-                    18,
+                    DEFAULT_BALANCE_PRECISION,
                     Balance::zero(),
                     true,
+                    None,
+                    None,
                 ),
                 (
                     KSM,
                     initial_assets_owner(),
                     AssetSymbol(b"KSM".to_vec()),
                     AssetName(b"Kusama".to_vec()),
-                    18,
+                    DEFAULT_BALANCE_PRECISION,
                     Balance::zero(),
                     true,
+                    None,
+                    None,
                 ),
                 (
                     PSWAP,
                     initial_assets_owner(),
                     AssetSymbol(b"PSWAP".to_vec()),
                     AssetName(b"Polkaswap".to_vec()),
-                    18,
+                    DEFAULT_BALANCE_PRECISION,
                     Balance::zero(),
                     true,
+                    None,
+                    None,
                 ),
             ],
             endowed_accounts: vec![],

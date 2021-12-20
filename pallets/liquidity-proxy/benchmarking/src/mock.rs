@@ -34,13 +34,15 @@ use crate::{Config, *};
 use common::mock::ExistentialDeposits;
 use common::prelude::{Balance, QuoteAmount};
 use common::{
-    fixed, fixed_from_basis_points, hash, Amount, AssetId32, BalancePrecision, DEXInfo, Fixed,
-    FromGenericPair, LiquiditySourceFilter, LiquiditySourceType, PriceToolsPallet, TechPurpose,
+    fixed, fixed_from_basis_points, hash, Amount, AssetId32, BalancePrecision, ContentSource,
+    DEXInfo, Description, Fixed, FromGenericPair, LiquiditySourceFilter, LiquiditySourceType,
+    PriceToolsPallet, TechPurpose, DEFAULT_BALANCE_PRECISION,
 };
 use currencies::BasicCurrencyAdapter;
 
 use frame_support::traits::GenesisBuild;
 use frame_support::{construct_runtime, parameter_types};
+use frame_system::pallet_prelude::BlockNumberFor;
 use multicollateral_bonding_curve_pool::{
     DistributionAccount, DistributionAccountData, DistributionAccounts,
 };
@@ -93,6 +95,7 @@ parameter_types! {
     pub GetMarketMakerRewardsAccountId: AccountId = AccountId32::from([9; 32]);
     pub GetBondingCurveRewardsAccountId: AccountId = AccountId32::from([10; 32]);
     pub GetTeamReservesAccountId: AccountId = AccountId::from([11; 32]);
+    pub GetFarmingRewardsAccountId: AccountId = AccountId32::from([12; 32]);
     pub GetXykFee: Fixed = fixed!(0.003);
 }
 
@@ -118,6 +121,7 @@ construct_runtime! {
         MBCPool: multicollateral_bonding_curve_pool::{Module, Call, Storage, Event<T>},
         PswapDistribution: pswap_distribution::{Module, Call, Config<T>, Storage, Event<T>},
         VestedRewards: vested_rewards::{Module, Call, Storage, Event<T>},
+        CeresLiquidityLocker: ceres_liquidity_locker::{Module, Call, Storage, Event<T>},
     }
 }
 
@@ -185,6 +189,7 @@ impl assets::Config for Runtime {
     type GetBaseAssetId = GetBaseAssetId;
     type Currency = currencies::Module<Runtime>;
     type GetTeamReservesAccountId = GetTeamReservesAccountId;
+    type GetTotalBalance = ();
     type WeightInfo = ();
 }
 
@@ -280,6 +285,15 @@ impl vested_rewards::Config for Runtime {
     type Event = Event;
     type GetMarketMakerRewardsAccountId = GetMarketMakerRewardsAccountId;
     type GetBondingCurveRewardsAccountId = GetBondingCurveRewardsAccountId;
+    type GetFarmingRewardsAccountId = GetFarmingRewardsAccountId;
+    type WeightInfo = ();
+}
+
+impl ceres_liquidity_locker::Config for Runtime {
+    const BLOCKS_PER_ONE_DAY: BlockNumberFor<Self> = 14_440;
+    type Event = Event;
+    type XYKPool = PoolXYK;
+    type CeresAssetId = ();
     type WeightInfo = ();
 }
 
@@ -472,6 +486,8 @@ pub struct ExtBuilder {
         BalancePrecision,
         Balance,
         bool,
+        Option<ContentSource>,
+        Option<Description>,
     )>,
 }
 
@@ -523,9 +539,11 @@ impl Default for ExtBuilder {
                     alice(),
                     AssetSymbol(b"XOR".to_vec()),
                     AssetName(b"SORA".to_vec()),
-                    18,
+                    DEFAULT_BALANCE_PRECISION,
                     balance!(350000),
                     true,
+                    None,
+                    None,
                 ),
                 (
                     common::DOT.into(),
@@ -535,33 +553,41 @@ impl Default for ExtBuilder {
                     10,
                     balance!(0),
                     true,
+                    None,
+                    None,
                 ),
                 (
                     common::VAL.into(),
                     alice(),
                     AssetSymbol(b"VAL".to_vec()),
                     AssetName(b"VAL".to_vec()),
-                    18,
+                    DEFAULT_BALANCE_PRECISION,
                     balance!(0),
                     true,
+                    None,
+                    None,
                 ),
                 (
                     common::USDT.into(),
                     alice(),
                     AssetSymbol(b"USDT".to_vec()),
                     AssetName(b"USDT".to_vec()),
-                    18,
+                    DEFAULT_BALANCE_PRECISION,
                     balance!(0),
                     true,
+                    None,
+                    None,
                 ),
                 (
                     common::PSWAP.into(),
                     alice(),
                     AssetSymbol(b"PSWAP".to_vec()),
                     AssetName(b"PSWAP".to_vec()),
-                    18,
+                    DEFAULT_BALANCE_PRECISION,
                     balance!(0),
                     true,
+                    None,
+                    None,
                 ),
             ],
         }

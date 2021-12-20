@@ -49,6 +49,7 @@ pub use common::mock::ComicAssetId::*;
 pub use common::mock::*;
 pub use common::TechAssetId as Tas;
 pub use common::TechPurpose::*;
+use frame_system::pallet_prelude::BlockNumberFor;
 
 pub type DEXId = u32;
 pub type BlockNumber = u64;
@@ -99,6 +100,7 @@ construct_runtime! {
         Technical: technical::{Module, Call, Config<T>, Storage, Event<T>},
         PswapDistribution: pswap_distribution::{Module, Call, Config<T>, Storage, Event<T>},
         PoolXYK: pool_xyk::{Module, Call, Storage, Event<T>},
+        CeresLiquidityLocker: ceres_liquidity_locker::{Module, Call, Storage, Event<T>},
     }
 }
 
@@ -182,6 +184,7 @@ impl assets::Config for Runtime {
     type GetBaseAssetId = GetBaseAssetId;
     type Currency = currencies::Module<Runtime>;
     type GetTeamReservesAccountId = GetTeamReservesAccountId;
+    type GetTotalBalance = ();
     type WeightInfo = ();
 }
 
@@ -207,6 +210,14 @@ impl pswap_distribution::Config for Runtime {
     type WeightInfo = ();
     type GetParliamentAccountId = GetParliamentAccountId;
     type PoolXykPallet = PoolXYK;
+}
+
+impl ceres_liquidity_locker::Config for Runtime {
+    const BLOCKS_PER_ONE_DAY: BlockNumberFor<Self> = 14_440;
+    type Event = Event;
+    type XYKPool = PoolXYK;
+    type CeresAssetId = ();
+    type WeightInfo = ();
 }
 
 impl Config for Runtime {
