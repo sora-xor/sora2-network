@@ -1,5 +1,6 @@
-use crate::{Bloom, Log};
+use crate::Log;
 use codec::{Decode, Encode};
+use ethbloom::Bloom;
 use sp_runtime::RuntimeDebug;
 use sp_std::prelude::*;
 
@@ -85,6 +86,7 @@ impl rlp::Decodable for Receipt {
 mod tests {
 
     use super::Receipt;
+    use ethbloom::Bloom;
     use hex_literal::hex;
 
     const RAW_RECEIPT: [u8; 1242] = hex!(
@@ -131,7 +133,7 @@ mod tests {
         assert_eq!(receipt.cumulative_gas_used, 414448);
         assert_eq!(
             receipt.bloom,
-            (&hex!(
+            Bloom::from_slice(&hex!(
                 "
 				042000000000000000000000800200000000000100000000000100000000000000000000
 				000000000000000000000000020000000800000000000000002000000000000000000000
@@ -143,7 +145,6 @@ mod tests {
 				10000000
 			"
             ))
-                .into(),
         );
         assert_eq!(receipt.logs.len(), 6);
     }

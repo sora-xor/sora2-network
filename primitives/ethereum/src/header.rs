@@ -1,5 +1,5 @@
 use codec::{Decode, Encode};
-use ethbloom::Bloom as EthBloom;
+use ethbloom::Bloom;
 use hex_literal::hex;
 use parity_bytes::Bytes;
 use rlp::RlpStream;
@@ -10,8 +10,6 @@ use sp_std::prelude::*;
 
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
-#[cfg(feature = "std")]
-use serde_big_array::big_array;
 
 use ethereum_types::{Address, H256, H64, U256};
 
@@ -164,7 +162,7 @@ impl Header {
         s.append(&self.state_root);
         s.append(&self.transactions_root);
         s.append(&self.receipts_root);
-        s.append(&EthBloom::from(self.logs_bloom.0));
+        s.append(&self.logs_bloom);
         s.append(&self.difficulty);
         s.append(&self.number);
         s.append(&self.gas_limit);
@@ -186,68 +184,10 @@ impl Header {
     }
 }
 
-#[cfg(feature = "std")]
-big_array! { BigArray; }
-
-/// Logs bloom.
-#[derive(Clone, Debug, Encode, Decode, scale_info::TypeInfo)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-pub struct Bloom(#[cfg_attr(feature = "std", serde(with = "BigArray"))] [u8; 256]);
-
-impl<'a> From<&'a [u8; 256]> for Bloom {
-    fn from(buffer: &'a [u8; 256]) -> Bloom {
-        Bloom(*buffer)
-    }
-}
-
-impl PartialEq<Bloom> for Bloom {
-    fn eq(&self, other: &Bloom) -> bool {
-        self.0.iter().zip(other.0.iter()).all(|(l, r)| l == r)
-    }
-}
-
-impl Default for Bloom {
-    fn default() -> Self {
-        Bloom([0; 256])
-    }
-}
-
-impl rlp::Decodable for Bloom {
-    fn decode(rlp: &rlp::Rlp) -> Result<Self, rlp::DecoderError> {
-        let v: Vec<u8> = rlp.as_val()?;
-        match v.len() {
-            256 => {
-                let mut bytes = [0u8; 256];
-                bytes.copy_from_slice(&v);
-                Ok(Self(bytes))
-            }
-            _ => Err(rlp::DecoderError::Custom("Expected 256 bytes")),
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
 
     use super::*;
-
-    #[test]
-    fn bloom_decode_rlp() {
-        let raw_bloom = hex!(
-            "
-			b901000420000000000000000000008002000000000001000000000001000000000000000000
-			0000000000000000000000000002000000080000000000000000200000000000000000000000
-			0000080000002200000000004000100000000000000000000000000000000000000000000000
-			0000000000000004000000001000010000000000080000000000400000000000000000000000
-			0000080000004000000000020000000000020000000000000000000000000000000000000000
-			0000040000000000020000000001000000000000000000000000000010000000020000200000
-			10200000000000010000000000000000000000000000000000000010000000
-		"
-        );
-        let expected_bytes = &raw_bloom[3..];
-        let bloom: Bloom = rlp::decode(&raw_bloom).unwrap();
-        assert_eq!(bloom.0, expected_bytes);
-    }
 
     #[test]
     fn header_compute_hash_poa() {
