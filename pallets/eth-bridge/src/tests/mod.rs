@@ -4,7 +4,6 @@ use crate::requests::{
 };
 use crate::tests::mock::*;
 use crate::util::majority;
-use codec::{Decode, Encode};
 use common::eth;
 use frame_support::dispatch::DispatchErrorWithPostInfo;
 use frame_support::weights::Pays;
@@ -27,9 +26,14 @@ pub(crate) type Assets = assets::Pallet<Runtime>;
 
 pub const ETH_NETWORK_ID: u32 = 0;
 
-fn get_signature_params(signature: &ecdsa::Signature) -> SignatureParams {
-    let encoded = signature.encode();
-    let mut params = SignatureParams::decode(&mut &encoded[..]).expect("Wrong signature format");
+fn get_signature_params(
+    signature: &(secp256k1::Signature, secp256k1::RecoveryId),
+) -> SignatureParams {
+    let mut params = SignatureParams {
+        r: signature.0.r.b32(),
+        s: signature.0.s.b32(),
+        v: signature.1.into(),
+    };
     params.v += 27;
     params
 }
@@ -59,8 +63,7 @@ pub fn approve_request(
         let public = PublicKey::from_secret_key(&secret);
         let msg = eth::prepare_message(encoded.as_raw());
         let sig_pair = secp256k1::sign(&msg, &secret);
-        let signature = sig_pair.into();
-        let signature_params = get_signature_params(&signature);
+        let signature_params = get_signature_params(&sig_pair);
         approvals.insert(signature_params.clone());
         let additional_sigs = if crate::PendingPeer::<Runtime>::get(net_id).is_some() {
             1

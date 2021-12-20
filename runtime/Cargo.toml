@@ -25,8 +25,8 @@ hex-literal = "0.3.1"
 log = { version = "0.4.14" }
 serde = { features = ['derive'], optional = true, version = '1.0.101' }
 
-bridge-multisig = { git = "https://github.com/soramitsu/sora2-frame-pallets.git", branch = "polkadot-v0.9.13", package = "pallet-multisig", default-features = false }
-beefy-primitives = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.13", default-features = false }
+bridge-multisig = { git = "https://github.com/soramitsu/sora2-frame-pallets.git", branch = "polkadot-v0.9.14", package = "pallet-multisig", default-features = false }
+beefy-primitives = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.14", default-features = false }
 pallet-mmr-primitives = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.9", default-features = false }
 pallet-mmr = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.9", default-features = false }
 
@@ -85,8 +85,8 @@ pallet-collective = { git = "https://github.com/paritytech/substrate.git", branc
 pallet-democracy = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.9", default-features = false }
 pallet-elections-phragmen = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.9", default-features = false }
 pallet-grandpa = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.9", default-features = false }
-pallet-beefy = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.13", default-features = false }
-pallet-beefy-mmr = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.13", default-features = false }
+pallet-beefy = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.14", default-features = false }
+pallet-beefy-mmr = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.14", default-features = false }
 pallet-babe = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.9", default-features = false }
 pallet-im-online = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.9", default-features = false }
 pallet-identity = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.9", default-features = false }
@@ -101,7 +101,7 @@ pallet-scheduler = { git = "https://github.com/paritytech/substrate.git", branch
 pallet-session = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.9", default-features = false, features = [
     "historical",
 ] }
-pallet-staking = { git = "https://github.com/soramitsu/sora2-frame-pallets.git", default-features = false, branch = "polkadot-v0.9.13" }
+pallet-staking = { git = "https://github.com/soramitsu/sora2-frame-pallets.git", default-features = false, branch = "polkadot-v0.9.14" }
 pallet-transaction-payment = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.9", default-features = false }
 pallet-transaction-payment-rpc-runtime-api = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.9", default-features = false }
 pallet-utility = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.9", default-features = false }
