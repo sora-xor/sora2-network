@@ -19,6 +19,8 @@ pub struct VotingInfo<Balance> {
 pub struct PollInfo<BlockNumber> {
     /// Number of options
     number_of_options: u32,
+    /// Poll start block
+    poll_start_block: BlockNumber,
     /// Poll end block
     poll_end_block: BlockNumber,
 }
@@ -35,7 +37,7 @@ pub mod pallet {
     use sp_runtime::traits::AccountIdConversion;
     use sp_runtime::ModuleId;
 
-    const PALLET_ID: ModuleId = ModuleId(*b"governac");
+    const PALLET_ID: ModuleId = ModuleId(*b"crsgvrnc");
 
     #[pallet::config]
     pub trait Config: frame_system::Config + assets::Config {
@@ -53,7 +55,7 @@ pub mod pallet {
     #[pallet::generate_store(pub (super) trait Store)]
     pub struct Pallet<T>(PhantomData<T>);
 
-    /// Poll_id -> Account_id -> Vec<VotingInfo>
+    /// Poll_id -> Account_id -> VotingInfo
     #[pallet::storage]
     #[pallet::getter(fn votings)]
     pub type Voting<T: Config> = StorageDoubleMap<
@@ -62,7 +64,7 @@ pub mod pallet {
         Vec<u8>,
         Identity,
         AccountIdOf<T>,
-        Vec<VotingInfo<Balance>>,
+        VotingInfo<Balance>,
         ValueQuery,
     >;
 
@@ -77,8 +79,8 @@ pub mod pallet {
     pub enum Event<T: Config> {
         /// Voting [who, option, balance]
         Voted(AccountIdOf<T>, u32, Balance),
-        /// Create poll [who, option, end_block]
-        Cretaed(AccountIdOf<T>, u32, T::BlockNumber),
+        /// Create poll [who, option, start_block, end_block]
+        Created(AccountIdOf<T>, u32, T::BlockNumber, T::BlockNumber),
         /// Withdrawn [who, balance]
         Withdrawn(AccountIdOf<T>, Balance),
     }
@@ -87,10 +89,14 @@ pub mod pallet {
     pub enum Error<T> {
         ///Invalid Votes
         InvalidVotes,
-        ///Invalid End Block
-        InvalidEndBlock,
+        ///Poll Is Finished
+        PollIsFinished,
         ///Not Enough Funds
         NotEnoughFunds,
+        ///Invalid Number Of Option
+        InvalidNumberOfOption,
+        ///Vote Denied
+        VoteDenied,
     }
 
     #[pallet::call]
@@ -105,30 +111,42 @@ pub mod pallet {
         ) -> DispatchResultWithPostInfo {
             let user = ensure_signed(origin)?;
 
-            ensure!(number_of_votes > 0, Error::<T>::InvalidVotes);
+            ensure!(number_of_votes > 0, Error::<T>::PollIsFinished);
 
             let poll_info = PollData::<T>::get(&poll_id);
             let current_block = frame_system::Pallet::<T>::block_number();
 
             ensure!(
-                current_block <= poll_info.poll_end_block,
-                Error::<T>::InvalidEndBlock
+                current_block >= poll_info.poll_start_block,
+                Error::<T>::PollIsFinished
             );
 
-            let mut vote_info = VotingInfo {
-                voting_option,
-                number_of_votes: 0,
-                ceres_withdrawn: false,
-            };
+            ensure!(
+                current_block <= poll_info.poll_end_block,
+                Error::<T>::PollIsFinished
+            );
+
+            ensure!(
+                voting_option <= poll_info.number_of_options,
+                Error::<T>::InvalidNumberOfOption
+            );
+
+            let mut votes = <Voting<T>>::get(&poll_id, &user);
+
+            if voting_option == 0 {
+                votes.voting_option = voting_option;
+            } else {
+                ensure!(votes.voting_option == voting_option, Error::<T>::VoteDenied)
+            }
 
             ensure!(
                 number_of_votes
-                    <= Assets::<T>::free_balance(&T::CeresAssetId::get(), &Self::account_id())
-                        .unwrap_or(0),
+                    <= Assets::<T>::free_balance(&T::CeresAssetId::get(), &user).unwrap_or(0),
                 Error::<T>::NotEnoughFunds
             );
 
-            vote_info.number_of_votes = number_of_votes;
+            votes.number_of_votes += number_of_votes;
+            votes.ceres_withdrawn = false;
 
             // Transfer Ceres to pallet
             Assets::<T>::transfer_from(
@@ -138,8 +156,8 @@ pub mod pallet {
                 number_of_votes,
             )?;
 
-            //Update storage
-            <Voting<T>>::append(&poll_id, &user, vote_info);
+            // Update storage
+            <Voting<T>>::insert(&poll_id, &user, votes);
 
             //Emit event
             Self::deposit_event(Event::<T>::Voted(user, voting_option, number_of_votes));
@@ -153,23 +171,42 @@ pub mod pallet {
         pub fn create_poll(
             origin: OriginFor<T>,
             poll_id: Vec<u8>,
-            number_of_option: u32,
-            pool_end_block: T::BlockNumber,
+            number_of_options: u32,
+            poll_start_block: T::BlockNumber,
+            poll_end_block: T::BlockNumber,
         ) -> DispatchResultWithPostInfo {
             let user = ensure_signed(origin)?;
 
             let current_block = frame_system::Pallet::<T>::block_number();
-            ensure!(pool_end_block > current_block, Error::<T>::InvalidEndBlock);
+
+            ensure!(number_of_options >= 2, Error::<T>::InvalidNumberOfOption);
+
+            ensure!(
+                poll_start_block >= current_block,
+                Error::<T>::PollIsFinished
+            );
+
+            ensure!(
+                poll_start_block > poll_end_block,
+                Error::<T>::PollIsFinished
+            );
+            ensure!(poll_end_block >= current_block, Error::<T>::PollIsFinished);
 
             let poll_info = PollInfo {
-                number_of_options: number_of_option,
-                poll_end_block: pool_end_block,
+                number_of_options,
+                poll_end_block,
+                poll_start_block,
             };
 
             <PollData<T>>::insert(&poll_id, poll_info);
 
             //Emit event
-            Self::deposit_event(Event::<T>::Cretaed(user, number_of_option, pool_end_block));
+            Self::deposit_event(Event::<T>::Created(
+                user,
+                number_of_options,
+                poll_start_block,
+                poll_end_block,
+            ));
 
             // Return a successful DispatchResult
             Ok(().into())
@@ -184,17 +221,14 @@ pub mod pallet {
             let current_block = frame_system::Pallet::<T>::block_number();
 
             ensure!(
-                current_block >= poll_info.poll_end_block,
-                Error::<T>::InvalidEndBlock
+                current_block > poll_info.poll_end_block,
+                Error::<T>::PollIsFinished
             );
-
-            //Update storage
+            // Update storage
             let mut votes = <Voting<T>>::get(&poll_id, &user);
             let mut total_votes = 0;
-            for vote in votes.iter_mut() {
-                total_votes += vote.number_of_votes;
-                vote.ceres_withdrawn = true;
-            }
+            total_votes += votes.number_of_votes;
+            votes.ceres_withdrawn = true;
 
             // Withdraw CERES
             Assets::<T>::transfer_from(
