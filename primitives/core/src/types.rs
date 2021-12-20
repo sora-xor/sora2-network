@@ -49,7 +49,7 @@ pub struct Proof {
     // The index of the transaction (and receipt) within the block.
     pub tx_index: u32,
     // Proof keys and values
-    pub data: (Vec<Vec<u8>>, Vec<Vec<u8>>),
+    pub data: Vec<Vec<u8>>,
 }
 
 /// Auxiliary [`DigestItem`] to include in header digest.

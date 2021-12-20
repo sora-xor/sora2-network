@@ -536,7 +536,7 @@ pub mod pallet {
 
             let result = stored_header
                 .header
-                .check_receipt_proof(&proof.data.1)
+                .check_receipt_proof(&proof.data)
                 .ok_or(Error::<T>::InvalidProof)?;
 
             match result {
