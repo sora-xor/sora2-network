@@ -1466,6 +1466,7 @@ impl ceres_liquidity_locker::Config for Runtime {
 impl ceres_token_locker::Config for Runtime {
     type Event = Event;
     type CeresAssetId = CeresAssetId;
+    type WeightInfo = ceres_token_locker::weights::WeightInfo<Runtime>;
 }
 
 /// Payload data to be signed when making signed transaction from off-chain workers,
@@ -2203,6 +2204,7 @@ impl_runtime_apis! {
             // add_benchmark!(params, batches, referrals, Referrals);
             add_benchmark!(params, batches, ceres_staking, CeresStaking);
             add_benchmark!(params, batches, ceres_liquidity_locker, CeresLiquidityLockerBench::<Runtime>);
+            add_benchmark!(params, batches, ceres_token_locker, CeresTokenLocker);
 
             if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
             Ok(batches)

@@ -1,5 +1,9 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
+pub mod weights;
+
+mod benchmarking;
+
 #[cfg(test)]
 mod mock;
 
@@ -7,6 +11,13 @@ mod mock;
 mod tests;
 
 use codec::{Decode, Encode};
+use frame_support::weights::Weight;
+
+pub trait WeightInfo {
+    fn lock_tokens() -> Weight;
+    fn withdraw_tokens() -> Weight;
+    fn change_fee() -> Weight;
+}
 
 #[derive(Encode, Decode, Default, PartialEq, Eq)]
 #[cfg_attr(feature = "std", derive(Debug))]
@@ -23,26 +34,29 @@ pub use pallet::*;
 
 #[frame_support::pallet]
 pub mod pallet {
-    use crate::{TokenLockInfo};
+    use crate::{TokenLockInfo, WeightInfo};
+    use common::balance;
     use common::prelude::{Balance, FixedWrapper};
-    use common::{balance};
     use frame_support::pallet_prelude::*;
     use frame_system::ensure_signed;
     use frame_system::pallet_prelude::*;
     use hex_literal::hex;
-    use sp_std::vec::Vec;
-    use sp_runtime::ModuleId;
     use sp_runtime::traits::AccountIdConversion;
+    use sp_runtime::ModuleId;
+    use sp_std::vec::Vec;
 
     const PALLET_ID: ModuleId = ModuleId(*b"crstlock");
 
     #[pallet::config]
-    pub trait Config: frame_system::Config + assets::Config {
+    pub trait Config: frame_system::Config + assets::Config + technical::Config {
         /// Because this pallet emits events, it depends on the runtime's definition of an event.
         type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 
         /// Ceres asset id
         type CeresAssetId: Get<Self::AssetId>;
+
+        /// Weight information for extrinsics in this pallet.
+        type WeightInfo: WeightInfo;
     }
 
     type Assets<T> = assets::Pallet<T>;
@@ -85,8 +99,7 @@ pub mod pallet {
     /// Amount of CERES for locker fees option two
     #[pallet::storage]
     #[pallet::getter(fn fee_amount)]
-    pub type FeeAmount<T: Config> =
-        StorageValue<_, Balance, ValueQuery, DefaultForFeeAmount<T>>;
+    pub type FeeAmount<T: Config> = StorageValue<_, Balance, ValueQuery, DefaultForFeeAmount<T>>;
 
     #[pallet::storage]
     #[pallet::getter(fn locker_data)]
@@ -102,10 +115,12 @@ pub mod pallet {
     #[pallet::metadata(AccountIdOf<T> = "AccountId", BalanceOf<T> = "Balance", T::BlockNumber = "BlockNumber")]
     #[pallet::generate_deposit(pub (super) fn deposit_event)]
     pub enum Event<T: Config> {
-        /// Funds Locked [who, amount, asset, block]
-        Locked(AccountIdOf<T>, Balance, AssetIdOf<T>, T::BlockNumber),
-        /// Funds Withdrawn [who, amount, asset, block]
-        Withdrawn(AccountIdOf<T>, Balance, AssetIdOf<T>, T::BlockNumber),
+        /// Funds Locked [who, amount, asset]
+        Locked(AccountIdOf<T>, Balance, AssetIdOf<T>),
+        /// Funds Withdrawn [who, amount, asset]
+        Withdrawn(AccountIdOf<T>, Balance, AssetIdOf<T>),
+        /// Fee Changed [who, amount]
+        FeeChanged(AccountIdOf<T>, Balance),
     }
 
     #[pallet::error]
@@ -121,18 +136,18 @@ pub mod pallet {
         ///Tokens not unlocked yet
         NotUnlockedYet,
         ///Lock info does not exist
-        LockInfoDoesNotExist
+        LockInfoDoesNotExist,
     }
 
     #[pallet::call]
     impl<T: Config> Pallet<T> {
         /// Lock tokens
-        #[pallet::weight(10000)]
+        #[pallet::weight(<T as Config>::WeightInfo::lock_tokens())]
         pub fn lock_tokens(
             origin: OriginFor<T>,
             asset_id: AssetIdOf<T>,
             unlocking_block: T::BlockNumber,
-            number_of_tokens: Balance
+            number_of_tokens: Balance,
         ) -> DispatchResultWithPostInfo {
             let user = ensure_signed(origin)?;
             ensure!(
@@ -150,55 +165,42 @@ pub mod pallet {
             let token_lock_info = TokenLockInfo {
                 tokens: number_of_tokens,
                 unlocking_block,
-                asset_id
+                asset_id,
             };
 
-            let fee = (FixedWrapper::from(number_of_tokens) * FixedWrapper::from(FeeAmount::<T>::get()))
-                .try_into_balance()
-                .unwrap_or(0);
+            let fee = (FixedWrapper::from(number_of_tokens)
+                * FixedWrapper::from(FeeAmount::<T>::get()))
+            .try_into_balance()
+            .unwrap_or(0);
+            let total = number_of_tokens + fee;
 
             ensure!(
-                number_of_tokens + fee <= Assets::<T>::free_balance(&asset_id, &user).unwrap_or(0),
+                total <= Assets::<T>::free_balance(&asset_id, &user).unwrap_or(0),
                 Error::<T>::NotEnoughFunds
             );
 
             // Transfer tokens
-            Assets::<T>::transfer_from(
-                &asset_id,
-                &user,
-                &Self::account_id(),
-                number_of_tokens,
-            )?;
+            Assets::<T>::transfer_from(&asset_id, &user, &Self::account_id(), number_of_tokens)?;
 
             // Pay fees
-            Assets::<T>::transfer_from(
-                &asset_id,
-                &user,
-                &FeesAccount::<T>::get(),
-                fee,
-            )?;
+            Assets::<T>::transfer_from(&asset_id, &user, &FeesAccount::<T>::get(), fee)?;
 
             <TokenLockerData<T>>::append(&user, token_lock_info);
 
             // Emit an event
-            Self::deposit_event(Event::Locked(
-                user,
-                number_of_tokens,
-                asset_id,
-                current_block,
-            ));
+            Self::deposit_event(Event::Locked(user, number_of_tokens, asset_id));
 
             // Return a successful DispatchResult
             Ok(().into())
         }
 
         /// Withdraw tokens
-        #[pallet::weight(10000)]
+        #[pallet::weight(<T as Config>::WeightInfo::withdraw_tokens())]
         pub fn withdraw_tokens(
             origin: OriginFor<T>,
             asset_id: AssetIdOf<T>,
             unlocking_block: T::BlockNumber,
-            number_of_tokens: Balance
+            number_of_tokens: Balance,
         ) -> DispatchResultWithPostInfo {
             let user = ensure_signed(origin)?;
             ensure!(
@@ -208,16 +210,16 @@ pub mod pallet {
 
             // Get current block
             let current_block = frame_system::Pallet::<T>::block_number();
-            ensure!(
-                unlocking_block < current_block,
-                Error::<T>::NotUnlockedYet
-            );
+            ensure!(unlocking_block < current_block, Error::<T>::NotUnlockedYet);
 
             let mut token_lock_info_vec = <TokenLockerData<T>>::get(&user);
             let mut idx = 0;
             let mut exist = false;
             for (index, lock) in token_lock_info_vec.iter().enumerate() {
-                if lock.unlocking_block == unlocking_block && lock.asset_id == asset_id && lock.tokens == number_of_tokens {
+                if lock.unlocking_block == unlocking_block
+                    && lock.asset_id == asset_id
+                    && lock.tokens == number_of_tokens
+                {
                     idx = index;
                     exist = true;
                     break;
@@ -229,34 +231,21 @@ pub mod pallet {
             }
 
             // Withdraw tokens
-            Assets::<T>::transfer_from(
-                &asset_id,
-                &Self::account_id(),
-                &user,
-                number_of_tokens,
-            )?;
+            Assets::<T>::transfer_from(&asset_id, &Self::account_id(), &user, number_of_tokens)?;
 
             token_lock_info_vec.remove(idx);
             <TokenLockerData<T>>::insert(&user, token_lock_info_vec);
 
             // Emit an event
-            Self::deposit_event(Event::Withdrawn(
-                user,
-                number_of_tokens,
-                asset_id,
-                current_block,
-            ));
+            Self::deposit_event(Event::Withdrawn(user, number_of_tokens, asset_id));
 
             // Return a successful DispatchResult
             Ok(().into())
         }
 
         /// Change fee
-        #[pallet::weight(10000)]
-        pub fn change_fee(
-            origin: OriginFor<T>,
-            new_fee: Balance,
-        ) -> DispatchResultWithPostInfo {
+        #[pallet::weight(<T as Config>::WeightInfo::change_fee())]
+        pub fn change_fee(origin: OriginFor<T>, new_fee: Balance) -> DispatchResultWithPostInfo {
             let user = ensure_signed(origin)?;
 
             if user != AuthorityAccount::<T>::get() {
@@ -264,6 +253,10 @@ pub mod pallet {
             }
 
             FeeAmount::<T>::put(new_fee);
+
+            // Emit an event
+            Self::deposit_event(Event::FeeChanged(user, new_fee));
+
             Ok(().into())
         }
     }

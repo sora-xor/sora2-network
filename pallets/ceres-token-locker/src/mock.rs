@@ -2,19 +2,24 @@ use crate::{self as ceres_token_locker};
 use common::mock::ExistentialDeposits;
 use common::prelude::Balance;
 use common::{
-    balance, AssetId32, AssetName, AssetSymbol, BalancePrecision, ContentSource, Description,
+    balance, fixed, AssetId32, AssetName, AssetSymbol, BalancePrecision, ContentSource,
+    Description, Fixed,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{GenesisBuild, Hooks};
 use frame_support::weights::Weight;
 use frame_support::{construct_runtime, parameter_types};
 use frame_system;
+use frame_system::pallet_prelude::BlockNumberFor;
 use hex_literal::hex;
 use sp_core::H256;
 use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentityLookup, Zero};
 use sp_runtime::Perbill;
 
+pub type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
+type TechAssetId = common::TechAssetId<common::PredefinedAssetId>;
+type DEXId = common::DEXId;
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
 
@@ -29,7 +34,13 @@ construct_runtime! {
         Tokens: tokens::{Module, Call, Config<T>, Storage, Event<T>},
         Currencies: currencies::{Module, Call, Storage, Event<T>},
         Balances: pallet_balances::{Module, Call, Storage, Event<T>},
+        DexManager: dex_manager::{Module, Call, Config<T>, Storage},
+        TradingPair: trading_pair::{Module, Call, Config<T>, Storage, Event<T>},
         Permissions: permissions::{Module, Call, Config<T>, Storage, Event<T>},
+        Technical: technical::{Module, Call, Config<T>, Storage, Event<T>},
+        PoolXYK: pool_xyk::{Module, Call, Storage, Event<T>},
+        PswapDistribution: pswap_distribution::{Module, Call, Config<T>, Storage, Event<T>},
+        CeresLiquidityLocker: ceres_liquidity_locker::{Module, Call, Storage, Event<T>},
         CeresTokenLocker: ceres_token_locker::{Module, Call, Storage, Event<T>},
     }
 }
@@ -50,6 +61,12 @@ parameter_types! {
     pub const MaximumBlockWeight: Weight = 1024;
     pub const MaximumBlockLength: u32 = 2 * 1024;
     pub const AvailableBlockRatio: Perbill = Perbill::from_percent(75);
+    pub GetXykFee: Fixed = fixed!(0.003);
+    pub GetIncentiveAssetId: AssetId = common::PSWAP.into();
+    pub const GetDefaultSubscriptionFrequency: BlockNumber = 10;
+    pub const GetBurnUpdateFrequency: BlockNumber = 14400;
+    pub GetParliamentAccountId: AccountId = 100;
+    pub GetPswapDistributionAccountId: AccountId = 101;
 }
 
 impl frame_system::Config for Runtime {
@@ -84,6 +101,7 @@ parameter_types! {
 impl crate::Config for Runtime {
     type Event = Event;
     type CeresAssetId = CeresAssetId;
+    type WeightInfo = ();
 }
 
 parameter_types! {
@@ -95,7 +113,7 @@ impl assets::Config for Runtime {
     type Event = Event;
     type ExtraAccountId = AccountId;
     type ExtraAssetRecordArg =
-    common::AssetIdExtraAssetRecordArg<common::DEXId, common::LiquiditySourceType, AccountId>;
+        common::AssetIdExtraAssetRecordArg<common::DEXId, common::LiquiditySourceType, AccountId>;
     type AssetId = AssetId;
     type GetBaseAssetId = GetBaseAssetId;
     type Currency = currencies::Module<Runtime>;
@@ -111,6 +129,62 @@ impl common::Config for Runtime {
 
 impl permissions::Config for Runtime {
     type Event = Event;
+}
+
+impl dex_manager::Config for Runtime {}
+
+impl trading_pair::Config for Runtime {
+    type Event = Event;
+    type EnsureDEXManager = dex_manager::Module<Runtime>;
+    type WeightInfo = ();
+}
+
+impl pool_xyk::Config for Runtime {
+    const MIN_XOR: Balance = balance!(0.0007);
+    type Event = Event;
+    type PairSwapAction = pool_xyk::PairSwapAction<AssetId, AccountId, TechAccountId>;
+    type DepositLiquidityAction =
+        pool_xyk::DepositLiquidityAction<AssetId, AccountId, TechAccountId>;
+    type WithdrawLiquidityAction =
+        pool_xyk::WithdrawLiquidityAction<AssetId, AccountId, TechAccountId>;
+    type PolySwapAction = pool_xyk::PolySwapAction<AssetId, AccountId, TechAccountId>;
+    type EnsureDEXManager = dex_manager::Module<Runtime>;
+    type GetFee = GetXykFee;
+    type OnPoolCreated = PswapDistribution;
+    type OnPoolReservesChanged = ();
+    type WeightInfo = ();
+}
+
+impl pswap_distribution::Config for Runtime {
+    type Event = Event;
+    type GetIncentiveAssetId = GetIncentiveAssetId;
+    type LiquidityProxy = ();
+    type CompatBalance = Balance;
+    type GetDefaultSubscriptionFrequency = GetDefaultSubscriptionFrequency;
+    type GetBurnUpdateFrequency = GetBurnUpdateFrequency;
+    type GetTechnicalAccountId = GetPswapDistributionAccountId;
+    type EnsureDEXManager = ();
+    type OnPswapBurnedAggregator = ();
+    type WeightInfo = ();
+    type GetParliamentAccountId = GetParliamentAccountId;
+    type PoolXykPallet = PoolXYK;
+}
+
+impl ceres_liquidity_locker::Config for Runtime {
+    const BLOCKS_PER_ONE_DAY: BlockNumberFor<Self> = 14_440;
+    type Event = Event;
+    type XYKPool = PoolXYK;
+    type CeresAssetId = ();
+    type WeightInfo = ();
+}
+
+impl technical::Config for Runtime {
+    type Event = Event;
+    type TechAssetId = TechAssetId;
+    type TechAccountId = TechAccountId;
+    type Trigger = ();
+    type Condition = ();
+    type SwapAction = pool_xyk::PolySwapAction<AssetId, AccountId, TechAccountId>;
 }
 
 impl tokens::Config for Runtime {
@@ -196,27 +270,27 @@ impl ExtBuilder {
                 .map(|(acc, _, balance)| (*acc, *balance))
                 .collect(),
         }
-            .assimilate_storage(&mut t)
-            .unwrap();
+        .assimilate_storage(&mut t)
+        .unwrap();
 
         PermissionsConfig {
             initial_permission_owners: vec![],
             initial_permissions: vec![],
         }
-            .assimilate_storage(&mut t)
-            .unwrap();
+        .assimilate_storage(&mut t)
+        .unwrap();
 
         assets::GenesisConfig::<Runtime> {
             endowed_assets: self.endowed_assets,
         }
-            .assimilate_storage(&mut t)
-            .unwrap();
+        .assimilate_storage(&mut t)
+        .unwrap();
 
         TokensConfig {
             endowed_accounts: self.endowed_accounts,
         }
-            .assimilate_storage(&mut t)
-            .unwrap();
+        .assimilate_storage(&mut t)
+        .unwrap();
 
         t.into()
     }

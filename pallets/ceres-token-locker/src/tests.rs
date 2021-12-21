@@ -3,15 +3,20 @@ mod tests {
     use crate::{pallet, Error};
     use common::balance;
     use frame_support::{assert_err, assert_ok};
-    use sp_runtime::ModuleId;
     use sp_runtime::traits::AccountIdConversion;
+    use sp_runtime::ModuleId;
 
     #[test]
     fn lock_tokens_invalid_number_of_tokens() {
         let mut ext = ExtBuilder::default().build();
         ext.execute_with(|| {
             assert_err!(
-                CeresTokenLocker::lock_tokens(Origin::signed(ALICE), CERES_ASSET_ID, frame_system::Pallet::<Runtime>::block_number() + 1, balance!(0)),
+                CeresTokenLocker::lock_tokens(
+                    Origin::signed(ALICE),
+                    CERES_ASSET_ID,
+                    frame_system::Pallet::<Runtime>::block_number() + 1,
+                    balance!(0)
+                ),
                 Error::<Runtime>::InvalidNumberOfTokens
             );
         });
@@ -22,7 +27,12 @@ mod tests {
         let mut ext = ExtBuilder::default().build();
         ext.execute_with(|| {
             assert_err!(
-                CeresTokenLocker::lock_tokens(Origin::signed(ALICE), CERES_ASSET_ID, frame_system::Pallet::<Runtime>::block_number(), balance!(1)),
+                CeresTokenLocker::lock_tokens(
+                    Origin::signed(ALICE),
+                    CERES_ASSET_ID,
+                    frame_system::Pallet::<Runtime>::block_number(),
+                    balance!(1)
+                ),
                 Error::<Runtime>::InvalidUnlockingBlock
             );
         });
@@ -33,7 +43,12 @@ mod tests {
         let mut ext = ExtBuilder::default().build();
         ext.execute_with(|| {
             assert_err!(
-                CeresTokenLocker::lock_tokens(Origin::signed(ALICE), CERES_ASSET_ID, frame_system::Pallet::<Runtime>::block_number() + 1, balance!(3000)),
+                CeresTokenLocker::lock_tokens(
+                    Origin::signed(ALICE),
+                    CERES_ASSET_ID,
+                    frame_system::Pallet::<Runtime>::block_number() + 1,
+                    balance!(3000)
+                ),
                 Error::<Runtime>::NotEnoughFunds
             );
         });
@@ -45,9 +60,12 @@ mod tests {
         ext.execute_with(|| {
             let unlocking_block = frame_system::Pallet::<Runtime>::block_number() + 1;
             let locked_tokens = balance!(2000);
-            assert_ok!(
-                CeresTokenLocker::lock_tokens(Origin::signed(ALICE), CERES_ASSET_ID, unlocking_block, locked_tokens),
-            );
+            assert_ok!(CeresTokenLocker::lock_tokens(
+                Origin::signed(ALICE),
+                CERES_ASSET_ID,
+                unlocking_block,
+                locked_tokens
+            ),);
 
             // Check ALICE's balances
             assert_eq!(
@@ -75,7 +93,10 @@ mod tests {
             let token_locker_vec = pallet::TokenLockerData::<Runtime>::get(&ALICE);
             assert_eq!(token_locker_vec.len(), 1);
             assert_eq!(token_locker_vec.get(0).unwrap().asset_id, CERES_ASSET_ID);
-            assert_eq!(token_locker_vec.get(0).unwrap().unlocking_block, unlocking_block);
+            assert_eq!(
+                token_locker_vec.get(0).unwrap().unlocking_block,
+                unlocking_block
+            );
             assert_eq!(token_locker_vec.get(0).unwrap().tokens, locked_tokens);
         });
     }
@@ -85,7 +106,12 @@ mod tests {
         let mut ext = ExtBuilder::default().build();
         ext.execute_with(|| {
             assert_err!(
-                CeresTokenLocker::withdraw_tokens(Origin::signed(ALICE), CERES_ASSET_ID, frame_system::Pallet::<Runtime>::block_number() + 1, balance!(0)),
+                CeresTokenLocker::withdraw_tokens(
+                    Origin::signed(ALICE),
+                    CERES_ASSET_ID,
+                    frame_system::Pallet::<Runtime>::block_number() + 1,
+                    balance!(0)
+                ),
                 Error::<Runtime>::InvalidNumberOfTokens
             );
         });
@@ -96,7 +122,12 @@ mod tests {
         let mut ext = ExtBuilder::default().build();
         ext.execute_with(|| {
             assert_err!(
-                CeresTokenLocker::withdraw_tokens(Origin::signed(ALICE), CERES_ASSET_ID, frame_system::Pallet::<Runtime>::block_number(), balance!(1)),
+                CeresTokenLocker::withdraw_tokens(
+                    Origin::signed(ALICE),
+                    CERES_ASSET_ID,
+                    frame_system::Pallet::<Runtime>::block_number(),
+                    balance!(1)
+                ),
                 Error::<Runtime>::NotUnlockedYet
             );
         });
@@ -108,7 +139,12 @@ mod tests {
         ext.execute_with(|| {
             run_to_block(5);
             assert_err!(
-                CeresTokenLocker::withdraw_tokens(Origin::signed(ALICE), CERES_ASSET_ID, 1u32.into(), balance!(1)),
+                CeresTokenLocker::withdraw_tokens(
+                    Origin::signed(ALICE),
+                    CERES_ASSET_ID,
+                    1u32.into(),
+                    balance!(1)
+                ),
                 Error::<Runtime>::LockInfoDoesNotExist
             );
         });
@@ -122,9 +158,12 @@ mod tests {
             let locked_tokens = balance!(2000);
 
             // Lock tokens
-            assert_ok!(
-                CeresTokenLocker::lock_tokens(Origin::signed(ALICE), CERES_ASSET_ID, unlocking_block, locked_tokens),
-            );
+            assert_ok!(CeresTokenLocker::lock_tokens(
+                Origin::signed(ALICE),
+                CERES_ASSET_ID,
+                unlocking_block,
+                locked_tokens
+            ),);
 
             // Check TokenLockerData map
             let mut token_locker_vec = pallet::TokenLockerData::<Runtime>::get(&ALICE);
@@ -133,9 +172,12 @@ mod tests {
             run_to_block(5);
 
             // Unlock tokens
-            assert_ok!(
-                CeresTokenLocker::withdraw_tokens(Origin::signed(ALICE), CERES_ASSET_ID, unlocking_block, locked_tokens),
-            );
+            assert_ok!(CeresTokenLocker::withdraw_tokens(
+                Origin::signed(ALICE),
+                CERES_ASSET_ID,
+                unlocking_block,
+                locked_tokens
+            ),);
 
             // Check TokenLockerData map
             token_locker_vec = pallet::TokenLockerData::<Runtime>::get(&ALICE);
@@ -175,12 +217,12 @@ mod tests {
         ext.execute_with(|| {
             let new_fee = balance!(0.01);
 
-            assert_ok!(CeresTokenLocker::change_fee(Origin::signed(pallet::AuthorityAccount::<Runtime>::get()), new_fee));
-
-            assert_eq!(
-                pallet::FeeAmount::<Runtime>::get(),
+            assert_ok!(CeresTokenLocker::change_fee(
+                Origin::signed(pallet::AuthorityAccount::<Runtime>::get()),
                 new_fee
-            );
+            ));
+
+            assert_eq!(pallet::FeeAmount::<Runtime>::get(), new_fee);
         });
     }
 }
