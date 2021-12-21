@@ -91,12 +91,18 @@ pub mod pallet {
         InvalidVotes,
         ///Poll Is Finished
         PollIsFinished,
+        ///Poll Is Not Started
+        PollIsNotStarted,
         ///Not Enough Funds
         NotEnoughFunds,
         ///Invalid Number Of Option
         InvalidNumberOfOption,
         ///Vote Denied
         VoteDenied,
+        ///Invalid Start Block
+        InvalidStartBlock,
+        ///Poll Is Not Finished
+        PollIsNotFinished,
     }
 
     #[pallet::call]
@@ -118,7 +124,7 @@ pub mod pallet {
 
             ensure!(
                 current_block >= poll_info.poll_start_block,
-                Error::<T>::PollIsFinished
+                Error::<T>::PollIsNotStarted
             );
 
             ensure!(
@@ -127,16 +133,19 @@ pub mod pallet {
             );
 
             ensure!(
-                voting_option <= poll_info.number_of_options,
+                voting_option <= poll_info.number_of_options && voting_option != 0,
                 Error::<T>::InvalidNumberOfOption
             );
 
-            let mut votes = <Voting<T>>::get(&poll_id, &user);
+            let mut voting_info = <Voting<T>>::get(&poll_id, &user);
 
-            if voting_option == 0 {
-                votes.voting_option = voting_option;
+            if voting_info.voting_option == 0 {
+                voting_info.voting_option = voting_option;
             } else {
-                ensure!(votes.voting_option == voting_option, Error::<T>::VoteDenied)
+                ensure!(
+                    voting_info.voting_option == voting_option,
+                    Error::<T>::VoteDenied
+                )
             }
 
             ensure!(
@@ -145,8 +154,7 @@ pub mod pallet {
                 Error::<T>::NotEnoughFunds
             );
 
-            votes.number_of_votes += number_of_votes;
-            votes.ceres_withdrawn = false;
+            voting_info.number_of_votes += number_of_votes;
 
             // Transfer Ceres to pallet
             Assets::<T>::transfer_from(
@@ -157,7 +165,7 @@ pub mod pallet {
             )?;
 
             // Update storage
-            <Voting<T>>::insert(&poll_id, &user, votes);
+            <Voting<T>>::insert(&poll_id, &user, voting_info);
 
             //Emit event
             Self::deposit_event(Event::<T>::Voted(user, voting_option, number_of_votes));
@@ -183,14 +191,13 @@ pub mod pallet {
 
             ensure!(
                 poll_start_block >= current_block,
-                Error::<T>::PollIsFinished
+                Error::<T>::InvalidStartBlock
             );
 
             ensure!(
-                poll_start_block > poll_end_block,
+                poll_end_block > poll_start_block,
                 Error::<T>::PollIsFinished
             );
-            ensure!(poll_end_block >= current_block, Error::<T>::PollIsFinished);
 
             let poll_info = PollInfo {
                 number_of_options,
@@ -222,24 +229,22 @@ pub mod pallet {
 
             ensure!(
                 current_block > poll_info.poll_end_block,
-                Error::<T>::PollIsFinished
+                Error::<T>::PollIsNotFinished
             );
             // Update storage
-            let mut votes = <Voting<T>>::get(&poll_id, &user);
-            let mut total_votes = 0;
-            total_votes += votes.number_of_votes;
-            votes.ceres_withdrawn = true;
+            let mut voting_info = <Voting<T>>::get(&poll_id, &user);
+            voting_info.ceres_withdrawn = true;
 
             // Withdraw CERES
             Assets::<T>::transfer_from(
                 &T::CeresAssetId::get().into(),
                 &Self::account_id(),
                 &user,
-                total_votes,
+                voting_info.number_of_votes,
             )?;
 
             //Emit event
-            Self::deposit_event(Event::<T>::Withdrawn(user, total_votes));
+            Self::deposit_event(Event::<T>::Withdrawn(user, voting_info.number_of_votes));
 
             // Return a successful DispatchResult
             Ok(().into())
