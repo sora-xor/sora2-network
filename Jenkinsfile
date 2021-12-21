@@ -11,6 +11,7 @@ String appImageName           = 'docker.soramitsu.co.jp/sora2/substrate'
 String secretScannerExclusion = '.*Cargo.toml'
 Boolean disableSecretScanner  = false
 String featureList            = 'private-net include-real-files reduced-pswap-reward-periods'
+String bmFeatures             = ''
 Map pushTags                  = ['master': 'latest', 'develop': 'dev']
 
 pipeline {
@@ -47,6 +48,7 @@ pipeline {
                             docker.image(envImageName + ':latest').inside() {
                                 if (env.TAG_NAME =~ 'benchmarking.*') {
                                     featureList = 'runtime-benchmarks main-net-coded'
+                                    bmFeatures = '--features runtime-benchmarks'
                                 }
                                 else if (env.TAG_NAME =~ 'stage.*') {
                                     featureList = 'private-net include-real-files'
@@ -59,11 +61,11 @@ pipeline {
                                 }
                                 sh """
                                     cargo build --release --features \"${featureList}\" --target-dir /app/target/
+                                    cargo test  --release \"${bmFeatures}\" --target-dir /app/target/
+                                    sccache -s
                                     mv /app/target/release/framenode .
                                     wasm-opt -Os -o ./framenode_runtime.compact.wasm /app/target/release/wbuild/framenode-runtime/framenode_runtime.compact.wasm
                                     subwasm --json info framenode_runtime.compact.wasm > ${wasmReportFile}
-                                    cargo test  --release --target-dir /app/target/
-                                    sccache -s
                                 """
                                 archiveArtifacts artifacts:
                                     "framenode_runtime.compact.wasm, ${wasmReportFile}"
