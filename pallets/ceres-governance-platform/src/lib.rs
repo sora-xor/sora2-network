@@ -1,6 +1,9 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![feature(destructuring_assignment)]
 
+#[cfg(test)]
+mod mock;
+
 use codec::{Decode, Encode};
 
 #[derive(Encode, Decode, Default, PartialEq, Eq)]
@@ -101,6 +104,8 @@ pub mod pallet {
         VoteDenied,
         ///Invalid Start Block
         InvalidStartBlock,
+        ///Invalid End Block
+        InvalidEndBlock,
         ///Poll Is Not Finished
         PollIsNotFinished,
     }
@@ -196,7 +201,7 @@ pub mod pallet {
 
             ensure!(
                 poll_end_block > poll_start_block,
-                Error::<T>::PollIsFinished
+                Error::<T>::InvalidEndBlock
             );
 
             let poll_info = PollInfo {
