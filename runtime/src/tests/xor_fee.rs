@@ -594,7 +594,6 @@ fn fee_payment_should_not_postpone() {
 }
 
 #[test]
-#[ignore]
 fn withdraw_fee_set_referrer() {
     ext().execute_with(|| {
         increase_balance(bob(), XOR.into(), balance!(1000));
@@ -603,11 +602,19 @@ fn withdraw_fee_set_referrer() {
 
         let dispatch_info = info_from_weight(100_000_000);
         let call = Call::Referrals(referrals::Call::set_referrer(bob()));
+        let initial_balance = Assets::free_balance(&XOR.into(), &alice()).unwrap();
 
         let result = XorFee::withdraw_fee(&alice(), &call, &dispatch_info, 1337, 0);
         assert_eq!(
             result,
-            Ok(LiquidityInfo::Paid(Some(NegativeImbalance::new(SMALL_FEE))))
+            Ok(LiquidityInfo::Paid((
+                bob(),
+                Some(NegativeImbalance::new(SMALL_FEE))
+            )))
+        );
+        assert_eq!(
+            Assets::free_balance(&XOR.into(), &alice()),
+            Ok(initial_balance)
         );
     });
 }
@@ -649,7 +656,10 @@ fn withdraw_fee_set_referrer_already2() {
         let result = XorFee::withdraw_fee(&alice(), &call, &dispatch_info, 1337, 0);
         assert_eq!(
             result,
-            Ok(LiquidityInfo::Paid(Some(NegativeImbalance::new(SMALL_FEE))))
+            Ok(LiquidityInfo::Paid((
+                alice(),
+                Some(NegativeImbalance::new(SMALL_FEE))
+            )))
         );
         assert_eq!(
             Assets::free_balance(&XOR.into(), &alice()),
