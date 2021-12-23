@@ -66,7 +66,7 @@ type Assets<T> = assets::Pallet<T>;
 // #[cfg_attr(test, derive(PartialEq))]
 pub enum LiquidityInfo<T: Config> {
     /// Fees operate as normal
-    Paid(Option<NegativeImbalanceOf<T>>),
+    Paid((T::AccountId, Option<NegativeImbalanceOf<T>>)),
     /// The fee payment has been postponed to after the transaction
     Postponed(BalanceOf<T>),
 }
@@ -74,8 +74,8 @@ pub enum LiquidityInfo<T: Config> {
 impl<T: Config> sp_std::fmt::Debug for LiquidityInfo<T> {
     fn fmt(&self, f: &mut sp_std::fmt::Formatter<'_>) -> sp_std::fmt::Result {
         match self {
-            LiquidityInfo::Paid(imbalance) => {
-                write!(f, "Paid({:?})", imbalance.as_ref().map(|b| b.peek()))
+            LiquidityInfo::Paid((a, b)) => {
+                write!(f, "Paid({:?}, {:?})", a, b.as_ref().map(|b| b.peek()))
             }
             LiquidityInfo::Postponed(b) => {
                 write!(f, "Postponed({:?})", b)
@@ -87,9 +87,8 @@ impl<T: Config> sp_std::fmt::Debug for LiquidityInfo<T> {
 impl<T: Config> PartialEq for LiquidityInfo<T> {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
-            (LiquidityInfo::Paid(a), LiquidityInfo::Paid(b)) => {
-                a.as_ref().map(|imbalance| imbalance.peek())
-                    == b.as_ref().map(|imbalance| imbalance.peek())
+            (LiquidityInfo::Paid((a1, b1)), LiquidityInfo::Paid((a2, b2))) => {
+                (a1 == a2) && b1.as_ref().map(|b| b.peek()) == b2.as_ref().map(|b| b.peek())
             }
             (LiquidityInfo::Postponed(a1), LiquidityInfo::Postponed(a2)) => a1 == a2,
             _ => false,
@@ -99,13 +98,13 @@ impl<T: Config> PartialEq for LiquidityInfo<T> {
 
 impl<T: Config> Default for LiquidityInfo<T> {
     fn default() -> Self {
-        LiquidityInfo::Paid(None)
+        LiquidityInfo::Paid((T::AccountId::default(), None))
     }
 }
 
-impl<T: Config> From<Option<NegativeImbalanceOf<T>>> for LiquidityInfo<T> {
-    fn from(paid: Option<NegativeImbalanceOf<T>>) -> Self {
-        LiquidityInfo::Paid(paid)
+impl<T: Config> From<(T::AccountId, Option<NegativeImbalanceOf<T>>)> for LiquidityInfo<T> {
+    fn from((account_id, paid): (T::AccountId, Option<NegativeImbalanceOf<T>>)) -> Self {
+        LiquidityInfo::Paid((account_id, paid))
     }
 }
 
@@ -124,10 +123,10 @@ where
         call: &CallOf<T>,
         _dispatch_info: &DispatchInfoOf<CallOf<T>>,
         fee: Self::Balance,
-        tip: Self::Balance,
+        _tip: Self::Balance,
     ) -> Result<Self::LiquidityInfo, TransactionValidityError> {
         if fee.is_zero() {
-            return Ok(None.into());
+            return Ok((who.clone(), None).into());
         }
 
         let maybe_custom_fee = T::CustomFees::compute_fee(call);
@@ -136,19 +135,8 @@ where
             _ => fee,
         };
 
-        let withdraw_reason = if tip.is_zero() {
-            WithdrawReasons::TRANSACTION_PAYMENT
-        } else {
-            WithdrawReasons::TRANSACTION_PAYMENT | WithdrawReasons::TIP
-        };
-
-        if let Ok(imbalance) = T::XorCurrency::withdraw(
-            who,
-            final_fee,
-            withdraw_reason,
-            ExistenceRequirement::KeepAlive,
-        ) {
-            return Ok(Some(imbalance).into());
+        if let Ok(result) = T::WithdrawFee::withdraw_fee(who, call, final_fee.into()) {
+            return Ok(result.into());
         }
 
         // In case we are producing XOR, we perform exchange before fees are withdraw to allow 0-XOR accounts to trade
@@ -230,7 +218,7 @@ where
         tip: Self::Balance,
         already_withdrawn: Self::LiquidityInfo,
     ) -> Result<(), TransactionValidityError> {
-        let withdrawn = match already_withdrawn {
+        let (fee_source, withdrawn) = match already_withdrawn {
             LiquidityInfo::Paid(opt) => opt,
             LiquidityInfo::Postponed(fee) => {
                 let withdraw_reason = if tip.is_zero() {
@@ -239,8 +227,16 @@ where
                     WithdrawReasons::TRANSACTION_PAYMENT | WithdrawReasons::TIP
                 };
 
-                T::XorCurrency::withdraw(who, fee, withdraw_reason, ExistenceRequirement::KeepAlive)
-                    .ok()
+                (
+                    who.clone(),
+                    T::XorCurrency::withdraw(
+                        who,
+                        fee,
+                        withdraw_reason,
+                        ExistenceRequirement::KeepAlive,
+                    )
+                    .ok(),
+                )
             }
         };
 
@@ -265,10 +261,10 @@ where
             // Refund to the the account that paid the fees. If this fails, the
             // account might have dropped below the existential balance. In
             // that case we don't refund anything.
-            let refund_imbalance = T::XorCurrency::deposit_into_existing(&who, refund_amount)
-                .unwrap_or_else(|_| {
-                    <T::XorCurrency as Currency<T::AccountId>>::PositiveImbalance::zero()
-                });
+            let refund_imbalance =
+                T::XorCurrency::deposit_into_existing(&fee_source, refund_amount).unwrap_or_else(
+                    |_| <T::XorCurrency as Currency<T::AccountId>>::PositiveImbalance::zero(),
+                );
 
             // Offset the imbalance caused by paying the fees against the refunded amount.
             let adjusted_paid = paid
@@ -276,8 +272,8 @@ where
                 .map_err(|_| TransactionValidityError::Invalid(InvalidTransaction::Payment))?;
 
             Self::deposit_event(Event::FeeWithdrawn(
-                who.clone(),
-                adjusted_paid.peek().into(),
+                fee_source.clone(),
+                adjusted_paid.peek(),
             ));
 
             // Applying VAL buy-back-and-burn logic
@@ -583,7 +579,7 @@ pub mod pallet {
     #[pallet::generate_deposit(pub(super) fn deposit_event)]
     pub enum Event<T: Config> {
         /// Fee has been withdrawn from user. [Account Id to withdraw from, Fee Amount]
-        FeeWithdrawn(AccountIdOf<T>, Balance),
+        FeeWithdrawn(AccountIdOf<T>, BalanceOf<T>),
         /// The portion of fee is sent to the referrer. [Referral, Referrer, Amount]
         ReferrerRewarded(AccountIdOf<T>, AccountIdOf<T>, Balance),
     }
