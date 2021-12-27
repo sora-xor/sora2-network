@@ -170,6 +170,7 @@ pallet-beefy = { git = "https://github.com/paritytech//substrate.git", branch = 
 pallet-beefy-mmr = { git = "https://github.com/paritytech//substrate.git", branch = "polkadot-v0.9.14" }
 beefy-gadget = { git = "https://github.com/paritytech//substrate.git", branch = "polkadot-v0.9.14" }
 beefy-gadget-rpc = { git = "https://github.com/paritytech//substrate.git", branch = "polkadot-v0.9.14" }
+beefy-merkle-tree = { git = "https://github.com/paritytech//substrate.git", branch = "polkadot-v0.9.14" }
 
 # https://github.com/soramitsu/sora2-frame-pallets.git
 #git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.8#74101dc21cfffb4c2d014fcc28edc166d5ca1b16
