@@ -96,6 +96,7 @@ pub struct MarketMakerInfo {
 pub trait WeightInfo {
     fn claim_incentives() -> Weight;
     fn on_initialize(_n: u32) -> Weight;
+    fn on_runtime_upgrade() -> Weight;
     fn set_asset_pair() -> Weight;
 }
 

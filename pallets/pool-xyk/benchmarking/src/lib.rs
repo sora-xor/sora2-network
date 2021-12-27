@@ -188,7 +188,8 @@ benchmarks! {
             &DEX.into(),
             &XOR.into(),
             &DOT.into(),
-            amount.into()
+            amount.into(),
+            true,
         ).unwrap()
     }
     verify {

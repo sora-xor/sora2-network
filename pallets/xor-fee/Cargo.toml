@@ -49,7 +49,6 @@ common = { path = "../../common", features = ["test"] }
 dex-manager = { path = "../dex-manager" }
 mock-liquidity-source = { path = "../mock-liquidity-source" }
 permissions = { path = "../permissions" }
-referrals = { path = "../referrals" }
 technical = { path = "../technical" }
 trading-pair = { path = "../trading-pair" }
 
@@ -62,7 +61,6 @@ std = [
     "frame-support/std",
     "frame-system/std",
     "pallet-session/std",
-    "pallet-staking/std",
     "pallet-transaction-payment/std",
     "serde",
     "sp-arithmetic/std",

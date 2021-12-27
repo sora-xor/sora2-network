@@ -229,10 +229,10 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
     spec_name: create_runtime_str!("sora-substrate"),
     impl_name: create_runtime_str!("sora-substrate"),
     authoring_version: 1,
-    spec_version: 11,
+    spec_version: 20,
     impl_version: 1,
     apis: RUNTIME_API_VERSIONS,
-    transaction_version: 11,
+    transaction_version: 20,
 };
 
 /// The version infromation used to identify this runtime when compiled natively.
@@ -1560,6 +1560,30 @@ impl pallet_beefy_mmr::Config for Runtime {
     type ParachainHeads = ParasProvider;
 }
 
+parameter_types! {
+    pub const CeresPerDay: Balance = balance!(6.66666666667);
+    pub const CeresAssetId: AssetId = common::AssetId32::from_bytes
+        (hex!("008bcfd2387d3fc453333557eecb0efe59fcba128769b2feefdd306e98e66440"));
+    pub const MaximumCeresInStakingPool: Balance = balance!(7200);
+}
+
+impl ceres_staking::Config for Runtime {
+    const BLOCKS_PER_ONE_DAY: BlockNumber = 1 * DAYS;
+    type Event = Event;
+    type CeresPerDay = CeresPerDay;
+    type CeresAssetId = CeresAssetId;
+    type MaximumCeresInStakingPool = MaximumCeresInStakingPool;
+    type WeightInfo = ceres_staking::weights::WeightInfo<Runtime>;
+}
+
+impl ceres_liquidity_locker::Config for Runtime {
+    const BLOCKS_PER_ONE_DAY: BlockNumber = 1 * DAYS;
+    type Event = Event;
+    type XYKPool = PoolXYK;
+    type CeresAssetId = CeresAssetId;
+    type WeightInfo = ceres_liquidity_locker::weights::WeightInfo<Runtime>;
+}
+
 /// Payload data to be signed when making signed transaction from off-chain workers,
 ///   inside `create_transaction` function.
 pub type SignedPayload = generic::SignedPayload<Call, SignedExtra>;
@@ -1752,23 +1776,23 @@ construct_runtime! {
         Farming: farming::{Pallet, Storage} = 42,
         XSTPool: xst::{Pallet, Call, Storage, Config<T>, Event<T>} = 43,
         PriceTools: price_tools::{Pallet, Storage, Event<T>} = 44,
+        CeresStaking: ceres_staking::{Pallet, Call, Storage, Event<T>} = 45,
+        CeresLiquidityLocker: ceres_liquidity_locker::{Pallet, Call, Storage, Event<T>} = 46,
 
         // Available only for test net
         Faucet: faucet::{Pallet, Call, Config<T>, Event<T>} = 80,
 
-        // Bridge support.
-        Mmr: pallet_mmr::{Pallet, Storage} = 81,
-        Beefy: pallet_beefy::{Pallet, Config<T>, Storage} = 82,
-        MmrLeaf: pallet_beefy_mmr::{Pallet, Storage} = 83,
-
-        // Snowbridge
-        EthereumLightClient: ethereum_light_client::{Pallet, Call, Storage, Event<T>, Config} = 90,
-        BasicInboundChannel: basic_channel_inbound::{Pallet, Call, Storage, Event<T>, Config} = 91,
-        BasicOutboundChannel: basic_channel_outbound::{Pallet, Storage, Event<T>, Config<T>} = 92,
-        IncentivizedInboundChannel: incentivized_channel_inbound::{Pallet, Call, Config<T>, Storage, Event<T>} = 93,
-        IncentivizedOutboundChannel: incentivized_channel_outbound::{Pallet, Config<T>, Storage, Event<T>} = 94,
-        Dispatch: dispatch::{Pallet, Storage, Event<T>, Origin} = 95,
-        EthApp: eth_app::{Pallet, Call, Storage, Event<T>, Config<T>} = 96,
+        // Trustless ethereum bridge
+        Mmr: pallet_mmr::{Pallet, Storage} = 90,
+        Beefy: pallet_beefy::{Pallet, Config<T>, Storage} = 91,
+        MmrLeaf: pallet_beefy_mmr::{Pallet, Storage} = 92,
+        EthereumLightClient: ethereum_light_client::{Pallet, Call, Storage, Event<T>, Config} = 93,
+        BasicInboundChannel: basic_channel_inbound::{Pallet, Call, Storage, Event<T>, Config} = 94,
+        BasicOutboundChannel: basic_channel_outbound::{Pallet, Storage, Event<T>, Config<T>} = 95,
+        IncentivizedInboundChannel: incentivized_channel_inbound::{Pallet, Call, Config<T>, Storage, Event<T>} = 96,
+        IncentivizedOutboundChannel: incentivized_channel_outbound::{Pallet, Config<T>, Storage, Event<T>} = 97,
+        Dispatch: dispatch::{Pallet, Storage, Event<T>, Origin} = 98,
+        EthApp: eth_app::{Pallet, Call, Storage, Event<T>, Config<T>} = 99,
         LeafProvider: leaf_provider::{Pallet, Storage, Event<T>} = 97,
     }
 }
@@ -1830,21 +1854,22 @@ construct_runtime! {
         Farming: farming::{Pallet, Storage} = 42,
         XSTPool: xst::{Pallet, Call, Storage, Config<T>, Event<T>} = 43,
         PriceTools: price_tools::{Pallet, Storage, Event<T>} = 44,
+        CeresStaking: ceres_staking::{Pallet, Call, Storage, Event<T>} = 45,
+        CeresLiquidityLocker: ceres_liquidity_locker::{Pallet, Call, Storage, Event<T>} = 46,
 
-        // Bridge support.
-        Mmr: pallet_mmr::{Pallet, Storage} = 45,
-        Beefy: pallet_beefy::{Pallet, Config<T>, Storage} = 46,
-        MmrLeaf: pallet_beefy_mmr::{Pallet, Storage} = 47,
 
-        // Snowbridge
-        EthereumLightClient: ethereum_light_client::{Pallet, Call, Storage, Event<T>, Config} = 90,
-        BasicInboundChannel: basic_channel_inbound::{Pallet, Call, Storage, Event<T>} = 91,
-        BasicOutboundChannel: basic_channel_outbound::{Pallet, Storage, Event<T>} = 92,
-        IncentivizedInboundChannel: incentivized_channel_inbound::{Pallet, Call, Config<T>, Storage, Event<T>} = 93,
-        IncentivizedOutboundChannel: incentivized_channel_outbound::{Pallet, Config<T>, Storage, Event<T>} = 94,
-        Dispatch: dispatch::{Pallet, Storage, Event<T>, Origin} = 95,
-        EthApp: eth_app::{Pallet, Call, Storage, Event<T>, Config<T>} = 96,
-        LeafProvider: leaf_provider::{Pallet, Storage, Event<T>} = 97,
+        // Trustless ethereum bridge
+        Mmr: pallet_mmr::{Pallet, Storage} = 90,
+        Beefy: pallet_beefy::{Pallet, Config<T>, Storage} = 91,
+        MmrLeaf: pallet_beefy_mmr::{Pallet, Storage} = 92,
+        EthereumLightClient: ethereum_light_client::{Pallet, Call, Storage, Event<T>, Config} = 93,
+        BasicInboundChannel: basic_channel_inbound::{Pallet, Call, Storage, Event<T>, Config} = 94,
+        BasicOutboundChannel: basic_channel_outbound::{Pallet, Storage, Event<T>, Config<T>} = 95,
+        IncentivizedInboundChannel: incentivized_channel_inbound::{Pallet, Call, Config<T>, Storage, Event<T>} = 96,
+        IncentivizedOutboundChannel: incentivized_channel_outbound::{Pallet, Config<T>, Storage, Event<T>} = 97,
+        Dispatch: dispatch::{Pallet, Storage, Event<T>, Origin} = 98,
+        EthApp: eth_app::{Pallet, Call, Storage, Event<T>, Config<T>} = 99,
+        LeafProvider: leaf_provider::{Pallet, Storage, Event<T>} = 100,
     }
 }
 
@@ -2034,6 +2059,7 @@ impl_runtime_apis! {
                     &input_asset_id,
                     &output_asset_id,
                     QuoteAmount::with_variant(swap_variant, desired_input_amount.into()),
+                    true,
                 ).ok().map(|sa| dex_runtime_api::SwapOutcomeInfo::<Balance> { amount: sa.amount, fee: sa.fee})
             }
             #[cfg(not(feature = "private-net"))]
@@ -2251,6 +2277,7 @@ impl_runtime_apis! {
                 QuoteAmount::with_variant(swap_variant, amount.into()),
                 LiquiditySourceFilter::with_mode(dex_id, filter_mode, selected_source_types),
                 false,
+                true,
             ).ok().map(|(asa, rewards, amount_without_impact)| liquidity_proxy_runtime_api::SwapOutcomeInfo::<Balance, AssetId> {
                 amount: asa.amount,
                 fee: asa.fee,
@@ -2456,6 +2483,7 @@ impl_runtime_apis! {
             use pool_xyk_benchmarking::Pallet as XYKPoolBench;
             use pswap_distribution_benchmarking::Pallet as PswapDistributionBench;
             use xor_fee_benchmarking::Pallet as XorFeeBench;
+            use ceres_liquidity_locker_benchmarking::Pallet as CeresLiquidityLockerBench;
 
             let mut list = Vec::<BenchmarkList>::new();
 
@@ -2477,6 +2505,8 @@ impl_runtime_apis! {
             list_benchmark!(list, extra, xor_fee, XorFeeBench::<Runtime>);
             list_benchmark!(list, extra, ethereum_light_client, EthereumLightClient);
             list_benchmark!(list, extra, referrals, Referrals);
+            list_benchmark!(list, extra, ceres_staking, CeresStaking);
+            list_benchmark!(list, extra, ceres_liquidity_locker, CeresLiquidityLockerBench::<Runtime>);
 
             let storage_info = AllPalletsWithSystem::storage_info();
 
@@ -2493,12 +2523,14 @@ impl_runtime_apis! {
             use pool_xyk_benchmarking::Pallet as XYKPoolBench;
             use pswap_distribution_benchmarking::Pallet as PswapDistributionBench;
             use xor_fee_benchmarking::Pallet as XorFeeBench;
+            use ceres_liquidity_locker_benchmarking::Pallet as CeresLiquidityLockerBench;
 
             impl dex_api_benchmarking::Config for Runtime {}
             impl liquidity_proxy_benchmarking::Config for Runtime {}
             impl pool_xyk_benchmarking::Config for Runtime {}
             impl pswap_distribution_benchmarking::Config for Runtime {}
             impl xor_fee_benchmarking::Config for Runtime {}
+            impl ceres_liquidity_locker_benchmarking::Config for Runtime {}
 
 
             let whitelist: Vec<TrackedStorageKey> = vec![
@@ -2519,8 +2551,7 @@ impl_runtime_apis! {
             let mut batches = Vec::<BenchmarkBatch>::new();
             let params = (&config, &whitelist);
 
-            add_benchmark!(params, batches, assets, Assets);
-            add_benchmark!(params, batches, dex_api, DEXAPIBench::<Runtime>);
+            add_benchmark!(params, batches, assets, Assets);add_benchmark!(params, batches, dex_api, DEXAPIBench::<Runtime>);
             #[cfg(feature = "private-net")]
             add_benchmark!(params, batches, faucet, Faucet);
             add_benchmark!(params, batches, farming, Farming);
@@ -2537,6 +2568,8 @@ impl_runtime_apis! {
             add_benchmark!(params, batches, xor_fee, XorFeeBench::<Runtime>);
             add_benchmark!(params, batches, ethereum_light_client, EthereumLightClient);
             add_benchmark!(params, batches, referrals, Referrals);
+            add_benchmark!(params, batches, ceres_staking, CeresStaking);
+            add_benchmark!(params, batches, ceres_liquidity_locker, CeresLiquidityLockerBench::<Runtime>);
 
             if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
             Ok(batches)

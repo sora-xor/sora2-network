@@ -42,6 +42,7 @@ use currencies::BasicCurrencyAdapter;
 
 use frame_support::traits::{Everything, GenesisBuild};
 use frame_support::{construct_runtime, parameter_types};
+use frame_system::pallet_prelude::BlockNumberFor;
 use liquidity_proxy::LiquidityProxyTrait;
 use multicollateral_bonding_curve_pool::{
     DistributionAccount, DistributionAccountData, DistributionAccounts,
@@ -121,6 +122,7 @@ construct_runtime! {
         MBCPool: multicollateral_bonding_curve_pool::{Pallet, Call, Storage, Event<T>},
         PswapDistribution: pswap_distribution::{Pallet, Call, Config<T>, Storage, Event<T>},
         VestedRewards: vested_rewards::{Pallet, Call, Storage, Event<T>},
+        CeresLiquidityLocker: ceres_liquidity_locker::{Pallet, Call, Storage, Event<T>},
     }
 }
 
@@ -293,6 +295,14 @@ impl vested_rewards::Config for Runtime {
     type WeightInfo = ();
 }
 
+impl ceres_liquidity_locker::Config for Runtime {
+    const BLOCKS_PER_ONE_DAY: BlockNumberFor<Self> = 14_440;
+    type Event = Event;
+    type XYKPool = PoolXYK;
+    type CeresAssetId = ();
+    type WeightInfo = ();
+}
+
 fn bonding_curve_distribution_accounts() -> DistributionAccounts<
     DistributionAccountData<
         DistributionAccount<
@@ -424,6 +434,7 @@ impl PriceToolsPallet<AssetId> for MockPriceTools {
                 0u32,
                 [LiquiditySourceType::XYKPool].iter().cloned().collect(),
             ),
+            true,
         );
         Ok(res?.amount)
     }

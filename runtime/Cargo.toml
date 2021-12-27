@@ -5,7 +5,7 @@ license = "BSD-4-Clause"
 homepage = "https://sora.org"
 repository = "https://github.com/sora-xor/sora2-network"
 name = "framenode-runtime"
-version = "0.1.0"
+version = "1.2.2"
 
 [package.metadata.docs.rs]
 targets = ["x86_64-unknown-linux-gnu"]
@@ -41,6 +41,9 @@ leaf-provider-runtime-api = { path = "../pallets/trustless-eth-bridge/leaf-provi
 assets = { path = "../pallets/assets", default-features = false }
 assets-runtime-api = { path = "../pallets/assets/runtime-api", default-features = false }
 common = { path = "../common", default-features = false }
+ceres-liquidity-locker = { path = "../pallets/ceres-liquidity-locker", default-features = false }
+ceres-liquidity-locker-benchmarking = { path = "../pallets/ceres-liquidity-locker/benchmarking", default-features = false, optional = true }
+ceres-staking = { path = "../pallets/ceres-staking", default-features = false }
 dex-api = { path = "../pallets/dex-api", default-features = false }
 dex-api-benchmarking = { path = "../pallets/dex-api/benchmarking", default-features = false, optional = true }
 dex-manager = { path = "../pallets/dex-manager", default-features = false }
@@ -133,13 +136,10 @@ snowbridge-core = { path = "../primitives/core", default-features = false }
 
 [dev-dependencies]
 env_logger = "0.9.0"
-
-common = { path = "../common", features = ["test"] }
-framenode-chain-spec = { path = "../node/chain_spec", features = ["test"] }
+framenode-chain-spec = { path = "../node/chain_spec", features = ["test", "private-net"] }
 
 [features]
 default = ["std"]
-test = []
 
 std = [
     "assets-runtime-api/std",
@@ -154,6 +154,8 @@ std = [
     "codec/std",
     "scale-info/std",
     "common/std",
+    "ceres-liquidity-locker/std",
+    "ceres-staking/std",
     "dex-api/std",
     "dex-manager-runtime-api/std",
     "dex-manager/std",
@@ -238,7 +240,9 @@ private-net = [
 
 runtime-benchmarks = [
     "assets/runtime-benchmarks",
+    "ceres-liquidity-locker-benchmarking",
     "dex-api-benchmarking",
+    "ceres-staking/runtime-benchmarks",
     "eth-bridge/runtime-benchmarks",
     "ethereum-light-client/runtime-benchmarks",
     "basic-channel/runtime-benchmarks",

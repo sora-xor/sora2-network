@@ -1,6 +1,6 @@
 [package]
 name = "framenode-chain-spec"
-version = "0.1.0"
+version = "1.2.2"
 authors = ["Parity Technologies <admin@parity.io>"]
 edition = "2021"
 
@@ -38,6 +38,5 @@ xor-fee = { path = "../../pallets/xor-fee" }
 include-real-files = []
 main-net-coded = []
 test = []
-runtime-benchmarks = []
 
 private-net = ["faucet", "framenode-runtime/private-net"]

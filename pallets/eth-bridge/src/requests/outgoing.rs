@@ -442,10 +442,10 @@ impl<T: Config> OutgoingAddToken<T> {
             Error::<T>::SidechainAssetIsAlreadyRegistered
         );
         let symbol = AssetSymbol(self.symbol.as_bytes().to_vec());
-        ensure!(symbol.is_valid(), assets::Error::<T>::InvalidAssetSymbol);
+        ensure!(&symbol.is_valid(), assets::Error::<T>::InvalidAssetSymbol);
 
         let name = AssetName(self.name.as_bytes().to_vec());
-        ensure!(name.is_valid(), assets::Error::<T>::InvalidAssetName);
+        ensure!(&name.is_valid(), assets::Error::<T>::InvalidAssetName);
 
         Ok((symbol, name))
     }
