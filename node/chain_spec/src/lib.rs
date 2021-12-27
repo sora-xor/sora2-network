@@ -33,8 +33,6 @@
 
 #![allow(unused_imports, unused_macros, dead_code)]
 
-use framenode_runtime::{BeefyConfig, GenesisConfig};
-
 use common::prelude::{Balance, DEXInfo, FixedWrapper};
 use common::{
     balance, fixed, hash, our_include, our_include_bytes, vec_push, BalancePrecision, DEXId, Fixed,
@@ -48,18 +46,18 @@ use framenode_runtime::multicollateral_bonding_curve_pool::{
 use framenode_runtime::opaque::SessionKeys;
 use framenode_runtime::{
     assets, eth_bridge, frame_system, AccountId, AssetId, AssetName, AssetSymbol, AssetsConfig,
-    BabeConfig, BalancesConfig, BeefyId, BridgeMultisigConfig, CouncilConfig, DEXAPIConfig,
-    DEXManagerConfig, DemocracyConfig, EthAppConfig, EthBridgeConfig, EthereumDifficultyConfig,
-    EthereumHeader, EthereumLightClientConfig, GetBaseAssetId, GetParliamentAccountId,
-    GetPswapAssetId, GetValAssetId, GetXorAssetId, GrandpaConfig, ImOnlineId, IrohaMigrationConfig,
-    LiquiditySourceType, MulticollateralBondingCurvePoolConfig, PermissionsConfig,
-    PswapDistributionConfig, RewardsConfig, Runtime, SS58Prefix, SessionConfig, StakerStatus,
-    StakingConfig, SystemConfig, TechAccountId, TechnicalConfig, TokensConfig, TradingPairConfig,
-    XSTPoolConfig, WASM_BINARY,
+    BabeConfig, BalancesConfig, BasicInboundChannelConfig, BasicOutboundChannelConfig, BeefyConfig,
+    BeefyId, BridgeMultisigConfig, CouncilConfig, DEXAPIConfig, DEXManagerConfig, DemocracyConfig,
+    EthAppConfig, EthBridgeConfig, EthereumHeader, EthereumLightClientConfig, GenesisConfig,
+    GetBaseAssetId, GetParliamentAccountId, GetPswapAssetId, GetValAssetId, GetXorAssetId,
+    GrandpaConfig, ImOnlineId, IncentivizedInboundChannelConfig, IncentivizedOutboundChannelConfig,
+    IrohaMigrationConfig, LiquiditySourceType, MulticollateralBondingCurvePoolConfig,
+    PermissionsConfig, PswapDistributionConfig, RewardsConfig, Runtime, SS58Prefix, SessionConfig,
+    Signature, StakerStatus, StakingConfig, SystemConfig, TechAccountId, TechnicalCommitteeConfig,
+    TechnicalConfig, TokensConfig, TradingPairConfig, XSTPoolConfig, WASM_BINARY,
 };
 use hex_literal::hex;
 use permissions::Scope;
-use rewards::RewardInfo;
 use sc_finality_grandpa::AuthorityId as GrandpaId;
 use sc_network::config::MultiaddrWithPeerId;
 use sc_service::{ChainType, Properties};
@@ -75,7 +73,6 @@ use codec::Encode;
 use framenode_runtime::assets::{AssetRecord, AssetRecordArg};
 #[cfg(feature = "private-net")]
 use framenode_runtime::{FaucetConfig, SudoConfig};
-use framenode_runtime::{Signature, TechnicalCommitteeConfig};
 use sp_core::{sr25519, Pair};
 use sp_runtime::traits::{IdentifyAccount, Verify};
 use std::borrow::Cow;
@@ -224,7 +221,7 @@ pub fn dev_net_coded() -> ChainSpec {
     let mut properties = Properties::new();
     properties.insert("ss58Format".into(), SS58Prefix::get().into());
     properties.insert("tokenSymbol".into(), "XOR".into());
-    properties.insert("tokenDecimals".into(), 18.into());
+    properties.insert("tokenDecimals".into(), DEFAULT_BALANCE_PRECISION.into());
     ChainSpec::from_genesis(
         "SORA-dev Testnet",
         "sora-substrate-dev",
@@ -333,7 +330,7 @@ pub fn staging_net_coded(test: bool) -> ChainSpec {
     let mut properties = Properties::new();
     properties.insert("ss58Format".into(), SS58Prefix::get().into());
     properties.insert("tokenSymbol".into(), "XOR".into());
-    properties.insert("tokenDecimals".into(), 18.into());
+    properties.insert("tokenDecimals".into(), DEFAULT_BALANCE_PRECISION.into());
     let (name, id, boot_nodes) = if test {
         (
             "SORA-test",
@@ -554,7 +551,7 @@ pub fn local_testnet_config() -> ChainSpec {
     let mut properties = Properties::new();
     properties.insert("ss58Format".into(), SS58Prefix::get().into());
     properties.insert("tokenSymbol".into(), "XOR".into());
-    properties.insert("tokenDecimals".into(), 18.into());
+    properties.insert("tokenDecimals".into(), DEFAULT_BALANCE_PRECISION.into());
     ChainSpec::from_genesis(
         "SORA-local Testnet",
         "sora-substrate-local",
@@ -652,10 +649,6 @@ fn testnet_genesis(
     treasury_account: AccountId,
 ) -> GenesisConfig {
     use common::XSTUSD;
-    use framenode_runtime::{
-        BasicInboundChannelConfig, BasicOutboundChannelConfig, IncentivizedInboundChannelConfig,
-        IncentivizedOutboundChannelConfig,
-    };
 
     // Initial balances
     let initial_staking = balance!(100);
@@ -933,10 +926,14 @@ fn testnet_genesis(
         let faucet_account_id: AccountId =
             technical::Pallet::<Runtime>::tech_account_id_to_account_id(&faucet_tech_account_id)
                 .expect("Failed to decode account id");
+        let ceres = common::AssetId32::from_bytes(hex!(
+            "008bcfd2387d3fc453333557eecb0efe59fcba128769b2feefdd306e98e66440"
+        ));
         tech_accounts.push((faucet_account_id.clone(), faucet_tech_account_id.clone()));
         balances.push((faucet_account_id.clone(), initial_faucet_balance));
         tokens_endowed_accounts.push((faucet_account_id.clone(), VAL, initial_faucet_balance));
-        tokens_endowed_accounts.push((faucet_account_id, PSWAP, initial_faucet_balance));
+        tokens_endowed_accounts.push((faucet_account_id.clone(), PSWAP, initial_faucet_balance));
+        tokens_endowed_accounts.push((faucet_account_id, ceres, initial_faucet_balance));
         FaucetConfig {
             reserves_account_id: faucet_tech_account_id,
         }
@@ -1053,6 +1050,8 @@ fn testnet_genesis(
                 //     DEFAULT_BALANCE_PRECISION,
                 //     Balance::zero(),
                 //     true,
+                //     None,
+                //     None,
                 // ),
                 (
                     GetValAssetId::get(),
@@ -1103,6 +1102,20 @@ fn testnet_genesis(
                     assets_and_permissions_account_id.clone(),
                     AssetSymbol(b"XSTUSD".to_vec()),
                     AssetName(b"SORA Synthetic USD".to_vec()),
+                    DEFAULT_BALANCE_PRECISION,
+                    Balance::zero(),
+                    true,
+                    None,
+                    None,
+                ),
+                (
+                    common::AssetId32::from_bytes(hex!(
+                        "008bcfd2387d3fc453333557eecb0efe59fcba128769b2feefdd306e98e66440"
+                    ))
+                    .into(),
+                    assets_and_permissions_account_id.clone(),
+                    AssetSymbol(b"CERES".to_vec()),
+                    AssetName(b"Ceres".to_vec()),
                     DEFAULT_BALANCE_PRECISION,
                     Balance::zero(),
                     true,
@@ -1317,7 +1330,7 @@ pub fn main_net_coded() -> ChainSpec {
     let mut properties = Properties::new();
     properties.insert("ss58Format".into(), SS58Prefix::get().into());
     properties.insert("tokenSymbol".into(), "XOR".into());
-    properties.insert("tokenDecimals".into(), 18i32.into());
+    properties.insert("tokenDecimals".into(), DEFAULT_BALANCE_PRECISION.into());
     let name = "SORA";
     let id = "sora-substrate-main-net";
     // SORA main-net node address. We should have 2 nodes.
@@ -1665,6 +1678,20 @@ fn mainnet_genesis(
             assets_and_permissions_account_id.clone(),
             AssetSymbol(b"XSTUSD".to_vec()),
             AssetName(b"SORA Synthetic USD".to_vec()),
+            DEFAULT_BALANCE_PRECISION,
+            Balance::zero(),
+            true,
+            None,
+            None,
+        ),
+        (
+            common::AssetId32::from_bytes(hex!(
+                "008bcfd2387d3fc453333557eecb0efe59fcba128769b2feefdd306e98e66440"
+            ))
+            .into(),
+            assets_and_permissions_account_id.clone(),
+            AssetSymbol(b"CERES".to_vec()),
+            AssetName(b"Ceres".to_vec()),
             DEFAULT_BALANCE_PRECISION,
             Balance::zero(),
             true,

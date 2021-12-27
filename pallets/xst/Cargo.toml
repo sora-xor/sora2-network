@@ -11,7 +11,9 @@ version = '1.0.0'
 targets = ['x86_64-unknown-linux-gnu']
 
 [dependencies]
-codec = { package = "parity-scale-codec", version = "2", default-features = false, features = ["derive"] }
+codec = { package = "parity-scale-codec", version = "2", default-features = false, features = [
+    "derive",
+] }
 scale-info = { version = "1.0.0", default-features = false, features = [
     "derive",
 ] }
@@ -21,7 +23,9 @@ frame-system = { git = "https://github.com/paritytech/substrate.git", branch = "
 frame-benchmarking = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.9", default-features = false, optional = true }
 hex-literal = { version = "0.3.1", optional = true }
 orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-traits", default-features = false }
-serde = { version = "1.0.101", default-features = false, optional = true, features = ["derive"] }
+serde = { version = "1.0.101", default-features = false, optional = true, features = [
+    "derive",
+] }
 sp-arithmetic = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.9", default-features = false }
 sp-runtime = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.9", default-features = false }
 sp-std = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.9", default-features = false }
@@ -37,6 +41,7 @@ trading-pair = { path = "../trading-pair", default-features = false }
 pool-xyk = { path = "../pool-xyk", default-features = false }
 
 [dev-dependencies]
+ceres-liquidity-locker = { path = "../ceres-liquidity-locker", default-features = false }
 hex-literal = "0.3.1"
 pallet-balances = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.9", default-features = false }
 sp-core = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.9", default-features = false }
@@ -68,5 +73,4 @@ runtime-benchmarks = [
     "frame-benchmarking",
     "frame-system/runtime-benchmarks",
     "frame-support/runtime-benchmarks",
-    "hex-literal",
 ]

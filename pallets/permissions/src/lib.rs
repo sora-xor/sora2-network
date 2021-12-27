@@ -189,13 +189,11 @@ impl<T: Config> Pallet<T> {
                 .map_err(|_| Error::<T>::IncRefError)?;
         }
         frame_system::Pallet::<T>::inc_consumers(&owner).map_err(|_| Error::<T>::IncRefError)?;
-
         Owners::<T>::mutate(permission_id, scope, |owners| {
             ensure!(owners.is_empty(), Error::<T>::PermissionAlreadyExists);
             owners.push(owner);
             Ok(())
         })?;
-
         Permissions::<T>::mutate(&account_id, scope, |permissions| {
             if let Err(index) = permissions.binary_search(&permission_id) {
                 permissions.insert(index, permission_id);

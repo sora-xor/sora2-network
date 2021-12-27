@@ -251,6 +251,50 @@ benchmarks! {
         Pallet::<T>::on_initialize(crate::RETRY_DISTRIBUTION_FREQUENCY.into());
     }
     verify {}
+
+    set_price_change_config {
+        let caller = alice::<T>();
+        frame_system::Module::<T>::inc_providers(&caller);
+        let dex_id: T::DEXId = common::DEXId::Polkaswap.into();
+        Permissions::<T>::assign_permission(
+            caller.clone(),
+            &caller,
+            permissions::MANAGE_DEX,
+            permissions::Scope::Limited(common::hash(&dex_id)),
+        ).unwrap();
+    }: {
+        Module::<T>::set_price_change_config(
+            RawOrigin::Root.into(),
+            balance!(12),
+            balance!(2600)
+        ).unwrap();
+    }
+    verify {
+        assert_last_event::<T>(Event::PriceChangeConfigChanged(balance!(12), balance!(2600)).into());
+        assert_eq!(PriceChangeRate::<T>::get(), FixedWrapper::from(balance!(12)).get().unwrap());
+        assert_eq!(PriceChangeStep::<T>::get(), FixedWrapper::from(balance!(2600)).get().unwrap());
+    }
+
+    set_price_bias {
+        let caller = alice::<T>();
+        frame_system::Module::<T>::inc_providers(&caller);
+        let dex_id: T::DEXId = common::DEXId::Polkaswap.into();
+        Permissions::<T>::assign_permission(
+            caller.clone(),
+            &caller,
+            permissions::MANAGE_DEX,
+            permissions::Scope::Limited(common::hash(&dex_id)),
+        ).unwrap();
+    }: {
+        Module::<T>::set_price_bias(
+            RawOrigin::Root.into(),
+            balance!(253)
+        ).unwrap();
+    }
+    verify {
+        assert_last_event::<T>(Event::PriceBiasChanged(balance!(253)).into());
+        assert_eq!(InitialPrice::<T>::get(), FixedWrapper::from(balance!(253)).get().unwrap());
+    }
 }
 
 #[cfg(test)]

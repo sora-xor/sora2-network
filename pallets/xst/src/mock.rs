@@ -42,6 +42,7 @@ use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{Everything, GenesisBuild};
 use frame_support::weights::Weight;
 use frame_support::{construct_runtime, parameter_types};
+use frame_system::pallet_prelude::BlockNumberFor;
 use hex_literal::hex;
 use permissions::{Scope, INIT_DEX, MANAGE_DEX};
 use sp_core::crypto::AccountId32;
@@ -121,6 +122,7 @@ construct_runtime! {
         XSTPool: xstpool::{Pallet, Call, Storage, Event<T>},
         PswapDistribution: pswap_distribution::{Pallet, Call, Storage, Event<T>},
         DEXApi: dex_api::{Pallet, Storage, Event<T>},
+        CeresLiquidityLocker: ceres_liquidity_locker::{Pallet, Call, Storage, Event<T>},
     }
 }
 
@@ -279,6 +281,14 @@ impl pool_xyk::Config for Runtime {
     type WeightInfo = ();
 }
 
+impl ceres_liquidity_locker::Config for Runtime {
+    const BLOCKS_PER_ONE_DAY: BlockNumberFor<Self> = 14_440;
+    type Event = Event;
+    type XYKPool = PoolXYK;
+    type CeresAssetId = ();
+    type WeightInfo = ();
+}
+
 pub struct MockDEXApi;
 
 impl MockDEXApi {
@@ -314,6 +324,7 @@ impl MockDEXApi {
         input_asset_id: &AssetId,
         output_asset_id: &AssetId,
         amount: QuoteAmount<Balance>,
+        deduce_fee: bool,
     ) -> Result<SwapOutcome<Balance>, DispatchError> {
         match amount {
             QuoteAmount::WithDesiredInput {
@@ -321,8 +332,12 @@ impl MockDEXApi {
             } => {
                 let amount_out = FixedWrapper::from(desired_amount_in)
                     * get_mock_prices()[&(*input_asset_id, *output_asset_id)];
-                let fee = amount_out.clone() * balance!(0.007); // XST uses 0.7% fees
-                let fee = fee.into_balance();
+                let fee = if deduce_fee {
+                    let fee = amount_out.clone() * balance!(0.007); // XST uses 0.7% fees
+                    fee.into_balance()
+                } else {
+                    0
+                };
                 let amount_out: Balance = amount_out.into_balance();
                 let amount_out = amount_out - fee;
                 Ok(SwapOutcome::new(amount_out, fee))
@@ -332,11 +347,15 @@ impl MockDEXApi {
             } => {
                 let amount_in = FixedWrapper::from(desired_amount_out)
                     / get_mock_prices()[&(*input_asset_id, *output_asset_id)];
-                let with_fee = amount_in.clone() / balance!(0.993); // XST uses 0.7% fees
-                let fee = with_fee.clone() - amount_in;
-                let fee = fee.into_balance();
-                let with_fee = with_fee.into_balance();
-                Ok(SwapOutcome::new(with_fee, fee))
+                if deduce_fee {
+                    let with_fee = amount_in.clone() / balance!(0.993); // XST uses 0.7% fees
+                    let fee = with_fee.clone() - amount_in;
+                    let fee = fee.into_balance();
+                    let with_fee = with_fee.into_balance();
+                    Ok(SwapOutcome::new(with_fee, fee))
+                } else {
+                    Ok(SwapOutcome::new(amount_in.into_balance(), 0))
+                }
             }
         }
     }
@@ -358,6 +377,7 @@ impl MockDEXApi {
                     input_asset_id,
                     output_asset_id,
                     swap_amount.into(),
+                    true,
                 )?;
                 let reserves_account_id =
                     &Technical::tech_account_id_to_account_id(&ReservesAccount::get())?;
@@ -387,6 +407,7 @@ impl MockDEXApi {
                     input_asset_id,
                     output_asset_id,
                     swap_amount.into(),
+                    true,
                 )?;
                 let reserves_account_id =
                     &Technical::tech_account_id_to_account_id(&ReservesAccount::get())?;
@@ -463,8 +484,15 @@ impl liquidity_proxy::LiquidityProxyTrait<DEXId, AccountId, AssetId> for MockDEX
         output_asset_id: &AssetId,
         amount: QuoteAmount<Balance>,
         filter: LiquiditySourceFilter<DEXId, LiquiditySourceType>,
+        deduce_fee: bool,
     ) -> Result<SwapOutcome<Balance>, DispatchError> {
-        Self::inner_quote(&filter.dex_id, input_asset_id, output_asset_id, amount)
+        Self::inner_quote(
+            &filter.dex_id,
+            input_asset_id,
+            output_asset_id,
+            amount,
+            deduce_fee,
+        )
     }
 }
 
@@ -556,6 +584,7 @@ impl PriceToolsPallet<AssetId> for MockDEXApi {
             input_asset_id,
             output_asset_id,
             QuoteAmount::with_desired_input(balance!(1)),
+            true,
         )?
         .amount)
     }
