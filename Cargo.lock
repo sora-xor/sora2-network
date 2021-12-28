@@ -6500,6 +6500,7 @@ name = "pswap-distribution-benchmarking"
 version = "0.1.0"
 dependencies = [
  "assets",
+ "ceres-liquidity-locker",
  "common",
  "dex-manager",
  "frame-benchmarking",
