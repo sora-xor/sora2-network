@@ -92,6 +92,10 @@ benchmarks! {
 
 impl_benchmark_test_suite!(
     CeresStaking,
-    crate::mock::ExtBuilder::empty().build(),
+    crate::mock::ExtBuilder {
+        endowed_assets: vec![],
+        endowed_accounts: vec![]
+    }
+    .build(),
     crate::mock::Runtime
 );
