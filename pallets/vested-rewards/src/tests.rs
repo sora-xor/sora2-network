@@ -35,7 +35,7 @@ use crate::{
 };
 use common::{
     balance, Balance, OnPswapBurned, PswapRemintInfo, RewardReason, VestedRewardsPallet, ETH,
-    PSWAP, XOR,
+    PSWAP, XOR, XSTUSD,
 };
 use frame_support::assert_noop;
 use frame_support::pallet_prelude::DispatchError;
@@ -460,6 +460,22 @@ fn migration_v0_1_0_to_v1_1_0_market_makers_fails_on_underflow() {
             crate::migration::inject_market_makers_first_month_rewards::<Runtime>(snapshot),
             Error::<Runtime>::CantSubtractSnapshot
         );
+    });
+}
+
+#[test]
+fn storage_has_allowed_market_maker_pools() {
+    let mut ext = ExtBuilder::default().build();
+    ext.execute_with(|| {
+        use crate::MarketMakingPairs;
+
+        assert!(!MarketMakingPairs::<Runtime>::contains_key(XOR, XSTUSD));
+        assert!(!MarketMakingPairs::<Runtime>::contains_key(XSTUSD, XOR));
+
+        crate::migration::allow_market_making_pairs::<Runtime>();
+
+        assert!(MarketMakingPairs::<Runtime>::contains_key(XOR, XSTUSD));
+        assert!(MarketMakingPairs::<Runtime>::contains_key(XSTUSD, XOR));
     });
 }
 
