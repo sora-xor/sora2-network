@@ -4,6 +4,9 @@
 #[cfg(test)]
 mod mock;
 
+#[cfg(test)]
+mod tests;
+
 use codec::{Decode, Encode};
 
 #[derive(Encode, Decode, Default, PartialEq, Eq)]
@@ -108,6 +111,8 @@ pub mod pallet {
         InvalidEndBlock,
         ///Poll Is Not Finished
         PollIsNotFinished,
+        ///InvalidNumberOfVotes
+        InvalidNumberOfVotes,
     }
 
     #[pallet::call]
@@ -122,7 +127,7 @@ pub mod pallet {
         ) -> DispatchResultWithPostInfo {
             let user = ensure_signed(origin)?;
 
-            ensure!(number_of_votes > 0, Error::<T>::PollIsFinished);
+            ensure!(number_of_votes > 0, Error::<T>::InvalidNumberOfVotes);
 
             let poll_info = PollData::<T>::get(&poll_id);
             let current_block = frame_system::Pallet::<T>::block_number();
