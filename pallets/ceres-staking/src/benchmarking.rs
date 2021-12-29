@@ -6,7 +6,7 @@ use super::*;
 
 use codec::Decode;
 use common::{balance, AssetId32, AssetName, AssetSymbol, DEFAULT_BALANCE_PRECISION};
-use frame_benchmarking::{benchmarks, Zero};
+use frame_benchmarking::{benchmarks, impl_benchmark_test_suite, Zero};
 use frame_system::{EventRecord, RawOrigin};
 use hex_literal::hex;
 use sp_std::prelude::*;
@@ -25,7 +25,7 @@ fn alice<T: Config>() -> T::AccountId {
 }
 
 fn assert_last_event<T: Config>(generic_event: <T as Config>::Event) {
-    let events = frame_system::Module::<T>::events();
+    let events = frame_system::Pallet::<T>::events();
     let system_event: <T as frame_system::Config>::Event = generic_event.into();
     // compare to the last event record
     let EventRecord { event, .. } = &events[events.len() - 1];
@@ -47,13 +47,13 @@ benchmarks! {
             true,
             None,
             None,
-        );
+        ).unwrap();
         let _ = assets::Pallet::<T>::mint(
             RawOrigin::Signed(caller.clone()).into(),
             CERES_ASSET_ID.into(),
             caller.clone(),
             balance!(101),
-        );
+        ).unwrap();
     }: _(RawOrigin::Signed(caller.clone()), amount)
     verify {
         assert_last_event::<T>(Event::Deposited(caller.clone(), amount).into());
@@ -73,34 +73,29 @@ benchmarks! {
             true,
             None,
             None,
-        );
+        ).unwrap();
         let _ = assets::Pallet::<T>::mint(
             RawOrigin::Signed(caller.clone()).into(),
             CERES_ASSET_ID.into(),
             caller.clone(),
             balance!(101),
-        );
+        ).unwrap();
         let _ = CeresStaking::<T>::deposit(
             RawOrigin::Signed(caller.clone()).into(),
             amount
-        );
+        ).unwrap();
     }: _(RawOrigin::Signed(caller.clone()))
     verify {
         assert_last_event::<T>(Event::Withdrawn(caller, amount, balance!(0)).into());
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::mock::{ExtBuilder, Runtime};
-    use frame_support::assert_ok;
-
-    #[test]
-    fn test_benchmarks() {
-        ExtBuilder::default().build().execute_with(|| {
-            assert_ok!(test_benchmark_deposit::<Runtime>());
-            assert_ok!(test_benchmark_withdraw::<Runtime>());
-        });
+impl_benchmark_test_suite!(
+    CeresStaking,
+    crate::mock::ExtBuilder {
+        endowed_assets: vec![],
+        endowed_accounts: vec![]
     }
-}
+    .build(),
+    crate::mock::Runtime
+);

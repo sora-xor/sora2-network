@@ -162,7 +162,7 @@ impl pallet_balances::Config for Runtime {
 }
 
 pub struct ExtBuilder {
-    endowed_assets: Vec<(
+    pub endowed_assets: Vec<(
         AssetId,
         AccountId,
         AssetSymbol,
@@ -173,7 +173,7 @@ pub struct ExtBuilder {
         Option<ContentSource>,
         Option<Description>,
     )>,
-    endowed_accounts: Vec<(AccountId, AssetId, Balance)>,
+    pub endowed_accounts: Vec<(AccountId, AssetId, Balance)>,
 }
 
 impl Default for ExtBuilder {

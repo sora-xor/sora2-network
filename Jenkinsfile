@@ -71,7 +71,7 @@ pipeline {
                                     "framenode_runtime.compact.wasm, ${wasmReportFile}"
                             }
                         } else {
-                            docker.image(envImageName + ':dev').inside() {
+                            docker.image(envImageName + ':sub4').inside() {
                                 sh '''
                                     cargo fmt -- --check > /dev/null
                                     cargo check --target-dir /app/target/
