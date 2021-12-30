@@ -1,6 +1,6 @@
 [package]
 name = "framenode"
-version = "0.1.0"
+version = "1.2.2"
 authors = ["Parity Technologies <admin@parity.io>"]
 build = "build.rs"
 edition = "2021"
@@ -111,7 +111,6 @@ private-net = [
 ]
 
 runtime-benchmarks = [
-    "framenode-chain-spec/runtime-benchmarks",
     "frame-benchmarking-cli",
     "framenode-runtime/runtime-benchmarks",
 ]

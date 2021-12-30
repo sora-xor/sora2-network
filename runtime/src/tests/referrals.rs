@@ -42,6 +42,14 @@ type E = referrals::Error<Runtime>;
 fn set_referrer_to() {
     ext().execute_with(|| {
         assert_ok!(Referrals::set_referrer_to(&alice(), alice()));
+        assert_eq!(
+            referrals::Referrers::<Runtime>::get(&alice()),
+            Some(alice())
+        );
+        assert_eq!(
+            referrals::Referrals::<Runtime>::get(&alice()),
+            vec![alice()]
+        );
     });
 }
 

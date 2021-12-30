@@ -414,7 +414,7 @@ pub mod pallet {
         type OnPswapBurnedAggregator: OnPswapBurned;
         type WeightInfo: WeightInfo;
         type GetParliamentAccountId: Get<Self::AccountId>;
-        type PoolXykPallet: PoolXykPallet<AccountId = Self::AccountId>;
+        type PoolXykPallet: PoolXykPallet<Self::AccountId, Self::AssetId>;
     }
 
     /// The current storage version.

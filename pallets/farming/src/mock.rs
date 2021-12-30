@@ -142,6 +142,7 @@ construct_runtime! {
         Scheduler: pallet_scheduler::{Pallet, Call, Storage, Event<T>},
 
         Farming: farming::{Pallet, Storage},
+        CeresLiquidityLocker: ceres_liquidity_locker::{Pallet, Call, Storage, Event<T>},
     }
 }
 
@@ -320,6 +321,14 @@ impl pallet_scheduler::Config for Runtime {
     type MaxScheduledPerBlock = ();
     type WeightInfo = ();
     type OriginPrivilegeCmp = OriginPrivilegeCmp;
+}
+
+impl ceres_liquidity_locker::Config for Runtime {
+    const BLOCKS_PER_ONE_DAY: BlockNumberFor<Self> = 14_440;
+    type Event = Event;
+    type XYKPool = PoolXYK;
+    type CeresAssetId = ();
+    type WeightInfo = ();
 }
 
 impl Config for Runtime {

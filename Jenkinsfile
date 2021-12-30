@@ -12,6 +12,7 @@ String secretScannerExclusion = '.*Cargo.toml'
 Boolean disableSecretScanner  = false
 String featureList            = 'private-net include-real-files reduced-pswap-reward-periods'
 Map pushTags                  = ['master': 'latest', 'develop': 'dev','substrate-4.0.0': 'sub4']
+String bmFeatures             = ''
 
 pipeline {
     options {
@@ -35,9 +36,9 @@ pipeline {
         }
         stage('Build & Tests') {
             environment {
-                PACKAGE       = 'framenode-runtime'
-                RUSTFLAGS     = '-Dwarnings'
-                RUNTIME_DIR   = 'runtime'
+                PACKAGE = 'framenode-runtime'
+                RUSTFLAGS = '-Dwarnings'
+                RUNTIME_DIR = 'runtime'
                 RUSTC_VERSION = "${rustcVersion}"
             }
             steps {
@@ -47,6 +48,7 @@ pipeline {
                             docker.image(envImageName + ':sub4').inside() {
                                 if (env.TAG_NAME =~ 'benchmarking.*') {
                                     featureList = 'runtime-benchmarks main-net-coded'
+                                    bmFeatures = '--features runtime-benchmarks'
                                 }
                                 else if (env.TAG_NAME =~ 'stage.*') {
                                     featureList = 'private-net include-real-files'
@@ -57,26 +59,26 @@ pipeline {
                                 else if (env.TAG_NAME) {
                                     featureList = 'include-real-files'
                                 }
-                                sh """#!/bin/bash
-                                    time cargo build --release --features \"${featureList}\" --target-dir /app/target/
-                                    time cargo test  --release --target-dir /app/target/
+                                sh """
+                                    cargo build --release --features \"${featureList}\" --target-dir /app/target/
+                                    cargo test  --release \"${bmFeatures}\" --target-dir /app/target/
                                     sccache -s
-                                    time mv /app/target/release/framenode .
-                                    time wasm-opt -Os -o ./framenode_runtime.compact.wasm /app/target/release/wbuild/framenode-runtime/framenode_runtime.compact.wasm
+                                    mv /app/target/release/framenode .
+                                    wasm-opt -Os -o ./framenode_runtime.compact.wasm /app/target/release/wbuild/framenode-runtime/framenode_runtime.compact.wasm
                                     subwasm --json info framenode_runtime.compact.wasm > ${wasmReportFile}
                                 """
                                 archiveArtifacts artifacts:
                                     "framenode_runtime.compact.wasm, ${wasmReportFile}"
                             }
                         } else {
-                            docker.image(envImageName + ':dev').inside() {
-                                sh '''#!/bin/bash
-                                    time cargo fmt -- --check > /dev/null
-                                    time cargo check --target-dir /app/target/
-                                    time cargo test  --target-dir /app/target/
-                                    time cargo check --features private-net        --target-dir /app/target/
-                                    time cargo test  --features private-net        --target-dir /app/target/
-                                    time cargo check --features runtime-benchmarks --target-dir /app/target/
+                            docker.image(envImageName + ':sub4').inside() {
+                                sh '''
+                                    cargo fmt -- --check > /dev/null
+                                    cargo check --target-dir /app/target/
+                                    cargo test --target-dir /app/target/
+                                    cargo check --features private-net --target-dir /app/target/
+                                    cargo test  --features private-net --target-dir /app/target/
+                                    cargo check --features runtime-benchmarks --target-dir /app/target/
                                     sccache -s
                                 '''
                             }

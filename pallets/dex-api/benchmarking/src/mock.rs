@@ -42,6 +42,7 @@ use frame_support::{construct_runtime, parameter_types};
 use frame_system;
 
 use common::prelude::Balance;
+use frame_system::pallet_prelude::BlockNumberFor;
 use permissions::{Scope, BURN, MANAGE_DEX, MINT};
 use sp_core::H256;
 use sp_runtime::testing::Header;
@@ -104,6 +105,7 @@ construct_runtime! {
         PswapDistribution: pswap_distribution::{Pallet, Call, Config<T>, Storage, Event<T>},
         MBCPool: multicollateral_bonding_curve_pool::{Pallet, Call, Config<T>, Storage, Event<T>},
         VestedRewards: vested_rewards::{Pallet, Call, Storage, Event<T>},
+        CeresLiquidityLocker: ceres_liquidity_locker::{Pallet, Call, Storage, Event<T>},
     }
 }
 
@@ -276,6 +278,14 @@ impl vested_rewards::Config for Runtime {
     type GetMarketMakerRewardsAccountId = GetMarketMakerRewardsAccountId;
     type GetBondingCurveRewardsAccountId = GetBondingCurveRewardsAccountId;
     type GetFarmingRewardsAccountId = GetFarmingRewardsAccountId;
+    type WeightInfo = ();
+}
+
+impl ceres_liquidity_locker::Config for Runtime {
+    const BLOCKS_PER_ONE_DAY: BlockNumberFor<Self> = 14_440;
+    type Event = Event;
+    type XYKPool = PoolXYK;
+    type CeresAssetId = ();
     type WeightInfo = ();
 }
 

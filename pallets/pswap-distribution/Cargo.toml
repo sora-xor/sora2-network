@@ -38,6 +38,7 @@ technical = { path = "../technical", default-features = false }
 trading-pair = { path = "../trading-pair", default-features = false }
 
 [dev-dependencies]
+ceres-liquidity-locker = { path = "../ceres-liquidity-locker", default-features = false }
 hex-literal = { version = '0.3.1' }
 sp-runtime = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.9" }
 

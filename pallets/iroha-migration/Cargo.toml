@@ -45,7 +45,6 @@ tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library
 assets = { path = "../assets" }
 common = { path = "../../common", features = ["test"] }
 permissions = { path = "../permissions" }
-referrals = { path = "../referrals" }
 technical = { path = "../technical" }
 eth-bridge = {path = "../eth-bridge" }
 

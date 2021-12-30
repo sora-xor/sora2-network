@@ -622,6 +622,8 @@ fn withdraw_fee_set_referrer() {
 
         let dispatch_info = info_from_weight(100_000_000);
         let call = Call::Referrals(referrals::Call::set_referrer { referrer: bob() });
+        let initial_balance = Assets::free_balance(&XOR.into(), &alice()).unwrap();
+
         let result = XorFee::withdraw_fee(&alice(), &call, &dispatch_info, 1337, 0);
         assert_eq!(
             result,
@@ -629,6 +631,10 @@ fn withdraw_fee_set_referrer() {
                 bob(),
                 Some(NegativeImbalance::new(SMALL_FEE))
             )))
+        );
+        assert_eq!(
+            Assets::free_balance(&XOR.into(), &alice()),
+            Ok(initial_balance)
         );
     });
 }

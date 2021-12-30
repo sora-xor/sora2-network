@@ -95,6 +95,7 @@ impl<T: Config>
         input_asset_id: &T::AssetId,
         output_asset_id: &T::AssetId,
         amount: QuoteAmount<Balance>,
+        deduce_fee: bool,
     ) -> Result<SwapOutcome<Balance>, DispatchError> {
         use LiquiditySourceType::*;
         macro_rules! quote {
@@ -104,6 +105,7 @@ impl<T: Config>
                     input_asset_id,
                     output_asset_id,
                     amount,
+                    deduce_fee,
                 )
             };
         }
@@ -188,6 +190,7 @@ impl<T: Config>
         input_asset_id: &T::AssetId,
         output_asset_id: &T::AssetId,
         amount: QuoteAmount<Balance>,
+        deduce_fee: bool,
     ) -> Result<SwapOutcome<Balance>, DispatchError> {
         use LiquiditySourceType::*;
         macro_rules! quote_without_impact {
@@ -197,6 +200,7 @@ impl<T: Config>
                     input_asset_id,
                     output_asset_id,
                     amount,
+                    deduce_fee,
                 )
             };
         }

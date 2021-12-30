@@ -46,6 +46,20 @@ pub trait WeightInfo {
     fn set_referrer() -> Weight;
 }
 
+impl WeightInfo for () {
+    fn reserve() -> Weight {
+        0
+    }
+
+    fn unreserve() -> Weight {
+        0
+    }
+
+    fn set_referrer() -> Weight {
+        0
+    }
+}
+
 impl<T: Config> Pallet<T> {
     pub fn set_referrer_to(
         referral: &T::AccountId,
@@ -59,6 +73,7 @@ impl<T: Config> Pallet<T> {
                 .map_err(|_| Error::<T>::IncRefError)?;
             frame_system::Pallet::<T>::inc_consumers(&referrer)
                 .map_err(|_| Error::<T>::IncRefError)?;
+            Referrals::<T>::append(&referrer, referral);
             *r = Some(referrer);
             Ok(())
         })
@@ -88,6 +103,7 @@ pub mod pallet {
     use frame_support::pallet_prelude::*;
     use frame_support::traits::StorageVersion;
     use frame_system::pallet_prelude::*;
+    use sp_std::prelude::*;
 
     use crate::WeightInfo;
 
@@ -195,6 +211,11 @@ pub mod pallet {
     #[pallet::getter(fn referrer_balance)]
     pub type ReferrerBalances<T: Config> = StorageMap<_, Blake2_128Concat, T::AccountId, Balance>;
 
+    #[pallet::storage]
+    #[pallet::getter(fn referrals)]
+    pub type Referrals<T: Config> =
+        StorageMap<_, Blake2_128Concat, T::AccountId, Vec<T::AccountId>, ValueQuery>;
+
     #[pallet::genesis_config]
     pub struct GenesisConfig<T: Config> {
         pub referrers: Vec<(T::AccountId, T::AccountId)>,
@@ -216,6 +237,7 @@ pub mod pallet {
                 frame_system::Pallet::<T>::inc_consumers(k).unwrap();
                 frame_system::Pallet::<T>::inc_consumers(v).unwrap();
                 Referrers::<T>::insert(k, v);
+                Referrals::<T>::append(v, k);
             });
         }
     }
