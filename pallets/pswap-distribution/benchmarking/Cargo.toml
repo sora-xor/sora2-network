@@ -12,7 +12,9 @@ edition = '2018'
 targets = ['x86_64-unknown-linux-gnu']
 
 [dependencies]
-codec = { package = "parity-scale-codec", version = "2", default-features = false, features = ["derive"] }
+codec = { package = "parity-scale-codec", version = "2", default-features = false, features = [
+    "derive",
+] }
 frame-benchmarking = { version = "3", default-features = false, optional = true }
 frame-support = { version = "3", default-features = false }
 frame-system = { version = "3", default-features = false }
@@ -32,6 +34,7 @@ technical = { path = "../../technical", default-features = false }
 trading-pair = { path = "../../trading-pair", default-features = false }
 
 [dev-dependencies]
+ceres-liquidity-locker = { path = "../../ceres-liquidity-locker", default-features = false }
 currencies = { version = "0.4", package = "orml-currencies" }
 hex-literal = { version = '0.3.1' }
 pallet-balances = { version = "3" }
@@ -64,5 +67,5 @@ std = [
 runtime-benchmarks = [
     "frame-benchmarking",
     "frame-support/runtime-benchmarks",
-    "frame-system/runtime-benchmarks"
+    "frame-system/runtime-benchmarks",
 ]
