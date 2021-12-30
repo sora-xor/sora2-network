@@ -98,7 +98,7 @@ mod tests {
 
     #[test]
     fn test_benchmarks() {
-        ExtBuilder::default().build().execute_with(|| {
+        ExtBuilder::empty().build().execute_with(|| {
             assert_ok!(test_benchmark_deposit::<Runtime>());
             assert_ok!(test_benchmark_withdraw::<Runtime>());
         });

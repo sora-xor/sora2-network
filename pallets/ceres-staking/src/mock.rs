@@ -194,6 +194,14 @@ impl Default for ExtBuilder {
 }
 
 impl ExtBuilder {
+    #[allow(dead_code)]
+    pub fn empty() -> Self {
+        ExtBuilder {
+            endowed_assets: vec![],
+            endowed_accounts: vec![],
+        }
+    }
+
     pub fn build(self) -> sp_io::TestExternalities {
         let mut t = SystemConfig::default().build_storage::<Runtime>().unwrap();
 
