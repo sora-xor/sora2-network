@@ -260,10 +260,16 @@ impl<T: Config> VestedRewardsPallet<T::AccountId, T::AssetId> for Module<T> {
         count: u32,
         from_asset_id: &T::AssetId,
         to_asset_id: &T::AssetId,
+        intermediate_asset_id: Option<&T::AssetId>,
     ) -> DispatchResult {
-        if MarketMakingPairs::<T>::contains_key(from_asset_id, to_asset_id)
-            && xor_volume >= balance!(1)
-        {
+        let allowed = if let Some(intermediate) = intermediate_asset_id {
+            MarketMakingPairs::<T>::contains_key(from_asset_id, intermediate)
+                && MarketMakingPairs::<T>::contains_key(intermediate, to_asset_id)
+        } else {
+            MarketMakingPairs::<T>::contains_key(from_asset_id, to_asset_id)
+        };
+
+        if allowed && xor_volume >= balance!(1) {
             MarketMakersRegistry::<T>::mutate(account_id, |info| {
                 info.count = info.count.saturating_add(count);
                 info.volume = info
