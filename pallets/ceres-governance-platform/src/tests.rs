@@ -1,21 +1,24 @@
 mod tests {
     use crate::mock::*;
-    use crate::Error;
+    use crate::{pallet, Error};
     use common::balance;
     use frame_support::{assert_err, assert_ok};
+    use sp_runtime::traits::AccountIdConversion;
+    use sp_runtime::ModuleId;
 
     #[test]
     fn create_poll_invalid_number_of_option() {
         let mut ext = ExtBuilder::default().build();
         ext.execute_with(|| {
             let poll_id = Vec::from([1, 2, 3, 4]);
+            let current_block = frame_system::Pallet::<Runtime>::block_number();
             assert_err!(
                 CeresGovernancePlatform::create_poll(
                     Origin::signed(ALICE),
                     poll_id,
                     1,
-                    frame_system::Pallet::<Runtime>::block_number(),
-                    frame_system::Pallet::<Runtime>::block_number() + 1
+                    current_block,
+                    current_block + 1
                 ),
                 Error::<Runtime>::InvalidNumberOfOption
             );
@@ -49,13 +52,14 @@ mod tests {
         let mut ext = ExtBuilder::default().build();
         ext.execute_with(|| {
             let poll_id = Vec::from([1, 2, 3, 4]);
+            let current_block = frame_system::Pallet::<Runtime>::block_number();
             assert_err!(
                 CeresGovernancePlatform::create_poll(
                     Origin::signed(ALICE),
                     poll_id,
                     2,
-                    frame_system::Pallet::<Runtime>::block_number() + 1,
-                    frame_system::Pallet::<Runtime>::block_number()
+                    current_block + 1,
+                    current_block
                 ),
                 Error::<Runtime>::InvalidEndBlock
             );
@@ -72,14 +76,17 @@ mod tests {
             let poll_end_block = frame_system::Pallet::<Runtime>::block_number() + 1;
             assert_ok!(CeresGovernancePlatform::create_poll(
                 Origin::signed(ALICE),
-                poll_id,
+                poll_id.clone(),
                 number_of_option,
                 poll_start_block,
                 poll_end_block
             ));
 
-            //Check number of option
-            assert_eq!(number_of_option, 2);
+            // Check PollData map
+            let poll_info = pallet::PollData::<Runtime>::get(&poll_id);
+            assert_eq!(poll_info.number_of_options, number_of_option);
+            assert_eq!(poll_info.poll_start_block, poll_start_block);
+            assert_eq!(poll_info.poll_end_block, poll_end_block);
         })
     }
 
@@ -88,7 +95,6 @@ mod tests {
         let mut ext = ExtBuilder::default().build();
         ext.execute_with(|| {
             let poll_id = Vec::from([1, 2, 3, 4]);
-
             assert_err!(
                 CeresGovernancePlatform::vote(Origin::signed(ALICE), poll_id, 2, balance!(0)),
                 Error::<Runtime>::InvalidNumberOfVotes
@@ -107,7 +113,7 @@ mod tests {
                 poll_id.clone(),
                 2,
                 current_block + 2,
-                frame_system::Pallet::<Runtime>::block_number() + 10
+                current_block + 10
             ));
             assert_err!(
                 CeresGovernancePlatform::vote(
@@ -154,12 +160,13 @@ mod tests {
         let mut ext = ExtBuilder::default().build();
         ext.execute_with(|| {
             let poll_id = Vec::from([1, 2, 3, 4]);
+            let current_block = frame_system::Pallet::<Runtime>::block_number();
             assert_ok!(CeresGovernancePlatform::create_poll(
                 Origin::signed(ALICE),
                 poll_id.clone(),
                 3,
-                frame_system::Pallet::<Runtime>::block_number(),
-                frame_system::Pallet::<Runtime>::block_number() + 10
+                current_block,
+                current_block + 10
             ));
             assert_err!(
                 CeresGovernancePlatform::vote(
@@ -231,6 +238,7 @@ mod tests {
             let poll_id = Vec::from([1, 2, 3, 4]);
             let voting_option = 3;
             let current_block = frame_system::Pallet::<Runtime>::block_number();
+            let number_of_votes = balance!(300);
             assert_ok!(CeresGovernancePlatform::create_poll(
                 Origin::signed(ALICE),
                 poll_id.clone(),
@@ -242,8 +250,28 @@ mod tests {
                 Origin::signed(ALICE),
                 poll_id.clone(),
                 voting_option,
-                balance!(300)
+                number_of_votes
             ));
+
+            // Check Voting map
+            let voting_info = pallet::Voting::<Runtime>::get(&poll_id, &ALICE);
+            assert_eq!(voting_info.voting_option, voting_option);
+            assert_eq!(voting_info.number_of_votes, number_of_votes);
+
+            // Check ALICE's balances
+            assert_eq!(
+                Assets::free_balance(&CERES_ASSET_ID, &ALICE)
+                    .expect("Failed to query free balance."),
+                balance!(2700)
+            );
+
+            // Check pallet's balances
+            let governance = ModuleId(*b"crsgvrnc").into_account();
+            assert_eq!(
+                Assets::free_balance(&CERES_ASSET_ID, &governance)
+                    .expect("Failed to query free balance."),
+                number_of_votes
+            );
         });
     }
 
@@ -257,7 +285,7 @@ mod tests {
                 Origin::signed(ALICE),
                 poll_id.clone(),
                 2,
-                frame_system::Pallet::<Runtime>::block_number(),
+                current_block,
                 current_block + 10
             ));
             assert_err!(
@@ -273,7 +301,7 @@ mod tests {
         ext.execute_with(|| {
             let poll_id = Vec::from([1, 2, 3, 4]);
             let voting_option = 2;
-            let number_of_votes = balance!(200);
+            let number_of_votes = balance!(300);
             let current_block = frame_system::Pallet::<Runtime>::block_number();
             assert_ok!(CeresGovernancePlatform::create_poll(
                 Origin::signed(ALICE),
@@ -295,6 +323,27 @@ mod tests {
                 Origin::signed(ALICE),
                 poll_id.clone()
             ));
+
+            // Check Voting map
+            let voting_info = pallet::Voting::<Runtime>::get(&poll_id, &ALICE);
+            assert_eq!(voting_info.voting_option, voting_option);
+            assert_eq!(voting_info.number_of_votes, number_of_votes);
+            assert_eq!(voting_info.ceres_withdrawn, true);
+
+            // Check ALICE's balances
+            assert_eq!(
+                Assets::free_balance(&CERES_ASSET_ID, &ALICE)
+                    .expect("Failed to query free balance."),
+                balance!(3000)
+            );
+
+            // Check pallet's balances
+            let governance = ModuleId(*b"crsgvrnc").into_account();
+            assert_eq!(
+                Assets::free_balance(&CERES_ASSET_ID, &governance)
+                    .expect("Failed to query free balance."),
+                balance!(0)
+            );
         })
     }
 }

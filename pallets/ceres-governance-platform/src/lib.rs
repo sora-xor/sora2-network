@@ -245,6 +245,8 @@ pub mod pallet {
             let mut voting_info = <Voting<T>>::get(&poll_id, &user);
             voting_info.ceres_withdrawn = true;
 
+            <Voting<T>>::insert(&poll_id, &user, &voting_info);
+
             // Withdraw CERES
             Assets::<T>::transfer_from(
                 &T::CeresAssetId::get().into(),
