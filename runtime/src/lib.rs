@@ -1439,6 +1439,16 @@ impl price_tools::Config for Runtime {
     type WeightInfo = price_tools::weights::WeightInfo<Runtime>;
 }
 
+parameter_types! {
+    pub const CeresAssetId: AssetId = common::AssetId32::from_bytes
+        (hex!("008bcfd2387d3fc453333557eecb0efe59fcba128769b2feefdd306e98e66440"));
+}
+
+impl ceres_governance_platform::Config for Runtime {
+    type Event = Event;
+    type CeresAssetId = CeresAssetId;
+}
+
 /// Payload data to be signed when making signed transaction from off-chain workers,
 ///   inside `create_transaction` function.
 pub type SignedPayload = generic::SignedPayload<Call, SignedExtra>;
@@ -1509,6 +1519,7 @@ construct_runtime! {
         Farming: farming::{Module, Call, Storage} = 42,
         XSTPool: xst::{Module, Call, Storage, Config<T>, Event<T>} = 43,
         PriceTools: price_tools::{Module, Storage, Event<T>} = 44,
+        CeresGovernancePlatform: ceres_governance_platform::{Module, Call, Storage, Event<T>} = 45,
 
         // Available only for test net
         Faucet: faucet::{Module, Call, Config<T>, Event<T>} = 80,
@@ -1572,6 +1583,7 @@ construct_runtime! {
         Farming: farming::{Module, Call, Storage} = 42,
         XSTPool: xst::{Module, Call, Storage, Config<T>, Event<T>} = 43,
         PriceTools: price_tools::{Module, Storage, Event<T>} = 44,
+        CeresGovernancePlatform: ceres_governance_platform::{Module, Call, Storage, Event<T>} = 45,
     }
 }
 
@@ -2163,6 +2175,7 @@ impl_runtime_apis! {
             add_benchmark!(params, batches, price_tools, PriceTools);
             add_benchmark!(params, batches, xor_fee, XorFeeBench::<Runtime>);
             add_benchmark!(params, batches, referrals, Referrals);
+            add_benchmark!(params, batches, ceres_governance_platform, CeresGovernancePlatform);
 
             if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
             Ok(batches)

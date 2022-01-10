@@ -1,6 +1,8 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![feature(destructuring_assignment)]
 
+mod benchmarking;
+
 #[cfg(test)]
 mod mock;
 
@@ -42,6 +44,7 @@ pub mod pallet {
     use frame_system::pallet_prelude::*;
     use sp_runtime::traits::AccountIdConversion;
     use sp_runtime::ModuleId;
+    use frame_support::traits::Vec;
 
     const PALLET_ID: ModuleId = ModuleId(*b"crsgvrnc");
 

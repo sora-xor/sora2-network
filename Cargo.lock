@@ -804,6 +804,7 @@ dependencies = [
  "ceres-governance-platform",
  "common",
  "dex-manager",
+ "frame-benchmarking 3.1.0",
  "frame-support",
  "frame-system",
  "hex-literal",
@@ -2401,6 +2402,7 @@ version = "0.1.0"
 dependencies = [
  "assets",
  "assets-runtime-api",
+ "ceres-governance-platform",
  "common",
  "dex-api",
  "dex-api-benchmarking",

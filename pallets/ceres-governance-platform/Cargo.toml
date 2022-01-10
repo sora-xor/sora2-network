@@ -25,6 +25,7 @@ trading-pair = { path = "../trading-pair", default-features = false }
 permissions = { path = "../permissions", default-features = false }
 serde = { version = "1.0.101", optional = true, features = ["derive"] }
 hex-literal = "0.3.1"
+frame-benchmarking = { version = "3", default-features = false, optional = true }
 
 [dev-dependencies]
 assets = { path = "../assets" }
@@ -57,3 +58,8 @@ std = [
     "sp-std/std",
 ]
 
+runtime-benchmarks = [
+    "frame-benchmarking",
+    "frame-system/runtime-benchmarks",
+    "frame-support/runtime-benchmarks",
+]
