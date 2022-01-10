@@ -797,14 +797,13 @@ dependencies = [
 ]
 
 [[package]]
-name = "ceres-governance-platform"
+name = "ceres-liquidity-locker"
 version = "1.2.0"
 dependencies = [
  "assets",
- "ceres-governance-platform",
+ "ceres-liquidity-locker",
  "common",
  "dex-manager",
- "frame-benchmarking 3.1.0",
  "frame-support",
  "frame-system",
  "hex-literal",
@@ -825,6 +824,58 @@ dependencies = [
  "sp-std",
  "technical",
  "trading-pair",
+]
+
+[[package]]
+name = "ceres-liquidity-locker-benchmarking"
+version = "0.1.0"
+dependencies = [
+ "assets",
+ "ceres-liquidity-locker",
+ "common",
+ "dex-api",
+ "dex-manager",
+ "frame-benchmarking 3.1.0",
+ "frame-support",
+ "frame-system",
+ "getrandom 0.2.3",
+ "hex-literal",
+ "orml-currencies",
+ "orml-tokens",
+ "pallet-balances",
+ "parity-scale-codec",
+ "permissions",
+ "pool-xyk",
+ "pswap-distribution",
+ "serde",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+ "technical",
+ "trading-pair",
+]
+
+[[package]]
+name = "ceres-staking"
+version = "1.0.0"
+dependencies = [
+ "assets",
+ "common",
+ "frame-benchmarking 3.1.0",
+ "frame-support",
+ "frame-system",
+ "hex-literal",
+ "orml-currencies",
+ "orml-tokens",
+ "pallet-balances",
+ "parity-scale-codec",
+ "permissions",
+ "serde",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
 ]
 
 [[package]]
@@ -1348,6 +1399,7 @@ name = "dex-api"
 version = "0.1.0"
 dependencies = [
  "assets",
+ "ceres-liquidity-locker",
  "common",
  "dex-manager",
  "frame-support",
@@ -1377,6 +1429,7 @@ name = "dex-api-benchmarking"
 version = "0.1.0"
 dependencies = [
  "assets",
+ "ceres-liquidity-locker",
  "common",
  "dex-api",
  "dex-manager",
@@ -1927,6 +1980,7 @@ name = "farming"
 version = "1.2.0"
 dependencies = [
  "assets",
+ "ceres-liquidity-locker",
  "common",
  "dex-manager",
  "env_logger 0.9.0",
@@ -2295,7 +2349,7 @@ dependencies = [
 
 [[package]]
 name = "framenode"
-version = "0.1.0"
+version = "1.2.2"
 dependencies = [
  "ansi_term 0.12.1",
  "assert_cmd",
@@ -2372,7 +2426,7 @@ dependencies = [
 
 [[package]]
 name = "framenode-chain-spec"
-version = "0.1.0"
+version = "1.2.2"
 dependencies = [
  "common",
  "faucet",
@@ -2398,11 +2452,13 @@ dependencies = [
 
 [[package]]
 name = "framenode-runtime"
-version = "0.1.0"
+version = "1.2.2"
 dependencies = [
  "assets",
  "assets-runtime-api",
- "ceres-governance-platform",
+ "ceres-liquidity-locker",
+ "ceres-liquidity-locker-benchmarking",
+ "ceres-staking",
  "common",
  "dex-api",
  "dex-api-benchmarking",
@@ -2745,8 +2801,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7fcd999463524c52659517fe2cea98493cfe485d10565e7b0fb07dbba7ad2753"
 dependencies = [
  "cfg-if 1.0.0",
+ "js-sys",
  "libc",
  "wasi 0.10.0+wasi-snapshot-preview1",
+ "wasm-bindgen",
 ]
 
 [[package]]
@@ -2919,9 +2977,9 @@ checksum = "7f24254aa9a54b5c858eaee2f5bccdb46aaf0e486a595ed5fd8f86ba55232a70"
 
 [[package]]
 name = "hex-literal"
-version = "0.3.3"
+version = "0.3.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "21e4590e13640f19f249fe3e4eca5113bc4289f2497710378190e7f4bd96f45b"
+checksum = "7ebdb29d2ea9ed0083cd8cece49bbd968021bd99b0849edb4a9a7ee0fdf6a4e0"
 
 [[package]]
 name = "hex_fmt"
@@ -4084,6 +4142,7 @@ name = "liquidity-proxy"
 version = "0.1.0"
 dependencies = [
  "assets",
+ "ceres-liquidity-locker",
  "common",
  "dex-api",
  "dex-manager",
@@ -4115,6 +4174,7 @@ name = "liquidity-proxy-benchmarking"
 version = "0.1.0"
 dependencies = [
  "assets",
+ "ceres-liquidity-locker",
  "common",
  "dex-api",
  "dex-manager",
@@ -4470,6 +4530,7 @@ name = "multicollateral-bonding-curve-pool"
 version = "0.2.0"
 dependencies = [
  "assets",
+ "ceres-liquidity-locker",
  "common",
  "dex-api",
  "dex-manager",
@@ -5684,6 +5745,7 @@ name = "pool-xyk"
 version = "1.2.0"
 dependencies = [
  "assets",
+ "ceres-liquidity-locker",
  "common",
  "dex-manager",
  "frame-support",
@@ -5713,6 +5775,7 @@ name = "pool-xyk-benchmarking"
 version = "0.1.0"
 dependencies = [
  "assets",
+ "ceres-liquidity-locker",
  "common",
  "dex-api",
  "dex-manager",
@@ -5773,6 +5836,7 @@ name = "price-tools"
 version = "1.0.0"
 dependencies = [
  "assets",
+ "ceres-liquidity-locker",
  "common",
  "dex-api",
  "dex-manager",
@@ -5967,6 +6031,7 @@ name = "pswap-distribution"
 version = "1.1.1"
 dependencies = [
  "assets",
+ "ceres-liquidity-locker",
  "common",
  "dex-manager",
  "frame-benchmarking 3.1.0",
@@ -5997,6 +6062,7 @@ name = "pswap-distribution-benchmarking"
 version = "0.1.0"
 dependencies = [
  "assets",
+ "ceres-liquidity-locker",
  "common",
  "dex-manager",
  "frame-benchmarking 3.1.0",
@@ -6344,7 +6410,7 @@ dependencies = [
 
 [[package]]
 name = "referrals"
-version = "1.0.0"
+version = "1.1.0"
 dependencies = [
  "assets",
  "common",
@@ -6353,8 +6419,12 @@ dependencies = [
  "frame-system",
  "hex-literal",
  "orml-traits",
+ "pallet-balances",
  "parity-scale-codec",
  "serde",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
  "sp-std",
 ]
 
@@ -9406,7 +9476,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "04f8ab788026715fa63b31960869617cba39117e520eb415b0139543e325ab59"
 dependencies = [
  "cfg-if 0.1.10",
- "rand 0.3.23",
+ "rand 0.7.3",
  "static_assertions",
 ]
 
@@ -9592,6 +9662,7 @@ name = "vested-rewards"
 version = "1.2.0"
 dependencies = [
  "assets",
+ "ceres-liquidity-locker",
  "common",
  "dex-manager",
  "frame-benchmarking 3.1.0",
@@ -10193,6 +10264,7 @@ name = "xst"
 version = "1.0.0"
 dependencies = [
  "assets",
+ "ceres-liquidity-locker",
  "common",
  "dex-api",
  "dex-manager",

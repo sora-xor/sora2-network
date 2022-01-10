@@ -31,17 +31,27 @@
 use common::mock::{alice, bob, charlie};
 use common::prelude::constants::SMALL_FEE;
 use common::XOR;
+use frame_support::traits::{Hooks, PalletVersion};
 use frame_support::{assert_err, assert_ok};
 use framenode_chain_spec::ext;
 
 use crate::{Assets, Currencies, Origin, Referrals, Runtime};
 
 type E = referrals::Error<Runtime>;
+type PalletInfoOf<T> = <T as frame_system::Config>::PalletInfo;
 
 #[test]
 fn set_referrer_to() {
     ext().execute_with(|| {
         assert_ok!(Referrals::set_referrer_to(&alice(), alice()));
+        assert_eq!(
+            referrals::Referrers::<Runtime>::get(&alice()),
+            Some(alice())
+        );
+        assert_eq!(
+            referrals::Referrals::<Runtime>::get(&alice()),
+            vec![alice()]
+        );
     });
 }
 
@@ -122,4 +132,26 @@ fn withdraw() {
 
         assert_ok!(Referrals::withdraw_fee(&alice(), SMALL_FEE));
     })
+}
+
+#[test]
+fn storage_migration_to_v1_1_0_works() {
+    ext().execute_with(|| {
+        PalletVersion {
+            major: 1,
+            minor: 0,
+            patch: 0,
+        }
+        .put_into_storage::<PalletInfoOf<Runtime>, Referrals>();
+
+        referrals::Referrers::<Runtime>::insert(alice(), alice());
+        referrals::Referrers::<Runtime>::insert(bob(), alice());
+
+        Referrals::on_runtime_upgrade();
+
+        let refs = referrals::Referrals::<Runtime>::get(alice());
+        assert!(refs.contains(&alice()));
+        assert!(refs.contains(&bob()));
+        assert_eq!(referrals::Referrals::<Runtime>::get(bob()), vec![]);
+    });
 }

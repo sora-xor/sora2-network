@@ -27,6 +27,7 @@ pswap-distribution = { path = "../../pswap-distribution", default-features = fal
 hex-literal = "0.3.1"
 
 [dev-dependencies]
+ceres-liquidity-locker = { path = "../../ceres-liquidity-locker", default-features = false }
 serde = { version = "1.0.101", default-features = false, features = ["derive"] }
 sp-io = { version = "3", default-features = false }
 sp-runtime = { version = "3", default-features = false }

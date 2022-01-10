@@ -6,13 +6,15 @@ repository = "https://github.com/sora-xor/sora2-network"
 description = "Referrals"
 edition = "2018"
 name = "referrals"
-version = "1.0.0"
+version = "1.1.0"
 
 [package.metadata.docs.rs]
 targets = ["x86_64-unknown-linux-gnu"]
 
 [dependencies]
+assets = { path = "../assets", default-features = false }
 codec = { package = "parity-scale-codec", version = "2", default-features = false, features = ["derive"] }
+common = { path = "../../common", default-features = false }
 frame-benchmarking = { version = "3", default-features = false, optional = true }
 frame-support = { version = "3", default-features = false }
 frame-system = { version = "3", default-features = false }
@@ -21,8 +23,12 @@ serde = { version = "1.0.101", optional = true, features = ["derive"] }
 sp-std = { version = "3", default-features = false }
 traits = { version = "0.4", package = "orml-traits", default-features = false, optional = true }
 
-assets = { path = "../assets", default-features = false }
-common = { path = "../../common", default-features = false }
+[dev-dependencies]
+common = { path = "../../common", features = ["test"] }
+pallet-balances = { version = "3", default-features = false }
+sp-core = { version = "3", default-features = false }
+sp-io = { version = "3", default-features = false }
+sp-runtime = { version = "3", default-features = false }
 
 [features]
 default = ["std"]

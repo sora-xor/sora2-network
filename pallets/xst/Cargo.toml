@@ -16,7 +16,7 @@ currencies = { version = "0.4", package = "orml-currencies", default-features = 
 frame-support = { version = "3", default-features = false }
 frame-system = { version = "3", default-features = false }
 frame-benchmarking = { version = "3", default-features = false, optional = true }
-hex-literal = { version = "0.3.1", optional = true }
+hex-literal = "0.3.4"
 orml-traits = { version = "0.4", package = "orml-traits", default-features = false }
 serde = { version = "1.0.101", default-features = false, optional = true, features = ["derive"] }
 sp-arithmetic = { version = "3", default-features = false }
@@ -34,6 +34,7 @@ trading-pair = { path = "../trading-pair", default-features = false }
 pool-xyk = { path = "../pool-xyk", default-features = false }
 
 [dev-dependencies]
+ceres-liquidity-locker = { path = "../ceres-liquidity-locker", default-features = false }
 hex-literal = "0.3.1"
 pallet-balances = { version = "3", default-features = false }
 sp-core = { version = "3", default-features = false }
@@ -64,5 +65,4 @@ runtime-benchmarks = [
     "frame-benchmarking",
     "frame-system/runtime-benchmarks",
     "frame-support/runtime-benchmarks",
-    "hex-literal",
 ]

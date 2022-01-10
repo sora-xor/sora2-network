@@ -332,11 +332,80 @@ fn quote_case_exact_input_for_output_base_first() {
                 &bp,
                 QuoteAmount::WithDesiredInput {
                     desired_amount_in: balance!(100000)
-                }
+                },
+                true
             )
             .unwrap()),
             (99849774661992989484226, balance!(300))
         );
+    })]);
+}
+
+#[test]
+fn test_deducing_fee() {
+    crate::Module::<Runtime>::preset_initial(vec![Rc::new(|dex_id, gt, bp, _, _, _, _, _| {
+        assert_ok!(crate::Module::<Runtime>::deposit_liquidity(
+            Origin::signed(ALICE()),
+            dex_id,
+            GoldenTicket.into(),
+            BlackPepper.into(),
+            balance!(100000),
+            balance!(200000),
+            0,
+            0,
+        ));
+        let (amount_a, fee_a): (Balance, Balance) =
+            simplify_swap_outcome!(crate::Module::<Runtime>::quote(
+                &dex_id,
+                &gt,
+                &bp,
+                QuoteAmount::WithDesiredInput {
+                    desired_amount_in: balance!(100000)
+                },
+                true
+            )
+            .unwrap());
+        assert_eq!((amount_a, fee_a), (99849774661992989484226, balance!(300)));
+        let (amount_b, fee_b): (Balance, Balance) =
+            simplify_swap_outcome!(crate::Module::<Runtime>::quote(
+                &dex_id,
+                &gt,
+                &bp,
+                QuoteAmount::WithDesiredInput {
+                    desired_amount_in: balance!(100000)
+                },
+                false
+            )
+            .unwrap());
+        assert_eq!((amount_b, fee_b), (amount_b + fee_b, 0));
+
+        let (amount_a, fee_a): (Balance, Balance) =
+            simplify_swap_outcome!(crate::Module::<Runtime>::quote(
+                &dex_id,
+                &gt,
+                &bp,
+                QuoteAmount::WithDesiredOutput {
+                    desired_amount_out: balance!(100000)
+                },
+                true
+            )
+            .unwrap());
+        assert_eq!(
+            (amount_a, fee_a),
+            (100300902708124373119360, balance!(300.902708124373119358))
+        );
+        let (amount_b, fee_b): (Balance, Balance) =
+            simplify_swap_outcome!(crate::Module::<Runtime>::quote(
+                &dex_id,
+                &gt,
+                &bp,
+                QuoteAmount::WithDesiredOutput {
+                    desired_amount_out: balance!(100000)
+                },
+                false
+            )
+            .unwrap());
+        assert_eq!((amount_b, fee_b), (amount_b + fee_b, 0));
     })]);
 }
 
@@ -360,7 +429,8 @@ fn quote_case_exact_input_for_output_base_second() {
                 &gt,
                 QuoteAmount::WithDesiredInput {
                     desired_amount_in: balance!(100000)
-                }
+                },
+                true
             )
             .unwrap()),
             (
@@ -391,7 +461,8 @@ fn quote_case_exact_output_for_input_base_first() {
                 &bp,
                 QuoteAmount::WithDesiredOutput {
                     desired_amount_out: balance!(100000)
-                }
+                },
+                true,
             )
             .unwrap()),
             (100300902708124373119360, 300902708124373119358)
@@ -419,7 +490,8 @@ fn quote_case_exact_output_for_input_base_second() {
                 &gt,
                 QuoteAmount::WithDesiredOutput {
                     desired_amount_out: balance!(50000)
-                }
+                },
+                true,
             )
             .unwrap()),
             (201207243460764587525158, 150451354062186559679)
@@ -844,6 +916,7 @@ fn exchange_outcome_should_match_actual_desired_amount_in_with_input_base() {
                 QuoteAmount::WithDesiredInput {
                     desired_amount_in: balance!(100000),
                 },
+                true,
             )
             .expect("Failed to quote.");
             let outcome = crate::Module::<Runtime>::exchange(
@@ -903,6 +976,7 @@ fn exchange_outcome_should_match_actual_desired_amount_in_with_output_base() {
                 QuoteAmount::WithDesiredInput {
                     desired_amount_in: balance!(100000),
                 },
+                true,
             )
             .expect("Failed to quote.");
             let outcome = crate::Module::<Runtime>::exchange(
@@ -963,6 +1037,7 @@ fn exchange_outcome_should_match_actual_desired_amount_out_with_input_base() {
                 QuoteAmount::WithDesiredOutput {
                     desired_amount_out: desired_out,
                 },
+                true,
             )
             .expect("Failed to quote.");
             let outcome = crate::Module::<Runtime>::exchange(
@@ -1017,6 +1092,7 @@ fn exchange_outcome_should_match_actual_desired_amount_out_with_output_base() {
                 QuoteAmount::WithDesiredOutput {
                     desired_amount_out: desired_out,
                 },
+                true,
             )
             .expect("Failed to quote.");
             let outcome = crate::Module::<Runtime>::exchange(
@@ -1648,6 +1724,7 @@ fn price_without_impact_small_amount() {
                 &BlackPepper.into(),
                 &GoldenTicket.into(),
                 QuoteAmount::with_desired_input(amount),
+                true,
             )
             .expect("Failed to quote.");
             let quote_without_impact_a = PoolXYK::quote_without_impact(
@@ -1655,6 +1732,7 @@ fn price_without_impact_small_amount() {
                 &BlackPepper.into(),
                 &GoldenTicket.into(),
                 QuoteAmount::with_desired_input(amount),
+                true,
             )
             .expect("Failed to quote without impact.");
             assert_eq!(quote_outcome_a.amount, balance!(2.492482691092422969));
@@ -1670,6 +1748,7 @@ fn price_without_impact_small_amount() {
                 &BlackPepper.into(),
                 &GoldenTicket.into(),
                 QuoteAmount::with_desired_output(amount),
+                true,
             )
             .expect("Failed to quote.");
             let quote_without_impact_b = PoolXYK::quote_without_impact(
@@ -1677,6 +1756,7 @@ fn price_without_impact_small_amount() {
                 &BlackPepper.into(),
                 &GoldenTicket.into(),
                 QuoteAmount::with_desired_output(amount),
+                true,
             )
             .expect("Failed to quote without impact.");
             assert_eq!(quote_outcome_b.amount, balance!(0.401204728643510095));
@@ -1692,6 +1772,7 @@ fn price_without_impact_small_amount() {
                 &GoldenTicket.into(),
                 &BlackPepper.into(),
                 QuoteAmount::with_desired_input(amount),
+                true,
             )
             .expect("Failed to quote.");
             let quote_without_impact_c = PoolXYK::quote_without_impact(
@@ -1699,6 +1780,7 @@ fn price_without_impact_small_amount() {
                 &GoldenTicket.into(),
                 &BlackPepper.into(),
                 QuoteAmount::with_desired_input(amount),
+                true,
             )
             .expect("Failed to quote without impact.");
             assert_eq!(quote_outcome_c.amount, balance!(0.398798895548614272));
@@ -1714,6 +1796,7 @@ fn price_without_impact_small_amount() {
                 &GoldenTicket.into(),
                 &BlackPepper.into(),
                 QuoteAmount::with_desired_output(amount),
+                true,
             )
             .expect("Failed to quote.");
             let quote_without_impact_d = PoolXYK::quote_without_impact(
@@ -1721,6 +1804,7 @@ fn price_without_impact_small_amount() {
                 &GoldenTicket.into(),
                 &BlackPepper.into(),
                 QuoteAmount::with_desired_output(amount),
+                true,
             )
             .expect("Failed to quote without impact.");
             assert_eq!(quote_outcome_d.amount, balance!(2.507539981175200824));
@@ -1744,6 +1828,7 @@ fn price_without_impact_large_amount() {
                 &BlackPepper.into(),
                 &GoldenTicket.into(),
                 QuoteAmount::with_desired_input(amount),
+                true,
             )
             .expect("Failed to quote.");
             let quote_without_impact_a = PoolXYK::quote_without_impact(
@@ -1751,6 +1836,7 @@ fn price_without_impact_large_amount() {
                 &BlackPepper.into(),
                 &GoldenTicket.into(),
                 QuoteAmount::with_desired_input(amount),
+                true,
             )
             .expect("Failed to quote without impact.");
             assert_eq!(quote_outcome_a.amount, balance!(147098.360655737704918032));
@@ -1766,6 +1852,7 @@ fn price_without_impact_large_amount() {
                 &BlackPepper.into(),
                 &GoldenTicket.into(),
                 QuoteAmount::with_desired_output(amount),
+                true,
             )
             .expect("Failed to quote.");
             let quote_without_impact_b = PoolXYK::quote_without_impact(
@@ -1773,6 +1860,7 @@ fn price_without_impact_large_amount() {
                 &BlackPepper.into(),
                 &GoldenTicket.into(),
                 QuoteAmount::with_desired_output(amount),
+                true,
             )
             .expect("Failed to quote without impact.");
             assert_eq!(quote_outcome_b.amount, balance!(55615.634172717441680828));
@@ -1788,6 +1876,7 @@ fn price_without_impact_large_amount() {
                 &GoldenTicket.into(),
                 &BlackPepper.into(),
                 QuoteAmount::with_desired_input(amount),
+                true,
             )
             .expect("Failed to quote.");
             let quote_without_impact_c = PoolXYK::quote_without_impact(
@@ -1795,6 +1884,7 @@ fn price_without_impact_large_amount() {
                 &GoldenTicket.into(),
                 &BlackPepper.into(),
                 QuoteAmount::with_desired_input(amount),
+                true,
             )
             .expect("Failed to quote without impact.");
             assert_eq!(quote_outcome_c.amount, balance!(31230.802697411355231672));
@@ -1810,6 +1900,7 @@ fn price_without_impact_large_amount() {
                 &GoldenTicket.into(),
                 &BlackPepper.into(),
                 QuoteAmount::with_desired_output(amount),
+                true,
             )
             .expect("Failed to quote.");
             let quote_without_impact_d = PoolXYK::quote_without_impact(
@@ -1817,6 +1908,7 @@ fn price_without_impact_large_amount() {
                 &GoldenTicket.into(),
                 &BlackPepper.into(),
                 QuoteAmount::with_desired_output(amount),
+                true,
             )
             .expect("Failed to quote without impact.");
             assert_eq!(quote_outcome_d.amount, balance!(820643.749430108507340228));
