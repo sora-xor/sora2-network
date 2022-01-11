@@ -240,6 +240,7 @@ impl<T: Config> Pallet<T> {
                         1,
                         &from_asset_id,
                         &to_asset_id,
+                        None,
                     )?;
                     Ok(outcome)
                 }
@@ -279,6 +280,7 @@ impl<T: Config> Pallet<T> {
                             2,
                             &from_asset_id,
                             &to_asset_id,
+                            Some(&intermediate_asset_id),
                         )?;
                         let cumulative_fee = first_swap
                             .fee
@@ -333,6 +335,7 @@ impl<T: Config> Pallet<T> {
                             2,
                             &from_asset_id,
                             &to_asset_id,
+                            Some(&intermediate_asset_id),
                         )?;
                         let cumulative_fee = first_swap
                             .fee
@@ -1114,7 +1117,7 @@ impl<T: Config> Pallet<T> {
             ($source_type:ident) => {
                 T::$source_type::buy_price(base_asset_id, collateral_asset_id)
                     .map_err(|_| Error::<T>::CalculationError)?
-                    .into();
+                    .into()
             };
         }
         let primary_buy_price: FixedWrapper = if collateral_asset_id == &XSTUSD.into() {
@@ -1214,7 +1217,7 @@ impl<T: Config> Pallet<T> {
             ($source_type:ident) => {
                 T::$source_type::sell_price(base_asset_id, collateral_asset_id)
                     .map_err(|_| Error::<T>::CalculationError)?
-                    .into();
+                    .into()
             };
         }
         let primary_sell_price: FixedWrapper = if collateral_asset_id == &XSTUSD.into() {

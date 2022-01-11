@@ -35,7 +35,7 @@ use crate::{
 };
 use common::{
     balance, Balance, OnPswapBurned, PswapRemintInfo, RewardReason, VestedRewardsPallet, ETH,
-    PSWAP, XOR,
+    PSWAP, XOR, XSTUSD,
 };
 use frame_support::assert_noop;
 use frame_support::pallet_prelude::DispatchError;
@@ -50,6 +50,7 @@ fn deposit_rewards_to_reserves(amount: Balance) {
 
 fn prepare_mm_pairs() {
     MarketMakingPairs::<Runtime>::insert(&XOR, &ETH, ());
+    MarketMakingPairs::<Runtime>::insert(&XSTUSD, &XOR, ());
 }
 
 #[test]
@@ -67,7 +68,8 @@ fn should_add_market_maker_infos_single_user() {
         );
 
         // first add
-        VestedRewards::update_market_maker_records(&alice(), balance!(123), 1, &XOR, &ETH).unwrap();
+        VestedRewards::update_market_maker_records(&alice(), balance!(123), 1, &XOR, &ETH, None)
+            .unwrap();
         let expected_1 = MarketMakerInfo {
             count: 1,
             volume: balance!(123),
@@ -75,7 +77,8 @@ fn should_add_market_maker_infos_single_user() {
         assert_eq!(VestedRewards::market_makers_registry(&alice()), expected_1);
 
         // second add
-        VestedRewards::update_market_maker_records(&alice(), balance!(123), 1, &XOR, &ETH).unwrap();
+        VestedRewards::update_market_maker_records(&alice(), balance!(123), 1, &XOR, &ETH, None)
+            .unwrap();
         let expected_2 = MarketMakerInfo {
             count: 2,
             volume: balance!(246),
@@ -86,11 +89,13 @@ fn should_add_market_maker_infos_single_user() {
         );
 
         // add with less than 1 xor
-        VestedRewards::update_market_maker_records(&alice(), balance!(0.9), 1, &XOR, &ETH).unwrap();
+        VestedRewards::update_market_maker_records(&alice(), balance!(0.9), 1, &XOR, &ETH, None)
+            .unwrap();
         assert_eq!(VestedRewards::market_makers_registry(&alice()), expected_2);
 
         // add with multiplier
-        VestedRewards::update_market_maker_records(&alice(), balance!(123), 2, &XOR, &ETH).unwrap();
+        VestedRewards::update_market_maker_records(&alice(), balance!(123), 2, &XOR, &ETH, None)
+            .unwrap();
         let expected_3 = MarketMakerInfo {
             count: 4,
             volume: balance!(492),
@@ -105,9 +110,12 @@ fn should_add_market_maker_infos_multiple_users() {
     ext.execute_with(|| {
         prepare_mm_pairs();
 
-        VestedRewards::update_market_maker_records(&alice(), balance!(111), 1, &XOR, &ETH).unwrap();
-        VestedRewards::update_market_maker_records(&bob(), balance!(111), 2, &XOR, &ETH).unwrap();
-        VestedRewards::update_market_maker_records(&eve(), balance!(111), 3, &XOR, &ETH).unwrap();
+        VestedRewards::update_market_maker_records(&alice(), balance!(111), 1, &XOR, &ETH, None)
+            .unwrap();
+        VestedRewards::update_market_maker_records(&bob(), balance!(111), 2, &XOR, &ETH, None)
+            .unwrap();
+        VestedRewards::update_market_maker_records(&eve(), balance!(111), 3, &XOR, &ETH, None)
+            .unwrap();
         assert_eq!(
             VestedRewards::market_makers_registry(&alice()),
             MarketMakerInfo {
@@ -147,19 +155,40 @@ fn should_update_market_maker_with_allowed_pair_only() {
         );
 
         // ok
-        VestedRewards::update_market_maker_records(&alice(), balance!(123), 1, &XOR, &ETH).unwrap();
-        let expected_1 = MarketMakerInfo {
+        VestedRewards::update_market_maker_records(&alice(), balance!(123), 1, &XOR, &ETH, None)
+            .unwrap();
+        let expected = MarketMakerInfo {
             count: 1,
             volume: balance!(123),
         };
         assert_eq!(
             VestedRewards::market_makers_registry(&alice()),
-            expected_1.clone()
+            expected.clone()
+        );
+
+        // with intermediate
+        VestedRewards::update_market_maker_records(
+            &alice(),
+            balance!(123),
+            1,
+            &XSTUSD,
+            &ETH,
+            Some(&XOR),
+        )
+        .unwrap();
+        let expected = MarketMakerInfo {
+            count: 2,
+            volume: balance!(246),
+        };
+        assert_eq!(
+            VestedRewards::market_makers_registry(&alice()),
+            expected.clone()
         );
 
         // not allowed
-        VestedRewards::update_market_maker_records(&alice(), balance!(123), 1, &ETH, &XOR).unwrap();
-        assert_eq!(VestedRewards::market_makers_registry(&alice()), expected_1);
+        VestedRewards::update_market_maker_records(&alice(), balance!(123), 1, &ETH, &XOR, None)
+            .unwrap();
+        assert_eq!(VestedRewards::market_makers_registry(&alice()), expected);
     });
 }
 
@@ -214,11 +243,12 @@ fn trying_to_add_market_maker_entry_no_side_effect() {
         prepare_mm_pairs();
 
         let root_a = frame_support::storage_root();
-        VestedRewards::update_market_maker_records(&alice(), balance!(1), 1, &XOR, &ETH).unwrap();
+        VestedRewards::update_market_maker_records(&alice(), balance!(1), 1, &XOR, &ETH, None)
+            .unwrap();
         let root_b = frame_support::storage_root();
         assert_ne!(root_a, root_b);
         // adding record should not add default value explicitly for non-eligible volume
-        VestedRewards::update_market_maker_records(&alice(), balance!(0.99), 1, &XOR, &ETH)
+        VestedRewards::update_market_maker_records(&alice(), balance!(0.99), 1, &XOR, &ETH, None)
             .unwrap();
         let root_c = frame_support::storage_root();
         assert_eq!(root_b, root_c);
@@ -460,6 +490,22 @@ fn migration_v0_1_0_to_v1_1_0_market_makers_fails_on_underflow() {
             crate::migration::inject_market_makers_first_month_rewards::<Runtime>(snapshot),
             Error::<Runtime>::CantSubtractSnapshot
         );
+    });
+}
+
+#[test]
+fn storage_has_allowed_market_maker_pools() {
+    let mut ext = ExtBuilder::default().build();
+    ext.execute_with(|| {
+        use crate::MarketMakingPairs;
+
+        assert!(!MarketMakingPairs::<Runtime>::contains_key(XOR, XSTUSD));
+        assert!(!MarketMakingPairs::<Runtime>::contains_key(XSTUSD, XOR));
+
+        crate::migration::allow_market_making_pairs::<Runtime>();
+
+        assert!(MarketMakingPairs::<Runtime>::contains_key(XOR, XSTUSD));
+        assert!(MarketMakingPairs::<Runtime>::contains_key(XSTUSD, XOR));
     });
 }
 
@@ -1011,10 +1057,12 @@ fn distributing_with_all_eligible_accounts() {
             balance!(400000000),
         )
         .unwrap();
-        VestedRewards::update_market_maker_records(&alice(), balance!(10), 500, &XOR, &ETH)
+        VestedRewards::update_market_maker_records(&alice(), balance!(10), 500, &XOR, &ETH, None)
             .unwrap();
-        VestedRewards::update_market_maker_records(&bob(), balance!(20), 1000, &XOR, &ETH).unwrap();
-        VestedRewards::update_market_maker_records(&eve(), balance!(30), 2000, &XOR, &ETH).unwrap();
+        VestedRewards::update_market_maker_records(&bob(), balance!(20), 1000, &XOR, &ETH, None)
+            .unwrap();
+        VestedRewards::update_market_maker_records(&eve(), balance!(30), 2000, &XOR, &ETH, None)
+            .unwrap();
 
         for block_n in 1..MARKET_MAKER_REWARDS_DISTRIBUTION_FREQUENCY {
             VestedRewards::on_initialize(block_n.into());
@@ -1145,11 +1193,12 @@ fn distributing_with_partially_eligible_accounts() {
             initial_reserve,
         )
         .unwrap();
-        VestedRewards::update_market_maker_records(&alice(), balance!(10), 499, &XOR, &ETH)
+        VestedRewards::update_market_maker_records(&alice(), balance!(10), 499, &XOR, &ETH, None)
             .unwrap();
-        VestedRewards::update_market_maker_records(&bob(), balance!(0.9), 1000, &XOR, &ETH)
+        VestedRewards::update_market_maker_records(&bob(), balance!(0.9), 1000, &XOR, &ETH, None)
             .unwrap();
-        VestedRewards::update_market_maker_records(&eve(), balance!(30), 2000, &XOR, &ETH).unwrap();
+        VestedRewards::update_market_maker_records(&eve(), balance!(30), 2000, &XOR, &ETH, None)
+            .unwrap();
 
         for block_n in 1..MARKET_MAKER_REWARDS_DISTRIBUTION_FREQUENCY {
             VestedRewards::on_initialize(block_n.into());
@@ -1262,10 +1311,12 @@ fn distributing_with_no_eligible_accounts_is_postponed() {
             initial_reserve,
         )
         .unwrap();
-        VestedRewards::update_market_maker_records(&alice(), balance!(0.5), 10, &XOR, &ETH)
+        VestedRewards::update_market_maker_records(&alice(), balance!(0.5), 10, &XOR, &ETH, None)
             .unwrap();
-        VestedRewards::update_market_maker_records(&bob(), balance!(0.7), 20, &XOR, &ETH).unwrap();
-        VestedRewards::update_market_maker_records(&eve(), balance!(0.9), 30, &XOR, &ETH).unwrap();
+        VestedRewards::update_market_maker_records(&bob(), balance!(0.7), 20, &XOR, &ETH, None)
+            .unwrap();
+        VestedRewards::update_market_maker_records(&eve(), balance!(0.9), 30, &XOR, &ETH, None)
+            .unwrap();
         for block_n in 1..MARKET_MAKER_REWARDS_DISTRIBUTION_FREQUENCY * 10 {
             VestedRewards::on_initialize(block_n.into());
         }
