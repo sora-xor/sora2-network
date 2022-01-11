@@ -15,6 +15,7 @@ use crate::Pallet as CeresGovernancePlatform;
 use assets::Pallet as Assets;
 use frame_support::traits::Hooks;
 use technical::Pallet as Technical;
+use frame_support::assert_ok;
 
 pub type AssetId = AssetId32<common::PredefinedAssetId>;
 pub const CERES_ASSET_ID: AssetId = common::AssetId32::from_bytes(hex!(
@@ -51,7 +52,7 @@ benchmarks! {
         let poll_id = Vec::from([1, 2, 3, 4]);
         let voting_option = 3;
         let number_of_votes = balance!(300);
-        let poll_start_block = frame_system::Pallet::<T>::block_number() + 5u32.into();
+        let poll_start_block = frame_system::Pallet::<T>::block_number();
         let poll_end_block = poll_start_block + 10u32.into();
 
         frame_system::Pallet::<T>::inc_providers(&caller);
@@ -106,10 +107,6 @@ benchmarks! {
     }
     verify {
         assert_last_event::<T>(Event::Created(caller, voting_option, poll_start_block, poll_end_block).into());
-        /*let poll_info = pallet::PollData::<T>::get(&poll_id);
-        assert_eq!(poll_info.number_of_options, voting_option);
-        assert_eq!(poll_info.poll_start_block, poll_start_block);
-        assert_eq!(poll_info.poll_end_block, poll_end_block);*/
     }
 
    withdraw {
@@ -117,7 +114,7 @@ benchmarks! {
         let poll_id = Vec::from([1, 2, 3, 4]);
         let voting_option = 3;
         let number_of_votes = balance!(300);
-        let poll_start_block = frame_system::Pallet::<T>::block_number() + 5u32.into();
+        let poll_start_block = frame_system::Pallet::<T>::block_number();
         let poll_end_block = poll_start_block + 10u32.into();
 
         frame_system::Pallet::<T>::inc_providers(&caller);
