@@ -10,6 +10,7 @@ use frame_support::traits::{GenesisBuild, Hooks};
 use frame_support::weights::Weight;
 use frame_support::{construct_runtime, parameter_types};
 use frame_system;
+use frame_system::pallet_prelude::BlockNumberFor;
 use hex_literal::hex;
 use sp_core::H256;
 use sp_runtime::testing::Header;
@@ -39,6 +40,7 @@ construct_runtime! {
         Technical: technical::{Module, Call, Config<T>, Storage, Event<T>},
         PoolXYK: pool_xyk::{Module, Call, Storage, Event<T>},
         PswapDistribution: pswap_distribution::{Module, Call, Config<T>, Storage, Event<T>},
+        CeresLiquidityLocker: ceres_liquidity_locker::{Module, Call, Storage, Event<T>},
         CeresGovernancePlatform: ceres_governance_platform::{Module, Call, Storage, Event<T>}
     }
 }
@@ -150,6 +152,14 @@ impl pool_xyk::Config for Runtime {
     type GetFee = GetXykFee;
     type OnPoolCreated = PswapDistribution;
     type OnPoolReservesChanged = ();
+    type WeightInfo = ();
+}
+
+impl ceres_liquidity_locker::Config for Runtime {
+    const BLOCKS_PER_ONE_DAY: BlockNumberFor<Self> = 14_440;
+    type Event = Event;
+    type XYKPool = PoolXYK;
+    type CeresAssetId = ();
     type WeightInfo = ();
 }
 

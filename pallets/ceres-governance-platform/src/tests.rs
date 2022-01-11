@@ -296,6 +296,42 @@ mod tests {
     }
 
     #[test]
+    fn withdraw_funds_already_withdrawn() {
+        let mut ext = ExtBuilder::default().build();
+        ext.execute_with(|| {
+            let poll_id = Vec::from([1, 2, 3, 4]);
+            let voting_option = 2;
+            let number_of_votes = balance!(300);
+            let current_block = frame_system::Pallet::<Runtime>::block_number();
+            assert_ok!(CeresGovernancePlatform::create_poll(
+                Origin::signed(ALICE),
+                poll_id.clone(),
+                voting_option,
+                current_block,
+                current_block + 10
+            ));
+            assert_ok!(CeresGovernancePlatform::vote(
+                Origin::signed(ALICE),
+                poll_id.clone(),
+                voting_option,
+                number_of_votes
+            ));
+
+            run_to_block(11);
+
+            assert_ok!(CeresGovernancePlatform::withdraw(
+                Origin::signed(ALICE),
+                poll_id.clone()
+            ));
+
+            assert_err!(
+                CeresGovernancePlatform::withdraw(Origin::signed(ALICE), poll_id.clone()),
+                Error::<Runtime>::FundsAlreadyWithdrawn
+            );
+        });
+    }
+
+    #[test]
     fn withdraw_ok() {
         let mut ext = ExtBuilder::default().build();
         ext.execute_with(|| {

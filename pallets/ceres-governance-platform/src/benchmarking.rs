@@ -6,16 +6,16 @@ use super::*;
 
 use codec::Decode;
 use common::{balance, AssetId32, FromGenericPair};
-use frame_benchmarking::{benchmarks};
+use frame_benchmarking::benchmarks;
 use frame_system::{EventRecord, RawOrigin};
 use hex_literal::hex;
 use sp_std::prelude::*;
 
 use crate::Pallet as CeresGovernancePlatform;
 use assets::Pallet as Assets;
+use frame_support::assert_ok;
 use frame_support::traits::Hooks;
 use technical::Pallet as Technical;
-use frame_support::assert_ok;
 
 pub type AssetId = AssetId32<common::PredefinedAssetId>;
 pub const CERES_ASSET_ID: AssetId = common::AssetId32::from_bytes(hex!(

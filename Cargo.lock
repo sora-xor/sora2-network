@@ -802,6 +802,7 @@ version = "1.2.0"
 dependencies = [
  "assets",
  "ceres-governance-platform",
+ "ceres-liquidity-locker",
  "common",
  "dex-manager",
  "frame-benchmarking 3.1.0",

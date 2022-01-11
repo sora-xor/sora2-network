@@ -49,11 +49,11 @@ pub mod pallet {
     use crate::{PollInfo, VotingInfo, WeightInfo};
     use common::prelude::Balance;
     use frame_support::pallet_prelude::*;
+    use frame_support::traits::Vec;
     use frame_system::ensure_signed;
     use frame_system::pallet_prelude::*;
     use sp_runtime::traits::AccountIdConversion;
     use sp_runtime::ModuleId;
-    use frame_support::traits::Vec;
 
     const PALLET_ID: ModuleId = ModuleId(*b"crsgvrnc");
 
@@ -128,6 +128,8 @@ pub mod pallet {
         PollIsNotFinished,
         ///InvalidNumberOfVotes
         InvalidNumberOfVotes,
+        ///FundsAlreadyWithdrawn,
+        FundsAlreadyWithdrawn,
     }
 
     #[pallet::call]
@@ -256,11 +258,13 @@ pub mod pallet {
                 current_block > poll_info.poll_end_block,
                 Error::<T>::PollIsNotFinished
             );
+
             // Update storage
             let mut voting_info = <Voting<T>>::get(&poll_id, &user);
-            voting_info.ceres_withdrawn = true;
-
-            <Voting<T>>::insert(&poll_id, &user, &voting_info);
+            ensure!(
+                voting_info.ceres_withdrawn == false,
+                Error::<T>::FundsAlreadyWithdrawn
+            );
 
             // Withdraw CERES
             Assets::<T>::transfer_from(
@@ -269,6 +273,9 @@ pub mod pallet {
                 &user,
                 voting_info.number_of_votes,
             )?;
+
+            voting_info.ceres_withdrawn = true;
+            <Voting<T>>::insert(&poll_id, &user, &voting_info);
 
             //Emit event
             Self::deposit_event(Event::<T>::Withdrawn(user, voting_info.number_of_votes));

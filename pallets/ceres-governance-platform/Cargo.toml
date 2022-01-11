@@ -30,6 +30,7 @@ frame-benchmarking = { version = "3", default-features = false, optional = true 
 [dev-dependencies]
 assets = { path = "../assets" }
 common = { path = "../../common", features = ["test"] }
+ceres-liquidity-locker = { path = "../ceres-liquidity-locker", default-features = false }
 currencies = { version = "0.4", package = "orml-currencies", default-features = false }
 dex-manager = { path = "../dex-manager", default-features = false }
 ceres-governance-platform = { path = ".", default-features = false }
