@@ -49,7 +49,7 @@ pub mod pallet {
     const PALLET_ID: ModuleId = ModuleId(*b"crsgvrnc");
 
     #[pallet::config]
-    pub trait Config: frame_system::Config + assets::Config {
+    pub trait Config: frame_system::Config + assets::Config + technical::Config {
         /// Because this pallet emits events, it depends on the runtime's definition of an event.
         type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 
@@ -83,7 +83,7 @@ pub mod pallet {
         StorageMap<_, Identity, Vec<u8>, PollInfo<T::BlockNumber>, ValueQuery>;
 
     #[pallet::event]
-    #[pallet::metadata(AccountIdOf<T> = "AccountId")]
+    #[pallet::metadata(AccountIdOf<T> = "AccountId", T::BlockNumber = "BlockNumber")]
     #[pallet::generate_deposit(pub (super) fn deposit_event)]
     pub enum Event<T: Config> {
         /// Voting [who, option, balance]

@@ -5,15 +5,16 @@
 use super::*;
 
 use codec::Decode;
-use common::{Balance, balance, AssetId32, AssetName, AssetSymbol, DEFAULT_BALANCE_PRECISION};
-use frame_benchmarking::{benchmarks, Zero};
+use common::{balance, AssetId32, FromGenericPair};
+use frame_benchmarking::{benchmarks};
 use frame_system::{EventRecord, RawOrigin};
 use hex_literal::hex;
 use sp_std::prelude::*;
-use frame_support::assert_ok;
 
 use crate::Pallet as CeresGovernancePlatform;
+use assets::Pallet as Assets;
 use frame_support::traits::Hooks;
+use technical::Pallet as Technical;
 
 pub type AssetId = AssetId32<common::PredefinedAssetId>;
 pub const CERES_ASSET_ID: AssetId = common::AssetId32::from_bytes(hex!(
@@ -45,31 +46,27 @@ fn run_to_block<T: Config>(n: u32) {
 }
 
 benchmarks! {
-    /*vote {
+    vote {
         let caller = alice::<T>();
         let poll_id = Vec::from([1, 2, 3, 4]);
         let voting_option = 3;
-        let poll_start_block = frame_system::Pallet::<T>::block_number();
         let number_of_votes = balance!(300);
+        let poll_start_block = frame_system::Pallet::<T>::block_number() + 5u32.into();
         let poll_end_block = poll_start_block + 10u32.into();
 
         frame_system::Pallet::<T>::inc_providers(&caller);
-        let _ = assets::Pallet::<T>::register_asset_id(
-            caller.clone(),
-            CERES_ASSET_ID.into(),
-            AssetSymbol(b"CERES".to_vec()),
-            AssetName(b"Ceres".to_vec()),
-            DEFAULT_BALANCE_PRECISION,
-            Balance::zero(),
-            true,
-            None,
-            None,
-        );
-        let _ = assets::Pallet::<T>::mint(
-            RawOrigin::Signed(caller.clone()).into(),
+        let assets_and_permissions_tech_account_id =
+            T::TechAccountId::from_generic_pair(b"SYSTEM_ACCOUNT".to_vec(), b"ASSETS_PERMISSIONS".to_vec());
+        let assets_and_permissions_account_id =
+            Technical::<T>::tech_account_id_to_account_id(
+                &assets_and_permissions_tech_account_id,
+            ).unwrap();
+
+        let _ = Assets::<T>::mint(
+            RawOrigin::Signed(assets_and_permissions_account_id.clone()).into(),
             CERES_ASSET_ID.into(),
             caller.clone(),
-            number_of_votes,
+            number_of_votes
         );
 
         let _ = CeresGovernancePlatform::<T>::create_poll(
@@ -89,24 +86,17 @@ benchmarks! {
     }
     verify {
         assert_last_event::<T>(Event::Voted(caller, voting_option, number_of_votes).into());
-    }*/
+    }
 
     create_poll {
         let caller = alice::<T>();
         let poll_id = Vec::from([1, 2, 3, 4]);
         let voting_option = 3;
-        let poll_start_block = frame_system::Pallet::<T>::block_number();
+        let poll_start_block = frame_system::Pallet::<T>::block_number() + 5u32.into();
         let poll_end_block = poll_start_block + 10u32.into();
-
-        CeresGovernancePlatform::<T>::create_poll(
-            RawOrigin::Signed(caller.clone()).into(),
-            poll_id.clone(),
-            voting_option,
-            poll_start_block,
-            poll_end_block
-            );
+        frame_system::Pallet::<T>::inc_providers(&caller);
     }: {
-       CeresGovernancePlatform::<T>::create_poll(
+       let _ = CeresGovernancePlatform::<T>::create_poll(
             RawOrigin::Signed(caller.clone()).into(),
             poll_id.clone(),
             voting_option,
@@ -116,33 +106,33 @@ benchmarks! {
     }
     verify {
         assert_last_event::<T>(Event::Created(caller, voting_option, poll_start_block, poll_end_block).into());
+        /*let poll_info = pallet::PollData::<T>::get(&poll_id);
+        assert_eq!(poll_info.number_of_options, voting_option);
+        assert_eq!(poll_info.poll_start_block, poll_start_block);
+        assert_eq!(poll_info.poll_end_block, poll_end_block);*/
     }
 
-   /* withdraw {
+   withdraw {
         let caller = alice::<T>();
         let poll_id = Vec::from([1, 2, 3, 4]);
         let voting_option = 3;
         let number_of_votes = balance!(300);
-        let poll_start_block = frame_system::Pallet::<T>::block_number();
+        let poll_start_block = frame_system::Pallet::<T>::block_number() + 5u32.into();
         let poll_end_block = poll_start_block + 10u32.into();
 
         frame_system::Pallet::<T>::inc_providers(&caller);
-        let _ = assets::Pallet::<T>::register_asset_id(
-            caller.clone(),
-            CERES_ASSET_ID.into(),
-            AssetSymbol(b"CERES".to_vec()),
-            AssetName(b"Ceres".to_vec()),
-            DEFAULT_BALANCE_PRECISION,
-            Balance::zero(),
-            true,
-            None,
-            None,
-        );
-        let _ = assets::Pallet::<T>::mint(
-            RawOrigin::Signed(caller.clone()).into(),
+        let assets_and_permissions_tech_account_id =
+            T::TechAccountId::from_generic_pair(b"SYSTEM_ACCOUNT".to_vec(), b"ASSETS_PERMISSIONS".to_vec());
+        let assets_and_permissions_account_id =
+            Technical::<T>::tech_account_id_to_account_id(
+                &assets_and_permissions_tech_account_id,
+            ).unwrap();
+
+        let _ = Assets::<T>::mint(
+            RawOrigin::Signed(assets_and_permissions_account_id.clone()).into(),
             CERES_ASSET_ID.into(),
             caller.clone(),
-            number_of_votes,
+            number_of_votes
         );
 
         // Create poll
@@ -166,7 +156,7 @@ benchmarks! {
     }: _(RawOrigin::Signed(caller.clone()), poll_id.clone())
     verify {
         assert_last_event::<T>(Event::Withdrawn(caller, number_of_votes).into());
-    }*/
+    }
 }
 
 #[cfg(test)]
@@ -178,9 +168,9 @@ mod tests {
     #[test]
     fn test_benchmarks() {
         ExtBuilder::default().build().execute_with(|| {
-            //assert_ok!(test_benchmark_vote::<Runtime>());
+            assert_ok!(test_benchmark_vote::<Runtime>());
             assert_ok!(test_benchmark_create_poll::<Runtime>());
-            //assert_ok!(test_benchmark_withdraw::<Runtime>());
+            assert_ok!(test_benchmark_withdraw::<Runtime>());
         });
     }
 }
