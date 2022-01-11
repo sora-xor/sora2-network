@@ -99,6 +99,7 @@ parameter_types! {
 impl crate::Config for Runtime {
     type Event = Event;
     type CeresAssetId = CeresAssetId;
+    type WeightInfo = ();
 }
 
 parameter_types! {

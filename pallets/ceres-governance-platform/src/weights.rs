@@ -28,12 +28,13 @@
 #![allow(unused_parens)]
 #![allow(unused_imports)]
 
+use common::weights::constants::EXTRINSIC_FIXED_WEIGHT;
 use frame_support::{traits::Get, weights::Weight};
 use sp_std::marker::PhantomData;
 
 /// Weight functions for ceres_governance_platform.
 pub struct WeightInfo<T>(PhantomData<T>);
-impl<T: frame_system::Config> ceres_governance_platform::WeightInfo for WeightInfo<T> {
+impl<T: frame_system::Config> crate::WeightInfo for WeightInfo<T> {
 	fn vote() -> Weight {
 		(100_800_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(6 as Weight))
@@ -47,5 +48,17 @@ impl<T: frame_system::Config> ceres_governance_platform::WeightInfo for WeightIn
 		(94_900_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(6 as Weight))
 			.saturating_add(T::DbWeight::get().writes(5 as Weight))
+	}
+}
+
+impl crate::WeightInfo for () {
+	fn vote() -> Weight {
+		EXTRINSIC_FIXED_WEIGHT
+	}
+	fn create_poll() -> Weight {
+		EXTRINSIC_FIXED_WEIGHT
+	}
+	fn withdraw() -> Weight {
+		EXTRINSIC_FIXED_WEIGHT
 	}
 }

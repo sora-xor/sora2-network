@@ -1,6 +1,8 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![feature(destructuring_assignment)]
 
+pub mod weights;
+
 mod benchmarking;
 
 #[cfg(test)]
@@ -10,6 +12,13 @@ mod mock;
 mod tests;
 
 use codec::{Decode, Encode};
+use frame_support::weights::Weight;
+
+pub trait WeightInfo {
+    fn vote() -> Weight;
+    fn create_poll() -> Weight;
+    fn withdraw() -> Weight;
+}
 
 #[derive(Encode, Decode, Default, PartialEq, Eq)]
 #[cfg_attr(feature = "std", derive(Debug))]
@@ -37,7 +46,7 @@ pub use pallet::*;
 
 #[frame_support::pallet]
 pub mod pallet {
-    use crate::{PollInfo, VotingInfo};
+    use crate::{PollInfo, VotingInfo, WeightInfo};
     use common::prelude::Balance;
     use frame_support::pallet_prelude::*;
     use frame_system::ensure_signed;
@@ -55,6 +64,9 @@ pub mod pallet {
 
         /// Ceres asset id
         type CeresAssetId: Get<Self::AssetId>;
+
+        /// Weight information for extrinsics in this pallet.
+        type WeightInfo: WeightInfo;
     }
 
     type Assets<T> = assets::Pallet<T>;
@@ -121,7 +133,7 @@ pub mod pallet {
     #[pallet::call]
     impl<T: Config> Pallet<T> {
         /// Voting for option
-        #[pallet::weight(10000)]
+        #[pallet::weight(<T as Config>::WeightInfo::vote())]
         pub fn vote(
             origin: OriginFor<T>,
             poll_id: Vec<u8>,
@@ -188,7 +200,7 @@ pub mod pallet {
         }
 
         /// Create Poll
-        #[pallet::weight(10000)]
+        #[pallet::weight(<T as Config>::WeightInfo::create_poll())]
         pub fn create_poll(
             origin: OriginFor<T>,
             poll_id: Vec<u8>,
@@ -233,7 +245,7 @@ pub mod pallet {
         }
 
         /// Withdraw
-        #[pallet::weight(10000)]
+        #[pallet::weight(<T as Config>::WeightInfo::withdraw())]
         pub fn withdraw(origin: OriginFor<T>, poll_id: Vec<u8>) -> DispatchResultWithPostInfo {
             let user = ensure_signed(origin)?;
 

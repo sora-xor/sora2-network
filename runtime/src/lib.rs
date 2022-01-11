@@ -1466,6 +1466,7 @@ impl ceres_liquidity_locker::Config for Runtime {
 impl ceres_governance_platform::Config for Runtime {
     type Event = Event;
     type CeresAssetId = CeresAssetId;
+    type WeightInfo = ceres_governance_platform::weights::WeightInfo<Runtime>;
 }
 
 /// Payload data to be signed when making signed transaction from off-chain workers,
