@@ -28,7 +28,7 @@ tiny-keccak = { version = "2", default-features = false }
 pallet-scheduler = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.9", default-features = false }
 pallet-timestamp = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.9", default-features = false }
 
-bridge-multisig = { git = "https://github.com/soramitsu/sora2-frame-pallets.git", branch = "polkadot-v0.9.14", package = "pallet-multisig", default-features = false }
+bridge-multisig = { git = "https://github.com/soramitsu/sora2-frame-pallets.git", branch = "polkadot-v0.9.15", package = "pallet-multisig", default-features = false }
 ethabi = { git = "https://github.com/vmarkushin/ethabi.git", branch = "no-std", package = "ethabi", default-features = false, features = ["alloc"] }
 ethabi-contract = { git = "https://github.com/vmarkushin/ethabi.git", branch = "no-std", package = "ethabi-contract", default-features = false }
 ethabi-derive = { git = "https://github.com/vmarkushin/ethabi.git", branch = "no-std", package = "ethabi-derive", default-features = false }
