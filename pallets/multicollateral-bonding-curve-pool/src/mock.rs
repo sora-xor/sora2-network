@@ -203,6 +203,7 @@ impl VestedRewardsPallet<AccountId, AssetId> for MockVestedRewards {
         _: u32,
         _: &AssetId,
         _: &AssetId,
+        _: Option<&AssetId>,
     ) -> DispatchResult {
         // do nothing
         Ok(())
