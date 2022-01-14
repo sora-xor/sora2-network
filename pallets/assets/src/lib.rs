@@ -280,6 +280,9 @@ pub mod pallet {
             let author = ensure_signed(origin)?;
             let precision = if is_nft { 0 } else { DEFAULT_BALANCE_PRECISION };
 
+            ensure!(!name.0.is_empty(), Error::<T>::InvalidAssetName);
+            ensure!(!symbol.0.is_empty(), Error::<T>::InvalidAssetSymbol);
+
             let asset_id = Self::register_from(
                 &author,
                 symbol,
@@ -394,9 +397,9 @@ pub mod pallet {
         AssetIdNotExists,
         /// A number is out of range of the balance type.
         InsufficientBalance,
-        /// Symbol is not valid. It must contain only uppercase latin characters or numbers, length <= 7.
+        /// Symbol is not valid. It must contain only uppercase latin characters or numbers, length is from 1 to 7.
         InvalidAssetSymbol,
-        /// Name is not valid. It must contain only uppercase or lowercase latin characters or numbers or spaces, length <= 33.
+        /// Name is not valid. It must contain only uppercase or lowercase latin characters or numbers or spaces, length is from 1 to 33.
         InvalidAssetName,
         /// Precision value is not valid, it should represent a number of decimal places for number, max is 30.
         InvalidPrecision,
