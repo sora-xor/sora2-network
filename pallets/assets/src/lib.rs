@@ -280,9 +280,6 @@ pub mod pallet {
             let author = ensure_signed(origin)?;
             let precision = if is_nft { 0 } else { DEFAULT_BALANCE_PRECISION };
 
-            ensure!(!name.0.is_empty(), Error::<T>::InvalidAssetName);
-            ensure!(!symbol.0.is_empty(), Error::<T>::InvalidAssetSymbol);
-
             let asset_id = Self::register_from(
                 &author,
                 symbol,
