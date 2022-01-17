@@ -410,6 +410,8 @@ pub mod pallet {
         InvalidContentSource,
         /// Description is not valid. It must be 200 characters long at max.
         InvalidDescription,
+        /// The asset is not mintable and its initial balance is 0.
+        DeadAsset,
     }
 
     /// Asset Id -> Owner Account Id
@@ -562,6 +564,7 @@ impl<T: Config> Pallet<T> {
         );
         ensure!(symbol.is_valid(), Error::<T>::InvalidAssetSymbol);
         ensure!(name.is_valid(), Error::<T>::InvalidAssetName);
+        ensure!(initial_supply > 0 || is_mintable, Error::<T>::DeadAsset);
         ensure!(
             !Self::asset_exists(&asset_id),
             Error::<T>::AssetIdAlreadyExists
