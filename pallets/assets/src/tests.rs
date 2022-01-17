@@ -143,6 +143,21 @@ mod tests {
             assert_err!(
                 Assets::register_asset_id(
                     ALICE,
+                    XOR,
+                    AssetSymbol(b"XOR".to_vec()),
+                    AssetName(b"".to_vec()),
+                    DEFAULT_BALANCE_PRECISION,
+                    Balance::zero(),
+                    true,
+                    None,
+                    None,
+                ),
+                Error::<Runtime>::InvalidAssetName
+            );
+
+            assert_err!(
+                Assets::register_asset_id(
+                    ALICE,
                     VAL,
                     AssetSymbol(b"VAL".to_vec()),
                     AssetName(b"This is a name with $ymbols".to_vec()),
@@ -181,6 +196,21 @@ mod tests {
                     ALICE,
                     XOR,
                     AssetSymbol(b"xor".to_vec()),
+                    AssetName(b"Super Sora".to_vec()),
+                    DEFAULT_BALANCE_PRECISION,
+                    Balance::zero(),
+                    true,
+                    None,
+                    None,
+                ),
+                Error::<Runtime>::InvalidAssetSymbol
+            );
+
+            assert_err!(
+                Assets::register_asset_id(
+                    ALICE,
+                    XOR,
+                    AssetSymbol(b"".to_vec()),
                     AssetName(b"Super Sora".to_vec()),
                     DEFAULT_BALANCE_PRECISION,
                     Balance::zero(),

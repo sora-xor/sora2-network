@@ -380,7 +380,8 @@ impl AssetSymbol {
     /// to ASCII range and are of single byte, therefore passing check in range 'A' to 'Z'
     /// and '0' to '9' guarantees that all graphemes are of length 1, therefore length check is valid.
     pub fn is_valid(&self) -> bool {
-        self.0.len() <= ASSET_SYMBOL_MAX_LENGTH
+        !self.0.is_empty()
+            && self.0.len() <= ASSET_SYMBOL_MAX_LENGTH
             && self
                 .0
                 .iter()
@@ -444,7 +445,8 @@ impl AssetName {
     /// to ASCII range and are of single byte, therefore passing check in range 'A' to 'z'
     /// guarantees that all graphemes are of length 1, therefore length check is valid.
     pub fn is_valid(&self) -> bool {
-        self.0.len() <= ASSET_NAME_MAX_LENGTH
+        !self.0.is_empty()
+            && self.0.len() <= ASSET_NAME_MAX_LENGTH
             && self.0.iter().all(|byte| {
                 (b'A'..=b'Z').contains(&byte)
                     || (b'a'..=b'z').contains(&byte)
