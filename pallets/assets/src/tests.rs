@@ -377,20 +377,26 @@ mod tests {
                 Assets::free_balance(&VAL, &ALICE).expect("Failed to query free balance."),
                 Balance::from(321u32),
             );
-            assert_ok!(Assets::register_asset_id(
-                ALICE,
-                DOT,
-                AssetSymbol(b"DOT".to_vec()),
-                AssetName(b"Polkadot".to_vec()),
-                DEFAULT_BALANCE_PRECISION,
-                Balance::from(0u32),
-                false,
-                None,
-                None,
-            ));
+        })
+    }
+
+    #[test]
+    fn should_not_allow_dead_asset() {
+        let mut ext = ExtBuilder::default().build();
+        ext.execute_with(|| {
             assert_eq!(
-                Assets::free_balance(&DOT, &ALICE).expect("Failed to query free balance."),
-                Balance::zero(),
+                Assets::register_asset_id(
+                    ALICE,
+                    DOT,
+                    AssetSymbol(b"DOT".to_vec()),
+                    AssetName(b"Polkadot".to_vec()),
+                    DEFAULT_BALANCE_PRECISION,
+                    Balance::from(0u32),
+                    false,
+                    None,
+                    None,
+                ),
+                Err(Error::<Runtime>::DeadAsset.into())
             );
         })
     }
