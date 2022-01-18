@@ -1,0 +1,53 @@
+[package]
+description = "Pallet for CERES Launchpad/ILO platform."
+authors = ["Danijel Radulovic Ltd. <danijel.radulovic@cerestoken.io>, Jovan Milosevic <jovan.milosevic@cerestoken.io>"]
+license = "BSD-4-Clause"
+homepage = "https://cerestoken.io"
+repository = "https://github.com/sora-xor/sora2-network"
+name = "ceres-launchpad"
+version = "1.0.0"
+edition = "2018"
+
+[package.metadata.docs.rs]
+targets = ["x86_64-unknown-linux-gnu"]
+
+[dependencies]
+codec = { package = "parity-scale-codec", version = "2", default-features = false, features = ["derive"] }
+frame-benchmarking = { version = "3", default-features = false, optional = true }
+frame-support = { version = "3", default-features = false }
+frame-system = { version = "3", default-features = false }
+assets = { path = "../assets", default-features = false }
+common = { path = "../../common", default-features = false }
+sp-core = { version = "3", default-features = false }
+sp-runtime = { version = "3", default-features = false }
+sp-std = { version = "3", default-features = false }
+serde = { version = "1.0.101", optional = true, features = ["derive"], default-features = false }
+hex-literal = "0.3.1"
+
+[dev-dependencies]
+assets = { path = "../assets" }
+common = { path = "../../common", features = ["test"] }
+currencies = { version = "0.4", package = "orml-currencies", default-features = false }
+sp-io = { version = "3", default-features = false }
+tokens = { version = "0.4", package = "orml-tokens", default-features = false }
+pallet-balances = { version = "3" }
+permissions = { path = "../permissions" }
+
+[features]
+default = ["std"]
+
+std = [
+    "codec/std",
+    "frame-support/std",
+    "frame-system/std",
+    'serde/std',
+    "sp-core/std",
+    "sp-runtime/std",
+    "sp-std/std",
+]
+
+runtime-benchmarks = [
+    "frame-benchmarking",
+    "frame-system/runtime-benchmarks",
+    "frame-support/runtime-benchmarks",
+]

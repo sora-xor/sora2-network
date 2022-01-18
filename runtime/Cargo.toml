@@ -24,6 +24,7 @@ bridge-multisig = { git = "https://github.com/soramitsu/sora2-frame-pallets.git"
 assets = { path = "../pallets/assets", default-features = false }
 assets-runtime-api = { path = "../pallets/assets/runtime-api", default-features = false}
 common = { path = "../common", default-features = false }
+ceres-launchpad = { path = "../pallets/ceres-launchpad", default-features = false }
 ceres-liquidity-locker = { path = "../pallets/ceres-liquidity-locker", default-features = false }
 ceres-liquidity-locker-benchmarking = { path = "../pallets/ceres-liquidity-locker/benchmarking", default-features = false, optional = true }
 ceres-staking = { path = "../pallets/ceres-staking", default-features = false }
