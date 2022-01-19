@@ -254,7 +254,7 @@ benchmarks! {
 
     set_price_change_config {
         let caller = alice::<T>();
-        frame_system::Module::<T>::inc_providers(&caller);
+        frame_system::Pallet::<T>::inc_providers(&caller);
         let dex_id: T::DEXId = common::DEXId::Polkaswap.into();
         Permissions::<T>::assign_permission(
             caller.clone(),
@@ -263,7 +263,7 @@ benchmarks! {
             permissions::Scope::Limited(common::hash(&dex_id)),
         ).unwrap();
     }: {
-        Module::<T>::set_price_change_config(
+        Pallet::<T>::set_price_change_config(
             RawOrigin::Root.into(),
             balance!(12),
             balance!(2600)
@@ -277,7 +277,7 @@ benchmarks! {
 
     set_price_bias {
         let caller = alice::<T>();
-        frame_system::Module::<T>::inc_providers(&caller);
+        frame_system::Pallet::<T>::inc_providers(&caller);
         let dex_id: T::DEXId = common::DEXId::Polkaswap.into();
         Permissions::<T>::assign_permission(
             caller.clone(),
@@ -286,7 +286,7 @@ benchmarks! {
             permissions::Scope::Limited(common::hash(&dex_id)),
         ).unwrap();
     }: {
-        Module::<T>::set_price_bias(
+        Pallet::<T>::set_price_bias(
             RawOrigin::Root.into(),
             balance!(253)
         ).unwrap();

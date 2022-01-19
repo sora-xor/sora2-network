@@ -162,7 +162,7 @@ impl pallet_balances::Config for Runtime {
 }
 
 pub struct ExtBuilder {
-    endowed_assets: Vec<(
+    pub endowed_assets: Vec<(
         AssetId,
         AccountId,
         AssetSymbol,
@@ -173,7 +173,7 @@ pub struct ExtBuilder {
         Option<ContentSource>,
         Option<Description>,
     )>,
-    endowed_accounts: Vec<(AccountId, AssetId, Balance)>,
+    pub endowed_accounts: Vec<(AccountId, AssetId, Balance)>,
 }
 
 impl Default for ExtBuilder {
@@ -199,6 +199,14 @@ impl Default for ExtBuilder {
 }
 
 impl ExtBuilder {
+    #[allow(dead_code)]
+    pub fn empty() -> Self {
+        ExtBuilder {
+            endowed_assets: vec![],
+            endowed_accounts: vec![],
+        }
+    }
+
     pub fn build(self) -> sp_io::TestExternalities {
         let mut t = SystemConfig::default().build_storage::<Runtime>().unwrap();
 

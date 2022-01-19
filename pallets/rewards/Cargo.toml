@@ -22,7 +22,7 @@ frame-benchmarking = { git = "https://github.com/paritytech/substrate.git", bran
 frame-support = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.9", default-features = false }
 frame-system = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.9", default-features = false }
 hex-literal = { version = "0.3.1", default-features = false }
-secp256k1 = { version = "0.6", features = [
+secp256k1 = { version = "0.7", features = [
     "hmac",
     "static-context",
 ], default-features = false, package = "libsecp256k1" }
