@@ -9,7 +9,7 @@ use sp_core::RuntimeDebug;
 use sp_core::H160;
 use sp_std::prelude::*;
 
-use snowbridge_core::MessageDispatch;
+use bridge_types::traits::MessageDispatch;
 
 use codec::{Decode, Encode};
 

@@ -38,14 +38,13 @@ use frame_system::ensure_signed;
 use sp_runtime::RuntimeDebug;
 use sp_std::prelude::*;
 
-use snowbridge_core::{Message, Proof, Verifier};
-use snowbridge_ethereum::difficulty::calc_difficulty;
-pub use snowbridge_ethereum::difficulty::DifficultyConfig as EthereumDifficultyConfig;
-use snowbridge_ethereum::ethashproof::{
-    DoubleNodeWithMerkleProof as EthashProofData, EthashProver,
-};
-pub use snowbridge_ethereum::Header as EthereumHeader;
-use snowbridge_ethereum::{HeaderId as EthereumHeaderId, Log, Receipt, H256, U256};
+use bridge_types::difficulty::calc_difficulty;
+pub use bridge_types::difficulty::DifficultyConfig as EthereumDifficultyConfig;
+use bridge_types::ethashproof::{DoubleNodeWithMerkleProof as EthashProofData, EthashProver};
+use bridge_types::traits::Verifier;
+use bridge_types::types::{Message, Proof};
+pub use bridge_types::Header as EthereumHeader;
+use bridge_types::{HeaderId as EthereumHeaderId, Log, Receipt, H256, U256};
 
 pub use weights::WeightInfo;
 
@@ -118,7 +117,10 @@ pub mod pallet {
     }
 
     #[pallet::event]
-    pub enum Event<T> {}
+    #[pallet::generate_deposit(pub(super) fn deposit_event)]
+    pub enum Event<T> {
+        Finalized(EthereumHeaderId),
+    }
 
     #[pallet::error]
     pub enum Error<T> {
@@ -412,6 +414,7 @@ pub mod pallet {
                     Self::get_best_finalized_header(&best_block_id, &finalized_block_id)?;
                 if new_finalized_block_id != finalized_block_id {
                     <FinalizedBlock<T>>::put(new_finalized_block_id);
+                    Self::deposit_event(Event::Finalized(new_finalized_block_id));
                     <Headers<T>>::mutate(
                         new_finalized_block_id.hash,
                         |option| -> DispatchResult {

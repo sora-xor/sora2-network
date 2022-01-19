@@ -23,7 +23,7 @@ contract ETHApp is RewardSource, AccessControl {
 
     event Unlocked(bytes32 sender, address recipient, uint256 amount);
 
-    bytes2 constant MINT_CALL = 0x6001;
+    bytes2 constant MINT_CALL = 0x6301;
 
     bytes32 public constant REWARD_ROLE = keccak256("REWARD_ROLE");
 

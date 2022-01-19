@@ -1,8 +1,9 @@
+use bridge_types::traits::{MessageDispatch, Verifier};
+use bridge_types::types::{ChannelId, Message, MessageId};
 use frame_support::dispatch::DispatchResult;
 use frame_support::traits::{EnsureOrigin, Get};
 use frame_support::weights::Weight;
 use frame_system::ensure_signed;
-use snowbridge_core::{ChannelId, Message, MessageDispatch, MessageId, Verifier};
 use sp_core::{H160, U256};
 use sp_std::convert::TryFrom;
 

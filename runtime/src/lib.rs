@@ -46,12 +46,12 @@ pub mod mock;
 #[cfg(test)]
 pub mod tests;
 
+use bridge_types::types::ChannelId;
 use common::prelude::constants::{BIG_FEE, SMALL_FEE};
 use common::prelude::QuoteAmount;
 use common::{AssetId32, PredefinedAssetId, ETH};
 use constants::time::*;
 use dispatch::EnsureEthereumAccount;
-use snowbridge_core::ChannelId;
 
 // Make the WASM binary available.
 #[cfg(feature = "std")]
@@ -59,6 +59,7 @@ include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
 
 pub use beefy_primitives::crypto::AuthorityId as BeefyId;
 use beefy_primitives::mmr::MmrLeafVersion;
+use bridge_types::types::AuxiliaryDigest;
 use core::marker::PhantomData;
 use core::time::Duration;
 use currencies::BasicCurrencyAdapter;
@@ -1608,7 +1609,7 @@ impl Contains<Call> for CallFilter {
 impl dispatch::Config for Runtime {
     type Origin = Origin;
     type Event = Event;
-    type MessageId = snowbridge_core::MessageId;
+    type MessageId = bridge_types::types::MessageId;
     type Call = Call;
     type CallFilter = CallFilter;
 }
@@ -1621,7 +1622,7 @@ const INDEXING_PREFIX: &'static [u8] = b"commitment";
 
 pub struct OutboundRouter<T>(PhantomData<T>);
 
-impl<T> snowbridge_core::OutboundRouter<T::AccountId> for OutboundRouter<T>
+impl<T> bridge_types::traits::OutboundRouter<T::AccountId> for OutboundRouter<T>
 where
     T: basic_channel::outbound::Config + incentivized_channel::outbound::Config,
 {
@@ -1793,7 +1794,7 @@ construct_runtime! {
         IncentivizedOutboundChannel: incentivized_channel_outbound::{Pallet, Config<T>, Storage, Event<T>} = 97,
         Dispatch: dispatch::{Pallet, Storage, Event<T>, Origin} = 98,
         EthApp: eth_app::{Pallet, Call, Storage, Event<T>, Config<T>} = 99,
-        LeafProvider: leaf_provider::{Pallet, Storage, Event<T>} = 97,
+        LeafProvider: leaf_provider::{Pallet, Storage, Event<T>} = 100,
     }
 }
 
@@ -2397,7 +2398,7 @@ impl_runtime_apis! {
     }
 
     impl leaf_provider_runtime_api::LeafProviderAPI<Block> for Runtime {
-        fn latest_digest() -> sp_runtime::generic::Digest {
+        fn latest_digest() -> AuxiliaryDigest {
             LeafProvider::latest_digest()
         }
     }

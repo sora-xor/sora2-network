@@ -12,8 +12,9 @@ use sp_runtime::{MultiSignature, Perbill};
 use sp_std::convert::From;
 use sp_std::marker::PhantomData;
 
-use snowbridge_core::{Message, MessageDispatch, Proof};
-use snowbridge_ethereum::{Header as EthereumHeader, Log, U256};
+use bridge_types::traits::MessageDispatch;
+use bridge_types::types::{Message, Proof};
+use bridge_types::{Header as EthereumHeader, Log, U256};
 
 use common::mock::ExistentialDeposits;
 use common::{balance, Amount, AssetId32, AssetName, AssetSymbol, DEXId, XOR};

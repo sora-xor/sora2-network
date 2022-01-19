@@ -1,10 +1,11 @@
 // Mock runtime
+#![cfg(test)]
 use crate::{EthashProofData, EthereumDifficultyConfig, EthereumHeader};
+use bridge_types::test_utils::BlockWithProofs;
+use bridge_types::types::{Message, Proof};
 use frame_support::parameter_types;
 use frame_support::traits::GenesisBuild;
 use frame_system as system;
-use snowbridge_core::{Message, Proof};
-use snowbridge_testutils::BlockWithProofs;
 use sp_core::H256;
 use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentifyAccount, IdentityLookup, Verify};

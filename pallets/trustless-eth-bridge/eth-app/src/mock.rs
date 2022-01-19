@@ -2,13 +2,14 @@ use currencies::BasicCurrencyAdapter;
 use sp_std::marker::PhantomData;
 
 // Mock runtime
+use bridge_types::traits::OutboundRouter;
+use bridge_types::types::ChannelId;
 use common::mock::ExistentialDeposits;
 use common::{balance, Amount, AssetId32, AssetName, AssetSymbol, Balance, DEXId, XOR};
 use frame_support::dispatch::{DispatchError, DispatchResult};
 use frame_support::parameter_types;
 use frame_support::traits::{Everything, GenesisBuild};
 use frame_system as system;
-use snowbridge_core::{ChannelId, OutboundRouter};
 use sp_core::{H160, H256};
 use sp_keyring::sr25519::Keyring;
 use sp_runtime::testing::Header;

@@ -6,8 +6,7 @@ use hex_literal::hex;
 use sp_std::convert::TryInto;
 use sp_std::prelude::*;
 
-use snowbridge_core::{ChannelId, Message, MessageId, Proof};
-use snowbridge_ethereum::{Header, Log};
+use bridge_types::{ChannelId, Header, Log, Message, MessageId, Proof};
 
 #[allow(unused_imports)]
 use crate::inbound::Pallet as BasicInboundChannel;

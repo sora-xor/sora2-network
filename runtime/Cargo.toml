@@ -67,7 +67,7 @@ price-tools = { path = "../pallets/price-tools", default-features = false }
 pswap-distribution = { path = "../pallets/pswap-distribution", default-features = false }
 pswap-distribution-benchmarking = { path = "../pallets/pswap-distribution/benchmarking", default-features = false, optional = true }
 pswap-distribution-runtime-api = { path = "../pallets/pswap-distribution/runtime-api", default-features = false }
-referrals = { path = "../pallets/referrals", default-features = false}
+referrals = { path = "../pallets/referrals", default-features = false }
 rewards = { path = "../pallets/rewards", default-features = false }
 rewards-runtime-api = { path = "../pallets/rewards/runtime-api", default-features = false }
 technical = { path = "../pallets/technical", default-features = false }
@@ -132,11 +132,14 @@ currencies = { git = "https://github.com/open-web3-stack/open-runtime-module-lib
 static_assertions = "1.1.0"
 tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-tokens", default-features = false }
 traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-traits", default-features = false }
-snowbridge-core = { path = "../primitives/core", default-features = false }
+bridge-types = { path = "../pallets/trustless-eth-bridge/types", default-features = false }
 
 [dev-dependencies]
 env_logger = "0.9.0"
-framenode-chain-spec = { path = "../node/chain_spec", features = ["test", "private-net"] }
+framenode-chain-spec = { path = "../node/chain_spec", features = [
+    "test",
+    "private-net",
+] }
 
 [features]
 default = ["std"]
@@ -169,7 +172,7 @@ std = [
     "eth-app/std",
     "leaf-provider/std",
     "leaf-provider-runtime-api/std",
-    "snowbridge-core/std",
+    "bridge-types/std",
     "farming/std",
     "faucet/std",
     "frame-executive/std",
@@ -233,10 +236,7 @@ std = [
     "xst/std",
 ]
 
-private-net = [
-    "faucet",
-    "farming/private-net"
-]
+private-net = ["faucet", "farming/private-net"]
 
 runtime-benchmarks = [
     "assets/runtime-benchmarks",
@@ -249,7 +249,7 @@ runtime-benchmarks = [
     "incentivized-channel/runtime-benchmarks",
     "dispatch/runtime-benchmarks",
     "eth-app/runtime-benchmarks",
-    "snowbridge-core/runtime-benchmarks",
+    "bridge-types/runtime-benchmarks",
     "farming/runtime-benchmarks",
     "faucet/runtime-benchmarks",
     "frame-benchmarking",
