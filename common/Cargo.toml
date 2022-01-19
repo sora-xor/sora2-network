@@ -18,7 +18,7 @@ derive_more = { version = "0.99.11", default-features = false }
 fixnum = { git = "https://github.com/vovac12/fixnum", branch = "master", default-features = false, features = ["i128", "parity", "scale-info"] }
 frame-support = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.9", default-features = false }
 frame-system = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.9", default-features = false }
-secp256k1 = { version = "0.6", features = ['hmac'], default-features = false, package = "libsecp256k1" }
+secp256k1 = { version = "0.7", features = ['hmac'], default-features = false, package = "libsecp256k1" }
 num-traits = { version = "0.2.12", default-features = false }
 orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-traits", default-features = false }
 paste = "1.0.0"

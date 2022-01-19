@@ -239,6 +239,7 @@ impl<T: Config> Pallet<T> {
                         1,
                         &from_asset_id,
                         &to_asset_id,
+                        None,
                     )?;
                     Ok(outcome)
                 }
@@ -278,6 +279,7 @@ impl<T: Config> Pallet<T> {
                             2,
                             &from_asset_id,
                             &to_asset_id,
+                            Some(&intermediate_asset_id),
                         )?;
                         let cumulative_fee = first_swap
                             .fee
@@ -332,6 +334,7 @@ impl<T: Config> Pallet<T> {
                             2,
                             &from_asset_id,
                             &to_asset_id,
+                            Some(&intermediate_asset_id),
                         )?;
                         let cumulative_fee = first_swap
                             .fee
