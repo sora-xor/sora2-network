@@ -105,6 +105,8 @@ pub mod pallet {
         ILOCreated(AccountIdOf<T>, AssetIdOf<T>),
         /// Contribute [who, what, balance]
         Contribute(AccountIdOf<T>, AssetIdOf<T>, Balance),
+        /// Emergency withdraw [who, what, balance]
+        EmergencyWithdraw(AccountIdOf<T>, AssetIdOf<T>, Balance),
     }
 
     #[pallet::error]
@@ -153,6 +155,10 @@ pub mod pallet {
         ContributionIsBiggerThenMax,
         ///ILODoesNotExist
         ILODoesNotExist,
+        ///ILOIsNotFinished
+        ILOIsNotFinished,
+        ///NotEnoughFunds
+        NotEnoughFunds,
     }
 
     #[pallet::hooks]
@@ -340,6 +346,81 @@ pub mod pallet {
 
             // Emit event
             Self::deposit_event(Event::<T>::Contribute(user, asset_id, funds_to_contribute));
+
+            // Return a successful DispatchResult
+            Ok(().into())
+        }
+
+        #[pallet::weight(10000)]
+        pub fn emergency_withdraw(
+            origin: OriginFor<T>,
+            asset_id: AssetIdOf<T>,
+        ) -> DispatchResultWithPostInfo {
+            let user = ensure_signed(origin)?;
+            let current_block = frame_system::Pallet::<T>::block_number();
+
+            // get ILO info
+            let mut ilo_info = <ILOs<T>>::get(&asset_id);
+
+            // Check if ILO for token exists
+            ensure!(ilo_info.ilo_price != 0, Error::<T>::ILODoesNotExist);
+
+            // Get contribution info
+            let contribute_info = <Contributions<T>>::get(&asset_id, &user);
+
+            ensure!(
+                ilo_info.start_block >= current_block,
+                Error::<T>::ILONotStarted
+            );
+            ensure!(
+                current_block > ilo_info.end_block,
+                Error::<T>::ILOIsNotFinished
+            );
+            ensure!(
+                contribute_info.funds_contributed > 0,
+                Error::<T>::NotEnoughFunds
+            );
+
+            let token_claimed = (FixedWrapper::from(contribute_info.funds_contributed)
+                * FixedWrapper::from(0.8))
+            .try_into_balance()
+            .unwrap_or(0);
+
+            // Emergency withdraw funds
+            Assets::<T>::transfer_from(
+                &asset_id.into(),
+                &Self::account_id(),
+                &user,
+                token_claimed,
+            )?;
+
+            /*
+            let unclaimed = (FixedWrapper::from(contribute_info.funds_contributed)
+                * FixedWrapper::from(0.2))
+                .try_into_balance()
+                .unwrap_or(0);
+
+            Assets::<T>::transfer_from(
+                &asset_id.into(),
+                &Self::account_id(),
+                &user,
+                unclaimed,
+            )?;
+            */
+
+            ilo_info.funds_raised -= contribute_info.funds_contributed;
+            ilo_info.sold_tokens -= contribute_info.tokens_bought;
+
+            // Update map
+            <ILOs<T>>::insert(&asset_id, &ilo_info);
+            <Contributions<T>>::remove(&asset_id, &user);
+
+            // Emit event
+            Self::deposit_event(Event::<T>::EmergencyWithdraw(
+                user,
+                asset_id,
+                contribute_info.funds_contributed,
+            ));
 
             // Return a successful DispatchResult
             Ok(().into())
