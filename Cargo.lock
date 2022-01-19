@@ -2524,22 +2524,23 @@ dependencies = [
 [[package]]
 name = "ethash"
 version = "0.5.0"
-dependencies = [
- "byteorder",
- "ethereum-types 0.12.1",
- "rlp 0.5.1",
- "sha3 0.10.0",
-]
-
-[[package]]
-name = "ethash"
-version = "0.5.0"
 source = "git+https://github.com/snowfork/ethash.git?branch=master#d777b18df8ebc29f9d8a5d78566bdd7fbee4a7cc"
 dependencies = [
  "byteorder",
  "ethereum-types 0.12.1",
  "rlp 0.5.1",
  "sha3 0.8.2",
+]
+
+[[package]]
+name = "ethash"
+version = "0.5.0"
+source = "git+https://github.com/vovac12/ethash#d394caf5faa131613390ab64e122e01518bb5f16"
+dependencies = [
+ "byteorder",
+ "ethereum-types 0.12.1",
+ "rlp 0.5.1",
+ "sha3 0.10.0",
 ]
 
 [[package]]
@@ -8163,7 +8164,7 @@ dependencies = [
  "common",
  "env_logger 0.9.0",
  "eth_trie",
- "ethash 0.5.0",
+ "ethash 0.5.0 (git+https://github.com/vovac12/ethash)",
  "ethereum-gen",
  "ethereum-types 0.12.1",
  "ethers",
