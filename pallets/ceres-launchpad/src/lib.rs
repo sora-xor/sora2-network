@@ -103,6 +103,8 @@ pub mod pallet {
     pub enum Event<T: Config> {
         /// ILO created [who, what]
         ILOCreated(AccountIdOf<T>, AssetIdOf<T>),
+        /// Contribute [who, what, balance]
+        Contribute(AccountIdOf<T>, AssetIdOf<T>, Balance),
     }
 
     #[pallet::error]
@@ -137,6 +139,20 @@ pub mod pallet {
         NotEnoughCeres,
         /// Not enough ILO tokens
         NotEnoughTokens,
+        ///ILONotStarted
+        ILONotStarted,
+        ///CantContributeInILO
+        CantContributeInILO,
+        ///HardCapIsHit
+        HardCapIsHit,
+        ///NotEnoughTokensToBuy
+        NotEnoughTokensToBuy,
+        ///ContributionIsLowerThenMin
+        ContributionIsLowerThenMin,
+        ///ContributionIsBiggerThenMax
+        ContributionIsBiggerThenMax,
+        ///ILODoesNotExist
+        ILODoesNotExist,
     }
 
     #[pallet::hooks]
@@ -251,6 +267,79 @@ pub mod pallet {
 
             // Emit an event
             Self::deposit_event(Event::ILOCreated(user, asset_id));
+
+            // Return a successful DispatchResult
+            Ok(().into())
+        }
+
+        /// Contribute
+        #[pallet::weight(10000)]
+        pub fn contribute(
+            origin: OriginFor<T>,
+            asset_id: AssetIdOf<T>,
+            funds_to_contribute: Balance,
+        ) -> DispatchResultWithPostInfo {
+            let user = ensure_signed(origin)?;
+            let current_block = frame_system::Pallet::<T>::block_number();
+
+            // get ILO info
+            let mut ilo_info = <ILOs<T>>::get(&asset_id);
+
+            // Check if ILO for token exists
+            ensure!(ilo_info.ilo_price != 0, Error::<T>::ILODoesNotExist);
+
+            // Get contribution info
+            let contribute_info = <Contributions<T>>::get(&asset_id, &user);
+
+            ensure!(
+                ilo_info.start_block >= current_block,
+                Error::<T>::ILONotStarted
+            );
+            ensure!(
+                ilo_info.end_block > ilo_info.start_block,
+                Error::<T>::CantContributeInILO
+            );
+            ensure!(
+                funds_to_contribute >= ilo_info.min_contribution,
+                Error::<T>::ContributionIsLowerThenMin
+            );
+            ensure!(
+                funds_to_contribute <= ilo_info.max_contribution,
+                Error::<T>::ContributionIsBiggerThenMax
+            );
+            ensure!(
+                ilo_info.funds_raised + funds_to_contribute <= ilo_info.hard_cap,
+                Error::<T>::HardCapIsHit
+            );
+            ensure!(
+                ilo_info.sold_tokens + funds_to_contribute <= ilo_info.number_of_tokens,
+                Error::<T>::NotEnoughTokensToBuy
+            );
+
+            // Calculate amount of bought tokens
+            let mut tokens_bought = (FixedWrapper::from(funds_to_contribute)
+                / FixedWrapper::from(ilo_info.ilo_price))
+            .try_into_balance()
+            .unwrap_or(0);
+
+            tokens_bought += funds_to_contribute;
+            ilo_info.funds_raised += tokens_bought;
+            ilo_info.sold_tokens += tokens_bought;
+
+            // Transfer ILO tokens to pallet
+            Assets::<T>::transfer_from(
+                &asset_id.into(),
+                &user,
+                &Self::account_id(),
+                tokens_bought,
+            )?;
+
+            // Update storage
+            <ILOs<T>>::insert(&asset_id, &ilo_info);
+            <Contributions<T>>::insert(&asset_id, &user, contribute_info);
+
+            // Emit event
+            Self::deposit_event(Event::<T>::Contribute(user, asset_id, funds_to_contribute));
 
             // Return a successful DispatchResult
             Ok(().into())
