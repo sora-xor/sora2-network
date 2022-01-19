@@ -342,7 +342,7 @@ pub mod pallet {
             );
 
             // Calculate amount of bought tokens
-            let mut tokens_bought = (FixedWrapper::from(funds_to_contribute)
+            let tokens_bought = (FixedWrapper::from(funds_to_contribute)
                 / FixedWrapper::from(ilo_info.ilo_price))
             .try_into_balance()
             .unwrap_or(0);
@@ -413,7 +413,7 @@ pub mod pallet {
 
             // Emergency withdraw funds
             Assets::<T>::transfer_from(
-                &T::XORAssetId::get.into(),
+                &T::XORAssetId::get().into(),
                 &Self::account_id(),
                 &user,
                 token_claimed,
@@ -437,6 +437,7 @@ pub mod pallet {
             ilo_info.sold_tokens -= contribution_info.tokens_bought;
 
             // Update map
+            <ILOs<T>>::insert(&asset_id, &ilo_info);
             <Contributions<T>>::remove(&asset_id, &user);
 
             // Emit event
