@@ -12,6 +12,7 @@ edition = "2018"
 targets = ["x86_64-unknown-linux-gnu"]
 
 [dependencies]
+ceres-liquidity-locker = { path = "../ceres-liquidity-locker", default-features = false }
 codec = { package = "parity-scale-codec", version = "2", default-features = false, features = ["derive"] }
 frame-benchmarking = { version = "3", default-features = false, optional = true }
 frame-support = { version = "3", default-features = false }
@@ -22,6 +23,8 @@ sp-core = { version = "3", default-features = false }
 sp-runtime = { version = "3", default-features = false }
 sp-std = { version = "3", default-features = false }
 serde = { version = "1.0.101", optional = true, features = ["derive"], default-features = false }
+pool-xyk = { path = "../pool-xyk", default-features = false }
+trading-pair = { path = "../trading-pair", default-features = false }
 hex-literal = "0.3.1"
 
 [dev-dependencies]

@@ -6,7 +6,8 @@ use codec::{Decode, Encode};
 #[cfg_attr(feature = "std", derive(Debug))]
 pub struct ILOInfo<Balance, AccountId, BlockNumber> {
     ilo_organizer: AccountId,
-    number_of_tokens: Balance,
+    tokens_for_ilo: Balance,
+    tokens_for_liquidity: Balance,
     ilo_price: Balance,
     soft_cap: Balance,
     hard_cap: Balance,
@@ -47,27 +48,37 @@ pub use pallet::*;
 #[frame_support::pallet]
 pub mod pallet {
     use crate::{ContributionInfo, ILOInfo, VestingInfo};
-    use common::balance;
     use common::prelude::{Balance, FixedWrapper};
+    use common::{balance, DEXId, PoolXykPallet};
     use frame_support::pallet_prelude::*;
-    use frame_system::ensure_signed;
     use frame_system::pallet_prelude::*;
+    use frame_system::{ensure_signed, RawOrigin};
     use sp_runtime::traits::AccountIdConversion;
     use sp_runtime::ModuleId;
 
     const PALLET_ID: ModuleId = ModuleId(*b"crslaunc");
 
     #[pallet::config]
-    pub trait Config: frame_system::Config + assets::Config {
+    pub trait Config:
+        frame_system::Config
+        + assets::Config
+        + trading_pair::Config
+        + pool_xyk::Config
+        + ceres_liquidity_locker::Config
+    {
         /// Because this pallet emits events, it depends on the runtime's definition of an event.
         type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 
-        /// Ceres asset id
-        type CeresAssetId: Get<AssetId>;
+        /// XOR asset id
+        type XORAssetId: Get<AssetId>;
     }
 
     type Assets<T> = assets::Pallet<T>;
-    pub type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
+    type TradingPair<T> = trading_pair::Pallet<T>;
+    type PoolXYK<T> = pool_xyk::Pallet<T>;
+    type CeresLiquidityLocker<T> = ceres_liquidity_locker::Pallet<T>;
+
+    type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
     type AssetIdOf<T> = <T as assets::Config>::AssetId;
     type AssetId = common::AssetId32<common::PredefinedAssetId>;
 
@@ -107,6 +118,8 @@ pub mod pallet {
         Contribute(AccountIdOf<T>, AssetIdOf<T>, Balance),
         /// Emergency withdraw [who, what, balance]
         EmergencyWithdraw(AccountIdOf<T>, AssetIdOf<T>, Balance),
+        /// ILO finished [who, what]
+        ILOFinished(AccountIdOf<T>, AssetIdOf<T>),
     }
 
     #[pallet::error]
@@ -131,6 +144,10 @@ pub mod pallet {
         InvalidEndBlock,
         /// Listing price must be greater than ILO price
         InvalidPrice,
+        /// Invalid number of tokens for liquidity
+        InvalidNumberOfTokensForLiquidity,
+        /// Invalid number of tokens for ILO
+        InvalidNumberOfTokensForILO,
         /// First release percent can't be zero
         InvalidFirstReleasePercent,
         /// Invalid vesting percent
@@ -143,6 +160,8 @@ pub mod pallet {
         NotEnoughTokens,
         ///ILONotStarted
         ILONotStarted,
+        /// ILO is finished,
+        ILOIsFinished,
         ///CantContributeInILO
         CantContributeInILO,
         ///HardCapIsHit
@@ -153,12 +172,16 @@ pub mod pallet {
         ContributionIsLowerThenMin,
         ///ContributionIsBiggerThenMax
         ContributionIsBiggerThenMax,
-        ///ILODoesNotExist
-        ILODoesNotExist,
-        ///ILOIsNotFinished
-        ILOIsNotFinished,
         ///NotEnoughFunds
         NotEnoughFunds,
+        /// ILO for token does not exist
+        ILODoesNotExist,
+        /// ILO is not finished
+        ILOIsNotFinished,
+        /// Pool does not exist
+        PoolDoesNotExist,
+        /// Unauthorized
+        Unauthorized,
     }
 
     #[pallet::hooks]
@@ -171,7 +194,8 @@ pub mod pallet {
         pub fn create_ilo(
             origin: OriginFor<T>,
             asset_id: AssetIdOf<T>,
-            number_of_tokens: Balance,
+            tokens_for_ilo: Balance,
+            tokens_for_liquidity: Balance,
             ilo_price: Balance,
             soft_cap: Balance,
             hard_cap: Balance,
@@ -200,6 +224,8 @@ pub mod pallet {
 
             // Check parameters
             let result = Self::check_parameters(
+                tokens_for_ilo,
+                tokens_for_liquidity,
                 ilo_price,
                 soft_cap,
                 hard_cap,
@@ -227,25 +253,22 @@ pub mod pallet {
                 Error::<T>::NotEnoughCeres
             );
 
+            let total_tokens = tokens_for_liquidity + tokens_for_ilo;
             ensure!(
-                number_of_tokens <= Assets::<T>::free_balance(&asset_id, &user).unwrap_or(0),
+                total_tokens <= Assets::<T>::free_balance(&asset_id, &user).unwrap_or(0),
                 Error::<T>::NotEnoughTokens
             );
 
             // Burn 10 CERES as fee
             Assets::<T>::burn(origin, T::CeresAssetId::get().into(), balance!(10))?;
 
-            // Transfer ILO tokens to pallet
-            Assets::<T>::transfer_from(
-                &asset_id.into(),
-                &user,
-                &Self::account_id(),
-                number_of_tokens,
-            )?;
+            // Transfer tokens to pallet
+            Assets::<T>::transfer_from(&asset_id.into(), &user, &Self::account_id(), total_tokens)?;
 
             ilo_info = ILOInfo {
                 ilo_organizer: user.clone(),
-                number_of_tokens,
+                tokens_for_ilo,
+                tokens_for_liquidity,
                 ilo_price,
                 soft_cap,
                 hard_cap,
@@ -295,15 +318,15 @@ pub mod pallet {
             ensure!(ilo_info.ilo_price != 0, Error::<T>::ILODoesNotExist);
 
             // Get contribution info
-            let contribute_info = <Contributions<T>>::get(&asset_id, &user);
+            let mut contribution_info = <Contributions<T>>::get(&asset_id, &user);
 
             ensure!(
                 ilo_info.start_block >= current_block,
                 Error::<T>::ILONotStarted
             );
             ensure!(
-                ilo_info.end_block > ilo_info.start_block,
-                Error::<T>::CantContributeInILO
+                ilo_info.end_block > current_block,
+                Error::<T>::ILOIsFinished
             );
             ensure!(
                 funds_to_contribute >= ilo_info.min_contribution,
@@ -317,10 +340,6 @@ pub mod pallet {
                 ilo_info.funds_raised + funds_to_contribute <= ilo_info.hard_cap,
                 Error::<T>::HardCapIsHit
             );
-            ensure!(
-                ilo_info.sold_tokens + funds_to_contribute <= ilo_info.number_of_tokens,
-                Error::<T>::NotEnoughTokensToBuy
-            );
 
             // Calculate amount of bought tokens
             let mut tokens_bought = (FixedWrapper::from(funds_to_contribute)
@@ -328,21 +347,27 @@ pub mod pallet {
             .try_into_balance()
             .unwrap_or(0);
 
-            tokens_bought += funds_to_contribute;
-            ilo_info.funds_raised += tokens_bought;
-            ilo_info.sold_tokens += tokens_bought;
+            ensure!(
+                ilo_info.sold_tokens + tokens_bought <= ilo_info.tokens_for_ilo,
+                Error::<T>::NotEnoughTokensToBuy
+            );
 
-            // Transfer ILO tokens to pallet
+            ilo_info.funds_raised += funds_to_contribute;
+            ilo_info.sold_tokens += tokens_bought;
+            contribution_info.funds_contributed += funds_to_contribute;
+            contribution_info.tokens_bought += tokens_bought;
+
+            // Transfer XOR to pallet
             Assets::<T>::transfer_from(
-                &asset_id.into(),
+                &T::XORAssetId::get().into(),
                 &user,
                 &Self::account_id(),
-                tokens_bought,
+                funds_to_contribute,
             )?;
 
             // Update storage
             <ILOs<T>>::insert(&asset_id, &ilo_info);
-            <Contributions<T>>::insert(&asset_id, &user, contribute_info);
+            <Contributions<T>>::insert(&asset_id, &user, contribution_info);
 
             // Emit event
             Self::deposit_event(Event::<T>::Contribute(user, asset_id, funds_to_contribute));
@@ -359,36 +384,36 @@ pub mod pallet {
             let user = ensure_signed(origin)?;
             let current_block = frame_system::Pallet::<T>::block_number();
 
-            // get ILO info
+            // Get ILO info
             let mut ilo_info = <ILOs<T>>::get(&asset_id);
 
             // Check if ILO for token exists
             ensure!(ilo_info.ilo_price != 0, Error::<T>::ILODoesNotExist);
 
             // Get contribution info
-            let contribute_info = <Contributions<T>>::get(&asset_id, &user);
+            let contribution_info = <Contributions<T>>::get(&asset_id, &user);
 
             ensure!(
-                ilo_info.start_block >= current_block,
+                ilo_info.start_block < current_block,
                 Error::<T>::ILONotStarted
             );
             ensure!(
-                current_block > ilo_info.end_block,
-                Error::<T>::ILOIsNotFinished
+                current_block < ilo_info.end_block,
+                Error::<T>::ILOIsFinished
             );
             ensure!(
-                contribute_info.funds_contributed > 0,
+                contribution_info.funds_contributed > 0,
                 Error::<T>::NotEnoughFunds
             );
 
-            let token_claimed = (FixedWrapper::from(contribute_info.funds_contributed)
+            let token_claimed = (FixedWrapper::from(contribution_info.funds_contributed)
                 * FixedWrapper::from(0.8))
             .try_into_balance()
             .unwrap_or(0);
 
             // Emergency withdraw funds
             Assets::<T>::transfer_from(
-                &asset_id.into(),
+                &T::XORAssetId::get.into(),
                 &Self::account_id(),
                 &user,
                 token_claimed,
@@ -408,19 +433,154 @@ pub mod pallet {
             )?;
             */
 
-            ilo_info.funds_raised -= contribute_info.funds_contributed;
-            ilo_info.sold_tokens -= contribute_info.tokens_bought;
+            ilo_info.funds_raised -= contribution_info.funds_contributed;
+            ilo_info.sold_tokens -= contribution_info.tokens_bought;
 
             // Update map
-            <ILOs<T>>::insert(&asset_id, &ilo_info);
             <Contributions<T>>::remove(&asset_id, &user);
 
             // Emit event
             Self::deposit_event(Event::<T>::EmergencyWithdraw(
                 user,
                 asset_id,
-                contribute_info.funds_contributed,
+                contribution_info.funds_contributed,
             ));
+
+            Ok(().into())
+        }
+
+        /// Finish ILO
+        #[pallet::weight(10000)]
+        pub fn finish_ilo(
+            origin: OriginFor<T>,
+            asset_id: AssetIdOf<T>,
+        ) -> DispatchResultWithPostInfo {
+            let user = ensure_signed(origin.clone())?;
+
+            // Get ILO info of asset_id token
+            let mut ilo_info = <ILOs<T>>::get(&asset_id);
+
+            // Check if ILO for token already exists
+            ensure!(ilo_info.ilo_price != 0, Error::<T>::ILODoesNotExist);
+
+            // Get current block
+            let current_block = frame_system::Pallet::<T>::block_number();
+            ensure!(
+                current_block > ilo_info.end_block,
+                Error::<T>::ILOIsNotFinished
+            );
+            if user != ilo_info.ilo_organizer {
+                return Err(Error::<T>::Unauthorized.into());
+            }
+
+            let pallet_account = Self::account_id();
+            if ilo_info.funds_raised < ilo_info.soft_cap {
+                // Failed ILO
+                ilo_info.failed = true;
+                let total_tokens = ilo_info.tokens_for_liquidity + ilo_info.tokens_for_ilo;
+                if !ilo_info.refund_type {
+                    Assets::<T>::burn(
+                        RawOrigin::Signed(pallet_account).into(),
+                        asset_id.into(),
+                        total_tokens,
+                    )?;
+                } else {
+                    Assets::<T>::transfer_from(
+                        &asset_id.into(),
+                        &pallet_account,
+                        &ilo_info.ilo_organizer,
+                        total_tokens,
+                    )?;
+                }
+
+                <ILOs<T>>::insert(&asset_id, &ilo_info);
+
+                return Ok(().into());
+            }
+
+            // Transfer raised funds to team
+            let team_percent = balance!(1) - ilo_info.liquidity_percent;
+            let funds_for_team = (FixedWrapper::from(ilo_info.funds_raised)
+                * FixedWrapper::from(team_percent))
+            .try_into_balance()
+            .unwrap_or(0);
+            let funds_for_liquidity = ilo_info.funds_raised - funds_for_team;
+            Assets::<T>::transfer_from(
+                &T::XORAssetId::get().into(),
+                &pallet_account,
+                &ilo_info.ilo_organizer,
+                funds_for_team,
+            )?;
+
+            // Register trading pair
+            TradingPair::<T>::register(
+                RawOrigin::Signed(pallet_account.clone()).into(),
+                DEXId::Polkaswap.into(),
+                T::XORAssetId::get().into(),
+                asset_id.into(),
+            )?;
+
+            // Initialize pool
+            PoolXYK::<T>::initialize_pool(
+                RawOrigin::Signed(pallet_account.clone()).into(),
+                DEXId::Polkaswap.into(),
+                T::XORAssetId::get().into(),
+                asset_id.into(),
+            )?;
+
+            // Deposit liquidity
+            let tokens_for_liquidity = (FixedWrapper::from(funds_for_liquidity)
+                / FixedWrapper::from(ilo_info.listing_price))
+            .try_into_balance()
+            .unwrap_or(0);
+            PoolXYK::<T>::deposit_liquidity(
+                RawOrigin::Signed(pallet_account.clone()).into(),
+                DEXId::Polkaswap.into(),
+                T::XORAssetId::get().into(),
+                asset_id.into(),
+                funds_for_liquidity,
+                tokens_for_liquidity,
+                balance!(0),
+                balance!(0),
+            )?;
+
+            // Burn unused tokens for liquidity
+            Assets::<T>::burn(
+                RawOrigin::Signed(pallet_account.clone()).into(),
+                asset_id.into(),
+                ilo_info.tokens_for_liquidity - tokens_for_liquidity,
+            )?;
+
+            // Burn unused tokens for ilo
+            Assets::<T>::burn(
+                RawOrigin::Signed(pallet_account.clone()).into(),
+                asset_id.into(),
+                ilo_info.tokens_for_ilo - ilo_info.sold_tokens,
+            )?;
+
+            // Lock liquidity
+            let unlocking_block = current_block + (14400u32 * ilo_info.lockup_days).into();
+            CeresLiquidityLocker::<T>::lock_liquidity(
+                RawOrigin::Signed(pallet_account.clone()).into(),
+                T::XORAssetId::get().into(),
+                asset_id.into(),
+                unlocking_block,
+                balance!(1),
+                true,
+            )?;
+
+            // Calculate LP tokens
+            let pool_account =
+                PoolXYK::<T>::properties_of_pool(T::XORAssetId::get().into(), asset_id)
+                    .ok_or(Error::<T>::PoolDoesNotExist)?
+                    .0;
+            ilo_info.lp_tokens =
+                PoolXYK::<T>::balance_of_pool_provider(pool_account, pallet_account).unwrap_or(0);
+
+            <ILOs<T>>::insert(&asset_id, &ilo_info);
+
+            // Emit an event
+            Self::deposit_event(Event::ILOFinished(user.clone(), asset_id));
 
             // Return a successful DispatchResult
             Ok(().into())
@@ -435,6 +595,8 @@ pub mod pallet {
 
         /// Check parameters
         fn check_parameters(
+            tokens_for_ilo: Balance,
+            tokens_for_liquidity: Balance,
             ilo_price: Balance,
             soft_cap: Balance,
             hard_cap: Balance,
@@ -491,6 +653,21 @@ pub mod pallet {
 
             if ilo_price >= listing_price {
                 return Err(Error::<T>::InvalidPrice.into());
+            }
+
+            let tfi = (FixedWrapper::from(hard_cap) / FixedWrapper::from(ilo_price))
+                .try_into_balance()
+                .unwrap_or(0);
+            if tokens_for_ilo != tfi {
+                return Err(Error::<T>::InvalidNumberOfTokensForILO.into());
+            }
+
+            let tfl = ((FixedWrapper::from(hard_cap) * FixedWrapper::from(liquidity_percent))
+                / FixedWrapper::from(listing_price))
+            .try_into_balance()
+            .unwrap_or(0);
+            if tokens_for_liquidity != tfl {
+                return Err(Error::<T>::InvalidNumberOfTokensForLiquidity.into());
             }
 
             if first_release_percent == balance!(0) {

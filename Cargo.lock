@@ -801,6 +801,7 @@ name = "ceres-launchpad"
 version = "1.0.0"
 dependencies = [
  "assets",
+ "ceres-liquidity-locker",
  "common",
  "frame-benchmarking 3.1.0",
  "frame-support",
@@ -811,11 +812,13 @@ dependencies = [
  "pallet-balances",
  "parity-scale-codec",
  "permissions",
+ "pool-xyk",
  "serde",
  "sp-core",
  "sp-io",
  "sp-runtime",
  "sp-std",
+ "trading-pair",
 ]
 
 [[package]]
