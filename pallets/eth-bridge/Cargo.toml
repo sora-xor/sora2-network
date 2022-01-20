@@ -16,7 +16,7 @@ frame-support = { git = "https://github.com/paritytech/substrate.git", branch = 
 frame-system = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.9", default-features = false }
 frame-benchmarking = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.9", default-features = false, optional = true }
 hex-literal = "0.3.1"
-secp256k1 = { version = "0.6", features = ['hmac'], default-features = false, package = "libsecp256k1" }
+secp256k1 = { version = "0.7", features = ['hmac'], default-features = false, package = "libsecp256k1" }
 once_cell = { version = "1.5.2", default-features = false, features = ['alloc', 'unstable'] }
 rlp = { version = "0.4.6", default-features = false }
 rustc-hex = { version = "2.1.0", default-features = false }
@@ -28,7 +28,7 @@ tiny-keccak = { version = "2", default-features = false }
 pallet-scheduler = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.9", default-features = false }
 pallet-timestamp = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.9", default-features = false }
 
-bridge-multisig = { git = "https://github.com/soramitsu/sora2-frame-pallets.git", branch = "polkadot-v0.9.13", package = "pallet-multisig", default-features = false }
+bridge-multisig = { git = "https://github.com/soramitsu/sora2-frame-pallets.git", branch = "polkadot-v0.9.15", package = "pallet-multisig", default-features = false }
 ethabi = { git = "https://github.com/vmarkushin/ethabi.git", branch = "no-std", package = "ethabi", default-features = false, features = ["alloc"] }
 ethabi-contract = { git = "https://github.com/vmarkushin/ethabi.git", branch = "no-std", package = "ethabi-contract", default-features = false }
 ethabi-derive = { git = "https://github.com/vmarkushin/ethabi.git", branch = "no-std", package = "ethabi-derive", default-features = false }

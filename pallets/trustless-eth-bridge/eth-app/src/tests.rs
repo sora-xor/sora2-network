@@ -7,7 +7,7 @@ use frame_support::{assert_noop, assert_ok};
 use sp_core::H160;
 use sp_keyring::AccountKeyring as Keyring;
 
-use snowbridge_core::ChannelId;
+use bridge_types::types::ChannelId;
 
 fn last_event() -> Event {
     System::events().pop().expect("Event expected").event

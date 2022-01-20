@@ -18,8 +18,7 @@ use sp_runtime::traits::{Hash, StaticLookup, Zero};
 
 use sp_std::prelude::*;
 
-use snowbridge_core::types::AuxiliaryDigestItem;
-use snowbridge_core::{ChannelId, MessageNonce};
+use bridge_types::types::{AuxiliaryDigestItem, ChannelId, MessageNonce};
 
 pub use weights::WeightInfo;
 

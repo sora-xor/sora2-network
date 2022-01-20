@@ -45,6 +45,7 @@ use frame_system;
 use traits::MultiCurrency;
 
 use common::prelude::{Balance, FixedWrapper, QuoteAmount, SwapAmount, SwapOutcome};
+use frame_system::pallet_prelude::BlockNumberFor;
 use permissions::{Scope, INIT_DEX, MANAGE_DEX};
 use sp_core::H256;
 use sp_runtime::testing::Header;
@@ -139,6 +140,7 @@ construct_runtime! {
         PoolXyk: pool_xyk::{Pallet, Call, Storage, Event<T>},
         PswapDistribution: pswap_distribution::{Pallet, Call, Storage, Event<T>},
         MBCPool: multicollateral_bonding_curve_pool::{Pallet, Call, Storage, Event<T>},
+        CeresLiquidityLocker: ceres_liquidity_locker::{Pallet, Call, Storage, Event<T>},
     }
 }
 
@@ -319,6 +321,14 @@ impl pool_xyk::Config for Runtime {
     type OnPoolCreated = pswap_distribution::Pallet<Runtime>;
     type OnPoolReservesChanged = ();
     type GetFee = GetXykFee;
+    type WeightInfo = ();
+}
+
+impl ceres_liquidity_locker::Config for Runtime {
+    const BLOCKS_PER_ONE_DAY: BlockNumberFor<Self> = 14_440;
+    type Event = Event;
+    type XYKPool = PoolXyk;
+    type CeresAssetId = ();
     type WeightInfo = ();
 }
 
@@ -527,6 +537,7 @@ impl LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> for Mock
         input_asset_id: &AssetId,
         output_asset_id: &AssetId,
         amount: QuoteAmount<Balance>,
+        deduce_fee: bool,
     ) -> Result<SwapOutcome<Balance>, DispatchError> {
         if !Self::can_exchange(dex_id, input_asset_id, output_asset_id) {
             panic!("Can't exchange");
@@ -555,7 +566,11 @@ impl LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> for Mock
                 .get()
                 .unwrap();
 
-            let extra_fee = FixedWrapper::from(undercollaterization_charge(collateralization));
+            let extra_fee = if deduce_fee {
+                FixedWrapper::from(undercollaterization_charge(collateralization))
+            } else {
+                0.into()
+            };
 
             match amount {
                 QuoteAmount::WithDesiredInput {
@@ -661,9 +676,10 @@ impl LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> for Mock
         input_asset_id: &AssetId,
         output_asset_id: &AssetId,
         amount: QuoteAmount<Balance>,
+        deduce_fee: bool,
     ) -> Result<SwapOutcome<Balance>, DispatchError> {
         // TODO: implement if needed
-        Self::quote(dex_id, input_asset_id, output_asset_id, amount)
+        Self::quote(dex_id, input_asset_id, output_asset_id, amount, deduce_fee)
     }
 }
 
@@ -883,6 +899,7 @@ impl LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> for Mock
         input_asset_id: &AssetId,
         output_asset_id: &AssetId,
         amount: QuoteAmount<Balance>,
+        _deduce_fee: bool,
     ) -> Result<SwapOutcome<Balance>, DispatchError> {
         if !Self::can_exchange(dex_id, input_asset_id, output_asset_id) {
             panic!("Can't exchange");
@@ -966,9 +983,10 @@ impl LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> for Mock
         input_asset_id: &AssetId,
         output_asset_id: &AssetId,
         amount: QuoteAmount<Balance>,
+        deduce_fee: bool,
     ) -> Result<SwapOutcome<Balance>, DispatchError> {
         // TODO: implement if needed
-        Self::quote(dex_id, input_asset_id, output_asset_id, amount)
+        Self::quote(dex_id, input_asset_id, output_asset_id, amount, deduce_fee)
     }
 }
 

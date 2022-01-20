@@ -26,7 +26,8 @@ use sp_core::{H160, U256};
 use sp_runtime::traits::StaticLookup;
 use sp_std::prelude::*;
 
-use snowbridge_core::{ChannelId, OutboundRouter};
+use bridge_types::traits::OutboundRouter;
+use bridge_types::types::ChannelId;
 
 mod payload;
 use payload::OutboundPayload;

@@ -32,6 +32,8 @@
 //!
 //! and thanks to versioning can be easily updated in the future.
 
+use bridge_types::types::MmrLeaf;
+use frame_support::log::warn;
 use sp_runtime::traits::Hash;
 
 use pallet_mmr::primitives::LeafDataProvider;
@@ -48,6 +50,7 @@ type MerkleRootOf<T> = <T as pallet_mmr::Config>::Hash;
 pub mod pallet {
     #![allow(missing_docs)]
 
+    use bridge_types::types::AuxiliaryDigest;
     use frame_support::pallet_prelude::*;
     use frame_system::pallet_prelude::*;
 
@@ -59,7 +62,7 @@ pub mod pallet {
     #[pallet::hooks]
     impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
         fn on_finalize(_n: T::BlockNumber) {
-            let digest = frame_system::Pallet::<T>::digest();
+            let digest: AuxiliaryDigest = frame_system::Pallet::<T>::digest().into();
             LatestDigest::<T>::put(digest);
         }
     }
@@ -67,8 +70,7 @@ pub mod pallet {
     /// Fee for accepting a message
     #[pallet::storage]
     #[pallet::getter(fn latest_digest)]
-    pub(super) type LatestDigest<T: Config> =
-        StorageValue<_, sp_runtime::generic::Digest, ValueQuery>;
+    pub(super) type LatestDigest<T: Config> = StorageValue<_, AuxiliaryDigest, ValueQuery>;
 
     /// The module's configuration trait.
     #[pallet::config]
@@ -84,32 +86,28 @@ pub mod pallet {
 
 impl<T: pallet_beefy_mmr::Config + Config + pallet_mmr::Config> LeafDataProvider for Pallet<T>
 where
-    beefy_merkle_tree::Hash: From<<T as pallet_mmr::Config>::Hash>,
-    <T as pallet_mmr::Config>::Hash: From<beefy_merkle_tree::Hash>,
+    MerkleRootOf<T>: From<beefy_merkle_tree::Hash> + Into<beefy_merkle_tree::Hash>,
 {
-    type LeafData = (
-        <pallet_beefy_mmr::Pallet<T> as LeafDataProvider>::LeafData,
+    type LeafData = MmrLeaf<
+        <T as frame_system::Config>::BlockNumber,
+        <T as frame_system::Config>::Hash,
+        MerkleRootOf<T>,
         beefy_merkle_tree::Hash,
-    );
+    >;
 
     fn leaf_data() -> Self::LeafData {
+        let leaf_data = <pallet_beefy_mmr::Pallet<T> as LeafDataProvider>::leaf_data();
         let digest = Pallet::<T>::latest_digest();
         let digest_encoded = digest.encode();
         let digest_hash =
             <pallet_beefy_mmr::Pallet<T> as beefy_merkle_tree::Hasher>::hash(&digest_encoded);
-        frame_support::log::warn!(
-            "get leaf data: block number: {:?}, digest hash: {:?}, digest {:?}",
-            frame_system::Pallet::<T>::block_number(),
+        let res = MmrLeaf {
+            version: leaf_data.version,
+            parent_number_and_hash: leaf_data.parent_number_and_hash,
+            beefy_next_authority_set: leaf_data.beefy_next_authority_set,
             digest_hash,
-            digest
-        );
-        let leaf = <pallet_beefy_mmr::Pallet<T> as LeafDataProvider>::leaf_data();
-        frame_support::log::warn!(
-            "get leaf data: block number: {:?}, next_authority_set: {:?}",
-            frame_system::Pallet::<T>::block_number(),
-            leaf.beefy_next_authority_set
-        );
-        (leaf, digest_hash)
+        };
+        res
     }
 }
 

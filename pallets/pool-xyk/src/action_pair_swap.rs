@@ -144,6 +144,7 @@ impl<T: Config> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, 
                         &balance_st,
                         &balance_tt,
                         &sa,
+                        true,
                     )?;
                     let x_in_pair = Pallet::<T>::calc_input_for_exact_output(
                         T::GetFee::get(),
@@ -151,6 +152,7 @@ impl<T: Config> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, 
                         &balance_st,
                         &balance_tt,
                         &ta,
+                        true,
                     )?;
                     if y_out_pair.0 != ta || x_in_pair.0 != sa || y_out_pair.1 != x_in_pair.1 {
                         Err(Error::<T>::PoolPairRatioAndPairSwapRatioIsDifferent)?;
@@ -168,6 +170,7 @@ impl<T: Config> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, 
                                 &balance_st,
                                 &balance_tt,
                                 &sa,
+                                true,
                             )?;
 
                             ensure!(
@@ -193,6 +196,7 @@ impl<T: Config> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, 
                                 &balance_st,
                                 &balance_tt,
                                 &ta,
+                                true,
                             )?;
 
                             ensure!(

@@ -70,6 +70,7 @@ fn prepare_pending_accounts<T: Config>(n: u128) {
 
 fn prepare_pending_market_makers<T: Config>(n: u128, m: u128) {
     MarketMakingPairs::<T>::insert(&T::AssetId::from(XOR), &T::AssetId::from(ETH), ());
+    MarketMakingPairs::<T>::insert(&T::AssetId::from(PSWAP), &T::AssetId::from(XOR), ());
     for i in 0..n {
         let user_account = create_account::<T>(b"eligible mm reward".to_vec(), i);
         T::Currency::deposit(XOR.into(), &user_account, balance!(1)).unwrap(); // to prevent inc ref error
@@ -77,8 +78,9 @@ fn prepare_pending_market_makers<T: Config>(n: u128, m: u128) {
             &user_account,
             balance!(100),
             500,
-            &XOR.into(),
+            &PSWAP.into(),
             &ETH.into(),
+            Some(&XOR.into()),
         )
         .unwrap();
     }
@@ -89,8 +91,9 @@ fn prepare_pending_market_makers<T: Config>(n: u128, m: u128) {
             &user_account,
             balance!(100),
             100,
-            &XOR.into(),
+            &PSWAP.into(),
             &ETH.into(),
+            Some(&XOR.into()),
         )
         .unwrap();
     }

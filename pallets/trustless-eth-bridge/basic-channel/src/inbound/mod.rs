@@ -8,8 +8,9 @@ pub mod weights;
 #[cfg(test)]
 mod test;
 
+use bridge_types::traits::{MessageDispatch, Verifier};
+use bridge_types::types::{ChannelId, Message, MessageId};
 use frame_system::ensure_signed;
-use snowbridge_core::{ChannelId, Message, MessageDispatch, MessageId, Verifier};
 use sp_core::H160;
 use sp_std::convert::TryFrom;
 

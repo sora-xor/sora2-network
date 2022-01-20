@@ -1,6 +1,6 @@
 import { ApiPromise, WsProvider } from '@polkadot/api';
 import * as hre from "hardhat";
-import * as sora from '@sora-substrate/api';
+// import * as sora from '@sora-substrate/api';
 
 const relaychainEndpoint = process.env.RELAYCHAIN_ENDPOINT;
 

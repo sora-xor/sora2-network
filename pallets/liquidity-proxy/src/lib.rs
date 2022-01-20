@@ -130,6 +130,7 @@ pub trait LiquidityProxyTrait<DEXId: PartialEq + Copy, AccountId, AssetId> {
         output_asset_id: &AssetId,
         amount: QuoteAmount<Balance>,
         filter: LiquiditySourceFilter<DEXId, LiquiditySourceType>,
+        deduce_fee: bool,
     ) -> Result<SwapOutcome<Balance>, DispatchError>;
 
     /// Perform exchange based on desired amount.
@@ -151,6 +152,7 @@ impl<DEXId: PartialEq + Copy, AccountId, AssetId> LiquidityProxyTrait<DEXId, Acc
         _output_asset_id: &AssetId,
         _amount: QuoteAmount<Balance>,
         _filter: LiquiditySourceFilter<DEXId, LiquiditySourceType>,
+        _deduce_fee: bool,
     ) -> Result<SwapOutcome<Balance>, DispatchError> {
         unimplemented!()
     }
@@ -237,6 +239,7 @@ impl<T: Config> Pallet<T> {
                         1,
                         &from_asset_id,
                         &to_asset_id,
+                        None,
                     )?;
                     Ok(outcome)
                 }
@@ -276,6 +279,7 @@ impl<T: Config> Pallet<T> {
                             2,
                             &from_asset_id,
                             &to_asset_id,
+                            Some(&intermediate_asset_id),
                         )?;
                         let cumulative_fee = first_swap
                             .fee
@@ -293,12 +297,14 @@ impl<T: Config> Pallet<T> {
                             QuoteAmount::with_desired_output(desired_amount_out),
                             filter.clone(),
                             true,
+                            true,
                         )?;
                         let (first_quote, _) = Self::quote_single(
                             &from_asset_id,
                             &intermediate_asset_id,
                             QuoteAmount::with_desired_output(second_quote.amount),
                             filter.clone(),
+                            true,
                             true,
                         )?;
                         ensure!(
@@ -328,6 +334,7 @@ impl<T: Config> Pallet<T> {
                             2,
                             &from_asset_id,
                             &to_asset_id,
+                            Some(&intermediate_asset_id),
                         )?;
                         let cumulative_fee = first_swap
                             .fee
@@ -350,23 +357,34 @@ impl<T: Config> Pallet<T> {
         filter: LiquiditySourceFilter<T::DEXId, LiquiditySourceType>,
     ) -> Result<SwapOutcome<Balance>, DispatchError> {
         common::with_transaction(|| {
-            let res =
-                Self::quote_single(input_asset_id, output_asset_id, amount.into(), filter, true)?
-                    .0
-                    .distribution
-                    .into_iter()
-                    .filter(|(_src, part_amount)| part_amount.amount() > balance!(0))
-                    .map(|(src, part_amount)| {
-                        T::LiquidityRegistry::exchange(
-                            sender,
-                            receiver,
-                            &src,
-                            input_asset_id,
-                            output_asset_id,
-                            amount.copy_direction(part_amount.amount(), amount.limit()),
-                        )
-                    })
-                    .collect::<Result<Vec<SwapOutcome<Balance>>, DispatchError>>()?;
+            let res = Self::quote_single(
+                input_asset_id,
+                output_asset_id,
+                amount.into(),
+                filter,
+                true,
+                true,
+            )?
+            .0
+            .distribution
+            .into_iter()
+            .filter(|(_src, part_amount)| part_amount.amount() > balance!(0))
+            .map(|(src, part_amount)| {
+                let part_amount = part_amount.amount();
+                let part_limit = (FixedWrapper::from(part_amount) / amount.amount()
+                    * amount.limit())
+                .try_into_balance()
+                .map_err(|_| Error::CalculationError::<T>)?;
+                T::LiquidityRegistry::exchange(
+                    sender,
+                    receiver,
+                    &src,
+                    input_asset_id,
+                    output_asset_id,
+                    amount.copy_direction(part_amount, part_limit),
+                )
+            })
+            .collect::<Result<Vec<SwapOutcome<Balance>>, DispatchError>>()?;
 
             let (amount, fee): (FixedWrapper, FixedWrapper) = res.into_iter().fold(
                 (fixed_wrapper!(0), fixed_wrapper!(0)),
@@ -398,6 +416,7 @@ impl<T: Config> Pallet<T> {
         amount: QuoteAmount<Balance>,
         filter: LiquiditySourceFilter<T::DEXId, LiquiditySourceType>,
         skip_info: bool,
+        deduce_fee: bool,
     ) -> Result<(SwapOutcome<Balance>, Rewards<T::AssetId>, Option<Balance>), DispatchError> {
         ensure!(
             input_asset_id != output_asset_id,
@@ -408,8 +427,14 @@ impl<T: Config> Pallet<T> {
                 from_asset_id,
                 to_asset_id,
             } => {
-                let (aso, rewards) =
-                    Self::quote_single(&from_asset_id, &to_asset_id, amount, filter, skip_info)?;
+                let (aso, rewards) = Self::quote_single(
+                    &from_asset_id,
+                    &to_asset_id,
+                    amount,
+                    filter,
+                    skip_info,
+                    deduce_fee,
+                )?;
                 let quote_without_impact = if skip_info {
                     None
                 } else {
@@ -417,6 +442,7 @@ impl<T: Config> Pallet<T> {
                         input_asset_id,
                         output_asset_id,
                         &aso.distribution,
+                        deduce_fee,
                     )?)
                 };
                 Ok((
@@ -437,6 +463,7 @@ impl<T: Config> Pallet<T> {
                         QuoteAmount::with_desired_input(desired_amount_in),
                         filter.clone(),
                         skip_info,
+                        deduce_fee,
                     )?;
                     let (second_quote, mut rewards_b) = Self::quote_single(
                         &intermediate_asset_id,
@@ -444,6 +471,7 @@ impl<T: Config> Pallet<T> {
                         QuoteAmount::with_desired_input(first_quote.amount),
                         filter,
                         skip_info,
+                        deduce_fee,
                     )?;
                     let quote_without_impact = if skip_info {
                         None
@@ -452,6 +480,7 @@ impl<T: Config> Pallet<T> {
                             &from_asset_id,
                             &intermediate_asset_id,
                             &first_quote.distribution,
+                            deduce_fee,
                         )?;
                         let ratio_to_actual = FixedWrapper::from(first_quote_without_impact)
                             / FixedWrapper::from(first_quote.amount);
@@ -474,6 +503,7 @@ impl<T: Config> Pallet<T> {
                             &intermediate_asset_id,
                             &to_asset_id,
                             &distribution?,
+                            deduce_fee,
                         )?;
                         Some(second_quote_without_impact)
                     };
@@ -496,6 +526,7 @@ impl<T: Config> Pallet<T> {
                         QuoteAmount::with_desired_output(desired_amount_out),
                         filter.clone(),
                         skip_info,
+                        deduce_fee,
                     )?;
                     let (first_quote, rewards_a) = Self::quote_single(
                         &from_asset_id,
@@ -503,6 +534,7 @@ impl<T: Config> Pallet<T> {
                         QuoteAmount::with_desired_output(second_quote.amount),
                         filter,
                         skip_info,
+                        deduce_fee,
                     )?;
                     let quote_without_impact = if skip_info {
                         None
@@ -511,6 +543,7 @@ impl<T: Config> Pallet<T> {
                             &intermediate_asset_id,
                             &to_asset_id,
                             &second_quote.distribution,
+                            deduce_fee,
                         )?;
                         let ratio_to_actual = FixedWrapper::from(second_quote_without_impact)
                             / FixedWrapper::from(second_quote.amount);
@@ -533,6 +566,7 @@ impl<T: Config> Pallet<T> {
                             &from_asset_id,
                             &intermediate_asset_id,
                             &distribution?,
+                            deduce_fee,
                         )?;
                         Some(first_quote_without_impact)
                     };
@@ -552,7 +586,7 @@ impl<T: Config> Pallet<T> {
         }
     }
 
-    /// Computes the optimal distribution across available liquidity sources to exectute the requested trade
+    /// Computes the optimal distribution across available liquidity sources to execute the requested trade
     /// given the input and output assets, the trade amount and a liquidity sources filter.
     ///
     /// - `input_asset_id` - ID of the asset to sell,
@@ -567,6 +601,7 @@ impl<T: Config> Pallet<T> {
         amount: QuoteAmount<Balance>,
         filter: LiquiditySourceFilter<T::DEXId, LiquiditySourceType>,
         skip_info: bool,
+        deduce_fee: bool,
     ) -> Result<
         (
             AggregatedSwapOutcome<LiquiditySourceIdOf<T>, Balance>,
@@ -582,8 +617,13 @@ impl<T: Config> Pallet<T> {
         // Check if we have exactly one source => no split required
         if sources.len() == 1 {
             let src = sources.first().unwrap();
-            let outcome =
-                T::LiquidityRegistry::quote(src, input_asset_id, output_asset_id, amount.into())?;
+            let outcome = T::LiquidityRegistry::quote(
+                src,
+                input_asset_id,
+                output_asset_id,
+                amount.into(),
+                deduce_fee,
+            )?;
             let rewards = if skip_info {
                 Vec::new()
             } else {
@@ -635,6 +675,7 @@ impl<T: Config> Pallet<T> {
                     output_asset_id,
                     amount.clone(),
                     skip_info,
+                    deduce_fee,
                 )?;
 
                 return Ok(outcome);
@@ -651,6 +692,7 @@ impl<T: Config> Pallet<T> {
             LiquiditySourceId<T::DEXId, LiquiditySourceType>,
             QuoteAmount<Balance>,
         )>,
+        deduce_fee: bool,
     ) -> Result<Balance, DispatchError> {
         let mut outcome_without_impact: Balance = 0;
         for (src, part_amount) in distribution
@@ -662,6 +704,7 @@ impl<T: Config> Pallet<T> {
                 input_asset_id,
                 output_asset_id,
                 part_amount.clone(),
+                deduce_fee,
             )?;
             outcome_without_impact = outcome_without_impact
                 .checked_add(part_outcome.amount)
@@ -853,6 +896,7 @@ impl<T: Config> Pallet<T> {
         output_asset_id: &T::AssetId,
         amount: QuoteAmount<Balance>,
         skip_info: bool,
+        deduce_fee: bool,
     ) -> Result<
         (
             AggregatedSwapOutcome<LiquiditySourceIdOf<T>, Balance>,
@@ -938,6 +982,7 @@ impl<T: Config> Pallet<T> {
                 input_asset_id,
                 output_asset_id,
                 amount_primary.clone(),
+                deduce_fee,
             )
             .and_then(|outcome_primary| {
                 if amount_primary.amount() < amount.amount() {
@@ -949,6 +994,7 @@ impl<T: Config> Pallet<T> {
                         input_asset_id,
                         output_asset_id,
                         amount_secondary.clone(),
+                        deduce_fee,
                     )
                     .and_then(|outcome_secondary| {
                         if !skip_info {
@@ -1001,6 +1047,7 @@ impl<T: Config> Pallet<T> {
             input_asset_id,
             output_asset_id,
             amount.clone(),
+            deduce_fee,
         )
         .and_then(|outcome| {
             if is_better(outcome.amount, best) {
@@ -1088,10 +1135,13 @@ impl<T: Config> Pallet<T> {
                     // 2) (y + y1) / (x - x1) = p // desired price `p` equation
                     // composing 1 and 2: (y + y1) * (y + y1) = k * p
                     // √(k * p) - y = y1
+                    // √(k) * √(p) - y = y1 // to prevent overflow
                     // where
                     // * x is base reserve, x1 is base amount, y is target reserve, y1 is target amount
                     // * p is desired price i.e. target/base
-                    let amount_secondary = (k * primary_buy_price).sqrt_accurate() - y; // always > 0
+                    let k_sqrt = k.sqrt_accurate();
+                    let primary_buy_price_sqrt = primary_buy_price.sqrt_accurate();
+                    let amount_secondary = k_sqrt * primary_buy_price_sqrt - y; // always > 0
                     if amount_secondary >= wrapped_amount {
                         balance!(0)
                     } else if amount_secondary <= fixed_wrapper!(0) {
@@ -1244,9 +1294,17 @@ impl<T: Config> LiquidityProxyTrait<T::DEXId, T::AccountId, T::AssetId> for Pall
         output_asset_id: &T::AssetId,
         amount: QuoteAmount<Balance>,
         filter: LiquiditySourceFilter<T::DEXId, LiquiditySourceType>,
+        deduce_fee: bool,
     ) -> Result<SwapOutcome<Balance>, DispatchError> {
-        Pallet::<T>::inner_quote(input_asset_id, output_asset_id, amount, filter, true)
-            .map(|(outcome, _rewards, _amount_without_impact)| outcome)
+        Pallet::<T>::inner_quote(
+            input_asset_id,
+            output_asset_id,
+            amount,
+            filter,
+            true,
+            deduce_fee,
+        )
+        .map(|(outcome, _rewards, _amount_without_impact)| outcome)
     }
 
     /// Applies trivial routing (via Base Asset), resulting in a poly-swap which may contain several individual swaps.

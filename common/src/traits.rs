@@ -105,6 +105,7 @@ pub trait LiquiditySource<TargetId, AccountId, AssetId, Amount, Error> {
         input_asset_id: &AssetId,
         output_asset_id: &AssetId,
         amount: QuoteAmount<Amount>,
+        deduce_fee: bool,
     ) -> Result<SwapOutcome<Amount>, DispatchError>;
 
     /// Perform exchange based on desired amount.
@@ -133,6 +134,7 @@ pub trait LiquiditySource<TargetId, AccountId, AssetId, Amount, Error> {
         input_asset_id: &AssetId,
         output_asset_id: &AssetId,
         amount: QuoteAmount<Amount>,
+        deduce_fee: bool,
     ) -> Result<SwapOutcome<Amount>, DispatchError>;
 }
 
@@ -152,6 +154,7 @@ impl<DEXId, AccountId, AssetId> LiquiditySource<DEXId, AccountId, AssetId, Fixed
         _input_asset_id: &AssetId,
         _output_asset_id: &AssetId,
         _amount: QuoteAmount<Fixed>,
+        _deduce_fee: bool,
     ) -> Result<SwapOutcome<Fixed>, DispatchError> {
         Err(DispatchError::CannotLookup)
     }
@@ -182,6 +185,7 @@ impl<DEXId, AccountId, AssetId> LiquiditySource<DEXId, AccountId, AssetId, Fixed
         _input_asset_id: &AssetId,
         _output_asset_id: &AssetId,
         _amount: QuoteAmount<Fixed>,
+        _deduce_fee: bool,
     ) -> Result<SwapOutcome<Fixed>, DispatchError> {
         Err(DispatchError::CannotLookup)
     }
@@ -203,6 +207,7 @@ impl<DEXId, AccountId, AssetId> LiquiditySource<DEXId, AccountId, AssetId, Balan
         _input_asset_id: &AssetId,
         _output_asset_id: &AssetId,
         _amount: QuoteAmount<Balance>,
+        _deduce_fee: bool,
     ) -> Result<SwapOutcome<Balance>, DispatchError> {
         Err(DispatchError::CannotLookup)
     }
@@ -233,6 +238,7 @@ impl<DEXId, AccountId, AssetId> LiquiditySource<DEXId, AccountId, AssetId, Balan
         _input_asset_id: &AssetId,
         _output_asset_id: &AssetId,
         _amount: QuoteAmount<Balance>,
+        _deduce_fee: bool,
     ) -> Result<SwapOutcome<Balance>, DispatchError> {
         Err(DispatchError::CannotLookup)
     }
@@ -502,6 +508,7 @@ pub trait VestedRewardsPallet<AccountId, AssetId> {
         count: u32,
         from_asset_id: &AssetId,
         to_asset_id: &AssetId,
+        intermediate_asset_id: Option<&AssetId>,
     ) -> DispatchResult;
 
     /// Report that account has received pswap reward for buying from tbc.
@@ -514,23 +521,40 @@ pub trait VestedRewardsPallet<AccountId, AssetId> {
     fn add_market_maker_reward(account_id: &AccountId, pswap_amount: Balance) -> DispatchResult;
 }
 
-pub trait PoolXykPallet {
-    type AccountId;
-    type AssetId;
-    type PoolProvidersOutput: IntoIterator<Item = (Self::AccountId, Balance)>;
-    type PoolPropertiesOutput: IntoIterator<
-        Item = (
-            Self::AssetId,
-            Self::AssetId,
-            (Self::AccountId, Self::AccountId),
-        ),
-    >;
+pub trait PoolXykPallet<AccountId, AssetId> {
+    type PoolProvidersOutput: IntoIterator<Item = (AccountId, Balance)>;
+    type PoolPropertiesOutput: IntoIterator<Item = (AssetId, AssetId, (AccountId, AccountId))>;
 
-    fn pool_providers(pool_account: &Self::AccountId) -> Self::PoolProvidersOutput;
+    fn pool_providers(pool_account: &AccountId) -> Self::PoolProvidersOutput;
 
-    fn total_issuance(pool_account: &Self::AccountId) -> Result<Balance, DispatchError>;
+    fn total_issuance(pool_account: &AccountId) -> Result<Balance, DispatchError>;
 
     fn all_properties() -> Self::PoolPropertiesOutput;
+
+    fn properties_of_pool(
+        _base_asset_id: AssetId,
+        _target_asset_id: AssetId,
+    ) -> Option<(AccountId, AccountId)> {
+        None
+    }
+
+    fn balance_of_pool_provider(
+        _pool_account: AccountId,
+        _liquidity_provider_account: AccountId,
+    ) -> Option<Balance> {
+        None
+    }
+
+    fn transfer_lp_tokens(
+        _pool_account: AccountId,
+        _asset_a: AssetId,
+        _asset_b: AssetId,
+        _base_account_id: AccountId,
+        _target_account_id: AccountId,
+        _pool_tokens: Balance,
+    ) -> Result<(), DispatchError> {
+        Err(DispatchError::CannotLookup)
+    }
 }
 
 pub trait OnPoolCreated {

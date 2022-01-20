@@ -34,30 +34,13 @@
 
 use super::*;
 
-use codec::{Decode, Encode};
+use codec::Encode;
 use frame_benchmarking::benchmarks;
-use frame_system::RawOrigin;
-use hex_literal::hex;
-use orml_traits::MultiCurrency;
 use sp_core::H256;
 use sp_io::hashing::blake2_256;
 use sp_std::prelude::*;
 
-use common::prelude::SwapAmount;
-use common::{AssetName, AssetSymbol, DEXId, LiquiditySource, DEFAULT_BALANCE_PRECISION, XOR};
-
 use crate::Pallet as PriceTools;
-use assets::Pallet as Assets;
-use pool_xyk::Pallet as XYKPool;
-use trading_pair::Pallet as TradingPair;
-
-pub const DEX: DEXId = DEXId::Polkaswap;
-
-// Support Functions
-fn alice<T: Config>() -> T::AccountId {
-    let bytes = hex!("d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d");
-    T::AccountId::decode(&mut &bytes[..]).unwrap_or_default()
-}
 
 fn create_asset<T: Config>(prefix: Vec<u8>, index: u128) -> T::AssetId {
     let entropy: [u8; 32] = (prefix, index).using_encoded(blake2_256);
@@ -65,77 +48,25 @@ fn create_asset<T: Config>(prefix: Vec<u8>, index: u128) -> T::AssetId {
 }
 
 fn prepare_secondary_market<T: Config>(n: u32) {
-    let caller = alice::<T>();
-    let caller_origin: <T as frame_system::Config>::Origin =
-        RawOrigin::Signed(caller.clone()).into();
-    T::Currency::deposit(XOR.into(), &caller, balance!(1)).unwrap();
-
     for i in 0..n {
         let asset = create_asset::<T>(b"asset".to_vec(), i.into());
-        T::Currency::deposit(XOR.into(), &caller, balance!(100)).unwrap();
-        Assets::<T>::register_asset_id(
-            caller.clone(),
-            asset.clone(),
-            AssetSymbol(b"TST".to_vec()),
-            AssetName(b"TST".to_vec()),
-            DEFAULT_BALANCE_PRECISION,
-            balance!(200),
-            true,
-            None,
-            None,
-        )
-        .unwrap();
-        TradingPair::<T>::register(caller_origin.clone(), DEX.into(), XOR.into(), asset).unwrap();
-        XYKPool::<T>::initialize_pool(caller_origin.clone(), DEX.into(), XOR.into(), asset)
-            .unwrap();
-        XYKPool::<T>::deposit_liquidity(
-            caller_origin.clone(),
-            DEX.into(),
-            XOR.into(),
-            asset,
-            balance!(100),
-            balance!(200),
-            balance!(0),
-            balance!(0),
-        )
-        .unwrap();
 
         PriceTools::<T>::register_asset(&asset).unwrap();
-    }
-    for _ in 1..=crate::AVG_BLOCK_SPAN {
-        for i in 0..n {
-            let asset = create_asset::<T>(b"asset".to_vec(), i.into());
-            T::Currency::deposit(XOR.into(), &caller, balance!(1)).unwrap();
-            XYKPool::<T>::exchange(
-                &caller.clone(),
-                &caller.clone(),
-                &DEX.into(),
-                &XOR.into(),
-                &asset,
-                SwapAmount::WithDesiredInput {
-                    desired_amount_in: balance!(1),
-                    min_amount_out: balance!(0),
-                },
-            )
-            .unwrap();
+        for m in 1..crate::AVG_BLOCK_SPAN {
+            crate::PriceInfos::<T>::mutate(asset, |val| {
+                let val = val.as_mut().unwrap();
+                let price = balance!(m + i);
+                val.spot_prices.push_back(price);
+                val.needs_update = false;
+                val.last_spot_price = price;
+            });
         }
-        PriceTools::<T>::average_prices_calculation_routine();
-        // after last recalculation there is no exchange, such that price state is considered unmodified
-    }
-}
-
-fn force_reserves_changed<T: Config>(m: u32) {
-    for i in 0..m {
-        let asset = create_asset::<T>(b"asset".to_vec(), i.into());
-        PriceTools::<T>::reserves_changed(&asset);
     }
 }
 
 benchmarks! {
     on_initialize {
         let n in 0 .. 10 => prepare_secondary_market::<T>(n);
-        let m in 0 .. 10 => force_reserves_changed::<T>(m);
-        let asset = create_asset::<T>(b"asset".to_vec(), 0);
         let mut infos_before = Vec::new();
         for i in 0..n {
             let asset = create_asset::<T>(b"asset".to_vec(), i.into());
@@ -148,7 +79,7 @@ benchmarks! {
     verify {
         for i in 0..n {
             let asset = create_asset::<T>(b"asset".to_vec(), i.into());
-            assert_ne!(infos_before.get(i as usize).unwrap(),  &crate::PriceInfos::<T>::get(&asset).unwrap().average_price);
+            assert_ne!(infos_before.get(i as usize).unwrap(), &crate::PriceInfos::<T>::get(&asset).unwrap().average_price);
         }
     }
 }

@@ -11,8 +11,7 @@ use sp_runtime::traits::{Hash, Zero};
 use sp_std::prelude::*;
 use traits::MultiCurrency;
 
-use snowbridge_core::types::AuxiliaryDigestItem;
-use snowbridge_core::{ChannelId, MessageNonce};
+use bridge_types::types::{AuxiliaryDigestItem, ChannelId, MessageNonce};
 
 pub mod weights;
 pub use weights::WeightInfo;
