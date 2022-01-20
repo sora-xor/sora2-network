@@ -1,10 +1,10 @@
 use currencies::BasicCurrencyAdapter;
-use snowbridge_ethereum::EthNetworkId;
 use sp_std::marker::PhantomData;
 
 // Mock runtime
 use bridge_types::traits::OutboundRouter;
 use bridge_types::types::ChannelId;
+use bridge_types::EthNetworkId;
 use common::mock::ExistentialDeposits;
 use common::{balance, Amount, AssetId32, AssetName, AssetSymbol, Balance, DEXId, XOR};
 use frame_support::dispatch::{DispatchError, DispatchResult};

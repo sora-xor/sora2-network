@@ -10,12 +10,12 @@ mod test;
 
 use bridge_types::traits::{MessageDispatch, Verifier};
 use bridge_types::types::{ChannelId, Message, MessageId};
+use bridge_types::EthNetworkId;
 use frame_system::ensure_signed;
 use sp_core::H160;
 use sp_std::convert::TryFrom;
 
 use envelope::Envelope;
-use snowbridge_ethereum::EthNetworkId;
 pub use weights::WeightInfo;
 
 pub use pallet::*;

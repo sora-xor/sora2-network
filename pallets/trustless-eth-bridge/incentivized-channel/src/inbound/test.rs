@@ -14,7 +14,7 @@ use sp_std::marker::PhantomData;
 
 use bridge_types::traits::MessageDispatch;
 use bridge_types::types::{Message, Proof};
-use bridge_types::{Header as EthereumHeader, Log, U256};
+use bridge_types::{Log, U256};
 
 use common::mock::ExistentialDeposits;
 use common::{balance, Amount, AssetId32, AssetName, AssetSymbol, DEXId, XOR};

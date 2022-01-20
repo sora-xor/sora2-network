@@ -12,7 +12,7 @@ use sp_std::convert::From;
 
 use bridge_types::traits::MessageDispatch;
 use bridge_types::types::{Message, Proof};
-use bridge_types::{Header as EthereumHeader, Log, U256};
+use bridge_types::Log;
 
 use hex_literal::hex;
 

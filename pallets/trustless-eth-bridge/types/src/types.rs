@@ -8,6 +8,8 @@ use sp_core::H256;
 use sp_runtime::{Digest, DigestItem};
 use sp_std::vec::Vec;
 
+pub use crate::EthNetworkId;
+
 #[derive(Encode, Decode, Copy, Clone, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
 pub struct MessageId {
     pub channel_id: ChannelId,
@@ -77,7 +79,7 @@ impl From<Digest> for AuxiliaryDigest {
 #[cfg_attr(feature = "std", derive(serde::Serialize, serde::Deserialize))]
 pub enum AuxiliaryDigestItem {
     /// A batch of messages has been committed.
-    Commitment(ChannelId, H256),
+    Commitment(ChannelId, EthNetworkId, H256),
 }
 
 impl Into<DigestItem> for AuxiliaryDigestItem {

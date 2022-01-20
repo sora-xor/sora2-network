@@ -645,10 +645,7 @@ fn testnet_genesis(
     treasury_account: AccountId,
 ) -> GenesisConfig {
     use common::XSTUSD;
-<<<<<<< HEAD
-=======
 
->>>>>>> 25f4ba8dacdfbc62665d81efadce7ce648482b31
     // Initial balances
     let initial_staking = balance!(100);
     let initial_eth_bridge_xor_amount = balance!(350000);

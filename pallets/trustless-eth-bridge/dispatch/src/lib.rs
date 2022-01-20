@@ -11,8 +11,8 @@ use sp_std::prelude::*;
 
 use bridge_types::traits::MessageDispatch;
 
+use bridge_types::EthNetworkId;
 use codec::{Decode, Encode};
-use snowbridge_ethereum::EthNetworkId;
 
 #[derive(Copy, Clone, PartialEq, Eq, Encode, Decode, RuntimeDebug, scale_info::TypeInfo)]
 pub struct RawOrigin(pub EthNetworkId, pub H160);

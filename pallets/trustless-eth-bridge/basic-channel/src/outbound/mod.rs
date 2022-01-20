@@ -6,12 +6,12 @@ mod benchmarking;
 #[cfg(test)]
 mod test;
 
+use bridge_types::EthNetworkId;
 use codec::{Decode, Encode};
 use ethabi::{self, Token};
 use frame_support::dispatch::DispatchResult;
 use frame_support::ensure;
 use frame_support::traits::{EnsureOrigin, Get};
-use snowbridge_ethereum::EthNetworkId;
 use sp_core::{RuntimeDebug, H160, H256};
 use sp_io::offchain_index;
 use sp_runtime::traits::{Hash, StaticLookup, Zero};
@@ -258,12 +258,11 @@ pub mod pallet {
                 message_map.entry(key).or_insert(vec![]).push(message);
             }
 
-            for ((network_id, channel), messages) in message_map {
+            for ((network_id, _), messages) in message_map {
                 let commitment_hash = Self::make_commitment_hash(&messages);
                 let digest_item = AuxiliaryDigestItem::Commitment(
                     ChannelId::Basic,
                     network_id,
-                    channel,
                     commitment_hash.clone(),
                 )
                 .into();

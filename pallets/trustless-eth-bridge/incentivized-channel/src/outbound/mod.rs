@@ -4,7 +4,6 @@ use frame_support::dispatch::DispatchResult;
 use frame_support::ensure;
 use frame_support::traits::{EnsureOrigin, Get};
 use frame_support::weights::Weight;
-use snowbridge_ethereum::EthNetworkId;
 use sp_core::{RuntimeDebug, H160, H256, U256};
 use sp_io::offchain_index;
 use sp_runtime::traits::{Hash, Zero};
@@ -12,6 +11,7 @@ use sp_std::prelude::*;
 use traits::MultiCurrency;
 
 use bridge_types::types::{AuxiliaryDigestItem, ChannelId, MessageNonce};
+use bridge_types::EthNetworkId;
 
 pub mod weights;
 pub use weights::WeightInfo;
@@ -244,12 +244,11 @@ pub mod pallet {
                 message_map.entry(key).or_insert(vec![]).push(message);
             }
 
-            for ((network_id, channel), messages) in message_map {
+            for ((network_id, _), messages) in message_map {
                 let commitment_hash = Self::make_commitment_hash(&messages);
                 let digest_item = AuxiliaryDigestItem::Commitment(
                     ChannelId::Incentivized,
                     network_id,
-                    channel,
                     commitment_hash.clone(),
                 )
                 .into();

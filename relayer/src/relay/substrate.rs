@@ -5,6 +5,7 @@ use crate::relay::simplified_proof::convert_to_simplified_mmr_proof;
 use crate::substrate::LeafProof;
 use beefy_merkle_tree::Keccak256;
 use bridge_types::types::{AuxiliaryDigest, AuxiliaryDigestItem, ChannelId};
+use bridge_types::EthNetworkId;
 use ethereum_gen::{
     basic_inbound_channel as basic, beefy_light_client,
     incentivized_inbound_channel as incentivized, BasicInboundChannel, BeefyLightClient,
@@ -73,6 +74,7 @@ impl RelayBuilder {
         let blocks_until_finalized = contract.block_wait_period().call().await?;
         let beefy_start_block = sub.beefy_start_block().await?;
         Ok(Relay {
+            chain_id: eth.inner().get_chainid().await?.as_u64(),
             sub,
             eth,
             contract,
@@ -93,6 +95,7 @@ pub struct Relay {
     incentivized: IncentivizedInboundChannel<SignedClientInner>,
     beefy_start_block: u64,
     blocks_until_finalized: u64,
+    chain_id: EthNetworkId,
 }
 
 impl Relay {
@@ -312,9 +315,12 @@ impl Relay {
                 };
 
                 for log in digest.logs {
-                    if let Ok(AuxiliaryDigestItem::Commitment(id, messages_hash)) =
+                    if let Ok(AuxiliaryDigestItem::Commitment(id, chain_id, messages_hash)) =
                         AuxiliaryDigestItem::try_from(log)
                     {
+                        if chain_id != self.chain_id {
+                            continue;
+                        }
                         let (digest_prefix, digest_suffix) = digest_hex
                             .split_once(&hex::encode(messages_hash.as_bytes()))
                             .unwrap();

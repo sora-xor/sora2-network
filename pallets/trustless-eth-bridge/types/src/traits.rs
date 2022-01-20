@@ -4,7 +4,7 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use crate::{Header, Log, U256};
+use crate::{EthNetworkId, Log};
 use frame_support::dispatch::{DispatchError, DispatchResult};
 use frame_system::Config;
 use sp_core::H160;

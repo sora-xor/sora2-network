@@ -1627,7 +1627,7 @@ where
     T: basic_channel::outbound::Config + incentivized_channel::outbound::Config,
 {
     fn submit(
-        network_id: snowbridge_ethereum::EthNetworkId,
+        network_id: bridge_types::EthNetworkId,
         channel: H160,
         channel_id: ChannelId,
         who: &T::AccountId,
@@ -1792,7 +1792,7 @@ construct_runtime! {
         Beefy: pallet_beefy::{Pallet, Config<T>, Storage} = 91,
         MmrLeaf: pallet_beefy_mmr::{Pallet, Storage} = 92,
         EthereumLightClient: ethereum_light_client::{Pallet, Call, Storage, Event<T>, Config} = 93,
-        BasicInboundChannel: basic_channel_inbound::{Pallet, Call, Storage, Event<T>, Config} = 94,
+        BasicInboundChannel: basic_channel_inbound::{Pallet, Call, Storage, Event<T>, Config<T>} = 94,
         BasicOutboundChannel: basic_channel_outbound::{Pallet, Storage, Event<T>, Config<T>} = 95,
         IncentivizedInboundChannel: incentivized_channel_inbound::{Pallet, Call, Config<T>, Storage, Event<T>} = 96,
         IncentivizedOutboundChannel: incentivized_channel_outbound::{Pallet, Config<T>, Storage, Event<T>} = 97,
@@ -1868,7 +1868,7 @@ construct_runtime! {
         Beefy: pallet_beefy::{Pallet, Config<T>, Storage} = 91,
         MmrLeaf: pallet_beefy_mmr::{Pallet, Storage} = 92,
         EthereumLightClient: ethereum_light_client::{Pallet, Call, Storage, Event<T>, Config} = 93,
-        BasicInboundChannel: basic_channel_inbound::{Pallet, Call, Storage, Event<T>, Config} = 94,
+        BasicInboundChannel: basic_channel_inbound::{Pallet, Call, Storage, Event<T>, Config<T>} = 94,
         BasicOutboundChannel: basic_channel_outbound::{Pallet, Storage, Event<T>, Config<T>} = 95,
         IncentivizedInboundChannel: incentivized_channel_inbound::{Pallet, Call, Config<T>, Storage, Event<T>} = 96,
         IncentivizedOutboundChannel: incentivized_channel_outbound::{Pallet, Config<T>, Storage, Event<T>} = 97,

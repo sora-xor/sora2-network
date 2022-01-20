@@ -44,7 +44,7 @@ use bridge_types::ethashproof::{DoubleNodeWithMerkleProof as EthashProofData, Et
 use bridge_types::traits::Verifier;
 use bridge_types::types::{Message, Proof};
 pub use bridge_types::Header as EthereumHeader;
-use bridge_types::{HeaderId as EthereumHeaderId, Log, Receipt, H256, U256};
+use bridge_types::{EthNetworkId, HeaderId as EthereumHeaderId, Log, Receipt, H256, U256};
 
 pub use weights::WeightInfo;
 
@@ -89,7 +89,6 @@ pub mod pallet {
     use frame_support::pallet_prelude::*;
     use frame_support::traits::StorageVersion;
     use frame_system::pallet_prelude::*;
-    use snowbridge_ethereum::EthNetworkId;
 
     /// The current storage version.
     const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
@@ -349,7 +348,7 @@ pub mod pallet {
                 header.gas_used <= header.gas_limit
                     && header.gas_limit < parent.gas_limit * 1025 / 1024
                     && header.gas_limit > parent.gas_limit * 1023 / 1024
-                    && header.gas_limit >= 5000.into()
+                    && header.gas_limit >= 5000u64.into()
                     && header.timestamp > parent.timestamp
                     && header.number == parent.number + 1
                     && header.extra_data.len() <= 32,

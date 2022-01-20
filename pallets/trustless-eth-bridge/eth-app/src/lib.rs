@@ -21,13 +21,13 @@ use frame_support::traits::EnsureOrigin;
 use frame_support::transactional;
 use frame_support::weights::Weight;
 use frame_system::ensure_signed;
-use snowbridge_ethereum::EthNetworkId;
 use sp_core::{H160, U256};
 use sp_runtime::traits::StaticLookup;
 use sp_std::prelude::*;
 
 use bridge_types::traits::OutboundRouter;
 use bridge_types::types::ChannelId;
+use bridge_types::EthNetworkId;
 
 mod payload;
 use payload::OutboundPayload;

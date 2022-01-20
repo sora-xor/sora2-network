@@ -1,5 +1,6 @@
 use bridge_types::traits::{MessageDispatch, Verifier};
 use bridge_types::types::{ChannelId, Message, MessageId};
+use bridge_types::EthNetworkId;
 use frame_support::dispatch::DispatchResult;
 use frame_support::traits::{EnsureOrigin, Get};
 use frame_system::ensure_signed;
@@ -35,7 +36,6 @@ pub mod pallet {
     use frame_support::pallet_prelude::*;
     use frame_support::traits::StorageVersion;
     use frame_system::pallet_prelude::*;
-    use snowbridge_ethereum::EthNetworkId;
 
     #[pallet::config]
     pub trait Config: frame_system::Config + assets::Config {
