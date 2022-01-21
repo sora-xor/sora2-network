@@ -120,6 +120,8 @@ pub mod pallet {
         EmergencyWithdraw(AccountIdOf<T>, AssetIdOf<T>, Balance),
         /// ILO finished [who, what]
         ILOFinished(AccountIdOf<T>, AssetIdOf<T>),
+        /// Claim LP Tokens
+        Claimed(AccountIdOf<T>, AssetIdOf<T>),
     }
 
     #[pallet::error]
@@ -182,6 +184,8 @@ pub mod pallet {
         PoolDoesNotExist,
         /// Unauthorized
         Unauthorized,
+        ///CantClaimLPTokens
+        CantClaimLPTokens
     }
 
     #[pallet::hooks]
@@ -582,6 +586,59 @@ pub mod pallet {
 
             // Emit an event
             Self::deposit_event(Event::ILOFinished(user.clone(), asset_id));
+
+            // Return a successful DispatchResult
+            Ok(().into())
+        }
+
+        #[pallet::weight(10000)]
+        pub fn claim_lp_tokens(
+            origin: OriginFor<T>,
+            asset_id: AssetIdOf<T>,
+        ) -> DispatchResultWithPostInfo {
+            let user = ensure_signed(origin)?;
+            let current_block = frame_system::Pallet::<T>::block_number();
+
+            // get ILO info
+            let mut ilo_info = <ILOs<T>>::get(&asset_id);
+
+            // Check if ILO for token exists
+            ensure!(ilo_info.ilo_price != 0, Error::<T>::ILODoesNotExist);
+
+            ensure!(
+                current_block > ilo_info.end_block + (ilo_info.lockup_days * 14400u32).into(),
+                Error::<T>::CantClaimLPTokens
+            );
+
+            if user != ilo_info.ilo_organizer {
+                return Err(Error::<T>::Unauthorized.into());
+            }
+
+            let pallet_account = Self::account_id();
+
+            // Get pool account
+            let pool_account =
+                PoolXYK::<T>::properties_of_pool(T::XORAssetId::get().into(), asset_id)
+                    .ok_or(Error::<T>::PoolDoesNotExist)?
+                    .0;
+            ilo_info.lp_tokens =
+                PoolXYK::<T>::balance_of_pool_provider(pool_account.clone(), pallet_account.clone()).unwrap_or(0);
+
+            // Transfer LP tokens
+            PoolXYK::<T>::transfer_lp_tokens(
+                pool_account.clone(),
+                T::XORAssetId::get().into(),
+                asset_id,
+                pallet_account.clone(),
+                user.clone(),
+                ilo_info.lp_tokens.clone()
+            )?;
+
+            // Update storage
+            <ILOs<T>>::insert(&asset_id, &ilo_info);
+
+            // Emit an event
+            Self::deposit_event(Event::Claimed(user.clone(), asset_id));
 
             // Return a successful DispatchResult
             Ok(().into())
