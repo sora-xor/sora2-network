@@ -35,6 +35,9 @@ sp-io = { version = "3", default-features = false }
 tokens = { version = "0.4", package = "orml-tokens", default-features = false }
 pallet-balances = { version = "3" }
 permissions = { path = "../permissions" }
+technical = { path = "../technical" }
+pswap-distribution = { path = "../pswap-distribution" }
+dex-manager = { path = "../dex-manager", default-features = false }
 
 [features]
 default = ["std"]

@@ -803,6 +803,7 @@ dependencies = [
  "assets",
  "ceres-liquidity-locker",
  "common",
+ "dex-manager",
  "frame-benchmarking 3.1.0",
  "frame-support",
  "frame-system",
@@ -813,11 +814,13 @@ dependencies = [
  "parity-scale-codec",
  "permissions",
  "pool-xyk",
+ "pswap-distribution",
  "serde",
  "sp-core",
  "sp-io",
  "sp-runtime",
  "sp-std",
+ "technical",
  "trading-pair",
 ]
 

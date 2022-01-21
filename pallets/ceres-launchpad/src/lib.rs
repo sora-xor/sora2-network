@@ -1,5 +1,8 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
+#[cfg(test)]
+mod mock;
+
 use codec::{Decode, Encode};
 
 #[derive(Encode, Decode, Default, PartialEq, Eq)]
