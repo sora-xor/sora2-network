@@ -3,7 +3,7 @@ use common::mock::ExistentialDeposits;
 use common::prelude::Balance;
 use common::{
     balance, fixed, AssetId32, AssetName, AssetSymbol, BalancePrecision, ContentSource,
-    Description, Fixed, XOR
+    Description, Fixed, XOR,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{GenesisBuild, Hooks};
@@ -110,7 +110,7 @@ impl assets::Config for Runtime {
     type Event = Event;
     type ExtraAccountId = AccountId;
     type ExtraAssetRecordArg =
-    common::AssetIdExtraAssetRecordArg<common::DEXId, common::LiquiditySourceType, AccountId>;
+        common::AssetIdExtraAssetRecordArg<common::DEXId, common::LiquiditySourceType, AccountId>;
     type AssetId = AssetId;
     type GetBaseAssetId = GetBaseAssetId;
     type Currency = currencies::Module<Runtime>;
@@ -141,9 +141,9 @@ impl pool_xyk::Config for Runtime {
     type Event = Event;
     type PairSwapAction = pool_xyk::PairSwapAction<AssetId, AccountId, TechAccountId>;
     type DepositLiquidityAction =
-    pool_xyk::DepositLiquidityAction<AssetId, AccountId, TechAccountId>;
+        pool_xyk::DepositLiquidityAction<AssetId, AccountId, TechAccountId>;
     type WithdrawLiquidityAction =
-    pool_xyk::WithdrawLiquidityAction<AssetId, AccountId, TechAccountId>;
+        pool_xyk::WithdrawLiquidityAction<AssetId, AccountId, TechAccountId>;
     type PolySwapAction = pool_xyk::PolySwapAction<AssetId, AccountId, TechAccountId>;
     type EnsureDEXManager = dex_manager::Module<Runtime>;
     type GetFee = GetXykFee;
@@ -248,10 +248,7 @@ impl Default for ExtBuilder {
                 None,
                 None,
             )],
-            endowed_accounts: vec![
-                (ALICE, XOR, balance!(3000)),
-                (BOB, XOR, balance!(500)),
-            ],
+            endowed_accounts: vec![(ALICE, XOR, balance!(3000)), (BOB, XOR, balance!(500))],
         }
     }
 }
@@ -267,27 +264,27 @@ impl ExtBuilder {
                 .map(|(acc, _, balance)| (*acc, *balance))
                 .collect(),
         }
-            .assimilate_storage(&mut t)
-            .unwrap();
+        .assimilate_storage(&mut t)
+        .unwrap();
 
         PermissionsConfig {
             initial_permission_owners: vec![],
             initial_permissions: vec![],
         }
-            .assimilate_storage(&mut t)
-            .unwrap();
+        .assimilate_storage(&mut t)
+        .unwrap();
 
         assets::GenesisConfig::<Runtime> {
             endowed_assets: self.endowed_assets,
         }
-            .assimilate_storage(&mut t)
-            .unwrap();
+        .assimilate_storage(&mut t)
+        .unwrap();
 
         TokensConfig {
             endowed_accounts: self.endowed_accounts,
         }
-            .assimilate_storage(&mut t)
-            .unwrap();
+        .assimilate_storage(&mut t)
+        .unwrap();
 
         t.into()
     }

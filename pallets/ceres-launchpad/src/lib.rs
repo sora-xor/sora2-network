@@ -4,6 +4,7 @@
 mod mock;
 
 use codec::{Decode, Encode};
+use frame_support::traits::Vec;
 
 #[derive(Encode, Decode, Default, PartialEq, Eq)]
 #[cfg_attr(feature = "std", derive(Debug))]
@@ -28,6 +29,8 @@ pub struct ILOInfo<Balance, AccountId, BlockNumber> {
     succeeded: bool,
     failed: bool,
     lp_tokens: Balance,
+    claimed_lp_tokens: bool,
+    finish_block: BlockNumber,
 }
 
 #[derive(Encode, Decode, Default, PartialEq, Eq)]
@@ -44,6 +47,8 @@ pub struct ContributionInfo<Balance> {
     funds_contributed: Balance,
     tokens_bought: Balance,
     tokens_claimed: Balance,
+    claiming_finished: bool,
+    claims: Vec<u8>,
 }
 
 pub use pallet::*;
@@ -56,7 +61,7 @@ pub mod pallet {
     use frame_support::pallet_prelude::*;
     use frame_system::pallet_prelude::*;
     use frame_system::{ensure_signed, RawOrigin};
-    use sp_runtime::traits::AccountIdConversion;
+    use sp_runtime::traits::{AccountIdConversion, CheckedDiv, Saturating, UniqueSaturatedInto};
     use sp_runtime::ModuleId;
 
     const PALLET_ID: ModuleId = ModuleId(*b"crslaunc");
@@ -188,7 +193,11 @@ pub mod pallet {
         /// Unauthorized
         Unauthorized,
         ///CantClaimLPTokens
-        CantClaimLPTokens
+        CantClaimLPTokens,
+        /// Funds already claimed
+        FundsAlreadyClaimed,
+        /// Nothing to claim
+        NothingToClaim,
     }
 
     #[pallet::hooks]
@@ -297,6 +306,8 @@ pub mod pallet {
                 succeeded: false,
                 failed: false,
                 lp_tokens: balance!(0),
+                claimed_lp_tokens: false,
+                finish_block: 0u32.into(),
             };
 
             <ILOs<T>>::insert(&asset_id, &ilo_info);
@@ -585,6 +596,7 @@ pub mod pallet {
             ilo_info.lp_tokens =
                 PoolXYK::<T>::balance_of_pool_provider(pool_account, pallet_account).unwrap_or(0);
 
+            ilo_info.finish_block = current_block;
             <ILOs<T>>::insert(&asset_id, &ilo_info);
 
             // Emit an event
@@ -602,11 +614,13 @@ pub mod pallet {
             let user = ensure_signed(origin)?;
             let current_block = frame_system::Pallet::<T>::block_number();
 
-            // get ILO info
+            // Get ILO info
             let mut ilo_info = <ILOs<T>>::get(&asset_id);
 
             // Check if ILO for token exists
             ensure!(ilo_info.ilo_price != 0, Error::<T>::ILODoesNotExist);
+
+            ensure!(!ilo_info.claimed_lp_tokens, Error::<T>::CantClaimLPTokens);
 
             ensure!(
                 current_block > ilo_info.end_block + (ilo_info.lockup_days * 14400u32).into(),
@@ -624,18 +638,18 @@ pub mod pallet {
                 PoolXYK::<T>::properties_of_pool(T::XORAssetId::get().into(), asset_id)
                     .ok_or(Error::<T>::PoolDoesNotExist)?
                     .0;
-            ilo_info.lp_tokens =
-                PoolXYK::<T>::balance_of_pool_provider(pool_account.clone(), pallet_account.clone()).unwrap_or(0);
 
             // Transfer LP tokens
             PoolXYK::<T>::transfer_lp_tokens(
                 pool_account.clone(),
                 T::XORAssetId::get().into(),
                 asset_id,
-                pallet_account.clone(),
+                pallet_account,
                 user.clone(),
-                ilo_info.lp_tokens.clone()
+                ilo_info.lp_tokens,
             )?;
+
+            ilo_info.claimed_lp_tokens = true;
 
             // Update storage
             <ILOs<T>>::insert(&asset_id, &ilo_info);
@@ -644,6 +658,100 @@ pub mod pallet {
             Self::deposit_event(Event::Claimed(user.clone(), asset_id));
 
             // Return a successful DispatchResult
+            Ok(().into())
+        }
+
+        #[pallet::weight(10000)]
+        pub fn claim(origin: OriginFor<T>, asset_id: AssetIdOf<T>) -> DispatchResultWithPostInfo {
+            let user = ensure_signed(origin)?;
+
+            // Get ILO info
+            let ilo_info = <ILOs<T>>::get(&asset_id);
+
+            // Check if ILO for token exists
+            ensure!(ilo_info.ilo_price != 0, Error::<T>::ILODoesNotExist);
+
+            if !ilo_info.failed && !ilo_info.succeeded {
+                return Err(Error::<T>::ILOIsNotFinished.into());
+            }
+
+            // Get contribution info
+            let mut contribution_info = <Contributions<T>>::get(&asset_id, &user);
+            ensure!(
+                contribution_info.claiming_finished == false,
+                Error::<T>::FundsAlreadyClaimed
+            );
+
+            if ilo_info.failed {
+                // Claim unused funds
+                Assets::<T>::transfer_from(
+                    &T::XORAssetId::get().into(),
+                    &Self::account_id(),
+                    &user,
+                    contribution_info.funds_contributed,
+                )?;
+                contribution_info.claiming_finished = true;
+            } else {
+                if contribution_info.tokens_claimed == balance!(0) {
+                    let tokens_to_claim = (FixedWrapper::from(contribution_info.tokens_bought)
+                        * FixedWrapper::from(ilo_info.token_vesting.first_release_percent))
+                    .try_into_balance()
+                    .unwrap_or(0);
+                    // Claim first time
+                    Assets::<T>::transfer_from(
+                        &asset_id.into(),
+                        &Self::account_id(),
+                        &user,
+                        tokens_to_claim,
+                    )?;
+                    contribution_info.tokens_claimed += tokens_to_claim;
+                } else {
+                    let current_block = frame_system::Pallet::<T>::block_number();
+                    let number_of_claims =
+                        contribution_info.claims.iter().filter(|&n| *n == 1).count();
+                    if number_of_claims == contribution_info.claims.len() {
+                        return Err(Error::<T>::FundsAlreadyClaimed.into());
+                    }
+
+                    let blocks_passed = current_block.saturating_sub(ilo_info.finish_block);
+                    let potential_claims: u32 = blocks_passed
+                        .checked_div(&ilo_info.token_vesting.vesting_period)
+                        .unwrap_or(0u32.into())
+                        .unique_saturated_into();
+                    if potential_claims == 0 {
+                        return Err(Error::<T>::NothingToClaim.into());
+                    }
+                    let allowed_claims = potential_claims.saturating_sub(number_of_claims as u32);
+                    if allowed_claims == 0 {
+                        return Err(Error::<T>::NothingToClaim.into());
+                    }
+
+                    let tokens_per_claim = (FixedWrapper::from(contribution_info.tokens_bought)
+                        * FixedWrapper::from(ilo_info.token_vesting.vesting_percent))
+                    .try_into_balance()
+                    .unwrap_or(0);
+                    let claimable = (FixedWrapper::from(tokens_per_claim)
+                        * FixedWrapper::from(allowed_claims))
+                    .try_into_balance()
+                    .unwrap_or(0);
+
+                    // Claim tokens
+                    Assets::<T>::transfer_from(
+                        &asset_id.into(),
+                        &Self::account_id(),
+                        &user,
+                        claimable,
+                    )?;
+                    contribution_info.tokens_claimed += claimable;
+
+                    for idx in number_of_claims..potential_claims as usize {
+                        contribution_info.claims[idx] = 1;
+                    }
+                }
+            }
+
+            <Contributions<T>>::insert(&asset_id, &user, contribution_info);
+
             Ok(().into())
         }
     }
