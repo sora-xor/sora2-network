@@ -92,13 +92,8 @@ impl frame_system::Config for Runtime {
     type SS58Prefix = ();
 }
 
-parameter_types! {
-    pub const XORAssetId: AssetId = XOR;
-}
-
 impl crate::Config for Runtime {
     type Event = Event;
-    type XORAssetId = XORAssetId;
 }
 
 parameter_types! {

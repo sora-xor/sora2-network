@@ -56,7 +56,7 @@ pub use pallet::*;
 #[frame_support::pallet]
 pub mod pallet {
     use crate::{ContributionInfo, ILOInfo, VestingInfo};
-    use common::prelude::{Balance, FixedWrapper};
+    use common::prelude::{Balance, FixedWrapper, XOR};
     use common::{balance, DEXId, PoolXykPallet};
     use frame_support::pallet_prelude::*;
     use frame_system::pallet_prelude::*;
@@ -76,9 +76,6 @@ pub mod pallet {
     {
         /// Because this pallet emits events, it depends on the runtime's definition of an event.
         type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
-
-        /// XOR asset id
-        type XORAssetId: Get<AssetId>;
     }
 
     type Assets<T> = assets::Pallet<T>;
@@ -88,11 +85,42 @@ pub mod pallet {
 
     type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
     type AssetIdOf<T> = <T as assets::Config>::AssetId;
-    type AssetId = common::AssetId32<common::PredefinedAssetId>;
 
     #[pallet::pallet]
     #[pallet::generate_store(pub (super) trait Store)]
     pub struct Pallet<T>(PhantomData<T>);
+
+    #[pallet::type_value]
+    pub fn DefaultForPenaltiesAccount<T: Config>() -> AccountIdOf<T> {
+        let bytes = hex!("0a0455d92e1fda8dee17b2c58761c8efca490ef2a1a03322dbfea7379481d517");
+        AccountIdOf::<T>::decode(&mut &bytes[..]).unwrap_or_default()
+    }
+
+    /// Account for collecting penalties
+    #[pallet::storage]
+    #[pallet::getter(fn penalties_account)]
+    pub type PenaltiesAccount<T: Config> = StorageValue<_, AccountIdOf<T>, ValueQuery, DefaultForPenaltiesAccount<T>>;
+
+    #[pallet::type_value]
+    pub fn DefaultCeresBurnFeeAmount<T: Config>() -> Balance {
+        balance!(10)
+    }
+
+    /// Amount of CERES for burn fee
+    #[pallet::storage]
+    #[pallet::getter(fn ceres_burn_fee_amount)]
+    pub type CeresBurnFeeAmount<T: Config> = StorageValue<_, Balance, ValueQuery, DefaultCeresBurnFeeAmount<T>>;
+
+    #[pallet::type_value]
+    pub fn DefaultForAuthorityAccount<T: Config>() -> AccountIdOf<T> {
+        let bytes = hex!("34a5b78f5fbcdc92a28767d63b579690a4b2f6a179931b3ecc87f09fc9366d47");
+        AccountIdOf::<T>::decode(&mut &bytes[..]).unwrap_or_default()
+    }
+
+    /// Account which has permissions for changing CERES burn amount fee
+    #[pallet::storage]
+    #[pallet::getter(fn authority_account)]
+    pub type AuthorityAccount<T: Config> = StorageValue<_, AccountIdOf<T>, ValueQuery, DefaultForAuthorityAccount<T>>;
 
     #[pallet::storage]
     #[pallet::getter(fn ilos)]
@@ -263,7 +291,7 @@ pub mod pallet {
             }
 
             ensure!(
-                balance!(10)
+                CeresBurnFeeAmount::<T>::get()
                     <= Assets::<T>::free_balance(&T::CeresAssetId::get().into(), &user)
                         .unwrap_or(0),
                 Error::<T>::NotEnoughCeres
@@ -276,7 +304,7 @@ pub mod pallet {
             );
 
             // Burn 10 CERES as fee
-            Assets::<T>::burn(origin, T::CeresAssetId::get().into(), balance!(10))?;
+            Assets::<T>::burn(origin, T::CeresAssetId::get().into(), CeresBurnFeeAmount::<T>::get())?;
 
             // Transfer tokens to pallet
             Assets::<T>::transfer_from(&asset_id.into(), &user, &Self::account_id(), total_tokens)?;
@@ -377,7 +405,7 @@ pub mod pallet {
 
             // Transfer XOR to pallet
             Assets::<T>::transfer_from(
-                &T::XORAssetId::get().into(),
+                &XOR.into(),
                 &user,
                 &Self::account_id(),
                 funds_to_contribute,
@@ -424,32 +452,27 @@ pub mod pallet {
                 Error::<T>::NotEnoughFunds
             );
 
-            let token_claimed = (FixedWrapper::from(contribution_info.funds_contributed)
+            let funds_to_claim = (FixedWrapper::from(contribution_info.funds_contributed)
                 * FixedWrapper::from(0.8))
             .try_into_balance()
             .unwrap_or(0);
 
             // Emergency withdraw funds
             Assets::<T>::transfer_from(
-                &T::XORAssetId::get().into(),
+                &XOR.into(),
                 &Self::account_id(),
                 &user,
-                token_claimed,
+                funds_to_claim,
             )?;
 
-            /*
-            let unclaimed = (FixedWrapper::from(contribute_info.funds_contributed)
-                * FixedWrapper::from(0.2))
-                .try_into_balance()
-                .unwrap_or(0);
+            let penalty = contribution_info.funds_contributed - funds_to_claim;
 
             Assets::<T>::transfer_from(
-                &asset_id.into(),
-                &Self::account_id(),
+                &XOR.into(),
+                &PenaltiesAccount::<T>::get(),
                 &user,
-                unclaimed,
+                penalty
             )?;
-            */
 
             ilo_info.funds_raised -= contribution_info.funds_contributed;
             ilo_info.sold_tokens -= contribution_info.tokens_bought;
@@ -525,7 +548,7 @@ pub mod pallet {
             .unwrap_or(0);
             let funds_for_liquidity = ilo_info.funds_raised - funds_for_team;
             Assets::<T>::transfer_from(
-                &T::XORAssetId::get().into(),
+                &XOR.into(),
                 &pallet_account,
                 &ilo_info.ilo_organizer,
                 funds_for_team,
@@ -535,7 +558,7 @@ pub mod pallet {
             TradingPair::<T>::register(
                 RawOrigin::Signed(pallet_account.clone()).into(),
                 DEXId::Polkaswap.into(),
-                T::XORAssetId::get().into(),
+                XOR.into(),
                 asset_id.into(),
             )?;
 
@@ -543,7 +566,7 @@ pub mod pallet {
             PoolXYK::<T>::initialize_pool(
                 RawOrigin::Signed(pallet_account.clone()).into(),
                 DEXId::Polkaswap.into(),
-                T::XORAssetId::get().into(),
+                XOR.into(),
                 asset_id.into(),
             )?;
 
@@ -555,7 +578,7 @@ pub mod pallet {
             PoolXYK::<T>::deposit_liquidity(
                 RawOrigin::Signed(pallet_account.clone()).into(),
                 DEXId::Polkaswap.into(),
-                T::XORAssetId::get().into(),
+                XOR.into(),
                 asset_id.into(),
                 funds_for_liquidity,
                 tokens_for_liquidity,
@@ -581,7 +604,7 @@ pub mod pallet {
             let unlocking_block = current_block + (14400u32 * ilo_info.lockup_days).into();
             CeresLiquidityLocker::<T>::lock_liquidity(
                 RawOrigin::Signed(pallet_account.clone()).into(),
-                T::XORAssetId::get().into(),
+                XOR.into(),
                 asset_id.into(),
                 unlocking_block,
                 balance!(1),
@@ -590,7 +613,7 @@ pub mod pallet {
 
             // Calculate LP tokens
             let pool_account =
-                PoolXYK::<T>::properties_of_pool(T::XORAssetId::get().into(), asset_id)
+                PoolXYK::<T>::properties_of_pool(XOR.into(), asset_id)
                     .ok_or(Error::<T>::PoolDoesNotExist)?
                     .0;
             ilo_info.lp_tokens =
@@ -635,14 +658,14 @@ pub mod pallet {
 
             // Get pool account
             let pool_account =
-                PoolXYK::<T>::properties_of_pool(T::XORAssetId::get().into(), asset_id)
+                PoolXYK::<T>::properties_of_pool(XOR.into(), asset_id)
                     .ok_or(Error::<T>::PoolDoesNotExist)?
                     .0;
 
             // Transfer LP tokens
             PoolXYK::<T>::transfer_lp_tokens(
                 pool_account.clone(),
-                T::XORAssetId::get().into(),
+                XOR.into(),
                 asset_id,
                 pallet_account,
                 user.clone(),
@@ -685,7 +708,7 @@ pub mod pallet {
             if ilo_info.failed {
                 // Claim unused funds
                 Assets::<T>::transfer_from(
-                    &T::XORAssetId::get().into(),
+                    &XOR.into(),
                     &Self::account_id(),
                     &user,
                     contribution_info.funds_contributed,
@@ -752,6 +775,22 @@ pub mod pallet {
 
             <Contributions<T>>::insert(&asset_id, &user, contribution_info);
 
+            Ok(().into())
+        }
+
+        /// Change CERES burn fee
+        #[pallet::weight(10000)]
+        pub fn change_ceres_burn_fee(
+            origin: OriginFor<T>,
+            ceres_fee: Balance,
+        ) -> DispatchResultWithPostInfo {
+            let user = ensure_signed(origin)?;
+
+            if user != AuthorityAccount::<T>::get() {
+                return Err(Error::<T>::Unauthorized.into());
+            }
+
+            CeresBurnFeeAmount::<T>::put(ceres_fee);
             Ok(().into())
         }
     }
