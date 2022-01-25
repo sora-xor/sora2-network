@@ -315,12 +315,8 @@ pub mod pallet {
                 Error::<T>::NotEnoughTokens
             );
 
-            // Transfer Ceres to pallet
-            // Assets::<T>::transfer_from(&T::CeresAssetId::get().into(), &user, &Self::account_id(), CeresBurnFeeAmount::<T>::get())?;
-
             // Burn CERES as fee
             Assets::<T>::burn(
-                // RawOrigin::Signed().into(),
                 origin,
                 T::CeresAssetId::get().into(),
                 CeresBurnFeeAmount::<T>::get(),
