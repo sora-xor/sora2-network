@@ -58,6 +58,7 @@ pub use pallet::*;
 #[frame_support::pallet]
 pub mod pallet {
     use crate::{ContributionInfo, ILOInfo, VestingInfo};
+    use common::fixnum::ops::RoundMode;
     use common::prelude::{Balance, FixedWrapper, XOR};
     use common::{balance, DEXId, PoolXykPallet};
     use frame_support::pallet_prelude::*;
@@ -314,8 +315,12 @@ pub mod pallet {
                 Error::<T>::NotEnoughTokens
             );
 
-            // Burn 10 CERES as fee
+            // Transfer Ceres to pallet
+            // Assets::<T>::transfer_from(&T::CeresAssetId::get().into(), &user, &Self::account_id(), CeresBurnFeeAmount::<T>::get())?;
+
+            // Burn CERES as fee
             Assets::<T>::burn(
+                // RawOrigin::Signed().into(),
                 origin,
                 T::CeresAssetId::get().into(),
                 CeresBurnFeeAmount::<T>::get(),
@@ -849,11 +854,12 @@ pub mod pallet {
             vesting_period: T::BlockNumber,
             vesting_percent: Balance,
         ) -> Result<(), DispatchError> {
-            if ilo_price == balance!(0) {
+            let zero = balance!(0);
+            if ilo_price == zero {
                 return Err(Error::<T>::ParameterCantBeZero.into());
             }
 
-            if hard_cap == balance!(0) {
+            if hard_cap == zero {
                 return Err(Error::<T>::ParameterCantBeZero.into());
             }
 
@@ -892,34 +898,42 @@ pub mod pallet {
                 return Err(Error::<T>::InvalidPrice.into());
             }
 
-            let tfi = (FixedWrapper::from(hard_cap) / FixedWrapper::from(ilo_price))
-                .try_into_balance()
-                .unwrap_or(0);
-            if tokens_for_ilo != tfi {
+            let tfi = ((FixedWrapper::from(hard_cap) / FixedWrapper::from(ilo_price))
+                .get()
+                .unwrap())
+            .integral(RoundMode::Ceil);
+            if tokens_for_ilo != balance!(tfi) {
                 return Err(Error::<T>::InvalidNumberOfTokensForILO.into());
             }
 
             let tfl = ((FixedWrapper::from(hard_cap) * FixedWrapper::from(liquidity_percent))
                 / FixedWrapper::from(listing_price))
-            .try_into_balance()
-            .unwrap_or(0);
-            if tokens_for_liquidity != tfl {
+            .get()
+            .unwrap()
+            .integral(RoundMode::Ceil);
+            if tokens_for_liquidity != balance!(tfl) {
                 return Err(Error::<T>::InvalidNumberOfTokensForLiquidity.into());
             }
 
-            if first_release_percent == balance!(0) {
+            if first_release_percent == zero {
                 return Err(Error::<T>::InvalidFirstReleasePercent.into());
             }
 
-            if first_release_percent != balance!(1) && vesting_percent == balance!(0) {
+            let one = balance!(1);
+            if first_release_percent != one && vesting_percent == zero {
                 return Err(Error::<T>::InvalidVestingPercent.into());
             }
 
-            if first_release_percent + vesting_percent > balance!(1) {
+            if first_release_percent + vesting_percent > one {
                 return Err(Error::<T>::InvalidVestingPercent.into());
             }
 
-            if first_release_percent != balance!(1) && vesting_period == 0u32.into() {
+            let vesting_amount = one - first_release_percent;
+            if vesting_amount % vesting_percent != 0 {
+                return Err(Error::<T>::InvalidVestingPercent.into());
+            }
+
+            if first_release_percent != one && vesting_period == 0u32.into() {
                 return Err(Error::<T>::InvalidVestingPeriod.into());
             }
 

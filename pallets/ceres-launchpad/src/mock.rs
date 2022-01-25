@@ -11,6 +11,7 @@ use frame_support::weights::Weight;
 use frame_support::{construct_runtime, parameter_types};
 use frame_system;
 use frame_system::pallet_prelude::BlockNumberFor;
+use hex_literal::hex;
 use sp_core::H256;
 use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentityLookup, Zero};
@@ -51,6 +52,10 @@ pub type AssetId = AssetId32<common::PredefinedAssetId>;
 
 pub const ALICE: AccountId = 1;
 pub const BOB: AccountId = 2;
+pub const CHARLES: AccountId = 3;
+pub const CERES_ASSET_ID: AssetId = common::AssetId32::from_bytes(hex!(
+    "008bcfd2387d3fc453333557eecb0efe59fcba128769b2feefdd306e98e66440"
+));
 
 pub const BLOCKS_PER_DAY: BlockNumberFor<Runtime> = 14_440;
 
@@ -147,11 +152,15 @@ impl pool_xyk::Config for Runtime {
     type WeightInfo = ();
 }
 
+parameter_types! {
+    pub const CeresAssetId: AssetId = CERES_ASSET_ID;
+}
+
 impl ceres_liquidity_locker::Config for Runtime {
     const BLOCKS_PER_ONE_DAY: BlockNumberFor<Self> = 14_440;
     type Event = Event;
     type XYKPool = PoolXYK;
-    type CeresAssetId = ();
+    type CeresAssetId = CeresAssetId;
     type WeightInfo = ();
 }
 
@@ -233,17 +242,21 @@ impl Default for ExtBuilder {
     fn default() -> Self {
         Self {
             endowed_assets: vec![(
-                XOR,
+                CERES_ASSET_ID,
                 ALICE,
-                AssetSymbol(b"XOR".to_vec()),
-                AssetName(b"XOR".to_vec()),
+                AssetSymbol(b"CERES".to_vec()),
+                AssetName(b"Ceres".to_vec()),
                 18,
                 Balance::zero(),
                 true,
                 None,
                 None,
             )],
-            endowed_accounts: vec![(ALICE, XOR, balance!(3000)), (BOB, XOR, balance!(500))],
+            endowed_accounts: vec![
+                (ALICE, CERES_ASSET_ID, balance!(15000)),
+                (BOB, CERES_ASSET_ID, balance!(5)),
+                (CHARLES, CERES_ASSET_ID, balance!(3000)),
+            ],
         }
     }
 }
