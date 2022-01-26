@@ -383,7 +383,7 @@ pub mod pallet {
             let mut contribution_info = <Contributions<T>>::get(&asset_id, &user);
 
             ensure!(
-                ilo_info.start_block >= current_block,
+                ilo_info.start_block < current_block,
                 Error::<T>::ILONotStarted
             );
             ensure!(
@@ -409,11 +409,6 @@ pub mod pallet {
                 / FixedWrapper::from(ilo_info.ilo_price))
             .try_into_balance()
             .unwrap_or(0);
-
-            ensure!(
-                ilo_info.sold_tokens + tokens_bought <= ilo_info.tokens_for_ilo,
-                Error::<T>::NotEnoughTokensToBuy
-            );
 
             ilo_info.funds_raised += funds_to_contribute;
             ilo_info.sold_tokens += tokens_bought;
