@@ -2,8 +2,6 @@
 //!
 //! Common traits and types
 
-#![cfg_attr(not(feature = "std"), no_std)]
-
 use crate::{Header, Log, U256};
 use frame_support::dispatch::{DispatchError, DispatchResult};
 use frame_system::Config;
