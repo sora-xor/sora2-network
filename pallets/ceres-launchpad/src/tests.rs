@@ -1,12 +1,96 @@
 mod tests {
     use crate::mock::*;
     use crate::{pallet, Error, Pallet as CeresLaunchpadPallet};
-    use common::balance;
     use common::prelude::FixedWrapper;
-    use common::PredefinedAssetId::XOR;
+    use common::{
+        balance, AssetName, AssetSymbol, Balance, DEFAULT_BALANCE_PRECISION, XOR,
+    };
     use frame_support::{assert_err, assert_ok};
     use sp_runtime::traits::AccountIdConversion;
     use sp_runtime::ModuleId;
+
+    fn preset_initial<Fun>(tests: Fun)
+    where
+        Fun: Fn(),
+    {
+        let mut ext = ExtBuilder::default().build();
+        let xor: AssetId = XOR.into();
+        let ceres: AssetId = CERES_ASSET_ID.into();
+
+        ext.execute_with(|| {
+            assert_ok!(assets::Module::<Runtime>::register_asset_id(
+                ALICE,
+                XOR.into(),
+                AssetSymbol(b"XOR".to_vec()),
+                AssetName(b"SORA".to_vec()),
+                DEFAULT_BALANCE_PRECISION,
+                Balance::from(0u32),
+                true,
+                None,
+                None,
+            ));
+
+            assert_ok!(assets::Module::<Runtime>::register_asset_id(
+                ALICE,
+                CERES_ASSET_ID.into(),
+                AssetSymbol(b"CERES".to_vec()),
+                AssetName(b"Ceres".to_vec()),
+                DEFAULT_BALANCE_PRECISION,
+                Balance::from(0u32),
+                true,
+                None,
+                None,
+            ));
+
+            assert_ok!(assets::Module::<Runtime>::mint_to(
+                &xor,
+                &ALICE,
+                &ALICE,
+                balance!(900000)
+            ));
+
+            assert_ok!(assets::Module::<Runtime>::mint_to(
+                &ceres,
+                &ALICE,
+                &ALICE,
+                balance!(1000)
+            ));
+
+            assert_ok!(assets::Module::<Runtime>::mint_to(
+                &xor,
+                &ALICE,
+                &CHARLES,
+                balance!(2000)
+            ));
+
+            assert_ok!(assets::Module::<Runtime>::mint_to(
+                &ceres,
+                &ALICE,
+                &CHARLES,
+                balance!(2000)
+            ));
+
+            assert_eq!(
+                assets::Module::<Runtime>::free_balance(&xor, &ALICE).unwrap(),
+                balance!(900000)
+            );
+            assert_eq!(
+                assets::Module::<Runtime>::free_balance(&ceres, &ALICE).unwrap(),
+                balance!(16000)
+            );
+
+            assert_eq!(
+                assets::Module::<Runtime>::free_balance(&xor, &CHARLES).unwrap(),
+                balance!(2000)
+            );
+            assert_eq!(
+                assets::Module::<Runtime>::free_balance(&ceres, &CHARLES).unwrap(),
+                balance!(5000)
+            );
+
+            tests();
+        });
+    }
 
     #[test]
     fn create_ilo_ilo_price_zero() {
@@ -826,8 +910,7 @@ mod tests {
 
     #[test]
     fn contribute_contribution_is_bigger_then_max() {
-        let mut ext = ExtBuilder::default().build();
-        ext.execute_with(|| {
+        preset_initial(|| {
             let current_block = frame_system::Pallet::<Runtime>::block_number();
             assert_ok!(CeresLaunchpadPallet::<Runtime>::create_ilo(
                 Origin::signed(ALICE),
@@ -870,8 +953,7 @@ mod tests {
 
     #[test]
     fn contribute_hard_cap_is_hit() {
-        let mut ext = ExtBuilder::default().build();
-        ext.execute_with(|| {
+        preset_initial(|| {
             let current_block = frame_system::Pallet::<Runtime>::block_number();
             let asset_id = CERES_ASSET_ID;
             assert_ok!(CeresLaunchpadPallet::<Runtime>::create_ilo(
@@ -916,8 +998,7 @@ mod tests {
 
     #[test]
     fn contribute_ok() {
-        let mut ext = ExtBuilder::default().build();
-        ext.execute_with(|| {
+        preset_initial(|| {
             let current_block = frame_system::Pallet::<Runtime>::block_number();
             let asset_id = CERES_ASSET_ID;
             assert_ok!(CeresLaunchpadPallet::<Runtime>::create_ilo(
@@ -966,7 +1047,7 @@ mod tests {
 
             assert_eq!(
                 Assets::free_balance(&XOR.into(), &CHARLES).expect("Failed to query free balance."),
-                balance!(2999.79)
+                balance!(1999.79)
             );
         });
     }
@@ -1099,8 +1180,7 @@ mod tests {
 
     #[test]
     fn emergency_withdraw_ok() {
-        let mut ext = ExtBuilder::default().build();
-        ext.execute_with(|| {
+        preset_initial(|| {
             let current_block = frame_system::Pallet::<Runtime>::block_number();
             assert_ok!(CeresLaunchpadPallet::<Runtime>::create_ilo(
                 Origin::signed(ALICE),
@@ -1151,7 +1231,7 @@ mod tests {
 
             assert_eq!(
                 Assets::free_balance(&XOR.into(), &CHARLES).expect("Failed to query free balance."),
-                balance!(2999.958)
+                balance!(1999.958)
             );
 
             assert_eq!(

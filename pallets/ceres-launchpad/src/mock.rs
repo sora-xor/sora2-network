@@ -2,8 +2,7 @@ use crate::{self as ceres_launchpad};
 use common::mock::ExistentialDeposits;
 use common::prelude::Balance;
 use common::{
-    balance, fixed, AssetId32, AssetName, AssetSymbol, BalancePrecision, ContentSource,
-    Description, Fixed, XOR,
+    balance, fixed, hash, DEXInfo, Fixed, XOR,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{GenesisBuild, Hooks};
@@ -12,14 +11,22 @@ use frame_support::{construct_runtime, parameter_types};
 use frame_system;
 use frame_system::pallet_prelude::BlockNumberFor;
 use hex_literal::hex;
+use permissions::{Scope, MANAGE_DEX};
 use sp_core::H256;
 use sp_runtime::testing::Header;
-use sp_runtime::traits::{BlakeTwo256, IdentityLookup, Zero};
+use sp_runtime::traits::{BlakeTwo256, IdentityLookup};
 use sp_runtime::Perbill;
+pub use common::mock::*;
+pub use common::TechAssetId as Tas;
+pub use common::TechPurpose::*;
 
+pub type DEXId = u32;
+pub type BlockNumber = u64;
+pub type AccountId = u128;
+pub type Amount = i128;
+pub type AssetId = common::AssetId32<common::PredefinedAssetId>;
+pub type TechAssetId = common::TechAssetId<common::PredefinedAssetId>;
 pub type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
-type TechAssetId = common::TechAssetId<common::PredefinedAssetId>;
-type DEXId = common::DEXId;
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
 
@@ -45,11 +52,6 @@ construct_runtime! {
     }
 }
 
-pub type AccountId = u128;
-pub type BlockNumber = u64;
-pub type Amount = i128;
-pub type AssetId = AssetId32<common::PredefinedAssetId>;
-
 pub const ALICE: AccountId = 1;
 pub const BOB: AccountId = 2;
 pub const CHARLES: AccountId = 3;
@@ -57,6 +59,7 @@ pub const CERES_ASSET_ID: AssetId = common::AssetId32::from_bytes(hex!(
     "008bcfd2387d3fc453333557eecb0efe59fcba128769b2feefdd306e98e66440"
 ));
 
+pub const DEX_A_ID: DEXId = 220;
 pub const BLOCKS_PER_DAY: BlockNumberFor<Runtime> = 14_440;
 
 parameter_types! {
@@ -110,7 +113,7 @@ impl assets::Config for Runtime {
     type Event = Event;
     type ExtraAccountId = AccountId;
     type ExtraAssetRecordArg =
-        common::AssetIdExtraAssetRecordArg<common::DEXId, common::LiquiditySourceType, AccountId>;
+        common::AssetIdExtraAssetRecordArg<DEXId, common::LiquiditySourceType, AccountId>;
     type AssetId = AssetId;
     type GetBaseAssetId = GetBaseAssetId;
     type Currency = currencies::Module<Runtime>;
@@ -120,7 +123,7 @@ impl assets::Config for Runtime {
 }
 
 impl common::Config for Runtime {
-    type DEXId = common::DEXId;
+    type DEXId = DEXId;
     type LstId = common::LiquiditySourceType;
 }
 
@@ -224,39 +227,33 @@ impl pallet_balances::Config for Runtime {
 }
 
 pub struct ExtBuilder {
-    endowed_assets: Vec<(
-        AssetId,
-        AccountId,
-        AssetSymbol,
-        AssetName,
-        BalancePrecision,
-        Balance,
-        bool,
-        Option<ContentSource>,
-        Option<Description>,
-    )>,
+    initial_dex_list: Vec<(DEXId, DEXInfo<AssetId>)>,
     endowed_accounts: Vec<(AccountId, AssetId, Balance)>,
+    initial_permission_owners: Vec<(u32, Scope, Vec<AccountId>)>,
+    initial_permissions: Vec<(AccountId, Scope, Vec<u32>)>,
 }
 
 impl Default for ExtBuilder {
     fn default() -> Self {
         Self {
-            endowed_assets: vec![(
-                CERES_ASSET_ID,
-                ALICE,
-                AssetSymbol(b"CERES".to_vec()),
-                AssetName(b"Ceres".to_vec()),
-                18,
-                Balance::zero(),
-                true,
-                None,
-                None,
+            initial_dex_list: vec![(
+                DEX_A_ID,
+                DEXInfo {
+                    base_asset_id: XOR.into(),
+                    is_public: true,
+                },
             )],
             endowed_accounts: vec![
-                (ALICE, CERES_ASSET_ID, balance!(15000)),
-                (BOB, CERES_ASSET_ID, balance!(5)),
-                (CHARLES, CERES_ASSET_ID, balance!(3000)),
+                (ALICE, CERES_ASSET_ID.into(), balance!(15000)),
+                (BOB, CERES_ASSET_ID.into(), balance!(5)),
+                (CHARLES, CERES_ASSET_ID.into(), balance!(3000)),
             ],
+            initial_permission_owners: vec![(
+                MANAGE_DEX,
+                Scope::Limited(hash(&DEX_A_ID)),
+                vec![BOB],
+            )],
+            initial_permissions: vec![(BOB, Scope::Limited(hash(&DEX_A_ID)), vec![MANAGE_DEX])],
         }
     }
 }
@@ -265,25 +262,8 @@ impl ExtBuilder {
     pub fn build(self) -> sp_io::TestExternalities {
         let mut t = SystemConfig::default().build_storage::<Runtime>().unwrap();
 
-        pallet_balances::GenesisConfig::<Runtime> {
-            balances: self
-                .endowed_accounts
-                .iter()
-                .map(|(acc, _, balance)| (*acc, *balance))
-                .collect(),
-        }
-        .assimilate_storage(&mut t)
-        .unwrap();
-
-        PermissionsConfig {
-            initial_permission_owners: vec![],
-            initial_permissions: vec![],
-        }
-        .assimilate_storage(&mut t)
-        .unwrap();
-
-        assets::GenesisConfig::<Runtime> {
-            endowed_assets: self.endowed_assets,
+        dex_manager::GenesisConfig::<Runtime> {
+            dex_list: self.initial_dex_list,
         }
         .assimilate_storage(&mut t)
         .unwrap();
@@ -293,6 +273,13 @@ impl ExtBuilder {
         }
         .assimilate_storage(&mut t)
         .unwrap();
+
+        permissions::GenesisConfig::<Runtime> {
+            initial_permission_owners: self.initial_permission_owners,
+            initial_permissions: self.initial_permissions,
+        }
+            .assimilate_storage(&mut t)
+            .unwrap();
 
         t.into()
     }
