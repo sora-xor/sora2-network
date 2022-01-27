@@ -48,6 +48,7 @@ pub mod tests;
 
 use common::prelude::constants::{BIG_FEE, SMALL_FEE};
 use common::prelude::QuoteAmount;
+use constants::rewards::VAL_BURN_PERCENT;
 use constants::time::*;
 
 // Make the WASM binary available.
@@ -883,6 +884,7 @@ impl rewards::Config for Runtime {
     const MAX_CHUNK_SIZE: usize = 100;
     const MAX_VESTING_RATIO: Percent = Percent::from_percent(55);
     const TIME_TO_SATURATION: BlockNumber = 5 * 365 * DAYS; // 5 years
+    const VAL_BURN_PERCENT: Percent = VAL_BURN_PERCENT;
     type Event = Event;
     type WeightInfo = rewards::weights::WeightInfo<Runtime>;
 }

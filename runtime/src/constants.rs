@@ -73,3 +73,9 @@ pub mod currency {
 
     pub const TRANSACTION_BYTE_FEE: Balance = 0;
 }
+
+pub mod rewards {
+    use sp_runtime::Percent;
+
+    pub const VAL_BURN_PERCENT: Percent = Percent::from_percent(3);
+}
