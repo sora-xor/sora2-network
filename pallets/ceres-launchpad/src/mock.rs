@@ -1,9 +1,10 @@
 use crate::{self as ceres_launchpad};
 use common::mock::ExistentialDeposits;
+pub use common::mock::*;
 use common::prelude::Balance;
-use common::{
-    balance, fixed, hash, DEXInfo, Fixed, XOR,
-};
+pub use common::TechAssetId as Tas;
+pub use common::TechPurpose::*;
+use common::{balance, fixed, hash, DEXId, DEXInfo, Fixed, XOR};
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{GenesisBuild, Hooks};
 use frame_support::weights::Weight;
@@ -16,10 +17,6 @@ use sp_core::H256;
 use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentityLookup};
 use sp_runtime::Perbill;
-pub use common::mock::*;
-pub use common::TechAssetId as Tas;
-pub use common::TechPurpose::*;
-use common::DEXId;
 
 pub type BlockNumber = u64;
 pub type AccountId = u128;
@@ -278,8 +275,8 @@ impl ExtBuilder {
             initial_permission_owners: self.initial_permission_owners,
             initial_permissions: self.initial_permissions,
         }
-            .assimilate_storage(&mut t)
-            .unwrap();
+        .assimilate_storage(&mut t)
+        .unwrap();
 
         t.into()
     }

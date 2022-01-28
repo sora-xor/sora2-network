@@ -2,9 +2,7 @@ mod tests {
     use crate::mock::*;
     use crate::{pallet, Error, Pallet as CeresLaunchpadPallet};
     use common::prelude::FixedWrapper;
-    use common::{
-        balance, AssetName, AssetSymbol, Balance, DEFAULT_BALANCE_PRECISION, XOR,
-    };
+    use common::{balance, AssetName, AssetSymbol, Balance, DEFAULT_BALANCE_PRECISION, XOR};
     use frame_support::{assert_err, assert_ok};
     use sp_runtime::traits::AccountIdConversion;
     use sp_runtime::ModuleId;
@@ -1364,12 +1362,10 @@ mod tests {
 
             run_to_block(11);
 
-            assert_ok!(
-                CeresLaunchpadPallet::<Runtime>::finish_ilo(
-                    Origin::signed(ALICE),
-                    CERES_ASSET_ID.into()
-                ),
-            );
+            assert_ok!(CeresLaunchpadPallet::<Runtime>::finish_ilo(
+                Origin::signed(ALICE),
+                CERES_ASSET_ID.into()
+            ),);
 
             let pallet_account = ModuleId(*b"crslaunc").into_account();
             assert_eq!(
@@ -1416,12 +1412,10 @@ mod tests {
 
             run_to_block(11);
 
-            assert_ok!(
-                CeresLaunchpadPallet::<Runtime>::finish_ilo(
-                    Origin::signed(ALICE),
-                    CERES_ASSET_ID.into()
-                ),
-            );
+            assert_ok!(CeresLaunchpadPallet::<Runtime>::finish_ilo(
+                Origin::signed(ALICE),
+                CERES_ASSET_ID.into()
+            ),);
 
             let pallet_account = ModuleId(*b"crslaunc").into_account();
             assert_eq!(
@@ -1438,6 +1432,48 @@ mod tests {
 
             let ilo_info = pallet::ILOs::<Runtime>::get(&CERES_ASSET_ID);
             assert_eq!(ilo_info.failed, true);
+        });
+    }
+
+    #[test]
+    fn finish_ilo_ilo_is_failed() {
+        preset_initial(|| {
+            let current_block = frame_system::Pallet::<Runtime>::block_number();
+            assert_ok!(CeresLaunchpadPallet::<Runtime>::create_ilo(
+                Origin::signed(ALICE),
+                CERES_ASSET_ID.into(),
+                balance!(7693),
+                balance!(3000),
+                balance!(0.13),
+                balance!(600),
+                balance!(1000),
+                balance!(0.2),
+                balance!(0.25),
+                true,
+                balance!(0.75),
+                balance!(0.25),
+                31,
+                current_block + 5,
+                current_block + 10,
+                balance!(0.2),
+                current_block + 3,
+                balance!(0.2)
+            ));
+
+            run_to_block(11);
+
+            assert_ok!(CeresLaunchpadPallet::<Runtime>::finish_ilo(
+                Origin::signed(ALICE),
+                CERES_ASSET_ID.into()
+            ),);
+
+            assert_err!(
+                CeresLaunchpadPallet::<Runtime>::finish_ilo(
+                    Origin::signed(ALICE),
+                    CERES_ASSET_ID.into()
+                ),
+                Error::<Runtime>::ILOIsFailed
+            );
         });
     }
 
@@ -1479,23 +1515,20 @@ mod tests {
             run_to_block(11);
 
             current_block = frame_system::Pallet::<Runtime>::block_number();
-            assert_ok!(
-                CeresLaunchpadPallet::<Runtime>::finish_ilo(
-                    Origin::signed(ALICE),
-                    CERES_ASSET_ID.into()
-                ),
-            );
+            assert_ok!(CeresLaunchpadPallet::<Runtime>::finish_ilo(
+                Origin::signed(ALICE),
+                CERES_ASSET_ID.into()
+            ),);
 
             let ilo_info = pallet::ILOs::<Runtime>::get(&CERES_ASSET_ID);
 
             let funds_for_liquidity = (FixedWrapper::from(ilo_info.funds_raised)
                 * FixedWrapper::from(ilo_info.liquidity_percent))
-                .try_into_balance()
-                .unwrap_or(0);
+            .try_into_balance()
+            .unwrap_or(0);
             let funds_for_team = ilo_info.funds_raised - funds_for_liquidity;
             assert_eq!(
-                Assets::free_balance(&XOR, &ALICE)
-                    .expect("Failed to query free balance."),
+                Assets::free_balance(&XOR, &ALICE).expect("Failed to query free balance."),
                 funds_for_team + balance!(900000)
             );
 
@@ -1504,8 +1537,8 @@ mod tests {
 
             let tokens_for_liquidity = (FixedWrapper::from(funds_for_liquidity)
                 / FixedWrapper::from(ilo_info.listing_price))
-                .try_into_balance()
-                .unwrap_or(0);
+            .try_into_balance()
+            .unwrap_or(0);
             assert_eq!(ceres_liq, tokens_for_liquidity);
 
             let pallet_account = ModuleId(*b"crslaunc").into_account();
@@ -1523,8 +1556,10 @@ mod tests {
                     CERES_ASSET_ID.into(),
                     ilo_info.lp_tokens,
                     balance!(0),
-                    balance!(0)),
-                pool_xyk::Error::<Runtime>::NotEnoughUnlockedLiquidity);
+                    balance!(0)
+                ),
+                pool_xyk::Error::<Runtime>::NotEnoughUnlockedLiquidity
+            );
 
             assert_eq!(ilo_info.finish_block, current_block);
         });
@@ -1568,23 +1603,20 @@ mod tests {
             run_to_block(11);
 
             current_block = frame_system::Pallet::<Runtime>::block_number();
-            assert_ok!(
-                CeresLaunchpadPallet::<Runtime>::finish_ilo(
-                    Origin::signed(ALICE),
-                    CERES_ASSET_ID.into()
-                ),
-            );
+            assert_ok!(CeresLaunchpadPallet::<Runtime>::finish_ilo(
+                Origin::signed(ALICE),
+                CERES_ASSET_ID.into()
+            ),);
 
             let ilo_info = pallet::ILOs::<Runtime>::get(&CERES_ASSET_ID);
 
             let funds_for_liquidity = (FixedWrapper::from(ilo_info.funds_raised)
                 * FixedWrapper::from(ilo_info.liquidity_percent))
-                .try_into_balance()
-                .unwrap_or(0);
+            .try_into_balance()
+            .unwrap_or(0);
             let funds_for_team = ilo_info.funds_raised - funds_for_liquidity;
             assert_eq!(
-                Assets::free_balance(&XOR, &ALICE)
-                    .expect("Failed to query free balance."),
+                Assets::free_balance(&XOR, &ALICE).expect("Failed to query free balance."),
                 funds_for_team + balance!(900000)
             );
 
@@ -1593,8 +1625,8 @@ mod tests {
 
             let tokens_for_liquidity = (FixedWrapper::from(funds_for_liquidity)
                 / FixedWrapper::from(ilo_info.listing_price))
-                .try_into_balance()
-                .unwrap_or(0);
+            .try_into_balance()
+            .unwrap_or(0);
             assert_eq!(ceres_liq, tokens_for_liquidity);
 
             let pallet_account = ModuleId(*b"crslaunc").into_account();
@@ -1612,14 +1644,432 @@ mod tests {
                     CERES_ASSET_ID.into(),
                     ilo_info.lp_tokens,
                     balance!(0),
-                    balance!(0)),
-                pool_xyk::Error::<Runtime>::NotEnoughUnlockedLiquidity);
+                    balance!(0)
+                ),
+                pool_xyk::Error::<Runtime>::NotEnoughUnlockedLiquidity
+            );
 
             assert_eq!(ilo_info.finish_block, current_block);
         });
     }
 
-    /*#[test]
+    #[test]
+    fn claim_ilo_does_not_exist() {
+        preset_initial(|| {
+            assert_err!(
+                CeresLaunchpadPallet::<Runtime>::claim(
+                    Origin::signed(CHARLES),
+                    CERES_ASSET_ID.into(),
+                ),
+                Error::<Runtime>::ILODoesNotExist
+            );
+        });
+    }
+
+    #[test]
+    fn claim_ilo_is_not_finished() {
+        preset_initial(|| {
+            let current_block = frame_system::Pallet::<Runtime>::block_number();
+            assert_ok!(CeresLaunchpadPallet::<Runtime>::create_ilo(
+                Origin::signed(ALICE),
+                CERES_ASSET_ID.into(),
+                balance!(7693),
+                balance!(3000),
+                balance!(0.13),
+                balance!(600),
+                balance!(1000),
+                balance!(0.2),
+                balance!(0.25),
+                true,
+                balance!(0.75),
+                balance!(0.25),
+                31,
+                current_block + 5,
+                current_block + 10,
+                balance!(0.2),
+                current_block + 3,
+                balance!(0.2)
+            ));
+
+            assert_err!(
+                CeresLaunchpadPallet::<Runtime>::claim(
+                    Origin::signed(CHARLES),
+                    CERES_ASSET_ID.into(),
+                ),
+                Error::<Runtime>::ILOIsNotFinished
+            );
+        });
+    }
+
+    #[test]
+    fn claim_ilo_failed_ok() {
+        preset_initial(|| {
+            let current_block = frame_system::Pallet::<Runtime>::block_number();
+            assert_ok!(CeresLaunchpadPallet::<Runtime>::create_ilo(
+                Origin::signed(ALICE),
+                CERES_ASSET_ID.into(),
+                balance!(7693),
+                balance!(3000),
+                balance!(0.13),
+                balance!(600),
+                balance!(1000),
+                balance!(0.2),
+                balance!(0.25),
+                true,
+                balance!(0.75),
+                balance!(0.25),
+                31,
+                current_block + 5,
+                current_block + 10,
+                balance!(0.2),
+                current_block + 3,
+                balance!(0.2)
+            ));
+
+            run_to_block(6);
+
+            let funds_to_contribute = balance!(0.21);
+
+            assert_ok!(CeresLaunchpadPallet::<Runtime>::contribute(
+                Origin::signed(CHARLES),
+                CERES_ASSET_ID.into(),
+                funds_to_contribute
+            ));
+
+            run_to_block(11);
+
+            assert_ok!(CeresLaunchpadPallet::<Runtime>::finish_ilo(
+                Origin::signed(ALICE),
+                CERES_ASSET_ID.into()
+            ),);
+
+            assert_ok!(CeresLaunchpadPallet::<Runtime>::claim(
+                Origin::signed(CHARLES),
+                CERES_ASSET_ID.into(),
+            ));
+
+            assert_eq!(
+                Assets::free_balance(&CERES_ASSET_ID, &CHARLES)
+                    .expect("Failed to query free balance."),
+                balance!(5000)
+            );
+
+            let contribution_info =
+                pallet::Contributions::<Runtime>::get(&CERES_ASSET_ID, &CHARLES);
+            assert_eq!(contribution_info.claiming_finished, true);
+        });
+    }
+
+    #[test]
+    fn claim_funds_already_claimed() {
+        preset_initial(|| {
+            let current_block = frame_system::Pallet::<Runtime>::block_number();
+            assert_ok!(CeresLaunchpadPallet::<Runtime>::create_ilo(
+                Origin::signed(ALICE),
+                CERES_ASSET_ID.into(),
+                balance!(7693),
+                balance!(3000),
+                balance!(0.13),
+                balance!(600),
+                balance!(1000),
+                balance!(0.2),
+                balance!(0.25),
+                true,
+                balance!(0.75),
+                balance!(0.25),
+                31,
+                current_block + 5,
+                current_block + 10,
+                balance!(0.2),
+                current_block + 3,
+                balance!(0.2)
+            ));
+
+            run_to_block(6);
+
+            let funds_to_contribute = balance!(0.21);
+
+            assert_ok!(CeresLaunchpadPallet::<Runtime>::contribute(
+                Origin::signed(CHARLES),
+                CERES_ASSET_ID.into(),
+                funds_to_contribute
+            ));
+
+            run_to_block(11);
+
+            assert_ok!(CeresLaunchpadPallet::<Runtime>::finish_ilo(
+                Origin::signed(ALICE),
+                CERES_ASSET_ID.into()
+            ),);
+
+            assert_ok!(CeresLaunchpadPallet::<Runtime>::claim(
+                Origin::signed(CHARLES),
+                CERES_ASSET_ID.into(),
+            ));
+
+            assert_err!(
+                CeresLaunchpadPallet::<Runtime>::claim(
+                    Origin::signed(CHARLES),
+                    CERES_ASSET_ID.into(),
+                ),
+                Error::<Runtime>::FundsAlreadyClaimed
+            );
+        });
+    }
+
+    #[test]
+    fn claim_first_release_claim_ok() {
+        preset_initial(|| {
+            let current_block = frame_system::Pallet::<Runtime>::block_number();
+            assert_ok!(CeresLaunchpadPallet::<Runtime>::create_ilo(
+                Origin::signed(ALICE),
+                CERES_ASSET_ID.into(),
+                balance!(7693),
+                balance!(3000),
+                balance!(0.13),
+                balance!(600),
+                balance!(1000),
+                balance!(0.2),
+                balance!(1500),
+                false,
+                balance!(0.75),
+                balance!(0.25),
+                31,
+                current_block + 5,
+                current_block + 10,
+                balance!(0.2),
+                current_block + 3,
+                balance!(0.2)
+            ));
+
+            run_to_block(6);
+
+            let funds_to_contribute = balance!(1000);
+
+            assert_ok!(CeresLaunchpadPallet::<Runtime>::contribute(
+                Origin::signed(CHARLES),
+                CERES_ASSET_ID.into(),
+                funds_to_contribute
+            ));
+
+            run_to_block(11);
+
+            assert_ok!(CeresLaunchpadPallet::<Runtime>::finish_ilo(
+                Origin::signed(ALICE),
+                CERES_ASSET_ID.into()
+            ),);
+
+            assert_ok!(CeresLaunchpadPallet::<Runtime>::claim(
+                Origin::signed(CHARLES),
+                CERES_ASSET_ID.into(),
+            ));
+
+            let ilo_info = pallet::ILOs::<Runtime>::get(&CERES_ASSET_ID);
+            let contribution_info =
+                pallet::Contributions::<Runtime>::get(&CERES_ASSET_ID, &CHARLES);
+
+            let tokens_to_claim = (FixedWrapper::from(contribution_info.tokens_bought)
+                * FixedWrapper::from(ilo_info.token_vesting.first_release_percent))
+            .try_into_balance()
+            .unwrap_or(0);
+
+            assert_eq!(
+                Assets::free_balance(&CERES_ASSET_ID, &CHARLES)
+                    .expect("Failed to query free balance."),
+                balance!(5000) + tokens_to_claim
+            );
+
+            assert_eq!(contribution_info.tokens_claimed, tokens_to_claim);
+        });
+    }
+
+    #[test]
+    fn claim_no_potential_claims() {
+        preset_initial(|| {
+            let current_block = frame_system::Pallet::<Runtime>::block_number();
+            assert_ok!(CeresLaunchpadPallet::<Runtime>::create_ilo(
+                Origin::signed(ALICE),
+                CERES_ASSET_ID.into(),
+                balance!(7693),
+                balance!(3000),
+                balance!(0.13),
+                balance!(600),
+                balance!(1000),
+                balance!(0.2),
+                balance!(1500),
+                false,
+                balance!(0.75),
+                balance!(0.25),
+                31,
+                current_block + 5,
+                current_block + 10,
+                balance!(0.2),
+                current_block + 50,
+                balance!(0.2)
+            ));
+
+            run_to_block(6);
+
+            let funds_to_contribute = balance!(1000);
+
+            assert_ok!(CeresLaunchpadPallet::<Runtime>::contribute(
+                Origin::signed(CHARLES),
+                CERES_ASSET_ID.into(),
+                funds_to_contribute
+            ));
+
+            run_to_block(11);
+
+            assert_ok!(CeresLaunchpadPallet::<Runtime>::finish_ilo(
+                Origin::signed(ALICE),
+                CERES_ASSET_ID.into()
+            ),);
+
+            assert_ok!(CeresLaunchpadPallet::<Runtime>::claim(
+                Origin::signed(CHARLES),
+                CERES_ASSET_ID.into(),
+            ));
+
+            run_to_block(12);
+
+            assert_err!(
+                CeresLaunchpadPallet::<Runtime>::claim(
+                    Origin::signed(CHARLES),
+                    CERES_ASSET_ID.into(),
+                ),
+                Error::<Runtime>::NothingToClaim
+            );
+        });
+    }
+
+    #[test]
+    fn claim_ok() {
+        preset_initial(|| {
+            let current_block = frame_system::Pallet::<Runtime>::block_number();
+            assert_ok!(CeresLaunchpadPallet::<Runtime>::create_ilo(
+                Origin::signed(ALICE),
+                CERES_ASSET_ID.into(),
+                balance!(7693),
+                balance!(3000),
+                balance!(0.13),
+                balance!(600),
+                balance!(1000),
+                balance!(0.2),
+                balance!(1500),
+                false,
+                balance!(0.75),
+                balance!(0.25),
+                31,
+                current_block + 5,
+                current_block + 10,
+                balance!(0.1),
+                30u32.into(),
+                balance!(0.18)
+            ));
+
+            run_to_block(6);
+
+            let funds_to_contribute = balance!(1000);
+
+            assert_ok!(CeresLaunchpadPallet::<Runtime>::contribute(
+                Origin::signed(CHARLES),
+                CERES_ASSET_ID.into(),
+                funds_to_contribute
+            ));
+
+            run_to_block(11);
+
+            assert_ok!(CeresLaunchpadPallet::<Runtime>::finish_ilo(
+                Origin::signed(ALICE),
+                CERES_ASSET_ID.into()
+            ),);
+
+            let ilo_info = pallet::ILOs::<Runtime>::get(&CERES_ASSET_ID);
+            let mut contribution_info =
+                pallet::Contributions::<Runtime>::get(&CERES_ASSET_ID, &CHARLES);
+
+            let first_release = (FixedWrapper::from(contribution_info.tokens_bought)
+                * FixedWrapper::from(ilo_info.token_vesting.first_release_percent))
+            .try_into_balance()
+            .unwrap_or(0);
+
+            let tokens_per_claim = (FixedWrapper::from(contribution_info.tokens_bought)
+                * FixedWrapper::from(ilo_info.token_vesting.vesting_percent))
+            .try_into_balance()
+            .unwrap_or(0);
+
+            assert_ok!(CeresLaunchpadPallet::<Runtime>::claim(
+                Origin::signed(CHARLES),
+                CERES_ASSET_ID.into(),
+            ));
+
+            run_to_block(43);
+
+            assert_ok!(CeresLaunchpadPallet::<Runtime>::claim(
+                Origin::signed(CHARLES),
+                CERES_ASSET_ID.into(),
+            ));
+
+            assert_eq!(
+                Assets::free_balance(&CERES_ASSET_ID, &CHARLES)
+                    .expect("Failed to query free balance."),
+                balance!(5000) + first_release + tokens_per_claim
+            );
+
+            run_to_block(103);
+
+            assert_ok!(CeresLaunchpadPallet::<Runtime>::claim(
+                Origin::signed(CHARLES),
+                CERES_ASSET_ID.into(),
+            ));
+            assert_eq!(
+                Assets::free_balance(&CERES_ASSET_ID, &CHARLES)
+                    .expect("Failed to query free balance."),
+                balance!(5000) + first_release + tokens_per_claim * 3
+            );
+
+            run_to_block(163);
+
+            assert_ok!(CeresLaunchpadPallet::<Runtime>::claim(
+                Origin::signed(CHARLES),
+                CERES_ASSET_ID.into(),
+            ));
+            contribution_info = pallet::Contributions::<Runtime>::get(&CERES_ASSET_ID, &CHARLES);
+            assert_eq!(
+                Assets::free_balance(&CERES_ASSET_ID, &CHARLES)
+                    .expect("Failed to query free balance."),
+                balance!(5000) + first_release + tokens_per_claim * 5
+            );
+            assert_eq!(contribution_info.claiming_finished, true);
+        });
+    }
+
+    #[test]
+    fn change_ceres_burn_fee_unauthorized() {
+        preset_initial(|| {
+            assert_err!(
+                CeresLaunchpadPallet::<Runtime>::change_ceres_burn_fee(
+                    Origin::signed(ALICE),
+                    balance!(100)
+                ),
+                Error::<Runtime>::Unauthorized
+            );
+        });
+    }
+
+    #[test]
+    fn change_ceres_burn_fee_ok() {
+        preset_initial(|| {
+            assert_ok!(CeresLaunchpadPallet::<Runtime>::change_ceres_burn_fee(
+                Origin::signed(pallet::AuthorityAccount::<Runtime>::get()),
+                balance!(100)
+            ));
+
+            assert_eq!(pallet::CeresBurnFeeAmount::<Runtime>::get(), balance!(100));
+        });
+    }
+
+    #[test]
     fn claim_lp_tokens_ilo_does_not_exist() {
         let mut ext = ExtBuilder::default().build();
         ext.execute_with(|| {
@@ -1633,7 +2083,7 @@ mod tests {
         });
     }
 
-    #[test]
+    /*#[test]
     fn claim_lp_tokens_cant_claim_lp_tokens_already_claimed() {
         let mut ext = ExtBuilder::default().build();
         ext.execute_with(|| {
@@ -1647,7 +2097,7 @@ mod tests {
                 Error::<Runtime>::ILODoesNotExist
             );
         });
-    }
+    }*/
 
     #[test]
     fn claim_lp_tokens_cant_claim_lp_tokens() {
@@ -1685,7 +2135,7 @@ mod tests {
         });
     }
 
-    #[test]
+    /*#[test]
     fn claim_lp_tokens_unauthorized() {
         let mut ext = ExtBuilder::default().build();
         ext.execute_with(|| {

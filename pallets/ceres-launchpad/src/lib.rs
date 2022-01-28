@@ -631,6 +631,7 @@ pub mod pallet {
             ilo_info.lp_tokens =
                 PoolXYK::<T>::balance_of_pool_provider(pool_account, pallet_account).unwrap_or(0);
 
+            ilo_info.succeeded = true;
             ilo_info.finish_block = current_block;
             <ILOs<T>>::insert(&asset_id, &ilo_info);
 
@@ -770,8 +771,9 @@ pub mod pallet {
                         * FixedWrapper::from(ilo_info.token_vesting.vesting_percent))
                     .try_into_balance()
                     .unwrap_or(0);
+
                     let claimable = (FixedWrapper::from(tokens_per_claim)
-                        * FixedWrapper::from(allowed_claims))
+                        * FixedWrapper::from(balance!(allowed_claims)))
                     .try_into_balance()
                     .unwrap_or(0);
 
@@ -785,7 +787,19 @@ pub mod pallet {
                     contribution_info.tokens_claimed += claimable;
                     contribution_info.number_of_claims += allowed_claims;
 
-                    if contribution_info.tokens_bought <= contribution_info.tokens_claimed {
+                    let claimed_percent =
+                        (FixedWrapper::from(ilo_info.token_vesting.vesting_percent)
+                            * FixedWrapper::from(balance!(contribution_info.number_of_claims)))
+                        .try_into_balance()
+                        .unwrap_or(0)
+                            + ilo_info.token_vesting.first_release_percent;
+
+                    #[cfg(feature = "std")]
+                    println!("{}", contribution_info.number_of_claims);
+                    #[cfg(feature = "std")]
+                    println!("{}", claimed_percent);
+
+                    if claimed_percent == balance!(1) {
                         contribution_info.claiming_finished = true;
                     }
                 }
