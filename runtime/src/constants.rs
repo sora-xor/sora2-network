@@ -78,4 +78,5 @@ pub mod rewards {
     use sp_runtime::Percent;
 
     pub const VAL_BURN_PERCENT: Percent = Percent::from_percent(3);
+    pub const PSWAP_BURN_PERCENT: Percent = Percent::from_percent(3);
 }

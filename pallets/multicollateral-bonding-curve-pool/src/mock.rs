@@ -50,7 +50,7 @@ use sp_core::crypto::AccountId32;
 use sp_core::H256;
 use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentityLookup, Zero};
-use sp_runtime::{DispatchError, DispatchResult, Perbill};
+use sp_runtime::{DispatchError, DispatchResult, Perbill, Percent};
 use std::collections::HashMap;
 
 pub type AccountId = AccountId32;
@@ -288,6 +288,7 @@ impl pallet_balances::Config for Runtime {
 }
 
 impl pswap_distribution::Config for Runtime {
+    const PSWAP_BURN_PERCENT: Percent = Percent::from_percent(3);
     type Event = Event;
     type GetIncentiveAssetId = GetIncentiveAssetId;
     type LiquidityProxy = ();

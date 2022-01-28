@@ -48,7 +48,7 @@ pub mod tests;
 
 use common::prelude::constants::{BIG_FEE, SMALL_FEE};
 use common::prelude::QuoteAmount;
-use constants::rewards::VAL_BURN_PERCENT;
+use constants::rewards::*;
 use constants::time::*;
 
 // Make the WASM binary available.
@@ -1304,6 +1304,7 @@ impl farming::Config for Runtime {
 }
 
 impl pswap_distribution::Config for Runtime {
+    const PSWAP_BURN_PERCENT: Percent = PSWAP_BURN_PERCENT;
     type Event = Event;
     type GetIncentiveAssetId = GetPswapAssetId;
     type LiquidityProxy = LiquidityProxy;
