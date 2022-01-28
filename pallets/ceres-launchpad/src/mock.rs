@@ -19,8 +19,8 @@ use sp_runtime::Perbill;
 pub use common::mock::*;
 pub use common::TechAssetId as Tas;
 pub use common::TechPurpose::*;
+use common::DEXId;
 
-pub type DEXId = u32;
 pub type BlockNumber = u64;
 pub type AccountId = u128;
 pub type Amount = i128;
@@ -59,7 +59,7 @@ pub const CERES_ASSET_ID: AssetId = common::AssetId32::from_bytes(hex!(
     "008bcfd2387d3fc453333557eecb0efe59fcba128769b2feefdd306e98e66440"
 ));
 
-pub const DEX_A_ID: DEXId = 220;
+pub const DEX_A_ID: DEXId = DEXId::Polkaswap;
 pub const BLOCKS_PER_DAY: BlockNumberFor<Runtime> = 14_440;
 
 parameter_types! {
@@ -253,7 +253,7 @@ impl Default for ExtBuilder {
                 Scope::Limited(hash(&DEX_A_ID)),
                 vec![BOB],
             )],
-            initial_permissions: vec![(BOB, Scope::Limited(hash(&DEX_A_ID)), vec![MANAGE_DEX])],
+            initial_permissions: vec![(ALICE, Scope::Limited(hash(&DEX_A_ID)), vec![MANAGE_DEX])],
         }
     }
 }
